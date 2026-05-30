@@ -1,5 +1,5 @@
 import Card from "../common/Card.jsx";
-import TierBadge from "./TierBadge.jsx";
+import TierEmblem from "./TierEmblem.jsx";
 import { getTierProgress, getTierQuote } from "../../lib/tier.js";
 
 export default function RatingCard({ title, mmr, subtitle, trend }) {
@@ -10,7 +10,7 @@ export default function RatingCard({ title, mmr, subtitle, trend }) {
           <p className="eyebrow">{title}</p>
           <strong>{Math.round(mmr)}</strong>
         </div>
-        <TierBadge mmr={mmr} compact />
+        <TierEmblem mmr={mmr} size="sm" />
       </div>
       <div className="progress-track" aria-hidden="true">
         <span style={{ width: `${getTierProgress(mmr)}%` }} />

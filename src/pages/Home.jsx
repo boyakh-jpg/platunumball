@@ -6,6 +6,7 @@ import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import MatchCard from "../components/match/MatchCard.jsx";
 import RatingCard from "../components/rating/RatingCard.jsx";
+import TierEmblem from "../components/rating/TierEmblem.jsx";
 import ShareCard from "../components/share/ShareCard.jsx";
 import TeamCard from "../components/team/TeamCard.jsx";
 import { COURTS } from "../lib/constants.js";
@@ -84,9 +85,14 @@ export default function Home({ app }) {
       <section className="court-command">
         <div className="court-command-copy">
           <BadgeLine icon={Trophy} text="Rank profile" />
-          <strong>{user.ratings.integrated}</strong>
-          <h2>{user.name} · 통합 티어 레이스</h2>
-          <Badge tone="gold">{getTierDivision(user.ratings.integrated)}</Badge>
+          <div className="tier-crest-lockup">
+            <TierEmblem mmr={user.ratings.integrated} size="hero" showLabel />
+            <div>
+              <strong>{user.ratings.integrated}</strong>
+              <h2>{user.name} · 통합 티어 레이스</h2>
+              <Badge tone="gold">{getTierDivision(user.ratings.integrated)}</Badge>
+            </div>
+          </div>
           <p className="tier-line">{getTierQuote(user.ratings.integrated)}</p>
           <p>{user.streak > 0 ? `${user.streak}연승 중. 다음 공식전이 티어를 크게 흔듭니다.` : "다음 승리를 노리는 중입니다."}</p>
         </div>

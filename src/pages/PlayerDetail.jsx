@@ -2,6 +2,7 @@ import { Link, Navigate, useParams } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import Card from "../components/common/Card.jsx";
 import RatingCard from "../components/rating/RatingCard.jsx";
+import TierEmblem from "../components/rating/TierEmblem.jsx";
 import TierBadge from "../components/rating/TierBadge.jsx";
 import { PLAYER_STAT_FIELDS } from "../lib/constants.js";
 import { formatStatLine } from "../lib/matchUtils.js";
@@ -80,8 +81,11 @@ export default function PlayerDetail({ app }) {
           </div>
         </div>
         <div className="tier-statement">
-          <span>{getTierDivision(player.ratings.integrated)}</span>
-          <strong>{getTierQuote(player.ratings.integrated)}</strong>
+          <TierEmblem mmr={player.ratings.integrated} size="hero" showLabel />
+          <div>
+            <span>{getTierDivision(player.ratings.integrated)}</span>
+            <strong>{getTierQuote(player.ratings.integrated)}</strong>
+          </div>
         </div>
       </section>
 
