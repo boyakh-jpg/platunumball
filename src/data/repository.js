@@ -8,6 +8,14 @@ import { isSupabaseConfigured, supabase } from "../lib/supabase.js";
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const makeId = (prefix) => `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
 const REMOTE_STATE_ID = "rankball-mvp";
+const DEFAULT_SETTINGS = {
+  privacy: {
+    regionRanking: true,
+    teamHistory: true,
+    statSummary: true,
+  },
+  blockedUserIds: [],
+};
 
 function mergeById(current = [], fallback = []) {
   const currentMap = new Map(current.map((item) => [item.id, item]));
@@ -34,7 +42,21 @@ function normalizeMatch(match) {
   };
 }
 
+function normalizeSettings(settings = {}) {
+  return {
+    ...DEFAULT_SETTINGS,
+    ...settings,
+    privacy: {
+      ...DEFAULT_SETTINGS.privacy,
+      ...(settings.privacy ?? {}),
+    },
+    blockedUserIds: settings.blockedUserIds ?? [],
+  };
+}
+
 function normalizeState(state) {
+  const notifications = state?.notifications?.length ? state.notifications : initialState.notifications;
+
   return {
     ...clone(initialState),
     ...state,
@@ -42,7 +64,9 @@ function normalizeState(state) {
     teams: mergeById(state?.teams, initialState.teams),
     affiliations: mergeById(state?.affiliations, initialState.affiliations),
     matches: mergeById(state?.matches, initialState.matches).map(normalizeMatch),
-    notifications: state?.notifications?.length ? state.notifications : initialState.notifications,
+    notifications: notifications.map((notification) => ({ readAt: null, ...notification })),
+    settings: normalizeSettings(state?.settings ?? initialState.settings),
+    reports: state?.reports ?? initialState.reports ?? [],
   };
 }
 
@@ -501,6 +525,96 @@ export function resumeMatchApproval(state, matchId) {
 export function switchUser(state, userId) {
   if (!state.users.some((user) => user.id === userId)) return state;
   return { ...state, currentUserId: userId };
+}
+
+export function updatePrivacySettings(state, patch) {
+  return {
+    ...state,
+    settings: normalizeSettings({
+      ...(state.settings ?? {}),
+      privacy: {
+        ...(state.settings?.privacy ?? DEFAULT_SETTINGS.privacy),
+        ...patch,
+      },
+    }),
+  };
+}
+
+export function blockUser(state, userId) {
+  if (!state.users.some((user) => user.id === userId) || userId === state.currentUserId) return state;
+  const blockedUserIds = Array.from(new Set([...(state.settings?.blockedUserIds ?? []), userId]));
+  const blockedUser = state.users.find((user) => user.id === userId);
+
+  return {
+    ...state,
+    settings: normalizeSettings({ ...(state.settings ?? {}), blockedUserIds }),
+    notifications: [
+      {
+        id: makeId("n"),
+        title: "플레이어 차단",
+        body: `${blockedUser?.name ?? "선택한 플레이어"}가 홈 검색과 추천 목록에서 숨겨집니다.`,
+        tone: "team",
+      },
+      ...state.notifications,
+    ],
+  };
+}
+
+export function unblockUser(state, userId) {
+  return {
+    ...state,
+    settings: normalizeSettings({
+      ...(state.settings ?? {}),
+      blockedUserIds: (state.settings?.blockedUserIds ?? []).filter((id) => id !== userId),
+    }),
+  };
+}
+
+export function reportMatch(state, matchId, reason = "") {
+  const match = state.matches.find((item) => item.id === matchId);
+  if (!match) return state;
+  const report = {
+    id: makeId("r"),
+    type: "match",
+    targetId: matchId,
+    by: state.currentUserId,
+    reason: reason.trim() || "경기 기록 확인이 필요합니다.",
+    status: "open",
+    createdAt: new Date().toISOString(),
+  };
+
+  return {
+    ...state,
+    reports: [report, ...(state.reports ?? [])],
+    notifications: [
+      {
+        id: makeId("n"),
+        title: "신고 접수",
+        body: `${match.title} 신고가 접수됐습니다. 운영 검토 목록에 남겼습니다.`,
+        tone: "match",
+        matchId,
+      },
+      ...state.notifications,
+    ],
+  };
+}
+
+export function markNotificationRead(state, notificationId) {
+  const readAt = new Date().toISOString();
+  return {
+    ...state,
+    notifications: state.notifications.map((notification) =>
+      notification.id === notificationId ? { ...notification, readAt: notification.readAt ?? readAt } : notification,
+    ),
+  };
+}
+
+export function markAllNotificationsRead(state) {
+  const readAt = new Date().toISOString();
+  return {
+    ...state,
+    notifications: state.notifications.map((notification) => ({ ...notification, readAt: notification.readAt ?? readAt })),
+  };
 }
 
 export function updateProfile(state, patch) {

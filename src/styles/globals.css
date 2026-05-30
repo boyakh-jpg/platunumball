@@ -627,11 +627,39 @@ h3 {
   color: var(--muted);
 }
 
+.notification-unread {
+  border-color: rgba(70, 224, 182, 0.38) !important;
+  background: rgba(70, 224, 182, 0.07) !important;
+}
+
+.notification-read {
+  opacity: 0.74;
+}
+
 .notification-actions {
   display: flex !important;
   flex: 0 0 auto;
   align-items: center;
   gap: 8px !important;
+}
+
+.notification-actions button,
+.compact-list button {
+  min-height: 34px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.055);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 850;
+  padding: 0 10px;
+}
+
+.notification-actions button:disabled,
+.compact-list button:disabled {
+  cursor: default;
+  opacity: 0.5;
 }
 
 .team-emblem {
@@ -1970,7 +1998,7 @@ input[type="color"] {
 }
 
 .match-action-row {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
 .settings-toggle-grid label {

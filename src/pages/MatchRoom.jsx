@@ -57,6 +57,7 @@ export default function MatchRoom({ app }) {
   const canDispute = Boolean(match.result) && match.status === "approval";
   const canVoid = match.status === "disputed";
   const canResumeApproval = match.status === "disputed";
+  const canReport = !["cancelled", "void"].includes(match.status);
 
   const updatePlayerStat = (playerId, fieldId, value) => {
     setScore((current) => ({
@@ -242,6 +243,7 @@ export default function MatchRoom({ app }) {
               <Button type="button" variant="secondary" disabled={!canCancel} onClick={() => app.actions.cancelMatch(match.id)}>경기 취소</Button>
               <Button type="button" variant="secondary" disabled={!canResumeApproval} onClick={() => app.actions.resumeMatchApproval(match.id)}>승인 재개</Button>
               <Button type="button" variant="secondary" disabled={!canVoid} onClick={() => app.actions.voidMatch(match.id)}>무효 처리</Button>
+              <Button type="button" variant="secondary" disabled={!canReport} onClick={() => app.actions.reportMatch(match.id, disputeReason)}>신고 접수</Button>
             </div>
           </Card>
           {match.result?.playerStats ? (

@@ -428,4 +428,13 @@ export const initialState = {
     { id: "n1", title: "경기 전 동의 대기", body: "토요 5v5 공식전의 경기 전 동의를 기다리고 있습니다.", tone: "match", matchId: "m1" },
     { id: "n2", title: "3연승", body: "민준의 통합 티어가 Platinum에 가까워지고 있어요.", tone: "tier" },
   ],
+  settings: {
+    privacy: {
+      regionRanking: true,
+      teamHistory: true,
+      statSummary: true,
+    },
+    blockedUserIds: [],
+  },
+  reports: [],
 };

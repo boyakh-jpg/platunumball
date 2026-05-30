@@ -17,7 +17,13 @@ const tabs = [
 export default function Rankings({ app }) {
   const [tab, setTab] = useState("local");
   const myRegion = app.currentUser.region;
-  const localPlayers = app.rankings.players.filter((user) => user.region === myRegion);
+  const hiddenUserIds = new Set(app.state.settings?.blockedUserIds ?? []);
+  if (app.state.settings?.privacy?.regionRanking === false) hiddenUserIds.add(app.currentUser.id);
+  const visiblePlayers = app.rankings.players.filter((user) => !hiddenUserIds.has(user.id));
+  const visibleModePlayers = tab === "teams" || tab === "affiliations" || tab === "integrated" || tab === "local"
+    ? visiblePlayers
+    : app.rankings.mode(tab).filter((user) => !hiddenUserIds.has(user.id));
+  const localPlayers = visiblePlayers.filter((user) => user.region === myRegion);
   const localTeams = app.rankings.teams.filter((team) => team.region === myRegion);
   const localAffiliations = app.rankings.affiliations.filter((affiliation) => affiliation.name === myRegion || affiliation.type !== "region").slice(0, 6);
   const type = tab === "teams" ? "teams" : tab === "affiliations" ? "affiliations" : "players";
@@ -27,10 +33,10 @@ export default function Rankings({ app }) {
       : tab === "affiliations"
         ? app.rankings.affiliations
         : tab === "integrated"
-          ? app.rankings.players
+          ? visiblePlayers
           : tab === "local"
             ? localPlayers
-            : app.rankings.mode(tab);
+            : visibleModePlayers;
 
   return (
     <div className="page-stack">

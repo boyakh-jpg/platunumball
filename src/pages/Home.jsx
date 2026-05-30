@@ -79,17 +79,20 @@ export default function Home({ app }) {
   const activeMatch = upcomingMatches[0] ?? completedMatches[0];
   const myTeam = app.state.teams.find((team) => team.members.some((member) => member.userId === user.id));
   const myTeamCount = app.state.teams.filter((team) => team.members.some((member) => member.userId === user.id)).length;
+  const blockedUserIds = app.state.settings?.blockedUserIds ?? [];
 
   const searchResults = useMemo(() => {
-    const players = app.state.users.map((item) => ({
-      id: `player-${item.id}`,
-      label: item.name,
-      meta: `${item.region} · ${item.position} · ${item.ratings.integrated}`,
-      href: `/app/players/${item.id}`,
-      score: Number(item.region === user.region) * 10000 + item.ratings.integrated,
-      haystack: `${item.name} ${item.handle} ${item.region} ${item.position} ${item.club}`,
-      avatar: item.avatarColor,
-    }));
+    const players = app.state.users
+      .filter((item) => !blockedUserIds.includes(item.id))
+      .map((item) => ({
+        id: `player-${item.id}`,
+        label: item.name,
+        meta: `${item.region} · ${item.position} · ${item.ratings.integrated}`,
+        href: `/app/players/${item.id}`,
+        score: Number(item.region === user.region) * 10000 + item.ratings.integrated,
+        haystack: `${item.name} ${item.handle} ${item.region} ${item.position} ${item.club}`,
+        avatar: item.avatarColor,
+      }));
     const teams = app.state.teams.map((team) => ({
       id: `team-${team.id}`,
       label: team.name,
@@ -113,7 +116,7 @@ export default function Home({ app }) {
       .filter((item) => (searchText ? item.haystack.toLowerCase().includes(searchText) : item.score >= 10000))
       .sort((a, b) => b.score - a.score || a.label.localeCompare(b.label))
       .slice(0, searchText ? 8 : 5);
-  }, [app.state.teams, app.state.users, searchText, user.region]);
+  }, [app.state.teams, app.state.users, blockedUserIds, searchText, user.region]);
 
   return (
     <div className="page-stack">
