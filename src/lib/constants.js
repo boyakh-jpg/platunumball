@@ -1,8 +1,8 @@
 export const MATCH_MODES = [
-  { id: "1v1", label: "1v1", size: 1, integratedWeight: 0.4 },
-  { id: "2v2", label: "2v2", size: 2, integratedWeight: 0.55 },
-  { id: "3v3", label: "3v3", size: 3, integratedWeight: 0.75 },
-  { id: "5v5", label: "5v5", size: 5, integratedWeight: 0.95 },
+  { id: "1v1", label: "1v1", size: 1, integratedWeight: 0.25, modeCap: 25, integratedCap: 8 },
+  { id: "2v2", label: "2v2", size: 2, integratedWeight: 0.45, modeCap: 28, integratedCap: 14 },
+  { id: "3v3", label: "3v3", size: 3, integratedWeight: 0.85, modeCap: 32, integratedCap: 25 },
+  { id: "5v5", label: "5v5", size: 5, integratedWeight: 1.35, modeCap: 40, integratedCap: 45, officialModeCap: 50, officialIntegratedCap: 55 },
 ];
 
 export const MODE_SIZES = MATCH_MODES.reduce((map, mode) => {
@@ -16,6 +16,7 @@ export const TEAM_ROLES = {
   captain: "팀장",
   regular: "정규멤버",
   candidate: "후보멤버",
+  substitute: "후보멤버",
   mercenary: "용병",
   guest: "게스트",
 };
@@ -28,10 +29,23 @@ export const AFFILIATION_TYPES = {
 };
 
 export const EVIDENCE_OPTIONS = [
-  { id: "photo", label: "스코어보드 사진", factor: 0.05 },
-  { id: "referee", label: "심판/운영자 확인", factor: 0.08 },
+  { id: "scoreboard_photo", label: "스코어보드 사진", factor: 0.05 },
+  { id: "team_photo", label: "양팀 단체사진", factor: 0.1 },
+  { id: "short_video", label: "경기 일부 영상", factor: 0.15 },
+  { id: "court_reservation", label: "구장 예약내역", factor: 0.2 },
+  { id: "tournament_bracket", label: "대회 대진표", factor: 0.2 },
   { id: "captain", label: "양팀 주장 확인", factor: 0.07 },
+  { id: "opponent_confirmation", label: "상대팀 확인", factor: 0.07 },
 ];
+
+export const CREDIBILITY_LEVELS = {
+  self_record: { label: "자가 기록", factor: 0 },
+  street_majority: { label: "길농 과반 승인", factor: 0.7 },
+  pre_registered: { label: "사전등록", factor: 1 },
+  evidence_verified: { label: "증빙 확인", factor: 1.15 },
+  official: { label: "공식경기", factor: 1.35 },
+  official_with_evidence: { label: "공식+증빙", factor: 1.5 },
+};
 
 export const PLAYER_STAT_FIELDS = [
   { id: "points", label: "득점", shortLabel: "PTS", weight: 0.035 },

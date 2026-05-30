@@ -1,9 +1,12 @@
 import { Link } from "react-router-dom";
 import Badge from "../common/Badge.jsx";
 import Card from "../common/Card.jsx";
+import { CREDIBILITY_LEVELS } from "../../lib/constants.js";
+import { getCredibilityLevel } from "../../lib/rating.js";
 
 export default function MatchContract({ match, users }) {
   const userMap = Object.fromEntries(users.map((user) => [user.id, user]));
+  const credibility = CREDIBILITY_LEVELS[getCredibilityLevel(match)] ?? CREDIBILITY_LEVELS.street_majority;
   const renderRoster = (side) => (
     <div className="roster">
       {side.players.map((id) => {
@@ -51,6 +54,26 @@ export default function MatchContract({ match, users }) {
         <div>
           <span>제한 시간</span>
           <strong>{match.rules.timeLimit}분</strong>
+        </div>
+        <div>
+          <span>랭크 반영</span>
+          <strong>{match.ranked === false ? "OFF" : "ON"}</strong>
+        </div>
+        <div>
+          <span>공신력</span>
+          <strong>{credibility.label}</strong>
+        </div>
+        <div>
+          <span>이의제기</span>
+          <strong>{match.objectionWindow ?? (match.official ? "24시간" : "1시간")}</strong>
+        </div>
+        <div>
+          <span>공격권</span>
+          <strong>{match.rules.attackRule ?? "득점 후 공격권 교대"}</strong>
+        </div>
+        <div>
+          <span>파울 룰</span>
+          <strong>{match.rules.foulRule ?? "현장 합의"}</strong>
         </div>
       </div>
       <div className="two-column">

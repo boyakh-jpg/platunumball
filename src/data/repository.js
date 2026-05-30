@@ -166,6 +166,7 @@ function finalizeMatch(state, targetMatch) {
     const change = ratingResult.changes.find((item) => item.playerId === user.id);
     return {
       ...user,
+      trustScore: Math.min(100, (user.trustScore ?? 80) + 1),
       streak: change?.result === "win" ? Math.max(1, user.streak + 1) : change?.result === "loss" ? Math.min(-1, user.streak - 1) : user.streak,
       ratings: nextRatings,
     };
@@ -234,6 +235,7 @@ export function createMatch(state, draft) {
     scheduledTime: draft.scheduledTime,
     scheduledAt: scheduledAt || "일정 미정",
     status: "contract",
+    ranked: draft.ranked !== false,
     official: Boolean(draft.official),
     preRegistered: Boolean(draft.preRegistered),
     rules: {
@@ -241,9 +243,12 @@ export function createMatch(state, draft) {
       timeLimit: Number(draft.timeLimit ?? 12),
       winByTwo: Boolean(draft.winByTwo),
       ball: draft.ball || "7호 공",
+      attackRule: draft.attackRule || "공격권은 득점 후 교대",
+      foulRule: draft.foulRule || "파울은 콜한 쪽 기준으로 즉시 중단",
     },
     memo: draft.memo || "결과는 양팀 과반 승인 후 티어에 반영됩니다.",
     stakes: draft.stakes || "내기 없음. 기록과 티어만 반영합니다.",
+    objectionWindow: draft.objectionWindow || (draft.official ? "24시간" : "1시간"),
     evidence,
     teamA: { name: teamA.name, teamId: teamA.id, players: getTeamPlayers(teamA, size), score: 0 },
     teamB: { name: teamB.name, teamId: teamB.id, players: getTeamPlayers(teamB, size), score: 0 },
@@ -357,6 +362,69 @@ export function createTeam(state, teamDraft) {
     ...state,
     teams: [team, ...state.teams],
     notifications: [{ id: makeId("n"), title: "팀 생성", body: `${team.name} 팀이 등록됐습니다.`, tone: "team" }, ...state.notifications],
+  };
+}
+
+export function addTeamMember(state, teamId, memberDraft) {
+  const userId = memberDraft.userId;
+  const team = state.teams.find((item) => item.id === teamId);
+  if (!team || team.members.some((member) => member.userId === userId)) return state;
+
+  const membershipCount = state.teams.filter((item) => item.members.some((member) => member.userId === userId)).length;
+  if (membershipCount >= MAX_TEAM_MEMBERSHIPS) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "팀원 추가 제한",
+          body: `한 플레이어는 최대 ${MAX_TEAM_MEMBERSHIPS}개 팀까지만 소속될 수 있습니다.`,
+          tone: "team",
+        },
+        ...state.notifications,
+      ],
+    };
+  }
+
+  return {
+    ...state,
+    teams: state.teams.map((item) =>
+      item.id === teamId
+        ? { ...item, members: [...item.members, { userId, role: memberDraft.role || "regular" }] }
+        : item,
+    ),
+  };
+}
+
+export function updateTeamMemberRole(state, teamId, userId, role) {
+  return {
+    ...state,
+    teams: state.teams.map((team) => {
+      if (team.id !== teamId) return team;
+      const nextMembers = team.members.map((member) => (
+        member.userId === userId ? { ...member, role } : member
+      ));
+      const hasCaptain = nextMembers.some((member) => member.role === "captain");
+      return {
+        ...team,
+        members: hasCaptain ? nextMembers : nextMembers.map((member, index) => (index === 0 ? { ...member, role: "captain" } : member)),
+      };
+    }),
+  };
+}
+
+export function removeTeamMember(state, teamId, userId) {
+  return {
+    ...state,
+    teams: state.teams.map((team) => {
+      if (team.id !== teamId) return team;
+      const nextMembers = team.members.filter((member) => member.userId !== userId);
+      const hasCaptain = nextMembers.some((member) => member.role === "captain");
+      return {
+        ...team,
+        members: hasCaptain ? nextMembers : nextMembers.map((member, index) => (index === 0 ? { ...member, role: "captain" } : member)),
+      };
+    }),
   };
 }
 

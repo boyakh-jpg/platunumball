@@ -73,7 +73,8 @@ export default function Home({ app }) {
   const user = app.currentUser;
   const [query, setQuery] = useState("");
   const searchText = query.trim().toLowerCase();
-  const upcomingMatches = [...app.state.matches].filter((match) => match.status !== "confirmed").sort(compareSchedule);
+  const approvalMatches = [...app.state.matches].filter((match) => match.status === "approval");
+  const upcomingMatches = [...app.state.matches].filter((match) => match.status !== "confirmed" && match.status !== "approval").sort(compareSchedule);
   const completedMatches = [...app.state.matches].filter((match) => match.status === "confirmed");
   const activeMatch = upcomingMatches[0] ?? completedMatches[0];
   const myTeam = app.state.teams.find((team) => team.members.some((member) => member.userId === user.id));
@@ -204,6 +205,23 @@ export default function Home({ app }) {
           </Card>
         </div>
         <aside className="page-stack">
+          <Card className="section-card">
+            <div className="section-title-row">
+              <div>
+                <p className="eyebrow">Approval</p>
+                <h2>승인 대기 경기</h2>
+              </div>
+              <Badge tone={approvalMatches.length ? "orange" : "neutral"}>{approvalMatches.length}개</Badge>
+            </div>
+            <div className="compact-list">
+              {approvalMatches.length ? approvalMatches.slice(0, 4).map((match) => (
+                <Link key={match.id} to={`/app/matches/${match.id}`}>
+                  <span>{match.title}</span>
+                  <strong>{match.approvals.teamA.length + match.approvals.teamB.length}명 승인</strong>
+                </Link>
+              )) : <div><span>승인 대기 중인 경기가 없습니다.</span><strong>OK</strong></div>}
+            </div>
+          </Card>
           <Card className="section-card">
             <div className="contract-grid single">
               <div>

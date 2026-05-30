@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
+import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import MemberTypeBadge from "../components/team/MemberTypeBadge.jsx";
 import TierBadge from "../components/rating/TierBadge.jsx";
-import { TEAM_ROLES } from "../lib/constants.js";
+import { MAX_TEAM_MEMBERSHIPS, TEAM_ROLES } from "../lib/constants.js";
 
 function getTeamSide(match, teamId) {
   if (match.teamA.teamId === teamId) return "teamA";
@@ -14,13 +16,23 @@ function getTeamSide(match, teamId) {
 export default function TeamDetail({ app }) {
   const { teamId } = useParams();
   const team = app.state.teams.find((item) => item.id === teamId);
+  const [memberDraft, setMemberDraft] = useState({ userId: app.state.users[0]?.id, role: "regular" });
 
   if (!team) return <Navigate to="/app/teams" replace />;
 
   const userMap = Object.fromEntries(app.state.users.map((user) => [user.id, user]));
+  const membershipCounts = new Map();
+  app.state.teams.forEach((item) => {
+    item.members.forEach((member) => membershipCounts.set(member.userId, (membershipCounts.get(member.userId) ?? 0) + 1));
+  });
   const captain = team.members.find((member) => member.role === "captain");
   const regularMembers = team.members.filter((member) => member.role === "captain" || member.role === "regular");
   const reserveMembers = team.members.filter((member) => member.role !== "captain" && member.role !== "regular");
+  const availableUsers = app.state.users.filter((user) => !team.members.some((member) => member.userId === user.id));
+  const firstAddableUser = availableUsers.find((user) => (membershipCounts.get(user.id) ?? 0) < MAX_TEAM_MEMBERSHIPS);
+  const addUserId = availableUsers.some((user) => user.id === memberDraft.userId) ? memberDraft.userId : firstAddableUser?.id ?? availableUsers[0]?.id ?? "";
+  const selectedCount = membershipCounts.get(addUserId) ?? 0;
+  const canAddMember = Boolean(addUserId) && selectedCount < MAX_TEAM_MEMBERSHIPS;
   const history = app.state.matches.filter((match) => getTeamSide(match, team.id));
   const wins = history.filter((match) => {
     const sideName = getTeamSide(match, team.id);
@@ -56,6 +68,14 @@ export default function TeamDetail({ app }) {
       </div>
     </Card>
   );
+
+  const addMember = (event) => {
+    event.preventDefault();
+    if (!canAddMember) return;
+    app.actions.addTeamMember(team.id, { ...memberDraft, userId: addUserId });
+    const nextUser = availableUsers.find((user) => user.id !== addUserId);
+    setMemberDraft({ userId: nextUser?.id ?? app.state.users[0]?.id, role: "regular" });
+  };
 
   return (
     <div className="page-stack team-detail-page">
@@ -133,6 +153,56 @@ export default function TeamDetail({ app }) {
                 <span>후보/용병</span>
                 <strong>{reserveMembers.length}명</strong>
               </div>
+            </div>
+          </Card>
+          <Card className="section-card">
+            <div className="section-title-row">
+              <div>
+                <p className="eyebrow">Member Control</p>
+                <h2>팀원 관리</h2>
+              </div>
+              <Badge tone="green">{team.members.length}명</Badge>
+            </div>
+            <form className="member-add-form" onSubmit={addMember}>
+              <label>
+                추가할 선수
+                <select value={addUserId} onChange={(event) => setMemberDraft((current) => ({ ...current, userId: event.target.value }))}>
+                  {availableUsers.map((user) => {
+                    const count = membershipCounts.get(user.id) ?? 0;
+                    return (
+                      <option key={user.id} value={user.id} disabled={count >= MAX_TEAM_MEMBERSHIPS}>
+                        {user.name} · {count}/{MAX_TEAM_MEMBERSHIPS}팀
+                      </option>
+                    );
+                  })}
+                </select>
+              </label>
+              <label>
+                역할
+                <select value={memberDraft.role} onChange={(event) => setMemberDraft((current) => ({ ...current, role: event.target.value }))}>
+                  {Object.entries(TEAM_ROLES).map(([role, label]) => <option key={role} value={role}>{label}</option>)}
+                </select>
+              </label>
+              <Button type="submit" disabled={!canAddMember || !availableUsers.length}>팀원 추가</Button>
+              {!canAddMember ? <p className="form-warning">선택한 선수는 이미 최대 {MAX_TEAM_MEMBERSHIPS}개 팀에 소속되어 있습니다.</p> : null}
+            </form>
+            <div className="member-control-list">
+              {team.members.map((member) => {
+                const user = userMap[member.userId];
+                if (!user) return null;
+                return (
+                  <div key={`${team.id}-${member.userId}-control`} className="member-control-row">
+                    <Link to={`/app/players/${member.userId}`}>
+                      <span className="avatar small" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
+                      <strong>{user.name}</strong>
+                    </Link>
+                    <select value={member.role} onChange={(event) => app.actions.updateTeamMemberRole(team.id, member.userId, event.target.value)}>
+                      {Object.entries(TEAM_ROLES).map(([role, label]) => <option key={role} value={role}>{label}</option>)}
+                    </select>
+                    <button type="button" disabled={team.members.length <= 1} onClick={() => app.actions.removeTeamMember(team.id, member.userId)}>제외</button>
+                  </div>
+                );
+              })}
             </div>
           </Card>
           {renderMembers("정규멤버", regularMembers)}

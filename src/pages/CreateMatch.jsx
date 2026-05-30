@@ -29,12 +29,16 @@ export default function CreateMatch({ app }) {
     scheduledTime: "20:30",
     teamAId: app.state.teams[0]?.id,
     teamBId: app.state.teams[1]?.id,
+    ranked: true,
     official: true,
     preRegistered: true,
     targetScore: 21,
     timeLimit: 12,
     ball: "7호 공",
     winByTwo: true,
+    attackRule: "득점 후 공격권 교대",
+    foulRule: "파울 콜 즉시 중단, 공격권 유지",
+    objectionWindow: "24시간",
     evidence: EVIDENCE_OPTIONS.filter((option) => option.id === "captain"),
     memo: "경기 전 룰을 확정하고, 경기 후 결과를 승인하면 티어에 반영됩니다.",
     stakes: "승자팀 다음 경기 우선권. 현금 정산 없음.",
@@ -218,8 +222,27 @@ export default function CreateMatch({ app }) {
           </div>
           <RuleSelector draft={draft} onChange={update} />
           <div className="toggle-pair">
+            <label><input type="checkbox" checked={draft.ranked} onChange={(event) => update({ ranked: event.target.checked })} /> 랭크 반영</label>
             <label><input type="checkbox" checked={draft.official} onChange={(event) => update({ official: event.target.checked })} /> 공식경기</label>
             <label><input type="checkbox" checked={draft.preRegistered} onChange={(event) => update({ preRegistered: event.target.checked })} /> 사전등록</label>
+          </div>
+          <div className="form-grid two">
+            <label>
+              공격권 룰
+              <input value={draft.attackRule} onChange={(event) => update({ attackRule: event.target.value })} />
+            </label>
+            <label>
+              파울 룰
+              <input value={draft.foulRule} onChange={(event) => update({ foulRule: event.target.value })} />
+            </label>
+            <label>
+              이의제기 시간
+              <select value={draft.objectionWindow} onChange={(event) => update({ objectionWindow: event.target.value })}>
+                <option>1시간</option>
+                <option>6시간</option>
+                <option>24시간</option>
+              </select>
+            </label>
           </div>
         </Card>
 

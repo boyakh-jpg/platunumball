@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  addTeamMember,
   approveMatch,
   createMatch,
   createTeam,
@@ -10,6 +11,8 @@ import {
   saveState,
   submitMatchResult,
   subscribeRemoteState,
+  removeTeamMember,
+  updateTeamMemberRole,
   updateProfile,
 } from "../data/repository.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
@@ -97,6 +100,9 @@ export function useAppData() {
       approveMatch: (matchId, sideName, playerId) => setState((prev) => approveMatch(prev, matchId, sideName, playerId)),
       updateProfile: (patch) => setState((prev) => updateProfile(prev, patch)),
       createTeam: (draft) => setState((prev) => createTeam(prev, draft)),
+      addTeamMember: (teamId, draft) => setState((prev) => addTeamMember(prev, teamId, draft)),
+      updateTeamMemberRole: (teamId, userId, role) => setState((prev) => updateTeamMemberRole(prev, teamId, userId, role)),
+      removeTeamMember: (teamId, userId) => setState((prev) => removeTeamMember(prev, teamId, userId)),
       reset: () => setState(resetState()),
     }),
     [],

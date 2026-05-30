@@ -1,6 +1,7 @@
 import { Link, Navigate, useParams } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import Card from "../components/common/Card.jsx";
+import ProgressionChecklist from "../components/rating/ProgressionChecklist.jsx";
 import RatingCard from "../components/rating/RatingCard.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
 import TierBadge from "../components/rating/TierBadge.jsx";
@@ -138,6 +139,7 @@ export default function PlayerDetail({ app }) {
         </div>
 
         <aside className="page-stack">
+          <ProgressionChecklist user={player} matches={app.state.matches} />
           <Card className="section-card">
             <div className="section-title-row">
               <div>

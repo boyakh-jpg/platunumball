@@ -1,4 +1,4 @@
-import { EVIDENCE_OPTIONS, MATCH_MODES } from "./constants.js";
+import { CREDIBILITY_LEVELS, EVIDENCE_OPTIONS, MATCH_MODES } from "./constants.js";
 import { calculatePlayerStatBoost } from "./matchUtils.js";
 import { getTier, getTierDivision } from "./tier.js";
 
@@ -6,14 +6,19 @@ const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const round = (value) => Math.round(value * 10) / 10;
 
 const modeWeightMap = {
-  "1v1": 0.7,
-  "2v2": 0.85,
+  "1v1": 0.78,
+  "2v2": 0.9,
   "3v3": 1,
-  "5v5": 1.15,
+  "5v5": 1.12,
 };
 
 const integratedWeightMap = MATCH_MODES.reduce((map, mode) => {
   map[mode.id] = mode.integratedWeight;
+  return map;
+}, {});
+
+const modeCapMap = MATCH_MODES.reduce((map, mode) => {
+  map[mode.id] = { mode: mode.modeCap, integrated: mode.integratedCap, officialMode: mode.officialModeCap, officialIntegrated: mode.officialIntegratedCap };
   return map;
 }, {});
 
@@ -35,23 +40,39 @@ export function getModeWeight(mode = "5v5") {
   return modeWeightMap[mode] ?? 1;
 }
 
+export function getCredibilityLevel(match = {}) {
+  if (match.ranked === false) return "self_record";
+  const hasEvidence = match.evidence?.some((item) => !["captain", "opponent_confirmation"].includes(item.id ?? item.type));
+  if (match.official && hasEvidence) return "official_with_evidence";
+  if (match.official) return "official";
+  if (hasEvidence) return "evidence_verified";
+  if (match.preRegistered) return "pre_registered";
+  return "street_majority";
+}
+
 export function getCredibilityFactor(match = {}) {
-  let factor = 1;
-  if (match.official) factor += 0.2;
-  if (match.preRegistered) factor += 0.12;
-  return factor;
+  const level = getCredibilityLevel(match);
+  return CREDIBILITY_LEVELS[level]?.factor ?? CREDIBILITY_LEVELS.street_majority.factor;
 }
 
 export function getScheduleFactor(match = {}) {
-  return match.preRegistered ? 1.08 : 1;
+  if (!match.preRegistered) return 0.7;
+  const created = match.createdAt ? new Date(match.createdAt) : null;
+  const scheduled = match.scheduledDate ? new Date(`${match.scheduledDate}T${match.scheduledTime || "00:00"}`) : null;
+  if (!created || !scheduled || Number.isNaN(created.getTime()) || Number.isNaN(scheduled.getTime())) return 1;
+  const minutes = (scheduled.getTime() - created.getTime()) / 60000;
+  if (minutes >= 60 * 24 * 3) return 1.15;
+  if (minutes >= 60 * 24) return 1.1;
+  if (minutes >= 30) return 1;
+  return 0.7;
 }
 
 export function getEvidenceFactor(evidenceList = []) {
-  const total = evidenceList.reduce((sum, evidence) => {
+  const best = evidenceList.reduce((max, evidence) => {
     const option = EVIDENCE_OPTIONS.find((item) => item.id === evidence.id || item.id === evidence.type);
-    return sum + (option?.factor ?? 0.03);
+    return Math.max(max, option?.factor ?? 0);
   }, 0);
-  return 1 + clamp(total, 0, 0.2);
+  return 1 + clamp(best, 0, 0.2);
 }
 
 export function getTrustFactor(trustScore = 80) {
@@ -65,6 +86,19 @@ export function getRepeatFactor(history = [], match = {}) {
   return recentSameCourt >= 3 ? 0.88 : 1;
 }
 
+export function getQualityFactor(match = {}, trustScore = 80, history = []) {
+  if (match.ranked === false) return 0;
+  return clamp(
+    getCredibilityFactor(match) *
+      getScheduleFactor(match) *
+      getEvidenceFactor(match.evidence) *
+      getTrustFactor(trustScore) *
+      getRepeatFactor(history, match),
+    0,
+    1.8,
+  );
+}
+
 export function calculateModeDelta({
   playerRating = 1200,
   teamMmr = 1200,
@@ -76,22 +110,19 @@ export function calculateModeDelta({
   history = [],
 }) {
   const base = getKFactor(playerRating) * (actual - expectedScore(teamMmr, opponentMmr));
-  const factor =
-    getModeWeight(mode) *
-    getCredibilityFactor(match) *
-    getScheduleFactor(match) *
-    getEvidenceFactor(match.evidence) *
-    getTrustFactor(trustScore) *
-    getRepeatFactor(history, match);
+  const factor = getModeWeight(mode) * getQualityFactor(match, trustScore, history);
+  const cap = match.official ? modeCapMap[mode]?.officialMode ?? modeCapMap[mode]?.mode ?? 40 : modeCapMap[mode]?.mode ?? 40;
 
-  return round(clamp(base * factor, -48, 48));
+  return round(clamp(base * factor, -cap, cap));
 }
 
 export function calculateIntegratedDelta(params) {
   const modeDelta = params.modeDelta ?? calculateModeDelta(params);
   const modeWeight = integratedWeightMap[params.mode ?? "5v5"] ?? 0.75;
-  const credibilityBoost = params.match?.official ? 1.08 : 1;
-  return round(clamp(modeDelta * modeWeight * credibilityBoost, -42, 42));
+  const cap = params.match?.official
+    ? modeCapMap[params.mode]?.officialIntegrated ?? modeCapMap[params.mode]?.integrated ?? 45
+    : modeCapMap[params.mode]?.integrated ?? 45;
+  return round(clamp(modeDelta * modeWeight, -cap, cap));
 }
 
 export function calculateTeamDelta({
@@ -102,7 +133,7 @@ export function calculateTeamDelta({
   regularRatio = 1,
 }) {
   const base = 24 * (actual - expectedScore(teamMmr, opponentTeamMmr));
-  const factor = getCredibilityFactor(match) * getEvidenceFactor(match.evidence) * clamp(regularRatio, 0.45, 1);
+  const factor = getQualityFactor(match, 80, []) * clamp(regularRatio, 0.45, 1);
   return round(clamp(base * factor, -34, 34));
 }
 

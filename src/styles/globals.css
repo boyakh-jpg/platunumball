@@ -2026,7 +2026,7 @@ input[type="color"] {
 .home-search-results a,
 .connection-list a {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 9px;
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -2043,6 +2043,7 @@ input[type="color"] {
 
 .home-search-results em,
 .connection-list em {
+  grid-column: 2;
   color: var(--muted);
   font-size: 0.78rem;
   font-style: normal;
@@ -2158,6 +2159,74 @@ input[type="color"] {
 
 .form-warning {
   color: var(--danger);
+}
+
+.progression-list,
+.member-control-list,
+.member-add-form {
+  display: grid;
+  gap: 9px;
+}
+
+.progression-list > div,
+.member-control-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.045);
+  padding: 10px;
+}
+
+.progression-list > div span {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--muted);
+  font-weight: 950;
+}
+
+.progression-list > div.done span {
+  background: var(--green);
+  color: #07110f;
+}
+
+.progression-list em {
+  color: var(--gold);
+  font-style: normal;
+  font-weight: 900;
+}
+
+.member-control-row {
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 0.5fr) auto;
+}
+
+.member-control-row a {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.member-control-row button {
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 93, 108, 0.1);
+  color: var(--danger);
+  cursor: pointer;
+  font-weight: 850;
+  padding: 0 10px;
+}
+
+.member-control-row button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
 }
 
 .profile-hero,
@@ -2423,7 +2492,8 @@ input[type="color"] {
 
   .history-item,
   .player-stat-row,
-  .approval-side-header {
+  .approval-side-header,
+  .member-control-row {
     grid-template-columns: 1fr;
   }
 

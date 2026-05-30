@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
+import ProgressionChecklist from "../components/rating/ProgressionChecklist.jsx";
 import RatingCard from "../components/rating/RatingCard.jsx";
 import ShareCard from "../components/share/ShareCard.jsx";
 
@@ -56,6 +57,7 @@ export default function Profile({ app }) {
           </section>
         </div>
         <aside className="page-stack">
+          <ProgressionChecklist user={user} matches={app.state.matches} />
           <ShareCard user={user} match={app.state.matches[0]} />
           <Card className="section-card">
             <div className="contract-grid single">
