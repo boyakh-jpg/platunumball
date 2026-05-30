@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import MemberTypeBadge from "./MemberTypeBadge.jsx";
 import TierBadge from "../rating/TierBadge.jsx";
 
@@ -9,7 +10,7 @@ export default function TeamMemberList({ team, users }) {
         const user = userMap[member.userId];
         if (!user) return null;
         return (
-          <div className="member-row" key={`${team.id}-${member.userId}`}>
+          <Link className="member-row" key={`${team.id}-${member.userId}`} to={`/app/players/${member.userId}`}>
             <div className="avatar small" style={{ "--avatar": user.avatarColor }}>
               {user.name.slice(0, 1)}
             </div>
@@ -19,7 +20,7 @@ export default function TeamMemberList({ team, users }) {
             </div>
             <TierBadge mmr={user.ratings.integrated} compact />
             <MemberTypeBadge role={member.role} />
-          </div>
+          </Link>
         );
       })}
     </div>

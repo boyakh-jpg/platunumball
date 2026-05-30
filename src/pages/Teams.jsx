@@ -8,7 +8,7 @@ import { COURTS, REGIONS } from "../lib/constants.js";
 const allRegions = ["전체", ...REGIONS];
 
 export default function Teams({ app }) {
-  const [draft, setDraft] = useState({ name: "New Court Crew", region: app.currentUser.region, homeCourt: COURTS[0].name, accent: "#58d2c0" });
+  const [draft, setDraft] = useState({ name: "New Court Crew", region: app.currentUser.region, homeCourt: COURTS[0].name, captainId: app.currentUser.id, accent: "#58d2c0" });
   const [query, setQuery] = useState("");
   const [region, setRegion] = useState(app.currentUser.region ?? "전체");
   const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
@@ -28,7 +28,7 @@ export default function Teams({ app }) {
   const submit = (event) => {
     event.preventDefault();
     app.actions.createTeam(draft);
-    setDraft({ name: "New Court Crew", region: app.currentUser.region, homeCourt: COURTS[0].name, accent: "#58d2c0" });
+    setDraft({ name: "New Court Crew", region: app.currentUser.region, homeCourt: COURTS[0].name, captainId: app.currentUser.id, accent: "#58d2c0" });
   };
 
   return (
@@ -110,6 +110,12 @@ export default function Teams({ app }) {
               홈 코트
               <select value={draft.homeCourt} onChange={(event) => update({ homeCourt: event.target.value })}>
                 {COURTS.filter((court) => court.region === draft.region || draft.region === "전체").map((court) => <option key={court.id} value={court.name}>{court.name}</option>)}
+              </select>
+            </label>
+            <label>
+              주장
+              <select value={draft.captainId} onChange={(event) => update({ captainId: event.target.value })}>
+                {app.state.users.map((user) => <option key={user.id} value={user.id}>{user.name} · {user.position} · {user.region}</option>)}
               </select>
             </label>
             <label>

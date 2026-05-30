@@ -7,9 +7,11 @@ import Home from "./pages/Home.jsx";
 import Landing from "./pages/Landing.jsx";
 import MatchRoom from "./pages/MatchRoom.jsx";
 import Notifications from "./pages/Notifications.jsx";
+import PlayerDetail from "./pages/PlayerDetail.jsx";
 import Profile from "./pages/Profile.jsx";
 import Rankings from "./pages/Rankings.jsx";
 import Settings from "./pages/Settings.jsx";
+import TeamDetail from "./pages/TeamDetail.jsx";
 import Teams from "./pages/Teams.jsx";
 
 export default function App() {
@@ -25,6 +27,8 @@ export default function App() {
         <Route path="/app/matches" element={<MatchRoom app={app} />} />
         <Route path="/app/rankings" element={<Rankings app={app} />} />
         <Route path="/app/teams" element={<Teams app={app} />} />
+        <Route path="/app/teams/:teamId" element={<TeamDetail app={app} />} />
+        <Route path="/app/players/:playerId" element={<PlayerDetail app={app} />} />
         <Route path="/app/profile" element={<Profile app={app} />} />
         <Route path="/app/affiliations" element={<Affiliations app={app} />} />
         <Route path="/app/notifications" element={<Notifications app={app} />} />

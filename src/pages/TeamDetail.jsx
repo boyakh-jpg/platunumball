@@ -1,0 +1,144 @@
+import { Link, Navigate, useParams } from "react-router-dom";
+import Badge from "../components/common/Badge.jsx";
+import Card from "../components/common/Card.jsx";
+import MemberTypeBadge from "../components/team/MemberTypeBadge.jsx";
+import TierBadge from "../components/rating/TierBadge.jsx";
+import { TEAM_ROLES } from "../lib/constants.js";
+
+function getTeamSide(match, teamId) {
+  if (match.teamA.teamId === teamId) return "teamA";
+  if (match.teamB.teamId === teamId) return "teamB";
+  return null;
+}
+
+export default function TeamDetail({ app }) {
+  const { teamId } = useParams();
+  const team = app.state.teams.find((item) => item.id === teamId);
+
+  if (!team) return <Navigate to="/app/teams" replace />;
+
+  const userMap = Object.fromEntries(app.state.users.map((user) => [user.id, user]));
+  const captain = team.members.find((member) => member.role === "captain");
+  const regularMembers = team.members.filter((member) => member.role === "captain" || member.role === "regular");
+  const reserveMembers = team.members.filter((member) => member.role !== "captain" && member.role !== "regular");
+  const history = app.state.matches.filter((match) => getTeamSide(match, team.id));
+  const wins = history.filter((match) => {
+    const sideName = getTeamSide(match, team.id);
+    const oppositeSide = sideName === "teamA" ? "teamB" : "teamA";
+    return match.status === "confirmed" && Number(match[sideName].score) > Number(match[oppositeSide].score);
+  }).length;
+
+  const renderMembers = (title, members) => (
+    <Card className="section-card">
+      <div className="section-title-row">
+        <div>
+          <p className="eyebrow">Roster</p>
+          <h2>{title}</h2>
+        </div>
+        <Badge tone="blue">{members.length}명</Badge>
+      </div>
+      <div className="member-list">
+        {members.map((member) => {
+          const user = userMap[member.userId];
+          if (!user) return null;
+          return (
+            <Link className="member-row" key={`${team.id}-${member.userId}-${member.role}`} to={`/app/players/${member.userId}`}>
+              <span className="avatar small" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
+              <div className="member-main">
+                <strong>{user.name}</strong>
+                <span>{user.position} · {user.region}</span>
+              </div>
+              <TierBadge mmr={user.ratings.integrated} compact />
+              <MemberTypeBadge role={member.role} />
+            </Link>
+          );
+        })}
+      </div>
+    </Card>
+  );
+
+  return (
+    <div className="page-stack team-detail-page">
+      <section className="team-detail-hero" style={{ "--team-color": team.accent }}>
+        <div>
+          <p className="eyebrow">Team Profile</p>
+          <h1>{team.name}</h1>
+          <p>{team.region} · {team.homeCourt}</p>
+          <div className="badge-row">
+            <Badge tone="green">{team.mmr} 팀 MMR</Badge>
+            <Badge tone="gold">주장 {userMap[captain?.userId]?.name ?? "미지정"}</Badge>
+          </div>
+        </div>
+        <div className="team-emblem hero-emblem">{team.name.slice(0, 1)}</div>
+      </section>
+
+      <div className="content-grid wide-left">
+        <div className="page-stack">
+          <Card className="section-card">
+            <div className="section-title-row">
+              <div>
+                <p className="eyebrow">Team History</p>
+                <h2>팀 경기 히스토리</h2>
+              </div>
+              <Badge tone="green">{history.length}경기 · {wins}승</Badge>
+            </div>
+            <div className="history-list">
+              {history.map((match) => {
+                const sideName = getTeamSide(match, team.id);
+                const oppositeSide = sideName === "teamA" ? "teamB" : "teamA";
+                const side = match[sideName];
+                const opponent = match[oppositeSide];
+                const reserveUsed = side.players
+                  .map((id) => team.members.find((member) => member.userId === id))
+                  .filter((member) => member && member.role !== "captain" && member.role !== "regular");
+                return (
+                  <article key={match.id} className="history-item">
+                    <div>
+                      <Link to={`/app/matches/${match.id}`}><strong>{match.title}</strong></Link>
+                      <span>{match.court} · {match.scheduledAt}</span>
+                    </div>
+                    <div className="history-score">
+                      <Badge tone={match.status === "confirmed" ? "green" : "orange"}>{match.status === "confirmed" ? "확정" : "진행중"}</Badge>
+                      <strong>{side.score ?? 0}:{opponent.score ?? 0}</strong>
+                    </div>
+                    <div className="roster compact-roster">
+                      {side.players.map((id) => {
+                        const user = userMap[id];
+                        return user ? <Link key={id} to={`/app/players/${id}`}><i style={{ "--avatar": user.avatarColor }} />{user.name}</Link> : null;
+                      })}
+                    </div>
+                    <p>
+                      상대 {opponent.name}
+                      {reserveUsed.length ? ` · 후보/용병 ${reserveUsed.map((member) => `${userMap[member.userId]?.name ?? "플레이어"}(${TEAM_ROLES[member.role]})`).join(", ")}` : ""}
+                    </p>
+                  </article>
+                );
+              })}
+            </div>
+          </Card>
+        </div>
+
+        <aside className="page-stack">
+          <Card className="section-card">
+            <div className="contract-grid single">
+              <div>
+                <span>주장</span>
+                <strong>{userMap[captain?.userId]?.name ?? "미지정"}</strong>
+              </div>
+              <div>
+                <span>정규멤버</span>
+                <strong>{regularMembers.length}명</strong>
+              </div>
+              <div>
+                <span>후보/용병</span>
+                <strong>{reserveMembers.length}명</strong>
+              </div>
+            </div>
+          </Card>
+          {renderMembers("정규멤버", regularMembers)}
+          {renderMembers("후보멤버와 용병 기록", reserveMembers)}
+        </aside>
+      </div>
+    </div>
+  );
+}

@@ -1,5 +1,6 @@
 import { MODE_SIZES, TEAM_ROLES } from "../lib/constants.js";
 import { initialState } from "../lib/mockData.js";
+import { getApprovalStatus, getSideMajority, normalizePlayerStats } from "../lib/matchUtils.js";
 import { applyMatchRating, calculateTeamDelta } from "../lib/rating.js";
 import { clearState, readState, writeState } from "../lib/storage.js";
 import { isSupabaseConfigured, supabase } from "../lib/supabase.js";
@@ -101,14 +102,6 @@ export function resetState() {
 
 function getTeamPlayers(team, size) {
   return team.members.slice(0, size).map((member) => member.userId);
-}
-
-function getSideMajority(side) {
-  return Math.floor(side.players.length / 2) + 1;
-}
-
-function isApproved(match, sideName) {
-  return match.approvals[sideName].length >= getSideMajority(match[sideName]);
 }
 
 function teamRegularRatio(team, playerIds) {
@@ -280,24 +273,35 @@ export function submitMatchResult(state, matchId, result) {
             status: "approval",
             teamA: { ...match.teamA, score: Number(result.scoreA) },
             teamB: { ...match.teamB, score: Number(result.scoreB) },
-            result: { scoreA: Number(result.scoreA), scoreB: Number(result.scoreB), submittedAt: new Date().toISOString() },
+            approvals: { teamA: [], teamB: [] },
+            result: {
+              scoreA: Number(result.scoreA),
+              scoreB: Number(result.scoreB),
+              playerStats: normalizePlayerStats(result.playerStats, [...match.teamA.players, ...match.teamB.players]),
+              submittedAt: new Date().toISOString(),
+            },
           }
         : match,
     ),
   };
 }
 
-export function approveMatch(state, matchId, sideName) {
+export function approveMatch(state, matchId, sideName, playerId) {
   const match = state.matches.find((item) => item.id === matchId);
   if (!match?.result || match.status === "confirmed") return state;
 
-  const majority = getSideMajority(match[sideName]);
-  const approvalIds = match[sideName].players.slice(0, majority);
+  const sidePlayers = match[sideName]?.players ?? [];
+  const approvalId = playerId && sidePlayers.includes(playerId)
+    ? playerId
+    : sidePlayers.find((id) => !(match.approvals?.[sideName] ?? []).includes(id));
+
+  if (!approvalId) return state;
+
   const updatedMatch = {
     ...match,
     approvals: {
-      ...match.approvals,
-      [sideName]: Array.from(new Set([...match.approvals[sideName], ...approvalIds])),
+      ...(match.approvals ?? { teamA: [], teamB: [] }),
+      [sideName]: Array.from(new Set([...(match.approvals?.[sideName] ?? []), approvalId])),
     },
   };
   const stateWithApproval = {
@@ -305,7 +309,7 @@ export function approveMatch(state, matchId, sideName) {
     matches: state.matches.map((item) => (item.id === matchId ? updatedMatch : item)),
   };
 
-  if (isApproved(updatedMatch, "teamA") && isApproved(updatedMatch, "teamB")) {
+  if (getApprovalStatus(updatedMatch, state.teams, "teamA").approved && getApprovalStatus(updatedMatch, state.teams, "teamB").approved) {
     return finalizeMatch(stateWithApproval, updatedMatch);
   }
 
@@ -320,6 +324,7 @@ export function updateProfile(state, patch) {
 }
 
 export function createTeam(state, teamDraft) {
+  const captainId = teamDraft.captainId || state.currentUserId;
   const team = {
     id: makeId("t"),
     name: teamDraft.name,
@@ -329,7 +334,7 @@ export function createTeam(state, teamDraft) {
     wins: 0,
     losses: 0,
     accent: teamDraft.accent || "#58d2c0",
-    members: [{ userId: state.currentUserId, role: "captain" }],
+    members: [{ userId: captainId, role: "captain" }],
   };
 
   return {

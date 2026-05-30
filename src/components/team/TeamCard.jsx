@@ -1,8 +1,9 @@
+import { Link } from "react-router-dom";
 import Badge from "../common/Badge.jsx";
 import Card from "../common/Card.jsx";
 import TeamMemberList from "./TeamMemberList.jsx";
 
-export default function TeamCard({ team, users, compact = false }) {
+export default function TeamCard({ team, users, compact = false, linked = true }) {
   const winRate = Math.round((team.wins / Math.max(1, team.wins + team.losses)) * 100);
 
   return (
@@ -10,7 +11,7 @@ export default function TeamCard({ team, users, compact = false }) {
       <div className="team-card-top">
         <div>
           <p className="eyebrow">{team.region} · {team.homeCourt}</p>
-          <h3>{team.name}</h3>
+          {linked ? <Link to={`/app/teams/${team.id}`}><h3>{team.name}</h3></Link> : <h3>{team.name}</h3>}
         </div>
         <div className="team-emblem" style={{ "--team-color": team.accent }}>
           {team.name.slice(0, 1)}

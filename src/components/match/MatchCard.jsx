@@ -26,9 +26,9 @@ export default function MatchCard({ match }) {
         <span><CalendarDays size={15} />{match.scheduledAt}</span>
       </div>
       <div className="score-line">
-        <span>{match.teamA.name}</span>
+        <Link to={`/app/teams/${match.teamA.teamId}`}>{match.teamA.name}</Link>
         <strong>{match.teamA.score ?? 0} : {match.teamB.score ?? 0}</strong>
-        <span>{match.teamB.name}</span>
+        <Link to={`/app/teams/${match.teamB.teamId}`}>{match.teamB.name}</Link>
       </div>
       <Link className="button button-secondary button-md" to={`/app/matches/${match.id}`}>
         경기방 보기

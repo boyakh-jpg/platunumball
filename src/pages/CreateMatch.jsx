@@ -6,7 +6,7 @@ import Card from "../components/common/Card.jsx";
 import EvidenceSelector from "../components/match/EvidenceSelector.jsx";
 import RuleSelector from "../components/match/RuleSelector.jsx";
 import TeamBuilder from "../components/match/TeamBuilder.jsx";
-import { COURTS, MATCH_MODES, REGIONS } from "../lib/constants.js";
+import { COURTS, EVIDENCE_OPTIONS, MATCH_MODES, REGIONS } from "../lib/constants.js";
 
 const today = new Date().toISOString().slice(0, 10);
 const allRegions = ["전체", ...REGIONS];
@@ -35,7 +35,7 @@ export default function CreateMatch({ app }) {
     timeLimit: 12,
     ball: "7호 공",
     winByTwo: true,
-    evidence: [],
+    evidence: EVIDENCE_OPTIONS.filter((option) => option.id === "captain"),
     memo: "경기 전 룰을 확정하고, 경기 후 결과를 승인하면 티어에 반영됩니다.",
     stakes: "승자팀 다음 경기 우선권. 현금 정산 없음.",
   });

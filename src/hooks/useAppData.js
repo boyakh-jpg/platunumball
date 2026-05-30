@@ -94,7 +94,7 @@ export function useAppData() {
         return createdId;
       },
       submitMatchResult: (matchId, result) => setState((prev) => submitMatchResult(prev, matchId, result)),
-      approveMatch: (matchId, sideName) => setState((prev) => approveMatch(prev, matchId, sideName)),
+      approveMatch: (matchId, sideName, playerId) => setState((prev) => approveMatch(prev, matchId, sideName, playerId)),
       updateProfile: (patch) => setState((prev) => updateProfile(prev, patch)),
       createTeam: (draft) => setState((prev) => createTeam(prev, draft)),
       reset: () => setState(resetState()),

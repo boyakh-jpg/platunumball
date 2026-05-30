@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import Badge from "../common/Badge.jsx";
 import Card from "../common/Card.jsx";
 
@@ -8,10 +9,10 @@ export default function MatchContract({ match, users }) {
       {side.players.map((id) => {
         const user = userMap[id];
         return (
-          <span key={id}>
+          <Link key={id} to={`/app/players/${id}`}>
             <i style={{ "--avatar": user?.avatarColor }} />
             {user?.name ?? "플레이어"}
-          </span>
+          </Link>
         );
       })}
     </div>
@@ -54,11 +55,11 @@ export default function MatchContract({ match, users }) {
       </div>
       <div className="two-column">
         <div>
-          <h3>{match.teamA.name}</h3>
+          <Link to={`/app/teams/${match.teamA.teamId}`}><h3>{match.teamA.name}</h3></Link>
           {renderRoster(match.teamA)}
         </div>
         <div>
-          <h3>{match.teamB.name}</h3>
+          <Link to={`/app/teams/${match.teamB.teamId}`}><h3>{match.teamB.name}</h3></Link>
           {renderRoster(match.teamB)}
         </div>
       </div>

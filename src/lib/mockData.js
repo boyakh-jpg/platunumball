@@ -395,7 +395,19 @@ export const initialState = {
       teamA: { name: "Noeul Kings", teamId: "t1", players: ["u1", "u2", "u4"], score: 15 },
       teamB: { name: "Bridge Ballers", teamId: "t2", players: ["u6", "u7", "u9"], score: 12 },
       approvals: { teamA: ["u1", "u2"], teamB: ["u6", "u7"] },
-      result: { scoreA: 15, scoreB: 12, submittedAt: "2026-05-30T12:20:00.000Z" },
+      result: {
+        scoreA: 15,
+        scoreB: 12,
+        playerStats: {
+          u1: { points: 6, rebounds: 2, assists: 5, steals: 1, blocks: 0 },
+          u2: { points: 5, rebounds: 3, assists: 2, steals: 2, blocks: 0 },
+          u4: { points: 4, rebounds: 6, assists: 1, steals: 0, blocks: 1 },
+          u6: { points: 4, rebounds: 2, assists: 4, steals: 1, blocks: 0 },
+          u7: { points: 3, rebounds: 4, assists: 2, steals: 1, blocks: 0 },
+          u9: { points: 5, rebounds: 5, assists: 1, steals: 0, blocks: 1 },
+        },
+        submittedAt: "2026-05-30T12:20:00.000Z",
+      },
       ratingResult: [
         { playerId: "u1", integratedDelta: 12.2, modeDelta: 15.8, result: "win" },
         { playerId: "u6", integratedDelta: -10.6, modeDelta: -13.9, result: "loss" },

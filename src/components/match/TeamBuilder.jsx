@@ -13,7 +13,7 @@ export default function TeamBuilder({ teams, users, draft, onChange }) {
             onChange(draft.teamAId ? { teamBId: team.id } : { teamAId: team.id });
           }}
         >
-          <TeamCard team={team} users={users} compact />
+          <TeamCard team={team} users={users} compact linked={false} />
         </button>
       ))}
     </div>

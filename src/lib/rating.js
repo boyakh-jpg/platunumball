@@ -1,4 +1,5 @@
 import { EVIDENCE_OPTIONS, MATCH_MODES } from "./constants.js";
+import { calculatePlayerStatBoost } from "./matchUtils.js";
 import { getTier, getTierDivision } from "./tier.js";
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
@@ -146,21 +147,24 @@ export function applyMatchRating(match, players, ratings, history = []) {
         trustScore,
         history,
       });
-      const integratedDelta = calculateIntegratedDelta({ modeDelta, mode, match });
+      const statBoost = calculatePlayerStatBoost(match, playerId, actual);
+      const adjustedModeDelta = round(clamp(modeDelta + statBoost, -48, 48));
+      const integratedDelta = calculateIntegratedDelta({ modeDelta: adjustedModeDelta, mode, match });
 
       nextRatings[playerId] = {
         ...current,
         integrated: Math.max(0, Math.round((current.integrated ?? 1200) + integratedDelta)),
         modes: {
           ...current.modes,
-          [mode]: Math.max(0, Math.round(modeRating + modeDelta)),
+          [mode]: Math.max(0, Math.round(modeRating + adjustedModeDelta)),
         },
       };
       changes.push({
         playerId,
         side: sideName,
-        modeDelta,
+        modeDelta: adjustedModeDelta,
         integratedDelta,
+        statBoost,
         result: actual === 1 ? "win" : actual === 0 ? "loss" : "draw",
       });
     }
