@@ -3,7 +3,7 @@ import { Crown, PlusCircle, Search, Shield, Swords } from "lucide-react";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import TeamCard from "../components/team/TeamCard.jsx";
-import { COURTS, REGIONS } from "../lib/constants.js";
+import { COURTS, MAX_TEAM_MEMBERSHIPS, REGIONS } from "../lib/constants.js";
 
 const allRegions = ["전체", ...REGIONS];
 
@@ -12,6 +12,15 @@ export default function Teams({ app }) {
   const [query, setQuery] = useState("");
   const [region, setRegion] = useState(app.currentUser.region ?? "전체");
   const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
+  const teamCountByUser = useMemo(() => {
+    const counts = new Map();
+    app.state.teams.forEach((team) => {
+      team.members.forEach((member) => counts.set(member.userId, (counts.get(member.userId) ?? 0) + 1));
+    });
+    return counts;
+  }, [app.state.teams]);
+  const selectedCaptainTeamCount = teamCountByUser.get(draft.captainId) ?? 0;
+  const captainLimitReached = selectedCaptainTeamCount >= MAX_TEAM_MEMBERSHIPS;
   const topTeam = [...app.state.teams].sort((a, b) => b.mmr - a.mmr)[0];
   const favoriteTeams = useMemo(() => {
     return [...app.state.teams]
@@ -115,14 +124,24 @@ export default function Teams({ app }) {
             <label>
               주장
               <select value={draft.captainId} onChange={(event) => update({ captainId: event.target.value })}>
-                {app.state.users.map((user) => <option key={user.id} value={user.id}>{user.name} · {user.position} · {user.region}</option>)}
+                {app.state.users.map((user) => {
+                  const count = teamCountByUser.get(user.id) ?? 0;
+                  return (
+                    <option key={user.id} value={user.id} disabled={count >= MAX_TEAM_MEMBERSHIPS}>
+                      {user.name} · {user.position} · {count}/{MAX_TEAM_MEMBERSHIPS}팀
+                    </option>
+                  );
+                })}
               </select>
+              <span className={captainLimitReached ? "form-warning" : "form-help"}>
+                한 플레이어는 최대 {MAX_TEAM_MEMBERSHIPS}개 팀까지만 소속될 수 있습니다.
+              </span>
             </label>
             <label>
               팀 컬러
               <input type="color" value={draft.accent} onChange={(event) => update({ accent: event.target.value })} />
             </label>
-            <Button type="submit"><PlusCircle size={18} /> 팀 만들기</Button>
+            <Button type="submit" disabled={captainLimitReached}><PlusCircle size={18} /> 팀 만들기</Button>
           </form>
         </Card>
       </div>

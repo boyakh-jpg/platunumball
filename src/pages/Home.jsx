@@ -12,75 +12,119 @@ import TeamCard from "../components/team/TeamCard.jsx";
 import { COURTS } from "../lib/constants.js";
 import { getTierDivision, getTierQuote } from "../lib/tier.js";
 
+function compareSchedule(a, b) {
+  return String(a.scheduledAt ?? "").localeCompare(String(b.scheduledAt ?? ""));
+}
+
+function matchHasUser(match, userId) {
+  return match.teamA.players.includes(userId) || match.teamB.players.includes(userId);
+}
+
+function getUserResult(match, userId) {
+  const sideName = match.teamA.players.includes(userId) ? "teamA" : "teamB";
+  const otherSide = sideName === "teamA" ? "teamB" : "teamA";
+  const sideScore = Number(match[sideName].score ?? match.result?.scoreA ?? 0);
+  const otherScore = Number(match[otherSide].score ?? match.result?.scoreB ?? 0);
+  if (sideScore === otherScore) return "D";
+  return sideScore > otherScore ? "W" : "L";
+}
+
+function getUserDelta(match, userId) {
+  const change = match.ratingResult?.find((item) => item.playerId === userId);
+  return Math.round(change?.integratedDelta ?? 0);
+}
+
+function FormTrendChart({ matches, userId }) {
+  const recent = matches.filter((match) => matchHasUser(match, userId)).slice(0, 8).reverse();
+  const values = recent.map((match) => getUserDelta(match, userId));
+  const maxAbs = Math.max(8, ...values.map((value) => Math.abs(value)));
+  const points = values.map((value, index) => {
+    const x = 18 + index * (recent.length > 1 ? 264 / (recent.length - 1) : 0);
+    const y = 82 - (value / maxAbs) * 48;
+    return `${x},${y}`;
+  });
+
+  return (
+    <div className="form-trend-chart">
+      <svg viewBox="0 0 300 128" role="img" aria-label="최근 전적 흐름 그래프">
+        <path d="M18 82H282" className="trend-axis" />
+        {points.length > 1 ? <polyline points={points.join(" ")} className="trend-line" /> : null}
+        {points.map((point, index) => {
+          const [x, y] = point.split(",");
+          const result = getUserResult(recent[index], userId);
+          return <circle key={`${point}-${index}`} cx={x} cy={y} r="5" className={`trend-dot trend-dot-${result.toLowerCase()}`} />;
+        })}
+      </svg>
+      <div className="form-pill-row">
+        {recent.map((match) => {
+          const result = getUserResult(match, userId);
+          return (
+            <Link key={match.id} to={`/app/matches/${match.id}`} className={`form-pill form-pill-${result.toLowerCase()}`}>
+              {result}
+            </Link>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function Home({ app }) {
   const user = app.currentUser;
   const [query, setQuery] = useState("");
-  const activeMatch = app.state.matches.find((match) => match.status !== "confirmed") ?? app.state.matches[0];
-  const myTeam = app.state.teams.find((team) => team.members.some((member) => member.userId === user.id));
   const searchText = query.trim().toLowerCase();
-  const playerResults = useMemo(() => app.state.users
-    .filter((item) => `${item.name} ${item.handle} ${item.region} ${item.position} ${item.club}`.toLowerCase().includes(searchText))
-    .sort((a, b) => Number(b.region === user.region) - Number(a.region === user.region) || b.ratings.integrated - a.ratings.integrated)
-    .slice(0, 5), [app.state.users, searchText, user.region]);
-  const teamResults = useMemo(() => app.state.teams
-    .filter((team) => `${team.name} ${team.region} ${team.homeCourt}`.toLowerCase().includes(searchText))
-    .sort((a, b) => Number(b.region === user.region) - Number(a.region === user.region) || b.mmr - a.mmr)
-    .slice(0, 5), [app.state.teams, searchText, user.region]);
-  const courtResults = useMemo(() => COURTS
-    .filter((court) => `${court.name} ${court.region} ${court.type}`.toLowerCase().includes(searchText))
-    .sort((a, b) => Number(b.region === user.region) - Number(a.region === user.region) || a.name.localeCompare(b.name))
-    .slice(0, 5), [searchText, user.region]);
+  const upcomingMatches = [...app.state.matches].filter((match) => match.status !== "confirmed").sort(compareSchedule);
+  const completedMatches = [...app.state.matches].filter((match) => match.status === "confirmed");
+  const activeMatch = upcomingMatches[0] ?? completedMatches[0];
+  const myTeam = app.state.teams.find((team) => team.members.some((member) => member.userId === user.id));
+  const myTeamCount = app.state.teams.filter((team) => team.members.some((member) => member.userId === user.id)).length;
+
+  const searchResults = useMemo(() => {
+    const players = app.state.users.map((item) => ({
+      id: `player-${item.id}`,
+      label: item.name,
+      meta: `${item.region} · ${item.position} · ${item.ratings.integrated}`,
+      href: `/app/players/${item.id}`,
+      score: Number(item.region === user.region) * 10000 + item.ratings.integrated,
+      haystack: `${item.name} ${item.handle} ${item.region} ${item.position} ${item.club}`,
+      avatar: item.avatarColor,
+    }));
+    const teams = app.state.teams.map((team) => ({
+      id: `team-${team.id}`,
+      label: team.name,
+      meta: `${team.region} · ${team.homeCourt} · ${team.mmr}`,
+      href: `/app/teams/${team.id}`,
+      score: Number(team.region === user.region) * 10000 + team.mmr,
+      haystack: `${team.name} ${team.region} ${team.homeCourt}`,
+      teamColor: team.accent,
+    }));
+    const courts = COURTS.map((court) => ({
+      id: `court-${court.id}`,
+      label: court.name,
+      meta: `${court.region} · ${court.type}`,
+      href: "/app/create",
+      score: Number(court.region === user.region) * 10000 + Number(court.favorite) * 1000,
+      haystack: `${court.name} ${court.region} ${court.type}`,
+      court: true,
+    }));
+
+    return [...players, ...teams, ...courts]
+      .filter((item) => (searchText ? item.haystack.toLowerCase().includes(searchText) : item.score >= 10000))
+      .sort((a, b) => b.score - a.score || a.label.localeCompare(b.label))
+      .slice(0, searchText ? 8 : 5);
+  }, [app.state.teams, app.state.users, searchText, user.region]);
 
   return (
     <div className="page-stack">
       <header className="page-header">
         <div>
-          <p className="eyebrow">Court Command</p>
-          <h1>{user.name}님의 오늘 랭크 보드</h1>
+          <p className="eyebrow">내 랭크 보드</p>
+          <h1>{user.name}님의 오늘 코트 현황</h1>
         </div>
         <Link to="/app/create">
-          <Button><PlusCircle size={18} /> 오늘의 판 만들기</Button>
+          <Button><PlusCircle size={18} /> 경기 만들기</Button>
         </Link>
       </header>
-
-      <Card className="home-search-panel">
-        <div className="home-search-box">
-          <Search size={24} />
-          <input value={query} placeholder="선수, 팀, 코트를 검색하세요" onChange={(event) => setQuery(event.target.value)} />
-        </div>
-        <div className="home-search-results">
-          <div>
-            <p className="eyebrow">Players</p>
-            {playerResults.map((item) => (
-              <Link key={item.id} to={`/app/players/${item.id}`}>
-                <span className="avatar small" style={{ "--avatar": item.avatarColor }}>{item.name.slice(0, 1)}</span>
-                <strong>{item.name}</strong>
-                <em>{item.region} · {item.ratings.integrated}</em>
-              </Link>
-            ))}
-          </div>
-          <div>
-            <p className="eyebrow">Teams</p>
-            {teamResults.map((team) => (
-              <Link key={team.id} to={`/app/teams/${team.id}`}>
-                <span className="team-mini-dot" style={{ "--team-color": team.accent }} />
-                <strong>{team.name}</strong>
-                <em>{team.region} · {team.mmr}</em>
-              </Link>
-            ))}
-          </div>
-          <div>
-            <p className="eyebrow">Courts</p>
-            {courtResults.map((court) => (
-              <Link key={court.id} to="/app/create">
-                <span className="team-mini-dot" />
-                <strong>{court.name}</strong>
-                <em>{court.region} · {court.type}</em>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </Card>
 
       <section className="court-command">
         <div className="court-command-copy">
@@ -89,12 +133,12 @@ export default function Home({ app }) {
             <TierEmblem mmr={user.ratings.integrated} size="hero" showLabel />
             <div>
               <strong>{user.ratings.integrated}</strong>
-              <h2>{user.name} · 통합 티어 레이스</h2>
+              <h2>{user.name} · 통합 티어</h2>
               <Badge tone="gold">{getTierDivision(user.ratings.integrated)}</Badge>
             </div>
           </div>
           <p className="tier-line">{getTierQuote(user.ratings.integrated)}</p>
-          <p>{user.streak > 0 ? `${user.streak}연승 중. 다음 공식전이 티어를 크게 흔듭니다.` : "다음 승리를 노리는 중입니다."}</p>
+          <p>{user.streak > 0 ? `${user.streak}연승 중. 다음 공식전이 티어를 흔듭니다.` : "다음 승리를 준비하는 중입니다."}</p>
         </div>
         <div className="mode-grid">
           {Object.entries(user.ratings.modes).map(([mode, mmr]) => (
@@ -103,27 +147,54 @@ export default function Home({ app }) {
         </div>
       </section>
 
+      <Card className="home-search-panel">
+        <div className="home-search-box">
+          <Search size={24} />
+          <input value={query} placeholder="이름, 팀명, 코트명을 바로 검색" onChange={(event) => setQuery(event.target.value)} />
+        </div>
+        <div className="home-search-results unified">
+          {searchResults.map((item) => (
+            <Link key={item.id} to={item.href}>
+              {item.avatar ? <span className="avatar small" style={{ "--avatar": item.avatar }}>{item.label.slice(0, 1)}</span> : null}
+              {item.teamColor ? <span className="team-mini-dot" style={{ "--team-color": item.teamColor }} /> : null}
+              {item.court ? <span className="court-mini-dot" /> : null}
+              <strong>{item.label}</strong>
+              <em>{item.meta}</em>
+            </Link>
+          ))}
+        </div>
+      </Card>
+
       <div className="content-grid">
         <div className="page-stack">
           <Card className="section-card match-focus-card">
             <div className="section-title-row">
               <div>
-                <p className="eyebrow">Next Match</p>
-                <h2>진행할 경기</h2>
+                <p className="eyebrow">Upcoming</p>
+                <h2>진행 예정 경기</h2>
               </div>
-              <Badge tone="orange">{activeMatch.status}</Badge>
+              <Badge tone={upcomingMatches.length ? "orange" : "neutral"}>{upcomingMatches.length}개</Badge>
             </div>
-            <MatchCard match={activeMatch} />
+            {upcomingMatches.length ? (
+              <div className="match-stack">
+                {upcomingMatches.slice(0, 3).map((match) => <MatchCard key={match.id} match={match} />)}
+              </div>
+            ) : (
+              <p className="muted">아직 잡힌 경기가 없습니다. 새 경기를 만들면 여기에 먼저 표시됩니다.</p>
+            )}
           </Card>
+
           <Card className="section-card">
             <div className="section-title-row">
               <div>
                 <p className="eyebrow">Recent Form</p>
-                <h2>전적 흐름</h2>
+                <h2>완료 전적 흐름</h2>
               </div>
+              <Badge tone="green">{completedMatches.length}경기</Badge>
             </div>
+            <FormTrendChart matches={completedMatches} userId={user.id} />
             <div className="compact-list">
-              {app.state.matches.slice(0, 5).map((match) => (
+              {completedMatches.slice(0, 5).map((match) => (
                 <Link key={match.id} to={`/app/matches/${match.id}`}>
                   <span>{match.title}</span>
                   <strong>{match.teamA.score ?? 0}:{match.teamB.score ?? 0}</strong>
@@ -133,6 +204,22 @@ export default function Home({ app }) {
           </Card>
         </div>
         <aside className="page-stack">
+          <Card className="section-card">
+            <div className="contract-grid single">
+              <div>
+                <span>소속 팀</span>
+                <strong>{myTeamCount}/5</strong>
+              </div>
+              <div>
+                <span>지역</span>
+                <strong>{user.region}</strong>
+              </div>
+              <div>
+                <span>신뢰도</span>
+                <strong>{user.trustScore}</strong>
+              </div>
+            </div>
+          </Card>
           {myTeam ? <TeamCard team={myTeam} users={app.state.users} compact /> : null}
           <ShareCard user={user} match={activeMatch} />
         </aside>

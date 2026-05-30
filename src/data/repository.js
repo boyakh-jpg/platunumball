@@ -1,4 +1,4 @@
-import { MODE_SIZES, TEAM_ROLES } from "../lib/constants.js";
+import { MAX_TEAM_MEMBERSHIPS, MODE_SIZES, TEAM_ROLES } from "../lib/constants.js";
 import { initialState } from "../lib/mockData.js";
 import { getApprovalStatus, getSideMajority, normalizePlayerStats } from "../lib/matchUtils.js";
 import { applyMatchRating, calculateTeamDelta } from "../lib/rating.js";
@@ -325,6 +325,22 @@ export function updateProfile(state, patch) {
 
 export function createTeam(state, teamDraft) {
   const captainId = teamDraft.captainId || state.currentUserId;
+  const captainTeamCount = state.teams.filter((team) => team.members.some((member) => member.userId === captainId)).length;
+  if (captainTeamCount >= MAX_TEAM_MEMBERSHIPS) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "팀 생성 제한",
+          body: `한 플레이어는 최대 ${MAX_TEAM_MEMBERSHIPS}개 팀까지만 소속될 수 있습니다.`,
+          tone: "team",
+        },
+        ...state.notifications,
+      ],
+    };
+  }
+
   const team = {
     id: makeId("t"),
     name: teamDraft.name,

@@ -10,6 +10,8 @@ export const MODE_SIZES = MATCH_MODES.reduce((map, mode) => {
   return map;
 }, {});
 
+export const MAX_TEAM_MEMBERSHIPS = 5;
+
 export const TEAM_ROLES = {
   captain: "팀장",
   regular: "정규멤버",

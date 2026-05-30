@@ -63,7 +63,7 @@ export default function MatchRoom({ app }) {
             <Badge tone={match.status === "confirmed" ? "green" : "blue"}>{statusLabel}</Badge>
             {match.preRegistered ? <Badge tone="green">사전등록</Badge> : null}
           </div>
-          <p className="eyebrow">RankBall Contract</p>
+          <p className="eyebrow">경기 계약서</p>
           <h1>{match.title}</h1>
           <p>{match.court} · {match.scheduledAt} · {match.mode}</p>
         </div>
@@ -86,7 +86,7 @@ export default function MatchRoom({ app }) {
           <Card className="section-card result-card">
             <div className="section-title-row">
               <div>
-                <p className="eyebrow">Result</p>
+                <p className="eyebrow">결과 입력</p>
                 <h2>경기 결과 입력</h2>
               </div>
             </div>
@@ -138,7 +138,7 @@ export default function MatchRoom({ app }) {
           <Card className="section-card">
             <div className="section-title-row">
               <div>
-                <p className="eyebrow">Rating Impact</p>
+                <p className="eyebrow">티어 반영</p>
                 <h2>MMR 변동</h2>
               </div>
             </div>
@@ -184,7 +184,7 @@ export default function MatchRoom({ app }) {
             <Card className="section-card">
               <div className="section-title-row">
                 <div>
-                  <p className="eyebrow">Box Score</p>
+                  <p className="eyebrow">개인 기록</p>
                   <h2>개인 스탯 요약</h2>
                 </div>
               </div>

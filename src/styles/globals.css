@@ -2013,6 +2013,10 @@ input[type="color"] {
   gap: 10px;
 }
 
+.home-search-results.unified {
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+}
+
 .home-search-results > div,
 .connection-list {
   display: grid;
@@ -2050,6 +2054,110 @@ input[type="color"] {
   height: 24px;
   border-radius: 50%;
   background: var(--team-color, var(--green));
+}
+
+.court-mini-dot {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 7px;
+  background:
+    linear-gradient(90deg, transparent 46%, rgba(255, 255, 255, 0.62) 47% 53%, transparent 54%),
+    linear-gradient(0deg, transparent 46%, rgba(255, 255, 255, 0.42) 47% 53%, transparent 54%),
+    rgba(70, 224, 182, 0.28);
+}
+
+.match-stack {
+  display: grid;
+  gap: 12px;
+}
+
+.form-trend-chart {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(180deg, rgba(70, 224, 182, 0.08), rgba(255, 255, 255, 0.025)),
+    rgba(255, 255, 255, 0.04);
+  padding: 12px;
+}
+
+.form-trend-chart svg {
+  width: 100%;
+  min-height: 128px;
+}
+
+.trend-axis {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.16);
+  stroke-width: 2;
+}
+
+.trend-line {
+  fill: none;
+  stroke: var(--green);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 4;
+}
+
+.trend-dot {
+  stroke: #07110f;
+  stroke-width: 2.5;
+}
+
+.trend-dot-w {
+  fill: var(--green);
+}
+
+.trend-dot-l {
+  fill: var(--danger);
+}
+
+.trend-dot-d {
+  fill: var(--gold);
+}
+
+.form-pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.form-pill {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 50%;
+  color: #07110f;
+  font-size: 0.78rem;
+  font-weight: 950;
+}
+
+.form-pill-w {
+  background: var(--green);
+}
+
+.form-pill-l {
+  background: var(--danger);
+}
+
+.form-pill-d {
+  background: var(--gold);
+}
+
+.form-help,
+.form-warning {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 750;
+}
+
+.form-warning {
+  color: var(--danger);
 }
 
 .profile-hero,
