@@ -1,0 +1,48 @@
+import { BarChart3, Bell, House, PlusCircle, Settings, Shield, UserRound, UsersRound } from "lucide-react";
+import { NavLink } from "react-router-dom";
+import TierBadge from "../rating/TierBadge.jsx";
+
+const navItems = [
+  { to: "/app", label: "홈", icon: House },
+  { to: "/app/create", label: "판 만들기", icon: PlusCircle },
+  { to: "/app/rankings", label: "랭킹", icon: BarChart3 },
+  { to: "/app/teams", label: "팀", icon: UsersRound },
+  { to: "/app/profile", label: "프로필", icon: UserRound },
+  { to: "/app/affiliations", label: "소속", icon: Shield },
+  { to: "/app/notifications", label: "알림", icon: Bell },
+  { to: "/app/settings", label: "설정", icon: Settings },
+];
+
+export default function Sidebar({ user }) {
+  return (
+    <aside className="sidebar">
+      <NavLink to="/" className="brand">
+        <span className="brand-mark">R</span>
+        <span>
+          <strong>RankBall</strong>
+          <small>street court ladder</small>
+        </span>
+      </NavLink>
+      <nav className="sidebar-nav" aria-label="주요 메뉴">
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          return (
+            <NavLink key={item.to} to={item.to} end={item.to === "/app"} className="nav-item">
+              <Icon size={18} />
+              <span>{item.label}</span>
+            </NavLink>
+          );
+        })}
+      </nav>
+      <div className="sidebar-profile">
+        <div className="avatar" style={{ "--avatar": user.avatarColor }}>
+          {user.name.slice(0, 1)}
+        </div>
+        <div>
+          <strong>{user.name}</strong>
+          <TierBadge mmr={user.ratings.integrated} compact />
+        </div>
+      </div>
+    </aside>
+  );
+}

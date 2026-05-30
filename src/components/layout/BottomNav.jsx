@@ -1,0 +1,26 @@
+import { BarChart3, House, PlusCircle, UserRound, UsersRound } from "lucide-react";
+import { NavLink } from "react-router-dom";
+
+const items = [
+  { to: "/app", label: "홈", icon: House },
+  { to: "/app/create", label: "생성", icon: PlusCircle },
+  { to: "/app/rankings", label: "랭킹", icon: BarChart3 },
+  { to: "/app/teams", label: "팀", icon: UsersRound },
+  { to: "/app/profile", label: "나", icon: UserRound },
+];
+
+export default function BottomNav() {
+  return (
+    <nav className="bottom-nav" aria-label="하단 메뉴">
+      {items.map((item) => {
+        const Icon = item.icon;
+        return (
+          <NavLink key={item.to} to={item.to} end={item.to === "/app"}>
+            <Icon size={20} />
+            <span>{item.label}</span>
+          </NavLink>
+        );
+      })}
+    </nav>
+  );
+}
