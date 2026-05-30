@@ -13,6 +13,16 @@ function getTeamSide(match, teamId) {
   return null;
 }
 
+const historyStatusLabel = {
+  contract: "동의 대기",
+  agreed: "예정",
+  approval: "승인 대기",
+  disputed: "보류",
+  confirmed: "확정",
+  void: "무효",
+  cancelled: "취소",
+};
+
 export default function TeamDetail({ app }) {
   const { teamId } = useParams();
   const team = app.state.teams.find((item) => item.id === teamId);
@@ -26,13 +36,14 @@ export default function TeamDetail({ app }) {
     item.members.forEach((member) => membershipCounts.set(member.userId, (membershipCounts.get(member.userId) ?? 0) + 1));
   });
   const captain = team.members.find((member) => member.role === "captain");
+  const canManage = captain?.userId === app.currentUser.id;
   const regularMembers = team.members.filter((member) => member.role === "captain" || member.role === "regular");
   const reserveMembers = team.members.filter((member) => member.role !== "captain" && member.role !== "regular");
   const availableUsers = app.state.users.filter((user) => !team.members.some((member) => member.userId === user.id));
   const firstAddableUser = availableUsers.find((user) => (membershipCounts.get(user.id) ?? 0) < MAX_TEAM_MEMBERSHIPS);
   const addUserId = availableUsers.some((user) => user.id === memberDraft.userId) ? memberDraft.userId : firstAddableUser?.id ?? availableUsers[0]?.id ?? "";
   const selectedCount = membershipCounts.get(addUserId) ?? 0;
-  const canAddMember = Boolean(addUserId) && selectedCount < MAX_TEAM_MEMBERSHIPS;
+  const canAddMember = canManage && Boolean(addUserId) && selectedCount < MAX_TEAM_MEMBERSHIPS;
   const history = app.state.matches.filter((match) => getTeamSide(match, team.id));
   const wins = history.filter((match) => {
     const sideName = getTeamSide(match, team.id);
@@ -118,7 +129,7 @@ export default function TeamDetail({ app }) {
                       <span>{match.court} · {match.scheduledAt}</span>
                     </div>
                     <div className="history-score">
-                      <Badge tone={match.status === "confirmed" ? "green" : "orange"}>{match.status === "confirmed" ? "확정" : "진행중"}</Badge>
+                      <Badge tone={match.status === "confirmed" ? "green" : match.status === "contract" ? "blue" : "orange"}>{historyStatusLabel[match.status] ?? match.status}</Badge>
                       <strong>{side.score ?? 0}:{opponent.score ?? 0}</strong>
                     </div>
                     <div className="roster compact-roster">
@@ -163,47 +174,53 @@ export default function TeamDetail({ app }) {
               </div>
               <Badge tone="green">{team.members.length}명</Badge>
             </div>
-            <form className="member-add-form" onSubmit={addMember}>
-              <label>
-                추가할 선수
-                <select value={addUserId} onChange={(event) => setMemberDraft((current) => ({ ...current, userId: event.target.value }))}>
-                  {availableUsers.map((user) => {
-                    const count = membershipCounts.get(user.id) ?? 0;
-                    return (
-                      <option key={user.id} value={user.id} disabled={count >= MAX_TEAM_MEMBERSHIPS}>
-                        {user.name} · {count}/{MAX_TEAM_MEMBERSHIPS}팀
-                      </option>
-                    );
-                  })}
-                </select>
-              </label>
-              <label>
-                역할
-                <select value={memberDraft.role} onChange={(event) => setMemberDraft((current) => ({ ...current, role: event.target.value }))}>
-                  {Object.entries(TEAM_ROLES).map(([role, label]) => <option key={role} value={role}>{label}</option>)}
-                </select>
-              </label>
-              <Button type="submit" disabled={!canAddMember || !availableUsers.length}>팀원 추가</Button>
-              {!canAddMember ? <p className="form-warning">선택한 선수는 이미 최대 {MAX_TEAM_MEMBERSHIPS}개 팀에 소속되어 있습니다.</p> : null}
-            </form>
-            <div className="member-control-list">
-              {team.members.map((member) => {
-                const user = userMap[member.userId];
-                if (!user) return null;
-                return (
-                  <div key={`${team.id}-${member.userId}-control`} className="member-control-row">
-                    <Link to={`/app/players/${member.userId}`}>
-                      <span className="avatar small" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
-                      <strong>{user.name}</strong>
-                    </Link>
-                    <select value={member.role} onChange={(event) => app.actions.updateTeamMemberRole(team.id, member.userId, event.target.value)}>
+            {canManage ? (
+              <>
+                <form className="member-add-form" onSubmit={addMember}>
+                  <label>
+                    추가할 선수
+                    <select value={addUserId} onChange={(event) => setMemberDraft((current) => ({ ...current, userId: event.target.value }))}>
+                      {availableUsers.map((user) => {
+                        const count = membershipCounts.get(user.id) ?? 0;
+                        return (
+                          <option key={user.id} value={user.id} disabled={count >= MAX_TEAM_MEMBERSHIPS}>
+                            {user.name} · {count}/{MAX_TEAM_MEMBERSHIPS}팀
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </label>
+                  <label>
+                    역할
+                    <select value={memberDraft.role} onChange={(event) => setMemberDraft((current) => ({ ...current, role: event.target.value }))}>
                       {Object.entries(TEAM_ROLES).map(([role, label]) => <option key={role} value={role}>{label}</option>)}
                     </select>
-                    <button type="button" disabled={team.members.length <= 1} onClick={() => app.actions.removeTeamMember(team.id, member.userId)}>제외</button>
-                  </div>
-                );
-              })}
-            </div>
+                  </label>
+                  <Button type="submit" disabled={!canAddMember || !availableUsers.length}>팀원 추가</Button>
+                  {!canAddMember ? <p className="form-warning">선택한 선수는 이미 최대 {MAX_TEAM_MEMBERSHIPS}개 팀에 소속되어 있습니다.</p> : null}
+                </form>
+                <div className="member-control-list">
+                  {team.members.map((member) => {
+                    const user = userMap[member.userId];
+                    if (!user) return null;
+                    return (
+                      <div key={`${team.id}-${member.userId}-control`} className="member-control-row">
+                        <Link to={`/app/players/${member.userId}`}>
+                          <span className="avatar small" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
+                          <strong>{user.name}</strong>
+                        </Link>
+                        <select value={member.role} onChange={(event) => app.actions.updateTeamMemberRole(team.id, member.userId, event.target.value)}>
+                          {Object.entries(TEAM_ROLES).map(([role, label]) => <option key={role} value={role}>{label}</option>)}
+                        </select>
+                        <button type="button" disabled={team.members.length <= 1} onClick={() => app.actions.removeTeamMember(team.id, member.userId)}>제외</button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <p className="form-help">팀장만 팀원을 추가하거나 역할을 바꿀 수 있습니다. 설정에서 데모 유저를 전환해 팀장 권한을 확인할 수 있습니다.</p>
+            )}
           </Card>
           {renderMembers("정규멤버", regularMembers)}
           {renderMembers("후보멤버와 용병 기록", reserveMembers)}

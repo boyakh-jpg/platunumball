@@ -19,6 +19,15 @@ function addCount(map, userId) {
   map.set(userId, (map.get(userId) ?? 0) + 1);
 }
 
+const historyStatusLabel = {
+  contract: "동의 대기",
+  agreed: "예정",
+  approval: "승인 대기",
+  disputed: "보류",
+  void: "무효",
+  cancelled: "취소",
+};
+
 export default function PlayerDetail({ app }) {
   const { playerId } = useParams();
   const player = app.state.users.find((user) => user.id === playerId);
@@ -122,7 +131,7 @@ export default function PlayerDetail({ app }) {
                       <span>{match.court} · {match.scheduledAt}</span>
                     </div>
                     <div className="history-score">
-                      <Badge tone={didWin === null ? "blue" : didWin ? "green" : "orange"}>{didWin === null ? match.status : didWin ? "승" : "패"}</Badge>
+                      <Badge tone={didWin === null ? "blue" : didWin ? "green" : "orange"}>{didWin === null ? historyStatusLabel[match.status] ?? match.status : didWin ? "승" : "패"}</Badge>
                       <strong>{side.score ?? 0}:{opponent.score ?? 0}</strong>
                     </div>
                     <div className="history-teams">

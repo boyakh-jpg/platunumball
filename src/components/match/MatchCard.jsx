@@ -4,9 +4,23 @@ import Badge from "../common/Badge.jsx";
 import Card from "../common/Card.jsx";
 
 const statusLabel = {
-  contract: "계약서",
+  contract: "동의 대기",
+  agreed: "진행 예정",
   approval: "승인 대기",
+  disputed: "이의제기",
   confirmed: "확정",
+  void: "무효",
+  cancelled: "취소",
+};
+
+const statusTone = {
+  contract: "blue",
+  agreed: "green",
+  approval: "orange",
+  disputed: "orange",
+  confirmed: "green",
+  void: "neutral",
+  cancelled: "neutral",
 };
 
 export default function MatchCard({ match }) {
@@ -17,8 +31,8 @@ export default function MatchCard({ match }) {
           <p className="eyebrow">{match.mode} · {match.official ? "공식경기" : "일반경기"}</p>
           <h3>{match.title}</h3>
         </div>
-        <Badge tone={match.status === "confirmed" ? "green" : match.status === "approval" ? "orange" : "blue"}>
-          {statusLabel[match.status]}
+        <Badge tone={statusTone[match.status] ?? "blue"}>
+          {statusLabel[match.status] ?? match.status}
         </Badge>
       </div>
       <div className="match-meta">

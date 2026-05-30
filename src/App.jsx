@@ -5,6 +5,7 @@ import Affiliations from "./pages/Affiliations.jsx";
 import CreateMatch from "./pages/CreateMatch.jsx";
 import Home from "./pages/Home.jsx";
 import Landing from "./pages/Landing.jsx";
+import Matches from "./pages/Matches.jsx";
 import MatchRoom from "./pages/MatchRoom.jsx";
 import Notifications from "./pages/Notifications.jsx";
 import PlayerDetail from "./pages/PlayerDetail.jsx";
@@ -24,7 +25,7 @@ export default function App() {
         <Route path="/app" element={<Home app={app} />} />
         <Route path="/app/create" element={<CreateMatch app={app} />} />
         <Route path="/app/matches/:matchId" element={<MatchRoom app={app} />} />
-        <Route path="/app/matches" element={<MatchRoom app={app} />} />
+        <Route path="/app/matches" element={<Matches app={app} />} />
         <Route path="/app/rankings" element={<Rankings app={app} />} />
         <Route path="/app/teams" element={<Teams app={app} />} />
         <Route path="/app/teams/:teamId" element={<TeamDetail app={app} />} />

@@ -364,8 +364,8 @@ export const initialState = {
       official: true,
       preRegistered: true,
       rules: { targetScore: 21, timeLimit: 12, winByTwo: true, ball: "7호 공" },
-      memo: "승자팀 다음 경기 우선권. 현금 정산 없음.",
-      stakes: "승자팀 다음 경기 우선권. 현금 정산 없음.",
+      memo: "승자팀 다음 경기 우선권. 금전 거래 없이 약속만 기록합니다.",
+      stakes: "승자팀 다음 경기 우선권. 금전 거래 없이 약속만 기록합니다.",
       ranked: true,
       objectionWindow: "24시간",
       evidence: [
@@ -374,7 +374,9 @@ export const initialState = {
       ],
       teamA: { name: "Noeul Kings", teamId: "t1", players: ["u1", "u2", "u3", "u4", "u5"], score: 0 },
       teamB: { name: "Bridge Ballers", teamId: "t2", players: ["u6", "u7", "u8", "u9", "u10"], score: 0 },
+      agreements: { teamA: [], teamB: [] },
       approvals: { teamA: [], teamB: [] },
+      disputes: [],
       result: null,
       ratingResult: null,
       createdAt: "2026-05-31T10:00:00.000Z",
@@ -398,7 +400,9 @@ export const initialState = {
       objectionWindow: "1시간",
       teamA: { name: "Noeul Kings", teamId: "t1", players: ["u1", "u2", "u4"], score: 15 },
       teamB: { name: "Bridge Ballers", teamId: "t2", players: ["u6", "u7", "u9"], score: 12 },
+      agreements: { teamA: ["u1", "u2"], teamB: ["u6", "u7"] },
       approvals: { teamA: ["u1", "u2"], teamB: ["u6", "u7"] },
+      disputes: [],
       result: {
         scoreA: 15,
         scoreB: 12,
@@ -421,7 +425,7 @@ export const initialState = {
     },
   ],
   notifications: [
-    { id: "n1", title: "경기계약서 대기", body: "토요 5v5 공식전의 결과 입력을 기다리고 있습니다.", tone: "match" },
+    { id: "n1", title: "경기 전 동의 대기", body: "토요 5v5 공식전의 경기 전 동의를 기다리고 있습니다.", tone: "match", matchId: "m1" },
     { id: "n2", title: "3연승", body: "민준의 통합 티어가 Platinum에 가까워지고 있어요.", tone: "tier" },
   ],
 };

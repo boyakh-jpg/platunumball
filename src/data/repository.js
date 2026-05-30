@@ -1,6 +1,6 @@
 import { MAX_TEAM_MEMBERSHIPS, MODE_SIZES, TEAM_ROLES } from "../lib/constants.js";
 import { initialState } from "../lib/mockData.js";
-import { getApprovalStatus, getSideMajority, normalizePlayerStats } from "../lib/matchUtils.js";
+import { getAgreementStatus, getApprovalStatus, normalizePlayerStats } from "../lib/matchUtils.js";
 import { applyMatchRating, calculateTeamDelta } from "../lib/rating.js";
 import { clearState, readState, writeState } from "../lib/storage.js";
 import { isSupabaseConfigured, supabase } from "../lib/supabase.js";
@@ -16,6 +16,24 @@ function mergeById(current = [], fallback = []) {
   return [...mergedDefaults, ...extraItems];
 }
 
+function normalizeMatch(match) {
+  const startedStatuses = ["agreed", "approval", "confirmed", "disputed", "void", "cancelled"];
+  const started = startedStatuses.includes(match.status);
+  const teamAPlayers = match.teamA?.players ?? [];
+  const teamBPlayers = match.teamB?.players ?? [];
+
+  return {
+    ...match,
+    status: match.status ?? "contract",
+    agreements: match.agreements ?? {
+      teamA: started ? [...teamAPlayers] : [],
+      teamB: started ? [...teamBPlayers] : [],
+    },
+    approvals: match.approvals ?? { teamA: [], teamB: [] },
+    disputes: match.disputes ?? [],
+  };
+}
+
 function normalizeState(state) {
   return {
     ...clone(initialState),
@@ -23,7 +41,7 @@ function normalizeState(state) {
     users: mergeById(state?.users, initialState.users),
     teams: mergeById(state?.teams, initialState.teams),
     affiliations: mergeById(state?.affiliations, initialState.affiliations),
-    matches: mergeById(state?.matches, initialState.matches),
+    matches: mergeById(state?.matches, initialState.matches).map(normalizeMatch),
     notifications: state?.notifications?.length ? state.notifications : initialState.notifications,
   };
 }
@@ -46,7 +64,7 @@ export async function loadRemoteState() {
     .maybeSingle();
 
   if (error) {
-    console.warn("Supabase state load failed. Falling back to local mock mode.", error.message);
+    console.warn("Supabase state load failed. Falling back to local demo mode.", error.message);
     return null;
   }
 
@@ -210,6 +228,7 @@ function finalizeMatch(state, targetMatch) {
         title: "경기 확정",
         body: `${targetMatch.title} 결과가 티어와 랭킹에 반영됐습니다.`,
         tone: "tier",
+        matchId: targetMatch.id,
       },
       ...state.notifications,
     ],
@@ -247,12 +266,14 @@ export function createMatch(state, draft) {
       foulRule: draft.foulRule || "파울은 콜한 쪽 기준으로 즉시 중단",
     },
     memo: draft.memo || "결과는 양팀 과반 승인 후 티어에 반영됩니다.",
-    stakes: draft.stakes || "내기 없음. 기록과 티어만 반영합니다.",
+    stakes: draft.stakes || "금전 거래 없이 약속과 벌칙만 기록합니다.",
     objectionWindow: draft.objectionWindow || (draft.official ? "24시간" : "1시간"),
     evidence,
     teamA: { name: teamA.name, teamId: teamA.id, players: getTeamPlayers(teamA, size), score: 0 },
     teamB: { name: teamB.name, teamId: teamB.id, players: getTeamPlayers(teamB, size), score: 0 },
+    agreements: { teamA: [], teamB: [] },
     approvals: { teamA: [], teamB: [] },
+    disputes: [],
     result: null,
     ratingResult: null,
     createdAt: new Date().toISOString(),
@@ -262,13 +283,78 @@ export function createMatch(state, draft) {
     ...state,
     matches: [match, ...state.matches],
     notifications: [
-      { id: makeId("n"), title: "새 경기방", body: `${match.title} 계약서가 생성됐습니다.`, tone: "match" },
+      { id: makeId("n"), title: "새 경기방", body: `${match.title} 경기 전 동의를 기다립니다.`, tone: "match", matchId: match.id },
       ...state.notifications,
     ],
   };
 }
 
+function getNextDecisionId(match, sideName, decisionKey, playerId) {
+  const sidePlayers = match[sideName]?.players ?? [];
+  if (playerId && sidePlayers.includes(playerId)) return playerId;
+  return sidePlayers.find((id) => !(match[decisionKey]?.[sideName] ?? []).includes(id));
+}
+
+export function agreeMatch(state, matchId, sideName, playerId) {
+  const match = state.matches.find((item) => item.id === matchId);
+  if (!match || !["contract", "agreed"].includes(match.status)) return state;
+
+  const agreementId = getNextDecisionId(match, sideName, "agreements", playerId);
+  if (!agreementId) return state;
+
+  const updatedMatch = {
+    ...match,
+    agreements: {
+      ...(match.agreements ?? { teamA: [], teamB: [] }),
+      [sideName]: Array.from(new Set([...(match.agreements?.[sideName] ?? []), agreementId])),
+    },
+  };
+  const ready =
+    match.status !== "agreed" &&
+    getAgreementStatus(updatedMatch, state.teams, "teamA").approved &&
+    getAgreementStatus(updatedMatch, state.teams, "teamB").approved;
+  const nextMatch = ready
+    ? { ...updatedMatch, status: "agreed", agreedAt: updatedMatch.agreedAt ?? new Date().toISOString() }
+    : updatedMatch;
+
+  return {
+    ...state,
+    matches: state.matches.map((item) => (item.id === matchId ? nextMatch : item)),
+    notifications: ready
+      ? [
+          {
+            id: makeId("n"),
+            title: "경기 전 동의 완료",
+            body: `${match.title} 경기 결과를 입력할 수 있습니다.`,
+            tone: "match",
+            matchId,
+          },
+          ...state.notifications,
+        ]
+      : state.notifications,
+  };
+}
+
 export function submitMatchResult(state, matchId, result) {
+  const match = state.matches.find((item) => item.id === matchId);
+  if (!match) return state;
+  if (match.status === "contract") {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "경기 전 동의 필요",
+          body: `${match.title}는 양팀 동의가 끝나야 결과를 입력할 수 있습니다.`,
+          tone: "match",
+          matchId,
+        },
+        ...state.notifications,
+      ],
+    };
+  }
+  if (["confirmed", "void", "cancelled", "disputed"].includes(match.status)) return state;
+
   return {
     ...state,
     matches: state.matches.map((match) =>
@@ -288,18 +374,24 @@ export function submitMatchResult(state, matchId, result) {
           }
         : match,
     ),
+    notifications: [
+      {
+        id: makeId("n"),
+        title: "결과 승인 대기",
+        body: `${match.title} 결과가 제출됐습니다. 양팀 승인을 기다립니다.`,
+        tone: "match",
+        matchId,
+      },
+      ...state.notifications,
+    ],
   };
 }
 
 export function approveMatch(state, matchId, sideName, playerId) {
   const match = state.matches.find((item) => item.id === matchId);
-  if (!match?.result || match.status === "confirmed") return state;
+  if (!match?.result || ["confirmed", "void", "cancelled", "disputed"].includes(match.status)) return state;
 
-  const sidePlayers = match[sideName]?.players ?? [];
-  const approvalId = playerId && sidePlayers.includes(playerId)
-    ? playerId
-    : sidePlayers.find((id) => !(match.approvals?.[sideName] ?? []).includes(id));
-
+  const approvalId = getNextDecisionId(match, sideName, "approvals", playerId);
   if (!approvalId) return state;
 
   const updatedMatch = {
@@ -319,6 +411,96 @@ export function approveMatch(state, matchId, sideName, playerId) {
   }
 
   return stateWithApproval;
+}
+
+export function disputeMatch(state, matchId, reason = "") {
+  const match = state.matches.find((item) => item.id === matchId);
+  if (!match?.result || match.status !== "approval") return state;
+
+  const dispute = {
+    id: makeId("d"),
+    by: state.currentUserId,
+    reason: reason.trim() || "스코어 또는 개인 기록 확인이 필요합니다.",
+    createdAt: new Date().toISOString(),
+  };
+
+  return {
+    ...state,
+    matches: state.matches.map((item) =>
+      item.id === matchId
+        ? { ...item, status: "disputed", disputes: [dispute, ...(item.disputes ?? [])] }
+        : item,
+    ),
+    notifications: [
+      {
+        id: makeId("n"),
+        title: "이의제기 접수",
+        body: `${match.title} 결과가 보류됐습니다. 양팀 확인 후 재승인하거나 무효 처리하세요.`,
+        tone: "match",
+        matchId,
+      },
+      ...state.notifications,
+    ],
+  };
+}
+
+export function cancelMatch(state, matchId) {
+  const match = state.matches.find((item) => item.id === matchId);
+  if (!match || !["contract", "agreed"].includes(match.status)) return state;
+
+  return {
+    ...state,
+    matches: state.matches.map((item) =>
+      item.id === matchId
+        ? { ...item, status: "cancelled", cancelledAt: new Date().toISOString() }
+        : item,
+    ),
+    notifications: [
+      { id: makeId("n"), title: "경기 취소", body: `${match.title} 경기방이 취소됐습니다.`, tone: "match", matchId },
+      ...state.notifications,
+    ],
+  };
+}
+
+export function voidMatch(state, matchId) {
+  const match = state.matches.find((item) => item.id === matchId);
+  if (!match || match.status !== "disputed") return state;
+
+  return {
+    ...state,
+    matches: state.matches.map((item) =>
+      item.id === matchId
+        ? { ...item, status: "void", ranked: false, voidedAt: new Date().toISOString() }
+        : item,
+    ),
+    notifications: [
+      { id: makeId("n"), title: "결과 무효", body: `${match.title} 결과가 랭킹 반영에서 제외됐습니다.`, tone: "match", matchId },
+      ...state.notifications,
+    ],
+  };
+}
+
+export function resumeMatchApproval(state, matchId) {
+  const match = state.matches.find((item) => item.id === matchId);
+  if (!match || match.status !== "disputed") return state;
+
+  return {
+    ...state,
+    matches: state.matches.map((item) =>
+      item.id === matchId
+        ? { ...item, status: "approval", approvals: { teamA: [], teamB: [] }, reviewResumedAt: new Date().toISOString() }
+        : item,
+    ),
+    notifications: [
+      { id: makeId("n"), title: "승인 재개", body: `${match.title} 결과 승인을 다시 시작합니다.`, tone: "match", matchId },
+      ...state.notifications,
+    ],
+  };
+}
+
+export function switchUser(state, userId) {
+  if (!state.users.some((user) => user.id === userId)) return state;
+  return { ...state, currentUserId: userId };
 }
 
 export function updateProfile(state, patch) {

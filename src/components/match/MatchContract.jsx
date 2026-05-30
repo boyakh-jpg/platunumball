@@ -88,8 +88,8 @@ export default function MatchContract({ match, users }) {
       </div>
       <div className="contract-note-grid">
         <div className="memo-box">
-          <span>내기/합의 사항</span>
-          <strong>{match.stakes ?? "내기 없음. 기록과 티어만 반영합니다."}</strong>
+          <span>약속/벌칙 메모</span>
+          <strong>{match.stakes ?? "금전 거래 없이 기록과 약속만 남깁니다."}</strong>
         </div>
         <div className="memo-box">
           <span>경기 메모</span>

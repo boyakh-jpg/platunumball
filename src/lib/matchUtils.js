@@ -21,9 +21,9 @@ export function getSideCaptainId(match = {}, teams = [], sideName) {
   return getTeamCaptainId(teams, match[sideName]?.teamId);
 }
 
-export function getApprovalStatus(match = {}, teams = [], sideName) {
+function getDecisionStatus(match = {}, teams = [], sideName, decisionKey) {
   const side = match[sideName] ?? { players: [] };
-  const approvals = match.approvals?.[sideName] ?? [];
+  const approvals = match[decisionKey]?.[sideName] ?? [];
   const captainRequired = isCaptainApprovalRequired(match);
   const captainId = getSideCaptainId(match, teams, sideName);
   const majority = getSideMajority(side);
@@ -40,6 +40,14 @@ export function getApprovalStatus(match = {}, teams = [], sideName) {
     majorityApproved,
     approved: majorityApproved && captainApproved,
   };
+}
+
+export function getAgreementStatus(match = {}, teams = [], sideName) {
+  return getDecisionStatus(match, teams, sideName, "agreements");
+}
+
+export function getApprovalStatus(match = {}, teams = [], sideName) {
+  return getDecisionStatus(match, teams, sideName, "approvals");
 }
 
 export function normalizePlayerStats(playerStats = {}, playerIds = []) {

@@ -1,10 +1,11 @@
-import { BarChart3, Bell, House, PlusCircle, Settings, Shield, UserRound, UsersRound } from "lucide-react";
+import { BarChart3, Bell, CalendarDays, House, PlusCircle, Settings, Shield, UserRound, UsersRound } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import TierBadge from "../rating/TierBadge.jsx";
 
 const navItems = [
   { to: "/app", label: "홈", icon: House },
   { to: "/app/create", label: "판 만들기", icon: PlusCircle },
+  { to: "/app/matches", label: "경기방", icon: CalendarDays },
   { to: "/app/rankings", label: "랭킹", icon: BarChart3 },
   { to: "/app/teams", label: "팀", icon: UsersRound },
   { to: "/app/profile", label: "프로필", icon: UserRound },

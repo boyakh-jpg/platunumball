@@ -9,7 +9,7 @@ npm install
 npm run dev
 ```
 
-`.env`가 없어도 localStorage mock mode로 실행됩니다.
+`.env`가 없어도 localStorage demo mode로 실행됩니다.
 
 ## Supabase
 
@@ -20,7 +20,7 @@ NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
 ```
 
-Supabase에 영속 저장을 쓰려면 `supabase/schema.sql`을 SQL Editor에서 먼저 실행하세요. 테이블이 없거나 정책이 막혀 있으면 앱은 localStorage mock mode로 계속 동작합니다.
+Supabase에 영속 저장을 쓰려면 `supabase/schema.sql`을 SQL Editor에서 먼저 실행하세요. 테이블이 없거나 정책이 막혀 있으면 앱은 localStorage demo mode로 계속 동작합니다.
 
 ## Vercel
 

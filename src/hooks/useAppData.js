@@ -1,19 +1,25 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   addTeamMember,
+  agreeMatch,
   approveMatch,
+  cancelMatch,
   createMatch,
   createTeam,
+  disputeMatch,
   loadRemoteState,
   loadState,
   resetState,
+  resumeMatchApproval,
   saveRemoteState,
   saveState,
   submitMatchResult,
   subscribeRemoteState,
   removeTeamMember,
+  switchUser,
   updateTeamMemberRole,
   updateProfile,
+  voidMatch,
 } from "../data/repository.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 
@@ -55,7 +61,7 @@ export function useAppData() {
         remoteReadyRef.current = true;
       })
       .catch((error) => {
-        console.warn("Supabase hydration failed. Local mock mode remains active.", error.message);
+        console.warn("Supabase hydration failed. Local demo mode remains active.", error.message);
         remoteReadyRef.current = true;
       });
 
@@ -96,8 +102,14 @@ export function useAppData() {
         });
         return createdId;
       },
+      agreeMatch: (matchId, sideName, playerId) => setState((prev) => agreeMatch(prev, matchId, sideName, playerId)),
       submitMatchResult: (matchId, result) => setState((prev) => submitMatchResult(prev, matchId, result)),
       approveMatch: (matchId, sideName, playerId) => setState((prev) => approveMatch(prev, matchId, sideName, playerId)),
+      disputeMatch: (matchId, reason) => setState((prev) => disputeMatch(prev, matchId, reason)),
+      cancelMatch: (matchId) => setState((prev) => cancelMatch(prev, matchId)),
+      voidMatch: (matchId) => setState((prev) => voidMatch(prev, matchId)),
+      resumeMatchApproval: (matchId) => setState((prev) => resumeMatchApproval(prev, matchId)),
+      switchUser: (userId) => setState((prev) => switchUser(prev, userId)),
       updateProfile: (patch) => setState((prev) => updateProfile(prev, patch)),
       createTeam: (draft) => setState((prev) => createTeam(prev, draft)),
       addTeamMember: (teamId, draft) => setState((prev) => addTeamMember(prev, teamId, draft)),

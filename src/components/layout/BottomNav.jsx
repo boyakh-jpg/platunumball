@@ -1,9 +1,9 @@
-import { BarChart3, House, PlusCircle, UserRound, UsersRound } from "lucide-react";
+import { BarChart3, CalendarDays, House, UserRound, UsersRound } from "lucide-react";
 import { NavLink } from "react-router-dom";
 
 const items = [
   { to: "/app", label: "홈", icon: House },
-  { to: "/app/create", label: "생성", icon: PlusCircle },
+  { to: "/app/matches", label: "경기", icon: CalendarDays },
   { to: "/app/rankings", label: "랭킹", icon: BarChart3 },
   { to: "/app/teams", label: "팀", icon: UsersRound },
   { to: "/app/profile", label: "나", icon: UserRound },

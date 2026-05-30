@@ -41,7 +41,7 @@ export default function CreateMatch({ app }) {
     objectionWindow: "24시간",
     evidence: EVIDENCE_OPTIONS.filter((option) => option.id === "captain"),
     memo: "경기 전 룰을 확정하고, 경기 후 결과를 승인하면 티어에 반영됩니다.",
-    stakes: "승자팀 다음 경기 우선권. 현금 정산 없음.",
+    stakes: "승자팀 다음 경기 우선권. 금전 거래 없이 약속만 기록합니다.",
   });
 
   const sortedTeams = useMemo(() => {
@@ -250,12 +250,12 @@ export default function CreateMatch({ app }) {
           <div className="section-title-row">
             <div>
               <p className="eyebrow">계약 조건</p>
-              <h2>내기/합의 사항</h2>
+              <h2>약속/벌칙 메모</h2>
             </div>
           </div>
           <EvidenceSelector selected={draft.evidence} onChange={(evidence) => update({ evidence })} />
           <label className="memo-label">
-            내기/합의 사항
+            약속/벌칙 메모
             <textarea value={draft.stakes} onChange={(event) => update({ stakes: event.target.value })} />
           </label>
           <label className="memo-label">

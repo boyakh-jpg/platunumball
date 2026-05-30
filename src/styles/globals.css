@@ -627,6 +627,13 @@ h3 {
   color: var(--muted);
 }
 
+.notification-actions {
+  display: flex !important;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px !important;
+}
+
 .team-emblem {
   display: grid;
   width: 48px;
@@ -1105,6 +1112,21 @@ input[type="color"] {
 
 .share-card strong {
   font-size: 2rem;
+}
+
+.share-card-action {
+  display: inline-flex;
+  width: max-content;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid rgba(255, 211, 108, 0.32);
+  border-radius: var(--radius);
+  background: rgba(255, 211, 108, 0.1);
+  color: var(--gold);
+  cursor: pointer;
+  font-weight: 900;
+  min-height: 38px;
+  padding: 0 11px;
 }
 
 .landing {
@@ -1922,6 +1944,42 @@ input[type="color"] {
   border-color: rgba(255, 211, 108, 0.24);
 }
 
+.match-board-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 18px;
+  align-items: start;
+}
+
+.match-lane {
+  min-height: 260px;
+}
+
+.empty-state {
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+  border-radius: var(--radius);
+  color: var(--muted);
+  padding: 14px;
+  text-align: center;
+}
+
+.match-action-row,
+.settings-toggle-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.match-action-row {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.settings-toggle-grid label {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.045);
+  padding: 10px;
+}
+
 @media (max-width: 1020px) {
   .landing-hero,
   .court-command,
@@ -2493,7 +2551,8 @@ input[type="color"] {
   .history-item,
   .player-stat-row,
   .approval-side-header,
-  .member-control-row {
+  .member-control-row,
+  .match-action-row {
     grid-template-columns: 1fr;
   }
 

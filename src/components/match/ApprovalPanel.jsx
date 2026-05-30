@@ -4,6 +4,7 @@ import { getApprovalStatus } from "../../lib/matchUtils.js";
 
 export default function ApprovalPanel({ match, teams, users, onApprove }) {
   const confirmed = match.status === "confirmed";
+  const locked = !match.result || ["confirmed", "disputed", "void", "cancelled"].includes(match.status);
   const userMap = Object.fromEntries(users.map((user) => [user.id, user]));
   const renderSide = (sideName) => {
     const status = getApprovalStatus(match, teams, sideName);
@@ -19,7 +20,7 @@ export default function ApprovalPanel({ match, teams, users, onApprove }) {
             const approved = status.approvals.includes(playerId);
             const captain = status.captainId === playerId;
             return (
-              <button key={playerId} type="button" disabled={!match.result || confirmed || approved} className={approved ? "approved" : ""} onClick={() => onApprove(sideName, playerId)}>
+              <button key={playerId} type="button" disabled={locked || approved} className={approved ? "approved" : ""} onClick={() => onApprove(sideName, playerId)}>
                 <span className="avatar small" style={{ "--avatar": user?.avatarColor }}>{user?.name?.slice(0, 1) ?? "P"}</span>
                 <strong>{user?.name ?? "플레이어"}</strong>
                 <em>{captain ? "주장" : approved ? "승인됨" : "승인"}</em>
@@ -39,7 +40,7 @@ export default function ApprovalPanel({ match, teams, users, onApprove }) {
           <p className="eyebrow">결과 승인</p>
           <h2>{confirmed ? "티어 반영 완료" : "플레이어별 승인"}</h2>
         </div>
-        <Badge tone={confirmed ? "green" : "orange"}>{confirmed ? "확정" : "대기"}</Badge>
+        <Badge tone={confirmed ? "green" : match.status === "disputed" ? "orange" : "orange"}>{confirmed ? "확정" : match.status === "disputed" ? "보류" : "대기"}</Badge>
       </div>
       <div className="approval-grid">
         {renderSide("teamA")}

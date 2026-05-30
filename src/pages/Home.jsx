@@ -74,7 +74,7 @@ export default function Home({ app }) {
   const [query, setQuery] = useState("");
   const searchText = query.trim().toLowerCase();
   const approvalMatches = [...app.state.matches].filter((match) => match.status === "approval");
-  const upcomingMatches = [...app.state.matches].filter((match) => match.status !== "confirmed" && match.status !== "approval").sort(compareSchedule);
+  const upcomingMatches = [...app.state.matches].filter((match) => ["contract", "agreed"].includes(match.status)).sort(compareSchedule);
   const completedMatches = [...app.state.matches].filter((match) => match.status === "confirmed");
   const activeMatch = upcomingMatches[0] ?? completedMatches[0];
   const myTeam = app.state.teams.find((team) => team.members.some((member) => member.userId === user.id));
@@ -217,7 +217,7 @@ export default function Home({ app }) {
               {approvalMatches.length ? approvalMatches.slice(0, 4).map((match) => (
                 <Link key={match.id} to={`/app/matches/${match.id}`}>
                   <span>{match.title}</span>
-                  <strong>{match.approvals.teamA.length + match.approvals.teamB.length}명 승인</strong>
+                  <strong>{(match.approvals?.teamA?.length ?? 0) + (match.approvals?.teamB?.length ?? 0)}명 승인</strong>
                 </Link>
               )) : <div><span>승인 대기 중인 경기가 없습니다.</span><strong>OK</strong></div>}
             </div>
