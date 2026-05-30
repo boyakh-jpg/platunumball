@@ -7,6 +7,7 @@ import MatchCard from "../components/match/MatchCard.jsx";
 import RatingCard from "../components/rating/RatingCard.jsx";
 import ShareCard from "../components/share/ShareCard.jsx";
 import TeamCard from "../components/team/TeamCard.jsx";
+import { getTierDivision, getTierQuote } from "../lib/tier.js";
 
 export default function Home({ app }) {
   const user = app.currentUser;
@@ -30,6 +31,8 @@ export default function Home({ app }) {
           <BadgeLine icon={Trophy} text="Rank profile" />
           <strong>{user.ratings.integrated}</strong>
           <h2>{user.name} · 통합 티어 레이스</h2>
+          <Badge tone="gold">{getTierDivision(user.ratings.integrated)}</Badge>
+          <p className="tier-line">{getTierQuote(user.ratings.integrated)}</p>
           <p>{user.streak > 0 ? `${user.streak}연승 중. 다음 공식전이 티어를 크게 흔듭니다.` : "다음 승리를 노리는 중입니다."}</p>
         </div>
         <div className="mode-grid">

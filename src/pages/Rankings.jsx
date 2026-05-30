@@ -1,9 +1,11 @@
 import { useState } from "react";
+import Badge from "../components/common/Badge.jsx";
 import Card from "../components/common/Card.jsx";
 import RankingTable from "../components/ranking/RankingTable.jsx";
 import RankingTabs from "../components/ranking/RankingTabs.jsx";
 
 const tabs = [
+  { id: "local", label: "내 주변" },
   { id: "integrated", label: "통합" },
   { id: "1v1", label: "1v1" },
   { id: "3v3", label: "3v3" },
@@ -13,7 +15,11 @@ const tabs = [
 ];
 
 export default function Rankings({ app }) {
-  const [tab, setTab] = useState("integrated");
+  const [tab, setTab] = useState("local");
+  const myRegion = app.currentUser.region;
+  const localPlayers = app.rankings.players.filter((user) => user.region === myRegion);
+  const localTeams = app.rankings.teams.filter((team) => team.region === myRegion);
+  const localAffiliations = app.rankings.affiliations.filter((affiliation) => affiliation.name === myRegion || affiliation.type !== "region").slice(0, 6);
   const type = tab === "teams" ? "teams" : tab === "affiliations" ? "affiliations" : "players";
   const rows =
     tab === "teams"
@@ -22,19 +28,55 @@ export default function Rankings({ app }) {
         ? app.rankings.affiliations
         : tab === "integrated"
           ? app.rankings.players
-          : app.rankings.mode(tab);
+          : tab === "local"
+            ? localPlayers
+            : app.rankings.mode(tab);
 
   return (
     <div className="page-stack">
       <header className="page-header">
         <div>
           <p className="eyebrow">Rankings</p>
-          <h1>랭킹</h1>
+          <h1>지역과 주변 소속부터 보는 랭킹</h1>
         </div>
+        <Badge tone="green">{myRegion} 우선</Badge>
       </header>
+      {tab === "local" ? (
+        <div className="content-grid">
+          <Card className="section-card">
+            <div className="section-title-row">
+              <div>
+                <p className="eyebrow">Local Players</p>
+                <h2>{myRegion} 개인 랭킹</h2>
+              </div>
+            </div>
+            <RankingTable rows={localPlayers} type="players" mode="integrated" />
+          </Card>
+          <div className="page-stack">
+            <Card className="section-card">
+              <div className="section-title-row">
+                <div>
+                  <p className="eyebrow">Local Teams</p>
+                  <h2>{myRegion} 팀</h2>
+                </div>
+              </div>
+              <RankingTable rows={localTeams} type="teams" />
+            </Card>
+            <Card className="section-card">
+              <div className="section-title-row">
+                <div>
+                  <p className="eyebrow">Affiliations</p>
+                  <h2>주변 소속</h2>
+                </div>
+              </div>
+              <RankingTable rows={localAffiliations} type="affiliations" />
+            </Card>
+          </div>
+        </div>
+      ) : null}
       <Card className="section-card">
         <RankingTabs value={tab} options={tabs} onChange={setTab} />
-        <RankingTable rows={rows} type={type} mode={tab} />
+        {tab === "local" ? null : <RankingTable rows={rows} type={type} mode={tab} />}
       </Card>
     </div>
   );

@@ -1,3 +1,5 @@
+import { TIER_QUOTES } from "./constants.js";
+
 export const TIERS = [
   { name: "Rookie", min: 0, max: 799, color: "#9aa4b2" },
   { name: "Bronze", min: 800, max: 999, color: "#c58652" },
@@ -28,4 +30,9 @@ export function getTierProgress(mmr = 0) {
   if (tier.name === "Legend") return 100;
   const span = tier.max - tier.min;
   return Math.round(((mmr - tier.min) / span) * 100);
+}
+
+export function getTierQuote(mmr = 0) {
+  const tier = getTier(mmr);
+  return TIER_QUOTES[tier.name] ?? TIER_QUOTES.Rookie;
 }

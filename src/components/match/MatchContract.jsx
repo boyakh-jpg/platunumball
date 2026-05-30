@@ -32,6 +32,14 @@ export default function MatchContract({ match, users }) {
           <strong>{match.court}</strong>
         </div>
         <div>
+          <span>일정</span>
+          <strong>{match.scheduledDate ?? match.scheduledAt}</strong>
+        </div>
+        <div>
+          <span>시간</span>
+          <strong>{match.scheduledTime ?? "-"}</strong>
+        </div>
+        <div>
           <span>방식</span>
           <strong>{match.mode}</strong>
         </div>
@@ -54,7 +62,16 @@ export default function MatchContract({ match, users }) {
           {renderRoster(match.teamB)}
         </div>
       </div>
-      <div className="memo-box">{match.memo}</div>
+      <div className="contract-note-grid">
+        <div className="memo-box">
+          <span>내기/합의 사항</span>
+          <strong>{match.stakes ?? "내기 없음. 기록과 티어만 반영합니다."}</strong>
+        </div>
+        <div className="memo-box">
+          <span>경기 메모</span>
+          <strong>{match.memo}</strong>
+        </div>
+      </div>
       <div className="badge-row">
         {match.preRegistered ? <Badge tone="green">사전등록</Badge> : null}
         {match.evidence.map((evidence) => <Badge key={evidence.id} tone="blue">{evidence.label}</Badge>)}

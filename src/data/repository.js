@@ -8,8 +8,27 @@ const clone = (value) => JSON.parse(JSON.stringify(value));
 const makeId = (prefix) => `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
 const REMOTE_STATE_ID = "rankball-mvp";
 
+function mergeById(current = [], fallback = []) {
+  const currentMap = new Map(current.map((item) => [item.id, item]));
+  const mergedDefaults = fallback.map((item) => ({ ...item, ...(currentMap.get(item.id) ?? {}) }));
+  const extraItems = current.filter((item) => !fallback.some((fallbackItem) => fallbackItem.id === item.id));
+  return [...mergedDefaults, ...extraItems];
+}
+
+function normalizeState(state) {
+  return {
+    ...clone(initialState),
+    ...state,
+    users: mergeById(state?.users, initialState.users),
+    teams: mergeById(state?.teams, initialState.teams),
+    affiliations: mergeById(state?.affiliations, initialState.affiliations),
+    matches: mergeById(state?.matches, initialState.matches),
+    notifications: state?.notifications?.length ? state.notifications : initialState.notifications,
+  };
+}
+
 export function loadState() {
-  return readState(clone(initialState));
+  return normalizeState(readState(clone(initialState)));
 }
 
 export function saveState(state) {
@@ -31,7 +50,11 @@ export async function loadRemoteState() {
   }
 
   if (data?.state && Object.keys(data.state).length > 0) {
-    return data.state;
+    const normalized = normalizeState(data.state);
+    if (JSON.stringify(normalized) !== JSON.stringify(data.state)) {
+      await saveRemoteState(normalized);
+    }
+    return normalized;
   }
 
   await saveRemoteState(clone(initialState));
@@ -204,6 +227,7 @@ function finalizeMatch(state, targetMatch) {
 export function createMatch(state, draft) {
   const mode = draft.mode ?? "5v5";
   const size = MODE_SIZES[mode] ?? 5;
+  const scheduledAt = `${draft.scheduledDate ?? ""} ${draft.scheduledTime ?? ""}`.trim();
   const teams = state.teams;
   const teamA = teams.find((team) => team.id === draft.teamAId) ?? teams[0];
   const teamB = teams.find((team) => team.id === draft.teamBId && team.id !== teamA.id) ?? teams.find((team) => team.id !== teamA.id) ?? teams[1];
@@ -213,7 +237,9 @@ export function createMatch(state, draft) {
     title: draft.title || `${draft.court} ${mode} 판`,
     mode,
     court: draft.court,
-    scheduledAt: draft.scheduledAt || "오늘 20:30",
+    scheduledDate: draft.scheduledDate,
+    scheduledTime: draft.scheduledTime,
+    scheduledAt: scheduledAt || "일정 미정",
     status: "contract",
     official: Boolean(draft.official),
     preRegistered: Boolean(draft.preRegistered),
@@ -224,6 +250,7 @@ export function createMatch(state, draft) {
       ball: draft.ball || "7호 공",
     },
     memo: draft.memo || "결과는 양팀 과반 승인 후 티어에 반영됩니다.",
+    stakes: draft.stakes || "내기 없음. 기록과 티어만 반영합니다.",
     evidence,
     teamA: { name: teamA.name, teamId: teamA.id, players: getTeamPlayers(teamA, size), score: 0 },
     teamB: { name: teamB.name, teamId: teamB.id, players: getTeamPlayers(teamB, size), score: 0 },

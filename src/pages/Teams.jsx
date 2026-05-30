@@ -1,19 +1,34 @@
-import { useState } from "react";
-import { Crown, PlusCircle, Shield, Swords } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Crown, PlusCircle, Search, Shield, Swords } from "lucide-react";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import TeamCard from "../components/team/TeamCard.jsx";
-import { COURTS } from "../lib/constants.js";
+import { COURTS, REGIONS } from "../lib/constants.js";
+
+const allRegions = ["전체", ...REGIONS];
 
 export default function Teams({ app }) {
-  const [draft, setDraft] = useState({ name: "New Court Crew", region: "마포", homeCourt: COURTS[0], accent: "#58d2c0" });
+  const [draft, setDraft] = useState({ name: "New Court Crew", region: app.currentUser.region, homeCourt: COURTS[0].name, accent: "#58d2c0" });
+  const [query, setQuery] = useState("");
+  const [region, setRegion] = useState(app.currentUser.region ?? "전체");
   const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
   const topTeam = [...app.state.teams].sort((a, b) => b.mmr - a.mmr)[0];
+  const favoriteTeams = useMemo(() => {
+    return [...app.state.teams]
+      .sort((a, b) => Number(b.favorite) - Number(a.favorite) || Number(b.region === app.currentUser.region) - Number(a.region === app.currentUser.region) || b.mmr - a.mmr)
+      .slice(0, 10);
+  }, [app.currentUser.region, app.state.teams]);
+  const visibleTeams = useMemo(() => {
+    return [...app.state.teams]
+      .filter((team) => region === "전체" || team.region === region)
+      .filter((team) => `${team.name} ${team.region} ${team.homeCourt}`.toLowerCase().includes(query.trim().toLowerCase()))
+      .sort((a, b) => Number(b.region === app.currentUser.region) - Number(a.region === app.currentUser.region) || Number(b.favorite) - Number(a.favorite) || b.mmr - a.mmr);
+  }, [app.currentUser.region, app.state.teams, query, region]);
 
   const submit = (event) => {
     event.preventDefault();
     app.actions.createTeam(draft);
-    setDraft({ name: "New Court Crew", region: "마포", homeCourt: COURTS[0], accent: "#58d2c0" });
+    setDraft({ name: "New Court Crew", region: app.currentUser.region, homeCourt: COURTS[0].name, accent: "#58d2c0" });
   };
 
   return (
@@ -22,7 +37,7 @@ export default function Teams({ app }) {
         <div>
           <p className="eyebrow">Squad House</p>
           <h1>코트 위 팀 랭크를 장악하세요.</h1>
-          <p>정규멤버, 후보, 용병을 나누고 경기 결과에 따라 팀 MMR이 움직입니다.</p>
+          <p>지역별 팀을 먼저 보고, 자주 찾는 팀을 빠르게 골라 경기방에 연결하세요.</p>
         </div>
         <div className="team-hub-board">
           <span><Crown size={18} /> Top squad</span>
@@ -34,9 +49,43 @@ export default function Teams({ app }) {
           </div>
         </div>
       </section>
+
+      <Card className="section-card selector-panel">
+        <div className="section-title-row">
+          <div>
+            <p className="eyebrow">Team Search</p>
+            <h2>팀 검색과 지역 정렬</h2>
+          </div>
+          <Search size={22} />
+        </div>
+        <div className="search-controls">
+          <label>
+            지역
+            <select value={region} onChange={(event) => setRegion(event.target.value)}>
+              {allRegions.map((item) => <option key={item}>{item}</option>)}
+            </select>
+          </label>
+          <label>
+            팀명/홈코트
+            <input value={query} placeholder="Noeul, 마포, 한강..." onChange={(event) => setQuery(event.target.value)} />
+          </label>
+        </div>
+        <div className="quick-picker">
+          <p className="eyebrow">자주 찾는 팀 10</p>
+          <div>
+            {favoriteTeams.map((team) => (
+              <button key={team.id} type="button" onClick={() => { setRegion(team.region); setQuery(team.name); }}>
+                <strong>{team.name}</strong>
+                <span>{team.region} · {team.mmr} MMR</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </Card>
+
       <div className="content-grid">
         <section className="card-grid">
-          {app.state.teams.map((team) => <TeamCard key={team.id} team={team} users={app.state.users} />)}
+          {visibleTeams.map((team) => <TeamCard key={team.id} team={team} users={app.state.users} />)}
         </section>
         <Card className="section-card team-create-panel">
           <div className="section-title-row">
@@ -53,12 +102,14 @@ export default function Teams({ app }) {
             </label>
             <label>
               지역
-              <input value={draft.region} onChange={(event) => update({ region: event.target.value })} />
+              <select value={draft.region} onChange={(event) => update({ region: event.target.value })}>
+                {REGIONS.map((item) => <option key={item}>{item}</option>)}
+              </select>
             </label>
             <label>
               홈 코트
               <select value={draft.homeCourt} onChange={(event) => update({ homeCourt: event.target.value })}>
-                {COURTS.map((court) => <option key={court}>{court}</option>)}
+                {COURTS.filter((court) => court.region === draft.region || draft.region === "전체").map((court) => <option key={court.id} value={court.name}>{court.name}</option>)}
               </select>
             </label>
             <label>

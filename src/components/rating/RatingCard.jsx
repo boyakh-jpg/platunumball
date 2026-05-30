@@ -1,6 +1,6 @@
 import Card from "../common/Card.jsx";
 import TierBadge from "./TierBadge.jsx";
-import { getTierProgress } from "../../lib/tier.js";
+import { getTierProgress, getTierQuote } from "../../lib/tier.js";
 
 export default function RatingCard({ title, mmr, subtitle, trend }) {
   return (
@@ -19,6 +19,7 @@ export default function RatingCard({ title, mmr, subtitle, trend }) {
         <span>{subtitle}</span>
         {trend ? <span className={trend > 0 ? "text-positive" : "text-negative"}>{trend > 0 ? "+" : ""}{trend}</span> : null}
       </div>
+      <p className="tier-quote">{getTierQuote(mmr)}</p>
     </Card>
   );
 }
