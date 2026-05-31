@@ -39,7 +39,7 @@ export const EVIDENCE_OPTIONS = [
 ];
 
 export const CREDIBILITY_LEVELS = {
-  self_record: { label: "자가 기록", factor: 0 },
+  self_record: { label: "친선 기록", factor: 0.18 },
   street_majority: { label: "길농 과반 승인", factor: 0.7 },
   pre_registered: { label: "사전등록", factor: 1 },
   evidence_verified: { label: "증빙 확인", factor: 1.15 },

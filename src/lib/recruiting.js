@@ -38,7 +38,7 @@ export function getRecruitingTierRange(targetMmr = 1200, ranked = true) {
   if (!ranked) {
     return {
       label: "티어 자유",
-      detail: "친선은 티어를 참고만 합니다.",
+      detail: "친선은 제한 없이 소폭 반영합니다.",
       min: 0,
       max: 9999,
     };
@@ -50,10 +50,15 @@ export function getRecruitingTierRange(targetMmr = 1200, ranked = true) {
 
   return {
     label: `${lowTier.name} ~ ${highTier.name}`,
-    detail: `${getTierDivision(lowTier.min)}부터 ${getTierDivision(highTier.max)}까지 추천`,
+    detail: `${getTierDivision(lowTier.min)}부터 ${getTierDivision(highTier.max)}까지 허용`,
     min: lowTier.min,
     max: highTier.max,
   };
+}
+
+export function isMmrInRecruitingRange(candidateMmr = 1200, targetMmr = 1200, ranked = true) {
+  const range = getRecruitingTierRange(targetMmr, ranked);
+  return !ranked || (candidateMmr >= range.min && candidateMmr <= range.max);
 }
 
 export function getRecruitingFit(post = {}, candidateMmr = 1200, state = {}) {
@@ -61,15 +66,15 @@ export function getRecruitingFit(post = {}, candidateMmr = 1200, state = {}) {
   const range = getRecruitingTierRange(targetMmr, post.ranked !== false);
 
   if (post.ranked === false) {
-    return { tone: "neutral", label: "친선 자유", range };
+    return { allowed: true, tone: "neutral", label: "친선 자유", range };
   }
   if (candidateMmr < range.min) {
-    return { tone: "blue", label: "언더독 보정", range };
+    return { allowed: false, tone: "orange", label: "티어 낮음", range };
   }
   if (candidateMmr > range.max) {
-    return { tone: "gold", label: "상위 용병 보정", range };
+    return { allowed: false, tone: "orange", label: "티어 높음", range };
   }
-  return { tone: "green", label: "추천 구간", range };
+  return { allowed: true, tone: "green", label: "허용 구간", range };
 }
 
 export function isNationalRecruitingPost(post = {}, state = {}) {

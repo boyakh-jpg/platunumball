@@ -2367,6 +2367,11 @@ input[type="color"] {
   padding: 12px;
 }
 
+.tier-range-note-warning {
+  border-color: rgba(255, 159, 67, 0.4);
+  background: rgba(255, 159, 67, 0.075);
+}
+
 .tier-range-note > div {
   display: grid;
   gap: 4px;

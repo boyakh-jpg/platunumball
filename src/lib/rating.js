@@ -88,7 +88,6 @@ export function getRepeatFactor(history = [], match = {}) {
 }
 
 export function getQualityFactor(match = {}, trustScore = 80, history = []) {
-  if (match.ranked === false) return 0;
   return clamp(
     getCredibilityFactor(match) *
       getScheduleFactor(match) *

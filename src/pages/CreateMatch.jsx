@@ -7,6 +7,7 @@ import EvidenceSelector from "../components/match/EvidenceSelector.jsx";
 import RuleSelector from "../components/match/RuleSelector.jsx";
 import TeamBuilder from "../components/match/TeamBuilder.jsx";
 import { COURTS, EVIDENCE_OPTIONS, MATCH_MODES, REGIONS } from "../lib/constants.js";
+import { getRecruitingTierRange, isMmrInRecruitingRange } from "../lib/recruiting.js";
 
 const today = new Date().toISOString().slice(0, 10);
 const allRegions = ["전체", ...REGIONS];
@@ -82,6 +83,13 @@ export default function CreateMatch({ app }) {
   );
   const selectedTeamA = app.state.teams.find((team) => team.id === draft.teamAId);
   const selectedTeamB = app.state.teams.find((team) => team.id === draft.teamBId);
+  const teamTierRange = getRecruitingTierRange(selectedTeamA?.mmr ?? 1200, draft.ranked);
+  const teamTierBlocked = Boolean(
+    draft.ranked &&
+      selectedTeamA &&
+      selectedTeamB &&
+      !isMmrInRecruitingRange(selectedTeamB.mmr, selectedTeamA.mmr, true),
+  );
   const selectedCourt = useMemo(
     () => COURTS.find((court) => court.name === draft.court) ?? COURTS[0],
     [draft.court],
@@ -94,6 +102,7 @@ export default function CreateMatch({ app }) {
   };
   const submit = (event) => {
     event.preventDefault();
+    if (teamTierBlocked) return;
     const matchId = app.actions.createMatch(draft);
     navigate(matchId ? `/app/matches/${matchId}` : "/app/matches");
   };
@@ -105,7 +114,7 @@ export default function CreateMatch({ app }) {
           <p className="eyebrow">CreateMatch</p>
           <h1>오늘의 판 만들기</h1>
         </div>
-        <Button type="submit">경기 생성</Button>
+        <Button type="submit" disabled={teamTierBlocked}>경기 생성</Button>
       </header>
 
       <div className="content-grid wide-left">
@@ -187,6 +196,18 @@ export default function CreateMatch({ app }) {
               <h2>참여 팀 검색</h2>
             </div>
           </div>
+          {draft.ranked ? (
+            <div className={teamTierBlocked ? "tier-range-note tier-range-note-warning" : "tier-range-note"}>
+              <div>
+                <span>랭크 허용 구간</span>
+                <strong>{teamTierRange.label}</strong>
+                <em>{selectedTeamA?.name ?? "A팀"} 기준. 구간 밖 팀은 랭크 반영 경기 생성이 막힙니다.</em>
+              </div>
+              <Badge tone={teamTierBlocked ? "orange" : "green"}>{teamTierBlocked ? "제한" : "허용"}</Badge>
+            </div>
+          ) : (
+            <p className="form-help">친선 경기는 티어 제한 없이 만들 수 있고, MMR은 소폭만 반영됩니다.</p>
+          )}
           <div className="search-controls">
             <label>
               지역

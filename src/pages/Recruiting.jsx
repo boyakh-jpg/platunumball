@@ -106,6 +106,7 @@ export default function Recruiting({ app }) {
               const target = getRecruitingTargetMmr(post, app.state);
               const applied = (post.applicants ?? []).includes(app.currentUser.id);
               const mine = post.playerId === app.currentUser.id;
+              const blockedByTier = !fit.allowed;
 
               return (
                 <article key={post.id} className="recruiting-post">
@@ -127,7 +128,7 @@ export default function Recruiting({ app }) {
                     </div>
                   </div>
                   <div className="recruiting-fit-panel">
-                    <span>{post.ranked === false ? "참고 티어" : "추천 구간"}</span>
+                    <span>{post.ranked === false ? "참고 티어" : "허용 구간"}</span>
                     <strong>{fit.range.label}</strong>
                     <em>{post.ranked === false ? "제한 없음" : `${target} MMR 기준`}</em>
                   </div>
@@ -141,11 +142,11 @@ export default function Recruiting({ app }) {
                   <div className="recruiting-actions">
                     <Button
                       type="button"
-                      variant={applied ? "secondary" : "primary"}
-                      disabled={applied || mine}
+                      variant={applied || blockedByTier ? "secondary" : "primary"}
+                      disabled={applied || mine || blockedByTier}
                       onClick={() => app.actions.interestRecruitingPost(post.id)}
                     >
-                      <Handshake size={17} /> {applied ? "관심 표시 완료" : "관심 표시"}
+                      <Handshake size={17} /> {mine ? "내 모집글" : blockedByTier ? "티어 구간 밖" : applied ? "관심 표시 완료" : "관심 표시"}
                     </Button>
                     {mine ? <Button type="button" variant="secondary" onClick={() => app.actions.closeRecruitingPost(post.id)}>마감</Button> : null}
                   </div>
@@ -228,7 +229,7 @@ export default function Recruiting({ app }) {
               </label>
               <div className="tier-range-note">
                 <div>
-                  <span>{draft.ranked ? "랭크 추천 구간" : "친선 매칭"}</span>
+                  <span>{draft.ranked ? "랭크 허용 구간" : "친선 매칭"}</span>
                   <strong>{draftRange.label}</strong>
                   <em>{draftRange.detail}</em>
                 </div>

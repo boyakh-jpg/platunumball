@@ -2,7 +2,7 @@ import { MAX_TEAM_MEMBERSHIPS, MODE_SIZES, TEAM_ROLES } from "../lib/constants.j
 import { initialState } from "../lib/mockData.js";
 import { getAgreementStatus, getApprovalStatus, normalizePlayerStats } from "../lib/matchUtils.js";
 import { applyMatchRating, calculateTeamDelta } from "../lib/rating.js";
-import { getMercenaryTeamWeight } from "../lib/recruiting.js";
+import { getMercenaryTeamWeight, getRecruitingFit } from "../lib/recruiting.js";
 import { clearState, readState, writeState } from "../lib/storage.js";
 import { isSupabaseConfigured, supabase } from "../lib/supabase.js";
 
@@ -667,6 +667,23 @@ export function createRecruitingPost(state, draft) {
 export function interestRecruitingPost(state, postId) {
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   if (!post || post.status !== "open") return state;
+  if (post.playerId === state.currentUserId) return state;
+  const user = state.users.find((item) => item.id === state.currentUserId);
+  const fit = getRecruitingFit(post, user?.ratings?.integrated ?? 1200, state);
+  if (!fit.allowed) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "티어 구간 제한",
+          body: `${post.title}은 랭크 반영 경기라 ${fit.range.label} 구간만 신청할 수 있습니다.`,
+          tone: "team",
+        },
+        ...state.notifications,
+      ],
+    };
+  }
   const applicants = Array.from(new Set([...(post.applicants ?? []), state.currentUserId]));
 
   return {
