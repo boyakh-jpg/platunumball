@@ -15,6 +15,8 @@ const DEFAULT_SETTINGS = {
     statSummary: true,
   },
   blockedUserIds: [],
+  favoriteTeamIds: [],
+  favoriteCourtIds: [],
 };
 
 function mergeById(current = [], fallback = []) {
@@ -51,6 +53,8 @@ function normalizeSettings(settings = {}) {
       ...(settings.privacy ?? {}),
     },
     blockedUserIds: settings.blockedUserIds ?? [],
+    favoriteTeamIds: settings.favoriteTeamIds ?? [],
+    favoriteCourtIds: settings.favoriteCourtIds ?? [],
   };
 }
 
@@ -566,6 +570,31 @@ export function unblockUser(state, userId) {
     settings: normalizeSettings({
       ...(state.settings ?? {}),
       blockedUserIds: (state.settings?.blockedUserIds ?? []).filter((id) => id !== userId),
+    }),
+  };
+}
+
+function toggleId(list = [], id) {
+  return list.includes(id) ? list.filter((item) => item !== id) : [id, ...list];
+}
+
+export function toggleFavoriteTeam(state, teamId) {
+  if (!state.teams.some((team) => team.id === teamId)) return state;
+  return {
+    ...state,
+    settings: normalizeSettings({
+      ...(state.settings ?? {}),
+      favoriteTeamIds: toggleId(state.settings?.favoriteTeamIds, teamId),
+    }),
+  };
+}
+
+export function toggleFavoriteCourt(state, courtId) {
+  return {
+    ...state,
+    settings: normalizeSettings({
+      ...(state.settings ?? {}),
+      favoriteCourtIds: toggleId(state.settings?.favoriteCourtIds, courtId),
     }),
   };
 }

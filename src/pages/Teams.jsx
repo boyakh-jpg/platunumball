@@ -11,6 +11,8 @@ export default function Teams({ app }) {
   const [draft, setDraft] = useState({ name: "New Court Crew", region: app.currentUser.region, homeCourt: COURTS[0].name, captainId: app.currentUser.id, accent: "#58d2c0" });
   const [query, setQuery] = useState("");
   const [region, setRegion] = useState(app.currentUser.region ?? "전체");
+  const favoriteTeamIds = app.state.settings?.favoriteTeamIds ?? [];
+  const isFavoriteTeam = (team) => favoriteTeamIds.includes(team.id) || (!favoriteTeamIds.length && team.favorite);
   const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
   const teamCountByUser = useMemo(() => {
     const counts = new Map();
@@ -24,15 +26,16 @@ export default function Teams({ app }) {
   const topTeam = [...app.state.teams].sort((a, b) => b.mmr - a.mmr)[0];
   const favoriteTeams = useMemo(() => {
     return [...app.state.teams]
-      .sort((a, b) => Number(b.favorite) - Number(a.favorite) || Number(b.region === app.currentUser.region) - Number(a.region === app.currentUser.region) || b.mmr - a.mmr)
+      .filter(isFavoriteTeam)
+      .sort((a, b) => Number(b.region === app.currentUser.region) - Number(a.region === app.currentUser.region) || b.mmr - a.mmr)
       .slice(0, 10);
-  }, [app.currentUser.region, app.state.teams]);
+  }, [app.currentUser.region, app.state.teams, favoriteTeamIds]);
   const visibleTeams = useMemo(() => {
     return [...app.state.teams]
       .filter((team) => region === "전체" || team.region === region)
       .filter((team) => `${team.name} ${team.region} ${team.homeCourt}`.toLowerCase().includes(query.trim().toLowerCase()))
-      .sort((a, b) => Number(b.region === app.currentUser.region) - Number(a.region === app.currentUser.region) || Number(b.favorite) - Number(a.favorite) || b.mmr - a.mmr);
-  }, [app.currentUser.region, app.state.teams, query, region]);
+      .sort((a, b) => Number(b.region === app.currentUser.region) - Number(a.region === app.currentUser.region) || Number(isFavoriteTeam(b)) - Number(isFavoriteTeam(a)) || b.mmr - a.mmr);
+  }, [app.currentUser.region, app.state.teams, favoriteTeamIds, query, region]);
 
   const submit = (event) => {
     event.preventDefault();
@@ -94,7 +97,15 @@ export default function Teams({ app }) {
 
       <div className="content-grid">
         <section className="card-grid">
-          {visibleTeams.map((team) => <TeamCard key={team.id} team={team} users={app.state.users} />)}
+          {visibleTeams.map((team) => (
+            <TeamCard
+              key={team.id}
+              team={team}
+              users={app.state.users}
+              favorite={isFavoriteTeam(team)}
+              onToggleFavorite={() => app.actions.toggleFavoriteTeam(team.id)}
+            />
+          ))}
         </section>
         <Card className="section-card team-create-panel">
           <div className="section-title-row">

@@ -21,6 +21,10 @@ export default function CreateMatch({ app }) {
   const [courtQuery, setCourtQuery] = useState("");
   const [teamRegion, setTeamRegion] = useState(app.currentUser.region ?? "전체");
   const [courtRegion, setCourtRegion] = useState(app.currentUser.region ?? "전체");
+  const favoriteTeamIds = app.state.settings?.favoriteTeamIds ?? [];
+  const favoriteCourtIds = app.state.settings?.favoriteCourtIds ?? [];
+  const isFavoriteTeam = (team) => favoriteTeamIds.includes(team.id) || (!favoriteTeamIds.length && team.favorite);
+  const isFavoriteCourt = (court) => favoriteCourtIds.includes(court.id) || (!favoriteCourtIds.length && court.favorite);
   const [draft, setDraft] = useState({
     title: "오늘의 5v5 공식전",
     mode: "5v5",
@@ -48,31 +52,39 @@ export default function CreateMatch({ app }) {
     return [...app.state.teams]
       .filter((team) => teamRegion === "전체" || team.region === teamRegion)
       .filter((team) => includesQuery(`${team.name} ${team.region} ${team.homeCourt}`, teamQuery))
-      .sort((a, b) => Number(b.favorite) - Number(a.favorite) || Number(b.region === app.currentUser.region) - Number(a.region === app.currentUser.region) || b.mmr - a.mmr);
-  }, [app.currentUser.region, app.state.teams, teamQuery, teamRegion]);
+      .sort((a, b) => Number(isFavoriteTeam(b)) - Number(isFavoriteTeam(a)) || Number(b.region === app.currentUser.region) - Number(a.region === app.currentUser.region) || b.mmr - a.mmr);
+  }, [app.currentUser.region, app.state.teams, favoriteTeamIds, teamQuery, teamRegion]);
 
   const sortedCourts = useMemo(() => {
     return COURTS
       .filter((court) => courtRegion === "전체" || court.region === courtRegion)
       .filter((court) => includesQuery(`${court.name} ${court.region} ${court.type}`, courtQuery))
-      .sort((a, b) => Number(b.favorite) - Number(a.favorite) || Number(b.region === app.currentUser.region) - Number(a.region === app.currentUser.region) || a.name.localeCompare(b.name));
-  }, [app.currentUser.region, courtQuery, courtRegion]);
+      .sort((a, b) => Number(isFavoriteCourt(b)) - Number(isFavoriteCourt(a)) || Number(b.region === app.currentUser.region) - Number(a.region === app.currentUser.region) || a.name.localeCompare(b.name));
+  }, [app.currentUser.region, courtQuery, courtRegion, favoriteCourtIds]);
 
   const favoriteTeams = useMemo(() => {
     return [...app.state.teams]
-      .sort((a, b) => Number(b.favorite) - Number(a.favorite) || Number(b.region === app.currentUser.region) - Number(a.region === app.currentUser.region) || b.mmr - a.mmr)
+      .filter(isFavoriteTeam)
+      .sort((a, b) => Number(b.region === app.currentUser.region) - Number(a.region === app.currentUser.region) || b.mmr - a.mmr)
       .slice(0, 10);
-  }, [app.currentUser.region, app.state.teams]);
+  }, [app.currentUser.region, app.state.teams, favoriteTeamIds]);
 
   const favoriteCourts = useMemo(() => {
     return [...COURTS]
-      .sort((a, b) => Number(b.favorite) - Number(a.favorite) || Number(b.region === app.currentUser.region) - Number(a.region === app.currentUser.region) || a.name.localeCompare(b.name))
+      .filter(isFavoriteCourt)
+      .sort((a, b) => Number(b.region === app.currentUser.region) - Number(a.region === app.currentUser.region) || a.name.localeCompare(b.name))
       .slice(0, 10);
-  }, [app.currentUser.region]);
+  }, [app.currentUser.region, favoriteCourtIds]);
 
   const selectedTeams = useMemo(
     () => app.state.teams.filter((team) => team.id === draft.teamAId || team.id === draft.teamBId),
     [app.state.teams, draft.teamAId, draft.teamBId],
+  );
+  const selectedTeamA = app.state.teams.find((team) => team.id === draft.teamAId);
+  const selectedTeamB = app.state.teams.find((team) => team.id === draft.teamBId);
+  const selectedCourt = useMemo(
+    () => COURTS.find((court) => court.name === draft.court) ?? COURTS[0],
+    [draft.court],
   );
 
   const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
@@ -153,6 +165,9 @@ export default function CreateMatch({ app }) {
                 <button key={court.id} type="button" className={draft.court === court.name ? "selected" : ""} onClick={() => update({ court: court.name })}>
                   <strong>{court.name}</strong>
                   <span>{court.region} · {court.type}</span>
+                  <small>
+                    <b onClick={(event) => { event.stopPropagation(); app.actions.toggleFavoriteCourt(court.id); }}>해제</b>
+                  </small>
                 </button>
               ))}
             </div>
@@ -160,6 +175,9 @@ export default function CreateMatch({ app }) {
           <select value={draft.court} onChange={(event) => update({ court: event.target.value })}>
             {sortedCourts.map((court) => <option key={court.id} value={court.name}>{court.region} · {court.name} · {court.type}</option>)}
           </select>
+          <Button type="button" variant="secondary" onClick={() => app.actions.toggleFavoriteCourt(selectedCourt.id)}>
+            {isFavoriteCourt(selectedCourt) ? "선택 코트 즐겨찾기 해제" : "선택 코트 즐겨찾기 추가"}
+          </Button>
         </Card>
 
         <Card className="section-card full-span selector-panel">
@@ -191,6 +209,7 @@ export default function CreateMatch({ app }) {
                   <small>
                     <b onClick={() => assignTeam(team.id, "A")}>A</b>
                     <b onClick={() => assignTeam(team.id, "B")}>B</b>
+                    <b onClick={() => app.actions.toggleFavoriteTeam(team.id)}>해제</b>
                   </small>
                 </button>
               ))}
@@ -209,6 +228,18 @@ export default function CreateMatch({ app }) {
                 {sortedTeams.filter((team) => team.id !== draft.teamAId).map((team) => <option key={team.id} value={team.id}>{team.region} · {team.name} · {team.mmr}</option>)}
               </select>
             </label>
+          </div>
+          <div className="favorite-action-row">
+            {selectedTeamA ? (
+              <Button type="button" variant="secondary" onClick={() => app.actions.toggleFavoriteTeam(selectedTeamA.id)}>
+                A팀 {isFavoriteTeam(selectedTeamA) ? "즐겨찾기 해제" : "즐겨찾기 추가"}
+              </Button>
+            ) : null}
+            {selectedTeamB ? (
+              <Button type="button" variant="secondary" onClick={() => app.actions.toggleFavoriteTeam(selectedTeamB.id)}>
+                B팀 {isFavoriteTeam(selectedTeamB) ? "즐겨찾기 해제" : "즐겨찾기 추가"}
+              </Button>
+            ) : null}
           </div>
           <TeamBuilder teams={selectedTeams} users={app.state.users} draft={draft} onChange={update} />
         </Card>

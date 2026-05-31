@@ -3,7 +3,7 @@ import Badge from "../common/Badge.jsx";
 import Card from "../common/Card.jsx";
 import TeamMemberList from "./TeamMemberList.jsx";
 
-export default function TeamCard({ team, users, compact = false, linked = true }) {
+export default function TeamCard({ team, users, compact = false, linked = true, favorite = false, onToggleFavorite }) {
   const winRate = Math.round((team.wins / Math.max(1, team.wins + team.losses)) * 100);
 
   return (
@@ -13,8 +13,15 @@ export default function TeamCard({ team, users, compact = false, linked = true }
           <p className="eyebrow">{team.region} · {team.homeCourt}</p>
           {linked ? <Link to={`/app/teams/${team.id}`}><h3>{team.name}</h3></Link> : <h3>{team.name}</h3>}
         </div>
-        <div className="team-emblem" style={{ "--team-color": team.accent }}>
-          {team.name.slice(0, 1)}
+        <div className="team-card-actions">
+          {onToggleFavorite ? (
+            <button type="button" className={favorite ? "favorite-toggle active" : "favorite-toggle"} onClick={onToggleFavorite}>
+              {favorite ? "고정됨" : "핀"}
+            </button>
+          ) : null}
+          <div className="team-emblem" style={{ "--team-color": team.accent }}>
+            {team.name.slice(0, 1)}
+          </div>
         </div>
       </div>
       <div className="stat-strip">

@@ -435,6 +435,8 @@ export const initialState = {
       statSummary: true,
     },
     blockedUserIds: [],
+    favoriteTeamIds: ["t1", "t2", "t5"],
+    favoriteCourtIds: ["c1", "c2", "c3"],
   },
   reports: [],
 };
