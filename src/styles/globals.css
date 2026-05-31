@@ -162,6 +162,116 @@ h3 {
   background: var(--surface);
 }
 
+.sidebar-profile > div:nth-child(2) {
+  min-width: 0;
+}
+
+.sidebar-signout {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  margin-left: auto;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.055);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.auth-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 22% 10%, rgba(70, 224, 182, 0.22), transparent 26rem),
+    radial-gradient(circle at 78% 0%, rgba(255, 211, 108, 0.16), transparent 24rem),
+    linear-gradient(135deg, #080b10 0%, #101722 50%, #130f0b 100%);
+  padding: 22px;
+}
+
+.auth-card {
+  width: min(560px, 100%);
+  display: grid;
+  gap: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.018)),
+    rgba(8, 11, 16, 0.86);
+  box-shadow: var(--shadow);
+  padding: 22px;
+  backdrop-filter: blur(18px);
+}
+
+.auth-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.auth-brand {
+  color: var(--text);
+}
+
+.auth-form {
+  display: grid;
+  gap: 16px;
+}
+
+.auth-form h1 {
+  font-size: 2.6rem;
+}
+
+.auth-message {
+  border: 1px solid rgba(70, 224, 182, 0.22);
+  border-radius: var(--radius);
+  background: rgba(70, 224, 182, 0.065);
+  padding: 10px;
+}
+
+.auth-session-line,
+.auth-profile-preview {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.045);
+  padding: 10px;
+}
+
+.auth-session-line span,
+.auth-profile-preview span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.auth-session-line button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.055);
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 850;
+  padding: 8px 10px;
+}
+
+.auth-profile-preview > div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
 .bottom-nav {
   display: none;
 }
@@ -1529,6 +1639,31 @@ input[type="color"] {
 @media (max-width: 640px) {
   .app-main {
     padding-inline: 12px;
+  }
+
+  .auth-shell {
+    padding: 12px;
+  }
+
+  .auth-card {
+    padding: 16px;
+  }
+
+  .auth-card-head,
+  .auth-session-line,
+  .auth-profile-preview {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .auth-form h1 {
+    font-size: 2.1rem;
+  }
+
+  .auth-session-line button {
+    width: 100%;
+    justify-content: center;
+    margin-left: 0;
   }
 
   h1 {

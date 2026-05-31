@@ -1,4 +1,4 @@
-import { BarChart3, Bell, CalendarDays, Handshake, House, PlusCircle, Settings, Shield, UserRound, UsersRound } from "lucide-react";
+import { BarChart3, Bell, CalendarDays, Handshake, House, LogOut, PlusCircle, Settings, Shield, UserRound, UsersRound } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import TierBadge from "../rating/TierBadge.jsx";
 
@@ -15,7 +15,7 @@ const navItems = [
   { to: "/app/settings", label: "설정", icon: Settings },
 ];
 
-export default function Sidebar({ user }) {
+export default function Sidebar({ user, auth }) {
   return (
     <aside className="sidebar">
       <NavLink to="/" className="brand">
@@ -42,8 +42,14 @@ export default function Sidebar({ user }) {
         </div>
         <div>
           <strong>{user.name}</strong>
+          {auth?.user?.email ? <small>{auth.user.email}</small> : null}
           <TierBadge mmr={user.ratings.integrated} compact />
         </div>
+        {auth?.session ? (
+          <button type="button" className="sidebar-signout" onClick={auth.signOut} aria-label="로그아웃">
+            <LogOut size={17} />
+          </button>
+        ) : null}
       </div>
     </aside>
   );

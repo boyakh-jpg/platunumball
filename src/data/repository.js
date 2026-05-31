@@ -113,9 +113,10 @@ export async function loadRemoteState() {
 export async function saveRemoteState(state) {
   if (!isSupabaseConfigured) return;
 
+  const sharedState = { ...state, currentUserId: initialState.currentUserId };
   const { error } = await supabase.from("rankball_state").upsert({
     id: REMOTE_STATE_ID,
-    state,
+    state: sharedState,
     updated_at: new Date().toISOString(),
   });
 

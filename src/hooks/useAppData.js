@@ -23,7 +23,6 @@ import {
   submitMatchResult,
   subscribeRemoteState,
   removeTeamMember,
-  switchUser,
   toggleFavoriteCourt,
   toggleFavoriteTeam,
   updateTeamMemberRole,
@@ -33,15 +32,20 @@ import {
   voidMatch,
 } from "../data/repository.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
+import { readProfileBindings, writeProfileBindings } from "../lib/storage.js";
 
 function sortByRating(items, selector) {
   return [...items].sort((a, b) => selector(b) - selector(a));
 }
 
-export function useAppData() {
+export function useAppData(authUserId = null) {
   const [state, setState] = useState(() => loadState());
+  const [profileBindings, setProfileBindings] = useState(() => readProfileBindings());
   const remoteReadyRef = useRef(!isSupabaseConfigured);
   const skipNextRemoteSaveRef = useRef(false);
+  const profileKey = authUserId ?? "local-demo";
+  const currentUserId = profileBindings[profileKey] ?? state.currentUserId ?? state.users[0]?.id;
+  const profileBound = !authUserId || Boolean(profileBindings[profileKey]);
 
   useEffect(() => {
     saveState(state);
@@ -88,8 +92,8 @@ export function useAppData() {
   }, []);
 
   const currentUser = useMemo(
-    () => state.users.find((user) => user.id === state.currentUserId) ?? state.users[0],
-    [state.currentUserId, state.users],
+    () => state.users.find((user) => user.id === currentUserId) ?? state.users[0],
+    [currentUserId, state.users],
   );
 
   const rankings = useMemo(
@@ -104,43 +108,50 @@ export function useAppData() {
 
   const actions = useMemo(
     () => ({
+      switchUser: (userId) => {
+        setProfileBindings((current) => {
+          const next = { ...current, [profileKey]: userId };
+          writeProfileBindings(next);
+          return next;
+        });
+        setState((prev) => ({ ...prev, currentUserId: userId }));
+      },
       createMatch: (draft) => {
         let createdId = null;
         setState((prev) => {
-          const next = createMatch(prev, draft);
+          const next = createMatch({ ...prev, currentUserId }, draft);
           createdId = next.matches[0].id;
           return next;
         });
         return createdId;
       },
-      agreeMatch: (matchId, sideName, playerId) => setState((prev) => agreeMatch(prev, matchId, sideName, playerId)),
-      submitMatchResult: (matchId, result) => setState((prev) => submitMatchResult(prev, matchId, result)),
-      approveMatch: (matchId, sideName, playerId) => setState((prev) => approveMatch(prev, matchId, sideName, playerId)),
-      disputeMatch: (matchId, reason) => setState((prev) => disputeMatch(prev, matchId, reason)),
-      cancelMatch: (matchId) => setState((prev) => cancelMatch(prev, matchId)),
-      voidMatch: (matchId) => setState((prev) => voidMatch(prev, matchId)),
-      resumeMatchApproval: (matchId) => setState((prev) => resumeMatchApproval(prev, matchId)),
-      switchUser: (userId) => setState((prev) => switchUser(prev, userId)),
-      updatePrivacySettings: (patch) => setState((prev) => updatePrivacySettings(prev, patch)),
-      blockUser: (userId) => setState((prev) => blockUser(prev, userId)),
-      unblockUser: (userId) => setState((prev) => unblockUser(prev, userId)),
-      reportMatch: (matchId, reason) => setState((prev) => reportMatch(prev, matchId, reason)),
+      agreeMatch: (matchId, sideName, playerId) => setState((prev) => agreeMatch({ ...prev, currentUserId }, matchId, sideName, playerId)),
+      submitMatchResult: (matchId, result) => setState((prev) => submitMatchResult({ ...prev, currentUserId }, matchId, result)),
+      approveMatch: (matchId, sideName, playerId) => setState((prev) => approveMatch({ ...prev, currentUserId }, matchId, sideName, playerId)),
+      disputeMatch: (matchId, reason) => setState((prev) => disputeMatch({ ...prev, currentUserId }, matchId, reason)),
+      cancelMatch: (matchId) => setState((prev) => cancelMatch({ ...prev, currentUserId }, matchId)),
+      voidMatch: (matchId) => setState((prev) => voidMatch({ ...prev, currentUserId }, matchId)),
+      resumeMatchApproval: (matchId) => setState((prev) => resumeMatchApproval({ ...prev, currentUserId }, matchId)),
+      updatePrivacySettings: (patch) => setState((prev) => updatePrivacySettings({ ...prev, currentUserId }, patch)),
+      blockUser: (userId) => setState((prev) => blockUser({ ...prev, currentUserId }, userId)),
+      unblockUser: (userId) => setState((prev) => unblockUser({ ...prev, currentUserId }, userId)),
+      reportMatch: (matchId, reason) => setState((prev) => reportMatch({ ...prev, currentUserId }, matchId, reason)),
       markNotificationRead: (notificationId) => setState((prev) => markNotificationRead(prev, notificationId)),
       markAllNotificationsRead: () => setState((prev) => markAllNotificationsRead(prev)),
       toggleFavoriteTeam: (teamId) => setState((prev) => toggleFavoriteTeam(prev, teamId)),
       toggleFavoriteCourt: (courtId) => setState((prev) => toggleFavoriteCourt(prev, courtId)),
-      updateProfile: (patch) => setState((prev) => updateProfile(prev, patch)),
-      createTeam: (draft) => setState((prev) => createTeam(prev, draft)),
-      createRecruitingPost: (draft) => setState((prev) => createRecruitingPost(prev, draft)),
-      interestRecruitingPost: (postId) => setState((prev) => interestRecruitingPost(prev, postId)),
-      closeRecruitingPost: (postId) => setState((prev) => closeRecruitingPost(prev, postId)),
-      addTeamMember: (teamId, draft) => setState((prev) => addTeamMember(prev, teamId, draft)),
-      updateTeamMemberRole: (teamId, userId, role) => setState((prev) => updateTeamMemberRole(prev, teamId, userId, role)),
-      removeTeamMember: (teamId, userId) => setState((prev) => removeTeamMember(prev, teamId, userId)),
+      updateProfile: (patch) => setState((prev) => updateProfile({ ...prev, currentUserId }, patch)),
+      createTeam: (draft) => setState((prev) => createTeam({ ...prev, currentUserId }, draft)),
+      createRecruitingPost: (draft) => setState((prev) => createRecruitingPost({ ...prev, currentUserId }, draft)),
+      interestRecruitingPost: (postId) => setState((prev) => interestRecruitingPost({ ...prev, currentUserId }, postId)),
+      closeRecruitingPost: (postId) => setState((prev) => closeRecruitingPost({ ...prev, currentUserId }, postId)),
+      addTeamMember: (teamId, draft) => setState((prev) => addTeamMember({ ...prev, currentUserId }, teamId, draft)),
+      updateTeamMemberRole: (teamId, userId, role) => setState((prev) => updateTeamMemberRole({ ...prev, currentUserId }, teamId, userId, role)),
+      removeTeamMember: (teamId, userId) => setState((prev) => removeTeamMember({ ...prev, currentUserId }, teamId, userId)),
       reset: () => setState(resetState()),
     }),
-    [],
+    [currentUserId, profileKey],
   );
 
-  return { state, currentUser, rankings, actions };
+  return { state: { ...state, currentUserId }, currentUser, currentUserId, profileBound, rankings, actions };
 }

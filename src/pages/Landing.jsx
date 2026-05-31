@@ -1,4 +1,4 @@
-import { ArrowRight, BarChart3, ClipboardCheck, House, ShieldCheck, Trophy } from "lucide-react";
+import { ArrowRight, BarChart3, ClipboardCheck, House, LogIn, ShieldCheck, Trophy } from "lucide-react";
 import { Link } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
@@ -25,6 +25,9 @@ export default function Landing({ state }) {
             </Link>
             <Link to="/app/rankings">
               <Button variant="secondary">랭킹 보드 보기</Button>
+            </Link>
+            <Link to="/login">
+              <Button variant="secondary"><LogIn size={18} /> 로그인</Button>
             </Link>
           </div>
           <div className="landing-stat-grid">

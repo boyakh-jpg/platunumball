@@ -5,18 +5,18 @@ import Card from "../components/common/Card.jsx";
 import Badge from "../components/common/Badge.jsx";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 
-export default function Settings({ app }) {
+export default function Settings({ app, auth }) {
   const privacy = app.state.settings?.privacy ?? {};
   const blockedUserIds = app.state.settings?.blockedUserIds ?? [];
-  const [blockUserId, setBlockUserId] = useState(app.state.users.find((user) => user.id !== app.state.currentUserId)?.id ?? "");
+  const [blockUserId, setBlockUserId] = useState(app.state.users.find((user) => user.id !== app.currentUserId)?.id ?? "");
   const [reportMatchId, setReportMatchId] = useState(app.state.matches[0]?.id ?? "");
   const [reportReason, setReportReason] = useState("경기 기록 확인이 필요합니다.");
   const userMap = Object.fromEntries(app.state.users.map((user) => [user.id, user]));
   const matchMap = Object.fromEntries(app.state.matches.map((match) => [match.id, match]));
 
   const blockableUsers = useMemo(
-    () => app.state.users.filter((user) => user.id !== app.state.currentUserId && !blockedUserIds.includes(user.id)),
-    [app.state.currentUserId, app.state.users, blockedUserIds],
+    () => app.state.users.filter((user) => user.id !== app.currentUserId && !blockedUserIds.includes(user.id)),
+    [app.currentUserId, app.state.users, blockedUserIds],
   );
   const selectedBlockUserId = blockableUsers.some((user) => user.id === blockUserId) ? blockUserId : blockableUsers[0]?.id ?? "";
   const selectedReportMatchId = app.state.matches.some((match) => match.id === reportMatchId) ? reportMatchId : app.state.matches[0]?.id ?? "";
@@ -48,7 +48,8 @@ export default function Settings({ app }) {
               </div>
               <Badge tone={isSupabaseConfigured ? "green" : "orange"}>{isSupabaseConfigured ? "연결됨" : "Demo"}</Badge>
             </div>
-            <p className="muted">현재 앱은 Supabase의 `rankball_state` JSON 상태를 공유합니다. 설정, 신고, 차단, 알림 읽음 상태도 같은 데이터에 저장됩니다.</p>
+            <p className="muted">현재 앱은 Supabase의 `rankball_state` JSON 상태를 공유합니다. 로그인 세션과 현재 플레이어 선택은 이 브라우저에 따로 저장됩니다.</p>
+            {auth?.user?.email ? <p className="form-help">로그인 계정: {auth.user.email}</p> : null}
           </Card>
 
           <Card className="section-card">
@@ -61,7 +62,7 @@ export default function Settings({ app }) {
             </div>
             <label>
               접속 플레이어
-              <select value={app.state.currentUserId} onChange={(event) => app.actions.switchUser(event.target.value)}>
+              <select value={app.currentUserId} onChange={(event) => app.actions.switchUser(event.target.value)}>
                 {app.state.users.map((user) => (
                   <option key={user.id} value={user.id}>{user.name} · {user.region} · {user.position}</option>
                 ))}
