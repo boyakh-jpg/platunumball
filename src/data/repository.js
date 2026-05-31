@@ -53,8 +53,8 @@ function normalizeSettings(settings = {}) {
       ...(settings.privacy ?? {}),
     },
     blockedUserIds: settings.blockedUserIds ?? [],
-    favoriteTeamIds: settings.favoriteTeamIds ?? [],
-    favoriteCourtIds: settings.favoriteCourtIds ?? [],
+    favoriteTeamIds: settings.favoriteTeamIds ?? initialState.settings?.favoriteTeamIds ?? [],
+    favoriteCourtIds: settings.favoriteCourtIds ?? initialState.settings?.favoriteCourtIds ?? [],
   };
 }
 

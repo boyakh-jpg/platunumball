@@ -23,8 +23,8 @@ export default function CreateMatch({ app }) {
   const [courtRegion, setCourtRegion] = useState(app.currentUser.region ?? "전체");
   const favoriteTeamIds = app.state.settings?.favoriteTeamIds ?? [];
   const favoriteCourtIds = app.state.settings?.favoriteCourtIds ?? [];
-  const isFavoriteTeam = (team) => favoriteTeamIds.includes(team.id) || (!favoriteTeamIds.length && team.favorite);
-  const isFavoriteCourt = (court) => favoriteCourtIds.includes(court.id) || (!favoriteCourtIds.length && court.favorite);
+  const isFavoriteTeam = (team) => favoriteTeamIds.includes(team.id);
+  const isFavoriteCourt = (court) => favoriteCourtIds.includes(court.id);
   const [draft, setDraft] = useState({
     title: "오늘의 5v5 공식전",
     mode: "5v5",

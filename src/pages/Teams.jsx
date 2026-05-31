@@ -12,7 +12,7 @@ export default function Teams({ app }) {
   const [query, setQuery] = useState("");
   const [region, setRegion] = useState(app.currentUser.region ?? "전체");
   const favoriteTeamIds = app.state.settings?.favoriteTeamIds ?? [];
-  const isFavoriteTeam = (team) => favoriteTeamIds.includes(team.id) || (!favoriteTeamIds.length && team.favorite);
+  const isFavoriteTeam = (team) => favoriteTeamIds.includes(team.id);
   const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
   const teamCountByUser = useMemo(() => {
     const counts = new Map();
