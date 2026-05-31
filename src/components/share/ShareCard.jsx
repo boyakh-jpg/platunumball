@@ -15,7 +15,7 @@ export default function ShareCard({ user, match }) {
     <div className="share-card">
       <div>
         <Trophy size={22} />
-        <span>결과 카드</span>
+        <span>공유 카드</span>
       </div>
       <h3>{match?.title ?? "오늘의 판"}</h3>
       <strong>{user.name}</strong>

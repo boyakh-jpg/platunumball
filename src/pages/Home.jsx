@@ -7,7 +7,6 @@ import Card from "../components/common/Card.jsx";
 import MatchCard from "../components/match/MatchCard.jsx";
 import RatingCard from "../components/rating/RatingCard.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
-import ShareCard from "../components/share/ShareCard.jsx";
 import TeamCard from "../components/team/TeamCard.jsx";
 import { COURTS } from "../lib/constants.js";
 import { isNationalRecruitingPost } from "../lib/recruiting.js";
@@ -77,7 +76,6 @@ export default function Home({ app }) {
   const approvalMatches = [...app.state.matches].filter((match) => match.status === "approval");
   const upcomingMatches = [...app.state.matches].filter((match) => ["contract", "agreed"].includes(match.status)).sort(compareSchedule);
   const completedMatches = [...app.state.matches].filter((match) => match.status === "confirmed");
-  const activeMatch = upcomingMatches[0] ?? completedMatches[0];
   const myTeam = app.state.teams.find((team) => team.members.some((member) => member.userId === user.id));
   const myTeamCount = app.state.teams.filter((team) => team.members.some((member) => member.userId === user.id)).length;
   const blockedUserIds = app.state.settings?.blockedUserIds ?? [];
@@ -296,7 +294,6 @@ export default function Home({ app }) {
             </div>
           </Card>
           {myTeam ? <TeamCard team={myTeam} users={app.state.users} compact /> : null}
-          <ShareCard user={user} match={activeMatch} />
         </aside>
       </div>
     </div>
