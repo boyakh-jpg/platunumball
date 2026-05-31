@@ -169,8 +169,8 @@ export default function Home({ app }) {
         </div>
       </Card>
 
-      <div className="content-grid">
-        <div className="page-stack">
+      <div className="content-grid home-dashboard-grid">
+        <div className="page-stack home-primary-stack">
           <Card className="section-card match-focus-card">
             <div className="section-title-row">
               <div>
@@ -207,7 +207,7 @@ export default function Home({ app }) {
             </div>
           </Card>
         </div>
-        <aside className="page-stack">
+        <aside className="page-stack home-side-stack">
           <Card className="section-card">
             <div className="section-title-row">
               <div>

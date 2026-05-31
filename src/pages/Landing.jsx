@@ -1,4 +1,4 @@
-import { ArrowRight, BarChart3, ClipboardCheck, ShieldCheck, Trophy } from "lucide-react";
+import { ArrowRight, BarChart3, ClipboardCheck, House, ShieldCheck, Trophy } from "lucide-react";
 import { Link } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
@@ -19,6 +19,9 @@ export default function Landing({ state }) {
               <Button>
                 오늘의 판 만들기 <ArrowRight size={18} />
               </Button>
+            </Link>
+            <Link to="/app">
+              <Button variant="secondary"><House size={18} /> 홈 화면</Button>
             </Link>
             <Link to="/app/rankings">
               <Button variant="secondary">랭킹 보드 보기</Button>
