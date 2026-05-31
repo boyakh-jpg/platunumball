@@ -972,6 +972,21 @@ h3 {
   color: #07110f;
 }
 
+.ranking-filter-card {
+  position: sticky;
+  top: 14px;
+  z-index: 5;
+  padding: 10px;
+}
+
+.ranking-filter-card .segmented-control {
+  width: 100%;
+}
+
+.ranking-filter-card .segmented-control button {
+  flex: 1 0 auto;
+}
+
 .contract-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

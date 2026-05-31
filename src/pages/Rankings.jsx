@@ -47,6 +47,9 @@ export default function Rankings({ app }) {
         </div>
         <Badge tone="green">{myRegion} 우선</Badge>
       </header>
+      <Card className="section-card ranking-filter-card">
+        <RankingTabs value={tab} options={tabs} onChange={setTab} />
+      </Card>
       {tab === "local" ? (
         <div className="content-grid">
           <Card className="section-card">
@@ -80,10 +83,11 @@ export default function Rankings({ app }) {
           </div>
         </div>
       ) : null}
-      <Card className="section-card">
-        <RankingTabs value={tab} options={tabs} onChange={setTab} />
-        {tab === "local" ? null : <RankingTable rows={rows} type={type} mode={tab} />}
-      </Card>
+      {tab !== "local" ? (
+        <Card className="section-card">
+          <RankingTable rows={rows} type={type} mode={tab} />
+        </Card>
+      ) : null}
     </div>
   );
 }
