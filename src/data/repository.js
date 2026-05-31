@@ -2,6 +2,7 @@ import { MAX_TEAM_MEMBERSHIPS, MODE_SIZES, TEAM_ROLES } from "../lib/constants.j
 import { initialState } from "../lib/mockData.js";
 import { getAgreementStatus, getApprovalStatus, normalizePlayerStats } from "../lib/matchUtils.js";
 import { applyMatchRating, calculateTeamDelta } from "../lib/rating.js";
+import { getMercenaryTeamWeight } from "../lib/recruiting.js";
 import { clearState, readState, writeState } from "../lib/storage.js";
 import { isSupabaseConfigured, supabase } from "../lib/supabase.js";
 
@@ -71,6 +72,7 @@ function normalizeState(state) {
     notifications: notifications.map((notification) => ({ readAt: null, ...notification })),
     settings: normalizeSettings(state?.settings ?? initialState.settings),
     reports: state?.reports ?? initialState.reports ?? [],
+    recruitingPosts: mergeById(state?.recruitingPosts, initialState.recruitingPosts ?? []),
   };
 }
 
@@ -150,14 +152,14 @@ function getTeamPlayers(team, size) {
   return team.members.slice(0, size).map((member) => member.userId);
 }
 
-function teamRegularRatio(team, playerIds) {
+function teamRegularRatio(team, playerIds, users = []) {
   if (!team) return 1;
+  const userById = Object.fromEntries(users.map((user) => [user.id, user]));
   const selected = team.members.filter((member) => playerIds.includes(member.userId));
   if (!selected.length) return 1;
   const weighted = selected.reduce((sum, member) => {
-    if (member.role === "mercenary" || member.role === "guest") return sum + 0.35;
-    if (member.role === "candidate") return sum + 0.75;
-    return sum + 1;
+    const memberMmr = userById[member.userId]?.ratings?.integrated ?? team.mmr;
+    return sum + getMercenaryTeamWeight(memberMmr, team.mmr, member.role);
   }, 0);
   return weighted / selected.length;
 }
@@ -180,7 +182,7 @@ function updateAffiliationScores(state) {
 
 function finalizeMatch(state, targetMatch) {
   const ratings = Object.fromEntries(state.users.map((user) => [user.id, clone(user.ratings)]));
-  const ratingResult = applyMatchRating(targetMatch, state.users, ratings, state.matches);
+  const ratingResult = applyMatchRating(targetMatch, state.users, ratings, state.matches, state.teams);
   const scoreA = Number(targetMatch.result.scoreA);
   const scoreB = Number(targetMatch.result.scoreB);
   const actualA = scoreA === scoreB ? 0.5 : scoreA > scoreB ? 1 : 0;
@@ -193,7 +195,7 @@ function finalizeMatch(state, targetMatch) {
         opponentTeamMmr: teamB?.mmr ?? 1200,
         actual: actualA,
         match: targetMatch,
-        regularRatio: teamRegularRatio(teamA, targetMatch.teamA.players),
+        regularRatio: teamRegularRatio(teamA, targetMatch.teamA.players, state.users),
       })
     : 0;
   const teamBDelta = teamB
@@ -202,7 +204,7 @@ function finalizeMatch(state, targetMatch) {
         opponentTeamMmr: teamA?.mmr ?? 1200,
         actual: actualB,
         match: targetMatch,
-        regularRatio: teamRegularRatio(teamB, targetMatch.teamB.players),
+        regularRatio: teamRegularRatio(teamB, targetMatch.teamB.players, state.users),
       })
     : 0;
 
@@ -625,6 +627,60 @@ export function reportMatch(state, matchId, reason = "") {
       },
       ...state.notifications,
     ],
+  };
+}
+
+export function createRecruitingPost(state, draft) {
+  const postType = draft.type === "find_team" ? "find_team" : "need_player";
+  const post = {
+    id: makeId("q"),
+    type: postType,
+    title: draft.title?.trim() || (postType === "find_team" ? "오늘 뛸 팀 구해요" : "오늘 경기 용병 1명"),
+    region: draft.region || state.users.find((user) => user.id === state.currentUserId)?.region || "전체",
+    court: draft.court || "미정",
+    mode: draft.mode || "5v5",
+    ranked: draft.ranked !== false,
+    spots: Math.max(1, Number(draft.spots ?? 1)),
+    teamId: postType === "need_player" ? draft.teamId : null,
+    playerId: state.currentUserId,
+    memo: draft.memo?.trim() || "같이 뛸 사람을 찾고 있습니다.",
+    status: "open",
+    applicants: [],
+    createdAt: new Date().toISOString(),
+  };
+
+  return {
+    ...state,
+    recruitingPosts: [post, ...(state.recruitingPosts ?? [])],
+    notifications: [
+      {
+        id: makeId("n"),
+        title: "모집글 등록",
+        body: `${post.title} 모집글이 올라갔습니다.`,
+        tone: "team",
+      },
+      ...state.notifications,
+    ],
+  };
+}
+
+export function interestRecruitingPost(state, postId) {
+  const post = state.recruitingPosts?.find((item) => item.id === postId);
+  if (!post || post.status !== "open") return state;
+  const applicants = Array.from(new Set([...(post.applicants ?? []), state.currentUserId]));
+
+  return {
+    ...state,
+    recruitingPosts: (state.recruitingPosts ?? []).map((item) => (item.id === postId ? { ...item, applicants } : item)),
+  };
+}
+
+export function closeRecruitingPost(state, postId) {
+  return {
+    ...state,
+    recruitingPosts: (state.recruitingPosts ?? []).map((post) => (
+      post.id === postId && post.playerId === state.currentUserId ? { ...post, status: "closed" } : post
+    )),
   };
 }
 

@@ -1,5 +1,6 @@
 import { CREDIBILITY_LEVELS, EVIDENCE_OPTIONS, MATCH_MODES } from "./constants.js";
 import { calculatePlayerStatBoost } from "./matchUtils.js";
+import { getMercenaryPlayerFactor } from "./recruiting.js";
 import { getTier, getTierDivision } from "./tier.js";
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
@@ -148,7 +149,7 @@ function sideAverage(side, ratings, mode) {
   );
 }
 
-export function applyMatchRating(match, players, ratings, history = []) {
+export function applyMatchRating(match, players, ratings, history = [], teams = []) {
   const mode = match.mode ?? "5v5";
   const scoreA = Number(match.result?.scoreA ?? match.teamA?.score ?? 0);
   const scoreB = Number(match.result?.scoreB ?? match.teamB?.score ?? 0);
@@ -157,6 +158,7 @@ export function applyMatchRating(match, players, ratings, history = []) {
   const teamAMmr = sideAverage(match.teamA, ratings, mode);
   const teamBMmr = sideAverage(match.teamB, ratings, mode);
   const playerById = Object.fromEntries(players.map((player) => [player.id, player]));
+  const teamById = Object.fromEntries(teams.map((team) => [team.id, team]));
   const nextRatings = {};
   const changes = [];
 
@@ -168,6 +170,9 @@ export function applyMatchRating(match, players, ratings, history = []) {
       const current = ratings[playerId] ?? { integrated: 1200, modes: {} };
       const modeRating = current.modes?.[mode] ?? current.integrated ?? 1200;
       const trustScore = playerById[playerId]?.trustScore ?? 80;
+      const playerTeam = teamById[match[sideName].teamId];
+      const role = playerTeam?.members?.find((member) => member.userId === playerId)?.role ?? "regular";
+      const mercenaryFactor = getMercenaryPlayerFactor(current.integrated, playerTeam?.mmr ?? teamMmr, role);
       const modeDelta = calculateModeDelta({
         playerRating: modeRating,
         teamMmr,
@@ -179,7 +184,7 @@ export function applyMatchRating(match, players, ratings, history = []) {
         history,
       });
       const statBoost = calculatePlayerStatBoost(match, playerId, actual);
-      const adjustedModeDelta = round(clamp(modeDelta + statBoost, -48, 48));
+      const adjustedModeDelta = round(clamp((modeDelta + statBoost) * mercenaryFactor, -48, 48));
       const integratedDelta = calculateIntegratedDelta({ modeDelta: adjustedModeDelta, mode, match });
 
       nextRatings[playerId] = {
@@ -196,6 +201,7 @@ export function applyMatchRating(match, players, ratings, history = []) {
         modeDelta: adjustedModeDelta,
         integratedDelta,
         statBoost,
+        mercenaryFactor,
         result: actual === 1 ? "win" : actual === 0 ? "loss" : "draw",
       });
     }

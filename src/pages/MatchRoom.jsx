@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
+import { Minus, Plus, X } from "lucide-react";
 import AgreementPanel from "../components/match/AgreementPanel.jsx";
 import ApprovalPanel from "../components/match/ApprovalPanel.jsx";
 import MatchContract from "../components/match/MatchContract.jsx";
@@ -43,10 +44,12 @@ export default function MatchRoom({ app }) {
     playerStats: makeInitialStats(match),
   });
   const [disputeReason, setDisputeReason] = useState("스코어 또는 개인 기록 재확인 필요");
+  const [statEditorPlayerId, setStatEditorPlayerId] = useState(null);
 
   if (!match) return <Navigate to="/app/create" replace />;
 
   const userMap = Object.fromEntries(app.state.users.map((user) => [user.id, user]));
+  const statEditorPlayer = statEditorPlayerId ? userMap[statEditorPlayerId] : null;
   const status = statusMeta[match.status] ?? { label: match.status, tone: "blue" };
   const teamAAgreement = getAgreementStatus(match, app.state.teams, "teamA");
   const teamBAgreement = getAgreementStatus(match, app.state.teams, "teamB");
@@ -60,16 +63,21 @@ export default function MatchRoom({ app }) {
   const canReport = !["cancelled", "void"].includes(match.status);
 
   const updatePlayerStat = (playerId, fieldId, value) => {
+    const nextValue = Math.max(0, Number(value ?? 0));
     setScore((current) => ({
       ...current,
       playerStats: {
         ...current.playerStats,
         [playerId]: {
           ...(current.playerStats[playerId] ?? {}),
-          [fieldId]: value,
+          [fieldId]: nextValue,
         },
       },
     }));
+  };
+  const bumpPlayerStat = (playerId, fieldId, delta) => {
+    const currentValue = Number(score.playerStats[playerId]?.[fieldId] ?? 0);
+    updatePlayerStat(playerId, fieldId, currentValue + delta);
   };
   const submitResult = (event) => {
     event.preventDefault();
@@ -137,31 +145,23 @@ export default function MatchRoom({ app }) {
                 <input type="number" min="0" disabled={!canSubmitResult} value={score.scoreB} onChange={(event) => setScore((current) => ({ ...current, scoreB: event.target.value }))} />
               </label>
               <Button type="submit" disabled={!canSubmitResult}>결과 저장</Button>
-              <div className="stat-entry-grid">
+              <div className="stat-entry-grid compact-stat-entry">
                 {["teamA", "teamB"].map((sideName) => (
                   <div key={sideName} className="stat-entry-side">
                     <h3>{match[sideName].name} 개인 기록</h3>
                     {match[sideName].players.map((playerId) => {
                       const user = userMap[playerId];
                       return (
-                        <div key={playerId} className="player-stat-row">
+                        <button key={playerId} type="button" className="stat-player-button" disabled={!canSubmitResult} onClick={() => setStatEditorPlayerId(playerId)}>
                           <div>
                             <span className="avatar small" style={{ "--avatar": user?.avatarColor }}>{user?.name?.slice(0, 1) ?? "P"}</span>
-                            <strong>{user?.name ?? "플레이어"}</strong>
+                            <span>
+                              <strong>{user?.name ?? "플레이어"}</strong>
+                              <em>{formatStatLine(score.playerStats[playerId])}</em>
+                            </span>
                           </div>
-                          {PLAYER_STAT_FIELDS.map((field) => (
-                            <label key={field.id}>
-                              {field.shortLabel}
-                              <input
-                                type="number"
-                                min="0"
-                                disabled={!canSubmitResult}
-                                value={score.playerStats[playerId]?.[field.id] ?? 0}
-                                onChange={(event) => updatePlayerStat(playerId, field.id, event.target.value)}
-                              />
-                            </label>
-                          ))}
-                        </div>
+                          <strong>입력</strong>
+                        </button>
                       );
                     })}
                   </div>
@@ -270,6 +270,42 @@ export default function MatchRoom({ app }) {
           <ShareCard user={app.currentUser} match={match} />
         </aside>
       </div>
+      {statEditorPlayer ? (
+        <div className="modal-backdrop stat-editor-backdrop" onClick={() => setStatEditorPlayerId(null)}>
+          <div className="modal stat-editor-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <p className="eyebrow">개인 기록</p>
+                <h2>{statEditorPlayer.name}</h2>
+                <span>{formatStatLine(score.playerStats[statEditorPlayerId])}</span>
+              </div>
+              <button type="button" className="button button-secondary button-icon" onClick={() => setStatEditorPlayerId(null)} aria-label="닫기">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="stat-stepper-list">
+              {PLAYER_STAT_FIELDS.map((field) => (
+                <div key={field.id} className="stat-stepper-row">
+                  <div>
+                    <strong>{field.label}</strong>
+                    <span>{field.shortLabel}</span>
+                  </div>
+                  <button type="button" disabled={!canSubmitResult} onClick={() => bumpPlayerStat(statEditorPlayerId, field.id, -1)}><Minus size={16} /></button>
+                  <input
+                    type="number"
+                    min="0"
+                    disabled={!canSubmitResult}
+                    value={score.playerStats[statEditorPlayerId]?.[field.id] ?? 0}
+                    onChange={(event) => updatePlayerStat(statEditorPlayerId, field.id, event.target.value)}
+                  />
+                  <button type="button" disabled={!canSubmitResult} onClick={() => bumpPlayerStat(statEditorPlayerId, field.id, 1)}><Plus size={16} /></button>
+                </div>
+              ))}
+            </div>
+            <Button type="button" onClick={() => setStatEditorPlayerId(null)}>완료</Button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

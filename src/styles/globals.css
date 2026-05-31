@@ -1471,7 +1471,7 @@ input[type="color"] {
     left: 12px;
     z-index: 20;
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(6, 1fr);
     gap: 4px;
     border: 1px solid var(--line);
     border-radius: var(--radius);
@@ -2216,6 +2216,162 @@ input[type="color"] {
     rgba(70, 224, 182, 0.28);
 }
 
+.wide-button {
+  width: 100%;
+}
+
+.rivalry-card {
+  border-color: rgba(255, 117, 95, 0.2);
+}
+
+.rivalry-list strong {
+  color: var(--orange);
+  white-space: nowrap;
+}
+
+.recruiting-mini-list:empty::before {
+  content: "내 지역 모집글이 없습니다.";
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.compact-segments {
+  width: max-content;
+  max-width: 100%;
+}
+
+.compact-segments button {
+  flex: 1 0 auto;
+}
+
+.flush-toggle {
+  margin-top: 0;
+}
+
+.recruiting-page .content-grid {
+  align-items: start;
+}
+
+.recruiting-board-card {
+  gap: 14px;
+}
+
+.recruiting-post-list {
+  display: grid;
+  gap: 12px;
+}
+
+.recruiting-post {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 0.34fr);
+  gap: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.014)),
+    rgba(8, 11, 16, 0.72);
+  padding: 14px;
+}
+
+.recruiting-post-main {
+  display: grid;
+  gap: 8px;
+}
+
+.recruiting-post-main h3 {
+  font-size: 1.15rem;
+}
+
+.recruiting-post-main p,
+.recruiting-owner-line {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.recruiting-owner-line a {
+  color: var(--text);
+}
+
+.recruiting-fit-panel {
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  border: 1px solid rgba(70, 224, 182, 0.16);
+  border-radius: var(--radius);
+  background: rgba(70, 224, 182, 0.055);
+  padding: 12px;
+}
+
+.recruiting-fit-panel span,
+.recruiting-fit-panel em,
+.tier-range-note span,
+.tier-range-note em {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-style: normal;
+  font-weight: 850;
+}
+
+.recruiting-fit-panel strong {
+  color: var(--green);
+}
+
+.recruiting-memo {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.applicant-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.applicant-row small {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.applicant-row strong {
+  margin-left: auto;
+  color: var(--gold);
+}
+
+.recruiting-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.recruiting-compose-card {
+  position: sticky;
+  top: 24px;
+}
+
+.tier-range-note {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid rgba(255, 211, 108, 0.18);
+  border-radius: var(--radius);
+  background: rgba(255, 211, 108, 0.055);
+  padding: 12px;
+}
+
+.tier-range-note > div {
+  display: grid;
+  gap: 4px;
+}
+
 .match-stack {
   display: grid;
   gap: 12px;
@@ -2535,6 +2691,58 @@ input[type="color"] {
   padding: 12px;
 }
 
+.compact-stat-entry .stat-entry-side {
+  align-content: start;
+}
+
+.stat-player-button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 56px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--text);
+  cursor: pointer;
+  padding: 9px;
+  text-align: left;
+}
+
+.stat-player-button > div {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 9px;
+}
+
+.stat-player-button > div > span:not(.avatar) {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.stat-player-button em {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-style: normal;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stat-player-button > strong {
+  color: var(--green);
+  font-size: 0.78rem;
+}
+
+.stat-player-button:disabled {
+  cursor: default;
+  opacity: 0.58;
+}
+
 .player-stat-row {
   display: grid;
   grid-template-columns: minmax(120px, 1fr) repeat(5, minmax(52px, 0.4fr));
@@ -2612,12 +2820,79 @@ input[type="color"] {
   text-transform: uppercase;
 }
 
+.stat-editor-backdrop {
+  place-items: end center;
+}
+
+.stat-editor-modal {
+  width: min(560px, 100%);
+  display: grid;
+  gap: 14px;
+}
+
+.modal-header span {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.stat-stepper-list {
+  display: grid;
+  gap: 10px;
+}
+
+.stat-stepper-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 42px 68px 42px;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.045);
+  padding: 10px;
+}
+
+.stat-stepper-row > div {
+  display: grid;
+  gap: 3px;
+}
+
+.stat-stepper-row span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.stat-stepper-row button {
+  display: grid;
+  height: 42px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.stat-stepper-row input {
+  min-height: 42px;
+  padding-inline: 6px;
+  text-align: center;
+}
+
 @media (max-width: 1020px) {
   .home-search-results,
   .profile-hero,
   .team-detail-hero,
-  .stat-entry-grid {
+  .stat-entry-grid,
+  .recruiting-post {
     grid-template-columns: 1fr;
+  }
+
+  .recruiting-compose-card {
+    position: static;
   }
 }
 
@@ -2642,11 +2917,31 @@ input[type="color"] {
   .approval-side-header,
   .member-control-row,
   .match-action-row,
-  .favorite-action-row {
+  .favorite-action-row,
+  .tier-range-note {
     grid-template-columns: 1fr;
   }
 
   .player-stat-row {
     align-items: stretch;
+  }
+
+  .recruiting-actions {
+    display: grid;
+  }
+
+  .stat-editor-backdrop {
+    padding: 10px;
+  }
+
+  .stat-editor-modal {
+    max-height: calc(100vh - 20px);
+    overflow: auto;
+  }
+
+  .stat-stepper-row {
+    grid-template-columns: minmax(0, 1fr) 38px 58px 38px;
+    gap: 6px;
+    padding: 8px;
   }
 }

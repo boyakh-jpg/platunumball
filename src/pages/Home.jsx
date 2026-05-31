@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Flame, PlusCircle, Search, Trophy } from "lucide-react";
+import { Flame, Handshake, PlusCircle, Search, Swords, Trophy } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
@@ -10,6 +10,7 @@ import TierEmblem from "../components/rating/TierEmblem.jsx";
 import ShareCard from "../components/share/ShareCard.jsx";
 import TeamCard from "../components/team/TeamCard.jsx";
 import { COURTS } from "../lib/constants.js";
+import { isNationalRecruitingPost } from "../lib/recruiting.js";
 import { getTierDivision, getTierQuote } from "../lib/tier.js";
 
 function compareSchedule(a, b) {
@@ -80,6 +81,22 @@ export default function Home({ app }) {
   const myTeam = app.state.teams.find((team) => team.members.some((member) => member.userId === user.id));
   const myTeamCount = app.state.teams.filter((team) => team.members.some((member) => member.userId === user.id)).length;
   const blockedUserIds = app.state.settings?.blockedUserIds ?? [];
+  const localRivals = useMemo(() => {
+    const regionTeams = app.state.teams
+      .filter((team) => team.region === user.region)
+      .sort((a, b) => b.mmr - a.mmr);
+    const referenceMmr = myTeam?.mmr ?? regionTeams[0]?.mmr ?? user.ratings.integrated;
+    return regionTeams
+      .filter((team) => team.id !== myTeam?.id)
+      .slice(0, 4)
+      .map((team) => ({ ...team, gap: team.mmr - referenceMmr }));
+  }, [app.state.teams, myTeam?.id, myTeam?.mmr, user.ratings.integrated, user.region]);
+  const localRecruitingPosts = useMemo(() => {
+    return [...(app.state.recruitingPosts ?? [])]
+      .filter((post) => post.status !== "closed")
+      .filter((post) => post.region === user.region || isNationalRecruitingPost(post, app.state))
+      .slice(0, 3);
+  }, [app.state, app.state.recruitingPosts, user.region]);
 
   const searchResults = useMemo(() => {
     const players = app.state.users
@@ -208,6 +225,43 @@ export default function Home({ app }) {
           </Card>
         </div>
         <aside className="page-stack home-side-stack">
+          <Card className="section-card rivalry-card">
+            <div className="section-title-row">
+              <div>
+                <p className="eyebrow">Local Rivalry</p>
+                <h2>{user.region} 라이벌</h2>
+              </div>
+              <Swords size={20} />
+            </div>
+            <div className="compact-list rivalry-list">
+              {localRivals.length ? localRivals.map((team) => (
+                <Link key={team.id} to={`/app/teams/${team.id}`}>
+                  <span>{team.name}</span>
+                  <strong>{team.gap > 0 ? `+${team.gap}` : team.gap} MMR</strong>
+                </Link>
+              )) : <div><span>같은 지역 팀을 더 등록해보세요.</span><strong>대기</strong></div>}
+            </div>
+          </Card>
+          <Card className="section-card recruiting-teaser-card">
+            <div className="section-title-row">
+              <div>
+                <p className="eyebrow">Recruiting</p>
+                <h2>용병/팀 찾기</h2>
+              </div>
+              <Handshake size={20} />
+            </div>
+            <div className="compact-list recruiting-mini-list">
+              {localRecruitingPosts.map((post) => (
+                <Link key={post.id} to="/app/recruiting">
+                  <span>{post.title}</span>
+                  <strong>{post.ranked === false ? "친선" : "랭크"}</strong>
+                </Link>
+              ))}
+            </div>
+            <Link to="/app/recruiting">
+              <Button variant="secondary" className="wide-button"><Handshake size={17} /> 모집판 보기</Button>
+            </Link>
+          </Card>
           <Card className="section-card">
             <div className="section-title-row">
               <div>
