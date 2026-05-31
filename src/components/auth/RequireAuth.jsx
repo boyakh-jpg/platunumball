@@ -1,6 +1,6 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 
-export default function RequireAuth({ auth, app }) {
+export default function RequireAuth({ auth }) {
   const location = useLocation();
 
   if (auth.loading) {
@@ -15,10 +15,6 @@ export default function RequireAuth({ auth, app }) {
   }
 
   if (auth.configured && !auth.session) {
-    return <Navigate to="/login" replace state={{ from: location }} />;
-  }
-
-  if (auth.configured && auth.session && !app.profileBound) {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 

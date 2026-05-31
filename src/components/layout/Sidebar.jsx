@@ -42,7 +42,7 @@ export default function Sidebar({ user, auth }) {
         </div>
         <div>
           <strong>{user.name}</strong>
-          {auth?.user?.email ? <small>{auth.user.email}</small> : null}
+          {auth?.user ? <small>{auth.user.user_metadata?.providerName ?? auth.user.email}</small> : null}
           <TierBadge mmr={user.ratings.integrated} compact />
         </div>
         {auth?.session ? (

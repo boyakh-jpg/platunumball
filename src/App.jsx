@@ -27,7 +27,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Landing state={app.state} />} />
       <Route path="/login" element={<Login auth={auth} app={app} />} />
-      <Route element={<RequireAuth auth={auth} app={app} />}>
+      <Route element={<RequireAuth auth={auth} />}>
         <Route element={<AppShell app={app} auth={auth} />}>
           <Route path="/app" element={<Home app={app} />} />
           <Route path="/app/create" element={<CreateMatch app={app} />} />

@@ -49,7 +49,7 @@ export default function Settings({ app, auth }) {
               <Badge tone={isSupabaseConfigured ? "green" : "orange"}>{isSupabaseConfigured ? "연결됨" : "Demo"}</Badge>
             </div>
             <p className="muted">현재 앱은 Supabase의 `rankball_state` JSON 상태를 공유합니다. 로그인 세션과 현재 플레이어 선택은 이 브라우저에 따로 저장됩니다.</p>
-            {auth?.user?.email ? <p className="form-help">로그인 계정: {auth.user.email}</p> : null}
+            {auth?.user ? <p className="form-help">로그인: {auth.user.user_metadata?.providerName ?? auth.user.email} 테스트 세션</p> : null}
           </Card>
 
           <Card className="section-card">

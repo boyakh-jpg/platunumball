@@ -45,7 +45,6 @@ export function useAppData(authUserId = null) {
   const skipNextRemoteSaveRef = useRef(false);
   const profileKey = authUserId ?? "local-demo";
   const currentUserId = profileBindings[profileKey] ?? state.currentUserId ?? state.users[0]?.id;
-  const profileBound = !authUserId || Boolean(profileBindings[profileKey]);
 
   useEffect(() => {
     saveState(state);
@@ -153,5 +152,5 @@ export function useAppData(authUserId = null) {
     [currentUserId, profileKey],
   );
 
-  return { state: { ...state, currentUserId }, currentUser, currentUserId, profileBound, rankings, actions };
+  return { state: { ...state, currentUserId }, currentUser, currentUserId, profileBound: true, rankings, actions };
 }

@@ -1,13 +1,57 @@
 import { useEffect, useMemo, useState } from "react";
 import { isSupabaseConfigured, supabase } from "../lib/supabase.js";
 
+const TEST_SESSION_KEY = "rankball.auth.testSession.v1";
+
+function readTestSession() {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(TEST_SESSION_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeTestSession(session) {
+  if (typeof window === "undefined") return;
+  if (session) window.localStorage.setItem(TEST_SESSION_KEY, JSON.stringify(session));
+  else window.localStorage.removeItem(TEST_SESSION_KEY);
+}
+
+function makeTestSession(provider) {
+  const providerName = { naver: "네이버", kakao: "카카오", google: "구글" }[provider] ?? provider;
+  const user = {
+    id: `test-${provider}`,
+    email: `${provider}@rankball.test`,
+    app_metadata: { provider },
+    user_metadata: { providerName },
+    aud: "authenticated",
+    role: "authenticated",
+  };
+
+  return {
+    access_token: `test-token-${provider}`,
+    token_type: "bearer",
+    expires_at: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30,
+    user,
+  };
+}
+
 export function useAuthSession() {
-  const [session, setSession] = useState(null);
-  const [loading, setLoading] = useState(isSupabaseConfigured);
+  const [session, setSession] = useState(() => readTestSession());
+  const [loading, setLoading] = useState(() => isSupabaseConfigured && !readTestSession());
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
+    const testSession = readTestSession();
+    if (testSession) {
+      setSession(testSession);
+      setLoading(false);
+      return undefined;
+    }
+
     if (!isSupabaseConfigured) {
       setLoading(false);
       return undefined;
@@ -33,30 +77,18 @@ export function useAuthSession() {
   }, []);
 
   const actions = useMemo(() => ({
-    signInWithEmail: async (email) => {
+    signInWithTestProvider: async (provider) => {
       setError("");
       setMessage("");
-      if (!isSupabaseConfigured) {
-        setError("Supabase Auth 환경변수가 없습니다.");
-        return;
-      }
-
-      const redirectTo = `${window.location.origin}/login`;
-      const { error: signInError } = await supabase.auth.signInWithOtp({
-        email,
-        options: { emailRedirectTo: redirectTo },
-      });
-
-      if (signInError) {
-        setError(signInError.message);
-        return;
-      }
-
-      setMessage("로그인 링크를 보냈습니다. 메일에서 링크를 열면 이어서 프로필을 선택합니다.");
+      const nextSession = makeTestSession(provider);
+      writeTestSession(nextSession);
+      setSession(nextSession);
+      return nextSession;
     },
     signOut: async () => {
       setError("");
       setMessage("");
+      writeTestSession(null);
       if (isSupabaseConfigured) await supabase.auth.signOut();
       setSession(null);
     },

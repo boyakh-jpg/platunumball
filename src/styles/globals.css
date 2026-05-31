@@ -266,6 +266,49 @@ h3 {
   padding: 8px 10px;
 }
 
+.social-login-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.provider-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 52px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 950;
+}
+
+.provider-button span {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  color: #07110f;
+}
+
+.provider-naver {
+  border-color: rgba(3, 199, 90, 0.38);
+  background: rgba(3, 199, 90, 0.13);
+}
+
+.provider-kakao {
+  border-color: rgba(254, 229, 0, 0.38);
+  background: rgba(254, 229, 0, 0.12);
+}
+
+.provider-google {
+  border-color: rgba(116, 168, 255, 0.34);
+}
+
 .auth-profile-preview > div {
   display: grid;
   min-width: 0;
