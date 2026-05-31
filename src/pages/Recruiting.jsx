@@ -1,11 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Handshake, MapPin, PlusCircle, Swords } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import TierBadge from "../components/rating/TierBadge.jsx";
-import { COURTS, MATCH_MODES, REGIONS } from "../lib/constants.js";
+import { COURTS, MATCH_MODES, PLAYER_POSITIONS, REGIONS } from "../lib/constants.js";
 import {
   RECRUITING_TYPES,
   getRecruitingFit,
@@ -33,15 +33,23 @@ export default function Recruiting({ app }) {
     mode: "5v5",
     ranked: true,
     spots: 1,
-    teamId: myTeams[0]?.id ?? app.state.teams[0]?.id,
+    teamId: myTeams[0]?.id ?? "",
+    position: "상관없음",
     memo: "포지션은 맞춰볼게요. 경기 전 룰만 먼저 확인해요.",
   }));
 
   const userById = useMemo(() => Object.fromEntries(app.state.users.map((user) => [user.id, user])), [app.state.users]);
   const teamById = useMemo(() => Object.fromEntries(app.state.teams.map((team) => [team.id, team])), [app.state.teams]);
-  const selectedTeam = teamById[draft.teamId] ?? myTeams[0] ?? app.state.teams[0];
+  const selectedTeam = myTeams.find((team) => team.id === draft.teamId) ?? myTeams[0] ?? null;
   const targetMmr = draft.type === "need_player" ? selectedTeam?.mmr ?? 1200 : app.currentUser.ratings.integrated;
   const draftRange = getRecruitingTierRange(targetMmr, draft.ranked);
+  const canPostRecruiting = draft.type !== "need_player" || Boolean(selectedTeam);
+
+  useEffect(() => {
+    if (draft.type !== "need_player") return;
+    if (selectedTeam && draft.teamId === selectedTeam.id) return;
+    setDraft((current) => ({ ...current, teamId: myTeams[0]?.id ?? "" }));
+  }, [draft.teamId, draft.type, myTeams, selectedTeam]);
 
   const posts = useMemo(() => {
     return [...(app.state.recruitingPosts ?? [])]
@@ -114,6 +122,7 @@ export default function Recruiting({ app }) {
                     <div className="badge-row">
                       <Badge tone={post.ranked === false ? "neutral" : "green"}>{post.ranked === false ? "친선" : "랭크 반영"}</Badge>
                       <Badge tone={fit.tone}>{fit.label}</Badge>
+                      <Badge tone="blue">{post.position && post.position !== "상관없음" ? post.position : "포지션 자유"}</Badge>
                       {isNationalRecruitingPost(post, app.state) ? <Badge tone="gold">전국구</Badge> : null}
                     </div>
                     <h3>{post.title}</h3>
@@ -172,7 +181,7 @@ export default function Recruiting({ app }) {
                     key={type}
                     type="button"
                     className={draft.type === type ? "active" : ""}
-                    onClick={() => update({ type, title: meta.emptyTitle })}
+                    onClick={() => update({ type, title: meta.emptyTitle, position: type === "find_team" ? app.currentUser.position : "상관없음" })}
                   >
                     {meta.label}
                   </button>
@@ -217,12 +226,32 @@ export default function Recruiting({ app }) {
                 <label>
                   모집 팀
                   <select value={draft.teamId} onChange={(event) => update({ teamId: event.target.value })}>
-                    {[...myTeams, ...app.state.teams.filter((team) => !myTeams.some((mine) => mine.id === team.id))].map((team) => (
+                    {myTeams.map((team) => (
                       <option key={team.id} value={team.id}>{team.region} · {team.name} · {team.mmr}</option>
                     ))}
                   </select>
                 </label>
               ) : null}
+              {draft.type === "need_player" ? (
+                <p className={canPostRecruiting ? "form-help" : "form-warning"}>
+                  {canPostRecruiting ? "용병 모집은 내 소속팀으로만 올릴 수 있습니다." : "소속팀이 있어야 용병 모집을 올릴 수 있습니다."}
+                </p>
+              ) : null}
+              <div className="position-tab-group">
+                <span>포지션</span>
+                <div className="segmented-control compact-segments position-segments">
+                  {PLAYER_POSITIONS.map((position) => (
+                    <button
+                      key={position}
+                      type="button"
+                      className={draft.position === position ? "active" : ""}
+                      onClick={() => update({ position })}
+                    >
+                      {position}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <label>
                 필요 인원
                 <input type="number" min="1" max="5" value={draft.spots} onChange={(event) => update({ spots: event.target.value })} />
@@ -239,7 +268,7 @@ export default function Recruiting({ app }) {
                 메모
                 <textarea value={draft.memo} onChange={(event) => update({ memo: event.target.value })} />
               </label>
-              <Button type="submit"><PlusCircle size={18} /> 모집글 올리기</Button>
+              <Button type="submit" disabled={!canPostRecruiting}><PlusCircle size={18} /> 모집글 올리기</Button>
             </form>
           </Card>
         </aside>

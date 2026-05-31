@@ -15,9 +15,10 @@ export default function TierEmblem({ mmr, size = "md", showLabel = false }) {
   const tier = getTier(mmr);
   const division = getTierDivision(mmr);
   const src = emblemByTier[tier.name] ?? emblemByTier.Rookie;
+  const tierClass = tier.name.toLowerCase();
 
   return (
-    <figure className={`tier-emblem tier-emblem-${size}`} style={{ "--tier-color": tier.color }}>
+    <figure className={`tier-emblem tier-emblem-${size} tier-rank-${tierClass}`} style={{ "--tier-color": tier.color }}>
       <img src={src} alt={`${division} 티어 문장`} loading="lazy" />
       {showLabel ? (
         <figcaption>

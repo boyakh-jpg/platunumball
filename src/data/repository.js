@@ -633,6 +633,25 @@ export function reportMatch(state, matchId, reason = "") {
 
 export function createRecruitingPost(state, draft) {
   const postType = draft.type === "find_team" ? "find_team" : "need_player";
+  const userTeamIds = new Set(
+    state.teams
+      .filter((team) => team.members.some((member) => member.userId === state.currentUserId))
+      .map((team) => team.id),
+  );
+  if (postType === "need_player" && !userTeamIds.has(draft.teamId)) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "소속팀 필요",
+          body: "용병 모집은 내 소속팀으로만 올릴 수 있습니다.",
+          tone: "team",
+        },
+        ...state.notifications,
+      ],
+    };
+  }
   const post = {
     id: makeId("q"),
     type: postType,
@@ -643,6 +662,7 @@ export function createRecruitingPost(state, draft) {
     ranked: draft.ranked !== false,
     spots: Math.max(1, Number(draft.spots ?? 1)),
     teamId: postType === "need_player" ? draft.teamId : null,
+    position: draft.position || "상관없음",
     playerId: state.currentUserId,
     memo: draft.memo?.trim() || "같이 뛸 사람을 찾고 있습니다.",
     status: "open",
