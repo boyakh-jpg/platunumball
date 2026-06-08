@@ -3161,3 +3161,218 @@ input[type="color"] {
     padding: 8px;
   }
 }
+
+@media (max-width: 640px) {
+  .landing {
+    overflow-x: hidden;
+  }
+
+  .landing-hero {
+    min-height: auto;
+    align-content: start;
+    gap: 18px;
+    overflow: visible;
+    padding: 20px 14px 24px;
+  }
+
+  .landing-copy {
+    max-width: 100%;
+    gap: 14px;
+  }
+
+  .landing-copy h1 {
+    font-size: clamp(2.35rem, 18vw, 3.15rem);
+    line-height: 0.96;
+    overflow-wrap: anywhere;
+  }
+
+  .landing-copy p {
+    max-width: 100%;
+    font-size: 0.98rem;
+    line-height: 1.5;
+  }
+
+  .landing-actions {
+    display: grid;
+    width: 100%;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .landing-actions a,
+  .landing-actions .button {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .button {
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  .landing-actions .button {
+    min-height: 46px;
+    padding-inline: 12px;
+    text-align: center;
+  }
+
+  .landing-stat-grid {
+    gap: 8px;
+  }
+
+  .landing-stat-grid span {
+    min-width: 0;
+    padding: 10px;
+  }
+
+  .landing-stat-grid strong {
+    font-size: 1.25rem;
+  }
+
+  .broadcast-panel {
+    min-height: 0;
+    align-items: stretch;
+  }
+
+  .broadcast-glass {
+    gap: 12px;
+    padding: 14px;
+    backdrop-filter: blur(12px);
+  }
+
+  .broadcast-glass h2 {
+    font-size: 1.1rem;
+    overflow-wrap: anywhere;
+  }
+
+  .broadcast-score {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding-block: 12px;
+    text-align: center;
+  }
+
+  .broadcast-score span {
+    min-width: 0;
+    font-size: 0.7rem;
+  }
+
+  .broadcast-score span:first-child {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .broadcast-score span:last-child {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .broadcast-score strong {
+    font-size: clamp(2rem, 18vw, 2.7rem);
+  }
+
+  .broadcast-score strong:first-of-type {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .broadcast-score strong:last-of-type {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .broadcast-score i {
+    grid-column: 1 / -1;
+    grid-row: 3;
+  }
+
+  .broadcast-list {
+    gap: 8px;
+  }
+
+  .broadcast-list span {
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 8px;
+    overflow-wrap: anywhere;
+  }
+
+  .app-main {
+    overflow-x: hidden;
+    padding: 14px 12px calc(var(--bottom-nav-height) + 18px);
+  }
+
+  .page-stack {
+    gap: 14px;
+  }
+
+  .page-header h1 {
+    font-size: clamp(1.8rem, 10vw, 2.35rem);
+    overflow-wrap: anywhere;
+  }
+
+  .page-header .button {
+    width: 100%;
+  }
+
+  .court-command {
+    min-height: auto;
+    gap: 16px;
+    overflow: visible;
+    padding: 16px;
+  }
+
+  .court-command-copy {
+    align-content: start;
+  }
+
+  .tier-crest-lockup {
+    gap: 12px;
+  }
+
+  .tier-emblem-hero {
+    width: min(132px, 44vw);
+  }
+
+  .tier-crest-lockup > div > strong {
+    font-size: clamp(3.1rem, 18vw, 4rem);
+    line-height: 0.9;
+  }
+
+  .court-command-copy h2 {
+    font-size: 1.12rem;
+    overflow-wrap: anywhere;
+  }
+
+  .court-command .tier-line {
+    max-width: 100%;
+    font-size: 0.95rem;
+  }
+
+  .home-search-panel {
+    padding: 12px;
+  }
+
+  .home-search-box {
+    gap: 8px;
+    padding: 8px 10px;
+  }
+
+  .home-search-box input {
+    min-width: 0;
+    min-height: 44px;
+    font-size: 1rem;
+  }
+
+  .home-dashboard-grid {
+    gap: 14px;
+  }
+
+  .section-title-row,
+  .rating-card-top,
+  .rating-card-bottom,
+  .match-card-header,
+  .team-card-top {
+    flex-wrap: wrap;
+  }
+}

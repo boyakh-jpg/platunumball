@@ -13,18 +13,18 @@ export default function Landing({ state }) {
         <div className="landing-copy">
           <Badge tone="green">RankBall Season Zero</Badge>
           <h1>RankBall</h1>
-          <p>친구끼리 뛰는 농구를 랭크전처럼 기록하고, 경기계약서와 승인으로 티어를 올리는 코트 래더.</p>
+          <p>동네 코트의 경기 기록, 팀 히스토리, 랭크 경쟁을 한 곳에서 관리하는 농구 래더.</p>
           <div className="landing-actions">
             <Link to="/app/create">
               <Button>
-                오늘의 판 만들기 <ArrowRight size={18} />
+                오늘 판 만들기 <ArrowRight size={18} />
               </Button>
             </Link>
             <Link to="/app">
               <Button variant="secondary"><House size={18} /> 홈 화면</Button>
             </Link>
             <Link to="/app/rankings">
-              <Button variant="secondary">랭킹 보드 보기</Button>
+              <Button variant="secondary">랭크보드</Button>
             </Link>
             <Link to="/login">
               <Button variant="secondary"><LogIn size={18} /> 로그인</Button>
@@ -49,9 +49,9 @@ export default function Landing({ state }) {
             </div>
             <div className="broadcast-list">
               <span><Trophy size={17} /> {topUser.name} · {topUser.ratings.integrated} MMR</span>
-              <span><ClipboardCheck size={17} /> Contract locked before tip-off</span>
-              <span><ShieldCheck size={17} /> Majority approval updates rank</span>
-              <span><BarChart3 size={17} /> 5v5 official has the highest weight</span>
+              <span><ClipboardCheck size={17} /> 경기 조건은 시작 전에 고정</span>
+              <span><ShieldCheck size={17} /> 과반 승인 후 랭크 반영</span>
+              <span><BarChart3 size={17} /> 공식 5v5는 가장 높은 가중치</span>
             </div>
           </div>
         </div>
