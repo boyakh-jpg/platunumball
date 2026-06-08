@@ -3316,6 +3316,9 @@ input[type="color"] {
   }
 
   .court-command {
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+    min-width: 0;
     min-height: auto;
     gap: 16px;
     overflow: visible;
@@ -3349,6 +3352,10 @@ input[type="color"] {
     font-size: 0.95rem;
   }
 
+  .court-command .mode-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .home-search-panel {
     padding: 12px;
   }
@@ -3365,7 +3372,22 @@ input[type="color"] {
   }
 
   .home-dashboard-grid {
+    grid-template-columns: minmax(0, 1fr);
     gap: 14px;
+  }
+
+  .content-grid,
+  .content-grid.wide-left,
+  .home-primary-stack,
+  .home-side-stack,
+  .home-side-stack > .card {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .compact-list a,
+  .compact-list > div {
+    min-width: 0;
   }
 
   .section-title-row,
