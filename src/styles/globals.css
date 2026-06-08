@@ -1648,14 +1648,14 @@ input[type="color"] {
     left: 12px;
     z-index: 20;
     display: grid;
-    grid-template-columns: repeat(6, 1fr);
-    gap: 4px;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 3px;
     border: 1px solid var(--line);
     border-radius: var(--radius);
     background: rgba(16, 18, 17, 0.92);
     box-shadow: var(--shadow);
     backdrop-filter: blur(16px);
-    padding: 6px;
+    padding: 5px;
   }
 
   .bottom-nav a {
@@ -1665,9 +1665,14 @@ input[type="color"] {
     gap: 3px;
     border-radius: 6px;
     color: var(--muted);
-    padding: 7px 2px;
-    font-size: 0.72rem;
+    padding: 7px 1px;
+    font-size: 0.64rem;
     font-weight: 800;
+  }
+
+  .bottom-nav a svg {
+    width: 18px;
+    height: 18px;
   }
 
   .bottom-nav a.active {
@@ -1678,6 +1683,7 @@ input[type="color"] {
   .content-grid,
   .content-grid.wide-left,
   .hero-dashboard,
+  .season-hero,
   .match-hero,
   .landing-hero {
     grid-template-columns: 1fr;
@@ -2494,6 +2500,291 @@ input[type="color"] {
   align-items: start;
 }
 
+.season-page {
+  gap: 22px;
+}
+
+.season-mini-card {
+  border-color: rgba(255, 211, 108, 0.22);
+  background:
+    linear-gradient(135deg, rgba(255, 211, 108, 0.075), rgba(70, 224, 182, 0.035)),
+    rgba(8, 11, 16, 0.78);
+}
+
+.season-mini-card .season-progress {
+  width: 100%;
+}
+
+.season-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 420px);
+  gap: 22px;
+  border: 1px solid rgba(255, 211, 108, 0.24);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(105deg, rgba(5, 7, 10, 0.96), rgba(5, 7, 10, 0.68), rgba(5, 7, 10, 0.94)),
+    url("/assets/rankball-court-hero.png") center / cover no-repeat;
+  box-shadow: var(--shadow);
+  padding: 24px;
+}
+
+.season-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px) 0 0 / 100% 8px,
+    radial-gradient(circle at 82% 16%, rgba(255, 211, 108, 0.18), transparent 18rem);
+  mix-blend-mode: screen;
+  opacity: 0.42;
+}
+
+.season-hero-copy,
+.season-rule-board {
+  position: relative;
+  z-index: 1;
+}
+
+.season-hero-copy {
+  display: grid;
+  align-content: end;
+  gap: 14px;
+}
+
+.season-hero-copy h1 {
+  font-size: clamp(2.6rem, 8vw, 5rem);
+  line-height: 0.95;
+}
+
+.season-hero-copy p {
+  max-width: 620px;
+  color: #d7e0ec;
+  font-size: 1.05rem;
+  line-height: 1.55;
+}
+
+.season-progress {
+  width: min(560px, 100%);
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.season-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--green), var(--gold));
+}
+
+.season-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.season-meta-row span,
+.season-rule-board span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius);
+  background: rgba(8, 11, 16, 0.62);
+  color: var(--muted);
+  padding: 9px 10px;
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+.season-rule-board {
+  display: grid;
+  align-content: end;
+  gap: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--radius);
+  background: rgba(8, 11, 16, 0.64);
+  padding: 16px;
+}
+
+.season-rule-board strong {
+  font-size: 1.25rem;
+}
+
+.season-rule-board .button,
+.season-rule-board a {
+  width: 100%;
+}
+
+.season-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.season-metric-card {
+  display: grid;
+  gap: 5px;
+}
+
+.season-metric-card span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+.season-metric-card strong {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.season-metric-card em {
+  color: var(--subtle);
+  font-size: 0.78rem;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.season-race-list {
+  display: grid;
+  gap: 9px;
+}
+
+.season-race-list a {
+  display: grid;
+  grid-template-columns: 32px auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.045);
+  padding: 10px;
+}
+
+.season-race-list a.mine {
+  border-color: rgba(70, 224, 182, 0.42);
+  background: rgba(70, 224, 182, 0.075);
+}
+
+.season-race-list a > strong {
+  color: var(--gold);
+  font-size: 0.95rem;
+}
+
+.season-race-list b,
+.season-race-list em {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.season-race-list em {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.team-race-list a {
+  grid-template-columns: 32px auto minmax(0, 1fr) auto;
+}
+
+.operations-list {
+  display: grid;
+  gap: 8px;
+}
+
+.operations-list a {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.045);
+  padding: 10px;
+  color: var(--muted);
+  font-weight: 850;
+}
+
+.operations-list strong {
+  color: var(--text);
+}
+
+.rivalry-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+  gap: 12px;
+}
+
+.rivalry-matchup {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  border: 1px solid rgba(255, 117, 95, 0.18);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(135deg, rgba(255, 117, 95, 0.075), rgba(255, 211, 108, 0.045)),
+    rgba(8, 11, 16, 0.74);
+  padding: 14px;
+}
+
+.rivalry-matchup > span {
+  color: var(--gold);
+  font-weight: 950;
+}
+
+.rivalry-matchup div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.rivalry-matchup a {
+  overflow-wrap: anywhere;
+  font-weight: 900;
+}
+
+.rivalry-matchup strong {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.rivalry-matchup p,
+.rivalry-challenge-link {
+  grid-column: 1 / -1;
+}
+
+.rivalry-matchup p {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.rivalry-empty {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.rivalry-empty p {
+  margin-top: 4px;
+}
+
+.rivalry-challenge-link {
+  display: inline-flex;
+  width: max-content;
+  max-width: 100%;
+  align-items: center;
+  gap: 6px;
+  color: var(--green);
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
 .recruiting-board-card {
   gap: 14px;
 }
@@ -3132,8 +3423,13 @@ input[type="color"] {
   .profile-hero,
   .team-detail-hero,
   .stat-entry-grid,
+  .season-metric-grid,
   .recruiting-post {
     grid-template-columns: 1fr;
+  }
+
+  .season-metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .recruiting-compose-card {
@@ -3405,6 +3701,87 @@ input[type="color"] {
     gap: 14px;
   }
 
+  .season-hero {
+    width: 100%;
+    min-width: 0;
+    gap: 14px;
+    padding: 16px;
+  }
+
+  .season-hero-copy,
+  .season-rule-board,
+  .season-metric-card,
+  .rivalry-matchup {
+    min-width: 0;
+  }
+
+  .season-hero-copy {
+    align-content: start;
+  }
+
+  .season-hero-copy h1 {
+    font-size: clamp(2rem, 12vw, 3rem);
+    overflow-wrap: anywhere;
+  }
+
+  .season-hero-copy p {
+    max-width: 100%;
+    font-size: 0.96rem;
+  }
+
+  .season-meta-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .season-meta-row span,
+  .season-rule-board span {
+    width: 100%;
+    min-width: 0;
+    align-items: flex-start;
+    overflow-wrap: anywhere;
+  }
+
+  .season-rule-board {
+    padding: 12px;
+  }
+
+  .season-metric-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .season-race-list a,
+  .team-race-list a {
+    grid-template-columns: 26px auto minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .season-race-list a > .tier-badge,
+  .season-race-list a > .badge {
+    grid-column: 3;
+    width: max-content;
+    max-width: 100%;
+  }
+
+  .operations-list a {
+    min-width: 0;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .rivalry-matchup {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rivalry-matchup > span {
+    justify-self: start;
+  }
+
+  .rivalry-challenge-link {
+    width: 100%;
+    justify-content: space-between;
+  }
+
   .content-grid,
   .content-grid.wide-left,
   .home-primary-stack,
@@ -3425,5 +3802,21 @@ input[type="color"] {
   .match-card-header,
   .team-card-top {
     flex-wrap: wrap;
+  }
+
+  .bottom-nav {
+    gap: 2px;
+    padding: 5px 4px;
+  }
+
+  .bottom-nav a {
+    gap: 2px;
+    padding: 6px 0;
+    font-size: 0.58rem;
+  }
+
+  .bottom-nav a svg {
+    width: 17px;
+    height: 17px;
   }
 }

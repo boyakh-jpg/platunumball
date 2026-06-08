@@ -68,6 +68,7 @@ function normalizeState(state) {
     users: mergeById(state?.users, initialState.users),
     teams: mergeById(state?.teams, initialState.teams),
     affiliations: mergeById(state?.affiliations, initialState.affiliations),
+    seasons: mergeById(state?.seasons, initialState.seasons ?? []),
     matches: mergeById(state?.matches, initialState.matches).map(normalizeMatch),
     notifications: notifications.map((notification) => ({ readAt: null, ...notification })),
     settings: normalizeSettings(state?.settings ?? initialState.settings),

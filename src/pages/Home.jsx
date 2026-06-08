@@ -10,6 +10,7 @@ import TierEmblem from "../components/rating/TierEmblem.jsx";
 import TeamCard from "../components/team/TeamCard.jsx";
 import { COURTS } from "../lib/constants.js";
 import { isNationalRecruitingPost } from "../lib/recruiting.js";
+import { getCurrentSeason, getPlayerSeasonRows, getSeasonProgress } from "../lib/season.js";
 import { getTierDivision, getTierQuote } from "../lib/tier.js";
 
 function compareSchedule(a, b) {
@@ -23,8 +24,8 @@ function matchHasUser(match, userId) {
 function getUserResult(match, userId) {
   const sideName = match.teamA.players.includes(userId) ? "teamA" : "teamB";
   const otherSide = sideName === "teamA" ? "teamB" : "teamA";
-  const sideScore = Number(match[sideName].score ?? match.result?.scoreA ?? 0);
-  const otherScore = Number(match[otherSide].score ?? match.result?.scoreB ?? 0);
+  const sideScore = Number((sideName === "teamA" ? match.result?.scoreA : match.result?.scoreB) ?? match[sideName].score ?? 0);
+  const otherScore = Number((otherSide === "teamA" ? match.result?.scoreA : match.result?.scoreB) ?? match[otherSide].score ?? 0);
   if (sideScore === otherScore) return "D";
   return sideScore > otherScore ? "W" : "L";
 }
@@ -79,6 +80,11 @@ export default function Home({ app }) {
   const myTeam = app.state.teams.find((team) => team.members.some((member) => member.userId === user.id));
   const myTeamCount = app.state.teams.filter((team) => team.members.some((member) => member.userId === user.id)).length;
   const blockedUserIds = app.state.settings?.blockedUserIds ?? [];
+  const season = getCurrentSeason(app.state);
+  const seasonProgress = getSeasonProgress(season);
+  const seasonRows = getPlayerSeasonRows(app.state.users, app.state.matches, season, user.region);
+  const mySeasonIndex = seasonRows.findIndex((row) => row.id === user.id);
+  const mySeasonRow = mySeasonIndex >= 0 ? seasonRows[mySeasonIndex] : null;
   const localRivals = useMemo(() => {
     const regionTeams = app.state.teams
       .filter((team) => team.region === user.region)
@@ -224,6 +230,31 @@ export default function Home({ app }) {
           </Card>
         </div>
         <aside className="page-stack home-side-stack">
+          <Card className="section-card season-mini-card">
+            <div className="section-title-row">
+              <div>
+                <p className="eyebrow">Season Race</p>
+                <h2>{user.region} 시즌 레이스</h2>
+              </div>
+              <Trophy size={20} />
+            </div>
+            <div className="season-progress">
+              <span style={{ width: `${seasonProgress}%` }} />
+            </div>
+            <div className="contract-grid single">
+              <div>
+                <span>내 지역 순위</span>
+                <strong>{mySeasonIndex >= 0 ? `${mySeasonIndex + 1}위` : "대기"}</strong>
+              </div>
+              <div>
+                <span>시즌 전적</span>
+                <strong>{mySeasonRow ? `${mySeasonRow.seasonWins}승 ${mySeasonRow.seasonLosses}패` : "0승 0패"}</strong>
+              </div>
+            </div>
+            <Link to="/app/season">
+              <Button variant="secondary" className="wide-button"><Trophy size={17} /> 시즌 허브</Button>
+            </Link>
+          </Card>
           <Card className="section-card rivalry-card">
             <div className="section-title-row">
               <div>

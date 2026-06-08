@@ -351,6 +351,23 @@ export const initialState = {
     { id: "a4", type: "company", name: "스틸픽", score: 1298, wins: 17, losses: 16 },
     { id: "a5", type: "club", name: "노을농구회", score: 1448, wins: 29, losses: 18 },
   ],
+  seasons: [
+    {
+      id: "season-zero",
+      name: "Season Zero",
+      subtitle: "지역 래더와 승인 시스템을 검증하는 프리시즌",
+      startsAt: "2026-05-31",
+      endsAt: "2026-08-31",
+      active: true,
+      regions: ["마포", "성수", "잠실", "강남"],
+      promotionLine: 4,
+      rules: [
+        "지역 랭킹은 같은 지역 플레이어를 먼저 정렬합니다.",
+        "랭크 반영 경기는 티어 구간 제한과 과반 승인을 모두 통과해야 합니다.",
+        "주장 확인 옵션이 있으면 양팀 주장 승인도 필요합니다.",
+      ],
+    },
+  ],
   matches: [
     {
       id: "m1",

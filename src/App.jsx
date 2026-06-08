@@ -15,6 +15,7 @@ import PlayerDetail from "./pages/PlayerDetail.jsx";
 import Profile from "./pages/Profile.jsx";
 import Rankings from "./pages/Rankings.jsx";
 import Recruiting from "./pages/Recruiting.jsx";
+import Season from "./pages/Season.jsx";
 import Settings from "./pages/Settings.jsx";
 import TeamDetail from "./pages/TeamDetail.jsx";
 import Teams from "./pages/Teams.jsx";
@@ -33,6 +34,7 @@ export default function App() {
           <Route path="/app/create" element={<CreateMatch app={app} />} />
           <Route path="/app/matches/:matchId" element={<MatchRoom app={app} />} />
           <Route path="/app/matches" element={<Matches app={app} />} />
+          <Route path="/app/season" element={<Season app={app} />} />
           <Route path="/app/rankings" element={<Rankings app={app} />} />
           <Route path="/app/recruiting" element={<Recruiting app={app} />} />
           <Route path="/app/teams" element={<Teams app={app} />} />
