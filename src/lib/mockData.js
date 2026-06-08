@@ -1,4 +1,6 @@
-export const initialState = {
+import { COURTS, MATCH_MODES, PLAYER_POSITIONS, REGIONS } from "./constants.js";
+
+const baseState = {
   currentUserId: "u1",
   users: [
     {
@@ -527,3 +529,335 @@ export const initialState = {
   },
   reports: [],
 };
+
+const demoSurnames = ["강", "김", "박", "이", "최", "정", "한", "오", "문", "서", "윤", "장", "배", "권", "노", "신"];
+const demoGivenNames = ["도하", "이준", "채원", "하준", "라온", "서진", "지민", "유겸", "태린", "아린", "현준", "나겸", "시우", "예준", "하온", "민서"];
+const demoSchools = ["연희대", "건대", "서강대", "한양대", "중앙대", "상암고", "동교고", "잠실고"];
+const demoCompanies = ["라임랩", "스틸픽", "오픈코트", "플레이메이트", "넥스트런", "픽앤롤", "프리랜서"];
+const demoClubs = ["노을농구회", "브릿지볼", "림파이어", "메테오스", "리버런", "언더패스"];
+const demoColors = ["#58d2c0", "#f4c74f", "#ff8a5b", "#74a8ff", "#d98cff", "#ff6f61", "#7bd389", "#f05d5e", "#ffc857", "#8ac7db"];
+const demoTeamNames = [
+  "Noeul Kings", "Bridge Ballers", "Rimfire", "Ttukseom Flow", "Jamsil Meteors",
+  "Sunset Riders", "Underpass Five", "Factory Hoops", "Blue Gym", "River Slash",
+  "Court Atlas", "Night Switch", "Rookie Press", "Arc Shooters", "Steel Motion",
+  "Lime Runners", "West Paint", "East Break", "High Glass", "Street Pulse",
+];
+
+function padNumber(value, size = 3) {
+  return String(value).padStart(size, "0");
+}
+
+function cycle(list, index) {
+  return list[index % list.length];
+}
+
+function makeDemoUser(index) {
+  const region = cycle(REGIONS, index - 1);
+  const position = cycle(PLAYER_POSITIONS.slice(1), index - 1);
+  const mmr = 980 + ((index * 43) % 640);
+  const name = `${cycle(demoSurnames, index)}${cycle(demoGivenNames, index * 3)}`;
+  return {
+    id: `u${index}`,
+    name,
+    handle: `@rankball${padNumber(index)}`,
+    position,
+    region,
+    school: cycle(demoSchools, index),
+    company: cycle(demoCompanies, index * 2),
+    club: cycle(demoClubs, index * 3),
+    trustScore: 72 + ((index * 7) % 27),
+    streak: (index % 7) - 3,
+    avatarColor: cycle(demoColors, index),
+    testLoginId: `rankball-${padNumber(index)}`,
+    testPassword: "test-0000",
+    ratings: {
+      integrated: mmr,
+      modes: {
+        "1v1": Math.max(800, mmr - 130 + ((index * 13) % 120)),
+        "2v2": Math.max(800, mmr - 80 + ((index * 17) % 100)),
+        "3v3": Math.max(800, mmr - 35 + ((index * 19) % 90)),
+        "5v5": Math.max(800, mmr + ((index * 23) % 90)),
+      },
+    },
+  };
+}
+
+function buildDemoUsers(baseUsers) {
+  const users = [...baseUsers];
+  for (let index = users.length + 1; index <= 100; index += 1) {
+    users.push(makeDemoUser(index));
+  }
+  return users.map((user, userIndex) => ({
+    testLoginId: `rankball-${padNumber(userIndex + 1)}`,
+    testPassword: "test-0000",
+    ...user,
+  }));
+}
+
+function makeDemoTeam(index, users) {
+  const firstUserIndex = index * 5;
+  const members = users.slice(firstUserIndex, firstUserIndex + 5).map((user, memberIndex) => ({
+    userId: user.id,
+    role: memberIndex === 0 ? "captain" : memberIndex === 4 && index % 3 === 0 ? "mercenary" : memberIndex === 3 && index % 4 === 0 ? "candidate" : "regular",
+  }));
+  const region = members[0] ? users.find((user) => user.id === members[0].userId)?.region : cycle(REGIONS, index);
+  const court = COURTS.find((item) => item.region === region) ?? COURTS[index % COURTS.length];
+
+  return {
+    id: `td${padNumber(index + 1, 2)}`,
+    name: `${cycle(demoTeamNames, index)} ${padNumber(index + 1, 2)}`,
+    homeCourt: court.name,
+    region,
+    mmr: 1080 + ((index * 37) % 430),
+    wins: 42 + ((index * 11) % 36),
+    losses: 28 + ((index * 7) % 31),
+    accent: cycle(demoColors, index * 2),
+    favorite: index < 6,
+    members,
+  };
+}
+
+function buildDemoTeams(baseTeams, users) {
+  const teams = [...baseTeams];
+  for (let index = 0; index < 20; index += 1) {
+    teams.push(makeDemoTeam(index, users));
+  }
+  return teams;
+}
+
+function makePlayerStats(matchIndex, sideIndex, playerIndex, user) {
+  const positionBonus = user.position === "C" || user.position === "PF" ? 2 : 0;
+  const guardBonus = user.position === "PG" || user.position === "SG" ? 2 : 0;
+  return {
+    points: 4 + ((matchIndex + playerIndex * 3 + sideIndex * 5) % 13),
+    rebounds: 2 + positionBonus + ((matchIndex + playerIndex * 2 + sideIndex) % 8),
+    assists: 1 + guardBonus + ((matchIndex + playerIndex + sideIndex * 2) % 7),
+    steals: (matchIndex + playerIndex + sideIndex) % 4,
+    blocks: positionBonus ? (matchIndex + playerIndex) % 3 : (matchIndex + sideIndex) % 2,
+  };
+}
+
+function sumPoints(playerStats, playerIds) {
+  return playerIds.reduce((sum, playerId) => sum + Number(playerStats[playerId]?.points ?? 0), 0);
+}
+
+function makeMatchTitle(matchIndex, teamA, teamB, mode) {
+  const label = matchIndex % 4 === 0 ? "공식전" : matchIndex % 5 === 0 ? "빠른대전" : "경쟁전";
+  return `${teamA.region} ${mode} ${label} #${padNumber(matchIndex + 1, 4)}`
+    + ` · ${teamA.name.split(" ")[0]} vs ${teamB.name.split(" ")[0]}`;
+}
+
+function makeConfirmedMatch(matchIndex, teams, userById) {
+  const teamA = teams[matchIndex % teams.length];
+  let teamB = teams[(matchIndex * 7 + 3) % teams.length];
+  if (teamA.id === teamB.id) teamB = teams[(matchIndex + 9) % teams.length];
+  const mode = "5v5";
+  const playersA = teamA.members.slice(0, 5).map((member) => member.userId);
+  const playersB = teamB.members.slice(0, 5).map((member) => member.userId);
+  const playerStats = {};
+
+  playersA.forEach((playerId, playerIndex) => {
+    playerStats[playerId] = makePlayerStats(matchIndex, 0, playerIndex, userById[playerId]);
+  });
+  playersB.forEach((playerId, playerIndex) => {
+    playerStats[playerId] = makePlayerStats(matchIndex, 1, playerIndex, userById[playerId]);
+  });
+
+  let scoreA = sumPoints(playerStats, playersA);
+  const scoreB = sumPoints(playerStats, playersB);
+  if (scoreA === scoreB) {
+    playerStats[playersA[0]].points += 1;
+    scoreA += 1;
+  }
+
+  const aWon = scoreA > scoreB;
+  const scheduledDate = `2026-${String(5 + Math.floor((matchIndex % 92) / 31)).padStart(2, "0")}-${String((matchIndex % 28) + 1).padStart(2, "0")}`;
+  const scheduledTime = `${String(10 + (matchIndex % 11)).padStart(2, "0")}:${matchIndex % 2 ? "30" : "00"}`;
+  const court = COURTS.find((item) => item.region === teamA.region)?.name ?? teamA.homeCourt;
+
+  return {
+    id: `md${padNumber(matchIndex + 1, 4)}`,
+    title: makeMatchTitle(matchIndex, teamA, teamB, mode),
+    mode,
+    court,
+    scheduledDate,
+    scheduledTime,
+    scheduledAt: `${scheduledDate} ${scheduledTime}`,
+    status: "confirmed",
+    ranked: matchIndex % 5 !== 0,
+    official: matchIndex % 4 === 0,
+    preRegistered: true,
+    rules: {
+      targetScore: 21,
+      timeLimit: 12,
+      winByTwo: matchIndex % 3 === 0,
+      ball: "7호 공",
+      attackRule: "공격권은 득점 후 교대",
+      foulRule: "파울은 콜한 쪽 기준으로 즉시 중단",
+    },
+    memo: "테스트 리그 시드 경기입니다. 개인 기록과 팀 히스토리 검증용 데이터입니다.",
+    stakes: "금전 거래 없이 약속과 벌칙만 기록합니다.",
+    objectionWindow: "24시간",
+    evidence: [{ id: "scoreboard_photo", label: "스코어보드 사진" }, { id: "captain", label: "양팀 주장 확인" }],
+    teamA: { name: teamA.name, teamId: teamA.id, players: playersA, score: scoreA },
+    teamB: { name: teamB.name, teamId: teamB.id, players: playersB, score: scoreB },
+    agreements: { teamA: playersA, teamB: playersB },
+    approvals: { teamA: playersA, teamB: playersB },
+    disputes: [],
+    result: {
+      scoreA,
+      scoreB,
+      playerStats,
+      submittedAt: `${scheduledDate}T${scheduledTime}:00.000Z`,
+    },
+    ratingResult: [...playersA, ...playersB].map((playerId, playerIndex) => {
+      const teamAWinner = playersA.includes(playerId) ? aWon : !aWon;
+      const delta = (teamAWinner ? 7 : -7) + ((matchIndex + playerIndex) % 5) * (teamAWinner ? 1 : -1);
+      return { playerId, integratedDelta: delta, modeDelta: Math.round(delta * 1.2), result: teamAWinner ? "win" : "loss" };
+    }),
+    teamRatingResult: { teamA: aWon ? 11 : -9, teamB: aWon ? -9 : 11 },
+    createdAt: `${scheduledDate}T${scheduledTime}:00.000Z`,
+    confirmedAt: `${scheduledDate}T${scheduledTime}:00.000Z`,
+  };
+}
+
+function makeActiveMatch(activeIndex, teams, userById) {
+  const base = makeConfirmedMatch(1000 + activeIndex, teams, userById);
+  const status = cycle(["contract", "agreed", "approval", "disputed"], activeIndex);
+  const common = {
+    ...base,
+    id: `ma${padNumber(activeIndex + 1, 3)}`,
+    title: `${status === "contract" ? "동의 대기" : status === "agreed" ? "진행 예정" : status === "approval" ? "결과 승인" : "이의 확인"} · ${base.teamA.name} vs ${base.teamB.name}`,
+    scheduledDate: `2026-06-${String(10 + (activeIndex % 18)).padStart(2, "0")}`,
+    scheduledTime: `${String(18 + (activeIndex % 4)).padStart(2, "0")}:00`,
+    scheduledAt: `2026-06-${String(10 + (activeIndex % 18)).padStart(2, "0")} ${String(18 + (activeIndex % 4)).padStart(2, "0")}:00`,
+    status,
+    confirmedAt: null,
+    ratingResult: null,
+    teamRatingResult: null,
+  };
+
+  if (status === "contract") {
+    return {
+      ...common,
+      teamA: { ...common.teamA, score: 0 },
+      teamB: { ...common.teamB, score: 0 },
+      agreements: { teamA: common.teamA.players.slice(0, 2), teamB: common.teamB.players.slice(0, 1) },
+      approvals: { teamA: [], teamB: [] },
+      result: null,
+    };
+  }
+  if (status === "agreed") {
+    return {
+      ...common,
+      teamA: { ...common.teamA, score: 0 },
+      teamB: { ...common.teamB, score: 0 },
+      agreements: { teamA: common.teamA.players, teamB: common.teamB.players },
+      approvals: { teamA: [], teamB: [] },
+      result: null,
+    };
+  }
+  if (status === "approval") {
+    return { ...common, agreements: { teamA: common.teamA.players, teamB: common.teamB.players }, approvals: { teamA: common.teamA.players.slice(0, 2), teamB: common.teamB.players.slice(0, 3) } };
+  }
+  return {
+    ...common,
+    agreements: { teamA: common.teamA.players, teamB: common.teamB.players },
+    approvals: { teamA: common.teamA.players.slice(0, 1), teamB: common.teamB.players.slice(0, 1) },
+    disputes: [{ id: `dd${padNumber(activeIndex, 3)}`, by: common.teamB.players[0], reason: "개인 기록 확인이 필요합니다.", createdAt: "2026-06-08T12:00:00.000Z" }],
+  };
+}
+
+function buildDemoMatches(baseMatches, teams, users) {
+  const demoTeams = teams.filter((team) => team.id.startsWith("td"));
+  const userById = Object.fromEntries(users.map((user) => [user.id, user]));
+  const confirmed = Array.from({ length: 1000 }, (_item, index) => makeConfirmedMatch(index, demoTeams, userById));
+  const active = Array.from({ length: 36 }, (_item, index) => makeActiveMatch(index, demoTeams, userById));
+  return [...baseMatches, ...active, ...confirmed];
+}
+
+function makeRecruitingPost(index, teams, users) {
+  const type = cycle(["need_player", "find_team", "need_team"], index);
+  const team = teams.filter((item) => item.id.startsWith("td"))[index % 20];
+  const player = users[(index * 7 + 11) % users.length];
+  const region = type === "find_team" ? player.region : team.region;
+  const court = COURTS.find((item) => item.region === region)?.name ?? cycle(COURTS, index).name;
+  const ranked = index % 4 !== 0;
+  const applicantTeam = teams.filter((item) => item.id.startsWith("td"))[(index * 5 + 3) % 20];
+  const applicantUser = users[(index * 9 + 17) % users.length];
+  const title = type === "need_player"
+    ? `${team.name} ${ranked ? "경쟁전" : "빠른대전"} 팀원 구해요`
+    : type === "find_team"
+      ? `${player.name} ${region} ${ranked ? "경쟁전" : "빠른대전"} 팀 구해요`
+      : `${team.name} 상대팀 구해요`;
+
+  return {
+    id: `qd${padNumber(index + 1, 3)}`,
+    type,
+    title,
+    region,
+    court,
+    mode: cycle(MATCH_MODES, index).id,
+    ranked,
+    spots: type === "need_player" ? 1 + (index % 2) : 1,
+    teamId: type === "find_team" ? null : team.id,
+    position: type === "need_team" ? "상관없음" : cycle(PLAYER_POSITIONS, index),
+    playerId: type === "find_team" ? player.id : team.members[0].userId,
+    memo: type === "need_player"
+      ? "포지션 맞으면 바로 경기방 초대합니다. 과반 동의 후 진행해요."
+      : type === "find_team"
+        ? "혼자 참여 가능합니다. 빠르게 뛸 팀 찾습니다."
+        : "비슷한 MMR 팀이면 바로 매치 잡습니다.",
+    status: index % 11 === 0 ? "closed" : "open",
+    applicants: type === "need_player"
+      ? [{ kind: "player", playerId: applicantUser.id, createdAt: "2026-06-01T10:00:00.000Z" }]
+      : [{ kind: "team", teamId: applicantTeam.id, playerId: applicantTeam.members[0].userId, createdAt: "2026-06-01T10:00:00.000Z" }],
+    createdAt: `2026-06-${String(1 + (index % 7)).padStart(2, "0")}T${String(9 + (index % 10)).padStart(2, "0")}:00:00.000Z`,
+  };
+}
+
+function buildDemoReports(matches, users) {
+  return Array.from({ length: 12 }, (_item, index) => {
+    const match = matches.find((item) => item.id === `ma${padNumber((index % 36) + 1, 3)}`) ?? matches[index];
+    return {
+      id: `rd${padNumber(index + 1, 3)}`,
+      type: "match",
+      targetId: match.id,
+      by: users[(index * 11) % users.length].id,
+      reason: index % 2 ? "리바운드 기록 재확인이 필요합니다." : "어시스트 기록 확인 요청입니다.",
+      status: index % 5 === 0 ? "resolved" : "open",
+      createdAt: "2026-06-08T11:00:00.000Z",
+    };
+  });
+}
+
+function uniqueById(items) {
+  return [...new Map(items.map((item) => [item.id, item])).values()];
+}
+
+function withDemoLeague(state) {
+  const users = buildDemoUsers(state.users);
+  const teams = buildDemoTeams(state.teams, users);
+  const matches = buildDemoMatches(state.matches, teams, users);
+  const recruitingPosts = [
+    ...state.recruitingPosts,
+    ...Array.from({ length: 60 }, (_item, index) => makeRecruitingPost(index, teams, users)),
+  ];
+  const reports = [...state.reports, ...buildDemoReports(matches, users)];
+
+  return {
+    ...state,
+    users: uniqueById(users),
+    teams: uniqueById(teams),
+    matches: uniqueById(matches),
+    recruitingPosts: uniqueById(recruitingPosts),
+    reports: uniqueById(reports),
+    settings: {
+      ...state.settings,
+      favoriteTeamIds: [...new Set([...(state.settings?.favoriteTeamIds ?? []), "td01", "td02", "td03", "td04"])],
+      favoriteCourtIds: [...new Set(state.settings?.favoriteCourtIds ?? [])],
+    },
+  };
+}
+
+export const initialState = withDemoLeague(baseState);

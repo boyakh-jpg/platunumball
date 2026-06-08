@@ -3006,6 +3006,72 @@ input[type="color"] {
   color: var(--blue);
 }
 
+.admin-seed-card {
+  border-color: rgba(118, 169, 255, 0.22);
+}
+
+.admin-account-search {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.045);
+  padding: 8px 10px;
+}
+
+.admin-account-search input {
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  padding: 8px 0;
+}
+
+.admin-account-search input:focus {
+  box-shadow: none;
+}
+
+.admin-account-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+  gap: 8px;
+}
+
+.admin-account-grid button {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--text);
+  cursor: pointer;
+  padding: 10px;
+  text-align: left;
+}
+
+.admin-account-grid button.active {
+  border-color: rgba(70, 224, 182, 0.5);
+  background: rgba(70, 224, 182, 0.1);
+}
+
+.admin-account-grid strong,
+.admin-account-grid em {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.admin-account-grid em {
+  grid-column: 2;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-style: normal;
+  font-weight: 800;
+}
+
 .match-stack {
   display: grid;
   gap: 12px;

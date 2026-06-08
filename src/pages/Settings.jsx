@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ShieldCheck, UserRound } from "lucide-react";
+import { Database, Search, ShieldCheck, UserRound } from "lucide-react";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import Badge from "../components/common/Badge.jsx";
@@ -11,6 +11,7 @@ export default function Settings({ app, auth }) {
   const [blockUserId, setBlockUserId] = useState(app.state.users.find((user) => user.id !== app.currentUserId)?.id ?? "");
   const [reportMatchId, setReportMatchId] = useState(app.state.matches[0]?.id ?? "");
   const [reportReason, setReportReason] = useState("경기 기록 확인이 필요합니다.");
+  const [accountQuery, setAccountQuery] = useState("");
   const userMap = Object.fromEntries(app.state.users.map((user) => [user.id, user]));
   const matchMap = Object.fromEntries(app.state.matches.map((match) => [match.id, match]));
 
@@ -20,6 +21,32 @@ export default function Settings({ app, auth }) {
   );
   const selectedBlockUserId = blockableUsers.some((user) => user.id === blockUserId) ? blockUserId : blockableUsers[0]?.id ?? "";
   const selectedReportMatchId = app.state.matches.some((match) => match.id === reportMatchId) ? reportMatchId : app.state.matches[0]?.id ?? "";
+  const matchCountByUser = useMemo(() => {
+    const counts = new Map();
+    app.state.matches.forEach((match) => {
+      [...(match.teamA?.players ?? []), ...(match.teamB?.players ?? [])].forEach((userId) => {
+        counts.set(userId, (counts.get(userId) ?? 0) + 1);
+      });
+    });
+    return counts;
+  }, [app.state.matches]);
+  const testAccounts = useMemo(
+    () => app.state.users.filter((user) => user.testLoginId),
+    [app.state.users],
+  );
+  const visibleTestAccounts = useMemo(() => {
+    const keyword = accountQuery.trim().toLowerCase();
+    return testAccounts
+      .filter((user) => (
+        keyword
+          ? `${user.name} ${user.handle} ${user.region} ${user.position} ${user.testLoginId}`.toLowerCase().includes(keyword)
+          : true
+      ))
+      .slice(0, 12);
+  }, [accountQuery, testAccounts]);
+  const averageMatches = testAccounts.length
+    ? Math.round(testAccounts.reduce((sum, user) => sum + (matchCountByUser.get(user.id) ?? 0), 0) / testAccounts.length)
+    : 0;
 
   const submitBlock = (event) => {
     event.preventDefault();
@@ -52,19 +79,66 @@ export default function Settings({ app, auth }) {
             {auth?.user ? <p className="form-help">로그인: {auth.user.user_metadata?.providerName ?? auth.user.email} 테스트 세션</p> : null}
           </Card>
 
+          <Card className="section-card admin-seed-card">
+            <div className="section-title-row">
+              <div>
+                <p className="eyebrow">Admin Seed</p>
+                <h2>테스트 리그 DB</h2>
+              </div>
+              <Database size={22} />
+            </div>
+            <div className="contract-grid single">
+              <div>
+                <span>로그인 계정</span>
+                <strong>{testAccounts.length}개</strong>
+              </div>
+              <div>
+                <span>경기 데이터</span>
+                <strong>{app.state.matches.length}경기</strong>
+              </div>
+              <div>
+                <span>평균 경기</span>
+                <strong>{averageMatches}경기/계정</strong>
+              </div>
+              <div>
+                <span>모집방</span>
+                <strong>{app.state.recruitingPosts.length}개</strong>
+              </div>
+            </div>
+            <p className="form-help">계정별 5v5 히스토리, 득점/리바운드/어시스트, 승인 대기 경기, 용병/팀 모집방이 함께 생성됩니다.</p>
+          </Card>
+
           <Card className="section-card">
             <div className="section-title-row">
               <div>
-                <p className="eyebrow">데모 로그인</p>
-                <h2>현재 플레이어 전환</h2>
+                <p className="eyebrow">Admin Login</p>
+                <h2>테스트 계정 로그인</h2>
               </div>
               <UserRound size={22} />
             </div>
+            <div className="admin-account-search">
+              <Search size={18} />
+              <input value={accountQuery} placeholder="이름, 지역, 포지션, rankball-001 검색" onChange={(event) => setAccountQuery(event.target.value)} />
+            </div>
+            <div className="admin-account-grid">
+              {visibleTestAccounts.map((user) => (
+                <button
+                  key={user.id}
+                  type="button"
+                  className={user.id === app.currentUserId ? "active" : ""}
+                  onClick={() => app.actions.switchUser(user.id)}
+                >
+                  <span className="avatar small" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
+                  <strong>{user.name}</strong>
+                  <em>{user.testLoginId} · {user.region} · {matchCountByUser.get(user.id) ?? 0}경기</em>
+                </button>
+              ))}
+            </div>
             <label>
-              접속 플레이어
+              전체 계정 선택
               <select value={app.currentUserId} onChange={(event) => app.actions.switchUser(event.target.value)}>
                 {app.state.users.map((user) => (
-                  <option key={user.id} value={user.id}>{user.name} · {user.region} · {user.position}</option>
+                  <option key={user.id} value={user.id}>{user.testLoginId ? `${user.testLoginId} · ` : ""}{user.name} · {user.region} · {user.position}</option>
                 ))}
               </select>
             </label>
