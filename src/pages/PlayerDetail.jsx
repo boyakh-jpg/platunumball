@@ -94,6 +94,7 @@ export default function PlayerDetail({ app }) {
           <TierEmblem mmr={player.ratings.integrated} size="hero" showLabel />
           <div>
             <span>{getTierDivision(player.ratings.integrated)}</span>
+            <em className="tier-score-line">{Math.round(player.ratings.integrated)} MMR</em>
             <strong>{getTierQuote(player.ratings.integrated)}</strong>
           </div>
         </div>

@@ -1,7 +1,7 @@
 import { CREDIBILITY_LEVELS, EVIDENCE_OPTIONS, MATCH_MODES } from "./constants.js";
 import { calculatePlayerStatBoost } from "./matchUtils.js";
 import { getMercenaryPlayerFactor } from "./recruiting.js";
-import { getTier, getTierDivision } from "./tier.js";
+import { getTier, getTierDisplay, getTierDivision, getTierLabel } from "./tier.js";
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const round = (value) => Math.round(value * 10) / 10;
@@ -23,7 +23,7 @@ const modeCapMap = MATCH_MODES.reduce((map, mode) => {
   return map;
 }, {});
 
-export { getTier, getTierDivision };
+export { getTier, getTierDisplay, getTierDivision, getTierLabel };
 
 export function expectedScore(teamMmr = 1200, opponentMmr = 1200) {
   return 1 / (1 + 10 ** ((opponentMmr - teamMmr) / 400));

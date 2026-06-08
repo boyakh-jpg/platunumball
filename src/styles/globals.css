@@ -678,7 +678,17 @@ h3 {
 
 .rating-card strong {
   display: block;
-  font-size: 1.8rem;
+  font-size: 1.28rem;
+  line-height: 1.08;
+  overflow-wrap: anywhere;
+}
+
+.rating-mmr {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
 }
 
 .progress-track {
@@ -2014,11 +2024,17 @@ input[type="color"] {
   gap: 10px;
 }
 
-.court-command-copy > strong,
-.tier-crest-lockup > div > strong {
+.court-command-copy > strong {
   font-size: 5.6rem;
   line-height: 0.9;
   font-variant-numeric: tabular-nums;
+}
+
+.tier-crest-lockup > div > strong {
+  color: var(--text);
+  font-size: clamp(2.15rem, 5vw, 3.35rem);
+  line-height: 0.95;
+  overflow-wrap: anywhere;
 }
 
 .tier-crest-lockup {
@@ -2029,7 +2045,21 @@ input[type="color"] {
 
 .tier-crest-lockup > div {
   display: grid;
-  gap: 10px;
+  gap: 8px;
+}
+
+.tier-score-line {
+  width: max-content;
+  max-width: 100%;
+  border: 1px solid rgba(255, 211, 108, 0.28);
+  border-radius: 999px;
+  background: rgba(255, 211, 108, 0.1);
+  color: var(--gold);
+  padding: 5px 9px;
+  font-size: 0.78rem;
+  font-style: normal;
+  font-weight: 950;
+  line-height: 1;
 }
 
 .court-command-copy h2 {
@@ -2801,7 +2831,6 @@ input[type="color"] {
   color: var(--gold);
   font-size: 0.78rem;
   font-weight: 950;
-  text-transform: uppercase;
 }
 
 .tier-statement > div > strong {
@@ -3338,8 +3367,8 @@ input[type="color"] {
   }
 
   .tier-crest-lockup > div > strong {
-    font-size: clamp(3.1rem, 18vw, 4rem);
-    line-height: 0.9;
+    font-size: clamp(2rem, 13vw, 2.75rem);
+    line-height: 0.95;
   }
 
   .court-command-copy h2 {

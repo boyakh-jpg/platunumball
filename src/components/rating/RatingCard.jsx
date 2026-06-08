@@ -1,6 +1,6 @@
 import Card from "../common/Card.jsx";
 import TierEmblem from "./TierEmblem.jsx";
-import { getTierProgress, getTierQuote } from "../../lib/tier.js";
+import { getTierDivision, getTierProgress, getTierQuote } from "../../lib/tier.js";
 
 export default function RatingCard({ title, mmr, subtitle, trend }) {
   return (
@@ -8,7 +8,8 @@ export default function RatingCard({ title, mmr, subtitle, trend }) {
       <div className="rating-card-top">
         <div>
           <p className="eyebrow">{title}</p>
-          <strong>{Math.round(mmr)}</strong>
+          <strong>{getTierDivision(mmr)}</strong>
+          <span className="rating-mmr">{Math.round(mmr)} MMR</span>
         </div>
         <TierEmblem mmr={mmr} size="sm" />
       </div>

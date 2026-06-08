@@ -151,9 +151,10 @@ export default function Home({ app }) {
           <div className="tier-crest-lockup">
             <TierEmblem mmr={user.ratings.integrated} size="hero" showLabel />
             <div>
-              <strong>{user.ratings.integrated}</strong>
-              <h2>{user.name} · 통합 티어</h2>
-              <Badge tone="gold">{getTierDivision(user.ratings.integrated)}</Badge>
+              <strong>{getTierDivision(user.ratings.integrated)}</strong>
+              <h2>{user.name} · 통합 랭크</h2>
+              <span className="tier-score-line">{Math.round(user.ratings.integrated)} MMR</span>
+              <Badge tone="gold">시즌 점수</Badge>
             </div>
           </div>
           <p className="tier-line">{getTierQuote(user.ratings.integrated)}</p>

@@ -22,7 +22,7 @@ export default function TierEmblem({ mmr, size = "md", showLabel = false }) {
       {showLabel ? (
         <figcaption>
           <strong>{division}</strong>
-          <span>{tier.name} crest</span>
+          <span>{Math.round(mmr)} MMR</span>
         </figcaption>
       ) : null}
     </figure>
