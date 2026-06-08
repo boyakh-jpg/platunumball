@@ -9,7 +9,7 @@ import RatingCard from "../components/rating/RatingCard.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
 import TeamCard from "../components/team/TeamCard.jsx";
 import { COURTS } from "../lib/constants.js";
-import { isNationalRecruitingPost } from "../lib/recruiting.js";
+import { RECRUITING_TYPES, isNationalRecruitingPost } from "../lib/recruiting.js";
 import { getCurrentSeason, getPlayerSeasonRows, getSeasonProgress } from "../lib/season.js";
 import { getTierDivision, getTierQuote } from "../lib/tier.js";
 
@@ -276,20 +276,23 @@ export default function Home({ app }) {
             <div className="section-title-row">
               <div>
                 <p className="eyebrow">Recruiting</p>
-                <h2>용병/팀 찾기</h2>
+                <h2>빠른대전/경쟁전 큐</h2>
               </div>
               <Handshake size={20} />
             </div>
             <div className="compact-list recruiting-mini-list">
-              {localRecruitingPosts.map((post) => (
-                <Link key={post.id} to="/app/recruiting">
-                  <span>{post.title}</span>
-                  <strong>{post.ranked === false ? "친선" : "랭크"}</strong>
-                </Link>
-              ))}
+              {localRecruitingPosts.map((post) => {
+                const meta = RECRUITING_TYPES[post.type] ?? RECRUITING_TYPES.need_player;
+                return (
+                  <Link key={post.id} to="/app/recruiting">
+                    <span>{post.title}</span>
+                    <strong>{post.ranked === false ? "빠대" : meta.actionLabel}</strong>
+                  </Link>
+                );
+              })}
             </div>
             <Link to="/app/recruiting">
-              <Button variant="secondary" className="wide-button"><Handshake size={17} /> 모집판 보기</Button>
+              <Button variant="secondary" className="wide-button"><Handshake size={17} /> 큐 보기</Button>
             </Link>
           </Card>
           <Card className="section-card">

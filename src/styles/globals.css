@@ -2789,6 +2789,59 @@ input[type="color"] {
   gap: 14px;
 }
 
+.queue-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.queue-filter-grid .segmented-control,
+.recruiting-compose-card .segmented-control {
+  width: 100%;
+}
+
+.recruiting-type-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.recruiting-type-grid button {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+  justify-items: start;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--muted);
+  padding: 10px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.recruiting-type-grid button.active {
+  border-color: rgba(70, 224, 182, 0.42);
+  background: rgba(70, 224, 182, 0.09);
+  color: var(--text);
+}
+
+.recruiting-type-grid strong,
+.recruiting-type-grid span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.recruiting-type-grid strong {
+  font-size: 0.86rem;
+}
+
+.recruiting-type-grid span {
+  color: var(--subtle);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
 .recruiting-post-list {
   display: grid;
   gap: 12px;
@@ -2863,8 +2916,25 @@ input[type="color"] {
 
 .applicant-row {
   display: flex;
+  min-width: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.applicant-team-chip {
+  display: inline-flex;
+  max-width: 100%;
   align-items: center;
   gap: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.055);
+  color: var(--text);
+  padding: 6px 8px;
+  font-size: 0.78rem;
+  font-weight: 850;
+  overflow-wrap: anywhere;
 }
 
 .applicant-row small {
@@ -2879,8 +2949,15 @@ input[type="color"] {
 
 .recruiting-actions {
   display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
+}
+
+.recruiting-apply-select {
+  width: min(220px, 100%);
+  min-width: 0;
 }
 
 .recruiting-compose-card {
@@ -2907,6 +2984,26 @@ input[type="color"] {
 .tier-range-note > div {
   display: grid;
   gap: 4px;
+}
+
+.queue-note {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  gap: 8px;
+  border: 1px solid rgba(118, 169, 255, 0.16);
+  border-radius: var(--radius);
+  background: rgba(118, 169, 255, 0.055);
+  color: var(--muted);
+  padding: 10px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.queue-note svg {
+  flex: 0 0 auto;
+  color: var(--blue);
 }
 
 .match-stack {
@@ -3432,6 +3529,11 @@ input[type="color"] {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .queue-filter-grid,
+  .recruiting-type-grid {
+    grid-template-columns: 1fr;
+  }
+
   .recruiting-compose-card {
     position: static;
   }
@@ -3469,6 +3571,11 @@ input[type="color"] {
 
   .recruiting-actions {
     display: grid;
+  }
+
+  .recruiting-apply-select,
+  .recruiting-actions .button {
+    width: 100%;
   }
 
   .stat-editor-backdrop {

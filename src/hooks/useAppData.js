@@ -142,7 +142,7 @@ export function useAppData(authUserId = null) {
       updateProfile: (patch) => setState((prev) => updateProfile({ ...prev, currentUserId }, patch)),
       createTeam: (draft) => setState((prev) => createTeam({ ...prev, currentUserId }, draft)),
       createRecruitingPost: (draft) => setState((prev) => createRecruitingPost({ ...prev, currentUserId }, draft)),
-      interestRecruitingPost: (postId) => setState((prev) => interestRecruitingPost({ ...prev, currentUserId }, postId)),
+      interestRecruitingPost: (postId, application) => setState((prev) => interestRecruitingPost({ ...prev, currentUserId }, postId, application)),
       closeRecruitingPost: (postId) => setState((prev) => closeRecruitingPost({ ...prev, currentUserId }, postId)),
       addTeamMember: (teamId, draft) => setState((prev) => addTeamMember({ ...prev, currentUserId }, teamId, draft)),
       updateTeamMemberRole: (teamId, userId, role) => setState((prev) => updateTeamMemberRole({ ...prev, currentUserId }, teamId, userId, role)),

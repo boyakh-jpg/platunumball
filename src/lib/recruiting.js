@@ -2,14 +2,28 @@ import { TIERS, getTier, getTierDivision } from "./tier.js";
 
 export const RECRUITING_TYPES = {
   need_player: {
-    label: "용병 구해요",
-    shortLabel: "용병 모집",
+    label: "팀원 구해요",
+    shortLabel: "팀이 개인 모집",
     emptyTitle: "오늘 경기 용병 1명",
+    applicantKind: "player",
+    actionLabel: "혼자 참여",
+    unitLabel: "개인 신청",
   },
   find_team: {
-    label: "용병으로 팀 구해요",
-    shortLabel: "팀 찾기",
+    label: "혼자 팀 구해요",
+    shortLabel: "솔로 큐",
     emptyTitle: "오늘 뛸 팀 구해요",
+    applicantKind: "team",
+    actionLabel: "팀으로 제안",
+    unitLabel: "팀 제안",
+  },
+  need_team: {
+    label: "상대팀 구해요",
+    shortLabel: "팀 큐",
+    emptyTitle: "오늘 경기 상대팀 구해요",
+    applicantKind: "team",
+    actionLabel: "팀으로 참여",
+    unitLabel: "팀 신청",
   },
 };
 
@@ -22,6 +36,64 @@ function clampIndex(index) {
 export function getTierIndex(mmr = 0) {
   const tier = getTier(mmr);
   return Math.max(0, TIERS.findIndex((item) => item.name === tier.name));
+}
+
+export function getRecruitingTypeMeta(type = "need_player") {
+  return RECRUITING_TYPES[type] ?? RECRUITING_TYPES.need_player;
+}
+
+export function getRecruitingApplicantKind(post = {}) {
+  return getRecruitingTypeMeta(post.type).applicantKind;
+}
+
+export function normalizeRecruitingApplicant(entry) {
+  if (!entry) return null;
+  if (typeof entry === "string") {
+    return { kind: "player", playerId: entry };
+  }
+
+  const kind = entry.kind === "team" || entry.teamId ? "team" : "player";
+  if (kind === "team" && entry.teamId) {
+    return {
+      kind: "team",
+      teamId: entry.teamId,
+      playerId: entry.playerId ?? null,
+      createdAt: entry.createdAt ?? null,
+    };
+  }
+  if (entry.playerId) {
+    return {
+      kind: "player",
+      playerId: entry.playerId,
+      createdAt: entry.createdAt ?? null,
+    };
+  }
+  return null;
+}
+
+export function normalizeRecruitingApplicants(applicants = []) {
+  return applicants.map(normalizeRecruitingApplicant).filter(Boolean);
+}
+
+export function getRecruitingApplicantKey(entry) {
+  const applicant = normalizeRecruitingApplicant(entry);
+  if (!applicant) return "";
+  return applicant.kind === "team" ? `team:${applicant.teamId}` : `player:${applicant.playerId}`;
+}
+
+export function hasRecruitingApplicant(post = {}, entry) {
+  const key = getRecruitingApplicantKey(entry);
+  if (!key) return false;
+  return normalizeRecruitingApplicants(post.applicants ?? []).some((applicant) => getRecruitingApplicantKey(applicant) === key);
+}
+
+export function normalizeRecruitingPost(post = {}) {
+  const type = RECRUITING_TYPES[post.type] ? post.type : "need_player";
+  return {
+    ...post,
+    type,
+    applicants: normalizeRecruitingApplicants(post.applicants ?? []),
+  };
 }
 
 export function getRecruitingTargetMmr(post = {}, state = {}) {

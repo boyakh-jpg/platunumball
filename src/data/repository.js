@@ -2,7 +2,14 @@ import { MAX_TEAM_MEMBERSHIPS, MODE_SIZES, TEAM_ROLES } from "../lib/constants.j
 import { initialState } from "../lib/mockData.js";
 import { getAgreementStatus, getApprovalStatus, normalizePlayerStats } from "../lib/matchUtils.js";
 import { applyMatchRating, calculateTeamDelta } from "../lib/rating.js";
-import { getMercenaryTeamWeight, getRecruitingFit } from "../lib/recruiting.js";
+import {
+  getMercenaryTeamWeight,
+  getRecruitingApplicantKind,
+  getRecruitingFit,
+  hasRecruitingApplicant,
+  normalizeRecruitingApplicants,
+  normalizeRecruitingPost,
+} from "../lib/recruiting.js";
 import { clearState, readState, writeState } from "../lib/storage.js";
 import { isSupabaseConfigured, supabase } from "../lib/supabase.js";
 
@@ -73,7 +80,7 @@ function normalizeState(state) {
     notifications: notifications.map((notification) => ({ readAt: null, ...notification })),
     settings: normalizeSettings(state?.settings ?? initialState.settings),
     reports: state?.reports ?? initialState.reports ?? [],
-    recruitingPosts: mergeById(state?.recruitingPosts, initialState.recruitingPosts ?? []),
+    recruitingPosts: mergeById(state?.recruitingPosts, initialState.recruitingPosts ?? []).map(normalizeRecruitingPost),
   };
 }
 
@@ -633,20 +640,20 @@ export function reportMatch(state, matchId, reason = "") {
 }
 
 export function createRecruitingPost(state, draft) {
-  const postType = draft.type === "find_team" ? "find_team" : "need_player";
+  const postType = ["find_team", "need_team"].includes(draft.type) ? draft.type : "need_player";
   const userTeamIds = new Set(
     state.teams
       .filter((team) => team.members.some((member) => member.userId === state.currentUserId))
       .map((team) => team.id),
   );
-  if (postType === "need_player" && !userTeamIds.has(draft.teamId)) {
+  if (["need_player", "need_team"].includes(postType) && !userTeamIds.has(draft.teamId)) {
     return {
       ...state,
       notifications: [
         {
           id: makeId("n"),
           title: "소속팀 필요",
-          body: "용병 모집은 내 소속팀으로만 올릴 수 있습니다.",
+          body: "팀 단위 모집은 내 소속팀으로만 올릴 수 있습니다.",
           tone: "team",
         },
         ...state.notifications,
@@ -656,13 +663,14 @@ export function createRecruitingPost(state, draft) {
   const post = {
     id: makeId("q"),
     type: postType,
-    title: draft.title?.trim() || (postType === "find_team" ? "오늘 뛸 팀 구해요" : "오늘 경기 용병 1명"),
+    title: draft.title?.trim()
+      || (postType === "find_team" ? "오늘 뛸 팀 구해요" : postType === "need_team" ? "오늘 경기 상대팀 구해요" : "오늘 경기 용병 1명"),
     region: draft.region || state.users.find((user) => user.id === state.currentUserId)?.region || "전체",
     court: draft.court || "미정",
     mode: draft.mode || "5v5",
     ranked: draft.ranked !== false,
     spots: Math.max(1, Number(draft.spots ?? 1)),
-    teamId: postType === "need_player" ? draft.teamId : null,
+    teamId: ["need_player", "need_team"].includes(postType) ? draft.teamId : null,
     position: draft.position || "상관없음",
     playerId: state.currentUserId,
     memo: draft.memo?.trim() || "같이 뛸 사람을 찾고 있습니다.",
@@ -686,12 +694,34 @@ export function createRecruitingPost(state, draft) {
   };
 }
 
-export function interestRecruitingPost(state, postId) {
+export function interestRecruitingPost(state, postId, application = {}) {
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   if (!post || post.status !== "open") return state;
   if (post.playerId === state.currentUserId) return state;
   const user = state.users.find((item) => item.id === state.currentUserId);
-  const fit = getRecruitingFit(post, user?.ratings?.integrated ?? 1200, state);
+  const applicantKind = getRecruitingApplicantKind(post);
+  const myTeams = state.teams.filter((team) => team.members.some((member) => member.userId === state.currentUserId));
+  const team = applicantKind === "team"
+    ? myTeams.find((item) => item.id === application.teamId) ?? myTeams[0]
+    : null;
+
+  if (applicantKind === "team" && !team) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "소속팀 필요",
+          body: "이 모집글은 팀으로 참여해야 합니다. 먼저 팀을 만들거나 소속팀을 선택하세요.",
+          tone: "team",
+        },
+        ...state.notifications,
+      ],
+    };
+  }
+
+  const candidateMmr = applicantKind === "team" ? team.mmr : user?.ratings?.integrated ?? 1200;
+  const fit = getRecruitingFit(post, candidateMmr, state);
   if (!fit.allowed) {
     return {
       ...state,
@@ -706,7 +736,11 @@ export function interestRecruitingPost(state, postId) {
       ],
     };
   }
-  const applicants = Array.from(new Set([...(post.applicants ?? []), state.currentUserId]));
+  const nextApplicant = applicantKind === "team"
+    ? { kind: "team", teamId: team.id, playerId: state.currentUserId, createdAt: new Date().toISOString() }
+    : { kind: "player", playerId: state.currentUserId, createdAt: new Date().toISOString() };
+  if (hasRecruitingApplicant(post, nextApplicant)) return state;
+  const applicants = [...normalizeRecruitingApplicants(post.applicants ?? []), nextApplicant];
 
   return {
     ...state,
