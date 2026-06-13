@@ -56,7 +56,7 @@ export default function MatchContract({ match, users }) {
           <strong>{match.rules.timeLimit}분</strong>
         </div>
         <div>
-          <span>랭크 반영</span>
+          <span>정규전 반영</span>
           <strong>{match.ranked === false ? "OFF" : "ON"}</strong>
         </div>
         <div>

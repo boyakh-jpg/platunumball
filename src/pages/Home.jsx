@@ -283,7 +283,7 @@ export default function Home({ app }) {
             <div className="section-title-row">
               <div>
                 <p className="eyebrow">Recruiting</p>
-                <h2>빠른대전/경쟁전 큐</h2>
+                <h2>친선전/정규전 큐</h2>
               </div>
               <Handshake size={20} />
             </div>
@@ -293,7 +293,7 @@ export default function Home({ app }) {
                 return (
                   <Link key={post.id} to="/app/recruiting">
                     <span>{post.title}</span>
-                    <strong>{post.ranked === false ? "빠대" : meta.actionLabel}</strong>
+                    <strong>{post.ranked === false ? "친선" : meta.actionLabel}</strong>
                   </Link>
                 );
               })}

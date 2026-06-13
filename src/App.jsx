@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import RequireAuth from "./components/auth/RequireAuth.jsx";
 import AppShell from "./components/layout/AppShell.jsx";
@@ -23,6 +24,11 @@ import Teams from "./pages/Teams.jsx";
 export default function App() {
   const auth = useAuthSession();
   const app = useAppData(auth.user?.id ?? null);
+  const theme = app.state.settings?.theme === "light" ? "light" : "dark";
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+  }, [theme]);
 
   return (
     <Routes>

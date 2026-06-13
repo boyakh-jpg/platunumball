@@ -17,6 +17,7 @@ const clone = (value) => JSON.parse(JSON.stringify(value));
 const makeId = (prefix) => `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
 const REMOTE_STATE_ID = "rankball-mvp";
 const DEFAULT_SETTINGS = {
+  theme: "dark",
   privacy: {
     regionRanking: true,
     teamHistory: true,
@@ -53,9 +54,11 @@ function normalizeMatch(match) {
 }
 
 function normalizeSettings(settings = {}) {
+  const theme = settings.theme === "light" ? "light" : "dark";
   return {
     ...DEFAULT_SETTINGS,
     ...settings,
+    theme,
     privacy: {
       ...DEFAULT_SETTINGS.privacy,
       ...(settings.privacy ?? {}),
@@ -555,6 +558,16 @@ export function updatePrivacySettings(state, patch) {
   };
 }
 
+export function updateSettings(state, patch) {
+  return {
+    ...state,
+    settings: normalizeSettings({
+      ...(state.settings ?? {}),
+      ...patch,
+    }),
+  };
+}
+
 export function blockUser(state, userId) {
   if (!state.users.some((user) => user.id === userId) || userId === state.currentUserId) return state;
   const blockedUserIds = Array.from(new Set([...(state.settings?.blockedUserIds ?? []), userId]));
@@ -729,7 +742,7 @@ export function interestRecruitingPost(state, postId, application = {}) {
         {
           id: makeId("n"),
           title: "티어 구간 제한",
-          body: `${post.title}은 랭크 반영 경기라 ${fit.range.label} 구간만 신청할 수 있습니다.`,
+          body: `${post.title}은 정규전이라 ${fit.range.label} 구간만 신청할 수 있습니다.`,
           tone: "team",
         },
         ...state.notifications,

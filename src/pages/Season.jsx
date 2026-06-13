@@ -67,7 +67,7 @@ export default function Season({ app }) {
           <span><ShieldCheck size={16} /> 팀 1위 {topTeam?.name ?? "-"}</span>
           <span><ClipboardCheck size={16} /> 처리 대기 {operations.contract + operations.approval + operations.disputed}</span>
           <Link to="/app/create">
-            <Button><Swords size={18} /> 랭크 경기 만들기</Button>
+            <Button><Swords size={18} /> 정규전 만들기</Button>
           </Link>
         </div>
       </section>

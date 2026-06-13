@@ -119,7 +119,7 @@ export default function Recruiting({ app }) {
       <header className="page-header">
         <div>
           <p className="eyebrow">Recruiting Queue</p>
-          <h1>빠른대전/경쟁전 모집 큐</h1>
+          <h1>친선전/정규전 모집 큐</h1>
         </div>
         <Badge tone="green">{app.currentUser.region} 먼저</Badge>
       </header>
@@ -139,8 +139,8 @@ export default function Recruiting({ app }) {
           <div className="queue-filter-grid">
             <div className="segmented-control compact-segments">
               <button type="button" className={queue === "all" ? "active" : ""} onClick={() => setQueue("all")}>전체</button>
-              <button type="button" className={queue === "ranked" ? "active" : ""} onClick={() => setQueue("ranked")}>경쟁전</button>
-              <button type="button" className={queue === "friendly" ? "active" : ""} onClick={() => setQueue("friendly")}>빠른대전</button>
+              <button type="button" className={queue === "ranked" ? "active" : ""} onClick={() => setQueue("ranked")}>정규전</button>
+              <button type="button" className={queue === "friendly" ? "active" : ""} onClick={() => setQueue("friendly")}>친선전</button>
             </div>
             <div className="segmented-control compact-segments">
               <button type="button" className={unit === "all" ? "active" : ""} onClick={() => setUnit("all")}>전체</button>
@@ -174,7 +174,7 @@ export default function Recruiting({ app }) {
                 <article key={post.id} className="recruiting-post">
                   <div className="recruiting-post-main">
                     <div className="badge-row">
-                      <Badge tone={post.ranked === false ? "neutral" : "green"}>{post.ranked === false ? "빠른대전" : "경쟁전"}</Badge>
+                      <Badge tone={post.ranked === false ? "neutral" : "green"}>{post.ranked === false ? "친선전" : "정규전"}</Badge>
                       <Badge tone={applicantKind === "team" ? "blue" : "gold"}>{typeMeta.unitLabel}</Badge>
                       <Badge tone={fit.tone}>{fit.label}</Badge>
                       {post.position && post.position !== "상관없음" ? <Badge tone="blue">{post.position}</Badge> : null}
@@ -192,7 +192,7 @@ export default function Recruiting({ app }) {
                     </div>
                   </div>
                   <div className="recruiting-fit-panel">
-                    <span>{post.ranked === false ? "빠른대전" : "경쟁전 허용 구간"}</span>
+                    <span>{post.ranked === false ? "친선전" : "정규전 허용 구간"}</span>
                     <strong>{fit.range.label}</strong>
                     <em>{post.ranked === false ? "티어 제한 없음" : `${target} MMR 기준`}</em>
                   </div>
@@ -265,8 +265,8 @@ export default function Recruiting({ app }) {
                 ))}
               </div>
               <div className="segmented-control compact-segments">
-                <button type="button" className={!draft.ranked ? "active" : ""} onClick={() => update({ ranked: false })}>빠른대전</button>
-                <button type="button" className={draft.ranked ? "active" : ""} onClick={() => update({ ranked: true })}>경쟁전</button>
+                <button type="button" className={!draft.ranked ? "active" : ""} onClick={() => update({ ranked: false })}>친선전</button>
+                <button type="button" className={draft.ranked ? "active" : ""} onClick={() => update({ ranked: true })}>정규전</button>
               </div>
               <label>
                 제목
@@ -338,7 +338,7 @@ export default function Recruiting({ app }) {
               </label>
               <div className="tier-range-note">
                 <div>
-                  <span>{draft.ranked ? "경쟁전 허용 구간" : "빠른대전"}</span>
+                  <span>{draft.ranked ? "정규전 허용 구간" : "친선전"}</span>
                   <strong>{draftRange.label}</strong>
                   <em>{draftRange.detail}</em>
                 </div>
@@ -346,7 +346,7 @@ export default function Recruiting({ app }) {
               </div>
               <div className="queue-note">
                 <ShieldCheck size={17} />
-                <span>{draft.ranked ? "경쟁전 · ±2티어" : "빠른대전 · 티어 자유"}</span>
+                <span>{draft.ranked ? "정규전 · ±2티어" : "친선전 · 티어 자유"}</span>
               </div>
               <label className="memo-label">
                 메모

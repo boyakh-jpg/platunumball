@@ -21,8 +21,8 @@ export default function ProgressionChecklist({ user, matches }) {
   const checks = nextTier
     ? [
         { label: `통합 MMR ${nextTier.min}+`, done: user.ratings.integrated >= nextTier.min },
-        ...(nextTier.name === "Platinum" ? [{ label: "3v3 또는 5v5 랭크 5경기", done: ranked3Or5 >= 5, value: `${ranked3Or5}/5` }] : []),
-        ...(nextTier.name === "Diamond" ? [{ label: "5v5 랭크 5경기", done: ranked5 >= 5, value: `${ranked5}/5` }] : []),
+        ...(nextTier.name === "Platinum" ? [{ label: "3v3 또는 5v5 정규전 5경기", done: ranked3Or5 >= 5, value: `${ranked3Or5}/5` }] : []),
+        ...(nextTier.name === "Diamond" ? [{ label: "5v5 정규전 5경기", done: ranked5 >= 5, value: `${ranked5}/5` }] : []),
         ...(nextTier.name === "Master" ? [
           { label: "5v5 공식경기 5경기", done: official5 >= 5, value: `${official5}/5` },
           { label: "신뢰도 80 이상", done: trust >= 80, value: trust },

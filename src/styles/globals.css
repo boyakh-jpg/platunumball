@@ -2313,6 +2313,10 @@ input[type="color"] {
   padding: 10px;
 }
 
+.theme-choice-card .segmented-control button {
+  flex: 1 1 0;
+}
+
 .favorite-action-row {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3645,6 +3649,121 @@ input[type="color"] {
   min-height: 42px;
   padding-inline: 6px;
   text-align: center;
+}
+
+html[data-theme="light"] body {
+  background:
+    radial-gradient(circle at 16% 10%, rgba(15, 159, 126, 0.16), transparent 30rem),
+    radial-gradient(circle at 84% 0%, rgba(184, 118, 19, 0.12), transparent 24rem),
+    linear-gradient(135deg, #f6f8f2 0%, #edf4ef 48%, #f8f3e8 100%);
+}
+
+html[data-theme="light"] .app-main {
+  background:
+    linear-gradient(rgba(22, 36, 42, 0.05) 1px, transparent 1px) 0 0 / 42px 42px,
+    linear-gradient(90deg, rgba(22, 36, 42, 0.05) 1px, transparent 1px) 0 0 / 42px 42px,
+    radial-gradient(circle at 72% 4%, rgba(184, 118, 19, 0.08), transparent 24rem);
+}
+
+html[data-theme="light"] .sidebar {
+  background:
+    linear-gradient(180deg, rgba(15, 159, 126, 0.07), transparent 38%),
+    rgba(255, 255, 255, 0.86);
+}
+
+html[data-theme="light"] .card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.66)),
+    rgba(255, 255, 255, 0.76);
+}
+
+html[data-theme="light"] .landing-hero {
+  background: #eef4ee;
+}
+
+html[data-theme="light"] .landing-backdrop {
+  background:
+    linear-gradient(90deg, rgba(246, 248, 242, 0.96) 0%, rgba(246, 248, 242, 0.72) 43%, rgba(246, 248, 242, 0.3) 100%),
+    linear-gradient(180deg, rgba(246, 248, 242, 0.18), rgba(246, 248, 242, 0.88)),
+    url("/assets/landing-night-court.png") center / cover no-repeat;
+}
+
+html[data-theme="light"] .broadcast-glass,
+html[data-theme="light"] .scoreboard-panel,
+html[data-theme="light"] .season-rule-board,
+html[data-theme="light"] .team-hub-board,
+html[data-theme="light"] .tier-statement,
+html[data-theme="light"] .share-card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0.64)),
+    rgba(255, 255, 255, 0.72);
+}
+
+html[data-theme="light"] .landing-stat-grid span,
+html[data-theme="light"] .broadcast-list span,
+html[data-theme="light"] .hero-stat-strip span,
+html[data-theme="light"] .rating-card,
+html[data-theme="light"] .contract-grid div,
+html[data-theme="light"] .memo-box,
+html[data-theme="light"] .approval-grid > div,
+html[data-theme="light"] .season-meta-row span,
+html[data-theme="light"] .season-rule-board span,
+html[data-theme="light"] .stat-player-button,
+html[data-theme="light"] .approval-voter-list button,
+html[data-theme="light"] .stat-stepper-row,
+html[data-theme="light"] .settings-toggle-grid label,
+html[data-theme="light"] .recruiting-type-grid button,
+html[data-theme="light"] .recruiting-post,
+html[data-theme="light"] .operations-list a,
+html[data-theme="light"] .season-race-list a,
+html[data-theme="light"] .history-item {
+  border-color: rgba(32, 56, 68, 0.14);
+  background: rgba(255, 255, 255, 0.58);
+}
+
+html[data-theme="light"] .court-command {
+  background:
+    linear-gradient(90deg, rgba(246, 248, 242, 0.94), rgba(246, 248, 242, 0.7), rgba(246, 248, 242, 0.9)),
+    url("/assets/home-rank-board.png") center / cover no-repeat;
+}
+
+html[data-theme="light"] .match-hero {
+  background:
+    linear-gradient(90deg, rgba(246, 248, 242, 0.96), rgba(246, 248, 242, 0.72), rgba(246, 248, 242, 0.92)),
+    url("/assets/match-score-arena.png") center / cover no-repeat;
+}
+
+html[data-theme="light"] .team-hub-hero,
+html[data-theme="light"] .season-hero {
+  background:
+    linear-gradient(105deg, rgba(246, 248, 242, 0.96), rgba(246, 248, 242, 0.7), rgba(246, 248, 242, 0.93)),
+    url("/assets/season-bracket-wall.png") center / cover no-repeat;
+}
+
+html[data-theme="light"] .profile-hero,
+html[data-theme="light"] .team-detail-hero {
+  background:
+    linear-gradient(90deg, rgba(246, 248, 242, 0.96), rgba(246, 248, 242, 0.72), rgba(246, 248, 242, 0.92)),
+    url("/assets/home-rank-board.png") center / cover no-repeat;
+}
+
+html[data-theme="light"] .recruiting-board-card,
+html[data-theme="light"] .recruiting-compose-card {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.7)),
+    url("/assets/recruiting-queue-court.png") center / cover no-repeat;
+}
+
+html[data-theme="light"] .court-command .tier-line,
+html[data-theme="light"] .season-hero-copy p,
+html[data-theme="light"] .landing-copy p {
+  color: var(--muted);
+}
+
+html[data-theme="light"] .brand-mark,
+html[data-theme="light"] .button-primary,
+html[data-theme="light"] .segmented-control button.active {
+  color: #f7fffb;
 }
 
 @media (max-width: 1020px) {

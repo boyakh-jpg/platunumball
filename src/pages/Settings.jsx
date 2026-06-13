@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Database, Search, ShieldCheck, UserRound } from "lucide-react";
+import { Database, Moon, Search, ShieldCheck, Sun, UserRound } from "lucide-react";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import Badge from "../components/common/Badge.jsx";
@@ -7,6 +7,7 @@ import { isSupabaseConfigured } from "../lib/supabase.js";
 
 export default function Settings({ app, auth }) {
   const privacy = app.state.settings?.privacy ?? {};
+  const theme = app.state.settings?.theme === "light" ? "light" : "dark";
   const blockedUserIds = app.state.settings?.blockedUserIds ?? [];
   const [blockUserId, setBlockUserId] = useState(app.state.users.find((user) => user.id !== app.currentUserId)?.id ?? "");
   const [reportMatchId, setReportMatchId] = useState(app.state.matches[0]?.id ?? "");
@@ -84,6 +85,32 @@ export default function Settings({ app, auth }) {
                 <span>세션</span>
                 <strong>{auth?.user ? auth.user.user_metadata?.providerName ?? "Test" : "Guest"}</strong>
               </div>
+            </div>
+          </Card>
+
+          <Card className="section-card theme-choice-card">
+            <div className="section-title-row">
+              <div>
+                <p className="eyebrow">화면 테마</p>
+                <h2>밝기</h2>
+              </div>
+              {theme === "light" ? <Sun size={22} /> : <Moon size={22} />}
+            </div>
+            <div className="segmented-control">
+              <button
+                type="button"
+                className={theme === "light" ? "active" : ""}
+                onClick={() => app.actions.updateSettings({ theme: "light" })}
+              >
+                라이트
+              </button>
+              <button
+                type="button"
+                className={theme === "dark" ? "active" : ""}
+                onClick={() => app.actions.updateSettings({ theme: "dark" })}
+              >
+                다크
+              </button>
             </div>
           </Card>
 

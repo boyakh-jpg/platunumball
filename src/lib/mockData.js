@@ -365,7 +365,7 @@ const baseState = {
       promotionLine: 4,
       rules: [
         "지역 랭킹은 같은 지역 플레이어를 먼저 정렬합니다.",
-        "랭크 반영 경기는 티어 구간 제한과 과반 승인을 모두 통과해야 합니다.",
+        "정규전은 티어 구간 제한과 과반 승인을 모두 통과해야 합니다.",
         "주장 확인 옵션이 있으면 양팀 주장 승인도 필요합니다.",
       ],
     },
@@ -502,7 +502,7 @@ const baseState = {
     {
       id: "q4",
       type: "need_team",
-      title: "마포 경쟁전 5v5 상대팀 구해요",
+      title: "마포 정규전 5v5 상대팀 구해요",
       region: "마포",
       court: "홍대 스트릿돔",
       mode: "5v5",
@@ -518,6 +518,7 @@ const baseState = {
     },
   ],
   settings: {
+    theme: "dark",
     privacy: {
       regionRanking: true,
       teamHistory: true,
@@ -642,7 +643,7 @@ function sumPoints(playerStats, playerIds) {
 }
 
 function makeMatchTitle(matchIndex, teamA, teamB, mode) {
-  const label = matchIndex % 4 === 0 ? "공식전" : matchIndex % 5 === 0 ? "빠른대전" : "경쟁전";
+  const label = matchIndex % 4 === 0 ? "공식전" : matchIndex % 5 === 0 ? "친선전" : "정규전";
   return `${teamA.region} ${mode} ${label} #${padNumber(matchIndex + 1, 4)}`
     + ` · ${teamA.name.split(" ")[0]} vs ${teamB.name.split(" ")[0]}`;
 }
@@ -786,9 +787,9 @@ function makeRecruitingPost(index, teams, users) {
   const applicantTeam = teams.filter((item) => item.id.startsWith("td"))[(index * 5 + 3) % 20];
   const applicantUser = users[(index * 9 + 17) % users.length];
   const title = type === "need_player"
-    ? `${team.name} ${ranked ? "경쟁전" : "빠른대전"} 팀원 구해요`
+    ? `${team.name} ${ranked ? "정규전" : "친선전"} 팀원 구해요`
     : type === "find_team"
-      ? `${player.name} ${region} ${ranked ? "경쟁전" : "빠른대전"} 팀 구해요`
+      ? `${player.name} ${region} ${ranked ? "정규전" : "친선전"} 팀 구해요`
       : `${team.name} 상대팀 구해요`;
 
   return {

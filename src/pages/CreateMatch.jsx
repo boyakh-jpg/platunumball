@@ -199,7 +199,7 @@ export default function CreateMatch({ app }) {
           {draft.ranked ? (
             <div className={teamTierBlocked ? "tier-range-note tier-range-note-warning" : "tier-range-note"}>
               <div>
-                <span>랭크 허용 구간</span>
+                <span>정규전 허용 구간</span>
                 <strong>{teamTierRange.label}</strong>
                 <em>{selectedTeamA?.name ?? "A팀"} 기준</em>
               </div>
@@ -208,7 +208,7 @@ export default function CreateMatch({ app }) {
           ) : (
             <div className="tier-range-note">
               <div>
-                <span>빠른대전</span>
+                <span>친선전</span>
                 <strong>티어 자유</strong>
                 <em>MMR 소폭</em>
               </div>
@@ -281,7 +281,7 @@ export default function CreateMatch({ app }) {
           </div>
           <RuleSelector draft={draft} onChange={update} />
           <div className="toggle-pair">
-            <label><input type="checkbox" checked={draft.ranked} onChange={(event) => update({ ranked: event.target.checked })} /> 랭크 반영</label>
+            <label><input type="checkbox" checked={draft.ranked} onChange={(event) => update({ ranked: event.target.checked })} /> 정규전 반영</label>
             <label><input type="checkbox" checked={draft.official} onChange={(event) => update({ official: event.target.checked })} /> 공식경기</label>
             <label><input type="checkbox" checked={draft.preRegistered} onChange={(event) => update({ preRegistered: event.target.checked })} /> 사전등록</label>
           </div>
