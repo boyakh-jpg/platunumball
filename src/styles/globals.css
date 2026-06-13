@@ -1843,7 +1843,7 @@ input[type="color"] {
   background:
     linear-gradient(90deg, rgba(5, 7, 10, 0.96) 0%, rgba(5, 7, 10, 0.72) 42%, rgba(5, 7, 10, 0.25) 100%),
     linear-gradient(180deg, rgba(5, 7, 10, 0.18), rgba(5, 7, 10, 0.94)),
-    url("/assets/landing-night-court.png") center / cover no-repeat;
+    url("/assets/rankball-court-hero.png") center / cover no-repeat;
 }
 
 .landing-hero::after,
@@ -3312,7 +3312,7 @@ input[type="color"] {
   border-radius: var(--radius);
   background:
     linear-gradient(90deg, rgba(5, 7, 10, 0.95), rgba(5, 7, 10, 0.66), rgba(5, 7, 10, 0.92)),
-    url("/assets/home-rank-board.png") center / cover no-repeat;
+    url("/assets/rankball-court-hero.png") center / cover no-repeat;
   box-shadow: var(--shadow);
   padding: 24px;
 }
@@ -3685,7 +3685,7 @@ html[data-theme="light"] .landing-backdrop {
   background:
     linear-gradient(90deg, rgba(246, 248, 242, 0.96) 0%, rgba(246, 248, 242, 0.72) 43%, rgba(246, 248, 242, 0.3) 100%),
     linear-gradient(180deg, rgba(246, 248, 242, 0.18), rgba(246, 248, 242, 0.88)),
-    url("/assets/landing-night-court.png") center / cover no-repeat;
+    url("/assets/rankball-court-hero.png") center / cover no-repeat;
 }
 
 html[data-theme="light"] .broadcast-glass,
@@ -3744,7 +3744,7 @@ html[data-theme="light"] .profile-hero,
 html[data-theme="light"] .team-detail-hero {
   background:
     linear-gradient(90deg, rgba(246, 248, 242, 0.96), rgba(246, 248, 242, 0.72), rgba(246, 248, 242, 0.92)),
-    url("/assets/home-rank-board.png") center / cover no-repeat;
+    url("/assets/rankball-court-hero.png") center / cover no-repeat;
 }
 
 html[data-theme="light"] .recruiting-board-card,
