@@ -1,6 +1,7 @@
 import { STORAGE_KEY } from "./constants.js";
 
 const PROFILE_BINDINGS_KEY = "rankball.auth.profile.v1";
+const MAX_LOCAL_STATE_CHARS = 1_800_000;
 
 export function readState(fallback) {
   if (typeof window === "undefined") return fallback;
@@ -14,7 +15,17 @@ export function readState(fallback) {
 
 export function writeState(state) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  try {
+    const serialized = JSON.stringify(state);
+    if (serialized.length > MAX_LOCAL_STATE_CHARS) {
+      window.localStorage.removeItem(STORAGE_KEY);
+      return;
+    }
+    window.localStorage.setItem(STORAGE_KEY, serialized);
+  } catch (error) {
+    window.localStorage.removeItem(STORAGE_KEY);
+    console.warn("RankBall local state cache skipped.", error);
+  }
 }
 
 export function clearState() {
