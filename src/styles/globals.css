@@ -1665,7 +1665,7 @@ input[type="color"] {
     left: 12px;
     z-index: 20;
     display: grid;
-    grid-template-columns: repeat(7, minmax(0, 1fr));
+    grid-template-columns: repeat(8, minmax(0, 1fr));
     gap: 3px;
     border: 1px solid var(--line);
     border-radius: var(--radius);
@@ -1683,13 +1683,13 @@ input[type="color"] {
     border-radius: 6px;
     color: var(--muted);
     padding: 7px 1px;
-    font-size: 0.64rem;
+    font-size: 0.6rem;
     font-weight: 800;
   }
 
   .bottom-nav a svg {
-    width: 18px;
-    height: 18px;
+    width: 17px;
+    height: 17px;
   }
 
   .bottom-nav a.active {
@@ -4184,11 +4184,11 @@ html[data-theme="light"] .segmented-control button.active {
   .bottom-nav a {
     gap: 2px;
     padding: 6px 0;
-    font-size: 0.58rem;
+    font-size: 0.54rem;
   }
 
   .bottom-nav a svg {
-    width: 17px;
-    height: 17px;
+    width: 16px;
+    height: 16px;
   }
 }
