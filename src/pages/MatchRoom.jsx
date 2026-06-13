@@ -128,11 +128,7 @@ export default function MatchRoom({ app }) {
               <Badge tone={canSubmitResult ? "green" : "neutral"}>{canSubmitResult ? "입력 가능" : "잠김"}</Badge>
             </div>
             {!canSubmitResult ? (
-              <p className="muted">
-                {match.status === "contract"
-                  ? "양팀 경기 전 동의가 끝나면 결과 입력이 열립니다."
-                  : "확정, 보류, 취소, 무효 상태에서는 결과를 수정하지 않습니다."}
-              </p>
+              <div className="empty-state">{match.status === "contract" ? "동의 필요" : "수정 잠김"}</div>
             ) : null}
             <form className="score-form" onSubmit={submitResult}>
               <label>
@@ -194,7 +190,7 @@ export default function MatchRoom({ app }) {
                 })}
               </div>
             ) : (
-              <p className="muted">양팀 과반 승인 후 통합/모드별 MMR이 반영됩니다.</p>
+              <div className="empty-state">승인 대기</div>
             )}
           </Card>
           <Card className="section-card">

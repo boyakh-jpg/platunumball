@@ -48,8 +48,7 @@ export default function Teams({ app }) {
       <section className="team-hub-hero">
         <div>
           <p className="eyebrow">Squad House</p>
-          <h1>코트 위 팀 랭크를 장악하세요.</h1>
-          <p>지역별 팀을 먼저 보고, 자주 찾는 팀을 빠르게 골라 경기방에 연결하세요.</p>
+          <h1>팀 랭크보드</h1>
         </div>
         <div className="team-hub-board">
           <span><Crown size={18} /> Top squad</span>
@@ -144,8 +143,8 @@ export default function Teams({ app }) {
                   );
                 })}
               </select>
-              <span className={captainLimitReached ? "form-warning" : "form-help"}>
-                한 플레이어는 최대 {MAX_TEAM_MEMBERSHIPS}개 팀까지만 소속될 수 있습니다.
+              <span className={captainLimitReached ? "form-warning" : "form-chip"}>
+                {selectedCaptainTeamCount}/{MAX_TEAM_MEMBERSHIPS}팀
               </span>
             </label>
             <label>

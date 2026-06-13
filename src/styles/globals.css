@@ -1307,6 +1307,23 @@ input[type="color"] {
   color: var(--muted);
 }
 
+.approval-status-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.approval-status-strip span {
+  border: 1px solid rgba(70, 224, 182, 0.24);
+  border-radius: var(--radius);
+  background: rgba(70, 224, 182, 0.08);
+  color: var(--text);
+  padding: 9px 10px;
+  text-align: center;
+  font-size: 0.82rem;
+  font-weight: 950;
+}
+
 .delta-list {
   display: grid;
   gap: 8px;
@@ -1826,7 +1843,7 @@ input[type="color"] {
   background:
     linear-gradient(90deg, rgba(5, 7, 10, 0.96) 0%, rgba(5, 7, 10, 0.72) 42%, rgba(5, 7, 10, 0.25) 100%),
     linear-gradient(180deg, rgba(5, 7, 10, 0.18), rgba(5, 7, 10, 0.94)),
-    url("/assets/rankball-court-hero.png") center / cover no-repeat;
+    url("/assets/landing-night-court.png") center / cover no-repeat;
 }
 
 .landing-hero::after,
@@ -1903,7 +1920,9 @@ input[type="color"] {
     linear-gradient(90deg, rgba(70, 224, 182, 0.12), rgba(255, 211, 108, 0.08));
   box-shadow: 0 30px 100px rgba(0, 0, 0, 0.52);
   backdrop-filter: blur(18px);
+  color: inherit;
   padding: 22px;
+  text-decoration: none;
 }
 
 .live-dot {
@@ -1975,6 +1994,11 @@ input[type="color"] {
   font-weight: 750;
 }
 
+.broadcast-list b {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
 .app-main {
   background:
     linear-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px) 0 0 / 42px 42px,
@@ -2017,7 +2041,7 @@ input[type="color"] {
   border-radius: var(--radius);
   background:
     linear-gradient(90deg, rgba(5, 7, 10, 0.94), rgba(5, 7, 10, 0.62), rgba(5, 7, 10, 0.92)),
-    url("/assets/rankball-court-hero.png") center / cover no-repeat;
+    url("/assets/home-rank-board.png") center / cover no-repeat;
   box-shadow: var(--shadow);
   padding: 22px;
 }
@@ -2068,6 +2092,26 @@ input[type="color"] {
   line-height: 1;
 }
 
+.hero-stat-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  width: min(620px, 100%);
+}
+
+.hero-stat-strip span {
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--radius);
+  background: rgba(8, 11, 16, 0.64);
+  color: var(--text);
+  padding: 10px 12px;
+  text-align: center;
+  font-size: 0.86rem;
+  font-weight: 950;
+  overflow-wrap: anywhere;
+}
+
 .court-command-copy h2 {
   font-size: 1.6rem;
 }
@@ -2106,7 +2150,7 @@ input[type="color"] {
 .match-hero {
   background:
     linear-gradient(90deg, rgba(5, 7, 10, 0.95), rgba(5, 7, 10, 0.64), rgba(5, 7, 10, 0.92)),
-    url("/assets/rankball-court-hero.png") center / cover no-repeat;
+    url("/assets/match-score-arena.png") center / cover no-repeat;
 }
 
 .team-hub-hero {
@@ -2120,7 +2164,7 @@ input[type="color"] {
   border-radius: var(--radius);
   background:
     linear-gradient(90deg, rgba(5, 7, 10, 0.94), rgba(5, 7, 10, 0.66)),
-    url("/assets/rankball-court-hero.png") center / cover no-repeat;
+    url("/assets/season-bracket-wall.png") center / cover no-repeat;
   box-shadow: var(--shadow);
   padding: 24px;
 }
@@ -2249,6 +2293,7 @@ input[type="color"] {
   color: var(--muted);
   padding: 14px;
   text-align: center;
+  font-weight: 850;
 }
 
 .match-action-row,
@@ -2526,7 +2571,7 @@ input[type="color"] {
   border-radius: var(--radius);
   background:
     linear-gradient(105deg, rgba(5, 7, 10, 0.96), rgba(5, 7, 10, 0.68), rgba(5, 7, 10, 0.94)),
-    url("/assets/rankball-court-hero.png") center / cover no-repeat;
+    url("/assets/season-bracket-wall.png") center / cover no-repeat;
   box-shadow: var(--shadow);
   padding: 24px;
 }
@@ -2787,6 +2832,11 @@ input[type="color"] {
 
 .recruiting-board-card {
   gap: 14px;
+  overflow: hidden;
+  border-color: rgba(70, 224, 182, 0.24);
+  background:
+    linear-gradient(135deg, rgba(8, 11, 16, 0.9), rgba(8, 11, 16, 0.7)),
+    url("/assets/recruiting-queue-court.png") center / cover no-repeat;
 }
 
 .queue-filter-grid {
@@ -2963,6 +3013,11 @@ input[type="color"] {
 .recruiting-compose-card {
   position: sticky;
   top: 24px;
+  overflow: hidden;
+  border-color: rgba(255, 211, 108, 0.2);
+  background:
+    linear-gradient(145deg, rgba(10, 14, 21, 0.93), rgba(10, 14, 21, 0.78)),
+    url("/assets/recruiting-queue-court.png") center / cover no-repeat;
 }
 
 .tier-range-note {
@@ -3154,10 +3209,21 @@ input[type="color"] {
 }
 
 .form-help,
-.form-warning {
+.form-warning,
+.form-chip {
   color: var(--muted);
   font-size: 0.76rem;
   font-weight: 750;
+}
+
+.form-chip {
+  width: max-content;
+  max-width: 100%;
+  border: 1px solid rgba(70, 224, 182, 0.24);
+  border-radius: 999px;
+  background: rgba(70, 224, 182, 0.08);
+  color: var(--green);
+  padding: 5px 9px;
 }
 
 .form-warning {
@@ -3242,7 +3308,7 @@ input[type="color"] {
   border-radius: var(--radius);
   background:
     linear-gradient(90deg, rgba(5, 7, 10, 0.95), rgba(5, 7, 10, 0.66), rgba(5, 7, 10, 0.92)),
-    url("/assets/rankball-court-hero.png") center / cover no-repeat;
+    url("/assets/home-rank-board.png") center / cover no-repeat;
   box-shadow: var(--shadow);
   padding: 24px;
 }
@@ -3850,6 +3916,10 @@ input[type="color"] {
     font-size: 0.95rem;
   }
 
+  .hero-stat-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .court-command .mode-grid {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -3922,6 +3992,16 @@ input[type="color"] {
   .season-metric-grid {
     grid-template-columns: minmax(0, 1fr);
     gap: 10px;
+  }
+
+  .approval-status-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .approval-status-strip span {
+    padding-inline: 6px;
+    font-size: 0.76rem;
   }
 
   .season-race-list a,

@@ -18,9 +18,9 @@ import {
 } from "../lib/recruiting.js";
 
 function getDefaultMemo(type) {
-  if (type === "need_team") return "비슷한 티어 팀이면 바로 경기방 만들고 양팀 동의로 진행해요.";
-  if (type === "find_team") return "혼자 참여 가능합니다. 포지션과 시간만 맞으면 바로 들어갈게요.";
-  return "포지션은 맞춰볼게요. 경기 전 룰만 먼저 확인해요.";
+  if (type === "need_team") return "동급 팀 우선.";
+  if (type === "find_team") return "바로 참여 가능.";
+  return "포지션 협의 가능.";
 }
 
 function formatApplicants(post, userById, teamById) {
@@ -311,9 +311,9 @@ export default function Recruiting({ app }) {
                 </label>
               ) : null}
               {posterNeedsTeam ? (
-                <p className={canPostRecruiting ? "form-help" : "form-warning"}>
-                  {canPostRecruiting ? "팀원 모집과 팀 큐는 내 소속팀으로만 올릴 수 있습니다." : "소속팀이 있어야 팀 단위 모집을 올릴 수 있습니다."}
-                </p>
+                <span className={canPostRecruiting ? "form-chip" : "form-warning"}>
+                  {canPostRecruiting ? "내 소속팀" : "소속팀 필요"}
+                </span>
               ) : null}
               {draft.type !== "need_team" ? (
                 <div className="position-tab-group">
@@ -346,7 +346,7 @@ export default function Recruiting({ app }) {
               </div>
               <div className="queue-note">
                 <ShieldCheck size={17} />
-                <span>{draft.ranked ? "경쟁전은 기준 MMR에서 위아래 두 티어까지만 신청됩니다." : "빠른대전은 티어 제한 없이 신청되고, 기록 반영은 약하게 처리됩니다."}</span>
+                <span>{draft.ranked ? "경쟁전 · ±2티어" : "빠른대전 · 티어 자유"}</span>
               </div>
               <label className="memo-label">
                 메모

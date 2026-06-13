@@ -45,8 +45,8 @@ export default function CreateMatch({ app }) {
     foulRule: "파울 콜 즉시 중단, 공격권 유지",
     objectionWindow: "24시간",
     evidence: EVIDENCE_OPTIONS.filter((option) => option.id === "captain"),
-    memo: "경기 전 룰을 확정하고, 경기 후 결과를 승인하면 티어에 반영됩니다.",
-    stakes: "승자팀 다음 경기 우선권. 금전 거래 없이 약속만 기록합니다.",
+    memo: "룰 확정 후 결과 승인.",
+    stakes: "다음 경기 우선권.",
   });
 
   const sortedTeams = useMemo(() => {
@@ -201,12 +201,19 @@ export default function CreateMatch({ app }) {
               <div>
                 <span>랭크 허용 구간</span>
                 <strong>{teamTierRange.label}</strong>
-                <em>{selectedTeamA?.name ?? "A팀"} 기준. 구간 밖 팀은 랭크 반영 경기 생성이 막힙니다.</em>
+                <em>{selectedTeamA?.name ?? "A팀"} 기준</em>
               </div>
               <Badge tone={teamTierBlocked ? "orange" : "green"}>{teamTierBlocked ? "제한" : "허용"}</Badge>
             </div>
           ) : (
-            <p className="form-help">친선 경기는 티어 제한 없이 만들 수 있고, MMR은 소폭만 반영됩니다.</p>
+            <div className="tier-range-note">
+              <div>
+                <span>빠른대전</span>
+                <strong>티어 자유</strong>
+                <em>MMR 소폭</em>
+              </div>
+              <Badge tone="neutral">OPEN</Badge>
+            </div>
           )}
           <div className="search-controls">
             <label>

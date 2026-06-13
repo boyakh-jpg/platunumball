@@ -11,7 +11,7 @@ import TeamCard from "../components/team/TeamCard.jsx";
 import { COURTS } from "../lib/constants.js";
 import { RECRUITING_TYPES, isNationalRecruitingPost } from "../lib/recruiting.js";
 import { getCurrentSeason, getPlayerSeasonRows, getSeasonProgress } from "../lib/season.js";
-import { getTierDivision, getTierQuote } from "../lib/tier.js";
+import { getTierDivision } from "../lib/tier.js";
 
 function compareSchedule(a, b) {
   return String(a.scheduledAt ?? "").localeCompare(String(b.scheduledAt ?? ""));
@@ -101,6 +101,9 @@ export default function Home({ app }) {
       .filter((post) => post.region === user.region || isNationalRecruitingPost(post, app.state))
       .slice(0, 3);
   }, [app.state, app.state.recruitingPosts, user.region]);
+  const myCompletedMatches = completedMatches.filter((match) => matchHasUser(match, user.id));
+  const myWins = myCompletedMatches.filter((match) => getUserResult(match, user.id) === "W").length;
+  const winRate = myCompletedMatches.length ? Math.round((myWins / myCompletedMatches.length) * 100) : 0;
 
   const searchResults = useMemo(() => {
     const players = app.state.users
@@ -163,8 +166,12 @@ export default function Home({ app }) {
               <Badge tone="gold">시즌 점수</Badge>
             </div>
           </div>
-          <p className="tier-line">{getTierQuote(user.ratings.integrated)}</p>
-          <p>{user.streak > 0 ? `${user.streak}연승 중. 다음 공식전이 티어를 흔듭니다.` : "다음 승리를 준비하는 중입니다."}</p>
+          <div className="hero-stat-strip">
+            <span>{myCompletedMatches.length}경기</span>
+            <span>{winRate}%</span>
+            <span>{mySeasonIndex >= 0 ? `${mySeasonIndex + 1}위` : "지역 대기"}</span>
+            <span>{user.streak > 0 ? `${user.streak}연승` : user.streak < 0 ? `${Math.abs(user.streak)}연패` : "흐름 대기"}</span>
+          </div>
         </div>
         <div className="mode-grid">
           {Object.entries(user.ratings.modes).map(([mode, mmr]) => (
@@ -206,7 +213,7 @@ export default function Home({ app }) {
                 {upcomingMatches.slice(0, 3).map((match) => <MatchCard key={match.id} match={match} />)}
               </div>
             ) : (
-              <p className="muted">아직 잡힌 경기가 없습니다. 새 경기를 만들면 여기에 먼저 표시됩니다.</p>
+              <div className="empty-state">예정 경기 없음</div>
             )}
           </Card>
 
@@ -269,7 +276,7 @@ export default function Home({ app }) {
                   <span>{team.name}</span>
                   <strong>{team.gap > 0 ? `+${team.gap}` : team.gap} MMR</strong>
                 </Link>
-              )) : <div><span>같은 지역 팀을 더 등록해보세요.</span><strong>대기</strong></div>}
+              )) : <div><span>지역 라이벌 없음</span><strong>대기</strong></div>}
             </div>
           </Card>
           <Card className="section-card recruiting-teaser-card">
@@ -309,7 +316,7 @@ export default function Home({ app }) {
                   <span>{match.title}</span>
                   <strong>{(match.approvals?.teamA?.length ?? 0) + (match.approvals?.teamB?.length ?? 0)}명 승인</strong>
                 </Link>
-              )) : <div><span>승인 대기 중인 경기가 없습니다.</span><strong>OK</strong></div>}
+              )) : <div><span>승인 대기 없음</span><strong>OK</strong></div>}
             </div>
           </Card>
           <Card className="section-card">

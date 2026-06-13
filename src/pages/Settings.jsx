@@ -75,8 +75,16 @@ export default function Settings({ app, auth }) {
               </div>
               <Badge tone={isSupabaseConfigured ? "green" : "orange"}>{isSupabaseConfigured ? "연결됨" : "Demo"}</Badge>
             </div>
-            <p className="muted">현재 앱은 Supabase의 `rankball_state` JSON 상태를 공유합니다. 로그인 세션과 현재 플레이어 선택은 이 브라우저에 따로 저장됩니다.</p>
-            {auth?.user ? <p className="form-help">로그인: {auth.user.user_metadata?.providerName ?? auth.user.email} 테스트 세션</p> : null}
+            <div className="contract-grid single">
+              <div>
+                <span>저장소</span>
+                <strong>{isSupabaseConfigured ? "Cloud" : "Local"}</strong>
+              </div>
+              <div>
+                <span>세션</span>
+                <strong>{auth?.user ? auth.user.user_metadata?.providerName ?? "Test" : "Guest"}</strong>
+              </div>
+            </div>
           </Card>
 
           <Card className="section-card admin-seed-card">
@@ -105,7 +113,6 @@ export default function Settings({ app, auth }) {
                 <strong>{app.state.recruitingPosts.length}개</strong>
               </div>
             </div>
-            <p className="form-help">계정별 5v5 히스토리, 득점/리바운드/어시스트, 승인 대기 경기, 용병/팀 모집방이 함께 생성됩니다.</p>
           </Card>
 
           <Card className="section-card">
@@ -142,7 +149,6 @@ export default function Settings({ app, auth }) {
                 ))}
               </select>
             </label>
-            <p className="form-help">팀장 권한, 경기 전 동의, 결과 승인 흐름을 사용자별로 확인할 수 있습니다.</p>
           </Card>
 
           <Card className="section-card">
@@ -179,7 +185,6 @@ export default function Settings({ app, auth }) {
                 개인 스탯 요약 표시
               </label>
             </div>
-            <p className="form-help">토글 상태는 Supabase 공유 상태에 저장됩니다.</p>
           </Card>
         </div>
 
@@ -191,7 +196,6 @@ export default function Settings({ app, auth }) {
                 <h2>샘플 데이터 복원</h2>
               </div>
             </div>
-            <p className="muted">로컬 저장값과 Supabase 공유 상태를 샘플 데이터 기준으로 다시 맞춥니다.</p>
             <Button variant="secondary" onClick={app.actions.reset}>데모 데이터 초기화</Button>
           </Card>
 

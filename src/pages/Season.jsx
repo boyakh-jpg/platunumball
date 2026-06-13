@@ -43,6 +43,8 @@ export default function Season({ app }) {
   const taskMatches = getTaskMatches(app.state.matches);
   const myRankIndex = playerRows.findIndex((user) => user.id === app.currentUser.id);
   const myRank = myRankIndex >= 0 ? myRankIndex + 1 : null;
+  const topPlayer = playerRows[0];
+  const topTeam = teamRows[0];
 
   return (
     <div className="page-stack season-page">
@@ -50,7 +52,6 @@ export default function Season({ app }) {
         <div className="season-hero-copy">
           <Badge tone="green">Active Season</Badge>
           <h1>{season.name}</h1>
-          <p>{season.subtitle}</p>
           <div className="season-progress">
             <span style={{ width: `${progress}%` }} />
           </div>
@@ -61,8 +62,10 @@ export default function Season({ app }) {
           </div>
         </div>
         <div className="season-rule-board">
-          <strong>시즌 규칙</strong>
-          {(season.rules ?? []).map((rule) => <span key={rule}>{rule}</span>)}
+          <strong>지역 현황</strong>
+          <span><Trophy size={16} /> 개인 1위 {topPlayer?.name ?? "-"}</span>
+          <span><ShieldCheck size={16} /> 팀 1위 {topTeam?.name ?? "-"}</span>
+          <span><ClipboardCheck size={16} /> 처리 대기 {operations.contract + operations.approval + operations.disputed}</span>
           <Link to="/app/create">
             <Button><Swords size={18} /> 랭크 경기 만들기</Button>
           </Link>

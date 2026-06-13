@@ -304,8 +304,8 @@ export function createMatch(state, draft) {
       attackRule: draft.attackRule || "공격권은 득점 후 교대",
       foulRule: draft.foulRule || "파울은 콜한 쪽 기준으로 즉시 중단",
     },
-    memo: draft.memo || "결과는 양팀 과반 승인 후 티어에 반영됩니다.",
-    stakes: draft.stakes || "금전 거래 없이 약속과 벌칙만 기록합니다.",
+    memo: draft.memo || "결과 승인 대기.",
+    stakes: draft.stakes || "다음 경기 우선권.",
     objectionWindow: draft.objectionWindow || (draft.official ? "24시간" : "1시간"),
     evidence,
     teamA: { name: teamA.name, teamId: teamA.id, players: getTeamPlayers(teamA, size), score: 0 },
@@ -792,7 +792,7 @@ export function createTeam(state, teamDraft) {
         {
           id: makeId("n"),
           title: "팀 생성 제한",
-          body: `한 플레이어는 최대 ${MAX_TEAM_MEMBERSHIPS}개 팀까지만 소속될 수 있습니다.`,
+          body: `팀 한도 ${MAX_TEAM_MEMBERSHIPS}/${MAX_TEAM_MEMBERSHIPS}`,
           tone: "team",
         },
         ...state.notifications,
@@ -832,7 +832,7 @@ export function addTeamMember(state, teamId, memberDraft) {
         {
           id: makeId("n"),
           title: "팀원 추가 제한",
-          body: `한 플레이어는 최대 ${MAX_TEAM_MEMBERSHIPS}개 팀까지만 소속될 수 있습니다.`,
+          body: `팀 한도 ${MAX_TEAM_MEMBERSHIPS}/${MAX_TEAM_MEMBERSHIPS}`,
           tone: "team",
         },
         ...state.notifications,

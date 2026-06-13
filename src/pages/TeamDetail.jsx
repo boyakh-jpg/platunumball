@@ -197,7 +197,7 @@ export default function TeamDetail({ app }) {
                     </select>
                   </label>
                   <Button type="submit" disabled={!canAddMember || !availableUsers.length}>팀원 추가</Button>
-                  {!canAddMember ? <p className="form-warning">선택한 선수는 이미 최대 {MAX_TEAM_MEMBERSHIPS}개 팀에 소속되어 있습니다.</p> : null}
+                  {!canAddMember ? <span className="form-warning">팀 한도 {MAX_TEAM_MEMBERSHIPS}/{MAX_TEAM_MEMBERSHIPS}</span> : null}
                 </form>
                 <div className="member-control-list">
                   {team.members.map((member) => {
@@ -219,7 +219,7 @@ export default function TeamDetail({ app }) {
                 </div>
               </>
             ) : (
-              <p className="form-help">팀장만 팀원을 추가하거나 역할을 바꿀 수 있습니다. 설정에서 데모 유저를 전환해 팀장 권한을 확인할 수 있습니다.</p>
+              <span className="form-chip">팀장 전용</span>
             )}
           </Card>
           {renderMembers("정규멤버", regularMembers)}

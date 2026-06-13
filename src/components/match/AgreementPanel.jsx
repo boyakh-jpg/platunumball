@@ -6,6 +6,8 @@ export default function AgreementPanel({ match, teams, users, onAgree }) {
   const locked = !["contract", "agreed"].includes(match.status);
   const completed = match.status !== "contract";
   const userMap = Object.fromEntries(users.map((user) => [user.id, user]));
+  const teamAStatus = getAgreementStatus(match, teams, "teamA");
+  const teamBStatus = getAgreementStatus(match, teams, "teamB");
 
   const renderSide = (sideName) => {
     const status = getAgreementStatus(match, teams, sideName);
@@ -51,7 +53,11 @@ export default function AgreementPanel({ match, teams, users, onAgree }) {
         </div>
         <Badge tone={completed ? "green" : "orange"}>{completed ? "완료" : "대기"}</Badge>
       </div>
-      <p className="muted">양팀 과반이 동의하면 결과 입력이 열립니다. 주장 확인 옵션이 켜져 있으면 각 팀 주장의 동의가 반드시 포함됩니다.</p>
+      <div className="approval-status-strip">
+        <span>A {teamAStatus.approvals.length}/{teamAStatus.majority}</span>
+        <span>B {teamBStatus.approvals.length}/{teamBStatus.majority}</span>
+        <span>{teamAStatus.captainRequired || teamBStatus.captainRequired ? "주장 필수" : "과반"}</span>
+      </div>
       <div className="approval-grid">
         {renderSide("teamA")}
         {renderSide("teamB")}

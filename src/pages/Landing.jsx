@@ -5,6 +5,19 @@ import Button from "../components/common/Button.jsx";
 
 export default function Landing({ state }) {
   const topUser = [...state.users].sort((a, b) => b.ratings.integrated - a.ratings.integrated)[0];
+  const featuredMatch =
+    state.matches.find((match) => ["approval", "agreed", "contract"].includes(match.status)) ??
+    state.matches.find((match) => match.status === "confirmed") ??
+    state.matches[0];
+  const approvalCount = state.matches.filter((match) => match.status === "approval").length;
+  const recruitingCount = state.recruitingPosts?.filter((post) => post.status !== "closed").length ?? 0;
+  const statusLabel = {
+    contract: "동의",
+    agreed: "예정",
+    approval: "승인",
+    disputed: "보류",
+    confirmed: "완료",
+  }[featuredMatch?.status] ?? "경기";
 
   return (
     <main className="landing">
@@ -13,7 +26,6 @@ export default function Landing({ state }) {
         <div className="landing-copy">
           <Badge tone="green">RankBall Season Zero</Badge>
           <h1>RankBall</h1>
-          <p>동네 코트의 경기 기록, 팀 히스토리, 랭크 경쟁을 한 곳에서 관리하는 농구 래더.</p>
           <div className="landing-actions">
             <Link to="/app/create">
               <Button>
@@ -31,29 +43,29 @@ export default function Landing({ state }) {
             </Link>
           </div>
           <div className="landing-stat-grid">
-            <span><strong>{state.matches.length}</strong> active matches</span>
-            <span><strong>{state.teams.length}</strong> squads</span>
+            <span><strong>{state.matches.length}</strong> matches</span>
+            <span><strong>{state.teams.length}</strong> teams</span>
             <span><strong>{topUser.ratings.integrated}</strong> top MMR</span>
           </div>
         </div>
         <div className="broadcast-panel" aria-label="RankBall live board">
-          <div className="broadcast-glass">
-            <div className="live-dot">LIVE</div>
-            <h2>Street Court Ladder</h2>
+          <Link to={featuredMatch ? `/app/matches/${featuredMatch.id}` : "/app"} className="broadcast-glass">
+            <div className="live-dot">TODAY</div>
+            <h2>{featuredMatch?.mode ?? "5v5"} Match</h2>
             <div className="broadcast-score">
-              <span>Noeul Kings</span>
-              <strong>21</strong>
+              <span>{featuredMatch?.teamA.name ?? "Team A"}</span>
+              <strong>{featuredMatch?.teamA.score ?? 0}</strong>
               <i>VS</i>
-              <strong>17</strong>
-              <span>Bridge Ballers</span>
+              <strong>{featuredMatch?.teamB.score ?? 0}</strong>
+              <span>{featuredMatch?.teamB.name ?? "Team B"}</span>
             </div>
             <div className="broadcast-list">
-              <span><Trophy size={17} /> {topUser.name} · {topUser.ratings.integrated} MMR</span>
-              <span><ClipboardCheck size={17} /> 경기 조건은 시작 전에 고정</span>
-              <span><ShieldCheck size={17} /> 과반 승인 후 랭크 반영</span>
-              <span><BarChart3 size={17} /> 공식 5v5는 가장 높은 가중치</span>
+              <span><Trophy size={17} /> {topUser.name} <b>{topUser.ratings.integrated}</b></span>
+              <span><ClipboardCheck size={17} /> 승인 대기 <b>{approvalCount}</b></span>
+              <span><ShieldCheck size={17} /> 모집 큐 <b>{recruitingCount}</b></span>
+              <span><BarChart3 size={17} /> 상태 <b>{statusLabel}</b></span>
             </div>
-          </div>
+          </Link>
         </div>
       </section>
     </main>

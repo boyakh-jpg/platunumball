@@ -39,7 +39,6 @@ export default function Login({ auth, app }) {
             <p className="eyebrow">Sign in</p>
             <h1>소셜 계정으로 시작</h1>
           </div>
-          <p className="muted">테스트 단계라 실제 OAuth 연결 없이 버튼을 누르면 바로 앱으로 들어갑니다.</p>
 
           {auth.session ? (
             <div className="auth-session-line">
@@ -63,7 +62,6 @@ export default function Login({ auth, app }) {
               앱으로 들어가기 <ArrowRight size={18} />
             </Button>
           ) : null}
-          <p className="form-help">현재 플레이어는 {app.currentUser.name}으로 시작합니다. 다른 플레이어 테스트는 설정에서 전환할 수 있습니다.</p>
         </div>
       </section>
     </main>
