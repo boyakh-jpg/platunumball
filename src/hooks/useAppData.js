@@ -169,7 +169,16 @@ export function useAppData(authUserId = null) {
       interestRecruitingPost: (postId, application) => setState((prev) => interestRecruitingPost({ ...prev, currentUserId }, postId, application)),
       cancelRecruitingParticipation: (postId) => setState((prev) => cancelRecruitingParticipation({ ...prev, currentUserId }, postId)),
       setRecruitingReady: (postId, ready) => setState((prev) => setRecruitingReady({ ...prev, currentUserId }, postId, ready)),
-      confirmRecruitingMatch: (postId) => setState((prev) => confirmRecruitingMatch({ ...prev, currentUserId }, postId)),
+      confirmRecruitingMatch: (postId) => {
+        let createdId = null;
+        setState((prev) => {
+          const existingIds = new Set((prev.matches ?? []).map((match) => match.id));
+          const next = confirmRecruitingMatch({ ...prev, currentUserId }, postId);
+          createdId = (next.matches ?? []).find((match) => !existingIds.has(match.id))?.id ?? null;
+          return next;
+        });
+        return createdId;
+      },
       closeRecruitingPost: (postId) => setState((prev) => closeRecruitingPost({ ...prev, currentUserId }, postId)),
       addTeamMember: (teamId, draft) => setState((prev) => addTeamMember({ ...prev, currentUserId }, teamId, draft)),
       updateTeamMemberRole: (teamId, userId, role) => setState((prev) => updateTeamMemberRole({ ...prev, currentUserId }, teamId, userId, role)),

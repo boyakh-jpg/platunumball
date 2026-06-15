@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   CheckCircle2,
   Clock3,
@@ -218,22 +218,50 @@ function ReadyStatusStrip({ lobby, compact = false }) {
   const visibleRows = compact ? rows.slice(0, 6) : rows;
   const hiddenCount = rows.length - visibleRows.length;
   const readyCount = rows.filter((row) => row.ready).length;
+  const readyRows = rows.filter((row) => row.ready);
+  const waitingRows = rows.filter((row) => !row.ready);
+  const renderReadyChip = (row) => (
+    <span key={row.id} className={row.ready ? "ow-ready-chip ready" : "ow-ready-chip waiting"}>
+      {row.ready ? <CheckCircle2 size={13} /> : <Clock3 size={13} />}
+      <b>{row.label}</b>
+      <small>{row.side}</small>
+      <em>{row.ready ? "완료" : "대기"}</em>
+    </span>
+  );
+
+  if (!compact) {
+    return (
+      <div className="ow-ready-strip ow-ready-strip-modal">
+        <div className="ow-ready-head">
+          <span>대기 현황</span>
+          <strong>{readyCount}/{rows.length}</strong>
+        </div>
+        <div className="ow-ready-groups">
+          <div className="ow-ready-group ready">
+            <strong><CheckCircle2 size={14} /> 대기 완료</strong>
+            <div className="ow-ready-chip-row">
+              {readyRows.length ? readyRows.map(renderReadyChip) : <span className="ow-ready-empty">아직 없음</span>}
+            </div>
+          </div>
+          <div className="ow-ready-group waiting">
+            <strong><Clock3 size={14} /> 대기 전</strong>
+            <div className="ow-ready-chip-row">
+              {waitingRows.length ? waitingRows.map(renderReadyChip) : <span className="ow-ready-empty">전원 완료</span>}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className={compact ? "ow-ready-strip ow-ready-strip-card" : "ow-ready-strip ow-ready-strip-modal"}>
+    <div className="ow-ready-strip ow-ready-strip-card">
       <div className="ow-ready-head">
         <span>대기 현황</span>
         <strong>{readyCount}/{rows.length}</strong>
       </div>
       <div className="ow-ready-chip-row">
-        {visibleRows.map((row) => (
-          <span key={row.id} className={row.ready ? "ow-ready-chip ready" : "ow-ready-chip waiting"}>
-            {row.ready ? <CheckCircle2 size={13} /> : <Clock3 size={13} />}
-            <b>{row.label}</b>
-            <small>{row.side}</small>
-            <em>{row.ready ? "완료" : "대기"}</em>
-          </span>
-        ))}
+        {visibleRows.map(renderReadyChip)}
         {hiddenCount > 0 ? <span className="ow-ready-chip more">+{hiddenCount}</span> : null}
       </div>
     </div>
@@ -316,6 +344,7 @@ function ReserveLine({ sideName, candidates, userById, teams }) {
 }
 
 export default function Recruiting({ app }) {
+  const navigate = useNavigate();
   const myTeams = useMemo(
     () => app.state.teams.filter((team) => team.members.some((member) => member.userId === app.currentUser.id)),
     [app.currentUser.id, app.state.teams],
@@ -451,6 +480,12 @@ export default function Recruiting({ app }) {
   const submitJoin = (post) => {
     const joinDraft = getJoinDraft(post);
     app.actions.interestRecruitingPost(post.id, joinDraft);
+  };
+  const confirmMatch = (post) => {
+    const matchId = app.actions.confirmRecruitingMatch(post.id);
+    if (!matchId) return;
+    setSelectedPostId(null);
+    navigate(`/app/matches/${matchId}`);
   };
 
   return (
@@ -808,7 +843,7 @@ export default function Recruiting({ app }) {
                   </Button>
                 ) : null}
                 {mine ? (
-                  <Button type="button" disabled={!lobby.canConfirm} onClick={() => app.actions.confirmRecruitingMatch(selectedPost.id)}>
+                  <Button type="button" disabled={!lobby.canConfirm} onClick={() => confirmMatch(selectedPost)}>
                     <Swords size={18} /> 매치 확정
                   </Button>
                 ) : null}

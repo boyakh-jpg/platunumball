@@ -897,6 +897,44 @@
   gap: 6px;
 }
 
+.ow-ready-groups {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ow-ready-group {
+  display: grid;
+  gap: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.035);
+  padding: 8px;
+}
+
+.ow-ready-group > strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 950;
+}
+
+.ow-ready-group.ready > strong {
+  color: var(--green);
+}
+
+.ow-ready-group.waiting > strong {
+  color: var(--gold);
+}
+
+.ow-ready-empty {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 850;
+}
+
 .ow-ready-chip {
   display: inline-flex;
   align-items: center;
@@ -1344,6 +1382,10 @@ html[data-theme="light"] .ow-compose-drawer {
 
   .ow-ready-strip-card {
     display: none;
+  }
+
+  .ow-ready-groups {
+    grid-template-columns: 1fr;
   }
 
   .ow-submit-row {
