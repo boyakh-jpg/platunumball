@@ -868,129 +868,6 @@
   background: linear-gradient(90deg, var(--green), var(--gold));
 }
 
-.ow-ready-strip {
-  display: grid;
-  gap: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.045);
-  padding: 9px;
-}
-
-.ow-ready-strip-modal {
-  margin-bottom: 12px;
-}
-
-.ow-ready-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  color: var(--muted);
-  font-size: 0.76rem;
-  font-weight: 950;
-}
-
-.ow-ready-head strong {
-  color: var(--gold);
-}
-
-.ow-ready-chip-row {
-  display: flex;
-  min-width: 0;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.ow-ready-groups {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.ow-ready-group {
-  display: grid;
-  gap: 7px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.035);
-  padding: 8px;
-}
-
-.ow-ready-group > strong {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--text);
-  font-size: 0.78rem;
-  font-weight: 950;
-}
-
-.ow-ready-group.ready > strong {
-  color: var(--green);
-}
-
-.ow-ready-group.waiting > strong {
-  color: var(--gold);
-}
-
-.ow-ready-empty {
-  color: var(--muted);
-  font-size: 0.74rem;
-  font-weight: 850;
-}
-
-.ow-ready-chip {
-  display: inline-flex;
-  align-items: center;
-  min-width: 0;
-  max-width: 100%;
-  gap: 5px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.055);
-  color: var(--muted);
-  padding: 5px 8px;
-  font-size: 0.72rem;
-  font-weight: 900;
-}
-
-.ow-ready-chip.ready {
-  border-color: rgba(70, 224, 182, 0.34);
-  background: rgba(70, 224, 182, 0.1);
-  color: var(--green);
-}
-
-.ow-ready-chip.waiting {
-  border-color: rgba(255, 211, 108, 0.2);
-  color: var(--gold);
-}
-
-.ow-ready-chip b {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--text);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ow-ready-chip small {
-  color: var(--muted);
-  font-size: 0.68rem;
-  font-weight: 950;
-}
-
-.ow-ready-chip em {
-  color: currentColor;
-  font-size: 0.68rem;
-  font-style: normal;
-  font-weight: 950;
-}
-
-.ow-ready-chip.more {
-  color: var(--text);
-}
-
 .ow-queue-ready-line {
   display: flex;
   min-width: 0;
@@ -1394,7 +1271,6 @@ html[data-theme="light"] .ow-hero-copy p {
 html[data-theme="light"] .ow-mode-card,
 html[data-theme="light"] .ow-filter-bar,
 html[data-theme="light"] .ow-queue-controls,
-html[data-theme="light"] .ow-ready-strip,
 html[data-theme="light"] .ow-recruit-card,
 html[data-theme="light"] .ow-hero-panel,
 html[data-theme="light"] .ow-empty-state {
@@ -1450,14 +1326,6 @@ html[data-theme="light"] .ow-compose-drawer {
 
   .ow-card-side {
     grid-template-columns: minmax(0, 0.72fr) minmax(0, 1fr);
-  }
-
-  .ow-ready-strip-card {
-    display: none;
-  }
-
-  .ow-ready-groups {
-    grid-template-columns: 1fr;
   }
 
   .ow-submit-row {

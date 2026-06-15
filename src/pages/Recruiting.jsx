@@ -173,6 +173,7 @@ function TeamMemberPicker({ team, userById, selectedIds, capacity, onChange }) {
 function EntryBlock({ entry, userById, teams }) {
   const mmr = getEntryMmr(entry);
   const players = entry.players.map((playerId) => userById[playerId]).filter(Boolean);
+  const readyLabel = entry.status === "ready" ? "대기 완료" : "대기 전";
 
   return (
     <div className={`ow-party-block ${entry.status === "ready" ? "ready" : ""}`}>
@@ -201,68 +202,9 @@ function EntryBlock({ entry, userById, teams }) {
             <span className="avatar small" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
             <span>{user.name}</span>
             <b>{getPlayerPosition(user)}</b>
+            <em>{readyLabel}</em>
           </PlayerHoverCard>
         ))}
-      </div>
-    </div>
-  );
-}
-
-function ReadyStatusStrip({ lobby, compact = false }) {
-  const rows = (lobby.entries ?? []).map((entry) => ({
-    id: entry.id,
-    label: getReadyTitle(entry),
-    side: entry.reserve ? "후보" : SIDE_LABELS[entry.side],
-    ready: entry.status === "ready",
-  }));
-  const visibleRows = compact ? rows.slice(0, 6) : rows;
-  const hiddenCount = rows.length - visibleRows.length;
-  const readyCount = rows.filter((row) => row.ready).length;
-  const readyRows = rows.filter((row) => row.ready);
-  const waitingRows = rows.filter((row) => !row.ready);
-  const renderReadyChip = (row) => (
-    <span key={row.id} className={row.ready ? "ow-ready-chip ready" : "ow-ready-chip waiting"}>
-      {row.ready ? <CheckCircle2 size={13} /> : <Clock3 size={13} />}
-      <b>{row.label}</b>
-      <small>{row.side}</small>
-      <em>{row.ready ? "완료" : "대기"}</em>
-    </span>
-  );
-
-  if (!compact) {
-    return (
-      <div className="ow-ready-strip ow-ready-strip-modal">
-        <div className="ow-ready-head">
-          <span>대기 현황</span>
-          <strong>{readyCount}/{rows.length}</strong>
-        </div>
-        <div className="ow-ready-groups">
-          <div className="ow-ready-group ready">
-            <strong><CheckCircle2 size={14} /> 대기 완료</strong>
-            <div className="ow-ready-chip-row">
-              {readyRows.length ? readyRows.map(renderReadyChip) : <span className="ow-ready-empty">아직 없음</span>}
-            </div>
-          </div>
-          <div className="ow-ready-group waiting">
-            <strong><Clock3 size={14} /> 대기 전</strong>
-            <div className="ow-ready-chip-row">
-              {waitingRows.length ? waitingRows.map(renderReadyChip) : <span className="ow-ready-empty">전원 완료</span>}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="ow-ready-strip ow-ready-strip-card">
-      <div className="ow-ready-head">
-        <span>대기 현황</span>
-        <strong>{readyCount}/{rows.length}</strong>
-      </div>
-      <div className="ow-ready-chip-row">
-        {visibleRows.map(renderReadyChip)}
-        {hiddenCount > 0 ? <span className="ow-ready-chip more">+{hiddenCount}</span> : null}
       </div>
     </div>
   );
@@ -302,6 +244,7 @@ function QueueReadyLine({ lobby, userById, teams }) {
 
 function FillSlot({ candidate, userById, teams }) {
   const user = candidate ? userById[candidate.playerId] : null;
+  const readyLabel = candidate?.status === "ready" ? "대기 완료" : "대기 전";
   if (!user) {
     return (
       <div className="ow-open-slot empty">
@@ -319,6 +262,7 @@ function FillSlot({ candidate, userById, teams }) {
         <em>{candidate.status === "ready" ? "충원 예정" : "준비 대기"} · {candidate.sourceLabel}</em>
       </span>
       <TierBadge mmr={user.ratings.integrated} compact />
+      <Badge tone={candidate.status === "ready" ? "green" : "neutral"}>{readyLabel}</Badge>
     </PlayerHoverCard>
   );
 }
@@ -368,7 +312,8 @@ function ReserveLine({ sideName, candidates, playingIds, userById, teams }) {
               <b>{index + 1}</b>
               <span className="avatar small" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
               <span>{user.name}</span>
-              <em>{canRecord ? "기록 가능" : candidate.status === "ready" ? "준비" : "대기"}</em>
+              <Badge tone={candidate.status === "ready" ? "green" : "neutral"}>{candidate.status === "ready" ? "대기 완료" : "대기 전"}</Badge>
+              {canRecord ? <em>기록 가능</em> : null}
             </PlayerHoverCard>
           );
         })}
@@ -692,8 +637,6 @@ export default function Recruiting({ app }) {
                 <span><UsersRound size={16} /> 팀은 선택 멤버만 참여</span>
                 <span><Clock3 size={16} /> 전원 대기 후 방장 확정</span>
               </div>
-
-              <ReadyStatusStrip lobby={lobby} />
 
               <div className="ow-lobby-grid">
                 <SideRoster sideName="teamA" side={lobby.sides.teamA} userById={userById} teams={app.state.teams} />
