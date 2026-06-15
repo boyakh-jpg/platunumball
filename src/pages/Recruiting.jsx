@@ -268,6 +268,38 @@ function ReadyStatusStrip({ lobby, compact = false }) {
   );
 }
 
+function QueueReadyLine({ lobby, userById, teams }) {
+  const rows = (lobby.entries ?? []).map((entry) => {
+    const user = entry.playerId ? userById[entry.playerId] : null;
+    return {
+      id: entry.id,
+      label: getReadyTitle(entry),
+      side: entry.reserve ? "?꾨낫" : SIDE_LABELS[entry.side],
+      ready: entry.status === "ready",
+      user,
+    };
+  });
+
+  return (
+    <div className="ow-queue-ready-line">
+      {rows.map((row) => (
+        <span key={row.id} className={row.ready ? "ready" : "waiting"}>
+          {row.user ? (
+            <PlayerHoverCard user={row.user} teams={teams} as="span">
+              <span className="avatar small" style={{ "--avatar": row.user.avatarColor }}>{row.user.name.slice(0, 1)}</span>
+              <b>{row.label}</b>
+            </PlayerHoverCard>
+          ) : (
+            <b>{row.label}</b>
+          )}
+          <small>{row.side}</small>
+          <em>{row.ready ? "대기 완료" : "대기 전"}</em>
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function FillSlot({ candidate, userById, teams }) {
   const user = candidate ? userById[candidate.playerId] : null;
   if (!user) {
@@ -570,12 +602,11 @@ export default function Recruiting({ app }) {
                   {["teamA", "teamB"].map((sideName) => (
                     <div key={sideName} className="ow-lobby-meter">
                       <span>{SIDE_LABELS[sideName]}</span>
-                      <div style={{ "--fill": `${Math.min(100, (lobby.sides[sideName].projectedFilled / lobby.sides[sideName].capacity) * 100)}%` }} />
                       <b>{lobby.sides[sideName].projectedFilled}/{lobby.sides[sideName].capacity}</b>
                     </div>
                   ))}
                 </div>
-                <ReadyStatusStrip lobby={lobby} compact />
+                <QueueReadyLine lobby={lobby} userById={userById} teams={app.state.teams} />
                 <div className="ow-card-bottom">
                   <span>{getRecruitingSchedule(post)}</span>
                   <span className="ow-tier-chip">{post.ranked === false ? "티어 자유" : `${target} MMR 기준`}</span>

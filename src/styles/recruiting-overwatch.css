@@ -837,12 +837,17 @@
 
 .ow-lobby-meter {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto auto;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
   color: var(--muted);
   font-size: 0.75rem;
   font-weight: 950;
+}
+
+.ow-lobby-meter b {
+  color: var(--gold);
 }
 
 .ow-lobby-meter div,
@@ -984,6 +989,64 @@
 
 .ow-ready-chip.more {
   color: var(--text);
+}
+
+.ow-queue-ready-line {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ow-queue-ready-line > span {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+  gap: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--muted);
+  padding: 5px 8px;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.ow-queue-ready-line > span.ready {
+  border-color: rgba(70, 224, 182, 0.3);
+  background: rgba(70, 224, 182, 0.09);
+  color: var(--green);
+}
+
+.ow-queue-ready-line > span.waiting {
+  border-color: rgba(255, 211, 108, 0.2);
+  color: var(--gold);
+}
+
+.ow-queue-ready-line .player-hover-trigger {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  gap: 5px;
+}
+
+.ow-queue-ready-line b {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ow-queue-ready-line small,
+.ow-queue-ready-line em {
+  color: currentColor;
+  font-size: 0.68rem;
+  font-style: normal;
+  font-weight: 950;
+  white-space: nowrap;
 }
 
 .ow-lobby-modal {
