@@ -106,6 +106,14 @@ function getEntryTitle(entry) {
   return `${entry.user?.name ?? "플레이어"} · 개인`;
 }
 
+function getReadyTitle(entry) {
+  if (entry.kind === "team") {
+    const leader = entry.user?.name ? ` · ${entry.user.name}` : "";
+    return `${entry.team?.name ?? "팀"}${leader}`;
+  }
+  return entry.user?.name ?? "플레이어";
+}
+
 function getPlayerPosition(user) {
   return user?.position || "포지션 자유";
 }
@@ -195,6 +203,38 @@ function EntryBlock({ entry, userById, teams }) {
             <b>{getPlayerPosition(user)}</b>
           </PlayerHoverCard>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function ReadyStatusStrip({ lobby, compact = false }) {
+  const rows = (lobby.entries ?? []).map((entry) => ({
+    id: entry.id,
+    label: getReadyTitle(entry),
+    side: entry.reserve ? "후보" : SIDE_LABELS[entry.side],
+    ready: entry.status === "ready",
+  }));
+  const visibleRows = compact ? rows.slice(0, 6) : rows;
+  const hiddenCount = rows.length - visibleRows.length;
+  const readyCount = rows.filter((row) => row.ready).length;
+
+  return (
+    <div className={compact ? "ow-ready-strip ow-ready-strip-card" : "ow-ready-strip ow-ready-strip-modal"}>
+      <div className="ow-ready-head">
+        <span>대기 현황</span>
+        <strong>{readyCount}/{rows.length}</strong>
+      </div>
+      <div className="ow-ready-chip-row">
+        {visibleRows.map((row) => (
+          <span key={row.id} className={row.ready ? "ow-ready-chip ready" : "ow-ready-chip waiting"}>
+            {row.ready ? <CheckCircle2 size={13} /> : <Clock3 size={13} />}
+            <b>{row.label}</b>
+            <small>{row.side}</small>
+            <em>{row.ready ? "완료" : "대기"}</em>
+          </span>
+        ))}
+        {hiddenCount > 0 ? <span className="ow-ready-chip more">+{hiddenCount}</span> : null}
       </div>
     </div>
   );
@@ -552,6 +592,7 @@ export default function Recruiting({ app }) {
                     </div>
                   ))}
                 </div>
+                <ReadyStatusStrip lobby={lobby} compact />
                 <div className="ow-card-bottom">
                   <span>{getRecruitingSchedule(post)}</span>
                   <span className="ow-tier-chip">{post.ranked === false ? "티어 자유" : `${target} MMR 기준`}</span>
@@ -628,6 +669,8 @@ export default function Recruiting({ app }) {
                 <span><UsersRound size={16} /> 팀은 선택 멤버만 참여</span>
                 <span><Clock3 size={16} /> 전원 대기 후 방장 확정</span>
               </div>
+
+              <ReadyStatusStrip lobby={lobby} />
 
               <div className="ow-lobby-grid">
                 <SideRoster sideName="teamA" side={lobby.sides.teamA} userById={userById} teams={app.state.teams} />
