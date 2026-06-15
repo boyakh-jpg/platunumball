@@ -1,26 +1,38 @@
-import { useLayoutEffect, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
-function getPosition(anchor, width, estimatedHeight) {
+function getPosition(anchor, width, cardHeight) {
   const rect = anchor.getBoundingClientRect();
   const margin = 12;
   const gap = 10;
   const safeWidth = Math.min(width, window.innerWidth - margin * 2);
   const maxLeft = Math.max(margin, window.innerWidth - safeWidth - margin);
   const left = Math.min(Math.max(margin, rect.left), maxLeft);
-  const below = rect.bottom + gap;
-  const above = rect.top - estimatedHeight - gap;
-  const top = below + estimatedHeight > window.innerHeight && above >= margin
-    ? above
-    : Math.min(below, window.innerHeight - estimatedHeight - margin);
-
-  const maxTop = Math.max(margin, window.innerHeight - estimatedHeight - margin);
+  const safeHeight = Math.min(cardHeight, window.innerHeight - margin * 2);
+  const belowSpace = window.innerHeight - rect.bottom - gap - margin;
+  const aboveSpace = rect.top - gap - margin;
+  const placeAbove = belowSpace < safeHeight && aboveSpace > belowSpace;
+  const availableSpace = Math.max(0, placeAbove ? aboveSpace : belowSpace);
+  const maxHeight = Math.min(window.innerHeight - margin * 2, availableSpace);
+  const visibleHeight = Math.min(safeHeight, maxHeight);
+  const top = placeAbove
+    ? rect.top - gap - visibleHeight
+    : Math.min(rect.bottom + gap, window.innerHeight - visibleHeight - margin);
 
   return {
-    top: Math.min(Math.max(margin, top), maxTop),
+    top: Math.max(margin, top),
     left,
+    maxHeight,
     width: safeWidth,
   };
+}
+
+function isSamePosition(a, b) {
+  return a &&
+    Math.round(a.top) === Math.round(b.top) &&
+    Math.round(a.left) === Math.round(b.left) &&
+    Math.round(a.width) === Math.round(b.width) &&
+    Math.round(a.maxHeight) === Math.round(b.maxHeight);
 }
 
 export default function HoverPortal({
@@ -32,6 +44,7 @@ export default function HoverPortal({
   estimatedHeight = 280,
 }) {
   const [position, setPosition] = useState(null);
+  const cardRef = useRef(null);
 
   useLayoutEffect(() => {
     if (!open || typeof document === "undefined") {
@@ -44,14 +57,18 @@ export default function HoverPortal({
         setPosition(null);
         return;
       }
-      setPosition(getPosition(anchorRef.current, width, estimatedHeight));
+      const measuredHeight = cardRef.current?.getBoundingClientRect().height || estimatedHeight;
+      const nextPosition = getPosition(anchorRef.current, width, measuredHeight);
+      setPosition((current) => (isSamePosition(current, nextPosition) ? current : nextPosition));
     };
 
     update();
+    const frameId = window.requestAnimationFrame(update);
     window.addEventListener("resize", update);
     window.addEventListener("scroll", update, true);
 
     return () => {
+      window.cancelAnimationFrame(frameId);
       window.removeEventListener("resize", update);
       window.removeEventListener("scroll", update, true);
     };
@@ -60,7 +77,7 @@ export default function HoverPortal({
   if (!open || !position || typeof document === "undefined") return null;
 
   return createPortal(
-    <span className={className} role="tooltip" style={position}>
+    <span ref={cardRef} className={className} role="tooltip" style={position}>
       {children}
     </span>,
     document.body,
