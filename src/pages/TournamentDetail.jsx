@@ -1,5 +1,5 @@
 import { Link, useParams } from "react-router-dom";
-import { CalendarDays, ChevronLeft, Save, ShieldCheck, Trophy } from "lucide-react";
+import { CalendarDays, ChevronLeft, Save, ShieldCheck } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import TierBadge from "../components/rating/TierBadge.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
@@ -46,18 +46,185 @@ function getTournamentMatches(tournament, matchesById, matches = []) {
 }
 
 function getWinnerName(match) {
+  const winnerTeamId = getMatchWinnerTeamId(match);
+  if (!winnerTeamId) return "";
+  return winnerTeamId === match.teamA.teamId ? match.teamA.name : match.teamB.name;
+}
+
+function getMatchWinnerTeamId(match) {
   const scoreA = Number(match.result?.scoreA ?? match.teamA?.score ?? 0);
   const scoreB = Number(match.result?.scoreB ?? match.teamB?.score ?? 0);
   if (!match.result || scoreA === scoreB) return "";
-  return scoreA > scoreB ? match.teamA.name : match.teamB.name;
+  return scoreA > scoreB ? match.teamA.teamId : match.teamB.teamId;
 }
 
-function getRoundEntrantCount(round = {}) {
-  return (round.pairings?.length ?? 0) + (round.byes?.length ?? 0);
+function getBracketRoundName(roundIndex, totalRounds) {
+  const entrantCount = 2 ** (totalRounds - roundIndex);
+  if (entrantCount === 2) return "결승";
+  if (entrantCount === 4) return "준결승";
+  return `${entrantCount}강`;
 }
 
-function getNextRoundSlotCount(round = {}) {
-  return Math.max(1, Math.ceil(getRoundEntrantCount(round) / 2));
+function findPairingForFirstRound(row, pairings = []) {
+  return pairings.find((pairing) => (
+    (pairing.bracketMatch ?? pairing.fixture) === row.fixture ||
+    (pairing.teamAId === row.teamAId && pairing.teamBId === row.teamBId)
+  ));
+}
+
+function getFallbackFirstRoundRows(tournament, bracketRound = {}) {
+  const bracket = tournament.bracket ?? {};
+  if (Array.isArray(bracket.firstRound) && bracket.firstRound.length) return bracket.firstRound;
+  if (Array.isArray(bracket.slots) && bracket.slots.length) {
+    const rows = [];
+    for (let index = 0; index < bracket.slots.length; index += 2) {
+      const teamAId = bracket.slots[index] ?? null;
+      const teamBId = bracket.slots[index + 1] ?? null;
+      rows.push({
+        id: `r1-${rows.length + 1}`,
+        round: 1,
+        fixture: rows.length + 1,
+        teamAId,
+        teamBId,
+        byeTeamId: teamAId && !teamBId ? teamAId : null,
+      });
+    }
+    return rows;
+  }
+
+  return [
+    ...(bracketRound.pairings ?? []).map((pairing, index) => ({
+      id: `r1-${pairing.bracketMatch ?? pairing.fixture ?? index + 1}`,
+      round: 1,
+      fixture: pairing.bracketMatch ?? pairing.fixture ?? index + 1,
+      teamAId: pairing.teamAId,
+      teamBId: pairing.teamBId,
+      byeTeamId: null,
+    })),
+    ...(bracketRound.byes ?? []).map((teamId, index) => ({
+      id: `r1-bye-${teamId}`,
+      round: 1,
+      fixture: (bracketRound.pairings?.length ?? 0) + index + 1,
+      teamAId: teamId,
+      teamBId: null,
+      byeTeamId: teamId,
+    })),
+  ];
+}
+
+function getNodeWinnerTeamId(node) {
+  if (!node) return "";
+  if (node.winnerTeamId) return node.winnerTeamId;
+  if (node.byeTeamId) return node.byeTeamId;
+  if (node.match) return getMatchWinnerTeamId(node.match);
+  return "";
+}
+
+function makeBracketSourceFromNode(node) {
+  const winnerTeamId = getNodeWinnerTeamId(node);
+  return {
+    type: "advance",
+    node,
+    teamId: winnerTeamId || null,
+  };
+}
+
+function buildTournamentBracketTree(tournament, matchesById) {
+  const bracket = tournament.bracket ?? {};
+  const bracketRound = bracket.rounds?.[0] ?? {};
+  const firstRoundRows = getFallbackFirstRoundRows(tournament, bracketRound);
+  const firstRoundPairings = bracketRound.pairings ?? [];
+  const bracketSize = bracket.bracketSize ?? Math.max(2, firstRoundRows.length * 2);
+  const totalRounds = Math.max(1, Math.ceil(Math.log2(bracketSize)));
+  const firstRoundName = getBracketRoundName(0, totalRounds);
+  const firstRoundNodes = firstRoundRows.map((row, index) => {
+    const pairing = findPairingForFirstRound(row, firstRoundPairings);
+    const match = pairing?.matchId ? matchesById[pairing.matchId] : null;
+    const fixture = row.fixture ?? pairing?.fixture ?? index + 1;
+    const byeTeamId = row.byeTeamId ?? (row.teamAId && !row.teamBId ? row.teamAId : null);
+    return {
+      id: row.id ?? `round-1-${fixture}`,
+      roundIndex: 0,
+      fixture,
+      name: `${firstRoundName} ${fixture}경기`,
+      sourceA: row.teamAId ? { type: "team", teamId: row.teamAId } : { type: "empty" },
+      sourceB: row.teamBId ? { type: "team", teamId: row.teamBId } : { type: "bye" },
+      match,
+      byeTeamId,
+      winnerTeamId: byeTeamId || getMatchWinnerTeamId(match),
+    };
+  });
+  const rounds = [{ id: "round-1", name: firstRoundName, nodes: firstRoundNodes }];
+  let currentNodes = firstRoundNodes;
+
+  for (let roundIndex = 1; currentNodes.length > 1; roundIndex += 1) {
+    const roundName = getBracketRoundName(roundIndex, totalRounds);
+    const nodes = [];
+    for (let index = 0; index < currentNodes.length; index += 2) {
+      const left = currentNodes[index];
+      const right = currentNodes[index + 1];
+      nodes.push({
+        id: `round-${roundIndex + 1}-${nodes.length + 1}`,
+        roundIndex,
+        fixture: nodes.length + 1,
+        name: `${roundName} ${nodes.length + 1}경기`,
+        sourceA: makeBracketSourceFromNode(left),
+        sourceB: right ? makeBracketSourceFromNode(right) : { type: "bye" },
+        match: null,
+        byeTeamId: null,
+        winnerTeamId: "",
+      });
+    }
+    rounds.push({ id: `round-${roundIndex + 1}`, name: roundName, nodes });
+    currentNodes = nodes;
+  }
+
+  return rounds;
+}
+
+function getBracketSourceInfo(source, teamById) {
+  if (!source || source.type === "empty") return { label: "빈 슬롯", detail: "부전승", team: null, state: "empty" };
+  if (source.type === "bye") return { label: "BYE", detail: "부전승 슬롯", team: null, state: "bye" };
+  const team = source.teamId ? teamById[source.teamId] : null;
+  if (team) {
+    return {
+      label: team.name,
+      detail: source.type === "advance" ? `${source.node.name} 승자` : "참가팀",
+      team,
+      state: "ready",
+    };
+  }
+  if (source.type === "advance") {
+    return { label: `${source.node.name} 승자`, detail: "결과 대기", team: null, state: "pending" };
+  }
+  return { label: "TBD", detail: "대기", team: null, state: "pending" };
+}
+
+function getBracketNodeStatus(node, teamById) {
+  if (node.byeTeamId) return `${teamById[node.byeTeamId]?.name ?? "팀"} 부전승 진출`;
+  if (node.match) {
+    const winner = getWinnerName(node.match);
+    return winner ? `${winner} 승` : getMatchTime(node.match);
+  }
+  const sourceA = getBracketSourceInfo(node.sourceA, teamById);
+  const sourceB = getBracketSourceInfo(node.sourceB, teamById);
+  if (sourceA.team && sourceB.team) return "대진 확정 · 경기 생성 대기";
+  return "승자 결정 후 대진 확정";
+}
+
+function renderBracketSource(source, teamById) {
+  const info = getBracketSourceInfo(source, teamById);
+  return (
+    <div className={`bracket-team-row ${info.state}`}>
+      <span className="bracket-slot-copy">
+        <strong>
+          {info.team ? <TeamHoverCard team={info.team} as="span">{info.team.name}</TeamHoverCard> : info.label}
+        </strong>
+        <em>{info.detail}</em>
+      </span>
+      {info.team ? <TierBadge mmr={info.team.mmr} compact /> : <span className="bracket-tbd-pill">{info.state === "bye" ? "BYE" : "TBD"}</span>}
+    </div>
+  );
 }
 
 export default function TournamentDetail({ app }) {
@@ -95,7 +262,7 @@ export default function TournamentDetail({ app }) {
     })
     .filter((row) => row.team);
   const acceptedCount = teamRows.filter((row) => row.status === "accepted").length;
-  const bracketRounds = tournament.bracket?.rounds ?? [];
+  const bracketTree = tournament.format === "tournament" ? buildTournamentBracketTree(tournament, matchesById) : [];
   const canManageSchedule = tournament.createdBy === app.currentUser.id;
   const leagueFixtures = tournament.bracket?.fixtures ?? tournamentMatches.map((match) => ({
     matchId: match.id,
@@ -195,55 +362,29 @@ export default function TournamentDetail({ app }) {
           </div>
         ) : tournament.format === "tournament" ? (
           <div className="tournament-bracket tournament-bracket-graphic">
-            {bracketRounds.map((round) => (
+            {bracketTree.map((round) => (
               <div key={round.id} className="tournament-round bracket-round-column">
                 <h3>{round.name}</h3>
                 <div className="bracket-lanes">
-                  {(round.pairings ?? []).map((pairing) => {
-                    const match = matchesById[pairing.matchId];
-                    const winner = match ? getWinnerName(match) : "";
+                  {round.nodes.map((node) => {
+                    const winner = node.match ? getWinnerName(node.match) : "";
                     return (
-                      <article key={pairing.matchId} className={winner ? "bracket-match-card done" : "bracket-match-card"}>
-                        <div className={winner === match?.teamA.name ? "bracket-team-row winner" : "bracket-team-row"}>
-                          <TeamHoverCard team={teamById[pairing.teamAId]} as="span">{teamById[pairing.teamAId]?.name ?? "TBD"}</TeamHoverCard>
-                          <TierBadge mmr={teamById[pairing.teamAId]?.mmr ?? 1200} compact />
+                      <article key={node.id} className={winner || node.byeTeamId ? "bracket-match-card done" : "bracket-match-card"}>
+                        <div className="bracket-node-head">
+                          <span>{node.name}</span>
+                          {node.match ? <Link to={`/app/matches/${node.match.id}`}>경기방</Link> : <b>{node.byeTeamId ? "BYE" : "예정"}</b>}
                         </div>
+                        {renderBracketSource(node.sourceA, teamById)}
                         <strong className="bracket-midline">vs</strong>
-                        <div className={winner === match?.teamB.name ? "bracket-team-row winner" : "bracket-team-row"}>
-                          <TeamHoverCard team={teamById[pairing.teamBId]} as="span">{teamById[pairing.teamBId]?.name ?? "TBD"}</TeamHoverCard>
-                          <TierBadge mmr={teamById[pairing.teamBId]?.mmr ?? 1200} compact />
-                        </div>
-                        {winner ? <em>{winner} 승</em> : <em>{match ? getMatchTime(match) : "일정 미정"}</em>}
-                        <span className="bracket-connector" aria-hidden="true" />
+                        {renderBracketSource(node.sourceB, teamById)}
+                        <em className="bracket-status">{getBracketNodeStatus(node, teamById)}</em>
+                        {round.nodes.length > 1 ? <span className="bracket-connector" aria-hidden="true" /> : null}
                       </article>
                     );
                   })}
-                  {(round.byes ?? []).map((teamId) => (
-                    <article key={`bye-${teamId}`} className="bracket-match-card bracket-bye-card">
-                      <div className="bracket-team-row winner">
-                        <TeamHoverCard team={teamById[teamId]} as="span">{teamById[teamId]?.name ?? "TBD"}</TeamHoverCard>
-                        <TierBadge mmr={teamById[teamId]?.mmr ?? 1200} compact />
-                      </div>
-                      <strong className="bracket-midline">BYE</strong>
-                      <em>부전승</em>
-                      <span className="bracket-connector" aria-hidden="true" />
-                    </article>
-                  ))}
                 </div>
               </div>
             ))}
-            <div className="tournament-round locked bracket-round-column">
-              <h3>다음 라운드</h3>
-              <div className="bracket-lanes bracket-next-lanes">
-                {Array.from({ length: getNextRoundSlotCount(bracketRounds[bracketRounds.length - 1]) }).map((_, index) => (
-                  <article key={`next-${index}`} className="bracket-next-slot">
-                    <span>{index + 1}번 슬롯</span>
-                    <strong><Trophy size={16} /></strong>
-                    <em>승자/부전승 진출</em>
-                  </article>
-                ))}
-              </div>
-            </div>
           </div>
         ) : (
           <div className="league-fixture-grid">

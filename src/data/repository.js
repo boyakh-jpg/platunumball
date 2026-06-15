@@ -960,25 +960,61 @@ function buildLeaguePairings(teamIds = []) {
   return pairings;
 }
 
+function getByeMatchIndexes(matchCount, byeCount) {
+  const indexes = [];
+  let left = 0;
+  let right = matchCount - 1;
+  while (indexes.length < byeCount && left <= right) {
+    indexes.push(left);
+    if (indexes.length < byeCount && right !== left) indexes.push(right);
+    left += 1;
+    right -= 1;
+  }
+  return new Set(indexes);
+}
+
 function buildTournamentPairings(teamIds = []) {
   const seedOrder = shuffleItems(teamIds);
   const bracketSize = 2 ** Math.ceil(Math.log2(Math.max(seedOrder.length, 2)));
+  const matchCount = bracketSize / 2;
   const byeCount = Math.max(0, bracketSize - seedOrder.length);
-  const byes = seedOrder.slice(0, byeCount);
-  const playableTeams = seedOrder.slice(byeCount);
-  const pairings = [];
-  for (let index = 0; index < playableTeams.length; index += 2) {
-    const teamAId = playableTeams[index];
-    const teamBId = playableTeams[index + 1];
-    if (!teamAId || !teamBId) continue;
-    pairings.push({
+  const byeMatchIndexes = getByeMatchIndexes(matchCount, byeCount);
+  let seedIndex = 0;
+  const firstRound = Array.from({ length: matchCount }, (_item, index) => {
+    if (byeMatchIndexes.has(index)) {
+      const teamAId = seedOrder[seedIndex++] ?? null;
+      return {
+        id: `r1-${index + 1}`,
+        round: 1,
+        fixture: index + 1,
+        teamAId,
+        teamBId: null,
+        byeTeamId: teamAId,
+      };
+    }
+    const teamAId = seedOrder[seedIndex++] ?? null;
+    const teamBId = seedOrder[seedIndex++] ?? null;
+    return {
+      id: `r1-${index + 1}`,
       round: 1,
-      fixture: pairings.length + 1,
+      fixture: index + 1,
       teamAId,
       teamBId,
-    });
-  }
-  return { seedOrder, bracketSize, pairings, byes };
+      byeTeamId: !teamBId ? teamAId : null,
+    };
+  });
+  const pairings = firstRound
+    .filter((row) => row.teamAId && row.teamBId)
+    .map((row) => ({
+      round: row.round,
+      fixture: row.fixture,
+      bracketMatch: row.fixture,
+      teamAId: row.teamAId,
+      teamBId: row.teamBId,
+    }));
+  const byes = firstRound.filter((row) => row.byeTeamId).map((row) => row.byeTeamId);
+  const slots = firstRound.flatMap((row) => [row.teamAId, row.teamBId]);
+  return { seedOrder, bracketSize, slots, firstRound, pairings, byes };
 }
 
 function makeTournamentMatch(tournament, teamA, teamB, pairing, now) {
@@ -1006,6 +1042,7 @@ function makeTournamentMatch(tournament, teamA, teamB, pairing, now) {
     tournamentFormat: tournament.format,
     tournamentRound: pairing.round,
     tournamentFixture: pairing.fixture,
+    tournamentBracketMatch: pairing.bracketMatch ?? pairing.fixture,
     tournamentMmrPolicy: tournament.mmrPolicy,
     rules: tournament.rules ?? {},
     memo: tournament.memo || "대회 경기입니다.",
@@ -1048,6 +1085,7 @@ function generateTournamentMatches(state, tournament) {
     matchId: match.id,
     round: match.tournamentRound,
     fixture: match.tournamentFixture,
+    bracketMatch: match.tournamentBracketMatch ?? match.tournamentFixture,
     teamAId: match.teamA.teamId,
     teamBId: match.teamB.teamId,
   }));
@@ -1057,6 +1095,8 @@ function generateTournamentMatches(state, tournament) {
         generatedAt: now,
         seedOrder: pairSource.seedOrder,
         bracketSize: pairSource.bracketSize,
+        slots: pairSource.slots,
+        firstRound: pairSource.firstRound,
         rounds: [{ id: "round-1", name: "1라운드", pairings: fixtureRows, byes: pairSource.byes }],
       }
     : {
