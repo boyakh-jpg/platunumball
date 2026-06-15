@@ -171,6 +171,10 @@ begin
     execute 'alter table public.matches add constraint matches_mmr_limit_mode_check check (mmr_limit_mode in (''off'', ''warn'', ''block''))';
   end if;
 
+  if to_regclass('public.match_results') is not null then
+    execute 'alter table public.match_results add column if not exists stat_submissions jsonb not null default ''{}''::jsonb';
+  end if;
+
   if to_regclass('public.recruiting_posts') is not null then
     execute 'alter table public.recruiting_posts add column if not exists host_join_mode text not null default ''team''';
     execute 'alter table public.recruiting_posts add column if not exists host_side text not null default ''teamA''';

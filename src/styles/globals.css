@@ -516,12 +516,12 @@ h3 {
   text-decoration: none;
 }
 
-.player-hover-card {
+span.player-hover-card {
   position: absolute;
   z-index: 80;
   top: calc(100% + 10px);
   left: 0;
-  display: grid;
+  display: none !important;
   width: min(330px, calc(100vw - 28px));
   min-width: 280px;
   gap: 12px;
@@ -540,6 +540,7 @@ h3 {
 
 .player-hover-trigger:hover .player-hover-card,
 .player-hover-trigger:focus-visible .player-hover-card {
+  display: grid !important;
   opacity: 1;
   transform: translateY(0);
 }
@@ -4602,6 +4603,10 @@ input[type="color"] {
   background: rgba(70, 224, 182, 0.075);
 }
 
+.stat-player-button.submitted {
+  border-color: rgba(118, 169, 255, 0.36);
+}
+
 .stat-player-button.locked > strong {
   color: var(--muted);
 }
@@ -4746,6 +4751,14 @@ input[type="color"] {
   background: rgba(88, 210, 192, 0.11);
 }
 
+.approval-voter-list button.stat-submitted:not(.approved) {
+  border-color: rgba(118, 169, 255, 0.26);
+}
+
+.approval-voter-list button.stat-missing:not(.approved) {
+  border-color: rgba(255, 211, 108, 0.22);
+}
+
 .approval-voter-list button:disabled {
   cursor: default;
   opacity: 0.72;
@@ -4756,6 +4769,32 @@ input[type="color"] {
   font-size: 0.72rem;
   font-style: normal;
   font-weight: 950;
+}
+
+.approval-guard-note {
+  display: grid;
+  gap: 4px;
+  margin-top: 12px;
+  border: 1px solid rgba(255, 211, 108, 0.22);
+  border-radius: var(--radius);
+  background: rgba(255, 211, 108, 0.075);
+  padding: 10px;
+}
+
+.approval-guard-note.ready {
+  border-color: rgba(70, 224, 182, 0.28);
+  background: rgba(70, 224, 182, 0.075);
+}
+
+.approval-guard-note strong {
+  color: var(--text);
+}
+
+.approval-guard-note span {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 850;
+  line-height: 1.45;
 }
 
 .scoreboard-panel a {

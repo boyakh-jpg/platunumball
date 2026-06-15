@@ -1,6 +1,14 @@
 import { COURTS, MAX_TEAM_MEMBERSHIPS, MODE_SIZES, TEAM_ROLES } from "../lib/constants.js";
 import { initialState } from "../lib/mockData.js";
-import { getAgreementStatus, getApprovalStatus, normalizePlayerStats } from "../lib/matchUtils.js";
+import {
+  getAgreementStatus,
+  getApprovalStatus,
+  getMatchPlayerIds,
+  getPlayerSideName,
+  getResultPointAudit,
+  getStatSubmissionStatus,
+  normalizePlayerStats,
+} from "../lib/matchUtils.js";
 import { applyMatchRating, calculateTeamDelta } from "../lib/rating.js";
 import {
   getMercenaryTeamWeight,
@@ -240,6 +248,7 @@ function fromRemoteMatch(row, context) {
           scoreA: resultRow.score_a,
           scoreB: resultRow.score_b,
           playerStats,
+          statSubmissions: resultRow.stat_submissions ?? {},
           submittedAt: resultRow.submitted_at,
         }
       : null,
@@ -647,6 +656,7 @@ async function saveNormalizedRemoteState(state) {
       submitted_by: match.teamA?.players?.[0] ?? currentUserId,
       score_a: Number(match.result.scoreA ?? match.teamA?.score ?? 0),
       score_b: Number(match.result.scoreB ?? match.teamB?.score ?? 0),
+      stat_submissions: match.result.statSubmissions ?? {},
       submitted_at: match.result.submittedAt,
     }));
   const statRows = state.matches.flatMap((match) =>
@@ -1122,6 +1132,24 @@ export function agreeMatch(state, matchId, sideName, playerId) {
 export function submitMatchResult(state, matchId, result) {
   const match = state.matches.find((item) => item.id === matchId);
   if (!match) return state;
+  const currentUserId = state.currentUserId;
+  const playerIds = getMatchPlayerIds(match);
+  const currentSideName = getPlayerSideName(match, currentUserId);
+  if (!currentSideName) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "결과 입력 권한 없음",
+          body: "경기 참가자만 스코어와 본인 기록을 입력할 수 있습니다.",
+          tone: "match",
+          matchId,
+        },
+        ...state.notifications,
+      ],
+    };
+  }
   if (match.status === "contract") {
     return {
       ...state,
@@ -1139,30 +1167,47 @@ export function submitMatchResult(state, matchId, result) {
   }
   if (["confirmed", "void", "cancelled", "disputed"].includes(match.status)) return state;
 
+  const now = new Date().toISOString();
+  const existingStats = normalizePlayerStats(match.result?.playerStats ?? {}, playerIds);
+  const submittedStats = normalizePlayerStats(result.playerStats ?? {}, [currentUserId])[currentUserId];
+  const nextResult = {
+    scoreA: Number(result.scoreA),
+    scoreB: Number(result.scoreB),
+    playerStats: {
+      ...existingStats,
+      [currentUserId]: submittedStats,
+    },
+    statSubmissions: {
+      ...(match.result?.statSubmissions ?? {}),
+      [currentUserId]: {
+        by: currentUserId,
+        side: currentSideName,
+        submittedAt: now,
+      },
+    },
+    submittedAt: match.result?.submittedAt ?? now,
+    updatedAt: now,
+  };
+
   return {
     ...state,
-    matches: state.matches.map((match) =>
-      match.id === matchId
+    matches: state.matches.map((item) =>
+      item.id === matchId
         ? {
-            ...match,
+            ...item,
             status: "approval",
-            teamA: { ...match.teamA, score: Number(result.scoreA) },
-            teamB: { ...match.teamB, score: Number(result.scoreB) },
+            teamA: { ...item.teamA, score: nextResult.scoreA },
+            teamB: { ...item.teamB, score: nextResult.scoreB },
             approvals: { teamA: [], teamB: [] },
-            result: {
-              scoreA: Number(result.scoreA),
-              scoreB: Number(result.scoreB),
-              playerStats: normalizePlayerStats(result.playerStats, [...match.teamA.players, ...match.teamB.players]),
-              submittedAt: new Date().toISOString(),
-            },
+            result: nextResult,
           }
-        : match,
+        : item,
     ),
     notifications: [
       {
         id: makeId("n"),
-        title: "결과 승인 대기",
-        body: `${match.title} 결과가 제출됐습니다. 양팀 승인을 기다립니다.`,
+        title: "내 기록 제출",
+        body: `${match.title} 스코어와 내 개인 기록이 저장됐습니다. 전원 제출 후 결과 승인이 가능합니다.`,
         tone: "match",
         matchId,
       },
@@ -1177,6 +1222,25 @@ export function approveMatch(state, matchId, sideName, playerId) {
 
   const approvalId = getSelfDecisionId(state, match, sideName, "approvals", playerId);
   if (!approvalId) return state;
+  const statStatus = getStatSubmissionStatus(match);
+  const pointAudit = getResultPointAudit(match);
+  if (!statStatus.complete || !pointAudit.matched) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "결과 승인 보류",
+          body: !statStatus.complete
+            ? `개인 기록 ${statStatus.submitted}/${statStatus.total}명 제출 상태입니다. 전원 제출 후 승인할 수 있습니다.`
+            : `득점 합계가 팀 스코어와 맞지 않습니다. A ${pointAudit.teamA.statPoints}/${pointAudit.teamA.teamScore}, B ${pointAudit.teamB.statPoints}/${pointAudit.teamB.teamScore}.`,
+          tone: "match",
+          matchId,
+        },
+        ...state.notifications,
+      ],
+    };
+  }
 
   const updatedMatch = {
     ...match,

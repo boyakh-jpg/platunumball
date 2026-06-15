@@ -11,7 +11,14 @@ import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import MmrChange from "../components/rating/MmrChange.jsx";
 import ShareCard from "../components/share/ShareCard.jsx";
 import { PLAYER_STAT_FIELDS } from "../lib/constants.js";
-import { formatStatLine, getAgreementStatus, getApprovalStatus } from "../lib/matchUtils.js";
+import {
+  formatStatLine,
+  getAgreementStatus,
+  getApprovalStatus,
+  getMatchPlayerIds,
+  getPlayerStatSubmitted,
+  getStatSubmissionStatus,
+} from "../lib/matchUtils.js";
 
 const statusMeta = {
   contract: { label: "경기 전 동의 대기", tone: "blue" },
@@ -76,7 +83,11 @@ export default function MatchRoom({ app }) {
   const teamBAgreement = getAgreementStatus(match, app.state.teams, "teamB");
   const teamAApproval = getApprovalStatus(match, app.state.teams, "teamA");
   const teamBApproval = getApprovalStatus(match, app.state.teams, "teamB");
-  const canSubmitResult = ["agreed", "approval"].includes(match.status);
+  const allPlayerIds = getMatchPlayerIds(match);
+  const currentUserInMatch = allPlayerIds.includes(app.currentUser.id);
+  const canSubmitResult = ["agreed", "approval"].includes(match.status) && currentUserInMatch;
+  const statSubmissionStatus = getStatSubmissionStatus(match);
+  const currentUserSubmitted = getPlayerStatSubmitted(match, app.currentUser.id);
   const canCancel = ["contract", "agreed"].includes(match.status);
   const canDispute = Boolean(match.result) && match.status === "approval";
   const canVoid = match.status === "disputed";
@@ -138,7 +149,12 @@ export default function MatchRoom({ app }) {
   const pointAuditA = getPointAudit(match, score, "teamA");
   const pointAuditB = getPointAudit(match, score, "teamB");
   const statTrustSteps = [
-    { id: "self", label: "본인 입력", detail: "다른 선수 기록 잠금", complete: true },
+    {
+      id: "self",
+      label: "전원 본인 제출",
+      detail: `${statSubmissionStatus.submitted}/${statSubmissionStatus.total}명 제출`,
+      complete: statSubmissionStatus.complete,
+    },
     {
       id: "points",
       label: "득점 합계",
@@ -258,15 +274,15 @@ export default function MatchRoom({ app }) {
                 {match.teamB.name}
                 <input type="number" min="0" disabled={!canSubmitResult} value={score.scoreB} onChange={(event) => setScore((current) => ({ ...current, scoreB: event.target.value }))} />
               </label>
-              <Button type="submit" disabled={!canSubmitResult}>스코어/내 기록 저장</Button>
+              <Button type="submit" disabled={!canSubmitResult}>{currentUserSubmitted ? "스코어/내 기록 다시 제출" : "스코어/내 기록 제출"}</Button>
               <div className="stat-integrity-note">
-                개인 스탯은 본인만 수정합니다. 다른 선수 기록은 해당 선수가 직접 입력하거나 승인 단계에서 이의제기합니다.
+                개인 스탯은 본인 기록만 병합 저장합니다. 전원이 제출하고 팀 득점 합계가 맞아야 결과 승인이 열립니다.
               </div>
               <div className="stat-trust-panel">
                 <div className="stat-trust-head">
                   <div>
                     <strong>개인 기록 신뢰도</strong>
-                    <span>본인 입력, 득점 합계, 양팀 승인, 증거 첨부를 같이 봅니다.</span>
+                    <span>전원 본인 제출, 득점 합계, 양팀 승인, 증거 첨부를 같이 봅니다.</span>
                   </div>
                   <Badge tone={statTrustPercent >= 75 ? "green" : statTrustPercent >= 50 ? "orange" : "neutral"}>{statTrustPercent}%</Badge>
                 </div>
@@ -286,16 +302,17 @@ export default function MatchRoom({ app }) {
                     {match[sideName].players.map((playerId) => {
                       const user = userMap[playerId];
                       const canEdit = canEditPlayerStat(playerId);
+                      const submitted = getPlayerStatSubmitted(match, playerId);
                       return (
-                        <button key={playerId} type="button" className={canEdit ? "stat-player-button editable" : "stat-player-button locked"} disabled={!canEdit} onClick={() => setStatEditorPlayerId(playerId)}>
+                        <button key={playerId} type="button" className={`${canEdit ? "stat-player-button editable" : "stat-player-button locked"} ${submitted ? "submitted" : ""}`} disabled={!canEdit} onClick={() => setStatEditorPlayerId(playerId)}>
                           <PlayerHoverCard as="span" user={user} teams={app.state.teams}>
                             <span className="avatar small" style={{ "--avatar": user?.avatarColor }}>{user?.name?.slice(0, 1) ?? "P"}</span>
                             <span>
                               <strong>{user?.name ?? "플레이어"}</strong>
-                              <em>{canEdit ? formatStatLine(score.playerStats[playerId]) : `${user?.position ?? "-"} · 본인 입력`}</em>
+                              <em>{canEdit ? formatStatLine(score.playerStats[playerId]) : `${user?.position ?? "-"} · ${submitted ? "제출됨" : "미제출"}`}</em>
                             </span>
                           </PlayerHoverCard>
-                          <strong>{canEdit ? "내 기록" : "잠김"}</strong>
+                          <strong>{canEdit ? (submitted ? "수정 제출" : "내 기록") : submitted ? "제출됨" : "미제출"}</strong>
                         </button>
                       );
                     })}

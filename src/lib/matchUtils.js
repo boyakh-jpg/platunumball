@@ -50,6 +50,16 @@ export function getApprovalStatus(match = {}, teams = [], sideName) {
   return getDecisionStatus(match, teams, sideName, "approvals");
 }
 
+export function getMatchPlayerIds(match = {}) {
+  return [...new Set([...(match.teamA?.players ?? []), ...(match.teamB?.players ?? [])])];
+}
+
+export function getPlayerSideName(match = {}, playerId) {
+  if (match.teamA?.players?.includes(playerId)) return "teamA";
+  if (match.teamB?.players?.includes(playerId)) return "teamB";
+  return null;
+}
+
 export function normalizePlayerStats(playerStats = {}, playerIds = []) {
   return Object.fromEntries(
     playerIds.map((playerId) => {
@@ -62,6 +72,48 @@ export function normalizePlayerStats(playerStats = {}, playerIds = []) {
       ];
     }),
   );
+}
+
+export function getPlayerStatSubmitted(match = {}, playerId) {
+  const submissions = match.result?.statSubmissions;
+  if (submissions && Object.keys(submissions).length) return Boolean(submissions[playerId]);
+  return Boolean(match.result?.playerStats?.[playerId]);
+}
+
+export function getStatSubmissionStatus(match = {}) {
+  const playerIds = getMatchPlayerIds(match);
+  const submittedIds = playerIds.filter((playerId) => getPlayerStatSubmitted(match, playerId));
+
+  return {
+    total: playerIds.length,
+    submitted: submittedIds.length,
+    submittedIds,
+    missingIds: playerIds.filter((playerId) => !submittedIds.includes(playerId)),
+    complete: playerIds.length > 0 && submittedIds.length === playerIds.length,
+  };
+}
+
+export function getResultPointAudit(match = {}, result = match.result) {
+  const auditSide = (sideName) => {
+    const scoreKey = sideName === "teamA" ? "scoreA" : "scoreB";
+    const teamScore = Number(result?.[scoreKey] ?? match[sideName]?.score ?? 0);
+    const statPoints = (match[sideName]?.players ?? []).reduce(
+      (sum, playerId) => sum + Number(result?.playerStats?.[playerId]?.points ?? 0),
+      0,
+    );
+    return {
+      teamScore,
+      statPoints,
+      matched: teamScore === statPoints,
+    };
+  };
+  const teamA = auditSide("teamA");
+  const teamB = auditSide("teamB");
+  return {
+    teamA,
+    teamB,
+    matched: teamA.matched && teamB.matched,
+  };
 }
 
 export function calculatePlayerStatBoost(match = {}, playerId, actual = 0.5) {
