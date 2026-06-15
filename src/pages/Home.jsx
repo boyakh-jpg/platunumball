@@ -6,7 +6,6 @@ import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import MatchCard from "../components/match/MatchCard.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
-import TeamCard from "../components/team/TeamCard.jsx";
 import { COURTS } from "../lib/constants.js";
 import { RECRUITING_TYPES, isNationalRecruitingPost } from "../lib/recruiting.js";
 import { getCurrentSeason, getPlayerSeasonRows, getSeasonProgress } from "../lib/season.js";
@@ -60,6 +59,10 @@ export default function Home({ app }) {
   const upcomingMatches = [...app.state.matches].filter((match) => ["contract", "agreed"].includes(match.status)).sort(compareSchedule);
   const completedMatches = [...app.state.matches].filter((match) => match.status === "confirmed");
   const myTeam = app.state.teams.find((team) => team.members.some((member) => member.userId === user.id));
+  const myTeams = app.state.teams
+    .filter((team) => team.members.some((member) => member.userId === user.id))
+    .map((team) => ({ ...team, myRole: team.members.find((member) => member.userId === user.id)?.role ?? "regular" }))
+    .sort((a, b) => Number(b.myRole === "captain") - Number(a.myRole === "captain") || b.mmr - a.mmr);
   const myTeamCount = app.state.teams.filter((team) => team.members.some((member) => member.userId === user.id)).length;
   const blockedUserIds = app.state.settings?.blockedUserIds ?? [];
   const season = getCurrentSeason(app.state);
@@ -212,9 +215,12 @@ export default function Home({ app }) {
           <div className="mode-grid opgg-mode-grid">
             {Object.entries(user.ratings.modes).map(([mode, mmr]) => (
               <div key={mode} className="opgg-mode-pill">
-                <span>{mode}</span>
-                <strong>{getTierDivision(mmr)}</strong>
-                <em>{Math.round(mmr)} MMR</em>
+                <TierEmblem mmr={mmr} size="sm" />
+                <div>
+                  <span>{mode}</span>
+                  <strong>{getTierDivision(mmr)}</strong>
+                  <em>{Math.round(mmr)} MMR</em>
+                </div>
               </div>
             ))}
           </div>
@@ -382,23 +388,28 @@ export default function Home({ app }) {
               )) : <div><span>승인 대기 없음</span><strong>OK</strong></div>}
             </div>
           </Card>
-          <Card className="section-card">
-            <div className="contract-grid single">
+          <Card className="section-card home-my-teams-card">
+            <div className="section-title-row">
               <div>
-                <span>소속 팀</span>
-                <strong>{myTeamCount}/5</strong>
+                <p className="eyebrow">My Teams</p>
+                <h2>내 소속 팀</h2>
               </div>
-              <div>
-                <span>지역</span>
-                <strong>{user.region}</strong>
-              </div>
-              <div>
-                <span>신뢰도</span>
-                <strong>{user.trustScore}</strong>
-              </div>
+              <Badge tone={myTeamCount ? "green" : "neutral"}>{myTeamCount}/5</Badge>
             </div>
+            <div className="home-team-list">
+              {myTeams.length ? myTeams.slice(0, 5).map((team) => (
+                <Link key={team.id} to={`/app/teams/${team.id}`}>
+                  <span className="team-mini-dot" style={{ "--team-color": team.accent }} />
+                  <strong>{team.name}</strong>
+                  <em>{team.myRole === "captain" ? "주장" : team.myRole === "regular" ? "정규" : team.myRole === "mercenary" ? "용병" : "후보"}</em>
+                  <b>{team.mmr}</b>
+                </Link>
+              )) : <div><span>팀 없음</span><strong>팀 찾기 필요</strong></div>}
+            </div>
+            <Link to="/app/teams">
+              <Button variant="secondary" className="wide-button">팀 전체 보기</Button>
+            </Link>
           </Card>
-          {myTeam ? <TeamCard team={myTeam} users={app.state.users} compact /> : null}
         </aside>
       </div>
     </div>

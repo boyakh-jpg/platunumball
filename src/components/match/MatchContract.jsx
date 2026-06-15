@@ -14,7 +14,8 @@ export default function MatchContract({ match, users }) {
         return (
           <Link key={id} to={`/app/players/${id}`}>
             <i style={{ "--avatar": user?.avatarColor }} />
-            {user?.name ?? "플레이어"}
+            <strong>{user?.name ?? "플레이어"}</strong>
+            <em>{user?.position ?? "-"}</em>
           </Link>
         );
       })}

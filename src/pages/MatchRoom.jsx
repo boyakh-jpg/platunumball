@@ -70,6 +70,7 @@ export default function MatchRoom({ app }) {
   const canVoid = match.status === "disputed";
   const canResumeApproval = match.status === "disputed";
   const canReport = !["cancelled", "void"].includes(match.status);
+  const isContractStage = match.status === "contract";
   const scoreA = getDisplayScore(match, "teamA");
   const scoreB = getDisplayScore(match, "teamB");
   const teamAMmr = getTeamMmr(app.state.teams, match.teamA.teamId);
@@ -91,6 +92,7 @@ export default function MatchRoom({ app }) {
             <Link key={playerId} to={`/app/players/${playerId}`} className={ready ? "gm-player-slot ready" : "gm-player-slot"}>
               <span className="avatar" style={{ "--avatar": user?.avatarColor }}>{user?.name?.slice(0, 1) ?? "P"}</span>
               <strong>{user?.name ?? "플레이어"}</strong>
+              <small>{user?.position ?? "-"}</small>
               <em>{captain ? "CAPT" : ready ? "READY" : "WAIT"}</em>
             </Link>
           );
@@ -120,6 +122,7 @@ export default function MatchRoom({ app }) {
     event.preventDefault();
     if (canSubmitResult) app.actions.submitMatchResult(match.id, score);
   };
+  const canEditPlayerStat = (playerId) => canSubmitResult && playerId === app.currentUser.id;
 
   return (
     <div className="page-stack match-room">
@@ -174,17 +177,31 @@ export default function MatchRoom({ app }) {
         </div>
       </section>
 
-      <div className="content-grid wide-left">
-        <div className="page-stack">
-          <MatchContract match={match} users={app.state.users} />
-          <AgreementPanel
-            match={match}
-            teams={app.state.teams}
-            users={app.state.users}
-            currentUserId={app.currentUser.id}
-            onAgree={(sideName, playerId) => app.actions.agreeMatch(match.id, sideName, playerId)}
-          />
-          <Card className="section-card result-card">
+      {isContractStage ? (
+        <div className="content-grid match-stage-contract">
+          <div className="page-stack">
+            <MatchContract match={match} users={app.state.users} />
+            <AgreementPanel
+              match={match}
+              teams={app.state.teams}
+              users={app.state.users}
+              currentUserId={app.currentUser.id}
+              onAgree={(sideName, playerId) => app.actions.agreeMatch(match.id, sideName, playerId)}
+            />
+          </div>
+        </div>
+      ) : (
+        <div className="content-grid wide-left">
+          <div className="page-stack">
+            <MatchContract match={match} users={app.state.users} />
+            <AgreementPanel
+              match={match}
+              teams={app.state.teams}
+              users={app.state.users}
+              currentUserId={app.currentUser.id}
+              onAgree={(sideName, playerId) => app.actions.agreeMatch(match.id, sideName, playerId)}
+            />
+            <Card className="section-card result-card">
             <div className="section-title-row">
               <div>
                 <p className="eyebrow">Result entry</p>
@@ -205,23 +222,27 @@ export default function MatchRoom({ app }) {
                 {match.teamB.name}
                 <input type="number" min="0" disabled={!canSubmitResult} value={score.scoreB} onChange={(event) => setScore((current) => ({ ...current, scoreB: event.target.value }))} />
               </label>
-              <Button type="submit" disabled={!canSubmitResult}>결과 저장</Button>
+              <Button type="submit" disabled={!canSubmitResult}>스코어/내 기록 저장</Button>
+              <div className="stat-integrity-note">
+                개인 스탯은 본인만 수정합니다. 다른 선수 기록은 해당 선수가 직접 입력하거나 승인 단계에서 이의제기합니다.
+              </div>
               <div className="stat-entry-grid compact-stat-entry">
                 {["teamA", "teamB"].map((sideName) => (
                   <div key={sideName} className="stat-entry-side">
                     <h3>{match[sideName].name} 개인 기록</h3>
                     {match[sideName].players.map((playerId) => {
                       const user = userMap[playerId];
+                      const canEdit = canEditPlayerStat(playerId);
                       return (
-                        <button key={playerId} type="button" className="stat-player-button" disabled={!canSubmitResult} onClick={() => setStatEditorPlayerId(playerId)}>
+                        <button key={playerId} type="button" className={canEdit ? "stat-player-button editable" : "stat-player-button locked"} disabled={!canEdit} onClick={() => setStatEditorPlayerId(playerId)}>
                           <div>
                             <span className="avatar small" style={{ "--avatar": user?.avatarColor }}>{user?.name?.slice(0, 1) ?? "P"}</span>
                             <span>
                               <strong>{user?.name ?? "플레이어"}</strong>
-                              <em>{formatStatLine(score.playerStats[playerId])}</em>
+                              <em>{canEdit ? formatStatLine(score.playerStats[playerId]) : `${user?.position ?? "-"} · 본인 입력`}</em>
                             </span>
                           </div>
-                          <strong>입력</strong>
+                          <strong>{canEdit ? "내 기록" : "잠김"}</strong>
                         </button>
                       );
                     })}
@@ -229,10 +250,10 @@ export default function MatchRoom({ app }) {
                 ))}
               </div>
             </form>
-          </Card>
-          <ApprovalPanel match={match} teams={app.state.teams} users={app.state.users} currentUserId={app.currentUser.id} onApprove={(sideName, playerId) => app.actions.approveMatch(match.id, sideName, playerId)} />
-        </div>
-        <aside className="page-stack">
+            </Card>
+            <ApprovalPanel match={match} teams={app.state.teams} users={app.state.users} currentUserId={app.currentUser.id} onApprove={(sideName, playerId) => app.actions.approveMatch(match.id, sideName, playerId)} />
+          </div>
+          <aside className="page-stack">
           <Card className="section-card">
             <div className="section-title-row">
               <div>
@@ -329,8 +350,9 @@ export default function MatchRoom({ app }) {
             </Card>
           ) : null}
           <ShareCard user={app.currentUser} match={match} />
-        </aside>
-      </div>
+          </aside>
+        </div>
+      )}
       {statEditorPlayer ? (
         <div className="modal-backdrop stat-editor-backdrop" onClick={() => setStatEditorPlayerId(null)}>
           <div className="modal stat-editor-modal" onClick={(event) => event.stopPropagation()}>
@@ -351,15 +373,15 @@ export default function MatchRoom({ app }) {
                     <strong>{field.label}</strong>
                     <span>{field.shortLabel}</span>
                   </div>
-                  <button type="button" disabled={!canSubmitResult} onClick={() => bumpPlayerStat(statEditorPlayerId, field.id, -1)}><Minus size={16} /></button>
+                  <button type="button" disabled={!canEditPlayerStat(statEditorPlayerId)} onClick={() => bumpPlayerStat(statEditorPlayerId, field.id, -1)}><Minus size={16} /></button>
                   <input
                     type="number"
                     min="0"
-                    disabled={!canSubmitResult}
+                    disabled={!canEditPlayerStat(statEditorPlayerId)}
                     value={score.playerStats[statEditorPlayerId]?.[field.id] ?? 0}
                     onChange={(event) => updatePlayerStat(statEditorPlayerId, field.id, event.target.value)}
                   />
-                  <button type="button" disabled={!canSubmitResult} onClick={() => bumpPlayerStat(statEditorPlayerId, field.id, 1)}><Plus size={16} /></button>
+                  <button type="button" disabled={!canEditPlayerStat(statEditorPlayerId)} onClick={() => bumpPlayerStat(statEditorPlayerId, field.id, 1)}><Plus size={16} /></button>
                 </div>
               ))}
             </div>

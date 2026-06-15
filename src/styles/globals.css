@@ -1007,6 +1007,15 @@ h3 {
   gap: 8px;
 }
 
+.contract-card {
+  display: grid;
+  gap: 16px;
+}
+
+.contract-card .contract-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(170px, 100%), 1fr));
+}
+
 .contract-grid.single {
   grid-template-columns: 1fr;
 }
@@ -1055,6 +1064,21 @@ h3 {
   background: rgba(255, 255, 255, 0.07);
   padding: 6px 9px 6px 6px;
   font-size: 0.8rem;
+}
+
+.roster a strong {
+  color: var(--text);
+  font-size: 0.8rem;
+}
+
+.roster a em {
+  border-radius: 999px;
+  background: rgba(116, 169, 255, 0.13);
+  color: var(--blue);
+  font-size: 0.68rem;
+  font-style: normal;
+  font-weight: 950;
+  padding: 2px 5px;
 }
 
 .roster i {
@@ -1317,6 +1341,10 @@ input[type="color"] {
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
   gap: 12px;
   align-items: end;
+}
+
+.score-form .stat-integrity-note {
+  grid-column: 1 / -1;
 }
 
 .score-form > span {
@@ -2731,11 +2759,23 @@ input[type="color"] {
 
 .opgg-mode-pill {
   display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
   gap: 6px;
   border: 1px solid rgba(116, 169, 255, 0.16);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.045);
   padding: 12px;
+}
+
+.opgg-mode-pill .tier-emblem-sm {
+  width: 52px;
+}
+
+.opgg-mode-pill > div {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
 }
 
 .opgg-mode-pill span {
@@ -2916,6 +2956,49 @@ input[type="color"] {
   font-weight: 800;
 }
 
+.home-my-teams-card {
+  border-color: rgba(116, 169, 255, 0.2);
+}
+
+.home-team-list {
+  display: grid;
+  gap: 8px;
+}
+
+.home-team-list a,
+.home-team-list > div {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.045);
+  padding: 10px;
+}
+
+.home-team-list strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-team-list em {
+  border-radius: 999px;
+  background: rgba(70, 224, 182, 0.1);
+  color: var(--green);
+  font-size: 0.7rem;
+  font-style: normal;
+  font-weight: 950;
+  padding: 4px 7px;
+}
+
+.home-team-list b {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
 .home-recent-card {
   gap: 12px;
 }
@@ -3048,6 +3131,57 @@ input[type="color"] {
   color: var(--muted);
   font-size: 0.82rem;
   font-weight: 850;
+}
+
+.affiliation-challenge-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(300px, 0.8fr);
+  gap: 14px;
+}
+
+.affiliation-focus-card {
+  border-color: rgba(116, 169, 255, 0.22);
+  background:
+    linear-gradient(180deg, rgba(116, 169, 255, 0.08), rgba(255, 255, 255, 0.018)),
+    rgba(12, 20, 32, 0.84);
+}
+
+.affiliation-challenge-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+  gap: 10px;
+}
+
+.affiliation-challenge-list > div {
+  display: grid;
+  gap: 5px;
+  border: 1px solid rgba(116, 169, 255, 0.16);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.045);
+  padding: 12px;
+}
+
+.affiliation-challenge-list span {
+  color: var(--blue);
+  font-size: 0.74rem;
+  font-weight: 950;
+}
+
+.affiliation-challenge-list strong {
+  color: var(--text);
+  font-size: 1.15rem;
+}
+
+.affiliation-challenge-list em {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-style: normal;
+  font-weight: 850;
+}
+
+.affiliation-challenge-list b {
+  color: var(--gold);
+  font-size: 0.8rem;
 }
 
 .position-segments {
@@ -4020,9 +4154,34 @@ input[type="color"] {
   font-size: 0.78rem;
 }
 
+.stat-player-button.editable {
+  border-color: rgba(70, 224, 182, 0.36);
+  background: rgba(70, 224, 182, 0.075);
+}
+
+.stat-player-button.locked > strong {
+  color: var(--muted);
+}
+
 .stat-player-button:disabled {
   cursor: default;
   opacity: 0.58;
+}
+
+.stat-integrity-note {
+  border: 1px solid rgba(255, 211, 108, 0.2);
+  border-radius: var(--radius);
+  background: rgba(255, 211, 108, 0.075);
+  color: var(--gold);
+  font-size: 0.8rem;
+  font-weight: 850;
+  line-height: 1.45;
+  padding: 10px;
+}
+
+.match-stage-contract {
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 980px;
 }
 
 .player-stat-row {
@@ -4669,11 +4828,23 @@ html[data-theme="light"] .segmented-control button.active {
 
   .content-grid,
   .content-grid.wide-left,
+  .affiliation-challenge-grid,
   .home-primary-stack,
   .home-side-stack,
   .home-side-stack > .card {
     width: 100%;
     min-width: 0;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .home-team-list a,
+  .home-team-list > div {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .home-team-list b {
+    grid-column: 2;
+    justify-self: start;
   }
 
   .compact-list a,
