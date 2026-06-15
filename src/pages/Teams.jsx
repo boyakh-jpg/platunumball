@@ -4,6 +4,7 @@ import { Crown, PlusCircle, Search, Shield, Swords } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
+import TierBadge from "../components/rating/TierBadge.jsx";
 import TeamCard from "../components/team/TeamCard.jsx";
 import { COURTS, MAX_TEAM_MEMBERSHIPS, REGIONS } from "../lib/constants.js";
 
@@ -135,6 +136,7 @@ export default function Teams({ app }) {
                   <span className="team-mini-dot" style={{ "--team-color": team.accent }} />
                   <strong>{team.name}</strong>
                   <em>{roleLabels[team.myRole] ?? team.myRole} · {team.mmr} MMR · {winRate}%</em>
+                  <TierBadge mmr={team.mmr} compact />
                   <b>{isCaptain ? "관리" : "상세"}</b>
                 </Link>
               );

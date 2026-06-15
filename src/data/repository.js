@@ -74,12 +74,14 @@ function normalizeSettings(settings = {}) {
 
 function normalizeState(state) {
   const notifications = state?.notifications?.length ? state.notifications : initialState.notifications;
+  const deletedTeamIds = new Set(state?.deletedTeamIds ?? []);
 
   return {
     ...clone(initialState),
     ...state,
+    deletedTeamIds: Array.from(deletedTeamIds),
     users: mergeById(state?.users, initialState.users),
-    teams: mergeById(state?.teams, initialState.teams),
+    teams: mergeById(state?.teams, initialState.teams).filter((team) => !deletedTeamIds.has(team.id)),
     affiliations: mergeById(state?.affiliations, initialState.affiliations).filter((affiliation) => affiliation.type !== "club"),
     seasons: mergeById(state?.seasons, initialState.seasons ?? []),
     matches: mergeById(state?.matches, initialState.matches).map(normalizeMatch),
@@ -330,13 +332,17 @@ async function loadNormalizedRemoteState() {
     approvalsByMatch: groupBy(approvals, "match_id"),
     disputesByMatch: groupBy(disputes, "match_id"),
   };
-  const remoteTeams = teams.map((team) => fromRemoteTeam(team, teamMembersByTeam.get(team.id)));
+  const deletedTeamIds = teams.filter((team) => team.deleted_at).map((team) => team.id);
+  const remoteTeams = teams
+    .filter((team) => !team.deleted_at)
+    .map((team) => fromRemoteTeam(team, teamMembersByTeam.get(team.id)));
   const remoteMatches = matches.map((match) => fromRemoteMatch(match, context)).sort((a, b) => String(b.createdAt ?? "").localeCompare(String(a.createdAt ?? "")));
   const favoriteRows = favorites.filter((favorite) => favorite.user_id === currentUserId);
   const applicationsByPost = groupBy(recruitingApplications, "post_id");
 
   const normalizedState = normalizeState({
     currentUserId,
+    deletedTeamIds,
     users: profiles.map(fromRemoteProfile),
     teams: remoteTeams,
     matches: remoteMatches,
@@ -461,6 +467,24 @@ async function upsertRemoteRows(table, rows, onConflict) {
   }
 }
 
+async function softDeleteRemoteTeams(teamIds = []) {
+  if (!teamIds.length) return;
+  for (const chunk of chunkRows(teamIds)) {
+    const deletedAt = new Date().toISOString();
+    let response = await supabase.from("team_members").delete().in("team_id", chunk);
+    if (response.error) throw response.error;
+
+    response = await supabase.from("favorites").delete().eq("target_type", "team").in("target_id", chunk);
+    if (response.error) throw response.error;
+
+    response = await supabase.from("recruiting_posts").update({ status: "closed", updated_at: deletedAt }).in("team_id", chunk);
+    if (response.error) throw response.error;
+
+    response = await supabase.from("teams").update({ deleted_at: deletedAt, updated_at: deletedAt }).in("id", chunk);
+    if (response.error) throw response.error;
+  }
+}
+
 function courtIdByName(courtName) {
   return COURTS.find((court) => court.name === courtName)?.id ?? null;
 }
@@ -471,6 +495,7 @@ function toDbTime(value) {
 
 async function saveNormalizedRemoteState(state) {
   const currentUserId = state.currentUserId ?? initialState.currentUserId;
+  const deletedTeamIds = state.deletedTeamIds ?? [];
   const profileRows = state.users.map((user) => ({
     id: user.id,
     name: user.name,
@@ -613,6 +638,7 @@ async function saveNormalizedRemoteState(state) {
     })),
   ).filter((application) => application.player_id);
 
+  await softDeleteRemoteTeams(deletedTeamIds);
   await upsertRemoteRows("profiles", profileRows, "id");
   await upsertRemoteRows("teams", teamRows, "id");
   await upsertRemoteRows("team_members", teamMemberRows, "team_id,user_id");
@@ -1348,6 +1374,49 @@ export function createTeam(state, teamDraft) {
     ...state,
     teams: [team, ...state.teams],
     notifications: [{ id: makeId("n"), title: "팀 생성", body: `${team.name} 팀이 등록됐습니다.`, tone: "team" }, ...state.notifications],
+  };
+}
+
+export function deleteTeam(state, teamId) {
+  const team = state.teams.find((item) => item.id === teamId);
+  if (!team) return state;
+
+  const captain = team.members.find((member) => member.role === "captain");
+  if (captain?.userId !== state.currentUserId) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "팀 삭제 권한 없음",
+          body: "주장만 팀을 삭제할 수 있습니다.",
+          tone: "team",
+        },
+        ...state.notifications,
+      ],
+    };
+  }
+
+  return {
+    ...state,
+    deletedTeamIds: Array.from(new Set([...(state.deletedTeamIds ?? []), teamId])),
+    teams: state.teams.filter((item) => item.id !== teamId),
+    settings: {
+      ...state.settings,
+      favoriteTeamIds: (state.settings?.favoriteTeamIds ?? []).filter((id) => id !== teamId),
+    },
+    recruitingPosts: (state.recruitingPosts ?? []).map((post) => (
+      post.teamId === teamId ? { ...post, teamId: null, status: "closed" } : post
+    )),
+    notifications: [
+      {
+        id: makeId("n"),
+        title: "팀 삭제",
+        body: `${team.name} 팀을 삭제했습니다. 기존 경기 기록은 유지됩니다.`,
+        tone: "team",
+      },
+      ...state.notifications,
+    ],
   };
 }
 

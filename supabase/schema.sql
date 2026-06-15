@@ -63,6 +63,11 @@ begin
     ';
   end if;
 
+  if to_regclass('public.teams') is not null then
+    execute 'alter table public.teams add column if not exists deleted_at timestamptz';
+    execute 'create index if not exists teams_deleted_at_idx on public.teams (deleted_at)';
+  end if;
+
   if to_regclass('public.affiliations') is not null then
     execute 'delete from public.affiliations where type = ''club''';
     execute 'alter table public.affiliations drop constraint if exists affiliations_type_check';

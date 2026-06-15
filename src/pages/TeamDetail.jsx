@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
-import { Star } from "lucide-react";
+import { Star, Trash2 } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import MemberTypeBadge from "../components/team/MemberTypeBadge.jsx";
 import TierBadge from "../components/rating/TierBadge.jsx";
+import TierEmblem from "../components/rating/TierEmblem.jsx";
 import { MAX_TEAM_MEMBERSHIPS, TEAM_ROLES } from "../lib/constants.js";
 
 function getTeamSide(match, teamId) {
@@ -33,6 +34,7 @@ export default function TeamDetail({ app }) {
   const { teamId } = useParams();
   const team = app.state.teams.find((item) => item.id === teamId);
   const [memberDraft, setMemberDraft] = useState({ userId: app.state.users[0]?.id, role: "regular" });
+  const [deleteArmed, setDeleteArmed] = useState(false);
 
   if (!team) return <Navigate to="/app/teams" replace />;
 
@@ -102,6 +104,13 @@ export default function TeamDetail({ app }) {
     const nextUser = availableUsers.find((user) => user.id !== addUserId);
     setMemberDraft({ userId: nextUser?.id ?? app.state.users[0]?.id, role: "regular" });
   };
+  const deleteTeam = () => {
+    if (!deleteArmed) {
+      setDeleteArmed(true);
+      return;
+    }
+    app.actions.deleteTeam(team.id);
+  };
 
   return (
     <div className="page-stack team-detail-page opgg-team-page">
@@ -112,6 +121,7 @@ export default function TeamDetail({ app }) {
           <p>{team.region} · {team.homeCourt}</p>
           <div className="badge-row">
             <Badge tone="green">{team.mmr} 팀 MMR</Badge>
+            <TierBadge mmr={team.mmr} />
             <Badge tone="gold">주장 {userMap[captain?.userId]?.name ?? "미지정"}</Badge>
           </div>
           <Button
@@ -124,7 +134,10 @@ export default function TeamDetail({ app }) {
             {isFavoriteTeam ? "즐겨찾기됨" : "즐겨찾기"}
           </Button>
         </div>
-        <div className="team-emblem hero-emblem">{team.name.slice(0, 1)}</div>
+        <div className="team-tier-hero">
+          <TierEmblem mmr={team.mmr} size="md" showLabel />
+          <div className="team-emblem hero-emblem">{team.name.slice(0, 1)}</div>
+        </div>
       </section>
 
       <nav className="opgg-profile-tabs">
@@ -140,7 +153,10 @@ export default function TeamDetail({ app }) {
               <p className="eyebrow">Team Ranked</p>
               <h2>팀 전적</h2>
             </div>
-            <Badge tone="gold">{team.mmr} MMR</Badge>
+            <div className="badge-row">
+              <Badge tone="gold">{team.mmr} MMR</Badge>
+              <TierBadge mmr={team.mmr} compact />
+            </div>
           </div>
           <div className="opgg-stat-grid">
             <span><strong>{wins}승</strong>승리</span>
@@ -279,6 +295,16 @@ export default function TeamDetail({ app }) {
                       </div>
                     );
                   })}
+                </div>
+                <div className="team-danger-zone">
+                  <div>
+                    <strong>팀 삭제</strong>
+                    <span>팀 프로필과 로스터를 삭제합니다. 기존 경기 기록은 유지됩니다.</span>
+                  </div>
+                  <Button type="button" variant="secondary" className="danger-button" onClick={deleteTeam}>
+                    <Trash2 size={16} />
+                    {deleteArmed ? "한 번 더 눌러 삭제" : "팀 삭제"}
+                  </Button>
                 </div>
               </>
             ) : (

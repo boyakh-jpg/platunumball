@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Star } from "lucide-react";
 import Badge from "../common/Badge.jsx";
 import Card from "../common/Card.jsx";
+import TierBadge from "../rating/TierBadge.jsx";
 import TeamMemberList from "./TeamMemberList.jsx";
 
 export default function TeamCard({ team, users, compact = false, linked = true, favorite = false, onToggleFavorite, rank }) {
@@ -16,6 +17,7 @@ export default function TeamCard({ team, users, compact = false, linked = true, 
         </div>
         <div className="team-card-actions">
           {rank ? <Badge tone={rank <= 3 ? "gold" : "blue"}>#{rank}</Badge> : null}
+          <TierBadge mmr={team.mmr} compact />
           {onToggleFavorite ? (
             <button type="button" className={favorite ? "favorite-toggle active" : "favorite-toggle"} onClick={onToggleFavorite}>
               <Star size={15} fill={favorite ? "currentColor" : "none"} />

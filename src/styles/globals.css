@@ -2335,6 +2335,21 @@ input[type="color"] {
   box-shadow: 0 0 28px color-mix(in srgb, var(--team-color) 36%, transparent);
 }
 
+.team-tier-hero {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 12px;
+}
+
+.team-tier-hero .hero-emblem {
+  width: 78px;
+  height: 78px;
+  font-size: 2.2rem;
+}
+
 .team-create-panel {
   position: sticky;
   top: 20px;
@@ -2360,7 +2375,7 @@ input[type="color"] {
 
 .my-team-row {
   display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+  grid-template-columns: auto auto minmax(0, 1fr) auto auto auto;
   align-items: center;
   gap: 10px;
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -4043,6 +4058,38 @@ input[type="color"] {
   opacity: 0.4;
 }
 
+.team-danger-zone {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid rgba(255, 91, 91, 0.24);
+  border-radius: var(--radius);
+  background: rgba(255, 91, 91, 0.07);
+  padding: 12px;
+}
+
+.team-danger-zone > div {
+  display: grid;
+  gap: 4px;
+}
+
+.team-danger-zone strong {
+  color: var(--text);
+}
+
+.team-danger-zone span {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 850;
+  line-height: 1.45;
+}
+
+.danger-button {
+  border-color: rgba(255, 91, 91, 0.42);
+  color: var(--danger);
+}
+
 .profile-hero,
 .team-detail-hero {
   position: relative;
@@ -4638,6 +4685,7 @@ html[data-theme="light"] .segmented-control button.active {
   .player-stat-row,
   .approval-side-header,
   .member-control-row,
+  .team-danger-zone,
   .match-action-row,
   .favorite-action-row,
   .tier-range-note {
@@ -5011,6 +5059,12 @@ html[data-theme="light"] .segmented-control button.active {
   .my-team-row em {
     grid-column: 3;
     white-space: normal;
+  }
+
+  .my-team-row .tier-badge {
+    grid-column: 3;
+    width: max-content;
+    max-width: 100%;
   }
 
   .compact-list a,

@@ -23,7 +23,7 @@ export default function RankingTable({ rows, type = "players", mode = "integrate
                 <span>{type === "players" ? `${row.region} · ${row.position}` : row.homeCourt ?? row.type}</span>
               </div>
             </Link>
-            {type === "players" ? <TierBadge mmr={mmr} compact /> : <Badge tone="blue">{row.wins}승</Badge>}
+            {type === "players" || type === "teams" ? <TierBadge mmr={mmr} compact /> : <Badge tone="blue">{row.wins}승</Badge>}
             <strong className="ranking-score">{Math.round(mmr)}</strong>
           </div>
         );
