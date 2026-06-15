@@ -1,10 +1,21 @@
-import { COURTS, MATCH_MODES, PLAYER_POSITIONS, REGIONS } from "./constants.js";
+import {
+  COURTS,
+  DISPUTE_WINDOW_MINUTES,
+  MATCH_MODES,
+  MODE_SIZES,
+  PLAYER_POSITIONS,
+  REFEREE_TRUST_MIN,
+  REGIONS,
+  STAT_ENTRY_WINDOW_MINUTES,
+} from "./constants.js";
 
 const DEMO_TODAY = "2026-06-15";
+const DEMO_NOW = "2026-06-15T21:48:00";
+const DEMO_QUEUE_START = "2026-06-16";
 const DEMO_QUEUE_TIMES = ["18:00", "19:30", "21:00"];
 
 function getDemoQueueSlot(slotIndex) {
-  const date = new Date(`${DEMO_TODAY}T00:00:00`);
+  const date = new Date(`${DEMO_QUEUE_START}T00:00:00`);
   date.setDate(date.getDate() + Math.floor(slotIndex / DEMO_QUEUE_TIMES.length));
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -15,6 +26,79 @@ function getDemoQueueSlot(slotIndex) {
     scheduledDate,
     scheduledTime,
     scheduledAt: `${scheduledDate} ${scheduledTime}`,
+  };
+}
+
+function makeDemoTimestamp(scheduledDate, scheduledTime, extraMinutes = 0) {
+  const date = new Date(`${scheduledDate}T${scheduledTime}`);
+  date.setMinutes(date.getMinutes() + extraMinutes);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${year}-${month}-${day}T${hours}:${minutes}:00.000Z`;
+}
+
+function getDemoModeSize(mode) {
+  return MODE_SIZES[mode] ?? 5;
+}
+
+function getTeamDemoPlayerIds(team = {}, capacity = 5) {
+  return (team.members ?? [])
+    .filter((member) => !["candidate", "substitute"].includes(member.role))
+    .map((member) => member.userId)
+    .slice(0, capacity);
+}
+
+function makeEmptyStatRecorders() {
+  return { teamA: "", teamB: "" };
+}
+
+function makeTrustFeedback(stars = {}) {
+  return { stars, updatedAt: null };
+}
+
+function makeDefaultRoomState(chatMessages = []) {
+  return {
+    chatMessages,
+    kickLog: [],
+    hostPenalties: [],
+  };
+}
+
+function makeDemoStatSubmissions(teamAPlayers = [], teamBPlayers = [], submittedAt, source = "player", by = null) {
+  const rows = [
+    ...teamAPlayers.map((playerId) => [playerId, { by: by ?? playerId, side: "teamA", source, submittedAt }]),
+    ...teamBPlayers.map((playerId) => [playerId, { by: by ?? playerId, side: "teamB", source, submittedAt }]),
+  ];
+  return Object.fromEntries(rows);
+}
+
+function makeDemoApplicant({
+  kind = "player",
+  playerId = null,
+  teamId = null,
+  side = "teamB",
+  status = "waiting",
+  reserve = false,
+  position = null,
+  playerIds = [],
+  createdAt = "2026-06-15T09:00:00.000Z",
+} = {}) {
+  const joinMode = kind === "team" || teamId ? "team" : "player";
+  return {
+    kind: joinMode,
+    joinMode,
+    playerId,
+    teamId: joinMode === "team" ? teamId : null,
+    side,
+    status,
+    reserve,
+    position,
+    playerIds: joinMode === "team" ? playerIds : [],
+    createdAt,
+    updatedAt: createdAt,
   };
 }
 
@@ -389,16 +473,62 @@ const baseState = {
   ],
   matches: [
     {
+      id: "m-live-recorder",
+      title: "Recorder Live 3v3 · Hongdae Rimfire vs Bridge Ballers",
+      mode: "3v3",
+      court: "Recorder Test Court",
+      scheduledDate: "2026-06-15",
+      scheduledTime: "21:30",
+      scheduledAt: "2026-06-15 21:30",
+      status: "agreed",
+      official: false,
+      preRegistered: true,
+      refereeId: "",
+      refereeTrustMin: REFEREE_TRUST_MIN,
+      statRecorders: { teamA: "u1", teamB: "" },
+      statEntryMinutes: STAT_ENTRY_WINDOW_MINUTES,
+      disputeMinutes: DISPUTE_WINDOW_MINUTES,
+      rules: { targetScore: 21, timeLimit: 60, winByTwo: false, ball: "7호" },
+      memo: "u1 recorder live demo. u1 is not playing and records teamA stats.",
+      stakes: "Demo match for recorder room access.",
+      ranked: true,
+      objectionWindow: "2시간",
+      evidence: [{ id: "captain", label: "captain approval" }],
+      teamA: { name: "Hongdae Rimfire", teamId: "t3", players: ["u2", "u5", "u8"], score: 0 },
+      teamB: { name: "Bridge Ballers", teamId: "t2", players: ["u6", "u7", "u9"], score: 0 },
+      parties: [
+        { kind: "team", side: "teamA", teamId: "t3", playerId: "u2", players: ["u2", "u5", "u8"], reserve: false },
+        { kind: "team", side: "teamB", teamId: "t2", playerId: "u6", players: ["u6", "u7", "u9"], reserve: false },
+      ],
+      promotedReserveIds: { teamA: [], teamB: [] },
+      agreements: { teamA: ["u2", "u5", "u8"], teamB: ["u6", "u7", "u9"] },
+      approvals: { teamA: [], teamB: [] },
+      disputes: [],
+      result: null,
+      ratingResult: null,
+      teamRatingResult: null,
+      endedAt: null,
+      trustFeedback: makeTrustFeedback(),
+      createdAt: "2026-06-15T12:00:00.000Z",
+      agreedAt: "2026-06-15T12:10:00.000Z",
+      confirmedAt: null,
+    },
+    {
       id: "m1",
       title: "토요 5v5 공식전",
       mode: "5v5",
       court: "한강 노을코트",
-      scheduledDate: "2026-05-31",
+      scheduledDate: "2026-06-18",
       scheduledTime: "20:30",
-      scheduledAt: "2026-05-31 20:30",
+      scheduledAt: "2026-06-18 20:30",
       status: "contract",
       official: true,
       preRegistered: true,
+      refereeId: "",
+      refereeTrustMin: REFEREE_TRUST_MIN,
+      statRecorders: makeEmptyStatRecorders(),
+      statEntryMinutes: STAT_ENTRY_WINDOW_MINUTES,
+      disputeMinutes: DISPUTE_WINDOW_MINUTES,
       rules: { targetScore: 21, timeLimit: 12, winByTwo: true, ball: "7호 공" },
       memo: "승자팀 다음 경기 우선권. 금전 거래 없이 약속만 기록합니다.",
       stakes: "승자팀 다음 경기 우선권. 금전 거래 없이 약속만 기록합니다.",
@@ -415,7 +545,11 @@ const baseState = {
       disputes: [],
       result: null,
       ratingResult: null,
-      createdAt: "2026-05-31T10:00:00.000Z",
+      teamRatingResult: null,
+      endedAt: null,
+      trustFeedback: makeTrustFeedback(),
+      createdAt: "2026-06-15T10:00:00.000Z",
+      confirmedAt: null,
     },
     {
       id: "m0",
@@ -428,6 +562,11 @@ const baseState = {
       status: "confirmed",
       official: false,
       preRegistered: true,
+      refereeId: "",
+      refereeTrustMin: REFEREE_TRUST_MIN,
+      statRecorders: makeEmptyStatRecorders(),
+      statEntryMinutes: STAT_ENTRY_WINDOW_MINUTES,
+      disputeMinutes: DISPUTE_WINDOW_MINUTES,
       rules: { targetScore: 15, timeLimit: 10, winByTwo: false, ball: "7호 공" },
       memo: "빠른 입력 테스트용 기록",
       stakes: "리벤지 매치. 패자는 다음 판 물/음료 준비.",
@@ -450,12 +589,18 @@ const baseState = {
           u7: { points: 3, rebounds: 4, assists: 2, steals: 1, blocks: 0 },
           u9: { points: 5, rebounds: 5, assists: 1, steals: 0, blocks: 1 },
         },
+        statSubmissions: makeDemoStatSubmissions(["u1", "u2", "u4"], ["u6", "u7", "u9"], "2026-05-30T12:20:00.000Z"),
+        submittedBy: "u1",
         submittedAt: "2026-05-30T12:20:00.000Z",
+        updatedAt: "2026-05-30T12:20:00.000Z",
       },
       ratingResult: [
         { playerId: "u1", integratedDelta: 12.2, modeDelta: 15.8, result: "win" },
         { playerId: "u6", integratedDelta: -10.6, modeDelta: -13.9, result: "loss" },
       ],
+      teamRatingResult: { teamA: 12, teamB: -11 },
+      endedAt: "2026-05-30T12:10:00.000Z",
+      trustFeedback: makeTrustFeedback({ u1: ["u6"], u6: ["u1"] }),
       createdAt: "2026-05-30T11:10:00.000Z",
       confirmedAt: "2026-05-30T12:25:00.000Z",
     },
@@ -475,14 +620,25 @@ const baseState = {
       mode: "5v5",
       ...getDemoQueueSlot(0),
       ranked: true,
-      spots: 1,
+      spots: 6,
       teamId: "t1",
+      targetTeamId: null,
+      refereeId: "",
+      refereeTrustMin: REFEREE_TRUST_MIN,
+      statEntryMinutes: STAT_ENTRY_WINDOW_MINUTES,
+      disputeMinutes: DISPUTE_WINDOW_MINUTES,
+      hostJoinMode: "team",
+      hostSide: "teamA",
+      hostReady: false,
+      sideCapacity: 5,
+      playerIds: ["u1", "u2", "u4", "u5"],
       position: "PF",
       playerId: "u1",
       memo: "리바운드 같이 잡아줄 포워드/센터면 좋아요.",
       status: "open",
-      applicants: [{ kind: "player", playerId: "u8", createdAt: "2026-05-31T09:44:00.000Z" }],
-      createdAt: "2026-05-31T09:30:00.000Z",
+      applicants: [makeDemoApplicant({ kind: "player", playerId: "u8", side: "teamB", status: "waiting", position: "SF", createdAt: "2026-06-15T09:44:00.000Z" })],
+      roomState: makeDefaultRoomState([{ id: "chat-q1-1", userId: "u1", body: "Need one more player for teamB.", createdAt: "2026-06-15T09:35:00.000Z" }]),
+      createdAt: "2026-06-15T09:30:00.000Z",
     },
     {
       id: "q2",
@@ -493,14 +649,25 @@ const baseState = {
       mode: "3v3",
       ...getDemoQueueSlot(1),
       ranked: false,
-      spots: 1,
+      spots: 5,
       teamId: null,
+      targetTeamId: null,
+      refereeId: "",
+      refereeTrustMin: REFEREE_TRUST_MIN,
+      statEntryMinutes: STAT_ENTRY_WINDOW_MINUTES,
+      disputeMinutes: DISPUTE_WINDOW_MINUTES,
+      hostJoinMode: "player",
+      hostSide: "teamA",
+      hostReady: false,
+      sideCapacity: 3,
+      playerIds: [],
       position: "SG",
       playerId: "u9",
       memo: "티어 상관없이 빠르게 두세 판 뛸 팀 찾습니다.",
       status: "open",
-      applicants: [{ kind: "team", teamId: "t2", playerId: "u2", createdAt: "2026-05-31T08:55:00.000Z" }],
-      createdAt: "2026-05-31T08:40:00.000Z",
+      applicants: [makeDemoApplicant({ kind: "team", teamId: "t2", playerId: "u6", side: "teamB", status: "ready", playerIds: ["u6", "u7", "u8"], createdAt: "2026-06-15T08:55:00.000Z" })],
+      roomState: makeDefaultRoomState([{ id: "chat-q2-1", userId: "u6", body: "Team party can fill the opposite side.", createdAt: "2026-06-15T08:57:00.000Z" }]),
+      createdAt: "2026-06-15T08:40:00.000Z",
     },
     {
       id: "q3",
@@ -511,14 +678,25 @@ const baseState = {
       mode: "5v5",
       ...getDemoQueueSlot(2),
       ranked: true,
-      spots: 1,
+      spots: 6,
       teamId: "t5",
+      targetTeamId: null,
+      refereeId: "",
+      refereeTrustMin: REFEREE_TRUST_MIN,
+      statEntryMinutes: STAT_ENTRY_WINDOW_MINUTES,
+      disputeMinutes: DISPUTE_WINDOW_MINUTES,
+      hostJoinMode: "team",
+      hostSide: "teamA",
+      hostReady: true,
+      sideCapacity: 5,
+      playerIds: ["u4", "u5", "u10", "u1"],
       position: "PG",
       playerId: "u4",
       memo: "볼 운반 가능한 가드면 포지션 크게 안 봅니다.",
       status: "open",
-      applicants: [{ kind: "player", playerId: "u2", createdAt: "2026-05-31T08:05:00.000Z" }],
-      createdAt: "2026-05-31T07:55:00.000Z",
+      applicants: [makeDemoApplicant({ kind: "player", playerId: "u2", side: "teamB", status: "ready", position: "SG", createdAt: "2026-06-15T08:05:00.000Z" })],
+      roomState: makeDefaultRoomState([{ id: "chat-q3-1", userId: "u4", body: "Ready when the opposite side fills.", createdAt: "2026-06-15T08:00:00.000Z" }]),
+      createdAt: "2026-06-15T07:55:00.000Z",
     },
     {
       id: "q4",
@@ -529,14 +707,25 @@ const baseState = {
       mode: "5v5",
       ...getDemoQueueSlot(3),
       ranked: true,
-      spots: 1,
+      spots: 6,
       teamId: "t1",
+      targetTeamId: null,
+      refereeId: "",
+      refereeTrustMin: REFEREE_TRUST_MIN,
+      statEntryMinutes: STAT_ENTRY_WINDOW_MINUTES,
+      disputeMinutes: DISPUTE_WINDOW_MINUTES,
+      hostJoinMode: "team",
+      hostSide: "teamA",
+      hostReady: false,
+      sideCapacity: 5,
+      playerIds: ["u1", "u2", "u4", "u5"],
       position: "상관없음",
       playerId: "u1",
       memo: "비슷한 티어 팀이면 바로 경기방 만들고 양팀 동의로 진행해요.",
       status: "open",
-      applicants: [{ kind: "team", teamId: "t3", playerId: "u3", createdAt: "2026-05-31T10:10:00.000Z" }],
-      createdAt: "2026-05-31T10:00:00.000Z",
+      applicants: [makeDemoApplicant({ kind: "team", teamId: "t3", playerId: "u2", side: "teamB", status: "waiting", playerIds: ["u2", "u5", "u8"], createdAt: "2026-06-15T10:10:00.000Z" })],
+      roomState: makeDefaultRoomState([{ id: "chat-q4-1", userId: "u2", body: "We can bring three now and keep reserves open.", createdAt: "2026-06-15T10:12:00.000Z" }]),
+      createdAt: "2026-06-15T10:00:00.000Z",
     },
   ],
   settings: {
@@ -705,6 +894,9 @@ function makeConfirmedMatch(matchIndex, teams, userById) {
   const aWon = scoreA > scoreB;
   const scheduledDate = getDemoPastDate(matchIndex);
   const scheduledTime = `${String(10 + (matchIndex % 11)).padStart(2, "0")}:${matchIndex % 2 ? "30" : "00"}`;
+  const startedAt = makeDemoTimestamp(scheduledDate, scheduledTime);
+  const endedAt = makeDemoTimestamp(scheduledDate, scheduledTime, 12);
+  const submittedAt = makeDemoTimestamp(scheduledDate, scheduledTime, 22);
   const court = COURTS.find((item) => item.region === teamA.region)?.name ?? teamA.homeCourt;
 
   return {
@@ -719,6 +911,11 @@ function makeConfirmedMatch(matchIndex, teams, userById) {
     ranked: matchIndex % 5 !== 0,
     official: matchIndex % 4 === 0,
     preRegistered: true,
+    refereeId: "",
+    refereeTrustMin: REFEREE_TRUST_MIN,
+    statRecorders: makeEmptyStatRecorders(),
+    statEntryMinutes: STAT_ENTRY_WINDOW_MINUTES,
+    disputeMinutes: DISPUTE_WINDOW_MINUTES,
     rules: {
       targetScore: 21,
       timeLimit: 12,
@@ -740,7 +937,10 @@ function makeConfirmedMatch(matchIndex, teams, userById) {
       scoreA,
       scoreB,
       playerStats,
-      submittedAt: `${scheduledDate}T${scheduledTime}:00.000Z`,
+      statSubmissions: makeDemoStatSubmissions(playersA, playersB, submittedAt),
+      submittedBy: playersA[0],
+      submittedAt,
+      updatedAt: submittedAt,
     },
     ratingResult: [...playersA, ...playersB].map((playerId, playerIndex) => {
       const teamAWinner = playersA.includes(playerId) ? aWon : !aWon;
@@ -748,13 +948,21 @@ function makeConfirmedMatch(matchIndex, teams, userById) {
       return { playerId, integratedDelta: delta, modeDelta: Math.round(delta * 1.2), result: teamAWinner ? "win" : "loss" };
     }),
     teamRatingResult: { teamA: aWon ? 11 : -9, teamB: aWon ? -9 : 11 },
-    createdAt: `${scheduledDate}T${scheduledTime}:00.000Z`,
-    confirmedAt: `${scheduledDate}T${scheduledTime}:00.000Z`,
+    endedAt,
+    trustFeedback: makeTrustFeedback({ [playersA[0]]: [playersB[0]], [playersB[0]]: [playersA[0]] }),
+    createdAt: startedAt,
+    confirmedAt: submittedAt,
   };
 }
 
-function getActiveMatchStatus(activeIndex, scheduledDate) {
-  if (scheduledDate >= DEMO_TODAY) return cycle(["contract", "agreed"], activeIndex + Math.floor(activeIndex / 18));
+function isDemoFutureSlot(scheduledDate, scheduledTime) {
+  const scheduled = new Date(`${scheduledDate}T${scheduledTime}`);
+  const now = new Date(DEMO_NOW);
+  return Number.isFinite(scheduled.getTime()) && scheduled.getTime() > now.getTime();
+}
+
+function getActiveMatchStatus(activeIndex, scheduledDate, scheduledTime) {
+  if (isDemoFutureSlot(scheduledDate, scheduledTime)) return cycle(["contract", "agreed"], activeIndex + Math.floor(activeIndex / 18));
   return cycle(["approval", "disputed"], activeIndex);
 }
 
@@ -769,7 +977,18 @@ function makeActiveMatch(activeIndex, teams, userById) {
   const base = makeConfirmedMatch(1000 + activeIndex, teams, userById);
   const scheduledDate = `2026-06-${String(10 + (activeIndex % 18)).padStart(2, "0")}`;
   const scheduledTime = `${String(18 + (activeIndex % 4)).padStart(2, "0")}:00`;
-  const status = getActiveMatchStatus(activeIndex, scheduledDate);
+  const endedAt = makeDemoTimestamp(scheduledDate, scheduledTime, 12);
+  const submittedAt = makeDemoTimestamp(scheduledDate, scheduledTime, 22);
+  const status = getActiveMatchStatus(activeIndex, scheduledDate, scheduledTime);
+  const activeResult = base.result
+    ? {
+        ...base.result,
+        submittedBy: base.teamA.players[0],
+        statSubmissions: makeDemoStatSubmissions(base.teamA.players, base.teamB.players, submittedAt),
+        submittedAt,
+        updatedAt: submittedAt,
+      }
+    : null;
   const common = {
     ...base,
     id: `ma${padNumber(activeIndex + 1, 3)}`,
@@ -778,6 +997,8 @@ function makeActiveMatch(activeIndex, teams, userById) {
     scheduledTime,
     scheduledAt: `${scheduledDate} ${scheduledTime}`,
     status,
+    result: activeResult,
+    endedAt,
     confirmedAt: null,
     ratingResult: null,
     teamRatingResult: null,
@@ -791,6 +1012,7 @@ function makeActiveMatch(activeIndex, teams, userById) {
       agreements: { teamA: common.teamA.players.slice(0, 2), teamB: common.teamB.players.slice(0, 1) },
       approvals: { teamA: [], teamB: [] },
       result: null,
+      endedAt: null,
     };
   }
   if (status === "agreed") {
@@ -801,6 +1023,7 @@ function makeActiveMatch(activeIndex, teams, userById) {
       agreements: { teamA: common.teamA.players, teamB: common.teamB.players },
       approvals: { teamA: [], teamB: [] },
       result: null,
+      endedAt: null,
     };
   }
   if (status === "approval") {
@@ -832,6 +1055,34 @@ function makeRecruitingPost(index, teams, users) {
   const applicantTeam = teams.filter((item) => item.id.startsWith("td"))[(index * 5 + 3) % 20];
   const applicantUser = users[(index * 9 + 17) % users.length];
   const schedule = getDemoQueueSlot(index + 4);
+  const mode = cycle(MATCH_MODES, index).id;
+  const sideCapacity = getDemoModeSize(mode);
+  const hostJoinMode = type === "find_team" ? "player" : "team";
+  const hostPlayerIds = hostJoinMode === "team" ? getTeamDemoPlayerIds(team, sideCapacity) : [];
+  const hostSize = hostJoinMode === "team" ? hostPlayerIds.length : 1;
+  const createdAt = `2026-06-${String(15 + Math.floor(index / 8)).padStart(2, "0")}T${String(9 + (index % 10)).padStart(2, "0")}:00:00.000Z`;
+  const applicantCreatedAt = `2026-06-${String(15 + Math.floor(index / 8)).padStart(2, "0")}T${String(10 + (index % 9)).padStart(2, "0")}:10:00.000Z`;
+  const applicantStatus = index % 3 === 0 ? "ready" : "waiting";
+  const applicant = type === "need_player"
+    ? makeDemoApplicant({
+        kind: "player",
+        playerId: applicantUser.id,
+        side: "teamB",
+        status: applicantStatus,
+        reserve: index % 7 === 0,
+        position: applicantUser.position,
+        createdAt: applicantCreatedAt,
+      })
+    : makeDemoApplicant({
+        kind: "team",
+        teamId: applicantTeam.id,
+        playerId: applicantTeam.members[0].userId,
+        side: "teamB",
+        status: applicantStatus,
+        reserve: index % 7 === 0,
+        playerIds: getTeamDemoPlayerIds(applicantTeam, sideCapacity),
+        createdAt: applicantCreatedAt,
+      });
   const title = type === "need_player"
     ? `${team.name} ${ranked ? "정규전" : "친선전"} 팀원 구해요`
     : type === "find_team"
@@ -844,11 +1095,21 @@ function makeRecruitingPost(index, teams, users) {
     title,
     region,
     court,
-    mode: cycle(MATCH_MODES, index).id,
+    mode,
     ...schedule,
     ranked,
-    spots: type === "need_player" ? 1 + (index % 2) : 1,
+    spots: Math.max(1, sideCapacity * 2 - hostSize),
     teamId: type === "find_team" ? null : team.id,
+    targetTeamId: null,
+    refereeId: "",
+    refereeTrustMin: REFEREE_TRUST_MIN,
+    statEntryMinutes: STAT_ENTRY_WINDOW_MINUTES,
+    disputeMinutes: DISPUTE_WINDOW_MINUTES,
+    hostJoinMode,
+    hostSide: "teamA",
+    hostReady: index % 4 === 0,
+    sideCapacity,
+    playerIds: hostPlayerIds,
     position: type === "need_team" ? "상관없음" : cycle(PLAYER_POSITIONS, index),
     playerId: type === "find_team" ? player.id : team.members[0].userId,
     memo: type === "need_player"
@@ -857,10 +1118,16 @@ function makeRecruitingPost(index, teams, users) {
         ? "혼자 참여 가능합니다. 빠르게 뛸 팀 찾습니다."
         : "비슷한 MMR 팀이면 바로 매치 잡습니다.",
     status: index % 11 === 0 ? "closed" : "open",
-    applicants: type === "need_player"
-      ? [{ kind: "player", playerId: applicantUser.id, createdAt: "2026-06-01T10:00:00.000Z" }]
-      : [{ kind: "team", teamId: applicantTeam.id, playerId: applicantTeam.members[0].userId, createdAt: "2026-06-01T10:00:00.000Z" }],
-    createdAt: `2026-06-${String(1 + (index % 7)).padStart(2, "0")}T${String(9 + (index % 10)).padStart(2, "0")}:00:00.000Z`,
+    applicants: [applicant],
+    roomState: makeDefaultRoomState([
+      {
+        id: `chat-qd${padNumber(index + 1, 3)}-1`,
+        userId: type === "find_team" ? player.id : team.members[0].userId,
+        body: "Demo queue room opened.",
+        createdAt,
+      },
+    ]),
+    createdAt,
   };
 }
 
