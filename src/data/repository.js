@@ -1810,16 +1810,16 @@ export function submitMatchResult(state, matchId, result) {
   const currentUserIsReferee = isMatchReferee(match, currentUserId);
   const currentUserIsEligibleReferee = currentUserIsReferee && isEligibleReferee(currentUser, match.refereeTrustMin);
   const recorderSides = getStatRecorderSides(match, currentUserId);
-  const currentUserCanRecord = currentUserIsEligibleReferee || recorderSides.length > 0 || (!hasReferee && Boolean(currentSideName));
+  const currentUserCanRecord = currentUserIsEligibleReferee || (!hasReferee && (recorderSides.length > 0 || Boolean(currentSideName)));
 
-  if (hasReferee && !currentUserIsEligibleReferee && !recorderSides.length) {
+  if (hasReferee && !currentUserIsEligibleReferee) {
     return {
       ...state,
       notifications: [
         {
           id: makeId("n"),
-          title: "심판/기록자 전용",
-          body: "심판이 초대된 경기는 심판이나 배정된 후보 기록자만 스코어와 개인 활약을 입력할 수 있습니다.",
+          title: "심판 기록 전용",
+          body: "심판이 초대된 경기는 해당 심판만 스코어와 개인 활약을 입력할 수 있습니다.",
           tone: "match",
           matchId,
         },
@@ -1862,7 +1862,7 @@ export function submitMatchResult(state, matchId, result) {
   const recordWindow = getMatchRecordWindow(match);
   const matchStartsAt = match.scheduledDate && match.scheduledTime ? new Date(`${match.scheduledDate}T${match.scheduledTime}`) : null;
   const beforeStart = matchStartsAt && Number.isFinite(matchStartsAt.getTime()) && Date.now() < matchStartsAt.getTime();
-  const liveRecordAllowed = recordWindow.beforeEnd && !beforeStart && (currentUserIsEligibleReferee || recorderSides.length > 0);
+  const liveRecordAllowed = recordWindow.beforeEnd && !beforeStart && (currentUserIsEligibleReferee || (!hasReferee && recorderSides.length > 0));
   if ((recordWindow.beforeEnd && !liveRecordAllowed) || (!recordWindow.beforeEnd && !recordWindow.statOpen)) {
     return {
       ...state,
@@ -1871,9 +1871,9 @@ export function submitMatchResult(state, matchId, result) {
           id: makeId("n"),
           title: beforeStart ? "경기 시작 전" : recordWindow.beforeEnd ? "실시간 기록 권한 없음" : "기록 입력 마감",
           body: beforeStart
-            ? "경기 시작 후 심판이나 배정 기록자만 실시간 기록을 저장할 수 있습니다."
+            ? "경기 시작 후 심판이 있으면 심판만, 심판이 없으면 배정 기록자만 실시간 기록을 저장할 수 있습니다."
             : recordWindow.beforeEnd
-              ? "경기 중 실시간 기록은 심판이나 배정된 기록자만 저장할 수 있습니다."
+              ? "경기 중 실시간 기록은 심판이 있으면 심판만 저장할 수 있습니다."
             : "경기 종료 후 1시간이 지나 개인 기록 입력이 마감됐습니다.",
           tone: "match",
           matchId,
@@ -2751,7 +2751,7 @@ export function confirmRecruitingMatch(state, postId) {
   const teamBPlayers = lobby.sides.teamB.projectedPlayers.slice(0, lobby.sides.teamB.capacity);
   const playerIds = [...teamAPlayers, ...teamBPlayers];
   const refereeId = getTrustedRefereeId(state, post.refereeId, playerIds);
-  const statRecorders = getReserveStatRecorders(lobby, playerIds);
+  const statRecorders = refereeId ? normalizeStatRecorders({}) : getReserveStatRecorders(lobby, playerIds);
   const match = {
     id: makeId("m"),
     title: post.title,

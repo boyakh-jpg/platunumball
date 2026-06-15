@@ -108,9 +108,9 @@ export default function MatchRoom({ app }) {
   const referee = getMatchReferee(match, app.state.users);
   const hasReferee = Boolean(match.refereeId);
   const currentUserIsReferee = isMatchReferee(match, app.currentUser.id);
-  const statRecorders = match.statRecorders ?? match.rules?.statRecorders ?? {};
-  const currentRecorderSides = getStatRecorderSides(match, app.currentUser.id);
-  const hasSideRecorders = Boolean(statRecorders.teamA || statRecorders.teamB);
+  const statRecorders = hasReferee ? {} : match.statRecorders ?? match.rules?.statRecorders ?? {};
+  const currentRecorderSides = hasReferee ? [] : getStatRecorderSides(match, app.currentUser.id);
+  const hasSideRecorders = !hasReferee && Boolean(statRecorders.teamA || statRecorders.teamB);
   const currentUserEditablePlayerIds = hasReferee && currentUserIsReferee
     ? allPlayerIds
     : allPlayerIds.filter((playerId) => getAllowedStatFields(match, app.currentUser.id, playerId).length > 0);
@@ -187,7 +187,7 @@ export default function MatchRoom({ app }) {
     if (canSubmitResult) app.actions.submitMatchResult(match.id, score);
   };
   const getSideLabel = (sideName) => (sideName === "teamA" ? "A팀" : "B팀");
-  const getRecorderName = (sideName) => userMap[statRecorders[sideName]]?.name ?? "";
+  const getRecorderName = (sideName) => hasReferee ? "" : userMap[statRecorders[sideName]]?.name ?? "";
   const canEditPlayerStat = (playerId) => canSubmitResult && getAllowedStatFields(match, app.currentUser.id, playerId).length > 0;
   const editableStatFields = statEditorPlayerId ? getAllowedStatFields(match, app.currentUser.id, statEditorPlayerId) : [];
   const getPlayerStatState = (playerId, submitted) => {

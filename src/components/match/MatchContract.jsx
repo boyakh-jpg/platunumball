@@ -17,10 +17,12 @@ export default function MatchContract({ match, users, teams = [] }) {
   const credibility = CREDIBILITY_LEVELS[getCredibilityLevel(match)] ?? CREDIBILITY_LEVELS.street_majority;
   const referee = getMatchReferee(match, users);
   const statRecorders = normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders);
-  const recorderLabel = ["teamA", "teamB"]
-    .filter((sideName) => statRecorders[sideName])
-    .map((sideName) => `${sideName === "teamA" ? "A팀" : "B팀"} ${userMap[statRecorders[sideName]]?.name ?? "후보"}`)
-    .join(" · ");
+  const recorderLabel = referee
+    ? ""
+    : ["teamA", "teamB"]
+        .filter((sideName) => statRecorders[sideName])
+        .map((sideName) => `${sideName === "teamA" ? "A팀" : "B팀"} ${userMap[statRecorders[sideName]]?.name ?? "후보"}`)
+        .join(" · ");
   const renderRoster = (side) => (
     <div className="roster">
       {side.players.map((id) => {
@@ -96,7 +98,7 @@ export default function MatchContract({ match, users, teams = [] }) {
         </div>
         <div>
           <span>후보 기록자</span>
-          <strong>{recorderLabel || "없음"}</strong>
+          <strong>{referee ? "심판 우선 · 없음" : recorderLabel || "없음"}</strong>
         </div>
         <div>
           <span>공격권</span>

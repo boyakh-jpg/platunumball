@@ -71,7 +71,7 @@ function getRoleText(match, user, recorderSides) {
 
 function canAccessRecorder(match, user) {
   const isReferee = isMatchReferee(match, user.id) && isEligibleReferee(user, match.refereeTrustMin);
-  return isReferee || getStatRecorderSides(match, user.id).length > 0;
+  return isReferee || (!match.refereeId && getStatRecorderSides(match, user.id).length > 0);
 }
 
 export default function Recorder({ app }) {
@@ -99,7 +99,7 @@ export default function Recorder({ app }) {
 
   const recorderSides = selectedMatch ? getStatRecorderSides(selectedMatch, user.id) : [];
   const isReferee = selectedMatch ? isMatchReferee(selectedMatch, user.id) : false;
-  const editableSides = isReferee ? ["teamA", "teamB"] : recorderSides;
+  const editableSides = isReferee ? ["teamA", "teamB"] : selectedMatch?.refereeId ? [] : recorderSides;
   const recordWindow = selectedMatch ? getMatchRecordWindow(selectedMatch) : null;
   const startsAt = selectedMatch ? getMatchStartDate(selectedMatch) : null;
   const beforeStart = startsAt && Date.now() < startsAt.getTime();
