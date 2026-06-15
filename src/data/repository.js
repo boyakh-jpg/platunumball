@@ -57,6 +57,9 @@ const DEFAULT_SETTINGS = {
 };
 const REMOTE_PAGE_SIZE = 1000;
 const REMOTE_WRITE_CHUNK_SIZE = 500;
+const POST_MATCH_STATUSES = new Set(["approval", "disputed"]);
+const LIFECYCLE_TITLE_PATTERN = /^(동의 대기|진행 예정|결과 승인|이의 확인|이의제기|확정|결과 입력)\s*·\s*/;
+const POST_MATCH_TITLE_PATTERN = /^(결과 승인|이의 확인|이의제기|확정|결과 입력)\s*·\s*/;
 let normalizedSaveWarningShown = false;
 
 function mergeById(current = [], fallback = []) {
@@ -66,13 +69,71 @@ function mergeById(current = [], fallback = []) {
   return [...mergedDefaults, ...extraItems];
 }
 
+function getScheduledStartMs(match = {}) {
+  const dateText = match.scheduledDate
+    ? `${match.scheduledDate}T${match.scheduledTime || "00:00"}`
+    : String(match.scheduledAt ?? "").replace(" ", "T");
+  const date = new Date(dateText);
+  return Number.isFinite(date.getTime()) ? date.getTime() : null;
+}
+
+function isFutureScheduledMatch(match = {}) {
+  const scheduledMs = getScheduledStartMs(match);
+  return Number.isFinite(scheduledMs) && scheduledMs > Date.now();
+}
+
+function getPregameMatchTitle(match = {}) {
+  const label = match.status === "contract" ? "동의 대기" : "진행 예정";
+  const versus = [match.teamA?.name, match.teamB?.name].filter(Boolean).join(" vs ");
+  return `${label} · ${versus || String(match.title ?? "").replace(POST_MATCH_TITLE_PATTERN, "") || "경기"}`;
+}
+
+function getLifecycleTitleLabel(status) {
+  if (status === "contract") return "동의 대기";
+  if (status === "agreed") return "진행 예정";
+  if (status === "approval") return "결과 승인";
+  if (status === "disputed") return "이의 확인";
+  if (status === "confirmed") return "확정";
+  return "";
+}
+
+function repairLifecycleTitle(match) {
+  const label = getLifecycleTitleLabel(match.status);
+  if (!label || !LIFECYCLE_TITLE_PATTERN.test(match.title ?? "")) return match;
+  const versus = [match.teamA?.name, match.teamB?.name].filter(Boolean).join(" vs ");
+  return { ...match, title: `${label} · ${versus || String(match.title ?? "").replace(LIFECYCLE_TITLE_PATTERN, "") || "경기"}` };
+}
+
+function resetFuturePostMatchState(match) {
+  const repaired = { ...match, status: "agreed" };
+  return {
+    ...repaired,
+    status: "agreed",
+    title: getPregameMatchTitle(repaired),
+    approvals: { teamA: [], teamB: [] },
+    disputes: [],
+    result: null,
+    ratingResult: null,
+    teamRatingResult: null,
+    endedAt: null,
+    confirmedAt: null,
+    teamA: { ...(match.teamA ?? {}), score: 0 },
+    teamB: { ...(match.teamB ?? {}), score: 0 },
+  };
+}
+
+function repairFuturePregameTitle(match) {
+  if (!["contract", "agreed"].includes(match.status) || !POST_MATCH_TITLE_PATTERN.test(match.title ?? "")) return match;
+  return { ...match, title: getPregameMatchTitle(match) };
+}
+
 function normalizeMatch(match) {
   const startedStatuses = ["agreed", "approval", "confirmed", "disputed", "void", "cancelled"];
   const started = startedStatuses.includes(match.status);
   const teamAPlayers = match.teamA?.players ?? [];
   const teamBPlayers = match.teamB?.players ?? [];
 
-  return {
+  const normalized = {
     ...match,
     status: match.status ?? "contract",
     agreements: match.agreements ?? {
@@ -87,6 +148,15 @@ function normalizeMatch(match) {
     statEntryMinutes: Number(match.statEntryMinutes ?? STAT_ENTRY_WINDOW_MINUTES),
     disputeMinutes: Number(match.disputeMinutes ?? DISPUTE_WINDOW_MINUTES),
   };
+
+  if (isFutureScheduledMatch(normalized)) {
+    if (POST_MATCH_STATUSES.has(normalized.status)) {
+      return resetFuturePostMatchState(normalized);
+    }
+    return repairFuturePregameTitle(repairLifecycleTitle(normalized));
+  }
+
+  return repairLifecycleTitle(normalized);
 }
 
 function normalizeSettings(settings = {}) {

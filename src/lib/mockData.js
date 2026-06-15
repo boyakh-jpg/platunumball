@@ -1,5 +1,7 @@
 import { COURTS, MATCH_MODES, PLAYER_POSITIONS, REGIONS } from "./constants.js";
 
+const DEMO_TODAY = "2026-06-15";
+
 const baseState = {
   currentUserId: "u1",
   users: [
@@ -648,6 +650,15 @@ function makeMatchTitle(matchIndex, teamA, teamB, mode) {
     + ` · ${teamA.name.split(" ")[0]} vs ${teamB.name.split(" ")[0]}`;
 }
 
+function getDemoPastDate(matchIndex) {
+  const date = new Date(`${DEMO_TODAY}T00:00:00`);
+  date.setDate(date.getDate() - 1 - (matchIndex % 45));
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function makeConfirmedMatch(matchIndex, teams, userById) {
   const teamA = teams[matchIndex % teams.length];
   let teamB = teams[(matchIndex * 7 + 3) % teams.length];
@@ -672,7 +683,7 @@ function makeConfirmedMatch(matchIndex, teams, userById) {
   }
 
   const aWon = scoreA > scoreB;
-  const scheduledDate = `2026-${String(5 + Math.floor((matchIndex % 92) / 31)).padStart(2, "0")}-${String((matchIndex % 28) + 1).padStart(2, "0")}`;
+  const scheduledDate = getDemoPastDate(matchIndex);
   const scheduledTime = `${String(10 + (matchIndex % 11)).padStart(2, "0")}:${matchIndex % 2 ? "30" : "00"}`;
   const court = COURTS.find((item) => item.region === teamA.region)?.name ?? teamA.homeCourt;
 
@@ -722,16 +733,30 @@ function makeConfirmedMatch(matchIndex, teams, userById) {
   };
 }
 
+function getActiveMatchStatus(activeIndex, scheduledDate) {
+  if (scheduledDate >= DEMO_TODAY) return cycle(["contract", "agreed"], activeIndex + Math.floor(activeIndex / 18));
+  return cycle(["approval", "disputed"], activeIndex);
+}
+
+function getActiveMatchTitle(status) {
+  if (status === "contract") return "동의 대기";
+  if (status === "agreed") return "진행 예정";
+  if (status === "approval") return "결과 승인";
+  return "이의 확인";
+}
+
 function makeActiveMatch(activeIndex, teams, userById) {
   const base = makeConfirmedMatch(1000 + activeIndex, teams, userById);
-  const status = cycle(["contract", "agreed", "approval", "disputed"], activeIndex);
+  const scheduledDate = `2026-06-${String(10 + (activeIndex % 18)).padStart(2, "0")}`;
+  const scheduledTime = `${String(18 + (activeIndex % 4)).padStart(2, "0")}:00`;
+  const status = getActiveMatchStatus(activeIndex, scheduledDate);
   const common = {
     ...base,
     id: `ma${padNumber(activeIndex + 1, 3)}`,
-    title: `${status === "contract" ? "동의 대기" : status === "agreed" ? "진행 예정" : status === "approval" ? "결과 승인" : "이의 확인"} · ${base.teamA.name} vs ${base.teamB.name}`,
-    scheduledDate: `2026-06-${String(10 + (activeIndex % 18)).padStart(2, "0")}`,
-    scheduledTime: `${String(18 + (activeIndex % 4)).padStart(2, "0")}:00`,
-    scheduledAt: `2026-06-${String(10 + (activeIndex % 18)).padStart(2, "0")} ${String(18 + (activeIndex % 4)).padStart(2, "0")}:00`,
+    title: `${getActiveMatchTitle(status)} · ${base.teamA.name} vs ${base.teamB.name}`,
+    scheduledDate,
+    scheduledTime,
+    scheduledAt: `${scheduledDate} ${scheduledTime}`,
     status,
     confirmedAt: null,
     ratingResult: null,

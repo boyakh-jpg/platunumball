@@ -301,7 +301,7 @@ begin
         from public.match_results result_row
         where result_row.match_id = match_row.id
       )
-        and coalesce(match_row.status, '') not in ('void', 'cancelled', 'disputed')
+        and coalesce(match_row.status, '') not in ('void', 'cancelled')
         and (match_row.scheduled_date is null or match_row.scheduled_date >= ref_date)
     ),
     past_slots as (
@@ -314,7 +314,8 @@ begin
     update public.matches match_row
     set
       scheduled_date = past_slots.next_date,
-      scheduled_time = past_slots.next_time
+      scheduled_time = past_slots.next_time,
+      scheduled_at = past_slots.next_date::text || ' ' || to_char(past_slots.next_time, 'HH24:MI')
     from past_slots
     where match_row.id = past_slots.id;
 
@@ -328,7 +329,7 @@ begin
         from public.match_results result_row
         where result_row.match_id = match_row.id
       )
-        and coalesce(match_row.status, '') not in ('void', 'cancelled', 'disputed')
+        and coalesce(match_row.status, '') not in ('void', 'cancelled')
         and (match_row.scheduled_date is null or match_row.scheduled_time is null)
     ),
     open_slots as (
@@ -341,7 +342,8 @@ begin
     update public.matches match_row
     set
       scheduled_date = open_slots.next_date,
-      scheduled_time = open_slots.next_time
+      scheduled_time = open_slots.next_time,
+      scheduled_at = open_slots.next_date::text || ' ' || to_char(open_slots.next_time, 'HH24:MI')
     from open_slots
     where match_row.id = open_slots.id;
 
@@ -383,13 +385,15 @@ begin
     set
       status = 'agreed',
       ended_at = null,
-      confirmed_at = null
+      confirmed_at = null,
+      score_a = 0,
+      score_b = 0
     where not exists (
       select 1
       from public.match_results result_row
       where result_row.match_id = match_row.id
     )
-      and coalesce(match_row.status, '') not in ('void', 'cancelled', 'disputed')
+      and coalesce(match_row.status, '') not in ('void', 'cancelled')
       and match_row.scheduled_date >= ref_date;
   end if;
 end;
