@@ -1330,6 +1330,10 @@ input[type="color"] {
   text-align: left;
 }
 
+.team-picker > .badge {
+  margin: 10px 10px 0;
+}
+
 .team-picker .card {
   border: 0;
   box-shadow: none;

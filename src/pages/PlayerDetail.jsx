@@ -103,7 +103,7 @@ export default function PlayerDetail({ app }) {
           <div>
             <p className="eyebrow">Player Profile</p>
             <h1>{player.name}</h1>
-            <p>{player.handle} · {player.club} · 신뢰도 {player.trustScore}</p>
+            <p>{player.handle} · 신뢰도 {player.trustScore}</p>
             <div className="badge-row">
               <TierBadge mmr={player.ratings.integrated} />
               <Badge tone="green">{player.region}</Badge>

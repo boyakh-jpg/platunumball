@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Star } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
@@ -17,8 +17,20 @@ function includesQuery(value, query) {
   return value.toLowerCase().includes(query.trim().toLowerCase());
 }
 
+function getUserTeam(teams, userId) {
+  return teams
+    .filter((team) => team.members.some((member) => member.userId === userId))
+    .sort((a, b) => Number(b.members.some((member) => member.userId === userId && member.role === "captain")) - Number(a.members.some((member) => member.userId === userId && member.role === "captain")) || b.mmr - a.mmr)[0];
+}
+
+function getOpponentTeam(teams, teamId, region) {
+  return teams.find((team) => team.id !== teamId && team.region === region) ?? teams.find((team) => team.id !== teamId);
+}
+
 export default function CreateMatch({ app }) {
   const navigate = useNavigate();
+  const defaultTeamA = getUserTeam(app.state.teams, app.currentUser.id) ?? app.state.teams[0];
+  const defaultTeamB = getOpponentTeam(app.state.teams, defaultTeamA?.id, app.currentUser.region);
   const [teamQuery, setTeamQuery] = useState("");
   const [courtQuery, setCourtQuery] = useState("");
   const [teamRegion, setTeamRegion] = useState(app.currentUser.region ?? "전체");
@@ -33,8 +45,8 @@ export default function CreateMatch({ app }) {
     court: COURTS[0].name,
     scheduledDate: today,
     scheduledTime: "20:30",
-    teamAId: app.state.teams[0]?.id,
-    teamBId: app.state.teams[1]?.id,
+    teamAId: defaultTeamA?.id,
+    teamBId: defaultTeamB?.id,
     ranked: true,
     official: true,
     preRegistered: true,
@@ -78,12 +90,17 @@ export default function CreateMatch({ app }) {
       .slice(0, 10);
   }, [app.currentUser.region, favoriteCourtIds]);
 
-  const selectedTeams = useMemo(
-    () => app.state.teams.filter((team) => team.id === draft.teamAId || team.id === draft.teamBId),
-    [app.state.teams, draft.teamAId, draft.teamBId],
-  );
   const selectedTeamA = app.state.teams.find((team) => team.id === draft.teamAId);
   const selectedTeamB = app.state.teams.find((team) => team.id === draft.teamBId);
+  const teamOptions = useMemo(() => {
+    const teamMap = new Map();
+    [selectedTeamA, selectedTeamB, ...sortedTeams].filter(Boolean).forEach((team) => teamMap.set(team.id, team));
+    return Array.from(teamMap.values());
+  }, [selectedTeamA, selectedTeamB, sortedTeams]);
+  const selectedTeams = useMemo(
+    () => [selectedTeamA, selectedTeamB].filter(Boolean),
+    [selectedTeamA, selectedTeamB],
+  );
   const teamTierRange = getRecruitingTierRange(selectedTeamA?.mmr ?? 1200, draft.ranked);
   const teamTierBlocked = Boolean(
     draft.ranked &&
@@ -91,19 +108,46 @@ export default function CreateMatch({ app }) {
       selectedTeamB &&
       !isMmrInRecruitingRange(selectedTeamB.mmr, selectedTeamA.mmr, true),
   );
+  const teamSelectionInvalid = !selectedTeamA || !selectedTeamB || selectedTeamA.id === selectedTeamB.id;
   const selectedCourt = useMemo(
     () => COURTS.find((court) => court.name === draft.court) ?? COURTS[0],
     [draft.court],
   );
 
   const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
+  useEffect(() => {
+    if (!app.state.teams.length) return;
+    setDraft((current) => {
+      const teamAExists = app.state.teams.some((team) => team.id === current.teamAId);
+      const teamBExists = app.state.teams.some((team) => team.id === current.teamBId);
+      const nextTeamAId = teamAExists ? current.teamAId : (getUserTeam(app.state.teams, app.currentUser.id) ?? app.state.teams[0])?.id;
+      const nextTeamBId = teamBExists && current.teamBId !== nextTeamAId
+        ? current.teamBId
+        : getOpponentTeam(app.state.teams, nextTeamAId, app.currentUser.region)?.id;
+      if (current.teamAId === nextTeamAId && current.teamBId === nextTeamBId) return current;
+      return { ...current, teamAId: nextTeamAId, teamBId: nextTeamBId };
+    });
+  }, [app.currentUser.id, app.currentUser.region, app.state.teams]);
+
+  const selectTeamA = (teamAId) => {
+    const nextTeamBId = draft.teamBId === teamAId
+      ? getOpponentTeam(sortedTeams, teamAId, app.currentUser.region)?.id ?? getOpponentTeam(app.state.teams, teamAId, app.currentUser.region)?.id
+      : draft.teamBId;
+    update({ teamAId, teamBId: nextTeamBId });
+  };
+  const selectTeamB = (teamBId) => {
+    const nextTeamAId = draft.teamAId === teamBId
+      ? getOpponentTeam(sortedTeams, teamBId, app.currentUser.region)?.id ?? getOpponentTeam(app.state.teams, teamBId, app.currentUser.region)?.id
+      : draft.teamAId;
+    update({ teamAId: nextTeamAId, teamBId });
+  };
   const assignTeam = (teamId, side) => {
-    if (side === "A") update({ teamAId: teamId, teamBId: draft.teamBId === teamId ? draft.teamAId : draft.teamBId });
-    if (side === "B") update({ teamBId: teamId, teamAId: draft.teamAId === teamId ? draft.teamBId : draft.teamAId });
+    if (side === "A") selectTeamA(teamId);
+    if (side === "B") selectTeamB(teamId);
   };
   const submit = (event) => {
     event.preventDefault();
-    if (teamTierBlocked) return;
+    if (teamTierBlocked || teamSelectionInvalid) return;
     const matchId = app.actions.createMatch(draft);
     navigate(matchId ? `/app/matches/${matchId}` : "/app/matches");
   };
@@ -115,7 +159,7 @@ export default function CreateMatch({ app }) {
           <p className="eyebrow">CreateMatch</p>
           <h1>오늘의 판 만들기</h1>
         </div>
-        <Button type="submit" disabled={teamTierBlocked}>경기 생성</Button>
+        <Button type="submit" disabled={teamTierBlocked || teamSelectionInvalid}>경기 생성</Button>
       </header>
 
       <div className="content-grid wide-left">
@@ -253,14 +297,20 @@ export default function CreateMatch({ app }) {
           <div className="form-grid two">
             <label>
               Team A
-              <select value={draft.teamAId} onChange={(event) => update({ teamAId: event.target.value })}>
-                {sortedTeams.map((team) => <option key={team.id} value={team.id}>{team.region} · {team.name} · {team.mmr}</option>)}
+              <select value={draft.teamAId ?? ""} onChange={(event) => selectTeamA(event.target.value)}>
+                {!teamOptions.length ? <option value="">팀 없음</option> : null}
+                {teamOptions
+                  .filter((team) => team.id !== draft.teamBId)
+                  .map((team) => <option key={team.id} value={team.id}>{team.region} · {team.name} · {team.mmr}</option>)}
               </select>
             </label>
             <label>
               Team B
-              <select value={draft.teamBId} onChange={(event) => update({ teamBId: event.target.value })}>
-                {sortedTeams.filter((team) => team.id !== draft.teamAId).map((team) => <option key={team.id} value={team.id}>{team.region} · {team.name} · {team.mmr}</option>)}
+              <select value={draft.teamBId ?? ""} onChange={(event) => selectTeamB(event.target.value)}>
+                {!teamOptions.some((team) => team.id !== draft.teamAId) ? <option value="">상대 팀 없음</option> : null}
+                {teamOptions
+                  .filter((team) => team.id !== draft.teamAId)
+                  .map((team) => <option key={team.id} value={team.id}>{team.region} · {team.name} · {team.mmr}</option>)}
               </select>
             </label>
           </div>

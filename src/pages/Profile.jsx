@@ -13,7 +13,6 @@ export default function Profile({ app }) {
     region: user.region,
     school: user.school,
     company: user.company,
-    club: user.club,
   });
   const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
 
@@ -70,8 +69,12 @@ export default function Profile({ app }) {
                 <strong>{user.region}</strong>
               </div>
               <div>
-                <span>동호회</span>
-                <strong>{user.club}</strong>
+                <span>학교</span>
+                <strong>{user.school}</strong>
+              </div>
+              <div>
+                <span>회사</span>
+                <strong>{user.company}</strong>
               </div>
             </div>
           </Card>
