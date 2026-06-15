@@ -73,5 +73,32 @@ begin
     execute 'alter table public.affiliations drop constraint if exists affiliations_type_check';
     execute 'alter table public.affiliations add constraint affiliations_type_check check (type in (''region'', ''school'', ''company''))';
   end if;
+
+  if to_regclass('public.recruiting_posts') is not null then
+    execute 'alter table public.recruiting_posts add column if not exists host_join_mode text not null default ''team''';
+    execute 'alter table public.recruiting_posts add column if not exists host_side text not null default ''teamA''';
+    execute 'alter table public.recruiting_posts add column if not exists host_ready boolean not null default false';
+    execute 'alter table public.recruiting_posts add column if not exists side_capacity integer not null default 5';
+    execute 'alter table public.recruiting_posts add column if not exists confirmed_at timestamptz';
+    execute 'alter table public.recruiting_posts drop constraint if exists recruiting_posts_host_join_mode_check';
+    execute 'alter table public.recruiting_posts add constraint recruiting_posts_host_join_mode_check check (host_join_mode in (''player'', ''team''))';
+    execute 'alter table public.recruiting_posts drop constraint if exists recruiting_posts_host_side_check';
+    execute 'alter table public.recruiting_posts add constraint recruiting_posts_host_side_check check (host_side in (''teamA'', ''teamB''))';
+    execute 'alter table public.recruiting_posts drop constraint if exists recruiting_posts_side_capacity_check';
+    execute 'alter table public.recruiting_posts add constraint recruiting_posts_side_capacity_check check (side_capacity between 1 and 5)';
+  end if;
+
+  if to_regclass('public.recruiting_applications') is not null then
+    execute 'alter table public.recruiting_applications add column if not exists side text not null default ''teamB''';
+    execute 'alter table public.recruiting_applications add column if not exists status text not null default ''waiting''';
+    execute 'alter table public.recruiting_applications add column if not exists reserve boolean not null default false';
+    execute 'alter table public.recruiting_applications add column if not exists position text';
+    execute 'alter table public.recruiting_applications add column if not exists updated_at timestamptz';
+    execute 'alter table public.recruiting_applications drop constraint if exists recruiting_applications_side_check';
+    execute 'alter table public.recruiting_applications add constraint recruiting_applications_side_check check (side in (''teamA'', ''teamB''))';
+    execute 'alter table public.recruiting_applications drop constraint if exists recruiting_applications_status_check';
+    execute 'alter table public.recruiting_applications add constraint recruiting_applications_status_check check (status in (''waiting'', ''ready'', ''confirmed''))';
+    execute 'create index if not exists recruiting_applications_post_side_idx on public.recruiting_applications (post_id, side, reserve)';
+  end if;
 end;
 $$;

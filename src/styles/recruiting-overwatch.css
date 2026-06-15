@@ -626,6 +626,334 @@
   min-height: 48px;
 }
 
+.ow-mode-card.static {
+  cursor: default;
+}
+
+.ow-mode-card.static:hover {
+  transform: none;
+}
+
+.ow-lobby-card {
+  cursor: pointer;
+}
+
+.ow-state-ready {
+  border-color: rgba(70, 224, 182, 0.52);
+  box-shadow: 0 0 0 1px rgba(70, 224, 182, 0.18);
+}
+
+.ow-lobby-meter-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ow-lobby-meter {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 950;
+}
+
+.ow-lobby-meter div,
+.ow-side-progress {
+  overflow: hidden;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.ow-lobby-meter div::before,
+.ow-side-progress::before {
+  content: "";
+  display: block;
+  width: var(--fill, 0%);
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--green), var(--gold));
+}
+
+.ow-lobby-modal {
+  width: min(1120px, 100%);
+  max-height: min(880px, calc(100vh - 36px));
+  overflow-y: auto;
+  border: 1px solid rgba(255, 211, 108, 0.22);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(145deg, rgba(10, 14, 21, 0.98), rgba(10, 14, 21, 0.92)),
+    url("/assets/recruiting-queue-court.png") center / cover no-repeat;
+  box-shadow: 0 30px 120px rgba(0, 0, 0, 0.58);
+  padding: 18px;
+}
+
+.ow-drawer-head p {
+  margin-top: 6px;
+  color: var(--muted);
+  font-weight: 850;
+}
+
+.ow-lobby-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.ow-lobby-summary span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.055);
+  color: var(--muted);
+  padding: 8px 10px;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.ow-lobby-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.ow-side-roster {
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius);
+  background: rgba(6, 9, 14, 0.72);
+  padding: 12px;
+}
+
+.ow-side-roster header {
+  display: grid;
+  gap: 8px;
+}
+
+.ow-side-roster header > div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--muted);
+  font-weight: 950;
+}
+
+.ow-side-roster header strong {
+  color: var(--gold);
+  font-size: 1.15rem;
+}
+
+.ow-roster-stack {
+  display: grid;
+  gap: 8px;
+}
+
+.ow-party-block,
+.ow-open-slot,
+.ow-owner-panel,
+.ow-room-rule-panel,
+.ow-reserve-panel,
+.ow-join-panel {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.ow-party-block {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+}
+
+.ow-party-block.ready {
+  border-color: rgba(70, 224, 182, 0.36);
+  background: rgba(70, 224, 182, 0.08);
+}
+
+.ow-party-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ow-party-head > div:first-child {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.ow-party-head strong {
+  overflow-wrap: anywhere;
+  color: var(--text);
+  font-size: 0.98rem;
+}
+
+.ow-party-head span {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 850;
+}
+
+.ow-party-meta {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.ow-party-members,
+.ow-reserve-line > div {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ow-member-chip {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.18);
+  color: var(--text);
+  padding: 5px 8px 5px 5px;
+  font-size: 0.78rem;
+  font-weight: 850;
+  text-decoration: none;
+}
+
+.ow-member-chip b {
+  color: var(--gold);
+  font-size: 0.68rem;
+}
+
+.ow-member-chip.compact {
+  padding-right: 8px;
+}
+
+.ow-open-slot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  color: var(--subtle);
+  padding: 10px;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.ow-reserve-panel {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px;
+}
+
+.ow-reserve-panel > span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.ow-reserve-line {
+  display: grid;
+  gap: 7px;
+}
+
+.ow-reserve-line strong {
+  color: var(--gold);
+  font-size: 0.8rem;
+}
+
+.ow-room-rule-panel {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 12px;
+}
+
+.ow-room-rule-panel strong {
+  color: var(--text);
+}
+
+.ow-room-rule-panel span {
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 850;
+  line-height: 1.45;
+}
+
+.ow-join-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 12px;
+}
+
+.ow-join-form {
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+}
+
+.ow-owner-panel {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+}
+
+.ow-owner-panel strong {
+  color: var(--text);
+}
+
+.ow-owner-panel span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+.ow-check-row {
+  align-content: center;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+}
+
+.ow-check-row input {
+  width: 18px;
+  height: 18px;
+}
+
+html[data-theme="light"] .ow-lobby-modal {
+  background:
+    linear-gradient(90deg, rgba(246, 248, 242, 0.98), rgba(246, 248, 242, 0.86)),
+    url("/assets/recruiting-queue-court.png") center / cover no-repeat;
+}
+
+html[data-theme="light"] .ow-side-roster,
+html[data-theme="light"] .ow-party-block,
+html[data-theme="light"] .ow-open-slot,
+html[data-theme="light"] .ow-owner-panel,
+html[data-theme="light"] .ow-room-rule-panel,
+html[data-theme="light"] .ow-reserve-panel,
+html[data-theme="light"] .ow-join-panel {
+  background: rgba(255, 255, 255, 0.78);
+}
+
 .bottom-nav {
   grid-template-columns: repeat(5, minmax(0, 1fr));
 }
@@ -685,7 +1013,10 @@ html[data-theme="light"] .ow-compose-drawer {
   .ow-field-grid,
   .ow-field-grid.three,
   .ow-compose-type-grid,
-  .ow-details-grid {
+  .ow-details-grid,
+  .ow-lobby-grid,
+  .ow-join-panel,
+  .ow-lobby-meter-grid {
     grid-template-columns: 1fr;
   }
 
@@ -707,5 +1038,19 @@ html[data-theme="light"] .ow-compose-drawer {
 
   .ow-compose-drawer {
     max-height: calc(100vh - 20px);
+  }
+
+  .ow-lobby-modal {
+    max-height: calc(100vh - 20px);
+    padding: 12px;
+  }
+
+  .ow-party-head,
+  .ow-join-panel {
+    align-items: stretch;
+  }
+
+  .ow-party-head {
+    display: grid;
   }
 }

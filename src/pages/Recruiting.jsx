@@ -1,70 +1,35 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { MapPin, PlusCircle, ShieldCheck, Swords, UserRound, UsersRound, X } from "lucide-react";
+import {
+  CheckCircle2,
+  Clock3,
+  MapPin,
+  PlusCircle,
+  ShieldCheck,
+  Swords,
+  UserRound,
+  UsersRound,
+  X,
+} from "lucide-react";
+import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import TierBadge from "../components/rating/TierBadge.jsx";
 import { COURTS, MATCH_MODES, PLAYER_POSITIONS, REGIONS } from "../lib/constants.js";
 import {
-  RECRUITING_TYPES,
-  getRecruitingApplicantKind,
+  RECRUITING_JOIN_MODES,
+  getRecruitingBestSide,
   getRecruitingFit,
-  getRecruitingTierRange,
+  getRecruitingLobby,
+  getRecruitingSideCapacity,
   getRecruitingTargetMmr,
   hasRecruitingApplicant,
   isNationalRecruitingPost,
-  normalizeRecruitingApplicants,
 } from "../lib/recruiting.js";
 
-const TYPE_VIEW = {
-  need_player: {
-    code: "PLAYER",
-    title: "용병 구함",
-    desc: "팀이 뛸 사람을 찾음",
-    icon: UserRound,
-  },
-  find_team: {
-    code: "SOLO",
-    title: "팀 찾기",
-    desc: "혼자 들어갈 팀을 찾음",
-    icon: UsersRound,
-  },
-  need_team: {
-    code: "TEAM",
-    title: "상대 구함",
-    desc: "팀 대 팀 경기를 찾음",
-    icon: Swords,
-  },
+const SIDE_LABELS = {
+  teamA: "A팀",
+  teamB: "B팀",
 };
-
-function getDefaultMemo(type) {
-  if (type === "need_team") return "동급 팀 우선.";
-  if (type === "find_team") return "바로 참여 가능.";
-  return "포지션 협의 가능.";
-}
-
-function getDefaultTitle(type) {
-  if (type === "find_team") return "오늘 뛸 팀 구함";
-  if (type === "need_team") return "상대팀 구함";
-  return "용병 1명";
-}
-
-function formatApplicants(post, userById, teamById) {
-  return normalizeRecruitingApplicants(post.applicants ?? [])
-    .map((applicant) => ({
-      ...applicant,
-      user: applicant.playerId ? userById[applicant.playerId] : null,
-      team: applicant.teamId ? teamById[applicant.teamId] : null,
-    }))
-    .filter((applicant) => (applicant.kind === "team" ? applicant.team : applicant.user));
-}
-
-function getDefaultApplyTeamId(post, teams) {
-  return teams.find((team) => team.region === post.region)?.id ?? teams[0]?.id ?? "";
-}
-
-function getPostApplyTeamId(post, teams, selectedByPost) {
-  return selectedByPost[post.id] ?? getDefaultApplyTeamId(post, teams);
-}
 
 function formatWhen(value) {
   if (!value) return "방금";
@@ -78,17 +43,116 @@ function formatWhen(value) {
   return `${Math.floor(hours / 24)}일 전`;
 }
 
-function getQueueLabel(post) {
-  return post.ranked === false ? "친선" : "정규";
+function getDefaultTitle(draft) {
+  return `${draft.ranked ? "정규전" : "친선전"} ${draft.mode} 매치 큐`;
 }
 
-function getButtonLabel({ mine, noTeam, blockedByTier, full, applied, typeMeta }) {
-  if (mine) return "내 글";
-  if (noTeam) return "팀 필요";
-  if (blockedByTier) return "티어 불가";
-  if (full) return "마감";
-  if (applied) return "완료";
-  return typeMeta.actionLabel;
+function getDefaultApplyTeamId(post, teams) {
+  return teams.find((team) => team.region === post.region)?.id ?? teams[0]?.id ?? "";
+}
+
+function getDefaultJoinDraft(post, teams, currentUser, state) {
+  const teamId = getDefaultApplyTeamId(post, teams);
+  return {
+    joinMode: teamId ? "team" : "player",
+    teamId,
+    side: getRecruitingBestSide(post, state),
+    reserve: false,
+    position: currentUser.position,
+  };
+}
+
+function getEntryMmr(entry) {
+  return entry.team?.mmr ?? entry.user?.ratings?.integrated ?? 1200;
+}
+
+function getEntryTitle(entry) {
+  if (entry.fixed && entry.kind === "team") return `${entry.team?.name ?? "팀"} · 방장 파티`;
+  if (entry.fixed) return `${entry.user?.name ?? "방장"} · 방장`;
+  if (entry.kind === "team") return `${entry.team?.name ?? "팀"} · 팀 파티`;
+  return `${entry.user?.name ?? "플레이어"} · 개인`;
+}
+
+function getPlayerPosition(user) {
+  return user?.position || "포지션 자유";
+}
+
+function EntryBlock({ entry, userById }) {
+  const mmr = getEntryMmr(entry);
+  const players = entry.players.map((playerId) => userById[playerId]).filter(Boolean);
+
+  return (
+    <div className={`ow-party-block ${entry.status === "ready" ? "ready" : ""}`}>
+      <div className="ow-party-head">
+        <div>
+          <strong>{getEntryTitle(entry)}</strong>
+          <span>{entry.kind === "team" ? `${players.length}명 자동 참여` : getPlayerPosition(entry.user)}</span>
+        </div>
+        <div className="ow-party-meta">
+          <TierBadge mmr={mmr} compact />
+          <Badge tone={entry.status === "ready" ? "green" : "neutral"}>
+            {entry.status === "ready" ? "대기 완료" : "대기 전"}
+          </Badge>
+        </div>
+      </div>
+      <div className="ow-party-members">
+        {players.map((user) => (
+          <Link key={user.id} to={`/app/players/${user.id}`} className="ow-member-chip">
+            <span className="avatar small" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
+            <span>{user.name}</span>
+            <b>{getPlayerPosition(user)}</b>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SideRoster({ sideName, side, userById }) {
+  const openSlots = Math.max(0, side.capacity - side.filled);
+  return (
+    <section className="ow-side-roster">
+      <header>
+        <div>
+          <span>{SIDE_LABELS[sideName]}</span>
+          <strong>{side.filled}/{side.capacity}</strong>
+        </div>
+        <div className="ow-side-progress" style={{ "--fill": `${Math.min(100, (side.filled / side.capacity) * 100)}%` }} />
+      </header>
+      <div className="ow-roster-stack">
+        {side.entries.map((entry) => (
+          <EntryBlock key={`${sideName}-${entry.id}`} entry={entry} userById={userById} />
+        ))}
+        {Array.from({ length: openSlots }).map((_item, index) => (
+          <div key={`${sideName}-open-${index}`} className="ow-open-slot">
+            <UserRound size={17} />
+            <span>빈 슬롯</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ReserveLine({ sideName, userIds, userById }) {
+  if (!userIds.length) return null;
+  return (
+    <div className="ow-reserve-line">
+      <strong>{SIDE_LABELS[sideName]} 후보</strong>
+      <div>
+        {userIds.map((userId) => {
+          const user = userById[userId];
+          if (!user) return null;
+          return (
+            <span key={`${sideName}-${userId}`} className="ow-member-chip compact">
+              <span className="avatar small" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
+              {user.name}
+            </span>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 export default function Recruiting({ app }) {
@@ -96,37 +160,34 @@ export default function Recruiting({ app }) {
     () => app.state.teams.filter((team) => team.members.some((member) => member.userId === app.currentUser.id)),
     [app.currentUser.id, app.state.teams],
   );
+  const userById = useMemo(() => Object.fromEntries(app.state.users.map((user) => [user.id, user])), [app.state.users]);
+  const teamById = useMemo(() => Object.fromEntries(app.state.teams.map((team) => [team.id, team])), [app.state.teams]);
   const [scope, setScope] = useState("local");
   const [queue, setQueue] = useState("all");
-  const [typeFilter, setTypeFilter] = useState("all");
   const [composeOpen, setComposeOpen] = useState(false);
-  const [applyTeamByPost, setApplyTeamByPost] = useState({});
+  const [selectedPostId, setSelectedPostId] = useState(null);
+  const [joinDraftByPost, setJoinDraftByPost] = useState({});
   const [draft, setDraft] = useState(() => ({
-    type: "need_player",
-    title: getDefaultTitle("need_player"),
+    hostJoinMode: myTeams[0]?.id ? "team" : "player",
+    title: "",
     region: app.currentUser.region,
     court: COURTS.find((court) => court.region === app.currentUser.region)?.name ?? COURTS[0].name,
     mode: "5v5",
     ranked: true,
-    spots: 1,
     teamId: myTeams[0]?.id ?? "",
-    position: "상관없음",
-    memo: getDefaultMemo("need_player"),
+    position: app.currentUser.position,
+    memo: "빈자리는 개인 또는 팀 파티로 들어올 수 있습니다.",
   }));
 
-  const userById = useMemo(() => Object.fromEntries(app.state.users.map((user) => [user.id, user])), [app.state.users]);
-  const teamById = useMemo(() => Object.fromEntries(app.state.teams.map((team) => [team.id, team])), [app.state.teams]);
   const selectedTeam = myTeams.find((team) => team.id === draft.teamId) ?? myTeams[0] ?? null;
-  const posterNeedsTeam = draft.type !== "find_team";
-  const targetMmr = draft.type === "find_team" ? app.currentUser.ratings.integrated : selectedTeam?.mmr ?? 1200;
-  const draftRange = getRecruitingTierRange(targetMmr, draft.ranked);
-  const canPostRecruiting = !posterNeedsTeam || Boolean(selectedTeam);
+  const hostNeedsTeam = draft.hostJoinMode === "team";
+  const canPostRecruiting = !hostNeedsTeam || Boolean(selectedTeam);
 
   useEffect(() => {
-    if (!posterNeedsTeam) return;
+    if (!hostNeedsTeam) return;
     if (selectedTeam && draft.teamId === selectedTeam.id) return;
     setDraft((current) => ({ ...current, teamId: myTeams[0]?.id ?? "" }));
-  }, [draft.teamId, myTeams, posterNeedsTeam, selectedTeam]);
+  }, [draft.teamId, hostNeedsTeam, myTeams, selectedTeam]);
 
   const visibleBasePosts = useMemo(() => {
     return [...(app.state.recruitingPosts ?? [])]
@@ -136,60 +197,49 @@ export default function Recruiting({ app }) {
   }, [app.currentUser.region, app.state, queue, scope]);
 
   const posts = useMemo(() => {
-    return visibleBasePosts
-      .filter((post) => typeFilter === "all" || post.type === typeFilter)
-      .sort((a, b) => {
-        const aLocal = Number(a.region === app.currentUser.region);
-        const bLocal = Number(b.region === app.currentUser.region);
-        const aNational = Number(isNationalRecruitingPost(a, app.state));
-        const bNational = Number(isNationalRecruitingPost(b, app.state));
-        return bLocal - aLocal || bNational - aNational || new Date(b.createdAt) - new Date(a.createdAt);
-      });
-  }, [app.currentUser.region, app.state, typeFilter, visibleBasePosts]);
+    return visibleBasePosts.sort((a, b) => {
+      const aLocal = Number(a.region === app.currentUser.region);
+      const bLocal = Number(b.region === app.currentUser.region);
+      const aNational = Number(isNationalRecruitingPost(a, app.state));
+      const bNational = Number(isNationalRecruitingPost(b, app.state));
+      return bLocal - aLocal || bNational - aNational || new Date(b.createdAt) - new Date(a.createdAt);
+    });
+  }, [app.currentUser.region, app.state, visibleBasePosts]);
 
-  const typeCounts = useMemo(() => {
-    return Object.keys(RECRUITING_TYPES).reduce((acc, type) => {
-      acc[type] = visibleBasePosts.filter((post) => post.type === type).length;
-      return acc;
-    }, {});
-  }, [visibleBasePosts]);
+  const selectedPost = selectedPostId
+    ? app.state.recruitingPosts.find((post) => post.id === selectedPostId)
+    : null;
+  const rankedCount = visibleBasePosts.filter((post) => post.ranked !== false).length;
+  const friendlyCount = visibleBasePosts.length - rankedCount;
 
   const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
-  const changeDraftType = (type) => {
-    update({
-      type,
-      title: getDefaultTitle(type),
-      teamId: type === "find_team" ? "" : myTeams[0]?.id ?? "",
-      spots: 1,
-      position: type === "find_team" ? app.currentUser.position : "상관없음",
-      memo: getDefaultMemo(type),
-    });
-  };
-  const openComposeForType = (type = draft.type) => {
-    if (type !== draft.type) changeDraftType(type);
-    setComposeOpen(true);
-  };
   const submit = (event) => {
     event.preventDefault();
-    app.actions.createRecruitingPost({ ...draft, title: draft.title || getDefaultTitle(draft.type) });
-    setDraft((current) => ({
-      ...current,
-      title: getDefaultTitle(current.type),
-      memo: getDefaultMemo(current.type),
-    }));
+    const nextDraft = { ...draft, title: draft.title.trim() || getDefaultTitle(draft) };
+    app.actions.createRecruitingPost(nextDraft);
+    setDraft((current) => ({ ...current, title: "", memo: "빈자리는 개인 또는 팀 파티로 들어올 수 있습니다." }));
     setComposeOpen(false);
   };
 
-  const rankedCount = visibleBasePosts.filter((post) => post.ranked !== false).length;
-  const friendlyCount = visibleBasePosts.length - rankedCount;
+  const getJoinDraft = (post) => joinDraftByPost[post.id] ?? getDefaultJoinDraft(post, myTeams, app.currentUser, app.state);
+  const updateJoinDraft = (post, patch) => {
+    setJoinDraftByPost((current) => ({
+      ...current,
+      [post.id]: { ...getJoinDraft(post), ...patch },
+    }));
+  };
+  const submitJoin = (post) => {
+    const joinDraft = getJoinDraft(post);
+    app.actions.interestRecruitingPost(post.id, joinDraft);
+  };
 
   return (
     <div className="page-stack ow-recruit-page">
       <section className="ow-recruit-hero">
         <div className="ow-hero-copy">
-          <span className="ow-kicker">RECRUIT QUEUE</span>
-          <h1>용병 큐</h1>
-          <p>오늘 뛸 사람, 들어갈 팀, 붙을 상대팀만 빠르게 고른다.</p>
+          <span className="ow-kicker">MATCH QUEUE</span>
+          <h1>매치 큐</h1>
+          <p>팀 구함, 용병 구함을 나누지 않는다. 방을 열고, 참가자가 개인이나 팀 파티로 들어온다.</p>
         </div>
         <div className="ow-hero-panel">
           <div className="ow-hero-stats">
@@ -197,203 +247,295 @@ export default function Recruiting({ app }) {
             <span><strong>{rankedCount}</strong>RANKED</span>
             <span><strong>{friendlyCount}</strong>FRIENDLY</span>
           </div>
-          <Button type="button" className="ow-hero-cta" onClick={() => openComposeForType(typeFilter === "all" ? "need_player" : typeFilter)}>
-            <PlusCircle size={18} /> 모집 시작
+          <Button type="button" className="ow-hero-cta" onClick={() => setComposeOpen(true)}>
+            <PlusCircle size={18} /> 매치방 만들기
           </Button>
         </div>
       </section>
 
-      <section className="ow-mode-grid" aria-label="모집 유형">
-        {Object.entries(TYPE_VIEW).map(([type, view]) => {
-          const Icon = view.icon;
-          return (
-            <button
-              key={type}
-              type="button"
-              className={`ow-mode-card ${typeFilter === type ? "active" : ""}`}
-              onClick={() => setTypeFilter(typeFilter === type ? "all" : type)}
-            >
-              <span className="ow-mode-icon"><Icon size={23} /></span>
-              <span className="ow-mode-copy">
-                <span className="ow-mode-code">{view.code}</span>
-                <h2>{view.title}</h2>
-                <p>{view.desc}</p>
-              </span>
-              <span className="ow-mode-count">{typeCounts[type] ?? 0} 대기</span>
-            </button>
-          );
-        })}
+      <section className="ow-mode-grid" aria-label="참여 방식">
+        <div className="ow-mode-card static">
+          <span className="ow-mode-icon"><UserRound size={23} /></span>
+          <span className="ow-mode-copy">
+            <span className="ow-mode-code">SOLO</span>
+            <h2>개인 참여</h2>
+            <p>빈 슬롯 하나에 용병처럼 들어간다.</p>
+          </span>
+          <span className="ow-mode-count">선택형</span>
+        </div>
+        <div className="ow-mode-card static">
+          <span className="ow-mode-icon"><UsersRound size={23} /></span>
+          <span className="ow-mode-copy">
+            <span className="ow-mode-code">PARTY</span>
+            <h2>팀 파티</h2>
+            <p>내 팀 활성 멤버가 자동으로 같이 들어간다.</p>
+          </span>
+          <span className="ow-mode-count">{myTeams.length}팀</span>
+        </div>
+        <div className="ow-mode-card static">
+          <span className="ow-mode-icon"><Swords size={23} /></span>
+          <span className="ow-mode-copy">
+            <span className="ow-mode-code">ROOM</span>
+            <h2>매치방</h2>
+            <p>A/B 로스터, 포지션, 티어, 후보를 보고 대기한다.</p>
+          </span>
+          <span className="ow-mode-count">팝업</span>
+        </div>
       </section>
 
       <section className="ow-filter-bar" aria-label="필터">
         <button type="button" className={scope === "local" ? "active" : ""} onClick={() => setScope("local")}>내 지역</button>
         <button type="button" className={scope === "all" ? "active" : ""} onClick={() => setScope("all")}>전체 지역</button>
         <button type="button" className={queue === "all" ? "active" : ""} onClick={() => setQueue("all")}>전체</button>
-        <button type="button" className={queue === "ranked" ? "active" : ""} onClick={() => setQueue("ranked")}>정규</button>
-        <button type="button" className={queue === "friendly" ? "active" : ""} onClick={() => setQueue("friendly")}>친선</button>
-        <button type="button" className={typeFilter === "all" ? "active" : ""} onClick={() => setTypeFilter("all")}>타입 전체</button>
+        <button type="button" className={queue === "ranked" ? "active" : ""} onClick={() => setQueue("ranked")}>정규전</button>
+        <button type="button" className={queue === "friendly" ? "active" : ""} onClick={() => setQueue("friendly")}>친선전</button>
         <span className="ow-filter-count">{posts.length}개 표시</span>
       </section>
 
-      <section className="ow-recruit-list" aria-label="모집글 목록">
+      <section className="ow-recruit-list" aria-label="매치 큐 목록">
         {posts.length ? posts.map((post) => {
-          const typeMeta = RECRUITING_TYPES[post.type] ?? RECRUITING_TYPES.need_player;
-          const typeView = TYPE_VIEW[post.type] ?? TYPE_VIEW.need_player;
-          const applicantKind = getRecruitingApplicantKind(post);
-          const owner = userById[post.playerId];
-          const team = teamById[post.teamId];
-          const applicants = formatApplicants(post, userById, teamById);
-          const applyTeamId = getPostApplyTeamId(post, myTeams, applyTeamByPost);
-          const applyTeam = teamById[applyTeamId];
-          const candidateMmr = applicantKind === "team" ? applyTeam?.mmr ?? 0 : app.currentUser.ratings.integrated;
-          const fit = getRecruitingFit(post, candidateMmr || app.currentUser.ratings.integrated, app.state);
+          const lobby = getRecruitingLobby(post, app.state);
           const target = getRecruitingTargetMmr(post, app.state);
-          const applicantEntry = applicantKind === "team"
-            ? { kind: "team", teamId: applyTeamId }
-            : { kind: "player", playerId: app.currentUser.id };
-          const applied = hasRecruitingApplicant(post, applicantEntry);
+          const host = userById[post.playerId];
+          const hostTeam = post.teamId ? teamById[post.teamId] : null;
+          const applicantEntry = { kind: "player", joinMode: "player", playerId: app.currentUser.id };
+          const applied = hasRecruitingApplicant(post, applicantEntry)
+            || myTeams.some((team) => hasRecruitingApplicant(post, { kind: "team", joinMode: "team", teamId: team.id }));
           const mine = post.playerId === app.currentUser.id;
-          const needsTeamApplication = applicantKind === "team";
-          const noTeam = needsTeamApplication && !myTeams.length;
-          const blockedByTier = !fit.allowed;
-          const full = applicants.length >= Number(post.spots ?? 1);
-          const disabled = applied || mine || blockedByTier || noTeam || full;
-          const canShowTeamSelect = needsTeamApplication && !mine && !applied && !full;
 
           return (
-            <article key={post.id} className={`ow-recruit-card ow-type-${post.type} ${disabled ? "ow-state-blocked" : ""} ${full ? "ow-state-full" : ""}`}>
+            <article
+              key={post.id}
+              className={`ow-recruit-card ow-lobby-card ${lobby.canConfirm ? "ow-state-ready" : ""}`}
+              onClick={() => setSelectedPostId(post.id)}
+            >
               <div className="ow-card-main">
                 <div className="ow-card-top">
-                  <span className="ow-type-tag">{typeView.code}</span>
-                  <span className={`ow-queue-pill ${post.ranked === false ? "friendly" : "ranked"}`}>{getQueueLabel(post)}</span>
-                  {post.position && post.position !== "상관없음" ? <span className="ow-position-pill">{post.position}</span> : null}
+                  <span className="ow-type-tag">ROOM</span>
+                  <span className={`ow-queue-pill ${post.ranked === false ? "friendly" : "ranked"}`}>{post.ranked === false ? "친선전" : "정규전"}</span>
+                  <span className="ow-position-pill">{post.mode}</span>
+                  {isNationalRecruitingPost(post, app.state) ? <span className="ow-position-pill">전국 노출</span> : null}
                 </div>
                 <h3>{post.title}</h3>
                 <div className="ow-card-meta">
                   <MapPin size={15} />
-                  <span>{post.region} · {post.court} · {post.mode}</span>
+                  <span>{post.region} · {post.court} · {hostTeam?.name ?? host?.name ?? "방장"}</span>
+                </div>
+                <div className="ow-lobby-meter-grid">
+                  {["teamA", "teamB"].map((sideName) => (
+                    <div key={sideName} className="ow-lobby-meter">
+                      <span>{SIDE_LABELS[sideName]}</span>
+                      <div style={{ "--fill": `${Math.min(100, (lobby.sides[sideName].filled / lobby.sides[sideName].capacity) * 100)}%` }} />
+                      <b>{lobby.sides[sideName].filled}/{lobby.sides[sideName].capacity}</b>
+                    </div>
+                  ))}
                 </div>
                 <div className="ow-card-bottom">
-                  <span className="ow-tier-chip">{post.ranked === false ? "티어 자유" : fit.range.label}</span>
+                  <span className="ow-tier-chip">{post.ranked === false ? "티어 자유" : `${target} MMR 기준`}</span>
                   <span>{formatWhen(post.createdAt)}</span>
-                  {isNationalRecruitingPost(post, app.state) ? <span>전국구</span> : null}
+                  <span>{lobby.ready ? "전원 대기 완료" : "대기 확인 중"}</span>
                 </div>
               </div>
 
-              <div className="ow-card-side">
-                <span className="ow-slot-count"><strong>{applicants.length}/{post.spots}</strong><span>신청</span></span>
-                <Button
-                  type="button"
-                  className="ow-card-action"
-                  variant={disabled ? "secondary" : "primary"}
-                  disabled={disabled}
-                  onClick={() => app.actions.interestRecruitingPost(post.id, needsTeamApplication ? { teamId: applyTeamId } : undefined)}
-                >
-                  {needsTeamApplication ? <UsersRound size={16} /> : <UserRound size={16} />}
-                  {getButtonLabel({ mine, noTeam, blockedByTier, full, applied, typeMeta })}
+              <div className="ow-card-side" onClick={(event) => event.stopPropagation()}>
+                <span className="ow-slot-count">
+                  <strong>{lobby.sides.teamA.filled + lobby.sides.teamB.filled}/{getRecruitingSideCapacity(post) * 2}</strong>
+                  <span>참가 인원</span>
+                </span>
+                <Button type="button" className="ow-card-action" onClick={() => setSelectedPostId(post.id)}>
+                  <Swords size={16} /> 방 보기
                 </Button>
+                {!mine && !applied ? (
+                  <Button
+                    type="button"
+                    className="ow-card-action"
+                    variant="secondary"
+                    onClick={() => app.actions.interestRecruitingPost(post.id, getDefaultJoinDraft(post, myTeams, app.currentUser, app.state))}
+                  >
+                    <Clock3 size={16} /> 빠른 대기
+                  </Button>
+                ) : null}
               </div>
-
-              <details className="ow-card-details">
-                <summary>상세 보기</summary>
-                <div className="ow-details-grid">
-                  <span>
-                    작성자
-                    {owner ? <Link to={`/app/players/${owner.id}`}>{owner.name}</Link> : <b>알 수 없음</b>}
-                  </span>
-                  <span>
-                    기준
-                    <b>{target} MMR · {fit.label}</b>
-                  </span>
-                  <span>
-                    유형
-                    <b>{typeMeta.shortLabel}</b>
-                  </span>
-                  {team ? (
-                    <span>
-                      팀
-                      <Link to={`/app/teams/${team.id}`}>{team.name}</Link>
-                    </span>
-                  ) : null}
-                  {canShowTeamSelect ? (
-                    <label>
-                      신청 팀
-                      <select
-                        value={applyTeamId}
-                        disabled={!myTeams.length}
-                        onChange={(event) => setApplyTeamByPost((current) => ({ ...current, [post.id]: event.target.value }))}
-                      >
-                        {myTeams.length ? myTeams.map((item) => (
-                          <option key={item.id} value={item.id}>{item.name} · {item.mmr}</option>
-                        )) : <option value="">소속팀 없음</option>}
-                      </select>
-                    </label>
-                  ) : null}
-                  <p className="ow-details-memo">{post.memo}</p>
-                  <div className="ow-applicant-strip">
-                    {applicants.length ? applicants.slice(0, 6).map((applicant) => (
-                      applicant.kind === "team" ? (
-                        <span key={`team-${applicant.team.id}`} className="ow-applicant-team">
-                          <span className="ow-mini-dot" style={{ "--team-color": applicant.team.accent }} />
-                          {applicant.team.name}
-                        </span>
-                      ) : (
-                        <span key={`player-${applicant.user.id}`} className="avatar small" style={{ "--avatar": applicant.user.avatarColor }}>{applicant.user.name.slice(0, 1)}</span>
-                      )
-                    )) : <small>아직 신청 없음</small>}
-                  </div>
-                  {mine ? <Button type="button" className="ow-close-button" variant="secondary" onClick={() => app.actions.closeRecruitingPost(post.id)}>마감</Button> : null}
-                </div>
-              </details>
             </article>
           );
         }) : (
           <div className="ow-empty-state">
             <div>
-              <strong>조건에 맞는 큐 없음</strong>
-              <p>필터를 풀거나 새 모집을 시작.</p>
+              <strong>조건에 맞는 매치방 없음</strong>
+              <p>필터를 바꾸거나 새 매치방을 열어라.</p>
             </div>
           </div>
         )}
       </section>
 
+      {selectedPost ? (() => {
+        const lobby = getRecruitingLobby(selectedPost, app.state);
+        const joinDraft = getJoinDraft(selectedPost);
+        const selectedJoinTeam = myTeams.find((team) => team.id === joinDraft.teamId) ?? myTeams[0] ?? null;
+        const candidateMmr = joinDraft.joinMode === "team"
+          ? selectedJoinTeam?.mmr ?? 0
+          : app.currentUser.ratings.integrated;
+        const fit = getRecruitingFit(selectedPost, candidateMmr || app.currentUser.ratings.integrated, app.state);
+        const mine = selectedPost.playerId === app.currentUser.id;
+        const myEntry = lobby.entries.find((entry) => entry.playerId === app.currentUser.id);
+        const alreadyApplied = Boolean(myEntry && !myEntry.fixed);
+        const canJoin = !mine && !alreadyApplied && fit.allowed && (joinDraft.joinMode === "player" || Boolean(selectedJoinTeam));
+
+        return (
+          <div className="ow-compose-backdrop" role="presentation" onMouseDown={() => setSelectedPostId(null)}>
+            <aside className="ow-lobby-modal" role="dialog" aria-modal="true" aria-label="매치방" onMouseDown={(event) => event.stopPropagation()}>
+              <div className="ow-drawer-head">
+                <div>
+                  <span className="ow-kicker">MATCH ROOM</span>
+                  <h2>{selectedPost.title}</h2>
+                  <p>{selectedPost.region} · {selectedPost.court} · {selectedPost.mode}</p>
+                </div>
+                <button type="button" className="ow-icon-button" aria-label="닫기" onClick={() => setSelectedPostId(null)}><X size={20} /></button>
+              </div>
+
+              <div className="ow-lobby-summary">
+                <span><ShieldCheck size={16} /> {selectedPost.ranked === false ? "친선전" : "정규전"}</span>
+                <span><UsersRound size={16} /> 팀은 활성 멤버 자동 참여</span>
+                <span><Clock3 size={16} /> 전원 대기 후 방장 확정</span>
+              </div>
+
+              <div className="ow-lobby-grid">
+                <SideRoster sideName="teamA" side={lobby.sides.teamA} userById={userById} />
+                <SideRoster sideName="teamB" side={lobby.sides.teamB} userById={userById} />
+              </div>
+
+              <div className="ow-reserve-panel">
+                <ReserveLine sideName="teamA" userIds={lobby.sides.teamA.reserves} userById={userById} />
+                <ReserveLine sideName="teamB" userIds={lobby.sides.teamB.reserves} userById={userById} />
+                {!lobby.sides.teamA.reserves.length && !lobby.sides.teamB.reserves.length ? <span>후보 없음</span> : null}
+              </div>
+
+              <div className="ow-room-rule-panel">
+                <strong>규칙</strong>
+                <span>{selectedPost.memo}</span>
+                <span>팀 MMR은 실제 참가한 팀원 비율 기준으로 반영한다.</span>
+                <span>확정 후 불참하면 신뢰점수 패널티 대상이다.</span>
+              </div>
+
+              <div className="ow-join-panel">
+                {mine ? (
+                  <div className="ow-owner-panel">
+                    <strong>방장 권한</strong>
+                    <span>{lobby.canConfirm ? "확정 가능" : "양쪽 인원과 대기 상태를 채워야 확정 가능"}</span>
+                  </div>
+                ) : alreadyApplied ? (
+                  <div className="ow-owner-panel">
+                    <strong>대기 등록됨</strong>
+                    <span>방장이 확정하기 전까지 준비 상태를 바꿀 수 있다.</span>
+                  </div>
+                ) : (
+                  <form className="ow-join-form" onSubmit={(event) => { event.preventDefault(); submitJoin(selectedPost); }}>
+                    <div className="segmented-control compact-segments">
+                      {Object.entries(RECRUITING_JOIN_MODES).map(([mode, meta]) => (
+                        <button
+                          key={mode}
+                          type="button"
+                          className={joinDraft.joinMode === mode ? "active" : ""}
+                          onClick={() => updateJoinDraft(selectedPost, { joinMode: mode, teamId: mode === "team" ? getDefaultApplyTeamId(selectedPost, myTeams) : "" })}
+                        >
+                          {meta.label}
+                        </button>
+                      ))}
+                    </div>
+                    {joinDraft.joinMode === "team" ? (
+                      <label>
+                        참여 팀
+                        <select value={joinDraft.teamId} onChange={(event) => updateJoinDraft(selectedPost, { teamId: event.target.value })}>
+                          {myTeams.length ? myTeams.map((team) => (
+                            <option key={team.id} value={team.id}>{team.name} · {team.mmr}</option>
+                          )) : <option value="">내 팀 없음</option>}
+                        </select>
+                      </label>
+                    ) : (
+                      <label>
+                        포지션
+                        <select value={joinDraft.position} onChange={(event) => updateJoinDraft(selectedPost, { position: event.target.value })}>
+                          {PLAYER_POSITIONS.map((position) => <option key={position}>{position}</option>)}
+                        </select>
+                      </label>
+                    )}
+                    <div className="ow-field-grid">
+                      <label>
+                        진영
+                        <select value={joinDraft.side} onChange={(event) => updateJoinDraft(selectedPost, { side: event.target.value })}>
+                          <option value="teamA">A팀</option>
+                          <option value="teamB">B팀</option>
+                        </select>
+                      </label>
+                      <label className="ow-check-row">
+                        <input type="checkbox" checked={joinDraft.reserve} onChange={(event) => updateJoinDraft(selectedPost, { reserve: event.target.checked })} />
+                        후보로 대기
+                      </label>
+                    </div>
+                    <div className="ow-mini-note">
+                      <div>
+                        <span>{joinDraft.joinMode === "team" ? "팀 파티" : "개인 참여"}</span>
+                        <strong>{fit.label}</strong>
+                        <em>{fit.range.label}</em>
+                      </div>
+                      <TierBadge mmr={candidateMmr || app.currentUser.ratings.integrated} compact />
+                    </div>
+                    <Button type="submit" disabled={!canJoin}>
+                      {joinDraft.joinMode === "team" ? <UsersRound size={18} /> : <UserRound size={18} />}
+                      {RECRUITING_JOIN_MODES[joinDraft.joinMode].actionLabel}
+                    </Button>
+                  </form>
+                )}
+
+                {myEntry ? (
+                  <Button
+                    type="button"
+                    variant={myEntry.status === "ready" ? "secondary" : "primary"}
+                    onClick={() => app.actions.setRecruitingReady(selectedPost.id, myEntry.status !== "ready")}
+                  >
+                    {myEntry.status === "ready" ? <Clock3 size={18} /> : <CheckCircle2 size={18} />}
+                    {myEntry.status === "ready" ? "대기 취소" : "대기 완료"}
+                  </Button>
+                ) : null}
+                {mine ? (
+                  <Button type="button" disabled={!lobby.canConfirm} onClick={() => app.actions.confirmRecruitingMatch(selectedPost.id)}>
+                    <Swords size={18} /> 매치 확정
+                  </Button>
+                ) : null}
+                {mine ? (
+                  <Button type="button" variant="secondary" onClick={() => app.actions.closeRecruitingPost(selectedPost.id)}>방 닫기</Button>
+                ) : null}
+              </div>
+            </aside>
+          </div>
+        );
+      })() : null}
+
       {composeOpen ? (
         <div className="ow-compose-backdrop" role="presentation" onMouseDown={() => setComposeOpen(false)}>
-          <aside className="ow-compose-drawer" role="dialog" aria-modal="true" aria-label="모집 시작" onMouseDown={(event) => event.stopPropagation()}>
+          <aside className="ow-compose-drawer" role="dialog" aria-modal="true" aria-label="매치방 만들기" onMouseDown={(event) => event.stopPropagation()}>
             <div className="ow-drawer-head">
               <div>
-                <span className="ow-kicker">CREATE QUEUE</span>
-                <h2>모집 시작</h2>
+                <span className="ow-kicker">CREATE ROOM</span>
+                <h2>매치방 만들기</h2>
               </div>
               <button type="button" className="ow-icon-button" aria-label="닫기" onClick={() => setComposeOpen(false)}><X size={20} /></button>
             </div>
 
             <form className="ow-compose-form" onSubmit={submit}>
-              <div className="ow-compose-type-grid">
-                {Object.entries(RECRUITING_TYPES).map(([type, meta]) => {
-                  const view = TYPE_VIEW[type] ?? TYPE_VIEW.need_player;
-                  return (
-                    <button
-                      key={type}
-                      type="button"
-                      className={draft.type === type ? "active" : ""}
-                      onClick={() => changeDraftType(type)}
-                    >
-                      <strong>{view.title}</strong>
-                      <span>{meta.shortLabel}</span>
-                    </button>
-                  );
-                })}
+              <div className="segmented-control compact-segments">
+                <button type="button" className={draft.hostJoinMode === "team" ? "active" : ""} onClick={() => update({ hostJoinMode: "team", teamId: myTeams[0]?.id ?? "" })}>내 팀으로 열기</button>
+                <button type="button" className={draft.hostJoinMode === "player" ? "active" : ""} onClick={() => update({ hostJoinMode: "player", teamId: "" })}>개인으로 열기</button>
               </div>
 
               <div className="segmented-control compact-segments">
-                <button type="button" className={!draft.ranked ? "active" : ""} onClick={() => update({ ranked: false })}>친선</button>
-                <button type="button" className={draft.ranked ? "active" : ""} onClick={() => update({ ranked: true })}>정규</button>
+                <button type="button" className={!draft.ranked ? "active" : ""} onClick={() => update({ ranked: false })}>친선전</button>
+                <button type="button" className={draft.ranked ? "active" : ""} onClick={() => update({ ranked: true })}>정규전</button>
               </div>
 
               <label>
                 제목
-                <input value={draft.title} onChange={(event) => update({ title: event.target.value })} />
+                <input value={draft.title} placeholder={getDefaultTitle(draft)} onChange={(event) => update({ title: event.target.value })} />
               </label>
 
               <div className="ow-field-grid three">
@@ -426,37 +568,31 @@ export default function Recruiting({ app }) {
               </div>
 
               <div className="ow-field-grid">
-                {posterNeedsTeam ? (
+                {draft.hostJoinMode === "team" ? (
                   <label>
-                    내 팀
+                    내 파티 팀
                     <select value={draft.teamId} onChange={(event) => update({ teamId: event.target.value })}>
-                      {myTeams.map((team) => (
+                      {myTeams.length ? myTeams.map((team) => (
                         <option key={team.id} value={team.id}>{team.region} · {team.name} · {team.mmr}</option>
-                      ))}
+                      )) : <option value="">내 팀 없음</option>}
                     </select>
                   </label>
-                ) : null}
-                {draft.type !== "need_team" ? (
+                ) : (
                   <label>
-                    포지션
+                    내 포지션
                     <select value={draft.position} onChange={(event) => update({ position: event.target.value })}>
                       {PLAYER_POSITIONS.map((position) => <option key={position}>{position}</option>)}
                     </select>
                   </label>
-                ) : null}
-                <label>
-                  {draft.type === "need_player" ? "필요 인원" : "필요 팀 수"}
-                  <input type="number" min="1" max={draft.type === "need_player" ? "5" : "4"} value={draft.spots} onChange={(event) => update({ spots: event.target.value })} />
-                </label>
-              </div>
-
-              <div className="ow-mini-note">
-                <div>
-                  <span>{draft.ranked ? "정규 허용 구간" : "친선"}</span>
-                  <strong>{draftRange.label}</strong>
-                  <em>{draft.ranked ? draftRange.detail : "티어 제한 없음"}</em>
+                )}
+                <div className="ow-mini-note">
+                  <div>
+                    <span>슬롯</span>
+                    <strong>{getRecruitingSideCapacity(draft)} vs {getRecruitingSideCapacity(draft)}</strong>
+                    <em>팀으로 열면 활성 멤버가 A팀에 자동 배치</em>
+                  </div>
+                  <ShieldCheck size={22} />
                 </div>
-                <TierBadge mmr={targetMmr} compact />
               </div>
 
               <label>
@@ -466,7 +602,7 @@ export default function Recruiting({ app }) {
 
               <div className="ow-submit-row">
                 <span className={canPostRecruiting ? "queue-note" : "form-warning"}>
-                  <ShieldCheck size={17} /> {canPostRecruiting ? "바로 등록 가능" : "소속팀 필요"}
+                  <ShieldCheck size={17} /> {canPostRecruiting ? "등록 가능" : "내 팀 선택 필요"}
                 </span>
                 <Button type="submit" disabled={!canPostRecruiting}><PlusCircle size={18} /> 등록</Button>
               </div>

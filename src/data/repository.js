@@ -5,7 +5,10 @@ import { applyMatchRating, calculateTeamDelta } from "../lib/rating.js";
 import {
   getMercenaryTeamWeight,
   getRecruitingApplicantKind,
+  getRecruitingBestSide,
   getRecruitingFit,
+  getRecruitingLobby,
+  getRecruitingSideCapacity,
   hasRecruitingApplicant,
   normalizeRecruitingApplicants,
   normalizeRecruitingPost,
@@ -396,16 +399,27 @@ async function loadNormalizedRemoteState() {
       ranked: post.ranked,
       spots: post.spots,
       teamId: post.team_id,
+      hostJoinMode: post.host_join_mode,
+      hostSide: post.host_side,
+      hostReady: post.host_ready,
+      sideCapacity: post.side_capacity,
       position: post.position,
       playerId: post.player_id,
       memo: post.memo,
       status: post.status,
+      confirmedAt: post.confirmed_at,
       createdAt: post.created_at,
       applicants: (applicationsByPost.get(post.id) ?? []).map((application) => ({
         kind: application.kind,
+        joinMode: application.kind,
         teamId: application.team_id,
         playerId: application.player_id,
+        side: application.side,
+        status: application.status,
+        reserve: application.reserve,
+        position: application.position,
         createdAt: application.created_at,
+        updatedAt: application.updated_at,
       })),
     })),
     settings: {
@@ -622,9 +636,14 @@ async function saveNormalizedRemoteState(state) {
     mode: post.mode,
     ranked: post.ranked !== false,
     spots: post.spots ?? 1,
+    host_join_mode: post.hostJoinMode ?? (post.teamId ? "team" : "player"),
+    host_side: post.hostSide ?? "teamA",
+    host_ready: Boolean(post.hostReady),
+    side_capacity: getRecruitingSideCapacity(post),
     position: post.position,
     memo: post.memo,
     status: post.status ?? "open",
+    confirmed_at: post.confirmedAt ?? null,
     created_at: post.createdAt,
     updated_at: new Date().toISOString(),
   }));
@@ -634,7 +653,12 @@ async function saveNormalizedRemoteState(state) {
       player_id: application.playerId,
       team_id: application.teamId,
       kind: application.kind ?? "player",
+      side: application.side ?? "teamB",
+      status: application.status ?? "waiting",
+      reserve: Boolean(application.reserve),
+      position: application.position ?? null,
       created_at: application.createdAt,
+      updated_at: application.updatedAt ?? application.createdAt,
     })),
   ).filter((application) => application.player_id);
 
@@ -1197,7 +1221,7 @@ export function reportMatch(state, matchId, reason = "") {
   };
 }
 
-export function createRecruitingPost(state, draft) {
+function legacyCreateRecruitingPost(state, draft) {
   const postType = ["find_team", "need_team"].includes(draft.type) ? draft.type : "need_player";
   const userTeamIds = new Set(
     state.teams
@@ -1252,7 +1276,7 @@ export function createRecruitingPost(state, draft) {
   };
 }
 
-export function interestRecruitingPost(state, postId, application = {}) {
+function legacyInterestRecruitingPost(state, postId, application = {}) {
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   if (!post || post.status !== "open") return state;
   if (post.playerId === state.currentUserId) return state;
@@ -1303,6 +1327,283 @@ export function interestRecruitingPost(state, postId, application = {}) {
   return {
     ...state,
     recruitingPosts: (state.recruitingPosts ?? []).map((item) => (item.id === postId ? { ...item, applicants } : item)),
+  };
+}
+
+export function createRecruitingPost(state, draft) {
+  const hostJoinMode = draft.hostJoinMode === "player" ? "player" : "team";
+  const postType = hostJoinMode === "team" ? "need_player" : "find_team";
+  const userTeamIds = new Set(
+    state.teams
+      .filter((team) => team.members.some((member) => member.userId === state.currentUserId))
+      .map((team) => team.id),
+  );
+
+  if (hostJoinMode === "team" && !userTeamIds.has(draft.teamId)) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "소속 팀 필요",
+          body: "팀으로 방을 열려면 내 팀을 먼저 선택해야 합니다.",
+          tone: "team",
+        },
+        ...state.notifications,
+      ],
+    };
+  }
+
+  const sideCapacity = Math.max(1, Number(draft.sideCapacity ?? MODE_SIZES[draft.mode] ?? 5));
+  const hostTeam = hostJoinMode === "team" ? state.teams.find((team) => team.id === draft.teamId) : null;
+  const activeHostCount = hostTeam?.members?.filter((member) => !["candidate", "substitute"].includes(member.role)).length ?? 1;
+  const hostSize = hostJoinMode === "team" ? Math.min(sideCapacity, Math.max(1, activeHostCount)) : 1;
+  const post = {
+    id: makeId("q"),
+    type: postType,
+    title: draft.title?.trim() || `${draft.ranked === false ? "친선전" : "정규전"} ${draft.mode || "5v5"} 매치 큐`,
+    region: draft.region || state.users.find((user) => user.id === state.currentUserId)?.region || "전체",
+    court: draft.court || "미정",
+    mode: draft.mode || "5v5",
+    ranked: draft.ranked !== false,
+    spots: Math.max(1, sideCapacity * 2 - hostSize),
+    teamId: hostJoinMode === "team" ? draft.teamId : null,
+    hostJoinMode,
+    hostSide: "teamA",
+    hostReady: false,
+    sideCapacity,
+    position: hostJoinMode === "player" ? draft.position || "포지션 자유" : "포지션 자유",
+    playerId: state.currentUserId,
+    memo: draft.memo?.trim() || "개인이나 팀 파티로 빈자리에 들어올 수 있습니다.",
+    status: "open",
+    applicants: [],
+    createdAt: new Date().toISOString(),
+  };
+
+  return {
+    ...state,
+    recruitingPosts: [post, ...(state.recruitingPosts ?? [])],
+    notifications: [
+      {
+        id: makeId("n"),
+        title: "매치 큐 등록",
+        body: `${post.title} 방이 열렸습니다.`,
+        tone: "team",
+      },
+      ...state.notifications,
+    ],
+  };
+}
+
+export function interestRecruitingPost(state, postId, application = {}) {
+  const post = state.recruitingPosts?.find((item) => item.id === postId);
+  if (!post || post.status !== "open") return state;
+  if (post.playerId === state.currentUserId) return state;
+  const user = state.users.find((item) => item.id === state.currentUserId);
+  const requestedJoinMode = application.joinMode === "team" || application.teamId
+    ? "team"
+    : application.joinMode === "player"
+      ? "player"
+      : getRecruitingApplicantKind(post);
+  const applicantKind = requestedJoinMode === "team" ? "team" : "player";
+  const myTeams = state.teams.filter((team) => team.members.some((member) => member.userId === state.currentUserId));
+  const team = applicantKind === "team"
+    ? myTeams.find((item) => item.id === application.teamId) ?? myTeams[0]
+    : null;
+
+  if (applicantKind === "team" && !team) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "소속 팀 필요",
+          body: "팀으로 들어가려면 내 팀이 필요합니다.",
+          tone: "team",
+        },
+        ...state.notifications,
+      ],
+    };
+  }
+
+  const candidateMmr = applicantKind === "team" ? team.mmr : user?.ratings?.integrated ?? 1200;
+  const fit = getRecruitingFit(post, candidateMmr, state);
+  if (!fit.allowed) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "티어 구간 제한",
+          body: `${post.title} 정규전은 ${fit.range.label} 구간만 대기할 수 있습니다.`,
+          tone: "team",
+        },
+        ...state.notifications,
+      ],
+    };
+  }
+
+  const side = ["teamA", "teamB"].includes(application.side) ? application.side : getRecruitingBestSide(post, state);
+  const lobby = getRecruitingLobby(post, state);
+  const partySize = applicantKind === "team" ? Math.min(getRecruitingSideCapacity(post), Math.max(1, team.members?.length ?? 1)) : 1;
+  const reserve = Boolean(application.reserve) || lobby.sides[side].filled + partySize > lobby.sides[side].capacity;
+  const now = new Date().toISOString();
+  const nextApplicant = applicantKind === "team"
+    ? {
+        kind: "team",
+        joinMode: "team",
+        teamId: team.id,
+        playerId: state.currentUserId,
+        side,
+        status: "waiting",
+        reserve,
+        position: application.position ?? null,
+        createdAt: now,
+        updatedAt: now,
+      }
+    : {
+        kind: "player",
+        joinMode: "player",
+        playerId: state.currentUserId,
+        teamId: null,
+        side,
+        status: "waiting",
+        reserve,
+        position: application.position ?? user?.position ?? null,
+        createdAt: now,
+        updatedAt: now,
+      };
+  if (hasRecruitingApplicant(post, nextApplicant)) return state;
+  const applicants = [...normalizeRecruitingApplicants(post.applicants ?? []), nextApplicant];
+
+  return {
+    ...state,
+    recruitingPosts: (state.recruitingPosts ?? []).map((item) => (item.id === postId ? { ...item, applicants } : item)),
+  };
+}
+
+function getLobbySideName(lobby, sideName) {
+  const names = lobby.sides[sideName].entries
+    .map((entry) => entry.team?.name ?? entry.user?.name)
+    .filter(Boolean);
+  if (!names.length) return sideName === "teamA" ? "A팀" : "B팀";
+  return names.slice(0, 3).join(" + ");
+}
+
+function getLobbyPrimaryTeamId(lobby, sideName) {
+  return lobby.sides[sideName].entries.find((entry) => entry.team?.id)?.team.id ?? null;
+}
+
+export function setRecruitingReady(state, postId, ready = true) {
+  const post = state.recruitingPosts?.find((item) => item.id === postId);
+  if (!post || post.status !== "open") return state;
+  const updatedAt = new Date().toISOString();
+
+  return {
+    ...state,
+    recruitingPosts: (state.recruitingPosts ?? []).map((item) => {
+      if (item.id !== postId) return item;
+      if (item.playerId === state.currentUserId) {
+        return { ...item, hostReady: Boolean(ready) };
+      }
+      return {
+        ...item,
+        applicants: normalizeRecruitingApplicants(item.applicants ?? []).map((applicant) => (
+          applicant.playerId === state.currentUserId
+            ? { ...applicant, status: ready ? "ready" : "waiting", updatedAt }
+            : applicant
+        )),
+      };
+    }),
+  };
+}
+
+export function confirmRecruitingMatch(state, postId) {
+  const post = state.recruitingPosts?.find((item) => item.id === postId);
+  if (!post || post.status !== "open" || post.playerId !== state.currentUserId) return state;
+  const lobby = getRecruitingLobby(post, state);
+
+  if (!lobby.canConfirm) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "매치 확정 불가",
+          body: "양쪽 인원이 꽉 차고 모든 참가자가 대기 완료 상태여야 합니다.",
+          tone: "match",
+          matchId: null,
+        },
+        ...state.notifications,
+      ],
+    };
+  }
+
+  const scheduledAt = post.scheduledDate && post.scheduledTime ? `${post.scheduledDate} ${post.scheduledTime}` : "일정 미정";
+  const now = new Date().toISOString();
+  const match = {
+    id: makeId("m"),
+    title: post.title,
+    mode: post.mode,
+    court: post.court,
+    scheduledDate: post.scheduledDate ?? "",
+    scheduledTime: post.scheduledTime ?? "",
+    scheduledAt,
+    status: "contract",
+    official: Boolean(post.official),
+    preRegistered: true,
+    rules: post.rules ?? { targetScore: 21, timeLimit: 12, winByTwo: true, ball: "7호 공" },
+    memo: post.memo,
+    stakes: "매치 큐에서 확정된 경기입니다.",
+    ranked: post.ranked !== false,
+    objectionWindow: "24시간",
+    evidence: [{ id: "captain", label: "양측 주장 확인" }],
+    teamA: {
+      name: getLobbySideName(lobby, "teamA"),
+      teamId: getLobbyPrimaryTeamId(lobby, "teamA"),
+      players: lobby.sides.teamA.players.slice(0, lobby.sides.teamA.capacity),
+      score: 0,
+    },
+    teamB: {
+      name: getLobbySideName(lobby, "teamB"),
+      teamId: getLobbyPrimaryTeamId(lobby, "teamB"),
+      players: lobby.sides.teamB.players.slice(0, lobby.sides.teamB.capacity),
+      score: 0,
+    },
+    parties: lobby.entries.map((entry) => ({
+      kind: entry.kind,
+      side: entry.side,
+      teamId: entry.teamId,
+      playerId: entry.playerId,
+      players: entry.players,
+      reserve: entry.reserve,
+    })),
+    agreements: { teamA: [], teamB: [] },
+    approvals: { teamA: [], teamB: [] },
+    disputes: [],
+    result: null,
+    ratingResult: null,
+    teamRatingResult: null,
+    recruitingPostId: post.id,
+    createdAt: now,
+  };
+
+  return {
+    ...state,
+    matches: [match, ...state.matches],
+    recruitingPosts: (state.recruitingPosts ?? []).map((item) => (
+      item.id === postId ? { ...item, status: "closed", confirmedAt: now } : item
+    )),
+    notifications: [
+      {
+        id: makeId("n"),
+        title: "매치 확정",
+        body: `${match.title} 경기방이 생성됐습니다.`,
+        tone: "match",
+        matchId: match.id,
+      },
+      ...state.notifications,
+    ],
   };
 }
 
