@@ -27,8 +27,10 @@ import {
   saveRemoteState,
   saveState,
   sendRecruitingChat,
+  setRecruitingApplicantPlacement,
   setRecruitingApplicantReserve,
   setRecruitingReady,
+  setRecruitingStatRecorder,
   submitMatchResult,
   subscribeRemoteState,
   removeTeamMember,
@@ -177,6 +179,12 @@ export function useAppData(authUserId = null) {
       sendRecruitingChat: (postId, body) => setState((prev) => sendRecruitingChat({ ...prev, currentUserId }, postId, body)),
       setRecruitingApplicantReserve: (postId, playerId, reserve) => {
         setState((prev) => setRecruitingApplicantReserve({ ...prev, currentUserId }, postId, playerId, reserve));
+      },
+      setRecruitingApplicantPlacement: (postId, playerId, placement) => {
+        setState((prev) => setRecruitingApplicantPlacement({ ...prev, currentUserId }, postId, playerId, placement));
+      },
+      setRecruitingStatRecorder: (postId, sideName, playerId) => {
+        setState((prev) => setRecruitingStatRecorder({ ...prev, currentUserId }, postId, sideName, playerId));
       },
       kickRecruitingApplicant: (postId, playerId) => setState((prev) => kickRecruitingApplicant({ ...prev, currentUserId }, postId, playerId)),
       confirmRecruitingMatch: (postId) => {

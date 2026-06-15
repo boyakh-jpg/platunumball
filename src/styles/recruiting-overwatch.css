@@ -1205,6 +1205,14 @@
   padding-right: 8px;
 }
 
+.ow-member-chip.compact .ow-recorder-action {
+  min-height: 28px;
+  margin-left: 2px;
+  padding: 0 8px;
+  border-radius: 6px;
+  font-size: 0.7rem;
+}
+
 .ow-member-chip.recorder {
   border-color: rgba(70, 224, 182, 0.42);
   background: rgba(70, 224, 182, 0.1);
@@ -1360,6 +1368,22 @@
 .ow-host-control-row > div:last-child {
   justify-content: flex-end;
   flex-wrap: wrap;
+}
+
+.ow-placement-actions {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ow-placement-actions .button-sm {
+  min-height: 30px;
+  padding: 0 9px;
+  border-radius: 6px;
+  font-size: 0.72rem;
 }
 
 .ow-host-control-row span:nth-child(2) {

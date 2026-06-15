@@ -1147,19 +1147,36 @@ function getTrustedRefereeId(state, refereeId, playerIds = []) {
   return isEligibleReferee(user, REFEREE_TRUST_MIN) ? refereeId : "";
 }
 
-function getReserveStatRecorders(lobby, playerIds = []) {
-  const playingIds = new Set(playerIds);
+function getValidRecruitingRecorder(post, state, sideName, playerId) {
+  if (!playerId || post.refereeId) return "";
+  const lobby = getRecruitingLobby(post, state);
+  const playingIds = new Set([...lobby.sides.teamA.projectedPlayers, ...lobby.sides.teamB.projectedPlayers]);
+  const candidate = (lobby.sides[sideName]?.reserveCandidates ?? []).find((item) => (
+    item.playerId === playerId &&
+    item.source === "reserve-entry" &&
+    item.status === "ready" &&
+    !playingIds.has(item.playerId)
+  ));
+  return candidate ? playerId : "";
+}
+
+function getRecruitingRoomStatRecorders(post, state) {
+  const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
+  const recorders = normalizeStatRecorders(roomState.statRecorders);
   return {
-    teamA: (lobby.sides.teamA.reserveCandidates ?? []).find((candidate) => (
-      candidate.source === "reserve-entry" &&
-      candidate.status === "ready" &&
-      !playingIds.has(candidate.playerId)
-    ))?.playerId ?? "",
-    teamB: (lobby.sides.teamB.reserveCandidates ?? []).find((candidate) => (
-      candidate.source === "reserve-entry" &&
-      candidate.status === "ready" &&
-      !playingIds.has(candidate.playerId)
-    ))?.playerId ?? "",
+    teamA: getValidRecruitingRecorder(post, state, "teamA", recorders.teamA),
+    teamB: getValidRecruitingRecorder(post, state, "teamB", recorders.teamB),
+  };
+}
+
+function cleanRecruitingRoomStatRecorders(post, state) {
+  const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
+  return {
+    ...post,
+    roomState: {
+      ...roomState,
+      statRecorders: getRecruitingRoomStatRecorders({ ...post, roomState }, state),
+    },
   };
 }
 
@@ -2608,14 +2625,14 @@ export function setRecruitingReady(state, postId, ready = true) {
       if (item.playerId === state.currentUserId) {
         return { ...item, hostReady: Boolean(ready) };
       }
-      return {
+      return cleanRecruitingRoomStatRecorders({
         ...item,
         applicants: normalizeRecruitingApplicants(item.applicants ?? []).map((applicant) => (
           applicant.playerId === state.currentUserId
             ? { ...applicant, status: ready ? "ready" : "waiting", updatedAt }
             : applicant
         )),
-      };
+      }, state);
     }),
   };
 }
@@ -2628,12 +2645,12 @@ export function cancelRecruitingParticipation(state, postId) {
     ...state,
     recruitingPosts: (state.recruitingPosts ?? []).map((item) => {
       if (item.id !== postId) return item;
-      return {
+      return cleanRecruitingRoomStatRecorders({
         ...item,
         applicants: normalizeRecruitingApplicants(item.applicants ?? []).filter(
           (applicant) => applicant.playerId !== state.currentUserId,
         ),
-      };
+      }, state);
     }),
   };
 }
@@ -2660,24 +2677,67 @@ export function sendRecruitingChat(state, postId, body = "") {
   };
 }
 
-export function setRecruitingApplicantReserve(state, postId, playerId, reserve = true) {
+export function setRecruitingApplicantPlacement(state, postId, playerId, placement = {}) {
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   if (!post || post.status !== "open" || post.playerId !== state.currentUserId || playerId === state.currentUserId) return state;
   const applicants = normalizeRecruitingApplicants(post.applicants ?? []);
-  if (!applicants.some((applicant) => applicant.playerId === playerId)) return state;
+  const target = applicants.find((applicant) => applicant.playerId === playerId);
+  if (!target) return state;
+
+  const side = ["teamA", "teamB"].includes(placement.side) ? placement.side : target.side;
+  const reserve = Boolean(placement.reserve);
+  const updatedAt = new Date().toISOString();
+  const nextApplicants = applicants.map((applicant) => (
+    applicant.playerId === playerId
+      ? { ...applicant, side, reserve, status: "waiting", updatedAt }
+      : applicant
+  ));
+  const nextPost = { ...post, applicants: nextApplicants };
+
+  if (!reserve) {
+    const lobby = getRecruitingLobby(nextPost, state);
+    const activePlayerCount = new Set(lobby.sides[side].entries.flatMap((entry) => entry.players)).size;
+    if (activePlayerCount > lobby.sides[side].capacity) return state;
+  }
+
+  return {
+    ...state,
+    recruitingPosts: (state.recruitingPosts ?? []).map((item) => (
+      item.id === postId ? cleanRecruitingRoomStatRecorders(nextPost, state) : item
+    )),
+  };
+}
+
+export function setRecruitingApplicantReserve(state, postId, playerId, reserve = true) {
+  return setRecruitingApplicantPlacement(state, postId, playerId, { reserve });
+}
+
+export function setRecruitingStatRecorder(state, postId, sideName, playerId = "") {
+  const post = state.recruitingPosts?.find((item) => item.id === postId);
+  if (!post || post.status !== "open" || post.playerId !== state.currentUserId || post.refereeId) return state;
+  if (!["teamA", "teamB"].includes(sideName)) return state;
+
+  const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
+  const currentRecorders = normalizeStatRecorders(roomState.statRecorders);
+  const nextPlayerId = playerId && currentRecorders[sideName] !== playerId
+    ? getValidRecruitingRecorder(post, state, sideName, playerId)
+    : "";
+  if (playerId && !nextPlayerId) return state;
+
+  const nextRecorders = normalizeStatRecorders({
+    ...currentRecorders,
+    [sideName]: nextPlayerId,
+  });
+  const otherSideName = sideName === "teamA" ? "teamB" : "teamA";
+  if (nextPlayerId && nextRecorders[otherSideName] === nextPlayerId) {
+    nextRecorders[otherSideName] = "";
+  }
 
   return {
     ...state,
     recruitingPosts: (state.recruitingPosts ?? []).map((item) => (
       item.id === postId
-        ? {
-            ...item,
-            applicants: applicants.map((applicant) => (
-              applicant.playerId === playerId
-                ? { ...applicant, reserve: Boolean(reserve), status: "waiting", updatedAt: new Date().toISOString() }
-                : applicant
-            )),
-          }
+        ? { ...item, roomState: { ...roomState, statRecorders: nextRecorders } }
         : item
     )),
   };
@@ -2703,11 +2763,11 @@ export function kickRecruitingApplicant(state, postId, playerId) {
     users: adjustUserTrust(state.users, state.currentUserId, -hostPenalty),
     recruitingPosts: (state.recruitingPosts ?? []).map((item) => (
       item.id === postId
-        ? {
+        ? cleanRecruitingRoomStatRecorders({
             ...item,
             roomState: { ...roomState, kickLog },
             applicants: applicants.filter((applicant) => applicant.playerId !== playerId),
-          }
+          }, state)
         : item
     )),
     notifications: [
@@ -2751,7 +2811,7 @@ export function confirmRecruitingMatch(state, postId) {
   const teamBPlayers = lobby.sides.teamB.projectedPlayers.slice(0, lobby.sides.teamB.capacity);
   const playerIds = [...teamAPlayers, ...teamBPlayers];
   const refereeId = getTrustedRefereeId(state, post.refereeId, playerIds);
-  const statRecorders = refereeId ? normalizeStatRecorders({}) : getReserveStatRecorders(lobby, playerIds);
+  const statRecorders = refereeId ? normalizeStatRecorders({}) : getRecruitingRoomStatRecorders(post, state);
   const match = {
     id: makeId("m"),
     title: post.title,

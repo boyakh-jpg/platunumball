@@ -121,6 +121,36 @@ function getPlayerPosition(user) {
   return user?.position || "포지션 자유";
 }
 
+function uniqueIds(ids = []) {
+  return Array.from(new Set(ids.filter(Boolean)));
+}
+
+function getEntryPlacementAvailability(entry, lobby) {
+  return ["teamA", "teamB"].reduce((acc, sideName) => {
+    const side = lobby.sides[sideName];
+    const filledWithoutEntry = uniqueIds(side.entries
+      .filter((item) => item.id !== entry.id)
+      .flatMap((item) => item.players)).length;
+    acc[sideName] = filledWithoutEntry + (entry.players?.length ?? 0) <= side.capacity;
+    return acc;
+  }, {});
+}
+
+function getLobbyRecorderIds(lobby, recorders = {}) {
+  const playingIds = new Set([...lobby.sides.teamA.projectedPlayers, ...lobby.sides.teamB.projectedPlayers]);
+  return ["teamA", "teamB"].reduce((acc, sideName) => {
+    const playerId = recorders[sideName] ?? "";
+    const candidate = (lobby.sides[sideName].reserveCandidates ?? []).find((item) => (
+      item.playerId === playerId &&
+      item.source === "reserve-entry" &&
+      item.status === "ready" &&
+      !playingIds.has(item.playerId)
+    ));
+    acc[sideName] = candidate ? playerId : "";
+    return acc;
+  }, { teamA: "", teamB: "" });
+}
+
 function TeamMemberPicker({ team, userById, selectedIds, capacity, onChange }) {
   if (!team) {
     return (
@@ -341,7 +371,7 @@ function SideRoster({ sideName, side, userById, teams }) {
   );
 }
 
-function ReserveLine({ sideName, candidates, playingIds, userById, teams }) {
+function ReserveLine({ sideName, candidates, playingIds, userById, teams, canManage = false, recorderId = "", onAssignRecorder }) {
   if (!candidates.length) return null;
   const playingSet = new Set(playingIds);
   return (
@@ -352,13 +382,25 @@ function ReserveLine({ sideName, candidates, playingIds, userById, teams }) {
           const user = userById[candidate.playerId];
           if (!user) return null;
           const canRecord = candidate.source === "reserve-entry" && candidate.status === "ready" && !playingSet.has(candidate.playerId);
+          const assigned = recorderId === candidate.playerId;
           return (
             <PlayerHoverCard key={`${sideName}-${candidate.playerId}`} user={user} teams={teams} className={canRecord ? "ow-member-chip compact recorder" : "ow-member-chip compact"}>
               <b>{index + 1}</b>
               <span className="avatar small" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
               <span>{user.name}</span>
               <Badge tone={candidate.status === "ready" ? "green" : "neutral"}>{candidate.status === "ready" ? "대기 완료" : "대기 전"}</Badge>
-              {canRecord ? <em>기록 가능</em> : null}
+              {canRecord ? <em>{assigned ? "기록자 지정됨" : "기록 가능"}</em> : null}
+              {canManage && canRecord ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={assigned ? "primary" : "secondary"}
+                  className="ow-recorder-action"
+                  onClick={() => onAssignRecorder(sideName, assigned ? "" : candidate.playerId)}
+                >
+                  {assigned ? "기록 해제" : "기록자 지정"}
+                </Button>
+              ) : null}
             </PlayerHoverCard>
           );
         })}
@@ -367,7 +409,7 @@ function ReserveLine({ sideName, candidates, playingIds, userById, teams }) {
   );
 }
 
-function HostRoomControls({ lobby, userById, teams, onToggleReserve, onKick }) {
+function HostRoomControls({ lobby, userById, teams, onSetPlacement, onKick }) {
   const applicants = (lobby.entries ?? []).filter((entry) => !entry.fixed);
 
   if (!applicants.length) {
@@ -383,11 +425,12 @@ function HostRoomControls({ lobby, userById, teams, onToggleReserve, onKick }) {
     <div className="ow-host-control-panel">
       <header>
         <strong>방장 관리</strong>
-        <span>후보 지정, 출전 전환, 강퇴</span>
+        <span>A/B 배치, 후보 전환, 강퇴</span>
       </header>
       <div className="ow-host-control-list">
         {applicants.map((entry) => {
           const leader = userById[entry.playerId];
+          const availability = getEntryPlacementAvailability(entry, lobby);
           return (
             <article key={entry.id} className="ow-host-control-row">
               <div>
@@ -399,9 +442,40 @@ function HostRoomControls({ lobby, userById, teams, onToggleReserve, onKick }) {
                   <em>{SIDE_LABELS[entry.side]} · {entry.reserve ? "후보" : "출전"} · {entry.status === "ready" ? "대기 완료" : "대기 전"}</em>
                 </span>
               </div>
-              <div>
-                <Button type="button" variant="secondary" onClick={() => onToggleReserve(entry.playerId, !entry.reserve)}>
-                  {entry.reserve ? "출전 전환" : "후보 지정"}
+              <div className="ow-placement-actions">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={!entry.reserve && entry.side === "teamA" ? "primary" : "secondary"}
+                  disabled={!availability.teamA}
+                  onClick={() => onSetPlacement(entry.playerId, { side: "teamA", reserve: false })}
+                >
+                  A 출전
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={!entry.reserve && entry.side === "teamB" ? "primary" : "secondary"}
+                  disabled={!availability.teamB}
+                  onClick={() => onSetPlacement(entry.playerId, { side: "teamB", reserve: false })}
+                >
+                  B 출전
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={entry.reserve && entry.side === "teamA" ? "primary" : "secondary"}
+                  onClick={() => onSetPlacement(entry.playerId, { side: "teamA", reserve: true })}
+                >
+                  A 후보
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={entry.reserve && entry.side === "teamB" ? "primary" : "secondary"}
+                  onClick={() => onSetPlacement(entry.playerId, { side: "teamB", reserve: true })}
+                >
+                  B 후보
                 </Button>
                 <Button type="button" variant="secondary" className="danger-button" onClick={() => onKick(entry.playerId)}>
                   <UserMinus size={16} /> 강퇴
@@ -747,15 +821,12 @@ export default function Recruiting({ app }) {
         const selectedTargetTeam = selectedPost.targetTeamId ? teamById[selectedPost.targetTeamId] : null;
         const selectedReferee = selectedPost.refereeId ? userById[selectedPost.refereeId] : null;
         const playingIds = [...lobby.sides.teamA.projectedPlayers, ...lobby.sides.teamB.projectedPlayers];
-        const statRecorderLabels = ["teamA", "teamB"].map((sideName) => {
-          const recorder = (lobby.sides[sideName].reserveCandidates ?? []).find((candidate) => (
-            candidate.source === "reserve-entry" &&
-            candidate.status === "ready" &&
-            !playingIds.includes(candidate.playerId)
-          ));
-          return recorder ? `${SIDE_LABELS[sideName]} ${userById[recorder.playerId]?.name ?? "후보"}` : "";
-        }).filter(Boolean);
         const roomState = selectedPost.roomState ?? {};
+        const recorderIds = getLobbyRecorderIds(lobby, roomState.statRecorders);
+        const statRecorderLabels = ["teamA", "teamB"].map((sideName) => {
+          const playerId = recorderIds[sideName];
+          return playerId ? `${SIDE_LABELS[sideName]} ${userById[playerId]?.name ?? "후보"}` : "";
+        }).filter(Boolean);
         const chatMessages = roomState.chatMessages ?? [];
 
         return (
@@ -785,8 +856,26 @@ export default function Recruiting({ app }) {
               </div>
 
               <div className="ow-reserve-panel">
-                <ReserveLine sideName="teamA" candidates={lobby.sides.teamA.reserveCandidates} playingIds={playingIds} userById={userById} teams={app.state.teams} />
-                <ReserveLine sideName="teamB" candidates={lobby.sides.teamB.reserveCandidates} playingIds={playingIds} userById={userById} teams={app.state.teams} />
+                <ReserveLine
+                  sideName="teamA"
+                  candidates={lobby.sides.teamA.reserveCandidates}
+                  playingIds={playingIds}
+                  userById={userById}
+                  teams={app.state.teams}
+                  canManage={mine && !selectedPost.refereeId}
+                  recorderId={recorderIds.teamA}
+                  onAssignRecorder={(sideName, playerId) => app.actions.setRecruitingStatRecorder(selectedPost.id, sideName, playerId)}
+                />
+                <ReserveLine
+                  sideName="teamB"
+                  candidates={lobby.sides.teamB.reserveCandidates}
+                  playingIds={playingIds}
+                  userById={userById}
+                  teams={app.state.teams}
+                  canManage={mine && !selectedPost.refereeId}
+                  recorderId={recorderIds.teamB}
+                  onAssignRecorder={(sideName, playerId) => app.actions.setRecruitingStatRecorder(selectedPost.id, sideName, playerId)}
+                />
                 {!lobby.sides.teamA.reserves.length && !lobby.sides.teamB.reserves.length ? <span>후보 없음</span> : null}
               </div>
 
@@ -803,7 +892,7 @@ export default function Recruiting({ app }) {
                   lobby={lobby}
                   userById={userById}
                   teams={app.state.teams}
-                  onToggleReserve={(playerId, reserve) => app.actions.setRecruitingApplicantReserve(selectedPost.id, playerId, reserve)}
+                  onSetPlacement={(playerId, placement) => app.actions.setRecruitingApplicantPlacement(selectedPost.id, playerId, placement)}
                   onKick={(playerId) => app.actions.kickRecruitingApplicant(selectedPost.id, playerId)}
                 />
               ) : null}
