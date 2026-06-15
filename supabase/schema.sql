@@ -311,3 +311,52 @@ begin
   end if;
 end;
 $$;
+
+do $$
+begin
+  if to_regclass('public.affiliations') is not null then
+    execute 'alter table public.affiliations enable row level security';
+    execute 'drop policy if exists affiliations_read_all on public.affiliations';
+    execute 'create policy affiliations_read_all on public.affiliations for select to public using (true)';
+  end if;
+end;
+$$;
+
+do $$
+begin
+  if to_regclass('public.seasons') is not null then
+    execute 'alter table public.seasons enable row level security';
+    execute 'drop policy if exists seasons_read_all on public.seasons';
+    execute 'create policy seasons_read_all on public.seasons for select to public using (true)';
+  end if;
+end;
+$$;
+
+do $$
+begin
+  if to_regclass('public.notifications') is not null then
+    execute 'alter table public.notifications enable row level security';
+    execute 'drop policy if exists notifications_read_all on public.notifications';
+    execute 'create policy notifications_read_all on public.notifications for select to public using (true)';
+  end if;
+end;
+$$;
+
+do $$
+begin
+  if to_regclass('public.reports') is not null then
+    execute 'alter table public.reports enable row level security';
+    execute 'drop policy if exists reports_read_all on public.reports';
+    execute 'create policy reports_read_all on public.reports for select to public using (true)';
+  end if;
+end;
+$$;
+
+do $$
+begin
+  if to_regclass('public.match_disputes') is not null then
+    execute 'drop policy if exists match_disputes_read_all on public.match_disputes';
+    execute 'create policy match_disputes_read_all on public.match_disputes for select to public using (true)';
+  end if;
+end;
+$$;
