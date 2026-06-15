@@ -2679,20 +2679,34 @@ export function sendRecruitingChat(state, postId, body = "") {
 
 export function setRecruitingApplicantPlacement(state, postId, playerId, placement = {}) {
   const post = state.recruitingPosts?.find((item) => item.id === postId);
-  if (!post || post.status !== "open" || post.playerId !== state.currentUserId || playerId === state.currentUserId) return state;
+  if (!post || post.status !== "open" || post.playerId !== state.currentUserId) return state;
+  const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
+  const hostTarget = playerId === post.playerId;
   const applicants = normalizeRecruitingApplicants(post.applicants ?? []);
-  const target = applicants.find((applicant) => applicant.playerId === playerId);
+  const target = hostTarget
+    ? { side: post.hostSide ?? "teamA", reserve: roomState.hostReserve }
+    : applicants.find((applicant) => applicant.playerId === playerId);
   if (!target) return state;
 
   const side = ["teamA", "teamB"].includes(placement.side) ? placement.side : target.side;
   const reserve = Boolean(placement.reserve);
   const updatedAt = new Date().toISOString();
-  const nextApplicants = applicants.map((applicant) => (
-    applicant.playerId === playerId
-      ? { ...applicant, side, reserve, status: "waiting", updatedAt }
-      : applicant
-  ));
-  const nextPost = { ...post, applicants: nextApplicants };
+  const nextApplicants = hostTarget
+    ? applicants
+    : applicants.map((applicant) => (
+      applicant.playerId === playerId
+        ? { ...applicant, side, reserve, status: "waiting", updatedAt }
+        : applicant
+    ));
+  const nextPost = hostTarget
+    ? {
+      ...post,
+      hostSide: side,
+      hostReady: false,
+      roomState: { ...roomState, hostReserve: reserve },
+      applicants: nextApplicants,
+    }
+    : { ...post, applicants: nextApplicants };
 
   if (!reserve) {
     const lobby = getRecruitingLobby(nextPost, state);

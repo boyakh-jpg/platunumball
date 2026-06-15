@@ -209,6 +209,7 @@ export function normalizeRecruitingRoomState(roomState = {}) {
 
   return {
     ...roomState,
+    hostReserve: Boolean(roomState.hostReserve),
     chatMessages,
     kickLog,
     hostPenalties,
@@ -315,6 +316,7 @@ export function isNationalRecruitingPost(post = {}, state = {}) {
 }
 
 export function getRecruitingHostEntry(post = {}, state = {}) {
+  const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
   const user = state.users?.find((item) => item.id === post.playerId) ?? null;
   const team = post.teamId ? state.teams?.find((item) => item.id === post.teamId) ?? null : null;
   const capacity = getRecruitingSideCapacity(post);
@@ -329,7 +331,7 @@ export function getRecruitingHostEntry(post = {}, state = {}) {
     joinMode,
     side: post.hostSide ?? "teamA",
     status: post.hostReady ? "ready" : "waiting",
-    reserve: false,
+    reserve: roomState.hostReserve,
     playerId: post.playerId,
     teamId: team?.id ?? null,
     user,

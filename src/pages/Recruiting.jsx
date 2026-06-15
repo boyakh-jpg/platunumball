@@ -410,7 +410,7 @@ function ReserveLine({ sideName, candidates, playingIds, userById, teams, canMan
 }
 
 function HostRoomControls({ lobby, userById, teams, onSetPlacement, onKick }) {
-  const applicants = (lobby.entries ?? []).filter((entry) => !entry.fixed);
+  const applicants = lobby.entries ?? [];
 
   if (!applicants.length) {
     return (
@@ -477,9 +477,11 @@ function HostRoomControls({ lobby, userById, teams, onSetPlacement, onKick }) {
                 >
                   B 후보
                 </Button>
-                <Button type="button" variant="secondary" className="danger-button" onClick={() => onKick(entry.playerId)}>
-                  <UserMinus size={16} /> 강퇴
-                </Button>
+                {!entry.fixed ? (
+                  <Button type="button" variant="secondary" className="danger-button" onClick={() => onKick(entry.playerId)}>
+                    <UserMinus size={16} /> 강퇴
+                  </Button>
+                ) : null}
               </div>
             </article>
           );
