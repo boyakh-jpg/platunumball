@@ -1297,6 +1297,141 @@
   line-height: 1.45;
 }
 
+.ow-host-control-panel,
+.ow-room-chat {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.045);
+  padding: 12px;
+}
+
+.ow-host-control-panel.empty span,
+.ow-chat-empty {
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 850;
+}
+
+.ow-host-control-panel header,
+.ow-room-chat header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ow-host-control-panel header span,
+.ow-room-chat header span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.ow-host-control-list,
+.ow-chat-list {
+  display: grid;
+  gap: 8px;
+}
+
+.ow-host-control-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.12);
+  padding: 9px;
+}
+
+.ow-host-control-row > div {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.ow-host-control-row > div:last-child {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.ow-host-control-row span:nth-child(2) {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.ow-host-control-row strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ow-host-control-row em {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-style: normal;
+  font-weight: 850;
+}
+
+.ow-chat-list {
+  max-height: 240px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding-right: 2px;
+}
+
+.ow-chat-message {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+
+.ow-chat-message > span:last-child {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.16);
+  padding: 8px;
+}
+
+.ow-chat-message strong {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.78rem;
+}
+
+.ow-chat-message strong em {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-style: normal;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.ow-chat-message b {
+  overflow-wrap: anywhere;
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.ow-chat-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
 .ow-join-panel {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
@@ -1350,6 +1485,8 @@ html[data-theme="light"] .ow-party-block,
 html[data-theme="light"] .ow-open-slot,
 html[data-theme="light"] .ow-owner-panel,
 html[data-theme="light"] .ow-room-rule-panel,
+html[data-theme="light"] .ow-host-control-panel,
+html[data-theme="light"] .ow-room-chat,
 html[data-theme="light"] .ow-reserve-panel,
 html[data-theme="light"] .ow-join-panel,
 html[data-theme="light"] .ow-party-picker {
@@ -1426,6 +1563,8 @@ html[data-theme="light"] .ow-compose-drawer {
   .ow-compose-type-grid,
   .ow-details-grid,
   .ow-lobby-grid,
+  .ow-host-control-row,
+  .ow-chat-form,
   .ow-join-panel,
   .ow-queue-board-grid {
     grid-template-columns: 1fr;
@@ -1457,8 +1596,13 @@ html[data-theme="light"] .ow-compose-drawer {
   }
 
   .ow-party-head,
+  .ow-host-control-row > div:last-child,
   .ow-join-panel {
     align-items: stretch;
+  }
+
+  .ow-host-control-row > div:last-child {
+    display: grid;
   }
 
   .ow-party-head {

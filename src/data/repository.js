@@ -37,6 +37,7 @@ import {
   hasRecruitingApplicant,
   normalizeRecruitingApplicants,
   normalizeRecruitingPost,
+  normalizeRecruitingRoomState,
 } from "../lib/recruiting.js";
 import { clearState, readState, writeState } from "../lib/storage.js";
 import { isSupabaseConfigured, supabase } from "../lib/supabase.js";
@@ -63,6 +64,59 @@ const POST_MATCH_STATUSES = new Set(["approval", "disputed"]);
 const LIFECYCLE_TITLE_PATTERN = /^(동의 대기|진행 예정|결과 승인|이의 확인|이의제기|확정|결과 입력)\s*·\s*/;
 const POST_MATCH_TITLE_PATTERN = /^(결과 승인|이의 확인|이의제기|확정|결과 입력)\s*·\s*/;
 let normalizedSaveWarningShown = false;
+
+function clampTrustScore(value) {
+  return Math.max(0, Math.min(100, Math.round(Number(value ?? 80))));
+}
+
+function adjustUserTrust(users = [], userId, delta) {
+  if (!userId || !delta) return users;
+  return users.map((user) => (
+    user.id === userId
+      ? { ...user, trustScore: clampTrustScore((user.trustScore ?? 80) + delta) }
+      : user
+  ));
+}
+
+function getRoomScheduleDate(post = {}) {
+  if (!post.scheduledDate || !post.scheduledTime) return null;
+  const date = new Date(`${post.scheduledDate}T${post.scheduledTime}`);
+  return Number.isFinite(date.getTime()) ? date : null;
+}
+
+function getRoomClosePenalty(post = {}, nowMs = Date.now()) {
+  const applicants = normalizeRecruitingApplicants(post.applicants ?? []);
+  const scheduled = getRoomScheduleDate(post);
+  const hoursUntil = scheduled ? (scheduled.getTime() - nowMs) / 36e5 : Infinity;
+  if (!applicants.length && hoursUntil > 24) return 0;
+
+  let penalty = applicants.length ? 2 : 0;
+  if (!post.hostReady) penalty += 2;
+  if (hoursUntil < 0) penalty += 8;
+  else if (hoursUntil <= 6) penalty += 5;
+  else if (hoursUntil <= 24) penalty += 3;
+  else if (hoursUntil <= 72) penalty += 1;
+
+  const createdAt = post.createdAt ? new Date(post.createdAt).getTime() : null;
+  const shortNotice = scheduled && Number.isFinite(createdAt) && (scheduled.getTime() - createdAt) / 36e5 <= 24;
+  if (shortNotice) penalty = Math.max(0, penalty - 2);
+  return Math.min(12, penalty);
+}
+
+function isRecruitingRoomMember(post = {}, userId, state = {}) {
+  if (!userId) return false;
+  if (post.playerId === userId) return true;
+  const teamIds = new Set(
+    (state.teams ?? [])
+      .filter((team) => team.members?.some((member) => member.userId === userId))
+      .map((team) => team.id),
+  );
+  return normalizeRecruitingApplicants(post.applicants ?? []).some((applicant) => (
+    applicant.playerId === userId ||
+    applicant.playerIds?.includes(userId) ||
+    (applicant.teamId && teamIds.has(applicant.teamId))
+  ));
+}
 
 function mergeById(current = [], fallback = []) {
   const currentMap = new Map(current.map((item) => [item.id, item]));
@@ -235,6 +289,7 @@ function normalizeMatch(match) {
     statRecorders: normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders),
     statEntryMinutes: Number(match.statEntryMinutes ?? STAT_ENTRY_WINDOW_MINUTES),
     disputeMinutes: Number(match.disputeMinutes ?? DISPUTE_WINDOW_MINUTES),
+    trustFeedback: match.trustFeedback ?? {},
   };
 
   if (isFutureScheduledMatch(normalized)) {
@@ -434,6 +489,7 @@ function fromRemoteMatch(row, context) {
     stakes: row.stakes,
     ranked: row.ranked !== false,
     mmrLimitMode: row.mmr_limit_mode ?? "block",
+    trustFeedback: row.trust_feedback ?? {},
     refereeId: row.referee_id ?? "",
     refereeTrustMin: row.referee_trust_min ?? REFEREE_TRUST_MIN,
     statRecorders: normalizeStatRecorders(row.stat_recorders ?? row.rules?.statRecorders),
@@ -633,6 +689,7 @@ async function loadNormalizedRemoteState() {
       refereeTrustMin: post.referee_trust_min ?? REFEREE_TRUST_MIN,
       statEntryMinutes: post.stat_entry_minutes ?? STAT_ENTRY_WINDOW_MINUTES,
       disputeMinutes: post.dispute_minutes ?? DISPUTE_WINDOW_MINUTES,
+      roomState: normalizeRecruitingRoomState(post.room_state ?? {}),
       hostJoinMode: post.host_join_mode,
       hostSide: post.host_side,
       hostReady: post.host_ready,
@@ -838,6 +895,7 @@ async function saveNormalizedRemoteState(state) {
     status: match.status ?? "contract",
     ranked: match.ranked !== false,
     mmr_limit_mode: match.mmrLimitMode ?? "block",
+    trust_feedback: match.trustFeedback ?? {},
     referee_id: match.refereeId || null,
     referee_trust_min: Number(match.refereeTrustMin ?? REFEREE_TRUST_MIN),
     stat_entry_minutes: Number(match.statEntryMinutes ?? STAT_ENTRY_WINDOW_MINUTES),
@@ -903,7 +961,7 @@ async function saveNormalizedRemoteState(state) {
       match_id: match.id,
       user_id: userId,
       recorded_by: match.result?.statSubmissions?.[userId]?.by ?? null,
-      record_source: match.result?.statSubmissions?.[userId]?.source === "referee" ? "referee" : "player",
+      record_source: match.result?.statSubmissions?.[userId]?.source ?? "player",
       points: Number(stat.points ?? 0),
       rebounds: Number(stat.rebounds ?? 0),
       assists: Number(stat.assists ?? 0),
@@ -943,6 +1001,7 @@ async function saveNormalizedRemoteState(state) {
     referee_trust_min: Number(post.refereeTrustMin ?? REFEREE_TRUST_MIN),
     stat_entry_minutes: Number(post.statEntryMinutes ?? STAT_ENTRY_WINDOW_MINUTES),
     dispute_minutes: Number(post.disputeMinutes ?? DISPUTE_WINDOW_MINUTES),
+    room_state: normalizeRecruitingRoomState(post.roomState ?? {}),
     host_join_mode: post.hostJoinMode ?? (post.teamId ? "team" : "player"),
     host_side: post.hostSide ?? "teamA",
     host_ready: Boolean(post.hostReady),
@@ -1354,16 +1413,32 @@ function finalizeMatch(state, targetMatch) {
         regularRatio: teamRegularRatio(teamB, targetMatch.teamB.players, state.users),
       })
     : 0;
+  const trustRewards = new Map();
+  Object.values(targetMatch.result?.statSubmissions ?? {}).forEach((submission) => {
+    if (submission?.source === "candidate_recorder" && submission.by) {
+      trustRewards.set(submission.by, (trustRewards.get(submission.by) ?? 0) + 2);
+    }
+  });
+  if (targetMatch.refereeId) {
+    trustRewards.set(targetMatch.refereeId, (trustRewards.get(targetMatch.refereeId) ?? 0) + 1);
+  }
 
   const users = state.users.map((user) => {
     const nextRatings = ratingResult.ratings[user.id];
-    if (!nextRatings) return user;
+    const trustReward = trustRewards.get(user.id) ?? 0;
+    if (!nextRatings && !trustReward) return user;
     const change = ratingResult.changes.find((item) => item.playerId === user.id);
     return {
       ...user,
-      trustScore: Math.min(100, (user.trustScore ?? 80) + 1),
-      streak: change?.result === "win" ? Math.max(1, user.streak + 1) : change?.result === "loss" ? Math.min(-1, user.streak - 1) : user.streak,
-      ratings: nextRatings,
+      trustScore: clampTrustScore((user.trustScore ?? 80) + (nextRatings ? 1 : 0) + trustReward),
+      streak: nextRatings
+        ? change?.result === "win"
+          ? Math.max(1, user.streak + 1)
+          : change?.result === "loss"
+            ? Math.min(-1, user.streak - 1)
+            : user.streak
+        : user.streak,
+      ratings: nextRatings ?? user.ratings,
     };
   });
 
@@ -2042,6 +2117,56 @@ export function resumeMatchApproval(state, matchId) {
   };
 }
 
+export function toggleMatchStar(state, matchId, targetUserId) {
+  const match = state.matches.find((item) => item.id === matchId);
+  const playerIds = match ? getMatchPlayerIds(match) : [];
+  if (!match || !["approval", "confirmed"].includes(match.status)) return state;
+  if (!playerIds.includes(state.currentUserId) || !playerIds.includes(targetUserId) || targetUserId === state.currentUserId) return state;
+
+  const maxStars = Math.max(1, Math.floor(playerIds.length / 2));
+  const trustFeedback = match.trustFeedback ?? {};
+  const stars = trustFeedback.stars ?? {};
+  const myStars = stars[state.currentUserId] ?? [];
+  const alreadyStarred = myStars.includes(targetUserId);
+  if (!alreadyStarred && myStars.length >= maxStars) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "별 한도 도달",
+          body: `한 경기에서 최대 ${maxStars}명에게 별을 줄 수 있습니다.`,
+          tone: "match",
+          matchId,
+        },
+        ...state.notifications,
+      ],
+    };
+  }
+
+  const nextMyStars = alreadyStarred
+    ? myStars.filter((userId) => userId !== targetUserId)
+    : [...myStars, targetUserId];
+  const nextStars = { ...stars, [state.currentUserId]: nextMyStars };
+
+  return {
+    ...state,
+    users: adjustUserTrust(state.users, targetUserId, alreadyStarred ? -1 : 1),
+    matches: state.matches.map((item) => (
+      item.id === matchId
+        ? {
+            ...item,
+            trustFeedback: {
+              ...trustFeedback,
+              stars: nextStars,
+              updatedAt: new Date().toISOString(),
+            },
+          }
+        : item
+    )),
+  };
+}
+
 export function switchUser(state, userId) {
   if (!state.users.some((user) => user.id === userId)) return state;
   return { ...state, currentUserId: userId };
@@ -2513,6 +2638,92 @@ export function cancelRecruitingParticipation(state, postId) {
   };
 }
 
+export function sendRecruitingChat(state, postId, body = "") {
+  const post = state.recruitingPosts?.find((item) => item.id === postId);
+  const text = String(body).trim().slice(0, 500);
+  if (!post || !text || !isRecruitingRoomMember(post, state.currentUserId, state)) return state;
+  const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
+  const message = {
+    id: makeId("chat"),
+    userId: state.currentUserId,
+    body: text,
+    createdAt: new Date().toISOString(),
+  };
+
+  return {
+    ...state,
+    recruitingPosts: (state.recruitingPosts ?? []).map((item) => (
+      item.id === postId
+        ? { ...item, roomState: { ...roomState, chatMessages: [...roomState.chatMessages, message] } }
+        : item
+    )),
+  };
+}
+
+export function setRecruitingApplicantReserve(state, postId, playerId, reserve = true) {
+  const post = state.recruitingPosts?.find((item) => item.id === postId);
+  if (!post || post.status !== "open" || post.playerId !== state.currentUserId || playerId === state.currentUserId) return state;
+  const applicants = normalizeRecruitingApplicants(post.applicants ?? []);
+  if (!applicants.some((applicant) => applicant.playerId === playerId)) return state;
+
+  return {
+    ...state,
+    recruitingPosts: (state.recruitingPosts ?? []).map((item) => (
+      item.id === postId
+        ? {
+            ...item,
+            applicants: applicants.map((applicant) => (
+              applicant.playerId === playerId
+                ? { ...applicant, reserve: Boolean(reserve), status: "waiting", updatedAt: new Date().toISOString() }
+                : applicant
+            )),
+          }
+        : item
+    )),
+  };
+}
+
+export function kickRecruitingApplicant(state, postId, playerId) {
+  const post = state.recruitingPosts?.find((item) => item.id === postId);
+  if (!post || post.status !== "open" || post.playerId !== state.currentUserId || playerId === state.currentUserId) return state;
+  const applicants = normalizeRecruitingApplicants(post.applicants ?? []);
+  const target = applicants.find((applicant) => applicant.playerId === playerId);
+  if (!target) return state;
+  const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
+  const hostKickCount = roomState.kickLog.filter((item) => item.by === state.currentUserId).length + 1;
+  const hostPenalty = hostKickCount >= 3 ? 1 : 0;
+  const now = new Date().toISOString();
+  const kickLog = [
+    ...roomState.kickLog,
+    { id: makeId("kick"), targetUserId: playerId, by: state.currentUserId, penalty: hostPenalty, createdAt: now },
+  ];
+
+  return {
+    ...state,
+    users: adjustUserTrust(state.users, state.currentUserId, -hostPenalty),
+    recruitingPosts: (state.recruitingPosts ?? []).map((item) => (
+      item.id === postId
+        ? {
+            ...item,
+            roomState: { ...roomState, kickLog },
+            applicants: applicants.filter((applicant) => applicant.playerId !== playerId),
+          }
+        : item
+    )),
+    notifications: [
+      {
+        id: makeId("n"),
+        title: hostPenalty ? "강퇴 남발 패널티" : "참가자 강퇴",
+        body: hostPenalty
+          ? "한 방에서 강퇴가 3회 이상 발생해 방장 신뢰도가 감소했습니다."
+          : "참가자를 방에서 내보냈습니다.",
+        tone: hostPenalty ? "orange" : "team",
+      },
+      ...state.notifications,
+    ],
+  };
+}
+
 export function confirmRecruitingMatch(state, postId) {
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   if (!post || post.status !== "open" || post.playerId !== state.currentUserId) return state;
@@ -2617,11 +2828,37 @@ export function confirmRecruitingMatch(state, postId) {
 }
 
 export function closeRecruitingPost(state, postId) {
+  const post = state.recruitingPosts?.find((item) => item.id === postId);
+  if (!post || post.playerId !== state.currentUserId) return state;
+  const penalty = getRoomClosePenalty(post);
+  const now = new Date().toISOString();
+  const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
+  const hostPenalties = penalty
+    ? [
+        ...roomState.hostPenalties,
+        { id: makeId("penalty"), by: state.currentUserId, penalty, reason: "room_closed", createdAt: now },
+      ]
+    : roomState.hostPenalties;
+
   return {
     ...state,
+    users: adjustUserTrust(state.users, state.currentUserId, -penalty),
     recruitingPosts: (state.recruitingPosts ?? []).map((post) => (
-      post.id === postId && post.playerId === state.currentUserId ? { ...post, status: "closed" } : post
+      post.id === postId && post.playerId === state.currentUserId
+        ? { ...post, status: "closed", roomState: { ...roomState, hostPenalties } }
+        : post
     )),
+    notifications: penalty
+      ? [
+          {
+            id: makeId("n"),
+            title: "방 닫기 패널티",
+            body: `대기 인원과 경기 일정이 가까운 상태에서 방을 닫아 신뢰도 ${penalty}점이 감소했습니다.`,
+            tone: "orange",
+          },
+          ...state.notifications,
+        ]
+      : state.notifications,
   };
 }
 

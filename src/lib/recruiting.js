@@ -177,6 +177,44 @@ export function normalizeRecruitingApplicants(applicants = []) {
   return applicants.map(normalizeRecruitingApplicant).filter(Boolean);
 }
 
+export function normalizeRecruitingRoomState(roomState = {}) {
+  const chatMessages = Array.isArray(roomState.chatMessages)
+    ? roomState.chatMessages
+        .map((message) => ({
+          id: message.id ?? "",
+          userId: message.userId ?? message.playerId ?? "",
+          body: String(message.body ?? "").slice(0, 500),
+          createdAt: message.createdAt ?? null,
+        }))
+        .filter((message) => message.userId && message.body.trim())
+    : [];
+  const kickLog = Array.isArray(roomState.kickLog)
+    ? roomState.kickLog.map((item) => ({
+        id: item.id ?? "",
+        targetUserId: item.targetUserId ?? "",
+        by: item.by ?? "",
+        penalty: Number(item.penalty ?? 0),
+        createdAt: item.createdAt ?? null,
+      }))
+    : [];
+  const hostPenalties = Array.isArray(roomState.hostPenalties)
+    ? roomState.hostPenalties.map((item) => ({
+        id: item.id ?? "",
+        by: item.by ?? "",
+        penalty: Number(item.penalty ?? 0),
+        reason: item.reason ?? "",
+        createdAt: item.createdAt ?? null,
+      }))
+    : [];
+
+  return {
+    ...roomState,
+    chatMessages,
+    kickLog,
+    hostPenalties,
+  };
+}
+
 export function getRecruitingApplicantKey(entry) {
   const applicant = normalizeRecruitingApplicant(entry);
   if (!applicant) return "";
@@ -213,6 +251,7 @@ export function normalizeRecruitingPost(post = {}) {
     refereeTrustMin: Number(post.refereeTrustMin ?? REFEREE_TRUST_MIN),
     statEntryMinutes: Number(post.statEntryMinutes ?? STAT_ENTRY_WINDOW_MINUTES),
     disputeMinutes: Number(post.disputeMinutes ?? DISPUTE_WINDOW_MINUTES),
+    roomState: normalizeRecruitingRoomState(post.roomState ?? {}),
     playerIds: unique(post.playerIds ?? post.players ?? []),
     applicants: normalizeRecruitingApplicants(post.applicants ?? []),
   };

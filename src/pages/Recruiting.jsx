@@ -4,9 +4,12 @@ import {
   CheckCircle2,
   Clock3,
   MapPin,
+  MessageSquare,
   PlusCircle,
+  Send,
   ShieldCheck,
   Swords,
+  UserMinus,
   UserRound,
   UsersRound,
   X,
@@ -364,6 +367,95 @@ function ReserveLine({ sideName, candidates, playingIds, userById, teams }) {
   );
 }
 
+function HostRoomControls({ lobby, userById, teams, onToggleReserve, onKick }) {
+  const applicants = (lobby.entries ?? []).filter((entry) => !entry.fixed);
+
+  if (!applicants.length) {
+    return (
+      <div className="ow-host-control-panel empty">
+        <strong>방장 관리</strong>
+        <span>관리할 참가자가 아직 없다.</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="ow-host-control-panel">
+      <header>
+        <strong>방장 관리</strong>
+        <span>후보 지정, 출전 전환, 강퇴</span>
+      </header>
+      <div className="ow-host-control-list">
+        {applicants.map((entry) => {
+          const leader = userById[entry.playerId];
+          return (
+            <article key={entry.id} className="ow-host-control-row">
+              <div>
+                <PlayerHoverCard user={leader} teams={teams} as="span">
+                  <span className="avatar small" style={{ "--avatar": leader?.avatarColor }}>{leader?.name?.slice(0, 1) ?? "?"}</span>
+                </PlayerHoverCard>
+                <span>
+                  <strong>{getEntryTitle(entry)}</strong>
+                  <em>{SIDE_LABELS[entry.side]} · {entry.reserve ? "후보" : "출전"} · {entry.status === "ready" ? "대기 완료" : "대기 전"}</em>
+                </span>
+              </div>
+              <div>
+                <Button type="button" variant="secondary" onClick={() => onToggleReserve(entry.playerId, !entry.reserve)}>
+                  {entry.reserve ? "출전 전환" : "후보 지정"}
+                </Button>
+                <Button type="button" variant="secondary" className="danger-button" onClick={() => onKick(entry.playerId)}>
+                  <UserMinus size={16} /> 강퇴
+                </Button>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function RoomChat({ messages, userById, teams, value, canChat, onChange, onSubmit }) {
+  return (
+    <div className="ow-room-chat">
+      <header>
+        <span><MessageSquare size={16} /> 방 채팅</span>
+        <strong>{messages.length}</strong>
+      </header>
+      <div className="ow-chat-list">
+        {messages.length ? messages.map((message) => {
+          const user = userById[message.userId];
+          return (
+            <div key={message.id || `${message.userId}-${message.createdAt}`} className="ow-chat-message">
+              <PlayerHoverCard user={user} teams={teams} as="span">
+                <span className="avatar small" style={{ "--avatar": user?.avatarColor }}>{user?.name?.slice(0, 1) ?? "?"}</span>
+              </PlayerHoverCard>
+              <span>
+                <strong>{user?.name ?? "알 수 없음"} <em>{formatWhen(message.createdAt)}</em></strong>
+                <b>{message.body}</b>
+              </span>
+            </div>
+          );
+        }) : (
+          <div className="ow-chat-empty">아직 채팅 없음</div>
+        )}
+      </div>
+      <form className="ow-chat-form" onSubmit={onSubmit}>
+        <input
+          value={value}
+          disabled={!canChat}
+          maxLength={500}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder={canChat ? "방 전체에 보낼 메시지" : "참여 후 채팅 가능"}
+        />
+        <Button type="submit" disabled={!canChat || !value.trim()}>
+          <Send size={16} /> 전송
+        </Button>
+      </form>
+    </div>
+  );
+}
+
 export default function Recruiting({ app }) {
   const navigate = useNavigate();
   const myTeams = useMemo(
@@ -381,6 +473,7 @@ export default function Recruiting({ app }) {
   const [composeOpen, setComposeOpen] = useState(false);
   const [selectedPostId, setSelectedPostId] = useState(null);
   const [joinDraftByPost, setJoinDraftByPost] = useState({});
+  const [chatDraftByPost, setChatDraftByPost] = useState({});
   const [draft, setDraft] = useState(() => ({
     hostJoinMode: myTeams[0]?.id ? "team" : "player",
     title: "",
@@ -477,6 +570,17 @@ export default function Recruiting({ app }) {
   const submitJoin = (post) => {
     const joinDraft = getJoinDraft(post);
     app.actions.interestRecruitingPost(post.id, joinDraft);
+  };
+  const getChatDraft = (post) => chatDraftByPost[post.id] ?? "";
+  const updateChatDraft = (post, value) => {
+    setChatDraftByPost((current) => ({ ...current, [post.id]: value }));
+  };
+  const submitChat = (event, post) => {
+    event.preventDefault();
+    const body = getChatDraft(post).trim();
+    if (!body) return;
+    app.actions.sendRecruitingChat(post.id, body);
+    updateChatDraft(post, "");
   };
   const confirmMatch = (post) => {
     const matchId = app.actions.confirmRecruitingMatch(post.id);
@@ -638,6 +742,7 @@ export default function Recruiting({ app }) {
         const mine = selectedPost.playerId === app.currentUser.id;
         const myEntry = lobby.entries.find((entry) => entry.playerId === app.currentUser.id);
         const alreadyApplied = Boolean(myEntry && !myEntry.fixed);
+        const canChat = isRecruitingPostForUser(selectedPost, app.currentUser.id, myTeamIds);
         const canJoin = !mine && !alreadyApplied && fit.allowed && (joinDraft.joinMode === "player" || (Boolean(selectedJoinTeam) && selectedJoinPlayerIds.length > 0));
         const selectedTargetTeam = selectedPost.targetTeamId ? teamById[selectedPost.targetTeamId] : null;
         const selectedReferee = selectedPost.refereeId ? userById[selectedPost.refereeId] : null;
@@ -650,6 +755,8 @@ export default function Recruiting({ app }) {
           ));
           return recorder ? `${SIDE_LABELS[sideName]} ${userById[recorder.playerId]?.name ?? "후보"}` : "";
         }).filter(Boolean);
+        const roomState = selectedPost.roomState ?? {};
+        const chatMessages = roomState.chatMessages ?? [];
 
         return (
           <div className="ow-compose-backdrop" role="presentation" onMouseDown={() => setSelectedPostId(null)}>
@@ -690,6 +797,26 @@ export default function Recruiting({ app }) {
                 <span>후보가 경기 밖에서 대기 완료하면 해당 팀 개인 활약 기록자로 배정된다.</span>
                 <span>확정 후 불참하면 신뢰점수 패널티 대상이다.</span>
               </div>
+
+              {mine ? (
+                <HostRoomControls
+                  lobby={lobby}
+                  userById={userById}
+                  teams={app.state.teams}
+                  onToggleReserve={(playerId, reserve) => app.actions.setRecruitingApplicantReserve(selectedPost.id, playerId, reserve)}
+                  onKick={(playerId) => app.actions.kickRecruitingApplicant(selectedPost.id, playerId)}
+                />
+              ) : null}
+
+              <RoomChat
+                messages={chatMessages}
+                userById={userById}
+                teams={app.state.teams}
+                value={getChatDraft(selectedPost)}
+                canChat={canChat}
+                onChange={(value) => updateChatDraft(selectedPost, value)}
+                onSubmit={(event) => submitChat(event, selectedPost)}
+              />
 
               <div className="ow-join-panel">
                 {mine ? (

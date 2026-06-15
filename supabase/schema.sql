@@ -192,6 +192,7 @@ begin
     execute 'alter table public.matches add column if not exists stat_entry_minutes integer not null default 60';
     execute 'alter table public.matches add column if not exists dispute_minutes integer not null default 120';
     execute 'alter table public.matches add column if not exists ended_at timestamptz';
+    execute 'alter table public.matches add column if not exists trust_feedback jsonb not null default ''{}''::jsonb';
     execute 'create index if not exists matches_referee_id_idx on public.matches (referee_id)';
     execute 'alter table public.matches add column if not exists tournament_id text';
     execute 'alter table public.matches add column if not exists tournament_format text';
@@ -212,7 +213,7 @@ begin
     execute 'alter table public.player_match_stats add column if not exists recorded_by text';
     execute 'alter table public.player_match_stats add column if not exists record_source text not null default ''player''';
     execute 'alter table public.player_match_stats drop constraint if exists player_match_stats_record_source_check';
-    execute 'alter table public.player_match_stats add constraint player_match_stats_record_source_check check (record_source in (''player'', ''referee''))';
+    execute 'alter table public.player_match_stats add constraint player_match_stats_record_source_check check (record_source in (''player'', ''referee'', ''candidate_recorder''))';
   end if;
 
   if to_regclass('public.recruiting_posts') is not null then
@@ -230,6 +231,7 @@ begin
     execute 'alter table public.recruiting_posts add column if not exists scheduled_at text';
     execute 'alter table public.recruiting_posts add column if not exists confirmed_at timestamptz';
     execute 'alter table public.recruiting_posts add column if not exists player_ids jsonb not null default ''[]''::jsonb';
+    execute 'alter table public.recruiting_posts add column if not exists room_state jsonb not null default ''{}''::jsonb';
     execute 'alter table public.recruiting_posts drop constraint if exists recruiting_posts_host_join_mode_check';
     execute 'alter table public.recruiting_posts add constraint recruiting_posts_host_join_mode_check check (host_join_mode in (''player'', ''team''))';
     execute 'alter table public.recruiting_posts drop constraint if exists recruiting_posts_host_side_check';

@@ -5092,6 +5092,69 @@ input[type="color"] {
   text-align: center;
 }
 
+.trust-star-card .muted {
+  font-size: 0.84rem;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.trust-star-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.trust-star-button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--text);
+  cursor: pointer;
+  padding: 9px;
+  text-align: left;
+}
+
+.trust-star-button.selected {
+  border-color: rgba(255, 211, 108, 0.58);
+  background: rgba(255, 211, 108, 0.12);
+  color: var(--gold);
+}
+
+.trust-star-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.trust-star-button .player-hover-trigger {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  color: inherit;
+}
+
+.trust-star-button .player-hover-trigger > span:last-child {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.trust-star-button strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trust-star-button em {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-style: normal;
+  font-weight: 850;
+}
+
 .recorder-header p {
   max-width: 780px;
   color: var(--muted);

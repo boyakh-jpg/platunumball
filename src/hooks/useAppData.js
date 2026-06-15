@@ -16,6 +16,7 @@ import {
   deleteTeam,
   disputeMatch,
   interestRecruitingPost,
+  kickRecruitingApplicant,
   loadRemoteState,
   loadState,
   markAllNotificationsRead,
@@ -25,12 +26,15 @@ import {
   resumeMatchApproval,
   saveRemoteState,
   saveState,
+  sendRecruitingChat,
+  setRecruitingApplicantReserve,
   setRecruitingReady,
   submitMatchResult,
   subscribeRemoteState,
   removeTeamMember,
   toggleFavoriteCourt,
   toggleFavoriteTeam,
+  toggleMatchStar,
   updateSettings,
   updateTeamMemberRole,
   updateTournamentMatchSchedule,
@@ -149,6 +153,7 @@ export function useAppData(authUserId = null) {
       agreeMatch: (matchId, sideName, playerId) => setState((prev) => agreeMatch({ ...prev, currentUserId }, matchId, sideName, playerId)),
       submitMatchResult: (matchId, result) => setState((prev) => submitMatchResult({ ...prev, currentUserId }, matchId, result)),
       approveMatch: (matchId, sideName, playerId) => setState((prev) => approveMatch({ ...prev, currentUserId }, matchId, sideName, playerId)),
+      toggleMatchStar: (matchId, targetUserId) => setState((prev) => toggleMatchStar({ ...prev, currentUserId }, matchId, targetUserId)),
       disputeMatch: (matchId, reason) => setState((prev) => disputeMatch({ ...prev, currentUserId }, matchId, reason)),
       cancelMatch: (matchId) => setState((prev) => cancelMatch({ ...prev, currentUserId }, matchId)),
       voidMatch: (matchId) => setState((prev) => voidMatch({ ...prev, currentUserId }, matchId)),
@@ -169,6 +174,11 @@ export function useAppData(authUserId = null) {
       interestRecruitingPost: (postId, application) => setState((prev) => interestRecruitingPost({ ...prev, currentUserId }, postId, application)),
       cancelRecruitingParticipation: (postId) => setState((prev) => cancelRecruitingParticipation({ ...prev, currentUserId }, postId)),
       setRecruitingReady: (postId, ready) => setState((prev) => setRecruitingReady({ ...prev, currentUserId }, postId, ready)),
+      sendRecruitingChat: (postId, body) => setState((prev) => sendRecruitingChat({ ...prev, currentUserId }, postId, body)),
+      setRecruitingApplicantReserve: (postId, playerId, reserve) => {
+        setState((prev) => setRecruitingApplicantReserve({ ...prev, currentUserId }, postId, playerId, reserve));
+      },
+      kickRecruitingApplicant: (postId, playerId) => setState((prev) => kickRecruitingApplicant({ ...prev, currentUserId }, postId, playerId)),
       confirmRecruitingMatch: (postId) => {
         let createdId = null;
         setState((prev) => {
