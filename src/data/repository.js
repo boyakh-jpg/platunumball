@@ -62,6 +62,7 @@ const REMOTE_WRITE_CHUNK_SIZE = 500;
 const QUEUE_SCHEDULE_START_DATE = "2026-06-15";
 const QUEUE_SCHEDULE_TIMES = ["18:00", "19:30", "21:00"];
 const POST_MATCH_STATUSES = new Set(["approval", "disputed"]);
+const RECORDABLE_RESERVE_SOURCES = new Set(["reserve-entry", "team-reserve"]);
 const LIFECYCLE_TITLE_PATTERN = /^(동의 대기|진행 예정|결과 승인|이의 확인|이의제기|확정|결과 입력)\s*·\s*/;
 const POST_MATCH_TITLE_PATTERN = /^(결과 승인|이의 확인|이의제기|확정|결과 입력)\s*·\s*/;
 let normalizedSaveWarningShown = false;
@@ -1154,7 +1155,7 @@ function getValidRecruitingRecorder(post, state, sideName, playerId) {
   const playingIds = new Set([...lobby.sides.teamA.projectedPlayers, ...lobby.sides.teamB.projectedPlayers]);
   const candidate = (lobby.sides[sideName]?.reserveCandidates ?? []).find((item) => (
     item.playerId === playerId &&
-    item.source === "reserve-entry" &&
+    RECORDABLE_RESERVE_SOURCES.has(item.source) &&
     item.status === "ready" &&
     !playingIds.has(item.playerId)
   ));

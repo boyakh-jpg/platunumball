@@ -39,6 +39,7 @@ const SIDE_LABELS = {
   teamA: "A팀",
   teamB: "B팀",
 };
+const RECORDABLE_RESERVE_SOURCES = new Set(["reserve-entry", "team-reserve"]);
 
 function formatWhen(value) {
   if (!value) return "방금";
@@ -142,7 +143,7 @@ function getLobbyRecorderIds(lobby, recorders = {}) {
     const playerId = recorders[sideName] ?? "";
     const candidate = (lobby.sides[sideName].reserveCandidates ?? []).find((item) => (
       item.playerId === playerId &&
-      item.source === "reserve-entry" &&
+      RECORDABLE_RESERVE_SOURCES.has(item.source) &&
       item.status === "ready" &&
       !playingIds.has(item.playerId)
     ));
@@ -381,7 +382,7 @@ function ReserveLine({ sideName, candidates, playingIds, userById, teams, canMan
         {candidates.map((candidate, index) => {
           const user = userById[candidate.playerId];
           if (!user) return null;
-          const canRecord = candidate.source === "reserve-entry" && candidate.status === "ready" && !playingSet.has(candidate.playerId);
+          const canRecord = RECORDABLE_RESERVE_SOURCES.has(candidate.source) && candidate.status === "ready" && !playingSet.has(candidate.playerId);
           const assigned = recorderId === candidate.playerId;
           return (
             <PlayerHoverCard key={`${sideName}-${candidate.playerId}`} user={user} teams={teams} className={canRecord ? "ow-member-chip compact recorder" : "ow-member-chip compact"}>
