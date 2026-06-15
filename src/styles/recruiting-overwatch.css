@@ -533,6 +533,7 @@
   display: grid;
   place-items: end center;
   background: rgba(0, 0, 0, 0.62);
+  overscroll-behavior: contain;
   padding: 18px;
 }
 
@@ -540,6 +541,7 @@
   width: min(760px, 100%);
   max-height: min(820px, calc(100vh - 36px));
   overflow-y: auto;
+  overscroll-behavior: contain;
   border: 1px solid rgba(255, 211, 108, 0.22);
   border-radius: var(--radius);
   background:
@@ -805,6 +807,7 @@
   width: min(1120px, 100%);
   max-height: min(880px, calc(100vh - 36px));
   overflow-y: auto;
+  overscroll-behavior: contain;
   border: 1px solid rgba(255, 211, 108, 0.22);
   border-radius: var(--radius);
   background:

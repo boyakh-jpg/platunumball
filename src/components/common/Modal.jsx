@@ -1,7 +1,10 @@
 import { X } from "lucide-react";
+import useBodyScrollLock from "../../hooks/useBodyScrollLock.js";
 import Button from "./Button.jsx";
 
 export default function Modal({ open, title, children, onClose }) {
+  useBodyScrollLock(open);
+
   if (!open) return null;
 
   return (

@@ -17,6 +17,7 @@ import Button from "../components/common/Button.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import TierBadge from "../components/rating/TierBadge.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
+import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { COURTS, MATCH_MODES, PLAYER_POSITIONS, REGIONS } from "../lib/constants.js";
 import {
   RECRUITING_JOIN_MODES,
@@ -373,6 +374,8 @@ export default function Recruiting({ app }) {
   const selectedPost = selectedPostId
     ? app.state.recruitingPosts.find((post) => post.id === selectedPostId)
     : null;
+  useBodyScrollLock(Boolean(selectedPost) || composeOpen);
+
   const rankedCount = visibleBasePosts.filter((post) => post.ranked !== false).length;
   const friendlyCount = visibleBasePosts.length - rankedCount;
   const playerEntryCount = scopedPosts.filter((post) => canEnterPost(post, "player")).length;

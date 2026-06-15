@@ -11,6 +11,7 @@ import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import MmrChange from "../components/rating/MmrChange.jsx";
 import ShareCard from "../components/share/ShareCard.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
+import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { PLAYER_STAT_FIELDS } from "../lib/constants.js";
 import {
   formatStatLine,
@@ -74,6 +75,7 @@ export default function MatchRoom({ app }) {
   });
   const [disputeReason, setDisputeReason] = useState("스코어 또는 개인 기록 재확인 필요");
   const [statEditorPlayerId, setStatEditorPlayerId] = useState(null);
+  useBodyScrollLock(Boolean(statEditorPlayerId));
 
   if (!match) return <Navigate to="/app/create" replace />;
 

@@ -519,17 +519,18 @@ h3 {
 
 span.player-hover-card,
 span.team-hover-card {
-  position: absolute;
-  z-index: 80;
-  top: calc(100% + 10px);
-  left: 0;
-  display: none !important;
-  width: min(330px, calc(100vw - 28px));
-  min-width: 280px;
+  position: fixed;
+  z-index: 1000;
+  display: grid !important;
+  width: min(360px, calc(100vw - 24px));
+  min-width: min(320px, calc(100vw - 24px));
+  max-height: calc(100vh - 24px);
   gap: 12px;
+  overflow: hidden;
   pointer-events: none;
-  opacity: 0;
-  transform: translateY(-6px);
+  overscroll-behavior: contain;
+  opacity: 1;
+  transform: translateY(0);
   border: 1px solid rgba(70, 224, 182, 0.28);
   border-radius: 10px;
   background:
@@ -538,15 +539,6 @@ span.team-hover-card {
   box-shadow: 0 24px 70px rgba(0, 0, 0, 0.46);
   padding: 12px;
   transition: opacity 0.14s ease, transform 0.14s ease;
-}
-
-.player-hover-trigger:hover .player-hover-card,
-.player-hover-trigger:focus-visible .player-hover-card,
-.team-hover-trigger:hover .team-hover-card,
-.team-hover-trigger:focus-visible .team-hover-card {
-  display: grid !important;
-  opacity: 1;
-  transform: translateY(0);
 }
 
 .player-hover-head,
@@ -594,12 +586,30 @@ span.team-hover-card {
 
 .player-hover-tier-grid > span {
   display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  align-items: center;
   min-width: 0;
-  gap: 4px;
+  gap: 8px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.045);
   padding: 8px;
+}
+
+.player-hover-tier-grid > span > span {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.player-hover-card .tier-emblem-sm {
+  width: 48px;
+}
+
+.player-hover-card .tier-badge-compact img,
+.team-hover-card .tier-badge-compact img {
+  width: 24px;
+  height: 24px;
 }
 
 .player-hover-tier-grid b,
@@ -627,12 +637,16 @@ span.team-hover-card {
 }
 
 .team-hover-tier {
-  grid-template-columns: 68px minmax(0, 1fr);
+  grid-template-columns: 88px minmax(0, 1fr);
   align-items: center;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.045);
   padding: 8px;
+}
+
+.team-hover-card .tier-emblem-md {
+  width: 82px;
 }
 
 .team-hover-stats {
@@ -2044,11 +2058,15 @@ input[type="color"] {
   display: grid;
   place-items: center;
   background: rgba(0, 0, 0, 0.52);
+  overscroll-behavior: contain;
   padding: 18px;
 }
 
 .modal {
   width: min(520px, 100%);
+  max-height: calc(100vh - 36px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--surface);

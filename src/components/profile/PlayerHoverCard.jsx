@@ -1,5 +1,8 @@
+import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import HoverPortal from "../common/HoverPortal.jsx";
 import TierBadge from "../rating/TierBadge.jsx";
+import TierEmblem from "../rating/TierEmblem.jsx";
 
 const rolePriority = {
   captain: 0,
@@ -28,6 +31,9 @@ function roleLabel(role) {
 }
 
 export default function PlayerHoverCard({ user, teams = [], children, className = "", as = "link", to }) {
+  const [open, setOpen] = useState(false);
+  const anchorRef = useRef(null);
+
   if (!user) return children ?? null;
 
   const userTeams = getUserTeams(user.id, teams);
@@ -38,11 +44,29 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
   ].filter(([, mmr]) => Number.isFinite(Number(mmr)));
   const Component = as === "span" ? "span" : Link;
   const props = as === "span" ? {} : { to: to ?? `/app/players/${user.id}` };
+  const showHover = () => setOpen(true);
+  const hideHover = () => setOpen(false);
 
   return (
-    <Component className={`player-hover-trigger ${className}`} {...props}>
+    <Component
+      ref={anchorRef}
+      className={`player-hover-trigger ${className}`}
+      onBlur={hideHover}
+      onFocus={showHover}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") hideHover();
+      }}
+      onMouseEnter={showHover}
+      onMouseLeave={hideHover}
+      {...props}
+    >
       {children}
-      <span className="player-hover-card" role="tooltip">
+      <HoverPortal
+        anchorRef={anchorRef}
+        className="player-hover-card hover-portal-card"
+        estimatedHeight={360}
+        open={open}
+      >
         <span className="player-hover-head">
           <span className="avatar" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
           <span>
@@ -52,9 +76,12 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
         </span>
         <span className="player-hover-tier-grid">
           {modes.map(([mode, mmr]) => (
-            <span key={mode}>
-              <b>{mode}</b>
-              <TierBadge mmr={Number(mmr)} compact />
+            <span className="player-hover-tier-row" key={mode}>
+              <TierEmblem mmr={Number(mmr)} size="sm" />
+              <span>
+                <b>{mode}</b>
+                <TierBadge mmr={Number(mmr)} compact />
+              </span>
             </span>
           ))}
         </span>
@@ -71,7 +98,7 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
             <em>없음</em>
           )}
         </span>
-      </span>
+      </HoverPortal>
     </Component>
   );
 }
