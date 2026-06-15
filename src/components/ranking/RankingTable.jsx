@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import Badge from "../common/Badge.jsx";
 import PlayerHoverCard from "../profile/PlayerHoverCard.jsx";
 import TierBadge from "../rating/TierBadge.jsx";
+import TeamHoverCard from "../team/TeamHoverCard.jsx";
 
 export default function RankingTable({ rows, type = "players", mode = "integrated", teams = [] }) {
   return (
@@ -24,12 +25,21 @@ export default function RankingTable({ rows, type = "players", mode = "integrate
                 </div>
               </PlayerHoverCard>
             ) : (
-              <Link className="ranking-name" to={type === "teams" ? `/app/teams/${row.id}` : "/app/affiliations"}>
+              type === "teams" ? (
+                <TeamHoverCard team={row} className="ranking-name">
+                  <div>
+                    <strong>{row.name}</strong>
+                    <span>{row.homeCourt}</span>
+                  </div>
+                </TeamHoverCard>
+              ) : (
+              <Link className="ranking-name" to="/app/affiliations">
                 <div>
                   <strong>{row.name}</strong>
                   <span>{row.homeCourt ?? row.type}</span>
                 </div>
               </Link>
+              )
             )}
             {type === "players" || type === "teams" ? <TierBadge mmr={mmr} compact /> : <Badge tone="blue">{row.wins}승</Badge>}
             <strong className="ranking-score">{Math.round(mmr)}</strong>

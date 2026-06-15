@@ -1,11 +1,11 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import { Crown, PlusCircle, Search, Shield, Swords } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import TierBadge from "../components/rating/TierBadge.jsx";
 import TeamCard from "../components/team/TeamCard.jsx";
+import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { COURTS, MAX_TEAM_MEMBERSHIPS, REGIONS } from "../lib/constants.js";
 
 const allRegions = ["전체", ...REGIONS];
@@ -108,7 +108,7 @@ export default function Teams({ app }) {
         </div>
         <div className="team-hub-board">
           <span><Crown size={18} /> 전체 1위 팀</span>
-          <strong>{topTeam?.name}</strong>
+          <TeamHoverCard team={topTeam} as="span"><strong>{topTeam?.name}</strong></TeamHoverCard>
           <em>{topTeam?.mmr} MMR · {topTeam?.wins}승 {topTeam?.losses}패 · {topTeam?.played}경기</em>
           <div>
             <span><Shield size={16} /> MMR 우선</span>
@@ -131,14 +131,14 @@ export default function Teams({ app }) {
               const winRate = team.played ? Math.round((team.wins / team.played) * 100) : 0;
               const isCaptain = team.myRole === "captain";
               return (
-                <Link key={team.id} className="my-team-row" to={`/app/teams/${team.id}${isCaptain ? "#team-control" : ""}`}>
+                <TeamHoverCard key={team.id} team={team} className="my-team-row" to={`/app/teams/${team.id}${isCaptain ? "#team-control" : ""}`}>
                   <span className="team-rank-chip">#{team.rank}</span>
                   <span className="team-mini-dot" style={{ "--team-color": team.accent }} />
                   <strong>{team.name}</strong>
                   <em>{roleLabels[team.myRole] ?? team.myRole} · {team.mmr} MMR · {winRate}%</em>
                   <TierBadge mmr={team.mmr} compact />
                   <b>{isCaptain ? "관리" : "상세"}</b>
-                </Link>
+                </TeamHoverCard>
               );
             }) : (
               <div className="empty-state">소속 팀이 없습니다. 오른쪽에서 팀을 만들거나 모집에 지원하세요.</div>
@@ -187,7 +187,7 @@ export default function Teams({ app }) {
           <div>
             {favoriteTeams.map((team) => (
               <button key={team.id} type="button" onClick={() => { setRegion(team.region); setQuery(team.name); }}>
-                <strong>{team.name}</strong>
+                <TeamHoverCard team={team} as="span"><strong>{team.name}</strong></TeamHoverCard>
                 <span>{team.region} · {team.mmr} MMR</span>
               </button>
             ))}

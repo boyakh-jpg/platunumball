@@ -2,6 +2,7 @@ import { Link, useParams } from "react-router-dom";
 import { CalendarDays, ChevronLeft, Save, ShieldCheck, Trophy } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import TierBadge from "../components/rating/TierBadge.jsx";
+import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 
 const formatLabels = {
   league: "리그",
@@ -152,7 +153,7 @@ export default function TournamentDetail({ app }) {
             <article key={row.teamId} className={row.status === "accepted" ? "accepted" : ""}>
               <div className="team-emblem" style={{ "--team-color": row.team.accent }}>{row.team.name.slice(0, 1)}</div>
               <div>
-                <Link to={`/app/teams/${row.team.id}`}>{row.team.name}</Link>
+                <TeamHoverCard team={row.team}>{row.team.name}</TeamHoverCard>
                 <span>{row.team.region} · {row.team.homeCourt} · 주장 {row.captainName}</span>
               </div>
               <TierBadge mmr={row.team.mmr} compact />
@@ -192,16 +193,16 @@ export default function TournamentDetail({ app }) {
                   const winner = match ? getWinnerName(match) : "";
                   return (
                     <article key={pairing.matchId} className={winner ? "done" : ""}>
-                      <span>{teamById[pairing.teamAId]?.name ?? "TBD"}</span>
+                      <TeamHoverCard team={teamById[pairing.teamAId]} as="span">{teamById[pairing.teamAId]?.name ?? "TBD"}</TeamHoverCard>
                       <strong>vs</strong>
-                      <span>{teamById[pairing.teamBId]?.name ?? "TBD"}</span>
+                      <TeamHoverCard team={teamById[pairing.teamBId]} as="span">{teamById[pairing.teamBId]?.name ?? "TBD"}</TeamHoverCard>
                       {winner ? <em>{winner} 승</em> : <em>{match ? getMatchTime(match) : "일정 미정"}</em>}
                     </article>
                   );
                 })}
                 {(round.byes ?? []).map((teamId) => (
                   <article key={`bye-${teamId}`} className="bye">
-                    <span>{teamById[teamId]?.name ?? "TBD"}</span>
+                    <TeamHoverCard team={teamById[teamId]} as="span">{teamById[teamId]?.name ?? "TBD"}</TeamHoverCard>
                     <strong>BYE</strong>
                     <em>부전승</em>
                   </article>
@@ -224,9 +225,9 @@ export default function TournamentDetail({ app }) {
               return (
                 <article key={fixture.matchId ?? `${fixture.teamAId}-${fixture.teamBId}`}>
                   <span>{fixture.fixture}경기</span>
-                  <strong>{teamById[fixture.teamAId]?.name ?? match?.teamA.name ?? "TBD"}</strong>
+                  <TeamHoverCard team={teamById[fixture.teamAId]}><strong>{teamById[fixture.teamAId]?.name ?? match?.teamA.name ?? "TBD"}</strong></TeamHoverCard>
                   <b>vs</b>
-                  <strong>{teamById[fixture.teamBId]?.name ?? match?.teamB.name ?? "TBD"}</strong>
+                  <TeamHoverCard team={teamById[fixture.teamBId]}><strong>{teamById[fixture.teamBId]?.name ?? match?.teamB.name ?? "TBD"}</strong></TeamHoverCard>
                   <em>{match ? getMatchTime(match) : "일정 미정"}</em>
                 </article>
               );
@@ -247,7 +248,11 @@ export default function TournamentDetail({ app }) {
           <div className="tournament-schedule-list">
             {tournamentMatches.map((match) => (
               <form key={match.id} onSubmit={(event) => saveSchedule(event, match.id)}>
-                <Link to={`/app/matches/${match.id}`}>{match.teamA.name} vs {match.teamB.name}</Link>
+                <Link to={`/app/matches/${match.id}`}>
+                  <TeamHoverCard team={teamById[match.teamA.teamId]} as="span">{match.teamA.name}</TeamHoverCard>
+                  {" vs "}
+                  <TeamHoverCard team={teamById[match.teamB.teamId]} as="span">{match.teamB.name}</TeamHoverCard>
+                </Link>
                 <span>{match.status === "confirmed" ? "확정" : match.status === "agreed" ? "예정" : "대기"}</span>
                 <input type="date" name="scheduledDate" defaultValue={match.scheduledDate ?? ""} aria-label="경기 날짜" />
                 <input type="time" name="scheduledTime" defaultValue={match.scheduledTime ?? ""} aria-label="경기 시간" />

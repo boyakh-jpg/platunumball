@@ -447,6 +447,7 @@
 }
 
 .om-tournament-teams strong,
+.om-tournament-teams .team-hover-trigger,
 .om-tournament-fixture-row a {
   min-width: 0;
   overflow: hidden;
@@ -489,6 +490,12 @@
   font-size: 0.76rem;
   font-weight: 900;
   padding: 7px 9px;
+}
+
+.om-tournament-pairings span .team-hover-trigger {
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
 }
 
 .om-tournament-fixture-row {
@@ -620,6 +627,7 @@
 }
 
 .tournament-team-list a,
+.tournament-team-list .team-hover-trigger,
 .tournament-schedule-list a {
   min-width: 0;
   overflow: hidden;
@@ -701,8 +709,10 @@
   grid-template-columns: minmax(0, 1fr) auto;
 }
 
-.tournament-round article span,
-.league-fixture-grid strong {
+.tournament-round article > span,
+.tournament-round article > .team-hover-trigger,
+.league-fixture-grid strong,
+.league-fixture-grid article > .team-hover-trigger {
   min-width: 0;
   overflow: hidden;
   color: var(--text);
@@ -742,6 +752,10 @@
   color: var(--gold);
   font-size: 0.72rem;
   font-weight: 950;
+}
+
+.league-fixture-grid article > .team-hover-trigger {
+  color: var(--text);
 }
 
 .tournament-schedule-list form {
@@ -953,7 +967,8 @@
   text-align: center;
 }
 
-.om-score-box a {
+.om-score-box a,
+.om-score-box > .team-hover-trigger {
   min-width: 0;
   overflow: hidden;
   color: var(--muted);

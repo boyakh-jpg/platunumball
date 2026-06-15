@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, PlusCircle, ShieldAlert, Swords, Trophy } from "lucide-react";
 import Button from "../components/common/Button.jsx";
+import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { MATCH_MODES } from "../lib/constants.js";
 
 const STATUS_META = {
@@ -397,7 +398,7 @@ export default function Matches({ app }) {
                     {teamRows.map((row) => (
                       <div key={row.teamId} className={row.status === "accepted" ? "accepted" : ""}>
                         <span>
-                          <strong>{row.team.name}</strong>
+                          <TeamHoverCard team={row.team}><strong>{row.team.name}</strong></TeamHoverCard>
                           <em>{row.team.mmr} MMR · 주장 {row.captainName}</em>
                         </span>
                         {row.canApprove ? (
@@ -412,7 +413,9 @@ export default function Matches({ app }) {
                     <div className="om-tournament-pairings">
                       {pairingPreview.slice(0, 4).map((pairing) => (
                         <span key={pairing.matchId ?? `${pairing.round}-${pairing.fixture}`}>
-                          {teamById[pairing.teamAId]?.name ?? "TBD"} vs {teamById[pairing.teamBId]?.name ?? "TBD"}
+                          <TeamHoverCard team={teamById[pairing.teamAId]}>{teamById[pairing.teamAId]?.name ?? "TBD"}</TeamHoverCard>
+                          {" vs "}
+                          <TeamHoverCard team={teamById[pairing.teamBId]}>{teamById[pairing.teamBId]?.name ?? "TBD"}</TeamHoverCard>
                         </span>
                       ))}
                     </div>
@@ -421,7 +424,11 @@ export default function Matches({ app }) {
                     <div className="om-tournament-fixtures">
                       {tournamentMatches.slice(0, 6).map((match) => (
                         <form key={match.id} className="om-tournament-fixture-row" onSubmit={(event) => saveTournamentSchedule(event, tournament.id, match.id)}>
-                          <Link to={`/app/matches/${match.id}`}>{match.teamA.name} vs {match.teamB.name}</Link>
+                          <Link to={`/app/matches/${match.id}`}>
+                            <TeamHoverCard team={teamById[match.teamA.teamId]} as="span">{match.teamA.name}</TeamHoverCard>
+                            {" vs "}
+                            <TeamHoverCard team={teamById[match.teamB.teamId]} as="span">{match.teamB.name}</TeamHoverCard>
+                          </Link>
                           <input type="date" name="scheduledDate" defaultValue={match.scheduledDate ?? ""} aria-label="경기 날짜" />
                           <input type="time" name="scheduledTime" defaultValue={match.scheduledTime ?? ""} aria-label="경기 시간" />
                           <button type="submit">저장</button>
@@ -484,9 +491,9 @@ export default function Matches({ app }) {
                 <p><CalendarDays size={15} />{formatMatchTime(match)} · {match.court}</p>
               </div>
               <div className="om-score-box">
-                <Link to={`/app/teams/${match.teamA.teamId}`}>{match.teamA.name}</Link>
+                <TeamHoverCard team={teamById[match.teamA.teamId]} to={`/app/teams/${match.teamA.teamId}`}>{match.teamA.name}</TeamHoverCard>
                 <strong>{scoreA} : {scoreB}</strong>
-                <Link to={`/app/teams/${match.teamB.teamId}`}>{match.teamB.name}</Link>
+                <TeamHoverCard team={teamById[match.teamB.teamId]} to={`/app/teams/${match.teamB.teamId}`}>{match.teamB.name}</TeamHoverCard>
                 {winner ? <span>{winner} 우세</span> : null}
               </div>
               <Link className="button button-secondary button-md om-room-link" to={`/app/matches/${match.id}`}>

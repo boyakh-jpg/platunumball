@@ -1,8 +1,8 @@
-import { Link } from "react-router-dom";
 import { Star } from "lucide-react";
 import Badge from "../common/Badge.jsx";
 import Card from "../common/Card.jsx";
 import TierBadge from "../rating/TierBadge.jsx";
+import TeamHoverCard from "./TeamHoverCard.jsx";
 import TeamMemberList from "./TeamMemberList.jsx";
 
 export default function TeamCard({ team, users, teams = [team], compact = false, linked = true, favorite = false, onToggleFavorite, rank }) {
@@ -13,7 +13,7 @@ export default function TeamCard({ team, users, teams = [team], compact = false,
       <div className="team-card-top">
         <div>
           <p className="eyebrow">{team.region} · {team.homeCourt}</p>
-          {linked ? <Link to={`/app/teams/${team.id}`}><h3>{team.name}</h3></Link> : <h3>{team.name}</h3>}
+          {linked ? <TeamHoverCard team={team}><h3>{team.name}</h3></TeamHoverCard> : <TeamHoverCard team={team} as="span"><h3>{team.name}</h3></TeamHoverCard>}
         </div>
         <div className="team-card-actions">
           {rank ? <Badge tone={rank <= 3 ? "gold" : "blue"}>#{rank}</Badge> : null}

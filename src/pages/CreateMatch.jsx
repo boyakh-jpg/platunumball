@@ -7,6 +7,7 @@ import Card from "../components/common/Card.jsx";
 import EvidenceSelector from "../components/match/EvidenceSelector.jsx";
 import RuleSelector from "../components/match/RuleSelector.jsx";
 import TeamBuilder from "../components/match/TeamBuilder.jsx";
+import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { COURTS, EVIDENCE_OPTIONS, MATCH_MODES, REGIONS } from "../lib/constants.js";
 import { getRecruitingSideCapacity, getRecruitingTierRange, getSelectableTeamPlayerIds, isMmrInRecruitingRange } from "../lib/recruiting.js";
 
@@ -601,7 +602,7 @@ export default function CreateMatch({ app }) {
                 const selected = isTournamentRoom ? invited : draft.teamAId === team.id || draft.teamBId === team.id;
                 return (
                   <button key={team.id} type="button" className={selected ? "favorite-pick selected" : "favorite-pick"}>
-                    <strong><Star size={15} fill="currentColor" /> {team.name}</strong>
+                    <TeamHoverCard team={team} as="span"><strong><Star size={15} fill="currentColor" /> {team.name}</strong></TeamHoverCard>
                     <span>{team.region} · {team.mmr} MMR</span>
                     <small>
                       {isTournamentRoom ? (
@@ -626,7 +627,7 @@ export default function CreateMatch({ app }) {
                   const invited = (draft.tournamentTeamIds ?? []).includes(team.id);
                   return (
                     <button key={team.id} type="button" className={invited ? "active" : ""} onClick={() => toggleTournamentTeam(team.id)}>
-                      <strong>{team.name}</strong>
+                      <TeamHoverCard team={team} as="span"><strong>{team.name}</strong></TeamHoverCard>
                       <span>{team.region} · {team.homeCourt}</span>
                       <em>{team.mmr} MMR</em>
                     </button>

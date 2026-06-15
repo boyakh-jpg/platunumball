@@ -7,6 +7,7 @@ import Card from "../components/common/Card.jsx";
 import MatchCard from "../components/match/MatchCard.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
+import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { COURTS } from "../lib/constants.js";
 import { RECRUITING_TYPES, isRecruitingPostForUser, isNationalRecruitingPost } from "../lib/recruiting.js";
 import { getCurrentSeason, getPlayerSeasonRows, getSeasonProgress } from "../lib/season.js";
@@ -80,6 +81,7 @@ export default function Home({ app }) {
   const upcomingMatches = [...app.state.matches].filter((match) => ["contract", "agreed"].includes(match.status) && matchHasUser(match, user.id)).sort(compareSchedule);
   const completedMatches = [...app.state.matches].filter((match) => match.status === "confirmed");
   const myTeam = app.state.teams.find((team) => team.members.some((member) => member.userId === user.id));
+  const teamById = useMemo(() => Object.fromEntries(app.state.teams.map((team) => [team.id, team])), [app.state.teams]);
   const myTeams = app.state.teams
     .filter((team) => team.members.some((member) => member.userId === user.id))
     .map((team) => ({ ...team, myRole: team.members.find((member) => member.userId === user.id)?.role ?? "regular" }))
@@ -199,6 +201,7 @@ export default function Home({ app }) {
       kind: "TEAM",
       meta: `${team.region} · ${team.homeCourt} · ${team.mmr}`,
       href: `/app/teams/${team.id}`,
+      team,
       score: Number(team.region === user.region) * 10000 + team.mmr,
       haystack: `${team.name} ${team.region} ${team.homeCourt}`,
       teamColor: team.accent,
@@ -250,16 +253,26 @@ export default function Home({ app }) {
         </div>
         <div className="home-search-results unified opgg-search-results">
           {searchResults.map((item) => (
-            <Link key={item.id} to={item.href}>
-              {item.avatar ? <span className="avatar small" style={{ "--avatar": item.avatar }}>{item.label.slice(0, 1)}</span> : null}
-              {item.teamColor ? <span className="team-mini-dot" style={{ "--team-color": item.teamColor }} /> : null}
-              {item.court ? <span className="court-mini-dot" /> : null}
-              <span className="opgg-result-main">
-                <strong>{item.label}</strong>
-                <em>{item.meta}</em>
-              </span>
-              <small>{item.kind}</small>
-            </Link>
+            item.team ? (
+              <TeamHoverCard key={item.id} team={item.team}>
+                {item.teamColor ? <span className="team-mini-dot" style={{ "--team-color": item.teamColor }} /> : null}
+                <span className="opgg-result-main">
+                  <strong>{item.label}</strong>
+                  <em>{item.meta}</em>
+                </span>
+                <small>{item.kind}</small>
+              </TeamHoverCard>
+            ) : (
+              <Link key={item.id} to={item.href}>
+                {item.avatar ? <span className="avatar small" style={{ "--avatar": item.avatar }}>{item.label.slice(0, 1)}</span> : null}
+                {item.court ? <span className="court-mini-dot" /> : null}
+                <span className="opgg-result-main">
+                  <strong>{item.label}</strong>
+                  <em>{item.meta}</em>
+                </span>
+                <small>{item.kind}</small>
+              </Link>
+            )
           ))}
         </div>
       </Card>
@@ -376,7 +389,7 @@ export default function Home({ app }) {
             </div>
             {upcomingMatches.length ? (
               <div className="match-stack">
-                {upcomingMatches.slice(0, 3).map((match) => <MatchCard key={match.id} match={match} />)}
+                {upcomingMatches.slice(0, 3).map((match) => <MatchCard key={match.id} match={match} teams={app.state.teams} />)}
               </div>
             ) : (
               <div className="empty-state">예정 경기 없음</div>
@@ -410,8 +423,8 @@ export default function Home({ app }) {
                       <>
                         <b>{line.result}</b>
                         <span>
-                          <strong>{line.side.name}</strong>
-                          <em>vs {line.opponent.name} · {match.court}</em>
+                          <TeamHoverCard team={teamById[line.side.teamId]} as="span"><strong>{line.side.name}</strong></TeamHoverCard>
+                          <em>vs <TeamHoverCard team={teamById[line.opponent.teamId]} as="span">{line.opponent.name}</TeamHoverCard> · {match.court}</em>
                         </span>
                         <i>{line.score}:{line.opponentScore}</i>
                       </>
@@ -458,10 +471,10 @@ export default function Home({ app }) {
             </div>
             <div className="compact-list rivalry-list">
               {localRivals.length ? localRivals.map((team) => (
-                <Link key={team.id} to={`/app/teams/${team.id}`}>
+                <TeamHoverCard key={team.id} team={team}>
                   <span>{team.name}</span>
                   <strong>{team.gap > 0 ? `+${team.gap}` : team.gap} MMR</strong>
-                </Link>
+                </TeamHoverCard>
               )) : <div><span>지역 라이벌 없음</span><strong>대기</strong></div>}
             </div>
           </Card>
@@ -515,12 +528,12 @@ export default function Home({ app }) {
             </div>
             <div className="home-team-list">
               {myTeams.length ? myTeams.slice(0, 5).map((team) => (
-                <Link key={team.id} to={`/app/teams/${team.id}`}>
+                <TeamHoverCard key={team.id} team={team}>
                   <span className="team-mini-dot" style={{ "--team-color": team.accent }} />
                   <strong>{team.name}</strong>
                   <em>{team.myRole === "captain" ? "주장" : team.myRole === "regular" ? "정규" : team.myRole === "mercenary" ? "용병" : "후보"}</em>
                   <b>{team.mmr}</b>
-                </Link>
+                </TeamHoverCard>
               )) : <div><span>팀 없음</span><strong>팀 찾기 필요</strong></div>}
             </div>
             <Link to="/app/teams">

@@ -16,6 +16,7 @@ import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import TierBadge from "../components/rating/TierBadge.jsx";
+import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { COURTS, MATCH_MODES, PLAYER_POSITIONS, REGIONS } from "../lib/constants.js";
 import {
   RECRUITING_JOIN_MODES,
@@ -168,7 +169,14 @@ function EntryBlock({ entry, userById, teams }) {
     <div className={`ow-party-block ${entry.status === "ready" ? "ready" : ""}`}>
       <div className="ow-party-head">
         <div>
-          <strong>{getEntryTitle(entry)}</strong>
+          <strong>
+            {entry.team ? (
+              <>
+                <TeamHoverCard team={entry.team} as="span">{entry.team.name}</TeamHoverCard>
+                {entry.fixed ? " · 방장 파티" : " · 팀 파티"}
+              </>
+            ) : getEntryTitle(entry)}
+          </strong>
           <span>{entry.kind === "team" ? `${players.length}명 선택 참여` : getPlayerPosition(entry.user)}</span>
         </div>
         <div className="ow-party-meta">
@@ -497,13 +505,16 @@ export default function Recruiting({ app }) {
                   {roomTag ? <span className="ow-my-room-tag">{roomTag}</span> : null}
                   <span className={`ow-queue-pill ${post.ranked === false ? "friendly" : "ranked"}`}>{post.ranked === false ? "친선전" : "정규전"}</span>
                   <span className="ow-position-pill">{post.mode}</span>
-                  {targetTeam ? <span className="ow-position-pill">희망 상대 {targetTeam.name}</span> : null}
+                  {targetTeam ? <span className="ow-position-pill">희망 상대 <TeamHoverCard team={targetTeam} as="span">{targetTeam.name}</TeamHoverCard></span> : null}
                   {isNationalRecruitingPost(post, app.state) ? <span className="ow-position-pill">전국 노출</span> : null}
                 </div>
                 <h3>{post.title}</h3>
                 <div className="ow-card-meta">
                   <MapPin size={15} />
-                  <span>{post.region} · {post.court} · {hostTeam?.name ?? host?.name ?? "방장"}</span>
+                  <span>
+                    {post.region} · {post.court} · {" "}
+                    {hostTeam ? <TeamHoverCard team={hostTeam} as="span">{hostTeam.name}</TeamHoverCard> : host?.name ?? "방장"}
+                  </span>
                 </div>
                 <div className="ow-lobby-meter-grid">
                   {["teamA", "teamB"].map((sideName) => (

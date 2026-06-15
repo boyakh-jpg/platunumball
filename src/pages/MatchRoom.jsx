@@ -10,6 +10,7 @@ import Card from "../components/common/Card.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import MmrChange from "../components/rating/MmrChange.jsx";
 import ShareCard from "../components/share/ShareCard.jsx";
+import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { PLAYER_STAT_FIELDS } from "../lib/constants.js";
 import {
   formatStatLine,
@@ -96,8 +97,10 @@ export default function MatchRoom({ app }) {
   const isContractStage = match.status === "contract";
   const scoreA = getDisplayScore(match, "teamA");
   const scoreB = getDisplayScore(match, "teamB");
-  const teamAMmr = getTeamMmr(app.state.teams, match.teamA.teamId);
-  const teamBMmr = getTeamMmr(app.state.teams, match.teamB.teamId);
+  const teamA = app.state.teams.find((team) => team.id === match.teamA.teamId);
+  const teamB = app.state.teams.find((team) => team.id === match.teamB.teamId);
+  const teamAMmr = teamA?.mmr ?? getTeamMmr(app.state.teams, match.teamA.teamId);
+  const teamBMmr = teamB?.mmr ?? getTeamMmr(app.state.teams, match.teamB.teamId);
   const winnerName = Number(scoreA) === Number(scoreB) ? "" : Number(scoreA) > Number(scoreB) ? match.teamA.name : match.teamB.name;
   const matchKind = match.ranked === false ? "친선전" : "정규전";
   const renderHeroRoster = (sideName) => {
@@ -198,7 +201,7 @@ export default function MatchRoom({ app }) {
           <div className="gm-team-panel team-a">
             <div className="gm-team-head">
               <span>HOME TEAM</span>
-              <Link to={`/app/teams/${match.teamA.teamId}`}>{match.teamA.name}</Link>
+              <TeamHoverCard team={teamA} to={`/app/teams/${match.teamA.teamId}`}>{match.teamA.name}</TeamHoverCard>
               <em>{teamAMmr || "-"} MMR</em>
             </div>
             {renderHeroRoster("teamA")}
@@ -214,7 +217,7 @@ export default function MatchRoom({ app }) {
           <div className="gm-team-panel team-b">
             <div className="gm-team-head">
               <span>OPPONENT</span>
-              <Link to={`/app/teams/${match.teamB.teamId}`}>{match.teamB.name}</Link>
+              <TeamHoverCard team={teamB} to={`/app/teams/${match.teamB.teamId}`}>{match.teamB.name}</TeamHoverCard>
               <em>{teamBMmr || "-"} MMR</em>
             </div>
             {renderHeroRoster("teamB")}

@@ -356,3 +356,107 @@ html[data-theme="light"] .gm-room-actions > div {
     padding: 8px 5px;
   }
 }
+
+.team-hover-trigger > span.team-hover-card {
+  position: absolute !important;
+  z-index: 120 !important;
+  top: calc(100% + 10px) !important;
+  left: 0 !important;
+  display: none !important;
+  width: min(330px, calc(100vw - 28px)) !important;
+  min-width: 280px !important;
+  gap: 12px !important;
+  pointer-events: none !important;
+  overflow: visible !important;
+  color: var(--text) !important;
+  font-size: 1rem !important;
+  font-weight: 400 !important;
+  line-height: 1.2 !important;
+  text-align: left !important;
+  white-space: normal !important;
+  opacity: 0 !important;
+  transform: translateY(-6px) !important;
+  border: 1px solid rgba(70, 224, 182, 0.28) !important;
+  border-radius: 10px !important;
+  background:
+    linear-gradient(145deg, rgba(5, 8, 12, 0.98), rgba(8, 14, 22, 0.96)),
+    rgba(5, 8, 12, 0.98) !important;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.46) !important;
+  padding: 12px !important;
+}
+
+.team-hover-trigger:hover > span.team-hover-card,
+.team-hover-trigger:focus-visible > span.team-hover-card {
+  display: grid !important;
+  opacity: 1 !important;
+  transform: translateY(0) !important;
+}
+
+span.team-hover-card .team-hover-head,
+span.team-hover-card .team-hover-tier {
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+span.team-hover-card .team-hover-tier {
+  grid-template-columns: 68px minmax(0, 1fr) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 8px !important;
+  background: rgba(255, 255, 255, 0.045) !important;
+  padding: 8px !important;
+}
+
+span.team-hover-card .team-hover-head > span:last-child,
+span.team-hover-card .team-hover-tier > span {
+  display: grid !important;
+  min-width: 0 !important;
+  gap: 4px !important;
+}
+
+span.team-hover-card .team-hover-stats {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 7px !important;
+}
+
+span.team-hover-card .team-hover-stats > span {
+  display: grid !important;
+  min-width: 0 !important;
+  gap: 2px !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 8px !important;
+  background: rgba(255, 255, 255, 0.045) !important;
+  padding: 8px !important;
+}
+
+span.team-hover-card strong {
+  overflow-wrap: anywhere !important;
+  color: var(--text) !important;
+  font-size: 1rem !important;
+  font-weight: 950 !important;
+  white-space: normal !important;
+}
+
+span.team-hover-card b {
+  color: var(--gold) !important;
+  font-size: 0.72rem !important;
+  font-weight: 950 !important;
+}
+
+span.team-hover-card em {
+  color: var(--muted) !important;
+  font-size: 0.76rem !important;
+  font-style: normal !important;
+  font-weight: 850 !important;
+  white-space: normal !important;
+}
+
+html[data-theme="light"] .team-hover-trigger > span.team-hover-card {
+  border-color: rgba(32, 56, 68, 0.16) !important;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(246, 250, 246, 0.96)),
+    rgba(255, 255, 255, 0.98) !important;
+  box-shadow: 0 22px 55px rgba(21, 38, 46, 0.18) !important;
+}

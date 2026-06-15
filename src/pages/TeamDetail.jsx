@@ -8,6 +8,7 @@ import MemberTypeBadge from "../components/team/MemberTypeBadge.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import TierBadge from "../components/rating/TierBadge.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
+import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { MAX_TEAM_MEMBERSHIPS, TEAM_ROLES } from "../lib/constants.js";
 
 function getTeamSide(match, teamId) {
@@ -40,6 +41,7 @@ export default function TeamDetail({ app }) {
   if (!team) return <Navigate to="/app/teams" replace />;
 
   const userMap = Object.fromEntries(app.state.users.map((user) => [user.id, user]));
+  const teamById = Object.fromEntries(app.state.teams.map((item) => [item.id, item]));
   const membershipCounts = new Map();
   app.state.teams.forEach((item) => {
     item.members.forEach((member) => membershipCounts.set(member.userId, (membershipCounts.get(member.userId) ?? 0) + 1));
@@ -219,7 +221,7 @@ export default function TeamDetail({ app }) {
                       })}
                     </div>
                     <p>
-                      상대 {opponent.name}
+                      상대 <TeamHoverCard team={teamById[opponent.teamId]} as="span">{opponent.name}</TeamHoverCard>
                       {reserveUsed.length ? ` · 후보/용병 ${reserveUsed.map((member) => `${userMap[member.userId]?.name ?? "플레이어"}(${TEAM_ROLES[member.role]})`).join(", ")}` : ""}
                     </p>
                   </article>
