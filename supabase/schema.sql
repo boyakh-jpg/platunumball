@@ -253,3 +253,144 @@ begin
   end if;
 end;
 $$;
+
+do $$
+declare
+  ref_date constant date := date '2026-06-15';
+begin
+  if to_regclass('public.recruiting_posts') is not null then
+    with queued as (
+      select
+        id,
+        row_number() over (order by coalesce(scheduled_date, ref_date), created_at, id) - 1 as idx
+      from public.recruiting_posts
+      where status = 'open'
+        and (
+          scheduled_date is null
+          or scheduled_time is null
+          or scheduled_date < ref_date
+          or scheduled_at is null
+          or btrim(scheduled_at) = ''
+          or scheduled_at !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
+        )
+    ),
+    slots as (
+      select
+        id,
+        ref_date + ((idx / 3)::int) as next_date,
+        (time '18:00' + ((idx % 3) * interval '90 minutes'))::time as next_time
+      from queued
+    )
+    update public.recruiting_posts post
+    set
+      scheduled_date = slots.next_date,
+      scheduled_time = slots.next_time,
+      scheduled_at = slots.next_date::text || ' ' || to_char(slots.next_time, 'HH24:MI')
+    from slots
+    where post.id = slots.id;
+  end if;
+
+  if to_regclass('public.matches') is not null and to_regclass('public.match_results') is not null then
+    with future_results as (
+      select
+        match_row.id,
+        row_number() over (order by coalesce(match_row.scheduled_date, ref_date), match_row.created_at, match_row.id) - 1 as idx
+      from public.matches match_row
+      where exists (
+        select 1
+        from public.match_results result_row
+        where result_row.match_id = match_row.id
+      )
+        and coalesce(match_row.status, '') not in ('void', 'cancelled', 'disputed')
+        and (match_row.scheduled_date is null or match_row.scheduled_date >= ref_date)
+    ),
+    past_slots as (
+      select
+        id,
+        ref_date - 1 - ((idx / 12)::int) as next_date,
+        (time '10:00' + ((idx % 12) * interval '60 minutes'))::time as next_time
+      from future_results
+    )
+    update public.matches match_row
+    set
+      scheduled_date = past_slots.next_date,
+      scheduled_time = past_slots.next_time
+    from past_slots
+    where match_row.id = past_slots.id;
+
+    with unscheduled_open as (
+      select
+        match_row.id,
+        row_number() over (order by coalesce(match_row.created_at, now()), match_row.id) - 1 as idx
+      from public.matches match_row
+      where not exists (
+        select 1
+        from public.match_results result_row
+        where result_row.match_id = match_row.id
+      )
+        and coalesce(match_row.status, '') not in ('void', 'cancelled', 'disputed')
+        and (match_row.scheduled_date is null or match_row.scheduled_time is null)
+    ),
+    open_slots as (
+      select
+        id,
+        ref_date + ((idx / 4)::int) as next_date,
+        (time '18:00' + ((idx % 4) * interval '60 minutes'))::time as next_time
+      from unscheduled_open
+    )
+    update public.matches match_row
+    set
+      scheduled_date = open_slots.next_date,
+      scheduled_time = open_slots.next_time
+    from open_slots
+    where match_row.id = open_slots.id;
+
+    update public.matches match_row
+    set
+      status = 'confirmed',
+      ended_at = coalesce(
+        match_row.ended_at,
+        ((match_row.scheduled_date + coalesce(match_row.scheduled_time, time '20:00')) at time zone 'Asia/Seoul') + interval '90 minutes'
+      ),
+      confirmed_at = coalesce(
+        match_row.confirmed_at,
+        ((match_row.scheduled_date + coalesce(match_row.scheduled_time, time '20:00')) at time zone 'Asia/Seoul') + interval '120 minutes'
+      )
+    where exists (
+      select 1
+      from public.match_results result_row
+      where result_row.match_id = match_row.id
+    )
+      and coalesce(match_row.status, '') not in ('void', 'cancelled', 'disputed')
+      and match_row.scheduled_date < ref_date;
+
+    update public.matches match_row
+    set
+      status = 'approval',
+      ended_at = timestamp with time zone '2026-06-15 00:00:00+09',
+      stat_entry_minutes = greatest(coalesce(match_row.stat_entry_minutes, 60), 1440),
+      dispute_minutes = greatest(coalesce(match_row.dispute_minutes, 120), 2880),
+      confirmed_at = null
+    where not exists (
+      select 1
+      from public.match_results result_row
+      where result_row.match_id = match_row.id
+    )
+      and coalesce(match_row.status, '') not in ('void', 'cancelled', 'disputed')
+      and match_row.scheduled_date < ref_date;
+
+    update public.matches match_row
+    set
+      status = 'agreed',
+      ended_at = null,
+      confirmed_at = null
+    where not exists (
+      select 1
+      from public.match_results result_row
+      where result_row.match_id = match_row.id
+    )
+      and coalesce(match_row.status, '') not in ('void', 'cancelled', 'disputed')
+      and match_row.scheduled_date >= ref_date;
+  end if;
+end;
+$$;
