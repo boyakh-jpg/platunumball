@@ -139,6 +139,13 @@ function getWinner(match) {
   return scoreA > scoreB ? match.teamA.name : match.teamB.name;
 }
 
+function getMatchActionLabel(match) {
+  if (match.status === "contract") return "동의";
+  if (match.status === "agreed") return "경기방";
+  if (match.status === "approval" || match.status === "disputed") return "처리";
+  return "보기";
+}
+
 function getViewCount(matches, view) {
   return matches.filter((match) => view.statuses.includes(match.status)).length;
 }
@@ -556,8 +563,8 @@ export default function Matches({ app }) {
               <div className="om-card-main">
                 <div className="om-card-kicker">
                   <span className={`om-status-pill ${status.tone}`}>{status.label}</span>
-                  <span>{match.mode}</span>
-                  <span>{match.official ? "공식" : "일반"}</span>
+                  <span className="om-card-mode">{match.mode}</span>
+                  <span className="om-card-official">{match.official ? "공식" : "일반"}</span>
                 </div>
                 <h3>{match.title}</h3>
                 <p><CalendarDays size={15} />{formatMatchTime(match)} · {match.court}</p>
@@ -569,7 +576,7 @@ export default function Matches({ app }) {
                 {winner ? <span>{winner} 우세</span> : null}
               </div>
               <Link className="button button-secondary button-md om-room-link" to={`/app/matches/${match.id}`}>
-                경기방
+                {getMatchActionLabel(match)}
               </Link>
             </article>
           );

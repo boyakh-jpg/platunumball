@@ -2014,6 +2014,12 @@ input[type="color"] {
   color: var(--text);
 }
 
+.match-waiting-card .empty-state {
+  display: grid;
+  min-height: 88px;
+  place-items: center;
+}
+
 .court-lines {
   position: absolute;
   inset: 46px;
@@ -4917,6 +4923,45 @@ input[type="color"] {
 .match-stage-contract {
   grid-template-columns: minmax(0, 1fr);
   max-width: 980px;
+}
+
+@media (max-width: 900px) {
+  .match-room .section-card {
+    gap: 12px;
+  }
+
+  .match-room .card {
+    padding: 14px;
+  }
+
+  .match-room .score-form {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  }
+
+  .match-room .score-form > button {
+    grid-column: 1 / -1;
+  }
+
+  .match-room .result-card .score-form input {
+    min-height: 62px;
+    font-size: 2rem;
+  }
+
+  .match-room .stat-referee-panel {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .match-room .stat-integrity-note,
+  .match-room .stat-trust-head span,
+  .match-room .stat-trust-grid span {
+    display: none;
+  }
+
+  .match-room .stat-trust-panel {
+    padding: 10px;
+  }
 }
 
 .player-stat-row {

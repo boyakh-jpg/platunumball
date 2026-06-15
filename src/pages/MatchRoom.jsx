@@ -124,6 +124,9 @@ export default function MatchRoom({ app }) {
   const canResumeApproval = match.status === "disputed";
   const canReport = !["cancelled", "void"].includes(match.status);
   const isContractStage = match.status === "contract";
+  const shouldShowResultEntry = match.status === "approval" || Boolean(match.result) || (match.status === "agreed" && !recordWindow.beforeEnd);
+  const shouldShowApprovalPanel = ["approval", "disputed", "confirmed"].includes(match.status) || Boolean(match.result);
+  const shouldShowWaitingPanel = !shouldShowResultEntry && !shouldShowApprovalPanel;
   const scoreA = getDisplayScore(match, "teamA");
   const scoreB = getDisplayScore(match, "teamB");
   const teamA = app.state.teams.find((team) => team.id === match.teamA.teamId);
@@ -327,14 +330,19 @@ export default function MatchRoom({ app }) {
       ) : (
         <div className="content-grid wide-left">
           <div className="page-stack">
-            <MatchContract match={match} users={app.state.users} teams={app.state.teams} />
-            <AgreementPanel
-              match={match}
-              teams={app.state.teams}
-              users={app.state.users}
-              currentUserId={app.currentUser.id}
-              onAgree={(sideName, playerId) => app.actions.agreeMatch(match.id, sideName, playerId)}
-            />
+            {shouldShowWaitingPanel ? (
+              <Card className="section-card match-waiting-card">
+                <div className="section-title-row">
+                  <div>
+                    <p className="eyebrow">Match state</p>
+                    <h2>경기 시작 대기</h2>
+                  </div>
+                  <Badge tone={status.tone}>{status.label}</Badge>
+                </div>
+                <div className="empty-state">결과 입력은 경기 종료 후 열린다.</div>
+              </Card>
+            ) : null}
+            {shouldShowResultEntry ? (
             <Card className="section-card result-card">
             <div className="section-title-row">
               <div>
@@ -426,7 +434,10 @@ export default function MatchRoom({ app }) {
               </div>
             </form>
             </Card>
-            <ApprovalPanel match={match} teams={app.state.teams} users={app.state.users} currentUserId={app.currentUser.id} onApprove={(sideName, playerId) => app.actions.approveMatch(match.id, sideName, playerId)} />
+            ) : null}
+            {shouldShowApprovalPanel ? (
+              <ApprovalPanel match={match} teams={app.state.teams} users={app.state.users} currentUserId={app.currentUser.id} onApprove={(sideName, playerId) => app.actions.approveMatch(match.id, sideName, playerId)} />
+            ) : null}
           </div>
           <aside className="page-stack">
           <Card className="section-card">
