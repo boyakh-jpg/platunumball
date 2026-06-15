@@ -884,6 +884,7 @@
 }
 
 .tournament-round article em,
+.vertical-bracket-node article em,
 .league-fixture-grid em {
   grid-column: 1 / -1;
   color: var(--muted);
@@ -910,6 +911,145 @@
     linear-gradient(90deg, rgba(116, 169, 255, 0.08), transparent 28%, transparent 72%, rgba(70, 224, 182, 0.08)),
     rgba(5, 8, 13, 0.82);
   padding: 18px;
+}
+
+.tournament-vertical-bracket {
+  --slot-width: 168px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  overflow-x: auto;
+  border: 1px solid rgba(255, 211, 108, 0.18);
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(circle at 50% 12%, rgba(255, 211, 108, 0.14), transparent 13rem),
+    linear-gradient(180deg, rgba(116, 169, 255, 0.08), transparent 34%, rgba(70, 224, 182, 0.07)),
+    rgba(5, 8, 13, 0.82);
+  padding: 18px;
+}
+
+.vertical-bracket-title,
+.vertical-bracket-trophy {
+  display: grid;
+  justify-self: center;
+  place-items: center;
+  border: 1px solid rgba(255, 211, 108, 0.26);
+  border-radius: var(--radius);
+  background: rgba(255, 211, 108, 0.1);
+  text-align: center;
+}
+
+.vertical-bracket-title {
+  gap: 5px;
+  min-width: 230px;
+  min-height: 76px;
+  padding: 12px 18px;
+}
+
+.vertical-bracket-title span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 950;
+}
+
+.vertical-bracket-title strong {
+  max-width: 260px;
+  overflow: hidden;
+  color: var(--gold);
+  font-size: 1.2rem;
+  font-weight: 950;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vertical-bracket-trophy {
+  width: 72px;
+  height: 72px;
+  color: var(--gold);
+  box-shadow: inset 0 0 50px rgba(255, 211, 108, 0.08);
+}
+
+.vertical-bracket-rows {
+  display: grid;
+  min-width: calc(var(--bracket-slots, 2) * var(--slot-width));
+  gap: 34px;
+  padding-top: 12px;
+}
+
+.vertical-bracket-row {
+  display: grid;
+  position: relative;
+  gap: 10px;
+}
+
+.vertical-bracket-row h3 {
+  justify-self: center;
+  color: var(--gold);
+  font-size: 0.9rem;
+  font-weight: 950;
+}
+
+.vertical-bracket-lanes {
+  display: grid;
+  grid-template-columns: repeat(var(--bracket-slots, 2), minmax(var(--slot-width), 1fr));
+  gap: 10px;
+  align-items: start;
+}
+
+.vertical-bracket-node {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  justify-items: center;
+}
+
+.vertical-bracket-row:not(:first-child) .vertical-bracket-node::before {
+  content: "";
+  position: absolute;
+  top: -34px;
+  left: 50%;
+  height: 34px;
+  border-left: 1px solid rgba(255, 211, 108, 0.4);
+}
+
+.vertical-bracket-row:not(:first-child) .vertical-bracket-node::after {
+  content: "";
+  position: absolute;
+  top: -34px;
+  left: 0;
+  right: 0;
+  border-top: 1px solid rgba(255, 211, 108, 0.34);
+}
+
+.vertical-bracket-node > .bracket-match-card {
+  position: relative;
+  display: grid;
+  width: min(100%, 270px);
+  gap: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 10px;
+}
+
+.vertical-bracket-node > .bracket-match-card.done {
+  border-color: rgba(70, 224, 182, 0.24);
+  background: rgba(70, 224, 182, 0.07);
+}
+
+.tournament-vertical-bracket .bracket-match-card > .bracket-connector {
+  position: absolute;
+  bottom: -25px;
+  left: 50%;
+  width: 1px;
+  height: 25px;
+  overflow: hidden;
+  background: rgba(255, 211, 108, 0.42);
+  color: transparent;
+}
+
+.vertical-bracket-row:last-child .bracket-match-card > .bracket-connector {
+  display: none;
 }
 
 .cup-bracket-side {
@@ -1442,9 +1582,13 @@ html[data-theme="light"] .om-empty-state,
 html[data-theme="light"] .tournament-summary-grid > div,
 html[data-theme="light"] .tournament-team-list article,
 html[data-theme="light"] .tournament-cup-bracket,
+html[data-theme="light"] .tournament-vertical-bracket,
 html[data-theme="light"] .cup-winner-card,
 html[data-theme="light"] .cup-trophy-ring,
+html[data-theme="light"] .vertical-bracket-title,
+html[data-theme="light"] .vertical-bracket-trophy,
 html[data-theme="light"] .tournament-round,
+html[data-theme="light"] .vertical-bracket-node > .bracket-match-card,
 html[data-theme="light"] .bracket-team-row,
 html[data-theme="light"] .league-fixture-grid article,
 html[data-theme="light"] .tournament-schedule-list form,
@@ -1590,6 +1734,28 @@ html[data-theme="light"] .tournament-schedule-list input {
 
   .tournament-cup-bracket {
     padding: 10px;
+  }
+
+  .tournament-vertical-bracket {
+    --slot-width: 142px;
+    padding: 10px;
+  }
+
+  .vertical-bracket-title {
+    min-width: 190px;
+  }
+
+  .vertical-bracket-rows {
+    gap: 28px;
+  }
+
+  .vertical-bracket-row:not(:first-child) .vertical-bracket-node::before {
+    top: -28px;
+    height: 28px;
+  }
+
+  .vertical-bracket-row:not(:first-child) .vertical-bracket-node::after {
+    top: -28px;
   }
 
   .tournament-round article > .bracket-connector {

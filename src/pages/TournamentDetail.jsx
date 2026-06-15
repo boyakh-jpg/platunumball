@@ -227,21 +227,24 @@ function renderBracketSource(source, teamById) {
   );
 }
 
-function getCupBracketLayout(bracketTree = []) {
+function getVerticalBracketLayout(bracketTree = []) {
   const finalRound = bracketTree[bracketTree.length - 1] ?? null;
-  const pathRounds = bracketTree.slice(0, -1);
-  const leftRounds = [];
-  const rightRounds = [];
-
-  pathRounds.forEach((round) => {
-    const mid = Math.ceil(round.nodes.length / 2);
-    leftRounds.push({ ...round, nodes: round.nodes.slice(0, mid) });
-    rightRounds.push({ ...round, nodes: round.nodes.slice(mid) });
+  const baseSlots = Math.max(1, bracketTree[0]?.nodes?.length ?? 1);
+  const rounds = [...bracketTree].reverse().map((round) => {
+    const span = Math.max(1, Math.floor(baseSlots / Math.max(1, round.nodes.length)));
+    return {
+      ...round,
+      span,
+      nodes: round.nodes.map((node, index) => ({
+        node,
+        gridColumn: `${index * span + 1} / span ${span}`,
+      })),
+    };
   });
 
   return {
-    leftRounds: leftRounds.filter((round) => round.nodes.length),
-    rightRounds: rightRounds.filter((round) => round.nodes.length),
+    baseSlots,
+    rounds,
     finalNode: finalRound?.nodes?.[0] ?? bracketTree[0]?.nodes?.[0] ?? null,
   };
 }
@@ -300,8 +303,8 @@ export default function TournamentDetail({ app }) {
     .filter((row) => row.team);
   const acceptedCount = teamRows.filter((row) => row.status === "accepted").length;
   const bracketTree = tournament.format === "tournament" ? buildTournamentBracketTree(tournament, matchesById) : [];
-  const cupBracket = tournament.format === "tournament" ? getCupBracketLayout(bracketTree) : { leftRounds: [], rightRounds: [], finalNode: null };
-  const championTeamId = cupBracket.finalNode ? getNodeWinnerTeamId(cupBracket.finalNode) : "";
+  const verticalBracket = tournament.format === "tournament" ? getVerticalBracketLayout(bracketTree) : { baseSlots: 1, rounds: [], finalNode: null };
+  const championTeamId = verticalBracket.finalNode ? getNodeWinnerTeamId(verticalBracket.finalNode) : "";
   const championTeam = championTeamId ? teamById[championTeamId] : null;
   const canManageSchedule = tournament.createdBy === app.currentUser.id;
   const leagueFixtures = tournament.bracket?.fixtures ?? tournamentMatches.map((match) => ({
@@ -401,37 +404,24 @@ export default function TournamentDetail({ app }) {
             <p>초대팀 주장이 모두 승인하면 자동으로 경기와 대진이 열린다.</p>
           </div>
         ) : tournament.format === "tournament" ? (
-          <div className="tournament-bracket tournament-cup-bracket">
-            <div className="cup-bracket-side left">
-              {cupBracket.leftRounds.map((round) => (
-                <div key={round.id} className="tournament-round bracket-round-column">
-                  <h3>{round.name}</h3>
-                  <div className="bracket-lanes">
-                    {round.nodes.map((node) => renderBracketNode(node, teamById))}
-                  </div>
-                </div>
-              ))}
+          <div className="tournament-bracket tournament-vertical-bracket" style={{ "--bracket-slots": verticalBracket.baseSlots }}>
+            <div className="vertical-bracket-title">
+              <span>우승</span>
+              <strong>{championTeam ? <TeamHoverCard team={championTeam} as="span">{championTeam.name}</TeamHoverCard> : "결승 승자"}</strong>
             </div>
-            <div className="cup-bracket-center">
-              <div className="cup-winner-card">
-                <span>우승</span>
-                <strong>{championTeam ? <TeamHoverCard team={championTeam} as="span">{championTeam.name}</TeamHoverCard> : "결승 승자"}</strong>
-              </div>
-              <div className="cup-trophy-ring">
-                <Trophy size={64} />
-              </div>
-              {cupBracket.finalNode ? (
-                <div className="cup-final-node">
-                  {renderBracketNode(cupBracket.finalNode, teamById)}
-                </div>
-              ) : null}
+            <div className="vertical-bracket-trophy">
+              <Trophy size={42} />
             </div>
-            <div className="cup-bracket-side right">
-              {[...cupBracket.rightRounds].reverse().map((round) => (
-                <div key={round.id} className="tournament-round bracket-round-column">
+            <div className="vertical-bracket-rows">
+              {verticalBracket.rounds.map((round) => (
+                <div key={round.id} className="vertical-bracket-row">
                   <h3>{round.name}</h3>
-                  <div className="bracket-lanes">
-                    {round.nodes.map((node) => renderBracketNode(node, teamById))}
+                  <div className="vertical-bracket-lanes">
+                    {round.nodes.map(({ node, gridColumn }) => (
+                      <div key={node.id} className="vertical-bracket-node" style={{ gridColumn }}>
+                        {renderBracketNode(node, teamById)}
+                      </div>
+                    ))}
                   </div>
                 </div>
               ))}
