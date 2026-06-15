@@ -18,7 +18,8 @@ import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import TierBadge from "../components/rating/TierBadge.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
-import { COURTS, MATCH_MODES, PLAYER_POSITIONS, REGIONS } from "../lib/constants.js";
+import { COURTS, MATCH_MODES, PLAYER_POSITIONS, REFEREE_TRUST_MIN, REGIONS } from "../lib/constants.js";
+import { isEligibleReferee } from "../lib/matchUtils.js";
 import {
   RECRUITING_JOIN_MODES,
   getRecruitingBestSide,
@@ -320,8 +321,9 @@ function SideRoster({ sideName, side, userById, teams }) {
   );
 }
 
-function ReserveLine({ sideName, candidates, userById, teams }) {
+function ReserveLine({ sideName, candidates, playingIds, userById, teams }) {
   if (!candidates.length) return null;
+  const playingSet = new Set(playingIds);
   return (
     <div className="ow-reserve-line">
       <strong>{SIDE_LABELS[sideName]} 후보</strong>
@@ -329,12 +331,13 @@ function ReserveLine({ sideName, candidates, userById, teams }) {
         {candidates.map((candidate, index) => {
           const user = userById[candidate.playerId];
           if (!user) return null;
+          const canRecord = candidate.source === "reserve-entry" && candidate.status === "ready" && !playingSet.has(candidate.playerId) && isEligibleReferee(user, REFEREE_TRUST_MIN);
           return (
-            <PlayerHoverCard key={`${sideName}-${candidate.playerId}`} user={user} teams={teams} className="ow-member-chip compact">
+            <PlayerHoverCard key={`${sideName}-${candidate.playerId}`} user={user} teams={teams} className={canRecord ? "ow-member-chip compact recorder" : "ow-member-chip compact"}>
               <b>{index + 1}</b>
               <span className="avatar small" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
               <span>{user.name}</span>
-              <em>{candidate.status === "ready" ? "준비" : "대기"}</em>
+              <em>{canRecord ? "기록 가능" : candidate.status === "ready" ? "준비" : "대기"}</em>
             </PlayerHoverCard>
           );
         })}
@@ -355,7 +358,6 @@ export default function Recruiting({ app }) {
   const [scope, setScope] = useState("local");
   const [queue, setQueue] = useState("all");
   const [roomScope, setRoomScope] = useState("all");
-  const [entryMode, setEntryMode] = useState("rooms");
   const [modeFilter, setModeFilter] = useState("all");
   const [queueControlsOpen, setQueueControlsOpen] = useState(true);
   const [composeOpen, setComposeOpen] = useState(false);
@@ -399,18 +401,6 @@ export default function Recruiting({ app }) {
     }));
   }, [draft.teamId, draft.playerIds, draftCapacity, hostNeedsTeam, myTeams, selectedTeam]);
 
-  const hasAppliedToPost = (post) => {
-    const applicantEntry = { kind: "player", joinMode: "player", playerId: app.currentUser.id };
-    return hasRecruitingApplicant(post, applicantEntry)
-      || myTeams.some((team) => hasRecruitingApplicant(post, { kind: "team", joinMode: "team", teamId: team.id }));
-  };
-  const canEnterPost = (post, mode) => {
-    if (post.playerId === app.currentUser.id || hasAppliedToPost(post)) return false;
-    if (mode === "team" && !myTeams.length) return false;
-    const candidateMmr = mode === "team" ? myTeams[0]?.mmr ?? 0 : app.currentUser.ratings.integrated;
-    return getRecruitingFit(post, candidateMmr || app.currentUser.ratings.integrated, app.state).allowed;
-  };
-
   const scopedPosts = useMemo(() => {
     return [...(app.state.recruitingPosts ?? [])]
       .filter((post) => post.status !== "closed")
@@ -421,16 +411,8 @@ export default function Recruiting({ app }) {
       .filter((post) => roomScope !== "joined" || (post.playerId !== app.currentUser.id && isRecruitingPostForUser(post, app.currentUser.id, myTeamIds)));
   }, [app.currentUser.id, app.currentUser.region, app.state, modeFilter, myTeamIds, queue, roomScope, scope]);
 
-  const visibleBasePosts = useMemo(() => {
-    return scopedPosts.filter((post) => {
-      if (entryMode === "player") return canEnterPost(post, "player");
-      if (entryMode === "team") return canEnterPost(post, "team");
-      return true;
-    });
-  }, [app.currentUser.id, app.currentUser.ratings.integrated, app.state, entryMode, myTeams, scopedPosts]);
-
   const posts = useMemo(() => {
-    return visibleBasePosts.sort((a, b) => {
+    return scopedPosts.sort((a, b) => {
       const aLocal = Number(a.region === app.currentUser.region);
       const bLocal = Number(b.region === app.currentUser.region);
       const aMine = Number(isRecruitingPostForUser(a, app.currentUser.id, myTeamIds));
@@ -439,18 +421,15 @@ export default function Recruiting({ app }) {
       const bNational = Number(isNationalRecruitingPost(b, app.state));
       return bMine - aMine || bLocal - aLocal || bNational - aNational || new Date(b.createdAt) - new Date(a.createdAt);
     });
-  }, [app.currentUser.id, app.currentUser.region, app.state, myTeamIds, visibleBasePosts]);
+  }, [app.currentUser.id, app.currentUser.region, app.state, myTeamIds, scopedPosts]);
 
   const selectedPost = selectedPostId
     ? app.state.recruitingPosts.find((post) => post.id === selectedPostId)
     : null;
   useBodyScrollLock(Boolean(selectedPost) || composeOpen);
 
-  const rankedCount = visibleBasePosts.filter((post) => post.ranked !== false).length;
-  const friendlyCount = visibleBasePosts.length - rankedCount;
-  const playerEntryCount = scopedPosts.filter((post) => canEnterPost(post, "player")).length;
-  const teamEntryCount = scopedPosts.filter((post) => canEnterPost(post, "team")).length;
-  const roomEntryCount = scopedPosts.length;
+  const rankedCount = scopedPosts.filter((post) => post.ranked !== false).length;
+  const friendlyCount = scopedPosts.length - rankedCount;
   const createdRoomCount = (app.state.recruitingPosts ?? [])
     .filter((post) => post.status !== "closed")
     .filter((post) => post.playerId === app.currentUser.id)
@@ -498,7 +477,7 @@ export default function Recruiting({ app }) {
         </div>
         <div className="ow-hero-panel">
           <div className="ow-hero-stats">
-            <span><strong>{visibleBasePosts.length}</strong>OPEN</span>
+            <span><strong>{scopedPosts.length}</strong>OPEN</span>
             <span><strong>{rankedCount}</strong>RANKED</span>
             <span><strong>{friendlyCount}</strong>FRIENDLY</span>
           </div>
@@ -514,7 +493,7 @@ export default function Recruiting({ app }) {
         <div className="ow-queue-controls-head">
           <div>
             <span className="ow-kicker">QUEUE FILTER</span>
-            <strong>{entryMode === "player" ? "개인 참여" : entryMode === "team" ? "팀 파티" : "매치방"} · {posts.length}개 표시</strong>
+            <strong>매치방 · {posts.length}개 표시</strong>
           </div>
           <button type="button" className="ow-collapse-button" onClick={() => setQueueControlsOpen((current) => !current)}>
             {queueControlsOpen ? "접기" : "펼치기"}
@@ -523,36 +502,6 @@ export default function Recruiting({ app }) {
 
         {queueControlsOpen ? (
           <>
-            <section className="ow-mode-grid" aria-label="참여 방식">
-              <button type="button" className={entryMode === "player" ? "ow-mode-card active" : "ow-mode-card"} onClick={() => setEntryMode("player")}>
-                <span className="ow-mode-icon"><UserRound size={23} /></span>
-                <span className="ow-mode-copy">
-                  <span className="ow-mode-code">SOLO</span>
-                  <h2>개인 참여</h2>
-                  <p>내 티어로 바로 들어갈 수 있는 빈 슬롯만 본다.</p>
-                </span>
-                <span className="ow-mode-count">{playerEntryCount}개</span>
-              </button>
-              <button type="button" className={entryMode === "team" ? "ow-mode-card active" : "ow-mode-card"} onClick={() => setEntryMode("team")}>
-                <span className="ow-mode-icon"><UsersRound size={23} /></span>
-                <span className="ow-mode-copy">
-                  <span className="ow-mode-code">PARTY</span>
-                  <h2>팀 파티</h2>
-                  <p>내 팀으로 들어갈 수 있는 공개방만 본다.</p>
-                </span>
-                <span className="ow-mode-count">{teamEntryCount}개</span>
-              </button>
-              <button type="button" className={entryMode === "rooms" ? "ow-mode-card active" : "ow-mode-card"} onClick={() => setEntryMode("rooms")}>
-                <span className="ow-mode-icon"><Swords size={23} /></span>
-                <span className="ow-mode-copy">
-                  <span className="ow-mode-code">ROOM</span>
-                  <h2>매치방</h2>
-                  <p>전체 공개방을 보고 방 상세에서 참여 방식을 고른다.</p>
-                </span>
-                <span className="ow-mode-count">{roomEntryCount}개</span>
-              </button>
-            </section>
-
             <section className="ow-filter-bar" aria-label="필터">
               <button type="button" className={scope === "local" ? "active" : ""} onClick={() => setScope("local")}>내 지역</button>
               <button type="button" className={scope === "all" ? "active" : ""} onClick={() => setScope("all")}>전체 지역</button>
@@ -683,6 +632,14 @@ export default function Recruiting({ app }) {
         const canJoin = !mine && !alreadyApplied && fit.allowed && (joinDraft.joinMode === "player" || (Boolean(selectedJoinTeam) && selectedJoinPlayerIds.length > 0));
         const selectedTargetTeam = selectedPost.targetTeamId ? teamById[selectedPost.targetTeamId] : null;
         const selectedReferee = selectedPost.refereeId ? userById[selectedPost.refereeId] : null;
+        const playingIds = [...lobby.sides.teamA.projectedPlayers, ...lobby.sides.teamB.projectedPlayers];
+        const trustedReserveRecorder = ["teamA", "teamB"]
+          .flatMap((sideName) => lobby.sides[sideName].reserveCandidates ?? [])
+          .find((candidate) => {
+            const user = userById[candidate.playerId];
+            return candidate.source === "reserve-entry" && candidate.status === "ready" && !playingIds.includes(candidate.playerId) && isEligibleReferee(user, REFEREE_TRUST_MIN);
+          });
+        const selectedRecorder = selectedReferee ?? (trustedReserveRecorder ? userById[trustedReserveRecorder.playerId] : null);
 
         return (
           <div className="ow-compose-backdrop" role="presentation" onMouseDown={() => setSelectedPostId(null)}>
@@ -700,7 +657,7 @@ export default function Recruiting({ app }) {
                 <span><ShieldCheck size={16} /> {selectedPost.ranked === false ? "친선전" : "정규전"}</span>
                 <span><Clock3 size={16} /> {getRecruitingSchedule(selectedPost)}</span>
                 {selectedTargetTeam ? <span><Swords size={16} /> 희망 상대 {selectedTargetTeam.name}</span> : null}
-                <span><ShieldCheck size={16} /> {selectedReferee ? `심판 ${selectedReferee.name}` : "심판 없음 · 득점만"}</span>
+                <span><ShieldCheck size={16} /> {selectedRecorder ? `${selectedReferee ? "심판" : "후보 기록자"} ${selectedRecorder.name}` : "심판 없음 · 득점만"}</span>
                 <span><UsersRound size={16} /> 팀은 선택 멤버만 참여</span>
                 <span><Clock3 size={16} /> 전원 대기 후 방장 확정</span>
               </div>
@@ -713,8 +670,8 @@ export default function Recruiting({ app }) {
               </div>
 
               <div className="ow-reserve-panel">
-                <ReserveLine sideName="teamA" candidates={lobby.sides.teamA.reserveCandidates} userById={userById} teams={app.state.teams} />
-                <ReserveLine sideName="teamB" candidates={lobby.sides.teamB.reserveCandidates} userById={userById} teams={app.state.teams} />
+                <ReserveLine sideName="teamA" candidates={lobby.sides.teamA.reserveCandidates} playingIds={playingIds} userById={userById} teams={app.state.teams} />
+                <ReserveLine sideName="teamB" candidates={lobby.sides.teamB.reserveCandidates} playingIds={playingIds} userById={userById} teams={app.state.teams} />
                 {!lobby.sides.teamA.reserves.length && !lobby.sides.teamB.reserves.length ? <span>후보 없음</span> : null}
               </div>
 
@@ -722,6 +679,7 @@ export default function Recruiting({ app }) {
                 <strong>규칙</strong>
                 <span>{selectedPost.memo}</span>
                 <span>팀 MMR은 실제 참가한 팀원 비율 기준으로 반영한다.</span>
+                <span>신뢰도 {REFEREE_TRUST_MIN} 이상 후보가 경기 밖에서 대기 완료하면 기록자로 자동 배정된다.</span>
                 <span>확정 후 불참하면 신뢰점수 패널티 대상이다.</span>
               </div>
 

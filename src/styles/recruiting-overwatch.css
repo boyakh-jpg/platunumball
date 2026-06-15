@@ -1154,6 +1154,15 @@
   padding-right: 8px;
 }
 
+.ow-member-chip.recorder {
+  border-color: rgba(70, 224, 182, 0.42);
+  background: rgba(70, 224, 182, 0.1);
+}
+
+.ow-member-chip.recorder em {
+  color: var(--green);
+}
+
 .ow-open-slot {
   display: flex;
   align-items: center;

@@ -925,6 +925,16 @@ function getTrustedRefereeId(state, refereeId, playerIds = []) {
   return isEligibleReferee(user, REFEREE_TRUST_MIN) ? refereeId : "";
 }
 
+function getTrustedReserveRecorderId(state, lobby, playerIds = []) {
+  const playingIds = new Set(playerIds);
+  const candidates = ["teamA", "teamB"].flatMap((sideName) => lobby.sides[sideName].reserveCandidates ?? []);
+  return candidates.find((candidate) => {
+    if (candidate.source !== "reserve-entry" || candidate.status !== "ready" || playingIds.has(candidate.playerId)) return false;
+    const user = state.users.find((item) => item.id === candidate.playerId);
+    return isEligibleReferee(user, REFEREE_TRUST_MIN);
+  })?.playerId ?? "";
+}
+
 function getScheduleText(date, time) {
   return [date, time].filter(Boolean).join(" ") || "일정 미정";
 }
@@ -2334,7 +2344,8 @@ export function confirmRecruitingMatch(state, postId) {
   const now = new Date().toISOString();
   const teamAPlayers = lobby.sides.teamA.projectedPlayers.slice(0, lobby.sides.teamA.capacity);
   const teamBPlayers = lobby.sides.teamB.projectedPlayers.slice(0, lobby.sides.teamB.capacity);
-  const refereeId = getTrustedRefereeId(state, post.refereeId, [...teamAPlayers, ...teamBPlayers]);
+  const playerIds = [...teamAPlayers, ...teamBPlayers];
+  const refereeId = getTrustedRefereeId(state, post.refereeId, playerIds) || getTrustedReserveRecorderId(state, lobby, playerIds);
   const match = {
     id: makeId("m"),
     title: post.title,
