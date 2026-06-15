@@ -1,4 +1,4 @@
-import { MAX_TEAM_MEMBERSHIPS, MODE_SIZES, TEAM_ROLES } from "../lib/constants.js";
+import { COURTS, MAX_TEAM_MEMBERSHIPS, MODE_SIZES, TEAM_ROLES } from "../lib/constants.js";
 import { initialState } from "../lib/mockData.js";
 import { getAgreementStatus, getApprovalStatus, normalizePlayerStats } from "../lib/matchUtils.js";
 import { applyMatchRating, calculateTeamDelta } from "../lib/rating.js";
@@ -27,6 +27,9 @@ const DEFAULT_SETTINGS = {
   favoriteTeamIds: [],
   favoriteCourtIds: [],
 };
+const REMOTE_PAGE_SIZE = 1000;
+const REMOTE_WRITE_CHUNK_SIZE = 500;
+let normalizedSaveWarningShown = false;
 
 function mergeById(current = [], fallback = []) {
   const currentMap = new Map(current.map((item) => [item.id, item]));
@@ -95,30 +98,533 @@ export function saveState(state) {
   writeState(state);
 }
 
-export async function loadRemoteState() {
-  if (!isSupabaseConfigured) return null;
+async function fetchAllRows(table, select = "*", order = "id") {
+  const rows = [];
+  for (let from = 0; ; from += REMOTE_PAGE_SIZE) {
+    const to = from + REMOTE_PAGE_SIZE - 1;
+    const query = supabase.from(table).select(select).range(from, to);
+    const { data, error } = order ? await query.order(order, { ascending: true }) : await query;
+    if (error) throw error;
+    rows.push(...(data ?? []));
+    if (!data || data.length < REMOTE_PAGE_SIZE) break;
+  }
+  return rows;
+}
 
+function groupBy(rows, key) {
+  return rows.reduce((map, row) => {
+    const value = row[key];
+    if (!map.has(value)) map.set(value, []);
+    map.get(value).push(row);
+    return map;
+  }, new Map());
+}
+
+function firstBy(rows, key) {
+  return Object.fromEntries(rows.map((row) => [row[key], row]));
+}
+
+function toDateTime(date, time, fallback) {
+  if (date && time) return `${date} ${String(time).slice(0, 5)}`;
+  if (date) return date;
+  return fallback ?? "일정 미정";
+}
+
+function fromRemoteProfile(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    handle: row.handle,
+    position: row.position,
+    region: row.region,
+    school: row.school,
+    company: row.company,
+    club: row.club,
+    trustScore: row.trust_score ?? 80,
+    streak: row.streak ?? 0,
+    avatarColor: row.avatar_color,
+    testLoginId: row.test_login_id,
+    testPassword: "test-0000",
+    ratings: row.ratings ?? { integrated: 1200, modes: {} },
+  };
+}
+
+function fromRemoteTeam(row, memberRows) {
+  return {
+    id: row.id,
+    name: row.name,
+    homeCourt: row.home_court,
+    region: row.region,
+    mmr: row.mmr ?? 1200,
+    wins: row.wins ?? 0,
+    losses: row.losses ?? 0,
+    accent: row.accent,
+    members: [...(memberRows ?? [])]
+      .sort((a, b) => String(a.role).localeCompare(String(b.role)) || String(a.user_id).localeCompare(String(b.user_id)))
+      .map((member) => ({ userId: member.user_id, role: member.role ?? "regular" })),
+  };
+}
+
+function fromRemoteMatch(row, context) {
+  const teamAPlayers = [...(context.playersByMatch.get(row.id) ?? [])]
+    .filter((player) => player.side === "teamA")
+    .sort((a, b) => (a.slot_order ?? 0) - (b.slot_order ?? 0))
+    .map((player) => player.user_id);
+  const teamBPlayers = [...(context.playersByMatch.get(row.id) ?? [])]
+    .filter((player) => player.side === "teamB")
+    .sort((a, b) => (a.slot_order ?? 0) - (b.slot_order ?? 0))
+    .map((player) => player.user_id);
+  const resultRow = context.resultsByMatch[row.id];
+  const statRows = context.statsByMatch.get(row.id) ?? [];
+  const playerStats = Object.fromEntries(
+    statRows.map((stat) => [
+      stat.user_id,
+      {
+        points: stat.points ?? 0,
+        rebounds: stat.rebounds ?? 0,
+        assists: stat.assists ?? 0,
+        steals: stat.steals ?? 0,
+        blocks: stat.blocks ?? 0,
+      },
+    ]),
+  );
+  const disputes = (context.disputesByMatch.get(row.id) ?? []).map((dispute) => ({
+    id: dispute.id,
+    by: dispute.user_id,
+    reason: dispute.reason,
+    createdAt: dispute.created_at,
+  }));
+  const agreements = {
+    teamA: (context.agreementsByMatch.get(row.id) ?? []).filter((item) => item.side === "teamA").map((item) => item.user_id),
+    teamB: (context.agreementsByMatch.get(row.id) ?? []).filter((item) => item.side === "teamB").map((item) => item.user_id),
+  };
+  const approvals = {
+    teamA: (context.approvalsByMatch.get(row.id) ?? []).filter((item) => item.side === "teamA").map((item) => item.user_id),
+    teamB: (context.approvalsByMatch.get(row.id) ?? []).filter((item) => item.side === "teamB").map((item) => item.user_id),
+  };
+  const teamA = context.teamById[row.team_a_id];
+  const teamB = context.teamById[row.team_b_id];
+  const scheduledAt = toDateTime(row.scheduled_date, row.scheduled_time, row.scheduled_at);
+
+  return {
+    id: row.id,
+    title: row.title,
+    mode: row.mode,
+    court: row.court_name ?? context.courtById[row.court_id]?.name ?? "미정",
+    scheduledDate: row.scheduled_date,
+    scheduledTime: row.scheduled_time ? String(row.scheduled_time).slice(0, 5) : "",
+    scheduledAt,
+    status: row.status ?? "contract",
+    official: Boolean(row.official),
+    preRegistered: Boolean(row.pre_registered),
+    rules: row.rules ?? {},
+    memo: row.memo,
+    stakes: row.stakes,
+    ranked: row.ranked !== false,
+    objectionWindow: row.objection_window,
+    evidence: row.evidence ?? [],
+    teamA: { name: teamA?.name ?? "Team A", teamId: row.team_a_id, players: teamAPlayers, score: row.score_a ?? 0 },
+    teamB: { name: teamB?.name ?? "Team B", teamId: row.team_b_id, players: teamBPlayers, score: row.score_b ?? 0 },
+    agreements,
+    approvals,
+    disputes,
+    result: resultRow
+      ? {
+          scoreA: resultRow.score_a,
+          scoreB: resultRow.score_b,
+          playerStats,
+          submittedAt: resultRow.submitted_at,
+        }
+      : null,
+    ratingResult: Array.isArray(row.rating_result) ? row.rating_result : null,
+    teamRatingResult: row.team_rating_result && !Array.isArray(row.team_rating_result) ? row.team_rating_result : null,
+    createdAt: row.created_at,
+    agreedAt: row.agreed_at,
+    confirmedAt: row.confirmed_at,
+    cancelledAt: row.cancelled_at,
+    voidedAt: row.voided_at,
+  };
+}
+
+async function loadLegacyRemoteRecord() {
   const { data, error } = await supabase
     .from("rankball_state")
-    .select("state")
+    .select("state, updated_at")
     .eq("id", REMOTE_STATE_ID)
     .maybeSingle();
 
-  if (error) {
+  if (error) throw error;
+  return data ?? null;
+}
+
+async function loadLegacyRemoteState() {
+  const record = await loadLegacyRemoteRecord();
+  return record?.state ?? null;
+}
+
+function getMaxUpdatedAt(rows) {
+  const timestamps = rows
+    .map((row) => row.updated_at ?? row.created_at)
+    .filter(Boolean)
+    .map((value) => new Date(value).getTime())
+    .filter((value) => !Number.isNaN(value));
+  return timestamps.length ? Math.max(...timestamps) : 0;
+}
+
+async function loadNormalizedRemoteState() {
+  const [
+    profiles,
+    teams,
+    teamMembers,
+    courts,
+    matches,
+    matchPlayers,
+    matchResults,
+    playerStats,
+    agreements,
+    approvals,
+    disputes,
+    favorites,
+    recruitingPosts,
+    recruitingApplications,
+    seasons,
+    affiliations,
+    notifications,
+    reports,
+  ] = await Promise.all([
+    fetchAllRows("profiles"),
+    fetchAllRows("teams"),
+    fetchAllRows("team_members", "*", null),
+    fetchAllRows("courts"),
+    fetchAllRows("matches", "*", "created_at"),
+    fetchAllRows("match_players", "*", null),
+    fetchAllRows("match_results", "*", null),
+    fetchAllRows("player_match_stats", "*", null),
+    fetchAllRows("match_agreements", "*", null),
+    fetchAllRows("match_approvals", "*", null),
+    fetchAllRows("match_disputes", "*", null),
+    fetchAllRows("favorites", "*", null),
+    fetchAllRows("recruiting_posts", "*", "created_at"),
+    fetchAllRows("recruiting_applications", "*", null),
+    fetchAllRows("seasons"),
+    fetchAllRows("affiliations"),
+    fetchAllRows("notifications", "*", "created_at"),
+    fetchAllRows("reports", "*", "created_at"),
+  ]);
+
+  if (!profiles.length || !matches.length) return null;
+
+  const legacyRecord = await loadLegacyRemoteRecord().catch(() => null);
+  const legacyState = legacyRecord?.state ?? null;
+  const currentUserId = legacyState?.currentUserId ?? initialState.currentUserId;
+  const teamMembersByTeam = groupBy(teamMembers, "team_id");
+  const teamById = firstBy(teams, "id");
+  const courtById = firstBy(courts, "id");
+  const context = {
+    teamById,
+    courtById,
+    playersByMatch: groupBy(matchPlayers, "match_id"),
+    resultsByMatch: firstBy(matchResults, "match_id"),
+    statsByMatch: groupBy(playerStats, "match_id"),
+    agreementsByMatch: groupBy(agreements, "match_id"),
+    approvalsByMatch: groupBy(approvals, "match_id"),
+    disputesByMatch: groupBy(disputes, "match_id"),
+  };
+  const remoteTeams = teams.map((team) => fromRemoteTeam(team, teamMembersByTeam.get(team.id)));
+  const remoteMatches = matches.map((match) => fromRemoteMatch(match, context)).sort((a, b) => String(b.createdAt ?? "").localeCompare(String(a.createdAt ?? "")));
+  const favoriteRows = favorites.filter((favorite) => favorite.user_id === currentUserId);
+  const applicationsByPost = groupBy(recruitingApplications, "post_id");
+
+  const normalizedState = normalizeState({
+    currentUserId,
+    users: profiles.map(fromRemoteProfile),
+    teams: remoteTeams,
+    matches: remoteMatches,
+    affiliations: affiliations.map((affiliation) => ({
+      id: affiliation.id,
+      type: affiliation.type,
+      name: affiliation.name,
+      score: affiliation.score ?? 0,
+      wins: affiliation.wins ?? 0,
+      losses: affiliation.losses ?? 0,
+    })),
+    seasons: seasons.map((season) => ({
+      id: season.id,
+      name: season.name,
+      subtitle: season.subtitle,
+      startsAt: season.starts_at,
+      endsAt: season.ends_at,
+      active: Boolean(season.active),
+      regions: season.regions ?? [],
+      promotionLine: season.promotion_line ?? 0,
+      rules: season.rules ?? [],
+    })),
+    notifications: notifications
+      .filter((notification) => !notification.user_id || notification.user_id === currentUserId)
+      .map((notification) => ({
+        id: notification.id,
+        title: notification.title,
+        body: notification.body,
+        tone: notification.tone,
+        matchId: notification.match_id,
+        readAt: notification.read_at,
+      })),
+    reports: reports.map((report) => ({
+      id: report.id,
+      type: report.type,
+      targetId: report.target_id,
+      by: report.user_id,
+      reason: report.reason,
+      status: report.status,
+      createdAt: report.created_at,
+    })),
+    recruitingPosts: recruitingPosts.map((post) => ({
+      id: post.id,
+      type: post.type,
+      title: post.title,
+      region: post.region,
+      court: post.court_name ?? courtById[post.court_id]?.name ?? "미정",
+      mode: post.mode,
+      ranked: post.ranked,
+      spots: post.spots,
+      teamId: post.team_id,
+      position: post.position,
+      playerId: post.player_id,
+      memo: post.memo,
+      status: post.status,
+      createdAt: post.created_at,
+      applicants: (applicationsByPost.get(post.id) ?? []).map((application) => ({
+        kind: application.kind,
+        teamId: application.team_id,
+        playerId: application.player_id,
+        createdAt: application.created_at,
+      })),
+    })),
+    settings: {
+      ...(legacyState?.settings ?? DEFAULT_SETTINGS),
+      favoriteTeamIds: favoriteRows.filter((favorite) => favorite.target_type === "team").map((favorite) => favorite.target_id),
+      favoriteCourtIds: favoriteRows.filter((favorite) => favorite.target_type === "court").map((favorite) => favorite.target_id),
+    },
+  });
+  return {
+    state: normalizedState,
+    updatedAt: Math.max(
+      getMaxUpdatedAt(profiles),
+      getMaxUpdatedAt(teams),
+      getMaxUpdatedAt(matches),
+      getMaxUpdatedAt(recruitingPosts),
+    ),
+  };
+}
+
+export async function loadRemoteState() {
+  if (!isSupabaseConfigured) return null;
+
+  try {
+    const normalizedRemote = await loadNormalizedRemoteState();
+    if (normalizedRemote) {
+      const legacyRecord = await loadLegacyRemoteRecord().catch(() => null);
+      const legacyUpdatedAt = legacyRecord?.updated_at ? new Date(legacyRecord.updated_at).getTime() : 0;
+      if (legacyRecord?.state && legacyUpdatedAt > normalizedRemote.updatedAt) {
+        return normalizeState(legacyRecord.state);
+      }
+      return normalizedRemote.state;
+    }
+  } catch (error) {
+    console.warn("Supabase normalized state load failed. Falling back to legacy state.", error.message);
+  }
+
+  try {
+    const legacyState = await loadLegacyRemoteState();
+    return legacyState ? normalizeState(legacyState) : clone(initialState);
+  } catch (error) {
     console.warn("Supabase state load failed. Falling back to local demo mode.", error.message);
     return null;
   }
+}
 
-  if (data?.state && Object.keys(data.state).length > 0) {
-    const normalized = normalizeState(data.state);
-    if (JSON.stringify(normalized) !== JSON.stringify(data.state)) {
-      await saveRemoteState(normalized);
-    }
-    return normalized;
+function chunkRows(rows, size = REMOTE_WRITE_CHUNK_SIZE) {
+  const chunks = [];
+  for (let index = 0; index < rows.length; index += size) {
+    chunks.push(rows.slice(index, index + size));
   }
+  return chunks;
+}
 
-  await saveRemoteState(clone(initialState));
-  return clone(initialState);
+async function upsertRemoteRows(table, rows, onConflict) {
+  if (!rows.length) return;
+  for (const chunk of chunkRows(rows)) {
+    const { error } = await supabase.from(table).upsert(chunk, onConflict ? { onConflict } : undefined);
+    if (error) throw error;
+  }
+}
+
+function courtIdByName(courtName) {
+  return COURTS.find((court) => court.name === courtName)?.id ?? null;
+}
+
+function toDbTime(value) {
+  return value ? String(value).slice(0, 5) : null;
+}
+
+async function saveNormalizedRemoteState(state) {
+  const currentUserId = state.currentUserId ?? initialState.currentUserId;
+  const profileRows = state.users.map((user) => ({
+    id: user.id,
+    name: user.name,
+    handle: user.handle,
+    region: user.region,
+    position: user.position,
+    avatar_color: user.avatarColor,
+    trust_score: user.trustScore ?? 80,
+    ratings: user.ratings ?? {},
+    school: user.school,
+    company: user.company,
+    club: user.club,
+    streak: user.streak ?? 0,
+    test_login_id: user.testLoginId,
+    updated_at: new Date().toISOString(),
+  }));
+  const teamRows = state.teams.map((team) => ({
+    id: team.id,
+    name: team.name,
+    region: team.region,
+    home_court: team.homeCourt,
+    mmr: team.mmr ?? 1200,
+    wins: team.wins ?? 0,
+    losses: team.losses ?? 0,
+    accent: team.accent,
+    updated_at: new Date().toISOString(),
+  }));
+  const teamMemberRows = state.teams.flatMap((team) =>
+    team.members.map((member) => ({
+      team_id: team.id,
+      user_id: member.userId,
+      role: member.role ?? "regular",
+    })),
+  );
+  const matchRows = state.matches.map((match) => ({
+    id: match.id,
+    title: match.title,
+    mode: match.mode,
+    court_id: courtIdByName(match.court),
+    court_name: match.court,
+    status: match.status ?? "contract",
+    ranked: match.ranked !== false,
+    official: Boolean(match.official),
+    pre_registered: Boolean(match.preRegistered),
+    scheduled_at: match.scheduledAt && match.scheduledAt !== "일정 미정" ? match.scheduledAt : null,
+    scheduled_date: match.scheduledDate || null,
+    scheduled_time: toDbTime(match.scheduledTime),
+    team_a_id: match.teamA?.teamId,
+    team_b_id: match.teamB?.teamId,
+    score_a: Number(match.result?.scoreA ?? match.teamA?.score ?? 0),
+    score_b: Number(match.result?.scoreB ?? match.teamB?.score ?? 0),
+    rules: match.rules ?? {},
+    memo: match.memo,
+    stakes: match.stakes,
+    objection_window: match.objectionWindow,
+    evidence: match.evidence ?? [],
+    created_by: match.teamA?.players?.[0] ?? currentUserId,
+    created_at: match.createdAt,
+    agreed_at: match.agreedAt,
+    confirmed_at: match.confirmedAt,
+    cancelled_at: match.cancelledAt,
+    voided_at: match.voidedAt,
+    rating_result: match.ratingResult ?? null,
+    team_rating_result: match.teamRatingResult ?? null,
+    updated_at: new Date().toISOString(),
+  }));
+  const matchPlayerRows = state.matches.flatMap((match) => [
+    ...(match.teamA?.players ?? []).map((userId, index) => ({
+      match_id: match.id,
+      team_id: match.teamA.teamId,
+      user_id: userId,
+      side: "teamA",
+      slot_order: index,
+    })),
+    ...(match.teamB?.players ?? []).map((userId, index) => ({
+      match_id: match.id,
+      team_id: match.teamB.teamId,
+      user_id: userId,
+      side: "teamB",
+      slot_order: index,
+    })),
+  ]);
+  const resultRows = state.matches
+    .filter((match) => match.result)
+    .map((match) => ({
+      match_id: match.id,
+      submitted_by: match.teamA?.players?.[0] ?? currentUserId,
+      score_a: Number(match.result.scoreA ?? match.teamA?.score ?? 0),
+      score_b: Number(match.result.scoreB ?? match.teamB?.score ?? 0),
+      submitted_at: match.result.submittedAt,
+    }));
+  const statRows = state.matches.flatMap((match) =>
+    Object.entries(match.result?.playerStats ?? {}).map(([userId, stat]) => ({
+      match_id: match.id,
+      user_id: userId,
+      points: Number(stat.points ?? 0),
+      rebounds: Number(stat.rebounds ?? 0),
+      assists: Number(stat.assists ?? 0),
+      steals: Number(stat.steals ?? 0),
+      blocks: Number(stat.blocks ?? 0),
+      updated_at: new Date().toISOString(),
+    })),
+  );
+  const agreementRows = state.matches.flatMap((match) => [
+    ...(match.agreements?.teamA ?? []).map((userId) => ({ match_id: match.id, user_id: userId, side: "teamA" })),
+    ...(match.agreements?.teamB ?? []).map((userId) => ({ match_id: match.id, user_id: userId, side: "teamB" })),
+  ]);
+  const approvalRows = state.matches.flatMap((match) => [
+    ...(match.approvals?.teamA ?? []).map((userId) => ({ match_id: match.id, user_id: userId, side: "teamA" })),
+    ...(match.approvals?.teamB ?? []).map((userId) => ({ match_id: match.id, user_id: userId, side: "teamB" })),
+  ]);
+  const favoriteRows = [
+    ...(state.settings?.favoriteTeamIds ?? []).map((targetId) => ({ user_id: currentUserId, target_type: "team", target_id: targetId })),
+    ...(state.settings?.favoriteCourtIds ?? []).map((targetId) => ({ user_id: currentUserId, target_type: "court", target_id: targetId })),
+  ];
+  const recruitingRows = (state.recruitingPosts ?? []).map((post) => ({
+    id: post.id,
+    type: post.type,
+    player_id: post.playerId,
+    team_id: post.teamId,
+    region: post.region,
+    court_id: courtIdByName(post.court),
+    court_name: post.court,
+    mode: post.mode,
+    ranked: post.ranked !== false,
+    spots: post.spots ?? 1,
+    position: post.position,
+    memo: post.memo,
+    status: post.status ?? "open",
+    created_at: post.createdAt,
+    updated_at: new Date().toISOString(),
+  }));
+  const applicationRows = (state.recruitingPosts ?? []).flatMap((post) =>
+    (post.applicants ?? []).map((application) => ({
+      post_id: post.id,
+      player_id: application.playerId,
+      team_id: application.teamId,
+      kind: application.kind ?? "player",
+      created_at: application.createdAt,
+    })),
+  ).filter((application) => application.player_id);
+
+  await upsertRemoteRows("profiles", profileRows, "id");
+  await upsertRemoteRows("teams", teamRows, "id");
+  await upsertRemoteRows("team_members", teamMemberRows, "team_id,user_id");
+  await upsertRemoteRows("matches", matchRows, "id");
+  await upsertRemoteRows("match_players", matchPlayerRows, "match_id,user_id");
+  await upsertRemoteRows("match_results", resultRows, "match_id");
+  await upsertRemoteRows("player_match_stats", statRows, "match_id,user_id");
+  await upsertRemoteRows("match_agreements", agreementRows, "match_id,user_id");
+  await upsertRemoteRows("match_approvals", approvalRows, "match_id,user_id");
+
+  await supabase.from("favorites").delete().eq("user_id", currentUserId);
+  await upsertRemoteRows("favorites", favoriteRows, "user_id,target_type,target_id");
+  await upsertRemoteRows("recruiting_posts", recruitingRows, "id");
+  await upsertRemoteRows("recruiting_applications", applicationRows, "post_id,player_id,kind");
 }
 
 export async function saveRemoteState(state) {
@@ -133,6 +639,15 @@ export async function saveRemoteState(state) {
 
   if (error) {
     console.warn("Supabase state save failed. Local state remains available.", error.message);
+  }
+
+  try {
+    await saveNormalizedRemoteState(sharedState);
+  } catch (normalizedError) {
+    if (!normalizedSaveWarningShown) {
+      normalizedSaveWarningShown = true;
+      console.warn("Supabase normalized save failed. Legacy state remains available.", normalizedError.message);
+    }
   }
 }
 
