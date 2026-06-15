@@ -1,18 +1,14 @@
-import { BarChart3, Bell, CalendarDays, Handshake, House, LogOut, PlusCircle, Settings, Shield, Trophy, UserRound, UsersRound } from "lucide-react";
+import { BarChart3, CalendarDays, Handshake, House, LogOut, Settings, UserRound, UsersRound } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import TierBadge from "../rating/TierBadge.jsx";
 
 const navItems = [
   { to: "/app", label: "홈", icon: House },
-  { to: "/app/create", label: "판 만들기", icon: PlusCircle },
-  { to: "/app/matches", label: "경기방", icon: CalendarDays },
-  { to: "/app/season", label: "시즌", icon: Trophy },
+  { to: "/app/matches", label: "경기", icon: CalendarDays },
   { to: "/app/recruiting", label: "용병", icon: Handshake },
   { to: "/app/rankings", label: "랭킹", icon: BarChart3 },
   { to: "/app/teams", label: "팀", icon: UsersRound },
-  { to: "/app/profile", label: "프로필", icon: UserRound },
-  { to: "/app/affiliations", label: "소속", icon: Shield },
-  { to: "/app/notifications", label: "알림", icon: Bell },
+  { to: "/app/profile", label: "나", icon: UserRound },
   { to: "/app/settings", label: "설정", icon: Settings },
 ];
 

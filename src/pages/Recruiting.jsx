@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { MapPin, PlusCircle, ShieldCheck, Swords, UserRound, UsersRound } from "lucide-react";
-import Badge from "../components/common/Badge.jsx";
+import { MapPin, PlusCircle, ShieldCheck, Swords, UserRound, UsersRound, X } from "lucide-react";
 import Button from "../components/common/Button.jsx";
-import Card from "../components/common/Card.jsx";
 import TierBadge from "../components/rating/TierBadge.jsx";
 import { COURTS, MATCH_MODES, PLAYER_POSITIONS, REGIONS } from "../lib/constants.js";
 import {
@@ -17,10 +15,37 @@ import {
   normalizeRecruitingApplicants,
 } from "../lib/recruiting.js";
 
+const TYPE_VIEW = {
+  need_player: {
+    code: "PLAYER",
+    title: "용병 구함",
+    desc: "팀이 뛸 사람을 찾음",
+    icon: UserRound,
+  },
+  find_team: {
+    code: "SOLO",
+    title: "팀 찾기",
+    desc: "혼자 들어갈 팀을 찾음",
+    icon: UsersRound,
+  },
+  need_team: {
+    code: "TEAM",
+    title: "상대 구함",
+    desc: "팀 대 팀 경기를 찾음",
+    icon: Swords,
+  },
+};
+
 function getDefaultMemo(type) {
   if (type === "need_team") return "동급 팀 우선.";
   if (type === "find_team") return "바로 참여 가능.";
   return "포지션 협의 가능.";
+}
+
+function getDefaultTitle(type) {
+  if (type === "find_team") return "오늘 뛸 팀 구함";
+  if (type === "need_team") return "상대팀 구함";
+  return "용병 1명";
 }
 
 function formatApplicants(post, userById, teamById) {
@@ -30,7 +55,7 @@ function formatApplicants(post, userById, teamById) {
       user: applicant.playerId ? userById[applicant.playerId] : null,
       team: applicant.teamId ? teamById[applicant.teamId] : null,
     }))
-    .filter((applicant) => applicant.kind === "team" ? applicant.team : applicant.user);
+    .filter((applicant) => (applicant.kind === "team" ? applicant.team : applicant.user));
 }
 
 function getDefaultApplyTeamId(post, teams) {
@@ -41,6 +66,31 @@ function getPostApplyTeamId(post, teams, selectedByPost) {
   return selectedByPost[post.id] ?? getDefaultApplyTeamId(post, teams);
 }
 
+function formatWhen(value) {
+  if (!value) return "방금";
+  const ms = Date.now() - new Date(value).getTime();
+  if (!Number.isFinite(ms) || ms < 0) return "방금";
+  const minutes = Math.floor(ms / 60000);
+  if (minutes < 1) return "방금";
+  if (minutes < 60) return `${minutes}분 전`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}시간 전`;
+  return `${Math.floor(hours / 24)}일 전`;
+}
+
+function getQueueLabel(post) {
+  return post.ranked === false ? "친선" : "정규";
+}
+
+function getButtonLabel({ mine, noTeam, blockedByTier, full, applied, typeMeta }) {
+  if (mine) return "내 글";
+  if (noTeam) return "팀 필요";
+  if (blockedByTier) return "티어 불가";
+  if (full) return "마감";
+  if (applied) return "완료";
+  return typeMeta.actionLabel;
+}
+
 export default function Recruiting({ app }) {
   const myTeams = useMemo(
     () => app.state.teams.filter((team) => team.members.some((member) => member.userId === app.currentUser.id)),
@@ -48,11 +98,12 @@ export default function Recruiting({ app }) {
   );
   const [scope, setScope] = useState("local");
   const [queue, setQueue] = useState("all");
-  const [unit, setUnit] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [composeOpen, setComposeOpen] = useState(false);
   const [applyTeamByPost, setApplyTeamByPost] = useState({});
   const [draft, setDraft] = useState(() => ({
     type: "need_player",
-    title: RECRUITING_TYPES.need_player.emptyTitle,
+    title: getDefaultTitle("need_player"),
     region: app.currentUser.region,
     court: COURTS.find((court) => court.region === app.currentUser.region)?.name ?? COURTS[0].name,
     mode: "5v5",
@@ -77,12 +128,16 @@ export default function Recruiting({ app }) {
     setDraft((current) => ({ ...current, teamId: myTeams[0]?.id ?? "" }));
   }, [draft.teamId, myTeams, posterNeedsTeam, selectedTeam]);
 
-  const posts = useMemo(() => {
+  const visibleBasePosts = useMemo(() => {
     return [...(app.state.recruitingPosts ?? [])]
       .filter((post) => post.status !== "closed")
       .filter((post) => scope !== "local" || post.region === app.currentUser.region || isNationalRecruitingPost(post, app.state))
-      .filter((post) => queue === "all" || (queue === "ranked" ? post.ranked !== false : post.ranked === false))
-      .filter((post) => unit === "all" || (unit === "solo" ? getRecruitingApplicantKind(post) === "player" : getRecruitingApplicantKind(post) === "team"))
+      .filter((post) => queue === "all" || (queue === "ranked" ? post.ranked !== false : post.ranked === false));
+  }, [app.currentUser.region, app.state, queue, scope]);
+
+  const posts = useMemo(() => {
+    return visibleBasePosts
+      .filter((post) => typeFilter === "all" || post.type === typeFilter)
       .sort((a, b) => {
         const aLocal = Number(a.region === app.currentUser.region);
         const bLocal = Number(b.region === app.currentUser.region);
@@ -90,189 +145,258 @@ export default function Recruiting({ app }) {
         const bNational = Number(isNationalRecruitingPost(b, app.state));
         return bLocal - aLocal || bNational - aNational || new Date(b.createdAt) - new Date(a.createdAt);
       });
-  }, [app.currentUser.region, app.state, queue, scope, unit]);
+  }, [app.currentUser.region, app.state, typeFilter, visibleBasePosts]);
+
+  const typeCounts = useMemo(() => {
+    return Object.keys(RECRUITING_TYPES).reduce((acc, type) => {
+      acc[type] = visibleBasePosts.filter((post) => post.type === type).length;
+      return acc;
+    }, {});
+  }, [visibleBasePosts]);
 
   const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
-  const changeType = (type) => {
-    const meta = RECRUITING_TYPES[type] ?? RECRUITING_TYPES.need_player;
+  const changeDraftType = (type) => {
     update({
       type,
-      title: meta.emptyTitle,
+      title: getDefaultTitle(type),
       teamId: type === "find_team" ? "" : myTeams[0]?.id ?? "",
       spots: 1,
       position: type === "find_team" ? app.currentUser.position : "상관없음",
       memo: getDefaultMemo(type),
     });
   };
+  const openComposeForType = (type = draft.type) => {
+    if (type !== draft.type) changeDraftType(type);
+    setComposeOpen(true);
+  };
   const submit = (event) => {
     event.preventDefault();
-    app.actions.createRecruitingPost(draft);
+    app.actions.createRecruitingPost({ ...draft, title: draft.title || getDefaultTitle(draft.type) });
     setDraft((current) => ({
       ...current,
-      title: RECRUITING_TYPES[current.type].emptyTitle,
+      title: getDefaultTitle(current.type),
       memo: getDefaultMemo(current.type),
     }));
+    setComposeOpen(false);
   };
 
+  const rankedCount = visibleBasePosts.filter((post) => post.ranked !== false).length;
+  const friendlyCount = visibleBasePosts.length - rankedCount;
+
   return (
-    <div className="page-stack recruiting-page">
-      <header className="page-header">
-        <div>
-          <p className="eyebrow">Recruiting Queue</p>
-          <h1>친선전/정규전 모집 큐</h1>
+    <div className="page-stack ow-recruit-page">
+      <section className="ow-recruit-hero">
+        <div className="ow-hero-copy">
+          <span className="ow-kicker">RECRUIT QUEUE</span>
+          <h1>용병 큐</h1>
+          <p>오늘 뛸 사람, 들어갈 팀, 붙을 상대팀만 빠르게 고른다.</p>
         </div>
-        <Badge tone="green">{app.currentUser.region} 먼저</Badge>
-      </header>
-
-      <section className="content-grid wide-left">
-        <Card className="section-card recruiting-board-card">
-          <div className="section-title-row">
-            <div>
-              <p className="eyebrow">Queue</p>
-              <h2>혼자 또는 팀으로 참여</h2>
-            </div>
-            <div className="segmented-control compact-segments">
-              <button type="button" className={scope === "local" ? "active" : ""} onClick={() => setScope("local")}>내 지역</button>
-              <button type="button" className={scope === "all" ? "active" : ""} onClick={() => setScope("all")}>전체</button>
-            </div>
+        <div className="ow-hero-panel">
+          <div className="ow-hero-stats">
+            <span><strong>{visibleBasePosts.length}</strong>OPEN</span>
+            <span><strong>{rankedCount}</strong>RANKED</span>
+            <span><strong>{friendlyCount}</strong>FRIENDLY</span>
           </div>
-          <div className="queue-filter-grid">
-            <div className="segmented-control compact-segments">
-              <button type="button" className={queue === "all" ? "active" : ""} onClick={() => setQueue("all")}>전체</button>
-              <button type="button" className={queue === "ranked" ? "active" : ""} onClick={() => setQueue("ranked")}>정규전</button>
-              <button type="button" className={queue === "friendly" ? "active" : ""} onClick={() => setQueue("friendly")}>친선전</button>
-            </div>
-            <div className="segmented-control compact-segments">
-              <button type="button" className={unit === "all" ? "active" : ""} onClick={() => setUnit("all")}>전체</button>
-              <button type="button" className={unit === "solo" ? "active" : ""} onClick={() => setUnit("solo")}>혼자 참여</button>
-              <button type="button" className={unit === "team" ? "active" : ""} onClick={() => setUnit("team")}>팀 참여</button>
-            </div>
-          </div>
+          <Button type="button" className="ow-hero-cta" onClick={() => openComposeForType(typeFilter === "all" ? "need_player" : typeFilter)}>
+            <PlusCircle size={18} /> 모집 시작
+          </Button>
+        </div>
+      </section>
 
-          <div className="recruiting-post-list">
-            {posts.map((post) => {
-              const typeMeta = RECRUITING_TYPES[post.type] ?? RECRUITING_TYPES.need_player;
-              const applicantKind = getRecruitingApplicantKind(post);
-              const owner = userById[post.playerId];
-              const team = teamById[post.teamId];
-              const applicants = formatApplicants(post, userById, teamById);
-              const applyTeamId = getPostApplyTeamId(post, myTeams, applyTeamByPost);
-              const applyTeam = teamById[applyTeamId];
-              const candidateMmr = applicantKind === "team" ? applyTeam?.mmr ?? 0 : app.currentUser.ratings.integrated;
-              const fit = getRecruitingFit(post, candidateMmr || app.currentUser.ratings.integrated, app.state);
-              const target = getRecruitingTargetMmr(post, app.state);
-              const applicantEntry = applicantKind === "team"
-                ? { kind: "team", teamId: applyTeamId }
-                : { kind: "player", playerId: app.currentUser.id };
-              const applied = hasRecruitingApplicant(post, applicantEntry);
-              const mine = post.playerId === app.currentUser.id;
-              const needsTeamApplication = applicantKind === "team";
-              const noTeam = needsTeamApplication && !myTeams.length;
-              const blockedByTier = !fit.allowed;
+      <section className="ow-mode-grid" aria-label="모집 유형">
+        {Object.entries(TYPE_VIEW).map(([type, view]) => {
+          const Icon = view.icon;
+          return (
+            <button
+              key={type}
+              type="button"
+              className={`ow-mode-card ${typeFilter === type ? "active" : ""}`}
+              onClick={() => setTypeFilter(typeFilter === type ? "all" : type)}
+            >
+              <span className="ow-mode-icon"><Icon size={23} /></span>
+              <span className="ow-mode-copy">
+                <span className="ow-mode-code">{view.code}</span>
+                <h2>{view.title}</h2>
+                <p>{view.desc}</p>
+              </span>
+              <span className="ow-mode-count">{typeCounts[type] ?? 0} 대기</span>
+            </button>
+          );
+        })}
+      </section>
 
-              return (
-                <article key={post.id} className="recruiting-post">
-                  <div className="recruiting-post-main">
-                    <div className="badge-row">
-                      <Badge tone={post.ranked === false ? "neutral" : "green"}>{post.ranked === false ? "친선전" : "정규전"}</Badge>
-                      <Badge tone={applicantKind === "team" ? "blue" : "gold"}>{typeMeta.unitLabel}</Badge>
-                      <Badge tone={fit.tone}>{fit.label}</Badge>
-                      {post.position && post.position !== "상관없음" ? <Badge tone="blue">{post.position}</Badge> : null}
-                      {isNationalRecruitingPost(post, app.state) ? <Badge tone="gold">전국구</Badge> : null}
-                    </div>
-                    <h3>{post.title}</h3>
-                    <p>
-                      <MapPin size={15} />
-                      {post.region} · {post.court} · {post.mode}
-                    </p>
-                    <div className="recruiting-owner-line">
-                      <span>{typeMeta.shortLabel}</span>
-                      {team ? <Link to={`/app/teams/${team.id}`}>{team.name}</Link> : null}
-                      {owner ? <Link to={`/app/players/${owner.id}`}>{owner.name}</Link> : null}
-                    </div>
-                  </div>
-                  <div className="recruiting-fit-panel">
-                    <span>{post.ranked === false ? "친선전" : "정규전 허용 구간"}</span>
-                    <strong>{fit.range.label}</strong>
-                    <em>{post.ranked === false ? "티어 제한 없음" : `${target} MMR 기준`}</em>
-                  </div>
-                  <p className="recruiting-memo">{post.memo}</p>
-                  <div className="applicant-row">
-                    {applicants.length ? applicants.slice(0, 4).map((applicant) => (
-                      applicant.kind === "team" ? (
-                        <span key={`team-${applicant.team.id}`} className="applicant-team-chip">
-                          <span className="team-mini-dot" style={{ "--team-color": applicant.team.accent }} />
-                          {applicant.team.name}
-                        </span>
-                      ) : (
-                        <span key={`player-${applicant.user.id}`} className="avatar small" style={{ "--avatar": applicant.user.avatarColor }}>{applicant.user.name.slice(0, 1)}</span>
-                      )
-                    )) : <small>아직 신청 없음</small>}
-                    <strong>{applicants.length}/{post.spots}</strong>
-                  </div>
-                  <div className="recruiting-actions">
-                    {needsTeamApplication && !mine ? (
+      <section className="ow-filter-bar" aria-label="필터">
+        <button type="button" className={scope === "local" ? "active" : ""} onClick={() => setScope("local")}>내 지역</button>
+        <button type="button" className={scope === "all" ? "active" : ""} onClick={() => setScope("all")}>전체 지역</button>
+        <button type="button" className={queue === "all" ? "active" : ""} onClick={() => setQueue("all")}>전체</button>
+        <button type="button" className={queue === "ranked" ? "active" : ""} onClick={() => setQueue("ranked")}>정규</button>
+        <button type="button" className={queue === "friendly" ? "active" : ""} onClick={() => setQueue("friendly")}>친선</button>
+        <button type="button" className={typeFilter === "all" ? "active" : ""} onClick={() => setTypeFilter("all")}>타입 전체</button>
+        <span className="ow-filter-count">{posts.length}개 표시</span>
+      </section>
+
+      <section className="ow-recruit-list" aria-label="모집글 목록">
+        {posts.length ? posts.map((post) => {
+          const typeMeta = RECRUITING_TYPES[post.type] ?? RECRUITING_TYPES.need_player;
+          const typeView = TYPE_VIEW[post.type] ?? TYPE_VIEW.need_player;
+          const applicantKind = getRecruitingApplicantKind(post);
+          const owner = userById[post.playerId];
+          const team = teamById[post.teamId];
+          const applicants = formatApplicants(post, userById, teamById);
+          const applyTeamId = getPostApplyTeamId(post, myTeams, applyTeamByPost);
+          const applyTeam = teamById[applyTeamId];
+          const candidateMmr = applicantKind === "team" ? applyTeam?.mmr ?? 0 : app.currentUser.ratings.integrated;
+          const fit = getRecruitingFit(post, candidateMmr || app.currentUser.ratings.integrated, app.state);
+          const target = getRecruitingTargetMmr(post, app.state);
+          const applicantEntry = applicantKind === "team"
+            ? { kind: "team", teamId: applyTeamId }
+            : { kind: "player", playerId: app.currentUser.id };
+          const applied = hasRecruitingApplicant(post, applicantEntry);
+          const mine = post.playerId === app.currentUser.id;
+          const needsTeamApplication = applicantKind === "team";
+          const noTeam = needsTeamApplication && !myTeams.length;
+          const blockedByTier = !fit.allowed;
+          const full = applicants.length >= Number(post.spots ?? 1);
+          const disabled = applied || mine || blockedByTier || noTeam || full;
+          const canShowTeamSelect = needsTeamApplication && !mine && !applied && !full;
+
+          return (
+            <article key={post.id} className={`ow-recruit-card ow-type-${post.type} ${disabled ? "ow-state-blocked" : ""} ${full ? "ow-state-full" : ""}`}>
+              <div className="ow-card-main">
+                <div className="ow-card-top">
+                  <span className="ow-type-tag">{typeView.code}</span>
+                  <span className={`ow-queue-pill ${post.ranked === false ? "friendly" : "ranked"}`}>{getQueueLabel(post)}</span>
+                  {post.position && post.position !== "상관없음" ? <span className="ow-position-pill">{post.position}</span> : null}
+                </div>
+                <h3>{post.title}</h3>
+                <div className="ow-card-meta">
+                  <MapPin size={15} />
+                  <span>{post.region} · {post.court} · {post.mode}</span>
+                </div>
+                <div className="ow-card-bottom">
+                  <span className="ow-tier-chip">{post.ranked === false ? "티어 자유" : fit.range.label}</span>
+                  <span>{formatWhen(post.createdAt)}</span>
+                  {isNationalRecruitingPost(post, app.state) ? <span>전국구</span> : null}
+                </div>
+              </div>
+
+              <div className="ow-card-side">
+                <span className="ow-slot-count"><strong>{applicants.length}/{post.spots}</strong><span>신청</span></span>
+                <Button
+                  type="button"
+                  className="ow-card-action"
+                  variant={disabled ? "secondary" : "primary"}
+                  disabled={disabled}
+                  onClick={() => app.actions.interestRecruitingPost(post.id, needsTeamApplication ? { teamId: applyTeamId } : undefined)}
+                >
+                  {needsTeamApplication ? <UsersRound size={16} /> : <UserRound size={16} />}
+                  {getButtonLabel({ mine, noTeam, blockedByTier, full, applied, typeMeta })}
+                </Button>
+              </div>
+
+              <details className="ow-card-details">
+                <summary>상세 보기</summary>
+                <div className="ow-details-grid">
+                  <span>
+                    작성자
+                    {owner ? <Link to={`/app/players/${owner.id}`}>{owner.name}</Link> : <b>알 수 없음</b>}
+                  </span>
+                  <span>
+                    기준
+                    <b>{target} MMR · {fit.label}</b>
+                  </span>
+                  <span>
+                    유형
+                    <b>{typeMeta.shortLabel}</b>
+                  </span>
+                  {team ? (
+                    <span>
+                      팀
+                      <Link to={`/app/teams/${team.id}`}>{team.name}</Link>
+                    </span>
+                  ) : null}
+                  {canShowTeamSelect ? (
+                    <label>
+                      신청 팀
                       <select
-                        className="recruiting-apply-select"
-                        disabled={!myTeams.length}
                         value={applyTeamId}
+                        disabled={!myTeams.length}
                         onChange={(event) => setApplyTeamByPost((current) => ({ ...current, [post.id]: event.target.value }))}
                       >
                         {myTeams.length ? myTeams.map((item) => (
                           <option key={item.id} value={item.id}>{item.name} · {item.mmr}</option>
                         )) : <option value="">소속팀 없음</option>}
                       </select>
-                    ) : null}
-                    <Button
-                      type="button"
-                      variant={applied || blockedByTier || noTeam ? "secondary" : "primary"}
-                      disabled={applied || mine || blockedByTier || noTeam}
-                      onClick={() => app.actions.interestRecruitingPost(post.id, needsTeamApplication ? { teamId: applyTeamId } : undefined)}
-                    >
-                      {needsTeamApplication ? <UsersRound size={17} /> : <UserRound size={17} />}
-                      {mine ? "내 모집글" : noTeam ? "소속팀 필요" : blockedByTier ? "티어 구간 밖" : applied ? "신청 완료" : typeMeta.actionLabel}
-                    </Button>
-                    {mine ? <Button type="button" variant="secondary" onClick={() => app.actions.closeRecruitingPost(post.id)}>마감</Button> : null}
+                    </label>
+                  ) : null}
+                  <p className="ow-details-memo">{post.memo}</p>
+                  <div className="ow-applicant-strip">
+                    {applicants.length ? applicants.slice(0, 6).map((applicant) => (
+                      applicant.kind === "team" ? (
+                        <span key={`team-${applicant.team.id}`} className="ow-applicant-team">
+                          <span className="ow-mini-dot" style={{ "--team-color": applicant.team.accent }} />
+                          {applicant.team.name}
+                        </span>
+                      ) : (
+                        <span key={`player-${applicant.user.id}`} className="avatar small" style={{ "--avatar": applicant.user.avatarColor }}>{applicant.user.name.slice(0, 1)}</span>
+                      )
+                    )) : <small>아직 신청 없음</small>}
                   </div>
-                </article>
-              );
-            })}
-          </div>
-        </Card>
-
-        <aside className="page-stack">
-          <Card className="section-card recruiting-compose-card">
-            <div className="section-title-row">
-              <div>
-                <p className="eyebrow">Post</p>
-                <h2>모집 올리기</h2>
-              </div>
-              <Swords size={22} />
+                  {mine ? <Button type="button" className="ow-close-button" variant="secondary" onClick={() => app.actions.closeRecruitingPost(post.id)}>마감</Button> : null}
+                </div>
+              </details>
+            </article>
+          );
+        }) : (
+          <div className="ow-empty-state">
+            <div>
+              <strong>조건에 맞는 큐 없음</strong>
+              <p>필터를 풀거나 새 모집을 시작.</p>
             </div>
-            <form className="form-stack" onSubmit={submit}>
-              <div className="recruiting-type-grid">
-                {Object.entries(RECRUITING_TYPES).map(([type, meta]) => (
-                  <button
-                    key={type}
-                    type="button"
-                    className={draft.type === type ? "active" : ""}
-                    onClick={() => changeType(type)}
-                  >
-                    {meta.applicantKind === "team" ? <UsersRound size={18} /> : <UserRound size={18} />}
-                    <strong>{meta.label}</strong>
-                    <span>{meta.shortLabel}</span>
-                  </button>
-                ))}
+          </div>
+        )}
+      </section>
+
+      {composeOpen ? (
+        <div className="ow-compose-backdrop" role="presentation" onMouseDown={() => setComposeOpen(false)}>
+          <aside className="ow-compose-drawer" role="dialog" aria-modal="true" aria-label="모집 시작" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="ow-drawer-head">
+              <div>
+                <span className="ow-kicker">CREATE QUEUE</span>
+                <h2>모집 시작</h2>
               </div>
+              <button type="button" className="ow-icon-button" aria-label="닫기" onClick={() => setComposeOpen(false)}><X size={20} /></button>
+            </div>
+
+            <form className="ow-compose-form" onSubmit={submit}>
+              <div className="ow-compose-type-grid">
+                {Object.entries(RECRUITING_TYPES).map(([type, meta]) => {
+                  const view = TYPE_VIEW[type] ?? TYPE_VIEW.need_player;
+                  return (
+                    <button
+                      key={type}
+                      type="button"
+                      className={draft.type === type ? "active" : ""}
+                      onClick={() => changeDraftType(type)}
+                    >
+                      <strong>{view.title}</strong>
+                      <span>{meta.shortLabel}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
               <div className="segmented-control compact-segments">
-                <button type="button" className={!draft.ranked ? "active" : ""} onClick={() => update({ ranked: false })}>친선전</button>
-                <button type="button" className={draft.ranked ? "active" : ""} onClick={() => update({ ranked: true })}>정규전</button>
+                <button type="button" className={!draft.ranked ? "active" : ""} onClick={() => update({ ranked: false })}>친선</button>
+                <button type="button" className={draft.ranked ? "active" : ""} onClick={() => update({ ranked: true })}>정규</button>
               </div>
+
               <label>
                 제목
                 <input value={draft.title} onChange={(event) => update({ title: event.target.value })} />
               </label>
-              <div className="form-grid two">
+
+              <div className="ow-field-grid three">
                 <label>
                   지역
                   <select
@@ -291,72 +415,65 @@ export default function Recruiting({ app }) {
                     {MATCH_MODES.map((mode) => <option key={mode.id} value={mode.id}>{mode.label}</option>)}
                   </select>
                 </label>
-              </div>
-              <label>
-                코트
-                <select value={draft.court} onChange={(event) => update({ court: event.target.value })}>
-                  {COURTS.filter((court) => court.region === draft.region || draft.region === "전체").map((court) => (
-                    <option key={court.id} value={court.name}>{court.region} · {court.name}</option>
-                  ))}
-                </select>
-              </label>
-              {posterNeedsTeam ? (
                 <label>
-                  내 팀
-                  <select value={draft.teamId} onChange={(event) => update({ teamId: event.target.value })}>
-                    {myTeams.map((team) => (
-                      <option key={team.id} value={team.id}>{team.region} · {team.name} · {team.mmr}</option>
+                  코트
+                  <select value={draft.court} onChange={(event) => update({ court: event.target.value })}>
+                    {COURTS.filter((court) => court.region === draft.region || draft.region === "전체").map((court) => (
+                      <option key={court.id} value={court.name}>{court.region} · {court.name}</option>
                     ))}
                   </select>
                 </label>
-              ) : null}
-              {posterNeedsTeam ? (
-                <span className={canPostRecruiting ? "form-chip" : "form-warning"}>
-                  {canPostRecruiting ? "내 소속팀" : "소속팀 필요"}
-                </span>
-              ) : null}
-              {draft.type !== "need_team" ? (
-                <div className="position-tab-group">
-                  <span>포지션</span>
-                  <div className="segmented-control compact-segments position-segments">
-                    {PLAYER_POSITIONS.map((position) => (
-                      <button
-                        key={position}
-                        type="button"
-                        className={draft.position === position ? "active" : ""}
-                        onClick={() => update({ position })}
-                      >
-                        {position}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-              <label>
-                {draft.type === "need_player" ? "필요 인원" : "필요 팀 수"}
-                <input type="number" min="1" max={draft.type === "need_player" ? "5" : "4"} value={draft.spots} onChange={(event) => update({ spots: event.target.value })} />
-              </label>
-              <div className="tier-range-note">
+              </div>
+
+              <div className="ow-field-grid">
+                {posterNeedsTeam ? (
+                  <label>
+                    내 팀
+                    <select value={draft.teamId} onChange={(event) => update({ teamId: event.target.value })}>
+                      {myTeams.map((team) => (
+                        <option key={team.id} value={team.id}>{team.region} · {team.name} · {team.mmr}</option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
+                {draft.type !== "need_team" ? (
+                  <label>
+                    포지션
+                    <select value={draft.position} onChange={(event) => update({ position: event.target.value })}>
+                      {PLAYER_POSITIONS.map((position) => <option key={position}>{position}</option>)}
+                    </select>
+                  </label>
+                ) : null}
+                <label>
+                  {draft.type === "need_player" ? "필요 인원" : "필요 팀 수"}
+                  <input type="number" min="1" max={draft.type === "need_player" ? "5" : "4"} value={draft.spots} onChange={(event) => update({ spots: event.target.value })} />
+                </label>
+              </div>
+
+              <div className="ow-mini-note">
                 <div>
-                  <span>{draft.ranked ? "정규전 허용 구간" : "친선전"}</span>
+                  <span>{draft.ranked ? "정규 허용 구간" : "친선"}</span>
                   <strong>{draftRange.label}</strong>
-                  <em>{draftRange.detail}</em>
+                  <em>{draft.ranked ? draftRange.detail : "티어 제한 없음"}</em>
                 </div>
                 <TierBadge mmr={targetMmr} compact />
               </div>
-              <div className="queue-note">
-                <ShieldCheck size={17} />
-                <span>{draft.ranked ? "정규전 · ±2티어" : "친선전 · 티어 자유"}</span>
-              </div>
-              <label className="memo-label">
+
+              <label>
                 메모
                 <textarea value={draft.memo} onChange={(event) => update({ memo: event.target.value })} />
               </label>
-              <Button type="submit" disabled={!canPostRecruiting}><PlusCircle size={18} /> 모집글 올리기</Button>
+
+              <div className="ow-submit-row">
+                <span className={canPostRecruiting ? "queue-note" : "form-warning"}>
+                  <ShieldCheck size={17} /> {canPostRecruiting ? "바로 등록 가능" : "소속팀 필요"}
+                </span>
+                <Button type="submit" disabled={!canPostRecruiting}><PlusCircle size={18} /> 등록</Button>
+              </div>
             </form>
-          </Card>
-        </aside>
-      </section>
+          </aside>
+        </div>
+      ) : null}
     </div>
   );
 }
