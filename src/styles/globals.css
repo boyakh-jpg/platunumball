@@ -2916,6 +2916,116 @@ input[type="color"] {
   font-weight: 800;
 }
 
+.home-recent-card {
+  gap: 12px;
+}
+
+.recent-result-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.recent-result-pill {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 950;
+}
+
+.recent-match-list {
+  display: grid;
+  gap: 8px;
+}
+
+.recent-match-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-left-width: 4px;
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.045);
+  padding: 10px;
+}
+
+.recent-match-row b {
+  display: grid;
+  height: 28px;
+  place-items: center;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 0.78rem;
+}
+
+.recent-match-row span {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.recent-match-row strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent-match-row em {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-style: normal;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent-match-row i {
+  color: var(--text);
+  font-size: 1.05rem;
+  font-style: normal;
+  font-weight: 950;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.recent-result-pill.result-w,
+.recent-match-row.result-w b {
+  background: var(--blue);
+}
+
+.recent-result-pill.result-l,
+.recent-match-row.result-l b {
+  background: var(--danger);
+}
+
+.recent-result-pill.result-d,
+.recent-match-row.result-d b {
+  background: var(--gold);
+  color: #141107;
+}
+
+.recent-match-row.result-w {
+  border-left-color: var(--blue);
+  background: rgba(116, 169, 255, 0.07);
+}
+
+.recent-match-row.result-l {
+  border-left-color: var(--danger);
+  background: rgba(255, 93, 108, 0.06);
+}
+
+.recent-match-row.result-d {
+  border-left-color: var(--gold);
+  background: rgba(255, 211, 108, 0.06);
+}
+
 .compact-segments {
   width: max-content;
   max-width: 100%;

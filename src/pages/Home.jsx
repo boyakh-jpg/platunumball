@@ -29,44 +29,27 @@ function getUserResult(match, userId) {
   return sideScore > otherScore ? "W" : "L";
 }
 
-function getUserDelta(match, userId) {
-  const change = match.ratingResult?.find((item) => item.playerId === userId);
-  return Math.round(change?.integratedDelta ?? 0);
+function getUserSide(match, userId) {
+  if (match.teamA.players.includes(userId)) return "teamA";
+  if (match.teamB.players.includes(userId)) return "teamB";
+  return "teamA";
 }
 
-function FormTrendChart({ matches, userId }) {
-  const recent = matches.filter((match) => matchHasUser(match, userId)).slice(0, 8).reverse();
-  const values = recent.map((match) => getUserDelta(match, userId));
-  const maxAbs = Math.max(8, ...values.map((value) => Math.abs(value)));
-  const points = values.map((value, index) => {
-    const x = 18 + index * (recent.length > 1 ? 264 / (recent.length - 1) : 0);
-    const y = 82 - (value / maxAbs) * 48;
-    return `${x},${y}`;
-  });
+function getSideScore(match, sideName) {
+  const resultKey = sideName === "teamA" ? "scoreA" : "scoreB";
+  return Number(match.result?.[resultKey] ?? match[sideName].score ?? 0);
+}
 
-  return (
-    <div className="form-trend-chart">
-      <svg viewBox="0 0 300 128" role="img" aria-label="최근 전적 흐름 그래프">
-        <path d="M18 82H282" className="trend-axis" />
-        {points.length > 1 ? <polyline points={points.join(" ")} className="trend-line" /> : null}
-        {points.map((point, index) => {
-          const [x, y] = point.split(",");
-          const result = getUserResult(recent[index], userId);
-          return <circle key={`${point}-${index}`} cx={x} cy={y} r="5" className={`trend-dot trend-dot-${result.toLowerCase()}`} />;
-        })}
-      </svg>
-      <div className="form-pill-row">
-        {recent.map((match) => {
-          const result = getUserResult(match, userId);
-          return (
-            <Link key={match.id} to={`/app/matches/${match.id}`} className={`form-pill form-pill-${result.toLowerCase()}`}>
-              {result}
-            </Link>
-          );
-        })}
-      </div>
-    </div>
-  );
+function getUserMatchLine(match, userId) {
+  const sideName = getUserSide(match, userId);
+  const otherSide = sideName === "teamA" ? "teamB" : "teamA";
+  return {
+    side: match[sideName],
+    opponent: match[otherSide],
+    score: getSideScore(match, sideName),
+    opponentScore: getSideScore(match, otherSide),
+    result: getUserResult(match, userId),
+  };
 }
 
 export default function Home({ app }) {
@@ -277,20 +260,40 @@ export default function Home({ app }) {
             )}
           </Card>
 
-          <Card className="section-card">
+          <Card className="section-card home-recent-card">
             <div className="section-title-row">
               <div>
-                <p className="eyebrow">Recent Form</p>
-                <h2>완료 전적 흐름</h2>
+                <p className="eyebrow">Recent Matches</p>
+                <h2>내 최근 전적</h2>
               </div>
-              <Badge tone="green">{completedMatches.length}경기</Badge>
+              <Badge tone="green">{myCompletedMatches.length}경기</Badge>
             </div>
-            <FormTrendChart matches={completedMatches} userId={user.id} />
-            <div className="compact-list">
+            <div className="recent-result-strip">
+              {myCompletedMatches.slice(0, 8).map((match) => {
+                const result = getUserResult(match, user.id);
+                return (
+                  <Link key={match.id} to={`/app/matches/${match.id}`} className={`recent-result-pill result-${result.toLowerCase()}`}>
+                    {result}
+                  </Link>
+                );
+              })}
+            </div>
+            <div className="recent-match-list">
               {latestMyMatches.map((match) => (
-                <Link key={match.id} to={`/app/matches/${match.id}`}>
-                  <span>{match.title}</span>
-                  <strong>{match.teamA.score ?? 0}:{match.teamB.score ?? 0}</strong>
+                <Link key={match.id} to={`/app/matches/${match.id}`} className={`recent-match-row result-${getUserResult(match, user.id).toLowerCase()}`}>
+                  {(() => {
+                    const line = getUserMatchLine(match, user.id);
+                    return (
+                      <>
+                        <b>{line.result}</b>
+                        <span>
+                          <strong>{line.side.name}</strong>
+                          <em>vs {line.opponent.name} · {match.court}</em>
+                        </span>
+                        <i>{line.score}:{line.opponentScore}</i>
+                      </>
+                    );
+                  })()}
                 </Link>
               ))}
             </div>
