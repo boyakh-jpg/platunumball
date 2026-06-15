@@ -203,9 +203,9 @@ export default function CreateMatch({ app }) {
   const tournamentMmrSpread = getMmrSpread(tournamentTeams);
   const teamOptions = useMemo(() => {
     const teamMap = new Map();
-    [selectedTeamA, selectedTeamB, ...sortedTeams].filter(Boolean).forEach((team) => teamMap.set(team.id, team));
+    [selectedTeamA, selectedTeamB, ...tournamentTeams, ...sortedTeams].filter(Boolean).forEach((team) => teamMap.set(team.id, team));
     return Array.from(teamMap.values());
-  }, [selectedTeamA, selectedTeamB, sortedTeams]);
+  }, [selectedTeamA, selectedTeamB, sortedTeams, tournamentTeams]);
   const selectedTeams = useMemo(
     () => (draft.visibility === "public"
       ? (draft.hostJoinMode === "team" ? [selectedTeamA].filter(Boolean) : [])
@@ -422,7 +422,10 @@ export default function CreateMatch({ app }) {
                 <em>매칭 목록에 노출하고 빈 슬롯을 개인/팀 파티가 채운다.</em>
               </span>
             </button>
-            <button type="button" className={isTournamentRoom ? "active" : ""} onClick={() => update({ visibility: "tournament", tournamentTeamIds: draft.tournamentTeamIds?.length ? draft.tournamentTeamIds : [defaultTeamA?.id, defaultTeamB?.id].filter(Boolean) })}>
+            <button type="button" className={isTournamentRoom ? "active" : ""} onClick={() => {
+              setTeamRegion("전체");
+              update({ visibility: "tournament", tournamentTeamIds: draft.tournamentTeamIds?.length ? draft.tournamentTeamIds : [defaultTeamA?.id, defaultTeamB?.id].filter(Boolean) });
+            }}>
               <Trophy size={19} />
               <span>
                 <strong>비공개 대회방</strong>
@@ -662,6 +665,17 @@ export default function CreateMatch({ app }) {
           </div>
           {isTournamentRoom ? (
             <>
+              <div className="tournament-selected-strip">
+                <span>선택 {tournamentTeams.length}팀 · 팀 수 제한 없음 · 2의 거듭제곱이 아니면 부전승 자동 배정</span>
+                <div>
+                  {tournamentTeams.map((team) => (
+                    <button key={team.id} type="button" onClick={() => toggleTournamentTeam(team.id)}>
+                      <TeamHoverCard team={team} as="span"><strong>{team.name}</strong></TeamHoverCard>
+                      <em>해제</em>
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="tournament-team-grid">
                 {teamOptions.map((team) => {
                   const invited = (draft.tournamentTeamIds ?? []).includes(team.id);

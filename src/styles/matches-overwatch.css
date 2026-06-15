@@ -738,6 +738,91 @@
   font-weight: 850;
 }
 
+.tournament-bracket-graphic {
+  grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+  overflow-x: auto;
+}
+
+.bracket-round-column {
+  position: relative;
+  align-content: start;
+}
+
+.bracket-lanes {
+  display: grid;
+  gap: 14px;
+}
+
+.tournament-round article.bracket-match-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 7px;
+  padding: 10px 36px 10px 10px;
+}
+
+.bracket-team-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.045);
+  padding: 6px 8px;
+}
+
+.bracket-team-row.winner {
+  border-color: rgba(70, 224, 182, 0.3);
+  background: rgba(70, 224, 182, 0.08);
+}
+
+.bracket-team-row .team-hover-trigger {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 0.83rem;
+  font-weight: 950;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bracket-midline {
+  justify-self: center;
+}
+
+.tournament-round article.bracket-bye-card {
+  border-color: rgba(255, 211, 108, 0.22);
+  background: rgba(255, 211, 108, 0.06);
+}
+
+.tournament-round article > .bracket-connector {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  width: 22px;
+  height: 1px;
+  min-width: 22px;
+  overflow: visible;
+  background: rgba(255, 211, 108, 0.45);
+  color: transparent;
+}
+
+.tournament-round article > .bracket-connector::after {
+  content: "";
+  position: absolute;
+  top: -18px;
+  right: 0;
+  height: 36px;
+  border-right: 1px solid rgba(255, 211, 108, 0.38);
+}
+
+.bracket-next-slot {
+  min-height: 92px;
+  align-content: center;
+}
+
 .league-fixture-grid {
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
@@ -779,6 +864,16 @@
   font-size: 0.8rem;
   font-weight: 850;
   padding: 0 9px;
+}
+
+.tournament-schedule-list form.locked {
+  opacity: 0.72;
+}
+
+.tournament-schedule-list input:disabled,
+.tournament-schedule-list button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .tournament-empty {
@@ -1036,6 +1131,7 @@ html[data-theme="light"] .om-empty-state,
 html[data-theme="light"] .tournament-summary-grid > div,
 html[data-theme="light"] .tournament-team-list article,
 html[data-theme="light"] .tournament-round,
+html[data-theme="light"] .bracket-team-row,
 html[data-theme="light"] .league-fixture-grid article,
 html[data-theme="light"] .tournament-schedule-list form,
 html[data-theme="light"] .tournament-empty {
@@ -1146,6 +1242,18 @@ html[data-theme="light"] .tournament-schedule-list input {
 
   .league-fixture-grid article {
     grid-template-columns: 1fr;
+  }
+
+  .tournament-bracket-graphic {
+    grid-template-columns: minmax(260px, 1fr);
+  }
+
+  .tournament-round article > .bracket-connector {
+    display: none;
+  }
+
+  .tournament-round article.bracket-match-card {
+    padding-right: 10px;
   }
 
   .om-list-head {

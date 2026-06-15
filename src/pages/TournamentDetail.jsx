@@ -52,6 +52,14 @@ function getWinnerName(match) {
   return scoreA > scoreB ? match.teamA.name : match.teamB.name;
 }
 
+function getRoundEntrantCount(round = {}) {
+  return (round.pairings?.length ?? 0) + (round.byes?.length ?? 0);
+}
+
+function getNextRoundSlotCount(round = {}) {
+  return Math.max(1, Math.ceil(getRoundEntrantCount(round) / 2));
+}
+
 export default function TournamentDetail({ app }) {
   const { tournamentId } = useParams();
   const tournament = (app.state.tournaments ?? []).find((item) => item.id === tournamentId);
@@ -88,6 +96,7 @@ export default function TournamentDetail({ app }) {
     .filter((row) => row.team);
   const acceptedCount = teamRows.filter((row) => row.status === "accepted").length;
   const bracketRounds = tournament.bracket?.rounds ?? [];
+  const canManageSchedule = tournament.createdBy === app.currentUser.id;
   const leagueFixtures = tournament.bracket?.fixtures ?? tournamentMatches.map((match) => ({
     matchId: match.id,
     round: match.tournamentRound,
@@ -98,6 +107,7 @@ export default function TournamentDetail({ app }) {
 
   const saveSchedule = (event, matchId) => {
     event.preventDefault();
+    if (!canManageSchedule) return;
     const form = new FormData(event.currentTarget);
     app.actions.updateTournamentMatchSchedule(tournament.id, matchId, {
       scheduledDate: form.get("scheduledDate"),
@@ -184,38 +194,55 @@ export default function TournamentDetail({ app }) {
             <p>초대팀 주장이 모두 승인하면 자동으로 경기와 대진이 열린다.</p>
           </div>
         ) : tournament.format === "tournament" ? (
-          <div className="tournament-bracket">
+          <div className="tournament-bracket tournament-bracket-graphic">
             {bracketRounds.map((round) => (
-              <div key={round.id} className="tournament-round">
+              <div key={round.id} className="tournament-round bracket-round-column">
                 <h3>{round.name}</h3>
-                {(round.pairings ?? []).map((pairing) => {
-                  const match = matchesById[pairing.matchId];
-                  const winner = match ? getWinnerName(match) : "";
-                  return (
-                    <article key={pairing.matchId} className={winner ? "done" : ""}>
-                      <TeamHoverCard team={teamById[pairing.teamAId]} as="span">{teamById[pairing.teamAId]?.name ?? "TBD"}</TeamHoverCard>
-                      <strong>vs</strong>
-                      <TeamHoverCard team={teamById[pairing.teamBId]} as="span">{teamById[pairing.teamBId]?.name ?? "TBD"}</TeamHoverCard>
-                      {winner ? <em>{winner} 승</em> : <em>{match ? getMatchTime(match) : "일정 미정"}</em>}
+                <div className="bracket-lanes">
+                  {(round.pairings ?? []).map((pairing) => {
+                    const match = matchesById[pairing.matchId];
+                    const winner = match ? getWinnerName(match) : "";
+                    return (
+                      <article key={pairing.matchId} className={winner ? "bracket-match-card done" : "bracket-match-card"}>
+                        <div className={winner === match?.teamA.name ? "bracket-team-row winner" : "bracket-team-row"}>
+                          <TeamHoverCard team={teamById[pairing.teamAId]} as="span">{teamById[pairing.teamAId]?.name ?? "TBD"}</TeamHoverCard>
+                          <TierBadge mmr={teamById[pairing.teamAId]?.mmr ?? 1200} compact />
+                        </div>
+                        <strong className="bracket-midline">vs</strong>
+                        <div className={winner === match?.teamB.name ? "bracket-team-row winner" : "bracket-team-row"}>
+                          <TeamHoverCard team={teamById[pairing.teamBId]} as="span">{teamById[pairing.teamBId]?.name ?? "TBD"}</TeamHoverCard>
+                          <TierBadge mmr={teamById[pairing.teamBId]?.mmr ?? 1200} compact />
+                        </div>
+                        {winner ? <em>{winner} 승</em> : <em>{match ? getMatchTime(match) : "일정 미정"}</em>}
+                        <span className="bracket-connector" aria-hidden="true" />
+                      </article>
+                    );
+                  })}
+                  {(round.byes ?? []).map((teamId) => (
+                    <article key={`bye-${teamId}`} className="bracket-match-card bracket-bye-card">
+                      <div className="bracket-team-row winner">
+                        <TeamHoverCard team={teamById[teamId]} as="span">{teamById[teamId]?.name ?? "TBD"}</TeamHoverCard>
+                        <TierBadge mmr={teamById[teamId]?.mmr ?? 1200} compact />
+                      </div>
+                      <strong className="bracket-midline">BYE</strong>
+                      <em>부전승</em>
+                      <span className="bracket-connector" aria-hidden="true" />
                     </article>
-                  );
-                })}
-                {(round.byes ?? []).map((teamId) => (
-                  <article key={`bye-${teamId}`} className="bye">
-                    <TeamHoverCard team={teamById[teamId]} as="span">{teamById[teamId]?.name ?? "TBD"}</TeamHoverCard>
-                    <strong>BYE</strong>
-                    <em>부전승</em>
+                  ))}
+                </div>
+              </div>
+            ))}
+            <div className="tournament-round locked bracket-round-column">
+              <h3>다음 라운드</h3>
+              <div className="bracket-lanes bracket-next-lanes">
+                {Array.from({ length: getNextRoundSlotCount(bracketRounds[bracketRounds.length - 1]) }).map((_, index) => (
+                  <article key={`next-${index}`} className="bracket-next-slot">
+                    <span>{index + 1}번 슬롯</span>
+                    <strong><Trophy size={16} /></strong>
+                    <em>승자/부전승 진출</em>
                   </article>
                 ))}
               </div>
-            ))}
-            <div className="tournament-round locked">
-              <h3>다음 라운드</h3>
-              <article>
-                <span>1라운드 결과 확정 후</span>
-                <strong><Trophy size={16} /></strong>
-                <em>진행 예정</em>
-              </article>
             </div>
           </div>
         ) : (
@@ -243,20 +270,20 @@ export default function TournamentDetail({ app }) {
               <span className="om-kicker">SCHEDULE</span>
               <h2>경기 일정</h2>
             </div>
-            <span>날짜/시간 저장</span>
+            <span>{canManageSchedule ? "생성자 일정 입력" : "생성자만 수정 가능"}</span>
           </div>
           <div className="tournament-schedule-list">
             {tournamentMatches.map((match) => (
-              <form key={match.id} onSubmit={(event) => saveSchedule(event, match.id)}>
+              <form key={match.id} className={canManageSchedule ? "" : "locked"} onSubmit={(event) => saveSchedule(event, match.id)}>
                 <Link to={`/app/matches/${match.id}`}>
                   <TeamHoverCard team={teamById[match.teamA.teamId]} as="span">{match.teamA.name}</TeamHoverCard>
                   {" vs "}
                   <TeamHoverCard team={teamById[match.teamB.teamId]} as="span">{match.teamB.name}</TeamHoverCard>
                 </Link>
                 <span>{match.status === "confirmed" ? "확정" : match.status === "agreed" ? "예정" : "대기"}</span>
-                <input type="date" name="scheduledDate" defaultValue={match.scheduledDate ?? ""} aria-label="경기 날짜" />
-                <input type="time" name="scheduledTime" defaultValue={match.scheduledTime ?? ""} aria-label="경기 시간" />
-                <button type="submit"><Save size={14} /> 저장</button>
+                <input type="date" name="scheduledDate" defaultValue={match.scheduledDate ?? ""} disabled={!canManageSchedule} aria-label="경기 날짜" />
+                <input type="time" name="scheduledTime" defaultValue={match.scheduledTime ?? ""} disabled={!canManageSchedule} aria-label="경기 시간" />
+                <button type="submit" disabled={!canManageSchedule}><Save size={14} /> 저장</button>
               </form>
             ))}
           </div>

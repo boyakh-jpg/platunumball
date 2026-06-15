@@ -109,6 +109,66 @@
   min-height: 48px;
 }
 
+.ow-queue-controls {
+  display: grid;
+  gap: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius);
+  background: rgba(8, 11, 16, 0.62);
+  padding: 12px;
+}
+
+.ow-queue-controls-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ow-queue-controls-head > div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.ow-queue-controls-head strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 0.98rem;
+  font-weight: 950;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ow-collapse-button {
+  min-height: 34px;
+  border: 1px solid rgba(70, 224, 182, 0.28);
+  border-radius: 7px;
+  background: rgba(70, 224, 182, 0.1);
+  color: var(--green);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 950;
+  padding: 0 12px;
+}
+
+.ow-queue-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.ow-queue-summary span {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.055);
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 900;
+  padding: 6px 9px;
+}
+
 .ow-mode-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1138,6 +1198,7 @@ html[data-theme="light"] .ow-hero-copy p {
 
 html[data-theme="light"] .ow-mode-card,
 html[data-theme="light"] .ow-filter-bar,
+html[data-theme="light"] .ow-queue-controls,
 html[data-theme="light"] .ow-recruit-card,
 html[data-theme="light"] .ow-hero-panel,
 html[data-theme="light"] .ow-empty-state {

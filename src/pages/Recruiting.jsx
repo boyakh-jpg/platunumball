@@ -288,6 +288,7 @@ export default function Recruiting({ app }) {
   const [roomScope, setRoomScope] = useState("all");
   const [entryMode, setEntryMode] = useState("rooms");
   const [modeFilter, setModeFilter] = useState("all");
+  const [queueControlsOpen, setQueueControlsOpen] = useState(true);
   const [composeOpen, setComposeOpen] = useState(false);
   const [selectedPostId, setSelectedPostId] = useState(null);
   const [joinDraftByPost, setJoinDraftByPost] = useState({});
@@ -434,52 +435,75 @@ export default function Recruiting({ app }) {
         </div>
       </section>
 
-      <section className="ow-mode-grid" aria-label="참여 방식">
-        <button type="button" className={entryMode === "player" ? "ow-mode-card active" : "ow-mode-card"} onClick={() => setEntryMode("player")}>
-          <span className="ow-mode-icon"><UserRound size={23} /></span>
-          <span className="ow-mode-copy">
-            <span className="ow-mode-code">SOLO</span>
-            <h2>개인 참여</h2>
-            <p>내 티어로 바로 들어갈 수 있는 빈 슬롯만 본다.</p>
-          </span>
-          <span className="ow-mode-count">{playerEntryCount}개</span>
-        </button>
-        <button type="button" className={entryMode === "team" ? "ow-mode-card active" : "ow-mode-card"} onClick={() => setEntryMode("team")}>
-          <span className="ow-mode-icon"><UsersRound size={23} /></span>
-          <span className="ow-mode-copy">
-            <span className="ow-mode-code">PARTY</span>
-            <h2>팀 파티</h2>
-            <p>내 팀으로 들어갈 수 있는 공개방만 본다.</p>
-          </span>
-          <span className="ow-mode-count">{teamEntryCount}개</span>
-        </button>
-        <button type="button" className={entryMode === "rooms" ? "ow-mode-card active" : "ow-mode-card"} onClick={() => setEntryMode("rooms")}>
-          <span className="ow-mode-icon"><Swords size={23} /></span>
-          <span className="ow-mode-copy">
-            <span className="ow-mode-code">ROOM</span>
-            <h2>매치방</h2>
-            <p>전체 공개방을 보고 방 상세에서 참여 방식을 고른다.</p>
-          </span>
-          <span className="ow-mode-count">{roomEntryCount}개</span>
-        </button>
-      </section>
+      <section className={queueControlsOpen ? "ow-queue-controls" : "ow-queue-controls collapsed"}>
+        <div className="ow-queue-controls-head">
+          <div>
+            <span className="ow-kicker">QUEUE FILTER</span>
+            <strong>{entryMode === "player" ? "개인 참여" : entryMode === "team" ? "팀 파티" : "매치방"} · {posts.length}개 표시</strong>
+          </div>
+          <button type="button" className="ow-collapse-button" onClick={() => setQueueControlsOpen((current) => !current)}>
+            {queueControlsOpen ? "접기" : "펼치기"}
+          </button>
+        </div>
 
-      <section className="ow-filter-bar" aria-label="필터">
-        <button type="button" className={scope === "local" ? "active" : ""} onClick={() => setScope("local")}>내 지역</button>
-        <button type="button" className={scope === "all" ? "active" : ""} onClick={() => setScope("all")}>전체 지역</button>
-        <button type="button" className={roomScope === "created" ? "active" : ""} onClick={() => setRoomScope(roomScope === "created" ? "all" : "created")}>내가 만든 방 {createdRoomCount}</button>
-        <button type="button" className={roomScope === "joined" ? "active" : ""} onClick={() => setRoomScope(roomScope === "joined" ? "all" : "joined")}>내 참여방 {joinedRoomCount}</button>
-        <button type="button" className={queue === "all" ? "active" : ""} onClick={() => setQueue("all")}>전체</button>
-        <button type="button" className={queue === "ranked" ? "active" : ""} onClick={() => setQueue("ranked")}>정규전</button>
-        <button type="button" className={queue === "friendly" ? "active" : ""} onClick={() => setQueue("friendly")}>친선전</button>
-        <label className="ow-filter-select">
-          방식
-          <select value={modeFilter} onChange={(event) => setModeFilter(event.target.value)}>
-            <option value="all">전체</option>
-            {MATCH_MODES.map((mode) => <option key={mode.id} value={mode.id}>{mode.label}</option>)}
-          </select>
-        </label>
-        <span className="ow-filter-count">{posts.length}개 표시</span>
+        {queueControlsOpen ? (
+          <>
+            <section className="ow-mode-grid" aria-label="참여 방식">
+              <button type="button" className={entryMode === "player" ? "ow-mode-card active" : "ow-mode-card"} onClick={() => setEntryMode("player")}>
+                <span className="ow-mode-icon"><UserRound size={23} /></span>
+                <span className="ow-mode-copy">
+                  <span className="ow-mode-code">SOLO</span>
+                  <h2>개인 참여</h2>
+                  <p>내 티어로 바로 들어갈 수 있는 빈 슬롯만 본다.</p>
+                </span>
+                <span className="ow-mode-count">{playerEntryCount}개</span>
+              </button>
+              <button type="button" className={entryMode === "team" ? "ow-mode-card active" : "ow-mode-card"} onClick={() => setEntryMode("team")}>
+                <span className="ow-mode-icon"><UsersRound size={23} /></span>
+                <span className="ow-mode-copy">
+                  <span className="ow-mode-code">PARTY</span>
+                  <h2>팀 파티</h2>
+                  <p>내 팀으로 들어갈 수 있는 공개방만 본다.</p>
+                </span>
+                <span className="ow-mode-count">{teamEntryCount}개</span>
+              </button>
+              <button type="button" className={entryMode === "rooms" ? "ow-mode-card active" : "ow-mode-card"} onClick={() => setEntryMode("rooms")}>
+                <span className="ow-mode-icon"><Swords size={23} /></span>
+                <span className="ow-mode-copy">
+                  <span className="ow-mode-code">ROOM</span>
+                  <h2>매치방</h2>
+                  <p>전체 공개방을 보고 방 상세에서 참여 방식을 고른다.</p>
+                </span>
+                <span className="ow-mode-count">{roomEntryCount}개</span>
+              </button>
+            </section>
+
+            <section className="ow-filter-bar" aria-label="필터">
+              <button type="button" className={scope === "local" ? "active" : ""} onClick={() => setScope("local")}>내 지역</button>
+              <button type="button" className={scope === "all" ? "active" : ""} onClick={() => setScope("all")}>전체 지역</button>
+              <button type="button" className={roomScope === "created" ? "active" : ""} onClick={() => setRoomScope(roomScope === "created" ? "all" : "created")}>내가 만든 방 {createdRoomCount}</button>
+              <button type="button" className={roomScope === "joined" ? "active" : ""} onClick={() => setRoomScope(roomScope === "joined" ? "all" : "joined")}>내 참여방 {joinedRoomCount}</button>
+              <button type="button" className={queue === "all" ? "active" : ""} onClick={() => setQueue("all")}>전체</button>
+              <button type="button" className={queue === "ranked" ? "active" : ""} onClick={() => setQueue("ranked")}>정규전</button>
+              <button type="button" className={queue === "friendly" ? "active" : ""} onClick={() => setQueue("friendly")}>친선전</button>
+              <label className="ow-filter-select">
+                방식
+                <select value={modeFilter} onChange={(event) => setModeFilter(event.target.value)}>
+                  <option value="all">전체</option>
+                  {MATCH_MODES.map((mode) => <option key={mode.id} value={mode.id}>{mode.label}</option>)}
+                </select>
+              </label>
+              <span className="ow-filter-count">{posts.length}개 표시</span>
+            </section>
+          </>
+        ) : (
+          <div className="ow-queue-summary">
+            <span>{scope === "local" ? "내 지역" : "전체 지역"}</span>
+            <span>{queue === "ranked" ? "정규전" : queue === "friendly" ? "친선전" : "전체"}</span>
+            <span>{modeFilter === "all" ? "전체 방식" : MATCH_MODES.find((mode) => mode.id === modeFilter)?.label ?? modeFilter}</span>
+            <span>{roomScope === "created" ? `내가 만든 방 ${createdRoomCount}` : roomScope === "joined" ? `내 참여방 ${joinedRoomCount}` : "전체 방"}</span>
+          </div>
+        )}
       </section>
 
       <section className="ow-recruit-list" aria-label="매치 큐 목록">

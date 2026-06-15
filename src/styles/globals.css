@@ -1512,6 +1512,54 @@ input[type="color"] {
   gap: 8px;
 }
 
+.tournament-selected-strip {
+  display: grid;
+  gap: 8px;
+}
+
+.tournament-selected-strip > span {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.tournament-selected-strip > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.tournament-selected-strip button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  max-width: 100%;
+  border: 1px solid rgba(255, 211, 108, 0.28);
+  border-radius: 999px;
+  background: rgba(255, 211, 108, 0.1);
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  padding: 0 10px;
+}
+
+.tournament-selected-strip strong {
+  display: block;
+  max-width: 180px;
+  overflow: hidden;
+  font-size: 0.8rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tournament-selected-strip em {
+  color: var(--gold);
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 950;
+}
+
 .tournament-team-grid button {
   display: grid;
   min-width: 0;

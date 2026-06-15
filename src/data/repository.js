@@ -962,15 +962,15 @@ function buildLeaguePairings(teamIds = []) {
 
 function buildTournamentPairings(teamIds = []) {
   const seedOrder = shuffleItems(teamIds);
+  const bracketSize = 2 ** Math.ceil(Math.log2(Math.max(seedOrder.length, 2)));
+  const byeCount = Math.max(0, bracketSize - seedOrder.length);
+  const byes = seedOrder.slice(0, byeCount);
+  const playableTeams = seedOrder.slice(byeCount);
   const pairings = [];
-  const byes = [];
-  for (let index = 0; index < seedOrder.length; index += 2) {
-    const teamAId = seedOrder[index];
-    const teamBId = seedOrder[index + 1];
-    if (!teamBId) {
-      byes.push(teamAId);
-      continue;
-    }
+  for (let index = 0; index < playableTeams.length; index += 2) {
+    const teamAId = playableTeams[index];
+    const teamBId = playableTeams[index + 1];
+    if (!teamAId || !teamBId) continue;
     pairings.push({
       round: 1,
       fixture: pairings.length + 1,
@@ -978,7 +978,7 @@ function buildTournamentPairings(teamIds = []) {
       teamBId,
     });
   }
-  return { seedOrder, pairings, byes };
+  return { seedOrder, bracketSize, pairings, byes };
 }
 
 function makeTournamentMatch(tournament, teamA, teamB, pairing, now) {
@@ -1056,6 +1056,7 @@ function generateTournamentMatches(state, tournament) {
         format: "tournament",
         generatedAt: now,
         seedOrder: pairSource.seedOrder,
+        bracketSize: pairSource.bracketSize,
         rounds: [{ id: "round-1", name: "1라운드", pairings: fixtureRows, byes: pairSource.byes }],
       }
     : {
@@ -1077,8 +1078,7 @@ function generateTournamentMatches(state, tournament) {
 }
 
 function isTournamentManager(state, tournament) {
-  if (tournament.createdBy === state.currentUserId) return true;
-  return (tournament.teamIds ?? []).some((teamId) => getTeamCaptainId(state.teams, teamId) === state.currentUserId);
+  return tournament.createdBy === state.currentUserId;
 }
 
 function teamRegularRatio(team, playerIds, users = []) {
@@ -1422,7 +1422,7 @@ export function updateTournamentMatchSchedule(state, tournamentId, matchId, sche
         {
           id: makeId("n"),
           title: "일정 수정 불가",
-          body: "대회 생성자나 참가팀 주장만 경기 일정을 수정할 수 있습니다.",
+          body: "대회 생성자만 경기 일정을 수정할 수 있습니다.",
           tone: "match",
           matchId,
         },

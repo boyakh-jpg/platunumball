@@ -87,6 +87,7 @@ export default function Home({ app }) {
     .map((team) => ({ ...team, myRole: team.members.find((member) => member.userId === user.id)?.role ?? "regular" }))
     .sort((a, b) => Number(b.myRole === "captain") - Number(a.myRole === "captain") || b.mmr - a.mmr);
   const myTeamIds = useMemo(() => myTeams.map((team) => team.id), [myTeams]);
+  const captainTeamIds = useMemo(() => myTeams.filter((team) => team.myRole === "captain").map((team) => team.id), [myTeams]);
   const myTeamCount = app.state.teams.filter((team) => team.members.some((member) => member.userId === user.id)).length;
   const blockedUserIds = app.state.settings?.blockedUserIds ?? [];
   const season = getCurrentSeason(app.state);
@@ -114,6 +115,20 @@ export default function Home({ app }) {
   const myWins = myCompletedMatches.filter((match) => getUserResult(match, user.id) === "W").length;
   const winRate = myCompletedMatches.length ? Math.round((myWins / myCompletedMatches.length) * 100) : 0;
   const priorityItems = useMemo(() => {
+    const tournamentInviteItems = (app.state.tournaments ?? [])
+      .filter((tournament) => tournament.status === "draft")
+      .flatMap((tournament) => captainTeamIds
+        .filter((teamId) => (tournament.teamIds ?? []).includes(teamId))
+        .filter((teamId) => (tournament.teamStatuses?.[teamId] ?? "invited") !== "accepted")
+        .map((teamId) => ({
+          id: `tournament-${tournament.id}-${teamId}`,
+          priority: 0,
+          label: "대회 초대",
+          title: tournament.title,
+          meta: `${teamById[teamId]?.name ?? "내 팀"} · ${tournament.format === "tournament" ? "토너먼트" : "리그"} 승인 필요`,
+          href: `/app/tournaments/${tournament.id}`,
+          icon: Trophy,
+        })));
     const matchItems = app.state.matches
       .filter((match) => matchHasUser(match, user.id))
       .map((match) => {
@@ -177,10 +192,10 @@ export default function Home({ app }) {
         icon: Handshake,
       }));
 
-    return [...matchItems, ...roomItems]
+    return [...tournamentInviteItems, ...matchItems, ...roomItems]
       .sort((a, b) => a.priority - b.priority || String(a.meta).localeCompare(String(b.meta)))
       .slice(0, 5);
-  }, [app.state.matches, app.state.recruitingPosts, myTeamIds, user.id]);
+  }, [app.state.matches, app.state.recruitingPosts, app.state.tournaments, captainTeamIds, myTeamIds, teamById, user.id]);
 
   const searchResults = useMemo(() => {
     const players = app.state.users
