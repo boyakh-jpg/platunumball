@@ -1347,6 +1347,10 @@ input[type="color"] {
   grid-column: 1 / -1;
 }
 
+.score-form .stat-trust-panel {
+  grid-column: 1 / -1;
+}
+
 .score-form > span {
   align-self: center;
   color: var(--muted);
@@ -4267,6 +4271,68 @@ input[type="color"] {
   font-weight: 850;
   line-height: 1.45;
   padding: 10px;
+}
+
+.stat-trust-panel {
+  display: grid;
+  gap: 10px;
+  border: 1px solid rgba(116, 169, 255, 0.18);
+  border-radius: var(--radius);
+  background: rgba(116, 169, 255, 0.055);
+  padding: 12px;
+}
+
+.stat-trust-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.stat-trust-head > div {
+  display: grid;
+  gap: 4px;
+}
+
+.stat-trust-head strong {
+  color: var(--text);
+}
+
+.stat-trust-head span {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 850;
+}
+
+.stat-trust-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr));
+  gap: 8px;
+}
+
+.stat-trust-grid > div {
+  display: grid;
+  gap: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.045);
+  padding: 9px;
+}
+
+.stat-trust-grid > div.complete {
+  border-color: rgba(70, 224, 182, 0.34);
+  background: rgba(70, 224, 182, 0.075);
+}
+
+.stat-trust-grid strong {
+  color: var(--text);
+  font-size: 0.82rem;
+}
+
+.stat-trust-grid span {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 850;
 }
 
 .match-stage-contract {

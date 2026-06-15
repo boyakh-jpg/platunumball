@@ -10,7 +10,7 @@ export const MODE_SIZES = MATCH_MODES.reduce((map, mode) => {
   return map;
 }, {});
 
-export const MAX_TEAM_MEMBERSHIPS = 5;
+export const MAX_TEAM_MEMBERSHIPS = 3;
 
 export const PLAYER_POSITIONS = ["상관없음", "PG", "SG", "SF", "PF", "C"];
 
@@ -27,7 +27,6 @@ export const AFFILIATION_TYPES = {
   region: "지역",
   school: "학교",
   company: "회사",
-  club: "동호회",
 };
 
 export const EVIDENCE_OPTIONS = [

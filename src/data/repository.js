@@ -80,7 +80,7 @@ function normalizeState(state) {
     ...state,
     users: mergeById(state?.users, initialState.users),
     teams: mergeById(state?.teams, initialState.teams),
-    affiliations: mergeById(state?.affiliations, initialState.affiliations),
+    affiliations: mergeById(state?.affiliations, initialState.affiliations).filter((affiliation) => affiliation.type !== "club"),
     seasons: mergeById(state?.seasons, initialState.seasons ?? []),
     matches: mergeById(state?.matches, initialState.matches).map(normalizeMatch),
     notifications: notifications.map((notification) => ({ readAt: null, ...notification })),
@@ -340,14 +340,16 @@ async function loadNormalizedRemoteState() {
     users: profiles.map(fromRemoteProfile),
     teams: remoteTeams,
     matches: remoteMatches,
-    affiliations: affiliations.map((affiliation) => ({
-      id: affiliation.id,
-      type: affiliation.type,
-      name: affiliation.name,
-      score: affiliation.score ?? 0,
-      wins: affiliation.wins ?? 0,
-      losses: affiliation.losses ?? 0,
-    })),
+    affiliations: affiliations
+      .filter((affiliation) => affiliation.type !== "club")
+      .map((affiliation) => ({
+        id: affiliation.id,
+        type: affiliation.type,
+        name: affiliation.name,
+        score: affiliation.score ?? 0,
+        wins: affiliation.wins ?? 0,
+        losses: affiliation.losses ?? 0,
+      })),
     seasons: seasons.map((season) => ({
       id: season.id,
       name: season.name,
@@ -693,12 +695,11 @@ function teamRegularRatio(team, playerIds, users = []) {
 
 function updateAffiliationScores(state) {
   const users = state.users;
-  return state.affiliations.map((affiliation) => {
+  return state.affiliations.filter((affiliation) => affiliation.type !== "club").map((affiliation) => {
     const members = users.filter((user) => {
       if (affiliation.type === "region") return user.region === affiliation.name;
       if (affiliation.type === "school") return user.school === affiliation.name;
       if (affiliation.type === "company") return user.company === affiliation.name;
-      if (affiliation.type === "club") return user.club === affiliation.name;
       return false;
     });
     if (!members.length) return affiliation;

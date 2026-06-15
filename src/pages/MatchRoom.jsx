@@ -41,6 +41,17 @@ function getDisplayScore(match, sideName) {
   return match.result?.[resultKey] ?? match[sideName].score ?? 0;
 }
 
+function getPointAudit(match, score, sideName) {
+  const scoreKey = sideName === "teamA" ? "scoreA" : "scoreB";
+  const teamScore = Number(score[scoreKey] ?? 0);
+  const statPoints = match[sideName].players.reduce((sum, playerId) => sum + Number(score.playerStats[playerId]?.points ?? 0), 0);
+  return {
+    teamScore,
+    statPoints,
+    matched: teamScore === statPoints,
+  };
+}
+
 export default function MatchRoom({ app }) {
   const { matchId } = useParams();
   const match = useMemo(
@@ -123,6 +134,30 @@ export default function MatchRoom({ app }) {
     if (canSubmitResult) app.actions.submitMatchResult(match.id, score);
   };
   const canEditPlayerStat = (playerId) => canSubmitResult && playerId === app.currentUser.id;
+  const pointAuditA = getPointAudit(match, score, "teamA");
+  const pointAuditB = getPointAudit(match, score, "teamB");
+  const statTrustSteps = [
+    { id: "self", label: "본인 입력", detail: "다른 선수 기록 잠금", complete: true },
+    {
+      id: "points",
+      label: "득점 합계",
+      detail: `A ${pointAuditA.statPoints}/${pointAuditA.teamScore} · B ${pointAuditB.statPoints}/${pointAuditB.teamScore}`,
+      complete: pointAuditA.matched && pointAuditB.matched,
+    },
+    {
+      id: "approval",
+      label: "양팀 승인",
+      detail: `A ${teamAApproval.approvals.length}/${teamAApproval.majority} · B ${teamBApproval.approvals.length}/${teamBApproval.majority}`,
+      complete: match.status === "confirmed" || (teamAApproval.approved && teamBApproval.approved),
+    },
+    {
+      id: "evidence",
+      label: "증거",
+      detail: `${match.evidence?.length ?? 0}개 첨부`,
+      complete: (match.evidence?.length ?? 0) > 0,
+    },
+  ];
+  const statTrustPercent = Math.round((statTrustSteps.filter((step) => step.complete).length / statTrustSteps.length) * 100);
 
   return (
     <div className="page-stack match-room">
@@ -225,6 +260,23 @@ export default function MatchRoom({ app }) {
               <Button type="submit" disabled={!canSubmitResult}>스코어/내 기록 저장</Button>
               <div className="stat-integrity-note">
                 개인 스탯은 본인만 수정합니다. 다른 선수 기록은 해당 선수가 직접 입력하거나 승인 단계에서 이의제기합니다.
+              </div>
+              <div className="stat-trust-panel">
+                <div className="stat-trust-head">
+                  <div>
+                    <strong>개인 기록 신뢰도</strong>
+                    <span>본인 입력, 득점 합계, 양팀 승인, 증거 첨부를 같이 봅니다.</span>
+                  </div>
+                  <Badge tone={statTrustPercent >= 75 ? "green" : statTrustPercent >= 50 ? "orange" : "neutral"}>{statTrustPercent}%</Badge>
+                </div>
+                <div className="stat-trust-grid">
+                  {statTrustSteps.map((step) => (
+                    <div key={step.id} className={step.complete ? "complete" : ""}>
+                      <strong>{step.label}</strong>
+                      <span>{step.detail}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
               <div className="stat-entry-grid compact-stat-entry">
                 {["teamA", "teamB"].map((sideName) => (

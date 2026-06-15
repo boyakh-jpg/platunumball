@@ -101,7 +101,7 @@ export function useAppData(authUserId = null) {
       players: sortByRating(state.users, (user) => user.ratings.integrated),
       mode: (mode) => sortByRating(state.users, (user) => user.ratings.modes[mode] ?? user.ratings.integrated),
       teams: sortByRating(state.teams, (team) => team.mmr),
-      affiliations: sortByRating(state.affiliations, (affiliation) => affiliation.score),
+      affiliations: sortByRating(state.affiliations.filter((affiliation) => affiliation.type !== "club"), (affiliation) => affiliation.score),
     }),
     [state.affiliations, state.teams, state.users],
   );

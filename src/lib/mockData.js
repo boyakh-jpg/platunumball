@@ -351,7 +351,6 @@ const baseState = {
     { id: "a2", type: "region", name: "성수", score: 1362, wins: 32, losses: 27 },
     { id: "a3", type: "school", name: "연희대", score: 1398, wins: 21, losses: 13 },
     { id: "a4", type: "company", name: "스틸픽", score: 1298, wins: 17, losses: 16 },
-    { id: "a5", type: "club", name: "노을농구회", score: 1448, wins: 29, losses: 18 },
   ],
   seasons: [
     {
