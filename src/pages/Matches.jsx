@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { CalendarDays, CheckCircle2, PlusCircle, ShieldAlert, Swords, Trophy } from "lucide-react";
+import { CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, PlusCircle, ShieldAlert, Swords, Trophy } from "lucide-react";
 import Button from "../components/common/Button.jsx";
 import { MATCH_MODES } from "../lib/constants.js";
 
@@ -57,8 +57,65 @@ const VIEWS = [
   },
 ];
 
+const ACTIVE_STATUSES = new Set(["contract", "agreed", "approval", "disputed"]);
+const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
+
+function toDateInputValue(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getMatchDate(match) {
+  if (match.scheduledDate) return String(match.scheduledDate).slice(0, 10);
+  const dateText = String(match.scheduledAt ?? match.createdAt ?? "");
+  return dateText.match(/\d{4}-\d{2}-\d{2}/)?.[0] ?? "";
+}
+
+function getMonthKey(value = toDateInputValue()) {
+  return String(value).slice(0, 7);
+}
+
+function addMonths(monthKey, amount) {
+  const [year, month] = monthKey.split("-").map(Number);
+  const date = new Date(year, month - 1 + amount, 1);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function getCalendarDays(monthKey) {
+  const [year, month] = monthKey.split("-").map(Number);
+  const firstDay = new Date(year, month - 1, 1);
+  const lastDay = new Date(year, month, 0);
+  const days = Array.from({ length: firstDay.getDay() }, () => "");
+
+  for (let day = 1; day <= lastDay.getDate(); day += 1) {
+    days.push(`${monthKey}-${String(day).padStart(2, "0")}`);
+  }
+
+  while (days.length % 7 !== 0) days.push("");
+  return days;
+}
+
+function formatMonthLabel(monthKey) {
+  const [year, month] = monthKey.split("-");
+  return `${year}.${month}`;
+}
+
+function formatDateLabel(dateValue) {
+  if (!dateValue) return "날짜 전체";
+  const [, month, day] = dateValue.split("-");
+  return `${month}.${day}`;
+}
+
 function compareRecent(a, b) {
   return String(b.scheduledAt ?? b.createdAt ?? "").localeCompare(String(a.scheduledAt ?? a.createdAt ?? ""));
+}
+
+function compareSchedule(a, b) {
+  const aKey = `${getMatchDate(a) || "9999-12-31"} ${a.scheduledTime ?? ""} ${a.scheduledAt ?? ""}`;
+  const bKey = `${getMatchDate(b) || "9999-12-31"} ${b.scheduledTime ?? ""} ${b.scheduledAt ?? ""}`;
+  return aKey.localeCompare(bKey);
 }
 
 function formatMatchTime(match) {
@@ -85,19 +142,41 @@ export default function Matches({ app }) {
   const [scopeFilter, setScopeFilter] = useState("all");
   const [kindFilter, setKindFilter] = useState("all");
   const [modeFilter, setModeFilter] = useState("all");
+  const [dateFilter, setDateFilter] = useState("");
+  const [calendarMonth, setCalendarMonth] = useState(getMonthKey());
+  const todayValue = toDateInputValue();
   const selectedView = VIEWS.find((view) => view.id === viewId) ?? VIEWS[0];
 
-  const filteredMatches = useMemo(() => {
+  const baseFilteredMatches = useMemo(() => {
     return [...app.state.matches]
       .filter((match) => scopeFilter !== "mine" || matchHasUser(match, app.currentUser.id))
       .filter((match) => kindFilter === "all" || (kindFilter === "ranked" ? match.ranked !== false : match.ranked === false))
       .filter((match) => modeFilter === "all" || match.mode === modeFilter);
   }, [app.currentUser.id, app.state.matches, kindFilter, modeFilter, scopeFilter]);
 
+  const filteredMatches = useMemo(() => {
+    return baseFilteredMatches.filter((match) => !dateFilter || getMatchDate(match) === dateFilter);
+  }, [baseFilteredMatches, dateFilter]);
+
+  const calendarMatches = useMemo(() => {
+    return baseFilteredMatches.filter((match) => ACTIVE_STATUSES.has(match.status) && getMatchDate(match));
+  }, [baseFilteredMatches]);
+
+  const calendarCounts = useMemo(() => {
+    return calendarMatches.reduce((map, match) => {
+      const date = getMatchDate(match);
+      map.set(date, (map.get(date) ?? 0) + 1);
+      return map;
+    }, new Map());
+  }, [calendarMatches]);
+
+  const calendarDays = useMemo(() => getCalendarDays(calendarMonth), [calendarMonth]);
+  const calendarMonthCount = calendarDays.reduce((sum, day) => sum + (calendarCounts.get(day) ?? 0), 0);
+
   const matchesByView = useMemo(() => {
     return filteredMatches
       .filter((match) => selectedView.statuses.includes(match.status))
-      .sort(compareRecent);
+      .sort(selectedView.id === "done" ? compareRecent : compareSchedule);
   }, [filteredMatches, selectedView.statuses]);
 
   const visibleMatches = matchesByView.slice(0, selectedView.id === "done" ? 80 : 60);
@@ -148,6 +227,70 @@ export default function Matches({ app }) {
         })}
       </section>
 
+      <section className="om-calendar-panel" aria-label="진행 경기 캘린더">
+        <div className="om-calendar-summary">
+          <span className="om-view-icon"><CalendarDays size={22} /></span>
+          <div>
+            <span className="om-kicker">SCHEDULE</span>
+            <h2>진행 일정</h2>
+            <p>{dateFilter ? `${formatDateLabel(dateFilter)} 경기만 표시` : "진행 중이거나 예정된 경기를 날짜별로 본다."}</p>
+          </div>
+          <div className="om-calendar-actions">
+            <button type="button" className={!dateFilter ? "active" : ""} onClick={() => setDateFilter("")}>전체</button>
+            <button
+              type="button"
+              className={dateFilter === todayValue ? "active" : ""}
+              onClick={() => {
+                setDateFilter(todayValue);
+                setCalendarMonth(getMonthKey(todayValue));
+                setViewId("active");
+              }}
+            >
+              오늘
+            </button>
+          </div>
+        </div>
+
+        <div className="om-calendar-box">
+          <div className="om-calendar-toolbar">
+            <button type="button" aria-label="이전 달" onClick={() => setCalendarMonth((month) => addMonths(month, -1))}>
+              <ChevronLeft size={18} />
+            </button>
+            <strong>{formatMonthLabel(calendarMonth)}</strong>
+            <button type="button" aria-label="다음 달" onClick={() => setCalendarMonth((month) => addMonths(month, 1))}>
+              <ChevronRight size={18} />
+            </button>
+            <span>{calendarMonthCount}경기</span>
+          </div>
+          <div className="om-calendar-weekdays">
+            {WEEKDAYS.map((day) => <span key={day}>{day}</span>)}
+          </div>
+          <div className="om-calendar-grid">
+            {calendarDays.map((day, index) => {
+              const count = calendarCounts.get(day) ?? 0;
+              const selected = day && day === dateFilter;
+              const isToday = day && day === todayValue;
+              return day ? (
+                <button
+                  key={day}
+                  type="button"
+                  className={`${selected ? "active" : ""} ${isToday ? "today" : ""}`}
+                  onClick={() => {
+                    setDateFilter(day);
+                    setViewId("active");
+                  }}
+                >
+                  <strong>{Number(day.slice(-2))}</strong>
+                  {count ? <span>{count}</span> : null}
+                </button>
+              ) : (
+                <span key={`empty-${index}`} />
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
       <section className="om-filter-bar" aria-label="경기 필터">
         <div className="segmented-control compact-segments">
           <button type="button" className={scopeFilter === "all" ? "active" : ""} onClick={() => setScopeFilter("all")}>전체 경기</button>
@@ -171,7 +314,7 @@ export default function Matches({ app }) {
         <div className="om-list-head">
           <div>
             <span className="om-kicker">{selectedView.code}</span>
-            <h2>{selectedView.title}</h2>
+            <h2>{dateFilter ? `${selectedView.title} · ${formatDateLabel(dateFilter)}` : selectedView.title}</h2>
           </div>
           <span>{filteredMatches.length}개 필터 · {matchesByView.length}개 중 {visibleMatches.length}개 표시</span>
         </div>
