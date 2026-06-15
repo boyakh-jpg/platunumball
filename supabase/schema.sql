@@ -264,8 +264,7 @@ begin
         id,
         row_number() over (order by coalesce(scheduled_date, ref_date), created_at, id) - 1 as idx
       from public.recruiting_posts
-      where status = 'open'
-        and (
+      where (
           scheduled_date is null
           or scheduled_time is null
           or scheduled_date < ref_date
@@ -274,12 +273,39 @@ begin
           or scheduled_at !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
         )
     ),
-    slots as (
+    used_slots as (
       select
-        id,
-        ref_date + ((idx / 3)::int) as next_date,
-        (time '18:00' + ((idx % 3) * interval '90 minutes'))::time as next_time
+        scheduled_date,
+        scheduled_time
+      from public.recruiting_posts
+      where scheduled_date >= ref_date
+        and scheduled_time is not null
+        and scheduled_at is not null
+        and btrim(scheduled_at) <> ''
+        and scheduled_at ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
+    ),
+    available_slots as (
+      select
+        row_number() over (order by generated.next_date, generated.next_time) - 1 as idx,
+        generated.next_date,
+        generated.next_time
+      from (
+        select
+          ref_date + ((slot_idx / 3)::int) as next_date,
+          (time '18:00' + ((slot_idx % 3) * interval '90 minutes'))::time as next_time
+        from generate_series(0, 1095) as generated_slots(slot_idx)
+      ) generated
+      where not exists (
+        select 1
+        from used_slots
+        where used_slots.scheduled_date = generated.next_date
+          and used_slots.scheduled_time = generated.next_time
+      )
+    ),
+    slots as (
+      select queued.id, available_slots.next_date, available_slots.next_time
       from queued
+      join available_slots on available_slots.idx = queued.idx
     )
     update public.recruiting_posts post
     set

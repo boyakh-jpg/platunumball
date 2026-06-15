@@ -57,6 +57,8 @@ const DEFAULT_SETTINGS = {
 };
 const REMOTE_PAGE_SIZE = 1000;
 const REMOTE_WRITE_CHUNK_SIZE = 500;
+const QUEUE_SCHEDULE_START_DATE = "2026-06-15";
+const QUEUE_SCHEDULE_TIMES = ["18:00", "19:30", "21:00"];
 const POST_MATCH_STATUSES = new Set(["approval", "disputed"]);
 const LIFECYCLE_TITLE_PATTERN = /^(동의 대기|진행 예정|결과 승인|이의 확인|이의제기|확정|결과 입력)\s*·\s*/;
 const POST_MATCH_TITLE_PATTERN = /^(결과 승인|이의 확인|이의제기|확정|결과 입력)\s*·\s*/;
@@ -67,6 +69,92 @@ function mergeById(current = [], fallback = []) {
   const mergedDefaults = fallback.map((item) => ({ ...item, ...(currentMap.get(item.id) ?? {}) }));
   const extraItems = current.filter((item) => !fallback.some((fallbackItem) => fallbackItem.id === item.id));
   return [...mergedDefaults, ...extraItems];
+}
+
+function addDateDays(dateValue, days) {
+  const date = new Date(`${dateValue}T00:00:00`);
+  date.setDate(date.getDate() + days);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getQueueSlot(slotIndex) {
+  const date = addDateDays(QUEUE_SCHEDULE_START_DATE, Math.floor(slotIndex / QUEUE_SCHEDULE_TIMES.length));
+  const time = QUEUE_SCHEDULE_TIMES[slotIndex % QUEUE_SCHEDULE_TIMES.length];
+  return {
+    scheduledDate: date,
+    scheduledTime: time,
+    scheduledAt: `${date} ${time}`,
+  };
+}
+
+function getDatePart(value) {
+  return String(value ?? "").match(/\d{4}-\d{2}-\d{2}/)?.[0] ?? "";
+}
+
+function getTimePart(value) {
+  return String(value ?? "").match(/\d{2}:\d{2}/)?.[0] ?? "";
+}
+
+function needsQueueSchedule(post = {}) {
+  const date = getDatePart(post.scheduledDate || post.scheduledAt);
+  const time = getTimePart(post.scheduledTime || post.scheduledAt);
+  return !date || !time || date < QUEUE_SCHEDULE_START_DATE || post.scheduledAt === "일정 미정";
+}
+
+function getQueueSortKey(post = {}) {
+  return `${getDatePart(post.scheduledDate || post.scheduledAt) || QUEUE_SCHEDULE_START_DATE} ${post.createdAt ?? ""} ${post.id ?? ""}`;
+}
+
+function getQueueScheduleKey(post = {}) {
+  return [getDatePart(post.scheduledDate || post.scheduledAt), getTimePart(post.scheduledTime || post.scheduledAt)].filter(Boolean).join(" ");
+}
+
+function isValidQueueScheduleKey(value = "") {
+  return Boolean(value.match(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/));
+}
+
+function normalizeRecruitingSchedules(posts = []) {
+  const scheduleById = new Map();
+  const used = new Set(
+    posts
+      .filter((post) => !needsQueueSchedule(post))
+      .map(getQueueScheduleKey)
+      .filter(isValidQueueScheduleKey),
+  );
+  let slotIndex = 0;
+
+  posts
+    .filter((post) => needsQueueSchedule(post))
+    .sort((a, b) => getQueueSortKey(a).localeCompare(getQueueSortKey(b)))
+    .forEach((post) => {
+      let slot = getQueueSlot(slotIndex);
+      while (used.has(slot.scheduledAt)) {
+        slotIndex += 1;
+        slot = getQueueSlot(slotIndex);
+      }
+      scheduleById.set(post.id, slot);
+      used.add(slot.scheduledAt);
+      slotIndex += 1;
+    });
+
+  return posts.map((post) => (scheduleById.has(post.id) ? { ...post, ...scheduleById.get(post.id) } : post));
+}
+
+function getNextQueueSchedule(posts = []) {
+  const used = new Set(
+    posts
+      .filter((post) => post.status !== "closed")
+      .map(getQueueScheduleKey)
+      .filter(isValidQueueScheduleKey),
+  );
+  for (let index = 0; index < 365 * QUEUE_SCHEDULE_TIMES.length; index += 1) {
+    const slot = getQueueSlot(index);
+    if (!used.has(slot.scheduledAt)) return slot;
+  }
+  return getQueueSlot(posts.length);
 }
 
 function getScheduledStartMs(match = {}) {
@@ -210,7 +298,7 @@ function normalizeState(state) {
     notifications: notifications.map((notification) => ({ readAt: null, ...notification })),
     settings: normalizeSettings(state?.settings ?? initialState.settings),
     reports: state?.reports ?? initialState.reports ?? [],
-    recruitingPosts: mergeById(state?.recruitingPosts, initialState.recruitingPosts ?? []).map(normalizeRecruitingPost),
+    recruitingPosts: normalizeRecruitingSchedules(mergeById(state?.recruitingPosts, initialState.recruitingPosts ?? [])).map(normalizeRecruitingPost),
   };
 }
 
@@ -2211,7 +2299,10 @@ export function createRecruitingPost(state, draft) {
   }
   const hostSize = hostJoinMode === "team" ? hostPlayerIds.length : 1;
   const refereeId = getTrustedRefereeId(state, draft.refereeId, [state.currentUserId, ...hostPlayerIds]);
-  const scheduledAt = `${draft.scheduledDate ?? ""} ${draft.scheduledTime ?? ""}`.trim();
+  const fallbackSchedule = getNextQueueSchedule(state.recruitingPosts ?? []);
+  const scheduledDate = draft.scheduledDate || fallbackSchedule.scheduledDate;
+  const scheduledTime = draft.scheduledTime || fallbackSchedule.scheduledTime;
+  const scheduledAt = `${scheduledDate} ${scheduledTime}`;
   const post = {
     id: makeId("q"),
     type: postType,
@@ -2219,9 +2310,9 @@ export function createRecruitingPost(state, draft) {
     region: draft.region || state.users.find((user) => user.id === state.currentUserId)?.region || "전체",
     court: draft.court || "미정",
     mode: draft.mode || "5v5",
-    scheduledDate: draft.scheduledDate || "",
-    scheduledTime: draft.scheduledTime || "",
-    scheduledAt: scheduledAt || "일정 미정",
+    scheduledDate,
+    scheduledTime,
+    scheduledAt,
     ranked: draft.ranked !== false,
     spots: Math.max(1, sideCapacity * 2 - hostSize),
     teamId: hostJoinMode === "team" ? draft.teamId : null,

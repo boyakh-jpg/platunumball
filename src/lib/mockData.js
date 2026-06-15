@@ -1,6 +1,22 @@
 import { COURTS, MATCH_MODES, PLAYER_POSITIONS, REGIONS } from "./constants.js";
 
 const DEMO_TODAY = "2026-06-15";
+const DEMO_QUEUE_TIMES = ["18:00", "19:30", "21:00"];
+
+function getDemoQueueSlot(slotIndex) {
+  const date = new Date(`${DEMO_TODAY}T00:00:00`);
+  date.setDate(date.getDate() + Math.floor(slotIndex / DEMO_QUEUE_TIMES.length));
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const scheduledDate = `${year}-${month}-${day}`;
+  const scheduledTime = DEMO_QUEUE_TIMES[slotIndex % DEMO_QUEUE_TIMES.length];
+  return {
+    scheduledDate,
+    scheduledTime,
+    scheduledAt: `${scheduledDate} ${scheduledTime}`,
+  };
+}
 
 const baseState = {
   currentUserId: "u1",
@@ -457,6 +473,7 @@ const baseState = {
       region: "마포",
       court: "한강 노을코트",
       mode: "5v5",
+      ...getDemoQueueSlot(0),
       ranked: true,
       spots: 1,
       teamId: "t1",
@@ -474,6 +491,7 @@ const baseState = {
       region: "성수",
       court: "성수 브릿지파크",
       mode: "3v3",
+      ...getDemoQueueSlot(1),
       ranked: false,
       spots: 1,
       teamId: null,
@@ -491,6 +509,7 @@ const baseState = {
       region: "잠실",
       court: "잠실 실내체육관 보조코트",
       mode: "5v5",
+      ...getDemoQueueSlot(2),
       ranked: true,
       spots: 1,
       teamId: "t5",
@@ -508,6 +527,7 @@ const baseState = {
       region: "마포",
       court: "홍대 스트릿돔",
       mode: "5v5",
+      ...getDemoQueueSlot(3),
       ranked: true,
       spots: 1,
       teamId: "t1",
@@ -811,6 +831,7 @@ function makeRecruitingPost(index, teams, users) {
   const ranked = index % 4 !== 0;
   const applicantTeam = teams.filter((item) => item.id.startsWith("td"))[(index * 5 + 3) % 20];
   const applicantUser = users[(index * 9 + 17) % users.length];
+  const schedule = getDemoQueueSlot(index + 4);
   const title = type === "need_player"
     ? `${team.name} ${ranked ? "정규전" : "친선전"} 팀원 구해요`
     : type === "find_team"
@@ -824,6 +845,7 @@ function makeRecruitingPost(index, teams, users) {
     region,
     court,
     mode: cycle(MATCH_MODES, index).id,
+    ...schedule,
     ranked,
     spots: type === "need_player" ? 1 + (index % 2) : 1,
     teamId: type === "find_team" ? null : team.id,
