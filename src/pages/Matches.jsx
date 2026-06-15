@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, PlusCircle, ShieldAlert, Swords, Trophy } from "lucide-react";
+import { CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, PlusCircle, ShieldAlert, Swords, Trophy, X } from "lucide-react";
 import Button from "../components/common/Button.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
+import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { MATCH_MODES } from "../lib/constants.js";
 
 const STATUS_META = {
@@ -172,6 +173,30 @@ function getTournamentMatches(tournament, matchesById, matches = []) {
   return [...source].sort((a, b) => (a.tournamentRound ?? 0) - (b.tournamentRound ?? 0) || (a.tournamentFixture ?? 0) - (b.tournamentFixture ?? 0));
 }
 
+function getTournamentTeamRows(tournament, teamById, userById, currentUserId) {
+  return (tournament.teamIds ?? [])
+    .map((teamId) => {
+      const team = teamById[teamId];
+      const captainId = getTeamCaptainId(team);
+      const status = getTournamentTeamStatus(tournament, teamId);
+      return {
+        team,
+        teamId,
+        captainId,
+        captainName: userById[captainId]?.name ?? "주장 미지정",
+        status,
+        canApprove: tournament.status === "draft" && captainId === currentUserId && status !== "accepted",
+      };
+    })
+    .filter((row) => row.team);
+}
+
+function getTournamentPairingPreview(tournament) {
+  return tournament.format === "tournament"
+    ? tournament.bracket?.rounds?.[0]?.pairings ?? []
+    : tournament.bracket?.fixtures ?? [];
+}
+
 export default function Matches({ app }) {
   const [viewId, setViewId] = useState("todo");
   const [scopeFilter, setScopeFilter] = useState("all");
@@ -179,6 +204,8 @@ export default function Matches({ app }) {
   const [modeFilter, setModeFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("");
   const [calendarMonth, setCalendarMonth] = useState(getMonthKey());
+  const [tournamentPanelOpen, setTournamentPanelOpen] = useState(false);
+  const [selectedTournamentId, setSelectedTournamentId] = useState(null);
   const todayValue = toDateInputValue();
   const selectedView = VIEWS.find((view) => view.id === viewId) ?? VIEWS[0];
   const teamById = useMemo(() => Object.fromEntries(app.state.teams.map((team) => [team.id, team])), [app.state.teams]);
@@ -190,6 +217,11 @@ export default function Matches({ app }) {
       .sort((a, b) => String(b.createdAt ?? "").localeCompare(String(a.createdAt ?? "")))
       .slice(0, 4);
   }, [app.state.tournaments]);
+  const selectedTournament = useMemo(
+    () => activeTournaments.find((tournament) => tournament.id === selectedTournamentId) ?? null,
+    [activeTournaments, selectedTournamentId],
+  );
+  useBodyScrollLock(Boolean(selectedTournament));
 
   const baseFilteredMatches = useMemo(() => {
     return [...app.state.matches]
@@ -344,35 +376,25 @@ export default function Matches({ app }) {
       </section>
 
       {activeTournaments.length ? (
-        <section className="om-tournament-panel" aria-label="비공개 대회">
+        <section className={tournamentPanelOpen ? "om-tournament-panel" : "om-tournament-panel collapsed"} aria-label="비공개 대회">
           <div className="om-list-head">
             <div>
               <span className="om-kicker">PRIVATE EVENT</span>
               <h2>비공개 대회</h2>
             </div>
-            <span>{activeTournaments.length}개 표시</span>
+            <div className="om-tournament-head-actions">
+              <span>{activeTournaments.length}개</span>
+              <button type="button" onClick={() => setTournamentPanelOpen((current) => !current)}>
+                {tournamentPanelOpen ? "접기" : "펼치기"}
+              </button>
+            </div>
           </div>
-          <div className="om-tournament-grid">
+          <div className={tournamentPanelOpen ? "om-tournament-grid" : "om-tournament-grid compact"}>
             {activeTournaments.map((tournament) => {
               const tournamentMatches = getTournamentMatches(tournament, matchesById, app.state.matches);
-              const teamRows = (tournament.teamIds ?? [])
-                .map((teamId) => {
-                  const team = teamById[teamId];
-                  const captainId = getTeamCaptainId(team);
-                  return {
-                    team,
-                    teamId,
-                    captainId,
-                    captainName: userById[captainId]?.name ?? "주장 미지정",
-                    status: getTournamentTeamStatus(tournament, teamId),
-                    canApprove: tournament.status === "draft" && captainId === app.currentUser.id && getTournamentTeamStatus(tournament, teamId) !== "accepted",
-                  };
-                })
-                .filter((row) => row.team);
+              const teamRows = getTournamentTeamRows(tournament, teamById, userById, app.currentUser.id);
               const acceptedCount = teamRows.filter((row) => row.status === "accepted").length;
-              const pairingPreview = tournament.format === "tournament"
-                ? tournament.bracket?.rounds?.[0]?.pairings ?? []
-                : tournament.bracket?.fixtures ?? [];
+              const pendingRows = teamRows.filter((row) => row.status !== "accepted");
               return (
                 <article key={tournament.id} className="om-tournament-card">
                   <div>
@@ -380,9 +402,6 @@ export default function Matches({ app }) {
                     <h3>{tournament.title}</h3>
                     <p><CalendarDays size={15} />{formatTournamentWindow(tournament)} · {tournament.court}</p>
                   </div>
-                  <Link className="button button-secondary button-md om-tournament-detail-link" to={`/app/tournaments/${tournament.id}`}>
-                    대진표 보기
-                  </Link>
                   <div className="om-tournament-meta">
                     <span>{tournament.mode}</span>
                     <span>{tournament.ranked === false ? "친선" : "정규"}</span>
@@ -392,58 +411,120 @@ export default function Matches({ app }) {
                   </div>
                   <div className="om-tournament-state">
                     <span>{tournamentStatusLabels[tournament.status] ?? tournament.status}</span>
-                    <em>{tournament.status === "draft" ? "모든 팀 주장 승인 후 자동 시작" : "대회 경기 MMR 보너스 적용"}</em>
+                    <em>{pendingRows.length ? `${pendingRows.length}팀 승인 대기` : "참가 승인 완료"}</em>
                   </div>
-                  <div className="om-tournament-teams">
-                    {teamRows.map((row) => (
-                      <div key={row.teamId} className={row.status === "accepted" ? "accepted" : ""}>
-                        <span>
-                          <TeamHoverCard team={row.team}><strong>{row.team.name}</strong></TeamHoverCard>
-                          <em>{row.team.mmr} MMR · 주장 {row.captainName}</em>
-                        </span>
-                        {row.canApprove ? (
-                          <button type="button" onClick={() => app.actions.approveTournamentTeam(tournament.id, row.teamId)}>승인</button>
-                        ) : (
-                          <b>{row.status === "accepted" ? "승인" : "초대"}</b>
-                        )}
-                      </div>
-                    ))}
+                  <div className="om-tournament-actions">
+                    <button type="button" onClick={() => setSelectedTournamentId(tournament.id)}>자세히</button>
+                    <Link className="button button-secondary button-md om-tournament-detail-link" to={`/app/tournaments/${tournament.id}`}>
+                      대진표
+                    </Link>
                   </div>
-                  {pairingPreview.length ? (
-                    <div className="om-tournament-pairings">
-                      {pairingPreview.slice(0, 4).map((pairing) => (
-                        <span key={pairing.matchId ?? `${pairing.round}-${pairing.fixture}`}>
-                          <TeamHoverCard team={teamById[pairing.teamAId]}>{teamById[pairing.teamAId]?.name ?? "TBD"}</TeamHoverCard>
-                          {" vs "}
-                          <TeamHoverCard team={teamById[pairing.teamBId]}>{teamById[pairing.teamBId]?.name ?? "TBD"}</TeamHoverCard>
-                        </span>
-                      ))}
-                    </div>
-                  ) : null}
-                  {tournamentMatches.length ? (
-                    <div className="om-tournament-fixtures">
-                      {tournamentMatches.slice(0, 6).map((match) => (
-                        <form key={match.id} className="om-tournament-fixture-row" onSubmit={(event) => saveTournamentSchedule(event, tournament.id, match.id)}>
-                          <Link to={`/app/matches/${match.id}`}>
-                            <TeamHoverCard team={teamById[match.teamA.teamId]} as="span">{match.teamA.name}</TeamHoverCard>
-                            {" vs "}
-                            <TeamHoverCard team={teamById[match.teamB.teamId]} as="span">{match.teamB.name}</TeamHoverCard>
-                          </Link>
-                          <input type="date" name="scheduledDate" defaultValue={match.scheduledDate ?? ""} aria-label="경기 날짜" />
-                          <input type="time" name="scheduledTime" defaultValue={match.scheduledTime ?? ""} aria-label="경기 시간" />
-                          <button type="submit">저장</button>
-                        </form>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="om-tournament-wait">승인 완료 전. 대진과 경기 생성 대기.</p>
-                  )}
                 </article>
               );
             })}
           </div>
         </section>
       ) : null}
+
+      {selectedTournament ? (() => {
+        const tournamentMatches = getTournamentMatches(selectedTournament, matchesById, app.state.matches);
+        const teamRows = getTournamentTeamRows(selectedTournament, teamById, userById, app.currentUser.id);
+        const pendingRows = teamRows.filter((row) => row.status !== "accepted");
+        const acceptedCount = teamRows.length - pendingRows.length;
+        const pairingPreview = getTournamentPairingPreview(selectedTournament);
+        const canManageSchedule = selectedTournament.createdBy === app.currentUser.id;
+        return (
+          <div className="om-tournament-modal-backdrop" role="presentation" onMouseDown={() => setSelectedTournamentId(null)}>
+            <aside className="om-tournament-modal" role="dialog" aria-modal="true" aria-label="대회 상세" onMouseDown={(event) => event.stopPropagation()}>
+              <div className="om-tournament-modal-head">
+                <div>
+                  <span className="om-kicker">{tournamentFormatLabels[selectedTournament.format] ?? selectedTournament.format}</span>
+                  <h2>{selectedTournament.title}</h2>
+                  <p>{formatTournamentWindow(selectedTournament)} · {selectedTournament.court}</p>
+                </div>
+                <button type="button" aria-label="닫기" onClick={() => setSelectedTournamentId(null)}><X size={20} /></button>
+              </div>
+
+              <div className="om-tournament-meta">
+                <span>{selectedTournament.mode}</span>
+                <span>{selectedTournament.ranked === false ? "친선" : "정규"}</span>
+                <span>{tournamentMmrLabels[selectedTournament.mmrPolicy] ?? selectedTournament.mmrPolicy}</span>
+                <strong>{acceptedCount}/{teamRows.length} 승인</strong>
+                <strong>{tournamentMatches.length}경기</strong>
+              </div>
+
+              <section className="om-tournament-modal-section">
+                <div className="om-modal-section-head">
+                  <strong>승인 대기</strong>
+                  <span>{pendingRows.length ? `${pendingRows.length}팀 남음` : "완료"}</span>
+                </div>
+                {pendingRows.length ? (
+                  <div className="om-tournament-teams">
+                    {pendingRows.map((row) => (
+                      <div key={row.teamId}>
+                        <span>
+                          <TeamHoverCard team={row.team}><strong>{row.team.name}</strong></TeamHoverCard>
+                          <em>{row.team.mmr} MMR · 주장 {row.captainName}</em>
+                        </span>
+                        {row.canApprove ? (
+                          <button type="button" onClick={() => app.actions.approveTournamentTeam(selectedTournament.id, row.teamId)}>승인</button>
+                        ) : (
+                          <b>초대</b>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="om-tournament-wait">참가팀 승인 완료. 승인 완료팀 목록은 접었다.</p>
+                )}
+              </section>
+
+              {pairingPreview.length ? (
+                <section className="om-tournament-modal-section">
+                  <div className="om-modal-section-head">
+                    <strong>{selectedTournament.format === "tournament" ? "첫 라운드" : "리그 경기"}</strong>
+                    <Link to={`/app/tournaments/${selectedTournament.id}`}>전체 대진표</Link>
+                  </div>
+                  <div className="om-tournament-pairings">
+                    {pairingPreview.slice(0, 6).map((pairing) => (
+                      <span key={pairing.matchId ?? `${pairing.round}-${pairing.fixture}`}>
+                        <TeamHoverCard team={teamById[pairing.teamAId]}>{teamById[pairing.teamAId]?.name ?? "TBD"}</TeamHoverCard>
+                        {" vs "}
+                        <TeamHoverCard team={teamById[pairing.teamBId]}>{teamById[pairing.teamBId]?.name ?? "TBD"}</TeamHoverCard>
+                      </span>
+                    ))}
+                  </div>
+                </section>
+              ) : null}
+
+              <section className="om-tournament-modal-section">
+                <div className="om-modal-section-head">
+                  <strong>경기 일정</strong>
+                  <span>{canManageSchedule ? "생성자 수정 가능" : "생성자만 수정"}</span>
+                </div>
+                {tournamentMatches.length ? (
+                  <div className="om-tournament-fixtures">
+                    {tournamentMatches.map((match) => (
+                      <form key={match.id} className={canManageSchedule ? "om-tournament-fixture-row" : "om-tournament-fixture-row locked"} onSubmit={(event) => saveTournamentSchedule(event, selectedTournament.id, match.id)}>
+                        <Link to={`/app/matches/${match.id}`}>
+                          <TeamHoverCard team={teamById[match.teamA.teamId]} as="span">{match.teamA.name}</TeamHoverCard>
+                          {" vs "}
+                          <TeamHoverCard team={teamById[match.teamB.teamId]} as="span">{match.teamB.name}</TeamHoverCard>
+                        </Link>
+                        <input type="date" name="scheduledDate" defaultValue={match.scheduledDate ?? ""} disabled={!canManageSchedule} aria-label="경기 날짜" />
+                        <input type="time" name="scheduledTime" defaultValue={match.scheduledTime ?? ""} disabled={!canManageSchedule} aria-label="경기 시간" />
+                        <button type="submit" disabled={!canManageSchedule}>저장</button>
+                      </form>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="om-tournament-wait">승인 완료 전. 대진과 경기 생성 대기.</p>
+                )}
+              </section>
+            </aside>
+          </div>
+        );
+      })() : null}
 
       <section className="om-filter-bar" aria-label="경기 필터">
         <div className="segmented-control compact-segments">

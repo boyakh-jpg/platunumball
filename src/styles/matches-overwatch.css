@@ -331,24 +331,64 @@
   gap: 10px;
 }
 
+.om-tournament-panel.collapsed {
+  gap: 8px;
+}
+
+.om-tournament-panel.collapsed .om-tournament-grid {
+  display: none;
+}
+
+.om-tournament-head-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.om-tournament-head-actions span {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 950;
+}
+
+.om-tournament-head-actions button {
+  min-height: 32px;
+  border: 1px solid rgba(255, 211, 108, 0.24);
+  border-radius: 7px;
+  background: rgba(255, 211, 108, 0.1);
+  color: var(--gold);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 950;
+  padding: 0 10px;
+}
+
 .om-tournament-grid {
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
 }
 
+.om-tournament-grid.compact {
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+}
+
 .om-tournament-card {
   display: grid;
-  gap: 12px;
+  gap: 9px;
   border: 1px solid rgba(255, 211, 108, 0.18);
   border-radius: var(--radius);
   background:
     linear-gradient(135deg, rgba(255, 211, 108, 0.08), transparent 42%),
     rgba(8, 11, 16, 0.72);
-  padding: 14px;
+  padding: 12px;
 }
 
 .om-tournament-card h3 {
   margin-top: 4px;
-  font-size: 1.12rem;
+  overflow: hidden;
+  font-size: 1rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .om-tournament-card p {
@@ -391,6 +431,25 @@
 
 .om-tournament-detail-link {
   justify-self: start;
+}
+
+.om-tournament-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.om-tournament-actions button {
+  min-height: 36px;
+  border: 1px solid rgba(255, 211, 108, 0.24);
+  border-radius: 8px;
+  background: rgba(255, 211, 108, 0.12);
+  color: var(--gold);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 950;
+  padding: 0 12px;
 }
 
 .om-tournament-state {
@@ -505,6 +564,10 @@
   align-items: center;
 }
 
+.om-tournament-fixture-row.locked {
+  opacity: 0.72;
+}
+
 .om-tournament-fixture-row input {
   min-width: 0;
   height: 34px;
@@ -517,11 +580,102 @@
   padding: 0 8px;
 }
 
+.om-tournament-fixture-row input:disabled,
+.om-tournament-fixture-row button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .om-tournament-wait {
   border: 1px dashed rgba(255, 255, 255, 0.14);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.04);
   padding: 10px;
+}
+
+.om-tournament-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.62);
+  overscroll-behavior: contain;
+  padding: 18px;
+}
+
+.om-tournament-modal {
+  display: grid;
+  width: min(920px, 100%);
+  max-height: min(860px, calc(100vh - 36px));
+  gap: 12px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid rgba(255, 211, 108, 0.24);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(145deg, rgba(10, 14, 21, 0.98), rgba(10, 14, 21, 0.92)),
+    url("/assets/match-score-arena.png") center / cover no-repeat;
+  box-shadow: 0 30px 120px rgba(0, 0, 0, 0.58);
+  padding: 18px;
+}
+
+.om-tournament-modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.om-tournament-modal-head h2 {
+  margin-top: 4px;
+  font-size: clamp(1.6rem, 4vw, 2.5rem);
+}
+
+.om-tournament-modal-head p {
+  margin-top: 6px;
+  color: var(--muted);
+  font-weight: 850;
+}
+
+.om-tournament-modal-head button {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.om-tournament-modal-section {
+  display: grid;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(8, 11, 16, 0.72);
+  padding: 12px;
+}
+
+.om-modal-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.om-modal-section-head strong {
+  color: var(--text);
+}
+
+.om-modal-section-head span,
+.om-modal-section-head a {
+  color: var(--gold);
+  font-size: 0.76rem;
+  font-weight: 950;
 }
 
 .tournament-detail-page {
@@ -743,6 +897,91 @@
   overflow-x: auto;
 }
 
+.tournament-cup-bracket {
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) minmax(230px, 280px) minmax(320px, 1fr);
+  align-items: stretch;
+  gap: 18px;
+  overflow-x: auto;
+  border: 1px solid rgba(255, 211, 108, 0.18);
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(circle at 50% 42%, rgba(255, 211, 108, 0.16), transparent 14rem),
+    linear-gradient(90deg, rgba(116, 169, 255, 0.08), transparent 28%, transparent 72%, rgba(70, 224, 182, 0.08)),
+    rgba(5, 8, 13, 0.82);
+  padding: 18px;
+}
+
+.cup-bracket-side {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(210px, 1fr);
+  gap: 14px;
+  min-width: 0;
+}
+
+.cup-bracket-side .bracket-round-column {
+  min-height: 520px;
+  align-content: stretch;
+}
+
+.cup-bracket-side .bracket-lanes {
+  height: 100%;
+  align-content: space-around;
+}
+
+.cup-bracket-center {
+  display: grid;
+  align-content: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.cup-winner-card,
+.cup-trophy-ring {
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 211, 108, 0.26);
+  border-radius: var(--radius);
+  background: rgba(255, 211, 108, 0.1);
+  text-align: center;
+}
+
+.cup-winner-card {
+  gap: 5px;
+  min-height: 82px;
+  padding: 12px;
+}
+
+.cup-winner-card span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 950;
+}
+
+.cup-winner-card strong {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--gold);
+  font-size: 1.2rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cup-trophy-ring {
+  min-height: 160px;
+  color: var(--gold);
+  box-shadow: inset 0 0 80px rgba(255, 211, 108, 0.08);
+}
+
+.cup-final-node .bracket-match-card {
+  padding-right: 10px;
+}
+
+.cup-final-node .bracket-connector {
+  display: none;
+}
+
 .bracket-round-column {
   position: relative;
   align-content: start;
@@ -872,6 +1111,16 @@
   right: 0;
   height: 36px;
   border-right: 1px solid rgba(255, 211, 108, 0.38);
+}
+
+.cup-bracket-side.right .tournament-round article > .bracket-connector {
+  right: auto;
+  left: 8px;
+}
+
+.cup-bracket-side.right .tournament-round article > .bracket-connector::after {
+  right: auto;
+  left: 0;
 }
 
 .bracket-next-slot {
@@ -1184,12 +1433,17 @@ html[data-theme="light"] .om-view-card,
 html[data-theme="light"] .om-calendar-summary,
 html[data-theme="light"] .om-calendar-box,
 html[data-theme="light"] .om-tournament-card,
+html[data-theme="light"] .om-tournament-modal,
+html[data-theme="light"] .om-tournament-modal-section,
 html[data-theme="light"] .om-filter-bar,
 html[data-theme="light"] .om-list-head,
 html[data-theme="light"] .om-match-card,
 html[data-theme="light"] .om-empty-state,
 html[data-theme="light"] .tournament-summary-grid > div,
 html[data-theme="light"] .tournament-team-list article,
+html[data-theme="light"] .tournament-cup-bracket,
+html[data-theme="light"] .cup-winner-card,
+html[data-theme="light"] .cup-trophy-ring,
 html[data-theme="light"] .tournament-round,
 html[data-theme="light"] .bracket-team-row,
 html[data-theme="light"] .league-fixture-grid article,
@@ -1228,6 +1482,19 @@ html[data-theme="light"] .tournament-schedule-list input {
 
   .tournament-hero-badges {
     justify-items: start;
+  }
+
+  .tournament-cup-bracket {
+    grid-template-columns: 1fr;
+  }
+
+  .cup-bracket-side {
+    grid-auto-flow: row;
+    grid-auto-columns: auto;
+  }
+
+  .cup-bracket-side .bracket-round-column {
+    min-height: auto;
   }
 }
 
@@ -1273,6 +1540,19 @@ html[data-theme="light"] .tournament-schedule-list input {
     grid-template-columns: 1fr;
   }
 
+  .om-tournament-modal-backdrop {
+    padding: 10px;
+  }
+
+  .om-tournament-modal {
+    max-height: calc(100vh - 20px);
+    padding: 12px;
+  }
+
+  .om-tournament-modal-head {
+    display: grid;
+  }
+
   .om-tournament-state {
     display: grid;
   }
@@ -1306,6 +1586,10 @@ html[data-theme="light"] .tournament-schedule-list input {
 
   .tournament-bracket-graphic {
     grid-template-columns: minmax(260px, 1fr);
+  }
+
+  .tournament-cup-bracket {
+    padding: 10px;
   }
 
   .tournament-round article > .bracket-connector {

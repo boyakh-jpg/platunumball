@@ -1,5 +1,5 @@
 import { Link, useParams } from "react-router-dom";
-import { CalendarDays, ChevronLeft, Save, ShieldCheck } from "lucide-react";
+import { CalendarDays, ChevronLeft, Save, ShieldCheck, Trophy } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import TierBadge from "../components/rating/TierBadge.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
@@ -227,6 +227,43 @@ function renderBracketSource(source, teamById) {
   );
 }
 
+function getCupBracketLayout(bracketTree = []) {
+  const finalRound = bracketTree[bracketTree.length - 1] ?? null;
+  const pathRounds = bracketTree.slice(0, -1);
+  const leftRounds = [];
+  const rightRounds = [];
+
+  pathRounds.forEach((round) => {
+    const mid = Math.ceil(round.nodes.length / 2);
+    leftRounds.push({ ...round, nodes: round.nodes.slice(0, mid) });
+    rightRounds.push({ ...round, nodes: round.nodes.slice(mid) });
+  });
+
+  return {
+    leftRounds: leftRounds.filter((round) => round.nodes.length),
+    rightRounds: rightRounds.filter((round) => round.nodes.length),
+    finalNode: finalRound?.nodes?.[0] ?? bracketTree[0]?.nodes?.[0] ?? null,
+  };
+}
+
+function renderBracketNode(node, teamById) {
+  if (!node) return null;
+  const winner = node.match ? getWinnerName(node.match) : "";
+  return (
+    <article key={node.id} className={winner || node.byeTeamId ? "bracket-match-card done" : "bracket-match-card"}>
+      <div className="bracket-node-head">
+        <span>{node.name}</span>
+        {node.match ? <Link to={`/app/matches/${node.match.id}`}>경기방</Link> : <b>{node.byeTeamId ? "BYE" : "예정"}</b>}
+      </div>
+      {renderBracketSource(node.sourceA, teamById)}
+      <strong className="bracket-midline">vs</strong>
+      {renderBracketSource(node.sourceB, teamById)}
+      <em className="bracket-status">{getBracketNodeStatus(node, teamById)}</em>
+      <span className="bracket-connector" aria-hidden="true" />
+    </article>
+  );
+}
+
 export default function TournamentDetail({ app }) {
   const { tournamentId } = useParams();
   const tournament = (app.state.tournaments ?? []).find((item) => item.id === tournamentId);
@@ -263,6 +300,9 @@ export default function TournamentDetail({ app }) {
     .filter((row) => row.team);
   const acceptedCount = teamRows.filter((row) => row.status === "accepted").length;
   const bracketTree = tournament.format === "tournament" ? buildTournamentBracketTree(tournament, matchesById) : [];
+  const cupBracket = tournament.format === "tournament" ? getCupBracketLayout(bracketTree) : { leftRounds: [], rightRounds: [], finalNode: null };
+  const championTeamId = cupBracket.finalNode ? getNodeWinnerTeamId(cupBracket.finalNode) : "";
+  const championTeam = championTeamId ? teamById[championTeamId] : null;
   const canManageSchedule = tournament.createdBy === app.currentUser.id;
   const leagueFixtures = tournament.bracket?.fixtures ?? tournamentMatches.map((match) => ({
     matchId: match.id,
@@ -361,30 +401,41 @@ export default function TournamentDetail({ app }) {
             <p>초대팀 주장이 모두 승인하면 자동으로 경기와 대진이 열린다.</p>
           </div>
         ) : tournament.format === "tournament" ? (
-          <div className="tournament-bracket tournament-bracket-graphic">
-            {bracketTree.map((round) => (
-              <div key={round.id} className="tournament-round bracket-round-column">
-                <h3>{round.name}</h3>
-                <div className="bracket-lanes">
-                  {round.nodes.map((node) => {
-                    const winner = node.match ? getWinnerName(node.match) : "";
-                    return (
-                      <article key={node.id} className={winner || node.byeTeamId ? "bracket-match-card done" : "bracket-match-card"}>
-                        <div className="bracket-node-head">
-                          <span>{node.name}</span>
-                          {node.match ? <Link to={`/app/matches/${node.match.id}`}>경기방</Link> : <b>{node.byeTeamId ? "BYE" : "예정"}</b>}
-                        </div>
-                        {renderBracketSource(node.sourceA, teamById)}
-                        <strong className="bracket-midline">vs</strong>
-                        {renderBracketSource(node.sourceB, teamById)}
-                        <em className="bracket-status">{getBracketNodeStatus(node, teamById)}</em>
-                        {round.nodes.length > 1 ? <span className="bracket-connector" aria-hidden="true" /> : null}
-                      </article>
-                    );
-                  })}
+          <div className="tournament-bracket tournament-cup-bracket">
+            <div className="cup-bracket-side left">
+              {cupBracket.leftRounds.map((round) => (
+                <div key={round.id} className="tournament-round bracket-round-column">
+                  <h3>{round.name}</h3>
+                  <div className="bracket-lanes">
+                    {round.nodes.map((node) => renderBracketNode(node, teamById))}
+                  </div>
                 </div>
+              ))}
+            </div>
+            <div className="cup-bracket-center">
+              <div className="cup-winner-card">
+                <span>우승</span>
+                <strong>{championTeam ? <TeamHoverCard team={championTeam} as="span">{championTeam.name}</TeamHoverCard> : "결승 승자"}</strong>
               </div>
-            ))}
+              <div className="cup-trophy-ring">
+                <Trophy size={64} />
+              </div>
+              {cupBracket.finalNode ? (
+                <div className="cup-final-node">
+                  {renderBracketNode(cupBracket.finalNode, teamById)}
+                </div>
+              ) : null}
+            </div>
+            <div className="cup-bracket-side right">
+              {[...cupBracket.rightRounds].reverse().map((round) => (
+                <div key={round.id} className="tournament-round bracket-round-column">
+                  <h3>{round.name}</h3>
+                  <div className="bracket-lanes">
+                    {round.nodes.map((node) => renderBracketNode(node, teamById))}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         ) : (
           <div className="league-fixture-grid">
