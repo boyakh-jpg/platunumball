@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, PlusCircle, ShieldAlert, Swords, Trophy, X } from "lucide-react";
+import { CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, PlusCircle, ShieldAlert, Swords, X } from "lucide-react";
 import Button from "../components/common/Button.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
@@ -18,6 +18,14 @@ const STATUS_META = {
 
 const VIEWS = [
   {
+    id: "active",
+    code: "MY",
+    title: "내 일정",
+    desc: "내 동의, 예정, 승인, 보류",
+    icon: CalendarDays,
+    statuses: ["contract", "agreed", "approval", "disputed"],
+  },
+  {
     id: "todo",
     code: "ACTION",
     title: "처리 필요",
@@ -30,24 +38,8 @@ const VIEWS = [
     code: "SOON",
     title: "예정",
     desc: "진행 예정 경기",
-    icon: CalendarDays,
-    statuses: ["agreed"],
-  },
-  {
-    id: "active",
-    code: "LIVE",
-    title: "전체 진행",
-    desc: "동의, 예정, 승인, 보류",
     icon: Swords,
-    statuses: ["contract", "agreed", "approval", "disputed"],
-  },
-  {
-    id: "done",
-    code: "DONE",
-    title: "기록",
-    desc: "확정된 경기",
-    icon: Trophy,
-    statuses: ["confirmed"],
+    statuses: ["agreed"],
   },
   {
     id: "closed",
@@ -130,10 +122,6 @@ function formatTournamentWindow(tournament) {
   return [tournament.startDate, tournament.endDate].filter(Boolean).join(" ~ ") || "일정 미정";
 }
 
-function compareRecent(a, b) {
-  return String(b.scheduledAt ?? b.createdAt ?? "").localeCompare(String(a.scheduledAt ?? a.createdAt ?? ""));
-}
-
 function compareSchedule(a, b) {
   const aKey = `${getMatchDate(a) || "9999-12-31"} ${a.scheduledTime ?? ""} ${a.scheduledAt ?? ""}`;
   const bKey = `${getMatchDate(b) || "9999-12-31"} ${b.scheduledTime ?? ""} ${b.scheduledAt ?? ""}`;
@@ -198,8 +186,7 @@ function getTournamentPairingPreview(tournament) {
 }
 
 export default function Matches({ app }) {
-  const [viewId, setViewId] = useState("todo");
-  const [scopeFilter, setScopeFilter] = useState("all");
+  const [viewId, setViewId] = useState("active");
   const [kindFilter, setKindFilter] = useState("all");
   const [modeFilter, setModeFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("");
@@ -211,12 +198,19 @@ export default function Matches({ app }) {
   const teamById = useMemo(() => Object.fromEntries(app.state.teams.map((team) => [team.id, team])), [app.state.teams]);
   const userById = useMemo(() => Object.fromEntries(app.state.users.map((user) => [user.id, user])), [app.state.users]);
   const matchesById = useMemo(() => Object.fromEntries(app.state.matches.map((match) => [match.id, match])), [app.state.matches]);
+  const myTeamIds = useMemo(
+    () => app.state.teams
+      .filter((team) => team.members.some((member) => member.userId === app.currentUser.id))
+      .map((team) => team.id),
+    [app.currentUser.id, app.state.teams],
+  );
   const activeTournaments = useMemo(() => {
     return [...(app.state.tournaments ?? [])]
       .filter((tournament) => !["closed", "cancelled"].includes(tournament.status))
+      .filter((tournament) => tournament.createdBy === app.currentUser.id || (tournament.teamIds ?? []).some((teamId) => myTeamIds.includes(teamId)))
       .sort((a, b) => String(b.createdAt ?? "").localeCompare(String(a.createdAt ?? "")))
       .slice(0, 4);
-  }, [app.state.tournaments]);
+  }, [app.currentUser.id, app.state.tournaments, myTeamIds]);
   const selectedTournament = useMemo(
     () => activeTournaments.find((tournament) => tournament.id === selectedTournamentId) ?? null,
     [activeTournaments, selectedTournamentId],
@@ -225,10 +219,11 @@ export default function Matches({ app }) {
 
   const baseFilteredMatches = useMemo(() => {
     return [...app.state.matches]
-      .filter((match) => scopeFilter !== "mine" || matchHasUser(match, app.currentUser.id))
+      .filter((match) => matchHasUser(match, app.currentUser.id))
+      .filter((match) => match.status !== "confirmed")
       .filter((match) => kindFilter === "all" || (kindFilter === "ranked" ? match.ranked !== false : match.ranked === false))
       .filter((match) => modeFilter === "all" || match.mode === modeFilter);
-  }, [app.currentUser.id, app.state.matches, kindFilter, modeFilter, scopeFilter]);
+  }, [app.currentUser.id, app.state.matches, kindFilter, modeFilter]);
 
   const filteredMatches = useMemo(() => {
     return baseFilteredMatches.filter((match) => !dateFilter || getMatchDate(match) === dateFilter);
@@ -252,13 +247,13 @@ export default function Matches({ app }) {
   const matchesByView = useMemo(() => {
     return filteredMatches
       .filter((match) => selectedView.statuses.includes(match.status))
-      .sort(selectedView.id === "done" ? compareRecent : compareSchedule);
+      .sort(compareSchedule);
   }, [filteredMatches, selectedView.statuses]);
 
-  const visibleMatches = matchesByView.slice(0, selectedView.id === "done" ? 80 : 60);
-  const todoCount = getViewCount(filteredMatches, VIEWS[0]);
-  const scheduledCount = getViewCount(filteredMatches, VIEWS[1]);
-  const doneCount = getViewCount(filteredMatches, VIEWS[3]);
+  const visibleMatches = matchesByView.slice(0, 60);
+  const activeCount = getViewCount(filteredMatches, VIEWS[0]);
+  const todoCount = getViewCount(filteredMatches, VIEWS[1]);
+  const scheduledCount = getViewCount(filteredMatches, VIEWS[2]);
   const saveTournamentSchedule = (event, tournamentId, matchId) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -273,14 +268,14 @@ export default function Matches({ app }) {
       <section className="om-match-hero">
         <div className="om-match-copy">
           <span className="om-kicker">MATCH QUEUE</span>
-          <h1>경기 큐</h1>
-          <p>지금 처리할 경기만 보고, 지난 기록은 필요할 때만 연다.</p>
+          <h1>내 경기</h1>
+          <p>내가 들어간 경기 일정과 처리할 동의, 승인만 먼저 본다.</p>
         </div>
         <div className="om-match-panel">
           <div className="om-match-stats">
+            <span><strong>{activeCount}</strong>MY</span>
             <span><strong>{todoCount}</strong>ACTION</span>
             <span><strong>{scheduledCount}</strong>SOON</span>
-            <span><strong>{doneCount}</strong>DONE</span>
           </div>
           <Link to="/app/create">
             <Button className="om-match-create"><PlusCircle size={18} /> 경기 만들기</Button>
@@ -305,7 +300,7 @@ export default function Matches({ app }) {
                 <strong>{view.title}</strong>
                 <em>{view.desc}</em>
               </span>
-              <b>{getViewCount(app.state.matches, view)}</b>
+              <b>{getViewCount(baseFilteredMatches, view)}</b>
             </button>
           );
         })}
@@ -316,8 +311,8 @@ export default function Matches({ app }) {
           <span className="om-view-icon"><CalendarDays size={22} /></span>
           <div>
             <span className="om-kicker">SCHEDULE</span>
-            <h2>진행 일정</h2>
-            <p>{dateFilter ? `${formatDateLabel(dateFilter)} 경기만 표시` : "진행 중이거나 예정된 경기를 날짜별로 본다."}</p>
+            <h2>내 진행 일정</h2>
+            <p>{dateFilter ? `${formatDateLabel(dateFilter)} 내 경기만 표시` : "내가 들어간 진행 중이거나 예정된 경기를 날짜별로 본다."}</p>
           </div>
           <div className="om-calendar-actions">
             <button type="button" className={!dateFilter ? "active" : ""} onClick={() => setDateFilter("")}>전체</button>
@@ -528,10 +523,6 @@ export default function Matches({ app }) {
 
       <section className="om-filter-bar" aria-label="경기 필터">
         <div className="segmented-control compact-segments">
-          <button type="button" className={scopeFilter === "all" ? "active" : ""} onClick={() => setScopeFilter("all")}>전체 경기</button>
-          <button type="button" className={scopeFilter === "mine" ? "active" : ""} onClick={() => setScopeFilter("mine")}>내 경기</button>
-        </div>
-        <div className="segmented-control compact-segments">
           <button type="button" className={kindFilter === "all" ? "active" : ""} onClick={() => setKindFilter("all")}>전체</button>
           <button type="button" className={kindFilter === "ranked" ? "active" : ""} onClick={() => setKindFilter("ranked")}>정규전</button>
           <button type="button" className={kindFilter === "friendly" ? "active" : ""} onClick={() => setKindFilter("friendly")}>친선전</button>
@@ -551,7 +542,7 @@ export default function Matches({ app }) {
             <span className="om-kicker">{selectedView.code}</span>
             <h2>{dateFilter ? `${selectedView.title} · ${formatDateLabel(dateFilter)}` : selectedView.title}</h2>
           </div>
-          <span>{filteredMatches.length}개 필터 · {matchesByView.length}개 중 {visibleMatches.length}개 표시</span>
+          <span>내 일정 {matchesByView.length}개 중 {visibleMatches.length}개 표시</span>
         </div>
 
         {visibleMatches.length ? visibleMatches.map((match) => {
