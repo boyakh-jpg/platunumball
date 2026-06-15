@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Star } from "lucide-react";
+import { Globe2, Lock, Star } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
@@ -31,6 +31,10 @@ export default function CreateMatch({ app }) {
   const navigate = useNavigate();
   const defaultTeamA = getUserTeam(app.state.teams, app.currentUser.id) ?? app.state.teams[0];
   const defaultTeamB = getOpponentTeam(app.state.teams, defaultTeamA?.id, app.currentUser.region);
+  const myTeams = useMemo(
+    () => app.state.teams.filter((team) => team.members.some((member) => member.userId === app.currentUser.id)),
+    [app.currentUser.id, app.state.teams],
+  );
   const [teamQuery, setTeamQuery] = useState("");
   const [courtQuery, setCourtQuery] = useState("");
   const [teamRegion, setTeamRegion] = useState(app.currentUser.region ?? "전체");
@@ -40,6 +44,8 @@ export default function CreateMatch({ app }) {
   const isFavoriteTeam = (team) => favoriteTeamIds.includes(team.id);
   const isFavoriteCourt = (court) => favoriteCourtIds.includes(court.id);
   const [draft, setDraft] = useState({
+    visibility: "private",
+    hostJoinMode: "team",
     title: "오늘의 5v5 공식전",
     mode: "5v5",
     court: COURTS[0].name,
@@ -98,17 +104,24 @@ export default function CreateMatch({ app }) {
     return Array.from(teamMap.values());
   }, [selectedTeamA, selectedTeamB, sortedTeams]);
   const selectedTeams = useMemo(
-    () => [selectedTeamA, selectedTeamB].filter(Boolean),
-    [selectedTeamA, selectedTeamB],
+    () => (draft.visibility === "public"
+      ? (draft.hostJoinMode === "team" ? [selectedTeamA].filter(Boolean) : [])
+      : [selectedTeamA, selectedTeamB].filter(Boolean)),
+    [draft.hostJoinMode, draft.visibility, selectedTeamA, selectedTeamB],
   );
   const teamTierRange = getRecruitingTierRange(selectedTeamA?.mmr ?? 1200, draft.ranked);
+  const isPublicRoom = draft.visibility === "public";
   const teamTierBlocked = Boolean(
-    draft.ranked &&
+    !isPublicRoom &&
+      draft.ranked &&
       selectedTeamA &&
       selectedTeamB &&
       !isMmrInRecruitingRange(selectedTeamB.mmr, selectedTeamA.mmr, true),
   );
-  const teamSelectionInvalid = !selectedTeamA || !selectedTeamB || selectedTeamA.id === selectedTeamB.id;
+  const privateTeamInvalid = !selectedTeamA || !selectedTeamB || selectedTeamA.id === selectedTeamB.id;
+  const publicTeamInvalid = draft.hostJoinMode === "team" && !myTeams.some((team) => team.id === draft.teamAId);
+  const teamSelectionInvalid = isPublicRoom ? publicTeamInvalid : privateTeamInvalid;
+  const submitDisabled = isPublicRoom ? publicTeamInvalid : teamTierBlocked || privateTeamInvalid;
   const selectedCourt = useMemo(
     () => COURTS.find((court) => court.name === draft.court) ?? COURTS[0],
     [draft.court],
@@ -147,7 +160,28 @@ export default function CreateMatch({ app }) {
   };
   const submit = (event) => {
     event.preventDefault();
-    if (teamTierBlocked || teamSelectionInvalid) return;
+    if (submitDisabled) return;
+    if (isPublicRoom) {
+      app.actions.createRecruitingPost({
+        title: draft.title,
+        hostJoinMode: draft.hostJoinMode,
+        teamId: draft.hostJoinMode === "team" ? draft.teamAId : "",
+        targetTeamId: draft.teamBId,
+        region: selectedCourt.region,
+        court: draft.court,
+        scheduledDate: draft.scheduledDate,
+        scheduledTime: draft.scheduledTime,
+        mode: draft.mode,
+        ranked: draft.ranked,
+        memo: [
+          draft.memo,
+          selectedTeamB ? `희망 상대: ${selectedTeamB.name}` : "",
+          "공개방: 개인 또는 팀 파티가 빈 슬롯에 참여할 수 있습니다.",
+        ].filter(Boolean).join("\n"),
+      });
+      navigate("/app/recruiting");
+      return;
+    }
     const matchId = app.actions.createMatch(draft);
     navigate(matchId ? `/app/matches/${matchId}` : "/app/matches");
   };
@@ -157,12 +191,38 @@ export default function CreateMatch({ app }) {
       <header className="page-header">
         <div>
           <p className="eyebrow">CreateMatch</p>
-          <h1>오늘의 판 만들기</h1>
+          <h1>경기방 만들기</h1>
         </div>
-        <Button type="submit" disabled={teamTierBlocked || teamSelectionInvalid}>경기 생성</Button>
+        <Button type="submit" disabled={submitDisabled}>{isPublicRoom ? "매칭에 공개" : "경기 생성"}</Button>
       </header>
 
       <div className="content-grid wide-left">
+        <Card className="section-card full-span">
+          <div className="section-title-row">
+            <div>
+              <p className="eyebrow">Room visibility</p>
+              <h2>공개 범위</h2>
+            </div>
+            <Badge tone={isPublicRoom ? "green" : "neutral"}>{isPublicRoom ? "공개방" : "비공개방"}</Badge>
+          </div>
+          <div className="create-mode-grid">
+            <button type="button" className={!isPublicRoom ? "active" : ""} onClick={() => update({ visibility: "private" })}>
+              <Lock size={19} />
+              <span>
+                <strong>비공개 경기방</strong>
+                <em>선택한 A팀/B팀으로 바로 경기 계약서를 만든다.</em>
+              </span>
+            </button>
+            <button type="button" className={isPublicRoom ? "active" : ""} onClick={() => update({ visibility: "public", hostJoinMode: "team", teamAId: defaultTeamA?.id ?? draft.teamAId })}>
+              <Globe2 size={19} />
+              <span>
+                <strong>공개 매칭방</strong>
+                <em>매칭 목록에 노출하고 빈 슬롯을 개인/팀 파티가 채운다.</em>
+              </span>
+            </button>
+          </div>
+        </Card>
+
         <Card className="section-card full-span">
           <div className="section-title-row">
             <div>
@@ -175,6 +235,15 @@ export default function CreateMatch({ app }) {
               제목
               <input value={draft.title} onChange={(event) => update({ title: event.target.value })} />
             </label>
+            {isPublicRoom ? (
+              <label>
+                방장 참여
+                <select value={draft.hostJoinMode} onChange={(event) => update({ hostJoinMode: event.target.value })}>
+                  <option value="team">내 팀 파티로 열기</option>
+                  <option value="player">개인으로 열기</option>
+                </select>
+              </label>
+            ) : null}
             <label>
               방식
               <select value={draft.mode} onChange={(event) => update({ mode: event.target.value })}>
@@ -244,7 +313,7 @@ export default function CreateMatch({ app }) {
           <div className="section-title-row">
             <div>
               <p className="eyebrow">Team Finder</p>
-              <h2>참여 팀 검색</h2>
+              <h2>{isPublicRoom ? "내 파티와 희망 상대" : "참여 팀 검색"}</h2>
             </div>
           </div>
           {draft.ranked ? (
@@ -296,16 +365,16 @@ export default function CreateMatch({ app }) {
           </div>
           <div className="form-grid two">
             <label>
-              Team A
+              {isPublicRoom ? "내 팀/파티" : "Team A"}
               <select value={draft.teamAId ?? ""} onChange={(event) => selectTeamA(event.target.value)}>
-                {!teamOptions.length ? <option value="">팀 없음</option> : null}
-                {teamOptions
+                {!(isPublicRoom ? myTeams : teamOptions).length ? <option value="">팀 없음</option> : null}
+                {(isPublicRoom ? myTeams : teamOptions)
                   .filter((team) => team.id !== draft.teamBId)
                   .map((team) => <option key={team.id} value={team.id}>{team.region} · {team.name} · {team.mmr}</option>)}
               </select>
             </label>
             <label>
-              Team B
+              {isPublicRoom ? "희망 상대팀" : "Team B"}
               <select value={draft.teamBId ?? ""} onChange={(event) => selectTeamB(event.target.value)}>
                 {!teamOptions.some((team) => team.id !== draft.teamAId) ? <option value="">상대 팀 없음</option> : null}
                 {teamOptions
@@ -314,6 +383,12 @@ export default function CreateMatch({ app }) {
               </select>
             </label>
           </div>
+          {isPublicRoom ? (
+            <div className="create-public-note">
+              <Globe2 size={17} />
+              <span>공개방은 매칭 목록에 노출된다. 희망 상대팀은 표시용이고, 실제 참여자는 방에서 대기/확정한다.</span>
+            </div>
+          ) : null}
           <div className="favorite-action-row">
             {selectedTeamA ? (
               <Button

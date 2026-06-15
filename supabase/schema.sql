@@ -79,6 +79,7 @@ begin
     execute 'alter table public.recruiting_posts add column if not exists host_side text not null default ''teamA''';
     execute 'alter table public.recruiting_posts add column if not exists host_ready boolean not null default false';
     execute 'alter table public.recruiting_posts add column if not exists side_capacity integer not null default 5';
+    execute 'alter table public.recruiting_posts add column if not exists target_team_id text';
     execute 'alter table public.recruiting_posts add column if not exists scheduled_date date';
     execute 'alter table public.recruiting_posts add column if not exists scheduled_time time';
     execute 'alter table public.recruiting_posts add column if not exists scheduled_at text';

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   CheckCircle2,
   Clock3,
@@ -208,6 +209,8 @@ export default function Recruiting({ app }) {
   const [scope, setScope] = useState("local");
   const [queue, setQueue] = useState("all");
   const [roomScope, setRoomScope] = useState("all");
+  const [entryMode, setEntryMode] = useState("rooms");
+  const [modeFilter, setModeFilter] = useState("all");
   const [composeOpen, setComposeOpen] = useState(false);
   const [selectedPostId, setSelectedPostId] = useState(null);
   const [joinDraftByPost, setJoinDraftByPost] = useState({});
@@ -236,13 +239,34 @@ export default function Recruiting({ app }) {
     setDraft((current) => ({ ...current, teamId: myTeams[0]?.id ?? "" }));
   }, [draft.teamId, hostNeedsTeam, myTeams, selectedTeam]);
 
-  const visibleBasePosts = useMemo(() => {
+  const hasAppliedToPost = (post) => {
+    const applicantEntry = { kind: "player", joinMode: "player", playerId: app.currentUser.id };
+    return hasRecruitingApplicant(post, applicantEntry)
+      || myTeams.some((team) => hasRecruitingApplicant(post, { kind: "team", joinMode: "team", teamId: team.id }));
+  };
+  const canEnterPost = (post, mode) => {
+    if (post.playerId === app.currentUser.id || hasAppliedToPost(post)) return false;
+    if (mode === "team" && !myTeams.length) return false;
+    const candidateMmr = mode === "team" ? myTeams[0]?.mmr ?? 0 : app.currentUser.ratings.integrated;
+    return getRecruitingFit(post, candidateMmr || app.currentUser.ratings.integrated, app.state).allowed;
+  };
+
+  const scopedPosts = useMemo(() => {
     return [...(app.state.recruitingPosts ?? [])]
       .filter((post) => post.status !== "closed")
       .filter((post) => scope !== "local" || post.region === app.currentUser.region || isNationalRecruitingPost(post, app.state))
       .filter((post) => queue === "all" || (queue === "ranked" ? post.ranked !== false : post.ranked === false))
+      .filter((post) => modeFilter === "all" || post.mode === modeFilter)
       .filter((post) => roomScope !== "mine" || isRecruitingPostForUser(post, app.currentUser.id, myTeamIds));
-  }, [app.currentUser.id, app.currentUser.region, app.state, myTeamIds, queue, roomScope, scope]);
+  }, [app.currentUser.id, app.currentUser.region, app.state, modeFilter, myTeamIds, queue, roomScope, scope]);
+
+  const visibleBasePosts = useMemo(() => {
+    return scopedPosts.filter((post) => {
+      if (entryMode === "player") return canEnterPost(post, "player");
+      if (entryMode === "team") return canEnterPost(post, "team");
+      return true;
+    });
+  }, [app.currentUser.id, app.currentUser.ratings.integrated, app.state, entryMode, myTeams, scopedPosts]);
 
   const posts = useMemo(() => {
     return visibleBasePosts.sort((a, b) => {
@@ -261,6 +285,9 @@ export default function Recruiting({ app }) {
     : null;
   const rankedCount = visibleBasePosts.filter((post) => post.ranked !== false).length;
   const friendlyCount = visibleBasePosts.length - rankedCount;
+  const playerEntryCount = scopedPosts.filter((post) => canEnterPost(post, "player")).length;
+  const teamEntryCount = scopedPosts.filter((post) => canEnterPost(post, "team")).length;
+  const roomEntryCount = scopedPosts.length;
   const myRoomCount = (app.state.recruitingPosts ?? [])
     .filter((post) => post.status !== "closed")
     .filter((post) => isRecruitingPostForUser(post, app.currentUser.id, myTeamIds))
@@ -292,8 +319,8 @@ export default function Recruiting({ app }) {
       <section className="ow-recruit-hero">
         <div className="ow-hero-copy">
           <span className="ow-kicker">MATCH QUEUE</span>
-          <h1>매치 큐</h1>
-          <p>팀 구함, 용병 구함을 나누지 않는다. 방을 열고, 참가자가 개인이나 팀 파티로 들어온다.</p>
+          <h1>대기 매칭</h1>
+          <p>개인/팀 모집을 나누지 않는다. 공개방을 열면 참가자가 개인이나 팀 파티로 들어온다.</p>
         </div>
         <div className="ow-hero-panel">
           <div className="ow-hero-stats">
@@ -301,40 +328,42 @@ export default function Recruiting({ app }) {
             <span><strong>{rankedCount}</strong>RANKED</span>
             <span><strong>{friendlyCount}</strong>FRIENDLY</span>
           </div>
-          <Button type="button" className="ow-hero-cta" onClick={() => setComposeOpen(true)}>
-            <PlusCircle size={18} /> 매치방 만들기
-          </Button>
+          <Link to="/app/create">
+            <Button type="button" className="ow-hero-cta">
+              <PlusCircle size={18} /> 경기방 만들기
+            </Button>
+          </Link>
         </div>
       </section>
 
       <section className="ow-mode-grid" aria-label="참여 방식">
-        <div className="ow-mode-card static">
+        <button type="button" className={entryMode === "player" ? "ow-mode-card active" : "ow-mode-card"} onClick={() => setEntryMode("player")}>
           <span className="ow-mode-icon"><UserRound size={23} /></span>
           <span className="ow-mode-copy">
             <span className="ow-mode-code">SOLO</span>
             <h2>개인 참여</h2>
-            <p>빈 슬롯 하나에 용병처럼 들어간다.</p>
+            <p>내 티어로 바로 들어갈 수 있는 빈 슬롯만 본다.</p>
           </span>
-          <span className="ow-mode-count">선택형</span>
-        </div>
-        <div className="ow-mode-card static">
+          <span className="ow-mode-count">{playerEntryCount}개</span>
+        </button>
+        <button type="button" className={entryMode === "team" ? "ow-mode-card active" : "ow-mode-card"} onClick={() => setEntryMode("team")}>
           <span className="ow-mode-icon"><UsersRound size={23} /></span>
           <span className="ow-mode-copy">
             <span className="ow-mode-code">PARTY</span>
             <h2>팀 파티</h2>
-            <p>내 팀 활성 멤버가 자동으로 같이 들어간다.</p>
+            <p>내 팀으로 들어갈 수 있는 공개방만 본다.</p>
           </span>
-          <span className="ow-mode-count">{myTeams.length}팀</span>
-        </div>
-        <div className="ow-mode-card static">
+          <span className="ow-mode-count">{teamEntryCount}개</span>
+        </button>
+        <button type="button" className={entryMode === "rooms" ? "ow-mode-card active" : "ow-mode-card"} onClick={() => setEntryMode("rooms")}>
           <span className="ow-mode-icon"><Swords size={23} /></span>
           <span className="ow-mode-copy">
             <span className="ow-mode-code">ROOM</span>
             <h2>매치방</h2>
-            <p>A/B 로스터, 포지션, 티어, 후보를 보고 대기한다.</p>
+            <p>전체 공개방을 보고 방 상세에서 참여 방식을 고른다.</p>
           </span>
-          <span className="ow-mode-count">팝업</span>
-        </div>
+          <span className="ow-mode-count">{roomEntryCount}개</span>
+        </button>
       </section>
 
       <section className="ow-filter-bar" aria-label="필터">
@@ -344,6 +373,13 @@ export default function Recruiting({ app }) {
         <button type="button" className={queue === "all" ? "active" : ""} onClick={() => setQueue("all")}>전체</button>
         <button type="button" className={queue === "ranked" ? "active" : ""} onClick={() => setQueue("ranked")}>정규전</button>
         <button type="button" className={queue === "friendly" ? "active" : ""} onClick={() => setQueue("friendly")}>친선전</button>
+        <label className="ow-filter-select">
+          방식
+          <select value={modeFilter} onChange={(event) => setModeFilter(event.target.value)}>
+            <option value="all">전체</option>
+            {MATCH_MODES.map((mode) => <option key={mode.id} value={mode.id}>{mode.label}</option>)}
+          </select>
+        </label>
         <span className="ow-filter-count">{posts.length}개 표시</span>
       </section>
 
@@ -353,6 +389,7 @@ export default function Recruiting({ app }) {
           const target = getRecruitingTargetMmr(post, app.state);
           const host = userById[post.playerId];
           const hostTeam = post.teamId ? teamById[post.teamId] : null;
+          const targetTeam = post.targetTeamId ? teamById[post.targetTeamId] : null;
           const applicantEntry = { kind: "player", joinMode: "player", playerId: app.currentUser.id };
           const applied = hasRecruitingApplicant(post, applicantEntry)
             || myTeams.some((team) => hasRecruitingApplicant(post, { kind: "team", joinMode: "team", teamId: team.id }));
@@ -371,6 +408,7 @@ export default function Recruiting({ app }) {
                   {myRoom ? <span className="ow-my-room-tag">내 방</span> : null}
                   <span className={`ow-queue-pill ${post.ranked === false ? "friendly" : "ranked"}`}>{post.ranked === false ? "친선전" : "정규전"}</span>
                   <span className="ow-position-pill">{post.mode}</span>
+                  {targetTeam ? <span className="ow-position-pill">희망 상대 {targetTeam.name}</span> : null}
                   {isNationalRecruitingPost(post, app.state) ? <span className="ow-position-pill">전국 노출</span> : null}
                 </div>
                 <h3>{post.title}</h3>
@@ -438,6 +476,7 @@ export default function Recruiting({ app }) {
         const myEntry = lobby.entries.find((entry) => entry.playerId === app.currentUser.id);
         const alreadyApplied = Boolean(myEntry && !myEntry.fixed);
         const canJoin = !mine && !alreadyApplied && fit.allowed && (joinDraft.joinMode === "player" || Boolean(selectedJoinTeam));
+        const selectedTargetTeam = selectedPost.targetTeamId ? teamById[selectedPost.targetTeamId] : null;
 
         return (
           <div className="ow-compose-backdrop" role="presentation" onMouseDown={() => setSelectedPostId(null)}>
@@ -454,6 +493,7 @@ export default function Recruiting({ app }) {
               <div className="ow-lobby-summary">
                 <span><ShieldCheck size={16} /> {selectedPost.ranked === false ? "친선전" : "정규전"}</span>
                 <span><Clock3 size={16} /> {getRecruitingSchedule(selectedPost)}</span>
+                {selectedTargetTeam ? <span><Swords size={16} /> 희망 상대 {selectedTargetTeam.name}</span> : null}
                 <span><UsersRound size={16} /> 팀은 활성 멤버 자동 참여</span>
                 <span><Clock3 size={16} /> 전원 대기 후 방장 확정</span>
               </div>

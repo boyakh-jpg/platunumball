@@ -1309,6 +1309,66 @@ input[type="color"] {
   margin-top: 12px;
 }
 
+.create-mode-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.create-mode-grid button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  padding: 12px;
+  text-align: left;
+}
+
+.create-mode-grid button.active {
+  border-color: rgba(70, 224, 182, 0.44);
+  background: rgba(70, 224, 182, 0.1);
+}
+
+.create-mode-grid button > svg {
+  color: var(--green);
+}
+
+.create-mode-grid span,
+.create-public-note {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.create-mode-grid strong {
+  color: var(--text);
+}
+
+.create-mode-grid em,
+.create-public-note span {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-style: normal;
+  font-weight: 850;
+  line-height: 1.45;
+}
+
+.create-public-note {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  margin-top: 12px;
+  border: 1px solid rgba(70, 224, 182, 0.18);
+  border-radius: var(--radius);
+  background: rgba(70, 224, 182, 0.055);
+  padding: 10px;
+}
+
 .evidence-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
@@ -1888,6 +1948,7 @@ input[type="color"] {
 
   .content-grid,
   .content-grid.wide-left,
+  .create-mode-grid,
   .hero-dashboard,
   .season-hero,
   .match-hero,
