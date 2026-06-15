@@ -160,12 +160,20 @@ begin
       execute function public.enforce_team_membership_limit()
     ';
   end if;
+end;
+$$;
 
+do $$
+begin
   if to_regclass('public.teams') is not null then
     execute 'alter table public.teams add column if not exists deleted_at timestamptz';
     execute 'create index if not exists teams_deleted_at_idx on public.teams (deleted_at)';
   end if;
+end;
+$$;
 
+do $$
+begin
   if to_regclass('public.tournaments') is not null then
     execute 'alter table public.tournaments add column if not exists started_at timestamptz';
     execute 'alter table public.tournaments add column if not exists match_ids jsonb not null default ''[]''::jsonb';
@@ -173,18 +181,30 @@ begin
     execute 'alter table public.tournaments add column if not exists team_approvals jsonb not null default ''{}''::jsonb';
     execute 'alter table public.tournaments add column if not exists bracket jsonb not null default ''{}''::jsonb';
   end if;
+end;
+$$;
 
+do $$
+begin
   if to_regclass('public.tournament_teams') is not null then
     execute 'alter table public.tournament_teams add column if not exists approved_by text';
     execute 'alter table public.tournament_teams add column if not exists approved_at timestamptz';
   end if;
+end;
+$$;
 
+do $$
+begin
   if to_regclass('public.affiliations') is not null then
     execute 'delete from public.affiliations where type = ''club''';
     execute 'alter table public.affiliations drop constraint if exists affiliations_type_check';
     execute 'alter table public.affiliations add constraint affiliations_type_check check (type in (''region'', ''school'', ''company''))';
   end if;
+end;
+$$;
 
+do $$
+begin
   if to_regclass('public.matches') is not null then
     execute 'alter table public.matches add column if not exists score_a integer not null default 0';
     execute 'alter table public.matches add column if not exists score_b integer not null default 0';
@@ -196,6 +216,13 @@ begin
     execute 'alter table public.matches add column if not exists ended_at timestamptz';
     execute 'alter table public.matches add column if not exists trust_feedback jsonb not null default ''{}''::jsonb';
     execute 'create index if not exists matches_referee_id_idx on public.matches (referee_id)';
+  end if;
+end;
+$$;
+
+do $$
+begin
+  if to_regclass('public.matches') is not null then
     execute 'alter table public.matches add column if not exists tournament_id text';
     execute 'alter table public.matches add column if not exists tournament_format text';
     execute 'alter table public.matches add column if not exists tournament_round integer';
@@ -205,7 +232,11 @@ begin
     execute 'alter table public.matches drop constraint if exists matches_mmr_limit_mode_check';
     execute 'alter table public.matches add constraint matches_mmr_limit_mode_check check (mmr_limit_mode in (''off'', ''warn'', ''block''))';
   end if;
+end;
+$$;
 
+do $$
+begin
   if to_regclass('public.match_results') is not null then
     execute 'alter table public.match_results add column if not exists score_a integer not null default 0';
     execute 'alter table public.match_results add column if not exists score_b integer not null default 0';
@@ -214,14 +245,22 @@ begin
     execute 'alter table public.match_results add column if not exists stat_submissions jsonb not null default ''{}''::jsonb';
     execute 'alter table public.match_results add column if not exists submitted_by text';
   end if;
+end;
+$$;
 
+do $$
+begin
   if to_regclass('public.player_match_stats') is not null then
     execute 'alter table public.player_match_stats add column if not exists recorded_by text';
     execute 'alter table public.player_match_stats add column if not exists record_source text not null default ''player''';
     execute 'alter table public.player_match_stats drop constraint if exists player_match_stats_record_source_check';
     execute 'alter table public.player_match_stats add constraint player_match_stats_record_source_check check (record_source in (''player'', ''referee'', ''candidate_recorder''))';
   end if;
+end;
+$$;
 
+do $$
+begin
   if to_regclass('public.recruiting_posts') is not null then
     execute 'alter table public.recruiting_posts add column if not exists host_join_mode text not null default ''team''';
     execute 'alter table public.recruiting_posts add column if not exists host_side text not null default ''teamA''';
@@ -232,6 +271,13 @@ begin
     execute 'alter table public.recruiting_posts add column if not exists referee_trust_min integer not null default 90';
     execute 'alter table public.recruiting_posts add column if not exists stat_entry_minutes integer not null default 60';
     execute 'alter table public.recruiting_posts add column if not exists dispute_minutes integer not null default 120';
+  end if;
+end;
+$$;
+
+do $$
+begin
+  if to_regclass('public.recruiting_posts') is not null then
     execute 'alter table public.recruiting_posts add column if not exists scheduled_date date';
     execute 'alter table public.recruiting_posts add column if not exists scheduled_time time';
     execute 'alter table public.recruiting_posts add column if not exists scheduled_at text';
@@ -245,7 +291,11 @@ begin
     execute 'alter table public.recruiting_posts drop constraint if exists recruiting_posts_side_capacity_check';
     execute 'alter table public.recruiting_posts add constraint recruiting_posts_side_capacity_check check (side_capacity between 1 and 5)';
   end if;
+end;
+$$;
 
+do $$
+begin
   if to_regclass('public.recruiting_applications') is not null then
     execute 'alter table public.recruiting_applications add column if not exists side text not null default ''teamB''';
     execute 'alter table public.recruiting_applications add column if not exists status text not null default ''waiting''';
