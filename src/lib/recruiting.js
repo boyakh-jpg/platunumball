@@ -37,7 +37,7 @@ export const RECRUITING_JOIN_MODES = {
   team: {
     label: "팀",
     actionLabel: "팀으로 대기",
-    description: "현재 팀 활성 멤버가 파티로 참여",
+    description: "선택한 팀원이 파티로 참여",
   },
 };
 
@@ -93,15 +93,26 @@ export function getRecruitingJoinMode(entry = {}) {
   return "player";
 }
 
-export function getActiveTeamPlayerIds(team = {}, capacity = Infinity) {
-  return (team.members ?? [])
+export function getSelectableTeamPlayerIds(team = {}) {
+  return (team?.members ?? [])
     .filter((member) => !RESERVE_ROLES.has(member.role))
-    .slice(0, capacity)
     .map((member) => member.userId);
 }
 
+export function getSelectedTeamPlayerIds(team = {}, capacity = Infinity, playerIds) {
+  const selectableIds = getSelectableTeamPlayerIds(team);
+  if (!Array.isArray(playerIds)) return selectableIds.slice(0, capacity);
+  const selectableSet = new Set(selectableIds);
+  return unique(playerIds).filter((playerId) => selectableSet.has(playerId)).slice(0, capacity);
+}
+
+export function getActiveTeamPlayerIds(team = {}, capacity = Infinity, playerIds) {
+  const selectedIds = getSelectedTeamPlayerIds(team, capacity, playerIds);
+  return selectedIds.length ? selectedIds : getSelectableTeamPlayerIds(team).slice(0, capacity);
+}
+
 export function getReserveTeamPlayerIds(team = {}) {
-  return (team.members ?? [])
+  return (team?.members ?? [])
     .filter((member) => RESERVE_ROLES.has(member.role))
     .map((member) => member.userId);
 }
@@ -118,6 +129,7 @@ export function normalizeRecruitingApplicant(entry) {
       status: "waiting",
       reserve: false,
       position: null,
+      playerIds: [],
       createdAt: null,
       updatedAt: null,
     };
@@ -138,6 +150,7 @@ export function normalizeRecruitingApplicant(entry) {
       status,
       reserve: Boolean(entry.reserve),
       position: entry.position ?? null,
+      playerIds: unique(entry.playerIds ?? entry.players ?? []),
       createdAt: entry.createdAt ?? null,
       updatedAt: entry.updatedAt ?? null,
     };
@@ -152,6 +165,7 @@ export function normalizeRecruitingApplicant(entry) {
       status,
       reserve: Boolean(entry.reserve),
       position: entry.position ?? null,
+      playerIds: [],
       createdAt: entry.createdAt ?? null,
       updatedAt: entry.updatedAt ?? null,
     };
@@ -195,6 +209,7 @@ export function normalizeRecruitingPost(post = {}) {
     hostSide: VALID_SIDES.has(post.hostSide) ? post.hostSide : "teamA",
     hostReady: Boolean(post.hostReady),
     sideCapacity: getRecruitingSideCapacity(post),
+    playerIds: unique(post.playerIds ?? post.players ?? []),
     applicants: normalizeRecruitingApplicants(post.applicants ?? []),
   };
 }
@@ -261,7 +276,7 @@ export function getRecruitingHostEntry(post = {}, state = {}) {
   const team = post.teamId ? state.teams?.find((item) => item.id === post.teamId) ?? null : null;
   const capacity = getRecruitingSideCapacity(post);
   const joinMode = post.hostJoinMode === "player" || !team ? "player" : "team";
-  const players = joinMode === "team" ? getActiveTeamPlayerIds(team, capacity) : [post.playerId].filter(Boolean);
+  const players = joinMode === "team" ? getActiveTeamPlayerIds(team, capacity, post.playerIds) : [post.playerId].filter(Boolean);
   const reserves = joinMode === "team" ? getReserveTeamPlayerIds(team) : [];
 
   return {
@@ -289,7 +304,7 @@ export function getRecruitingApplicantEntry(applicant = {}, state = {}, post = {
   const user = normalized.playerId ? state.users?.find((item) => item.id === normalized.playerId) ?? null : null;
   const team = normalized.teamId ? state.teams?.find((item) => item.id === normalized.teamId) ?? null : null;
   const players = normalized.kind === "team"
-    ? getActiveTeamPlayerIds(team, capacity)
+    ? getActiveTeamPlayerIds(team, capacity, normalized.playerIds)
     : [normalized.playerId].filter(Boolean);
   const reserves = normalized.kind === "team" ? getReserveTeamPlayerIds(team) : [];
 

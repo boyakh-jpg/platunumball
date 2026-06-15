@@ -211,6 +211,7 @@ begin
     execute 'alter table public.recruiting_posts add column if not exists scheduled_time time';
     execute 'alter table public.recruiting_posts add column if not exists scheduled_at text';
     execute 'alter table public.recruiting_posts add column if not exists confirmed_at timestamptz';
+    execute 'alter table public.recruiting_posts add column if not exists player_ids jsonb not null default ''[]''::jsonb';
     execute 'alter table public.recruiting_posts drop constraint if exists recruiting_posts_host_join_mode_check';
     execute 'alter table public.recruiting_posts add constraint recruiting_posts_host_join_mode_check check (host_join_mode in (''player'', ''team''))';
     execute 'alter table public.recruiting_posts drop constraint if exists recruiting_posts_host_side_check';
@@ -224,6 +225,7 @@ begin
     execute 'alter table public.recruiting_applications add column if not exists status text not null default ''waiting''';
     execute 'alter table public.recruiting_applications add column if not exists reserve boolean not null default false';
     execute 'alter table public.recruiting_applications add column if not exists position text';
+    execute 'alter table public.recruiting_applications add column if not exists player_ids jsonb not null default ''[]''::jsonb';
     execute 'alter table public.recruiting_applications add column if not exists updated_at timestamptz';
     execute 'alter table public.recruiting_applications drop constraint if exists recruiting_applications_side_check';
     execute 'alter table public.recruiting_applications add constraint recruiting_applications_side_check check (side in (''teamA'', ''teamB''))';

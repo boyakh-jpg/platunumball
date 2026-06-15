@@ -654,6 +654,91 @@
   font-size: 1rem;
 }
 
+.ow-party-field {
+  display: grid;
+  gap: 10px;
+}
+
+.ow-party-picker {
+  display: grid;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.045);
+  padding: 10px;
+}
+
+.ow-party-picker.empty {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+.ow-party-picker-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.ow-party-picker-head strong {
+  color: var(--gold);
+}
+
+.ow-party-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 7px;
+}
+
+.ow-party-picker-grid button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.18);
+  color: var(--text);
+  cursor: pointer;
+  padding: 7px;
+  text-align: left;
+}
+
+.ow-party-picker-grid button.selected {
+  border-color: rgba(70, 224, 182, 0.48);
+  background: rgba(70, 224, 182, 0.13);
+}
+
+.ow-party-picker-grid button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.ow-party-picker-grid button > span:nth-child(2) {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.ow-party-picker-grid strong {
+  overflow-wrap: anywhere;
+  color: var(--text);
+  font-size: 0.82rem;
+}
+
+.ow-party-picker-grid em,
+.ow-party-picker > em {
+  color: var(--gold);
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 850;
+}
+
 .ow-submit-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -1020,8 +1105,17 @@ html[data-theme="light"] .ow-open-slot,
 html[data-theme="light"] .ow-owner-panel,
 html[data-theme="light"] .ow-room-rule-panel,
 html[data-theme="light"] .ow-reserve-panel,
-html[data-theme="light"] .ow-join-panel {
+html[data-theme="light"] .ow-join-panel,
+html[data-theme="light"] .ow-party-picker {
   background: rgba(255, 255, 255, 0.78);
+}
+
+html[data-theme="light"] .ow-party-picker-grid button {
+  background: rgba(10, 18, 30, 0.04);
+}
+
+html[data-theme="light"] .ow-party-picker-grid button.selected {
+  background: rgba(25, 148, 119, 0.12);
 }
 
 .bottom-nav {

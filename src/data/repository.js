@@ -18,6 +18,7 @@ import {
   getRecruitingFit,
   getRecruitingLobby,
   getRecruitingSideCapacity,
+  getSelectedTeamPlayerIds,
   hasRecruitingApplicant,
   normalizeRecruitingApplicants,
   normalizeRecruitingPost,
@@ -447,6 +448,7 @@ async function loadNormalizedRemoteState() {
       hostSide: post.host_side,
       hostReady: post.host_ready,
       sideCapacity: post.side_capacity,
+      playerIds: post.player_ids ?? [],
       position: post.position,
       playerId: post.player_id,
       memo: post.memo,
@@ -462,6 +464,7 @@ async function loadNormalizedRemoteState() {
         status: application.status,
         reserve: application.reserve,
         position: application.position,
+        playerIds: application.player_ids ?? [],
         createdAt: application.created_at,
         updatedAt: application.updated_at,
       })),
@@ -744,6 +747,7 @@ async function saveNormalizedRemoteState(state) {
     host_side: post.hostSide ?? "teamA",
     host_ready: Boolean(post.hostReady),
     side_capacity: getRecruitingSideCapacity(post),
+    player_ids: post.playerIds ?? [],
     position: post.position,
     memo: post.memo,
     status: post.status ?? "open",
@@ -761,6 +765,7 @@ async function saveNormalizedRemoteState(state) {
       status: application.status ?? "waiting",
       reserve: Boolean(application.reserve),
       position: application.position ?? null,
+      player_ids: application.playerIds ?? [],
       created_at: application.createdAt,
       updated_at: application.updatedAt ?? application.createdAt,
     })),
@@ -1910,8 +1915,22 @@ export function createRecruitingPost(state, draft) {
 
   const sideCapacity = Math.max(1, Number(draft.sideCapacity ?? MODE_SIZES[draft.mode] ?? 5));
   const hostTeam = hostJoinMode === "team" ? state.teams.find((team) => team.id === draft.teamId) : null;
-  const activeHostCount = hostTeam?.members?.filter((member) => !["candidate", "substitute"].includes(member.role)).length ?? 1;
-  const hostSize = hostJoinMode === "team" ? Math.min(sideCapacity, Math.max(1, activeHostCount)) : 1;
+  const hostPlayerIds = hostJoinMode === "team" ? getSelectedTeamPlayerIds(hostTeam, sideCapacity, draft.playerIds) : [];
+  if (hostJoinMode === "team" && !hostPlayerIds.length) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "참여 팀원 필요",
+          body: "팀으로 방을 열려면 실제 참여할 팀원을 1명 이상 선택해야 합니다.",
+          tone: "team",
+        },
+        ...state.notifications,
+      ],
+    };
+  }
+  const hostSize = hostJoinMode === "team" ? hostPlayerIds.length : 1;
   const scheduledAt = `${draft.scheduledDate ?? ""} ${draft.scheduledTime ?? ""}`.trim();
   const post = {
     id: makeId("q"),
@@ -1931,6 +1950,7 @@ export function createRecruitingPost(state, draft) {
     hostSide: "teamA",
     hostReady: false,
     sideCapacity,
+    playerIds: hostPlayerIds,
     position: hostJoinMode === "player" ? draft.position || "포지션 자유" : "포지션 자유",
     playerId: state.currentUserId,
     memo: draft.memo?.trim() || "개인이나 팀 파티로 빈자리에 들어올 수 있습니다.",
@@ -2004,7 +2024,22 @@ export function interestRecruitingPost(state, postId, application = {}) {
 
   const side = ["teamA", "teamB"].includes(application.side) ? application.side : getRecruitingBestSide(post, state);
   const lobby = getRecruitingLobby(post, state);
-  const partySize = applicantKind === "team" ? Math.min(getRecruitingSideCapacity(post), Math.max(1, team.members?.length ?? 1)) : 1;
+  const selectedPlayerIds = applicantKind === "team" ? getSelectedTeamPlayerIds(team, getRecruitingSideCapacity(post), application.playerIds) : [];
+  if (applicantKind === "team" && !selectedPlayerIds.length) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "참여 팀원 필요",
+          body: "팀으로 대기하려면 실제 참여할 팀원을 1명 이상 선택해야 합니다.",
+          tone: "team",
+        },
+        ...state.notifications,
+      ],
+    };
+  }
+  const partySize = applicantKind === "team" ? selectedPlayerIds.length : 1;
   const reserve = Boolean(application.reserve) || lobby.sides[side].filled + partySize > lobby.sides[side].capacity;
   const now = new Date().toISOString();
   const nextApplicant = applicantKind === "team"
@@ -2017,6 +2052,7 @@ export function interestRecruitingPost(state, postId, application = {}) {
         status: "waiting",
         reserve,
         position: application.position ?? null,
+        playerIds: selectedPlayerIds,
         createdAt: now,
         updatedAt: now,
       }

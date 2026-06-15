@@ -1370,6 +1370,86 @@ input[type="color"] {
   padding: 10px;
 }
 
+.public-party-picker {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.045);
+  padding: 12px;
+}
+
+.public-party-picker.empty {
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.public-party-picker-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+.public-party-picker-head strong {
+  color: var(--green);
+}
+
+.public-party-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr));
+  gap: 8px;
+}
+
+.public-party-picker-grid button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 50px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--text);
+  cursor: pointer;
+  padding: 8px;
+  text-align: left;
+}
+
+.public-party-picker-grid button.selected {
+  border-color: rgba(70, 224, 182, 0.48);
+  background: rgba(70, 224, 182, 0.12);
+}
+
+.public-party-picker-grid button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.public-party-picker-grid button > span:nth-child(2) {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.public-party-picker-grid strong {
+  overflow-wrap: anywhere;
+  color: var(--text);
+  font-size: 0.86rem;
+}
+
+.public-party-picker-grid em,
+.public-party-picker > em {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-style: normal;
+  font-weight: 800;
+}
+
 .tournament-team-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr));
@@ -5010,6 +5090,15 @@ html[data-theme="light"] .quick-picker button.favorite-pick.selected {
     linear-gradient(180deg, rgba(70, 224, 182, 0.3), rgba(255, 235, 156, 0.58)),
     rgba(241, 255, 247, 0.9);
   box-shadow: inset 0 0 0 1px rgba(15, 159, 126, 0.16), 0 12px 28px rgba(15, 159, 126, 0.08);
+}
+
+html[data-theme="light"] .public-party-picker,
+html[data-theme="light"] .public-party-picker-grid button {
+  background: rgba(255, 255, 255, 0.86);
+}
+
+html[data-theme="light"] .public-party-picker-grid button.selected {
+  background: rgba(25, 148, 119, 0.12);
 }
 
 html[data-theme="light"] .player-hover-card {

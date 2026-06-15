@@ -24,6 +24,7 @@ import {
   getRecruitingLobby,
   getRecruitingSideCapacity,
   getRecruitingTargetMmr,
+  getSelectableTeamPlayerIds,
   hasRecruitingApplicant,
   isRecruitingPostForUser,
   isNationalRecruitingPost,
@@ -66,11 +67,26 @@ function getDefaultApplyTeamId(post, teams) {
   return teams.find((team) => team.region === post.region)?.id ?? teams[0]?.id ?? "";
 }
 
+function getDefaultTeamPlayerIds(team, capacity) {
+  if (!team) return [];
+  return getSelectableTeamPlayerIds(team).slice(0, capacity);
+}
+
+function getPartyPlayerIds(team, playerIds, capacity) {
+  if (!team) return [];
+  if (!Array.isArray(playerIds)) return getDefaultTeamPlayerIds(team, capacity);
+  const selectableIds = new Set(getSelectableTeamPlayerIds(team));
+  return Array.from(new Set(playerIds.filter((playerId) => selectableIds.has(playerId)))).slice(0, capacity);
+}
+
 function getDefaultJoinDraft(post, teams, currentUser, state) {
   const teamId = getDefaultApplyTeamId(post, teams);
+  const team = teams.find((item) => item.id === teamId) ?? null;
+  const capacity = getRecruitingSideCapacity(post);
   return {
     joinMode: teamId ? "team" : "player",
     teamId,
+    playerIds: getDefaultTeamPlayerIds(team, capacity),
     side: getRecruitingBestSide(post, state),
     reserve: false,
     position: currentUser.position,
@@ -92,6 +108,58 @@ function getPlayerPosition(user) {
   return user?.position || "포지션 자유";
 }
 
+function TeamMemberPicker({ team, userById, selectedIds, capacity, onChange }) {
+  if (!team) {
+    return (
+      <div className="ow-party-picker empty">
+        <span>선택할 팀이 없다.</span>
+      </div>
+    );
+  }
+
+  const memberIds = getSelectableTeamPlayerIds(team);
+  const selectedSet = new Set(selectedIds);
+  const toggleMember = (playerId) => {
+    const nextIds = selectedSet.has(playerId)
+      ? selectedIds.filter((id) => id !== playerId)
+      : [...selectedIds, playerId].slice(0, capacity);
+    onChange(nextIds);
+  };
+
+  return (
+    <div className="ow-party-picker">
+      <div className="ow-party-picker-head">
+        <span>참여 팀원</span>
+        <strong>{selectedIds.length}/{capacity}</strong>
+      </div>
+      <div className="ow-party-picker-grid">
+        {memberIds.map((playerId) => {
+          const user = userById[playerId];
+          const selected = selectedSet.has(playerId);
+          const locked = !selected && selectedIds.length >= capacity;
+          return (
+            <button
+              key={playerId}
+              type="button"
+              className={selected ? "selected" : ""}
+              disabled={locked}
+              onClick={() => toggleMember(playerId)}
+            >
+              <span className="avatar small" style={{ "--avatar": user?.avatarColor }}>{user?.name?.slice(0, 1) ?? "?"}</span>
+              <span>
+                <strong>{user?.name ?? "알 수 없음"}</strong>
+                <em>{getPlayerPosition(user)}</em>
+              </span>
+              <TierBadge mmr={user?.ratings?.integrated ?? 1200} compact />
+            </button>
+          );
+        })}
+      </div>
+      {!selectedIds.length ? <em>최소 1명 선택 필요</em> : null}
+    </div>
+  );
+}
+
 function EntryBlock({ entry, userById, teams }) {
   const mmr = getEntryMmr(entry);
   const players = entry.players.map((playerId) => userById[playerId]).filter(Boolean);
@@ -101,7 +169,7 @@ function EntryBlock({ entry, userById, teams }) {
       <div className="ow-party-head">
         <div>
           <strong>{getEntryTitle(entry)}</strong>
-          <span>{entry.kind === "team" ? `${players.length}명 자동 참여` : getPlayerPosition(entry.user)}</span>
+          <span>{entry.kind === "team" ? `${players.length}명 선택 참여` : getPlayerPosition(entry.user)}</span>
         </div>
         <div className="ow-party-meta">
           <TierBadge mmr={mmr} compact />
@@ -224,20 +292,33 @@ export default function Recruiting({ app }) {
     mode: "5v5",
     ranked: true,
     teamId: myTeams[0]?.id ?? "",
+    playerIds: getDefaultTeamPlayerIds(myTeams[0], getRecruitingSideCapacity({ mode: "5v5" })),
     position: app.currentUser.position,
     memo: "빈자리는 개인 또는 팀 파티로 들어올 수 있습니다.",
   }));
 
   const selectedTeam = myTeams.find((team) => team.id === draft.teamId) ?? myTeams[0] ?? null;
+  const draftCapacity = getRecruitingSideCapacity(draft);
+  const selectedHostPlayerIds = getPartyPlayerIds(selectedTeam, draft.playerIds, draftCapacity);
   const hostNeedsTeam = draft.hostJoinMode === "team";
   const hasSchedule = Boolean(draft.scheduledDate && draft.scheduledTime && draft.court);
-  const canPostRecruiting = hasSchedule && (!hostNeedsTeam || Boolean(selectedTeam));
+  const canPostRecruiting = hasSchedule && (!hostNeedsTeam || (Boolean(selectedTeam) && selectedHostPlayerIds.length > 0));
 
   useEffect(() => {
     if (!hostNeedsTeam) return;
-    if (selectedTeam && draft.teamId === selectedTeam.id) return;
-    setDraft((current) => ({ ...current, teamId: myTeams[0]?.id ?? "" }));
-  }, [draft.teamId, hostNeedsTeam, myTeams, selectedTeam]);
+    const nextTeam = selectedTeam ?? myTeams[0] ?? null;
+    if (!nextTeam) return;
+    const nextPlayerIds = getPartyPlayerIds(nextTeam, draft.playerIds, draftCapacity);
+    const playerIdsNeedSync = !Array.isArray(draft.playerIds)
+      || draft.playerIds.length > draftCapacity
+      || draft.playerIds.some((playerId) => !getSelectableTeamPlayerIds(nextTeam).includes(playerId));
+    if (draft.teamId === nextTeam.id && !playerIdsNeedSync) return;
+    setDraft((current) => ({
+      ...current,
+      teamId: nextTeam.id,
+      playerIds: nextPlayerIds.length ? nextPlayerIds : getDefaultTeamPlayerIds(nextTeam, draftCapacity),
+    }));
+  }, [draft.teamId, draft.playerIds, draftCapacity, hostNeedsTeam, myTeams, selectedTeam]);
 
   const hasAppliedToPost = (post) => {
     const applicantEntry = { kind: "player", joinMode: "player", playerId: app.currentUser.id };
@@ -257,7 +338,8 @@ export default function Recruiting({ app }) {
       .filter((post) => scope !== "local" || post.region === app.currentUser.region || isNationalRecruitingPost(post, app.state))
       .filter((post) => queue === "all" || (queue === "ranked" ? post.ranked !== false : post.ranked === false))
       .filter((post) => modeFilter === "all" || post.mode === modeFilter)
-      .filter((post) => roomScope !== "mine" || isRecruitingPostForUser(post, app.currentUser.id, myTeamIds));
+      .filter((post) => roomScope !== "created" || post.playerId === app.currentUser.id)
+      .filter((post) => roomScope !== "joined" || (post.playerId !== app.currentUser.id && isRecruitingPostForUser(post, app.currentUser.id, myTeamIds)));
   }, [app.currentUser.id, app.currentUser.region, app.state, modeFilter, myTeamIds, queue, roomScope, scope]);
 
   const visibleBasePosts = useMemo(() => {
@@ -288,8 +370,13 @@ export default function Recruiting({ app }) {
   const playerEntryCount = scopedPosts.filter((post) => canEnterPost(post, "player")).length;
   const teamEntryCount = scopedPosts.filter((post) => canEnterPost(post, "team")).length;
   const roomEntryCount = scopedPosts.length;
-  const myRoomCount = (app.state.recruitingPosts ?? [])
+  const createdRoomCount = (app.state.recruitingPosts ?? [])
     .filter((post) => post.status !== "closed")
+    .filter((post) => post.playerId === app.currentUser.id)
+    .length;
+  const joinedRoomCount = (app.state.recruitingPosts ?? [])
+    .filter((post) => post.status !== "closed")
+    .filter((post) => post.playerId !== app.currentUser.id)
     .filter((post) => isRecruitingPostForUser(post, app.currentUser.id, myTeamIds))
     .length;
 
@@ -369,7 +456,8 @@ export default function Recruiting({ app }) {
       <section className="ow-filter-bar" aria-label="필터">
         <button type="button" className={scope === "local" ? "active" : ""} onClick={() => setScope("local")}>내 지역</button>
         <button type="button" className={scope === "all" ? "active" : ""} onClick={() => setScope("all")}>전체 지역</button>
-        <button type="button" className={roomScope === "mine" ? "active" : ""} onClick={() => setRoomScope(roomScope === "mine" ? "all" : "mine")}>내 방 {myRoomCount}</button>
+        <button type="button" className={roomScope === "created" ? "active" : ""} onClick={() => setRoomScope(roomScope === "created" ? "all" : "created")}>내가 만든 방 {createdRoomCount}</button>
+        <button type="button" className={roomScope === "joined" ? "active" : ""} onClick={() => setRoomScope(roomScope === "joined" ? "all" : "joined")}>내 참여방 {joinedRoomCount}</button>
         <button type="button" className={queue === "all" ? "active" : ""} onClick={() => setQueue("all")}>전체</button>
         <button type="button" className={queue === "ranked" ? "active" : ""} onClick={() => setQueue("ranked")}>정규전</button>
         <button type="button" className={queue === "friendly" ? "active" : ""} onClick={() => setQueue("friendly")}>친선전</button>
@@ -395,6 +483,7 @@ export default function Recruiting({ app }) {
             || myTeams.some((team) => hasRecruitingApplicant(post, { kind: "team", joinMode: "team", teamId: team.id }));
           const mine = post.playerId === app.currentUser.id;
           const myRoom = isRecruitingPostForUser(post, app.currentUser.id, myTeamIds);
+          const roomTag = mine ? "내가 만든 방" : myRoom ? "내 참여방" : "";
 
           return (
             <article
@@ -405,7 +494,7 @@ export default function Recruiting({ app }) {
               <div className="ow-card-main">
                 <div className="ow-card-top">
                   <span className="ow-type-tag">ROOM</span>
-                  {myRoom ? <span className="ow-my-room-tag">내 방</span> : null}
+                  {roomTag ? <span className="ow-my-room-tag">{roomTag}</span> : null}
                   <span className={`ow-queue-pill ${post.ranked === false ? "friendly" : "ranked"}`}>{post.ranked === false ? "친선전" : "정규전"}</span>
                   <span className="ow-position-pill">{post.mode}</span>
                   {targetTeam ? <span className="ow-position-pill">희망 상대 {targetTeam.name}</span> : null}
@@ -468,6 +557,8 @@ export default function Recruiting({ app }) {
         const lobby = getRecruitingLobby(selectedPost, app.state);
         const joinDraft = getJoinDraft(selectedPost);
         const selectedJoinTeam = myTeams.find((team) => team.id === joinDraft.teamId) ?? myTeams[0] ?? null;
+        const joinCapacity = getRecruitingSideCapacity(selectedPost);
+        const selectedJoinPlayerIds = getPartyPlayerIds(selectedJoinTeam, joinDraft.playerIds, joinCapacity);
         const candidateMmr = joinDraft.joinMode === "team"
           ? selectedJoinTeam?.mmr ?? 0
           : app.currentUser.ratings.integrated;
@@ -475,7 +566,7 @@ export default function Recruiting({ app }) {
         const mine = selectedPost.playerId === app.currentUser.id;
         const myEntry = lobby.entries.find((entry) => entry.playerId === app.currentUser.id);
         const alreadyApplied = Boolean(myEntry && !myEntry.fixed);
-        const canJoin = !mine && !alreadyApplied && fit.allowed && (joinDraft.joinMode === "player" || Boolean(selectedJoinTeam));
+        const canJoin = !mine && !alreadyApplied && fit.allowed && (joinDraft.joinMode === "player" || (Boolean(selectedJoinTeam) && selectedJoinPlayerIds.length > 0));
         const selectedTargetTeam = selectedPost.targetTeamId ? teamById[selectedPost.targetTeamId] : null;
 
         return (
@@ -494,7 +585,7 @@ export default function Recruiting({ app }) {
                 <span><ShieldCheck size={16} /> {selectedPost.ranked === false ? "친선전" : "정규전"}</span>
                 <span><Clock3 size={16} /> {getRecruitingSchedule(selectedPost)}</span>
                 {selectedTargetTeam ? <span><Swords size={16} /> 희망 상대 {selectedTargetTeam.name}</span> : null}
-                <span><UsersRound size={16} /> 팀은 활성 멤버 자동 참여</span>
+                <span><UsersRound size={16} /> 팀은 선택 멤버만 참여</span>
                 <span><Clock3 size={16} /> 전원 대기 후 방장 확정</span>
               </div>
 
@@ -535,21 +626,48 @@ export default function Recruiting({ app }) {
                           key={mode}
                           type="button"
                           className={joinDraft.joinMode === mode ? "active" : ""}
-                          onClick={() => updateJoinDraft(selectedPost, { joinMode: mode, teamId: mode === "team" ? getDefaultApplyTeamId(selectedPost, myTeams) : "" })}
+                          onClick={() => {
+                            const teamId = mode === "team" ? getDefaultApplyTeamId(selectedPost, myTeams) : "";
+                            const team = myTeams.find((item) => item.id === teamId) ?? null;
+                            updateJoinDraft(selectedPost, {
+                              joinMode: mode,
+                              teamId,
+                              playerIds: mode === "team" ? getDefaultTeamPlayerIds(team, joinCapacity) : [],
+                            });
+                          }}
                         >
                           {meta.label}
                         </button>
                       ))}
                     </div>
                     {joinDraft.joinMode === "team" ? (
-                      <label>
-                        참여 팀
-                        <select value={joinDraft.teamId} onChange={(event) => updateJoinDraft(selectedPost, { teamId: event.target.value })}>
-                          {myTeams.length ? myTeams.map((team) => (
-                            <option key={team.id} value={team.id}>{team.name} · {team.mmr}</option>
-                          )) : <option value="">내 팀 없음</option>}
-                        </select>
-                      </label>
+                      <>
+                        <label>
+                          참여 팀
+                          <select
+                            value={joinDraft.teamId}
+                            onChange={(event) => {
+                              const teamId = event.target.value;
+                              const team = myTeams.find((item) => item.id === teamId) ?? null;
+                              updateJoinDraft(selectedPost, {
+                                teamId,
+                                playerIds: getDefaultTeamPlayerIds(team, joinCapacity),
+                              });
+                            }}
+                          >
+                            {myTeams.length ? myTeams.map((team) => (
+                              <option key={team.id} value={team.id}>{team.name} · {team.mmr}</option>
+                            )) : <option value="">내 팀 없음</option>}
+                          </select>
+                        </label>
+                        <TeamMemberPicker
+                          team={selectedJoinTeam}
+                          userById={userById}
+                          selectedIds={selectedJoinPlayerIds}
+                          capacity={joinCapacity}
+                          onChange={(playerIds) => updateJoinDraft(selectedPost, { playerIds })}
+                        />
+                      </>
                     ) : (
                       <label>
                         포지션
@@ -633,8 +751,21 @@ export default function Recruiting({ app }) {
 
             <form className="ow-compose-form" onSubmit={submit}>
               <div className="segmented-control compact-segments">
-                <button type="button" className={draft.hostJoinMode === "team" ? "active" : ""} onClick={() => update({ hostJoinMode: "team", teamId: myTeams[0]?.id ?? "" })}>내 팀으로 열기</button>
-                <button type="button" className={draft.hostJoinMode === "player" ? "active" : ""} onClick={() => update({ hostJoinMode: "player", teamId: "" })}>개인으로 열기</button>
+                <button
+                  type="button"
+                  className={draft.hostJoinMode === "team" ? "active" : ""}
+                  onClick={() => {
+                    const team = myTeams[0] ?? null;
+                    update({
+                      hostJoinMode: "team",
+                      teamId: team?.id ?? "",
+                      playerIds: getDefaultTeamPlayerIds(team, draftCapacity),
+                    });
+                  }}
+                >
+                  내 팀으로 열기
+                </button>
+                <button type="button" className={draft.hostJoinMode === "player" ? "active" : ""} onClick={() => update({ hostJoinMode: "player", teamId: "", playerIds: [] })}>개인으로 열기</button>
               </div>
 
               <div className="segmented-control compact-segments">
@@ -689,14 +820,33 @@ export default function Recruiting({ app }) {
 
               <div className="ow-field-grid">
                 {draft.hostJoinMode === "team" ? (
-                  <label>
-                    내 파티 팀
-                    <select value={draft.teamId} onChange={(event) => update({ teamId: event.target.value })}>
-                      {myTeams.length ? myTeams.map((team) => (
-                        <option key={team.id} value={team.id}>{team.region} · {team.name} · {team.mmr}</option>
-                      )) : <option value="">내 팀 없음</option>}
-                    </select>
-                  </label>
+                  <div className="ow-party-field">
+                    <label>
+                      내 파티 팀
+                      <select
+                        value={draft.teamId}
+                        onChange={(event) => {
+                          const teamId = event.target.value;
+                          const team = myTeams.find((item) => item.id === teamId) ?? null;
+                          update({
+                            teamId,
+                            playerIds: getDefaultTeamPlayerIds(team, draftCapacity),
+                          });
+                        }}
+                      >
+                        {myTeams.length ? myTeams.map((team) => (
+                          <option key={team.id} value={team.id}>{team.region} · {team.name} · {team.mmr}</option>
+                        )) : <option value="">내 팀 없음</option>}
+                      </select>
+                    </label>
+                    <TeamMemberPicker
+                      team={selectedTeam}
+                      userById={userById}
+                      selectedIds={selectedHostPlayerIds}
+                      capacity={draftCapacity}
+                      onChange={(playerIds) => update({ playerIds })}
+                    />
+                  </div>
                 ) : (
                   <label>
                     내 포지션
@@ -708,8 +858,8 @@ export default function Recruiting({ app }) {
                 <div className="ow-mini-note">
                   <div>
                     <span>슬롯</span>
-                    <strong>{getRecruitingSideCapacity(draft)} vs {getRecruitingSideCapacity(draft)}</strong>
-                    <em>팀으로 열면 활성 멤버가 A팀에 자동 배치</em>
+                    <strong>{draftCapacity} vs {draftCapacity}</strong>
+                    <em>{draft.hostJoinMode === "team" ? `${selectedHostPlayerIds.length}명 선택 배치` : "개인 1명이 A팀에 배치"}</em>
                   </div>
                   <ShieldCheck size={22} />
                 </div>
@@ -722,7 +872,7 @@ export default function Recruiting({ app }) {
 
               <div className="ow-submit-row">
                 <span className={canPostRecruiting ? "queue-note" : "form-warning"}>
-                  <ShieldCheck size={17} /> {canPostRecruiting ? "등록 가능" : hasSchedule ? "내 팀 선택 필요" : "날짜/시간/장소 필요"}
+                  <ShieldCheck size={17} /> {canPostRecruiting ? "등록 가능" : hasSchedule ? "팀/팀원 선택 필요" : "날짜/시간/장소 필요"}
                 </span>
                 <Button type="submit" disabled={!canPostRecruiting}><PlusCircle size={18} /> 등록</Button>
               </div>

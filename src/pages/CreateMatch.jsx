@@ -8,7 +8,7 @@ import EvidenceSelector from "../components/match/EvidenceSelector.jsx";
 import RuleSelector from "../components/match/RuleSelector.jsx";
 import TeamBuilder from "../components/match/TeamBuilder.jsx";
 import { COURTS, EVIDENCE_OPTIONS, MATCH_MODES, REGIONS } from "../lib/constants.js";
-import { getRecruitingTierRange, isMmrInRecruitingRange } from "../lib/recruiting.js";
+import { getRecruitingSideCapacity, getRecruitingTierRange, getSelectableTeamPlayerIds, isMmrInRecruitingRange } from "../lib/recruiting.js";
 
 const today = new Date().toISOString().slice(0, 10);
 const nextWeek = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString().slice(0, 10);
@@ -52,6 +52,65 @@ function getMmrSpread(teams) {
   return mmrs.length ? Math.max(...mmrs) - Math.min(...mmrs) : 0;
 }
 
+function getDefaultTeamPlayerIds(team, capacity) {
+  if (!team) return [];
+  return getSelectableTeamPlayerIds(team).slice(0, capacity);
+}
+
+function getPartyPlayerIds(team, playerIds, capacity) {
+  if (!team) return [];
+  if (!Array.isArray(playerIds)) return getDefaultTeamPlayerIds(team, capacity);
+  const selectableIds = new Set(getSelectableTeamPlayerIds(team));
+  return Array.from(new Set(playerIds.filter((playerId) => selectableIds.has(playerId)))).slice(0, capacity);
+}
+
+function PublicPartyPicker({ team, users, selectedIds, capacity, onChange }) {
+  const userById = Object.fromEntries(users.map((user) => [user.id, user]));
+  if (!team) {
+    return (
+      <div className="public-party-picker empty">
+        <span>내 팀을 먼저 선택해야 한다.</span>
+      </div>
+    );
+  }
+
+  const memberIds = getSelectableTeamPlayerIds(team);
+  const selectedSet = new Set(selectedIds);
+  const toggleMember = (playerId) => {
+    const nextIds = selectedSet.has(playerId)
+      ? selectedIds.filter((id) => id !== playerId)
+      : [...selectedIds, playerId].slice(0, capacity);
+    onChange(nextIds);
+  };
+
+  return (
+    <div className="public-party-picker">
+      <div className="public-party-picker-head">
+        <span>방장 파티 참여 팀원</span>
+        <strong>{selectedIds.length}/{capacity}</strong>
+      </div>
+      <div className="public-party-picker-grid">
+        {memberIds.map((playerId) => {
+          const user = userById[playerId];
+          const selected = selectedSet.has(playerId);
+          const locked = !selected && selectedIds.length >= capacity;
+          return (
+            <button key={playerId} type="button" className={selected ? "selected" : ""} disabled={locked} onClick={() => toggleMember(playerId)}>
+              <span className="avatar small" style={{ "--avatar": user?.avatarColor }}>{user?.name?.slice(0, 1) ?? "?"}</span>
+              <span>
+                <strong>{user?.name ?? "알 수 없음"}</strong>
+                <em>{user?.position ?? "포지션 자유"}</em>
+              </span>
+              <Badge tone={selected ? "green" : "neutral"}>{selected ? "참여" : "대기"}</Badge>
+            </button>
+          );
+        })}
+      </div>
+      {!selectedIds.length ? <em>최소 1명 선택 필요</em> : null}
+    </div>
+  );
+}
+
 export default function CreateMatch({ app }) {
   const navigate = useNavigate();
   const defaultTeamA = getUserTeam(app.state.teams, app.currentUser.id) ?? app.state.teams[0];
@@ -79,6 +138,7 @@ export default function CreateMatch({ app }) {
     scheduledTime: "20:30",
     teamAId: defaultTeamA?.id,
     teamBId: defaultTeamB?.id,
+    playerIds: getDefaultTeamPlayerIds(defaultTeamA, getRecruitingSideCapacity({ mode: "5v5" })),
     ranked: true,
     official: true,
     preRegistered: true,
@@ -131,6 +191,8 @@ export default function CreateMatch({ app }) {
 
   const selectedTeamA = app.state.teams.find((team) => team.id === draft.teamAId);
   const selectedTeamB = app.state.teams.find((team) => team.id === draft.teamBId);
+  const publicPartyCapacity = getRecruitingSideCapacity(draft);
+  const publicPartyPlayerIds = getPartyPlayerIds(selectedTeamA, draft.playerIds, publicPartyCapacity);
   const tournamentTeams = useMemo(
     () => (draft.tournamentTeamIds ?? []).map((teamId) => app.state.teams.find((team) => team.id === teamId)).filter(Boolean),
     [app.state.teams, draft.tournamentTeamIds],
@@ -169,7 +231,9 @@ export default function CreateMatch({ app }) {
       !isMmrInRecruitingRange(selectedTeamB.mmr, selectedTeamA.mmr, true),
   );
   const privateTeamInvalid = !selectedTeamA || !selectedTeamB || selectedTeamA.id === selectedTeamB.id;
-  const publicTeamInvalid = draft.hostJoinMode === "team" && !myTeams.some((team) => team.id === draft.teamAId);
+  const publicTeamInvalid = draft.hostJoinMode === "team" && (
+    !myTeams.some((team) => team.id === draft.teamAId) || !publicPartyPlayerIds.length
+  );
   const tournamentMmrBlocked = Boolean(
     isTournamentRoom &&
       draft.ranked &&
@@ -203,11 +267,30 @@ export default function CreateMatch({ app }) {
     });
   }, [app.currentUser.id, app.currentUser.region, app.state.teams]);
 
+  useEffect(() => {
+    if (!isPublicRoom || draft.hostJoinMode !== "team" || !selectedTeamA) return;
+    const selectableIds = getSelectableTeamPlayerIds(selectedTeamA);
+    const selectedIds = getPartyPlayerIds(selectedTeamA, draft.playerIds, publicPartyCapacity);
+    const playerIdsNeedSync = !Array.isArray(draft.playerIds)
+      || draft.playerIds.length > publicPartyCapacity
+      || draft.playerIds.some((playerId) => !selectableIds.includes(playerId));
+    if (!playerIdsNeedSync) return;
+    setDraft((current) => ({
+      ...current,
+      playerIds: selectedIds.length ? selectedIds : getDefaultTeamPlayerIds(selectedTeamA, publicPartyCapacity),
+    }));
+  }, [draft.hostJoinMode, draft.playerIds, isPublicRoom, publicPartyCapacity, selectedTeamA]);
+
   const selectTeamA = (teamAId) => {
     const nextTeamBId = draft.teamBId === teamAId
       ? getOpponentTeam(sortedTeams, teamAId, app.currentUser.region)?.id ?? getOpponentTeam(app.state.teams, teamAId, app.currentUser.region)?.id
       : draft.teamBId;
-    update({ teamAId, teamBId: nextTeamBId });
+    const team = app.state.teams.find((item) => item.id === teamAId);
+    update({
+      teamAId,
+      teamBId: nextTeamBId,
+      ...(isPublicRoom && draft.hostJoinMode === "team" ? { playerIds: getDefaultTeamPlayerIds(team, publicPartyCapacity) } : {}),
+    });
   };
   const selectTeamB = (teamBId) => {
     const nextTeamAId = draft.teamAId === teamBId
@@ -247,6 +330,7 @@ export default function CreateMatch({ app }) {
         title: draft.title,
         hostJoinMode: draft.hostJoinMode,
         teamId: draft.hostJoinMode === "team" ? draft.teamAId : "",
+        playerIds: draft.hostJoinMode === "team" ? publicPartyPlayerIds : [],
         targetTeamId: draft.teamBId,
         region: selectedCourt.region,
         court: draft.court,
@@ -294,7 +378,19 @@ export default function CreateMatch({ app }) {
                 <em>선택한 A팀/B팀으로 바로 경기 계약서를 만든다.</em>
               </span>
             </button>
-            <button type="button" className={draft.visibility === "public" ? "active" : ""} onClick={() => update({ visibility: "public", hostJoinMode: "team", teamAId: defaultTeamA?.id ?? draft.teamAId })}>
+            <button
+              type="button"
+              className={draft.visibility === "public" ? "active" : ""}
+              onClick={() => {
+                const team = defaultTeamA ?? selectedTeamA;
+                update({
+                  visibility: "public",
+                  hostJoinMode: "team",
+                  teamAId: team?.id ?? draft.teamAId,
+                  playerIds: getDefaultTeamPlayerIds(team, publicPartyCapacity),
+                });
+              }}
+            >
               <Globe2 size={19} />
               <span>
                 <strong>공개 매칭방</strong>
@@ -326,7 +422,16 @@ export default function CreateMatch({ app }) {
             {isPublicRoom ? (
               <label>
                 방장 참여
-                <select value={draft.hostJoinMode} onChange={(event) => update({ hostJoinMode: event.target.value })}>
+                <select
+                  value={draft.hostJoinMode}
+                  onChange={(event) => {
+                    const hostJoinMode = event.target.value;
+                    update({
+                      hostJoinMode,
+                      playerIds: hostJoinMode === "team" ? getDefaultTeamPlayerIds(selectedTeamA, publicPartyCapacity) : [],
+                    });
+                  }}
+                >
                   <option value="team">내 팀 파티로 열기</option>
                   <option value="player">개인으로 열기</option>
                 </select>
@@ -555,6 +660,15 @@ export default function CreateMatch({ app }) {
               </label>
             </div>
           )}
+          {isPublicRoom && draft.hostJoinMode === "team" ? (
+            <PublicPartyPicker
+              team={selectedTeamA}
+              users={app.state.users}
+              selectedIds={publicPartyPlayerIds}
+              capacity={publicPartyCapacity}
+              onChange={(playerIds) => update({ playerIds })}
+            />
+          ) : null}
           {isPublicRoom ? (
             <div className="create-public-note">
               <Globe2 size={17} />
