@@ -186,6 +186,8 @@ begin
   end if;
 
   if to_regclass('public.matches') is not null then
+    execute 'alter table public.matches add column if not exists score_a integer not null default 0';
+    execute 'alter table public.matches add column if not exists score_b integer not null default 0';
     execute 'alter table public.matches add column if not exists mmr_limit_mode text not null default ''block''';
     execute 'alter table public.matches add column if not exists referee_id text';
     execute 'alter table public.matches add column if not exists referee_trust_min integer not null default 90';
@@ -205,6 +207,10 @@ begin
   end if;
 
   if to_regclass('public.match_results') is not null then
+    execute 'alter table public.match_results add column if not exists score_a integer not null default 0';
+    execute 'alter table public.match_results add column if not exists score_b integer not null default 0';
+    execute 'update public.match_results set score_a = 0 where score_a is null';
+    execute 'update public.match_results set score_b = 0 where score_b is null';
     execute 'alter table public.match_results add column if not exists stat_submissions jsonb not null default ''{}''::jsonb';
     execute 'alter table public.match_results add column if not exists submitted_by text';
   end if;
@@ -312,8 +318,7 @@ begin
     update public.recruiting_posts post
     set
       scheduled_date = slots.next_date,
-      scheduled_time = slots.next_time,
-      scheduled_at = slots.next_date::text || ' ' || to_char(slots.next_time, 'HH24:MI')
+      scheduled_time = slots.next_time
     from slots
     where post.id = slots.id;
   end if;
@@ -342,8 +347,7 @@ begin
     update public.matches match_row
     set
       scheduled_date = past_slots.next_date,
-      scheduled_time = past_slots.next_time,
-      scheduled_at = past_slots.next_date::text || ' ' || to_char(past_slots.next_time, 'HH24:MI')
+      scheduled_time = past_slots.next_time
     from past_slots
     where match_row.id = past_slots.id;
 
@@ -370,8 +374,7 @@ begin
     update public.matches match_row
     set
       scheduled_date = open_slots.next_date,
-      scheduled_time = open_slots.next_time,
-      scheduled_at = open_slots.next_date::text || ' ' || to_char(open_slots.next_time, 'HH24:MI')
+      scheduled_time = open_slots.next_time
     from open_slots
     where match_row.id = open_slots.id;
 
