@@ -1733,17 +1733,18 @@ export function submitMatchResult(state, matchId, result) {
   const hasReferee = Boolean(match.refereeId);
   const currentUser = state.users.find((user) => user.id === currentUserId);
   const currentUserIsReferee = isMatchReferee(match, currentUserId);
+  const currentUserIsEligibleReferee = currentUserIsReferee && isEligibleReferee(currentUser, match.refereeTrustMin);
   const recorderSides = getStatRecorderSides(match, currentUserId);
-  const currentUserCanRecord = currentUserIsReferee || Boolean(currentSideName) || recorderSides.length > 0;
+  const currentUserCanRecord = currentUserIsEligibleReferee || recorderSides.length > 0 || (!hasReferee && Boolean(currentSideName));
 
-  if (hasReferee && (!currentUserIsReferee || !isEligibleReferee(currentUser, match.refereeTrustMin))) {
+  if (hasReferee && !currentUserIsEligibleReferee && !recorderSides.length) {
     return {
       ...state,
       notifications: [
         {
           id: makeId("n"),
-          title: "심판 기록 전용",
-          body: "심판이 초대된 경기는 해당 심판만 스코어와 개인 활약을 입력할 수 있습니다.",
+          title: "심판/기록자 전용",
+          body: "심판이 초대된 경기는 심판이나 배정된 후보 기록자만 스코어와 개인 활약을 입력할 수 있습니다.",
           tone: "match",
           matchId,
         },
@@ -1784,15 +1785,20 @@ export function submitMatchResult(state, matchId, result) {
   }
   if (["confirmed", "void", "cancelled", "disputed"].includes(match.status)) return state;
   const recordWindow = getMatchRecordWindow(match);
-  if (recordWindow.beforeEnd || !recordWindow.statOpen) {
+  const matchStartsAt = match.scheduledDate && match.scheduledTime ? new Date(`${match.scheduledDate}T${match.scheduledTime}`) : null;
+  const beforeStart = matchStartsAt && Number.isFinite(matchStartsAt.getTime()) && Date.now() < matchStartsAt.getTime();
+  const liveRecordAllowed = recordWindow.beforeEnd && !beforeStart && (currentUserIsEligibleReferee || recorderSides.length > 0);
+  if ((recordWindow.beforeEnd && !liveRecordAllowed) || (!recordWindow.beforeEnd && !recordWindow.statOpen)) {
     return {
       ...state,
       notifications: [
         {
           id: makeId("n"),
-          title: recordWindow.beforeEnd ? "경기 종료 전" : "기록 입력 마감",
-          body: recordWindow.beforeEnd
-            ? "경기 종료 후 개인 기록 입력이 열립니다."
+          title: beforeStart ? "경기 시작 전" : recordWindow.beforeEnd ? "실시간 기록 권한 없음" : "기록 입력 마감",
+          body: beforeStart
+            ? "경기 시작 후 심판이나 배정 기록자만 실시간 기록을 저장할 수 있습니다."
+            : recordWindow.beforeEnd
+              ? "경기 중 실시간 기록은 심판이나 배정된 기록자만 저장할 수 있습니다."
             : "경기 종료 후 1시간이 지나 개인 기록 입력이 마감됐습니다.",
           tone: "match",
           matchId,
@@ -1804,10 +1810,11 @@ export function submitMatchResult(state, matchId, result) {
 
   const now = new Date().toISOString();
   const existingStats = normalizePlayerStats(match.result?.playerStats ?? {}, playerIds);
-  const endedAt = match.endedAt ?? recordWindow.endAt?.toISOString() ?? now;
+  const liveEntry = recordWindow.beforeEnd && liveRecordAllowed;
+  const endedAt = liveEntry ? match.endedAt : match.endedAt ?? recordWindow.endAt?.toISOString() ?? now;
   const recorderPlayerIds = recorderSides.flatMap((sideName) => match[sideName]?.players ?? []);
   const selfPlayerIds = currentSideName ? [currentUserId] : [];
-  const targetPlayerIds = hasReferee ? playerIds : [...new Set([...recorderPlayerIds, ...selfPlayerIds])]
+  const targetPlayerIds = currentUserIsEligibleReferee ? playerIds : [...new Set([...recorderPlayerIds, ...selfPlayerIds])]
     .filter((playerId) => getAllowedStatFields(match, currentUserId, playerId).length > 0);
   if (!hasReferee && !targetPlayerIds.length) {
     return {
@@ -1825,8 +1832,8 @@ export function submitMatchResult(state, matchId, result) {
     };
   }
   const submittedStats = normalizePlayerStats(result.playerStats ?? {}, targetPlayerIds);
-  const nextPlayerStats = hasReferee ? submittedStats : { ...existingStats };
-  if (!hasReferee) {
+  const nextPlayerStats = currentUserIsEligibleReferee ? submittedStats : { ...existingStats };
+  if (!currentUserIsEligibleReferee) {
     targetPlayerIds.forEach((playerId) => {
       const allowedFieldIds = new Set(getAllowedStatFields(match, currentUserId, playerId).map((field) => field.id));
       nextPlayerStats[playerId] = Object.fromEntries(
@@ -1837,7 +1844,7 @@ export function submitMatchResult(state, matchId, result) {
       );
     });
   }
-  const nextSubmissions = hasReferee
+  const nextSubmissions = currentUserIsEligibleReferee
     ? Object.fromEntries(playerIds.map((playerId) => [playerId, { by: currentUserId, side: "referee", source: "referee", submittedAt: now }]))
     : {
         ...(match.result?.statSubmissions ?? {}),
@@ -1863,10 +1870,10 @@ export function submitMatchResult(state, matchId, result) {
       item.id === matchId
         ? {
             ...item,
-            status: "approval",
+            status: liveEntry ? item.status : "approval",
             teamA: { ...item.teamA, score: nextResult.scoreA },
             teamB: { ...item.teamB, score: nextResult.scoreB },
-            approvals: { teamA: [], teamB: [] },
+            approvals: liveEntry ? item.approvals : { teamA: [], teamB: [] },
             result: nextResult,
             endedAt,
           }
@@ -1875,8 +1882,8 @@ export function submitMatchResult(state, matchId, result) {
     notifications: [
       {
         id: makeId("n"),
-        title: hasReferee ? "심판 기록 제출" : recorderSides.length ? "후보 기록 제출" : "내 득점 제출",
-        body: hasReferee
+        title: currentUserIsEligibleReferee ? "심판 기록 제출" : recorderSides.length ? "후보 기록 제출" : "내 득점 제출",
+        body: currentUserIsEligibleReferee
           ? `${match.title} 스코어와 전체 개인 활약이 저장됐습니다.`
           : recorderSides.length
             ? `${match.title} 후보 기록자가 팀 개인 활약을 저장했습니다.`

@@ -1,4 +1,4 @@
-import { BarChart3, CalendarDays, Handshake, House, LogOut, Settings, UserRound, UsersRound } from "lucide-react";
+import { BarChart3, CalendarDays, ClipboardList, Handshake, House, LogOut, Settings, UserRound, UsersRound } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import PlayerHoverCard from "../profile/PlayerHoverCard.jsx";
 import TierBadge from "../rating/TierBadge.jsx";
@@ -6,6 +6,7 @@ import TierBadge from "../rating/TierBadge.jsx";
 const navItems = [
   { to: "/app", label: "홈", icon: House },
   { to: "/app/matches", label: "경기", icon: CalendarDays },
+  { to: "/app/recorder", label: "기록", icon: ClipboardList },
   { to: "/app/recruiting", label: "매칭", icon: Handshake },
   { to: "/app/rankings", label: "랭킹", icon: BarChart3 },
   { to: "/app/teams", label: "팀", icon: UsersRound },

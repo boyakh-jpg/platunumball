@@ -5092,6 +5092,316 @@ input[type="color"] {
   text-align: center;
 }
 
+.recorder-header p {
+  max-width: 780px;
+  color: var(--muted);
+  font-weight: 750;
+  line-height: 1.5;
+}
+
+.recorder-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.recorder-match-list,
+.recorder-board,
+.recorder-empty {
+  display: grid;
+  gap: 16px;
+}
+
+.recorder-match-list {
+  position: sticky;
+  top: 18px;
+}
+
+.recorder-match-options {
+  display: grid;
+  gap: 8px;
+}
+
+.recorder-match-option {
+  display: grid;
+  gap: 7px;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  cursor: pointer;
+  padding: 12px;
+  text-align: left;
+}
+
+.recorder-match-option.active {
+  border-color: rgba(70, 224, 182, 0.42);
+  background: rgba(70, 224, 182, 0.09);
+}
+
+.recorder-match-option > span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.recorder-match-option em,
+.recorder-match-option small {
+  color: var(--muted);
+  font-style: normal;
+  font-weight: 800;
+}
+
+.recorder-match-option strong {
+  overflow-wrap: anywhere;
+}
+
+.recorder-board-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.recorder-board-head > div:first-child {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+}
+
+.recorder-board-head h2 {
+  overflow-wrap: anywhere;
+}
+
+.recorder-board-head p {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.recorder-live-state {
+  display: grid;
+  min-width: 150px;
+  gap: 5px;
+  border: 1px solid rgba(118, 169, 255, 0.22);
+  border-radius: var(--radius);
+  background: rgba(118, 169, 255, 0.07);
+  padding: 10px;
+}
+
+.recorder-live-state svg {
+  color: var(--green);
+}
+
+.recorder-live-state span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.recorder-scoreboard {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  border: 1px solid rgba(70, 224, 182, 0.2);
+  border-radius: var(--radius);
+  background: rgba(70, 224, 182, 0.065);
+  padding: 14px;
+}
+
+.recorder-scoreboard span {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+  text-align: center;
+}
+
+.recorder-scoreboard strong {
+  overflow: hidden;
+  font-size: 0.9rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recorder-scoreboard em,
+.recorder-scoreboard b {
+  color: var(--green);
+  font-size: 2.7rem;
+  font-style: normal;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.recorder-sides {
+  display: grid;
+  gap: 12px;
+}
+
+.recorder-sides.two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.recorder-side {
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.035);
+  padding: 12px;
+}
+
+.recorder-side > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.recorder-side > header span,
+.recorder-side > header em {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.recorder-side > header strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recorder-player-list {
+  display: grid;
+  gap: 8px;
+}
+
+.recorder-player-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 230px) minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.035);
+  padding: 9px;
+}
+
+.recorder-player-main {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 9px;
+  color: var(--text);
+}
+
+.recorder-player-main > span:last-child {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.recorder-player-main strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recorder-player-main em {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-style: normal;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recorder-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+  gap: 6px;
+}
+
+.recorder-stat-stepper {
+  display: grid;
+  grid-template-columns: 26px 28px minmax(28px, 1fr) 28px;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.045);
+  padding: 5px;
+}
+
+.recorder-stat-stepper.editable {
+  border-color: rgba(70, 224, 182, 0.34);
+  background: rgba(70, 224, 182, 0.07);
+}
+
+.recorder-stat-stepper span {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 950;
+}
+
+.recorder-stat-stepper strong {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.recorder-stat-stepper button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.recorder-stat-stepper button:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
+.recorder-save-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+
+.recorder-save-row p,
+.recorder-empty p {
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.recorder-empty {
+  justify-items: start;
+  max-width: 620px;
+}
+
+.recorder-empty svg {
+  color: var(--green);
+}
+
+.recorder-empty strong {
+  font-size: 1.2rem;
+}
+
 html[data-theme="light"] body {
   background:
     radial-gradient(circle at 16% 10%, rgba(15, 159, 126, 0.16), transparent 30rem),
@@ -5278,10 +5588,16 @@ html[data-theme="light"] .favorite-toggle-button.active.button-secondary {
   .home-search-results,
   .profile-hero,
   .team-detail-hero,
+  .recorder-layout,
+  .recorder-sides.two,
   .stat-entry-grid,
   .season-metric-grid,
   .recruiting-post {
     grid-template-columns: 1fr;
+  }
+
+  .recorder-match-list {
+    position: static;
   }
 
   .season-metric-grid {
@@ -5318,6 +5634,7 @@ html[data-theme="light"] .favorite-toggle-button.active.button-secondary {
   .player-stat-row,
   .approval-side-header,
   .member-control-row,
+  .recorder-player-row,
   .team-danger-zone,
   .match-action-row,
   .favorite-action-row,
@@ -5346,6 +5663,20 @@ html[data-theme="light"] .favorite-toggle-button.active.button-secondary {
   .stat-editor-modal {
     max-height: calc(100vh - 20px);
     overflow: auto;
+  }
+
+  .recorder-board-head,
+  .recorder-save-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .recorder-live-state {
+    min-width: 0;
+  }
+
+  .recorder-stat-grid {
+    grid-template-columns: 1fr;
   }
 
   .stat-stepper-row {

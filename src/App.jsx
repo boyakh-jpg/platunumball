@@ -15,6 +15,7 @@ import Notifications from "./pages/Notifications.jsx";
 import PlayerDetail from "./pages/PlayerDetail.jsx";
 import Profile from "./pages/Profile.jsx";
 import Rankings from "./pages/Rankings.jsx";
+import Recorder from "./pages/Recorder.jsx";
 import Recruiting from "./pages/Recruiting.jsx";
 import Season from "./pages/Season.jsx";
 import Settings from "./pages/Settings.jsx";
@@ -41,6 +42,7 @@ export default function App() {
           <Route path="/app/create" element={<CreateMatch app={app} />} />
           <Route path="/app/matches/:matchId" element={<MatchRoom app={app} />} />
           <Route path="/app/matches" element={<Matches app={app} />} />
+          <Route path="/app/recorder" element={<Recorder app={app} />} />
           <Route path="/app/season" element={<Season app={app} />} />
           <Route path="/app/rankings" element={<Rankings app={app} />} />
           <Route path="/app/recruiting" element={<Recruiting app={app} />} />
