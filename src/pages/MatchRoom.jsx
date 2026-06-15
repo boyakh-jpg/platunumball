@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
-import { Minus, Plus, X } from "lucide-react";
+import { CalendarDays, MapPin, Minus, Plus, ShieldCheck, Trophy, UsersRound, X } from "lucide-react";
 import AgreementPanel from "../components/match/AgreementPanel.jsx";
 import ApprovalPanel from "../components/match/ApprovalPanel.jsx";
 import MatchContract from "../components/match/MatchContract.jsx";
@@ -32,6 +32,15 @@ function makeInitialStats(match) {
   );
 }
 
+function getTeamMmr(teams, teamId) {
+  return teams.find((team) => team.id === teamId)?.mmr ?? 0;
+}
+
+function getDisplayScore(match, sideName) {
+  const resultKey = sideName === "teamA" ? "scoreA" : "scoreB";
+  return match.result?.[resultKey] ?? match[sideName].score ?? 0;
+}
+
 export default function MatchRoom({ app }) {
   const { matchId } = useParams();
   const match = useMemo(
@@ -61,6 +70,34 @@ export default function MatchRoom({ app }) {
   const canVoid = match.status === "disputed";
   const canResumeApproval = match.status === "disputed";
   const canReport = !["cancelled", "void"].includes(match.status);
+  const scoreA = getDisplayScore(match, "teamA");
+  const scoreB = getDisplayScore(match, "teamB");
+  const teamAMmr = getTeamMmr(app.state.teams, match.teamA.teamId);
+  const teamBMmr = getTeamMmr(app.state.teams, match.teamB.teamId);
+  const winnerName = Number(scoreA) === Number(scoreB) ? "" : Number(scoreA) > Number(scoreB) ? match.teamA.name : match.teamB.name;
+  const matchKind = match.ranked === false ? "친선전" : "정규전";
+  const renderHeroRoster = (sideName) => {
+    const team = match[sideName];
+    const agreement = sideName === "teamA" ? teamAAgreement : teamBAgreement;
+
+    return (
+      <div className="gm-roster-row">
+        {team.players.map((playerId) => {
+          const user = userMap[playerId];
+          const ready = agreement.approvals.includes(playerId) || match.status !== "contract";
+          const captain = agreement.captainId === playerId;
+
+          return (
+            <Link key={playerId} to={`/app/players/${playerId}`} className={ready ? "gm-player-slot ready" : "gm-player-slot"}>
+              <span className="avatar" style={{ "--avatar": user?.avatarColor }}>{user?.name?.slice(0, 1) ?? "P"}</span>
+              <strong>{user?.name ?? "플레이어"}</strong>
+              <em>{captain ? "CAPT" : ready ? "READY" : "WAIT"}</em>
+            </Link>
+          );
+        })}
+      </div>
+    );
+  };
 
   const updatePlayerStat = (playerId, fieldId, value) => {
     const nextValue = Math.max(0, Number(value ?? 0));
@@ -86,27 +123,54 @@ export default function MatchRoom({ app }) {
 
   return (
     <div className="page-stack match-room">
-      <section className="match-hero">
-        <div className="match-hero-copy">
+      <section className={match.ranked === false ? "gm-room-hero gm-friendly" : "gm-room-hero gm-ranked"}>
+        <div className="gm-room-topline">
           <div className="badge-row">
-            <Badge tone={match.official ? "gold" : "neutral"}>{match.official ? "공식경기" : "일반경기"}</Badge>
+            <Badge tone={match.ranked === false ? "neutral" : "gold"}>{matchKind}</Badge>
             <Badge tone={status.tone}>{status.label}</Badge>
             {match.preRegistered ? <Badge tone="green">사전등록</Badge> : null}
           </div>
-          <p className="eyebrow">경기방</p>
-          <h1>{match.title}</h1>
-          <p>{match.court} · {match.scheduledAt} · {match.mode}</p>
+          <span>{match.mode}</span>
         </div>
-        <div className="scoreboard-panel">
-          <div>
-            <Link to={`/app/teams/${match.teamA.teamId}`}>{match.teamA.name}</Link>
-            <strong>{match.teamA.score ?? 0}</strong>
+
+        <div className="gm-room-title">
+          <span>{match.official ? "OFFICIAL ROOM" : "CUSTOM ROOM"}</span>
+          <h1>{matchKind}</h1>
+          <p><MapPin size={16} />{match.court} · {match.scheduledAt}</p>
+        </div>
+
+        <div className="gm-versus-stage">
+          <div className="gm-team-panel team-a">
+            <div className="gm-team-head">
+              <span>HOME TEAM</span>
+              <Link to={`/app/teams/${match.teamA.teamId}`}>{match.teamA.name}</Link>
+              <em>{teamAMmr || "-"} MMR</em>
+            </div>
+            {renderHeroRoster("teamA")}
           </div>
-          <i>VS</i>
-          <div>
-            <Link to={`/app/teams/${match.teamB.teamId}`}>{match.teamB.name}</Link>
-            <strong>{match.teamB.score ?? 0}</strong>
+
+          <div className="gm-score-core">
+            <strong>{scoreA}</strong>
+            <i>VS</i>
+            <strong>{scoreB}</strong>
+            <span>{winnerName ? `${winnerName} 우세` : "전투 준비"}</span>
           </div>
+
+          <div className="gm-team-panel team-b">
+            <div className="gm-team-head">
+              <span>OPPONENT</span>
+              <Link to={`/app/teams/${match.teamB.teamId}`}>{match.teamB.name}</Link>
+              <em>{teamBMmr || "-"} MMR</em>
+            </div>
+            {renderHeroRoster("teamB")}
+          </div>
+        </div>
+
+        <div className="gm-room-actions">
+          <div><CalendarDays size={17} /><span>{match.scheduledDate ?? "일정"} {match.scheduledTime ?? ""}</span></div>
+          <div><UsersRound size={17} /><span>{match.teamA.players.length} vs {match.teamB.players.length}</span></div>
+          <div><ShieldCheck size={17} /><span>{match.ranked === false ? "티어 자유" : "MMR 반영"}</span></div>
+          <div><Trophy size={17} /><span>{match.rules.targetScore}점 · {match.rules.timeLimit}분</span></div>
         </div>
       </section>
 

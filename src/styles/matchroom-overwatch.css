@@ -1,0 +1,349 @@
+.match-room {
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.gm-room-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: grid;
+  gap: 22px;
+  min-height: 620px;
+  border: 1px solid rgba(118, 169, 255, 0.28);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(90deg, rgba(3, 6, 12, 0.98), rgba(4, 8, 15, 0.78) 42%, rgba(4, 8, 15, 0.5)),
+    url("/assets/match-score-arena.png") center / cover no-repeat;
+  box-shadow: var(--shadow);
+  padding: 22px;
+}
+
+.gm-room-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px) 0 0 / 100% 9px,
+    radial-gradient(circle at 50% 48%, rgba(118, 169, 255, 0.26), transparent 20rem),
+    linear-gradient(90deg, rgba(70, 224, 182, 0.15), transparent 32%, transparent 68%, rgba(255, 111, 97, 0.16));
+  opacity: 0.74;
+}
+
+.gm-room-hero::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 44%;
+  z-index: -1;
+  background: linear-gradient(0deg, rgba(16, 53, 128, 0.56), transparent);
+}
+
+.gm-room-topline,
+.gm-room-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.gm-room-topline > span {
+  color: var(--gold);
+  font-size: 0.86rem;
+  font-weight: 950;
+}
+
+.gm-room-title {
+  display: grid;
+  max-width: 650px;
+  gap: 8px;
+}
+
+.gm-room-title > span {
+  color: var(--gold);
+  font-size: 0.82rem;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.gm-room-title h1 {
+  font-size: clamp(4rem, 10vw, 7.8rem);
+  line-height: 0.85;
+  text-transform: uppercase;
+}
+
+.gm-room-title p {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #dce5ef;
+  font-size: 1.02rem;
+  font-weight: 850;
+}
+
+.gm-versus-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(170px, 220px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: stretch;
+  margin-top: auto;
+}
+
+.gm-team-panel,
+.gm-score-core,
+.gm-room-actions > div {
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  background: rgba(5, 10, 18, 0.68);
+  backdrop-filter: blur(16px);
+}
+
+.gm-team-panel {
+  display: grid;
+  align-content: space-between;
+  min-height: 250px;
+  gap: 18px;
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+.gm-team-head {
+  display: grid;
+  gap: 5px;
+}
+
+.gm-team-head span {
+  color: var(--gold);
+  font-size: 0.72rem;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.gm-team-head a {
+  color: var(--text);
+  font-size: clamp(1.4rem, 2.5vw, 2.2rem);
+  font-weight: 950;
+  line-height: 1;
+}
+
+.gm-team-head em {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-style: normal;
+  font-weight: 850;
+}
+
+.gm-roster-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(76px, 1fr));
+  gap: 10px;
+}
+
+.gm-player-slot {
+  display: grid;
+  min-width: 0;
+  justify-items: center;
+  gap: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.055);
+  color: var(--muted);
+  padding: 10px 7px;
+  text-align: center;
+}
+
+.gm-player-slot.ready {
+  border-color: rgba(70, 224, 182, 0.45);
+  background: rgba(70, 224, 182, 0.1);
+}
+
+.gm-player-slot .avatar {
+  width: 50px;
+  height: 50px;
+  font-size: 1.2rem;
+}
+
+.gm-player-slot strong {
+  width: 100%;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 0.82rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gm-player-slot em {
+  color: var(--gold);
+  font-size: 0.68rem;
+  font-style: normal;
+  font-weight: 950;
+}
+
+.gm-score-core {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 8px;
+  border-radius: var(--radius);
+  padding: 16px;
+  text-align: center;
+}
+
+.gm-score-core strong {
+  color: var(--text);
+  font-size: clamp(3.2rem, 6vw, 5.4rem);
+  line-height: 0.9;
+}
+
+.gm-score-core i {
+  color: var(--gold);
+  font-size: 1.25rem;
+  font-style: normal;
+  font-weight: 950;
+}
+
+.gm-score-core span {
+  color: var(--green);
+  font-size: 0.8rem;
+  font-weight: 950;
+}
+
+.gm-room-actions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.gm-room-actions > div {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  border-radius: 8px;
+  color: var(--muted);
+  padding: 11px 12px;
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+.gm-room-actions svg {
+  color: var(--green);
+  flex: 0 0 auto;
+}
+
+.gm-room-actions span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gm-room-hero + .content-grid {
+  margin-top: 4px;
+}
+
+html[data-theme="light"] .gm-room-hero {
+  background:
+    linear-gradient(90deg, rgba(246, 248, 242, 0.98), rgba(246, 248, 242, 0.82) 42%, rgba(246, 248, 242, 0.58)),
+    url("/assets/match-score-arena.png") center / cover no-repeat;
+}
+
+html[data-theme="light"] .gm-room-title p {
+  color: var(--muted);
+}
+
+html[data-theme="light"] .gm-team-panel,
+html[data-theme="light"] .gm-score-core,
+html[data-theme="light"] .gm-room-actions > div {
+  background: rgba(255, 255, 255, 0.76);
+}
+
+@media (max-width: 1100px) {
+  .gm-room-hero {
+    min-height: 0;
+  }
+
+  .gm-versus-stage {
+    grid-template-columns: 1fr;
+  }
+
+  .gm-score-core {
+    grid-template-columns: 1fr auto 1fr;
+  }
+
+  .gm-score-core span {
+    grid-column: 1 / -1;
+  }
+
+  .gm-room-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .gm-room-hero {
+    gap: 16px;
+    padding: 16px;
+  }
+
+  .gm-room-title h1 {
+    font-size: 3.1rem;
+  }
+
+  .gm-room-topline {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .gm-team-panel {
+    min-height: 0;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .gm-roster-row {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .gm-player-slot {
+    gap: 5px;
+    padding: 7px 4px;
+  }
+
+  .gm-player-slot .avatar {
+    width: 38px;
+    height: 38px;
+    font-size: 0.98rem;
+  }
+
+  .gm-player-slot strong {
+    font-size: 0.68rem;
+  }
+
+  .gm-player-slot em {
+    display: none;
+  }
+
+  .gm-score-core {
+    padding: 10px;
+  }
+
+  .gm-score-core strong {
+    font-size: 2.7rem;
+  }
+
+  .gm-room-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 420px) {
+  .gm-player-slot .avatar {
+    width: 42px;
+    height: 42px;
+  }
+
+  .gm-player-slot {
+    padding: 8px 5px;
+  }
+}
