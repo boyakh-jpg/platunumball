@@ -1,5 +1,6 @@
 import { BarChart3, CalendarDays, Handshake, House, LogOut, Settings, UserRound, UsersRound } from "lucide-react";
 import { NavLink } from "react-router-dom";
+import PlayerHoverCard from "../profile/PlayerHoverCard.jsx";
 import TierBadge from "../rating/TierBadge.jsx";
 
 const navItems = [
@@ -12,7 +13,7 @@ const navItems = [
   { to: "/app/settings", label: "설정", icon: Settings },
 ];
 
-export default function Sidebar({ user, auth }) {
+export default function Sidebar({ user, teams = [], auth }) {
   return (
     <aside className="sidebar">
       <NavLink to="/" className="brand">
@@ -33,7 +34,7 @@ export default function Sidebar({ user, auth }) {
           );
         })}
       </nav>
-      <div className="sidebar-profile">
+      <PlayerHoverCard as="span" user={user} teams={teams} className="sidebar-profile">
         <div className="avatar" style={{ "--avatar": user.avatarColor }}>
           {user.name.slice(0, 1)}
         </div>
@@ -47,7 +48,7 @@ export default function Sidebar({ user, auth }) {
             <LogOut size={17} />
           </button>
         ) : null}
-      </div>
+      </PlayerHoverCard>
     </aside>
   );
 }

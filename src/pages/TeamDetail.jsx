@@ -5,6 +5,7 @@ import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import MemberTypeBadge from "../components/team/MemberTypeBadge.jsx";
+import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import TierBadge from "../components/rating/TierBadge.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
 import { MAX_TEAM_MEMBERSHIPS, TEAM_ROLES } from "../lib/constants.js";
@@ -82,7 +83,7 @@ export default function TeamDetail({ app }) {
           const user = userMap[member.userId];
           if (!user) return null;
           return (
-            <Link className="member-row" key={`${team.id}-${member.userId}-${member.role}`} to={`/app/players/${member.userId}`}>
+            <PlayerHoverCard className="member-row" key={`${team.id}-${member.userId}-${member.role}`} user={user} teams={app.state.teams}>
               <span className="avatar small" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
               <div className="member-main">
                 <strong>{user.name}</strong>
@@ -90,7 +91,7 @@ export default function TeamDetail({ app }) {
               </div>
               <TierBadge mmr={user.ratings.integrated} compact />
               <MemberTypeBadge role={member.role} />
-            </Link>
+            </PlayerHoverCard>
           );
         })}
       </div>
@@ -214,7 +215,7 @@ export default function TeamDetail({ app }) {
                     <div className="roster compact-roster">
                       {side.players.map((id) => {
                         const user = userMap[id];
-                        return user ? <Link key={id} to={`/app/players/${id}`}><i style={{ "--avatar": user.avatarColor }} />{user.name}</Link> : null;
+                        return user ? <PlayerHoverCard key={id} user={user} teams={app.state.teams}><i style={{ "--avatar": user.avatarColor }} />{user.name}</PlayerHoverCard> : null;
                       })}
                     </div>
                     <p>
@@ -284,10 +285,10 @@ export default function TeamDetail({ app }) {
                     if (!user) return null;
                     return (
                       <div key={`${team.id}-${member.userId}-control`} className="member-control-row">
-                        <Link to={`/app/players/${member.userId}`}>
+                        <PlayerHoverCard user={user} teams={app.state.teams}>
                           <span className="avatar small" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
                           <strong>{user.name}</strong>
-                        </Link>
+                        </PlayerHoverCard>
                         <select value={member.role} onChange={(event) => app.actions.updateTeamMemberRole(team.id, member.userId, event.target.value)}>
                           {Object.entries(TEAM_ROLES).map(([role, label]) => <option key={role} value={role}>{label}</option>)}
                         </select>

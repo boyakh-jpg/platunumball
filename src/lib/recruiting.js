@@ -54,6 +54,23 @@ function unique(items = []) {
   return Array.from(new Set(items.filter(Boolean)));
 }
 
+function compareCandidates(a, b) {
+  const readyDiff = Number(b.status === "ready") - Number(a.status === "ready");
+  if (readyDiff) return readyDiff;
+  const trustDiff = Number(b.user?.trustScore ?? 0) - Number(a.user?.trustScore ?? 0);
+  if (trustDiff) return trustDiff;
+  return String(a.createdAt ?? "").localeCompare(String(b.createdAt ?? ""));
+}
+
+function uniqueCandidates(candidates = []) {
+  const seen = new Set();
+  return candidates.filter((candidate) => {
+    if (!candidate.playerId || seen.has(candidate.playerId)) return false;
+    seen.add(candidate.playerId);
+    return true;
+  });
+}
+
 export function getTierIndex(mmr = 0) {
   const tier = getTier(mmr);
   return Math.max(0, TIERS.findIndex((item) => item.name === tier.name));
@@ -288,16 +305,52 @@ export function getRecruitingLobby(post = {}, state = {}) {
     const sideEntries = entries.filter((entry) => entry.side === side && !entry.reserve);
     const reserveEntries = entries.filter((entry) => entry.side === side && entry.reserve);
     const players = unique(sideEntries.flatMap((entry) => entry.players));
-    const reserves = unique([
-      ...reserveEntries.flatMap((entry) => entry.players),
-      ...sideEntries.flatMap((entry) => entry.reserves),
-    ]);
+    const userById = Object.fromEntries((state.users ?? []).map((user) => [user.id, user]));
+    const reserveCandidates = uniqueCandidates([
+      ...reserveEntries.flatMap((entry) =>
+        entry.players.map((playerId) => ({
+          playerId,
+          user: userById[playerId],
+          source: "reserve-entry",
+          sourceLabel: entry.kind === "team" ? "후보 팀" : "후보 개인",
+          entryId: entry.id,
+          status: entry.status,
+          side,
+          createdAt: entry.createdAt,
+        })),
+      ),
+      ...sideEntries.flatMap((entry) =>
+        entry.reserves.map((playerId) => ({
+          playerId,
+          user: userById[playerId],
+          source: "team-reserve",
+          sourceLabel: "팀 후보",
+          entryId: entry.id,
+          status: entry.status,
+          side,
+          createdAt: entry.createdAt,
+        })),
+      ),
+    ])
+      .filter((candidate) => !players.includes(candidate.playerId))
+      .sort(compareCandidates);
+    const openSlots = Math.max(0, getRecruitingSideCapacity(normalizedPost) - players.length);
+    const fillSlots = reserveCandidates.slice(0, openSlots).map((candidate, index) => ({
+      ...candidate,
+      slotOrder: players.length + index + 1,
+    }));
+    const reserves = reserveCandidates.map((candidate) => candidate.playerId);
+    const projectedPlayers = unique([...players, ...fillSlots.map((candidate) => candidate.playerId)]);
     acc[side] = {
       entries: sideEntries,
       reserveEntries,
+      reserveCandidates,
+      fillSlots,
       players,
+      projectedPlayers,
       reserves,
       filled: players.length,
+      projectedFilled: projectedPlayers.length,
       capacity: getRecruitingSideCapacity(normalizedPost),
     };
     return acc;
@@ -305,20 +358,26 @@ export function getRecruitingLobby(post = {}, state = {}) {
 
   const playingEntries = entries.filter((entry) => !entry.reserve);
   const full = sides.teamA.filled >= sides.teamA.capacity && sides.teamB.filled >= sides.teamB.capacity;
+  const projectedFull =
+    sides.teamA.projectedFilled >= sides.teamA.capacity &&
+    sides.teamB.projectedFilled >= sides.teamB.capacity;
   const ready = playingEntries.length > 0 && playingEntries.every((entry) => entry.status === "ready");
+  const fillReady = [...sides.teamA.fillSlots, ...sides.teamB.fillSlots].every((candidate) => candidate.status === "ready");
 
   return {
     entries,
     sides,
     full,
+    projectedFull,
     ready,
-    canConfirm: full && ready,
+    fillReady,
+    canConfirm: projectedFull && ready && fillReady,
   };
 }
 
 export function getRecruitingBestSide(post = {}, state = {}) {
   const lobby = getRecruitingLobby(post, state);
-  return lobby.sides.teamA.filled <= lobby.sides.teamB.filled ? "teamA" : "teamB";
+  return lobby.sides.teamA.projectedFilled <= lobby.sides.teamB.projectedFilled ? "teamA" : "teamB";
 }
 
 export function getMercenaryTeamWeight(memberMmr = 1200, teamMmr = 1200, role = "regular") {

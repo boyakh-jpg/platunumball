@@ -5,7 +5,7 @@ import Card from "../common/Card.jsx";
 import TierBadge from "../rating/TierBadge.jsx";
 import TeamMemberList from "./TeamMemberList.jsx";
 
-export default function TeamCard({ team, users, compact = false, linked = true, favorite = false, onToggleFavorite, rank }) {
+export default function TeamCard({ team, users, teams = [team], compact = false, linked = true, favorite = false, onToggleFavorite, rank }) {
   const winRate = Math.round((team.wins / Math.max(1, team.wins + team.losses)) * 100);
 
   return (
@@ -43,7 +43,7 @@ export default function TeamCard({ team, users, compact = false, linked = true, 
           로스터
         </span>
       </div>
-      {compact ? null : <TeamMemberList team={team} users={users} />}
+      {compact ? null : <TeamMemberList team={team} users={users} teams={teams} />}
       <Badge tone="green">정규멤버 {team.members.filter((member) => member.role === "regular" || member.role === "captain").length}</Badge>
     </Card>
   );

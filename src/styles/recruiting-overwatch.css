@@ -855,6 +855,37 @@
   font-weight: 900;
 }
 
+.ow-open-slot.fill {
+  justify-content: space-between;
+  border-color: rgba(255, 211, 108, 0.3);
+  background: rgba(255, 211, 108, 0.08);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.ow-open-slot.fill > span:nth-child(2) {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+  margin-right: auto;
+}
+
+.ow-open-slot.fill strong {
+  color: var(--text);
+  font-size: 0.86rem;
+}
+
+.ow-open-slot.fill em,
+.ow-member-chip em {
+  color: var(--gold);
+  font-size: 0.68rem;
+  font-style: normal;
+}
+
+.ow-open-slot.empty {
+  border-style: dashed;
+}
+
 .ow-reserve-panel {
   display: grid;
   gap: 8px;

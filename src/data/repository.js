@@ -1561,13 +1561,13 @@ export function confirmRecruitingMatch(state, postId) {
     teamA: {
       name: getLobbySideName(lobby, "teamA"),
       teamId: getLobbyPrimaryTeamId(lobby, "teamA"),
-      players: lobby.sides.teamA.players.slice(0, lobby.sides.teamA.capacity),
+      players: lobby.sides.teamA.projectedPlayers.slice(0, lobby.sides.teamA.capacity),
       score: 0,
     },
     teamB: {
       name: getLobbySideName(lobby, "teamB"),
       teamId: getLobbyPrimaryTeamId(lobby, "teamB"),
-      players: lobby.sides.teamB.players.slice(0, lobby.sides.teamB.capacity),
+      players: lobby.sides.teamB.projectedPlayers.slice(0, lobby.sides.teamB.capacity),
       score: 0,
     },
     parties: lobby.entries.map((entry) => ({
@@ -1578,6 +1578,10 @@ export function confirmRecruitingMatch(state, postId) {
       players: entry.players,
       reserve: entry.reserve,
     })),
+    promotedReserveIds: {
+      teamA: lobby.sides.teamA.fillSlots.map((candidate) => candidate.playerId),
+      teamB: lobby.sides.teamB.fillSlots.map((candidate) => candidate.playerId),
+    },
     agreements: { teamA: [], teamB: [] },
     approvals: { teamA: [], teamB: [] },
     disputes: [],

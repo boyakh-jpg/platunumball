@@ -202,6 +202,7 @@ export default function Teams({ app }) {
               key={team.id}
               team={team}
               users={app.state.users}
+              teams={app.state.teams}
               rank={team.rank}
               favorite={isFavoriteTeam(team)}
               onToggleFavorite={() => app.actions.toggleFavoriteTeam(team.id)}

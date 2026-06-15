@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
+import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import TierBadge from "../components/rating/TierBadge.jsx";
 import {
   getCurrentSeason,
@@ -107,7 +108,7 @@ export default function Season({ app }) {
             </div>
             <div className="season-race-list">
               {playerRows.slice(0, 8).map((user, index) => (
-                <Link key={user.id} to={`/app/players/${user.id}`} className={user.id === app.currentUser.id ? "mine" : ""}>
+                <PlayerHoverCard key={user.id} user={user} teams={app.state.teams} className={user.id === app.currentUser.id ? "mine" : ""}>
                   <strong>{index + 1}</strong>
                   <span className="avatar small" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
                   <div>
@@ -119,7 +120,7 @@ export default function Season({ app }) {
                     </em>
                   </div>
                   <TierBadge mmr={user.ratings.integrated} compact />
-                </Link>
+                </PlayerHoverCard>
               ))}
             </div>
           </Card>
@@ -158,10 +159,10 @@ export default function Season({ app }) {
             </div>
             <div className="compact-list">
               {nationalPlayers.map((user, index) => (
-                <Link key={user.id} to={`/app/players/${user.id}`}>
+                <PlayerHoverCard key={user.id} user={user} teams={app.state.teams}>
                   <span>{index + 1}. {user.name}</span>
                   <strong>{user.ratings.integrated}</strong>
-                </Link>
+                </PlayerHoverCard>
               ))}
             </div>
           </Card>

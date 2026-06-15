@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import {
   CheckCircle2,
   Clock3,
@@ -13,6 +12,7 @@ import {
 } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
+import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import TierBadge from "../components/rating/TierBadge.jsx";
 import { COURTS, MATCH_MODES, PLAYER_POSITIONS, REGIONS } from "../lib/constants.js";
 import {
@@ -77,7 +77,7 @@ function getPlayerPosition(user) {
   return user?.position || "포지션 자유";
 }
 
-function EntryBlock({ entry, userById }) {
+function EntryBlock({ entry, userById, teams }) {
   const mmr = getEntryMmr(entry);
   const players = entry.players.map((playerId) => userById[playerId]).filter(Boolean);
 
@@ -97,31 +97,57 @@ function EntryBlock({ entry, userById }) {
       </div>
       <div className="ow-party-members">
         {players.map((user) => (
-          <Link key={user.id} to={`/app/players/${user.id}`} className="ow-member-chip">
+          <PlayerHoverCard key={user.id} user={user} teams={teams} className="ow-member-chip">
             <span className="avatar small" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
             <span>{user.name}</span>
             <b>{getPlayerPosition(user)}</b>
-          </Link>
+          </PlayerHoverCard>
         ))}
       </div>
     </div>
   );
 }
 
-function SideRoster({ sideName, side, userById }) {
-  const openSlots = Math.max(0, side.capacity - side.filled);
+function FillSlot({ candidate, userById, teams }) {
+  const user = candidate ? userById[candidate.playerId] : null;
+  if (!user) {
+    return (
+      <div className="ow-open-slot empty">
+        <UserRound size={17} />
+        <span>후보 없음</span>
+      </div>
+    );
+  }
+
+  return (
+    <PlayerHoverCard user={user} teams={teams} className="ow-open-slot fill">
+      <span className="avatar small" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
+      <span>
+        <strong>{user.name}</strong>
+        <em>{candidate.status === "ready" ? "충원 예정" : "준비 대기"} · {candidate.sourceLabel}</em>
+      </span>
+      <TierBadge mmr={user.ratings.integrated} compact />
+    </PlayerHoverCard>
+  );
+}
+
+function SideRoster({ sideName, side, userById, teams }) {
+  const openSlots = Math.max(0, side.capacity - side.projectedFilled);
   return (
     <section className="ow-side-roster">
       <header>
         <div>
           <span>{SIDE_LABELS[sideName]}</span>
-          <strong>{side.filled}/{side.capacity}</strong>
+          <strong>{side.projectedFilled}/{side.capacity}</strong>
         </div>
-        <div className="ow-side-progress" style={{ "--fill": `${Math.min(100, (side.filled / side.capacity) * 100)}%` }} />
+        <div className="ow-side-progress" style={{ "--fill": `${Math.min(100, (side.projectedFilled / side.capacity) * 100)}%` }} />
       </header>
       <div className="ow-roster-stack">
         {side.entries.map((entry) => (
-          <EntryBlock key={`${sideName}-${entry.id}`} entry={entry} userById={userById} />
+          <EntryBlock key={`${sideName}-${entry.id}`} entry={entry} userById={userById} teams={teams} />
+        ))}
+        {side.fillSlots.map((candidate) => (
+          <FillSlot key={`${sideName}-fill-${candidate.playerId}`} candidate={candidate} userById={userById} teams={teams} />
         ))}
         {Array.from({ length: openSlots }).map((_item, index) => (
           <div key={`${sideName}-open-${index}`} className="ow-open-slot">
@@ -134,20 +160,22 @@ function SideRoster({ sideName, side, userById }) {
   );
 }
 
-function ReserveLine({ sideName, userIds, userById }) {
-  if (!userIds.length) return null;
+function ReserveLine({ sideName, candidates, userById, teams }) {
+  if (!candidates.length) return null;
   return (
     <div className="ow-reserve-line">
       <strong>{SIDE_LABELS[sideName]} 후보</strong>
       <div>
-        {userIds.map((userId) => {
-          const user = userById[userId];
+        {candidates.map((candidate, index) => {
+          const user = userById[candidate.playerId];
           if (!user) return null;
           return (
-            <span key={`${sideName}-${userId}`} className="ow-member-chip compact">
+            <PlayerHoverCard key={`${sideName}-${candidate.playerId}`} user={user} teams={teams} className="ow-member-chip compact">
+              <b>{index + 1}</b>
               <span className="avatar small" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
-              {user.name}
-            </span>
+              <span>{user.name}</span>
+              <em>{candidate.status === "ready" ? "준비" : "대기"}</em>
+            </PlayerHoverCard>
           );
         })}
       </div>
@@ -325,8 +353,8 @@ export default function Recruiting({ app }) {
                   {["teamA", "teamB"].map((sideName) => (
                     <div key={sideName} className="ow-lobby-meter">
                       <span>{SIDE_LABELS[sideName]}</span>
-                      <div style={{ "--fill": `${Math.min(100, (lobby.sides[sideName].filled / lobby.sides[sideName].capacity) * 100)}%` }} />
-                      <b>{lobby.sides[sideName].filled}/{lobby.sides[sideName].capacity}</b>
+                      <div style={{ "--fill": `${Math.min(100, (lobby.sides[sideName].projectedFilled / lobby.sides[sideName].capacity) * 100)}%` }} />
+                      <b>{lobby.sides[sideName].projectedFilled}/{lobby.sides[sideName].capacity}</b>
                     </div>
                   ))}
                 </div>
@@ -339,7 +367,7 @@ export default function Recruiting({ app }) {
 
               <div className="ow-card-side" onClick={(event) => event.stopPropagation()}>
                 <span className="ow-slot-count">
-                  <strong>{lobby.sides.teamA.filled + lobby.sides.teamB.filled}/{getRecruitingSideCapacity(post) * 2}</strong>
+                  <strong>{lobby.sides.teamA.projectedFilled + lobby.sides.teamB.projectedFilled}/{getRecruitingSideCapacity(post) * 2}</strong>
                   <span>참가 인원</span>
                 </span>
                 <Button type="button" className="ow-card-action" onClick={() => setSelectedPostId(post.id)}>
@@ -400,13 +428,13 @@ export default function Recruiting({ app }) {
               </div>
 
               <div className="ow-lobby-grid">
-                <SideRoster sideName="teamA" side={lobby.sides.teamA} userById={userById} />
-                <SideRoster sideName="teamB" side={lobby.sides.teamB} userById={userById} />
+                <SideRoster sideName="teamA" side={lobby.sides.teamA} userById={userById} teams={app.state.teams} />
+                <SideRoster sideName="teamB" side={lobby.sides.teamB} userById={userById} teams={app.state.teams} />
               </div>
 
               <div className="ow-reserve-panel">
-                <ReserveLine sideName="teamA" userIds={lobby.sides.teamA.reserves} userById={userById} />
-                <ReserveLine sideName="teamB" userIds={lobby.sides.teamB.reserves} userById={userById} />
+                <ReserveLine sideName="teamA" candidates={lobby.sides.teamA.reserveCandidates} userById={userById} teams={app.state.teams} />
+                <ReserveLine sideName="teamB" candidates={lobby.sides.teamB.reserveCandidates} userById={userById} teams={app.state.teams} />
                 {!lobby.sides.teamA.reserves.length && !lobby.sides.teamB.reserves.length ? <span>후보 없음</span> : null}
               </div>
 

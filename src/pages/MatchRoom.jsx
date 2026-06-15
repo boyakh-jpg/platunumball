@@ -7,6 +7,7 @@ import MatchContract from "../components/match/MatchContract.jsx";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
+import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import MmrChange from "../components/rating/MmrChange.jsx";
 import ShareCard from "../components/share/ShareCard.jsx";
 import { PLAYER_STAT_FIELDS } from "../lib/constants.js";
@@ -100,12 +101,12 @@ export default function MatchRoom({ app }) {
           const captain = agreement.captainId === playerId;
 
           return (
-            <Link key={playerId} to={`/app/players/${playerId}`} className={ready ? "gm-player-slot ready" : "gm-player-slot"}>
+            <PlayerHoverCard key={playerId} user={user} teams={app.state.teams} className={ready ? "gm-player-slot ready" : "gm-player-slot"}>
               <span className="avatar" style={{ "--avatar": user?.avatarColor }}>{user?.name?.slice(0, 1) ?? "P"}</span>
               <strong>{user?.name ?? "플레이어"}</strong>
               <small>{user?.position ?? "-"}</small>
               <em>{captain ? "CAPT" : ready ? "READY" : "WAIT"}</em>
-            </Link>
+            </PlayerHoverCard>
           );
         })}
       </div>
@@ -215,7 +216,7 @@ export default function MatchRoom({ app }) {
       {isContractStage ? (
         <div className="content-grid match-stage-contract">
           <div className="page-stack">
-            <MatchContract match={match} users={app.state.users} />
+            <MatchContract match={match} users={app.state.users} teams={app.state.teams} />
             <AgreementPanel
               match={match}
               teams={app.state.teams}
@@ -228,7 +229,7 @@ export default function MatchRoom({ app }) {
       ) : (
         <div className="content-grid wide-left">
           <div className="page-stack">
-            <MatchContract match={match} users={app.state.users} />
+            <MatchContract match={match} users={app.state.users} teams={app.state.teams} />
             <AgreementPanel
               match={match}
               teams={app.state.teams}
@@ -287,13 +288,13 @@ export default function MatchRoom({ app }) {
                       const canEdit = canEditPlayerStat(playerId);
                       return (
                         <button key={playerId} type="button" className={canEdit ? "stat-player-button editable" : "stat-player-button locked"} disabled={!canEdit} onClick={() => setStatEditorPlayerId(playerId)}>
-                          <div>
+                          <PlayerHoverCard as="span" user={user} teams={app.state.teams}>
                             <span className="avatar small" style={{ "--avatar": user?.avatarColor }}>{user?.name?.slice(0, 1) ?? "P"}</span>
                             <span>
                               <strong>{user?.name ?? "플레이어"}</strong>
                               <em>{canEdit ? formatStatLine(score.playerStats[playerId]) : `${user?.position ?? "-"} · 본인 입력`}</em>
                             </span>
-                          </div>
+                          </PlayerHoverCard>
                           <strong>{canEdit ? "내 기록" : "잠김"}</strong>
                         </button>
                       );

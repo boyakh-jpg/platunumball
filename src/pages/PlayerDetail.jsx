@@ -1,6 +1,7 @@
 import { Link, Navigate, useParams } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import Card from "../components/common/Card.jsx";
+import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import ProgressionChecklist from "../components/rating/ProgressionChecklist.jsx";
 import RatingCard from "../components/rating/RatingCard.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
@@ -84,11 +85,11 @@ export default function PlayerDetail({ app }) {
           const user = userMap[id];
           if (!user) return null;
           return (
-            <Link key={id} to={`/app/players/${id}`}>
+            <PlayerHoverCard key={id} user={user} teams={app.state.teams}>
               <span className="avatar small" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
               <strong>{user.name}</strong>
               <em>{count}경기</em>
-            </Link>
+            </PlayerHoverCard>
           );
         })}
       </div>

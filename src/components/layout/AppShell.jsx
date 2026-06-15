@@ -5,7 +5,7 @@ import Sidebar from "./Sidebar.jsx";
 export default function AppShell({ app, auth }) {
   return (
     <div className="app-shell">
-      <Sidebar user={app.currentUser} auth={auth} />
+      <Sidebar user={app.currentUser} teams={app.state.teams} auth={auth} />
       <main className="app-main">
         <Outlet />
       </main>

@@ -1,8 +1,9 @@
 import { Link } from "react-router-dom";
 import Badge from "../common/Badge.jsx";
+import PlayerHoverCard from "../profile/PlayerHoverCard.jsx";
 import TierBadge from "../rating/TierBadge.jsx";
 
-export default function RankingTable({ rows, type = "players", mode = "integrated" }) {
+export default function RankingTable({ rows, type = "players", mode = "integrated", teams = [] }) {
   return (
     <div className="ranking-table">
       {rows.map((row, index) => {
@@ -12,17 +13,24 @@ export default function RankingTable({ rows, type = "players", mode = "integrate
         return (
           <div className="ranking-row" key={key}>
             <span className={`rank rank-${rank}`}>{rank}</span>
-            <Link className="ranking-name" to={type === "players" ? `/app/players/${row.id}` : type === "teams" ? `/app/teams/${row.id}` : "/app/affiliations"}>
-              {type === "players" ? (
+            {type === "players" ? (
+              <PlayerHoverCard user={row} teams={teams} className="ranking-name">
                 <div className="avatar small" style={{ "--avatar": row.avatarColor }}>
                   {row.name.slice(0, 1)}
                 </div>
-              ) : null}
-              <div>
-                <strong>{row.name}</strong>
-                <span>{type === "players" ? `${row.region} · ${row.position}` : row.homeCourt ?? row.type}</span>
-              </div>
-            </Link>
+                <div>
+                  <strong>{row.name}</strong>
+                  <span>{row.region} · {row.position}</span>
+                </div>
+              </PlayerHoverCard>
+            ) : (
+              <Link className="ranking-name" to={type === "teams" ? `/app/teams/${row.id}` : "/app/affiliations"}>
+                <div>
+                  <strong>{row.name}</strong>
+                  <span>{row.homeCourt ?? row.type}</span>
+                </div>
+              </Link>
+            )}
             {type === "players" || type === "teams" ? <TierBadge mmr={mmr} compact /> : <Badge tone="blue">{row.wins}승</Badge>}
             <strong className="ranking-score">{Math.round(mmr)}</strong>
           </div>

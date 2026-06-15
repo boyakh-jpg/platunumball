@@ -59,7 +59,7 @@ export default function Rankings({ app }) {
                 <h2>{myRegion} 개인 랭킹</h2>
               </div>
             </div>
-            <RankingTable rows={localPlayers} type="players" mode="integrated" />
+            <RankingTable rows={localPlayers} type="players" mode="integrated" teams={app.state.teams} />
           </Card>
           <div className="page-stack">
             <Card className="section-card">
@@ -69,7 +69,7 @@ export default function Rankings({ app }) {
                   <h2>{myRegion} 팀</h2>
                 </div>
               </div>
-              <RankingTable rows={localTeams} type="teams" />
+              <RankingTable rows={localTeams} type="teams" teams={app.state.teams} />
             </Card>
             <Card className="section-card">
               <div className="section-title-row">
@@ -78,14 +78,14 @@ export default function Rankings({ app }) {
                   <h2>주변 소속</h2>
                 </div>
               </div>
-              <RankingTable rows={localAffiliations} type="affiliations" />
+              <RankingTable rows={localAffiliations} type="affiliations" teams={app.state.teams} />
             </Card>
           </div>
         </div>
       ) : null}
       {tab !== "local" ? (
         <Card className="section-card">
-          <RankingTable rows={rows} type={type} mode={tab} />
+          <RankingTable rows={rows} type={type} mode={tab} teams={app.state.teams} />
         </Card>
       ) : null}
     </div>

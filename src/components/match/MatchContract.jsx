@@ -1,10 +1,11 @@
 import { Link } from "react-router-dom";
 import Badge from "../common/Badge.jsx";
 import Card from "../common/Card.jsx";
+import PlayerHoverCard from "../profile/PlayerHoverCard.jsx";
 import { CREDIBILITY_LEVELS } from "../../lib/constants.js";
 import { getCredibilityLevel } from "../../lib/rating.js";
 
-export default function MatchContract({ match, users }) {
+export default function MatchContract({ match, users, teams = [] }) {
   const userMap = Object.fromEntries(users.map((user) => [user.id, user]));
   const credibility = CREDIBILITY_LEVELS[getCredibilityLevel(match)] ?? CREDIBILITY_LEVELS.street_majority;
   const renderRoster = (side) => (
@@ -12,11 +13,11 @@ export default function MatchContract({ match, users }) {
       {side.players.map((id) => {
         const user = userMap[id];
         return (
-          <Link key={id} to={`/app/players/${id}`}>
+          <PlayerHoverCard key={id} user={user} teams={teams}>
             <i style={{ "--avatar": user?.avatarColor }} />
             <strong>{user?.name ?? "플레이어"}</strong>
             <em>{user?.position ?? "-"}</em>
-          </Link>
+          </PlayerHoverCard>
         );
       })}
     </div>

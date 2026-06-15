@@ -3,6 +3,7 @@ import { Database, Moon, Search, ShieldCheck, Sun, UserRound } from "lucide-reac
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import Badge from "../components/common/Badge.jsx";
+import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 
 export default function Settings({ app, auth }) {
@@ -162,8 +163,10 @@ export default function Settings({ app, auth }) {
                   className={user.id === app.currentUserId ? "active" : ""}
                   onClick={() => app.actions.switchUser(user.id)}
                 >
-                  <span className="avatar small" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
-                  <strong>{user.name}</strong>
+                  <PlayerHoverCard as="span" user={user} teams={app.state.teams}>
+                    <span className="avatar small" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
+                    <strong>{user.name}</strong>
+                  </PlayerHoverCard>
                   <em>{user.testLoginId} · {user.region} · {matchCountByUser.get(user.id) ?? 0}경기</em>
                 </button>
               ))}

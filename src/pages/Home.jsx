@@ -5,6 +5,7 @@ import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import MatchCard from "../components/match/MatchCard.jsx";
+import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
 import { COURTS } from "../lib/constants.js";
 import { RECRUITING_TYPES, isNationalRecruitingPost } from "../lib/recruiting.js";
@@ -236,12 +237,12 @@ export default function Home({ app }) {
           </div>
           <div className="opgg-rank-list">
             {topRankers.map((row, index) => (
-              <Link key={row.id} to={`/app/players/${row.id}`}>
+              <PlayerHoverCard key={row.id} user={row} teams={app.state.teams}>
                 <b>{index + 1}</b>
                 <span className="avatar small" style={{ "--avatar": row.avatarColor }}>{row.name.slice(0, 1)}</span>
                 <strong>{row.name}</strong>
                 <em>{Math.round(row.seasonScore)}점</em>
-              </Link>
+              </PlayerHoverCard>
             ))}
           </div>
         </Card>

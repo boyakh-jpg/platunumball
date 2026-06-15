@@ -1,6 +1,6 @@
 import { getTier, getTierDivision } from "../../lib/tier.js";
 
-const emblemByTier = {
+export const emblemByTier = {
   Rookie: "/assets/tier-emblems/tier-rookie-v5.png",
   Bronze: "/assets/tier-emblems/tier-bronze-v5.png",
   Silver: "/assets/tier-emblems/tier-silver-v5.png",
@@ -11,10 +11,15 @@ const emblemByTier = {
   Legend: "/assets/tier-emblems/tier-legend-v5.png",
 };
 
+export function getTierEmblemSrc(mmr) {
+  const tier = getTier(mmr);
+  return emblemByTier[tier.name] ?? emblemByTier.Rookie;
+}
+
 export default function TierEmblem({ mmr, size = "md", showLabel = false }) {
   const tier = getTier(mmr);
   const division = getTierDivision(mmr);
-  const src = emblemByTier[tier.name] ?? emblemByTier.Rookie;
+  const src = getTierEmblemSrc(mmr);
 
   return (
     <figure className={`tier-emblem tier-emblem-${size}`} style={{ "--tier-color": tier.color }}>
