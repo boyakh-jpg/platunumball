@@ -265,6 +265,7 @@ $$;
 do $$
 declare
   ref_date constant date := date '2026-06-15';
+  batch_size constant integer := 150;
 begin
   if to_regclass('public.recruiting_posts') is not null then
     with queued as (
@@ -276,44 +277,16 @@ begin
           scheduled_date is null
           or scheduled_time is null
           or scheduled_date < ref_date
-          or scheduled_at is null
-          or btrim(scheduled_at) = ''
-          or scheduled_at !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
         )
-    ),
-    used_slots as (
-      select
-        scheduled_date,
-        scheduled_time
-      from public.recruiting_posts
-      where scheduled_date >= ref_date
-        and scheduled_time is not null
-        and scheduled_at is not null
-        and btrim(scheduled_at) <> ''
-        and scheduled_at ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
-    ),
-    available_slots as (
-      select
-        row_number() over (order by generated.next_date, generated.next_time) - 1 as idx,
-        generated.next_date,
-        generated.next_time
-      from (
-        select
-          ref_date + ((slot_idx / 3)::int) as next_date,
-          (time '18:00' + ((slot_idx % 3) * interval '90 minutes'))::time as next_time
-        from generate_series(0, 1095) as generated_slots(slot_idx)
-      ) generated
-      where not exists (
-        select 1
-        from used_slots
-        where used_slots.scheduled_date = generated.next_date
-          and used_slots.scheduled_time = generated.next_time
-      )
+      order by coalesce(scheduled_date, ref_date), created_at, id
+      limit batch_size
     ),
     slots as (
-      select queued.id, available_slots.next_date, available_slots.next_time
+      select
+        queued.id,
+        ref_date + ((queued.idx / 3)::int) as next_date,
+        (time '18:00' + ((queued.idx % 3) * interval '90 minutes'))::time as next_time
       from queued
-      join available_slots on available_slots.idx = queued.idx
     )
     update public.recruiting_posts post
     set
@@ -336,6 +309,8 @@ begin
       )
         and coalesce(match_row.status, '') not in ('void', 'cancelled')
         and (match_row.scheduled_date is null or match_row.scheduled_date >= ref_date)
+      order by coalesce(match_row.scheduled_date, ref_date), match_row.created_at, match_row.id
+      limit batch_size
     ),
     past_slots as (
       select
@@ -363,6 +338,8 @@ begin
       )
         and coalesce(match_row.status, '') not in ('void', 'cancelled')
         and (match_row.scheduled_date is null or match_row.scheduled_time is null)
+      order by coalesce(match_row.created_at, now()), match_row.id
+      limit batch_size
     ),
     open_slots as (
       select
@@ -378,6 +355,19 @@ begin
     from open_slots
     where match_row.id = open_slots.id;
 
+    with past_result_matches as (
+      select match_row.id
+      from public.matches match_row
+      where exists (
+        select 1
+        from public.match_results result_row
+        where result_row.match_id = match_row.id
+      )
+        and coalesce(match_row.status, '') not in ('void', 'cancelled', 'disputed')
+        and match_row.scheduled_date < ref_date
+      order by match_row.scheduled_date, match_row.created_at, match_row.id
+      limit batch_size
+    )
     update public.matches match_row
     set
       status = 'confirmed',
@@ -389,14 +379,22 @@ begin
         match_row.confirmed_at,
         ((match_row.scheduled_date + coalesce(match_row.scheduled_time, time '20:00')) at time zone 'Asia/Seoul') + interval '120 minutes'
       )
-    where exists (
-      select 1
-      from public.match_results result_row
-      where result_row.match_id = match_row.id
-    )
-      and coalesce(match_row.status, '') not in ('void', 'cancelled', 'disputed')
-      and match_row.scheduled_date < ref_date;
+    from past_result_matches
+    where match_row.id = past_result_matches.id;
 
+    with past_open_matches as (
+      select match_row.id
+      from public.matches match_row
+      where not exists (
+        select 1
+        from public.match_results result_row
+        where result_row.match_id = match_row.id
+      )
+        and coalesce(match_row.status, '') not in ('void', 'cancelled', 'disputed')
+        and match_row.scheduled_date < ref_date
+      order by match_row.scheduled_date, match_row.created_at, match_row.id
+      limit batch_size
+    )
     update public.matches match_row
     set
       status = 'approval',
@@ -404,14 +402,22 @@ begin
       stat_entry_minutes = greatest(coalesce(match_row.stat_entry_minutes, 60), 1440),
       dispute_minutes = greatest(coalesce(match_row.dispute_minutes, 120), 2880),
       confirmed_at = null
-    where not exists (
-      select 1
-      from public.match_results result_row
-      where result_row.match_id = match_row.id
-    )
-      and coalesce(match_row.status, '') not in ('void', 'cancelled', 'disputed')
-      and match_row.scheduled_date < ref_date;
+    from past_open_matches
+    where match_row.id = past_open_matches.id;
 
+    with future_open_matches as (
+      select match_row.id
+      from public.matches match_row
+      where not exists (
+        select 1
+        from public.match_results result_row
+        where result_row.match_id = match_row.id
+      )
+        and coalesce(match_row.status, '') not in ('void', 'cancelled')
+        and match_row.scheduled_date >= ref_date
+      order by match_row.scheduled_date, match_row.created_at, match_row.id
+      limit batch_size
+    )
     update public.matches match_row
     set
       status = 'agreed',
@@ -419,13 +425,8 @@ begin
       confirmed_at = null,
       score_a = 0,
       score_b = 0
-    where not exists (
-      select 1
-      from public.match_results result_row
-      where result_row.match_id = match_row.id
-    )
-      and coalesce(match_row.status, '') not in ('void', 'cancelled')
-      and match_row.scheduled_date >= ref_date;
+    from future_open_matches
+    where match_row.id = future_open_matches.id;
   end if;
 end;
 $$;
