@@ -18,8 +18,7 @@ import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import TierBadge from "../components/rating/TierBadge.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
-import { COURTS, MATCH_MODES, PLAYER_POSITIONS, REFEREE_TRUST_MIN, REGIONS } from "../lib/constants.js";
-import { isEligibleReferee } from "../lib/matchUtils.js";
+import { COURTS, MATCH_MODES, PLAYER_POSITIONS, REGIONS } from "../lib/constants.js";
 import {
   RECRUITING_JOIN_MODES,
   getRecruitingBestSide,
@@ -331,7 +330,7 @@ function ReserveLine({ sideName, candidates, playingIds, userById, teams }) {
         {candidates.map((candidate, index) => {
           const user = userById[candidate.playerId];
           if (!user) return null;
-          const canRecord = candidate.source === "reserve-entry" && candidate.status === "ready" && !playingSet.has(candidate.playerId) && isEligibleReferee(user, REFEREE_TRUST_MIN);
+          const canRecord = candidate.source === "reserve-entry" && candidate.status === "ready" && !playingSet.has(candidate.playerId);
           return (
             <PlayerHoverCard key={`${sideName}-${candidate.playerId}`} user={user} teams={teams} className={canRecord ? "ow-member-chip compact recorder" : "ow-member-chip compact"}>
               <b>{index + 1}</b>
@@ -633,13 +632,14 @@ export default function Recruiting({ app }) {
         const selectedTargetTeam = selectedPost.targetTeamId ? teamById[selectedPost.targetTeamId] : null;
         const selectedReferee = selectedPost.refereeId ? userById[selectedPost.refereeId] : null;
         const playingIds = [...lobby.sides.teamA.projectedPlayers, ...lobby.sides.teamB.projectedPlayers];
-        const trustedReserveRecorder = ["teamA", "teamB"]
-          .flatMap((sideName) => lobby.sides[sideName].reserveCandidates ?? [])
-          .find((candidate) => {
-            const user = userById[candidate.playerId];
-            return candidate.source === "reserve-entry" && candidate.status === "ready" && !playingIds.includes(candidate.playerId) && isEligibleReferee(user, REFEREE_TRUST_MIN);
-          });
-        const selectedRecorder = selectedReferee ?? (trustedReserveRecorder ? userById[trustedReserveRecorder.playerId] : null);
+        const statRecorderLabels = ["teamA", "teamB"].map((sideName) => {
+          const recorder = (lobby.sides[sideName].reserveCandidates ?? []).find((candidate) => (
+            candidate.source === "reserve-entry" &&
+            candidate.status === "ready" &&
+            !playingIds.includes(candidate.playerId)
+          ));
+          return recorder ? `${SIDE_LABELS[sideName]} ${userById[recorder.playerId]?.name ?? "후보"}` : "";
+        }).filter(Boolean);
 
         return (
           <div className="ow-compose-backdrop" role="presentation" onMouseDown={() => setSelectedPostId(null)}>
@@ -657,7 +657,7 @@ export default function Recruiting({ app }) {
                 <span><ShieldCheck size={16} /> {selectedPost.ranked === false ? "친선전" : "정규전"}</span>
                 <span><Clock3 size={16} /> {getRecruitingSchedule(selectedPost)}</span>
                 {selectedTargetTeam ? <span><Swords size={16} /> 희망 상대 {selectedTargetTeam.name}</span> : null}
-                <span><ShieldCheck size={16} /> {selectedRecorder ? `${selectedReferee ? "심판" : "후보 기록자"} ${selectedRecorder.name}` : "심판 없음 · 득점만"}</span>
+                <span><ShieldCheck size={16} /> {selectedReferee ? `심판 ${selectedReferee.name}` : statRecorderLabels.length ? `후보 기록자 ${statRecorderLabels.join(" · ")}` : "심판 없음 · 득점만"}</span>
                 <span><UsersRound size={16} /> 팀은 선택 멤버만 참여</span>
                 <span><Clock3 size={16} /> 전원 대기 후 방장 확정</span>
               </div>
@@ -679,7 +679,7 @@ export default function Recruiting({ app }) {
                 <strong>규칙</strong>
                 <span>{selectedPost.memo}</span>
                 <span>팀 MMR은 실제 참가한 팀원 비율 기준으로 반영한다.</span>
-                <span>신뢰도 {REFEREE_TRUST_MIN} 이상 후보가 경기 밖에서 대기 완료하면 기록자로 자동 배정된다.</span>
+                <span>후보가 경기 밖에서 대기 완료하면 해당 팀 개인 활약 기록자로 배정된다.</span>
                 <span>확정 후 불참하면 신뢰점수 패널티 대상이다.</span>
               </div>
 

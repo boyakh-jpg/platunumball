@@ -77,6 +77,24 @@ export function isMatchReferee(match = {}, userId) {
   return Boolean(match.refereeId && userId && match.refereeId === userId);
 }
 
+export function normalizeStatRecorders(recorders = {}) {
+  return {
+    teamA: recorders.teamA ?? "",
+    teamB: recorders.teamB ?? "",
+  };
+}
+
+export function getStatRecorderSides(match = {}, userId) {
+  if (!userId) return [];
+  const recorders = normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders);
+  return ["teamA", "teamB"].filter((sideName) => recorders[sideName] === userId);
+}
+
+export function isMatchStatRecorder(match = {}, userId, sideName = null) {
+  const recorderSides = getStatRecorderSides(match, userId);
+  return sideName ? recorderSides.includes(sideName) : recorderSides.length > 0;
+}
+
 export function getMatchEndDate(match = {}) {
   if (match.endedAt) {
     const ended = new Date(match.endedAt);
@@ -133,8 +151,14 @@ export function getMatchRecordWindow(match = {}, now = Date.now()) {
   };
 }
 
-export function getAllowedStatFields(match = {}, userId) {
+export function getAllowedStatFields(match = {}, userId, playerId = userId) {
   if (isMatchReferee(match, userId)) return PLAYER_STAT_FIELDS;
+  const playerSideName = getPlayerSideName(match, playerId);
+  const recorders = normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders);
+  if (playerSideName && recorders[playerSideName]) {
+    return recorders[playerSideName] === userId ? PLAYER_STAT_FIELDS : [];
+  }
+  if (playerId !== userId) return [];
   return PLAYER_STAT_FIELDS.filter((field) => field.id === "points");
 }
 
@@ -198,10 +222,12 @@ export function calculatePlayerStatBoost(match = {}, playerId, actual = 0.5) {
   const stats = match.result?.playerStats?.[playerId] ?? match.playerStats?.[playerId];
   if (!stats) return 0;
 
+  const source = match.result?.statSubmissions?.[playerId]?.source;
+  const sourceFactor = source === "referee" ? 1 : source === "candidate_recorder" ? 0.72 : source === "player" ? 0.5 : 1;
   const raw = PLAYER_STAT_FIELDS.reduce((sum, field) => sum + Number(stats[field.id] ?? 0) * field.weight, 0);
   const capped = clamp(raw, -0.8, 2.2);
   const resultFactor = actual === 1 ? 1 : actual === 0 ? 0.55 : 0.75;
-  return round(capped * resultFactor);
+  return round(capped * resultFactor * sourceFactor);
 }
 
 export function formatStatLine(stats = {}) {

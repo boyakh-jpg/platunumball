@@ -3,7 +3,7 @@ import Badge from "../common/Badge.jsx";
 import Card from "../common/Card.jsx";
 import PlayerHoverCard from "../profile/PlayerHoverCard.jsx";
 import { CREDIBILITY_LEVELS } from "../../lib/constants.js";
-import { getMatchReferee } from "../../lib/matchUtils.js";
+import { getMatchReferee, normalizeStatRecorders } from "../../lib/matchUtils.js";
 import { getCredibilityLevel } from "../../lib/rating.js";
 
 const mmrLimitLabels = {
@@ -16,6 +16,11 @@ export default function MatchContract({ match, users, teams = [] }) {
   const userMap = Object.fromEntries(users.map((user) => [user.id, user]));
   const credibility = CREDIBILITY_LEVELS[getCredibilityLevel(match)] ?? CREDIBILITY_LEVELS.street_majority;
   const referee = getMatchReferee(match, users);
+  const statRecorders = normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders);
+  const recorderLabel = ["teamA", "teamB"]
+    .filter((sideName) => statRecorders[sideName])
+    .map((sideName) => `${sideName === "teamA" ? "A팀" : "B팀"} ${userMap[statRecorders[sideName]]?.name ?? "후보"}`)
+    .join(" · ");
   const renderRoster = (side) => (
     <div className="roster">
       {side.players.map((id) => {
@@ -88,6 +93,10 @@ export default function MatchContract({ match, users, teams = [] }) {
         <div>
           <span>심판</span>
           <strong>{referee ? `${referee.name} · 신뢰도 ${referee.trustScore}` : "없음 · 득점만"}</strong>
+        </div>
+        <div>
+          <span>후보 기록자</span>
+          <strong>{recorderLabel || "없음"}</strong>
         </div>
         <div>
           <span>공격권</span>

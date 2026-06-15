@@ -15,11 +15,14 @@ import {
   getMatchPlayerIds,
   getMatchRecordWindow,
   getPlayerSideName,
+  getStatRecorderSides,
   getResultPointAudit,
   getStatSubmissionStatus,
   getTeamCaptainId,
   isEligibleReferee,
   isMatchReferee,
+  isMatchStatRecorder,
+  normalizeStatRecorders,
   normalizePlayerStats,
 } from "../lib/matchUtils.js";
 import { applyMatchRating, calculateTeamDelta } from "../lib/rating.js";
@@ -80,6 +83,7 @@ function normalizeMatch(match) {
     disputes: match.disputes ?? [],
     refereeId: match.refereeId ?? "",
     refereeTrustMin: Number(match.refereeTrustMin ?? REFEREE_TRUST_MIN),
+    statRecorders: normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders),
     statEntryMinutes: Number(match.statEntryMinutes ?? STAT_ENTRY_WINDOW_MINUTES),
     disputeMinutes: Number(match.disputeMinutes ?? DISPUTE_WINDOW_MINUTES),
   };
@@ -274,6 +278,7 @@ function fromRemoteMatch(row, context) {
     mmrLimitMode: row.mmr_limit_mode ?? "block",
     refereeId: row.referee_id ?? "",
     refereeTrustMin: row.referee_trust_min ?? REFEREE_TRUST_MIN,
+    statRecorders: normalizeStatRecorders(row.stat_recorders ?? row.rules?.statRecorders),
     statEntryMinutes: row.stat_entry_minutes ?? STAT_ENTRY_WINDOW_MINUTES,
     disputeMinutes: row.dispute_minutes ?? DISPUTE_WINDOW_MINUTES,
     tournamentId: row.tournament_id,
@@ -693,7 +698,7 @@ async function saveNormalizedRemoteState(state) {
     team_b_id: match.teamB?.teamId,
     score_a: Number(match.result?.scoreA ?? match.teamA?.score ?? 0),
     score_b: Number(match.result?.scoreB ?? match.teamB?.score ?? 0),
-    rules: match.rules ?? {},
+    rules: { ...(match.rules ?? {}), statRecorders: normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders) },
     memo: match.memo,
     stakes: match.stakes,
     objection_window: match.objectionWindow,
@@ -740,7 +745,7 @@ async function saveNormalizedRemoteState(state) {
       match_id: match.id,
       user_id: userId,
       recorded_by: match.result?.statSubmissions?.[userId]?.by ?? null,
-      record_source: match.refereeId ? "referee" : "player",
+      record_source: match.result?.statSubmissions?.[userId]?.source === "referee" ? "referee" : "player",
       points: Number(stat.points ?? 0),
       rebounds: Number(stat.rebounds ?? 0),
       assists: Number(stat.assists ?? 0),
@@ -925,14 +930,20 @@ function getTrustedRefereeId(state, refereeId, playerIds = []) {
   return isEligibleReferee(user, REFEREE_TRUST_MIN) ? refereeId : "";
 }
 
-function getTrustedReserveRecorderId(state, lobby, playerIds = []) {
+function getReserveStatRecorders(lobby, playerIds = []) {
   const playingIds = new Set(playerIds);
-  const candidates = ["teamA", "teamB"].flatMap((sideName) => lobby.sides[sideName].reserveCandidates ?? []);
-  return candidates.find((candidate) => {
-    if (candidate.source !== "reserve-entry" || candidate.status !== "ready" || playingIds.has(candidate.playerId)) return false;
-    const user = state.users.find((item) => item.id === candidate.playerId);
-    return isEligibleReferee(user, REFEREE_TRUST_MIN);
-  })?.playerId ?? "";
+  return {
+    teamA: (lobby.sides.teamA.reserveCandidates ?? []).find((candidate) => (
+      candidate.source === "reserve-entry" &&
+      candidate.status === "ready" &&
+      !playingIds.has(candidate.playerId)
+    ))?.playerId ?? "",
+    teamB: (lobby.sides.teamB.reserveCandidates ?? []).find((candidate) => (
+      candidate.source === "reserve-entry" &&
+      candidate.status === "ready" &&
+      !playingIds.has(candidate.playerId)
+    ))?.playerId ?? "",
+  };
 }
 
 function getScheduleText(date, time) {
@@ -1564,6 +1575,8 @@ export function submitMatchResult(state, matchId, result) {
   const hasReferee = Boolean(match.refereeId);
   const currentUser = state.users.find((user) => user.id === currentUserId);
   const currentUserIsReferee = isMatchReferee(match, currentUserId);
+  const recorderSides = getStatRecorderSides(match, currentUserId);
+  const currentUserCanRecord = currentUserIsReferee || Boolean(currentSideName) || recorderSides.length > 0;
 
   if (hasReferee && (!currentUserIsReferee || !isEligibleReferee(currentUser, match.refereeTrustMin))) {
     return {
@@ -1581,14 +1594,14 @@ export function submitMatchResult(state, matchId, result) {
     };
   }
 
-  if (!hasReferee && !currentSideName) {
+  if (!hasReferee && !currentUserCanRecord) {
     return {
       ...state,
       notifications: [
         {
           id: makeId("n"),
           title: "결과 입력 권한 없음",
-          body: "경기 참가자만 스코어와 본인 득점을 입력할 수 있습니다.",
+          body: "경기 참가자 또는 팀 후보 기록자만 스코어와 개인 활약을 입력할 수 있습니다.",
           tone: "match",
           matchId,
         },
@@ -1634,36 +1647,47 @@ export function submitMatchResult(state, matchId, result) {
   const now = new Date().toISOString();
   const existingStats = normalizePlayerStats(match.result?.playerStats ?? {}, playerIds);
   const endedAt = match.endedAt ?? recordWindow.endAt?.toISOString() ?? now;
-  const submittedStats = normalizePlayerStats(result.playerStats ?? {}, hasReferee ? playerIds : [currentUserId]);
-  const nextPlayerStats = hasReferee
-    ? submittedStats
-    : {
-        ...existingStats,
-        [currentUserId]: Object.fromEntries(
-          Object.entries(submittedStats[currentUserId]).map(([fieldId, value]) => [
-            fieldId,
-            getAllowedStatFields(match, currentUserId).some((field) => field.id === fieldId) ? value : 0,
-          ]),
-        ),
-      };
-  const nextSubmissions = hasReferee
-    ? Object.fromEntries(
-        playerIds.map((playerId) => [
-          playerId,
-          {
-            by: currentUserId,
-            side: "referee",
-            submittedAt: now,
-          },
+  const recorderPlayerIds = recorderSides.flatMap((sideName) => match[sideName]?.players ?? []);
+  const selfPlayerIds = currentSideName ? [currentUserId] : [];
+  const targetPlayerIds = hasReferee ? playerIds : [...new Set([...recorderPlayerIds, ...selfPlayerIds])]
+    .filter((playerId) => getAllowedStatFields(match, currentUserId, playerId).length > 0);
+  if (!hasReferee && !targetPlayerIds.length) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "후보 기록자 배정됨",
+          body: "이 팀은 후보 기록자가 개인 활약을 입력합니다.",
+          tone: "match",
+          matchId,
+        },
+        ...state.notifications,
+      ],
+    };
+  }
+  const submittedStats = normalizePlayerStats(result.playerStats ?? {}, targetPlayerIds);
+  const nextPlayerStats = hasReferee ? submittedStats : { ...existingStats };
+  if (!hasReferee) {
+    targetPlayerIds.forEach((playerId) => {
+      const allowedFieldIds = new Set(getAllowedStatFields(match, currentUserId, playerId).map((field) => field.id));
+      nextPlayerStats[playerId] = Object.fromEntries(
+        Object.entries(submittedStats[playerId]).map(([fieldId, value]) => [
+          fieldId,
+          allowedFieldIds.has(fieldId) ? value : existingStats[playerId]?.[fieldId] ?? 0,
         ]),
-      )
+      );
+    });
+  }
+  const nextSubmissions = hasReferee
+    ? Object.fromEntries(playerIds.map((playerId) => [playerId, { by: currentUserId, side: "referee", source: "referee", submittedAt: now }]))
     : {
         ...(match.result?.statSubmissions ?? {}),
-        [currentUserId]: {
-          by: currentUserId,
-          side: currentSideName,
-          submittedAt: now,
-        },
+        ...Object.fromEntries(targetPlayerIds.map((playerId) => {
+          const sideName = getPlayerSideName(match, playerId);
+          const source = isMatchStatRecorder(match, currentUserId, sideName) ? "candidate_recorder" : "player";
+          return [playerId, { by: currentUserId, side: sideName, source, submittedAt: now }];
+        })),
       };
   const nextResult = {
     scoreA: Number(result.scoreA),
@@ -1693,9 +1717,11 @@ export function submitMatchResult(state, matchId, result) {
     notifications: [
       {
         id: makeId("n"),
-        title: hasReferee ? "심판 기록 제출" : "내 득점 제출",
+        title: hasReferee ? "심판 기록 제출" : recorderSides.length ? "후보 기록 제출" : "내 득점 제출",
         body: hasReferee
           ? `${match.title} 스코어와 전체 개인 활약이 저장됐습니다.`
+          : recorderSides.length
+            ? `${match.title} 후보 기록자가 팀 개인 활약을 저장했습니다.`
           : `${match.title} 스코어와 내 득점이 저장됐습니다. 전원 제출 후 결과 승인이 가능합니다.`,
         tone: "match",
         matchId,
@@ -2345,7 +2371,8 @@ export function confirmRecruitingMatch(state, postId) {
   const teamAPlayers = lobby.sides.teamA.projectedPlayers.slice(0, lobby.sides.teamA.capacity);
   const teamBPlayers = lobby.sides.teamB.projectedPlayers.slice(0, lobby.sides.teamB.capacity);
   const playerIds = [...teamAPlayers, ...teamBPlayers];
-  const refereeId = getTrustedRefereeId(state, post.refereeId, playerIds) || getTrustedReserveRecorderId(state, lobby, playerIds);
+  const refereeId = getTrustedRefereeId(state, post.refereeId, playerIds);
+  const statRecorders = getReserveStatRecorders(lobby, playerIds);
   const match = {
     id: makeId("m"),
     title: post.title,
@@ -2359,6 +2386,7 @@ export function confirmRecruitingMatch(state, postId) {
     preRegistered: true,
     refereeId,
     refereeTrustMin: REFEREE_TRUST_MIN,
+    statRecorders,
     statEntryMinutes: STAT_ENTRY_WINDOW_MINUTES,
     disputeMinutes: DISPUTE_WINDOW_MINUTES,
     rules: post.rules ?? { targetScore: 21, timeLimit: 12, winByTwo: true, ball: "7호 공" },

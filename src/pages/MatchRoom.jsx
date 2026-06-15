@@ -21,9 +21,12 @@ import {
   getMatchRecordWindow,
   getMatchReferee,
   getMatchPlayerIds,
+  getPlayerSideName,
   getPlayerStatSubmitted,
+  getStatRecorderSides,
   getStatSubmissionStatus,
   isMatchReferee,
+  isMatchStatRecorder,
 } from "../lib/matchUtils.js";
 
 const statusMeta = {
@@ -105,8 +108,14 @@ export default function MatchRoom({ app }) {
   const referee = getMatchReferee(match, app.state.users);
   const hasReferee = Boolean(match.refereeId);
   const currentUserIsReferee = isMatchReferee(match, app.currentUser.id);
-  const currentUserInMatch = allPlayerIds.includes(app.currentUser.id);
-  const canSubmitResult = ["agreed", "approval"].includes(match.status) && recordWindow.statOpen && (hasReferee ? currentUserIsReferee : currentUserInMatch);
+  const statRecorders = match.statRecorders ?? match.rules?.statRecorders ?? {};
+  const currentRecorderSides = getStatRecorderSides(match, app.currentUser.id);
+  const hasSideRecorders = Boolean(statRecorders.teamA || statRecorders.teamB);
+  const currentUserEditablePlayerIds = hasReferee && currentUserIsReferee
+    ? allPlayerIds
+    : allPlayerIds.filter((playerId) => getAllowedStatFields(match, app.currentUser.id, playerId).length > 0);
+  const currentUserCanSubmit = hasReferee ? currentUserIsReferee : currentUserEditablePlayerIds.length > 0;
+  const canSubmitResult = ["agreed", "approval"].includes(match.status) && recordWindow.statOpen && currentUserCanSubmit;
   const statSubmissionStatus = getStatSubmissionStatus(match);
   const currentUserSubmitted = getPlayerStatSubmitted(match, app.currentUser.id);
   const canCancel = ["contract", "agreed"].includes(match.status);
@@ -129,6 +138,8 @@ export default function MatchRoom({ app }) {
       ? "기록 입력 마감"
       : hasReferee && !currentUserIsReferee
         ? "심판만 입력"
+        : !currentUserCanSubmit
+          ? "참가자/후보 기록자만 입력"
         : "입력 가능";
   const renderHeroRoster = (sideName) => {
     const team = match[sideName];
@@ -175,14 +186,42 @@ export default function MatchRoom({ app }) {
     event.preventDefault();
     if (canSubmitResult) app.actions.submitMatchResult(match.id, score);
   };
-  const canEditPlayerStat = (playerId) => canSubmitResult && (hasReferee ? currentUserIsReferee : playerId === app.currentUser.id);
-  const editableStatFields = getAllowedStatFields(match, app.currentUser.id);
+  const getSideLabel = (sideName) => (sideName === "teamA" ? "A팀" : "B팀");
+  const getRecorderName = (sideName) => userMap[statRecorders[sideName]]?.name ?? "";
+  const canEditPlayerStat = (playerId) => canSubmitResult && getAllowedStatFields(match, app.currentUser.id, playerId).length > 0;
+  const editableStatFields = statEditorPlayerId ? getAllowedStatFields(match, app.currentUser.id, statEditorPlayerId) : [];
+  const getPlayerStatState = (playerId, submitted) => {
+    const sideName = getPlayerSideName(match, playerId);
+    const recorderName = sideName ? getRecorderName(sideName) : "";
+    if (canEditPlayerStat(playerId)) {
+      if (hasReferee) return "심판 입력";
+      if (sideName && isMatchStatRecorder(match, app.currentUser.id, sideName)) return "후보 기록";
+      return submitted ? "득점 수정" : "내 득점";
+    }
+    if (submitted) return "제출됨";
+    if (recorderName) return `후보 ${recorderName}`;
+    return "미제출";
+  };
+  const permissionTitle = hasReferee
+    ? `심판 ${referee?.name ?? "지정됨"}`
+    : currentRecorderSides.length
+      ? `후보 기록자 ${currentRecorderSides.map(getSideLabel).join(", ")}`
+      : hasSideRecorders
+        ? "후보 기록자 배정"
+        : "참가자 본인 득점";
+  const permissionDetail = hasReferee
+    ? "심판만 전체 개인 활약 입력"
+    : currentRecorderSides.length
+      ? "내가 맡은 팀의 득점/리바운드/어시스트/스틸/블록 입력"
+      : hasSideRecorders
+        ? "후보가 있는 팀은 후보 기록자가 개인 활약 입력"
+        : "리바운드/어시스트/스틸/블록은 비활성";
   const pointAuditA = getPointAudit(match, score, "teamA");
   const pointAuditB = getPointAudit(match, score, "teamB");
   const statTrustSteps = [
     {
       id: "self",
-      label: "전원 본인 제출",
+      label: hasSideRecorders ? "후보/본인 제출" : "전원 본인 제출",
       detail: `${statSubmissionStatus.submitted}/${statSubmissionStatus.total}명 제출`,
       complete: statSubmissionStatus.complete,
     },
@@ -298,8 +337,8 @@ export default function MatchRoom({ app }) {
             <div className="stat-referee-panel">
               <div>
                 <span>기록 권한</span>
-                <strong>{hasReferee ? `심판 ${referee?.name ?? "지정됨"}` : "참가자 본인 득점"}</strong>
-                <em>{hasReferee ? "심판만 전체 개인 활약 입력" : "리바운드/어시스트/스틸/블록은 비활성"}</em>
+                <strong>{permissionTitle}</strong>
+                <em>{permissionDetail}</em>
               </div>
               <div>
                 <span>개인 기록 마감</span>
@@ -323,18 +362,20 @@ export default function MatchRoom({ app }) {
                 <input type="number" min="0" disabled={!canSubmitResult} value={score.scoreB} onChange={(event) => setScore((current) => ({ ...current, scoreB: event.target.value }))} />
               </label>
               <Button type="submit" disabled={!canSubmitResult}>
-                {hasReferee ? "심판 기록 제출" : currentUserSubmitted ? "스코어/내 득점 다시 제출" : "스코어/내 득점 제출"}
+                {hasReferee ? "심판 기록 제출" : currentRecorderSides.length ? "후보 기록 제출" : currentUserSubmitted ? "스코어/내 득점 다시 제출" : "스코어/내 득점 제출"}
               </Button>
               <div className="stat-integrity-note">
                 {hasReferee
                   ? "심판이 스코어와 전체 개인 활약을 한 번에 저장합니다. 1시간 안에 입력해야 합니다."
-                  : "심판이 없으면 각 참가자는 본인 득점만 저장합니다. 전원 제출과 득점 합계가 맞아야 결과 승인이 열립니다."}
+                  : hasSideRecorders
+                    ? "후보가 있는 팀은 후보 기록자가 해당 팀 개인 활약을 저장합니다. 후보 기록은 심판보다 낮은 MMR 가중치로 반영됩니다."
+                    : "심판이 없으면 각 참가자는 본인 득점만 저장합니다. 전원 제출과 득점 합계가 맞아야 결과 승인이 열립니다."}
               </div>
               <div className="stat-trust-panel">
                 <div className="stat-trust-head">
                   <div>
                     <strong>개인 기록 신뢰도</strong>
-                    <span>전원 본인 제출, 득점 합계, 양팀 승인, 증거 첨부를 같이 봅니다.</span>
+                    <span>후보/본인 제출, 득점 합계, 양팀 승인, 증거 첨부를 같이 봅니다.</span>
                   </div>
                   <Badge tone={statTrustPercent >= 75 ? "green" : statTrustPercent >= 50 ? "orange" : "neutral"}>{statTrustPercent}%</Badge>
                 </div>
@@ -361,10 +402,10 @@ export default function MatchRoom({ app }) {
                             <span className="avatar small" style={{ "--avatar": user?.avatarColor }}>{user?.name?.slice(0, 1) ?? "P"}</span>
                             <span>
                               <strong>{user?.name ?? "플레이어"}</strong>
-                              <em>{canEdit ? formatStatLine(score.playerStats[playerId]) : `${user?.position ?? "-"} · ${submitted ? "제출됨" : "미제출"}`}</em>
+                              <em>{canEdit ? formatStatLine(score.playerStats[playerId]) : `${user?.position ?? "-"} · ${getPlayerStatState(playerId, submitted)}`}</em>
                             </span>
                           </PlayerHoverCard>
-                          <strong>{canEdit ? (hasReferee ? "심판 입력" : submitted ? "득점 수정" : "내 득점") : submitted ? "제출됨" : "미제출"}</strong>
+                          <strong>{getPlayerStatState(playerId, submitted)}</strong>
                         </button>
                       );
                     })}
