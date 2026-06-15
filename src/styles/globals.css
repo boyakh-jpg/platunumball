@@ -2877,6 +2877,78 @@ input[type="color"] {
   padding: 4px 7px;
 }
 
+.home-action-card {
+  border-color: rgba(255, 211, 108, 0.28);
+  background:
+    linear-gradient(90deg, rgba(255, 211, 108, 0.08), rgba(70, 224, 182, 0.035)),
+    rgba(8, 11, 16, 0.9);
+}
+
+.home-action-list {
+  display: grid;
+  gap: 8px;
+}
+
+.home-action-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.045);
+  padding: 10px;
+}
+
+.home-action-row.priority-1,
+.home-action-row.priority-2,
+.home-action-row.priority-3 {
+  border-color: rgba(255, 211, 108, 0.34);
+  background: rgba(255, 211, 108, 0.075);
+}
+
+.home-action-icon {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 8px;
+  background: rgba(70, 224, 182, 0.14);
+  color: var(--green);
+}
+
+.home-action-main {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.home-action-main strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-action-main em {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-style: normal;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-action-row b {
+  border-radius: 999px;
+  background: rgba(116, 169, 255, 0.12);
+  color: var(--blue);
+  font-size: 0.74rem;
+  font-weight: 950;
+  padding: 5px 8px;
+  white-space: nowrap;
+}
+
 .opgg-summary-grid {
   display: grid;
   grid-template-columns: minmax(280px, 0.95fr) minmax(320px, 1.2fr) minmax(280px, 0.9fr);
@@ -3153,12 +3225,14 @@ input[type="color"] {
   }
 
   .opgg-search-results a,
-  .opgg-rank-list a {
+  .opgg-rank-list a,
+  .home-action-row {
     grid-template-columns: auto minmax(0, 1fr);
   }
 
   .opgg-search-results small,
-  .opgg-rank-list em {
+  .opgg-rank-list em,
+  .home-action-row b {
     grid-column: 2;
     justify-self: start;
   }
@@ -4715,6 +4789,12 @@ html[data-theme="light"] .season-race-list a,
 html[data-theme="light"] .history-item {
   border-color: rgba(32, 56, 68, 0.14);
   background: rgba(255, 255, 255, 0.58);
+}
+
+html[data-theme="light"] .home-action-card {
+  background:
+    linear-gradient(90deg, rgba(255, 211, 108, 0.14), rgba(70, 224, 182, 0.08)),
+    rgba(255, 255, 255, 0.82);
 }
 
 html[data-theme="light"] .court-command {

@@ -4,7 +4,7 @@ import { TIERS, getTier, getTierDivision } from "./tier.js";
 export const RECRUITING_TYPES = {
   need_player: {
     label: "매치 큐",
-    shortLabel: "빈자리 모집",
+    shortLabel: "빈자리 대기",
     emptyTitle: "오늘 매치 큐",
     applicantKind: "player",
     actionLabel: "개인 대기",
@@ -32,7 +32,7 @@ export const RECRUITING_JOIN_MODES = {
   player: {
     label: "개인",
     actionLabel: "개인으로 대기",
-    description: "용병처럼 한 자리로 참여",
+    description: "빈 슬롯 한 자리로 참여",
   },
   team: {
     label: "팀",
@@ -173,6 +173,16 @@ export function hasRecruitingApplicant(post = {}, entry) {
   const key = getRecruitingApplicantKey(entry);
   if (!key) return false;
   return normalizeRecruitingApplicants(post.applicants ?? []).some((applicant) => getRecruitingApplicantKey(applicant) === key);
+}
+
+export function isRecruitingPostForUser(post = {}, userId, teamIds = []) {
+  if (!userId) return false;
+  const teamIdSet = new Set(teamIds.filter(Boolean));
+  if (post.playerId === userId) return true;
+  if (post.teamId && teamIdSet.has(post.teamId)) return true;
+  return normalizeRecruitingApplicants(post.applicants ?? []).some((applicant) => (
+    applicant.playerId === userId || (applicant.teamId && teamIdSet.has(applicant.teamId))
+  ));
 }
 
 export function normalizeRecruitingPost(post = {}) {

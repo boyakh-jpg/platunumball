@@ -396,6 +396,9 @@ async function loadNormalizedRemoteState() {
       region: post.region,
       court: post.court_name ?? courtById[post.court_id]?.name ?? "미정",
       mode: post.mode,
+      scheduledDate: post.scheduled_date,
+      scheduledTime: post.scheduled_time ? String(post.scheduled_time).slice(0, 5) : "",
+      scheduledAt: toDateTime(post.scheduled_date, post.scheduled_time, post.scheduled_at),
       ranked: post.ranked,
       spots: post.spots,
       teamId: post.team_id,
@@ -643,6 +646,9 @@ async function saveNormalizedRemoteState(state) {
     court_id: courtIdByName(post.court),
     court_name: post.court,
     mode: post.mode,
+    scheduled_date: post.scheduledDate || null,
+    scheduled_time: toDbTime(post.scheduledTime),
+    scheduled_at: post.scheduledAt && post.scheduledAt !== "일정 미정" ? post.scheduledAt : null,
     ranked: post.ranked !== false,
     spots: post.spots ?? 1,
     host_join_mode: post.hostJoinMode ?? (post.teamId ? "team" : "player"),
@@ -1368,6 +1374,7 @@ export function createRecruitingPost(state, draft) {
   const hostTeam = hostJoinMode === "team" ? state.teams.find((team) => team.id === draft.teamId) : null;
   const activeHostCount = hostTeam?.members?.filter((member) => !["candidate", "substitute"].includes(member.role)).length ?? 1;
   const hostSize = hostJoinMode === "team" ? Math.min(sideCapacity, Math.max(1, activeHostCount)) : 1;
+  const scheduledAt = `${draft.scheduledDate ?? ""} ${draft.scheduledTime ?? ""}`.trim();
   const post = {
     id: makeId("q"),
     type: postType,
@@ -1375,6 +1382,9 @@ export function createRecruitingPost(state, draft) {
     region: draft.region || state.users.find((user) => user.id === state.currentUserId)?.region || "전체",
     court: draft.court || "미정",
     mode: draft.mode || "5v5",
+    scheduledDate: draft.scheduledDate || "",
+    scheduledTime: draft.scheduledTime || "",
+    scheduledAt: scheduledAt || "일정 미정",
     ranked: draft.ranked !== false,
     spots: Math.max(1, sideCapacity * 2 - hostSize),
     teamId: hostJoinMode === "team" ? draft.teamId : null,

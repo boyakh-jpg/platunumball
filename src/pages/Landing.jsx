@@ -62,7 +62,7 @@ export default function Landing({ state }) {
             <div className="broadcast-list">
               <span><Trophy size={17} /> {topUser.name} <b>{topUser.ratings.integrated}</b></span>
               <span><ClipboardCheck size={17} /> 승인 대기 <b>{approvalCount}</b></span>
-              <span><ShieldCheck size={17} /> 모집 큐 <b>{recruitingCount}</b></span>
+              <span><ShieldCheck size={17} /> 대기 매칭 <b>{recruitingCount}</b></span>
               <span><BarChart3 size={17} /> 상태 <b>{statusLabel}</b></span>
             </div>
           </Link>

@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { CalendarDays, CheckCircle2, Clock3, PlusCircle, ShieldAlert, Swords, Trophy } from "lucide-react";
+import { CalendarDays, CheckCircle2, PlusCircle, ShieldAlert, Swords, Trophy } from "lucide-react";
 import Button from "../components/common/Button.jsx";
+import { MATCH_MODES } from "../lib/constants.js";
 
 const STATUS_META = {
   contract: { label: "동의", tone: "blue" },
@@ -15,20 +16,28 @@ const STATUS_META = {
 
 const VIEWS = [
   {
+    id: "todo",
+    code: "ACTION",
+    title: "처리 필요",
+    desc: "동의, 승인, 보류",
+    icon: ShieldAlert,
+    statuses: ["contract", "approval", "disputed"],
+  },
+  {
+    id: "scheduled",
+    code: "SOON",
+    title: "예정",
+    desc: "진행 예정 경기",
+    icon: CalendarDays,
+    statuses: ["agreed"],
+  },
+  {
     id: "active",
     code: "LIVE",
-    title: "진행중",
+    title: "전체 진행",
     desc: "동의, 예정, 승인, 보류",
     icon: Swords,
     statuses: ["contract", "agreed", "approval", "disputed"],
-  },
-  {
-    id: "approval",
-    code: "CHECK",
-    title: "처리 필요",
-    desc: "승인과 이의 확인",
-    icon: ShieldAlert,
-    statuses: ["approval", "disputed"],
   },
   {
     id: "done",
@@ -67,20 +76,34 @@ function getViewCount(matches, view) {
   return matches.filter((match) => view.statuses.includes(match.status)).length;
 }
 
+function matchHasUser(match, userId) {
+  return match.teamA.players.includes(userId) || match.teamB.players.includes(userId);
+}
+
 export default function Matches({ app }) {
-  const [viewId, setViewId] = useState("active");
+  const [viewId, setViewId] = useState("todo");
+  const [scopeFilter, setScopeFilter] = useState("all");
+  const [kindFilter, setKindFilter] = useState("all");
+  const [modeFilter, setModeFilter] = useState("all");
   const selectedView = VIEWS.find((view) => view.id === viewId) ?? VIEWS[0];
 
-  const matchesByView = useMemo(() => {
+  const filteredMatches = useMemo(() => {
     return [...app.state.matches]
+      .filter((match) => scopeFilter !== "mine" || matchHasUser(match, app.currentUser.id))
+      .filter((match) => kindFilter === "all" || (kindFilter === "ranked" ? match.ranked !== false : match.ranked === false))
+      .filter((match) => modeFilter === "all" || match.mode === modeFilter);
+  }, [app.currentUser.id, app.state.matches, kindFilter, modeFilter, scopeFilter]);
+
+  const matchesByView = useMemo(() => {
+    return filteredMatches
       .filter((match) => selectedView.statuses.includes(match.status))
       .sort(compareRecent);
-  }, [app.state.matches, selectedView.statuses]);
+  }, [filteredMatches, selectedView.statuses]);
 
   const visibleMatches = matchesByView.slice(0, selectedView.id === "done" ? 80 : 60);
-  const activeCount = getViewCount(app.state.matches, VIEWS[0]);
-  const approvalCount = getViewCount(app.state.matches, VIEWS[1]);
-  const doneCount = getViewCount(app.state.matches, VIEWS[2]);
+  const todoCount = getViewCount(filteredMatches, VIEWS[0]);
+  const scheduledCount = getViewCount(filteredMatches, VIEWS[1]);
+  const doneCount = getViewCount(filteredMatches, VIEWS[3]);
 
   return (
     <div className="page-stack om-match-page">
@@ -92,8 +115,8 @@ export default function Matches({ app }) {
         </div>
         <div className="om-match-panel">
           <div className="om-match-stats">
-            <span><strong>{activeCount}</strong>LIVE</span>
-            <span><strong>{approvalCount}</strong>CHECK</span>
+            <span><strong>{todoCount}</strong>ACTION</span>
+            <span><strong>{scheduledCount}</strong>SOON</span>
             <span><strong>{doneCount}</strong>DONE</span>
           </div>
           <Link to="/app/create">
@@ -125,13 +148,32 @@ export default function Matches({ app }) {
         })}
       </section>
 
+      <section className="om-filter-bar" aria-label="경기 필터">
+        <div className="segmented-control compact-segments">
+          <button type="button" className={scopeFilter === "all" ? "active" : ""} onClick={() => setScopeFilter("all")}>전체 경기</button>
+          <button type="button" className={scopeFilter === "mine" ? "active" : ""} onClick={() => setScopeFilter("mine")}>내 경기</button>
+        </div>
+        <div className="segmented-control compact-segments">
+          <button type="button" className={kindFilter === "all" ? "active" : ""} onClick={() => setKindFilter("all")}>전체</button>
+          <button type="button" className={kindFilter === "ranked" ? "active" : ""} onClick={() => setKindFilter("ranked")}>정규전</button>
+          <button type="button" className={kindFilter === "friendly" ? "active" : ""} onClick={() => setKindFilter("friendly")}>친선전</button>
+        </div>
+        <label>
+          모드
+          <select value={modeFilter} onChange={(event) => setModeFilter(event.target.value)}>
+            <option value="all">전체 모드</option>
+            {MATCH_MODES.map((mode) => <option key={mode.id} value={mode.id}>{mode.label}</option>)}
+          </select>
+        </label>
+      </section>
+
       <section className="om-match-list" aria-label="경기 목록">
         <div className="om-list-head">
           <div>
             <span className="om-kicker">{selectedView.code}</span>
             <h2>{selectedView.title}</h2>
           </div>
-          <span>{matchesByView.length}개 중 {visibleMatches.length}개 표시</span>
+          <span>{filteredMatches.length}개 필터 · {matchesByView.length}개 중 {visibleMatches.length}개 표시</span>
         </div>
 
         {visibleMatches.length ? visibleMatches.map((match) => {

@@ -266,6 +266,24 @@
   opacity: 0.68;
 }
 
+.ow-recruit-card.ow-my-room {
+  border-color: rgba(70, 224, 182, 0.5);
+  box-shadow: 0 0 0 1px rgba(70, 224, 182, 0.14), 0 18px 50px rgba(0, 0, 0, 0.24);
+}
+
+.ow-my-room-tag {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: rgba(70, 224, 182, 0.16);
+  color: var(--green);
+  font-size: 0.7rem;
+  font-weight: 950;
+  line-height: 1;
+  padding: 6px 8px;
+  white-space: nowrap;
+}
+
 .ow-card-main {
   display: grid;
   min-width: 0;

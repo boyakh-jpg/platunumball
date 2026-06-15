@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Handshake, PlusCircle, Search, Swords, Trophy } from "lucide-react";
+import { CalendarDays, ClipboardCheck, Handshake, PlusCircle, Search, ShieldAlert, Swords, Trophy } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
@@ -8,7 +8,7 @@ import MatchCard from "../components/match/MatchCard.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
 import { COURTS } from "../lib/constants.js";
-import { RECRUITING_TYPES, isNationalRecruitingPost } from "../lib/recruiting.js";
+import { RECRUITING_TYPES, isRecruitingPostForUser, isNationalRecruitingPost } from "../lib/recruiting.js";
 import { getCurrentSeason, getPlayerSeasonRows, getSeasonProgress } from "../lib/season.js";
 import { getTierDivision } from "../lib/tier.js";
 
@@ -18,6 +18,12 @@ function compareSchedule(a, b) {
 
 function matchHasUser(match, userId) {
   return match.teamA.players.includes(userId) || match.teamB.players.includes(userId);
+}
+
+function isPastScheduled(match) {
+  if (!match.scheduledDate) return false;
+  const scheduled = new Date(`${match.scheduledDate}T${match.scheduledTime || "00:00"}`);
+  return Number.isFinite(scheduled.getTime()) && scheduled.getTime() <= Date.now();
 }
 
 function getUserResult(match, userId) {
@@ -33,6 +39,20 @@ function getUserSide(match, userId) {
   if (match.teamA.players.includes(userId)) return "teamA";
   if (match.teamB.players.includes(userId)) return "teamB";
   return "teamA";
+}
+
+function userNeedsAgreement(match, userId) {
+  const sideName = getUserSide(match, userId);
+  return match.status === "contract" && matchHasUser(match, userId) && !(match.agreements?.[sideName] ?? []).includes(userId);
+}
+
+function userNeedsApproval(match, userId) {
+  const sideName = getUserSide(match, userId);
+  return match.status === "approval" && matchHasUser(match, userId) && !(match.approvals?.[sideName] ?? []).includes(userId);
+}
+
+function getRecruitingSchedule(post) {
+  return [post.scheduledDate, post.scheduledTime].filter(Boolean).join(" ") || post.scheduledAt || "일정 미정";
 }
 
 function getSideScore(match, sideName) {
@@ -56,14 +76,15 @@ export default function Home({ app }) {
   const user = app.currentUser;
   const [query, setQuery] = useState("");
   const searchText = query.trim().toLowerCase();
-  const approvalMatches = [...app.state.matches].filter((match) => match.status === "approval");
-  const upcomingMatches = [...app.state.matches].filter((match) => ["contract", "agreed"].includes(match.status)).sort(compareSchedule);
+  const approvalMatches = [...app.state.matches].filter((match) => match.status === "approval" && matchHasUser(match, user.id));
+  const upcomingMatches = [...app.state.matches].filter((match) => ["contract", "agreed"].includes(match.status) && matchHasUser(match, user.id)).sort(compareSchedule);
   const completedMatches = [...app.state.matches].filter((match) => match.status === "confirmed");
   const myTeam = app.state.teams.find((team) => team.members.some((member) => member.userId === user.id));
   const myTeams = app.state.teams
     .filter((team) => team.members.some((member) => member.userId === user.id))
     .map((team) => ({ ...team, myRole: team.members.find((member) => member.userId === user.id)?.role ?? "regular" }))
     .sort((a, b) => Number(b.myRole === "captain") - Number(a.myRole === "captain") || b.mmr - a.mmr);
+  const myTeamIds = useMemo(() => myTeams.map((team) => team.id), [myTeams]);
   const myTeamCount = app.state.teams.filter((team) => team.members.some((member) => member.userId === user.id)).length;
   const blockedUserIds = app.state.settings?.blockedUserIds ?? [];
   const season = getCurrentSeason(app.state);
@@ -90,6 +111,74 @@ export default function Home({ app }) {
   const myCompletedMatches = completedMatches.filter((match) => matchHasUser(match, user.id));
   const myWins = myCompletedMatches.filter((match) => getUserResult(match, user.id) === "W").length;
   const winRate = myCompletedMatches.length ? Math.round((myWins / myCompletedMatches.length) * 100) : 0;
+  const priorityItems = useMemo(() => {
+    const matchItems = app.state.matches
+      .filter((match) => matchHasUser(match, user.id))
+      .map((match) => {
+        if (userNeedsApproval(match, user.id)) {
+          return {
+            id: `approval-${match.id}`,
+            priority: 1,
+            label: "결과 승인",
+            title: match.title,
+            meta: `${match.scheduledAt} · ${match.court}`,
+            href: `/app/matches/${match.id}`,
+            icon: ShieldAlert,
+          };
+        }
+        if (userNeedsAgreement(match, user.id)) {
+          return {
+            id: `agreement-${match.id}`,
+            priority: 2,
+            label: "동의 필요",
+            title: match.title,
+            meta: `${match.scheduledAt} · ${match.court}`,
+            href: `/app/matches/${match.id}`,
+            icon: ClipboardCheck,
+          };
+        }
+        if (match.status === "agreed" && isPastScheduled(match)) {
+          return {
+            id: `result-${match.id}`,
+            priority: 3,
+            label: "결과 입력",
+            title: match.title,
+            meta: `${match.scheduledAt} · ${match.court}`,
+            href: `/app/matches/${match.id}`,
+            icon: CalendarDays,
+          };
+        }
+        if (match.status === "agreed") {
+          return {
+            id: `scheduled-${match.id}`,
+            priority: 4,
+            label: "예정 경기",
+            title: match.title,
+            meta: `${match.scheduledAt} · ${match.court}`,
+            href: `/app/matches/${match.id}`,
+            icon: CalendarDays,
+          };
+        }
+        return null;
+      })
+      .filter(Boolean);
+    const roomItems = (app.state.recruitingPosts ?? [])
+      .filter((post) => post.status !== "closed")
+      .filter((post) => isRecruitingPostForUser(post, user.id, myTeamIds))
+      .map((post) => ({
+        id: `queue-${post.id}`,
+        priority: 5,
+        label: post.playerId === user.id ? "내가 연 방" : "대기 중",
+        title: post.title,
+        meta: `${getRecruitingSchedule(post)} · ${post.court}`,
+        href: "/app/recruiting",
+        icon: Handshake,
+      }));
+
+    return [...matchItems, ...roomItems]
+      .sort((a, b) => a.priority - b.priority || String(a.meta).localeCompare(String(b.meta)))
+      .slice(0, 5);
+  }, [app.state.matches, app.state.recruitingPosts, myTeamIds, user.id]);
 
   const searchResults = useMemo(() => {
     const players = app.state.users
@@ -157,7 +246,7 @@ export default function Home({ app }) {
           <Link to="/app/rankings">랭킹</Link>
           <Link to="/app/matches">경기</Link>
           <Link to="/app/teams">팀</Link>
-          <Link to="/app/recruiting">모집</Link>
+          <Link to="/app/recruiting">매칭</Link>
         </div>
         <div className="home-search-results unified opgg-search-results">
           {searchResults.map((item) => (
@@ -174,6 +263,33 @@ export default function Home({ app }) {
           ))}
         </div>
       </Card>
+
+      {priorityItems.length ? (
+        <Card className="section-card home-action-card">
+          <div className="section-title-row">
+            <div>
+              <p className="eyebrow">Action Queue</p>
+              <h2>내가 처리할 방</h2>
+            </div>
+            <Badge tone={priorityItems.some((item) => item.priority <= 3) ? "orange" : "green"}>{priorityItems.length}개</Badge>
+          </div>
+          <div className="home-action-list">
+            {priorityItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Link key={item.id} to={item.href} className={`home-action-row priority-${item.priority}`}>
+                  <span className="home-action-icon"><Icon size={18} /></span>
+                  <span className="home-action-main">
+                    <strong>{item.title}</strong>
+                    <em>{item.meta}</em>
+                  </span>
+                  <b>{item.label}</b>
+                </Link>
+              );
+            })}
+          </div>
+        </Card>
+      ) : null}
 
       <section className="opgg-summary-grid">
         <Card className="section-card opgg-profile-card">

@@ -24,6 +24,7 @@ import {
   getRecruitingSideCapacity,
   getRecruitingTargetMmr,
   hasRecruitingApplicant,
+  isRecruitingPostForUser,
   isNationalRecruitingPost,
 } from "../lib/recruiting.js";
 
@@ -46,6 +47,18 @@ function formatWhen(value) {
 
 function getDefaultTitle(draft) {
   return `${draft.ranked ? "정규전" : "친선전"} ${draft.mode} 매치 큐`;
+}
+
+function getTodayInputValue() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getRecruitingSchedule(post) {
+  return [post.scheduledDate, post.scheduledTime].filter(Boolean).join(" ") || post.scheduledAt || "일정 미정";
 }
 
 function getDefaultApplyTeamId(post, teams) {
@@ -189,10 +202,12 @@ export default function Recruiting({ app }) {
     () => app.state.teams.filter((team) => team.members.some((member) => member.userId === app.currentUser.id)),
     [app.currentUser.id, app.state.teams],
   );
+  const myTeamIds = useMemo(() => myTeams.map((team) => team.id), [myTeams]);
   const userById = useMemo(() => Object.fromEntries(app.state.users.map((user) => [user.id, user])), [app.state.users]);
   const teamById = useMemo(() => Object.fromEntries(app.state.teams.map((team) => [team.id, team])), [app.state.teams]);
   const [scope, setScope] = useState("local");
   const [queue, setQueue] = useState("all");
+  const [roomScope, setRoomScope] = useState("all");
   const [composeOpen, setComposeOpen] = useState(false);
   const [selectedPostId, setSelectedPostId] = useState(null);
   const [joinDraftByPost, setJoinDraftByPost] = useState({});
@@ -201,6 +216,8 @@ export default function Recruiting({ app }) {
     title: "",
     region: app.currentUser.region,
     court: COURTS.find((court) => court.region === app.currentUser.region)?.name ?? COURTS[0].name,
+    scheduledDate: getTodayInputValue(),
+    scheduledTime: "20:00",
     mode: "5v5",
     ranked: true,
     teamId: myTeams[0]?.id ?? "",
@@ -210,7 +227,8 @@ export default function Recruiting({ app }) {
 
   const selectedTeam = myTeams.find((team) => team.id === draft.teamId) ?? myTeams[0] ?? null;
   const hostNeedsTeam = draft.hostJoinMode === "team";
-  const canPostRecruiting = !hostNeedsTeam || Boolean(selectedTeam);
+  const hasSchedule = Boolean(draft.scheduledDate && draft.scheduledTime && draft.court);
+  const canPostRecruiting = hasSchedule && (!hostNeedsTeam || Boolean(selectedTeam));
 
   useEffect(() => {
     if (!hostNeedsTeam) return;
@@ -222,24 +240,31 @@ export default function Recruiting({ app }) {
     return [...(app.state.recruitingPosts ?? [])]
       .filter((post) => post.status !== "closed")
       .filter((post) => scope !== "local" || post.region === app.currentUser.region || isNationalRecruitingPost(post, app.state))
-      .filter((post) => queue === "all" || (queue === "ranked" ? post.ranked !== false : post.ranked === false));
-  }, [app.currentUser.region, app.state, queue, scope]);
+      .filter((post) => queue === "all" || (queue === "ranked" ? post.ranked !== false : post.ranked === false))
+      .filter((post) => roomScope !== "mine" || isRecruitingPostForUser(post, app.currentUser.id, myTeamIds));
+  }, [app.currentUser.id, app.currentUser.region, app.state, myTeamIds, queue, roomScope, scope]);
 
   const posts = useMemo(() => {
     return visibleBasePosts.sort((a, b) => {
       const aLocal = Number(a.region === app.currentUser.region);
       const bLocal = Number(b.region === app.currentUser.region);
+      const aMine = Number(isRecruitingPostForUser(a, app.currentUser.id, myTeamIds));
+      const bMine = Number(isRecruitingPostForUser(b, app.currentUser.id, myTeamIds));
       const aNational = Number(isNationalRecruitingPost(a, app.state));
       const bNational = Number(isNationalRecruitingPost(b, app.state));
-      return bLocal - aLocal || bNational - aNational || new Date(b.createdAt) - new Date(a.createdAt);
+      return bMine - aMine || bLocal - aLocal || bNational - aNational || new Date(b.createdAt) - new Date(a.createdAt);
     });
-  }, [app.currentUser.region, app.state, visibleBasePosts]);
+  }, [app.currentUser.id, app.currentUser.region, app.state, myTeamIds, visibleBasePosts]);
 
   const selectedPost = selectedPostId
     ? app.state.recruitingPosts.find((post) => post.id === selectedPostId)
     : null;
   const rankedCount = visibleBasePosts.filter((post) => post.ranked !== false).length;
   const friendlyCount = visibleBasePosts.length - rankedCount;
+  const myRoomCount = (app.state.recruitingPosts ?? [])
+    .filter((post) => post.status !== "closed")
+    .filter((post) => isRecruitingPostForUser(post, app.currentUser.id, myTeamIds))
+    .length;
 
   const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
   const submit = (event) => {
@@ -315,6 +340,7 @@ export default function Recruiting({ app }) {
       <section className="ow-filter-bar" aria-label="필터">
         <button type="button" className={scope === "local" ? "active" : ""} onClick={() => setScope("local")}>내 지역</button>
         <button type="button" className={scope === "all" ? "active" : ""} onClick={() => setScope("all")}>전체 지역</button>
+        <button type="button" className={roomScope === "mine" ? "active" : ""} onClick={() => setRoomScope(roomScope === "mine" ? "all" : "mine")}>내 방 {myRoomCount}</button>
         <button type="button" className={queue === "all" ? "active" : ""} onClick={() => setQueue("all")}>전체</button>
         <button type="button" className={queue === "ranked" ? "active" : ""} onClick={() => setQueue("ranked")}>정규전</button>
         <button type="button" className={queue === "friendly" ? "active" : ""} onClick={() => setQueue("friendly")}>친선전</button>
@@ -331,16 +357,18 @@ export default function Recruiting({ app }) {
           const applied = hasRecruitingApplicant(post, applicantEntry)
             || myTeams.some((team) => hasRecruitingApplicant(post, { kind: "team", joinMode: "team", teamId: team.id }));
           const mine = post.playerId === app.currentUser.id;
+          const myRoom = isRecruitingPostForUser(post, app.currentUser.id, myTeamIds);
 
           return (
             <article
               key={post.id}
-              className={`ow-recruit-card ow-lobby-card ${lobby.canConfirm ? "ow-state-ready" : ""}`}
+              className={`ow-recruit-card ow-lobby-card ${lobby.canConfirm ? "ow-state-ready" : ""} ${myRoom ? "ow-my-room" : ""}`}
               onClick={() => setSelectedPostId(post.id)}
             >
               <div className="ow-card-main">
                 <div className="ow-card-top">
                   <span className="ow-type-tag">ROOM</span>
+                  {myRoom ? <span className="ow-my-room-tag">내 방</span> : null}
                   <span className={`ow-queue-pill ${post.ranked === false ? "friendly" : "ranked"}`}>{post.ranked === false ? "친선전" : "정규전"}</span>
                   <span className="ow-position-pill">{post.mode}</span>
                   {isNationalRecruitingPost(post, app.state) ? <span className="ow-position-pill">전국 노출</span> : null}
@@ -360,6 +388,7 @@ export default function Recruiting({ app }) {
                   ))}
                 </div>
                 <div className="ow-card-bottom">
+                  <span>{getRecruitingSchedule(post)}</span>
                   <span className="ow-tier-chip">{post.ranked === false ? "티어 자유" : `${target} MMR 기준`}</span>
                   <span>{formatWhen(post.createdAt)}</span>
                   <span>{lobby.ready ? "전원 대기 완료" : "대기 확인 중"}</span>
@@ -424,6 +453,7 @@ export default function Recruiting({ app }) {
 
               <div className="ow-lobby-summary">
                 <span><ShieldCheck size={16} /> {selectedPost.ranked === false ? "친선전" : "정규전"}</span>
+                <span><Clock3 size={16} /> {getRecruitingSchedule(selectedPost)}</span>
                 <span><UsersRound size={16} /> 팀은 활성 멤버 자동 참여</span>
                 <span><Clock3 size={16} /> 전원 대기 후 방장 확정</span>
               </div>
@@ -577,6 +607,17 @@ export default function Recruiting({ app }) {
                 <input value={draft.title} placeholder={getDefaultTitle(draft)} onChange={(event) => update({ title: event.target.value })} />
               </label>
 
+              <div className="ow-field-grid">
+                <label>
+                  날짜
+                  <input type="date" required value={draft.scheduledDate} onChange={(event) => update({ scheduledDate: event.target.value })} />
+                </label>
+                <label>
+                  시간
+                  <input type="time" required value={draft.scheduledTime} onChange={(event) => update({ scheduledTime: event.target.value })} />
+                </label>
+              </div>
+
               <div className="ow-field-grid three">
                 <label>
                   지역
@@ -597,7 +638,7 @@ export default function Recruiting({ app }) {
                   </select>
                 </label>
                 <label>
-                  코트
+                  장소
                   <select value={draft.court} onChange={(event) => update({ court: event.target.value })}>
                     {COURTS.filter((court) => court.region === draft.region || draft.region === "전체").map((court) => (
                       <option key={court.id} value={court.name}>{court.region} · {court.name}</option>
@@ -641,7 +682,7 @@ export default function Recruiting({ app }) {
 
               <div className="ow-submit-row">
                 <span className={canPostRecruiting ? "queue-note" : "form-warning"}>
-                  <ShieldCheck size={17} /> {canPostRecruiting ? "등록 가능" : "내 팀 선택 필요"}
+                  <ShieldCheck size={17} /> {canPostRecruiting ? "등록 가능" : hasSchedule ? "내 팀 선택 필요" : "날짜/시간/장소 필요"}
                 </span>
                 <Button type="submit" disabled={!canPostRecruiting}><PlusCircle size={18} /> 등록</Button>
               </div>

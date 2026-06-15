@@ -99,7 +99,7 @@
 
 .om-view-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
   gap: 12px;
 }
 
@@ -170,6 +170,35 @@
 .om-view-card b {
   color: var(--gold);
   font-size: 1.3rem;
+}
+
+.om-filter-bar {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, auto) minmax(180px, 240px);
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius);
+  background: rgba(8, 11, 16, 0.66);
+  padding: 12px;
+}
+
+.om-filter-bar label {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.om-filter-bar select {
+  min-height: 40px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text);
+  font-weight: 850;
+  padding: 0 10px;
 }
 
 .om-match-list {
@@ -373,6 +402,7 @@ html[data-theme="light"] .om-match-copy p {
 
 html[data-theme="light"] .om-match-panel,
 html[data-theme="light"] .om-view-card,
+html[data-theme="light"] .om-filter-bar,
 html[data-theme="light"] .om-list-head,
 html[data-theme="light"] .om-match-card,
 html[data-theme="light"] .om-empty-state {
@@ -387,6 +417,10 @@ html[data-theme="light"] .om-empty-state {
 
   .om-view-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .om-filter-bar {
+    grid-template-columns: 1fr;
   }
 }
 

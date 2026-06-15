@@ -79,6 +79,9 @@ begin
     execute 'alter table public.recruiting_posts add column if not exists host_side text not null default ''teamA''';
     execute 'alter table public.recruiting_posts add column if not exists host_ready boolean not null default false';
     execute 'alter table public.recruiting_posts add column if not exists side_capacity integer not null default 5';
+    execute 'alter table public.recruiting_posts add column if not exists scheduled_date date';
+    execute 'alter table public.recruiting_posts add column if not exists scheduled_time time';
+    execute 'alter table public.recruiting_posts add column if not exists scheduled_at text';
     execute 'alter table public.recruiting_posts add column if not exists confirmed_at timestamptz';
     execute 'alter table public.recruiting_posts drop constraint if exists recruiting_posts_host_join_mode_check';
     execute 'alter table public.recruiting_posts add constraint recruiting_posts_host_join_mode_check check (host_join_mode in (''player'', ''team''))';
