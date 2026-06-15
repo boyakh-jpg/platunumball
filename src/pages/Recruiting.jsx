@@ -9,6 +9,7 @@ import {
   UserRound,
   UsersRound,
   X,
+  XCircle,
 } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
@@ -522,7 +523,17 @@ export default function Recruiting({ app }) {
                     onClick={() => app.actions.setRecruitingReady(selectedPost.id, myEntry.status !== "ready")}
                   >
                     {myEntry.status === "ready" ? <Clock3 size={18} /> : <CheckCircle2 size={18} />}
-                    {myEntry.status === "ready" ? "대기 취소" : "대기 완료"}
+                    {myEntry.status === "ready" ? "준비 해제" : "대기 완료"}
+                  </Button>
+                ) : null}
+                {alreadyApplied ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="danger-button"
+                    onClick={() => app.actions.cancelRecruitingParticipation(selectedPost.id)}
+                  >
+                    <XCircle size={18} /> 참여 취소
                   </Button>
                 ) : null}
                 {mine ? (

@@ -499,6 +499,15 @@ async function softDeleteRemoteTeams(teamIds = []) {
   }
 }
 
+async function replaceRemoteRecruitingApplications(postIds = [], applicationRows = []) {
+  for (const chunk of chunkRows(postIds)) {
+    const { error } = await supabase.from("recruiting_applications").delete().in("post_id", chunk);
+    if (error) throw error;
+  }
+
+  await upsertRemoteRows("recruiting_applications", applicationRows, "post_id,player_id,kind");
+}
+
 function courtIdByName(courtName) {
   return COURTS.find((court) => court.name === courtName)?.id ?? null;
 }
@@ -661,6 +670,7 @@ async function saveNormalizedRemoteState(state) {
       updated_at: application.updatedAt ?? application.createdAt,
     })),
   ).filter((application) => application.player_id);
+  const recruitingPostIds = (state.recruitingPosts ?? []).map((post) => post.id).filter(Boolean);
 
   await softDeleteRemoteTeams(deletedTeamIds);
   await upsertRemoteRows("profiles", profileRows, "id");
@@ -676,7 +686,7 @@ async function saveNormalizedRemoteState(state) {
   await supabase.from("favorites").delete().eq("user_id", currentUserId);
   await upsertRemoteRows("favorites", favoriteRows, "user_id,target_type,target_id");
   await upsertRemoteRows("recruiting_posts", recruitingRows, "id");
-  await upsertRemoteRows("recruiting_applications", applicationRows, "post_id,player_id,kind");
+  await replaceRemoteRecruitingApplications(recruitingPostIds, applicationRows);
 }
 
 export async function saveRemoteState(state) {
@@ -1513,6 +1523,24 @@ export function setRecruitingReady(state, postId, ready = true) {
             ? { ...applicant, status: ready ? "ready" : "waiting", updatedAt }
             : applicant
         )),
+      };
+    }),
+  };
+}
+
+export function cancelRecruitingParticipation(state, postId) {
+  const post = state.recruitingPosts?.find((item) => item.id === postId);
+  if (!post || post.status !== "open" || post.playerId === state.currentUserId) return state;
+
+  return {
+    ...state,
+    recruitingPosts: (state.recruitingPosts ?? []).map((item) => {
+      if (item.id !== postId) return item;
+      return {
+        ...item,
+        applicants: normalizeRecruitingApplicants(item.applicants ?? []).filter(
+          (applicant) => applicant.playerId !== state.currentUserId,
+        ),
       };
     }),
   };
