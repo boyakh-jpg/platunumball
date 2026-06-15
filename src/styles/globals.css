@@ -2337,6 +2337,95 @@ input[type="color"] {
   border-color: rgba(255, 211, 108, 0.2);
 }
 
+.team-overview-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(300px, 0.7fr);
+  gap: 14px;
+}
+
+.my-team-management-card,
+.team-rank-rule-card {
+  border-color: rgba(70, 224, 182, 0.2);
+}
+
+.my-team-list,
+.rank-rule-list {
+  display: grid;
+  gap: 9px;
+}
+
+.my-team-row {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.045);
+  padding: 11px;
+}
+
+.my-team-row strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.my-team-row em {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-style: normal;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.my-team-row b,
+.team-rank-chip {
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 950;
+  padding: 5px 8px;
+}
+
+.my-team-row b {
+  background: rgba(70, 224, 182, 0.12);
+  color: var(--green);
+}
+
+.team-rank-chip {
+  background: rgba(255, 211, 108, 0.12);
+  color: var(--gold);
+}
+
+.rank-rule-list > div {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(116, 169, 255, 0.14);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.045);
+  padding: 10px;
+}
+
+.rank-rule-list strong {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: rgba(116, 169, 255, 0.16);
+  color: var(--blue);
+}
+
+.team-ranking-note {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
 .match-focus-card,
 .result-card {
   border-color: rgba(255, 211, 108, 0.24);
@@ -2393,6 +2482,7 @@ input[type="color"] {
   .landing-hero,
   .court-command,
   .team-hub-hero,
+  .team-overview-grid,
   .home-dashboard-grid {
     grid-template-columns: 1fr;
   }
@@ -4829,6 +4919,7 @@ html[data-theme="light"] .segmented-control button.active {
   .content-grid,
   .content-grid.wide-left,
   .affiliation-challenge-grid,
+  .team-overview-grid,
   .home-primary-stack,
   .home-side-stack,
   .home-side-stack > .card {
@@ -4845,6 +4936,15 @@ html[data-theme="light"] .segmented-control button.active {
   .home-team-list b {
     grid-column: 2;
     justify-self: start;
+  }
+
+  .my-team-row {
+    grid-template-columns: auto auto minmax(0, 1fr) auto;
+  }
+
+  .my-team-row em {
+    grid-column: 3;
+    white-space: normal;
   }
 
   .compact-list a,

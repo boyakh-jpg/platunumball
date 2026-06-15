@@ -4,7 +4,7 @@ import Badge from "../common/Badge.jsx";
 import Card from "../common/Card.jsx";
 import TeamMemberList from "./TeamMemberList.jsx";
 
-export default function TeamCard({ team, users, compact = false, linked = true, favorite = false, onToggleFavorite }) {
+export default function TeamCard({ team, users, compact = false, linked = true, favorite = false, onToggleFavorite, rank }) {
   const winRate = Math.round((team.wins / Math.max(1, team.wins + team.losses)) * 100);
 
   return (
@@ -15,6 +15,7 @@ export default function TeamCard({ team, users, compact = false, linked = true, 
           {linked ? <Link to={`/app/teams/${team.id}`}><h3>{team.name}</h3></Link> : <h3>{team.name}</h3>}
         </div>
         <div className="team-card-actions">
+          {rank ? <Badge tone={rank <= 3 ? "gold" : "blue"}>#{rank}</Badge> : null}
           {onToggleFavorite ? (
             <button type="button" className={favorite ? "favorite-toggle active" : "favorite-toggle"} onClick={onToggleFavorite}>
               <Star size={15} fill={favorite ? "currentColor" : "none"} />
