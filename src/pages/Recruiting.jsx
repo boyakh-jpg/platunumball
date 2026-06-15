@@ -409,7 +409,7 @@ function ReserveLine({ sideName, candidates, playingIds, userById, teams, canMan
   );
 }
 
-function HostRoomControls({ lobby, userById, teams, onSetPlacement, onKick }) {
+function HostRoomControls({ lobby, userById, teams, onSetPlacement, onSetMemberReserve, onKick }) {
   const applicants = lobby.entries ?? [];
 
   if (!applicants.length) {
@@ -431,6 +431,11 @@ function HostRoomControls({ lobby, userById, teams, onSetPlacement, onKick }) {
         {applicants.map((entry) => {
           const leader = userById[entry.playerId];
           const availability = getEntryPlacementAvailability(entry, lobby);
+          const activePlayerIds = entry.players ?? [];
+          const activePlayerSet = new Set(activePlayerIds);
+          const reservePlayerIds = (entry.reserves ?? []).filter((playerId) => !activePlayerSet.has(playerId));
+          const canPromoteReserve = lobby.sides[entry.side].filled < lobby.sides[entry.side].capacity;
+          const canDemoteActive = activePlayerIds.length > 1;
           return (
             <article key={entry.id} className="ow-host-control-row">
               <div>
@@ -483,6 +488,46 @@ function HostRoomControls({ lobby, userById, teams, onSetPlacement, onKick }) {
                   </Button>
                 ) : null}
               </div>
+              {entry.team && !entry.reserve ? (
+                <div className="ow-member-adjust-actions">
+                  {activePlayerIds.map((playerId) => {
+                    const user = userById[playerId];
+                    return (
+                      <PlayerHoverCard key={`${entry.id}-${playerId}-active`} user={user} teams={teams} className="ow-member-adjust-chip">
+                        <span className="avatar small" style={{ "--avatar": user?.avatarColor }}>{user?.name?.slice(0, 1) ?? "?"}</span>
+                        <span>{user?.name ?? "선수"}</span>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          disabled={!canDemoteActive}
+                          onClick={() => onSetMemberReserve(entry.id, playerId, true)}
+                        >
+                          후보
+                        </Button>
+                      </PlayerHoverCard>
+                    );
+                  })}
+                  {reservePlayerIds.map((playerId) => {
+                    const user = userById[playerId];
+                    return (
+                      <PlayerHoverCard key={`${entry.id}-${playerId}-reserve`} user={user} teams={teams} className="ow-member-adjust-chip reserve">
+                        <span className="avatar small" style={{ "--avatar": user?.avatarColor }}>{user?.name?.slice(0, 1) ?? "?"}</span>
+                        <span>{user?.name ?? "후보"}</span>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          disabled={!canPromoteReserve}
+                          onClick={() => onSetMemberReserve(entry.id, playerId, false)}
+                        >
+                          출전
+                        </Button>
+                      </PlayerHoverCard>
+                    );
+                  })}
+                </div>
+              ) : null}
             </article>
           );
         })}
@@ -895,6 +940,7 @@ export default function Recruiting({ app }) {
                   userById={userById}
                   teams={app.state.teams}
                   onSetPlacement={(playerId, placement) => app.actions.setRecruitingApplicantPlacement(selectedPost.id, playerId, placement)}
+                  onSetMemberReserve={(entryId, playerId, reserve) => app.actions.setRecruitingPartyPlayerReserve(selectedPost.id, entryId, playerId, reserve)}
                   onKick={(playerId) => app.actions.kickRecruitingApplicant(selectedPost.id, playerId)}
                 />
               ) : null}

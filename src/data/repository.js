@@ -28,6 +28,7 @@ import {
 import { applyMatchRating, calculateTeamDelta } from "../lib/rating.js";
 import {
   getMercenaryTeamWeight,
+  getRecruitingApplicantKey,
   getRecruitingApplicantKind,
   getRecruitingBestSide,
   getRecruitingFit,
@@ -2724,6 +2725,53 @@ export function setRecruitingApplicantPlacement(state, postId, playerId, placeme
 
 export function setRecruitingApplicantReserve(state, postId, playerId, reserve = true) {
   return setRecruitingApplicantPlacement(state, postId, playerId, { reserve });
+}
+
+export function setRecruitingPartyPlayerReserve(state, postId, entryId, playerId, reserve = true) {
+  const post = state.recruitingPosts?.find((item) => item.id === postId);
+  if (!post || post.status !== "open" || post.playerId !== state.currentUserId || !entryId || !playerId) return state;
+
+  const lobby = getRecruitingLobby(post, state);
+  const entry = (lobby.entries ?? []).find((item) => item.id === entryId);
+  if (!entry?.team || !entry.team.members?.some((member) => member.userId === playerId)) return state;
+
+  const capacity = getRecruitingSideCapacity(post);
+  const applicants = normalizeRecruitingApplicants(post.applicants ?? []);
+  const targetApplicant = entry.fixed
+    ? null
+    : applicants.find((applicant) => getRecruitingApplicantKey(applicant) === entry.id);
+  if (!entry.fixed && !targetApplicant) return state;
+
+  const currentPlayerIds = getSelectedTeamPlayerIds(entry.team, capacity, entry.fixed ? post.playerIds : targetApplicant.playerIds);
+  const nextPlayerIds = reserve
+    ? currentPlayerIds.filter((id) => id !== playerId)
+    : Array.from(new Set([...currentPlayerIds, playerId]));
+  if (!nextPlayerIds.length || nextPlayerIds.length > capacity) return state;
+
+  const updatedAt = new Date().toISOString();
+  const nextPost = entry.fixed
+    ? { ...post, hostReady: false, playerIds: nextPlayerIds }
+    : {
+      ...post,
+      applicants: applicants.map((applicant) => (
+        getRecruitingApplicantKey(applicant) === entry.id
+          ? { ...applicant, playerIds: nextPlayerIds, status: "waiting", updatedAt }
+          : applicant
+      )),
+    };
+
+  if (!reserve) {
+    const nextLobby = getRecruitingLobby(nextPost, state);
+    const activePlayerCount = new Set(nextLobby.sides[entry.side].entries.flatMap((item) => item.players)).size;
+    if (activePlayerCount > nextLobby.sides[entry.side].capacity) return state;
+  }
+
+  return {
+    ...state,
+    recruitingPosts: (state.recruitingPosts ?? []).map((item) => (
+      item.id === postId ? cleanRecruitingRoomStatRecorders(nextPost, state) : item
+    )),
+  };
 }
 
 export function setRecruitingStatRecorder(state, postId, sideName, playerId = "") {

@@ -99,11 +99,15 @@ export function getSelectableTeamPlayerIds(team = {}) {
     .map((member) => member.userId);
 }
 
+function getTeamPlayerIds(team = {}) {
+  return (team?.members ?? []).map((member) => member.userId);
+}
+
 export function getSelectedTeamPlayerIds(team = {}, capacity = Infinity, playerIds) {
   const selectableIds = getSelectableTeamPlayerIds(team);
   if (!Array.isArray(playerIds)) return selectableIds.slice(0, capacity);
-  const selectableSet = new Set(selectableIds);
-  return unique(playerIds).filter((playerId) => selectableSet.has(playerId)).slice(0, capacity);
+  const teamPlayerSet = new Set(getTeamPlayerIds(team));
+  return unique(playerIds).filter((playerId) => teamPlayerSet.has(playerId)).slice(0, capacity);
 }
 
 export function getActiveTeamPlayerIds(team = {}, capacity = Infinity, playerIds) {

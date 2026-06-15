@@ -1386,6 +1386,47 @@
   font-size: 0.72rem;
 }
 
+.ow-member-adjust-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 2px;
+}
+
+.ow-member-adjust-chip {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 4px;
+}
+
+.ow-member-adjust-chip.reserve {
+  border-style: dashed;
+}
+
+.ow-member-adjust-chip > span:not(.avatar) {
+  max-width: 92px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.ow-member-adjust-chip .button-sm {
+  min-height: 26px;
+  padding: 0 7px;
+  border-radius: 6px;
+  font-size: 0.68rem;
+}
+
 .ow-host-control-row span:nth-child(2) {
   display: grid;
   min-width: 0;
