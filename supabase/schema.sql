@@ -73,6 +73,11 @@ create table if not exists public.tournaments (
   memo text,
   created_by text,
   created_at timestamptz not null default now(),
+  started_at timestamptz,
+  match_ids jsonb not null default '[]'::jsonb,
+  team_statuses jsonb not null default '{}'::jsonb,
+  team_approvals jsonb not null default '{}'::jsonb,
+  bracket jsonb not null default '{}'::jsonb,
   updated_at timestamptz not null default now(),
   constraint tournaments_format_check check (format in ('league', 'tournament')),
   constraint tournaments_visibility_check check (visibility in ('private', 'public')),
@@ -86,6 +91,8 @@ create table if not exists public.tournament_teams (
   team_id text not null,
   seed_order integer not null default 1,
   status text not null default 'invited',
+  approved_by text,
+  approved_at timestamptz,
   created_at timestamptz not null default now(),
   primary key (tournament_id, team_id),
   constraint tournament_teams_status_check check (status in ('invited', 'accepted', 'declined'))
@@ -159,6 +166,19 @@ begin
     execute 'create index if not exists teams_deleted_at_idx on public.teams (deleted_at)';
   end if;
 
+  if to_regclass('public.tournaments') is not null then
+    execute 'alter table public.tournaments add column if not exists started_at timestamptz';
+    execute 'alter table public.tournaments add column if not exists match_ids jsonb not null default ''[]''::jsonb';
+    execute 'alter table public.tournaments add column if not exists team_statuses jsonb not null default ''{}''::jsonb';
+    execute 'alter table public.tournaments add column if not exists team_approvals jsonb not null default ''{}''::jsonb';
+    execute 'alter table public.tournaments add column if not exists bracket jsonb not null default ''{}''::jsonb';
+  end if;
+
+  if to_regclass('public.tournament_teams') is not null then
+    execute 'alter table public.tournament_teams add column if not exists approved_by text';
+    execute 'alter table public.tournament_teams add column if not exists approved_at timestamptz';
+  end if;
+
   if to_regclass('public.affiliations') is not null then
     execute 'delete from public.affiliations where type = ''club''';
     execute 'alter table public.affiliations drop constraint if exists affiliations_type_check';
@@ -167,6 +187,12 @@ begin
 
   if to_regclass('public.matches') is not null then
     execute 'alter table public.matches add column if not exists mmr_limit_mode text not null default ''block''';
+    execute 'alter table public.matches add column if not exists tournament_id text';
+    execute 'alter table public.matches add column if not exists tournament_format text';
+    execute 'alter table public.matches add column if not exists tournament_round integer';
+    execute 'alter table public.matches add column if not exists tournament_fixture integer';
+    execute 'alter table public.matches add column if not exists tournament_mmr_policy text';
+    execute 'create index if not exists matches_tournament_id_idx on public.matches (tournament_id)';
     execute 'alter table public.matches drop constraint if exists matches_mmr_limit_mode_check';
     execute 'alter table public.matches add constraint matches_mmr_limit_mode_check check (mmr_limit_mode in (''off'', ''warn'', ''block''))';
   end if;

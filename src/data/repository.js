@@ -7,6 +7,7 @@ import {
   getPlayerSideName,
   getResultPointAudit,
   getStatSubmissionStatus,
+  getTeamCaptainId,
   normalizePlayerStats,
 } from "../lib/matchUtils.js";
 import { applyMatchRating, calculateTeamDelta } from "../lib/rating.js";
@@ -83,6 +84,24 @@ function normalizeSettings(settings = {}) {
   };
 }
 
+function normalizeTournament(tournament = {}) {
+  const teamIds = tournament.teamIds ?? [];
+  const teamStatuses = {
+    ...Object.fromEntries(teamIds.map((teamId) => [teamId, "invited"])),
+    ...(tournament.teamStatuses ?? {}),
+  };
+
+  return {
+    ...tournament,
+    status: tournament.status ?? "draft",
+    teamIds,
+    teamStatuses,
+    teamApprovals: tournament.teamApprovals ?? {},
+    matchIds: tournament.matchIds ?? [],
+    bracket: tournament.bracket ?? null,
+  };
+}
+
 function normalizeState(state) {
   const notifications = state?.notifications?.length ? state.notifications : initialState.notifications;
   const deletedTeamIds = new Set(state?.deletedTeamIds ?? []);
@@ -96,7 +115,7 @@ function normalizeState(state) {
     affiliations: mergeById(state?.affiliations, initialState.affiliations).filter((affiliation) => affiliation.type !== "club"),
     seasons: mergeById(state?.seasons, initialState.seasons ?? []),
     matches: mergeById(state?.matches, initialState.matches).map(normalizeMatch),
-    tournaments: mergeById(state?.tournaments, initialState.tournaments ?? []),
+    tournaments: mergeById(state?.tournaments, initialState.tournaments ?? []).map(normalizeTournament),
     notifications: notifications.map((notification) => ({ readAt: null, ...notification })),
     settings: normalizeSettings(state?.settings ?? initialState.settings),
     reports: state?.reports ?? initialState.reports ?? [],
@@ -236,6 +255,11 @@ function fromRemoteMatch(row, context) {
     stakes: row.stakes,
     ranked: row.ranked !== false,
     mmrLimitMode: row.mmr_limit_mode ?? "block",
+    tournamentId: row.tournament_id,
+    tournamentFormat: row.tournament_format,
+    tournamentRound: row.tournament_round,
+    tournamentFixture: row.tournament_fixture,
+    tournamentMmrPolicy: row.tournament_mmr_policy,
     objectionWindow: row.objection_window,
     evidence: row.evidence ?? [],
     teamA: { name: teamA?.name ?? "Team A", teamId: row.team_a_id, players: teamAPlayers, score: row.score_a ?? 0 },
@@ -442,32 +466,45 @@ async function loadNormalizedRemoteState() {
         updatedAt: application.updated_at,
       })),
     })),
-    tournaments: tournaments.map((tournament) => ({
-      id: tournament.id,
-      title: tournament.title,
-      format: tournament.format,
-      visibility: tournament.visibility,
-      status: tournament.status,
-      region: tournament.region,
-      court: tournament.court_name,
-      mode: tournament.mode,
-      ranked: tournament.ranked,
-      official: tournament.official,
-      startDate: tournament.start_date,
-      endDate: tournament.end_date,
-      schedulePolicy: tournament.schedule_policy,
-      scheduleNote: tournament.schedule_note,
-      mmrLimitMode: tournament.mmr_limit_mode,
-      maxMmrGap: tournament.max_mmr_gap,
-      mmrPolicy: tournament.mmr_policy,
-      rules: tournament.rules ?? {},
-      memo: tournament.memo,
-      createdBy: tournament.created_by,
-      createdAt: tournament.created_at,
-      teamIds: (tournamentTeamsByTournament.get(tournament.id) ?? [])
-        .sort((a, b) => (a.seed_order ?? 0) - (b.seed_order ?? 0))
-        .map((team) => team.team_id),
-    })),
+    tournaments: tournaments.map((tournament) => {
+      const teamRows = [...(tournamentTeamsByTournament.get(tournament.id) ?? [])]
+        .sort((a, b) => (a.seed_order ?? 0) - (b.seed_order ?? 0));
+      const rowTeamStatuses = Object.fromEntries(teamRows.map((team) => [team.team_id, team.status ?? "invited"]));
+      const rowTeamApprovals = Object.fromEntries(
+        teamRows
+          .filter((team) => team.approved_by || team.approved_at)
+          .map((team) => [team.team_id, { by: team.approved_by, approvedAt: team.approved_at }]),
+      );
+      return {
+        id: tournament.id,
+        title: tournament.title,
+        format: tournament.format,
+        visibility: tournament.visibility,
+        status: tournament.status,
+        region: tournament.region,
+        court: tournament.court_name,
+        mode: tournament.mode,
+        ranked: tournament.ranked,
+        official: tournament.official,
+        startDate: tournament.start_date,
+        endDate: tournament.end_date,
+        schedulePolicy: tournament.schedule_policy,
+        scheduleNote: tournament.schedule_note,
+        mmrLimitMode: tournament.mmr_limit_mode,
+        maxMmrGap: tournament.max_mmr_gap,
+        mmrPolicy: tournament.mmr_policy,
+        rules: tournament.rules ?? {},
+        memo: tournament.memo,
+        createdBy: tournament.created_by,
+        createdAt: tournament.created_at,
+        startedAt: tournament.started_at,
+        matchIds: tournament.match_ids ?? [],
+        teamStatuses: { ...rowTeamStatuses, ...(tournament.team_statuses ?? {}) },
+        teamApprovals: { ...rowTeamApprovals, ...(tournament.team_approvals ?? {}) },
+        bracket: tournament.bracket ?? null,
+        teamIds: teamRows.map((team) => team.team_id),
+      };
+    }),
     settings: {
       ...(legacyState?.settings ?? DEFAULT_SETTINGS),
       favoriteTeamIds: favoriteRows.filter((favorite) => favorite.target_type === "team").map((favorite) => favorite.target_id),
@@ -609,6 +646,11 @@ async function saveNormalizedRemoteState(state) {
     status: match.status ?? "contract",
     ranked: match.ranked !== false,
     mmr_limit_mode: match.mmrLimitMode ?? "block",
+    tournament_id: match.tournamentId ?? null,
+    tournament_format: match.tournamentFormat ?? null,
+    tournament_round: match.tournamentRound ?? null,
+    tournament_fixture: match.tournamentFixture ?? null,
+    tournament_mmr_policy: match.tournamentMmrPolicy ?? null,
     official: Boolean(match.official),
     pre_registered: Boolean(match.preRegistered),
     scheduled_at: match.scheduledAt && match.scheduledAt !== "일정 미정" ? match.scheduledAt : null,
@@ -746,6 +788,11 @@ async function saveNormalizedRemoteState(state) {
     memo: tournament.memo,
     created_by: tournament.createdBy ?? currentUserId,
     created_at: tournament.createdAt,
+    started_at: tournament.startedAt ?? null,
+    match_ids: tournament.matchIds ?? [],
+    team_statuses: tournament.teamStatuses ?? {},
+    team_approvals: tournament.teamApprovals ?? {},
+    bracket: tournament.bracket ?? {},
     updated_at: new Date().toISOString(),
   }));
   const tournamentTeamRows = (state.tournaments ?? []).flatMap((tournament) =>
@@ -753,6 +800,9 @@ async function saveNormalizedRemoteState(state) {
       tournament_id: tournament.id,
       team_id: teamId,
       seed_order: index + 1,
+      status: tournament.teamStatuses?.[teamId] ?? "invited",
+      approved_by: tournament.teamApprovals?.[teamId]?.by ?? null,
+      approved_at: tournament.teamApprovals?.[teamId]?.approvedAt ?? null,
     })),
   );
 
@@ -825,6 +875,158 @@ export function resetState() {
 
 function getTeamPlayers(team, size) {
   return team.members.slice(0, size).map((member) => member.userId);
+}
+
+function getScheduleText(date, time) {
+  return [date, time].filter(Boolean).join(" ") || "일정 미정";
+}
+
+function shuffleItems(items = []) {
+  const next = [...items];
+  for (let index = next.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [next[index], next[swapIndex]] = [next[swapIndex], next[index]];
+  }
+  return next;
+}
+
+function getTournamentTeamStatuses(tournament = {}) {
+  return {
+    ...Object.fromEntries((tournament.teamIds ?? []).map((teamId) => [teamId, "invited"])),
+    ...(tournament.teamStatuses ?? {}),
+  };
+}
+
+function buildLeaguePairings(teamIds = []) {
+  const pairings = [];
+  for (let homeIndex = 0; homeIndex < teamIds.length; homeIndex += 1) {
+    for (let awayIndex = homeIndex + 1; awayIndex < teamIds.length; awayIndex += 1) {
+      pairings.push({
+        round: 1,
+        fixture: pairings.length + 1,
+        teamAId: teamIds[homeIndex],
+        teamBId: teamIds[awayIndex],
+      });
+    }
+  }
+  return pairings;
+}
+
+function buildTournamentPairings(teamIds = []) {
+  const seedOrder = shuffleItems(teamIds);
+  const pairings = [];
+  const byes = [];
+  for (let index = 0; index < seedOrder.length; index += 2) {
+    const teamAId = seedOrder[index];
+    const teamBId = seedOrder[index + 1];
+    if (!teamBId) {
+      byes.push(teamAId);
+      continue;
+    }
+    pairings.push({
+      round: 1,
+      fixture: pairings.length + 1,
+      teamAId,
+      teamBId,
+    });
+  }
+  return { seedOrder, pairings, byes };
+}
+
+function makeTournamentMatch(tournament, teamA, teamB, pairing, now) {
+  const mode = tournament.mode || "5v5";
+  const size = MODE_SIZES[mode] ?? 5;
+  const roundLabel = tournament.format === "tournament" ? `${pairing.round}R-${pairing.fixture}` : `L-${pairing.fixture}`;
+
+  return {
+    id: makeId("m"),
+    title: `${tournament.title} ${roundLabel} · ${teamA.name} vs ${teamB.name}`,
+    mode,
+    court: tournament.court || "미정",
+    scheduledDate: "",
+    scheduledTime: "",
+    scheduledAt: "일정 미정",
+    status: "contract",
+    ranked: tournament.ranked !== false,
+    official: Boolean(tournament.official),
+    preRegistered: true,
+    tournamentId: tournament.id,
+    tournamentFormat: tournament.format,
+    tournamentRound: pairing.round,
+    tournamentFixture: pairing.fixture,
+    tournamentMmrPolicy: tournament.mmrPolicy,
+    rules: tournament.rules ?? {},
+    memo: tournament.memo || "대회 경기입니다.",
+    stakes: "대회 경기 MMR 가중치가 적용됩니다.",
+    mmrLimitMode: tournament.mmrLimitMode ?? "warn",
+    objectionWindow: tournament.official ? "24시간" : "1시간",
+    evidence: [
+      { id: "captain", label: "양팀 주장 확인" },
+      { id: "tournament_bracket", label: "대회 대진표" },
+    ],
+    teamA: { name: teamA.name, teamId: teamA.id, players: getTeamPlayers(teamA, size), score: 0 },
+    teamB: { name: teamB.name, teamId: teamB.id, players: getTeamPlayers(teamB, size), score: 0 },
+    agreements: { teamA: [], teamB: [] },
+    approvals: { teamA: [], teamB: [] },
+    disputes: [],
+    result: null,
+    ratingResult: null,
+    createdAt: now,
+  };
+}
+
+function generateTournamentMatches(state, tournament) {
+  if (tournament.matchIds?.length) return { matches: [], tournament };
+
+  const teamById = Object.fromEntries(state.teams.map((team) => [team.id, team]));
+  const now = new Date().toISOString();
+  const pairSource = tournament.format === "tournament"
+    ? buildTournamentPairings(tournament.teamIds ?? [])
+    : { seedOrder: tournament.teamIds ?? [], pairings: buildLeaguePairings(tournament.teamIds ?? []), byes: [] };
+  const matches = pairSource.pairings
+    .map((pairing) => {
+      const teamA = teamById[pairing.teamAId];
+      const teamB = teamById[pairing.teamBId];
+      if (!teamA || !teamB) return null;
+      return makeTournamentMatch(tournament, teamA, teamB, pairing, now);
+    })
+    .filter(Boolean);
+  const matchIds = matches.map((match) => match.id);
+  const fixtureRows = matches.map((match) => ({
+    matchId: match.id,
+    round: match.tournamentRound,
+    fixture: match.tournamentFixture,
+    teamAId: match.teamA.teamId,
+    teamBId: match.teamB.teamId,
+  }));
+  const bracket = tournament.format === "tournament"
+    ? {
+        format: "tournament",
+        generatedAt: now,
+        seedOrder: pairSource.seedOrder,
+        rounds: [{ id: "round-1", name: "1라운드", pairings: fixtureRows, byes: pairSource.byes }],
+      }
+    : {
+        format: "league",
+        generatedAt: now,
+        fixtures: fixtureRows,
+      };
+
+  return {
+    matches,
+    tournament: {
+      ...tournament,
+      status: "active",
+      startedAt: now,
+      matchIds,
+      bracket,
+    },
+  };
+}
+
+function isTournamentManager(state, tournament) {
+  if (tournament.createdBy === state.currentUserId) return true;
+  return (tournament.teamIds ?? []).some((teamId) => getTeamCaptainId(state.teams, teamId) === state.currentUserId);
 }
 
 function teamRegularRatio(team, playerIds, users = []) {
@@ -1033,6 +1235,18 @@ export function createTournament(state, draft) {
     };
   }
 
+  const createdAt = new Date().toISOString();
+  const teamStatuses = Object.fromEntries(
+    teamIds.map((teamId) => [
+      teamId,
+      getTeamCaptainId(state.teams, teamId) === state.currentUserId ? "accepted" : "invited",
+    ]),
+  );
+  const teamApprovals = Object.fromEntries(
+    teamIds
+      .filter((teamId) => teamStatuses[teamId] === "accepted")
+      .map((teamId) => [teamId, { by: state.currentUserId, approvedAt: createdAt }]),
+  );
   const tournament = {
     id: makeId("trn"),
     title: draft.title?.trim() || `${draft.mode || "5v5"} 비공개 대회`,
@@ -1061,19 +1275,122 @@ export function createTournament(state, draft) {
     },
     memo: draft.memo || "비공개 초대 대회입니다.",
     createdBy: state.currentUserId,
-    createdAt: new Date().toISOString(),
+    createdAt,
     teamIds,
+    teamStatuses,
+    teamApprovals,
+    matchIds: [],
+    bracket: null,
+  };
+  const allAccepted = teamIds.every((teamId) => teamStatuses[teamId] === "accepted");
+  const generated = allAccepted ? generateTournamentMatches(state, tournament) : { matches: [], tournament };
+
+  return {
+    ...state,
+    matches: generated.matches.length ? [...generated.matches, ...state.matches] : state.matches,
+    tournaments: [generated.tournament, ...(state.tournaments ?? [])],
+    notifications: [
+      {
+        id: makeId("n"),
+        title: allAccepted ? "대회 시작" : "대회 생성",
+        body: allAccepted
+          ? `${tournament.title} 대회가 시작됐습니다. 경기 ${generated.matches.length}개 생성.`
+          : `${tournament.title} 대회방을 만들었습니다. 초대팀 ${teamIds.length}개.`,
+        tone: "match",
+      },
+      ...state.notifications,
+    ],
+  };
+}
+
+export function approveTournamentTeam(state, tournamentId, teamId) {
+  const tournament = (state.tournaments ?? []).find((item) => item.id === tournamentId);
+  if (!tournament || tournament.status !== "draft" || !(tournament.teamIds ?? []).includes(teamId)) return state;
+
+  const captainId = getTeamCaptainId(state.teams, teamId);
+  if (captainId !== state.currentUserId) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "대회 승인 불가",
+          body: "해당 팀 주장만 대회 참가를 승인할 수 있습니다.",
+          tone: "match",
+        },
+        ...state.notifications,
+      ],
+    };
+  }
+
+  const now = new Date().toISOString();
+  const teamStatuses = { ...getTournamentTeamStatuses(tournament), [teamId]: "accepted" };
+  const teamApprovals = {
+    ...(tournament.teamApprovals ?? {}),
+    [teamId]: { by: state.currentUserId, approvedAt: now },
+  };
+  const approvedTournament = { ...tournament, teamStatuses, teamApprovals };
+  const allAccepted = (approvedTournament.teamIds ?? []).every((id) => teamStatuses[id] === "accepted");
+  const generated = allAccepted ? generateTournamentMatches(state, approvedTournament) : { matches: [], tournament: approvedTournament };
+
+  return {
+    ...state,
+    matches: generated.matches.length ? [...generated.matches, ...state.matches] : state.matches,
+    tournaments: (state.tournaments ?? []).map((item) => (item.id === tournamentId ? generated.tournament : item)),
+    notifications: [
+      {
+        id: makeId("n"),
+        title: allAccepted ? "대회 시작" : "대회 참가 승인",
+        body: allAccepted
+          ? `${tournament.title} 대회가 시작됐습니다. 경기 ${generated.matches.length}개 생성.`
+          : `${tournament.title} 참가 승인 완료. 남은 팀 승인을 기다립니다.`,
+        tone: "match",
+      },
+      ...state.notifications,
+    ],
+  };
+}
+
+export function updateTournamentMatchSchedule(state, tournamentId, matchId, schedule = {}) {
+  const tournament = (state.tournaments ?? []).find((item) => item.id === tournamentId);
+  const match = state.matches.find((item) => item.id === matchId && item.tournamentId === tournamentId);
+  if (!tournament || !match) return state;
+
+  if (!isTournamentManager(state, tournament)) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "일정 수정 불가",
+          body: "대회 생성자나 참가팀 주장만 경기 일정을 수정할 수 있습니다.",
+          tone: "match",
+          matchId,
+        },
+        ...state.notifications,
+      ],
+    };
+  }
+
+  const scheduledDate = String(schedule.scheduledDate ?? "").slice(0, 10);
+  const scheduledTime = String(schedule.scheduledTime ?? "").slice(0, 5);
+  const updatedMatch = {
+    ...match,
+    scheduledDate,
+    scheduledTime,
+    scheduledAt: getScheduleText(scheduledDate, scheduledTime),
   };
 
   return {
     ...state,
-    tournaments: [tournament, ...(state.tournaments ?? [])],
+    matches: state.matches.map((item) => (item.id === matchId ? updatedMatch : item)),
     notifications: [
       {
         id: makeId("n"),
-        title: "대회 생성",
-        body: `${tournament.title} 대회방을 만들었습니다. 초대팀 ${teamIds.length}개.`,
+        title: "대회 일정 수정",
+        body: `${match.title} 일정이 ${updatedMatch.scheduledAt}(으)로 바뀌었습니다.`,
         tone: "match",
+        matchId,
       },
       ...state.notifications,
     ],

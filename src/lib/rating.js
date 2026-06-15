@@ -87,15 +87,21 @@ export function getRepeatFactor(history = [], match = {}) {
   return recentSameCourt >= 3 ? 0.88 : 1;
 }
 
+export function getTournamentFactor(match = {}) {
+  if (!match.tournamentId) return 1;
+  return match.tournamentFormat === "tournament" ? 1.18 : 1.12;
+}
+
 export function getQualityFactor(match = {}, trustScore = 80, history = []) {
   return clamp(
     getCredibilityFactor(match) *
       getScheduleFactor(match) *
       getEvidenceFactor(match.evidence) *
       getTrustFactor(trustScore) *
-      getRepeatFactor(history, match),
+      getRepeatFactor(history, match) *
+      getTournamentFactor(match),
     0,
-    1.8,
+    2.05,
   );
 }
 

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   addTeamMember,
   agreeMatch,
+  approveTournamentTeam,
   approveMatch,
   blockUser,
   cancelMatch,
@@ -32,6 +33,7 @@ import {
   toggleFavoriteTeam,
   updateSettings,
   updateTeamMemberRole,
+  updateTournamentMatchSchedule,
   updatePrivacySettings,
   updateProfile,
   unblockUser,
@@ -139,6 +141,10 @@ export function useAppData(authUserId = null) {
           return next;
         });
         return createdId;
+      },
+      approveTournamentTeam: (tournamentId, teamId) => setState((prev) => approveTournamentTeam({ ...prev, currentUserId }, tournamentId, teamId)),
+      updateTournamentMatchSchedule: (tournamentId, matchId, schedule) => {
+        setState((prev) => updateTournamentMatchSchedule({ ...prev, currentUserId }, tournamentId, matchId, schedule));
       },
       agreeMatch: (matchId, sideName, playerId) => setState((prev) => agreeMatch({ ...prev, currentUserId }, matchId, sideName, playerId)),
       submitMatchResult: (matchId, result) => setState((prev) => submitMatchResult({ ...prev, currentUserId }, matchId, result)),

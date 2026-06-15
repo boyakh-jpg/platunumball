@@ -68,6 +68,13 @@ const tournamentMmrLabels = {
   standard: "일반 MMR",
   event_only: "대회 점수만",
 };
+const tournamentStatusLabels = {
+  draft: "팀장 승인 대기",
+  active: "진행 중",
+  scheduled: "예정",
+  closed: "종료",
+  cancelled: "취소",
+};
 
 function toDateInputValue(date = new Date()) {
   const year = date.getFullYear();
@@ -150,6 +157,20 @@ function matchHasUser(match, userId) {
   return match.teamA.players.includes(userId) || match.teamB.players.includes(userId);
 }
 
+function getTeamCaptainId(team) {
+  return team?.members?.find((member) => member.role === "captain")?.userId ?? null;
+}
+
+function getTournamentTeamStatus(tournament, teamId) {
+  return tournament.teamStatuses?.[teamId] ?? "invited";
+}
+
+function getTournamentMatches(tournament, matchesById, matches = []) {
+  const fromIds = (tournament.matchIds ?? []).map((matchId) => matchesById[matchId]).filter(Boolean);
+  const source = fromIds.length ? fromIds : matches.filter((match) => match.tournamentId === tournament.id);
+  return [...source].sort((a, b) => (a.tournamentRound ?? 0) - (b.tournamentRound ?? 0) || (a.tournamentFixture ?? 0) - (b.tournamentFixture ?? 0));
+}
+
 export default function Matches({ app }) {
   const [viewId, setViewId] = useState("todo");
   const [scopeFilter, setScopeFilter] = useState("all");
@@ -160,6 +181,8 @@ export default function Matches({ app }) {
   const todayValue = toDateInputValue();
   const selectedView = VIEWS.find((view) => view.id === viewId) ?? VIEWS[0];
   const teamById = useMemo(() => Object.fromEntries(app.state.teams.map((team) => [team.id, team])), [app.state.teams]);
+  const userById = useMemo(() => Object.fromEntries(app.state.users.map((user) => [user.id, user])), [app.state.users]);
+  const matchesById = useMemo(() => Object.fromEntries(app.state.matches.map((match) => [match.id, match])), [app.state.matches]);
   const activeTournaments = useMemo(() => {
     return [...(app.state.tournaments ?? [])]
       .filter((tournament) => !["closed", "cancelled"].includes(tournament.status))
@@ -203,6 +226,14 @@ export default function Matches({ app }) {
   const todoCount = getViewCount(filteredMatches, VIEWS[0]);
   const scheduledCount = getViewCount(filteredMatches, VIEWS[1]);
   const doneCount = getViewCount(filteredMatches, VIEWS[3]);
+  const saveTournamentSchedule = (event, tournamentId, matchId) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    app.actions.updateTournamentMatchSchedule(tournamentId, matchId, {
+      scheduledDate: form.get("scheduledDate"),
+      scheduledTime: form.get("scheduledTime"),
+    });
+  };
 
   return (
     <div className="page-stack om-match-page">
@@ -322,7 +353,25 @@ export default function Matches({ app }) {
           </div>
           <div className="om-tournament-grid">
             {activeTournaments.map((tournament) => {
-              const invitedTeams = (tournament.teamIds ?? []).map((teamId) => teamById[teamId]?.name).filter(Boolean);
+              const tournamentMatches = getTournamentMatches(tournament, matchesById, app.state.matches);
+              const teamRows = (tournament.teamIds ?? [])
+                .map((teamId) => {
+                  const team = teamById[teamId];
+                  const captainId = getTeamCaptainId(team);
+                  return {
+                    team,
+                    teamId,
+                    captainId,
+                    captainName: userById[captainId]?.name ?? "주장 미지정",
+                    status: getTournamentTeamStatus(tournament, teamId),
+                    canApprove: tournament.status === "draft" && captainId === app.currentUser.id && getTournamentTeamStatus(tournament, teamId) !== "accepted",
+                  };
+                })
+                .filter((row) => row.team);
+              const acceptedCount = teamRows.filter((row) => row.status === "accepted").length;
+              const pairingPreview = tournament.format === "tournament"
+                ? tournament.bracket?.rounds?.[0]?.pairings ?? []
+                : tournament.bracket?.fixtures ?? [];
               return (
                 <article key={tournament.id} className="om-tournament-card">
                   <div>
@@ -334,9 +383,51 @@ export default function Matches({ app }) {
                     <span>{tournament.mode}</span>
                     <span>{tournament.ranked === false ? "친선" : "정규"}</span>
                     <span>{tournamentMmrLabels[tournament.mmrPolicy] ?? tournament.mmrPolicy}</span>
-                    <strong>{invitedTeams.length}팀 초대</strong>
+                    <strong>{acceptedCount}/{teamRows.length} 승인</strong>
+                    <strong>{tournamentMatches.length}경기</strong>
                   </div>
-                  <p>{invitedTeams.slice(0, 4).join(" · ")}{invitedTeams.length > 4 ? ` 외 ${invitedTeams.length - 4}` : ""}</p>
+                  <div className="om-tournament-state">
+                    <span>{tournamentStatusLabels[tournament.status] ?? tournament.status}</span>
+                    <em>{tournament.status === "draft" ? "모든 팀 주장 승인 후 자동 시작" : "대회 경기 MMR 보너스 적용"}</em>
+                  </div>
+                  <div className="om-tournament-teams">
+                    {teamRows.map((row) => (
+                      <div key={row.teamId} className={row.status === "accepted" ? "accepted" : ""}>
+                        <span>
+                          <strong>{row.team.name}</strong>
+                          <em>{row.team.mmr} MMR · 주장 {row.captainName}</em>
+                        </span>
+                        {row.canApprove ? (
+                          <button type="button" onClick={() => app.actions.approveTournamentTeam(tournament.id, row.teamId)}>승인</button>
+                        ) : (
+                          <b>{row.status === "accepted" ? "승인" : "초대"}</b>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  {pairingPreview.length ? (
+                    <div className="om-tournament-pairings">
+                      {pairingPreview.slice(0, 4).map((pairing) => (
+                        <span key={pairing.matchId ?? `${pairing.round}-${pairing.fixture}`}>
+                          {teamById[pairing.teamAId]?.name ?? "TBD"} vs {teamById[pairing.teamBId]?.name ?? "TBD"}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+                  {tournamentMatches.length ? (
+                    <div className="om-tournament-fixtures">
+                      {tournamentMatches.slice(0, 6).map((match) => (
+                        <form key={match.id} className="om-tournament-fixture-row" onSubmit={(event) => saveTournamentSchedule(event, tournament.id, match.id)}>
+                          <Link to={`/app/matches/${match.id}`}>{match.teamA.name} vs {match.teamB.name}</Link>
+                          <input type="date" name="scheduledDate" defaultValue={match.scheduledDate ?? ""} aria-label="경기 날짜" />
+                          <input type="time" name="scheduledTime" defaultValue={match.scheduledTime ?? ""} aria-label="경기 시간" />
+                          <button type="submit">저장</button>
+                        </form>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="om-tournament-wait">승인 완료 전. 대진과 경기 생성 대기.</p>
+                  )}
                 </article>
               );
             })}
