@@ -20,6 +20,7 @@ import Season from "./pages/Season.jsx";
 import Settings from "./pages/Settings.jsx";
 import TeamDetail from "./pages/TeamDetail.jsx";
 import Teams from "./pages/Teams.jsx";
+import TournamentDetail from "./pages/TournamentDetail.jsx";
 
 export default function App() {
   const auth = useAuthSession();
@@ -45,6 +46,7 @@ export default function App() {
           <Route path="/app/recruiting" element={<Recruiting app={app} />} />
           <Route path="/app/teams" element={<Teams app={app} />} />
           <Route path="/app/teams/:teamId" element={<TeamDetail app={app} />} />
+          <Route path="/app/tournaments/:tournamentId" element={<TournamentDetail app={app} />} />
           <Route path="/app/players/:playerId" element={<PlayerDetail app={app} />} />
           <Route path="/app/profile" element={<Profile app={app} />} />
           <Route path="/app/affiliations" element={<Affiliations app={app} />} />

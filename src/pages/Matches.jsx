@@ -379,6 +379,9 @@ export default function Matches({ app }) {
                     <h3>{tournament.title}</h3>
                     <p><CalendarDays size={15} />{formatTournamentWindow(tournament)} · {tournament.court}</p>
                   </div>
+                  <Link className="button button-secondary button-md om-tournament-detail-link" to={`/app/tournaments/${tournament.id}`}>
+                    대진표 보기
+                  </Link>
                   <div className="om-tournament-meta">
                     <span>{tournament.mode}</span>
                     <span>{tournament.ranked === false ? "친선" : "정규"}</span>
