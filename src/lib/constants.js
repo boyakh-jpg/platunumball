@@ -11,6 +11,9 @@ export const MODE_SIZES = MATCH_MODES.reduce((map, mode) => {
 }, {});
 
 export const MAX_TEAM_MEMBERSHIPS = 3;
+export const REFEREE_TRUST_MIN = 90;
+export const STAT_ENTRY_WINDOW_MINUTES = 60;
+export const DISPUTE_WINDOW_MINUTES = 120;
 
 export const PLAYER_POSITIONS = ["상관없음", "PG", "SG", "SF", "PF", "C"];
 

@@ -15,11 +15,15 @@ import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { PLAYER_STAT_FIELDS } from "../lib/constants.js";
 import {
   formatStatLine,
+  getAllowedStatFields,
   getAgreementStatus,
   getApprovalStatus,
+  getMatchRecordWindow,
+  getMatchReferee,
   getMatchPlayerIds,
   getPlayerStatSubmitted,
   getStatSubmissionStatus,
+  isMatchReferee,
 } from "../lib/matchUtils.js";
 
 const statusMeta = {
@@ -62,6 +66,16 @@ function getPointAudit(match, score, sideName) {
   };
 }
 
+function formatWindowTime(value) {
+  if (!value) return "일정 없음";
+  return value.toLocaleString("ko-KR", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export default function MatchRoom({ app }) {
   const { matchId } = useParams();
   const match = useMemo(
@@ -87,12 +101,16 @@ export default function MatchRoom({ app }) {
   const teamAApproval = getApprovalStatus(match, app.state.teams, "teamA");
   const teamBApproval = getApprovalStatus(match, app.state.teams, "teamB");
   const allPlayerIds = getMatchPlayerIds(match);
+  const recordWindow = getMatchRecordWindow(match);
+  const referee = getMatchReferee(match, app.state.users);
+  const hasReferee = Boolean(match.refereeId);
+  const currentUserIsReferee = isMatchReferee(match, app.currentUser.id);
   const currentUserInMatch = allPlayerIds.includes(app.currentUser.id);
-  const canSubmitResult = ["agreed", "approval"].includes(match.status) && currentUserInMatch;
+  const canSubmitResult = ["agreed", "approval"].includes(match.status) && recordWindow.statOpen && (hasReferee ? currentUserIsReferee : currentUserInMatch);
   const statSubmissionStatus = getStatSubmissionStatus(match);
   const currentUserSubmitted = getPlayerStatSubmitted(match, app.currentUser.id);
   const canCancel = ["contract", "agreed"].includes(match.status);
-  const canDispute = Boolean(match.result) && match.status === "approval";
+  const canDispute = Boolean(match.result) && match.status === "approval" && recordWindow.disputeOpen;
   const canVoid = match.status === "disputed";
   const canResumeApproval = match.status === "disputed";
   const canReport = !["cancelled", "void"].includes(match.status);
@@ -105,6 +123,13 @@ export default function MatchRoom({ app }) {
   const teamBMmr = teamB?.mmr ?? getTeamMmr(app.state.teams, match.teamB.teamId);
   const winnerName = Number(scoreA) === Number(scoreB) ? "" : Number(scoreA) > Number(scoreB) ? match.teamA.name : match.teamB.name;
   const matchKind = match.ranked === false ? "친선전" : "정규전";
+  const recordLockReason = recordWindow.beforeEnd
+    ? "경기 종료 후 입력 가능"
+    : recordWindow.statExpired
+      ? "기록 입력 마감"
+      : hasReferee && !currentUserIsReferee
+        ? "심판만 입력"
+        : "입력 가능";
   const renderHeroRoster = (sideName) => {
     const team = match[sideName];
     const agreement = sideName === "teamA" ? teamAAgreement : teamBAgreement;
@@ -150,7 +175,8 @@ export default function MatchRoom({ app }) {
     event.preventDefault();
     if (canSubmitResult) app.actions.submitMatchResult(match.id, score);
   };
-  const canEditPlayerStat = (playerId) => canSubmitResult && playerId === app.currentUser.id;
+  const canEditPlayerStat = (playerId) => canSubmitResult && (hasReferee ? currentUserIsReferee : playerId === app.currentUser.id);
+  const editableStatFields = getAllowedStatFields(match, app.currentUser.id);
   const pointAuditA = getPointAudit(match, score, "teamA");
   const pointAuditB = getPointAudit(match, score, "teamB");
   const statTrustSteps = [
@@ -264,11 +290,28 @@ export default function MatchRoom({ app }) {
                 <p className="eyebrow">Result entry</p>
                 <h2>경기 결과 입력</h2>
               </div>
-              <Badge tone={canSubmitResult ? "green" : "neutral"}>{canSubmitResult ? "입력 가능" : "잠김"}</Badge>
+              <Badge tone={canSubmitResult ? "green" : recordWindow.statExpired ? "orange" : "neutral"}>{recordLockReason}</Badge>
             </div>
             {!canSubmitResult ? (
               <div className="empty-state">{match.status === "contract" ? "동의 필요" : "수정 잠김"}</div>
             ) : null}
+            <div className="stat-referee-panel">
+              <div>
+                <span>기록 권한</span>
+                <strong>{hasReferee ? `심판 ${referee?.name ?? "지정됨"}` : "참가자 본인 득점"}</strong>
+                <em>{hasReferee ? "심판만 전체 개인 활약 입력" : "리바운드/어시스트/스틸/블록은 비활성"}</em>
+              </div>
+              <div>
+                <span>개인 기록 마감</span>
+                <strong>{formatWindowTime(recordWindow.statClosesAt)}</strong>
+                <em>경기 종료 후 {match.statEntryMinutes ?? 60}분</em>
+              </div>
+              <div>
+                <span>이의제기 마감</span>
+                <strong>{formatWindowTime(recordWindow.disputeClosesAt)}</strong>
+                <em>경기 종료 후 {match.disputeMinutes ?? 120}분</em>
+              </div>
+            </div>
             <form className="score-form" onSubmit={submitResult}>
               <label>
                 {match.teamA.name}
@@ -279,9 +322,13 @@ export default function MatchRoom({ app }) {
                 {match.teamB.name}
                 <input type="number" min="0" disabled={!canSubmitResult} value={score.scoreB} onChange={(event) => setScore((current) => ({ ...current, scoreB: event.target.value }))} />
               </label>
-              <Button type="submit" disabled={!canSubmitResult}>{currentUserSubmitted ? "스코어/내 기록 다시 제출" : "스코어/내 기록 제출"}</Button>
+              <Button type="submit" disabled={!canSubmitResult}>
+                {hasReferee ? "심판 기록 제출" : currentUserSubmitted ? "스코어/내 득점 다시 제출" : "스코어/내 득점 제출"}
+              </Button>
               <div className="stat-integrity-note">
-                개인 스탯은 본인 기록만 병합 저장합니다. 전원이 제출하고 팀 득점 합계가 맞아야 결과 승인이 열립니다.
+                {hasReferee
+                  ? "심판이 스코어와 전체 개인 활약을 한 번에 저장합니다. 1시간 안에 입력해야 합니다."
+                  : "심판이 없으면 각 참가자는 본인 득점만 저장합니다. 전원 제출과 득점 합계가 맞아야 결과 승인이 열립니다."}
               </div>
               <div className="stat-trust-panel">
                 <div className="stat-trust-head">
@@ -317,7 +364,7 @@ export default function MatchRoom({ app }) {
                               <em>{canEdit ? formatStatLine(score.playerStats[playerId]) : `${user?.position ?? "-"} · ${submitted ? "제출됨" : "미제출"}`}</em>
                             </span>
                           </PlayerHoverCard>
-                          <strong>{canEdit ? (submitted ? "수정 제출" : "내 기록") : submitted ? "제출됨" : "미제출"}</strong>
+                          <strong>{canEdit ? (hasReferee ? "심판 입력" : submitted ? "득점 수정" : "내 득점") : submitted ? "제출됨" : "미제출"}</strong>
                         </button>
                       );
                     })}
@@ -388,9 +435,10 @@ export default function MatchRoom({ app }) {
                 <p className="eyebrow">Review controls</p>
                 <h2>보류와 취소</h2>
               </div>
-              <Badge tone={canDispute || canCancel || canVoid ? "orange" : "neutral"}>{canDispute || canCancel || canVoid ? "처리 가능" : "닫힘"}</Badge>
+              <Badge tone={canDispute || canCancel || canVoid ? "orange" : "neutral"}>{recordWindow.disputeExpired ? "이의 마감" : canDispute || canCancel || canVoid ? "처리 가능" : "닫힘"}</Badge>
             </div>
             {match.disputes?.[0] ? <p className="muted">최근 이의제기: {match.disputes[0].reason}</p> : null}
+            <p className="muted">이의제기 마감: {formatWindowTime(recordWindow.disputeClosesAt)}</p>
             <label className="memo-label">
               이의제기 사유
               <textarea disabled={!canDispute} value={disputeReason} onChange={(event) => setDisputeReason(event.target.value)} />
@@ -442,7 +490,7 @@ export default function MatchRoom({ app }) {
               </button>
             </div>
             <div className="stat-stepper-list">
-              {PLAYER_STAT_FIELDS.map((field) => (
+              {editableStatFields.map((field) => (
                 <div key={field.id} className="stat-stepper-row">
                   <div>
                     <strong>{field.label}</strong>

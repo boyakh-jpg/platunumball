@@ -582,6 +582,7 @@ export default function Recruiting({ app }) {
         const alreadyApplied = Boolean(myEntry && !myEntry.fixed);
         const canJoin = !mine && !alreadyApplied && fit.allowed && (joinDraft.joinMode === "player" || (Boolean(selectedJoinTeam) && selectedJoinPlayerIds.length > 0));
         const selectedTargetTeam = selectedPost.targetTeamId ? teamById[selectedPost.targetTeamId] : null;
+        const selectedReferee = selectedPost.refereeId ? userById[selectedPost.refereeId] : null;
 
         return (
           <div className="ow-compose-backdrop" role="presentation" onMouseDown={() => setSelectedPostId(null)}>
@@ -599,6 +600,7 @@ export default function Recruiting({ app }) {
                 <span><ShieldCheck size={16} /> {selectedPost.ranked === false ? "친선전" : "정규전"}</span>
                 <span><Clock3 size={16} /> {getRecruitingSchedule(selectedPost)}</span>
                 {selectedTargetTeam ? <span><Swords size={16} /> 희망 상대 {selectedTargetTeam.name}</span> : null}
+                <span><ShieldCheck size={16} /> {selectedReferee ? `심판 ${selectedReferee.name}` : "심판 없음 · 득점만"}</span>
                 <span><UsersRound size={16} /> 팀은 선택 멤버만 참여</span>
                 <span><Clock3 size={16} /> 전원 대기 후 방장 확정</span>
               </div>

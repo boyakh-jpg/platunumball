@@ -1,4 +1,4 @@
-import { MODE_SIZES } from "./constants.js";
+import { DISPUTE_WINDOW_MINUTES, MODE_SIZES, REFEREE_TRUST_MIN, STAT_ENTRY_WINDOW_MINUTES } from "./constants.js";
 import { TIERS, getTier, getTierDivision } from "./tier.js";
 
 export const RECRUITING_TYPES = {
@@ -209,6 +209,10 @@ export function normalizeRecruitingPost(post = {}) {
     hostSide: VALID_SIDES.has(post.hostSide) ? post.hostSide : "teamA",
     hostReady: Boolean(post.hostReady),
     sideCapacity: getRecruitingSideCapacity(post),
+    refereeId: post.refereeId ?? "",
+    refereeTrustMin: Number(post.refereeTrustMin ?? REFEREE_TRUST_MIN),
+    statEntryMinutes: Number(post.statEntryMinutes ?? STAT_ENTRY_WINDOW_MINUTES),
+    disputeMinutes: Number(post.disputeMinutes ?? DISPUTE_WINDOW_MINUTES),
     playerIds: unique(post.playerIds ?? post.players ?? []),
     applicants: normalizeRecruitingApplicants(post.applicants ?? []),
   };

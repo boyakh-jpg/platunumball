@@ -1,4 +1,9 @@
-import { PLAYER_STAT_FIELDS } from "./constants.js";
+import {
+  DISPUTE_WINDOW_MINUTES,
+  PLAYER_STAT_FIELDS,
+  REFEREE_TRUST_MIN,
+  STAT_ENTRY_WINDOW_MINUTES,
+} from "./constants.js";
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const round = (value) => Math.round(value * 10) / 10;
@@ -58,6 +63,79 @@ export function getPlayerSideName(match = {}, playerId) {
   if (match.teamA?.players?.includes(playerId)) return "teamA";
   if (match.teamB?.players?.includes(playerId)) return "teamB";
   return null;
+}
+
+export function getMatchReferee(match = {}, users = []) {
+  return users.find((user) => user.id === match.refereeId) ?? null;
+}
+
+export function isEligibleReferee(user = {}, minTrust = REFEREE_TRUST_MIN) {
+  return Number(user?.trustScore ?? 0) >= Number(minTrust ?? REFEREE_TRUST_MIN);
+}
+
+export function isMatchReferee(match = {}, userId) {
+  return Boolean(match.refereeId && userId && match.refereeId === userId);
+}
+
+export function getMatchEndDate(match = {}) {
+  if (match.endedAt) {
+    const ended = new Date(match.endedAt);
+    if (Number.isFinite(ended.getTime())) return ended;
+  }
+  if (match.scheduledDate && match.scheduledTime) {
+    const scheduled = new Date(`${match.scheduledDate}T${match.scheduledTime}`);
+    if (Number.isFinite(scheduled.getTime())) {
+      return new Date(scheduled.getTime() + Number(match.rules?.timeLimit ?? 0) * 60000);
+    }
+  }
+  const fallback = match.result?.submittedAt ?? match.confirmedAt ?? match.agreedAt;
+  if (!fallback) return null;
+  const parsed = new Date(fallback);
+  return Number.isFinite(parsed.getTime()) ? parsed : null;
+}
+
+function addMinutes(date, minutes) {
+  return new Date(date.getTime() + Number(minutes ?? 0) * 60000);
+}
+
+export function getMatchRecordWindow(match = {}, now = Date.now()) {
+  const endAt = getMatchEndDate(match);
+  const statEntryMinutes = Number(match.statEntryMinutes ?? STAT_ENTRY_WINDOW_MINUTES);
+  const disputeMinutes = Number(match.disputeMinutes ?? DISPUTE_WINDOW_MINUTES);
+
+  if (!endAt) {
+    return {
+      endAt: null,
+      statClosesAt: null,
+      disputeClosesAt: null,
+      beforeEnd: false,
+      statOpen: true,
+      disputeOpen: true,
+      statExpired: false,
+      disputeExpired: false,
+    };
+  }
+
+  const nowMs = typeof now === "number" ? now : new Date(now).getTime();
+  const endMs = endAt.getTime();
+  const statClosesAt = addMinutes(endAt, statEntryMinutes);
+  const disputeClosesAt = addMinutes(endAt, disputeMinutes);
+
+  return {
+    endAt,
+    statClosesAt,
+    disputeClosesAt,
+    beforeEnd: nowMs < endMs,
+    statOpen: nowMs >= endMs && nowMs <= statClosesAt.getTime(),
+    disputeOpen: nowMs >= endMs && nowMs <= disputeClosesAt.getTime(),
+    statExpired: nowMs > statClosesAt.getTime(),
+    disputeExpired: nowMs > disputeClosesAt.getTime(),
+  };
+}
+
+export function getAllowedStatFields(match = {}, userId) {
+  if (isMatchReferee(match, userId)) return PLAYER_STAT_FIELDS;
+  return PLAYER_STAT_FIELDS.filter((field) => field.id === "points");
 }
 
 export function normalizePlayerStats(playerStats = {}, playerIds = []) {

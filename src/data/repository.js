@@ -1,13 +1,25 @@
-import { COURTS, MAX_TEAM_MEMBERSHIPS, MODE_SIZES, TEAM_ROLES } from "../lib/constants.js";
+import {
+  COURTS,
+  DISPUTE_WINDOW_MINUTES,
+  MAX_TEAM_MEMBERSHIPS,
+  MODE_SIZES,
+  REFEREE_TRUST_MIN,
+  STAT_ENTRY_WINDOW_MINUTES,
+  TEAM_ROLES,
+} from "../lib/constants.js";
 import { initialState } from "../lib/mockData.js";
 import {
   getAgreementStatus,
   getApprovalStatus,
+  getAllowedStatFields,
   getMatchPlayerIds,
+  getMatchRecordWindow,
   getPlayerSideName,
   getResultPointAudit,
   getStatSubmissionStatus,
   getTeamCaptainId,
+  isEligibleReferee,
+  isMatchReferee,
   normalizePlayerStats,
 } from "../lib/matchUtils.js";
 import { applyMatchRating, calculateTeamDelta } from "../lib/rating.js";
@@ -66,6 +78,10 @@ function normalizeMatch(match) {
     },
     approvals: match.approvals ?? { teamA: [], teamB: [] },
     disputes: match.disputes ?? [],
+    refereeId: match.refereeId ?? "",
+    refereeTrustMin: Number(match.refereeTrustMin ?? REFEREE_TRUST_MIN),
+    statEntryMinutes: Number(match.statEntryMinutes ?? STAT_ENTRY_WINDOW_MINUTES),
+    disputeMinutes: Number(match.disputeMinutes ?? DISPUTE_WINDOW_MINUTES),
   };
 }
 
@@ -256,6 +272,10 @@ function fromRemoteMatch(row, context) {
     stakes: row.stakes,
     ranked: row.ranked !== false,
     mmrLimitMode: row.mmr_limit_mode ?? "block",
+    refereeId: row.referee_id ?? "",
+    refereeTrustMin: row.referee_trust_min ?? REFEREE_TRUST_MIN,
+    statEntryMinutes: row.stat_entry_minutes ?? STAT_ENTRY_WINDOW_MINUTES,
+    disputeMinutes: row.dispute_minutes ?? DISPUTE_WINDOW_MINUTES,
     tournamentId: row.tournament_id,
     tournamentFormat: row.tournament_format,
     tournamentRound: row.tournament_round,
@@ -274,6 +294,7 @@ function fromRemoteMatch(row, context) {
           scoreB: resultRow.score_b,
           playerStats,
           statSubmissions: resultRow.stat_submissions ?? {},
+          submittedBy: resultRow.submitted_by,
           submittedAt: resultRow.submitted_at,
         }
       : null,
@@ -281,6 +302,7 @@ function fromRemoteMatch(row, context) {
     teamRatingResult: row.team_rating_result && !Array.isArray(row.team_rating_result) ? row.team_rating_result : null,
     createdAt: row.created_at,
     agreedAt: row.agreed_at,
+    endedAt: row.ended_at,
     confirmedAt: row.confirmed_at,
     cancelledAt: row.cancelled_at,
     voidedAt: row.voided_at,
@@ -444,6 +466,10 @@ async function loadNormalizedRemoteState() {
       spots: post.spots,
       teamId: post.team_id,
       targetTeamId: post.target_team_id,
+      refereeId: post.referee_id ?? "",
+      refereeTrustMin: post.referee_trust_min ?? REFEREE_TRUST_MIN,
+      statEntryMinutes: post.stat_entry_minutes ?? STAT_ENTRY_WINDOW_MINUTES,
+      disputeMinutes: post.dispute_minutes ?? DISPUTE_WINDOW_MINUTES,
       hostJoinMode: post.host_join_mode,
       hostSide: post.host_side,
       hostReady: post.host_ready,
@@ -649,6 +675,10 @@ async function saveNormalizedRemoteState(state) {
     status: match.status ?? "contract",
     ranked: match.ranked !== false,
     mmr_limit_mode: match.mmrLimitMode ?? "block",
+    referee_id: match.refereeId || null,
+    referee_trust_min: Number(match.refereeTrustMin ?? REFEREE_TRUST_MIN),
+    stat_entry_minutes: Number(match.statEntryMinutes ?? STAT_ENTRY_WINDOW_MINUTES),
+    dispute_minutes: Number(match.disputeMinutes ?? DISPUTE_WINDOW_MINUTES),
     tournament_id: match.tournamentId ?? null,
     tournament_format: match.tournamentFormat ?? null,
     tournament_round: match.tournamentRound ?? null,
@@ -671,6 +701,7 @@ async function saveNormalizedRemoteState(state) {
     created_by: match.teamA?.players?.[0] ?? currentUserId,
     created_at: match.createdAt,
     agreed_at: match.agreedAt,
+    ended_at: match.endedAt ?? null,
     confirmed_at: match.confirmedAt,
     cancelled_at: match.cancelledAt,
     voided_at: match.voidedAt,
@@ -698,7 +729,7 @@ async function saveNormalizedRemoteState(state) {
     .filter((match) => match.result)
     .map((match) => ({
       match_id: match.id,
-      submitted_by: match.teamA?.players?.[0] ?? currentUserId,
+      submitted_by: match.result.submittedBy ?? match.refereeId ?? match.teamA?.players?.[0] ?? currentUserId,
       score_a: Number(match.result.scoreA ?? match.teamA?.score ?? 0),
       score_b: Number(match.result.scoreB ?? match.teamB?.score ?? 0),
       stat_submissions: match.result.statSubmissions ?? {},
@@ -708,6 +739,8 @@ async function saveNormalizedRemoteState(state) {
     Object.entries(match.result?.playerStats ?? {}).map(([userId, stat]) => ({
       match_id: match.id,
       user_id: userId,
+      recorded_by: match.result?.statSubmissions?.[userId]?.by ?? null,
+      record_source: match.refereeId ? "referee" : "player",
       points: Number(stat.points ?? 0),
       rebounds: Number(stat.rebounds ?? 0),
       assists: Number(stat.assists ?? 0),
@@ -743,6 +776,10 @@ async function saveNormalizedRemoteState(state) {
     ranked: post.ranked !== false,
     spots: post.spots ?? 1,
     target_team_id: post.targetTeamId ?? null,
+    referee_id: post.refereeId || null,
+    referee_trust_min: Number(post.refereeTrustMin ?? REFEREE_TRUST_MIN),
+    stat_entry_minutes: Number(post.statEntryMinutes ?? STAT_ENTRY_WINDOW_MINUTES),
+    dispute_minutes: Number(post.disputeMinutes ?? DISPUTE_WINDOW_MINUTES),
     host_join_mode: post.hostJoinMode ?? (post.teamId ? "team" : "player"),
     host_side: post.hostSide ?? "teamA",
     host_ready: Boolean(post.hostReady),
@@ -882,6 +919,12 @@ function getTeamPlayers(team, size) {
   return team.members.slice(0, size).map((member) => member.userId);
 }
 
+function getTrustedRefereeId(state, refereeId, playerIds = []) {
+  if (!refereeId || playerIds.includes(refereeId)) return "";
+  const user = state.users.find((item) => item.id === refereeId);
+  return isEligibleReferee(user, REFEREE_TRUST_MIN) ? refereeId : "";
+}
+
 function getScheduleText(date, time) {
   return [date, time].filter(Boolean).join(" ") || "일정 미정";
 }
@@ -955,6 +998,10 @@ function makeTournamentMatch(tournament, teamA, teamB, pairing, now) {
     ranked: tournament.ranked !== false,
     official: Boolean(tournament.official),
     preRegistered: true,
+    refereeId: "",
+    refereeTrustMin: REFEREE_TRUST_MIN,
+    statEntryMinutes: STAT_ENTRY_WINDOW_MINUTES,
+    disputeMinutes: DISPUTE_WINDOW_MINUTES,
     tournamentId: tournament.id,
     tournamentFormat: tournament.format,
     tournamentRound: pairing.round,
@@ -964,7 +1011,7 @@ function makeTournamentMatch(tournament, teamA, teamB, pairing, now) {
     memo: tournament.memo || "대회 경기입니다.",
     stakes: "대회 경기 MMR 가중치가 적용됩니다.",
     mmrLimitMode: tournament.mmrLimitMode ?? "warn",
-    objectionWindow: tournament.official ? "24시간" : "1시간",
+    objectionWindow: "2시간",
     evidence: [
       { id: "captain", label: "양팀 주장 확인" },
       { id: "tournament_bracket", label: "대회 대진표" },
@@ -1156,6 +1203,9 @@ export function createMatch(state, draft) {
   const teamA = teams.find((team) => team.id === draft.teamAId) ?? teams[0];
   const teamB = teams.find((team) => team.id === draft.teamBId && team.id !== teamA.id) ?? teams.find((team) => team.id !== teamA.id) ?? teams[1];
   const evidence = (draft.evidence ?? []).map((item) => ({ id: item.id, label: item.label }));
+  const teamAPlayers = getTeamPlayers(teamA, size);
+  const teamBPlayers = getTeamPlayers(teamB, size);
+  const refereeId = getTrustedRefereeId(state, draft.refereeId, [...teamAPlayers, ...teamBPlayers]);
   const match = {
     id: makeId("m"),
     title: draft.title || `${draft.court} ${mode} 판`,
@@ -1168,6 +1218,10 @@ export function createMatch(state, draft) {
     ranked: draft.ranked !== false,
     official: Boolean(draft.official),
     preRegistered: Boolean(draft.preRegistered),
+    refereeId,
+    refereeTrustMin: REFEREE_TRUST_MIN,
+    statEntryMinutes: STAT_ENTRY_WINDOW_MINUTES,
+    disputeMinutes: DISPUTE_WINDOW_MINUTES,
     rules: {
       targetScore: Number(draft.targetScore ?? 21),
       timeLimit: Number(draft.timeLimit ?? 12),
@@ -1179,10 +1233,10 @@ export function createMatch(state, draft) {
     memo: draft.memo || "결과 승인 대기.",
     stakes: draft.stakes || "다음 경기 우선권.",
     mmrLimitMode: draft.mmrLimitMode ?? "block",
-    objectionWindow: draft.objectionWindow || (draft.official ? "24시간" : "1시간"),
+    objectionWindow: "2시간",
     evidence,
-    teamA: { name: teamA.name, teamId: teamA.id, players: getTeamPlayers(teamA, size), score: 0 },
-    teamB: { name: teamB.name, teamId: teamB.id, players: getTeamPlayers(teamB, size), score: 0 },
+    teamA: { name: teamA.name, teamId: teamA.id, players: teamAPlayers, score: 0 },
+    teamB: { name: teamB.name, teamId: teamB.id, players: teamBPlayers, score: 0 },
     agreements: { teamA: [], teamB: [] },
     approvals: { teamA: [], teamB: [] },
     disputes: [],
@@ -1457,14 +1511,34 @@ export function submitMatchResult(state, matchId, result) {
   const currentUserId = state.currentUserId;
   const playerIds = getMatchPlayerIds(match);
   const currentSideName = getPlayerSideName(match, currentUserId);
-  if (!currentSideName) {
+  const hasReferee = Boolean(match.refereeId);
+  const currentUser = state.users.find((user) => user.id === currentUserId);
+  const currentUserIsReferee = isMatchReferee(match, currentUserId);
+
+  if (hasReferee && (!currentUserIsReferee || !isEligibleReferee(currentUser, match.refereeTrustMin))) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "심판 기록 전용",
+          body: "심판이 초대된 경기는 해당 심판만 스코어와 개인 활약을 입력할 수 있습니다.",
+          tone: "match",
+          matchId,
+        },
+        ...state.notifications,
+      ],
+    };
+  }
+
+  if (!hasReferee && !currentSideName) {
     return {
       ...state,
       notifications: [
         {
           id: makeId("n"),
           title: "결과 입력 권한 없음",
-          body: "경기 참가자만 스코어와 본인 기록을 입력할 수 있습니다.",
+          body: "경기 참가자만 스코어와 본인 득점을 입력할 수 있습니다.",
           tone: "match",
           matchId,
         },
@@ -1488,25 +1562,65 @@ export function submitMatchResult(state, matchId, result) {
     };
   }
   if (["confirmed", "void", "cancelled", "disputed"].includes(match.status)) return state;
+  const recordWindow = getMatchRecordWindow(match);
+  if (recordWindow.beforeEnd || !recordWindow.statOpen) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: recordWindow.beforeEnd ? "경기 종료 전" : "기록 입력 마감",
+          body: recordWindow.beforeEnd
+            ? "경기 종료 후 개인 기록 입력이 열립니다."
+            : "경기 종료 후 1시간이 지나 개인 기록 입력이 마감됐습니다.",
+          tone: "match",
+          matchId,
+        },
+        ...state.notifications,
+      ],
+    };
+  }
 
   const now = new Date().toISOString();
   const existingStats = normalizePlayerStats(match.result?.playerStats ?? {}, playerIds);
-  const submittedStats = normalizePlayerStats(result.playerStats ?? {}, [currentUserId])[currentUserId];
+  const endedAt = match.endedAt ?? recordWindow.endAt?.toISOString() ?? now;
+  const submittedStats = normalizePlayerStats(result.playerStats ?? {}, hasReferee ? playerIds : [currentUserId]);
+  const nextPlayerStats = hasReferee
+    ? submittedStats
+    : {
+        ...existingStats,
+        [currentUserId]: Object.fromEntries(
+          Object.entries(submittedStats[currentUserId]).map(([fieldId, value]) => [
+            fieldId,
+            getAllowedStatFields(match, currentUserId).some((field) => field.id === fieldId) ? value : 0,
+          ]),
+        ),
+      };
+  const nextSubmissions = hasReferee
+    ? Object.fromEntries(
+        playerIds.map((playerId) => [
+          playerId,
+          {
+            by: currentUserId,
+            side: "referee",
+            submittedAt: now,
+          },
+        ]),
+      )
+    : {
+        ...(match.result?.statSubmissions ?? {}),
+        [currentUserId]: {
+          by: currentUserId,
+          side: currentSideName,
+          submittedAt: now,
+        },
+      };
   const nextResult = {
     scoreA: Number(result.scoreA),
     scoreB: Number(result.scoreB),
-    playerStats: {
-      ...existingStats,
-      [currentUserId]: submittedStats,
-    },
-    statSubmissions: {
-      ...(match.result?.statSubmissions ?? {}),
-      [currentUserId]: {
-        by: currentUserId,
-        side: currentSideName,
-        submittedAt: now,
-      },
-    },
+    playerStats: nextPlayerStats,
+    statSubmissions: nextSubmissions,
+    submittedBy: currentUserId,
     submittedAt: match.result?.submittedAt ?? now,
     updatedAt: now,
   };
@@ -1522,14 +1636,17 @@ export function submitMatchResult(state, matchId, result) {
             teamB: { ...item.teamB, score: nextResult.scoreB },
             approvals: { teamA: [], teamB: [] },
             result: nextResult,
+            endedAt,
           }
         : item,
     ),
     notifications: [
       {
         id: makeId("n"),
-        title: "내 기록 제출",
-        body: `${match.title} 스코어와 내 개인 기록이 저장됐습니다. 전원 제출 후 결과 승인이 가능합니다.`,
+        title: hasReferee ? "심판 기록 제출" : "내 득점 제출",
+        body: hasReferee
+          ? `${match.title} 스코어와 전체 개인 활약이 저장됐습니다.`
+          : `${match.title} 스코어와 내 득점이 저장됐습니다. 전원 제출 후 결과 승인이 가능합니다.`,
         tone: "match",
         matchId,
       },
@@ -1586,6 +1703,22 @@ export function approveMatch(state, matchId, sideName, playerId) {
 export function disputeMatch(state, matchId, reason = "") {
   const match = state.matches.find((item) => item.id === matchId);
   if (!match?.result || match.status !== "approval") return state;
+  const recordWindow = getMatchRecordWindow(match);
+  if (!recordWindow.disputeOpen) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "이의제기 마감",
+          body: "경기 종료 후 2시간이 지나 이의제기를 접수할 수 없습니다.",
+          tone: "match",
+          matchId,
+        },
+        ...state.notifications,
+      ],
+    };
+  }
 
   const dispute = {
     id: makeId("d"),
@@ -1931,6 +2064,7 @@ export function createRecruitingPost(state, draft) {
     };
   }
   const hostSize = hostJoinMode === "team" ? hostPlayerIds.length : 1;
+  const refereeId = getTrustedRefereeId(state, draft.refereeId, [state.currentUserId, ...hostPlayerIds]);
   const scheduledAt = `${draft.scheduledDate ?? ""} ${draft.scheduledTime ?? ""}`.trim();
   const post = {
     id: makeId("q"),
@@ -1946,6 +2080,10 @@ export function createRecruitingPost(state, draft) {
     spots: Math.max(1, sideCapacity * 2 - hostSize),
     teamId: hostJoinMode === "team" ? draft.teamId : null,
     targetTeamId: draft.targetTeamId ?? null,
+    refereeId,
+    refereeTrustMin: REFEREE_TRUST_MIN,
+    statEntryMinutes: STAT_ENTRY_WINDOW_MINUTES,
+    disputeMinutes: DISPUTE_WINDOW_MINUTES,
     hostJoinMode,
     hostSide: "teamA",
     hostReady: false,
@@ -2154,6 +2292,9 @@ export function confirmRecruitingMatch(state, postId) {
 
   const scheduledAt = post.scheduledDate && post.scheduledTime ? `${post.scheduledDate} ${post.scheduledTime}` : "일정 미정";
   const now = new Date().toISOString();
+  const teamAPlayers = lobby.sides.teamA.projectedPlayers.slice(0, lobby.sides.teamA.capacity);
+  const teamBPlayers = lobby.sides.teamB.projectedPlayers.slice(0, lobby.sides.teamB.capacity);
+  const refereeId = getTrustedRefereeId(state, post.refereeId, [...teamAPlayers, ...teamBPlayers]);
   const match = {
     id: makeId("m"),
     title: post.title,
@@ -2165,22 +2306,26 @@ export function confirmRecruitingMatch(state, postId) {
     status: "contract",
     official: Boolean(post.official),
     preRegistered: true,
+    refereeId,
+    refereeTrustMin: REFEREE_TRUST_MIN,
+    statEntryMinutes: STAT_ENTRY_WINDOW_MINUTES,
+    disputeMinutes: DISPUTE_WINDOW_MINUTES,
     rules: post.rules ?? { targetScore: 21, timeLimit: 12, winByTwo: true, ball: "7호 공" },
     memo: post.memo,
     stakes: "매치 큐에서 확정된 경기입니다.",
     ranked: post.ranked !== false,
-    objectionWindow: "24시간",
+    objectionWindow: "2시간",
     evidence: [{ id: "captain", label: "양측 주장 확인" }],
     teamA: {
       name: getLobbySideName(lobby, "teamA"),
       teamId: getLobbyPrimaryTeamId(lobby, "teamA"),
-      players: lobby.sides.teamA.projectedPlayers.slice(0, lobby.sides.teamA.capacity),
+      players: teamAPlayers,
       score: 0,
     },
     teamB: {
       name: getLobbySideName(lobby, "teamB"),
       teamId: getLobbyPrimaryTeamId(lobby, "teamB"),
-      players: lobby.sides.teamB.projectedPlayers.slice(0, lobby.sides.teamB.capacity),
+      players: teamBPlayers,
       score: 0,
     },
     parties: lobby.entries.map((entry) => ({

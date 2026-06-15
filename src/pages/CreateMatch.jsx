@@ -8,7 +8,8 @@ import EvidenceSelector from "../components/match/EvidenceSelector.jsx";
 import RuleSelector from "../components/match/RuleSelector.jsx";
 import TeamBuilder from "../components/match/TeamBuilder.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
-import { COURTS, EVIDENCE_OPTIONS, MATCH_MODES, REGIONS } from "../lib/constants.js";
+import { COURTS, EVIDENCE_OPTIONS, MATCH_MODES, REFEREE_TRUST_MIN, REGIONS } from "../lib/constants.js";
+import { isEligibleReferee } from "../lib/matchUtils.js";
 import { getRecruitingSideCapacity, getRecruitingTierRange, getSelectableTeamPlayerIds, isMmrInRecruitingRange } from "../lib/recruiting.js";
 
 const today = new Date().toISOString().slice(0, 10);
@@ -140,6 +141,7 @@ export default function CreateMatch({ app }) {
     teamAId: defaultTeamA?.id,
     teamBId: defaultTeamB?.id,
     playerIds: getDefaultTeamPlayerIds(defaultTeamA, getRecruitingSideCapacity({ mode: "5v5" })),
+    refereeId: "",
     ranked: true,
     official: true,
     preRegistered: true,
@@ -210,9 +212,24 @@ export default function CreateMatch({ app }) {
       : [selectedTeamA, selectedTeamB].filter(Boolean)),
     [draft.hostJoinMode, draft.visibility, selectedTeamA, selectedTeamB],
   );
-  const teamTierRange = getRecruitingTierRange(selectedTeamA?.mmr ?? 1200, draft.ranked);
   const isPublicRoom = draft.visibility === "public";
   const isTournamentRoom = draft.visibility === "tournament";
+  const activePlayerIds = useMemo(() => {
+    const capacity = getRecruitingSideCapacity(draft);
+    if (isPublicRoom) return new Set(draft.hostJoinMode === "team" ? publicPartyPlayerIds : [app.currentUser.id]);
+    return new Set([
+      ...getDefaultTeamPlayerIds(selectedTeamA, capacity),
+      ...getDefaultTeamPlayerIds(selectedTeamB, capacity),
+    ]);
+  }, [app.currentUser.id, draft, isPublicRoom, publicPartyPlayerIds, selectedTeamA, selectedTeamB]);
+  const refereeCandidates = useMemo(
+    () => app.state.users
+      .filter((user) => isEligibleReferee(user, REFEREE_TRUST_MIN))
+      .filter((user) => !activePlayerIds.has(user.id))
+      .sort((a, b) => Number(b.trustScore ?? 0) - Number(a.trustScore ?? 0)),
+    [activePlayerIds, app.state.users],
+  );
+  const teamTierRange = getRecruitingTierRange(selectedTeamA?.mmr ?? 1200, draft.ranked);
   const teamTierBlocked = Boolean(
     !isPublicRoom &&
       !isTournamentRoom &&
@@ -253,6 +270,12 @@ export default function CreateMatch({ app }) {
   );
 
   const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
+  useEffect(() => {
+    if (!draft.refereeId) return;
+    if (refereeCandidates.some((user) => user.id === draft.refereeId)) return;
+    setDraft((current) => ({ ...current, refereeId: "" }));
+  }, [draft.refereeId, refereeCandidates]);
+
   useEffect(() => {
     if (!app.state.teams.length) return;
     setDraft((current) => {
@@ -332,6 +355,7 @@ export default function CreateMatch({ app }) {
         hostJoinMode: draft.hostJoinMode,
         teamId: draft.hostJoinMode === "team" ? draft.teamAId : "",
         playerIds: draft.hostJoinMode === "team" ? publicPartyPlayerIds : [],
+        refereeId: draft.refereeId,
         targetTeamId: draft.teamBId,
         region: selectedCourt.region,
         court: draft.court,
@@ -460,6 +484,22 @@ export default function CreateMatch({ app }) {
               시간
               <input type="time" value={draft.scheduledTime} onChange={(event) => update({ scheduledTime: event.target.value })} />
             </label>
+            {!isTournamentRoom ? (
+              <>
+                <label>
+                  심판
+                  <select value={draft.refereeId} onChange={(event) => update({ refereeId: event.target.value })}>
+                    <option value="">초대 안 함 · 개인 기록은 득점만</option>
+                    {refereeCandidates.map((user) => (
+                      <option key={user.id} value={user.id}>{user.name} · 신뢰도 {user.trustScore}</option>
+                    ))}
+                  </select>
+                </label>
+                <div className="stat-integrity-note">
+                  심판은 신뢰도 {REFEREE_TRUST_MIN} 이상만 가능. 초대 시 심판만 득점/리바운드/어시스트/스틸/블록을 입력한다.
+                </div>
+              </>
+            ) : null}
             {isTournamentRoom ? (
               <>
                 <label>

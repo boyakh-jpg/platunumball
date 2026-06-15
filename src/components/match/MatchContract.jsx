@@ -3,6 +3,7 @@ import Badge from "../common/Badge.jsx";
 import Card from "../common/Card.jsx";
 import PlayerHoverCard from "../profile/PlayerHoverCard.jsx";
 import { CREDIBILITY_LEVELS } from "../../lib/constants.js";
+import { getMatchReferee } from "../../lib/matchUtils.js";
 import { getCredibilityLevel } from "../../lib/rating.js";
 
 const mmrLimitLabels = {
@@ -14,6 +15,7 @@ const mmrLimitLabels = {
 export default function MatchContract({ match, users, teams = [] }) {
   const userMap = Object.fromEntries(users.map((user) => [user.id, user]));
   const credibility = CREDIBILITY_LEVELS[getCredibilityLevel(match)] ?? CREDIBILITY_LEVELS.street_majority;
+  const referee = getMatchReferee(match, users);
   const renderRoster = (side) => (
     <div className="roster">
       {side.players.map((id) => {
@@ -77,7 +79,15 @@ export default function MatchContract({ match, users, teams = [] }) {
         </div>
         <div>
           <span>이의제기</span>
-          <strong>{match.objectionWindow ?? (match.official ? "24시간" : "1시간")}</strong>
+          <strong>{match.disputeMinutes ?? 120}분</strong>
+        </div>
+        <div>
+          <span>개인 기록</span>
+          <strong>{match.statEntryMinutes ?? 60}분 안에 입력</strong>
+        </div>
+        <div>
+          <span>심판</span>
+          <strong>{referee ? `${referee.name} · 신뢰도 ${referee.trustScore}` : "없음 · 득점만"}</strong>
         </div>
         <div>
           <span>공격권</span>

@@ -187,6 +187,12 @@ begin
 
   if to_regclass('public.matches') is not null then
     execute 'alter table public.matches add column if not exists mmr_limit_mode text not null default ''block''';
+    execute 'alter table public.matches add column if not exists referee_id text';
+    execute 'alter table public.matches add column if not exists referee_trust_min integer not null default 90';
+    execute 'alter table public.matches add column if not exists stat_entry_minutes integer not null default 60';
+    execute 'alter table public.matches add column if not exists dispute_minutes integer not null default 120';
+    execute 'alter table public.matches add column if not exists ended_at timestamptz';
+    execute 'create index if not exists matches_referee_id_idx on public.matches (referee_id)';
     execute 'alter table public.matches add column if not exists tournament_id text';
     execute 'alter table public.matches add column if not exists tournament_format text';
     execute 'alter table public.matches add column if not exists tournament_round integer';
@@ -199,6 +205,14 @@ begin
 
   if to_regclass('public.match_results') is not null then
     execute 'alter table public.match_results add column if not exists stat_submissions jsonb not null default ''{}''::jsonb';
+    execute 'alter table public.match_results add column if not exists submitted_by text';
+  end if;
+
+  if to_regclass('public.player_match_stats') is not null then
+    execute 'alter table public.player_match_stats add column if not exists recorded_by text';
+    execute 'alter table public.player_match_stats add column if not exists record_source text not null default ''player''';
+    execute 'alter table public.player_match_stats drop constraint if exists player_match_stats_record_source_check';
+    execute 'alter table public.player_match_stats add constraint player_match_stats_record_source_check check (record_source in (''player'', ''referee''))';
   end if;
 
   if to_regclass('public.recruiting_posts') is not null then
@@ -207,6 +221,10 @@ begin
     execute 'alter table public.recruiting_posts add column if not exists host_ready boolean not null default false';
     execute 'alter table public.recruiting_posts add column if not exists side_capacity integer not null default 5';
     execute 'alter table public.recruiting_posts add column if not exists target_team_id text';
+    execute 'alter table public.recruiting_posts add column if not exists referee_id text';
+    execute 'alter table public.recruiting_posts add column if not exists referee_trust_min integer not null default 90';
+    execute 'alter table public.recruiting_posts add column if not exists stat_entry_minutes integer not null default 60';
+    execute 'alter table public.recruiting_posts add column if not exists dispute_minutes integer not null default 120';
     execute 'alter table public.recruiting_posts add column if not exists scheduled_date date';
     execute 'alter table public.recruiting_posts add column if not exists scheduled_time time';
     execute 'alter table public.recruiting_posts add column if not exists scheduled_at text';

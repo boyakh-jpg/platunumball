@@ -4774,6 +4774,36 @@ input[type="color"] {
   padding: 10px;
 }
 
+.stat-referee-panel {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.stat-referee-panel > div {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+  border: 1px solid rgba(70, 224, 182, 0.18);
+  border-radius: var(--radius);
+  background: rgba(70, 224, 182, 0.055);
+  padding: 10px;
+}
+
+.stat-referee-panel span,
+.stat-referee-panel em {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-style: normal;
+  font-weight: 850;
+}
+
+.stat-referee-panel strong {
+  overflow-wrap: anywhere;
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
 .stat-trust-panel {
   display: grid;
   gap: 10px;
@@ -5243,6 +5273,7 @@ html[data-theme="light"] .favorite-toggle-button.active.button-secondary {
   .team-danger-zone,
   .match-action-row,
   .favorite-action-row,
+  .stat-referee-panel,
   .tier-range-note {
     grid-template-columns: 1fr;
   }
