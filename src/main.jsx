@@ -5,6 +5,7 @@ import App from "./App.jsx";
 import "./styles/tokens.css";
 import "./styles/globals.css";
 import "./styles/recruiting-overwatch.css";
+import "./styles/matches-overwatch.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
