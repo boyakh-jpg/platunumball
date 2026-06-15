@@ -210,34 +210,76 @@ function EntryBlock({ entry, userById, teams }) {
   );
 }
 
-function QueueReadyLine({ lobby, userById, teams }) {
+function QueueRoomBoard({ lobby, userById, teams }) {
   const rows = (lobby.entries ?? []).map((entry) => {
     const user = entry.playerId ? userById[entry.playerId] : null;
+    const players = (entry.players ?? []).map((playerId) => userById[playerId]).filter(Boolean);
     return {
       id: entry.id,
       label: getReadyTitle(entry),
-      side: entry.reserve ? "?꾨낫" : SIDE_LABELS[entry.side],
+      sideName: entry.side,
+      reserve: Boolean(entry.reserve),
       ready: entry.status === "ready",
       user,
+      team: entry.team,
+      players,
     };
   });
+  const renderRow = (row) => (
+    <span key={row.id} className={row.ready ? "ready" : "waiting"}>
+      <span className="ow-queue-board-avatars" aria-hidden="true">
+        {row.players.slice(0, 3).map((player) => (
+          <PlayerHoverCard key={player.id} user={player} teams={teams} as="span">
+            <span className="avatar small" style={{ "--avatar": player.avatarColor }}>{player.name.slice(0, 1)}</span>
+          </PlayerHoverCard>
+        ))}
+        {row.players.length > 3 ? <i>+{row.players.length - 3}</i> : null}
+      </span>
+      <span className="ow-queue-board-name">
+        {row.team ? (
+          <TeamHoverCard team={row.team} as="span">
+            <b>{row.label}</b>
+          </TeamHoverCard>
+        ) : row.user ? (
+          <PlayerHoverCard user={row.user} teams={teams} as="span">
+            <b>{row.label}</b>
+          </PlayerHoverCard>
+        ) : (
+          <b>{row.label}</b>
+        )}
+      </span>
+      <em>{row.ready ? "대기 완료" : "대기 전"}</em>
+    </span>
+  );
+  const renderGroup = (id, label, side) => {
+    const groupRows = rows.filter((row) => (id === "reserve" ? row.reserve : !row.reserve && row.sideName === id));
+    if (id === "reserve" && !groupRows.length) return null;
+    return (
+      <div className={`ow-queue-board-group ${id}`}>
+        <header>
+          <strong>{label}</strong>
+          <small>{side ? `${side.projectedFilled}/${side.capacity}` : `${groupRows.length}명`}</small>
+        </header>
+        <div>{groupRows.length ? groupRows.map(renderRow) : <span className="empty">대기 없음</span>}</div>
+      </div>
+    );
+  };
+  const readyCount = rows.filter((row) => row.ready).length;
+  const filledCount = lobby.sides.teamA.projectedFilled + lobby.sides.teamB.projectedFilled;
+  const totalCapacity = lobby.sides.teamA.capacity + lobby.sides.teamB.capacity;
 
   return (
-    <div className="ow-queue-ready-line">
-      {rows.map((row) => (
-        <span key={row.id} className={row.ready ? "ready" : "waiting"}>
-          {row.user ? (
-            <PlayerHoverCard user={row.user} teams={teams} as="span">
-              <span className="avatar small" style={{ "--avatar": row.user.avatarColor }}>{row.user.name.slice(0, 1)}</span>
-              <b>{row.label}</b>
-            </PlayerHoverCard>
-          ) : (
-            <b>{row.label}</b>
-          )}
-          <small>{row.side}</small>
-          <em>{row.ready ? "대기 완료" : "대기 전"}</em>
-        </span>
-      ))}
+    <div className={lobby.canConfirm ? "ow-queue-board complete" : "ow-queue-board"}>
+      <div className="ow-queue-board-head">
+        <span>{lobby.canConfirm ? "확정 가능" : "대기 확인 중"}</span>
+        <b>대기 {readyCount}/{rows.length}</b>
+        <b>인원 {filledCount}/{totalCapacity}</b>
+      </div>
+      <div className="ow-queue-board-grid">
+        {renderGroup("teamA", SIDE_LABELS.teamA, lobby.sides.teamA)}
+        {renderGroup("teamB", SIDE_LABELS.teamB, lobby.sides.teamB)}
+        {renderGroup("reserve", "후보", null)}
+      </div>
     </div>
   );
 }
@@ -543,15 +585,7 @@ export default function Recruiting({ app }) {
                     {hostTeam ? <TeamHoverCard team={hostTeam} as="span">{hostTeam.name}</TeamHoverCard> : host?.name ?? "방장"}
                   </span>
                 </div>
-                <div className="ow-lobby-meter-grid">
-                  {["teamA", "teamB"].map((sideName) => (
-                    <div key={sideName} className="ow-lobby-meter">
-                      <span>{SIDE_LABELS[sideName]}</span>
-                      <b>{lobby.sides[sideName].projectedFilled}/{lobby.sides[sideName].capacity}</b>
-                    </div>
-                  ))}
-                </div>
-                <QueueReadyLine lobby={lobby} userById={userById} teams={app.state.teams} />
+                <QueueRoomBoard lobby={lobby} userById={userById} teams={app.state.teams} />
                 <div className="ow-card-bottom">
                   <span>{getRecruitingSchedule(post)}</span>
                   <span className="ow-tier-chip">{post.ranked === false ? "티어 자유" : `${target} MMR 기준`}</span>

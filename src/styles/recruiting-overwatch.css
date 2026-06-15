@@ -829,28 +829,6 @@
   box-shadow: 0 0 0 1px rgba(70, 224, 182, 0.18);
 }
 
-.ow-lobby-meter-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.ow-lobby-meter {
-  display: grid;
-  grid-template-columns: auto auto;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  color: var(--muted);
-  font-size: 0.75rem;
-  font-weight: 950;
-}
-
-.ow-lobby-meter b {
-  color: var(--gold);
-}
-
-.ow-lobby-meter div,
 .ow-side-progress {
   overflow: hidden;
   height: 8px;
@@ -858,7 +836,6 @@
   background: rgba(255, 255, 255, 0.08);
 }
 
-.ow-lobby-meter div::before,
 .ow-side-progress::before {
   content: "";
   display: block;
@@ -868,62 +845,196 @@
   background: linear-gradient(90deg, var(--green), var(--gold));
 }
 
-.ow-queue-ready-line {
-  display: flex;
+.ow-queue-board {
+  display: grid;
   min-width: 0;
+  gap: 8px;
+  border: 1px solid rgba(255, 211, 108, 0.14);
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.03));
+  padding: 9px;
+}
+
+.ow-queue-board.complete {
+  border-color: rgba(70, 224, 182, 0.42);
+  background: linear-gradient(135deg, rgba(70, 224, 182, 0.14), rgba(255, 255, 255, 0.035));
+}
+
+.ow-queue-board-head {
+  display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 6px;
+  min-width: 0;
 }
 
-.ow-queue-ready-line > span {
+.ow-queue-board-head span,
+.ow-queue-board-head b {
   display: inline-flex;
   align-items: center;
-  min-width: 0;
-  max-width: 100%;
-  gap: 5px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  min-height: 24px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.045);
-  color: var(--muted);
-  padding: 5px 8px;
-  font-size: 0.72rem;
-  font-weight: 900;
+  padding: 4px 8px;
+  font-size: 0.7rem;
+  font-weight: 950;
+  white-space: nowrap;
 }
 
-.ow-queue-ready-line > span.ready {
-  border-color: rgba(70, 224, 182, 0.3);
-  background: rgba(70, 224, 182, 0.09);
-  color: var(--green);
-}
-
-.ow-queue-ready-line > span.waiting {
-  border-color: rgba(255, 211, 108, 0.2);
+.ow-queue-board-head span {
+  border: 1px solid rgba(255, 211, 108, 0.22);
+  background: rgba(255, 211, 108, 0.08);
   color: var(--gold);
 }
 
-.ow-queue-ready-line .player-hover-trigger {
-  display: inline-flex;
+.ow-queue-board-head b {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.18);
+  color: var(--text);
+}
+
+.ow-queue-board-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  min-width: 0;
+}
+
+.ow-queue-board-group {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.16);
+  padding: 7px;
+}
+
+.ow-queue-board-group.reserve {
+  border-color: rgba(255, 211, 108, 0.18);
+}
+
+.ow-queue-board-group header {
+  display: flex;
   align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  gap: 6px;
+}
+
+.ow-queue-board-group header strong {
+  color: var(--text);
+  font-size: 0.74rem;
+  font-weight: 950;
+}
+
+.ow-queue-board-group header small {
+  color: var(--gold);
+  font-size: 0.68rem;
+  font-weight: 950;
+}
+
+.ow-queue-board-group > div {
+  display: grid;
   min-width: 0;
   gap: 5px;
 }
 
-.ow-queue-ready-line b {
+.ow-queue-board-group > div > span {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 32px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.045);
+  padding: 5px 6px;
+}
+
+.ow-queue-board-group > div > span.ready {
+  border-color: rgba(70, 224, 182, 0.34);
+  background: rgba(70, 224, 182, 0.09);
+}
+
+.ow-queue-board-group > div > span.waiting {
+  border-color: rgba(255, 211, 108, 0.18);
+}
+
+.ow-queue-board-avatars {
+  display: inline-flex;
+  align-items: center;
+  min-width: 22px;
+}
+
+.ow-queue-board-avatars .player-hover-trigger {
+  display: inline-flex;
+  margin-left: -6px;
+}
+
+.ow-queue-board-avatars .player-hover-trigger:first-child {
+  margin-left: 0;
+}
+
+.ow-queue-board-avatars .avatar.small {
+  width: 22px;
+  height: 22px;
+  border: 2px solid rgba(8, 12, 18, 0.94);
+  font-size: 0.64rem;
+}
+
+.ow-queue-board-avatars i {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin-left: -6px;
+  border: 2px solid rgba(8, 12, 18, 0.94);
+  border-radius: 999px;
+  background: rgba(255, 211, 108, 0.18);
+  color: var(--gold);
+  font-size: 0.58rem;
+  font-style: normal;
+  font-weight: 950;
+}
+
+.ow-queue-board-name,
+.ow-queue-board-name .team-hover-trigger,
+.ow-queue-board-name .player-hover-trigger {
+  display: inline-flex;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.ow-queue-board-name b {
+  display: block;
   min-width: 0;
   overflow: hidden;
   color: var(--text);
+  font-size: 0.72rem;
+  font-weight: 950;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.ow-queue-ready-line small,
-.ow-queue-ready-line em {
-  color: currentColor;
+.ow-queue-board-group em {
+  color: var(--gold);
   font-size: 0.68rem;
   font-style: normal;
   font-weight: 950;
   white-space: nowrap;
+}
+
+.ow-queue-board-group .ready em {
+  color: var(--green);
+}
+
+.ow-queue-board-group .empty {
+  display: block;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 850;
 }
 
 .ow-lobby-modal {
@@ -1316,7 +1427,7 @@ html[data-theme="light"] .ow-compose-drawer {
   .ow-details-grid,
   .ow-lobby-grid,
   .ow-join-panel,
-  .ow-lobby-meter-grid {
+  .ow-queue-board-grid {
     grid-template-columns: 1fr;
   }
 
