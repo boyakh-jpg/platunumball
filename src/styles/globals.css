@@ -1311,7 +1311,7 @@ input[type="color"] {
 
 .create-mode-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
   gap: 10px;
 }
 
@@ -1367,6 +1367,52 @@ input[type="color"] {
   border-radius: var(--radius);
   background: rgba(70, 224, 182, 0.055);
   padding: 10px;
+}
+
+.tournament-team-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr));
+  gap: 8px;
+}
+
+.tournament-team-grid button {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+  justify-items: start;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  padding: 11px;
+  text-align: left;
+}
+
+.tournament-team-grid button.active {
+  border-color: rgba(255, 211, 108, 0.5);
+  background: rgba(255, 211, 108, 0.1);
+}
+
+.tournament-team-grid strong,
+.tournament-team-grid span,
+.tournament-team-grid em {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.tournament-team-grid span,
+.tournament-team-grid em {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-style: normal;
+  font-weight: 850;
+}
+
+.tournament-team-grid em {
+  color: var(--gold);
 }
 
 .evidence-grid {

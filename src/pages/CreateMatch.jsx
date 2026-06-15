@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Globe2, Lock, Star } from "lucide-react";
+import { Globe2, Lock, Star, Trophy } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
@@ -11,7 +11,27 @@ import { COURTS, EVIDENCE_OPTIONS, MATCH_MODES, REGIONS } from "../lib/constants
 import { getRecruitingTierRange, isMmrInRecruitingRange } from "../lib/recruiting.js";
 
 const today = new Date().toISOString().slice(0, 10);
+const nextWeek = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString().slice(0, 10);
 const allRegions = ["전체", ...REGIONS];
+const mmrLimitOptions = [
+  { id: "off", label: "제한 없음" },
+  { id: "warn", label: "경고만" },
+  { id: "block", label: "생성 차단" },
+];
+const tournamentFormatOptions = [
+  { id: "league", label: "리그", desc: "모든 팀이 일정 수만큼 경기" },
+  { id: "tournament", label: "토너먼트", desc: "패배 시 탈락, 대진표 중심" },
+];
+const tournamentMmrPolicyOptions = [
+  { id: "gap_adjusted", label: "격차 보정" },
+  { id: "standard", label: "일반 MMR" },
+  { id: "event_only", label: "대회 점수만" },
+];
+const tournamentScheduleOptions = [
+  { id: "weekly", label: "주 1회 배정" },
+  { id: "daily", label: "매일 배정" },
+  { id: "manual", label: "직접 조율" },
+];
 
 function includesQuery(value, query) {
   return value.toLowerCase().includes(query.trim().toLowerCase());
@@ -25,6 +45,11 @@ function getUserTeam(teams, userId) {
 
 function getOpponentTeam(teams, teamId, region) {
   return teams.find((team) => team.id !== teamId && team.region === region) ?? teams.find((team) => team.id !== teamId);
+}
+
+function getMmrSpread(teams) {
+  const mmrs = teams.map((team) => Number(team.mmr ?? 1200));
+  return mmrs.length ? Math.max(...mmrs) - Math.min(...mmrs) : 0;
 }
 
 export default function CreateMatch({ app }) {
@@ -46,6 +71,7 @@ export default function CreateMatch({ app }) {
   const [draft, setDraft] = useState({
     visibility: "private",
     hostJoinMode: "team",
+    mmrLimitMode: "block",
     title: "오늘의 5v5 공식전",
     mode: "5v5",
     court: COURTS[0].name,
@@ -66,6 +92,13 @@ export default function CreateMatch({ app }) {
     evidence: EVIDENCE_OPTIONS.filter((option) => option.id === "captain"),
     memo: "룰 확정 후 결과 승인.",
     stakes: "다음 경기 우선권.",
+    tournamentFormat: "league",
+    tournamentTeamIds: [defaultTeamA?.id, defaultTeamB?.id].filter(Boolean),
+    tournamentEndDate: nextWeek,
+    tournamentSchedulePolicy: "weekly",
+    tournamentScheduleNote: "초대팀 확정 후 경기별 일정을 배정합니다.",
+    tournamentMmrPolicy: "gap_adjusted",
+    tournamentMaxMmrGap: 250,
   });
 
   const sortedTeams = useMemo(() => {
@@ -98,6 +131,11 @@ export default function CreateMatch({ app }) {
 
   const selectedTeamA = app.state.teams.find((team) => team.id === draft.teamAId);
   const selectedTeamB = app.state.teams.find((team) => team.id === draft.teamBId);
+  const tournamentTeams = useMemo(
+    () => (draft.tournamentTeamIds ?? []).map((teamId) => app.state.teams.find((team) => team.id === teamId)).filter(Boolean),
+    [app.state.teams, draft.tournamentTeamIds],
+  );
+  const tournamentMmrSpread = getMmrSpread(tournamentTeams);
   const teamOptions = useMemo(() => {
     const teamMap = new Map();
     [selectedTeamA, selectedTeamB, ...sortedTeams].filter(Boolean).forEach((team) => teamMap.set(team.id, team));
@@ -111,8 +149,20 @@ export default function CreateMatch({ app }) {
   );
   const teamTierRange = getRecruitingTierRange(selectedTeamA?.mmr ?? 1200, draft.ranked);
   const isPublicRoom = draft.visibility === "public";
+  const isTournamentRoom = draft.visibility === "tournament";
   const teamTierBlocked = Boolean(
     !isPublicRoom &&
+      !isTournamentRoom &&
+      draft.mmrLimitMode === "block" &&
+      draft.ranked &&
+      selectedTeamA &&
+      selectedTeamB &&
+      !isMmrInRecruitingRange(selectedTeamB.mmr, selectedTeamA.mmr, true),
+  );
+  const teamTierWarned = Boolean(
+    !isPublicRoom &&
+      !isTournamentRoom &&
+      draft.mmrLimitMode === "warn" &&
       draft.ranked &&
       selectedTeamA &&
       selectedTeamB &&
@@ -120,8 +170,18 @@ export default function CreateMatch({ app }) {
   );
   const privateTeamInvalid = !selectedTeamA || !selectedTeamB || selectedTeamA.id === selectedTeamB.id;
   const publicTeamInvalid = draft.hostJoinMode === "team" && !myTeams.some((team) => team.id === draft.teamAId);
-  const teamSelectionInvalid = isPublicRoom ? publicTeamInvalid : privateTeamInvalid;
-  const submitDisabled = isPublicRoom ? publicTeamInvalid : teamTierBlocked || privateTeamInvalid;
+  const tournamentMmrBlocked = Boolean(
+    isTournamentRoom &&
+      draft.ranked &&
+      draft.mmrLimitMode === "block" &&
+      tournamentMmrSpread > Number(draft.tournamentMaxMmrGap ?? 250),
+  );
+  const tournamentInvalid = !draft.title.trim() || tournamentTeams.length < 2 || tournamentMmrBlocked;
+  const submitDisabled = isTournamentRoom
+    ? tournamentInvalid
+    : isPublicRoom
+      ? publicTeamInvalid
+      : teamTierBlocked || privateTeamInvalid;
   const selectedCourt = useMemo(
     () => COURTS.find((court) => court.name === draft.court) ?? COURTS[0],
     [draft.court],
@@ -133,12 +193,13 @@ export default function CreateMatch({ app }) {
     setDraft((current) => {
       const teamAExists = app.state.teams.some((team) => team.id === current.teamAId);
       const teamBExists = app.state.teams.some((team) => team.id === current.teamBId);
+      const tournamentTeamIds = (current.tournamentTeamIds ?? []).filter((teamId) => app.state.teams.some((team) => team.id === teamId));
       const nextTeamAId = teamAExists ? current.teamAId : (getUserTeam(app.state.teams, app.currentUser.id) ?? app.state.teams[0])?.id;
       const nextTeamBId = teamBExists && current.teamBId !== nextTeamAId
         ? current.teamBId
         : getOpponentTeam(app.state.teams, nextTeamAId, app.currentUser.region)?.id;
-      if (current.teamAId === nextTeamAId && current.teamBId === nextTeamBId) return current;
-      return { ...current, teamAId: nextTeamAId, teamBId: nextTeamBId };
+      if (current.teamAId === nextTeamAId && current.teamBId === nextTeamBId && tournamentTeamIds.length === (current.tournamentTeamIds ?? []).length) return current;
+      return { ...current, teamAId: nextTeamAId, teamBId: nextTeamBId, tournamentTeamIds };
     });
   }, [app.currentUser.id, app.currentUser.region, app.state.teams]);
 
@@ -158,9 +219,29 @@ export default function CreateMatch({ app }) {
     if (side === "A") selectTeamA(teamId);
     if (side === "B") selectTeamB(teamId);
   };
+  const toggleTournamentTeam = (teamId) => {
+    setDraft((current) => {
+      const teamIds = current.tournamentTeamIds ?? [];
+      return {
+        ...current,
+        tournamentTeamIds: teamIds.includes(teamId)
+          ? teamIds.filter((id) => id !== teamId)
+          : [...teamIds, teamId],
+      };
+    });
+  };
   const submit = (event) => {
     event.preventDefault();
     if (submitDisabled) return;
+    if (isTournamentRoom) {
+      const tournamentId = app.actions.createTournament({
+        ...draft,
+        teamIds: draft.tournamentTeamIds,
+        region: selectedCourt.region,
+      });
+      if (tournamentId) navigate("/app/matches");
+      return;
+    }
     if (isPublicRoom) {
       app.actions.createRecruitingPost({
         title: draft.title,
@@ -191,9 +272,9 @@ export default function CreateMatch({ app }) {
       <header className="page-header">
         <div>
           <p className="eyebrow">CreateMatch</p>
-          <h1>경기방 만들기</h1>
+          <h1>경기/대회 만들기</h1>
         </div>
-        <Button type="submit" disabled={submitDisabled}>{isPublicRoom ? "매칭에 공개" : "경기 생성"}</Button>
+        <Button type="submit" disabled={submitDisabled}>{isTournamentRoom ? "대회 생성" : isPublicRoom ? "매칭에 공개" : "경기 생성"}</Button>
       </header>
 
       <div className="content-grid wide-left">
@@ -203,21 +284,28 @@ export default function CreateMatch({ app }) {
               <p className="eyebrow">Room visibility</p>
               <h2>공개 범위</h2>
             </div>
-            <Badge tone={isPublicRoom ? "green" : "neutral"}>{isPublicRoom ? "공개방" : "비공개방"}</Badge>
+            <Badge tone={isTournamentRoom ? "gold" : isPublicRoom ? "green" : "neutral"}>{isTournamentRoom ? "비공개 대회" : isPublicRoom ? "공개방" : "비공개방"}</Badge>
           </div>
           <div className="create-mode-grid">
-            <button type="button" className={!isPublicRoom ? "active" : ""} onClick={() => update({ visibility: "private" })}>
+            <button type="button" className={draft.visibility === "private" ? "active" : ""} onClick={() => update({ visibility: "private" })}>
               <Lock size={19} />
               <span>
                 <strong>비공개 경기방</strong>
                 <em>선택한 A팀/B팀으로 바로 경기 계약서를 만든다.</em>
               </span>
             </button>
-            <button type="button" className={isPublicRoom ? "active" : ""} onClick={() => update({ visibility: "public", hostJoinMode: "team", teamAId: defaultTeamA?.id ?? draft.teamAId })}>
+            <button type="button" className={draft.visibility === "public" ? "active" : ""} onClick={() => update({ visibility: "public", hostJoinMode: "team", teamAId: defaultTeamA?.id ?? draft.teamAId })}>
               <Globe2 size={19} />
               <span>
                 <strong>공개 매칭방</strong>
                 <em>매칭 목록에 노출하고 빈 슬롯을 개인/팀 파티가 채운다.</em>
+              </span>
+            </button>
+            <button type="button" className={isTournamentRoom ? "active" : ""} onClick={() => update({ visibility: "tournament", tournamentTeamIds: draft.tournamentTeamIds?.length ? draft.tournamentTeamIds : [defaultTeamA?.id, defaultTeamB?.id].filter(Boolean) })}>
+              <Trophy size={19} />
+              <span>
+                <strong>비공개 대회방</strong>
+                <em>초대팀, 리그/토너먼트, 일정, MMR 룰을 한 번에 정한다.</em>
               </span>
             </button>
           </div>
@@ -244,6 +332,14 @@ export default function CreateMatch({ app }) {
                 </select>
               </label>
             ) : null}
+            {isTournamentRoom ? (
+              <label>
+                대회 방식
+                <select value={draft.tournamentFormat} onChange={(event) => update({ tournamentFormat: event.target.value })}>
+                  {tournamentFormatOptions.map((option) => <option key={option.id} value={option.id}>{option.label} · {option.desc}</option>)}
+                </select>
+              </label>
+            ) : null}
             <label>
               방식
               <select value={draft.mode} onChange={(event) => update({ mode: event.target.value })}>
@@ -258,6 +354,20 @@ export default function CreateMatch({ app }) {
               시간
               <input type="time" value={draft.scheduledTime} onChange={(event) => update({ scheduledTime: event.target.value })} />
             </label>
+            {isTournamentRoom ? (
+              <>
+                <label>
+                  종료일
+                  <input type="date" value={draft.tournamentEndDate} onChange={(event) => update({ tournamentEndDate: event.target.value })} />
+                </label>
+                <label>
+                  일정 배정
+                  <select value={draft.tournamentSchedulePolicy} onChange={(event) => update({ tournamentSchedulePolicy: event.target.value })}>
+                    {tournamentScheduleOptions.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+                  </select>
+                </label>
+              </>
+            ) : null}
           </div>
         </Card>
 
@@ -313,17 +423,26 @@ export default function CreateMatch({ app }) {
           <div className="section-title-row">
             <div>
               <p className="eyebrow">Team Finder</p>
-              <h2>{isPublicRoom ? "내 파티와 희망 상대" : "참여 팀 검색"}</h2>
+              <h2>{isTournamentRoom ? "초대 팀 선택" : isPublicRoom ? "내 파티와 희망 상대" : "참여 팀 검색"}</h2>
             </div>
           </div>
-          {draft.ranked ? (
+          {isTournamentRoom ? (
+            <div className={tournamentMmrBlocked ? "tier-range-note tier-range-note-warning" : "tier-range-note"}>
+              <div>
+                <span>초대팀 MMR 차이</span>
+                <strong>{tournamentTeams.length}팀 · {tournamentMmrSpread}점 차이</strong>
+                <em>{draft.mmrLimitMode === "off" ? "제한 없음" : `${draft.tournamentMaxMmrGap}점 기준`}</em>
+              </div>
+              <Badge tone={tournamentMmrBlocked ? "orange" : "green"}>{tournamentMmrBlocked ? "차단" : "허용"}</Badge>
+            </div>
+          ) : draft.ranked ? (
             <div className={teamTierBlocked ? "tier-range-note tier-range-note-warning" : "tier-range-note"}>
               <div>
                 <span>정규전 허용 구간</span>
                 <strong>{teamTierRange.label}</strong>
-                <em>{selectedTeamA?.name ?? "A팀"} 기준</em>
+                <em>{teamTierWarned ? "경고만 표시" : `${selectedTeamA?.name ?? "A팀"} 기준`}</em>
               </div>
-              <Badge tone={teamTierBlocked ? "orange" : "green"}>{teamTierBlocked ? "제한" : "허용"}</Badge>
+              <Badge tone={teamTierBlocked || teamTierWarned ? "orange" : "green"}>{teamTierBlocked ? "차단" : teamTierWarned ? "경고" : "허용"}</Badge>
             </div>
           ) : (
             <div className="tier-range-note">
@@ -335,6 +454,28 @@ export default function CreateMatch({ app }) {
               <Badge tone="neutral">OPEN</Badge>
             </div>
           )}
+          <div className="form-grid two">
+            <label>
+              MMR 제한
+              <select value={draft.mmrLimitMode} onChange={(event) => update({ mmrLimitMode: event.target.value })}>
+                {mmrLimitOptions.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+              </select>
+            </label>
+            {isTournamentRoom ? (
+              <label>
+                허용 MMR 차이
+                <input type="number" min="0" step="10" value={draft.tournamentMaxMmrGap} onChange={(event) => update({ tournamentMaxMmrGap: event.target.value })} />
+              </label>
+            ) : null}
+            {isTournamentRoom ? (
+              <label>
+                MMR 득점 룰
+                <select value={draft.tournamentMmrPolicy} onChange={(event) => update({ tournamentMmrPolicy: event.target.value })}>
+                  {tournamentMmrPolicyOptions.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+                </select>
+              </label>
+            ) : null}
+          </div>
           <div className="search-controls">
             <label>
               지역
@@ -350,70 +491,103 @@ export default function CreateMatch({ app }) {
           <div className="quick-picker">
             <p className="eyebrow">자주 찾는 팀</p>
             <div>
-              {favoriteTeams.map((team) => (
-                <button key={team.id} type="button" className={draft.teamAId === team.id || draft.teamBId === team.id ? "favorite-pick selected" : "favorite-pick"}>
-                  <strong><Star size={15} fill="currentColor" /> {team.name}</strong>
-                  <span>{team.region} · {team.mmr} MMR</span>
-                  <small>
-                    <b onClick={() => assignTeam(team.id, "A")}>A</b>
-                    <b onClick={() => assignTeam(team.id, "B")}>B</b>
-                    <b onClick={() => app.actions.toggleFavoriteTeam(team.id)}>해제</b>
-                  </small>
-                </button>
-              ))}
+              {favoriteTeams.map((team) => {
+                const invited = (draft.tournamentTeamIds ?? []).includes(team.id);
+                const selected = isTournamentRoom ? invited : draft.teamAId === team.id || draft.teamBId === team.id;
+                return (
+                  <button key={team.id} type="button" className={selected ? "favorite-pick selected" : "favorite-pick"}>
+                    <strong><Star size={15} fill="currentColor" /> {team.name}</strong>
+                    <span>{team.region} · {team.mmr} MMR</span>
+                    <small>
+                      {isTournamentRoom ? (
+                        <b onClick={() => toggleTournamentTeam(team.id)}>{invited ? "초대 해제" : "초대"}</b>
+                      ) : (
+                        <>
+                          <b onClick={() => assignTeam(team.id, "A")}>A</b>
+                          <b onClick={() => assignTeam(team.id, "B")}>B</b>
+                        </>
+                      )}
+                      <b onClick={() => app.actions.toggleFavoriteTeam(team.id)}>즐겨찾기 해제</b>
+                    </small>
+                  </button>
+                );
+              })}
             </div>
           </div>
-          <div className="form-grid two">
-            <label>
-              {isPublicRoom ? "내 팀/파티" : "Team A"}
-              <select value={draft.teamAId ?? ""} onChange={(event) => selectTeamA(event.target.value)}>
-                {!(isPublicRoom ? myTeams : teamOptions).length ? <option value="">팀 없음</option> : null}
-                {(isPublicRoom ? myTeams : teamOptions)
-                  .filter((team) => team.id !== draft.teamBId)
-                  .map((team) => <option key={team.id} value={team.id}>{team.region} · {team.name} · {team.mmr}</option>)}
-              </select>
-            </label>
-            <label>
-              {isPublicRoom ? "희망 상대팀" : "Team B"}
-              <select value={draft.teamBId ?? ""} onChange={(event) => selectTeamB(event.target.value)}>
-                {!teamOptions.some((team) => team.id !== draft.teamAId) ? <option value="">상대 팀 없음</option> : null}
-                {teamOptions
-                  .filter((team) => team.id !== draft.teamAId)
-                  .map((team) => <option key={team.id} value={team.id}>{team.region} · {team.name} · {team.mmr}</option>)}
-              </select>
-            </label>
-          </div>
+          {isTournamentRoom ? (
+            <>
+              <div className="tournament-team-grid">
+                {teamOptions.map((team) => {
+                  const invited = (draft.tournamentTeamIds ?? []).includes(team.id);
+                  return (
+                    <button key={team.id} type="button" className={invited ? "active" : ""} onClick={() => toggleTournamentTeam(team.id)}>
+                      <strong>{team.name}</strong>
+                      <span>{team.region} · {team.homeCourt}</span>
+                      <em>{team.mmr} MMR</em>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="create-public-note">
+                <Trophy size={17} />
+                <span>비공개 대회는 초대팀만 보이게 저장된다. 경기 자동 생성 전 단계라 일정/룰/초대팀을 먼저 확정한다.</span>
+              </div>
+            </>
+          ) : (
+            <div className="form-grid two">
+              <label>
+                {isPublicRoom ? "내 팀/파티" : "Team A"}
+                <select value={draft.teamAId ?? ""} onChange={(event) => selectTeamA(event.target.value)}>
+                  {!(isPublicRoom ? myTeams : teamOptions).length ? <option value="">팀 없음</option> : null}
+                  {(isPublicRoom ? myTeams : teamOptions)
+                    .filter((team) => team.id !== draft.teamBId)
+                    .map((team) => <option key={team.id} value={team.id}>{team.region} · {team.name} · {team.mmr}</option>)}
+                </select>
+              </label>
+              <label>
+                {isPublicRoom ? "희망 상대팀" : "Team B"}
+                <select value={draft.teamBId ?? ""} onChange={(event) => selectTeamB(event.target.value)}>
+                  {!teamOptions.some((team) => team.id !== draft.teamAId) ? <option value="">상대 팀 없음</option> : null}
+                  {teamOptions
+                    .filter((team) => team.id !== draft.teamAId)
+                    .map((team) => <option key={team.id} value={team.id}>{team.region} · {team.name} · {team.mmr}</option>)}
+                </select>
+              </label>
+            </div>
+          )}
           {isPublicRoom ? (
             <div className="create-public-note">
               <Globe2 size={17} />
               <span>공개방은 매칭 목록에 노출된다. 희망 상대팀은 표시용이고, 실제 참여자는 방에서 대기/확정한다.</span>
             </div>
           ) : null}
-          <div className="favorite-action-row">
-            {selectedTeamA ? (
-              <Button
-                type="button"
-                variant="secondary"
-                className={isFavoriteTeam(selectedTeamA) ? "favorite-toggle-button active" : "favorite-toggle-button"}
-                onClick={() => app.actions.toggleFavoriteTeam(selectedTeamA.id)}
-              >
-                <Star size={16} fill={isFavoriteTeam(selectedTeamA) ? "currentColor" : "none"} />
-                A팀 {isFavoriteTeam(selectedTeamA) ? "즐겨찾기 해제" : "즐겨찾기 추가"}
-              </Button>
-            ) : null}
-            {selectedTeamB ? (
-              <Button
-                type="button"
-                variant="secondary"
-                className={isFavoriteTeam(selectedTeamB) ? "favorite-toggle-button active" : "favorite-toggle-button"}
-                onClick={() => app.actions.toggleFavoriteTeam(selectedTeamB.id)}
-              >
-                <Star size={16} fill={isFavoriteTeam(selectedTeamB) ? "currentColor" : "none"} />
-                B팀 {isFavoriteTeam(selectedTeamB) ? "즐겨찾기 해제" : "즐겨찾기 추가"}
-              </Button>
-            ) : null}
-          </div>
-          <TeamBuilder teams={selectedTeams} users={app.state.users} draft={draft} onChange={update} />
+          {!isTournamentRoom ? (
+            <div className="favorite-action-row">
+              {selectedTeamA ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className={isFavoriteTeam(selectedTeamA) ? "favorite-toggle-button active" : "favorite-toggle-button"}
+                  onClick={() => app.actions.toggleFavoriteTeam(selectedTeamA.id)}
+                >
+                  <Star size={16} fill={isFavoriteTeam(selectedTeamA) ? "currentColor" : "none"} />
+                  A팀 {isFavoriteTeam(selectedTeamA) ? "즐겨찾기 해제" : "즐겨찾기 추가"}
+                </Button>
+              ) : null}
+              {selectedTeamB ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className={isFavoriteTeam(selectedTeamB) ? "favorite-toggle-button active" : "favorite-toggle-button"}
+                  onClick={() => app.actions.toggleFavoriteTeam(selectedTeamB.id)}
+                >
+                  <Star size={16} fill={isFavoriteTeam(selectedTeamB) ? "currentColor" : "none"} />
+                  B팀 {isFavoriteTeam(selectedTeamB) ? "즐겨찾기 해제" : "즐겨찾기 추가"}
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
+          {isTournamentRoom ? null : <TeamBuilder teams={selectedTeams} users={app.state.users} draft={draft} onChange={update} />}
         </Card>
 
         <Card className="section-card">
@@ -446,6 +620,12 @@ export default function CreateMatch({ app }) {
                 <option>24시간</option>
               </select>
             </label>
+            {isTournamentRoom ? (
+              <label>
+                일정 메모
+                <input value={draft.tournamentScheduleNote} onChange={(event) => update({ tournamentScheduleNote: event.target.value })} />
+              </label>
+            ) : null}
           </div>
         </Card>
 

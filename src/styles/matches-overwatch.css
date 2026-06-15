@@ -325,6 +325,70 @@
   line-height: 1;
 }
 
+.om-tournament-panel,
+.om-tournament-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.om-tournament-grid {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.om-tournament-card {
+  display: grid;
+  gap: 12px;
+  border: 1px solid rgba(255, 211, 108, 0.18);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(135deg, rgba(255, 211, 108, 0.08), transparent 42%),
+    rgba(8, 11, 16, 0.72);
+  padding: 14px;
+}
+
+.om-tournament-card h3 {
+  margin-top: 4px;
+  font-size: 1.12rem;
+}
+
+.om-tournament-card p {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 850;
+  line-height: 1.45;
+}
+
+.om-tournament-meta {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.om-tournament-meta span,
+.om-tournament-meta strong {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 950;
+  line-height: 1;
+  padding: 6px 8px;
+}
+
+.om-tournament-meta strong {
+  background: rgba(255, 211, 108, 0.13);
+  color: var(--gold);
+}
+
 .om-filter-bar {
   display: grid;
   grid-template-columns: minmax(0, auto) minmax(0, auto) minmax(180px, 240px);
@@ -557,6 +621,7 @@ html[data-theme="light"] .om-match-panel,
 html[data-theme="light"] .om-view-card,
 html[data-theme="light"] .om-calendar-summary,
 html[data-theme="light"] .om-calendar-box,
+html[data-theme="light"] .om-tournament-card,
 html[data-theme="light"] .om-filter-bar,
 html[data-theme="light"] .om-list-head,
 html[data-theme="light"] .om-match-card,

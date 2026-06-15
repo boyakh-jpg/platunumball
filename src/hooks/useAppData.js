@@ -11,6 +11,7 @@ import {
   createMatch,
   createRecruitingPost,
   createTeam,
+  createTournament,
   deleteTeam,
   disputeMatch,
   interestRecruitingPost,
@@ -125,6 +126,16 @@ export function useAppData(authUserId = null) {
         setState((prev) => {
           const next = createMatch({ ...prev, currentUserId }, draft);
           createdId = next.matches[0].id;
+          return next;
+        });
+        return createdId;
+      },
+      createTournament: (draft) => {
+        let createdId = null;
+        setState((prev) => {
+          const existingIds = new Set((prev.tournaments ?? []).map((tournament) => tournament.id));
+          const next = createTournament({ ...prev, currentUserId }, draft);
+          createdId = (next.tournaments ?? []).find((tournament) => !existingIds.has(tournament.id))?.id ?? null;
           return next;
         });
         return createdId;

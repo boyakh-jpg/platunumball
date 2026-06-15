@@ -88,6 +88,7 @@ function normalizeState(state) {
     affiliations: mergeById(state?.affiliations, initialState.affiliations).filter((affiliation) => affiliation.type !== "club"),
     seasons: mergeById(state?.seasons, initialState.seasons ?? []),
     matches: mergeById(state?.matches, initialState.matches).map(normalizeMatch),
+    tournaments: mergeById(state?.tournaments, initialState.tournaments ?? []),
     notifications: notifications.map((notification) => ({ readAt: null, ...notification })),
     settings: normalizeSettings(state?.settings ?? initialState.settings),
     reports: state?.reports ?? initialState.reports ?? [],
@@ -226,6 +227,7 @@ function fromRemoteMatch(row, context) {
     memo: row.memo,
     stakes: row.stakes,
     ranked: row.ranked !== false,
+    mmrLimitMode: row.mmr_limit_mode ?? "block",
     objectionWindow: row.objection_window,
     evidence: row.evidence ?? [],
     teamA: { name: teamA?.name ?? "Team A", teamId: row.team_a_id, players: teamAPlayers, score: row.score_a ?? 0 },
@@ -292,6 +294,8 @@ async function loadNormalizedRemoteState() {
     favorites,
     recruitingPosts,
     recruitingApplications,
+    tournaments,
+    tournamentTeams,
     seasons,
     affiliations,
     notifications,
@@ -311,6 +315,8 @@ async function loadNormalizedRemoteState() {
     fetchAllRows("favorites", "*", null),
     fetchAllRows("recruiting_posts", "*", "created_at"),
     fetchAllRows("recruiting_applications", "*", null),
+    fetchAllRows("tournaments", "*", "created_at"),
+    fetchAllRows("tournament_teams", "*", null),
     fetchAllRows("seasons"),
     fetchAllRows("affiliations"),
     fetchAllRows("notifications", "*", "created_at"),
@@ -342,6 +348,7 @@ async function loadNormalizedRemoteState() {
   const remoteMatches = matches.map((match) => fromRemoteMatch(match, context)).sort((a, b) => String(b.createdAt ?? "").localeCompare(String(a.createdAt ?? "")));
   const favoriteRows = favorites.filter((favorite) => favorite.user_id === currentUserId);
   const applicationsByPost = groupBy(recruitingApplications, "post_id");
+  const tournamentTeamsByTournament = groupBy(tournamentTeams, "tournament_id");
 
   const normalizedState = normalizeState({
     currentUserId,
@@ -426,6 +433,32 @@ async function loadNormalizedRemoteState() {
         updatedAt: application.updated_at,
       })),
     })),
+    tournaments: tournaments.map((tournament) => ({
+      id: tournament.id,
+      title: tournament.title,
+      format: tournament.format,
+      visibility: tournament.visibility,
+      status: tournament.status,
+      region: tournament.region,
+      court: tournament.court_name,
+      mode: tournament.mode,
+      ranked: tournament.ranked,
+      official: tournament.official,
+      startDate: tournament.start_date,
+      endDate: tournament.end_date,
+      schedulePolicy: tournament.schedule_policy,
+      scheduleNote: tournament.schedule_note,
+      mmrLimitMode: tournament.mmr_limit_mode,
+      maxMmrGap: tournament.max_mmr_gap,
+      mmrPolicy: tournament.mmr_policy,
+      rules: tournament.rules ?? {},
+      memo: tournament.memo,
+      createdBy: tournament.created_by,
+      createdAt: tournament.created_at,
+      teamIds: (tournamentTeamsByTournament.get(tournament.id) ?? [])
+        .sort((a, b) => (a.seed_order ?? 0) - (b.seed_order ?? 0))
+        .map((team) => team.team_id),
+    })),
     settings: {
       ...(legacyState?.settings ?? DEFAULT_SETTINGS),
       favoriteTeamIds: favoriteRows.filter((favorite) => favorite.target_type === "team").map((favorite) => favorite.target_id),
@@ -439,6 +472,7 @@ async function loadNormalizedRemoteState() {
       getMaxUpdatedAt(teams),
       getMaxUpdatedAt(matches),
       getMaxUpdatedAt(recruitingPosts),
+      getMaxUpdatedAt(tournaments),
     ),
   };
 }
@@ -565,6 +599,7 @@ async function saveNormalizedRemoteState(state) {
     court_name: match.court,
     status: match.status ?? "contract",
     ranked: match.ranked !== false,
+    mmr_limit_mode: match.mmrLimitMode ?? "block",
     official: Boolean(match.official),
     pre_registered: Boolean(match.preRegistered),
     scheduled_at: match.scheduledAt && match.scheduledAt !== "일정 미정" ? match.scheduledAt : null,
@@ -679,6 +714,37 @@ async function saveNormalizedRemoteState(state) {
     })),
   ).filter((application) => application.player_id);
   const recruitingPostIds = (state.recruitingPosts ?? []).map((post) => post.id).filter(Boolean);
+  const tournamentRows = (state.tournaments ?? []).map((tournament) => ({
+    id: tournament.id,
+    title: tournament.title,
+    format: tournament.format ?? "league",
+    visibility: tournament.visibility ?? "private",
+    status: tournament.status ?? "draft",
+    region: tournament.region,
+    court_name: tournament.court,
+    mode: tournament.mode,
+    ranked: tournament.ranked !== false,
+    official: Boolean(tournament.official),
+    start_date: tournament.startDate || null,
+    end_date: tournament.endDate || null,
+    schedule_policy: tournament.schedulePolicy ?? "weekly",
+    schedule_note: tournament.scheduleNote,
+    mmr_limit_mode: tournament.mmrLimitMode ?? "warn",
+    max_mmr_gap: Number(tournament.maxMmrGap ?? 250),
+    mmr_policy: tournament.mmrPolicy ?? "gap_adjusted",
+    rules: tournament.rules ?? {},
+    memo: tournament.memo,
+    created_by: tournament.createdBy ?? currentUserId,
+    created_at: tournament.createdAt,
+    updated_at: new Date().toISOString(),
+  }));
+  const tournamentTeamRows = (state.tournaments ?? []).flatMap((tournament) =>
+    (tournament.teamIds ?? []).map((teamId, index) => ({
+      tournament_id: tournament.id,
+      team_id: teamId,
+      seed_order: index + 1,
+    })),
+  );
 
   await softDeleteRemoteTeams(deletedTeamIds);
   await upsertRemoteRows("profiles", profileRows, "id");
@@ -695,6 +761,8 @@ async function saveNormalizedRemoteState(state) {
   await upsertRemoteRows("favorites", favoriteRows, "user_id,target_type,target_id");
   await upsertRemoteRows("recruiting_posts", recruitingRows, "id");
   await replaceRemoteRecruitingApplications(recruitingPostIds, applicationRows);
+  await upsertRemoteRows("tournaments", tournamentRows, "id");
+  await upsertRemoteRows("tournament_teams", tournamentTeamRows, "tournament_id,team_id");
 }
 
 export async function saveRemoteState(state) {
@@ -893,6 +961,7 @@ export function createMatch(state, draft) {
     },
     memo: draft.memo || "결과 승인 대기.",
     stakes: draft.stakes || "다음 경기 우선권.",
+    mmrLimitMode: draft.mmrLimitMode ?? "block",
     objectionWindow: draft.objectionWindow || (draft.official ? "24시간" : "1시간"),
     evidence,
     teamA: { name: teamA.name, teamId: teamA.id, players: getTeamPlayers(teamA, size), score: 0 },
@@ -910,6 +979,92 @@ export function createMatch(state, draft) {
     matches: [match, ...state.matches],
     notifications: [
       { id: makeId("n"), title: "새 경기방", body: `${match.title} 경기 전 동의를 기다립니다.`, tone: "match", matchId: match.id },
+      ...state.notifications,
+    ],
+  };
+}
+
+export function createTournament(state, draft) {
+  const teamIds = [...new Set(draft.teamIds ?? draft.tournamentTeamIds ?? [])]
+    .filter((teamId) => state.teams.some((team) => team.id === teamId));
+  const invitedTeams = teamIds.map((teamId) => state.teams.find((team) => team.id === teamId)).filter(Boolean);
+  const mmrs = invitedTeams.map((team) => Number(team.mmr ?? 1200));
+  const mmrSpread = mmrs.length ? Math.max(...mmrs) - Math.min(...mmrs) : 0;
+  const maxMmrGap = Number(draft.tournamentMaxMmrGap ?? draft.maxMmrGap ?? 250);
+  const mmrLimitMode = draft.mmrLimitMode ?? "warn";
+
+  if (teamIds.length < 2) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "대회 생성 불가",
+          body: "비공개 대회는 최소 2개 팀을 초대해야 합니다.",
+          tone: "match",
+        },
+        ...state.notifications,
+      ],
+    };
+  }
+
+  if (draft.ranked !== false && mmrLimitMode === "block" && mmrSpread > maxMmrGap) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "MMR 제한",
+          body: `초대 팀 MMR 차이 ${mmrSpread}점이 제한 ${maxMmrGap}점을 넘었습니다.`,
+          tone: "match",
+        },
+        ...state.notifications,
+      ],
+    };
+  }
+
+  const tournament = {
+    id: makeId("trn"),
+    title: draft.title?.trim() || `${draft.mode || "5v5"} 비공개 대회`,
+    format: draft.tournamentFormat ?? "league",
+    visibility: "private",
+    status: "draft",
+    region: draft.region || state.users.find((user) => user.id === state.currentUserId)?.region || "전체",
+    court: draft.court || "미정",
+    mode: draft.mode || "5v5",
+    ranked: draft.ranked !== false,
+    official: Boolean(draft.official),
+    startDate: draft.scheduledDate || draft.tournamentStartDate || "",
+    endDate: draft.tournamentEndDate || draft.scheduledDate || "",
+    schedulePolicy: draft.tournamentSchedulePolicy ?? "weekly",
+    scheduleNote: draft.tournamentScheduleNote?.trim() || "초대팀 확정 후 경기별 일정을 배정합니다.",
+    mmrLimitMode,
+    maxMmrGap,
+    mmrPolicy: draft.tournamentMmrPolicy ?? "gap_adjusted",
+    rules: {
+      targetScore: Number(draft.targetScore ?? 21),
+      timeLimit: Number(draft.timeLimit ?? 12),
+      winByTwo: Boolean(draft.winByTwo),
+      ball: draft.ball || "7호 공",
+      attackRule: draft.attackRule || "공격권은 득점 후 교대",
+      foulRule: draft.foulRule || "파울은 콜한 쪽 기준으로 즉시 중단",
+    },
+    memo: draft.memo || "비공개 초대 대회입니다.",
+    createdBy: state.currentUserId,
+    createdAt: new Date().toISOString(),
+    teamIds,
+  };
+
+  return {
+    ...state,
+    tournaments: [tournament, ...(state.tournaments ?? [])],
+    notifications: [
+      {
+        id: makeId("n"),
+        title: "대회 생성",
+        body: `${tournament.title} 대회방을 만들었습니다. 초대팀 ${teamIds.length}개.`,
+        tone: "match",
+      },
       ...state.notifications,
     ],
   };

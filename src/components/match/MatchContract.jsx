@@ -5,6 +5,12 @@ import PlayerHoverCard from "../profile/PlayerHoverCard.jsx";
 import { CREDIBILITY_LEVELS } from "../../lib/constants.js";
 import { getCredibilityLevel } from "../../lib/rating.js";
 
+const mmrLimitLabels = {
+  off: "제한 없음",
+  warn: "경고만",
+  block: "생성 차단",
+};
+
 export default function MatchContract({ match, users, teams = [] }) {
   const userMap = Object.fromEntries(users.map((user) => [user.id, user]));
   const credibility = CREDIBILITY_LEVELS[getCredibilityLevel(match)] ?? CREDIBILITY_LEVELS.street_majority;
@@ -60,6 +66,10 @@ export default function MatchContract({ match, users, teams = [] }) {
         <div>
           <span>정규전 반영</span>
           <strong>{match.ranked === false ? "OFF" : "ON"}</strong>
+        </div>
+        <div>
+          <span>MMR 제한</span>
+          <strong>{mmrLimitLabels[match.mmrLimitMode] ?? "생성 차단"}</strong>
         </div>
         <div>
           <span>공신력</span>

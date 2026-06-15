@@ -59,6 +59,15 @@ const VIEWS = [
 
 const ACTIVE_STATUSES = new Set(["contract", "agreed", "approval", "disputed"]);
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
+const tournamentFormatLabels = {
+  league: "리그",
+  tournament: "토너먼트",
+};
+const tournamentMmrLabels = {
+  gap_adjusted: "격차 보정",
+  standard: "일반 MMR",
+  event_only: "대회 점수만",
+};
 
 function toDateInputValue(date = new Date()) {
   const year = date.getFullYear();
@@ -108,6 +117,10 @@ function formatDateLabel(dateValue) {
   return `${month}.${day}`;
 }
 
+function formatTournamentWindow(tournament) {
+  return [tournament.startDate, tournament.endDate].filter(Boolean).join(" ~ ") || "일정 미정";
+}
+
 function compareRecent(a, b) {
   return String(b.scheduledAt ?? b.createdAt ?? "").localeCompare(String(a.scheduledAt ?? a.createdAt ?? ""));
 }
@@ -146,6 +159,13 @@ export default function Matches({ app }) {
   const [calendarMonth, setCalendarMonth] = useState(getMonthKey());
   const todayValue = toDateInputValue();
   const selectedView = VIEWS.find((view) => view.id === viewId) ?? VIEWS[0];
+  const teamById = useMemo(() => Object.fromEntries(app.state.teams.map((team) => [team.id, team])), [app.state.teams]);
+  const activeTournaments = useMemo(() => {
+    return [...(app.state.tournaments ?? [])]
+      .filter((tournament) => !["closed", "cancelled"].includes(tournament.status))
+      .sort((a, b) => String(b.createdAt ?? "").localeCompare(String(a.createdAt ?? "")))
+      .slice(0, 4);
+  }, [app.state.tournaments]);
 
   const baseFilteredMatches = useMemo(() => {
     return [...app.state.matches]
@@ -290,6 +310,39 @@ export default function Matches({ app }) {
           </div>
         </div>
       </section>
+
+      {activeTournaments.length ? (
+        <section className="om-tournament-panel" aria-label="비공개 대회">
+          <div className="om-list-head">
+            <div>
+              <span className="om-kicker">PRIVATE EVENT</span>
+              <h2>비공개 대회</h2>
+            </div>
+            <span>{activeTournaments.length}개 표시</span>
+          </div>
+          <div className="om-tournament-grid">
+            {activeTournaments.map((tournament) => {
+              const invitedTeams = (tournament.teamIds ?? []).map((teamId) => teamById[teamId]?.name).filter(Boolean);
+              return (
+                <article key={tournament.id} className="om-tournament-card">
+                  <div>
+                    <span className="om-kicker">{tournamentFormatLabels[tournament.format] ?? tournament.format}</span>
+                    <h3>{tournament.title}</h3>
+                    <p><CalendarDays size={15} />{formatTournamentWindow(tournament)} · {tournament.court}</p>
+                  </div>
+                  <div className="om-tournament-meta">
+                    <span>{tournament.mode}</span>
+                    <span>{tournament.ranked === false ? "친선" : "정규"}</span>
+                    <span>{tournamentMmrLabels[tournament.mmrPolicy] ?? tournament.mmrPolicy}</span>
+                    <strong>{invitedTeams.length}팀 초대</strong>
+                  </div>
+                  <p>{invitedTeams.slice(0, 4).join(" · ")}{invitedTeams.length > 4 ? ` 외 ${invitedTeams.length - 4}` : ""}</p>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
 
       <section className="om-filter-bar" aria-label="경기 필터">
         <div className="segmented-control compact-segments">

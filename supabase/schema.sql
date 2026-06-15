@@ -51,6 +51,97 @@ begin
 end;
 $$;
 
+create table if not exists public.tournaments (
+  id text primary key,
+  title text not null,
+  format text not null default 'league',
+  visibility text not null default 'private',
+  status text not null default 'draft',
+  region text,
+  court_name text,
+  mode text,
+  ranked boolean not null default true,
+  official boolean not null default false,
+  start_date date,
+  end_date date,
+  schedule_policy text not null default 'weekly',
+  schedule_note text,
+  mmr_limit_mode text not null default 'warn',
+  max_mmr_gap integer not null default 250,
+  mmr_policy text not null default 'gap_adjusted',
+  rules jsonb not null default '{}'::jsonb,
+  memo text,
+  created_by text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint tournaments_format_check check (format in ('league', 'tournament')),
+  constraint tournaments_visibility_check check (visibility in ('private', 'public')),
+  constraint tournaments_status_check check (status in ('draft', 'scheduled', 'active', 'closed', 'cancelled')),
+  constraint tournaments_mmr_limit_mode_check check (mmr_limit_mode in ('off', 'warn', 'block')),
+  constraint tournaments_mmr_policy_check check (mmr_policy in ('gap_adjusted', 'standard', 'event_only'))
+);
+
+create table if not exists public.tournament_teams (
+  tournament_id text not null references public.tournaments(id) on delete cascade,
+  team_id text not null,
+  seed_order integer not null default 1,
+  status text not null default 'invited',
+  created_at timestamptz not null default now(),
+  primary key (tournament_id, team_id),
+  constraint tournament_teams_status_check check (status in ('invited', 'accepted', 'declined'))
+);
+
+create index if not exists tournaments_created_at_idx on public.tournaments (created_at desc);
+create index if not exists tournament_teams_team_id_idx on public.tournament_teams (team_id);
+
+alter table public.tournaments enable row level security;
+alter table public.tournament_teams enable row level security;
+
+drop policy if exists "tournaments_select_public" on public.tournaments;
+drop policy if exists "tournaments_insert_public" on public.tournaments;
+drop policy if exists "tournaments_update_public" on public.tournaments;
+drop policy if exists "tournament_teams_select_public" on public.tournament_teams;
+drop policy if exists "tournament_teams_insert_public" on public.tournament_teams;
+drop policy if exists "tournament_teams_update_public" on public.tournament_teams;
+
+create policy "tournaments_select_public"
+on public.tournaments
+for select
+to anon, authenticated
+using (true);
+
+create policy "tournaments_insert_public"
+on public.tournaments
+for insert
+to anon, authenticated
+with check (true);
+
+create policy "tournaments_update_public"
+on public.tournaments
+for update
+to anon, authenticated
+using (true)
+with check (true);
+
+create policy "tournament_teams_select_public"
+on public.tournament_teams
+for select
+to anon, authenticated
+using (true);
+
+create policy "tournament_teams_insert_public"
+on public.tournament_teams
+for insert
+to anon, authenticated
+with check (true);
+
+create policy "tournament_teams_update_public"
+on public.tournament_teams
+for update
+to anon, authenticated
+using (true)
+with check (true);
+
 do $$
 begin
   if to_regclass('public.team_members') is not null then
@@ -72,6 +163,12 @@ begin
     execute 'delete from public.affiliations where type = ''club''';
     execute 'alter table public.affiliations drop constraint if exists affiliations_type_check';
     execute 'alter table public.affiliations add constraint affiliations_type_check check (type in (''region'', ''school'', ''company''))';
+  end if;
+
+  if to_regclass('public.matches') is not null then
+    execute 'alter table public.matches add column if not exists mmr_limit_mode text not null default ''block''';
+    execute 'alter table public.matches drop constraint if exists matches_mmr_limit_mode_check';
+    execute 'alter table public.matches add constraint matches_mmr_limit_mode_check check (mmr_limit_mode in (''off'', ''warn'', ''block''))';
   end if;
 
   if to_regclass('public.recruiting_posts') is not null then
