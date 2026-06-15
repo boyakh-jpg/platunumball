@@ -331,17 +331,20 @@ export function createMatch(state, draft) {
   };
 }
 
-function getNextDecisionId(match, sideName, decisionKey, playerId) {
+function getSelfDecisionId(state, match, sideName, decisionKey, playerId) {
+  const currentUserId = state.currentUserId;
+  if (!currentUserId || playerId !== currentUserId) return null;
   const sidePlayers = match[sideName]?.players ?? [];
-  if (playerId && sidePlayers.includes(playerId)) return playerId;
-  return sidePlayers.find((id) => !(match[decisionKey]?.[sideName] ?? []).includes(id));
+  if (!sidePlayers.includes(currentUserId)) return null;
+  if ((match[decisionKey]?.[sideName] ?? []).includes(currentUserId)) return null;
+  return currentUserId;
 }
 
 export function agreeMatch(state, matchId, sideName, playerId) {
   const match = state.matches.find((item) => item.id === matchId);
   if (!match || !["contract", "agreed"].includes(match.status)) return state;
 
-  const agreementId = getNextDecisionId(match, sideName, "agreements", playerId);
+  const agreementId = getSelfDecisionId(state, match, sideName, "agreements", playerId);
   if (!agreementId) return state;
 
   const updatedMatch = {
@@ -433,7 +436,7 @@ export function approveMatch(state, matchId, sideName, playerId) {
   const match = state.matches.find((item) => item.id === matchId);
   if (!match?.result || ["confirmed", "void", "cancelled", "disputed"].includes(match.status)) return state;
 
-  const approvalId = getNextDecisionId(match, sideName, "approvals", playerId);
+  const approvalId = getSelfDecisionId(state, match, sideName, "approvals", playerId);
   if (!approvalId) return state;
 
   const updatedMatch = {

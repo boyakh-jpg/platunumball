@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { Star } from "lucide-react";
 import Badge from "../common/Badge.jsx";
 import Card from "../common/Card.jsx";
 import TeamMemberList from "./TeamMemberList.jsx";
@@ -16,7 +17,8 @@ export default function TeamCard({ team, users, compact = false, linked = true, 
         <div className="team-card-actions">
           {onToggleFavorite ? (
             <button type="button" className={favorite ? "favorite-toggle active" : "favorite-toggle"} onClick={onToggleFavorite}>
-              {favorite ? "고정됨" : "핀"}
+              <Star size={15} fill={favorite ? "currentColor" : "none"} />
+              {favorite ? "즐겨찾기" : "추가"}
             </button>
           ) : null}
           <div className="team-emblem" style={{ "--team-color": team.accent }}>

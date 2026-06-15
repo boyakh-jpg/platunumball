@@ -1,3 +1,3 @@
-export default function Card({ children, className = "", as: Tag = "section" }) {
-  return <Tag className={`card ${className}`}>{children}</Tag>;
+export default function Card({ children, className = "", as: Tag = "section", ...props }) {
+  return <Tag {...props} className={`card ${className}`}>{children}</Tag>;
 }

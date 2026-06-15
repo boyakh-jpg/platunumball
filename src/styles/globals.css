@@ -844,6 +844,10 @@ h3 {
 }
 
 .favorite-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   min-height: 32px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -856,9 +860,10 @@ h3 {
 }
 
 .favorite-toggle.active {
-  border-color: rgba(255, 211, 108, 0.36);
-  background: rgba(255, 211, 108, 0.1);
+  border-color: rgba(255, 211, 108, 0.68);
+  background: linear-gradient(180deg, rgba(255, 211, 108, 0.24), rgba(255, 211, 108, 0.1));
   color: var(--gold);
+  box-shadow: 0 0 0 1px rgba(255, 211, 108, 0.14), 0 10px 24px rgba(255, 211, 108, 0.1);
 }
 
 .stat-strip {
@@ -1240,6 +1245,28 @@ input[type="color"] {
   box-shadow: inset 0 0 0 1px rgba(70, 224, 182, 0.22), 0 0 24px rgba(70, 224, 182, 0.1);
 }
 
+.quick-picker button.favorite-pick {
+  border-color: rgba(255, 211, 108, 0.34);
+  background:
+    linear-gradient(180deg, rgba(255, 211, 108, 0.12), rgba(255, 211, 108, 0.035)),
+    rgba(8, 11, 16, 0.72);
+}
+
+.quick-picker button.favorite-pick strong {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  color: var(--gold);
+}
+
+.quick-picker button.favorite-pick.selected {
+  border-color: rgba(70, 224, 182, 0.72);
+  background:
+    linear-gradient(180deg, rgba(70, 224, 182, 0.16), rgba(255, 211, 108, 0.09)),
+    rgba(8, 11, 16, 0.74);
+}
+
 .quick-picker button span {
   color: var(--muted);
   font-size: 0.78rem;
@@ -1260,6 +1287,17 @@ input[type="color"] {
   background: var(--green);
   color: #05100d;
   font-size: 0.75rem;
+}
+
+.favorite-toggle-button {
+  gap: 7px;
+}
+
+.favorite-toggle-button.active.button-secondary {
+  border-color: rgba(255, 211, 108, 0.68);
+  background: linear-gradient(180deg, rgba(255, 211, 108, 0.24), rgba(255, 211, 108, 0.1));
+  color: var(--gold);
+  box-shadow: 0 0 0 1px rgba(255, 211, 108, 0.12);
 }
 
 .team-picker {
@@ -2491,6 +2529,371 @@ input[type="color"] {
     linear-gradient(90deg, transparent 46%, rgba(255, 255, 255, 0.62) 47% 53%, transparent 54%),
     linear-gradient(0deg, transparent 46%, rgba(255, 255, 255, 0.42) 47% 53%, transparent 54%),
     rgba(70, 224, 182, 0.28);
+}
+
+.opgg-home {
+  gap: 18px;
+}
+
+.opgg-search-hero {
+  display: grid;
+  gap: 18px;
+  border: 1px solid rgba(116, 169, 255, 0.2);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(135deg, rgba(38, 76, 132, 0.62), rgba(12, 20, 32, 0.94) 56%, rgba(8, 11, 16, 0.98)),
+    var(--surface);
+  padding: 24px;
+}
+
+.opgg-hero-top {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.opgg-hero-top > div {
+  display: grid;
+  gap: 8px;
+}
+
+.opgg-hero-top h1 {
+  font-size: clamp(2.5rem, 8vw, 4.3rem);
+  letter-spacing: 0;
+}
+
+.opgg-hero-top p:not(.eyebrow) {
+  max-width: 640px;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.opgg-search-card {
+  border-color: rgba(116, 169, 255, 0.26);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.025)),
+    rgba(12, 20, 32, 0.94);
+}
+
+.opgg-quick-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.opgg-quick-links a,
+.opgg-profile-tabs a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  border: 1px solid rgba(116, 169, 255, 0.2);
+  border-radius: var(--radius);
+  background: rgba(116, 169, 255, 0.08);
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 900;
+  padding: 0 12px;
+}
+
+.opgg-search-results a {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.opgg-result-main {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.opgg-search-results em {
+  grid-column: auto;
+}
+
+.opgg-search-results small {
+  align-self: center;
+  border-radius: 999px;
+  background: rgba(116, 169, 255, 0.12);
+  color: var(--blue);
+  font-size: 0.68rem;
+  font-weight: 950;
+  padding: 4px 7px;
+}
+
+.opgg-summary-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.95fr) minmax(320px, 1.2fr) minmax(280px, 0.9fr);
+  gap: 14px;
+  align-items: stretch;
+}
+
+.opgg-profile-card,
+.opgg-mode-card,
+.opgg-leaderboard-card,
+.opgg-record-card {
+  border-color: rgba(116, 169, 255, 0.18);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.018)),
+    rgba(12, 20, 32, 0.88);
+}
+
+.opgg-profile-head {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+}
+
+.opgg-profile-head .hero-avatar {
+  width: 58px;
+  height: 58px;
+  font-size: 1.5rem;
+}
+
+.opgg-profile-head > div:last-child,
+.opgg-profile-identity > div:last-child {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+
+.opgg-profile-head h2 {
+  font-size: 1.45rem;
+}
+
+.opgg-profile-head span,
+.opgg-rank-block span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.opgg-rank-block,
+.opgg-record-main {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  border: 1px solid rgba(255, 211, 108, 0.18);
+  border-radius: var(--radius);
+  background: rgba(255, 211, 108, 0.065);
+  padding: 12px;
+}
+
+.opgg-rank-block strong,
+.opgg-record-main strong {
+  display: block;
+  font-size: 1.3rem;
+  line-height: 1.12;
+}
+
+.opgg-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.opgg-stat-grid span {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+  border: 1px solid rgba(116, 169, 255, 0.14);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 850;
+  padding: 10px;
+}
+
+.opgg-stat-grid strong {
+  color: var(--text);
+  font-size: 1.08rem;
+  overflow-wrap: anywhere;
+}
+
+.opgg-profile-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.opgg-profile-tabs a:first-child {
+  border-color: rgba(116, 169, 255, 0.46);
+  background: rgba(116, 169, 255, 0.18);
+  color: var(--blue);
+}
+
+.opgg-mode-grid {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.opgg-mode-pill {
+  display: grid;
+  gap: 6px;
+  border: 1px solid rgba(116, 169, 255, 0.16);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.045);
+  padding: 12px;
+}
+
+.opgg-mode-pill span {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.opgg-mode-pill strong {
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.opgg-mode-pill em {
+  color: var(--blue);
+  font-size: 0.78rem;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.opgg-rank-list {
+  display: grid;
+  gap: 8px;
+}
+
+.opgg-rank-list a {
+  display: grid;
+  grid-template-columns: 28px auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.045);
+  padding: 9px;
+}
+
+.opgg-rank-list b {
+  color: var(--blue);
+  text-align: center;
+}
+
+.opgg-rank-list strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.opgg-rank-list em {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-style: normal;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.opgg-profile-hero {
+  border-color: rgba(116, 169, 255, 0.22);
+  background:
+    linear-gradient(135deg, rgba(116, 169, 255, 0.13), rgba(255, 255, 255, 0.025)),
+    rgba(12, 20, 32, 0.92);
+}
+
+.opgg-profile-identity p:not(.eyebrow) {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.opgg-tier-statement {
+  background:
+    linear-gradient(180deg, rgba(255, 211, 108, 0.1), rgba(255, 211, 108, 0.035)),
+    rgba(8, 11, 16, 0.7);
+}
+
+.opgg-profile-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.opgg-record-card .form-pill-row {
+  justify-content: flex-start;
+}
+
+.opgg-match-item {
+  border-left: 4px solid var(--line);
+}
+
+.opgg-match-win {
+  border-left-color: var(--blue);
+  background: rgba(116, 169, 255, 0.07);
+}
+
+.opgg-match-loss {
+  border-left-color: var(--danger);
+  background: rgba(255, 93, 108, 0.06);
+}
+
+.opgg-match-draw {
+  border-left-color: var(--gold);
+  background: rgba(255, 211, 108, 0.06);
+}
+
+.opgg-team-hero .favorite-toggle-button {
+  width: max-content;
+  margin-top: 4px;
+}
+
+@media (max-width: 1180px) {
+  .opgg-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .opgg-leaderboard-card {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 760px) {
+  .opgg-search-hero,
+  .opgg-search-card,
+  .opgg-profile-card,
+  .opgg-mode-card,
+  .opgg-leaderboard-card,
+  .opgg-record-card {
+    padding: 14px;
+  }
+
+  .opgg-hero-top,
+  .opgg-profile-head,
+  .opgg-profile-identity {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .opgg-hero-top .button,
+  .opgg-team-hero .favorite-toggle-button {
+    width: 100%;
+  }
+
+  .opgg-summary-grid,
+  .opgg-profile-summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .opgg-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .opgg-search-results a,
+  .opgg-rank-list a {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .opgg-search-results small,
+  .opgg-rank-list em {
+    grid-column: 2;
+    justify-self: start;
+  }
 }
 
 .wide-button {

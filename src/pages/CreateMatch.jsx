@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Star } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
@@ -171,8 +172,8 @@ export default function CreateMatch({ app }) {
             <p className="eyebrow">자주 찾는 코트</p>
             <div>
               {favoriteCourts.map((court) => (
-                <button key={court.id} type="button" className={draft.court === court.name ? "selected" : ""} onClick={() => update({ court: court.name })}>
-                  <strong>{court.name}</strong>
+                <button key={court.id} type="button" className={draft.court === court.name ? "favorite-pick selected" : "favorite-pick"} onClick={() => update({ court: court.name })}>
+                  <strong><Star size={15} fill="currentColor" /> {court.name}</strong>
                   <span>{court.region} · {court.type}</span>
                   <small>
                     <b onClick={(event) => { event.stopPropagation(); app.actions.toggleFavoriteCourt(court.id); }}>해제</b>
@@ -184,7 +185,13 @@ export default function CreateMatch({ app }) {
           <select value={draft.court} onChange={(event) => update({ court: event.target.value })}>
             {sortedCourts.map((court) => <option key={court.id} value={court.name}>{court.region} · {court.name} · {court.type}</option>)}
           </select>
-          <Button type="button" variant="secondary" onClick={() => app.actions.toggleFavoriteCourt(selectedCourt.id)}>
+          <Button
+            type="button"
+            variant="secondary"
+            className={isFavoriteCourt(selectedCourt) ? "favorite-toggle-button active" : "favorite-toggle-button"}
+            onClick={() => app.actions.toggleFavoriteCourt(selectedCourt.id)}
+          >
+            <Star size={16} fill={isFavoriteCourt(selectedCourt) ? "currentColor" : "none"} />
             {isFavoriteCourt(selectedCourt) ? "선택 코트 즐겨찾기 해제" : "선택 코트 즐겨찾기 추가"}
           </Button>
         </Card>
@@ -231,8 +238,8 @@ export default function CreateMatch({ app }) {
             <p className="eyebrow">자주 찾는 팀</p>
             <div>
               {favoriteTeams.map((team) => (
-                <button key={team.id} type="button" className={draft.teamAId === team.id || draft.teamBId === team.id ? "selected" : ""}>
-                  <strong>{team.name}</strong>
+                <button key={team.id} type="button" className={draft.teamAId === team.id || draft.teamBId === team.id ? "favorite-pick selected" : "favorite-pick"}>
+                  <strong><Star size={15} fill="currentColor" /> {team.name}</strong>
                   <span>{team.region} · {team.mmr} MMR</span>
                   <small>
                     <b onClick={() => assignTeam(team.id, "A")}>A</b>
@@ -259,12 +266,24 @@ export default function CreateMatch({ app }) {
           </div>
           <div className="favorite-action-row">
             {selectedTeamA ? (
-              <Button type="button" variant="secondary" onClick={() => app.actions.toggleFavoriteTeam(selectedTeamA.id)}>
+              <Button
+                type="button"
+                variant="secondary"
+                className={isFavoriteTeam(selectedTeamA) ? "favorite-toggle-button active" : "favorite-toggle-button"}
+                onClick={() => app.actions.toggleFavoriteTeam(selectedTeamA.id)}
+              >
+                <Star size={16} fill={isFavoriteTeam(selectedTeamA) ? "currentColor" : "none"} />
                 A팀 {isFavoriteTeam(selectedTeamA) ? "즐겨찾기 해제" : "즐겨찾기 추가"}
               </Button>
             ) : null}
             {selectedTeamB ? (
-              <Button type="button" variant="secondary" onClick={() => app.actions.toggleFavoriteTeam(selectedTeamB.id)}>
+              <Button
+                type="button"
+                variant="secondary"
+                className={isFavoriteTeam(selectedTeamB) ? "favorite-toggle-button active" : "favorite-toggle-button"}
+                onClick={() => app.actions.toggleFavoriteTeam(selectedTeamB.id)}
+              >
+                <Star size={16} fill={isFavoriteTeam(selectedTeamB) ? "currentColor" : "none"} />
                 B팀 {isFavoriteTeam(selectedTeamB) ? "즐겨찾기 해제" : "즐겨찾기 추가"}
               </Button>
             ) : null}

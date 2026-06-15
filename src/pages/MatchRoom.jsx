@@ -181,6 +181,7 @@ export default function MatchRoom({ app }) {
             match={match}
             teams={app.state.teams}
             users={app.state.users}
+            currentUserId={app.currentUser.id}
             onAgree={(sideName, playerId) => app.actions.agreeMatch(match.id, sideName, playerId)}
           />
           <Card className="section-card result-card">
@@ -229,7 +230,7 @@ export default function MatchRoom({ app }) {
               </div>
             </form>
           </Card>
-          <ApprovalPanel match={match} teams={app.state.teams} users={app.state.users} onApprove={(sideName, playerId) => app.actions.approveMatch(match.id, sideName, playerId)} />
+          <ApprovalPanel match={match} teams={app.state.teams} users={app.state.users} currentUserId={app.currentUser.id} onApprove={(sideName, playerId) => app.actions.approveMatch(match.id, sideName, playerId)} />
         </div>
         <aside className="page-stack">
           <Card className="section-card">

@@ -1,11 +1,10 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Flame, Handshake, PlusCircle, Search, Swords, Trophy } from "lucide-react";
+import { Handshake, PlusCircle, Search, Swords, Trophy } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import MatchCard from "../components/match/MatchCard.jsx";
-import RatingCard from "../components/rating/RatingCard.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
 import TeamCard from "../components/team/TeamCard.jsx";
 import { COURTS } from "../lib/constants.js";
@@ -111,6 +110,7 @@ export default function Home({ app }) {
       .map((item) => ({
         id: `player-${item.id}`,
         label: item.name,
+        kind: "PLAYER",
         meta: `${item.region} · ${item.position} · ${item.ratings.integrated}`,
         href: `/app/players/${item.id}`,
         score: Number(item.region === user.region) * 10000 + item.ratings.integrated,
@@ -120,6 +120,7 @@ export default function Home({ app }) {
     const teams = app.state.teams.map((team) => ({
       id: `team-${team.id}`,
       label: team.name,
+      kind: "TEAM",
       meta: `${team.region} · ${team.homeCourt} · ${team.mmr}`,
       href: `/app/teams/${team.id}`,
       score: Number(team.region === user.region) * 10000 + team.mmr,
@@ -129,6 +130,7 @@ export default function Home({ app }) {
     const courts = COURTS.map((court) => ({
       id: `court-${court.id}`,
       label: court.name,
+      kind: "COURT",
       meta: `${court.region} · ${court.type}`,
       href: "/app/create",
       score: Number(court.region === user.region) * 10000 + Number(court.favorite) * 1000,
@@ -141,64 +143,122 @@ export default function Home({ app }) {
       .sort((a, b) => b.score - a.score || a.label.localeCompare(b.label))
       .slice(0, searchText ? 8 : 5);
   }, [app.state.teams, app.state.users, blockedUserIds, searchText, user.region]);
+  const topRankers = seasonRows.slice(0, 5);
+  const latestMyMatches = myCompletedMatches.slice(0, 5);
 
   return (
-    <div className="page-stack">
-      <header className="page-header">
-        <div>
-          <p className="eyebrow">내 랭크 보드</p>
-          <h1>{user.name}님의 오늘 코트 현황</h1>
-        </div>
-        <Link to="/app/create">
-          <Button><PlusCircle size={18} /> 경기 만들기</Button>
-        </Link>
-      </header>
-
-      <section className="court-command">
-        <div className="court-command-copy">
-          <BadgeLine icon={Trophy} text="Rank profile" />
-          <div className="tier-crest-lockup">
-            <TierEmblem mmr={user.ratings.integrated} size="hero" showLabel />
-            <div>
-              <strong>{getTierDivision(user.ratings.integrated)}</strong>
-              <h2>{user.name} · 통합 랭크</h2>
-              <span className="tier-score-line">{Math.round(user.ratings.integrated)} MMR</span>
-              <Badge tone="gold">시즌 점수</Badge>
-            </div>
+    <div className="page-stack opgg-home">
+      <section className="opgg-search-hero">
+        <div className="opgg-hero-top">
+          <div>
+            <p className="eyebrow">RANKBALL.GG</p>
+            <h1>전적 검색</h1>
+            <p>선수, 팀, 코트를 검색하고 최근 경기와 지역 랭킹을 바로 확인하세요.</p>
           </div>
-          <div className="hero-stat-strip">
-            <span>{myCompletedMatches.length}경기</span>
-            <span>{winRate}%</span>
-            <span>{mySeasonIndex >= 0 ? `${mySeasonIndex + 1}위` : "지역 대기"}</span>
-            <span>{user.streak > 0 ? `${user.streak}연승` : user.streak < 0 ? `${Math.abs(user.streak)}연패` : "흐름 대기"}</span>
-          </div>
-        </div>
-        <div className="mode-grid">
-          {Object.entries(user.ratings.modes).map(([mode, mmr]) => (
-            <RatingCard key={mode} title={mode} mmr={mmr} subtitle="모드 티어" />
-          ))}
+          <Link to="/app/create">
+            <Button><PlusCircle size={18} /> 경기 만들기</Button>
+          </Link>
         </div>
       </section>
 
-      <Card className="home-search-panel">
+      <Card className="home-search-panel opgg-search-card">
         <div className="home-search-box">
           <Search size={24} />
           <input value={query} placeholder="이름, 팀명, 코트명을 바로 검색" onChange={(event) => setQuery(event.target.value)} />
         </div>
-        <div className="home-search-results unified">
+        <div className="opgg-quick-links">
+          <Link to="/app/rankings">랭킹</Link>
+          <Link to="/app/matches">경기</Link>
+          <Link to="/app/teams">팀</Link>
+          <Link to="/app/recruiting">모집</Link>
+        </div>
+        <div className="home-search-results unified opgg-search-results">
           {searchResults.map((item) => (
             <Link key={item.id} to={item.href}>
               {item.avatar ? <span className="avatar small" style={{ "--avatar": item.avatar }}>{item.label.slice(0, 1)}</span> : null}
               {item.teamColor ? <span className="team-mini-dot" style={{ "--team-color": item.teamColor }} /> : null}
               {item.court ? <span className="court-mini-dot" /> : null}
-              <strong>{item.label}</strong>
-              <em>{item.meta}</em>
+              <span className="opgg-result-main">
+                <strong>{item.label}</strong>
+                <em>{item.meta}</em>
+              </span>
+              <small>{item.kind}</small>
             </Link>
           ))}
         </div>
       </Card>
 
-      <div className="content-grid home-dashboard-grid">
+      <section className="opgg-summary-grid">
+        <Card className="section-card opgg-profile-card">
+          <div className="opgg-profile-head">
+            <div className="avatar hero-avatar" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</div>
+            <div>
+              <p className="eyebrow">내 프로필</p>
+              <h2>{user.name}</h2>
+              <span>{user.region} · {user.position} · 신뢰도 {user.trustScore}</span>
+            </div>
+          </div>
+          <div className="opgg-rank-block">
+            <TierEmblem mmr={user.ratings.integrated} size="md" showLabel />
+            <div>
+              <strong>{getTierDivision(user.ratings.integrated)}</strong>
+              <span>{Math.round(user.ratings.integrated)} MMR</span>
+            </div>
+          </div>
+          <div className="opgg-stat-grid">
+            <span><strong>{myCompletedMatches.length}</strong>경기</span>
+            <span><strong>{winRate}%</strong>승률</span>
+            <span><strong>{mySeasonIndex >= 0 ? `${mySeasonIndex + 1}위` : "-"}</strong>{user.region}</span>
+            <span><strong>{user.streak > 0 ? `${user.streak}연승` : user.streak < 0 ? `${Math.abs(user.streak)}연패` : "0"}</strong>흐름</span>
+          </div>
+          <div className="opgg-profile-tabs">
+            <Link to={`/app/players/${user.id}`}>프로필</Link>
+            <Link to="/app/season">시즌</Link>
+            <Link to="/app/settings">설정</Link>
+          </div>
+        </Card>
+
+        <Card className="section-card opgg-mode-card">
+          <div className="section-title-row">
+            <div>
+              <p className="eyebrow">Queue Rating</p>
+              <h2>모드별 티어</h2>
+            </div>
+            <Badge tone="gold">{Math.round(user.ratings.integrated)}</Badge>
+          </div>
+          <div className="mode-grid opgg-mode-grid">
+            {Object.entries(user.ratings.modes).map(([mode, mmr]) => (
+              <div key={mode} className="opgg-mode-pill">
+                <span>{mode}</span>
+                <strong>{getTierDivision(mmr)}</strong>
+                <em>{Math.round(mmr)} MMR</em>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <Card className="section-card opgg-leaderboard-card">
+          <div className="section-title-row">
+            <div>
+              <p className="eyebrow">Local Ranking</p>
+              <h2>{user.region} 랭킹</h2>
+            </div>
+            <Trophy size={20} />
+          </div>
+          <div className="opgg-rank-list">
+            {topRankers.map((row, index) => (
+              <Link key={row.id} to={`/app/players/${row.id}`}>
+                <b>{index + 1}</b>
+                <span className="avatar small" style={{ "--avatar": row.avatarColor }}>{row.name.slice(0, 1)}</span>
+                <strong>{row.name}</strong>
+                <em>{Math.round(row.seasonScore)}점</em>
+              </Link>
+            ))}
+          </div>
+        </Card>
+      </section>
+
+      <div className="content-grid home-dashboard-grid opgg-dashboard-grid">
         <div className="page-stack home-primary-stack">
           <Card className="section-card match-focus-card">
             <div className="section-title-row">
@@ -227,7 +287,7 @@ export default function Home({ app }) {
             </div>
             <FormTrendChart matches={completedMatches} userId={user.id} />
             <div className="compact-list">
-              {completedMatches.slice(0, 5).map((match) => (
+              {latestMyMatches.map((match) => (
                 <Link key={match.id} to={`/app/matches/${match.id}`}>
                   <span>{match.title}</span>
                   <strong>{match.teamA.score ?? 0}:{match.teamB.score ?? 0}</strong>
@@ -339,15 +399,5 @@ export default function Home({ app }) {
         </aside>
       </div>
     </div>
-  );
-}
-
-function BadgeLine({ icon: Icon, text }) {
-  return (
-    <span className="badge-line">
-      <Icon size={17} />
-      {text}
-      <Flame size={17} />
-    </span>
   );
 }

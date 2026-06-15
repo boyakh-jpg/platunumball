@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
+import { Star } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
@@ -11,6 +12,11 @@ function getTeamSide(match, teamId) {
   if (match.teamA.teamId === teamId) return "teamA";
   if (match.teamB.teamId === teamId) return "teamB";
   return null;
+}
+
+function getSideScore(match, sideName) {
+  const resultKey = sideName === "teamA" ? "scoreA" : "scoreB";
+  return Number(match.result?.[resultKey] ?? match[sideName]?.score ?? 0);
 }
 
 const historyStatusLabel = {
@@ -36,6 +42,8 @@ export default function TeamDetail({ app }) {
     item.members.forEach((member) => membershipCounts.set(member.userId, (membershipCounts.get(member.userId) ?? 0) + 1));
   });
   const captain = team.members.find((member) => member.role === "captain");
+  const favoriteTeamIds = app.state.settings?.favoriteTeamIds ?? [];
+  const isFavoriteTeam = favoriteTeamIds.includes(team.id);
   const canManage = captain?.userId === app.currentUser.id;
   const regularMembers = team.members.filter((member) => member.role === "captain" || member.role === "regular");
   const reserveMembers = team.members.filter((member) => member.role !== "captain" && member.role !== "regular");
@@ -48,8 +56,15 @@ export default function TeamDetail({ app }) {
   const wins = history.filter((match) => {
     const sideName = getTeamSide(match, team.id);
     const oppositeSide = sideName === "teamA" ? "teamB" : "teamA";
-    return match.status === "confirmed" && Number(match[sideName].score) > Number(match[oppositeSide].score);
+    return match.status === "confirmed" && getSideScore(match, sideName) > getSideScore(match, oppositeSide);
   }).length;
+  const losses = history.filter((match) => {
+    const sideName = getTeamSide(match, team.id);
+    const oppositeSide = sideName === "teamA" ? "teamB" : "teamA";
+    return match.status === "confirmed" && getSideScore(match, sideName) < getSideScore(match, oppositeSide);
+  }).length;
+  const confirmedCount = wins + losses;
+  const winRate = confirmedCount ? Math.round((wins / confirmedCount) * 100) : 0;
 
   const renderMembers = (title, members) => (
     <Card className="section-card">
@@ -89,8 +104,8 @@ export default function TeamDetail({ app }) {
   };
 
   return (
-    <div className="page-stack team-detail-page">
-      <section className="team-detail-hero" style={{ "--team-color": team.accent }}>
+    <div className="page-stack team-detail-page opgg-team-page">
+      <section className="team-detail-hero opgg-profile-hero opgg-team-hero" style={{ "--team-color": team.accent }}>
         <div>
           <p className="eyebrow">Team Profile</p>
           <h1>{team.name}</h1>
@@ -99,13 +114,61 @@ export default function TeamDetail({ app }) {
             <Badge tone="green">{team.mmr} 팀 MMR</Badge>
             <Badge tone="gold">주장 {userMap[captain?.userId]?.name ?? "미지정"}</Badge>
           </div>
+          <Button
+            type="button"
+            variant={isFavoriteTeam ? "primary" : "secondary"}
+            className={isFavoriteTeam ? "favorite-toggle-button active" : "favorite-toggle-button"}
+            onClick={() => app.actions.toggleFavoriteTeam(team.id)}
+          >
+            <Star size={16} fill={isFavoriteTeam ? "currentColor" : "none"} />
+            {isFavoriteTeam ? "즐겨찾기됨" : "즐겨찾기"}
+          </Button>
         </div>
         <div className="team-emblem hero-emblem">{team.name.slice(0, 1)}</div>
       </section>
 
+      <nav className="opgg-profile-tabs">
+        <a href="#team-history">전적</a>
+        <a href="#team-roster">로스터</a>
+        <a href="#team-control">관리</a>
+      </nav>
+
+      <section className="opgg-profile-summary">
+        <Card className="section-card opgg-record-card">
+          <div className="section-title-row">
+            <div>
+              <p className="eyebrow">Team Ranked</p>
+              <h2>팀 전적</h2>
+            </div>
+            <Badge tone="gold">{team.mmr} MMR</Badge>
+          </div>
+          <div className="opgg-stat-grid">
+            <span><strong>{wins}승</strong>승리</span>
+            <span><strong>{losses}패</strong>패배</span>
+            <span><strong>{winRate}%</strong>승률</span>
+            <span><strong>{history.length}</strong>전체 경기</span>
+          </div>
+        </Card>
+        <Card className="section-card opgg-record-card">
+          <div className="section-title-row">
+            <div>
+              <p className="eyebrow">Roster</p>
+              <h2>선수 구성</h2>
+            </div>
+            <Badge tone="green">{team.members.length}명</Badge>
+          </div>
+          <div className="opgg-stat-grid">
+            <span><strong>{regularMembers.length}</strong>정규</span>
+            <span><strong>{reserveMembers.length}</strong>후보/용병</span>
+            <span><strong>{myTeamCountLabel(canManage)}</strong>권한</span>
+            <span><strong>{team.region}</strong>지역</span>
+          </div>
+        </Card>
+      </section>
+
       <div className="content-grid wide-left">
         <div className="page-stack">
-          <Card className="section-card">
+          <Card id="team-history" className="section-card">
             <div className="section-title-row">
               <div>
                 <p className="eyebrow">Team History</p>
@@ -130,7 +193,7 @@ export default function TeamDetail({ app }) {
                     </div>
                     <div className="history-score">
                       <Badge tone={match.status === "confirmed" ? "green" : match.status === "contract" ? "blue" : "orange"}>{historyStatusLabel[match.status] ?? match.status}</Badge>
-                      <strong>{side.score ?? 0}:{opponent.score ?? 0}</strong>
+                      <strong>{getSideScore(match, sideName)}:{getSideScore(match, oppositeSide)}</strong>
                     </div>
                     <div className="roster compact-roster">
                       {side.players.map((id) => {
@@ -166,7 +229,7 @@ export default function TeamDetail({ app }) {
               </div>
             </div>
           </Card>
-          <Card className="section-card">
+          <Card id="team-control" className="section-card">
             <div className="section-title-row">
               <div>
                 <p className="eyebrow">Member Control</p>
@@ -222,10 +285,16 @@ export default function TeamDetail({ app }) {
               <span className="form-chip">팀장 전용</span>
             )}
           </Card>
-          {renderMembers("정규멤버", regularMembers)}
+          <div id="team-roster" className="page-stack">
+            {renderMembers("정규멤버", regularMembers)}
+          </div>
           {renderMembers("후보멤버와 용병 기록", reserveMembers)}
         </aside>
       </div>
     </div>
   );
+}
+
+function myTeamCountLabel(canManage) {
+  return canManage ? "관리" : "조회";
 }

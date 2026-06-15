@@ -2,7 +2,7 @@ import Card from "../common/Card.jsx";
 import Badge from "../common/Badge.jsx";
 import { getApprovalStatus } from "../../lib/matchUtils.js";
 
-export default function ApprovalPanel({ match, teams, users, onApprove }) {
+export default function ApprovalPanel({ match, teams, users, currentUserId, onApprove }) {
   const confirmed = match.status === "confirmed";
   const locked = !match.result || ["confirmed", "disputed", "void", "cancelled"].includes(match.status);
   const userMap = Object.fromEntries(users.map((user) => [user.id, user]));
@@ -19,11 +19,16 @@ export default function ApprovalPanel({ match, teams, users, onApprove }) {
             const user = userMap[playerId];
             const approved = status.approvals.includes(playerId);
             const captain = status.captainId === playerId;
+            const isCurrentUser = playerId === currentUserId;
+            const buttonClass = [
+              approved ? "approved" : "",
+              isCurrentUser ? "is-current-user" : "is-not-current-user",
+            ].filter(Boolean).join(" ");
             return (
-              <button key={playerId} type="button" disabled={locked || approved} className={approved ? "approved" : ""} onClick={() => onApprove(sideName, playerId)}>
+              <button key={playerId} type="button" disabled={locked || approved || !isCurrentUser} className={buttonClass} onClick={() => onApprove(sideName, playerId)}>
                 <span className="avatar small" style={{ "--avatar": user?.avatarColor }}>{user?.name?.slice(0, 1) ?? "P"}</span>
                 <strong>{user?.name ?? "플레이어"}</strong>
-                <em>{captain ? "주장" : approved ? "승인됨" : "승인"}</em>
+                <em>{approved ? "승인됨" : isCurrentUser ? (captain ? "주장 승인" : "내 승인") : "대리 불가"}</em>
               </button>
             );
           })}

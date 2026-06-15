@@ -15,6 +15,21 @@ function getPlayerSide(match, playerId) {
   return null;
 }
 
+function getSideScore(match, sideName) {
+  const resultKey = sideName === "teamA" ? "scoreA" : "scoreB";
+  return Number(match.result?.[resultKey] ?? match[sideName]?.score ?? 0);
+}
+
+function getPlayerOutcome(match, playerId) {
+  const sideName = getPlayerSide(match, playerId);
+  if (!sideName || !match.result) return null;
+  const otherSide = sideName === "teamA" ? "teamB" : "teamA";
+  const sideScore = getSideScore(match, sideName);
+  const otherScore = getSideScore(match, otherSide);
+  if (sideScore === otherScore) return "draw";
+  return sideScore > otherScore ? "win" : "loss";
+}
+
 function addCount(map, userId) {
   map.set(userId, (map.get(userId) ?? 0) + 1);
 }
@@ -50,6 +65,11 @@ export default function PlayerDetail({ app }) {
     const stats = match.result?.playerStats?.[player.id];
     if (stats) PLAYER_STAT_FIELDS.forEach((field) => { totals[field.id] += Number(stats[field.id] ?? 0); });
   }
+  const confirmedHistory = history.filter((match) => match.status === "confirmed" && match.result);
+  const wins = confirmedHistory.filter((match) => getPlayerOutcome(match, player.id) === "win").length;
+  const losses = confirmedHistory.filter((match) => getPlayerOutcome(match, player.id) === "loss").length;
+  const winRate = confirmedHistory.length ? Math.round((wins / confirmedHistory.length) * 100) : 0;
+  const recentOutcomes = confirmedHistory.slice(0, 10).map((match) => getPlayerOutcome(match, player.id));
 
   const renderRelationship = (title, counts) => (
     <Card className="section-card">
@@ -76,13 +96,14 @@ export default function PlayerDetail({ app }) {
   );
 
   return (
-    <div className="page-stack profile-detail-page">
-      <section className="profile-hero">
-        <div className="profile-identity">
+    <div className="page-stack profile-detail-page opgg-profile-page">
+      <section className="profile-hero opgg-profile-hero">
+        <div className="profile-identity opgg-profile-identity">
           <div className="avatar hero-avatar" style={{ "--avatar": player.avatarColor }}>{player.name.slice(0, 1)}</div>
           <div>
             <p className="eyebrow">Player Profile</p>
             <h1>{player.name}</h1>
+            <p>{player.handle} · {player.club} · 신뢰도 {player.trustScore}</p>
             <div className="badge-row">
               <TierBadge mmr={player.ratings.integrated} />
               <Badge tone="green">{player.region}</Badge>
@@ -90,7 +111,7 @@ export default function PlayerDetail({ app }) {
             </div>
           </div>
         </div>
-        <div className="tier-statement">
+        <div className="tier-statement opgg-tier-statement">
           <TierEmblem mmr={player.ratings.integrated} size="hero" showLabel />
           <div>
             <span>{getTierDivision(player.ratings.integrated)}</span>
@@ -98,6 +119,55 @@ export default function PlayerDetail({ app }) {
             <strong>{getTierQuote(player.ratings.integrated)}</strong>
           </div>
         </div>
+      </section>
+
+      <nav className="opgg-profile-tabs">
+        <a href="#summary">종합</a>
+        <a href="#history">전적</a>
+        <a href="#teams">팀</a>
+        <a href="#links">상대</a>
+      </nav>
+
+      <section id="summary" className="opgg-profile-summary">
+        <Card className="section-card opgg-record-card">
+          <div className="section-title-row">
+            <div>
+              <p className="eyebrow">Ranked Solo</p>
+              <h2>통합 랭크</h2>
+            </div>
+            <Badge tone="gold">{Math.round(player.ratings.integrated)} MMR</Badge>
+          </div>
+          <div className="opgg-record-main">
+            <TierEmblem mmr={player.ratings.integrated} size="md" showLabel />
+            <div>
+              <strong>{getTierDivision(player.ratings.integrated)}</strong>
+              <span>{wins}승 {losses}패 · 승률 {winRate}%</span>
+            </div>
+          </div>
+          <div className="form-pill-row">
+            {recentOutcomes.map((outcome, index) => (
+              <span key={`${outcome}-${index}`} className={`form-pill form-pill-${outcome === "win" ? "w" : outcome === "loss" ? "l" : "d"}`}>
+                {outcome === "win" ? "W" : outcome === "loss" ? "L" : "D"}
+              </span>
+            ))}
+          </div>
+        </Card>
+        <Card className="section-card opgg-record-card">
+          <div className="section-title-row">
+            <div>
+              <p className="eyebrow">Career Totals</p>
+              <h2>누적 스탯</h2>
+            </div>
+          </div>
+          <div className="opgg-stat-grid">
+            {PLAYER_STAT_FIELDS.map((field) => (
+              <span key={field.id}>
+                <strong>{totals[field.id]}</strong>
+                {field.label}
+              </span>
+            ))}
+          </div>
+        </Card>
       </section>
 
       <div className="content-grid wide-left">
@@ -109,7 +179,7 @@ export default function PlayerDetail({ app }) {
             ))}
           </section>
 
-          <Card className="section-card">
+          <Card id="history" className="section-card">
             <div className="section-title-row">
               <div>
                 <p className="eyebrow">Player History</p>
@@ -124,16 +194,18 @@ export default function PlayerDetail({ app }) {
                 const side = match[sideName];
                 const opponent = match[oppositeSide];
                 const stats = match.result?.playerStats?.[player.id];
-                const didWin = match.result ? Number(side.score) > Number(opponent.score) : null;
+                const outcome = getPlayerOutcome(match, player.id);
                 return (
-                  <article key={match.id} className="history-item">
+                  <article key={match.id} className={`history-item opgg-match-item ${outcome ? `opgg-match-${outcome}` : ""}`}>
                     <div>
                       <Link to={`/app/matches/${match.id}`}><strong>{match.title}</strong></Link>
                       <span>{match.court} · {match.scheduledAt}</span>
                     </div>
                     <div className="history-score">
-                      <Badge tone={didWin === null ? "blue" : didWin ? "green" : "orange"}>{didWin === null ? historyStatusLabel[match.status] ?? match.status : didWin ? "승" : "패"}</Badge>
-                      <strong>{side.score ?? 0}:{opponent.score ?? 0}</strong>
+                      <Badge tone={outcome === null ? "blue" : outcome === "win" ? "green" : outcome === "loss" ? "orange" : "gold"}>
+                        {outcome === null ? historyStatusLabel[match.status] ?? match.status : outcome === "win" ? "승" : outcome === "loss" ? "패" : "무"}
+                      </Badge>
+                      <strong>{getSideScore(match, sideName)}:{getSideScore(match, oppositeSide)}</strong>
                     </div>
                     <div className="history-teams">
                       <Link to={`/app/teams/${side.teamId}`}>{teamMap[side.teamId]?.name ?? side.name}</Link>
@@ -150,7 +222,7 @@ export default function PlayerDetail({ app }) {
 
         <aside className="page-stack">
           <ProgressionChecklist user={player} matches={app.state.matches} />
-          <Card className="section-card">
+          <Card className="section-card" id="teams">
             <div className="section-title-row">
               <div>
                 <p className="eyebrow">Career Totals</p>
@@ -182,8 +254,10 @@ export default function PlayerDetail({ app }) {
               ))}
             </div>
           </Card>
-          {renderRelationship("같이 뛴 사람", teammateCounts)}
-          {renderRelationship("상대한 사람", opponentCounts)}
+          <div id="links" className="page-stack">
+            {renderRelationship("같이 뛴 사람", teammateCounts)}
+            {renderRelationship("상대한 사람", opponentCounts)}
+          </div>
         </aside>
       </div>
     </div>
