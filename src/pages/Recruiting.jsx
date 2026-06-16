@@ -550,12 +550,11 @@ function FillSlot({ candidate, userById, teams, readyText = "READY" }) {
     <div className="ow-room-player-slot-wrap">
       <PlayerHoverCard user={user} teams={teams} className={candidate.status === "ready" ? "ow-room-player-slot fill ready" : "ow-room-player-slot fill"}>
         <span className="avatar" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
-        <span>
-          <strong>{user.name}</strong>
-          <em>{candidate.status === "ready" ? readyText : "재확인 필요"} · {candidate.sourceLabel}</em>
-        </span>
+        <strong>{user.name}</strong>
+        <small>{getPlayerPosition(user)}</small>
+        <b>{candidate.sourceLabel}</b>
         <TierBadge mmr={user.ratings.integrated} compact />
-        <Badge tone={candidate.status === "ready" ? "green" : "neutral"}>{readyLabel}</Badge>
+        <em>{candidate.status === "ready" ? readyText : readyLabel}</em>
       </PlayerHoverCard>
     </div>
   );
