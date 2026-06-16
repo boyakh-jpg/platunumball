@@ -144,6 +144,37 @@ function isRecruitingRoomParticipant(post = {}, userId) {
   ));
 }
 
+function getRecruitingParticipantEntry(post = {}, state = {}, userId, sideName = null) {
+  const lobby = getRecruitingLobby(post, state);
+  return (lobby.entries ?? []).find((entry) => (
+    (!sideName || entry.side === sideName) &&
+    (
+      entry.playerId === userId ||
+      (entry.players ?? []).includes(userId) ||
+      (entry.reserves ?? []).includes(userId)
+    )
+  )) ?? null;
+}
+
+function inferRecruitingInvitationTeamId(post = {}, state = {}, invitation = {}) {
+  if (invitation.teamId) return invitation.teamId;
+  const fromUserId = invitation.fromUserId;
+  const targetUserId = invitation.targetUserId;
+  if (!fromUserId || !targetUserId) return null;
+
+  const fromEntry = getRecruitingParticipantEntry(post, state, fromUserId, invitation.side);
+  if (!fromEntry) return null;
+  if (fromEntry?.team?.members?.some((member) => member.userId === targetUserId)) {
+    return fromEntry.team.id;
+  }
+
+  const sharedTeam = (state.teams ?? []).find((team) => (
+    team.members?.some((member) => member.userId === fromUserId) &&
+    team.members?.some((member) => member.userId === targetUserId)
+  ));
+  return sharedTeam?.id ?? null;
+}
+
 function mergeById(current = [], fallback = []) {
   const currentMap = new Map(current.map((item) => [item.id, item]));
   const mergedDefaults = fallback.map((item) => ({ ...item, ...(currentMap.get(item.id) ?? {}) }));
@@ -3399,8 +3430,9 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
   if (!invitation) return state;
 
   const user = state.users.find((item) => item.id === state.currentUserId);
-  const invitedTeam = invitation.teamId
-    ? state.teams.find((team) => team.id === invitation.teamId && team.members.some((member) => member.userId === state.currentUserId))
+  const invitationTeamId = inferRecruitingInvitationTeamId(post, state, invitation);
+  const invitedTeam = invitationTeamId
+    ? state.teams.find((team) => team.id === invitationTeamId && team.members.some((member) => member.userId === state.currentUserId))
     : null;
   const fit = getRecruitingFit(post, invitedTeam?.mmr ?? user?.ratings?.integrated ?? 1200, state);
   const expireInvitation = (body) => ({
@@ -3449,19 +3481,30 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
     const applicants = normalizeRecruitingApplicants(post.applicants ?? []);
     const teamKey = `team:${invitedTeam.id}`;
     const isHostParty = post.teamId === invitedTeam.id && post.hostJoinMode !== "player";
+    const anchorApplicant = applicants.find((applicant) => (
+      applicant.kind === "player" &&
+      applicant.playerId === invitation.fromUserId &&
+      applicant.side === side &&
+      invitedTeam.members.some((member) => member.userId === applicant.playerId)
+    ));
     const existingApplicant = applicants.find((applicant) => getRecruitingApplicantKey(applicant) === teamKey);
     const currentPlayerIds = isHostParty
       ? getSelectedTeamPlayerIds(invitedTeam, capacity, post.playerIds)
       : existingApplicant
         ? getSelectedTeamPlayerIds(invitedTeam, capacity, existingApplicant.playerIds)
-        : [];
+        : anchorApplicant && !anchorApplicant.reserve
+          ? [anchorApplicant.playerId]
+          : [];
     const nextPlayerIds = Array.from(new Set([...currentPlayerIds, state.currentUserId])).slice(0, capacity);
     if (!reserve && !nextPlayerIds.includes(state.currentUserId)) {
       return expireInvitation("방이 꽉 찼습니다. 먼저 수락한 선수만 들어갑니다.");
     }
 
     const reserveKey = isHostParty ? "host" : teamKey;
-    const currentReserveIds = roomState.partyReserves?.[reserveKey] ?? [];
+    const currentReserveIds = [
+      ...(roomState.partyReserves?.[reserveKey] ?? []),
+      ...(anchorApplicant?.reserve ? [anchorApplicant.playerId] : []),
+    ];
     const nextReserveIds = reserve
       ? Array.from(new Set([...currentReserveIds, state.currentUserId]))
       : currentReserveIds.filter((playerId) => playerId !== state.currentUserId);
@@ -3478,19 +3521,21 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
           kind: "team",
           joinMode: "team",
           teamId: invitedTeam.id,
-          playerId: state.currentUserId,
+          playerId: anchorApplicant?.playerId ?? state.currentUserId,
           side,
           status: "ready",
-          reserve,
+          reserve: reserve && !nextPlayerIds.length,
           position: null,
-          playerIds: [state.currentUserId],
+          playerIds: nextPlayerIds,
           createdAt: now,
           updatedAt: now,
         };
     const nextApplicants = isHostParty
       ? applicants
       : existingApplicant
-        ? applicants.map((applicant) => (
+        ? applicants
+          .filter((applicant) => applicant.playerId !== anchorApplicant?.playerId)
+          .map((applicant) => (
             getRecruitingApplicantKey(applicant) === teamKey
               ? {
                   ...applicant,
@@ -3502,7 +3547,10 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
                 }
               : applicant
           ))
-        : [...applicants, nextApplicant];
+        : [
+            ...applicants.filter((applicant) => applicant.playerId !== anchorApplicant?.playerId),
+            nextApplicant,
+          ];
     const nextPost = isHostParty
       ? {
           ...post,
@@ -3609,7 +3657,7 @@ function buildRecruitingTeamAbsorbPost(post, state, applicants, roomState, playe
   const isHostParty = post.teamId === sourceTeamId && post.hostJoinMode !== "player" && (post.hostSide ?? "teamA") === side;
   const targetApplicant = applicants.find((applicant) => getRecruitingApplicantKey(applicant) === teamKey && applicant.side === side);
   const canUseHostParty = sourceEntryId ? sourceEntryId === "host" && isHostParty : isHostParty;
-  const canUseTeamParty = sourceEntryId ? sourceEntryId === teamKey && Boolean(targetApplicant) : Boolean(targetApplicant);
+  const canUseTeamParty = Boolean(targetApplicant) && (!sourceEntryId || sourceEntryId === teamKey || targetApplicant.teamId === sourceTeamId);
   if (!canUseHostParty && !canUseTeamParty) return null;
 
   const currentPlayerIds = canUseHostParty
