@@ -5,14 +5,15 @@ import Button from "../components/common/Button.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { MATCH_MODES } from "../lib/constants.js";
+import { getMatchEndDate } from "../lib/matchUtils.js";
 import { getRecruitingLobby, getRecruitingSideCapacity, isRecruitingPostForUser } from "../lib/recruiting.js";
 
 const STATUS_META = {
-  contract: { label: "동의", tone: "blue" },
+  contract: { label: "동의 대기", tone: "blue" },
   agreed: { label: "예정", tone: "green" },
-  approval: { label: "승인", tone: "orange" },
-  disputed: { label: "보류", tone: "orange" },
-  confirmed: { label: "확정", tone: "green" },
+  approval: { label: "결과 승인중", tone: "orange" },
+  disputed: { label: "이의신청중", tone: "orange" },
+  confirmed: { label: "기록 확정", tone: "green" },
   void: { label: "무효", tone: "neutral" },
   cancelled: { label: "취소", tone: "neutral" },
 };
@@ -151,6 +152,45 @@ function compareSchedule(a, b) {
 
 function formatMatchTime(match) {
   return match.scheduledAt ?? match.createdAt?.slice(0, 16)?.replace("T", " ") ?? "시간 미정";
+}
+
+function getMatchStartDate(match) {
+  const source = match.scheduledDate
+    ? `${match.scheduledDate}T${match.scheduledTime || "00:00"}`
+    : String(match.scheduledAt ?? "").replace(" ", "T");
+  const parsed = new Date(source);
+  return Number.isFinite(parsed.getTime()) ? parsed : null;
+}
+
+function getMatchProcessMeta(match, now = new Date()) {
+  if (match.status !== "agreed") return STATUS_META[match.status] ?? { label: match.status, tone: "blue" };
+  const startAt = getMatchStartDate(match);
+  const endAt = getMatchEndDate(match);
+  const nowMs = now.getTime();
+  if (startAt && nowMs < startAt.getTime()) return { label: "예정", tone: "green" };
+  if (startAt && endAt && nowMs <= endAt.getTime()) return { label: "현재 진행", tone: "blue" };
+  if (startAt && endAt && nowMs > endAt.getTime()) return { label: "경기 종료", tone: "orange" };
+  return STATUS_META.agreed;
+}
+
+function shouldShowScoreBox(match) {
+  return Boolean(match.result) || ["approval", "disputed", "confirmed", "void"].includes(match.status);
+}
+
+function getMatchPlayerCount(match) {
+  return new Set([...(match.teamA?.players ?? []), ...(match.teamB?.players ?? [])]).size;
+}
+
+function formatMatchRules(match) {
+  const targetScore = Number(match.rules?.targetScore ?? 0);
+  const timeLimit = Number(match.rules?.timeLimit ?? 0);
+  const rules = [
+    targetScore ? `${targetScore}점` : "",
+    timeLimit ? `${timeLimit}분` : "",
+    match.rules?.winByTwo ? "2점차" : "",
+    match.rules?.ball ?? "",
+  ].filter(Boolean);
+  return rules.join(" · ") || "룰 미정";
 }
 
 function getWinner(match) {
@@ -695,7 +735,8 @@ export default function Matches({ app }) {
         </div>
 
         {visibleMatches.length ? visibleMatches.map((match) => {
-          const status = STATUS_META[match.status] ?? { label: match.status, tone: "blue" };
+          const status = getMatchProcessMeta(match);
+          const showScoreBox = shouldShowScoreBox(match);
           const scoreA = match.teamA.score ?? match.result?.scoreA ?? 0;
           const scoreB = match.teamB.score ?? match.result?.scoreB ?? 0;
           const winner = getWinner(match);
@@ -711,12 +752,24 @@ export default function Matches({ app }) {
                 <h3>{match.title}</h3>
                 <p><CalendarDays size={15} />{formatMatchTime(match)} · {match.court}</p>
               </div>
-              <div className="om-score-box">
-                <TeamHoverCard team={teamById[match.teamA.teamId]} to={`/app/teams/${match.teamA.teamId}`}>{match.teamA.name}</TeamHoverCard>
-                <strong>{scoreA} : {scoreB}</strong>
-                <TeamHoverCard team={teamById[match.teamB.teamId]} to={`/app/teams/${match.teamB.teamId}`}>{match.teamB.name}</TeamHoverCard>
-                {winner ? <span>{winner} 우세</span> : null}
-              </div>
+              {showScoreBox ? (
+                <div className="om-score-box">
+                  <TeamHoverCard team={teamById[match.teamA.teamId]} to={`/app/teams/${match.teamA.teamId}`}>{match.teamA.name}</TeamHoverCard>
+                  <strong>{scoreA} : {scoreB}</strong>
+                  <TeamHoverCard team={teamById[match.teamB.teamId]} to={`/app/teams/${match.teamB.teamId}`}>{match.teamB.name}</TeamHoverCard>
+                  {winner ? <span>{winner} 우세</span> : null}
+                </div>
+              ) : (
+                <div className="om-match-info-box">
+                  <div>
+                    <TeamHoverCard team={teamById[match.teamA.teamId]} to={`/app/teams/${match.teamA.teamId}`}>{match.teamA.name}</TeamHoverCard>
+                    <strong>vs</strong>
+                    <TeamHoverCard team={teamById[match.teamB.teamId]} to={`/app/teams/${match.teamB.teamId}`}>{match.teamB.name}</TeamHoverCard>
+                  </div>
+                  <span>참여 {getMatchPlayerCount(match)}명 · A {match.teamA.players?.length ?? 0} / B {match.teamB.players?.length ?? 0}</span>
+                  <span>{formatMatchRules(match)}</span>
+                </div>
+              )}
               <Link className="button button-secondary button-md om-room-link" to={`/app/matches/${match.id}`}>
                 {getMatchActionLabel(match)}
               </Link>
