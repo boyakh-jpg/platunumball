@@ -20,7 +20,7 @@ function writeTestSession(session) {
 }
 
 function makeTestSession(provider) {
-  const providerName = { naver: "네이버", kakao: "카카오", google: "구글" }[provider] ?? provider;
+  const providerName = { naver: "Naver", kakao: "Kakao", google: "Google" }[provider] ?? provider;
   const user = {
     id: `test-${provider}`,
     email: `${provider}@rankball.test`,
@@ -39,23 +39,19 @@ function makeTestSession(provider) {
 }
 
 export function useAuthSession() {
-  const [session, setSession] = useState(() => readTestSession());
-  const [loading, setLoading] = useState(() => isSupabaseConfigured && !readTestSession());
+  const [session, setSession] = useState(() => (isSupabaseConfigured ? null : readTestSession()));
+  const [loading, setLoading] = useState(() => isSupabaseConfigured);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const testSession = readTestSession();
-    if (testSession) {
-      setSession(testSession);
+    if (!isSupabaseConfigured) {
+      setSession(readTestSession());
       setLoading(false);
       return undefined;
     }
 
-    if (!isSupabaseConfigured) {
-      setLoading(false);
-      return undefined;
-    }
+    writeTestSession(null);
 
     let mounted = true;
     supabase.auth.getSession().then(({ data, error: sessionError }) => {
@@ -77,9 +73,23 @@ export function useAuthSession() {
   }, []);
 
   const actions = useMemo(() => ({
-    signInWithTestProvider: async (provider) => {
+    signInWithProvider: async (provider) => {
       setError("");
       setMessage("");
+      if (isSupabaseConfigured) {
+        const { error: authError } = await supabase.auth.signInWithOAuth({
+          provider,
+          options: {
+            redirectTo: `${window.location.origin}/app`,
+          },
+        });
+        if (authError) {
+          setError(authError.message);
+          return null;
+        }
+        return null;
+      }
+
       const nextSession = makeTestSession(provider);
       writeTestSession(nextSession);
       setSession(nextSession);

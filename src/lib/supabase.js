@@ -7,6 +7,7 @@ const key =
   import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 export const isSupabaseConfigured = Boolean(url && key);
+export const isBulkRemoteWriteEnabled = import.meta.env.VITE_ENABLE_BULK_REMOTE_WRITE === "true";
 export const supabase = isSupabaseConfigured
   ? createClient(url, key, {
       auth: {

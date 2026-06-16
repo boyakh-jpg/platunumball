@@ -43,11 +43,10 @@ import {
   normalizeRecruitingRoomState,
 } from "../lib/recruiting.js";
 import { clearState, readState, writeState } from "../lib/storage.js";
-import { isSupabaseConfigured, supabase } from "../lib/supabase.js";
+import { isBulkRemoteWriteEnabled, isSupabaseConfigured, supabase } from "../lib/supabase.js";
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const makeId = (prefix) => `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
-const REMOTE_STATE_ID = "rankball-mvp";
 const DEFAULT_SETTINGS = {
   theme: "dark",
   privacy: {
@@ -534,22 +533,6 @@ function fromRemoteMatch(row, context) {
   };
 }
 
-async function loadLegacyRemoteRecord() {
-  const { data, error } = await supabase
-    .from("rankball_state")
-    .select("state, updated_at")
-    .eq("id", REMOTE_STATE_ID)
-    .maybeSingle();
-
-  if (error) throw error;
-  return data ?? null;
-}
-
-async function loadLegacyRemoteState() {
-  const record = await loadLegacyRemoteRecord();
-  return record?.state ?? null;
-}
-
 function getMaxUpdatedAt(rows) {
   const timestamps = rows
     .map((row) => row.updated_at ?? row.created_at)
@@ -606,9 +589,7 @@ async function loadNormalizedRemoteState() {
 
   if (!profiles.length || !matches.length) return null;
 
-  const legacyRecord = await loadLegacyRemoteRecord().catch(() => null);
-  const legacyState = legacyRecord?.state ?? null;
-  const currentUserId = legacyState?.currentUserId ?? initialState.currentUserId;
+  const currentUserId = initialState.currentUserId;
   const teamMembersByTeam = groupBy(teamMembers, "team_id");
   const teamById = firstBy(teams, "id");
   const courtById = firstBy(courts, "id");
@@ -783,23 +764,9 @@ export async function loadRemoteState() {
 
   try {
     const normalizedRemote = await loadNormalizedRemoteState();
-    if (normalizedRemote) {
-      const legacyRecord = await loadLegacyRemoteRecord().catch(() => null);
-      const legacyUpdatedAt = legacyRecord?.updated_at ? new Date(legacyRecord.updated_at).getTime() : 0;
-      if (legacyRecord?.state && legacyUpdatedAt > normalizedRemote.updatedAt) {
-        return normalizeState(legacyRecord.state);
-      }
-      return normalizedRemote.state;
-    }
+    return normalizedRemote?.state ?? null;
   } catch (error) {
-    console.warn("Supabase normalized state load failed. Falling back to legacy state.", error.message);
-  }
-
-  try {
-    const legacyState = await loadLegacyRemoteState();
-    return legacyState ? normalizeState(legacyState) : clone(initialState);
-  } catch (error) {
-    console.warn("Supabase state load failed. Falling back to local demo mode.", error.message);
+    console.warn("Supabase normalized state load failed. Local demo mode remains active.", error.message);
     return null;
   }
 }
@@ -1097,45 +1064,21 @@ async function saveNormalizedRemoteState(state) {
 
 export async function saveRemoteState(state) {
   if (!isSupabaseConfigured) return;
+  if (!isBulkRemoteWriteEnabled) return;
 
   const sharedState = { ...state, currentUserId: initialState.currentUserId };
-  const { error } = await supabase.from("rankball_state").upsert({
-    id: REMOTE_STATE_ID,
-    state: sharedState,
-    updated_at: new Date().toISOString(),
-  });
-
-  if (error) {
-    console.warn("Supabase state save failed. Local state remains available.", error.message);
-  }
-
   try {
     await saveNormalizedRemoteState(sharedState);
   } catch (normalizedError) {
     if (!normalizedSaveWarningShown) {
       normalizedSaveWarningShown = true;
-      console.warn("Supabase normalized save failed. Legacy state remains available.", normalizedError.message);
+      console.warn("Supabase normalized save failed. Local state remains available.", normalizedError.message);
     }
   }
 }
 
-export function subscribeRemoteState(onState) {
-  if (!isSupabaseConfigured) return () => {};
-
-  const channel = supabase
-    .channel("rankball-state")
-    .on(
-      "postgres_changes",
-      { event: "*", schema: "public", table: "rankball_state", filter: `id=eq.${REMOTE_STATE_ID}` },
-      (payload) => {
-        if (payload.new?.state) onState(payload.new.state);
-      },
-    )
-    .subscribe();
-
-  return () => {
-    supabase.removeChannel(channel);
-  };
+export function subscribeRemoteState() {
+  return () => {};
 }
 
 export function resetState() {

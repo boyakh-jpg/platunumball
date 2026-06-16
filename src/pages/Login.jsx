@@ -4,20 +4,21 @@ import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 
 const providers = [
-  { id: "naver", label: "네이버", mark: "N" },
-  { id: "kakao", label: "카카오", mark: "K" },
-  { id: "google", label: "구글", mark: "G" },
+  { id: "naver", label: "Naver", mark: "N" },
+  { id: "kakao", label: "Kakao", mark: "K" },
+  { id: "google", label: "Google", mark: "G" },
 ];
 
 export default function Login({ auth, app }) {
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from?.pathname && location.state.from.pathname !== "/login" ? location.state.from.pathname : "/app";
+  const activeProviders = auth.configured ? providers.filter((provider) => provider.id === "google") : providers;
 
   const enterApp = () => navigate(from, { replace: true });
   const signIn = async (providerId) => {
-    await auth.signInWithTestProvider(providerId);
-    enterApp();
+    const nextSession = await auth.signInWithProvider(providerId);
+    if (nextSession) enterApp();
   };
 
   return (
@@ -31,7 +32,7 @@ export default function Login({ auth, app }) {
               <small>street court ladder</small>
             </span>
           </Link>
-          <Badge tone={auth.session ? "green" : "blue"}>{auth.session ? "테스트 세션" : "소셜 로그인"}</Badge>
+          <Badge tone={auth.session ? "green" : "blue"}>{auth.session ? "로그인됨" : auth.configured ? "Supabase Auth" : "Demo login"}</Badge>
         </div>
 
         <div className="auth-form">
@@ -43,16 +44,18 @@ export default function Login({ auth, app }) {
           {auth.session ? (
             <div className="auth-session-line">
               <ShieldCheck size={18} />
-              <span>{auth.user.user_metadata?.providerName ?? auth.user.email} 테스트 로그인됨</span>
+              <span>{auth.user.user_metadata?.providerName ?? auth.user.email} 로그인됨</span>
               <button type="button" onClick={auth.signOut}><LogOut size={16} /> 로그아웃</button>
             </div>
           ) : null}
 
+          {auth.error ? <p className="auth-message">{auth.error}</p> : null}
+
           <div className="social-login-grid">
-            {providers.map((provider) => (
+            {activeProviders.map((provider) => (
               <button key={provider.id} type="button" className={`provider-button provider-${provider.id}`} onClick={() => signIn(provider.id)}>
                 <span>{provider.mark}</span>
-                {provider.label}로 로그인하기
+                {auth.configured ? `${provider.label} OAuth` : `${provider.label} demo`}
               </button>
             ))}
           </div>

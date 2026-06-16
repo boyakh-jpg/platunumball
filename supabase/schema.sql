@@ -9,29 +9,14 @@ alter table public.rankball_state enable row level security;
 drop policy if exists "rankball_state_select_public" on public.rankball_state;
 drop policy if exists "rankball_state_insert_public" on public.rankball_state;
 drop policy if exists "rankball_state_update_public" on public.rankball_state;
+drop policy if exists "rankball_state_admin_only" on public.rankball_state;
 
-create policy "rankball_state_select_public"
+create policy "rankball_state_admin_only"
 on public.rankball_state
-for select
-to anon, authenticated
-using (true);
-
-create policy "rankball_state_insert_public"
-on public.rankball_state
-for insert
-to anon, authenticated
-with check (true);
-
-create policy "rankball_state_update_public"
-on public.rankball_state
-for update
-to anon, authenticated
-using (true)
-with check (true);
-
-insert into public.rankball_state (id, state)
-values ('rankball-mvp', '{}'::jsonb)
-on conflict (id) do nothing;
+for all
+to authenticated
+using (false)
+with check (false);
 
 create or replace function public.enforce_team_membership_limit()
 returns trigger
@@ -337,7 +322,17 @@ begin
   if to_regclass('public.notifications') is not null then
     execute 'alter table public.notifications enable row level security';
     execute 'drop policy if exists notifications_read_all on public.notifications';
-    execute 'create policy notifications_read_all on public.notifications for select to public using (true)';
+    execute 'drop policy if exists notifications_self_read on public.notifications';
+    execute 'drop policy if exists notifications_self_update on public.notifications';
+    if exists (
+      select 1 from information_schema.columns
+      where table_schema = 'public' and table_name = 'notifications' and column_name = 'user_id'
+    ) then
+      execute 'create policy notifications_self_read on public.notifications for select to authenticated using (user_id = auth.uid()::text)';
+      execute 'create policy notifications_self_update on public.notifications for update to authenticated using (user_id = auth.uid()::text) with check (user_id = auth.uid()::text)';
+    else
+      execute 'create policy notifications_self_read on public.notifications for select to authenticated using (false)';
+    end if;
   end if;
 end;
 $$;
@@ -347,7 +342,15 @@ begin
   if to_regclass('public.reports') is not null then
     execute 'alter table public.reports enable row level security';
     execute 'drop policy if exists reports_read_all on public.reports';
-    execute 'create policy reports_read_all on public.reports for select to public using (true)';
+    execute 'drop policy if exists reports_insert_authenticated on public.reports';
+    execute 'drop policy if exists reports_no_public_read on public.reports';
+    if exists (
+      select 1 from information_schema.columns
+      where table_schema = 'public' and table_name = 'reports' and column_name = 'user_id'
+    ) then
+      execute 'create policy reports_insert_authenticated on public.reports for insert to authenticated with check (user_id = auth.uid()::text)';
+    end if;
+    execute 'create policy reports_no_public_read on public.reports for select to authenticated using (false)';
   end if;
 end;
 $$;
@@ -356,7 +359,8 @@ do $$
 begin
   if to_regclass('public.match_disputes') is not null then
     execute 'drop policy if exists match_disputes_read_all on public.match_disputes';
-    execute 'create policy match_disputes_read_all on public.match_disputes for select to public using (true)';
+    execute 'drop policy if exists match_disputes_no_public_read on public.match_disputes';
+    execute 'create policy match_disputes_no_public_read on public.match_disputes for select to authenticated using (false)';
   end if;
 end;
 $$;
