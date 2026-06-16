@@ -3635,6 +3635,14 @@ export function confirmRecruitingMatch(state, postId) {
   const mmrRangeMode = normalizeRecruitingMmrRangeMode(post.mmrRangeMode ?? post.roomState?.mmrRangeMode);
   const ranked = post.ranked !== false;
   const ratingScale = getRecruitingRatingScale({ ranked, mmrRangeMode });
+  const defaultRules = {
+    targetScore: 21,
+    timeLimit: 12,
+    winByTwo: true,
+    ball: "7호 공",
+    attackRule: "득점 후 공격권 교대",
+    foulRule: "파울 콜 즉시 중단, 공격권 유지",
+  };
   const match = {
     id: makeId("m"),
     title: post.title,
@@ -3652,7 +3660,8 @@ export function confirmRecruitingMatch(state, postId) {
     statEntryMinutes: STAT_ENTRY_WINDOW_MINUTES,
     disputeMinutes: DISPUTE_WINDOW_MINUTES,
     rules: {
-      ...(post.rules ?? { targetScore: 21, timeLimit: 12, winByTwo: true, ball: "7호 공" }),
+      ...defaultRules,
+      ...(post.rules ?? {}),
       mmrRangeMode,
       ratingScale,
     },

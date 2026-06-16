@@ -112,6 +112,12 @@ export default function MatchRoom({ app }) {
   const hasReferee = Boolean(match.refereeId);
   const currentUserIsReferee = isMatchReferee(match, app.currentUser.id);
   const statRecorders = hasReferee ? {} : match.statRecorders ?? match.rules?.statRecorders ?? {};
+  const recorderSummary = referee
+    ? `심판 ${referee.name}`
+    : ["teamA", "teamB"]
+        .filter((sideName) => statRecorders[sideName])
+        .map((sideName) => `${sideName === "teamA" ? "A팀" : "B팀"} ${userMap[statRecorders[sideName]]?.name ?? "후보"}`)
+        .join(" · ") || "참가자 본인 득점";
   const currentRecorderSides = hasReferee ? [] : getStatRecorderSides(match, app.currentUser.id);
   const hasSideRecorders = !hasReferee && Boolean(statRecorders.teamA || statRecorders.teamB);
   const currentUserEditablePlayerIds = hasReferee && currentUserIsReferee
@@ -341,6 +347,17 @@ export default function MatchRoom({ app }) {
     });
     return acc;
   }, {});
+  const ruleItems = [
+    ["목표 점수", `${match.rules?.targetScore ?? 21}점`],
+    ["제한 시간", `${match.rules?.timeLimit ?? 12}분`],
+    ["승리 조건", match.rules?.winByTwo ? "2점차" : "선착순"],
+    ["사용 공", match.rules?.ball ?? "7호 공"],
+    ["공격권", match.rules?.attackRule ?? "득점 후 공격권 교대"],
+    ["파울 룰", match.rules?.foulRule ?? "현장 합의"],
+    ["기록 권한", recorderSummary],
+    ["이의제기", `${match.disputeMinutes ?? 120}분`],
+    ["티어 반영", match.ranked === false ? "친선 · 티어 자유" : `정규 · MMR ${Math.round((match.ratingScale ?? match.rules?.ratingScale ?? 1) * 100)}%`],
+  ];
 
   return (
     <div className="page-stack match-room">
@@ -391,7 +408,7 @@ export default function MatchRoom({ app }) {
           <div><CalendarDays size={17} /><span>{match.scheduledDate ?? "일정"} {match.scheduledTime ?? ""}</span></div>
           <div><UsersRound size={17} /><span>{match.teamA.players.length} vs {match.teamB.players.length}</span></div>
           <div><ShieldCheck size={17} /><span>{match.ranked === false ? "티어 자유" : "MMR 반영"}</span></div>
-          <div><Trophy size={17} /><span>{match.rules.targetScore}점 · {match.rules.timeLimit}분</span></div>
+          <div><Trophy size={17} /><span>{match.rules?.targetScore ?? 21}점 · {match.rules?.timeLimit ?? 12}분</span></div>
         </div>
       </section>
 
@@ -411,6 +428,26 @@ export default function MatchRoom({ app }) {
           <Badge tone={status.tone}>{status.label}</Badge>
         )}
       </Card>
+
+      {!isContractStage ? (
+        <Card className="section-card gm-rule-summary-card">
+          <div className="section-title-row">
+            <div>
+              <p className="eyebrow">Match rules</p>
+              <h2>경기 룰</h2>
+            </div>
+            <Badge tone={match.ranked === false ? "neutral" : "gold"}>{match.ranked === false ? "친선전" : "정규전"}</Badge>
+          </div>
+          <div className="contract-grid">
+            {ruleItems.map(([label, value]) => (
+              <div key={label}>
+                <span>{label}</span>
+                <strong>{value}</strong>
+              </div>
+            ))}
+          </div>
+        </Card>
+      ) : null}
 
       {isContractStage ? (
         <div className="content-grid match-stage-contract">
