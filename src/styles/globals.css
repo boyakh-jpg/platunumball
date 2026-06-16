@@ -5,6 +5,7 @@
 html {
   min-width: 320px;
   background: var(--bg);
+  --bottom-nav-height: 46px;
 }
 
 body {
@@ -2338,8 +2339,9 @@ input[type="color"] {
     left: 12px;
     z-index: 20;
     display: grid;
-    grid-template-columns: repeat(8, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
     gap: 3px;
+    min-height: var(--bottom-nav-height);
     border: 1px solid var(--line);
     border-radius: var(--radius);
     background: rgba(16, 18, 17, 0.92);
@@ -2349,20 +2351,32 @@ input[type="color"] {
   }
 
   .bottom-nav a {
-    display: grid;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     min-width: 0;
-    place-items: center;
     gap: 3px;
     border-radius: 6px;
     color: var(--muted);
     padding: 7px 1px;
     font-size: 0.6rem;
     font-weight: 800;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  .bottom-nav a span {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .bottom-nav a svg {
-    width: 17px;
-    height: 17px;
+    width: 16px;
+    height: 16px;
+    flex: 0 0 auto;
   }
 
   .bottom-nav a.active {
@@ -6664,7 +6678,7 @@ html[data-theme="light"] .favorite-toggle-button.active.button-secondary {
   }
 
   .bottom-nav a svg {
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
   }
 }
