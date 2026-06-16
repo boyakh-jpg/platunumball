@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   CheckCircle2,
@@ -210,9 +210,9 @@ function canMovePlayerTo(lobby, playerId, sideName, reserve = false) {
   return side.projectedPlayers.includes(playerId) || side.projectedFilled < side.capacity;
 }
 
-function getSameSidePartyOptions(lobby, myEntry, myTeams = []) {
+function getSameSidePartyOptions(lobby, myEntry, myTeams = [], targetSide = myEntry?.side) {
   if (!myEntry || myEntry.fixed || myEntry.kind === "team") return [];
-  const sideEntries = lobby.sides[myEntry.side]?.entries ?? [];
+  const sideEntries = lobby.sides[targetSide]?.entries ?? [];
   return myTeams.filter((team) => {
     const memberIds = new Set((team.members ?? []).map((member) => member.userId));
     return sideEntries.some((entry) => (
@@ -560,6 +560,31 @@ function FillSlot({ candidate, userById, teams, readyText = "READY" }) {
   );
 }
 
+function SlotCommandPanel({ sideName, reserve = false, canMoveHere = false, partyJoinOptions = [], onMoveHere, onJoinParty, onClose, children }) {
+  return (
+    <div className="ow-slot-command-popover" onClick={(event) => event.stopPropagation()}>
+      <header>
+        <div>
+          <strong>{SIDE_LABELS[sideName]} {reserve ? "후보 슬롯" : "빈 슬롯"}</strong>
+          <span>이 자리로 이동하거나 초대한다.</span>
+        </div>
+        <button type="button" className="ow-icon-button" aria-label="닫기" onClick={onClose}><X size={16} /></button>
+      </header>
+      <div className="ow-slot-command-actions">
+        <Button type="button" size="sm" variant="secondary" disabled={!canMoveHere} onClick={onMoveHere}>
+          이 자리로 이동
+        </Button>
+        {partyJoinOptions.map((team) => (
+          <Button key={team.id} type="button" size="sm" variant="secondary" onClick={() => onJoinParty(team.id)}>
+            {team.name} 파티 합류
+          </Button>
+        ))}
+      </div>
+      {children}
+    </div>
+  );
+}
+
 function SideRoster({
   sideName,
   side,
@@ -568,6 +593,7 @@ function SideRoster({
   teams,
   canInvite = false,
   onInviteSlot,
+  renderSlotCommand,
 }) {
   const activeSlots = [];
   const seenPlayerIds = new Set();
@@ -587,7 +613,7 @@ function SideRoster({
           <strong>{side.projectedFilled}/{side.capacity}</strong>
         </div>
       </header>
-      <div className="ow-room-slot-row" style={{ "--slot-count": Math.min(5, side.capacity) }}>
+      <div className="ow-room-slot-row" style={{ "--slot-count": 5 }}>
         {activeSlots.map(({ entry, playerId, user }) => {
           const isPartyEntry = entry.fixed || entry.kind === "team";
           const partyLabel = isPartyEntry && entry.team ? entry.team.name : "개인 참여";
@@ -612,19 +638,26 @@ function SideRoster({
             teams={teams}
           />
         ))}
-        {Array.from({ length: openSlots }).map((_item, index) => (
-          <button
-            key={`${sideName}-open-${index}`}
-            type="button"
-            className={canInvite ? "ow-room-player-slot empty invite" : "ow-room-player-slot empty"}
-            disabled={!canInvite}
-            onClick={() => onInviteSlot?.(sideName)}
-          >
-            <UserRound size={17} />
-            <span>빈 슬롯</span>
-            {canInvite ? <em>초대</em> : null}
-          </button>
-        ))}
+        {Array.from({ length: openSlots }).map((_item, index) => {
+          const slotKey = `${sideName}-active-${index}`;
+          return (
+            <Fragment key={slotKey}>
+              <div className="ow-room-player-slot-wrap">
+                <button
+                  type="button"
+                  className={canInvite ? "ow-room-player-slot empty invite" : "ow-room-player-slot empty"}
+                  disabled={!canInvite}
+                  onClick={() => onInviteSlot?.(sideName, false, slotKey)}
+                >
+                  <UserRound size={17} />
+                  <span>빈 슬롯</span>
+                  {canInvite ? <em>초대</em> : null}
+                </button>
+              </div>
+              {renderSlotCommand?.(sideName, false, slotKey)}
+            </Fragment>
+          );
+        })}
       </div>
     </section>
   );
@@ -636,7 +669,7 @@ function stopControlClick(event, callback) {
   callback();
 }
 
-function ReserveLine({ sideName, candidates, playingIds, lobby, userById, teams, canInvite = false, recorderId = "", onInviteSlot }) {
+function ReserveLine({ sideName, candidates, playingIds, lobby, userById, teams, canInvite = false, recorderId = "", onInviteSlot, renderSlotCommand }) {
   const playingSet = new Set(playingIds);
   const slots = candidates.slice(0, MAX_RESERVE_PLAYERS_PER_SIDE);
   const openSlots = Math.max(0, MAX_RESERVE_PLAYERS_PER_SIDE - slots.length);
@@ -661,19 +694,26 @@ function ReserveLine({ sideName, candidates, playingIds, lobby, userById, teams,
             />
           );
         })}
-        {Array.from({ length: openSlots }).map((_item, index) => (
-          <button
-            key={`${sideName}-reserve-open-${index}`}
-            type="button"
-            className={canInvite ? "ow-room-player-slot empty invite" : "ow-room-player-slot empty"}
-            disabled={!canInvite}
-            onClick={() => onInviteSlot?.(sideName)}
-          >
-            <UserRound size={17} />
-            <span>후보 슬롯</span>
-            {canInvite ? <em>초대</em> : null}
-          </button>
-        ))}
+        {Array.from({ length: openSlots }).map((_item, index) => {
+          const slotKey = `${sideName}-reserve-${index}`;
+          return (
+            <Fragment key={slotKey}>
+              <div className="ow-room-player-slot-wrap">
+                <button
+                  type="button"
+                  className={canInvite ? "ow-room-player-slot empty invite" : "ow-room-player-slot empty"}
+                  disabled={!canInvite}
+                  onClick={() => onInviteSlot?.(sideName, true, slotKey)}
+                >
+                  <UserRound size={17} />
+                  <span>후보 슬롯</span>
+                  {canInvite ? <em>초대</em> : null}
+                </button>
+              </div>
+              {renderSlotCommand?.(sideName, true, slotKey)}
+            </Fragment>
+          );
+        })}
       </div>
     </div>
   );
@@ -1267,8 +1307,8 @@ export default function Recruiting({ app }) {
     app.actions.sendRecruitingChat(post.id, body);
     updateChatDraft(post, "");
   };
-  const openInviteSlot = (post, sideName, reserve = false) => {
-    setInviteDraft({ postId: post.id, sideName, reserve, query: "", selectedPlayerIds: [] });
+  const openInviteSlot = (post, sideName, reserve = false, slotKey = "") => {
+    setInviteDraft({ postId: post.id, sideName, reserve, slotKey, query: "", selectedPlayerIds: [] });
   };
   const getRoomEditDraftByPost = (post) => roomEditDraftByPost[post.id] ?? null;
   const openRoomEdit = (post) => {
@@ -1532,6 +1572,45 @@ export default function Recruiting({ app }) {
         const teamBMeta = getLobbySideMeta(lobby, "teamB", userById);
         const roomReadyLabel = lobby.canConfirm ? "READY" : "충원 중";
         const roomTitle = selectedPost.ranked === false ? "친선전" : "정규전";
+        const renderSlotCommand = (sideName, reserve, slotKey) => {
+          if (!activeInviteDraft || activeInviteDraft.sideName !== sideName || Boolean(activeInviteDraft.reserve) !== reserve || activeInviteDraft.slotKey !== slotKey) return null;
+          const canMoveHere = Boolean(
+            myEntry?.kind === "player" &&
+            canMovePlayerTo(lobby, myEntry.playerId, sideName, reserve) &&
+            (myEntry.side !== sideName || Boolean(myEntry.reserve) !== reserve),
+          );
+          const targetPartyOptions = getSameSidePartyOptions(lobby, myEntry, myTeams, sideName);
+          return (
+            <SlotCommandPanel
+              sideName={sideName}
+              reserve={reserve}
+              canMoveHere={canMoveHere}
+              partyJoinOptions={targetPartyOptions}
+              onMoveHere={() => app.actions.setRecruitingApplicantPlacement(selectedPost.id, myEntry.playerId, { side: sideName, reserve })}
+              onJoinParty={(teamId) => app.actions.joinRecruitingSideParty(selectedPost.id, teamId)}
+              onClose={() => setInviteDraft(null)}
+            >
+              <InvitePanel
+                sideName={activeInviteDraft.sideName}
+                reserve={Boolean(activeInviteDraft.reserve)}
+                query={activeInviteDraft.query}
+                onQueryChange={(query) => updateInviteDraft({ query, selectedPlayerIds: [] })}
+                users={app.state.users}
+                teams={app.state.teams}
+                userById={userById}
+                disabledPlayerIds={disabledInvitePlayerIds}
+                selectedPlayerIds={activeInviteDraft.selectedPlayerIds ?? []}
+                favoritePlayerIds={favoritePlayerIds}
+                favoriteTeamIds={favoriteTeamIds}
+                onTogglePlayer={toggleInvitePlayer}
+                onInvitePlayers={(playerIds, teamId) => sendInvites(selectedPost, playerIds, teamId)}
+                onToggleFavoritePlayer={(playerId) => app.actions.toggleFavoritePlayer(playerId)}
+                onToggleFavoriteTeam={(teamId) => app.actions.toggleFavoriteTeam(teamId)}
+                onClose={() => setInviteDraft(null)}
+              />
+            </SlotCommandPanel>
+          );
+        };
 
         return (
           <div className="ow-compose-backdrop" role="presentation" onMouseDown={() => { setInviteDraft(null); setSelectedPostId(null); }}>
@@ -1570,7 +1649,8 @@ export default function Recruiting({ app }) {
                       teams={app.state.teams}
                       canInvite={canInviteFromRoom}
                       canManage={mine}
-                      onInviteSlot={(sideName) => openInviteSlot(selectedPost, sideName)}
+                      onInviteSlot={(sideName, reserve, slotKey) => openInviteSlot(selectedPost, sideName, reserve, slotKey)}
+                      renderSlotCommand={renderSlotCommand}
                       onSetPlacement={(playerId, placement) => app.actions.setRecruitingApplicantPlacement(selectedPost.id, playerId, placement)}
                       onSetMemberReserve={(entryId, playerId, reserve) => app.actions.setRecruitingPartyPlayerReserve(selectedPost.id, entryId, playerId, reserve)}
                       onDetachMember={(entryId, playerId) => app.actions.detachRecruitingPartyPlayer(selectedPost.id, entryId, playerId)}
@@ -1602,7 +1682,8 @@ export default function Recruiting({ app }) {
                       teams={app.state.teams}
                       canInvite={canInviteFromRoom}
                       canManage={mine}
-                      onInviteSlot={(sideName) => openInviteSlot(selectedPost, sideName)}
+                      onInviteSlot={(sideName, reserve, slotKey) => openInviteSlot(selectedPost, sideName, reserve, slotKey)}
+                      renderSlotCommand={renderSlotCommand}
                       onSetPlacement={(playerId, placement) => app.actions.setRecruitingApplicantPlacement(selectedPost.id, playerId, placement)}
                       onSetMemberReserve={(entryId, playerId, reserve) => app.actions.setRecruitingPartyPlayerReserve(selectedPost.id, entryId, playerId, reserve)}
                       onDetachMember={(entryId, playerId) => app.actions.detachRecruitingPartyPlayer(selectedPost.id, entryId, playerId)}
@@ -1625,7 +1706,8 @@ export default function Recruiting({ app }) {
                     canManage={mine}
                     recorderId={recorderIds.teamA}
                     lobby={lobby}
-                    onInviteSlot={(sideName) => openInviteSlot(selectedPost, sideName, true)}
+                    onInviteSlot={(sideName, reserve, slotKey) => openInviteSlot(selectedPost, sideName, reserve, slotKey)}
+                    renderSlotCommand={renderSlotCommand}
                     onMoveCandidate={moveCandidate}
                     onRemoveCandidate={removeCandidate}
                   />
@@ -1639,7 +1721,8 @@ export default function Recruiting({ app }) {
                     canManage={mine}
                     recorderId={recorderIds.teamB}
                     lobby={lobby}
-                    onInviteSlot={(sideName) => openInviteSlot(selectedPost, sideName, true)}
+                    onInviteSlot={(sideName, reserve, slotKey) => openInviteSlot(selectedPost, sideName, reserve, slotKey)}
+                    renderSlotCommand={renderSlotCommand}
                     onMoveCandidate={moveCandidate}
                     onRemoveCandidate={removeCandidate}
                   />
@@ -1653,7 +1736,7 @@ export default function Recruiting({ app }) {
                 </div>
               </div>
 
-              {activeInviteDraft ? (
+              {activeInviteDraft && !activeInviteDraft.slotKey ? (
                 <InvitePanel
                   sideName={activeInviteDraft.sideName}
                   reserve={Boolean(activeInviteDraft.reserve)}

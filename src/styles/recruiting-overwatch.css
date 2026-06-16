@@ -1492,6 +1492,58 @@
   padding-inline: 4px;
 }
 
+.ow-slot-command-popover {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 10px;
+  min-width: 0;
+  border: 1px solid rgba(255, 211, 108, 0.28);
+  border-radius: 10px;
+  background:
+    linear-gradient(145deg, rgba(9, 14, 23, 0.98), rgba(9, 14, 23, 0.92)),
+    rgba(9, 14, 23, 0.98);
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.36);
+  padding: 10px;
+}
+
+.ow-slot-command-popover > header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.ow-slot-command-popover > header > div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.ow-slot-command-popover > header strong {
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 950;
+}
+
+.ow-slot-command-popover > header span {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 850;
+}
+
+.ow-slot-command-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ow-slot-command-popover .ow-invite-panel {
+  margin-top: 0;
+  border-color: rgba(70, 224, 182, 0.16);
+  background: rgba(70, 224, 182, 0.045);
+  padding: 10px;
+}
+
 .ow-reserve-panel {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2503,6 +2555,7 @@ html[data-theme="light"] .ow-reserve-panel,
 html[data-theme="light"] .ow-join-panel,
 html[data-theme="light"] .ow-invite-panel,
 html[data-theme="light"] .ow-invitation-list,
+html[data-theme="light"] .ow-slot-command-popover,
 html[data-theme="light"] .ow-party-picker {
   background: rgba(255, 255, 255, 0.78);
 }
@@ -2670,12 +2723,17 @@ html[data-theme="light"] .ow-compose-drawer {
   }
 
   .ow-reserve-panel {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
   }
 
-  .ow-room-slot-row,
-  .ow-room-reserve-row {
+  .ow-room-slot-row {
     grid-template-columns: repeat(var(--slot-count, 5), minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .ow-room-reserve-row {
+    grid-template-columns: minmax(0, 1fr);
     gap: 5px;
   }
 
