@@ -594,6 +594,32 @@ span.team-hover-card {
   display: none;
 }
 
+.hover-portal-card.touch-open .hover-card-close {
+  display: inline-grid;
+  justify-self: end;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 950;
+  padding: 6px 10px;
+}
+
+.hover-portal-card.touch-open .hover-card-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  background: linear-gradient(135deg, var(--green), var(--blue));
+  color: #061018;
+  font-size: 0.86rem;
+  font-weight: 950;
+  padding: 11px 12px;
+  text-decoration: none;
+}
+
 .player-hover-head,
 .team-hover-head,
 .team-hover-tier {

@@ -83,9 +83,8 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
     ["통합", user.ratings?.integrated],
     ...Object.entries(user.ratings?.modes ?? {}),
   ].filter(([, mmr]) => Number.isFinite(Number(mmr)));
-  const Component = as === "span" ? "span" : Link;
   const profilePath = to ?? `/app/players/${user.id}`;
-  const props = as === "span" ? {} : { to: profilePath };
+  const props = as === "span" ? {} : { role: "button", tabIndex: 0 };
   const showHover = () => {
     if (canUseHoverPreview()) setHoverOpen(true);
   };
@@ -108,23 +107,20 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
     }, 420);
   };
   const handleTriggerClick = (event) => {
-    if (!isTouchPreviewEvent(event)) return;
+    if (as === "span" && !isTouchPreviewEvent(event)) return;
+    event.preventDefault();
+    event.stopPropagation();
     if (longPressOpenedRef.current) {
-      event.preventDefault();
-      event.stopPropagation();
       longPressOpenedRef.current = false;
       return;
     }
-    if (as === "span") {
-      event.preventDefault();
-      event.stopPropagation();
-      setTouchOpen(true);
-    }
+    setHoverOpen(false);
+    setTouchOpen(true);
   };
   const open = touchOpen || (canUseHoverPreview() && hoverOpen);
 
   return (
-    <Component
+    <span
       ref={anchorRef}
       className={`player-hover-trigger ${className}`}
       onBlur={hideHover}
@@ -137,6 +133,12 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
         if (event.key === "Escape") {
           hideHover();
           closeTouch();
+        }
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          event.stopPropagation();
+          setHoverOpen(false);
+          setTouchOpen(true);
         }
       }}
       onMouseEnter={showHover}
@@ -200,6 +202,6 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
           closeTouch();
         }}>프로필 보기</Link>
       </HoverPortal>
-    </Component>
+    </span>
   );
 }

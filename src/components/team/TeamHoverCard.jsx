@@ -50,13 +50,11 @@ export default function TeamHoverCard({ team, children, className = "", as = "li
   }, [touchOpen]);
 
   if (!team) {
-    if (as === "span") return <span className={className}>{children}</span>;
-    return to ? <Link className={className} to={to}>{children}</Link> : children ?? null;
+    return <span className={className}>{children}</span>;
   }
 
-  const Component = as === "span" ? "span" : Link;
   const teamPath = to ?? `/app/teams/${team.id}`;
-  const props = as === "span" ? {} : { to: teamPath };
+  const props = as === "span" ? {} : { role: "button", tabIndex: 0 };
   const played = Number(team.wins ?? 0) + Number(team.losses ?? 0);
   const winRate = played ? Math.round((Number(team.wins ?? 0) / played) * 100) : 0;
   const showHover = () => {
@@ -81,23 +79,20 @@ export default function TeamHoverCard({ team, children, className = "", as = "li
     }, 420);
   };
   const handleTriggerClick = (event) => {
-    if (!isTouchPreviewEvent(event)) return;
+    if (as === "span" && !isTouchPreviewEvent(event)) return;
+    event.preventDefault();
+    event.stopPropagation();
     if (longPressOpenedRef.current) {
-      event.preventDefault();
-      event.stopPropagation();
       longPressOpenedRef.current = false;
       return;
     }
-    if (as === "span") {
-      event.preventDefault();
-      event.stopPropagation();
-      setTouchOpen(true);
-    }
+    setHoverOpen(false);
+    setTouchOpen(true);
   };
   const open = touchOpen || (canUseHoverPreview() && hoverOpen);
 
   return (
-    <Component
+    <span
       ref={anchorRef}
       className={`team-hover-trigger ${className}`}
       onBlur={hideHover}
@@ -110,6 +105,12 @@ export default function TeamHoverCard({ team, children, className = "", as = "li
         if (event.key === "Escape") {
           hideHover();
           closeTouch();
+        }
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          event.stopPropagation();
+          setHoverOpen(false);
+          setTouchOpen(true);
         }
       }}
       onMouseEnter={showHover}
@@ -162,6 +163,6 @@ export default function TeamHoverCard({ team, children, className = "", as = "li
           closeTouch();
         }}>팀 보기</Link>
       </HoverPortal>
-    </Component>
+    </span>
   );
 }
