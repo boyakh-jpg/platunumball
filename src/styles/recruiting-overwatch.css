@@ -1307,6 +1307,229 @@
   border-style: dashed;
 }
 
+.ow-open-slot.invite {
+  cursor: pointer;
+  justify-content: space-between;
+  width: 100%;
+  color: var(--text);
+}
+
+.ow-open-slot.invite:hover {
+  border-color: rgba(70, 224, 182, 0.42);
+  background: rgba(70, 224, 182, 0.1);
+}
+
+.ow-open-slot.invite em {
+  color: var(--green);
+  font-style: normal;
+  font-weight: 950;
+}
+
+.ow-invite-panel,
+.ow-invitation-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  border: 1px solid rgba(70, 224, 182, 0.24);
+  border-radius: 8px;
+  background: rgba(70, 224, 182, 0.075);
+  padding: 12px;
+}
+
+.ow-invite-panel header,
+.ow-invite-team-head,
+.ow-invitation-list > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.ow-invite-panel header > div,
+.ow-invite-team-head .team-hover-trigger,
+.ow-invitation-list .player-hover-trigger {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.ow-invite-panel header strong,
+.ow-invitation-list > strong {
+  color: var(--text);
+  font-weight: 950;
+}
+
+.ow-invite-panel header span,
+.ow-invite-empty,
+.ow-invite-favorites > em {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+.ow-invite-search {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 9px 10px;
+}
+
+.ow-invite-search input {
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  outline: none;
+}
+
+.ow-invite-result {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.ow-invite-result .player-hover-trigger,
+.ow-invite-team-head .team-hover-trigger,
+.ow-invite-favorite .player-hover-trigger,
+.ow-invite-favorite .team-hover-trigger,
+.ow-invitation-list .player-hover-trigger {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.ow-invite-result .player-hover-trigger > span:last-child,
+.ow-invite-team-head .team-hover-trigger > span:last-child,
+.ow-invite-favorite .player-hover-trigger > span:last-child,
+.ow-invite-favorite .team-hover-trigger > span:last-child,
+.ow-invitation-list .player-hover-trigger > span:last-child {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.ow-invite-result strong,
+.ow-invite-team-head strong,
+.ow-invite-favorite strong,
+.ow-invitation-list b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ow-invite-result em,
+.ow-invite-team-head em,
+.ow-invite-favorite em,
+.ow-invitation-list em {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ow-invite-result > button:not(.button),
+.ow-invite-team-head > button {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--muted);
+}
+
+.ow-invite-result > button.active,
+.ow-invite-team-head > button.active {
+  border-color: rgba(255, 211, 108, 0.42);
+  color: var(--gold);
+}
+
+.ow-invite-team-picker,
+.ow-invite-favorites {
+  display: grid;
+  gap: 8px;
+}
+
+.ow-invite-member-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  gap: 8px;
+}
+
+.ow-invite-member-grid button,
+.ow-invite-favorite {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--text);
+  padding: 8px;
+  text-align: left;
+}
+
+.ow-invite-member-grid button.selected {
+  border-color: rgba(70, 224, 182, 0.42);
+  background: rgba(70, 224, 182, 0.13);
+}
+
+.ow-invite-member-grid button:disabled,
+.ow-invite-favorite:disabled {
+  opacity: 0.48;
+}
+
+.ow-invite-member-grid button > span:last-child {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.ow-invite-favorites > div {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.ow-invite-favorite {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.ow-invite-favorite b {
+  color: var(--green);
+  font-size: 0.74rem;
+  font-weight: 950;
+}
+
+.ow-invite-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.ow-invitation-list > div.mine {
+  border: 1px solid rgba(255, 211, 108, 0.3);
+  border-radius: 8px;
+  background: rgba(255, 211, 108, 0.08);
+  padding: 8px;
+}
+
 .ow-reserve-panel {
   display: grid;
   gap: 8px;
@@ -1602,8 +1825,21 @@ html[data-theme="light"] .ow-host-control-panel,
 html[data-theme="light"] .ow-room-chat,
 html[data-theme="light"] .ow-reserve-panel,
 html[data-theme="light"] .ow-join-panel,
+html[data-theme="light"] .ow-invite-panel,
+html[data-theme="light"] .ow-invitation-list,
 html[data-theme="light"] .ow-party-picker {
   background: rgba(255, 255, 255, 0.78);
+}
+
+html[data-theme="light"] .ow-invite-search,
+html[data-theme="light"] .ow-invite-member-grid button,
+html[data-theme="light"] .ow-invite-favorite {
+  background: rgba(10, 18, 30, 0.04);
+}
+
+html[data-theme="light"] .ow-invite-member-grid button.selected,
+html[data-theme="light"] .ow-invitation-list > div.mine {
+  background: rgba(25, 148, 119, 0.12);
 }
 
 html[data-theme="light"] .ow-party-picker-grid button {
@@ -1678,6 +1914,10 @@ html[data-theme="light"] .ow-compose-drawer {
   .ow-lobby-grid,
   .ow-host-control-row,
   .ow-chat-form,
+  .ow-invite-result,
+  .ow-invite-panel header,
+  .ow-invite-team-head,
+  .ow-invitation-list > div,
   .ow-join-panel,
   .ow-queue-board-grid {
     grid-template-columns: 1fr;

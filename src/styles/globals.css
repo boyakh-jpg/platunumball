@@ -577,6 +577,17 @@ span.team-hover-card {
   color: var(--text);
 }
 
+.hover-hashtag {
+  display: inline-flex;
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--gold);
+  font-size: 0.76rem;
+  font-weight: 950;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .player-hover-head em,
 .player-hover-team em,
 .team-hover-head em,
@@ -677,6 +688,106 @@ span.team-hover-card {
 .team-hover-stats b {
   color: var(--text);
   font-size: 0.84rem;
+}
+
+.favorite-management-card {
+  gap: 12px;
+}
+
+.favorite-search-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 9px 10px;
+}
+
+.favorite-search-row input {
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  outline: none;
+}
+
+.favorite-result-stack,
+.favorite-chip-list {
+  display: grid;
+  gap: 8px;
+}
+
+.favorite-result-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.favorite-result-row .player-hover-trigger,
+.favorite-result-row .team-hover-trigger,
+.favorite-mini-chip {
+  display: inline-grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.favorite-result-row .player-hover-trigger > span:last-child,
+.favorite-result-row .team-hover-trigger > span:last-child {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.favorite-result-row strong,
+.favorite-mini-chip span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.favorite-result-row em {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-style: normal;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.favorite-chip-list {
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+}
+
+.favorite-mini-chip {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 8px;
+}
+
+.favorite-chip-list > em {
+  color: var(--muted);
+  font-style: normal;
+  font-weight: 850;
+}
+
+.team-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--team-color, var(--green));
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.06);
 }
 
 @media (hover: none), (pointer: coarse) {

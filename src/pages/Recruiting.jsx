@@ -6,10 +6,13 @@ import {
   MapPin,
   MessageSquare,
   PlusCircle,
+  Search,
   Send,
   ShieldCheck,
+  Star,
   Swords,
   UserMinus,
+  UserPlus,
   UserRound,
   UsersRound,
   X,
@@ -37,6 +40,7 @@ import {
   isRecruitingPostForUser,
   isNationalRecruitingPost,
 } from "../lib/recruiting.js";
+import { findTeamByHashtag, findUserByHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 
 const SIDE_LABELS = {
   teamA: "A팀",
@@ -346,7 +350,7 @@ function FillSlot({ candidate, userById, teams }) {
   );
 }
 
-function SideRoster({ sideName, side, userById, teams }) {
+function SideRoster({ sideName, side, userById, teams, canInvite = false, onInviteSlot }) {
   const openSlots = Math.max(0, side.capacity - side.projectedFilled);
   return (
     <section className="ow-side-roster">
@@ -365,10 +369,17 @@ function SideRoster({ sideName, side, userById, teams }) {
           <FillSlot key={`${sideName}-fill-${candidate.playerId}`} candidate={candidate} userById={userById} teams={teams} />
         ))}
         {Array.from({ length: openSlots }).map((_item, index) => (
-          <div key={`${sideName}-open-${index}`} className="ow-open-slot">
+          <button
+            key={`${sideName}-open-${index}`}
+            type="button"
+            className={canInvite ? "ow-open-slot empty invite" : "ow-open-slot empty"}
+            disabled={!canInvite}
+            onClick={() => onInviteSlot?.(sideName)}
+          >
             <UserRound size={17} />
             <span>빈 슬롯</span>
-          </div>
+            {canInvite ? <em>초대</em> : null}
+          </button>
         ))}
       </div>
     </section>
@@ -607,6 +618,174 @@ function RoomChat({ messages, userById, teams, value, canChat, onChange, onSubmi
   );
 }
 
+function InvitePanel({
+  sideName,
+  query,
+  onQueryChange,
+  users,
+  teams,
+  userById,
+  disabledPlayerIds,
+  selectedPlayerIds,
+  favoritePlayerIds,
+  favoriteTeamIds,
+  onTogglePlayer,
+  onInvitePlayers,
+  onToggleFavoritePlayer,
+  onToggleFavoriteTeam,
+  onClose,
+}) {
+  const matchedUser = query.trim() ? findUserByHashtag(users, query) : null;
+  const matchedTeam = query.trim() ? findTeamByHashtag(teams, query) : null;
+  const selectedSet = new Set(selectedPlayerIds);
+  const disabledSet = new Set(disabledPlayerIds);
+  const favoritePlayers = favoritePlayerIds.map((playerId) => userById[playerId]).filter(Boolean);
+  const favoriteTeams = favoriteTeamIds.map((teamId) => teams.find((team) => team.id === teamId)).filter(Boolean);
+  const teamMemberIds = matchedTeam ? getSelectableTeamPlayerIds(matchedTeam) : [];
+  const selectedInvitableIds = selectedPlayerIds.filter((playerId) => !disabledSet.has(playerId));
+
+  const renderPlayerInvite = (player) => {
+    const disabled = !player || disabledSet.has(player.id);
+    return (
+      <button key={player.id} type="button" className="ow-invite-favorite" disabled={disabled} onClick={() => onInvitePlayers([player.id], null)}>
+        <PlayerHoverCard as="span" user={player} teams={teams}>
+          <span className="avatar small" style={{ "--avatar": player.avatarColor }}>{player.name.slice(0, 1)}</span>
+          <span>
+            <strong>{player.name}</strong>
+            <em>{getUserHashtag(player)}</em>
+          </span>
+        </PlayerHoverCard>
+        <b>{disabled ? "불가" : "초대"}</b>
+      </button>
+    );
+  };
+
+  return (
+    <div className="ow-invite-panel">
+      <header>
+        <div>
+          <strong>{SIDE_LABELS[sideName]} 빈 슬롯 초대</strong>
+          <span>선착순 수락이다. 방이 차면 수락 실패.</span>
+        </div>
+        <button type="button" className="ow-icon-button" aria-label="초대 닫기" onClick={onClose}><X size={18} /></button>
+      </header>
+      <label className="ow-invite-search">
+        <Search size={17} />
+        <input value={query} placeholder="#minjun 또는 #noeulkings" onChange={(event) => onQueryChange(event.target.value)} />
+      </label>
+
+      {matchedUser ? (
+        <div className="ow-invite-result">
+          <PlayerHoverCard as="span" user={matchedUser} teams={teams}>
+            <span className="avatar small" style={{ "--avatar": matchedUser.avatarColor }}>{matchedUser.name.slice(0, 1)}</span>
+            <span>
+              <strong>{matchedUser.name}</strong>
+              <em>{getUserHashtag(matchedUser)} · {matchedUser.position}</em>
+            </span>
+          </PlayerHoverCard>
+          <button type="button" className={favoritePlayerIds.includes(matchedUser.id) ? "active" : ""} onClick={() => onToggleFavoritePlayer(matchedUser.id)}>
+            <Star size={15} fill={favoritePlayerIds.includes(matchedUser.id) ? "currentColor" : "none"} />
+          </button>
+          <Button type="button" size="sm" disabled={disabledSet.has(matchedUser.id)} onClick={() => onInvitePlayers([matchedUser.id], null)}>
+            <UserPlus size={16} /> 초대
+          </Button>
+        </div>
+      ) : null}
+
+      {matchedTeam ? (
+        <div className="ow-invite-team-picker">
+          <div className="ow-invite-team-head">
+            <TeamHoverCard as="span" team={matchedTeam}>
+              <span className="team-dot" style={{ "--team-color": matchedTeam.accent }} />
+              <span>
+                <strong>{matchedTeam.name}</strong>
+                <em>{getTeamHashtag(matchedTeam)} · {matchedTeam.mmr} MMR</em>
+              </span>
+            </TeamHoverCard>
+            <button type="button" className={favoriteTeamIds.includes(matchedTeam.id) ? "active" : ""} onClick={() => onToggleFavoriteTeam(matchedTeam.id)}>
+              <Star size={15} fill={favoriteTeamIds.includes(matchedTeam.id) ? "currentColor" : "none"} />
+            </button>
+          </div>
+          <div className="ow-invite-member-grid">
+            {teamMemberIds.map((playerId) => {
+              const player = userById[playerId];
+              const selected = selectedSet.has(playerId);
+              const disabled = disabledSet.has(playerId);
+              return (
+                <button key={playerId} type="button" className={selected ? "selected" : ""} disabled={disabled} aria-pressed={selected} onClick={() => onTogglePlayer(playerId)}>
+                  <span className="avatar small" style={{ "--avatar": player?.avatarColor }}>{player?.name?.slice(0, 1) ?? "?"}</span>
+                  <span>
+                    <strong>{player?.name ?? "선수"}</strong>
+                    <em>{disabled ? "이미 대기/초대" : getUserHashtag(player)}</em>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <Button type="button" size="sm" disabled={!selectedInvitableIds.length} onClick={() => onInvitePlayers(selectedInvitableIds, matchedTeam.id)}>
+            선택 {selectedInvitableIds.length}명 초대
+          </Button>
+        </div>
+      ) : null}
+
+      {query.trim() && !matchedUser && !matchedTeam ? <div className="ow-invite-empty">해시태그 결과 없음</div> : null}
+
+      <div className="ow-invite-favorites">
+        <strong>즐겨찾기</strong>
+        <div>
+          {favoritePlayers.map(renderPlayerInvite)}
+          {favoriteTeams.map((team) => (
+            <button key={team.id} type="button" className="ow-invite-favorite" onClick={() => onQueryChange(getTeamHashtag(team))}>
+              <TeamHoverCard as="span" team={team}>
+                <span className="team-dot" style={{ "--team-color": team.accent }} />
+                <span>
+                  <strong>{team.name}</strong>
+                  <em>{getTeamHashtag(team)}</em>
+                </span>
+              </TeamHoverCard>
+              <b>선택</b>
+            </button>
+          ))}
+          {!favoritePlayers.length && !favoriteTeams.length ? <em>나 메뉴에서 즐겨찾기를 저장해라.</em> : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function InvitationPanel({ invitations, userById, teams, currentUserId, alreadyApplied, onAccept, onDecline }) {
+  const pending = invitations.filter((invitation) => invitation.status === "pending");
+  if (!pending.length) return null;
+  return (
+    <div className="ow-invitation-list">
+      <strong>초대장</strong>
+      {pending.map((invitation) => {
+        const target = userById[invitation.targetUserId];
+        const mine = invitation.targetUserId === currentUserId;
+        return (
+          <div key={invitation.id} className={mine ? "mine" : ""}>
+            <PlayerHoverCard as="span" user={target} teams={teams}>
+              <span className="avatar small" style={{ "--avatar": target?.avatarColor }}>{target?.name?.slice(0, 1) ?? "?"}</span>
+              <span>
+                <b>{target?.name ?? "선수"}</b>
+                <em>{SIDE_LABELS[invitation.side]} · {getUserHashtag(target)}</em>
+              </span>
+            </PlayerHoverCard>
+            {mine ? (
+              <span className="ow-invite-actions">
+                <Button type="button" size="sm" disabled={alreadyApplied} onClick={() => onAccept(invitation.id)}>수락</Button>
+                <Button type="button" size="sm" variant="secondary" onClick={() => onDecline(invitation.id)}>거절</Button>
+              </span>
+            ) : (
+              <Badge tone="blue">수락 대기</Badge>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function Recruiting({ app }) {
   const navigate = useNavigate();
   const myTeams = useMemo(
@@ -625,6 +804,7 @@ export default function Recruiting({ app }) {
   const [selectedPostId, setSelectedPostId] = useState(null);
   const [joinDraftByPost, setJoinDraftByPost] = useState({});
   const [chatDraftByPost, setChatDraftByPost] = useState({});
+  const [inviteDraft, setInviteDraft] = useState(null);
   const [draft, setDraft] = useState(() => ({
     hostJoinMode: myTeams[0]?.id ? "team" : "player",
     title: "",
@@ -738,6 +918,29 @@ export default function Recruiting({ app }) {
     if (!body) return;
     app.actions.sendRecruitingChat(post.id, body);
     updateChatDraft(post, "");
+  };
+  const openInviteSlot = (post, sideName) => {
+    setInviteDraft({ postId: post.id, sideName, query: "", selectedPlayerIds: [] });
+  };
+  const updateInviteDraft = (patch) => {
+    setInviteDraft((current) => (current ? { ...current, ...patch } : current));
+  };
+  const toggleInvitePlayer = (playerId) => {
+    setInviteDraft((current) => {
+      if (!current) return current;
+      const selected = current.selectedPlayerIds ?? [];
+      return {
+        ...current,
+        selectedPlayerIds: selected.includes(playerId)
+          ? selected.filter((id) => id !== playerId)
+          : [...selected, playerId],
+      };
+    });
+  };
+  const sendInvites = (post, playerIds, teamId = null) => {
+    if (!inviteDraft || !playerIds.length) return;
+    app.actions.inviteRecruitingPlayers(post.id, { side: inviteDraft.sideName, playerIds, teamId });
+    setInviteDraft((current) => (current ? { ...current, selectedPlayerIds: [] } : current));
   };
   const confirmMatch = (post) => {
     const matchId = app.actions.confirmRecruitingMatch(post.id);
@@ -918,9 +1121,19 @@ export default function Recruiting({ app }) {
           return playerId ? `${SIDE_LABELS[sideName]} ${userById[playerId]?.name ?? "후보"}` : "";
         }).filter(Boolean);
         const chatMessages = roomState.chatMessages ?? [];
+        const invitations = roomState.invitations ?? [];
+        const pendingInvitations = invitations.filter((invitation) => invitation.status === "pending");
+        const disabledInvitePlayerIds = [
+          selectedPost.playerId,
+          ...lobby.entries.flatMap((entry) => [entry.playerId, ...(entry.players ?? []), ...(entry.reserves ?? [])]),
+          ...pendingInvitations.map((invitation) => invitation.targetUserId),
+        ].filter(Boolean);
+        const activeInviteDraft = inviteDraft?.postId === selectedPost.id ? inviteDraft : null;
+        const favoritePlayerIds = app.state.settings?.favoritePlayerIds ?? [];
+        const favoriteTeamIds = app.state.settings?.favoriteTeamIds ?? [];
 
         return (
-          <div className="ow-compose-backdrop" role="presentation" onMouseDown={() => setSelectedPostId(null)}>
+          <div className="ow-compose-backdrop" role="presentation" onMouseDown={() => { setInviteDraft(null); setSelectedPostId(null); }}>
             <aside className="ow-lobby-modal" role="dialog" aria-modal="true" aria-label="매치방" onMouseDown={(event) => event.stopPropagation()}>
               <div className="ow-drawer-head">
                 <div>
@@ -928,7 +1141,7 @@ export default function Recruiting({ app }) {
                   <h2>{selectedPost.title}</h2>
                   <p>{selectedPost.region} · {selectedPost.court} · {selectedPost.mode}</p>
                 </div>
-                <button type="button" className="ow-icon-button" aria-label="닫기" onClick={() => setSelectedPostId(null)}><X size={20} /></button>
+                <button type="button" className="ow-icon-button" aria-label="닫기" onClick={() => { setInviteDraft(null); setSelectedPostId(null); }}><X size={20} /></button>
               </div>
 
               <div className="ow-lobby-summary">
@@ -942,9 +1155,39 @@ export default function Recruiting({ app }) {
               </div>
 
               <div className="ow-lobby-grid">
-                <SideRoster sideName="teamA" side={lobby.sides.teamA} userById={userById} teams={app.state.teams} />
-                <SideRoster sideName="teamB" side={lobby.sides.teamB} userById={userById} teams={app.state.teams} />
+                <SideRoster sideName="teamA" side={lobby.sides.teamA} userById={userById} teams={app.state.teams} canInvite={mine} onInviteSlot={(sideName) => openInviteSlot(selectedPost, sideName)} />
+                <SideRoster sideName="teamB" side={lobby.sides.teamB} userById={userById} teams={app.state.teams} canInvite={mine} onInviteSlot={(sideName) => openInviteSlot(selectedPost, sideName)} />
               </div>
+
+              {activeInviteDraft ? (
+                <InvitePanel
+                  sideName={activeInviteDraft.sideName}
+                  query={activeInviteDraft.query}
+                  onQueryChange={(query) => updateInviteDraft({ query, selectedPlayerIds: [] })}
+                  users={app.state.users}
+                  teams={app.state.teams}
+                  userById={userById}
+                  disabledPlayerIds={disabledInvitePlayerIds}
+                  selectedPlayerIds={activeInviteDraft.selectedPlayerIds ?? []}
+                  favoritePlayerIds={favoritePlayerIds}
+                  favoriteTeamIds={favoriteTeamIds}
+                  onTogglePlayer={toggleInvitePlayer}
+                  onInvitePlayers={(playerIds, teamId) => sendInvites(selectedPost, playerIds, teamId)}
+                  onToggleFavoritePlayer={(playerId) => app.actions.toggleFavoritePlayer(playerId)}
+                  onToggleFavoriteTeam={(teamId) => app.actions.toggleFavoriteTeam(teamId)}
+                  onClose={() => setInviteDraft(null)}
+                />
+              ) : null}
+
+              <InvitationPanel
+                invitations={invitations}
+                userById={userById}
+                teams={app.state.teams}
+                currentUserId={app.currentUser.id}
+                alreadyApplied={alreadyApplied}
+                onAccept={(invitationId) => app.actions.acceptRecruitingInvitation(selectedPost.id, invitationId)}
+                onDecline={(invitationId) => app.actions.declineRecruitingInvitation(selectedPost.id, invitationId)}
+              />
 
               <div className="ow-reserve-panel">
                 <ReserveLine

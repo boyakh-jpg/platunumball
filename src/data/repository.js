@@ -55,6 +55,7 @@ const DEFAULT_SETTINGS = {
     statSummary: true,
   },
   blockedUserIds: [],
+  favoritePlayerIds: [],
   favoriteTeamIds: [],
   favoriteCourtIds: [],
 };
@@ -66,6 +67,7 @@ const POST_MATCH_STATUSES = new Set(["approval", "disputed"]);
 const RECORDABLE_RESERVE_SOURCES = new Set(["reserve-entry", "team-reserve"]);
 const LIFECYCLE_TITLE_PATTERN = /^(동의 대기|진행 예정|결과 승인|이의 확인|이의제기|확정|결과 입력)\s*·\s*/;
 const POST_MATCH_TITLE_PATTERN = /^(결과 승인|이의 확인|이의제기|확정|결과 입력)\s*·\s*/;
+const SIDE_LABEL_TEXT = { teamA: "A팀", teamB: "B팀" };
 let normalizedSaveWarningShown = false;
 
 function clampTrustScore(value) {
@@ -118,6 +120,8 @@ function isRecruitingRoomMember(post = {}, userId, state = {}) {
     applicant.playerId === userId ||
     applicant.playerIds?.includes(userId) ||
     (applicant.teamId && teamIds.has(applicant.teamId))
+  )) || normalizeRecruitingRoomState(post.roomState ?? {}).invitations.some((invitation) => (
+    invitation.targetUserId === userId && invitation.status === "pending"
   ));
 }
 
@@ -316,6 +320,7 @@ function normalizeSettings(settings = {}) {
       ...(settings.privacy ?? {}),
     },
     blockedUserIds: settings.blockedUserIds ?? [],
+    favoritePlayerIds: settings.favoritePlayerIds ?? initialState.settings?.favoritePlayerIds ?? [],
     favoriteTeamIds: settings.favoriteTeamIds ?? initialState.settings?.favoriteTeamIds ?? [],
     favoriteCourtIds: settings.favoriteCourtIds ?? initialState.settings?.favoriteCourtIds ?? [],
   };
@@ -743,6 +748,7 @@ async function loadNormalizedRemoteState() {
     }),
     settings: {
       ...(legacyState?.settings ?? DEFAULT_SETTINGS),
+      favoritePlayerIds: favoriteRows.filter((favorite) => favorite.target_type === "player").map((favorite) => favorite.target_id),
       favoriteTeamIds: favoriteRows.filter((favorite) => favorite.target_type === "team").map((favorite) => favorite.target_id),
       favoriteCourtIds: favoriteRows.filter((favorite) => favorite.target_type === "court").map((favorite) => favorite.target_id),
     },
@@ -952,6 +958,7 @@ async function saveNormalizedRemoteState(state) {
     ...(match.approvals?.teamB ?? []).map((userId) => ({ match_id: match.id, user_id: userId, side: "teamB" })),
   ]);
   const favoriteRows = [
+    ...(state.settings?.favoritePlayerIds ?? []).map((targetId) => ({ user_id: currentUserId, target_type: "player", target_id: targetId })),
     ...(state.settings?.favoriteTeamIds ?? []).map((targetId) => ({ user_id: currentUserId, target_type: "team", target_id: targetId })),
     ...(state.settings?.favoriteCourtIds ?? []).map((targetId) => ({ user_id: currentUserId, target_type: "court", target_id: targetId })),
   ];
@@ -2201,6 +2208,17 @@ function toggleId(list = [], id) {
   return list.includes(id) ? list.filter((item) => item !== id) : [id, ...list];
 }
 
+export function toggleFavoritePlayer(state, userId) {
+  if (!state.users.some((user) => user.id === userId)) return state;
+  return {
+    ...state,
+    settings: normalizeSettings({
+      ...(state.settings ?? {}),
+      favoritePlayerIds: toggleId(state.settings?.favoritePlayerIds, userId),
+    }),
+  };
+}
+
 export function toggleFavoriteTeam(state, teamId) {
   if (!state.teams.some((team) => team.id === teamId)) return state;
   return {
@@ -2637,6 +2655,179 @@ export function sendRecruitingChat(state, postId, body = "") {
   };
 }
 
+export function inviteRecruitingPlayers(state, postId, invite = {}) {
+  const post = state.recruitingPosts?.find((item) => item.id === postId);
+  if (!post || post.status !== "open" || post.playerId !== state.currentUserId) return state;
+
+  const side = ["teamA", "teamB"].includes(invite.side) ? invite.side : "teamB";
+  const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
+  const lobby = getRecruitingLobby(post, state);
+  const existingPlayerIds = new Set([
+    post.playerId,
+    ...lobby.entries.flatMap((entry) => [entry.playerId, ...(entry.players ?? []), ...(entry.reserves ?? [])]),
+    ...roomState.invitations
+      .filter((invitation) => invitation.status === "pending")
+      .map((invitation) => invitation.targetUserId),
+  ].filter(Boolean));
+  const targetUserIds = Array.from(new Set(invite.playerIds ?? [invite.playerId]))
+    .filter((playerId) => state.users.some((user) => user.id === playerId))
+    .filter((playerId) => !existingPlayerIds.has(playerId));
+
+  if (!targetUserIds.length) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "초대 대상 없음",
+          body: "이미 방에 있거나 초대된 선수입니다.",
+          tone: "team",
+        },
+        ...state.notifications,
+      ],
+    };
+  }
+
+  const now = new Date().toISOString();
+  const invitations = [
+    ...roomState.invitations,
+    ...targetUserIds.map((targetUserId) => ({
+      id: makeId("inv"),
+      targetUserId,
+      fromUserId: state.currentUserId,
+      teamId: invite.teamId ?? null,
+      side,
+      reserve: false,
+      status: "pending",
+      createdAt: now,
+      updatedAt: now,
+    })),
+  ];
+
+  return {
+    ...state,
+    recruitingPosts: (state.recruitingPosts ?? []).map((item) => (
+      item.id === postId ? { ...item, roomState: { ...roomState, invitations } } : item
+    )),
+    notifications: [
+      {
+        id: makeId("n"),
+        title: "초대장 발송",
+        body: `${post.title} ${SIDE_LABEL_TEXT[side]} 빈 슬롯에 ${targetUserIds.length}명 초대장을 보냈습니다.`,
+        tone: "match",
+      },
+      ...state.notifications,
+    ],
+  };
+}
+
+export function acceptRecruitingInvitation(state, postId, invitationId) {
+  const post = state.recruitingPosts?.find((item) => item.id === postId);
+  if (!post || post.status !== "open" || post.playerId === state.currentUserId) return state;
+  const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
+  const invitation = roomState.invitations.find((item) => (
+    item.id === invitationId &&
+    item.targetUserId === state.currentUserId &&
+    item.status === "pending"
+  ));
+  if (!invitation) return state;
+
+  const user = state.users.find((item) => item.id === state.currentUserId);
+  const fit = getRecruitingFit(post, user?.ratings?.integrated ?? 1200, state);
+  const expireInvitation = (body) => ({
+    ...state,
+    recruitingPosts: (state.recruitingPosts ?? []).map((item) => (
+      item.id === postId
+        ? {
+            ...item,
+            roomState: {
+              ...roomState,
+              invitations: roomState.invitations.map((candidate) => (
+                candidate.id === invitationId ? { ...candidate, status: "expired", updatedAt: new Date().toISOString() } : candidate
+              )),
+            },
+          }
+        : item
+    )),
+    notifications: [
+      {
+        id: makeId("n"),
+        title: "초대 수락 실패",
+        body,
+        tone: "orange",
+      },
+      ...state.notifications,
+    ],
+  });
+
+  if (!fit.allowed) {
+    return expireInvitation(`${post.title} 정규전은 ${fit.range.label} 구간만 대기할 수 있습니다.`);
+  }
+
+  const lobby = getRecruitingLobby(post, state);
+  const side = ["teamA", "teamB"].includes(invitation.side) ? invitation.side : getRecruitingBestSide(post, state);
+  if (lobby.sides[side].filled >= lobby.sides[side].capacity) {
+    return expireInvitation("방이 꽉 찼습니다. 먼저 수락한 선수만 들어갑니다.");
+  }
+
+  const now = new Date().toISOString();
+  const nextApplicant = {
+    kind: "player",
+    joinMode: "player",
+    playerId: state.currentUserId,
+    teamId: null,
+    side,
+    status: "waiting",
+    reserve: false,
+    position: user?.position ?? null,
+    createdAt: now,
+    updatedAt: now,
+  };
+  if (hasRecruitingApplicant(post, nextApplicant)) return state;
+
+  return {
+    ...state,
+    recruitingPosts: (state.recruitingPosts ?? []).map((item) => (
+      item.id === postId
+        ? {
+            ...item,
+            applicants: [...normalizeRecruitingApplicants(item.applicants ?? []), nextApplicant],
+            roomState: {
+              ...roomState,
+              invitations: roomState.invitations.filter((candidate) => candidate.id !== invitationId),
+            },
+          }
+        : item
+    )),
+    notifications: [
+      {
+        id: makeId("n"),
+        title: "초대 수락",
+        body: `${post.title} ${SIDE_LABEL_TEXT[side]}에 대기 등록됐습니다.`,
+        tone: "match",
+      },
+      ...state.notifications,
+    ],
+  };
+}
+
+export function declineRecruitingInvitation(state, postId, invitationId) {
+  const post = state.recruitingPosts?.find((item) => item.id === postId);
+  if (!post || post.status !== "open") return state;
+  const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
+  const invitation = roomState.invitations.find((item) => item.id === invitationId && item.targetUserId === state.currentUserId);
+  if (!invitation) return state;
+
+  return {
+    ...state,
+    recruitingPosts: (state.recruitingPosts ?? []).map((item) => (
+      item.id === postId
+        ? { ...item, roomState: { ...roomState, invitations: roomState.invitations.filter((candidate) => candidate.id !== invitationId) } }
+        : item
+    )),
+  };
+}
+
 export function setRecruitingApplicantPlacement(state, postId, playerId, placement = {}) {
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   if (!post || post.status !== "open" || post.playerId !== state.currentUserId) return state;
@@ -2911,7 +3102,9 @@ export function confirmRecruitingMatch(state, postId) {
     ...state,
     matches: [match, ...state.matches],
     recruitingPosts: (state.recruitingPosts ?? []).map((item) => (
-      item.id === postId ? { ...item, status: "closed", confirmedAt: now } : item
+      item.id === postId
+        ? { ...item, status: "closed", confirmedAt: now, roomState: { ...normalizeRecruitingRoomState(item.roomState ?? {}), invitations: [] } }
+        : item
     )),
     notifications: [
       {
@@ -2944,7 +3137,7 @@ export function closeRecruitingPost(state, postId) {
     users: adjustUserTrust(state.users, state.currentUserId, -penalty),
     recruitingPosts: (state.recruitingPosts ?? []).map((post) => (
       post.id === postId && post.playerId === state.currentUserId
-        ? { ...post, status: "closed", roomState: { ...roomState, hostPenalties } }
+        ? { ...post, status: "closed", roomState: { ...roomState, hostPenalties, invitations: [] } }
         : post
     )),
     notifications: penalty

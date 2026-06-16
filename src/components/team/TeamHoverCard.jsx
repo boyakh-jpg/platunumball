@@ -4,6 +4,7 @@ import HoverPortal from "../common/HoverPortal.jsx";
 import TierBadge from "../rating/TierBadge.jsx";
 import TierEmblem from "../rating/TierEmblem.jsx";
 import useBodyScrollLock from "../../hooks/useBodyScrollLock.js";
+import { getTeamHashtag } from "../../lib/handles.js";
 
 function isTouchPreviewEvent(event) {
   if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return false;
@@ -128,6 +129,7 @@ export default function TeamHoverCard({ team, children, className = "", as = "li
           <span className="team-emblem" style={{ "--team-color": team.accent }}>{team.name.slice(0, 1)}</span>
           <span>
             <strong>{team.name}</strong>
+            <span className="hover-hashtag">{getTeamHashtag(team)}</span>
             <em>{team.region} · {team.homeCourt}</em>
           </span>
         </span>

@@ -4,6 +4,7 @@ import HoverPortal from "../common/HoverPortal.jsx";
 import TierBadge from "../rating/TierBadge.jsx";
 import TierEmblem from "../rating/TierEmblem.jsx";
 import useBodyScrollLock from "../../hooks/useBodyScrollLock.js";
+import { getTeamHashtag, getUserHashtag } from "../../lib/handles.js";
 
 const rolePriority = {
   captain: 0,
@@ -155,6 +156,7 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
           <span className="avatar" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
           <span>
             <strong>{user.name}</strong>
+            <span className="hover-hashtag">{getUserHashtag(user)}</span>
             <em>{user.region} · {user.position} · 신뢰도 {user.trustScore ?? "-"}</em>
           </span>
         </span>
@@ -175,7 +177,7 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
             <span>
               <i style={{ "--team-color": activeTeam.accent }} />
               <strong>{activeTeam.name}</strong>
-              <em>{roleLabel(activeTeam.myRole)}</em>
+              <em>{getTeamHashtag(activeTeam)} · {roleLabel(activeTeam.myRole)}</em>
               <TierBadge mmr={activeTeam.mmr} compact />
             </span>
           ) : (

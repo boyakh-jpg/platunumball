@@ -226,6 +226,21 @@ export function normalizeRecruitingRoomState(roomState = {}) {
         createdAt: item.createdAt ?? null,
       }))
     : [];
+  const invitations = Array.isArray(roomState.invitations)
+    ? roomState.invitations
+        .map((item) => ({
+          id: item.id ?? "",
+          targetUserId: item.targetUserId ?? item.userId ?? "",
+          fromUserId: item.fromUserId ?? item.by ?? "",
+          teamId: item.teamId ?? null,
+          side: VALID_SIDES.has(item.side) ? item.side : "teamB",
+          reserve: Boolean(item.reserve),
+          status: ["pending", "accepted", "declined", "expired"].includes(item.status) ? item.status : "pending",
+          createdAt: item.createdAt ?? null,
+          updatedAt: item.updatedAt ?? null,
+        }))
+        .filter((item) => item.id && item.targetUserId)
+    : [];
   const partyReserves = roomState.partyReserves && typeof roomState.partyReserves === "object"
     ? Object.fromEntries(
         Object.entries(roomState.partyReserves)
@@ -240,6 +255,7 @@ export function normalizeRecruitingRoomState(roomState = {}) {
     chatMessages,
     kickLog,
     hostPenalties,
+    invitations,
     partyReserves,
   };
 }
@@ -261,6 +277,7 @@ export function isRecruitingPostForUser(post = {}, userId, teamIds = []) {
   const teamIdSet = new Set(teamIds.filter(Boolean));
   if (post.playerId === userId) return true;
   if (post.teamId && teamIdSet.has(post.teamId)) return true;
+  if (normalizeRecruitingRoomState(post.roomState ?? {}).invitations.some((invitation) => invitation.targetUserId === userId && invitation.status === "pending")) return true;
   return normalizeRecruitingApplicants(post.applicants ?? []).some((applicant) => (
     applicant.playerId === userId || (applicant.teamId && teamIdSet.has(applicant.teamId))
   ));

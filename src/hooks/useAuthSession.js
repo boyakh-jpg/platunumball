@@ -72,14 +72,21 @@ async function readOAuthStartError(response, provider) {
 }
 
 export function useAuthSession() {
-  const [session, setSession] = useState(() => (isSupabaseConfigured ? null : readTestSession()));
-  const [loading, setLoading] = useState(() => isSupabaseConfigured);
+  const [session, setSession] = useState(() => readTestSession());
+  const [loading, setLoading] = useState(() => isSupabaseConfigured && !readTestSession());
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
       setSession(readTestSession());
+      setLoading(false);
+      return undefined;
+    }
+
+    const previewSession = readTestSession();
+    if (previewSession && isDemoLoginAllowed()) {
+      setSession(previewSession);
       setLoading(false);
       return undefined;
     }
@@ -157,6 +164,7 @@ export function useAuthSession() {
           }
           window.location.assign(nextUrl);
         } catch {
+          if (isDemoLoginAllowed()) return enterPreviewSession();
           setError("OAuth 설정 확인에 실패했습니다. Supabase Auth provider와 Redirect URL을 확인하세요.");
         }
         return null;

@@ -1,10 +1,14 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { Search, Star } from "lucide-react";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
+import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import ProgressionChecklist from "../components/rating/ProgressionChecklist.jsx";
 import RatingCard from "../components/rating/RatingCard.jsx";
 import ShareCard from "../components/share/ShareCard.jsx";
+import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
+import { findTeamByHashtag, findUserByHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 
 function compareRecent(a, b) {
   return String(b.scheduledAt ?? b.createdAt ?? "").localeCompare(String(a.scheduledAt ?? a.createdAt ?? ""));
@@ -52,6 +56,7 @@ export default function Profile({ app }) {
     school: user.school,
     company: user.company,
   });
+  const [favoriteQuery, setFavoriteQuery] = useState("");
   const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
 
   const submit = (event) => {
@@ -62,6 +67,12 @@ export default function Profile({ app }) {
     .filter((match) => match.status === "confirmed" && getUserSide(match, user.id))
     .sort(compareRecent)
     .slice(0, 6);
+  const favoritePlayerIds = app.state.settings?.favoritePlayerIds ?? [];
+  const favoriteTeamIds = app.state.settings?.favoriteTeamIds ?? [];
+  const favoritePlayers = favoritePlayerIds.map((playerId) => app.state.users.find((item) => item.id === playerId)).filter(Boolean);
+  const favoriteTeams = favoriteTeamIds.map((teamId) => app.state.teams.find((item) => item.id === teamId)).filter(Boolean);
+  const searchedUser = favoriteQuery.trim() ? findUserByHashtag(app.state.users, favoriteQuery) : null;
+  const searchedTeam = favoriteQuery.trim() ? findTeamByHashtag(app.state.teams, favoriteQuery) : null;
 
   return (
     <div className="page-stack">
@@ -98,6 +109,65 @@ export default function Profile({ app }) {
           </section>
         </div>
         <aside className="page-stack">
+          <Card className="section-card favorite-management-card">
+            <div className="section-title-row">
+              <div>
+                <p className="eyebrow">Favorites</p>
+                <h2>즐겨찾기</h2>
+              </div>
+              <Star size={20} />
+            </div>
+            <div className="favorite-search-row">
+              <Search size={17} />
+              <input value={favoriteQuery} placeholder="#minjun 또는 #noeulkings" onChange={(event) => setFavoriteQuery(event.target.value)} />
+            </div>
+            <div className="favorite-result-stack">
+              {searchedUser ? (
+                <div className="favorite-result-row">
+                  <PlayerHoverCard as="span" user={searchedUser} teams={app.state.teams}>
+                    <span className="avatar small" style={{ "--avatar": searchedUser.avatarColor }}>{searchedUser.name.slice(0, 1)}</span>
+                    <span>
+                      <strong>{searchedUser.name}</strong>
+                      <em>{getUserHashtag(searchedUser)}</em>
+                    </span>
+                  </PlayerHoverCard>
+                  <Button type="button" size="sm" variant={favoritePlayerIds.includes(searchedUser.id) ? "primary" : "secondary"} onClick={() => app.actions.toggleFavoritePlayer(searchedUser.id)}>
+                    {favoritePlayerIds.includes(searchedUser.id) ? "해제" : "저장"}
+                  </Button>
+                </div>
+              ) : null}
+              {searchedTeam ? (
+                <div className="favorite-result-row">
+                  <TeamHoverCard as="span" team={searchedTeam}>
+                    <span className="team-emblem small" style={{ "--team-color": searchedTeam.accent }}>{searchedTeam.name.slice(0, 1)}</span>
+                    <span>
+                      <strong>{searchedTeam.name}</strong>
+                      <em>{getTeamHashtag(searchedTeam)}</em>
+                    </span>
+                  </TeamHoverCard>
+                  <Button type="button" size="sm" variant={favoriteTeamIds.includes(searchedTeam.id) ? "primary" : "secondary"} onClick={() => app.actions.toggleFavoriteTeam(searchedTeam.id)}>
+                    {favoriteTeamIds.includes(searchedTeam.id) ? "해제" : "저장"}
+                  </Button>
+                </div>
+              ) : null}
+              {favoriteQuery.trim() && !searchedUser && !searchedTeam ? <div className="empty-state">해시태그 결과 없음</div> : null}
+            </div>
+            <div className="favorite-chip-list">
+              {favoritePlayers.map((player) => (
+                <PlayerHoverCard key={player.id} as="span" user={player} teams={app.state.teams} className="favorite-mini-chip">
+                  <span className="avatar small" style={{ "--avatar": player.avatarColor }}>{player.name.slice(0, 1)}</span>
+                  <span>{getUserHashtag(player)}</span>
+                </PlayerHoverCard>
+              ))}
+              {favoriteTeams.map((team) => (
+                <TeamHoverCard key={team.id} as="span" team={team} className="favorite-mini-chip">
+                  <span className="team-dot" style={{ "--team-color": team.accent }} />
+                  <span>{getTeamHashtag(team)}</span>
+                </TeamHoverCard>
+              ))}
+              {!favoritePlayers.length && !favoriteTeams.length ? <em>저장된 즐겨찾기 없음</em> : null}
+            </div>
+          </Card>
           <ProgressionChecklist user={user} matches={app.state.matches} />
           <Card className="section-card">
             <div className="section-title-row">

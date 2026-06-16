@@ -736,6 +736,7 @@ const baseState = {
       statSummary: true,
     },
     blockedUserIds: [],
+    favoritePlayerIds: ["u2", "u3", "u4"],
     favoriteTeamIds: ["t1", "t2", "t5"],
     favoriteCourtIds: ["c1", "c2", "c3"],
   },
