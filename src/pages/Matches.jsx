@@ -401,7 +401,10 @@ export default function Matches({ app }) {
   }, [dateFilter, viewId, visibleRecruitingCandidates]);
 
   const visibleMatches = matchesByView.slice(0, 60);
-  const hideEmptyMatchList = viewId === "active" && visibleRecruitingRooms.length > 0 && !visibleMatches.length;
+  const visibleScheduleItems = useMemo(() => ([
+    ...visibleRecruitingRooms.map((post) => ({ type: "room", id: `room-${post.id}`, item: post })),
+    ...visibleMatches.map((match) => ({ type: "match", id: `match-${match.id}`, item: match })),
+  ].sort((a, b) => compareSchedule(a.item, b.item))), [visibleMatches, visibleRecruitingRooms]);
   const activeCount = getViewCount(filteredMatches, VIEWS[0], app.currentUser.id);
   const todoCount = getViewCount(filteredMatches, VIEWS[1], app.currentUser.id);
   const scheduledCount = getViewCount(filteredMatches, VIEWS[2], app.currentUser.id);
@@ -702,27 +705,30 @@ export default function Matches({ app }) {
         </label>
       </section>
 
-      {visibleRecruitingRooms.length ? (
-        <section className="om-match-list" aria-label="확정 전 매칭방">
-          <div className="om-list-head">
-            <div>
-              <span className="om-kicker">OPEN ROOM</span>
-              <h2>확정 전 매칭방</h2>
-            </div>
-            <span>{visibleRecruitingRooms.length}개</span>
+      <section className="om-match-list" aria-label="경기 목록">
+        <div className="om-list-head">
+          <div>
+            <span className="om-kicker">{selectedView.code}</span>
+            <h2>{dateFilter ? `${selectedView.title} · ${formatDateLabel(dateFilter)}` : selectedView.title}</h2>
           </div>
-          {visibleRecruitingRooms.map((post) => {
+          <span>내 일정 {matchesByView.length + visibleRecruitingRooms.length}개 중 {visibleScheduleItems.length}개 표시</span>
+        </div>
+
+        {visibleScheduleItems.length ? visibleScheduleItems.map(({ type, item }) => {
+          if (type === "room") {
+            const post = item;
             const lobby = getRecruitingLobby(post, app.state);
             const myEntry = getRecruitingEntryForUser(lobby, app.currentUser.id, myTeamIds);
             const needConfirm = myEntry && myEntry.status !== "ready";
             const filled = lobby.sides.teamA.projectedFilled + lobby.sides.teamB.projectedFilled;
             const capacity = getRecruitingSideCapacity(post) * 2;
             return (
-              <article key={post.id} className="om-match-card om-status-contract">
+              <article key={`room-${post.id}`} className="om-match-card om-status-contract">
                 <div className="om-card-main">
                   <div className="om-card-kicker">
                     <span className={`om-status-pill ${needConfirm ? "orange" : "blue"}`}>{needConfirm ? "재확인 필요" : "확정 대기"}</span>
                     <span className="om-card-mode">{post.mode}</span>
+                    <span className="om-card-official">공개방</span>
                     <span className="om-card-official">{post.ranked === false ? "친선" : "정규"}</span>
                   </div>
                   <h3>{post.title}</h3>
@@ -739,33 +745,22 @@ export default function Matches({ app }) {
                 </Link>
               </article>
             );
-          })}
-        </section>
-      ) : null}
-
-      {!hideEmptyMatchList ? (
-      <section className="om-match-list" aria-label="경기 목록">
-        <div className="om-list-head">
-          <div>
-            <span className="om-kicker">{selectedView.code}</span>
-            <h2>{dateFilter ? `${selectedView.title} · ${formatDateLabel(dateFilter)}` : selectedView.title}</h2>
-          </div>
-          <span>내 일정 {matchesByView.length}개 중 {visibleMatches.length}개 표시</span>
-        </div>
-
-        {visibleMatches.length ? visibleMatches.map((match) => {
+          }
+          const match = item;
           const status = getMatchProcessMeta(match);
           const showScoreBox = shouldShowScoreBox(match);
           const scoreA = match.teamA.score ?? match.result?.scoreA ?? 0;
           const scoreB = match.teamB.score ?? match.result?.scoreB ?? 0;
           const winner = getWinner(match);
+          const visibilityLabel = match.tournamentId ? "대회방" : match.recruitingPostId ? "공개 확정" : "비공개방";
 
           return (
-            <article key={match.id} className={`om-match-card om-status-${match.status}`}>
+            <article key={`match-${match.id}`} className={`om-match-card om-status-${match.status}`}>
               <div className="om-card-main">
                 <div className="om-card-kicker">
                   <span className={`om-status-pill ${status.tone}`}>{status.label}</span>
                   <span className="om-card-mode">{match.mode}</span>
+                  <span className="om-card-official">{visibilityLabel}</span>
                   <span className="om-card-official">{match.official ? "공식" : "일반"}</span>
                 </div>
                 <h3>{match.title}</h3>
@@ -801,7 +796,6 @@ export default function Matches({ app }) {
           </div>
         )}
       </section>
-      ) : null}
     </div>
   );
 }
