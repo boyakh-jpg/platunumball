@@ -247,7 +247,7 @@
 
 .om-calendar-toolbar {
   display: grid;
-  grid-template-columns: 34px 1fr 34px auto;
+  grid-template-columns: 34px 1fr 34px;
   gap: 8px;
   align-items: center;
 }
@@ -261,11 +261,15 @@
 }
 
 .om-calendar-toolbar strong {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
   text-align: center;
   font-size: 1.08rem;
 }
 
-.om-calendar-toolbar span {
+.om-calendar-toolbar strong span {
   color: var(--gold);
   font-size: 0.78rem;
   font-weight: 950;
@@ -1781,11 +1785,6 @@ html[data-theme="light"] .tournament-schedule-list input {
 
   .om-calendar-toolbar {
     grid-template-columns: 36px 1fr 36px;
-  }
-
-  .om-calendar-toolbar span {
-    grid-column: 1 / -1;
-    text-align: center;
   }
 
   .om-calendar-weekdays,

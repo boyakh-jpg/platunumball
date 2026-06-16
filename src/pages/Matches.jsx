@@ -351,7 +351,10 @@ export default function Matches({ app }) {
       })
       .filter((post) => kindFilter === "all" || (kindFilter === "ranked" ? post.ranked !== false : post.ranked === false))
       .filter((post) => modeFilter === "all" || post.mode === modeFilter);
-    return [...baseFilteredMatches.filter((match) => getMatchDate(match)), ...recruitingRooms];
+    const displayableMatches = baseFilteredMatches.filter((match) => (
+      getMatchDate(match) && VIEWS.some((view) => shouldShowMatchForView(match, view, app.currentUser.id))
+    ));
+    return [...displayableMatches, ...recruitingRooms];
   }, [app.currentUser.id, app.state.recruitingPosts, baseFilteredMatches, kindFilter, maxScheduleDate, modeFilter, myTeamIds]);
 
   const calendarCounts = useMemo(() => {
@@ -364,6 +367,23 @@ export default function Matches({ app }) {
 
   const calendarDays = useMemo(() => getCalendarDays(calendarMonth), [calendarMonth]);
   const calendarMonthCount = calendarDays.reduce((sum, day) => sum + (calendarCounts.get(day) ?? 0), 0);
+  const visibleRecruitingCandidates = useMemo(() => {
+    return [...(app.state.recruitingPosts ?? [])]
+      .filter((post) => post.status === "open")
+      .filter((post) => isRecruitingPostForUser(post, app.currentUser.id, myTeamIds))
+      .filter((post) => {
+        const postDate = getMatchDate(post);
+        return postDate && postDate <= maxScheduleDate;
+      })
+      .filter((post) => kindFilter === "all" || (kindFilter === "ranked" ? post.ranked !== false : post.ranked === false))
+      .filter((post) => modeFilter === "all" || post.mode === modeFilter);
+  }, [app.currentUser.id, app.state.recruitingPosts, kindFilter, maxScheduleDate, modeFilter, myTeamIds]);
+  const getViewIdForDate = (day) => {
+    if (visibleRecruitingCandidates.some((post) => getMatchDate(post) === day)) return "active";
+    const dayMatches = baseFilteredMatches.filter((match) => getMatchDate(match) === day);
+    const preferredView = VIEWS.find((view) => dayMatches.some((match) => shouldShowMatchForView(match, view, app.currentUser.id)));
+    return preferredView?.id ?? (day < todayValue ? "history" : "active");
+  };
 
   const matchesByView = useMemo(() => {
     return filteredMatches
@@ -373,22 +393,17 @@ export default function Matches({ app }) {
 
   const visibleRecruitingRooms = useMemo(() => {
     if (viewId !== "active") return [];
-    return [...(app.state.recruitingPosts ?? [])]
-      .filter((post) => post.status === "open")
-      .filter((post) => isRecruitingPostForUser(post, app.currentUser.id, myTeamIds))
+    return visibleRecruitingCandidates
       .filter((post) => {
         const postDate = getMatchDate(post);
-        if (!postDate) return true;
-        if (postDate > maxScheduleDate) return false;
         return !dateFilter || postDate === dateFilter;
       })
-      .filter((post) => kindFilter === "all" || (kindFilter === "ranked" ? post.ranked !== false : post.ranked === false))
-      .filter((post) => modeFilter === "all" || post.mode === modeFilter)
       .sort(compareSchedule)
       .slice(0, 12);
-  }, [app.currentUser.id, app.state.recruitingPosts, dateFilter, kindFilter, maxScheduleDate, modeFilter, myTeamIds, viewId]);
+  }, [dateFilter, viewId, visibleRecruitingCandidates]);
 
   const visibleMatches = matchesByView.slice(0, 60);
+  const hideEmptyMatchList = viewId === "active" && visibleRecruitingRooms.length > 0 && !visibleMatches.length;
   const activeCount = getViewCount(filteredMatches, VIEWS[0], app.currentUser.id);
   const todoCount = getViewCount(filteredMatches, VIEWS[1], app.currentUser.id);
   const scheduledCount = getViewCount(filteredMatches, VIEWS[2], app.currentUser.id);
@@ -473,11 +488,13 @@ export default function Matches({ app }) {
             <button type="button" aria-label="이전 달" onClick={() => setCalendarMonth((month) => addMonths(month, -1))}>
               <ChevronLeft size={18} />
             </button>
-            <strong>{formatMonthLabel(calendarMonth)}</strong>
+            <strong>
+              {formatMonthLabel(calendarMonth)}
+              <span>{calendarMonthCount}경기</span>
+            </strong>
             <button type="button" aria-label="다음 달" onClick={() => setCalendarMonth((month) => addMonths(month, 1))}>
               <ChevronRight size={18} />
             </button>
-            <span>{calendarMonthCount}경기</span>
           </div>
           <div className="om-calendar-weekdays">
             {WEEKDAYS.map((day) => <span key={day}>{day}</span>)}
@@ -494,7 +511,7 @@ export default function Matches({ app }) {
                   className={`${selected ? "active" : ""} ${isToday ? "today" : ""}`}
                   onClick={() => {
                     setDateFilter(day);
-                    setViewId(day < todayValue ? "history" : "active");
+                    setViewId(getViewIdForDate(day));
                   }}
                 >
                   <strong>{Number(day.slice(-2))}</strong>
@@ -725,6 +742,7 @@ export default function Matches({ app }) {
         </section>
       ) : null}
 
+      {!hideEmptyMatchList ? (
       <section className="om-match-list" aria-label="경기 목록">
         <div className="om-list-head">
           <div>
@@ -782,6 +800,7 @@ export default function Matches({ app }) {
           </div>
         )}
       </section>
+      ) : null}
     </div>
   );
 }
