@@ -2767,9 +2767,10 @@ export function sendRecruitingChat(state, postId, body = "") {
 
 export function inviteRecruitingPlayers(state, postId, invite = {}) {
   const post = state.recruitingPosts?.find((item) => item.id === postId);
-  if (!post || post.status !== "open" || post.playerId !== state.currentUserId) return state;
+  if (!post || post.status !== "open") return state;
 
   const side = ["teamA", "teamB"].includes(invite.side) ? invite.side : "teamB";
+  const reserve = Boolean(invite.reserve);
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
   const lobby = getRecruitingLobby(post, state);
   const existingPlayerIds = new Set([
@@ -2807,7 +2808,7 @@ export function inviteRecruitingPlayers(state, postId, invite = {}) {
       fromUserId: state.currentUserId,
       teamId: invite.teamId ?? null,
       side,
-      reserve: false,
+      reserve,
       status: "pending",
       createdAt: now,
       updatedAt: now,
@@ -2823,7 +2824,7 @@ export function inviteRecruitingPlayers(state, postId, invite = {}) {
       ...targetUserIds.map((targetUserId) => ({
         id: makeId("n"),
         title: "매치방 초대",
-        body: `${post.title} ${SIDE_LABEL_TEXT[side]} 빈 슬롯 초대장이 도착했습니다.`,
+        body: `${post.title} ${SIDE_LABEL_TEXT[side]} ${reserve ? "후보" : "빈 슬롯"} 초대장이 도착했습니다.`,
         tone: "match",
         targetUserId,
         recruitingPostId: postId,
@@ -2831,7 +2832,7 @@ export function inviteRecruitingPlayers(state, postId, invite = {}) {
       {
         id: makeId("n"),
         title: "초대장 발송",
-        body: `${post.title} ${SIDE_LABEL_TEXT[side]} 빈 슬롯에 ${targetUserIds.length}명 초대장을 보냈습니다.`,
+        body: `${post.title} ${SIDE_LABEL_TEXT[side]} ${reserve ? "후보" : "빈 슬롯"}에 ${targetUserIds.length}명 초대장을 보냈습니다.`,
         tone: "match",
       },
       ...state.notifications,
@@ -2884,7 +2885,8 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
 
   const lobby = getRecruitingLobby(post, state);
   const side = ["teamA", "teamB"].includes(invitation.side) ? invitation.side : getRecruitingBestSide(post, state);
-  if (lobby.sides[side].filled >= lobby.sides[side].capacity) {
+  const reserve = Boolean(invitation.reserve);
+  if (!reserve && lobby.sides[side].filled >= lobby.sides[side].capacity) {
     return expireInvitation("방이 꽉 찼습니다. 먼저 수락한 선수만 들어갑니다.");
   }
 
@@ -2896,7 +2898,7 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
     teamId: null,
     side,
     status: "waiting",
-    reserve: false,
+    reserve,
     position: user?.position ?? null,
     createdAt: now,
     updatedAt: now,
@@ -2921,7 +2923,7 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
       {
         id: makeId("n"),
         title: "초대 수락",
-        body: `${post.title} ${SIDE_LABEL_TEXT[side]}에 대기 등록됐습니다.`,
+        body: `${post.title} ${SIDE_LABEL_TEXT[side]} ${reserve ? "후보" : "출전"}으로 대기 등록됐습니다.`,
         tone: "match",
       },
       ...state.notifications,

@@ -621,6 +621,7 @@ function RoomChat({ messages, userById, teams, value, canChat, onChange, onSubmi
 
 function InvitePanel({
   sideName,
+  reserve = false,
   query,
   onQueryChange,
   users,
@@ -665,8 +666,8 @@ function InvitePanel({
     <div className="ow-invite-panel">
       <header>
         <div>
-          <strong>{SIDE_LABELS[sideName]} 빈 슬롯 초대</strong>
-          <span>선착순 수락이다. 방이 차면 수락 실패.</span>
+          <strong>{SIDE_LABELS[sideName]} {reserve ? "후보" : "빈 슬롯"} 초대</strong>
+          <span>{reserve ? "수락하면 해당 팀 후보로 들어온다." : "선착순 수락이다. 방이 차면 수락 실패."}</span>
         </div>
         <button type="button" className="ow-icon-button" aria-label="초대 닫기" onClick={onClose}><X size={18} /></button>
       </header>
@@ -769,7 +770,7 @@ function InvitationPanel({ invitations, userById, teams, currentUserId, alreadyA
               <span className="avatar small" style={{ "--avatar": target?.avatarColor }}>{target?.name?.slice(0, 1) ?? "?"}</span>
               <span>
                 <b>{target?.name ?? "선수"}</b>
-                <em>{SIDE_LABELS[invitation.side]} · {getUserHashtag(target)}</em>
+                <em>{SIDE_LABELS[invitation.side]} · {invitation.reserve ? "후보" : "출전"} · {getUserHashtag(target)}</em>
               </span>
             </PlayerHoverCard>
             {mine ? (
@@ -951,8 +952,8 @@ export default function Recruiting({ app }) {
     app.actions.sendRecruitingChat(post.id, body);
     updateChatDraft(post, "");
   };
-  const openInviteSlot = (post, sideName) => {
-    setInviteDraft({ postId: post.id, sideName, query: "", selectedPlayerIds: [] });
+  const openInviteSlot = (post, sideName, reserve = false) => {
+    setInviteDraft({ postId: post.id, sideName, reserve, query: "", selectedPlayerIds: [] });
   };
   const updateInviteDraft = (patch) => {
     setInviteDraft((current) => (current ? { ...current, ...patch } : current));
@@ -971,7 +972,7 @@ export default function Recruiting({ app }) {
   };
   const sendInvites = (post, playerIds, teamId = null) => {
     if (!inviteDraft || !playerIds.length) return;
-    app.actions.inviteRecruitingPlayers(post.id, { side: inviteDraft.sideName, playerIds, teamId });
+    app.actions.inviteRecruitingPlayers(post.id, { side: inviteDraft.sideName, reserve: Boolean(inviteDraft.reserve), playerIds, teamId });
     setInviteDraft((current) => (current ? { ...current, selectedPlayerIds: [] } : current));
   };
   const confirmMatch = (post) => {
@@ -1159,6 +1160,7 @@ export default function Recruiting({ app }) {
         const invitations = roomState.invitations ?? [];
         const pendingInvitations = invitations.filter((invitation) => invitation.status === "pending");
         const disabledInvitePlayerIds = [
+          app.currentUser.id,
           selectedPost.playerId,
           ...lobby.entries.flatMap((entry) => [entry.playerId, ...(entry.players ?? []), ...(entry.reserves ?? [])]),
           ...pendingInvitations.map((invitation) => invitation.targetUserId),
@@ -1190,13 +1192,14 @@ export default function Recruiting({ app }) {
               </div>
 
               <div className="ow-lobby-grid">
-                <SideRoster sideName="teamA" side={lobby.sides.teamA} userById={userById} teams={app.state.teams} canInvite={mine} onInviteSlot={(sideName) => openInviteSlot(selectedPost, sideName)} />
-                <SideRoster sideName="teamB" side={lobby.sides.teamB} userById={userById} teams={app.state.teams} canInvite={mine} onInviteSlot={(sideName) => openInviteSlot(selectedPost, sideName)} />
+                <SideRoster sideName="teamA" side={lobby.sides.teamA} userById={userById} teams={app.state.teams} canInvite onInviteSlot={(sideName) => openInviteSlot(selectedPost, sideName)} />
+                <SideRoster sideName="teamB" side={lobby.sides.teamB} userById={userById} teams={app.state.teams} canInvite onInviteSlot={(sideName) => openInviteSlot(selectedPost, sideName)} />
               </div>
 
               {activeInviteDraft ? (
                 <InvitePanel
                   sideName={activeInviteDraft.sideName}
+                  reserve={Boolean(activeInviteDraft.reserve)}
                   query={activeInviteDraft.query}
                   onQueryChange={(query) => updateInviteDraft({ query, selectedPlayerIds: [] })}
                   users={app.state.users}
@@ -1225,6 +1228,14 @@ export default function Recruiting({ app }) {
               />
 
               <div className="ow-reserve-panel">
+                <div className="ow-reserve-invite-actions">
+                  <Button type="button" size="sm" variant="secondary" onClick={() => openInviteSlot(selectedPost, "teamA", true)}>
+                    <UserPlus size={16} /> A 후보 초대
+                  </Button>
+                  <Button type="button" size="sm" variant="secondary" onClick={() => openInviteSlot(selectedPost, "teamB", true)}>
+                    <UserPlus size={16} /> B 후보 초대
+                  </Button>
+                </div>
                 <ReserveLine
                   sideName="teamA"
                   candidates={lobby.sides.teamA.reserveCandidates}

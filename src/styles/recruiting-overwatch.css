@@ -1561,6 +1561,12 @@
   font-weight: 900;
 }
 
+.ow-reserve-invite-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .ow-reserve-line {
   display: grid;
   gap: 7px;
