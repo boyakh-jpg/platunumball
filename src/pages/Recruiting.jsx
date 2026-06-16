@@ -964,7 +964,7 @@ function InvitePanel({
       <header>
         <div>
           <strong>{SIDE_LABELS[sideName]} {reserve ? "후보" : "빈 슬롯"} 초대</strong>
-          <span>{reserve ? "수락하면 해당 팀 후보로 들어온다." : "선착순 수락이다. 방이 차면 수락 실패."}</span>
+          <span>{reserve ? "수락하면 해당 팀의 후보 선수로 들어온다." : "선착순 수락이다. 방이 차면 수락 실패."}</span>
         </div>
         <button type="button" className="ow-icon-button" aria-label="초대 닫기" onClick={onClose}><X size={18} /></button>
       </header>

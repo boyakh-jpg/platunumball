@@ -2219,7 +2219,7 @@ export function submitMatchResult(state, matchId, result) {
         {
           id: makeId("n"),
           title: "결과 입력 권한 없음",
-          body: "경기 참가자 또는 팀 후보 기록자만 스코어와 개인 활약을 입력할 수 있습니다.",
+          body: "경기 참가자 또는 후보 기록자만 스코어와 개인 활약을 입력할 수 있습니다.",
           tone: "match",
           matchId,
         },

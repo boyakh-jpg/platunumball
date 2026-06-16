@@ -484,7 +484,7 @@ export function getRecruitingLobby(post = {}, state = {}) {
           playerId,
           user: userById[playerId],
           source: "reserve-entry",
-          sourceLabel: entry.kind === "team" ? "후보 팀" : "후보 개인",
+          sourceLabel: "후보",
           entryId: entry.id,
           status: entry.status,
           side,
@@ -496,7 +496,7 @@ export function getRecruitingLobby(post = {}, state = {}) {
           playerId,
           user: userById[playerId],
           source: "team-reserve",
-          sourceLabel: "팀 후보",
+          sourceLabel: "후보",
           entryId: entry.id,
           status: normalizedPost.roomState?.ruleRevision
             ? normalizedPost.roomState.reserveReady?.[playerId] ? "ready" : "waiting"
