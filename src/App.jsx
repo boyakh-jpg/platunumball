@@ -14,6 +14,7 @@ import MatchRoom from "./pages/MatchRoom.jsx";
 import Notifications from "./pages/Notifications.jsx";
 import PlayerDetail from "./pages/PlayerDetail.jsx";
 import Profile from "./pages/Profile.jsx";
+import ProfileRecords from "./pages/ProfileRecords.jsx";
 import Rankings from "./pages/Rankings.jsx";
 import Recorder from "./pages/Recorder.jsx";
 import Recruiting from "./pages/Recruiting.jsx";
@@ -51,6 +52,7 @@ export default function App() {
           <Route path="/app/tournaments/:tournamentId" element={<TournamentDetail app={app} />} />
           <Route path="/app/players/:playerId" element={<PlayerDetail app={app} />} />
           <Route path="/app/profile" element={<Profile app={app} />} />
+          <Route path="/app/profile/records" element={<ProfileRecords app={app} />} />
           <Route path="/app/affiliations" element={<Affiliations app={app} />} />
           <Route path="/app/notifications" element={<Notifications app={app} />} />
           <Route path="/app/settings" element={<Settings app={app} auth={auth} />} />

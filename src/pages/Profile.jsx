@@ -15,8 +15,8 @@ function compareRecent(a, b) {
 }
 
 function getUserSide(match, userId) {
-  if (match.teamA.players.includes(userId)) return "teamA";
-  if (match.teamB.players.includes(userId)) return "teamB";
+  if (match.teamA?.players?.includes(userId)) return "teamA";
+  if (match.teamB?.players?.includes(userId)) return "teamB";
   return null;
 }
 
@@ -54,6 +54,39 @@ function getAverageFouls(matches = [], userId) {
   return total / confirmed.length;
 }
 
+function RecentRecordCard({ records, userId }) {
+  return (
+    <Card className="section-card profile-record-card">
+      <div className="section-title-row">
+        <div>
+          <p className="eyebrow">Record</p>
+          <h2>내 기록</h2>
+        </div>
+        <Link className="button button-secondary button-sm" to="/app/profile/records">기록 더보기</Link>
+      </div>
+      {records.length ? (
+        <div className="recent-match-list">
+          {records.map((match) => {
+            const line = getUserRecordLine(match, userId);
+            return (
+              <Link key={match.id} to={`/app/matches/${match.id}`} className={`recent-match-row result-${line.result.toLowerCase()}`}>
+                <b>{line.result}</b>
+                <span>
+                  <strong>{line.side.name} vs {line.opponent.name}</strong>
+                  <em>{match.scheduledAt} · {match.mode}</em>
+                </span>
+                <i>{line.score}:{line.opponentScore}</i>
+              </Link>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="empty-state">확정된 경기 기록이 없습니다.</div>
+      )}
+    </Card>
+  );
+}
+
 export default function Profile({ app }) {
   const user = app.currentUser;
   const [draft, setDraft] = useState({
@@ -83,15 +116,15 @@ export default function Profile({ app }) {
   const averageFouls = getAverageFouls(app.state.matches, user.id);
 
   return (
-    <div className="page-stack">
+    <div className="page-stack profile-page">
       <header className="page-header">
         <div>
           <p className="eyebrow">Profile</p>
           <h1>프로필</h1>
         </div>
       </header>
-      <div className="content-grid">
-        <div className="page-stack">
+      <div className="content-grid profile-overview-grid">
+        <div className="page-stack profile-main-stack">
           <Card className="section-card">
             <div className="section-title-row">
               <div>
@@ -115,8 +148,9 @@ export default function Profile({ app }) {
               <RatingCard key={mode} title={mode} mmr={mmr} subtitle="모드 티어" />
             ))}
           </section>
+          <RecentRecordCard records={myRecords} userId={user.id} />
         </div>
-        <aside className="page-stack">
+        <aside className="page-stack profile-side-grid">
           <Card className="section-card favorite-management-card">
             <div className="section-title-row">
               <div>
@@ -177,33 +211,6 @@ export default function Profile({ app }) {
             </div>
           </Card>
           <ProgressionChecklist user={user} matches={app.state.matches} />
-          <Card className="section-card">
-            <div className="section-title-row">
-              <div>
-                <p className="eyebrow">Record</p>
-                <h2>내 기록</h2>
-              </div>
-            </div>
-            {myRecords.length ? (
-              <div className="recent-match-list">
-                {myRecords.map((match) => {
-                  const line = getUserRecordLine(match, user.id);
-                  return (
-                    <Link key={match.id} to={`/app/matches/${match.id}`} className={`recent-match-row result-${line.result.toLowerCase()}`}>
-                      <b>{line.result}</b>
-                      <span>
-                        <strong>{line.side.name} vs {line.opponent.name}</strong>
-                        <em>{match.scheduledAt} · {match.mode}</em>
-                      </span>
-                      <i>{line.score}:{line.opponentScore}</i>
-                    </Link>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="empty-state">확정된 경기 기록이 없습니다.</div>
-            )}
-          </Card>
           <ShareCard user={user} match={app.state.matches[0]} />
           <Card className="section-card">
             <div className="contract-grid single">
