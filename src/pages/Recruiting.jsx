@@ -132,18 +132,20 @@ function getDefaultJoinDraft(post, teams, currentUser, state) {
 }
 
 function getEntryMmr(entry) {
-  return entry.team?.mmr ?? entry.user?.ratings?.integrated ?? 1200;
+  return (entry.fixed || entry.kind === "team")
+    ? entry.team?.mmr ?? entry.user?.ratings?.integrated ?? 1200
+    : entry.user?.ratings?.integrated ?? 1200;
 }
 
 function getEntryTitle(entry) {
   if (entry.fixed && entry.team) return `${entry.team.name} · 방장 파티`;
-  if (entry.team) return `${entry.team.name} · 팀 파티`;
+  if (entry.kind === "team" && entry.team) return `${entry.team.name} · 팀 파티`;
   if (entry.fixed) return `${entry.user?.name ?? "방장"} · 방장`;
   return `${entry.user?.name ?? "플레이어"} · 개인`;
 }
 
 function getReadyTitle(entry) {
-  if (entry.team) {
+  if ((entry.fixed || entry.kind === "team") && entry.team) {
     const leader = entry.user?.name ? ` · ${entry.user.name}` : "";
     return `${entry.team?.name ?? "팀"}${leader}`;
   }
@@ -285,7 +287,7 @@ function EntryBlock({
   canManage = false,
   onSetPlacement,
   onSetMemberReserve,
-  onMoveMember,
+  onDetachMember,
   onRemoveMember,
   onKick,
 }) {
@@ -295,9 +297,10 @@ function EntryBlock({
   const availability = canManage && lobby ? getEntryPlacementAvailability(entry, lobby) : {};
   const activePlayerIds = entry.players ?? [];
   const canDemoteActive = activePlayerIds.length > 1;
+  const isPartyEntry = entry.fixed || entry.kind === "team";
   const renderPlayerActions = (user) => {
     if (!canManage || !user) return null;
-    if (!entry.team) {
+    if (!isPartyEntry) {
       return (
         <SlotActionMenu>
           <PlacementActionButtons
@@ -323,24 +326,14 @@ function EntryBlock({
         >
           후보로
         </button>
-        {["teamA", "teamB"].flatMap((sideName) => ([
+        {!(entry.fixed && user.id === entry.playerId) ? (
           <button
-            key={`${sideName}-active`}
             type="button"
-            disabled={!canMovePlayerTo(lobby, user.id, sideName, false)}
-            onClick={(event) => stopControlClick(event, () => onMoveMember(entry.id, user.id, { side: sideName, reserve: false }))}
+            onClick={(event) => stopControlClick(event, () => onDetachMember(entry.id, user.id))}
           >
-            {SIDE_LABELS[sideName]} 출전
-          </button>,
-          <button
-            key={`${sideName}-reserve`}
-            type="button"
-            disabled={!canMovePlayerTo(lobby, user.id, sideName, true)}
-            onClick={(event) => stopControlClick(event, () => onMoveMember(entry.id, user.id, { side: sideName, reserve: true }))}
-          >
-            {SIDE_LABELS[sideName]} 후보
-          </button>,
-        ]))}
+            파티에서 내보내기
+          </button>
+        ) : null}
         {!(entry.fixed && user.id === entry.playerId) ? (
           <button type="button" className="danger" onClick={(event) => stopControlClick(event, () => onRemoveMember(entry.id, user.id))}>
             강퇴
@@ -355,14 +348,14 @@ function EntryBlock({
       <div className="ow-party-head">
         <div>
           <strong>
-            {entry.team ? (
+            {isPartyEntry && entry.team ? (
               <>
                 <TeamHoverCard team={entry.team} as="span">{entry.team.name}</TeamHoverCard>
                 {entry.fixed ? " · 방장 파티" : " · 팀 파티"}
               </>
             ) : getEntryTitle(entry)}
           </strong>
-          <span>{entry.team ? `${players.length}명 팀 소속 참여` : getPlayerPosition(entry.user)}</span>
+          <span>{isPartyEntry && entry.team ? `${players.length}명 팀 소속 참여` : entry.team ? `개인참여 · 원래 ${entry.team.name}` : getPlayerPosition(entry.user)}</span>
         </div>
         <div className="ow-party-meta">
           <TierBadge mmr={mmr} compact />
@@ -379,7 +372,7 @@ function EntryBlock({
               />
               {!entry.fixed ? (
                 <button type="button" className="danger" onClick={(event) => stopControlClick(event, () => onKick(entry.playerId))}>
-                  파티 강퇴
+                  {isPartyEntry ? "파티 강퇴" : "강퇴"}
                 </button>
               ) : null}
             </SlotActionMenu>
@@ -480,6 +473,9 @@ function QueueRoomBoard({ lobby, userById, teams }) {
 function FillSlot({ candidate, lobby, userById, teams, canManage = false, readyText = "충원 예정", onMoveCandidate, onRemoveCandidate }) {
   const user = candidate ? userById[candidate.playerId] : null;
   const readyLabel = candidate?.status === "ready" ? "참여 확정" : "재확인 필요";
+  const candidateEntry = candidate ? lobby?.entries?.find((entry) => entry.id === candidate.entryId) : null;
+  const isPartyCandidate = Boolean(candidateEntry?.fixed || candidateEntry?.kind === "team");
+  const moveSideNames = isPartyCandidate ? [candidate.side ?? candidateEntry?.side ?? "teamA"] : ["teamA", "teamB"];
   if (!user) {
     return (
       <div className="ow-open-slot empty">
@@ -502,7 +498,7 @@ function FillSlot({ candidate, lobby, userById, teams, canManage = false, readyT
       </PlayerHoverCard>
       {canManage ? (
         <SlotActionMenu>
-          {["teamA", "teamB"].flatMap((sideName) => ([
+          {moveSideNames.flatMap((sideName) => ([
             <button
               key={`${sideName}-active`}
               type="button"
@@ -535,7 +531,7 @@ function SideRoster({
   onInviteSlot,
   onSetPlacement,
   onSetMemberReserve,
-  onMoveMember,
+  onDetachMember,
   onRemoveMember,
   onKick,
   onMoveCandidate,
@@ -561,7 +557,7 @@ function SideRoster({
             canManage={canManage}
             onSetPlacement={onSetPlacement}
             onSetMemberReserve={onSetMemberReserve}
-            onMoveMember={onMoveMember}
+            onDetachMember={onDetachMember}
             onRemoveMember={onRemoveMember}
             onKick={onKick}
           />
@@ -1428,7 +1424,7 @@ export default function Recruiting({ app }) {
         const pendingInvitations = invitations.filter((invitation) => invitation.status === "pending");
         const moveCandidate = (candidate, placement) => {
           const candidateEntry = lobby.entries.find((entry) => entry.id === candidate.entryId);
-          if (candidateEntry?.team) {
+          if (candidateEntry?.fixed || candidateEntry?.kind === "team") {
             app.actions.setRecruitingPartyPlayerPlacement(selectedPost.id, candidate.entryId, candidate.playerId, placement);
             return;
           }
@@ -1436,7 +1432,7 @@ export default function Recruiting({ app }) {
         };
         const removeCandidate = (candidate) => {
           const candidateEntry = lobby.entries.find((entry) => entry.id === candidate.entryId);
-          if (candidateEntry?.team) {
+          if (candidateEntry?.fixed || candidateEntry?.kind === "team") {
             app.actions.removeRecruitingPartyPlayer(selectedPost.id, candidate.entryId, candidate.playerId);
             return;
           }
@@ -1486,7 +1482,7 @@ export default function Recruiting({ app }) {
                   onInviteSlot={(sideName) => openInviteSlot(selectedPost, sideName)}
                   onSetPlacement={(playerId, placement) => app.actions.setRecruitingApplicantPlacement(selectedPost.id, playerId, placement)}
                   onSetMemberReserve={(entryId, playerId, reserve) => app.actions.setRecruitingPartyPlayerReserve(selectedPost.id, entryId, playerId, reserve)}
-                  onMoveMember={(entryId, playerId, placement) => app.actions.setRecruitingPartyPlayerPlacement(selectedPost.id, entryId, playerId, placement)}
+                  onDetachMember={(entryId, playerId) => app.actions.detachRecruitingPartyPlayer(selectedPost.id, entryId, playerId)}
                   onRemoveMember={(entryId, playerId) => app.actions.removeRecruitingPartyPlayer(selectedPost.id, entryId, playerId)}
                   onKick={(playerId) => app.actions.kickRecruitingApplicant(selectedPost.id, playerId)}
                   onMoveCandidate={moveCandidate}
@@ -1503,7 +1499,7 @@ export default function Recruiting({ app }) {
                   onInviteSlot={(sideName) => openInviteSlot(selectedPost, sideName)}
                   onSetPlacement={(playerId, placement) => app.actions.setRecruitingApplicantPlacement(selectedPost.id, playerId, placement)}
                   onSetMemberReserve={(entryId, playerId, reserve) => app.actions.setRecruitingPartyPlayerReserve(selectedPost.id, entryId, playerId, reserve)}
-                  onMoveMember={(entryId, playerId, placement) => app.actions.setRecruitingPartyPlayerPlacement(selectedPost.id, entryId, playerId, placement)}
+                  onDetachMember={(entryId, playerId) => app.actions.detachRecruitingPartyPlayer(selectedPost.id, entryId, playerId)}
                   onRemoveMember={(entryId, playerId) => app.actions.removeRecruitingPartyPlayer(selectedPost.id, entryId, playerId)}
                   onKick={(playerId) => app.actions.kickRecruitingApplicant(selectedPost.id, playerId)}
                   onMoveCandidate={moveCandidate}

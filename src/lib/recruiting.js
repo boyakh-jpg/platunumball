@@ -150,6 +150,7 @@ export function normalizeRecruitingApplicant(entry) {
       reserve: false,
       position: null,
       playerIds: [],
+      sourceEntryId: null,
       createdAt: null,
       updatedAt: null,
     };
@@ -182,6 +183,7 @@ export function normalizeRecruitingApplicant(entry) {
       playerId: entry.playerId,
       teamId: null,
       sourceTeamId: entry.sourceTeamId ?? entry.partyTeamId ?? null,
+      sourceEntryId: entry.sourceEntryId ?? entry.partyEntryId ?? null,
       side,
       status,
       reserve: Boolean(entry.reserve),

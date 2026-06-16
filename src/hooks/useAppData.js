@@ -15,6 +15,7 @@ import {
   createTeam,
   createTournament,
   deleteTeam,
+  detachRecruitingPartyPlayer,
   declineRecruitingInvitation,
   disputeMatch,
   interestRecruitingPost,
@@ -214,6 +215,9 @@ export function useAppData(authUserId = null) {
       },
       setRecruitingPartyPlayerPlacement: (postId, entryId, playerId, placement) => {
         setState((prev) => setRecruitingPartyPlayerPlacement({ ...prev, currentUserId }, postId, entryId, playerId, placement));
+      },
+      detachRecruitingPartyPlayer: (postId, entryId, playerId) => {
+        setState((prev) => detachRecruitingPartyPlayer({ ...prev, currentUserId }, postId, entryId, playerId));
       },
       removeRecruitingPartyPlayer: (postId, entryId, playerId) => {
         setState((prev) => removeRecruitingPartyPlayer({ ...prev, currentUserId }, postId, entryId, playerId));
