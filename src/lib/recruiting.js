@@ -275,14 +275,14 @@ export function hasRecruitingApplicant(post = {}, entry) {
 export function getPendingRecruitingInvitations(state = {}, userId) {
   if (!userId) return [];
   return (state.recruitingPosts ?? [])
-    .filter((post) => post.status !== "closed")
+    .filter((post) => post.status === "open")
     .flatMap((post) => normalizeRecruitingRoomState(post.roomState ?? {}).invitations
       .filter((invitation) => invitation.targetUserId === userId && invitation.status === "pending")
       .map((invitation) => ({ post, invitation })));
 }
 
 export function hasPendingRecruitingInvitation(post = {}, userId) {
-  if (!userId || post.status === "closed") return false;
+  if (!userId || post.status !== "open") return false;
   return normalizeRecruitingRoomState(post.roomState ?? {}).invitations.some((invitation) => (
     invitation.targetUserId === userId && invitation.status === "pending"
   ));
@@ -304,6 +304,8 @@ export function normalizeRecruitingPost(post = {}) {
   const hostJoinMode = post.hostJoinMode === "player" || !post.teamId ? "player" : "team";
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
   const mmrRangeMode = normalizeRecruitingMmrRangeMode(post.mmrRangeMode ?? roomState.mmrRangeMode);
+  const ruleRevision = Number(roomState.ruleRevision ?? 0);
+  const applicants = normalizeRecruitingApplicants(post.applicants ?? []);
   return {
     ...post,
     type,
@@ -311,7 +313,7 @@ export function normalizeRecruitingPost(post = {}) {
     ratingScale: post.ratingScale ?? getRecruitingRatingScale({ ...post, mmrRangeMode, roomState }),
     hostJoinMode,
     hostSide: VALID_SIDES.has(post.hostSide) ? post.hostSide : "teamA",
-    hostReady: Boolean(post.hostReady),
+    hostReady: ruleRevision ? Boolean(post.hostReady) : true,
     sideCapacity: getRecruitingSideCapacity(post),
     refereeId: post.refereeId ?? "",
     refereeTrustMin: Number(post.refereeTrustMin ?? REFEREE_TRUST_MIN),
@@ -319,7 +321,7 @@ export function normalizeRecruitingPost(post = {}) {
     disputeMinutes: Number(post.disputeMinutes ?? DISPUTE_WINDOW_MINUTES),
     roomState: { ...roomState, mmrRangeMode },
     playerIds: unique(post.playerIds ?? post.players ?? []),
-    applicants: normalizeRecruitingApplicants(post.applicants ?? []),
+    applicants: ruleRevision ? applicants : applicants.map((applicant) => ({ ...applicant, status: "ready" })),
   };
 }
 

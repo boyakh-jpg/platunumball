@@ -66,6 +66,8 @@ const QUEUE_SCHEDULE_START_DATE = "2026-06-15";
 const QUEUE_SCHEDULE_TIMES = ["18:00", "19:30", "21:00"];
 const POST_MATCH_STATUSES = new Set(["approval", "disputed"]);
 const RECORDABLE_RESERVE_SOURCES = new Set(["reserve-entry", "team-reserve"]);
+const DAY_MS = 24 * 60 * 60 * 1000;
+const SCHEDULE_MAX_DAYS = 365;
 const LIFECYCLE_TITLE_PATTERN = /^(동의 대기|진행 예정|결과 승인|이의 확인|이의제기|확정|결과 입력)\s*·\s*/;
 const POST_MATCH_TITLE_PATTERN = /^(결과 승인|이의 확인|이의제기|확정|결과 입력)\s*·\s*/;
 const SIDE_LABEL_TEXT = { teamA: "A팀", teamB: "B팀" };
@@ -146,6 +148,35 @@ function addDateDays(dateValue, days) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function getLocalDateValue(date = new Date()) {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+function getMaxScheduleDateValue(now = new Date()) {
+  return addDateDays(getLocalDateValue(now), SCHEDULE_MAX_DAYS);
+}
+
+function isScheduleDateInAllowedWindow(dateValue, now = new Date()) {
+  const value = getDatePart(dateValue);
+  if (!value) return false;
+  const today = getLocalDateValue(now);
+  const maxDate = getMaxScheduleDateValue(now);
+  return value >= today && value <= maxDate;
+}
+
+function getInvalidScheduleNotification() {
+  return {
+    id: makeId("n"),
+    title: "일정 설정 불가",
+    body: "경기 날짜는 오늘부터 1년 안에서만 만들 수 있습니다.",
+    tone: "orange",
+  };
 }
 
 function getQueueSlot(slotIndex) {
@@ -407,7 +438,7 @@ function normalizeState(state) {
 }
 
 export function loadState() {
-  return normalizeState(readState(clone(initialState)));
+  return runAutomaticStateMaintenance(normalizeState(readState(clone(initialState))));
 }
 
 export function saveState(state) {
@@ -812,7 +843,7 @@ export async function loadRemoteState() {
 
   try {
     const normalizedRemote = await loadNormalizedRemoteState();
-    return normalizedRemote?.state ?? null;
+    return normalizedRemote?.state ? runAutomaticStateMaintenance(normalizedRemote.state) : null;
   } catch (error) {
     console.warn("Supabase normalized state load failed. Local demo mode remains active.", error.message);
     return null;
@@ -1275,6 +1306,8 @@ function makeTournamentMatch(tournament, teamA, teamB, pairing, now) {
   const mode = tournament.mode || "5v5";
   const size = MODE_SIZES[mode] ?? 5;
   const roundLabel = tournament.format === "tournament" ? `${pairing.round}R-${pairing.fixture}` : `L-${pairing.fixture}`;
+  const teamAPlayers = getTeamPlayers(teamA, size);
+  const teamBPlayers = getTeamPlayers(teamB, size);
 
   return {
     id: makeId("m"),
@@ -1284,7 +1317,7 @@ function makeTournamentMatch(tournament, teamA, teamB, pairing, now) {
     scheduledDate: "",
     scheduledTime: "",
     scheduledAt: "일정 미정",
-    status: "contract",
+    status: "agreed",
     ranked: tournament.ranked !== false,
     official: Boolean(tournament.official),
     preRegistered: true,
@@ -1307,13 +1340,14 @@ function makeTournamentMatch(tournament, teamA, teamB, pairing, now) {
       { id: "captain", label: "양팀 주장 확인" },
       { id: "tournament_bracket", label: "대회 대진표" },
     ],
-    teamA: { name: teamA.name, teamId: teamA.id, players: getTeamPlayers(teamA, size), score: 0 },
-    teamB: { name: teamB.name, teamId: teamB.id, players: getTeamPlayers(teamB, size), score: 0 },
-    agreements: { teamA: [], teamB: [] },
+    teamA: { name: teamA.name, teamId: teamA.id, players: teamAPlayers, score: 0 },
+    teamB: { name: teamB.name, teamId: teamB.id, players: teamBPlayers, score: 0 },
+    agreements: { teamA: teamAPlayers, teamB: teamBPlayers },
     approvals: { teamA: [], teamB: [] },
     disputes: [],
     result: null,
     ratingResult: null,
+    agreedAt: now,
     createdAt: now,
   };
 }
@@ -1506,10 +1540,129 @@ function finalizeMatch(state, targetMatch) {
   return { ...nextState, affiliations: updateAffiliationScores(nextState) };
 }
 
+function fillMatchDecision(match, decisionKey) {
+  return {
+    ...(match[decisionKey] ?? { teamA: [], teamB: [] }),
+    teamA: [...new Set([...(match[decisionKey]?.teamA ?? []), ...(match.teamA?.players ?? [])])],
+    teamB: [...new Set([...(match[decisionKey]?.teamB ?? []), ...(match.teamB?.players ?? [])])],
+  };
+}
+
+function isAutoDecisionDue(match, nowMs = Date.now()) {
+  const recordWindow = getMatchRecordWindow(match, nowMs);
+  return Boolean(recordWindow.endAt && nowMs >= recordWindow.endAt.getTime() + DAY_MS);
+}
+
+function applyAutomaticMatchDecisions(state, now = new Date()) {
+  const nowMs = now.getTime();
+  const nowIso = now.toISOString();
+  let nextState = state;
+
+  for (const match of state.matches ?? []) {
+    const current = nextState.matches.find((item) => item.id === match.id);
+    if (!current || !isAutoDecisionDue(current, nowMs)) continue;
+
+    if (current.status === "contract") {
+      const nextMatch = {
+        ...current,
+        status: "agreed",
+        agreements: fillMatchDecision(current, "agreements"),
+        agreedAt: current.agreedAt ?? nowIso,
+        autoAgreedAt: current.autoAgreedAt ?? nowIso,
+      };
+      nextState = {
+        ...nextState,
+        matches: nextState.matches.map((item) => (item.id === current.id ? nextMatch : item)),
+        notifications: [
+          {
+            id: makeId("n"),
+            title: "동의 자동 처리",
+            body: `${current.title} 동의가 24시간 안에 처리되지 않아 자동 동의 처리됐습니다.`,
+            tone: "match",
+            matchId: current.id,
+          },
+          ...nextState.notifications,
+        ],
+      };
+      continue;
+    }
+
+    if (current.status === "approval" && current.result) {
+      const statStatus = getStatSubmissionStatus(current);
+      const pointAudit = getResultPointAudit(current);
+      if (!statStatus.complete || !pointAudit.matched) continue;
+      const nextMatch = {
+        ...current,
+        approvals: fillMatchDecision(current, "approvals"),
+        autoApprovedAt: current.autoApprovedAt ?? nowIso,
+      };
+      nextState = finalizeMatch(
+        {
+          ...nextState,
+          matches: nextState.matches.map((item) => (item.id === current.id ? nextMatch : item)),
+        },
+        nextMatch,
+      );
+    }
+  }
+
+  return nextState;
+}
+
+function applyExpiredRecruitingRooms(state, now = new Date()) {
+  const nowMs = now.getTime();
+  const expiredPosts = (state.recruitingPosts ?? []).filter((post) => {
+    if (post.status !== "open") return false;
+    const deadlineMs = getScheduledStartMs(post);
+    if (!Number.isFinite(deadlineMs) || nowMs <= deadlineMs) return false;
+    return !getRecruitingLobby(post, state).projectedFull;
+  });
+  if (!expiredPosts.length) return state;
+
+  const expiredIds = new Set(expiredPosts.map((post) => post.id));
+  const nowIso = now.toISOString();
+
+  return {
+    ...state,
+    recruitingPosts: (state.recruitingPosts ?? []).map((post) => {
+      if (!expiredIds.has(post.id)) return post;
+      const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
+      return {
+        ...post,
+        status: "cancelled",
+        cancelledAt: post.cancelledAt ?? nowIso,
+        roomState: {
+          ...roomState,
+          invitations: roomState.invitations.map((invitation) => (
+            invitation.status === "pending" ? { ...invitation, status: "expired", updatedAt: nowIso } : invitation
+          )),
+        },
+      };
+    }),
+    notifications: [
+      ...expiredPosts.map((post) => ({
+        id: makeId("n"),
+        title: "매칭방 자동 취소",
+        body: `${post.title} 인원이 제한시간 안에 차지 않아 취소됐습니다.`,
+        tone: "orange",
+        recruitingPostId: post.id,
+      })),
+      ...state.notifications,
+    ],
+  };
+}
+
+export function runAutomaticStateMaintenance(state, now = new Date()) {
+  return applyExpiredRecruitingRooms(applyAutomaticMatchDecisions(state, now), now);
+}
+
 export function createMatch(state, draft) {
   const mode = draft.mode ?? "5v5";
   const size = MODE_SIZES[mode] ?? 5;
   const scheduledAt = `${draft.scheduledDate ?? ""} ${draft.scheduledTime ?? ""}`.trim();
+  if (!isScheduleDateInAllowedWindow(draft.scheduledDate)) {
+    return { ...state, notifications: [getInvalidScheduleNotification(), ...state.notifications] };
+  }
   const teams = state.teams;
   const teamA = teams.find((team) => team.id === draft.teamAId) ?? teams[0];
   const teamB = teams.find((team) => team.id === draft.teamBId && team.id !== teamA.id) ?? teams.find((team) => team.id !== teamA.id) ?? teams[1];
@@ -1573,6 +1726,11 @@ export function createMatch(state, draft) {
 }
 
 export function createTournament(state, draft) {
+  const tournamentStartDate = draft.scheduledDate || draft.tournamentStartDate || "";
+  const tournamentEndDate = draft.tournamentEndDate || tournamentStartDate;
+  if (!isScheduleDateInAllowedWindow(tournamentStartDate) || !isScheduleDateInAllowedWindow(tournamentEndDate)) {
+    return { ...state, notifications: [getInvalidScheduleNotification(), ...state.notifications] };
+  }
   const teamIds = [...new Set(draft.teamIds ?? draft.tournamentTeamIds ?? [])]
     .filter((teamId) => state.teams.some((team) => team.id === teamId));
   const invitedTeams = teamIds.map((teamId) => state.teams.find((team) => team.id === teamId)).filter(Boolean);
@@ -1634,8 +1792,8 @@ export function createTournament(state, draft) {
     mode: draft.mode || "5v5",
     ranked: draft.ranked !== false,
     official: Boolean(draft.official),
-    startDate: draft.scheduledDate || draft.tournamentStartDate || "",
-    endDate: draft.tournamentEndDate || draft.scheduledDate || "",
+    startDate: tournamentStartDate,
+    endDate: tournamentEndDate,
     schedulePolicy: draft.tournamentSchedulePolicy ?? "weekly",
     scheduleNote: draft.tournamentScheduleNote?.trim() || "초대팀 확정 후 경기별 일정을 배정합니다.",
     mmrLimitMode,
@@ -1750,6 +1908,9 @@ export function updateTournamentMatchSchedule(state, tournamentId, matchId, sche
 
   const scheduledDate = String(schedule.scheduledDate ?? "").slice(0, 10);
   const scheduledTime = String(schedule.scheduledTime ?? "").slice(0, 5);
+  if (!isScheduleDateInAllowedWindow(scheduledDate)) {
+    return { ...state, notifications: [getInvalidScheduleNotification(), ...state.notifications] };
+  }
   const updatedMatch = {
     ...match,
     scheduledDate,
@@ -2535,6 +2696,9 @@ export function createRecruitingPost(state, draft) {
   const scheduledDate = draft.scheduledDate || fallbackSchedule.scheduledDate;
   const scheduledTime = draft.scheduledTime || fallbackSchedule.scheduledTime;
   const scheduledAt = `${scheduledDate} ${scheduledTime}`;
+  if (!isScheduleDateInAllowedWindow(scheduledDate)) {
+    return { ...state, notifications: [getInvalidScheduleNotification(), ...state.notifications] };
+  }
   const mmrRangeMode = normalizeRecruitingMmrRangeMode(draft.mmrRangeMode);
   const ratingScale = draft.ranked === false ? 1 : getRecruitingRatingScale({ ranked: draft.ranked !== false, mmrRangeMode });
   const post = {
@@ -2559,7 +2723,7 @@ export function createRecruitingPost(state, draft) {
     disputeMinutes: DISPUTE_WINDOW_MINUTES,
     hostJoinMode,
     hostSide: "teamA",
-    hostReady: false,
+    hostReady: true,
     roomState: { mmrRangeMode },
     sideCapacity,
     playerIds: hostPlayerIds,
@@ -2661,7 +2825,7 @@ export function interestRecruitingPost(state, postId, application = {}) {
         teamId: team.id,
         playerId: state.currentUserId,
         side,
-        status: "waiting",
+        status: "ready",
         reserve,
         position: application.position ?? null,
         playerIds: selectedPlayerIds,
@@ -2674,7 +2838,7 @@ export function interestRecruitingPost(state, postId, application = {}) {
         playerId: state.currentUserId,
         teamId: null,
         side,
-        status: "waiting",
+        status: "ready",
         reserve,
         position: application.position ?? user?.position ?? null,
         createdAt: now,
@@ -2722,6 +2886,66 @@ export function setRecruitingReady(state, postId, ready = true) {
         )),
       }, state);
     }),
+  };
+}
+
+export function updateRecruitingRoomRules(state, postId, patch = {}) {
+  const post = state.recruitingPosts?.find((item) => item.id === postId);
+  if (!post || post.status !== "open" || post.playerId !== state.currentUserId) return state;
+
+  const currentCapacity = getRecruitingSideCapacity(post);
+  const sideCapacity = Math.max(1, Math.min(5, Number(patch.sideCapacity ?? currentCapacity)));
+  const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
+  const nextMmrRangeMode = normalizeRecruitingMmrRangeMode(patch.mmrRangeMode ?? post.mmrRangeMode ?? roomState.mmrRangeMode);
+  const updatedAt = new Date().toISOString();
+  const nextPost = cleanRecruitingRoomStatRecorders({
+    ...post,
+    sideCapacity,
+    mmrRangeMode: nextMmrRangeMode,
+    ratingScale: getRecruitingRatingScale({ ...post, mmrRangeMode: nextMmrRangeMode }),
+    hostReady: false,
+    applicants: normalizeRecruitingApplicants(post.applicants ?? []).map((applicant) => ({
+      ...applicant,
+      status: "waiting",
+      updatedAt,
+    })),
+    roomState: {
+      ...roomState,
+      mmrRangeMode: nextMmrRangeMode,
+      ruleRevision: Number(roomState.ruleRevision ?? 0) + 1,
+      ruleChangedAt: updatedAt,
+    },
+  }, state);
+  const lobby = getRecruitingLobby(nextPost, state);
+  if (lobby.sides.teamA.filled > sideCapacity || lobby.sides.teamB.filled > sideCapacity) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "정원 변경 불가",
+          body: "현재 출전 인원이 새 정원보다 많습니다. 먼저 후보로 빼고 다시 변경하세요.",
+          tone: "orange",
+          recruitingPostId: postId,
+        },
+        ...state.notifications,
+      ],
+    };
+  }
+
+  return {
+    ...state,
+    recruitingPosts: (state.recruitingPosts ?? []).map((item) => (item.id === postId ? nextPost : item)),
+    notifications: [
+      {
+        id: makeId("n"),
+        title: "매칭방 룰 변경",
+        body: `${post.title} 룰이 바뀌어 참여자 재확인이 필요합니다.`,
+        tone: "match",
+        recruitingPostId: postId,
+      },
+      ...state.notifications,
+    ],
   };
 }
 
@@ -2897,7 +3121,7 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
     playerId: state.currentUserId,
     teamId: null,
     side,
-    status: "waiting",
+    status: "ready",
     reserve,
     position: user?.position ?? null,
     createdAt: now,
@@ -3164,7 +3388,7 @@ export function confirmRecruitingMatch(state, postId) {
     scheduledDate: post.scheduledDate ?? "",
     scheduledTime: post.scheduledTime ?? "",
     scheduledAt,
-    status: "contract",
+    status: "agreed",
     official: Boolean(post.official),
     preRegistered: true,
     refereeId,
@@ -3213,13 +3437,14 @@ export function confirmRecruitingMatch(state, postId) {
       teamA: lobby.sides.teamA.fillSlots.map((candidate) => candidate.playerId),
       teamB: lobby.sides.teamB.fillSlots.map((candidate) => candidate.playerId),
     },
-    agreements: { teamA: [], teamB: [] },
+    agreements: { teamA: teamAPlayers, teamB: teamBPlayers },
     approvals: { teamA: [], teamB: [] },
     disputes: [],
     result: null,
     ratingResult: null,
     teamRatingResult: null,
     recruitingPostId: post.id,
+    agreedAt: now,
     createdAt: now,
   };
 

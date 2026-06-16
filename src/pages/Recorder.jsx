@@ -27,9 +27,11 @@ const statusMeta = {
   agreed: { label: "진행", tone: "green" },
   approval: { label: "승인", tone: "orange" },
   disputed: { label: "이의", tone: "orange" },
+  confirmed: { label: "확정", tone: "green" },
 };
 
-const activeStatuses = new Set(["agreed", "approval", "disputed"]);
+const activeStatuses = new Set(["agreed", "approval", "disputed", "confirmed"]);
+const CONFIRMED_VISIBLE_MS = 24 * 60 * 60 * 1000;
 
 function makeInitialStats(match) {
   return Object.fromEntries(
@@ -83,6 +85,10 @@ function getRoleText(match, user, recorderSides) {
 
 function canAccessActiveMatch(match, user) {
   if (!activeStatuses.has(match.status)) return false;
+  if (match.status === "confirmed") {
+    const confirmedMs = new Date(match.confirmedAt ?? match.result?.submittedAt ?? match.endedAt ?? match.createdAt).getTime();
+    if (!Number.isFinite(confirmedMs) || Date.now() - confirmedMs > CONFIRMED_VISIBLE_MS) return false;
+  }
   const isReferee = isMatchReferee(match, user.id) && isEligibleReferee(user, match.refereeTrustMin);
   const isRecorder = !match.refereeId && getStatRecorderSides(match, user.id).length > 0;
   const isPlayer = getMatchPlayerIds(match).includes(user.id);
@@ -126,11 +132,13 @@ export default function Recorder({ app }) {
   const startsAt = selectedMatch ? getMatchStartDate(selectedMatch) : null;
   const beforeStart = startsAt && Date.now() < startsAt.getTime();
   const saveWindowOpen = selectedMatch && !beforeStart && (recordWindow?.beforeEnd || recordWindow?.statOpen);
-  const canSave = Boolean(selectedMatch && selectedMatch.status !== "disputed" && editablePlayerIds.length && saveWindowOpen);
+  const canSave = Boolean(selectedMatch && !["disputed", "confirmed"].includes(selectedMatch.status) && editablePlayerIds.length && saveWindowOpen);
   const scoreA = selectedMatch ? getSideScore(selectedMatch, stats, "teamA", editablePlayerIds) : 0;
   const scoreB = selectedMatch ? getSideScore(selectedMatch, stats, "teamB", editablePlayerIds) : 0;
   const saveLockedReason = beforeStart
     ? "경기 시작 전"
+    : selectedMatch?.status === "confirmed"
+      ? "결과 확정"
     : selectedMatch?.status === "disputed"
       ? "이의 확인 중"
     : recordWindow?.statExpired

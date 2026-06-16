@@ -10,7 +10,7 @@ import TierEmblem from "../components/rating/TierEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { COURTS } from "../lib/constants.js";
 import { getAllowedStatFields, getMatchRecordWindow, getPlayerStatSubmitted } from "../lib/matchUtils.js";
-import { RECRUITING_TYPES, getPendingRecruitingInvitations, isNationalRecruitingPost } from "../lib/recruiting.js";
+import { RECRUITING_TYPES, getPendingRecruitingInvitations, isNationalRecruitingPost, isRecruitingPostForUser } from "../lib/recruiting.js";
 import { getCurrentSeason, getPlayerSeasonRows, getSeasonProgress } from "../lib/season.js";
 import { getTierDivision } from "../lib/tier.js";
 
@@ -91,6 +91,7 @@ export default function Home({ app }) {
     .map((team) => ({ ...team, myRole: team.members.find((member) => member.userId === user.id)?.role ?? "regular" }))
     .sort((a, b) => Number(b.myRole === "captain") - Number(a.myRole === "captain") || b.mmr - a.mmr);
   const captainTeamIds = useMemo(() => myTeams.filter((team) => team.myRole === "captain").map((team) => team.id), [myTeams]);
+  const myTeamIds = useMemo(() => myTeams.map((team) => team.id), [myTeams]);
   const pendingInvitations = useMemo(() => getPendingRecruitingInvitations(app.state, user.id), [app.state, user.id]);
   const myTeamCount = app.state.teams.filter((team) => team.members.some((member) => member.userId === user.id)).length;
   const blockedUserIds = app.state.settings?.blockedUserIds ?? [];
@@ -111,7 +112,7 @@ export default function Home({ app }) {
   }, [app.state.teams, myTeam?.id, myTeam?.mmr, user.ratings.integrated, user.region]);
   const localRecruitingPosts = useMemo(() => {
     return [...(app.state.recruitingPosts ?? [])]
-      .filter((post) => post.status !== "closed")
+      .filter((post) => post.status === "open")
       .filter((post) => post.region === user.region || isNationalRecruitingPost(post, app.state))
       .slice(0, 3);
   }, [app.state, app.state.recruitingPosts, user.region]);
@@ -182,11 +183,25 @@ export default function Home({ app }) {
       href: `/app/recruiting?filter=invited&post=${post.id}`,
       icon: UserPlus,
     }));
+    const cancelledRoomItems = (app.state.recruitingPosts ?? [])
+      .filter((post) => post.status === "cancelled")
+      .filter((post) => isRecruitingPostForUser(post, user.id, myTeamIds))
+      .sort((a, b) => String(b.cancelledAt ?? b.createdAt ?? "").localeCompare(String(a.cancelledAt ?? a.createdAt ?? "")))
+      .slice(0, 2)
+      .map((post) => ({
+        id: `cancelled-room-${post.id}`,
+        priority: 5,
+        label: "방 취소",
+        title: post.title,
+        meta: `${getRecruitingSchedule(post)} · ${post.court}`,
+        href: `/app/recruiting?post=${post.id}`,
+        icon: ShieldAlert,
+      }));
 
-    return [...invitationItems, ...tournamentInviteItems, ...matchItems]
+    return [...invitationItems, ...tournamentInviteItems, ...matchItems, ...cancelledRoomItems]
       .sort((a, b) => a.priority - b.priority || String(a.meta).localeCompare(String(b.meta)))
       .slice(0, 5);
-  }, [app.state.matches, app.state.tournaments, captainTeamIds, pendingInvitations, teamById, user.id]);
+  }, [app.state.matches, app.state.recruitingPosts, app.state.tournaments, captainTeamIds, myTeamIds, pendingInvitations, teamById, user.id]);
 
   const searchResults = useMemo(() => {
     if (!searchText) return [];

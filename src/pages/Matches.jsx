@@ -5,6 +5,7 @@ import Button from "../components/common/Button.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { MATCH_MODES } from "../lib/constants.js";
+import { getRecruitingLobby, getRecruitingSideCapacity, isRecruitingPostForUser } from "../lib/recruiting.js";
 
 const STATUS_META = {
   contract: { label: "동의", tone: "blue" },
@@ -42,6 +43,14 @@ const VIEWS = [
     statuses: ["agreed"],
   },
   {
+    id: "history",
+    code: "HISTORY",
+    title: "지난 경기",
+    desc: "1/3/6개월 전적",
+    icon: CheckCircle2,
+    statuses: ["confirmed"],
+  },
+  {
     id: "closed",
     code: "CLOSED",
     title: "닫힘",
@@ -51,7 +60,6 @@ const VIEWS = [
   },
 ];
 
-const ACTIVE_STATUSES = new Set(["contract", "agreed", "approval", "disputed"]);
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 const tournamentFormatLabels = {
   league: "리그",
@@ -91,6 +99,19 @@ function addMonths(monthKey, amount) {
   const [year, month] = monthKey.split("-").map(Number);
   const date = new Date(year, month - 1 + amount, 1);
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function addDays(dateValue, amount) {
+  const date = new Date(`${dateValue}T00:00:00`);
+  date.setDate(date.getDate() + amount);
+  return toDateInputValue(date);
+}
+
+function subtractMonths(dateValue, amount) {
+  const [year, month, day] = dateValue.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  date.setMonth(date.getMonth() - amount);
+  return toDateInputValue(date);
 }
 
 function getCalendarDays(monthKey) {
@@ -146,12 +167,41 @@ function getMatchActionLabel(match) {
   return "보기";
 }
 
-function getViewCount(matches, view) {
-  return matches.filter((match) => view.statuses.includes(match.status)).length;
+function getViewCount(matches, view, userId) {
+  return matches.filter((match) => shouldShowMatchForView(match, view, userId)).length;
 }
 
 function matchHasUser(match, userId) {
   return match.teamA.players.includes(userId) || match.teamB.players.includes(userId);
+}
+
+function getUserSideName(match, userId) {
+  if (match.teamA.players.includes(userId)) return "teamA";
+  if (match.teamB.players.includes(userId)) return "teamB";
+  return null;
+}
+
+function userDecisionDone(match, userId) {
+  const sideName = getUserSideName(match, userId);
+  if (!sideName) return false;
+  if (match.status === "contract") return (match.agreements?.[sideName] ?? []).includes(userId);
+  if (match.status === "approval") return (match.approvals?.[sideName] ?? []).includes(userId);
+  return false;
+}
+
+function shouldShowMatchForView(match, view, userId) {
+  if (!view.statuses.includes(match.status)) return false;
+  if ((view.id === "active" || view.id === "todo") && userDecisionDone(match, userId)) return false;
+  return true;
+}
+
+function getRecruitingEntryForUser(lobby, userId, teamIds = []) {
+  const teamIdSet = new Set(teamIds);
+  return (lobby.entries ?? []).find((entry) => (
+    entry.playerId === userId ||
+    (entry.players ?? []).includes(userId) ||
+    (entry.teamId && teamIdSet.has(entry.teamId))
+  )) ?? null;
 }
 
 function getTeamCaptainId(team) {
@@ -197,10 +247,13 @@ export default function Matches({ app }) {
   const [kindFilter, setKindFilter] = useState("all");
   const [modeFilter, setModeFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("");
+  const [historyRangeMonths, setHistoryRangeMonths] = useState(1);
   const [calendarMonth, setCalendarMonth] = useState(getMonthKey());
   const [tournamentPanelOpen, setTournamentPanelOpen] = useState(false);
   const [selectedTournamentId, setSelectedTournamentId] = useState(null);
   const todayValue = toDateInputValue();
+  const maxScheduleDate = addDays(todayValue, 365);
+  const historyCutoffDate = subtractMonths(todayValue, historyRangeMonths);
   const selectedView = VIEWS.find((view) => view.id === viewId) ?? VIEWS[0];
   const teamById = useMemo(() => Object.fromEntries(app.state.teams.map((team) => [team.id, team])), [app.state.teams]);
   const userById = useMemo(() => Object.fromEntries(app.state.users.map((user) => [user.id, user])), [app.state.users]);
@@ -227,18 +280,33 @@ export default function Matches({ app }) {
   const baseFilteredMatches = useMemo(() => {
     return [...app.state.matches]
       .filter((match) => matchHasUser(match, app.currentUser.id))
-      .filter((match) => match.status !== "confirmed")
+      .filter((match) => {
+        const matchDate = getMatchDate(match);
+        if (!matchDate) return true;
+        if (matchDate > maxScheduleDate) return false;
+        if (["confirmed", "cancelled", "void"].includes(match.status) && matchDate < historyCutoffDate) return false;
+        return true;
+      })
       .filter((match) => kindFilter === "all" || (kindFilter === "ranked" ? match.ranked !== false : match.ranked === false))
       .filter((match) => modeFilter === "all" || match.mode === modeFilter);
-  }, [app.currentUser.id, app.state.matches, kindFilter, modeFilter]);
+  }, [app.currentUser.id, app.state.matches, historyCutoffDate, kindFilter, maxScheduleDate, modeFilter]);
 
   const filteredMatches = useMemo(() => {
     return baseFilteredMatches.filter((match) => !dateFilter || getMatchDate(match) === dateFilter);
   }, [baseFilteredMatches, dateFilter]);
 
   const calendarMatches = useMemo(() => {
-    return baseFilteredMatches.filter((match) => ACTIVE_STATUSES.has(match.status) && getMatchDate(match));
-  }, [baseFilteredMatches]);
+    const recruitingRooms = [...(app.state.recruitingPosts ?? [])]
+      .filter((post) => post.status === "open")
+      .filter((post) => isRecruitingPostForUser(post, app.currentUser.id, myTeamIds))
+      .filter((post) => {
+        const postDate = getMatchDate(post);
+        return postDate && postDate <= maxScheduleDate;
+      })
+      .filter((post) => kindFilter === "all" || (kindFilter === "ranked" ? post.ranked !== false : post.ranked === false))
+      .filter((post) => modeFilter === "all" || post.mode === modeFilter);
+    return [...baseFilteredMatches.filter((match) => getMatchDate(match)), ...recruitingRooms];
+  }, [app.currentUser.id, app.state.recruitingPosts, baseFilteredMatches, kindFilter, maxScheduleDate, modeFilter, myTeamIds]);
 
   const calendarCounts = useMemo(() => {
     return calendarMatches.reduce((map, match) => {
@@ -253,14 +321,31 @@ export default function Matches({ app }) {
 
   const matchesByView = useMemo(() => {
     return filteredMatches
-      .filter((match) => selectedView.statuses.includes(match.status))
+      .filter((match) => shouldShowMatchForView(match, selectedView, app.currentUser.id))
       .sort(compareSchedule);
-  }, [filteredMatches, selectedView.statuses]);
+  }, [app.currentUser.id, filteredMatches, selectedView]);
+
+  const visibleRecruitingRooms = useMemo(() => {
+    if (viewId !== "active") return [];
+    return [...(app.state.recruitingPosts ?? [])]
+      .filter((post) => post.status === "open")
+      .filter((post) => isRecruitingPostForUser(post, app.currentUser.id, myTeamIds))
+      .filter((post) => {
+        const postDate = getMatchDate(post);
+        if (!postDate) return true;
+        if (postDate > maxScheduleDate) return false;
+        return !dateFilter || postDate === dateFilter;
+      })
+      .filter((post) => kindFilter === "all" || (kindFilter === "ranked" ? post.ranked !== false : post.ranked === false))
+      .filter((post) => modeFilter === "all" || post.mode === modeFilter)
+      .sort(compareSchedule)
+      .slice(0, 12);
+  }, [app.currentUser.id, app.state.recruitingPosts, dateFilter, kindFilter, maxScheduleDate, modeFilter, myTeamIds, viewId]);
 
   const visibleMatches = matchesByView.slice(0, 60);
-  const activeCount = getViewCount(filteredMatches, VIEWS[0]);
-  const todoCount = getViewCount(filteredMatches, VIEWS[1]);
-  const scheduledCount = getViewCount(filteredMatches, VIEWS[2]);
+  const activeCount = getViewCount(filteredMatches, VIEWS[0], app.currentUser.id);
+  const todoCount = getViewCount(filteredMatches, VIEWS[1], app.currentUser.id);
+  const scheduledCount = getViewCount(filteredMatches, VIEWS[2], app.currentUser.id);
   const saveTournamentSchedule = (event, tournamentId, matchId) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -307,7 +392,7 @@ export default function Matches({ app }) {
                 <strong>{view.title}</strong>
                 <em>{view.desc}</em>
               </span>
-              <b>{getViewCount(baseFilteredMatches, view)}</b>
+              <b>{getViewCount(baseFilteredMatches, view, app.currentUser.id)}</b>
             </button>
           );
         })}
@@ -363,7 +448,7 @@ export default function Matches({ app }) {
                   className={`${selected ? "active" : ""} ${isToday ? "today" : ""}`}
                   onClick={() => {
                     setDateFilter(day);
-                    setViewId("active");
+                    setViewId(day < todayValue ? "history" : "active");
                   }}
                 >
                   <strong>{Number(day.slice(-2))}</strong>
@@ -513,7 +598,7 @@ export default function Matches({ app }) {
                           {" vs "}
                           <TeamHoverCard team={teamById[match.teamB.teamId]} as="span">{match.teamB.name}</TeamHoverCard>
                         </Link>
-                        <input type="date" name="scheduledDate" defaultValue={match.scheduledDate ?? ""} disabled={!canManageSchedule} aria-label="경기 날짜" />
+                        <input type="date" name="scheduledDate" min={todayValue} max={maxScheduleDate} defaultValue={match.scheduledDate ?? ""} disabled={!canManageSchedule} aria-label="경기 날짜" />
                         <input type="time" name="scheduledTime" defaultValue={match.scheduledTime ?? ""} disabled={!canManageSchedule} aria-label="경기 시간" />
                         <button type="submit" disabled={!canManageSchedule}>저장</button>
                       </form>
@@ -541,7 +626,58 @@ export default function Matches({ app }) {
             {MATCH_MODES.map((mode) => <option key={mode.id} value={mode.id}>{mode.label}</option>)}
           </select>
         </label>
+        {selectedView.id === "history" ? (
+          <label>
+            지난 경기
+            <select value={historyRangeMonths} onChange={(event) => setHistoryRangeMonths(Number(event.target.value))}>
+              <option value={1}>1개월</option>
+              <option value={3}>3개월</option>
+              <option value={6}>6개월</option>
+            </select>
+          </label>
+        ) : null}
       </section>
+
+      {visibleRecruitingRooms.length ? (
+        <section className="om-match-list" aria-label="확정 전 매칭방">
+          <div className="om-list-head">
+            <div>
+              <span className="om-kicker">OPEN ROOM</span>
+              <h2>확정 전 매칭방</h2>
+            </div>
+            <span>{visibleRecruitingRooms.length}개</span>
+          </div>
+          {visibleRecruitingRooms.map((post) => {
+            const lobby = getRecruitingLobby(post, app.state);
+            const myEntry = getRecruitingEntryForUser(lobby, app.currentUser.id, myTeamIds);
+            const needConfirm = myEntry && myEntry.status !== "ready";
+            const filled = lobby.sides.teamA.projectedFilled + lobby.sides.teamB.projectedFilled;
+            const capacity = getRecruitingSideCapacity(post) * 2;
+            return (
+              <article key={post.id} className="om-match-card om-status-contract">
+                <div className="om-card-main">
+                  <div className="om-card-kicker">
+                    <span className={`om-status-pill ${needConfirm ? "orange" : "blue"}`}>{needConfirm ? "재확인 필요" : "확정 대기"}</span>
+                    <span className="om-card-mode">{post.mode}</span>
+                    <span className="om-card-official">{post.ranked === false ? "친선" : "정규"}</span>
+                  </div>
+                  <h3>{post.title}</h3>
+                  <p><CalendarDays size={15} />{formatMatchTime(post)} · {post.court}</p>
+                </div>
+                <div className="om-score-box">
+                  <span>A {lobby.sides.teamA.projectedFilled}/{lobby.sides.teamA.capacity}</span>
+                  <strong>{filled}/{capacity}</strong>
+                  <span>B {lobby.sides.teamB.projectedFilled}/{lobby.sides.teamB.capacity}</span>
+                  <span>{lobby.canConfirm ? "방장 확정 가능" : "인원 충원 중"}</span>
+                </div>
+                <Link className="button button-secondary button-md om-room-link" to={`/app/recruiting?post=${post.id}`}>
+                  {needConfirm ? "참여 유지" : "방 보기"}
+                </Link>
+              </article>
+            );
+          })}
+        </section>
+      ) : null}
 
       <section className="om-match-list" aria-label="경기 목록">
         <div className="om-list-head">

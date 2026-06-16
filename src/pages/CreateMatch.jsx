@@ -14,6 +14,7 @@ import { MMR_RANGE_POLICIES, getRecruitingSideCapacity, getRecruitingTierRange, 
 
 const today = new Date().toISOString().slice(0, 10);
 const nextWeek = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString().slice(0, 10);
+const maxScheduleDate = new Date(Date.now() + 1000 * 60 * 60 * 24 * 365).toISOString().slice(0, 10);
 const allRegions = ["전체", ...REGIONS];
 const mmrLimitOptions = [
   { id: "off", label: "제한 없음" },
@@ -250,6 +251,8 @@ export default function CreateMatch({ app }) {
       selectedTeamB &&
       !isMmrInRecruitingRange(selectedTeamB.mmr, selectedTeamA.mmr, true, draft.mmrRangeMode),
   );
+  const scheduleAllowed = draft.scheduledDate >= today && draft.scheduledDate <= maxScheduleDate;
+  const tournamentEndAllowed = !isTournamentRoom || (draft.tournamentEndDate >= today && draft.tournamentEndDate <= maxScheduleDate);
   const privateTeamInvalid = !selectedTeamA || !selectedTeamB || selectedTeamA.id === selectedTeamB.id;
   const publicTeamInvalid = draft.hostJoinMode === "team" && (
     !myTeams.some((team) => team.id === draft.teamAId) || !publicPartyPlayerIds.length
@@ -261,11 +264,11 @@ export default function CreateMatch({ app }) {
       tournamentMmrSpread > Number(draft.tournamentMaxMmrGap ?? 250),
   );
   const tournamentInvalid = !draft.title.trim() || tournamentTeams.length < 2 || tournamentMmrBlocked;
-  const submitDisabled = isTournamentRoom
+  const submitDisabled = !scheduleAllowed || !tournamentEndAllowed || (isTournamentRoom
     ? tournamentInvalid
     : isPublicRoom
       ? publicTeamInvalid
-      : teamTierBlocked || privateTeamInvalid;
+      : teamTierBlocked || privateTeamInvalid);
   const selectedCourt = useMemo(
     () => COURTS.find((court) => court.name === draft.court) ?? COURTS[0],
     [draft.court],
@@ -484,7 +487,7 @@ export default function CreateMatch({ app }) {
             </label>
             <label>
               날짜
-              <input type="date" value={draft.scheduledDate} onChange={(event) => update({ scheduledDate: event.target.value })} />
+              <input type="date" min={today} max={maxScheduleDate} value={draft.scheduledDate} onChange={(event) => update({ scheduledDate: event.target.value })} />
             </label>
             <label>
               시간
@@ -510,7 +513,7 @@ export default function CreateMatch({ app }) {
               <>
                 <label>
                   종료일
-                  <input type="date" value={draft.tournamentEndDate} onChange={(event) => update({ tournamentEndDate: event.target.value })} />
+                  <input type="date" min={today} max={maxScheduleDate} value={draft.tournamentEndDate} onChange={(event) => update({ tournamentEndDate: event.target.value })} />
                 </label>
                 <label>
                   일정 배정

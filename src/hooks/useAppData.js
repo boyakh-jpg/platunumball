@@ -28,6 +28,7 @@ import {
   reportMatch,
   resetState,
   resumeMatchApproval,
+  runAutomaticStateMaintenance,
   saveRemoteState,
   saveState,
   sendRecruitingChat,
@@ -48,6 +49,7 @@ import {
   updateTournamentMatchSchedule,
   updatePrivacySettings,
   updateProfile,
+  updateRecruitingRoomRules,
   unblockUser,
   voidMatch,
 } from "../data/repository.js";
@@ -82,6 +84,14 @@ export function useAppData(authUserId = null) {
   }, [state]);
 
   useEffect(() => {
+    setState((prev) => runAutomaticStateMaintenance(prev));
+    const interval = window.setInterval(() => {
+      setState((prev) => runAutomaticStateMaintenance(prev));
+    }, 60000);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
     if (!isSupabaseConfigured) return undefined;
 
     let mounted = true;
@@ -101,7 +111,7 @@ export function useAppData(authUserId = null) {
 
     const unsubscribe = subscribeRemoteState((remoteState) => {
       skipNextRemoteSaveRef.current = true;
-      setState(remoteState);
+      setState(runAutomaticStateMaintenance(remoteState));
     });
 
     return () => {
@@ -189,6 +199,7 @@ export function useAppData(authUserId = null) {
       declineRecruitingInvitation: (postId, invitationId) => setState((prev) => declineRecruitingInvitation({ ...prev, currentUserId }, postId, invitationId)),
       cancelRecruitingParticipation: (postId) => setState((prev) => cancelRecruitingParticipation({ ...prev, currentUserId }, postId)),
       setRecruitingReady: (postId, ready) => setState((prev) => setRecruitingReady({ ...prev, currentUserId }, postId, ready)),
+      updateRecruitingRoomRules: (postId, patch) => setState((prev) => updateRecruitingRoomRules({ ...prev, currentUserId }, postId, patch)),
       sendRecruitingChat: (postId, body) => setState((prev) => sendRecruitingChat({ ...prev, currentUserId }, postId, body)),
       setRecruitingApplicantReserve: (postId, playerId, reserve) => {
         setState((prev) => setRecruitingApplicantReserve({ ...prev, currentUserId }, postId, playerId, reserve));

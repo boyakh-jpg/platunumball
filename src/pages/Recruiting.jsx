@@ -73,6 +73,15 @@ function getTodayInputValue() {
   return `${year}-${month}-${day}`;
 }
 
+function getMaxInputValue() {
+  const date = new Date();
+  date.setDate(date.getDate() + 365);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function getRecruitingSchedule(post) {
   return [post.scheduledDate, post.scheduledTime].filter(Boolean).join(" ") || post.scheduledAt || "일정 미정";
 }
@@ -215,7 +224,7 @@ function TeamMemberPicker({ team, userById, selectedIds, capacity, onChange }) {
 function EntryBlock({ entry, userById, teams }) {
   const mmr = getEntryMmr(entry);
   const players = entry.players.map((playerId) => userById[playerId]).filter(Boolean);
-  const readyLabel = entry.status === "ready" ? "대기 완료" : "대기 전";
+  const readyLabel = entry.status === "ready" ? "참여 확정" : "재확인 필요";
 
   return (
     <div className={`ow-party-block ${entry.status === "ready" ? "ready" : ""}`}>
@@ -234,7 +243,7 @@ function EntryBlock({ entry, userById, teams }) {
         <div className="ow-party-meta">
           <TierBadge mmr={mmr} compact />
           <Badge tone={entry.status === "ready" ? "green" : "neutral"}>
-            {entry.status === "ready" ? "대기 완료" : "대기 전"}
+            {entry.status === "ready" ? "참여 확정" : "재확인 필요"}
           </Badge>
         </div>
       </div>
@@ -290,7 +299,7 @@ function QueueRoomBoard({ lobby, userById, teams }) {
           <b>{row.label}</b>
         )}
       </span>
-      <em>{row.ready ? "대기 완료" : "대기 전"}</em>
+      <em>{row.ready ? "참여 확정" : "재확인 필요"}</em>
     </span>
   );
   const renderGroup = (id, label, side) => {
@@ -302,7 +311,7 @@ function QueueRoomBoard({ lobby, userById, teams }) {
           <strong>{label}</strong>
           <small>{side ? `${side.projectedFilled}/${side.capacity}` : `${groupRows.length}명`}</small>
         </header>
-        <div>{groupRows.length ? groupRows.map(renderRow) : <span className="empty">대기 없음</span>}</div>
+        <div>{groupRows.length ? groupRows.map(renderRow) : <span className="empty">참여 없음</span>}</div>
       </div>
     );
   };
@@ -313,8 +322,8 @@ function QueueRoomBoard({ lobby, userById, teams }) {
   return (
     <div className={lobby.canConfirm ? "ow-queue-board complete" : "ow-queue-board"}>
       <div className="ow-queue-board-head">
-        <span>{lobby.canConfirm ? "확정 가능" : "대기 확인 중"}</span>
-        <b>대기 {readyCount}/{rows.length}</b>
+        <span>{lobby.canConfirm ? "확정 가능" : "참여 확인 중"}</span>
+        <b>참여 {readyCount}/{rows.length}</b>
         <b>인원 {filledCount}/{totalCapacity}</b>
       </div>
       <div className="ow-queue-board-grid">
@@ -328,7 +337,7 @@ function QueueRoomBoard({ lobby, userById, teams }) {
 
 function FillSlot({ candidate, userById, teams }) {
   const user = candidate ? userById[candidate.playerId] : null;
-  const readyLabel = candidate?.status === "ready" ? "대기 완료" : "대기 전";
+  const readyLabel = candidate?.status === "ready" ? "참여 확정" : "재확인 필요";
   if (!user) {
     return (
       <div className="ow-open-slot empty">
@@ -343,7 +352,7 @@ function FillSlot({ candidate, userById, teams }) {
       <span className="avatar small" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
       <span>
         <strong>{user.name}</strong>
-        <em>{candidate.status === "ready" ? "충원 예정" : "준비 대기"} · {candidate.sourceLabel}</em>
+        <em>{candidate.status === "ready" ? "충원 예정" : "재확인 필요"} · {candidate.sourceLabel}</em>
       </span>
       <TierBadge mmr={user.ratings.integrated} compact />
       <Badge tone={candidate.status === "ready" ? "green" : "neutral"}>{readyLabel}</Badge>
@@ -411,7 +420,7 @@ function ReserveLine({ sideName, candidates, playingIds, userById, teams, canMan
                 <b>{index + 1}</b>
                 <span className="avatar small" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
                 <span>{user.name}</span>
-                <Badge tone={candidate.status === "ready" ? "green" : "neutral"}>{candidate.status === "ready" ? "대기 완료" : "대기 전"}</Badge>
+                <Badge tone={candidate.status === "ready" ? "green" : "neutral"}>{candidate.status === "ready" ? "참여 확정" : "재확인 필요"}</Badge>
                 {canRecord ? <em>{assigned ? "기록자 지정됨" : "기록 가능"}</em> : null}
               </PlayerHoverCard>
               {canManage && canRecord ? (
@@ -468,7 +477,7 @@ function HostRoomControls({ lobby, userById, teams, recorderIds = {}, canAssignR
                 </PlayerHoverCard>
                 <span>
                   <strong>{getEntryTitle(entry)}</strong>
-                  <em>{SIDE_LABELS[entry.side]} · {entry.reserve ? "후보" : "출전"} · {entry.status === "ready" ? "대기 완료" : "대기 전"}</em>
+                  <em>{SIDE_LABELS[entry.side]} · {entry.reserve ? "후보" : "출전"} · {entry.status === "ready" ? "참여 확정" : "재확인 필요"}</em>
                 </span>
               </div>
               <div className="ow-placement-actions">
@@ -836,7 +845,10 @@ export default function Recruiting({ app }) {
   const draftRangePolicy = MMR_RANGE_POLICIES[draft.mmrRangeMode] ?? MMR_RANGE_POLICIES.narrow;
   const hostNeedsTeam = draft.hostJoinMode === "team";
   const hasSchedule = Boolean(draft.scheduledDate && draft.scheduledTime && draft.court);
-  const canPostRecruiting = hasSchedule && (!hostNeedsTeam || (Boolean(selectedTeam) && selectedHostPlayerIds.length > 0));
+  const minScheduleDate = getTodayInputValue();
+  const maxScheduleDate = getMaxInputValue();
+  const scheduleAllowed = draft.scheduledDate >= minScheduleDate && draft.scheduledDate <= maxScheduleDate;
+  const canPostRecruiting = hasSchedule && scheduleAllowed && (!hostNeedsTeam || (Boolean(selectedTeam) && selectedHostPlayerIds.length > 0));
 
   useEffect(() => {
     if (targetFilter === "invited") {
@@ -1091,7 +1103,7 @@ export default function Recruiting({ app }) {
                   <span>{getRecruitingSchedule(post)}</span>
                   <span className="ow-tier-chip">{post.ranked === false ? "티어 자유" : range.label}</span>
                   <span>{formatWhen(post.createdAt)}</span>
-                  <span>{lobby.ready ? "전원 대기 완료" : "대기 확인 중"}</span>
+                  <span>{lobby.ready ? "전원 참여 확정" : "참여 확인 중"}</span>
                 </div>
               </div>
 
@@ -1110,7 +1122,7 @@ export default function Recruiting({ app }) {
                     variant="secondary"
                     onClick={() => app.actions.interestRecruitingPost(post.id, getDefaultJoinDraft(post, myTeams, app.currentUser, app.state))}
                   >
-                    <Clock3 size={16} /> 빠른 대기
+                    <Clock3 size={16} /> 빠른 참여
                   </Button>
                 ) : null}
               </div>
@@ -1188,7 +1200,7 @@ export default function Recruiting({ app }) {
                 {selectedTargetTeam ? <span><Swords size={16} /> 희망 상대 {selectedTargetTeam.name}</span> : null}
                 <span><ShieldCheck size={16} /> {selectedReferee ? `심판 ${selectedReferee.name}` : statRecorderLabels.length ? `후보 기록자 ${statRecorderLabels.join(" · ")}` : "심판 없음 · 득점만"}</span>
                 <span><UsersRound size={16} /> 팀은 선택 멤버만 참여</span>
-                <span><Clock3 size={16} /> 전원 대기 후 방장 확정</span>
+                <span><Clock3 size={16} /> 인원 충원 후 방장 확정</span>
               </div>
 
               <div className="ow-lobby-grid">
@@ -1260,10 +1272,24 @@ export default function Recruiting({ app }) {
               </div>
 
               <div className="ow-room-rule-panel">
+                {mine ? (
+                  <div className="ow-room-rule-controls">
+                    <label>
+                      팀당 정원
+                      <select
+                        value={getRecruitingSideCapacity(selectedPost)}
+                        onChange={(event) => app.actions.updateRecruitingRoomRules(selectedPost.id, { sideCapacity: Number(event.target.value) })}
+                      >
+                        {[1, 2, 3, 4, 5].map((value) => <option key={value} value={value}>{value} vs {value}</option>)}
+                      </select>
+                    </label>
+                    <small>정원을 바꾸면 전원 참여 유지 확인이 다시 필요하다.</small>
+                  </div>
+                ) : null}
                 <strong>규칙</strong>
                 <span>{selectedPost.memo}</span>
                 <span>팀 MMR은 실제 참가한 팀원 비율 기준으로 반영한다.</span>
-                <span>후보가 경기 밖에서 대기 완료하면 해당 팀 개인 활약 기록자로 배정된다.</span>
+                <span>후보가 경기 밖에서 참여 확정하면 해당 팀 개인 활약 기록자로 배정된다.</span>
                 <span>확정 후 불참하면 신뢰점수 패널티 대상이다.</span>
               </div>
 
@@ -1295,12 +1321,12 @@ export default function Recruiting({ app }) {
                 {mine ? (
                   <div className="ow-owner-panel">
                     <strong>방장 권한</strong>
-                    <span>{lobby.canConfirm ? "확정 가능" : "양쪽 인원과 대기 상태를 채워야 확정 가능"}</span>
+                    <span>{lobby.canConfirm ? "확정 가능" : "양쪽 인원과 참여 확인을 채워야 확정 가능"}</span>
                   </div>
                 ) : alreadyApplied ? (
                   <div className="ow-owner-panel">
-                    <strong>대기 등록됨</strong>
-                    <span>방장이 확정하기 전까지 준비 상태를 바꿀 수 있다.</span>
+                    <strong>참여 등록됨</strong>
+                    <span>룰이 바뀌면 참여 유지 확인이 다시 필요하다.</span>
                   </div>
                 ) : (
                   <form className="ow-join-form" onSubmit={(event) => { event.preventDefault(); submitJoin(selectedPost); }}>
@@ -1370,7 +1396,7 @@ export default function Recruiting({ app }) {
                       </label>
                       <label className="ow-check-row">
                         <input type="checkbox" checked={joinDraft.reserve} onChange={(event) => updateJoinDraft(selectedPost, { reserve: event.target.checked })} />
-                        후보로 대기
+                        후보로 참여
                       </label>
                     </div>
                     <div className="ow-mini-note">
@@ -1388,14 +1414,14 @@ export default function Recruiting({ app }) {
                   </form>
                 )}
 
-                {myEntry ? (
+                {myEntry && myEntry.status !== "ready" ? (
                   <Button
                     type="button"
-                    variant={myEntry.status === "ready" ? "secondary" : "primary"}
-                    onClick={() => app.actions.setRecruitingReady(selectedPost.id, myEntry.status !== "ready")}
+                    variant="primary"
+                    onClick={() => app.actions.setRecruitingReady(selectedPost.id, true)}
                   >
-                    {myEntry.status === "ready" ? <Clock3 size={18} /> : <CheckCircle2 size={18} />}
-                    {myEntry.status === "ready" ? "준비 해제" : "대기 완료"}
+                    <CheckCircle2 size={18} />
+                    참여 유지
                   </Button>
                 ) : null}
                 {alreadyApplied ? (
@@ -1488,7 +1514,7 @@ export default function Recruiting({ app }) {
               <div className="ow-field-grid">
                 <label>
                   날짜
-                  <input type="date" required value={draft.scheduledDate} onChange={(event) => update({ scheduledDate: event.target.value })} />
+                  <input type="date" required min={minScheduleDate} max={maxScheduleDate} value={draft.scheduledDate} onChange={(event) => update({ scheduledDate: event.target.value })} />
                 </label>
                 <label>
                   시간

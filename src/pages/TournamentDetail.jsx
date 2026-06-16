@@ -4,6 +4,20 @@ import Badge from "../components/common/Badge.jsx";
 import TierBadge from "../components/rating/TierBadge.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 
+function toDateInputValue(date = new Date()) {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+function addDays(dateValue, amount) {
+  const date = new Date(`${dateValue}T00:00:00`);
+  date.setDate(date.getDate() + amount);
+  return toDateInputValue(date);
+}
+
 const formatLabels = {
   league: "리그",
   tournament: "토너먼트",
@@ -307,6 +321,8 @@ export default function TournamentDetail({ app }) {
   const championTeamId = verticalBracket.finalNode ? getNodeWinnerTeamId(verticalBracket.finalNode) : "";
   const championTeam = championTeamId ? teamById[championTeamId] : null;
   const canManageSchedule = tournament.createdBy === app.currentUser.id;
+  const todayValue = toDateInputValue();
+  const maxScheduleDate = addDays(todayValue, 365);
   const leagueFixtures = tournament.bracket?.fixtures ?? tournamentMatches.map((match) => ({
     matchId: match.id,
     round: match.tournamentRound,
@@ -463,7 +479,7 @@ export default function TournamentDetail({ app }) {
                   <TeamHoverCard team={teamById[match.teamB.teamId]} as="span">{match.teamB.name}</TeamHoverCard>
                 </Link>
                 <span>{match.status === "confirmed" ? "확정" : match.status === "agreed" ? "예정" : "대기"}</span>
-                <input type="date" name="scheduledDate" defaultValue={match.scheduledDate ?? ""} disabled={!canManageSchedule} aria-label="경기 날짜" />
+                <input type="date" name="scheduledDate" min={todayValue} max={maxScheduleDate} defaultValue={match.scheduledDate ?? ""} disabled={!canManageSchedule} aria-label="경기 날짜" />
                 <input type="time" name="scheduledTime" defaultValue={match.scheduledTime ?? ""} disabled={!canManageSchedule} aria-label="경기 시간" />
                 <button type="submit" disabled={!canManageSchedule}><Save size={14} /> 저장</button>
               </form>
