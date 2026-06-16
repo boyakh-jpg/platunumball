@@ -231,6 +231,29 @@ function getSameSidePartyOptions(lobby, myEntry, myTeams = [], targetSide = myEn
   });
 }
 
+function getJoinableSidePartyOptions(lobby, myTeams = [], currentUserId = "", targetSide = "") {
+  const sides = ["teamA", "teamB"].filter((sideName) => !targetSide || sideName === targetSide);
+  const seen = new Set();
+  return sides.flatMap((sideName) => {
+    const sideEntries = lobby.sides[sideName]?.entries ?? [];
+    return myTeams.flatMap((team) => {
+      const memberIds = new Set((team.members ?? []).map((member) => member.userId));
+      const hasCurrentUser = memberIds.has(currentUserId);
+      const canJoin = hasCurrentUser && sideEntries.some((entry) => (
+        ![entry.playerId, ...(entry.players ?? []), ...(entry.reserves ?? [])].includes(currentUserId) &&
+        (
+          entry.team?.id === team.id ||
+          (entry.kind === "player" && memberIds.has(entry.playerId))
+        )
+      ));
+      const key = `${sideName}-${team.id}`;
+      if (!canJoin || seen.has(key)) return [];
+      seen.add(key);
+      return [{ team, sideName }];
+    });
+  });
+}
+
 function SlotActionMenu({ label = "관리", children }) {
   return (
     <details className="ow-slot-action-menu" onClick={(event) => event.stopPropagation()}>
@@ -1579,6 +1602,7 @@ export default function Recruiting({ app }) {
         const roomEditCapacityValid = !roomEditDraft || Number(roomEditDraft.sideCapacity) >= maxSideFilled;
         const playingIds = [...lobby.sides.teamA.projectedPlayers, ...lobby.sides.teamB.projectedPlayers];
         const partyJoinOptions = getSameSidePartyOptions(lobby, myEntry, myTeams);
+        const sidePartyJoinOptions = getJoinableSidePartyOptions(lobby, myTeams, app.currentUser.id);
         const roomState = selectedPost.roomState ?? {};
         const recorderIds = getLobbyRecorderIds(lobby);
         const chatMessages = roomState.chatMessages ?? [];
@@ -1665,7 +1689,7 @@ export default function Recruiting({ app }) {
               canMoveHere={canMoveHere}
               partyJoinOptions={targetPartyOptions}
               onMoveHere={() => moveActiveUserToSlot(sideName, reserve)}
-              onJoinParty={(teamId) => app.actions.joinRecruitingSideParty(selectedPost.id, teamId)}
+              onJoinParty={(teamId) => app.actions.joinRecruitingSideParty(selectedPost.id, teamId, sideName)}
               onClose={() => setInviteDraft(null)}
             >
               <InvitePanel
@@ -1990,11 +2014,11 @@ export default function Recruiting({ app }) {
                     <strong>참여 등록됨</strong>
                     <span>팀 조율은 채팅으로 합의하고, 내 A/B 위치는 직접 바꿀 수 있습니다.</span>
                     {renderSelfPlacementActions()}
-                    {partyJoinOptions.length ? (
+                    {sidePartyJoinOptions.length ? (
                       <div className="ow-self-placement-actions">
-                        {partyJoinOptions.map((team) => (
-                          <Button key={team.id} type="button" size="sm" variant="secondary" onClick={() => app.actions.joinRecruitingSideParty(selectedPost.id, team.id)}>
-                            {team.name} 파티 합류
+                        {sidePartyJoinOptions.map(({ team, sideName }) => (
+                          <Button key={`${sideName}-${team.id}`} type="button" size="sm" variant="secondary" onClick={() => app.actions.joinRecruitingSideParty(selectedPost.id, team.id, sideName)}>
+                            {SIDE_LABELS[sideName]} {team.name} 파티 합류
                           </Button>
                         ))}
                       </div>
@@ -2002,6 +2026,21 @@ export default function Recruiting({ app }) {
                   </div>
                 ) : (
                   <form className="ow-join-form" onSubmit={(event) => { event.preventDefault(); submitJoin(selectedPost); }}>
+                    {sidePartyJoinOptions.length ? (
+                      <div className="ow-self-placement-actions">
+                        {sidePartyJoinOptions.map(({ team, sideName }) => (
+                          <Button
+                            key={`${sideName}-${team.id}`}
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => app.actions.joinRecruitingSideParty(selectedPost.id, team.id, sideName)}
+                          >
+                            {SIDE_LABELS[sideName]} {team.name} 파티 합류
+                          </Button>
+                        ))}
+                      </div>
+                    ) : null}
                     <div className="segmented-control compact-segments">
                       {Object.entries(RECRUITING_JOIN_MODES).map(([mode, meta]) => (
                         <button

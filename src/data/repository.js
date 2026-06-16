@@ -3818,7 +3818,7 @@ export function setRecruitingApplicantReserve(state, postId, playerId, reserve =
   return setRecruitingApplicantPlacement(state, postId, playerId, { reserve });
 }
 
-export function joinRecruitingSideParty(state, postId, teamId) {
+export function joinRecruitingSideParty(state, postId, teamId, sideName = "") {
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   if (!post || post.status !== "open" || !teamId) return state;
 
@@ -3832,15 +3832,27 @@ export function joinRecruitingSideParty(state, postId, teamId) {
     applicant.playerId === state.currentUserId &&
     team.members.some((member) => member.userId === applicant.playerId)
   ));
-  if (!currentApplicant) return state;
-
-  const side = currentApplicant.side;
   const lobby = getRecruitingLobby(post, state);
+  const teamMemberIds = new Set((team.members ?? []).map((member) => member.userId));
+  const requestedSide = ["teamA", "teamB"].includes(sideName) ? sideName : "";
+  const joinableSide = requestedSide || ["teamA", "teamB"].find((candidateSide) => (
+    (lobby.sides[candidateSide]?.entries ?? []).some((entry) => (
+      entry.team?.id === teamId ||
+      (entry.kind === "player" && teamMemberIds.has(entry.playerId))
+    ))
+  ));
+  if (!currentApplicant && !joinableSide) return state;
+
+  const side = joinableSide || currentApplicant.side;
   const partyEntry = (lobby.sides[side]?.entries ?? []).find((entry) => (
     entry.team?.id === teamId &&
     (entry.fixed || entry.kind === "team")
   ));
   const updatedAt = new Date().toISOString();
+  const capacity = getRecruitingSideCapacity(post);
+  const currentUserReserve = currentApplicant
+    ? Boolean(currentApplicant.reserve)
+    : lobby.sides[side].projectedFilled >= capacity;
 
   if (partyEntry) {
     const absorbedPost = buildRecruitingTeamAbsorbPost(
@@ -3851,7 +3863,7 @@ export function joinRecruitingSideParty(state, postId, teamId) {
       state.currentUserId,
       teamId,
       partyEntry.id,
-      { side, reserve: Boolean(currentApplicant.reserve) },
+      { side, reserve: currentUserReserve },
       updatedAt,
     );
     if (!absorbedPost) return state;
@@ -3871,14 +3883,31 @@ export function joinRecruitingSideParty(state, postId, teamId) {
     };
   }
 
-  const sameTeamApplicants = applicants.filter((applicant) => (
+  const currentUser = state.users.find((user) => user.id === state.currentUserId);
+  const mergeApplicants = currentApplicant
+    ? applicants
+    : [
+        ...applicants,
+        {
+          kind: "player",
+          joinMode: "player",
+          playerId: state.currentUserId,
+          teamId: null,
+          side,
+          status: "ready",
+          reserve: currentUserReserve,
+          position: currentUser?.position ?? null,
+          createdAt: updatedAt,
+          updatedAt,
+        },
+      ];
+  const sameTeamApplicants = mergeApplicants.filter((applicant) => (
     applicant.kind === "player" &&
     applicant.side === side &&
     team.members.some((member) => member.userId === applicant.playerId)
   ));
   if (sameTeamApplicants.length < 2) return state;
 
-  const capacity = getRecruitingSideCapacity(post);
   const activePlayerIds = sameTeamApplicants
     .filter((applicant) => !applicant.reserve)
     .map((applicant) => applicant.playerId)
@@ -3892,6 +3921,12 @@ export function joinRecruitingSideParty(state, postId, teamId) {
   const nextPartyReserves = { ...roomState.partyReserves, [teamKey]: Array.from(new Set(reservePlayerIds)) };
   if (!nextPartyReserves[teamKey].length) delete nextPartyReserves[teamKey];
   const sameTeamPlayerSet = new Set(sameTeamApplicants.map((applicant) => applicant.playerId));
+  const nextRoomState = updateManyPinnedReservePlayers(
+    updateManyPinnedReservePlayers({ ...roomState, partyReserves: nextPartyReserves }, side, activePlayerIds, false),
+    side,
+    reservePlayerIds,
+    true,
+  );
   const nextApplicant = {
     kind: "team",
     joinMode: "team",
@@ -3908,13 +3943,10 @@ export function joinRecruitingSideParty(state, postId, teamId) {
   const nextPost = {
     ...post,
     applicants: [
-      ...applicants.filter((applicant) => !sameTeamPlayerSet.has(applicant.playerId)),
+      ...mergeApplicants.filter((applicant) => !sameTeamPlayerSet.has(applicant.playerId)),
       nextApplicant,
     ],
-    roomState: {
-      ...roomState,
-      partyReserves: nextPartyReserves,
-    },
+    roomState: nextRoomState,
   };
   const nextLobby = getRecruitingLobby(nextPost, state);
   if (nextLobby.sides[side].projectedFilled > nextLobby.sides[side].capacity) return state;

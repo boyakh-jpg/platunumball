@@ -213,8 +213,8 @@ export function useAppData(authUserId = null) {
       setRecruitingApplicantPlacement: (postId, playerId, placement) => {
         setState((prev) => setRecruitingApplicantPlacement({ ...prev, currentUserId }, postId, playerId, placement));
       },
-      joinRecruitingSideParty: (postId, teamId) => {
-        setState((prev) => joinRecruitingSideParty({ ...prev, currentUserId }, postId, teamId));
+      joinRecruitingSideParty: (postId, teamId, sideName) => {
+        setState((prev) => joinRecruitingSideParty({ ...prev, currentUserId }, postId, teamId, sideName));
       },
       setRecruitingPartyPlayerReserve: (postId, entryId, playerId, reserve) => {
         setState((prev) => setRecruitingPartyPlayerReserve({ ...prev, currentUserId }, postId, entryId, playerId, reserve));
