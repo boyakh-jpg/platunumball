@@ -122,14 +122,14 @@ function getEntryMmr(entry) {
 }
 
 function getEntryTitle(entry) {
-  if (entry.fixed && entry.kind === "team") return `${entry.team?.name ?? "팀"} · 방장 파티`;
+  if (entry.fixed && entry.team) return `${entry.team.name} · 방장 파티`;
+  if (entry.team) return `${entry.team.name} · 팀 파티`;
   if (entry.fixed) return `${entry.user?.name ?? "방장"} · 방장`;
-  if (entry.kind === "team") return `${entry.team?.name ?? "팀"} · 팀 파티`;
   return `${entry.user?.name ?? "플레이어"} · 개인`;
 }
 
 function getReadyTitle(entry) {
-  if (entry.kind === "team") {
+  if (entry.team) {
     const leader = entry.user?.name ? ` · ${entry.user.name}` : "";
     return `${entry.team?.name ?? "팀"}${leader}`;
   }
@@ -348,7 +348,7 @@ function EntryBlock({
               </>
             ) : getEntryTitle(entry)}
           </strong>
-          <span>{entry.kind === "team" ? `${players.length}명 선택 참여` : getPlayerPosition(entry.user)}</span>
+          <span>{entry.team ? `${players.length}명 팀 소속 참여` : getPlayerPosition(entry.user)}</span>
         </div>
         <div className="ow-party-meta">
           <TierBadge mmr={mmr} compact />

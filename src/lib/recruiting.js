@@ -181,6 +181,7 @@ export function normalizeRecruitingApplicant(entry) {
       joinMode,
       playerId: entry.playerId,
       teamId: null,
+      sourceTeamId: entry.sourceTeamId ?? entry.partyTeamId ?? null,
       side,
       status,
       reserve: Boolean(entry.reserve),
@@ -419,7 +420,8 @@ export function getRecruitingApplicantEntry(applicant = {}, state = {}, post = {
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
   const capacity = getRecruitingSideCapacity(post);
   const user = normalized.playerId ? state.users?.find((item) => item.id === normalized.playerId) ?? null : null;
-  const team = normalized.teamId ? state.teams?.find((item) => item.id === normalized.teamId) ?? null : null;
+  const displayTeamId = normalized.kind === "team" ? normalized.teamId : normalized.sourceTeamId;
+  const team = displayTeamId ? state.teams?.find((item) => item.id === displayTeamId) ?? null : null;
   const players = normalized.kind === "team"
     ? getActiveTeamPlayerIds(team, capacity, normalized.playerIds)
     : [normalized.playerId].filter(Boolean);

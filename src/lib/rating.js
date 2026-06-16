@@ -181,7 +181,8 @@ export function applyMatchRating(match, players, ratings, history = [], teams = 
       const current = ratings[playerId] ?? { integrated: 1200, modes: {} };
       const modeRating = current.modes?.[mode] ?? current.integrated ?? 1200;
       const trustScore = playerById[playerId]?.trustScore ?? 80;
-      const playerTeam = teamById[match[sideName].teamId];
+      const playerTeamId = match[sideName].playerTeams?.[playerId] ?? match[sideName].teamId;
+      const playerTeam = teamById[playerTeamId];
       const role = playerTeam?.members?.find((member) => member.userId === playerId)?.role ?? "regular";
       const mercenaryFactor = getMercenaryPlayerFactor(current.integrated, playerTeam?.mmr ?? teamMmr, role);
       const modeDelta = calculateModeDelta({

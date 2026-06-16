@@ -1462,6 +1462,29 @@ function teamRegularRatio(team, playerIds, users = []) {
   return weighted / selected.length;
 }
 
+function averageTeamMmr(groups = []) {
+  if (!groups.length) return 1200;
+  return groups.reduce((sum, group) => sum + Number(group.team?.mmr ?? 1200), 0) / groups.length;
+}
+
+function getMatchSideTeamGroups(state, match, sideName) {
+  const side = match[sideName] ?? {};
+  const playerTeams = side.playerTeams ?? {};
+  const groups = new Map();
+  (side.players ?? []).forEach((playerId) => {
+    const teamId = playerTeams[playerId] ?? side.teamId;
+    if (!teamId) return;
+    if (!groups.has(teamId)) groups.set(teamId, []);
+    groups.get(teamId).push(playerId);
+  });
+  return Array.from(groups.entries())
+    .map(([teamId, playerIds]) => ({
+      team: state.teams.find((team) => team.id === teamId),
+      playerIds,
+    }))
+    .filter((group) => group.team);
+}
+
 function updateAffiliationScores(state) {
   const users = state.users;
   return state.affiliations.filter((affiliation) => affiliation.type !== "club").map((affiliation) => {
@@ -1484,26 +1507,46 @@ function finalizeMatch(state, targetMatch) {
   const scoreB = Number(targetMatch.result.scoreB);
   const actualA = scoreA === scoreB ? 0.5 : scoreA > scoreB ? 1 : 0;
   const actualB = 1 - actualA;
-  const teamA = state.teams.find((team) => team.id === targetMatch.teamA.teamId);
-  const teamB = state.teams.find((team) => team.id === targetMatch.teamB.teamId);
-  const teamADelta = teamA
-    ? calculateTeamDelta({
-        teamMmr: teamA.mmr,
-        opponentTeamMmr: teamB?.mmr ?? 1200,
+  const teamAGroups = getMatchSideTeamGroups(state, targetMatch, "teamA");
+  const teamBGroups = getMatchSideTeamGroups(state, targetMatch, "teamB");
+  const teamAMmr = averageTeamMmr(teamAGroups);
+  const teamBMmr = averageTeamMmr(teamBGroups);
+  const teamDeltaEntries = [
+    ...teamAGroups.map((group) => ({
+      teamId: group.team.id,
+      side: "teamA",
+      actual: actualA,
+      delta: calculateTeamDelta({
+        teamMmr: group.team.mmr,
+        opponentTeamMmr: teamBMmr,
         actual: actualA,
         match: targetMatch,
-        regularRatio: teamRegularRatio(teamA, targetMatch.teamA.players, state.users),
-      })
-    : 0;
-  const teamBDelta = teamB
-    ? calculateTeamDelta({
-        teamMmr: teamB.mmr,
-        opponentTeamMmr: teamA?.mmr ?? 1200,
+        regularRatio: teamRegularRatio(group.team, group.playerIds, state.users),
+      }),
+    })),
+    ...teamBGroups.map((group) => ({
+      teamId: group.team.id,
+      side: "teamB",
+      actual: actualB,
+      delta: calculateTeamDelta({
+        teamMmr: group.team.mmr,
+        opponentTeamMmr: teamAMmr,
         actual: actualB,
         match: targetMatch,
-        regularRatio: teamRegularRatio(teamB, targetMatch.teamB.players, state.users),
-      })
-    : 0;
+        regularRatio: teamRegularRatio(group.team, group.playerIds, state.users),
+      }),
+    })),
+  ];
+  const teamDeltaById = teamDeltaEntries.reduce((acc, entry) => {
+    acc[entry.teamId] = entry;
+    return acc;
+  }, {});
+  const teamADelta = teamDeltaEntries
+    .filter((entry) => entry.side === "teamA")
+    .reduce((sum, entry) => sum + entry.delta, 0);
+  const teamBDelta = teamDeltaEntries
+    .filter((entry) => entry.side === "teamB")
+    .reduce((sum, entry) => sum + entry.delta, 0);
   const trustRewards = new Map();
   Object.values(targetMatch.result?.statSubmissions ?? {}).forEach((submission) => {
     if (submission?.source === "candidate_recorder" && submission.by) {
@@ -1535,20 +1578,13 @@ function finalizeMatch(state, targetMatch) {
   });
 
   const teams = state.teams.map((team) => {
-    if (team.id === targetMatch.teamA.teamId) {
+    const teamDelta = teamDeltaById[team.id];
+    if (teamDelta) {
       return {
         ...team,
-        mmr: Math.round(team.mmr + teamADelta),
-        wins: team.wins + (actualA === 1 ? 1 : 0),
-        losses: team.losses + (actualA === 0 ? 1 : 0),
-      };
-    }
-    if (team.id === targetMatch.teamB.teamId) {
-      return {
-        ...team,
-        mmr: Math.round(team.mmr + teamBDelta),
-        wins: team.wins + (actualB === 1 ? 1 : 0),
-        losses: team.losses + (actualB === 0 ? 1 : 0),
+        mmr: Math.round(team.mmr + teamDelta.delta),
+        wins: team.wins + (teamDelta.actual === 1 ? 1 : 0),
+        losses: team.losses + (teamDelta.actual === 0 ? 1 : 0),
       };
     }
     return team;
@@ -1558,7 +1594,11 @@ function finalizeMatch(state, targetMatch) {
     ...targetMatch,
     status: "confirmed",
     ratingResult: ratingResult.changes,
-    teamRatingResult: { teamA: teamADelta, teamB: teamBDelta },
+    teamRatingResult: {
+      teamA: teamADelta,
+      teamB: teamBDelta,
+      teams: Object.fromEntries(teamDeltaEntries.map((entry) => [entry.teamId, entry.delta])),
+    },
     confirmedAt: new Date().toISOString(),
   };
   const nextState = {
@@ -2912,7 +2952,22 @@ function getLobbySideName(lobby, sideName) {
 }
 
 function getLobbyPrimaryTeamId(lobby, sideName) {
-  return lobby.sides[sideName].entries.find((entry) => entry.team?.id)?.team.id ?? null;
+  return getLobbyEntryTeamId(lobby.sides[sideName].entries.find((entry) => getLobbyEntryTeamId(entry))) ?? null;
+}
+
+function getLobbyEntryTeamId(entry = {}) {
+  return entry.team?.id ?? entry.teamId ?? entry.sourceTeamId ?? null;
+}
+
+function getLobbySidePlayerTeamIds(lobby, sideName) {
+  return Object.fromEntries(
+    lobby.sides[sideName].entries
+      .flatMap((entry) => {
+        const teamId = getLobbyEntryTeamId(entry);
+        if (!teamId) return [];
+        return (entry.players ?? []).map((playerId) => [playerId, teamId]);
+      }),
+  );
 }
 
 export function setRecruitingReady(state, postId, ready = true) {
@@ -3411,6 +3466,7 @@ export function setRecruitingPartyPlayerPlacement(state, postId, entryId, player
     joinMode: "player",
     playerId,
     teamId: null,
+    sourceTeamId: entry.team?.id ?? entry.teamId ?? null,
     side,
     status: entry.status === "ready" ? "ready" : "waiting",
     reserve,
@@ -3629,6 +3685,8 @@ export function confirmRecruitingMatch(state, postId) {
   const now = new Date().toISOString();
   const teamAPlayers = lobby.sides.teamA.projectedPlayers.slice(0, lobby.sides.teamA.capacity);
   const teamBPlayers = lobby.sides.teamB.projectedPlayers.slice(0, lobby.sides.teamB.capacity);
+  const teamAPlayerTeams = getLobbySidePlayerTeamIds(lobby, "teamA");
+  const teamBPlayerTeams = getLobbySidePlayerTeamIds(lobby, "teamB");
   const playerIds = [...teamAPlayers, ...teamBPlayers];
   const refereeId = getTrustedRefereeId(state, post.refereeId, playerIds);
   const statRecorders = refereeId ? normalizeStatRecorders({}) : getRecruitingRoomStatRecorders(post, state);
@@ -3675,19 +3733,21 @@ export function confirmRecruitingMatch(state, postId) {
     teamA: {
       name: getLobbySideName(lobby, "teamA"),
       teamId: getLobbyPrimaryTeamId(lobby, "teamA"),
+      playerTeams: teamAPlayerTeams,
       players: teamAPlayers,
       score: 0,
     },
     teamB: {
       name: getLobbySideName(lobby, "teamB"),
       teamId: getLobbyPrimaryTeamId(lobby, "teamB"),
+      playerTeams: teamBPlayerTeams,
       players: teamBPlayers,
       score: 0,
     },
     parties: lobby.entries.map((entry) => ({
       kind: entry.kind,
       side: entry.side,
-      teamId: entry.teamId,
+      teamId: getLobbyEntryTeamId(entry),
       playerId: entry.playerId,
       players: entry.players,
       reserves: entry.reserves ?? [],
