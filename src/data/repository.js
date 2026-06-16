@@ -3955,13 +3955,16 @@ export function setRecruitingPartyPlayerReserve(state, postId, entryId, playerId
   const nextPlayerIds = reserve
     ? currentPlayerIds.filter((id) => id !== playerId)
     : Array.from(new Set([...currentPlayerIds, playerId]));
-  if (!nextPlayerIds.length || nextPlayerIds.length > capacity) return state;
+  const partyBecomesReserve = reserve && !entry.fixed && currentPlayerIds.length === 1 && currentPlayerIds[0] === playerId;
+  if ((!partyBecomesReserve && !nextPlayerIds.length) || nextPlayerIds.length > capacity) return state;
 
   const updatedAt = new Date().toISOString();
   const currentReserveIds = roomState.partyReserves?.[entry.id] ?? [];
-  const nextReserveIds = reserve
-    ? Array.from(new Set([...currentReserveIds, playerId]))
-    : currentReserveIds.filter((id) => id !== playerId);
+  const nextReserveIds = partyBecomesReserve
+    ? currentReserveIds.filter((id) => id !== playerId)
+    : reserve
+      ? Array.from(new Set([...currentReserveIds, playerId]))
+      : currentReserveIds.filter((id) => id !== playerId);
   const nextPartyReserves = { ...roomState.partyReserves, [entry.id]: nextReserveIds };
   if (!nextReserveIds.length) delete nextPartyReserves[entry.id];
   const nextRoomState = updatePinnedReservePlayers(
@@ -3977,7 +3980,13 @@ export function setRecruitingPartyPlayerReserve(state, postId, entryId, playerId
       roomState: nextRoomState,
       applicants: applicants.map((applicant) => (
         getRecruitingApplicantKey(applicant) === entry.id
-          ? { ...applicant, playerIds: nextPlayerIds, status: "waiting", updatedAt }
+          ? {
+              ...applicant,
+              reserve: partyBecomesReserve ? true : false,
+              playerIds: partyBecomesReserve ? currentPlayerIds : nextPlayerIds,
+              status: "waiting",
+              updatedAt,
+            }
           : applicant
       )),
     };
@@ -4025,9 +4034,10 @@ export function setRecruitingPartyPlayerPlacement(state, postId, entryId, player
   return setRecruitingPartyPlayerReserve(state, postId, entryId, playerId, reserve);
 }
 
-export function detachRecruitingPartyPlayer(state, postId, entryId, playerId) {
+export function detachRecruitingPartyPlayer(state, postId, entryId, playerId, placement = {}) {
   const post = state.recruitingPosts?.find((item) => item.id === postId);
-  if (!post || post.status !== "open" || post.playerId !== state.currentUserId || !entryId || !playerId) return state;
+  if (!post || post.status !== "open" || !entryId || !playerId) return state;
+  if (post.playerId !== state.currentUserId && playerId !== state.currentUserId) return state;
 
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
   const lobby = getRecruitingLobby(post, state);
@@ -4047,9 +4057,11 @@ export function detachRecruitingPartyPlayer(state, postId, entryId, playerId) {
   const currentPlayerIds = storedPlayerIds.length ? storedPlayerIds : (entry.players ?? []);
   const reserveKey = entry.id;
   const currentReserveIds = roomState.partyReserves?.[reserveKey] ?? [];
-  const wasActive = currentPlayerIds.includes(playerId);
-  const wasReserve = currentReserveIds.includes(playerId);
+  const wasActive = !entry.reserve && currentPlayerIds.includes(playerId);
+  const wasReserve = Boolean(entry.reserve) || currentReserveIds.includes(playerId);
   if (!wasActive && !wasReserve) return state;
+  const targetSide = ["teamA", "teamB"].includes(placement.side) ? placement.side : entry.side;
+  const targetReserve = placement.reserve === undefined ? (!wasActive && wasReserve) : Boolean(placement.reserve);
 
   const nextPlayerIds = currentPlayerIds.filter((id) => id !== playerId);
   if (entry.fixed && !nextPlayerIds.length) return state;
@@ -4059,9 +4071,9 @@ export function detachRecruitingPartyPlayer(state, postId, entryId, playerId) {
   if (!nextReserveIds.length) delete nextPartyReserves[reserveKey];
   const nextRoomState = updatePinnedReservePlayers(
     { ...roomState, partyReserves: nextPartyReserves },
-    entry.side,
+    targetSide,
     playerId,
-    !wasActive && wasReserve,
+    targetReserve,
   );
   const updatedAt = new Date().toISOString();
   const movedUser = state.users.find((user) => user.id === playerId);
@@ -4072,9 +4084,9 @@ export function detachRecruitingPartyPlayer(state, postId, entryId, playerId) {
     teamId: null,
     sourceTeamId: entry.team?.id ?? entry.teamId ?? null,
     sourceEntryId: entry.id,
-    side: entry.side,
+    side: targetSide,
     status: "waiting",
-    reserve: !wasActive && wasReserve,
+    reserve: targetReserve,
     position: movedUser?.position ?? null,
     createdAt: updatedAt,
     updatedAt,
@@ -4095,6 +4107,18 @@ export function detachRecruitingPartyPlayer(state, postId, entryId, playerId) {
   const nextPost = entry.fixed
     ? { ...post, hostReady: false, playerIds: nextPlayerIds, roomState: nextRoomState, applicants: nextApplicants }
     : { ...post, roomState: nextRoomState, applicants: nextApplicants };
+
+  if (targetReserve && isRecruitingReserveLimitExceeded(nextPost, state, targetSide)) {
+    return {
+      ...state,
+      notifications: [getRecruitingReserveLimitNotification(postId, targetSide), ...state.notifications],
+    };
+  }
+  if (!targetReserve) {
+    const nextLobby = getRecruitingLobby(nextPost, state);
+    const activePlayerCount = new Set(nextLobby.sides[targetSide].entries.flatMap((item) => item.players)).size;
+    if (activePlayerCount > nextLobby.sides[targetSide].capacity) return state;
+  }
 
   return {
     ...state,

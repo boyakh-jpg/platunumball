@@ -1523,7 +1523,7 @@ export default function Recruiting({ app }) {
           entry.players?.includes(app.currentUser.id) ||
           entry.reserves?.includes(app.currentUser.id)
         ));
-        const alreadyApplied = Boolean(myEntry && !myEntry.fixed);
+        const alreadyApplied = Boolean(myEntry && !mine);
         const canInviteFromRoom = isCurrentUserRoomParticipant(selectedPost, lobby, app.currentUser.id);
         const canChat = isRecruitingPostForUser(selectedPost, app.currentUser.id, myTeamIds);
         const canJoin = !mine && !alreadyApplied && fit.allowed && (joinDraft.joinMode === "player" || (Boolean(selectedJoinTeam) && selectedJoinPlayerIds.length > 0));
@@ -1582,13 +1582,16 @@ export default function Recruiting({ app }) {
           myEntry.players?.includes(app.currentUser.id) ||
           myEntry.reserves?.includes(app.currentUser.id)
         ));
+        const currentUserPartyLocked = Boolean(myEntry?.fixed && app.currentUser.id === selectedPost.playerId);
+        const currentUserInParty = Boolean(currentUserInEntry && (myEntry?.fixed || myEntry?.kind === "team"));
         const canMoveActiveUserToSlot = (sideName, reserve) => {
           if (!myEntry || !currentUserInEntry) return false;
           const samePlacement = myEntry.side === sideName && currentUserReserve === reserve;
           if (samePlacement) return false;
           if (!canMovePlayerTo(lobby, app.currentUser.id, sideName, reserve)) return false;
           if (myEntry.kind === "player" && myEntry.playerId === app.currentUser.id) return true;
-          if ((myEntry.fixed || myEntry.kind === "team") && myEntry.side === sideName) return true;
+          if (currentUserInParty && myEntry.side === sideName) return true;
+          if (currentUserInParty && !currentUserPartyLocked) return true;
           return false;
         };
         const moveActiveUserToSlot = (sideName, reserve) => {
@@ -1598,8 +1601,13 @@ export default function Recruiting({ app }) {
             setInviteDraft(null);
             return;
           }
-          if ((myEntry.fixed || myEntry.kind === "team") && myEntry.side === sideName) {
+          if (currentUserInParty && myEntry.side === sideName) {
             app.actions.setRecruitingPartyPlayerPlacement(selectedPost.id, myEntry.id, app.currentUser.id, { side: sideName, reserve });
+            setInviteDraft(null);
+            return;
+          }
+          if (currentUserInParty && !currentUserPartyLocked) {
+            app.actions.detachRecruitingPartyPlayer(selectedPost.id, myEntry.id, app.currentUser.id, { side: sideName, reserve });
             setInviteDraft(null);
           }
         };
@@ -1641,6 +1649,39 @@ export default function Recruiting({ app }) {
                 onClose={() => setInviteDraft(null)}
               />
             </SlotCommandPanel>
+          );
+        };
+        const selfPlacementActions = [
+          { side: "teamA", reserve: false, label: "A 출전" },
+          { side: "teamB", reserve: false, label: "B 출전" },
+          { side: "teamA", reserve: true, label: "A 후보" },
+          { side: "teamB", reserve: true, label: "B 후보" },
+        ];
+        const renderSelfPlacementActions = () => {
+          if (!myEntry || !currentUserInEntry || mine) return null;
+          return (
+            <div className="ow-self-placement-actions">
+              {selfPlacementActions.map((action) => {
+                const active = myEntry.side === action.side && currentUserReserve === action.reserve;
+                return (
+                  <Button
+                    key={`${action.side}-${action.reserve ? "reserve" : "active"}`}
+                    type="button"
+                    size="sm"
+                    variant={active ? "primary" : "secondary"}
+                    disabled={active || !canMoveActiveUserToSlot(action.side, action.reserve)}
+                    onClick={() => moveActiveUserToSlot(action.side, action.reserve)}
+                  >
+                    {action.label}
+                  </Button>
+                );
+              })}
+              {currentUserInParty && !currentUserPartyLocked ? (
+                <Button type="button" size="sm" variant="secondary" onClick={() => app.actions.detachRecruitingPartyPlayer(selectedPost.id, myEntry.id, app.currentUser.id)}>
+                  파티 나가기
+                </Button>
+              ) : null}
+            </div>
           );
         };
 
@@ -1910,13 +1951,7 @@ export default function Recruiting({ app }) {
                   <div className="ow-owner-panel">
                     <strong>참여 등록됨</strong>
                     <span>팀 조율은 채팅으로 합의하고, 내 A/B 위치는 직접 바꿀 수 있습니다.</span>
-                    {myEntry?.kind === "player" ? (
-                      <div className="ow-self-placement-actions">
-                        <Button type="button" size="sm" variant={!myEntry.reserve && myEntry.side === "teamA" ? "primary" : "secondary"} onClick={() => app.actions.setRecruitingApplicantPlacement(selectedPost.id, myEntry.playerId, { side: "teamA", reserve: false })}>A 출전</Button>
-                        <Button type="button" size="sm" variant={!myEntry.reserve && myEntry.side === "teamB" ? "primary" : "secondary"} onClick={() => app.actions.setRecruitingApplicantPlacement(selectedPost.id, myEntry.playerId, { side: "teamB", reserve: false })}>B 출전</Button>
-                        <Button type="button" size="sm" variant={myEntry.reserve ? "primary" : "secondary"} onClick={() => app.actions.setRecruitingApplicantPlacement(selectedPost.id, myEntry.playerId, { side: myEntry.side, reserve: true })}>후보</Button>
-                      </div>
-                    ) : null}
+                    {renderSelfPlacementActions()}
                     {partyJoinOptions.length ? (
                       <div className="ow-self-placement-actions">
                         {partyJoinOptions.map((team) => (
