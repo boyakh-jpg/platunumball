@@ -188,6 +188,42 @@
   font-weight: 950;
 }
 
+.gm-reserve-panel {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.gm-reserve-line {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(5, 10, 18, 0.46);
+  padding: 10px;
+}
+
+.gm-reserve-line > strong {
+  color: var(--gold);
+  font-size: 0.78rem;
+  font-weight: 950;
+}
+
+.gm-reserve-row {
+  grid-template-columns: repeat(2, minmax(76px, 1fr));
+}
+
+.gm-player-slot.reserve {
+  min-height: 106px;
+}
+
+.gm-player-slot.reserve.empty {
+  align-content: center;
+  border-style: dashed;
+  color: var(--muted);
+}
+
 .gm-score-core {
   display: grid;
   align-content: center;
@@ -304,6 +340,7 @@ html[data-theme="light"] .gm-room-title p {
 
 html[data-theme="light"] .gm-team-panel,
 html[data-theme="light"] .gm-score-core,
+html[data-theme="light"] .gm-reserve-line,
 html[data-theme="light"] .gm-room-actions > div {
   background: rgba(255, 255, 255, 0.76);
 }
@@ -340,6 +377,10 @@ html[data-theme="light"] .gm-room-actions > div {
   }
 
   .gm-versus-stage {
+    grid-template-columns: 1fr;
+  }
+
+  .gm-reserve-panel {
     grid-template-columns: 1fr;
   }
 

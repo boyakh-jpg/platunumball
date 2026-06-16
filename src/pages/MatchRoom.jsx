@@ -21,6 +21,7 @@ import {
   getMatchRecordWindow,
   getMatchReferee,
   getMatchPlayerIds,
+  getMatchReservePlayerIds,
   getMatchSidePlayerIds,
   getPlayerSideName,
   getPlayerStatSubmitted,
@@ -193,6 +194,37 @@ export default function MatchRoom({ app }) {
             </PlayerHoverCard>
           );
         })}
+      </div>
+    );
+  };
+  const renderHeroReserves = (sideName) => {
+    const reservePlayerIds = getMatchReservePlayerIds(match, sideName).slice(0, 2);
+    const openSlots = Math.max(0, 2 - reservePlayerIds.length);
+
+    return (
+      <div className="gm-reserve-line">
+        <strong>{sideName === "teamA" ? "A팀" : "B팀"} 후보 {reservePlayerIds.length}/2</strong>
+        <div className="gm-roster-row gm-reserve-row">
+          {reservePlayerIds.map((playerId) => {
+            const user = userMap[playerId];
+            const recorder = statRecorders[sideName] === playerId;
+            return (
+              <PlayerHoverCard key={`${sideName}-reserve-${playerId}`} user={user} teams={app.state.teams} className="gm-player-slot reserve ready">
+                <span className="avatar" style={{ "--avatar": user?.avatarColor }}>{user?.name?.slice(0, 1) ?? "P"}</span>
+                <strong>{user?.name ?? "플레이어"}</strong>
+                <small>{user?.position ?? "-"}</small>
+                <em>{recorder ? "REC" : "SUB"}</em>
+              </PlayerHoverCard>
+            );
+          })}
+          {Array.from({ length: openSlots }).map((_item, index) => (
+            <div key={`${sideName}-reserve-empty-${index}`} className="gm-player-slot reserve empty">
+              <UsersRound size={18} />
+              <strong>후보 슬롯</strong>
+              <em>SUB</em>
+            </div>
+          ))}
+        </div>
       </div>
     );
   };
@@ -426,6 +458,11 @@ export default function MatchRoom({ app }) {
             </div>
             {renderHeroRoster("teamB")}
           </div>
+        </div>
+
+        <div className="gm-reserve-panel">
+          {renderHeroReserves("teamA")}
+          {renderHeroReserves("teamB")}
         </div>
 
         <div className="gm-room-actions">

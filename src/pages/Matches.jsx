@@ -1,11 +1,13 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, PlusCircle, ShieldAlert, Swords, X } from "lucide-react";
+import { CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, MapPin, PlusCircle, ShieldAlert, ShieldCheck, Swords, Trophy, UsersRound, X } from "lucide-react";
+import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
+import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { MATCH_MODES } from "../lib/constants.js";
-import { getMatchEndDate } from "../lib/matchUtils.js";
+import { getMatchEndDate, getMatchReservePlayerIds } from "../lib/matchUtils.js";
 import { getRecruitingLobby, getRecruitingSideCapacity, isRecruitingPostForUser } from "../lib/recruiting.js";
 
 const STATUS_META = {
@@ -287,6 +289,147 @@ function getTournamentPairingPreview(tournament) {
     : tournament.bracket?.fixtures ?? [];
 }
 
+function getRoomCapacity(match) {
+  const fromRules = Number(match.rules?.sideCapacity);
+  if (Number.isFinite(fromRules) && fromRules > 0) return fromRules;
+  const fromMode = Number(String(match.mode ?? "").match(/(\d+)\s*v/i)?.[1]);
+  if (Number.isFinite(fromMode) && fromMode > 0) return fromMode;
+  return Math.max(match.teamA?.players?.length ?? 0, match.teamB?.players?.length ?? 0, 5);
+}
+
+function MatchPreviewSide({ match, sideName, teamById, userById, teams }) {
+  const side = match[sideName] ?? { players: [] };
+  const team = teamById[side.teamId];
+  const capacity = getRoomCapacity(match);
+  const players = (side.players ?? []).slice(0, capacity);
+  const emptyCount = Math.max(0, capacity - players.length);
+
+  return (
+    <div className={`ow-lobby-team-panel ${sideName === "teamA" ? "team-a" : "team-b"}`}>
+      <div className="ow-lobby-team-head">
+        <span>{sideName === "teamA" ? "HOME TEAM" : "OPPONENT"}</span>
+        <strong>{side.name}</strong>
+        <em>{team?.mmr ?? "-"} MMR</em>
+      </div>
+      <div className="ow-room-slot-row">
+        {players.map((playerId) => {
+          const user = userById[playerId];
+          return (
+            <PlayerHoverCard key={`${sideName}-${playerId}`} user={user} teams={teams} className="ow-room-player-slot ready">
+              <span className="avatar" style={{ "--avatar": user?.avatarColor }}>{user?.name?.slice(0, 1) ?? "?"}</span>
+              <strong>{user?.name ?? "플레이어"}</strong>
+              <small>{user?.position ?? "-"}</small>
+              <em>READY</em>
+            </PlayerHoverCard>
+          );
+        })}
+        {Array.from({ length: emptyCount }).map((_item, index) => (
+          <div key={`${sideName}-empty-${index}`} className="ow-room-player-slot empty">
+            <UsersRound size={18} />
+            <strong>빈 슬롯</strong>
+            <em>LOCK</em>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MatchPreviewReserveLine({ match, sideName, userById, teams }) {
+  const reserves = getMatchReservePlayerIds(match, sideName).slice(0, 2);
+  const emptyCount = Math.max(0, 2 - reserves.length);
+
+  return (
+    <div className="ow-reserve-line">
+      <strong>{sideName === "teamA" ? "A팀" : "B팀"} 후보 {reserves.length}/2</strong>
+      <div className="ow-room-reserve-row">
+        {reserves.map((playerId) => {
+          const user = userById[playerId];
+          return (
+            <PlayerHoverCard key={`${sideName}-reserve-${playerId}`} user={user} teams={teams} className="ow-room-player-slot ready">
+              <span className="avatar" style={{ "--avatar": user?.avatarColor }}>{user?.name?.slice(0, 1) ?? "?"}</span>
+              <strong>{user?.name ?? "플레이어"}</strong>
+              <small>{user?.position ?? "-"}</small>
+              <em>SUB</em>
+            </PlayerHoverCard>
+          );
+        })}
+        {Array.from({ length: emptyCount }).map((_item, index) => (
+          <div key={`${sideName}-reserve-empty-${index}`} className="ow-room-player-slot empty">
+            <UsersRound size={18} />
+            <strong>후보 슬롯</strong>
+            <em>SUB</em>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MatchPreviewModal({ match, status, teamById, userById, teams, onClose }) {
+  const scoreA = match.teamA.score ?? match.result?.scoreA ?? 0;
+  const scoreB = match.teamB.score ?? match.result?.scoreB ?? 0;
+  const capacity = getRoomCapacity(match);
+  const roomTitle = match.ranked === false ? "친선전" : "정규전";
+  const roomType = match.recruitingPostId ? "PUBLIC ROOM" : match.tournamentId ? "PRIVATE EVENT ROOM" : "PRIVATE ROOM";
+  const filledA = match.teamA.players?.length ?? 0;
+  const filledB = match.teamB.players?.length ?? 0;
+
+  return (
+    <div className="ow-compose-backdrop" role="presentation" onMouseDown={onClose}>
+      <aside className="ow-lobby-modal" role="dialog" aria-modal="true" aria-label="경기방" onMouseDown={(event) => event.stopPropagation()}>
+        <div className="ow-lobby-arena">
+          <div className="ow-lobby-topline">
+            <div className="badge-row">
+              <Badge tone={match.ranked === false ? "neutral" : "gold"}>{roomTitle}</Badge>
+              <Badge tone={status.tone}>{status.label}</Badge>
+              <Badge tone={match.recruitingPostId ? "green" : "blue"}>{match.recruitingPostId ? "공개방" : "비공개방"}</Badge>
+            </div>
+            <div>
+              <span>{match.mode}</span>
+              <button type="button" className="ow-icon-button" aria-label="닫기" onClick={onClose}><X size={20} /></button>
+            </div>
+          </div>
+
+          <div className="ow-lobby-title">
+            <span>{roomType}</span>
+            <h2>{roomTitle}</h2>
+            <p><MapPin size={16} />{match.court} · {formatMatchTime(match)}</p>
+          </div>
+
+          <div className="ow-lobby-versus-stage">
+            <MatchPreviewSide match={match} sideName="teamA" teamById={teamById} userById={userById} teams={teams} />
+            <div className="ow-lobby-score-core">
+              <strong>{scoreA}</strong>
+              <i>VS</i>
+              <strong>{scoreB}</strong>
+              <span>{filledA}/{capacity} · {filledB}/{capacity}</span>
+            </div>
+            <MatchPreviewSide match={match} sideName="teamB" teamById={teamById} userById={userById} teams={teams} />
+          </div>
+
+          <div className="ow-reserve-panel">
+            <MatchPreviewReserveLine match={match} sideName="teamA" userById={userById} teams={teams} />
+            <MatchPreviewReserveLine match={match} sideName="teamB" userById={userById} teams={teams} />
+          </div>
+
+          <div className="ow-lobby-actions">
+            <div><CalendarDays size={17} /><span>{match.scheduledDate ?? ""} {match.scheduledTime ?? ""}</span></div>
+            <div><UsersRound size={17} /><span>{capacity} vs {capacity}</span></div>
+            <div><ShieldCheck size={17} /><span>{match.ranked === false ? "티어 자유" : "MMR 반영"}</span></div>
+            <div><Trophy size={17} /><span>{formatMatchRules(match)}</span></div>
+          </div>
+        </div>
+
+        <div className="om-room-modal-actions">
+          <Link className="button button-primary button-md" to={`/app/matches/${match.id}`}>경기방</Link>
+          <button type="button" className="button button-secondary button-md" onClick={onClose}>닫기</button>
+        </div>
+      </aside>
+    </div>
+  );
+}
+
 export default function Matches({ app }) {
   const [viewId, setViewId] = useState("active");
   const [kindFilter, setKindFilter] = useState("all");
@@ -296,6 +439,7 @@ export default function Matches({ app }) {
   const [calendarMonth, setCalendarMonth] = useState(getMonthKey());
   const [tournamentPanelOpen, setTournamentPanelOpen] = useState(true);
   const [selectedTournamentId, setSelectedTournamentId] = useState(null);
+  const [selectedMatchId, setSelectedMatchId] = useState(null);
   const todayValue = toDateInputValue();
   const maxScheduleDate = addDays(todayValue, 365);
   const historyCutoffDate = subtractMonths(todayValue, historyRangeMonths);
@@ -319,7 +463,8 @@ export default function Matches({ app }) {
     () => activeTournaments.find((tournament) => tournament.id === selectedTournamentId) ?? null,
     [activeTournaments, selectedTournamentId],
   );
-  useBodyScrollLock(Boolean(selectedTournament));
+  const selectedMatch = selectedMatchId ? matchesById[selectedMatchId] ?? null : null;
+  useBodyScrollLock(Boolean(selectedTournament || selectedMatch));
 
   const baseFilteredMatches = useMemo(() => {
     return [...app.state.matches]
@@ -690,6 +835,17 @@ export default function Matches({ app }) {
         );
       })() : null}
 
+      {selectedMatch ? (
+        <MatchPreviewModal
+          match={selectedMatch}
+          status={getMatchProcessMeta(selectedMatch)}
+          teamById={teamById}
+          userById={userById}
+          teams={app.state.teams}
+          onClose={() => setSelectedMatchId(null)}
+        />
+      ) : null}
+
       <section className="om-filter-bar" aria-label="경기 필터">
         <div className="segmented-control compact-segments">
           <button type="button" className={kindFilter === "all" ? "active" : ""} onClick={() => setKindFilter("all")}>전체</button>
@@ -784,9 +940,9 @@ export default function Matches({ app }) {
                   <span>{formatMatchRules(match)}</span>
                 </div>
               )}
-              <Link className="button button-secondary button-md om-room-link" to={`/app/matches/${match.id}`}>
+              <button type="button" className="button button-secondary button-md om-room-link" onClick={() => setSelectedMatchId(match.id)}>
                 {getMatchActionLabel(match)}
-              </Link>
+              </button>
             </article>
           );
         }) : (

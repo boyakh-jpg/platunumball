@@ -1612,6 +1612,13 @@
   padding-inline: 10px;
 }
 
+.om-room-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
 .om-empty-state {
   display: grid;
   min-height: 220px;

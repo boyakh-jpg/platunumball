@@ -239,6 +239,37 @@ function PlacementActionButtons({ currentSide, currentReserve = false, availabil
   ));
 }
 
+function PlayerRoomSlot({ user, teams, status = "waiting", title = "", detail = "", mmr = 1200, empty = false, invite = false, onInvite, children }) {
+  if (empty) {
+    return (
+      <button
+        type="button"
+        className={invite ? "ow-room-player-slot empty invite" : "ow-room-player-slot empty"}
+        disabled={!invite}
+        onClick={onInvite}
+      >
+        <UserRound size={18} />
+        <strong>{title}</strong>
+        {detail ? <em>{detail}</em> : null}
+      </button>
+    );
+  }
+
+  return (
+    <div className="ow-room-player-slot-wrap">
+      <PlayerHoverCard user={user} teams={teams} className={status === "ready" ? "ow-room-player-slot ready" : "ow-room-player-slot"}>
+        <span className="avatar" style={{ "--avatar": user?.avatarColor }}>{user?.name?.slice(0, 1) ?? "?"}</span>
+        <strong>{user?.name ?? "플레이어"}</strong>
+        <small>{getPlayerPosition(user)}</small>
+        {detail ? <b>{detail}</b> : null}
+        <TierBadge mmr={mmr} compact />
+        <em>{title}</em>
+      </PlayerHoverCard>
+      {children}
+    </div>
+  );
+}
+
 function isCurrentUserRoomParticipant(post, lobby, currentUserId) {
   if (!currentUserId) return false;
   if (post.playerId === currentUserId || post.playerIds?.includes(currentUserId)) return true;
@@ -496,7 +527,7 @@ function FillSlot({ candidate, lobby, userById, teams, canManage = false, readyT
   const moveSideNames = isPartyCandidate ? [candidate.side ?? candidateEntry?.side ?? "teamA"] : ["teamA", "teamB"];
   if (!user) {
     return (
-      <div className="ow-open-slot empty">
+      <div className="ow-room-player-slot empty">
         <UserRound size={17} />
         <span>후보 없음</span>
       </div>
@@ -504,9 +535,9 @@ function FillSlot({ candidate, lobby, userById, teams, canManage = false, readyT
   }
 
   return (
-    <div className="ow-open-slot-wrap">
-      <PlayerHoverCard user={user} teams={teams} className="ow-open-slot fill">
-        <span className="avatar small" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
+    <div className="ow-room-player-slot-wrap">
+      <PlayerHoverCard user={user} teams={teams} className={candidate.status === "ready" ? "ow-room-player-slot fill ready" : "ow-room-player-slot fill"}>
+        <span className="avatar" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
         <span>
           <strong>{user.name}</strong>
           <em>{candidate.status === "ready" ? readyText : "재확인 필요"} · {candidate.sourceLabel}</em>
@@ -555,7 +586,65 @@ function SideRoster({
   onMoveCandidate,
   onRemoveCandidate,
 }) {
+  const activeSlots = [];
+  const seenPlayerIds = new Set();
+  (side.entries ?? []).forEach((entry) => {
+    (entry.players ?? []).forEach((playerId) => {
+      if (!playerId || seenPlayerIds.has(playerId)) return;
+      seenPlayerIds.add(playerId);
+      activeSlots.push({ entry, playerId, user: userById[playerId] });
+    });
+  });
   const openSlots = Math.max(0, side.capacity - side.projectedFilled);
+  const renderActiveActions = ({ entry, playerId, user }) => {
+    if (!canManage || !user) return null;
+    const availability = getEntryPlacementAvailability(entry, lobby);
+    const isPartyEntry = entry.fixed || entry.kind === "team";
+    const canDemoteActive = (entry.players ?? []).length > 1;
+
+    if (!isPartyEntry) {
+      return (
+        <SlotActionMenu>
+          <PlacementActionButtons
+            currentSide={entry.side}
+            currentReserve={Boolean(entry.reserve)}
+            availability={availability}
+            onMove={(placement) => onSetPlacement(entry.playerId, placement)}
+          />
+          {!entry.fixed ? (
+            <button type="button" className="danger" onClick={(event) => stopControlClick(event, () => onKick(entry.playerId))}>
+              강퇴
+            </button>
+          ) : null}
+        </SlotActionMenu>
+      );
+    }
+
+    return (
+      <SlotActionMenu>
+        <button
+          type="button"
+          disabled={!canDemoteActive || !canMovePlayerTo(lobby, playerId, entry.side, true)}
+          onClick={(event) => stopControlClick(event, () => onSetMemberReserve(entry.id, playerId, true))}
+        >
+          후보로
+        </button>
+        {!(entry.fixed && playerId === entry.playerId) ? (
+          <button
+            type="button"
+            onClick={(event) => stopControlClick(event, () => onDetachMember(entry.id, playerId))}
+          >
+            파티에서 내보내기
+          </button>
+        ) : null}
+        {!(entry.fixed && playerId === entry.playerId) ? (
+          <button type="button" className="danger" onClick={(event) => stopControlClick(event, () => onRemoveMember(entry.id, playerId))}>
+            강퇴
+          </button>
+        ) : null}
+      </SlotActionMenu>
+    );
+  };
   return (
     <section className="ow-side-roster">
       <header>
@@ -564,22 +653,24 @@ function SideRoster({
           <strong>{side.projectedFilled}/{side.capacity}</strong>
         </div>
       </header>
-      <div className="ow-roster-stack">
-        {side.entries.map((entry) => (
-          <EntryBlock
-            key={`${sideName}-${entry.id}`}
-            entry={entry}
-            lobby={lobby}
-            userById={userById}
-            teams={teams}
-            canManage={canManage}
-            onSetPlacement={onSetPlacement}
-            onSetMemberReserve={onSetMemberReserve}
-            onDetachMember={onDetachMember}
-            onRemoveMember={onRemoveMember}
-            onKick={onKick}
-          />
-        ))}
+      <div className="ow-room-slot-row">
+        {activeSlots.map(({ entry, playerId, user }) => {
+          const isPartyEntry = entry.fixed || entry.kind === "team";
+          const partyLabel = isPartyEntry && entry.team ? entry.team.name : "개인 참여";
+          return (
+            <PlayerRoomSlot
+              key={`${sideName}-${entry.id}-${playerId}`}
+              user={user}
+              teams={teams}
+              status={entry.status}
+              title={entry.status === "ready" ? "READY" : "WAIT"}
+              detail={partyLabel}
+              mmr={user?.ratings?.integrated ?? getEntryMmr(entry)}
+            >
+              {renderActiveActions({ entry, playerId, user })}
+            </PlayerRoomSlot>
+          );
+        })}
         {side.fillSlots.map((candidate) => (
           <FillSlot
             key={`${sideName}-fill-${candidate.playerId}`}
@@ -596,7 +687,7 @@ function SideRoster({
           <button
             key={`${sideName}-open-${index}`}
             type="button"
-            className={canInvite ? "ow-open-slot empty invite" : "ow-open-slot empty"}
+            className={canInvite ? "ow-room-player-slot empty invite" : "ow-room-player-slot empty"}
             disabled={!canInvite}
             onClick={() => onInviteSlot?.(sideName)}
           >
@@ -623,7 +714,7 @@ function ReserveLine({ sideName, candidates, playingIds, lobby, userById, teams,
   return (
     <div className="ow-reserve-line">
       <strong>{SIDE_LABELS[sideName]} 후보 {candidates.length}/{MAX_RESERVE_PLAYERS_PER_SIDE}</strong>
-      <div className="ow-reserve-slot-grid">
+      <div className="ow-room-reserve-row">
         {slots.map((candidate) => {
           const user = userById[candidate.playerId];
           if (!user) return null;
@@ -648,7 +739,7 @@ function ReserveLine({ sideName, candidates, playingIds, lobby, userById, teams,
           <button
             key={`${sideName}-reserve-open-${index}`}
             type="button"
-            className={canInvite ? "ow-open-slot empty invite" : "ow-open-slot empty"}
+            className={canInvite ? "ow-room-player-slot empty invite" : "ow-room-player-slot empty"}
             disabled={!canInvite}
             onClick={() => onInviteSlot?.(sideName)}
           >
@@ -1545,6 +1636,37 @@ export default function Recruiting({ app }) {
                   </div>
                 </div>
 
+                <div className="ow-reserve-panel">
+                  <ReserveLine
+                    sideName="teamA"
+                    candidates={lobby.sides.teamA.reserveCandidates}
+                    playingIds={playingIds}
+                    userById={userById}
+                    teams={app.state.teams}
+                    canInvite={canInviteFromRoom}
+                    canManage={mine}
+                    recorderId={recorderIds.teamA}
+                    lobby={lobby}
+                    onInviteSlot={(sideName) => openInviteSlot(selectedPost, sideName, true)}
+                    onMoveCandidate={moveCandidate}
+                    onRemoveCandidate={removeCandidate}
+                  />
+                  <ReserveLine
+                    sideName="teamB"
+                    candidates={lobby.sides.teamB.reserveCandidates}
+                    playingIds={playingIds}
+                    userById={userById}
+                    teams={app.state.teams}
+                    canInvite={canInviteFromRoom}
+                    canManage={mine}
+                    recorderId={recorderIds.teamB}
+                    lobby={lobby}
+                    onInviteSlot={(sideName) => openInviteSlot(selectedPost, sideName, true)}
+                    onMoveCandidate={moveCandidate}
+                    onRemoveCandidate={removeCandidate}
+                  />
+                </div>
+
                 <div className="ow-lobby-actions">
                   <div><Clock3 size={17} /><span>{getRecruitingSchedule(selectedPost)}</span></div>
                   <div><UsersRound size={17} /><span>{getRecruitingSideCapacity(selectedPost)} vs {getRecruitingSideCapacity(selectedPost)}</span></div>
@@ -1583,37 +1705,6 @@ export default function Recruiting({ app }) {
                 onAccept={(invitationId) => app.actions.acceptRecruitingInvitation(selectedPost.id, invitationId)}
                 onDecline={(invitationId) => app.actions.declineRecruitingInvitation(selectedPost.id, invitationId)}
               />
-
-              <div className="ow-reserve-panel">
-                <ReserveLine
-                  sideName="teamA"
-                  candidates={lobby.sides.teamA.reserveCandidates}
-                  playingIds={playingIds}
-                  userById={userById}
-                  teams={app.state.teams}
-                  canInvite={canInviteFromRoom}
-                  canManage={mine}
-                  recorderId={recorderIds.teamA}
-                  lobby={lobby}
-                  onInviteSlot={(sideName) => openInviteSlot(selectedPost, sideName, true)}
-                  onMoveCandidate={moveCandidate}
-                  onRemoveCandidate={removeCandidate}
-                />
-                <ReserveLine
-                  sideName="teamB"
-                  candidates={lobby.sides.teamB.reserveCandidates}
-                  playingIds={playingIds}
-                  userById={userById}
-                  teams={app.state.teams}
-                  canInvite={canInviteFromRoom}
-                  canManage={mine}
-                  recorderId={recorderIds.teamB}
-                  lobby={lobby}
-                  onInviteSlot={(sideName) => openInviteSlot(selectedPost, sideName, true)}
-                  onMoveCandidate={moveCandidate}
-                  onRemoveCandidate={removeCandidate}
-                />
-              </div>
 
               <div className="ow-room-rule-panel">
                 <div className="ow-room-rule-head">

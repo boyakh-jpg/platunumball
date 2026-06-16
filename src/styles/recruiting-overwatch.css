@@ -1361,6 +1361,118 @@
   background: rgba(0, 0, 0, 0.16);
 }
 
+.ow-room-slot-row,
+.ow-room-reserve-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(76px, 1fr));
+  gap: 8px;
+  align-items: stretch;
+}
+
+.ow-room-player-slot-wrap {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+}
+
+.ow-room-player-slot {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  min-height: 122px;
+  align-content: center;
+  justify-items: center;
+  gap: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 8px;
+  background: rgba(70, 224, 182, 0.08);
+  color: var(--muted);
+  padding: 9px 6px;
+  text-align: center;
+}
+
+.ow-room-player-slot.ready {
+  border-color: rgba(70, 224, 182, 0.5);
+  background: rgba(70, 224, 182, 0.13);
+}
+
+.ow-room-player-slot.empty {
+  border-style: dashed;
+  background: rgba(0, 0, 0, 0.18);
+  cursor: default;
+}
+
+.ow-room-player-slot.empty.invite {
+  color: var(--gold);
+  cursor: pointer;
+}
+
+.ow-room-player-slot .avatar {
+  width: 42px;
+  height: 42px;
+  font-size: 1.02rem;
+}
+
+.ow-room-player-slot strong,
+.ow-room-player-slot > span:not(.avatar),
+.ow-room-player-slot b,
+.ow-room-player-slot small,
+.ow-room-player-slot em {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ow-room-player-slot strong {
+  color: var(--text);
+  font-size: 0.78rem;
+  line-height: 1.1;
+}
+
+.ow-room-player-slot small,
+.ow-room-player-slot b {
+  border-radius: 999px;
+  background: rgba(116, 169, 255, 0.14);
+  color: var(--blue);
+  font-size: 0.58rem;
+  font-weight: 950;
+  padding: 2px 6px;
+}
+
+.ow-room-player-slot b {
+  color: var(--muted);
+}
+
+.ow-room-player-slot em {
+  color: var(--gold);
+  font-size: 0.62rem;
+  font-style: normal;
+  font-weight: 950;
+}
+
+.ow-room-player-slot .tier-badge {
+  transform: scale(0.9);
+}
+
+.ow-reserve-panel {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.ow-reserve-line {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+}
+
+.ow-reserve-line > strong {
+  color: var(--gold);
+  font-size: 0.78rem;
+  font-weight: 950;
+}
+
 .ow-drawer-head p {
   margin-top: 6px;
   color: var(--muted);
@@ -2439,6 +2551,25 @@ html[data-theme="light"] .ow-compose-drawer {
 
   .ow-lobby-actions {
     grid-template-columns: 1fr;
+  }
+
+  .ow-reserve-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .ow-room-slot-row,
+  .ow-room-reserve-row {
+    grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
+  }
+
+  .ow-room-player-slot {
+    min-height: 106px;
+    padding: 7px 4px;
+  }
+
+  .ow-room-player-slot .avatar {
+    width: 36px;
+    height: 36px;
   }
 
   .ow-party-head,
