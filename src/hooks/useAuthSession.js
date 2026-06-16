@@ -4,6 +4,7 @@ import { isSupabaseConfigured, supabase } from "../lib/supabase.js";
 const TEST_SESSION_KEY = "rankball.auth.testSession.v1";
 const PROVIDER_LABELS = { naver: "Naver", kakao: "Kakao", google: "Google" };
 const DEMO_LOGIN_ENV = import.meta.env.VITE_DEMO_LOGIN;
+let pendingOAuthExchange = null;
 
 function readTestSession() {
   if (typeof window === "undefined") return null;
@@ -49,9 +50,56 @@ function isDemoLoginAllowed() {
   return host === "localhost" || host === "127.0.0.1" || host.endsWith("boyakh-jpgs-projects.vercel.app");
 }
 
+function getOAuthCode() {
+  if (typeof window === "undefined") return "";
+  return new URLSearchParams(window.location.search).get("code") ?? "";
+}
+
+function getOAuthCallbackError() {
+  if (typeof window === "undefined") return "";
+  const search = new URLSearchParams(window.location.search);
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  return search.get("error_description")
+    ?? search.get("error")
+    ?? hash.get("error_description")
+    ?? hash.get("error")
+    ?? "";
+}
+
+function hasOAuthCallbackParams() {
+  if (typeof window === "undefined") return false;
+  const search = new URLSearchParams(window.location.search);
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  return search.has("code")
+    || search.has("error")
+    || search.has("error_description")
+    || hash.has("access_token")
+    || hash.has("refresh_token")
+    || hash.has("error")
+    || hash.has("error_description");
+}
+
+function cleanOAuthCallbackUrl() {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  ["code", "error", "error_description"].forEach((key) => url.searchParams.delete(key));
+  if (window.location.hash) url.hash = "";
+  window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+}
+
+function exchangeOAuthCodeOnce(code) {
+  if (!pendingOAuthExchange && code) {
+    pendingOAuthExchange = supabase.auth.exchangeCodeForSession(code).finally(() => {
+      pendingOAuthExchange = null;
+    });
+  }
+  return pendingOAuthExchange;
+}
+
 export function useAuthSession() {
-  const [session, setSession] = useState(() => readTestSession());
-  const [loading, setLoading] = useState(() => isSupabaseConfigured && !readTestSession());
+  const hasInitialOAuthCallback = hasOAuthCallbackParams();
+  const [session, setSession] = useState(() => (isSupabaseConfigured && hasInitialOAuthCallback ? null : readTestSession()));
+  const [loading, setLoading] = useState(() => isSupabaseConfigured && (hasInitialOAuthCallback || !readTestSession()));
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -62,25 +110,52 @@ export function useAuthSession() {
       return undefined;
     }
 
+    const hasCallback = hasOAuthCallbackParams();
+    const callbackError = getOAuthCallbackError();
+    const authCode = getOAuthCode();
+
+    if (callbackError) {
+      writeTestSession(null);
+      cleanOAuthCallbackUrl();
+      setError(callbackError);
+      setSession(null);
+      setLoading(false);
+      return undefined;
+    }
+
     const previewSession = readTestSession();
-    if (previewSession && isDemoLoginAllowed()) {
+    if (!hasCallback && previewSession && isDemoLoginAllowed()) {
       setSession(previewSession);
       setLoading(false);
       return undefined;
     }
 
     writeTestSession(null);
+    if (authCode) cleanOAuthCallbackUrl();
 
     let mounted = true;
-    supabase.auth.getSession().then(({ data, error: sessionError }) => {
-      if (!mounted) return;
-      if (sessionError) setError(sessionError.message);
-      setSession(data.session ?? null);
-      setLoading(false);
-    });
-
+    let resolvingInitialSession = true;
     const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession ?? null);
+      if (!resolvingInitialSession) setLoading(false);
+    });
+
+    const loadSession = authCode
+      ? exchangeOAuthCodeOnce(authCode)
+      : pendingOAuthExchange ?? supabase.auth.getSession();
+
+    loadSession.then(({ data: sessionData, error: sessionError }) => {
+      if (!mounted) return;
+      resolvingInitialSession = false;
+      if (sessionError) setError(sessionError.message);
+      setSession(sessionData.session ?? null);
+      if (hasCallback && !authCode) cleanOAuthCallbackUrl();
+      setLoading(false);
+    }).catch((sessionError) => {
+      if (!mounted) return;
+      resolvingInitialSession = false;
+      setError(sessionError?.message ?? "OAuth 세션 확인에 실패했습니다.");
+      setSession(null);
       setLoading(false);
     });
 
