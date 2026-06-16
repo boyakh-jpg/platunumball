@@ -534,7 +534,7 @@ function QueueRoomBoard({ lobby, userById, teams }) {
   );
 }
 
-function FillSlot({ candidate, userById, teams, readyText = "충원 예정" }) {
+function FillSlot({ candidate, userById, teams, readyText = "READY" }) {
   const user = candidate ? userById[candidate.playerId] : null;
   const readyLabel = candidate?.status === "ready" ? "참여 확정" : "재확인 필요";
   if (!user) {
