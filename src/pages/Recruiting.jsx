@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   CheckCircle2,
   Clock3,
@@ -789,6 +789,9 @@ function InvitationPanel({ invitations, userById, teams, currentUserId, alreadyA
 
 export default function Recruiting({ app }) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const targetPostId = searchParams.get("post") ?? "";
+  const targetFilter = searchParams.get("filter") ?? "";
   const myTeams = useMemo(
     () => app.state.teams.filter((team) => team.members.some((member) => member.userId === app.currentUser.id)),
     [app.currentUser.id, app.state.teams],
@@ -798,7 +801,7 @@ export default function Recruiting({ app }) {
   const teamById = useMemo(() => Object.fromEntries(app.state.teams.map((team) => [team.id, team])), [app.state.teams]);
   const [scope, setScope] = useState("local");
   const [queue, setQueue] = useState("all");
-  const [roomScope, setRoomScope] = useState("all");
+  const [roomScope, setRoomScope] = useState(() => (targetFilter === "invited" ? "invited" : "all"));
   const [modeFilter, setModeFilter] = useState("all");
   const [queueControlsOpen, setQueueControlsOpen] = useState(true);
   const [composeOpen, setComposeOpen] = useState(false);
@@ -835,6 +838,18 @@ export default function Recruiting({ app }) {
   const canPostRecruiting = hasSchedule && (!hostNeedsTeam || (Boolean(selectedTeam) && selectedHostPlayerIds.length > 0));
 
   useEffect(() => {
+    if (targetFilter === "invited") {
+      setRoomScope("invited");
+      return;
+    }
+    if (!targetPostId) return;
+    setScope("all");
+    setQueue("all");
+    setModeFilter("all");
+    setRoomScope("all");
+  }, [targetFilter, targetPostId]);
+
+  useEffect(() => {
     if (!hostNeedsTeam) return;
     const nextTeam = selectedTeam ?? myTeams[0] ?? null;
     if (!nextTeam) return;
@@ -860,7 +875,8 @@ export default function Recruiting({ app }) {
       .filter((post) => queue === "all" || (queue === "ranked" ? post.ranked !== false : post.ranked === false))
       .filter((post) => modeFilter === "all" || post.mode === modeFilter)
       .filter((post) => roomScope !== "created" || post.playerId === app.currentUser.id)
-      .filter((post) => roomScope !== "joined" || (post.playerId !== app.currentUser.id && isRecruitingPostForUser(post, app.currentUser.id, myTeamIds)));
+      .filter((post) => roomScope !== "joined" || (post.playerId !== app.currentUser.id && isRecruitingPostForUser(post, app.currentUser.id, myTeamIds)))
+      .filter((post) => roomScope !== "invited" || hasPendingRecruitingInvitation(post, app.currentUser.id));
   }, [app.currentUser.id, app.currentUser.region, app.state, modeFilter, myTeamIds, queue, roomScope, scope]);
 
   const posts = useMemo(() => {
@@ -880,6 +896,14 @@ export default function Recruiting({ app }) {
     : null;
   useBodyScrollLock(Boolean(selectedPost) || composeOpen);
 
+  useEffect(() => {
+    if (!targetPostId || !posts.some((post) => post.id === targetPostId)) return undefined;
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById(`recruiting-room-${targetPostId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [posts, targetPostId]);
+
   const rankedCount = scopedPosts.filter((post) => post.ranked !== false).length;
   const friendlyCount = scopedPosts.length - rankedCount;
   const createdRoomCount = (app.state.recruitingPosts ?? [])
@@ -890,6 +914,10 @@ export default function Recruiting({ app }) {
     .filter((post) => post.status !== "closed")
     .filter((post) => post.playerId !== app.currentUser.id)
     .filter((post) => isRecruitingPostForUser(post, app.currentUser.id, myTeamIds))
+    .length;
+  const invitedRoomCount = (app.state.recruitingPosts ?? [])
+    .filter((post) => post.status !== "closed")
+    .filter((post) => hasPendingRecruitingInvitation(post, app.currentUser.id))
     .length;
 
   const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
@@ -993,6 +1021,7 @@ export default function Recruiting({ app }) {
               <button type="button" className={scope === "all" ? "active" : ""} onClick={() => setScope("all")}>전체 지역</button>
               <button type="button" className={roomScope === "created" ? "active" : ""} onClick={() => setRoomScope(roomScope === "created" ? "all" : "created")}>내가 만든 방 {createdRoomCount}</button>
               <button type="button" className={roomScope === "joined" ? "active" : ""} onClick={() => setRoomScope(roomScope === "joined" ? "all" : "joined")}>내 참여방 {joinedRoomCount}</button>
+              <button type="button" className={roomScope === "invited" ? "active" : ""} onClick={() => setRoomScope(roomScope === "invited" ? "all" : "invited")}>초대받음 {invitedRoomCount}</button>
               <button type="button" className={queue === "all" ? "active" : ""} onClick={() => setQueue("all")}>전체</button>
               <button type="button" className={queue === "ranked" ? "active" : ""} onClick={() => setQueue("ranked")}>정규전</button>
               <button type="button" className={queue === "friendly" ? "active" : ""} onClick={() => setQueue("friendly")}>친선전</button>
@@ -1011,7 +1040,7 @@ export default function Recruiting({ app }) {
             <span>{scope === "local" ? "내 지역" : "전체 지역"}</span>
             <span>{queue === "ranked" ? "정규전" : queue === "friendly" ? "친선전" : "전체"}</span>
             <span>{modeFilter === "all" ? "전체 방식" : MATCH_MODES.find((mode) => mode.id === modeFilter)?.label ?? modeFilter}</span>
-            <span>{roomScope === "created" ? `내가 만든 방 ${createdRoomCount}` : roomScope === "joined" ? `내 참여방 ${joinedRoomCount}` : "전체 방"}</span>
+            <span>{roomScope === "created" ? `내가 만든 방 ${createdRoomCount}` : roomScope === "joined" ? `내 참여방 ${joinedRoomCount}` : roomScope === "invited" ? `초대받음 ${invitedRoomCount}` : "전체 방"}</span>
           </div>
         )}
       </section>
@@ -1034,8 +1063,9 @@ export default function Recruiting({ app }) {
 
           return (
             <article
+              id={`recruiting-room-${post.id}`}
               key={post.id}
-              className={`ow-recruit-card ow-lobby-card ${lobby.canConfirm ? "ow-state-ready" : ""} ${myRoom ? "ow-my-room" : ""}`}
+              className={`ow-recruit-card ow-lobby-card ${lobby.canConfirm ? "ow-state-ready" : ""} ${myRoom ? "ow-my-room" : ""} ${invited ? "ow-invited-room" : ""} ${targetPostId === post.id ? "ow-target-room" : ""}`}
               onClick={() => setSelectedPostId(post.id)}
             >
               <div className="ow-card-main">

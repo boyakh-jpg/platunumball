@@ -190,7 +190,7 @@ export default function Home({ app }) {
         label: post.playerId === user.id ? "내가 연 방" : "대기 중",
         title: post.title,
         meta: `${getRecruitingSchedule(post)} · ${post.court}`,
-        href: "/app/recruiting",
+        href: `/app/recruiting?post=${post.id}`,
         icon: Handshake,
       }));
 
@@ -200,7 +200,7 @@ export default function Home({ app }) {
       label: "방 초대",
       title: post.title,
       meta: `${getRecruitingSchedule(post)} · ${post.court}`,
-      href: "/app/recruiting",
+      href: `/app/recruiting?filter=invited&post=${post.id}`,
       icon: UserPlus,
     }));
 
@@ -351,7 +351,7 @@ export default function Home({ app }) {
                 <span className="home-invitation-actions">
                   <Button size="sm" type="button" onClick={() => app.actions.acceptRecruitingInvitation(post.id, invitation.id)}>수락</Button>
                   <Button size="sm" type="button" variant="secondary" onClick={() => app.actions.declineRecruitingInvitation(post.id, invitation.id)}>거절</Button>
-                  <Link className="button button-secondary button-sm" to="/app/recruiting">방 보기</Link>
+                  <Link className="button button-secondary button-sm" to={`/app/recruiting?filter=invited&post=${post.id}`}>방 보기</Link>
                 </span>
               </div>
             ))}
@@ -545,7 +545,7 @@ export default function Home({ app }) {
               {localRecruitingPosts.map((post) => {
                 const meta = RECRUITING_TYPES[post.type] ?? RECRUITING_TYPES.need_player;
                 return (
-                  <Link key={post.id} to="/app/recruiting">
+                  <Link key={post.id} to={`/app/recruiting?post=${post.id}`}>
                     <span>{post.title}</span>
                     <strong>{post.ranked === false ? "친선" : meta.actionLabel}</strong>
                   </Link>

@@ -45,7 +45,7 @@ export default function Notifications({ app }) {
                 <span className="home-invitation-actions">
                   <Button size="sm" type="button" onClick={() => app.actions.acceptRecruitingInvitation(post.id, invitation.id)}>수락</Button>
                   <Button size="sm" type="button" variant="secondary" onClick={() => app.actions.declineRecruitingInvitation(post.id, invitation.id)}>거절</Button>
-                  <Link className="button button-secondary button-sm" to="/app/recruiting">방 보기</Link>
+                  <Link className="button button-secondary button-sm" to={`/app/recruiting?filter=invited&post=${post.id}`}>방 보기</Link>
                 </span>
               </div>
             ))}
@@ -73,7 +73,7 @@ export default function Notifications({ app }) {
                   <Link className="button button-secondary button-md" to={`/app/matches/${notification.matchId}`}>경기방</Link>
                 ) : null}
                 {notification.recruitingPostId ? (
-                  <Link className="button button-secondary button-md" to="/app/recruiting">매칭</Link>
+                  <Link className="button button-secondary button-md" to={`/app/recruiting?post=${notification.recruitingPostId}`}>매칭</Link>
                 ) : null}
                 <button type="button" disabled={Boolean(notification.readAt)} onClick={() => app.actions.markNotificationRead(notification.id)}>
                   {notification.readAt ? "읽음" : "읽음 처리"}

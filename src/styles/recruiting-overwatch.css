@@ -352,6 +352,19 @@
   box-shadow: 0 0 0 1px rgba(70, 224, 182, 0.14), 0 18px 50px rgba(0, 0, 0, 0.24);
 }
 
+.ow-recruit-card.ow-invited-room {
+  border-color: rgba(255, 211, 108, 0.68);
+  background:
+    linear-gradient(135deg, rgba(255, 211, 108, 0.16), rgba(70, 224, 182, 0.055)),
+    rgba(12, 12, 16, 0.92);
+  box-shadow: 0 0 0 1px rgba(255, 211, 108, 0.18), 0 18px 52px rgba(0, 0, 0, 0.28);
+}
+
+.ow-recruit-card.ow-target-room {
+  outline: 2px solid rgba(255, 211, 108, 0.72);
+  outline-offset: 3px;
+}
+
 .ow-my-room-tag {
   display: inline-flex;
   align-items: center;
@@ -1877,6 +1890,14 @@ html[data-theme="light"] .ow-recruit-card,
 html[data-theme="light"] .ow-hero-panel,
 html[data-theme="light"] .ow-empty-state {
   background: rgba(255, 255, 255, 0.78);
+}
+
+html[data-theme="light"] .ow-recruit-card.ow-invited-room {
+  border-color: rgba(184, 118, 19, 0.54);
+  background:
+    linear-gradient(135deg, rgba(255, 211, 108, 0.34), rgba(70, 224, 182, 0.12)),
+    rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 0 1px rgba(184, 118, 19, 0.12), 0 16px 38px rgba(88, 65, 18, 0.12);
 }
 
 html[data-theme="light"] .ow-compose-drawer {
