@@ -169,7 +169,7 @@ export function getAllowedStatFields(match = {}, userId, playerId = userId) {
   const playerSideName = getPlayerSideName(match, playerId);
   const recorders = normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders);
   if (playerSideName && recorders[playerSideName]) {
-    return recorders[playerSideName] === userId ? PLAYER_STAT_FIELDS : [];
+    return recorders[playerSideName] === userId ? PLAYER_STAT_FIELDS.filter((field) => field.id === "points") : [];
   }
   if (playerId !== userId) return [];
   return PLAYER_STAT_FIELDS.filter((field) => field.id === "points");

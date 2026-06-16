@@ -28,12 +28,14 @@ import {
   reportMatch,
   resetState,
   resumeMatchApproval,
+  removeRecruitingPartyPlayer,
   runAutomaticStateMaintenance,
   saveRemoteState,
   saveState,
   sendRecruitingChat,
   setRecruitingApplicantPlacement,
   setRecruitingApplicantReserve,
+  setRecruitingPartyPlayerPlacement,
   setRecruitingPartyPlayerReserve,
   setRecruitingReady,
   setRecruitingStatRecorder,
@@ -209,6 +211,12 @@ export function useAppData(authUserId = null) {
       },
       setRecruitingPartyPlayerReserve: (postId, entryId, playerId, reserve) => {
         setState((prev) => setRecruitingPartyPlayerReserve({ ...prev, currentUserId }, postId, entryId, playerId, reserve));
+      },
+      setRecruitingPartyPlayerPlacement: (postId, entryId, playerId, placement) => {
+        setState((prev) => setRecruitingPartyPlayerPlacement({ ...prev, currentUserId }, postId, entryId, playerId, placement));
+      },
+      removeRecruitingPartyPlayer: (postId, entryId, playerId) => {
+        setState((prev) => removeRecruitingPartyPlayer({ ...prev, currentUserId }, postId, entryId, playerId));
       },
       setRecruitingStatRecorder: (postId, sideName, playerId) => {
         setState((prev) => setRecruitingStatRecorder({ ...prev, currentUserId }, postId, sideName, playerId));

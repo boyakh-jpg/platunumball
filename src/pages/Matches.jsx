@@ -212,6 +212,13 @@ function getTournamentTeamStatus(tournament, teamId) {
   return tournament.teamStatuses?.[teamId] ?? "invited";
 }
 
+function getTournamentTeamIds(tournament) {
+  return [...new Set([
+    ...(tournament.teamIds ?? []),
+    ...Object.keys(tournament.teamStatuses ?? {}),
+  ].filter(Boolean))];
+}
+
 function getTournamentMatches(tournament, matchesById, matches = []) {
   const fromIds = (tournament.matchIds ?? []).map((matchId) => matchesById[matchId]).filter(Boolean);
   const source = fromIds.length ? fromIds : matches.filter((match) => match.tournamentId === tournament.id);
@@ -219,7 +226,7 @@ function getTournamentMatches(tournament, matchesById, matches = []) {
 }
 
 function getTournamentTeamRows(tournament, teamById, userById, currentUserId) {
-  return (tournament.teamIds ?? [])
+  return getTournamentTeamIds(tournament)
     .map((teamId) => {
       const team = teamById[teamId];
       const captainId = getTeamCaptainId(team);
@@ -249,7 +256,7 @@ export default function Matches({ app }) {
   const [dateFilter, setDateFilter] = useState("");
   const [historyRangeMonths, setHistoryRangeMonths] = useState(1);
   const [calendarMonth, setCalendarMonth] = useState(getMonthKey());
-  const [tournamentPanelOpen, setTournamentPanelOpen] = useState(false);
+  const [tournamentPanelOpen, setTournamentPanelOpen] = useState(true);
   const [selectedTournamentId, setSelectedTournamentId] = useState(null);
   const todayValue = toDateInputValue();
   const maxScheduleDate = addDays(todayValue, 365);
@@ -267,9 +274,8 @@ export default function Matches({ app }) {
   const activeTournaments = useMemo(() => {
     return [...(app.state.tournaments ?? [])]
       .filter((tournament) => !["closed", "cancelled"].includes(tournament.status))
-      .filter((tournament) => tournament.createdBy === app.currentUser.id || (tournament.teamIds ?? []).some((teamId) => myTeamIds.includes(teamId)))
-      .sort((a, b) => String(b.createdAt ?? "").localeCompare(String(a.createdAt ?? "")))
-      .slice(0, 4);
+      .filter((tournament) => tournament.createdBy === app.currentUser.id || getTournamentTeamIds(tournament).some((teamId) => myTeamIds.includes(teamId)))
+      .sort((a, b) => String(b.createdAt ?? "").localeCompare(String(a.createdAt ?? "")));
   }, [app.currentUser.id, app.state.tournaments, myTeamIds]);
   const selectedTournament = useMemo(
     () => activeTournaments.find((tournament) => tournament.id === selectedTournamentId) ?? null,

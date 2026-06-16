@@ -444,13 +444,32 @@ export function getRecruitingLobby(post = {}, state = {}) {
   const applicants = normalizeRecruitingApplicants(normalizedPost.applicants ?? [])
     .map((applicant) => getRecruitingApplicantEntry(applicant, state, normalizedPost))
     .filter(Boolean);
-  const entries = [host, ...applicants];
+  const rawEntries = [host, ...applicants].filter(Boolean);
+  const activeSeen = new Set();
+  const entries = rawEntries
+    .map((entry) => {
+      const players = entry.reserve
+        ? unique(entry.players ?? []).filter(Boolean)
+        : unique(entry.players ?? []).filter((playerId) => {
+            if (!playerId || activeSeen.has(playerId)) return false;
+            activeSeen.add(playerId);
+            return true;
+          });
+      return {
+        ...entry,
+        players,
+        reserves: unique(entry.reserves ?? []).filter((playerId) => playerId && !players.includes(playerId)),
+      };
+    })
+    .filter((entry) => entry.fixed || entry.players.length || entry.reserves.length);
+  const activePlayerIds = new Set(entries.filter((entry) => !entry.reserve).flatMap((entry) => entry.players));
+  const reserveSeen = new Set();
+  const userById = Object.fromEntries((state.users ?? []).map((user) => [user.id, user]));
 
   const sides = ["teamA", "teamB"].reduce((acc, side) => {
     const sideEntries = entries.filter((entry) => entry.side === side && !entry.reserve);
     const reserveEntries = entries.filter((entry) => entry.side === side && entry.reserve);
     const players = unique(sideEntries.flatMap((entry) => entry.players));
-    const userById = Object.fromEntries((state.users ?? []).map((user) => [user.id, user]));
     const reserveCandidates = uniqueCandidates([
       ...reserveEntries.flatMap((entry) =>
         entry.players.map((playerId) => ({
@@ -477,7 +496,12 @@ export function getRecruitingLobby(post = {}, state = {}) {
         })),
       ),
     ])
-      .filter((candidate) => !players.includes(candidate.playerId))
+      .filter((candidate) => candidate.playerId && !activePlayerIds.has(candidate.playerId))
+      .filter((candidate) => {
+        if (reserveSeen.has(candidate.playerId)) return false;
+        reserveSeen.add(candidate.playerId);
+        return true;
+      })
       .sort(compareCandidates);
     const openSlots = Math.max(0, getRecruitingSideCapacity(normalizedPost) - players.length);
     const fillSlots = reserveCandidates.slice(0, openSlots).map((candidate, index) => ({
