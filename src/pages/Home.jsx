@@ -9,7 +9,8 @@ import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { COURTS } from "../lib/constants.js";
-import { RECRUITING_TYPES, getPendingRecruitingInvitations, isRecruitingPostForUser, isNationalRecruitingPost } from "../lib/recruiting.js";
+import { getAllowedStatFields, getMatchRecordWindow, getPlayerStatSubmitted } from "../lib/matchUtils.js";
+import { RECRUITING_TYPES, getPendingRecruitingInvitations, isNationalRecruitingPost } from "../lib/recruiting.js";
 import { getCurrentSeason, getPlayerSeasonRows, getSeasonProgress } from "../lib/season.js";
 import { getTierDivision } from "../lib/tier.js";
 
@@ -19,12 +20,6 @@ function compareSchedule(a, b) {
 
 function matchHasUser(match, userId) {
   return match.teamA.players.includes(userId) || match.teamB.players.includes(userId);
-}
-
-function isPastScheduled(match) {
-  if (!match.scheduledDate) return false;
-  const scheduled = new Date(`${match.scheduledDate}T${match.scheduledTime || "00:00"}`);
-  return Number.isFinite(scheduled.getTime()) && scheduled.getTime() <= Date.now();
 }
 
 function getUserResult(match, userId) {
@@ -50,6 +45,15 @@ function userNeedsAgreement(match, userId) {
 function userNeedsApproval(match, userId) {
   const sideName = getUserSide(match, userId);
   return match.status === "approval" && matchHasUser(match, userId) && !(match.approvals?.[sideName] ?? []).includes(userId);
+}
+
+function userNeedsResultInput(match, userId) {
+  if (!["agreed", "approval"].includes(match.status) || !matchHasUser(match, userId)) return false;
+  if (getPlayerStatSubmitted(match, userId)) return false;
+  const recordWindow = getMatchRecordWindow(match);
+  if (!recordWindow.statOpen) return false;
+  const playerIds = [...(match.teamA?.players ?? []), ...(match.teamB?.players ?? [])];
+  return playerIds.some((playerId) => getAllowedStatFields(match, userId, playerId).length > 0);
 }
 
 function getRecruitingSchedule(post) {
@@ -86,7 +90,6 @@ export default function Home({ app }) {
     .filter((team) => team.members.some((member) => member.userId === user.id))
     .map((team) => ({ ...team, myRole: team.members.find((member) => member.userId === user.id)?.role ?? "regular" }))
     .sort((a, b) => Number(b.myRole === "captain") - Number(a.myRole === "captain") || b.mmr - a.mmr);
-  const myTeamIds = useMemo(() => myTeams.map((team) => team.id), [myTeams]);
   const captainTeamIds = useMemo(() => myTeams.filter((team) => team.myRole === "captain").map((team) => team.id), [myTeams]);
   const pendingInvitations = useMemo(() => getPendingRecruitingInvitations(app.state, user.id), [app.state, user.id]);
   const myTeamCount = app.state.teams.filter((team) => team.members.some((member) => member.userId === user.id)).length;
@@ -133,17 +136,6 @@ export default function Home({ app }) {
     const matchItems = app.state.matches
       .filter((match) => matchHasUser(match, user.id))
       .map((match) => {
-        if (userNeedsApproval(match, user.id)) {
-          return {
-            id: `approval-${match.id}`,
-            priority: 1,
-            label: "결과 승인",
-            title: match.title,
-            meta: `${match.scheduledAt} · ${match.court}`,
-            href: `/app/matches/${match.id}`,
-            icon: ShieldAlert,
-          };
-        }
         if (userNeedsAgreement(match, user.id)) {
           return {
             id: `agreement-${match.id}`,
@@ -155,7 +147,7 @@ export default function Home({ app }) {
             icon: ClipboardCheck,
           };
         }
-        if (match.status === "agreed" && isPastScheduled(match)) {
+        if (userNeedsResultInput(match, user.id)) {
           return {
             id: `result-${match.id}`,
             priority: 3,
@@ -166,33 +158,20 @@ export default function Home({ app }) {
             icon: CalendarDays,
           };
         }
-        if (match.status === "agreed") {
+        if (userNeedsApproval(match, user.id)) {
           return {
-            id: `scheduled-${match.id}`,
+            id: `approval-${match.id}`,
             priority: 4,
-            label: "예정 경기",
+            label: "결과 승인",
             title: match.title,
             meta: `${match.scheduledAt} · ${match.court}`,
             href: `/app/matches/${match.id}`,
-            icon: CalendarDays,
+            icon: ShieldAlert,
           };
         }
         return null;
       })
       .filter(Boolean);
-    const roomItems = (app.state.recruitingPosts ?? [])
-      .filter((post) => post.status !== "closed")
-      .filter((post) => isRecruitingPostForUser(post, user.id, myTeamIds))
-      .filter((post) => !pendingInvitations.some((item) => item.post.id === post.id))
-      .map((post) => ({
-        id: `queue-${post.id}`,
-        priority: 5,
-        label: post.playerId === user.id ? "내가 연 방" : "대기 중",
-        title: post.title,
-        meta: `${getRecruitingSchedule(post)} · ${post.court}`,
-        href: `/app/recruiting?post=${post.id}`,
-        icon: Handshake,
-      }));
 
     const invitationItems = pendingInvitations.map(({ post, invitation }) => ({
       id: `invite-${post.id}-${invitation.id}`,
@@ -204,12 +183,14 @@ export default function Home({ app }) {
       icon: UserPlus,
     }));
 
-    return [...invitationItems, ...tournamentInviteItems, ...matchItems, ...roomItems]
+    return [...invitationItems, ...tournamentInviteItems, ...matchItems]
       .sort((a, b) => a.priority - b.priority || String(a.meta).localeCompare(String(b.meta)))
       .slice(0, 5);
-  }, [app.state.matches, app.state.recruitingPosts, app.state.tournaments, captainTeamIds, myTeamIds, pendingInvitations, teamById, user.id]);
+  }, [app.state.matches, app.state.tournaments, captainTeamIds, pendingInvitations, teamById, user.id]);
 
   const searchResults = useMemo(() => {
+    if (!searchText) return [];
+
     const players = app.state.users
       .filter((item) => !blockedUserIds.includes(item.id))
       .map((item) => ({
@@ -245,9 +226,9 @@ export default function Home({ app }) {
     }));
 
     return [...players, ...teams, ...courts]
-      .filter((item) => (searchText ? item.haystack.toLowerCase().includes(searchText) : item.score >= 10000))
+      .filter((item) => item.haystack.toLowerCase().includes(searchText))
       .sort((a, b) => b.score - a.score || a.label.localeCompare(b.label))
-      .slice(0, searchText ? 8 : 5);
+      .slice(0, 8);
   }, [app.state.teams, app.state.users, blockedUserIds, searchText, user.region]);
   const topRankers = seasonRows.slice(0, 5);
   const latestMyMatches = myCompletedMatches.slice(0, 5);
@@ -278,30 +259,32 @@ export default function Home({ app }) {
           <Link to="/app/teams">팀</Link>
           <Link to="/app/recruiting">매칭</Link>
         </div>
-        <div className="home-search-results unified opgg-search-results">
-          {searchResults.map((item) => (
-            item.team ? (
-              <TeamHoverCard key={item.id} team={item.team}>
-                {item.teamColor ? <span className="team-mini-dot" style={{ "--team-color": item.teamColor }} /> : null}
-                <span className="opgg-result-main">
-                  <strong>{item.label}</strong>
-                  <em>{item.meta}</em>
-                </span>
-                <small>{item.kind}</small>
-              </TeamHoverCard>
-            ) : (
-              <Link key={item.id} to={item.href}>
-                {item.avatar ? <span className="avatar small" style={{ "--avatar": item.avatar }}>{item.label.slice(0, 1)}</span> : null}
-                {item.court ? <span className="court-mini-dot" /> : null}
-                <span className="opgg-result-main">
-                  <strong>{item.label}</strong>
-                  <em>{item.meta}</em>
-                </span>
-                <small>{item.kind}</small>
-              </Link>
-            )
-          ))}
-        </div>
+        {searchText ? (
+          <div className="home-search-results unified opgg-search-results">
+            {searchResults.length ? searchResults.map((item) => (
+              item.team ? (
+                <TeamHoverCard key={item.id} team={item.team}>
+                  {item.teamColor ? <span className="team-mini-dot" style={{ "--team-color": item.teamColor }} /> : null}
+                  <span className="opgg-result-main">
+                    <strong>{item.label}</strong>
+                    <em>{item.meta}</em>
+                  </span>
+                  <small>{item.kind}</small>
+                </TeamHoverCard>
+              ) : (
+                <Link key={item.id} to={item.href}>
+                  {item.avatar ? <span className="avatar small" style={{ "--avatar": item.avatar }}>{item.label.slice(0, 1)}</span> : null}
+                  {item.court ? <span className="court-mini-dot" /> : null}
+                  <span className="opgg-result-main">
+                    <strong>{item.label}</strong>
+                    <em>{item.meta}</em>
+                  </span>
+                  <small>{item.kind}</small>
+                </Link>
+              )
+            )) : <div className="empty-state">검색 결과 없음</div>}
+          </div>
+        ) : null}
       </Card>
 
       {priorityItems.length ? (
@@ -311,7 +294,7 @@ export default function Home({ app }) {
               <p className="eyebrow">Action Queue</p>
               <h2>내가 처리할 방</h2>
             </div>
-            <Badge tone={priorityItems.some((item) => item.priority <= 3) ? "orange" : "green"}>{priorityItems.length}개</Badge>
+            <Badge tone="orange">{priorityItems.length}개</Badge>
           </div>
           <div className="home-action-list">
             {priorityItems.map((item) => {

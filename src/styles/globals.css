@@ -2392,6 +2392,7 @@ input[type="color"] {
 
   .bottom-nav a span {
     display: block;
+    min-width: 0;
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -3454,7 +3455,8 @@ input[type="color"] {
 
 .home-action-row.priority-1,
 .home-action-row.priority-2,
-.home-action-row.priority-3 {
+.home-action-row.priority-3,
+.home-action-row.priority-4 {
   border-color: rgba(255, 211, 108, 0.34);
   background: rgba(255, 211, 108, 0.075);
 }
