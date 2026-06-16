@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 function getPosition(anchor, width, cardHeight) {
@@ -42,9 +42,16 @@ export default function HoverPortal({
   children,
   width = 360,
   estimatedHeight = 280,
+  portalRef,
 }) {
   const [position, setPosition] = useState(null);
   const cardRef = useRef(null);
+  const setCardNode = useCallback((node) => {
+    cardRef.current = node;
+    if (!portalRef) return;
+    if (typeof portalRef === "function") portalRef(node);
+    else portalRef.current = node;
+  }, [portalRef]);
 
   useLayoutEffect(() => {
     if (!open || typeof document === "undefined") {
@@ -77,7 +84,7 @@ export default function HoverPortal({
   if (!open || !position || typeof document === "undefined") return null;
 
   return createPortal(
-    <span ref={cardRef} className={className} role="tooltip" style={position}>
+    <span ref={setCardNode} className={className} role="tooltip" style={position}>
       {children}
     </span>,
     document.body,

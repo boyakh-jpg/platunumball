@@ -541,6 +541,16 @@ span.team-hover-card {
   transition: opacity 0.14s ease, transform 0.14s ease;
 }
 
+.hover-portal-card.touch-open {
+  overflow: auto;
+  pointer-events: auto;
+}
+
+.hover-card-close,
+.hover-card-action {
+  display: none;
+}
+
 .player-hover-head,
 .team-hover-head,
 .team-hover-tier {
@@ -667,6 +677,51 @@ span.team-hover-card {
 .team-hover-stats b {
   color: var(--text);
   font-size: 0.84rem;
+}
+
+@media (hover: none), (pointer: coarse) {
+  span.player-hover-card.touch-open,
+  span.team-hover-card.touch-open {
+    top: auto !important;
+    right: 12px;
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    left: 12px !important;
+    width: auto !important;
+    min-width: 0;
+    max-height: min(78vh, 560px);
+    border-radius: 14px;
+    padding: 14px;
+  }
+
+  .hover-card-close {
+    display: inline-grid;
+    justify-self: end;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 0.78rem;
+    font-weight: 950;
+    padding: 6px 10px;
+  }
+
+  .hover-card-action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9px;
+    background: linear-gradient(135deg, var(--green), var(--blue));
+    color: #061018;
+    font-size: 0.86rem;
+    font-weight: 950;
+    padding: 11px 12px;
+    text-decoration: none;
+  }
+
+  span.player-hover-card.touch-open .player-hover-tier-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .tier-emblem {

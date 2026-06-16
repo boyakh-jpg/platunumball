@@ -1,8 +1,9 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import HoverPortal from "../common/HoverPortal.jsx";
 import TierBadge from "../rating/TierBadge.jsx";
 import TierEmblem from "../rating/TierEmblem.jsx";
+import useBodyScrollLock from "../../hooks/useBodyScrollLock.js";
 
 const rolePriority = {
   captain: 0,
@@ -30,9 +31,44 @@ function roleLabel(role) {
   return "후보";
 }
 
+function isTouchPreviewEvent(event) {
+  if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return false;
+  return typeof window !== "undefined" && window.matchMedia("(hover: none), (pointer: coarse)").matches;
+}
+
 export default function PlayerHoverCard({ user, teams = [], children, className = "", as = "link", to }) {
-  const [open, setOpen] = useState(false);
+  const [hoverOpen, setHoverOpen] = useState(false);
+  const [touchOpen, setTouchOpen] = useState(false);
   const anchorRef = useRef(null);
+  const cardRef = useRef(null);
+  const longPressTimerRef = useRef(null);
+  const longPressOpenedRef = useRef(false);
+  useBodyScrollLock(touchOpen);
+
+  useEffect(() => () => {
+    if (longPressTimerRef.current) window.clearTimeout(longPressTimerRef.current);
+  }, []);
+
+  useEffect(() => {
+    if (!touchOpen) return undefined;
+
+    const closeOutside = (event) => {
+      const target = event.target;
+      if (anchorRef.current?.contains(target) || cardRef.current?.contains(target)) return;
+      setTouchOpen(false);
+    };
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") setTouchOpen(false);
+    };
+
+    document.addEventListener("pointerdown", closeOutside, true);
+    document.addEventListener("keydown", closeOnEscape);
+
+    return () => {
+      document.removeEventListener("pointerdown", closeOutside, true);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [touchOpen]);
 
   if (!user) return children ?? null;
 
@@ -43,30 +79,78 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
     ...Object.entries(user.ratings?.modes ?? {}),
   ].filter(([, mmr]) => Number.isFinite(Number(mmr)));
   const Component = as === "span" ? "span" : Link;
-  const props = as === "span" ? {} : { to: to ?? `/app/players/${user.id}` };
-  const showHover = () => setOpen(true);
-  const hideHover = () => setOpen(false);
+  const profilePath = to ?? `/app/players/${user.id}`;
+  const props = as === "span" ? {} : { to: profilePath };
+  const showHover = () => setHoverOpen(true);
+  const hideHover = () => setHoverOpen(false);
+  const closeTouch = () => setTouchOpen(false);
+  const clearLongPress = () => {
+    if (!longPressTimerRef.current) return;
+    window.clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = null;
+  };
+  const handlePointerDown = (event) => {
+    if (!isTouchPreviewEvent(event)) return;
+    clearLongPress();
+    longPressOpenedRef.current = false;
+    longPressTimerRef.current = window.setTimeout(() => {
+      longPressOpenedRef.current = true;
+      setTouchOpen(true);
+    }, 420);
+  };
+  const handleTriggerClick = (event) => {
+    if (!isTouchPreviewEvent(event)) return;
+    if (longPressOpenedRef.current) {
+      event.preventDefault();
+      event.stopPropagation();
+      longPressOpenedRef.current = false;
+      return;
+    }
+    if (as === "span") {
+      event.preventDefault();
+      event.stopPropagation();
+      setTouchOpen(true);
+    }
+  };
+  const open = hoverOpen || touchOpen;
 
   return (
     <Component
       ref={anchorRef}
       className={`player-hover-trigger ${className}`}
       onBlur={hideHover}
+      onClick={handleTriggerClick}
+      onContextMenu={(event) => {
+        if (isTouchPreviewEvent(event)) event.preventDefault();
+      }}
       onFocus={showHover}
       onKeyDown={(event) => {
-        if (event.key === "Escape") hideHover();
+        if (event.key === "Escape") {
+          hideHover();
+          closeTouch();
+        }
       }}
       onMouseEnter={showHover}
       onMouseLeave={hideHover}
+      onPointerCancel={clearLongPress}
+      onPointerDown={handlePointerDown}
+      onPointerLeave={clearLongPress}
+      onPointerUp={clearLongPress}
       {...props}
     >
       {children}
       <HoverPortal
         anchorRef={anchorRef}
-        className="player-hover-card hover-portal-card"
+        className={`player-hover-card hover-portal-card ${touchOpen ? "touch-open" : ""}`}
         estimatedHeight={360}
         open={open}
+        portalRef={cardRef}
       >
+        <button type="button" className="hover-card-close" onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          closeTouch();
+        }}>닫기</button>
         <span className="player-hover-head">
           <span className="avatar" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
           <span>
@@ -98,6 +182,10 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
             <em>없음</em>
           )}
         </span>
+        <Link className="hover-card-action" to={profilePath} onClick={(event) => {
+          event.stopPropagation();
+          closeTouch();
+        }}>프로필 보기</Link>
       </HoverPortal>
     </Component>
   );
