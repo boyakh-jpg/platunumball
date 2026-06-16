@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Card from "../components/common/Card.jsx";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
@@ -11,9 +11,14 @@ const toneMap = {
 };
 
 export default function Notifications({ app }) {
+  const navigate = useNavigate();
   const visibleNotifications = app.state.notifications.filter((notification) => !notification.targetUserId || notification.targetUserId === app.currentUser.id);
   const unreadCount = visibleNotifications.filter((notification) => !notification.readAt).length;
   const pendingInvitations = getPendingRecruitingInvitations(app.state, app.currentUser.id);
+  const acceptInvitation = (postId, invitationId) => {
+    app.actions.acceptRecruitingInvitation(postId, invitationId);
+    navigate(`/app/recruiting?post=${postId}`);
+  };
 
   return (
     <div className="page-stack">
@@ -43,7 +48,7 @@ export default function Notifications({ app }) {
                   <em>{[post.scheduledDate, post.scheduledTime].filter(Boolean).join(" ") || post.scheduledAt || "일정 미정"} · {post.court}</em>
                 </span>
                 <span className="home-invitation-actions">
-                  <Button size="sm" type="button" onClick={() => app.actions.acceptRecruitingInvitation(post.id, invitation.id)}>수락</Button>
+                  <Button size="sm" type="button" onClick={() => acceptInvitation(post.id, invitation.id)}>수락</Button>
                   <Button size="sm" type="button" variant="secondary" onClick={() => app.actions.declineRecruitingInvitation(post.id, invitation.id)}>거절</Button>
                   <Link className="button button-secondary button-sm" to={`/app/recruiting?filter=invited&post=${post.id}`}>방 보기</Link>
                 </span>

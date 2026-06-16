@@ -1117,6 +1117,13 @@ export default function Recruiting({ app }) {
   useBodyScrollLock(Boolean(selectedPost) || composeOpen);
 
   useEffect(() => {
+    if (!targetPostId) return;
+    const targetPost = app.state.recruitingPosts.find((post) => post.id === targetPostId && post.status !== "closed");
+    if (!targetPost) return;
+    setSelectedPostId(targetPostId);
+  }, [app.state.recruitingPosts, targetPostId]);
+
+  useEffect(() => {
     if (!targetPostId || !posts.some((post) => post.id === targetPostId)) return undefined;
     const frame = window.requestAnimationFrame(() => {
       document.getElementById(`recruiting-room-${targetPostId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });

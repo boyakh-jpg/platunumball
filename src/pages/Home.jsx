@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { CalendarDays, ClipboardCheck, Handshake, PlusCircle, Search, ShieldAlert, Swords, Trophy, UserPlus } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
@@ -78,6 +78,7 @@ function getUserMatchLine(match, userId) {
 }
 
 export default function Home({ app }) {
+  const navigate = useNavigate();
   const user = app.currentUser;
   const [query, setQuery] = useState("");
   const searchText = query.trim().toLowerCase();
@@ -93,6 +94,10 @@ export default function Home({ app }) {
   const captainTeamIds = useMemo(() => myTeams.filter((team) => team.myRole === "captain").map((team) => team.id), [myTeams]);
   const myTeamIds = useMemo(() => myTeams.map((team) => team.id), [myTeams]);
   const pendingInvitations = useMemo(() => getPendingRecruitingInvitations(app.state, user.id), [app.state, user.id]);
+  const acceptInvitation = (postId, invitationId) => {
+    app.actions.acceptRecruitingInvitation(postId, invitationId);
+    navigate(`/app/recruiting?post=${postId}`);
+  };
   const myTeamCount = app.state.teams.filter((team) => team.members.some((member) => member.userId === user.id)).length;
   const blockedUserIds = app.state.settings?.blockedUserIds ?? [];
   const season = getCurrentSeason(app.state);
@@ -347,7 +352,7 @@ export default function Home({ app }) {
                   <em>{getRecruitingSchedule(post)} · {post.court}</em>
                 </span>
                 <span className="home-invitation-actions">
-                  <Button size="sm" type="button" onClick={() => app.actions.acceptRecruitingInvitation(post.id, invitation.id)}>수락</Button>
+                  <Button size="sm" type="button" onClick={() => acceptInvitation(post.id, invitation.id)}>수락</Button>
                   <Button size="sm" type="button" variant="secondary" onClick={() => app.actions.declineRecruitingInvitation(post.id, invitation.id)}>거절</Button>
                   <Link className="button button-secondary button-sm" to={`/app/recruiting?filter=invited&post=${post.id}`}>방 보기</Link>
                 </span>
