@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
-import { CalendarDays, MapPin, Minus, Plus, ShieldCheck, Star, Trophy, UsersRound, X } from "lucide-react";
+import { CalendarDays, MapPin, Minus, Plus, ShieldCheck, ThumbsUp, Trophy, UsersRound, X } from "lucide-react";
 import AgreementPanel from "../components/match/AgreementPanel.jsx";
 import ApprovalPanel from "../components/match/ApprovalPanel.jsx";
 import MatchContract from "../components/match/MatchContract.jsx";
@@ -94,7 +94,12 @@ export default function MatchRoom({ app }) {
   const [disputeReason, setDisputeReason] = useState("스코어 또는 개인 기록 재확인 필요");
   const [statEditorPlayerId, setStatEditorPlayerId] = useState(null);
   const [reviewControlsOpen, setReviewControlsOpen] = useState(false);
+  const [thumbDraftPlayerIds, setThumbDraftPlayerIds] = useState([]);
   useBodyScrollLock(Boolean(statEditorPlayerId));
+
+  useEffect(() => {
+    setThumbDraftPlayerIds(match?.trustFeedback?.stars?.[app.currentUser.id] ?? []);
+  }, [app.currentUser.id, match?.id, match?.trustFeedback]);
 
   if (!match) return <Navigate to="/app/create" replace />;
 
@@ -139,7 +144,7 @@ export default function MatchRoom({ app }) {
   const isContractStage = match.status === "contract";
   const shouldShowResultEntry = match.status === "approval" || Boolean(match.result) || (match.status === "agreed" && !recordWindow.beforeEnd);
   const shouldShowApprovalPanel = ["disputed", "confirmed"].includes(match.status) || (match.status === "approval" && approvalAccessReady);
-  const shouldShowWaitingPanel = !shouldShowResultEntry && !shouldShowApprovalPanel;
+  const shouldShowWaitingPanel = false;
   const scoreA = getDisplayScore(match, "teamA");
   const scoreB = getDisplayScore(match, "teamB");
   const teamA = app.state.teams.find((team) => team.id === match.teamA.teamId);
@@ -336,17 +341,25 @@ export default function MatchRoom({ app }) {
   ];
   const statTrustPercent = Math.round((statTrustSteps.filter((step) => step.complete).length / statTrustSteps.length) * 100);
   const trustFeedback = match.trustFeedback ?? {};
-  const starsByGiver = trustFeedback.stars ?? {};
-  const myStarredPlayerIds = starsByGiver[app.currentUser.id] ?? [];
-  const starLimit = Math.max(1, Math.floor(allPlayerIds.length / 2));
-  const canGiveStars = ["approval", "confirmed"].includes(match.status) && allPlayerIds.includes(app.currentUser.id);
-  const starTargets = allPlayerIds.filter((playerId) => playerId !== app.currentUser.id);
-  const starCountByPlayer = Object.values(starsByGiver).reduce((acc, targetIds = []) => {
+  const thumbsByGiver = trustFeedback.stars ?? {};
+  const thumbLimit = Math.max(1, Math.floor(allPlayerIds.length / 2));
+  const canSubmitThumbs = ["approval", "confirmed"].includes(match.status) && recordWindow.statOpen && allPlayerIds.includes(app.currentUser.id);
+  const shouldShowThumbReview = ["approval", "confirmed"].includes(match.status) && !recordWindow.beforeEnd && allPlayerIds.includes(app.currentUser.id);
+  const thumbTargets = allPlayerIds.filter((playerId) => playerId !== app.currentUser.id);
+  const thumbCountByPlayer = Object.values(thumbsByGiver).reduce((acc, targetIds = []) => {
     targetIds.forEach((targetId) => {
       acc[targetId] = (acc[targetId] ?? 0) + 1;
     });
     return acc;
   }, {});
+  const toggleThumbDraft = (targetUserId) => {
+    setThumbDraftPlayerIds((current) => {
+      const selected = current.includes(targetUserId);
+      if (selected) return current.filter((playerId) => playerId !== targetUserId);
+      if (current.length >= thumbLimit) return current;
+      return [...current, targetUserId];
+    });
+  };
   const ruleItems = [
     ["목표 점수", `${match.rules?.targetScore ?? 21}점`],
     ["제한 시간", `${match.rules?.timeLimit ?? 12}분`],
@@ -602,41 +615,47 @@ export default function MatchRoom({ app }) {
               <div className="empty-state">승인 대기</div>
             )}
           </Card>
-          <Card className="section-card trust-star-card">
-            <div className="section-title-row">
-              <div>
-                <p className="eyebrow">Trust review</p>
-                <h2>별 평가</h2>
+          {shouldShowThumbReview ? (
+            <Card className="section-card trust-star-card">
+              <div className="section-title-row">
+                <div>
+                  <p className="eyebrow">Trust review</p>
+                  <h2>따봉 평가</h2>
+                </div>
+                <Badge tone={canSubmitThumbs ? "gold" : "neutral"}>{thumbDraftPlayerIds.length}/{thumbLimit}</Badge>
               </div>
-              <Badge tone={canGiveStars ? "gold" : "neutral"}>{myStarredPlayerIds.length}/{starLimit}</Badge>
-            </div>
-            <p className="muted">한 경기에서 참가자의 절반 정도에게만 별을 줄 수 있다. 별을 받은 선수는 신뢰도가 오른다.</p>
-            <div className="trust-star-grid">
-              {starTargets.map((playerId) => {
-                const user = userMap[playerId];
-                const selected = myStarredPlayerIds.includes(playerId);
-                const limitReached = !selected && myStarredPlayerIds.length >= starLimit;
-                return (
-                  <button
-                    key={playerId}
-                    type="button"
-                    className={selected ? "trust-star-button selected" : "trust-star-button"}
-                    disabled={!canGiveStars || limitReached}
-                    onClick={() => app.actions.toggleMatchStar(match.id, playerId)}
-                  >
-                    <PlayerHoverCard as="span" user={user} teams={app.state.teams}>
-                      <span className="avatar small" style={{ "--avatar": user?.avatarColor }}>{user?.name?.slice(0, 1) ?? "P"}</span>
-                      <span>
-                        <strong>{user?.name ?? "플레이어"}</strong>
-                        <em>{starCountByPlayer[playerId] ?? 0}개 받음</em>
-                      </span>
-                    </PlayerHoverCard>
-                    <Star size={16} fill={selected ? "currentColor" : "none"} />
-                  </button>
-                );
-              })}
-            </div>
-          </Card>
+              <p className="muted">경기 종료 후 1시간 안에 제출한다. 받은 따봉은 신뢰점수에 반영된다.</p>
+              <div className="trust-star-grid">
+                {thumbTargets.map((playerId) => {
+                  const user = userMap[playerId];
+                  const selected = thumbDraftPlayerIds.includes(playerId);
+                  const limitReached = !selected && thumbDraftPlayerIds.length >= thumbLimit;
+                  return (
+                    <button
+                      key={playerId}
+                      type="button"
+                      className={selected ? "trust-star-button selected" : "trust-star-button"}
+                      disabled={!canSubmitThumbs || limitReached}
+                      onClick={() => toggleThumbDraft(playerId)}
+                    >
+                      <PlayerHoverCard as="span" user={user} teams={app.state.teams}>
+                        <span className="avatar small" style={{ "--avatar": user?.avatarColor }}>{user?.name?.slice(0, 1) ?? "P"}</span>
+                        <span>
+                          <strong>{user?.name ?? "플레이어"}</strong>
+                          <em>{thumbCountByPlayer[playerId] ?? 0}개 받음</em>
+                        </span>
+                      </PlayerHoverCard>
+                      <ThumbsUp size={16} fill={selected ? "currentColor" : "none"} />
+                    </button>
+                  );
+                })}
+              </div>
+              <Button type="button" disabled={!canSubmitThumbs} onClick={() => app.actions.submitMatchThumbs(match.id, thumbDraftPlayerIds)}>
+                <ThumbsUp size={16} /> 따봉 제출하기
+              </Button>
+              {!canSubmitThumbs ? <p className="muted">제출 가능 시간이 지났거나 아직 경기 종료 전이다.</p> : null}
+            </Card>
+          ) : null}
           <Card className="section-card">
             <div className="contract-grid single">
               <div>

@@ -152,6 +152,24 @@ function getReadyTitle(entry) {
   return entry.user?.name ?? "플레이어";
 }
 
+function getLobbySideMeta(lobby, sideName, userById) {
+  const side = lobby.sides[sideName];
+  const teamEntry = side.entries.find((entry) => (entry.fixed || entry.kind === "team") && entry.team);
+  const leadEntry = teamEntry ?? side.entries[0] ?? null;
+  const playerMmrs = side.projectedPlayers
+    .map((playerId) => userById[playerId]?.ratings?.integrated)
+    .filter((value) => Number.isFinite(Number(value)));
+  const avgMmr = playerMmrs.length
+    ? Math.round(playerMmrs.reduce((sum, value) => sum + Number(value), 0) / playerMmrs.length)
+    : 0;
+
+  return {
+    name: leadEntry?.team?.name ?? leadEntry?.user?.name ?? SIDE_LABELS[sideName],
+    mmr: leadEntry?.team?.mmr ?? avgMmr,
+    label: sideName === "teamA" ? "HOME TEAM" : "OPPONENT",
+  };
+}
+
 function getPlayerPosition(user) {
   return user?.position || "포지션 자유";
 }
@@ -1398,8 +1416,6 @@ export default function Recruiting({ app }) {
         const canInviteFromRoom = isCurrentUserRoomParticipant(selectedPost, lobby, app.currentUser.id);
         const canChat = isRecruitingPostForUser(selectedPost, app.currentUser.id, myTeamIds);
         const canJoin = !mine && !alreadyApplied && fit.allowed && (joinDraft.joinMode === "player" || (Boolean(selectedJoinTeam) && selectedJoinPlayerIds.length > 0));
-        const selectedTargetTeam = selectedPost.targetTeamId ? teamById[selectedPost.targetTeamId] : null;
-        const selectedReferee = selectedPost.refereeId ? userById[selectedPost.refereeId] : null;
         const selectedRange = getRecruitingTierRange(
           getRecruitingTargetMmr(selectedPost, app.state),
           selectedPost.ranked !== false,
@@ -1415,10 +1431,6 @@ export default function Recruiting({ app }) {
         const playingIds = [...lobby.sides.teamA.projectedPlayers, ...lobby.sides.teamB.projectedPlayers];
         const roomState = selectedPost.roomState ?? {};
         const recorderIds = getLobbyRecorderIds(lobby);
-        const statRecorderLabels = ["teamA", "teamB"].map((sideName) => {
-          const playerId = recorderIds[sideName];
-          return playerId ? `${SIDE_LABELS[sideName]} ${userById[playerId]?.name ?? "후보"}` : "";
-        }).filter(Boolean);
         const chatMessages = roomState.chatMessages ?? [];
         const invitations = roomState.invitations ?? [];
         const pendingInvitations = invitations.filter((invitation) => invitation.status === "pending");
@@ -1447,64 +1459,98 @@ export default function Recruiting({ app }) {
         const activeInviteDraft = inviteDraft?.postId === selectedPost.id ? inviteDraft : null;
         const favoritePlayerIds = app.state.settings?.favoritePlayerIds ?? [];
         const favoriteTeamIds = app.state.settings?.favoriteTeamIds ?? [];
+        const teamAMeta = getLobbySideMeta(lobby, "teamA", userById);
+        const teamBMeta = getLobbySideMeta(lobby, "teamB", userById);
+        const roomReadyLabel = lobby.canConfirm ? "READY" : "충원 중";
+        const roomTitle = selectedPost.ranked === false ? "친선전" : "정규전";
 
         return (
           <div className="ow-compose-backdrop" role="presentation" onMouseDown={() => { setInviteDraft(null); setSelectedPostId(null); }}>
             <aside className="ow-lobby-modal" role="dialog" aria-modal="true" aria-label="매치방" onMouseDown={(event) => event.stopPropagation()}>
-              <div className="ow-drawer-head">
-                <div>
-                  <span className="ow-kicker">MATCH ROOM</span>
-                  <h2>{selectedPost.title}</h2>
-                  <p>{selectedPost.region} · {selectedPost.court} · {selectedPost.mode}</p>
+              <div className="ow-lobby-arena">
+                <div className="ow-lobby-topline">
+                  <div className="badge-row">
+                    <Badge tone={selectedPost.ranked === false ? "neutral" : "gold"}>{roomTitle}</Badge>
+                    <Badge tone={lobby.canConfirm ? "green" : "blue"}>{lobby.canConfirm ? "확정 가능" : "진행 예정"}</Badge>
+                    <Badge tone="green">사전등록</Badge>
+                  </div>
+                  <div>
+                    <span>{selectedPost.mode}</span>
+                    <button type="button" className="ow-icon-button" aria-label="닫기" onClick={() => { setInviteDraft(null); setSelectedPostId(null); }}><X size={20} /></button>
+                  </div>
                 </div>
-                <button type="button" className="ow-icon-button" aria-label="닫기" onClick={() => { setInviteDraft(null); setSelectedPostId(null); }}><X size={20} /></button>
-              </div>
 
-              <div className="ow-lobby-summary">
-                <span><ShieldCheck size={16} /> {selectedPost.ranked === false ? "친선전" : "정규전"}</span>
-                {selectedPost.ranked !== false ? <span><ShieldCheck size={16} /> {selectedRange.label} · MMR {Math.round(selectedRatingScale * 100)}%</span> : null}
-                <span><Clock3 size={16} /> {getRecruitingSchedule(selectedPost)}</span>
-                {selectedTargetTeam ? <span><Swords size={16} /> 희망 상대 {selectedTargetTeam.name}</span> : null}
-                <span><ShieldCheck size={16} /> {selectedReferee ? `심판 ${selectedReferee.name}` : statRecorderLabels.length ? `후보 기록자 ${statRecorderLabels.join(" · ")}` : "심판 없음 · 득점만"}</span>
-                <span><UsersRound size={16} /> 팀은 선택 멤버만 참여</span>
-                <span><Clock3 size={16} /> 인원 충원 후 방장 확정</span>
-              </div>
+                <div className="ow-lobby-title">
+                  <span>{selectedPost.visibility === "private" ? "PRIVATE ROOM" : "CUSTOM ROOM"}</span>
+                  <h2>{roomTitle}</h2>
+                  <p><MapPin size={16} />{selectedPost.court} · {getRecruitingSchedule(selectedPost)}</p>
+                </div>
 
-              <div className="ow-lobby-grid">
-                <SideRoster
-                  sideName="teamA"
-                  side={lobby.sides.teamA}
-                  lobby={lobby}
-                  userById={userById}
-                  teams={app.state.teams}
-                  canInvite={canInviteFromRoom}
-                  canManage={mine}
-                  onInviteSlot={(sideName) => openInviteSlot(selectedPost, sideName)}
-                  onSetPlacement={(playerId, placement) => app.actions.setRecruitingApplicantPlacement(selectedPost.id, playerId, placement)}
-                  onSetMemberReserve={(entryId, playerId, reserve) => app.actions.setRecruitingPartyPlayerReserve(selectedPost.id, entryId, playerId, reserve)}
-                  onDetachMember={(entryId, playerId) => app.actions.detachRecruitingPartyPlayer(selectedPost.id, entryId, playerId)}
-                  onRemoveMember={(entryId, playerId) => app.actions.removeRecruitingPartyPlayer(selectedPost.id, entryId, playerId)}
-                  onKick={(playerId) => app.actions.kickRecruitingApplicant(selectedPost.id, playerId)}
-                  onMoveCandidate={moveCandidate}
-                  onRemoveCandidate={removeCandidate}
-                />
-                <SideRoster
-                  sideName="teamB"
-                  side={lobby.sides.teamB}
-                  lobby={lobby}
-                  userById={userById}
-                  teams={app.state.teams}
-                  canInvite={canInviteFromRoom}
-                  canManage={mine}
-                  onInviteSlot={(sideName) => openInviteSlot(selectedPost, sideName)}
-                  onSetPlacement={(playerId, placement) => app.actions.setRecruitingApplicantPlacement(selectedPost.id, playerId, placement)}
-                  onSetMemberReserve={(entryId, playerId, reserve) => app.actions.setRecruitingPartyPlayerReserve(selectedPost.id, entryId, playerId, reserve)}
-                  onDetachMember={(entryId, playerId) => app.actions.detachRecruitingPartyPlayer(selectedPost.id, entryId, playerId)}
-                  onRemoveMember={(entryId, playerId) => app.actions.removeRecruitingPartyPlayer(selectedPost.id, entryId, playerId)}
-                  onKick={(playerId) => app.actions.kickRecruitingApplicant(selectedPost.id, playerId)}
-                  onMoveCandidate={moveCandidate}
-                  onRemoveCandidate={removeCandidate}
-                />
+                <div className="ow-lobby-versus-stage">
+                  <div className="ow-lobby-team-panel team-a">
+                    <div className="ow-lobby-team-head">
+                      <span>{teamAMeta.label}</span>
+                      <strong>{teamAMeta.name}</strong>
+                      <em>{teamAMeta.mmr || "-"} MMR</em>
+                    </div>
+                    <SideRoster
+                      sideName="teamA"
+                      side={lobby.sides.teamA}
+                      lobby={lobby}
+                      userById={userById}
+                      teams={app.state.teams}
+                      canInvite={canInviteFromRoom}
+                      canManage={mine}
+                      onInviteSlot={(sideName) => openInviteSlot(selectedPost, sideName)}
+                      onSetPlacement={(playerId, placement) => app.actions.setRecruitingApplicantPlacement(selectedPost.id, playerId, placement)}
+                      onSetMemberReserve={(entryId, playerId, reserve) => app.actions.setRecruitingPartyPlayerReserve(selectedPost.id, entryId, playerId, reserve)}
+                      onDetachMember={(entryId, playerId) => app.actions.detachRecruitingPartyPlayer(selectedPost.id, entryId, playerId)}
+                      onRemoveMember={(entryId, playerId) => app.actions.removeRecruitingPartyPlayer(selectedPost.id, entryId, playerId)}
+                      onKick={(playerId) => app.actions.kickRecruitingApplicant(selectedPost.id, playerId)}
+                      onMoveCandidate={moveCandidate}
+                      onRemoveCandidate={removeCandidate}
+                    />
+                  </div>
+
+                  <div className="ow-lobby-score-core">
+                    <strong>{lobby.sides.teamA.projectedFilled}/{lobby.sides.teamA.capacity}</strong>
+                    <i>VS</i>
+                    <strong>{lobby.sides.teamB.projectedFilled}/{lobby.sides.teamB.capacity}</strong>
+                    <span>{roomReadyLabel}</span>
+                  </div>
+
+                  <div className="ow-lobby-team-panel team-b">
+                    <div className="ow-lobby-team-head">
+                      <span>{teamBMeta.label}</span>
+                      <strong>{teamBMeta.name}</strong>
+                      <em>{teamBMeta.mmr || "-"} MMR</em>
+                    </div>
+                    <SideRoster
+                      sideName="teamB"
+                      side={lobby.sides.teamB}
+                      lobby={lobby}
+                      userById={userById}
+                      teams={app.state.teams}
+                      canInvite={canInviteFromRoom}
+                      canManage={mine}
+                      onInviteSlot={(sideName) => openInviteSlot(selectedPost, sideName)}
+                      onSetPlacement={(playerId, placement) => app.actions.setRecruitingApplicantPlacement(selectedPost.id, playerId, placement)}
+                      onSetMemberReserve={(entryId, playerId, reserve) => app.actions.setRecruitingPartyPlayerReserve(selectedPost.id, entryId, playerId, reserve)}
+                      onDetachMember={(entryId, playerId) => app.actions.detachRecruitingPartyPlayer(selectedPost.id, entryId, playerId)}
+                      onRemoveMember={(entryId, playerId) => app.actions.removeRecruitingPartyPlayer(selectedPost.id, entryId, playerId)}
+                      onKick={(playerId) => app.actions.kickRecruitingApplicant(selectedPost.id, playerId)}
+                      onMoveCandidate={moveCandidate}
+                      onRemoveCandidate={removeCandidate}
+                    />
+                  </div>
+                </div>
+
+                <div className="ow-lobby-actions">
+                  <div><Clock3 size={17} /><span>{getRecruitingSchedule(selectedPost)}</span></div>
+                  <div><UsersRound size={17} /><span>{getRecruitingSideCapacity(selectedPost)} vs {getRecruitingSideCapacity(selectedPost)}</span></div>
+                  <div><ShieldCheck size={17} /><span>{selectedPost.ranked === false ? "티어 자유" : `MMR ${Math.round(selectedRatingScale * 100)}%`}</span></div>
+                  <div><Swords size={17} /><span>{selectedPost.rules?.targetScore ?? 21}점 · {selectedPost.rules?.timeLimit ?? 12}분</span></div>
+                </div>
               </div>
 
               {activeInviteDraft ? (
@@ -1755,7 +1801,7 @@ export default function Recruiting({ app }) {
                     </div>
                     <Button type="submit" disabled={!canJoin}>
                       {joinDraft.joinMode === "team" ? <UsersRound size={18} /> : <UserRound size={18} />}
-                      {RECRUITING_JOIN_MODES[joinDraft.joinMode].actionLabel}
+                      READY
                     </Button>
                   </form>
                 )}
@@ -1767,7 +1813,7 @@ export default function Recruiting({ app }) {
                     onClick={() => app.actions.setRecruitingReady(selectedPost.id, true)}
                   >
                     <CheckCircle2 size={18} />
-                    참여 유지
+                    READY
                   </Button>
                 ) : null}
                 {alreadyApplied ? (

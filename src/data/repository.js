@@ -2500,6 +2500,75 @@ export function toggleMatchStar(state, matchId, targetUserId) {
   };
 }
 
+export function submitMatchThumbs(state, matchId, targetUserIds = []) {
+  const match = state.matches.find((item) => item.id === matchId);
+  const playerIds = match ? getMatchPlayerIds(match) : [];
+  const recordWindow = match ? getMatchRecordWindow(match) : null;
+  if (!match || !["approval", "confirmed"].includes(match.status) || !recordWindow?.statOpen) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "따봉 제출 마감",
+          body: "따봉은 경기 종료 후 1시간 안에만 제출할 수 있습니다.",
+          tone: "orange",
+          matchId,
+        },
+        ...state.notifications,
+      ],
+    };
+  }
+  if (!playerIds.includes(state.currentUserId)) return state;
+
+  const maxThumbs = Math.max(1, Math.floor(playerIds.length / 2));
+  const nextMyThumbs = Array.from(new Set(targetUserIds))
+    .filter((targetUserId) => playerIds.includes(targetUserId) && targetUserId !== state.currentUserId)
+    .slice(0, maxThumbs);
+  const trustFeedback = match.trustFeedback ?? {};
+  const thumbs = trustFeedback.stars ?? {};
+  const previousThumbs = thumbs[state.currentUserId] ?? [];
+  const previousSet = new Set(previousThumbs);
+  const nextSet = new Set(nextMyThumbs);
+  const adjustedUsers = state.users.map((user) => {
+    if (!playerIds.includes(user.id) || user.id === state.currentUserId) return user;
+    const gained = nextSet.has(user.id) && !previousSet.has(user.id);
+    const lost = previousSet.has(user.id) && !nextSet.has(user.id);
+    if (!gained && !lost) return user;
+    return {
+      ...user,
+      trustScore: Math.max(0, Math.min(100, Number(user.trustScore ?? 70) + (gained ? 1 : -1))),
+    };
+  });
+
+  return {
+    ...state,
+    users: adjustedUsers,
+    matches: state.matches.map((item) => (
+      item.id === matchId
+        ? {
+            ...item,
+            trustFeedback: {
+              ...trustFeedback,
+              stars: { ...thumbs, [state.currentUserId]: nextMyThumbs },
+              updatedAt: new Date().toISOString(),
+            },
+          }
+        : item
+    )),
+    notifications: [
+      {
+        id: makeId("n"),
+        title: "따봉 제출 완료",
+        body: `${nextMyThumbs.length}명에게 따봉을 제출했습니다.`,
+        tone: "match",
+        matchId,
+      },
+      ...state.notifications,
+    ],
+  };
+}
+
 export function switchUser(state, userId) {
   if (!state.users.some((user) => user.id === userId)) return state;
   return { ...state, currentUserId: userId };
