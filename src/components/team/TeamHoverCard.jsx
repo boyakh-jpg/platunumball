@@ -11,6 +11,10 @@ function isTouchPreviewEvent(event) {
   return typeof window !== "undefined" && window.matchMedia("(hover: none), (pointer: coarse)").matches;
 }
 
+function canUseHoverPreview() {
+  return typeof window === "undefined" || !window.matchMedia("(hover: none), (pointer: coarse)").matches;
+}
+
 export default function TeamHoverCard({ team, children, className = "", as = "link", to }) {
   const [hoverOpen, setHoverOpen] = useState(false);
   const [touchOpen, setTouchOpen] = useState(false);
@@ -55,7 +59,9 @@ export default function TeamHoverCard({ team, children, className = "", as = "li
   const props = as === "span" ? {} : { to: teamPath };
   const played = Number(team.wins ?? 0) + Number(team.losses ?? 0);
   const winRate = played ? Math.round((Number(team.wins ?? 0) / played) * 100) : 0;
-  const showHover = () => setHoverOpen(true);
+  const showHover = () => {
+    if (canUseHoverPreview()) setHoverOpen(true);
+  };
   const hideHover = () => setHoverOpen(false);
   const closeTouch = () => setTouchOpen(false);
   const clearLongPress = () => {
@@ -66,9 +72,11 @@ export default function TeamHoverCard({ team, children, className = "", as = "li
   const handlePointerDown = (event) => {
     if (!isTouchPreviewEvent(event)) return;
     clearLongPress();
+    setHoverOpen(false);
     longPressOpenedRef.current = false;
     longPressTimerRef.current = window.setTimeout(() => {
       longPressOpenedRef.current = true;
+      setHoverOpen(false);
       setTouchOpen(true);
     }, 420);
   };
@@ -86,7 +94,7 @@ export default function TeamHoverCard({ team, children, className = "", as = "li
       setTouchOpen(true);
     }
   };
-  const open = hoverOpen || touchOpen;
+  const open = touchOpen || (canUseHoverPreview() && hoverOpen);
 
   return (
     <Component
@@ -110,6 +118,9 @@ export default function TeamHoverCard({ team, children, className = "", as = "li
       onPointerDown={handlePointerDown}
       onPointerLeave={clearLongPress}
       onPointerUp={clearLongPress}
+      onDragStart={(event) => {
+        if (isTouchPreviewEvent(event)) event.preventDefault();
+      }}
       {...props}
     >
       {children}

@@ -37,6 +37,10 @@ function isTouchPreviewEvent(event) {
   return typeof window !== "undefined" && window.matchMedia("(hover: none), (pointer: coarse)").matches;
 }
 
+function canUseHoverPreview() {
+  return typeof window === "undefined" || !window.matchMedia("(hover: none), (pointer: coarse)").matches;
+}
+
 export default function PlayerHoverCard({ user, teams = [], children, className = "", as = "link", to }) {
   const [hoverOpen, setHoverOpen] = useState(false);
   const [touchOpen, setTouchOpen] = useState(false);
@@ -82,7 +86,9 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
   const Component = as === "span" ? "span" : Link;
   const profilePath = to ?? `/app/players/${user.id}`;
   const props = as === "span" ? {} : { to: profilePath };
-  const showHover = () => setHoverOpen(true);
+  const showHover = () => {
+    if (canUseHoverPreview()) setHoverOpen(true);
+  };
   const hideHover = () => setHoverOpen(false);
   const closeTouch = () => setTouchOpen(false);
   const clearLongPress = () => {
@@ -93,9 +99,11 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
   const handlePointerDown = (event) => {
     if (!isTouchPreviewEvent(event)) return;
     clearLongPress();
+    setHoverOpen(false);
     longPressOpenedRef.current = false;
     longPressTimerRef.current = window.setTimeout(() => {
       longPressOpenedRef.current = true;
+      setHoverOpen(false);
       setTouchOpen(true);
     }, 420);
   };
@@ -113,7 +121,7 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
       setTouchOpen(true);
     }
   };
-  const open = hoverOpen || touchOpen;
+  const open = touchOpen || (canUseHoverPreview() && hoverOpen);
 
   return (
     <Component
@@ -137,6 +145,9 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
       onPointerDown={handlePointerDown}
       onPointerLeave={clearLongPress}
       onPointerUp={clearLongPress}
+      onDragStart={(event) => {
+        if (isTouchPreviewEvent(event)) event.preventDefault();
+      }}
       {...props}
     >
       {children}
