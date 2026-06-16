@@ -81,10 +81,25 @@ export default function HoverPortal({
     };
   }, [anchorRef, estimatedHeight, open, width]);
 
-  if (!open || !position || typeof document === "undefined") return null;
+  if (!open || typeof document === "undefined") return null;
+
+  const measuringStyle = {
+    top: 0,
+    left: 0,
+    width: Math.min(width, Math.max(0, window.innerWidth - 24)),
+    maxHeight: "calc(100vh - 24px)",
+    visibility: "hidden",
+    pointerEvents: "none",
+  };
 
   return createPortal(
-    <span ref={setCardNode} className={className} role="tooltip" style={position}>
+    <span
+      ref={setCardNode}
+      aria-hidden={position ? undefined : true}
+      className={className}
+      role="tooltip"
+      style={position ?? measuringStyle}
+    >
       {children}
     </span>,
     document.body,
