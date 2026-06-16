@@ -866,6 +866,7 @@ function makePlayerStats(matchIndex, sideIndex, playerIndex, user) {
     assists: 1 + guardBonus + ((matchIndex + playerIndex + sideIndex * 2) % 7),
     steals: (matchIndex + playerIndex + sideIndex) % 4,
     blocks: positionBonus ? (matchIndex + playerIndex) % 3 : (matchIndex + sideIndex) % 2,
+    fouls: (matchIndex + playerIndex * 2 + sideIndex) % 5,
   };
 }
 

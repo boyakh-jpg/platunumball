@@ -84,6 +84,12 @@ function adjustUserTrust(users = [], userId, delta) {
   ));
 }
 
+function getFoulTrustPenalty(stats = {}) {
+  const fouls = Math.max(0, Number(stats.fouls ?? 0));
+  if (fouls <= 2) return 0;
+  return -Math.min(4, fouls - 2);
+}
+
 function getRoomScheduleDate(post = {}) {
   if (!post.scheduledDate || !post.scheduledTime) return null;
   const date = new Date(`${post.scheduledDate}T${post.scheduledTime}`);
@@ -495,6 +501,7 @@ function fromRemoteMatch(row, context) {
         assists: stat.assists ?? 0,
         steals: stat.steals ?? 0,
         blocks: stat.blocks ?? 0,
+        fouls: stat.fouls ?? 0,
       },
     ]),
   );
@@ -981,6 +988,7 @@ async function saveNormalizedRemoteState(state) {
       assists: Number(stat.assists ?? 0),
       steals: Number(stat.steals ?? 0),
       blocks: Number(stat.blocks ?? 0),
+      fouls: Number(stat.fouls ?? 0),
       updated_at: new Date().toISOString(),
     })),
   );
@@ -1436,9 +1444,10 @@ function finalizeMatch(state, targetMatch) {
     const trustReward = trustRewards.get(user.id) ?? 0;
     if (!nextRatings && !trustReward) return user;
     const change = ratingResult.changes.find((item) => item.playerId === user.id);
+    const foulPenalty = getFoulTrustPenalty(targetMatch.result?.playerStats?.[user.id]);
     return {
       ...user,
-      trustScore: clampTrustScore((user.trustScore ?? 80) + (nextRatings ? 1 : 0) + trustReward),
+      trustScore: clampTrustScore((user.trustScore ?? 80) + (nextRatings ? 1 : 0) + trustReward + foulPenalty),
       streak: nextRatings
         ? change?.result === "win"
           ? Math.max(1, user.streak + 1)

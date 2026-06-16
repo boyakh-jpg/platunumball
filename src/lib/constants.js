@@ -57,6 +57,7 @@ export const PLAYER_STAT_FIELDS = [
   { id: "assists", label: "어시스트", shortLabel: "AST", weight: 0.055 },
   { id: "steals", label: "스틸", shortLabel: "STL", weight: 0.08 },
   { id: "blocks", label: "블록", shortLabel: "BLK", weight: 0.08 },
+  { id: "fouls", label: "파울", shortLabel: "F", weight: 0 },
 ];
 
 export const COURTS = [

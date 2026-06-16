@@ -47,6 +47,13 @@ function getUserRecordLine(match, userId) {
   };
 }
 
+function getAverageFouls(matches = [], userId) {
+  const confirmed = matches.filter((match) => match.status === "confirmed" && match.result && getUserSide(match, userId));
+  if (!confirmed.length) return 0;
+  const total = confirmed.reduce((sum, match) => sum + Number(match.result?.playerStats?.[userId]?.fouls ?? 0), 0);
+  return total / confirmed.length;
+}
+
 export default function Profile({ app }) {
   const user = app.currentUser;
   const [draft, setDraft] = useState({
@@ -73,6 +80,7 @@ export default function Profile({ app }) {
   const favoriteTeams = favoriteTeamIds.map((teamId) => app.state.teams.find((item) => item.id === teamId)).filter(Boolean);
   const searchedUser = favoriteQuery.trim() ? findUserByHashtag(app.state.users, favoriteQuery) : null;
   const searchedTeam = favoriteQuery.trim() ? findTeamByHashtag(app.state.teams, favoriteQuery) : null;
+  const averageFouls = getAverageFouls(app.state.matches, user.id);
 
   return (
     <div className="page-stack">
@@ -206,6 +214,10 @@ export default function Profile({ app }) {
               <div>
                 <span>지역</span>
                 <strong>{user.region}</strong>
+              </div>
+              <div>
+                <span>평균 파울</span>
+                <strong>{averageFouls.toFixed(1)}</strong>
               </div>
               <div>
                 <span>학교</span>

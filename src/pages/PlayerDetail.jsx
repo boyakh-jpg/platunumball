@@ -71,6 +71,9 @@ export default function PlayerDetail({ app }) {
   const losses = confirmedHistory.filter((match) => getPlayerOutcome(match, player.id) === "loss").length;
   const winRate = confirmedHistory.length ? Math.round((wins / confirmedHistory.length) * 100) : 0;
   const recentOutcomes = confirmedHistory.slice(0, 10).map((match) => getPlayerOutcome(match, player.id));
+  const averageFouls = confirmedHistory.length
+    ? confirmedHistory.reduce((sum, match) => sum + Number(match.result?.playerStats?.[player.id]?.fouls ?? 0), 0) / confirmedHistory.length
+    : 0;
 
   const renderRelationship = (title, counts) => (
     <Card className="section-card">
@@ -167,6 +170,10 @@ export default function PlayerDetail({ app }) {
                 {field.label}
               </span>
             ))}
+            <span>
+              <strong>{averageFouls.toFixed(1)}</strong>
+              평균 파울
+            </span>
           </div>
         </Card>
       </section>
