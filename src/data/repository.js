@@ -1712,7 +1712,8 @@ export function createMatch(state, draft) {
   const teamBPlayers = getTeamPlayers(teamB, size);
   const refereeId = getTrustedRefereeId(state, draft.refereeId, [...teamAPlayers, ...teamBPlayers]);
   const mmrRangeMode = normalizeRecruitingMmrRangeMode(draft.mmrRangeMode);
-  const ratingScale = draft.ranked === false ? 1 : getRecruitingRatingScale({ ranked: draft.ranked !== false, mmrRangeMode });
+  const ranked = draft.ranked !== false;
+  const ratingScale = ranked ? getRecruitingRatingScale({ ranked, mmrRangeMode }) : 1;
   const match = {
     id: makeId("m"),
     title: draft.title || `${draft.court} ${mode} 판`,
@@ -1722,8 +1723,8 @@ export function createMatch(state, draft) {
     scheduledTime: draft.scheduledTime,
     scheduledAt: scheduledAt || "일정 미정",
     status: "contract",
-    ranked: draft.ranked !== false,
-    official: Boolean(draft.official),
+    ranked,
+    official: ranked && Boolean(draft.official),
     preRegistered: Boolean(draft.preRegistered),
     refereeId,
     refereeTrustMin: REFEREE_TRUST_MIN,
@@ -1811,6 +1812,7 @@ export function createTournament(state, draft) {
   }
 
   const createdAt = new Date().toISOString();
+  const ranked = draft.ranked !== false;
   const teamStatuses = Object.fromEntries(
     teamIds.map((teamId) => [
       teamId,
@@ -1831,8 +1833,8 @@ export function createTournament(state, draft) {
     region: draft.region || state.users.find((user) => user.id === state.currentUserId)?.region || "전체",
     court: draft.court || "미정",
     mode: draft.mode || "5v5",
-    ranked: draft.ranked !== false,
-    official: Boolean(draft.official),
+    ranked,
+    official: ranked && Boolean(draft.official),
     startDate: tournamentStartDate,
     endDate: tournamentEndDate,
     schedulePolicy: draft.tournamentSchedulePolicy ?? "weekly",
@@ -3388,6 +3390,10 @@ export function setRecruitingPartyPlayerPlacement(state, postId, entryId, player
     : applicants.find((applicant) => getRecruitingApplicantKey(applicant) === entry.id);
   if (!entry.fixed && !targetApplicant) return state;
 
+  if (side === entry.side) {
+    return setRecruitingPartyPlayerReserve(state, postId, entryId, playerId, reserve);
+  }
+
   const storedPlayerIds = getSelectedTeamPlayerIds(entry.team, capacity, entry.fixed ? post.playerIds : targetApplicant.playerIds);
   const currentPlayerIds = storedPlayerIds.length ? storedPlayerIds : (entry.players ?? []);
   const nextPlayerIds = currentPlayerIds.filter((id) => id !== playerId);
@@ -3627,7 +3633,8 @@ export function confirmRecruitingMatch(state, postId) {
   const refereeId = getTrustedRefereeId(state, post.refereeId, playerIds);
   const statRecorders = refereeId ? normalizeStatRecorders({}) : getRecruitingRoomStatRecorders(post, state);
   const mmrRangeMode = normalizeRecruitingMmrRangeMode(post.mmrRangeMode ?? post.roomState?.mmrRangeMode);
-  const ratingScale = getRecruitingRatingScale({ ranked: post.ranked !== false, mmrRangeMode });
+  const ranked = post.ranked !== false;
+  const ratingScale = getRecruitingRatingScale({ ranked, mmrRangeMode });
   const match = {
     id: makeId("m"),
     title: post.title,
@@ -3637,7 +3644,7 @@ export function confirmRecruitingMatch(state, postId) {
     scheduledTime: post.scheduledTime ?? "",
     scheduledAt,
     status: "agreed",
-    official: Boolean(post.official),
+    official: ranked && Boolean(post.official),
     preRegistered: true,
     refereeId,
     refereeTrustMin: REFEREE_TRUST_MIN,
@@ -3651,7 +3658,7 @@ export function confirmRecruitingMatch(state, postId) {
     },
     memo: post.memo,
     stakes: "매치 큐에서 확정된 경기입니다.",
-    ranked: post.ranked !== false,
+    ranked,
     mmrRangeMode,
     ratingScale,
     objectionWindow: "2시간",

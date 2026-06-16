@@ -274,7 +274,11 @@ export default function CreateMatch({ app }) {
     [draft.court],
   );
 
-  const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
+  const update = (patch) => setDraft((current) => {
+    const next = { ...current, ...patch };
+    if (patch.ranked === false) next.official = false;
+    return next;
+  });
   useEffect(() => {
     if (!draft.refereeId) return;
     if (refereeCandidates.some((user) => user.id === draft.refereeId)) return;
@@ -796,7 +800,7 @@ export default function CreateMatch({ app }) {
           <RuleSelector draft={draft} onChange={update} />
           <div className="toggle-pair">
             <label><input type="checkbox" checked={draft.ranked} onChange={(event) => update({ ranked: event.target.checked })} /> 정규전 반영</label>
-            <label><input type="checkbox" checked={draft.official} onChange={(event) => update({ official: event.target.checked })} /> 공식경기</label>
+            <label><input type="checkbox" checked={draft.ranked && draft.official} disabled={!draft.ranked} onChange={(event) => update({ official: event.target.checked })} /> 공식경기</label>
             <label><input type="checkbox" checked={draft.preRegistered} onChange={(event) => update({ preRegistered: event.target.checked })} /> 사전등록</label>
           </div>
           <div className="form-grid two">

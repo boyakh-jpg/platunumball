@@ -321,6 +321,7 @@ function EntryBlock({
           <button
             key={`${sideName}-reserve`}
             type="button"
+            disabled={!canMovePlayerTo(lobby, user.id, sideName, true)}
             onClick={(event) => stopControlClick(event, () => onMoveMember(entry.id, user.id, { side: sideName, reserve: true }))}
           >
             {SIDE_LABELS[sideName]} 후보
@@ -627,6 +628,7 @@ function ReserveLine({ sideName, candidates, playingIds, lobby, userById, teams,
                     <button
                       key={`${targetSideName}-reserve`}
                       type="button"
+                      disabled={!canMovePlayerTo(lobby, candidate.playerId, targetSideName, true)}
                       onClick={(event) => stopControlClick(event, () => onMoveCandidate(candidate, { side: targetSideName, reserve: true }))}
                     >
                       {SIDE_LABELS[targetSideName]} 후보
