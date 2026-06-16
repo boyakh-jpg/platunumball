@@ -3,6 +3,7 @@ import { isSupabaseConfigured, supabase } from "../lib/supabase.js";
 
 const TEST_SESSION_KEY = "rankball.auth.testSession.v1";
 const PROVIDER_LABELS = { naver: "Naver", kakao: "Kakao", google: "Google" };
+const DEMO_LOGIN_ENV = import.meta.env.VITE_DEMO_LOGIN;
 
 function readTestSession() {
   if (typeof window === "undefined") return null;
@@ -39,6 +40,15 @@ function makeTestSession(provider) {
   };
 }
 
+function isDemoLoginAllowed() {
+  if (DEMO_LOGIN_ENV === "true") return true;
+  if (DEMO_LOGIN_ENV === "false") return false;
+  if (typeof window === "undefined") return false;
+
+  const host = window.location.hostname;
+  return host === "localhost" || host === "127.0.0.1" || host.endsWith("boyakh-jpgs-projects.vercel.app");
+}
+
 async function readOAuthStartError(response, provider) {
   let payload = null;
   try {
@@ -50,9 +60,15 @@ async function readOAuthStartError(response, provider) {
   const message = payload?.msg ?? payload?.message ?? payload?.error_description ?? "";
   if (payload?.error_code === "validation_failed" && message.toLowerCase().includes("provider is not enabled")) {
     const providerName = PROVIDER_LABELS[provider] ?? provider;
-    return `Supabase에서 ${providerName} OAuth provider가 꺼져 있습니다. Authentication > Providers에서 ${providerName}을 켜고 Client ID/Secret을 넣어야 합니다.`;
+    return {
+      providerDisabled: true,
+      message: `Supabase에서 ${providerName} OAuth provider가 꺼져 있습니다. Authentication > Providers에서 ${providerName}을 켜고 Client ID/Secret을 넣어야 합니다.`,
+    };
   }
-  return message || `OAuth 시작 실패 (${response.status})`;
+  return {
+    providerDisabled: false,
+    message: message || `OAuth 시작 실패 (${response.status})`,
+  };
 }
 
 export function useAuthSession() {
@@ -95,6 +111,13 @@ export function useAuthSession() {
       setMessage("");
       if (isSupabaseConfigured) {
         const redirectTo = `${window.location.origin}/app`;
+        const enterPreviewSession = () => {
+          const nextSession = makeTestSession(provider);
+          writeTestSession(nextSession);
+          setSession(nextSession);
+          setMessage("OAuth 설정 전이라 preview/dev 로그인으로 임시 입장했습니다.");
+          return nextSession;
+        };
         const { data, error: authError } = await supabase.auth.signInWithOAuth({
           provider,
           options: {
@@ -113,8 +136,17 @@ export function useAuthSession() {
 
         try {
           const response = await fetch(data.url, { redirect: "manual" });
+          if (response.status === 0) {
+            if (isDemoLoginAllowed()) return enterPreviewSession();
+            window.location.assign(data.url);
+            return null;
+          }
           if (!response.ok) {
-            setError(await readOAuthStartError(response, provider));
+            const startError = await readOAuthStartError(response, provider);
+            if (startError.providerDisabled && isDemoLoginAllowed()) {
+              return enterPreviewSession();
+            }
+            setError(startError.message);
             return null;
           }
           const payload = await response.json().catch(() => null);

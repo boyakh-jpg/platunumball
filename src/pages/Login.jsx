@@ -50,6 +50,7 @@ export default function Login({ auth, app }) {
           ) : null}
 
           {auth.error ? <p className="auth-message">{auth.error}</p> : null}
+          {auth.message ? <p className="auth-message">{auth.message}</p> : null}
 
           <div className="social-login-grid">
             {activeProviders.map((provider) => (
