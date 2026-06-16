@@ -589,7 +589,7 @@ export default function Home({ app }) {
                 <TeamHoverCard key={team.id} team={team}>
                   <span className="team-mini-dot" style={{ "--team-color": team.accent }} />
                   <strong>{team.name}</strong>
-                  <em>{team.myRole === "captain" ? "주장" : team.myRole === "regular" ? "정규" : team.myRole === "mercenary" ? "용병" : "후보"}</em>
+                  <em>{team.myRole === "captain" ? "주장" : ["candidate", "substitute", "regular"].includes(team.myRole) ? "팀원" : team.myRole === "mercenary" ? "용병" : "게스트"}</em>
                   <b>{team.mmr}</b>
                 </TeamHoverCard>
               )) : <div><span>팀 없음</span><strong>팀 찾기 필요</strong></div>}

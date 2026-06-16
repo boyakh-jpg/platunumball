@@ -46,7 +46,6 @@ function getDemoModeSize(mode) {
 
 function getTeamDemoPlayerIds(team = {}, capacity = 5) {
   return (team.members ?? [])
-    .filter((member) => !["candidate", "substitute"].includes(member.role))
     .map((member) => member.userId)
     .slice(0, capacity);
 }

@@ -20,8 +20,8 @@ export const PLAYER_POSITIONS = ["상관없음", "PG", "SG", "SF", "PF", "C"];
 export const TEAM_ROLES = {
   captain: "팀장",
   regular: "정규멤버",
-  candidate: "후보멤버",
-  substitute: "후보멤버",
+  candidate: "정식팀원",
+  substitute: "정식팀원",
   mercenary: "용병",
   guest: "게스트",
 };

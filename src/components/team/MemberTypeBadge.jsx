@@ -4,7 +4,8 @@ import { getMemberRoleLabel } from "../../data/repository.js";
 const roleTone = {
   captain: "gold",
   regular: "green",
-  candidate: "blue",
+  candidate: "green",
+  substitute: "green",
   mercenary: "orange",
   guest: "neutral",
 };

@@ -13,8 +13,8 @@ const allRegions = ["전체", ...REGIONS];
 const roleLabels = {
   captain: "주장",
   regular: "정규",
-  candidate: "후보",
-  substitute: "후보",
+  candidate: "정식",
+  substitute: "정식",
   mercenary: "용병",
   guest: "게스트",
 };

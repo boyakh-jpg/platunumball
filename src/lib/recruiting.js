@@ -48,7 +48,7 @@ export const MMR_RANGE_POLICIES = {
 };
 
 const MERCENARY_ROLES = new Set(["mercenary", "guest"]);
-const RESERVE_ROLES = new Set(["candidate", "substitute"]);
+const RESERVE_ROLES = new Set();
 const VALID_SIDES = new Set(["teamA", "teamB"]);
 const VALID_APPLICATION_STATUS = new Set(["waiting", "ready", "confirmed"]);
 
@@ -558,7 +558,7 @@ export function getRecruitingBestSide(post = {}, state = {}) {
 }
 
 export function getMercenaryTeamWeight(memberMmr = 1200, teamMmr = 1200, role = "regular") {
-  if (!MERCENARY_ROLES.has(role)) return role === "candidate" ? 0.75 : 1;
+  if (!MERCENARY_ROLES.has(role)) return 1;
   if (memberMmr <= teamMmr - 140) return 0.65;
   if (memberMmr >= teamMmr + 140) return 0.22;
   return 0.4;

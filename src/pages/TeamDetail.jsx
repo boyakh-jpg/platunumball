@@ -31,6 +31,7 @@ const historyStatusLabel = {
   void: "무효",
   cancelled: "취소",
 };
+const externalTeamRoles = new Set(["mercenary", "guest"]);
 
 export default function TeamDetail({ app }) {
   const { teamId } = useParams();
@@ -50,8 +51,8 @@ export default function TeamDetail({ app }) {
   const favoriteTeamIds = app.state.settings?.favoriteTeamIds ?? [];
   const isFavoriteTeam = favoriteTeamIds.includes(team.id);
   const canManage = captain?.userId === app.currentUser.id;
-  const regularMembers = team.members.filter((member) => member.role === "captain" || member.role === "regular");
-  const reserveMembers = team.members.filter((member) => member.role !== "captain" && member.role !== "regular");
+  const regularMembers = team.members.filter((member) => !externalTeamRoles.has(member.role));
+  const reserveMembers = team.members.filter((member) => externalTeamRoles.has(member.role));
   const availableUsers = app.state.users.filter((user) => !team.members.some((member) => member.userId === user.id));
   const firstAddableUser = availableUsers.find((user) => (membershipCounts.get(user.id) ?? 0) < MAX_TEAM_MEMBERSHIPS);
   const addUserId = availableUsers.some((user) => user.id === memberDraft.userId) ? memberDraft.userId : firstAddableUser?.id ?? availableUsers[0]?.id ?? "";
@@ -177,8 +178,8 @@ export default function TeamDetail({ app }) {
             <Badge tone="green">{team.members.length}명</Badge>
           </div>
           <div className="opgg-stat-grid">
-            <span><strong>{regularMembers.length}</strong>정규</span>
-            <span><strong>{reserveMembers.length}</strong>후보/용병</span>
+            <span><strong>{regularMembers.length}</strong>팀원</span>
+            <span><strong>{reserveMembers.length}</strong>용병/게스트</span>
             <span><strong>{myTeamCountLabel(canManage)}</strong>권한</span>
             <span><strong>{team.region}</strong>지역</span>
           </div>
@@ -203,7 +204,7 @@ export default function TeamDetail({ app }) {
                 const opponent = match[oppositeSide];
                 const reserveUsed = side.players
                   .map((id) => team.members.find((member) => member.userId === id))
-                  .filter((member) => member && member.role !== "captain" && member.role !== "regular");
+                  .filter((member) => member && externalTeamRoles.has(member.role));
                 return (
                   <article key={match.id} className="history-item">
                     <div>
@@ -222,7 +223,7 @@ export default function TeamDetail({ app }) {
                     </div>
                     <p>
                       상대 <TeamHoverCard team={teamById[opponent.teamId]} as="span">{opponent.name}</TeamHoverCard>
-                      {reserveUsed.length ? ` · 후보/용병 ${reserveUsed.map((member) => `${userMap[member.userId]?.name ?? "플레이어"}(${TEAM_ROLES[member.role]})`).join(", ")}` : ""}
+                      {reserveUsed.length ? ` · 용병/게스트 ${reserveUsed.map((member) => `${userMap[member.userId]?.name ?? "플레이어"}(${TEAM_ROLES[member.role]})`).join(", ")}` : ""}
                     </p>
                   </article>
                 );
@@ -239,11 +240,11 @@ export default function TeamDetail({ app }) {
                 <strong>{userMap[captain?.userId]?.name ?? "미지정"}</strong>
               </div>
               <div>
-                <span>정규멤버</span>
+                <span>팀원</span>
                 <strong>{regularMembers.length}명</strong>
               </div>
               <div>
-                <span>후보/용병</span>
+                <span>용병/게스트</span>
                 <strong>{reserveMembers.length}명</strong>
               </div>
             </div>
@@ -315,9 +316,9 @@ export default function TeamDetail({ app }) {
             )}
           </Card>
           <div id="team-roster" className="page-stack">
-            {renderMembers("정규멤버", regularMembers)}
+            {renderMembers("팀원", regularMembers)}
           </div>
-          {renderMembers("후보멤버와 용병 기록", reserveMembers)}
+          {renderMembers("용병/게스트 기록", reserveMembers)}
         </aside>
       </div>
     </div>

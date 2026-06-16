@@ -9,10 +9,10 @@ import { getTeamHashtag, getUserHashtag } from "../../lib/handles.js";
 const rolePriority = {
   captain: 0,
   regular: 1,
+  candidate: 1,
+  substitute: 1,
   mercenary: 2,
   guest: 3,
-  candidate: 4,
-  substitute: 4,
 };
 
 function getUserTeams(userId, teams = []) {
@@ -27,9 +27,9 @@ function getUserTeams(userId, teams = []) {
 
 function roleLabel(role) {
   if (role === "captain") return "주장";
-  if (role === "regular") return "활성";
+  if (role === "regular" || role === "candidate" || role === "substitute") return "팀원";
   if (role === "mercenary" || role === "guest") return "용병";
-  return "후보";
+  return "팀원";
 }
 
 function isTouchPreviewEvent(event) {
