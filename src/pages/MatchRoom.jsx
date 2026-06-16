@@ -21,6 +21,7 @@ import {
   getMatchRecordWindow,
   getMatchReferee,
   getMatchPlayerIds,
+  getMatchSidePlayerIds,
   getPlayerSideName,
   getPlayerStatSubmitted,
   getResultPointAudit,
@@ -41,7 +42,7 @@ const statusMeta = {
 };
 
 function makeInitialStats(match) {
-  const playerIds = [...(match?.teamA.players ?? []), ...(match?.teamB.players ?? [])];
+  const playerIds = getMatchPlayerIds(match);
   return Object.fromEntries(
     playerIds.map((playerId) => [
       playerId,
@@ -62,7 +63,7 @@ function getDisplayScore(match, sideName) {
 function getPointAudit(match, score, sideName) {
   const scoreKey = sideName === "teamA" ? "scoreA" : "scoreB";
   const teamScore = Number(score[scoreKey] ?? 0);
-  const statPoints = match[sideName].players.reduce((sum, playerId) => sum + Number(score.playerStats[playerId]?.points ?? 0), 0);
+  const statPoints = getMatchSidePlayerIds(match, sideName).reduce((sum, playerId) => sum + Number(score.playerStats[playerId]?.points ?? 0), 0);
   return {
     teamScore,
     statPoints,
@@ -91,6 +92,7 @@ export default function MatchRoom({ app }) {
     scoreB: match?.result?.scoreB ?? match?.teamB.score ?? 17,
     playerStats: makeInitialStats(match),
   });
+  const matchPlayerKey = match ? getMatchPlayerIds(match).join("|") : "";
   const [disputeReason, setDisputeReason] = useState("스코어 또는 개인 기록 재확인 필요");
   const [statEditorPlayerId, setStatEditorPlayerId] = useState(null);
   const [reviewControlsOpen, setReviewControlsOpen] = useState(false);
@@ -100,6 +102,15 @@ export default function MatchRoom({ app }) {
   useEffect(() => {
     setThumbDraftPlayerIds(match?.trustFeedback?.stars?.[app.currentUser.id] ?? []);
   }, [app.currentUser.id, match?.id, match?.trustFeedback]);
+
+  useEffect(() => {
+    if (!match) return;
+    setScore({
+      scoreA: match.result?.scoreA ?? match.teamA.score ?? 21,
+      scoreB: match.result?.scoreB ?? match.teamB.score ?? 17,
+      playerStats: makeInitialStats(match),
+    });
+  }, [match?.id, match?.result?.updatedAt, match?.result?.submittedAt, matchPlayerKey]);
 
   if (!match) return <Navigate to="/app/create" replace />;
 
@@ -560,7 +571,7 @@ export default function MatchRoom({ app }) {
                 {["teamA", "teamB"].map((sideName) => (
                   <div key={sideName} className="stat-entry-side">
                     <h3>{match[sideName].name} 개인 기록</h3>
-                    {match[sideName].players.map((playerId) => {
+                    {getMatchSidePlayerIds(match, sideName).map((playerId) => {
                       const user = userMap[playerId];
                       const canEdit = canEditPlayerStat(playerId);
                       const submitted = getPlayerStatSubmitted(match, playerId);
@@ -722,7 +733,7 @@ export default function MatchRoom({ app }) {
                 </div>
               </div>
               <div className="compact-list">
-                {[...match.teamA.players, ...match.teamB.players].map((playerId) => {
+                {getMatchPlayerIds(match).map((playerId) => {
                   const user = userMap[playerId];
                   return (
                     <div key={playerId}>

@@ -14,6 +14,7 @@ import {
   getAllowedStatFields,
   getMatchPlayerIds,
   getMatchReservePlayerIds,
+  getMatchSidePlayerIds,
   getMatchRecordWindow,
   getPlayerSideName,
   getStatRecorderSides,
@@ -328,6 +329,11 @@ function normalizeMatch(match) {
   const started = startedStatuses.includes(match.status);
   const teamAPlayers = match.teamA?.players ?? [];
   const teamBPlayers = match.teamB?.players ?? [];
+  const playedPlayerIds = match.playedPlayerIds ?? match.rules?.playedPlayerIds ?? {};
+  const normalizedPlayedPlayerIds = {
+    teamA: uniquePlayerIds(playedPlayerIds.teamA ?? []),
+    teamB: uniquePlayerIds(playedPlayerIds.teamB ?? []),
+  };
 
   const normalized = {
     ...match,
@@ -344,6 +350,11 @@ function normalizeMatch(match) {
     statEntryMinutes: Number(match.statEntryMinutes ?? STAT_ENTRY_WINDOW_MINUTES),
     disputeMinutes: Number(match.disputeMinutes ?? DISPUTE_WINDOW_MINUTES),
     trustFeedback: match.trustFeedback ?? {},
+    playedPlayerIds: normalizedPlayedPlayerIds,
+    rules: {
+      ...(match.rules ?? {}),
+      playedPlayerIds: normalizedPlayedPlayerIds,
+    },
   };
 
   if (isFutureScheduledMatch(normalized)) {
@@ -1471,7 +1482,7 @@ function getMatchSideTeamGroups(state, match, sideName) {
   const side = match[sideName] ?? {};
   const playerTeams = side.playerTeams ?? {};
   const groups = new Map();
-  (side.players ?? []).forEach((playerId) => {
+  getMatchSidePlayerIds(match, sideName).forEach((playerId) => {
     const teamId = playerTeams[playerId] ?? side.teamId;
     if (!teamId) return;
     if (!groups.has(teamId)) groups.set(teamId, []);
@@ -2026,6 +2037,81 @@ function getSelfDecisionId(state, match, sideName, decisionKey, playerId) {
   return currentUserId;
 }
 
+function uniquePlayerIds(playerIds = []) {
+  return [...new Set(playerIds.filter(Boolean))];
+}
+
+function getMatchPlayerTeamId(match = {}, sideName, playerId) {
+  const side = match[sideName] ?? {};
+  if (side.playerTeams?.[playerId]) return side.playerTeams[playerId];
+  const party = (match.parties ?? []).find((item) => (
+    item.side === sideName &&
+    [...(item.players ?? []), ...(item.reserves ?? [])].includes(playerId)
+  ));
+  return party?.teamId ?? side.teamId ?? null;
+}
+
+function getRecorderHandoffPatch(match, sideName, currentRecorderId, nextRecorderId) {
+  const side = match[sideName] ?? {};
+  const sidePlayers = side.players ?? [];
+  const reserveIds = getMatchReservePlayerIds(match, sideName);
+  const currentIsPlayer = sidePlayers.includes(currentRecorderId);
+  const currentIsReserve = reserveIds.includes(currentRecorderId);
+  const nextIsPlayer = sidePlayers.includes(nextRecorderId);
+  const nextIsReserve = reserveIds.includes(nextRecorderId);
+  if (!nextIsPlayer && !nextIsReserve) return { valid: false, match, swapped: false };
+
+  const recordWindow = getMatchRecordWindow(match);
+  const shouldSwap = recordWindow.beforeEnd && (
+    (currentIsReserve && nextIsPlayer) ||
+    (currentIsPlayer && nextIsReserve)
+  );
+  if (!shouldSwap) return { valid: true, match, swapped: false };
+
+  const activeInId = currentIsReserve ? currentRecorderId : nextRecorderId;
+  const benchedId = currentIsReserve ? nextRecorderId : currentRecorderId;
+  const nextPlayers = sidePlayers.map((playerId) => (playerId === benchedId ? activeInId : playerId));
+  const currentReservePlayers = match.reservePlayers?.[sideName] ?? [];
+  const nextReservePlayers = uniquePlayerIds([
+    ...currentReservePlayers.filter((playerId) => playerId !== activeInId),
+    benchedId,
+  ]);
+  const playedPlayerIds = match.playedPlayerIds ?? match.rules?.playedPlayerIds ?? {};
+  const nextPlayedPlayerIds = {
+    ...playedPlayerIds,
+    [sideName]: uniquePlayerIds([...(playedPlayerIds[sideName] ?? []), ...sidePlayers, activeInId, benchedId]),
+  };
+  const playerTeams = { ...(side.playerTeams ?? {}) };
+  [activeInId, benchedId].forEach((playerId) => {
+    const teamId = getMatchPlayerTeamId(match, sideName, playerId);
+    if (teamId) playerTeams[playerId] = teamId;
+  });
+
+  return {
+    valid: true,
+    swapped: true,
+    activeInId,
+    benchedId,
+    match: {
+      ...match,
+      [sideName]: {
+        ...side,
+        players: uniquePlayerIds(nextPlayers),
+        playerTeams,
+      },
+      reservePlayers: {
+        ...(match.reservePlayers ?? {}),
+        [sideName]: nextReservePlayers,
+      },
+      playedPlayerIds: nextPlayedPlayerIds,
+      rules: {
+        ...(match.rules ?? {}),
+        playedPlayerIds: nextPlayedPlayerIds,
+      },
+    },
+  };
+}
+
 export function agreeMatch(state, matchId, sideName, playerId) {
   const match = state.matches.find((item) => item.id === matchId);
   if (!match || !["contract", "agreed"].includes(match.status)) return state;
@@ -2154,7 +2240,7 @@ export function submitMatchResult(state, matchId, result) {
   const existingStats = normalizePlayerStats(match.result?.playerStats ?? {}, playerIds);
   const liveEntry = recordWindow.beforeEnd && liveRecordAllowed;
   const endedAt = liveEntry ? match.endedAt : match.endedAt ?? recordWindow.endAt?.toISOString() ?? now;
-  const recorderPlayerIds = recorderSides.flatMap((sideName) => match[sideName]?.players ?? []);
+  const recorderPlayerIds = recorderSides.flatMap((sideName) => getMatchSidePlayerIds(match, sideName));
   const selfPlayerIds = currentSideName ? [currentUserId] : [];
   const targetPlayerIds = currentUserIsEligibleReferee ? playerIds : [...new Set([...recorderPlayerIds, ...selfPlayerIds])]
     .filter((playerId) => getAllowedStatFields(match, currentUserId, playerId).length > 0);
@@ -2247,15 +2333,15 @@ export function handoffMatchRecorder(state, matchId, sideName, nextRecorderId) {
   const currentRecorderId = currentRecorders[sideName];
   if (!currentRecorderId || currentRecorderId !== state.currentUserId) return state;
 
-  const reserveIds = getMatchReservePlayerIds(match, sideName);
-  if (!reserveIds.includes(nextRecorderId)) {
+  const handoffPatch = getRecorderHandoffPatch(match, sideName, currentRecorderId, nextRecorderId);
+  if (!handoffPatch.valid) {
     return {
       ...state,
       notifications: [
         {
           id: makeId("n"),
           title: "인수인계 불가",
-          body: "같은 팀 후보 또는 쉬고 있는 선수에게만 기록 권한을 넘길 수 있습니다.",
+          body: "같은 팀 출전선수 또는 후보에게만 기록 권한을 넘길 수 있습니다.",
           tone: "orange",
           matchId,
         },
@@ -2266,16 +2352,20 @@ export function handoffMatchRecorder(state, matchId, sideName, nextRecorderId) {
 
   const nextRecorders = { ...currentRecorders, [sideName]: nextRecorderId };
   const nextUser = state.users.find((user) => user.id === nextRecorderId);
+  const activeInUser = state.users.find((user) => user.id === handoffPatch.activeInId);
+  const benchedUser = state.users.find((user) => user.id === handoffPatch.benchedId);
 
   return {
     ...state,
     matches: state.matches.map((item) => (
       item.id === matchId
-        ? {
-            ...item,
+        ? (() => {
+            const patched = getRecorderHandoffPatch(item, sideName, currentRecorderId, nextRecorderId).match;
+            return {
+              ...patched,
             statRecorders: nextRecorders,
             rules: {
-              ...(item.rules ?? {}),
+              ...(patched.rules ?? {}),
               statRecorders: nextRecorders,
             },
             recorderHandoffs: [
@@ -2286,16 +2376,19 @@ export function handoffMatchRecorder(state, matchId, sideName, nextRecorderId) {
                 to: nextRecorderId,
                 createdAt: new Date().toISOString(),
               },
-              ...(item.recorderHandoffs ?? []),
+              ...(patched.recorderHandoffs ?? []),
             ],
-          }
+          };
+        })()
         : item
     )),
     notifications: [
       {
         id: makeId("n"),
         title: "기록자 인수인계",
-        body: `${match.title} ${SIDE_LABEL_TEXT[sideName]} 기록 권한이 ${nextUser?.name ?? "후보"}에게 넘어갔습니다.`,
+        body: handoffPatch.swapped
+          ? `${match.title} ${SIDE_LABEL_TEXT[sideName]} 기록 권한이 ${nextUser?.name ?? "후보"}에게 넘어갔습니다. ${activeInUser?.name ?? "후보"} 출전, ${benchedUser?.name ?? "선수"} 후보 전환.`
+          : `${match.title} ${SIDE_LABEL_TEXT[sideName]} 기록 권한이 ${nextUser?.name ?? "후보"}에게 넘어갔습니다.`,
         tone: "match",
         matchId,
       },

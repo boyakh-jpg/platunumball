@@ -1,5 +1,5 @@
 import { CREDIBILITY_LEVELS, EVIDENCE_OPTIONS, MATCH_MODES } from "./constants.js";
-import { calculatePlayerStatBoost } from "./matchUtils.js";
+import { calculatePlayerStatBoost, getMatchSidePlayerIds } from "./matchUtils.js";
 import { getMercenaryPlayerFactor } from "./recruiting.js";
 import { getTier, getTierDisplay, getTierDivision, getTierLabel } from "./tier.js";
 
@@ -154,9 +154,9 @@ function average(values) {
   return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
-function sideAverage(side, ratings, mode) {
+function sideAverage(match, sideName, ratings, mode) {
   return average(
-    side.players.map((playerId) => ratings[playerId]?.modes?.[mode] ?? ratings[playerId]?.integrated ?? 1200),
+    getMatchSidePlayerIds(match, sideName).map((playerId) => ratings[playerId]?.modes?.[mode] ?? ratings[playerId]?.integrated ?? 1200),
   );
 }
 
@@ -166,8 +166,8 @@ export function applyMatchRating(match, players, ratings, history = [], teams = 
   const scoreB = Number(match.result?.scoreB ?? match.teamB?.score ?? 0);
   const actualA = scoreA === scoreB ? 0.5 : scoreA > scoreB ? 1 : 0;
   const actualB = 1 - actualA;
-  const teamAMmr = sideAverage(match.teamA, ratings, mode);
-  const teamBMmr = sideAverage(match.teamB, ratings, mode);
+  const teamAMmr = sideAverage(match, "teamA", ratings, mode);
+  const teamBMmr = sideAverage(match, "teamB", ratings, mode);
   const playerById = Object.fromEntries(players.map((player) => [player.id, player]));
   const teamById = Object.fromEntries(teams.map((team) => [team.id, team]));
   const nextRatings = {};
@@ -177,7 +177,7 @@ export function applyMatchRating(match, players, ratings, history = [], teams = 
     ["teamA", actualA, teamAMmr, teamBMmr],
     ["teamB", actualB, teamBMmr, teamAMmr],
   ]) {
-    for (const playerId of match[sideName].players) {
+    for (const playerId of getMatchSidePlayerIds(match, sideName)) {
       const current = ratings[playerId] ?? { integrated: 1200, modes: {} };
       const modeRating = current.modes?.[mode] ?? current.integrated ?? 1200;
       const trustScore = playerById[playerId]?.trustScore ?? 80;

@@ -12,6 +12,7 @@ import {
   getMatchReservePlayerIds,
   getMatchPlayerIds,
   getMatchRecordWindow,
+  getMatchSidePlayerIds,
   getPlayerSideName,
   getStatRecorderSides,
   isEligibleReferee,
@@ -56,15 +57,15 @@ function getExistingScore(match, sideName) {
 }
 
 function sumSidePoints(match, stats, sideName) {
-  return (match[sideName]?.players ?? []).reduce((sum, playerId) => sum + Number(stats[playerId]?.points ?? 0), 0);
+  return getMatchSidePlayerIds(match, sideName).reduce((sum, playerId) => sum + Number(stats[playerId]?.points ?? 0), 0);
 }
 
 function hasSideStats(match, sideName) {
-  return (match[sideName]?.players ?? []).some((playerId) => match.result?.playerStats?.[playerId]);
+  return getMatchSidePlayerIds(match, sideName).some((playerId) => match.result?.playerStats?.[playerId]);
 }
 
 function getSideScore(match, stats, sideName, editablePlayerIds) {
-  const hasEditablePlayer = (match[sideName]?.players ?? []).some((playerId) => editablePlayerIds.includes(playerId));
+  const hasEditablePlayer = getMatchSidePlayerIds(match, sideName).some((playerId) => editablePlayerIds.includes(playerId));
   if (hasEditablePlayer || hasSideStats(match, sideName)) return sumSidePoints(match, stats, sideName);
   return getExistingScore(match, sideName);
 }
@@ -108,6 +109,7 @@ export default function Recorder({ app }) {
   );
   const [selectedMatchId, setSelectedMatchId] = useState("");
   const selectedMatch = matches.find((match) => match.id === selectedMatchId) ?? matches[0] ?? null;
+  const selectedMatchPlayerKey = selectedMatch ? getMatchPlayerIds(selectedMatch).join("|") : "";
   const [stats, setStats] = useState({});
   const [handoffDraft, setHandoffDraft] = useState({});
   const [disputeReason, setDisputeReason] = useState("스코어 또는 개인 기록 재확인 필요");
@@ -122,7 +124,7 @@ export default function Recorder({ app }) {
       setStats(makeInitialStats(selectedMatch));
       setHandoffDraft({});
     }
-  }, [selectedMatch?.id, selectedMatch?.result?.updatedAt, selectedMatch?.result?.submittedAt]);
+  }, [selectedMatch?.id, selectedMatch?.result?.updatedAt, selectedMatch?.result?.submittedAt, selectedMatchPlayerKey]);
 
   const recorderSides = selectedMatch ? getStatRecorderSides(selectedMatch, user.id) : [];
   const editablePlayerIds = selectedMatch
@@ -184,6 +186,9 @@ export default function Recorder({ app }) {
 
   const renderSide = (sideName) => {
     const side = selectedMatch[sideName];
+    const activePlayerIds = side.players ?? [];
+    const reservePlayerIds = getMatchReservePlayerIds(selectedMatch, sideName);
+    const statPlayerIds = getMatchSidePlayerIds(selectedMatch, sideName);
 
     return (
       <section className="recorder-side" key={sideName}>
@@ -193,9 +198,14 @@ export default function Recorder({ app }) {
           <em>{sumSidePoints(selectedMatch, stats, sideName)} 득점</em>
         </header>
         <div className="recorder-player-list">
-          {side.players.map((playerId) => {
+          {statPlayerIds.map((playerId) => {
             const player = userMap[playerId];
             const allowedFields = new Set(getAllowedStatFields(selectedMatch, user.id, playerId).map((field) => field.id));
+            const rosterLabel = activePlayerIds.includes(playerId)
+              ? "출전 중"
+              : reservePlayerIds.includes(playerId)
+                ? "후보"
+                : "교체 출전";
 
             return (
               <article className="recorder-player-row" key={playerId}>
@@ -203,7 +213,7 @@ export default function Recorder({ app }) {
                   <span className="avatar small" style={{ "--avatar": player?.avatarColor }}>{player?.name?.slice(0, 1) ?? "P"}</span>
                   <span>
                     <strong>{player?.name ?? "선수"}</strong>
-                    <em>{player?.position ?? "-"} · 신뢰 {player?.trustScore ?? "-"}</em>
+                    <em>{player?.position ?? "-"} · {rosterLabel} · 신뢰 {player?.trustScore ?? "-"}</em>
                   </span>
                 </PlayerHoverCard>
                 <div className="recorder-stat-grid">
@@ -335,14 +345,19 @@ export default function Recorder({ app }) {
                 <div>
                   <span className="eyebrow">HANDOFF</span>
                   <strong>기록자 인수인계</strong>
-                  <p>후보가 출전하면 쉬고 있는 같은 팀 선수에게 현재 기록 상태를 넘깁니다.</p>
+                  <p>출전 선수를 고르면 그 선수가 후보 기록자가 되고 현재 기록자가 출전한다. 후보를 고르면 기록 권한만 넘긴다.</p>
                 </div>
                 <div className="recorder-handoff-list">
                   {recorderSides.map((sideName) => {
-                    const candidates = getMatchReservePlayerIds(selectedMatch, sideName)
+                    const activeCandidates = (selectedMatch[sideName]?.players ?? [])
                       .filter((playerId) => playerId !== user.id)
-                      .map((playerId) => userMap[playerId])
-                      .filter(Boolean);
+                      .map((playerId) => ({ user: userMap[playerId], role: "출전 중" }))
+                      .filter((item) => item.user);
+                    const reserveCandidates = getMatchReservePlayerIds(selectedMatch, sideName)
+                      .filter((playerId) => playerId !== user.id)
+                      .map((playerId) => ({ user: userMap[playerId], role: "후보" }))
+                      .filter((item) => item.user);
+                    const candidates = [...activeCandidates, ...reserveCandidates];
                     return (
                       <div className="recorder-handoff-row" key={sideName}>
                         <label>
@@ -351,9 +366,9 @@ export default function Recorder({ app }) {
                             value={handoffDraft[sideName] ?? ""}
                             onChange={(event) => setHandoffDraft((current) => ({ ...current, [sideName]: event.target.value }))}
                           >
-                            <option value="">후보 선택</option>
+                            <option value="">인수인계 대상 선택</option>
                             {candidates.map((candidate) => (
-                              <option value={candidate.id} key={candidate.id}>{candidate.name} · {candidate.position}</option>
+                              <option value={candidate.user.id} key={candidate.user.id}>{candidate.user.name} · {candidate.role} · {candidate.user.position}</option>
                             ))}
                           </select>
                         </label>

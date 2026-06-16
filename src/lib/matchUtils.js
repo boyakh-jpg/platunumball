@@ -7,6 +7,7 @@ import {
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const round = (value) => Math.round(value * 10) / 10;
+const uniquePlayerIds = (playerIds = []) => [...new Set(playerIds.filter(Boolean))];
 
 export function getSideMajority(side = {}) {
   const total = side.players?.length ?? 0;
@@ -56,7 +57,13 @@ export function getApprovalStatus(match = {}, teams = [], sideName) {
 }
 
 export function getMatchPlayerIds(match = {}) {
-  return [...new Set([...(match.teamA?.players ?? []), ...(match.teamB?.players ?? [])])];
+  return uniquePlayerIds([...getMatchSidePlayerIds(match, "teamA"), ...getMatchSidePlayerIds(match, "teamB")]);
+}
+
+export function getMatchSidePlayerIds(match = {}, sideName) {
+  const side = match[sideName] ?? {};
+  const playedPlayerIds = match.playedPlayerIds ?? match.rules?.playedPlayerIds ?? {};
+  return uniquePlayerIds([...(side.players ?? []), ...(playedPlayerIds[sideName] ?? [])]);
 }
 
 export function getMatchReservePlayerIds(match = {}, sideName) {
@@ -73,8 +80,8 @@ export function getMatchReservePlayerIds(match = {}, sideName) {
 }
 
 export function getPlayerSideName(match = {}, playerId) {
-  if (match.teamA?.players?.includes(playerId)) return "teamA";
-  if (match.teamB?.players?.includes(playerId)) return "teamB";
+  if (getMatchSidePlayerIds(match, "teamA").includes(playerId)) return "teamA";
+  if (getMatchSidePlayerIds(match, "teamB").includes(playerId)) return "teamB";
   return null;
 }
 
@@ -212,7 +219,7 @@ export function getResultPointAudit(match = {}, result = match.result) {
   const auditSide = (sideName) => {
     const scoreKey = sideName === "teamA" ? "scoreA" : "scoreB";
     const teamScore = Number(result?.[scoreKey] ?? match[sideName]?.score ?? 0);
-    const statPoints = (match[sideName]?.players ?? []).reduce(
+    const statPoints = getMatchSidePlayerIds(match, sideName).reduce(
       (sum, playerId) => sum + Number(result?.playerStats?.[playerId]?.points ?? 0),
       0,
     );
