@@ -1725,14 +1725,18 @@ export default function Recruiting({ app }) {
             <div className="ow-self-placement-actions">
               {selfPlacementActions.map((action) => {
                 const active = myEntry.side === action.side && currentUserReserve === action.reserve;
+                const movable = canMoveActiveUserToSlot(action.side, action.reserve);
                 return (
                   <Button
                     key={`${action.side}-${action.reserve ? "reserve" : "active"}`}
                     type="button"
                     size="sm"
                     variant={active ? "primary" : "secondary"}
-                    disabled={active || !canMoveActiveUserToSlot(action.side, action.reserve)}
-                    onClick={() => moveActiveUserToSlot(action.side, action.reserve)}
+                    aria-pressed={active}
+                    disabled={!active && !movable}
+                    onClick={() => {
+                      if (!active) moveActiveUserToSlot(action.side, action.reserve);
+                    }}
                   >
                     {action.label}
                   </Button>
