@@ -23,6 +23,7 @@ import {
   getMatchPlayerIds,
   getPlayerSideName,
   getPlayerStatSubmitted,
+  getResultPointAudit,
   getStatRecorderSides,
   getStatSubmissionStatus,
   isMatchReferee,
@@ -92,6 +93,7 @@ export default function MatchRoom({ app }) {
   });
   const [disputeReason, setDisputeReason] = useState("스코어 또는 개인 기록 재확인 필요");
   const [statEditorPlayerId, setStatEditorPlayerId] = useState(null);
+  const [reviewControlsOpen, setReviewControlsOpen] = useState(false);
   useBodyScrollLock(Boolean(statEditorPlayerId));
 
   if (!match) return <Navigate to="/app/create" replace />;
@@ -104,6 +106,7 @@ export default function MatchRoom({ app }) {
   const teamAApproval = getApprovalStatus(match, app.state.teams, "teamA");
   const teamBApproval = getApprovalStatus(match, app.state.teams, "teamB");
   const allPlayerIds = getMatchPlayerIds(match);
+  const currentUserSideName = getPlayerSideName(match, app.currentUser.id);
   const recordWindow = getMatchRecordWindow(match);
   const referee = getMatchReferee(match, app.state.users);
   const hasReferee = Boolean(match.refereeId);
@@ -117,7 +120,11 @@ export default function MatchRoom({ app }) {
   const currentUserCanSubmit = hasReferee ? currentUserIsReferee : currentUserEditablePlayerIds.length > 0;
   const canSubmitResult = ["agreed", "approval"].includes(match.status) && recordWindow.statOpen && currentUserCanSubmit;
   const statSubmissionStatus = getStatSubmissionStatus(match);
+  const resultPointAudit = getResultPointAudit(match);
+  const approvalAccessReady = Boolean(match.result) && statSubmissionStatus.complete && resultPointAudit.matched;
   const currentUserSubmitted = getPlayerStatSubmitted(match, app.currentUser.id);
+  const currentUserAgreementDone = currentUserSideName ? (match.agreements?.[currentUserSideName] ?? []).includes(app.currentUser.id) : false;
+  const currentUserApprovalDone = currentUserSideName ? (match.approvals?.[currentUserSideName] ?? []).includes(app.currentUser.id) : false;
   const canCancel = ["contract", "agreed"].includes(match.status);
   const canDispute = Boolean(match.result) && match.status === "approval" && recordWindow.disputeOpen;
   const canVoid = match.status === "disputed";
@@ -125,7 +132,7 @@ export default function MatchRoom({ app }) {
   const canReport = !["cancelled", "void"].includes(match.status);
   const isContractStage = match.status === "contract";
   const shouldShowResultEntry = match.status === "approval" || Boolean(match.result) || (match.status === "agreed" && !recordWindow.beforeEnd);
-  const shouldShowApprovalPanel = ["approval", "disputed", "confirmed"].includes(match.status) || Boolean(match.result);
+  const shouldShowApprovalPanel = ["disputed", "confirmed"].includes(match.status) || (match.status === "approval" && approvalAccessReady);
   const shouldShowWaitingPanel = !shouldShowResultEntry && !shouldShowApprovalPanel;
   const scoreA = getDisplayScore(match, "teamA");
   const scoreB = getDisplayScore(match, "teamB");
@@ -219,6 +226,80 @@ export default function MatchRoom({ app }) {
       : hasSideRecorders
         ? "후보가 있는 팀은 후보 기록자가 개인 활약 입력"
         : "리바운드/어시스트/스틸/블록은 비활성";
+  const nextAction = (() => {
+    if (match.status === "contract") {
+      if (currentUserSideName && !currentUserAgreementDone) {
+        return {
+          label: "동의하고 경기 준비",
+          detail: "내 동의만 처리하면 된다.",
+          button: "동의",
+          type: "agree",
+        };
+      }
+      return {
+        label: "팀 동의 대기",
+        detail: "남은 참가자가 동의하면 예정 경기로 넘어간다.",
+      };
+    }
+    if (match.status === "agreed") {
+      if (recordWindow.beforeEnd) {
+        return {
+          label: "경기 예정",
+          detail: "경기 종료 후 결과 입력이 열린다.",
+        };
+      }
+      if (canSubmitResult) {
+        return {
+          label: "결과 입력",
+          detail: permissionTitle,
+          button: "입력",
+          href: "#result-entry",
+        };
+      }
+      return {
+        label: recordLockReason,
+        detail: permissionDetail,
+      };
+    }
+    if (match.status === "approval") {
+      if (!approvalAccessReady) {
+        return {
+          label: canSubmitResult && !currentUserSubmitted ? "내 기록 입력" : "기록 확인 대기",
+          detail: `개인 기록 ${statSubmissionStatus.submitted}/${statSubmissionStatus.total}명 · 득점 합계 확인 필요`,
+          button: canSubmitResult && !currentUserSubmitted ? "입력" : "보기",
+          href: "#result-entry",
+        };
+      }
+      if (currentUserSideName && !currentUserApprovalDone) {
+        return {
+          label: "결과 승인",
+          detail: "기록 조건이 맞았다. 내 승인만 처리하면 된다.",
+          button: "승인",
+          type: "approve",
+        };
+      }
+      return {
+        label: "승인 대기",
+        detail: "다른 참가자 승인만 남았다.",
+      };
+    }
+    if (match.status === "disputed") {
+      return {
+        label: "이의 확인",
+        detail: "보류 사유 확인 후 승인 재개 또는 무효 처리.",
+      };
+    }
+    if (match.status === "confirmed") {
+      return {
+        label: "확정 완료",
+        detail: "MMR과 전적 반영이 끝났다.",
+      };
+    }
+    return {
+      label: status.label,
+      detail: "필요한 보조 처리는 접힌 메뉴에서 처리.",
+    };
+  })();
   const pointAuditA = getPointAudit(match, score, "teamA");
   const pointAuditB = getPointAudit(match, score, "teamB");
   const statTrustSteps = [
@@ -314,6 +395,23 @@ export default function MatchRoom({ app }) {
         </div>
       </section>
 
+      <Card className="gm-next-action-card">
+        <div>
+          <span>NEXT</span>
+          <strong>{nextAction.label}</strong>
+          <em>{nextAction.detail}</em>
+        </div>
+        {nextAction.type === "agree" ? (
+          <Button type="button" onClick={() => app.actions.agreeMatch(match.id, currentUserSideName, app.currentUser.id)}>{nextAction.button}</Button>
+        ) : nextAction.type === "approve" ? (
+          <Button type="button" onClick={() => app.actions.approveMatch(match.id, currentUserSideName, app.currentUser.id)}>{nextAction.button}</Button>
+        ) : nextAction.href ? (
+          <a className="button button-primary button-md" href={nextAction.href}>{nextAction.button}</a>
+        ) : (
+          <Badge tone={status.tone}>{status.label}</Badge>
+        )}
+      </Card>
+
       {isContractStage ? (
         <div className="content-grid match-stage-contract">
           <div className="page-stack">
@@ -343,7 +441,7 @@ export default function MatchRoom({ app }) {
               </Card>
             ) : null}
             {shouldShowResultEntry ? (
-            <Card className="section-card result-card">
+            <Card id="result-entry" className="section-card result-card">
             <div className="section-title-row">
               <div>
                 <p className="eyebrow">Result entry</p>
@@ -436,7 +534,9 @@ export default function MatchRoom({ app }) {
             </Card>
             ) : null}
             {shouldShowApprovalPanel ? (
-              <ApprovalPanel match={match} teams={app.state.teams} users={app.state.users} currentUserId={app.currentUser.id} onApprove={(sideName, playerId) => app.actions.approveMatch(match.id, sideName, playerId)} />
+              <div id="approval-panel">
+                <ApprovalPanel match={match} teams={app.state.teams} users={app.state.users} currentUserId={app.currentUser.id} onApprove={(sideName, playerId) => app.actions.approveMatch(match.id, sideName, playerId)} />
+              </div>
             ) : null}
           </div>
           <aside className="page-stack">
@@ -528,7 +628,7 @@ export default function MatchRoom({ app }) {
               </div>
             </div>
           </Card>
-          <Card className="section-card">
+          <Card className="section-card review-controls-card">
             <div className="section-title-row">
               <div>
                 <p className="eyebrow">Review controls</p>
@@ -538,17 +638,24 @@ export default function MatchRoom({ app }) {
             </div>
             {match.disputes?.[0] ? <p className="muted">최근 이의제기: {match.disputes[0].reason}</p> : null}
             <p className="muted">이의제기 마감: {formatWindowTime(recordWindow.disputeClosesAt)}</p>
-            <label className="memo-label">
-              이의제기 사유
-              <textarea disabled={!canDispute} value={disputeReason} onChange={(event) => setDisputeReason(event.target.value)} />
-            </label>
-            <div className="match-action-row">
-              <Button type="button" variant="secondary" disabled={!canDispute} onClick={() => app.actions.disputeMatch(match.id, disputeReason)}>이의제기</Button>
-              <Button type="button" variant="secondary" disabled={!canCancel} onClick={() => app.actions.cancelMatch(match.id)}>경기 취소</Button>
-              <Button type="button" variant="secondary" disabled={!canResumeApproval} onClick={() => app.actions.resumeMatchApproval(match.id)}>승인 재개</Button>
-              <Button type="button" variant="secondary" disabled={!canVoid} onClick={() => app.actions.voidMatch(match.id)}>무효 처리</Button>
-              <Button type="button" variant="secondary" disabled={!canReport} onClick={() => app.actions.reportMatch(match.id, disputeReason)}>신고 접수</Button>
-            </div>
+            <Button type="button" variant="secondary" onClick={() => setReviewControlsOpen((current) => !current)}>
+              {reviewControlsOpen ? "보조 메뉴 닫기" : "취소/이의/신고 열기"}
+            </Button>
+            {reviewControlsOpen ? (
+              <>
+                <label className="memo-label">
+                  이의제기 사유
+                  <textarea disabled={!canDispute} value={disputeReason} onChange={(event) => setDisputeReason(event.target.value)} />
+                </label>
+                <div className="match-action-row">
+                  <Button type="button" variant="secondary" disabled={!canDispute} onClick={() => app.actions.disputeMatch(match.id, disputeReason)}>이의제기</Button>
+                  <Button type="button" variant="secondary" disabled={!canCancel} onClick={() => app.actions.cancelMatch(match.id)}>경기 취소</Button>
+                  <Button type="button" variant="secondary" disabled={!canResumeApproval} onClick={() => app.actions.resumeMatchApproval(match.id)}>승인 재개</Button>
+                  <Button type="button" variant="secondary" disabled={!canVoid} onClick={() => app.actions.voidMatch(match.id)}>무효 처리</Button>
+                  <Button type="button" variant="secondary" disabled={!canReport} onClick={() => app.actions.reportMatch(match.id, disputeReason)}>신고 접수</Button>
+                </div>
+              </>
+            ) : null}
           </Card>
           {match.result?.playerStats ? (
             <Card className="section-card">

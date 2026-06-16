@@ -174,8 +174,8 @@
 
 .om-calendar-panel {
   display: grid;
-  grid-template-columns: minmax(220px, 0.5fr) minmax(0, 1fr);
-  gap: 12px;
+  grid-template-columns: minmax(190px, 0.36fr) minmax(0, 0.64fr);
+  gap: 10px;
 }
 
 .om-calendar-summary,
@@ -183,24 +183,26 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius);
   background: rgba(8, 11, 16, 0.66);
-  padding: 12px;
+  padding: 10px;
 }
 
 .om-calendar-summary {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 12px;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 10px;
   align-content: start;
   align-items: start;
+  align-self: start;
 }
 
 .om-calendar-summary h2 {
-  margin-top: 3px;
-  font-size: 1.38rem;
+  margin-top: 2px;
+  font-size: 1.08rem;
 }
 
 .om-calendar-summary p {
-  margin-top: 6px;
+  display: none;
+  margin-top: 4px;
   color: var(--muted);
   font-size: 0.8rem;
   font-weight: 850;
@@ -240,7 +242,7 @@
 
 .om-calendar-box {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .om-calendar-toolbar {
@@ -274,7 +276,7 @@
 .om-calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 6px;
+  gap: 5px;
 }
 
 .om-calendar-weekdays span {
@@ -286,7 +288,7 @@
 
 .om-calendar-grid button,
 .om-calendar-grid > span {
-  min-height: 40px;
+  min-height: 32px;
   border-radius: 8px;
 }
 
@@ -294,8 +296,8 @@
   position: relative;
   display: grid;
   place-items: center;
-  gap: 2px;
-  padding: 6px 4px;
+  gap: 1px;
+  padding: 4px 3px;
 }
 
 .om-calendar-grid button.today {
@@ -1745,7 +1747,7 @@ html[data-theme="light"] .tournament-schedule-list input {
 
   .om-calendar-grid button,
   .om-calendar-grid > span {
-    min-height: 42px;
+    min-height: 34px;
   }
 
   .om-tournament-state,

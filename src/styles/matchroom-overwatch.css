@@ -246,6 +246,48 @@
   white-space: nowrap;
 }
 
+.gm-next-action-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border-color: rgba(70, 224, 182, 0.24);
+  background: linear-gradient(90deg, rgba(70, 224, 182, 0.1), rgba(118, 169, 255, 0.07));
+  padding: 12px 14px;
+}
+
+.gm-next-action-card > div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.gm-next-action-card span {
+  color: var(--gold);
+  font-size: 0.72rem;
+  font-weight: 950;
+}
+
+.gm-next-action-card strong {
+  color: var(--text);
+  font-size: 1.02rem;
+}
+
+.gm-next-action-card em {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-style: normal;
+  font-weight: 850;
+}
+
+.gm-next-action-card .button {
+  min-width: 96px;
+}
+
+.review-controls-card > .button {
+  width: 100%;
+}
+
 .gm-room-hero + .content-grid {
   margin-top: 4px;
 }
@@ -280,6 +322,14 @@ html[data-theme="light"] .gm-room-actions > div {
 
   .gm-room-actions {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .gm-next-action-card {
+    grid-template-columns: 1fr;
+  }
+
+  .gm-next-action-card .button {
+    width: 100%;
   }
 }
 
