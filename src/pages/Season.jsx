@@ -193,7 +193,7 @@ export default function Season({ app }) {
             </div>
             <div className="compact-list">
               {taskMatches.length ? taskMatches.map((match) => (
-                <Link key={match.id} to={`/app/matches/${match.id}`}>
+                <Link key={match.id} to={`/app/matches?match=${match.id}`}>
                   <span>{match.title}</span>
                   <strong>{statusLabels[match.status] ?? match.status}</strong>
                 </Link>

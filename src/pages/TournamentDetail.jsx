@@ -270,7 +270,7 @@ function renderBracketNode(node, teamById) {
     <article key={node.id} className={winner || node.byeTeamId ? "bracket-match-card done" : "bracket-match-card"}>
       <div className="bracket-node-head">
         <span>{node.name}</span>
-        {node.match ? <Link to={`/app/matches/${node.match.id}`}>경기방</Link> : <b>{node.byeTeamId ? "BYE" : "예정"}</b>}
+        {node.match ? <Link to={`/app/matches?match=${node.match.id}`}>방 보기</Link> : <b>{node.byeTeamId ? "BYE" : "예정"}</b>}
       </div>
       {renderBracketSource(node.sourceA, teamById)}
       <strong className="bracket-midline">vs</strong>
@@ -473,7 +473,7 @@ export default function TournamentDetail({ app }) {
           <div className="tournament-schedule-list">
             {tournamentMatches.map((match) => (
               <form key={match.id} className={canManageSchedule ? "" : "locked"} onSubmit={(event) => saveSchedule(event, match.id)}>
-                <Link to={`/app/matches/${match.id}`}>
+                <Link to={`/app/matches?match=${match.id}`}>
                   <TeamHoverCard team={teamById[match.teamA.teamId]} as="span">{match.teamA.name}</TeamHoverCard>
                   {" vs "}
                   <TeamHoverCard team={teamById[match.teamB.teamId]} as="span">{match.teamB.name}</TeamHoverCard>

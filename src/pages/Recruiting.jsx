@@ -534,7 +534,7 @@ function QueueRoomBoard({ lobby, userById, teams }) {
   );
 }
 
-function FillSlot({ candidate, userById, teams, canManage = false, readyText = "충원 예정", onRemoveCandidate }) {
+function FillSlot({ candidate, userById, teams, readyText = "충원 예정" }) {
   const user = candidate ? userById[candidate.playerId] : null;
   const readyLabel = candidate?.status === "ready" ? "참여 확정" : "재확인 필요";
   if (!user) {
@@ -557,13 +557,6 @@ function FillSlot({ candidate, userById, teams, canManage = false, readyText = "
         <TierBadge mmr={user.ratings.integrated} compact />
         <Badge tone={candidate.status === "ready" ? "green" : "neutral"}>{readyLabel}</Badge>
       </PlayerHoverCard>
-      {canManage ? (
-        <SlotActionMenu>
-          <button type="button" className="danger" onClick={(event) => stopControlClick(event, () => onRemoveCandidate(candidate))}>
-            강퇴
-          </button>
-        </SlotActionMenu>
-      ) : null}
     </div>
   );
 }
@@ -575,15 +568,7 @@ function SideRoster({
   userById,
   teams,
   canInvite = false,
-  canManage = false,
   onInviteSlot,
-  onSetPlacement,
-  onSetMemberReserve,
-  onDetachMember,
-  onRemoveMember,
-  onKick,
-  onMoveCandidate,
-  onRemoveCandidate,
 }) {
   const activeSlots = [];
   const seenPlayerIds = new Set();
@@ -595,23 +580,6 @@ function SideRoster({
     });
   });
   const openSlots = Math.max(0, side.capacity - side.projectedFilled);
-  const renderActiveActions = ({ entry, playerId, user }) => {
-    if (!canManage || !user) return null;
-    const isPartyEntry = entry.fixed || entry.kind === "team";
-    if (entry.fixed && playerId === entry.playerId) return null;
-
-    return (
-      <SlotActionMenu>
-        <button
-          type="button"
-          className="danger"
-          onClick={(event) => stopControlClick(event, () => (isPartyEntry ? onRemoveMember(entry.id, playerId) : onKick(entry.playerId)))}
-        >
-          강퇴
-        </button>
-      </SlotActionMenu>
-    );
-  };
   return (
     <section className="ow-side-roster">
       <header>
@@ -633,9 +601,7 @@ function SideRoster({
               title={entry.status === "ready" ? "READY" : "WAIT"}
               detail={partyLabel}
               mmr={user?.ratings?.integrated ?? getEntryMmr(entry)}
-            >
-              {renderActiveActions({ entry, playerId, user })}
-            </PlayerRoomSlot>
+            />
           );
         })}
         {side.fillSlots.map((candidate) => (
@@ -645,9 +611,6 @@ function SideRoster({
             lobby={lobby}
             userById={userById}
             teams={teams}
-            canManage={canManage}
-            onMoveCandidate={onMoveCandidate}
-            onRemoveCandidate={onRemoveCandidate}
           />
         ))}
         {Array.from({ length: openSlots }).map((_item, index) => (
@@ -674,7 +637,7 @@ function stopControlClick(event, callback) {
   callback();
 }
 
-function ReserveLine({ sideName, candidates, playingIds, lobby, userById, teams, canInvite = false, canManage = false, recorderId = "", onInviteSlot, onMoveCandidate, onRemoveCandidate }) {
+function ReserveLine({ sideName, candidates, playingIds, lobby, userById, teams, canInvite = false, recorderId = "", onInviteSlot }) {
   const playingSet = new Set(playingIds);
   const slots = candidates.slice(0, MAX_RESERVE_PLAYERS_PER_SIDE);
   const openSlots = Math.max(0, MAX_RESERVE_PLAYERS_PER_SIDE - slots.length);
@@ -695,10 +658,7 @@ function ReserveLine({ sideName, candidates, playingIds, lobby, userById, teams,
               lobby={lobby}
               userById={userById}
               teams={teams}
-              canManage={canManage}
               readyText={readyText}
-              onMoveCandidate={onMoveCandidate}
-              onRemoveCandidate={onRemoveCandidate}
             />
           );
         })}
@@ -714,6 +674,57 @@ function ReserveLine({ sideName, candidates, playingIds, lobby, userById, teams,
             <span>후보 슬롯</span>
             {canInvite ? <em>초대</em> : null}
           </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RoomKickPanel({ lobby, userById, teams, onKickApplicant, onRemovePartyPlayer }) {
+  const rows = [];
+  (lobby.entries ?? []).forEach((entry) => {
+    const isPartyEntry = entry.fixed || entry.kind === "team";
+    const activeIds = entry.players ?? [];
+    const reserveIds = (entry.reserves ?? []).filter((playerId) => !activeIds.includes(playerId));
+    [
+      ...activeIds.map((playerId) => ({ playerId, reserve: false })),
+      ...reserveIds.map((playerId) => ({ playerId, reserve: true })),
+    ].forEach(({ playerId, reserve }) => {
+      if (!playerId || (entry.fixed && playerId === entry.playerId)) return;
+      const user = userById[playerId];
+      if (!user) return;
+      rows.push({ entry, isPartyEntry, playerId, reserve, user });
+    });
+  });
+
+  if (!rows.length) return null;
+
+  return (
+    <div className="ow-host-kick-panel">
+      <header>
+        <strong>강퇴</strong>
+        <span>방장은 팀 배치 대신 퇴장만 처리한다.</span>
+      </header>
+      <div className="ow-host-kick-list">
+        {rows.map(({ entry, isPartyEntry, playerId, reserve, user }) => (
+          <div key={`${entry.id}-${playerId}`} className="ow-host-kick-row">
+            <PlayerHoverCard user={user} teams={teams} as="span">
+              <span className="avatar small" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
+              <span>
+                <strong>{user.name}</strong>
+                <em>{SIDE_LABELS[entry.side]} · {reserve ? "후보" : "출전"} · {entry.team?.name ?? "개인"}</em>
+              </span>
+            </PlayerHoverCard>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              className="danger-button"
+              onClick={() => (isPartyEntry ? onRemovePartyPlayer(entry.id, playerId) : onKickApplicant(entry.playerId))}
+            >
+              강퇴
+            </Button>
+          </div>
         ))}
       </div>
     </div>
@@ -1307,7 +1318,7 @@ export default function Recruiting({ app }) {
     const matchId = app.actions.confirmRecruitingMatch(post.id);
     if (!matchId) return;
     setSelectedPostId(null);
-    navigate(`/app/matches/${matchId}`);
+    navigate(`/app/matches?match=${matchId}`);
   };
 
   return (
@@ -1673,6 +1684,16 @@ export default function Recruiting({ app }) {
                 onAccept={(invitationId) => app.actions.acceptRecruitingInvitation(selectedPost.id, invitationId)}
                 onDecline={(invitationId) => app.actions.declineRecruitingInvitation(selectedPost.id, invitationId)}
               />
+
+              {mine ? (
+                <RoomKickPanel
+                  lobby={lobby}
+                  userById={userById}
+                  teams={app.state.teams}
+                  onKickApplicant={(playerId) => app.actions.kickRecruitingApplicant(selectedPost.id, playerId)}
+                  onRemovePartyPlayer={(entryId, playerId) => app.actions.removeRecruitingPartyPlayer(selectedPost.id, entryId, playerId)}
+                />
+              ) : null}
 
               <div className="ow-room-rule-panel">
                 <div className="ow-room-rule-head">

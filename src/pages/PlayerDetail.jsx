@@ -206,7 +206,7 @@ export default function PlayerDetail({ app }) {
                 return (
                   <article key={match.id} className={`history-item opgg-match-item ${outcome ? `opgg-match-${outcome}` : ""}`}>
                     <div>
-                      <Link to={`/app/matches/${match.id}`}><strong>{match.title}</strong></Link>
+                      <Link to={`/app/matches?match=${match.id}`}><strong>{match.title}</strong></Link>
                       <span>{match.court} · {match.scheduledAt}</span>
                     </div>
                     <div className="history-score">

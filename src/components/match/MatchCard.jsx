@@ -48,8 +48,8 @@ export default function MatchCard({ match, teams = [] }) {
         <strong>{match.teamA.score ?? 0} : {match.teamB.score ?? 0}</strong>
         <TeamHoverCard team={teamB} to={`/app/teams/${match.teamB.teamId}`}>{match.teamB.name}</TeamHoverCard>
       </div>
-      <Link className="button button-secondary button-md" to={`/app/matches/${match.id}`}>
-        경기방 보기
+      <Link className="button button-secondary button-md" to={`/app/matches?match=${match.id}`}>
+        방 보기
       </Link>
     </Card>
   );

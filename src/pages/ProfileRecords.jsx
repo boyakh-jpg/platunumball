@@ -107,7 +107,7 @@ export default function ProfileRecords({ app }) {
               const line = getRecordLine(match, user.id);
               const stats = match.result?.playerStats?.[user.id] ?? {};
               return (
-                <Link key={match.id} to={`/app/matches/${match.id}`} className={`recent-match-row profile-record-row result-${line.result.toLowerCase()}`}>
+                <Link key={match.id} to={`/app/matches?match=${match.id}`} className={`recent-match-row profile-record-row result-${line.result.toLowerCase()}`}>
                   <b>{line.result}</b>
                   <span>
                     <strong>{line.side.name} vs {line.opponent.name}</strong>

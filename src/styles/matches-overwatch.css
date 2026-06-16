@@ -1612,6 +1612,77 @@
   padding-inline: 10px;
 }
 
+.om-room-modal-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(70, 224, 182, 0.22);
+  border-radius: var(--radius);
+  background: rgba(70, 224, 182, 0.075);
+  padding: 12px;
+}
+
+.om-room-modal-panel > div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.om-room-modal-panel span {
+  color: var(--gold);
+  font-size: 0.68rem;
+  font-weight: 950;
+}
+
+.om-room-modal-panel strong {
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.om-room-modal-panel em {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-style: normal;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.om-room-modal-rule-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.om-room-modal-rule-grid > span {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.045);
+  padding: 9px;
+}
+
+.om-room-modal-rule-grid em {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.om-room-modal-rule-grid strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 0.78rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .om-room-modal-actions {
   display: flex;
   justify-content: flex-end;
@@ -1954,5 +2025,13 @@ html[data-theme="light"] .tournament-schedule-list input {
 
   .om-card-kicker {
     gap: 5px;
+  }
+
+  .om-room-modal-panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .om-room-modal-rule-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

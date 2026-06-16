@@ -5,7 +5,7 @@
 html {
   min-width: 320px;
   background: var(--bg);
-  --bottom-nav-height: 46px;
+  --bottom-nav-height: 58px;
 }
 
 body {
@@ -2365,14 +2365,14 @@ input[type="color"] {
     z-index: 20;
     display: grid;
     grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: 3px;
+    gap: 4px;
     min-height: var(--bottom-nav-height);
     border: 1px solid var(--line);
     border-radius: var(--radius);
     background: rgba(16, 18, 17, 0.92);
     box-shadow: var(--shadow);
     backdrop-filter: blur(16px);
-    padding: 5px;
+    padding: 7px;
   }
 
   .bottom-nav a {
@@ -2380,11 +2380,11 @@ input[type="color"] {
     align-items: center;
     justify-content: center;
     min-width: 0;
-    gap: 3px;
+    gap: 4px;
     border-radius: 6px;
     color: var(--muted);
-    padding: 7px 1px;
-    font-size: 0.6rem;
+    padding: 9px 1px;
+    font-size: 0.62rem;
     font-weight: 800;
     line-height: 1;
     white-space: nowrap;
@@ -2400,8 +2400,8 @@ input[type="color"] {
   }
 
   .bottom-nav a svg {
-    width: 16px;
-    height: 16px;
+    width: 18px;
+    height: 18px;
     flex: 0 0 auto;
   }
 
@@ -6246,7 +6246,7 @@ html[data-theme="light"] .favorite-toggle-button.active.button-secondary {
   .recorder-player-row {
     grid-template-columns: minmax(72px, 84px) minmax(0, 1fr);
     gap: 5px;
-    padding: 5px;
+    padding: 7px;
   }
 
   .recorder-player-main {
@@ -6711,18 +6711,18 @@ html[data-theme="light"] .favorite-toggle-button.active.button-secondary {
   }
 
   .bottom-nav {
-    gap: 2px;
-    padding: 5px 4px;
+    gap: 3px;
+    padding: 7px 4px;
   }
 
   .bottom-nav a {
     gap: 2px;
-    padding: 6px 0;
-    font-size: 0.54rem;
+    padding: 8px 0;
+    font-size: 0.58rem;
   }
 
   .bottom-nav a svg {
-    width: 14px;
-    height: 14px;
+    width: 16px;
+    height: 16px;
   }
 }

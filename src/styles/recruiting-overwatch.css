@@ -1834,6 +1834,77 @@
   opacity: 0.42;
 }
 
+.ow-host-kick-panel {
+  display: grid;
+  gap: 10px;
+  border: 1px solid rgba(255, 95, 115, 0.18);
+  border-radius: var(--radius);
+  background: rgba(255, 95, 115, 0.055);
+  padding: 12px;
+}
+
+.ow-host-kick-panel header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ow-host-kick-panel header strong {
+  color: var(--text);
+  font-size: 0.92rem;
+}
+
+.ow-host-kick-panel header span {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 850;
+}
+
+.ow-host-kick-list {
+  display: grid;
+  gap: 7px;
+}
+
+.ow-host-kick-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 8px;
+}
+
+.ow-host-kick-row > span {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.ow-host-kick-row > span > span:last-child {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.ow-host-kick-row strong,
+.ow-host-kick-row em {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ow-host-kick-row em {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 850;
+}
+
 .ow-open-slot {
   display: flex;
   align-items: center;

@@ -75,7 +75,7 @@ export default function Notifications({ app }) {
               <span className="notification-actions">
                 <Badge tone={toneMap[notification.tone] ?? "neutral"}>{notification.tone}</Badge>
                 {notification.matchId ? (
-                  <Link className="button button-secondary button-md" to={`/app/matches/${notification.matchId}`}>경기방</Link>
+                  <Link className="button button-secondary button-md" to={`/app/matches?match=${notification.matchId}`}>방 보기</Link>
                 ) : null}
                 {notification.recruitingPostId ? (
                   <Link className="button button-secondary button-md" to={`/app/recruiting?post=${notification.recruitingPostId}`}>매칭</Link>

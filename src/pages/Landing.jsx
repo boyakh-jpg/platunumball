@@ -49,7 +49,7 @@ export default function Landing({ state }) {
           </div>
         </div>
         <div className="broadcast-panel" aria-label="RankBall live board">
-          <Link to={featuredMatch ? `/app/matches/${featuredMatch.id}` : "/app"} className="broadcast-glass">
+          <Link to={featuredMatch ? `/app/matches?match=${featuredMatch.id}` : "/app"} className="broadcast-glass">
             <div className="live-dot">TODAY</div>
             <h2>{featuredMatch?.mode ?? "5v5"} Match</h2>
             <div className="broadcast-score">

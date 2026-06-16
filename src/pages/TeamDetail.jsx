@@ -207,7 +207,7 @@ export default function TeamDetail({ app }) {
                 return (
                   <article key={match.id} className="history-item">
                     <div>
-                      <Link to={`/app/matches/${match.id}`}><strong>{match.title}</strong></Link>
+                      <Link to={`/app/matches?match=${match.id}`}><strong>{match.title}</strong></Link>
                       <span>{match.court} · {match.scheduledAt}</span>
                     </div>
                     <div className="history-score">

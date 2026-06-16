@@ -273,7 +273,7 @@ export default function Recorder({ app }) {
           <h1>진행 경기</h1>
           <p>활성 경기만 모아 기록 입력, 이의제기, 결과 승인을 한 화면에서 처리합니다.</p>
         </div>
-        <Link to={`/app/matches/${selectedMatch.id}`} className="button button-secondary button-md">경기방</Link>
+        <Link to={`/app/matches?match=${selectedMatch.id}`} className="button button-secondary button-md">방 보기</Link>
       </header>
 
       <div className="recorder-layout">

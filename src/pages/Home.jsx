@@ -149,7 +149,7 @@ export default function Home({ app }) {
             label: "동의 필요",
             title: match.title,
             meta: `${match.scheduledAt} · ${match.court}`,
-            href: `/app/matches/${match.id}`,
+            href: `/app/matches?match=${match.id}`,
             icon: ClipboardCheck,
           };
         }
@@ -160,7 +160,7 @@ export default function Home({ app }) {
             label: "결과 입력",
             title: match.title,
             meta: `${match.scheduledAt} · ${match.court}`,
-            href: `/app/matches/${match.id}`,
+            href: `/app/matches?match=${match.id}`,
             icon: CalendarDays,
           };
         }
@@ -171,7 +171,7 @@ export default function Home({ app }) {
             label: "결과 승인",
             title: match.title,
             meta: `${match.scheduledAt} · ${match.court}`,
-            href: `/app/matches/${match.id}`,
+            href: `/app/matches?match=${match.id}`,
             icon: ShieldAlert,
           };
         }
@@ -466,7 +466,7 @@ export default function Home({ app }) {
               {myCompletedMatches.slice(0, 8).map((match) => {
                 const result = getUserResult(match, user.id);
                 return (
-                  <Link key={match.id} to={`/app/matches/${match.id}`} className={`recent-result-pill result-${result.toLowerCase()}`}>
+                  <Link key={match.id} to={`/app/matches?match=${match.id}`} className={`recent-result-pill result-${result.toLowerCase()}`}>
                     {result}
                   </Link>
                 );
@@ -474,7 +474,7 @@ export default function Home({ app }) {
             </div>
             <div className="recent-match-list">
               {latestMyMatches.map((match) => (
-                <Link key={match.id} to={`/app/matches/${match.id}`} className={`recent-match-row result-${getUserResult(match, user.id).toLowerCase()}`}>
+                <Link key={match.id} to={`/app/matches?match=${match.id}`} className={`recent-match-row result-${getUserResult(match, user.id).toLowerCase()}`}>
                   {(() => {
                     const line = getUserMatchLine(match, user.id);
                     return (
@@ -569,7 +569,7 @@ export default function Home({ app }) {
             </div>
             <div className="compact-list">
               {approvalMatches.length ? approvalMatches.slice(0, 4).map((match) => (
-                <Link key={match.id} to={`/app/matches/${match.id}`}>
+                <Link key={match.id} to={`/app/matches?match=${match.id}`}>
                   <span>{match.title}</span>
                   <strong>{(match.approvals?.teamA?.length ?? 0) + (match.approvals?.teamB?.length ?? 0)}명 승인</strong>
                 </Link>

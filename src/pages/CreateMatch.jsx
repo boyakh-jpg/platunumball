@@ -383,7 +383,7 @@ export default function CreateMatch({ app }) {
       return;
     }
     const matchId = app.actions.createMatch(draft);
-    navigate(matchId ? `/app/matches/${matchId}` : "/app/matches");
+    navigate(matchId ? `/app/matches?match=${matchId}` : "/app/matches");
   };
 
   return (

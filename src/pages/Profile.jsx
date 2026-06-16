@@ -69,7 +69,7 @@ function RecentRecordCard({ records, userId }) {
           {records.map((match) => {
             const line = getUserRecordLine(match, userId);
             return (
-              <Link key={match.id} to={`/app/matches/${match.id}`} className={`recent-match-row result-${line.result.toLowerCase()}`}>
+              <Link key={match.id} to={`/app/matches?match=${match.id}`} className={`recent-match-row result-${line.result.toLowerCase()}`}>
                 <b>{line.result}</b>
                 <span>
                   <strong>{line.side.name} vs {line.opponent.name}</strong>

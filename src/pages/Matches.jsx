@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, MapPin, PlusCircle, ShieldAlert, ShieldCheck, Swords, Trophy, UsersRound, X } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
@@ -196,7 +196,7 @@ function getWinner(match) {
 
 function getMatchActionLabel(match) {
   if (match.status === "contract") return "동의";
-  if (match.status === "agreed") return "경기방";
+  if (match.status === "agreed") return "방 보기";
   if (match.status === "approval" || match.status === "disputed") return "처리";
   return "보기";
 }
@@ -366,7 +366,47 @@ function MatchPreviewReserveLine({ match, sideName, userById, teams }) {
   );
 }
 
-function MatchPreviewModal({ match, status, teamById, userById, teams, onClose }) {
+function getMatchModalAction(match, userId) {
+  const sideName = getUserSideName(match, userId);
+  if (!sideName) {
+    return { label: "경기 정보", detail: "명단과 룰을 확인합니다." };
+  }
+
+  if (match.status === "contract") {
+    const done = (match.agreements?.[sideName] ?? []).includes(userId);
+    return done
+      ? { label: "동의 완료", detail: "다른 참가자의 동의를 기다립니다." }
+      : { label: "동의 필요", detail: "경기 전 계약 동의가 필요합니다.", action: "agree", button: "동의" };
+  }
+
+  if (match.status === "approval" || match.status === "disputed") {
+    const done = (match.approvals?.[sideName] ?? []).includes(userId);
+    return done
+      ? { label: "승인 완료", detail: "상대 승인 또는 이의신청 마감을 기다립니다." }
+      : { label: "결과 승인 필요", detail: "경기 결과와 기록을 확인한 뒤 승인합니다.", action: "approve", button: "승인" };
+  }
+
+  if (match.status === "agreed") {
+    return { label: "전투 준비", detail: "경기 전에는 룰과 출전 명단만 확인합니다." };
+  }
+
+  if (match.status === "confirmed") {
+    return { label: "기록 확정", detail: "완료된 경기는 기록에서 다시 볼 수 있습니다." };
+  }
+
+  return { label: getMatchProcessMeta(match).label, detail: "현재 상태를 확인합니다." };
+}
+
+function getMatchRuleRows(match, capacity) {
+  return [
+    { label: "방식", value: `${capacity} vs ${capacity}` },
+    { label: "룰", value: formatMatchRules(match) },
+    { label: "MMR", value: match.ranked === false ? "티어 자유" : "MMR 반영" },
+    { label: "장소", value: match.court },
+  ];
+}
+
+function MatchPreviewModal({ app, match, status, teamById, userById, teams, onClose }) {
   const scoreA = match.teamA.score ?? match.result?.scoreA ?? 0;
   const scoreB = match.teamB.score ?? match.result?.scoreB ?? 0;
   const capacity = getRoomCapacity(match);
@@ -374,6 +414,13 @@ function MatchPreviewModal({ match, status, teamById, userById, teams, onClose }
   const roomType = match.recruitingPostId ? "PUBLIC ROOM" : match.tournamentId ? "PRIVATE EVENT ROOM" : "PRIVATE ROOM";
   const filledA = match.teamA.players?.length ?? 0;
   const filledB = match.teamB.players?.length ?? 0;
+  const nextAction = getMatchModalAction(match, app.currentUser.id);
+  const userSideName = getUserSideName(match, app.currentUser.id);
+  const runAction = () => {
+    if (!nextAction.action || !userSideName) return;
+    if (nextAction.action === "agree") app.actions.agreeMatch(match.id, userSideName, app.currentUser.id);
+    if (nextAction.action === "approve") app.actions.approveMatch(match.id, userSideName, app.currentUser.id);
+  };
 
   return (
     <div className="ow-compose-backdrop" role="presentation" onMouseDown={onClose}>
@@ -413,6 +460,26 @@ function MatchPreviewModal({ match, status, teamById, userById, teams, onClose }
             <MatchPreviewReserveLine match={match} sideName="teamB" userById={userById} teams={teams} />
           </div>
 
+          <div className="om-room-modal-panel">
+            <div>
+              <span>NEXT</span>
+              <strong>{nextAction.label}</strong>
+              <em>{nextAction.detail}</em>
+            </div>
+            {nextAction.action ? (
+              <Button type="button" onClick={runAction}>{nextAction.button}</Button>
+            ) : null}
+          </div>
+
+          <div className="om-room-modal-rule-grid">
+            {getMatchRuleRows(match, capacity).map((row) => (
+              <span key={row.label}>
+                <em>{row.label}</em>
+                <strong>{row.value}</strong>
+              </span>
+            ))}
+          </div>
+
           <div className="ow-lobby-actions">
             <div><CalendarDays size={17} /><span>{match.scheduledDate ?? ""} {match.scheduledTime ?? ""}</span></div>
             <div><UsersRound size={17} /><span>{capacity} vs {capacity}</span></div>
@@ -422,7 +489,6 @@ function MatchPreviewModal({ match, status, teamById, userById, teams, onClose }
         </div>
 
         <div className="om-room-modal-actions">
-          <Link className="button button-primary button-md" to={`/app/matches/${match.id}`}>경기방</Link>
           <button type="button" className="button button-secondary button-md" onClick={onClose}>닫기</button>
         </div>
       </aside>
@@ -431,6 +497,7 @@ function MatchPreviewModal({ match, status, teamById, userById, teams, onClose }
 }
 
 export default function Matches({ app }) {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [viewId, setViewId] = useState("active");
   const [kindFilter, setKindFilter] = useState("all");
   const [modeFilter, setModeFilter] = useState("all");
@@ -440,6 +507,7 @@ export default function Matches({ app }) {
   const [tournamentPanelOpen, setTournamentPanelOpen] = useState(true);
   const [selectedTournamentId, setSelectedTournamentId] = useState(null);
   const [selectedMatchId, setSelectedMatchId] = useState(null);
+  const queryMatchId = searchParams.get("match");
   const todayValue = toDateInputValue();
   const maxScheduleDate = addDays(todayValue, 365);
   const historyCutoffDate = subtractMonths(todayValue, historyRangeMonths);
@@ -463,8 +531,15 @@ export default function Matches({ app }) {
     () => activeTournaments.find((tournament) => tournament.id === selectedTournamentId) ?? null,
     [activeTournaments, selectedTournamentId],
   );
-  const selectedMatch = selectedMatchId ? matchesById[selectedMatchId] ?? null : null;
+  const selectedMatch = (selectedMatchId ? matchesById[selectedMatchId] : null) ?? (queryMatchId ? matchesById[queryMatchId] : null) ?? null;
   useBodyScrollLock(Boolean(selectedTournament || selectedMatch));
+  const closeSelectedMatch = () => {
+    setSelectedMatchId(null);
+    if (!queryMatchId) return;
+    const next = new URLSearchParams(searchParams);
+    next.delete("match");
+    setSearchParams(next, { replace: true });
+  };
 
   const baseFilteredMatches = useMemo(() => {
     return [...app.state.matches]
@@ -815,7 +890,7 @@ export default function Matches({ app }) {
                   <div className="om-tournament-fixtures">
                     {tournamentMatches.map((match) => (
                       <form key={match.id} className={canManageSchedule ? "om-tournament-fixture-row" : "om-tournament-fixture-row locked"} onSubmit={(event) => saveTournamentSchedule(event, selectedTournament.id, match.id)}>
-                        <Link to={`/app/matches/${match.id}`}>
+                        <Link to={`/app/matches?match=${match.id}`}>
                           <TeamHoverCard team={teamById[match.teamA.teamId]} as="span">{match.teamA.name}</TeamHoverCard>
                           {" vs "}
                           <TeamHoverCard team={teamById[match.teamB.teamId]} as="span">{match.teamB.name}</TeamHoverCard>
@@ -837,12 +912,13 @@ export default function Matches({ app }) {
 
       {selectedMatch ? (
         <MatchPreviewModal
+          app={app}
           match={selectedMatch}
           status={getMatchProcessMeta(selectedMatch)}
           teamById={teamById}
           userById={userById}
           teams={app.state.teams}
-          onClose={() => setSelectedMatchId(null)}
+          onClose={closeSelectedMatch}
         />
       ) : null}
 
