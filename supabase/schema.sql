@@ -96,43 +96,34 @@ drop policy if exists "tournament_teams_select_public" on public.tournament_team
 drop policy if exists "tournament_teams_insert_public" on public.tournament_teams;
 drop policy if exists "tournament_teams_update_public" on public.tournament_teams;
 
+do $$
+declare
+  policy_row record;
+begin
+  for policy_row in
+    select tablename, policyname
+    from pg_policies
+    where schemaname = 'public'
+      and tablename in ('tournaments', 'tournament_teams')
+      and cmd in ('INSERT', 'UPDATE', 'ALL')
+      and ('public' = any(roles) or 'anon' = any(roles))
+  loop
+    execute format('drop policy if exists %I on public.%I', policy_row.policyname, policy_row.tablename);
+  end loop;
+end;
+$$;
+
 create policy "tournaments_select_public"
 on public.tournaments
 for select
 to anon, authenticated
 using (true);
 
-create policy "tournaments_insert_public"
-on public.tournaments
-for insert
-to anon, authenticated
-with check (true);
-
-create policy "tournaments_update_public"
-on public.tournaments
-for update
-to anon, authenticated
-using (true)
-with check (true);
-
 create policy "tournament_teams_select_public"
 on public.tournament_teams
 for select
 to anon, authenticated
 using (true);
-
-create policy "tournament_teams_insert_public"
-on public.tournament_teams
-for insert
-to anon, authenticated
-with check (true);
-
-create policy "tournament_teams_update_public"
-on public.tournament_teams
-for update
-to anon, authenticated
-using (true)
-with check (true);
 
 do $$
 begin
@@ -282,8 +273,11 @@ end;
 $$;
 
 do $$
+declare
+  policy_name text;
 begin
   if to_regclass('public.recruiting_applications') is not null then
+    execute 'alter table public.recruiting_applications enable row level security';
     execute 'alter table public.recruiting_applications add column if not exists side text not null default ''teamB''';
     execute 'alter table public.recruiting_applications add column if not exists status text not null default ''waiting''';
     execute 'alter table public.recruiting_applications add column if not exists reserve boolean not null default false';
@@ -295,6 +289,49 @@ begin
     execute 'alter table public.recruiting_applications drop constraint if exists recruiting_applications_status_check';
     execute 'alter table public.recruiting_applications add constraint recruiting_applications_status_check check (status in (''waiting'', ''ready'', ''confirmed''))';
     execute 'create index if not exists recruiting_applications_post_side_idx on public.recruiting_applications (post_id, side, reserve)';
+
+    for policy_name in
+      select policyname
+      from pg_policies
+      where schemaname = 'public'
+        and tablename = 'recruiting_applications'
+        and cmd in ('SELECT', 'ALL')
+    loop
+      execute format('drop policy if exists %I on public.recruiting_applications', policy_name);
+    end loop;
+
+    if to_regclass('public.recruiting_posts') is not null then
+      execute '
+        create policy recruiting_applications_related_user_read
+        on public.recruiting_applications
+        for select
+        to authenticated
+        using (
+          player_id = auth.uid()::text
+          or player_ids ? auth.uid()::text
+          or exists (
+            select 1
+            from public.recruiting_posts post
+            where post.id = recruiting_applications.post_id
+              and (
+                post.player_id = auth.uid()::text
+                or post.player_ids ? auth.uid()::text
+              )
+          )
+        )
+      ';
+    else
+      execute '
+        create policy recruiting_applications_related_user_read
+        on public.recruiting_applications
+        for select
+        to authenticated
+        using (
+          player_id = auth.uid()::text
+          or player_ids ? auth.uid()::text
+        )
+      ';
+    end if;
   end if;
 end;
 $$;
