@@ -1506,6 +1506,17 @@
   padding: 10px;
 }
 
+.ow-slot-command-popover.floating {
+  position: fixed;
+  top: max(14px, env(safe-area-inset-top));
+  left: 50%;
+  z-index: 140;
+  width: min(560px, calc(100vw - 24px));
+  max-height: min(78vh, 720px);
+  overflow: auto;
+  transform: translateX(-50%);
+}
+
 .ow-slot-command-popover > header {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

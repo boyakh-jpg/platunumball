@@ -254,6 +254,13 @@ export function normalizeRecruitingRoomState(roomState = {}) {
   const reserveReady = roomState.reserveReady && typeof roomState.reserveReady === "object"
     ? Object.fromEntries(Object.entries(roomState.reserveReady).filter(([playerId, ready]) => playerId && ready))
     : {};
+  const pinnedReservePlayers = roomState.pinnedReservePlayers && typeof roomState.pinnedReservePlayers === "object"
+    ? Object.fromEntries(
+        Object.entries(roomState.pinnedReservePlayers)
+          .map(([sideName, ids]) => [sideName, unique(Array.isArray(ids) ? ids : [])])
+          .filter(([sideName, ids]) => VALID_SIDES.has(sideName) && ids.length),
+      )
+    : {};
 
   return {
     ...roomState,
@@ -264,6 +271,7 @@ export function normalizeRecruitingRoomState(roomState = {}) {
     invitations,
     partyReserves,
     reserveReady,
+    pinnedReservePlayers,
   };
 }
 
@@ -475,6 +483,7 @@ export function getRecruitingLobby(post = {}, state = {}) {
   const userById = Object.fromEntries((state.users ?? []).map((user) => [user.id, user]));
 
   const sides = ["teamA", "teamB"].reduce((acc, side) => {
+    const pinnedReserveIds = new Set(normalizedPost.roomState?.pinnedReservePlayers?.[side] ?? []);
     const sideEntries = entries.filter((entry) => entry.side === side && !entry.reserve);
     const reserveEntries = entries.filter((entry) => entry.side === side && entry.reserve);
     const players = unique(sideEntries.flatMap((entry) => entry.players));
@@ -488,6 +497,7 @@ export function getRecruitingLobby(post = {}, state = {}) {
           entryId: entry.id,
           status: entry.status,
           side,
+          pinned: pinnedReserveIds.has(playerId),
           createdAt: entry.createdAt,
         })),
       ),
@@ -502,6 +512,7 @@ export function getRecruitingLobby(post = {}, state = {}) {
             ? normalizedPost.roomState.reserveReady?.[playerId] ? "ready" : "waiting"
             : entry.status,
           side,
+          pinned: pinnedReserveIds.has(playerId),
           createdAt: entry.createdAt,
         })),
       ),
@@ -513,7 +524,9 @@ export function getRecruitingLobby(post = {}, state = {}) {
         return true;
       })
       .sort(compareCandidates);
-    const fillSlots = reserveCandidates.slice(0, Math.max(0, getRecruitingSideCapacity(normalizedPost) - players.length));
+    const fillSlots = reserveCandidates
+      .filter((candidate) => candidate.status === "ready" && !candidate.pinned)
+      .slice(0, Math.max(0, getRecruitingSideCapacity(normalizedPost) - players.length));
     const fillPlayerIds = new Set(fillSlots.map((candidate) => candidate.playerId));
     const visibleReserveCandidates = reserveCandidates.filter((candidate) => !fillPlayerIds.has(candidate.playerId));
     const reserves = visibleReserveCandidates.map((candidate) => candidate.playerId);

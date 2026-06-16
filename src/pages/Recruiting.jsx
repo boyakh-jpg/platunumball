@@ -210,6 +210,12 @@ function canMovePlayerTo(lobby, playerId, sideName, reserve = false) {
   return side.projectedPlayers.includes(playerId) || side.projectedFilled < side.capacity;
 }
 
+function getEntryPlayerReserveState(entry, playerId) {
+  if (!entry || !playerId) return false;
+  if (entry.reserve) return true;
+  return (entry.reserves ?? []).includes(playerId) && !(entry.players ?? []).includes(playerId);
+}
+
 function getSameSidePartyOptions(lobby, myEntry, myTeams = [], targetSide = myEntry?.side) {
   if (!myEntry || myEntry.fixed || myEntry.kind === "team") return [];
   const sideEntries = lobby.sides[targetSide]?.entries ?? [];
@@ -560,9 +566,9 @@ function FillSlot({ candidate, userById, teams, readyText = "READY" }) {
   );
 }
 
-function SlotCommandPanel({ sideName, reserve = false, canMoveHere = false, partyJoinOptions = [], onMoveHere, onJoinParty, onClose, children }) {
+function SlotCommandPanel({ sideName, reserve = false, floating = false, canMoveHere = false, partyJoinOptions = [], onMoveHere, onJoinParty, onClose, children }) {
   return (
-    <div className="ow-slot-command-popover" onClick={(event) => event.stopPropagation()}>
+    <div className={floating ? "ow-slot-command-popover floating" : "ow-slot-command-popover"} onClick={(event) => event.stopPropagation()}>
       <header>
         <div>
           <strong>{SIDE_LABELS[sideName]} {reserve ? "후보 슬롯" : "빈 슬롯"}</strong>
@@ -593,7 +599,6 @@ function SideRoster({
   teams,
   canInvite = false,
   onInviteSlot,
-  renderSlotCommand,
 }) {
   const activeSlots = [];
   const seenPlayerIds = new Set();
@@ -654,7 +659,6 @@ function SideRoster({
                   {canInvite ? <em>초대</em> : null}
                 </button>
               </div>
-              {renderSlotCommand?.(sideName, false, slotKey)}
             </Fragment>
           );
         })}
@@ -669,7 +673,7 @@ function stopControlClick(event, callback) {
   callback();
 }
 
-function ReserveLine({ sideName, candidates, playingIds, lobby, userById, teams, canInvite = false, recorderId = "", onInviteSlot, renderSlotCommand }) {
+function ReserveLine({ sideName, candidates, playingIds, lobby, userById, teams, canInvite = false, recorderId = "", onInviteSlot }) {
   const playingSet = new Set(playingIds);
   const slots = candidates.slice(0, MAX_RESERVE_PLAYERS_PER_SIDE);
   const openSlots = Math.max(0, MAX_RESERVE_PLAYERS_PER_SIDE - slots.length);
@@ -710,7 +714,6 @@ function ReserveLine({ sideName, candidates, playingIds, lobby, userById, teams,
                   {canInvite ? <em>초대</em> : null}
                 </button>
               </div>
-              {renderSlotCommand?.(sideName, true, slotKey)}
             </Fragment>
           );
         })}
@@ -1572,34 +1575,63 @@ export default function Recruiting({ app }) {
         const teamBMeta = getLobbySideMeta(lobby, "teamB", userById);
         const roomReadyLabel = lobby.canConfirm ? "READY" : "충원 중";
         const roomTitle = selectedPost.ranked === false ? "친선전" : "정규전";
-        const renderSlotCommand = (sideName, reserve, slotKey) => {
-          if (!activeInviteDraft || activeInviteDraft.sideName !== sideName || Boolean(activeInviteDraft.reserve) !== reserve || activeInviteDraft.slotKey !== slotKey) return null;
+        const activeSlotDraft = activeInviteDraft?.slotKey ? activeInviteDraft : null;
+        const currentUserReserve = getEntryPlayerReserveState(myEntry, app.currentUser.id);
+        const currentUserInEntry = Boolean(myEntry && (
+          myEntry.playerId === app.currentUser.id ||
+          myEntry.players?.includes(app.currentUser.id) ||
+          myEntry.reserves?.includes(app.currentUser.id)
+        ));
+        const canMoveActiveUserToSlot = (sideName, reserve) => {
+          if (!myEntry || !currentUserInEntry) return false;
+          const samePlacement = myEntry.side === sideName && currentUserReserve === reserve;
+          if (samePlacement) return false;
+          if (!canMovePlayerTo(lobby, app.currentUser.id, sideName, reserve)) return false;
+          if (myEntry.kind === "player" && myEntry.playerId === app.currentUser.id) return true;
+          if ((myEntry.fixed || myEntry.kind === "team") && myEntry.side === sideName) return true;
+          return false;
+        };
+        const moveActiveUserToSlot = (sideName, reserve) => {
+          if (!myEntry || !currentUserInEntry) return;
+          if (myEntry.kind === "player" && myEntry.playerId === app.currentUser.id) {
+            app.actions.setRecruitingApplicantPlacement(selectedPost.id, app.currentUser.id, { side: sideName, reserve });
+            setInviteDraft(null);
+            return;
+          }
+          if ((myEntry.fixed || myEntry.kind === "team") && myEntry.side === sideName) {
+            app.actions.setRecruitingPartyPlayerPlacement(selectedPost.id, myEntry.id, app.currentUser.id, { side: sideName, reserve });
+            setInviteDraft(null);
+          }
+        };
+        const renderSlotCommand = () => {
+          if (!activeSlotDraft) return null;
+          const sideName = activeSlotDraft.sideName;
+          const reserve = Boolean(activeSlotDraft.reserve);
           const canMoveHere = Boolean(
-            myEntry?.kind === "player" &&
-            canMovePlayerTo(lobby, myEntry.playerId, sideName, reserve) &&
-            (myEntry.side !== sideName || Boolean(myEntry.reserve) !== reserve),
+            canMoveActiveUserToSlot(sideName, reserve),
           );
           const targetPartyOptions = getSameSidePartyOptions(lobby, myEntry, myTeams, sideName);
           return (
             <SlotCommandPanel
               sideName={sideName}
               reserve={reserve}
+              floating
               canMoveHere={canMoveHere}
               partyJoinOptions={targetPartyOptions}
-              onMoveHere={() => app.actions.setRecruitingApplicantPlacement(selectedPost.id, myEntry.playerId, { side: sideName, reserve })}
+              onMoveHere={() => moveActiveUserToSlot(sideName, reserve)}
               onJoinParty={(teamId) => app.actions.joinRecruitingSideParty(selectedPost.id, teamId)}
               onClose={() => setInviteDraft(null)}
             >
               <InvitePanel
-                sideName={activeInviteDraft.sideName}
-                reserve={Boolean(activeInviteDraft.reserve)}
-                query={activeInviteDraft.query}
+                sideName={activeSlotDraft.sideName}
+                reserve={Boolean(activeSlotDraft.reserve)}
+                query={activeSlotDraft.query}
                 onQueryChange={(query) => updateInviteDraft({ query, selectedPlayerIds: [] })}
                 users={app.state.users}
                 teams={app.state.teams}
                 userById={userById}
                 disabledPlayerIds={disabledInvitePlayerIds}
-                selectedPlayerIds={activeInviteDraft.selectedPlayerIds ?? []}
+                selectedPlayerIds={activeSlotDraft.selectedPlayerIds ?? []}
                 favoritePlayerIds={favoritePlayerIds}
                 favoriteTeamIds={favoriteTeamIds}
                 onTogglePlayer={toggleInvitePlayer}
@@ -1650,7 +1682,6 @@ export default function Recruiting({ app }) {
                       canInvite={canInviteFromRoom}
                       canManage={mine}
                       onInviteSlot={(sideName, reserve, slotKey) => openInviteSlot(selectedPost, sideName, reserve, slotKey)}
-                      renderSlotCommand={renderSlotCommand}
                       onSetPlacement={(playerId, placement) => app.actions.setRecruitingApplicantPlacement(selectedPost.id, playerId, placement)}
                       onSetMemberReserve={(entryId, playerId, reserve) => app.actions.setRecruitingPartyPlayerReserve(selectedPost.id, entryId, playerId, reserve)}
                       onDetachMember={(entryId, playerId) => app.actions.detachRecruitingPartyPlayer(selectedPost.id, entryId, playerId)}
@@ -1683,7 +1714,6 @@ export default function Recruiting({ app }) {
                       canInvite={canInviteFromRoom}
                       canManage={mine}
                       onInviteSlot={(sideName, reserve, slotKey) => openInviteSlot(selectedPost, sideName, reserve, slotKey)}
-                      renderSlotCommand={renderSlotCommand}
                       onSetPlacement={(playerId, placement) => app.actions.setRecruitingApplicantPlacement(selectedPost.id, playerId, placement)}
                       onSetMemberReserve={(entryId, playerId, reserve) => app.actions.setRecruitingPartyPlayerReserve(selectedPost.id, entryId, playerId, reserve)}
                       onDetachMember={(entryId, playerId) => app.actions.detachRecruitingPartyPlayer(selectedPost.id, entryId, playerId)}
@@ -1707,7 +1737,6 @@ export default function Recruiting({ app }) {
                     recorderId={recorderIds.teamA}
                     lobby={lobby}
                     onInviteSlot={(sideName, reserve, slotKey) => openInviteSlot(selectedPost, sideName, reserve, slotKey)}
-                    renderSlotCommand={renderSlotCommand}
                     onMoveCandidate={moveCandidate}
                     onRemoveCandidate={removeCandidate}
                   />
@@ -1722,7 +1751,6 @@ export default function Recruiting({ app }) {
                     recorderId={recorderIds.teamB}
                     lobby={lobby}
                     onInviteSlot={(sideName, reserve, slotKey) => openInviteSlot(selectedPost, sideName, reserve, slotKey)}
-                    renderSlotCommand={renderSlotCommand}
                     onMoveCandidate={moveCandidate}
                     onRemoveCandidate={removeCandidate}
                   />
@@ -1735,6 +1763,7 @@ export default function Recruiting({ app }) {
                   <div><Swords size={17} /><span>{selectedPost.rules?.targetScore ?? 21}점 · {selectedPost.rules?.timeLimit ?? 12}분</span></div>
                 </div>
               </div>
+              {renderSlotCommand()}
 
               {activeInviteDraft && !activeInviteDraft.slotKey ? (
                 <InvitePanel
