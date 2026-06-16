@@ -2974,18 +2974,33 @@ export function setRecruitingReady(state, postId, ready = true) {
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   if (!post || post.status !== "open") return state;
   const updatedAt = new Date().toISOString();
+  const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
+  const lobby = getRecruitingLobby(post, state);
+  const hostPartyUser = post.playerId === state.currentUserId || (post.playerIds ?? []).includes(state.currentUserId);
+  const activePlayerIds = new Set([...lobby.sides.teamA.projectedPlayers, ...lobby.sides.teamB.projectedPlayers]);
+  const reserveCandidate = [...lobby.sides.teamA.reserveCandidates, ...lobby.sides.teamB.reserveCandidates]
+    .find((candidate) => candidate.playerId === state.currentUserId && !activePlayerIds.has(candidate.playerId));
+  const nextReserveReady = { ...(roomState.reserveReady ?? {}) };
+  if (reserveCandidate) {
+    if (ready) nextReserveReady[state.currentUserId] = true;
+    else delete nextReserveReady[state.currentUserId];
+  }
+  const nextRoomState = reserveCandidate
+    ? { ...roomState, reserveReady: nextReserveReady }
+    : roomState;
 
   return {
     ...state,
     recruitingPosts: (state.recruitingPosts ?? []).map((item) => {
       if (item.id !== postId) return item;
-      if (item.playerId === state.currentUserId) {
-        return { ...item, hostReady: Boolean(ready) };
+      if (hostPartyUser) {
+        return { ...item, hostReady: Boolean(ready), roomState: nextRoomState };
       }
       return cleanRecruitingRoomStatRecorders({
         ...item,
+        roomState: nextRoomState,
         applicants: normalizeRecruitingApplicants(item.applicants ?? []).map((applicant) => (
-          applicant.playerId === state.currentUserId
+          applicant.playerId === state.currentUserId || (applicant.playerIds ?? []).includes(state.currentUserId)
             ? { ...applicant, status: ready ? "ready" : "waiting", updatedAt }
             : applicant
         )),
@@ -3900,6 +3915,9 @@ export function confirmRecruitingMatch(state, postId) {
   const teamAPlayerTeams = getLobbySidePlayerTeamIds(lobby, "teamA");
   const teamBPlayerTeams = getLobbySidePlayerTeamIds(lobby, "teamB");
   const playerIds = [...teamAPlayers, ...teamBPlayers];
+  const teamAReservePlayers = lobby.sides.teamA.reserveCandidates.filter((candidate) => candidate.status === "ready").map((candidate) => candidate.playerId);
+  const teamBReservePlayers = lobby.sides.teamB.reserveCandidates.filter((candidate) => candidate.status === "ready").map((candidate) => candidate.playerId);
+  const readyReserveIds = new Set([...teamAReservePlayers, ...teamBReservePlayers]);
   const refereeId = getTrustedRefereeId(state, post.refereeId, playerIds);
   const statRecorders = refereeId ? normalizeStatRecorders({}) : getRecruitingRoomStatRecorders(post, state);
   const mmrRangeMode = normalizeRecruitingMmrRangeMode(post.mmrRangeMode ?? post.roomState?.mmrRangeMode);
@@ -3956,18 +3974,20 @@ export function confirmRecruitingMatch(state, postId) {
       players: teamBPlayers,
       score: 0,
     },
-    parties: lobby.entries.map((entry) => ({
-      kind: entry.kind,
-      side: entry.side,
-      teamId: getLobbyEntryTeamId(entry),
-      playerId: entry.playerId,
-      players: entry.players,
-      reserves: entry.reserves ?? [],
-      reserve: entry.reserve,
-    })),
+    parties: lobby.entries
+      .map((entry) => ({
+        kind: entry.kind,
+        side: entry.side,
+        teamId: getLobbyEntryTeamId(entry),
+        playerId: entry.playerId,
+        players: entry.reserve && entry.status !== "ready" ? [] : entry.players,
+        reserves: (entry.reserves ?? []).filter((playerId) => readyReserveIds.has(playerId)),
+        reserve: entry.reserve,
+      }))
+      .filter((entry) => entry.players.length || entry.reserves.length),
     reservePlayers: {
-      teamA: lobby.sides.teamA.reserves,
-      teamB: lobby.sides.teamB.reserves,
+      teamA: teamAReservePlayers,
+      teamB: teamBReservePlayers,
     },
     promotedReserveIds: {
       teamA: lobby.sides.teamA.fillSlots.map((candidate) => candidate.playerId),

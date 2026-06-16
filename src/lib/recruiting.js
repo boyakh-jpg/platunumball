@@ -249,6 +249,9 @@ export function normalizeRecruitingRoomState(roomState = {}) {
           .filter(([, ids]) => ids.length),
       )
     : {};
+  const reserveReady = roomState.reserveReady && typeof roomState.reserveReady === "object"
+    ? Object.fromEntries(Object.entries(roomState.reserveReady).filter(([playerId, ready]) => playerId && ready))
+    : {};
 
   return {
     ...roomState,
@@ -258,6 +261,7 @@ export function normalizeRecruitingRoomState(roomState = {}) {
     hostPenalties,
     invitations,
     partyReserves,
+    reserveReady,
   };
 }
 
@@ -492,7 +496,9 @@ export function getRecruitingLobby(post = {}, state = {}) {
           source: "team-reserve",
           sourceLabel: "팀 후보",
           entryId: entry.id,
-          status: entry.status,
+          status: normalizedPost.roomState?.ruleRevision
+            ? normalizedPost.roomState.reserveReady?.[playerId] ? "ready" : "waiting"
+            : entry.status,
           side,
           createdAt: entry.createdAt,
         })),

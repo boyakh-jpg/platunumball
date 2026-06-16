@@ -1059,6 +1059,7 @@ export default function Recruiting({ app }) {
 
   useEffect(() => {
     if (targetFilter === "invited") {
+      setScope("all");
       setRoomScope("invited");
       return;
     }
@@ -1154,6 +1155,12 @@ export default function Recruiting({ app }) {
     app.actions.createRecruitingPost(nextDraft);
     setDraft((current) => ({ ...current, title: "", memo: "빈자리는 개인 또는 팀 파티로 들어올 수 있습니다." }));
     setComposeOpen(false);
+  };
+
+  const selectRoomScope = (nextScope) => {
+    const target = roomScope === nextScope ? "all" : nextScope;
+    setRoomScope(target);
+    if (target !== "all") setScope("all");
   };
 
   const getJoinDraft = (post) => joinDraftByPost[post.id] ?? getDefaultJoinDraft(post, myTeams, app.currentUser, app.state);
@@ -1269,9 +1276,9 @@ export default function Recruiting({ app }) {
             <section className="ow-filter-bar" aria-label="필터">
               <button type="button" className={scope === "local" ? "active" : ""} onClick={() => setScope("local")}>내 지역</button>
               <button type="button" className={scope === "all" ? "active" : ""} onClick={() => setScope("all")}>전체 지역</button>
-              <button type="button" className={roomScope === "created" ? "active" : ""} onClick={() => setRoomScope(roomScope === "created" ? "all" : "created")}>내가 만든 방 {createdRoomCount}</button>
-              <button type="button" className={roomScope === "joined" ? "active" : ""} onClick={() => setRoomScope(roomScope === "joined" ? "all" : "joined")}>내 참여방 {joinedRoomCount}</button>
-              <button type="button" className={roomScope === "invited" ? "active" : ""} onClick={() => setRoomScope(roomScope === "invited" ? "all" : "invited")}>초대받음 {invitedRoomCount}</button>
+              <button type="button" className={roomScope === "created" ? "active" : ""} onClick={() => selectRoomScope("created")}>내가 만든 방 {createdRoomCount}</button>
+              <button type="button" className={roomScope === "joined" ? "active" : ""} onClick={() => selectRoomScope("joined")}>내 참여방 {joinedRoomCount}</button>
+              <button type="button" className={roomScope === "invited" ? "active" : ""} onClick={() => selectRoomScope("invited")}>초대받음 {invitedRoomCount}</button>
               <button type="button" className={queue === "all" ? "active" : ""} onClick={() => setQueue("all")}>전체</button>
               <button type="button" className={queue === "ranked" ? "active" : ""} onClick={() => setQueue("ranked")}>정규전</button>
               <button type="button" className={queue === "friendly" ? "active" : ""} onClick={() => setQueue("friendly")}>친선전</button>
@@ -1386,7 +1393,11 @@ export default function Recruiting({ app }) {
           : app.currentUser.ratings.integrated;
         const fit = getRecruitingFit(selectedPost, candidateMmr || app.currentUser.ratings.integrated, app.state);
         const mine = selectedPost.playerId === app.currentUser.id;
-        const myEntry = lobby.entries.find((entry) => entry.playerId === app.currentUser.id);
+        const myEntry = lobby.entries.find((entry) => (
+          entry.playerId === app.currentUser.id ||
+          entry.players?.includes(app.currentUser.id) ||
+          entry.reserves?.includes(app.currentUser.id)
+        ));
         const alreadyApplied = Boolean(myEntry && !myEntry.fixed);
         const canInviteFromRoom = isCurrentUserRoomParticipant(selectedPost, lobby, app.currentUser.id);
         const canChat = isRecruitingPostForUser(selectedPost, app.currentUser.id, myTeamIds);
