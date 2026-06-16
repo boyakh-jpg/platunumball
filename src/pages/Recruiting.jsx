@@ -23,12 +23,15 @@ import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { COURTS, MATCH_MODES, PLAYER_POSITIONS, REGIONS } from "../lib/constants.js";
 import {
+  MMR_RANGE_POLICIES,
   RECRUITING_JOIN_MODES,
   getRecruitingBestSide,
   getRecruitingFit,
   getRecruitingLobby,
+  getRecruitingRatingScale,
   getRecruitingSideCapacity,
   getRecruitingTargetMmr,
+  getRecruitingTierRange,
   getSelectableTeamPlayerIds,
   hasRecruitingApplicant,
   isRecruitingPostForUser,
@@ -631,6 +634,7 @@ export default function Recruiting({ app }) {
     scheduledTime: "20:00",
     mode: "5v5",
     ranked: true,
+    mmrRangeMode: "narrow",
     teamId: myTeams[0]?.id ?? "",
     playerIds: getDefaultTeamPlayerIds(myTeams[0], getRecruitingSideCapacity({ mode: "5v5" })),
     position: app.currentUser.position,
@@ -640,6 +644,11 @@ export default function Recruiting({ app }) {
   const selectedTeam = myTeams.find((team) => team.id === draft.teamId) ?? myTeams[0] ?? null;
   const draftCapacity = getRecruitingSideCapacity(draft);
   const selectedHostPlayerIds = getPartyPlayerIds(selectedTeam, draft.playerIds, draftCapacity);
+  const draftTargetMmr = draft.hostJoinMode === "team"
+    ? selectedTeam?.mmr ?? app.currentUser.ratings.integrated
+    : app.currentUser.ratings.integrated;
+  const draftRange = getRecruitingTierRange(draftTargetMmr, draft.ranked, draft.mmrRangeMode);
+  const draftRangePolicy = MMR_RANGE_POLICIES[draft.mmrRangeMode] ?? MMR_RANGE_POLICIES.narrow;
   const hostNeedsTeam = draft.hostJoinMode === "team";
   const hasSchedule = Boolean(draft.scheduledDate && draft.scheduledTime && draft.court);
   const canPostRecruiting = hasSchedule && (!hostNeedsTeam || (Boolean(selectedTeam) && selectedHostPlayerIds.length > 0));
@@ -804,6 +813,7 @@ export default function Recruiting({ app }) {
         {posts.length ? posts.map((post) => {
           const lobby = getRecruitingLobby(post, app.state);
           const target = getRecruitingTargetMmr(post, app.state);
+          const range = getRecruitingTierRange(target, post.ranked !== false, post.mmrRangeMode ?? post.roomState?.mmrRangeMode);
           const host = userById[post.playerId];
           const hostTeam = post.teamId ? teamById[post.teamId] : null;
           const targetTeam = post.targetTeamId ? teamById[post.targetTeamId] : null;
@@ -840,7 +850,7 @@ export default function Recruiting({ app }) {
                 <QueueRoomBoard lobby={lobby} userById={userById} teams={app.state.teams} />
                 <div className="ow-card-bottom">
                   <span>{getRecruitingSchedule(post)}</span>
-                  <span className="ow-tier-chip">{post.ranked === false ? "티어 자유" : `${target} MMR 기준`}</span>
+                  <span className="ow-tier-chip">{post.ranked === false ? "티어 자유" : range.label}</span>
                   <span>{formatWhen(post.createdAt)}</span>
                   <span>{lobby.ready ? "전원 대기 완료" : "대기 확인 중"}</span>
                 </div>
@@ -894,6 +904,12 @@ export default function Recruiting({ app }) {
         const canJoin = !mine && !alreadyApplied && fit.allowed && (joinDraft.joinMode === "player" || (Boolean(selectedJoinTeam) && selectedJoinPlayerIds.length > 0));
         const selectedTargetTeam = selectedPost.targetTeamId ? teamById[selectedPost.targetTeamId] : null;
         const selectedReferee = selectedPost.refereeId ? userById[selectedPost.refereeId] : null;
+        const selectedRange = getRecruitingTierRange(
+          getRecruitingTargetMmr(selectedPost, app.state),
+          selectedPost.ranked !== false,
+          selectedPost.mmrRangeMode ?? selectedPost.roomState?.mmrRangeMode,
+        );
+        const selectedRatingScale = getRecruitingRatingScale(selectedPost);
         const playingIds = [...lobby.sides.teamA.projectedPlayers, ...lobby.sides.teamB.projectedPlayers];
         const roomState = selectedPost.roomState ?? {};
         const recorderIds = getLobbyRecorderIds(lobby, roomState.statRecorders);
@@ -917,6 +933,7 @@ export default function Recruiting({ app }) {
 
               <div className="ow-lobby-summary">
                 <span><ShieldCheck size={16} /> {selectedPost.ranked === false ? "친선전" : "정규전"}</span>
+                {selectedPost.ranked !== false ? <span><ShieldCheck size={16} /> {selectedRange.label} · MMR {Math.round(selectedRatingScale * 100)}%</span> : null}
                 <span><Clock3 size={16} /> {getRecruitingSchedule(selectedPost)}</span>
                 {selectedTargetTeam ? <span><Swords size={16} /> 희망 상대 {selectedTargetTeam.name}</span> : null}
                 <span><ShieldCheck size={16} /> {selectedReferee ? `심판 ${selectedReferee.name}` : statRecorderLabels.length ? `후보 기록자 ${statRecorderLabels.join(" · ")}` : "심판 없음 · 득점만"}</span>
@@ -1150,6 +1167,29 @@ export default function Recruiting({ app }) {
                 <button type="button" className={!draft.ranked ? "active" : ""} onClick={() => update({ ranked: false })}>친선전</button>
                 <button type="button" className={draft.ranked ? "active" : ""} onClick={() => update({ ranked: true })}>정규전</button>
               </div>
+
+              {draft.ranked ? (
+                <div className="ow-range-control">
+                  <div>
+                    <span>정규전 허용구간</span>
+                    <strong>{draftRange.label}</strong>
+                    <em>{draftRange.detail}</em>
+                  </div>
+                  <div className="segmented-control compact-segments">
+                    {Object.entries(MMR_RANGE_POLICIES).map(([mode, policy]) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        className={draft.mmrRangeMode === mode ? "active" : ""}
+                        onClick={() => update({ mmrRangeMode: mode })}
+                      >
+                        {policy.label}
+                      </button>
+                    ))}
+                  </div>
+                  <small>{draftRangePolicy.detail} · 경기 확정 시 MMR {Math.round(draftRangePolicy.ratingScale * 100)}% 반영</small>
+                </div>
+              ) : null}
 
               <label>
                 제목

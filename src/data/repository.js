@@ -33,9 +33,11 @@ import {
   getRecruitingBestSide,
   getRecruitingFit,
   getRecruitingLobby,
+  getRecruitingRatingScale,
   getRecruitingSideCapacity,
   getSelectedTeamPlayerIds,
   hasRecruitingApplicant,
+  normalizeRecruitingMmrRangeMode,
   normalizeRecruitingApplicants,
   normalizeRecruitingPost,
   normalizeRecruitingRoomState,
@@ -491,6 +493,8 @@ function fromRemoteMatch(row, context) {
     stakes: row.stakes,
     ranked: row.ranked !== false,
     mmrLimitMode: row.mmr_limit_mode ?? "block",
+    mmrRangeMode: row.rules?.mmrRangeMode,
+    ratingScale: row.rules?.ratingScale,
     trustFeedback: row.trust_feedback ?? {},
     refereeId: row.referee_id ?? "",
     refereeTrustMin: row.referee_trust_min ?? REFEREE_TRUST_MIN,
@@ -1519,6 +1523,8 @@ export function createMatch(state, draft) {
   const teamAPlayers = getTeamPlayers(teamA, size);
   const teamBPlayers = getTeamPlayers(teamB, size);
   const refereeId = getTrustedRefereeId(state, draft.refereeId, [...teamAPlayers, ...teamBPlayers]);
+  const mmrRangeMode = normalizeRecruitingMmrRangeMode(draft.mmrRangeMode);
+  const ratingScale = draft.ranked === false ? 1 : getRecruitingRatingScale({ ranked: draft.ranked !== false, mmrRangeMode });
   const match = {
     id: makeId("m"),
     title: draft.title || `${draft.court} ${mode} 판`,
@@ -1542,10 +1548,14 @@ export function createMatch(state, draft) {
       ball: draft.ball || "7호 공",
       attackRule: draft.attackRule || "공격권은 득점 후 교대",
       foulRule: draft.foulRule || "파울은 콜한 쪽 기준으로 즉시 중단",
+      mmrRangeMode,
+      ratingScale,
     },
     memo: draft.memo || "결과 승인 대기.",
     stakes: draft.stakes || "다음 경기 우선권.",
     mmrLimitMode: draft.mmrLimitMode ?? "block",
+    mmrRangeMode,
+    ratingScale,
     objectionWindow: "2시간",
     evidence,
     teamA: { name: teamA.name, teamId: teamA.id, players: teamAPlayers, score: 0 },
@@ -2454,6 +2464,8 @@ export function createRecruitingPost(state, draft) {
   const scheduledDate = draft.scheduledDate || fallbackSchedule.scheduledDate;
   const scheduledTime = draft.scheduledTime || fallbackSchedule.scheduledTime;
   const scheduledAt = `${scheduledDate} ${scheduledTime}`;
+  const mmrRangeMode = normalizeRecruitingMmrRangeMode(draft.mmrRangeMode);
+  const ratingScale = draft.ranked === false ? 1 : getRecruitingRatingScale({ ranked: draft.ranked !== false, mmrRangeMode });
   const post = {
     id: makeId("q"),
     type: postType,
@@ -2465,6 +2477,8 @@ export function createRecruitingPost(state, draft) {
     scheduledTime,
     scheduledAt,
     ranked: draft.ranked !== false,
+    mmrRangeMode,
+    ratingScale,
     spots: Math.max(1, sideCapacity * 2 - hostSize),
     teamId: hostJoinMode === "team" ? draft.teamId : null,
     targetTeamId: draft.targetTeamId ?? null,
@@ -2475,6 +2489,7 @@ export function createRecruitingPost(state, draft) {
     hostJoinMode,
     hostSide: "teamA",
     hostReady: false,
+    roomState: { mmrRangeMode },
     sideCapacity,
     playerIds: hostPlayerIds,
     position: hostJoinMode === "player" ? draft.position || "포지션 자유" : "포지션 자유",
@@ -2885,6 +2900,8 @@ export function confirmRecruitingMatch(state, postId) {
   const playerIds = [...teamAPlayers, ...teamBPlayers];
   const refereeId = getTrustedRefereeId(state, post.refereeId, playerIds);
   const statRecorders = refereeId ? normalizeStatRecorders({}) : getRecruitingRoomStatRecorders(post, state);
+  const mmrRangeMode = normalizeRecruitingMmrRangeMode(post.mmrRangeMode ?? post.roomState?.mmrRangeMode);
+  const ratingScale = getRecruitingRatingScale({ ranked: post.ranked !== false, mmrRangeMode });
   const match = {
     id: makeId("m"),
     title: post.title,
@@ -2901,10 +2918,16 @@ export function confirmRecruitingMatch(state, postId) {
     statRecorders,
     statEntryMinutes: STAT_ENTRY_WINDOW_MINUTES,
     disputeMinutes: DISPUTE_WINDOW_MINUTES,
-    rules: post.rules ?? { targetScore: 21, timeLimit: 12, winByTwo: true, ball: "7호 공" },
+    rules: {
+      ...(post.rules ?? { targetScore: 21, timeLimit: 12, winByTwo: true, ball: "7호 공" }),
+      mmrRangeMode,
+      ratingScale,
+    },
     memo: post.memo,
     stakes: "매치 큐에서 확정된 경기입니다.",
     ranked: post.ranked !== false,
+    mmrRangeMode,
+    ratingScale,
     objectionWindow: "2시간",
     evidence: [{ id: "captain", label: "양측 주장 확인" }],
     teamA: {

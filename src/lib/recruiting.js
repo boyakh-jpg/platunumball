@@ -41,6 +41,12 @@ export const RECRUITING_JOIN_MODES = {
   },
 };
 
+export const MMR_RANGE_POLICIES = {
+  narrow: { label: "좁게", detail: "비슷한 실력만", gap: 120, ratingScale: 1 },
+  standard: { label: "보통", detail: "적당한 범위", gap: 220, ratingScale: 0.9 },
+  wide: { label: "넓게", detail: "대기 풀 우선", gap: 360, ratingScale: 0.7 },
+};
+
 const MERCENARY_ROLES = new Set(["mercenary", "guest"]);
 const RESERVE_ROLES = new Set(["candidate", "substitute"]);
 const VALID_SIDES = new Set(["teamA", "teamB"]);
@@ -74,6 +80,16 @@ function uniqueCandidates(candidates = []) {
 export function getTierIndex(mmr = 0) {
   const tier = getTier(mmr);
   return Math.max(0, TIERS.findIndex((item) => item.name === tier.name));
+}
+
+export function normalizeRecruitingMmrRangeMode(mode = "narrow") {
+  return MMR_RANGE_POLICIES[mode] ? mode : "narrow";
+}
+
+export function getRecruitingRatingScale(post = {}) {
+  if (post.ranked === false) return 1;
+  const mode = normalizeRecruitingMmrRangeMode(post.mmrRangeMode ?? post.roomState?.mmrRangeMode);
+  return MMR_RANGE_POLICIES[mode].ratingScale;
 }
 
 export function getRecruitingTypeMeta(type = "need_player") {
@@ -253,9 +269,13 @@ export function isRecruitingPostForUser(post = {}, userId, teamIds = []) {
 export function normalizeRecruitingPost(post = {}) {
   const type = RECRUITING_TYPES[post.type] ? post.type : "need_player";
   const hostJoinMode = post.hostJoinMode === "player" || !post.teamId ? "player" : "team";
+  const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
+  const mmrRangeMode = normalizeRecruitingMmrRangeMode(post.mmrRangeMode ?? roomState.mmrRangeMode);
   return {
     ...post,
     type,
+    mmrRangeMode,
+    ratingScale: post.ratingScale ?? getRecruitingRatingScale({ ...post, mmrRangeMode, roomState }),
     hostJoinMode,
     hostSide: VALID_SIDES.has(post.hostSide) ? post.hostSide : "teamA",
     hostReady: Boolean(post.hostReady),
@@ -264,7 +284,7 @@ export function normalizeRecruitingPost(post = {}) {
     refereeTrustMin: Number(post.refereeTrustMin ?? REFEREE_TRUST_MIN),
     statEntryMinutes: Number(post.statEntryMinutes ?? STAT_ENTRY_WINDOW_MINUTES),
     disputeMinutes: Number(post.disputeMinutes ?? DISPUTE_WINDOW_MINUTES),
-    roomState: normalizeRecruitingRoomState(post.roomState ?? {}),
+    roomState: { ...roomState, mmrRangeMode },
     playerIds: unique(post.playerIds ?? post.players ?? []),
     applicants: normalizeRecruitingApplicants(post.applicants ?? []),
   };
@@ -280,7 +300,7 @@ export function getRecruitingTargetMmr(post = {}, state = {}) {
   return 1200;
 }
 
-export function getRecruitingTierRange(targetMmr = 1200, ranked = true) {
+export function getRecruitingTierRange(targetMmr = 1200, ranked = true, rangeMode = "narrow") {
   if (!ranked) {
     return {
       label: "티어 자유",
@@ -290,26 +310,29 @@ export function getRecruitingTierRange(targetMmr = 1200, ranked = true) {
     };
   }
 
-  const targetIndex = getTierIndex(targetMmr);
-  const lowTier = TIERS[clampIndex(targetIndex - 2)];
-  const highTier = TIERS[clampIndex(targetIndex + 2)];
+  const mode = normalizeRecruitingMmrRangeMode(rangeMode);
+  const policy = MMR_RANGE_POLICIES[mode];
+  const min = Math.max(0, Math.round(Number(targetMmr) - policy.gap));
+  const max = Math.round(Number(targetMmr) + policy.gap);
 
   return {
-    label: `${lowTier.name} ~ ${highTier.name}`,
-    detail: `${getTierDivision(lowTier.min)}부터 ${getTierDivision(highTier.max)}까지 허용`,
-    min: lowTier.min,
-    max: highTier.max,
+    label: `${policy.label} · ${min}~${max} MMR`,
+    detail: `${getTierDivision(min)} ~ ${getTierDivision(max)} · MMR ${Math.round(policy.ratingScale * 100)}% 반영`,
+    mode,
+    min,
+    max,
+    ratingScale: policy.ratingScale,
   };
 }
 
-export function isMmrInRecruitingRange(candidateMmr = 1200, targetMmr = 1200, ranked = true) {
-  const range = getRecruitingTierRange(targetMmr, ranked);
+export function isMmrInRecruitingRange(candidateMmr = 1200, targetMmr = 1200, ranked = true, rangeMode = "narrow") {
+  const range = getRecruitingTierRange(targetMmr, ranked, rangeMode);
   return !ranked || (candidateMmr >= range.min && candidateMmr <= range.max);
 }
 
 export function getRecruitingFit(post = {}, candidateMmr = 1200, state = {}) {
   const targetMmr = getRecruitingTargetMmr(post, state);
-  const range = getRecruitingTierRange(targetMmr, post.ranked !== false);
+  const range = getRecruitingTierRange(targetMmr, post.ranked !== false, post.mmrRangeMode ?? post.roomState?.mmrRangeMode);
 
   if (post.ranked === false) {
     return { allowed: true, tone: "neutral", label: "친선 자유", range };

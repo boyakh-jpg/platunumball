@@ -10,7 +10,7 @@ import TeamBuilder from "../components/match/TeamBuilder.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { COURTS, EVIDENCE_OPTIONS, MATCH_MODES, REFEREE_TRUST_MIN, REGIONS } from "../lib/constants.js";
 import { isEligibleReferee } from "../lib/matchUtils.js";
-import { getRecruitingSideCapacity, getRecruitingTierRange, getSelectableTeamPlayerIds, isMmrInRecruitingRange } from "../lib/recruiting.js";
+import { MMR_RANGE_POLICIES, getRecruitingSideCapacity, getRecruitingTierRange, getSelectableTeamPlayerIds, isMmrInRecruitingRange } from "../lib/recruiting.js";
 
 const today = new Date().toISOString().slice(0, 10);
 const nextWeek = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString().slice(0, 10);
@@ -133,6 +133,7 @@ export default function CreateMatch({ app }) {
     visibility: "private",
     hostJoinMode: "team",
     mmrLimitMode: "block",
+    mmrRangeMode: "narrow",
     title: "오늘의 5v5 공식전",
     mode: "5v5",
     court: COURTS[0].name,
@@ -229,7 +230,8 @@ export default function CreateMatch({ app }) {
       .sort((a, b) => Number(b.trustScore ?? 0) - Number(a.trustScore ?? 0)),
     [activePlayerIds, app.state.users],
   );
-  const teamTierRange = getRecruitingTierRange(selectedTeamA?.mmr ?? 1200, draft.ranked);
+  const teamTierRange = getRecruitingTierRange(selectedTeamA?.mmr ?? 1200, draft.ranked, draft.mmrRangeMode);
+  const mmrRangePolicy = MMR_RANGE_POLICIES[draft.mmrRangeMode] ?? MMR_RANGE_POLICIES.narrow;
   const teamTierBlocked = Boolean(
     !isPublicRoom &&
       !isTournamentRoom &&
@@ -237,7 +239,7 @@ export default function CreateMatch({ app }) {
       draft.ranked &&
       selectedTeamA &&
       selectedTeamB &&
-      !isMmrInRecruitingRange(selectedTeamB.mmr, selectedTeamA.mmr, true),
+      !isMmrInRecruitingRange(selectedTeamB.mmr, selectedTeamA.mmr, true, draft.mmrRangeMode),
   );
   const teamTierWarned = Boolean(
     !isPublicRoom &&
@@ -246,7 +248,7 @@ export default function CreateMatch({ app }) {
       draft.ranked &&
       selectedTeamA &&
       selectedTeamB &&
-      !isMmrInRecruitingRange(selectedTeamB.mmr, selectedTeamA.mmr, true),
+      !isMmrInRecruitingRange(selectedTeamB.mmr, selectedTeamA.mmr, true, draft.mmrRangeMode),
   );
   const privateTeamInvalid = !selectedTeamA || !selectedTeamB || selectedTeamA.id === selectedTeamB.id;
   const publicTeamInvalid = draft.hostJoinMode === "team" && (
@@ -363,6 +365,7 @@ export default function CreateMatch({ app }) {
         scheduledTime: draft.scheduledTime,
         mode: draft.mode,
         ranked: draft.ranked,
+        mmrRangeMode: draft.mmrRangeMode,
         memo: [
           draft.memo,
           selectedTeamB ? `희망 상대: ${selectedTeamB.name}` : "",
@@ -603,6 +606,27 @@ export default function CreateMatch({ app }) {
               <Badge tone="neutral">OPEN</Badge>
             </div>
           )}
+          {!isTournamentRoom && draft.ranked ? (
+            <div className="mmr-range-mode-control">
+              <div>
+                <span>허용구간 선택</span>
+                <strong>{teamTierRange.detail}</strong>
+                <em>{mmrRangePolicy.detail} · 경기 확정 시 MMR {Math.round(mmrRangePolicy.ratingScale * 100)}% 반영</em>
+              </div>
+              <div className="segmented-control compact-segments">
+                {Object.entries(MMR_RANGE_POLICIES).map(([mode, policy]) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    className={draft.mmrRangeMode === mode ? "active" : ""}
+                    onClick={() => update({ mmrRangeMode: mode })}
+                  >
+                    {policy.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
           <div className="form-grid two">
             <label>
               MMR 제한

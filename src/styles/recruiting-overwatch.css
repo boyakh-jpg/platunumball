@@ -716,6 +716,39 @@
   font-size: 1rem;
 }
 
+.ow-range-control {
+  display: grid;
+  gap: 10px;
+  border: 1px solid rgba(255, 211, 108, 0.18);
+  border-radius: 8px;
+  background: rgba(255, 211, 108, 0.07);
+  padding: 12px;
+}
+
+.ow-range-control > div:first-child {
+  display: grid;
+  gap: 3px;
+}
+
+.ow-range-control span {
+  color: var(--gold);
+  font-size: 0.78rem;
+  font-weight: 950;
+}
+
+.ow-range-control strong {
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.ow-range-control em,
+.ow-range-control small {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-style: normal;
+  font-weight: 850;
+}
+
 .ow-party-field {
   display: grid;
   gap: 10px;

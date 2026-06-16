@@ -92,6 +92,11 @@ export function getTournamentFactor(match = {}) {
   return match.tournamentFormat === "tournament" ? 1.18 : 1.12;
 }
 
+export function getRatingScaleFactor(match = {}) {
+  const scale = Number(match.ratingScale ?? match.rules?.ratingScale ?? 1);
+  return Number.isFinite(scale) ? clamp(scale, 0.2, 1.15) : 1;
+}
+
 export function getQualityFactor(match = {}, trustScore = 80, history = []) {
   return clamp(
     getCredibilityFactor(match) *
@@ -99,7 +104,8 @@ export function getQualityFactor(match = {}, trustScore = 80, history = []) {
       getEvidenceFactor(match.evidence) *
       getTrustFactor(trustScore) *
       getRepeatFactor(history, match) *
-      getTournamentFactor(match),
+      getTournamentFactor(match) *
+      getRatingScaleFactor(match),
     0,
     2.05,
   );
