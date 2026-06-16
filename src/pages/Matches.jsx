@@ -311,7 +311,7 @@ function MatchPreviewSide({ match, sideName, teamById, userById, teams }) {
         <strong>{side.name}</strong>
         <em>{team?.mmr ?? "-"} MMR</em>
       </div>
-      <div className="ow-room-slot-row">
+      <div className="ow-room-slot-row" style={{ "--slot-count": Math.min(5, capacity) }}>
         {players.map((playerId) => {
           const user = userById[playerId];
           return (
@@ -342,7 +342,7 @@ function MatchPreviewReserveLine({ match, sideName, userById, teams }) {
   return (
     <div className="ow-reserve-line">
       <strong>{sideName === "teamA" ? "A팀" : "B팀"} 후보 {reserves.length}/2</strong>
-      <div className="ow-room-reserve-row">
+      <div className="ow-room-reserve-row" style={{ "--slot-count": 2 }}>
         {reserves.map((playerId) => {
           const user = userById[playerId];
           return (

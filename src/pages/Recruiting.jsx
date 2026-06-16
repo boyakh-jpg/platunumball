@@ -210,6 +210,21 @@ function canMovePlayerTo(lobby, playerId, sideName, reserve = false) {
   return side.projectedPlayers.includes(playerId) || side.projectedFilled < side.capacity;
 }
 
+function getSameSidePartyOptions(lobby, myEntry, myTeams = []) {
+  if (!myEntry || myEntry.fixed || myEntry.kind === "team") return [];
+  const sideEntries = lobby.sides[myEntry.side]?.entries ?? [];
+  return myTeams.filter((team) => {
+    const memberIds = new Set((team.members ?? []).map((member) => member.userId));
+    return sideEntries.some((entry) => (
+      entry.id !== myEntry.id &&
+      (
+        entry.team?.id === team.id ||
+        (entry.kind === "player" && memberIds.has(entry.playerId))
+      )
+    ));
+  });
+}
+
 function SlotActionMenu({ label = "관리", children }) {
   return (
     <details className="ow-slot-action-menu" onClick={(event) => event.stopPropagation()}>
@@ -519,12 +534,9 @@ function QueueRoomBoard({ lobby, userById, teams }) {
   );
 }
 
-function FillSlot({ candidate, lobby, userById, teams, canManage = false, readyText = "충원 예정", onMoveCandidate, onRemoveCandidate }) {
+function FillSlot({ candidate, userById, teams, canManage = false, readyText = "충원 예정", onRemoveCandidate }) {
   const user = candidate ? userById[candidate.playerId] : null;
   const readyLabel = candidate?.status === "ready" ? "참여 확정" : "재확인 필요";
-  const candidateEntry = candidate ? lobby?.entries?.find((entry) => entry.id === candidate.entryId) : null;
-  const isPartyCandidate = Boolean(candidateEntry?.fixed || candidateEntry?.kind === "team");
-  const moveSideNames = isPartyCandidate ? [candidate.side ?? candidateEntry?.side ?? "teamA"] : ["teamA", "teamB"];
   if (!user) {
     return (
       <div className="ow-room-player-slot empty">
@@ -547,19 +559,6 @@ function FillSlot({ candidate, lobby, userById, teams, canManage = false, readyT
       </PlayerHoverCard>
       {canManage ? (
         <SlotActionMenu>
-          {moveSideNames.flatMap((sideName) => ([
-            <button
-              key={`${sideName}-active`}
-              type="button"
-              disabled={!canMovePlayerTo(lobby, candidate.playerId, sideName, false)}
-              onClick={(event) => stopControlClick(event, () => onMoveCandidate(candidate, { side: sideName, reserve: false }))}
-            >
-              {SIDE_LABELS[sideName]} 출전
-            </button>,
-            <button key={`${sideName}-reserve`} type="button" disabled={!canMovePlayerTo(lobby, candidate.playerId, sideName, true)} onClick={(event) => stopControlClick(event, () => onMoveCandidate(candidate, { side: sideName, reserve: true }))}>
-              {SIDE_LABELS[sideName]} 후보
-            </button>,
-          ]))}
           <button type="button" className="danger" onClick={(event) => stopControlClick(event, () => onRemoveCandidate(candidate))}>
             강퇴
           </button>
@@ -598,50 +597,18 @@ function SideRoster({
   const openSlots = Math.max(0, side.capacity - side.projectedFilled);
   const renderActiveActions = ({ entry, playerId, user }) => {
     if (!canManage || !user) return null;
-    const availability = getEntryPlacementAvailability(entry, lobby);
     const isPartyEntry = entry.fixed || entry.kind === "team";
-    const canDemoteActive = (entry.players ?? []).length > 1;
-
-    if (!isPartyEntry) {
-      return (
-        <SlotActionMenu>
-          <PlacementActionButtons
-            currentSide={entry.side}
-            currentReserve={Boolean(entry.reserve)}
-            availability={availability}
-            onMove={(placement) => onSetPlacement(entry.playerId, placement)}
-          />
-          {!entry.fixed ? (
-            <button type="button" className="danger" onClick={(event) => stopControlClick(event, () => onKick(entry.playerId))}>
-              강퇴
-            </button>
-          ) : null}
-        </SlotActionMenu>
-      );
-    }
+    if (entry.fixed && playerId === entry.playerId) return null;
 
     return (
       <SlotActionMenu>
         <button
           type="button"
-          disabled={!canDemoteActive || !canMovePlayerTo(lobby, playerId, entry.side, true)}
-          onClick={(event) => stopControlClick(event, () => onSetMemberReserve(entry.id, playerId, true))}
+          className="danger"
+          onClick={(event) => stopControlClick(event, () => (isPartyEntry ? onRemoveMember(entry.id, playerId) : onKick(entry.playerId)))}
         >
-          후보로
+          강퇴
         </button>
-        {!(entry.fixed && playerId === entry.playerId) ? (
-          <button
-            type="button"
-            onClick={(event) => stopControlClick(event, () => onDetachMember(entry.id, playerId))}
-          >
-            파티에서 내보내기
-          </button>
-        ) : null}
-        {!(entry.fixed && playerId === entry.playerId) ? (
-          <button type="button" className="danger" onClick={(event) => stopControlClick(event, () => onRemoveMember(entry.id, playerId))}>
-            강퇴
-          </button>
-        ) : null}
       </SlotActionMenu>
     );
   };
@@ -653,7 +620,7 @@ function SideRoster({
           <strong>{side.projectedFilled}/{side.capacity}</strong>
         </div>
       </header>
-      <div className="ow-room-slot-row">
+      <div className="ow-room-slot-row" style={{ "--slot-count": Math.min(5, side.capacity) }}>
         {activeSlots.map(({ entry, playerId, user }) => {
           const isPartyEntry = entry.fixed || entry.kind === "team";
           const partyLabel = isPartyEntry && entry.team ? entry.team.name : "개인 참여";
@@ -714,7 +681,7 @@ function ReserveLine({ sideName, candidates, playingIds, lobby, userById, teams,
   return (
     <div className="ow-reserve-line">
       <strong>{SIDE_LABELS[sideName]} 후보 {candidates.length}/{MAX_RESERVE_PLAYERS_PER_SIDE}</strong>
-      <div className="ow-room-reserve-row">
+      <div className="ow-room-reserve-row" style={{ "--slot-count": MAX_RESERVE_PLAYERS_PER_SIDE }}>
         {slots.map((candidate) => {
           const user = userById[candidate.playerId];
           if (!user) return null;
@@ -1517,9 +1484,10 @@ export default function Recruiting({ app }) {
         const roomEditRange = roomEditDraft
           ? getRecruitingTierRange(getRecruitingTargetMmr(selectedPost, app.state), selectedPost.ranked !== false, roomEditDraft.mmrRangeMode)
           : null;
-        const maxSideFilled = Math.max(lobby.sides.teamA.filled, lobby.sides.teamB.filled);
+        const maxSideFilled = Math.max(lobby.sides.teamA.projectedFilled, lobby.sides.teamB.projectedFilled);
         const roomEditCapacityValid = !roomEditDraft || Number(roomEditDraft.sideCapacity) >= maxSideFilled;
         const playingIds = [...lobby.sides.teamA.projectedPlayers, ...lobby.sides.teamB.projectedPlayers];
+        const partyJoinOptions = getSameSidePartyOptions(lobby, myEntry, myTeams);
         const roomState = selectedPost.roomState ?? {};
         const recorderIds = getLobbyRecorderIds(lobby);
         const chatMessages = roomState.chatMessages ?? [];
@@ -1809,7 +1777,23 @@ export default function Recruiting({ app }) {
                 ) : alreadyApplied ? (
                   <div className="ow-owner-panel">
                     <strong>참여 등록됨</strong>
-                    <span>룰이 바뀌면 참여 유지 확인이 다시 필요하다.</span>
+                    <span>팀 조율은 채팅으로 합의하고, 내 A/B 위치는 직접 바꿀 수 있습니다.</span>
+                    {myEntry?.kind === "player" ? (
+                      <div className="ow-self-placement-actions">
+                        <Button type="button" size="sm" variant={!myEntry.reserve && myEntry.side === "teamA" ? "primary" : "secondary"} onClick={() => app.actions.setRecruitingApplicantPlacement(selectedPost.id, myEntry.playerId, { side: "teamA", reserve: false })}>A 출전</Button>
+                        <Button type="button" size="sm" variant={!myEntry.reserve && myEntry.side === "teamB" ? "primary" : "secondary"} onClick={() => app.actions.setRecruitingApplicantPlacement(selectedPost.id, myEntry.playerId, { side: "teamB", reserve: false })}>B 출전</Button>
+                        <Button type="button" size="sm" variant={myEntry.reserve ? "primary" : "secondary"} onClick={() => app.actions.setRecruitingApplicantPlacement(selectedPost.id, myEntry.playerId, { side: myEntry.side, reserve: true })}>후보</Button>
+                      </div>
+                    ) : null}
+                    {partyJoinOptions.length ? (
+                      <div className="ow-self-placement-actions">
+                        {partyJoinOptions.map((team) => (
+                          <Button key={team.id} type="button" size="sm" variant="secondary" onClick={() => app.actions.joinRecruitingSideParty(selectedPost.id, team.id)}>
+                            {team.name} 파티 합류
+                          </Button>
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
                 ) : (
                   <form className="ow-join-form" onSubmit={(event) => { event.preventDefault(); submitJoin(selectedPost); }}>

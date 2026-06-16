@@ -20,6 +20,7 @@ import {
   disputeMatch,
   interestRecruitingPost,
   inviteRecruitingPlayers,
+  joinRecruitingSideParty,
   handoffMatchRecorder,
   kickRecruitingApplicant,
   loadRemoteState,
@@ -211,6 +212,9 @@ export function useAppData(authUserId = null) {
       },
       setRecruitingApplicantPlacement: (postId, playerId, placement) => {
         setState((prev) => setRecruitingApplicantPlacement({ ...prev, currentUserId }, postId, playerId, placement));
+      },
+      joinRecruitingSideParty: (postId, teamId) => {
+        setState((prev) => joinRecruitingSideParty({ ...prev, currentUserId }, postId, teamId));
       },
       setRecruitingPartyPlayerReserve: (postId, entryId, playerId, reserve) => {
         setState((prev) => setRecruitingPartyPlayerReserve({ ...prev, currentUserId }, postId, entryId, playerId, reserve));

@@ -513,13 +513,15 @@ export function getRecruitingLobby(post = {}, state = {}) {
         return true;
       })
       .sort(compareCandidates);
-    const fillSlots = [];
-    const reserves = reserveCandidates.map((candidate) => candidate.playerId);
-    const projectedPlayers = players;
+    const fillSlots = reserveCandidates.slice(0, Math.max(0, getRecruitingSideCapacity(normalizedPost) - players.length));
+    const fillPlayerIds = new Set(fillSlots.map((candidate) => candidate.playerId));
+    const visibleReserveCandidates = reserveCandidates.filter((candidate) => !fillPlayerIds.has(candidate.playerId));
+    const reserves = visibleReserveCandidates.map((candidate) => candidate.playerId);
+    const projectedPlayers = unique([...players, ...fillSlots.map((candidate) => candidate.playerId)]);
     acc[side] = {
       entries: sideEntries,
       reserveEntries,
-      reserveCandidates,
+      reserveCandidates: visibleReserveCandidates,
       fillSlots,
       players,
       projectedPlayers,
