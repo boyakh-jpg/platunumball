@@ -5413,6 +5413,7 @@ input[type="color"] {
 }
 
 .recorder-match-list,
+.recorder-workspace,
 .recorder-board,
 .recorder-empty {
   display: grid;
@@ -5676,6 +5677,67 @@ input[type="color"] {
 .recorder-stat-stepper button:disabled {
   cursor: not-allowed;
   opacity: 0.35;
+}
+
+.recorder-handoff-panel {
+  display: grid;
+  gap: 12px;
+  border: 1px solid rgba(255, 211, 108, 0.22);
+  border-radius: var(--radius);
+  background: rgba(255, 211, 108, 0.06);
+  padding: 12px;
+}
+
+.recorder-handoff-panel > div:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.recorder-handoff-panel strong {
+  font-size: 1rem;
+}
+
+.recorder-handoff-panel p,
+.recorder-review-panel .muted {
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.recorder-handoff-list {
+  display: grid;
+  gap: 8px;
+}
+
+.recorder-handoff-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 10px;
+}
+
+.recorder-handoff-row label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.recorder-handoff-row select {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-weight: 850;
+  padding: 10px 12px;
+}
+
+.recorder-review-panel {
+  display: grid;
+  gap: 14px;
 }
 
 .recorder-save-row {
@@ -5972,9 +6034,14 @@ html[data-theme="light"] .favorite-toggle-button.active.button-secondary {
   }
 
   .recorder-board-head,
+  .recorder-handoff-row,
   .recorder-save-row {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .recorder-handoff-row {
+    grid-template-columns: 1fr;
   }
 
   .recorder-live-state {

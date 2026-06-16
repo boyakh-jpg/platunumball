@@ -59,6 +59,19 @@ export function getMatchPlayerIds(match = {}) {
   return [...new Set([...(match.teamA?.players ?? []), ...(match.teamB?.players ?? [])])];
 }
 
+export function getMatchReservePlayerIds(match = {}, sideName) {
+  const activeIds = new Set(match[sideName]?.players ?? []);
+  const reserveIds = (match.parties ?? [])
+    .filter((party) => party.side === sideName)
+    .flatMap((party) => [
+      ...(party.reserve ? party.players ?? [] : []),
+      ...(party.reserves ?? []),
+    ]);
+
+  return [...new Set([...(match.reservePlayers?.[sideName] ?? []), ...reserveIds])]
+    .filter((playerId) => playerId && !activeIds.has(playerId));
+}
+
 export function getPlayerSideName(match = {}, playerId) {
   if (match.teamA?.players?.includes(playerId)) return "teamA";
   if (match.teamB?.players?.includes(playerId)) return "teamB";

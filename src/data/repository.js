@@ -13,6 +13,7 @@ import {
   getApprovalStatus,
   getAllowedStatFields,
   getMatchPlayerIds,
+  getMatchReservePlayerIds,
   getMatchRecordWindow,
   getPlayerSideName,
   getStatRecorderSides,
@@ -1950,6 +1951,72 @@ export function submitMatchResult(state, matchId, result) {
   };
 }
 
+export function handoffMatchRecorder(state, matchId, sideName, nextRecorderId) {
+  const match = state.matches.find((item) => item.id === matchId);
+  if (!match || match.refereeId || !["agreed", "approval"].includes(match.status)) return state;
+  if (!["teamA", "teamB"].includes(sideName)) return state;
+
+  const currentRecorders = normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders);
+  const currentRecorderId = currentRecorders[sideName];
+  if (!currentRecorderId || currentRecorderId !== state.currentUserId) return state;
+
+  const reserveIds = getMatchReservePlayerIds(match, sideName);
+  if (!reserveIds.includes(nextRecorderId)) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "인수인계 불가",
+          body: "같은 팀 후보 또는 쉬고 있는 선수에게만 기록 권한을 넘길 수 있습니다.",
+          tone: "orange",
+          matchId,
+        },
+        ...state.notifications,
+      ],
+    };
+  }
+
+  const nextRecorders = { ...currentRecorders, [sideName]: nextRecorderId };
+  const nextUser = state.users.find((user) => user.id === nextRecorderId);
+
+  return {
+    ...state,
+    matches: state.matches.map((item) => (
+      item.id === matchId
+        ? {
+            ...item,
+            statRecorders: nextRecorders,
+            rules: {
+              ...(item.rules ?? {}),
+              statRecorders: nextRecorders,
+            },
+            recorderHandoffs: [
+              {
+                id: makeId("handoff"),
+                side: sideName,
+                from: currentRecorderId,
+                to: nextRecorderId,
+                createdAt: new Date().toISOString(),
+              },
+              ...(item.recorderHandoffs ?? []),
+            ],
+          }
+        : item
+    )),
+    notifications: [
+      {
+        id: makeId("n"),
+        title: "기록자 인수인계",
+        body: `${match.title} ${SIDE_LABEL_TEXT[sideName]} 기록 권한이 ${nextUser?.name ?? "후보"}에게 넘어갔습니다.`,
+        tone: "match",
+        matchId,
+      },
+      ...state.notifications,
+    ],
+  };
+}
+
 export function approveMatch(state, matchId, sideName, playerId) {
   const match = state.matches.find((item) => item.id === matchId);
   if (!match?.result || ["confirmed", "void", "cancelled", "disputed"].includes(match.status)) return state;
@@ -3082,8 +3149,13 @@ export function confirmRecruitingMatch(state, postId) {
       teamId: entry.teamId,
       playerId: entry.playerId,
       players: entry.players,
+      reserves: entry.reserves ?? [],
       reserve: entry.reserve,
     })),
+    reservePlayers: {
+      teamA: lobby.sides.teamA.reserves,
+      teamB: lobby.sides.teamB.reserves,
+    },
     promotedReserveIds: {
       teamA: lobby.sides.teamA.fillSlots.map((candidate) => candidate.playerId),
       teamB: lobby.sides.teamB.fillSlots.map((candidate) => candidate.playerId),

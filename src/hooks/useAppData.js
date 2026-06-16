@@ -19,6 +19,7 @@ import {
   disputeMatch,
   interestRecruitingPost,
   inviteRecruitingPlayers,
+  handoffMatchRecorder,
   kickRecruitingApplicant,
   loadRemoteState,
   loadState,
@@ -159,6 +160,9 @@ export function useAppData(authUserId = null) {
       },
       agreeMatch: (matchId, sideName, playerId) => setState((prev) => agreeMatch({ ...prev, currentUserId }, matchId, sideName, playerId)),
       submitMatchResult: (matchId, result) => setState((prev) => submitMatchResult({ ...prev, currentUserId }, matchId, result)),
+      handoffMatchRecorder: (matchId, sideName, nextRecorderId) => {
+        setState((prev) => handoffMatchRecorder({ ...prev, currentUserId }, matchId, sideName, nextRecorderId));
+      },
       approveMatch: (matchId, sideName, playerId) => setState((prev) => approveMatch({ ...prev, currentUserId }, matchId, sideName, playerId)),
       toggleMatchStar: (matchId, targetUserId) => setState((prev) => toggleMatchStar({ ...prev, currentUserId }, matchId, targetUserId)),
       disputeMatch: (matchId, reason) => setState((prev) => disputeMatch({ ...prev, currentUserId }, matchId, reason)),
