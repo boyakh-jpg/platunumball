@@ -169,6 +169,12 @@ function getLobbyRecorderIds(lobby, recorders = {}) {
   }, { teamA: "", teamB: "" });
 }
 
+function isCurrentUserRoomParticipant(post, lobby, currentUserId) {
+  if (!currentUserId) return false;
+  if (post.playerId === currentUserId || post.playerIds?.includes(currentUserId)) return true;
+  return (lobby.entries ?? []).some((entry) => entry.playerId === currentUserId || entry.players?.includes(currentUserId));
+}
+
 function TeamMemberPicker({ team, userById, selectedIds, capacity, onChange }) {
   if (!team) {
     return (
@@ -1151,6 +1157,7 @@ export default function Recruiting({ app }) {
         const mine = selectedPost.playerId === app.currentUser.id;
         const myEntry = lobby.entries.find((entry) => entry.playerId === app.currentUser.id);
         const alreadyApplied = Boolean(myEntry && !myEntry.fixed);
+        const canInviteFromRoom = isCurrentUserRoomParticipant(selectedPost, lobby, app.currentUser.id);
         const canChat = isRecruitingPostForUser(selectedPost, app.currentUser.id, myTeamIds);
         const canJoin = !mine && !alreadyApplied && fit.allowed && (joinDraft.joinMode === "player" || (Boolean(selectedJoinTeam) && selectedJoinPlayerIds.length > 0));
         const selectedTargetTeam = selectedPost.targetTeamId ? teamById[selectedPost.targetTeamId] : null;
@@ -1204,8 +1211,8 @@ export default function Recruiting({ app }) {
               </div>
 
               <div className="ow-lobby-grid">
-                <SideRoster sideName="teamA" side={lobby.sides.teamA} userById={userById} teams={app.state.teams} canInvite onInviteSlot={(sideName) => openInviteSlot(selectedPost, sideName)} />
-                <SideRoster sideName="teamB" side={lobby.sides.teamB} userById={userById} teams={app.state.teams} canInvite onInviteSlot={(sideName) => openInviteSlot(selectedPost, sideName)} />
+                <SideRoster sideName="teamA" side={lobby.sides.teamA} userById={userById} teams={app.state.teams} canInvite={canInviteFromRoom} onInviteSlot={(sideName) => openInviteSlot(selectedPost, sideName)} />
+                <SideRoster sideName="teamB" side={lobby.sides.teamB} userById={userById} teams={app.state.teams} canInvite={canInviteFromRoom} onInviteSlot={(sideName) => openInviteSlot(selectedPost, sideName)} />
               </div>
 
               {activeInviteDraft ? (
@@ -1241,12 +1248,16 @@ export default function Recruiting({ app }) {
 
               <div className="ow-reserve-panel">
                 <div className="ow-reserve-invite-actions">
-                  <Button type="button" size="sm" variant="secondary" onClick={() => openInviteSlot(selectedPost, "teamA", true)}>
-                    <UserPlus size={16} /> A 후보 초대
-                  </Button>
-                  <Button type="button" size="sm" variant="secondary" onClick={() => openInviteSlot(selectedPost, "teamB", true)}>
-                    <UserPlus size={16} /> B 후보 초대
-                  </Button>
+                  {canInviteFromRoom ? (
+                    <>
+                      <Button type="button" size="sm" variant="secondary" onClick={() => openInviteSlot(selectedPost, "teamA", true)}>
+                        <UserPlus size={16} /> A 후보 초대
+                      </Button>
+                      <Button type="button" size="sm" variant="secondary" onClick={() => openInviteSlot(selectedPost, "teamB", true)}>
+                        <UserPlus size={16} /> B 후보 초대
+                      </Button>
+                    </>
+                  ) : null}
                 </div>
                 <ReserveLine
                   sideName="teamA"

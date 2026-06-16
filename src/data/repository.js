@@ -134,6 +134,14 @@ function isRecruitingRoomMember(post = {}, userId, state = {}) {
   ));
 }
 
+function isRecruitingRoomParticipant(post = {}, userId) {
+  if (!userId) return false;
+  if (post.playerId === userId || post.playerIds?.includes(userId)) return true;
+  return normalizeRecruitingApplicants(post.applicants ?? []).some((applicant) => (
+    applicant.playerId === userId || applicant.playerIds?.includes(userId)
+  ));
+}
+
 function mergeById(current = [], fallback = []) {
   const currentMap = new Map(current.map((item) => [item.id, item]));
   const mergedDefaults = fallback.map((item) => ({ ...item, ...(currentMap.get(item.id) ?? {}) }));
@@ -2992,6 +3000,21 @@ export function sendRecruitingChat(state, postId, body = "") {
 export function inviteRecruitingPlayers(state, postId, invite = {}) {
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   if (!post || post.status !== "open") return state;
+  if (!isRecruitingRoomParticipant(post, state.currentUserId)) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "초대 권한 없음",
+          body: "방에 참여한 사람만 빈 슬롯이나 후보를 초대할 수 있습니다.",
+          tone: "orange",
+          recruitingPostId: postId,
+        },
+        ...state.notifications,
+      ],
+    };
+  }
 
   const side = ["teamA", "teamB"].includes(invite.side) ? invite.side : "teamB";
   const reserve = Boolean(invite.reserve);
