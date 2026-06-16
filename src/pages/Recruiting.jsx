@@ -467,7 +467,9 @@ function EntryBlock({
 }
 
 function QueueRoomBoard({ lobby, userById, teams }) {
-  const rows = (lobby.entries ?? []).map((entry) => {
+  const entries = lobby.entries ?? [];
+  const entryById = Object.fromEntries(entries.map((entry) => [entry.id, entry]));
+  const activeRows = entries.filter((entry) => !entry.reserve).map((entry) => {
     const user = entry.playerId ? userById[entry.playerId] : null;
     const players = (entry.players ?? []).map((playerId) => userById[playerId]).filter(Boolean);
     return {
@@ -481,6 +483,42 @@ function QueueRoomBoard({ lobby, userById, teams }) {
       players,
     };
   });
+  const fillRows = ["teamA", "teamB"].flatMap((sideName) => (
+    (lobby.sides[sideName]?.fillSlots ?? []).map((candidate) => {
+      const entry = entryById[candidate.entryId] ?? {};
+      const user = userById[candidate.playerId] ?? candidate.user ?? null;
+      const label = entry.team && user ? `${entry.team.name} · ${user.name}` : user?.name ?? getReadyTitle(entry);
+      return {
+        id: `fill-${sideName}-${candidate.playerId}`,
+        label,
+        sideName,
+        reserve: false,
+        ready: candidate.status === "ready",
+        autoFill: true,
+        user,
+        team: entry.team ?? null,
+        players: user ? [user] : [],
+      };
+    })
+  ));
+  const reserveRows = ["teamA", "teamB"].flatMap((sideName) => (
+    (lobby.sides[sideName]?.reserveCandidates ?? []).map((candidate) => {
+      const entry = entryById[candidate.entryId] ?? {};
+      const user = userById[candidate.playerId] ?? candidate.user ?? null;
+      const label = entry.team && user ? `${entry.team.name} · ${user.name}` : user?.name ?? getReadyTitle(entry);
+      return {
+        id: `reserve-${sideName}-${candidate.playerId}`,
+        label,
+        sideName,
+        reserve: true,
+        ready: candidate.status === "ready",
+        user,
+        team: entry.team ?? null,
+        players: user ? [user] : [],
+      };
+    })
+  ));
+  const rows = [...activeRows, ...fillRows, ...reserveRows];
   const renderRow = (row) => (
     <span key={row.id} className={row.ready ? "ready" : "waiting"}>
       <span className="ow-queue-board-avatars" aria-hidden="true">
@@ -504,7 +542,7 @@ function QueueRoomBoard({ lobby, userById, teams }) {
           <b>{row.label}</b>
         )}
       </span>
-      <em>{row.ready ? "참여 확정" : "재확인 필요"}</em>
+      <em>{row.autoFill ? "충원 출전" : row.ready ? "참여 확정" : "재확인 필요"}</em>
     </span>
   );
   const renderGroup = (id, label, side) => {
