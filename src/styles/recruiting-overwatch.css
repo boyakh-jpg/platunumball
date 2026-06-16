@@ -880,22 +880,6 @@
   box-shadow: 0 0 0 1px rgba(70, 224, 182, 0.18);
 }
 
-.ow-side-progress {
-  overflow: hidden;
-  height: 8px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.ow-side-progress::before {
-  content: "";
-  display: block;
-  width: var(--fill, 0%);
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, var(--green), var(--gold));
-}
-
 .ow-queue-board {
   display: grid;
   min-width: 0;
@@ -1667,12 +1651,6 @@
   font-weight: 900;
 }
 
-.ow-reserve-invite-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
 .ow-reserve-line {
   display: grid;
   gap: 7px;
@@ -1681,6 +1659,12 @@
 .ow-reserve-line strong {
   color: var(--gold);
   font-size: 0.8rem;
+}
+
+.ow-reserve-line > .ow-reserve-slot-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .ow-room-rule-panel {
@@ -2063,7 +2047,8 @@ html[data-theme="light"] .ow-compose-drawer {
   .ow-invite-team-head,
   .ow-invitation-list > div,
   .ow-join-panel,
-  .ow-queue-board-grid {
+  .ow-queue-board-grid,
+  .ow-reserve-line > .ow-reserve-slot-grid {
     grid-template-columns: 1fr;
   }
 
