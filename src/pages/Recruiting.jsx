@@ -372,6 +372,12 @@ function SideRoster({ sideName, side, userById, teams }) {
   );
 }
 
+function stopControlClick(event, callback) {
+  event.preventDefault();
+  event.stopPropagation();
+  callback();
+}
+
 function ReserveLine({ sideName, candidates, playingIds, userById, teams, canManage = false, recorderId = "", onAssignRecorder }) {
   if (!candidates.length) return null;
   const playingSet = new Set(playingIds);
@@ -385,24 +391,26 @@ function ReserveLine({ sideName, candidates, playingIds, userById, teams, canMan
           const canRecord = RECORDABLE_RESERVE_SOURCES.has(candidate.source) && candidate.status === "ready" && !playingSet.has(candidate.playerId);
           const assigned = recorderId === candidate.playerId;
           return (
-            <PlayerHoverCard key={`${sideName}-${candidate.playerId}`} user={user} teams={teams} className={canRecord ? "ow-member-chip compact recorder" : "ow-member-chip compact"}>
-              <b>{index + 1}</b>
-              <span className="avatar small" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
-              <span>{user.name}</span>
-              <Badge tone={candidate.status === "ready" ? "green" : "neutral"}>{candidate.status === "ready" ? "대기 완료" : "대기 전"}</Badge>
-              {canRecord ? <em>{assigned ? "기록자 지정됨" : "기록 가능"}</em> : null}
+            <span key={`${sideName}-${candidate.playerId}`} className={canRecord ? "ow-member-chip compact recorder" : "ow-member-chip compact"}>
+              <PlayerHoverCard user={user} teams={teams} as="span" className="ow-member-chip-profile">
+                <b>{index + 1}</b>
+                <span className="avatar small" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
+                <span>{user.name}</span>
+                <Badge tone={candidate.status === "ready" ? "green" : "neutral"}>{candidate.status === "ready" ? "대기 완료" : "대기 전"}</Badge>
+                {canRecord ? <em>{assigned ? "기록자 지정됨" : "기록 가능"}</em> : null}
+              </PlayerHoverCard>
               {canManage && canRecord ? (
                 <Button
                   type="button"
                   size="sm"
                   variant={assigned ? "primary" : "secondary"}
                   className="ow-recorder-action"
-                  onClick={() => onAssignRecorder(sideName, assigned ? "" : candidate.playerId)}
+                  onClick={(event) => stopControlClick(event, () => onAssignRecorder(sideName, assigned ? "" : candidate.playerId))}
                 >
                   {assigned ? "기록 해제" : "기록자 지정"}
                 </Button>
               ) : null}
-            </PlayerHoverCard>
+            </span>
           );
         })}
       </div>
@@ -410,7 +418,7 @@ function ReserveLine({ sideName, candidates, playingIds, userById, teams, canMan
   );
 }
 
-function HostRoomControls({ lobby, userById, teams, onSetPlacement, onSetMemberReserve, onKick }) {
+function HostRoomControls({ lobby, userById, teams, recorderIds = {}, canAssignRecorder = false, onSetPlacement, onSetMemberReserve, onAssignRecorder, onKick }) {
   const applicants = lobby.entries ?? [];
 
   if (!applicants.length) {
@@ -426,7 +434,7 @@ function HostRoomControls({ lobby, userById, teams, onSetPlacement, onSetMemberR
     <div className="ow-host-control-panel">
       <header>
         <strong>방장 관리</strong>
-        <span>A/B 배치, 후보 전환, 강퇴</span>
+        <span>A/B 배치, 후보 전환, 기록자 지정, 강퇴</span>
       </header>
       <div className="ow-host-control-list">
         {applicants.map((entry) => {
@@ -494,37 +502,55 @@ function HostRoomControls({ lobby, userById, teams, onSetPlacement, onSetMemberR
                   {activePlayerIds.map((playerId) => {
                     const user = userById[playerId];
                     return (
-                      <PlayerHoverCard key={`${entry.id}-${playerId}-active`} user={user} teams={teams} className="ow-member-adjust-chip">
-                        <span className="avatar small" style={{ "--avatar": user?.avatarColor }}>{user?.name?.slice(0, 1) ?? "?"}</span>
-                        <span>{user?.name ?? "선수"}</span>
+                      <span key={`${entry.id}-${playerId}-active`} className="ow-member-adjust-chip">
+                        <PlayerHoverCard user={user} teams={teams} as="span" className="ow-member-adjust-profile">
+                          <span className="avatar small" style={{ "--avatar": user?.avatarColor }}>{user?.name?.slice(0, 1) ?? "?"}</span>
+                          <span>{user?.name ?? "선수"}</span>
+                        </PlayerHoverCard>
                         <Button
                           type="button"
                           size="sm"
                           variant="secondary"
                           disabled={!canDemoteActive}
-                          onClick={() => onSetMemberReserve(entry.id, playerId, true)}
+                          onClick={(event) => stopControlClick(event, () => onSetMemberReserve(entry.id, playerId, true))}
                         >
                           후보
                         </Button>
-                      </PlayerHoverCard>
+                      </span>
                     );
                   })}
                   {reservePlayerIds.map((playerId) => {
                     const user = userById[playerId];
+                    const assigned = recorderIds[entry.side] === playerId;
+                    const canRecord = canAssignRecorder && entry.status === "ready";
                     return (
-                      <PlayerHoverCard key={`${entry.id}-${playerId}-reserve`} user={user} teams={teams} className="ow-member-adjust-chip reserve">
-                        <span className="avatar small" style={{ "--avatar": user?.avatarColor }}>{user?.name?.slice(0, 1) ?? "?"}</span>
-                        <span>{user?.name ?? "후보"}</span>
+                      <span key={`${entry.id}-${playerId}-reserve`} className={assigned ? "ow-member-adjust-chip reserve recorder" : "ow-member-adjust-chip reserve"}>
+                        <PlayerHoverCard user={user} teams={teams} as="span" className="ow-member-adjust-profile">
+                          <span className="avatar small" style={{ "--avatar": user?.avatarColor }}>{user?.name?.slice(0, 1) ?? "?"}</span>
+                          <span>{user?.name ?? "후보"}</span>
+                        </PlayerHoverCard>
                         <Button
                           type="button"
                           size="sm"
                           variant="secondary"
                           disabled={!canPromoteReserve}
-                          onClick={() => onSetMemberReserve(entry.id, playerId, false)}
+                          onClick={(event) => stopControlClick(event, () => onSetMemberReserve(entry.id, playerId, false))}
                         >
                           출전
                         </Button>
-                      </PlayerHoverCard>
+                        {canAssignRecorder ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant={assigned ? "primary" : "secondary"}
+                            className="ow-recorder-action"
+                            disabled={!canRecord}
+                            onClick={(event) => stopControlClick(event, () => onAssignRecorder(entry.side, assigned ? "" : playerId))}
+                          >
+                            {assigned ? "기록 해제" : "기록자 지정"}
+                          </Button>
+                        ) : null}
+                      </span>
                     );
                   })}
                 </div>
@@ -940,8 +966,11 @@ export default function Recruiting({ app }) {
                   lobby={lobby}
                   userById={userById}
                   teams={app.state.teams}
+                  recorderIds={recorderIds}
+                  canAssignRecorder={!selectedPost.refereeId}
                   onSetPlacement={(playerId, placement) => app.actions.setRecruitingApplicantPlacement(selectedPost.id, playerId, placement)}
                   onSetMemberReserve={(entryId, playerId, reserve) => app.actions.setRecruitingPartyPlayerReserve(selectedPost.id, entryId, playerId, reserve)}
+                  onAssignRecorder={(sideName, playerId) => app.actions.setRecruitingStatRecorder(selectedPost.id, sideName, playerId)}
                   onKick={(playerId) => app.actions.kickRecruitingApplicant(selectedPost.id, playerId)}
                 />
               ) : null}

@@ -1201,6 +1201,16 @@
   font-size: 0.68rem;
 }
 
+.ow-member-chip-profile,
+.ow-member-adjust-profile {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  color: inherit;
+  text-decoration: none;
+}
+
 .ow-member-chip.compact {
   padding-right: 8px;
 }
@@ -1411,7 +1421,12 @@
   border-style: dashed;
 }
 
-.ow-member-adjust-chip > span:not(.avatar) {
+.ow-member-adjust-chip.recorder {
+  border-color: rgba(70, 224, 182, 0.44);
+  background: rgba(70, 224, 182, 0.1);
+}
+
+.ow-member-adjust-profile > span:not(.avatar) {
   max-width: 92px;
   overflow: hidden;
   text-overflow: ellipsis;

@@ -2732,6 +2732,7 @@ export function setRecruitingPartyPlayerReserve(state, postId, entryId, playerId
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   if (!post || post.status !== "open" || post.playerId !== state.currentUserId || !entryId || !playerId) return state;
 
+  const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
   const lobby = getRecruitingLobby(post, state);
   const entry = (lobby.entries ?? []).find((item) => item.id === entryId);
   if (!entry?.team || !entry.team.members?.some((member) => member.userId === playerId)) return state;
@@ -2743,17 +2744,26 @@ export function setRecruitingPartyPlayerReserve(state, postId, entryId, playerId
     : applicants.find((applicant) => getRecruitingApplicantKey(applicant) === entry.id);
   if (!entry.fixed && !targetApplicant) return state;
 
-  const currentPlayerIds = getSelectedTeamPlayerIds(entry.team, capacity, entry.fixed ? post.playerIds : targetApplicant.playerIds);
+  const storedPlayerIds = getSelectedTeamPlayerIds(entry.team, capacity, entry.fixed ? post.playerIds : targetApplicant.playerIds);
+  const currentPlayerIds = storedPlayerIds.length ? storedPlayerIds : (entry.players ?? []);
   const nextPlayerIds = reserve
     ? currentPlayerIds.filter((id) => id !== playerId)
     : Array.from(new Set([...currentPlayerIds, playerId]));
   if (!nextPlayerIds.length || nextPlayerIds.length > capacity) return state;
 
   const updatedAt = new Date().toISOString();
+  const currentReserveIds = roomState.partyReserves?.[entry.id] ?? [];
+  const nextReserveIds = reserve
+    ? Array.from(new Set([...currentReserveIds, playerId]))
+    : currentReserveIds.filter((id) => id !== playerId);
+  const nextPartyReserves = { ...roomState.partyReserves, [entry.id]: nextReserveIds };
+  if (!nextReserveIds.length) delete nextPartyReserves[entry.id];
+  const nextRoomState = { ...roomState, partyReserves: nextPartyReserves };
   const nextPost = entry.fixed
-    ? { ...post, hostReady: false, playerIds: nextPlayerIds }
+    ? { ...post, hostReady: false, playerIds: nextPlayerIds, roomState: nextRoomState }
     : {
       ...post,
+      roomState: nextRoomState,
       applicants: applicants.map((applicant) => (
         getRecruitingApplicantKey(applicant) === entry.id
           ? { ...applicant, playerIds: nextPlayerIds, status: "waiting", updatedAt }
