@@ -66,6 +66,7 @@ const QUEUE_SCHEDULE_START_DATE = "2026-06-15";
 const QUEUE_SCHEDULE_TIMES = ["18:00", "19:30", "21:00"];
 const POST_MATCH_STATUSES = new Set(["approval", "disputed"]);
 const RECORDABLE_RESERVE_SOURCES = new Set(["reserve-entry", "team-reserve"]);
+const MAX_RECRUITING_RESERVES_PER_SIDE = 2;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const SCHEDULE_MAX_DAYS = 365;
 const LIFECYCLE_TITLE_PATTERN = /^(동의 대기|진행 예정|결과 승인|이의 확인|이의제기|확정|결과 입력)\s*·\s*/;
@@ -1212,6 +1213,30 @@ function getRecruitingRoomStatRecorders(post, state) {
   return {
     teamA: getRecorder("teamA"),
     teamB: getRecorder("teamB"),
+  };
+}
+
+function getPendingReserveInvitationCount(roomState, sideName) {
+  return (roomState.invitations ?? []).filter((invitation) => (
+    invitation.status === "pending" &&
+    invitation.reserve &&
+    invitation.side === sideName
+  )).length;
+}
+
+function isRecruitingReserveLimitExceeded(post, state, sideName) {
+  if (!["teamA", "teamB"].includes(sideName)) return true;
+  const lobby = getRecruitingLobby(post, state);
+  return (lobby.sides[sideName]?.reserveCandidates?.length ?? 0) > MAX_RECRUITING_RESERVES_PER_SIDE;
+}
+
+function getRecruitingReserveLimitNotification(postId, sideName) {
+  return {
+    id: makeId("n"),
+    title: "후보 슬롯 초과",
+    body: `${SIDE_LABEL_TEXT[sideName] ?? "해당 팀"} 후보는 최대 ${MAX_RECRUITING_RESERVES_PER_SIDE}명까지 가능합니다.`,
+    tone: "orange",
+    recruitingPostId: postId,
   };
 }
 
@@ -2862,10 +2887,17 @@ export function interestRecruitingPost(state, postId, application = {}) {
       };
   if (hasRecruitingApplicant(post, nextApplicant)) return state;
   const applicants = [...normalizeRecruitingApplicants(post.applicants ?? []), nextApplicant];
+  const nextPost = { ...post, applicants };
+  if (reserve && isRecruitingReserveLimitExceeded(nextPost, state, side)) {
+    return {
+      ...state,
+      notifications: [getRecruitingReserveLimitNotification(postId, side), ...state.notifications],
+    };
+  }
 
   return {
     ...state,
-    recruitingPosts: (state.recruitingPosts ?? []).map((item) => (item.id === postId ? { ...item, applicants } : item)),
+    recruitingPosts: (state.recruitingPosts ?? []).map((item) => (item.id === postId ? nextPost : item)),
   };
 }
 
@@ -3054,6 +3086,17 @@ export function inviteRecruitingPlayers(state, postId, invite = {}) {
     };
   }
 
+  if (reserve) {
+    const reserveCount = lobby.sides[side]?.reserveCandidates?.length ?? 0;
+    const pendingReserveCount = getPendingReserveInvitationCount(roomState, side);
+    if (reserveCount + pendingReserveCount + targetUserIds.length > MAX_RECRUITING_RESERVES_PER_SIDE) {
+      return {
+        ...state,
+        notifications: [getRecruitingReserveLimitNotification(postId, side), ...state.notifications],
+      };
+    }
+  }
+
   const now = new Date().toISOString();
   const invitations = [
     ...roomState.invitations,
@@ -3141,6 +3184,9 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
   const lobby = getRecruitingLobby(post, state);
   const side = ["teamA", "teamB"].includes(invitation.side) ? invitation.side : getRecruitingBestSide(post, state);
   const reserve = Boolean(invitation.reserve);
+  if (reserve && (lobby.sides[side]?.reserveCandidates?.length ?? 0) >= MAX_RECRUITING_RESERVES_PER_SIDE) {
+    return expireInvitation(`${SIDE_LABEL_TEXT[side]} 후보가 이미 ${MAX_RECRUITING_RESERVES_PER_SIDE}명입니다.`);
+  }
   if (!reserve && lobby.sides[side].filled >= lobby.sides[side].capacity) {
     return expireInvitation("방이 꽉 찼습니다. 먼저 수락한 선수만 들어갑니다.");
   }
@@ -3234,6 +3280,13 @@ export function setRecruitingApplicantPlacement(state, postId, playerId, placeme
     }
     : { ...post, applicants: nextApplicants };
 
+  if (reserve && isRecruitingReserveLimitExceeded(nextPost, state, side)) {
+    return {
+      ...state,
+      notifications: [getRecruitingReserveLimitNotification(postId, side), ...state.notifications],
+    };
+  }
+
   if (!reserve) {
     const lobby = getRecruitingLobby(nextPost, state);
     const activePlayerCount = new Set(lobby.sides[side].entries.flatMap((entry) => entry.players)).size;
@@ -3294,6 +3347,13 @@ export function setRecruitingPartyPlayerReserve(state, postId, entryId, playerId
           : applicant
       )),
     };
+
+  if (reserve && isRecruitingReserveLimitExceeded(nextPost, state, entry.side)) {
+    return {
+      ...state,
+      notifications: [getRecruitingReserveLimitNotification(postId, entry.side), ...state.notifications],
+    };
+  }
 
   if (!reserve) {
     const nextLobby = getRecruitingLobby(nextPost, state);
@@ -3368,6 +3428,12 @@ export function setRecruitingPartyPlayerPlacement(state, postId, entryId, player
   const nextPost = entry.fixed
     ? { ...post, hostReady: false, playerIds: nextPlayerIds, roomState: nextRoomState, applicants: nextApplicants }
     : { ...post, roomState: nextRoomState, applicants: nextApplicants };
+  if (reserve && isRecruitingReserveLimitExceeded(nextPost, state, side)) {
+    return {
+      ...state,
+      notifications: [getRecruitingReserveLimitNotification(postId, side), ...state.notifications],
+    };
+  }
   if (!reserve) {
     const nextLobby = getRecruitingLobby(nextPost, state);
     if (nextLobby.sides[side].filled > nextLobby.sides[side].capacity) return state;

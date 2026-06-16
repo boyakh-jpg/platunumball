@@ -503,13 +503,9 @@ export function getRecruitingLobby(post = {}, state = {}) {
         return true;
       })
       .sort(compareCandidates);
-    const openSlots = Math.max(0, getRecruitingSideCapacity(normalizedPost) - players.length);
-    const fillSlots = reserveCandidates.slice(0, openSlots).map((candidate, index) => ({
-      ...candidate,
-      slotOrder: players.length + index + 1,
-    }));
+    const fillSlots = [];
     const reserves = reserveCandidates.map((candidate) => candidate.playerId);
-    const projectedPlayers = unique([...players, ...fillSlots.map((candidate) => candidate.playerId)]);
+    const projectedPlayers = players;
     acc[side] = {
       entries: sideEntries,
       reserveEntries,

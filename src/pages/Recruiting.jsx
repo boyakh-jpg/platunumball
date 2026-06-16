@@ -48,6 +48,7 @@ const SIDE_LABELS = {
   teamB: "B팀",
 };
 const RECORDABLE_RESERVE_SOURCES = new Set(["reserve-entry", "team-reserve"]);
+const MAX_RESERVE_PLAYERS_PER_SIDE = 2;
 
 function formatWhen(value) {
   if (!value) return "방금";
@@ -150,6 +151,7 @@ function getEntryPlacementAvailability(entry, lobby) {
       .filter((item) => item.id !== entry.id)
       .flatMap((item) => item.players)).length;
     acc[sideName] = filledWithoutEntry + (entry.players?.length ?? 0) <= side.capacity;
+    acc[`${sideName}Reserve`] = (entry.reserve && entry.side === sideName) || side.reserveCandidates.length < MAX_RESERVE_PLAYERS_PER_SIDE;
     return acc;
   }, {});
 }
@@ -168,9 +170,9 @@ function getLobbyRecorderIds(lobby) {
 }
 
 function canMovePlayerTo(lobby, playerId, sideName, reserve = false) {
-  if (reserve) return true;
   const side = lobby.sides[sideName];
   if (!side) return false;
+  if (reserve) return side.reserves.includes(playerId) || side.reserveCandidates.length < MAX_RESERVE_PLAYERS_PER_SIDE;
   return side.projectedPlayers.includes(playerId) || side.projectedFilled < side.capacity;
 }
 
@@ -187,8 +189,8 @@ function PlacementActionButtons({ currentSide, currentReserve = false, availabil
   const actions = [
     { side: "teamA", reserve: false, label: "A 출전", disabled: availability.teamA === false },
     { side: "teamB", reserve: false, label: "B 출전", disabled: availability.teamB === false },
-    { side: "teamA", reserve: true, label: "A 후보" },
-    { side: "teamB", reserve: true, label: "B 후보" },
+    { side: "teamA", reserve: true, label: "A 후보", disabled: availability.teamAReserve === false },
+    { side: "teamB", reserve: true, label: "B 후보", disabled: availability.teamBReserve === false },
   ];
   return actions.map((action) => (
     <button
@@ -302,7 +304,7 @@ function EntryBlock({
       <SlotActionMenu>
         <button
           type="button"
-          disabled={!canDemoteActive}
+          disabled={!canDemoteActive || !canMovePlayerTo(lobby, user.id, entry.side, true)}
           onClick={(event) => stopControlClick(event, () => onSetMemberReserve(entry.id, user.id, true))}
         >
           후보로
@@ -595,7 +597,7 @@ function ReserveLine({ sideName, candidates, playingIds, lobby, userById, teams,
   const playingSet = new Set(playingIds);
   return (
     <div className="ow-reserve-line">
-      <strong>{SIDE_LABELS[sideName]} 후보</strong>
+      <strong>{SIDE_LABELS[sideName]} 후보 {candidates.length}/{MAX_RESERVE_PLAYERS_PER_SIDE}</strong>
       <div>
         {candidates.map((candidate, index) => {
           const user = userById[candidate.playerId];
@@ -1493,10 +1495,10 @@ export default function Recruiting({ app }) {
                 <div className="ow-reserve-invite-actions">
                   {canInviteFromRoom ? (
                     <>
-                      <Button type="button" size="sm" variant="secondary" onClick={() => openInviteSlot(selectedPost, "teamA", true)}>
+                      <Button type="button" size="sm" variant="secondary" disabled={lobby.sides.teamA.reserveCandidates.length >= MAX_RESERVE_PLAYERS_PER_SIDE} onClick={() => openInviteSlot(selectedPost, "teamA", true)}>
                         <UserPlus size={16} /> A 후보 초대
                       </Button>
-                      <Button type="button" size="sm" variant="secondary" onClick={() => openInviteSlot(selectedPost, "teamB", true)}>
+                      <Button type="button" size="sm" variant="secondary" disabled={lobby.sides.teamB.reserveCandidates.length >= MAX_RESERVE_PLAYERS_PER_SIDE} onClick={() => openInviteSlot(selectedPost, "teamB", true)}>
                         <UserPlus size={16} /> B 후보 초대
                       </Button>
                     </>
