@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { isSupabaseConfigured, supabase } from "../lib/supabase.js";
 
 const TEST_SESSION_KEY = "rankball.auth.testSession.v1";
+const PROVIDER_LABELS = { naver: "Naver", kakao: "Kakao", google: "Google" };
 
 function readTestSession() {
   if (typeof window === "undefined") return null;
@@ -20,7 +21,7 @@ function writeTestSession(session) {
 }
 
 function makeTestSession(provider) {
-  const providerName = { naver: "Naver", kakao: "Kakao", google: "Google" }[provider] ?? provider;
+  const providerName = PROVIDER_LABELS[provider] ?? provider;
   const user = {
     id: `test-${provider}`,
     email: `${provider}@rankball.test`,
@@ -36,6 +37,22 @@ function makeTestSession(provider) {
     expires_at: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30,
     user,
   };
+}
+
+async function readOAuthStartError(response, provider) {
+  let payload = null;
+  try {
+    payload = await response.json();
+  } catch {
+    payload = null;
+  }
+
+  const message = payload?.msg ?? payload?.message ?? payload?.error_description ?? "";
+  if (payload?.error_code === "validation_failed" && message.toLowerCase().includes("provider is not enabled")) {
+    const providerName = PROVIDER_LABELS[provider] ?? provider;
+    return `Supabase에서 ${providerName} OAuth provider가 꺼져 있습니다. Authentication > Providers에서 ${providerName}을 켜고 Client ID/Secret을 넣어야 합니다.`;
+  }
+  return message || `OAuth 시작 실패 (${response.status})`;
 }
 
 export function useAuthSession() {
@@ -77,15 +94,38 @@ export function useAuthSession() {
       setError("");
       setMessage("");
       if (isSupabaseConfigured) {
-        const { error: authError } = await supabase.auth.signInWithOAuth({
+        const redirectTo = `${window.location.origin}/app`;
+        const { data, error: authError } = await supabase.auth.signInWithOAuth({
           provider,
           options: {
-            redirectTo: `${window.location.origin}/app`,
+            redirectTo,
+            skipBrowserRedirect: true,
           },
         });
         if (authError) {
           setError(authError.message);
           return null;
+        }
+        if (!data?.url) {
+          setError("OAuth 시작 URL을 만들지 못했습니다.");
+          return null;
+        }
+
+        try {
+          const response = await fetch(data.url, { redirect: "manual" });
+          if (!response.ok) {
+            setError(await readOAuthStartError(response, provider));
+            return null;
+          }
+          const payload = await response.json().catch(() => null);
+          const nextUrl = payload?.url;
+          if (!nextUrl) {
+            setError("OAuth 제공자 이동 URL을 받지 못했습니다.");
+            return null;
+          }
+          window.location.assign(nextUrl);
+        } catch {
+          setError("OAuth 설정 확인에 실패했습니다. Supabase Auth provider와 Redirect URL을 확인하세요.");
         }
         return null;
       }
