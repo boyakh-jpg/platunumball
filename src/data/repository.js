@@ -3000,29 +3000,8 @@ export function updateRecruitingRoomRules(state, postId, patch = {}) {
 
   const currentCapacity = getRecruitingSideCapacity(post);
   const sideCapacity = Math.max(1, Math.min(5, Number(patch.sideCapacity ?? currentCapacity)));
-  const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
-  const nextMmrRangeMode = normalizeRecruitingMmrRangeMode(patch.mmrRangeMode ?? post.mmrRangeMode ?? roomState.mmrRangeMode);
-  const updatedAt = new Date().toISOString();
-  const nextPost = cleanRecruitingRoomStatRecorders({
-    ...post,
-    sideCapacity,
-    mmrRangeMode: nextMmrRangeMode,
-    ratingScale: getRecruitingRatingScale({ ...post, mmrRangeMode: nextMmrRangeMode }),
-    hostReady: false,
-    applicants: normalizeRecruitingApplicants(post.applicants ?? []).map((applicant) => ({
-      ...applicant,
-      status: "waiting",
-      updatedAt,
-    })),
-    roomState: {
-      ...roomState,
-      mmrRangeMode: nextMmrRangeMode,
-      ruleRevision: Number(roomState.ruleRevision ?? 0) + 1,
-      ruleChangedAt: updatedAt,
-    },
-  }, state);
-  const lobby = getRecruitingLobby(nextPost, state);
-  if (lobby.sides.teamA.filled > sideCapacity || lobby.sides.teamB.filled > sideCapacity) {
+  const currentLobby = getRecruitingLobby(post, state);
+  if (currentLobby.sides.teamA.filled > sideCapacity || currentLobby.sides.teamB.filled > sideCapacity) {
     return {
       ...state,
       notifications: [
@@ -3037,7 +3016,42 @@ export function updateRecruitingRoomRules(state, postId, patch = {}) {
       ],
     };
   }
-
+  const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
+  const nextMmrRangeMode = normalizeRecruitingMmrRangeMode(patch.mmrRangeMode ?? post.mmrRangeMode ?? roomState.mmrRangeMode);
+  const nextRules = {
+    targetScore: Math.max(7, Math.min(31, Number(patch.targetScore ?? post.rules?.targetScore ?? 21))),
+    timeLimit: Math.max(5, Math.min(60, Number(patch.timeLimit ?? post.rules?.timeLimit ?? 12))),
+    winByTwo: Boolean(patch.winByTwo ?? post.rules?.winByTwo ?? true),
+    ball: patch.ball ?? post.rules?.ball ?? "7호 공",
+    attackRule: String(patch.attackRule ?? post.rules?.attackRule ?? "득점 후 공격권 교대").slice(0, 120),
+    foulRule: String(patch.foulRule ?? post.rules?.foulRule ?? "파울 콜 즉시 중단, 공격권 유지").slice(0, 120),
+  };
+  const updatedAt = new Date().toISOString();
+  const nextPost = cleanRecruitingRoomStatRecorders({
+    ...post,
+    sideCapacity,
+    mmrRangeMode: nextMmrRangeMode,
+    ratingScale: post.ranked === false ? 1 : getRecruitingRatingScale({ ...post, mmrRangeMode: nextMmrRangeMode }),
+    rules: {
+      ...(post.rules ?? {}),
+      ...nextRules,
+      mmrRangeMode: nextMmrRangeMode,
+      ratingScale: post.ranked === false ? 1 : getRecruitingRatingScale({ ...post, mmrRangeMode: nextMmrRangeMode }),
+    },
+    memo: patch.memo === undefined ? post.memo : String(patch.memo ?? "").slice(0, 500),
+    hostReady: false,
+    applicants: normalizeRecruitingApplicants(post.applicants ?? []).map((applicant) => ({
+      ...applicant,
+      status: "waiting",
+      updatedAt,
+    })),
+    roomState: {
+      ...roomState,
+      mmrRangeMode: nextMmrRangeMode,
+      ruleRevision: Number(roomState.ruleRevision ?? 0) + 1,
+      ruleChangedAt: updatedAt,
+    },
+  }, state);
   return {
     ...state,
     recruitingPosts: (state.recruitingPosts ?? []).map((item) => (item.id === postId ? nextPost : item)),

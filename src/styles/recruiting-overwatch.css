@@ -1185,6 +1185,51 @@
   font-weight: 850;
 }
 
+.ow-room-rule-head,
+.ow-room-edit-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ow-room-rule-summary {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ow-room-rule-summary span {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.055);
+  padding: 5px 8px;
+}
+
+.ow-room-edit-panel {
+  display: grid;
+  gap: 10px;
+  border: 1px solid rgba(70, 224, 182, 0.22);
+  border-radius: 8px;
+  background: rgba(70, 224, 182, 0.07);
+  padding: 10px;
+}
+
+.ow-room-edit-panel > label {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.ow-room-edit-panel small {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 850;
+}
+
 .ow-party-block {
   display: grid;
   gap: 10px;

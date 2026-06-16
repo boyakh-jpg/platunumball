@@ -103,6 +103,20 @@ function getPartyPlayerIds(team, playerIds, capacity) {
   return Array.from(new Set(playerIds.filter((playerId) => selectableIds.has(playerId)))).slice(0, capacity);
 }
 
+function getRoomEditDraft(post) {
+  return {
+    sideCapacity: getRecruitingSideCapacity(post),
+    mmrRangeMode: post.mmrRangeMode ?? post.roomState?.mmrRangeMode ?? "narrow",
+    targetScore: post.rules?.targetScore ?? 21,
+    timeLimit: post.rules?.timeLimit ?? 12,
+    winByTwo: post.rules?.winByTwo ?? true,
+    ball: post.rules?.ball ?? "7호 공",
+    attackRule: post.rules?.attackRule ?? "득점 후 공격권 교대",
+    foulRule: post.rules?.foulRule ?? "파울 콜 즉시 중단, 공격권 유지",
+    memo: post.memo ?? "",
+  };
+}
+
 function getDefaultJoinDraft(post, teams, currentUser, state) {
   const teamId = getDefaultApplyTeamId(post, teams);
   const team = teams.find((item) => item.id === teamId) ?? null;
@@ -1011,6 +1025,7 @@ export default function Recruiting({ app }) {
   const [joinDraftByPost, setJoinDraftByPost] = useState({});
   const [chatDraftByPost, setChatDraftByPost] = useState({});
   const [inviteDraft, setInviteDraft] = useState(null);
+  const [roomEditDraftByPost, setRoomEditDraftByPost] = useState({});
   const [draft, setDraft] = useState(() => ({
     hostJoinMode: myTeams[0]?.id ? "team" : "player",
     title: "",
@@ -1158,6 +1173,29 @@ export default function Recruiting({ app }) {
   };
   const openInviteSlot = (post, sideName, reserve = false) => {
     setInviteDraft({ postId: post.id, sideName, reserve, query: "", selectedPlayerIds: [] });
+  };
+  const getRoomEditDraftByPost = (post) => roomEditDraftByPost[post.id] ?? null;
+  const openRoomEdit = (post) => {
+    setRoomEditDraftByPost((current) => ({ ...current, [post.id]: getRoomEditDraft(post) }));
+  };
+  const closeRoomEdit = (post) => {
+    setRoomEditDraftByPost((current) => {
+      const next = { ...current };
+      delete next[post.id];
+      return next;
+    });
+  };
+  const updateRoomEditDraft = (post, patch) => {
+    setRoomEditDraftByPost((current) => ({
+      ...current,
+      [post.id]: { ...(current[post.id] ?? getRoomEditDraft(post)), ...patch },
+    }));
+  };
+  const saveRoomEdit = (post) => {
+    const roomEditDraft = getRoomEditDraftByPost(post);
+    if (!roomEditDraft) return;
+    app.actions.updateRecruitingRoomRules(post.id, roomEditDraft);
+    closeRoomEdit(post);
   };
   const updateInviteDraft = (patch) => {
     setInviteDraft((current) => (current ? { ...current, ...patch } : current));
@@ -1354,6 +1392,12 @@ export default function Recruiting({ app }) {
           selectedPost.mmrRangeMode ?? selectedPost.roomState?.mmrRangeMode,
         );
         const selectedRatingScale = getRecruitingRatingScale(selectedPost);
+        const roomEditDraft = getRoomEditDraftByPost(selectedPost);
+        const roomEditRange = roomEditDraft
+          ? getRecruitingTierRange(getRecruitingTargetMmr(selectedPost, app.state), selectedPost.ranked !== false, roomEditDraft.mmrRangeMode)
+          : null;
+        const maxSideFilled = Math.max(lobby.sides.teamA.filled, lobby.sides.teamB.filled);
+        const roomEditCapacityValid = !roomEditDraft || Number(roomEditDraft.sideCapacity) >= maxSideFilled;
         const playingIds = [...lobby.sides.teamA.projectedPlayers, ...lobby.sides.teamB.projectedPlayers];
         const roomState = selectedPost.roomState ?? {};
         const recorderIds = getLobbyRecorderIds(lobby);
@@ -1512,21 +1556,83 @@ export default function Recruiting({ app }) {
               </div>
 
               <div className="ow-room-rule-panel">
-                {mine ? (
-                  <div className="ow-room-rule-controls">
+                <div className="ow-room-rule-head">
+                  <strong>규칙</strong>
+                  {mine ? (
+                    <Button type="button" size="sm" variant="secondary" onClick={() => (roomEditDraft ? closeRoomEdit(selectedPost) : openRoomEdit(selectedPost))}>
+                      {roomEditDraft ? "수정 닫기" : "방 수정"}
+                    </Button>
+                  ) : null}
+                </div>
+                <div className="ow-room-rule-summary">
+                  <span>{getRecruitingSideCapacity(selectedPost)} vs {getRecruitingSideCapacity(selectedPost)}</span>
+                  <span>{selectedPost.rules?.targetScore ?? 21}점 · {selectedPost.rules?.timeLimit ?? 12}분</span>
+                  <span>{(selectedPost.rules?.winByTwo ?? true) ? "2점차" : "선착순"} · {selectedPost.rules?.ball ?? "7호 공"}</span>
+                  {selectedPost.ranked !== false ? <span>{selectedRange.label}</span> : <span>친선 · 티어 자유</span>}
+                </div>
+                {roomEditDraft ? (
+                  <div className="ow-room-edit-panel">
+                    <div className="ow-field-grid three">
+                      <label>
+                        팀당 정원
+                        <select value={roomEditDraft.sideCapacity} onChange={(event) => updateRoomEditDraft(selectedPost, { sideCapacity: Number(event.target.value) })}>
+                          {[1, 2, 3, 4, 5].map((value) => <option key={value} value={value}>{value} vs {value}</option>)}
+                        </select>
+                      </label>
+                      <label>
+                        목표 점수
+                        <input type="number" min="7" max="31" value={roomEditDraft.targetScore} onChange={(event) => updateRoomEditDraft(selectedPost, { targetScore: event.target.value })} />
+                      </label>
+                      <label>
+                        제한 시간
+                        <input type="number" min="5" max="60" value={roomEditDraft.timeLimit} onChange={(event) => updateRoomEditDraft(selectedPost, { timeLimit: event.target.value })} />
+                      </label>
+                    </div>
+                    <div className="ow-field-grid three">
+                      <label>
+                        사용 공
+                        <select value={roomEditDraft.ball} onChange={(event) => updateRoomEditDraft(selectedPost, { ball: event.target.value })}>
+                          <option>7호 공</option>
+                          <option>6호 공</option>
+                          <option>코트 공</option>
+                        </select>
+                      </label>
+                      <label className="switch-line">
+                        <input type="checkbox" checked={roomEditDraft.winByTwo} onChange={(event) => updateRoomEditDraft(selectedPost, { winByTwo: event.target.checked })} />
+                        2점 차 승리
+                      </label>
+                      {selectedPost.ranked !== false ? (
+                        <label>
+                          정규전 허용구간
+                          <select value={roomEditDraft.mmrRangeMode} onChange={(event) => updateRoomEditDraft(selectedPost, { mmrRangeMode: event.target.value })}>
+                            {Object.entries(MMR_RANGE_POLICIES).map(([mode, policy]) => <option key={mode} value={mode}>{policy.label}</option>)}
+                          </select>
+                        </label>
+                      ) : null}
+                    </div>
+                    {roomEditRange ? <small>{roomEditRange.detail}</small> : null}
+                    <div className="ow-field-grid">
+                      <label>
+                        공격권 룰
+                        <input value={roomEditDraft.attackRule} onChange={(event) => updateRoomEditDraft(selectedPost, { attackRule: event.target.value })} />
+                      </label>
+                      <label>
+                        파울 룰
+                        <input value={roomEditDraft.foulRule} onChange={(event) => updateRoomEditDraft(selectedPost, { foulRule: event.target.value })} />
+                      </label>
+                    </div>
                     <label>
-                      팀당 정원
-                      <select
-                        value={getRecruitingSideCapacity(selectedPost)}
-                        onChange={(event) => app.actions.updateRecruitingRoomRules(selectedPost.id, { sideCapacity: Number(event.target.value) })}
-                      >
-                        {[1, 2, 3, 4, 5].map((value) => <option key={value} value={value}>{value} vs {value}</option>)}
-                      </select>
+                      메모
+                      <textarea value={roomEditDraft.memo} onChange={(event) => updateRoomEditDraft(selectedPost, { memo: event.target.value })} />
                     </label>
-                    <small>정원을 바꾸면 전원 참여 유지 확인이 다시 필요하다.</small>
+                    {!roomEditCapacityValid ? <span className="form-warning">현재 출전 인원이 {maxSideFilled}명이라 정원을 그보다 낮출 수 없습니다.</span> : null}
+                    <div className="ow-room-edit-actions">
+                      <Button type="button" size="sm" variant="secondary" onClick={() => closeRoomEdit(selectedPost)}>취소</Button>
+                      <Button type="button" size="sm" disabled={!roomEditCapacityValid} onClick={() => saveRoomEdit(selectedPost)}>수정 저장</Button>
+                    </div>
+                    <small>저장하면 방장 포함 모든 참가자가 참여 유지를 다시 눌러야 합니다.</small>
                   </div>
                 ) : null}
-                <strong>규칙</strong>
                 <span>{selectedPost.memo}</span>
                 <span>팀 MMR은 실제 참가한 팀원 비율 기준으로 반영한다.</span>
                 <span>후보가 경기 밖에서 참여 확정하면 해당 팀 개인 활약 기록자로 배정된다.</span>
