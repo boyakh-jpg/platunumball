@@ -184,13 +184,16 @@ export default function MatchRoom({ app }) {
           const user = userMap[playerId];
           const ready = agreement.approvals.includes(playerId) || match.status !== "contract";
           const captain = agreement.captainId === playerId;
+          const slotLabel = match.status === "contract"
+            ? captain ? (ready ? "주장동의" : "주장대기") : ready ? "동의완료" : "동의대기"
+            : captain ? "CAPT" : "READY";
 
           return (
             <PlayerHoverCard key={playerId} user={user} teams={app.state.teams} className={ready ? "gm-player-slot ready" : "gm-player-slot"}>
               <span className="avatar" style={{ "--avatar": user?.avatarColor }}>{user?.name?.slice(0, 1) ?? "P"}</span>
               <strong>{user?.name ?? "플레이어"}</strong>
               <small>{user?.position ?? "-"}</small>
-              <em>{captain ? "CAPT" : ready ? "READY" : "WAIT"}</em>
+              <em>{slotLabel}</em>
             </PlayerHoverCard>
           );
         })}

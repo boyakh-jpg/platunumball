@@ -7,7 +7,7 @@ import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { MATCH_MODES } from "../lib/constants.js";
-import { getMatchEndDate, getMatchReservePlayerIds } from "../lib/matchUtils.js";
+import { getAgreementStatus, getMatchEndDate, getMatchReservePlayerIds } from "../lib/matchUtils.js";
 import { getRecruitingLobby, getRecruitingSideCapacity, isRecruitingPostForUser } from "../lib/recruiting.js";
 
 const STATUS_META = {
@@ -297,6 +297,17 @@ function getRoomCapacity(match) {
   return Math.max(match.teamA?.players?.length ?? 0, match.teamB?.players?.length ?? 0, 5);
 }
 
+function getAgreementSlotState(match, teams, sideName, playerId) {
+  if (match.status !== "contract") return { ready: true, label: "READY" };
+  const status = getAgreementStatus(match, teams, sideName);
+  const agreed = status.approvals.includes(playerId);
+  const captain = status.captainId === playerId;
+  return {
+    ready: agreed,
+    label: captain ? (agreed ? "주장동의" : "주장대기") : agreed ? "동의완료" : "동의대기",
+  };
+}
+
 function MatchPreviewSide({ match, sideName, teamById, userById, teams }) {
   const side = match[sideName] ?? { players: [] };
   const team = teamById[side.teamId];
@@ -314,12 +325,13 @@ function MatchPreviewSide({ match, sideName, teamById, userById, teams }) {
       <div className="ow-room-slot-row" style={{ "--slot-count": Math.min(5, capacity) }}>
         {players.map((playerId) => {
           const user = userById[playerId];
+          const slotState = getAgreementSlotState(match, teams, sideName, playerId);
           return (
-            <PlayerHoverCard key={`${sideName}-${playerId}`} user={user} teams={teams} className="ow-room-player-slot ready">
+            <PlayerHoverCard key={`${sideName}-${playerId}`} user={user} teams={teams} className={slotState.ready ? "ow-room-player-slot ready" : "ow-room-player-slot"}>
               <span className="avatar" style={{ "--avatar": user?.avatarColor }}>{user?.name?.slice(0, 1) ?? "?"}</span>
               <strong>{user?.name ?? "플레이어"}</strong>
               <small>{user?.position ?? "-"}</small>
-              <em>READY</em>
+              <em>{slotState.label}</em>
             </PlayerHoverCard>
           );
         })}
