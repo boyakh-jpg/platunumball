@@ -23,9 +23,9 @@ const VIEWS = [
     id: "active",
     code: "MY",
     title: "내 일정",
-    desc: "내 동의, 예정, 승인, 보류",
+    desc: "진행, 예정, 지난 경기",
     icon: CalendarDays,
-    statuses: ["contract", "agreed", "approval", "disputed"],
+    statuses: ["contract", "agreed", "approval", "disputed", "confirmed"],
   },
   {
     id: "todo",
@@ -42,14 +42,6 @@ const VIEWS = [
     desc: "진행 예정 경기",
     icon: Swords,
     statuses: ["agreed"],
-  },
-  {
-    id: "history",
-    code: "HISTORY",
-    title: "지난 경기",
-    desc: "1/3/6개월 전적",
-    icon: CheckCircle2,
-    statuses: ["confirmed"],
   },
   {
     id: "closed",
@@ -422,7 +414,7 @@ export default function Matches({ app }) {
         <div className="om-match-copy">
           <span className="om-kicker">MATCH QUEUE</span>
           <h1>내 경기</h1>
-          <p>내가 들어간 경기 일정과 처리할 동의, 승인만 먼저 본다.</p>
+          <p>내가 들어간 진행, 예정, 지난 경기를 날짜별로 본다.</p>
         </div>
         <div className="om-match-panel">
           <div className="om-match-stats">
@@ -689,7 +681,7 @@ export default function Matches({ app }) {
             {MATCH_MODES.map((mode) => <option key={mode.id} value={mode.id}>{mode.label}</option>)}
           </select>
         </label>
-        {selectedView.id === "history" ? (
+        {selectedView.id === "active" ? (
           <label>
             지난 경기
             <select value={historyRangeMonths} onChange={(event) => setHistoryRangeMonths(Number(event.target.value))}>
