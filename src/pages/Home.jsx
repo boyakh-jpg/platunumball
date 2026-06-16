@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { CalendarDays, ClipboardCheck, Handshake, PlusCircle, Search, ShieldAlert, Swords, Trophy } from "lucide-react";
+import { CalendarDays, ClipboardCheck, Handshake, PlusCircle, Search, ShieldAlert, Swords, Trophy, UserPlus } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
@@ -9,7 +9,7 @@ import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { COURTS } from "../lib/constants.js";
-import { RECRUITING_TYPES, isRecruitingPostForUser, isNationalRecruitingPost } from "../lib/recruiting.js";
+import { RECRUITING_TYPES, getPendingRecruitingInvitations, isRecruitingPostForUser, isNationalRecruitingPost } from "../lib/recruiting.js";
 import { getCurrentSeason, getPlayerSeasonRows, getSeasonProgress } from "../lib/season.js";
 import { getTierDivision } from "../lib/tier.js";
 
@@ -88,6 +88,7 @@ export default function Home({ app }) {
     .sort((a, b) => Number(b.myRole === "captain") - Number(a.myRole === "captain") || b.mmr - a.mmr);
   const myTeamIds = useMemo(() => myTeams.map((team) => team.id), [myTeams]);
   const captainTeamIds = useMemo(() => myTeams.filter((team) => team.myRole === "captain").map((team) => team.id), [myTeams]);
+  const pendingInvitations = useMemo(() => getPendingRecruitingInvitations(app.state, user.id), [app.state, user.id]);
   const myTeamCount = app.state.teams.filter((team) => team.members.some((member) => member.userId === user.id)).length;
   const blockedUserIds = app.state.settings?.blockedUserIds ?? [];
   const season = getCurrentSeason(app.state);
@@ -182,6 +183,7 @@ export default function Home({ app }) {
     const roomItems = (app.state.recruitingPosts ?? [])
       .filter((post) => post.status !== "closed")
       .filter((post) => isRecruitingPostForUser(post, user.id, myTeamIds))
+      .filter((post) => !pendingInvitations.some((item) => item.post.id === post.id))
       .map((post) => ({
         id: `queue-${post.id}`,
         priority: 5,
@@ -192,10 +194,20 @@ export default function Home({ app }) {
         icon: Handshake,
       }));
 
-    return [...tournamentInviteItems, ...matchItems, ...roomItems]
+    const invitationItems = pendingInvitations.map(({ post, invitation }) => ({
+      id: `invite-${post.id}-${invitation.id}`,
+      priority: 0,
+      label: "방 초대",
+      title: post.title,
+      meta: `${getRecruitingSchedule(post)} · ${post.court}`,
+      href: "/app/recruiting",
+      icon: UserPlus,
+    }));
+
+    return [...invitationItems, ...tournamentInviteItems, ...matchItems, ...roomItems]
       .sort((a, b) => a.priority - b.priority || String(a.meta).localeCompare(String(b.meta)))
       .slice(0, 5);
-  }, [app.state.matches, app.state.recruitingPosts, app.state.tournaments, captainTeamIds, myTeamIds, teamById, user.id]);
+  }, [app.state.matches, app.state.recruitingPosts, app.state.tournaments, captainTeamIds, myTeamIds, pendingInvitations, teamById, user.id]);
 
   const searchResults = useMemo(() => {
     const players = app.state.users
@@ -315,6 +327,34 @@ export default function Home({ app }) {
                 </Link>
               );
             })}
+          </div>
+        </Card>
+      ) : null}
+
+      {pendingInvitations.length ? (
+        <Card className="section-card home-invitation-card">
+          <div className="section-title-row">
+            <div>
+              <p className="eyebrow">Invitations</p>
+              <h2>받은 초대장</h2>
+            </div>
+            <Badge tone="orange">{pendingInvitations.length}개</Badge>
+          </div>
+          <div className="home-invitation-list">
+            {pendingInvitations.slice(0, 4).map(({ post, invitation }) => (
+              <div key={`${post.id}-${invitation.id}`} className="home-invitation-row">
+                <span className="home-action-icon"><UserPlus size={18} /></span>
+                <span className="home-action-main">
+                  <strong>{post.title}</strong>
+                  <em>{getRecruitingSchedule(post)} · {post.court}</em>
+                </span>
+                <span className="home-invitation-actions">
+                  <Button size="sm" type="button" onClick={() => app.actions.acceptRecruitingInvitation(post.id, invitation.id)}>수락</Button>
+                  <Button size="sm" type="button" variant="secondary" onClick={() => app.actions.declineRecruitingInvitation(post.id, invitation.id)}>거절</Button>
+                  <Link className="button button-secondary button-sm" to="/app/recruiting">방 보기</Link>
+                </span>
+              </div>
+            ))}
           </div>
         </Card>
       ) : null}

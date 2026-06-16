@@ -443,6 +443,12 @@ h3 {
   padding: 0 15px;
 }
 
+.button-sm {
+  min-height: 34px;
+  padding: 0 11px;
+  font-size: 0.78rem;
+}
+
 .button-icon {
   width: 40px;
   padding: 0;
@@ -3357,7 +3363,22 @@ input[type="color"] {
   gap: 8px;
 }
 
+.home-invitation-card {
+  border-color: rgba(70, 224, 182, 0.34);
+}
+
+.home-invitation-list {
+  display: grid;
+  gap: 8px;
+}
+
 .home-action-row {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.home-action-row,
+.home-invitation-row {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
@@ -3366,6 +3387,19 @@ input[type="color"] {
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.045);
   padding: 10px;
+}
+
+.home-invitation-row {
+  border-color: rgba(70, 224, 182, 0.2);
+  background: rgba(70, 224, 182, 0.055);
+}
+
+.home-invitation-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  white-space: nowrap;
 }
 
 .home-action-row.priority-1,
@@ -3694,15 +3728,23 @@ input[type="color"] {
 
   .opgg-search-results a,
   .opgg-rank-list a,
-  .home-action-row {
+  .home-action-row,
+  .home-invitation-row {
     grid-template-columns: auto minmax(0, 1fr);
   }
 
   .opgg-search-results small,
   .opgg-rank-list em,
-  .home-action-row b {
+  .home-action-row b,
+  .home-invitation-actions {
     grid-column: 2;
     justify-self: start;
+  }
+
+  .home-invitation-actions {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    white-space: normal;
   }
 }
 

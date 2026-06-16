@@ -272,12 +272,28 @@ export function hasRecruitingApplicant(post = {}, entry) {
   return normalizeRecruitingApplicants(post.applicants ?? []).some((applicant) => getRecruitingApplicantKey(applicant) === key);
 }
 
+export function getPendingRecruitingInvitations(state = {}, userId) {
+  if (!userId) return [];
+  return (state.recruitingPosts ?? [])
+    .filter((post) => post.status !== "closed")
+    .flatMap((post) => normalizeRecruitingRoomState(post.roomState ?? {}).invitations
+      .filter((invitation) => invitation.targetUserId === userId && invitation.status === "pending")
+      .map((invitation) => ({ post, invitation })));
+}
+
+export function hasPendingRecruitingInvitation(post = {}, userId) {
+  if (!userId || post.status === "closed") return false;
+  return normalizeRecruitingRoomState(post.roomState ?? {}).invitations.some((invitation) => (
+    invitation.targetUserId === userId && invitation.status === "pending"
+  ));
+}
+
 export function isRecruitingPostForUser(post = {}, userId, teamIds = []) {
   if (!userId) return false;
   const teamIdSet = new Set(teamIds.filter(Boolean));
   if (post.playerId === userId) return true;
   if (post.teamId && teamIdSet.has(post.teamId)) return true;
-  if (normalizeRecruitingRoomState(post.roomState ?? {}).invitations.some((invitation) => invitation.targetUserId === userId && invitation.status === "pending")) return true;
+  if (hasPendingRecruitingInvitation(post, userId)) return true;
   return normalizeRecruitingApplicants(post.applicants ?? []).some((applicant) => (
     applicant.playerId === userId || (applicant.teamId && teamIdSet.has(applicant.teamId))
   ));

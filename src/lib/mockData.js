@@ -608,6 +608,7 @@ const baseState = {
     },
   ],
   notifications: [
+    { id: "n-invite-q2-u1", title: "매치방 초대", body: "성수 친선 3v3 팀 구해요 A팀 빈 슬롯 초대장이 도착했습니다.", tone: "match", targetUserId: "u1", recruitingPostId: "q2" },
     { id: "n1", title: "경기 전 동의 대기", body: "토요 5v5 공식전의 경기 전 동의를 기다리고 있습니다.", tone: "match", matchId: "m1" },
     { id: "n2", title: "3연승", body: "민준의 통합 티어가 Platinum에 가까워지고 있어요.", tone: "tier" },
   ],
@@ -668,7 +669,23 @@ const baseState = {
       memo: "티어 상관없이 빠르게 두세 판 뛸 팀 찾습니다.",
       status: "open",
       applicants: [makeDemoApplicant({ kind: "team", teamId: "t2", playerId: "u6", side: "teamB", status: "ready", playerIds: ["u6", "u7", "u8"], createdAt: "2026-06-15T08:55:00.000Z" })],
-      roomState: makeDefaultRoomState([{ id: "chat-q2-1", userId: "u6", body: "Team party can fill the opposite side.", createdAt: "2026-06-15T08:57:00.000Z" }]),
+      roomState: {
+        ...makeDefaultRoomState([{ id: "chat-q2-1", userId: "u6", body: "Team party can fill the opposite side.", createdAt: "2026-06-15T08:57:00.000Z" }]),
+        demoInviteQ2Seeded: true,
+        invitations: [
+          {
+            id: "inv-demo-q2-u1",
+            targetUserId: "u1",
+            fromUserId: "u9",
+            teamId: null,
+            side: "teamA",
+            reserve: false,
+            status: "pending",
+            createdAt: "2026-06-15T09:05:00.000Z",
+            updatedAt: "2026-06-15T09:05:00.000Z",
+          },
+        ],
+      },
       createdAt: "2026-06-15T08:40:00.000Z",
     },
     {

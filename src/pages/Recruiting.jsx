@@ -37,6 +37,7 @@ import {
   getRecruitingTierRange,
   getSelectableTeamPlayerIds,
   hasRecruitingApplicant,
+  hasPendingRecruitingInvitation,
   isRecruitingPostForUser,
   isNationalRecruitingPost,
 } from "../lib/recruiting.js";
@@ -852,7 +853,10 @@ export default function Recruiting({ app }) {
   const scopedPosts = useMemo(() => {
     return [...(app.state.recruitingPosts ?? [])]
       .filter((post) => post.status !== "closed")
-      .filter((post) => scope !== "local" || post.region === app.currentUser.region || isNationalRecruitingPost(post, app.state))
+      .filter((post) => {
+        const invited = hasPendingRecruitingInvitation(post, app.currentUser.id);
+        return invited || scope !== "local" || post.region === app.currentUser.region || isNationalRecruitingPost(post, app.state);
+      })
       .filter((post) => queue === "all" || (queue === "ranked" ? post.ranked !== false : post.ranked === false))
       .filter((post) => modeFilter === "all" || post.mode === modeFilter)
       .filter((post) => roomScope !== "created" || post.playerId === app.currentUser.id)
@@ -1025,7 +1029,8 @@ export default function Recruiting({ app }) {
             || myTeams.some((team) => hasRecruitingApplicant(post, { kind: "team", joinMode: "team", teamId: team.id }));
           const mine = post.playerId === app.currentUser.id;
           const myRoom = isRecruitingPostForUser(post, app.currentUser.id, myTeamIds);
-          const roomTag = mine ? "내가 만든 방" : myRoom ? "내 참여방" : "";
+          const invited = hasPendingRecruitingInvitation(post, app.currentUser.id);
+          const roomTag = invited ? "초대받음" : mine ? "내가 만든 방" : myRoom ? "내 참여방" : "";
 
           return (
             <article
@@ -1036,7 +1041,7 @@ export default function Recruiting({ app }) {
               <div className="ow-card-main">
                 <div className="ow-card-top">
                   <span className="ow-type-tag">ROOM</span>
-                  {roomTag ? <span className="ow-my-room-tag">{roomTag}</span> : null}
+                  {roomTag ? <span className={invited ? "ow-my-room-tag invited" : "ow-my-room-tag"}>{roomTag}</span> : null}
                   <span className={`ow-queue-pill ${post.ranked === false ? "friendly" : "ranked"}`}>{post.ranked === false ? "친선전" : "정규전"}</span>
                   <span className="ow-position-pill">{post.mode}</span>
                   {targetTeam ? <span className="ow-position-pill">희망 상대 <TeamHoverCard team={targetTeam} as="span">{targetTeam.name}</TeamHoverCard></span> : null}

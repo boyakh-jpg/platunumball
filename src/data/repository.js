@@ -345,6 +345,38 @@ function normalizeTournament(tournament = {}) {
   };
 }
 
+function ensureDemoRecruitingInvitation(post = {}) {
+  if (post.id !== "q2" || post.status === "closed") return post;
+  const alreadyApplied = hasRecruitingApplicant(post, { kind: "player", playerId: "u1" });
+  if (alreadyApplied) return post;
+  const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
+  if (roomState.demoInviteQ2Seeded) return { ...post, roomState };
+  const hasInvite = roomState.invitations.some((invitation) => invitation.targetUserId === "u1");
+  if (hasInvite) return { ...post, roomState: { ...roomState, demoInviteQ2Seeded: true } };
+
+  return {
+    ...post,
+    roomState: {
+      ...roomState,
+      demoInviteQ2Seeded: true,
+      invitations: [
+        ...roomState.invitations,
+        {
+          id: "inv-demo-q2-u1",
+          targetUserId: "u1",
+          fromUserId: "u9",
+          teamId: null,
+          side: "teamA",
+          reserve: false,
+          status: "pending",
+          createdAt: "2026-06-15T09:05:00.000Z",
+          updatedAt: "2026-06-15T09:05:00.000Z",
+        },
+      ],
+    },
+  };
+}
+
 function normalizeState(state) {
   const notifications = state?.notifications?.length ? state.notifications : initialState.notifications;
   const deletedTeamIds = new Set(state?.deletedTeamIds ?? []);
@@ -362,7 +394,9 @@ function normalizeState(state) {
     notifications: notifications.map((notification) => ({ readAt: null, ...notification })),
     settings: normalizeSettings(state?.settings ?? initialState.settings),
     reports: state?.reports ?? initialState.reports ?? [],
-    recruitingPosts: normalizeRecruitingSchedules(mergeById(state?.recruitingPosts, initialState.recruitingPosts ?? [])).map(normalizeRecruitingPost),
+    recruitingPosts: normalizeRecruitingSchedules(mergeById(state?.recruitingPosts, initialState.recruitingPosts ?? []))
+      .map(ensureDemoRecruitingInvitation)
+      .map(normalizeRecruitingPost),
   };
 }
 
@@ -2777,6 +2811,14 @@ export function inviteRecruitingPlayers(state, postId, invite = {}) {
       item.id === postId ? { ...item, roomState: { ...roomState, invitations } } : item
     )),
     notifications: [
+      ...targetUserIds.map((targetUserId) => ({
+        id: makeId("n"),
+        title: "매치방 초대",
+        body: `${post.title} ${SIDE_LABEL_TEXT[side]} 빈 슬롯 초대장이 도착했습니다.`,
+        tone: "match",
+        targetUserId,
+        recruitingPostId: postId,
+      })),
       {
         id: makeId("n"),
         title: "초대장 발송",

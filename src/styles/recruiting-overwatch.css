@@ -365,6 +365,11 @@
   white-space: nowrap;
 }
 
+.ow-my-room-tag.invited {
+  background: rgba(255, 211, 108, 0.18);
+  color: var(--gold);
+}
+
 .ow-card-main {
   display: grid;
   min-width: 0;

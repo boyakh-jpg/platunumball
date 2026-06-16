@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import Card from "../components/common/Card.jsx";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
+import { getPendingRecruitingInvitations } from "../lib/recruiting.js";
 
 const toneMap = {
   match: "blue",
@@ -10,7 +11,9 @@ const toneMap = {
 };
 
 export default function Notifications({ app }) {
-  const unreadCount = app.state.notifications.filter((notification) => !notification.readAt).length;
+  const visibleNotifications = app.state.notifications.filter((notification) => !notification.targetUserId || notification.targetUserId === app.currentUser.id);
+  const unreadCount = visibleNotifications.filter((notification) => !notification.readAt).length;
+  const pendingInvitations = getPendingRecruitingInvitations(app.state, app.currentUser.id);
 
   return (
     <div className="page-stack">
@@ -23,6 +26,32 @@ export default function Notifications({ app }) {
           모두 읽음
         </Button>
       </header>
+      {pendingInvitations.length ? (
+        <Card className="section-card notification-invitation-card">
+          <div className="section-title-row">
+            <div>
+              <p className="eyebrow">Invitations</p>
+              <h2>받은 초대장</h2>
+            </div>
+            <Badge tone="orange">{pendingInvitations.length}개</Badge>
+          </div>
+          <div className="home-invitation-list">
+            {pendingInvitations.map(({ post, invitation }) => (
+              <div key={`${post.id}-${invitation.id}`} className="home-invitation-row">
+                <span className="home-action-main">
+                  <strong>{post.title}</strong>
+                  <em>{[post.scheduledDate, post.scheduledTime].filter(Boolean).join(" ") || post.scheduledAt || "일정 미정"} · {post.court}</em>
+                </span>
+                <span className="home-invitation-actions">
+                  <Button size="sm" type="button" onClick={() => app.actions.acceptRecruitingInvitation(post.id, invitation.id)}>수락</Button>
+                  <Button size="sm" type="button" variant="secondary" onClick={() => app.actions.declineRecruitingInvitation(post.id, invitation.id)}>거절</Button>
+                  <Link className="button button-secondary button-sm" to="/app/recruiting">방 보기</Link>
+                </span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      ) : null}
       <Card className="section-card">
         <div className="section-title-row">
           <div>
@@ -32,7 +61,7 @@ export default function Notifications({ app }) {
           <Badge tone={unreadCount ? "orange" : "green"}>{unreadCount ? "확인 필요" : "정리됨"}</Badge>
         </div>
         <div className="compact-list notifications-list">
-          {app.state.notifications.map((notification) => (
+          {visibleNotifications.map((notification) => (
             <div key={notification.id} className={notification.readAt ? "notification-read" : "notification-unread"}>
               <span>
                 <strong>{notification.title}</strong>
@@ -42,6 +71,9 @@ export default function Notifications({ app }) {
                 <Badge tone={toneMap[notification.tone] ?? "neutral"}>{notification.tone}</Badge>
                 {notification.matchId ? (
                   <Link className="button button-secondary button-md" to={`/app/matches/${notification.matchId}`}>경기방</Link>
+                ) : null}
+                {notification.recruitingPostId ? (
+                  <Link className="button button-secondary button-md" to="/app/recruiting">매칭</Link>
                 ) : null}
                 <button type="button" disabled={Boolean(notification.readAt)} onClick={() => app.actions.markNotificationRead(notification.id)}>
                   {notification.readAt ? "읽음" : "읽음 처리"}
