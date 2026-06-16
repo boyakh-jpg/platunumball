@@ -216,7 +216,22 @@
   gap: 8px;
 }
 
+.om-history-range {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr repeat(3, minmax(0, 54px));
+  gap: 6px;
+  align-items: center;
+}
+
+.om-history-range span {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 950;
+}
+
 .om-calendar-actions button,
+.om-history-range button,
 .om-calendar-toolbar button,
 .om-calendar-grid button {
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -233,7 +248,15 @@
   font-weight: 950;
 }
 
+.om-history-range button {
+  min-height: 30px;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  font-weight: 950;
+}
+
 .om-calendar-actions button.active,
+.om-history-range button.active,
 .om-calendar-grid button.active {
   border-color: rgba(118, 169, 255, 0.62);
   background: rgba(118, 169, 255, 0.18);

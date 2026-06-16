@@ -200,7 +200,7 @@ function getMatchActionLabel(match) {
 }
 
 function getViewCount(matches, view, userId) {
-  return matches.filter((match) => shouldShowMatchForView(match, view, userId)).length;
+  return matches.filter((match) => shouldShowMatchInList(match, view, userId, false)).length;
 }
 
 function matchHasUser(match, userId) {
@@ -224,6 +224,12 @@ function userDecisionDone(match, userId) {
 function shouldShowMatchForView(match, view, userId) {
   if (!view.statuses.includes(match.status)) return false;
   if ((view.id === "active" || view.id === "todo") && userDecisionDone(match, userId)) return false;
+  return true;
+}
+
+function shouldShowMatchInList(match, view, userId, hasDateFilter) {
+  if (!shouldShowMatchForView(match, view, userId)) return false;
+  if (view.id === "active" && match.status === "confirmed" && !hasDateFilter) return false;
   return true;
 }
 
@@ -379,9 +385,9 @@ export default function Matches({ app }) {
 
   const matchesByView = useMemo(() => {
     return filteredMatches
-      .filter((match) => shouldShowMatchForView(match, selectedView, app.currentUser.id))
+      .filter((match) => shouldShowMatchInList(match, selectedView, app.currentUser.id, Boolean(dateFilter)))
       .sort(compareSchedule);
-  }, [app.currentUser.id, filteredMatches, selectedView]);
+  }, [app.currentUser.id, dateFilter, filteredMatches, selectedView]);
 
   const visibleRecruitingRooms = useMemo(() => {
     if (viewId !== "active") return [];
@@ -472,6 +478,19 @@ export default function Matches({ app }) {
             >
               오늘
             </button>
+          </div>
+          <div className="om-history-range" aria-label="지난 경기 표시 범위">
+            <span>지난 경기</span>
+            {[1, 3, 6].map((month) => (
+              <button
+                key={month}
+                type="button"
+                className={historyRangeMonths === month ? "active" : ""}
+                onClick={() => setHistoryRangeMonths(month)}
+              >
+                {month}개월
+              </button>
+            ))}
           </div>
         </div>
 
@@ -681,16 +700,6 @@ export default function Matches({ app }) {
             {MATCH_MODES.map((mode) => <option key={mode.id} value={mode.id}>{mode.label}</option>)}
           </select>
         </label>
-        {selectedView.id === "active" ? (
-          <label>
-            지난 경기
-            <select value={historyRangeMonths} onChange={(event) => setHistoryRangeMonths(Number(event.target.value))}>
-              <option value={1}>1개월</option>
-              <option value={3}>3개월</option>
-              <option value={6}>6개월</option>
-            </select>
-          </label>
-        ) : null}
       </section>
 
       {visibleRecruitingRooms.length ? (
