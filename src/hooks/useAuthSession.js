@@ -4,7 +4,6 @@ import { isSupabaseConfigured, supabase } from "../lib/supabase.js";
 const TEST_SESSION_KEY = "rankball.auth.testSession.v1";
 const PROVIDER_LABELS = { naver: "Naver", kakao: "Kakao", google: "Google" };
 const DEMO_LOGIN_ENV = import.meta.env.VITE_DEMO_LOGIN;
-let pendingOAuthExchange = null;
 
 function readTestSession() {
   if (typeof window === "undefined") return null;
@@ -66,6 +65,14 @@ function getOAuthCallbackError() {
     ?? "";
 }
 
+function formatAuthError(message) {
+  if (!message) return "";
+  if (message.startsWith("Unable to exchange external code")) {
+    return "Google OAuth 설정 오류입니다. Google Cloud Console의 Authorized redirect URI와 Supabase Google Provider의 Client ID/Secret을 확인하세요.";
+  }
+  return message;
+}
+
 function hasOAuthCallbackParams() {
   if (typeof window === "undefined") return false;
   const search = new URLSearchParams(window.location.search);
@@ -85,15 +92,6 @@ function cleanOAuthCallbackUrl() {
   ["code", "error", "error_description"].forEach((key) => url.searchParams.delete(key));
   if (window.location.hash) url.hash = "";
   window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
-}
-
-function exchangeOAuthCodeOnce(code) {
-  if (!pendingOAuthExchange && code) {
-    pendingOAuthExchange = supabase.auth.exchangeCodeForSession(code).finally(() => {
-      pendingOAuthExchange = null;
-    });
-  }
-  return pendingOAuthExchange;
 }
 
 export function useAuthSession() {
@@ -117,7 +115,7 @@ export function useAuthSession() {
     if (callbackError) {
       writeTestSession(null);
       cleanOAuthCallbackUrl();
-      setError(callbackError);
+      setError(formatAuthError(callbackError));
       setSession(null);
       setLoading(false);
       return undefined;
@@ -131,7 +129,6 @@ export function useAuthSession() {
     }
 
     writeTestSession(null);
-    if (authCode) cleanOAuthCallbackUrl();
 
     let mounted = true;
     let resolvingInitialSession = true;
@@ -140,21 +137,19 @@ export function useAuthSession() {
       if (!resolvingInitialSession) setLoading(false);
     });
 
-    const loadSession = authCode
-      ? exchangeOAuthCodeOnce(authCode)
-      : pendingOAuthExchange ?? supabase.auth.getSession();
+    const loadSession = supabase.auth.getSession();
 
     loadSession.then(({ data: sessionData, error: sessionError }) => {
       if (!mounted) return;
       resolvingInitialSession = false;
-      if (sessionError) setError(sessionError.message);
+      if (sessionError) setError(formatAuthError(sessionError.message));
       setSession(sessionData.session ?? null);
       if (hasCallback && !authCode) cleanOAuthCallbackUrl();
       setLoading(false);
     }).catch((sessionError) => {
       if (!mounted) return;
       resolvingInitialSession = false;
-      setError(sessionError?.message ?? "OAuth 세션 확인에 실패했습니다.");
+      setError(formatAuthError(sessionError?.message) || "OAuth 세션 확인에 실패했습니다.");
       setSession(null);
       setLoading(false);
     });
@@ -178,7 +173,7 @@ export function useAuthSession() {
           },
         });
         if (authError) {
-          setError(authError.message);
+          setError(formatAuthError(authError.message));
           return null;
         }
         return null;
