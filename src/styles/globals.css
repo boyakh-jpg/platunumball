@@ -6101,14 +6101,195 @@ html[data-theme="light"] .favorite-toggle-button.active.button-secondary {
     min-width: 0;
   }
 
+  .recorder-page {
+    gap: 10px;
+  }
+
+  .recorder-header p {
+    display: none;
+  }
+
+  .recorder-layout,
+  .recorder-workspace,
+  .recorder-board,
+  .recorder-empty {
+    gap: 10px;
+  }
+
+  .recorder-board {
+    padding: 10px;
+  }
+
+  .recorder-board-head {
+    gap: 8px;
+  }
+
+  .recorder-board-head > div:first-child {
+    gap: 4px;
+  }
+
+  .recorder-board-head h2 {
+    font-size: 1rem;
+  }
+
+  .recorder-board-head p,
+  .recorder-live-state span {
+    font-size: 0.7rem;
+  }
+
+  .recorder-live-state {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 8px;
+  }
+
+  .recorder-scoreboard {
+    gap: 7px;
+    padding: 8px;
+  }
+
+  .recorder-scoreboard span {
+    gap: 2px;
+  }
+
+  .recorder-scoreboard strong {
+    font-size: 0.72rem;
+  }
+
+  .recorder-scoreboard em,
+  .recorder-scoreboard b {
+    font-size: 1.55rem;
+  }
+
+  .recorder-sides,
+  .recorder-side,
+  .recorder-player-list {
+    gap: 6px;
+  }
+
+  .recorder-side {
+    padding: 8px;
+  }
+
+  .recorder-side > header {
+    gap: 6px;
+  }
+
+  .recorder-side > header span,
+  .recorder-side > header em {
+    font-size: 0.68rem;
+  }
+
+  .recorder-side > header strong {
+    font-size: 0.86rem;
+  }
+
+  .recorder-player-row {
+    grid-template-columns: minmax(72px, 84px) minmax(0, 1fr);
+    gap: 5px;
+    padding: 5px;
+  }
+
+  .recorder-player-main {
+    gap: 5px;
+  }
+
+  .recorder-player-main .avatar.small {
+    width: 24px;
+    height: 24px;
+    font-size: 0.68rem;
+  }
+
+  .recorder-player-main > span:last-child {
+    gap: 0;
+  }
+
+  .recorder-player-main strong {
+    font-size: 0.74rem;
+  }
+
+  .recorder-player-main em {
+    font-size: 0.6rem;
+  }
+
   .recorder-stat-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 3px;
+  }
+
+  .recorder-stat-stepper {
+    grid-template-areas:
+      "label value"
+      "minus plus";
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 2px;
+    min-width: 0;
+    padding: 3px;
+  }
+
+  .recorder-stat-stepper span {
+    grid-area: label;
+    align-self: center;
+    overflow: hidden;
+    font-size: 0.52rem;
+    text-overflow: clip;
+  }
+
+  .recorder-stat-stepper strong {
+    grid-area: value;
+    align-self: center;
+    font-size: 0.72rem;
+    line-height: 1;
+  }
+
+  .recorder-stat-stepper button {
+    width: 100%;
+    min-width: 0;
+    height: 22px;
+    border-radius: 5px;
+  }
+
+  .recorder-stat-stepper button:first-of-type {
+    grid-area: minus;
+  }
+
+  .recorder-stat-stepper button:last-of-type {
+    grid-area: plus;
+  }
+
+  .recorder-stat-stepper button svg {
+    width: 12px;
+    height: 12px;
   }
 
   .stat-stepper-row {
     grid-template-columns: minmax(0, 1fr) 38px 58px 38px;
     gap: 6px;
     padding: 8px;
+  }
+}
+
+@media (max-width: 430px) {
+  .recorder-player-row {
+    grid-template-columns: minmax(56px, 68px) minmax(0, 1fr);
+  }
+
+  .recorder-player-main .avatar.small,
+  .recorder-player-main em {
+    display: none;
+  }
+
+  .recorder-stat-stepper {
+    padding: 2px;
+  }
+
+  .recorder-stat-stepper span {
+    font-size: 0.5rem;
+  }
+
+  .recorder-stat-stepper button {
+    height: 20px;
   }
 }
 
