@@ -154,7 +154,7 @@ export default function CreateMatch({ app }) {
     attackRule: "득점 후 공격권 교대",
     foulRule: "파울 콜 즉시 중단, 공격권 유지",
     objectionWindow: "24시간",
-    evidence: EVIDENCE_OPTIONS.filter((option) => option.id === "captain"),
+    evidence: [],
     memo: "룰 확정 후 결과 승인.",
     stakes: "다음 경기 우선권.",
     tournamentFormat: "league",
@@ -833,7 +833,7 @@ export default function CreateMatch({ app }) {
           <div className="section-title-row">
             <div>
               <p className="eyebrow">계약 조건</p>
-              <h2>약속/벌칙 메모</h2>
+              <h2>약속과 메모</h2>
             </div>
           </div>
           <EvidenceSelector selected={draft.evidence} onChange={(evidence) => update({ evidence })} />

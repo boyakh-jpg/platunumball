@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import Badge from "../common/Badge.jsx";
 import Card from "../common/Card.jsx";
 import PlayerHoverCard from "../profile/PlayerHoverCard.jsx";
-import { CREDIBILITY_LEVELS } from "../../lib/constants.js";
+import { CREDIBILITY_LEVELS, EVIDENCE_OPTIONS } from "../../lib/constants.js";
 import { getMatchReferee, normalizeStatRecorders } from "../../lib/matchUtils.js";
 import { getCredibilityLevel } from "../../lib/rating.js";
 
@@ -13,6 +13,8 @@ const mmrLimitLabels = {
 };
 
 export default function MatchContract({ match, users, teams = [] }) {
+  const activeEvidenceIds = new Set(EVIDENCE_OPTIONS.map((item) => item.id));
+  const evidenceItems = (match.evidence ?? []).filter((evidence) => activeEvidenceIds.has(evidence.id ?? evidence.type));
   const userMap = Object.fromEntries(users.map((user) => [user.id, user]));
   const credibility = CREDIBILITY_LEVELS[getCredibilityLevel(match)] ?? CREDIBILITY_LEVELS.street_majority;
   const referee = getMatchReferee(match, users);
@@ -129,10 +131,12 @@ export default function MatchContract({ match, users, teams = [] }) {
           <strong>{match.memo}</strong>
         </div>
       </div>
-      <div className="badge-row">
-        {match.preRegistered ? <Badge tone="green">사전등록</Badge> : null}
-        {match.evidence.map((evidence) => <Badge key={evidence.id} tone="blue">{evidence.label}</Badge>)}
-      </div>
+      {(match.preRegistered || evidenceItems.length) ? (
+        <div className="badge-row">
+          {match.preRegistered ? <Badge tone="green">사전등록</Badge> : null}
+          {evidenceItems.map((evidence) => <Badge key={evidence.id ?? evidence.type} tone="blue">{evidence.label}</Badge>)}
+        </div>
+      ) : null}
     </Card>
   );
 }

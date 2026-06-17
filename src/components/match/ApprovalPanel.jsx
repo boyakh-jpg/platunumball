@@ -15,13 +15,12 @@ export default function ApprovalPanel({ match, teams, users, currentUserId, onAp
       <div>
         <div className="approval-side-header">
           <strong>{match[sideName].name}</strong>
-          <span>{status.approvals.length}/{status.majority} · {status.captainRequired ? "주장 필수" : "과반 승인"}</span>
+          <span>{status.approvals.length}/{status.majority} · 과반 승인</span>
         </div>
         <div className="approval-voter-list">
           {match[sideName].players.map((playerId) => {
             const user = userMap[playerId];
             const approved = status.approvals.includes(playerId);
-            const captain = status.captainId === playerId;
             const isCurrentUser = playerId === currentUserId;
             const statSubmitted = getPlayerStatSubmitted(match, playerId);
             const disabled = locked || approved || !isCurrentUser || !approvalReady;
@@ -44,7 +43,7 @@ export default function ApprovalPanel({ match, teams, users, currentUserId, onAp
                         : !pointAudit.matched
                           ? "득점 합계 불일치"
                           : isCurrentUser
-                            ? (captain ? "주장 승인" : "내 승인")
+                            ? "내 승인"
                             : "대리 불가"}
                 </em>
               </button>

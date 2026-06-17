@@ -33,13 +33,7 @@ export const AFFILIATION_TYPES = {
 };
 
 export const EVIDENCE_OPTIONS = [
-  { id: "scoreboard_photo", label: "스코어보드 사진", factor: 0.05 },
-  { id: "team_photo", label: "양팀 단체사진", factor: 0.1 },
-  { id: "short_video", label: "경기 일부 영상", factor: 0.15 },
   { id: "court_reservation", label: "구장 예약내역", factor: 0.2 },
-  { id: "tournament_bracket", label: "대회 대진표", factor: 0.2 },
-  { id: "captain", label: "양팀 주장 확인", factor: 0.07 },
-  { id: "opponent_confirmation", label: "상대팀 확인", factor: 0.07 },
 ];
 
 export const CREDIBILITY_LEVELS = {

@@ -14,8 +14,8 @@ export function getSideMajority(side = {}) {
   return Math.floor(total / 2) + 1;
 }
 
-export function isCaptainApprovalRequired(match = {}) {
-  return match.evidence?.some((item) => (item.id ?? item.type) === "captain") ?? false;
+export function isCaptainApprovalRequired() {
+  return false;
 }
 
 export function getTeamCaptainId(teams = [], teamId) {

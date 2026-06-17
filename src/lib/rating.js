@@ -18,6 +18,8 @@ const integratedWeightMap = MATCH_MODES.reduce((map, mode) => {
   return map;
 }, {});
 
+const activeEvidenceIds = new Set(EVIDENCE_OPTIONS.map((item) => item.id));
+
 const modeCapMap = MATCH_MODES.reduce((map, mode) => {
   map[mode.id] = { mode: mode.modeCap, integrated: mode.integratedCap, officialMode: mode.officialModeCap, officialIntegrated: mode.officialIntegratedCap };
   return map;
@@ -43,7 +45,7 @@ export function getModeWeight(mode = "5v5") {
 
 export function getCredibilityLevel(match = {}) {
   if (match.ranked === false) return "self_record";
-  const hasEvidence = match.evidence?.some((item) => !["captain", "opponent_confirmation"].includes(item.id ?? item.type));
+  const hasEvidence = match.evidence?.some((item) => activeEvidenceIds.has(item.id ?? item.type));
   if (match.official && hasEvidence) return "official_with_evidence";
   if (match.official) return "official";
   if (hasEvidence) return "evidence_verified";

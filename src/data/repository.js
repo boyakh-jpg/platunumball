@@ -1434,10 +1434,7 @@ function makeTournamentMatch(tournament, teamA, teamB, pairing, now) {
     stakes: "대회 경기 MMR 가중치가 적용됩니다.",
     mmrLimitMode: tournament.mmrLimitMode ?? "warn",
     objectionWindow: "2시간",
-    evidence: [
-      { id: "captain", label: "양팀 주장 확인" },
-      { id: "tournament_bracket", label: "대회 대진표" },
-    ],
+    evidence: [],
     teamA: { name: teamA.name, teamId: teamA.id, players: teamAPlayers, score: 0 },
     teamB: { name: teamB.name, teamId: teamB.id, players: teamBPlayers, score: 0 },
     agreements: { teamA: teamAPlayers, teamB: teamBPlayers },
@@ -4414,7 +4411,7 @@ export function confirmRecruitingMatch(state, postId) {
     mmrRangeMode,
     ratingScale,
     objectionWindow: "2시간",
-    evidence: [{ id: "captain", label: "양측 주장 확인" }],
+    evidence: [],
     teamA: {
       name: getLobbySideName(lobby, "teamA"),
       teamId: getLobbyPrimaryTeamId(lobby, "teamA"),

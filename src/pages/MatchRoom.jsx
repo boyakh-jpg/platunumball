@@ -12,7 +12,7 @@ import MmrChange from "../components/rating/MmrChange.jsx";
 import ShareCard from "../components/share/ShareCard.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
-import { PLAYER_STAT_FIELDS } from "../lib/constants.js";
+import { EVIDENCE_OPTIONS, PLAYER_STAT_FIELDS } from "../lib/constants.js";
 import {
   formatStatLine,
   getAllowedStatFields,
@@ -144,6 +144,8 @@ export default function MatchRoom({ app }) {
   const canSubmitResult = ["agreed", "approval"].includes(match.status) && recordWindow.statOpen && currentUserCanSubmit;
   const statSubmissionStatus = getStatSubmissionStatus(match);
   const resultPointAudit = getResultPointAudit(match);
+  const activeEvidenceIds = new Set(EVIDENCE_OPTIONS.map((item) => item.id));
+  const activeEvidenceCount = (match.evidence ?? []).filter((evidence) => activeEvidenceIds.has(evidence.id ?? evidence.type)).length;
   const approvalAccessReady = Boolean(match.result) && statSubmissionStatus.complete && resultPointAudit.matched;
   const currentUserSubmitted = getPlayerStatSubmitted(match, app.currentUser.id);
   const currentUserAgreementDone = currentUserSideName ? (match.agreements?.[currentUserSideName] ?? []).includes(app.currentUser.id) : false;
@@ -386,8 +388,8 @@ export default function MatchRoom({ app }) {
     {
       id: "evidence",
       label: "증거",
-      detail: `${match.evidence?.length ?? 0}개 첨부`,
-      complete: (match.evidence?.length ?? 0) > 0,
+      detail: `${activeEvidenceCount}개 첨부`,
+      complete: activeEvidenceCount > 0,
     },
   ];
   const statTrustPercent = Math.round((statTrustSteps.filter((step) => step.complete).length / statTrustSteps.length) * 100);
@@ -743,8 +745,8 @@ export default function MatchRoom({ app }) {
                 <strong>{teamBApproval.approvals.length}/{teamBApproval.majority}</strong>
               </div>
               <div>
-                <span>주장 확인 조건</span>
-                <strong>{teamAApproval.captainRequired ? "필수" : "선택"}</strong>
+                <span>승인 기준</span>
+                <strong>과반</strong>
               </div>
               <div>
                 <span>현재 상태</span>

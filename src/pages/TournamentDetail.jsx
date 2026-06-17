@@ -362,7 +362,7 @@ export default function TournamentDetail({ app }) {
         <div>
           <span>팀 승인</span>
           <strong>{acceptedCount}/{teamRows.length}</strong>
-          <em>모든 주장 승인 후 시작</em>
+          <em>모든 팀 승인 후 시작</em>
         </div>
         <div>
           <span>생성 경기</span>
