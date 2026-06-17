@@ -4052,7 +4052,6 @@ export function setRecruitingPartyPlayerPlacement(state, postId, entryId, player
   const lobby = getRecruitingLobby(post, state);
   const entry = (lobby.entries ?? []).find((item) => item.id === entryId);
   if (!entry?.team || !entry.team.members?.some((member) => member.userId === playerId)) return state;
-  if (entry.fixed && playerId === post.playerId) return state;
 
   const side = ["teamA", "teamB"].includes(placement.side) ? placement.side : entry.side;
   const reserve = Boolean(placement.reserve);
