@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { CalendarDays, ClipboardCheck, Handshake, PlusCircle, Search, ShieldAlert, Swords, Trophy, UserPlus } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
@@ -9,7 +9,7 @@ import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { COURTS } from "../lib/constants.js";
-import { getAllowedStatFields, getMatchRecordWindow, getPlayerStatSubmitted } from "../lib/matchUtils.js";
+import { getAllowedStatFields, getMatchRecordWindow, getPlayerSideName, getPlayerStatSubmitted } from "../lib/matchUtils.js";
 import { RECRUITING_TYPES, getPendingRecruitingInvitations, isNationalRecruitingPost, isRecruitingPostForUser } from "../lib/recruiting.js";
 import { getCurrentSeason, getPlayerSeasonRows, getSeasonProgress } from "../lib/season.js";
 import { getTierDivision } from "../lib/tier.js";
@@ -19,7 +19,7 @@ function compareSchedule(a, b) {
 }
 
 function matchHasUser(match, userId) {
-  return match.teamA.players.includes(userId) || match.teamB.players.includes(userId);
+  return Boolean(getPlayerSideName(match, userId));
 }
 
 function getUserResult(match, userId) {
@@ -32,23 +32,21 @@ function getUserResult(match, userId) {
 }
 
 function getUserSide(match, userId) {
-  if (match.teamA.players.includes(userId)) return "teamA";
-  if (match.teamB.players.includes(userId)) return "teamB";
-  return "teamA";
+  return getPlayerSideName(match, userId);
 }
 
 function userNeedsAgreement(match, userId) {
   const sideName = getUserSide(match, userId);
-  return match.status === "contract" && matchHasUser(match, userId) && !(match.agreements?.[sideName] ?? []).includes(userId);
+  return Boolean(sideName && match.status === "contract" && !(match.agreements?.[sideName] ?? []).includes(userId));
 }
 
 function userNeedsApproval(match, userId) {
   const sideName = getUserSide(match, userId);
-  return match.status === "approval" && matchHasUser(match, userId) && !(match.approvals?.[sideName] ?? []).includes(userId);
+  return Boolean(sideName && ["approval", "disputed"].includes(match.status) && !(match.approvals?.[sideName] ?? []).includes(userId));
 }
 
 function userNeedsResultInput(match, userId) {
-  if (!["agreed", "approval"].includes(match.status) || !matchHasUser(match, userId)) return false;
+  if (!["agreed", "approval", "disputed"].includes(match.status) || !matchHasUser(match, userId)) return false;
   if (getPlayerStatSubmitted(match, userId)) return false;
   const recordWindow = getMatchRecordWindow(match);
   if (!recordWindow.statOpen) return false;
@@ -78,11 +76,10 @@ function getUserMatchLine(match, userId) {
 }
 
 export default function Home({ app }) {
-  const navigate = useNavigate();
   const user = app.currentUser;
   const [query, setQuery] = useState("");
   const searchText = query.trim().toLowerCase();
-  const approvalMatches = [...app.state.matches].filter((match) => match.status === "approval" && matchHasUser(match, user.id));
+  const approvalMatches = [...app.state.matches].filter((match) => userNeedsApproval(match, user.id));
   const upcomingMatches = [...app.state.matches].filter((match) => ["contract", "agreed"].includes(match.status) && matchHasUser(match, user.id)).sort(compareSchedule);
   const completedMatches = [...app.state.matches].filter((match) => match.status === "confirmed");
   const myTeam = app.state.teams.find((team) => team.members.some((member) => member.userId === user.id));
@@ -94,10 +91,6 @@ export default function Home({ app }) {
   const captainTeamIds = useMemo(() => myTeams.filter((team) => team.myRole === "captain").map((team) => team.id), [myTeams]);
   const myTeamIds = useMemo(() => myTeams.map((team) => team.id), [myTeams]);
   const pendingInvitations = useMemo(() => getPendingRecruitingInvitations(app.state, user.id), [app.state, user.id]);
-  const acceptInvitation = (postId, invitationId) => {
-    app.actions.acceptRecruitingInvitation(postId, invitationId);
-    navigate(`/app/recruiting?post=${postId}`);
-  };
   const myTeamCount = app.state.teams.filter((team) => team.members.some((member) => member.userId === user.id)).length;
   const blockedUserIds = app.state.settings?.blockedUserIds ?? [];
   const season = getCurrentSeason(app.state);
@@ -124,7 +117,7 @@ export default function Home({ app }) {
   const myCompletedMatches = completedMatches.filter((match) => matchHasUser(match, user.id));
   const myWins = myCompletedMatches.filter((match) => getUserResult(match, user.id) === "W").length;
   const winRate = myCompletedMatches.length ? Math.round((myWins / myCompletedMatches.length) * 100) : 0;
-  const priorityItems = useMemo(() => {
+  const actionItems = useMemo(() => {
     const tournamentInviteItems = (app.state.tournaments ?? [])
       .filter((tournament) => tournament.status === "draft")
       .flatMap((tournament) => captainTeamIds
@@ -168,7 +161,7 @@ export default function Home({ app }) {
           return {
             id: `approval-${match.id}`,
             priority: 4,
-            label: "결과 승인",
+            label: match.status === "disputed" ? "이의 확인" : "결과 승인",
             title: match.title,
             meta: `${match.scheduledAt} · ${match.court}`,
             href: `/app/matches?match=${match.id}`,
@@ -204,9 +197,9 @@ export default function Home({ app }) {
       }));
 
     return [...invitationItems, ...tournamentInviteItems, ...matchItems, ...cancelledRoomItems]
-      .sort((a, b) => a.priority - b.priority || String(a.meta).localeCompare(String(b.meta)))
-      .slice(0, 5);
+      .sort((a, b) => a.priority - b.priority || String(a.meta).localeCompare(String(b.meta)));
   }, [app.state.matches, app.state.recruitingPosts, app.state.tournaments, captainTeamIds, myTeamIds, pendingInvitations, teamById, user.id]);
+  const priorityItems = actionItems.slice(0, 5);
 
   const searchResults = useMemo(() => {
     if (!searchText) return [];
@@ -307,14 +300,14 @@ export default function Home({ app }) {
         ) : null}
       </Card>
 
-      {priorityItems.length ? (
+      {actionItems.length ? (
         <Card className="section-card home-action-card">
           <div className="section-title-row">
             <div>
               <p className="eyebrow">Action Queue</p>
               <h2>내가 처리할 방</h2>
             </div>
-            <Badge tone="orange">{priorityItems.length}개</Badge>
+            <Badge tone="orange">{actionItems.length}개</Badge>
           </div>
           <div className="home-action-list">
             {priorityItems.map((item) => {
@@ -330,34 +323,16 @@ export default function Home({ app }) {
                 </Link>
               );
             })}
-          </div>
-        </Card>
-      ) : null}
-
-      {pendingInvitations.length ? (
-        <Card className="section-card home-invitation-card">
-          <div className="section-title-row">
-            <div>
-              <p className="eyebrow">Invitations</p>
-              <h2>받은 초대장</h2>
-            </div>
-            <Badge tone="orange">{pendingInvitations.length}개</Badge>
-          </div>
-          <div className="home-invitation-list">
-            {pendingInvitations.slice(0, 4).map(({ post, invitation }) => (
-              <div key={`${post.id}-${invitation.id}`} className="home-invitation-row">
-                <span className="home-action-icon"><UserPlus size={18} /></span>
+            {actionItems.length > priorityItems.length ? (
+              <Link to={actionItems[priorityItems.length]?.href ?? "/app/matches"} className="home-action-row priority-5">
+                <span className="home-action-icon"><ClipboardCheck size={18} /></span>
                 <span className="home-action-main">
-                  <strong>{post.title}</strong>
-                  <em>{getRecruitingSchedule(post)} · {post.court}</em>
+                  <strong>더 처리할 항목 있음</strong>
+                  <em>{actionItems.length - priorityItems.length}개 더 있음</em>
                 </span>
-                <span className="home-invitation-actions">
-                  <Button size="sm" type="button" onClick={() => acceptInvitation(post.id, invitation.id)}>수락</Button>
-                  <Button size="sm" type="button" variant="secondary" onClick={() => app.actions.declineRecruitingInvitation(post.id, invitation.id)}>거절</Button>
-                  <Link className="button button-secondary button-sm" to={`/app/recruiting?filter=invited&post=${post.id}`}>방 보기</Link>
-                </span>
-              </div>
-            ))}
+                <b>더보기</b>
+              </Link>
+            ) : null}
           </div>
         </Card>
       ) : null}
