@@ -72,6 +72,10 @@ const tournamentStatusLabels = {
   closed: "종료",
   cancelled: "취소",
 };
+const SIDE_LABELS = {
+  teamA: "A팀",
+  teamB: "B팀",
+};
 
 function toDateInputValue(date = new Date()) {
   const year = date.getFullYear();
@@ -378,6 +382,172 @@ function MatchPreviewReserveLine({ match, sideName, userById, teams }) {
   );
 }
 
+function RecruitingPreviewSide({ side, sideName, userById, teams }) {
+  const capacity = side.capacity;
+  const players = side.projectedPlayers.slice(0, capacity);
+  const emptyCount = Math.max(0, capacity - players.length);
+
+  return (
+    <div className={`ow-lobby-team-panel ${sideName === "teamA" ? "team-a" : "team-b"}`}>
+      <div className="ow-lobby-team-head">
+        <span>{sideName === "teamA" ? "HOME TEAM" : "OPPONENT"}</span>
+        <strong>{SIDE_LABELS[sideName]}</strong>
+        <em>{side.projectedFilled}/{side.capacity}</em>
+      </div>
+      <div className="ow-room-slot-row" style={{ "--slot-count": Math.min(5, capacity) }}>
+        {players.map((playerId) => {
+          const user = userById[playerId];
+          const activeEntry = side.entries.find((entry) => entry.players?.includes(playerId));
+          const fillCandidate = side.fillSlots.find((candidate) => candidate.playerId === playerId);
+          const ready = (activeEntry?.status ?? fillCandidate?.status) === "ready";
+          return (
+            <PlayerHoverCard key={`${sideName}-${playerId}`} user={user} teams={teams} className={ready ? "ow-room-player-slot ready" : "ow-room-player-slot"}>
+              <span className="avatar" style={{ "--avatar": user?.avatarColor }}>{user?.name?.slice(0, 1) ?? "?"}</span>
+              <strong>{user?.name ?? "플레이어"}</strong>
+              <small>{user?.position ?? "-"}</small>
+              <b>{activeEntry?.team?.name ?? fillCandidate?.sourceLabel ?? "개인 참여"}</b>
+              <em>{ready ? "READY" : "WAIT"}</em>
+            </PlayerHoverCard>
+          );
+        })}
+        {Array.from({ length: emptyCount }).map((_item, index) => (
+          <div key={`${sideName}-empty-${index}`} className="ow-room-player-slot empty">
+            <UsersRound size={18} />
+            <strong>빈 슬롯</strong>
+            <em>OPEN</em>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RecruitingPreviewReserveLine({ side, sideName, userById, teams }) {
+  const reserves = side.reserveCandidates.slice(0, 2);
+  const emptyCount = Math.max(0, 2 - reserves.length);
+
+  return (
+    <div className="ow-reserve-line">
+      <strong>{SIDE_LABELS[sideName]} 후보 {reserves.length}/2</strong>
+      <div className="ow-room-reserve-row" style={{ "--slot-count": 2 }}>
+        {reserves.map((candidate) => {
+          const user = userById[candidate.playerId];
+          return (
+            <PlayerHoverCard key={`${sideName}-reserve-${candidate.playerId}`} user={user} teams={teams} className="ow-room-player-slot ready">
+              <span className="avatar" style={{ "--avatar": user?.avatarColor }}>{user?.name?.slice(0, 1) ?? "?"}</span>
+              <strong>{user?.name ?? "플레이어"}</strong>
+              <small>{user?.position ?? "-"}</small>
+              <em>SUB</em>
+            </PlayerHoverCard>
+          );
+        })}
+        {Array.from({ length: emptyCount }).map((_item, index) => (
+          <div key={`${sideName}-reserve-empty-${index}`} className="ow-room-player-slot empty">
+            <UsersRound size={18} />
+            <strong>후보 슬롯</strong>
+            <em>SUB</em>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RecruitingPreviewModal({ app, post, lobby, myEntry, userById, teams, onClose, onOpenMatch }) {
+  const capacity = getRecruitingSideCapacity(post);
+  const roomTitle = post.ranked === false ? "친선전" : "정규전";
+  const needConfirm = myEntry && myEntry.status !== "ready";
+  const canHostConfirm = post.playerId === app.currentUser.id && lobby.canConfirm;
+  const filledA = lobby.sides.teamA.projectedFilled;
+  const filledB = lobby.sides.teamB.projectedFilled;
+  const nextAction = needConfirm
+    ? { label: "CONFIRM 필요", detail: "참여 확정을 눌러야 내 일정이 유지됩니다.", action: "ready", button: "CONFIRM" }
+    : canHostConfirm
+      ? { label: "매칭 확정 가능", detail: "방장이 확정하면 경기로 전환됩니다.", action: "confirm", button: "매칭 확정" }
+      : lobby.canConfirm
+        ? { label: "방장 확정 대기", detail: "인원이 찼고 모든 참여자가 준비됐습니다." }
+        : { label: "충원 중", detail: "빈 슬롯이 채워질 때까지 공개방으로 유지됩니다." };
+  const runAction = () => {
+    if (nextAction.action === "ready") app.actions.setRecruitingReady(post.id, true);
+    if (nextAction.action === "confirm") {
+      const matchId = app.actions.confirmRecruitingMatch(post.id);
+      onClose();
+      if (matchId) onOpenMatch(matchId);
+    }
+  };
+
+  return (
+    <div className="ow-compose-backdrop" role="presentation" onMouseDown={onClose}>
+      <aside className="ow-lobby-modal" role="dialog" aria-modal="true" aria-label="공개방" onMouseDown={(event) => event.stopPropagation()}>
+        <div className="ow-lobby-arena">
+          <div className="ow-lobby-topline">
+            <div className="badge-row">
+              <Badge tone={post.ranked === false ? "neutral" : "gold"}>{roomTitle}</Badge>
+              <Badge tone={lobby.canConfirm ? "green" : "blue"}>{lobby.canConfirm ? "CONFIRM" : "WAIT"}</Badge>
+              <Badge tone="green">공개방</Badge>
+            </div>
+            <div>
+              <span>{post.mode}</span>
+              <button type="button" className="ow-icon-button" aria-label="닫기" onClick={onClose}><X size={20} /></button>
+            </div>
+          </div>
+
+          <div className="ow-lobby-title">
+            <span>PUBLIC ROOM</span>
+            <h2>{roomTitle}</h2>
+            <p><MapPin size={16} />{post.court} · {formatMatchTime(post)}</p>
+          </div>
+
+          <div className="ow-lobby-versus-stage">
+            <RecruitingPreviewSide side={lobby.sides.teamA} sideName="teamA" userById={userById} teams={teams} />
+            <div className="ow-lobby-score-core">
+              <strong>{filledA}/{capacity}</strong>
+              <i>VS</i>
+              <strong>{filledB}/{capacity}</strong>
+              <span>{lobby.canConfirm ? "READY" : "WAIT"}</span>
+            </div>
+            <RecruitingPreviewSide side={lobby.sides.teamB} sideName="teamB" userById={userById} teams={teams} />
+          </div>
+
+          <div className="ow-reserve-panel">
+            <RecruitingPreviewReserveLine side={lobby.sides.teamA} sideName="teamA" userById={userById} teams={teams} />
+            <RecruitingPreviewReserveLine side={lobby.sides.teamB} sideName="teamB" userById={userById} teams={teams} />
+          </div>
+
+          <div className="om-room-modal-panel">
+            <div>
+              <span>NEXT</span>
+              <strong>{nextAction.label}</strong>
+              <em>{nextAction.detail}</em>
+            </div>
+            {nextAction.action ? (
+              <Button type="button" onClick={runAction}>{nextAction.button}</Button>
+            ) : null}
+          </div>
+
+          <div className="om-room-modal-rule-grid">
+            <span><em>방식</em><strong>{capacity} vs {capacity}</strong></span>
+            <span><em>룰</em><strong>{post.rules?.targetScore ?? 21}점 · {post.rules?.timeLimit ?? 12}분</strong></span>
+            <span><em>MMR</em><strong>{post.ranked === false ? "티어 자유" : "MMR 반영"}</strong></span>
+            <span><em>장소</em><strong>{post.court}</strong></span>
+          </div>
+
+          <div className="ow-lobby-actions">
+            <div><CalendarDays size={17} /><span>{post.scheduledDate ?? ""} {post.scheduledTime ?? ""}</span></div>
+            <div><UsersRound size={17} /><span>{capacity} vs {capacity}</span></div>
+            <div><ShieldCheck size={17} /><span>{post.ranked === false ? "티어 자유" : "MMR 반영"}</span></div>
+            <div><Trophy size={17} /><span>{post.rules?.ball ?? "7호 공"}</span></div>
+          </div>
+        </div>
+
+        <div className="om-room-modal-actions">
+          <button type="button" className="button button-secondary button-md" onClick={onClose}>닫기</button>
+        </div>
+      </aside>
+    </div>
+  );
+}
+
 function getMatchModalAction(match, userId) {
   const sideName = getUserSideName(match, userId);
   if (!sideName) {
@@ -519,6 +689,7 @@ export default function Matches({ app }) {
   const [tournamentPanelOpen, setTournamentPanelOpen] = useState(true);
   const [selectedTournamentId, setSelectedTournamentId] = useState(null);
   const [selectedMatchId, setSelectedMatchId] = useState(null);
+  const [selectedRecruitingPostId, setSelectedRecruitingPostId] = useState(null);
   const queryMatchId = searchParams.get("match");
   const todayValue = toDateInputValue();
   const maxScheduleDate = addDays(todayValue, 365);
@@ -543,8 +714,16 @@ export default function Matches({ app }) {
     () => activeTournaments.find((tournament) => tournament.id === selectedTournamentId) ?? null,
     [activeTournaments, selectedTournamentId],
   );
+  const selectedRecruitingPost = useMemo(
+    () => (app.state.recruitingPosts ?? []).find((post) => post.id === selectedRecruitingPostId && post.status === "open") ?? null,
+    [app.state.recruitingPosts, selectedRecruitingPostId],
+  );
+  const selectedRecruitingLobby = selectedRecruitingPost ? getRecruitingLobby(selectedRecruitingPost, app.state) : null;
+  const selectedRecruitingEntry = selectedRecruitingLobby
+    ? getRecruitingEntryForUser(selectedRecruitingLobby, app.currentUser.id, myTeamIds)
+    : null;
   const selectedMatch = (selectedMatchId ? matchesById[selectedMatchId] : null) ?? (queryMatchId ? matchesById[queryMatchId] : null) ?? null;
-  useBodyScrollLock(Boolean(selectedTournament || selectedMatch));
+  useBodyScrollLock(Boolean(selectedTournament || selectedMatch || selectedRecruitingPost));
   const closeSelectedMatch = () => {
     setSelectedMatchId(null);
     if (!queryMatchId) return;
@@ -934,6 +1113,19 @@ export default function Matches({ app }) {
         />
       ) : null}
 
+      {selectedRecruitingPost && selectedRecruitingLobby ? (
+        <RecruitingPreviewModal
+          app={app}
+          post={selectedRecruitingPost}
+          lobby={selectedRecruitingLobby}
+          myEntry={selectedRecruitingEntry}
+          userById={userById}
+          teams={app.state.teams}
+          onClose={() => setSelectedRecruitingPostId(null)}
+          onOpenMatch={(matchId) => setSelectedMatchId(matchId)}
+        />
+      ) : null}
+
       <section className="om-filter-bar" aria-label="경기 필터">
         <div className="segmented-control compact-segments">
           <button type="button" className={kindFilter === "all" ? "active" : ""} onClick={() => setKindFilter("all")}>전체</button>
@@ -984,9 +1176,9 @@ export default function Matches({ app }) {
                   <span>B {lobby.sides.teamB.projectedFilled}/{lobby.sides.teamB.capacity}</span>
                   <span>{lobby.canConfirm ? "CONFIRM" : "WAIT"}</span>
                 </div>
-                <Link className="button button-secondary button-md om-room-link" to={`/app/recruiting?post=${post.id}`}>
+                <button type="button" className="button button-secondary button-md om-room-link" onClick={() => setSelectedRecruitingPostId(post.id)}>
                   {needConfirm ? "CONFIRM" : "방 보기"}
-                </Link>
+                </button>
               </article>
             );
           }
