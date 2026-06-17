@@ -749,13 +749,14 @@ function ReserveLine({ sideName, candidates, playingIds, lobby, userById, teams,
           const assigned = recorderId === candidate.playerId;
           const readyText = canRecord ? (assigned ? "자동 기록자" : "기록 후보") : "후보";
           return (
-            <FillSlot
+            <PlayerRoomSlot
               key={`${sideName}-${candidate.playerId}`}
-              candidate={candidate}
-              lobby={lobby}
-              userById={userById}
+              user={user}
               teams={teams}
-              readyText={readyText}
+              status={candidate.status}
+              title={readyText}
+              detail={candidate.sourceLabel}
+              mmr={user.ratings?.integrated ?? 1200}
             />
           );
         })}
