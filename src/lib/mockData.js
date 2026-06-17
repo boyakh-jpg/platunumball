@@ -607,7 +607,7 @@ const baseState = {
     },
   ],
   notifications: [
-    { id: "n-invite-q2-u1", title: "매치방 초대", body: "성수 친선 3v3 팀 구해요 A팀 빈 슬롯 초대장이 도착했습니다.", tone: "match", targetUserId: "u1", recruitingPostId: "q2" },
+    { id: "n-invite-q2-u1", title: "매치방 초대", body: "성수 친선 3v3 팀 구해요 A사이드 빈 슬롯 초대장이 도착했습니다.", tone: "match", targetUserId: "u1", recruitingPostId: "q2" },
     { id: "n1", title: "경기 전 동의 대기", body: "토요 5v5 공식전의 경기 전 동의를 기다리고 있습니다.", tone: "match", matchId: "m1" },
     { id: "n2", title: "3연승", body: "민준의 통합 티어가 Platinum에 가까워지고 있어요.", tone: "tier" },
   ],

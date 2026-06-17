@@ -20,8 +20,8 @@ import {
 } from "../lib/matchUtils.js";
 
 const sideLabels = {
-  teamA: "A팀",
-  teamB: "B팀",
+  teamA: "A사이드",
+  teamB: "B사이드",
 };
 
 const statusMeta = {

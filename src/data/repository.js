@@ -72,7 +72,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const SCHEDULE_MAX_DAYS = 365;
 const LIFECYCLE_TITLE_PATTERN = /^(동의 대기|진행 예정|결과 승인|이의 확인|이의제기|확정|결과 입력)\s*·\s*/;
 const POST_MATCH_TITLE_PATTERN = /^(결과 승인|이의 확인|이의제기|확정|결과 입력)\s*·\s*/;
-const SIDE_LABEL_TEXT = { teamA: "A팀", teamB: "B팀" };
+const SIDE_LABEL_TEXT = { teamA: "A사이드", teamB: "B사이드" };
 let normalizedSaveWarningShown = false;
 
 function clampTrustScore(value) {
@@ -1298,7 +1298,7 @@ function getRecruitingReserveLimitNotification(postId, sideName) {
   return {
     id: makeId("n"),
     title: "후보 슬롯 초과",
-    body: `${SIDE_LABEL_TEXT[sideName] ?? "해당 팀"} 후보는 최대 ${MAX_RECRUITING_RESERVES_PER_SIDE}명까지 가능합니다.`,
+    body: `${SIDE_LABEL_TEXT[sideName] ?? "해당 사이드"} 후보는 최대 ${MAX_RECRUITING_RESERVES_PER_SIDE}명까지 가능합니다.`,
     tone: "orange",
     recruitingPostId: postId,
   };
@@ -3165,7 +3165,7 @@ function getLobbySideName(lobby, sideName) {
   const names = lobby.sides[sideName].entries
     .map((entry) => entry.team?.name ?? entry.user?.name)
     .filter(Boolean);
-  if (!names.length) return sideName === "teamA" ? "A팀" : "B팀";
+  if (!names.length) return sideName === "teamA" ? "A사이드" : "B사이드";
   return names.slice(0, 3).join(" + ");
 }
 

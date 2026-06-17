@@ -410,7 +410,7 @@ export default function CreateMatch({ app }) {
               <Lock size={19} />
               <span>
                 <strong>비공개 경기방</strong>
-                <em>선택한 A팀/B팀으로 바로 경기 계약서를 만든다.</em>
+                <em>선택한 A사이드/B사이드로 바로 경기 계약서를 만든다.</em>
               </span>
             </button>
             <button
@@ -599,7 +599,7 @@ export default function CreateMatch({ app }) {
               <div>
                 <span>정규전 허용 구간</span>
                 <strong>{teamTierRange.label}</strong>
-                <em>{teamTierWarned ? "경고만 표시" : `${selectedTeamA?.name ?? "A팀"} 기준`}</em>
+                <em>{teamTierWarned ? "경고만 표시" : `${selectedTeamA?.name ?? "A사이드"} 기준`}</em>
               </div>
               <Badge tone={teamTierBlocked || teamTierWarned ? "orange" : "green"}>{teamTierBlocked ? "차단" : teamTierWarned ? "경고" : "허용"}</Badge>
             </div>
@@ -771,7 +771,7 @@ export default function CreateMatch({ app }) {
                   onClick={() => app.actions.toggleFavoriteTeam(selectedTeamA.id)}
                 >
                   <Star size={16} fill={isFavoriteTeam(selectedTeamA) ? "currentColor" : "none"} />
-                  A팀 {isFavoriteTeam(selectedTeamA) ? "즐겨찾기 해제" : "즐겨찾기 추가"}
+                  A사이드 {isFavoriteTeam(selectedTeamA) ? "즐겨찾기 해제" : "즐겨찾기 추가"}
                 </Button>
               ) : null}
               {selectedTeamB ? (
@@ -782,7 +782,7 @@ export default function CreateMatch({ app }) {
                   onClick={() => app.actions.toggleFavoriteTeam(selectedTeamB.id)}
                 >
                   <Star size={16} fill={isFavoriteTeam(selectedTeamB) ? "currentColor" : "none"} />
-                  B팀 {isFavoriteTeam(selectedTeamB) ? "즐겨찾기 해제" : "즐겨찾기 추가"}
+                  B사이드 {isFavoriteTeam(selectedTeamB) ? "즐겨찾기 해제" : "즐겨찾기 추가"}
                 </Button>
               ) : null}
             </div>

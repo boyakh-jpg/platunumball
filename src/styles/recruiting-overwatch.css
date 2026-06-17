@@ -1315,22 +1315,23 @@
 .ow-room-player-slot-wrap.party-linked::before {
   content: "";
   position: absolute;
-  inset: -4px;
+  inset: -5px;
   z-index: 0;
-  border: 1px solid rgba(70, 224, 182, 0.28);
-  border-radius: 11px;
-  background: rgba(70, 224, 182, 0.045);
+  border: 1px solid rgba(70, 224, 182, 0.38);
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, rgba(70, 224, 182, 0.09), rgba(70, 224, 182, 0.035));
   pointer-events: none;
 }
 
 .ow-room-player-slot-wrap.party-linked::after {
   content: "";
   position: absolute;
-  top: 30px;
+  top: 31px;
   z-index: 0;
-  height: 2px;
+  height: 3px;
   border-radius: 999px;
-  background: rgba(70, 224, 182, 0.55);
+  background: linear-gradient(90deg, rgba(70, 224, 182, 0), rgba(70, 224, 182, 0.72), rgba(70, 224, 182, 0));
   pointer-events: none;
 }
 
@@ -1498,6 +1499,19 @@ button.ow-room-player-slot {
   display: none;
 }
 
+.ow-slot-popover-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 135;
+  display: grid;
+  align-items: start;
+  justify-items: center;
+  overflow: auto;
+  overscroll-behavior: contain;
+  background: rgba(0, 0, 0, 0.34);
+  padding: max(14px, env(safe-area-inset-top)) 12px max(18px, env(safe-area-inset-bottom));
+}
+
 .ow-slot-command-popover {
   display: grid;
   grid-column: 1 / -1;
@@ -1513,14 +1527,14 @@ button.ow-room-player-slot {
 }
 
 .ow-slot-command-popover.floating {
-  position: fixed;
-  top: max(14px, env(safe-area-inset-top));
-  left: 50%;
+  position: relative;
+  top: auto;
+  left: auto;
   z-index: 140;
   width: min(560px, calc(100vw - 24px));
   max-height: min(78vh, 720px);
   overflow: auto;
-  transform: translateX(-50%);
+  transform: none;
 }
 
 .ow-slot-command-popover > header {

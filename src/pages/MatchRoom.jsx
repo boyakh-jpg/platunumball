@@ -133,7 +133,7 @@ export default function MatchRoom({ app }) {
     ? `심판 ${referee.name}`
     : ["teamA", "teamB"]
         .filter((sideName) => statRecorders[sideName])
-        .map((sideName) => `${sideName === "teamA" ? "A팀" : "B팀"} ${userMap[statRecorders[sideName]]?.name ?? "후보"}`)
+        .map((sideName) => `${sideName === "teamA" ? "A사이드" : "B사이드"} ${userMap[statRecorders[sideName]]?.name ?? "후보"}`)
         .join(" · ") || "참가자 본인 득점";
   const currentRecorderSides = hasReferee ? [] : getStatRecorderSides(match, app.currentUser.id);
   const hasSideRecorders = !hasReferee && Boolean(statRecorders.teamA || statRecorders.teamB);
@@ -206,7 +206,7 @@ export default function MatchRoom({ app }) {
 
     return (
       <div className="gm-reserve-line">
-        <strong>{sideName === "teamA" ? "A팀" : "B팀"} 후보 {reservePlayerIds.length}/2</strong>
+        <strong>{sideName === "teamA" ? "A사이드" : "B사이드"} 후보 {reservePlayerIds.length}/2</strong>
         <div className="gm-roster-row gm-reserve-row">
           {reservePlayerIds.map((playerId) => {
             const user = userMap[playerId];
@@ -253,7 +253,7 @@ export default function MatchRoom({ app }) {
     event.preventDefault();
     if (canSubmitResult) app.actions.submitMatchResult(match.id, score);
   };
-  const getSideLabel = (sideName) => (sideName === "teamA" ? "A팀" : "B팀");
+  const getSideLabel = (sideName) => (sideName === "teamA" ? "A사이드" : "B사이드");
   const getRecorderName = (sideName) => hasReferee ? "" : userMap[statRecorders[sideName]]?.name ?? "";
   const canEditPlayerStat = (playerId) => canSubmitResult && getAllowedStatFields(match, app.currentUser.id, playerId).length > 0;
   const editableStatFields = statEditorPlayerId ? getAllowedStatFields(match, app.currentUser.id, statEditorPlayerId) : [];
@@ -587,7 +587,7 @@ export default function MatchRoom({ app }) {
                 {hasReferee
                   ? "심판이 스코어와 전체 개인 활약을 한 번에 저장합니다. 1시간 안에 입력해야 합니다."
                   : hasSideRecorders
-                    ? "후보가 있는 팀은 후보 기록자가 해당 팀 개인 활약을 저장합니다. 후보 기록은 심판보다 낮은 MMR 가중치로 반영됩니다."
+                    ? "후보가 있는 사이드는 후보 기록자가 해당 사이드 개인 활약을 저장합니다. 후보 기록은 심판보다 낮은 MMR 가중치로 반영됩니다."
                     : "심판이 없으면 각 참가자는 본인 득점만 저장합니다. 전원 제출과 득점 합계가 맞아야 결과 승인이 열립니다."}
               </div>
               <div className="stat-trust-panel">

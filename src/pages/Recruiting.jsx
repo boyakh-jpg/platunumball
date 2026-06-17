@@ -44,8 +44,8 @@ import {
 import { findTeamByHashtag, findUserByHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 
 const SIDE_LABELS = {
-  teamA: "A팀",
-  teamB: "B팀",
+  teamA: "A사이드",
+  teamB: "B사이드",
 };
 const RECORDABLE_RESERVE_SOURCES = new Set(["reserve-entry", "team-reserve"]);
 const MAX_RESERVE_PLAYERS_PER_SIDE = 2;
@@ -549,9 +549,29 @@ function FillSlot({ candidate, lobby, userById, teams, hostPlayerId = "", curren
   );
 }
 
+function CommandPopoverFrame({ floating = false, className = "", onClose, children }) {
+  const panel = (
+    <div
+      className={[className, floating ? "floating" : ""].filter(Boolean).join(" ")}
+      onPointerDown={(event) => event.stopPropagation()}
+      onClick={(event) => event.stopPropagation()}
+    >
+      {children}
+    </div>
+  );
+
+  if (!floating) return panel;
+
+  return (
+    <div className="ow-slot-popover-backdrop" role="presentation" onPointerDown={onClose}>
+      {panel}
+    </div>
+  );
+}
+
 function SlotCommandPanel({ sideName, reserve = false, floating = false, canMoveHere = false, partyJoinOptions = [], onMoveHere, onJoinParty, onClose, children }) {
   return (
-    <div className={floating ? "ow-slot-command-popover floating" : "ow-slot-command-popover"} onClick={(event) => event.stopPropagation()}>
+    <CommandPopoverFrame floating={floating} className="ow-slot-command-popover" onClose={onClose}>
       <header>
         <div>
           <strong>{SIDE_LABELS[sideName]} {reserve ? "후보 슬롯" : "빈 슬롯"}</strong>
@@ -570,7 +590,7 @@ function SlotCommandPanel({ sideName, reserve = false, floating = false, canMove
         ))}
       </div>
       {children}
-    </div>
+    </CommandPopoverFrame>
   );
 }
 
@@ -595,7 +615,7 @@ function SelfSlotCommandPanel({
       : "개인 참여 중";
 
   return (
-    <div className="ow-slot-command-popover ow-self-slot-popover floating" onClick={(event) => event.stopPropagation()}>
+    <CommandPopoverFrame floating className="ow-slot-command-popover ow-self-slot-popover" onClose={onClose}>
       <header>
         <div>
           <strong>내 슬롯 관리</strong>
@@ -619,7 +639,7 @@ function SelfSlotCommandPanel({
           </Button>
         ))}
       </div>
-    </div>
+    </CommandPopoverFrame>
   );
 }
 
@@ -938,7 +958,7 @@ function InvitePanel({
       <header>
         <div>
           <strong>{SIDE_LABELS[sideName]} {reserve ? "후보" : "빈 슬롯"} 초대</strong>
-          <span>{reserve ? "수락하면 해당 팀의 후보 선수로 들어온다." : "선착순 수락이다. 방이 차면 수락 실패."}</span>
+          <span>{reserve ? "수락하면 해당 사이드의 후보 선수로 들어온다." : "선착순 수락이다. 방이 차면 수락 실패."}</span>
         </div>
         <button type="button" className="ow-icon-button" aria-label="초대 닫기" onClick={onClose}><X size={18} /></button>
       </header>
@@ -1913,7 +1933,7 @@ export default function Recruiting({ app }) {
                 ) : null}
                 <span>{selectedPost.memo}</span>
                 <span>팀 MMR은 실제 참가한 팀원 비율 기준으로 반영한다.</span>
-                <span>후보가 경기 밖에서 참여 확정하면 해당 팀 개인 활약 기록자로 배정된다.</span>
+                <span>후보가 경기 밖에서 참여 확정하면 해당 사이드 개인 활약 기록자로 배정된다.</span>
                 <span>확정 후 불참하면 신뢰점수 패널티 대상이다.</span>
               </div>
 
@@ -2015,8 +2035,8 @@ export default function Recruiting({ app }) {
                       <label>
                         진영
                         <select value={joinDraft.side} onChange={(event) => updateJoinDraft(selectedPost, { side: event.target.value })}>
-                          <option value="teamA">A팀</option>
-                          <option value="teamB">B팀</option>
+                          <option value="teamA">A사이드</option>
+                          <option value="teamB">B사이드</option>
                         </select>
                       </label>
                       <label className="ow-check-row">
@@ -2229,7 +2249,7 @@ export default function Recruiting({ app }) {
                   <div>
                     <span>슬롯</span>
                     <strong>{draftCapacity} vs {draftCapacity}</strong>
-                    <em>{draft.hostJoinMode === "team" ? `${selectedHostPlayerIds.length}명 선택 배치` : "개인 1명이 A팀에 배치"}</em>
+                    <em>{draft.hostJoinMode === "team" ? `${selectedHostPlayerIds.length}명 선택 배치` : "개인 1명이 A사이드에 배치"}</em>
                   </div>
                   <ShieldCheck size={22} />
                 </div>

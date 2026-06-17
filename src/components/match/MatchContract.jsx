@@ -21,7 +21,7 @@ export default function MatchContract({ match, users, teams = [] }) {
     ? ""
     : ["teamA", "teamB"]
         .filter((sideName) => statRecorders[sideName])
-        .map((sideName) => `${sideName === "teamA" ? "A팀" : "B팀"} ${userMap[statRecorders[sideName]]?.name ?? "후보"}`)
+        .map((sideName) => `${sideName === "teamA" ? "A사이드" : "B사이드"} ${userMap[statRecorders[sideName]]?.name ?? "후보"}`)
         .join(" · ");
   const renderRoster = (side) => (
     <div className="roster">

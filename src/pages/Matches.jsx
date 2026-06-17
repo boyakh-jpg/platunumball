@@ -73,8 +73,8 @@ const tournamentStatusLabels = {
   cancelled: "취소",
 };
 const SIDE_LABELS = {
-  teamA: "A팀",
-  teamB: "B팀",
+  teamA: "A사이드",
+  teamB: "B사이드",
 };
 
 function toDateInputValue(date = new Date()) {
@@ -358,7 +358,7 @@ function MatchPreviewReserveLine({ match, sideName, userById, teams }) {
 
   return (
     <div className="ow-reserve-line">
-      <strong>{sideName === "teamA" ? "A팀" : "B팀"} 후보 {reserves.length}/2</strong>
+      <strong>{sideName === "teamA" ? "A사이드" : "B사이드"} 후보 {reserves.length}/2</strong>
       <div className="ow-room-reserve-row" style={{ "--slot-count": slotTrackCount }}>
         {reserves.map((playerId) => {
           const user = userById[playerId];
