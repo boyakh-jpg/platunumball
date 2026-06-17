@@ -249,12 +249,10 @@ function shouldShowMatchInList(match, view, userId, hasDateFilter) {
   return true;
 }
 
-function getRecruitingEntryForUser(lobby, userId, teamIds = []) {
-  const teamIdSet = new Set(teamIds);
+function getRecruitingEntryForUser(lobby, userId) {
   return (lobby.entries ?? []).find((entry) => (
-    entry.playerId === userId ||
     (entry.players ?? []).includes(userId) ||
-    (entry.teamId && teamIdSet.has(entry.teamId))
+    (entry.reserves ?? []).includes(userId)
   )) ?? null;
 }
 
@@ -414,7 +412,6 @@ function RecruitingPreviewModal({ app, post, lobby, myEntry, userById, teams, on
     myEntry.players?.includes(app.currentUser.id) ||
     myEntry.reserves?.includes(app.currentUser.id)
   ));
-  const currentUserPartyLocked = Boolean(myEntry?.fixed && app.currentUser.id === post.playerId);
   const currentUserInParty = Boolean(currentUserInEntry && isPartyEntry(myEntry));
   const showCaptainBadge = post.visibility === "private";
   const nextAction = needConfirm
@@ -455,7 +452,7 @@ function RecruitingPreviewModal({ app, post, lobby, myEntry, userById, teams, on
     if (!canMovePlayerTo(lobby, app.currentUser.id, sideName, reserve)) return false;
     if (myEntry.kind === "player" && myEntry.playerId === app.currentUser.id) return true;
     if (currentUserInParty && myEntry.side === sideName) return true;
-    if (currentUserInParty && !currentUserPartyLocked) return true;
+    if (currentUserInParty) return true;
     return false;
   };
   const moveActiveUserToSlot = (sideName, reserve) => {
@@ -470,13 +467,13 @@ function RecruitingPreviewModal({ app, post, lobby, myEntry, userById, teams, on
       setSlotActionDraft(null);
       return;
     }
-    if (currentUserInParty && !currentUserPartyLocked) {
+    if (currentUserInParty) {
       app.actions.detachRecruitingPartyPlayer(post.id, myEntry.id, app.currentUser.id, { side: sideName, reserve });
       setSlotActionDraft(null);
     }
   };
   const leaveCurrentParty = () => {
-    if (!currentUserInParty || currentUserPartyLocked || !myEntry) return;
+    if (!currentUserInParty || !myEntry) return;
     app.actions.detachRecruitingPartyPlayer(post.id, myEntry.id, app.currentUser.id, { side: myEntry.side, reserve: currentUserReserve });
     setSlotActionDraft(null);
   };
@@ -523,7 +520,7 @@ function RecruitingPreviewModal({ app, post, lobby, myEntry, userById, teams, on
         reserve={Boolean(activeSelfSlotDraft.reserve)}
         sourceTeam={sourceTeam}
         anchor={activeSelfSlotDraft.anchor}
-        canLeaveParty={currentUserInParty && !currentUserPartyLocked}
+        canLeaveParty={currentUserInParty}
         partyJoinOptions={targetPartyOptions}
         onLeaveParty={leaveCurrentParty}
         onJoinParty={(teamId) => {
@@ -848,7 +845,7 @@ export default function Matches({ app }) {
   );
   const selectedRecruitingLobby = selectedRecruitingPost ? getRecruitingLobby(selectedRecruitingPost, app.state) : null;
   const selectedRecruitingEntry = selectedRecruitingLobby
-    ? getRecruitingEntryForUser(selectedRecruitingLobby, app.currentUser.id, myTeamIds)
+    ? getRecruitingEntryForUser(selectedRecruitingLobby, app.currentUser.id)
     : null;
   const selectedMatch = (selectedMatchId ? matchesById[selectedMatchId] : null) ?? (queryMatchId ? matchesById[queryMatchId] : null) ?? null;
   useBodyScrollLock(Boolean(selectedTournament || selectedMatch || selectedRecruitingPost));
@@ -1282,7 +1279,7 @@ export default function Matches({ app }) {
           if (type === "room") {
             const post = item;
             const lobby = getRecruitingLobby(post, app.state);
-            const myEntry = getRecruitingEntryForUser(lobby, app.currentUser.id, myTeamIds);
+            const myEntry = getRecruitingEntryForUser(lobby, app.currentUser.id);
             const needConfirm = myEntry && myEntry.status !== "ready";
             const filled = lobby.sides.teamA.projectedFilled + lobby.sides.teamB.projectedFilled;
             const capacity = getRecruitingSideCapacity(post) * 2;

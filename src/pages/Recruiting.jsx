@@ -343,7 +343,10 @@ function PlayerRoomSlot({
 function isCurrentUserRoomParticipant(post, lobby, currentUserId) {
   if (!currentUserId) return false;
   if (post.playerId === currentUserId || post.playerIds?.includes(currentUserId)) return true;
-  return (lobby.entries ?? []).some((entry) => entry.playerId === currentUserId || entry.players?.includes(currentUserId));
+  return (lobby.entries ?? []).some((entry) => (
+    entry.players?.includes(currentUserId) ||
+    entry.reserves?.includes(currentUserId)
+  ));
 }
 
 function TeamMemberPicker({ team, userById, selectedIds, capacity, onChange }) {
@@ -1531,13 +1534,12 @@ export default function Recruiting({ app }) {
         const fit = getRecruitingFit(selectedPost, candidateMmr || app.currentUser.ratings.integrated, app.state);
         const mine = selectedPost.playerId === app.currentUser.id;
         const myEntry = lobby.entries.find((entry) => (
-          entry.playerId === app.currentUser.id ||
           entry.players?.includes(app.currentUser.id) ||
           entry.reserves?.includes(app.currentUser.id)
         ));
         const alreadyApplied = Boolean(myEntry && !mine);
         const canInviteFromRoom = isCurrentUserRoomParticipant(selectedPost, lobby, app.currentUser.id);
-        const canChat = isRecruitingPostForUser(selectedPost, app.currentUser.id, myTeamIds);
+        const canChat = canInviteFromRoom;
         const canJoin = !mine && !alreadyApplied && fit.allowed && (joinDraft.joinMode === "player" || (Boolean(selectedJoinTeam) && selectedJoinPlayerIds.length > 0));
         const selectedRange = getRecruitingTierRange(
           getRecruitingTargetMmr(selectedPost, app.state),
@@ -1597,7 +1599,6 @@ export default function Recruiting({ app }) {
           myEntry.players?.includes(app.currentUser.id) ||
           myEntry.reserves?.includes(app.currentUser.id)
         ));
-        const currentUserPartyLocked = Boolean(myEntry?.fixed && app.currentUser.id === selectedPost.playerId);
         const currentUserInParty = Boolean(currentUserInEntry && isPartyEntry(myEntry));
         const canMoveActiveUserToSlot = (sideName, reserve) => {
           if (!myEntry || !currentUserInEntry) return false;
@@ -1606,7 +1607,7 @@ export default function Recruiting({ app }) {
           if (!canMovePlayerTo(lobby, app.currentUser.id, sideName, reserve)) return false;
           if (myEntry.kind === "player" && myEntry.playerId === app.currentUser.id) return true;
           if (currentUserInParty && myEntry.side === sideName) return true;
-          if (currentUserInParty && !currentUserPartyLocked) return true;
+          if (currentUserInParty) return true;
           return false;
         };
         const moveActiveUserToSlot = (sideName, reserve) => {
@@ -1623,14 +1624,14 @@ export default function Recruiting({ app }) {
             setSlotActionDraft(null);
             return;
           }
-          if (currentUserInParty && !currentUserPartyLocked) {
+          if (currentUserInParty) {
             app.actions.detachRecruitingPartyPlayer(selectedPost.id, myEntry.id, app.currentUser.id, { side: sideName, reserve });
             setInviteDraft(null);
             setSlotActionDraft(null);
           }
         };
         const leaveCurrentParty = () => {
-          if (!currentUserInParty || currentUserPartyLocked || !myEntry) return;
+          if (!currentUserInParty || !myEntry) return;
           app.actions.detachRecruitingPartyPlayer(selectedPost.id, myEntry.id, app.currentUser.id, { side: myEntry.side, reserve: currentUserReserve });
           setSlotActionDraft(null);
         };
@@ -1718,7 +1719,7 @@ export default function Recruiting({ app }) {
               reserve={Boolean(activeSelfSlotDraft.reserve)}
               sourceTeam={sourceTeam}
               anchor={activeSelfSlotDraft.anchor}
-              canLeaveParty={currentUserInParty && !currentUserPartyLocked}
+              canLeaveParty={currentUserInParty}
               partyJoinOptions={targetPartyOptions}
               onLeaveParty={leaveCurrentParty}
               onJoinParty={(teamId) => {

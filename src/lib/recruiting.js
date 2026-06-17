@@ -128,7 +128,7 @@ export function getSelectedTeamPlayerIds(team = {}, capacity = Infinity, playerI
 
 export function getActiveTeamPlayerIds(team = {}, capacity = Infinity, playerIds) {
   const selectedIds = getSelectedTeamPlayerIds(team, capacity, playerIds);
-  return selectedIds.length ? selectedIds : getSelectableTeamPlayerIds(team).slice(0, capacity);
+  return Array.isArray(playerIds) ? selectedIds : getSelectableTeamPlayerIds(team).slice(0, capacity);
 }
 
 export function getReserveTeamPlayerIds(team = {}) {
@@ -546,7 +546,7 @@ export function getRecruitingLobby(post = {}, state = {}) {
     return acc;
   }, {});
 
-  const playingEntries = entries.filter((entry) => !entry.reserve);
+  const playingEntries = entries.filter((entry) => !entry.reserve && (entry.players ?? []).length);
   const full = sides.teamA.filled >= sides.teamA.capacity && sides.teamB.filled >= sides.teamB.capacity;
   const projectedFull =
     sides.teamA.projectedFilled >= sides.teamA.capacity &&
