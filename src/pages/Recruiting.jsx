@@ -190,7 +190,7 @@ function uniqueIds(ids = []) {
   return Array.from(new Set(ids.filter(Boolean)));
 }
 
-function getLobbyRecorderIds(lobby) {
+export function getLobbyRecorderIds(lobby) {
   const playingIds = new Set([...lobby.sides.teamA.projectedPlayers, ...lobby.sides.teamB.projectedPlayers]);
   return ["teamA", "teamB"].reduce((acc, sideName) => {
     const candidate = (lobby.sides[sideName].reserveCandidates ?? []).find((item) => (
@@ -203,20 +203,20 @@ function getLobbyRecorderIds(lobby) {
   }, { teamA: "", teamB: "" });
 }
 
-function canMovePlayerTo(lobby, playerId, sideName, reserve = false) {
+export function canMovePlayerTo(lobby, playerId, sideName, reserve = false) {
   const side = lobby.sides[sideName];
   if (!side) return false;
   if (reserve) return side.reserves.includes(playerId) || side.reserveCandidates.length < MAX_RESERVE_PLAYERS_PER_SIDE;
   return side.projectedPlayers.includes(playerId) || side.projectedFilled < side.capacity;
 }
 
-function getEntryPlayerReserveState(entry, playerId) {
+export function getEntryPlayerReserveState(entry, playerId) {
   if (!entry || !playerId) return false;
   if (entry.reserve) return true;
   return (entry.reserves ?? []).includes(playerId) && !(entry.players ?? []).includes(playerId);
 }
 
-function getSameSidePartyOptions(lobby, myEntry, myTeams = [], targetSide = myEntry?.side) {
+export function getSameSidePartyOptions(lobby, myEntry, myTeams = [], targetSide = myEntry?.side) {
   if (!myEntry || myEntry.fixed || myEntry.kind === "team") return [];
   const sideEntries = lobby.sides[targetSide]?.entries ?? [];
   return myTeams.filter((team) => {
@@ -263,7 +263,7 @@ function getPartySlotClass(partyKey, partyCounts, partySeen) {
   return `party-linked party-${role}`;
 }
 
-function isPartyEntry(entry) {
+export function isPartyEntry(entry) {
   return entry?.kind === "team";
 }
 
@@ -625,7 +625,7 @@ function SlotCommandPanel({ sideName, reserve = false, floating = false, anchor 
   );
 }
 
-function SelfSlotCommandPanel({
+export function SelfSlotCommandPanel({
   entry,
   sideName,
   reserve = false,
@@ -675,7 +675,7 @@ function SelfSlotCommandPanel({
   );
 }
 
-function SideRoster({
+export function SideRoster({
   sideName,
   side,
   lobby,
@@ -774,7 +774,7 @@ function SideRoster({
   );
 }
 
-function ReserveLine({
+export function ReserveLine({
   sideName,
   candidates,
   playingIds,
