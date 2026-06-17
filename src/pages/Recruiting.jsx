@@ -722,7 +722,7 @@ export function SideRoster({
       <div className="ow-room-slot-row" style={{ "--slot-count": 5 }}>
         {activeSlots.map(({ entry, playerId, user, partyKey }) => {
           const partyEntry = isPartyEntry(entry);
-          const partyLabel = partyEntry && entry.team ? entry.team.name : entry.team ? `${entry.team.name} · 개인` : "개인 참여";
+          const partyLabel = partyEntry && entry.team ? entry.team.name : "개인 참여";
           const partyClassName = getPartySlotClass(partyKey, partyCounts, partySeen);
           const isSelfSlot = playerId === currentUserId;
           return (
@@ -1116,7 +1116,44 @@ function InvitationPanel({ invitations, userById, teams, currentUserId, alreadyA
   );
 }
 
-export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null }) {
+function getSourceMatchUserSideName(match, userId) {
+  if (!match || !userId) return null;
+  if (match.teamA?.players?.includes(userId)) return "teamA";
+  if (match.teamB?.players?.includes(userId)) return "teamB";
+  return null;
+}
+
+function getSourceMatchStatus(match, lobby) {
+  if (!match) return lobby.canConfirm ? { label: "CONFIRM", tone: "green" } : { label: "WAIT", tone: "blue" };
+  if (match.status === "contract") return { label: "WAIT", tone: "blue" };
+  if (match.status === "agreed") return { label: "READY", tone: "green" };
+  if (match.status === "approval" || match.status === "disputed") return { label: "CONFIRM", tone: "orange" };
+  if (match.status === "confirmed") return { label: "DONE", tone: "green" };
+  if (match.status === "cancelled" || match.status === "void") return { label: "CLOSED", tone: "neutral" };
+  return { label: String(match.status ?? "WAIT").toUpperCase(), tone: "blue" };
+}
+
+function getSourceMatchAction(match, userId) {
+  const sideName = getSourceMatchUserSideName(match, userId);
+  if (!match || !sideName) return { label: "경기 정보", detail: "명단과 룰을 확인합니다." };
+  if (match.status === "contract") {
+    const done = (match.agreements?.[sideName] ?? []).includes(userId);
+    return done
+      ? { label: "READY", detail: "다른 참가자의 동의를 기다립니다." }
+      : { label: "WAIT", detail: "경기 전 동의가 필요합니다.", action: "agree", button: "CONFIRM" };
+  }
+  if (match.status === "approval" || match.status === "disputed") {
+    const done = (match.approvals?.[sideName] ?? []).includes(userId);
+    return done
+      ? { label: "CONFIRM 완료", detail: "상대 승인 또는 이의신청 마감을 기다립니다." }
+      : { label: "CONFIRM 필요", detail: "경기 결과와 기록을 확인합니다.", action: "approve", button: "CONFIRM" };
+  }
+  if (match.status === "agreed") return { label: "READY", detail: "경기 전 룰과 출전 명단을 확인합니다." };
+  if (match.status === "confirmed") return { label: "DONE", detail: "확정된 경기는 기록에서 다시 볼 수 있습니다." };
+  return { label: "경기 정보", detail: "현재 상태를 확인합니다." };
+}
+
+export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, sourceMatch = null }) {
   const selectedPost = post;
   const myTeams = useMemo(
     () => app.state.teams.filter((team) => team.members.some((member) => member.userId === app.currentUser.id)),
@@ -1248,15 +1285,17 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null }) 
           ? selectedJoinTeam?.mmr ?? 0
           : app.currentUser.ratings.integrated;
         const fit = getRecruitingFit(selectedPost, candidateMmr || app.currentUser.ratings.integrated, app.state);
+        const matchRoom = Boolean(sourceMatch);
+        const storedRoomPost = app.state.recruitingPosts?.find((item) => item.id === selectedPost.id) ?? null;
         const mine = selectedPost.playerId === app.currentUser.id;
         const myEntry = lobby.entries.find((entry) => (
           entry.players?.includes(app.currentUser.id) ||
           entry.reserves?.includes(app.currentUser.id)
         ));
         const alreadyApplied = Boolean(myEntry && !mine);
-        const canInviteFromRoom = isCurrentUserRoomParticipant(selectedPost, lobby, app.currentUser.id);
-        const canChat = canInviteFromRoom;
-        const canJoin = !mine && !alreadyApplied && fit.allowed && (joinDraft.joinMode === "player" || (Boolean(selectedJoinTeam) && selectedJoinPlayerIds.length > 0));
+        const canInviteFromRoom = !matchRoom && isCurrentUserRoomParticipant(selectedPost, lobby, app.currentUser.id);
+        const canChat = Boolean(storedRoomPost) && isCurrentUserRoomParticipant(selectedPost, lobby, app.currentUser.id);
+        const canJoin = !matchRoom && !mine && !alreadyApplied && fit.allowed && (joinDraft.joinMode === "player" || (Boolean(selectedJoinTeam) && selectedJoinPlayerIds.length > 0));
         const selectedRange = getRecruitingTierRange(
           getRecruitingTargetMmr(selectedPost, app.state),
           selectedPost.ranked !== false,
@@ -1305,7 +1344,10 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null }) 
         const favoriteTeamIds = app.state.settings?.favoriteTeamIds ?? [];
         const teamAMeta = getLobbySideMeta(lobby, "teamA", userById);
         const teamBMeta = getLobbySideMeta(lobby, "teamB", userById);
-        const roomReadyLabel = lobby.canConfirm ? "READY" : "WAIT";
+        const sourceMatchStatus = getSourceMatchStatus(sourceMatch, lobby);
+        const sourceMatchAction = getSourceMatchAction(sourceMatch, app.currentUser.id);
+        const sourceMatchSideName = getSourceMatchUserSideName(sourceMatch, app.currentUser.id);
+        const roomReadyLabel = sourceMatch ? sourceMatchStatus.label : lobby.canConfirm ? "READY" : "WAIT";
         const roomTitle = selectedPost.ranked === false ? "친선전" : "정규전";
         const showCaptainBadge = selectedPost.visibility === "private";
         const activeSlotDraft = activeInviteDraft?.slotKey ? activeInviteDraft : null;
@@ -1456,7 +1498,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null }) 
                 <div className="ow-lobby-topline">
                   <div className="badge-row">
                     <Badge tone={selectedPost.ranked === false ? "neutral" : "gold"}>{roomTitle}</Badge>
-                    <Badge tone={lobby.canConfirm ? "green" : "blue"}>{lobby.canConfirm ? "CONFIRM" : "WAIT"}</Badge>
+                    <Badge tone={sourceMatch ? sourceMatchStatus.tone : lobby.canConfirm ? "green" : "blue"}>{sourceMatch ? sourceMatchStatus.label : lobby.canConfirm ? "CONFIRM" : "WAIT"}</Badge>
                     <Badge tone="green">사전등록</Badge>
                   </div>
                   <div>
@@ -1465,7 +1507,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null }) 
                 </div>
 
                 <div className="ow-lobby-title">
-                  <span>{selectedPost.visibility === "private" ? "PRIVATE ROOM" : "CUSTOM ROOM"}</span>
+                  <span>{sourceMatch?.tournamentId ? "PRIVATE EVENT ROOM" : selectedPost.visibility === "private" ? "PRIVATE ROOM" : "CUSTOM ROOM"}</span>
                   <h2>{roomTitle}</h2>
                   <p><MapPin size={16} />{selectedPost.court} · {getRecruitingSchedule(selectedPost)}</p>
                 </div>
@@ -1617,7 +1659,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null }) 
                 onDecline={(invitationId) => app.actions.declineRecruitingInvitation(selectedPost.id, invitationId)}
               />
 
-              {mine ? (
+              {mine && !matchRoom ? (
                 <RoomKickPanel
                   lobby={lobby}
                   userById={userById}
@@ -1630,7 +1672,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null }) 
               <div className="ow-room-rule-panel">
                 <div className="ow-room-rule-head">
                   <strong>규칙</strong>
-                  {mine ? (
+                  {mine && !matchRoom ? (
                     <Button type="button" size="sm" variant="secondary" onClick={() => (roomEditDraft ? closeRoomEdit(selectedPost) : openRoomEdit(selectedPost))}>
                       {roomEditDraft ? "수정 닫기" : "방 수정"}
                     </Button>
@@ -1722,7 +1764,28 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null }) 
               />
 
               <div className="ow-join-panel">
-                {mine ? (
+                {matchRoom ? (
+                  <div className="ow-owner-panel">
+                    <strong>{sourceMatchAction.label}</strong>
+                    <span>{sourceMatchAction.detail}</span>
+                    {sourceMatchAction.action && sourceMatchSideName ? (
+                      <Button
+                        type="button"
+                        onClick={() => {
+                          if (sourceMatchAction.action === "agree") app.actions.agreeMatch(sourceMatch.id, sourceMatchSideName, app.currentUser.id);
+                          if (sourceMatchAction.action === "approve") app.actions.approveMatch(sourceMatch.id, sourceMatchSideName, app.currentUser.id);
+                        }}
+                      >
+                        {sourceMatchAction.button}
+                      </Button>
+                    ) : null}
+                    {mine && ["contract", "agreed"].includes(sourceMatch.status) ? (
+                      <Button type="button" variant="secondary" className="danger-button" onClick={() => app.actions.cancelMatch(sourceMatch.id)}>
+                        경기 취소
+                      </Button>
+                    ) : null}
+                  </div>
+                ) : mine ? (
                   <div className="ow-owner-panel">
                     <strong>방장 권한</strong>
                     <span>{lobby.canConfirm ? "CONFIRM" : "WAIT"}</span>
@@ -1833,7 +1896,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null }) 
                   </form>
                 )}
 
-                {myEntry && myEntry.status !== "ready" ? (
+                {!matchRoom && myEntry && myEntry.status !== "ready" ? (
                   <Button
                     type="button"
                     variant="primary"
@@ -1843,7 +1906,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null }) 
                     CONFIRM
                   </Button>
                 ) : null}
-                {alreadyApplied ? (
+                {!matchRoom && alreadyApplied ? (
                   <Button
                     type="button"
                     variant="secondary"
@@ -1853,12 +1916,12 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null }) 
                     <XCircle size={18} /> 참여 취소
                   </Button>
                 ) : null}
-                {mine ? (
+                {!matchRoom && mine ? (
                   <Button type="button" disabled={!lobby.canConfirm} onClick={() => confirmMatch(selectedPost)}>
                     <Swords size={18} /> CONFIRM
                   </Button>
                 ) : null}
-                {mine ? (
+                {!matchRoom && mine ? (
                   <Button type="button" variant="secondary" className="danger-button" onClick={() => app.actions.closeRecruitingPost(selectedPost.id)}>
                     경기 취소
                   </Button>

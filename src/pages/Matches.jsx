@@ -1,17 +1,14 @@
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, MapPin, PlusCircle, ShieldAlert, ShieldCheck, Swords, Trophy, UsersRound, X } from "lucide-react";
+import { CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, PlusCircle, ShieldAlert, Swords, X } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { MATCH_MODES } from "../lib/constants.js";
-import { getAgreementStatus, getMatchEndDate, getMatchReservePlayerIds } from "../lib/matchUtils.js";
+import { getMatchEndDate, getMatchReservePlayerIds } from "../lib/matchUtils.js";
 import { getRecruitingLobby, getRecruitingSideCapacity, isRecruitingPostForUser } from "../lib/recruiting.js";
-import {
-  PlayerRoomSlot,
-  RecruitingRoomModal,
-} from "./Recruiting.jsx";
+import { RecruitingRoomModal } from "./Recruiting.jsx";
 
 const STATUS_META = {
   contract: { label: "WAIT", tone: "blue" },
@@ -302,35 +299,6 @@ function getRoomCapacity(match) {
   return Math.max(match.teamA?.players?.length ?? 0, match.teamB?.players?.length ?? 0, 5);
 }
 
-function getAgreementSlotState(match, teams, sideName, playerId) {
-  if (match.status !== "contract") return { ready: true, label: "READY" };
-  const status = getAgreementStatus(match, teams, sideName);
-  const agreed = status.approvals.includes(playerId);
-  return {
-    ready: agreed,
-    label: agreed ? "READY" : "WAIT",
-  };
-}
-
-function getPartySlotClass(partyKey, partyCounts, partySeen) {
-  if (!partyKey || (partyCounts[partyKey] ?? 0) < 2) return "";
-  const index = partySeen[partyKey] ?? 0;
-  partySeen[partyKey] = index + 1;
-  const count = partyCounts[partyKey];
-  const role = index === 0 ? "first" : index === count - 1 ? "last" : "middle";
-  return `party-linked party-${role}`;
-}
-
-function getMatchPartyKey(match, sideName, playerId) {
-  const explicitParty = (match.parties ?? []).find((party) => (
-    party.side === sideName &&
-    [...(party.players ?? []), ...(party.reserves ?? [])].includes(playerId)
-  ));
-  if (explicitParty?.teamId) return `${sideName}:party:${explicitParty.teamId}:${explicitParty.playerId ?? ""}`;
-  const side = match[sideName] ?? {};
-  return side.teamId ? `${sideName}:team:${side.teamId}` : "";
-}
-
 function getMatchHostPlayerId(match, state = null) {
   const sourcePost = match.recruitingPostId
     ? state?.recruitingPosts?.find((post) => post.id === match.recruitingPostId)
@@ -338,254 +306,163 @@ function getMatchHostPlayerId(match, state = null) {
   return match.createdBy || match.hostPlayerId || match.createdPlayerId || sourcePost?.playerId || match.teamA?.players?.[0] || "";
 }
 
-function getMatchSlotBadge(match, teams, sideName, playerId) {
-  if (!playerId) return null;
-  if (playerId === getMatchHostPlayerId(match)) return { tone: "host", label: "방장" };
-  const captainId = getTeamCaptainId(teams.find((team) => team.id === match[sideName]?.teamId));
-  if (captainId === playerId) return { tone: "captain", label: "주장" };
-  return null;
+function uniquePlayerIds(ids = []) {
+  return Array.from(new Set(ids.filter(Boolean)));
 }
 
-function MatchPreviewSide({ match, sideName, teamById, userById, teams }) {
-  const side = match[sideName] ?? { players: [] };
-  const team = teamById[side.teamId];
-  const capacity = getRoomCapacity(match);
-  const players = (side.players ?? []).slice(0, capacity);
-  const emptyCount = Math.max(0, capacity - players.length);
-  const partyCounts = players.reduce((acc, playerId) => {
-    const partyKey = getMatchPartyKey(match, sideName, playerId);
-    if (partyKey) acc[partyKey] = (acc[partyKey] ?? 0) + 1;
-    return acc;
-  }, {});
-  const partySeen = {};
-
-  return (
-    <div className={`ow-lobby-team-panel ${sideName === "teamA" ? "team-a" : "team-b"}`}>
-      <div className="ow-lobby-team-head">
-        <span>{sideName === "teamA" ? "HOME TEAM" : "OPPONENT"}</span>
-        <strong>{side.name}</strong>
-        <em>{team?.mmr ?? "-"} MMR</em>
-      </div>
-      <div className="ow-room-slot-row" style={{ "--slot-count": Math.min(5, capacity) }}>
-        {players.map((playerId) => {
-          const user = userById[playerId];
-          const slotState = getAgreementSlotState(match, teams, sideName, playerId);
-          const partyKey = getMatchPartyKey(match, sideName, playerId);
-          return (
-            <PlayerRoomSlot
-              key={`${sideName}-${playerId}`}
-              user={user}
-              teams={teams}
-              status={slotState.ready ? "ready" : "waiting"}
-              title={slotState.label}
-              detail={team?.name ?? "개인 참여"}
-              mmr={user?.ratings?.integrated ?? 1200}
-              badge={getMatchSlotBadge(match, teams, sideName, playerId)}
-              partyClassName={getPartySlotClass(partyKey, partyCounts, partySeen)}
-            />
-          );
-        })}
-        {Array.from({ length: emptyCount }).map((_item, index) => (
-          <div key={`${sideName}-empty-${index}`} className="ow-room-player-slot empty">
-            <UsersRound size={18} />
-            <strong>빈 슬롯</strong>
-            <em>LOCK</em>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+function getSideAgreementReady(match, sideName) {
+  if (match.status !== "contract") return true;
+  const players = match[sideName]?.players ?? [];
+  const agreements = new Set(match.agreements?.[sideName] ?? []);
+  return players.length > 0 && players.every((playerId) => agreements.has(playerId));
 }
 
-function MatchPreviewReserveLine({ match, sideName, userById, teams }) {
-  const reserves = getMatchReservePlayerIds(match, sideName).slice(0, 2);
-  const emptyCount = Math.max(0, 2 - reserves.length);
-  const slotTrackCount = 5;
-  const team = teams.find((item) => item.id === match[sideName]?.teamId);
-  const partyCounts = reserves.reduce((acc, playerId) => {
-    const partyKey = getMatchPartyKey(match, sideName, playerId);
-    if (partyKey) acc[partyKey] = (acc[partyKey] ?? 0) + 1;
-    return acc;
-  }, {});
-  const partySeen = {};
-
-  return (
-    <div className="ow-reserve-line">
-      <strong>{sideName === "teamA" ? "A사이드" : "B사이드"} 후보 {reserves.length}/2</strong>
-      <div className="ow-room-reserve-row" style={{ "--slot-count": slotTrackCount }}>
-        {reserves.map((playerId) => {
-          const user = userById[playerId];
-          return (
-            <PlayerRoomSlot
-              key={`${sideName}-reserve-${playerId}`}
-              user={user}
-              teams={teams}
-              status="ready"
-              title="SUB"
-              detail={team?.name ?? "후보"}
-              mmr={user?.ratings?.integrated ?? 1200}
-              badge={getMatchSlotBadge(match, teams, sideName, playerId)}
-              partyClassName={getPartySlotClass(getMatchPartyKey(match, sideName, playerId), partyCounts, partySeen)}
-            />
-          );
-        })}
-        {Array.from({ length: emptyCount }).map((_item, index) => (
-          <div key={`${sideName}-reserve-empty-${index}`} className="ow-room-player-slot empty">
-            <UsersRound size={18} />
-            <strong>후보 슬롯</strong>
-            <em>SUB</em>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function getMatchModalAction(match, userId) {
-  const sideName = getUserSideName(match, userId);
-  if (!sideName) {
-    return { label: "경기 정보", detail: "명단과 룰을 확인합니다." };
-  }
-
-  if (match.status === "contract") {
-    const done = (match.agreements?.[sideName] ?? []).includes(userId);
-    return done
-      ? { label: "동의 완료", detail: "다른 참가자의 동의를 기다립니다." }
-      : { label: "동의 필요", detail: "경기 전 계약 동의가 필요합니다.", action: "agree", button: "동의" };
-  }
-
-  if (match.status === "approval" || match.status === "disputed") {
-    const done = (match.approvals?.[sideName] ?? []).includes(userId);
-    return done
-      ? { label: "승인 완료", detail: "상대 승인 또는 이의신청 마감을 기다립니다." }
-      : { label: "결과 승인 필요", detail: "경기 결과와 기록을 확인한 뒤 승인합니다.", action: "approve", button: "승인" };
-  }
-
-  if (match.status === "agreed") {
-    return { label: "전투 준비", detail: "경기 전에는 룰과 출전 명단만 확인합니다." };
-  }
-
-  if (match.status === "confirmed") {
-    return { label: "기록 확정", detail: "완료된 경기는 기록에서 다시 볼 수 있습니다." };
-  }
-
-  return { label: getMatchProcessMeta(match).label, detail: "현재 상태를 확인합니다." };
-}
-
-function getMatchRuleRows(match, capacity) {
-  return [
-    { label: "방식", value: `${capacity} vs ${capacity}` },
-    { label: "룰", value: formatMatchRules(match) },
-    { label: "MMR", value: match.ranked === false ? "티어 자유" : "MMR 반영" },
-    { label: "장소", value: match.court },
-  ];
-}
-
-function MatchPreviewModal({ app, match, status, teamById, userById, teams, onClose }) {
-  const scoreA = match.teamA.score ?? match.result?.scoreA ?? 0;
-  const scoreB = match.teamB.score ?? match.result?.scoreB ?? 0;
-  const capacity = getRoomCapacity(match);
-  const roomTitle = match.ranked === false ? "친선전" : "정규전";
-  const roomType = match.recruitingPostId ? "PUBLIC ROOM" : match.tournamentId ? "PRIVATE EVENT ROOM" : "PRIVATE ROOM";
-  const filledA = match.teamA.players?.length ?? 0;
-  const filledB = match.teamB.players?.length ?? 0;
-  const nextAction = getMatchModalAction(match, app.currentUser.id);
-  const userSideName = getUserSideName(match, app.currentUser.id);
-  const isHost = getMatchHostPlayerId(match, app.state) === app.currentUser.id;
-  const canCancel = isHost && ["contract", "agreed"].includes(match.status);
-  const runAction = () => {
-    if (!nextAction.action || !userSideName) return;
-    if (nextAction.action === "agree") app.actions.agreeMatch(match.id, userSideName, app.currentUser.id);
-    if (nextAction.action === "approve") app.actions.approveMatch(match.id, userSideName, app.currentUser.id);
+function getMatchRoomPost(match, state) {
+  const sourcePost = match.recruitingPostId
+    ? state.recruitingPosts?.find((post) => post.id === match.recruitingPostId)
+    : null;
+  const hostPlayerId = getMatchHostPlayerId(match, state);
+  const sideCapacity = getRoomCapacity(match);
+  const baseRoomState = {
+    ...(sourcePost?.roomState ?? {}),
+    ruleRevision: sourcePost?.roomState?.ruleRevision ?? 1,
   };
 
-  return (
-    <div className="ow-compose-backdrop" role="presentation" onMouseDown={onClose}>
-      <aside className="ow-lobby-modal" role="dialog" aria-modal="true" aria-label="경기방" onMouseDown={(event) => event.stopPropagation()}>
-        <div className="ow-lobby-arena">
-          <div className="ow-lobby-topline">
-            <div className="badge-row">
-              <Badge tone={match.ranked === false ? "neutral" : "gold"}>{roomTitle}</Badge>
-              <Badge tone={status.tone}>{status.label}</Badge>
-              <Badge tone={match.recruitingPostId ? "green" : "blue"}>{match.recruitingPostId ? "공개방" : "비공개방"}</Badge>
-            </div>
-            <div>
-              <span>{match.mode}</span>
-              <button type="button" className="ow-icon-button" aria-label="닫기" onClick={onClose}><X size={20} /></button>
-            </div>
-          </div>
+  if (sourcePost) {
+    return {
+      ...sourcePost,
+      title: match.title ?? sourcePost.title,
+      mode: match.mode ?? sourcePost.mode,
+      court: match.court ?? sourcePost.court,
+      scheduledDate: match.scheduledDate ?? sourcePost.scheduledDate,
+      scheduledTime: match.scheduledTime ?? sourcePost.scheduledTime,
+      scheduledAt: match.scheduledAt ?? sourcePost.scheduledAt,
+      ranked: match.ranked ?? sourcePost.ranked,
+      official: match.official ?? sourcePost.official,
+      preRegistered: match.preRegistered ?? sourcePost.preRegistered,
+      sideCapacity,
+      rules: { ...(sourcePost.rules ?? {}), ...(match.rules ?? {}) },
+      memo: match.memo ?? sourcePost.memo,
+      visibility: sourcePost.visibility ?? "public",
+      playerId: hostPlayerId,
+      roomState: baseRoomState,
+    };
+  }
 
-          <div className="ow-lobby-title">
-            <span>{roomType}</span>
-            <h2>{roomTitle}</h2>
-            <p><MapPin size={16} />{match.court} · {formatMatchTime(match)}</p>
-          </div>
+  const teamAPlayers = uniquePlayerIds(match.teamA?.players ?? []);
+  const teamBPlayers = uniquePlayerIds(match.teamB?.players ?? []);
+  const teamAReserves = uniquePlayerIds(getMatchReservePlayerIds(match, "teamA"));
+  const teamBReserves = uniquePlayerIds(getMatchReservePlayerIds(match, "teamB"));
+  const hostJoinMode = match.teamA?.teamId ? "team" : "player";
+  const applicants = [];
+  const partyReserves = {};
 
-          <div className="ow-lobby-versus-stage">
-            <MatchPreviewSide match={match} sideName="teamA" teamById={teamById} userById={userById} teams={teams} />
-            <div className="ow-lobby-score-core">
-              <strong>{scoreA}</strong>
-              <i>VS</i>
-              <strong>{scoreB}</strong>
-              <span>{filledA}/{capacity} · {filledB}/{capacity}</span>
-            </div>
-            <MatchPreviewSide match={match} sideName="teamB" teamById={teamById} userById={userById} teams={teams} />
-          </div>
+  if (hostJoinMode === "player") {
+    teamAPlayers
+      .filter((playerId) => playerId !== hostPlayerId)
+      .forEach((playerId) => {
+        applicants.push({
+          kind: "player",
+          joinMode: "player",
+          playerId,
+          side: "teamA",
+          status: getSideAgreementReady(match, "teamA") ? "ready" : "waiting",
+          reserve: false,
+          createdAt: match.createdAt,
+          updatedAt: match.createdAt,
+        });
+      });
+    teamAReserves.forEach((playerId) => {
+      applicants.push({
+        kind: "player",
+        joinMode: "player",
+        playerId,
+        side: "teamA",
+        status: "ready",
+        reserve: true,
+        createdAt: match.createdAt,
+        updatedAt: match.createdAt,
+      });
+    });
+  } else {
+    partyReserves.host = teamAReserves;
+  }
 
-          <div className="ow-reserve-panel">
-            <MatchPreviewReserveLine match={match} sideName="teamA" userById={userById} teams={teams} />
-            <MatchPreviewReserveLine match={match} sideName="teamB" userById={userById} teams={teams} />
-          </div>
+  if (match.teamB?.teamId) {
+    applicants.push({
+      kind: "team",
+      joinMode: "team",
+      teamId: match.teamB.teamId,
+      playerId: teamBPlayers[0] ?? null,
+      playerIds: teamBPlayers,
+      side: "teamB",
+      status: getSideAgreementReady(match, "teamB") ? "ready" : "waiting",
+      reserve: false,
+      createdAt: match.createdAt,
+      updatedAt: match.createdAt,
+    });
+    partyReserves[`team:${match.teamB.teamId}`] = teamBReserves;
+  } else {
+    teamBPlayers.forEach((playerId) => {
+      applicants.push({
+        kind: "player",
+        joinMode: "player",
+        playerId,
+        side: "teamB",
+        status: getSideAgreementReady(match, "teamB") ? "ready" : "waiting",
+        reserve: false,
+        createdAt: match.createdAt,
+        updatedAt: match.createdAt,
+      });
+    });
+    teamBReserves.forEach((playerId) => {
+      applicants.push({
+        kind: "player",
+        joinMode: "player",
+        playerId,
+        side: "teamB",
+        status: "ready",
+        reserve: true,
+        createdAt: match.createdAt,
+        updatedAt: match.createdAt,
+      });
+    });
+  }
 
-          <div className="om-room-modal-panel">
-            <div>
-              <span>NEXT</span>
-              <strong>{nextAction.label}</strong>
-              <em>{nextAction.detail}</em>
-            </div>
-            {nextAction.action ? (
-              <Button type="button" onClick={runAction}>{nextAction.button}</Button>
-            ) : null}
-          </div>
-
-          <div className="ow-room-rule-panel">
-            <div className="ow-room-rule-head">
-              <strong>규칙</strong>
-            </div>
-            <div className="ow-room-rule-summary">
-              {getMatchRuleRows(match, capacity).map((row) => (
-                <span key={row.label}>{row.label} · {row.value}</span>
-              ))}
-            </div>
-            <span>{match.memo ?? match.stakes ?? "경기 전 규칙과 출전 명단을 확인합니다."}</span>
-          </div>
-
-          {isHost ? (
-            <div className="ow-join-panel">
-              <div className="ow-owner-panel">
-                <strong>방장 권한</strong>
-                <span>{canCancel ? "경기 시작 전 취소할 수 있습니다." : "현재 단계에서는 취소할 수 없습니다."}</span>
-                <Button type="button" variant="secondary" className="danger-button" disabled={!canCancel} onClick={() => app.actions.cancelMatch(match.id)}>
-                  경기 취소
-                </Button>
-              </div>
-            </div>
-          ) : null}
-
-          <div className="ow-lobby-actions">
-            <div><CalendarDays size={17} /><span>{match.scheduledDate ?? ""} {match.scheduledTime ?? ""}</span></div>
-            <div><UsersRound size={17} /><span>{capacity} vs {capacity}</span></div>
-            <div><ShieldCheck size={17} /><span>{match.ranked === false ? "티어 자유" : "MMR 반영"}</span></div>
-            <div><Trophy size={17} /><span>{formatMatchRules(match)}</span></div>
-          </div>
-        </div>
-
-        <div className="om-room-modal-actions">
-          <button type="button" className="button button-secondary button-md" onClick={onClose}>닫기</button>
-        </div>
-      </aside>
-    </div>
-  );
+  return {
+    id: `match-room-${match.id}`,
+    title: match.title,
+    type: "need_player",
+    mode: match.mode,
+    court: match.court,
+    scheduledDate: match.scheduledDate ?? "",
+    scheduledTime: match.scheduledTime ?? "",
+    scheduledAt: match.scheduledAt,
+    status: "closed",
+    visibility: match.tournamentId ? "private" : match.recruitingPostId ? "public" : "private",
+    ranked: match.ranked !== false,
+    official: Boolean(match.official),
+    preRegistered: Boolean(match.preRegistered),
+    hostSide: "teamA",
+    hostJoinMode,
+    hostReady: getSideAgreementReady(match, "teamA"),
+    playerId: hostPlayerId,
+    teamId: match.teamA?.teamId ?? null,
+    playerIds: hostJoinMode === "team" ? teamAPlayers : [hostPlayerId].filter(Boolean),
+    sideCapacity,
+    mmrRangeMode: match.mmrRangeMode ?? match.rules?.mmrRangeMode ?? "narrow",
+    ratingScale: match.ratingScale ?? match.rules?.ratingScale ?? 1,
+    rules: match.rules ?? {},
+    memo: match.memo ?? match.stakes ?? "",
+    applicants,
+    roomState: {
+      ...baseRoomState,
+      partyReserves,
+      chatMessages: [],
+      invitations: [],
+    },
+    createdAt: match.createdAt,
+  };
 }
 
 export default function Matches({ app }) {
@@ -630,6 +507,7 @@ export default function Matches({ app }) {
   );
   const selectedRecruitingLobby = selectedRecruitingPost ? getRecruitingLobby(selectedRecruitingPost, app.state) : null;
   const selectedMatch = (selectedMatchId ? matchesById[selectedMatchId] : null) ?? (queryMatchId ? matchesById[queryMatchId] : null) ?? null;
+  const selectedMatchRoomPost = selectedMatch ? getMatchRoomPost(selectedMatch, app.state) : null;
   useBodyScrollLock(Boolean(selectedTournament || selectedMatch || selectedRecruitingPost));
   const closeSelectedMatch = () => {
     setSelectedMatchId(null);
@@ -1008,14 +886,11 @@ export default function Matches({ app }) {
         );
       })() : null}
 
-      {selectedMatch ? (
-        <MatchPreviewModal
+      {selectedMatch && selectedMatchRoomPost ? (
+        <RecruitingRoomModal
           app={app}
-          match={selectedMatch}
-          status={getMatchProcessMeta(selectedMatch)}
-          teamById={teamById}
-          userById={userById}
-          teams={app.state.teams}
+          post={selectedMatchRoomPost}
+          sourceMatch={selectedMatch}
           onClose={closeSelectedMatch}
         />
       ) : null}
