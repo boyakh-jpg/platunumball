@@ -1537,6 +1537,22 @@ button.ow-room-player-slot {
   transform: none;
 }
 
+.ow-slot-command-popover.floating.anchored {
+  position: fixed;
+  top: var(--popover-y);
+  left: var(--popover-x);
+  width: min(var(--popover-width), calc(100vw - 24px));
+  max-height: min(70vh, 560px);
+}
+
+.ow-slot-command-popover.floating.anchored.below {
+  transform: translate(-50%, 0);
+}
+
+.ow-slot-command-popover.floating.anchored.above {
+  transform: translate(-50%, -100%);
+}
+
 .ow-slot-command-popover > header {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

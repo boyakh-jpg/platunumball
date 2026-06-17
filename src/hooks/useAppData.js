@@ -211,19 +211,19 @@ export function useAppData(authUserId = null) {
         setState((prev) => setRecruitingApplicantReserve({ ...prev, currentUserId }, postId, playerId, reserve));
       },
       setRecruitingApplicantPlacement: (postId, playerId, placement) => {
-        setState((prev) => setRecruitingApplicantPlacement({ ...prev, currentUserId }, postId, playerId, placement));
+        setState((prev) => setRecruitingApplicantPlacement({ ...prev, currentUserId: playerId || currentUserId }, postId, playerId, placement));
       },
       joinRecruitingSideParty: (postId, teamId, sideName) => {
         setState((prev) => joinRecruitingSideParty({ ...prev, currentUserId }, postId, teamId, sideName));
       },
       setRecruitingPartyPlayerReserve: (postId, entryId, playerId, reserve) => {
-        setState((prev) => setRecruitingPartyPlayerReserve({ ...prev, currentUserId }, postId, entryId, playerId, reserve));
+        setState((prev) => setRecruitingPartyPlayerReserve({ ...prev, currentUserId: playerId || currentUserId }, postId, entryId, playerId, reserve));
       },
       setRecruitingPartyPlayerPlacement: (postId, entryId, playerId, placement) => {
-        setState((prev) => setRecruitingPartyPlayerPlacement({ ...prev, currentUserId }, postId, entryId, playerId, placement));
+        setState((prev) => setRecruitingPartyPlayerPlacement({ ...prev, currentUserId: playerId || currentUserId }, postId, entryId, playerId, placement));
       },
       detachRecruitingPartyPlayer: (postId, entryId, playerId, placement) => {
-        setState((prev) => detachRecruitingPartyPlayer({ ...prev, currentUserId }, postId, entryId, playerId, placement));
+        setState((prev) => detachRecruitingPartyPlayer({ ...prev, currentUserId: playerId || currentUserId }, postId, entryId, playerId, placement));
       },
       removeRecruitingPartyPlayer: (postId, entryId, playerId) => {
         setState((prev) => removeRecruitingPartyPlayer({ ...prev, currentUserId }, postId, entryId, playerId));
