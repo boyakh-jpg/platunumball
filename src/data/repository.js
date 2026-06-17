@@ -2087,7 +2087,15 @@ function getSelfDecisionId(state, match, sideName, decisionKey, playerId) {
   const currentUserId = state.currentUserId;
   if (!currentUserId || playerId !== currentUserId) return null;
   const sidePlayers = match[sideName]?.players ?? [];
-  if (!sidePlayers.includes(currentUserId)) return null;
+  const sideTeamId = match[sideName]?.teamId;
+  const captainId = decisionKey === "agreements" && sideTeamId
+    ? getTeamCaptainId(state.teams, sideTeamId)
+    : "";
+  if (captainId) {
+    if (currentUserId !== captainId) return null;
+  } else if (!sidePlayers.includes(currentUserId)) {
+    return null;
+  }
   if ((match[decisionKey]?.[sideName] ?? []).includes(currentUserId)) return null;
   return currentUserId;
 }

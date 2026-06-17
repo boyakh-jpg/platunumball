@@ -1172,11 +1172,30 @@ function getSourceMatchUserSideName(match, userId) {
   return null;
 }
 
+function getSourceMatchDecisionSideName(match, userId, teams = []) {
+  const playerSideName = getSourceMatchUserSideName(match, userId);
+  if (playerSideName) return playerSideName;
+  const sideName = ["teamA", "teamB"].find((name) => {
+    const teamId = match?.[name]?.teamId;
+    if (!teamId) return false;
+    const team = teams.find((item) => item.id === teamId);
+    return getTeamCaptainId(team) === userId;
+  });
+  return sideName ?? null;
+}
+
+function getSourceMatchCaptainId(match, teams = [], sideName) {
+  const teamId = match?.[sideName]?.teamId;
+  if (!teamId) return "";
+  return getTeamCaptainId(teams.find((team) => team.id === teamId)) || match?.[sideName]?.players?.[0] || "";
+}
+
 function getSourceMatchStatus(match, lobby, userId = "") {
   if (!match) return lobby.canConfirm ? { label: "READY", tone: "green" } : { label: "WAIT", tone: "blue" };
   if (match.status === "contract") return { label: "WAIT", tone: "blue" };
   if (match.status === "agreed") return { label: "READY", tone: "green" };
-  if (match.status === "approval" || match.status === "disputed") {
+  if (match.status === "disputed") return { label: "이의 확인", tone: "orange" };
+  if (match.status === "approval") {
     const sideName = getSourceMatchUserSideName(match, userId);
     const needsConfirm = sideName && !(match.approvals?.[sideName] ?? []).includes(userId);
     return needsConfirm ? { label: "CONFIRM", tone: "orange" } : { label: "WAIT", tone: "blue" };
@@ -1186,16 +1205,31 @@ function getSourceMatchStatus(match, lobby, userId = "") {
   return { label: String(match.status ?? "WAIT").toUpperCase(), tone: "blue" };
 }
 
-function getSourceMatchAction(match, userId) {
-  const sideName = getSourceMatchUserSideName(match, userId);
+function getSourceMatchAction(match, userId, teams = [], userById = {}) {
+  const sideName = getSourceMatchDecisionSideName(match, userId, teams);
   if (!match || !sideName) return { label: "경기 정보", detail: "명단과 룰을 확인합니다." };
   if (match.status === "contract") {
     const done = (match.agreements?.[sideName] ?? []).includes(userId);
+    const captainId = getSourceMatchCaptainId(match, teams, sideName);
+    const captainRequired = Boolean(match[sideName]?.teamId);
+    const captainName = userById[captainId]?.name ?? "팀장";
+    if (captainRequired && captainId && userId !== captainId) {
+      return done
+        ? { label: "READY", detail: "팀장 READY가 완료됐습니다." }
+        : { label: "WAIT", detail: `${captainName} 팀장 READY 대기 중입니다.` };
+    }
     return done
-      ? { label: "READY", detail: "다른 참가자의 동의를 기다립니다." }
-      : { label: "WAIT", detail: "경기 전 동의가 필요합니다.", action: "agree", button: "CONFIRM" };
+      ? { label: "READY", detail: captainRequired ? "팀장 READY 완료. 상대팀을 기다립니다." : "다른 참가자의 동의를 기다립니다." }
+      : { label: "WAIT", detail: captainRequired ? "팀장 READY가 필요합니다." : "경기 전 동의가 필요합니다.", action: "agree", button: captainRequired ? "READY" : "CONFIRM" };
   }
-  if (match.status === "approval" || match.status === "disputed") {
+  if (match.status === "disputed") {
+    return {
+      label: "이의 확인",
+      detail: "이의 사유 확인 후 승인 재개 또는 무효 처리하세요.",
+      disputed: true,
+    };
+  }
+  if (match.status === "approval") {
     const done = (match.approvals?.[sideName] ?? []).includes(userId);
     return done
       ? { label: "CONFIRM 완료", detail: "상대 승인 또는 이의신청 마감을 기다립니다." }
@@ -1392,14 +1426,26 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
         const teamAMeta = getLobbySideMeta(lobby, "teamA", userById);
         const teamBMeta = getLobbySideMeta(lobby, "teamB", userById);
         const sourceMatchStatus = getSourceMatchStatus(sourceMatch, lobby, app.currentUser.id);
-        const sourceMatchAction = getSourceMatchAction(sourceMatch, app.currentUser.id);
-        const sourceMatchSideName = getSourceMatchUserSideName(sourceMatch, app.currentUser.id);
+        const sourceMatchAction = getSourceMatchAction(sourceMatch, app.currentUser.id, app.state.teams, userById);
+        const sourceMatchSideName = getSourceMatchDecisionSideName(sourceMatch, app.currentUser.id, app.state.teams);
         const roomQueueStatus = getRecruitingRoomStatus(lobby, { myEntry, mine });
         const roomReadyLabel = sourceMatch ? sourceMatchStatus.label : roomQueueStatus.label;
         const sourceMatchStarted = Boolean(sourceMatch?.startedAt ?? sourceMatch?.rules?.startedAt);
         const canStartSourceMatch = Boolean(matchRoom && mine && sourceMatch?.status === "agreed" && !sourceMatch?.result && !sourceMatch?.endedAt && !sourceMatchStarted);
         const canEndSourceMatch = Boolean(matchRoom && mine && sourceMatch?.status === "agreed" && !sourceMatch?.result && !sourceMatch?.endedAt && sourceMatchStarted);
         const roomTitle = selectedPost.ranked === false ? "친선전" : "정규전";
+        const roomVisibilityLabel = sourceMatch?.tournamentId
+          ? "대회방"
+          : selectedPost.visibility === "private"
+            ? "비공개방"
+            : "공개방";
+        const sourceTeamSideCount = ["teamA", "teamB"].filter((sideName) => Boolean(sourceMatch?.[sideName]?.teamId)).length;
+        const lobbyTeamEntryCount = (lobby.entries ?? []).filter((entry) => isPartyEntry(entry)).length;
+        const roomMatchTypeLabel = sourceTeamSideCount >= 2 || (selectedPost.visibility === "private" && lobbyTeamEntryCount >= 2)
+          ? "팀전"
+          : lobbyTeamEntryCount > 0 || sourceTeamSideCount > 0
+            ? "팀 파티 포함"
+            : "개인 매칭";
         const showCaptainBadge = selectedPost.visibility === "private";
         const activeSlotDraft = activeInviteDraft?.slotKey ? activeInviteDraft : null;
         const currentUserReserve = getEntryPlayerReserveState(myEntry, app.currentUser.id);
@@ -1550,6 +1596,8 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                   <div className="badge-row">
                     <Badge tone={selectedPost.ranked === false ? "neutral" : "gold"}>{roomTitle}</Badge>
                     <Badge tone={sourceMatch ? sourceMatchStatus.tone : roomQueueStatus.tone}>{sourceMatch ? sourceMatchStatus.label : roomQueueStatus.label}</Badge>
+                    <Badge tone={selectedPost.visibility === "private" ? "blue" : "green"}>{roomVisibilityLabel}</Badge>
+                    <Badge tone="neutral">{roomMatchTypeLabel}</Badge>
                     <Badge tone="green">사전등록</Badge>
                   </div>
                   <div>
@@ -1558,7 +1606,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                 </div>
 
                 <div className="ow-lobby-title">
-                  <span>{sourceMatch?.tournamentId ? "PRIVATE EVENT ROOM" : selectedPost.visibility === "private" ? "PRIVATE ROOM" : "CUSTOM ROOM"}</span>
+                  <span>{roomVisibilityLabel} · {roomMatchTypeLabel}</span>
                   <h2>{roomTitle}</h2>
                   <p><MapPin size={16} />{selectedPost.court} · {getRecruitingSchedule(selectedPost)}</p>
                 </div>
@@ -1838,6 +1886,9 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                   <div className="ow-owner-panel">
                     <strong>{sourceMatchAction.label}</strong>
                     <span>{sourceMatchAction.detail}</span>
+                    {sourceMatchAction.disputed && sourceMatch?.disputes?.[0]?.reason ? (
+                      <span>최근 이의: {sourceMatch.disputes[0].reason}</span>
+                    ) : null}
                     {sourceMatchAction.action && sourceMatchSideName ? (
                       <Button
                         type="button"
@@ -1848,6 +1899,16 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                       >
                         {sourceMatchAction.button}
                       </Button>
+                    ) : null}
+                    {sourceMatchAction.disputed ? (
+                      <>
+                        <Button type="button" onClick={() => app.actions.resumeMatchApproval(sourceMatch.id)}>
+                          승인 재개
+                        </Button>
+                        <Button type="button" variant="secondary" className="danger-button" onClick={() => app.actions.voidMatch(sourceMatch.id)}>
+                          무효 처리
+                        </Button>
+                      </>
                     ) : null}
                     {canStartSourceMatch ? (
                       <Button type="button" onClick={() => app.actions.startMatch(sourceMatch.id)}>

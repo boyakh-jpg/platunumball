@@ -206,7 +206,7 @@ function getWinner(match) {
 }
 
 function getMatchActionLabel(match) {
-  if (match.status === "contract") return "동의";
+  if (match.status === "contract") return match.teamA?.teamId || match.teamB?.teamId ? "READY" : "동의";
   if (match.status === "agreed") return "방 보기";
   if (match.status === "approval" || match.status === "disputed") return "처리";
   return "보기";

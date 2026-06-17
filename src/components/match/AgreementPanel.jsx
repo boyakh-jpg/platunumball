@@ -24,6 +24,7 @@ export default function AgreementPanel({ match, teams, users, currentUserId, onA
             const agreed = status.approvals.includes(playerId);
             const captain = status.captainId === playerId;
             const isCurrentUser = playerId === currentUserId;
+            const canCurrentUserAgree = isCurrentUser && (!status.captainRequired || captain);
             const buttonClass = [
               agreed ? "approved" : "",
               isCurrentUser ? "is-current-user" : "is-not-current-user",
@@ -33,13 +34,13 @@ export default function AgreementPanel({ match, teams, users, currentUserId, onA
               <button
                 key={playerId}
                 type="button"
-                disabled={locked || completed || agreed || !isCurrentUser}
+                disabled={locked || completed || agreed || !canCurrentUserAgree}
                 className={buttonClass}
                 onClick={() => onAgree(sideName, playerId)}
               >
                 <span className="avatar small" style={{ "--avatar": user?.avatarColor }}>{user?.name?.slice(0, 1) ?? "P"}</span>
                 <strong>{user?.name ?? "플레이어"}</strong>
-                <em>{agreed ? "동의됨" : isCurrentUser ? (captain ? "팀장 READY" : "내 동의") : "대리 불가"}</em>
+                <em>{agreed ? "READY" : canCurrentUserAgree ? (captain ? "팀장 READY" : "내 동의") : status.captainRequired ? "팀장 대기" : "대리 불가"}</em>
               </button>
             );
           })}
