@@ -3188,7 +3188,16 @@ export function setRecruitingReady(state, postId, ready = true) {
   const updatedAt = new Date().toISOString();
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
   const lobby = getRecruitingLobby(post, state);
-  const hostPartyUser = post.playerId === state.currentUserId || (post.playerIds ?? []).includes(state.currentUserId);
+  const applicants = normalizeRecruitingApplicants(post.applicants ?? []);
+  const currentApplicant = applicants.find((applicant) => (
+    applicant.playerId === state.currentUserId || (applicant.playerIds ?? []).includes(state.currentUserId)
+  ));
+  const hostEntry = (lobby.entries ?? []).find((entry) => entry.id === "host");
+  const hostPartyUser = !currentApplicant && (
+    (hostEntry?.players ?? []).includes(state.currentUserId) ||
+    (hostEntry?.reserves ?? []).includes(state.currentUserId) ||
+    (post.hostJoinMode === "player" && post.playerId === state.currentUserId)
+  );
   const activePlayerIds = new Set([...lobby.sides.teamA.projectedPlayers, ...lobby.sides.teamB.projectedPlayers]);
   const reserveCandidate = [...lobby.sides.teamA.reserveCandidates, ...lobby.sides.teamB.reserveCandidates]
     .find((candidate) => candidate.playerId === state.currentUserId && !activePlayerIds.has(candidate.playerId));
@@ -3212,7 +3221,7 @@ export function setRecruitingReady(state, postId, ready = true) {
         ...item,
         roomState: nextRoomState,
         applicants: normalizeRecruitingApplicants(item.applicants ?? []).map((applicant) => (
-          applicant.playerId === state.currentUserId || (applicant.playerIds ?? []).includes(state.currentUserId)
+          getRecruitingApplicantKey(applicant) === getRecruitingApplicantKey(currentApplicant)
             ? { ...applicant, status: ready ? "ready" : "waiting", updatedAt }
             : applicant
         )),
@@ -3750,11 +3759,12 @@ export function setRecruitingApplicantPlacement(state, postId, playerId, placeme
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   if (!isMutableRecruitingRoom(post) || !playerId) return state;
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
-  const hostTarget = playerId === post.playerId;
   const applicants = normalizeRecruitingApplicants(post.applicants ?? []);
-  const target = hostTarget
+  const targetApplicant = applicants.find((applicant) => getRecruitingApplicantKey(applicant) === `player:${playerId}`);
+  const hostTarget = playerId === post.playerId && !targetApplicant;
+  const target = targetApplicant ?? (hostTarget
     ? { side: post.hostSide ?? "teamA", reserve: roomState.hostReserve }
-    : applicants.find((applicant) => getRecruitingApplicantKey(applicant) === `player:${playerId}`);
+    : null);
   if (!target) return state;
   const requesterControlsTarget = hostTarget
     ? post.playerId === state.currentUserId
@@ -3767,7 +3777,7 @@ export function setRecruitingApplicantPlacement(state, postId, playerId, placeme
   const nextApplicants = hostTarget
     ? applicants
     : applicants.map((applicant) => (
-      applicant.playerId === playerId
+      getRecruitingApplicantKey(applicant) === getRecruitingApplicantKey(targetApplicant)
         ? { ...applicant, side, reserve, status: "waiting", updatedAt }
         : applicant
     ));

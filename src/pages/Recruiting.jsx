@@ -152,7 +152,7 @@ function getReadyTitle(entry) {
   return entry.user?.name ?? "플레이어";
 }
 
-function getLobbySideMeta(lobby, sideName, userById) {
+export function getLobbySideMeta(lobby, sideName, userById) {
   const side = lobby.sides[sideName];
   const teamEntry = side.entries.find((entry) => isPartyEntry(entry) && entry.team);
   const leadEntry = teamEntry ?? side.entries[0] ?? null;
@@ -277,7 +277,7 @@ function getVisualPartyKey(entry, sideName = "") {
   return isPartyEntry(entry) ? `party:${entry.id}` : "";
 }
 
-function PlayerRoomSlot({
+export function PlayerRoomSlot({
   user,
   teams,
   status = "waiting",
@@ -603,7 +603,7 @@ function CommandPopoverFrame({ floating = false, anchor = null, className = "", 
   );
 }
 
-function SlotCommandPanel({ sideName, reserve = false, floating = false, anchor = null, canMoveHere = false, partyJoinOptions = [], onMoveHere, onJoinParty, onClose, children }) {
+export function SlotCommandPanel({ sideName, reserve = false, floating = false, anchor = null, canMoveHere = false, partyJoinOptions = [], onMoveHere, onJoinParty, onClose, children }) {
   return (
     <CommandPopoverFrame floating={floating} anchor={anchor} className="ow-slot-command-popover" onClose={onClose}>
       <header>
@@ -906,7 +906,7 @@ function RoomKickPanel({ lobby, userById, teams, onKickApplicant, onRemovePartyP
   );
 }
 
-function RoomChat({ messages, userById, teams, value, canChat, onChange, onSubmit }) {
+export function RoomChat({ messages, userById, teams, value, canChat, onChange, onSubmit }) {
   return (
     <div className="ow-room-chat">
       <header>
@@ -947,7 +947,7 @@ function RoomChat({ messages, userById, teams, value, canChat, onChange, onSubmi
   );
 }
 
-function InvitePanel({
+export function InvitePanel({
   sideName,
   reserve = false,
   query,
