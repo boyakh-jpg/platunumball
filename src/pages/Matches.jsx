@@ -354,7 +354,7 @@ function MatchPreviewSide({ match, sideName, teamById, userById, teams }) {
 function MatchPreviewReserveLine({ match, sideName, userById, teams }) {
   const reserves = getMatchReservePlayerIds(match, sideName).slice(0, 2);
   const emptyCount = Math.max(0, 2 - reserves.length);
-  const slotTrackCount = Math.max(2, getRoomCapacity(match));
+  const slotTrackCount = 5;
 
   return (
     <div className="ow-reserve-line">
@@ -426,7 +426,7 @@ function RecruitingPreviewSide({ side, sideName, userById, teams }) {
 function RecruitingPreviewReserveLine({ side, sideName, userById, teams }) {
   const reserves = side.reserveCandidates.slice(0, 2);
   const emptyCount = Math.max(0, 2 - reserves.length);
-  const slotTrackCount = Math.max(2, side.capacity);
+  const slotTrackCount = 5;
 
   return (
     <div className="ow-reserve-line">

@@ -4156,6 +4156,15 @@ export function detachRecruitingPartyPlayer(state, postId, entryId, playerId, pl
     recruitingPosts: (state.recruitingPosts ?? []).map((item) => (
       item.id === postId ? cleanRecruitingRoomStatRecorders(nextPost, state) : item
     )),
+    notifications: [
+      {
+        id: makeId("n"),
+        title: "파티에서 나감",
+        body: `${entry.team.name} 파티에서 빠져 개인 참여로 전환되었습니다.`,
+        tone: "team",
+      },
+      ...(state.notifications ?? []),
+    ],
   };
 }
 
