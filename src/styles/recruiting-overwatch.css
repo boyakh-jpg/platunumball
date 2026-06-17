@@ -2502,6 +2502,18 @@
   padding: 12px;
 }
 
+.ow-modal-close-row {
+  display: grid;
+  margin-top: 12px;
+}
+
+.ow-modal-close-button {
+  min-height: 56px;
+  border-color: rgba(255, 255, 255, 0.18);
+  font-size: 1rem;
+  font-weight: 950;
+}
+
 .ow-join-form {
   display: grid;
   min-width: 0;

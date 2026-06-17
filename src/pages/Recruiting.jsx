@@ -1752,8 +1752,8 @@ export default function Recruiting({ app }) {
         };
 
         return (
-          <div className="ow-compose-backdrop" role="presentation" onMouseDown={() => { setInviteDraft(null); setSelectedPostId(null); }}>
-            <aside className="ow-lobby-modal" role="dialog" aria-modal="true" aria-label="매치방" onMouseDown={(event) => event.stopPropagation()}>
+          <div className="ow-compose-backdrop" role="presentation" onPointerDown={() => { setInviteDraft(null); setSelectedPostId(null); }}>
+            <aside className="ow-lobby-modal" role="dialog" aria-modal="true" aria-label="매치방" onPointerDown={(event) => event.stopPropagation()}>
               <div className="ow-lobby-arena">
                 <div className="ow-lobby-topline">
                   <div className="badge-row">
@@ -1763,7 +1763,6 @@ export default function Recruiting({ app }) {
                   </div>
                   <div>
                     <span>{selectedPost.mode}</span>
-                    <button type="button" className="ow-icon-button" aria-label="닫기" onClick={() => { setInviteDraft(null); setSelectedPostId(null); }}><X size={20} /></button>
                   </div>
                 </div>
 
@@ -2155,8 +2154,20 @@ export default function Recruiting({ app }) {
                   </Button>
                 ) : null}
                 {mine ? (
-                  <Button type="button" variant="secondary" onClick={() => app.actions.closeRecruitingPost(selectedPost.id)}>방 닫기</Button>
+                  <Button type="button" variant="secondary" className="danger-button" onClick={() => app.actions.closeRecruitingPost(selectedPost.id)}>
+                    경기 취소
+                  </Button>
                 ) : null}
+              </div>
+              <div className="ow-modal-close-row">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="ow-modal-close-button"
+                  onClick={() => { setInviteDraft(null); setSelectedPostId(null); }}
+                >
+                  <X size={20} /> 방 닫기
+                </Button>
               </div>
             </aside>
           </div>
