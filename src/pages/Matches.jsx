@@ -9,19 +9,8 @@ import { MATCH_MODES } from "../lib/constants.js";
 import { getAgreementStatus, getMatchEndDate, getMatchReservePlayerIds } from "../lib/matchUtils.js";
 import { getRecruitingLobby, getRecruitingSideCapacity, isRecruitingPostForUser } from "../lib/recruiting.js";
 import {
-  InvitePanel,
   PlayerRoomSlot,
-  ReserveLine,
-  RoomChat,
-  SelfSlotCommandPanel,
-  SideRoster,
-  SlotCommandPanel,
-  canMovePlayerTo,
-  getEntryPlayerReserveState,
-  getLobbySideMeta,
-  getLobbyRecorderIds,
-  getSameSidePartyOptions,
-  isPartyEntry,
+  RecruitingRoomModal,
 } from "./Recruiting.jsx";
 
 const STATUS_META = {
@@ -342,8 +331,11 @@ function getMatchPartyKey(match, sideName, playerId) {
   return side.teamId ? `${sideName}:team:${side.teamId}` : "";
 }
 
-function getMatchHostPlayerId(match) {
-  return match.createdBy ?? match.hostPlayerId ?? match.createdPlayerId ?? match.teamA?.players?.[0] ?? "";
+function getMatchHostPlayerId(match, state = null) {
+  const sourcePost = match.recruitingPostId
+    ? state?.recruitingPosts?.find((post) => post.id === match.recruitingPostId)
+    : null;
+  return match.createdBy || match.hostPlayerId || match.createdPlayerId || sourcePost?.playerId || match.teamA?.players?.[0] || "";
 }
 
 function getMatchSlotBadge(match, teams, sideName, playerId) {
@@ -449,418 +441,6 @@ function MatchPreviewReserveLine({ match, sideName, userById, teams }) {
   );
 }
 
-function RecruitingPreviewModal({ app, post, lobby, myEntry, userById, teams, onClose, onOpenMatch }) {
-  const [slotActionDraft, setSlotActionDraft] = useState(null);
-  const [inviteDraft, setInviteDraft] = useState(null);
-  const [chatDraft, setChatDraft] = useState("");
-  const capacity = getRecruitingSideCapacity(post);
-  const roomTitle = post.ranked === false ? "친선전" : "정규전";
-  const needConfirm = myEntry && myEntry.status !== "ready";
-  const canHostConfirm = post.playerId === app.currentUser.id && lobby.canConfirm;
-  const filledA = lobby.sides.teamA.projectedFilled;
-  const filledB = lobby.sides.teamB.projectedFilled;
-  const myTeams = useMemo(
-    () => teams.filter((team) => team.members.some((member) => member.userId === app.currentUser.id)),
-    [app.currentUser.id, teams],
-  );
-  const roomState = post.roomState ?? {};
-  const playingIds = [...lobby.sides.teamA.projectedPlayers, ...lobby.sides.teamB.projectedPlayers];
-  const recorderIds = getLobbyRecorderIds(lobby);
-  const invitations = roomState.invitations ?? [];
-  const pendingInvitations = invitations.filter((invitation) => invitation.status === "pending");
-  const chatMessages = roomState.chatMessages ?? [];
-  const activeSelfSlotDraft = slotActionDraft?.postId === post.id ? slotActionDraft : null;
-  const activeInviteDraft = inviteDraft?.postId === post.id ? inviteDraft : null;
-  const activeSlotDraft = activeInviteDraft?.slotKey ? activeInviteDraft : null;
-  const favoritePlayerIds = app.state.settings?.favoritePlayerIds ?? [];
-  const favoriteTeamIds = app.state.settings?.favoriteTeamIds ?? [];
-  const currentUserReserve = getEntryPlayerReserveState(myEntry, app.currentUser.id);
-  const currentUserInEntry = Boolean(myEntry && (
-    myEntry.playerId === app.currentUser.id ||
-    myEntry.players?.includes(app.currentUser.id) ||
-    myEntry.reserves?.includes(app.currentUser.id)
-  ));
-  const currentUserInParty = Boolean(currentUserInEntry && isPartyEntry(myEntry));
-  const canInviteFromRoom = currentUserInEntry;
-  const canChat = currentUserInEntry;
-  const disabledInvitePlayerIds = [
-    app.currentUser.id,
-    post.playerId,
-    ...lobby.entries.flatMap((entry) => [entry.playerId, ...(entry.players ?? []), ...(entry.reserves ?? [])]),
-    ...pendingInvitations.map((invitation) => invitation.targetUserId),
-  ].filter(Boolean);
-  const teamAMeta = getLobbySideMeta(lobby, "teamA", userById);
-  const teamBMeta = getLobbySideMeta(lobby, "teamB", userById);
-  const showCaptainBadge = post.visibility === "private";
-  const nextAction = needConfirm
-    ? { label: "CONFIRM 필요", detail: "참여 확정을 눌러야 내 일정이 유지됩니다.", action: "ready", button: "CONFIRM" }
-    : canHostConfirm
-      ? { label: "매칭 확정 가능", detail: "방장이 확정하면 경기로 전환됩니다.", action: "confirm", button: "매칭 확정" }
-      : lobby.canConfirm
-        ? { label: "방장 확정 대기", detail: "인원이 찼고 모든 참여자가 준비됐습니다." }
-        : { label: "충원 중", detail: "빈 슬롯이 채워질 때까지 공개방으로 유지됩니다." };
-  const getCommandAnchor = (event) => {
-    const target = event?.currentTarget;
-    if (!target?.getBoundingClientRect || typeof window === "undefined") return null;
-    const rect = target.getBoundingClientRect();
-    const width = Math.min(380, Math.max(280, window.innerWidth - 24));
-    const halfWidth = width / 2;
-    const x = Math.min(
-      Math.max(rect.left + rect.width / 2, 12 + halfWidth),
-      window.innerWidth - 12 - halfWidth,
-    );
-    const spaceBelow = window.innerHeight - rect.bottom;
-    const spaceAbove = rect.top;
-    const placement = spaceBelow >= 300 || spaceBelow >= spaceAbove ? "bottom" : "top";
-    const y = placement === "bottom" ? rect.bottom + 8 : rect.top - 8;
-    return {
-      x,
-      y: Math.min(Math.max(y, 12), window.innerHeight - 12),
-      width,
-      placement,
-    };
-  };
-  const openSelfSlotAction = (sideName, reserve = false, playerId = "", entryId = "", event = null) => {
-    setInviteDraft(null);
-    setSlotActionDraft({ postId: post.id, sideName, reserve, playerId, entryId, anchor: getCommandAnchor(event) });
-  };
-  const openInviteSlot = (sideName, reserve = false, slotKey = "", event = null) => {
-    setSlotActionDraft(null);
-    setInviteDraft({ postId: post.id, sideName, reserve, slotKey, query: "", selectedPlayerIds: [], anchor: getCommandAnchor(event) });
-  };
-  const updateInviteDraft = (patch) => {
-    setInviteDraft((current) => (current ? { ...current, ...patch } : current));
-  };
-  const toggleInvitePlayer = (playerId) => {
-    setInviteDraft((current) => {
-      if (!current) return current;
-      const selected = current.selectedPlayerIds ?? [];
-      return {
-        ...current,
-        selectedPlayerIds: selected.includes(playerId)
-          ? selected.filter((id) => id !== playerId)
-          : [...selected, playerId],
-      };
-    });
-  };
-  const sendInvites = (playerIds, teamId = null) => {
-    if (!activeInviteDraft || !playerIds.length) return;
-    app.actions.inviteRecruitingPlayers(post.id, { side: activeInviteDraft.sideName, reserve: Boolean(activeInviteDraft.reserve), playerIds, teamId });
-    setInviteDraft((current) => (current ? { ...current, selectedPlayerIds: [] } : current));
-  };
-  const canMoveActiveUserToSlot = (sideName, reserve) => {
-    if (!myEntry || !currentUserInEntry) return false;
-    const samePlacement = myEntry.side === sideName && currentUserReserve === reserve;
-    if (samePlacement) return false;
-    if (!canMovePlayerTo(lobby, app.currentUser.id, sideName, reserve)) return false;
-    if (myEntry.kind === "player" && myEntry.playerId === app.currentUser.id) return true;
-    if (currentUserInParty && myEntry.side === sideName) return true;
-    if (currentUserInParty) return true;
-    return false;
-  };
-  const moveActiveUserToSlot = (sideName, reserve) => {
-    if (!myEntry || !currentUserInEntry) return;
-    if (myEntry.kind === "player" && myEntry.playerId === app.currentUser.id) {
-      app.actions.setRecruitingApplicantPlacement(post.id, app.currentUser.id, { side: sideName, reserve });
-      setSlotActionDraft(null);
-      return;
-    }
-    if (currentUserInParty && myEntry.side === sideName) {
-      app.actions.setRecruitingPartyPlayerPlacement(post.id, myEntry.id, app.currentUser.id, { side: sideName, reserve });
-      setSlotActionDraft(null);
-      return;
-    }
-    if (currentUserInParty) {
-      app.actions.detachRecruitingPartyPlayer(post.id, myEntry.id, app.currentUser.id, { side: sideName, reserve });
-      setSlotActionDraft(null);
-    }
-  };
-  const renderSlotCommand = () => {
-    if (!activeSlotDraft) return null;
-    const sideName = activeSlotDraft.sideName;
-    const reserve = Boolean(activeSlotDraft.reserve);
-    const canMoveHere = Boolean(canMoveActiveUserToSlot(sideName, reserve));
-    const targetPartyOptions = getSameSidePartyOptions(lobby, myEntry, myTeams, sideName);
-    return (
-      <SlotCommandPanel
-        sideName={sideName}
-        reserve={reserve}
-        floating
-        anchor={activeSlotDraft.anchor}
-        canMoveHere={canMoveHere}
-        partyJoinOptions={targetPartyOptions}
-        onMoveHere={() => moveActiveUserToSlot(sideName, reserve)}
-        onJoinParty={(teamId) => app.actions.joinRecruitingSideParty(post.id, teamId, sideName)}
-        onClose={() => setInviteDraft(null)}
-      >
-        <InvitePanel
-          sideName={activeSlotDraft.sideName}
-          reserve={Boolean(activeSlotDraft.reserve)}
-          query={activeSlotDraft.query}
-          onQueryChange={(query) => updateInviteDraft({ query, selectedPlayerIds: [] })}
-          users={app.state.users}
-          teams={teams}
-          userById={userById}
-          disabledPlayerIds={disabledInvitePlayerIds}
-          selectedPlayerIds={activeSlotDraft.selectedPlayerIds ?? []}
-          favoritePlayerIds={favoritePlayerIds}
-          favoriteTeamIds={favoriteTeamIds}
-          onTogglePlayer={toggleInvitePlayer}
-          onInvitePlayers={sendInvites}
-          onToggleFavoritePlayer={(playerId) => app.actions.toggleFavoritePlayer(playerId)}
-          onToggleFavoriteTeam={(teamId) => app.actions.toggleFavoriteTeam(teamId)}
-          onClose={() => setInviteDraft(null)}
-        />
-      </SlotCommandPanel>
-    );
-  };
-  const leaveCurrentParty = () => {
-    if (!currentUserInParty || !myEntry) return;
-    app.actions.detachRecruitingPartyPlayer(post.id, myEntry.id, app.currentUser.id, { side: myEntry.side, reserve: currentUserReserve });
-    setSlotActionDraft(null);
-  };
-  const selfPlacementActions = [
-    { side: "teamA", reserve: false, label: "A 출전" },
-    { side: "teamB", reserve: false, label: "B 출전" },
-    { side: "teamA", reserve: true, label: "A 후보" },
-    { side: "teamB", reserve: true, label: "B 후보" },
-  ];
-  const renderSelfPlacementActions = () => {
-    if (!myEntry || !currentUserInEntry) return null;
-    return (
-      <div className="ow-self-placement-actions">
-        {selfPlacementActions.map((action) => {
-          const active = myEntry.side === action.side && currentUserReserve === action.reserve;
-          const movable = canMoveActiveUserToSlot(action.side, action.reserve);
-          return (
-            <Button
-              key={`${action.side}-${action.reserve ? "reserve" : "active"}`}
-              type="button"
-              size="sm"
-              variant={active ? "primary" : "secondary"}
-              aria-pressed={active}
-              disabled={!active && !movable}
-              onClick={() => {
-                if (!active) moveActiveUserToSlot(action.side, action.reserve);
-              }}
-            >
-              {action.label}
-            </Button>
-          );
-        })}
-      </div>
-    );
-  };
-  const renderSelfSlotCommand = () => {
-    if (!activeSelfSlotDraft || !myEntry || !currentUserInEntry) return null;
-    const sourceTeam = myEntry.sourceTeamId ? teams.find((team) => team.id === myEntry.sourceTeamId) : null;
-    const targetPartyOptions = getSameSidePartyOptions(lobby, myEntry, myTeams, activeSelfSlotDraft.sideName);
-    return (
-      <SelfSlotCommandPanel
-        entry={myEntry}
-        sideName={activeSelfSlotDraft.sideName}
-        reserve={Boolean(activeSelfSlotDraft.reserve)}
-        sourceTeam={sourceTeam}
-        anchor={activeSelfSlotDraft.anchor}
-        canLeaveParty={currentUserInParty}
-        partyJoinOptions={targetPartyOptions}
-        onLeaveParty={leaveCurrentParty}
-        onJoinParty={(teamId) => {
-          app.actions.joinRecruitingSideParty(post.id, teamId, activeSelfSlotDraft.sideName);
-          setSlotActionDraft(null);
-        }}
-        onClose={() => setSlotActionDraft(null)}
-      >
-        {renderSelfPlacementActions()}
-      </SelfSlotCommandPanel>
-    );
-  };
-  const runAction = () => {
-    if (nextAction.action === "ready") app.actions.setRecruitingReady(post.id, true);
-    if (nextAction.action === "confirm") {
-      const matchId = app.actions.confirmRecruitingMatch(post.id);
-      onClose();
-      if (matchId) onOpenMatch(matchId);
-    }
-  };
-
-  return (
-    <div className="ow-compose-backdrop" role="presentation" onMouseDown={onClose}>
-      <aside className="ow-lobby-modal" role="dialog" aria-modal="true" aria-label="공개방" onMouseDown={(event) => event.stopPropagation()}>
-        <div className="ow-lobby-arena">
-          <div className="ow-lobby-topline">
-            <div className="badge-row">
-              <Badge tone={post.ranked === false ? "neutral" : "gold"}>{roomTitle}</Badge>
-              <Badge tone={lobby.canConfirm ? "green" : "blue"}>{lobby.canConfirm ? "CONFIRM" : "WAIT"}</Badge>
-              <Badge tone="green">공개방</Badge>
-            </div>
-            <div>
-              <span>{post.mode}</span>
-              <button type="button" className="ow-icon-button" aria-label="닫기" onClick={onClose}><X size={20} /></button>
-            </div>
-          </div>
-
-          <div className="ow-lobby-title">
-            <span>PUBLIC ROOM</span>
-            <h2>{roomTitle}</h2>
-            <p><MapPin size={16} />{post.court} · {formatMatchTime(post)}</p>
-          </div>
-
-          <div className="ow-lobby-versus-stage">
-            <div className="ow-lobby-team-panel team-a">
-              <div className="ow-lobby-team-head">
-                <span>{teamAMeta.label}</span>
-                <strong>{teamAMeta.name}</strong>
-                <em>{teamAMeta.mmr || "-"} MMR</em>
-              </div>
-              <SideRoster
-                sideName="teamA"
-                side={lobby.sides.teamA}
-                lobby={lobby}
-                userById={userById}
-                teams={teams}
-                hostPlayerId={post.playerId}
-                currentUserId={app.currentUser.id}
-                showCaptainBadge={showCaptainBadge}
-                canInvite={canInviteFromRoom}
-                onInviteSlot={(sideName, reserve, slotKey, event) => openInviteSlot(sideName, reserve, slotKey, event)}
-                onSelfSlotAction={openSelfSlotAction}
-              />
-            </div>
-            <div className="ow-lobby-score-core">
-              <strong>{filledA}/{capacity}</strong>
-              <i>VS</i>
-              <strong>{filledB}/{capacity}</strong>
-              <span>{lobby.canConfirm ? "READY" : "WAIT"}</span>
-            </div>
-            <div className="ow-lobby-team-panel team-b">
-              <div className="ow-lobby-team-head">
-                <span>{teamBMeta.label}</span>
-                <strong>{teamBMeta.name}</strong>
-                <em>{teamBMeta.mmr || "-"} MMR</em>
-              </div>
-              <SideRoster
-                sideName="teamB"
-                side={lobby.sides.teamB}
-                lobby={lobby}
-                userById={userById}
-                teams={teams}
-                hostPlayerId={post.playerId}
-                currentUserId={app.currentUser.id}
-                showCaptainBadge={showCaptainBadge}
-                canInvite={canInviteFromRoom}
-                onInviteSlot={(sideName, reserve, slotKey, event) => openInviteSlot(sideName, reserve, slotKey, event)}
-                onSelfSlotAction={openSelfSlotAction}
-              />
-            </div>
-          </div>
-
-          <div className="ow-reserve-panel">
-            <ReserveLine
-              sideName="teamA"
-              candidates={lobby.sides.teamA.reserveCandidates}
-              playingIds={playingIds}
-              lobby={lobby}
-              userById={userById}
-              teams={teams}
-              hostPlayerId={post.playerId}
-              currentUserId={app.currentUser.id}
-              showCaptainBadge={showCaptainBadge}
-              recorderId={recorderIds.teamA}
-              canInvite={canInviteFromRoom}
-              onInviteSlot={(sideName, reserve, slotKey, event) => openInviteSlot(sideName, reserve, slotKey, event)}
-              onSelfSlotAction={openSelfSlotAction}
-            />
-            <ReserveLine
-              sideName="teamB"
-              candidates={lobby.sides.teamB.reserveCandidates}
-              playingIds={playingIds}
-              lobby={lobby}
-              userById={userById}
-              teams={teams}
-              hostPlayerId={post.playerId}
-              currentUserId={app.currentUser.id}
-              showCaptainBadge={showCaptainBadge}
-              recorderId={recorderIds.teamB}
-              canInvite={canInviteFromRoom}
-              onInviteSlot={(sideName, reserve, slotKey, event) => openInviteSlot(sideName, reserve, slotKey, event)}
-              onSelfSlotAction={openSelfSlotAction}
-            />
-          </div>
-
-          <div className="om-room-modal-panel">
-            <div>
-              <span>NEXT</span>
-              <strong>{nextAction.label}</strong>
-              <em>{nextAction.detail}</em>
-            </div>
-            {nextAction.action ? (
-              <Button type="button" onClick={runAction}>{nextAction.button}</Button>
-            ) : null}
-          </div>
-
-          <div className="om-room-modal-rule-grid">
-            <span><em>방식</em><strong>{capacity} vs {capacity}</strong></span>
-            <span><em>룰</em><strong>{post.rules?.targetScore ?? 21}점 · {post.rules?.timeLimit ?? 12}분</strong></span>
-            <span><em>MMR</em><strong>{post.ranked === false ? "티어 자유" : "MMR 반영"}</strong></span>
-            <span><em>장소</em><strong>{post.court}</strong></span>
-          </div>
-
-          <div className="ow-lobby-actions">
-            <div><CalendarDays size={17} /><span>{post.scheduledDate ?? ""} {post.scheduledTime ?? ""}</span></div>
-            <div><UsersRound size={17} /><span>{capacity} vs {capacity}</span></div>
-            <div><ShieldCheck size={17} /><span>{post.ranked === false ? "티어 자유" : "MMR 반영"}</span></div>
-            <div><Trophy size={17} /><span>{post.rules?.ball ?? "7호 공"}</span></div>
-          </div>
-        </div>
-        {renderSlotCommand()}
-        {renderSelfSlotCommand()}
-
-        {activeInviteDraft && !activeInviteDraft.slotKey ? (
-          <InvitePanel
-            sideName={activeInviteDraft.sideName}
-            reserve={Boolean(activeInviteDraft.reserve)}
-            query={activeInviteDraft.query}
-            onQueryChange={(query) => updateInviteDraft({ query, selectedPlayerIds: [] })}
-            users={app.state.users}
-            teams={teams}
-            userById={userById}
-            disabledPlayerIds={disabledInvitePlayerIds}
-            selectedPlayerIds={activeInviteDraft.selectedPlayerIds ?? []}
-            favoritePlayerIds={favoritePlayerIds}
-            favoriteTeamIds={favoriteTeamIds}
-            onTogglePlayer={toggleInvitePlayer}
-            onInvitePlayers={sendInvites}
-            onToggleFavoritePlayer={(playerId) => app.actions.toggleFavoritePlayer(playerId)}
-            onToggleFavoriteTeam={(teamId) => app.actions.toggleFavoriteTeam(teamId)}
-            onClose={() => setInviteDraft(null)}
-          />
-        ) : null}
-
-        <RoomChat
-          messages={chatMessages}
-          userById={userById}
-          teams={teams}
-          value={chatDraft}
-          canChat={canChat}
-          onChange={setChatDraft}
-          onSubmit={(event) => {
-            event.preventDefault();
-            const body = chatDraft.trim();
-            if (!body) return;
-            app.actions.sendRecruitingChat(post.id, body);
-            setChatDraft("");
-          }}
-        />
-
-        <div className="om-room-modal-actions">
-          <button type="button" className="button button-secondary button-md" onClick={onClose}>닫기</button>
-        </div>
-      </aside>
-    </div>
-  );
-}
-
 function getMatchModalAction(match, userId) {
   const sideName = getUserSideName(match, userId);
   if (!sideName) {
@@ -911,6 +491,8 @@ function MatchPreviewModal({ app, match, status, teamById, userById, teams, onCl
   const filledB = match.teamB.players?.length ?? 0;
   const nextAction = getMatchModalAction(match, app.currentUser.id);
   const userSideName = getUserSideName(match, app.currentUser.id);
+  const isHost = getMatchHostPlayerId(match, app.state) === app.currentUser.id;
+  const canCancel = isHost && ["contract", "agreed"].includes(match.status);
   const runAction = () => {
     if (!nextAction.action || !userSideName) return;
     if (nextAction.action === "agree") app.actions.agreeMatch(match.id, userSideName, app.currentUser.id);
@@ -966,14 +548,29 @@ function MatchPreviewModal({ app, match, status, teamById, userById, teams, onCl
             ) : null}
           </div>
 
-          <div className="om-room-modal-rule-grid">
-            {getMatchRuleRows(match, capacity).map((row) => (
-              <span key={row.label}>
-                <em>{row.label}</em>
-                <strong>{row.value}</strong>
-              </span>
-            ))}
+          <div className="ow-room-rule-panel">
+            <div className="ow-room-rule-head">
+              <strong>규칙</strong>
+            </div>
+            <div className="ow-room-rule-summary">
+              {getMatchRuleRows(match, capacity).map((row) => (
+                <span key={row.label}>{row.label} · {row.value}</span>
+              ))}
+            </div>
+            <span>{match.memo ?? match.stakes ?? "경기 전 규칙과 출전 명단을 확인합니다."}</span>
           </div>
+
+          {isHost ? (
+            <div className="ow-join-panel">
+              <div className="ow-owner-panel">
+                <strong>방장 권한</strong>
+                <span>{canCancel ? "경기 시작 전 취소할 수 있습니다." : "현재 단계에서는 취소할 수 없습니다."}</span>
+                <Button type="button" variant="secondary" className="danger-button" disabled={!canCancel} onClick={() => app.actions.cancelMatch(match.id)}>
+                  경기 취소
+                </Button>
+              </div>
+            </div>
+          ) : null}
 
           <div className="ow-lobby-actions">
             <div><CalendarDays size={17} /><span>{match.scheduledDate ?? ""} {match.scheduledTime ?? ""}</span></div>
@@ -1032,9 +629,6 @@ export default function Matches({ app }) {
     [app.state.recruitingPosts, selectedRecruitingPostId],
   );
   const selectedRecruitingLobby = selectedRecruitingPost ? getRecruitingLobby(selectedRecruitingPost, app.state) : null;
-  const selectedRecruitingEntry = selectedRecruitingLobby
-    ? getRecruitingEntryForUser(selectedRecruitingLobby, app.currentUser.id)
-    : null;
   const selectedMatch = (selectedMatchId ? matchesById[selectedMatchId] : null) ?? (queryMatchId ? matchesById[queryMatchId] : null) ?? null;
   useBodyScrollLock(Boolean(selectedTournament || selectedMatch || selectedRecruitingPost));
   const closeSelectedMatch = () => {
@@ -1427,13 +1021,9 @@ export default function Matches({ app }) {
       ) : null}
 
       {selectedRecruitingPost && selectedRecruitingLobby ? (
-        <RecruitingPreviewModal
+        <RecruitingRoomModal
           app={app}
           post={selectedRecruitingPost}
-          lobby={selectedRecruitingLobby}
-          myEntry={selectedRecruitingEntry}
-          userById={userById}
-          teams={app.state.teams}
           onClose={() => setSelectedRecruitingPostId(null)}
           onOpenMatch={(matchId) => setSelectedMatchId(matchId)}
         />

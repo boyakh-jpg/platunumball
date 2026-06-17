@@ -148,7 +148,12 @@ export default function MatchRoom({ app }) {
   const currentUserSubmitted = getPlayerStatSubmitted(match, app.currentUser.id);
   const currentUserAgreementDone = currentUserSideName ? (match.agreements?.[currentUserSideName] ?? []).includes(app.currentUser.id) : false;
   const currentUserApprovalDone = currentUserSideName ? (match.approvals?.[currentUserSideName] ?? []).includes(app.currentUser.id) : false;
-  const canCancel = ["contract", "agreed"].includes(match.status);
+  const sourceRecruitingPost = match.recruitingPostId
+    ? app.state.recruitingPosts?.find((post) => post.id === match.recruitingPostId)
+    : null;
+  const matchHostPlayerId = match.createdBy || match.hostPlayerId || match.createdPlayerId || sourceRecruitingPost?.playerId || match.teamA?.players?.[0] || "";
+  const isMatchHost = matchHostPlayerId === app.currentUser.id;
+  const canCancel = isMatchHost && ["contract", "agreed"].includes(match.status);
   const canDispute = Boolean(match.result) && match.status === "approval" && recordWindow.disputeOpen;
   const canVoid = match.status === "disputed";
   const canResumeApproval = match.status === "disputed";
@@ -493,8 +498,7 @@ export default function MatchRoom({ app }) {
         )}
       </Card>
 
-      {!isContractStage ? (
-        <Card className="section-card gm-rule-summary-card">
+      <Card className="section-card gm-rule-summary-card">
           <div className="section-title-row">
             <div>
               <p className="eyebrow">Match rules</p>
@@ -510,6 +514,19 @@ export default function MatchRoom({ app }) {
               </div>
             ))}
           </div>
+        </Card>
+
+      {isMatchHost ? (
+        <Card className="section-card">
+          <div className="section-title-row">
+            <div>
+              <p className="eyebrow">Host controls</p>
+              <h2>방장 권한</h2>
+            </div>
+            <Badge tone={canCancel ? "orange" : "neutral"}>{canCancel ? "취소 가능" : "잠김"}</Badge>
+          </div>
+          <p className="muted">{canCancel ? "경기 시작 전 방장은 경기 취소가 가능합니다." : "현재 단계에서는 방장 취소가 잠겼습니다."}</p>
+          <Button type="button" variant="secondary" disabled={!canCancel} onClick={() => app.actions.cancelMatch(match.id)}>경기 취소</Button>
         </Card>
       ) : null}
 

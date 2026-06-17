@@ -1116,192 +1116,50 @@ function InvitationPanel({ invitations, userById, teams, currentUserId, alreadyA
   );
 }
 
-export default function Recruiting({ app }) {
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const targetPostId = searchParams.get("post") ?? "";
-  const targetFilter = searchParams.get("filter") ?? "";
+export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null }) {
+  const selectedPost = post;
   const myTeams = useMemo(
     () => app.state.teams.filter((team) => team.members.some((member) => member.userId === app.currentUser.id)),
     [app.currentUser.id, app.state.teams],
   );
-  const myTeamIds = useMemo(() => myTeams.map((team) => team.id), [myTeams]);
   const userById = useMemo(() => Object.fromEntries(app.state.users.map((user) => [user.id, user])), [app.state.users]);
   const teamById = useMemo(() => Object.fromEntries(app.state.teams.map((team) => [team.id, team])), [app.state.teams]);
-  const [scope, setScope] = useState("local");
-  const [queue, setQueue] = useState("all");
-  const [roomScope, setRoomScope] = useState(() => (targetFilter === "invited" ? "invited" : "all"));
-  const [modeFilter, setModeFilter] = useState("all");
-  const [queueControlsOpen, setQueueControlsOpen] = useState(true);
-  const [composeOpen, setComposeOpen] = useState(false);
-  const [selectedPostId, setSelectedPostId] = useState(null);
   const [joinDraftByPost, setJoinDraftByPost] = useState({});
   const [chatDraftByPost, setChatDraftByPost] = useState({});
   const [inviteDraft, setInviteDraft] = useState(null);
   const [slotActionDraft, setSlotActionDraft] = useState(null);
   const [roomEditDraftByPost, setRoomEditDraftByPost] = useState({});
-  const [draft, setDraft] = useState(() => ({
-    hostJoinMode: myTeams[0]?.id ? "team" : "player",
-    title: "",
-    region: app.currentUser.region,
-    court: COURTS.find((court) => court.region === app.currentUser.region)?.name ?? COURTS[0].name,
-    scheduledDate: getTodayInputValue(),
-    scheduledTime: "20:00",
-    mode: "5v5",
-    ranked: true,
-    mmrRangeMode: "narrow",
-    teamId: myTeams[0]?.id ?? "",
-    playerIds: getDefaultTeamPlayerIds(myTeams[0], getRecruitingSideCapacity({ mode: "5v5" })),
-    position: app.currentUser.position,
-    memo: "빈자리는 개인 또는 팀 파티로 들어올 수 있습니다.",
-  }));
 
-  const selectedTeam = myTeams.find((team) => team.id === draft.teamId) ?? myTeams[0] ?? null;
-  const draftCapacity = getRecruitingSideCapacity(draft);
-  const selectedHostPlayerIds = getPartyPlayerIds(selectedTeam, draft.playerIds, draftCapacity);
-  const draftTargetMmr = draft.hostJoinMode === "team"
-    ? selectedTeam?.mmr ?? app.currentUser.ratings.integrated
-    : app.currentUser.ratings.integrated;
-  const draftRange = getRecruitingTierRange(draftTargetMmr, draft.ranked, draft.mmrRangeMode);
-  const draftRangePolicy = MMR_RANGE_POLICIES[draft.mmrRangeMode] ?? MMR_RANGE_POLICIES.narrow;
-  const hostNeedsTeam = draft.hostJoinMode === "team";
-  const hasSchedule = Boolean(draft.scheduledDate && draft.scheduledTime && draft.court);
-  const minScheduleDate = getTodayInputValue();
-  const maxScheduleDate = getMaxInputValue();
-  const scheduleAllowed = draft.scheduledDate >= minScheduleDate && draft.scheduledDate <= maxScheduleDate;
-  const canPostRecruiting = hasSchedule && scheduleAllowed && (!hostNeedsTeam || (Boolean(selectedTeam) && selectedHostPlayerIds.length > 0));
-
-  useEffect(() => {
-    if (targetFilter === "invited") {
-      setScope("all");
-      setRoomScope("invited");
-      return;
-    }
-    if (!targetPostId) return;
-    setScope("all");
-    setQueue("all");
-    setModeFilter("all");
-    setRoomScope("all");
-  }, [targetFilter, targetPostId]);
-
-  useEffect(() => {
-    if (!hostNeedsTeam) return;
-    const nextTeam = selectedTeam ?? myTeams[0] ?? null;
-    if (!nextTeam) return;
-    const nextPlayerIds = getPartyPlayerIds(nextTeam, draft.playerIds, draftCapacity);
-    const playerIdsNeedSync = !Array.isArray(draft.playerIds)
-      || draft.playerIds.length > draftCapacity
-      || draft.playerIds.some((playerId) => !getSelectableTeamPlayerIds(nextTeam).includes(playerId));
-    if (draft.teamId === nextTeam.id && !playerIdsNeedSync) return;
-    setDraft((current) => ({
-      ...current,
-      teamId: nextTeam.id,
-      playerIds: nextPlayerIds.length ? nextPlayerIds : getDefaultTeamPlayerIds(nextTeam, draftCapacity),
-    }));
-  }, [draft.teamId, draft.playerIds, draftCapacity, hostNeedsTeam, myTeams, selectedTeam]);
-
-  const scopedPosts = useMemo(() => {
-    return [...(app.state.recruitingPosts ?? [])]
-      .filter((post) => post.status !== "closed")
-      .filter((post) => {
-        const invited = hasPendingRecruitingInvitation(post, app.currentUser.id);
-        return invited || scope !== "local" || post.region === app.currentUser.region || isNationalRecruitingPost(post, app.state);
-      })
-      .filter((post) => queue === "all" || (queue === "ranked" ? post.ranked !== false : post.ranked === false))
-      .filter((post) => modeFilter === "all" || post.mode === modeFilter)
-      .filter((post) => roomScope !== "created" || post.playerId === app.currentUser.id)
-      .filter((post) => roomScope !== "joined" || (post.playerId !== app.currentUser.id && isRecruitingPostForUser(post, app.currentUser.id, myTeamIds)))
-      .filter((post) => roomScope !== "invited" || hasPendingRecruitingInvitation(post, app.currentUser.id));
-  }, [app.currentUser.id, app.currentUser.region, app.state, modeFilter, myTeamIds, queue, roomScope, scope]);
-
-  const posts = useMemo(() => {
-    return scopedPosts.sort((a, b) => {
-      const aLocal = Number(a.region === app.currentUser.region);
-      const bLocal = Number(b.region === app.currentUser.region);
-      const aMine = Number(isRecruitingPostForUser(a, app.currentUser.id, myTeamIds));
-      const bMine = Number(isRecruitingPostForUser(b, app.currentUser.id, myTeamIds));
-      const aNational = Number(isNationalRecruitingPost(a, app.state));
-      const bNational = Number(isNationalRecruitingPost(b, app.state));
-      return bMine - aMine || bLocal - aLocal || bNational - aNational || new Date(b.createdAt) - new Date(a.createdAt);
-    });
-  }, [app.currentUser.id, app.currentUser.region, app.state, myTeamIds, scopedPosts]);
-
-  const selectedPost = selectedPostId
-    ? app.state.recruitingPosts.find((post) => post.id === selectedPostId)
-    : null;
-  useBodyScrollLock(Boolean(selectedPost) || composeOpen);
-
-  useEffect(() => {
-    if (!targetPostId) return;
-    const targetPost = app.state.recruitingPosts.find((post) => post.id === targetPostId && post.status !== "closed");
-    if (!targetPost) return;
-    setSelectedPostId(targetPostId);
-  }, [app.state.recruitingPosts, targetPostId]);
-
-  useEffect(() => {
-    if (!targetPostId || !posts.some((post) => post.id === targetPostId)) return undefined;
-    const frame = window.requestAnimationFrame(() => {
-      document.getElementById(`recruiting-room-${targetPostId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, [posts, targetPostId]);
-
-  const rankedCount = scopedPosts.filter((post) => post.ranked !== false).length;
-  const friendlyCount = scopedPosts.length - rankedCount;
-  const createdRoomCount = (app.state.recruitingPosts ?? [])
-    .filter((post) => post.status !== "closed")
-    .filter((post) => post.playerId === app.currentUser.id)
-    .length;
-  const joinedRoomCount = (app.state.recruitingPosts ?? [])
-    .filter((post) => post.status !== "closed")
-    .filter((post) => post.playerId !== app.currentUser.id)
-    .filter((post) => isRecruitingPostForUser(post, app.currentUser.id, myTeamIds))
-    .length;
-  const invitedRoomCount = (app.state.recruitingPosts ?? [])
-    .filter((post) => post.status !== "closed")
-    .filter((post) => hasPendingRecruitingInvitation(post, app.currentUser.id))
-    .length;
-
-  const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
-  const submit = (event) => {
-    event.preventDefault();
-    const nextDraft = { ...draft, title: draft.title.trim() || getDefaultTitle(draft) };
-    app.actions.createRecruitingPost(nextDraft);
-    setDraft((current) => ({ ...current, title: "", memo: "빈자리는 개인 또는 팀 파티로 들어올 수 있습니다." }));
-    setComposeOpen(false);
+  const closeModal = () => {
+    setInviteDraft(null);
+    setSlotActionDraft(null);
+    onClose?.();
   };
-
-  const selectRoomScope = (nextScope) => {
-    const target = roomScope === nextScope ? "all" : nextScope;
-    setRoomScope(target);
-    if (target !== "all") setScope("all");
-  };
-
-  const getJoinDraft = (post) => joinDraftByPost[post.id] ?? getDefaultJoinDraft(post, myTeams, app.currentUser, app.state);
-  const updateJoinDraft = (post, patch) => {
+  const getJoinDraft = (roomPost) => joinDraftByPost[roomPost.id] ?? getDefaultJoinDraft(roomPost, myTeams, app.currentUser, app.state);
+  const updateJoinDraft = (roomPost, patch) => {
     setJoinDraftByPost((current) => ({
       ...current,
-      [post.id]: { ...getJoinDraft(post), ...patch },
+      [roomPost.id]: { ...getJoinDraft(roomPost), ...patch },
     }));
   };
-  const submitJoin = (post) => {
-    const joinDraft = getJoinDraft(post);
-    app.actions.interestRecruitingPost(post.id, joinDraft);
+  const submitJoin = (roomPost) => {
+    const joinDraft = getJoinDraft(roomPost);
+    app.actions.interestRecruitingPost(roomPost.id, joinDraft);
   };
-  const getChatDraft = (post) => chatDraftByPost[post.id] ?? "";
-  const updateChatDraft = (post, value) => {
-    setChatDraftByPost((current) => ({ ...current, [post.id]: value }));
+  const getChatDraft = (roomPost) => chatDraftByPost[roomPost.id] ?? '';
+  const updateChatDraft = (roomPost, value) => {
+    setChatDraftByPost((current) => ({ ...current, [roomPost.id]: value }));
   };
-  const submitChat = (event, post) => {
+  const submitChat = (event, roomPost) => {
     event.preventDefault();
-    const body = getChatDraft(post).trim();
+    const body = getChatDraft(roomPost).trim();
     if (!body) return;
-    app.actions.sendRecruitingChat(post.id, body);
-    updateChatDraft(post, "");
+    app.actions.sendRecruitingChat(roomPost.id, body);
+    updateChatDraft(roomPost, '');
   };
   const getCommandAnchor = (event) => {
     const target = event?.currentTarget;
-    if (!target?.getBoundingClientRect || typeof window === "undefined") return null;
+    if (!target?.getBoundingClientRect || typeof window === 'undefined') return null;
     const rect = target.getBoundingClientRect();
     const width = Math.min(380, Math.max(280, window.innerWidth - 24));
     const halfWidth = width / 2;
@@ -1311,8 +1169,8 @@ export default function Recruiting({ app }) {
     );
     const spaceBelow = window.innerHeight - rect.bottom;
     const spaceAbove = rect.top;
-    const placement = spaceBelow >= 300 || spaceBelow >= spaceAbove ? "bottom" : "top";
-    const y = placement === "bottom" ? rect.bottom + 8 : rect.top - 8;
+    const placement = spaceBelow >= 300 || spaceBelow >= spaceAbove ? 'bottom' : 'top';
+    const y = placement === 'bottom' ? rect.bottom + 8 : rect.top - 8;
     return {
       x,
       y: Math.min(Math.max(y, 12), window.innerHeight - 12),
@@ -1320,36 +1178,36 @@ export default function Recruiting({ app }) {
       placement,
     };
   };
-  const openInviteSlot = (post, sideName, reserve = false, slotKey = "", event = null) => {
+  const openInviteSlot = (roomPost, sideName, reserve = false, slotKey = '', event = null) => {
     setSlotActionDraft(null);
-    setInviteDraft({ postId: post.id, sideName, reserve, slotKey, query: "", selectedPlayerIds: [], anchor: getCommandAnchor(event) });
+    setInviteDraft({ postId: roomPost.id, sideName, reserve, slotKey, query: '', selectedPlayerIds: [], anchor: getCommandAnchor(event) });
   };
-  const openSelfSlotAction = (post, sideName, reserve = false, playerId = "", entryId = "", event = null) => {
+  const openSelfSlotAction = (roomPost, sideName, reserve = false, playerId = '', entryId = '', event = null) => {
     setInviteDraft(null);
-    setSlotActionDraft({ postId: post.id, sideName, reserve, playerId, entryId, anchor: getCommandAnchor(event) });
+    setSlotActionDraft({ postId: roomPost.id, sideName, reserve, playerId, entryId, anchor: getCommandAnchor(event) });
   };
-  const getRoomEditDraftByPost = (post) => roomEditDraftByPost[post.id] ?? null;
-  const openRoomEdit = (post) => {
-    setRoomEditDraftByPost((current) => ({ ...current, [post.id]: getRoomEditDraft(post) }));
+  const getRoomEditDraftByPost = (roomPost) => roomEditDraftByPost[roomPost.id] ?? null;
+  const openRoomEdit = (roomPost) => {
+    setRoomEditDraftByPost((current) => ({ ...current, [roomPost.id]: getRoomEditDraft(roomPost) }));
   };
-  const closeRoomEdit = (post) => {
+  const closeRoomEdit = (roomPost) => {
     setRoomEditDraftByPost((current) => {
       const next = { ...current };
-      delete next[post.id];
+      delete next[roomPost.id];
       return next;
     });
   };
-  const updateRoomEditDraft = (post, patch) => {
+  const updateRoomEditDraft = (roomPost, patch) => {
     setRoomEditDraftByPost((current) => ({
       ...current,
-      [post.id]: { ...(current[post.id] ?? getRoomEditDraft(post)), ...patch },
+      [roomPost.id]: { ...(current[roomPost.id] ?? getRoomEditDraft(roomPost)), ...patch },
     }));
   };
-  const saveRoomEdit = (post) => {
-    const roomEditDraft = getRoomEditDraftByPost(post);
+  const saveRoomEdit = (roomPost) => {
+    const roomEditDraft = getRoomEditDraftByPost(roomPost);
     if (!roomEditDraft) return;
-    app.actions.updateRecruitingRoomRules(post.id, roomEditDraft);
-    closeRoomEdit(post);
+    app.actions.updateRecruitingRoomRules(roomPost.id, roomEditDraft);
+    closeRoomEdit(roomPost);
   };
   const updateInviteDraft = (patch) => {
     setInviteDraft((current) => (current ? { ...current, ...patch } : current));
@@ -1366,163 +1224,21 @@ export default function Recruiting({ app }) {
       };
     });
   };
-  const sendInvites = (post, playerIds, teamId = null) => {
+  const sendInvites = (roomPost, playerIds, teamId = null) => {
     if (!inviteDraft || !playerIds.length) return;
-    app.actions.inviteRecruitingPlayers(post.id, { side: inviteDraft.sideName, reserve: Boolean(inviteDraft.reserve), playerIds, teamId });
+    app.actions.inviteRecruitingPlayers(roomPost.id, { side: inviteDraft.sideName, reserve: Boolean(inviteDraft.reserve), playerIds, teamId });
     setInviteDraft((current) => (current ? { ...current, selectedPlayerIds: [] } : current));
   };
-  const confirmMatch = (post) => {
-    const matchId = app.actions.confirmRecruitingMatch(post.id);
+  const confirmMatch = (roomPost) => {
+    const matchId = app.actions.confirmRecruitingMatch(roomPost.id);
     if (!matchId) return;
-    setSelectedPostId(null);
-    navigate(`/app/matches?match=${matchId}`);
+    closeModal();
+    onOpenMatch?.(matchId);
   };
 
-  return (
-    <div className="page-stack ow-recruit-page">
-      <section className="ow-recruit-hero">
-        <div className="ow-hero-copy">
-          <span className="ow-kicker">MATCH QUEUE</span>
-          <h1>대기 매칭</h1>
-          <p>개인/팀 모집을 나누지 않는다. 공개방을 열면 참가자가 개인이나 팀 파티로 들어온다.</p>
-        </div>
-        <div className="ow-hero-panel">
-          <div className="ow-hero-stats">
-            <span><strong>{scopedPosts.length}</strong>OPEN</span>
-            <span><strong>{rankedCount}</strong>RANKED</span>
-            <span><strong>{friendlyCount}</strong>FRIENDLY</span>
-          </div>
-          <Link to="/app/create">
-            <Button type="button" className="ow-hero-cta">
-              <PlusCircle size={18} /> 경기방 만들기
-            </Button>
-          </Link>
-        </div>
-      </section>
+  if (!selectedPost) return null;
 
-      <section className={queueControlsOpen ? "ow-queue-controls" : "ow-queue-controls collapsed"}>
-        <div className="ow-queue-controls-head">
-          <div>
-            <span className="ow-kicker">QUEUE FILTER</span>
-            <strong>매치방 · {posts.length}개 표시</strong>
-          </div>
-          <button type="button" className="ow-collapse-button" onClick={() => setQueueControlsOpen((current) => !current)}>
-            {queueControlsOpen ? "접기" : "펼치기"}
-          </button>
-        </div>
-
-        {queueControlsOpen ? (
-          <>
-            <section className="ow-filter-bar" aria-label="필터">
-              <button type="button" className={scope === "local" ? "active" : ""} onClick={() => setScope("local")}>내 지역</button>
-              <button type="button" className={scope === "all" ? "active" : ""} onClick={() => setScope("all")}>전체 지역</button>
-              <button type="button" className={roomScope === "created" ? "active" : ""} onClick={() => selectRoomScope("created")}>내가 만든 방 {createdRoomCount}</button>
-              <button type="button" className={roomScope === "joined" ? "active" : ""} onClick={() => selectRoomScope("joined")}>내 참여방 {joinedRoomCount}</button>
-              <button type="button" className={roomScope === "invited" ? "active" : ""} onClick={() => selectRoomScope("invited")}>초대받음 {invitedRoomCount}</button>
-              <button type="button" className={queue === "all" ? "active" : ""} onClick={() => setQueue("all")}>전체</button>
-              <button type="button" className={queue === "ranked" ? "active" : ""} onClick={() => setQueue("ranked")}>정규전</button>
-              <button type="button" className={queue === "friendly" ? "active" : ""} onClick={() => setQueue("friendly")}>친선전</button>
-              <label className="ow-filter-select">
-                방식
-                <select value={modeFilter} onChange={(event) => setModeFilter(event.target.value)}>
-                  <option value="all">전체</option>
-                  {MATCH_MODES.map((mode) => <option key={mode.id} value={mode.id}>{mode.label}</option>)}
-                </select>
-              </label>
-              <span className="ow-filter-count">{posts.length}개 표시</span>
-            </section>
-          </>
-        ) : (
-          <div className="ow-queue-summary">
-            <span>{scope === "local" ? "내 지역" : "전체 지역"}</span>
-            <span>{queue === "ranked" ? "정규전" : queue === "friendly" ? "친선전" : "전체"}</span>
-            <span>{modeFilter === "all" ? "전체 방식" : MATCH_MODES.find((mode) => mode.id === modeFilter)?.label ?? modeFilter}</span>
-            <span>{roomScope === "created" ? `내가 만든 방 ${createdRoomCount}` : roomScope === "joined" ? `내 참여방 ${joinedRoomCount}` : roomScope === "invited" ? `초대받음 ${invitedRoomCount}` : "전체 방"}</span>
-          </div>
-        )}
-      </section>
-
-      <section className="ow-recruit-list" aria-label="매치 큐 목록">
-        {posts.length ? posts.map((post) => {
-          const lobby = getRecruitingLobby(post, app.state);
-          const target = getRecruitingTargetMmr(post, app.state);
-          const range = getRecruitingTierRange(target, post.ranked !== false, post.mmrRangeMode ?? post.roomState?.mmrRangeMode);
-          const host = userById[post.playerId];
-          const hostTeam = post.teamId ? teamById[post.teamId] : null;
-          const targetTeam = post.targetTeamId ? teamById[post.targetTeamId] : null;
-          const applicantEntry = { kind: "player", joinMode: "player", playerId: app.currentUser.id };
-          const applied = hasRecruitingApplicant(post, applicantEntry)
-            || myTeams.some((team) => hasRecruitingApplicant(post, { kind: "team", joinMode: "team", teamId: team.id }));
-          const mine = post.playerId === app.currentUser.id;
-          const myRoom = isRecruitingPostForUser(post, app.currentUser.id, myTeamIds);
-          const invited = hasPendingRecruitingInvitation(post, app.currentUser.id);
-          const roomTag = invited ? "초대받음" : mine ? "내가 만든 방" : myRoom ? "내 참여방" : "";
-
-          return (
-            <article
-              id={`recruiting-room-${post.id}`}
-              key={post.id}
-              className={`ow-recruit-card ow-lobby-card ${lobby.canConfirm ? "ow-state-ready" : ""} ${myRoom ? "ow-my-room" : ""} ${invited ? "ow-invited-room" : ""} ${targetPostId === post.id ? "ow-target-room" : ""}`}
-              onClick={() => setSelectedPostId(post.id)}
-            >
-              <div className="ow-card-main">
-                <div className="ow-card-top">
-                  <span className="ow-type-tag">ROOM</span>
-                  {roomTag ? <span className={invited ? "ow-my-room-tag invited" : "ow-my-room-tag"}>{roomTag}</span> : null}
-                  <span className={`ow-queue-pill ${post.ranked === false ? "friendly" : "ranked"}`}>{post.ranked === false ? "친선전" : "정규전"}</span>
-                  <span className="ow-position-pill">{post.mode}</span>
-                  {targetTeam ? <span className="ow-position-pill">희망 상대 <TeamHoverCard team={targetTeam} as="span">{targetTeam.name}</TeamHoverCard></span> : null}
-                  {isNationalRecruitingPost(post, app.state) ? <span className="ow-position-pill">전국 노출</span> : null}
-                </div>
-                <h3>{post.title}</h3>
-                <div className="ow-card-meta">
-                  <MapPin size={15} />
-                  <span>
-                    {post.region} · {post.court} · {" "}
-                    {hostTeam ? <TeamHoverCard team={hostTeam} as="span">{hostTeam.name}</TeamHoverCard> : host?.name ?? "방장"}
-                  </span>
-                </div>
-                <QueueRoomBoard lobby={lobby} userById={userById} teams={app.state.teams} />
-                <div className="ow-card-bottom">
-                  <span>{getRecruitingSchedule(post)}</span>
-                  <span className="ow-tier-chip">{post.ranked === false ? "티어 자유" : range.label}</span>
-                  <span>{formatWhen(post.createdAt)}</span>
-                  <span>{lobby.ready ? "READY" : "WAIT"}</span>
-                </div>
-              </div>
-
-              <div className="ow-card-side" onClick={(event) => event.stopPropagation()}>
-                <span className="ow-slot-count">
-                  <strong>{lobby.sides.teamA.projectedFilled + lobby.sides.teamB.projectedFilled}/{getRecruitingSideCapacity(post) * 2}</strong>
-                  <span>참가 인원</span>
-                </span>
-                <Button type="button" className="ow-card-action" onClick={() => setSelectedPostId(post.id)}>
-                  <Swords size={16} /> 방 보기
-                </Button>
-                {!mine && !applied ? (
-                  <Button
-                    type="button"
-                    className="ow-card-action"
-                    variant="secondary"
-                    onClick={() => app.actions.interestRecruitingPost(post.id, getDefaultJoinDraft(post, myTeams, app.currentUser, app.state))}
-                  >
-                    <Clock3 size={16} /> 빠른 참여
-                  </Button>
-                ) : null}
-              </div>
-            </article>
-          );
-        }) : (
-          <div className="ow-empty-state">
-            <div>
-              <strong>조건에 맞는 매치방 없음</strong>
-              <p>필터를 바꾸거나 새 매치방을 열어라.</p>
-            </div>
-          </div>
-        )}
-      </section>
-
-      {selectedPost ? (() => {
+  return (() => {
         const lobby = getRecruitingLobby(selectedPost, app.state);
         const joinDraft = getJoinDraft(selectedPost);
         const selectedJoinTeam = myTeams.find((team) => team.id === joinDraft.teamId) ?? myTeams[0] ?? null;
@@ -1734,7 +1450,7 @@ export default function Recruiting({ app }) {
         };
 
         return (
-          <div className="ow-compose-backdrop" role="presentation" onPointerDown={() => { setInviteDraft(null); setSlotActionDraft(null); setSelectedPostId(null); }}>
+          <div className="ow-compose-backdrop" role="presentation" onPointerDown={() => { setInviteDraft(null); setSlotActionDraft(null); closeModal(); }}>
             <aside className="ow-lobby-modal" role="dialog" aria-modal="true" aria-label="매치방" onPointerDown={(event) => event.stopPropagation()}>
               <div className="ow-lobby-arena">
                 <div className="ow-lobby-topline">
@@ -2153,7 +1869,7 @@ export default function Recruiting({ app }) {
                   type="button"
                   variant="secondary"
                   className="ow-modal-close-button"
-                  onClick={() => { setInviteDraft(null); setSelectedPostId(null); }}
+                  onClick={() => { setInviteDraft(null); closeModal(); }}
                 >
                   <X size={20} /> 방 닫기
                 </Button>
@@ -2161,7 +1877,317 @@ export default function Recruiting({ app }) {
             </aside>
           </div>
         );
-      })() : null}
+      })();
+}
+
+export default function Recruiting({ app }) {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const targetPostId = searchParams.get("post") ?? "";
+  const targetFilter = searchParams.get("filter") ?? "";
+  const myTeams = useMemo(
+    () => app.state.teams.filter((team) => team.members.some((member) => member.userId === app.currentUser.id)),
+    [app.currentUser.id, app.state.teams],
+  );
+  const myTeamIds = useMemo(() => myTeams.map((team) => team.id), [myTeams]);
+  const userById = useMemo(() => Object.fromEntries(app.state.users.map((user) => [user.id, user])), [app.state.users]);
+  const teamById = useMemo(() => Object.fromEntries(app.state.teams.map((team) => [team.id, team])), [app.state.teams]);
+  const [scope, setScope] = useState("local");
+  const [queue, setQueue] = useState("all");
+  const [roomScope, setRoomScope] = useState(() => (targetFilter === "invited" ? "invited" : "all"));
+  const [modeFilter, setModeFilter] = useState("all");
+  const [queueControlsOpen, setQueueControlsOpen] = useState(true);
+  const [composeOpen, setComposeOpen] = useState(false);
+  const [selectedPostId, setSelectedPostId] = useState(null);
+  const [draft, setDraft] = useState(() => ({
+    hostJoinMode: myTeams[0]?.id ? "team" : "player",
+    title: "",
+    region: app.currentUser.region,
+    court: COURTS.find((court) => court.region === app.currentUser.region)?.name ?? COURTS[0].name,
+    scheduledDate: getTodayInputValue(),
+    scheduledTime: "20:00",
+    mode: "5v5",
+    ranked: true,
+    mmrRangeMode: "narrow",
+    teamId: myTeams[0]?.id ?? "",
+    playerIds: getDefaultTeamPlayerIds(myTeams[0], getRecruitingSideCapacity({ mode: "5v5" })),
+    position: app.currentUser.position,
+    memo: "빈자리는 개인 또는 팀 파티로 들어올 수 있습니다.",
+  }));
+
+  const selectedTeam = myTeams.find((team) => team.id === draft.teamId) ?? myTeams[0] ?? null;
+  const draftCapacity = getRecruitingSideCapacity(draft);
+  const selectedHostPlayerIds = getPartyPlayerIds(selectedTeam, draft.playerIds, draftCapacity);
+  const draftTargetMmr = draft.hostJoinMode === "team"
+    ? selectedTeam?.mmr ?? app.currentUser.ratings.integrated
+    : app.currentUser.ratings.integrated;
+  const draftRange = getRecruitingTierRange(draftTargetMmr, draft.ranked, draft.mmrRangeMode);
+  const draftRangePolicy = MMR_RANGE_POLICIES[draft.mmrRangeMode] ?? MMR_RANGE_POLICIES.narrow;
+  const hostNeedsTeam = draft.hostJoinMode === "team";
+  const hasSchedule = Boolean(draft.scheduledDate && draft.scheduledTime && draft.court);
+  const minScheduleDate = getTodayInputValue();
+  const maxScheduleDate = getMaxInputValue();
+  const scheduleAllowed = draft.scheduledDate >= minScheduleDate && draft.scheduledDate <= maxScheduleDate;
+  const canPostRecruiting = hasSchedule && scheduleAllowed && (!hostNeedsTeam || (Boolean(selectedTeam) && selectedHostPlayerIds.length > 0));
+
+  useEffect(() => {
+    if (targetFilter === "invited") {
+      setScope("all");
+      setRoomScope("invited");
+      return;
+    }
+    if (!targetPostId) return;
+    setScope("all");
+    setQueue("all");
+    setModeFilter("all");
+    setRoomScope("all");
+  }, [targetFilter, targetPostId]);
+
+  useEffect(() => {
+    if (!hostNeedsTeam) return;
+    const nextTeam = selectedTeam ?? myTeams[0] ?? null;
+    if (!nextTeam) return;
+    const nextPlayerIds = getPartyPlayerIds(nextTeam, draft.playerIds, draftCapacity);
+    const playerIdsNeedSync = !Array.isArray(draft.playerIds)
+      || draft.playerIds.length > draftCapacity
+      || draft.playerIds.some((playerId) => !getSelectableTeamPlayerIds(nextTeam).includes(playerId));
+    if (draft.teamId === nextTeam.id && !playerIdsNeedSync) return;
+    setDraft((current) => ({
+      ...current,
+      teamId: nextTeam.id,
+      playerIds: nextPlayerIds.length ? nextPlayerIds : getDefaultTeamPlayerIds(nextTeam, draftCapacity),
+    }));
+  }, [draft.teamId, draft.playerIds, draftCapacity, hostNeedsTeam, myTeams, selectedTeam]);
+
+  const scopedPosts = useMemo(() => {
+    return [...(app.state.recruitingPosts ?? [])]
+      .filter((post) => post.status !== "closed")
+      .filter((post) => {
+        const invited = hasPendingRecruitingInvitation(post, app.currentUser.id);
+        return invited || scope !== "local" || post.region === app.currentUser.region || isNationalRecruitingPost(post, app.state);
+      })
+      .filter((post) => queue === "all" || (queue === "ranked" ? post.ranked !== false : post.ranked === false))
+      .filter((post) => modeFilter === "all" || post.mode === modeFilter)
+      .filter((post) => roomScope !== "created" || post.playerId === app.currentUser.id)
+      .filter((post) => roomScope !== "joined" || (post.playerId !== app.currentUser.id && isRecruitingPostForUser(post, app.currentUser.id, myTeamIds)))
+      .filter((post) => roomScope !== "invited" || hasPendingRecruitingInvitation(post, app.currentUser.id));
+  }, [app.currentUser.id, app.currentUser.region, app.state, modeFilter, myTeamIds, queue, roomScope, scope]);
+
+  const posts = useMemo(() => {
+    return scopedPosts.sort((a, b) => {
+      const aLocal = Number(a.region === app.currentUser.region);
+      const bLocal = Number(b.region === app.currentUser.region);
+      const aMine = Number(isRecruitingPostForUser(a, app.currentUser.id, myTeamIds));
+      const bMine = Number(isRecruitingPostForUser(b, app.currentUser.id, myTeamIds));
+      const aNational = Number(isNationalRecruitingPost(a, app.state));
+      const bNational = Number(isNationalRecruitingPost(b, app.state));
+      return bMine - aMine || bLocal - aLocal || bNational - aNational || new Date(b.createdAt) - new Date(a.createdAt);
+    });
+  }, [app.currentUser.id, app.currentUser.region, app.state, myTeamIds, scopedPosts]);
+
+  const selectedPost = selectedPostId
+    ? app.state.recruitingPosts.find((post) => post.id === selectedPostId)
+    : null;
+  useBodyScrollLock(Boolean(selectedPost) || composeOpen);
+
+  useEffect(() => {
+    if (!targetPostId) return;
+    const targetPost = app.state.recruitingPosts.find((post) => post.id === targetPostId && post.status !== "closed");
+    if (!targetPost) return;
+    setSelectedPostId(targetPostId);
+  }, [app.state.recruitingPosts, targetPostId]);
+
+  useEffect(() => {
+    if (!targetPostId || !posts.some((post) => post.id === targetPostId)) return undefined;
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById(`recruiting-room-${targetPostId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [posts, targetPostId]);
+
+  const rankedCount = scopedPosts.filter((post) => post.ranked !== false).length;
+  const friendlyCount = scopedPosts.length - rankedCount;
+  const createdRoomCount = (app.state.recruitingPosts ?? [])
+    .filter((post) => post.status !== "closed")
+    .filter((post) => post.playerId === app.currentUser.id)
+    .length;
+  const joinedRoomCount = (app.state.recruitingPosts ?? [])
+    .filter((post) => post.status !== "closed")
+    .filter((post) => post.playerId !== app.currentUser.id)
+    .filter((post) => isRecruitingPostForUser(post, app.currentUser.id, myTeamIds))
+    .length;
+  const invitedRoomCount = (app.state.recruitingPosts ?? [])
+    .filter((post) => post.status !== "closed")
+    .filter((post) => hasPendingRecruitingInvitation(post, app.currentUser.id))
+    .length;
+
+  const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
+  const submit = (event) => {
+    event.preventDefault();
+    const nextDraft = { ...draft, title: draft.title.trim() || getDefaultTitle(draft) };
+    app.actions.createRecruitingPost(nextDraft);
+    setDraft((current) => ({ ...current, title: "", memo: "빈자리는 개인 또는 팀 파티로 들어올 수 있습니다." }));
+    setComposeOpen(false);
+  };
+
+  const selectRoomScope = (nextScope) => {
+    const target = roomScope === nextScope ? "all" : nextScope;
+    setRoomScope(target);
+    if (target !== "all") setScope("all");
+  };
+
+  return (
+    <div className="page-stack ow-recruit-page">
+      <section className="ow-recruit-hero">
+        <div className="ow-hero-copy">
+          <span className="ow-kicker">MATCH QUEUE</span>
+          <h1>대기 매칭</h1>
+          <p>개인/팀 모집을 나누지 않는다. 공개방을 열면 참가자가 개인이나 팀 파티로 들어온다.</p>
+        </div>
+        <div className="ow-hero-panel">
+          <div className="ow-hero-stats">
+            <span><strong>{scopedPosts.length}</strong>OPEN</span>
+            <span><strong>{rankedCount}</strong>RANKED</span>
+            <span><strong>{friendlyCount}</strong>FRIENDLY</span>
+          </div>
+          <Link to="/app/create">
+            <Button type="button" className="ow-hero-cta">
+              <PlusCircle size={18} /> 경기방 만들기
+            </Button>
+          </Link>
+        </div>
+      </section>
+
+      <section className={queueControlsOpen ? "ow-queue-controls" : "ow-queue-controls collapsed"}>
+        <div className="ow-queue-controls-head">
+          <div>
+            <span className="ow-kicker">QUEUE FILTER</span>
+            <strong>매치방 · {posts.length}개 표시</strong>
+          </div>
+          <button type="button" className="ow-collapse-button" onClick={() => setQueueControlsOpen((current) => !current)}>
+            {queueControlsOpen ? "접기" : "펼치기"}
+          </button>
+        </div>
+
+        {queueControlsOpen ? (
+          <>
+            <section className="ow-filter-bar" aria-label="필터">
+              <button type="button" className={scope === "local" ? "active" : ""} onClick={() => setScope("local")}>내 지역</button>
+              <button type="button" className={scope === "all" ? "active" : ""} onClick={() => setScope("all")}>전체 지역</button>
+              <button type="button" className={roomScope === "created" ? "active" : ""} onClick={() => selectRoomScope("created")}>내가 만든 방 {createdRoomCount}</button>
+              <button type="button" className={roomScope === "joined" ? "active" : ""} onClick={() => selectRoomScope("joined")}>내 참여방 {joinedRoomCount}</button>
+              <button type="button" className={roomScope === "invited" ? "active" : ""} onClick={() => selectRoomScope("invited")}>초대받음 {invitedRoomCount}</button>
+              <button type="button" className={queue === "all" ? "active" : ""} onClick={() => setQueue("all")}>전체</button>
+              <button type="button" className={queue === "ranked" ? "active" : ""} onClick={() => setQueue("ranked")}>정규전</button>
+              <button type="button" className={queue === "friendly" ? "active" : ""} onClick={() => setQueue("friendly")}>친선전</button>
+              <label className="ow-filter-select">
+                방식
+                <select value={modeFilter} onChange={(event) => setModeFilter(event.target.value)}>
+                  <option value="all">전체</option>
+                  {MATCH_MODES.map((mode) => <option key={mode.id} value={mode.id}>{mode.label}</option>)}
+                </select>
+              </label>
+              <span className="ow-filter-count">{posts.length}개 표시</span>
+            </section>
+          </>
+        ) : (
+          <div className="ow-queue-summary">
+            <span>{scope === "local" ? "내 지역" : "전체 지역"}</span>
+            <span>{queue === "ranked" ? "정규전" : queue === "friendly" ? "친선전" : "전체"}</span>
+            <span>{modeFilter === "all" ? "전체 방식" : MATCH_MODES.find((mode) => mode.id === modeFilter)?.label ?? modeFilter}</span>
+            <span>{roomScope === "created" ? `내가 만든 방 ${createdRoomCount}` : roomScope === "joined" ? `내 참여방 ${joinedRoomCount}` : roomScope === "invited" ? `초대받음 ${invitedRoomCount}` : "전체 방"}</span>
+          </div>
+        )}
+      </section>
+
+      <section className="ow-recruit-list" aria-label="매치 큐 목록">
+        {posts.length ? posts.map((post) => {
+          const lobby = getRecruitingLobby(post, app.state);
+          const target = getRecruitingTargetMmr(post, app.state);
+          const range = getRecruitingTierRange(target, post.ranked !== false, post.mmrRangeMode ?? post.roomState?.mmrRangeMode);
+          const host = userById[post.playerId];
+          const hostTeam = post.teamId ? teamById[post.teamId] : null;
+          const targetTeam = post.targetTeamId ? teamById[post.targetTeamId] : null;
+          const applicantEntry = { kind: "player", joinMode: "player", playerId: app.currentUser.id };
+          const applied = hasRecruitingApplicant(post, applicantEntry)
+            || myTeams.some((team) => hasRecruitingApplicant(post, { kind: "team", joinMode: "team", teamId: team.id }));
+          const mine = post.playerId === app.currentUser.id;
+          const myRoom = isRecruitingPostForUser(post, app.currentUser.id, myTeamIds);
+          const invited = hasPendingRecruitingInvitation(post, app.currentUser.id);
+          const roomTag = invited ? "초대받음" : mine ? "내가 만든 방" : myRoom ? "내 참여방" : "";
+
+          return (
+            <article
+              id={`recruiting-room-${post.id}`}
+              key={post.id}
+              className={`ow-recruit-card ow-lobby-card ${lobby.canConfirm ? "ow-state-ready" : ""} ${myRoom ? "ow-my-room" : ""} ${invited ? "ow-invited-room" : ""} ${targetPostId === post.id ? "ow-target-room" : ""}`}
+              onClick={() => setSelectedPostId(post.id)}
+            >
+              <div className="ow-card-main">
+                <div className="ow-card-top">
+                  <span className="ow-type-tag">ROOM</span>
+                  {roomTag ? <span className={invited ? "ow-my-room-tag invited" : "ow-my-room-tag"}>{roomTag}</span> : null}
+                  <span className={`ow-queue-pill ${post.ranked === false ? "friendly" : "ranked"}`}>{post.ranked === false ? "친선전" : "정규전"}</span>
+                  <span className="ow-position-pill">{post.mode}</span>
+                  {targetTeam ? <span className="ow-position-pill">희망 상대 <TeamHoverCard team={targetTeam} as="span">{targetTeam.name}</TeamHoverCard></span> : null}
+                  {isNationalRecruitingPost(post, app.state) ? <span className="ow-position-pill">전국 노출</span> : null}
+                </div>
+                <h3>{post.title}</h3>
+                <div className="ow-card-meta">
+                  <MapPin size={15} />
+                  <span>
+                    {post.region} · {post.court} · {" "}
+                    {hostTeam ? <TeamHoverCard team={hostTeam} as="span">{hostTeam.name}</TeamHoverCard> : host?.name ?? "방장"}
+                  </span>
+                </div>
+                <QueueRoomBoard lobby={lobby} userById={userById} teams={app.state.teams} />
+                <div className="ow-card-bottom">
+                  <span>{getRecruitingSchedule(post)}</span>
+                  <span className="ow-tier-chip">{post.ranked === false ? "티어 자유" : range.label}</span>
+                  <span>{formatWhen(post.createdAt)}</span>
+                  <span>{lobby.ready ? "READY" : "WAIT"}</span>
+                </div>
+              </div>
+
+              <div className="ow-card-side" onClick={(event) => event.stopPropagation()}>
+                <span className="ow-slot-count">
+                  <strong>{lobby.sides.teamA.projectedFilled + lobby.sides.teamB.projectedFilled}/{getRecruitingSideCapacity(post) * 2}</strong>
+                  <span>참가 인원</span>
+                </span>
+                <Button type="button" className="ow-card-action" onClick={() => setSelectedPostId(post.id)}>
+                  <Swords size={16} /> 방 보기
+                </Button>
+                {!mine && !applied ? (
+                  <Button
+                    type="button"
+                    className="ow-card-action"
+                    variant="secondary"
+                    onClick={() => app.actions.interestRecruitingPost(post.id, getDefaultJoinDraft(post, myTeams, app.currentUser, app.state))}
+                  >
+                    <Clock3 size={16} /> 빠른 참여
+                  </Button>
+                ) : null}
+              </div>
+            </article>
+          );
+        }) : (
+          <div className="ow-empty-state">
+            <div>
+              <strong>조건에 맞는 매치방 없음</strong>
+              <p>필터를 바꾸거나 새 매치방을 열어라.</p>
+            </div>
+          </div>
+        )}
+      </section>
+
+      {selectedPost ? (
+        <RecruitingRoomModal
+          app={app}
+          post={selectedPost}
+          onClose={() => setSelectedPostId(null)}
+          onOpenMatch={(matchId) => navigate(`/app/matches?match=${matchId}`)}
+        />
+      ) : null}
 
       {composeOpen ? (
         <div className="ow-compose-backdrop" role="presentation" onMouseDown={() => setComposeOpen(false)}>

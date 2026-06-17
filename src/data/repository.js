@@ -2538,6 +2538,11 @@ export function disputeMatch(state, matchId, reason = "") {
 export function cancelMatch(state, matchId) {
   const match = state.matches.find((item) => item.id === matchId);
   if (!match || !["contract", "agreed"].includes(match.status)) return state;
+  const sourcePost = match.recruitingPostId
+    ? state.recruitingPosts?.find((post) => post.id === match.recruitingPostId)
+    : null;
+  const hostPlayerId = match.createdBy || match.hostPlayerId || match.createdPlayerId || sourcePost?.playerId || match.teamA?.players?.[0] || "";
+  if (hostPlayerId && hostPlayerId !== state.currentUserId) return state;
 
   return {
     ...state,
@@ -3986,7 +3991,8 @@ export function setRecruitingPartyPlayerReserve(state, postId, entryId, playerId
     ? currentPlayerIds.filter((id) => id !== playerId)
     : Array.from(new Set([...currentPlayerIds, playerId]));
   const partyBecomesReserve = reserve && !entry.fixed && currentPlayerIds.length === 1 && currentPlayerIds[0] === playerId;
-  if ((!partyBecomesReserve && !nextPlayerIds.length) || nextPlayerIds.length > capacity) return state;
+  const fixedPartyBecomesReserve = reserve && entry.fixed && currentPlayerIds.length === 1 && currentPlayerIds[0] === playerId;
+  if ((!partyBecomesReserve && !fixedPartyBecomesReserve && !nextPlayerIds.length) || nextPlayerIds.length > capacity) return state;
 
   const updatedAt = new Date().toISOString();
   const currentReserveIds = roomState.partyReserves?.[entry.id] ?? [];
@@ -4117,7 +4123,22 @@ export function detachRecruitingPartyPlayer(state, postId, entryId, playerId, pl
     createdAt: updatedAt,
     updatedAt,
   };
-  let nextApplicants = applicants.filter((applicant) => getRecruitingApplicantKey(applicant) !== `player:${playerId}`);
+  let nextApplicants = applicants
+    .filter((applicant) => getRecruitingApplicantKey(applicant) !== `player:${playerId}`)
+    .map((applicant) => {
+      if (getRecruitingApplicantKey(applicant) === entry.id || applicant.kind !== "team") return applicant;
+      const remainingPlayerIds = uniquePlayerIds(applicant.playerIds ?? []).filter((id) => id !== playerId);
+      if (!remainingPlayerIds.length) return null;
+      if (remainingPlayerIds.length === (applicant.playerIds ?? []).length) return applicant;
+      return {
+        ...applicant,
+        playerId: remainingPlayerIds.includes(applicant.playerId) ? applicant.playerId : remainingPlayerIds[0],
+        playerIds: remainingPlayerIds,
+        status: "waiting",
+        updatedAt,
+      };
+    })
+    .filter(Boolean);
   if (!entry.fixed) {
     nextApplicants = nextApplicants
       .map((applicant) => {
@@ -4434,6 +4455,7 @@ export function confirmRecruitingMatch(state, postId) {
     ratingResult: null,
     teamRatingResult: null,
     recruitingPostId: post.id,
+    createdBy: post.playerId,
     agreedAt: now,
     createdAt: now,
   };
