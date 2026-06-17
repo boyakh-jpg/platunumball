@@ -33,7 +33,7 @@ import {
 } from "../lib/matchUtils.js";
 
 const statusMeta = {
-  contract: { label: "경기 전 동의 대기", tone: "blue" },
+  contract: { label: "WAIT", tone: "blue" },
   agreed: { label: "진행 예정", tone: "green" },
   approval: { label: "결과 승인 대기", tone: "orange" },
   disputed: { label: "이의제기 보류", tone: "orange" },
@@ -185,7 +185,7 @@ export default function MatchRoom({ app }) {
           const ready = agreement.approvals.includes(playerId) || match.status !== "contract";
           const captain = agreement.captainId === playerId;
           const slotLabel = match.status === "contract"
-            ? captain ? (ready ? "주장동의" : "주장대기") : ready ? "동의완료" : "동의대기"
+            ? ready ? "READY" : "WAIT"
             : captain ? "CAPT" : "READY";
 
           return (
@@ -294,7 +294,7 @@ export default function MatchRoom({ app }) {
         };
       }
       return {
-        label: "팀 동의 대기",
+        label: "WAIT",
         detail: "남은 참가자가 동의하면 예정 경기로 넘어간다.",
       };
     }

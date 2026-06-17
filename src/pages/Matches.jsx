@@ -11,7 +11,7 @@ import { getAgreementStatus, getMatchEndDate, getMatchReservePlayerIds } from ".
 import { getRecruitingLobby, getRecruitingSideCapacity, isRecruitingPostForUser } from "../lib/recruiting.js";
 
 const STATUS_META = {
-  contract: { label: "동의 대기", tone: "blue" },
+  contract: { label: "WAIT", tone: "blue" },
   agreed: { label: "예정", tone: "green" },
   approval: { label: "결과 승인중", tone: "orange" },
   disputed: { label: "이의신청중", tone: "orange" },
@@ -304,7 +304,7 @@ function getAgreementSlotState(match, teams, sideName, playerId) {
   const captain = status.captainId === playerId;
   return {
     ready: agreed,
-    label: captain ? (agreed ? "주장동의" : "주장대기") : agreed ? "동의완료" : "동의대기",
+    label: agreed ? "READY" : "WAIT",
   };
 }
 
@@ -970,7 +970,7 @@ export default function Matches({ app }) {
               <article key={`room-${post.id}`} className="om-match-card om-status-contract">
                 <div className="om-card-main">
                   <div className="om-card-kicker">
-                    <span className={`om-status-pill ${needConfirm ? "orange" : "blue"}`}>{needConfirm ? "재확인 필요" : "확정 대기"}</span>
+                    <span className={`om-status-pill ${needConfirm ? "orange" : "blue"}`}>{needConfirm ? "WAIT" : "CONFIRM"}</span>
                     <span className="om-card-mode">{post.mode}</span>
                     <span className="om-card-official">공개방</span>
                     <span className="om-card-official">{post.ranked === false ? "친선" : "정규"}</span>
@@ -982,10 +982,10 @@ export default function Matches({ app }) {
                   <span>A {lobby.sides.teamA.projectedFilled}/{lobby.sides.teamA.capacity}</span>
                   <strong>{filled}/{capacity}</strong>
                   <span>B {lobby.sides.teamB.projectedFilled}/{lobby.sides.teamB.capacity}</span>
-                  <span>{lobby.canConfirm ? "방장 확정 가능" : "인원 충원 중"}</span>
+                  <span>{lobby.canConfirm ? "CONFIRM" : "WAIT"}</span>
                 </div>
                 <Link className="button button-secondary button-md om-room-link" to={`/app/recruiting?post=${post.id}`}>
-                  {needConfirm ? "참여 유지" : "방 보기"}
+                  {needConfirm ? "CONFIRM" : "방 보기"}
                 </Link>
               </article>
             );

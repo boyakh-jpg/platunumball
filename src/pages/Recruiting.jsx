@@ -386,7 +386,7 @@ function EntryBlock({
 }) {
   const mmr = getEntryMmr(entry);
   const players = entry.players.map((playerId) => userById[playerId]).filter(Boolean);
-  const readyLabel = entry.status === "ready" ? "참여 확정" : "재확인 필요";
+  const readyLabel = entry.status === "ready" ? "READY" : "WAIT";
   const availability = canManage && lobby ? getEntryPlacementAvailability(entry, lobby) : {};
   const activePlayerIds = entry.players ?? [];
   const canDemoteActive = activePlayerIds.length > 1;
@@ -453,7 +453,7 @@ function EntryBlock({
         <div className="ow-party-meta">
           <TierBadge mmr={mmr} compact />
           <Badge tone={entry.status === "ready" ? "green" : "neutral"}>
-            {entry.status === "ready" ? "참여 확정" : "재확인 필요"}
+            {entry.status === "ready" ? "READY" : "WAIT"}
           </Badge>
           {canManage ? (
             <SlotActionMenu>
@@ -565,7 +565,7 @@ function QueueRoomBoard({ lobby, userById, teams }) {
           <b>{row.label}</b>
         )}
       </span>
-      <em>{row.autoFill ? "충원 출전" : row.ready ? "참여 확정" : "재확인 필요"}</em>
+      <em>{row.autoFill ? "FILL" : row.ready ? "READY" : "WAIT"}</em>
     </span>
   );
   const renderGroup = (id, label, side) => {
@@ -588,7 +588,7 @@ function QueueRoomBoard({ lobby, userById, teams }) {
   return (
     <div className={lobby.canConfirm ? "ow-queue-board complete" : "ow-queue-board"}>
       <div className="ow-queue-board-head">
-        <span>{lobby.canConfirm ? "확정 가능" : "참여 확인 중"}</span>
+        <span>{lobby.canConfirm ? "CONFIRM" : "WAIT"}</span>
         <b>참여 {readyCount}/{rows.length}</b>
         <b>인원 {filledCount}/{totalCapacity}</b>
       </div>
@@ -603,7 +603,7 @@ function QueueRoomBoard({ lobby, userById, teams }) {
 
 function FillSlot({ candidate, userById, teams, readyText = "READY" }) {
   const user = candidate ? userById[candidate.playerId] : null;
-  const readyLabel = candidate?.status === "ready" ? "참여 확정" : "재확인 필요";
+  const readyLabel = candidate?.status === "ready" ? "READY" : "WAIT";
   if (!user) {
     return (
       <div className="ow-room-player-slot empty">
@@ -869,7 +869,7 @@ function HostRoomControls({ lobby, userById, teams, recorderIds = {}, canAssignR
                 </PlayerHoverCard>
                 <span>
                   <strong>{getEntryTitle(entry)}</strong>
-                  <em>{SIDE_LABELS[entry.side]} · {entry.reserve ? "후보" : "출전"} · {entry.status === "ready" ? "참여 확정" : "재확인 필요"}</em>
+                  <em>{SIDE_LABELS[entry.side]} · {entry.reserve ? "후보" : "출전"} · {entry.status === "ready" ? "READY" : "WAIT"}</em>
                 </span>
               </div>
               <div className="ow-placement-actions">
@@ -1533,7 +1533,7 @@ export default function Recruiting({ app }) {
                   <span>{getRecruitingSchedule(post)}</span>
                   <span className="ow-tier-chip">{post.ranked === false ? "티어 자유" : range.label}</span>
                   <span>{formatWhen(post.createdAt)}</span>
-                  <span>{lobby.ready ? "전원 참여 확정" : "참여 확인 중"}</span>
+                  <span>{lobby.ready ? "READY" : "WAIT"}</span>
                 </div>
               </div>
 
@@ -1635,7 +1635,7 @@ export default function Recruiting({ app }) {
         const favoriteTeamIds = app.state.settings?.favoriteTeamIds ?? [];
         const teamAMeta = getLobbySideMeta(lobby, "teamA", userById);
         const teamBMeta = getLobbySideMeta(lobby, "teamB", userById);
-        const roomReadyLabel = lobby.canConfirm ? "READY" : "충원 중";
+        const roomReadyLabel = lobby.canConfirm ? "READY" : "WAIT";
         const roomTitle = selectedPost.ranked === false ? "친선전" : "정규전";
         const activeSlotDraft = activeInviteDraft?.slotKey ? activeInviteDraft : null;
         const currentUserReserve = getEntryPlayerReserveState(myEntry, app.currentUser.id);
@@ -1758,7 +1758,7 @@ export default function Recruiting({ app }) {
                 <div className="ow-lobby-topline">
                   <div className="badge-row">
                     <Badge tone={selectedPost.ranked === false ? "neutral" : "gold"}>{roomTitle}</Badge>
-                    <Badge tone={lobby.canConfirm ? "green" : "blue"}>{lobby.canConfirm ? "확정 가능" : "진행 예정"}</Badge>
+                    <Badge tone={lobby.canConfirm ? "green" : "blue"}>{lobby.canConfirm ? "CONFIRM" : "WAIT"}</Badge>
                     <Badge tone="green">사전등록</Badge>
                   </div>
                   <div>
@@ -1988,7 +1988,7 @@ export default function Recruiting({ app }) {
                       <Button type="button" size="sm" variant="secondary" onClick={() => closeRoomEdit(selectedPost)}>취소</Button>
                       <Button type="button" size="sm" disabled={!roomEditCapacityValid} onClick={() => saveRoomEdit(selectedPost)}>수정 저장</Button>
                     </div>
-                    <small>저장하면 방장 포함 모든 참가자가 참여 유지를 다시 눌러야 합니다.</small>
+                    <small>저장하면 방장 포함 모든 참가자가 CONFIRM을 다시 눌러야 합니다.</small>
                   </div>
                 ) : null}
                 <span>{selectedPost.memo}</span>
@@ -2011,7 +2011,7 @@ export default function Recruiting({ app }) {
                 {mine ? (
                   <div className="ow-owner-panel">
                     <strong>방장 권한</strong>
-                    <span>{lobby.canConfirm ? "확정 가능" : "양쪽 인원과 참여 확인을 채워야 확정 가능"}</span>
+                    <span>{lobby.canConfirm ? "CONFIRM" : "WAIT"}</span>
                   </div>
                 ) : alreadyApplied ? (
                   <div className="ow-owner-panel">
@@ -2136,7 +2136,7 @@ export default function Recruiting({ app }) {
                     onClick={() => app.actions.setRecruitingReady(selectedPost.id, true)}
                   >
                     <CheckCircle2 size={18} />
-                    READY
+                    CONFIRM
                   </Button>
                 ) : null}
                 {alreadyApplied ? (
@@ -2151,7 +2151,7 @@ export default function Recruiting({ app }) {
                 ) : null}
                 {mine ? (
                   <Button type="button" disabled={!lobby.canConfirm} onClick={() => confirmMatch(selectedPost)}>
-                    <Swords size={18} /> 매치 확정
+                    <Swords size={18} /> CONFIRM
                   </Button>
                 ) : null}
                 {mine ? (
