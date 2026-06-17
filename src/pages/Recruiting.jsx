@@ -360,6 +360,21 @@ export function getRecruitingRoomStatus(lobby, { myEntry = null, mine = false } 
   return { label: "WAIT", tone: "orange", detail: "참여 확인 중" };
 }
 
+export function getRecruitingRoomListStatus(lobby, { myEntry = null, mine = false } = {}) {
+  if (lobby.canConfirm) {
+    return mine
+      ? { label: "확정 가능", tone: "green", detail: "방장 확정 가능", actionLabel: "확정하기" }
+      : { label: "확정 대기", tone: "green", detail: "방장 확정 대기", actionLabel: "방 보기" };
+  }
+  if (!lobby.projectedFull) {
+    return { label: "충원 중", tone: "blue", detail: "빈 슬롯 모집 중", actionLabel: "방 보기" };
+  }
+  if (myEntry?.status && myEntry.status !== "ready") {
+    return { label: "확인 필요", tone: "orange", detail: "내 참여 확인 필요", actionLabel: "확인하기" };
+  }
+  return { label: "확인 대기", tone: "orange", detail: "참가자 확인 대기", actionLabel: "방 보기" };
+}
+
 function TeamMemberPicker({ team, userById, selectedIds, capacity, onChange }) {
   if (!team) {
     return (
@@ -488,7 +503,7 @@ function QueueRoomBoard({ lobby, userById, teams }) {
           <b>{row.label}</b>
         )}
       </span>
-      <em>{row.autoFill ? "FILL" : row.ready ? "READY" : "WAIT"}</em>
+      <em>{row.autoFill ? "자동" : row.ready ? "확정" : "대기"}</em>
     </span>
   );
   const renderGroup = (id, label, side) => {
@@ -507,12 +522,12 @@ function QueueRoomBoard({ lobby, userById, teams }) {
   const readyCount = rows.filter((row) => row.ready).length;
   const filledCount = lobby.sides.teamA.projectedFilled + lobby.sides.teamB.projectedFilled;
   const totalCapacity = lobby.sides.teamA.capacity + lobby.sides.teamB.capacity;
-  const roomStatus = getRecruitingRoomStatus(lobby);
+  const roomStatus = getRecruitingRoomListStatus(lobby);
 
   return (
     <div className={lobby.canConfirm ? "ow-queue-board complete" : "ow-queue-board"}>
       <div className="ow-queue-board-head">
-        <span>{roomStatus.label}</span>
+        <span className={`ow-room-list-state ${roomStatus.tone}`}>{roomStatus.label}</span>
         <b>참여 {readyCount}/{rows.length}</b>
         <b>인원 {filledCount}/{totalCapacity}</b>
       </div>
@@ -2199,7 +2214,7 @@ export default function Recruiting({ app }) {
             entry.players?.includes(app.currentUser.id) ||
             entry.reserves?.includes(app.currentUser.id)
           ));
-          const roomStatus = getRecruitingRoomStatus(lobby, { myEntry, mine });
+          const roomStatus = getRecruitingRoomListStatus(lobby, { myEntry, mine });
 
           return (
             <article
@@ -2230,7 +2245,7 @@ export default function Recruiting({ app }) {
                   <span>{getRecruitingSchedule(post)}</span>
                   <span className="ow-tier-chip">{post.ranked === false ? "티어 자유" : range.label}</span>
                   <span>{formatWhen(post.createdAt)}</span>
-                  <span>{roomStatus.label}</span>
+                  <span className={`ow-room-list-state ${roomStatus.tone}`}>{roomStatus.label}</span>
                 </div>
               </div>
 
@@ -2240,7 +2255,7 @@ export default function Recruiting({ app }) {
                   <span>참가 인원</span>
                 </span>
                 <Button type="button" className="ow-card-action" onClick={() => setSelectedPostId(post.id)}>
-                  <Swords size={16} /> 방 보기
+                  <Swords size={16} /> {roomStatus.actionLabel}
                 </Button>
                 {!mine && !applied ? (
                   <Button

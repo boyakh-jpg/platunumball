@@ -8,13 +8,13 @@ import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { MATCH_MODES } from "../lib/constants.js";
 import { getMatchEndDate, getMatchReservePlayerIds } from "../lib/matchUtils.js";
 import { getRecruitingLobby, getRecruitingSideCapacity, isRecruitingPostForUser } from "../lib/recruiting.js";
-import { RecruitingRoomModal, getRecruitingRoomStatus } from "./Recruiting.jsx";
+import { RecruitingRoomModal, getRecruitingRoomListStatus } from "./Recruiting.jsx";
 
 const STATUS_META = {
-  contract: { label: "WAIT", tone: "blue" },
-  agreed: { label: "예정", tone: "green" },
-  approval: { label: "결과 승인중", tone: "orange" },
-  disputed: { label: "이의신청중", tone: "orange" },
+  contract: { label: "동의 대기", tone: "orange" },
+  agreed: { label: "경기 예정", tone: "green" },
+  approval: { label: "결과 승인", tone: "orange" },
+  disputed: { label: "이의 확인", tone: "orange" },
   confirmed: { label: "기록 확정", tone: "green" },
   void: { label: "무효", tone: "neutral" },
   cancelled: { label: "취소", tone: "neutral" },
@@ -165,7 +165,7 @@ function getMatchProcessMeta(match, now = new Date()) {
   const startAt = getMatchStartDate(match);
   const endAt = getMatchEndDate(match);
   const nowMs = now.getTime();
-  if (startAt && nowMs < startAt.getTime()) return { label: "예정", tone: "green" };
+  if (startAt && nowMs < startAt.getTime()) return { label: "경기 예정", tone: "green" };
   if (startAt && endAt && nowMs <= endAt.getTime()) return { label: "현재 진행", tone: "blue" };
   if (startAt && endAt && nowMs > endAt.getTime()) return { label: "경기 종료", tone: "orange" };
   return STATUS_META.agreed;
@@ -934,7 +934,7 @@ export default function Matches({ app }) {
             const lobby = getRecruitingLobby(post, app.state);
             const myEntry = getRecruitingEntryForUser(lobby, app.currentUser.id);
             const needConfirm = myEntry && myEntry.status !== "ready";
-            const roomStatus = getRecruitingRoomStatus(lobby, { myEntry, mine: post.playerId === app.currentUser.id });
+            const roomStatus = getRecruitingRoomListStatus(lobby, { myEntry, mine: post.playerId === app.currentUser.id });
             const filled = lobby.sides.teamA.projectedFilled + lobby.sides.teamB.projectedFilled;
             const capacity = getRecruitingSideCapacity(post) * 2;
             return (
@@ -956,7 +956,7 @@ export default function Matches({ app }) {
                   <span>{roomStatus.detail}</span>
                 </div>
                 <button type="button" className="button button-secondary button-md om-room-link" onClick={() => setSelectedRecruitingPostId(post.id)}>
-                  {needConfirm ? "CONFIRM" : "방 보기"}
+                  {needConfirm ? "확인하기" : roomStatus.actionLabel}
                 </button>
               </article>
             );

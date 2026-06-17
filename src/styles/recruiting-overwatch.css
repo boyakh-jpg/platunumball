@@ -464,6 +464,35 @@
   font-weight: 850;
 }
 
+.ow-card-bottom > .ow-room-list-state,
+.ow-queue-board-head .ow-room-list-state {
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-weight: 950;
+}
+
+.ow-card-bottom > .ow-room-list-state.blue,
+.ow-queue-board-head .ow-room-list-state.blue {
+  border-color: rgba(118, 169, 255, 0.22);
+  background: rgba(118, 169, 255, 0.11);
+  color: var(--blue);
+}
+
+.ow-card-bottom > .ow-room-list-state.green,
+.ow-queue-board-head .ow-room-list-state.green {
+  border-color: rgba(70, 224, 182, 0.22);
+  background: rgba(70, 224, 182, 0.11);
+  color: var(--green);
+}
+
+.ow-card-bottom > .ow-room-list-state.orange,
+.ow-queue-board-head .ow-room-list-state.orange {
+  border-color: rgba(255, 211, 108, 0.24);
+  background: rgba(255, 211, 108, 0.11);
+  color: var(--gold);
+}
+
 .ow-card-side {
   display: grid;
   justify-items: stretch;
