@@ -229,7 +229,7 @@ function userDecisionDone(match, userId) {
 
 function shouldShowMatchForView(match, view, userId) {
   if (!view.statuses.includes(match.status)) return false;
-  if ((view.id === "active" || view.id === "todo") && userDecisionDone(match, userId)) return false;
+  if (view.id === "todo" && userDecisionDone(match, userId)) return false;
   return true;
 }
 
