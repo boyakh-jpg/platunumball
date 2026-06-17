@@ -1295,74 +1295,6 @@
   display: none;
 }
 
-.ow-lobby-team-panel .ow-party-block {
-  border-color: rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.055);
-}
-
-.ow-lobby-team-panel .ow-party-head {
-  align-items: center;
-}
-
-.ow-lobby-team-panel .ow-party-members {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
-  gap: 8px;
-}
-
-.ow-lobby-team-panel .ow-member-chip-wrap {
-  display: grid;
-  min-width: 0;
-  justify-items: center;
-  gap: 6px;
-}
-
-.ow-lobby-team-panel .ow-member-chip {
-  display: grid;
-  width: 100%;
-  justify-items: center;
-  gap: 6px;
-  border-radius: 8px;
-  background: rgba(70, 224, 182, 0.08);
-  padding: 8px 5px;
-  text-align: center;
-}
-
-.ow-lobby-team-panel .ow-member-chip .avatar {
-  width: 38px;
-  height: 38px;
-}
-
-.ow-lobby-team-panel .ow-member-chip span:not(.avatar),
-.ow-lobby-team-panel .ow-member-chip b,
-.ow-lobby-team-panel .ow-member-chip em {
-  width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ow-lobby-team-panel .ow-member-chip b {
-  border-radius: 999px;
-  background: rgba(116, 169, 255, 0.14);
-  color: var(--blue);
-  padding: 2px 6px;
-}
-
-.ow-lobby-team-panel .ow-member-chip em {
-  color: var(--gold);
-  font-size: 0.62rem;
-  font-style: normal;
-  font-weight: 950;
-}
-
-.ow-lobby-team-panel .ow-open-slot {
-  min-height: 78px;
-  justify-content: center;
-  border-style: dashed;
-  background: rgba(0, 0, 0, 0.16);
-}
-
 .ow-room-slot-row,
 .ow-room-reserve-row {
   display: grid;
@@ -1566,17 +1498,6 @@ button.ow-room-player-slot {
   display: none;
 }
 
-.ow-room-player-slot-wrap .ow-slot-action-menu {
-  width: 100%;
-  min-width: 0;
-}
-
-.ow-room-player-slot-wrap .ow-slot-action-menu summary {
-  width: 100%;
-  box-sizing: border-box;
-  padding-inline: 4px;
-}
-
 .ow-slot-command-popover {
   display: grid;
   grid-column: 1 / -1;
@@ -1740,8 +1661,6 @@ button.ow-room-player-slot {
   gap: 8px;
 }
 
-.ow-party-block,
-.ow-open-slot,
 .ow-owner-panel,
 .ow-room-rule-panel,
 .ow-reserve-panel,
@@ -1826,193 +1745,6 @@ button.ow-room-player-slot {
   margin-top: 8px;
 }
 
-.ow-party-block {
-  display: grid;
-  gap: 10px;
-  padding: 10px;
-}
-
-.ow-party-block.ready {
-  border-color: rgba(70, 224, 182, 0.36);
-  background: rgba(70, 224, 182, 0.08);
-}
-
-.ow-party-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.ow-party-head > div:first-child {
-  display: grid;
-  min-width: 0;
-  gap: 3px;
-}
-
-.ow-party-head strong {
-  overflow-wrap: anywhere;
-  color: var(--text);
-  font-size: 0.98rem;
-}
-
-.ow-party-head span {
-  color: var(--muted);
-  font-size: 0.76rem;
-  font-weight: 850;
-}
-
-.ow-party-meta {
-  display: flex;
-  flex: 0 0 auto;
-  align-items: center;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 6px;
-}
-
-.ow-party-members {
-  display: flex;
-  min-width: 0;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.ow-member-chip {
-  display: inline-flex;
-  min-width: 0;
-  align-items: center;
-  gap: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.18);
-  color: var(--text);
-  padding: 5px 8px 5px 5px;
-  font-size: 0.78rem;
-  font-weight: 850;
-  text-decoration: none;
-}
-
-.ow-member-chip-wrap,
-.ow-open-slot-wrap {
-  display: inline-flex;
-  min-width: 0;
-  align-items: center;
-  gap: 5px;
-}
-
-.ow-open-slot-wrap {
-  width: 100%;
-}
-
-.ow-open-slot-wrap .ow-open-slot.fill {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.ow-member-chip b {
-  color: var(--gold);
-  font-size: 0.68rem;
-}
-
-.ow-member-chip-profile,
-.ow-member-adjust-profile {
-  display: inline-flex;
-  min-width: 0;
-  align-items: center;
-  gap: 6px;
-  color: inherit;
-  text-decoration: none;
-}
-
-.ow-member-chip.compact {
-  padding-right: 8px;
-}
-
-.ow-member-chip.compact .ow-recorder-action {
-  min-height: 28px;
-  margin-left: 2px;
-  padding: 0 8px;
-  border-radius: 6px;
-  font-size: 0.7rem;
-}
-
-.ow-member-chip.recorder {
-  border-color: rgba(70, 224, 182, 0.42);
-  background: rgba(70, 224, 182, 0.1);
-}
-
-.ow-member-chip.recorder em {
-  color: var(--green);
-}
-
-.ow-slot-action-menu {
-  position: relative;
-  flex: 0 0 auto;
-}
-
-.ow-slot-action-menu summary {
-  display: inline-flex;
-  min-height: 28px;
-  cursor: pointer;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--text);
-  padding: 0 8px;
-  font-size: 0.7rem;
-  font-weight: 950;
-  list-style: none;
-}
-
-.ow-slot-action-menu summary::-webkit-details-marker {
-  display: none;
-}
-
-.ow-slot-action-menu > div {
-  position: absolute;
-  z-index: 30;
-  right: 0;
-  top: calc(100% + 5px);
-  display: grid;
-  min-width: 116px;
-  gap: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 8px;
-  background: rgba(9, 14, 23, 0.96);
-  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.28);
-  padding: 6px;
-}
-
-.ow-slot-action-menu button {
-  min-height: 28px;
-  cursor: pointer;
-  border: 0;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--text);
-  padding: 0 8px;
-  text-align: left;
-  font-size: 0.72rem;
-  font-weight: 900;
-}
-
-.ow-slot-action-menu button.active {
-  background: rgba(70, 224, 182, 0.22);
-  color: var(--green);
-}
-
-.ow-slot-action-menu button.danger {
-  color: #ff6b7a;
-}
-
-.ow-slot-action-menu button:disabled {
-  cursor: not-allowed;
-  opacity: 0.42;
-}
-
 .ow-host-kick-panel {
   display: grid;
   gap: 10px;
@@ -2082,66 +1814,6 @@ button.ow-room-player-slot {
   font-size: 0.72rem;
   font-style: normal;
   font-weight: 850;
-}
-
-.ow-open-slot {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 42px;
-  color: var(--subtle);
-  padding: 10px;
-  font-size: 0.82rem;
-  font-weight: 900;
-}
-
-.ow-open-slot.fill {
-  justify-content: space-between;
-  border-color: rgba(255, 211, 108, 0.3);
-  background: rgba(255, 211, 108, 0.08);
-  color: var(--text);
-  text-decoration: none;
-}
-
-.ow-open-slot.fill > span:nth-child(2) {
-  display: grid;
-  min-width: 0;
-  gap: 2px;
-  margin-right: auto;
-}
-
-.ow-open-slot.fill strong {
-  color: var(--text);
-  font-size: 0.86rem;
-}
-
-.ow-open-slot.fill em,
-.ow-member-chip em {
-  color: var(--gold);
-  font-size: 0.68rem;
-  font-style: normal;
-}
-
-.ow-open-slot.empty {
-  border-style: dashed;
-}
-
-.ow-open-slot.invite {
-  cursor: pointer;
-  justify-content: space-between;
-  width: 100%;
-  color: var(--text);
-}
-
-.ow-open-slot.invite:hover {
-  border-color: rgba(70, 224, 182, 0.42);
-  background: rgba(70, 224, 182, 0.1);
-}
-
-.ow-open-slot.invite em {
-  color: var(--green);
-  font-style: normal;
-  font-weight: 950;
 }
 
 .ow-invite-panel,
@@ -2398,7 +2070,6 @@ button.ow-room-player-slot {
   line-height: 1.45;
 }
 
-.ow-host-control-panel,
 .ow-room-chat {
   display: grid;
   gap: 10px;
@@ -2409,14 +2080,12 @@ button.ow-room-player-slot {
   padding: 12px;
 }
 
-.ow-host-control-panel.empty span,
 .ow-chat-empty {
   color: var(--muted);
   font-size: 0.84rem;
   font-weight: 850;
 }
 
-.ow-host-control-panel header,
 .ow-room-chat header {
   display: flex;
   align-items: center;
@@ -2424,7 +2093,6 @@ button.ow-room-player-slot {
   gap: 10px;
 }
 
-.ow-host-control-panel header span,
 .ow-room-chat header span {
   display: inline-flex;
   align-items: center;
@@ -2434,114 +2102,9 @@ button.ow-room-player-slot {
   font-weight: 900;
 }
 
-.ow-host-control-list,
 .ow-chat-list {
   display: grid;
   gap: 8px;
-}
-
-.ow-host-control-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.12);
-  padding: 9px;
-}
-
-.ow-host-control-row > div {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 8px;
-}
-
-.ow-host-control-row > div:last-child {
-  justify-content: flex-end;
-  flex-wrap: wrap;
-}
-
-.ow-placement-actions {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.ow-placement-actions .button-sm {
-  min-height: 30px;
-  padding: 0 9px;
-  border-radius: 6px;
-  font-size: 0.72rem;
-}
-
-.ow-member-adjust-actions {
-  grid-column: 1 / -1;
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding-top: 2px;
-}
-
-.ow-member-adjust-chip {
-  display: inline-flex;
-  min-width: 0;
-  align-items: center;
-  gap: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05);
-  padding: 4px;
-}
-
-.ow-member-adjust-chip.reserve {
-  border-style: dashed;
-}
-
-.ow-member-adjust-chip.recorder {
-  border-color: rgba(70, 224, 182, 0.44);
-  background: rgba(70, 224, 182, 0.1);
-}
-
-.ow-member-adjust-profile > span:not(.avatar) {
-  max-width: 92px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 0.78rem;
-  font-weight: 800;
-}
-
-.ow-member-adjust-chip .button-sm {
-  min-height: 26px;
-  padding: 0 7px;
-  border-radius: 6px;
-  font-size: 0.68rem;
-}
-
-.ow-host-control-row span:nth-child(2) {
-  display: grid;
-  min-width: 0;
-  gap: 2px;
-}
-
-.ow-host-control-row strong {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ow-host-control-row em {
-  color: var(--muted);
-  font-size: 0.74rem;
-  font-style: normal;
-  font-weight: 850;
 }
 
 .ow-chat-list {
@@ -2670,11 +2233,8 @@ html[data-theme="light"] .ow-lobby-actions > div {
 }
 
 html[data-theme="light"] .ow-side-roster,
-html[data-theme="light"] .ow-party-block,
-html[data-theme="light"] .ow-open-slot,
 html[data-theme="light"] .ow-owner-panel,
 html[data-theme="light"] .ow-room-rule-panel,
-html[data-theme="light"] .ow-host-control-panel,
 html[data-theme="light"] .ow-room-chat,
 html[data-theme="light"] .ow-reserve-panel,
 html[data-theme="light"] .ow-join-panel,
@@ -2687,14 +2247,8 @@ html[data-theme="light"] .ow-party-picker {
 
 html[data-theme="light"] .ow-invite-search,
 html[data-theme="light"] .ow-invite-member-grid button,
-html[data-theme="light"] .ow-invite-favorite,
-html[data-theme="light"] .ow-slot-action-menu summary,
-html[data-theme="light"] .ow-slot-action-menu button {
+html[data-theme="light"] .ow-invite-favorite {
   background: rgba(10, 18, 30, 0.04);
-}
-
-html[data-theme="light"] .ow-slot-action-menu > div {
-  background: rgba(255, 255, 255, 0.98);
 }
 
 html[data-theme="light"] .ow-invite-member-grid button.selected,
@@ -2780,7 +2334,6 @@ html[data-theme="light"] .ow-compose-drawer {
   .ow-compose-type-grid,
   .ow-details-grid,
   .ow-lobby-grid,
-  .ow-host-control-row,
   .ow-chat-form,
   .ow-invite-result,
   .ow-invite-panel header,
@@ -2881,17 +2434,7 @@ html[data-theme="light"] .ow-compose-drawer {
     height: 36px;
   }
 
-  .ow-party-head,
-  .ow-host-control-row > div:last-child,
   .ow-join-panel {
     align-items: stretch;
-  }
-
-  .ow-host-control-row > div:last-child {
-    display: grid;
-  }
-
-  .ow-party-head {
-    display: grid;
   }
 }

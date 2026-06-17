@@ -12,7 +12,6 @@ import {
   ShieldCheck,
   Star,
   Swords,
-  UserMinus,
   UserPlus,
   UserRound,
   UsersRound,
@@ -191,18 +190,6 @@ function uniqueIds(ids = []) {
   return Array.from(new Set(ids.filter(Boolean)));
 }
 
-function getEntryPlacementAvailability(entry, lobby) {
-  return ["teamA", "teamB"].reduce((acc, sideName) => {
-    const side = lobby.sides[sideName];
-    const filledWithoutEntry = uniqueIds(side.entries
-      .filter((item) => item.id !== entry.id)
-      .flatMap((item) => item.players)).length;
-    acc[sideName] = filledWithoutEntry + (entry.players?.length ?? 0) <= side.capacity;
-    acc[`${sideName}Reserve`] = (entry.reserve && entry.side === sideName) || side.reserveCandidates.length < MAX_RESERVE_PLAYERS_PER_SIDE;
-    return acc;
-  }, {});
-}
-
 function getLobbyRecorderIds(lobby) {
   const playingIds = new Set([...lobby.sides.teamA.projectedPlayers, ...lobby.sides.teamB.projectedPlayers]);
   return ["teamA", "teamB"].reduce((acc, sideName) => {
@@ -265,35 +252,6 @@ function getJoinableSidePartyOptions(lobby, myTeams = [], currentUserId = "", ta
       return [{ team, sideName }];
     });
   });
-}
-
-function SlotActionMenu({ label = "관리", children }) {
-  return (
-    <details className="ow-slot-action-menu" onClick={(event) => event.stopPropagation()}>
-      <summary>{label}</summary>
-      <div>{children}</div>
-    </details>
-  );
-}
-
-function PlacementActionButtons({ currentSide, currentReserve = false, availability = {}, onMove }) {
-  const actions = [
-    { side: "teamA", reserve: false, label: "A 출전", disabled: availability.teamA === false },
-    { side: "teamB", reserve: false, label: "B 출전", disabled: availability.teamB === false },
-    { side: "teamA", reserve: true, label: "A 후보", disabled: availability.teamAReserve === false },
-    { side: "teamB", reserve: true, label: "B 후보", disabled: availability.teamBReserve === false },
-  ];
-  return actions.map((action) => (
-    <button
-      key={`${action.side}-${action.reserve ? "reserve" : "active"}`}
-      type="button"
-      className={currentSide === action.side && currentReserve === action.reserve ? "active" : ""}
-      disabled={action.disabled}
-      onClick={(event) => stopControlClick(event, () => onMove({ side: action.side, reserve: action.reserve }))}
-    >
-      {action.label}
-    </button>
-  ));
 }
 
 function getPartySlotClass(partyKey, partyCounts, partySeen) {
@@ -422,123 +380,6 @@ function TeamMemberPicker({ team, userById, selectedIds, capacity, onChange }) {
         })}
       </div>
       {!selectedIds.length ? <em>최소 1명 선택 필요</em> : null}
-    </div>
-  );
-}
-
-function EntryBlock({
-  entry,
-  lobby,
-  userById,
-  teams,
-  canManage = false,
-  onSetPlacement,
-  onSetMemberReserve,
-  onDetachMember,
-  onRemoveMember,
-  onKick,
-}) {
-  const mmr = getEntryMmr(entry);
-  const players = entry.players.map((playerId) => userById[playerId]).filter(Boolean);
-  const readyLabel = entry.status === "ready" ? "READY" : "WAIT";
-  const availability = canManage && lobby ? getEntryPlacementAvailability(entry, lobby) : {};
-  const activePlayerIds = entry.players ?? [];
-  const canDemoteActive = activePlayerIds.length > 1;
-  const isPartyEntry = entry.fixed || entry.kind === "team";
-  const renderPlayerActions = (user) => {
-    if (!canManage || !user) return null;
-    if (!isPartyEntry) {
-      return (
-        <SlotActionMenu>
-          <PlacementActionButtons
-            currentSide={entry.side}
-            currentReserve={Boolean(entry.reserve)}
-            availability={availability}
-            onMove={(placement) => onSetPlacement(entry.playerId, placement)}
-          />
-          {!entry.fixed ? (
-            <button type="button" className="danger" onClick={(event) => stopControlClick(event, () => onKick(entry.playerId))}>
-              강퇴
-            </button>
-          ) : null}
-        </SlotActionMenu>
-      );
-    }
-    return (
-      <SlotActionMenu>
-        <button
-          type="button"
-          disabled={!canDemoteActive || !canMovePlayerTo(lobby, user.id, entry.side, true)}
-          onClick={(event) => stopControlClick(event, () => onSetMemberReserve(entry.id, user.id, true))}
-        >
-          후보로
-        </button>
-        {!(entry.fixed && user.id === entry.playerId) ? (
-          <button
-            type="button"
-            onClick={(event) => stopControlClick(event, () => onDetachMember(entry.id, user.id))}
-          >
-            파티에서 내보내기
-          </button>
-        ) : null}
-        {!(entry.fixed && user.id === entry.playerId) ? (
-          <button type="button" className="danger" onClick={(event) => stopControlClick(event, () => onRemoveMember(entry.id, user.id))}>
-            강퇴
-          </button>
-        ) : null}
-      </SlotActionMenu>
-    );
-  };
-
-  return (
-    <div className={`ow-party-block ${entry.status === "ready" ? "ready" : ""}`}>
-      <div className="ow-party-head">
-        <div>
-          <strong>
-            {isPartyEntry && entry.team ? (
-              <>
-                <TeamHoverCard team={entry.team} as="span">{entry.team.name}</TeamHoverCard>
-                {entry.fixed ? " · 방장 파티" : " · 팀 파티"}
-              </>
-            ) : getEntryTitle(entry)}
-          </strong>
-          <span>{isPartyEntry && entry.team ? `${players.length}명 팀 소속 참여` : entry.team ? `개인참여 · 원래 ${entry.team.name}` : getPlayerPosition(entry.user)}</span>
-        </div>
-        <div className="ow-party-meta">
-          <TierBadge mmr={mmr} compact />
-          <Badge tone={entry.status === "ready" ? "green" : "neutral"}>
-            {entry.status === "ready" ? "READY" : "WAIT"}
-          </Badge>
-          {canManage ? (
-            <SlotActionMenu>
-              <PlacementActionButtons
-                currentSide={entry.side}
-                currentReserve={Boolean(entry.reserve)}
-                availability={availability}
-                onMove={(placement) => onSetPlacement(entry.playerId, placement)}
-              />
-              {!entry.fixed ? (
-                <button type="button" className="danger" onClick={(event) => stopControlClick(event, () => onKick(entry.playerId))}>
-                  {isPartyEntry ? "파티 강퇴" : "강퇴"}
-                </button>
-              ) : null}
-            </SlotActionMenu>
-          ) : null}
-        </div>
-      </div>
-      <div className="ow-party-members">
-        {players.map((user) => (
-          <span key={user.id} className="ow-member-chip-wrap">
-            <PlayerHoverCard user={user} teams={teams} className="ow-member-chip">
-              <span className="avatar small" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
-              <span>{user.name}</span>
-              <b>{getPlayerPosition(user)}</b>
-              <em>{readyLabel}</em>
-            </PlayerHoverCard>
-            {renderPlayerActions(user)}
-          </span>
-        ))}
-      </div>
     </div>
   );
 }
@@ -880,12 +721,6 @@ function SideRoster({
   );
 }
 
-function stopControlClick(event, callback) {
-  event.preventDefault();
-  event.stopPropagation();
-  callback();
-}
-
 function ReserveLine({
   sideName,
   candidates,
@@ -1009,151 +844,6 @@ function RoomKickPanel({ lobby, userById, teams, onKickApplicant, onRemovePartyP
             </Button>
           </div>
         ))}
-      </div>
-    </div>
-  );
-}
-
-function HostRoomControls({ lobby, userById, teams, recorderIds = {}, canAssignRecorder = false, onSetPlacement, onSetMemberReserve, onAssignRecorder, onKick }) {
-  const applicants = lobby.entries ?? [];
-
-  if (!applicants.length) {
-    return (
-      <div className="ow-host-control-panel empty">
-        <strong>방장 관리</strong>
-        <span>관리할 참가자가 아직 없다.</span>
-      </div>
-    );
-  }
-
-  return (
-    <div className="ow-host-control-panel">
-      <header>
-        <strong>방장 관리</strong>
-        <span>A/B 배치, 후보 전환, 기록자 지정, 강퇴</span>
-      </header>
-      <div className="ow-host-control-list">
-        {applicants.map((entry) => {
-          const leader = userById[entry.playerId];
-          const availability = getEntryPlacementAvailability(entry, lobby);
-          const activePlayerIds = entry.players ?? [];
-          const activePlayerSet = new Set(activePlayerIds);
-          const reservePlayerIds = (entry.reserves ?? []).filter((playerId) => !activePlayerSet.has(playerId));
-          const canPromoteReserve = lobby.sides[entry.side].filled < lobby.sides[entry.side].capacity;
-          const canDemoteActive = activePlayerIds.length > 1;
-          return (
-            <article key={entry.id} className="ow-host-control-row">
-              <div>
-                <PlayerHoverCard user={leader} teams={teams} as="span">
-                  <span className="avatar small" style={{ "--avatar": leader?.avatarColor }}>{leader?.name?.slice(0, 1) ?? "?"}</span>
-                </PlayerHoverCard>
-                <span>
-                  <strong>{getEntryTitle(entry)}</strong>
-                  <em>{SIDE_LABELS[entry.side]} · {entry.reserve ? "후보" : "출전"} · {entry.status === "ready" ? "READY" : "WAIT"}</em>
-                </span>
-              </div>
-              <div className="ow-placement-actions">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={!entry.reserve && entry.side === "teamA" ? "primary" : "secondary"}
-                  disabled={!availability.teamA}
-                  onClick={() => onSetPlacement(entry.playerId, { side: "teamA", reserve: false })}
-                >
-                  A 출전
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={!entry.reserve && entry.side === "teamB" ? "primary" : "secondary"}
-                  disabled={!availability.teamB}
-                  onClick={() => onSetPlacement(entry.playerId, { side: "teamB", reserve: false })}
-                >
-                  B 출전
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={entry.reserve && entry.side === "teamA" ? "primary" : "secondary"}
-                  onClick={() => onSetPlacement(entry.playerId, { side: "teamA", reserve: true })}
-                >
-                  A 후보
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={entry.reserve && entry.side === "teamB" ? "primary" : "secondary"}
-                  onClick={() => onSetPlacement(entry.playerId, { side: "teamB", reserve: true })}
-                >
-                  B 후보
-                </Button>
-                {!entry.fixed ? (
-                  <Button type="button" variant="secondary" className="danger-button" onClick={() => onKick(entry.playerId)}>
-                    <UserMinus size={16} /> 강퇴
-                  </Button>
-                ) : null}
-              </div>
-              {entry.team && !entry.reserve ? (
-                <div className="ow-member-adjust-actions">
-                  {activePlayerIds.map((playerId) => {
-                    const user = userById[playerId];
-                    return (
-                      <span key={`${entry.id}-${playerId}-active`} className="ow-member-adjust-chip">
-                        <PlayerHoverCard user={user} teams={teams} as="span" className="ow-member-adjust-profile">
-                          <span className="avatar small" style={{ "--avatar": user?.avatarColor }}>{user?.name?.slice(0, 1) ?? "?"}</span>
-                          <span>{user?.name ?? "선수"}</span>
-                        </PlayerHoverCard>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="secondary"
-                          disabled={!canDemoteActive}
-                          onClick={(event) => stopControlClick(event, () => onSetMemberReserve(entry.id, playerId, true))}
-                        >
-                          후보
-                        </Button>
-                      </span>
-                    );
-                  })}
-                  {reservePlayerIds.map((playerId) => {
-                    const user = userById[playerId];
-                    const assigned = recorderIds[entry.side] === playerId;
-                    const canRecord = canAssignRecorder && entry.status === "ready";
-                    return (
-                      <span key={`${entry.id}-${playerId}-reserve`} className={assigned ? "ow-member-adjust-chip reserve recorder" : "ow-member-adjust-chip reserve"}>
-                        <PlayerHoverCard user={user} teams={teams} as="span" className="ow-member-adjust-profile">
-                          <span className="avatar small" style={{ "--avatar": user?.avatarColor }}>{user?.name?.slice(0, 1) ?? "?"}</span>
-                          <span>{user?.name ?? "후보"}</span>
-                        </PlayerHoverCard>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="secondary"
-                          disabled={!canPromoteReserve}
-                          onClick={(event) => stopControlClick(event, () => onSetMemberReserve(entry.id, playerId, false))}
-                        >
-                          출전
-                        </Button>
-                        {canAssignRecorder ? (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant={assigned ? "primary" : "secondary"}
-                            className="ow-recorder-action"
-                            disabled={!canRecord}
-                            onClick={(event) => stopControlClick(event, () => onAssignRecorder(entry.side, assigned ? "" : playerId))}
-                          >
-                            {assigned ? "기록 해제" : "기록자 지정"}
-                          </Button>
-                        ) : null}
-                      </span>
-                    );
-                  })}
-                </div>
-              ) : null}
-            </article>
-          );
-        })}
       </div>
     </div>
   );
