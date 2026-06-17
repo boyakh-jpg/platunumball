@@ -255,15 +255,6 @@ function getJoinableSidePartyOptions(lobby, myTeams = [], currentUserId = "", ta
   });
 }
 
-function getPartySlotClass(partyKey, partyCounts, partySeen) {
-  if (!partyKey || (partyCounts[partyKey] ?? 0) < 2) return "";
-  const index = partySeen[partyKey] ?? 0;
-  partySeen[partyKey] = index + 1;
-  const count = partyCounts[partyKey];
-  const role = index === 0 ? "first" : index === count - 1 ? "last" : "middle";
-  return `party-linked party-${role}`;
-}
-
 export function isPartyEntry(entry) {
   return entry?.kind === "team";
 }
@@ -278,6 +269,26 @@ function getVisualPartyKey(entry, sideName = "") {
   return isPartyEntry(entry) ? `party:${entry.id}` : "";
 }
 
+function groupPartySlots(slots = []) {
+  const partyCounts = slots.reduce((acc, slot) => {
+    if (slot.partyKey) acc[slot.partyKey] = (acc[slot.partyKey] ?? 0) + 1;
+    return acc;
+  }, {});
+  const groups = [];
+
+  slots.forEach((slot) => {
+    const canGroup = slot.partyKey && partyCounts[slot.partyKey] > 1;
+    const lastGroup = groups[groups.length - 1];
+    if (canGroup && lastGroup?.partyKey === slot.partyKey) {
+      lastGroup.slots.push(slot);
+      return;
+    }
+    groups.push(canGroup ? { type: "party", partyKey: slot.partyKey, slots: [slot] } : { type: "slot", slots: [slot] });
+  });
+
+  return groups;
+}
+
 export function PlayerRoomSlot({
   user,
   teams,
@@ -290,7 +301,6 @@ export function PlayerRoomSlot({
   invite = false,
   onInvite,
   onSelfAction,
-  partyClassName = "",
   children,
 }) {
   if (empty) {
@@ -326,7 +336,7 @@ export function PlayerRoomSlot({
   );
 
   return (
-    <div className={`ow-room-player-slot-wrap ${partyClassName}`.trim()}>
+    <div className="ow-room-player-slot-wrap">
       {onSelfAction ? (
         <button type="button" className={`${slotClassName} self-action`} onClick={(event) => onSelfAction(event)}>
           {slotContent}
@@ -537,7 +547,7 @@ function QueueRoomBoard({ lobby, userById, teams }) {
   );
 }
 
-function FillSlot({ candidate, lobby, userById, teams, hostPlayerId = "", currentUserId = "", showCaptainBadge = false, readyText = "READY", partyClassName = "", onSelfAction }) {
+function FillSlot({ candidate, lobby, userById, teams, hostPlayerId = "", currentUserId = "", showCaptainBadge = false, readyText = "READY", onSelfAction }) {
   const user = candidate ? userById[candidate.playerId] : null;
   const readyLabel = candidate?.status === "ready" ? "READY" : "WAIT";
   const entry = candidate ? (lobby.entries ?? []).find((item) => item.id === candidate.entryId) : null;
@@ -553,7 +563,7 @@ function FillSlot({ candidate, lobby, userById, teams, hostPlayerId = "", curren
   }
 
   return (
-    <div className={`ow-room-player-slot-wrap ${partyClassName}`.trim()}>
+    <div className="ow-room-player-slot-wrap">
       {isSelfSlot && onSelfAction ? (
         <button
           type="button"
@@ -729,12 +739,26 @@ export function SideRoster({
       });
     });
   });
-  const partyCounts = activeSlots.reduce((acc, slot) => {
-    if (slot.partyKey) acc[slot.partyKey] = (acc[slot.partyKey] ?? 0) + 1;
-    return acc;
-  }, {});
-  const partySeen = {};
+  const activeSlotGroups = groupPartySlots(activeSlots);
   const openSlots = Math.max(0, side.capacity - side.projectedFilled);
+  const renderActiveSlot = ({ entry, playerId, user }) => {
+    const partyEntry = isPartyEntry(entry);
+    const partyLabel = partyEntry && entry.team ? entry.team.name : "개인 참여";
+    const isSelfSlot = playerId === currentUserId;
+    return (
+      <PlayerRoomSlot
+        key={`${sideName}-${entry.id}-${playerId}`}
+        user={user}
+        teams={teams}
+        status={entry.status}
+        title={entry.status === "ready" ? "READY" : "WAIT"}
+        detail={partyLabel}
+        mmr={user?.ratings?.integrated ?? getEntryMmr(entry)}
+        badge={getRoomSlotBadge(playerId, entry, hostPlayerId, showCaptainBadge)}
+        onSelfAction={isSelfSlot ? (event) => onSelfSlotAction?.(sideName, false, playerId, entry.id, event) : null}
+      />
+    );
+  };
   return (
     <section className="ow-side-roster">
       <header>
@@ -744,26 +768,17 @@ export function SideRoster({
         </div>
       </header>
       <div className="ow-room-slot-row" style={{ "--slot-count": 5 }}>
-        {activeSlots.map(({ entry, playerId, user, partyKey }) => {
-          const partyEntry = isPartyEntry(entry);
-          const partyLabel = partyEntry && entry.team ? entry.team.name : "개인 참여";
-          const partyClassName = getPartySlotClass(partyKey, partyCounts, partySeen);
-          const isSelfSlot = playerId === currentUserId;
-          return (
-            <PlayerRoomSlot
-              key={`${sideName}-${entry.id}-${playerId}`}
-              user={user}
-              teams={teams}
-              status={entry.status}
-              title={entry.status === "ready" ? "READY" : "WAIT"}
-              detail={partyLabel}
-              mmr={user?.ratings?.integrated ?? getEntryMmr(entry)}
-              badge={getRoomSlotBadge(playerId, entry, hostPlayerId, showCaptainBadge)}
-              partyClassName={partyClassName}
-              onSelfAction={isSelfSlot ? (event) => onSelfSlotAction?.(sideName, false, playerId, entry.id, event) : null}
-            />
-          );
-        })}
+        {activeSlotGroups.map((group) => (
+          group.type === "party" ? (
+            <div
+              key={`${sideName}-${group.partyKey}`}
+              className="ow-room-party-group"
+              style={{ "--party-slot-count": group.slots.length, gridColumn: `span ${group.slots.length}` }}
+            >
+              {group.slots.map(renderActiveSlot)}
+            </div>
+          ) : renderActiveSlot(group.slots[0])
+        ))}
         {side.fillSlots.map((candidate) => (
           <FillSlot
             key={`${sideName}-fill-${candidate.playerId}`}
@@ -820,41 +835,51 @@ export function ReserveLine({
   const slots = candidates.slice(0, MAX_RESERVE_PLAYERS_PER_SIDE);
   const openSlots = Math.max(0, MAX_RESERVE_PLAYERS_PER_SIDE - slots.length);
   const slotTrackCount = 5;
-  const partyCounts = slots.reduce((acc, candidate) => {
+  const reserveSlots = slots.map((candidate) => {
     const entry = (lobby.entries ?? []).find((item) => item.id === candidate.entryId);
-    const partyKey = getVisualPartyKey(entry, sideName);
-    if (partyKey) acc[partyKey] = (acc[partyKey] ?? 0) + 1;
-    return acc;
-  }, {});
-  const partySeen = {};
+    return {
+      candidate,
+      entry,
+      partyKey: getVisualPartyKey(entry, sideName),
+    };
+  });
+  const reserveSlotGroups = groupPartySlots(reserveSlots);
+  const renderReserveSlot = ({ candidate, entry }) => {
+    const user = userById[candidate.playerId];
+    if (!user) return null;
+    const canRecord = RECORDABLE_RESERVE_SOURCES.has(candidate.source) && candidate.status === "ready" && !playingSet.has(candidate.playerId);
+    const assigned = recorderId === candidate.playerId;
+    const readyText = canRecord ? (assigned ? "자동 기록자" : "기록 후보") : "후보";
+    const isSelfSlot = candidate.playerId === currentUserId;
+    return (
+      <PlayerRoomSlot
+        key={`${sideName}-${candidate.playerId}`}
+        user={user}
+        teams={teams}
+        status={candidate.status}
+        title={readyText}
+        detail={candidate.sourceLabel}
+        mmr={user.ratings?.integrated ?? 1200}
+        badge={getRoomSlotBadge(candidate.playerId, entry, hostPlayerId, showCaptainBadge)}
+        onSelfAction={isSelfSlot ? (event) => onSelfSlotAction?.(sideName, true, candidate.playerId, candidate.entryId, event) : null}
+      />
+    );
+  };
   return (
     <div className="ow-reserve-line">
       <strong>{SIDE_LABELS[sideName]} 후보 {candidates.length}/{MAX_RESERVE_PLAYERS_PER_SIDE}</strong>
       <div className="ow-room-reserve-row" style={{ "--slot-count": slotTrackCount }}>
-        {slots.map((candidate) => {
-          const user = userById[candidate.playerId];
-          if (!user) return null;
-          const canRecord = RECORDABLE_RESERVE_SOURCES.has(candidate.source) && candidate.status === "ready" && !playingSet.has(candidate.playerId);
-          const assigned = recorderId === candidate.playerId;
-          const readyText = canRecord ? (assigned ? "자동 기록자" : "기록 후보") : "후보";
-          const entry = (lobby.entries ?? []).find((item) => item.id === candidate.entryId);
-          const partyClassName = getPartySlotClass(getVisualPartyKey(entry, sideName), partyCounts, partySeen);
-          const isSelfSlot = candidate.playerId === currentUserId;
-          return (
-            <PlayerRoomSlot
-              key={`${sideName}-${candidate.playerId}`}
-              user={user}
-              teams={teams}
-              status={candidate.status}
-              title={readyText}
-              detail={candidate.sourceLabel}
-              mmr={user.ratings?.integrated ?? 1200}
-              badge={getRoomSlotBadge(candidate.playerId, entry, hostPlayerId, showCaptainBadge)}
-              partyClassName={partyClassName}
-              onSelfAction={isSelfSlot ? (event) => onSelfSlotAction?.(sideName, true, candidate.playerId, candidate.entryId, event) : null}
-            />
-          );
-        })}
+        {reserveSlotGroups.map((group) => (
+          group.type === "party" ? (
+            <div
+              key={`${sideName}-reserve-${group.partyKey}`}
+              className="ow-room-party-group"
+              style={{ "--party-slot-count": group.slots.length, gridColumn: `span ${group.slots.length}` }}
+            >
+              {group.slots.map(renderReserveSlot)}
+            </div>
+          ) : renderReserveSlot(group.slots[0])
+        ))}
         {Array.from({ length: openSlots }).map((_item, index) => {
           const slotKey = `${sideName}-reserve-${index}`;
           return (

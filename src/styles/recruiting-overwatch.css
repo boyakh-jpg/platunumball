@@ -1341,7 +1341,16 @@
   gap: 6px;
 }
 
-.ow-room-player-slot-wrap.party-linked::before {
+.ow-room-party-group {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: repeat(var(--party-slot-count, 2), minmax(0, var(--room-slot-width)));
+  gap: var(--room-slot-gap);
+  min-width: 0;
+}
+
+.ow-room-party-group::before {
   content: "";
   position: absolute;
   inset: -5px;
@@ -1353,30 +1362,8 @@
   pointer-events: none;
 }
 
-.ow-room-player-slot-wrap.party-linked::after {
-  content: "";
-  position: absolute;
-  top: 31px;
-  z-index: 0;
-  height: 3px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, rgba(70, 224, 182, 0), rgba(70, 224, 182, 0.72), rgba(70, 224, 182, 0));
-  pointer-events: none;
-}
-
-.ow-room-player-slot-wrap.party-first::after {
-  right: calc(-1 * var(--room-slot-gap));
-  left: 50%;
-}
-
-.ow-room-player-slot-wrap.party-middle::after {
-  right: calc(-1 * var(--room-slot-gap));
-  left: calc(-1 * var(--room-slot-gap));
-}
-
-.ow-room-player-slot-wrap.party-last::after {
-  right: 50%;
-  left: calc(-1 * var(--room-slot-gap));
+.ow-room-party-group > .ow-room-player-slot-wrap {
+  z-index: 1;
 }
 
 .ow-room-player-slot {
