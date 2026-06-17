@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   CheckCircle2,
   Clock3,
+  Crown,
   MapPin,
   MessageSquare,
   PlusCircle,
@@ -174,6 +175,17 @@ function getPlayerPosition(user) {
   return user?.position || "포지션 자유";
 }
 
+function getTeamCaptainId(team) {
+  return team?.members?.find((member) => member.role === "captain")?.userId ?? "";
+}
+
+function getRoomSlotBadge(playerId, entry, hostPlayerId) {
+  if (!playerId) return null;
+  if (playerId === hostPlayerId) return { tone: "host", label: "방장" };
+  if (getTeamCaptainId(entry?.team) === playerId) return { tone: "captain", label: "주장" };
+  return null;
+}
+
 function uniqueIds(ids = []) {
   return Array.from(new Set(ids.filter(Boolean)));
 }
@@ -283,7 +295,7 @@ function PlacementActionButtons({ currentSide, currentReserve = false, availabil
   ));
 }
 
-function PlayerRoomSlot({ user, teams, status = "waiting", title = "", detail = "", mmr = 1200, empty = false, invite = false, onInvite, children }) {
+function PlayerRoomSlot({ user, teams, status = "waiting", title = "", detail = "", mmr = 1200, badge = null, empty = false, invite = false, onInvite, children }) {
   if (empty) {
     return (
       <button
@@ -302,6 +314,11 @@ function PlayerRoomSlot({ user, teams, status = "waiting", title = "", detail = 
   return (
     <div className="ow-room-player-slot-wrap">
       <PlayerHoverCard user={user} teams={teams} className={status === "ready" ? "ow-room-player-slot ready" : "ow-room-player-slot"}>
+        {badge ? (
+          <span className={`ow-room-slot-crown ${badge.tone}`} title={badge.label} aria-label={badge.label}>
+            <Crown size={12} strokeWidth={3} />
+          </span>
+        ) : null}
         <span className="avatar" style={{ "--avatar": user?.avatarColor }}>{user?.name?.slice(0, 1) ?? "?"}</span>
         <strong>{user?.name ?? "플레이어"}</strong>
         <small>{getPlayerPosition(user)}</small>
@@ -601,9 +618,11 @@ function QueueRoomBoard({ lobby, userById, teams }) {
   );
 }
 
-function FillSlot({ candidate, userById, teams, readyText = "READY" }) {
+function FillSlot({ candidate, lobby, userById, teams, hostPlayerId = "", readyText = "READY" }) {
   const user = candidate ? userById[candidate.playerId] : null;
   const readyLabel = candidate?.status === "ready" ? "READY" : "WAIT";
+  const entry = candidate ? (lobby.entries ?? []).find((item) => item.id === candidate.entryId) : null;
+  const badge = getRoomSlotBadge(candidate?.playerId, entry, hostPlayerId);
   if (!user) {
     return (
       <div className="ow-room-player-slot empty">
@@ -616,6 +635,11 @@ function FillSlot({ candidate, userById, teams, readyText = "READY" }) {
   return (
     <div className="ow-room-player-slot-wrap">
       <PlayerHoverCard user={user} teams={teams} className={candidate.status === "ready" ? "ow-room-player-slot fill ready" : "ow-room-player-slot fill"}>
+        {badge ? (
+          <span className={`ow-room-slot-crown ${badge.tone}`} title={badge.label} aria-label={badge.label}>
+            <Crown size={12} strokeWidth={3} />
+          </span>
+        ) : null}
         <span className="avatar" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
         <strong>{user.name}</strong>
         <small>{getPlayerPosition(user)}</small>
@@ -658,6 +682,7 @@ function SideRoster({
   lobby,
   userById,
   teams,
+  hostPlayerId = "",
   canInvite = false,
   onInviteSlot,
 }) {
@@ -692,6 +717,7 @@ function SideRoster({
               title={entry.status === "ready" ? "READY" : "WAIT"}
               detail={partyLabel}
               mmr={user?.ratings?.integrated ?? getEntryMmr(entry)}
+              badge={getRoomSlotBadge(playerId, entry, hostPlayerId)}
             />
           );
         })}
@@ -702,6 +728,7 @@ function SideRoster({
             lobby={lobby}
             userById={userById}
             teams={teams}
+            hostPlayerId={hostPlayerId}
           />
         ))}
         {Array.from({ length: openSlots }).map((_item, index) => {
@@ -734,7 +761,7 @@ function stopControlClick(event, callback) {
   callback();
 }
 
-function ReserveLine({ sideName, candidates, playingIds, lobby, userById, teams, canInvite = false, recorderId = "", onInviteSlot }) {
+function ReserveLine({ sideName, candidates, playingIds, lobby, userById, teams, hostPlayerId = "", canInvite = false, recorderId = "", onInviteSlot }) {
   const playingSet = new Set(playingIds);
   const slots = candidates.slice(0, MAX_RESERVE_PLAYERS_PER_SIDE);
   const openSlots = Math.max(0, MAX_RESERVE_PLAYERS_PER_SIDE - slots.length);
@@ -748,6 +775,7 @@ function ReserveLine({ sideName, candidates, playingIds, lobby, userById, teams,
           const canRecord = RECORDABLE_RESERVE_SOURCES.has(candidate.source) && candidate.status === "ready" && !playingSet.has(candidate.playerId);
           const assigned = recorderId === candidate.playerId;
           const readyText = canRecord ? (assigned ? "자동 기록자" : "기록 후보") : "후보";
+          const entry = (lobby.entries ?? []).find((item) => item.id === candidate.entryId);
           return (
             <PlayerRoomSlot
               key={`${sideName}-${candidate.playerId}`}
@@ -757,6 +785,7 @@ function ReserveLine({ sideName, candidates, playingIds, lobby, userById, teams,
               title={readyText}
               detail={candidate.sourceLabel}
               mmr={user.ratings?.integrated ?? 1200}
+              badge={getRoomSlotBadge(candidate.playerId, entry, hostPlayerId)}
             />
           );
         })}
@@ -1786,6 +1815,7 @@ export default function Recruiting({ app }) {
                       lobby={lobby}
                       userById={userById}
                       teams={app.state.teams}
+                      hostPlayerId={selectedPost.playerId}
                       canInvite={canInviteFromRoom}
                       canManage={mine}
                       onInviteSlot={(sideName, reserve, slotKey) => openInviteSlot(selectedPost, sideName, reserve, slotKey)}
@@ -1818,6 +1848,7 @@ export default function Recruiting({ app }) {
                       lobby={lobby}
                       userById={userById}
                       teams={app.state.teams}
+                      hostPlayerId={selectedPost.playerId}
                       canInvite={canInviteFromRoom}
                       canManage={mine}
                       onInviteSlot={(sideName, reserve, slotKey) => openInviteSlot(selectedPost, sideName, reserve, slotKey)}
@@ -1839,6 +1870,7 @@ export default function Recruiting({ app }) {
                     playingIds={playingIds}
                     userById={userById}
                     teams={app.state.teams}
+                    hostPlayerId={selectedPost.playerId}
                     canInvite={canInviteFromRoom}
                     canManage={mine}
                     recorderId={recorderIds.teamA}
@@ -1853,6 +1885,7 @@ export default function Recruiting({ app }) {
                     playingIds={playingIds}
                     userById={userById}
                     teams={app.state.teams}
+                    hostPlayerId={selectedPost.playerId}
                     canInvite={canInviteFromRoom}
                     canManage={mine}
                     recorderId={recorderIds.teamB}

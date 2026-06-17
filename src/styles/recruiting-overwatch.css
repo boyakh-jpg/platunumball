@@ -1397,6 +1397,32 @@
   background: rgba(70, 224, 182, 0.13);
 }
 
+.ow-room-slot-crown {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  z-index: 2;
+  display: grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.26);
+  pointer-events: none;
+}
+
+.ow-room-slot-crown.host {
+  background: var(--gold);
+  color: #141006;
+}
+
+.ow-room-slot-crown.captain {
+  border-color: rgba(118, 169, 255, 0.45);
+  background: rgba(118, 169, 255, 0.22);
+  color: var(--blue);
+}
+
 .ow-room-player-slot.empty {
   border-style: dashed;
   background: rgba(0, 0, 0, 0.18);
