@@ -1348,6 +1348,7 @@
   grid-template-columns: repeat(var(--party-slot-count, 2), minmax(0, var(--room-slot-width)));
   gap: var(--room-slot-gap);
   min-width: 0;
+  --party-link-y: 30px;
 }
 
 .ow-room-party-group::before {
@@ -1362,8 +1363,22 @@
   pointer-events: none;
 }
 
-.ow-room-party-group > .ow-room-player-slot-wrap {
+.ow-room-party-group::after {
+  content: "";
+  position: absolute;
+  top: var(--party-link-y);
+  left: calc(var(--room-slot-width) / 2);
+  right: calc(var(--room-slot-width) / 2);
   z-index: 1;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(70, 224, 182, 0), rgba(70, 224, 182, 0.78), rgba(70, 224, 182, 0));
+  box-shadow: 0 0 10px rgba(70, 224, 182, 0.28);
+  pointer-events: none;
+}
+
+.ow-room-party-group > .ow-room-player-slot-wrap {
+  z-index: 2;
 }
 
 .ow-room-player-slot {
@@ -2504,6 +2519,10 @@ html[data-theme="light"] .ow-compose-drawer {
   .ow-room-player-slot .avatar {
     width: 36px;
     height: 36px;
+  }
+
+  .ow-room-party-group {
+    --party-link-y: 25px;
   }
 
   .ow-join-panel {
