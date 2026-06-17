@@ -354,11 +354,12 @@ function MatchPreviewSide({ match, sideName, teamById, userById, teams }) {
 function MatchPreviewReserveLine({ match, sideName, userById, teams }) {
   const reserves = getMatchReservePlayerIds(match, sideName).slice(0, 2);
   const emptyCount = Math.max(0, 2 - reserves.length);
+  const slotTrackCount = Math.max(2, getRoomCapacity(match));
 
   return (
     <div className="ow-reserve-line">
       <strong>{sideName === "teamA" ? "A팀" : "B팀"} 후보 {reserves.length}/2</strong>
-      <div className="ow-room-reserve-row" style={{ "--slot-count": 2 }}>
+      <div className="ow-room-reserve-row" style={{ "--slot-count": slotTrackCount }}>
         {reserves.map((playerId) => {
           const user = userById[playerId];
           return (
@@ -425,11 +426,12 @@ function RecruitingPreviewSide({ side, sideName, userById, teams }) {
 function RecruitingPreviewReserveLine({ side, sideName, userById, teams }) {
   const reserves = side.reserveCandidates.slice(0, 2);
   const emptyCount = Math.max(0, 2 - reserves.length);
+  const slotTrackCount = Math.max(2, side.capacity);
 
   return (
     <div className="ow-reserve-line">
       <strong>{SIDE_LABELS[sideName]} 후보 {reserves.length}/2</strong>
-      <div className="ow-room-reserve-row" style={{ "--slot-count": 2 }}>
+      <div className="ow-room-reserve-row" style={{ "--slot-count": slotTrackCount }}>
         {reserves.map((candidate) => {
           const user = userById[candidate.playerId];
           return (

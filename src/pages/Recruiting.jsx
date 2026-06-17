@@ -765,10 +765,11 @@ function ReserveLine({ sideName, candidates, playingIds, lobby, userById, teams,
   const playingSet = new Set(playingIds);
   const slots = candidates.slice(0, MAX_RESERVE_PLAYERS_PER_SIDE);
   const openSlots = Math.max(0, MAX_RESERVE_PLAYERS_PER_SIDE - slots.length);
+  const slotTrackCount = Math.max(MAX_RESERVE_PLAYERS_PER_SIDE, lobby.sides[sideName]?.capacity ?? MAX_RESERVE_PLAYERS_PER_SIDE);
   return (
     <div className="ow-reserve-line">
       <strong>{SIDE_LABELS[sideName]} 후보 {candidates.length}/{MAX_RESERVE_PLAYERS_PER_SIDE}</strong>
-      <div className="ow-room-reserve-row" style={{ "--slot-count": MAX_RESERVE_PLAYERS_PER_SIDE }}>
+      <div className="ow-room-reserve-row" style={{ "--slot-count": slotTrackCount }}>
         {slots.map((candidate) => {
           const user = userById[candidate.playerId];
           if (!user) return null;
