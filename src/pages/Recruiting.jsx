@@ -349,6 +349,17 @@ function isCurrentUserRoomParticipant(post, lobby, currentUserId) {
   ));
 }
 
+export function getRecruitingRoomStatus(lobby, { myEntry = null, mine = false } = {}) {
+  if (lobby.canConfirm) {
+    return mine
+      ? { label: "CONFIRM", tone: "green", detail: "방장 확정 가능" }
+      : { label: "READY", tone: "green", detail: "방장 확정 대기" };
+  }
+  if (!lobby.projectedFull) return { label: "WAIT", tone: "blue", detail: "충원 중" };
+  if (myEntry?.status && myEntry.status !== "ready") return { label: "WAIT", tone: "orange", detail: "내 확인 필요" };
+  return { label: "WAIT", tone: "orange", detail: "참여 확인 중" };
+}
+
 function TeamMemberPicker({ team, userById, selectedIds, capacity, onChange }) {
   if (!team) {
     return (
@@ -496,11 +507,12 @@ function QueueRoomBoard({ lobby, userById, teams }) {
   const readyCount = rows.filter((row) => row.ready).length;
   const filledCount = lobby.sides.teamA.projectedFilled + lobby.sides.teamB.projectedFilled;
   const totalCapacity = lobby.sides.teamA.capacity + lobby.sides.teamB.capacity;
+  const roomStatus = getRecruitingRoomStatus(lobby);
 
   return (
     <div className={lobby.canConfirm ? "ow-queue-board complete" : "ow-queue-board"}>
       <div className="ow-queue-board-head">
-        <span>{lobby.canConfirm ? "CONFIRM" : "WAIT"}</span>
+        <span>{roomStatus.label}</span>
         <b>참여 {readyCount}/{rows.length}</b>
         <b>인원 {filledCount}/{totalCapacity}</b>
       </div>
@@ -1123,11 +1135,15 @@ function getSourceMatchUserSideName(match, userId) {
   return null;
 }
 
-function getSourceMatchStatus(match, lobby) {
+function getSourceMatchStatus(match, lobby, userId = "") {
   if (!match) return lobby.canConfirm ? { label: "CONFIRM", tone: "green" } : { label: "WAIT", tone: "blue" };
   if (match.status === "contract") return { label: "WAIT", tone: "blue" };
   if (match.status === "agreed") return { label: "READY", tone: "green" };
-  if (match.status === "approval" || match.status === "disputed") return { label: "CONFIRM", tone: "orange" };
+  if (match.status === "approval" || match.status === "disputed") {
+    const sideName = getSourceMatchUserSideName(match, userId);
+    const needsConfirm = sideName && !(match.approvals?.[sideName] ?? []).includes(userId);
+    return needsConfirm ? { label: "CONFIRM", tone: "orange" } : { label: "WAIT", tone: "blue" };
+  }
   if (match.status === "confirmed") return { label: "DONE", tone: "green" };
   if (match.status === "cancelled" || match.status === "void") return { label: "CLOSED", tone: "neutral" };
   return { label: String(match.status ?? "WAIT").toUpperCase(), tone: "blue" };
@@ -1344,10 +1360,11 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
         const favoriteTeamIds = app.state.settings?.favoriteTeamIds ?? [];
         const teamAMeta = getLobbySideMeta(lobby, "teamA", userById);
         const teamBMeta = getLobbySideMeta(lobby, "teamB", userById);
-        const sourceMatchStatus = getSourceMatchStatus(sourceMatch, lobby);
+        const sourceMatchStatus = getSourceMatchStatus(sourceMatch, lobby, app.currentUser.id);
         const sourceMatchAction = getSourceMatchAction(sourceMatch, app.currentUser.id);
         const sourceMatchSideName = getSourceMatchUserSideName(sourceMatch, app.currentUser.id);
-        const roomReadyLabel = sourceMatch ? sourceMatchStatus.label : lobby.canConfirm ? "READY" : "WAIT";
+        const roomQueueStatus = getRecruitingRoomStatus(lobby, { myEntry, mine });
+        const roomReadyLabel = sourceMatch ? sourceMatchStatus.label : roomQueueStatus.label;
         const roomTitle = selectedPost.ranked === false ? "친선전" : "정규전";
         const showCaptainBadge = selectedPost.visibility === "private";
         const activeSlotDraft = activeInviteDraft?.slotKey ? activeInviteDraft : null;
@@ -1498,7 +1515,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                 <div className="ow-lobby-topline">
                   <div className="badge-row">
                     <Badge tone={selectedPost.ranked === false ? "neutral" : "gold"}>{roomTitle}</Badge>
-                    <Badge tone={sourceMatch ? sourceMatchStatus.tone : lobby.canConfirm ? "green" : "blue"}>{sourceMatch ? sourceMatchStatus.label : lobby.canConfirm ? "CONFIRM" : "WAIT"}</Badge>
+                    <Badge tone={sourceMatch ? sourceMatchStatus.tone : roomQueueStatus.tone}>{sourceMatch ? sourceMatchStatus.label : roomQueueStatus.label}</Badge>
                     <Badge tone="green">사전등록</Badge>
                   </div>
                   <div>
@@ -1788,7 +1805,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                 ) : mine ? (
                   <div className="ow-owner-panel">
                     <strong>방장 권한</strong>
-                    <span>{lobby.canConfirm ? "CONFIRM" : "WAIT"}</span>
+                    <span>{roomQueueStatus.detail}</span>
                   </div>
                 ) : alreadyApplied ? (
                   <div className="ow-owner-panel">
@@ -2178,6 +2195,11 @@ export default function Recruiting({ app }) {
           const myRoom = isRecruitingPostForUser(post, app.currentUser.id, myTeamIds);
           const invited = hasPendingRecruitingInvitation(post, app.currentUser.id);
           const roomTag = invited ? "초대받음" : mine ? "내가 만든 방" : myRoom ? "내 참여방" : "";
+          const myEntry = lobby.entries.find((entry) => (
+            entry.players?.includes(app.currentUser.id) ||
+            entry.reserves?.includes(app.currentUser.id)
+          ));
+          const roomStatus = getRecruitingRoomStatus(lobby, { myEntry, mine });
 
           return (
             <article
@@ -2208,7 +2230,7 @@ export default function Recruiting({ app }) {
                   <span>{getRecruitingSchedule(post)}</span>
                   <span className="ow-tier-chip">{post.ranked === false ? "티어 자유" : range.label}</span>
                   <span>{formatWhen(post.createdAt)}</span>
-                  <span>{lobby.ready ? "READY" : "WAIT"}</span>
+                  <span>{roomStatus.label}</span>
                 </div>
               </div>
 

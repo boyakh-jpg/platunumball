@@ -8,7 +8,7 @@ import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { MATCH_MODES } from "../lib/constants.js";
 import { getMatchEndDate, getMatchReservePlayerIds } from "../lib/matchUtils.js";
 import { getRecruitingLobby, getRecruitingSideCapacity, isRecruitingPostForUser } from "../lib/recruiting.js";
-import { RecruitingRoomModal } from "./Recruiting.jsx";
+import { RecruitingRoomModal, getRecruitingRoomStatus } from "./Recruiting.jsx";
 
 const STATUS_META = {
   contract: { label: "WAIT", tone: "blue" },
@@ -934,13 +934,14 @@ export default function Matches({ app }) {
             const lobby = getRecruitingLobby(post, app.state);
             const myEntry = getRecruitingEntryForUser(lobby, app.currentUser.id);
             const needConfirm = myEntry && myEntry.status !== "ready";
+            const roomStatus = getRecruitingRoomStatus(lobby, { myEntry, mine: post.playerId === app.currentUser.id });
             const filled = lobby.sides.teamA.projectedFilled + lobby.sides.teamB.projectedFilled;
             const capacity = getRecruitingSideCapacity(post) * 2;
             return (
               <article key={`room-${post.id}`} className="om-match-card om-status-contract">
                 <div className="om-card-main">
                   <div className="om-card-kicker">
-                    <span className={`om-status-pill ${needConfirm ? "orange" : "blue"}`}>{needConfirm ? "WAIT" : "CONFIRM"}</span>
+                    <span className={`om-status-pill ${roomStatus.tone}`}>{roomStatus.label}</span>
                     <span className="om-card-mode">{post.mode}</span>
                     <span className="om-card-official">공개방</span>
                     <span className="om-card-official">{post.ranked === false ? "친선" : "정규"}</span>
@@ -952,7 +953,7 @@ export default function Matches({ app }) {
                   <span>A {lobby.sides.teamA.projectedFilled}/{lobby.sides.teamA.capacity}</span>
                   <strong>{filled}/{capacity}</strong>
                   <span>B {lobby.sides.teamB.projectedFilled}/{lobby.sides.teamB.capacity}</span>
-                  <span>{lobby.canConfirm ? "CONFIRM" : "WAIT"}</span>
+                  <span>{roomStatus.detail}</span>
                 </div>
                 <button type="button" className="button button-secondary button-md om-room-link" onClick={() => setSelectedRecruitingPostId(post.id)}>
                   {needConfirm ? "CONFIRM" : "방 보기"}
