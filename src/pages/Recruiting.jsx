@@ -179,9 +179,10 @@ function getTeamCaptainId(team) {
   return team?.members?.find((member) => member.role === "captain")?.userId ?? "";
 }
 
-function getRoomSlotBadge(playerId, entry, hostPlayerId) {
+function getRoomSlotBadge(playerId, entry, hostPlayerId, showCaptainBadge = false) {
   if (!playerId) return null;
   if (playerId === hostPlayerId) return { tone: "host", label: "방장" };
+  if (!showCaptainBadge) return null;
   if (getTeamCaptainId(entry?.team) === playerId) return { tone: "captain", label: "주장" };
   return null;
 }
@@ -654,11 +655,11 @@ function QueueRoomBoard({ lobby, userById, teams }) {
   );
 }
 
-function FillSlot({ candidate, lobby, userById, teams, hostPlayerId = "", currentUserId = "", readyText = "READY", partyClassName = "", onSelfAction }) {
+function FillSlot({ candidate, lobby, userById, teams, hostPlayerId = "", currentUserId = "", showCaptainBadge = false, readyText = "READY", partyClassName = "", onSelfAction }) {
   const user = candidate ? userById[candidate.playerId] : null;
   const readyLabel = candidate?.status === "ready" ? "READY" : "WAIT";
   const entry = candidate ? (lobby.entries ?? []).find((item) => item.id === candidate.entryId) : null;
-  const badge = getRoomSlotBadge(candidate?.playerId, entry, hostPlayerId);
+  const badge = getRoomSlotBadge(candidate?.playerId, entry, hostPlayerId, showCaptainBadge);
   if (!user) {
     return (
       <div className="ow-room-player-slot empty">
@@ -789,6 +790,7 @@ function SideRoster({
   teams,
   hostPlayerId = "",
   currentUserId = "",
+  showCaptainBadge = false,
   canInvite = false,
   onInviteSlot,
   onSelfSlotAction,
@@ -835,7 +837,7 @@ function SideRoster({
               title={entry.status === "ready" ? "READY" : "WAIT"}
               detail={partyLabel}
               mmr={user?.ratings?.integrated ?? getEntryMmr(entry)}
-              badge={getRoomSlotBadge(playerId, entry, hostPlayerId)}
+              badge={getRoomSlotBadge(playerId, entry, hostPlayerId, showCaptainBadge)}
               partyClassName={partyClassName}
               onSelfAction={playerId === currentUserId ? () => onSelfSlotAction?.(sideName, false, playerId) : null}
             />
@@ -850,6 +852,7 @@ function SideRoster({
             teams={teams}
             hostPlayerId={hostPlayerId}
             currentUserId={currentUserId}
+            showCaptainBadge={showCaptainBadge}
             onSelfAction={() => onSelfSlotAction?.(sideName, false, candidate.playerId)}
           />
         ))}
@@ -892,6 +895,7 @@ function ReserveLine({
   teams,
   hostPlayerId = "",
   currentUserId = "",
+  showCaptainBadge = false,
   canInvite = false,
   recorderId = "",
   onInviteSlot,
@@ -929,7 +933,7 @@ function ReserveLine({
               title={readyText}
               detail={candidate.sourceLabel}
               mmr={user.ratings?.integrated ?? 1200}
-              badge={getRoomSlotBadge(candidate.playerId, entry, hostPlayerId)}
+              badge={getRoomSlotBadge(candidate.playerId, entry, hostPlayerId, showCaptainBadge)}
               partyClassName={partyClassName}
               onSelfAction={candidate.playerId === currentUserId ? () => onSelfSlotAction?.(sideName, true, candidate.playerId) : null}
             />
@@ -1820,6 +1824,7 @@ export default function Recruiting({ app }) {
         const teamBMeta = getLobbySideMeta(lobby, "teamB", userById);
         const roomReadyLabel = lobby.canConfirm ? "READY" : "WAIT";
         const roomTitle = selectedPost.ranked === false ? "친선전" : "정규전";
+        const showCaptainBadge = selectedPost.visibility === "private";
         const activeSlotDraft = activeInviteDraft?.slotKey ? activeInviteDraft : null;
         const currentUserReserve = getEntryPlayerReserveState(myEntry, app.currentUser.id);
         const currentUserInEntry = Boolean(myEntry && (
@@ -1996,6 +2001,7 @@ export default function Recruiting({ app }) {
                       teams={app.state.teams}
                       hostPlayerId={selectedPost.playerId}
                       currentUserId={app.currentUser.id}
+                      showCaptainBadge={showCaptainBadge}
                       canInvite={canInviteFromRoom}
                       canManage={mine}
                       onInviteSlot={(sideName, reserve, slotKey) => openInviteSlot(selectedPost, sideName, reserve, slotKey)}
@@ -2031,6 +2037,7 @@ export default function Recruiting({ app }) {
                       teams={app.state.teams}
                       hostPlayerId={selectedPost.playerId}
                       currentUserId={app.currentUser.id}
+                      showCaptainBadge={showCaptainBadge}
                       canInvite={canInviteFromRoom}
                       canManage={mine}
                       onInviteSlot={(sideName, reserve, slotKey) => openInviteSlot(selectedPost, sideName, reserve, slotKey)}
@@ -2055,6 +2062,7 @@ export default function Recruiting({ app }) {
                     teams={app.state.teams}
                     hostPlayerId={selectedPost.playerId}
                     currentUserId={app.currentUser.id}
+                    showCaptainBadge={showCaptainBadge}
                     canInvite={canInviteFromRoom}
                     canManage={mine}
                     recorderId={recorderIds.teamA}
@@ -2072,6 +2080,7 @@ export default function Recruiting({ app }) {
                     teams={app.state.teams}
                     hostPlayerId={selectedPost.playerId}
                     currentUserId={app.currentUser.id}
+                    showCaptainBadge={showCaptainBadge}
                     canInvite={canInviteFromRoom}
                     canManage={mine}
                     recorderId={recorderIds.teamB}
