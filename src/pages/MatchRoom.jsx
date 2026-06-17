@@ -161,7 +161,8 @@ export default function MatchRoom({ app }) {
   const canResumeApproval = match.status === "disputed";
   const canReport = !["cancelled", "void"].includes(match.status);
   const isContractStage = match.status === "contract";
-  const shouldShowResultEntry = match.status === "approval" || Boolean(match.result) || (match.status === "agreed" && !recordWindow.beforeEnd);
+  const shouldShowResultEntry =
+    match.status === "approval" || Boolean(match.result) || (match.status === "agreed" && !recordWindow.beforeStart && !recordWindow.beforeEnd);
   const shouldShowApprovalPanel = ["disputed", "confirmed"].includes(match.status) || (match.status === "approval" && approvalAccessReady);
   const shouldShowWaitingPanel = false;
   const scoreA = getDisplayScore(match, "teamA");
@@ -172,8 +173,10 @@ export default function MatchRoom({ app }) {
   const teamBMmr = teamB?.mmr ?? getTeamMmr(app.state.teams, match.teamB.teamId);
   const winnerName = Number(scoreA) === Number(scoreB) ? "" : Number(scoreA) > Number(scoreB) ? match.teamA.name : match.teamB.name;
   const matchKind = match.ranked === false ? "친선전" : "정규전";
-  const recordLockReason = recordWindow.beforeEnd
-    ? "경기 종료 후 입력 가능"
+  const recordLockReason = recordWindow.beforeStart
+    ? "경기 시작 전"
+    : recordWindow.beforeEnd
+      ? "경기 종료 후 입력 가능"
     : recordWindow.statExpired
       ? "기록 입력 마감"
       : hasReferee && !currentUserIsReferee

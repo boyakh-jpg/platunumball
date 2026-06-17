@@ -15,6 +15,7 @@ import {
   getMatchPlayerIds,
   getMatchReservePlayerIds,
   getMatchSidePlayerIds,
+  getMatchStartDate,
   getMatchRecordWindow,
   getPlayerSideName,
   getStatRecorderSides,
@@ -1787,8 +1788,19 @@ function applyExpiredRecruitingRooms(state, now = new Date()) {
   };
 }
 
+function applyAutomaticRecruitingConfirmations(state) {
+  let nextState = state;
+  for (const post of state.recruitingPosts ?? []) {
+    const current = nextState.recruitingPosts?.find((item) => item.id === post.id);
+    if (!current || current.status !== "open") continue;
+    if (!getRecruitingLobby(current, nextState).canConfirm) continue;
+    nextState = confirmRecruitingMatch({ ...nextState, currentUserId: current.playerId }, current.id);
+  }
+  return nextState;
+}
+
 export function runAutomaticStateMaintenance(state, now = new Date()) {
-  return applyExpiredRecruitingRooms(applyAutomaticMatchDecisions(state, now), now);
+  return applyAutomaticRecruitingConfirmations(applyExpiredRecruitingRooms(applyAutomaticMatchDecisions(state, now), now));
 }
 
 export function createMatch(state, draft) {
@@ -2256,8 +2268,8 @@ export function submitMatchResult(state, matchId, result) {
   }
   if (["confirmed", "void", "cancelled", "disputed"].includes(match.status)) return state;
   const recordWindow = getMatchRecordWindow(match);
-  const matchStartsAt = match.scheduledDate && match.scheduledTime ? new Date(`${match.scheduledDate}T${match.scheduledTime}`) : null;
-  const beforeStart = matchStartsAt && Number.isFinite(matchStartsAt.getTime()) && Date.now() < matchStartsAt.getTime();
+  const matchStartsAt = getMatchStartDate(match);
+  const beforeStart = !matchStartsAt || (Number.isFinite(matchStartsAt.getTime()) && Date.now() < matchStartsAt.getTime());
   const liveRecordAllowed = recordWindow.beforeEnd && !beforeStart && (currentUserIsEligibleReferee || (!hasReferee && recorderSides.length > 0));
   if ((recordWindow.beforeEnd && !liveRecordAllowed) || (!recordWindow.beforeEnd && !recordWindow.statOpen)) {
     return {
@@ -2532,13 +2544,66 @@ export function disputeMatch(state, matchId, reason = "") {
   };
 }
 
+function getMatchHostPlayerId(state, match) {
+  const sourcePost = match?.recruitingPostId
+    ? state.recruitingPosts?.find((post) => post.id === match.recruitingPostId)
+    : null;
+  return match?.createdBy || match?.hostPlayerId || match?.createdPlayerId || sourcePost?.playerId || match?.teamA?.players?.[0] || "";
+}
+
+export function startMatch(state, matchId) {
+  const match = state.matches.find((item) => item.id === matchId);
+  if (!match || match.status !== "agreed" || match.result || match.endedAt) return state;
+  const hostPlayerId = getMatchHostPlayerId(state, match);
+  if (hostPlayerId && hostPlayerId !== state.currentUserId) return state;
+  const now = new Date().toISOString();
+  const nextMatch = {
+    ...match,
+    startedAt: match.startedAt ?? now,
+    rules: {
+      ...(match.rules ?? {}),
+      startedAt: match.rules?.startedAt ?? now,
+    },
+  };
+  return {
+    ...state,
+    matches: state.matches.map((item) => (item.id === matchId ? nextMatch : item)),
+    notifications: [
+      { id: makeId("n"), title: "경기 시작", body: `${match.title} 경기가 시작됐습니다.`, tone: "match", matchId },
+      ...state.notifications,
+    ],
+  };
+}
+
+export function endMatch(state, matchId) {
+  const match = state.matches.find((item) => item.id === matchId);
+  if (!match || match.status !== "agreed" || match.result || match.endedAt) return state;
+  const hostPlayerId = getMatchHostPlayerId(state, match);
+  if (hostPlayerId && hostPlayerId !== state.currentUserId) return state;
+  const now = new Date().toISOString();
+  const nextMatch = {
+    ...match,
+    startedAt: match.startedAt ?? match.rules?.startedAt ?? now,
+    endedAt: now,
+    rules: {
+      ...(match.rules ?? {}),
+      startedAt: match.rules?.startedAt ?? match.startedAt ?? now,
+    },
+  };
+  return {
+    ...state,
+    matches: state.matches.map((item) => (item.id === matchId ? nextMatch : item)),
+    notifications: [
+      { id: makeId("n"), title: "경기 종료", body: `${match.title} 경기가 종료됐습니다. 결과 입력이 열렸습니다.`, tone: "match", matchId },
+      ...state.notifications,
+    ],
+  };
+}
+
 export function cancelMatch(state, matchId) {
   const match = state.matches.find((item) => item.id === matchId);
   if (!match || !["contract", "agreed"].includes(match.status)) return state;
-  const sourcePost = match.recruitingPostId
-    ? state.recruitingPosts?.find((post) => post.id === match.recruitingPostId)
-    : null;
-  const hostPlayerId = match.createdBy || match.hostPlayerId || match.createdPlayerId || sourcePost?.playerId || match.teamA?.players?.[0] || "";
+  const hostPlayerId = getMatchHostPlayerId(state, match);
   if (hostPlayerId && hostPlayerId !== state.currentUserId) return state;
 
   return {
@@ -3150,10 +3215,10 @@ export function interestRecruitingPost(state, postId, application = {}) {
     };
   }
 
-  return {
+  return applyAutomaticRecruitingConfirmations({
     ...state,
     recruitingPosts: (state.recruitingPosts ?? []).map((item) => (item.id === postId ? nextPost : item)),
-  };
+  });
 }
 
 function getLobbySideName(lobby, sideName) {
@@ -3212,7 +3277,7 @@ export function setRecruitingReady(state, postId, ready = true) {
     ? { ...roomState, reserveReady: nextReserveReady }
     : roomState;
 
-  return {
+  return applyAutomaticRecruitingConfirmations({
     ...state,
     recruitingPosts: (state.recruitingPosts ?? []).map((item) => {
       if (item.id !== postId) return item;
@@ -3229,7 +3294,7 @@ export function setRecruitingReady(state, postId, ready = true) {
         )),
       }, state);
     }),
-  };
+  });
 }
 
 export function updateRecruitingRoomRules(state, postId, patch = {}) {
@@ -3300,6 +3365,47 @@ export function updateRecruitingRoomRules(state, postId, patch = {}) {
         body: `${post.title} 룰이 바뀌어 참여자 재확인이 필요합니다.`,
         tone: "match",
         recruitingPostId: postId,
+      },
+      ...state.notifications,
+    ],
+  };
+}
+
+export function updateMatchRoomRules(state, matchId, patch = {}) {
+  const match = state.matches.find((item) => item.id === matchId);
+  if (!match || !["contract", "agreed"].includes(match.status) || match.result || match.endedAt) return state;
+  const hostPlayerId = getMatchHostPlayerId(state, match);
+  if (hostPlayerId && hostPlayerId !== state.currentUserId) return state;
+  const nextRules = {
+    ...(match.rules ?? {}),
+    targetScore: Math.max(7, Math.min(31, Number(patch.targetScore ?? match.rules?.targetScore ?? 21))),
+    timeLimit: Math.max(5, Math.min(60, Number(patch.timeLimit ?? match.rules?.timeLimit ?? 12))),
+    winByTwo: Boolean(patch.winByTwo ?? match.rules?.winByTwo ?? true),
+    ball: patch.ball ?? match.rules?.ball ?? "7호 공",
+    attackRule: String(patch.attackRule ?? match.rules?.attackRule ?? "득점 후 공격권 교대").slice(0, 120),
+    foulRule: String(patch.foulRule ?? match.rules?.foulRule ?? "파울 콜 즉시 중단, 공격권 유지").slice(0, 120),
+  };
+  delete nextRules.startedAt;
+  const nextMatch = {
+    ...match,
+    status: "contract",
+    rules: nextRules,
+    memo: patch.memo === undefined ? match.memo : String(patch.memo ?? "").slice(0, 500),
+    stakes: patch.stakes === undefined ? match.stakes : String(patch.stakes ?? "").slice(0, 500),
+    agreements: { teamA: [], teamB: [] },
+    agreedAt: null,
+    startedAt: null,
+  };
+  return {
+    ...state,
+    matches: state.matches.map((item) => (item.id === matchId ? nextMatch : item)),
+    notifications: [
+      {
+        id: makeId("n"),
+        title: "경기 룰 변경",
+        body: `${match.title} 룰이 바뀌어 재확인이 필요합니다.`,
+        tone: "match",
+        matchId,
       },
       ...state.notifications,
     ],
@@ -3603,7 +3709,7 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
       }
     }
 
-    return {
+    return applyAutomaticRecruitingConfirmations({
       ...state,
       recruitingPosts: (state.recruitingPosts ?? []).map((item) => (
         item.id === postId ? cleanRecruitingRoomStatRecorders(nextPost, state) : item
@@ -3617,7 +3723,7 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
         },
         ...state.notifications,
       ],
-    };
+    });
   }
 
   const nextApplicant = {
@@ -3634,7 +3740,7 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
   };
   if (hasRecruitingApplicant(post, nextApplicant)) return state;
 
-  return {
+  return applyAutomaticRecruitingConfirmations({
     ...state,
     recruitingPosts: (state.recruitingPosts ?? []).map((item) => (
       item.id === postId
@@ -3657,7 +3763,7 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
       },
       ...state.notifications,
     ],
-  };
+  });
 }
 
 export function declineRecruitingInvitation(state, postId, invitationId) {
@@ -4351,7 +4457,7 @@ export function confirmRecruitingMatch(state, postId) {
         {
           id: makeId("n"),
           title: "매치 확정 불가",
-          body: "양쪽 인원이 꽉 차고 모든 참가자가 대기 완료 상태여야 합니다.",
+          body: "양쪽 슬롯이 채워지고 필요한 CONFIRM이 끝나야 합니다.",
           tone: "match",
           matchId: null,
         },

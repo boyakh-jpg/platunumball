@@ -153,6 +153,11 @@ function formatMatchTime(match) {
 }
 
 function getMatchStartDate(match) {
+  const actualStart = match.startedAt ?? match.rules?.startedAt;
+  if (actualStart) {
+    const parsed = new Date(actualStart);
+    if (Number.isFinite(parsed.getTime())) return parsed;
+  }
   const source = match.scheduledDate
     ? `${match.scheduledDate}T${match.scheduledTime || "00:00"}`
     : String(match.scheduledAt ?? "").replace(" ", "T");
@@ -163,11 +168,13 @@ function getMatchStartDate(match) {
 function getMatchProcessMeta(match, now = new Date()) {
   if (match.status !== "agreed") return STATUS_META[match.status] ?? { label: match.status, tone: "blue" };
   const startAt = getMatchStartDate(match);
+  const actualStarted = Boolean(match.startedAt ?? match.rules?.startedAt);
   const endAt = getMatchEndDate(match);
   const nowMs = now.getTime();
-  if (startAt && nowMs < startAt.getTime()) return { label: "경기 예정", tone: "green" };
-  if (startAt && endAt && nowMs <= endAt.getTime()) return { label: "현재 진행", tone: "blue" };
-  if (startAt && endAt && nowMs > endAt.getTime()) return { label: "경기 종료", tone: "orange" };
+  if (!actualStarted && startAt && nowMs < startAt.getTime()) return { label: "경기 예정", tone: "green" };
+  if (!actualStarted) return { label: "시작 대기", tone: "orange" };
+  if (!match.endedAt) return { label: "경기 진행", tone: "blue" };
+  if (endAt) return { label: "경기 종료", tone: "orange" };
   return STATUS_META.agreed;
 }
 
@@ -343,6 +350,7 @@ function getMatchRoomPost(match, state) {
       sideCapacity,
       rules: { ...(sourcePost.rules ?? {}), ...(match.rules ?? {}) },
       memo: match.memo ?? sourcePost.memo,
+      stakes: match.stakes ?? sourcePost.stakes,
       visibility: sourcePost.visibility ?? "public",
       playerId: hostPlayerId,
       roomState: baseRoomState,
@@ -454,6 +462,7 @@ function getMatchRoomPost(match, state) {
     ratingScale: match.ratingScale ?? match.rules?.ratingScale ?? 1,
     rules: match.rules ?? {},
     memo: match.memo ?? match.stakes ?? "",
+    stakes: match.stakes ?? "",
     applicants,
     roomState: {
       ...baseRoomState,

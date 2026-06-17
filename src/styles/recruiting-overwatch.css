@@ -1773,6 +1773,32 @@ button.ow-room-player-slot {
   padding: 5px 8px;
 }
 
+.ow-room-rule-summary.detail span {
+  border-radius: 7px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.ow-room-rule-panel .ow-details-memo {
+  display: grid;
+  gap: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 7px;
+  background: rgba(0, 0, 0, 0.16);
+  padding: 9px;
+}
+
+.ow-room-rule-panel .ow-details-memo strong {
+  color: var(--gold);
+  font-size: 0.78rem;
+}
+
+.ow-room-rule-panel .ow-details-memo span {
+  color: var(--text);
+  font-weight: 850;
+  overflow-wrap: anywhere;
+}
+
 .ow-room-edit-panel {
   display: grid;
   gap: 10px;

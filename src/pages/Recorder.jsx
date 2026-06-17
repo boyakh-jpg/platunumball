@@ -45,12 +45,6 @@ function makeInitialStats(match) {
   );
 }
 
-function getMatchStartDate(match) {
-  if (!match?.scheduledDate || !match?.scheduledTime) return null;
-  const date = new Date(`${match.scheduledDate}T${match.scheduledTime}`);
-  return Number.isFinite(date.getTime()) ? date : null;
-}
-
 function getExistingScore(match, sideName) {
   const scoreKey = sideName === "teamA" ? "scoreA" : "scoreB";
   return Number(match.result?.[scoreKey] ?? match[sideName]?.score ?? 0);
@@ -131,8 +125,7 @@ export default function Recorder({ app }) {
     ? getMatchPlayerIds(selectedMatch).filter((playerId) => getAllowedStatFields(selectedMatch, user.id, playerId).length > 0)
     : [];
   const recordWindow = selectedMatch ? getMatchRecordWindow(selectedMatch) : null;
-  const startsAt = selectedMatch ? getMatchStartDate(selectedMatch) : null;
-  const beforeStart = startsAt && Date.now() < startsAt.getTime();
+  const beforeStart = Boolean(recordWindow?.beforeStart);
   const saveWindowOpen = selectedMatch && !beforeStart && (recordWindow?.beforeEnd || recordWindow?.statOpen);
   const canSave = Boolean(selectedMatch && !["disputed", "confirmed"].includes(selectedMatch.status) && editablePlayerIds.length && saveWindowOpen);
   const scoreA = selectedMatch ? getSideScore(selectedMatch, stats, "teamA", editablePlayerIds) : 0;

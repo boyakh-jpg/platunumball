@@ -30,10 +30,13 @@ export function getSideCaptainId(match = {}, teams = [], sideName) {
 function getDecisionStatus(match = {}, teams = [], sideName, decisionKey) {
   const side = match[sideName] ?? { players: [] };
   const approvals = match[decisionKey]?.[sideName] ?? [];
-  const captainRequired = isCaptainApprovalRequired(match);
   const captainId = getSideCaptainId(match, teams, sideName);
-  const majority = getSideMajority(side);
-  const majorityApproved = approvals.length >= majority;
+  const teamAgreement = decisionKey === "agreements" && Boolean(side.teamId);
+  const captainRequired = teamAgreement || isCaptainApprovalRequired(match);
+  const majority = teamAgreement ? 1 : getSideMajority(side);
+  const majorityApproved = teamAgreement
+    ? Boolean(captainId ? approvals.includes(captainId) : approvals.length)
+    : approvals.length >= majority;
   const captainApproved = !captainRequired || !captainId || approvals.includes(captainId);
 
   return {
@@ -115,18 +118,21 @@ export function isMatchStatRecorder(match = {}, userId, sideName = null) {
   return sideName ? recorderSides.includes(sideName) : recorderSides.length > 0;
 }
 
+export function getMatchStartDate(match = {}) {
+  const actualStart = match.startedAt ?? match.rules?.startedAt;
+  if (actualStart) {
+    const started = new Date(actualStart);
+    if (Number.isFinite(started.getTime())) return started;
+  }
+  return null;
+}
+
 export function getMatchEndDate(match = {}) {
   if (match.endedAt) {
     const ended = new Date(match.endedAt);
     if (Number.isFinite(ended.getTime())) return ended;
   }
-  if (match.scheduledDate && match.scheduledTime) {
-    const scheduled = new Date(`${match.scheduledDate}T${match.scheduledTime}`);
-    if (Number.isFinite(scheduled.getTime())) {
-      return new Date(scheduled.getTime() + Number(match.rules?.timeLimit ?? 0) * 60000);
-    }
-  }
-  const fallback = match.result?.submittedAt ?? match.confirmedAt ?? match.agreedAt;
+  const fallback = match.result?.submittedAt ?? match.confirmedAt;
   if (!fallback) return null;
   const parsed = new Date(fallback);
   return Number.isFinite(parsed.getTime()) ? parsed : null;
@@ -137,6 +143,7 @@ function addMinutes(date, minutes) {
 }
 
 export function getMatchRecordWindow(match = {}, now = Date.now()) {
+  const startAt = getMatchStartDate(match);
   const endAt = getMatchEndDate(match);
   const statEntryMinutes = Number(match.statEntryMinutes ?? STAT_ENTRY_WINDOW_MINUTES);
   const disputeMinutes = Number(match.disputeMinutes ?? DISPUTE_WINDOW_MINUTES);
@@ -146,9 +153,10 @@ export function getMatchRecordWindow(match = {}, now = Date.now()) {
       endAt: null,
       statClosesAt: null,
       disputeClosesAt: null,
-      beforeEnd: false,
-      statOpen: true,
-      disputeOpen: true,
+      beforeStart: !startAt,
+      beforeEnd: Boolean(startAt),
+      statOpen: false,
+      disputeOpen: false,
       statExpired: false,
       disputeExpired: false,
     };

@@ -113,6 +113,7 @@ function getRoomEditDraft(post) {
     ball: post.rules?.ball ?? "7호 공",
     attackRule: post.rules?.attackRule ?? "득점 후 공격권 교대",
     foulRule: post.rules?.foulRule ?? "파울 콜 즉시 중단, 공격권 유지",
+    stakes: post.stakes ?? "",
     memo: post.memo ?? "",
   };
 }
@@ -351,23 +352,19 @@ function isCurrentUserRoomParticipant(post, lobby, currentUserId) {
 
 export function getRecruitingRoomStatus(lobby, { myEntry = null, mine = false } = {}) {
   if (lobby.canConfirm) {
-    return mine
-      ? { label: "CONFIRM", tone: "green", detail: "방장 확정 가능" }
-      : { label: "READY", tone: "green", detail: "방장 확정 대기" };
+    return { label: "READY", tone: "green", detail: "자동 확정 대기" };
   }
-  if (!lobby.projectedFull) return { label: "WAIT", tone: "blue", detail: "충원 중" };
+  if (!lobby.projectedFull) return { label: "WAIT", tone: "blue", detail: "모집 중" };
   if (myEntry?.status && myEntry.status !== "ready") return { label: "WAIT", tone: "orange", detail: "내 확인 필요" };
   return { label: "WAIT", tone: "orange", detail: "참여 확인 중" };
 }
 
 export function getRecruitingRoomListStatus(lobby, { myEntry = null, mine = false } = {}) {
   if (lobby.canConfirm) {
-    return mine
-      ? { label: "확정 가능", tone: "green", detail: "방장 확정 가능", actionLabel: "확정하기" }
-      : { label: "확정 대기", tone: "green", detail: "방장 확정 대기", actionLabel: "방 보기" };
+    return { label: "확정 중", tone: "green", detail: "조건 충족, 자동 확정 대기", actionLabel: "방 보기" };
   }
   if (!lobby.projectedFull) {
-    return { label: "충원 중", tone: "blue", detail: "빈 슬롯 모집 중", actionLabel: "방 보기" };
+    return { label: "모집 중", tone: "blue", detail: "빈 슬롯 모집 중", actionLabel: "방 보기" };
   }
   if (myEntry?.status && myEntry.status !== "ready") {
     return { label: "확인 필요", tone: "orange", detail: "내 참여 확인 필요", actionLabel: "확인하기" };
@@ -1151,7 +1148,7 @@ function getSourceMatchUserSideName(match, userId) {
 }
 
 function getSourceMatchStatus(match, lobby, userId = "") {
-  if (!match) return lobby.canConfirm ? { label: "CONFIRM", tone: "green" } : { label: "WAIT", tone: "blue" };
+  if (!match) return lobby.canConfirm ? { label: "READY", tone: "green" } : { label: "WAIT", tone: "blue" };
   if (match.status === "contract") return { label: "WAIT", tone: "blue" };
   if (match.status === "agreed") return { label: "READY", tone: "green" };
   if (match.status === "approval" || match.status === "disputed") {
@@ -1274,7 +1271,8 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
   const saveRoomEdit = (roomPost) => {
     const roomEditDraft = getRoomEditDraftByPost(roomPost);
     if (!roomEditDraft) return;
-    app.actions.updateRecruitingRoomRules(roomPost.id, roomEditDraft);
+    if (sourceMatch) app.actions.updateMatchRoomRules(sourceMatch.id, roomEditDraft);
+    else app.actions.updateRecruitingRoomRules(roomPost.id, roomEditDraft);
     closeRoomEdit(roomPost);
   };
   const updateInviteDraft = (patch) => {
@@ -1297,13 +1295,6 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
     app.actions.inviteRecruitingPlayers(roomPost.id, { side: inviteDraft.sideName, reserve: Boolean(inviteDraft.reserve), playerIds, teamId });
     setInviteDraft((current) => (current ? { ...current, selectedPlayerIds: [] } : current));
   };
-  const confirmMatch = (roomPost) => {
-    const matchId = app.actions.confirmRecruitingMatch(roomPost.id);
-    if (!matchId) return;
-    closeModal();
-    onOpenMatch?.(matchId);
-  };
-
   if (!selectedPost) return null;
 
   return (() => {
@@ -1380,6 +1371,9 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
         const sourceMatchSideName = getSourceMatchUserSideName(sourceMatch, app.currentUser.id);
         const roomQueueStatus = getRecruitingRoomStatus(lobby, { myEntry, mine });
         const roomReadyLabel = sourceMatch ? sourceMatchStatus.label : roomQueueStatus.label;
+        const sourceMatchStarted = Boolean(sourceMatch?.startedAt ?? sourceMatch?.rules?.startedAt);
+        const canStartSourceMatch = Boolean(matchRoom && mine && sourceMatch?.status === "agreed" && !sourceMatch?.result && !sourceMatch?.endedAt && !sourceMatchStarted);
+        const canEndSourceMatch = Boolean(matchRoom && mine && sourceMatch?.status === "agreed" && !sourceMatch?.result && !sourceMatch?.endedAt && sourceMatchStarted);
         const roomTitle = selectedPost.ranked === false ? "친선전" : "정규전";
         const showCaptainBadge = selectedPost.visibility === "private";
         const activeSlotDraft = activeInviteDraft?.slotKey ? activeInviteDraft : null;
@@ -1704,7 +1698,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
               <div className="ow-room-rule-panel">
                 <div className="ow-room-rule-head">
                   <strong>규칙</strong>
-                  {mine && !matchRoom ? (
+                  {mine && (!matchRoom || (sourceMatch && sourceMatch.status === "agreed" && !sourceMatch.endedAt && !sourceMatch.result && !sourceMatchStarted)) ? (
                     <Button type="button" size="sm" variant="secondary" onClick={() => (roomEditDraft ? closeRoomEdit(selectedPost) : openRoomEdit(selectedPost))}>
                       {roomEditDraft ? "수정 닫기" : "방 수정"}
                     </Button>
@@ -1716,6 +1710,22 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                   <span>{(selectedPost.rules?.winByTwo ?? true) ? "2점차" : "선착순"} · {selectedPost.rules?.ball ?? "7호 공"}</span>
                   {selectedPost.ranked !== false ? <span>{selectedRange.label}</span> : <span>친선 · 티어 자유</span>}
                 </div>
+                <div className="ow-room-rule-summary detail">
+                  <span>공격권: {selectedPost.rules?.attackRule ?? "득점 후 공격권 교대"}</span>
+                  <span>파울: {selectedPost.rules?.foulRule ?? "파울 콜 즉시 중단, 공격권 유지"}</span>
+                </div>
+                {selectedPost.stakes ? (
+                  <div className="ow-details-memo">
+                    <strong>약속/벌칙</strong>
+                    <span>{selectedPost.stakes}</span>
+                  </div>
+                ) : null}
+                {selectedPost.memo ? (
+                  <div className="ow-details-memo">
+                    <strong>경기 메모</strong>
+                    <span>{selectedPost.memo}</span>
+                  </div>
+                ) : null}
                 {roomEditDraft ? (
                   <div className="ow-room-edit-panel">
                     <div className="ow-field-grid three">
@@ -1768,7 +1778,11 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                       </label>
                     </div>
                     <label>
-                      메모
+                      약속/벌칙
+                      <textarea value={roomEditDraft.stakes} onChange={(event) => updateRoomEditDraft(selectedPost, { stakes: event.target.value })} />
+                    </label>
+                    <label>
+                      경기 메모
                       <textarea value={roomEditDraft.memo} onChange={(event) => updateRoomEditDraft(selectedPost, { memo: event.target.value })} />
                     </label>
                     {!roomEditCapacityValid ? <span className="form-warning">현재 출전 인원이 {maxSideFilled}명이라 정원을 그보다 낮출 수 없습니다.</span> : null}
@@ -1779,7 +1793,6 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                     <small>저장하면 방장 포함 모든 참가자가 CONFIRM을 다시 눌러야 합니다.</small>
                   </div>
                 ) : null}
-                <span>{selectedPost.memo}</span>
                 <span>팀 MMR은 실제 참가한 팀원 비율 기준으로 반영한다.</span>
                 <span>후보가 경기 밖에서 참여 확정하면 해당 사이드 개인 활약 기록자로 배정된다.</span>
                 <span>확정 후 불참하면 신뢰점수 패널티 대상이다.</span>
@@ -1809,6 +1822,16 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                         }}
                       >
                         {sourceMatchAction.button}
+                      </Button>
+                    ) : null}
+                    {canStartSourceMatch ? (
+                      <Button type="button" onClick={() => app.actions.startMatch(sourceMatch.id)}>
+                        경기 시작
+                      </Button>
+                    ) : null}
+                    {canEndSourceMatch ? (
+                      <Button type="button" variant="secondary" onClick={() => app.actions.endMatch(sourceMatch.id)}>
+                        경기 종료
                       </Button>
                     ) : null}
                     {mine && ["contract", "agreed"].includes(sourceMatch.status) ? (
@@ -1946,11 +1969,6 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                     onClick={() => app.actions.cancelRecruitingParticipation(selectedPost.id)}
                   >
                     <XCircle size={18} /> 참여 취소
-                  </Button>
-                ) : null}
-                {!matchRoom && mine ? (
-                  <Button type="button" disabled={!lobby.canConfirm} onClick={() => confirmMatch(selectedPost)}>
-                    <Swords size={18} /> CONFIRM
                   </Button>
                 ) : null}
                 {!matchRoom && mine ? (
