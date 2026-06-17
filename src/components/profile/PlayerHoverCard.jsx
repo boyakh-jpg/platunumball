@@ -5,6 +5,7 @@ import TierBadge from "../rating/TierBadge.jsx";
 import TierEmblem from "../rating/TierEmblem.jsx";
 import useBodyScrollLock from "../../hooks/useBodyScrollLock.js";
 import { getTeamHashtag, getUserHashtag } from "../../lib/handles.js";
+import { clearPinnedHoverPreview, getPinnedHoverPreviewKey, pinHoverPreview, subscribePinnedHoverPreview } from "../../lib/hoverPreviewPin.js";
 
 const rolePriority = {
   captain: 0,
@@ -44,15 +45,34 @@ function canUseHoverPreview() {
 export default function PlayerHoverCard({ user, teams = [], children, className = "", as = "link", to }) {
   const [hoverOpen, setHoverOpen] = useState(false);
   const [touchOpen, setTouchOpen] = useState(false);
+  const [pinnedHoverKey, setPinnedHoverKey] = useState(getPinnedHoverPreviewKey);
   const anchorRef = useRef(null);
   const cardRef = useRef(null);
   const longPressTimerRef = useRef(null);
   const longPressOpenedRef = useRef(false);
+  const cardKey = user?.id ? `player:${user.id}` : "";
   useBodyScrollLock(touchOpen);
+
+  const openPinned = () => {
+    setHoverOpen(false);
+    pinHoverPreview(cardKey);
+    setTouchOpen(true);
+  };
+  const closeTouch = () => {
+    setTouchOpen(false);
+    clearPinnedHoverPreview(cardKey);
+  };
+
+  useEffect(() => subscribePinnedHoverPreview(setPinnedHoverKey), []);
+
+  useEffect(() => {
+    if (touchOpen && pinnedHoverKey && pinnedHoverKey !== cardKey) setTouchOpen(false);
+  }, [cardKey, pinnedHoverKey, touchOpen]);
 
   useEffect(() => () => {
     if (longPressTimerRef.current) window.clearTimeout(longPressTimerRef.current);
-  }, []);
+    clearPinnedHoverPreview(cardKey);
+  }, [cardKey]);
 
   useEffect(() => {
     if (!touchOpen) return undefined;
@@ -60,10 +80,10 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
     const closeOutside = (event) => {
       const target = event.target;
       if (anchorRef.current?.contains(target) || cardRef.current?.contains(target)) return;
-      setTouchOpen(false);
+      closeTouch();
     };
     const closeOnEscape = (event) => {
-      if (event.key === "Escape") setTouchOpen(false);
+      if (event.key === "Escape") closeTouch();
     };
 
     document.addEventListener("pointerdown", closeOutside, true);
@@ -73,7 +93,7 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
       document.removeEventListener("pointerdown", closeOutside, true);
       document.removeEventListener("keydown", closeOnEscape);
     };
-  }, [touchOpen]);
+  }, [cardKey, touchOpen]);
 
   if (!user) return children ?? null;
 
@@ -86,10 +106,9 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
   const profilePath = to ?? `/app/players/${user.id}`;
   const props = as === "span" ? {} : { role: "button", tabIndex: 0 };
   const showHover = () => {
-    if (canUseHoverPreview()) setHoverOpen(true);
+    if (canUseHoverPreview() && !pinnedHoverKey) setHoverOpen(true);
   };
   const hideHover = () => setHoverOpen(false);
-  const closeTouch = () => setTouchOpen(false);
   const clearLongPress = () => {
     if (!longPressTimerRef.current) return;
     window.clearTimeout(longPressTimerRef.current);
@@ -102,8 +121,7 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
     longPressOpenedRef.current = false;
     longPressTimerRef.current = window.setTimeout(() => {
       longPressOpenedRef.current = true;
-      setHoverOpen(false);
-      setTouchOpen(true);
+      openPinned();
     }, 420);
   };
   const handleTriggerClick = (event) => {
@@ -114,10 +132,9 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
       longPressOpenedRef.current = false;
       return;
     }
-    setHoverOpen(false);
-    setTouchOpen(true);
+    openPinned();
   };
-  const open = touchOpen || (canUseHoverPreview() && hoverOpen);
+  const open = touchOpen || (!pinnedHoverKey && canUseHoverPreview() && hoverOpen);
 
   return (
     <span
@@ -137,8 +154,7 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
           event.stopPropagation();
-          setHoverOpen(false);
-          setTouchOpen(true);
+          openPinned();
         }
       }}
       onMouseEnter={showHover}
