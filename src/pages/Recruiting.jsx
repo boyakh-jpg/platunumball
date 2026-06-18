@@ -22,6 +22,7 @@ import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import TierBadge from "../components/rating/TierBadge.jsx";
+import { getTierEmblemSrc } from "../components/rating/TierEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { COURTS, MATCH_MODES, PLAYER_POSITIONS, REGIONS } from "../lib/constants.js";
@@ -57,6 +58,13 @@ const SIDE_LABELS = {
 };
 const RECORDABLE_RESERVE_SOURCES = new Set(["reserve-entry", "team-reserve"]);
 const MAX_RESERVE_PLAYERS_PER_SIDE = 2;
+const ROOM_SLOT_POSITION_AVATARS = {
+  PG: "/assets/position-avatars/PG.png",
+  SG: "/assets/position-avatars/SG.png",
+  SF: "/assets/position-avatars/SF.png",
+  PF: "/assets/position-avatars/PF.png",
+  C: "/assets/position-avatars/C.png",
+};
 
 function formatWhen(value) {
   if (!value) return "방금";
@@ -177,6 +185,44 @@ export function getLobbySideMeta(lobby, sideName, userById, { useSideName = fals
 
 function getPlayerPosition(user) {
   return user?.position || "포지션 자유";
+}
+
+function getRoomSlotPositionAvatarSrc(user) {
+  const position = String(user?.position ?? "").trim().toUpperCase();
+  return ROOM_SLOT_POSITION_AVATARS[position] ?? null;
+}
+
+function RoomSlotAvatar({ user, mmr = 1200 }) {
+  const [failed, setFailed] = useState(false);
+  const avatarSrc = getRoomSlotPositionAvatarSrc(user);
+  const initial = user?.name?.slice(0, 1) ?? "?";
+
+  if (!avatarSrc || failed) {
+    return <span className="avatar" style={{ "--avatar": user?.avatarColor }}>{initial}</span>;
+  }
+
+  return (
+    <span className="avatar ow-position-avatar" style={{ "--avatar": user?.avatarColor }}>
+      <img
+        className="ow-position-avatar-tier"
+        src={getTierEmblemSrc(user?.ratings?.integrated ?? mmr)}
+        alt=""
+        aria-hidden="true"
+        loading="lazy"
+        onError={(event) => {
+          event.currentTarget.hidden = true;
+        }}
+      />
+      <img
+        className="ow-position-avatar-player"
+        src={avatarSrc}
+        alt=""
+        aria-hidden="true"
+        loading="lazy"
+        onError={() => setFailed(true)}
+      />
+    </span>
+  );
 }
 
 function getTeamCaptainId(team) {
@@ -326,11 +372,10 @@ export function PlayerRoomSlot({
           <Crown size={12} strokeWidth={3} />
         </span>
       ) : null}
-      <span className="avatar" style={{ "--avatar": user?.avatarColor }}>{user?.name?.slice(0, 1) ?? "?"}</span>
+      <RoomSlotAvatar user={user} mmr={mmr} />
       <strong>{user?.name ?? "플레이어"}</strong>
       <small>{getPlayerPosition(user)}</small>
       {detail ? <b>{detail}</b> : null}
-      <TierBadge mmr={mmr} compact />
       <em>{title}</em>
     </>
   );
@@ -587,11 +632,10 @@ function FillSlot({ candidate, lobby, userById, teams, hostPlayerId = "", curren
               <Crown size={12} strokeWidth={3} />
             </span>
           ) : null}
-          <span className="avatar" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
+          <RoomSlotAvatar user={user} mmr={user.ratings?.integrated ?? 1200} />
           <strong>{user.name}</strong>
           <small>{getPlayerPosition(user)}</small>
           <b>{candidate.sourceLabel}</b>
-          <TierBadge mmr={user.ratings.integrated} compact />
           <em>{candidate.status === "ready" ? readyText : readyLabel}</em>
         </button>
       ) : (
@@ -601,11 +645,10 @@ function FillSlot({ candidate, lobby, userById, teams, hostPlayerId = "", curren
             <Crown size={12} strokeWidth={3} />
           </span>
         ) : null}
-        <span className="avatar" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
+        <RoomSlotAvatar user={user} mmr={user.ratings?.integrated ?? 1200} />
         <strong>{user.name}</strong>
         <small>{getPlayerPosition(user)}</small>
         <b>{candidate.sourceLabel}</b>
-        <TierBadge mmr={user.ratings.integrated} compact />
         <em>{candidate.status === "ready" ? readyText : readyLabel}</em>
       </PlayerHoverCard>
       )}

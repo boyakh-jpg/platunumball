@@ -1388,7 +1388,7 @@
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-rows: 42px 16px 18px 18px 20px 16px;
+  grid-template-rows: 42px 16px 18px 18px 16px;
   min-width: 0;
   min-height: 122px;
   align-content: start;
@@ -1468,6 +1468,44 @@ button.ow-room-player-slot {
   font-size: 1.02rem;
 }
 
+.ow-room-player-slot .ow-position-avatar {
+  position: relative;
+  overflow: hidden;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: transparent;
+}
+
+.ow-position-avatar-tier,
+.ow-position-avatar-player {
+  position: absolute;
+  pointer-events: none;
+  user-select: none;
+}
+
+.ow-position-avatar-tier {
+  inset: 1px;
+  z-index: 0;
+  width: calc(100% - 2px);
+  height: calc(100% - 2px);
+  object-fit: contain;
+  opacity: 0.9;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.38));
+}
+
+.ow-position-avatar-player {
+  left: 50%;
+  bottom: -2px;
+  z-index: 1;
+  width: 122%;
+  height: 152%;
+  object-fit: cover;
+  object-position: center bottom;
+  transform: translateX(-50%);
+  filter: drop-shadow(0 4px 7px rgba(0, 0, 0, 0.48));
+}
+
 .ow-room-player-slot strong,
 .ow-room-player-slot > span:not(.avatar),
 .ow-room-player-slot b,
@@ -1510,7 +1548,7 @@ button.ow-room-player-slot {
 }
 
 .ow-room-player-slot em {
-  grid-row: 6;
+  grid-row: 5;
   min-height: 16px;
   color: var(--gold);
   font-size: 0.62rem;
@@ -2582,7 +2620,7 @@ html[data-theme="light"] .ow-compose-drawer {
   }
 
   .ow-room-player-slot {
-    grid-template-rows: 36px 15px 17px 17px 18px 15px;
+    grid-template-rows: 36px 15px 17px 17px 15px;
     min-height: 106px;
     gap: 2px;
     padding: 7px 4px;
