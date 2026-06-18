@@ -365,6 +365,8 @@ export default function CreateMatch({ app }) {
     [activePlayerIds, app.state.users],
   );
   const teamTierRange = getRecruitingTierRange(selectedTeamA?.mmr ?? 1200, draft.ranked, draft.mmrRangeMode);
+  const personalTierRange = getRecruitingTierRange(app.currentUser.ratings?.integrated ?? 1200, draft.ranked, draft.mmrRangeMode);
+  const roomTierRange = isTeamRoom ? teamTierRange : personalTierRange;
   const mmrRangePolicy = MMR_RANGE_POLICIES[draft.mmrRangeMode] ?? MMR_RANGE_POLICIES.narrow;
   const teamTierBlocked = Boolean(
     isTeamRoom &&
@@ -574,7 +576,7 @@ export default function CreateMatch({ app }) {
       approvalModeA: draft.approvalModeA,
       approvalModeB: draft.approvalModeB,
       refereeId: draft.refereeId,
-      targetTeamId: isPublicRoom && isTeamRoom ? draft.teamBId : "",
+      targetTeamId: "",
       region: selectedCourt.region,
       court: draft.court,
       timingType: draft.timingType,
@@ -599,7 +601,6 @@ export default function CreateMatch({ app }) {
       memo: [
         draft.courtReserved ? `구장 예약: ${draft.courtFee ? `${draft.courtFee}원` : "예약 있음"}` : "",
         draft.memo,
-        isPublicRoom && selectedTeamB ? `희망 상대: ${selectedTeamB.name}` : "",
         isPublicRoom ? "공개방: 빈 슬롯은 방에서 공개 모집합니다." : "비공개방: 초대/선택된 인원만 참여합니다.",
       ].filter(Boolean).join("\n"),
     });
@@ -843,8 +844,8 @@ export default function CreateMatch({ app }) {
         <Card className="section-card full-span selector-panel">
           <div className="section-title-row">
             <div>
-              <p className="eyebrow">Team Finder</p>
-              <h2>{isTournamentRoom ? "초대 팀 선택" : isPublicRoom ? "내 파티와 희망 상대" : "참여 팀 검색"}</h2>
+              <p className="eyebrow">{isTournamentRoom || isTeamRoom ? "Team Finder" : "Match Criteria"}</p>
+              <h2>{isTournamentRoom ? "초대 팀 선택" : isTeamRoom ? (isPublicRoom ? "내 파티 선택" : "참여 팀 검색") : "개인전 매칭 기준"}</h2>
             </div>
           </div>
           {isTournamentRoom ? (
@@ -860,8 +861,8 @@ export default function CreateMatch({ app }) {
             <div className={teamTierBlocked ? "tier-range-note tier-range-note-warning" : "tier-range-note"}>
               <div>
                 <span>정규전 허용 구간</span>
-                <strong>{teamTierRange.label}</strong>
-                <em>{teamTierWarned ? "경고만 표시" : `${selectedTeamA?.name ?? "A사이드"} 기준`}</em>
+                <strong>{roomTierRange.label}</strong>
+                <em>{teamTierWarned ? "경고만 표시" : isTeamRoom ? `${selectedTeamA?.name ?? "A사이드"} 기준` : `${app.currentUser.name} 기준`}</em>
               </div>
               <Badge tone={teamTierBlocked || teamTierWarned ? "orange" : "green"}>{teamTierBlocked ? "차단" : teamTierWarned ? "경고" : "허용"}</Badge>
             </div>
@@ -879,7 +880,7 @@ export default function CreateMatch({ app }) {
             <div className="mmr-range-mode-control">
               <div>
                 <span>허용구간 선택</span>
-                <strong>{teamTierRange.detail}</strong>
+                <strong>{roomTierRange.detail}</strong>
                 <em>{mmrRangePolicy.detail} · 경기 확정 시 MMR {Math.round(mmrRangePolicy.ratingScale * 100)}% 반영</em>
               </div>
               <div className="segmented-control compact-segments">
@@ -918,44 +919,50 @@ export default function CreateMatch({ app }) {
               </label>
             ) : null}
           </div>
-          <div className="search-controls">
-            <label>
-              지역
-              <select value={teamRegion} onChange={(event) => setTeamRegion(event.target.value)}>
-                {allRegions.map((region) => <option key={region}>{region}</option>)}
-              </select>
-            </label>
-            <label>
-              팀명
-              <input value={teamQuery} placeholder="팀, 지역, 홈코트 검색" onChange={(event) => setTeamQuery(event.target.value)} />
-            </label>
-          </div>
-          <div className="quick-picker">
-            <p className="eyebrow">자주 찾는 팀</p>
-            <div>
-              {favoriteTeams.map((team) => {
-                const invited = (draft.tournamentTeamIds ?? []).includes(team.id);
-                const selected = isTournamentRoom ? invited : draft.teamAId === team.id || draft.teamBId === team.id;
-                return (
-                  <button key={team.id} type="button" className={selected ? "favorite-pick selected" : "favorite-pick"}>
-                    <TeamHoverCard team={team} as="span"><strong><Star size={15} fill="currentColor" /> {team.name}</strong></TeamHoverCard>
-                    <span>{team.region} · {team.mmr} MMR</span>
-                    <small>
-                      {isTournamentRoom ? (
-                        <b onClick={() => toggleTournamentTeam(team.id)}>{invited ? "초대 해제" : "초대"}</b>
-                      ) : (
-                        <>
-                          <b onClick={() => assignTeam(team.id, "A")}>A</b>
-                          <b onClick={() => assignTeam(team.id, "B")}>B</b>
-                        </>
-                      )}
-                      <b onClick={() => app.actions.toggleFavoriteTeam(team.id)}>즐겨찾기 해제</b>
-                    </small>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          {isTournamentRoom || isTeamRoom ? (
+            <>
+              <div className="search-controls">
+                <label>
+                  지역
+                  <select value={teamRegion} onChange={(event) => setTeamRegion(event.target.value)}>
+                    {allRegions.map((region) => <option key={region}>{region}</option>)}
+                  </select>
+                </label>
+                <label>
+                  팀명
+                  <input value={teamQuery} placeholder="팀, 지역, 홈코트 검색" onChange={(event) => setTeamQuery(event.target.value)} />
+                </label>
+              </div>
+              <div className="quick-picker">
+                <p className="eyebrow">자주 찾는 팀</p>
+                <div>
+                  {favoriteTeams.map((team) => {
+                    const invited = (draft.tournamentTeamIds ?? []).includes(team.id);
+                    const selected = isTournamentRoom ? invited : isPublicRoom ? draft.teamAId === team.id : draft.teamAId === team.id || draft.teamBId === team.id;
+                    return (
+                      <button key={team.id} type="button" className={selected ? "favorite-pick selected" : "favorite-pick"}>
+                        <TeamHoverCard team={team} as="span"><strong><Star size={15} fill="currentColor" /> {team.name}</strong></TeamHoverCard>
+                        <span>{team.region} · {team.mmr} MMR</span>
+                        <small>
+                          {isTournamentRoom ? (
+                            <b onClick={() => toggleTournamentTeam(team.id)}>{invited ? "초대 해제" : "초대"}</b>
+                          ) : isPublicRoom ? (
+                            <b onClick={() => assignTeam(team.id, "A")}>내 파티</b>
+                          ) : (
+                            <>
+                              <b onClick={() => assignTeam(team.id, "A")}>A</b>
+                              <b onClick={() => assignTeam(team.id, "B")}>B</b>
+                            </>
+                          )}
+                          <b onClick={() => app.actions.toggleFavoriteTeam(team.id)}>즐겨찾기 해제</b>
+                        </small>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          ) : null}
           {isTournamentRoom ? (
             <>
               <div className="tournament-selected-strip">
@@ -986,28 +993,30 @@ export default function CreateMatch({ app }) {
                 <span>비공개 대회는 초대팀만 보이게 저장된다. 경기 자동 생성 전 단계라 일정/룰/초대팀을 먼저 확정한다.</span>
               </div>
             </>
-          ) : (
-            <div className="form-grid two" hidden={!isTeamRoom}>
+          ) : isTeamRoom ? (
+            <div className="form-grid two">
               <label>
                 {isPublicRoom ? "방장 파티" : "A사이드"}
                 <select value={draft.teamAId ?? ""} onChange={(event) => selectTeamA(event.target.value)}>
                   {!(isPublicRoom ? myTeams : teamOptions).length ? <option value="">팀 없음</option> : null}
                   {(isPublicRoom ? myTeams : teamOptions)
-                    .filter((team) => team.id !== draft.teamBId)
+                    .filter((team) => isPublicRoom || team.id !== draft.teamBId)
                     .map((team) => <option key={team.id} value={team.id}>{team.region} · {team.name} · {team.mmr}</option>)}
                 </select>
               </label>
-              <label>
-                {isPublicRoom ? "희망 상대팀" : "B사이드"}
-                <select value={draft.teamBId ?? ""} onChange={(event) => selectTeamB(event.target.value)}>
-                  {!teamOptions.some((team) => team.id !== draft.teamAId) ? <option value="">상대 팀 없음</option> : null}
-                  {teamOptions
-                    .filter((team) => team.id !== draft.teamAId)
-                    .map((team) => <option key={team.id} value={team.id}>{team.region} · {team.name} · {team.mmr}</option>)}
-                </select>
-              </label>
+              {!isPublicRoom ? (
+                <label>
+                  B사이드
+                  <select value={draft.teamBId ?? ""} onChange={(event) => selectTeamB(event.target.value)}>
+                    {!teamOptions.some((team) => team.id !== draft.teamAId) ? <option value="">상대 팀 없음</option> : null}
+                    {teamOptions
+                      .filter((team) => team.id !== draft.teamAId)
+                      .map((team) => <option key={team.id} value={team.id}>{team.region} · {team.name} · {team.mmr}</option>)}
+                  </select>
+                </label>
+              ) : null}
             </div>
-          )}
+          ) : null}
           {!isTournamentRoom && !isTeamRoom ? (
             <div className="create-public-note">
               <Globe2 size={17} />
@@ -1061,7 +1070,7 @@ export default function CreateMatch({ app }) {
           {isPublicRoom ? (
             <div className="create-public-note">
               <Globe2 size={17} />
-              <span>공개방은 매칭 목록에 노출된다. 희망 상대팀은 표시용이고, 실제 참여자는 방에서 대기/확정한다.</span>
+              <span>공개방은 매칭 목록에 노출된다. 상대 사이드는 방 안의 빈 슬롯을 공개 모집한다.</span>
             </div>
           ) : null}
           {isTeamRoom ? (
@@ -1077,7 +1086,7 @@ export default function CreateMatch({ app }) {
                   A사이드 {isFavoriteTeam(selectedTeamA) ? "즐겨찾기 해제" : "즐겨찾기 추가"}
                 </Button>
               ) : null}
-              {selectedTeamB ? (
+              {!isPublicRoom && selectedTeamB ? (
                 <Button
                   type="button"
                   variant="secondary"
