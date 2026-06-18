@@ -15,6 +15,7 @@ import { MMR_RANGE_POLICIES, getRecruitingSideCapacity, getRecruitingTierRange, 
 const today = new Date().toISOString().slice(0, 10);
 const nextWeek = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString().slice(0, 10);
 const maxScheduleDate = new Date(Date.now() + 1000 * 60 * 60 * 24 * 365).toISOString().slice(0, 10);
+const maxPrivateScheduleDate = new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString().slice(0, 10);
 const maxPublicScheduleDate = getPublicRoomMaxDateInput();
 const allRegions = ["전체", ...REGIONS];
 const mmrLimitOptions = [
@@ -219,7 +220,7 @@ export default function CreateMatch({ app }) {
   const isPublicRoom = draft.visibility === "public";
   const isTournamentRoom = draft.visibility === "tournament";
   const isInstantRoom = !isTournamentRoom && draft.timingType === "instant";
-  const scheduleMaxDate = isPublicRoom ? maxPublicScheduleDate : maxScheduleDate;
+  const scheduleMaxDate = isPublicRoom ? maxPublicScheduleDate : isTournamentRoom ? maxScheduleDate : maxPrivateScheduleDate;
   const activePlayerIds = useMemo(() => {
     const capacity = getRecruitingSideCapacity(draft);
     if (isPublicRoom) return new Set(draft.hostJoinMode === "team" ? publicPartyPlayerIds : [app.currentUser.id]);
@@ -497,7 +498,7 @@ export default function CreateMatch({ app }) {
                   <button type="button" className={draft.timingType === "scheduled" ? "active" : ""} onClick={() => update({ timingType: "scheduled" })}>일정 지정</button>
                   <button type="button" className={draft.timingType === "instant" ? "active" : ""} onClick={() => update({ timingType: "instant" })}>즉시</button>
                 </div>
-                <small>{isInstantRoom ? "날짜/시간 없이 바로 경기준비방으로 만든다." : isPublicRoom ? "공개 예약방은 5일 이내, 경기 4시간 이후만 가능하다." : "비공개 예약방은 1년 이내로 만들 수 있다."}</small>
+                <small>{isInstantRoom ? "날짜/시간 없이 바로 경기준비방으로 만든다." : isPublicRoom ? "공개 예약방은 5일 이내, 경기 4시간 이후만 가능하다." : "비공개 예약방은 1개월 이내로 만들 수 있다."}</small>
               </div>
             ) : null}
             <label>

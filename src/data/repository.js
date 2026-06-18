@@ -73,6 +73,7 @@ const RECORDABLE_RESERVE_SOURCES = new Set(["reserve-entry", "team-reserve"]);
 const MAX_RECRUITING_RESERVES_PER_SIDE = 2;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const SCHEDULE_MAX_DAYS = 365;
+const ROOM_SCHEDULE_MAX_DAYS = 30;
 const LIFECYCLE_TITLE_PATTERN = /^(동의 대기|진행 예정|결과 승인|이의 확인|이의제기|확정|결과 입력)\s*·\s*/;
 const POST_MATCH_TITLE_PATTERN = /^(결과 승인|이의 확인|이의제기|확정|결과 입력)\s*·\s*/;
 const SIDE_LABEL_TEXT = { teamA: "A사이드", teamB: "B사이드" };
@@ -196,23 +197,25 @@ function getLocalDateValue(date = new Date()) {
   ].join("-");
 }
 
-function getMaxScheduleDateValue(now = new Date()) {
-  return addDateDays(getLocalDateValue(now), SCHEDULE_MAX_DAYS);
+function getMaxScheduleDateValue(now = new Date(), maxDays = SCHEDULE_MAX_DAYS) {
+  return addDateDays(getLocalDateValue(now), maxDays);
 }
 
-function isScheduleDateInAllowedWindow(dateValue, now = new Date()) {
+function isScheduleDateInAllowedWindow(dateValue, now = new Date(), maxDays = SCHEDULE_MAX_DAYS) {
   const value = getDatePart(dateValue);
   if (!value) return false;
   const today = getLocalDateValue(now);
-  const maxDate = getMaxScheduleDateValue(now);
+  const maxDate = getMaxScheduleDateValue(now, maxDays);
   return value >= today && value <= maxDate;
 }
 
-function getInvalidScheduleNotification() {
+function getInvalidScheduleNotification(maxDays = SCHEDULE_MAX_DAYS) {
   return {
     id: makeId("n"),
     title: "일정 설정 불가",
-    body: "경기 날짜는 오늘부터 1년 안에서만 만들 수 있습니다.",
+    body: maxDays <= ROOM_SCHEDULE_MAX_DAYS
+      ? "비공개 경기방 날짜는 오늘부터 1개월 안에서만 만들 수 있습니다."
+      : "경기 날짜는 오늘부터 1년 안에서만 만들 수 있습니다.",
     tone: "orange",
   };
 }
@@ -1829,8 +1832,8 @@ export function createMatch(state, draft) {
   const size = MODE_SIZES[mode] ?? 5;
   const timingType = draft.timingType === "instant" ? "instant" : "scheduled";
   const scheduledAt = timingType === "instant" ? "즉시" : `${draft.scheduledDate ?? ""} ${draft.scheduledTime ?? ""}`.trim();
-  if (timingType !== "instant" && !isScheduleDateInAllowedWindow(draft.scheduledDate)) {
-    return { ...state, notifications: [getInvalidScheduleNotification(), ...state.notifications] };
+  if (timingType !== "instant" && !isScheduleDateInAllowedWindow(draft.scheduledDate, new Date(), ROOM_SCHEDULE_MAX_DAYS)) {
+    return { ...state, notifications: [getInvalidScheduleNotification(ROOM_SCHEDULE_MAX_DAYS), ...state.notifications] };
   }
   const teams = state.teams;
   const teamA = teams.find((team) => team.id === draft.teamAId) ?? teams[0];
@@ -2081,8 +2084,9 @@ export function updateTournamentMatchSchedule(state, tournamentId, matchId, sche
 
   const scheduledDate = String(schedule.scheduledDate ?? "").slice(0, 10);
   const scheduledTime = String(schedule.scheduledTime ?? "").slice(0, 5);
-  if (!isScheduleDateInAllowedWindow(scheduledDate)) {
-    return { ...state, notifications: [getInvalidScheduleNotification(), ...state.notifications] };
+  const maxDays = match.tournamentId ? SCHEDULE_MAX_DAYS : ROOM_SCHEDULE_MAX_DAYS;
+  if (!isScheduleDateInAllowedWindow(scheduledDate, new Date(), maxDays)) {
+    return { ...state, notifications: [getInvalidScheduleNotification(maxDays), ...state.notifications] };
   }
   const updatedMatch = {
     ...match,
