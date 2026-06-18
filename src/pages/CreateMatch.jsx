@@ -614,7 +614,6 @@ export default function CreateMatch({ app }) {
           <p className="eyebrow">CreateMatch</p>
           <h1>경기/대회 만들기</h1>
         </div>
-        <Button type="submit" disabled={submitDisabled}>{isTournamentRoom ? "대회 생성" : isPublicRoom ? "매칭에 공개" : "경기 생성"}</Button>
       </header>
 
       <div className="content-grid wide-left">
@@ -1165,6 +1164,9 @@ export default function CreateMatch({ app }) {
             <textarea value={draft.memo} onChange={(event) => update({ memo: event.target.value })} />
           </label>
         </Card>
+      </div>
+      <div className="create-submit-row">
+        <Button type="submit" disabled={submitDisabled}>{isTournamentRoom ? "대회 생성" : "경기 생성"}</Button>
       </div>
     </form>
   );
