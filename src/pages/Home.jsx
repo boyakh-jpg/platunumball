@@ -39,6 +39,7 @@ function getUserSide(match, userId) {
 
 function userNeedsApproval(match, userId) {
   const sideName = getUserSide(match, userId);
+  if (getMatchRoomPhase(match).phase === "record") return false;
   return Boolean(sideName && ["approval", "disputed"].includes(match.status) && !(match.approvals?.[sideName] ?? []).includes(userId));
 }
 

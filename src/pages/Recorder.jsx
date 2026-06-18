@@ -12,6 +12,7 @@ import {
   getMatchReservePlayerIds,
   getMatchPlayerIds,
   getMatchRecordWindow,
+  getMatchRoomPhase,
   getMatchSidePlayerIds,
   getPlayerSideName,
   getStatRecorderSides,
@@ -31,8 +32,7 @@ const statusMeta = {
   confirmed: { label: "확정", tone: "green" },
 };
 
-const activeStatuses = new Set(["agreed", "approval", "disputed", "confirmed"]);
-const CONFIRMED_VISIBLE_MS = 24 * 60 * 60 * 1000;
+const activeStatuses = new Set(["agreed", "approval", "disputed"]);
 
 function makeInitialStats(match) {
   return Object.fromEntries(
@@ -80,10 +80,7 @@ function getRoleText(match, user, recorderSides) {
 
 function canAccessActiveMatch(match, user) {
   if (!activeStatuses.has(match.status)) return false;
-  if (match.status === "confirmed") {
-    const confirmedMs = new Date(match.confirmedAt ?? match.result?.submittedAt ?? match.endedAt ?? match.createdAt).getTime();
-    if (!Number.isFinite(confirmedMs) || Date.now() - confirmedMs > CONFIRMED_VISIBLE_MS) return false;
-  }
+  if (getMatchRoomPhase(match).phase === "record") return false;
   const isReferee = isMatchReferee(match, user.id) && isEligibleReferee(user, match.refereeTrustMin);
   const isRecorder = !match.refereeId && getStatRecorderSides(match, user.id).length > 0;
   const isPlayer = getMatchPlayerIds(match).includes(user.id);

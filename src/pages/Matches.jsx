@@ -204,7 +204,7 @@ function shouldShowMatchForView(match, view, userId) {
   if (view.id === "closed") return ["cancelled", "void"].includes(phase);
   if (view.id === "scheduled") return ["locked", "checkin"].includes(phase);
   if (view.id === "todo") return ["postgame", "dispute"].includes(phase) && !userDecisionDone(match, userId);
-  if (view.id === "active") return !["cancelled", "void"].includes(phase);
+  if (view.id === "active") return !["cancelled", "void", "record"].includes(phase);
   return false;
 }
 

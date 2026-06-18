@@ -2288,6 +2288,75 @@ button.ow-room-player-slot {
   font-weight: 850;
 }
 
+.ow-source-record-summary {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+  border: 1px solid rgba(70, 224, 182, 0.18);
+  border-radius: 8px;
+  background: rgba(70, 224, 182, 0.06);
+  padding: 10px;
+}
+
+.ow-source-record-score {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.ow-source-record-score span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ow-source-record-score span:last-child {
+  text-align: right;
+}
+
+.ow-source-record-score strong {
+  color: var(--gold);
+  font-size: 1.15rem;
+}
+
+.ow-source-record-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ow-source-record-side {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+}
+
+.ow-source-record-side > strong {
+  color: var(--text);
+  font-size: 0.82rem;
+}
+
+.ow-source-record-side > div {
+  display: grid;
+  grid-template-columns: minmax(56px, 0.45fr) minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  border-radius: 7px;
+  background: rgba(0, 0, 0, 0.18);
+  padding: 6px 8px;
+}
+
+.ow-source-record-side em {
+  min-width: 0;
+  color: var(--text);
+  font-style: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .ow-check-row {
   align-content: center;
   grid-template-columns: auto minmax(0, 1fr);

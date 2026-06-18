@@ -258,6 +258,7 @@ export function getMatchRoomPhase(match = {}, now = new Date()) {
   if (match.status === "cancelled") return ROOM_PHASE_META.cancelled;
   if (match.status === "void") return ROOM_PHASE_META.void;
   if (match.status === "confirmed") return ROOM_PHASE_META.record;
+  if (match.status === "disputed" && getMatchRecordWindow(match, now).disputeExpired) return ROOM_PHASE_META.record;
   if (match.status === "approval" || match.status === "disputed") return ROOM_PHASE_META.dispute;
   if (match.endedAt || (match.status === "agreed" && match.result)) return ROOM_PHASE_META.postgame;
   if (getMatchStartDate(match)) return ROOM_PHASE_META.live;
@@ -281,7 +282,10 @@ export function getMatchRecordWindow(match = {}, now = Date.now()) {
   const startAt = getMatchStartDate(match);
   const endAt = getMatchEndDate(match);
   const statEntryMinutes = Number(match.statEntryMinutes ?? STAT_ENTRY_WINDOW_MINUTES);
-  const disputeMinutes = Number(match.disputeMinutes ?? DISPUTE_WINDOW_MINUTES);
+  const rawDisputeMinutes = Number(match.disputeMinutes ?? DISPUTE_WINDOW_MINUTES);
+  const disputeMinutes = Number.isFinite(rawDisputeMinutes) && rawDisputeMinutes > 0
+    ? Math.min(rawDisputeMinutes, DISPUTE_WINDOW_MINUTES)
+    : DISPUTE_WINDOW_MINUTES;
 
   if (!endAt) {
     return {

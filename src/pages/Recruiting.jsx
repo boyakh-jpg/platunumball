@@ -42,7 +42,14 @@ import {
   isNationalRecruitingPost,
 } from "../lib/recruiting.js";
 import { findTeamByHashtag, findUserByHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
-import { getMatchRoomPhase, getPublicRoomMaxDateInput, getPublicRoomTimingStatus, isInstantRoom } from "../lib/matchUtils.js";
+import {
+  formatStatLine,
+  getMatchRoomPhase,
+  getMatchSidePlayerIds,
+  getPublicRoomMaxDateInput,
+  getPublicRoomTimingStatus,
+  isInstantRoom,
+} from "../lib/matchUtils.js";
 
 const SIDE_LABELS = {
   teamA: "A사이드",
@@ -1227,6 +1234,38 @@ function getSourceMatchAction(match, userId, teams = [], userById = {}) {
   return { label: "경기 정보", detail: "현재 상태를 확인합니다." };
 }
 
+function SourceMatchRecordSummary({ match, userById }) {
+  if (!match?.result) return null;
+  const result = match.result;
+  const renderSide = (sideName) => (
+    <div className="ow-source-record-side" key={sideName}>
+      <strong>{match[sideName]?.name ?? SIDE_LABELS[sideName]}</strong>
+      {getMatchSidePlayerIds(match, sideName).map((playerId) => {
+        const user = userById[playerId];
+        return (
+          <div key={playerId}>
+            <span>{user?.name ?? "플레이어"}</span>
+            <em>{formatStatLine(result.playerStats?.[playerId] ?? {})}</em>
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  return (
+    <div className="ow-source-record-summary">
+      <div className="ow-source-record-score">
+        <span>{match.teamA?.name ?? "A"}</span>
+        <strong>{Number(result.scoreA ?? match.teamA?.score ?? 0)} : {Number(result.scoreB ?? match.teamB?.score ?? 0)}</strong>
+        <span>{match.teamB?.name ?? "B"}</span>
+      </div>
+      <div className="ow-source-record-grid">
+        {["teamA", "teamB"].map(renderSide)}
+      </div>
+    </div>
+  );
+}
+
 export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, sourceMatch = null }) {
   const selectedPost = post;
   const myTeams = useMemo(
@@ -1883,6 +1922,9 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                     <span>{sourceMatchAction.detail}</span>
                     {sourceMatchAction.disputed && sourceMatch?.disputes?.[0]?.reason ? (
                       <span>최근 이의: {sourceMatch.disputes[0].reason}</span>
+                    ) : null}
+                    {sourceMatchAction.disputed ? (
+                      <SourceMatchRecordSummary match={sourceMatch} userById={userById} />
                     ) : null}
                     {sourceMatchAction.action && sourceMatchSideName ? (
                       <Button

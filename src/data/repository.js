@@ -394,6 +394,12 @@ function repairFuturePregameTitle(match) {
   return { ...match, title: getPregameMatchTitle(match) };
 }
 
+function normalizeDisputeMinutes(match) {
+  const minutes = Number(match.disputeMinutes ?? DISPUTE_WINDOW_MINUTES);
+  if (!Number.isFinite(minutes) || minutes <= 0) return DISPUTE_WINDOW_MINUTES;
+  return Math.min(minutes, DISPUTE_WINDOW_MINUTES);
+}
+
 function normalizeMatch(match) {
   const startedStatuses = ["agreed", "approval", "confirmed", "disputed", "void", "cancelled"];
   const started = startedStatuses.includes(match.status);
@@ -418,7 +424,7 @@ function normalizeMatch(match) {
     refereeTrustMin: Number(match.refereeTrustMin ?? REFEREE_TRUST_MIN),
     statRecorders: normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders),
     statEntryMinutes: Number(match.statEntryMinutes ?? STAT_ENTRY_WINDOW_MINUTES),
-    disputeMinutes: Number(match.disputeMinutes ?? DISPUTE_WINDOW_MINUTES),
+    disputeMinutes: normalizeDisputeMinutes(match),
     trustFeedback: match.trustFeedback ?? {},
     playedPlayerIds: normalizedPlayedPlayerIds,
     rules: {
@@ -1756,7 +1762,28 @@ function applyAutomaticMatchDecisions(state, now = new Date()) {
 
   for (const match of state.matches ?? []) {
     const current = nextState.matches.find((item) => item.id === match.id);
-    if (!current || !isAutoDecisionDue(current, nowMs)) continue;
+    if (!current) continue;
+
+    if (current.status === "disputed" && current.result) {
+      const recordWindow = getMatchRecordWindow(current, nowMs);
+      if (!recordWindow.disputeExpired) continue;
+      const nextMatch = {
+        ...current,
+        disputeMinutes: DISPUTE_WINDOW_MINUTES,
+        approvals: fillMatchDecision(current, "approvals"),
+        autoConfirmedAt: current.autoConfirmedAt ?? nowIso,
+      };
+      nextState = finalizeMatch(
+        {
+          ...nextState,
+          matches: nextState.matches.map((item) => (item.id === current.id ? nextMatch : item)),
+        },
+        nextMatch,
+      );
+      continue;
+    }
+
+    if (!isAutoDecisionDue(current, nowMs)) continue;
 
     if (current.status === "contract") {
       const nextMatch = {
@@ -1800,6 +1827,7 @@ function applyAutomaticMatchDecisions(state, now = new Date()) {
         nextMatch,
       );
     }
+
   }
 
   return nextState;
