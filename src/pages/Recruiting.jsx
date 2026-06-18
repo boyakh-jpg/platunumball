@@ -42,6 +42,7 @@ import {
   isNationalRecruitingPost,
 } from "../lib/recruiting.js";
 import { findTeamByHashtag, findUserByHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
+import { getMatchRoomPhase } from "../lib/matchUtils.js";
 
 const SIDE_LABELS = {
   teamA: "A사이드",
@@ -362,24 +363,28 @@ function isCurrentUserRoomParticipant(post, lobby, currentUserId) {
 
 export function getRecruitingRoomStatus(lobby, { myEntry = null, mine = false } = {}) {
   if (lobby.canConfirm) {
-    return { label: "READY", tone: "green", detail: "자동 확정 대기" };
+    return mine
+      ? { label: "대기방", tone: "green", detail: "정원 충족 · 경기 확정 가능" }
+      : { label: "대기방", tone: "green", detail: "방장 경기 확정 대기" };
   }
-  if (!lobby.projectedFull) return { label: "WAIT", tone: "blue", detail: "모집 중" };
-  if (myEntry?.status && myEntry.status !== "ready") return { label: "WAIT", tone: "orange", detail: "내 확인 필요" };
-  return { label: "WAIT", tone: "orange", detail: "참여 확인 중" };
+  if (!lobby.projectedFull) return { label: "대기방", tone: "blue", detail: "모집 중" };
+  if (myEntry?.status && myEntry.status !== "ready") return { label: "대기방", tone: "orange", detail: "내 확인 필요" };
+  return { label: "대기방", tone: "orange", detail: "참여 확인 중" };
 }
 
 export function getRecruitingRoomListStatus(lobby, { myEntry = null, mine = false } = {}) {
   if (lobby.canConfirm) {
-    return { label: "확정 중", tone: "green", detail: "조건 충족, 자동 확정 대기", actionLabel: "방 보기" };
+    return mine
+      ? { label: "대기방", tone: "green", detail: "정원 충족 · 경기 확정 가능", actionLabel: "방 보기" }
+      : { label: "대기방", tone: "green", detail: "방장 경기 확정 대기", actionLabel: "방 보기" };
   }
   if (!lobby.projectedFull) {
-    return { label: "모집 중", tone: "blue", detail: "빈 슬롯 모집 중", actionLabel: "방 보기" };
+    return { label: "대기방", tone: "blue", detail: "빈 슬롯 모집 중", actionLabel: "방 보기" };
   }
   if (myEntry?.status && myEntry.status !== "ready") {
-    return { label: "확인 필요", tone: "orange", detail: "내 참여 확인 필요", actionLabel: "확인하기" };
+    return { label: "대기방", tone: "orange", detail: "내 참여 확인 필요", actionLabel: "확인하기" };
   }
-  return { label: "확인 대기", tone: "orange", detail: "참가자 확인 대기", actionLabel: "방 보기" };
+  return { label: "대기방", tone: "orange", detail: "참가자 확인 대기", actionLabel: "방 보기" };
 }
 
 function TeamMemberPicker({ team, userById, selectedIds, capacity, onChange }) {
@@ -1184,59 +1189,37 @@ function getSourceMatchDecisionSideName(match, userId, teams = []) {
   return sideName ?? null;
 }
 
-function getSourceMatchCaptainId(match, teams = [], sideName) {
-  const teamId = match?.[sideName]?.teamId;
-  if (!teamId) return "";
-  return getTeamCaptainId(teams.find((team) => team.id === teamId)) || match?.[sideName]?.players?.[0] || "";
-}
-
 function getSourceMatchStatus(match, lobby, userId = "") {
-  if (!match) return lobby.canConfirm ? { label: "READY", tone: "green" } : { label: "WAIT", tone: "blue" };
-  if (match.status === "contract") return { label: "WAIT", tone: "blue" };
-  if (match.status === "agreed") return { label: "READY", tone: "green" };
-  if (match.status === "disputed") return { label: "이의 확인", tone: "orange" };
-  if (match.status === "approval") {
-    const sideName = getSourceMatchUserSideName(match, userId);
-    const needsConfirm = sideName && !(match.approvals?.[sideName] ?? []).includes(userId);
-    return needsConfirm ? { label: "CONFIRM", tone: "orange" } : { label: "WAIT", tone: "blue" };
-  }
-  if (match.status === "confirmed") return { label: "DONE", tone: "green" };
-  if (match.status === "cancelled" || match.status === "void") return { label: "CLOSED", tone: "neutral" };
-  return { label: String(match.status ?? "WAIT").toUpperCase(), tone: "blue" };
+  if (!match) return { label: "대기방", tone: lobby.canConfirm ? "green" : "blue" };
+  const phase = getMatchRoomPhase(match);
+  return { label: phase.label, tone: phase.tone };
 }
 
 function getSourceMatchAction(match, userId, teams = [], userById = {}) {
   const sideName = getSourceMatchDecisionSideName(match, userId, teams);
   if (!match || !sideName) return { label: "경기 정보", detail: "명단과 룰을 확인합니다." };
-  if (match.status === "contract") {
-    const done = (match.agreements?.[sideName] ?? []).includes(userId);
-    const captainId = getSourceMatchCaptainId(match, teams, sideName);
-    const captainRequired = Boolean(match[sideName]?.teamId);
-    const captainName = userById[captainId]?.name ?? "팀장";
-    if (captainRequired && captainId && userId !== captainId) {
-      return done
-        ? { label: "READY", detail: "팀장 READY가 완료됐습니다." }
-        : { label: "WAIT", detail: `${captainName} 팀장 READY 대기 중입니다.` };
-    }
-    return done
-      ? { label: "READY", detail: captainRequired ? "팀장 READY 완료. 상대팀을 기다립니다." : "다른 참가자의 동의를 기다립니다." }
-      : { label: "WAIT", detail: captainRequired ? "팀장 READY가 필요합니다." : "경기 전 동의가 필요합니다.", action: "agree", button: captainRequired ? "READY" : "CONFIRM" };
+  const phase = getMatchRoomPhase(match);
+  if (phase.phase === "locked") {
+    return { label: "확정방", detail: "경기 전까지 방 수정만 가능합니다." };
   }
-  if (match.status === "disputed") {
+  if (phase.phase === "checkin") {
+    return { label: "경기준비방", detail: "인원 체크 후 미출석자는 정리하고 경기 시작을 누릅니다." };
+  }
+  if (phase.phase === "live") {
+    return { label: "경기시작", detail: "기록판이 열려 있습니다. 경기 종료 전까지 개인활약을 입력합니다." };
+  }
+  if (phase.phase === "postgame") {
+    return { label: "경기종료", detail: "파울, 점수, 따봉을 빠르게 정리하고 기록완료를 기다립니다." };
+  }
+  if (phase.phase === "dispute") {
     return {
-      label: "이의 확인",
-      detail: "이의 사유 확인 후 승인 재개 또는 무효 처리하세요.",
+      label: "이의신청방",
+      detail: "30분 안에 이의 사유를 확인하고 승인 재개 또는 무효 처리하세요.",
       disputed: true,
     };
   }
-  if (match.status === "approval") {
-    const done = (match.approvals?.[sideName] ?? []).includes(userId);
-    return done
-      ? { label: "CONFIRM 완료", detail: "상대 승인 또는 이의신청 마감을 기다립니다." }
-      : { label: "CONFIRM 필요", detail: "경기 결과와 기록을 확인합니다.", action: "approve", button: "CONFIRM" };
-  }
-  if (match.status === "agreed") return { label: "READY", detail: "경기 전 룰과 출전 명단을 확인합니다." };
-  if (match.status === "confirmed") return { label: "DONE", detail: "확정된 경기는 기록에서 다시 볼 수 있습니다." };
+  if (phase.phase === "record") return { label: "기록방", detail: "확정된 점수, 개인활약, 파울을 열람합니다." };
+  if (phase.phase === "cancelled" || phase.phase === "void") return { label: phase.label, detail: "닫힌 방입니다." };
   return { label: "경기 정보", detail: "현재 상태를 확인합니다." };
 }
 
@@ -1354,6 +1337,12 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
     app.actions.inviteRecruitingPlayers(roomPost.id, { side: inviteDraft.sideName, reserve: Boolean(inviteDraft.reserve), playerIds, teamId });
     setInviteDraft((current) => (current ? { ...current, selectedPlayerIds: [] } : current));
   };
+  const confirmQueueRoom = (roomPost) => {
+    const matchId = app.actions.confirmRecruitingMatch(roomPost.id);
+    if (!matchId) return;
+    closeModal();
+    onOpenMatch?.(matchId);
+  };
   if (!selectedPost) return null;
 
   return (() => {
@@ -1430,9 +1419,10 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
         const sourceMatchSideName = getSourceMatchDecisionSideName(sourceMatch, app.currentUser.id, app.state.teams);
         const roomQueueStatus = getRecruitingRoomStatus(lobby, { myEntry, mine });
         const roomReadyLabel = sourceMatch ? sourceMatchStatus.label : roomQueueStatus.label;
+        const sourceMatchPhase = sourceMatch ? getMatchRoomPhase(sourceMatch) : null;
         const sourceMatchStarted = Boolean(sourceMatch?.startedAt ?? sourceMatch?.rules?.startedAt);
-        const canStartSourceMatch = Boolean(matchRoom && mine && sourceMatch?.status === "agreed" && !sourceMatch?.result && !sourceMatch?.endedAt && !sourceMatchStarted);
-        const canEndSourceMatch = Boolean(matchRoom && mine && sourceMatch?.status === "agreed" && !sourceMatch?.result && !sourceMatch?.endedAt && sourceMatchStarted);
+        const canStartSourceMatch = Boolean(matchRoom && mine && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.result && !sourceMatch?.endedAt);
+        const canEndSourceMatch = Boolean(matchRoom && mine && sourceMatchPhase?.phase === "live" && !sourceMatch?.result && !sourceMatch?.endedAt && sourceMatchStarted);
         const roomTitle = selectedPost.ranked === false ? "친선전" : "정규전";
         const roomVisibilityLabel = sourceMatch?.tournamentId
           ? "대회방"
@@ -1771,7 +1761,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
               <div className="ow-room-rule-panel">
                 <div className="ow-room-rule-head">
                   <strong>규칙</strong>
-                  {mine && (!matchRoom || (sourceMatch && sourceMatch.status === "agreed" && !sourceMatch.endedAt && !sourceMatch.result && !sourceMatchStarted)) ? (
+                  {mine && (!matchRoom || (sourceMatch && ["locked", "checkin"].includes(sourceMatchPhase?.phase) && !sourceMatch.endedAt && !sourceMatch.result)) ? (
                     <Button type="button" size="sm" variant="secondary" onClick={() => (roomEditDraft ? closeRoomEdit(selectedPost) : openRoomEdit(selectedPost))}>
                       {roomEditDraft ? "수정 닫기" : "방 수정"}
                     </Button>
@@ -2032,7 +2022,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                     </div>
                     <Button type="submit" disabled={!canJoin}>
                       {joinDraft.joinMode === "team" ? <UsersRound size={18} /> : <UserRound size={18} />}
-                      READY
+                      참여
                     </Button>
                   </form>
                 )}
@@ -2045,6 +2035,17 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                   >
                     <CheckCircle2 size={18} />
                     CONFIRM
+                  </Button>
+                ) : null}
+                {!matchRoom && mine ? (
+                  <Button
+                    type="button"
+                    variant="primary"
+                    disabled={!lobby.canConfirm}
+                    onClick={() => confirmQueueRoom(selectedPost)}
+                  >
+                    <Swords size={18} />
+                    경기 확정
                   </Button>
                 ) : null}
                 {!matchRoom && alreadyApplied ? (

@@ -9,8 +9,8 @@ import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { COURTS } from "../lib/constants.js";
-import { getAllowedStatFields, getMatchRecordWindow, getPlayerSideName, getPlayerStatSubmitted } from "../lib/matchUtils.js";
-import { RECRUITING_TYPES, getPendingRecruitingInvitations, isNationalRecruitingPost, isRecruitingPostForUser } from "../lib/recruiting.js";
+import { getAllowedStatFields, getMatchRecordWindow, getMatchRoomPhase, getPlayerSideName, getPlayerStatSubmitted } from "../lib/matchUtils.js";
+import { RECRUITING_TYPES, getPendingRecruitingInvitations, getRecruitingLobby, isNationalRecruitingPost, isRecruitingPostForUser } from "../lib/recruiting.js";
 import { getCurrentSeason, getPlayerSeasonRows, getSeasonProgress } from "../lib/season.js";
 import { getTierDivision } from "../lib/tier.js";
 
@@ -33,11 +33,6 @@ function getUserResult(match, userId) {
 
 function getUserSide(match, userId) {
   return getPlayerSideName(match, userId);
-}
-
-function userNeedsAgreement(match, userId) {
-  const sideName = getUserSide(match, userId);
-  return Boolean(sideName && match.status === "contract" && !(match.agreements?.[sideName] ?? []).includes(userId));
 }
 
 function userNeedsApproval(match, userId) {
@@ -80,7 +75,9 @@ export default function Home({ app }) {
   const [query, setQuery] = useState("");
   const searchText = query.trim().toLowerCase();
   const approvalMatches = [...app.state.matches].filter((match) => userNeedsApproval(match, user.id));
-  const upcomingMatches = [...app.state.matches].filter((match) => ["contract", "agreed"].includes(match.status) && matchHasUser(match, user.id)).sort(compareSchedule);
+  const upcomingMatches = [...app.state.matches]
+    .filter((match) => ["locked", "checkin"].includes(getMatchRoomPhase(match).phase) && matchHasUser(match, user.id))
+    .sort(compareSchedule);
   const completedMatches = [...app.state.matches].filter((match) => match.status === "confirmed");
   const myTeam = app.state.teams.find((team) => team.members.some((member) => member.userId === user.id));
   const teamById = useMemo(() => Object.fromEntries(app.state.teams.map((team) => [team.id, team])), [app.state.teams]);
@@ -135,18 +132,19 @@ export default function Home({ app }) {
     const matchItems = app.state.matches
       .filter((match) => matchHasUser(match, user.id))
       .map((match) => {
-        if (userNeedsAgreement(match, user.id)) {
+        const phase = getMatchRoomPhase(match).phase;
+        if (phase === "checkin" && match.createdBy === user.id) {
           return {
-            id: `agreement-${match.id}`,
+            id: `checkin-${match.id}`,
             priority: 2,
-            label: "동의 필요",
+            label: "경기 시작",
             title: match.title,
             meta: `${match.scheduledAt} · ${match.court}`,
             href: `/app/matches?match=${match.id}`,
-            icon: ClipboardCheck,
+            icon: Swords,
           };
         }
-        if (userNeedsResultInput(match, user.id)) {
+        if (phase === "postgame" && userNeedsResultInput(match, user.id)) {
           return {
             id: `result-${match.id}`,
             priority: 3,
@@ -157,7 +155,7 @@ export default function Home({ app }) {
             icon: CalendarDays,
           };
         }
-        if (userNeedsApproval(match, user.id)) {
+        if (phase === "dispute" && userNeedsApproval(match, user.id)) {
           return {
             id: `approval-${match.id}`,
             priority: 4,
@@ -171,6 +169,19 @@ export default function Home({ app }) {
         return null;
       })
       .filter(Boolean);
+    const confirmableRoomItems = (app.state.recruitingPosts ?? [])
+      .filter((post) => post.status === "open" && post.playerId === user.id)
+      .map((post) => ({ post, lobby: getRecruitingLobby(post, app.state) }))
+      .filter(({ lobby }) => lobby.canConfirm)
+      .map(({ post }) => ({
+        id: `confirm-room-${post.id}`,
+        priority: 1,
+        label: "경기 확정",
+        title: post.title,
+        meta: `${getRecruitingSchedule(post)} · ${post.court}`,
+        href: `/app/recruiting?post=${post.id}`,
+        icon: Swords,
+      }));
 
     const invitationItems = pendingInvitations.map(({ post, invitation }) => ({
       id: `invite-${post.id}-${invitation.id}`,
@@ -196,7 +207,7 @@ export default function Home({ app }) {
         icon: ShieldAlert,
       }));
 
-    return [...invitationItems, ...tournamentInviteItems, ...matchItems, ...cancelledRoomItems]
+    return [...invitationItems, ...tournamentInviteItems, ...confirmableRoomItems, ...matchItems, ...cancelledRoomItems]
       .sort((a, b) => a.priority - b.priority || String(a.meta).localeCompare(String(b.meta)));
   }, [app.state.matches, app.state.recruitingPosts, app.state.tournaments, captainTeamIds, myTeamIds, pendingInvitations, teamById, user.id]);
   const priorityItems = actionItems.slice(0, 5);

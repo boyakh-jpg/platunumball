@@ -138,6 +138,44 @@ export function getMatchEndDate(match = {}) {
   return Number.isFinite(parsed.getTime()) ? parsed : null;
 }
 
+export function getMatchScheduledDate(match = {}) {
+  const source = match.scheduledDate
+    ? `${match.scheduledDate}T${match.scheduledTime || "00:00"}`
+    : String(match.scheduledAt ?? "").replace(" ", "T");
+  const parsed = new Date(source);
+  return Number.isFinite(parsed.getTime()) ? parsed : null;
+}
+
+export const ROOM_PHASE_META = {
+  waiting: { phase: "waiting", label: "대기방", listLabel: "모집 중", tone: "blue", actionLabel: "방 보기" },
+  locked: { phase: "locked", label: "확정방", listLabel: "확정방", tone: "green", actionLabel: "방 보기" },
+  checkin: { phase: "checkin", label: "경기준비방", listLabel: "경기준비", tone: "orange", actionLabel: "준비" },
+  live: { phase: "live", label: "경기시작", listLabel: "경기 진행", tone: "blue", actionLabel: "기록" },
+  postgame: { phase: "postgame", label: "경기종료", listLabel: "경기 종료", tone: "orange", actionLabel: "기록완료" },
+  dispute: { phase: "dispute", label: "이의신청방", listLabel: "이의신청", tone: "orange", actionLabel: "처리" },
+  record: { phase: "record", label: "기록방", listLabel: "기록방", tone: "green", actionLabel: "보기" },
+  cancelled: { phase: "cancelled", label: "취소", listLabel: "취소", tone: "neutral", actionLabel: "보기" },
+  void: { phase: "void", label: "무효", listLabel: "무효", tone: "neutral", actionLabel: "보기" },
+};
+
+export function getMatchRoomPhase(match = {}, now = new Date()) {
+  if (match.status === "cancelled") return ROOM_PHASE_META.cancelled;
+  if (match.status === "void") return ROOM_PHASE_META.void;
+  if (match.status === "confirmed") return ROOM_PHASE_META.record;
+  if (match.status === "approval" || match.status === "disputed") return ROOM_PHASE_META.dispute;
+  if (match.endedAt || (match.status === "agreed" && match.result)) return ROOM_PHASE_META.postgame;
+  if (getMatchStartDate(match)) return ROOM_PHASE_META.live;
+
+  if (match.status === "agreed" || match.status === "contract") {
+    const scheduledAt = getMatchScheduledDate(match);
+    const nowMs = now instanceof Date ? now.getTime() : new Date(now).getTime();
+    if (scheduledAt && Number.isFinite(nowMs) && nowMs >= scheduledAt.getTime()) return ROOM_PHASE_META.checkin;
+    return ROOM_PHASE_META.locked;
+  }
+
+  return ROOM_PHASE_META.waiting;
+}
+
 function addMinutes(date, minutes) {
   return new Date(date.getTime() + Number(minutes ?? 0) * 60000);
 }

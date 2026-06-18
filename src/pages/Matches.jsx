@@ -6,19 +6,9 @@ import Button from "../components/common/Button.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { MATCH_MODES } from "../lib/constants.js";
-import { getMatchEndDate, getMatchReservePlayerIds } from "../lib/matchUtils.js";
+import { getMatchReservePlayerIds, getMatchRoomPhase } from "../lib/matchUtils.js";
 import { getRecruitingLobby, getRecruitingSideCapacity, isRecruitingPostForUser } from "../lib/recruiting.js";
 import { RecruitingRoomModal, getRecruitingRoomListStatus } from "./Recruiting.jsx";
-
-const STATUS_META = {
-  contract: { label: "동의 대기", tone: "orange" },
-  agreed: { label: "경기 예정", tone: "green" },
-  approval: { label: "결과 승인", tone: "orange" },
-  disputed: { label: "이의 확인", tone: "orange" },
-  confirmed: { label: "기록 확정", tone: "green" },
-  void: { label: "무효", tone: "neutral" },
-  cancelled: { label: "취소", tone: "neutral" },
-};
 
 const VIEWS = [
   {
@@ -27,7 +17,6 @@ const VIEWS = [
     title: "내 일정",
     desc: "진행, 예정, 지난 경기",
     icon: CalendarDays,
-    statuses: ["contract", "agreed", "approval", "disputed", "confirmed"],
   },
   {
     id: "todo",
@@ -35,7 +24,6 @@ const VIEWS = [
     title: "처리 필요",
     desc: "동의, 승인, 보류",
     icon: ShieldAlert,
-    statuses: ["contract", "approval", "disputed"],
   },
   {
     id: "scheduled",
@@ -43,7 +31,6 @@ const VIEWS = [
     title: "예정",
     desc: "진행 예정 경기",
     icon: Swords,
-    statuses: ["agreed"],
   },
   {
     id: "closed",
@@ -51,7 +38,6 @@ const VIEWS = [
     title: "닫힘",
     desc: "취소와 무효",
     icon: CheckCircle2,
-    statuses: ["cancelled", "void"],
   },
 ];
 
@@ -152,34 +138,14 @@ function formatMatchTime(match) {
   return match.scheduledAt ?? match.createdAt?.slice(0, 16)?.replace("T", " ") ?? "시간 미정";
 }
 
-function getMatchStartDate(match) {
-  const actualStart = match.startedAt ?? match.rules?.startedAt;
-  if (actualStart) {
-    const parsed = new Date(actualStart);
-    if (Number.isFinite(parsed.getTime())) return parsed;
-  }
-  const source = match.scheduledDate
-    ? `${match.scheduledDate}T${match.scheduledTime || "00:00"}`
-    : String(match.scheduledAt ?? "").replace(" ", "T");
-  const parsed = new Date(source);
-  return Number.isFinite(parsed.getTime()) ? parsed : null;
-}
-
 function getMatchProcessMeta(match, now = new Date()) {
-  if (match.status !== "agreed") return STATUS_META[match.status] ?? { label: match.status, tone: "blue" };
-  const startAt = getMatchStartDate(match);
-  const actualStarted = Boolean(match.startedAt ?? match.rules?.startedAt);
-  const endAt = getMatchEndDate(match);
-  const nowMs = now.getTime();
-  if (!actualStarted && startAt && nowMs < startAt.getTime()) return { label: "경기 예정", tone: "green" };
-  if (!actualStarted) return { label: "시작 대기", tone: "orange" };
-  if (!match.endedAt) return { label: "경기 진행", tone: "blue" };
-  if (endAt) return { label: "경기 종료", tone: "orange" };
-  return STATUS_META.agreed;
+  const phase = getMatchRoomPhase(match, now);
+  return { ...phase, label: phase.listLabel ?? phase.label };
 }
 
 function shouldShowScoreBox(match) {
-  return Boolean(match.result) || ["approval", "disputed", "confirmed", "void"].includes(match.status);
+  const phase = getMatchRoomPhase(match);
+  return ["postgame", "dispute", "record", "void"].includes(phase.phase);
 }
 
 function getMatchPlayerCount(match) {
@@ -206,10 +172,7 @@ function getWinner(match) {
 }
 
 function getMatchActionLabel(match) {
-  if (match.status === "contract") return match.teamA?.teamId || match.teamB?.teamId ? "READY" : "동의";
-  if (match.status === "agreed") return "방 보기";
-  if (match.status === "approval" || match.status === "disputed") return "처리";
-  return "보기";
+  return getMatchRoomPhase(match).actionLabel;
 }
 
 function getViewCount(matches, view, userId) {
@@ -235,9 +198,12 @@ function userDecisionDone(match, userId) {
 }
 
 function shouldShowMatchForView(match, view, userId) {
-  if (!view.statuses.includes(match.status)) return false;
-  if (view.id === "todo" && userDecisionDone(match, userId)) return false;
-  return true;
+  const phase = getMatchRoomPhase(match).phase;
+  if (view.id === "closed") return ["cancelled", "void"].includes(phase);
+  if (view.id === "scheduled") return ["locked", "checkin"].includes(phase);
+  if (view.id === "todo") return ["postgame", "dispute"].includes(phase) && !userDecisionDone(match, userId);
+  if (view.id === "active") return !["cancelled", "void"].includes(phase);
+  return false;
 }
 
 function shouldShowMatchInList(match, view, userId, hasDateFilter) {

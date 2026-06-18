@@ -1789,14 +1789,7 @@ function applyExpiredRecruitingRooms(state, now = new Date()) {
 }
 
 function applyAutomaticRecruitingConfirmations(state) {
-  let nextState = state;
-  for (const post of state.recruitingPosts ?? []) {
-    const current = nextState.recruitingPosts?.find((item) => item.id === post.id);
-    if (!current || current.status !== "open") continue;
-    if (!getRecruitingLobby(current, nextState).canConfirm) continue;
-    nextState = confirmRecruitingMatch({ ...nextState, currentUserId: current.playerId }, current.id);
-  }
-  return nextState;
+  return state;
 }
 
 export function runAutomaticStateMaintenance(state, now = new Date()) {
@@ -1828,7 +1821,7 @@ export function createMatch(state, draft) {
     scheduledDate: draft.scheduledDate,
     scheduledTime: draft.scheduledTime,
     scheduledAt: scheduledAt || "일정 미정",
-    status: "contract",
+    status: "agreed",
     ranked,
     official: ranked && Boolean(draft.official),
     preRegistered: Boolean(draft.preRegistered),
@@ -1860,6 +1853,7 @@ export function createMatch(state, draft) {
     disputes: [],
     result: null,
     ratingResult: null,
+    agreedAt: new Date().toISOString(),
     createdAt: new Date().toISOString(),
   };
 
@@ -1867,7 +1861,7 @@ export function createMatch(state, draft) {
     ...state,
     matches: [match, ...state.matches],
     notifications: [
-      { id: makeId("n"), title: "새 경기방", body: `${match.title} 경기 전 동의를 기다립니다.`, tone: "match", matchId: match.id },
+      { id: makeId("n"), title: "새 경기방", body: `${match.title} 확정방이 만들어졌습니다.`, tone: "match", matchId: match.id },
       ...state.notifications,
     ],
   };
@@ -2561,12 +2555,14 @@ function getMatchHostPlayerId(state, match) {
 
 export function startMatch(state, matchId) {
   const match = state.matches.find((item) => item.id === matchId);
-  if (!match || match.status !== "agreed" || match.result || match.endedAt) return state;
+  if (!match || !["contract", "agreed"].includes(match.status) || match.result || match.endedAt) return state;
   const hostPlayerId = getMatchHostPlayerId(state, match);
   if (hostPlayerId && hostPlayerId !== state.currentUserId) return state;
   const now = new Date().toISOString();
   const nextMatch = {
     ...match,
+    status: "agreed",
+    agreedAt: match.agreedAt ?? now,
     startedAt: match.startedAt ?? now,
     rules: {
       ...(match.rules ?? {}),
@@ -3396,7 +3392,7 @@ export function updateMatchRoomRules(state, matchId, patch = {}) {
   delete nextRules.startedAt;
   const nextMatch = {
     ...match,
-    status: "contract",
+    status: "agreed",
     rules: nextRules,
     memo: patch.memo === undefined ? match.memo : String(patch.memo ?? "").slice(0, 500),
     stakes: patch.stakes === undefined ? match.stakes : String(patch.stakes ?? "").slice(0, 500),
