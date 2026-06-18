@@ -273,17 +273,18 @@ function isValidQueueScheduleKey(value = "") {
 }
 
 function normalizeRecruitingSchedules(posts = []) {
+  const normalizedPosts = posts.map((post) => normalizeRecruitingPost(post));
   const startDate = getQueueScheduleStartDate();
   const scheduleById = new Map();
   const used = new Set(
-    posts
+    normalizedPosts
       .filter((post) => post.status !== "closed" && !needsQueueSchedule(post, startDate))
       .map(getQueueScheduleKey)
       .filter(isValidQueueScheduleKey),
   );
   let slotIndex = 0;
 
-  posts
+  normalizedPosts
     .filter((post) => post.status !== "closed" && needsQueueSchedule(post, startDate))
     .sort((a, b) => getQueueSortKey(a).localeCompare(getQueueSortKey(b)))
     .forEach((post) => {
@@ -297,7 +298,7 @@ function normalizeRecruitingSchedules(posts = []) {
       slotIndex += 1;
     });
 
-  return posts.map((post) => (scheduleById.has(post.id) ? { ...post, ...scheduleById.get(post.id) } : post));
+  return normalizedPosts.map((post) => (scheduleById.has(post.id) ? { ...post, ...scheduleById.get(post.id) } : post));
 }
 
 function getNextQueueSchedule(posts = []) {
@@ -3126,6 +3127,9 @@ export function createRecruitingPost(state, draft) {
   const sideCapacity = Math.max(1, Number(draft.sideCapacity ?? MODE_SIZES[draft.mode] ?? 5));
   const hostTeam = hostJoinMode === "team" ? state.teams.find((team) => team.id === draft.teamId) : null;
   const hostPlayerIds = hostJoinMode === "team" ? getSelectedTeamPlayerIds(hostTeam, sideCapacity, draft.playerIds) : [];
+  const hostPlayerId = hostJoinMode === "team" && hostPlayerIds.length && !hostPlayerIds.includes(state.currentUserId)
+    ? hostPlayerIds[0]
+    : state.currentUserId;
   if (hostJoinMode === "team" && !hostPlayerIds.length) {
     return {
       ...state,
@@ -3185,7 +3189,7 @@ export function createRecruitingPost(state, draft) {
     sideCapacity,
     playerIds: hostPlayerIds,
     position: hostJoinMode === "player" ? draft.position || "포지션 자유" : "포지션 자유",
-    playerId: state.currentUserId,
+    playerId: hostPlayerId,
     memo: draft.memo?.trim() || "개인이나 팀 파티로 빈자리에 들어올 수 있습니다.",
     status: "open",
     applicants: [],

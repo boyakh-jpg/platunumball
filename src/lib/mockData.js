@@ -1128,7 +1128,7 @@ function makeRecruitingPost(index, teams, users) {
     sideCapacity,
     playerIds: hostPlayerIds,
     position: type === "need_team" ? "상관없음" : cycle(PLAYER_POSITIONS, index),
-    playerId: type === "find_team" ? player.id : team.members[0].userId,
+    playerId: type === "find_team" ? player.id : hostPlayerIds[0] ?? team.members[0].userId,
     memo: type === "need_player"
       ? "포지션 맞으면 바로 경기방 초대합니다. 과반 동의 후 진행해요."
       : type === "find_team"

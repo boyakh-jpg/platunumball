@@ -322,18 +322,26 @@ export function hasPendingRecruitingInvitation(post = {}, userId) {
 
 export function isRecruitingPostForUser(post = {}, userId, teamIds = []) {
   if (!userId) return false;
-  const teamIdSet = new Set(teamIds.filter(Boolean));
   if (post.playerId === userId) return true;
-  if (post.teamId && teamIdSet.has(post.teamId)) return true;
+  const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
+  if (unique(post.playerIds ?? post.players ?? []).includes(userId)) return true;
+  if ((roomState.partyReserves.host ?? []).includes(userId)) return true;
   if (hasPendingRecruitingInvitation(post, userId)) return true;
-  return normalizeRecruitingApplicants(post.applicants ?? []).some((applicant) => (
-    applicant.playerId === userId || (applicant.teamId && teamIdSet.has(applicant.teamId))
-  ));
+  return normalizeRecruitingApplicants(post.applicants ?? []).some((applicant) => {
+    if (applicant.playerId === userId) return true;
+    if ((applicant.playerIds ?? []).includes(userId)) return true;
+    const reserveKey = getRecruitingApplicantKey(applicant);
+    return Boolean(reserveKey && (roomState.partyReserves[reserveKey] ?? []).includes(userId));
+  });
 }
 
 export function normalizeRecruitingPost(post = {}) {
   const type = RECRUITING_TYPES[post.type] ? post.type : "need_player";
   const hostJoinMode = post.hostJoinMode === "player" || !post.teamId ? "player" : "team";
+  const playerIds = unique(post.playerIds ?? post.players ?? []);
+  const hostPlayerId = hostJoinMode === "team" && playerIds.length && !playerIds.includes(post.playerId)
+    ? playerIds[0]
+    : post.playerId;
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
   const mmrRangeMode = normalizeRecruitingMmrRangeMode(post.mmrRangeMode ?? roomState.mmrRangeMode);
   const timingType = post.timingType === "instant" || roomState.timingType === "instant" || post.scheduledAt === "즉시" ? "instant" : "scheduled";
@@ -354,7 +362,8 @@ export function normalizeRecruitingPost(post = {}) {
     disputeMinutes: Number(post.disputeMinutes ?? DISPUTE_WINDOW_MINUTES),
     timingType,
     roomState: { ...roomState, mmrRangeMode, timingType },
-    playerIds: unique(post.playerIds ?? post.players ?? []),
+    playerId: hostPlayerId,
+    playerIds,
     applicants: ruleRevision ? applicants : applicants.map((applicant) => ({ ...applicant, status: "ready" })),
   };
 }
