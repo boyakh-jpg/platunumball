@@ -998,17 +998,27 @@
 }
 
 .ow-queue-board-group > div {
-  display: grid;
+  display: flex;
+  align-items: stretch;
   min-width: 0;
   gap: 5px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.ow-queue-board-group > div::-webkit-scrollbar {
+  display: none;
 }
 
 .ow-queue-board-group > div > span {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
+  flex: 1 0 min(150px, 42vw);
   gap: 6px;
   min-width: 0;
+  max-width: 210px;
   min-height: 32px;
   border: 1px solid rgba(255, 255, 255, 0.09);
   border-radius: 8px;
@@ -1095,7 +1105,9 @@
 }
 
 .ow-queue-board-group .empty {
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
   color: var(--muted);
   font-size: 0.72rem;
   font-weight: 850;
