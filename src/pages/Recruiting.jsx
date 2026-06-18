@@ -51,6 +51,7 @@ import {
   getRoomRefereeLabel,
   getRoomVisibilityLabel,
   getMatchRoomPhase,
+  getMatchReservePlayerIds,
   getMatchSidePlayerIds,
   getPublicRoomMaxDateInput,
   getPublicRoomTimingStatus,
@@ -1002,7 +1003,18 @@ export function ReserveLine({
   );
 }
 
-function RoomKickPanel({ lobby, userById, teams, onKickApplicant, onRemovePartyPlayer, onSetReserve, onSetPlacement, allowSideMove = false }) {
+function RoomKickPanel({
+  lobby,
+  userById,
+  teams,
+  onKickApplicant,
+  onRemovePartyPlayer,
+  onSetReserve,
+  onSetPlacement,
+  allowSideMove = false,
+  attendanceBySide = null,
+  requireMissingAttendance = false,
+}) {
   const rows = [];
   (lobby.entries ?? []).forEach((entry) => {
     const partyEntry = isPartyEntry(entry);
@@ -1028,41 +1040,47 @@ function RoomKickPanel({ lobby, userById, teams, onKickApplicant, onRemovePartyP
         <span>방장은 팀 배치 대신 퇴장만 처리한다.</span>
       </header>
       <div className="ow-host-kick-list">
-        {rows.map(({ entry, partyEntry, playerId, reserve, user }) => (
-          <div key={`${entry.id}-${playerId}`} className="ow-host-kick-row">
-            <PlayerHoverCard user={user} teams={teams} as="span">
-              <span className="avatar small" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
-              <span>
-                <strong>{user.name}</strong>
-                <em>{SIDE_LABELS[entry.side]} · {reserve ? "후보" : "출전"} · {entry.team?.name ?? "개인"}</em>
-              </span>
-            </PlayerHoverCard>
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              className="danger-button"
-              onClick={() => (partyEntry ? onRemovePartyPlayer(entry.id, playerId) : onKickApplicant(entry.playerId))}
-            >
-              강퇴
-            </Button>
-            {onSetReserve ? (
-              <Button type="button" size="sm" variant="secondary" onClick={() => onSetReserve(entry, playerId, !reserve)}>
-                {reserve ? "출전" : "후보"}
-              </Button>
-            ) : null}
-            {allowSideMove && onSetPlacement ? (
+        {rows.map(({ entry, partyEntry, playerId, reserve, user }) => {
+          const checkedIn = Boolean(attendanceBySide?.[entry.side]?.includes(playerId));
+          const kickDisabled = requireMissingAttendance && checkedIn;
+          return (
+            <div key={`${entry.id}-${playerId}`} className="ow-host-kick-row">
+              <PlayerHoverCard user={user} teams={teams} as="span">
+                <span className="avatar small" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
+                <span>
+                  <strong>{user.name}</strong>
+                  <em>{SIDE_LABELS[entry.side]} · {reserve ? "후보" : "출전"} · {entry.team?.name ?? "개인"}</em>
+                  {attendanceBySide ? <i>{checkedIn ? "출석 완료" : "미출석"}</i> : null}
+                </span>
+              </PlayerHoverCard>
               <Button
                 type="button"
                 size="sm"
                 variant="secondary"
-                onClick={() => onSetPlacement(playerId, { side: entry.side === "teamA" ? "teamB" : "teamA", reserve })}
+                className="danger-button"
+                disabled={kickDisabled}
+                onClick={() => (partyEntry ? onRemovePartyPlayer(entry.id, playerId) : onKickApplicant(entry.playerId))}
               >
-                {entry.side === "teamA" ? "B" : "A"} 이동
+                강퇴
               </Button>
-            ) : null}
-          </div>
-        ))}
+              {onSetReserve ? (
+                <Button type="button" size="sm" variant="secondary" onClick={() => onSetReserve(entry, playerId, !reserve)}>
+                  {reserve ? "출전" : "후보"}
+                </Button>
+              ) : null}
+              {allowSideMove && onSetPlacement ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => onSetPlacement(playerId, { side: entry.side === "teamA" ? "teamB" : "teamA", reserve })}
+                >
+                  {entry.side === "teamA" ? "B" : "A"} 이동
+                </Button>
+              ) : null}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -1282,6 +1300,13 @@ function getSourceMatchUserSideName(match, userId) {
   if (!match || !userId) return null;
   if (match.teamA?.players?.includes(userId)) return "teamA";
   if (match.teamB?.players?.includes(userId)) return "teamB";
+  return null;
+}
+
+function getSourceMatchParticipantSideName(match, userId) {
+  if (!match || !userId) return null;
+  if (match.teamA?.players?.includes(userId) || getMatchReservePlayerIds(match, "teamA").includes(userId)) return "teamA";
+  if (match.teamB?.players?.includes(userId) || getMatchReservePlayerIds(match, "teamB").includes(userId)) return "teamB";
   return null;
 }
 
@@ -1561,12 +1586,29 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
         const sourceMatchStatus = getSourceMatchStatus(sourceMatch, lobby, app.currentUser.id);
         const sourceMatchAction = getSourceMatchAction(sourceMatch, app.currentUser.id, app.state.teams, userById);
         const sourceMatchSideName = getSourceMatchDecisionSideName(sourceMatch, app.currentUser.id, app.state.teams);
+        const sourceMatchParticipantSideName = getSourceMatchParticipantSideName(sourceMatch, app.currentUser.id);
         const roomTimingStatus = getPublicRoomTimingStatus(selectedPost);
         const roomQueueStatus = getRecruitingRoomStatus(lobby, { post: selectedPost, myEntry, mine });
         const needsPrivateConfirm = !matchRoom && !mine && selectedPost.visibility !== "public" && Boolean(myEntry && myEntry.status !== "ready");
         const roomReadyLabel = sourceMatch ? sourceMatchStatus.label : roomQueueStatus.label;
         const sourceMatchPhase = sourceMatch ? getMatchRoomPhase(sourceMatch) : null;
         const sourceMatchStarted = Boolean(sourceMatch?.startedAt);
+        const sourceMatchAttendance = {
+          teamA: sourceMatch?.attendance?.teamA ?? [],
+          teamB: sourceMatch?.attendance?.teamB ?? [],
+        };
+        const canCheckInSourceMatch = Boolean(
+          matchRoom &&
+          sourceMatchParticipantSideName &&
+          sourceMatchPhase?.phase === "checkin" &&
+          !sourceMatch?.startedAt &&
+          !sourceMatch?.endedAt &&
+          !sourceMatch?.result,
+        );
+        const sourceMatchCheckedIn = Boolean(
+          sourceMatchParticipantSideName &&
+          sourceMatchAttendance[sourceMatchParticipantSideName]?.includes(app.currentUser.id),
+        );
         const canStartSourceMatch = Boolean(matchRoom && mine && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.result && !sourceMatch?.endedAt);
         const canEndSourceMatch = Boolean(matchRoom && mine && sourceMatchPhase?.phase === "live" && !sourceMatch?.result && !sourceMatch?.endedAt && sourceMatchStarted);
         const canManageMatchCheckin = Boolean(matchRoom && mine && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.startedAt && !sourceMatch?.endedAt && !sourceMatch?.result);
@@ -1916,6 +1958,8 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                   onSetReserve={matchRoom ? ((entry, playerId, reserve) => app.actions.setMatchRoomPlayerPlacement(sourceMatch.id, playerId, { side: entry.side, reserve })) : null}
                   onSetPlacement={matchRoom ? ((playerId, placement) => app.actions.setMatchRoomPlayerPlacement(sourceMatch.id, playerId, placement)) : null}
                   allowSideMove={canMoveMatchSides}
+                  attendanceBySide={matchRoom ? sourceMatchAttendance : null}
+                  requireMissingAttendance={canManageMatchCheckin}
                 />
               ) : null}
 
@@ -2072,6 +2116,16 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                         }}
                       >
                         {sourceMatchAction.button}
+                      </Button>
+                    ) : null}
+                    {canCheckInSourceMatch ? (
+                      <Button
+                        type="button"
+                        variant={sourceMatchCheckedIn ? "secondary" : "primary"}
+                        disabled={sourceMatchCheckedIn}
+                        onClick={() => app.actions.checkInMatchPlayer(sourceMatch.id, sourceMatchParticipantSideName, app.currentUser.id)}
+                      >
+                        {sourceMatchCheckedIn ? "출석 완료" : "출석체크"}
                       </Button>
                     ) : null}
                     {sourceMatchAction.disputed ? (

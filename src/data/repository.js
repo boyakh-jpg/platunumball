@@ -14,6 +14,7 @@ import {
   getApprovalStatus,
   getAllowedStatFields,
   getMatchPlayerIds,
+  getMatchRoomPhase,
   getMatchReservePlayerIds,
   getMatchSidePlayerIds,
   getMatchStartDate,
@@ -2665,11 +2666,70 @@ function getMatchHostPlayerId(state, match) {
   return getRecruitingRoomOwnerId(sourcePost) || match?.createdBy || match?.hostPlayerId || match?.createdPlayerId || match?.teamA?.players?.[0] || "";
 }
 
+function getMatchAttendance(match = {}) {
+  return {
+    teamA: uniquePlayerIds(match.attendance?.teamA ?? []),
+    teamB: uniquePlayerIds(match.attendance?.teamB ?? []),
+  };
+}
+
+function getMissingActiveAttendance(match = {}) {
+  const attendance = getMatchAttendance(match);
+  return ["teamA", "teamB"].flatMap((sideName) => (
+    uniquePlayerIds(match[sideName]?.players ?? [])
+      .filter((playerId) => !attendance[sideName].includes(playerId))
+      .map((playerId) => ({ sideName, playerId }))
+  ));
+}
+
+export function checkInMatchPlayer(state, matchId, sideName, playerId) {
+  const match = state.matches.find((item) => item.id === matchId);
+  if (!match || !playerId || playerId !== state.currentUserId) return state;
+  if (getMatchRoomPhase(match).phase !== "checkin" || match.startedAt || match.endedAt || match.result) return state;
+  const placement = getMatchPlayerPlacement(match, playerId);
+  if (!placement || placement.side !== sideName) return state;
+
+  const attendance = getMatchAttendance(match);
+  const nextMatch = {
+    ...match,
+    attendance: {
+      ...attendance,
+      [sideName]: uniquePlayerIds([...attendance[sideName], playerId]),
+    },
+  };
+
+  return {
+    ...state,
+    matches: state.matches.map((item) => (item.id === matchId ? nextMatch : item)),
+    notifications: [
+      { id: makeId("n"), title: "출석 완료", body: "경기준비방 출석체크가 완료됐습니다.", tone: "match", matchId },
+      ...state.notifications,
+    ],
+  };
+}
+
 export function startMatch(state, matchId) {
   const match = state.matches.find((item) => item.id === matchId);
   if (!match || !["contract", "agreed"].includes(match.status) || match.result || match.endedAt) return state;
   const hostPlayerId = getMatchHostPlayerId(state, match);
   if (hostPlayerId && hostPlayerId !== state.currentUserId) return state;
+  if (getMatchRoomPhase(match).phase !== "checkin") return state;
+  const missingAttendance = getMissingActiveAttendance(match);
+  if (missingAttendance.length) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "출석체크 필요",
+          body: "출전선수 전원이 출석체크해야 경기 시작이 가능합니다.",
+          tone: "orange",
+          matchId,
+        },
+        ...state.notifications,
+      ],
+    };
+  }
   const now = new Date().toISOString();
   const nextMatch = {
     ...match,
@@ -3647,6 +3707,7 @@ export function updateMatchRoomRules(state, matchId, patch = {}) {
     },
     parties: convertToPlayerMatch ? [] : match.parties ?? [],
     agreements: { teamA: [], teamB: [] },
+    attendance: { teamA: [], teamB: [] },
     agreedAt: null,
     startedAt: null,
   };
@@ -3701,6 +3762,7 @@ function updateMatchPartiesForPlayer(match = {}, playerId = "", sideName = "", r
 }
 
 function clearMatchPlayerDecision(nextMatch, playerId) {
+  const attendance = getMatchAttendance(nextMatch);
   return {
     ...nextMatch,
     agreements: {
@@ -3710,6 +3772,10 @@ function clearMatchPlayerDecision(nextMatch, playerId) {
     approvals: {
       teamA: (nextMatch.approvals?.teamA ?? []).filter((id) => id !== playerId),
       teamB: (nextMatch.approvals?.teamB ?? []).filter((id) => id !== playerId),
+    },
+    attendance: {
+      teamA: attendance.teamA.filter((id) => id !== playerId),
+      teamB: attendance.teamB.filter((id) => id !== playerId),
     },
   };
 }
@@ -5107,9 +5173,13 @@ export function confirmRecruitingMatch(state, postId) {
   const teamAPlayerTeams = getLobbySidePlayerTeamIds(lobby, "teamA");
   const teamBPlayerTeams = getLobbySidePlayerTeamIds(lobby, "teamB");
   const playerIds = [...teamAPlayers, ...teamBPlayers];
-  const teamAReservePlayers = lobby.sides.teamA.reserveCandidates.filter((candidate) => candidate.status === "ready").map((candidate) => candidate.playerId);
-  const teamBReservePlayers = lobby.sides.teamB.reserveCandidates.filter((candidate) => candidate.status === "ready").map((candidate) => candidate.playerId);
-  const readyReserveIds = new Set([...teamAReservePlayers, ...teamBReservePlayers]);
+  const teamAReservePlayers = uniquePlayerIds(lobby.sides.teamA.reserveCandidates.map((candidate) => candidate.playerId))
+    .filter((playerId) => !teamAPlayers.includes(playerId))
+    .slice(0, MAX_RECRUITING_RESERVES_PER_SIDE);
+  const teamBReservePlayers = uniquePlayerIds(lobby.sides.teamB.reserveCandidates.map((candidate) => candidate.playerId))
+    .filter((playerId) => !teamBPlayers.includes(playerId))
+    .slice(0, MAX_RECRUITING_RESERVES_PER_SIDE);
+  const confirmedReserveIds = new Set([...teamAReservePlayers, ...teamBReservePlayers]);
   const refereeId = getTrustedRefereeId(state, promotedPost.refereeId, playerIds);
   const statRecorders = refereeId ? normalizeStatRecorders({}) : getRecruitingRoomStatRecorders(promotedPost, state);
   const mmrRangeMode = normalizeRecruitingMmrRangeMode(promotedPost.mmrRangeMode ?? promotedPost.roomState?.mmrRangeMode);
@@ -5175,7 +5245,7 @@ export function confirmRecruitingMatch(state, postId) {
         teamId: getLobbyEntryTeamId(entry),
         playerId: entry.playerId,
         players: entry.reserve && entry.status !== "ready" ? [] : entry.players,
-        reserves: (entry.reserves ?? []).filter((playerId) => readyReserveIds.has(playerId)),
+        reserves: (entry.reserves ?? []).filter((playerId) => confirmedReserveIds.has(playerId)),
         reserve: entry.reserve,
       }))
       .filter((entry) => entry.players.length || entry.reserves.length),
@@ -5188,6 +5258,7 @@ export function confirmRecruitingMatch(state, postId) {
       teamB: promotion.promotedIdsBySide.teamB,
     },
     agreements: { teamA: teamAPlayers, teamB: teamBPlayers },
+    attendance: { teamA: [], teamB: [] },
     approvals: { teamA: [], teamB: [] },
     disputes: [],
     result: null,

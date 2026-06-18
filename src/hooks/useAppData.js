@@ -8,6 +8,7 @@ import {
   blockUser,
   cancelMatch,
   cancelRecruitingParticipation,
+  checkInMatchPlayer,
   closeRecruitingPost,
   confirmRecruitingMatch,
   createMatch,
@@ -187,6 +188,7 @@ export function useAppData(authUserId = null) {
         setState((prev) => handoffMatchRecorder({ ...prev, currentUserId }, matchId, sideName, nextRecorderId));
       },
       approveMatch: (matchId, sideName, playerId) => setState((prev) => approveMatch({ ...prev, currentUserId }, matchId, sideName, playerId)),
+      checkInMatchPlayer: (matchId, sideName, playerId) => setState((prev) => checkInMatchPlayer({ ...prev, currentUserId }, matchId, sideName, playerId)),
       toggleMatchStar: (matchId, targetUserId) => setState((prev) => toggleMatchStar({ ...prev, currentUserId }, matchId, targetUserId)),
       submitMatchThumbs: (matchId, targetUserIds) => setState((prev) => submitMatchThumbs({ ...prev, currentUserId }, matchId, targetUserIds)),
       disputeMatch: (matchId, reason) => setState((prev) => disputeMatch({ ...prev, currentUserId }, matchId, reason)),

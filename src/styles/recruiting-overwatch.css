@@ -1980,7 +1980,7 @@ button.ow-room-player-slot {
 
 .ow-host-kick-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) repeat(3, auto);
   align-items: center;
   gap: 8px;
   border: 1px solid rgba(255, 255, 255, 0.09);
@@ -2003,7 +2003,8 @@ button.ow-room-player-slot {
 }
 
 .ow-host-kick-row strong,
-.ow-host-kick-row em {
+.ow-host-kick-row em,
+.ow-host-kick-row i {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2015,6 +2016,13 @@ button.ow-room-player-slot {
   font-size: 0.72rem;
   font-style: normal;
   font-weight: 850;
+}
+
+.ow-host-kick-row i {
+  color: var(--mint);
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 950;
 }
 
 .ow-invite-panel,
