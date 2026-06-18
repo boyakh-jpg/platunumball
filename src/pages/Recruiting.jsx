@@ -194,6 +194,7 @@ function getRoomSlotPositionAvatarSrc(user) {
 
 function RoomSlotAvatar({ user, mmr = 1200 }) {
   const [failed, setFailed] = useState(false);
+  const position = String(user?.position ?? "").trim().toUpperCase();
   const avatarSrc = getRoomSlotPositionAvatarSrc(user);
   const initial = user?.name?.slice(0, 1) ?? "?";
 
@@ -202,7 +203,7 @@ function RoomSlotAvatar({ user, mmr = 1200 }) {
   }
 
   return (
-    <span className="avatar ow-position-avatar" style={{ "--avatar": user?.avatarColor }}>
+    <span className="avatar ow-position-avatar" data-position={position} style={{ "--avatar": user?.avatarColor }}>
       <img
         className="ow-position-avatar-tier"
         src={getTierEmblemSrc(user?.ratings?.integrated ?? mmr)}
