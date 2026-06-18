@@ -265,6 +265,28 @@ export const ROOM_PHASE_META = {
   void: { phase: "void", label: "무효", listLabel: "무효", tone: "neutral", actionLabel: "보기" },
 };
 
+export function cleanRoomTitle(title = "", fallback = "경기방") {
+  const cleaned = String(title || "")
+    .replace(/^FLOW\s*/i, "")
+    .trim();
+  return cleaned || fallback;
+}
+
+export function getRoomVisibilityLabel(room = {}, sourceRoom = null) {
+  if (room.tournamentId) return "대회방";
+  const visibility = room.visibility ?? sourceRoom?.visibility;
+  if (visibility) return visibility === "private" ? "비공개방" : "공개방";
+  return room.recruitingPostId ? "공개방" : "비공개방";
+}
+
+export function getRoomCompetitionLabel(room = {}) {
+  return room.ranked === false ? "친선전" : "정규전";
+}
+
+export function getRoomRefereeLabel(room = {}) {
+  return room.refereeId ? "심판 있음" : "심판 없음";
+}
+
 export function getMatchRoomPhase(match = {}, now = new Date()) {
   if (match.status === "cancelled") return ROOM_PHASE_META.cancelled;
   if (match.status === "void") return ROOM_PHASE_META.void;

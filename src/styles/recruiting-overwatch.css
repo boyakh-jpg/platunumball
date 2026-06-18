@@ -1863,6 +1863,38 @@ button.ow-room-player-slot {
   overflow-wrap: anywhere;
 }
 
+.ow-room-referee-line {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  border: 1px solid rgba(70, 224, 182, 0.14);
+  border-radius: 7px;
+  background: rgba(70, 224, 182, 0.06);
+  padding: 8px 9px;
+}
+
+.ow-room-referee-line > strong {
+  color: var(--gold);
+  font-size: 0.78rem;
+}
+
+.ow-room-referee-card {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+  color: var(--text);
+  font-weight: 900;
+}
+
+.ow-room-referee-card > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .ow-room-rule-panel .ow-details-memo {
   display: grid;
   gap: 5px;

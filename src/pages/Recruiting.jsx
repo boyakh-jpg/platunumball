@@ -45,7 +45,11 @@ import {
 } from "../lib/recruiting.js";
 import { findTeamByHashtag, findUserByHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import {
+  cleanRoomTitle,
   formatStatLine,
+  getRoomCompetitionLabel,
+  getRoomRefereeLabel,
+  getRoomVisibilityLabel,
   getMatchRoomPhase,
   getMatchSidePlayerIds,
   getPublicRoomMaxDateInput,
@@ -1567,12 +1571,10 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
         const canEndSourceMatch = Boolean(matchRoom && mine && sourceMatchPhase?.phase === "live" && !sourceMatch?.result && !sourceMatch?.endedAt && sourceMatchStarted);
         const canManageMatchCheckin = Boolean(matchRoom && mine && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.startedAt && !sourceMatch?.endedAt && !sourceMatch?.result);
         const canMoveMatchSides = Boolean(canManageMatchCheckin && selectedPost.hostJoinMode !== "team");
-        const roomTitle = selectedPost.ranked === false ? "친선전" : "정규전";
-        const roomVisibilityLabel = sourceMatch?.tournamentId
-          ? "대회방"
-          : selectedPost.visibility === "private"
-            ? "비공개방"
-            : "공개방";
+        const roomCompetitionLabel = getRoomCompetitionLabel(selectedPost);
+        const roomDisplayTitle = cleanRoomTitle(selectedPost.title, roomCompetitionLabel);
+        const roomVisibilityLabel = getRoomVisibilityLabel(sourceMatch ?? selectedPost, selectedPost);
+        const roomVisibilityTone = roomVisibilityLabel === "대회방" ? "gold" : roomVisibilityLabel === "비공개방" ? "blue" : "green";
         const sourceTeamSideCount = ["teamA", "teamB"].filter((sideName) => Boolean(sourceMatch?.[sideName]?.teamId)).length;
         const lobbyTeamEntryCount = (lobby.entries ?? []).filter((entry) => isPartyEntry(entry)).length;
         const teamMatchSideLocked = sourceTeamSideCount >= 2 || (selectedPost.hostJoinMode === "team" && lobbyTeamEntryCount > 0);
@@ -1581,6 +1583,8 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
           : lobbyTeamEntryCount > 0 || sourceTeamSideCount > 0
             ? "팀 파티 포함"
             : "개인 매칭";
+        const roomPhaseBadge = sourceMatch ? sourceMatchPhase : roomQueueStatus;
+        const referee = selectedPost.refereeId ? userById[selectedPost.refereeId] : null;
         const showCaptainBadge = selectedPost.visibility === "private";
         const activeSlotDraft = activeInviteDraft?.slotKey ? activeInviteDraft : null;
         const currentUserReserve = getEntryPlayerReserveState(myEntry, app.currentUser.id);
@@ -1733,20 +1737,17 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
               <div className="ow-lobby-arena">
                 <div className="ow-lobby-topline">
                   <div className="badge-row">
-                    <Badge tone={selectedPost.ranked === false ? "neutral" : "gold"}>{roomTitle}</Badge>
-                    <Badge tone={sourceMatch ? sourceMatchStatus.tone : roomQueueStatus.tone}>{sourceMatch ? sourceMatchStatus.label : roomQueueStatus.label}</Badge>
-                    <Badge tone={selectedPost.visibility === "private" ? "blue" : "green"}>{roomVisibilityLabel}</Badge>
+                    <Badge tone={roomPhaseBadge?.tone ?? "neutral"}>{roomPhaseBadge?.label ?? "대기방"}</Badge>
+                    <Badge tone="neutral">{selectedPost.mode}</Badge>
+                    <Badge tone={roomVisibilityTone}>{roomVisibilityLabel}</Badge>
                     <Badge tone="neutral">{roomMatchTypeLabel}</Badge>
-                    <Badge tone="green">사전등록</Badge>
-                  </div>
-                  <div>
-                    <span>{selectedPost.mode}</span>
+                    <Badge tone={selectedPost.ranked === false ? "neutral" : "gold"}>{roomCompetitionLabel}</Badge>
+                    <Badge tone={referee ? "blue" : "neutral"}>{getRoomRefereeLabel(selectedPost)}</Badge>
                   </div>
                 </div>
 
                 <div className="ow-lobby-title">
-                  <span>{roomVisibilityLabel} · {roomMatchTypeLabel}</span>
-                  <h2>{roomTitle}</h2>
+                  <h2>{roomDisplayTitle}</h2>
                   <p><MapPin size={16} />{selectedPost.court} · {getRecruitingSchedule(selectedPost)}</p>
                 </div>
 
@@ -1936,6 +1937,17 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                 <div className="ow-room-rule-summary detail">
                   <span>공격권: {selectedPost.rules?.attackRule ?? "득점 후 공격권 교대"}</span>
                   <span>파울: {selectedPost.rules?.foulRule ?? "파울 콜 즉시 중단, 공격권 유지"}</span>
+                </div>
+                <div className="ow-room-referee-line">
+                  <strong>심판</strong>
+                  {referee ? (
+                    <PlayerHoverCard user={referee} teams={app.state.teams} as="span" className="ow-room-referee-card">
+                      <span className="avatar small" style={{ "--avatar": referee.avatarColor }}>{referee.name.slice(0, 1)}</span>
+                      <span>{referee.name}</span>
+                    </PlayerHoverCard>
+                  ) : (
+                    <span>없음</span>
+                  )}
                 </div>
                 {selectedPost.stakes ? (
                   <div className="ow-details-memo">
@@ -2523,7 +2535,7 @@ export default function Recruiting({ app }) {
                   {targetTeam ? <span className="ow-position-pill">희망 상대 <TeamHoverCard team={targetTeam} as="span">{targetTeam.name}</TeamHoverCard></span> : null}
                   {isNationalRecruitingPost(post, app.state) ? <span className="ow-position-pill">전국 노출</span> : null}
                 </div>
-                <h3>{post.title}</h3>
+                <h3>{cleanRoomTitle(post.title, post.ranked === false ? "친선전" : "정규전")}</h3>
                 <div className="ow-card-meta">
                   <MapPin size={15} />
                   <span>

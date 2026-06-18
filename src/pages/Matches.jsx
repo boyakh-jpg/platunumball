@@ -6,7 +6,15 @@ import Button from "../components/common/Button.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { MATCH_MODES } from "../lib/constants.js";
-import { getMatchReservePlayerIds, getMatchRoomPhase, isInstantRoom } from "../lib/matchUtils.js";
+import {
+  cleanRoomTitle,
+  getRoomCompetitionLabel,
+  getRoomRefereeLabel,
+  getRoomVisibilityLabel,
+  getMatchReservePlayerIds,
+  getMatchRoomPhase,
+  isInstantRoom,
+} from "../lib/matchUtils.js";
 import { getRecruitingLobby, getRecruitingRoomOwnerId, getRecruitingSideCapacity, isRecruitingPostForUser } from "../lib/recruiting.js";
 import { RecruitingRoomModal, getRecruitingRoomListStatus } from "./Recruiting.jsx";
 
@@ -181,7 +189,7 @@ function formatMatchTime(match) {
 
 function getMatchProcessMeta(match, now = new Date()) {
   const phase = getMatchRoomPhase(match, now);
-  return { ...phase, label: phase.listLabel ?? phase.label };
+  return { ...phase, label: phase.label };
 }
 
 function shouldShowScoreBox(match) {
@@ -203,6 +211,15 @@ function formatMatchRules(match) {
     match.rules?.ball ?? "",
   ].filter(Boolean);
   return rules.join(" · ") || "룰 미정";
+}
+
+function getRoomTypeLabel(room = {}, lobby = null) {
+  const matchTeamCount = ["teamA", "teamB"].filter((sideName) => Boolean(room[sideName]?.teamId)).length;
+  const matchPartyCount = (room.parties ?? []).filter((party) => party.teamId).length;
+  const lobbyTeamCount = lobby?.entries?.filter((entry) => entry.kind === "team").length ?? 0;
+  if (matchTeamCount >= 2 || lobbyTeamCount >= 2) return "팀전";
+  if (matchTeamCount > 0 || matchPartyCount > 0 || lobbyTeamCount > 0 || room.hostJoinMode === "team") return "팀 파티 포함";
+  return "개인 매칭";
 }
 
 function getWinner(match) {
@@ -437,6 +454,8 @@ function getMatchRoomPost(match, state) {
       ranked: match.ranked ?? sourcePost.ranked,
       official: match.official ?? sourcePost.official,
       preRegistered: match.preRegistered ?? sourcePost.preRegistered,
+      refereeId: match.refereeId ?? sourcePost.refereeId ?? "",
+      refereeTrustMin: match.refereeTrustMin ?? sourcePost.refereeTrustMin,
       sideCapacity,
       hostJoinMode,
       hostReady: getSideAgreementReady(match, "teamA"),
@@ -468,6 +487,8 @@ function getMatchRoomPost(match, state) {
     ranked: match.ranked !== false,
     official: Boolean(match.official),
     preRegistered: Boolean(match.preRegistered),
+    refereeId: match.refereeId ?? "",
+    refereeTrustMin: match.refereeTrustMin,
     hostSide: "teamA",
     hostJoinMode,
     hostReady: getSideAgreementReady(match, "teamA"),
@@ -995,16 +1016,19 @@ export default function Matches({ app }) {
             const roomStatus = getRecruitingRoomListStatus(lobby, { post, myEntry, mine });
             const filled = lobby.sides.teamA.projectedFilled + lobby.sides.teamB.projectedFilled;
             const capacity = getRecruitingSideCapacity(post) * 2;
+            const roomTitle = cleanRoomTitle(post.title, post.ranked === false ? "친선전" : "정규전");
             return (
               <article key={`room-${post.id}`} className="om-match-card om-status-contract">
                 <div className="om-card-main">
                   <div className="om-card-kicker">
                     <span className={`om-status-pill ${roomStatus.tone}`}>{roomStatus.label}</span>
                     <span className="om-card-mode">{post.mode}</span>
-                    <span className="om-card-official">{post.visibility === "private" ? "비공개방" : "공개방"}</span>
-                    <span className="om-card-official">{post.ranked === false ? "친선" : "정규"}</span>
+                    <span className="om-card-official">{getRoomVisibilityLabel(post)}</span>
+                    <span className="om-card-official">{getRoomTypeLabel(post, lobby)}</span>
+                    <span className="om-card-official">{getRoomCompetitionLabel(post)}</span>
+                    <span className="om-card-official">{getRoomRefereeLabel(post)}</span>
                   </div>
-                  <h3>{post.title}</h3>
+                  <h3>{roomTitle}</h3>
                   <p><CalendarDays size={15} />{formatMatchTime(post)} · {post.court}</p>
                 </div>
                 <div className="om-score-box">
@@ -1025,7 +1049,9 @@ export default function Matches({ app }) {
           const scoreA = match.teamA.score ?? match.result?.scoreA ?? 0;
           const scoreB = match.teamB.score ?? match.result?.scoreB ?? 0;
           const winner = getWinner(match);
-          const visibilityLabel = match.tournamentId ? "대회방" : match.recruitingPostId ? "공개 확정" : "비공개방";
+          const sourcePost = match.recruitingPostId ? app.state.recruitingPosts.find((post) => post.id === match.recruitingPostId) : null;
+          const visibilityLabel = getRoomVisibilityLabel(match, sourcePost);
+          const matchTitle = cleanRoomTitle(match.title, getRoomCompetitionLabel(match));
 
           return (
             <article key={`match-${match.id}`} className={`om-match-card om-status-${match.status}`}>
@@ -1034,9 +1060,11 @@ export default function Matches({ app }) {
                   <span className={`om-status-pill ${status.tone}`}>{status.label}</span>
                   <span className="om-card-mode">{match.mode}</span>
                   <span className="om-card-official">{visibilityLabel}</span>
-                  <span className="om-card-official">{match.official ? "공식" : "일반"}</span>
+                  <span className="om-card-official">{getRoomTypeLabel(match)}</span>
+                  <span className="om-card-official">{getRoomCompetitionLabel(match)}</span>
+                  <span className="om-card-official">{getRoomRefereeLabel(match)}</span>
                 </div>
-                <h3>{match.title}</h3>
+                <h3>{matchTitle}</h3>
                 <p><CalendarDays size={15} />{formatMatchTime(match)} · {match.court}</p>
               </div>
               {showScoreBox ? (
