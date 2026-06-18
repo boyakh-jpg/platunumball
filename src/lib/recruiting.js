@@ -124,8 +124,7 @@ function getTeamPlayerIds(team = {}) {
 
 export function getSelectedTeamPlayerIds(team = {}, capacity = Infinity, playerIds) {
   const selectableIds = getSelectableTeamPlayerIds(team);
-  if (!Array.isArray(playerIds)) return selectableIds.slice(0, capacity);
-  if (!playerIds.length) return [];
+  if (!Array.isArray(playerIds) || !playerIds.length) return selectableIds.slice(0, capacity);
   const teamPlayerSet = new Set(getTeamPlayerIds(team));
   return unique(playerIds).filter((playerId) => teamPlayerSet.has(playerId)).slice(0, capacity);
 }
