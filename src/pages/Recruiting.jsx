@@ -157,7 +157,7 @@ function getReadyTitle(entry) {
   return entry.user?.name ?? "플레이어";
 }
 
-export function getLobbySideMeta(lobby, sideName, userById) {
+export function getLobbySideMeta(lobby, sideName, userById, { useSideName = false } = {}) {
   const side = lobby.sides[sideName];
   const teamEntry = side.entries.find((entry) => isPartyEntry(entry) && entry.team);
   const leadEntry = teamEntry ?? side.entries[0] ?? null;
@@ -169,8 +169,8 @@ export function getLobbySideMeta(lobby, sideName, userById) {
     : 0;
 
   return {
-    name: leadEntry?.team?.name ?? leadEntry?.user?.name ?? SIDE_LABELS[sideName],
-    mmr: leadEntry?.team?.mmr ?? avgMmr,
+    name: useSideName ? SIDE_LABELS[sideName] : leadEntry?.team?.name ?? leadEntry?.user?.name ?? SIDE_LABELS[sideName],
+    mmr: useSideName ? avgMmr : leadEntry?.team?.mmr ?? avgMmr,
     label: sideName === "teamA" ? "HOME TEAM" : "OPPONENT",
   };
 }
@@ -1451,8 +1451,9 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
         const activeSelfSlotDraft = slotActionDraft?.postId === selectedPost.id ? slotActionDraft : null;
         const favoritePlayerIds = app.state.settings?.favoritePlayerIds ?? [];
         const favoriteTeamIds = app.state.settings?.favoriteTeamIds ?? [];
-        const teamAMeta = getLobbySideMeta(lobby, "teamA", userById);
-        const teamBMeta = getLobbySideMeta(lobby, "teamB", userById);
+        const useSideNameHeader = selectedPost.visibility !== "private";
+        const teamAMeta = getLobbySideMeta(lobby, "teamA", userById, { useSideName: useSideNameHeader });
+        const teamBMeta = getLobbySideMeta(lobby, "teamB", userById, { useSideName: useSideNameHeader });
         const sourceMatchStatus = getSourceMatchStatus(sourceMatch, lobby, app.currentUser.id);
         const sourceMatchAction = getSourceMatchAction(sourceMatch, app.currentUser.id, app.state.teams, userById);
         const sourceMatchSideName = getSourceMatchDecisionSideName(sourceMatch, app.currentUser.id, app.state.teams);
