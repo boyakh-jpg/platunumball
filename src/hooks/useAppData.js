@@ -31,6 +31,7 @@ import {
   reportMatch,
   resetState,
   resumeMatchApproval,
+  removeMatchRoomPlayer,
   removeRecruitingPartyPlayer,
   runAutomaticStateMaintenance,
   saveRemoteState,
@@ -39,6 +40,7 @@ import {
   setRecruitingApplicantPlacement,
   setRecruitingApplicantReserve,
   setRecruitingSlotPosition,
+  setMatchRoomPlayerPlacement,
   setRecruitingPartyPlayerPlacement,
   setRecruitingPartyPlayerReserve,
   setRecruitingReady,
@@ -215,6 +217,8 @@ export function useAppData(authUserId = null) {
       setRecruitingReady: (postId, ready) => setState((prev) => setRecruitingReady({ ...prev, currentUserId }, postId, ready)),
       updateRecruitingRoomRules: (postId, patch) => setState((prev) => updateRecruitingRoomRules({ ...prev, currentUserId }, postId, patch)),
       updateMatchRoomRules: (matchId, patch) => setState((prev) => updateMatchRoomRules({ ...prev, currentUserId }, matchId, patch)),
+      setMatchRoomPlayerPlacement: (matchId, playerId, placement) => setState((prev) => setMatchRoomPlayerPlacement({ ...prev, currentUserId }, matchId, playerId, placement)),
+      removeMatchRoomPlayer: (matchId, playerId) => setState((prev) => removeMatchRoomPlayer({ ...prev, currentUserId }, matchId, playerId)),
       sendRecruitingChat: (postId, body) => setState((prev) => sendRecruitingChat({ ...prev, currentUserId }, postId, body)),
       setRecruitingApplicantReserve: (postId, playerId, reserve) => {
         setState((prev) => setRecruitingApplicantReserve({ ...prev, currentUserId }, postId, playerId, reserve));

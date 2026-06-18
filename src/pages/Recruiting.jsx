@@ -119,6 +119,7 @@ function getPartyPlayerIds(team, playerIds, capacity) {
 function getRoomEditDraft(post) {
   return {
     sideCapacity: getRecruitingSideCapacity(post),
+    matchJoinMode: post.hostJoinMode === "team" ? "team" : "player",
     mmrRangeMode: post.mmrRangeMode ?? post.roomState?.mmrRangeMode ?? "narrow",
     targetScore: post.rules?.targetScore ?? 21,
     timeLimit: post.rules?.timeLimit ?? 12,
@@ -249,7 +250,7 @@ function getRoomSlotBadge(playerId, entry, hostPlayerId, showCaptainBadge = fals
   if (!playerId) return null;
   if (playerId === hostPlayerId) return { tone: "host", label: "방장" };
   if (!showCaptainBadge) return null;
-  if (getTeamCaptainId(entry?.team) === playerId) return { tone: "captain", label: "주장" };
+  if (isPartyEntry(entry) && entry?.playerId === playerId) return { tone: "captain", label: "파티장" };
   return null;
 }
 
@@ -997,7 +998,7 @@ export function ReserveLine({
   );
 }
 
-function RoomKickPanel({ lobby, userById, teams, onKickApplicant, onRemovePartyPlayer }) {
+function RoomKickPanel({ lobby, userById, teams, onKickApplicant, onRemovePartyPlayer, onSetReserve, onSetPlacement, allowSideMove = false }) {
   const rows = [];
   (lobby.entries ?? []).forEach((entry) => {
     const partyEntry = isPartyEntry(entry);
@@ -1041,6 +1042,21 @@ function RoomKickPanel({ lobby, userById, teams, onKickApplicant, onRemovePartyP
             >
               강퇴
             </Button>
+            {onSetReserve ? (
+              <Button type="button" size="sm" variant="secondary" onClick={() => onSetReserve(entry, playerId, !reserve)}>
+                {reserve ? "출전" : "후보"}
+              </Button>
+            ) : null}
+            {allowSideMove && onSetPlacement ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={() => onSetPlacement(playerId, { side: entry.side === "teamA" ? "teamB" : "teamA", reserve })}
+              >
+                {entry.side === "teamA" ? "B" : "A"} 이동
+              </Button>
+            ) : null}
           </div>
         ))}
       </div>
@@ -1498,7 +1514,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
         const roomEditRange = roomEditDraft
           ? getRecruitingTierRange(getRecruitingTargetMmr(selectedPost, app.state), selectedPost.ranked !== false, roomEditDraft.mmrRangeMode)
           : null;
-        const maxSideFilled = Math.max(lobby.sides.teamA.projectedFilled, lobby.sides.teamB.projectedFilled);
+        const maxSideFilled = Math.max(lobby.sides.teamA.filled, lobby.sides.teamB.filled);
         const roomEditCapacityValid = !roomEditDraft || Number(roomEditDraft.sideCapacity) >= maxSideFilled;
         const playingIds = [...lobby.sides.teamA.projectedPlayers, ...lobby.sides.teamB.projectedPlayers];
         const partyJoinOptions = getSameSidePartyOptions(lobby, myEntry, myTeams);
@@ -1549,6 +1565,8 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
         const sourceMatchStarted = Boolean(sourceMatch?.startedAt);
         const canStartSourceMatch = Boolean(matchRoom && mine && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.result && !sourceMatch?.endedAt);
         const canEndSourceMatch = Boolean(matchRoom && mine && sourceMatchPhase?.phase === "live" && !sourceMatch?.result && !sourceMatch?.endedAt && sourceMatchStarted);
+        const canManageMatchCheckin = Boolean(matchRoom && mine && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.startedAt && !sourceMatch?.endedAt && !sourceMatch?.result);
+        const canMoveMatchSides = Boolean(canManageMatchCheckin && selectedPost.hostJoinMode !== "team");
         const roomTitle = selectedPost.ranked === false ? "친선전" : "정규전";
         const roomVisibilityLabel = sourceMatch?.tournamentId
           ? "대회방"
@@ -1883,13 +1901,20 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                 onDecline={(invitationId) => app.actions.declineRecruitingInvitation(selectedPost.id, invitationId)}
               />
 
-              {mine && !matchRoom ? (
+              {mine && (!matchRoom || canManageMatchCheckin) ? (
                 <RoomKickPanel
                   lobby={lobby}
                   userById={userById}
                   teams={app.state.teams}
-                  onKickApplicant={(playerId) => app.actions.kickRecruitingApplicant(selectedPost.id, playerId)}
-                  onRemovePartyPlayer={(entryId, playerId) => app.actions.removeRecruitingPartyPlayer(selectedPost.id, entryId, playerId)}
+                  onKickApplicant={(playerId) => (
+                    matchRoom ? app.actions.removeMatchRoomPlayer(sourceMatch.id, playerId) : app.actions.kickRecruitingApplicant(selectedPost.id, playerId)
+                  )}
+                  onRemovePartyPlayer={(entryId, playerId) => (
+                    matchRoom ? app.actions.removeMatchRoomPlayer(sourceMatch.id, playerId) : app.actions.removeRecruitingPartyPlayer(selectedPost.id, entryId, playerId)
+                  )}
+                  onSetReserve={matchRoom ? ((entry, playerId, reserve) => app.actions.setMatchRoomPlayerPlacement(sourceMatch.id, playerId, { side: entry.side, reserve })) : null}
+                  onSetPlacement={matchRoom ? ((playerId, placement) => app.actions.setMatchRoomPlayerPlacement(sourceMatch.id, playerId, placement)) : null}
+                  allowSideMove={canMoveMatchSides}
                 />
               ) : null}
 
@@ -1941,6 +1966,15 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                         제한 시간
                         <input type="number" min="5" max="60" value={roomEditDraft.timeLimit} onChange={(event) => updateRoomEditDraft(selectedPost, { timeLimit: event.target.value })} />
                       </label>
+                      {matchRoom && sourceMatchPhase?.phase === "checkin" ? (
+                        <label>
+                          매치 방식
+                          <select value={roomEditDraft.matchJoinMode ?? selectedPost.hostJoinMode ?? "player"} onChange={(event) => updateRoomEditDraft(selectedPost, { matchJoinMode: event.target.value })}>
+                            <option value="team">팀전 유지</option>
+                            <option value="player">개인전 전환</option>
+                          </select>
+                        </label>
+                      ) : null}
                     </div>
                     <div className="ow-field-grid three">
                       <label>

@@ -3168,9 +3168,7 @@ export function createRecruitingPost(state, draft) {
   const opponentReservePlayerIds = opponentTeam
     ? getSelectedReservePlayerIds(opponentTeam, orderedOpponentPlayerIds, draft.opponentReservePlayerIds).filter((playerId) => !hostSidePlayerIds.has(playerId))
     : [];
-  const hostPlayerId = hostJoinMode === "team" && hostPlayerIds.length && !hostPlayerIds.includes(state.currentUserId)
-    ? hostPlayerIds[0]
-    : state.currentUserId;
+  const hostPlayerId = state.currentUserId;
   if (hostJoinMode === "team" && !hostPlayerIds.length) {
     return {
       ...state,
@@ -3599,8 +3597,28 @@ export function updateMatchRoomRules(state, matchId, patch = {}) {
   if (!match || !["contract", "agreed"].includes(match.status) || match.result || match.endedAt) return state;
   const hostPlayerId = getMatchHostPlayerId(state, match);
   if (hostPlayerId && hostPlayerId !== state.currentUserId) return state;
+  const sideCapacity = Math.max(1, Math.min(5, Number(patch.sideCapacity ?? getRecruitingSideCapacity(match))));
+  const teamAActiveCount = uniquePlayerIds(match.teamA?.players ?? []).length;
+  const teamBActiveCount = uniquePlayerIds(match.teamB?.players ?? []).length;
+  if (teamAActiveCount > sideCapacity || teamBActiveCount > sideCapacity) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "정원 변경 불가",
+          body: "현재 출전 인원이 새 정원보다 많습니다. 먼저 미출석 인원을 후보로 내리거나 강퇴하세요.",
+          tone: "orange",
+          matchId,
+        },
+        ...state.notifications,
+      ],
+    };
+  }
+  const convertToPlayerMatch = patch.matchJoinMode === "player";
   const nextRules = {
     ...(match.rules ?? {}),
+    sideCapacity,
     targetScore: Math.max(7, Math.min(31, Number(patch.targetScore ?? match.rules?.targetScore ?? 21))),
     timeLimit: Math.max(5, Math.min(60, Number(patch.timeLimit ?? match.rules?.timeLimit ?? 12))),
     winByTwo: Boolean(patch.winByTwo ?? match.rules?.winByTwo ?? true),
@@ -3611,10 +3629,23 @@ export function updateMatchRoomRules(state, matchId, patch = {}) {
   delete nextRules.startedAt;
   const nextMatch = {
     ...match,
+    mode: `${sideCapacity}v${sideCapacity}`,
     status: "agreed",
     rules: nextRules,
+    sideCapacity,
     memo: patch.memo === undefined ? match.memo : String(patch.memo ?? "").slice(0, 500),
     stakes: patch.stakes === undefined ? match.stakes : String(patch.stakes ?? "").slice(0, 500),
+    teamA: {
+      ...(match.teamA ?? {}),
+      teamId: convertToPlayerMatch ? null : match.teamA?.teamId ?? null,
+      playerTeams: convertToPlayerMatch ? {} : match.teamA?.playerTeams ?? {},
+    },
+    teamB: {
+      ...(match.teamB ?? {}),
+      teamId: convertToPlayerMatch ? null : match.teamB?.teamId ?? null,
+      playerTeams: convertToPlayerMatch ? {} : match.teamB?.playerTeams ?? {},
+    },
+    parties: convertToPlayerMatch ? [] : match.parties ?? [],
     agreements: { teamA: [], teamB: [] },
     agreedAt: null,
     startedAt: null,
@@ -3627,6 +3658,142 @@ export function updateMatchRoomRules(state, matchId, patch = {}) {
         id: makeId("n"),
         title: "경기 룰 변경",
         body: `${match.title} 룰이 바뀌어 재확인이 필요합니다.`,
+        tone: "match",
+        matchId,
+      },
+      ...state.notifications,
+    ],
+  };
+}
+
+function canEditMatchPreparation(state, match) {
+  if (!match || !["contract", "agreed"].includes(match.status) || match.result || match.endedAt || match.startedAt) return false;
+  const hostPlayerId = getMatchHostPlayerId(state, match);
+  return !hostPlayerId || hostPlayerId === state.currentUserId;
+}
+
+function getMatchPlayerPlacement(match = {}, playerId = "") {
+  for (const sideName of ["teamA", "teamB"]) {
+    if ((match[sideName]?.players ?? []).includes(playerId)) return { side: sideName, reserve: false };
+    if (getMatchReservePlayerIds(match, sideName).includes(playerId)) return { side: sideName, reserve: true };
+  }
+  return null;
+}
+
+function updateMatchPartiesForPlayer(match = {}, playerId = "", sideName = "", reserve = false, remove = false) {
+  return (match.parties ?? [])
+    .map((party) => {
+      const hadPlayer = (party.players ?? []).includes(playerId) || (party.reserves ?? []).includes(playerId);
+      const nextPlayers = uniquePlayerIds(party.players ?? []).filter((id) => id !== playerId);
+      const nextReserves = uniquePlayerIds(party.reserves ?? []).filter((id) => id !== playerId);
+      if (!remove && hadPlayer && party.side === sideName) {
+        if (reserve) nextReserves.push(playerId);
+        else nextPlayers.push(playerId);
+      }
+      return {
+        ...party,
+        players: uniquePlayerIds(nextPlayers),
+        reserves: uniquePlayerIds(nextReserves),
+        reserve: party.reserve && !nextPlayers.length,
+      };
+    })
+    .filter((party) => (party.players ?? []).length || (party.reserves ?? []).length);
+}
+
+function clearMatchPlayerDecision(nextMatch, playerId) {
+  return {
+    ...nextMatch,
+    agreements: {
+      teamA: (nextMatch.agreements?.teamA ?? []).filter((id) => id !== playerId),
+      teamB: (nextMatch.agreements?.teamB ?? []).filter((id) => id !== playerId),
+    },
+    approvals: {
+      teamA: (nextMatch.approvals?.teamA ?? []).filter((id) => id !== playerId),
+      teamB: (nextMatch.approvals?.teamB ?? []).filter((id) => id !== playerId),
+    },
+  };
+}
+
+export function setMatchRoomPlayerPlacement(state, matchId, playerId, placement = {}) {
+  const match = state.matches.find((item) => item.id === matchId);
+  if (!canEditMatchPreparation(state, match) || !playerId) return state;
+  const currentPlacement = getMatchPlayerPlacement(match, playerId);
+  if (!currentPlacement) return state;
+  const targetSide = ["teamA", "teamB"].includes(placement.side) ? placement.side : currentPlacement.side;
+  const targetReserve = Boolean(placement.reserve);
+  const sideCapacity = getRecruitingSideCapacity(match);
+  const teamMatchLocked = Boolean(match.teamA?.teamId || match.teamB?.teamId || (match.parties ?? []).some((party) => party.teamId));
+  if (teamMatchLocked && targetSide !== currentPlacement.side) return state;
+
+  const baseTeamAPlayers = uniquePlayerIds(match.teamA?.players ?? []).filter((id) => id !== playerId);
+  const baseTeamBPlayers = uniquePlayerIds(match.teamB?.players ?? []).filter((id) => id !== playerId);
+  const nextReservePlayers = {
+    teamA: getMatchReservePlayerIds(match, "teamA").filter((id) => id !== playerId),
+    teamB: getMatchReservePlayerIds(match, "teamB").filter((id) => id !== playerId),
+  };
+  const nextTeamAPlayers = targetSide === "teamA" && !targetReserve ? uniquePlayerIds([...baseTeamAPlayers, playerId]) : baseTeamAPlayers;
+  const nextTeamBPlayers = targetSide === "teamB" && !targetReserve ? uniquePlayerIds([...baseTeamBPlayers, playerId]) : baseTeamBPlayers;
+  if (targetReserve) nextReservePlayers[targetSide] = uniquePlayerIds([...nextReservePlayers[targetSide], playerId]);
+  if (nextTeamAPlayers.length > sideCapacity || nextTeamBPlayers.length > sideCapacity) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "출전 이동 불가",
+          body: "해당 사이드 출전 슬롯이 가득 찼습니다.",
+          tone: "orange",
+          matchId,
+        },
+        ...state.notifications,
+      ],
+    };
+  }
+
+  const nextMatch = clearMatchPlayerDecision({
+    ...match,
+    status: "agreed",
+    teamA: { ...(match.teamA ?? {}), players: nextTeamAPlayers },
+    teamB: { ...(match.teamB ?? {}), players: nextTeamBPlayers },
+    reservePlayers: nextReservePlayers,
+    parties: updateMatchPartiesForPlayer(match, playerId, targetSide, targetReserve),
+    agreedAt: null,
+  }, playerId);
+
+  return {
+    ...state,
+    matches: state.matches.map((item) => (item.id === matchId ? nextMatch : item)),
+  };
+}
+
+export function removeMatchRoomPlayer(state, matchId, playerId) {
+  const match = state.matches.find((item) => item.id === matchId);
+  if (!canEditMatchPreparation(state, match) || !playerId || playerId === state.currentUserId) return state;
+  const placement = getMatchPlayerPlacement(match, playerId);
+  if (!placement) return state;
+
+  const nextReservePlayers = {
+    teamA: getMatchReservePlayerIds(match, "teamA").filter((id) => id !== playerId),
+    teamB: getMatchReservePlayerIds(match, "teamB").filter((id) => id !== playerId),
+  };
+  const nextMatch = clearMatchPlayerDecision({
+    ...match,
+    status: "agreed",
+    teamA: { ...(match.teamA ?? {}), players: uniquePlayerIds(match.teamA?.players ?? []).filter((id) => id !== playerId) },
+    teamB: { ...(match.teamB ?? {}), players: uniquePlayerIds(match.teamB?.players ?? []).filter((id) => id !== playerId) },
+    reservePlayers: nextReservePlayers,
+    parties: updateMatchPartiesForPlayer(match, playerId, placement.side, placement.reserve, true),
+    agreedAt: null,
+  }, playerId);
+
+  return {
+    ...state,
+    matches: state.matches.map((item) => (item.id === matchId ? nextMatch : item)),
+    notifications: [
+      {
+        id: makeId("n"),
+        title: "미출석 인원 강퇴",
+        body: "경기준비방에서 미출석 인원을 정리했습니다.",
         tone: "match",
         matchId,
       },

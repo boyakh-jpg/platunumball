@@ -337,35 +337,6 @@ function getMatchRoomPost(match, state) {
     : null;
   const hostPlayerId = getMatchHostPlayerId(match, state);
   const sideCapacity = getRoomCapacity(match);
-  const baseRoomState = {
-    ...(sourcePost?.roomState ?? {}),
-    ruleRevision: sourcePost?.roomState?.ruleRevision ?? 1,
-  };
-
-  if (sourcePost) {
-    return {
-      ...sourcePost,
-      status: "open",
-      title: match.title ?? sourcePost.title,
-      mode: match.mode ?? sourcePost.mode,
-      court: match.court ?? sourcePost.court,
-      scheduledDate: match.scheduledDate ?? sourcePost.scheduledDate,
-      scheduledTime: match.scheduledTime ?? sourcePost.scheduledTime,
-      scheduledAt: match.scheduledAt ?? sourcePost.scheduledAt,
-      timingType: match.timingType ?? sourcePost.timingType ?? match.rules?.timingType ?? sourcePost.roomState?.timingType ?? "scheduled",
-      ranked: match.ranked ?? sourcePost.ranked,
-      official: match.official ?? sourcePost.official,
-      preRegistered: match.preRegistered ?? sourcePost.preRegistered,
-      sideCapacity,
-      rules: { ...(sourcePost.rules ?? {}), ...(match.rules ?? {}) },
-      memo: match.memo ?? sourcePost.memo,
-      stakes: match.stakes ?? sourcePost.stakes,
-      visibility: sourcePost.visibility ?? "public",
-      ownerId: hostPlayerId,
-      roomState: { ...baseRoomState, ownerId: hostPlayerId },
-    };
-  }
-
   const teamAPlayers = uniquePlayerIds(match.teamA?.players ?? []);
   const teamBPlayers = uniquePlayerIds(match.teamB?.players ?? []);
   const teamAReserves = uniquePlayerIds(getMatchReservePlayerIds(match, "teamA"));
@@ -444,6 +415,42 @@ function getMatchRoomPost(match, state) {
         updatedAt: match.createdAt,
       });
     });
+  }
+
+  const baseRoomState = {
+    ...(sourcePost?.roomState ?? {}),
+    ruleRevision: sourcePost?.roomState?.ruleRevision ?? 1,
+    partyReserves,
+  };
+
+  if (sourcePost) {
+    return {
+      ...sourcePost,
+      status: "open",
+      title: match.title ?? sourcePost.title,
+      mode: match.mode ?? sourcePost.mode,
+      court: match.court ?? sourcePost.court,
+      scheduledDate: match.scheduledDate ?? sourcePost.scheduledDate,
+      scheduledTime: match.scheduledTime ?? sourcePost.scheduledTime,
+      scheduledAt: match.scheduledAt ?? sourcePost.scheduledAt,
+      timingType: match.timingType ?? sourcePost.timingType ?? match.rules?.timingType ?? sourcePost.roomState?.timingType ?? "scheduled",
+      ranked: match.ranked ?? sourcePost.ranked,
+      official: match.official ?? sourcePost.official,
+      preRegistered: match.preRegistered ?? sourcePost.preRegistered,
+      sideCapacity,
+      hostJoinMode,
+      hostReady: getSideAgreementReady(match, "teamA"),
+      teamId: match.teamA?.teamId ?? null,
+      playerId: hostPlayerId,
+      playerIds: hostJoinMode === "team" ? teamAPlayers : [hostPlayerId].filter(Boolean),
+      applicants,
+      rules: { ...(sourcePost.rules ?? {}), ...(match.rules ?? {}) },
+      memo: match.memo ?? sourcePost.memo,
+      stakes: match.stakes ?? sourcePost.stakes,
+      visibility: sourcePost.visibility ?? "public",
+      ownerId: hostPlayerId,
+      roomState: { ...baseRoomState, ownerId: hostPlayerId },
+    };
   }
 
   return {
