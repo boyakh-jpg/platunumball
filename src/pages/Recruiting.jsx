@@ -443,7 +443,7 @@ function TeamMemberPicker({ team, userById, selectedIds, capacity, onChange }) {
   );
 }
 
-function QueueRoomBoard({ lobby, userById, teams }) {
+function QueueRoomBoard({ post, lobby, userById, teams }) {
   const entries = lobby.entries ?? [];
   const entryById = Object.fromEntries(entries.map((entry) => [entry.id, entry]));
   const activeRows = entries.filter((entry) => !entry.reserve).map((entry) => {
@@ -1425,7 +1425,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
         const roomQueueStatus = getRecruitingRoomStatus(lobby, { post: selectedPost, myEntry, mine });
         const roomReadyLabel = sourceMatch ? sourceMatchStatus.label : roomQueueStatus.label;
         const sourceMatchPhase = sourceMatch ? getMatchRoomPhase(sourceMatch) : null;
-        const sourceMatchStarted = Boolean(sourceMatch?.startedAt ?? sourceMatch?.rules?.startedAt);
+        const sourceMatchStarted = Boolean(sourceMatch?.startedAt);
         const canStartSourceMatch = Boolean(matchRoom && mine && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.result && !sourceMatch?.endedAt);
         const canEndSourceMatch = Boolean(matchRoom && mine && sourceMatchPhase?.phase === "live" && !sourceMatch?.result && !sourceMatch?.endedAt && sourceMatchStarted);
         const roomTitle = selectedPost.ranked === false ? "친선전" : "정규전";
@@ -2360,7 +2360,7 @@ export default function Recruiting({ app }) {
                     {hostTeam ? <TeamHoverCard team={hostTeam} as="span">{hostTeam.name}</TeamHoverCard> : host?.name ?? "방장"}
                   </span>
                 </div>
-                <QueueRoomBoard lobby={lobby} userById={userById} teams={app.state.teams} />
+                <QueueRoomBoard post={post} lobby={lobby} userById={userById} teams={app.state.teams} />
                 <div className="ow-card-bottom">
                   <span>{getRecruitingSchedule(post)}</span>
                   <span className="ow-tier-chip">{post.ranked === false ? "티어 자유" : range.label}</span>

@@ -155,7 +155,7 @@ export function isMatchStatRecorder(match = {}, userId, sideName = null) {
 }
 
 export function getMatchStartDate(match = {}) {
-  const actualStart = match.startedAt ?? match.rules?.startedAt;
+  const actualStart = match.startedAt;
   if (actualStart) {
     const started = new Date(actualStart);
     if (Number.isFinite(started.getTime())) return started;

@@ -101,7 +101,10 @@ export function getRecruitingApplicantKind(post = {}) {
 }
 
 export function getRecruitingSideCapacity(post = {}) {
-  return Math.max(1, Number(post.sideCapacity ?? MODE_SIZES[post.mode] ?? 5));
+  const modeCapacity = MODE_SIZES[post.mode] ?? 5;
+  const rawCapacity = Number(post.sideCapacity ?? modeCapacity);
+  const safeCapacity = Number.isFinite(rawCapacity) ? rawCapacity : modeCapacity;
+  return Math.max(1, Math.min(5, modeCapacity, safeCapacity));
 }
 
 export function getRecruitingJoinMode(entry = {}) {
@@ -121,7 +124,7 @@ function getTeamPlayerIds(team = {}) {
 
 export function getSelectedTeamPlayerIds(team = {}, capacity = Infinity, playerIds) {
   const selectableIds = getSelectableTeamPlayerIds(team);
-  if (!Array.isArray(playerIds)) return selectableIds.slice(0, capacity);
+  if (!Array.isArray(playerIds) || !playerIds.length) return selectableIds.slice(0, capacity);
   const teamPlayerSet = new Set(getTeamPlayerIds(team));
   return unique(playerIds).filter((playerId) => teamPlayerSet.has(playerId)).slice(0, capacity);
 }

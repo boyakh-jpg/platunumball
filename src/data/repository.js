@@ -67,13 +67,15 @@ const DEFAULT_SETTINGS = {
 const REMOTE_PAGE_SIZE = 1000;
 const REMOTE_WRITE_CHUNK_SIZE = 500;
 const QUEUE_SCHEDULE_START_DATE = "2026-06-15";
-const QUEUE_SCHEDULE_TIMES = ["18:00", "19:30", "21:00"];
+const QUEUE_SCHEDULE_TIMES = ["10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00", "21:00"];
 const POST_MATCH_STATUSES = new Set(["approval", "disputed"]);
 const RECORDABLE_RESERVE_SOURCES = new Set(["reserve-entry", "team-reserve"]);
 const MAX_RECRUITING_RESERVES_PER_SIDE = 2;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const SCHEDULE_MAX_DAYS = 365;
 const ROOM_SCHEDULE_MAX_DAYS = 30;
+const PUBLIC_ROOM_SCHEDULE_MAX_DAYS = 5;
+const PUBLIC_ROOM_MIN_LEAD_HOURS = 4;
 const LIFECYCLE_TITLE_PATTERN = /^(동의 대기|진행 예정|결과 승인|이의 확인|이의제기|확정|결과 입력)\s*·\s*/;
 const POST_MATCH_TITLE_PATTERN = /^(결과 승인|이의 확인|이의제기|확정|결과 입력)\s*·\s*/;
 const SIDE_LABEL_TEXT = { teamA: "A사이드", teamB: "B사이드" };
@@ -229,14 +231,23 @@ function getInvalidPublicScheduleNotification(detail = "공개 예약방은 5일
   };
 }
 
-function getQueueSlot(slotIndex) {
-  const date = addDateDays(QUEUE_SCHEDULE_START_DATE, Math.floor(slotIndex / QUEUE_SCHEDULE_TIMES.length));
+function getQueueScheduleStartDate(now = new Date()) {
+  return [QUEUE_SCHEDULE_START_DATE, getLocalDateValue(now)].sort().at(-1);
+}
+
+function getQueueSlot(slotIndex, startDate = getQueueScheduleStartDate()) {
+  const date = addDateDays(startDate, Math.floor(slotIndex / QUEUE_SCHEDULE_TIMES.length));
   const time = QUEUE_SCHEDULE_TIMES[slotIndex % QUEUE_SCHEDULE_TIMES.length];
   return {
     scheduledDate: date,
     scheduledTime: time,
     scheduledAt: `${date} ${time}`,
   };
+}
+
+function isQueueSlotAllowed(slot, now = new Date()) {
+  const date = new Date(`${slot.scheduledDate}T${slot.scheduledTime}`);
+  return Number.isFinite(date.getTime()) && date.getTime() > now.getTime() + PUBLIC_ROOM_MIN_LEAD_HOURS * 3600000;
 }
 
 function getDatePart(value) {
@@ -247,9 +258,13 @@ function getTimePart(value) {
   return String(value ?? "").match(/\d{2}:\d{2}/)?.[0] ?? "";
 }
 
-function needsQueueSchedule(post = {}) {
+function needsQueueSchedule(post = {}, startDate = getQueueScheduleStartDate()) {
   const date = getDatePart(post.scheduledDate || post.scheduledAt);
   const time = getTimePart(post.scheduledTime || post.scheduledAt);
+  const maxDate = addDateDays(startDate, PUBLIC_ROOM_SCHEDULE_MAX_DAYS);
+  if (isInstantRoom(post)) return false;
+  if (!date || !time || date < startDate || date > maxDate) return true;
+  if (!isQueueSlotAllowed({ scheduledDate: date, scheduledTime: time })) return true;
   return !date || !time || date < QUEUE_SCHEDULE_START_DATE || post.scheduledAt === "일정 미정";
 }
 
@@ -266,23 +281,24 @@ function isValidQueueScheduleKey(value = "") {
 }
 
 function normalizeRecruitingSchedules(posts = []) {
+  const startDate = getQueueScheduleStartDate();
   const scheduleById = new Map();
   const used = new Set(
     posts
-      .filter((post) => !needsQueueSchedule(post))
+      .filter((post) => post.status !== "closed" && !needsQueueSchedule(post, startDate))
       .map(getQueueScheduleKey)
       .filter(isValidQueueScheduleKey),
   );
   let slotIndex = 0;
 
   posts
-    .filter((post) => needsQueueSchedule(post))
+    .filter((post) => post.status !== "closed" && needsQueueSchedule(post, startDate))
     .sort((a, b) => getQueueSortKey(a).localeCompare(getQueueSortKey(b)))
     .forEach((post) => {
-      let slot = getQueueSlot(slotIndex);
-      while (used.has(slot.scheduledAt)) {
+      let slot = getQueueSlot(slotIndex, startDate);
+      while (used.has(slot.scheduledAt) || !isQueueSlotAllowed(slot)) {
         slotIndex += 1;
-        slot = getQueueSlot(slotIndex);
+        slot = getQueueSlot(slotIndex, startDate);
       }
       scheduleById.set(post.id, slot);
       used.add(slot.scheduledAt);
@@ -293,17 +309,18 @@ function normalizeRecruitingSchedules(posts = []) {
 }
 
 function getNextQueueSchedule(posts = []) {
+  const startDate = getQueueScheduleStartDate();
   const used = new Set(
     posts
       .filter((post) => post.status !== "closed")
       .map(getQueueScheduleKey)
       .filter(isValidQueueScheduleKey),
   );
-  for (let index = 0; index < 365 * QUEUE_SCHEDULE_TIMES.length; index += 1) {
-    const slot = getQueueSlot(index);
-    if (!used.has(slot.scheduledAt)) return slot;
+  for (let index = 0; index < (PUBLIC_ROOM_SCHEDULE_MAX_DAYS + 1) * QUEUE_SCHEDULE_TIMES.length; index += 1) {
+    const slot = getQueueSlot(index, startDate);
+    if (!used.has(slot.scheduledAt) && isQueueSlotAllowed(slot)) return slot;
   }
-  return getQueueSlot(posts.length);
+  return getQueueSlot(posts.length, startDate);
 }
 
 function getScheduledStartMs(match = {}) {
@@ -344,6 +361,8 @@ function repairLifecycleTitle(match) {
 
 function resetFuturePostMatchState(match) {
   const repaired = { ...match, status: "agreed" };
+  const nextRules = { ...(match.rules ?? {}) };
+  delete nextRules.startedAt;
   return {
     ...repaired,
     status: "agreed",
@@ -353,11 +372,21 @@ function resetFuturePostMatchState(match) {
     result: null,
     ratingResult: null,
     teamRatingResult: null,
+    startedAt: null,
     endedAt: null,
     confirmedAt: null,
+    rules: nextRules,
     teamA: { ...(match.teamA ?? {}), score: 0 },
     teamB: { ...(match.teamB ?? {}), score: 0 },
   };
+}
+
+function clearFuturePregameStartState(match) {
+  if (!["contract", "agreed"].includes(match.status) || !isFutureScheduledMatch(match)) return match;
+  if (!match.startedAt && !match.rules?.startedAt) return match;
+  const nextRules = { ...(match.rules ?? {}) };
+  delete nextRules.startedAt;
+  return { ...match, startedAt: null, rules: nextRules };
 }
 
 function repairFuturePregameTitle(match) {
@@ -398,14 +427,16 @@ function normalizeMatch(match) {
     },
   };
 
-  if (isFutureScheduledMatch(normalized)) {
-    if (POST_MATCH_STATUSES.has(normalized.status)) {
-      return resetFuturePostMatchState(normalized);
+  const pregameStartRepaired = clearFuturePregameStartState(normalized);
+
+  if (isFutureScheduledMatch(pregameStartRepaired)) {
+    if (POST_MATCH_STATUSES.has(pregameStartRepaired.status)) {
+      return resetFuturePostMatchState(pregameStartRepaired);
     }
-    return repairFuturePregameTitle(repairLifecycleTitle(normalized));
+    return repairFuturePregameTitle(repairLifecycleTitle(pregameStartRepaired));
   }
 
-  return repairLifecycleTitle(normalized);
+  return repairLifecycleTitle(pregameStartRepaired);
 }
 
 function normalizeSettings(settings = {}) {
@@ -668,6 +699,7 @@ function fromRemoteMatch(row, context) {
     teamRatingResult: row.team_rating_result && !Array.isArray(row.team_rating_result) ? row.team_rating_result : null,
     createdAt: row.created_at,
     agreedAt: row.agreed_at,
+    startedAt: row.started_at,
     endedAt: row.ended_at,
     confirmedAt: row.confirmed_at,
     cancelledAt: row.cancelled_at,
@@ -891,7 +923,8 @@ async function loadNormalizedRemoteState() {
       };
     }),
     settings: {
-      ...(legacyState?.settings ?? DEFAULT_SETTINGS),
+      ...DEFAULT_SETTINGS,
+      ...(initialState.settings ?? {}),
       favoritePlayerIds: favoriteRows.filter((favorite) => favorite.target_type === "player").map((favorite) => favorite.target_id),
       favoriteTeamIds: favoriteRows.filter((favorite) => favorite.target_type === "team").map((favorite) => favorite.target_id),
       favoriteCourtIds: favoriteRows.filter((favorite) => favorite.target_type === "court").map((favorite) => favorite.target_id),
@@ -1045,6 +1078,7 @@ async function saveNormalizedRemoteState(state) {
     created_by: match.teamA?.players?.[0] ?? currentUserId,
     created_at: match.createdAt,
     agreed_at: match.agreedAt,
+    started_at: match.startedAt ?? null,
     ended_at: match.endedAt ?? null,
     confirmed_at: match.confirmedAt,
     cancelled_at: match.cancelledAt,
@@ -3377,6 +3411,7 @@ export function updateRecruitingRoomRules(state, postId, patch = {}) {
   const updatedAt = new Date().toISOString();
   const nextPost = cleanRecruitingRoomStatRecorders({
     ...post,
+    mode: `${sideCapacity}v${sideCapacity}`,
     sideCapacity,
     mmrRangeMode: nextMmrRangeMode,
     ratingScale: post.ranked === false ? 1 : getRecruitingRatingScale({ ...post, mmrRangeMode: nextMmrRangeMode }),
@@ -4002,11 +4037,15 @@ export function joinRecruitingSideParty(state, postId, teamId, sideName = "") {
   ));
   const updatedAt = new Date().toISOString();
   const capacity = getRecruitingSideCapacity(post);
+  const sideProjectedFilled = lobby.sides[side]?.projectedFilled ?? 0;
   const currentUserReserve = currentApplicant
-    ? Boolean(currentApplicant.reserve)
-    : lobby.sides[side].projectedFilled >= capacity;
+    ? Boolean(currentApplicant.reserve && sideProjectedFilled >= capacity)
+    : sideProjectedFilled >= capacity;
 
   if (partyEntry) {
+    if ((partyEntry.reserves ?? []).includes(state.currentUserId)) {
+      return setRecruitingPartyPlayerReserve(state, postId, partyEntry.id, state.currentUserId, false);
+    }
     const absorbedPost = buildRecruitingTeamAbsorbPost(
       post,
       state,
