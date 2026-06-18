@@ -3598,16 +3598,57 @@ export function updateMatchRoomRules(state, matchId, patch = {}) {
 export function cancelRecruitingParticipation(state, postId) {
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   if (!post || post.status !== "open" || isRecruitingRoomOwner(post, state.currentUserId) || post.playerId === state.currentUserId) return state;
+  const currentUserId = state.currentUserId;
+  const removeUserFromRoomState = (roomState = {}) => {
+    const normalizedRoomState = normalizeRecruitingRoomState(roomState);
+    const nextPartyReserves = Object.fromEntries(
+      Object.entries(normalizedRoomState.partyReserves ?? {})
+        .map(([key, ids]) => [key, ids.filter((playerId) => playerId !== currentUserId)])
+        .filter(([, ids]) => ids.length),
+    );
+    const nextPinnedReservePlayers = Object.fromEntries(
+      Object.entries(normalizedRoomState.pinnedReservePlayers ?? {})
+        .map(([sideName, ids]) => [sideName, ids.filter((playerId) => playerId !== currentUserId)])
+        .filter(([, ids]) => ids.length),
+    );
+    const nextReserveReady = { ...(normalizedRoomState.reserveReady ?? {}) };
+    const nextSlotPositions = { ...(normalizedRoomState.slotPositions ?? {}) };
+    delete nextReserveReady[currentUserId];
+    delete nextSlotPositions[currentUserId];
+    return {
+      ...normalizedRoomState,
+      partyReserves: nextPartyReserves,
+      pinnedReservePlayers: nextPinnedReservePlayers,
+      reserveReady: nextReserveReady,
+      slotPositions: nextSlotPositions,
+    };
+  };
 
   return {
     ...state,
     recruitingPosts: (state.recruitingPosts ?? []).map((item) => {
       if (item.id !== postId) return item;
+      const applicants = normalizeRecruitingApplicants(item.applicants ?? [])
+        .map((applicant) => {
+          if (applicant.playerId === currentUserId) return null;
+          if (applicant.kind !== "team") return applicant;
+          const nextPlayerIds = (applicant.playerIds ?? []).filter((playerId) => playerId !== currentUserId);
+          if (!nextPlayerIds.length) return null;
+          return {
+            ...applicant,
+            playerIds: nextPlayerIds,
+            playerId: applicant.playerId && applicant.playerId !== currentUserId ? applicant.playerId : nextPlayerIds[0],
+          };
+        })
+        .filter(Boolean);
+      const playerIds = Array.isArray(item.playerIds)
+        ? item.playerIds.filter((playerId) => playerId !== currentUserId)
+        : item.playerIds;
       return cleanRecruitingRoomStatRecorders({
         ...item,
-        applicants: normalizeRecruitingApplicants(item.applicants ?? []).filter(
-          (applicant) => applicant.playerId !== state.currentUserId,
-        ),
+        playerIds,
+        roomState: removeUserFromRoomState(item.roomState ?? {}),
+        applicants,
       }, state);
     }),
   };

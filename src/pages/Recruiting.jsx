@@ -1543,6 +1543,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
         const sourceMatchSideName = getSourceMatchDecisionSideName(sourceMatch, app.currentUser.id, app.state.teams);
         const roomTimingStatus = getPublicRoomTimingStatus(selectedPost);
         const roomQueueStatus = getRecruitingRoomStatus(lobby, { post: selectedPost, myEntry, mine });
+        const needsPrivateConfirm = !matchRoom && selectedPost.visibility !== "public" && Boolean(myEntry && myEntry.status !== "ready");
         const roomReadyLabel = sourceMatch ? sourceMatchStatus.label : roomQueueStatus.label;
         const sourceMatchPhase = sourceMatch ? getMatchRoomPhase(sourceMatch) : null;
         const sourceMatchStarted = Boolean(sourceMatch?.startedAt);
@@ -2164,7 +2165,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                   </form>
                 )}
 
-                {!matchRoom && myEntry && myEntry.status !== "ready" ? (
+                {needsPrivateConfirm ? (
                   <Button
                     type="button"
                     variant="primary"

@@ -360,7 +360,7 @@ export function normalizeRecruitingPost(post = {}) {
     ratingScale: post.ratingScale ?? getRecruitingRatingScale({ ...post, mmrRangeMode, roomState }),
     hostJoinMode,
     hostSide: VALID_SIDES.has(post.hostSide) ? post.hostSide : "teamA",
-    hostReady: ruleRevision ? Boolean(post.hostReady) : true,
+    hostReady: ruleRevision && post.visibility !== "public" ? Boolean(post.hostReady) : true,
     sideCapacity: getRecruitingSideCapacity(post),
     ownerId,
     refereeId: post.refereeId ?? "",
@@ -371,7 +371,7 @@ export function normalizeRecruitingPost(post = {}) {
     roomState: { ...roomState, ownerId, mmrRangeMode, timingType },
     playerId: hostPlayerId,
     playerIds,
-    applicants: ruleRevision ? applicants : applicants.map((applicant) => ({ ...applicant, status: "ready" })),
+    applicants: ruleRevision && post.visibility !== "public" ? applicants : applicants.map((applicant) => ({ ...applicant, status: "ready" })),
   };
 }
 
