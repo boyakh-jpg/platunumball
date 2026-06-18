@@ -1755,7 +1755,7 @@ function applyAutomaticMatchDecisions(state, now = new Date()) {
     const current = nextState.matches.find((item) => item.id === match.id);
     if (!current) continue;
 
-    if (current.status === "disputed" && current.result) {
+    if ((current.status === "approval" || current.status === "disputed") && current.result) {
       const recordWindow = getMatchRecordWindow(current, nowMs);
       if (!recordWindow.disputeExpired) continue;
       const nextMatch = {

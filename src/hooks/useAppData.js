@@ -107,8 +107,9 @@ export function useAppData(authUserId = null) {
       .then((remoteState) => {
         if (!mounted) return;
         if (remoteState) {
-          skipNextRemoteSaveRef.current = true;
-          setState(remoteState);
+          const maintainedState = runAutomaticStateMaintenance(remoteState);
+          skipNextRemoteSaveRef.current = maintainedState === remoteState;
+          setState(maintainedState);
         }
         remoteReadyRef.current = true;
       })
@@ -118,8 +119,9 @@ export function useAppData(authUserId = null) {
       });
 
     const unsubscribe = subscribeRemoteState((remoteState) => {
-      skipNextRemoteSaveRef.current = true;
-      setState(runAutomaticStateMaintenance(remoteState));
+      const maintainedState = runAutomaticStateMaintenance(remoteState);
+      skipNextRemoteSaveRef.current = maintainedState === remoteState;
+      setState(maintainedState);
     });
 
     return () => {
