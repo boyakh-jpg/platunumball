@@ -10,7 +10,7 @@ import TierEmblem from "../components/rating/TierEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { COURTS } from "../lib/constants.js";
 import { getAllowedStatFields, getMatchRecordWindow, getMatchRoomPhase, getPlayerSideName, getPlayerStatSubmitted, getPublicRoomTimingStatus, isInstantRoom } from "../lib/matchUtils.js";
-import { RECRUITING_TYPES, getPendingRecruitingInvitations, getRecruitingLobby, isNationalRecruitingPost, isRecruitingPostForUser } from "../lib/recruiting.js";
+import { RECRUITING_TYPES, getPendingRecruitingInvitations, getRecruitingLobby, getRecruitingRoomOwnerId, isNationalRecruitingPost, isRecruitingPostForUser } from "../lib/recruiting.js";
 import { getCurrentSeason, getPlayerSeasonRows, getSeasonProgress } from "../lib/season.js";
 import { getTierDivision } from "../lib/tier.js";
 
@@ -174,7 +174,7 @@ export default function Home({ app }) {
       })
       .filter(Boolean);
     const confirmableRoomItems = (app.state.recruitingPosts ?? [])
-      .filter((post) => post.status === "open" && post.playerId === user.id)
+      .filter((post) => post.status === "open" && getRecruitingRoomOwnerId(post) === user.id)
       .map((post) => ({ post, lobby: getRecruitingLobby(post, app.state), timing: getPublicRoomTimingStatus(post) }))
       .filter(({ lobby, timing }) => lobby.canConfirm && timing.canConfirm)
       .map(({ post }) => ({

@@ -7,7 +7,7 @@ import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { MATCH_MODES } from "../lib/constants.js";
 import { getMatchReservePlayerIds, getMatchRoomPhase, isInstantRoom } from "../lib/matchUtils.js";
-import { getRecruitingLobby, getRecruitingSideCapacity, isRecruitingPostForUser } from "../lib/recruiting.js";
+import { getRecruitingLobby, getRecruitingRoomOwnerId, getRecruitingSideCapacity, isRecruitingPostForUser } from "../lib/recruiting.js";
 import { RecruitingRoomModal, getRecruitingRoomListStatus } from "./Recruiting.jsx";
 
 const VIEWS = [
@@ -278,7 +278,7 @@ function getMatchHostPlayerId(match, state = null) {
   const sourcePost = match.recruitingPostId
     ? state?.recruitingPosts?.find((post) => post.id === match.recruitingPostId)
     : null;
-  return match.createdBy || match.hostPlayerId || match.createdPlayerId || sourcePost?.playerId || match.teamA?.players?.[0] || "";
+  return getRecruitingRoomOwnerId(sourcePost) || match.createdBy || match.hostPlayerId || match.createdPlayerId || match.teamA?.players?.[0] || "";
 }
 
 function uniquePlayerIds(ids = []) {
@@ -321,8 +321,8 @@ function getMatchRoomPost(match, state) {
       memo: match.memo ?? sourcePost.memo,
       stakes: match.stakes ?? sourcePost.stakes,
       visibility: sourcePost.visibility ?? "public",
-      playerId: hostPlayerId,
-      roomState: baseRoomState,
+      ownerId: hostPlayerId,
+      roomState: { ...baseRoomState, ownerId: hostPlayerId },
     };
   }
 
@@ -424,6 +424,7 @@ function getMatchRoomPost(match, state) {
     hostSide: "teamA",
     hostJoinMode,
     hostReady: getSideAgreementReady(match, "teamA"),
+    ownerId: hostPlayerId,
     playerId: hostPlayerId,
     teamId: match.teamA?.teamId ?? null,
     playerIds: hostJoinMode === "team" ? teamAPlayers : [hostPlayerId].filter(Boolean),
@@ -436,6 +437,7 @@ function getMatchRoomPost(match, state) {
     applicants,
     roomState: {
       ...baseRoomState,
+      ownerId: hostPlayerId,
       timingType: match.timingType ?? match.rules?.timingType ?? "scheduled",
       partyReserves,
       chatMessages: [],
@@ -576,14 +578,20 @@ export default function Matches({ app }) {
       .slice(0, 12);
   }, [dateFilter, viewId, visibleRecruitingCandidates]);
 
+  const activeRoomCount = visibleRecruitingCandidates.length;
+  const filteredActiveRoomCount = visibleRecruitingCandidates.filter((post) => {
+    const postDate = getMatchDate(post);
+    return !dateFilter || postDate === dateFilter;
+  }).length;
   const visibleMatches = matchesByView.slice(0, 60);
   const visibleScheduleItems = useMemo(() => ([
     ...visibleRecruitingRooms.map((post) => ({ type: "room", id: `room-${post.id}`, item: post })),
     ...visibleMatches.map((match) => ({ type: "match", id: `match-${match.id}`, item: match })),
   ].sort((a, b) => compareSchedule(a.item, b.item))), [visibleMatches, visibleRecruitingRooms]);
-  const activeCount = getViewCount(filteredMatches, VIEWS[0], app.currentUser.id);
+  const activeCount = getViewCount(filteredMatches, VIEWS[0], app.currentUser.id) + filteredActiveRoomCount;
   const todoCount = getViewCount(filteredMatches, VIEWS[1], app.currentUser.id);
   const scheduledCount = getViewCount(filteredMatches, VIEWS[2], app.currentUser.id);
+  const getViewButtonCount = (view) => getViewCount(baseFilteredMatches, view, app.currentUser.id) + (view.id === "active" ? activeRoomCount : 0);
   const saveTournamentSchedule = (event, tournamentId, matchId) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -630,7 +638,7 @@ export default function Matches({ app }) {
                 <strong>{view.title}</strong>
                 <em>{view.desc}</em>
               </span>
-              <b>{getViewCount(baseFilteredMatches, view, app.currentUser.id)}</b>
+              <b>{getViewButtonCount(view)}</b>
             </button>
           );
         })}
@@ -905,7 +913,7 @@ export default function Matches({ app }) {
             <span className="om-kicker">{selectedView.code}</span>
             <h2>{dateFilter ? `${selectedView.title} · ${formatDateLabel(dateFilter)}` : selectedView.title}</h2>
           </div>
-          <span>내 일정 {matchesByView.length + visibleRecruitingRooms.length}개 중 {visibleScheduleItems.length}개 표시</span>
+          <span>내 일정 {matchesByView.length + filteredActiveRoomCount}개 중 {visibleScheduleItems.length}개 표시</span>
         </div>
 
         {visibleScheduleItems.length ? visibleScheduleItems.map(({ type, item }) => {
@@ -914,7 +922,7 @@ export default function Matches({ app }) {
             const lobby = getRecruitingLobby(post, app.state);
             const myEntry = getRecruitingEntryForUser(lobby, app.currentUser.id);
             const needConfirm = myEntry && myEntry.status !== "ready";
-            const roomStatus = getRecruitingRoomListStatus(lobby, { post, myEntry, mine: post.playerId === app.currentUser.id });
+            const roomStatus = getRecruitingRoomListStatus(lobby, { post, myEntry, mine: getRecruitingRoomOwnerId(post) === app.currentUser.id });
             const filled = lobby.sides.teamA.projectedFilled + lobby.sides.teamB.projectedFilled;
             const capacity = getRecruitingSideCapacity(post) * 2;
             return (

@@ -136,8 +136,9 @@ function getExplicitTeamPlayerIds(team = {}, capacity = Infinity, playerIds = []
 }
 
 export function getActiveTeamPlayerIds(team = {}, capacity = Infinity, playerIds) {
-  const selectedIds = getSelectedTeamPlayerIds(team, capacity, playerIds);
-  return Array.isArray(playerIds) ? selectedIds : getSelectableTeamPlayerIds(team).slice(0, capacity);
+  return Array.isArray(playerIds)
+    ? getExplicitTeamPlayerIds(team, capacity, playerIds)
+    : getSelectableTeamPlayerIds(team).slice(0, capacity);
 }
 
 export function getReserveTeamPlayerIds(team = {}) {
@@ -320,8 +321,14 @@ export function hasPendingRecruitingInvitation(post = {}, userId) {
   ));
 }
 
+export function getRecruitingRoomOwnerId(post = {}) {
+  const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
+  return post.ownerId || roomState.ownerId || post.createdBy || post.createdPlayerId || post.playerId || "";
+}
+
 export function isRecruitingPostForUser(post = {}, userId, teamIds = []) {
   if (!userId) return false;
+  if (getRecruitingRoomOwnerId(post) === userId) return true;
   if (post.playerId === userId) return true;
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
   if (unique(post.playerIds ?? post.players ?? []).includes(userId)) return true;
@@ -339,10 +346,9 @@ export function normalizeRecruitingPost(post = {}) {
   const type = RECRUITING_TYPES[post.type] ? post.type : "need_player";
   const hostJoinMode = post.hostJoinMode === "player" || !post.teamId ? "player" : "team";
   const playerIds = unique(post.playerIds ?? post.players ?? []);
-  const hostPlayerId = hostJoinMode === "team" && playerIds.length && !playerIds.includes(post.playerId)
-    ? playerIds[0]
-    : post.playerId;
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
+  const ownerId = getRecruitingRoomOwnerId({ ...post, roomState });
+  const hostPlayerId = post.playerId || ownerId;
   const mmrRangeMode = normalizeRecruitingMmrRangeMode(post.mmrRangeMode ?? roomState.mmrRangeMode);
   const timingType = post.timingType === "instant" || roomState.timingType === "instant" || post.scheduledAt === "즉시" ? "instant" : "scheduled";
   const ruleRevision = Number(roomState.ruleRevision ?? 0);
@@ -356,12 +362,13 @@ export function normalizeRecruitingPost(post = {}) {
     hostSide: VALID_SIDES.has(post.hostSide) ? post.hostSide : "teamA",
     hostReady: ruleRevision ? Boolean(post.hostReady) : true,
     sideCapacity: getRecruitingSideCapacity(post),
+    ownerId,
     refereeId: post.refereeId ?? "",
     refereeTrustMin: Number(post.refereeTrustMin ?? REFEREE_TRUST_MIN),
     statEntryMinutes: Number(post.statEntryMinutes ?? STAT_ENTRY_WINDOW_MINUTES),
     disputeMinutes: Number(post.disputeMinutes ?? DISPUTE_WINDOW_MINUTES),
     timingType,
-    roomState: { ...roomState, mmrRangeMode, timingType },
+    roomState: { ...roomState, ownerId, mmrRangeMode, timingType },
     playerId: hostPlayerId,
     playerIds,
     applicants: ruleRevision ? applicants : applicants.map((applicant) => ({ ...applicant, status: "ready" })),

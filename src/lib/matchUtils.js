@@ -215,6 +215,17 @@ export function getPublicRoomTimingStatus(room = {}, now = new Date()) {
   }
 
   const scheduledMs = scheduledAt.getTime();
+  if (room.visibility === "private") {
+    return {
+      timingType,
+      label: "예약방",
+      detail: "비공개방은 경기 전까지 확정할 수 있습니다.",
+      canConfirm: scheduledMs > nowMs,
+      canCreate: scheduledMs > nowMs,
+      expired: false,
+      scheduledAt,
+    };
+  }
   const today = getLocalDateInputValue(nowDate);
   const maxDate = getPublicRoomMaxDateInput(nowDate);
   const dateValue = String(room.scheduledDate ?? "").slice(0, 10);

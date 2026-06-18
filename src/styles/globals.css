@@ -1735,6 +1735,11 @@ input[type="color"] {
   background: rgba(70, 224, 182, 0.12);
 }
 
+.public-party-picker-grid button.reserve {
+  border-color: rgba(107, 166, 255, 0.48);
+  background: rgba(107, 166, 255, 0.12);
+}
+
 .public-party-picker-grid button:disabled {
   cursor: not-allowed;
   opacity: 0.48;
@@ -6078,6 +6083,10 @@ html[data-theme="light"] .public-party-picker-grid button {
 
 html[data-theme="light"] .public-party-picker-grid button.selected {
   background: rgba(25, 148, 119, 0.12);
+}
+
+html[data-theme="light"] .public-party-picker-grid button.reserve {
+  background: rgba(37, 99, 235, 0.1);
 }
 
 html[data-theme="light"] .player-hover-card,

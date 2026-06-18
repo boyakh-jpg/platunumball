@@ -33,6 +33,7 @@ import {
   getRecruitingFit,
   getRecruitingLobby,
   getRecruitingRatingScale,
+  getRecruitingRoomOwnerId,
   getRecruitingSideCapacity,
   getRecruitingTargetMmr,
   getRecruitingTierRange,
@@ -415,6 +416,7 @@ export function PlayerRoomSlot({
 
 function isCurrentUserRoomParticipant(post, lobby, currentUserId) {
   if (!currentUserId) return false;
+  if (getRecruitingRoomOwnerId(post) === currentUserId) return true;
   if (post.playerId === currentUserId || post.playerIds?.includes(currentUserId)) return true;
   return (lobby.entries ?? []).some((entry) => (
     entry.players?.includes(currentUserId) ||
@@ -1476,7 +1478,8 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
         const matchRoom = Boolean(sourceMatch);
         const storedRoomPost = app.state.recruitingPosts?.find((item) => item.id === selectedPost.id) ?? null;
         const slotPositions = selectedPost.roomState?.slotPositions ?? {};
-        const mine = selectedPost.playerId === app.currentUser.id;
+        const roomOwnerId = getRecruitingRoomOwnerId(selectedPost);
+        const mine = roomOwnerId === app.currentUser.id;
         const myEntry = lobby.entries.find((entry) => (
           entry.players?.includes(app.currentUser.id) ||
           entry.reserves?.includes(app.currentUser.id)
@@ -1523,6 +1526,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
         };
         const disabledInvitePlayerIds = [
           app.currentUser.id,
+          roomOwnerId,
           selectedPost.playerId,
           ...lobby.entries.flatMap((entry) => [entry.playerId, ...(entry.players ?? []), ...(entry.reserves ?? [])]),
           ...pendingInvitations.map((invitation) => invitation.targetUserId),
@@ -1552,6 +1556,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
             : "공개방";
         const sourceTeamSideCount = ["teamA", "teamB"].filter((sideName) => Boolean(sourceMatch?.[sideName]?.teamId)).length;
         const lobbyTeamEntryCount = (lobby.entries ?? []).filter((entry) => isPartyEntry(entry)).length;
+        const teamMatchSideLocked = sourceTeamSideCount >= 2 || (selectedPost.hostJoinMode === "team" && lobbyTeamEntryCount > 0);
         const roomMatchTypeLabel = sourceTeamSideCount >= 2 || (selectedPost.visibility === "private" && lobbyTeamEntryCount >= 2)
           ? "팀전"
           : lobbyTeamEntryCount > 0 || sourceTeamSideCount > 0
@@ -1570,6 +1575,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
           if (!myEntry || !currentUserInEntry) return false;
           const samePlacement = myEntry.side === sideName && currentUserReserve === reserve;
           if (samePlacement) return false;
+          if (teamMatchSideLocked && sideName !== myEntry.side) return false;
           if (!canMovePlayerTo(lobby, app.currentUser.id, sideName, reserve)) return false;
           if (myEntry.kind === "player" && myEntry.playerId === app.currentUser.id) return true;
           if (currentUserInParty && myEntry.side === sideName) return true;
@@ -1738,7 +1744,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                       lobby={lobby}
                       userById={userById}
                       teams={app.state.teams}
-                      hostPlayerId={selectedPost.playerId}
+                      hostPlayerId={roomOwnerId}
                       currentUserId={app.currentUser.id}
                       showCaptainBadge={showCaptainBadge}
                       slotPositions={slotPositions}
@@ -1775,7 +1781,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                       lobby={lobby}
                       userById={userById}
                       teams={app.state.teams}
-                      hostPlayerId={selectedPost.playerId}
+                      hostPlayerId={roomOwnerId}
                       currentUserId={app.currentUser.id}
                       showCaptainBadge={showCaptainBadge}
                       slotPositions={slotPositions}
@@ -1801,7 +1807,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                     playingIds={playingIds}
                     userById={userById}
                     teams={app.state.teams}
-                    hostPlayerId={selectedPost.playerId}
+                    hostPlayerId={roomOwnerId}
                     currentUserId={app.currentUser.id}
                     showCaptainBadge={showCaptainBadge}
                     slotPositions={slotPositions}
@@ -1820,7 +1826,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                     playingIds={playingIds}
                     userById={userById}
                     teams={app.state.teams}
-                    hostPlayerId={selectedPost.playerId}
+                    hostPlayerId={roomOwnerId}
                     currentUserId={app.currentUser.id}
                     showCaptainBadge={showCaptainBadge}
                     slotPositions={slotPositions}
@@ -2295,15 +2301,15 @@ export default function Recruiting({ app }) {
 
   const scopedPosts = useMemo(() => {
     return [...(app.state.recruitingPosts ?? [])]
-      .filter((post) => post.status !== "closed")
+      .filter((post) => post.status === "open")
       .filter((post) => {
         const invited = hasPendingRecruitingInvitation(post, app.currentUser.id);
         return invited || scope !== "local" || post.region === app.currentUser.region || isNationalRecruitingPost(post, app.state);
       })
       .filter((post) => queue === "all" || (queue === "ranked" ? post.ranked !== false : post.ranked === false))
       .filter((post) => modeFilter === "all" || post.mode === modeFilter)
-      .filter((post) => roomScope !== "created" || post.playerId === app.currentUser.id)
-      .filter((post) => roomScope !== "joined" || (post.playerId !== app.currentUser.id && isRecruitingPostForUser(post, app.currentUser.id, myTeamIds)))
+      .filter((post) => roomScope !== "created" || getRecruitingRoomOwnerId(post) === app.currentUser.id)
+      .filter((post) => roomScope !== "joined" || (getRecruitingRoomOwnerId(post) !== app.currentUser.id && isRecruitingPostForUser(post, app.currentUser.id, myTeamIds)))
       .filter((post) => roomScope !== "invited" || hasPendingRecruitingInvitation(post, app.currentUser.id));
   }, [app.currentUser.id, app.currentUser.region, app.state, modeFilter, myTeamIds, queue, roomScope, scope]);
 
@@ -2344,16 +2350,16 @@ export default function Recruiting({ app }) {
   const rankedCount = scopedPosts.filter((post) => post.ranked !== false).length;
   const friendlyCount = scopedPosts.length - rankedCount;
   const createdRoomCount = (app.state.recruitingPosts ?? [])
-    .filter((post) => post.status !== "closed")
-    .filter((post) => post.playerId === app.currentUser.id)
+    .filter((post) => post.status === "open")
+    .filter((post) => getRecruitingRoomOwnerId(post) === app.currentUser.id)
     .length;
   const joinedRoomCount = (app.state.recruitingPosts ?? [])
-    .filter((post) => post.status !== "closed")
-    .filter((post) => post.playerId !== app.currentUser.id)
+    .filter((post) => post.status === "open")
+    .filter((post) => getRecruitingRoomOwnerId(post) !== app.currentUser.id)
     .filter((post) => isRecruitingPostForUser(post, app.currentUser.id, myTeamIds))
     .length;
   const invitedRoomCount = (app.state.recruitingPosts ?? [])
-    .filter((post) => post.status !== "closed")
+    .filter((post) => post.status === "open")
     .filter((post) => hasPendingRecruitingInvitation(post, app.currentUser.id))
     .length;
 
@@ -2446,13 +2452,14 @@ export default function Recruiting({ app }) {
           const lobby = getRecruitingLobby(post, app.state);
           const target = getRecruitingTargetMmr(post, app.state);
           const range = getRecruitingTierRange(target, post.ranked !== false, post.mmrRangeMode ?? post.roomState?.mmrRangeMode);
-          const host = userById[post.playerId];
+          const roomOwnerId = getRecruitingRoomOwnerId(post);
+          const host = userById[roomOwnerId] ?? userById[post.playerId];
           const hostTeam = post.teamId ? teamById[post.teamId] : null;
           const targetTeam = post.targetTeamId ? teamById[post.targetTeamId] : null;
           const applicantEntry = { kind: "player", joinMode: "player", playerId: app.currentUser.id };
           const applied = hasRecruitingApplicant(post, applicantEntry)
             || myTeams.some((team) => hasRecruitingApplicant(post, { kind: "team", joinMode: "team", teamId: team.id }));
-          const mine = post.playerId === app.currentUser.id;
+          const mine = roomOwnerId === app.currentUser.id;
           const myRoom = isRecruitingPostForUser(post, app.currentUser.id, myTeamIds);
           const invited = hasPendingRecruitingInvitation(post, app.currentUser.id);
           const roomTag = invited ? "초대받음" : mine ? "내가 만든 방" : myRoom ? "내 참여방" : "";
