@@ -435,7 +435,7 @@ export function getRecruitingRoomStatus(lobby, { post = null, myEntry = null, mi
       : { label: "대기방", tone: "green", detail: "방장 경기 확정 대기" };
   }
   if (!lobby.projectedFull) return { label: "대기방", tone: "blue", detail: timingStatus?.timingType === "instant" ? "즉시 모집 중" : "모집 중" };
-  if (myEntry?.status && myEntry.status !== "ready") return { label: "대기방", tone: "orange", detail: "내 확인 필요" };
+  if (!mine && myEntry?.status && myEntry.status !== "ready") return { label: "대기방", tone: "orange", detail: "내 확인 필요" };
   return { label: "대기방", tone: "orange", detail: "참여 확인 중" };
 }
 
@@ -452,7 +452,7 @@ export function getRecruitingRoomListStatus(lobby, { post = null, myEntry = null
   if (!lobby.projectedFull) {
     return { label: "대기방", tone: "blue", detail: timingStatus?.timingType === "instant" ? "즉시 모집 중" : "빈 슬롯 모집 중", actionLabel: "방 보기" };
   }
-  if (myEntry?.status && myEntry.status !== "ready") {
+  if (!mine && myEntry?.status && myEntry.status !== "ready") {
     return { label: "대기방", tone: "orange", detail: "내 참여 확인 필요", actionLabel: "확인하기" };
   }
   return { label: "대기방", tone: "orange", detail: "참가자 확인 대기", actionLabel: "방 보기" };
@@ -1543,7 +1543,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
         const sourceMatchSideName = getSourceMatchDecisionSideName(sourceMatch, app.currentUser.id, app.state.teams);
         const roomTimingStatus = getPublicRoomTimingStatus(selectedPost);
         const roomQueueStatus = getRecruitingRoomStatus(lobby, { post: selectedPost, myEntry, mine });
-        const needsPrivateConfirm = !matchRoom && selectedPost.visibility !== "public" && Boolean(myEntry && myEntry.status !== "ready");
+        const needsPrivateConfirm = !matchRoom && !mine && selectedPost.visibility !== "public" && Boolean(myEntry && myEntry.status !== "ready");
         const roomReadyLabel = sourceMatch ? sourceMatchStatus.label : roomQueueStatus.label;
         const sourceMatchPhase = sourceMatch ? getMatchRoomPhase(sourceMatch) : null;
         const sourceMatchStarted = Boolean(sourceMatch?.startedAt);
@@ -1988,7 +1988,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                       <Button type="button" size="sm" variant="secondary" onClick={() => closeRoomEdit(selectedPost)}>취소</Button>
                       <Button type="button" size="sm" disabled={!roomEditCapacityValid} onClick={() => saveRoomEdit(selectedPost)}>수정 저장</Button>
                     </div>
-                    <small>저장하면 방장 포함 모든 참가자가 CONFIRM을 다시 눌러야 합니다.</small>
+                    <small>저장하면 방장을 제외한 참가자가 CONFIRM을 다시 눌러야 합니다.</small>
                   </div>
                 ) : null}
                 <span>팀 MMR은 실제 참가한 팀원 비율 기준으로 반영한다.</span>

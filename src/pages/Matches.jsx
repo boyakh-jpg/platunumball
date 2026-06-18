@@ -980,8 +980,9 @@ export default function Matches({ app }) {
             const post = item;
             const lobby = getRecruitingLobby(post, app.state);
             const myEntry = getRecruitingEntryForUser(lobby, app.currentUser.id);
-            const needConfirm = post.visibility !== "public" && myEntry && myEntry.status !== "ready";
-            const roomStatus = getRecruitingRoomListStatus(lobby, { post, myEntry, mine: getRecruitingRoomOwnerId(post) === app.currentUser.id });
+            const mine = getRecruitingRoomOwnerId(post) === app.currentUser.id;
+            const needConfirm = !mine && post.visibility !== "public" && myEntry && myEntry.status !== "ready";
+            const roomStatus = getRecruitingRoomListStatus(lobby, { post, myEntry, mine });
             const filled = lobby.sides.teamA.projectedFilled + lobby.sides.teamB.projectedFilled;
             const capacity = getRecruitingSideCapacity(post) * 2;
             return (
@@ -990,7 +991,7 @@ export default function Matches({ app }) {
                   <div className="om-card-kicker">
                     <span className={`om-status-pill ${roomStatus.tone}`}>{roomStatus.label}</span>
                     <span className="om-card-mode">{post.mode}</span>
-                    <span className="om-card-official">공개방</span>
+                    <span className="om-card-official">{post.visibility === "private" ? "비공개방" : "공개방"}</span>
                     <span className="om-card-official">{post.ranked === false ? "친선" : "정규"}</span>
                   </div>
                   <h3>{post.title}</h3>
