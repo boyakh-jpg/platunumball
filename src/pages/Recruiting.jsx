@@ -2147,7 +2147,10 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                       </label>
                       <label className="ow-check-row">
                         <input type="checkbox" checked={joinDraft.reserve} onChange={(event) => updateJoinDraft(selectedPost, { reserve: event.target.checked })} />
-                        후보로 참여
+                        <span>
+                          후보로 참여
+                          <small>출전선수 부족하면 자동으로 출전됩니다.</small>
+                        </span>
                       </label>
                     </div>
                     <div className="ow-mini-note">

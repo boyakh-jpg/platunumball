@@ -4727,10 +4727,125 @@ export function kickRecruitingApplicant(state, postId, playerId) {
   };
 }
 
+function promoteRecruitingReservesForConfirmation(post, state, lobby) {
+  const fillSlots = ["teamA", "teamB"].flatMap((sideName) => (
+    [...(lobby.sides[sideName]?.fillSlots ?? []), ...(lobby.sides[sideName]?.reserveCandidates ?? [])]
+      .filter((candidate, index, candidates) => (
+        candidate.status === "ready" &&
+        candidates.findIndex((item) => item.playerId === candidate.playerId) === index
+      ))
+      .slice(0, Math.max(0, (lobby.sides[sideName]?.capacity ?? 0) - (lobby.sides[sideName]?.filled ?? 0)))
+      .map((candidate) => ({ ...candidate, side: sideName }))
+  ));
+  const promotedIdsBySide = {
+    teamA: fillSlots.filter((candidate) => candidate.side === "teamA").map((candidate) => candidate.playerId),
+    teamB: fillSlots.filter((candidate) => candidate.side === "teamB").map((candidate) => candidate.playerId),
+  };
+  if (!fillSlots.length) return { post, promotedIdsBySide };
+
+  const capacity = getRecruitingSideCapacity(post);
+  const updatedAt = new Date().toISOString();
+  const byEntry = fillSlots.reduce((acc, candidate) => {
+    if (!candidate.entryId || !candidate.playerId) return acc;
+    const current = acc.get(candidate.entryId) ?? { side: candidate.side, playerIds: [] };
+    current.playerIds = uniquePlayerIds([...current.playerIds, candidate.playerId]);
+    acc.set(candidate.entryId, current);
+    return acc;
+  }, new Map());
+
+  let nextPost = { ...post };
+  let nextRoomState = normalizeRecruitingRoomState(post.roomState ?? {});
+  let nextApplicants = normalizeRecruitingApplicants(post.applicants ?? []);
+  const nextPartyReserves = { ...(nextRoomState.partyReserves ?? {}) };
+  const promotedPlayerIds = [];
+
+  byEntry.forEach(({ playerIds }, entryId) => {
+    const entry = (lobby.entries ?? []).find((item) => item.id === entryId);
+    if (!entry) return;
+    const promotedIds = uniquePlayerIds(playerIds).filter((playerId) => (
+      (entry.players ?? []).includes(playerId) || (entry.reserves ?? []).includes(playerId)
+    ));
+    if (!promotedIds.length) return;
+    promotedPlayerIds.push(...promotedIds);
+
+    const reserveKey = entry.fixed ? "host" : entry.id;
+    const existingReserveIds = uniquePlayerIds(nextPartyReserves[reserveKey] ?? []);
+    const entryWasReserve = Boolean(entry.reserve);
+    const remainingReserveIds = entryWasReserve
+      ? uniquePlayerIds(entry.players ?? []).filter((playerId) => !promotedIds.includes(playerId))
+      : uniquePlayerIds([...(entry.reserves ?? []), ...existingReserveIds]).filter((playerId) => !promotedIds.includes(playerId));
+
+    if (entry.fixed) {
+      if (entry.kind === "team") {
+        const activeIds = entryWasReserve
+          ? promotedIds.slice(0, capacity)
+          : uniquePlayerIds([...(nextPost.playerIds ?? []), ...promotedIds]).slice(0, capacity);
+        nextPost = {
+          ...nextPost,
+          playerIds: activeIds,
+          hostReady: true,
+        };
+        const reserveIds = uniquePlayerIds([...existingReserveIds, ...remainingReserveIds]).filter((playerId) => !activeIds.includes(playerId));
+        if (reserveIds.length) nextPartyReserves[reserveKey] = reserveIds;
+        else delete nextPartyReserves[reserveKey];
+      } else {
+        nextPost = { ...nextPost, hostReady: true };
+      }
+      if (entryWasReserve) nextRoomState = { ...nextRoomState, hostReserve: false };
+      return;
+    }
+
+    nextApplicants = nextApplicants.map((applicant) => {
+      if (getRecruitingApplicantKey(applicant) !== entry.id) return applicant;
+      if (applicant.kind === "team") {
+        const activeIds = entryWasReserve
+          ? promotedIds.slice(0, capacity)
+          : uniquePlayerIds([...(applicant.playerIds ?? []), ...promotedIds]).slice(0, capacity);
+        const reserveIds = uniquePlayerIds([...existingReserveIds, ...remainingReserveIds]).filter((playerId) => !activeIds.includes(playerId));
+        if (reserveIds.length) nextPartyReserves[reserveKey] = reserveIds;
+        else delete nextPartyReserves[reserveKey];
+        return {
+          ...applicant,
+          reserve: false,
+          status: "ready",
+          playerId: activeIds[0] ?? applicant.playerId,
+          playerIds: activeIds,
+          updatedAt,
+        };
+      }
+      return {
+        ...applicant,
+        reserve: false,
+        status: "ready",
+        updatedAt,
+      };
+    });
+  });
+
+  nextRoomState = updateManyPinnedReservePlayers(
+    { ...nextRoomState, partyReserves: nextPartyReserves },
+    "teamA",
+    promotedPlayerIds,
+    false,
+  );
+  nextRoomState = updateManyPinnedReservePlayers(nextRoomState, "teamB", promotedPlayerIds, false);
+
+  return {
+    post: {
+      ...nextPost,
+      roomState: nextRoomState,
+      applicants: nextApplicants,
+    },
+    promotedIdsBySide,
+  };
+}
+
 export function confirmRecruitingMatch(state, postId) {
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   if (!post || post.status !== "open" || !isRecruitingRoomOwner(post, state.currentUserId)) return state;
-  const lobby = getRecruitingLobby(post, state);
+  const promotion = promoteRecruitingReservesForConfirmation(post, state, getRecruitingLobby(post, state));
+  const promotedPost = promotion.post;
+  const lobby = getRecruitingLobby(promotedPost, state);
 
   if (!lobby.canConfirm) {
     return {
@@ -4747,7 +4862,7 @@ export function confirmRecruitingMatch(state, postId) {
       ],
     };
   }
-  const timingStatus = getPublicRoomTimingStatus(post);
+  const timingStatus = getPublicRoomTimingStatus(promotedPost);
   if (!timingStatus.canConfirm) {
     return {
       ...state,
@@ -4764,8 +4879,8 @@ export function confirmRecruitingMatch(state, postId) {
     };
   }
 
-  const timingType = post.timingType === "instant" || post.roomState?.timingType === "instant" ? "instant" : "scheduled";
-  const scheduledAt = timingType === "instant" ? "즉시" : (post.scheduledDate && post.scheduledTime ? `${post.scheduledDate} ${post.scheduledTime}` : "일정 미정");
+  const timingType = promotedPost.timingType === "instant" || promotedPost.roomState?.timingType === "instant" ? "instant" : "scheduled";
+  const scheduledAt = timingType === "instant" ? "즉시" : (promotedPost.scheduledDate && promotedPost.scheduledTime ? `${promotedPost.scheduledDate} ${promotedPost.scheduledTime}` : "일정 미정");
   const now = new Date().toISOString();
   const teamAPlayers = lobby.sides.teamA.projectedPlayers.slice(0, lobby.sides.teamA.capacity);
   const teamBPlayers = lobby.sides.teamB.projectedPlayers.slice(0, lobby.sides.teamB.capacity);
@@ -4775,10 +4890,10 @@ export function confirmRecruitingMatch(state, postId) {
   const teamAReservePlayers = lobby.sides.teamA.reserveCandidates.filter((candidate) => candidate.status === "ready").map((candidate) => candidate.playerId);
   const teamBReservePlayers = lobby.sides.teamB.reserveCandidates.filter((candidate) => candidate.status === "ready").map((candidate) => candidate.playerId);
   const readyReserveIds = new Set([...teamAReservePlayers, ...teamBReservePlayers]);
-  const refereeId = getTrustedRefereeId(state, post.refereeId, playerIds);
-  const statRecorders = refereeId ? normalizeStatRecorders({}) : getRecruitingRoomStatRecorders(post, state);
-  const mmrRangeMode = normalizeRecruitingMmrRangeMode(post.mmrRangeMode ?? post.roomState?.mmrRangeMode);
-  const ranked = post.ranked !== false;
+  const refereeId = getTrustedRefereeId(state, promotedPost.refereeId, playerIds);
+  const statRecorders = refereeId ? normalizeStatRecorders({}) : getRecruitingRoomStatRecorders(promotedPost, state);
+  const mmrRangeMode = normalizeRecruitingMmrRangeMode(promotedPost.mmrRangeMode ?? promotedPost.roomState?.mmrRangeMode);
+  const ranked = promotedPost.ranked !== false;
   const ratingScale = getRecruitingRatingScale({ ranked, mmrRangeMode });
   const defaultRules = {
     targetScore: 21,
@@ -4790,15 +4905,15 @@ export function confirmRecruitingMatch(state, postId) {
   };
   const match = {
     id: makeId("m"),
-    title: post.title,
-    mode: post.mode,
-    court: post.court,
-    scheduledDate: timingType === "instant" ? "" : (post.scheduledDate ?? ""),
-    scheduledTime: timingType === "instant" ? "" : (post.scheduledTime ?? ""),
+    title: promotedPost.title,
+    mode: promotedPost.mode,
+    court: promotedPost.court,
+    scheduledDate: timingType === "instant" ? "" : (promotedPost.scheduledDate ?? ""),
+    scheduledTime: timingType === "instant" ? "" : (promotedPost.scheduledTime ?? ""),
     scheduledAt,
     timingType,
     status: "agreed",
-    official: ranked && Boolean(post.official),
+    official: ranked && Boolean(promotedPost.official),
     preRegistered: true,
     refereeId,
     refereeTrustMin: REFEREE_TRUST_MIN,
@@ -4807,12 +4922,12 @@ export function confirmRecruitingMatch(state, postId) {
     disputeMinutes: DISPUTE_WINDOW_MINUTES,
     rules: {
       ...defaultRules,
-      ...(post.rules ?? {}),
+      ...(promotedPost.rules ?? {}),
       timingType,
       mmrRangeMode,
       ratingScale,
     },
-    memo: post.memo,
+    memo: promotedPost.memo,
     stakes: "매치 큐에서 확정된 경기입니다.",
     ranked,
     mmrRangeMode,
@@ -4849,8 +4964,8 @@ export function confirmRecruitingMatch(state, postId) {
       teamB: teamBReservePlayers,
     },
     promotedReserveIds: {
-      teamA: lobby.sides.teamA.fillSlots.map((candidate) => candidate.playerId),
-      teamB: lobby.sides.teamB.fillSlots.map((candidate) => candidate.playerId),
+      teamA: promotion.promotedIdsBySide.teamA,
+      teamB: promotion.promotedIdsBySide.teamB,
     },
     agreements: { teamA: teamAPlayers, teamB: teamBPlayers },
     approvals: { teamA: [], teamB: [] },
@@ -4858,8 +4973,8 @@ export function confirmRecruitingMatch(state, postId) {
     result: null,
     ratingResult: null,
     teamRatingResult: null,
-    recruitingPostId: post.id,
-    createdBy: getRecruitingRoomOwnerId(post) || post.playerId,
+    recruitingPostId: promotedPost.id,
+    createdBy: getRecruitingRoomOwnerId(promotedPost) || promotedPost.playerId,
     agreedAt: now,
     createdAt: now,
   };
@@ -4869,7 +4984,7 @@ export function confirmRecruitingMatch(state, postId) {
     matches: [match, ...state.matches],
     recruitingPosts: (state.recruitingPosts ?? []).map((item) => (
       item.id === postId
-        ? { ...item, status: "closed", confirmedAt: now, roomState: { ...normalizeRecruitingRoomState(item.roomState ?? {}), invitations: [] } }
+        ? { ...promotedPost, status: "closed", confirmedAt: now, roomState: { ...normalizeRecruitingRoomState(promotedPost.roomState ?? {}), invitations: [] } }
         : item
     )),
     notifications: [

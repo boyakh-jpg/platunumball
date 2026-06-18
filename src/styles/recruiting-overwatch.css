@@ -2437,6 +2437,19 @@ button.ow-room-player-slot {
   height: 18px;
 }
 
+.ow-check-row span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ow-check-row small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
 html[data-theme="light"] .ow-lobby-modal {
   background: rgba(246, 248, 242, 0.96);
 }
