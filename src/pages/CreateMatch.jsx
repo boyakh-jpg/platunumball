@@ -239,6 +239,7 @@ export default function CreateMatch({ app }) {
     [app.currentUser.id, app.state.teams],
   );
   const [teamQuery, setTeamQuery] = useState("");
+  const [opponentTeamQuery, setOpponentTeamQuery] = useState("");
   const [courtQuery, setCourtQuery] = useState("");
   const [teamRegion, setTeamRegion] = useState(app.currentUser.region ?? "전체");
   const [courtRegion, setCourtRegion] = useState(app.currentUser.region ?? "전체");
@@ -344,6 +345,7 @@ export default function CreateMatch({ app }) {
     [selectedTeamA, selectedTeamB, ...tournamentTeams, ...sortedTeams].filter(Boolean).forEach((team) => teamMap.set(team.id, team));
     return Array.from(teamMap.values());
   }, [selectedTeamA, selectedTeamB, sortedTeams, tournamentTeams]);
+  const teamAOptions = myTeams.length ? myTeams : teamOptions;
   const selectedTeams = useMemo(
     () => (isTeamRoom
       ? (isPublicRoom ? [selectedTeamA].filter(Boolean) : [selectedTeamA, selectedTeamB].filter(Boolean))
@@ -362,6 +364,20 @@ export default function CreateMatch({ app }) {
       ...opponentReservePlayerIds,
     ]);
   }, [app.currentUser.id, isPublicRoom, isTeamRoom, opponentPartyPlayerIds, opponentReservePlayerIds, ownerReservePlayerIds, publicPartyPlayerIds]);
+  const opponentTeamResults = useMemo(() => {
+    if (!isTeamRoom || isPublicRoom || !selectedTeamA) return [];
+    const query = opponentTeamQuery.trim();
+    return app.state.teams
+      .filter((team) => team.id !== selectedTeamA.id)
+      .filter((team) => getDefaultTeamPlayerIds(team, sideCapacity, ownerSidePlayerIds).length >= sideCapacity)
+      .filter((team) => !query || includesQuery(`${team.name} ${team.region} ${team.homeCourt}`, query))
+      .sort((a, b) => (
+        Number(favoriteTeamIds.includes(b.id)) - Number(favoriteTeamIds.includes(a.id)) ||
+        Number(b.region === app.currentUser.region) - Number(a.region === app.currentUser.region) ||
+        b.mmr - a.mmr
+      ))
+      .slice(0, query ? 8 : 5);
+  }, [app.currentUser.region, app.state.teams, favoriteTeamIds, isPublicRoom, isTeamRoom, opponentTeamQuery, ownerSidePlayerIds, selectedTeamA, sideCapacity]);
   const refereeCandidates = useMemo(
     () => app.state.users
       .filter((user) => isEligibleReferee(user, REFEREE_TRUST_MIN))
@@ -421,6 +437,15 @@ export default function CreateMatch({ app }) {
     : isPublicRoom
       ? publicTeamInvalid
       : teamTierBlocked || privateTeamInvalid);
+  const submitDisabledReason = !scheduleAllowed
+    ? "일정 조건이 맞지 않습니다. 즉시는 바로 생성 가능하고, 예약 일정은 허용 기간 안에서만 가능합니다."
+    : !tournamentEndAllowed
+      ? "대회 종료일이 허용 기간을 벗어났습니다."
+      : teamTierBlocked
+        ? "상대팀 MMR이 현재 허용구간 밖입니다. MMR 제한을 경고만 또는 제한 없음으로 바꾸면 생성할 수 있습니다."
+        : privateTeamInvalid
+          ? "팀전은 A/B사이드 출전 슬롯이 모두 채워져야 생성할 수 있습니다."
+          : "";
   const selectedCourt = useMemo(
     () => COURTS.find((court) => court.name === draft.court) ?? COURTS[0],
     [draft.court],
@@ -518,6 +543,7 @@ export default function CreateMatch({ app }) {
       ? currentTeamB
       : getOpponentTeam(sortedTeams, teamAId, app.currentUser.region, playerIds, sideCapacity) ?? getOpponentTeam(app.state.teams, teamAId, app.currentUser.region, playerIds, sideCapacity);
     const opponentPlayerIds = getDefaultTeamPlayerIds(nextTeamB, sideCapacity, playerIds);
+    setOpponentTeamQuery("");
     update({
       teamAId,
       teamBId: nextTeamB?.id,
@@ -538,6 +564,7 @@ export default function CreateMatch({ app }) {
     const playerIds = getPartyPlayerIds(nextTeamA, draft.playerIds, sideCapacity);
     const team = app.state.teams.find((item) => item.id === teamBId);
     const opponentPlayerIds = getDefaultTeamPlayerIds(team, sideCapacity, playerIds);
+    setOpponentTeamQuery("");
     update({
       teamAId: nextTeamA?.id,
       teamBId,
@@ -1037,22 +1064,48 @@ export default function CreateMatch({ app }) {
               <label>
                 {isPublicRoom ? "방장 파티" : "A사이드"}
                 <select value={draft.teamAId ?? ""} onChange={(event) => selectTeamA(event.target.value)}>
-                  {!(isPublicRoom ? myTeams : teamOptions).length ? <option value="">팀 없음</option> : null}
-                  {(isPublicRoom ? myTeams : teamOptions)
+                  {!(isPublicRoom ? myTeams : teamAOptions).length ? <option value="">팀 없음</option> : null}
+                  {(isPublicRoom ? myTeams : teamAOptions)
                     .filter((team) => isPublicRoom || team.id !== draft.teamBId)
                     .map((team) => <option key={team.id} value={team.id}>{team.region} · {team.name} · {team.mmr}</option>)}
                 </select>
               </label>
               {!isPublicRoom ? (
-                <label>
-                  B사이드
-                  <select value={draft.teamBId ?? ""} onChange={(event) => selectTeamB(event.target.value)}>
-                    {!teamOptions.some((team) => team.id !== draft.teamAId) ? <option value="">상대 팀 없음</option> : null}
-                    {teamOptions
-                      .filter((team) => team.id !== draft.teamAId)
-                      .map((team) => <option key={team.id} value={team.id}>{team.region} · {team.name} · {team.mmr}</option>)}
-                  </select>
-                </label>
+                <div className={`team-search-field ${opponentTeamQuery.trim() ? "has-query" : ""}`}>
+                  <span className="field-label">B사이드</span>
+                  <input
+                    value={opponentTeamQuery}
+                    placeholder="상대 팀명 검색"
+                    onChange={(event) => setOpponentTeamQuery(event.target.value)}
+                  />
+                  <div className="team-search-popover">
+                    <small>{opponentTeamQuery.trim() ? "검색 결과" : "즐겨찾기"}</small>
+                    {opponentTeamResults.length ? opponentTeamResults.map((team) => {
+                      const mmrBlocked = draft.mmrLimitMode === "block" && draft.ranked && selectedTeamA && !isMmrInRecruitingRange(team.mmr, selectedTeamA.mmr, true, draft.mmrRangeMode);
+                      return (
+                        <button
+                          key={team.id}
+                          type="button"
+                          className={team.id === draft.teamBId ? "selected" : ""}
+                          onMouseDown={(event) => {
+                            event.preventDefault();
+                            selectTeamB(team.id);
+                          }}
+                        >
+                          <TeamHoverCard team={team} as="span"><strong>{team.name}</strong></TeamHoverCard>
+                          <span>{team.region} · {team.mmr} MMR · {team.homeCourt}</span>
+                          <em>{favoriteTeamIds.includes(team.id) ? "즐겨찾기" : mmrBlocked ? "MMR 범위 밖" : "선택 가능"}</em>
+                        </button>
+                      );
+                    }) : <em>{opponentTeamQuery.trim() ? "검색 결과 없음" : "즐겨찾기 팀 없음"}</em>}
+                  </div>
+                  {selectedTeamB ? (
+                    <div className="team-search-selected">
+                      <TeamHoverCard team={selectedTeamB} as="span"><strong>{selectedTeamB.name}</strong></TeamHoverCard>
+                      <span>{selectedTeamB.region} · {selectedTeamB.mmr} MMR</span>
+                    </div>
+                  ) : null}
+                </div>
               ) : null}
             </div>
           ) : null}
@@ -1216,6 +1269,7 @@ export default function CreateMatch({ app }) {
         </Card>
       </div>
       <div className="create-submit-row">
+        {submitDisabledReason ? <span className="create-submit-warning">{submitDisabledReason}</span> : null}
         <Button type="submit" disabled={submitDisabled}>{isTournamentRoom ? "대회 생성" : "경기 생성"}</Button>
       </div>
     </form>

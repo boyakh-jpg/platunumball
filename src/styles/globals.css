@@ -1555,11 +1555,23 @@ span.team-hover-card {
 
 .create-submit-row {
   display: flex;
+  align-items: center;
+  flex-wrap: wrap;
   justify-content: flex-end;
+  gap: 10px;
 }
 
 .create-submit-row .button {
   min-width: min(240px, 100%);
+}
+
+.create-submit-warning {
+  flex: 1 1 260px;
+  color: var(--gold);
+  font-size: 0.84rem;
+  font-weight: 850;
+  line-height: 1.45;
+  text-align: right;
 }
 
 label {
@@ -1966,6 +1978,103 @@ input[type="color"] {
 .quick-picker button.selected {
   border-color: rgba(70, 224, 182, 0.65);
   box-shadow: inset 0 0 0 1px rgba(70, 224, 182, 0.22), 0 0 24px rgba(70, 224, 182, 0.1);
+}
+
+.team-search-field {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.team-search-popover {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% - 1px);
+  left: 0;
+  right: 0;
+  display: none;
+  max-height: 280px;
+  overflow: auto;
+  border: 1px solid rgba(70, 224, 182, 0.24);
+  border-radius: 8px;
+  background: rgba(8, 13, 20, 0.98);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.34);
+  padding: 7px;
+}
+
+.team-search-field:focus-within .team-search-popover,
+.team-search-field.has-query .team-search-popover {
+  display: grid;
+  gap: 6px;
+}
+
+.team-search-popover small {
+  color: var(--gold);
+  font-size: 0.68rem;
+  font-weight: 950;
+  padding-inline: 4px;
+}
+
+.team-search-popover button,
+.team-search-selected {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px 8px;
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--text);
+  padding: 8px;
+  text-align: left;
+}
+
+.team-search-popover button {
+  cursor: pointer;
+}
+
+.team-search-popover button.selected {
+  border-color: rgba(70, 224, 182, 0.58);
+  background: rgba(70, 224, 182, 0.12);
+}
+
+.team-search-popover strong,
+.team-search-selected strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 0.82rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.team-search-popover span,
+.team-search-selected span {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.team-search-popover em {
+  grid-row: 1 / span 2;
+  grid-column: 2;
+  color: var(--gold);
+  font-size: 0.68rem;
+  font-style: normal;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+.team-search-selected {
+  border-color: rgba(70, 224, 182, 0.18);
+  background: rgba(70, 224, 182, 0.06);
 }
 
 .quick-picker button.favorite-pick {
