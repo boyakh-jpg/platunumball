@@ -8,6 +8,7 @@ import {
   REGIONS,
   STAT_ENTRY_WINDOW_MINUTES,
 } from "./constants.js";
+import { demoFlowState } from "./demoFlowState.js";
 
 const DEMO_TODAY = "2026-06-18";
 const DEMO_NOW = "2026-06-18T12:00:00";
@@ -1571,4 +1572,5 @@ function withDemoLeague(state) {
   };
 }
 
-export const initialState = withDemoLeague(baseState);
+export const sourceDemoState = withDemoLeague(baseState);
+export const initialState = demoFlowState ?? sourceDemoState;

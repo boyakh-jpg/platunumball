@@ -569,20 +569,27 @@ export function getRecruitingLobby(post = {}, state = {}) {
     const fillSlots = reserveCandidates
       .filter((candidate) => candidate.status === "ready" && !candidate.pinned)
       .slice(0, Math.max(0, getRecruitingSideCapacity(normalizedPost) - players.length));
+    const confirmationFillSlots = reserveCandidates
+      .filter((candidate) => candidate.status === "ready")
+      .slice(0, Math.max(0, getRecruitingSideCapacity(normalizedPost) - players.length));
     const fillPlayerIds = new Set(fillSlots.map((candidate) => candidate.playerId));
     const visibleReserveCandidates = reserveCandidates.filter((candidate) => !fillPlayerIds.has(candidate.playerId));
     const reserves = visibleReserveCandidates.map((candidate) => candidate.playerId);
     const projectedPlayers = unique([...players, ...fillSlots.map((candidate) => candidate.playerId)]);
+    const confirmationProjectedPlayers = unique([...players, ...confirmationFillSlots.map((candidate) => candidate.playerId)]);
     acc[side] = {
       entries: sideEntries,
       reserveEntries,
       reserveCandidates: visibleReserveCandidates,
       fillSlots,
+      confirmationFillSlots,
       players,
       projectedPlayers,
+      confirmationProjectedPlayers,
       reserves,
       filled: players.length,
       projectedFilled: projectedPlayers.length,
+      confirmationProjectedFilled: confirmationProjectedPlayers.length,
       capacity: getRecruitingSideCapacity(normalizedPost),
     };
     return acc;
@@ -593,17 +600,23 @@ export function getRecruitingLobby(post = {}, state = {}) {
   const projectedFull =
     sides.teamA.projectedFilled >= sides.teamA.capacity &&
     sides.teamB.projectedFilled >= sides.teamB.capacity;
+  const confirmationProjectedFull =
+    sides.teamA.confirmationProjectedFilled >= sides.teamA.capacity &&
+    sides.teamB.confirmationProjectedFilled >= sides.teamB.capacity;
   const ready = playingEntries.length > 0 && playingEntries.every((entry) => entry.status === "ready");
   const fillReady = [...sides.teamA.fillSlots, ...sides.teamB.fillSlots].every((candidate) => candidate.status === "ready");
+  const confirmationFillReady = [...sides.teamA.confirmationFillSlots, ...sides.teamB.confirmationFillSlots].every((candidate) => candidate.status === "ready");
 
   return {
     entries,
     sides,
     full,
     projectedFull,
+    confirmationProjectedFull,
     ready,
     fillReady,
-    canConfirm: projectedFull && ready && fillReady,
+    confirmationFillReady,
+    canConfirm: confirmationProjectedFull && ready && confirmationFillReady,
   };
 }
 
