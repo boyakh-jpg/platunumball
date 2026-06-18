@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { Component, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, PlusCircle, ShieldAlert, Swords, X } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
@@ -40,6 +40,42 @@ const VIEWS = [
     icon: CheckCircle2,
   },
 ];
+
+class RoomModalErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+
+  render() {
+    if (!this.state.error) return this.props.children;
+
+    return <RoomModalErrorView error={this.state.error} onClose={this.props.onClose} />;
+  }
+}
+
+function RoomModalErrorView({ error, onClose }) {
+  return (
+    <div className="ow-modal-backdrop" role="presentation" onMouseDown={onClose}>
+      <aside className="ow-room-modal" role="dialog" aria-modal="true" aria-label="경기방 오류" onMouseDown={(event) => event.stopPropagation()}>
+        <div className="ow-modal-status-row">
+          <Badge tone="orange">경기방 오류</Badge>
+        </div>
+        <h2 className="ow-room-title">경기방을 열 수 없습니다</h2>
+        <p className="ow-room-subtitle">{String(error?.message ?? "방 데이터를 확인해야 합니다.")}</p>
+        <div className="ow-modal-close-row">
+          <Button type="button" variant="secondary" size="lg" onClick={onClose}>
+            방 닫기
+          </Button>
+        </div>
+      </aside>
+    </div>
+  );
+}
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 const tournamentFormatLabels = {
@@ -306,6 +342,7 @@ function getMatchRoomPost(match, state) {
   if (sourcePost) {
     return {
       ...sourcePost,
+      status: "open",
       title: match.title ?? sourcePost.title,
       mode: match.mode ?? sourcePost.mode,
       court: match.court ?? sourcePost.court,
@@ -416,7 +453,7 @@ function getMatchRoomPost(match, state) {
     scheduledTime: match.scheduledTime ?? "",
     scheduledAt: match.scheduledAt,
     timingType: match.timingType ?? match.rules?.timingType ?? "scheduled",
-    status: "closed",
+    status: "open",
     visibility: match.tournamentId ? "private" : match.recruitingPostId ? "public" : "private",
     ranked: match.ranked !== false,
     official: Boolean(match.official),
@@ -489,13 +526,29 @@ export default function Matches({ app }) {
   );
   const selectedRecruitingLobby = selectedRecruitingPost ? getRecruitingLobby(selectedRecruitingPost, app.state) : null;
   const selectedMatch = (selectedMatchId ? matchesById[selectedMatchId] : null) ?? (queryMatchId ? matchesById[queryMatchId] : null) ?? null;
-  const selectedMatchRoomPost = selectedMatch ? getMatchRoomPost(selectedMatch, app.state) : null;
+  const selectedMatchRoom = useMemo(() => {
+    if (!selectedMatch) return { post: null, error: null };
+    try {
+      return { post: getMatchRoomPost(selectedMatch, app.state), error: null };
+    } catch (error) {
+      return { post: null, error };
+    }
+  }, [app.state, selectedMatch]);
+  const selectedMatchRoomPost = selectedMatchRoom.post;
+  const selectedMatchRoomError = selectedMatchRoom.error;
   useBodyScrollLock(Boolean(selectedTournament || selectedMatch || selectedRecruitingPost));
   const closeSelectedMatch = () => {
     setSelectedMatchId(null);
     if (!queryMatchId) return;
     const next = new URLSearchParams(searchParams);
     next.delete("match");
+    setSearchParams(next, { replace: true });
+  };
+  const openSelectedMatch = (matchId) => {
+    if (!matchId) return;
+    setSelectedMatchId(matchId);
+    const next = new URLSearchParams(searchParams);
+    next.set("match", matchId);
     setSearchParams(next, { replace: true });
   };
 
@@ -874,13 +927,19 @@ export default function Matches({ app }) {
         );
       })() : null}
 
+      {selectedMatch && selectedMatchRoomError ? (
+        <RoomModalErrorView error={selectedMatchRoomError} onClose={closeSelectedMatch} />
+      ) : null}
+
       {selectedMatch && selectedMatchRoomPost ? (
-        <RecruitingRoomModal
-          app={app}
-          post={selectedMatchRoomPost}
-          sourceMatch={selectedMatch}
-          onClose={closeSelectedMatch}
-        />
+        <RoomModalErrorBoundary key={selectedMatch.id} onClose={closeSelectedMatch}>
+          <RecruitingRoomModal
+            app={app}
+            post={selectedMatchRoomPost}
+            sourceMatch={selectedMatch}
+            onClose={closeSelectedMatch}
+          />
+        </RoomModalErrorBoundary>
       ) : null}
 
       {selectedRecruitingPost && selectedRecruitingLobby ? (
@@ -921,7 +980,7 @@ export default function Matches({ app }) {
             const post = item;
             const lobby = getRecruitingLobby(post, app.state);
             const myEntry = getRecruitingEntryForUser(lobby, app.currentUser.id);
-            const needConfirm = myEntry && myEntry.status !== "ready";
+            const needConfirm = post.visibility !== "public" && myEntry && myEntry.status !== "ready";
             const roomStatus = getRecruitingRoomListStatus(lobby, { post, myEntry, mine: getRecruitingRoomOwnerId(post) === app.currentUser.id });
             const filled = lobby.sides.teamA.projectedFilled + lobby.sides.teamB.projectedFilled;
             const capacity = getRecruitingSideCapacity(post) * 2;
@@ -987,7 +1046,7 @@ export default function Matches({ app }) {
                   <span>{formatMatchRules(match)}</span>
                 </div>
               )}
-              <button type="button" className="button button-secondary button-md om-room-link" onClick={() => setSelectedMatchId(match.id)}>
+              <button type="button" className="button button-secondary button-md om-room-link" onClick={() => openSelectedMatch(match.id)}>
                 {getMatchActionLabel(match)}
               </button>
             </article>

@@ -322,8 +322,9 @@ export function hasPendingRecruitingInvitation(post = {}, userId) {
 }
 
 export function getRecruitingRoomOwnerId(post = {}) {
-  const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
-  return post.ownerId || roomState.ownerId || post.createdBy || post.createdPlayerId || post.playerId || "";
+  const safePost = post ?? {};
+  const roomState = normalizeRecruitingRoomState(safePost.roomState ?? {});
+  return safePost.ownerId || roomState.ownerId || safePost.createdBy || safePost.createdPlayerId || safePost.playerId || "";
 }
 
 export function isRecruitingPostForUser(post = {}, userId, teamIds = []) {
@@ -441,7 +442,13 @@ export function getRecruitingHostEntry(post = {}, state = {}) {
   const team = post.teamId ? state.teams?.find((item) => item.id === post.teamId) ?? null : null;
   const capacity = getRecruitingSideCapacity(post);
   const joinMode = post.hostJoinMode === "player" || !team ? "player" : "team";
-  const players = joinMode === "team" ? getActiveTeamPlayerIds(team, capacity, post.playerIds) : [post.playerId].filter(Boolean);
+  const activeTeamPlayerIds = joinMode === "team" ? getActiveTeamPlayerIds(team, capacity, post.playerIds) : [];
+  const fallbackTeamPlayerId = post.playerId && getTeamPlayerIds(team).includes(post.playerId)
+    ? post.playerId
+    : getSelectableTeamPlayerIds(team)[0];
+  const players = joinMode === "team"
+    ? (activeTeamPlayerIds.length ? activeTeamPlayerIds : [fallbackTeamPlayerId].filter(Boolean))
+    : [post.playerId].filter(Boolean);
   const explicitReserves = joinMode === "team" ? getExplicitTeamPlayerIds(team, Infinity, roomState.partyReserves.host ?? []) : [];
   const reserves = joinMode === "team" ? unique([...getReserveTeamPlayerIds(team), ...explicitReserves]).filter((playerId) => !players.includes(playerId)) : [];
 
