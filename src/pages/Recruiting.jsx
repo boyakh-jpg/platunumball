@@ -187,15 +187,29 @@ function getPlayerPosition(user) {
   return user?.position || "포지션 자유";
 }
 
-function getRoomSlotPositionAvatarSrc(user) {
-  const position = String(user?.position ?? "").trim().toUpperCase();
-  return ROOM_SLOT_POSITION_AVATARS[position] ?? null;
+function getRoomSlotPositionAvatarSrc(position) {
+  const normalizedPosition = String(position ?? "").trim().toUpperCase();
+  return ROOM_SLOT_POSITION_AVATARS[normalizedPosition] ?? null;
 }
 
-function RoomSlotAvatar({ user, mmr = 1200 }) {
+function getRoomSlotDisplayPosition(user, slotPositions = {}, playerId = user?.id, entry = null) {
+  const position = slotPositions[playerId] ?? (entry?.kind === "player" ? entry.position : null) ?? user?.position ?? PLAYER_POSITIONS[0];
+  return PLAYER_POSITIONS.includes(position) ? position : PLAYER_POSITIONS[0];
+}
+
+function getPartyOptionLabel(option) {
+  const leader = option.entry?.user?.name ? ` · ${option.entry.user.name}` : "";
+  return `${option.team.name}${leader}`;
+}
+
+function getPartyOptionKey(option) {
+  return `${option.sideName}-${option.team.id}-${option.entry?.id ?? "entry"}`;
+}
+
+function RoomSlotAvatar({ user, mmr = 1200, position = null }) {
   const [failed, setFailed] = useState(false);
-  const position = String(user?.position ?? "").trim().toUpperCase();
-  const avatarSrc = getRoomSlotPositionAvatarSrc(user);
+  const normalizedPosition = String(position ?? user?.position ?? "").trim().toUpperCase();
+  const avatarSrc = getRoomSlotPositionAvatarSrc(normalizedPosition);
   const initial = user?.name?.slice(0, 1) ?? "?";
 
   if (!avatarSrc || failed) {
@@ -203,7 +217,7 @@ function RoomSlotAvatar({ user, mmr = 1200 }) {
   }
 
   return (
-    <span className="avatar ow-position-avatar" data-position={position} style={{ "--avatar": user?.avatarColor }}>
+    <span className="avatar ow-position-avatar" data-position={normalizedPosition} style={{ "--avatar": user?.avatarColor }}>
       <img
         className="ow-position-avatar-tier"
         src={getTierEmblemSrc(user?.ratings?.integrated ?? mmr)}
@@ -269,39 +283,39 @@ export function getEntryPlayerReserveState(entry, playerId) {
 }
 
 export function getSameSidePartyOptions(lobby, myEntry, myTeams = [], targetSide = myEntry?.side) {
-  if (!myEntry || myEntry.fixed || myEntry.kind === "team") return [];
+  if (!myEntry || myEntry.kind === "team") return [];
   const sideEntries = lobby.sides[targetSide]?.entries ?? [];
-  return myTeams.filter((team) => {
+  return myTeams.flatMap((team) => {
     const memberIds = new Set((team.members ?? []).map((member) => member.userId));
-    return sideEntries.some((entry) => (
+    return sideEntries
+      .filter((entry) => (
       entry.id !== myEntry.id &&
       (
         entry.team?.id === team.id ||
         (entry.kind === "player" && memberIds.has(entry.playerId))
       )
-    ));
+      ))
+      .map((entry) => ({ team, entry, sideName: targetSide }));
   });
 }
 
 function getJoinableSidePartyOptions(lobby, myTeams = [], currentUserId = "", targetSide = "") {
   const sides = ["teamA", "teamB"].filter((sideName) => !targetSide || sideName === targetSide);
-  const seen = new Set();
   return sides.flatMap((sideName) => {
     const sideEntries = lobby.sides[sideName]?.entries ?? [];
     return myTeams.flatMap((team) => {
       const memberIds = new Set((team.members ?? []).map((member) => member.userId));
       const hasCurrentUser = memberIds.has(currentUserId);
-      const canJoin = hasCurrentUser && sideEntries.some((entry) => (
+      if (!hasCurrentUser) return [];
+      return sideEntries
+        .filter((entry) => (
         ![entry.playerId, ...(entry.players ?? []), ...(entry.reserves ?? [])].includes(currentUserId) &&
         (
           entry.team?.id === team.id ||
           (entry.kind === "player" && memberIds.has(entry.playerId))
         )
-      ));
-      const key = `${sideName}-${team.id}`;
-      if (!canJoin || seen.has(key)) return [];
-      seen.add(key);
-      return [{ team, sideName }];
+        ))
+        .map((entry) => ({ team, entry, sideName }));
     });
   });
 }
@@ -343,6 +357,7 @@ export function PlayerRoomSlot({
   title = "",
   detail = "",
   mmr = 1200,
+  position = null,
   badge = null,
   empty = false,
   invite = false,
@@ -366,6 +381,7 @@ export function PlayerRoomSlot({
   }
 
   const slotClassName = status === "ready" ? "ow-room-player-slot ready" : "ow-room-player-slot";
+  const displayPosition = position ?? getPlayerPosition(user);
   const slotContent = (
     <>
       {badge ? (
@@ -373,9 +389,9 @@ export function PlayerRoomSlot({
           <Crown size={12} strokeWidth={3} />
         </span>
       ) : null}
-      <RoomSlotAvatar user={user} mmr={mmr} />
+      <RoomSlotAvatar user={user} mmr={mmr} position={displayPosition} />
       <strong>{user?.name ?? "플레이어"}</strong>
-      <small>{getPlayerPosition(user)}</small>
+      <small>{displayPosition}</small>
       {detail ? <b>{detail}</b> : null}
       <em>{title}</em>
     </>
@@ -605,12 +621,13 @@ function QueueRoomBoard({ post, lobby, userById, teams }) {
   );
 }
 
-function FillSlot({ candidate, lobby, userById, teams, hostPlayerId = "", currentUserId = "", showCaptainBadge = false, readyText = "READY", onSelfAction }) {
+function FillSlot({ candidate, lobby, userById, teams, hostPlayerId = "", currentUserId = "", showCaptainBadge = false, readyText = "READY", slotPositions = {}, onSelfAction }) {
   const user = candidate ? userById[candidate.playerId] : null;
   const readyLabel = candidate?.status === "ready" ? "READY" : "WAIT";
   const entry = candidate ? (lobby.entries ?? []).find((item) => item.id === candidate.entryId) : null;
   const badge = getRoomSlotBadge(candidate?.playerId, entry, hostPlayerId, showCaptainBadge);
   const isSelfSlot = candidate?.playerId === currentUserId;
+  const displayPosition = getRoomSlotDisplayPosition(user, slotPositions, candidate?.playerId, entry);
   if (!user) {
     return (
       <div className="ow-room-player-slot empty">
@@ -633,9 +650,9 @@ function FillSlot({ candidate, lobby, userById, teams, hostPlayerId = "", curren
               <Crown size={12} strokeWidth={3} />
             </span>
           ) : null}
-          <RoomSlotAvatar user={user} mmr={user.ratings?.integrated ?? 1200} />
+          <RoomSlotAvatar user={user} mmr={user.ratings?.integrated ?? 1200} position={displayPosition} />
           <strong>{user.name}</strong>
-          <small>{getPlayerPosition(user)}</small>
+          <small>{displayPosition}</small>
           <b>{candidate.sourceLabel}</b>
           <em>{candidate.status === "ready" ? readyText : readyLabel}</em>
         </button>
@@ -646,9 +663,9 @@ function FillSlot({ candidate, lobby, userById, teams, hostPlayerId = "", curren
             <Crown size={12} strokeWidth={3} />
           </span>
         ) : null}
-        <RoomSlotAvatar user={user} mmr={user.ratings?.integrated ?? 1200} />
+        <RoomSlotAvatar user={user} mmr={user.ratings?.integrated ?? 1200} position={displayPosition} />
         <strong>{user.name}</strong>
-        <small>{getPlayerPosition(user)}</small>
+        <small>{displayPosition}</small>
         <b>{candidate.sourceLabel}</b>
         <em>{candidate.status === "ready" ? readyText : readyLabel}</em>
       </PlayerHoverCard>
@@ -707,9 +724,9 @@ export function SlotCommandPanel({ sideName, reserve = false, floating = false, 
         <Button type="button" size="sm" variant="secondary" disabled={!canMoveHere} onClick={onMoveHere}>
           이 자리로 이동
         </Button>
-        {partyJoinOptions.map((team) => (
-          <Button key={team.id} type="button" size="sm" variant="secondary" onClick={() => onJoinParty(team.id)}>
-            {team.name} 파티 합류
+        {partyJoinOptions.map((option) => (
+          <Button key={getPartyOptionKey(option)} type="button" size="sm" variant="secondary" onClick={() => onJoinParty(option.team.id, option.entry?.id)}>
+            {getPartyOptionLabel(option)} 파티 합류
           </Button>
         ))}
       </div>
@@ -726,6 +743,8 @@ export function SelfSlotCommandPanel({
   anchor = null,
   canLeaveParty = false,
   partyJoinOptions = [],
+  currentPosition = "",
+  onPositionChange,
   onLeaveParty,
   onJoinParty,
   onClose,
@@ -738,6 +757,7 @@ export function SelfSlotCommandPanel({
     : fromParty
       ? `${sourceTeam.name} 파티에서 나와 개인 참여 중`
       : "개인 참여 중";
+  const safeCurrentPosition = PLAYER_POSITIONS.includes(currentPosition) ? currentPosition : PLAYER_POSITIONS[0];
 
   return (
     <CommandPopoverFrame floating anchor={anchor} className="ow-slot-command-popover ow-self-slot-popover" onClose={onClose}>
@@ -751,6 +771,14 @@ export function SelfSlotCommandPanel({
       <div className="ow-self-slot-status">
         <Badge tone={inParty ? "green" : fromParty ? "orange" : "neutral"}>{partyText}</Badge>
       </div>
+      {onPositionChange ? (
+        <label className="ow-self-position-control">
+          <span>슬롯 포지션</span>
+          <select value={safeCurrentPosition} onChange={(event) => onPositionChange(event.target.value)}>
+            {PLAYER_POSITIONS.map((position) => <option key={position} value={position}>{position}</option>)}
+          </select>
+        </label>
+      ) : null}
       {children}
       <div className="ow-slot-command-actions">
         {canLeaveParty ? (
@@ -758,9 +786,9 @@ export function SelfSlotCommandPanel({
             파티 나가기
           </Button>
         ) : null}
-        {partyJoinOptions.map((team) => (
-          <Button key={team.id} type="button" size="sm" variant="secondary" onClick={() => onJoinParty(team.id)}>
-            {team.name} 파티 합류
+        {partyJoinOptions.map((option) => (
+          <Button key={getPartyOptionKey(option)} type="button" size="sm" variant="secondary" onClick={() => onJoinParty(option.team.id, option.entry?.id)}>
+            {getPartyOptionLabel(option)} 파티 합류
           </Button>
         ))}
       </div>
@@ -777,6 +805,7 @@ export function SideRoster({
   hostPlayerId = "",
   currentUserId = "",
   showCaptainBadge = false,
+  slotPositions = {},
   canInvite = false,
   onInviteSlot,
   onSelfSlotAction,
@@ -801,6 +830,7 @@ export function SideRoster({
     const partyEntry = isPartyEntry(entry);
     const partyLabel = partyEntry && entry.team ? entry.team.name : "개인 참여";
     const isSelfSlot = playerId === currentUserId;
+    const displayPosition = getRoomSlotDisplayPosition(user, slotPositions, playerId, entry);
     return (
       <PlayerRoomSlot
         key={`${sideName}-${entry.id}-${playerId}`}
@@ -810,6 +840,7 @@ export function SideRoster({
         title={entry.status === "ready" ? "READY" : "WAIT"}
         detail={partyLabel}
         mmr={user?.ratings?.integrated ?? getEntryMmr(entry)}
+        position={displayPosition}
         badge={getRoomSlotBadge(playerId, entry, hostPlayerId, showCaptainBadge)}
         onSelfAction={isSelfSlot ? (event) => onSelfSlotAction?.(sideName, false, playerId, entry.id, event) : null}
       />
@@ -845,6 +876,7 @@ export function SideRoster({
             hostPlayerId={hostPlayerId}
             currentUserId={currentUserId}
             showCaptainBadge={showCaptainBadge}
+            slotPositions={slotPositions}
             onSelfAction={(event) => onSelfSlotAction?.(sideName, false, candidate.playerId, candidate.entryId, event)}
           />
         ))}
@@ -882,6 +914,7 @@ export function ReserveLine({
   hostPlayerId = "",
   currentUserId = "",
   showCaptainBadge = false,
+  slotPositions = {},
   canInvite = false,
   recorderId = "",
   onInviteSlot,
@@ -907,6 +940,7 @@ export function ReserveLine({
     const assigned = recorderId === candidate.playerId;
     const readyText = canRecord ? (assigned ? "자동 기록자" : "기록 후보") : "후보";
     const isSelfSlot = candidate.playerId === currentUserId;
+    const displayPosition = getRoomSlotDisplayPosition(user, slotPositions, candidate.playerId, entry);
     return (
       <PlayerRoomSlot
         key={`${sideName}-${candidate.playerId}`}
@@ -916,6 +950,7 @@ export function ReserveLine({
         title={readyText}
         detail={candidate.sourceLabel}
         mmr={user.ratings?.integrated ?? 1200}
+        position={displayPosition}
         badge={getRoomSlotBadge(candidate.playerId, entry, hostPlayerId, showCaptainBadge)}
         onSelfAction={isSelfSlot ? (event) => onSelfSlotAction?.(sideName, true, candidate.playerId, candidate.entryId, event) : null}
       />
@@ -1440,6 +1475,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
         const fit = getRecruitingFit(selectedPost, candidateMmr || app.currentUser.ratings.integrated, app.state);
         const matchRoom = Boolean(sourceMatch);
         const storedRoomPost = app.state.recruitingPosts?.find((item) => item.id === selectedPost.id) ?? null;
+        const slotPositions = selectedPost.roomState?.slotPositions ?? {};
         const mine = selectedPost.playerId === app.currentUser.id;
         const myEntry = lobby.entries.find((entry) => (
           entry.players?.includes(app.currentUser.id) ||
@@ -1582,7 +1618,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
               canMoveHere={canMoveHere}
               partyJoinOptions={targetPartyOptions}
               onMoveHere={() => moveActiveUserToSlot(sideName, reserve)}
-              onJoinParty={(teamId) => app.actions.joinRecruitingSideParty(selectedPost.id, teamId, sideName)}
+              onJoinParty={(teamId, entryId) => app.actions.joinRecruitingSideParty(selectedPost.id, teamId, sideName, entryId)}
               onClose={() => setInviteDraft(null)}
             >
               <InvitePanel
@@ -1642,6 +1678,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
           if (!activeSelfSlotDraft || !myEntry || !currentUserInEntry) return null;
           const sourceTeam = myEntry.sourceTeamId ? teamById[myEntry.sourceTeamId] : null;
           const targetPartyOptions = getSameSidePartyOptions(lobby, myEntry, myTeams, activeSelfSlotDraft.sideName);
+          const currentSlotPosition = getRoomSlotDisplayPosition(app.currentUser, slotPositions, app.currentUser.id, myEntry);
           return (
             <SelfSlotCommandPanel
               entry={myEntry}
@@ -1651,9 +1688,11 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
               anchor={activeSelfSlotDraft.anchor}
               canLeaveParty={currentUserInParty}
               partyJoinOptions={targetPartyOptions}
+              currentPosition={currentSlotPosition}
+              onPositionChange={(position) => app.actions.setRecruitingSlotPosition(selectedPost.id, app.currentUser.id, position)}
               onLeaveParty={leaveCurrentParty}
-              onJoinParty={(teamId) => {
-                app.actions.joinRecruitingSideParty(selectedPost.id, teamId, activeSelfSlotDraft.sideName);
+              onJoinParty={(teamId, entryId) => {
+                app.actions.joinRecruitingSideParty(selectedPost.id, teamId, activeSelfSlotDraft.sideName, entryId);
                 setSlotActionDraft(null);
               }}
               onClose={() => setSlotActionDraft(null)}
@@ -1702,6 +1741,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                       hostPlayerId={selectedPost.playerId}
                       currentUserId={app.currentUser.id}
                       showCaptainBadge={showCaptainBadge}
+                      slotPositions={slotPositions}
                       canInvite={canInviteFromRoom}
                       canManage={mine}
                       onInviteSlot={(sideName, reserve, slotKey, event) => openInviteSlot(selectedPost, sideName, reserve, slotKey, event)}
@@ -1738,6 +1778,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                       hostPlayerId={selectedPost.playerId}
                       currentUserId={app.currentUser.id}
                       showCaptainBadge={showCaptainBadge}
+                      slotPositions={slotPositions}
                       canInvite={canInviteFromRoom}
                       canManage={mine}
                       onInviteSlot={(sideName, reserve, slotKey, event) => openInviteSlot(selectedPost, sideName, reserve, slotKey, event)}
@@ -1763,6 +1804,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                     hostPlayerId={selectedPost.playerId}
                     currentUserId={app.currentUser.id}
                     showCaptainBadge={showCaptainBadge}
+                    slotPositions={slotPositions}
                     canInvite={canInviteFromRoom}
                     canManage={mine}
                     recorderId={recorderIds.teamA}
@@ -1781,6 +1823,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                     hostPlayerId={selectedPost.playerId}
                     currentUserId={app.currentUser.id}
                     showCaptainBadge={showCaptainBadge}
+                    slotPositions={slotPositions}
                     canInvite={canInviteFromRoom}
                     canManage={mine}
                     recorderId={recorderIds.teamB}
@@ -2018,15 +2061,15 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                   <form className="ow-join-form" onSubmit={(event) => { event.preventDefault(); submitJoin(selectedPost); }}>
                     {sidePartyJoinOptions.length ? (
                       <div className="ow-self-placement-actions">
-                        {sidePartyJoinOptions.map(({ team, sideName }) => (
+                        {sidePartyJoinOptions.map((option) => (
                           <Button
-                            key={`${sideName}-${team.id}`}
+                            key={getPartyOptionKey(option)}
                             type="button"
                             size="sm"
                             variant="secondary"
-                            onClick={() => app.actions.joinRecruitingSideParty(selectedPost.id, team.id, sideName)}
+                            onClick={() => app.actions.joinRecruitingSideParty(selectedPost.id, option.team.id, option.sideName, option.entry?.id)}
                           >
-                            {SIDE_LABELS[sideName]} {team.name} 파티 합류
+                            {SIDE_LABELS[option.sideName]} {getPartyOptionLabel(option)} 파티 합류
                           </Button>
                         ))}
                       </div>

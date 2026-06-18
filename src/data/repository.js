@@ -3,6 +3,7 @@ import {
   DISPUTE_WINDOW_MINUTES,
   MAX_TEAM_MEMBERSHIPS,
   MODE_SIZES,
+  PLAYER_POSITIONS,
   REFEREE_TRUST_MIN,
   STAT_ENTRY_WINDOW_MINUTES,
   TEAM_ROLES,
@@ -4012,7 +4013,30 @@ export function setRecruitingApplicantReserve(state, postId, playerId, reserve =
   return setRecruitingApplicantPlacement(state, postId, playerId, { reserve });
 }
 
-export function joinRecruitingSideParty(state, postId, teamId, sideName = "") {
+export function setRecruitingSlotPosition(state, postId, playerId, position = "") {
+  const post = state.recruitingPosts?.find((item) => item.id === postId);
+  if (!isMutableRecruitingRoom(post) || !playerId || playerId !== state.currentUserId) return state;
+
+  const lobby = getRecruitingLobby(post, state);
+  const isRoomMember = (lobby.entries ?? []).some((entry) => isRecruitingEntryMember(entry, playerId));
+  if (!isRoomMember) return state;
+
+  const normalizedPosition = PLAYER_POSITIONS.includes(position) ? position : "";
+  const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
+  const nextSlotPositions = { ...(roomState.slotPositions ?? {}) };
+  if (normalizedPosition) nextSlotPositions[playerId] = normalizedPosition;
+  else delete nextSlotPositions[playerId];
+
+  const nextRoomState = { ...roomState, slotPositions: nextSlotPositions };
+  return {
+    ...state,
+    recruitingPosts: (state.recruitingPosts ?? []).map((item) => (
+      item.id === postId ? { ...item, roomState: nextRoomState } : item
+    )),
+  };
+}
+
+export function joinRecruitingSideParty(state, postId, teamId, sideName = "", entryId = "") {
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   if (!isMutableRecruitingRoom(post) || !teamId) return state;
 
@@ -4038,10 +4062,11 @@ export function joinRecruitingSideParty(state, postId, teamId, sideName = "") {
   if (!currentApplicant && !joinableSide) return state;
 
   const side = joinableSide || currentApplicant.side;
-  const partyEntry = (lobby.sides[side]?.entries ?? []).find((entry) => (
+  const partyEntries = (lobby.sides[side]?.entries ?? []).filter((entry) => (
     entry.team?.id === teamId &&
     isRecruitingTeamPartyEntry(entry)
   ));
+  const partyEntry = partyEntries.find((entry) => entry.id === entryId) ?? partyEntries[0] ?? null;
   const updatedAt = new Date().toISOString();
   const capacity = getRecruitingSideCapacity(post);
   const sideProjectedFilled = lobby.sides[side]?.projectedFilled ?? 0;

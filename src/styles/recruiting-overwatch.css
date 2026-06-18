@@ -1668,6 +1668,27 @@ button.ow-room-player-slot {
   gap: 6px;
 }
 
+.ow-self-position-control {
+  display: grid;
+  gap: 5px;
+}
+
+.ow-self-position-control > span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.ow-self-position-control select {
+  min-height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(8, 16, 28, 0.88);
+  color: var(--text);
+  padding: 6px 8px;
+  font-weight: 900;
+}
+
 .ow-slot-command-popover .ow-invite-panel {
   margin-top: 0;
   border-color: rgba(70, 224, 182, 0.16);

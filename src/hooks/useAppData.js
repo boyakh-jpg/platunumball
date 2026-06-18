@@ -38,6 +38,7 @@ import {
   sendRecruitingChat,
   setRecruitingApplicantPlacement,
   setRecruitingApplicantReserve,
+  setRecruitingSlotPosition,
   setRecruitingPartyPlayerPlacement,
   setRecruitingPartyPlayerReserve,
   setRecruitingReady,
@@ -221,8 +222,11 @@ export function useAppData(authUserId = null) {
       setRecruitingApplicantPlacement: (postId, playerId, placement) => {
         setState((prev) => setRecruitingApplicantPlacement({ ...prev, currentUserId: playerId || currentUserId }, postId, playerId, placement));
       },
-      joinRecruitingSideParty: (postId, teamId, sideName) => {
-        setState((prev) => joinRecruitingSideParty({ ...prev, currentUserId }, postId, teamId, sideName));
+      joinRecruitingSideParty: (postId, teamId, sideName, entryId) => {
+        setState((prev) => joinRecruitingSideParty({ ...prev, currentUserId }, postId, teamId, sideName, entryId));
+      },
+      setRecruitingSlotPosition: (postId, playerId, position) => {
+        setState((prev) => setRecruitingSlotPosition({ ...prev, currentUserId }, postId, playerId, position));
       },
       setRecruitingPartyPlayerReserve: (postId, entryId, playerId, reserve) => {
         setState((prev) => setRecruitingPartyPlayerReserve({ ...prev, currentUserId: playerId || currentUserId }, postId, entryId, playerId, reserve));
