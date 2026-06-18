@@ -108,6 +108,7 @@ function SideRosterPicker({
   requiredActive = false,
   onChange,
   onReserveChange,
+  onRosterChange,
 }) {
   const userById = Object.fromEntries(users.map((user) => [user.id, user]));
   if (!team) {
@@ -123,24 +124,36 @@ function SideRosterPicker({
   const activeSet = new Set(activeIds);
   const reserveIdList = getPartyReserveIds(team, reserveIds, activeIds, reserveCapacity);
   const reserveSet = new Set(reserveIdList);
+  const commitRoster = (nextActiveIds, nextReserveIds) => {
+    if (onRosterChange) {
+      onRosterChange({ selectedIds: nextActiveIds, reserveIds: nextReserveIds });
+      return;
+    }
+    onChange(nextActiveIds);
+    onReserveChange?.(nextReserveIds);
+  };
   const toggleMember = (playerId) => {
     if (activeSet.has(playerId)) {
       const nextActive = activeIds.filter((id) => id !== playerId);
       const nextReserve = reserveIdList.length < reserveCapacity ? [...reserveIdList, playerId] : reserveIdList;
-      onChange(nextActive);
-      onReserveChange?.(nextReserve);
+      commitRoster(nextActive, nextReserve);
       return;
     }
     if (reserveSet.has(playerId)) {
-      onReserveChange?.(reserveIdList.filter((id) => id !== playerId));
+      const nextReserve = reserveIdList.filter((id) => id !== playerId);
+      if (activeIds.length < capacity) {
+        commitRoster([...activeIds, playerId], nextReserve);
+        return;
+      }
+      commitRoster(activeIds, nextReserve);
       return;
     }
     if (activeIds.length < capacity) {
-      onChange([...activeIds, playerId]);
+      commitRoster([...activeIds, playerId], reserveIdList);
       return;
     }
     if (reserveIdList.length < reserveCapacity) {
-      onReserveChange?.([...reserveIdList, playerId]);
+      commitRoster(activeIds, [...reserveIdList, playerId]);
     }
   };
 
@@ -481,19 +494,17 @@ export default function CreateMatch({ app }) {
     if (!isTeamRoom || !selectedTeamA) return;
     const selectableIds = getSelectableTeamPlayerIds(selectedTeamA);
     const selectedIds = getPartyPlayerIds(selectedTeamA, draft.playerIds, sideCapacity);
-    const activeShort = !isPublicRoom && selectedIds.length < sideCapacity;
     const reserveIds = getPartyReserveIds(selectedTeamA, draft.reservePlayerIds, selectedIds);
     const playerIdsNeedSync = !Array.isArray(draft.playerIds)
       || draft.playerIds.length > sideCapacity
-      || draft.playerIds.some((playerId) => !selectableIds.includes(playerId))
-      || activeShort;
+      || draft.playerIds.some((playerId) => !selectableIds.includes(playerId));
     const reserveIdsNeedSync = !Array.isArray(draft.reservePlayerIds)
       || draft.reservePlayerIds.length > MAX_PARTY_RESERVES
       || draft.reservePlayerIds.some((playerId) => !selectableIds.includes(playerId) || selectedIds.includes(playerId));
     if (!playerIdsNeedSync && !reserveIdsNeedSync) return;
     setDraft((current) => ({
       ...current,
-      playerIds: activeShort || !selectedIds.length ? getDefaultTeamPlayerIds(selectedTeamA, sideCapacity, [], app.currentUser.id) : selectedIds,
+      playerIds: !selectedIds.length ? getDefaultTeamPlayerIds(selectedTeamA, sideCapacity, [], app.currentUser.id) : selectedIds,
       reservePlayerIds: reserveIds,
     }));
   }, [app.currentUser.id, draft.hostJoinMode, draft.playerIds, draft.reservePlayerIds, isPublicRoom, isTeamRoom, sideCapacity, selectedTeamA]);
@@ -505,13 +516,11 @@ export default function CreateMatch({ app }) {
     const selectedIds = getPartyPlayerIds(selectedTeamB, draft.opponentPlayerIds, sideCapacity, excludedIds);
     const fallbackSelectedIds = selectedIds.length ? selectedIds : getDefaultTeamPlayerIds(selectedTeamB, sideCapacity, excludedIds);
     const reserveIds = getPartyReserveIds(selectedTeamB, draft.opponentReservePlayerIds, fallbackSelectedIds, MAX_PARTY_RESERVES, excludedIds);
-    const activeShort = fallbackSelectedIds.length < sideCapacity;
     const nextLeaderId = fallbackSelectedIds.includes(draft.opponentLeaderId) ? draft.opponentLeaderId : fallbackSelectedIds[0] ?? "";
     const playerIdsNeedSync = !Array.isArray(draft.opponentPlayerIds)
       || draft.opponentPlayerIds.length > sideCapacity
       || draft.opponentPlayerIds.some((playerId) => !selectableIds.includes(playerId) || excludedIds.includes(playerId))
-      || selectedIds.length !== draft.opponentPlayerIds.length
-      || activeShort;
+      || selectedIds.length !== draft.opponentPlayerIds.length;
     const reserveIdsNeedSync = !Array.isArray(draft.opponentReservePlayerIds)
       || draft.opponentReservePlayerIds.length > MAX_PARTY_RESERVES
       || draft.opponentReservePlayerIds.some((playerId) => !selectableIds.includes(playerId) || fallbackSelectedIds.includes(playerId) || excludedIds.includes(playerId));
@@ -1119,6 +1128,7 @@ export default function CreateMatch({ app }) {
               requiredActive={!isPublicRoom}
               onChange={(playerIds) => update({ playerIds })}
               onReserveChange={(reservePlayerIds) => update({ reservePlayerIds })}
+              onRosterChange={({ selectedIds: playerIds, reserveIds: reservePlayerIds }) => update({ playerIds, reservePlayerIds })}
             />
           ) : null}
           {!isPublicRoom && isTeamRoom ? (
@@ -1136,6 +1146,11 @@ export default function CreateMatch({ app }) {
                   opponentLeaderId: opponentPlayerIds.includes(draft.opponentLeaderId) ? draft.opponentLeaderId : opponentPlayerIds[0] ?? "",
                 })}
                 onReserveChange={(opponentReservePlayerIds) => update({ opponentReservePlayerIds })}
+                onRosterChange={({ selectedIds: opponentPlayerIds, reserveIds: opponentReservePlayerIds }) => update({
+                  opponentPlayerIds,
+                  opponentReservePlayerIds,
+                  opponentLeaderId: opponentPlayerIds.includes(draft.opponentLeaderId) ? draft.opponentLeaderId : opponentPlayerIds[0] ?? "",
+                })}
               />
               <div className="form-grid two">
                 <label>
