@@ -5,7 +5,6 @@ import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import RuleSelector from "../components/match/RuleSelector.jsx";
-import TeamBuilder from "../components/match/TeamBuilder.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { COURTS, MATCH_MODES, REFEREE_TRUST_MIN, REGIONS } from "../lib/constants.js";
 import { getPublicRoomMaxDateInput, isEligibleReferee } from "../lib/matchUtils.js";
@@ -346,12 +345,6 @@ export default function CreateMatch({ app }) {
     return Array.from(teamMap.values());
   }, [selectedTeamA, selectedTeamB, sortedTeams, tournamentTeams]);
   const teamAOptions = myTeams.length ? myTeams : teamOptions;
-  const selectedTeams = useMemo(
-    () => (isTeamRoom
-      ? (isPublicRoom ? [selectedTeamA].filter(Boolean) : [selectedTeamA, selectedTeamB].filter(Boolean))
-      : []),
-    [isPublicRoom, isTeamRoom, selectedTeamA, selectedTeamB],
-  );
   const isInstantRoom = !isTournamentRoom && draft.timingType === "instant";
   const scheduleMaxDate = isPublicRoom ? maxPublicScheduleDate : isTournamentRoom ? maxScheduleDate : maxPrivateScheduleDate;
   const activePlayerIds = useMemo(() => {
@@ -1183,33 +1176,6 @@ export default function CreateMatch({ app }) {
               <span>공개방은 매칭 목록에 노출된다. 상대 사이드는 방 안의 빈 슬롯을 공개 모집한다.</span>
             </div>
           ) : null}
-          {isTeamRoom ? (
-            <div className="favorite-action-row">
-              {selectedTeamA ? (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className={isFavoriteTeam(selectedTeamA) ? "favorite-toggle-button active" : "favorite-toggle-button"}
-                  onClick={() => app.actions.toggleFavoriteTeam(selectedTeamA.id)}
-                >
-                  <Star size={16} fill={isFavoriteTeam(selectedTeamA) ? "currentColor" : "none"} />
-                  A사이드 {isFavoriteTeam(selectedTeamA) ? "즐겨찾기 해제" : "즐겨찾기 추가"}
-                </Button>
-              ) : null}
-              {!isPublicRoom && selectedTeamB ? (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className={isFavoriteTeam(selectedTeamB) ? "favorite-toggle-button active" : "favorite-toggle-button"}
-                  onClick={() => app.actions.toggleFavoriteTeam(selectedTeamB.id)}
-                >
-                  <Star size={16} fill={isFavoriteTeam(selectedTeamB) ? "currentColor" : "none"} />
-                  B사이드 {isFavoriteTeam(selectedTeamB) ? "즐겨찾기 해제" : "즐겨찾기 추가"}
-                </Button>
-              ) : null}
-            </div>
-          ) : null}
-          {isTeamRoom ? <TeamBuilder teams={selectedTeams} users={app.state.users} draft={draft} onChange={update} /> : null}
         </Card>
 
         <Card className="section-card">
