@@ -274,14 +274,10 @@ function getVisualPartyKey(entry, sideName = "") {
 }
 
 function groupPartySlots(slots = []) {
-  const partyCounts = slots.reduce((acc, slot) => {
-    if (slot.partyKey) acc[slot.partyKey] = (acc[slot.partyKey] ?? 0) + 1;
-    return acc;
-  }, {});
   const groups = [];
 
   slots.forEach((slot) => {
-    const canGroup = slot.partyKey && partyCounts[slot.partyKey] > 1;
+    const canGroup = Boolean(slot.partyKey);
     const lastGroup = groups[groups.length - 1];
     if (canGroup && lastGroup?.partyKey === slot.partyKey) {
       lastGroup.slots.push(slot);

@@ -157,22 +157,13 @@ function getRecruitingParticipantEntry(post = {}, state = {}, userId, sideName =
 }
 
 function inferRecruitingInvitationTeamId(post = {}, state = {}, invitation = {}) {
-  if (invitation.teamId) return invitation.teamId;
-  const fromUserId = invitation.fromUserId;
-  const targetUserId = invitation.targetUserId;
-  if (!fromUserId || !targetUserId) return null;
+  return invitation.teamId || null;
+}
 
-  const fromEntry = getRecruitingParticipantEntry(post, state, fromUserId, invitation.side);
-  if (!fromEntry) return null;
-  if (fromEntry?.team?.members?.some((member) => member.userId === targetUserId)) {
-    return fromEntry.team.id;
-  }
-
-  const sharedTeam = (state.teams ?? []).find((team) => (
-    team.members?.some((member) => member.userId === fromUserId) &&
-    team.members?.some((member) => member.userId === targetUserId)
-  ));
-  return sharedTeam?.id ?? null;
+function getExplicitInvitationTeamPlayerIds(team = {}, capacity = Infinity, playerIds = [], fallbackPlayerId = "") {
+  const sourceIds = Array.isArray(playerIds) ? playerIds : [fallbackPlayerId];
+  const teamPlayerSet = new Set((team?.members ?? []).map((member) => member.userId));
+  return uniquePlayerIds(sourceIds).filter((playerId) => teamPlayerSet.has(playerId)).slice(0, capacity);
 }
 
 function mergeById(current = [], fallback = []) {
@@ -3724,19 +3715,11 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
     const applicants = normalizeRecruitingApplicants(post.applicants ?? []);
     const teamKey = `team:${invitedTeam.id}`;
     const isHostParty = post.teamId === invitedTeam.id && post.hostJoinMode !== "player";
-    const anchorApplicant = applicants.find((applicant) => (
-      applicant.kind === "player" &&
-      applicant.playerId === invitation.fromUserId &&
-      applicant.side === side &&
-      invitedTeam.members.some((member) => member.userId === applicant.playerId)
-    ));
     const existingApplicant = applicants.find((applicant) => getRecruitingApplicantKey(applicant) === teamKey);
     const currentPlayerIds = isHostParty
-      ? getSelectedTeamPlayerIds(invitedTeam, capacity, post.playerIds)
+      ? getExplicitInvitationTeamPlayerIds(invitedTeam, capacity, post.playerIds, post.playerId)
       : existingApplicant
-        ? getSelectedTeamPlayerIds(invitedTeam, capacity, existingApplicant.playerIds)
-        : anchorApplicant && !anchorApplicant.reserve
-          ? [anchorApplicant.playerId]
+        ? getExplicitInvitationTeamPlayerIds(invitedTeam, capacity, existingApplicant.playerIds, existingApplicant.playerId)
           : [];
     const nextPlayerIds = Array.from(new Set([...currentPlayerIds, state.currentUserId])).slice(0, capacity);
     if (!reserve && !nextPlayerIds.includes(state.currentUserId)) {
@@ -3744,10 +3727,7 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
     }
 
     const reserveKey = isHostParty ? "host" : teamKey;
-    const currentReserveIds = [
-      ...(roomState.partyReserves?.[reserveKey] ?? []),
-      ...(anchorApplicant?.reserve ? [anchorApplicant.playerId] : []),
-    ];
+    const currentReserveIds = roomState.partyReserves?.[reserveKey] ?? [];
     const nextReserveIds = reserve
       ? Array.from(new Set([...currentReserveIds, state.currentUserId]))
       : currentReserveIds.filter((playerId) => playerId !== state.currentUserId);
@@ -3768,20 +3748,19 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
           kind: "team",
           joinMode: "team",
           teamId: invitedTeam.id,
-          playerId: anchorApplicant?.playerId ?? state.currentUserId,
+          playerId: state.currentUserId,
           side,
           status: "ready",
           reserve: reserve && !nextPlayerIds.length,
           position: null,
-          playerIds: nextPlayerIds,
+          playerIds: reserve && !nextPlayerIds.length ? [state.currentUserId] : nextPlayerIds,
           createdAt: now,
           updatedAt: now,
         };
     const nextApplicants = isHostParty
       ? applicants
-      : existingApplicant
-        ? applicants
-          .filter((applicant) => applicant.playerId !== anchorApplicant?.playerId)
+        : existingApplicant
+          ? applicants
           .map((applicant) => (
             getRecruitingApplicantKey(applicant) === teamKey
               ? {
@@ -3795,7 +3774,7 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
               : applicant
           ))
         : [
-            ...applicants.filter((applicant) => applicant.playerId !== anchorApplicant?.playerId),
+            ...applicants,
             nextApplicant,
           ];
     const nextPost = isHostParty

@@ -1354,12 +1354,15 @@
 .ow-room-party-group::before {
   content: "";
   position: absolute;
-  inset: -5px;
+  inset: -7px;
   z-index: 0;
-  border: 1px solid rgba(70, 224, 182, 0.38);
+  border: 2px solid rgba(70, 224, 182, 0.62);
   border-radius: 12px;
   background:
-    linear-gradient(180deg, rgba(70, 224, 182, 0.09), rgba(70, 224, 182, 0.035));
+    linear-gradient(180deg, rgba(70, 224, 182, 0.13), rgba(70, 224, 182, 0.045));
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 211, 108, 0.16),
+    0 0 18px rgba(70, 224, 182, 0.16);
   pointer-events: none;
 }
 
@@ -1370,10 +1373,10 @@
   left: calc(var(--room-slot-width) / 2);
   right: calc(var(--room-slot-width) / 2);
   z-index: 1;
-  height: 3px;
+  height: 4px;
   border-radius: 999px;
-  background: linear-gradient(90deg, rgba(70, 224, 182, 0), rgba(70, 224, 182, 0.78), rgba(70, 224, 182, 0));
-  box-shadow: 0 0 10px rgba(70, 224, 182, 0.28);
+  background: linear-gradient(90deg, rgba(255, 211, 108, 0.12), rgba(255, 211, 108, 0.92), rgba(255, 211, 108, 0.12));
+  box-shadow: 0 0 12px rgba(255, 211, 108, 0.36);
   pointer-events: none;
 }
 
