@@ -82,4 +82,4 @@ export const TIER_QUOTES = {
   Legend: "최상위권 기록을 유지하는 플레이어입니다.",
 };
 
-export const STORAGE_KEY = "rankball.mvp.state.v2";
+export const STORAGE_KEY = "rankball.mvp.state.v3";

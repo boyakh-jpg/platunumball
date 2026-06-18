@@ -359,6 +359,7 @@ room = createRoom(state, "u1", {
   playerIds: ["u1", "u2", "u3"],
   reservePlayerIds: ["u4", "u5"],
   opponentPlayerIds: ["u6", "u7", "u8"],
+  opponentLeaderId: "u7",
   opponentReservePlayerIds: ["u9", "u10"],
   refereeId: "u11",
   court: "한강 노을코트",
@@ -367,11 +368,26 @@ room = createRoom(state, "u1", {
 });
 state = room.state;
 const lifecyclePostId = room.postId;
-state = withUser(state, "u6", (scoped) => setRecruitingReady(scoped, lifecyclePostId, true));
+let lifecyclePost = getPost(state, lifecyclePostId);
+let lifecycleInvite = lifecyclePost.roomState.invitations.find((invitation) => invitation.targetUserId === "u7");
+assertFlow(Boolean(lifecycleInvite), "비공개 팀전 즉시: B 파티장 초대장 발송", {
+  targetUserId: lifecycleInvite?.targetUserId,
+  scheduledAt: lifecyclePost.scheduledAt,
+});
+state = withUser(state, "u7", (scoped) => acceptRecruitingInvitation(scoped, lifecyclePostId, lifecycleInvite.id));
 let lifecycleLobby = getRecruitingLobby(getPost(state, lifecyclePostId), state);
-assertFlow(lifecycleLobby.canConfirm, "비공개 팀전: 파티장 확인 후 확정 가능", {
+assertFlow(lifecycleLobby.canConfirm, "비공개 팀전 즉시: B 파티장 수락 후 확정 가능", {
   teamA: lifecycleLobby.sides.teamA.confirmationProjectedFilled,
   teamB: lifecycleLobby.sides.teamB.confirmationProjectedFilled,
+  ready: lifecycleLobby.ready,
+  confirmationFillReady: lifecycleLobby.confirmationFillReady,
+  entries: lifecycleLobby.entries.map((entry) => ({
+    id: entry.id,
+    kind: entry.kind,
+    side: entry.side,
+    status: entry.status,
+    players: entry.players,
+  })),
 });
 
 const beforeLifecycleMatchIds = new Set(state.matches.map((match) => match.id));

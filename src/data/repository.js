@@ -42,6 +42,7 @@ import {
   getRecruitingRatingScale,
   getRecruitingRoomOwnerId,
   getRecruitingSideCapacity,
+  getSelectableTeamPlayerIds,
   getSelectedTeamPlayerIds,
   hasRecruitingApplicant,
   normalizeRecruitingMmrRangeMode,
@@ -2193,6 +2194,13 @@ function uniquePlayerIds(playerIds = []) {
   return [...new Set(playerIds.filter(Boolean))];
 }
 
+function ensureTeamPartyLeader(team = {}, playerIds = [], leaderId = "", capacity = Infinity) {
+  const selectableIds = new Set(getSelectableTeamPlayerIds(team));
+  const safePlayerIds = uniquePlayerIds(playerIds).filter((playerId) => selectableIds.has(playerId));
+  if (!leaderId || !selectableIds.has(leaderId)) return safePlayerIds.slice(0, capacity);
+  return [leaderId, ...safePlayerIds.filter((playerId) => playerId !== leaderId)].slice(0, capacity);
+}
+
 function getSelectedReservePlayerIds(team = {}, activeIds = [], reserveIds = []) {
   if (!team || !Array.isArray(reserveIds) || !reserveIds.length) return [];
   const activeSet = new Set(activeIds);
@@ -3143,7 +3151,8 @@ export function createRecruitingPost(state, draft) {
 
   const sideCapacity = Math.max(1, Number(draft.sideCapacity ?? MODE_SIZES[draft.mode] ?? 5));
   const hostTeam = hostJoinMode === "team" ? state.teams.find((team) => team.id === draft.teamId) : null;
-  const hostPlayerIds = hostJoinMode === "team" ? getSelectedTeamPlayerIds(hostTeam, sideCapacity, draft.playerIds) : [];
+  const rawHostPlayerIds = hostJoinMode === "team" ? getSelectedTeamPlayerIds(hostTeam, sideCapacity, draft.playerIds) : [];
+  const hostPlayerIds = hostJoinMode === "team" ? ensureTeamPartyLeader(hostTeam, rawHostPlayerIds, state.currentUserId, sideCapacity) : [];
   const hostReservePlayerIds = hostJoinMode === "team" ? getSelectedReservePlayerIds(hostTeam, hostPlayerIds, draft.reservePlayerIds) : [];
   const opponentTeam = visibility === "private" && hostJoinMode === "team"
     ? state.teams.find((team) => team.id === (draft.opponentTeamId ?? draft.targetTeamId))
@@ -3152,8 +3161,12 @@ export function createRecruitingPost(state, draft) {
   const opponentPlayerIds = opponentTeam
     ? getSelectedTeamPlayerIds(opponentTeam, sideCapacity, draft.opponentPlayerIds).filter((playerId) => !hostSidePlayerIds.has(playerId))
     : [];
+  const opponentLeaderId = opponentPlayerIds.includes(draft.opponentLeaderId) ? draft.opponentLeaderId : opponentPlayerIds[0] ?? "";
+  const orderedOpponentPlayerIds = opponentTeam
+    ? ensureTeamPartyLeader(opponentTeam, opponentPlayerIds, opponentLeaderId, sideCapacity)
+    : [];
   const opponentReservePlayerIds = opponentTeam
-    ? getSelectedReservePlayerIds(opponentTeam, opponentPlayerIds, draft.opponentReservePlayerIds).filter((playerId) => !hostSidePlayerIds.has(playerId))
+    ? getSelectedReservePlayerIds(opponentTeam, orderedOpponentPlayerIds, draft.opponentReservePlayerIds).filter((playerId) => !hostSidePlayerIds.has(playerId))
     : [];
   const hostPlayerId = hostJoinMode === "team" && hostPlayerIds.length && !hostPlayerIds.includes(state.currentUserId)
     ? hostPlayerIds[0]
@@ -3172,7 +3185,7 @@ export function createRecruitingPost(state, draft) {
       ],
     };
   }
-  if (visibility === "private" && hostJoinMode === "team" && (!opponentTeam || opponentTeam.id === hostTeam?.id || opponentPlayerIds.length < sideCapacity)) {
+  if (visibility === "private" && hostJoinMode === "team" && (!opponentTeam || opponentTeam.id === hostTeam?.id || orderedOpponentPlayerIds.length < sideCapacity)) {
     return {
       ...state,
       notifications: [
@@ -3187,8 +3200,8 @@ export function createRecruitingPost(state, draft) {
     };
   }
   const hostSize = hostJoinMode === "team" ? hostPlayerIds.length : 1;
-  const opponentSize = opponentPlayerIds.length;
-  const refereeId = getTrustedRefereeId(state, draft.refereeId, [state.currentUserId, ...hostPlayerIds, ...opponentPlayerIds]);
+  const opponentSize = orderedOpponentPlayerIds.length;
+  const refereeId = getTrustedRefereeId(state, draft.refereeId, [state.currentUserId, ...hostPlayerIds, ...orderedOpponentPlayerIds]);
   const timingType = draft.timingType === "instant" ? "instant" : "scheduled";
   const fallbackSchedule = timingType === "instant" ? null : getNextQueueSchedule(state.recruitingPosts ?? []);
   const scheduledDate = timingType === "instant" ? "" : (draft.scheduledDate || fallbackSchedule.scheduledDate);
@@ -3208,17 +3221,31 @@ export function createRecruitingPost(state, draft) {
   const partyReserves = {};
   if (hostReservePlayerIds.length) partyReserves.host = hostReservePlayerIds;
   if (opponentTeam && opponentReservePlayerIds.length) partyReserves[`team:${opponentTeam.id}`] = opponentReservePlayerIds;
-  const applicants = opponentTeam && opponentPlayerIds.length
+  const invitationTargets = visibility === "private" && hostJoinMode === "team" && opponentTeam && opponentLeaderId
+    ? [opponentLeaderId]
+    : [];
+  const initialInvitations = invitationTargets.map((targetUserId) => ({
+    id: makeId("inv"),
+    targetUserId,
+    fromUserId: state.currentUserId,
+    teamId: opponentTeam.id,
+    side: "teamB",
+    reserve: false,
+    status: "pending",
+    createdAt,
+    updatedAt: createdAt,
+  }));
+  const applicants = opponentTeam && orderedOpponentPlayerIds.length
     ? [
         {
           kind: "team",
           joinMode: "team",
           teamId: opponentTeam.id,
-          playerId: opponentPlayerIds[0],
+          playerId: opponentLeaderId || orderedOpponentPlayerIds[0],
           side: "teamB",
           status: "waiting",
           reserve: false,
-          playerIds: opponentPlayerIds,
+          playerIds: orderedOpponentPlayerIds,
           createdAt,
           updatedAt: createdAt,
         },
@@ -3258,6 +3285,11 @@ export function createRecruitingPost(state, draft) {
       approvalModeA: draft.approvalModeA === "all" ? "all" : "leader",
       approvalModeB: draft.approvalModeB === "all" ? "all" : "leader",
       partyReserves,
+      partyLeaders: {
+        host: state.currentUserId,
+        ...(opponentTeam && opponentLeaderId ? { [`team:${opponentTeam.id}`]: opponentLeaderId } : {}),
+      },
+      invitations: initialInvitations,
     },
     sideCapacity,
     playerIds: hostPlayerIds,
@@ -3279,6 +3311,14 @@ export function createRecruitingPost(state, draft) {
     ...state,
     recruitingPosts: [post, ...(state.recruitingPosts ?? [])],
     notifications: [
+      ...initialInvitations.map((invitation) => ({
+        id: makeId("n"),
+        title: "매치방 초대",
+        body: `${post.title} B사이드 파티장 초대장이 도착했습니다. 수락하면 B사이드가 READY가 됩니다.`,
+        tone: "match",
+        targetUserId: invitation.targetUserId,
+        recruitingPostId: post.id,
+      })),
       {
         id: makeId("n"),
         title: "매치 큐 등록",
@@ -3827,20 +3867,33 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
   const lobby = getRecruitingLobby(post, state);
   const side = ["teamA", "teamB"].includes(invitation.side) ? invitation.side : getRecruitingBestSide(post, state);
   const reserve = Boolean(invitation.reserve);
+  const invitedTeamCapacity = getRecruitingSideCapacity(post);
+  const invitedTeamKey = invitedTeam ? `team:${invitedTeam.id}` : "";
+  const existingInvitedTeamApplicant = invitedTeam
+    ? normalizeRecruitingApplicants(post.applicants ?? []).find((applicant) => getRecruitingApplicantKey(applicant) === invitedTeamKey)
+    : null;
+  const alreadyInInvitedTeamSlot = existingInvitedTeamApplicant
+    ? getExplicitInvitationTeamPlayerIds(
+      invitedTeam,
+      invitedTeamCapacity,
+      existingInvitedTeamApplicant.playerIds,
+      existingInvitedTeamApplicant.playerId,
+    ).includes(state.currentUserId)
+    : false;
   if (reserve && (lobby.sides[side]?.reserveCandidates?.length ?? 0) >= MAX_RECRUITING_RESERVES_PER_SIDE) {
     return expireInvitation(`${SIDE_LABEL_TEXT[side]} 후보가 이미 ${MAX_RECRUITING_RESERVES_PER_SIDE}명입니다.`);
   }
-  if (!reserve && lobby.sides[side].filled >= lobby.sides[side].capacity) {
+  if (!reserve && lobby.sides[side].filled >= lobby.sides[side].capacity && !alreadyInInvitedTeamSlot) {
     return expireInvitation("방이 꽉 찼습니다. 먼저 수락한 선수만 들어갑니다.");
   }
 
   const now = new Date().toISOString();
   if (invitedTeam) {
-    const capacity = getRecruitingSideCapacity(post);
+    const capacity = invitedTeamCapacity;
     const applicants = normalizeRecruitingApplicants(post.applicants ?? []);
-    const teamKey = `team:${invitedTeam.id}`;
+    const teamKey = invitedTeamKey;
     const isHostParty = post.teamId === invitedTeam.id && post.hostJoinMode !== "player";
-    const existingApplicant = applicants.find((applicant) => getRecruitingApplicantKey(applicant) === teamKey);
+    const existingApplicant = existingInvitedTeamApplicant;
     const currentPlayerIds = isHostParty
       ? getExplicitInvitationTeamPlayerIds(invitedTeam, capacity, post.playerIds, post.playerId)
       : existingApplicant
@@ -4854,7 +4907,7 @@ export function confirmRecruitingMatch(state, postId) {
         {
           id: makeId("n"),
           title: "매치 확정 불가",
-          body: "양쪽 슬롯이 채워지고 필요한 CONFIRM이 끝나야 합니다.",
+          body: "양쪽 슬롯이 채워지고 필요한 수락이 끝나야 합니다.",
           tone: "match",
           matchId: null,
         },

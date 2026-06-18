@@ -361,6 +361,16 @@ h3 {
   align-items: start;
 }
 
+.content-grid > *,
+.section-card,
+.form-grid > *,
+.search-controls > *,
+.public-party-picker,
+.public-party-picker-grid button,
+.quick-picker button {
+  min-width: 0;
+}
+
 .content-grid.wide-left {
   grid-template-columns: minmax(0, 1fr) minmax(340px, 420px);
 }
@@ -1707,6 +1717,7 @@ input[type="color"] {
 .public-party-picker-head {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: 10px;
   color: var(--muted);
@@ -1720,7 +1731,7 @@ input[type="color"] {
 
 .public-party-picker-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
   gap: 8px;
 }
 
@@ -1908,13 +1919,13 @@ input[type="color"] {
 
 .search-controls {
   display: grid;
-  grid-template-columns: minmax(160px, 0.34fr) minmax(0, 1fr);
+  grid-template-columns: minmax(min(160px, 100%), 0.34fr) minmax(0, 1fr);
   gap: 12px;
 }
 
 .court-reservation-row {
   display: grid;
-  grid-template-columns: max-content minmax(180px, 1fr);
+  grid-template-columns: minmax(0, max-content) minmax(min(180px, 100%), 1fr);
   align-items: end;
   gap: 12px;
 }

@@ -249,8 +249,9 @@
 .ow-filter-bar {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
-  overflow-x: auto;
+  overflow-x: visible;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius);
   background: rgba(8, 11, 16, 0.68);
@@ -258,7 +259,7 @@
 }
 
 .ow-filter-bar button {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
   min-height: 36px;
   border: 1px solid transparent;
   border-radius: 7px;
@@ -280,6 +281,8 @@
   display: inline-grid;
   grid-template-columns: auto minmax(92px, 130px);
   align-items: center;
+  flex: 1 1 180px;
+  max-width: 260px;
   gap: 7px;
   color: var(--muted);
   font-size: 0.76rem;
@@ -297,7 +300,7 @@
 }
 
 .ow-filter-count {
-  margin-left: auto;
+  margin-left: 0;
   color: var(--gold);
   font-size: 0.78rem;
   font-weight: 950;
@@ -430,10 +433,13 @@
 }
 
 .ow-recruit-card h3 {
+  display: -webkit-box;
   overflow: hidden;
   font-size: 1.3rem;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .ow-card-meta {
@@ -1000,25 +1006,20 @@
 .ow-queue-board-group > div {
   display: flex;
   align-items: stretch;
+  flex-wrap: wrap;
   min-width: 0;
   gap: 5px;
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  scrollbar-width: none;
-}
-
-.ow-queue-board-group > div::-webkit-scrollbar {
-  display: none;
+  overflow: visible;
 }
 
 .ow-queue-board-group > div > span {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  flex: 1 0 min(150px, 42vw);
+  flex: 1 1 min(128px, 100%);
   gap: 6px;
   min-width: 0;
-  max-width: 210px;
+  max-width: 100%;
   min-height: 32px;
   border: 1px solid rgba(255, 255, 255, 0.09);
   border-radius: 8px;
@@ -2561,6 +2562,16 @@ html[data-theme="light"] .ow-compose-drawer {
 
   .ow-mode-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 920px) {
+  .ow-recruit-card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ow-card-side {
+    grid-template-columns: minmax(0, 0.72fr) minmax(0, 1fr);
   }
 }
 

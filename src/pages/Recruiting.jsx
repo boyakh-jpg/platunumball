@@ -1245,7 +1245,7 @@ function InvitationPanel({ invitations, userById, teams, currentUserId, alreadyA
             </PlayerHoverCard>
             {mine ? (
               <span className="ow-invite-actions">
-                <Button type="button" size="sm" disabled={alreadyApplied} onClick={() => onAccept(invitation.id)}>수락</Button>
+                <Button type="button" size="sm" onClick={() => onAccept(invitation.id)}>수락</Button>
                 <Button type="button" size="sm" variant="secondary" onClick={() => onDecline(invitation.id)}>거절</Button>
               </span>
             ) : (
@@ -1988,7 +1988,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                       <Button type="button" size="sm" variant="secondary" onClick={() => closeRoomEdit(selectedPost)}>취소</Button>
                       <Button type="button" size="sm" disabled={!roomEditCapacityValid} onClick={() => saveRoomEdit(selectedPost)}>수정 저장</Button>
                     </div>
-                    <small>저장하면 방장을 제외한 참가자가 CONFIRM을 다시 눌러야 합니다.</small>
+                    <small>저장하면 방장을 제외한 참가자가 다시 수락해야 합니다.</small>
                   </div>
                 ) : null}
                 <span>팀 MMR은 실제 참가한 팀원 비율 기준으로 반영한다.</span>
@@ -2175,7 +2175,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                     onClick={() => app.actions.setRecruitingReady(selectedPost.id, true)}
                   >
                     <CheckCircle2 size={18} />
-                    CONFIRM
+                    수락
                   </Button>
                 ) : null}
                 {!matchRoom && mine ? (
