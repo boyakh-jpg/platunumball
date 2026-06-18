@@ -108,8 +108,11 @@ function toDateInputValue(date = new Date()) {
 
 function getMatchDate(match) {
   if (match.scheduledDate) return String(match.scheduledDate).slice(0, 10);
-  const dateText = String(match.scheduledAt ?? match.createdAt ?? "");
-  return dateText.match(/\d{4}-\d{2}-\d{2}/)?.[0] ?? "";
+  const scheduledText = String(match.scheduledAt ?? "");
+  const scheduledDate = scheduledText.match(/\d{4}-\d{2}-\d{2}/)?.[0];
+  if (scheduledDate) return scheduledDate;
+  const createdText = String(match.createdAt ?? "");
+  return createdText.match(/\d{4}-\d{2}-\d{2}/)?.[0] ?? "";
 }
 
 function getMonthKey(value = toDateInputValue()) {
