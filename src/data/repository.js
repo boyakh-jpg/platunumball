@@ -3881,14 +3881,18 @@ function buildRecruitingTeamAbsorbPost(post, state, applicants, roomState, playe
 
   const capacity = getRecruitingSideCapacity(post);
   const teamKey = `team:${sourceTeamId}`;
+  const hostPlayerInTeam = team.members.some((member) => member.userId === post.playerId);
   const isHostParty = post.teamId === sourceTeamId && post.hostJoinMode !== "player" && (post.hostSide ?? "teamA") === side;
+  const canPromoteHostPlayerParty = post.hostJoinMode === "player" && hostPlayerInTeam && (post.hostSide ?? "teamA") === side;
   const targetApplicant = applicants.find((applicant) => getRecruitingApplicantKey(applicant) === teamKey && applicant.side === side);
-  const canUseHostParty = sourceEntryId ? sourceEntryId === "host" && isHostParty : isHostParty;
+  const canUseHostParty = sourceEntryId ? sourceEntryId === "host" && (isHostParty || canPromoteHostPlayerParty) : (isHostParty || canPromoteHostPlayerParty);
   const canUseTeamParty = Boolean(targetApplicant) && (!sourceEntryId || sourceEntryId === teamKey || targetApplicant.teamId === sourceTeamId);
   if (!canUseHostParty && !canUseTeamParty) return null;
 
   const currentPlayerIds = canUseHostParty
-    ? getSelectedTeamPlayerIds(team, capacity, post.playerIds)
+    ? canPromoteHostPlayerParty
+      ? [post.playerId].filter(Boolean)
+      : getSelectedTeamPlayerIds(team, capacity, post.playerIds)
     : getSelectedTeamPlayerIds(team, capacity, targetApplicant.playerIds);
   const nextPlayerIds = reserve
     ? currentPlayerIds.filter((id) => id !== playerId)
@@ -3925,6 +3929,8 @@ function buildRecruitingTeamAbsorbPost(post, state, applicants, roomState, playe
   return canUseHostParty
     ? {
         ...post,
+        teamId: sourceTeamId,
+        hostJoinMode: "team",
         hostReady: false,
         playerIds: reserve ? currentPlayerIds : nextPlayerIds,
         roomState: nextRoomState,
@@ -4062,7 +4068,14 @@ export function joinRecruitingSideParty(state, postId, teamId, sideName = "", en
   if (!currentApplicant && !joinableSide) return state;
 
   const side = joinableSide || currentApplicant.side;
-  const partyEntries = (lobby.sides[side]?.entries ?? []).filter((entry) => (
+  const sideEntries = lobby.sides[side]?.entries ?? [];
+  const targetEntry = entryId ? sideEntries.find((entry) => entry.id === entryId) : null;
+  const targetEntryIsSameTeamPlayer = Boolean(
+    targetEntry?.kind === "player" &&
+    targetEntry.playerId &&
+    teamMemberIds.has(targetEntry.playerId),
+  );
+  const partyEntries = sideEntries.filter((entry) => (
     entry.team?.id === teamId &&
     isRecruitingTeamPartyEntry(entry)
   ));
@@ -4086,6 +4099,35 @@ export function joinRecruitingSideParty(state, postId, teamId, sideName = "", en
       state.currentUserId,
       teamId,
       partyEntry.id,
+      { side, reserve: currentUserReserve },
+      updatedAt,
+    );
+    if (!absorbedPost) return state;
+    const nextLobby = getRecruitingLobby(absorbedPost, state);
+    if (nextLobby.sides[side].projectedFilled > nextLobby.sides[side].capacity) return state;
+    if (isRecruitingReserveLimitExceeded(absorbedPost, state, side)) {
+      return {
+        ...state,
+        notifications: [getRecruitingReserveLimitNotification(postId, side), ...state.notifications],
+      };
+    }
+    return {
+      ...state,
+      recruitingPosts: (state.recruitingPosts ?? []).map((item) => (
+        item.id === postId ? cleanRecruitingRoomStatRecorders(absorbedPost, state) : item
+      )),
+    };
+  }
+
+  if (targetEntry?.fixed && targetEntryIsSameTeamPlayer) {
+    const absorbedPost = buildRecruitingTeamAbsorbPost(
+      post,
+      state,
+      applicants,
+      roomState,
+      state.currentUserId,
+      teamId,
+      targetEntry.id,
       { side, reserve: currentUserReserve },
       updatedAt,
     );
