@@ -4,11 +4,10 @@ import { Globe2, Lock, Star, Trophy } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
-import EvidenceSelector from "../components/match/EvidenceSelector.jsx";
 import RuleSelector from "../components/match/RuleSelector.jsx";
 import TeamBuilder from "../components/match/TeamBuilder.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
-import { COURTS, EVIDENCE_OPTIONS, MATCH_MODES, REFEREE_TRUST_MIN, REGIONS } from "../lib/constants.js";
+import { COURTS, MATCH_MODES, REFEREE_TRUST_MIN, REGIONS } from "../lib/constants.js";
 import { getPublicRoomMaxDateInput, isEligibleReferee } from "../lib/matchUtils.js";
 import { MMR_RANGE_POLICIES, getRecruitingSideCapacity, getRecruitingTierRange, getSelectableTeamPlayerIds, isMmrInRecruitingRange } from "../lib/recruiting.js";
 
@@ -830,6 +829,15 @@ export default function CreateMatch({ app }) {
           <select value={draft.court} onChange={(event) => update({ court: event.target.value })}>
             {sortedCourts.map((court) => <option key={court.id} value={court.name}>{court.region} · {court.name} · {court.type}</option>)}
           </select>
+          <div className="court-reservation-row">
+            <label>
+              <input type="checkbox" checked={draft.courtReserved} onChange={(event) => update({ courtReserved: event.target.checked })} />
+              구장예약됨
+            </label>
+            {draft.courtReserved ? (
+              <input value={draft.courtFee} placeholder="예약 금액/메모" onChange={(event) => update({ courtFee: event.target.value })} />
+            ) : null}
+          </div>
           <Button
             type="button"
             variant="secondary"
@@ -1148,16 +1156,6 @@ export default function CreateMatch({ app }) {
               <h2>약속과 메모</h2>
             </div>
           </div>
-          <div className="toggle-pair">
-            <label><input type="checkbox" checked={draft.courtReserved} onChange={(event) => update({ courtReserved: event.target.checked })} /> 구장 예약 있음</label>
-          </div>
-          {draft.courtReserved ? (
-            <label>
-              구장 예약 금액/메모
-              <input value={draft.courtFee} placeholder="예: 30000 또는 무료 예약" onChange={(event) => update({ courtFee: event.target.value })} />
-            </label>
-          ) : null}
-          <EvidenceSelector selected={draft.evidence} onChange={(evidence) => update({ evidence })} />
           <label className="memo-label">
             약속/벌칙 메모
             <textarea value={draft.stakes} onChange={(event) => update({ stakes: event.target.value })} />

@@ -1903,6 +1903,20 @@ input[type="color"] {
   gap: 12px;
 }
 
+.court-reservation-row {
+  display: grid;
+  grid-template-columns: max-content minmax(180px, 1fr);
+  align-items: end;
+  gap: 12px;
+}
+
+.court-reservation-row label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+}
+
 .quick-picker {
   display: grid;
   gap: 10px;
@@ -2532,6 +2546,7 @@ input[type="color"] {
   .form-grid.two,
   .contract-grid,
   .contract-note-grid,
+  .court-reservation-row,
   .search-controls,
   .two-column,
   .approval-grid,
