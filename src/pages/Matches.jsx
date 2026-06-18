@@ -6,7 +6,7 @@ import Button from "../components/common/Button.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { MATCH_MODES } from "../lib/constants.js";
-import { getMatchReservePlayerIds, getMatchRoomPhase } from "../lib/matchUtils.js";
+import { getMatchReservePlayerIds, getMatchRoomPhase, isInstantRoom } from "../lib/matchUtils.js";
 import { getRecruitingLobby, getRecruitingSideCapacity, isRecruitingPostForUser } from "../lib/recruiting.js";
 import { RecruitingRoomModal, getRecruitingRoomListStatus } from "./Recruiting.jsx";
 
@@ -129,6 +129,8 @@ function formatTournamentWindow(tournament) {
 }
 
 function compareSchedule(a, b) {
+  const instantDiff = Number(isInstantRoom(b)) - Number(isInstantRoom(a));
+  if (instantDiff) return instantDiff;
   const aKey = `${getMatchDate(a) || "9999-12-31"} ${a.scheduledTime ?? ""} ${a.scheduledAt ?? ""}`;
   const bKey = `${getMatchDate(b) || "9999-12-31"} ${b.scheduledTime ?? ""} ${b.scheduledAt ?? ""}`;
   return aKey.localeCompare(bKey);
@@ -310,6 +312,7 @@ function getMatchRoomPost(match, state) {
       scheduledDate: match.scheduledDate ?? sourcePost.scheduledDate,
       scheduledTime: match.scheduledTime ?? sourcePost.scheduledTime,
       scheduledAt: match.scheduledAt ?? sourcePost.scheduledAt,
+      timingType: match.timingType ?? sourcePost.timingType ?? match.rules?.timingType ?? sourcePost.roomState?.timingType ?? "scheduled",
       ranked: match.ranked ?? sourcePost.ranked,
       official: match.official ?? sourcePost.official,
       preRegistered: match.preRegistered ?? sourcePost.preRegistered,
@@ -412,6 +415,7 @@ function getMatchRoomPost(match, state) {
     scheduledDate: match.scheduledDate ?? "",
     scheduledTime: match.scheduledTime ?? "",
     scheduledAt: match.scheduledAt,
+    timingType: match.timingType ?? match.rules?.timingType ?? "scheduled",
     status: "closed",
     visibility: match.tournamentId ? "private" : match.recruitingPostId ? "public" : "private",
     ranked: match.ranked !== false,
@@ -426,12 +430,13 @@ function getMatchRoomPost(match, state) {
     sideCapacity,
     mmrRangeMode: match.mmrRangeMode ?? match.rules?.mmrRangeMode ?? "narrow",
     ratingScale: match.ratingScale ?? match.rules?.ratingScale ?? 1,
-    rules: match.rules ?? {},
+    rules: { ...(match.rules ?? {}), timingType: match.timingType ?? match.rules?.timingType ?? "scheduled" },
     memo: match.memo ?? match.stakes ?? "",
     stakes: match.stakes ?? "",
     applicants,
     roomState: {
       ...baseRoomState,
+      timingType: match.timingType ?? match.rules?.timingType ?? "scheduled",
       partyReserves,
       chatMessages: [],
       invitations: [],
@@ -909,7 +914,7 @@ export default function Matches({ app }) {
             const lobby = getRecruitingLobby(post, app.state);
             const myEntry = getRecruitingEntryForUser(lobby, app.currentUser.id);
             const needConfirm = myEntry && myEntry.status !== "ready";
-            const roomStatus = getRecruitingRoomListStatus(lobby, { myEntry, mine: post.playerId === app.currentUser.id });
+            const roomStatus = getRecruitingRoomListStatus(lobby, { post, myEntry, mine: post.playerId === app.currentUser.id });
             const filled = lobby.sides.teamA.projectedFilled + lobby.sides.teamB.projectedFilled;
             const capacity = getRecruitingSideCapacity(post) * 2;
             return (

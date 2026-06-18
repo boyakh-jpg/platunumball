@@ -8,6 +8,42 @@ import {
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const round = (value) => Math.round(value * 10) / 10;
 const uniquePlayerIds = (playerIds = []) => [...new Set(playerIds.filter(Boolean))];
+export const PUBLIC_ROOM_SCHEDULE_MAX_DAYS = 5;
+export const PUBLIC_ROOM_CONFIRM_OPEN_HOURS = 24;
+export const PUBLIC_ROOM_CONFIRM_CLOSE_HOURS = 4;
+export const INSTANT_ROOM_EXPIRE_MINUTES = 60;
+
+function addDateDays(dateValue, days) {
+  const date = new Date(`${dateValue}T00:00:00`);
+  if (!Number.isFinite(date.getTime())) return "";
+  date.setDate(date.getDate() + days);
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+export function getRoomTimingType(room = {}) {
+  const value = room.timingType ?? room.rules?.timingType ?? room.roomState?.timingType;
+  return value === "instant" || room.scheduledAt === "즉시" ? "instant" : "scheduled";
+}
+
+export function isInstantRoom(room = {}) {
+  return getRoomTimingType(room) === "instant";
+}
+
+export function getLocalDateInputValue(now = new Date()) {
+  return [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, "0"),
+    String(now.getDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+export function getPublicRoomMaxDateInput(now = new Date()) {
+  return addDateDays(getLocalDateInputValue(now), PUBLIC_ROOM_SCHEDULE_MAX_DAYS);
+}
 
 export function getSideMajority(side = {}) {
   const total = side.players?.length ?? 0;
@@ -139,11 +175,71 @@ export function getMatchEndDate(match = {}) {
 }
 
 export function getMatchScheduledDate(match = {}) {
+  if (isInstantRoom(match)) return null;
   const source = match.scheduledDate
     ? `${match.scheduledDate}T${match.scheduledTime || "00:00"}`
     : String(match.scheduledAt ?? "").replace(" ", "T");
   const parsed = new Date(source);
   return Number.isFinite(parsed.getTime()) ? parsed : null;
+}
+
+export function getPublicRoomTimingStatus(room = {}, now = new Date()) {
+  const nowDate = now instanceof Date ? now : new Date(now);
+  const nowMs = nowDate.getTime();
+  const timingType = getRoomTimingType(room);
+  if (timingType === "instant") {
+    const createdAt = new Date(room.createdAt ?? nowDate);
+    const expiresAt = new Date(createdAt.getTime() + INSTANT_ROOM_EXPIRE_MINUTES * 60000);
+    return {
+      timingType,
+      label: "즉시",
+      detail: "정원 충족 시 바로 확정 가능",
+      canConfirm: true,
+      canCreate: true,
+      expired: Number.isFinite(expiresAt.getTime()) && nowMs > expiresAt.getTime(),
+      expiresAt,
+    };
+  }
+
+  const scheduledAt = getMatchScheduledDate(room);
+  if (!scheduledAt) {
+    return {
+      timingType,
+      label: "일정 필요",
+      detail: "날짜와 시간을 입력해야 합니다.",
+      canConfirm: false,
+      canCreate: false,
+      expired: false,
+      scheduledAt: null,
+    };
+  }
+
+  const scheduledMs = scheduledAt.getTime();
+  const today = getLocalDateInputValue(nowDate);
+  const maxDate = getPublicRoomMaxDateInput(nowDate);
+  const dateValue = String(room.scheduledDate ?? "").slice(0, 10);
+  const dateAllowed = dateValue >= today && dateValue <= maxDate;
+  const createLeadAllowed = scheduledMs > nowMs + PUBLIC_ROOM_CONFIRM_CLOSE_HOURS * 3600000;
+  const confirmOpenMs = scheduledMs - PUBLIC_ROOM_CONFIRM_OPEN_HOURS * 3600000;
+  const confirmCloseMs = scheduledMs - PUBLIC_ROOM_CONFIRM_CLOSE_HOURS * 3600000;
+  const beforeConfirmOpen = nowMs < confirmOpenMs;
+  const afterConfirmClose = nowMs > confirmCloseMs;
+
+  return {
+    timingType,
+    label: beforeConfirmOpen ? "확정 가능 시간 대기" : afterConfirmClose ? "확정 마감" : "경기 확정 가능",
+    detail: beforeConfirmOpen
+      ? "경기 24시간 전부터 확정할 수 있습니다."
+      : afterConfirmClose
+        ? "경기 4시간 전 확정 마감이 지났습니다."
+        : "방장이 경기 확정을 누를 수 있습니다.",
+    canConfirm: dateAllowed && !beforeConfirmOpen && !afterConfirmClose,
+    canCreate: dateAllowed && createLeadAllowed,
+    expired: afterConfirmClose,
+    scheduledAt,
+    confirmOpenAt: new Date(confirmOpenMs),
+    confirmCloseAt: new Date(confirmCloseMs),
+  };
 }
 
 export const ROOM_PHASE_META = {
@@ -167,6 +263,7 @@ export function getMatchRoomPhase(match = {}, now = new Date()) {
   if (getMatchStartDate(match)) return ROOM_PHASE_META.live;
 
   if (match.status === "agreed" || match.status === "contract") {
+    if (isInstantRoom(match)) return ROOM_PHASE_META.checkin;
     const scheduledAt = getMatchScheduledDate(match);
     const nowMs = now instanceof Date ? now.getTime() : new Date(now).getTime();
     if (scheduledAt && Number.isFinite(nowMs) && nowMs >= scheduledAt.getTime()) return ROOM_PHASE_META.checkin;

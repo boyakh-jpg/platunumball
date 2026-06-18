@@ -42,7 +42,7 @@ import {
   isNationalRecruitingPost,
 } from "../lib/recruiting.js";
 import { findTeamByHashtag, findUserByHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
-import { getMatchRoomPhase } from "../lib/matchUtils.js";
+import { getMatchRoomPhase, getPublicRoomMaxDateInput, getPublicRoomTimingStatus, isInstantRoom } from "../lib/matchUtils.js";
 
 const SIDE_LABELS = {
   teamA: "A사이드",
@@ -76,15 +76,11 @@ function getTodayInputValue() {
 }
 
 function getMaxInputValue() {
-  const date = new Date();
-  date.setDate(date.getDate() + 365);
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  return getPublicRoomMaxDateInput();
 }
 
 function getRecruitingSchedule(post) {
+  if (isInstantRoom(post)) return "즉시";
   return [post.scheduledDate, post.scheduledTime].filter(Boolean).join(" ") || post.scheduledAt || "일정 미정";
 }
 
@@ -361,25 +357,33 @@ function isCurrentUserRoomParticipant(post, lobby, currentUserId) {
   ));
 }
 
-export function getRecruitingRoomStatus(lobby, { myEntry = null, mine = false } = {}) {
+export function getRecruitingRoomStatus(lobby, { post = null, myEntry = null, mine = false } = {}) {
+  const timingStatus = post ? getPublicRoomTimingStatus(post) : null;
   if (lobby.canConfirm) {
+    if (timingStatus && !timingStatus.canConfirm) {
+      return { label: "대기방", tone: timingStatus.expired ? "neutral" : "blue", detail: timingStatus.detail };
+    }
     return mine
       ? { label: "대기방", tone: "green", detail: "정원 충족 · 경기 확정 가능" }
       : { label: "대기방", tone: "green", detail: "방장 경기 확정 대기" };
   }
-  if (!lobby.projectedFull) return { label: "대기방", tone: "blue", detail: "모집 중" };
+  if (!lobby.projectedFull) return { label: "대기방", tone: "blue", detail: timingStatus?.timingType === "instant" ? "즉시 모집 중" : "모집 중" };
   if (myEntry?.status && myEntry.status !== "ready") return { label: "대기방", tone: "orange", detail: "내 확인 필요" };
   return { label: "대기방", tone: "orange", detail: "참여 확인 중" };
 }
 
-export function getRecruitingRoomListStatus(lobby, { myEntry = null, mine = false } = {}) {
+export function getRecruitingRoomListStatus(lobby, { post = null, myEntry = null, mine = false } = {}) {
+  const timingStatus = post ? getPublicRoomTimingStatus(post) : null;
   if (lobby.canConfirm) {
+    if (timingStatus && !timingStatus.canConfirm) {
+      return { label: "대기방", tone: timingStatus.expired ? "neutral" : "blue", detail: timingStatus.detail, actionLabel: "방 보기" };
+    }
     return mine
       ? { label: "대기방", tone: "green", detail: "정원 충족 · 경기 확정 가능", actionLabel: "방 보기" }
       : { label: "대기방", tone: "green", detail: "방장 경기 확정 대기", actionLabel: "방 보기" };
   }
   if (!lobby.projectedFull) {
-    return { label: "대기방", tone: "blue", detail: "빈 슬롯 모집 중", actionLabel: "방 보기" };
+    return { label: "대기방", tone: "blue", detail: timingStatus?.timingType === "instant" ? "즉시 모집 중" : "빈 슬롯 모집 중", actionLabel: "방 보기" };
   }
   if (myEntry?.status && myEntry.status !== "ready") {
     return { label: "대기방", tone: "orange", detail: "내 참여 확인 필요", actionLabel: "확인하기" };
@@ -534,7 +538,7 @@ function QueueRoomBoard({ lobby, userById, teams }) {
   const readyCount = rows.filter((row) => row.ready).length;
   const filledCount = lobby.sides.teamA.projectedFilled + lobby.sides.teamB.projectedFilled;
   const totalCapacity = lobby.sides.teamA.capacity + lobby.sides.teamB.capacity;
-  const roomStatus = getRecruitingRoomListStatus(lobby);
+  const roomStatus = getRecruitingRoomListStatus(lobby, { post });
 
   return (
     <div className={lobby.canConfirm ? "ow-queue-board complete" : "ow-queue-board"}>
@@ -1417,7 +1421,8 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
         const sourceMatchStatus = getSourceMatchStatus(sourceMatch, lobby, app.currentUser.id);
         const sourceMatchAction = getSourceMatchAction(sourceMatch, app.currentUser.id, app.state.teams, userById);
         const sourceMatchSideName = getSourceMatchDecisionSideName(sourceMatch, app.currentUser.id, app.state.teams);
-        const roomQueueStatus = getRecruitingRoomStatus(lobby, { myEntry, mine });
+        const roomTimingStatus = getPublicRoomTimingStatus(selectedPost);
+        const roomQueueStatus = getRecruitingRoomStatus(lobby, { post: selectedPost, myEntry, mine });
         const roomReadyLabel = sourceMatch ? sourceMatchStatus.label : roomQueueStatus.label;
         const sourceMatchPhase = sourceMatch ? getMatchRoomPhase(sourceMatch) : null;
         const sourceMatchStarted = Boolean(sourceMatch?.startedAt ?? sourceMatch?.rules?.startedAt);
@@ -2041,7 +2046,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                   <Button
                     type="button"
                     variant="primary"
-                    disabled={!lobby.canConfirm}
+                    disabled={!lobby.canConfirm || !roomTimingStatus.canConfirm}
                     onClick={() => confirmQueueRoom(selectedPost)}
                   >
                     <Swords size={18} />
@@ -2104,6 +2109,7 @@ export default function Recruiting({ app }) {
     title: "",
     region: app.currentUser.region,
     court: COURTS.find((court) => court.region === app.currentUser.region)?.name ?? COURTS[0].name,
+    timingType: "scheduled",
     scheduledDate: getTodayInputValue(),
     scheduledTime: "20:00",
     mode: "5v5",
@@ -2124,10 +2130,12 @@ export default function Recruiting({ app }) {
   const draftRange = getRecruitingTierRange(draftTargetMmr, draft.ranked, draft.mmrRangeMode);
   const draftRangePolicy = MMR_RANGE_POLICIES[draft.mmrRangeMode] ?? MMR_RANGE_POLICIES.narrow;
   const hostNeedsTeam = draft.hostJoinMode === "team";
-  const hasSchedule = Boolean(draft.scheduledDate && draft.scheduledTime && draft.court);
+  const draftInstant = draft.timingType === "instant";
+  const hasSchedule = Boolean((draftInstant || (draft.scheduledDate && draft.scheduledTime)) && draft.court);
   const minScheduleDate = getTodayInputValue();
   const maxScheduleDate = getMaxInputValue();
-  const scheduleAllowed = draft.scheduledDate >= minScheduleDate && draft.scheduledDate <= maxScheduleDate;
+  const draftTimingStatus = getPublicRoomTimingStatus(draft);
+  const scheduleAllowed = draftInstant || (draft.scheduledDate >= minScheduleDate && draft.scheduledDate <= maxScheduleDate && draftTimingStatus.canCreate);
   const canPostRecruiting = hasSchedule && scheduleAllowed && (!hostNeedsTeam || (Boolean(selectedTeam) && selectedHostPlayerIds.length > 0));
 
   useEffect(() => {
@@ -2181,7 +2189,9 @@ export default function Recruiting({ app }) {
       const bMine = Number(isRecruitingPostForUser(b, app.currentUser.id, myTeamIds));
       const aNational = Number(isNationalRecruitingPost(a, app.state));
       const bNational = Number(isNationalRecruitingPost(b, app.state));
-      return bMine - aMine || bLocal - aLocal || bNational - aNational || new Date(b.createdAt) - new Date(a.createdAt);
+      const aInstant = Number(isInstantRoom(a));
+      const bInstant = Number(isInstantRoom(b));
+      return bMine - aMine || bInstant - aInstant || bLocal - aLocal || bNational - aNational || new Date(b.createdAt) - new Date(a.createdAt);
     });
   }, [app.currentUser.id, app.currentUser.region, app.state, myTeamIds, scopedPosts]);
 
@@ -2224,7 +2234,12 @@ export default function Recruiting({ app }) {
   const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
   const submit = (event) => {
     event.preventDefault();
-    const nextDraft = { ...draft, title: draft.title.trim() || getDefaultTitle(draft) };
+    const nextDraft = {
+      ...draft,
+      title: draft.title.trim() || getDefaultTitle(draft),
+      scheduledDate: draftInstant ? "" : draft.scheduledDate,
+      scheduledTime: draftInstant ? "" : draft.scheduledTime,
+    };
     app.actions.createRecruitingPost(nextDraft);
     setDraft((current) => ({ ...current, title: "", memo: "빈자리는 개인 또는 팀 파티로 들어올 수 있습니다." }));
     setComposeOpen(false);
@@ -2319,7 +2334,7 @@ export default function Recruiting({ app }) {
             entry.players?.includes(app.currentUser.id) ||
             entry.reserves?.includes(app.currentUser.id)
           ));
-          const roomStatus = getRecruitingRoomListStatus(lobby, { myEntry, mine });
+          const roomStatus = getRecruitingRoomListStatus(lobby, { post, myEntry, mine });
 
           return (
             <article
@@ -2457,15 +2472,37 @@ export default function Recruiting({ app }) {
                 <input value={draft.title} placeholder={getDefaultTitle(draft)} onChange={(event) => update({ title: event.target.value })} />
               </label>
 
+              <div className="field-block">
+                <span className="field-label">시간 옵션</span>
+                <div className="segmented-control compact-segments">
+                  <button type="button" className={draft.timingType === "scheduled" ? "active" : ""} onClick={() => update({ timingType: "scheduled" })}>일정 지정</button>
+                  <button type="button" className={draft.timingType === "instant" ? "active" : ""} onClick={() => update({ timingType: "instant" })}>즉시</button>
+                </div>
+                <small>{draftInstant ? "지금 바로 모아서 정원 충족 시 바로 확정한다." : "공개 예약방은 5일 이내, 경기 4시간 이후만 가능하다."}</small>
+              </div>
+
               <div className="ow-field-grid">
-                <label>
-                  날짜
-                  <input type="date" required min={minScheduleDate} max={maxScheduleDate} value={draft.scheduledDate} onChange={(event) => update({ scheduledDate: event.target.value })} />
-                </label>
-                <label>
-                  시간
-                  <input type="time" required value={draft.scheduledTime} onChange={(event) => update({ scheduledTime: event.target.value })} />
-                </label>
+                {!draftInstant ? (
+                  <>
+                    <label>
+                      날짜
+                      <input type="date" required min={minScheduleDate} max={maxScheduleDate} value={draft.scheduledDate} onChange={(event) => update({ scheduledDate: event.target.value })} />
+                    </label>
+                    <label>
+                      시간
+                      <input type="time" required value={draft.scheduledTime} onChange={(event) => update({ scheduledTime: event.target.value })} />
+                    </label>
+                  </>
+                ) : (
+                  <div className="ow-mini-note">
+                    <div>
+                      <span>일정</span>
+                      <strong>즉시</strong>
+                      <em>날짜/시간 입력 없음</em>
+                    </div>
+                    <Clock3 size={22} />
+                  </div>
+                )}
               </div>
 
               <div className="ow-field-grid three">
@@ -2551,7 +2588,7 @@ export default function Recruiting({ app }) {
 
               <div className="ow-submit-row">
                 <span className={canPostRecruiting ? "queue-note" : "form-warning"}>
-                  <ShieldCheck size={17} /> {canPostRecruiting ? "등록 가능" : hasSchedule ? "팀/팀원 선택 필요" : "날짜/시간/장소 필요"}
+                  <ShieldCheck size={17} /> {canPostRecruiting ? "등록 가능" : hasSchedule ? (scheduleAllowed ? "팀/팀원 선택 필요" : draftTimingStatus.detail) : "날짜/시간/장소 필요"}
                 </span>
                 <Button type="submit" disabled={!canPostRecruiting}><PlusCircle size={18} /> 등록</Button>
               </div>

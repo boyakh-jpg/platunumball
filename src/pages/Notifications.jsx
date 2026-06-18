@@ -2,6 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import Card from "../components/common/Card.jsx";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
+import { isInstantRoom } from "../lib/matchUtils.js";
 import { getPendingRecruitingInvitations } from "../lib/recruiting.js";
 
 const toneMap = {
@@ -9,6 +10,11 @@ const toneMap = {
   tier: "gold",
   team: "green",
 };
+
+function getRecruitingSchedule(post) {
+  if (isInstantRoom(post)) return "즉시";
+  return [post.scheduledDate, post.scheduledTime].filter(Boolean).join(" ") || post.scheduledAt || "일정 미정";
+}
 
 export default function Notifications({ app }) {
   const navigate = useNavigate();
@@ -45,7 +51,7 @@ export default function Notifications({ app }) {
               <div key={`${post.id}-${invitation.id}`} className="home-invitation-row">
                 <span className="home-action-main">
                   <strong>{post.title}</strong>
-                  <em>{[post.scheduledDate, post.scheduledTime].filter(Boolean).join(" ") || post.scheduledAt || "일정 미정"} · {post.court}</em>
+                  <em>{getRecruitingSchedule(post)} · {post.court}</em>
                 </span>
                 <span className="home-invitation-actions">
                   <Button size="sm" type="button" onClick={() => acceptInvitation(post.id, invitation.id)}>수락</Button>

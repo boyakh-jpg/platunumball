@@ -9,12 +9,14 @@ import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { COURTS } from "../lib/constants.js";
-import { getAllowedStatFields, getMatchRecordWindow, getMatchRoomPhase, getPlayerSideName, getPlayerStatSubmitted } from "../lib/matchUtils.js";
+import { getAllowedStatFields, getMatchRecordWindow, getMatchRoomPhase, getPlayerSideName, getPlayerStatSubmitted, getPublicRoomTimingStatus, isInstantRoom } from "../lib/matchUtils.js";
 import { RECRUITING_TYPES, getPendingRecruitingInvitations, getRecruitingLobby, isNationalRecruitingPost, isRecruitingPostForUser } from "../lib/recruiting.js";
 import { getCurrentSeason, getPlayerSeasonRows, getSeasonProgress } from "../lib/season.js";
 import { getTierDivision } from "../lib/tier.js";
 
 function compareSchedule(a, b) {
+  const instantDiff = Number(isInstantRoom(b)) - Number(isInstantRoom(a));
+  if (instantDiff) return instantDiff;
   return String(a.scheduledAt ?? "").localeCompare(String(b.scheduledAt ?? ""));
 }
 
@@ -50,6 +52,7 @@ function userNeedsResultInput(match, userId) {
 }
 
 function getRecruitingSchedule(post) {
+  if (isInstantRoom(post)) return "즉시";
   return [post.scheduledDate, post.scheduledTime].filter(Boolean).join(" ") || post.scheduledAt || "일정 미정";
 }
 
@@ -171,8 +174,8 @@ export default function Home({ app }) {
       .filter(Boolean);
     const confirmableRoomItems = (app.state.recruitingPosts ?? [])
       .filter((post) => post.status === "open" && post.playerId === user.id)
-      .map((post) => ({ post, lobby: getRecruitingLobby(post, app.state) }))
-      .filter(({ lobby }) => lobby.canConfirm)
+      .map((post) => ({ post, lobby: getRecruitingLobby(post, app.state), timing: getPublicRoomTimingStatus(post) }))
+      .filter(({ lobby, timing }) => lobby.canConfirm && timing.canConfirm)
       .map(({ post }) => ({
         id: `confirm-room-${post.id}`,
         priority: 1,

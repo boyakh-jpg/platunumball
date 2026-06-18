@@ -16,12 +16,14 @@ import {
   getMatchReservePlayerIds,
   getMatchSidePlayerIds,
   getMatchStartDate,
+  getPublicRoomTimingStatus,
   getMatchRecordWindow,
   getPlayerSideName,
   getStatRecorderSides,
   getResultPointAudit,
   getStatSubmissionStatus,
   getTeamCaptainId,
+  isInstantRoom,
   isEligibleReferee,
   isMatchReferee,
   isMatchStatRecorder,
@@ -96,6 +98,7 @@ function getFoulTrustPenalty(stats = {}) {
 }
 
 function getRoomScheduleDate(post = {}) {
+  if (isInstantRoom(post)) return null;
   if (!post.scheduledDate || !post.scheduledTime) return null;
   const date = new Date(`${post.scheduledDate}T${post.scheduledTime}`);
   return Number.isFinite(date.getTime()) ? date : null;
@@ -214,6 +217,15 @@ function getInvalidScheduleNotification() {
   };
 }
 
+function getInvalidPublicScheduleNotification(detail = "공개 예약방은 5일 이내, 경기 4시간 이후 시간만 만들 수 있습니다.") {
+  return {
+    id: makeId("n"),
+    title: "공개방 일정 불가",
+    body: detail,
+    tone: "orange",
+  };
+}
+
 function getQueueSlot(slotIndex) {
   const date = addDateDays(QUEUE_SCHEDULE_START_DATE, Math.floor(slotIndex / QUEUE_SCHEDULE_TIMES.length));
   const time = QUEUE_SCHEDULE_TIMES[slotIndex % QUEUE_SCHEDULE_TIMES.length];
@@ -292,6 +304,7 @@ function getNextQueueSchedule(posts = []) {
 }
 
 function getScheduledStartMs(match = {}) {
+  if (isInstantRoom(match)) return null;
   const dateText = match.scheduledDate
     ? `${match.scheduledDate}T${match.scheduledTime || "00:00"}`
     : String(match.scheduledAt ?? "").replace(" ", "T");
@@ -597,7 +610,9 @@ function fromRemoteMatch(row, context) {
   };
   const teamA = context.teamById[row.team_a_id];
   const teamB = context.teamById[row.team_b_id];
-  const scheduledAt = toDateTime(row.scheduled_date, row.scheduled_time, row.scheduled_at);
+  const rawScheduledAt = toDateTime(row.scheduled_date, row.scheduled_time, row.scheduled_at);
+  const timingType = row.rules?.timingType === "instant" || rawScheduledAt === "즉시" ? "instant" : "scheduled";
+  const scheduledAt = timingType === "instant" ? "즉시" : rawScheduledAt;
 
   return {
     id: row.id,
@@ -607,6 +622,7 @@ function fromRemoteMatch(row, context) {
     scheduledDate: row.scheduled_date,
     scheduledTime: row.scheduled_time ? String(row.scheduled_time).slice(0, 5) : "",
     scheduledAt,
+    timingType,
     status: row.status ?? "contract",
     official: Boolean(row.official),
     preRegistered: Boolean(row.pre_registered),
@@ -781,50 +797,57 @@ async function loadNormalizedRemoteState() {
       status: report.status,
       createdAt: report.created_at,
     })),
-    recruitingPosts: recruitingPosts.map((post) => ({
-      id: post.id,
-      type: post.type,
-      title: post.title,
-      region: post.region,
-      court: post.court_name ?? courtById[post.court_id]?.name ?? "미정",
-      mode: post.mode,
-      scheduledDate: post.scheduled_date,
-      scheduledTime: post.scheduled_time ? String(post.scheduled_time).slice(0, 5) : "",
-      scheduledAt: toDateTime(post.scheduled_date, post.scheduled_time, post.scheduled_at),
-      ranked: post.ranked,
-      spots: post.spots,
-      teamId: post.team_id,
-      targetTeamId: post.target_team_id,
-      refereeId: post.referee_id ?? "",
-      refereeTrustMin: post.referee_trust_min ?? REFEREE_TRUST_MIN,
-      statEntryMinutes: post.stat_entry_minutes ?? STAT_ENTRY_WINDOW_MINUTES,
-      disputeMinutes: post.dispute_minutes ?? DISPUTE_WINDOW_MINUTES,
-      roomState: normalizeRecruitingRoomState(post.room_state ?? {}),
-      hostJoinMode: post.host_join_mode,
-      hostSide: post.host_side,
-      hostReady: post.host_ready,
-      sideCapacity: post.side_capacity,
-      playerIds: post.player_ids ?? [],
-      position: post.position,
-      playerId: post.player_id,
-      memo: post.memo,
-      status: post.status,
-      confirmedAt: post.confirmed_at,
-      createdAt: post.created_at,
-      applicants: (applicationsByPost.get(post.id) ?? []).map((application) => ({
-        kind: application.kind,
-        joinMode: application.kind,
-        teamId: application.team_id,
-        playerId: application.player_id,
-        side: application.side,
-        status: application.status,
-        reserve: application.reserve,
-        position: application.position,
-        playerIds: application.player_ids ?? [],
-        createdAt: application.created_at,
-        updatedAt: application.updated_at,
-      })),
-    })),
+    recruitingPosts: recruitingPosts.map((post) => {
+      const rawScheduledAt = toDateTime(post.scheduled_date, post.scheduled_time, post.scheduled_at);
+      const roomState = normalizeRecruitingRoomState(post.room_state ?? {});
+      const timingType = roomState.timingType === "instant" || rawScheduledAt === "즉시" ? "instant" : "scheduled";
+      const scheduledAt = timingType === "instant" ? "즉시" : rawScheduledAt;
+      return {
+        id: post.id,
+        type: post.type,
+        title: post.title,
+        region: post.region,
+        court: post.court_name ?? courtById[post.court_id]?.name ?? "미정",
+        mode: post.mode,
+        scheduledDate: post.scheduled_date,
+        scheduledTime: post.scheduled_time ? String(post.scheduled_time).slice(0, 5) : "",
+        scheduledAt,
+        timingType,
+        ranked: post.ranked,
+        spots: post.spots,
+        teamId: post.team_id,
+        targetTeamId: post.target_team_id,
+        refereeId: post.referee_id ?? "",
+        refereeTrustMin: post.referee_trust_min ?? REFEREE_TRUST_MIN,
+        statEntryMinutes: post.stat_entry_minutes ?? STAT_ENTRY_WINDOW_MINUTES,
+        disputeMinutes: post.dispute_minutes ?? DISPUTE_WINDOW_MINUTES,
+        roomState,
+        hostJoinMode: post.host_join_mode,
+        hostSide: post.host_side,
+        hostReady: post.host_ready,
+        sideCapacity: post.side_capacity,
+        playerIds: post.player_ids ?? [],
+        position: post.position,
+        playerId: post.player_id,
+        memo: post.memo,
+        status: post.status,
+        confirmedAt: post.confirmed_at,
+        createdAt: post.created_at,
+        applicants: (applicationsByPost.get(post.id) ?? []).map((application) => ({
+          kind: application.kind,
+          joinMode: application.kind,
+          teamId: application.team_id,
+          playerId: application.player_id,
+          side: application.side,
+          status: application.status,
+          reserve: application.reserve,
+          position: application.position,
+          playerIds: application.player_ids ?? [],
+          createdAt: application.created_at,
+          updatedAt: application.updated_at,
+        })),
+      };
+    }),
     tournaments: tournaments.map((tournament) => {
       const teamRows = [...(tournamentTeamsByTournament.get(tournament.id) ?? [])]
         .sort((a, b) => (a.seed_order ?? 0) - (b.seed_order ?? 0));
@@ -1004,14 +1027,14 @@ async function saveNormalizedRemoteState(state) {
     tournament_mmr_policy: match.tournamentMmrPolicy ?? null,
     official: Boolean(match.official),
     pre_registered: Boolean(match.preRegistered),
-    scheduled_at: match.scheduledAt && match.scheduledAt !== "일정 미정" ? match.scheduledAt : null,
+    scheduled_at: match.scheduledAt && !["일정 미정", "즉시"].includes(match.scheduledAt) ? match.scheduledAt : null,
     scheduled_date: match.scheduledDate || null,
     scheduled_time: toDbTime(match.scheduledTime),
     team_a_id: match.teamA?.teamId,
     team_b_id: match.teamB?.teamId,
     score_a: Number(match.result?.scoreA ?? match.teamA?.score ?? 0),
     score_b: Number(match.result?.scoreB ?? match.teamB?.score ?? 0),
-    rules: { ...(match.rules ?? {}), statRecorders: normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders) },
+    rules: { ...(match.rules ?? {}), timingType: match.timingType ?? match.rules?.timingType ?? "scheduled", statRecorders: normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders) },
     memo: match.memo,
     stakes: match.stakes,
     objection_window: match.objectionWindow,
@@ -1092,7 +1115,7 @@ async function saveNormalizedRemoteState(state) {
     mode: post.mode,
     scheduled_date: post.scheduledDate || null,
     scheduled_time: toDbTime(post.scheduledTime),
-    scheduled_at: post.scheduledAt && post.scheduledAt !== "일정 미정" ? post.scheduledAt : null,
+    scheduled_at: post.scheduledAt && !["일정 미정", "즉시"].includes(post.scheduledAt) ? post.scheduledAt : null,
     ranked: post.ranked !== false,
     spots: post.spots ?? 1,
     target_team_id: post.targetTeamId ?? null,
@@ -1100,7 +1123,7 @@ async function saveNormalizedRemoteState(state) {
     referee_trust_min: Number(post.refereeTrustMin ?? REFEREE_TRUST_MIN),
     stat_entry_minutes: Number(post.statEntryMinutes ?? STAT_ENTRY_WINDOW_MINUTES),
     dispute_minutes: Number(post.disputeMinutes ?? DISPUTE_WINDOW_MINUTES),
-    room_state: normalizeRecruitingRoomState(post.roomState ?? {}),
+    room_state: { ...normalizeRecruitingRoomState(post.roomState ?? {}), timingType: post.timingType ?? post.roomState?.timingType ?? "scheduled" },
     host_join_mode: post.hostJoinMode ?? (post.teamId ? "team" : "player"),
     host_side: post.hostSide ?? "teamA",
     host_ready: Boolean(post.hostReady),
@@ -1746,20 +1769,25 @@ function applyAutomaticMatchDecisions(state, now = new Date()) {
 }
 
 function applyExpiredRecruitingRooms(state, now = new Date()) {
-  const nowMs = now.getTime();
-  const expiredPosts = (state.recruitingPosts ?? []).filter((post) => {
+  const expiredRows = (state.recruitingPosts ?? []).map((post) => {
     if (post.status !== "open") return false;
+    const lobby = getRecruitingLobby(post, state);
+    const timing = getPublicRoomTimingStatus(post, now);
+    if (timing.expired) return { post, lobby, penalizeHost: lobby.projectedFull };
     const deadlineMs = getScheduledStartMs(post);
-    if (!Number.isFinite(deadlineMs) || nowMs <= deadlineMs) return false;
-    return !getRecruitingLobby(post, state).projectedFull;
-  });
-  if (!expiredPosts.length) return state;
+    if (!Number.isFinite(deadlineMs) || now.getTime() <= deadlineMs || lobby.projectedFull) return false;
+    return { post, lobby, penalizeHost: false };
+  }).filter(Boolean);
+  if (!expiredRows.length) return state;
 
+  const expiredPosts = expiredRows.map((row) => row.post);
   const expiredIds = new Set(expiredPosts.map((post) => post.id));
+  const penalizedHostIds = expiredRows.filter((row) => row.penalizeHost).map((row) => row.post.playerId);
   const nowIso = now.toISOString();
 
   return {
     ...state,
+    users: penalizedHostIds.reduce((users, userId) => adjustUserTrust(users, userId, -4), state.users),
     recruitingPosts: (state.recruitingPosts ?? []).map((post) => {
       if (!expiredIds.has(post.id)) return post;
       const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
@@ -1799,8 +1827,9 @@ export function runAutomaticStateMaintenance(state, now = new Date()) {
 export function createMatch(state, draft) {
   const mode = draft.mode ?? "5v5";
   const size = MODE_SIZES[mode] ?? 5;
-  const scheduledAt = `${draft.scheduledDate ?? ""} ${draft.scheduledTime ?? ""}`.trim();
-  if (!isScheduleDateInAllowedWindow(draft.scheduledDate)) {
+  const timingType = draft.timingType === "instant" ? "instant" : "scheduled";
+  const scheduledAt = timingType === "instant" ? "즉시" : `${draft.scheduledDate ?? ""} ${draft.scheduledTime ?? ""}`.trim();
+  if (timingType !== "instant" && !isScheduleDateInAllowedWindow(draft.scheduledDate)) {
     return { ...state, notifications: [getInvalidScheduleNotification(), ...state.notifications] };
   }
   const teams = state.teams;
@@ -1818,9 +1847,10 @@ export function createMatch(state, draft) {
     title: draft.title || `${draft.court} ${mode} 판`,
     mode,
     court: draft.court,
-    scheduledDate: draft.scheduledDate,
-    scheduledTime: draft.scheduledTime,
+    scheduledDate: timingType === "instant" ? "" : draft.scheduledDate,
+    scheduledTime: timingType === "instant" ? "" : draft.scheduledTime,
     scheduledAt: scheduledAt || "일정 미정",
+    timingType,
     status: "agreed",
     ranked,
     official: ranked && Boolean(draft.official),
@@ -3054,12 +3084,17 @@ export function createRecruitingPost(state, draft) {
   }
   const hostSize = hostJoinMode === "team" ? hostPlayerIds.length : 1;
   const refereeId = getTrustedRefereeId(state, draft.refereeId, [state.currentUserId, ...hostPlayerIds]);
-  const fallbackSchedule = getNextQueueSchedule(state.recruitingPosts ?? []);
-  const scheduledDate = draft.scheduledDate || fallbackSchedule.scheduledDate;
-  const scheduledTime = draft.scheduledTime || fallbackSchedule.scheduledTime;
-  const scheduledAt = `${scheduledDate} ${scheduledTime}`;
-  if (!isScheduleDateInAllowedWindow(scheduledDate)) {
+  const timingType = draft.timingType === "instant" ? "instant" : "scheduled";
+  const fallbackSchedule = timingType === "instant" ? null : getNextQueueSchedule(state.recruitingPosts ?? []);
+  const scheduledDate = timingType === "instant" ? "" : (draft.scheduledDate || fallbackSchedule.scheduledDate);
+  const scheduledTime = timingType === "instant" ? "" : (draft.scheduledTime || fallbackSchedule.scheduledTime);
+  const scheduledAt = timingType === "instant" ? "즉시" : `${scheduledDate} ${scheduledTime}`;
+  if (timingType !== "instant" && !isScheduleDateInAllowedWindow(scheduledDate)) {
     return { ...state, notifications: [getInvalidScheduleNotification(), ...state.notifications] };
+  }
+  const timingStatus = getPublicRoomTimingStatus({ timingType, scheduledDate, scheduledTime, scheduledAt, createdAt: new Date().toISOString() });
+  if (!timingStatus.canCreate) {
+    return { ...state, notifications: [getInvalidPublicScheduleNotification(timingStatus.detail), ...state.notifications] };
   }
   const mmrRangeMode = normalizeRecruitingMmrRangeMode(draft.mmrRangeMode);
   const ratingScale = draft.ranked === false ? 1 : getRecruitingRatingScale({ ranked: draft.ranked !== false, mmrRangeMode });
@@ -3073,6 +3108,7 @@ export function createRecruitingPost(state, draft) {
     scheduledDate,
     scheduledTime,
     scheduledAt,
+    timingType,
     ranked: draft.ranked !== false,
     mmrRangeMode,
     ratingScale,
@@ -3086,7 +3122,8 @@ export function createRecruitingPost(state, draft) {
     hostJoinMode,
     hostSide: "teamA",
     hostReady: true,
-    roomState: { mmrRangeMode },
+    visibility: "public",
+    roomState: { mmrRangeMode, timingType },
     sideCapacity,
     playerIds: hostPlayerIds,
     position: hostJoinMode === "player" ? draft.position || "포지션 자유" : "포지션 자유",
@@ -4469,8 +4506,25 @@ export function confirmRecruitingMatch(state, postId) {
       ],
     };
   }
+  const timingStatus = getPublicRoomTimingStatus(post);
+  if (!timingStatus.canConfirm) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "매치 확정 불가",
+          body: timingStatus.detail,
+          tone: "match",
+          matchId: null,
+        },
+        ...state.notifications,
+      ],
+    };
+  }
 
-  const scheduledAt = post.scheduledDate && post.scheduledTime ? `${post.scheduledDate} ${post.scheduledTime}` : "일정 미정";
+  const timingType = post.timingType === "instant" || post.roomState?.timingType === "instant" ? "instant" : "scheduled";
+  const scheduledAt = timingType === "instant" ? "즉시" : (post.scheduledDate && post.scheduledTime ? `${post.scheduledDate} ${post.scheduledTime}` : "일정 미정");
   const now = new Date().toISOString();
   const teamAPlayers = lobby.sides.teamA.projectedPlayers.slice(0, lobby.sides.teamA.capacity);
   const teamBPlayers = lobby.sides.teamB.projectedPlayers.slice(0, lobby.sides.teamB.capacity);
@@ -4498,9 +4552,10 @@ export function confirmRecruitingMatch(state, postId) {
     title: post.title,
     mode: post.mode,
     court: post.court,
-    scheduledDate: post.scheduledDate ?? "",
-    scheduledTime: post.scheduledTime ?? "",
+    scheduledDate: timingType === "instant" ? "" : (post.scheduledDate ?? ""),
+    scheduledTime: timingType === "instant" ? "" : (post.scheduledTime ?? ""),
     scheduledAt,
+    timingType,
     status: "agreed",
     official: ranked && Boolean(post.official),
     preRegistered: true,
@@ -4512,6 +4567,7 @@ export function confirmRecruitingMatch(state, postId) {
     rules: {
       ...defaultRules,
       ...(post.rules ?? {}),
+      timingType,
       mmrRangeMode,
       ratingScale,
     },

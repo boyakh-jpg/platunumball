@@ -319,6 +319,7 @@ export function normalizeRecruitingPost(post = {}) {
   const hostJoinMode = post.hostJoinMode === "player" || !post.teamId ? "player" : "team";
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
   const mmrRangeMode = normalizeRecruitingMmrRangeMode(post.mmrRangeMode ?? roomState.mmrRangeMode);
+  const timingType = post.timingType === "instant" || roomState.timingType === "instant" || post.scheduledAt === "즉시" ? "instant" : "scheduled";
   const ruleRevision = Number(roomState.ruleRevision ?? 0);
   const applicants = normalizeRecruitingApplicants(post.applicants ?? []);
   return {
@@ -334,7 +335,8 @@ export function normalizeRecruitingPost(post = {}) {
     refereeTrustMin: Number(post.refereeTrustMin ?? REFEREE_TRUST_MIN),
     statEntryMinutes: Number(post.statEntryMinutes ?? STAT_ENTRY_WINDOW_MINUTES),
     disputeMinutes: Number(post.disputeMinutes ?? DISPUTE_WINDOW_MINUTES),
-    roomState: { ...roomState, mmrRangeMode },
+    timingType,
+    roomState: { ...roomState, mmrRangeMode, timingType },
     playerIds: unique(post.playerIds ?? post.players ?? []),
     applicants: ruleRevision ? applicants : applicants.map((applicant) => ({ ...applicant, status: "ready" })),
   };

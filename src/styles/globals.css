@@ -1551,6 +1551,25 @@ label {
   font-weight: 800;
 }
 
+.field-block {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.field-block small {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.field-label {
+  display: block;
+}
+
 input,
 select,
 textarea {
