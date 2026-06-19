@@ -7,6 +7,14 @@ import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import { DEFAULT_REPORT_REASON, REPORT_REASONS } from "../lib/reportReasons.js";
 import { getMatchPlayerIds } from "../lib/matchUtils.js";
 import { COURTS, REGIONS } from "../lib/constants.js";
+import {
+  REFEREE_EXAM_BANK,
+  REFEREE_EXAM_PASS_SCORE,
+  REFEREE_EXAM_SIZE,
+  REFEREE_EXAM_VERSION,
+  getRefereeExamSet,
+  gradeRefereeExam,
+} from "../lib/refereeExamBank.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 
 const REPORT_MATCH_WINDOW_DAYS = 7;
@@ -19,6 +27,11 @@ const DEFAULT_COURT_REQUEST = {
   courtKind: "street_hoop",
   paid: false,
   reservation: false,
+};
+const DEFAULT_REFEREE_REQUEST = {
+  qualification: "community_exam",
+  experience: "",
+  memo: "",
 };
 
 function getMatchReportTime(match = {}) {
@@ -43,13 +56,20 @@ export default function Settings({ app, auth }) {
   const [reportMemo, setReportMemo] = useState("");
   const [reportedUserIds, setReportedUserIds] = useState([]);
   const [accountQuery, setAccountQuery] = useState("");
+  const [courtAddressQuery, setCourtAddressQuery] = useState("");
   const [courtDraft, setCourtDraft] = useState(() => ({
     ...DEFAULT_COURT_REQUEST,
     region: app.currentUser?.region ?? DEFAULT_COURT_REQUEST.region,
   }));
+  const [refereeDraft, setRefereeDraft] = useState(DEFAULT_REFEREE_REQUEST);
+  const [refereeExamSeed, setRefereeExamSeed] = useState(() => `${Date.now()}-${app.currentUserId}`);
+  const [refereeExamOpen, setRefereeExamOpen] = useState(false);
+  const [refereeExamAnswers, setRefereeExamAnswers] = useState({});
+  const [refereeExamResult, setRefereeExamResult] = useState(null);
   const userMap = useMemo(() => Object.fromEntries(app.state.users.map((user) => [user.id, user])), [app.state.users]);
   const matchMap = useMemo(() => Object.fromEntries(app.state.matches.map((match) => [match.id, match])), [app.state.matches]);
   const courtRequests = app.state.settings?.courtRequests ?? [];
+  const refereeRequests = app.state.settings?.refereeRequests ?? [];
 
   const blockableUsers = useMemo(
     () => app.state.users.filter((user) => user.id !== app.currentUserId && !blockedUserIds.includes(user.id)),
@@ -98,6 +118,19 @@ export default function Settings({ app, auth }) {
   const averageMatches = testAccounts.length
     ? Math.round(testAccounts.reduce((sum, user) => sum + (matchCountByUser.get(user.id) ?? 0), 0) / testAccounts.length)
     : 0;
+  const courtAddressResults = useMemo(() => {
+    const keyword = courtAddressQuery.trim().toLowerCase();
+    return COURTS
+      .filter((court) => {
+        const haystack = `${court.name} ${court.region} ${court.addressText} ${court.locationNote} ${court.hashtag}`.toLowerCase();
+        return keyword ? haystack.includes(keyword) : court.region === courtDraft.region;
+      })
+      .slice(0, 5);
+  }, [courtAddressQuery, courtDraft.region]);
+  const refereeExamQuestions = useMemo(() => getRefereeExamSet(refereeExamSeed), [refereeExamSeed]);
+  const answeredRefereeExamCount = Object.keys(refereeExamAnswers).length;
+  const refereeExamRequired = refereeDraft.qualification === "community_exam";
+  const refereeExamPassed = refereeExamResult?.passed === true;
 
   const submitBlock = (event) => {
     event.preventDefault();
@@ -111,13 +144,55 @@ export default function Settings({ app, auth }) {
     if (selectedReportMatchId) app.actions.reportMatch(selectedReportMatchId, [reportReason, targetLine, memo].filter(Boolean).join(" · "), selectedReportedUserIds);
   };
   const updateCourtDraft = (patch) => setCourtDraft((current) => ({ ...current, ...patch }));
+  const selectCourtAddress = (court) => {
+    updateCourtDraft({
+      name: courtDraft.name.trim() ? courtDraft.name : court.name,
+      region: court.region,
+      type: court.type,
+      addressText: court.addressText,
+      locationNote: court.locationNote,
+      courtKind: court.courtKind,
+      paid: court.paid,
+      reservation: court.reservation,
+    });
+    setCourtAddressQuery(`${court.name} ${court.addressText}`);
+  };
   const submitCourtRequest = (event) => {
     event.preventDefault();
     app.actions.submitCourtRequest(courtDraft);
+    setCourtAddressQuery("");
     setCourtDraft({
       ...DEFAULT_COURT_REQUEST,
       region: app.currentUser?.region ?? DEFAULT_COURT_REQUEST.region,
     });
+  };
+  const updateRefereeDraft = (patch) => setRefereeDraft((current) => ({ ...current, ...patch }));
+  const startRefereeExam = () => {
+    setRefereeExamSeed(`${Date.now()}-${app.currentUserId}-${Math.random()}`);
+    setRefereeExamAnswers({});
+    setRefereeExamResult(null);
+    setRefereeExamOpen(true);
+  };
+  const selectRefereeExamAnswer = (questionId, answerIndex) => {
+    if (refereeExamResult) return;
+    setRefereeExamAnswers((current) => ({ ...current, [questionId]: answerIndex }));
+  };
+  const submitRefereeExam = () => {
+    setRefereeExamResult(gradeRefereeExam(refereeExamQuestions, refereeExamAnswers));
+  };
+  const submitRefereeRequest = (event) => {
+    event.preventDefault();
+    app.actions.submitRefereeRequest({
+      ...refereeDraft,
+      examVersion: REFEREE_EXAM_VERSION,
+      examScore: refereeExamResult?.score ?? 0,
+      examTotal: refereeExamResult?.total ?? REFEREE_EXAM_SIZE,
+      examPassed: refereeDraft.qualification === "official_license" ? false : refereeExamPassed,
+    });
+    setRefereeDraft(DEFAULT_REFEREE_REQUEST);
+    setRefereeExamAnswers({});
+    setRefereeExamResult(null);
+    setRefereeExamOpen(false);
   };
   const toggleReportedUser = (userId) => {
     setReportedUserIds((current) => (
@@ -313,6 +388,24 @@ export default function Settings({ app, auth }) {
               <MapPin size={22} />
             </div>
             <form className="form-stack" onSubmit={submitCourtRequest}>
+              <div className="settings-address-search">
+                <label>
+                  주소 검색
+                  <div className="admin-account-search">
+                    <Search size={18} />
+                    <input value={courtAddressQuery} placeholder="코트명, 주소, 해시태그 검색" onChange={(event) => setCourtAddressQuery(event.target.value)} />
+                  </div>
+                </label>
+                <div className="settings-address-results">
+                  {courtAddressResults.map((court) => (
+                    <button key={court.id} type="button" onClick={() => selectCourtAddress(court)}>
+                      <strong>{court.name}</strong>
+                      <span>{court.region} · {court.addressText}</span>
+                    </button>
+                  ))}
+                  {!courtAddressResults.length ? <span>검색 결과 없음. 직접 주소를 입력하세요.</span> : null}
+                </div>
+              </div>
               <label>
                 구장명
                 <input value={courtDraft.name} placeholder="예: 망원 나들목 골대" onChange={(event) => updateCourtDraft({ name: event.target.value })} />
@@ -463,6 +556,99 @@ export default function Settings({ app, auth }) {
                   <strong>{report.status}</strong>
                 </div>
               ))}
+            </div>
+          </Card>
+
+          <Card className="section-card">
+            <div className="section-title-row">
+              <div>
+                <p className="eyebrow">Referee</p>
+                <h2>심판 등록요청</h2>
+              </div>
+              <ShieldCheck size={22} />
+            </div>
+            <div className="referee-exam-panel">
+              <div className="referee-exam-summary">
+                <span><strong>{REFEREE_EXAM_BANK.length}</strong>문제은행</span>
+                <span><strong>{REFEREE_EXAM_SIZE}</strong>문항</span>
+                <span><strong>{REFEREE_EXAM_PASS_SCORE}</strong>점 통과</span>
+              </div>
+              <div className="referee-exam-actions">
+                <Button type="button" variant="secondary" onClick={startRefereeExam}>
+                  {refereeExamOpen ? "시험 다시 뽑기" : "심판 시험 시작"}
+                </Button>
+                {refereeExamResult ? (
+                  <Badge tone={refereeExamResult.passed ? "green" : "orange"}>
+                    {refereeExamResult.score}/{refereeExamResult.total} · {refereeExamResult.passed ? "통과" : "미통과"}
+                  </Badge>
+                ) : (
+                  <Badge tone="neutral">{answeredRefereeExamCount}/{REFEREE_EXAM_SIZE}</Badge>
+                )}
+              </div>
+              {refereeExamOpen ? (
+                <div className="referee-exam-list">
+                  {refereeExamQuestions.map((question) => (
+                    <div key={question.id} className="referee-exam-question">
+                      <strong>{question.number}. {question.stem}</strong>
+                      <div className="referee-exam-choice-grid">
+                        {question.choices.map((choice, index) => {
+                          const selected = refereeExamAnswers[question.id] === index;
+                          const checked = Boolean(refereeExamResult);
+                          const correct = checked && question.answerIndex === index;
+                          const wrong = checked && selected && question.answerIndex !== index;
+                          return (
+                            <button
+                              key={choice}
+                              type="button"
+                              className={`${selected ? "selected" : ""} ${correct ? "correct" : ""} ${wrong ? "wrong" : ""}`}
+                              onClick={() => selectRefereeExamAnswer(question.id, index)}
+                            >
+                              {choice}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {refereeExamResult ? <small>{question.explanation}</small> : null}
+                    </div>
+                  ))}
+                  <Button type="button" onClick={submitRefereeExam} disabled={answeredRefereeExamCount < REFEREE_EXAM_SIZE || Boolean(refereeExamResult)}>
+                    채점하기
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+            <form className="form-stack" onSubmit={submitRefereeRequest}>
+              <label>
+                신청 유형
+                <select value={refereeDraft.qualification} onChange={(event) => updateRefereeDraft({ qualification: event.target.value })}>
+                  <option value="community_exam">커뮤니티 심판 시험</option>
+                  <option value="official_license">정식 라이선스 보유</option>
+                </select>
+              </label>
+              <label>
+                심판 경험
+                <input value={refereeDraft.experience} placeholder="예: 동호회 20경기, 학교대회 5경기" onChange={(event) => updateRefereeDraft({ experience: event.target.value })} />
+              </label>
+              <label>
+                메모
+                <textarea value={refereeDraft.memo} placeholder="자격증, 활동지역, 가능한 시간 등을 적어주세요." onChange={(event) => updateRefereeDraft({ memo: event.target.value })} />
+              </label>
+              <Button type="submit" variant="secondary" disabled={refereeExamRequired && !refereeExamPassed}>
+                <Send size={16} /> 심판 등록요청
+              </Button>
+              {refereeExamRequired && !refereeExamPassed ? <small>커뮤니티 심판은 시험 통과 후 등록요청할 수 있습니다.</small> : null}
+            </form>
+            <div className="compact-list">
+              {refereeRequests.slice(0, 4).map((request) => (
+                <div key={request.id}>
+                  <span>
+                    {request.qualification === "official_license" ? "정식 라이선스" : "커뮤니티 시험"} · 신뢰도 {request.trustScore}
+                    {request.examTotal ? ` · 시험 ${request.examScore}/${request.examTotal}` : ""}
+                  </span>
+                  <strong>{request.status === "pending" ? "대기" : request.status}</strong>
+                </div>
+              ))}
+              {!refereeRequests.length ? <div><span>요청한 심판 등록이 없습니다.</span><strong>신뢰도 {app.currentUser?.trustScore ?? 0}</strong></div> : null}
             </div>
           </Card>
         </aside>

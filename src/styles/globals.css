@@ -3587,6 +3587,144 @@ input[type="color"] {
   padding: 10px;
 }
 
+.settings-address-search {
+  display: grid;
+  gap: 8px;
+}
+
+.settings-address-results {
+  display: grid;
+  gap: 8px;
+}
+
+.settings-address-results button {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--text);
+  cursor: pointer;
+  padding: 10px;
+  text-align: left;
+}
+
+.settings-address-results strong,
+.settings-address-results span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.settings-address-results span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.referee-exam-panel {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(70, 224, 182, 0.055);
+  padding: 12px;
+}
+
+.referee-exam-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.referee-exam-summary span {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius);
+  background: rgba(0, 0, 0, 0.16);
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+  padding: 8px;
+}
+
+.referee-exam-summary strong {
+  color: var(--text);
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.referee-exam-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.referee-exam-list {
+  display: grid;
+  max-height: min(520px, 70vh);
+  overflow: auto;
+  gap: 10px;
+  padding-right: 4px;
+}
+
+.referee-exam-question {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.045);
+  padding: 10px;
+}
+
+.referee-exam-question > strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 0.9rem;
+}
+
+.referee-exam-question small {
+  color: var(--muted);
+  font-weight: 750;
+}
+
+.referee-exam-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.referee-exam-choice-grid button {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.055);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 850;
+  padding: 9px;
+  text-align: left;
+}
+
+.referee-exam-choice-grid button.selected {
+  border-color: rgba(70, 224, 182, 0.68);
+  background: rgba(70, 224, 182, 0.13);
+}
+
+.referee-exam-choice-grid button.correct {
+  border-color: rgba(70, 224, 182, 0.85);
+  background: rgba(70, 224, 182, 0.18);
+}
+
+.referee-exam-choice-grid button.wrong {
+  border-color: rgba(255, 108, 117, 0.85);
+  background: rgba(255, 108, 117, 0.14);
+}
+
 .report-player-picker {
   display: grid;
   gap: 9px;

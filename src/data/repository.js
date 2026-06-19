@@ -72,6 +72,7 @@ const DEFAULT_SETTINGS = {
   favoriteTeamIds: [],
   favoriteCourtIds: [],
   courtRequests: [],
+  refereeRequests: [],
 };
 const REMOTE_PAGE_SIZE = 1000;
 const REMOTE_WRITE_CHUNK_SIZE = 500;
@@ -492,6 +493,7 @@ function normalizeSettings(settings = {}) {
     favoriteTeamIds: settings.favoriteTeamIds ?? initialState.settings?.favoriteTeamIds ?? [],
     favoriteCourtIds: settings.favoriteCourtIds ?? initialState.settings?.favoriteCourtIds ?? [],
     courtRequests: settings.courtRequests ?? initialState.settings?.courtRequests ?? [],
+    refereeRequests: settings.refereeRequests ?? initialState.settings?.refereeRequests ?? [],
   };
 }
 
@@ -3293,6 +3295,47 @@ export function submitCourtRequest(state, draft = {}) {
         id: makeId("n"),
         title: "구장 등록요청",
         body: `${request.name} 등록요청이 접수됐습니다.`,
+        tone: "team",
+      },
+      ...state.notifications,
+    ],
+  };
+}
+
+export function submitRefereeRequest(state, draft = {}) {
+  const currentUser = state.users.find((user) => user.id === state.currentUserId);
+  const qualification = draft.qualification === "official_license" ? "official_license" : "community_exam";
+  const experience = String(draft.experience ?? "").trim();
+  const memo = String(draft.memo ?? "").trim();
+  const examScore = Math.max(0, Number(draft.examScore ?? 0));
+  const examTotal = Math.max(0, Number(draft.examTotal ?? 0));
+
+  const request = {
+    id: makeId("rr"),
+    status: "pending",
+    requestedBy: state.currentUserId,
+    qualification,
+    experience,
+    memo,
+    examVersion: String(draft.examVersion ?? ""),
+    examScore,
+    examTotal,
+    examPassed: Boolean(draft.examPassed),
+    trustScore: Number(currentUser?.trustScore ?? 0),
+    createdAt: new Date().toISOString(),
+  };
+
+  return {
+    ...state,
+    settings: normalizeSettings({
+      ...(state.settings ?? {}),
+      refereeRequests: [request, ...(state.settings?.refereeRequests ?? [])],
+    }),
+    notifications: [
+      {
+        id: makeId("n"),
+        title: "심판 등록요청",
+        body: `${currentUser?.name ?? "플레이어"} 심판 등록요청을 접수했습니다.`,
         tone: "team",
       },
       ...state.notifications,

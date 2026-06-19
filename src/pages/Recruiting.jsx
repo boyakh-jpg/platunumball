@@ -192,18 +192,6 @@ function getDefaultJoinDraft(post, teams, currentUser, state) {
   };
 }
 
-function getQuickJoinDraft(post, currentUser, state) {
-  return {
-    joinMode: "player",
-    teamId: "",
-    playerIds: [],
-    reservePlayerIds: [],
-    side: getRecruitingBestSide(post, state),
-    reserve: false,
-    position: currentUser.position,
-  };
-}
-
 function getEntryMmr(entry) {
   return isPartyEntry(entry)
     ? entry.team?.mmr ?? entry.user?.ratings?.integrated ?? 1200
@@ -2669,8 +2657,6 @@ export default function Recruiting({ app }) {
           const myRoom = isRecruitingPostForUser(post, app.currentUser.id, myTeamIds);
           const invited = hasPendingRecruitingInvitation(post, app.currentUser.id);
           const roomTag = invited ? "초대받음" : mine ? "내가 만든 방" : myRoom ? "내 참여방" : "";
-          const quickJoinFit = getRecruitingFit(post, app.currentUser.ratings.integrated, app.state);
-          const canQuickJoin = !isTeamOnlyRoom(post) && quickJoinFit.allowed;
           const myEntry = lobby.entries.find((entry) => (
             entry.players?.includes(app.currentUser.id) ||
             entry.reserves?.includes(app.currentUser.id)
@@ -2718,16 +2704,6 @@ export default function Recruiting({ app }) {
                 <Button type="button" className="ow-card-action" onClick={() => setSelectedPostId(post.id)}>
                   <Swords size={16} /> {roomStatus.actionLabel}
                 </Button>
-                {!mine && !applied && canQuickJoin ? (
-                  <Button
-                    type="button"
-                    className="ow-card-action"
-                    variant="secondary"
-                    onClick={() => app.actions.interestRecruitingPost(post.id, getQuickJoinDraft(post, app.currentUser, app.state))}
-                  >
-                    <Clock3 size={16} /> 빠른 참여
-                  </Button>
-                ) : null}
               </div>
             </article>
           );
