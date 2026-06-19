@@ -19,6 +19,8 @@ import {
   getMatchReservePlayerIds,
   getMatchSidePlayerIds,
   getMatchStartDate,
+  getMatchTrustFeedbackLimit,
+  getMatchTrustFeedbackParticipantIds,
   getPublicRoomTimingStatus,
   getMatchRecordWindow,
   getPlayerSideName,
@@ -26,6 +28,7 @@ import {
   getResultPointAudit,
   getStatSubmissionStatus,
   getTeamCaptainId,
+  isMatchTrustFeedbackOpen,
   isInstantRoom,
   isEligibleReferee,
   isMatchReferee,
@@ -84,6 +87,11 @@ const PUBLIC_ROOM_MIN_LEAD_HOURS = 4;
 const LIFECYCLE_TITLE_PATTERN = /^(동의 대기|진행 예정|결과 승인|이의 확인|이의제기|확정|결과 입력)\s*·\s*/;
 const POST_MATCH_TITLE_PATTERN = /^(결과 승인|이의 확인|이의제기|확정|결과 입력)\s*·\s*/;
 const SIDE_LABEL_TEXT = { teamA: "A사이드", teamB: "B사이드" };
+const HOST_TRUST_MIN = {
+  rankedPrivate: 70,
+  rankedPublic: 75,
+  official: 80,
+};
 
 function isRecruitingRoomOwner(post = {}, userId = "") {
   return Boolean(userId && getRecruitingRoomOwnerId(post) === userId);
@@ -101,6 +109,27 @@ function adjustUserTrust(users = [], userId, delta) {
       ? { ...user, trustScore: clampTrustScore((user.trustScore ?? 80) + delta) }
       : user
   ));
+}
+
+function getHostTrustRequirement({ ranked = true, visibility = "private", official = false } = {}) {
+  if (!ranked) return 0;
+  if (official) return HOST_TRUST_MIN.official;
+  return visibility === "public" ? HOST_TRUST_MIN.rankedPublic : HOST_TRUST_MIN.rankedPrivate;
+}
+
+function getHostTrustBlockNotification(state, draft = {}) {
+  const ranked = draft.ranked !== false;
+  const visibility = draft.visibility === "public" ? "public" : "private";
+  const requiredTrust = getHostTrustRequirement({ ranked, visibility, official: Boolean(draft.official) });
+  const currentUser = state.users.find((user) => user.id === state.currentUserId);
+  const trustScore = Number(currentUser?.trustScore ?? 0);
+  if (!requiredTrust || trustScore >= requiredTrust) return null;
+  return {
+    id: makeId("n"),
+    title: "방장 신뢰도 부족",
+    body: `${visibility === "public" ? "공개 정규전" : "정규전"} 방장은 신뢰도 ${requiredTrust}점 이상부터 가능합니다. 현재 ${trustScore}점입니다.`,
+    tone: "orange",
+  };
 }
 
 function getFoulTrustPenalty(stats = {}) {
@@ -1502,7 +1531,7 @@ function makeTournamentMatch(tournament, teamA, teamB, pairing, now) {
     memo: tournament.memo || "대회 경기입니다.",
     stakes: "대회 경기 MMR 가중치가 적용됩니다.",
     mmrLimitMode: tournament.mmrLimitMode ?? "warn",
-    objectionWindow: "2시간",
+    objectionWindow: "30분",
     evidence: [],
     teamA: { name: teamA.name, teamId: teamA.id, players: teamAPlayers, score: 0 },
     teamB: { name: teamB.name, teamId: teamB.id, players: teamBPlayers, score: 0 },
@@ -1894,6 +1923,8 @@ export function runAutomaticStateMaintenance(state, now = new Date()) {
 }
 
 export function createMatch(state, draft) {
+  const hostTrustBlock = getHostTrustBlockNotification(state, { ...draft, visibility: "private" });
+  if (hostTrustBlock) return { ...state, notifications: [hostTrustBlock, ...state.notifications] };
   const mode = draft.mode ?? "5v5";
   const size = MODE_SIZES[mode] ?? 5;
   const timingType = draft.timingType === "instant" ? "instant" : "scheduled";
@@ -1943,7 +1974,7 @@ export function createMatch(state, draft) {
     mmrLimitMode: draft.mmrLimitMode ?? "block",
     mmrRangeMode,
     ratingScale,
-    objectionWindow: "2시간",
+    objectionWindow: "30분",
     evidence,
     teamA: { name: teamA.name, teamId: teamA.id, players: teamAPlayers, score: 0 },
     teamB: { name: teamB.name, teamId: teamB.id, players: teamBPlayers, score: 0 },
@@ -2648,7 +2679,7 @@ export function disputeMatch(state, matchId, reason = "") {
         {
           id: makeId("n"),
           title: "이의제기 마감",
-          body: "경기 종료 후 2시간이 지나 이의제기를 접수할 수 없습니다.",
+          body: "경기 종료 후 30분이 지나 이의제기를 접수할 수 없습니다.",
           tone: "match",
           matchId,
         },
@@ -3004,11 +3035,11 @@ export function resumeMatchApproval(state, matchId) {
 
 export function toggleMatchStar(state, matchId, targetUserId) {
   const match = state.matches.find((item) => item.id === matchId);
-  const playerIds = match ? getMatchPlayerIds(match) : [];
-  if (!match || !["approval", "confirmed"].includes(match.status)) return state;
-  if (!playerIds.includes(state.currentUserId) || !playerIds.includes(targetUserId) || targetUserId === state.currentUserId) return state;
+  const feedbackIds = match ? getMatchTrustFeedbackParticipantIds(match) : [];
+  if (!match || !isMatchTrustFeedbackOpen(match)) return state;
+  if (!feedbackIds.includes(state.currentUserId) || !feedbackIds.includes(targetUserId) || targetUserId === state.currentUserId) return state;
 
-  const maxStars = Math.max(1, Math.floor(playerIds.length / 2));
+  const maxStars = getMatchTrustFeedbackLimit(match);
   const trustFeedback = match.trustFeedback ?? {};
   const stars = trustFeedback.stars ?? {};
   const myStars = stars[state.currentUserId] ?? [];
@@ -3019,8 +3050,8 @@ export function toggleMatchStar(state, matchId, targetUserId) {
       notifications: [
         {
           id: makeId("n"),
-          title: "별 한도 도달",
-          body: `한 경기에서 최대 ${maxStars}명에게 별을 줄 수 있습니다.`,
+          title: "따봉 한도 도달",
+          body: `한 경기에서 최대 ${maxStars}명에게 따봉을 줄 수 있습니다.`,
           tone: "match",
           matchId,
         },
@@ -3054,16 +3085,15 @@ export function toggleMatchStar(state, matchId, targetUserId) {
 
 export function submitMatchThumbs(state, matchId, targetUserIds = []) {
   const match = state.matches.find((item) => item.id === matchId);
-  const playerIds = match ? getMatchPlayerIds(match) : [];
-  const recordWindow = match ? getMatchRecordWindow(match) : null;
-  if (!match || !["approval", "confirmed"].includes(match.status) || !recordWindow?.statOpen) {
+  const feedbackIds = match ? getMatchTrustFeedbackParticipantIds(match) : [];
+  if (!match || !isMatchTrustFeedbackOpen(match)) {
     return {
       ...state,
       notifications: [
         {
           id: makeId("n"),
           title: "따봉 제출 마감",
-          body: "따봉은 경기 종료 후 1시간 안에만 제출할 수 있습니다.",
+          body: "따봉은 기록확정 후 24시간 안에만 제출할 수 있습니다.",
           tone: "orange",
           matchId,
         },
@@ -3071,11 +3101,12 @@ export function submitMatchThumbs(state, matchId, targetUserIds = []) {
       ],
     };
   }
-  if (!playerIds.includes(state.currentUserId)) return state;
+  if (!feedbackIds.includes(state.currentUserId)) return state;
 
-  const maxThumbs = Math.max(1, Math.floor(playerIds.length / 2));
+  const userIds = new Set(state.users.map((user) => user.id));
+  const maxThumbs = getMatchTrustFeedbackLimit(match);
   const nextMyThumbs = Array.from(new Set(targetUserIds))
-    .filter((targetUserId) => playerIds.includes(targetUserId) && targetUserId !== state.currentUserId)
+    .filter((targetUserId) => feedbackIds.includes(targetUserId) && userIds.has(targetUserId) && targetUserId !== state.currentUserId)
     .slice(0, maxThumbs);
   const trustFeedback = match.trustFeedback ?? {};
   const thumbs = trustFeedback.stars ?? {};
@@ -3083,7 +3114,7 @@ export function submitMatchThumbs(state, matchId, targetUserIds = []) {
   const previousSet = new Set(previousThumbs);
   const nextSet = new Set(nextMyThumbs);
   const adjustedUsers = state.users.map((user) => {
-    if (!playerIds.includes(user.id) || user.id === state.currentUserId) return user;
+    if (!feedbackIds.includes(user.id) || user.id === state.currentUserId) return user;
     const gained = nextSet.has(user.id) && !previousSet.has(user.id);
     const lost = previousSet.has(user.id) && !nextSet.has(user.id);
     if (!gained && !lost) return user;
@@ -3358,6 +3389,8 @@ export function createRecruitingPost(state, draft) {
   const hostJoinMode = draft.hostJoinMode === "player" ? "player" : "team";
   const postType = hostJoinMode === "team" ? "need_player" : "find_team";
   const visibility = draft.visibility === "private" ? "private" : "public";
+  const hostTrustBlock = getHostTrustBlockNotification(state, { ...draft, visibility });
+  if (hostTrustBlock) return { ...state, notifications: [hostTrustBlock, ...state.notifications] };
   const userTeamIds = new Set(
     state.teams
       .filter((team) => team.members.some((member) => member.userId === state.currentUserId))

@@ -124,6 +124,47 @@ export function getPlayerSideName(match = {}, playerId) {
   return null;
 }
 
+export function getMatchHostPlayerId(match = {}) {
+  return match.createdBy || match.hostPlayerId || match.createdPlayerId || match.playerId || match.teamA?.players?.[0] || "";
+}
+
+export function getMatchTrustFeedbackParticipantIds(match = {}) {
+  const statRecorders = normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders);
+  return uniquePlayerIds([
+    ...getMatchPlayerIds(match),
+    ...getMatchReservePlayerIds(match, "teamA"),
+    ...getMatchReservePlayerIds(match, "teamB"),
+    getMatchHostPlayerId(match),
+    match.refereeId,
+    ...Object.values(statRecorders),
+  ]);
+}
+
+export function getMatchTrustFeedbackClosesAt(match = {}) {
+  const baseValue = match.confirmedAt || match.autoConfirmedAt || match.result?.updatedAt || match.result?.submittedAt || match.endedAt;
+  const baseDate = baseValue ? new Date(baseValue) : null;
+  if (!baseDate || !Number.isFinite(baseDate.getTime())) return null;
+  return addMinutes(baseDate, 24 * 60);
+}
+
+export function isMatchTrustFeedbackOpen(match = {}, now = Date.now()) {
+  if (match.status !== "confirmed") return false;
+  const closesAt = getMatchTrustFeedbackClosesAt(match);
+  if (!closesAt) return false;
+  const nowMs = typeof now === "number" ? now : new Date(now).getTime();
+  return Number.isFinite(nowMs) && nowMs <= closesAt.getTime();
+}
+
+export function getMatchTrustFeedbackLimit(match = {}) {
+  const activeCount = getMatchPlayerIds(match).length;
+  const operationIds = new Set([
+    getMatchHostPlayerId(match),
+    match.refereeId,
+    ...Object.values(normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders)),
+  ].filter(Boolean));
+  return Math.max(1, Math.floor(activeCount / 2)) + (operationIds.size ? 1 : 0);
+}
+
 export function getMatchReferee(match = {}, users = []) {
   return users.find((user) => user.id === match.refereeId) ?? null;
 }

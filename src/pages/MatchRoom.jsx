@@ -12,7 +12,7 @@ import MmrChange from "../components/rating/MmrChange.jsx";
 import ShareCard from "../components/share/ShareCard.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
-import { EVIDENCE_OPTIONS, PLAYER_STAT_FIELDS } from "../lib/constants.js";
+import { DISPUTE_WINDOW_MINUTES, EVIDENCE_OPTIONS, PLAYER_STAT_FIELDS } from "../lib/constants.js";
 import {
   formatStatLine,
   getAllowedStatFields,
@@ -23,6 +23,9 @@ import {
   getMatchPlayerIds,
   getMatchReservePlayerIds,
   getMatchSidePlayerIds,
+  getMatchTrustFeedbackClosesAt,
+  getMatchTrustFeedbackLimit,
+  getMatchTrustFeedbackParticipantIds,
   getPlayerSideName,
   getPlayerStatSubmitted,
   getResultPointAudit,
@@ -30,6 +33,7 @@ import {
   getStatSubmissionStatus,
   isMatchReferee,
   isMatchStatRecorder,
+  isMatchTrustFeedbackOpen,
 } from "../lib/matchUtils.js";
 
 const statusMeta = {
@@ -82,6 +86,17 @@ function formatWindowTime(value) {
   });
 }
 
+function getTrustFeedbackRole(match, playerId) {
+  const roles = [];
+  if (match.createdBy === playerId || match.hostPlayerId === playerId || match.createdPlayerId === playerId || match.teamA?.players?.[0] === playerId) roles.push("방장");
+  if (match.refereeId === playerId) roles.push("심판");
+  const recorders = match.statRecorders ?? match.rules?.statRecorders ?? {};
+  if (Object.values(recorders).includes(playerId)) roles.push("기록자");
+  if (getMatchPlayerIds(match).includes(playerId)) roles.push("선수");
+  if (["teamA", "teamB"].some((sideName) => getMatchReservePlayerIds(match, sideName).includes(playerId))) roles.push("후보");
+  return roles.length ? roles.join(" · ") : "관계자";
+}
+
 export default function MatchRoom({ app }) {
   const { matchId } = useParams();
   const match = useMemo(
@@ -101,7 +116,8 @@ export default function MatchRoom({ app }) {
   useBodyScrollLock(Boolean(statEditorPlayerId));
 
   useEffect(() => {
-    setThumbDraftPlayerIds(match?.trustFeedback?.stars?.[app.currentUser.id] ?? []);
+    const participantIds = match ? getMatchTrustFeedbackParticipantIds(match) : [];
+    setThumbDraftPlayerIds((match?.trustFeedback?.stars?.[app.currentUser.id] ?? []).filter((playerId) => participantIds.includes(playerId)));
   }, [app.currentUser.id, match?.id, match?.trustFeedback]);
 
   useEffect(() => {
@@ -398,10 +414,12 @@ export default function MatchRoom({ app }) {
   const statTrustPercent = Math.round((statTrustSteps.filter((step) => step.complete).length / statTrustSteps.length) * 100);
   const trustFeedback = match.trustFeedback ?? {};
   const thumbsByGiver = trustFeedback.stars ?? {};
-  const thumbLimit = Math.max(1, Math.floor(allPlayerIds.length / 2));
-  const canSubmitThumbs = ["approval", "confirmed"].includes(match.status) && recordWindow.statOpen && allPlayerIds.includes(app.currentUser.id);
-  const shouldShowThumbReview = ["approval", "confirmed"].includes(match.status) && !recordWindow.beforeEnd && allPlayerIds.includes(app.currentUser.id);
-  const thumbTargets = allPlayerIds.filter((playerId) => playerId !== app.currentUser.id);
+  const feedbackParticipantIds = getMatchTrustFeedbackParticipantIds(match).filter((playerId) => userMap[playerId]);
+  const thumbLimit = getMatchTrustFeedbackLimit(match);
+  const trustFeedbackClosesAt = getMatchTrustFeedbackClosesAt(match);
+  const canSubmitThumbs = isMatchTrustFeedbackOpen(match) && feedbackParticipantIds.includes(app.currentUser.id);
+  const shouldShowThumbReview = match.status === "confirmed" && feedbackParticipantIds.includes(app.currentUser.id);
+  const thumbTargets = feedbackParticipantIds.filter((playerId) => playerId !== app.currentUser.id);
   const thumbCountByPlayer = Object.values(thumbsByGiver).reduce((acc, targetIds = []) => {
     targetIds.forEach((targetId) => {
       acc[targetId] = (acc[targetId] ?? 0) + 1;
@@ -424,7 +442,7 @@ export default function MatchRoom({ app }) {
     ["공격권", match.rules?.attackRule ?? "득점 후 공격권 교대"],
     ["파울 룰", match.rules?.foulRule ?? "현장 합의"],
     ["기록 권한", recorderSummary],
-    ["이의제기", `${match.disputeMinutes ?? 120}분`],
+    ["이의제기", `${Math.min(Number(match.disputeMinutes ?? DISPUTE_WINDOW_MINUTES), DISPUTE_WINDOW_MINUTES)}분`],
     ["티어 반영", match.ranked === false ? "친선 · 티어 자유" : `정규 · MMR ${Math.round((match.ratingScale ?? match.rules?.ratingScale ?? 1) * 100)}%`],
   ];
 
@@ -697,7 +715,7 @@ export default function MatchRoom({ app }) {
                 </div>
                 <Badge tone={canSubmitThumbs ? "gold" : "neutral"}>{thumbDraftPlayerIds.length}/{thumbLimit}</Badge>
               </div>
-              <p className="muted">경기 종료 후 1시간 안에 제출한다. 받은 따봉은 신뢰점수에 반영된다.</p>
+              <p className="muted">기록확정 후 24시간 안에 제출한다. 선수/방장/기록자/심판 따봉이 같은 신뢰 평가로 반영된다.</p>
               <div className="trust-star-grid">
                 {thumbTargets.map((playerId) => {
                   const user = userMap[playerId];
@@ -715,7 +733,7 @@ export default function MatchRoom({ app }) {
                         <span className="avatar small" style={{ "--avatar": user?.avatarColor }}>{user?.name?.slice(0, 1) ?? "P"}</span>
                         <span>
                           <strong>{user?.name ?? "플레이어"}</strong>
-                          <em>{thumbCountByPlayer[playerId] ?? 0}개 받음</em>
+                          <em>{getTrustFeedbackRole(match, playerId)} · {thumbCountByPlayer[playerId] ?? 0}개 받음</em>
                         </span>
                       </PlayerHoverCard>
                       <ThumbsUp size={16} fill={selected ? "currentColor" : "none"} />
@@ -726,7 +744,7 @@ export default function MatchRoom({ app }) {
               <Button type="button" disabled={!canSubmitThumbs} onClick={() => app.actions.submitMatchThumbs(match.id, thumbDraftPlayerIds)}>
                 <ThumbsUp size={16} /> 따봉 제출하기
               </Button>
-              {!canSubmitThumbs ? <p className="muted">제출 가능 시간이 지났거나 아직 경기 종료 전이다.</p> : null}
+              {!canSubmitThumbs ? <p className="muted">제출 가능 시간이 지났거나 아직 기록확정 전이다. 마감: {formatWindowTime(trustFeedbackClosesAt)}</p> : null}
             </Card>
           ) : null}
           <Card className="section-card">
