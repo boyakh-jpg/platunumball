@@ -213,6 +213,26 @@ function formatMatchRules(match) {
   return rules.join(" · ") || "룰 미정";
 }
 
+function MatchListSummary({ left, center = "vs", right, meta, detail, leftTeam = null, rightTeam = null }) {
+  const renderSide = (label, team) => (
+    <span className="om-summary-side">
+      {team ? <TeamHoverCard team={team} as="span">{label}</TeamHoverCard> : label}
+    </span>
+  );
+
+  return (
+    <div className="om-match-summary-box">
+      <div className="om-summary-line">
+        {renderSide(left, leftTeam)}
+        <strong>{center}</strong>
+        {renderSide(right, rightTeam)}
+      </div>
+      <span className="om-summary-meta">{meta}</span>
+      {detail ? <span className="om-summary-detail">{detail}</span> : null}
+    </div>
+  );
+}
+
 function getRoomTypeLabel(room = {}, lobby = null) {
   const matchTeamCount = ["teamA", "teamB"].filter((sideName) => Boolean(room[sideName]?.teamId)).length;
   const matchPartyCount = (room.parties ?? []).filter((party) => party.teamId).length;
@@ -1054,12 +1074,13 @@ export default function Matches({ app }) {
                   <h3>{roomTitle}</h3>
                   <p><CalendarDays size={15} />{formatMatchTime(post)} · {post.court}</p>
                 </div>
-                <div className="om-score-box">
-                  <span>A {lobby.sides.teamA.projectedFilled}/{lobby.sides.teamA.capacity}</span>
-                  <strong>{filled}/{capacity}</strong>
-                  <span>B {lobby.sides.teamB.projectedFilled}/{lobby.sides.teamB.capacity}</span>
-                  <span>{roomStatus.detail}</span>
-                </div>
+                <MatchListSummary
+                  left={`A ${lobby.sides.teamA.projectedFilled}/${lobby.sides.teamA.capacity}`}
+                  center={`${filled}/${capacity}`}
+                  right={`B ${lobby.sides.teamB.projectedFilled}/${lobby.sides.teamB.capacity}`}
+                  meta={formatMatchRules(post)}
+                  detail={roomStatus.detail}
+                />
                 <button type="button" className="button button-secondary button-md om-room-link" onClick={() => setSelectedRecruitingPostId(post.id)}>
                   {needConfirm ? "확인하기" : roomStatus.actionLabel}
                 </button>
@@ -1098,15 +1119,14 @@ export default function Matches({ app }) {
                   {winner ? <span>{winner} 우세</span> : null}
                 </div>
               ) : (
-                <div className="om-match-info-box">
-                  <div>
-                    <TeamHoverCard team={teamById[match.teamA.teamId]} to={`/app/teams/${match.teamA.teamId}`}>{match.teamA.name}</TeamHoverCard>
-                    <strong>vs</strong>
-                    <TeamHoverCard team={teamById[match.teamB.teamId]} to={`/app/teams/${match.teamB.teamId}`}>{match.teamB.name}</TeamHoverCard>
-                  </div>
-                  <span>참여 {getMatchPlayerCount(match)}명 · A {match.teamA.players?.length ?? 0} / B {match.teamB.players?.length ?? 0}</span>
-                  <span>{formatMatchRules(match)}</span>
-                </div>
+                <MatchListSummary
+                  left={match.teamA.name}
+                  right={match.teamB.name}
+                  leftTeam={teamById[match.teamA.teamId]}
+                  rightTeam={teamById[match.teamB.teamId]}
+                  meta={`참여 ${getMatchPlayerCount(match)}명 · A ${match.teamA.players?.length ?? 0} / B ${match.teamB.players?.length ?? 0}`}
+                  detail={formatMatchRules(match)}
+                />
               )}
               <button type="button" className="button button-secondary button-md om-room-link" onClick={() => openSelectedMatch(match.id)}>
                 {getMatchActionLabel(match)}
