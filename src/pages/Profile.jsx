@@ -143,10 +143,10 @@ export default function Profile({ app }) {
               <Button type="submit">저장</Button>
             </form>
           </Card>
-          <section className="mode-grid">
-            <RatingCard title="통합" mmr={user.ratings.integrated} subtitle="메인 티어" />
+          <section className="profile-rating-grid">
+            <RatingCard className="profile-rating-primary" title="통합" mmr={user.ratings.integrated} subtitle="메인 티어" />
             {Object.entries(user.ratings.modes).map(([mode, mmr]) => (
-              <RatingCard key={mode} title={mode} mmr={mmr} subtitle="모드 티어" />
+              <RatingCard className="profile-rating-mode" key={mode} title={mode} mmr={mmr} subtitle="모드 티어" />
             ))}
           </section>
           <RecentRecordCard records={myRecords} userId={user.id} />

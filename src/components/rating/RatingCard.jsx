@@ -2,9 +2,9 @@ import Card from "../common/Card.jsx";
 import TierEmblem from "./TierEmblem.jsx";
 import { getTierDivision, getTierProgress, getTierQuote } from "../../lib/tier.js";
 
-export default function RatingCard({ title, mmr, subtitle, trend }) {
+export default function RatingCard({ title, mmr, subtitle, trend, className = "" }) {
   return (
-    <Card className="rating-card">
+    <Card className={`rating-card ${className}`}>
       <div className="rating-card-top">
         <div>
           <p className="eyebrow">{title}</p>
