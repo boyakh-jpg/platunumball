@@ -12,9 +12,10 @@ body {
   margin: 0;
   min-height: 100vh;
   background:
-    radial-gradient(circle at 18% 14%, rgba(70, 224, 182, 0.16), transparent 28rem),
-    radial-gradient(circle at 82% 4%, rgba(255, 117, 95, 0.12), transparent 24rem),
-    linear-gradient(135deg, #080b10 0%, #101722 45%, #15100d 100%);
+    linear-gradient(180deg, rgba(5, 7, 10, 0.74), rgba(5, 7, 10, 0.94)),
+    linear-gradient(90deg, rgba(6, 18, 22, 0.94), rgba(13, 15, 21, 0.72), rgba(23, 13, 9, 0.88)),
+    var(--bg-court) center / cover fixed no-repeat,
+    #080b10;
   color: var(--text);
   font-family:
     Inter, Pretendard, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -185,9 +186,10 @@ h3 {
   display: grid;
   place-items: center;
   background:
-    radial-gradient(circle at 22% 10%, rgba(70, 224, 182, 0.22), transparent 26rem),
-    radial-gradient(circle at 78% 0%, rgba(255, 211, 108, 0.16), transparent 24rem),
-    linear-gradient(135deg, #080b10 0%, #101722 50%, #130f0b 100%);
+    linear-gradient(180deg, rgba(5, 7, 10, 0.66), rgba(5, 7, 10, 0.92)),
+    linear-gradient(90deg, rgba(5, 19, 24, 0.92), rgba(13, 15, 21, 0.68), rgba(22, 12, 8, 0.88)),
+    var(--bg-court) center / cover no-repeat,
+    #080b10;
   padding: 22px;
 }
 
@@ -3013,7 +3015,8 @@ input[type="color"] {
   background:
     linear-gradient(90deg, rgba(5, 7, 10, 0.96) 0%, rgba(5, 7, 10, 0.72) 42%, rgba(5, 7, 10, 0.25) 100%),
     linear-gradient(180deg, rgba(5, 7, 10, 0.18), rgba(5, 7, 10, 0.94)),
-    url("/assets/rankball-court-hero.png") center / cover no-repeat;
+    var(--bg-action) right center / auto 112% no-repeat,
+    var(--bg-court) center / cover no-repeat;
 }
 
 .landing-hero::after,
@@ -3211,7 +3214,8 @@ input[type="color"] {
   border-radius: var(--radius);
   background:
     linear-gradient(90deg, rgba(5, 7, 10, 0.94), rgba(5, 7, 10, 0.62), rgba(5, 7, 10, 0.92)),
-    url("/assets/home-rank-board.png") center / cover no-repeat;
+    var(--bg-action) right center / auto 116% no-repeat,
+    var(--bg-court) center / cover no-repeat;
   box-shadow: var(--shadow);
   padding: 22px;
 }
@@ -3320,7 +3324,7 @@ input[type="color"] {
 .match-hero {
   background:
     linear-gradient(90deg, rgba(5, 7, 10, 0.95), rgba(5, 7, 10, 0.64), rgba(5, 7, 10, 0.92)),
-    url("/assets/match-score-arena.png") center / cover no-repeat;
+    var(--bg-hoop) center / cover no-repeat;
 }
 
 .team-hub-hero {
@@ -3334,7 +3338,7 @@ input[type="color"] {
   border-radius: var(--radius);
   background:
     linear-gradient(90deg, rgba(5, 7, 10, 0.94), rgba(5, 7, 10, 0.66)),
-    url("/assets/season-bracket-wall.png") center / cover no-repeat;
+    var(--bg-ball) center / cover no-repeat;
   box-shadow: var(--shadow);
   padding: 24px;
 }
@@ -5090,7 +5094,7 @@ input[type="color"] {
   border-radius: var(--radius);
   background:
     linear-gradient(105deg, rgba(5, 7, 10, 0.96), rgba(5, 7, 10, 0.68), rgba(5, 7, 10, 0.94)),
-    url("/assets/season-bracket-wall.png") center / cover no-repeat;
+    var(--bg-ball) center / cover no-repeat;
   box-shadow: var(--shadow);
   padding: 24px;
 }
@@ -5355,7 +5359,7 @@ input[type="color"] {
   border-color: rgba(70, 224, 182, 0.24);
   background:
     linear-gradient(135deg, rgba(8, 11, 16, 0.9), rgba(8, 11, 16, 0.7)),
-    url("/assets/recruiting-queue-court.png") center / cover no-repeat;
+    var(--bg-ball) center / cover no-repeat;
 }
 
 .queue-filter-grid {
@@ -5536,7 +5540,7 @@ input[type="color"] {
   border-color: rgba(255, 211, 108, 0.2);
   background:
     linear-gradient(145deg, rgba(10, 14, 21, 0.93), rgba(10, 14, 21, 0.78)),
-    url("/assets/recruiting-queue-court.png") center / cover no-repeat;
+    var(--bg-hoop) center / cover no-repeat;
 }
 
 .tier-range-note {
@@ -7022,9 +7026,10 @@ input[type="color"] {
 
 html[data-theme="light"] body {
   background:
-    radial-gradient(circle at 16% 10%, rgba(15, 159, 126, 0.16), transparent 30rem),
-    radial-gradient(circle at 84% 0%, rgba(184, 118, 19, 0.12), transparent 24rem),
-    linear-gradient(135deg, #f6f8f2 0%, #edf4ef 48%, #f8f3e8 100%);
+    linear-gradient(180deg, rgba(248, 252, 248, 0.86), rgba(242, 247, 244, 0.96)),
+    linear-gradient(90deg, rgba(238, 248, 246, 0.92), rgba(248, 248, 240, 0.78), rgba(252, 244, 230, 0.9)),
+    var(--bg-ball) center / cover fixed no-repeat,
+    #f4f7f2;
 }
 
 html[data-theme="light"] .app-main {
@@ -7054,7 +7059,8 @@ html[data-theme="light"] .landing-backdrop {
   background:
     linear-gradient(90deg, rgba(246, 248, 242, 0.96) 0%, rgba(246, 248, 242, 0.72) 43%, rgba(246, 248, 242, 0.3) 100%),
     linear-gradient(180deg, rgba(246, 248, 242, 0.18), rgba(246, 248, 242, 0.88)),
-    url("/assets/rankball-court-hero.png") center / cover no-repeat;
+    var(--bg-action) right center / auto 112% no-repeat,
+    var(--bg-court) center / cover no-repeat;
 }
 
 html[data-theme="light"] .broadcast-glass,
@@ -7099,34 +7105,35 @@ html[data-theme="light"] .home-action-card {
 html[data-theme="light"] .court-command {
   background:
     linear-gradient(90deg, rgba(246, 248, 242, 0.94), rgba(246, 248, 242, 0.7), rgba(246, 248, 242, 0.9)),
-    url("/assets/home-rank-board.png") center / cover no-repeat;
+    var(--bg-action) right center / auto 116% no-repeat,
+    var(--bg-court) center / cover no-repeat;
 }
 
 html[data-theme="light"] .match-hero {
   background:
     linear-gradient(90deg, rgba(246, 248, 242, 0.96), rgba(246, 248, 242, 0.72), rgba(246, 248, 242, 0.92)),
-    url("/assets/match-score-arena.png") center / cover no-repeat;
+    var(--bg-hoop) center / cover no-repeat;
 }
 
 html[data-theme="light"] .team-hub-hero,
 html[data-theme="light"] .season-hero {
   background:
     linear-gradient(105deg, rgba(246, 248, 242, 0.96), rgba(246, 248, 242, 0.7), rgba(246, 248, 242, 0.93)),
-    url("/assets/season-bracket-wall.png") center / cover no-repeat;
+    var(--bg-ball) center / cover no-repeat;
 }
 
 html[data-theme="light"] .profile-hero,
 html[data-theme="light"] .team-detail-hero {
   background:
     linear-gradient(90deg, rgba(246, 248, 242, 0.96), rgba(246, 248, 242, 0.72), rgba(246, 248, 242, 0.92)),
-    url("/assets/rankball-court-hero.png") center / cover no-repeat;
+    var(--bg-court) center / cover no-repeat;
 }
 
 html[data-theme="light"] .recruiting-board-card,
 html[data-theme="light"] .recruiting-compose-card {
   background:
     linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.7)),
-    url("/assets/recruiting-queue-court.png") center / cover no-repeat;
+    var(--bg-hoop) center / cover no-repeat;
 }
 
 html[data-theme="light"] .court-command .tier-line,
@@ -7206,6 +7213,98 @@ html[data-theme="light"] .favorite-toggle-button.active.button-secondary {
     rgba(255, 250, 224, 0.94);
   color: #8a5b00;
   box-shadow: inset 0 0 0 1px rgba(184, 118, 19, 0.12), 0 12px 24px rgba(184, 118, 19, 0.08);
+}
+
+html[data-theme="light"] .auth-shell {
+  background:
+    linear-gradient(180deg, rgba(248, 252, 248, 0.76), rgba(242, 247, 244, 0.94)),
+    var(--bg-court) center / cover no-repeat,
+    #f4f7f2;
+}
+
+html[data-theme="light"] .auth-card,
+html[data-theme="light"] .sidebar-profile,
+html[data-theme="light"] .provider-button,
+html[data-theme="light"] .theme-choice-card,
+html[data-theme="light"] .selector-panel,
+html[data-theme="light"] .team-search-selected,
+html[data-theme="light"] .team-search-popover,
+html[data-theme="light"] .quick-picker button,
+html[data-theme="light"] .tier-range-note,
+html[data-theme="light"] .mmr-range-mode-control {
+  border-color: rgba(32, 56, 68, 0.15);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(247, 251, 248, 0.72)),
+    rgba(255, 255, 255, 0.86);
+  color: var(--text);
+}
+
+html[data-theme="light"] input,
+html[data-theme="light"] select,
+html[data-theme="light"] textarea {
+  border-color: rgba(32, 56, 68, 0.17);
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--text);
+}
+
+html[data-theme="light"] input::placeholder,
+html[data-theme="light"] textarea::placeholder {
+  color: #829097;
+}
+
+html[data-theme="light"] .button-secondary,
+html[data-theme="light"] .button-ghost,
+html[data-theme="light"] .sidebar-signout,
+html[data-theme="light"] .badge,
+html[data-theme="light"] .favorite-toggle,
+html[data-theme="light"] .favorite-toggle-button,
+html[data-theme="light"] .segmented-control,
+html[data-theme="light"] .nav-item:hover,
+html[data-theme="light"] .nav-item.active {
+  border-color: rgba(32, 56, 68, 0.15);
+  background: rgba(255, 255, 255, 0.66);
+  color: var(--text);
+}
+
+html[data-theme="light"] .button-ghost {
+  background: transparent;
+}
+
+html[data-theme="light"] .segmented-control button {
+  color: #4d5f67;
+}
+
+html[data-theme="light"] .segmented-control button.active,
+html[data-theme="light"] .button-primary {
+  background: linear-gradient(135deg, var(--green), #26c7a1);
+  color: #f7fffb;
+}
+
+html[data-theme="light"] .team-search-popover button,
+html[data-theme="light"] .team-search-selected,
+html[data-theme="light"] .quick-picker button {
+  border-color: rgba(32, 56, 68, 0.13);
+}
+
+html[data-theme="light"] .team-search-popover button:hover,
+html[data-theme="light"] .quick-picker button:hover {
+  border-color: rgba(15, 159, 126, 0.32);
+  background:
+    linear-gradient(180deg, rgba(236, 255, 247, 0.9), rgba(255, 255, 255, 0.78)),
+    rgba(255, 255, 255, 0.9);
+}
+
+html[data-theme="light"] .quick-picker button.selected,
+html[data-theme="light"] .team-search-popover button.selected {
+  border-color: rgba(15, 159, 126, 0.55);
+  background: rgba(15, 159, 126, 0.12);
+}
+
+html[data-theme="light"] .applicant-team-chip,
+html[data-theme="light"] .recruiting-type-grid button,
+html[data-theme="light"] .recruiting-fit-panel {
+  border-color: rgba(32, 56, 68, 0.13);
+  background: rgba(255, 255, 255, 0.62);
 }
 
 @media (max-width: 1020px) {

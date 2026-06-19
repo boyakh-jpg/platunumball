@@ -20,6 +20,10 @@
   --radius: 8px;
   --sidebar-width: 260px;
   --bottom-nav-height: 58px;
+  --bg-court: url("/assets/rankball-court-hero.png");
+  --bg-action: url("/assets/main.png");
+  --bg-hoop: url("/assets/Gemini_Generated_Image_veaa01veaa01veaa.png");
+  --bg-ball: url("/assets/Gemini_Generated_Image_pkzbpxpkzbpxpkzb.png");
 }
 
 html[data-theme="light"] {
