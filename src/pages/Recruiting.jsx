@@ -534,121 +534,14 @@ function TeamMemberPicker({ team, userById, selectedIds, capacity, onChange, req
   );
 }
 
-function QueueRoomBoard({ post, lobby, userById, teams }) {
-  const entries = lobby.entries ?? [];
-  const entryById = Object.fromEntries(entries.map((entry) => [entry.id, entry]));
-  const getQueueRowTeam = (entry = {}) => (isPartyEntry(entry) ? entry.team ?? null : null);
-  const getQueueRowLabel = (entry = {}, user = null) => {
-    const team = getQueueRowTeam(entry);
-    if (team && user) return `${team.name} · ${user.name}`;
-    if (team) return getReadyTitle(entry);
-    return user?.name ?? getReadyTitle(entry);
-  };
-  const activeRows = entries.filter((entry) => !entry.reserve).map((entry) => {
-    const user = entry.playerId ? userById[entry.playerId] : null;
-    const players = (entry.players ?? []).map((playerId) => userById[playerId]).filter(Boolean);
-    return {
-      id: entry.id,
-      label: getReadyTitle(entry),
-      sideName: entry.side,
-      reserve: Boolean(entry.reserve),
-      ready: entry.status === "ready",
-      user,
-      team: getQueueRowTeam(entry),
-      players,
-    };
-  });
-  const fillRows = ["teamA", "teamB"].flatMap((sideName) => (
-    (lobby.sides[sideName]?.fillSlots ?? []).map((candidate) => {
-      const entry = entryById[candidate.entryId] ?? {};
-      const user = userById[candidate.playerId] ?? candidate.user ?? null;
-      const rowLabel = getQueueRowLabel(entry, user);
-      return {
-        id: `fill-${sideName}-${candidate.playerId}`,
-        label: rowLabel,
-        sideName,
-        reserve: false,
-        ready: candidate.status === "ready",
-        autoFill: true,
-        user,
-        team: getQueueRowTeam(entry),
-        players: user ? [user] : [],
-      };
-    })
-  ));
-  const reserveRows = ["teamA", "teamB"].flatMap((sideName) => (
-    (lobby.sides[sideName]?.reserveCandidates ?? []).map((candidate) => {
-      const entry = entryById[candidate.entryId] ?? {};
-      const user = userById[candidate.playerId] ?? candidate.user ?? null;
-      const rowLabel = getQueueRowLabel(entry, user);
-      return {
-        id: `reserve-${sideName}-${candidate.playerId}`,
-        label: rowLabel,
-        sideName,
-        reserve: true,
-        ready: candidate.status === "ready",
-        user,
-        team: getQueueRowTeam(entry),
-        players: user ? [user] : [],
-      };
-    })
-  ));
-  const rows = [...activeRows, ...fillRows, ...reserveRows];
-  const renderRow = (row) => (
-    <span key={row.id} className={row.ready ? "ready" : "waiting"}>
-      <span className="ow-queue-board-avatars" aria-hidden="true">
-        {row.players.slice(0, 3).map((player) => (
-          <PlayerHoverCard key={player.id} user={player} teams={teams} as="span">
-            <span className="avatar small" style={{ "--avatar": player.avatarColor }}>{player.name.slice(0, 1)}</span>
-          </PlayerHoverCard>
-        ))}
-        {row.players.length > 3 ? <i>+{row.players.length - 3}</i> : null}
-      </span>
-      <span className="ow-queue-board-name">
-        {row.team ? (
-          <TeamHoverCard team={row.team} as="span">
-            <b>{row.label}</b>
-          </TeamHoverCard>
-        ) : row.user ? (
-          <PlayerHoverCard user={row.user} teams={teams} as="span">
-            <b>{row.label}</b>
-          </PlayerHoverCard>
-        ) : (
-          <b>{row.label}</b>
-        )}
-      </span>
-      <em>{row.autoFill ? "자동" : row.ready ? "확정" : "대기"}</em>
-    </span>
-  );
-  const renderGroup = (id, label, side) => {
-    const groupRows = rows.filter((row) => (id === "reserve" ? row.reserve : !row.reserve && row.sideName === id));
-    if (id === "reserve" && !groupRows.length) return null;
-    return (
-      <div className={`ow-queue-board-group ${id}`}>
-        <header>
-          <strong>{label}</strong>
-          <small>{side ? `${side.projectedFilled}/${side.capacity}` : `${groupRows.length}명`}</small>
-        </header>
-        <div>{groupRows.length ? groupRows.map(renderRow) : <span className="empty">참여 없음</span>}</div>
-      </div>
-    );
-  };
-  const readyCount = rows.filter((row) => row.ready).length;
-  const filledCount = lobby.sides.teamA.projectedFilled + lobby.sides.teamB.projectedFilled;
-  const totalCapacity = lobby.sides.teamA.capacity + lobby.sides.teamB.capacity;
+function QueueRoomBoard({ post, lobby }) {
   const roomStatus = getRecruitingRoomListStatus(lobby, { post });
 
   return (
     <div className={lobby.canConfirm ? "ow-queue-board complete" : "ow-queue-board"}>
       <div className="ow-queue-board-head">
         <span className={`ow-room-list-state ${roomStatus.tone}`}>{roomStatus.label}</span>
-        <b>참여 {readyCount}/{rows.length}</b>
-        <b>인원 {filledCount}/{totalCapacity}</b>
-      </div>
-      <div className="ow-queue-board-grid">
-        {renderGroup("teamA", SIDE_LABELS.teamA, lobby.sides.teamA)}
-        {renderGroup("teamB", SIDE_LABELS.teamB, lobby.sides.teamB)}
-        {renderGroup("reserve", "후보", null)}
+        {roomStatus.detail ? <b>{roomStatus.detail}</b> : null}
       </div>
     </div>
   );
@@ -2645,7 +2538,7 @@ export default function Recruiting({ app }) {
               <div className="ow-card-side" onClick={(event) => event.stopPropagation()}>
                 <span className="ow-slot-count">
                   <strong>{lobby.sides.teamA.projectedFilled + lobby.sides.teamB.projectedFilled}/{getRecruitingSideCapacity(post) * 2}</strong>
-                  <span>참가 인원</span>
+                  <span>슬롯 현황</span>
                 </span>
                 <Button type="button" className="ow-card-action" onClick={() => setSelectedPostId(post.id)}>
                   <Swords size={16} /> {roomStatus.actionLabel}
