@@ -2923,7 +2923,7 @@ export function endMatch(state, matchId) {
 }
 
 function canEditPostgameRoster(state, match) {
-  if (!match || ["confirmed", "void", "cancelled", "disputed"].includes(match.status) || match.result) return false;
+  if (!match || ["approval", "confirmed", "void", "cancelled", "disputed"].includes(match.status)) return false;
   if (getMatchRoomPhase(match).phase !== "postgame") return false;
   if (getMatchRecordWindow(match).statExpired) return false;
   return currentUserCanOperateStartedMatch(state, match);
