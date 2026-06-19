@@ -2713,12 +2713,16 @@ html[data-theme="light"] .ow-compose-drawer {
   }
 
   .ow-recruit-hero {
-    min-height: 220px;
+    min-height: 174px;
     padding: 18px;
   }
 
   .ow-hero-copy h1 {
     font-size: 3rem;
+  }
+
+  .ow-hero-panel {
+    display: none;
   }
 
   .ow-hero-stats,
