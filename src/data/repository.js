@@ -2202,6 +2202,14 @@ function ensureTeamPartyLeader(team = {}, playerIds = [], leaderId = "", capacit
   return [leaderId, ...safePlayerIds.filter((playerId) => playerId !== leaderId)].slice(0, capacity);
 }
 
+function getAveragePlayerMmr(state = {}, playerIds = [], fallback = 1200) {
+  const values = uniquePlayerIds(playerIds)
+    .map((playerId) => Number(state.users?.find((user) => user.id === playerId)?.ratings?.integrated))
+    .filter((value) => Number.isFinite(value));
+  if (!values.length) return fallback;
+  return Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
+}
+
 function getSelectedReservePlayerIds(team = {}, activeIds = [], reserveIds = []) {
   if (!team || !Array.isArray(reserveIds) || !reserveIds.length) return [];
   const activeSet = new Set(activeIds);
@@ -3419,7 +3427,13 @@ export function interestRecruitingPost(state, postId, application = {}) {
     };
   }
 
-  const candidateMmr = applicantKind === "team" ? team.mmr : user?.ratings?.integrated ?? 1200;
+  const sideCapacity = getRecruitingSideCapacity(post);
+  const selectedPlayerIds = applicantKind === "team"
+    ? ensureTeamPartyLeader(team, getSelectedTeamPlayerIds(team, sideCapacity, application.playerIds), state.currentUserId, sideCapacity)
+    : [];
+  const candidateMmr = applicantKind === "team"
+    ? getAveragePlayerMmr(state, selectedPlayerIds, team?.mmr ?? user?.ratings?.integrated ?? 1200)
+    : user?.ratings?.integrated ?? 1200;
   const fit = getRecruitingFit(post, candidateMmr, state);
   if (!fit.allowed) {
     return {
@@ -3438,7 +3452,6 @@ export function interestRecruitingPost(state, postId, application = {}) {
 
   const side = ["teamA", "teamB"].includes(application.side) ? application.side : getRecruitingBestSide(post, state);
   const lobby = getRecruitingLobby(post, state);
-  const selectedPlayerIds = applicantKind === "team" ? getSelectedTeamPlayerIds(team, getRecruitingSideCapacity(post), application.playerIds) : [];
   if (applicantKind === "team" && !selectedPlayerIds.length) {
     return {
       ...state,

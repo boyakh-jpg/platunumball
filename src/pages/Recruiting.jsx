@@ -109,16 +109,32 @@ function getDefaultApplyTeamId(post, teams) {
   return teams.find((team) => team.region === post.region)?.id ?? teams[0]?.id ?? "";
 }
 
-function getDefaultTeamPlayerIds(team, capacity) {
+function getDefaultTeamPlayerIds(team, capacity, requiredPlayerId = "") {
   if (!team) return [];
-  return getSelectableTeamPlayerIds(team).slice(0, capacity);
+  const selectableIds = getSelectableTeamPlayerIds(team);
+  const orderedIds = requiredPlayerId && selectableIds.includes(requiredPlayerId)
+    ? [requiredPlayerId, ...selectableIds.filter((playerId) => playerId !== requiredPlayerId)]
+    : selectableIds;
+  return orderedIds.slice(0, capacity);
 }
 
-function getPartyPlayerIds(team, playerIds, capacity) {
+function getPartyPlayerIds(team, playerIds, capacity, requiredPlayerId = "") {
   if (!team) return [];
-  if (!Array.isArray(playerIds)) return getDefaultTeamPlayerIds(team, capacity);
+  if (!Array.isArray(playerIds)) return getDefaultTeamPlayerIds(team, capacity, requiredPlayerId);
   const selectableIds = new Set(getSelectableTeamPlayerIds(team));
-  return Array.from(new Set(playerIds.filter((playerId) => selectableIds.has(playerId)))).slice(0, capacity);
+  const safeIds = Array.from(new Set(playerIds.filter((playerId) => selectableIds.has(playerId))));
+  const orderedIds = requiredPlayerId && selectableIds.has(requiredPlayerId)
+    ? [requiredPlayerId, ...safeIds.filter((playerId) => playerId !== requiredPlayerId)]
+    : safeIds;
+  return orderedIds.slice(0, capacity);
+}
+
+function getPlayerMmrAverage(playerIds = [], userById = {}, fallback = 1200) {
+  const values = playerIds
+    .map((playerId) => Number(userById[playerId]?.ratings?.integrated))
+    .filter((value) => Number.isFinite(value));
+  if (!values.length) return fallback;
+  return Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
 }
 
 function getRoomEditDraft(post) {
@@ -142,9 +158,9 @@ function getDefaultJoinDraft(post, teams, currentUser, state) {
   const team = teams.find((item) => item.id === teamId) ?? null;
   const capacity = getRecruitingSideCapacity(post);
   return {
-    joinMode: teamId ? "team" : "player",
+    joinMode: "player",
     teamId,
-    playerIds: getDefaultTeamPlayerIds(team, capacity),
+    playerIds: getDefaultTeamPlayerIds(team, capacity, currentUser.id),
     side: getRecruitingBestSide(post, state),
     reserve: false,
     position: currentUser.position,
@@ -464,7 +480,7 @@ export function getRecruitingRoomListStatus(lobby, { post = null, myEntry = null
   return { label: "대기방", tone: "orange", detail: "참가자 확인 대기", actionLabel: "방 보기" };
 }
 
-function TeamMemberPicker({ team, userById, selectedIds, capacity, onChange }) {
+function TeamMemberPicker({ team, userById, selectedIds, capacity, onChange, requiredPlayerId = "" }) {
   if (!team) {
     return (
       <div className="ow-party-picker empty">
@@ -476,6 +492,7 @@ function TeamMemberPicker({ team, userById, selectedIds, capacity, onChange }) {
   const memberIds = getSelectableTeamPlayerIds(team);
   const selectedSet = new Set(selectedIds);
   const toggleMember = (playerId) => {
+    if (playerId === requiredPlayerId) return;
     const nextIds = selectedSet.has(playerId)
       ? selectedIds.filter((id) => id !== playerId)
       : [...selectedIds, playerId].slice(0, capacity);
@@ -492,19 +509,20 @@ function TeamMemberPicker({ team, userById, selectedIds, capacity, onChange }) {
         {memberIds.map((playerId) => {
           const user = userById[playerId];
           const selected = selectedSet.has(playerId);
-          const locked = !selected && selectedIds.length >= capacity;
+          const required = playerId === requiredPlayerId;
+          const locked = required || (!selected && selectedIds.length >= capacity);
           return (
             <button
               key={playerId}
               type="button"
-              className={selected ? "selected" : ""}
-              disabled={locked}
+              className={[selected ? "selected" : "", required ? "required" : ""].filter(Boolean).join(" ")}
+              disabled={!required && locked}
               onClick={() => toggleMember(playerId)}
             >
               <span className="avatar small" style={{ "--avatar": user?.avatarColor }}>{user?.name?.slice(0, 1) ?? "?"}</span>
               <span>
                 <strong>{user?.name ?? "알 수 없음"}</strong>
-                <em>{getPlayerPosition(user)}</em>
+                <em>{required ? `${getPlayerPosition(user)} · 필수` : getPlayerPosition(user)}</em>
               </span>
               <TierBadge mmr={user?.ratings?.integrated ?? 1200} compact />
             </button>
@@ -1515,9 +1533,9 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
         const joinDraft = getJoinDraft(selectedPost);
         const selectedJoinTeam = myTeams.find((team) => team.id === joinDraft.teamId) ?? myTeams[0] ?? null;
         const joinCapacity = getRecruitingSideCapacity(selectedPost);
-        const selectedJoinPlayerIds = getPartyPlayerIds(selectedJoinTeam, joinDraft.playerIds, joinCapacity);
+        const selectedJoinPlayerIds = getPartyPlayerIds(selectedJoinTeam, joinDraft.playerIds, joinCapacity, app.currentUser.id);
         const candidateMmr = joinDraft.joinMode === "team"
-          ? selectedJoinTeam?.mmr ?? 0
+          ? getPlayerMmrAverage(selectedJoinPlayerIds, userById, selectedJoinTeam?.mmr ?? app.currentUser.ratings.integrated)
           : app.currentUser.ratings.integrated;
         const fit = getRecruitingFit(selectedPost, candidateMmr || app.currentUser.ratings.integrated, app.state);
         const matchRoom = Boolean(sourceMatch);
@@ -1532,7 +1550,12 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
         const alreadyApplied = Boolean(myEntry && !mine);
         const canInviteFromRoom = !matchRoom && isCurrentUserRoomParticipant(selectedPost, lobby, app.currentUser.id);
         const canChat = Boolean(storedRoomPost) && isCurrentUserRoomParticipant(selectedPost, lobby, app.currentUser.id);
-        const canJoin = !matchRoom && !mine && !alreadyApplied && fit.allowed && (joinDraft.joinMode === "player" || (Boolean(selectedJoinTeam) && selectedJoinPlayerIds.length > 0));
+        const teamJoinValid = joinDraft.joinMode !== "team" || (
+          Boolean(selectedJoinTeam) &&
+          selectedJoinPlayerIds.includes(app.currentUser.id) &&
+          selectedJoinPlayerIds.length > 0
+        );
+        const canJoin = !matchRoom && !mine && !alreadyApplied && fit.allowed && (joinDraft.joinMode === "player" || teamJoinValid);
         const selectedRange = getRecruitingTierRange(
           getRecruitingTargetMmr(selectedPost, app.state),
           selectedPost.ranked !== false,
@@ -2193,7 +2216,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                             updateJoinDraft(selectedPost, {
                               joinMode: mode,
                               teamId,
-                              playerIds: mode === "team" ? getDefaultTeamPlayerIds(team, joinCapacity) : [],
+                              playerIds: mode === "team" ? getDefaultTeamPlayerIds(team, joinCapacity, app.currentUser.id) : [],
                             });
                           }}
                         >
@@ -2212,7 +2235,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                               const team = myTeams.find((item) => item.id === teamId) ?? null;
                               updateJoinDraft(selectedPost, {
                                 teamId,
-                                playerIds: getDefaultTeamPlayerIds(team, joinCapacity),
+                                playerIds: getDefaultTeamPlayerIds(team, joinCapacity, app.currentUser.id),
                               });
                             }}
                           >
@@ -2227,6 +2250,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                           selectedIds={selectedJoinPlayerIds}
                           capacity={joinCapacity}
                           onChange={(playerIds) => updateJoinDraft(selectedPost, { playerIds })}
+                          requiredPlayerId={app.currentUser.id}
                         />
                       </>
                     ) : (

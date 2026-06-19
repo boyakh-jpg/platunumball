@@ -862,6 +862,10 @@
   background: rgba(70, 224, 182, 0.13);
 }
 
+.ow-party-picker-grid button.required {
+  cursor: default;
+}
+
 .ow-party-picker-grid button:disabled {
   cursor: not-allowed;
   opacity: 0.48;
