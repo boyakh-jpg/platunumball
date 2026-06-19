@@ -4721,28 +4721,37 @@ input[type="color"] {
   gap: 8px;
 }
 
-.opgg-rank-list a {
+.opgg-rank-list .opgg-rank-row {
   display: grid;
-  grid-template-columns: 28px auto minmax(0, 1fr) auto;
+  width: 100%;
+  grid-template-columns: 24px 32px minmax(0, 1fr) max-content;
   align-items: center;
-  gap: 9px;
+  gap: 10px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.045);
   padding: 9px;
 }
 
-.opgg-rank-list b {
+.opgg-rank-list .opgg-rank-row > b {
   color: var(--blue);
   text-align: center;
 }
 
-.opgg-rank-list strong {
-  min-width: 0;
-  overflow-wrap: anywhere;
+.opgg-rank-list .opgg-rank-row > .avatar.small {
+  width: 32px;
+  height: 32px;
+  font-size: 0.86rem;
 }
 
-.opgg-rank-list em {
+.opgg-rank-list .opgg-rank-row > strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.opgg-rank-list .opgg-rank-row > em {
   color: var(--muted);
   font-size: 0.78rem;
   font-style: normal;
@@ -4844,14 +4853,18 @@ input[type="color"] {
   }
 
   .opgg-search-results a,
-  .opgg-rank-list a,
   .home-action-row,
   .home-invitation-row {
     grid-template-columns: auto minmax(0, 1fr);
   }
 
+  .opgg-rank-list .opgg-rank-row {
+    grid-template-columns: 22px 30px minmax(0, 1fr) max-content;
+    gap: 8px;
+    padding: 8px;
+  }
+
   .opgg-search-results small,
-  .opgg-rank-list em,
   .home-action-row b,
   .home-invitation-actions {
     grid-column: 2;

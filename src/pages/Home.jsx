@@ -475,7 +475,7 @@ export default function Home({ app }) {
           </div>
           <div className="opgg-rank-list">
             {topRankers.map((row, index) => (
-              <PlayerHoverCard key={row.id} user={row} teams={app.state.teams}>
+              <PlayerHoverCard className="opgg-rank-row" key={row.id} user={row} teams={app.state.teams}>
                 <b>{index + 1}</b>
                 <span className="avatar small" style={{ "--avatar": row.avatarColor }}>{row.name.slice(0, 1)}</span>
                 <strong>{row.name}</strong>
