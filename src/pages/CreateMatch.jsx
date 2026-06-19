@@ -58,11 +58,12 @@ function getAgeRestrictionFromGroups(groupIds = []) {
 }
 
 function toggleAgeRestriction(ageRestriction, groupId) {
-  if (groupId === "any") return "any";
   const currentOption = getAgeRestrictionOption(ageRestriction);
-  const currentGroups = currentOption.id === "any" ? [] : [...currentOption.allowedGroups];
+  const currentGroups = [...currentOption.allowedGroups];
   const nextSet = new Set(currentGroups);
-  if (nextSet.has(groupId)) nextSet.delete(groupId);
+  if (nextSet.has(groupId)) {
+    if (nextSet.size > 1) nextSet.delete(groupId);
+  }
   else nextSet.add(groupId);
   if (nextSet.has("junior") && nextSet.has("open")) nextSet.add("rising");
   return getAgeRestrictionFromGroups([...nextSet]);
@@ -287,6 +288,7 @@ export default function CreateMatch({ app }) {
   const [courtQuery, setCourtQuery] = useState("");
   const [teamRegion, setTeamRegion] = useState(app.currentUser.region ?? "전체");
   const [courtRegion, setCourtRegion] = useState(app.currentUser.region ?? "전체");
+  const defaultAgeRestriction = getAgeGroupForUser(app.currentUser);
   const favoriteTeamIds = app.state.settings?.favoriteTeamIds ?? [];
   const favoriteCourtIds = app.state.settings?.favoriteCourtIds ?? [];
   const isFavoriteTeam = (team) => favoriteTeamIds.includes(team.id);
@@ -298,7 +300,7 @@ export default function CreateMatch({ app }) {
     teamOnly: false,
     mmrLimitMode: "block",
     mmrRangeMode: "narrow",
-    ageRestriction: "any",
+    ageRestriction: defaultAgeRestriction,
     title: "오늘의 5v5 공식전",
     mode: "5v5",
     court: COURTS[0].name,
@@ -1009,15 +1011,11 @@ export default function CreateMatch({ app }) {
                 <Badge tone={ageRestrictionBlocked ? "orange" : "green"}>{ageRestrictionBlocked ? "차단" : "허용"}</Badge>
               </div>
               <div className="segmented-control compact-segments age-restriction-segments">
-                {[{ id: "any", label: "모두" }, ...AGE_GROUPS.map((group) => ({ id: group.id, label: group.label }))].map((option) => (
+                {AGE_GROUPS.map((option) => (
                   <button
                     key={option.id}
                     type="button"
-                    className={
-                      option.id === "any"
-                        ? draft.ageRestriction === "any" ? "active" : ""
-                        : draft.ageRestriction !== "any" && ageRestrictionOption.allowedGroups.includes(option.id) ? "active" : ""
-                    }
+                    className={ageRestrictionOption.allowedGroups.includes(option.id) ? "active" : ""}
                     onClick={() => update({ ageRestriction: toggleAgeRestriction(draft.ageRestriction, option.id) })}
                   >
                     {option.label}

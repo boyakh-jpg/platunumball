@@ -34,14 +34,36 @@ export function getAgeGroupByBirthYear(birthYear, now = new Date()) {
   return AGE_GROUPS.find((group) => age >= group.minAge && age <= group.maxAge)?.id ?? "open";
 }
 
+export function getAgeGroupSeasonForDate(now = new Date()) {
+  const date = now instanceof Date ? now : new Date(now);
+  const safeDate = Number.isNaN(date.getTime()) ? new Date() : date;
+  const year = safeDate.getFullYear();
+  const isFirstHalf = safeDate.getMonth() < 6;
+  return {
+    id: `${year}-${isFirstHalf ? "h1" : "h2"}`,
+    label: `${year} ${isFirstHalf ? "1" : "2"}시즌`,
+    startsAt: `${year}-${isFirstHalf ? "01-01" : "07-01"}`,
+    endsAt: `${year}-${isFirstHalf ? "06-30" : "12-31"}`,
+  };
+}
+
+export function getAgeGroupSeasonLabel(now = new Date()) {
+  const season = getAgeGroupSeasonForDate(now);
+  return `${season.label} · ${season.startsAt.slice(5).replace("-", ".")}~${season.endsAt.slice(5).replace("-", ".")}`;
+}
+
+export function shouldRecheckAgeGroup(user, now = new Date()) {
+  return Boolean(user?.birthYear && user?.onboardingComplete && user?.ageGroupCheckedSeason !== getAgeGroupSeasonForDate(now).id);
+}
+
 export function getAgeGroupLabel(ageGroupId) {
   const group = AGE_GROUPS.find((item) => item.id === ageGroupId) ?? AGE_GROUPS[2];
   if (String(group.label).toLowerCase() === String(group.rangeLabel).toLowerCase()) return group.label;
   return `${group.label} · ${group.rangeLabel}`;
 }
 
-export function getAgeGroupForUser(user) {
-  return user?.ageGroup ?? getAgeGroupByBirthYear(user?.birthYear) ?? "open";
+export function getAgeGroupForUser(user, now = new Date()) {
+  return getAgeGroupByBirthYear(user?.birthYear, now) ?? user?.ageGroup ?? "open";
 }
 
 export function inferRegionSelection(region = "") {

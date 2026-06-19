@@ -5,7 +5,7 @@ import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import { PLAYER_POSITIONS } from "../lib/constants.js";
-import { AGE_GROUPS, getAgeGroupByBirthYear, getAgeGroupLabel, inferRegionSelection, REGION_TREE } from "../lib/profileSetup.js";
+import { AGE_GROUPS, getAgeGroupByBirthYear, getAgeGroupLabel, getAgeGroupSeasonForDate, getAgeGroupSeasonLabel, inferRegionSelection, REGION_TREE } from "../lib/profileSetup.js";
 
 const POSITION_OPTIONS = PLAYER_POSITIONS.filter((position) => ["PG", "SG", "SF", "PF", "C"].includes(position));
 
@@ -30,6 +30,8 @@ export default function Signup({ app, auth }) {
   const selectedRegion = REGION_TREE.find((item) => item.sido === draft.sido) ?? REGION_TREE[0];
   const ageGroup = getAgeGroupByBirthYear(draft.birthYear) ?? user.ageGroup ?? "open";
   const ageGroupLabel = getAgeGroupLabel(ageGroup);
+  const ageGroupSeason = getAgeGroupSeasonForDate();
+  const ageGroupSeasonLabel = getAgeGroupSeasonLabel();
   const email = auth?.user?.email ?? auth?.user?.user_metadata?.email ?? "Google OAuth 또는 데모 계정";
 
   const districtOptions = useMemo(() => selectedRegion.districts, [selectedRegion]);
@@ -45,6 +47,7 @@ export default function Signup({ app, auth }) {
       handle,
       birthYear: Number(draft.birthYear) || null,
       ageGroup,
+      ageGroupCheckedSeason: ageGroupSeason.id,
       position: draft.position,
       region: `${draft.sido} ${district}`,
       regionSido: draft.sido,
@@ -151,7 +154,7 @@ export default function Signup({ app, auth }) {
             </div>
           </Card>
           <Card className="section-card">
-            <p className="muted">Google OAuth에서는 앱이 바로 쓸 수 있는 출생연도를 안정적으로 받지 않는다. 그래서 연령부는 직접 입력하고, 나이 속임은 신고 사유로 처리한다.</p>
+            <p className="muted">Google OAuth에서는 앱이 바로 쓸 수 있는 출생연도를 안정적으로 받지 않는다. 연령부는 출생연도 기준으로 자동 계산하고, {ageGroupSeasonLabel} 단위로 다시 확인한다. 나이 속임은 신고 사유로 처리한다.</p>
           </Card>
         </aside>
       </div>

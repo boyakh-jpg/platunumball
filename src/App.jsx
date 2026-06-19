@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import RequireAuth from "./components/auth/RequireAuth.jsx";
 import AppShell from "./components/layout/AppShell.jsx";
 import { useAuthSession } from "./hooks/useAuthSession.js";
@@ -25,15 +25,25 @@ import Signup from "./pages/Signup.jsx";
 import TeamDetail from "./pages/TeamDetail.jsx";
 import Teams from "./pages/Teams.jsx";
 import TournamentDetail from "./pages/TournamentDetail.jsx";
+import { shouldRecheckAgeGroup } from "./lib/profileSetup.js";
 
 export default function App() {
   const auth = useAuthSession();
   const app = useAppData(auth.user?.id ?? null);
+  const location = useLocation();
   const theme = app.state.settings?.theme === "light" ? "light" : "dark";
+  const ageRecheckRequired = Boolean(
+    auth.user &&
+      location.pathname.startsWith("/app") &&
+      location.pathname !== "/app/signup" &&
+      shouldRecheckAgeGroup(app.currentUser),
+  );
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
+
+  if (ageRecheckRequired) return <Navigate to="/app/signup" replace />;
 
   return (
     <Routes>
