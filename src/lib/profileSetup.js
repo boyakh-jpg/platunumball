@@ -36,6 +36,7 @@ export function getAgeGroupByBirthYear(birthYear, now = new Date()) {
 
 export function getAgeGroupLabel(ageGroupId) {
   const group = AGE_GROUPS.find((item) => item.id === ageGroupId) ?? AGE_GROUPS[2];
+  if (String(group.label).toLowerCase() === String(group.rangeLabel).toLowerCase()) return group.label;
   return `${group.label} · ${group.rangeLabel}`;
 }
 

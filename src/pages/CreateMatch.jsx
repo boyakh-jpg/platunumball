@@ -8,6 +8,7 @@ import RuleSelector from "../components/match/RuleSelector.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { COURTS, MATCH_MODES, REFEREE_TRUST_MIN, REGIONS } from "../lib/constants.js";
 import { getPublicRoomMaxDateInput, isEligibleReferee } from "../lib/matchUtils.js";
+import { AGE_GROUPS, getAgeGroupForUser, getAgeGroupLabel } from "../lib/profileSetup.js";
 import { MMR_RANGE_POLICIES, getRecruitingSideCapacity, getRecruitingTierRange, getSelectableTeamPlayerIds, isMmrInRecruitingRange } from "../lib/recruiting.js";
 
 const today = new Date().toISOString().slice(0, 10);
@@ -35,6 +36,21 @@ const tournamentScheduleOptions = [
   { id: "daily", label: "매일 배정" },
   { id: "manual", label: "직접 조율" },
 ];
+
+const ageRestrictionOptions = [
+  { id: "any", label: "연령 무관", desc: "Junior / Rising / Open 모두 참여", allowedGroups: AGE_GROUPS.map((group) => group.id) },
+  ...AGE_GROUPS.map((group) => ({
+    id: group.id,
+    label: getAgeGroupLabel(group.id),
+    desc: `${group.rangeLabel} 전용`,
+    allowedGroups: [group.id],
+  })),
+  { id: "rising_open", label: "Rising ~ Open", desc: "Rising / Open 참여", allowedGroups: ["rising", "open"] },
+];
+
+function getAgeRestrictionOption(ageRestriction) {
+  return ageRestrictionOptions.find((option) => option.id === ageRestriction) ?? ageRestrictionOptions[0];
+}
 
 const MAX_PARTY_RESERVES = 2;
 
@@ -266,6 +282,7 @@ export default function CreateMatch({ app }) {
     teamOnly: false,
     mmrLimitMode: "block",
     mmrRangeMode: "narrow",
+    ageRestriction: "any",
     title: "오늘의 5v5 공식전",
     mode: "5v5",
     court: COURTS[0].name,
@@ -396,6 +413,9 @@ export default function CreateMatch({ app }) {
   const personalTierRange = getRecruitingTierRange(app.currentUser.ratings?.integrated ?? 1200, draft.ranked, draft.mmrRangeMode);
   const roomTierRange = isTeamRoom ? teamTierRange : personalTierRange;
   const mmrRangePolicy = MMR_RANGE_POLICIES[draft.mmrRangeMode] ?? MMR_RANGE_POLICIES.narrow;
+  const ageRestrictionOption = getAgeRestrictionOption(draft.ageRestriction);
+  const currentUserAgeGroup = getAgeGroupForUser(app.currentUser);
+  const ageRestrictionBlocked = !isTournamentRoom && !ageRestrictionOption.allowedGroups.includes(currentUserAgeGroup);
   const teamTierBlocked = Boolean(
     isTeamRoom &&
       !isPublicRoom &&
@@ -441,7 +461,7 @@ export default function CreateMatch({ app }) {
       tournamentMmrSpread > Number(draft.tournamentMaxMmrGap ?? 250),
   );
   const tournamentInvalid = !draft.title.trim() || tournamentTeams.length < 2 || tournamentMmrBlocked;
-  const submitDisabled = !scheduleAllowed || !tournamentEndAllowed || (isTournamentRoom
+  const submitDisabled = !scheduleAllowed || !tournamentEndAllowed || ageRestrictionBlocked || (isTournamentRoom
     ? tournamentInvalid
     : isPublicRoom
       ? publicTeamInvalid
@@ -452,7 +472,9 @@ export default function CreateMatch({ app }) {
       ? "대회 종료일이 허용 기간을 벗어났습니다."
       : teamTierBlocked
         ? "상대팀 MMR이 현재 허용구간 밖입니다. MMR 제한을 경고만 또는 제한 없음으로 바꾸면 생성할 수 있습니다."
-        : privateTeamInvalid
+        : ageRestrictionBlocked
+          ? "생성자가 선택한 연령 제한 밖입니다. 연령 제한을 바꾸면 생성할 수 있습니다."
+          : privateTeamInvalid
           ? "팀전은 A/B사이드 출전 슬롯이 모두 채워져야 생성할 수 있습니다."
           : "";
   const selectedCourt = useMemo(
@@ -635,6 +657,8 @@ export default function CreateMatch({ app }) {
       official: draft.official,
       preRegistered: draft.preRegistered,
       mmrRangeMode: draft.mmrRangeMode,
+      ageRestriction: draft.ageRestriction,
+      allowedAgeGroups: ageRestrictionOption.allowedGroups,
       rules: {
         targetScore: draft.targetScore,
         timeLimit: draft.timeLimit,
@@ -642,6 +666,8 @@ export default function CreateMatch({ app }) {
         winByTwo: draft.winByTwo,
         attackRule: draft.attackRule,
         foulRule: draft.foulRule,
+        ageRestriction: draft.ageRestriction,
+        allowedAgeGroups: ageRestrictionOption.allowedGroups,
       },
       stakes: draft.stakes,
       courtReserved: draft.courtReserved,
@@ -931,31 +957,16 @@ export default function CreateMatch({ app }) {
               </div>
               <Badge tone={tournamentMmrBlocked ? "orange" : "green"}>{tournamentMmrBlocked ? "차단" : "허용"}</Badge>
             </div>
-          ) : draft.ranked ? (
-            <div className={teamTierBlocked ? "tier-range-note tier-range-note-warning" : "tier-range-note"}>
-              <div>
-                <span>정규전 허용 구간</span>
-                <strong>{roomTierRange.label}</strong>
-                <em>{teamTierWarned ? "경고만 표시" : isTeamRoom ? `${selectedTeamA?.name ?? "A사이드"} 기준` : `${app.currentUser.name} 기준`}</em>
-              </div>
-              <Badge tone={teamTierBlocked || teamTierWarned ? "orange" : "green"}>{teamTierBlocked ? "차단" : teamTierWarned ? "경고" : "허용"}</Badge>
-            </div>
-          ) : (
-            <div className="tier-range-note">
-              <div>
-                <span>친선전</span>
-                <strong>티어 자유</strong>
-                <em>MMR 소폭</em>
-              </div>
-              <Badge tone="neutral">OPEN</Badge>
-            </div>
-          )}
+          ) : null}
           {!isTournamentRoom && draft.ranked ? (
-            <div className="mmr-range-mode-control">
-              <div>
-                <span>허용구간 선택</span>
-                <strong>{roomTierRange.detail}</strong>
-                <em>{mmrRangePolicy.detail} · 경기 확정 시 MMR {Math.round(mmrRangePolicy.ratingScale * 100)}% 반영</em>
+            <div className={teamTierBlocked ? "mmr-range-mode-control tier-range-note-warning" : "mmr-range-mode-control"}>
+              <div className="mmr-range-summary-row">
+                <div>
+                  <span>정규전 허용구간 선택</span>
+                  <strong>{roomTierRange.detail}</strong>
+                  <em>{teamTierWarned ? "경고만 표시" : isTeamRoom ? `${selectedTeamA?.name ?? "A사이드"} 기준` : `${app.currentUser.name} 기준`} · {mmrRangePolicy.detail}</em>
+                </div>
+                <Badge tone={teamTierBlocked || teamTierWarned ? "orange" : "green"}>{teamTierBlocked ? "차단" : teamTierWarned ? "경고" : "허용"}</Badge>
               </div>
               <div className="segmented-control compact-segments">
                 {Object.entries(MMR_RANGE_POLICIES).map(([mode, policy]) => (
@@ -966,6 +977,30 @@ export default function CreateMatch({ app }) {
                     onClick={() => update({ mmrRangeMode: mode })}
                   >
                     {policy.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          {!isTournamentRoom ? (
+            <div className={ageRestrictionBlocked ? "mmr-range-mode-control tier-range-note-warning" : "mmr-range-mode-control"}>
+              <div className="mmr-range-summary-row">
+                <div>
+                  <span>연령 제한</span>
+                  <strong>{ageRestrictionOption.label}</strong>
+                  <em>{ageRestrictionOption.desc}</em>
+                </div>
+                <Badge tone={ageRestrictionBlocked ? "orange" : "green"}>{ageRestrictionBlocked ? "차단" : "허용"}</Badge>
+              </div>
+              <div className="segmented-control compact-segments">
+                {ageRestrictionOptions.map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    className={draft.ageRestriction === option.id ? "active" : ""}
+                    onClick={() => update({ ageRestriction: option.id })}
+                  >
+                    {option.label}
                   </button>
                 ))}
               </div>

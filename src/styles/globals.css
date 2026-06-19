@@ -5263,6 +5263,19 @@ input[type="color"] {
   gap: 4px;
 }
 
+.mmr-range-mode-control > .mmr-range-summary-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.mmr-range-summary-row > div:first-child {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
 .mmr-range-mode-control span {
   color: var(--gold);
   font-size: 0.78rem;

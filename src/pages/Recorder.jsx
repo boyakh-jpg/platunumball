@@ -85,11 +85,9 @@ function getMatchHostPlayerId(match, state) {
   return sourcePost?.createdBy || sourcePost?.hostPlayerId || sourcePost?.userId || match?.createdBy || match?.hostPlayerId || match?.createdPlayerId || match?.teamA?.players?.[0] || "";
 }
 
-function getRecorderAllowedFields(match, state, userId, playerId) {
+function getRecorderAllowedFields(match, state, userId, playerId, allowPostgameScore = false) {
   const fields = getAllowedStatFields(match, userId, playerId);
-  const hostPlayerId = getMatchHostPlayerId(match, state);
-  const hostPostgameScore = Boolean(hostPlayerId === userId && getMatchRoomPhase(match).phase === "postgame" && !["confirmed", "disputed"].includes(match.status));
-  if (!hostPostgameScore) return fields;
+  if (!allowPostgameScore) return fields;
   const fieldById = Object.fromEntries(fields.map((field) => [field.id, field]));
   const pointsField = PLAYER_STAT_FIELDS.find((field) => field.id === "points");
   if (pointsField) fieldById.points = pointsField;
@@ -143,20 +141,25 @@ export default function Recorder({ app }) {
     }
   }, [selectedMatch?.id, selectedMatch?.result?.updatedAt, selectedMatch?.result?.submittedAt, selectedMatchPlayerKey]);
 
-  const recorderSides = selectedMatch ? getStatRecorderSides(selectedMatch, user.id) : [];
-  const editablePlayerIds = selectedMatch
-    ? getMatchPlayerIds(selectedMatch).filter((playerId) => getRecorderAllowedFields(selectedMatch, app.state, user.id, playerId).length > 0)
-    : [];
   const recordWindow = selectedMatch ? getMatchRecordWindow(selectedMatch) : null;
   const roomPhase = selectedMatch ? getMatchRoomPhase(selectedMatch).phase : "";
   const hostPlayerId = selectedMatch ? getMatchHostPlayerId(selectedMatch, app.state) : "";
   const currentUserIsHost = Boolean(hostPlayerId && hostPlayerId === user.id);
+  const selectedMatchHasReferee = Boolean(selectedMatch?.refereeId);
+  const currentUserIsEligibleReferee = Boolean(selectedMatch && isMatchReferee(selectedMatch, user.id) && isEligibleReferee(user, selectedMatch.refereeTrustMin));
+  const currentUserCanOperatePostStart = Boolean(selectedMatch && (selectedMatchHasReferee ? currentUserIsEligibleReferee : currentUserIsHost));
+  const currentUserCanPostgameScore = Boolean(currentUserCanOperatePostStart && roomPhase === "postgame" && !["confirmed", "disputed"].includes(selectedMatch.status));
+  const postStartOperatorLabel = selectedMatchHasReferee ? "심판" : "방장";
+  const recorderSides = selectedMatch ? getStatRecorderSides(selectedMatch, user.id) : [];
+  const editablePlayerIds = selectedMatch
+    ? getMatchPlayerIds(selectedMatch).filter((playerId) => getRecorderAllowedFields(selectedMatch, app.state, user.id, playerId, currentUserCanPostgameScore).length > 0)
+    : [];
   const beforeStart = Boolean(recordWindow?.beforeStart);
   const saveWindowOpen = selectedMatch && !beforeStart && (recordWindow?.beforeEnd || recordWindow?.statOpen);
   const hasDirtyStats = Object.keys(dirtyStats).length > 0;
   const canSave = Boolean(selectedMatch && !["disputed", "confirmed"].includes(selectedMatch.status) && editablePlayerIds.length && saveWindowOpen && hasDirtyStats);
-  const canEndLiveMatch = Boolean(selectedMatch && currentUserIsHost && roomPhase === "live" && !selectedMatch.endedAt && !selectedMatch.result);
-  const canEditPostgameRoster = Boolean(selectedMatch && currentUserIsHost && roomPhase === "postgame" && recordWindow?.statOpen && !selectedMatch.result);
+  const canEndLiveMatch = Boolean(selectedMatch && currentUserCanOperatePostStart && roomPhase === "live" && !selectedMatch.endedAt && !selectedMatch.result);
+  const canEditPostgameRoster = Boolean(selectedMatch && currentUserCanOperatePostStart && roomPhase === "postgame" && recordWindow?.statOpen && !selectedMatch.result);
   const scoreA = selectedMatch ? getSideScore(selectedMatch, stats, "teamA", editablePlayerIds) : 0;
   const scoreB = selectedMatch ? getSideScore(selectedMatch, stats, "teamB", editablePlayerIds) : 0;
   const saveLockedReason = beforeStart
@@ -170,9 +173,9 @@ export default function Recorder({ app }) {
       : !editablePlayerIds.length
         ? "기록 권한 없음"
         : "저장 가능";
-  const canDispute = Boolean(selectedMatch?.result) && selectedMatch?.status === "approval" && recordWindow?.disputeOpen;
-  const canResumeApproval = selectedMatch?.status === "disputed";
-  const canVoid = selectedMatch?.status === "disputed";
+  const canDispute = Boolean(selectedMatch?.result) && selectedMatch?.status === "approval" && recordWindow?.disputeOpen && currentUserCanOperatePostStart;
+  const canResumeApproval = selectedMatch?.status === "disputed" && currentUserCanOperatePostStart;
+  const canVoid = selectedMatch?.status === "disputed" && currentUserCanOperatePostStart;
 
   const updateStat = (playerId, fieldId, delta) => {
     setStats((current) => {
@@ -240,7 +243,7 @@ export default function Recorder({ app }) {
         <div className="recorder-player-list">
           {statPlayerIds.map((playerId) => {
             const player = userMap[playerId];
-            const allowedFields = new Set(getRecorderAllowedFields(selectedMatch, app.state, user.id, playerId).map((field) => field.id));
+            const allowedFields = new Set(getRecorderAllowedFields(selectedMatch, app.state, user.id, playerId, currentUserCanPostgameScore).map((field) => field.id));
             const rosterLabel = activePlayerIds.includes(playerId)
               ? "출전 중"
               : reservePlayerIds.includes(playerId)
@@ -378,7 +381,7 @@ export default function Recorder({ app }) {
 
             {canEndLiveMatch ? (
               <div className="recorder-host-action-row">
-                <p>방장이 경기 종료를 누르면 경기종료방으로 넘어가고 결과 입력이 열린다.</p>
+                <p>{postStartOperatorLabel}이 경기 종료를 누르면 경기종료방으로 넘어가고 결과 입력이 열린다.</p>
                 <Button type="button" variant="secondary" onClick={() => app.actions.endMatch(selectedMatch.id)}>
                   <Square size={16} />
                   경기 종료

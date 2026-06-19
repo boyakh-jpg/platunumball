@@ -2680,6 +2680,21 @@ export function approveMatch(state, matchId, sideName, playerId) {
 export function disputeMatch(state, matchId, reason = "") {
   const match = state.matches.find((item) => item.id === matchId);
   if (!match?.result || match.status !== "approval") return state;
+  if (!currentUserCanOperateStartedMatch(state, match)) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: match.refereeId ? "심판 처리 전용" : "방장 처리 전용",
+          body: match.refereeId ? "심판이 있는 경기는 심판만 이의 처리를 시작할 수 있습니다." : "심판이 없는 경기는 방장만 이의 처리를 시작할 수 있습니다.",
+          tone: "orange",
+          matchId,
+        },
+        ...state.notifications,
+      ],
+    };
+  }
   const recordWindow = getMatchRecordWindow(match);
   if (!recordWindow.disputeOpen) {
     return {
@@ -2729,6 +2744,22 @@ function getMatchHostPlayerId(state, match) {
     ? state.recruitingPosts?.find((post) => post.id === match.recruitingPostId)
     : null;
   return getRecruitingRoomOwnerId(sourcePost) || match?.createdBy || match?.hostPlayerId || match?.createdPlayerId || match?.teamA?.players?.[0] || "";
+}
+
+function currentUserIsMatchHost(state, match) {
+  const hostPlayerId = getMatchHostPlayerId(state, match);
+  return !hostPlayerId || hostPlayerId === state.currentUserId;
+}
+
+function currentUserIsEligibleMatchReferee(state, match) {
+  const currentUser = state.users.find((user) => user.id === state.currentUserId);
+  return Boolean(isMatchReferee(match, state.currentUserId) && isEligibleReferee(currentUser, match?.refereeTrustMin));
+}
+
+function currentUserCanOperateStartedMatch(state, match) {
+  if (!match) return false;
+  if (match.refereeId) return currentUserIsEligibleMatchReferee(state, match);
+  return currentUserIsMatchHost(state, match);
 }
 
 function getAllowedResultFieldIds(match, currentUserId, playerId, hostPostgameScore = false) {
@@ -2852,8 +2883,7 @@ export function startMatch(state, matchId) {
 export function endMatch(state, matchId) {
   const match = state.matches.find((item) => item.id === matchId);
   if (!match || match.status !== "agreed" || match.result || match.endedAt) return state;
-  const hostPlayerId = getMatchHostPlayerId(state, match);
-  if (hostPlayerId && hostPlayerId !== state.currentUserId) return state;
+  if (!currentUserCanOperateStartedMatch(state, match)) return state;
   const now = new Date().toISOString();
   const nextMatch = {
     ...match,
@@ -2878,8 +2908,7 @@ function canEditPostgameRoster(state, match) {
   if (!match || ["confirmed", "void", "cancelled", "disputed"].includes(match.status) || match.result) return false;
   if (getMatchRoomPhase(match).phase !== "postgame") return false;
   if (getMatchRecordWindow(match).statExpired) return false;
-  const hostPlayerId = getMatchHostPlayerId(state, match);
-  return !hostPlayerId || hostPlayerId === state.currentUserId;
+  return currentUserCanOperateStartedMatch(state, match);
 }
 
 function makeAnonymousMatchPlayer(playerId, name) {
@@ -2989,8 +3018,8 @@ export function removeMatchLatePlayer(state, matchId, playerId) {
 export function cancelMatch(state, matchId) {
   const match = state.matches.find((item) => item.id === matchId);
   if (!match || !["contract", "agreed"].includes(match.status)) return state;
-  const hostPlayerId = getMatchHostPlayerId(state, match);
-  if (hostPlayerId && hostPlayerId !== state.currentUserId) return state;
+  const afterStart = Boolean(match.startedAt || match.endedAt || match.result || ["live", "postgame", "dispute", "record"].includes(getMatchRoomPhase(match).phase));
+  if (afterStart ? !currentUserCanOperateStartedMatch(state, match) : !currentUserIsMatchHost(state, match)) return state;
 
   return {
     ...state,
@@ -3009,6 +3038,7 @@ export function cancelMatch(state, matchId) {
 export function voidMatch(state, matchId) {
   const match = state.matches.find((item) => item.id === matchId);
   if (!match || match.status !== "disputed") return state;
+  if (!currentUserCanOperateStartedMatch(state, match)) return state;
 
   return {
     ...state,
@@ -3027,6 +3057,7 @@ export function voidMatch(state, matchId) {
 export function resumeMatchApproval(state, matchId) {
   const match = state.matches.find((item) => item.id === matchId);
   if (!match || match.status !== "disputed") return state;
+  if (!currentUserCanOperateStartedMatch(state, match)) return state;
 
   return {
     ...state,
@@ -3778,6 +3809,8 @@ export function createRecruitingPost(state, draft) {
     timingType,
     ranked: draft.ranked !== false,
     mmrRangeMode,
+    ageRestriction: draft.ageRestriction ?? draft.rules?.ageRestriction ?? "any",
+    allowedAgeGroups: draft.allowedAgeGroups ?? draft.rules?.allowedAgeGroups ?? [],
     ratingScale,
     spots: Math.max(0, sideCapacity * 2 - hostSize - opponentSize),
     teamId: hostJoinMode === "team" ? draft.teamId : null,

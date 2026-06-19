@@ -57,7 +57,9 @@ import {
   getMatchSidePlayerIds,
   getPublicRoomMaxDateInput,
   getPublicRoomTimingStatus,
+  isEligibleReferee,
   isInstantRoom,
+  isMatchReferee,
 } from "../lib/matchUtils.js";
 
 const SIDE_LABELS = {
@@ -1638,6 +1640,8 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
         const roomReadyLabel = sourceMatch ? sourceMatchStatus.label : roomQueueStatus.label;
         const sourceMatchPhase = sourceMatch ? getMatchRoomPhase(sourceMatch) : null;
         const sourceMatchStarted = Boolean(sourceMatch?.startedAt);
+        const currentUserIsSourceReferee = Boolean(sourceMatch && isMatchReferee(sourceMatch, app.currentUser.id) && isEligibleReferee(app.currentUser, sourceMatch.refereeTrustMin));
+        const currentUserCanOperateStartedSourceMatch = Boolean(sourceMatch && (sourceMatch.refereeId ? currentUserIsSourceReferee : mine));
         const sourceMatchAttendance = {
           teamA: sourceMatch?.attendance?.teamA ?? [],
           teamB: sourceMatch?.attendance?.teamB ?? [],
@@ -1655,7 +1659,9 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
           sourceMatchAttendance[sourceMatchParticipantSideName]?.includes(app.currentUser.id),
         );
         const canStartSourceMatch = Boolean(matchRoom && mine && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.result && !sourceMatch?.endedAt);
-        const canEndSourceMatch = Boolean(matchRoom && mine && sourceMatchPhase?.phase === "live" && !sourceMatch?.result && !sourceMatch?.endedAt && sourceMatchStarted);
+        const canEndSourceMatch = Boolean(matchRoom && currentUserCanOperateStartedSourceMatch && sourceMatchPhase?.phase === "live" && !sourceMatch?.result && !sourceMatch?.endedAt && sourceMatchStarted);
+        const canReviewSourceMatch = Boolean(matchRoom && currentUserCanOperateStartedSourceMatch && sourceMatchPhase?.phase === "dispute");
+        const canCancelSourceMatch = Boolean(matchRoom && sourceMatch && ["contract", "agreed"].includes(sourceMatch.status) && (sourceMatchStarted || sourceMatch.endedAt || sourceMatch.result ? currentUserCanOperateStartedSourceMatch : mine));
         const canManageMatchCheckin = Boolean(matchRoom && mine && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.startedAt && !sourceMatch?.endedAt && !sourceMatch?.result);
         const canMoveMatchSides = Boolean(canManageMatchCheckin && selectedPost.hostJoinMode !== "team");
         const roomCompetitionLabel = getRoomCompetitionLabel(selectedPost);
@@ -2204,7 +2210,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                         {sourceMatchCheckedIn ? "출석 완료" : "출석체크"}
                       </Button>
                     ) : null}
-                    {sourceMatchAction.disputed ? (
+                    {sourceMatchAction.disputed && canReviewSourceMatch ? (
                       <>
                         <Button type="button" onClick={() => app.actions.resumeMatchApproval(sourceMatch.id)}>
                           승인 재개
@@ -2224,7 +2230,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                         경기 종료
                       </Button>
                     ) : null}
-                    {mine && ["contract", "agreed"].includes(sourceMatch.status) ? (
+                    {canCancelSourceMatch ? (
                       <Button type="button" variant="secondary" className="danger-button" onClick={() => app.actions.cancelMatch(sourceMatch.id)}>
                         경기 취소
                       </Button>

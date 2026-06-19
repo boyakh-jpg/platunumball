@@ -22,6 +22,7 @@ import {
   getApprovalStatus,
   getMatchRecordWindow,
   getMatchReferee,
+  getMatchRoomPhase,
   getMatchPlayerIds,
   getMatchReservePlayerIds,
   getMatchSidePlayerIds,
@@ -33,6 +34,7 @@ import {
   getResultPointAudit,
   getStatRecorderSides,
   getStatSubmissionStatus,
+  isEligibleReferee,
   isMatchReferee,
   isMatchStatRecorder,
   isMatchTrustFeedbackOpen,
@@ -147,6 +149,7 @@ export default function MatchRoom({ app }) {
   const referee = getMatchReferee(match, app.state.users);
   const hasReferee = Boolean(match.refereeId);
   const currentUserIsReferee = isMatchReferee(match, app.currentUser.id);
+  const currentUserIsEligibleReferee = currentUserIsReferee && isEligibleReferee(app.currentUser, match.refereeTrustMin);
   const statRecorders = hasReferee ? {} : match.statRecorders ?? match.rules?.statRecorders ?? {};
   const recorderSummary = referee
     ? `심판 ${referee.name}`
@@ -156,10 +159,10 @@ export default function MatchRoom({ app }) {
         .join(" · ") || "참가자 본인 득점";
   const currentRecorderSides = hasReferee ? [] : getStatRecorderSides(match, app.currentUser.id);
   const hasSideRecorders = !hasReferee && Boolean(statRecorders.teamA || statRecorders.teamB);
-  const currentUserEditablePlayerIds = hasReferee && currentUserIsReferee
+  const currentUserEditablePlayerIds = hasReferee && currentUserIsEligibleReferee
     ? allPlayerIds
     : allPlayerIds.filter((playerId) => getAllowedStatFields(match, app.currentUser.id, playerId).length > 0);
-  const currentUserCanSubmit = hasReferee ? currentUserIsReferee : currentUserEditablePlayerIds.length > 0;
+  const currentUserCanSubmit = hasReferee ? currentUserIsEligibleReferee : currentUserEditablePlayerIds.length > 0;
   const canSubmitResult = ["agreed", "approval"].includes(match.status) && recordWindow.statOpen && currentUserCanSubmit;
   const statSubmissionStatus = getStatSubmissionStatus(match);
   const resultPointAudit = getResultPointAudit(match);
@@ -174,10 +177,13 @@ export default function MatchRoom({ app }) {
     : null;
   const matchHostPlayerId = match.createdBy || match.hostPlayerId || match.createdPlayerId || sourceRecruitingPost?.playerId || match.teamA?.players?.[0] || "";
   const isMatchHost = matchHostPlayerId === app.currentUser.id;
-  const canCancel = isMatchHost && ["contract", "agreed"].includes(match.status);
-  const canDispute = Boolean(match.result) && match.status === "approval" && recordWindow.disputeOpen;
-  const canVoid = match.status === "disputed";
-  const canResumeApproval = match.status === "disputed";
+  const matchPhase = getMatchRoomPhase(match).phase;
+  const startedAuthorityPhase = Boolean(match.startedAt || match.endedAt || match.result || ["live", "postgame", "dispute", "record"].includes(matchPhase));
+  const currentUserCanOperateStartedMatch = hasReferee ? currentUserIsEligibleReferee : isMatchHost;
+  const canCancel = ["contract", "agreed"].includes(match.status) && (startedAuthorityPhase ? currentUserCanOperateStartedMatch : isMatchHost);
+  const canDispute = Boolean(match.result) && match.status === "approval" && recordWindow.disputeOpen && currentUserCanOperateStartedMatch;
+  const canVoid = match.status === "disputed" && currentUserCanOperateStartedMatch;
+  const canResumeApproval = match.status === "disputed" && currentUserCanOperateStartedMatch;
   const canReport = !["cancelled", "void"].includes(match.status) && (Boolean(match.endedAt) || Boolean(match.result) || ["approval", "disputed", "confirmed"].includes(match.status));
   const isContractStage = match.status === "contract";
   const shouldShowResultEntry =
@@ -542,16 +548,16 @@ export default function MatchRoom({ app }) {
           </div>
         </Card>
 
-      {isMatchHost ? (
+      {isMatchHost || (startedAuthorityPhase && currentUserIsEligibleReferee) ? (
         <Card className="section-card">
           <div className="section-title-row">
             <div>
-              <p className="eyebrow">Host controls</p>
-              <h2>방장 권한</h2>
+              <p className="eyebrow">{hasReferee && startedAuthorityPhase ? "Referee controls" : "Host controls"}</p>
+              <h2>{hasReferee && startedAuthorityPhase ? "심판 권한" : "방장 권한"}</h2>
             </div>
             <Badge tone={canCancel ? "orange" : "neutral"}>{canCancel ? "취소 가능" : "잠김"}</Badge>
           </div>
-          <p className="muted">{canCancel ? "경기 시작 전 방장은 경기 취소가 가능합니다." : "현재 단계에서는 방장 취소가 잠겼습니다."}</p>
+          <p className="muted">{canCancel ? "현재 운영 권한으로 경기 취소가 가능합니다." : "현재 단계에서는 경기 취소가 잠겼습니다."}</p>
           <Button type="button" variant="secondary" disabled={!canCancel} onClick={() => app.actions.cancelMatch(match.id)}>경기 취소</Button>
         </Card>
       ) : null}
