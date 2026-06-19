@@ -2776,6 +2776,11 @@ function currentUserCanOperateStartedMatch(state, match) {
   return currentUserIsMatchHost(state, match);
 }
 
+function currentUserCanStartMatch(state, match) {
+  if (!match) return false;
+  return currentUserIsMatchHost(state, match) || currentUserIsEligibleMatchReferee(state, match);
+}
+
 function getAllowedResultFieldIds(match, currentUserId, playerId, hostPostgameScore = false) {
   const fields = getAllowedStatFields(match, currentUserId, playerId);
   if (!hostPostgameScore) return fields;
@@ -2854,7 +2859,7 @@ export function checkInMatchPlayer(state, matchId, sideName, playerId) {
 export function startMatch(state, matchId) {
   const match = state.matches.find((item) => item.id === matchId);
   if (!match || !["contract", "agreed"].includes(match.status) || match.result || match.endedAt) return state;
-  if (!currentUserCanOperateStartedMatch(state, match)) return state;
+  if (!currentUserCanStartMatch(state, match)) return state;
   if (getMatchRoomPhase(match).phase !== "checkin") return state;
   const missingAttendance = getMissingActiveAttendance(match);
   if (missingAttendance.length) {
@@ -4658,7 +4663,10 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
   const invitedTeam = invitationTeamId
     ? state.teams.find((team) => team.id === invitationTeamId && team.members.some((member) => member.userId === state.currentUserId))
     : null;
-  const fit = getRecruitingFit(post, user?.ratings?.integrated ?? 1200, state);
+  const candidateMmr = invitedTeam
+    ? invitedTeam.mmr ?? user?.ratings?.integrated ?? 1200
+    : user?.ratings?.integrated ?? 1200;
+  const fit = getRecruitingFit(post, candidateMmr, state);
   const expireInvitation = (body) => ({
     ...state,
     recruitingPosts: (state.recruitingPosts ?? []).map((item) => (

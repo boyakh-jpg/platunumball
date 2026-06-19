@@ -5,6 +5,7 @@ import {
   acceptRecruitingInvitation,
   approveMatch,
   cancelRecruitingParticipation,
+  checkInMatchPlayer,
   confirmRecruitingMatch,
   createMatch,
   createRecruitingPost,
@@ -224,6 +225,22 @@ function userByIndex(state, index) {
   return state.users[index % state.users.length]?.id ?? "u1";
 }
 
+function trustedUserByIndex(state, index, minTrust = 75) {
+  const users = state.users.filter((user) => Number(user.trustScore ?? 0) >= minTrust);
+  return users[index % users.length]?.id ?? userByIndex(state, index);
+}
+
+function ensureTrustedPartyLeader(state, team = {}, playerIds = [], minTrust = 75) {
+  const trustById = new Map(state.users.map((user) => [user.id, Number(user.trustScore ?? 0)]));
+  const teamIds = (team.members ?? []).map((member) => member.userId);
+  const leaderId = playerIds.find((playerId) => (trustById.get(playerId) ?? 0) >= minTrust)
+    ?? teamIds.find((playerId) => (trustById.get(playerId) ?? 0) >= minTrust)
+    ?? playerIds[0]
+    ?? "";
+  if (!leaderId) return playerIds;
+  return [leaderId, ...playerIds.filter((playerId) => playerId !== leaderId)].slice(0, playerIds.length);
+}
+
 function pickDisjointTeamPair(state, capacity = 5, seed = 0) {
   const teams = teamsWithSize(state, capacity + 1);
   for (let attempt = 0; attempt < teams.length * teams.length; attempt += 1) {
@@ -295,8 +312,11 @@ function addBulkDemoContent(state) {
     const hostJoinMode = visibility === "private" ? "player" : index % 3 === 0 ? "team" : "player";
     const teams = teamsWithSize(nextState, modeMeta.capacity);
     const hostTeam = teams[(index + 3) % teams.length];
-    const hostPlayers = teamRoster(hostTeam, Math.max(1, Math.min(modeMeta.capacity, index % 2 ? 1 : modeMeta.capacity)), index);
-    const ownerId = hostJoinMode === "team" ? hostPlayers[0] : userByIndex(nextState, index + 24);
+    let hostPlayers = teamRoster(hostTeam, Math.max(1, Math.min(modeMeta.capacity, index % 2 ? 1 : modeMeta.capacity)), index);
+    if (hostJoinMode === "team") {
+      hostPlayers = ensureTrustedPartyLeader(nextState, hostTeam, hostPlayers, visibility === "public" ? 75 : 70);
+    }
+    const ownerId = hostJoinMode === "team" ? hostPlayers[0] : trustedUserByIndex(nextState, index + 24, visibility === "public" ? 75 : 70);
     const room = createRoom(nextState, ownerId, {
       title: `FLOW 모집 중 ${index + 1} ${modeMeta.mode}`,
       visibility,
@@ -411,13 +431,30 @@ assertFlow(getMatch(state, lifecycleMatchId).rules.targetScore === 15, "경기�
 state = withUser(state, "u6", (scoped) => startMatch(scoped, lifecycleMatchId));
 assertFlow(!getMatch(state, lifecycleMatchId).startedAt, "상대 파티장은 경기 시작 불가", {});
 
+for (const sideName of ["teamA", "teamB"]) {
+  for (const playerId of getMatch(state, lifecycleMatchId)[sideName].players) {
+    state = withUser(state, playerId, (scoped) => checkInMatchPlayer(scoped, lifecycleMatchId, sideName, playerId));
+  }
+}
+assertFlow(
+  getMatch(state, lifecycleMatchId).attendance.teamA.length === getMatch(state, lifecycleMatchId).teamA.players.length &&
+    getMatch(state, lifecycleMatchId).attendance.teamB.length === getMatch(state, lifecycleMatchId).teamB.players.length,
+  "경기준비방: 출전선수 전원 출석체크",
+  { attendance: getMatch(state, lifecycleMatchId).attendance },
+);
+
 state = withUser(state, "u1", (scoped) => startMatch(scoped, lifecycleMatchId));
 assertFlow(getMatchRoomPhase(getMatch(state, lifecycleMatchId)).phase === "live", "방장 경기 시작", {
   phase: getMatchRoomPhase(getMatch(state, lifecycleMatchId)),
 });
 
 state = withUser(state, "u1", (scoped) => endMatch(scoped, lifecycleMatchId));
-assertFlow(getMatchRoomPhase(getMatch(state, lifecycleMatchId)).phase === "postgame", "방장 경기 종료", {
+assertFlow(getMatchRoomPhase(getMatch(state, lifecycleMatchId)).phase === "live", "심판 배정 경기: 방장 종료 불가", {
+  phase: getMatchRoomPhase(getMatch(state, lifecycleMatchId)),
+});
+
+state = withUser(state, "u11", (scoped) => endMatch(scoped, lifecycleMatchId));
+assertFlow(getMatchRoomPhase(getMatch(state, lifecycleMatchId)).phase === "postgame", "심판 경기 종료", {
   phase: getMatchRoomPhase(getMatch(state, lifecycleMatchId)),
 });
 
@@ -427,11 +464,16 @@ assertFlow(getMatchRoomPhase(getMatch(state, lifecycleMatchId)).phase === "dispu
 });
 
 state = withUser(state, "u6", (scoped) => disputeMatch(scoped, lifecycleMatchId, "점수 재확인 요청"));
-assertFlow(getMatch(state, lifecycleMatchId).status === "disputed", "상대 파티장 이의제기", {
+assertFlow(getMatch(state, lifecycleMatchId).status === "approval", "심판 배정 경기: 상대 파티장 이의 처리 불가", {
   disputes: getMatch(state, lifecycleMatchId).disputes?.length,
 });
 
-state = withUser(state, "u1", (scoped) => resumeMatchApproval(scoped, lifecycleMatchId));
+state = withUser(state, "u11", (scoped) => disputeMatch(scoped, lifecycleMatchId, "점수 재확인 요청"));
+assertFlow(getMatch(state, lifecycleMatchId).status === "disputed", "심판 이의 처리 시작", {
+  disputes: getMatch(state, lifecycleMatchId).disputes?.length,
+});
+
+state = withUser(state, "u11", (scoped) => resumeMatchApproval(scoped, lifecycleMatchId));
 assertFlow(getMatch(state, lifecycleMatchId).status === "approval", "이의 처리 후 승인 재개", {});
 
 state = withUser(state, "u1", (scoped) => submitMatchThumbs(scoped, lifecycleMatchId, ["u6", "u7"]));

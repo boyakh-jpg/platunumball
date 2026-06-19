@@ -1452,7 +1452,7 @@
 .ow-room-party-group::before {
   content: "";
   position: absolute;
-  inset: -7px;
+  inset: -7px 0;
   z-index: 0;
   border: 2px solid rgba(70, 224, 182, 0.62);
   border-radius: 12px;
