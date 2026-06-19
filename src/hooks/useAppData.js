@@ -239,10 +239,10 @@ export function useAppData(authUserId = null) {
         setState((prev) => setRecruitingSlotPosition({ ...prev, currentUserId }, postId, playerId, position));
       },
       setRecruitingPartyPlayerReserve: (postId, entryId, playerId, reserve) => {
-        setState((prev) => setRecruitingPartyPlayerReserve({ ...prev, currentUserId: playerId || currentUserId }, postId, entryId, playerId, reserve));
+        setState((prev) => setRecruitingPartyPlayerReserve({ ...prev, currentUserId }, postId, entryId, playerId, reserve));
       },
       setRecruitingPartyPlayerPlacement: (postId, entryId, playerId, placement) => {
-        setState((prev) => setRecruitingPartyPlayerPlacement({ ...prev, currentUserId: playerId || currentUserId }, postId, entryId, playerId, placement));
+        setState((prev) => setRecruitingPartyPlayerPlacement({ ...prev, currentUserId }, postId, entryId, playerId, placement));
       },
       detachRecruitingPartyPlayer: (postId, entryId, playerId, placement) => {
         setState((prev) => detachRecruitingPartyPlayer({ ...prev, currentUserId: playerId || currentUserId }, postId, entryId, playerId, placement));

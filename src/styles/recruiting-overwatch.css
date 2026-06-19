@@ -889,7 +889,8 @@
   gap: 7px;
 }
 
-.ow-party-picker-grid button {
+.ow-party-picker-grid > button,
+.ow-party-member-card {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
@@ -904,21 +905,30 @@
   text-align: left;
 }
 
-.ow-party-picker-grid button.selected {
+.ow-party-picker-grid > button.selected,
+.ow-party-member-card.selected {
   border-color: rgba(70, 224, 182, 0.48);
   background: rgba(70, 224, 182, 0.13);
 }
 
-.ow-party-picker-grid button.required {
+.ow-party-member-card.reserve {
+  border-color: rgba(255, 210, 92, 0.4);
+  background: rgba(255, 210, 92, 0.09);
+}
+
+.ow-party-picker-grid > button.required,
+.ow-party-member-card.required {
   cursor: default;
 }
 
-.ow-party-picker-grid button:disabled {
+.ow-party-picker-grid > button:disabled,
+.ow-party-member-card button:disabled {
   cursor: not-allowed;
   opacity: 0.48;
 }
 
-.ow-party-picker-grid button > span:nth-child(2) {
+.ow-party-picker-grid > button > span:nth-child(2),
+.ow-party-member-card > span:nth-child(2) {
   display: grid;
   min-width: 0;
   gap: 2px;
@@ -936,6 +946,30 @@
   font-size: 0.72rem;
   font-style: normal;
   font-weight: 850;
+}
+
+.ow-party-role-buttons {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.ow-party-role-buttons button {
+  min-height: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.ow-party-role-buttons button.active {
+  border-color: rgba(70, 224, 182, 0.55);
+  background: rgba(70, 224, 182, 0.18);
+  color: var(--mint);
 }
 
 .ow-submit-row {
@@ -2598,12 +2632,19 @@ html[data-theme="light"] .ow-invitation-list > div.mine {
   background: rgba(25, 148, 119, 0.12);
 }
 
-html[data-theme="light"] .ow-party-picker-grid button {
+html[data-theme="light"] .ow-party-picker-grid > button,
+html[data-theme="light"] .ow-party-member-card,
+html[data-theme="light"] .ow-party-role-buttons button {
   background: rgba(10, 18, 30, 0.04);
 }
 
-html[data-theme="light"] .ow-party-picker-grid button.selected {
+html[data-theme="light"] .ow-party-picker-grid > button.selected,
+html[data-theme="light"] .ow-party-member-card.selected {
   background: rgba(25, 148, 119, 0.12);
+}
+
+html[data-theme="light"] .ow-party-member-card.reserve {
+  background: rgba(196, 143, 28, 0.1);
 }
 
 .bottom-nav {
