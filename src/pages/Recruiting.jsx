@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
+import CourtHoverCard from "../components/court/CourtHoverCard.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import TierBadge from "../components/rating/TierBadge.jsx";
 import { getTierEmblemSrc } from "../components/rating/TierEmblem.jsx";
@@ -1871,7 +1872,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
 
                 <div className="ow-lobby-title">
                   <h2>{roomDisplayTitle}</h2>
-                  <p><MapPin size={16} />{selectedPost.court} · {getRecruitingSchedule(selectedPost)}</p>
+                  <p><MapPin size={16} /><CourtHoverCard courtName={selectedPost.court}>{selectedPost.court}</CourtHoverCard> · {getRecruitingSchedule(selectedPost)}</p>
                 </div>
 
                 <div className="ow-lobby-versus-stage">
@@ -2695,7 +2696,7 @@ export default function Recruiting({ app }) {
                 <div className="ow-card-meta">
                   <MapPin size={15} />
                   <span>
-                    {post.region} · {post.court} · {" "}
+                    {post.region} · <CourtHoverCard courtName={post.court}>{post.court}</CourtHoverCard> · {" "}
                     {hostTeam ? <TeamHoverCard team={hostTeam} as="span">{hostTeam.name}</TeamHoverCard> : host?.name ?? "방장"}
                   </span>
                 </div>

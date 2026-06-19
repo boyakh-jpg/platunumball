@@ -20,6 +20,10 @@ export function getTeamHashtag(team = {}) {
   return toHashtag(team.hashtag ?? team.handle ?? team.name ?? team.id, team.id ?? "team");
 }
 
+export function getCourtHashtag(court = {}) {
+  return toHashtag(court.hashtag ?? court.handle ?? court.name ?? court.id, court.id ?? "court");
+}
+
 export function sameHashtag(query, value) {
   return Boolean(stripHandle(query) && stripHandle(query) === stripHandle(value));
 }
@@ -37,5 +41,13 @@ export function findTeamByHashtag(teams = [], query = "") {
     sameHashtag(query, team.hashtag) ||
     sameHashtag(query, team.handle) ||
     sameHashtag(query, getTeamHashtag(team))
+  )) ?? null;
+}
+
+export function findCourtByHashtag(courts = [], query = "") {
+  return courts.find((court) => (
+    sameHashtag(query, court.hashtag) ||
+    sameHashtag(query, court.handle) ||
+    sameHashtag(query, getCourtHashtag(court))
   )) ?? null;
 }

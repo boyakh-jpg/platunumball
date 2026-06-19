@@ -1,14 +1,25 @@
 import { useEffect, useMemo, useState } from "react";
-import { Database, Moon, Search, ShieldCheck, Sun, UserRound } from "lucide-react";
+import { Database, MapPin, Moon, Search, Send, ShieldCheck, Sun, UserRound } from "lucide-react";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import Badge from "../components/common/Badge.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import { DEFAULT_REPORT_REASON, REPORT_REASONS } from "../lib/reportReasons.js";
 import { getMatchPlayerIds } from "../lib/matchUtils.js";
+import { COURTS, REGIONS } from "../lib/constants.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 
 const REPORT_MATCH_WINDOW_DAYS = 7;
+const DEFAULT_COURT_REQUEST = {
+  name: "",
+  region: "마포",
+  type: "야외",
+  addressText: "",
+  locationNote: "",
+  courtKind: "street_hoop",
+  paid: false,
+  reservation: false,
+};
 
 function getMatchReportTime(match = {}) {
   const rawDate = match.endedAt ?? match.confirmedAt ?? match.scheduledDate ?? match.scheduledAt ?? match.createdAt;
@@ -32,8 +43,13 @@ export default function Settings({ app, auth }) {
   const [reportMemo, setReportMemo] = useState("");
   const [reportedUserIds, setReportedUserIds] = useState([]);
   const [accountQuery, setAccountQuery] = useState("");
+  const [courtDraft, setCourtDraft] = useState(() => ({
+    ...DEFAULT_COURT_REQUEST,
+    region: app.currentUser?.region ?? DEFAULT_COURT_REQUEST.region,
+  }));
   const userMap = useMemo(() => Object.fromEntries(app.state.users.map((user) => [user.id, user])), [app.state.users]);
   const matchMap = useMemo(() => Object.fromEntries(app.state.matches.map((match) => [match.id, match])), [app.state.matches]);
+  const courtRequests = app.state.settings?.courtRequests ?? [];
 
   const blockableUsers = useMemo(
     () => app.state.users.filter((user) => user.id !== app.currentUserId && !blockedUserIds.includes(user.id)),
@@ -93,6 +109,15 @@ export default function Settings({ app, auth }) {
     const targetNames = selectedReportedUserIds.map((userId) => userMap[userId]?.name).filter(Boolean);
     const targetLine = targetNames.length ? `대상: ${targetNames.join(", ")}` : "대상: 경기 전체";
     if (selectedReportMatchId) app.actions.reportMatch(selectedReportMatchId, [reportReason, targetLine, memo].filter(Boolean).join(" · "), selectedReportedUserIds);
+  };
+  const updateCourtDraft = (patch) => setCourtDraft((current) => ({ ...current, ...patch }));
+  const submitCourtRequest = (event) => {
+    event.preventDefault();
+    app.actions.submitCourtRequest(courtDraft);
+    setCourtDraft({
+      ...DEFAULT_COURT_REQUEST,
+      region: app.currentUser?.region ?? DEFAULT_COURT_REQUEST.region,
+    });
   };
   const toggleReportedUser = (userId) => {
     setReportedUserIds((current) => (
@@ -277,6 +302,75 @@ export default function Settings({ app, auth }) {
               </div>
             </div>
             <Button variant="secondary" onClick={app.actions.reset}>데모 데이터 초기화</Button>
+          </Card>
+
+          <Card className="section-card">
+            <div className="section-title-row">
+              <div>
+                <p className="eyebrow">Court</p>
+                <h2>구장 등록요청</h2>
+              </div>
+              <MapPin size={22} />
+            </div>
+            <form className="form-stack" onSubmit={submitCourtRequest}>
+              <label>
+                구장명
+                <input value={courtDraft.name} placeholder="예: 망원 나들목 골대" onChange={(event) => updateCourtDraft({ name: event.target.value })} />
+              </label>
+              <div className="ow-field-grid">
+                <label>
+                  지역
+                  <select value={courtDraft.region} onChange={(event) => updateCourtDraft({ region: event.target.value })}>
+                    {REGIONS.map((region) => <option key={region} value={region}>{region}</option>)}
+                  </select>
+                </label>
+                <label>
+                  유형
+                  <select value={courtDraft.type} onChange={(event) => updateCourtDraft({ type: event.target.value })}>
+                    <option value="야외">야외</option>
+                    <option value="실내">실내</option>
+                  </select>
+                </label>
+              </div>
+              <label>
+                주소
+                <input value={courtDraft.addressText} placeholder="도로명/근처 주소" onChange={(event) => updateCourtDraft({ addressText: event.target.value })} />
+              </label>
+              <label>
+                찾아가는 메모
+                <textarea value={courtDraft.locationNote} placeholder="예: 나들목 지나 오른쪽 두 번째 골대" onChange={(event) => updateCourtDraft({ locationNote: event.target.value })} />
+              </label>
+              <div className="settings-toggle-grid">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={courtDraft.courtKind === "official"}
+                    onChange={(event) => updateCourtDraft({ courtKind: event.target.checked ? "official" : "street_hoop" })}
+                  />
+                  정식구장
+                </label>
+                <label>
+                  <input type="checkbox" checked={courtDraft.paid} onChange={(event) => updateCourtDraft({ paid: event.target.checked })} />
+                  유료구장
+                </label>
+                <label>
+                  <input type="checkbox" checked={courtDraft.reservation} onChange={(event) => updateCourtDraft({ reservation: event.target.checked })} />
+                  구장예약됨
+                </label>
+              </div>
+              <Button type="submit" variant="secondary" disabled={!courtDraft.name.trim() || !courtDraft.addressText.trim()}>
+                <Send size={16} /> 등록요청
+              </Button>
+            </form>
+            <div className="compact-list">
+              {courtRequests.slice(0, 4).map((request) => (
+                <div key={request.id}>
+                  <span>{request.name} · {request.region}</span>
+                  <strong>{request.status === "pending" ? "대기" : request.status}</strong>
+                </div>
+              ))}
+              {!courtRequests.length ? <div><span>요청한 구장이 없습니다.</span><strong>{COURTS.length}개 등록</strong></div> : null}
+            </div>
           </Card>
 
           <Card className="section-card">

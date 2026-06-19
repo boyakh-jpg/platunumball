@@ -71,6 +71,7 @@ const DEFAULT_SETTINGS = {
   favoritePlayerIds: [],
   favoriteTeamIds: [],
   favoriteCourtIds: [],
+  courtRequests: [],
 };
 const REMOTE_PAGE_SIZE = 1000;
 const REMOTE_WRITE_CHUNK_SIZE = 500;
@@ -490,6 +491,7 @@ function normalizeSettings(settings = {}) {
     favoritePlayerIds: settings.favoritePlayerIds ?? initialState.settings?.favoritePlayerIds ?? [],
     favoriteTeamIds: settings.favoriteTeamIds ?? initialState.settings?.favoriteTeamIds ?? [],
     favoriteCourtIds: settings.favoriteCourtIds ?? initialState.settings?.favoriteCourtIds ?? [],
+    courtRequests: settings.courtRequests ?? initialState.settings?.courtRequests ?? [],
   };
 }
 
@@ -3244,6 +3246,57 @@ export function toggleFavoriteCourt(state, courtId) {
       ...(state.settings ?? {}),
       favoriteCourtIds: toggleId(state.settings?.favoriteCourtIds, courtId),
     }),
+  };
+}
+
+export function submitCourtRequest(state, draft = {}) {
+  const name = String(draft.name ?? "").trim();
+  const addressText = String(draft.addressText ?? "").trim();
+  if (!name || !addressText) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "구장 등록 보류",
+          body: "구장명과 주소는 필요합니다.",
+          tone: "orange",
+        },
+        ...state.notifications,
+      ],
+    };
+  }
+
+  const request = {
+    id: makeId("cr"),
+    status: "pending",
+    requestedBy: state.currentUserId,
+    name,
+    region: String(draft.region ?? "").trim() || state.users.find((user) => user.id === state.currentUserId)?.region || "미정",
+    type: draft.type === "실내" ? "실내" : "야외",
+    addressText,
+    locationNote: String(draft.locationNote ?? "").trim(),
+    courtKind: draft.courtKind === "official" ? "official" : "street_hoop",
+    paid: Boolean(draft.paid),
+    reservation: Boolean(draft.reservation),
+    createdAt: new Date().toISOString(),
+  };
+
+  return {
+    ...state,
+    settings: normalizeSettings({
+      ...(state.settings ?? {}),
+      courtRequests: [request, ...(state.settings?.courtRequests ?? [])],
+    }),
+    notifications: [
+      {
+        id: makeId("n"),
+        title: "구장 등록요청",
+        body: `${request.name} 등록요청이 접수됐습니다.`,
+        tone: "team",
+      },
+      ...state.notifications,
+    ],
   };
 }
 

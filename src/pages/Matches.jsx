@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, PlusCircle, ShieldAlert, Swords, X } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
+import CourtHoverCard from "../components/court/CourtHoverCard.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { MATCH_MODES } from "../lib/constants.js";
@@ -1072,7 +1073,7 @@ export default function Matches({ app }) {
                     <span className="om-card-official">{getRoomRefereeLabel(post)}</span>
                   </div>
                   <h3>{roomTitle}</h3>
-                  <p><CalendarDays size={15} />{formatMatchTime(post)} · {post.court}</p>
+                  <p><CalendarDays size={15} />{formatMatchTime(post)} · <CourtHoverCard courtName={post.court}>{post.court}</CourtHoverCard></p>
                 </div>
                 <MatchListSummary
                   left={`A ${lobby.sides.teamA.projectedFilled}/${lobby.sides.teamA.capacity}`}
@@ -1109,7 +1110,7 @@ export default function Matches({ app }) {
                   <span className="om-card-official">{getRoomRefereeLabel(match)}</span>
                 </div>
                 <h3>{matchTitle}</h3>
-                <p><CalendarDays size={15} />{formatMatchTime(match)} · {match.court}</p>
+                <p><CalendarDays size={15} />{formatMatchTime(match)} · <CourtHoverCard courtName={match.court}>{match.court}</CourtHoverCard></p>
               </div>
               {showScoreBox ? (
                 <div className="om-score-box">
