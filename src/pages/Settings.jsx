@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Database, MapPin, Moon, Search, Send, ShieldCheck, Sun, UserRound } from "lucide-react";
+import { Link } from "react-router-dom";
+import { BookOpen, Database, MapPin, Moon, Search, Send, ShieldCheck, Sun, UserRound } from "lucide-react";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import Badge from "../components/common/Badge.jsx";
@@ -657,6 +658,19 @@ export default function Settings({ app, auth }) {
                 <h2>심판 등록요청</h2>
               </div>
               <ShieldCheck size={22} />
+            </div>
+            <div className="referee-rulebook-panel compact">
+              <div className="referee-rulebook-head">
+                <div>
+                  <span className="eyebrow">Study guide</span>
+                  <strong>커뮤니티 심판 룰북</strong>
+                  <p>문제 원문은 숨기고 판정 기준, 개인활약 기록 기준, 상황 예시만 따로 정리했다.</p>
+                </div>
+                <Badge tone="blue">학습자료</Badge>
+              </div>
+              <Link className="button button-secondary button-md" to="/app/referee-rulebook">
+                <BookOpen size={16} /> 룰북 보기
+              </Link>
             </div>
             <div className="referee-exam-panel">
               <div className="referee-exam-summary">

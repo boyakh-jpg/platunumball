@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" role="img" aria-label="경기 전 일러스트">
+  <defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#081d32"/><stop offset="1" stop-color="#153025"/></linearGradient><style>.t{font:800 16px Arial,"Noto Sans KR",sans-serif;fill:#f8fafc}.s{font:700 10px Arial,"Noto Sans KR",sans-serif;fill:#b9c7d9}.l{fill:none;stroke:#46e0b6;stroke-width:2;opacity:.42}.p{fill:#46e0b6}.o{fill:#ffd76a}.b{fill:#6ea8ff}</style></defs>
+  <rect width="320" height="180" rx="18" fill="url(#g)"/><rect x="24" y="28" width="272" height="126" rx="14" fill="#08111f" stroke="#46e0b6" opacity=".92"/>
+  <path class="l" d="M160 28v126M60 66h200M60 112h200"/>
+  <rect x="58" y="52" width="56" height="28" rx="8" fill="#122238" stroke="#46e0b6"/><rect x="132" y="52" width="56" height="28" rx="8" fill="#122238" stroke="#ffd76a"/><rect x="206" y="52" width="56" height="28" rx="8" fill="#122238" stroke="#6ea8ff"/>
+  <circle class="p" cx="86" cy="121" r="13"/><circle class="o" cx="160" cy="121" r="13"/><circle class="b" cx="234" cy="121" r="13"/>
+  <text x="24" y="20" class="t">경기 전 확인</text><text x="72" y="70" class="s">출석</text><text x="148" y="70" class="s">룰</text><text x="220" y="70" class="s">기록</text>
+</svg>

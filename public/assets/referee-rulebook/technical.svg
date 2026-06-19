@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" role="img" aria-label="제재 일러스트">
+  <defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#2a1321"/><stop offset="1" stop-color="#10204a"/></linearGradient><style>.t{font:800 16px Arial,"Noto Sans KR",sans-serif;fill:#f8fafc}.s{font:700 10px Arial,"Noto Sans KR",sans-serif;fill:#b9c7d9}.l{fill:none;stroke:#46e0b6;stroke-width:2;opacity:.42}.r{fill:#ff6b6b}.o{fill:#ffd76a}.p{fill:#46e0b6}</style></defs>
+  <rect width="320" height="180" rx="18" fill="url(#g)"/><rect x="24" y="28" width="272" height="126" rx="14" fill="#08111f" stroke="#46e0b6" opacity=".92"/><path class="l" d="M160 28v126M68 90h184"/>
+  <circle class="r" cx="100" cy="90" r="18"/><circle class="o" cx="160" cy="90" r="18"/><circle class="p" cx="220" cy="90" r="18"/><path d="M90 66l24 48M114 66l-24 48" stroke="#ffd76a" stroke-width="4" stroke-linecap="round"/>
+  <text x="24" y="20" class="t">거친 플레이</text><text x="84" y="126" class="s">경고</text><text x="146" y="126" class="s">중단</text><text x="206" y="126" class="s">기록</text>
+</svg>

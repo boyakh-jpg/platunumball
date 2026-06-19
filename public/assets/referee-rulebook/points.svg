@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" role="img" aria-label="득점 기록 일러스트">
+  <defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#081d32"/><stop offset="1" stop-color="#10204a"/></linearGradient><style>.t{font:800 16px Arial,"Noto Sans KR",sans-serif;fill:#f8fafc}.s{font:700 10px Arial,"Noto Sans KR",sans-serif;fill:#b9c7d9}.l{fill:none;stroke:#46e0b6;stroke-width:2;opacity:.42}.o{fill:#ffd76a}.p{fill:#46e0b6}</style></defs>
+  <rect width="320" height="180" rx="18" fill="url(#g)"/><rect x="24" y="28" width="272" height="126" rx="14" fill="#08111f" stroke="#46e0b6" opacity=".92"/><path class="l" d="M160 28v126M66 90h188"/>
+  <circle class="p" cx="92" cy="118" r="14"/><path d="M92 118c44-70 88-78 132-42" fill="none" stroke="#ffd76a" stroke-width="4"/><rect x="218" y="62" width="30" height="4" rx="2" fill="#f8fafc"/><circle class="o" cx="233" cy="74" r="8"/>
+  <text x="24" y="20" class="t">득점 기록</text><text x="78" y="144" class="s">시도</text><text x="218" y="100" class="s">성공</text>
+</svg>

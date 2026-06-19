@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" role="img" aria-label="바이얼레이션 일러스트">
+  <defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#09211d"/><stop offset="1" stop-color="#241934"/></linearGradient><style>.t{font:800 16px Arial,"Noto Sans KR",sans-serif;fill:#f8fafc}.s{font:700 10px Arial,"Noto Sans KR",sans-serif;fill:#b9c7d9}.l{fill:none;stroke:#46e0b6;stroke-width:2;opacity:.42}.r{fill:#ff6b6b}.o{fill:#ffd76a}.b{fill:#6ea8ff}</style></defs>
+  <rect width="320" height="180" rx="18" fill="url(#g)"/><rect x="24" y="28" width="272" height="126" rx="14" fill="#08111f" stroke="#46e0b6" opacity=".92"/>
+  <path class="l" d="M160 28v126M64 90h192M95 58h130v64H95z"/>
+  <path d="M78 120c28-50 56 18 82-28s58-10 82-38" fill="none" stroke="#ffd76a" stroke-width="5" stroke-dasharray="8 7" stroke-linecap="round"/>
+  <circle class="r" cx="82" cy="120" r="13"/><circle class="o" cx="160" cy="90" r="13"/><circle class="b" cx="242" cy="54" r="13"/>
+  <text x="24" y="20" class="t">바이얼레이션</text><text x="58" y="144" class="s">드리블</text><text x="146" y="116" class="s">스텝</text><text x="222" y="82" class="s">백코트</text>
+</svg>

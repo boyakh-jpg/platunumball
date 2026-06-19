@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" role="img" aria-label="득점 판정 일러스트">
+  <defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#081d32"/><stop offset="1" stop-color="#241934"/></linearGradient><style>.t{font:800 16px Arial,"Noto Sans KR",sans-serif;fill:#f8fafc}.s{font:700 10px Arial,"Noto Sans KR",sans-serif;fill:#b9c7d9}.l{fill:none;stroke:#46e0b6;stroke-width:2;opacity:.42}.p{fill:#46e0b6}.o{fill:#ffd76a}.r{fill:#ff6b6b}</style></defs>
+  <rect width="320" height="180" rx="18" fill="url(#g)"/><rect x="24" y="28" width="272" height="126" rx="14" fill="#08111f" stroke="#46e0b6" opacity=".92"/><path class="l" d="M160 28v126M68 90h184M98 58h124v64H98z"/>
+  <rect x="226" y="54" width="30" height="4" rx="2" fill="#f8fafc"/><circle cx="241" cy="66" r="10" fill="none" stroke="#ff6b6b" stroke-width="3"/>
+  <path d="M82 124c42-70 92-80 154-54" fill="none" stroke="#ffd76a" stroke-width="4" stroke-linecap="round"/><circle class="o" cx="82" cy="124" r="10"/><circle class="p" cx="126" cy="116" r="13"/><circle class="r" cx="202" cy="80" r="13"/>
+  <text x="24" y="20" class="t">득점 판정</text><text x="70" y="146" class="s">슛</text><text x="188" y="108" class="s">수비</text><text x="226" y="92" class="s">림</text>
+</svg>

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" role="img" aria-label="후기 일러스트">
+  <defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#081d32"/><stop offset="1" stop-color="#09211d"/></linearGradient><style>.t{font:800 16px Arial,"Noto Sans KR",sans-serif;fill:#f8fafc}.s{font:700 10px Arial,"Noto Sans KR",sans-serif;fill:#b9c7d9}.l{fill:none;stroke:#46e0b6;stroke-width:2;opacity:.42}</style></defs>
+  <rect width="320" height="180" rx="18" fill="url(#g)"/><rect x="24" y="28" width="272" height="126" rx="14" fill="#08111f" stroke="#46e0b6" opacity=".92"/><path class="l" d="M160 28v126M68 90h184"/>
+  <path d="M86 96l17 17 37-44M154 104h64M154 78h84" fill="none" stroke="#46e0b6" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="148" y="62" width="98" height="58" rx="12" fill="#122238" stroke="#ffd76a"/>
+  <text x="24" y="20" class="t">따봉과 신고</text><text x="162" y="86" class="s">따봉</text><text x="162" y="108" class="s">신고</text>
+</svg>

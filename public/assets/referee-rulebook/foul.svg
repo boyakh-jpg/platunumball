@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" role="img" aria-label="파울 기록 일러스트">
+  <defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#2a1321"/><stop offset="1" stop-color="#081d32"/></linearGradient><style>.t{font:800 16px Arial,"Noto Sans KR",sans-serif;fill:#f8fafc}.s{font:700 10px Arial,"Noto Sans KR",sans-serif;fill:#b9c7d9}.l{fill:none;stroke:#46e0b6;stroke-width:2;opacity:.42}.r{fill:#ff6b6b}.p{fill:#46e0b6}.o{fill:#ffd76a}</style></defs>
+  <rect width="320" height="180" rx="18" fill="url(#g)"/><rect x="24" y="28" width="272" height="126" rx="14" fill="#08111f" stroke="#46e0b6" opacity=".92"/><path class="l" d="M160 28v126M66 90h188"/>
+  <circle class="r" cx="132" cy="92" r="17"/><circle class="p" cx="178" cy="92" r="17"/><path d="M144 92h22" stroke="#ffd76a" stroke-width="5" stroke-linecap="round"/><rect x="210" y="62" width="42" height="54" rx="9" fill="#122238" stroke="#ff6b6b"/>
+  <text x="24" y="20" class="t">파울</text><text x="114" y="126" class="s">접촉</text><text x="166" y="126" class="s">이득</text><text x="218" y="94" class="s">기록</text>
+</svg>

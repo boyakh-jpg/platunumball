@@ -3622,6 +3622,299 @@ input[type="color"] {
   font-weight: 750;
 }
 
+.referee-rulebook-panel {
+  display: grid;
+  gap: 12px;
+  border: 1px solid rgba(90, 168, 255, 0.24);
+  border-radius: var(--radius);
+  background: rgba(90, 168, 255, 0.06);
+  padding: 12px;
+}
+
+.referee-rulebook-panel.compact .button {
+  justify-content: center;
+  width: 100%;
+}
+
+.referee-rulebook-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 10px;
+}
+
+.referee-rulebook-head > div {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.referee-rulebook-head strong {
+  color: var(--text);
+  font-size: 1.04rem;
+}
+
+.referee-rulebook-head p,
+.referee-rulebook-section p,
+.referee-rulebook-section-body p,
+.referee-stat-guide > p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 750;
+  line-height: 1.45;
+}
+
+.referee-rulebook-notice {
+  display: grid;
+  gap: 6px;
+}
+
+.referee-rulebook-notice span {
+  border-left: 3px solid rgba(255, 211, 108, 0.72);
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.4;
+  padding-left: 8px;
+}
+
+.referee-rulebook-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.referee-rulebook-section {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius);
+  background: rgba(0, 0, 0, 0.14);
+  padding: 10px;
+}
+
+.referee-rulebook-section strong {
+  color: var(--green);
+  font-size: 0.9rem;
+}
+
+.referee-rulebook-section ul {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.referee-rulebook-section li {
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 750;
+  line-height: 1.4;
+}
+
+.referee-rulebook-page {
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+.referee-rulebook-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(260px, 0.9fr);
+  align-items: stretch;
+  gap: 16px;
+  border: 1px solid rgba(70, 224, 182, 0.22);
+  border-radius: calc(var(--radius) + 6px);
+  background:
+    linear-gradient(135deg, rgba(70, 224, 182, 0.12), rgba(90, 168, 255, 0.08)),
+    var(--surface);
+  padding: 18px;
+}
+
+.referee-rulebook-hero > div:first-child {
+  display: grid;
+  align-content: center;
+  gap: 12px;
+}
+
+.referee-rulebook-hero h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: clamp(1.6rem, 3vw, 2.35rem);
+  line-height: 1.05;
+}
+
+.referee-rulebook-hero p,
+.referee-rulebook-footer p {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 800;
+  line-height: 1.55;
+}
+
+.rulebook-asset {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  min-width: 0;
+}
+
+.rulebook-asset img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius);
+  background: #08111f;
+  object-fit: cover;
+}
+
+.rulebook-asset figcaption {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.referee-rulebook-checklist {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 14px;
+}
+
+.referee-rulebook-checklist > div:last-child {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.referee-rulebook-checklist span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 850;
+  line-height: 1.35;
+  padding: 8px;
+}
+
+.referee-rulebook-checklist b {
+  color: var(--green);
+  font-size: 0.76rem;
+}
+
+.referee-rulebook-section-grid,
+.referee-stat-guide-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.referee-rulebook-section-card,
+.referee-stat-guide-card {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+}
+
+.referee-rulebook-section-body {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.referee-rulebook-section-body > strong,
+.referee-stat-guide-card strong {
+  color: var(--text);
+  font-size: 1.02rem;
+  line-height: 1.25;
+}
+
+.referee-rulebook-section-body > ul,
+.referee-rulebook-detail-grid ul,
+.referee-stat-columns ul,
+.referee-stat-examples ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.referee-rulebook-section-body li,
+.referee-rulebook-detail-grid li,
+.referee-stat-columns li,
+.referee-stat-examples li {
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 760;
+  line-height: 1.45;
+}
+
+.referee-rulebook-detail-grid,
+.referee-stat-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.referee-rulebook-detail-grid > div,
+.referee-stat-columns > div,
+.referee-stat-examples {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius);
+  background: rgba(0, 0, 0, 0.12);
+  padding: 10px;
+}
+
+.referee-rulebook-detail-grid span,
+.referee-stat-columns span,
+.referee-stat-examples span {
+  color: var(--green);
+  font-size: 0.78rem;
+  font-weight: 950;
+}
+
+.referee-stat-guide {
+  display: grid;
+  gap: 12px;
+  border: 1px solid rgba(70, 224, 182, 0.2);
+  border-radius: var(--radius);
+  background: rgba(70, 224, 182, 0.045);
+  padding: 14px;
+}
+
+.referee-stat-guide-card > div:nth-child(2) {
+  display: grid;
+  gap: 8px;
+}
+
+.referee-stat-columns {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.referee-rulebook-footer {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.referee-rulebook-footer svg {
+  flex: 0 0 auto;
+  color: var(--green);
+}
+
 .referee-exam-panel {
   display: grid;
   gap: 10px;
@@ -7155,6 +7448,23 @@ html[data-theme="light"] .favorite-toggle-button.active.button-secondary {
 }
 
 @media (max-width: 640px) {
+  .referee-rulebook-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .referee-rulebook-head {
+    grid-template-columns: 1fr;
+  }
+
+  .referee-rulebook-hero,
+  .referee-rulebook-section-grid,
+  .referee-stat-guide-grid,
+  .referee-rulebook-detail-grid,
+  .referee-stat-columns,
+  .referee-rulebook-checklist > div:last-child {
+    grid-template-columns: 1fr;
+  }
+
   .landing {
     overflow-x: hidden;
   }

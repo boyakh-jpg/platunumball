@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" role="img" aria-label="시간 일러스트">
+  <defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#10204a"/><stop offset="1" stop-color="#1d1434"/></linearGradient><style>.t{font:800 16px Arial,"Noto Sans KR",sans-serif;fill:#f8fafc}.n{font:900 20px Arial,"Noto Sans KR",sans-serif;fill:#ffd76a}.s{font:700 10px Arial,"Noto Sans KR",sans-serif;fill:#b9c7d9}.l{fill:none;stroke:#46e0b6;stroke-width:2;opacity:.42}</style></defs>
+  <rect width="320" height="180" rx="18" fill="url(#g)"/><rect x="24" y="28" width="272" height="126" rx="14" fill="#08111f" stroke="#46e0b6" opacity=".92"/>
+  <path class="l" d="M160 28v126M62 90h196M98 56h124v68H98z"/>
+  <circle cx="88" cy="92" r="23" fill="#122238" stroke="#46e0b6"/><circle cx="160" cy="92" r="23" fill="#122238" stroke="#ffd76a"/><circle cx="232" cy="92" r="23" fill="#122238" stroke="#6ea8ff"/>
+  <text x="24" y="20" class="t">시간과 재개</text><text x="76" y="99" class="n">8</text><text x="142" y="99" class="n">24</text><text x="214" y="99" class="n">14</text>
+  <text x="72" y="126" class="s">백코트</text><text x="145" y="126" class="s">새 공격</text><text x="217" y="126" class="s">재공격</text>
+</svg>

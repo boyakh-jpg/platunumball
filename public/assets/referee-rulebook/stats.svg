@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" role="img" aria-label="개인활약 기록 일러스트">
+  <defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#10204a"/><stop offset="1" stop-color="#09211d"/></linearGradient><style>.t{font:800 16px Arial,"Noto Sans KR",sans-serif;fill:#f8fafc}.s{font:700 10px Arial,"Noto Sans KR",sans-serif;fill:#b9c7d9}.l{fill:none;stroke:#46e0b6;stroke-width:2;opacity:.42}.p{fill:#46e0b6}.o{fill:#ffd76a}.b{fill:#6ea8ff}</style></defs>
+  <rect width="320" height="180" rx="18" fill="url(#g)"/><rect x="24" y="28" width="272" height="126" rx="14" fill="#08111f" stroke="#46e0b6" opacity=".92"/><path class="l" d="M160 28v126M66 90h188"/>
+  <rect x="58" y="58" width="60" height="62" rx="10" fill="#122238" stroke="#46e0b6"/><rect x="130" y="58" width="60" height="62" rx="10" fill="#122238" stroke="#ffd76a"/><rect x="202" y="58" width="60" height="62" rx="10" fill="#122238" stroke="#6ea8ff"/>
+  <circle class="p" cx="88" cy="80" r="9"/><circle class="o" cx="160" cy="80" r="9"/><circle class="b" cx="232" cy="80" r="9"/>
+  <text x="24" y="20" class="t">개인활약</text><text x="74" y="106" class="s">득점</text><text x="146" y="106" class="s">도움</text><text x="216" y="106" class="s">수비</text>
+</svg>
