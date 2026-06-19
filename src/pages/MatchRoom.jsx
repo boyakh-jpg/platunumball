@@ -13,6 +13,7 @@ import ShareCard from "../components/share/ShareCard.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { DISPUTE_WINDOW_MINUTES, EVIDENCE_OPTIONS, PLAYER_STAT_FIELDS } from "../lib/constants.js";
+import { DEFAULT_REPORT_REASON, REPORT_REASONS } from "../lib/reportReasons.js";
 import {
   formatStatLine,
   getAllowedStatFields,
@@ -110,6 +111,7 @@ export default function MatchRoom({ app }) {
   });
   const matchPlayerKey = match ? getMatchPlayerIds(match).join("|") : "";
   const [disputeReason, setDisputeReason] = useState("스코어 또는 개인 기록 재확인 필요");
+  const [reportReason, setReportReason] = useState(DEFAULT_REPORT_REASON);
   const [statEditorPlayerId, setStatEditorPlayerId] = useState(null);
   const [reviewControlsOpen, setReviewControlsOpen] = useState(false);
   const [thumbDraftPlayerIds, setThumbDraftPlayerIds] = useState([]);
@@ -175,7 +177,7 @@ export default function MatchRoom({ app }) {
   const canDispute = Boolean(match.result) && match.status === "approval" && recordWindow.disputeOpen;
   const canVoid = match.status === "disputed";
   const canResumeApproval = match.status === "disputed";
-  const canReport = !["cancelled", "void"].includes(match.status);
+  const canReport = !["cancelled", "void"].includes(match.status) && (Boolean(match.endedAt) || Boolean(match.result) || ["approval", "disputed", "confirmed"].includes(match.status));
   const isContractStage = match.status === "contract";
   const shouldShowResultEntry =
     match.status === "approval" || Boolean(match.result) || (match.status === "agreed" && !recordWindow.beforeStart && !recordWindow.beforeEnd);
@@ -794,12 +796,18 @@ export default function MatchRoom({ app }) {
                   이의제기 사유
                   <textarea disabled={!canDispute} value={disputeReason} onChange={(event) => setDisputeReason(event.target.value)} />
                 </label>
+                <label className="memo-label">
+                  신고 사유
+                  <select disabled={!canReport} value={reportReason} onChange={(event) => setReportReason(event.target.value)}>
+                    {REPORT_REASONS.map((reason) => <option key={reason} value={reason}>{reason}</option>)}
+                  </select>
+                </label>
                 <div className="match-action-row">
                   <Button type="button" variant="secondary" disabled={!canDispute} onClick={() => app.actions.disputeMatch(match.id, disputeReason)}>이의제기</Button>
                   <Button type="button" variant="secondary" disabled={!canCancel} onClick={() => app.actions.cancelMatch(match.id)}>경기 취소</Button>
                   <Button type="button" variant="secondary" disabled={!canResumeApproval} onClick={() => app.actions.resumeMatchApproval(match.id)}>승인 재개</Button>
                   <Button type="button" variant="secondary" disabled={!canVoid} onClick={() => app.actions.voidMatch(match.id)}>무효 처리</Button>
-                  <Button type="button" variant="secondary" disabled={!canReport} onClick={() => app.actions.reportMatch(match.id, disputeReason)}>신고 접수</Button>
+                  <Button type="button" variant="secondary" disabled={!canReport} onClick={() => app.actions.reportMatch(match.id, reportReason)}>신고 접수</Button>
                 </div>
               </>
             ) : null}

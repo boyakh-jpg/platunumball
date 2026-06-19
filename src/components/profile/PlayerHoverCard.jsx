@@ -6,6 +6,7 @@ import TierEmblem from "../rating/TierEmblem.jsx";
 import useBodyScrollLock from "../../hooks/useBodyScrollLock.js";
 import { getTeamHashtag, getUserHashtag } from "../../lib/handles.js";
 import { clearPinnedHoverPreview, getPinnedHoverPreviewKey, pinHoverPreview, subscribePinnedHoverPreview } from "../../lib/hoverPreviewPin.js";
+import { getAgeGroupForUser, getAgeGroupLabel } from "../../lib/profileSetup.js";
 
 const rolePriority = {
   captain: 0,
@@ -186,6 +187,7 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
           <span>
             <strong>{user.name}</strong>
             <span className="hover-hashtag">{getUserHashtag(user)}</span>
+            <span className="hover-age-group">{getAgeGroupLabel(getAgeGroupForUser(user))}</span>
             <em>{user.region} · {user.position} · 신뢰도 {user.trustScore ?? "-"}</em>
           </span>
         </span>

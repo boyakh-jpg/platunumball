@@ -3254,7 +3254,7 @@ export function reportMatch(state, matchId, reason = "") {
     type: "match",
     targetId: matchId,
     by: state.currentUserId,
-    reason: reason.trim() || "경기 기록 확인이 필요합니다.",
+    reason: reason.trim() || "기타 운영 확인 필요",
     status: "open",
     createdAt: new Date().toISOString(),
   };

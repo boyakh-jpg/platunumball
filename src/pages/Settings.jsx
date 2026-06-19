@@ -4,6 +4,7 @@ import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import Badge from "../components/common/Badge.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
+import { DEFAULT_REPORT_REASON, REPORT_REASONS } from "../lib/reportReasons.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 
 export default function Settings({ app, auth }) {
@@ -12,7 +13,8 @@ export default function Settings({ app, auth }) {
   const blockedUserIds = app.state.settings?.blockedUserIds ?? [];
   const [blockUserId, setBlockUserId] = useState(app.state.users.find((user) => user.id !== app.currentUserId)?.id ?? "");
   const [reportMatchId, setReportMatchId] = useState(app.state.matches[0]?.id ?? "");
-  const [reportReason, setReportReason] = useState("경기 기록 확인이 필요합니다.");
+  const [reportReason, setReportReason] = useState(DEFAULT_REPORT_REASON);
+  const [reportMemo, setReportMemo] = useState("");
   const [accountQuery, setAccountQuery] = useState("");
   const userMap = Object.fromEntries(app.state.users.map((user) => [user.id, user]));
   const matchMap = Object.fromEntries(app.state.matches.map((match) => [match.id, match]));
@@ -56,7 +58,8 @@ export default function Settings({ app, auth }) {
   };
   const submitReport = (event) => {
     event.preventDefault();
-    if (selectedReportMatchId) app.actions.reportMatch(selectedReportMatchId, reportReason);
+    const memo = reportMemo.trim();
+    if (selectedReportMatchId) app.actions.reportMatch(selectedReportMatchId, memo ? `${reportReason} · ${memo}` : reportReason);
   };
 
   return (
@@ -273,7 +276,13 @@ export default function Settings({ app, auth }) {
               </label>
               <label>
                 사유
-                <textarea value={reportReason} onChange={(event) => setReportReason(event.target.value)} />
+                <select value={reportReason} onChange={(event) => setReportReason(event.target.value)}>
+                  {REPORT_REASONS.map((reason) => <option key={reason} value={reason}>{reason}</option>)}
+                </select>
+              </label>
+              <label>
+                상세 메모
+                <textarea value={reportMemo} placeholder="상황을 짧게 적어주세요." onChange={(event) => setReportMemo(event.target.value)} />
               </label>
               <Button type="submit" variant="secondary" disabled={!selectedReportMatchId}>신고 접수</Button>
             </form>

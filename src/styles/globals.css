@@ -667,6 +667,18 @@ span.team-hover-card {
   white-space: nowrap;
 }
 
+.hover-age-group {
+  display: inline-flex;
+  width: fit-content;
+  border: 1px solid rgba(255, 211, 108, 0.28);
+  border-radius: 999px;
+  background: rgba(255, 211, 108, 0.1);
+  color: var(--gold);
+  font-size: 0.72rem;
+  font-weight: 950;
+  padding: 4px 8px;
+}
+
 .player-hover-head em,
 .player-hover-team em,
 .team-hover-head em,
@@ -1649,6 +1661,50 @@ input[type="color"] {
   flex-wrap: wrap;
   gap: 12px;
   margin-top: 12px;
+}
+
+.signup-setup-grid {
+  align-items: start;
+}
+
+.signup-submit-row {
+  grid-column: 1 / -1;
+}
+
+.age-group-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.age-group-grid span {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.045);
+  padding: 12px;
+}
+
+.age-group-grid span.active {
+  border-color: rgba(70, 224, 182, 0.55);
+  background: rgba(70, 224, 182, 0.1);
+}
+
+.age-group-grid strong {
+  color: var(--text);
+  font-size: 0.92rem;
+}
+
+.age-group-grid em {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-style: normal;
+  font-weight: 850;
+}
+
+.signup-preview-card .contract-grid strong {
+  overflow-wrap: anywhere;
 }
 
 .create-mode-grid {

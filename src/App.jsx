@@ -20,6 +20,7 @@ import Recorder from "./pages/Recorder.jsx";
 import Recruiting from "./pages/Recruiting.jsx";
 import Season from "./pages/Season.jsx";
 import Settings from "./pages/Settings.jsx";
+import Signup from "./pages/Signup.jsx";
 import TeamDetail from "./pages/TeamDetail.jsx";
 import Teams from "./pages/Teams.jsx";
 import TournamentDetail from "./pages/TournamentDetail.jsx";
@@ -56,6 +57,7 @@ export default function App() {
           <Route path="/app/affiliations" element={<Affiliations app={app} />} />
           <Route path="/app/notifications" element={<Notifications app={app} />} />
           <Route path="/app/settings" element={<Settings app={app} auth={auth} />} />
+          <Route path="/app/signup" element={<Signup app={app} auth={auth} />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/app" replace />} />

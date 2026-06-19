@@ -122,6 +122,7 @@ export default function Profile({ app }) {
           <p className="eyebrow">Profile</p>
           <h1>프로필</h1>
         </div>
+        <Link className="button button-secondary" to="/app/signup">가입 정보 설정</Link>
       </header>
       <div className="content-grid profile-overview-grid">
         <div className="page-stack profile-main-stack">

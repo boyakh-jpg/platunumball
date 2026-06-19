@@ -62,9 +62,14 @@ export default function Login({ auth, app }) {
           </div>
 
           {auth.session ? (
-            <Button type="button" onClick={enterApp}>
+            <>
+              <Button type="button" onClick={enterApp}>
               앱으로 들어가기 <ArrowRight size={18} />
-            </Button>
+              </Button>
+              <Button type="button" variant="secondary" onClick={() => navigate("/app/signup")}>
+                가입 정보 설정
+              </Button>
+            </>
           ) : null}
         </div>
       </section>
