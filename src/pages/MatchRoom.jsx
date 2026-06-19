@@ -825,7 +825,7 @@ export default function MatchRoom({ app }) {
               </>
             ) : null}
           </Card>
-          {match.result?.playerStats ? (
+          {match.result ? (
             <Card className="section-card">
               <div className="section-title-row">
                 <div>
@@ -839,7 +839,7 @@ export default function MatchRoom({ app }) {
                   return (
                     <div key={playerId}>
                       <span>{user?.name ?? "플레이어"}</span>
-                      <strong>{formatStatLine(match.result.playerStats[playerId])}</strong>
+                      <strong>{formatStatLine(score.playerStats[playerId])}</strong>
                     </div>
                   );
                 })}

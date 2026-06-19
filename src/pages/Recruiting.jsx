@@ -55,6 +55,7 @@ import {
   getMatchRoomPhase,
   getMatchReservePlayerIds,
   getMatchSidePlayerIds,
+  normalizePlayerStats,
   getPublicRoomMaxDateInput,
   getPublicRoomTimingStatus,
   isEligibleReferee,
@@ -1369,20 +1370,24 @@ function getSourceMatchAction(match, userId, teams = [], userById = {}) {
 function SourceMatchRecordSummary({ match, userById }) {
   if (!match?.result) return null;
   const result = match.result;
-  const renderSide = (sideName) => (
+  const renderSide = (sideName) => {
+    const sidePlayerIds = getMatchSidePlayerIds(match, sideName);
+    const playerStats = normalizePlayerStats(result.playerStats, sidePlayerIds);
+    return (
     <div className="ow-source-record-side" key={sideName}>
       <strong>{match[sideName]?.name ?? SIDE_LABELS[sideName]}</strong>
-      {getMatchSidePlayerIds(match, sideName).map((playerId) => {
+      {sidePlayerIds.map((playerId) => {
         const user = userById[playerId];
         return (
           <div key={playerId}>
             <span>{user?.name ?? "플레이어"}</span>
-            <em>{formatStatLine(result.playerStats?.[playerId] ?? {})}</em>
+            <em>{formatStatLine(playerStats[playerId])}</em>
           </div>
         );
       })}
     </div>
-  );
+    );
+  };
 
   return (
     <div className="ow-source-record-summary">
@@ -1664,6 +1669,11 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
         const canReviewSourceMatch = Boolean(matchRoom && currentUserCanOperateStartedSourceMatch && sourceMatchPhase?.phase === "dispute");
         const canCancelSourceMatch = Boolean(matchRoom && sourceMatch && ["contract", "agreed"].includes(sourceMatch.status) && (sourceMatchStarted || sourceMatch.endedAt || sourceMatch.result ? currentUserCanOperateStartedSourceMatch : mine));
         const canManageMatchCheckin = Boolean(matchRoom && mine && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.startedAt && !sourceMatch?.endedAt && !sourceMatch?.result);
+        const showSourceMatchRecordSummary = Boolean(
+          matchRoom &&
+          sourceMatch?.result &&
+          ["postgame", "dispute", "record"].includes(sourceMatchPhase?.phase),
+        );
         const canMoveMatchSides = Boolean(canManageMatchCheckin && selectedPost.hostJoinMode !== "team");
         const roomCompetitionLabel = getRoomCompetitionLabel(selectedPost);
         const roomDisplayTitle = cleanRoomTitle(selectedPost.title, roomCompetitionLabel);
@@ -2187,7 +2197,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                     {sourceMatchAction.disputed && sourceMatch?.disputes?.[0]?.reason ? (
                       <span>최근 이의: {sourceMatch.disputes[0].reason}</span>
                     ) : null}
-                    {sourceMatchAction.disputed ? (
+                    {showSourceMatchRecordSummary ? (
                       <SourceMatchRecordSummary match={sourceMatch} userById={userById} />
                     ) : null}
                     {sourceMatchAction.action && sourceMatchSideName ? (
