@@ -651,7 +651,10 @@ export default function Settings({ app, auth }) {
             </div>
           </Card>
 
-          <Card className="section-card">
+        </aside>
+      </div>
+
+      <Card className="section-card settings-referee-card">
             <div className="section-title-row">
               <div>
                 <p className="eyebrow">Referee</p>
@@ -762,9 +765,7 @@ export default function Settings({ app, auth }) {
               ))}
               {!refereeRequests.length ? <div><span>요청한 심판 등록이 없습니다.</span><strong>신뢰도 {app.currentUser?.trustScore ?? 0}</strong></div> : null}
             </div>
-          </Card>
-        </aside>
-      </div>
+      </Card>
     </div>
   );
 }
