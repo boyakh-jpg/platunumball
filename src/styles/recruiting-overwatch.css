@@ -807,6 +807,53 @@
   gap: 10px;
 }
 
+.ow-team-choice-field {
+  display: grid;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.ow-team-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 7px;
+}
+
+.ow-team-choice-grid button {
+  display: grid;
+  gap: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.18);
+  color: var(--text);
+  cursor: pointer;
+  padding: 9px;
+  text-align: left;
+}
+
+.ow-team-choice-grid button.selected {
+  border-color: rgba(70, 224, 182, 0.52);
+  background: rgba(70, 224, 182, 0.14);
+}
+
+.ow-team-choice-grid strong,
+.ow-team-choice-grid em {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ow-team-choice-grid em,
+.ow-team-choice-field > em {
+  color: var(--gold);
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 850;
+}
+
 .ow-party-picker {
   display: grid;
   gap: 8px;

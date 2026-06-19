@@ -2226,24 +2226,29 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                     </div>
                     {joinDraft.joinMode === "team" ? (
                       <>
-                        <label>
-                          참여 팀
-                          <select
-                            value={joinDraft.teamId}
-                            onChange={(event) => {
-                              const teamId = event.target.value;
-                              const team = myTeams.find((item) => item.id === teamId) ?? null;
-                              updateJoinDraft(selectedPost, {
-                                teamId,
-                                playerIds: getDefaultTeamPlayerIds(team, joinCapacity, app.currentUser.id),
-                              });
-                            }}
-                          >
-                            {myTeams.length ? myTeams.map((team) => (
-                              <option key={team.id} value={team.id}>{team.name} · {team.mmr}</option>
-                            )) : <option value="">내 팀 없음</option>}
-                          </select>
-                        </label>
+                        <div className="ow-team-choice-field">
+                          <span>참여 팀</span>
+                          {myTeams.length ? (
+                            <div className="ow-team-choice-grid">
+                              {myTeams.map((team) => (
+                                <button
+                                  key={team.id}
+                                  type="button"
+                                  className={joinDraft.teamId === team.id ? "selected" : ""}
+                                  onClick={() => updateJoinDraft(selectedPost, {
+                                    teamId: team.id,
+                                    playerIds: getDefaultTeamPlayerIds(team, joinCapacity, app.currentUser.id),
+                                  })}
+                                >
+                                  <strong>{team.name}</strong>
+                                  <em>{team.mmr} MMR</em>
+                                </button>
+                              ))}
+                            </div>
+                          ) : (
+                            <em>내 팀 없음</em>
+                          )}
+                        </div>
                         <TeamMemberPicker
                           team={selectedJoinTeam}
                           userById={userById}
