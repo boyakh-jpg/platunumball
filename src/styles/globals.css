@@ -4673,7 +4673,8 @@ input[type="color"] {
 }
 
 .opgg-mode-grid {
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
 }
 
 .opgg-mode-pill {
@@ -4714,6 +4715,28 @@ input[type="color"] {
   font-size: 0.78rem;
   font-style: normal;
   font-weight: 900;
+}
+
+@media (max-width: 430px) {
+  .opgg-mode-grid {
+    gap: 8px;
+  }
+
+  .opgg-mode-pill {
+    gap: 5px;
+    padding: 10px 8px;
+  }
+
+  .opgg-mode-pill .tier-emblem-sm {
+    width: 44px;
+  }
+
+  .opgg-mode-pill strong,
+  .opgg-mode-pill em {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 .opgg-rank-list {
