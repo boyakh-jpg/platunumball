@@ -9,7 +9,7 @@ import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { COURTS } from "../lib/constants.js";
-import { getAllowedStatFields, getMatchRecordWindow, getMatchRoomPhase, getPlayerSideName, getPlayerStatSubmitted, getPublicRoomTimingStatus, isInstantRoom } from "../lib/matchUtils.js";
+import { getAllowedStatFields, getMatchRecordWindow, getMatchReservePlayerIds, getMatchRoomPhase, getPlayerSideName, getPlayerStatSubmitted, getPublicRoomTimingStatus, isInstantRoom } from "../lib/matchUtils.js";
 import { RECRUITING_TYPES, getPendingRecruitingInvitations, getRecruitingLobby, getRecruitingRoomOwnerId, isNationalRecruitingPost, isRecruitingPostForUser } from "../lib/recruiting.js";
 import { getCurrentSeason, getPlayerSeasonRows, getSeasonProgress } from "../lib/season.js";
 import { getTierDivision } from "../lib/tier.js";
@@ -21,11 +21,11 @@ function compareSchedule(a, b) {
 }
 
 function matchHasUser(match, userId) {
-  return Boolean(getPlayerSideName(match, userId));
+  return Boolean(getUserParticipantSide(match, userId));
 }
 
 function getUserResult(match, userId) {
-  const sideName = match.teamA.players.includes(userId) ? "teamA" : "teamB";
+  const sideName = getUserParticipantSide(match, userId) ?? "teamA";
   const otherSide = sideName === "teamA" ? "teamB" : "teamA";
   const sideScore = Number((sideName === "teamA" ? match.result?.scoreA : match.result?.scoreB) ?? match[sideName].score ?? 0);
   const otherScore = Number((otherSide === "teamA" ? match.result?.scoreA : match.result?.scoreB) ?? match[otherSide].score ?? 0);
@@ -35,6 +35,25 @@ function getUserResult(match, userId) {
 
 function getUserSide(match, userId) {
   return getPlayerSideName(match, userId);
+}
+
+function getUserParticipantSide(match, userId) {
+  const sideName = getPlayerSideName(match, userId);
+  if (sideName) return sideName;
+  if (getMatchReservePlayerIds(match, "teamA").includes(userId)) return "teamA";
+  if (getMatchReservePlayerIds(match, "teamB").includes(userId)) return "teamB";
+  return null;
+}
+
+function userNeedsAgreement(match, userId) {
+  const sideName = getUserSide(match, userId);
+  return Boolean(sideName && match.status === "contract" && !(match.agreements?.[sideName] ?? []).includes(userId));
+}
+
+function userNeedsCheckin(match, userId) {
+  const sideName = getUserParticipantSide(match, userId);
+  if (!sideName || getMatchRoomPhase(match).phase !== "checkin") return false;
+  return !(match.attendance?.[sideName] ?? []).includes(userId);
 }
 
 function userNeedsApproval(match, userId) {
@@ -63,7 +82,7 @@ function getSideScore(match, sideName) {
 }
 
 function getUserMatchLine(match, userId) {
-  const sideName = getUserSide(match, userId);
+  const sideName = getUserParticipantSide(match, userId) ?? "teamA";
   const otherSide = sideName === "teamA" ? "teamB" : "teamA";
   return {
     side: match[sideName],
@@ -137,6 +156,28 @@ export default function Home({ app }) {
       .filter((match) => matchHasUser(match, user.id))
       .map((match) => {
         const phase = getMatchRoomPhase(match).phase;
+        if (userNeedsAgreement(match, user.id)) {
+          return {
+            id: `agreement-${match.id}`,
+            priority: 1,
+            label: "동의",
+            title: match.title,
+            meta: `${match.scheduledAt} · ${match.court}`,
+            href: `/app/matches?match=${match.id}`,
+            icon: Handshake,
+          };
+        }
+        if (userNeedsCheckin(match, user.id)) {
+          return {
+            id: `checkin-player-${match.id}`,
+            priority: 1,
+            label: "출석체크",
+            title: match.title,
+            meta: `${match.scheduledAt} · ${match.court}`,
+            href: `/app/matches?match=${match.id}`,
+            icon: ClipboardCheck,
+          };
+        }
         if (phase === "checkin" && match.createdBy === user.id) {
           return {
             id: `checkin-${match.id}`,
@@ -173,6 +214,26 @@ export default function Home({ app }) {
         return null;
       })
       .filter(Boolean);
+    const readyRoomItems = (app.state.recruitingPosts ?? [])
+      .filter((post) => post.status === "open" && getRecruitingRoomOwnerId(post) !== user.id)
+      .map((post) => ({ post, lobby: getRecruitingLobby(post, app.state) }))
+      .map(({ post, lobby }) => ({
+        post,
+        entry: (lobby.entries ?? []).find((entry) => (
+          (entry.players ?? []).includes(user.id) ||
+          (entry.reserves ?? []).includes(user.id)
+        )),
+      }))
+      .filter(({ entry }) => entry && entry.status !== "ready")
+      .map(({ post }) => ({
+        id: `ready-room-${post.id}`,
+        priority: 1,
+        label: "수락",
+        title: post.title,
+        meta: `${getRecruitingSchedule(post)} · ${post.court}`,
+        href: `/app/recruiting?post=${post.id}`,
+        icon: ClipboardCheck,
+      }));
     const confirmableRoomItems = (app.state.recruitingPosts ?? [])
       .filter((post) => post.status === "open" && getRecruitingRoomOwnerId(post) === user.id)
       .map((post) => ({ post, lobby: getRecruitingLobby(post, app.state), timing: getPublicRoomTimingStatus(post) }))
@@ -211,9 +272,9 @@ export default function Home({ app }) {
         icon: ShieldAlert,
       }));
 
-    return [...invitationItems, ...tournamentInviteItems, ...confirmableRoomItems, ...matchItems, ...cancelledRoomItems]
+    return [...invitationItems, ...tournamentInviteItems, ...readyRoomItems, ...confirmableRoomItems, ...matchItems, ...cancelledRoomItems]
       .sort((a, b) => a.priority - b.priority || String(a.meta).localeCompare(String(b.meta)));
-  }, [app.state.matches, app.state.recruitingPosts, app.state.tournaments, captainTeamIds, myTeamIds, pendingInvitations, teamById, user.id]);
+  }, [app.state, app.state.matches, app.state.recruitingPosts, app.state.tournaments, captainTeamIds, myTeamIds, pendingInvitations, teamById, user.id]);
   const priorityItems = actionItems.slice(0, 5);
 
   const searchResults = useMemo(() => {

@@ -238,13 +238,27 @@ function getViewCount(matches, view, userId) {
 }
 
 function matchHasUser(match, userId) {
-  return match.teamA.players.includes(userId) || match.teamB.players.includes(userId);
+  return Boolean(getUserParticipantSideName(match, userId));
 }
 
 function getUserSideName(match, userId) {
   if (match.teamA.players.includes(userId)) return "teamA";
   if (match.teamB.players.includes(userId)) return "teamB";
   return null;
+}
+
+function getUserParticipantSideName(match, userId) {
+  const sideName = getUserSideName(match, userId);
+  if (sideName) return sideName;
+  if (getMatchReservePlayerIds(match, "teamA").includes(userId)) return "teamA";
+  if (getMatchReservePlayerIds(match, "teamB").includes(userId)) return "teamB";
+  return null;
+}
+
+function userNeedsCheckin(match, userId) {
+  const sideName = getUserParticipantSideName(match, userId);
+  if (!sideName || getMatchRoomPhase(match).phase !== "checkin") return false;
+  return !(match.attendance?.[sideName] ?? []).includes(userId);
 }
 
 function userDecisionDone(match, userId) {
@@ -255,11 +269,20 @@ function userDecisionDone(match, userId) {
   return false;
 }
 
+function userNeedsAgreement(match, userId) {
+  const sideName = getUserSideName(match, userId);
+  return Boolean(sideName && match.status === "contract" && !(match.agreements?.[sideName] ?? []).includes(userId));
+}
+
 function shouldShowMatchForView(match, view, userId) {
   const phase = getMatchRoomPhase(match).phase;
   if (view.id === "closed") return ["cancelled", "void"].includes(phase);
   if (view.id === "scheduled") return ["locked", "checkin"].includes(phase);
-  if (view.id === "todo") return ["postgame", "dispute"].includes(phase) && !userDecisionDone(match, userId);
+  if (view.id === "todo") {
+    if (userNeedsAgreement(match, userId)) return true;
+    if (userNeedsCheckin(match, userId)) return true;
+    return ["postgame", "dispute"].includes(phase) && !userDecisionDone(match, userId);
+  }
   if (view.id === "active") return !["cancelled", "void", "record"].includes(phase);
   return false;
 }
