@@ -2700,8 +2700,12 @@ export default function Recruiting({ app }) {
                 <div className="ow-card-meta">
                   <MapPin size={15} />
                   <span>
-                    {post.region} · <CourtHoverCard courtName={post.court}>{post.court}</CourtHoverCard> · {" "}
-                    {hostTeam ? <TeamHoverCard team={hostTeam} as="span">{hostTeam.name}</TeamHoverCard> : host?.name ?? "방장"}
+                    {post.region} · <CourtHoverCard courtName={post.court} className="ow-card-hover-link">{post.court}</CourtHoverCard> ·{" "}
+                    {hostTeam ? (
+                      <TeamHoverCard team={hostTeam} as="span" className="ow-card-hover-link">{hostTeam.name}</TeamHoverCard>
+                    ) : (
+                      <PlayerHoverCard user={host} teams={app.state.teams} as="span" className="ow-card-hover-link">{host?.name ?? "방장"}</PlayerHoverCard>
+                    )}
                   </span>
                 </div>
                 <QueueRoomBoard post={post} lobby={lobby} userById={userById} teams={app.state.teams} />

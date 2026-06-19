@@ -459,6 +459,12 @@
   white-space: nowrap;
 }
 
+.ow-card-meta .ow-card-hover-link {
+  overflow: visible;
+  color: var(--text);
+  font-weight: 900;
+}
+
 .ow-tier-chip {
   background: rgba(70, 224, 182, 0.1);
   color: var(--green);
