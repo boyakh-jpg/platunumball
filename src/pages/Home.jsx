@@ -9,6 +9,7 @@ import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { COURTS } from "../lib/constants.js";
+import { getCourtHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { getAllowedStatFields, getMatchRecordWindow, getMatchReservePlayerIds, getMatchRoomPhase, getPlayerSideName, getPlayerStatSubmitted, getPublicRoomTimingStatus, isInstantRoom } from "../lib/matchUtils.js";
 import { RECRUITING_TYPES, getPendingRecruitingInvitations, getRecruitingLobby, getRecruitingRoomOwnerId, isNationalRecruitingPost, isRecruitingPostForUser } from "../lib/recruiting.js";
 import { getCurrentSeason, getPlayerSeasonRows, getSeasonProgress } from "../lib/season.js";
@@ -93,9 +94,13 @@ function getUserMatchLine(match, userId) {
   };
 }
 
+const SEARCH_PREVIEW_LIMIT = 5;
+const SEARCH_DETAIL_LIMIT = 20;
+
 export default function Home({ app }) {
   const user = app.currentUser;
   const [query, setQuery] = useState("");
+  const [searchExpanded, setSearchExpanded] = useState(false);
   const searchText = query.trim().toLowerCase();
   const approvalMatches = [...app.state.matches].filter((match) => userNeedsApproval(match, user.id));
   const upcomingMatches = [...app.state.matches]
@@ -282,43 +287,62 @@ export default function Home({ app }) {
 
     const players = app.state.users
       .filter((item) => !blockedUserIds.includes(item.id))
-      .map((item) => ({
-        id: `player-${item.id}`,
-        label: item.name,
-        kind: "PLAYER",
-        meta: `${item.region} · ${item.position} · ${item.ratings.integrated}`,
-        href: `/app/players/${item.id}`,
-        score: Number(item.region === user.region) * 10000 + item.ratings.integrated,
-        haystack: `${item.name} ${item.handle} ${item.region} ${item.position} ${item.club}`,
-        avatar: item.avatarColor,
-      }));
-    const teams = app.state.teams.map((team) => ({
-      id: `team-${team.id}`,
-      label: team.name,
-      kind: "TEAM",
-      meta: `${team.region} · ${team.homeCourt} · ${team.mmr}`,
-      href: `/app/teams/${team.id}`,
-      team,
-      score: Number(team.region === user.region) * 10000 + team.mmr,
-      haystack: `${team.name} ${team.region} ${team.homeCourt}`,
-      teamColor: team.accent,
-    }));
-    const courts = COURTS.map((court) => ({
-      id: `court-${court.id}`,
-      label: court.name,
-      kind: "COURT",
-      meta: `${court.region} · ${court.type}`,
-      href: "/app/create",
-      score: Number(court.region === user.region) * 10000 + Number(court.favorite) * 1000,
-      haystack: `${court.name} ${court.region} ${court.type}`,
-      court: true,
-    }));
+      .map((item) => {
+        const hashtag = getUserHashtag(item);
+        return {
+          id: `player-${item.id}`,
+          label: item.name,
+          kind: "PLAYER",
+          meta: `${item.region} · ${item.position} · ${item.ratings.integrated}`,
+          href: `/app/players/${item.id}`,
+          score: Number(hashtag.toLowerCase() === searchText) * 100000 + Number(item.region === user.region) * 10000 + item.ratings.integrated,
+          haystack: `${item.name} ${item.handle} ${hashtag} ${item.region} ${item.position} ${item.club}`,
+          avatar: item.avatarColor,
+          hashtag,
+        };
+      });
+    const teams = app.state.teams.map((team) => {
+      const hashtag = getTeamHashtag(team);
+      return {
+        id: `team-${team.id}`,
+        label: team.name,
+        kind: "TEAM",
+        meta: `${team.region} · ${team.homeCourt} · ${team.mmr}`,
+        href: `/app/teams/${team.id}`,
+        team,
+        score: Number(hashtag.toLowerCase() === searchText) * 100000 + Number(team.region === user.region) * 10000 + team.mmr,
+        haystack: `${team.name} ${team.handle ?? ""} ${hashtag} ${team.region} ${team.homeCourt}`,
+        teamColor: team.accent,
+        hashtag,
+      };
+    });
+    const courts = COURTS.map((court) => {
+      const hashtag = getCourtHashtag(court);
+      return {
+        id: `court-${court.id}`,
+        label: court.name,
+        kind: "COURT",
+        meta: `${court.region} · ${court.type}`,
+        href: "/app/create",
+        score: Number(hashtag.toLowerCase() === searchText) * 100000 + Number(court.region === user.region) * 10000 + Number(court.favorite) * 1000,
+        haystack: `${court.name} ${hashtag} ${court.region} ${court.type}`,
+        court: true,
+        hashtag,
+      };
+    });
 
     return [...players, ...teams, ...courts]
-      .filter((item) => item.haystack.toLowerCase().includes(searchText))
-      .sort((a, b) => b.score - a.score || a.label.localeCompare(b.label))
-      .slice(0, 8);
+      .filter((item) => {
+        const itemHashtag = item.hashtag.toLowerCase();
+        if (/^#\d+$/.test(searchText)) return itemHashtag === searchText;
+        if (searchText.startsWith("#")) return itemHashtag.includes(searchText);
+        return item.haystack.toLowerCase().includes(searchText);
+      })
+      .sort((a, b) => b.score - a.score || a.label.localeCompare(b.label));
   }, [app.state.teams, app.state.users, blockedUserIds, searchText, user.region]);
+  const visibleSearchResults = searchResults.slice(0, searchExpanded ? SEARCH_DETAIL_LIMIT : SEARCH_PREVIEW_LIMIT);
+  const hasMoreSearchResults = searchResults.length > SEARCH_PREVIEW_LIMIT;
+  const hasTooManySearchResults = searchExpanded && searchResults.length > SEARCH_DETAIL_LIMIT;
   const topRankers = seasonRows.slice(0, 5);
   const latestMyMatches = myCompletedMatches.slice(0, 5);
 
@@ -340,7 +364,14 @@ export default function Home({ app }) {
       <Card className="home-search-panel opgg-search-card">
         <div className="home-search-box">
           <Search size={24} />
-          <input value={query} placeholder="이름, 팀명, 코트명을 바로 검색" onChange={(event) => setQuery(event.target.value)} />
+          <input
+            value={query}
+            placeholder="이름, 팀명, 코트명, 해시태그를 바로 검색"
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setSearchExpanded(false);
+            }}
+          />
         </div>
         <div className="opgg-quick-links">
           <Link to="/app/rankings">랭킹</Link>
@@ -350,7 +381,7 @@ export default function Home({ app }) {
         </div>
         {searchText ? (
           <div className="home-search-results unified opgg-search-results">
-            {searchResults.length ? searchResults.map((item) => (
+            {visibleSearchResults.length ? visibleSearchResults.map((item) => (
               item.team ? (
                 <TeamHoverCard key={item.id} team={item.team}>
                   {item.teamColor ? <span className="team-mini-dot" style={{ "--team-color": item.teamColor }} /> : null}
@@ -358,7 +389,7 @@ export default function Home({ app }) {
                     <strong>{item.label}</strong>
                     <em>{item.meta}</em>
                   </span>
-                  <small>{item.kind}</small>
+                  <small>{item.kind} · {item.hashtag}</small>
                 </TeamHoverCard>
               ) : (
                 <Link key={item.id} to={item.href}>
@@ -368,10 +399,14 @@ export default function Home({ app }) {
                     <strong>{item.label}</strong>
                     <em>{item.meta}</em>
                   </span>
-                  <small>{item.kind}</small>
+                  <small>{item.kind} · {item.hashtag}</small>
                 </Link>
               )
             )) : <div className="empty-state">검색 결과 없음</div>}
+            {hasMoreSearchResults && !searchExpanded ? (
+              <button type="button" className="home-search-more" onClick={() => setSearchExpanded(true)}>더보기</button>
+            ) : null}
+            {hasTooManySearchResults ? <div className="home-search-overflow">검색결과 너무 많음</div> : null}
           </div>
         ) : null}
       </Card>

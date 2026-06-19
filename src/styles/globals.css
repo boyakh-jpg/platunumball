@@ -4402,6 +4402,7 @@ input[type="color"] {
 }
 
 .home-search-results a,
+.home-search-results .team-hover-trigger,
 .connection-list a {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -4559,7 +4560,8 @@ input[type="color"] {
   padding: 0 12px;
 }
 
-.opgg-search-results a {
+.opgg-search-results a,
+.opgg-search-results .team-hover-trigger {
   grid-template-columns: auto minmax(0, 1fr) auto;
 }
 
@@ -4581,6 +4583,37 @@ input[type="color"] {
   font-size: 0.68rem;
   font-weight: 950;
   padding: 4px 7px;
+}
+
+.home-search-more,
+.home-search-overflow {
+  grid-column: 1 / -1;
+}
+
+.home-search-more {
+  min-height: 42px;
+  border: 1px solid rgba(116, 169, 255, 0.22);
+  border-radius: var(--radius);
+  background: rgba(116, 169, 255, 0.08);
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 950;
+}
+
+.home-search-more:hover {
+  border-color: rgba(70, 224, 182, 0.36);
+  background: rgba(70, 224, 182, 0.12);
+}
+
+.home-search-overflow {
+  border: 1px solid rgba(255, 211, 108, 0.22);
+  border-radius: var(--radius);
+  background: rgba(255, 211, 108, 0.09);
+  color: var(--gold);
+  font-size: 0.82rem;
+  font-weight: 900;
+  padding: 10px 12px;
+  text-align: center;
 }
 
 .home-action-card {
