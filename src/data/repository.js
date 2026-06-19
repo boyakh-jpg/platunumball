@@ -88,6 +88,7 @@ const ROOM_SCHEDULE_MAX_DAYS = 30;
 const PUBLIC_ROOM_SCHEDULE_MAX_DAYS = 5;
 const PUBLIC_ROOM_MIN_LEAD_HOURS = 4;
 const REFEREE_EXAM_COOLDOWN_MS = 7 * DAY_MS;
+const REPORT_MATCH_WINDOW_MS = 7 * DAY_MS;
 const LIFECYCLE_TITLE_PATTERN = /^(동의 대기|진행 예정|결과 승인|이의 확인|이의제기|확정|결과 입력)\s*·\s*/;
 const POST_MATCH_TITLE_PATTERN = /^(결과 승인|이의 확인|이의제기|확정|결과 입력)\s*·\s*/;
 const SIDE_LABEL_TEXT = { teamA: "A사이드", teamB: "B사이드" };
@@ -3443,10 +3444,61 @@ export function submitRefereeRequest(state, draft = {}) {
   };
 }
 
+function getReportableMatchTimeMs(match = {}) {
+  const rawDate = match.endedAt ?? match.confirmedAt ?? match.scheduledDate ?? match.scheduledAt ?? match.createdAt;
+  if (!rawDate) return 0;
+  if (match.scheduledDate && rawDate === match.scheduledDate) {
+    const value = new Date(`${match.scheduledDate}T${match.scheduledTime || "00:00"}`).getTime();
+    return Number.isFinite(value) ? value : 0;
+  }
+  const value = new Date(rawDate).getTime();
+  return Number.isFinite(value) ? value : 0;
+}
+
+function getReportableMatchUserIds(match = {}) {
+  return uniquePlayerIds([
+    ...getMatchPlayerIds(match),
+    ...getMatchReservePlayerIds(match, "teamA"),
+    ...getMatchReservePlayerIds(match, "teamB"),
+  ]);
+}
+
 export function reportMatch(state, matchId, reason = "", reportedUserIds = []) {
   const match = state.matches.find((item) => item.id === matchId);
   if (!match) return state;
-  const matchPlayerIds = new Set(getMatchPlayerIds(match));
+  const now = Date.now();
+  const reportTime = getReportableMatchTimeMs(match);
+  const matchPlayerIds = new Set(getReportableMatchUserIds(match));
+  if (!matchPlayerIds.has(state.currentUserId)) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "신고 보류",
+          body: "내가 출전했거나 후보로 등록된 경기만 신고할 수 있습니다.",
+          tone: "orange",
+          matchId,
+        },
+        ...state.notifications,
+      ],
+    };
+  }
+  if (reportTime < now - REPORT_MATCH_WINDOW_MS || reportTime > now) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "신고 기한 만료",
+          body: "경기 기록 신고는 최근 7일 내 내 경기만 가능합니다.",
+          tone: "orange",
+          matchId,
+        },
+        ...state.notifications,
+      ],
+    };
+  }
   const safeReportedUserIds = Array.from(new Set((reportedUserIds ?? []).filter((userId) => matchPlayerIds.has(userId))));
   const report = {
     id: makeId("r"),

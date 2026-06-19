@@ -3749,14 +3749,14 @@ input[type="color"] {
 
 .report-player-picker > div {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
   gap: 8px;
 }
 
 .report-player-picker button {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
+  align-items: start;
   gap: 8px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -3767,13 +3767,20 @@ input[type="color"] {
   text-align: left;
 }
 
+.report-player-info {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
 .report-player-picker button.selected {
   border-color: rgba(255, 107, 107, 0.58);
   background: rgba(255, 107, 107, 0.12);
 }
 
 .report-player-picker button strong,
-.report-player-picker button em {
+.report-player-picker button em,
+.report-player-picker button small {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -3781,10 +3788,15 @@ input[type="color"] {
 }
 
 .report-player-picker button em {
-  grid-column: 2;
   color: var(--muted);
   font-size: 0.76rem;
   font-style: normal;
+  font-weight: 850;
+}
+
+.report-player-picker button small {
+  color: var(--gold);
+  font-size: 0.72rem;
   font-weight: 850;
 }
 

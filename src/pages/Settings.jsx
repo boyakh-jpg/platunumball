@@ -5,7 +5,7 @@ import Card from "../components/common/Card.jsx";
 import Badge from "../components/common/Badge.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import { DEFAULT_REPORT_REASON, REPORT_REASONS } from "../lib/reportReasons.js";
-import { getMatchPlayerIds } from "../lib/matchUtils.js";
+import { formatStatLine, getMatchReservePlayerIds, getMatchSidePlayerIds } from "../lib/matchUtils.js";
 import { COURTS, REGIONS } from "../lib/constants.js";
 import {
   REFEREE_EXAM_BANK_SIZE,
@@ -68,6 +68,33 @@ function formatKoreanDateTime(value) {
   });
 }
 
+function getReportParticipantRows(match = {}, userMap = {}) {
+  const rows = [];
+  const seen = new Set();
+  const addSideRows = (sideName, role, playerIds) => {
+    playerIds.forEach((userId) => {
+      const user = userMap[userId];
+      if (!user || seen.has(userId)) return;
+      seen.add(userId);
+      rows.push({
+        userId,
+        user,
+        sideName,
+        sideLabel: sideName === "teamA" ? "A사이드" : "B사이드",
+        teamName: match[sideName]?.name ?? (sideName === "teamA" ? "A사이드" : "B사이드"),
+        role,
+        stats: match.result?.playerStats?.[userId] ?? match.playerStats?.[userId] ?? {},
+      });
+    });
+  };
+
+  addSideRows("teamA", "출전", getMatchSidePlayerIds(match, "teamA"));
+  addSideRows("teamB", "출전", getMatchSidePlayerIds(match, "teamB"));
+  addSideRows("teamA", "후보", getMatchReservePlayerIds(match, "teamA"));
+  addSideRows("teamB", "후보", getMatchReservePlayerIds(match, "teamB"));
+  return rows;
+}
+
 export default function Settings({ app, auth }) {
   const privacy = app.state.settings?.privacy ?? {};
   const theme = app.state.settings?.theme === "light" ? "light" : "dark";
@@ -106,15 +133,23 @@ export default function Settings({ app, auth }) {
     const cutoff = now - REPORT_MATCH_WINDOW_DAYS * 24 * 60 * 60 * 1000;
     return [...app.state.matches]
       .map((match) => ({ match, reportTime: getMatchReportTime(match) }))
-      .filter(({ reportTime }) => reportTime >= cutoff && reportTime <= now)
+      .filter(({ match, reportTime }) => (
+        reportTime >= cutoff &&
+        reportTime <= now &&
+        getReportParticipantRows(match, userMap).some((row) => row.userId === app.currentUserId)
+      ))
       .sort((a, b) => b.reportTime - a.reportTime)
       .map(({ match }) => match);
-  }, [app.state.matches]);
+  }, [app.currentUserId, app.state.matches, userMap]);
   const selectedReportMatchId = recentReportMatches.some((match) => match.id === reportMatchId) ? reportMatchId : recentReportMatches[0]?.id ?? "";
   const selectedReportMatch = recentReportMatches.find((match) => match.id === selectedReportMatchId) ?? null;
-  const reportParticipantIds = useMemo(
-    () => (selectedReportMatch ? getMatchPlayerIds(selectedReportMatch) : []).filter((userId) => userMap[userId]),
+  const reportParticipantRows = useMemo(
+    () => (selectedReportMatch ? getReportParticipantRows(selectedReportMatch, userMap) : []),
     [selectedReportMatch, userMap],
+  );
+  const reportParticipantIds = useMemo(
+    () => reportParticipantRows.map((row) => row.userId),
+    [reportParticipantRows],
   );
   const selectedReportedUserIds = reportedUserIds.filter((userId) => reportParticipantIds.includes(userId));
   const matchCountByUser = useMemo(() => {
@@ -568,19 +603,22 @@ export default function Settings({ app, auth }) {
                   {!recentReportMatches.length ? <option value="">최근 7일 경기 없음</option> : null}
                   {recentReportMatches.map((match) => <option key={match.id} value={match.id}>{match.title}</option>)}
                 </select>
+                <small>최근 7일 내 내가 출전했거나 후보로 등록된 경기만 표시됩니다.</small>
               </label>
               {selectedReportMatch ? (
                 <div className="report-player-picker">
                   <span>신고 대상</span>
                   <div>
-                    {reportParticipantIds.map((userId) => {
-                      const user = userMap[userId];
-                      const checked = selectedReportedUserIds.includes(userId);
+                    {reportParticipantRows.map((row) => {
+                      const checked = selectedReportedUserIds.includes(row.userId);
                       return (
-                        <button key={userId} type="button" className={checked ? "selected" : ""} onClick={() => toggleReportedUser(userId)}>
-                          <span className="avatar small" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
-                          <strong>{user.name}</strong>
-                          <em>{user.position}</em>
+                        <button key={row.userId} type="button" className={checked ? "selected" : ""} onClick={() => toggleReportedUser(row.userId)}>
+                          <span className="avatar small" style={{ "--avatar": row.user.avatarColor }}>{row.user.name.slice(0, 1)}</span>
+                          <span className="report-player-info">
+                            <strong>{row.user.name}</strong>
+                            <em>{row.sideLabel} · {row.teamName} · {row.role} · {row.user.position}</em>
+                            <small>{formatStatLine(row.stats)}</small>
+                          </span>
                         </button>
                       );
                     })}
