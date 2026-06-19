@@ -1516,6 +1516,11 @@ span.referee-hover-card {
   padding: 10px;
 }
 
+.member-row-compact {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
 .member-main,
 .ranking-name > div {
   min-width: 0;
@@ -3425,14 +3430,83 @@ input[type="color"] {
 }
 
 .team-card h3 {
-  font-size: 1.55rem;
+  font-size: clamp(1.35rem, 3vw, 1.75rem);
+  line-height: 1.04;
   text-transform: uppercase;
+}
+
+.team-card-title {
+  display: grid;
+  min-width: 0;
+  gap: 7px;
+}
+
+.team-card-title .team-hover-trigger,
+.team-card-title h3 {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.team-card-title h3 {
+  overflow-wrap: anywhere;
+}
+
+.team-card .team-card-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
 }
 
 .team-emblem {
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: var(--radius);
   box-shadow: 0 0 28px color-mix(in srgb, var(--team-color) 36%, transparent);
+}
+
+.team-card-actions {
+  align-items: start;
+  flex-shrink: 0;
+}
+
+.team-card-actions .tier-emblem {
+  width: 84px;
+}
+
+.team-card-actions .tier-emblem figcaption {
+  display: none;
+}
+
+.team-card .member-list {
+  min-width: 0;
+}
+
+.team-card .member-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-width: 0;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.team-card .member-row .badge {
+  min-width: 0;
+  max-width: 88px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.team-card .member-row-compact .member-main {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.team-card .member-row-compact strong,
+.team-card .member-row-compact span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .team-tier-hero {
@@ -3454,6 +3528,35 @@ input[type="color"] {
   position: sticky;
   top: 20px;
   border-color: rgba(255, 211, 108, 0.2);
+}
+
+.teams-page > .content-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+  align-items: start;
+}
+
+.teams-page > .content-grid > .card-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr));
+}
+
+@media (max-width: 1020px) {
+  .teams-page > .content-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .teams-page > .content-grid > .card-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .team-card .team-card-top {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .team-card-actions .tier-emblem {
+    width: 72px;
+  }
 }
 
 .team-overview-grid {
