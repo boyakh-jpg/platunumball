@@ -9,6 +9,7 @@ import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import MmrChange from "../components/rating/MmrChange.jsx";
+import RefereeHoverCard from "../components/referee/RefereeHoverCard.jsx";
 import ShareCard from "../components/share/ShareCard.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
@@ -558,7 +559,7 @@ export default function MatchRoom({ app }) {
       {isContractStage ? (
         <div className="content-grid match-stage-contract">
           <div className="page-stack">
-            <MatchContract match={match} users={app.state.users} teams={app.state.teams} />
+            <MatchContract match={match} users={app.state.users} teams={app.state.teams} matches={app.state.matches} />
             <AgreementPanel
               match={match}
               teams={app.state.teams}
@@ -598,7 +599,13 @@ export default function MatchRoom({ app }) {
             <div className="stat-referee-panel">
               <div>
                 <span>기록 권한</span>
-                <strong>{permissionTitle}</strong>
+                <strong>
+                  {hasReferee && referee ? (
+                    <RefereeHoverCard user={referee} matches={app.state.matches} minTrust={match.refereeTrustMin} className="stat-referee-trigger">
+                      심판 {referee.name}
+                    </RefereeHoverCard>
+                  ) : permissionTitle}
+                </strong>
                 <em>{permissionDetail}</em>
               </div>
               <div>

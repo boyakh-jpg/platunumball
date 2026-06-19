@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import Badge from "../common/Badge.jsx";
 import Card from "../common/Card.jsx";
 import PlayerHoverCard from "../profile/PlayerHoverCard.jsx";
+import RefereeHoverCard from "../referee/RefereeHoverCard.jsx";
 import { CREDIBILITY_LEVELS, EVIDENCE_OPTIONS } from "../../lib/constants.js";
 import { getMatchReferee, normalizeStatRecorders } from "../../lib/matchUtils.js";
 import { getCredibilityLevel } from "../../lib/rating.js";
@@ -12,7 +13,7 @@ const mmrLimitLabels = {
   block: "생성 차단",
 };
 
-export default function MatchContract({ match, users, teams = [] }) {
+export default function MatchContract({ match, users, teams = [], matches = [] }) {
   const activeEvidenceIds = new Set(EVIDENCE_OPTIONS.map((item) => item.id));
   const evidenceItems = (match.evidence ?? []).filter((evidence) => activeEvidenceIds.has(evidence.id ?? evidence.type));
   const userMap = Object.fromEntries(users.map((user) => [user.id, user]));
@@ -96,7 +97,13 @@ export default function MatchContract({ match, users, teams = [] }) {
         </div>
         <div>
           <span>심판</span>
-          <strong>{referee ? `${referee.name} · 신뢰도 ${referee.trustScore}` : "없음 · 득점만"}</strong>
+          <strong>
+            {referee ? (
+              <RefereeHoverCard user={referee} matches={matches} minTrust={match.refereeTrustMin}>
+                {referee.name} · 신뢰도 {referee.trustScore}
+              </RefereeHoverCard>
+            ) : "없음 · 득점만"}
+          </strong>
         </div>
         <div>
           <span>후보 기록자</span>

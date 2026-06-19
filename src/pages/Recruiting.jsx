@@ -22,6 +22,7 @@ import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import CourtHoverCard from "../components/court/CourtHoverCard.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
+import RefereeHoverCard from "../components/referee/RefereeHoverCard.jsx";
 import TierBadge from "../components/rating/TierBadge.jsx";
 import { getTierEmblemSrc } from "../components/rating/TierEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
@@ -2072,10 +2073,10 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                 <div className="ow-room-referee-line">
                   <strong>심판</strong>
                   {referee ? (
-                    <PlayerHoverCard user={referee} teams={app.state.teams} as="span" className="ow-room-referee-card">
+                    <RefereeHoverCard user={referee} matches={app.state.matches} minTrust={selectedPost.refereeTrustMin} className="ow-room-referee-card">
                       <span className="avatar small" style={{ "--avatar": referee.avatarColor }}>{referee.name.slice(0, 1)}</span>
                       <span>{referee.name}</span>
-                    </PlayerHoverCard>
+                    </RefereeHoverCard>
                   ) : (
                     <span>없음</span>
                   )}
