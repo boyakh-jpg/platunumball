@@ -8,7 +8,7 @@ import RuleSelector from "../components/match/RuleSelector.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { COURTS, MATCH_MODES, REFEREE_TRUST_MIN, REGIONS } from "../lib/constants.js";
 import { getPublicRoomMaxDateInput, isEligibleReferee } from "../lib/matchUtils.js";
-import { AGE_GROUPS, getAgeGroupForUser, getAgeGroupLabel } from "../lib/profileSetup.js";
+import { AGE_GROUPS, getAgeGroupForUser } from "../lib/profileSetup.js";
 import { MMR_RANGE_POLICIES, getRecruitingSideCapacity, getRecruitingTierRange, getSelectableTeamPlayerIds, isMmrInRecruitingRange } from "../lib/recruiting.js";
 
 const today = new Date().toISOString().slice(0, 10);
@@ -38,18 +38,34 @@ const tournamentScheduleOptions = [
 ];
 
 const ageRestrictionOptions = [
-  { id: "any", label: "연령 무관", desc: "Junior / Rising / Open 모두 참여", allowedGroups: AGE_GROUPS.map((group) => group.id) },
-  ...AGE_GROUPS.map((group) => ({
-    id: group.id,
-    label: getAgeGroupLabel(group.id),
-    desc: `${group.rangeLabel} 전용`,
-    allowedGroups: [group.id],
-  })),
+  { id: "any", label: "연령 무관", desc: "모든 연령 참여", allowedGroups: AGE_GROUPS.map((group) => group.id) },
+  { id: "junior", label: "Junior", desc: "Junior 전용", allowedGroups: ["junior"] },
+  { id: "rising", label: "Rising", desc: "Rising 전용", allowedGroups: ["rising"] },
+  { id: "open", label: "Open", desc: "Open 전용", allowedGroups: ["open"] },
+  { id: "junior_rising", label: "Junior ~ Rising", desc: "Junior / Rising 참여", allowedGroups: ["junior", "rising"] },
   { id: "rising_open", label: "Rising ~ Open", desc: "Rising / Open 참여", allowedGroups: ["rising", "open"] },
 ];
 
 function getAgeRestrictionOption(ageRestriction) {
   return ageRestrictionOptions.find((option) => option.id === ageRestriction) ?? ageRestrictionOptions[0];
+}
+
+function getAgeRestrictionFromGroups(groupIds = []) {
+  const order = AGE_GROUPS.map((group) => group.id);
+  const groups = order.filter((groupId) => groupIds.includes(groupId));
+  if (!groups.length || groups.length === order.length) return "any";
+  return groups.join("_");
+}
+
+function toggleAgeRestriction(ageRestriction, groupId) {
+  if (groupId === "any") return "any";
+  const currentOption = getAgeRestrictionOption(ageRestriction);
+  const currentGroups = currentOption.id === "any" ? [] : [...currentOption.allowedGroups];
+  const nextSet = new Set(currentGroups);
+  if (nextSet.has(groupId)) nextSet.delete(groupId);
+  else nextSet.add(groupId);
+  if (nextSet.has("junior") && nextSet.has("open")) nextSet.add("rising");
+  return getAgeRestrictionFromGroups([...nextSet]);
 }
 
 const MAX_PARTY_RESERVES = 2;
@@ -992,13 +1008,17 @@ export default function CreateMatch({ app }) {
                 </div>
                 <Badge tone={ageRestrictionBlocked ? "orange" : "green"}>{ageRestrictionBlocked ? "차단" : "허용"}</Badge>
               </div>
-              <div className="segmented-control compact-segments">
-                {ageRestrictionOptions.map((option) => (
+              <div className="segmented-control compact-segments age-restriction-segments">
+                {[{ id: "any", label: "모두" }, ...AGE_GROUPS.map((group) => ({ id: group.id, label: group.label }))].map((option) => (
                   <button
                     key={option.id}
                     type="button"
-                    className={draft.ageRestriction === option.id ? "active" : ""}
-                    onClick={() => update({ ageRestriction: option.id })}
+                    className={
+                      option.id === "any"
+                        ? draft.ageRestriction === "any" ? "active" : ""
+                        : draft.ageRestriction !== "any" && ageRestrictionOption.allowedGroups.includes(option.id) ? "active" : ""
+                    }
+                    onClick={() => update({ ageRestriction: toggleAgeRestriction(draft.ageRestriction, option.id) })}
                   >
                     {option.label}
                   </button>
