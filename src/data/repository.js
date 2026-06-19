@@ -2384,10 +2384,9 @@ export function submitMatchResult(state, matchId, result) {
   const currentUserIsReferee = isMatchReferee(match, currentUserId);
   const currentUserIsEligibleReferee = currentUserIsReferee && isEligibleReferee(currentUser, match.refereeTrustMin);
   const recorderSides = getStatRecorderSides(match, currentUserId);
-  const hostPlayerId = getMatchHostPlayerId(state, match);
-  const currentUserIsHost = Boolean(hostPlayerId && hostPlayerId === currentUserId);
   const roomPhase = getMatchRoomPhase(match).phase;
-  const currentUserCanPostgameScore = currentUserIsHost && roomPhase === "postgame" && !["confirmed", "disputed"].includes(match.status);
+  const currentUserCanOperatePostStart = currentUserCanOperateStartedMatch(state, match);
+  const currentUserCanPostgameScore = currentUserCanOperatePostStart && roomPhase === "postgame" && !["confirmed", "disputed"].includes(match.status);
   const currentUserCanRecord = currentUserIsEligibleReferee || currentUserCanPostgameScore || (!hasReferee && (recorderSides.length > 0 || Boolean(currentSideName)));
 
   if (hasReferee && !currentUserIsEligibleReferee) {
@@ -2436,7 +2435,22 @@ export function submitMatchResult(state, matchId, result) {
       ],
     };
   }
-  if (["confirmed", "void", "cancelled", "disputed"].includes(match.status)) return state;
+  if (match.status === "disputed") {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "이의신청 처리 중",
+          body: "이의신청 중에는 기록을 직접 덮어쓸 수 없습니다. 승인 재개 또는 무효 처리 후 다시 진행하세요.",
+          tone: "orange",
+          matchId,
+        },
+        ...state.notifications,
+      ],
+    };
+  }
+  if (["confirmed", "void", "cancelled"].includes(match.status)) return state;
   const recordWindow = getMatchRecordWindow(match);
   const matchStartsAt = getMatchStartDate(match);
   const beforeStart = !matchStartsAt || (Number.isFinite(matchStartsAt.getTime()) && Date.now() < matchStartsAt.getTime());
@@ -2840,8 +2854,7 @@ export function checkInMatchPlayer(state, matchId, sideName, playerId) {
 export function startMatch(state, matchId) {
   const match = state.matches.find((item) => item.id === matchId);
   if (!match || !["contract", "agreed"].includes(match.status) || match.result || match.endedAt) return state;
-  const hostPlayerId = getMatchHostPlayerId(state, match);
-  if (hostPlayerId && hostPlayerId !== state.currentUserId) return state;
+  if (!currentUserCanOperateStartedMatch(state, match)) return state;
   if (getMatchRoomPhase(match).phase !== "checkin") return state;
   const missingAttendance = getMissingActiveAttendance(match);
   if (missingAttendance.length) {
@@ -4936,6 +4949,14 @@ function isMutableRecruitingRoom(post) {
   return Boolean(post && post.status !== "closed");
 }
 
+function isRecruitingTeamSideLocked(post = {}) {
+  const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
+  return Boolean(
+    (post.hostJoinMode === "team" || post.teamId) &&
+    (post.visibility === "private" || post.teamOnly === true || roomState.teamOnly === true)
+  );
+}
+
 function isRecruitingEntryMember(entry, playerId) {
   if (!entry || !playerId) return false;
   return (entry.players ?? []).includes(playerId) || (entry.reserves ?? []).includes(playerId);
@@ -4964,6 +4985,7 @@ export function setRecruitingApplicantPlacement(state, postId, playerId, placeme
 
   const side = ["teamA", "teamB"].includes(placement.side) ? placement.side : target.side;
   const reserve = Boolean(placement.reserve);
+  if (isRecruitingTeamSideLocked(post) && side !== target.side) return state;
   const updatedAt = new Date().toISOString();
   const nextApplicants = hostTarget
     ? applicants
@@ -5335,13 +5357,15 @@ export function setRecruitingPartyPlayerPlacement(state, postId, entryId, player
 export function detachRecruitingPartyPlayer(state, postId, entryId, playerId, placement = {}) {
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   if (!isMutableRecruitingRoom(post) || !entryId || !playerId) return state;
-  if (post.playerId !== state.currentUserId && playerId !== state.currentUserId) return state;
 
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
   const lobby = getRecruitingLobby(post, state);
   const entry = (lobby.entries ?? []).find((item) => item.id === entryId);
   if (!isRecruitingTeamPartyEntry(entry) || !entry?.team) return state;
   if (!isRecruitingEntryMember(entry, playerId)) return state;
+  const partyLeaderId = roomState.partyLeaders?.[entryId] ?? (entry.fixed ? post.playerId : entry.playerId) ?? "";
+  const canDetach = post.playerId === state.currentUserId || playerId === state.currentUserId || partyLeaderId === state.currentUserId;
+  if (!canDetach) return state;
 
   const capacity = getRecruitingSideCapacity(post);
   const applicants = normalizeRecruitingApplicants(post.applicants ?? []);
@@ -5358,6 +5382,7 @@ export function detachRecruitingPartyPlayer(state, postId, entryId, playerId, pl
   if (!wasActive && !wasReserve) return state;
   const targetSide = ["teamA", "teamB"].includes(placement.side) ? placement.side : entry.side;
   const targetReserve = placement.reserve === undefined ? (!wasActive && wasReserve) : Boolean(placement.reserve);
+  if (isRecruitingTeamSideLocked(post) && targetSide !== entry.side) return state;
 
   const nextPlayerIds = currentPlayerIds.filter((id) => id !== playerId);
 

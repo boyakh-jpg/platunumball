@@ -1658,7 +1658,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
           sourceMatchParticipantSideName &&
           sourceMatchAttendance[sourceMatchParticipantSideName]?.includes(app.currentUser.id),
         );
-        const canStartSourceMatch = Boolean(matchRoom && mine && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.result && !sourceMatch?.endedAt);
+        const canStartSourceMatch = Boolean(matchRoom && currentUserCanOperateStartedSourceMatch && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.result && !sourceMatch?.endedAt);
         const canEndSourceMatch = Boolean(matchRoom && currentUserCanOperateStartedSourceMatch && sourceMatchPhase?.phase === "live" && !sourceMatch?.result && !sourceMatch?.endedAt && sourceMatchStarted);
         const canReviewSourceMatch = Boolean(matchRoom && currentUserCanOperateStartedSourceMatch && sourceMatchPhase?.phase === "dispute");
         const canCancelSourceMatch = Boolean(matchRoom && sourceMatch && ["contract", "agreed"].includes(sourceMatch.status) && (sourceMatchStarted || sourceMatch.endedAt || sourceMatch.result ? currentUserCanOperateStartedSourceMatch : mine));
