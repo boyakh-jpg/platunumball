@@ -109,6 +109,10 @@ function getDefaultApplyTeamId(post, teams) {
   return teams.find((team) => team.region === post.region)?.id ?? teams[0]?.id ?? "";
 }
 
+function isTeamOnlyRoom(post = {}) {
+  return post.teamOnly === true || post.roomState?.teamOnly === true;
+}
+
 function getDefaultTeamPlayerIds(team, capacity, requiredPlayerId = "") {
   if (!team) return [];
   const selectableIds = getSelectableTeamPlayerIds(team);
@@ -157,10 +161,11 @@ function getDefaultJoinDraft(post, teams, currentUser, state) {
   const teamId = getDefaultApplyTeamId(post, teams);
   const team = teams.find((item) => item.id === teamId) ?? null;
   const capacity = getRecruitingSideCapacity(post);
+  const teamOnly = isTeamOnlyRoom(post);
   return {
-    joinMode: "player",
+    joinMode: teamOnly ? "team" : "player",
     teamId,
-    playerIds: getDefaultTeamPlayerIds(team, capacity, currentUser.id),
+    playerIds: teamOnly ? getDefaultTeamPlayerIds(team, capacity, currentUser.id) : [],
     side: getRecruitingBestSide(post, state),
     reserve: false,
     position: currentUser.position,
@@ -1325,7 +1330,19 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
     setSlotActionDraft(null);
     onClose?.();
   };
-  const getJoinDraft = (roomPost) => joinDraftByPost[roomPost.id] ?? getDefaultJoinDraft(roomPost, myTeams, app.currentUser, app.state);
+  const getJoinDraft = (roomPost) => {
+    const baseDraft = getDefaultJoinDraft(roomPost, myTeams, app.currentUser, app.state);
+    const storedDraft = joinDraftByPost[roomPost.id];
+    if (!storedDraft) return baseDraft;
+    if (!isTeamOnlyRoom(roomPost) || storedDraft.joinMode === "team") return storedDraft;
+    return {
+      ...baseDraft,
+      ...storedDraft,
+      joinMode: "team",
+      teamId: storedDraft.teamId || baseDraft.teamId,
+      playerIds: storedDraft.playerIds?.length ? storedDraft.playerIds : baseDraft.playerIds,
+    };
+  };
   const updateJoinDraft = (roomPost, patch) => {
     setJoinDraftByPost((current) => ({
       ...current,
@@ -1431,6 +1448,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
   return (() => {
         const lobby = getRecruitingLobby(selectedPost, app.state);
         const joinDraft = getJoinDraft(selectedPost);
+        const teamOnlyRoom = isTeamOnlyRoom(selectedPost);
         const selectedJoinTeam = myTeams.find((team) => team.id === joinDraft.teamId) ?? myTeams[0] ?? null;
         const joinCapacity = getRecruitingSideCapacity(selectedPost);
         const selectedJoinPlayerIds = getPartyPlayerIds(selectedJoinTeam, joinDraft.playerIds, joinCapacity, app.currentUser.id);
@@ -1453,7 +1471,8 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
         const teamJoinValid = joinDraft.joinMode !== "team" || (
           Boolean(selectedJoinTeam) &&
           selectedJoinPlayerIds.includes(app.currentUser.id) &&
-          selectedJoinPlayerIds.length > 0
+          selectedJoinPlayerIds.length > 0 &&
+          (!teamOnlyRoom || selectedJoinPlayerIds.length >= joinCapacity)
         );
         const canJoin = !matchRoom && !mine && !alreadyApplied && fit.allowed && (joinDraft.joinMode === "player" || teamJoinValid);
         const selectedRange = getRecruitingTierRange(
@@ -2105,7 +2124,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                       </div>
                     ) : null}
                     <div className="segmented-control compact-segments">
-                      {Object.entries(RECRUITING_JOIN_MODES).map(([mode, meta]) => (
+                      {Object.entries(RECRUITING_JOIN_MODES).filter(([mode]) => !teamOnlyRoom || mode === "team").map(([mode, meta]) => (
                         <button
                           key={mode}
                           type="button"

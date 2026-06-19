@@ -1707,6 +1707,29 @@ input[type="color"] {
   overflow-wrap: anywhere;
 }
 
+.create-team-only-toggle {
+  min-height: 42px;
+  align-self: end;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.045);
+  padding: 10px 12px;
+}
+
+.create-team-only-toggle span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  color: var(--text);
+}
+
+.create-team-only-toggle small {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
 .create-mode-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));

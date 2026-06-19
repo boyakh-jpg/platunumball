@@ -894,6 +894,7 @@ async function loadNormalizedRemoteState() {
         statEntryMinutes: post.stat_entry_minutes ?? STAT_ENTRY_WINDOW_MINUTES,
         disputeMinutes: post.dispute_minutes ?? DISPUTE_WINDOW_MINUTES,
         roomState,
+        teamOnly: roomState.teamOnly === true,
         hostJoinMode: post.host_join_mode,
         hostSide: post.host_side,
         hostReady: post.host_ready,
@@ -3387,8 +3388,9 @@ function legacyInterestRecruitingPost(state, postId, application = {}) {
 
 export function createRecruitingPost(state, draft) {
   const hostJoinMode = draft.hostJoinMode === "player" ? "player" : "team";
-  const postType = hostJoinMode === "team" ? "need_player" : "find_team";
   const visibility = draft.visibility === "private" ? "private" : "public";
+  const teamOnly = visibility === "public" && hostJoinMode === "team" && draft.teamOnly === true;
+  const postType = teamOnly ? "need_team" : hostJoinMode === "team" ? "need_player" : "find_team";
   const hostTrustBlock = getHostTrustBlockNotification(state, { ...draft, visibility });
   if (hostTrustBlock) return { ...state, notifications: [hostTrustBlock, ...state.notifications] };
   const userTeamIds = new Set(
@@ -3432,14 +3434,14 @@ export function createRecruitingPost(state, draft) {
     ? getSelectedReservePlayerIds(opponentTeam, orderedOpponentPlayerIds, draft.opponentReservePlayerIds).filter((playerId) => !hostSidePlayerIds.has(playerId))
     : [];
   const hostPlayerId = state.currentUserId;
-  if (hostJoinMode === "team" && !hostPlayerIds.length) {
+  if (hostJoinMode === "team" && (!hostPlayerIds.length || (teamOnly && hostPlayerIds.length < sideCapacity))) {
     return {
       ...state,
       notifications: [
         {
           id: makeId("n"),
           title: "참여 팀원 필요",
-          body: "팀으로 방을 열려면 실제 참여할 팀원을 1명 이상 선택해야 합니다.",
+          body: teamOnly ? "팀으로만 참여 공개방은 방장 사이드 출전 슬롯을 모두 채워야 합니다." : "팀으로 방을 열려면 실제 참여할 팀원을 1명 이상 선택해야 합니다.",
           tone: "team",
         },
         ...state.notifications,
@@ -3535,6 +3537,7 @@ export function createRecruitingPost(state, draft) {
     disputeMinutes: DISPUTE_WINDOW_MINUTES,
     ownerId: state.currentUserId,
     hostJoinMode,
+    teamOnly,
     hostSide: "teamA",
     hostReady: true,
     visibility,
@@ -3543,6 +3546,7 @@ export function createRecruitingPost(state, draft) {
       mmrRangeMode,
       timingType,
       ruleRevision: 1,
+      teamOnly,
       approvalModeA: draft.approvalModeA === "all" ? "all" : "leader",
       approvalModeB: draft.approvalModeB === "all" ? "all" : "leader",
       partyReserves,
@@ -3596,10 +3600,11 @@ export function interestRecruitingPost(state, postId, application = {}) {
   if (!post || post.status !== "open") return state;
   if (isRecruitingRoomOwner(post, state.currentUserId) || post.playerId === state.currentUserId) return state;
   const user = state.users.find((item) => item.id === state.currentUserId);
+  const teamOnly = post.teamOnly === true || post.roomState?.teamOnly === true;
   const requestedJoinMode = application.joinMode === "team" || application.teamId
     ? "team"
     : application.joinMode === "player"
-      ? "player"
+      ? (teamOnly ? "team" : "player")
       : getRecruitingApplicantKind(post);
   const applicantKind = requestedJoinMode === "team" ? "team" : "player";
   const myTeams = state.teams.filter((team) => team.members.some((member) => member.userId === state.currentUserId));
@@ -3647,14 +3652,14 @@ export function interestRecruitingPost(state, postId, application = {}) {
 
   const side = ["teamA", "teamB"].includes(application.side) ? application.side : getRecruitingBestSide(post, state);
   const lobby = getRecruitingLobby(post, state);
-  if (applicantKind === "team" && !selectedPlayerIds.length) {
+  if (applicantKind === "team" && (!selectedPlayerIds.length || (teamOnly && selectedPlayerIds.length < sideCapacity))) {
     return {
       ...state,
       notifications: [
         {
           id: makeId("n"),
           title: "참여 팀원 필요",
-          body: "팀으로 대기하려면 실제 참여할 팀원을 1명 이상 선택해야 합니다.",
+          body: teamOnly ? "팀으로만 참여 방은 출전 슬롯을 모두 채울 팀 파티로만 들어갈 수 있습니다." : "팀으로 대기하려면 실제 참여할 팀원을 1명 이상 선택해야 합니다.",
           tone: "team",
         },
         ...state.notifications,
