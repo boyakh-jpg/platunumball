@@ -8457,3 +8457,227 @@ html[data-theme="light"] .team-hub-hero p:not(.eyebrow) {
     font-size: 2.6rem;
   }
 }
+
+/* Unified home dashboard surfaces */
+.opgg-home {
+  gap: 16px;
+}
+
+.opgg-search-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 214px;
+  border-color: rgba(70, 224, 182, 0.22);
+  background:
+    linear-gradient(90deg, rgba(5, 7, 10, 0.97), rgba(5, 7, 10, 0.76) 54%, rgba(5, 7, 10, 0.48)),
+    var(--bg-ball) center / cover no-repeat;
+  box-shadow: var(--shadow);
+}
+
+.opgg-search-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px) 0 0 / 100% 8px,
+    linear-gradient(90deg, rgba(70, 224, 182, 0.2), transparent 24%, transparent 78%, rgba(255, 211, 108, 0.14));
+  opacity: 0.36;
+}
+
+.opgg-search-hero > * {
+  position: relative;
+  z-index: 1;
+}
+
+.opgg-search-hero h1 {
+  font-size: clamp(2.8rem, 6.4vw, 5.3rem);
+  line-height: 0.92;
+}
+
+.opgg-search-hero p:not(.eyebrow) {
+  color: #dce5ef;
+}
+
+.home-search-panel,
+.home-action-card,
+.opgg-profile-card,
+.opgg-mode-card,
+.opgg-leaderboard-card,
+.opgg-record-card,
+.match-focus-card,
+.home-recent-card,
+.season-mini-card,
+.rivalry-card,
+.recruiting-teaser-card,
+.home-my-teams-card,
+.home-side-stack > .card {
+  border-color: rgba(163, 185, 208, 0.16);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.052), rgba(255, 255, 255, 0.016)),
+    rgba(10, 14, 21, 0.9);
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.28);
+}
+
+.home-search-box,
+.home-search-results a,
+.home-search-results .team-hover-trigger,
+.opgg-quick-links a,
+.opgg-profile-tabs a,
+.opgg-rank-block,
+.opgg-record-main,
+.opgg-stat-grid span,
+.opgg-mode-pill,
+.opgg-rank-list .opgg-rank-row,
+.home-action-row,
+.home-invitation-row,
+.home-side-stack .compact-list a,
+.home-side-stack .compact-list > div,
+.home-team-list a,
+.home-team-list > div,
+.recent-match-row {
+  border-color: rgba(163, 185, 208, 0.14);
+  background: rgba(255, 255, 255, 0.045);
+  box-shadow: none;
+}
+
+.home-action-card,
+.rivalry-card,
+.home-my-teams-card {
+  border-color: rgba(163, 185, 208, 0.16);
+}
+
+.home-action-row.priority-1,
+.home-action-row.priority-2,
+.home-action-row.priority-3,
+.home-action-row.priority-4 {
+  border-color: rgba(255, 211, 108, 0.3);
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.home-action-row.priority-1,
+.home-action-row.priority-2 {
+  box-shadow: inset 3px 0 0 rgba(255, 211, 108, 0.72);
+}
+
+.home-action-row.priority-3,
+.home-action-row.priority-4 {
+  box-shadow: inset 3px 0 0 rgba(70, 224, 182, 0.58);
+}
+
+.home-action-icon {
+  background: rgba(70, 224, 182, 0.12);
+}
+
+.home-action-row b,
+.opgg-search-results small,
+.home-team-list em {
+  background: rgba(116, 169, 255, 0.1);
+  color: var(--blue);
+}
+
+.home-side-stack {
+  gap: 16px;
+}
+
+.home-side-stack .section-title-row,
+.home-action-card .section-title-row,
+.opgg-summary-grid .section-title-row {
+  min-height: 34px;
+}
+
+.home-side-stack .compact-list a,
+.home-side-stack .compact-list > div,
+.home-team-list a,
+.home-team-list > div {
+  min-height: 46px;
+}
+
+.rivalry-list strong {
+  color: var(--muted);
+}
+
+.recent-match-row.result-w,
+.recent-match-row.result-l,
+.recent-match-row.result-d {
+  background: rgba(255, 255, 255, 0.045);
+}
+
+html[data-theme="light"] .opgg-search-hero {
+  border-color: rgba(32, 56, 68, 0.14);
+  background:
+    linear-gradient(90deg, rgba(246, 248, 242, 0.98), rgba(246, 248, 242, 0.88) 54%, rgba(246, 248, 242, 0.72)),
+    var(--bg-ball) center / cover no-repeat;
+}
+
+html[data-theme="light"] .opgg-search-hero h1 {
+  color: #152026;
+}
+
+html[data-theme="light"] .opgg-search-hero p:not(.eyebrow) {
+  color: #56666f;
+}
+
+html[data-theme="light"] .home-search-panel,
+html[data-theme="light"] .home-action-card,
+html[data-theme="light"] .opgg-profile-card,
+html[data-theme="light"] .opgg-mode-card,
+html[data-theme="light"] .opgg-leaderboard-card,
+html[data-theme="light"] .opgg-record-card,
+html[data-theme="light"] .match-focus-card,
+html[data-theme="light"] .home-recent-card,
+html[data-theme="light"] .season-mini-card,
+html[data-theme="light"] .rivalry-card,
+html[data-theme="light"] .recruiting-teaser-card,
+html[data-theme="light"] .home-my-teams-card,
+html[data-theme="light"] .home-side-stack > .card {
+  border-color: rgba(32, 56, 68, 0.14);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.66)),
+    rgba(255, 255, 255, 0.76);
+  box-shadow: 0 18px 42px rgba(35, 50, 59, 0.14);
+}
+
+html[data-theme="light"] .home-search-box,
+html[data-theme="light"] .home-search-results a,
+html[data-theme="light"] .home-search-results .team-hover-trigger,
+html[data-theme="light"] .opgg-quick-links a,
+html[data-theme="light"] .opgg-profile-tabs a,
+html[data-theme="light"] .opgg-rank-block,
+html[data-theme="light"] .opgg-record-main,
+html[data-theme="light"] .opgg-stat-grid span,
+html[data-theme="light"] .opgg-mode-pill,
+html[data-theme="light"] .opgg-rank-list .opgg-rank-row,
+html[data-theme="light"] .home-action-row,
+html[data-theme="light"] .home-invitation-row,
+html[data-theme="light"] .home-side-stack .compact-list a,
+html[data-theme="light"] .home-side-stack .compact-list > div,
+html[data-theme="light"] .home-team-list a,
+html[data-theme="light"] .home-team-list > div,
+html[data-theme="light"] .recent-match-row {
+  border-color: rgba(32, 56, 68, 0.14);
+  background: rgba(255, 255, 255, 0.58);
+}
+
+@media (max-width: 720px) {
+  .opgg-search-hero {
+    min-height: 158px;
+    padding: 16px;
+  }
+
+  .opgg-search-hero h1 {
+    font-size: 2.6rem;
+  }
+
+  .opgg-search-hero p:not(.eyebrow) {
+    display: none;
+  }
+
+  .home-action-main strong,
+  .home-action-main em,
+  .home-side-stack .compact-list span {
+    white-space: normal;
+  }
+}

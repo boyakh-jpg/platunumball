@@ -2131,3 +2131,53 @@ html[data-theme="light"] .tournament-schedule-list input {
     font-size: 2.6rem;
   }
 }
+
+/* Unified match page surfaces */
+.om-view-card,
+.om-calendar-summary,
+.om-calendar-box,
+.om-filter-bar,
+.om-list-head,
+.om-match-card,
+.om-score-box,
+.om-match-summary-box,
+.om-match-info-box {
+  border-color: rgba(163, 185, 208, 0.16);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.052), rgba(255, 255, 255, 0.016)),
+    rgba(10, 14, 21, 0.9);
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.28);
+}
+
+.om-view-card:hover,
+.om-view-card.active {
+  transform: none;
+  border-color: rgba(70, 224, 182, 0.42);
+  box-shadow: inset 3px 0 0 rgba(70, 224, 182, 0.72), 0 16px 44px rgba(0, 0, 0, 0.28);
+}
+
+.om-view-icon {
+  background: rgba(70, 224, 182, 0.12);
+  color: var(--green);
+}
+
+.om-view-card small,
+.om-view-card b {
+  color: var(--gold);
+}
+
+html[data-theme="light"] .om-view-card,
+html[data-theme="light"] .om-calendar-summary,
+html[data-theme="light"] .om-calendar-box,
+html[data-theme="light"] .om-filter-bar,
+html[data-theme="light"] .om-list-head,
+html[data-theme="light"] .om-match-card,
+html[data-theme="light"] .om-score-box,
+html[data-theme="light"] .om-match-summary-box,
+html[data-theme="light"] .om-match-info-box {
+  border-color: rgba(32, 56, 68, 0.14);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.66)),
+    rgba(255, 255, 255, 0.76);
+  box-shadow: 0 18px 42px rgba(35, 50, 59, 0.14);
+}

@@ -2880,3 +2880,82 @@ html[data-theme="light"] .ow-compose-drawer {
     font-size: 2.6rem;
   }
 }
+
+/* Unified queue page surfaces */
+.ow-hero-panel,
+.ow-queue-controls,
+.ow-filter-bar,
+.ow-mode-card,
+.ow-recruit-card,
+.ow-card-details,
+.ow-card-action,
+.ow-empty-state {
+  border-color: rgba(163, 185, 208, 0.16);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.052), rgba(255, 255, 255, 0.016)),
+    rgba(10, 14, 21, 0.9);
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.28);
+}
+
+.ow-recruit-card.ow-my-room,
+.ow-recruit-card.ow-invited-room,
+.ow-recruit-card.ow-target-room {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.052), rgba(255, 255, 255, 0.016)),
+    rgba(10, 14, 21, 0.9);
+}
+
+.ow-recruit-card.ow-my-room {
+  border-color: rgba(70, 224, 182, 0.42);
+  box-shadow: inset 3px 0 0 rgba(70, 224, 182, 0.72), 0 16px 44px rgba(0, 0, 0, 0.28);
+}
+
+.ow-recruit-card.ow-invited-room {
+  border-color: rgba(255, 211, 108, 0.42);
+  box-shadow: inset 3px 0 0 rgba(255, 211, 108, 0.72), 0 16px 44px rgba(0, 0, 0, 0.28);
+}
+
+.ow-recruit-card.ow-target-room {
+  border-color: rgba(116, 169, 255, 0.42);
+  box-shadow: inset 3px 0 0 rgba(116, 169, 255, 0.72), 0 16px 44px rgba(0, 0, 0, 0.28);
+}
+
+.ow-mode-card:hover,
+.ow-mode-card.active {
+  transform: none;
+  border-color: rgba(70, 224, 182, 0.42);
+  box-shadow: inset 3px 0 0 rgba(70, 224, 182, 0.72), 0 16px 44px rgba(0, 0, 0, 0.28);
+}
+
+html[data-theme="light"] .ow-hero-panel,
+html[data-theme="light"] .ow-queue-controls,
+html[data-theme="light"] .ow-filter-bar,
+html[data-theme="light"] .ow-mode-card,
+html[data-theme="light"] .ow-recruit-card,
+html[data-theme="light"] .ow-card-details,
+html[data-theme="light"] .ow-card-action,
+html[data-theme="light"] .ow-empty-state,
+html[data-theme="light"] .ow-recruit-card.ow-my-room,
+html[data-theme="light"] .ow-recruit-card.ow-invited-room,
+html[data-theme="light"] .ow-recruit-card.ow-target-room {
+  border-color: rgba(32, 56, 68, 0.14);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.66)),
+    rgba(255, 255, 255, 0.76);
+  box-shadow: 0 18px 42px rgba(35, 50, 59, 0.14);
+}
+
+html[data-theme="light"] .ow-recruit-card.ow-my-room {
+  border-color: rgba(15, 159, 126, 0.44);
+  box-shadow: inset 3px 0 0 rgba(15, 159, 126, 0.64), 0 18px 42px rgba(35, 50, 59, 0.14);
+}
+
+html[data-theme="light"] .ow-recruit-card.ow-invited-room {
+  border-color: rgba(184, 118, 19, 0.44);
+  box-shadow: inset 3px 0 0 rgba(184, 118, 19, 0.58), 0 18px 42px rgba(35, 50, 59, 0.14);
+}
+
+html[data-theme="light"] .ow-recruit-card.ow-target-room {
+  border-color: rgba(53, 119, 212, 0.42);
+  box-shadow: inset 3px 0 0 rgba(53, 119, 212, 0.56), 0 18px 42px rgba(35, 50, 59, 0.14);
+}
