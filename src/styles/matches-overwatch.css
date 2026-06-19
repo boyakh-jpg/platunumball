@@ -2092,3 +2092,42 @@ html[data-theme="light"] .tournament-schedule-list input {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* Unified app hero sizing */
+.om-match-hero {
+  min-height: 214px;
+  padding: 24px;
+}
+
+.om-match-copy h1 {
+  font-size: clamp(2.8rem, 6.4vw, 5.3rem);
+  line-height: 0.92;
+  letter-spacing: 0;
+}
+
+@media (max-width: 720px) {
+  .om-match-hero {
+    min-height: 174px;
+    align-items: end;
+    padding: 18px;
+  }
+
+  .om-match-copy h1 {
+    font-size: 3rem;
+  }
+
+  .om-match-panel {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .om-match-hero {
+    min-height: 158px;
+    padding: 16px;
+  }
+
+  .om-match-copy h1 {
+    font-size: 2.6rem;
+  }
+}

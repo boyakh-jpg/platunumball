@@ -8308,3 +8308,152 @@ html[data-theme="light"] .recruiting-fit-panel {
     height: 16px;
   }
 }
+
+/* Unified app page surfaces */
+.page-header {
+  --page-hero-bg: var(--bg-ball);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 214px;
+  border: 1px solid rgba(70, 224, 182, 0.22);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(90deg, rgba(5, 7, 10, 0.97), rgba(5, 7, 10, 0.76) 54%, rgba(5, 7, 10, 0.48)),
+    var(--page-hero-bg) center / cover no-repeat;
+  box-shadow: var(--shadow);
+  padding: 24px;
+}
+
+.page-header::after,
+.team-hub-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px) 0 0 / 100% 8px,
+    linear-gradient(90deg, rgba(70, 224, 182, 0.2), transparent 24%, transparent 78%, rgba(255, 211, 108, 0.14));
+  opacity: 0.36;
+}
+
+.page-header > * {
+  position: relative;
+  z-index: 1;
+}
+
+.page-header > div {
+  display: grid;
+  gap: 10px;
+}
+
+.page-header h1,
+.team-hub-hero h1 {
+  font-size: clamp(2.8rem, 6.4vw, 5.3rem);
+  line-height: 0.92;
+  letter-spacing: 0;
+}
+
+.page-header p:not(.eyebrow) {
+  max-width: 680px;
+  color: #dce5ef;
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.5;
+}
+
+.profile-page .page-header {
+  --page-hero-bg: var(--bg-court);
+}
+
+.recorder-page .page-header {
+  --page-hero-bg: var(--bg-hoop);
+}
+
+.settings-page .page-header {
+  --page-hero-bg: var(--bg-ball);
+}
+
+.team-hub-hero {
+  min-height: 238px;
+  padding: 24px;
+}
+
+.team-hub-hero > div:first-child {
+  min-height: 188px;
+}
+
+html[data-theme="light"] .page-header,
+html[data-theme="light"] .team-hub-hero {
+  border-color: rgba(32, 56, 68, 0.14);
+  background:
+    linear-gradient(90deg, rgba(246, 248, 242, 0.98), rgba(246, 248, 242, 0.88) 54%, rgba(246, 248, 242, 0.72)),
+    var(--page-hero-bg, var(--bg-ball)) center / cover no-repeat;
+}
+
+html[data-theme="light"] .page-header h1,
+html[data-theme="light"] .team-hub-hero h1 {
+  color: #152026;
+}
+
+html[data-theme="light"] .page-header p:not(.eyebrow),
+html[data-theme="light"] .team-hub-hero p:not(.eyebrow) {
+  color: #56666f;
+}
+
+@media (max-width: 1020px) {
+  .page-header,
+  .team-hub-hero {
+    min-height: 196px;
+    grid-template-columns: 1fr;
+    align-items: end;
+  }
+
+  .team-hub-hero > div:first-child {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 720px) {
+  .page-header,
+  .team-hub-hero {
+    min-height: 174px;
+    padding: 18px;
+  }
+
+  .page-header {
+    align-items: end;
+  }
+
+  .page-header h1,
+  .team-hub-hero h1 {
+    font-size: 3rem;
+  }
+
+  .page-header p:not(.eyebrow),
+  .team-hub-hero p:not(.eyebrow) {
+    display: none;
+  }
+
+  .page-header .button {
+    width: 100%;
+  }
+
+  .team-hub-board {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-header,
+  .team-hub-hero {
+    min-height: 158px;
+    padding: 16px;
+  }
+
+  .page-header h1,
+  .team-hub-hero h1 {
+    font-size: 2.6rem;
+  }
+}

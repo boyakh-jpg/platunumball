@@ -300,7 +300,7 @@ export default function Settings({ app, auth }) {
   }, [reportParticipantIds]);
 
   return (
-    <div className="page-stack">
+    <div className="page-stack settings-page">
       <header className="page-header">
         <div>
           <p className="eyebrow">Settings</p>

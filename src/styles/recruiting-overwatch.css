@@ -2845,3 +2845,38 @@ html[data-theme="light"] .ow-compose-drawer {
     align-items: stretch;
   }
 }
+
+/* Unified app hero sizing */
+.ow-recruit-hero {
+  min-height: 214px;
+  padding: 24px;
+}
+
+.ow-hero-copy h1 {
+  font-size: clamp(2.8rem, 6.4vw, 5.3rem);
+  line-height: 0.92;
+  letter-spacing: 0;
+}
+
+@media (max-width: 720px) {
+  .ow-recruit-hero {
+    min-height: 174px;
+    align-items: end;
+    padding: 18px;
+  }
+
+  .ow-hero-copy h1 {
+    font-size: 3rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .ow-recruit-hero {
+    min-height: 158px;
+    padding: 16px;
+  }
+
+  .ow-hero-copy h1 {
+    font-size: 2.6rem;
+  }
+}
