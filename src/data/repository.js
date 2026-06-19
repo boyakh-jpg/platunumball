@@ -4210,6 +4210,46 @@ export function inviteRecruitingPlayers(state, postId, invite = {}) {
   const reserve = Boolean(invite.reserve);
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
   const lobby = getRecruitingLobby(post, state);
+  const teamOnly = post.teamOnly === true || roomState.teamOnly === true;
+  const sideTeamId = getLobbyPrimaryTeamId(lobby, side);
+  if (teamOnly) {
+    if (!sideTeamId) {
+      return {
+        ...state,
+        notifications: [
+          {
+            id: makeId("n"),
+            title: "초대 제한",
+            body: "팀으로만 참여 방은 해당 사이드가 팀으로 점유된 뒤 같은 팀원만 초대할 수 있습니다.",
+            tone: "orange",
+            recruitingPostId: postId,
+          },
+          ...state.notifications,
+        ],
+      };
+    }
+    const sideTeam = state.teams.find((team) => team.id === sideTeamId);
+    const sideTeamMemberIds = new Set((sideTeam?.members ?? []).map((member) => member.userId));
+    const targetIds = Array.from(new Set(invite.playerIds ?? [invite.playerId])).filter(Boolean);
+    const inviterInSideTeam = sideTeamMemberIds.has(state.currentUserId);
+    const targetsInSideTeam = targetIds.every((playerId) => sideTeamMemberIds.has(playerId));
+    const inviteTeamMatches = !invite.teamId || invite.teamId === sideTeamId;
+    if (!inviterInSideTeam || !targetsInSideTeam || !inviteTeamMatches) {
+      return {
+        ...state,
+        notifications: [
+          {
+            id: makeId("n"),
+            title: "초대 제한",
+            body: "팀으로만 참여 방은 해당 사이드를 점유한 팀원만 같은 팀원을 초대할 수 있습니다.",
+            tone: "orange",
+            recruitingPostId: postId,
+          },
+          ...state.notifications,
+        ],
+      };
+    }
+  }
   const existingPlayerIds = new Set([
     post.playerId,
     ...lobby.entries.flatMap((entry) => [entry.playerId, ...(entry.players ?? []), ...(entry.reserves ?? [])]),

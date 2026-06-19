@@ -374,6 +374,11 @@ function getEntryTeamGroupId(entry) {
   return entry?.team?.id ?? entry?.teamId ?? entry?.sourceTeamId ?? "";
 }
 
+function getLobbyPrimaryTeamId(lobby, sideName) {
+  const teamEntry = lobby.sides?.[sideName]?.entries?.find((entry) => getEntryTeamGroupId(entry));
+  return getEntryTeamGroupId(teamEntry);
+}
+
 function getVisualPartyKey(entry, sideName = "") {
   const teamId = getEntryTeamGroupId(entry);
   if (!teamId) return "";
@@ -1132,6 +1137,7 @@ export function InvitePanel({
   selectedPlayerIds,
   favoritePlayerIds,
   favoriteTeamIds,
+  allowedTeamId = "",
   onTogglePlayer,
   onInvitePlayers,
   onToggleFavoritePlayer,
@@ -1142,13 +1148,18 @@ export function InvitePanel({
   const matchedTeam = query.trim() ? findTeamByHashtag(teams, query) : null;
   const selectedSet = new Set(selectedPlayerIds);
   const disabledSet = new Set(disabledPlayerIds);
+  const allowedTeam = allowedTeamId ? teams.find((team) => team.id === allowedTeamId) : null;
+  const allowedTeamMemberIds = new Set(allowedTeam ? getSelectableTeamPlayerIds(allowedTeam) : []);
+  const isAllowedPlayer = (playerId) => !allowedTeamId || allowedTeamMemberIds.has(playerId);
   const favoritePlayers = favoritePlayerIds.map((playerId) => userById[playerId]).filter(Boolean);
-  const favoriteTeams = favoriteTeamIds.map((teamId) => teams.find((team) => team.id === teamId)).filter(Boolean);
-  const teamMemberIds = matchedTeam ? getSelectableTeamPlayerIds(matchedTeam) : [];
-  const selectedInvitableIds = selectedPlayerIds.filter((playerId) => !disabledSet.has(playerId));
+  const favoriteTeams = favoriteTeamIds
+    .map((teamId) => teams.find((team) => team.id === teamId))
+    .filter((team) => team && (!allowedTeamId || team.id === allowedTeamId));
+  const teamMemberIds = matchedTeam && (!allowedTeamId || matchedTeam.id === allowedTeamId) ? getSelectableTeamPlayerIds(matchedTeam) : [];
+  const selectedInvitableIds = selectedPlayerIds.filter((playerId) => !disabledSet.has(playerId) && isAllowedPlayer(playerId));
 
   const renderPlayerInvite = (player) => {
-    const disabled = !player || disabledSet.has(player.id);
+    const disabled = !player || disabledSet.has(player.id) || !isAllowedPlayer(player.id);
     return (
       <button key={player.id} type="button" className="ow-invite-favorite" disabled={disabled} onClick={() => onInvitePlayers([player.id], null)}>
         <PlayerHoverCard as="span" user={player} teams={teams}>
@@ -1174,8 +1185,10 @@ export function InvitePanel({
       </header>
       <label className="ow-invite-search">
         <Search size={17} />
-        <input value={query} placeholder="#minjun 또는 #noeulkings" onChange={(event) => onQueryChange(event.target.value)} />
+        <input value={query} placeholder={allowedTeam ? `${allowedTeam.name} 팀원 해시태그` : "#minjun 또는 #noeulkings"} onChange={(event) => onQueryChange(event.target.value)} />
       </label>
+
+      {allowedTeam ? <div className="ow-invite-empty">{allowedTeam.name} 팀원만 이 사이드에 초대할 수 있습니다.</div> : null}
 
       {matchedUser ? (
         <div className="ow-invite-result">
@@ -1189,13 +1202,13 @@ export function InvitePanel({
           <button type="button" className={favoritePlayerIds.includes(matchedUser.id) ? "active" : ""} onClick={() => onToggleFavoritePlayer(matchedUser.id)}>
             <Star size={15} fill={favoritePlayerIds.includes(matchedUser.id) ? "currentColor" : "none"} />
           </button>
-          <Button type="button" size="sm" disabled={disabledSet.has(matchedUser.id)} onClick={() => onInvitePlayers([matchedUser.id], null)}>
+          <Button type="button" size="sm" disabled={disabledSet.has(matchedUser.id) || !isAllowedPlayer(matchedUser.id)} onClick={() => onInvitePlayers([matchedUser.id], allowedTeamId || null)}>
             <UserPlus size={16} /> 초대
           </Button>
         </div>
       ) : null}
 
-      {matchedTeam ? (
+      {matchedTeam && (!allowedTeamId || matchedTeam.id === allowedTeamId) ? (
         <div className="ow-invite-team-picker">
           <div className="ow-invite-team-head">
             <TeamHoverCard as="span" team={matchedTeam}>
@@ -1571,6 +1584,18 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
           ?? (entry?.fixed ? selectedPost.playerId : entry?.playerId)
           ?? "";
         const canManageEntry = (entry) => Boolean(isPartyEntry(entry) && getEntryPartyLeaderId(entry) === app.currentUser.id);
+        const getInviteAllowedTeamId = (sideName) => {
+          if (!teamOnlyRoom) return "";
+          return getLobbyPrimaryTeamId(lobby, sideName) ?? "";
+        };
+        const canInviteSideFromRoom = (sideName) => {
+          if (!canInviteFromRoom) return false;
+          if (!teamOnlyRoom) return true;
+          const allowedTeamId = getInviteAllowedTeamId(sideName);
+          if (!allowedTeamId) return false;
+          const team = teamById[allowedTeamId];
+          return Boolean(team?.members?.some((member) => member.userId === app.currentUser.id));
+        };
         const moveCandidate = (candidate, placement) => {
           const candidateEntry = lobby.entries.find((entry) => entry.id === candidate.entryId);
           if (isPartyEntry(candidateEntry)) {
@@ -1722,6 +1747,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                 selectedPlayerIds={activeSlotDraft.selectedPlayerIds ?? []}
                 favoritePlayerIds={favoritePlayerIds}
                 favoriteTeamIds={favoriteTeamIds}
+                allowedTeamId={getInviteAllowedTeamId(activeSlotDraft.sideName)}
                 onTogglePlayer={toggleInvitePlayer}
                 onInvitePlayers={(playerIds, teamId) => sendInvites(selectedPost, playerIds, teamId)}
                 onToggleFavoritePlayer={(playerId) => app.actions.toggleFavoritePlayer(playerId)}
@@ -1853,7 +1879,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                       currentUserId={app.currentUser.id}
                       showCaptainBadge={showCaptainBadge}
                       slotPositions={slotPositions}
-                      canInvite={canInviteFromRoom}
+                      canInvite={canInviteSideFromRoom("teamA")}
                       canManageEntry={canManageEntry}
                       canManage={mine}
                       onInviteSlot={(sideName, reserve, slotKey, event) => openInviteSlot(selectedPost, sideName, reserve, slotKey, event)}
@@ -1891,7 +1917,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                       currentUserId={app.currentUser.id}
                       showCaptainBadge={showCaptainBadge}
                       slotPositions={slotPositions}
-                      canInvite={canInviteFromRoom}
+                      canInvite={canInviteSideFromRoom("teamB")}
                       canManageEntry={canManageEntry}
                       canManage={mine}
                       onInviteSlot={(sideName, reserve, slotKey, event) => openInviteSlot(selectedPost, sideName, reserve, slotKey, event)}
@@ -1918,7 +1944,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                     currentUserId={app.currentUser.id}
                     showCaptainBadge={showCaptainBadge}
                     slotPositions={slotPositions}
-                    canInvite={canInviteFromRoom}
+                    canInvite={canInviteSideFromRoom("teamA")}
                     canManageEntry={canManageEntry}
                     canManage={mine}
                     recorderId={recorderIds.teamA}
@@ -1938,7 +1964,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                     currentUserId={app.currentUser.id}
                     showCaptainBadge={showCaptainBadge}
                     slotPositions={slotPositions}
-                    canInvite={canInviteFromRoom}
+                    canInvite={canInviteSideFromRoom("teamB")}
                     canManageEntry={canManageEntry}
                     canManage={mine}
                     recorderId={recorderIds.teamB}
@@ -1973,6 +1999,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                   selectedPlayerIds={activeInviteDraft.selectedPlayerIds ?? []}
                   favoritePlayerIds={favoritePlayerIds}
                   favoriteTeamIds={favoriteTeamIds}
+                  allowedTeamId={getInviteAllowedTeamId(activeInviteDraft.sideName)}
                   onTogglePlayer={toggleInvitePlayer}
                   onInvitePlayers={(playerIds, teamId) => sendInvites(selectedPost, playerIds, teamId)}
                   onToggleFavoritePlayer={(playerId) => app.actions.toggleFavoritePlayer(playerId)}
