@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { AlertTriangle, ClipboardList, Minus, Plus, RotateCcw, Save, ShieldCheck } from "lucide-react";
+import { AlertTriangle, ClipboardList, Minus, Plus, RotateCcw, Save, ShieldCheck, Square } from "lucide-react";
 import ApprovalPanel from "../components/match/ApprovalPanel.jsx";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
@@ -78,23 +78,45 @@ function getRoleText(match, user, recorderSides) {
   return "경기 관계자";
 }
 
-function canAccessActiveMatch(match, user) {
+function getMatchHostPlayerId(match, state) {
+  const sourcePost = match?.recruitingPostId
+    ? state.recruitingPosts?.find((post) => post.id === match.recruitingPostId)
+    : null;
+  return sourcePost?.createdBy || sourcePost?.hostPlayerId || sourcePost?.userId || match?.createdBy || match?.hostPlayerId || match?.createdPlayerId || match?.teamA?.players?.[0] || "";
+}
+
+function getRecorderAllowedFields(match, state, userId, playerId) {
+  const fields = getAllowedStatFields(match, userId, playerId);
+  const hostPlayerId = getMatchHostPlayerId(match, state);
+  const hostPostgameScore = Boolean(hostPlayerId === userId && getMatchRoomPhase(match).phase === "postgame" && !["confirmed", "disputed"].includes(match.status));
+  if (!hostPostgameScore) return fields;
+  const fieldById = Object.fromEntries(fields.map((field) => [field.id, field]));
+  const pointsField = PLAYER_STAT_FIELDS.find((field) => field.id === "points");
+  if (pointsField) fieldById.points = pointsField;
+  return Object.values(fieldById);
+}
+
+function canAccessActiveMatch(match, user, state) {
   if (!activeStatuses.has(match.status)) return false;
   if (getMatchRoomPhase(match).phase === "record") return false;
+  const isHost = getMatchHostPlayerId(match, state) === user.id;
   const isReferee = isMatchReferee(match, user.id) && isEligibleReferee(user, match.refereeTrustMin);
   const isRecorder = !match.refereeId && getStatRecorderSides(match, user.id).length > 0;
   const isPlayer = getMatchPlayerIds(match).includes(user.id);
   const isReserve = ["teamA", "teamB"].some((sideName) => getMatchReservePlayerIds(match, sideName).includes(user.id));
-  return isReferee || isRecorder || isPlayer || isReserve;
+  return isHost || isReferee || isRecorder || isPlayer || isReserve;
 }
 
 export default function Recorder({ app }) {
   const user = app.currentUser;
-  const userMap = useMemo(() => Object.fromEntries(app.state.users.map((item) => [item.id, item])), [app.state.users]);
+  const userMap = useMemo(() => {
+    const anonymousUsers = app.state.matches.flatMap((match) => Object.values(match.anonymousPlayers ?? {}));
+    return Object.fromEntries([...app.state.users, ...anonymousUsers].map((item) => [item.id, item]));
+  }, [app.state.matches, app.state.users]);
   const matches = useMemo(
     () =>
       app.state.matches
-        .filter((match) => canAccessActiveMatch(match, user))
+        .filter((match) => canAccessActiveMatch(match, user, app.state))
         .sort((a, b) => String(a.scheduledAt ?? a.createdAt ?? "").localeCompare(String(b.scheduledAt ?? b.createdAt ?? ""))),
     [app.state.matches, user],
   );
@@ -102,7 +124,9 @@ export default function Recorder({ app }) {
   const selectedMatch = matches.find((match) => match.id === selectedMatchId) ?? matches[0] ?? null;
   const selectedMatchPlayerKey = selectedMatch ? getMatchPlayerIds(selectedMatch).join("|") : "";
   const [stats, setStats] = useState({});
+  const [dirtyStats, setDirtyStats] = useState({});
   const [handoffDraft, setHandoffDraft] = useState({});
+  const [latePlayerDraft, setLatePlayerDraft] = useState({ sideName: "teamA", userId: "", name: "" });
   const [disputeReason, setDisputeReason] = useState("스코어 또는 개인 기록 재확인 필요");
 
   useEffect(() => {
@@ -113,18 +137,26 @@ export default function Recorder({ app }) {
   useEffect(() => {
     if (selectedMatch) {
       setStats(makeInitialStats(selectedMatch));
+      setDirtyStats({});
       setHandoffDraft({});
+      setLatePlayerDraft((current) => ({ ...current, userId: "", name: "" }));
     }
   }, [selectedMatch?.id, selectedMatch?.result?.updatedAt, selectedMatch?.result?.submittedAt, selectedMatchPlayerKey]);
 
   const recorderSides = selectedMatch ? getStatRecorderSides(selectedMatch, user.id) : [];
   const editablePlayerIds = selectedMatch
-    ? getMatchPlayerIds(selectedMatch).filter((playerId) => getAllowedStatFields(selectedMatch, user.id, playerId).length > 0)
+    ? getMatchPlayerIds(selectedMatch).filter((playerId) => getRecorderAllowedFields(selectedMatch, app.state, user.id, playerId).length > 0)
     : [];
   const recordWindow = selectedMatch ? getMatchRecordWindow(selectedMatch) : null;
+  const roomPhase = selectedMatch ? getMatchRoomPhase(selectedMatch).phase : "";
+  const hostPlayerId = selectedMatch ? getMatchHostPlayerId(selectedMatch, app.state) : "";
+  const currentUserIsHost = Boolean(hostPlayerId && hostPlayerId === user.id);
   const beforeStart = Boolean(recordWindow?.beforeStart);
   const saveWindowOpen = selectedMatch && !beforeStart && (recordWindow?.beforeEnd || recordWindow?.statOpen);
-  const canSave = Boolean(selectedMatch && !["disputed", "confirmed"].includes(selectedMatch.status) && editablePlayerIds.length && saveWindowOpen);
+  const hasDirtyStats = Object.keys(dirtyStats).length > 0;
+  const canSave = Boolean(selectedMatch && !["disputed", "confirmed"].includes(selectedMatch.status) && editablePlayerIds.length && saveWindowOpen && hasDirtyStats);
+  const canEndLiveMatch = Boolean(selectedMatch && currentUserIsHost && roomPhase === "live" && !selectedMatch.endedAt && !selectedMatch.result);
+  const canEditPostgameRoster = Boolean(selectedMatch && currentUserIsHost && roomPhase === "postgame" && recordWindow?.statOpen && !selectedMatch.result);
   const scoreA = selectedMatch ? getSideScore(selectedMatch, stats, "teamA", editablePlayerIds) : 0;
   const scoreB = selectedMatch ? getSideScore(selectedMatch, stats, "teamB", editablePlayerIds) : 0;
   const saveLockedReason = beforeStart
@@ -146,6 +178,13 @@ export default function Recorder({ app }) {
     setStats((current) => {
       const currentPlayer = current[playerId] ?? {};
       const nextValue = Math.max(0, Number(currentPlayer[fieldId] ?? 0) + delta);
+      setDirtyStats((dirtyCurrent) => ({
+        ...dirtyCurrent,
+        [playerId]: {
+          ...(dirtyCurrent[playerId] ?? {}),
+          [fieldId]: nextValue,
+        },
+      }));
 
       return {
         ...current,
@@ -162,8 +201,19 @@ export default function Recorder({ app }) {
     app.actions.submitMatchResult(selectedMatch.id, {
       scoreA,
       scoreB,
-      playerStats: stats,
+      playerStats: dirtyStats,
     });
+    setDirtyStats({});
+  };
+
+  const addLatePlayer = (anonymous = false) => {
+    if (!selectedMatch || !canEditPostgameRoster) return;
+    app.actions.addMatchLatePlayer(selectedMatch.id, {
+      sideName: latePlayerDraft.sideName,
+      userId: anonymous ? "" : latePlayerDraft.userId,
+      name: anonymous ? latePlayerDraft.name : "",
+    });
+    setLatePlayerDraft((current) => ({ ...current, userId: "", name: "" }));
   };
 
   const handoffRecorder = (sideName) => {
@@ -190,7 +240,7 @@ export default function Recorder({ app }) {
         <div className="recorder-player-list">
           {statPlayerIds.map((playerId) => {
             const player = userMap[playerId];
-            const allowedFields = new Set(getAllowedStatFields(selectedMatch, user.id, playerId).map((field) => field.id));
+            const allowedFields = new Set(getRecorderAllowedFields(selectedMatch, app.state, user.id, playerId).map((field) => field.id));
             const rosterLabel = activePlayerIds.includes(playerId)
               ? "출전 중"
               : reservePlayerIds.includes(playerId)
@@ -326,9 +376,79 @@ export default function Recorder({ app }) {
               </span>
             </div>
 
+            {canEndLiveMatch ? (
+              <div className="recorder-host-action-row">
+                <p>방장이 경기 종료를 누르면 경기종료방으로 넘어가고 결과 입력이 열린다.</p>
+                <Button type="button" variant="secondary" onClick={() => app.actions.endMatch(selectedMatch.id)}>
+                  <Square size={16} />
+                  경기 종료
+                </Button>
+              </div>
+            ) : null}
+
             <div className="recorder-sides two">
               {["teamA", "teamB"].map(renderSide)}
             </div>
+
+            {canEditPostgameRoster ? (
+              <div className="recorder-late-player-panel">
+                <div>
+                  <span className="eyebrow">POSTGAME ROSTER</span>
+                  <strong>경기 후 추가 출전 기록</strong>
+                  <p>현장에서 추가로 뛴 사람만 기록 대상에 넣는다. 추가자는 MMR에 반영되지 않는다.</p>
+                </div>
+                <div className="recorder-late-player-form">
+                  <label>
+                    사이드
+                    <select
+                      value={latePlayerDraft.sideName}
+                      onChange={(event) => setLatePlayerDraft((current) => ({ ...current, sideName: event.target.value }))}
+                    >
+                      <option value="teamA">{sideLabels.teamA}</option>
+                      <option value="teamB">{sideLabels.teamB}</option>
+                    </select>
+                  </label>
+                  <label>
+                    등록 선수
+                    <select
+                      value={latePlayerDraft.userId}
+                      onChange={(event) => setLatePlayerDraft((current) => ({ ...current, userId: event.target.value }))}
+                    >
+                      <option value="">선택</option>
+                      {app.state.users
+                        .filter((item) => !getMatchPlayerIds(selectedMatch).includes(item.id))
+                        .map((item) => <option value={item.id} key={item.id}>{item.name} · {item.position}</option>)}
+                    </select>
+                  </label>
+                  <Button type="button" variant="secondary" disabled={!latePlayerDraft.userId} onClick={() => addLatePlayer(false)}>
+                    등록 선수 추가
+                  </Button>
+                  <label>
+                    무기명
+                    <input
+                      value={latePlayerDraft.name}
+                      onChange={(event) => setLatePlayerDraft((current) => ({ ...current, name: event.target.value }))}
+                      placeholder="현장 선수 이름"
+                    />
+                  </label>
+                  <Button type="button" variant="secondary" disabled={!latePlayerDraft.name.trim()} onClick={() => addLatePlayer(true)}>
+                    무기명 추가
+                  </Button>
+                </div>
+                <div className="recorder-late-player-list">
+                  {(selectedMatch.mmrExcludedPlayerIds ?? selectedMatch.rules?.mmrExcludedPlayerIds ?? []).map((playerId) => {
+                    const latePlayer = userMap[playerId];
+                    const sideName = getPlayerSideName(selectedMatch, playerId);
+                    return (
+                      <span key={playerId}>
+                        {latePlayer?.name ?? "추가 선수"} · {sideLabels[sideName] ?? "기록"}
+                        <button type="button" onClick={() => app.actions.removeMatchLatePlayer(selectedMatch.id, playerId)}>제거</button>
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
 
             {recorderSides.length && !selectedMatch.refereeId ? (
               <div className="recorder-handoff-panel">

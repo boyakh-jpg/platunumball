@@ -158,8 +158,13 @@ function average(values) {
 
 function sideAverage(match, sideName, ratings, mode) {
   return average(
-    getMatchSidePlayerIds(match, sideName).map((playerId) => ratings[playerId]?.modes?.[mode] ?? ratings[playerId]?.integrated ?? 1200),
+    getRatedSidePlayerIds(match, sideName).map((playerId) => ratings[playerId]?.modes?.[mode] ?? ratings[playerId]?.integrated ?? 1200),
   );
+}
+
+function getRatedSidePlayerIds(match, sideName) {
+  const excludedIds = new Set(match.mmrExcludedPlayerIds ?? match.rules?.mmrExcludedPlayerIds ?? []);
+  return getMatchSidePlayerIds(match, sideName).filter((playerId) => !excludedIds.has(playerId));
 }
 
 export function applyMatchRating(match, players, ratings, history = [], teams = []) {
@@ -179,7 +184,7 @@ export function applyMatchRating(match, players, ratings, history = [], teams = 
     ["teamA", actualA, teamAMmr, teamBMmr],
     ["teamB", actualB, teamBMmr, teamAMmr],
   ]) {
-    for (const playerId of getMatchSidePlayerIds(match, sideName)) {
+    for (const playerId of getRatedSidePlayerIds(match, sideName)) {
       const current = ratings[playerId] ?? { integrated: 1200, modes: {} };
       const modeRating = current.modes?.[mode] ?? current.integrated ?? 1200;
       const trustScore = playerById[playerId]?.trustScore ?? 80;

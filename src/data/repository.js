@@ -3,6 +3,7 @@ import {
   DISPUTE_WINDOW_MINUTES,
   MAX_TEAM_MEMBERSHIPS,
   MODE_SIZES,
+  PLAYER_STAT_FIELDS,
   PLAYER_POSITIONS,
   REFEREE_TRUST_MIN,
   STAT_ENTRY_WINDOW_MINUTES,
@@ -1592,8 +1593,10 @@ function averageTeamMmr(groups = []) {
 function getMatchSideTeamGroups(state, match, sideName) {
   const side = match[sideName] ?? {};
   const playerTeams = side.playerTeams ?? {};
+  const excludedIds = new Set(match.mmrExcludedPlayerIds ?? match.rules?.mmrExcludedPlayerIds ?? []);
   const groups = new Map();
   getMatchSidePlayerIds(match, sideName).forEach((playerId) => {
+    if (excludedIds.has(playerId)) return;
     const teamId = playerTeams[playerId] ?? side.teamId;
     if (!teamId) return;
     if (!groups.has(teamId)) groups.set(teamId, []);
@@ -2341,7 +2344,11 @@ export function submitMatchResult(state, matchId, result) {
   const currentUserIsReferee = isMatchReferee(match, currentUserId);
   const currentUserIsEligibleReferee = currentUserIsReferee && isEligibleReferee(currentUser, match.refereeTrustMin);
   const recorderSides = getStatRecorderSides(match, currentUserId);
-  const currentUserCanRecord = currentUserIsEligibleReferee || (!hasReferee && (recorderSides.length > 0 || Boolean(currentSideName)));
+  const hostPlayerId = getMatchHostPlayerId(state, match);
+  const currentUserIsHost = Boolean(hostPlayerId && hostPlayerId === currentUserId);
+  const roomPhase = getMatchRoomPhase(match).phase;
+  const currentUserCanPostgameScore = currentUserIsHost && roomPhase === "postgame" && !["confirmed", "disputed"].includes(match.status);
+  const currentUserCanRecord = currentUserIsEligibleReferee || currentUserCanPostgameScore || (!hasReferee && (recorderSides.length > 0 || Boolean(currentSideName)));
 
   if (hasReferee && !currentUserIsEligibleReferee) {
     return {
@@ -2393,7 +2400,7 @@ export function submitMatchResult(state, matchId, result) {
   const recordWindow = getMatchRecordWindow(match);
   const matchStartsAt = getMatchStartDate(match);
   const beforeStart = !matchStartsAt || (Number.isFinite(matchStartsAt.getTime()) && Date.now() < matchStartsAt.getTime());
-  const liveRecordAllowed = recordWindow.beforeEnd && !beforeStart && (currentUserIsEligibleReferee || (!hasReferee && recorderSides.length > 0));
+  const liveRecordAllowed = recordWindow.beforeEnd && !beforeStart && (currentUserIsEligibleReferee || (!hasReferee && (recorderSides.length > 0 || Boolean(currentSideName))));
   if ((recordWindow.beforeEnd && !liveRecordAllowed) || (!recordWindow.beforeEnd && !recordWindow.statOpen)) {
     return {
       ...state,
@@ -2420,8 +2427,9 @@ export function submitMatchResult(state, matchId, result) {
   const endedAt = liveEntry ? match.endedAt : match.endedAt ?? recordWindow.endAt?.toISOString() ?? now;
   const recorderPlayerIds = recorderSides.flatMap((sideName) => getMatchSidePlayerIds(match, sideName));
   const selfPlayerIds = currentSideName ? [currentUserId] : [];
-  const targetPlayerIds = currentUserIsEligibleReferee ? playerIds : [...new Set([...recorderPlayerIds, ...selfPlayerIds])]
-    .filter((playerId) => getAllowedStatFields(match, currentUserId, playerId).length > 0);
+  const hostPostgamePlayerIds = currentUserCanPostgameScore ? playerIds : [];
+  const targetPlayerIds = currentUserIsEligibleReferee ? playerIds : [...new Set([...recorderPlayerIds, ...selfPlayerIds, ...hostPostgamePlayerIds])]
+    .filter((playerId) => getAllowedResultFieldIds(match, currentUserId, playerId, currentUserCanPostgameScore).length > 0);
   if (!hasReferee && !targetPlayerIds.length) {
     return {
       ...state,
@@ -2437,32 +2445,41 @@ export function submitMatchResult(state, matchId, result) {
       ],
     };
   }
-  const submittedStats = normalizePlayerStats(result.playerStats ?? {}, targetPlayerIds);
-  const nextPlayerStats = currentUserIsEligibleReferee ? submittedStats : { ...existingStats };
-  if (!currentUserIsEligibleReferee) {
-    targetPlayerIds.forEach((playerId) => {
-      const allowedFieldIds = new Set(getAllowedStatFields(match, currentUserId, playerId).map((field) => field.id));
-      nextPlayerStats[playerId] = Object.fromEntries(
-        Object.entries(submittedStats[playerId]).map(([fieldId, value]) => [
-          fieldId,
-          allowedFieldIds.has(fieldId) ? value : existingStats[playerId]?.[fieldId] ?? 0,
-        ]),
-      );
-    });
-  }
-  const nextSubmissions = currentUserIsEligibleReferee
-    ? Object.fromEntries(playerIds.map((playerId) => [playerId, { by: currentUserId, side: "referee", source: "referee", submittedAt: now }]))
-    : {
-        ...(match.result?.statSubmissions ?? {}),
-        ...Object.fromEntries(targetPlayerIds.map((playerId) => {
-          const sideName = getPlayerSideName(match, playerId);
-          const source = isMatchStatRecorder(match, currentUserId, sideName) ? "candidate_recorder" : "player";
-          return [playerId, { by: currentUserId, side: sideName, source, submittedAt: now }];
-        })),
-      };
+  const submittedStatPatch = getSubmittedStatPatch(result.playerStats ?? {}, targetPlayerIds);
+  const touchedPlayerIds = Object.keys(submittedStatPatch);
+  const nextPlayerStats = { ...existingStats };
+  touchedPlayerIds.forEach((playerId) => {
+    const allowedFieldIds = new Set(
+      getAllowedResultFieldIds(match, currentUserId, playerId, currentUserCanPostgameScore).map((field) => field.id),
+    );
+    const currentStats = nextPlayerStats[playerId] ?? {};
+    nextPlayerStats[playerId] = {
+      ...currentStats,
+      ...Object.fromEntries(
+        Object.entries(submittedStatPatch[playerId])
+          .filter(([fieldId]) => currentUserIsEligibleReferee || allowedFieldIds.has(fieldId)),
+      ),
+    };
+  });
+  const nextSubmissions = {
+    ...(match.result?.statSubmissions ?? {}),
+    ...Object.fromEntries(touchedPlayerIds.map((playerId) => {
+      const sideName = getPlayerSideName(match, playerId);
+      const source = currentUserIsEligibleReferee
+        ? "referee"
+        : isMatchStatRecorder(match, currentUserId, sideName)
+          ? "candidate_recorder"
+          : currentUserCanPostgameScore && playerId !== currentUserId
+            ? "host_postgame"
+        : "player";
+      return [playerId, { by: currentUserId, side: sideName, source, submittedAt: now }];
+    })),
+  };
+  const nextScoreA = getMergedResultScore(match, nextPlayerStats, "teamA", result.scoreA);
+  const nextScoreB = getMergedResultScore(match, nextPlayerStats, "teamB", result.scoreB);
   const nextResult = {
-    scoreA: Number(result.scoreA),
-    scoreB: Number(result.scoreB),
+    scoreA: nextScoreA,
+    scoreB: nextScoreB,
     playerStats: nextPlayerStats,
     statSubmissions: nextSubmissions,
     submittedBy: currentUserId,
@@ -2674,6 +2691,39 @@ function getMatchHostPlayerId(state, match) {
   return getRecruitingRoomOwnerId(sourcePost) || match?.createdBy || match?.hostPlayerId || match?.createdPlayerId || match?.teamA?.players?.[0] || "";
 }
 
+function getAllowedResultFieldIds(match, currentUserId, playerId, hostPostgameScore = false) {
+  const fields = getAllowedStatFields(match, currentUserId, playerId);
+  if (!hostPostgameScore) return fields;
+  const fieldById = Object.fromEntries(fields.map((field) => [field.id, field]));
+  const pointsField = PLAYER_STAT_FIELDS.find((field) => field.id === "points");
+  if (pointsField) fieldById.points = pointsField;
+  return Object.values(fieldById);
+}
+
+function getSubmittedStatPatch(playerStats = {}, targetPlayerIds = []) {
+  const targetSet = new Set(targetPlayerIds);
+  const validFieldIds = new Set(PLAYER_STAT_FIELDS.map((field) => field.id));
+  return Object.fromEntries(
+    Object.entries(playerStats ?? {})
+      .filter(([playerId]) => targetSet.has(playerId))
+      .map(([playerId, stats]) => [
+        playerId,
+        Object.fromEntries(
+          Object.entries(stats ?? {})
+            .filter(([fieldId]) => validFieldIds.has(fieldId))
+            .map(([fieldId, value]) => [fieldId, Math.max(0, Number(value ?? 0))]),
+        ),
+      ])
+      .filter(([, stats]) => Object.keys(stats).length),
+  );
+}
+
+function getMergedResultScore(match, playerStats, sideName, fallbackScore = 0) {
+  const sidePlayerIds = getMatchSidePlayerIds(match, sideName);
+  if (!sidePlayerIds.some((playerId) => playerStats[playerId])) return Number(fallbackScore ?? match[sideName]?.score ?? 0);
+  return sidePlayerIds.reduce((sum, playerId) => sum + Number(playerStats[playerId]?.points ?? 0), 0);
+}
+
 function getMatchAttendance(match = {}) {
   return {
     teamA: uniquePlayerIds(match.attendance?.teamA ?? []),
@@ -2779,6 +2829,118 @@ export function endMatch(state, matchId) {
     matches: state.matches.map((item) => (item.id === matchId ? nextMatch : item)),
     notifications: [
       { id: makeId("n"), title: "경기 종료", body: `${match.title} 경기가 종료됐습니다. 결과 입력이 열렸습니다.`, tone: "match", matchId },
+      ...state.notifications,
+    ],
+  };
+}
+
+function canEditPostgameRoster(state, match) {
+  if (!match || ["confirmed", "void", "cancelled", "disputed"].includes(match.status) || match.result) return false;
+  if (getMatchRoomPhase(match).phase !== "postgame") return false;
+  if (getMatchRecordWindow(match).statExpired) return false;
+  const hostPlayerId = getMatchHostPlayerId(state, match);
+  return !hostPlayerId || hostPlayerId === state.currentUserId;
+}
+
+function makeAnonymousMatchPlayer(playerId, name) {
+  return {
+    id: playerId,
+    name: String(name || "").trim() || "무기명 선수",
+    position: "-",
+    avatarColor: "#64748b",
+    trustScore: "-",
+    ratings: { integrated: 0, modes: {} },
+  };
+}
+
+export function addMatchLatePlayer(state, matchId, draft = {}) {
+  const match = state.matches.find((item) => item.id === matchId);
+  if (!canEditPostgameRoster(state, match)) return state;
+  const sideName = ["teamA", "teamB"].includes(draft.sideName) ? draft.sideName : "teamA";
+  const registeredUserId = state.users.some((user) => user.id === draft.userId) ? draft.userId : "";
+  const anonymousName = String(draft.name ?? "").trim();
+  if (!registeredUserId && !anonymousName) return state;
+
+  const playerId = registeredUserId || makeId("anon");
+  if (getPlayerSideName(match, playerId)) {
+    return {
+      ...state,
+      notifications: [
+        { id: makeId("n"), title: "이미 기록 대상", body: "이미 출전 또는 교체 출전 기록에 포함된 선수입니다.", tone: "orange", matchId },
+        ...state.notifications,
+      ],
+    };
+  }
+
+  const playedPlayerIds = match.playedPlayerIds ?? match.rules?.playedPlayerIds ?? {};
+  const nextPlayedPlayerIds = {
+    ...playedPlayerIds,
+    [sideName]: uniquePlayerIds([...(playedPlayerIds[sideName] ?? []), playerId]),
+  };
+  const nextReservePlayers = {
+    teamA: getMatchReservePlayerIds(match, "teamA").filter((id) => id !== playerId),
+    teamB: getMatchReservePlayerIds(match, "teamB").filter((id) => id !== playerId),
+  };
+  const nextExcludedIds = uniquePlayerIds([...(match.mmrExcludedPlayerIds ?? match.rules?.mmrExcludedPlayerIds ?? []), playerId]);
+  const nextAnonymousPlayers = registeredUserId
+    ? match.anonymousPlayers ?? {}
+    : { ...(match.anonymousPlayers ?? {}), [playerId]: makeAnonymousMatchPlayer(playerId, anonymousName) };
+  const nextMatch = {
+    ...match,
+    playedPlayerIds: nextPlayedPlayerIds,
+    reservePlayers: nextReservePlayers,
+    anonymousPlayers: nextAnonymousPlayers,
+    mmrExcludedPlayerIds: nextExcludedIds,
+    rules: {
+      ...(match.rules ?? {}),
+      playedPlayerIds: nextPlayedPlayerIds,
+      mmrExcludedPlayerIds: nextExcludedIds,
+    },
+  };
+
+  return {
+    ...state,
+    matches: state.matches.map((item) => (item.id === matchId ? nextMatch : item)),
+    notifications: [
+      { id: makeId("n"), title: "경기 후 선수 추가", body: `${SIDE_LABEL_TEXT[sideName]} 기록 대상에 추가했습니다. MMR에는 반영되지 않습니다.`, tone: "match", matchId },
+      ...state.notifications,
+    ],
+  };
+}
+
+export function removeMatchLatePlayer(state, matchId, playerId) {
+  const match = state.matches.find((item) => item.id === matchId);
+  if (!canEditPostgameRoster(state, match) || !playerId) return state;
+  const excludedIds = new Set(match.mmrExcludedPlayerIds ?? match.rules?.mmrExcludedPlayerIds ?? []);
+  if (!excludedIds.has(playerId)) return state;
+  const playedPlayerIds = match.playedPlayerIds ?? match.rules?.playedPlayerIds ?? {};
+  const nextPlayedPlayerIds = {
+    teamA: uniquePlayerIds(playedPlayerIds.teamA ?? []).filter((id) => id !== playerId),
+    teamB: uniquePlayerIds(playedPlayerIds.teamB ?? []).filter((id) => id !== playerId),
+  };
+  const nextExcludedIds = [...excludedIds].filter((id) => id !== playerId);
+  const nextAnonymousPlayers = { ...(match.anonymousPlayers ?? {}) };
+  delete nextAnonymousPlayers[playerId];
+
+  return {
+    ...state,
+    matches: state.matches.map((item) =>
+      item.id === matchId
+        ? {
+            ...item,
+            playedPlayerIds: nextPlayedPlayerIds,
+            anonymousPlayers: nextAnonymousPlayers,
+            mmrExcludedPlayerIds: nextExcludedIds,
+            rules: {
+              ...(item.rules ?? {}),
+              playedPlayerIds: nextPlayedPlayerIds,
+              mmrExcludedPlayerIds: nextExcludedIds,
+            },
+          }
+        : item,
+    ),
+    notifications: [
+      { id: makeId("n"), title: "경기 후 선수 제거", body: "기록 전용 추가 선수를 제거했습니다.", tone: "match", matchId },
       ...state.notifications,
     ],
   };

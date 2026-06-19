@@ -5987,6 +5987,91 @@ input[type="color"] {
   padding: 12px;
 }
 
+.recorder-host-action-row,
+.recorder-late-player-panel {
+  display: grid;
+  gap: 12px;
+  border: 1px solid rgba(70, 224, 182, 0.22);
+  border-radius: var(--radius);
+  background: rgba(70, 224, 182, 0.06);
+  padding: 12px;
+}
+
+.recorder-host-action-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.recorder-host-action-row p,
+.recorder-late-player-panel p {
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.recorder-late-player-panel > div:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.recorder-late-player-form {
+  display: grid;
+  grid-template-columns: 120px minmax(180px, 1fr) auto minmax(180px, 1fr) auto;
+  gap: 8px;
+  align-items: end;
+}
+
+.recorder-late-player-form label {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.recorder-late-player-form select,
+.recorder-late-player-form input {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-weight: 850;
+  padding: 10px 12px;
+}
+
+.recorder-late-player-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.recorder-late-player-list span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.055);
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 900;
+  padding: 6px 8px 6px 10px;
+}
+
+.recorder-late-player-list button {
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 900;
+  padding: 4px 7px;
+}
+
 .recorder-handoff-panel > div:first-child {
   display: grid;
   gap: 4px;
@@ -6337,12 +6422,15 @@ html[data-theme="light"] .favorite-toggle-button.active.button-secondary {
 
   .recorder-board-head,
   .recorder-handoff-row,
+  .recorder-host-action-row,
   .recorder-save-row {
     align-items: stretch;
     flex-direction: column;
   }
 
-  .recorder-handoff-row {
+  .recorder-handoff-row,
+  .recorder-host-action-row,
+  .recorder-late-player-form {
     grid-template-columns: 1fr;
   }
 
@@ -6396,6 +6484,16 @@ html[data-theme="light"] .favorite-toggle-button.active.button-secondary {
   .recorder-scoreboard {
     gap: 7px;
     padding: 8px;
+  }
+
+  .recorder-host-action-row,
+  .recorder-late-player-panel {
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .recorder-late-player-form {
+    gap: 6px;
   }
 
   .recorder-scoreboard span {

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   addTeamMember,
+  addMatchLatePlayer,
   acceptRecruitingInvitation,
   agreeMatch,
   approveTournamentTeam,
@@ -32,6 +33,7 @@ import {
   reportMatch,
   resetState,
   resumeMatchApproval,
+  removeMatchLatePlayer,
   removeMatchRoomPlayer,
   removeRecruitingPartyPlayer,
   runAutomaticStateMaintenance,
@@ -197,6 +199,8 @@ export function useAppData(authUserId = null) {
       resumeMatchApproval: (matchId) => setState((prev) => resumeMatchApproval({ ...prev, currentUserId }, matchId)),
       startMatch: (matchId) => setState((prev) => startMatch({ ...prev, currentUserId }, matchId)),
       endMatch: (matchId) => setState((prev) => endMatch({ ...prev, currentUserId }, matchId)),
+      addMatchLatePlayer: (matchId, draft) => setState((prev) => addMatchLatePlayer({ ...prev, currentUserId }, matchId, draft)),
+      removeMatchLatePlayer: (matchId, playerId) => setState((prev) => removeMatchLatePlayer({ ...prev, currentUserId }, matchId, playerId)),
       updateSettings: (patch) => setState((prev) => updateSettings({ ...prev, currentUserId }, patch)),
       updatePrivacySettings: (patch) => setState((prev) => updatePrivacySettings({ ...prev, currentUserId }, patch)),
       blockUser: (userId) => setState((prev) => blockUser({ ...prev, currentUserId }, userId)),
