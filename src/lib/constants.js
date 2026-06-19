@@ -58,7 +58,6 @@ export const COURTS = [
   {
     id: "c1",
     name: "한강 노을코트",
-    hashtag: "hangang-noeul",
     region: "마포",
     type: "야외",
     favorite: true,
@@ -73,7 +72,6 @@ export const COURTS = [
   {
     id: "c2",
     name: "성수 브릿지파크",
-    hashtag: "seongsu-bridge",
     region: "성수",
     type: "야외",
     favorite: true,
@@ -88,7 +86,6 @@ export const COURTS = [
   {
     id: "c3",
     name: "잠실 실내체육관 보조코트",
-    hashtag: "jamsil-sub",
     region: "잠실",
     type: "실내",
     favorite: true,
@@ -103,7 +100,6 @@ export const COURTS = [
   {
     id: "c4",
     name: "홍대 스트릿돔",
-    hashtag: "hongdae-dome",
     region: "마포",
     type: "실내",
     favorite: true,
@@ -118,7 +114,6 @@ export const COURTS = [
   {
     id: "c5",
     name: "뚝섬 리버사이드",
-    hashtag: "ttukseom-river",
     region: "성수",
     type: "야외",
     favorite: true,
@@ -133,7 +128,6 @@ export const COURTS = [
   {
     id: "c6",
     name: "양재 플로우코트",
-    hashtag: "yangjae-flow",
     region: "강남",
     type: "실내",
     favorite: true,
@@ -148,7 +142,6 @@ export const COURTS = [
   {
     id: "c7",
     name: "반포 선셋파크",
-    hashtag: "banpo-sunset",
     region: "서초",
     type: "야외",
     favorite: true,
@@ -163,7 +156,6 @@ export const COURTS = [
   {
     id: "c8",
     name: "노량진 루프코트",
-    hashtag: "noryangjin-roof",
     region: "동작",
     type: "야외",
     favorite: true,
@@ -178,7 +170,6 @@ export const COURTS = [
   {
     id: "c9",
     name: "연남 레일파크",
-    hashtag: "yeonnam-rail",
     region: "마포",
     type: "야외",
     favorite: false,
@@ -193,7 +184,6 @@ export const COURTS = [
   {
     id: "c10",
     name: "왕십리 언더패스",
-    hashtag: "wangsimni-underpass",
     region: "성동",
     type: "야외",
     favorite: false,
@@ -208,7 +198,6 @@ export const COURTS = [
   {
     id: "c11",
     name: "신촌 블루짐",
-    hashtag: "sinchon-bluegym",
     region: "서대문",
     type: "실내",
     favorite: false,
@@ -223,7 +212,6 @@ export const COURTS = [
   {
     id: "c12",
     name: "문래 팩토리코트",
-    hashtag: "mullae-factory",
     region: "영등포",
     type: "실내",
     favorite: false,

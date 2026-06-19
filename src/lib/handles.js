@@ -20,8 +20,17 @@ export function getTeamHashtag(team = {}) {
   return toHashtag(team.hashtag ?? team.handle ?? team.name ?? team.id, team.id ?? "team");
 }
 
+function getCourtNumericHandle(court = {}) {
+  const idDigits = String(court.id ?? "").match(/\d+/g)?.join("");
+  if (idDigits) return idDigits.replace(/^0+(?=\d)/, "");
+
+  const source = String(court.id ?? court.name ?? "0");
+  const fallbackNumber = Array.from(source).reduce((sum, char, index) => sum + char.charCodeAt(0) * (index + 1), 0);
+  return String(fallbackNumber || 0);
+}
+
 export function getCourtHashtag(court = {}) {
-  return toHashtag(court.hashtag ?? court.handle ?? court.name ?? court.id, court.id ?? "court");
+  return `#${getCourtNumericHandle(court)}`;
 }
 
 export function sameHashtag(query, value) {
@@ -46,8 +55,6 @@ export function findTeamByHashtag(teams = [], query = "") {
 
 export function findCourtByHashtag(courts = [], query = "") {
   return courts.find((court) => (
-    sameHashtag(query, court.hashtag) ||
-    sameHashtag(query, court.handle) ||
     sameHashtag(query, getCourtHashtag(court))
   )) ?? null;
 }

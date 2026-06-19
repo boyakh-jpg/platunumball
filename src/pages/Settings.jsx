@@ -8,6 +8,7 @@ import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import { DEFAULT_REPORT_REASON, REPORT_REASONS } from "../lib/reportReasons.js";
 import { formatStatLine, getMatchReservePlayerIds, getMatchSidePlayerIds } from "../lib/matchUtils.js";
 import { COURTS, REGIONS } from "../lib/constants.js";
+import { getCourtHashtag } from "../lib/handles.js";
 import {
   REFEREE_EXAM_BANK_SIZE,
   REFEREE_EXAM_PASS_SCORE,
@@ -183,7 +184,7 @@ export default function Settings({ app, auth }) {
     const keyword = courtAddressQuery.trim().toLowerCase();
     return COURTS
       .filter((court) => {
-        const haystack = `${court.name} ${court.region} ${court.addressText} ${court.locationNote} ${court.hashtag}`.toLowerCase();
+        const haystack = `${court.name} ${court.region} ${court.addressText} ${court.locationNote} ${getCourtHashtag(court)}`.toLowerCase();
         return keyword ? haystack.includes(keyword) : court.region === courtDraft.region;
       })
       .slice(0, 5);
@@ -482,7 +483,7 @@ export default function Settings({ app, auth }) {
                   주소 검색
                   <div className="admin-account-search">
                     <Search size={18} />
-                    <input value={courtAddressQuery} placeholder="코트명, 주소, 해시태그 검색" onChange={(event) => setCourtAddressQuery(event.target.value)} />
+                    <input value={courtAddressQuery} placeholder="코트명, 주소, #1 검색" onChange={(event) => setCourtAddressQuery(event.target.value)} />
                   </div>
                 </label>
                 <div className="settings-address-results">
