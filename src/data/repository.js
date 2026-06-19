@@ -4276,6 +4276,26 @@ export function inviteRecruitingPlayers(state, postId, invite = {}) {
     };
   }
 
+  const outOfRangeUser = targetUserIds
+    .map((playerId) => state.users.find((user) => user.id === playerId))
+    .find((targetUser) => targetUser && !getRecruitingFit(post, targetUser.ratings?.integrated ?? 1200, state).allowed);
+  if (outOfRangeUser) {
+    const fit = getRecruitingFit(post, outOfRangeUser.ratings?.integrated ?? 1200, state);
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "티어 구간 제한",
+          body: `${outOfRangeUser.name} 선수는 ${fit.range.label} 구간 밖이라 초대할 수 없습니다.`,
+          tone: "orange",
+          recruitingPostId: postId,
+        },
+        ...state.notifications,
+      ],
+    };
+  }
+
   if (reserve) {
     const reserveCount = lobby.sides[side]?.reserveCandidates?.length ?? 0;
     const pendingReserveCount = getPendingReserveInvitationCount(roomState, side);
@@ -4344,7 +4364,7 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
   const invitedTeam = invitationTeamId
     ? state.teams.find((team) => team.id === invitationTeamId && team.members.some((member) => member.userId === state.currentUserId))
     : null;
-  const fit = getRecruitingFit(post, invitedTeam?.mmr ?? user?.ratings?.integrated ?? 1200, state);
+  const fit = getRecruitingFit(post, user?.ratings?.integrated ?? 1200, state);
   const expireInvitation = (body) => ({
     ...state,
     recruitingPosts: (state.recruitingPosts ?? []).map((item) => (
