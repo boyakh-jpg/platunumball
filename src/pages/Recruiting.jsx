@@ -537,6 +537,13 @@ function TeamMemberPicker({ team, userById, selectedIds, capacity, onChange, req
 function QueueRoomBoard({ post, lobby, userById, teams }) {
   const entries = lobby.entries ?? [];
   const entryById = Object.fromEntries(entries.map((entry) => [entry.id, entry]));
+  const getQueueRowTeam = (entry = {}) => (isPartyEntry(entry) ? entry.team ?? null : null);
+  const getQueueRowLabel = (entry = {}, user = null) => {
+    const team = getQueueRowTeam(entry);
+    if (team && user) return `${team.name} · ${user.name}`;
+    if (team) return getReadyTitle(entry);
+    return user?.name ?? getReadyTitle(entry);
+  };
   const activeRows = entries.filter((entry) => !entry.reserve).map((entry) => {
     const user = entry.playerId ? userById[entry.playerId] : null;
     const players = (entry.players ?? []).map((playerId) => userById[playerId]).filter(Boolean);
@@ -547,7 +554,7 @@ function QueueRoomBoard({ post, lobby, userById, teams }) {
       reserve: Boolean(entry.reserve),
       ready: entry.status === "ready",
       user,
-      team: entry.team,
+      team: getQueueRowTeam(entry),
       players,
     };
   });
@@ -555,16 +562,16 @@ function QueueRoomBoard({ post, lobby, userById, teams }) {
     (lobby.sides[sideName]?.fillSlots ?? []).map((candidate) => {
       const entry = entryById[candidate.entryId] ?? {};
       const user = userById[candidate.playerId] ?? candidate.user ?? null;
-      const label = entry.team && user ? `${entry.team.name} · ${user.name}` : user?.name ?? getReadyTitle(entry);
+      const rowLabel = getQueueRowLabel(entry, user);
       return {
         id: `fill-${sideName}-${candidate.playerId}`,
-        label,
+        label: rowLabel,
         sideName,
         reserve: false,
         ready: candidate.status === "ready",
         autoFill: true,
         user,
-        team: entry.team ?? null,
+        team: getQueueRowTeam(entry),
         players: user ? [user] : [],
       };
     })
@@ -573,15 +580,15 @@ function QueueRoomBoard({ post, lobby, userById, teams }) {
     (lobby.sides[sideName]?.reserveCandidates ?? []).map((candidate) => {
       const entry = entryById[candidate.entryId] ?? {};
       const user = userById[candidate.playerId] ?? candidate.user ?? null;
-      const label = entry.team && user ? `${entry.team.name} · ${user.name}` : user?.name ?? getReadyTitle(entry);
+      const rowLabel = getQueueRowLabel(entry, user);
       return {
         id: `reserve-${sideName}-${candidate.playerId}`,
-        label,
+        label: rowLabel,
         sideName,
         reserve: true,
         ready: candidate.status === "ready",
         user,
-        team: entry.team ?? null,
+        team: getQueueRowTeam(entry),
         players: user ? [user] : [],
       };
     })
