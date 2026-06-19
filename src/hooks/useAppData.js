@@ -205,7 +205,7 @@ export function useAppData(authUserId = null) {
       updatePrivacySettings: (patch) => setState((prev) => updatePrivacySettings({ ...prev, currentUserId }, patch)),
       blockUser: (userId) => setState((prev) => blockUser({ ...prev, currentUserId }, userId)),
       unblockUser: (userId) => setState((prev) => unblockUser({ ...prev, currentUserId }, userId)),
-      reportMatch: (matchId, reason) => setState((prev) => reportMatch({ ...prev, currentUserId }, matchId, reason)),
+      reportMatch: (matchId, reason, reportedUserIds) => setState((prev) => reportMatch({ ...prev, currentUserId }, matchId, reason, reportedUserIds)),
       markNotificationRead: (notificationId) => setState((prev) => markNotificationRead(prev, notificationId)),
       markAllNotificationsRead: () => setState((prev) => markAllNotificationsRead(prev)),
       toggleFavoritePlayer: (userId) => setState((prev) => toggleFavoritePlayer(prev, userId)),

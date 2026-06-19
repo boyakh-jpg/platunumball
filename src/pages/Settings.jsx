@@ -1,11 +1,26 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Database, Moon, Search, ShieldCheck, Sun, UserRound } from "lucide-react";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import Badge from "../components/common/Badge.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import { DEFAULT_REPORT_REASON, REPORT_REASONS } from "../lib/reportReasons.js";
+import { getMatchPlayerIds } from "../lib/matchUtils.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
+
+const REPORT_MATCH_WINDOW_DAYS = 7;
+
+function getMatchReportTime(match = {}) {
+  const rawDate = match.endedAt ?? match.confirmedAt ?? match.scheduledDate ?? match.scheduledAt ?? match.createdAt;
+  if (!rawDate) return 0;
+  if (match.scheduledDate && rawDate === match.scheduledDate) {
+    const time = match.scheduledTime || "00:00";
+    const value = new Date(`${match.scheduledDate}T${time}`).getTime();
+    return Number.isFinite(value) ? value : 0;
+  }
+  const value = new Date(rawDate).getTime();
+  return Number.isFinite(value) ? value : 0;
+}
 
 export default function Settings({ app, auth }) {
   const privacy = app.state.settings?.privacy ?? {};
@@ -15,16 +30,32 @@ export default function Settings({ app, auth }) {
   const [reportMatchId, setReportMatchId] = useState(app.state.matches[0]?.id ?? "");
   const [reportReason, setReportReason] = useState(DEFAULT_REPORT_REASON);
   const [reportMemo, setReportMemo] = useState("");
+  const [reportedUserIds, setReportedUserIds] = useState([]);
   const [accountQuery, setAccountQuery] = useState("");
-  const userMap = Object.fromEntries(app.state.users.map((user) => [user.id, user]));
-  const matchMap = Object.fromEntries(app.state.matches.map((match) => [match.id, match]));
+  const userMap = useMemo(() => Object.fromEntries(app.state.users.map((user) => [user.id, user])), [app.state.users]);
+  const matchMap = useMemo(() => Object.fromEntries(app.state.matches.map((match) => [match.id, match])), [app.state.matches]);
 
   const blockableUsers = useMemo(
     () => app.state.users.filter((user) => user.id !== app.currentUserId && !blockedUserIds.includes(user.id)),
     [app.currentUserId, app.state.users, blockedUserIds],
   );
   const selectedBlockUserId = blockableUsers.some((user) => user.id === blockUserId) ? blockUserId : blockableUsers[0]?.id ?? "";
-  const selectedReportMatchId = app.state.matches.some((match) => match.id === reportMatchId) ? reportMatchId : app.state.matches[0]?.id ?? "";
+  const recentReportMatches = useMemo(() => {
+    const now = Date.now();
+    const cutoff = now - REPORT_MATCH_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+    return [...app.state.matches]
+      .map((match) => ({ match, reportTime: getMatchReportTime(match) }))
+      .filter(({ reportTime }) => reportTime >= cutoff && reportTime <= now)
+      .sort((a, b) => b.reportTime - a.reportTime)
+      .map(({ match }) => match);
+  }, [app.state.matches]);
+  const selectedReportMatchId = recentReportMatches.some((match) => match.id === reportMatchId) ? reportMatchId : recentReportMatches[0]?.id ?? "";
+  const selectedReportMatch = recentReportMatches.find((match) => match.id === selectedReportMatchId) ?? null;
+  const reportParticipantIds = useMemo(
+    () => (selectedReportMatch ? getMatchPlayerIds(selectedReportMatch) : []).filter((userId) => userMap[userId]),
+    [selectedReportMatch, userMap],
+  );
+  const selectedReportedUserIds = reportedUserIds.filter((userId) => reportParticipantIds.includes(userId));
   const matchCountByUser = useMemo(() => {
     const counts = new Map();
     app.state.matches.forEach((match) => {
@@ -59,8 +90,24 @@ export default function Settings({ app, auth }) {
   const submitReport = (event) => {
     event.preventDefault();
     const memo = reportMemo.trim();
-    if (selectedReportMatchId) app.actions.reportMatch(selectedReportMatchId, memo ? `${reportReason} · ${memo}` : reportReason);
+    const targetNames = selectedReportedUserIds.map((userId) => userMap[userId]?.name).filter(Boolean);
+    const targetLine = targetNames.length ? `대상: ${targetNames.join(", ")}` : "대상: 경기 전체";
+    if (selectedReportMatchId) app.actions.reportMatch(selectedReportMatchId, [reportReason, targetLine, memo].filter(Boolean).join(" · "), selectedReportedUserIds);
   };
+  const toggleReportedUser = (userId) => {
+    setReportedUserIds((current) => (
+      current.includes(userId)
+        ? current.filter((id) => id !== userId)
+        : [...current, userId]
+    ));
+  };
+
+  useEffect(() => {
+    setReportedUserIds((current) => {
+      const next = current.filter((userId) => reportParticipantIds.includes(userId));
+      return next.length === current.length ? current : next;
+    });
+  }, [reportParticipantIds]);
 
   return (
     <div className="page-stack">
@@ -270,10 +317,39 @@ export default function Settings({ app, auth }) {
             <form className="form-stack" onSubmit={submitReport}>
               <label>
                 경기
-                <select value={selectedReportMatchId} onChange={(event) => setReportMatchId(event.target.value)}>
-                  {app.state.matches.map((match) => <option key={match.id} value={match.id}>{match.title}</option>)}
+                <select
+                  value={selectedReportMatchId}
+                  disabled={!recentReportMatches.length}
+                  onChange={(event) => {
+                    setReportMatchId(event.target.value);
+                    setReportedUserIds([]);
+                  }}
+                >
+                  {!recentReportMatches.length ? <option value="">최근 7일 경기 없음</option> : null}
+                  {recentReportMatches.map((match) => <option key={match.id} value={match.id}>{match.title}</option>)}
                 </select>
               </label>
+              {selectedReportMatch ? (
+                <div className="report-player-picker">
+                  <span>신고 대상</span>
+                  <div>
+                    {reportParticipantIds.map((userId) => {
+                      const user = userMap[userId];
+                      const checked = selectedReportedUserIds.includes(userId);
+                      return (
+                        <button key={userId} type="button" className={checked ? "selected" : ""} onClick={() => toggleReportedUser(userId)}>
+                          <span className="avatar small" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
+                          <strong>{user.name}</strong>
+                          <em>{user.position}</em>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <small>선택하지 않으면 경기 전체 신고로 접수됩니다.</small>
+                </div>
+              ) : (
+                <div className="empty-state">최근 7일 내 신고할 경기가 없습니다.</div>
+              )}
               <label>
                 사유
                 <select value={reportReason} onChange={(event) => setReportReason(event.target.value)}>

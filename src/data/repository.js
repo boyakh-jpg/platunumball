@@ -3247,14 +3247,17 @@ export function toggleFavoriteCourt(state, courtId) {
   };
 }
 
-export function reportMatch(state, matchId, reason = "") {
+export function reportMatch(state, matchId, reason = "", reportedUserIds = []) {
   const match = state.matches.find((item) => item.id === matchId);
   if (!match) return state;
+  const matchPlayerIds = new Set(getMatchPlayerIds(match));
+  const safeReportedUserIds = Array.from(new Set((reportedUserIds ?? []).filter((userId) => matchPlayerIds.has(userId))));
   const report = {
     id: makeId("r"),
     type: "match",
     targetId: matchId,
     by: state.currentUserId,
+    reportedUserIds: safeReportedUserIds,
     reason: reason.trim() || "기타 운영 확인 필요",
     status: "open",
     createdAt: new Date().toISOString(),

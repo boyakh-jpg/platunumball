@@ -3404,6 +3404,64 @@ input[type="color"] {
   padding: 10px;
 }
 
+.report-player-picker {
+  display: grid;
+  gap: 9px;
+}
+
+.report-player-picker > span {
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.report-player-picker > div {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+  gap: 8px;
+}
+
+.report-player-picker button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--text);
+  cursor: pointer;
+  padding: 9px;
+  text-align: left;
+}
+
+.report-player-picker button.selected {
+  border-color: rgba(255, 107, 107, 0.58);
+  background: rgba(255, 107, 107, 0.12);
+}
+
+.report-player-picker button strong,
+.report-player-picker button em {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.report-player-picker button em {
+  grid-column: 2;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-style: normal;
+  font-weight: 850;
+}
+
+.report-player-picker small {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
 .theme-choice-card .segmented-control button {
   flex: 1 1 0;
 }
