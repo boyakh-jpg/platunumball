@@ -21,6 +21,8 @@
 
 ## Production Migration TODO
 
+- 심판 시험 문제 추첨, 채점, 주 1회 응시 제한은 서버 함수/DB 정책으로 이동. 클라이언트 번들에는 정답 bank를 두지 않는다.
+
 - 소유권 기준을 Supabase Auth ID로 이전:
   - `profiles.user_id = auth.users.id`
   - match participants, recruiting posts, applications, notifications, favorites, reports는 `auth.users.id` 기준으로 연결

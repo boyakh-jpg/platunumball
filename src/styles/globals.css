@@ -3656,6 +3656,17 @@ input[type="color"] {
   line-height: 1;
 }
 
+.referee-exam-lock {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.referee-exam-lock.locked {
+  color: var(--gold);
+}
+
 .referee-exam-actions {
   display: flex;
   align-items: center;

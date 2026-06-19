@@ -73,6 +73,7 @@ const DEFAULT_SETTINGS = {
   favoriteCourtIds: [],
   courtRequests: [],
   refereeRequests: [],
+  refereeExamAttempts: [],
 };
 const REMOTE_PAGE_SIZE = 1000;
 const REMOTE_WRITE_CHUNK_SIZE = 500;
@@ -86,6 +87,7 @@ const SCHEDULE_MAX_DAYS = 365;
 const ROOM_SCHEDULE_MAX_DAYS = 30;
 const PUBLIC_ROOM_SCHEDULE_MAX_DAYS = 5;
 const PUBLIC_ROOM_MIN_LEAD_HOURS = 4;
+const REFEREE_EXAM_COOLDOWN_MS = 7 * DAY_MS;
 const LIFECYCLE_TITLE_PATTERN = /^(동의 대기|진행 예정|결과 승인|이의 확인|이의제기|확정|결과 입력)\s*·\s*/;
 const POST_MATCH_TITLE_PATTERN = /^(결과 승인|이의 확인|이의제기|확정|결과 입력)\s*·\s*/;
 const SIDE_LABEL_TEXT = { teamA: "A사이드", teamB: "B사이드" };
@@ -494,6 +496,7 @@ function normalizeSettings(settings = {}) {
     favoriteCourtIds: settings.favoriteCourtIds ?? initialState.settings?.favoriteCourtIds ?? [],
     courtRequests: settings.courtRequests ?? initialState.settings?.courtRequests ?? [],
     refereeRequests: settings.refereeRequests ?? initialState.settings?.refereeRequests ?? [],
+    refereeExamAttempts: settings.refereeExamAttempts ?? initialState.settings?.refereeExamAttempts ?? [],
   };
 }
 
@@ -3302,6 +3305,81 @@ export function submitCourtRequest(state, draft = {}) {
   };
 }
 
+function getLatestRefereeExamAttempt(settings = {}, userId) {
+  return [...(settings.refereeExamAttempts ?? [])]
+    .filter((attempt) => attempt.userId === userId)
+    .sort((a, b) => new Date(b.startedAt ?? 0).getTime() - new Date(a.startedAt ?? 0).getTime())[0] ?? null;
+}
+
+function hashAttemptSeed(value = "") {
+  return Array.from(String(value)).reduce((hash, char) => ((hash << 5) - hash + char.charCodeAt(0)) | 0, 0).toString(36);
+}
+
+function getRefereeExamLockNotification(availableAfter) {
+  return {
+    id: makeId("n"),
+    title: "심판 시험 제한",
+    body: `심판 시험은 주 1회만 가능합니다. 다음 응시 가능: ${new Date(availableAfter).toLocaleString("ko-KR")}`,
+    tone: "orange",
+  };
+}
+
+export function startRefereeExamAttempt(state, draft = {}) {
+  const now = Date.now();
+  const latestAttempt = getLatestRefereeExamAttempt(state.settings, state.currentUserId);
+  const lockedUntil = latestAttempt?.availableAfter ? new Date(latestAttempt.availableAfter).getTime() : 0;
+  if (Number.isFinite(lockedUntil) && lockedUntil > now) {
+    return {
+      ...state,
+      notifications: [getRefereeExamLockNotification(latestAttempt.availableAfter), ...state.notifications],
+    };
+  }
+
+  const startedAt = new Date(now).toISOString();
+  const attempt = {
+    id: String(draft.id || makeId("rea")),
+    userId: state.currentUserId,
+    status: "started",
+    examVersion: String(draft.examVersion ?? ""),
+    seedHash: hashAttemptSeed(draft.seed),
+    startedAt,
+    availableAfter: new Date(now + REFEREE_EXAM_COOLDOWN_MS).toISOString(),
+  };
+
+  return {
+    ...state,
+    settings: normalizeSettings({
+      ...(state.settings ?? {}),
+      refereeExamAttempts: [attempt, ...(state.settings?.refereeExamAttempts ?? [])],
+    }),
+  };
+}
+
+export function finishRefereeExamAttempt(state, attemptId, result = {}) {
+  const attempts = state.settings?.refereeExamAttempts ?? [];
+  const target = attempts.find((attempt) => attempt.id === attemptId && attempt.userId === state.currentUserId);
+  if (!target) return state;
+
+  return {
+    ...state,
+    settings: normalizeSettings({
+      ...(state.settings ?? {}),
+      refereeExamAttempts: attempts.map((attempt) => (
+        attempt.id === attemptId
+          ? {
+              ...attempt,
+              status: result.passed ? "passed" : "failed",
+              score: Math.max(0, Number(result.score ?? 0)),
+              total: Math.max(0, Number(result.total ?? 0)),
+              passed: Boolean(result.passed),
+              finishedAt: new Date().toISOString(),
+            }
+          : attempt
+      )),
+    }),
+  };
+}
+
 export function submitRefereeRequest(state, draft = {}) {
   const currentUser = state.users.find((user) => user.id === state.currentUserId);
   const qualification = draft.qualification === "official_license" ? "official_license" : "community_exam";
@@ -3309,6 +3387,27 @@ export function submitRefereeRequest(state, draft = {}) {
   const memo = String(draft.memo ?? "").trim();
   const examScore = Math.max(0, Number(draft.examScore ?? 0));
   const examTotal = Math.max(0, Number(draft.examTotal ?? 0));
+  const passedAttempt = (state.settings?.refereeExamAttempts ?? []).find((attempt) => (
+    attempt.id === draft.examAttemptId &&
+    attempt.userId === state.currentUserId &&
+    attempt.examVersion === draft.examVersion &&
+    attempt.passed === true
+  ));
+
+  if (qualification === "community_exam" && !passedAttempt) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "심판 등록 보류",
+          body: "통과한 심판 시험 기록이 있어야 커뮤니티 심판 등록요청이 가능합니다.",
+          tone: "orange",
+        },
+        ...state.notifications,
+      ],
+    };
+  }
 
   const request = {
     id: makeId("rr"),
@@ -3320,7 +3419,8 @@ export function submitRefereeRequest(state, draft = {}) {
     examVersion: String(draft.examVersion ?? ""),
     examScore,
     examTotal,
-    examPassed: Boolean(draft.examPassed),
+    examPassed: qualification === "community_exam" ? true : Boolean(draft.examPassed),
+    examAttemptId: passedAttempt?.id ?? "",
     trustScore: Number(currentUser?.trustScore ?? 0),
     createdAt: new Date().toISOString(),
   };

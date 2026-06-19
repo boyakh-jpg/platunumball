@@ -435,7 +435,7 @@ function rotateChoices(question, shift) {
   };
 }
 
-export const REFEREE_EXAM_BANK = Array.from({ length: 600 }, (_, index) => {
+const REFEREE_EXAM_BANK = Array.from({ length: 600 }, (_, index) => {
   const base = BASE_QUESTIONS[index % BASE_QUESTIONS.length];
   const round = Math.floor(index / BASE_QUESTIONS.length) + 1;
   const rotated = rotateChoices(base, round + index);
@@ -448,6 +448,7 @@ export const REFEREE_EXAM_BANK = Array.from({ length: 600 }, (_, index) => {
     explanation: base.explanation,
   };
 });
+export const REFEREE_EXAM_BANK_SIZE = REFEREE_EXAM_BANK.length;
 
 function hashSeed(seed = "") {
   return Array.from(String(seed)).reduce((hash, char) => ((hash << 5) - hash + char.charCodeAt(0)) | 0, 0);
@@ -461,7 +462,7 @@ function seededRandom(seed) {
   };
 }
 
-export function getRefereeExamSet(seed = Date.now(), count = REFEREE_EXAM_SIZE) {
+function buildRefereeExamSet(seed = Date.now(), count = REFEREE_EXAM_SIZE) {
   const random = seededRandom(seed);
   return [...REFEREE_EXAM_BANK]
     .map((question) => ({ question, sort: random() }))
@@ -470,13 +471,24 @@ export function getRefereeExamSet(seed = Date.now(), count = REFEREE_EXAM_SIZE) 
     .map((item, index) => ({ ...item.question, number: index + 1 }));
 }
 
-export function gradeRefereeExam(questions = [], answers = {}) {
+function toPublicQuestion(question) {
+  const { answerIndex, explanation, ...publicQuestion } = question;
+  return publicQuestion;
+}
+
+export function getRefereeExamSet(seed = Date.now(), count = REFEREE_EXAM_SIZE) {
+  return buildRefereeExamSet(seed, count).map(toPublicQuestion);
+}
+
+export function gradeRefereeExam(seed = Date.now(), answers = {}, count = REFEREE_EXAM_SIZE) {
+  const questions = Array.isArray(seed) ? seed : buildRefereeExamSet(seed, count);
   const reviewed = questions.map((question) => {
     const selectedIndex = Number(answers[question.id]);
     return {
       id: question.id,
       selectedIndex: Number.isInteger(selectedIndex) ? selectedIndex : -1,
       answerIndex: question.answerIndex,
+      explanation: question.explanation,
       correct: selectedIndex === question.answerIndex,
     };
   });
@@ -486,5 +498,6 @@ export function gradeRefereeExam(questions = [], answers = {}) {
     total: questions.length,
     passed: score >= REFEREE_EXAM_PASS_SCORE,
     reviewed,
+    reviewedById: Object.fromEntries(reviewed.map((item) => [item.id, item])),
   };
 }

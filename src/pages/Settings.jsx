@@ -8,7 +8,7 @@ import { DEFAULT_REPORT_REASON, REPORT_REASONS } from "../lib/reportReasons.js";
 import { getMatchPlayerIds } from "../lib/matchUtils.js";
 import { COURTS, REGIONS } from "../lib/constants.js";
 import {
-  REFEREE_EXAM_BANK,
+  REFEREE_EXAM_BANK_SIZE,
   REFEREE_EXAM_PASS_SCORE,
   REFEREE_EXAM_SIZE,
   REFEREE_EXAM_VERSION,
@@ -18,6 +18,7 @@ import {
 import { isSupabaseConfigured } from "../lib/supabase.js";
 
 const REPORT_MATCH_WINDOW_DAYS = 7;
+const REFEREE_EXAM_COOLDOWN_DAYS = 7;
 const DEFAULT_COURT_REQUEST = {
   name: "",
   region: "마포",
@@ -46,6 +47,27 @@ function getMatchReportTime(match = {}) {
   return Number.isFinite(value) ? value : 0;
 }
 
+function makeRefereeAttemptId() {
+  return `rea_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function getLatestRefereeExamAttempt(attempts = [], userId) {
+  return [...attempts]
+    .filter((attempt) => attempt.userId === userId)
+    .sort((a, b) => new Date(b.startedAt ?? 0).getTime() - new Date(a.startedAt ?? 0).getTime())[0] ?? null;
+}
+
+function formatKoreanDateTime(value) {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "";
+  return date.toLocaleString("ko-KR", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export default function Settings({ app, auth }) {
   const privacy = app.state.settings?.privacy ?? {};
   const theme = app.state.settings?.theme === "light" ? "light" : "dark";
@@ -70,6 +92,9 @@ export default function Settings({ app, auth }) {
   const matchMap = useMemo(() => Object.fromEntries(app.state.matches.map((match) => [match.id, match])), [app.state.matches]);
   const courtRequests = app.state.settings?.courtRequests ?? [];
   const refereeRequests = app.state.settings?.refereeRequests ?? [];
+  const refereeExamAttempts = app.state.settings?.refereeExamAttempts ?? [];
+  const [currentRefereeExamAttemptId, setCurrentRefereeExamAttemptId] = useState("");
+  const [refereeExamNotice, setRefereeExamNotice] = useState("");
 
   const blockableUsers = useMemo(
     () => app.state.users.filter((user) => user.id !== app.currentUserId && !blockedUserIds.includes(user.id)),
@@ -131,6 +156,13 @@ export default function Settings({ app, auth }) {
   const answeredRefereeExamCount = Object.keys(refereeExamAnswers).length;
   const refereeExamRequired = refereeDraft.qualification === "community_exam";
   const refereeExamPassed = refereeExamResult?.passed === true;
+  const latestRefereeExamAttempt = useMemo(
+    () => getLatestRefereeExamAttempt(refereeExamAttempts, app.currentUserId),
+    [app.currentUserId, refereeExamAttempts],
+  );
+  const refereeExamLockedUntilMs = latestRefereeExamAttempt?.availableAfter ? new Date(latestRefereeExamAttempt.availableAfter).getTime() : 0;
+  const refereeExamLocked = Number.isFinite(refereeExamLockedUntilMs) && refereeExamLockedUntilMs > Date.now();
+  const refereeExamLockLabel = refereeExamLocked ? formatKoreanDateTime(latestRefereeExamAttempt.availableAfter) : "";
 
   const submitBlock = (event) => {
     event.preventDefault();
@@ -168,9 +200,26 @@ export default function Settings({ app, auth }) {
   };
   const updateRefereeDraft = (patch) => setRefereeDraft((current) => ({ ...current, ...patch }));
   const startRefereeExam = () => {
-    setRefereeExamSeed(`${Date.now()}-${app.currentUserId}-${Math.random()}`);
+    if (refereeExamOpen && !refereeExamResult) {
+      setRefereeExamNotice("이미 진행 중인 시험이 있습니다.");
+      return;
+    }
+    if (refereeExamLocked) {
+      setRefereeExamNotice(`심판 시험은 주 1회만 가능합니다. 다음 응시 가능: ${refereeExamLockLabel}`);
+      return;
+    }
+    const nextSeed = `${Date.now()}-${app.currentUserId}-${Math.random()}`;
+    const attemptId = makeRefereeAttemptId();
+    setCurrentRefereeExamAttemptId(attemptId);
+    setRefereeExamSeed(nextSeed);
     setRefereeExamAnswers({});
     setRefereeExamResult(null);
+    setRefereeExamNotice("");
+    app.actions.startRefereeExamAttempt({
+      id: attemptId,
+      seed: nextSeed,
+      examVersion: REFEREE_EXAM_VERSION,
+    });
     setRefereeExamOpen(true);
   };
   const selectRefereeExamAnswer = (questionId, answerIndex) => {
@@ -178,7 +227,9 @@ export default function Settings({ app, auth }) {
     setRefereeExamAnswers((current) => ({ ...current, [questionId]: answerIndex }));
   };
   const submitRefereeExam = () => {
-    setRefereeExamResult(gradeRefereeExam(refereeExamQuestions, refereeExamAnswers));
+    const result = gradeRefereeExam(refereeExamSeed, refereeExamAnswers);
+    setRefereeExamResult(result);
+    if (currentRefereeExamAttemptId) app.actions.finishRefereeExamAttempt(currentRefereeExamAttemptId, result);
   };
   const submitRefereeRequest = (event) => {
     event.preventDefault();
@@ -188,8 +239,10 @@ export default function Settings({ app, auth }) {
       examScore: refereeExamResult?.score ?? 0,
       examTotal: refereeExamResult?.total ?? REFEREE_EXAM_SIZE,
       examPassed: refereeDraft.qualification === "official_license" ? false : refereeExamPassed,
+      examAttemptId: currentRefereeExamAttemptId,
     });
     setRefereeDraft(DEFAULT_REFEREE_REQUEST);
+    setCurrentRefereeExamAttemptId("");
     setRefereeExamAnswers({});
     setRefereeExamResult(null);
     setRefereeExamOpen(false);
@@ -569,13 +622,19 @@ export default function Settings({ app, auth }) {
             </div>
             <div className="referee-exam-panel">
               <div className="referee-exam-summary">
-                <span><strong>{REFEREE_EXAM_BANK.length}</strong>문제은행</span>
+                <span><strong>{REFEREE_EXAM_BANK_SIZE}</strong>문제은행</span>
                 <span><strong>{REFEREE_EXAM_SIZE}</strong>문항</span>
                 <span><strong>{REFEREE_EXAM_PASS_SCORE}</strong>점 통과</span>
               </div>
+              <p className={`referee-exam-lock ${refereeExamLocked ? "locked" : ""}`}>
+                {refereeExamLocked
+                  ? `주 1회 제한 중 · 다음 응시 가능 ${refereeExamLockLabel}`
+                  : `시험 시작 후 ${REFEREE_EXAM_COOLDOWN_DAYS}일 동안 재응시할 수 없습니다.`}
+              </p>
+              {refereeExamNotice ? <p className="referee-exam-lock locked">{refereeExamNotice}</p> : null}
               <div className="referee-exam-actions">
-                <Button type="button" variant="secondary" onClick={startRefereeExam}>
-                  {refereeExamOpen ? "시험 다시 뽑기" : "심판 시험 시작"}
+                <Button type="button" variant="secondary" onClick={startRefereeExam} disabled={refereeExamLocked || (refereeExamOpen && !refereeExamResult)}>
+                  {refereeExamOpen && !refereeExamResult ? "시험 진행 중" : "심판 시험 시작"}
                 </Button>
                 {refereeExamResult ? (
                   <Badge tone={refereeExamResult.passed ? "green" : "orange"}>
@@ -592,10 +651,11 @@ export default function Settings({ app, auth }) {
                       <strong>{question.number}. {question.stem}</strong>
                       <div className="referee-exam-choice-grid">
                         {question.choices.map((choice, index) => {
+                          const review = refereeExamResult?.reviewedById?.[question.id];
                           const selected = refereeExamAnswers[question.id] === index;
                           const checked = Boolean(refereeExamResult);
-                          const correct = checked && question.answerIndex === index;
-                          const wrong = checked && selected && question.answerIndex !== index;
+                          const correct = checked && review?.answerIndex === index;
+                          const wrong = checked && selected && review?.answerIndex !== index;
                           return (
                             <button
                               key={choice}
@@ -608,7 +668,7 @@ export default function Settings({ app, auth }) {
                           );
                         })}
                       </div>
-                      {refereeExamResult ? <small>{question.explanation}</small> : null}
+                      {refereeExamResult ? <small>{refereeExamResult.reviewedById?.[question.id]?.explanation}</small> : null}
                     </div>
                   ))}
                   <Button type="button" onClick={submitRefereeExam} disabled={answeredRefereeExamCount < REFEREE_EXAM_SIZE || Boolean(refereeExamResult)}>
