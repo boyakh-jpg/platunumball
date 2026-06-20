@@ -2,6 +2,7 @@ import { CalendarDays, MapPin } from "lucide-react";
 import { Link } from "react-router-dom";
 import Badge from "../common/Badge.jsx";
 import Card from "../common/Card.jsx";
+import CourtHoverCard from "../court/CourtHoverCard.jsx";
 import TeamHoverCard from "../team/TeamHoverCard.jsx";
 
 const statusLabel = {
@@ -40,7 +41,7 @@ export default function MatchCard({ match, teams = [] }) {
         </Badge>
       </div>
       <div className="match-meta">
-        <span><MapPin size={15} />{match.court}</span>
+        <span><MapPin size={15} /><CourtHoverCard courtName={match.court}>{match.court}</CourtHoverCard></span>
         <span><CalendarDays size={15} />{match.scheduledAt}</span>
       </div>
       <div className="score-line">
