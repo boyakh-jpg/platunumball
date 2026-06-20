@@ -306,10 +306,11 @@ function getEntryPartyLeaderId(entry, hostPlayerId = "", roomState = {}) {
   return roomState.partyLeaders?.[entry.id] ?? (entry.fixed ? hostPlayerId : entry.playerId) ?? "";
 }
 
-function getRoomSlotBadge(playerId, entry, hostPlayerId, showCaptainBadge = false, roomState = {}) {
+function getRoomSlotBadge(playerId, entry, hostPlayerId, showCaptainBadge = false, roomState = {}, options = {}) {
+  const showPartyBadge = options.showPartyBadge !== false;
   if (!playerId) return null;
   if (playerId === hostPlayerId) return ROOM_SLOT_BADGES.host;
-  if (!showCaptainBadge) return null;
+  if (!showCaptainBadge || !showPartyBadge) return null;
   if (isPartyEntry(entry) && getEntryPartyLeaderId(entry, hostPlayerId, roomState) === playerId) return ROOM_SLOT_BADGES.partyLeader;
   if (isPartyEntry(entry) && getTeamCaptainId(entry.team) === playerId) return ROOM_SLOT_BADGES.teamCaptain;
   return null;
@@ -668,7 +669,7 @@ function FillSlot({ candidate, lobby, userById, teams, hostPlayerId = "", curren
   const user = candidate ? userById[candidate.playerId] : null;
   const readyLabel = candidate?.status === "ready" ? "READY" : "WAIT";
   const entry = candidate ? (lobby.entries ?? []).find((item) => item.id === candidate.entryId) : null;
-  const badge = getRoomSlotBadge(candidate?.playerId, entry, hostPlayerId, showCaptainBadge, roomState);
+  const badge = getRoomSlotBadge(candidate?.playerId, entry, hostPlayerId, showCaptainBadge, roomState, { showPartyBadge: !candidate?.reserve });
   const isSelfSlot = candidate?.playerId === currentUserId;
   const canOpenAction = isSelfSlot || Boolean(entry && canManageEntry?.(entry));
   const displayPosition = getRoomSlotDisplayPosition(user, slotPositions, candidate?.playerId, entry);
@@ -1004,7 +1005,7 @@ export function ReserveLine({
         detail={candidate.sourceLabel}
         mmr={user.ratings?.integrated ?? 1200}
         position={displayPosition}
-        badge={getRoomSlotBadge(candidate.playerId, entry, hostPlayerId, showCaptainBadge, roomState)}
+        badge={getRoomSlotBadge(candidate.playerId, entry, hostPlayerId, showCaptainBadge, roomState, { showPartyBadge: false })}
         onSelfAction={canOpenAction ? (event) => onSelfSlotAction?.(sideName, true, candidate.playerId, candidate.entryId, event) : null}
       />
     );
@@ -1054,6 +1055,7 @@ function RoomKickPanel({
   teams,
   onKickApplicant,
   onRemovePartyPlayer,
+  onCheckInPlayer,
   onSetReserve,
   onSetPlacement,
   allowSideMove = false,
@@ -1098,6 +1100,17 @@ function RoomKickPanel({
                   {attendanceBySide ? <i>{checkedIn ? "출석 완료" : "미출석"}</i> : null}
                 </span>
               </PlayerHoverCard>
+              {attendanceBySide && onCheckInPlayer ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={checkedIn ? "secondary" : "primary"}
+                  disabled={checkedIn}
+                  onClick={() => onCheckInPlayer(entry.side, playerId)}
+                >
+                  {checkedIn ? "출석 완료" : "출석"}
+                </Button>
+              ) : null}
               <Button
                 type="button"
                 size="sm"
@@ -1700,8 +1713,10 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
           teamA: sourceMatch?.attendance?.teamA ?? [],
           teamB: sourceMatch?.attendance?.teamB ?? [],
         };
+        const canManageMatchCheckin = Boolean(matchRoom && currentUserCanStartSourceMatch && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.startedAt && !sourceMatch?.endedAt && !sourceMatch?.result);
         const canCheckInSourceMatch = Boolean(
           matchRoom &&
+          canManageMatchCheckin &&
           sourceMatchParticipantSideName &&
           sourceMatchPhase?.phase === "checkin" &&
           !sourceMatch?.startedAt &&
@@ -1716,7 +1731,6 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
         const canEndSourceMatch = Boolean(matchRoom && currentUserCanOperateStartedSourceMatch && sourceMatchPhase?.phase === "live" && !sourceMatch?.result && !sourceMatch?.endedAt && sourceMatchStarted);
         const canReviewSourceMatch = Boolean(matchRoom && !sourceRoomReadOnly && currentUserCanOperateStartedSourceMatch && sourceMatchPhase?.phase === "dispute");
         const canCancelSourceMatch = Boolean(matchRoom && sourceMatch && ["contract", "agreed"].includes(sourceMatch.status) && (sourceMatchStarted || sourceMatch.endedAt || sourceMatch.result ? currentUserCanOperateStartedSourceMatch : mine));
-        const canManageMatchCheckin = Boolean(matchRoom && mine && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.startedAt && !sourceMatch?.endedAt && !sourceMatch?.result);
         const showSourceMatchRecordSummary = Boolean(
           matchRoom &&
           sourceMatch?.result &&
@@ -2091,7 +2105,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                 />
               ) : null}
 
-              {!sourceRoomReadOnly && mine && (!matchRoom || canManageMatchCheckin) ? (
+              {!sourceRoomReadOnly && ((!matchRoom && mine) || (matchRoom && canManageMatchCheckin)) ? (
                 <RoomKickPanel
                   lobby={lobby}
                   userById={userById}
@@ -2102,6 +2116,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                   onRemovePartyPlayer={(entryId, playerId) => (
                     matchRoom ? app.actions.removeMatchRoomPlayer(sourceMatch.id, playerId) : app.actions.removeRecruitingPartyPlayer(selectedPost.id, entryId, playerId)
                   )}
+                  onCheckInPlayer={matchRoom ? ((sideName, playerId) => app.actions.checkInMatchPlayer(sourceMatch.id, sideName, playerId)) : null}
                   onSetReserve={matchRoom ? ((entry, playerId, reserve) => app.actions.setMatchRoomPlayerPlacement(sourceMatch.id, playerId, { side: entry.side, reserve })) : null}
                   onSetPlacement={matchRoom ? ((playerId, placement) => app.actions.setMatchRoomPlayerPlacement(sourceMatch.id, playerId, placement)) : null}
                   allowSideMove={canMoveMatchSides}

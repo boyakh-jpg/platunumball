@@ -2832,7 +2832,8 @@ function getMissingActiveAttendance(match = {}) {
 
 export function checkInMatchPlayer(state, matchId, sideName, playerId) {
   const match = state.matches.find((item) => item.id === matchId);
-  if (!match || !playerId || playerId !== state.currentUserId) return state;
+  if (!match || !playerId) return state;
+  if (!currentUserCanStartMatch(state, match)) return state;
   if (getMatchRoomPhase(match).phase !== "checkin" || match.startedAt || match.endedAt || match.result) return state;
   const placement = getMatchPlayerPlacement(match, playerId);
   if (!placement || placement.side !== sideName) return state;
