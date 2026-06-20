@@ -2196,3 +2196,125 @@ html[data-theme="light"] .om-match-info-box {
     rgba(255, 255, 255, 0.76);
   box-shadow: 0 18px 42px rgba(35, 50, 59, 0.14);
 }
+
+/* Match list/filter convergence */
+.om-filter-bar,
+.om-list-head,
+.om-match-card,
+.om-match-summary-box,
+.om-score-box,
+.om-match-info-box,
+.om-calendar-summary,
+.om-calendar-box,
+.om-view-card {
+  border-color: rgba(163, 185, 208, 0.16);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.052), rgba(255, 255, 255, 0.016)),
+    rgba(10, 14, 21, 0.9);
+}
+
+.om-filter-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  overflow-x: visible;
+  gap: 8px;
+  padding: 10px;
+}
+
+.om-filter-bar .segmented-control {
+  width: auto;
+  max-width: 100%;
+  flex-wrap: wrap;
+}
+
+.om-filter-bar label {
+  flex: 1 1 180px;
+  max-width: 260px;
+}
+
+.om-filter-bar select,
+.om-filter-bar .segmented-control button,
+.om-calendar-actions button,
+.om-history-range button,
+.om-calendar-toolbar button,
+.om-calendar-grid button {
+  border-color: rgba(163, 185, 208, 0.14);
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.om-filter-bar .segmented-control button.active,
+.om-calendar-actions button.active,
+.om-history-range button.active,
+.om-calendar-grid button.active {
+  border-color: rgba(70, 224, 182, 0.42);
+  background: rgba(70, 224, 182, 0.12);
+  color: var(--green);
+}
+
+.om-match-card {
+  min-height: 136px;
+}
+
+.om-card-main {
+  min-width: 0;
+}
+
+.om-card-kicker {
+  gap: 7px;
+}
+
+.om-match-card p,
+.om-summary-meta,
+.om-summary-detail,
+.om-match-info-box span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.om-match-summary-box,
+.om-score-box,
+.om-match-info-box {
+  box-shadow: none;
+}
+
+.om-summary-line {
+  grid-template-columns: minmax(0, 1fr) 42px minmax(0, 1fr);
+}
+
+html[data-theme="light"] .om-filter-bar,
+html[data-theme="light"] .om-list-head,
+html[data-theme="light"] .om-match-card,
+html[data-theme="light"] .om-match-summary-box,
+html[data-theme="light"] .om-score-box,
+html[data-theme="light"] .om-match-info-box,
+html[data-theme="light"] .om-calendar-summary,
+html[data-theme="light"] .om-calendar-box,
+html[data-theme="light"] .om-view-card {
+  border-color: rgba(41, 116, 99, 0.16);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(239, 249, 245, 0.78)),
+    rgba(246, 252, 249, 0.88);
+}
+
+html[data-theme="light"] .om-filter-bar select,
+html[data-theme="light"] .om-filter-bar .segmented-control button,
+html[data-theme="light"] .om-calendar-actions button,
+html[data-theme="light"] .om-history-range button,
+html[data-theme="light"] .om-calendar-toolbar button,
+html[data-theme="light"] .om-calendar-grid button {
+  border-color: rgba(41, 116, 99, 0.16);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+@media (max-width: 720px) {
+  .om-filter-bar label {
+    max-width: none;
+  }
+
+  .om-match-card {
+    gap: 10px;
+  }
+}

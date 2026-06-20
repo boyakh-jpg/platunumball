@@ -3113,3 +3113,109 @@ html[data-theme="light"] .ow-recruit-card.ow-target-room {
   border-color: rgba(53, 119, 212, 0.42);
   box-shadow: inset 3px 0 0 rgba(53, 119, 212, 0.56), 0 18px 42px rgba(35, 50, 59, 0.14);
 }
+
+/* Queue list/filter convergence */
+.ow-queue-controls,
+.ow-filter-bar,
+.ow-recruit-card,
+.ow-queue-board {
+  border-color: rgba(163, 185, 208, 0.16);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.052), rgba(255, 255, 255, 0.016)),
+    rgba(10, 14, 21, 0.9);
+}
+
+.ow-filter-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  overflow-x: visible;
+  gap: 8px;
+  padding: 10px;
+}
+
+.ow-filter-bar button,
+.ow-filter-select select,
+.ow-collapse-button {
+  border-color: rgba(163, 185, 208, 0.14);
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.ow-filter-bar button.active,
+.ow-collapse-button {
+  border-color: rgba(70, 224, 182, 0.42);
+  background: rgba(70, 224, 182, 0.12);
+  color: var(--green);
+}
+
+.ow-filter-select {
+  flex: 1 1 180px;
+  max-width: 260px;
+}
+
+.ow-recruit-card {
+  grid-template-columns: minmax(0, 1fr) 118px;
+  min-height: 136px;
+}
+
+.ow-card-main {
+  min-width: 0;
+}
+
+.ow-card-top,
+.ow-card-bottom {
+  align-items: center;
+  gap: 7px;
+}
+
+.ow-card-meta span,
+.ow-card-bottom span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ow-queue-board {
+  box-shadow: none;
+}
+
+.ow-summary-line {
+  grid-template-columns: minmax(0, 1fr) 42px minmax(0, 1fr);
+}
+
+html[data-theme="light"] .ow-queue-controls,
+html[data-theme="light"] .ow-filter-bar,
+html[data-theme="light"] .ow-recruit-card,
+html[data-theme="light"] .ow-queue-board {
+  border-color: rgba(41, 116, 99, 0.16);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(239, 249, 245, 0.78)),
+    rgba(246, 252, 249, 0.88);
+}
+
+html[data-theme="light"] .ow-filter-bar button,
+html[data-theme="light"] .ow-filter-select select,
+html[data-theme="light"] .ow-collapse-button {
+  border-color: rgba(41, 116, 99, 0.16);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+@media (max-width: 720px) {
+  .ow-recruit-card {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .ow-card-side {
+    grid-template-columns: 1fr;
+  }
+
+  .ow-card-action {
+    min-height: 44px;
+  }
+
+  .ow-filter-select {
+    max-width: none;
+  }
+}

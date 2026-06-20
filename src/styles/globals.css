@@ -8768,3 +8768,267 @@ html[data-theme="light"] .recent-match-row {
     white-space: normal;
   }
 }
+
+/* Cross-page design convergence */
+.section-card,
+.team-card,
+.rating-card,
+.profile-records-summary,
+.selector-panel,
+.team-create-panel,
+.my-team-management-card,
+.team-rank-rule-card,
+.home-search-panel,
+.home-action-card,
+.opgg-profile-card,
+.opgg-mode-card,
+.opgg-leaderboard-card,
+.opgg-record-card,
+.match-focus-card,
+.home-recent-card,
+.season-mini-card,
+.rivalry-card,
+.recruiting-teaser-card,
+.home-my-teams-card,
+.home-side-stack > .card {
+  border-color: rgba(163, 185, 208, 0.16);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.052), rgba(255, 255, 255, 0.016)),
+    rgba(10, 14, 21, 0.9);
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.28);
+}
+
+.opgg-stat-grid span,
+.stat-strip span,
+.rank-rule-list > div,
+.opgg-rank-block,
+.opgg-record-main,
+.opgg-mode-pill,
+.team-hub-board,
+.team-hub-board div span,
+.team-card .member-row,
+.member-row,
+.ranking-row,
+.delta-row,
+.recent-match-row,
+.home-action-row,
+.home-invitation-row,
+.home-search-box,
+.home-search-results a,
+.home-search-results .team-hover-trigger,
+.opgg-quick-links a,
+.opgg-profile-tabs a,
+.opgg-rank-list .opgg-rank-row,
+.home-side-stack .compact-list a,
+.home-side-stack .compact-list > div,
+.home-team-list a,
+.home-team-list > div,
+.quick-picker button,
+.favorite-result-row,
+.favorite-mini-chip {
+  border-color: rgba(163, 185, 208, 0.14);
+  background: rgba(255, 255, 255, 0.045);
+  box-shadow: none;
+}
+
+.opgg-stat-grid,
+.stat-strip {
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+  gap: 8px;
+}
+
+.opgg-stat-grid span,
+.stat-strip span,
+.rank-rule-list > div {
+  min-height: 62px;
+  align-content: center;
+  padding: 10px 12px;
+}
+
+.recent-match-row,
+.profile-record-row,
+.home-action-row,
+.home-invitation-row,
+.my-team-row,
+.home-team-list a,
+.home-team-list > div,
+.opgg-rank-list .opgg-rank-row {
+  min-width: 0;
+  min-height: 48px;
+}
+
+.recent-match-row {
+  grid-template-columns: 34px minmax(0, 1fr) minmax(54px, auto);
+}
+
+.recent-match-row > span,
+.profile-record-row > span {
+  min-width: 0;
+}
+
+.recent-match-row strong,
+.recent-match-row em,
+.recent-match-row small,
+.my-team-row strong,
+.my-team-row em,
+.home-team-list strong,
+.home-team-list em,
+.opgg-rank-list .opgg-rank-row > strong,
+.opgg-rank-list .opgg-rank-row > em {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-rating-grid,
+.opgg-mode-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.profile-rating-primary {
+  grid-column: span 2;
+}
+
+.profile-rating-mode,
+.opgg-mode-pill {
+  min-height: 132px;
+}
+
+.team-card {
+  overflow: hidden;
+}
+
+.team-card .team-card-top {
+  min-width: 0;
+}
+
+.team-card-actions {
+  min-width: 86px;
+  justify-content: flex-end;
+}
+
+.team-card .stat-strip {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.team-card .member-row {
+  min-height: 44px;
+}
+
+.team-card .member-row .tier-badge {
+  max-width: 84px;
+}
+
+.selector-panel .search-controls,
+.queue-filter-grid,
+.ranking-filter-card {
+  border: 1px solid rgba(163, 185, 208, 0.16);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.045);
+  padding: 12px;
+}
+
+.selector-panel .quick-picker {
+  display: grid;
+  gap: 8px;
+}
+
+html[data-theme="light"] .section-card,
+html[data-theme="light"] .team-card,
+html[data-theme="light"] .rating-card,
+html[data-theme="light"] .profile-records-summary,
+html[data-theme="light"] .selector-panel,
+html[data-theme="light"] .team-create-panel,
+html[data-theme="light"] .my-team-management-card,
+html[data-theme="light"] .team-rank-rule-card,
+html[data-theme="light"] .home-search-panel,
+html[data-theme="light"] .home-action-card,
+html[data-theme="light"] .opgg-profile-card,
+html[data-theme="light"] .opgg-mode-card,
+html[data-theme="light"] .opgg-leaderboard-card,
+html[data-theme="light"] .opgg-record-card,
+html[data-theme="light"] .match-focus-card,
+html[data-theme="light"] .home-recent-card,
+html[data-theme="light"] .season-mini-card,
+html[data-theme="light"] .rivalry-card,
+html[data-theme="light"] .recruiting-teaser-card,
+html[data-theme="light"] .home-my-teams-card,
+html[data-theme="light"] .home-side-stack > .card {
+  border-color: rgba(41, 116, 99, 0.18);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(239, 249, 245, 0.78)),
+    rgba(246, 252, 249, 0.88);
+  box-shadow: 0 18px 42px rgba(35, 87, 75, 0.12);
+}
+
+html[data-theme="light"] .opgg-stat-grid span,
+html[data-theme="light"] .stat-strip span,
+html[data-theme="light"] .rank-rule-list > div,
+html[data-theme="light"] .opgg-rank-block,
+html[data-theme="light"] .opgg-record-main,
+html[data-theme="light"] .opgg-mode-pill,
+html[data-theme="light"] .team-hub-board,
+html[data-theme="light"] .team-hub-board div span,
+html[data-theme="light"] .team-card .member-row,
+html[data-theme="light"] .member-row,
+html[data-theme="light"] .ranking-row,
+html[data-theme="light"] .delta-row,
+html[data-theme="light"] .recent-match-row,
+html[data-theme="light"] .home-action-row,
+html[data-theme="light"] .home-invitation-row,
+html[data-theme="light"] .home-search-box,
+html[data-theme="light"] .home-search-results a,
+html[data-theme="light"] .home-search-results .team-hover-trigger,
+html[data-theme="light"] .opgg-quick-links a,
+html[data-theme="light"] .opgg-profile-tabs a,
+html[data-theme="light"] .opgg-rank-list .opgg-rank-row,
+html[data-theme="light"] .home-side-stack .compact-list a,
+html[data-theme="light"] .home-side-stack .compact-list > div,
+html[data-theme="light"] .home-team-list a,
+html[data-theme="light"] .home-team-list > div,
+html[data-theme="light"] .quick-picker button,
+html[data-theme="light"] .favorite-result-row,
+html[data-theme="light"] .favorite-mini-chip,
+html[data-theme="light"] .selector-panel .search-controls,
+html[data-theme="light"] .queue-filter-grid,
+html[data-theme="light"] .ranking-filter-card {
+  border-color: rgba(41, 116, 99, 0.16);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+@media (max-width: 760px) {
+  .recent-match-row,
+  .profile-record-row {
+    grid-template-columns: 32px minmax(0, 1fr) auto;
+  }
+
+  .profile-rating-grid,
+  .opgg-mode-grid {
+    gap: 8px;
+  }
+
+  .profile-rating-mode,
+  .opgg-mode-pill {
+    min-height: 112px;
+    padding: 10px;
+  }
+}
+
+@media (max-width: 430px) {
+  .opgg-rank-list .opgg-rank-row {
+    grid-template-columns: 22px 28px minmax(0, 1fr);
+  }
+
+  .opgg-rank-list .opgg-rank-row > em {
+    grid-column: 3;
+  }
+
+  .team-card .stat-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .team-card .stat-strip span {
+    padding: 8px;
+  }
+}
