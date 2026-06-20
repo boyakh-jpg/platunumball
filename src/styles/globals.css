@@ -6553,11 +6553,44 @@ input[type="color"] {
   .match-room .stat-trust-panel {
     padding: 10px;
   }
+
+  .match-room .stat-entry-side {
+    gap: 7px;
+    padding: 10px;
+  }
+
+  .match-room .stat-player-button {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+    min-height: 0;
+    padding: 8px;
+  }
+
+  .match-room .stat-player-button > strong {
+    justify-self: start;
+  }
+
+  .match-room .stat-player-button em {
+    overflow: visible;
+    line-height: 1.25;
+    white-space: normal;
+  }
+
+  .match-room .compact-list > div {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: start;
+    gap: 5px;
+  }
+
+  .match-room .compact-list strong {
+    text-align: left;
+  }
 }
 
 .player-stat-row {
   display: grid;
-  grid-template-columns: minmax(120px, 1fr) repeat(5, minmax(52px, 0.4fr));
+  grid-template-columns: minmax(120px, 1fr) repeat(6, minmax(48px, 0.36fr));
   gap: 8px;
   align-items: end;
 }
@@ -6575,9 +6608,23 @@ input[type="color"] {
 }
 
 .player-stat-row input {
+  width: 100%;
+  min-width: 0;
   min-height: 34px;
   padding: 6px;
   text-align: center;
+}
+
+.match-room .compact-list > div {
+  min-width: 0;
+}
+
+.match-room .compact-list strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+  text-align: right;
+  white-space: normal;
 }
 
 .approval-side-header {
@@ -7675,7 +7722,20 @@ html[data-theme="light"] .recruiting-fit-panel {
   }
 
   .player-stat-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     align-items: stretch;
+  }
+
+  .player-stat-row > div {
+    grid-column: 1 / -1;
+  }
+
+  .player-stat-row label {
+    min-width: 0;
+  }
+
+  .player-stat-row input {
+    width: 100%;
   }
 
   .recruiting-actions {
@@ -7895,12 +7955,15 @@ html[data-theme="light"] .recruiting-fit-panel {
 
 @media (max-width: 430px) {
   .recorder-player-row {
-    grid-template-columns: minmax(56px, 68px) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .recorder-player-main .avatar.small,
   .recorder-player-main em {
     display: none;
+  }
+
+  .recorder-player-main {
+    min-width: 0;
   }
 
   .recorder-stat-stepper {
