@@ -18,6 +18,18 @@ Caveman mode.
 - Do not invent filenames.
 - Commit and push completed work unless user says not to.
 
+# Request Handling
+
+- Before implementing non-trivial requests, restate the request as a clean implementation prompt in Korean.
+- Confirm the intended scope, affected screens, and whether logic/design docs need updates.
+- Do not blindly agree with the user.
+- Judge the request against `docs/logic-and-terminology.md` and `docs/design-system.md`.
+- If the request conflicts with existing principles, say so and ask whether to change the principle or reject the change.
+- If the request is safe and aligned with principles, proceed without excessive questioning.
+- If the user is reporting a bug, first say what invariant appears broken.
+- If the user proposes a UI idea, evaluate whether it improves clarity, reduces steps, and preserves responsive layout.
+- If the user proposes a logic change, evaluate whether it breaks room phase, party, permission, MMR, or record rules.
+
 # Project Rules
 
 - Before changing room, match, party, invite, referee, record, report, MMR, team, tournament, or auth logic, check `docs/logic-and-terminology.md`.
