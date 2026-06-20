@@ -18,7 +18,7 @@
   border-radius: var(--radius);
   background:
     linear-gradient(90deg, rgba(5, 7, 10, 0.98), rgba(5, 7, 10, 0.72) 52%, rgba(5, 7, 10, 0.42)),
-    var(--bg-ball) center / cover no-repeat;
+    var(--bg-ball) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat;
   box-shadow: var(--shadow);
   padding: 24px;
 }
@@ -665,7 +665,7 @@
   border-radius: var(--radius);
   background:
     linear-gradient(145deg, rgba(10, 14, 21, 0.98), rgba(10, 14, 21, 0.92)),
-    var(--bg-ball) center / cover no-repeat;
+    var(--bg-ball) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat;
   box-shadow: 0 30px 120px rgba(0, 0, 0, 0.58);
   padding: 18px;
 }
@@ -1230,7 +1230,7 @@
   border-radius: var(--radius);
   background:
     linear-gradient(90deg, rgba(3, 6, 12, 0.98), rgba(4, 8, 15, 0.78) 42%, rgba(4, 8, 15, 0.5)),
-    var(--bg-hoop) center / cover no-repeat;
+    var(--bg-hoop) var(--hero-bg-position-hoop) / var(--hero-bg-size) no-repeat;
   box-shadow: var(--shadow);
   padding: 18px;
 }
@@ -2613,7 +2613,7 @@ html[data-theme="light"] .ow-lobby-modal {
 html[data-theme="light"] .ow-lobby-arena {
   background:
     linear-gradient(90deg, rgba(246, 248, 242, 0.98), rgba(246, 248, 242, 0.82) 42%, rgba(246, 248, 242, 0.58)),
-    var(--bg-hoop) center / cover no-repeat;
+    var(--bg-hoop) var(--hero-bg-position-hoop) / var(--hero-bg-size) no-repeat;
 }
 
 html[data-theme="light"] .ow-lobby-title p {
@@ -2745,7 +2745,7 @@ html[data-theme="light"] .ow-recruit-hero,
 html[data-theme="light"] .ow-compose-drawer {
   background:
     linear-gradient(90deg, rgba(246, 248, 242, 0.98), rgba(246, 248, 242, 0.78) 52%, rgba(246, 248, 242, 0.54)),
-    var(--bg-ball) center / cover no-repeat;
+    var(--bg-ball) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat;
 }
 
 html[data-theme="light"] .ow-hero-copy p {

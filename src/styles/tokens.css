@@ -24,6 +24,11 @@
   --bg-action: url("/assets/main.png");
   --bg-hoop: url("/assets/Gemini_Generated_Image_veaa01veaa01veaa.png");
   --bg-ball: url("/assets/Gemini_Generated_Image_pkzbpxpkzbpxpkzb.png");
+  --hero-bg-size: cover;
+  --hero-bg-position-court: center center;
+  --hero-bg-position-action: center center;
+  --hero-bg-position-hoop: center center;
+  --hero-bg-position-ball: center center;
 }
 
 html[data-theme="light"] {

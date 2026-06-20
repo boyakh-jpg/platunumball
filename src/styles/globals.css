@@ -186,7 +186,7 @@ h3 {
   background:
     linear-gradient(180deg, rgba(5, 7, 10, 0.66), rgba(5, 7, 10, 0.92)),
     linear-gradient(90deg, rgba(5, 19, 24, 0.92), rgba(13, 15, 21, 0.68), rgba(22, 12, 8, 0.88)),
-    var(--bg-court) center / cover no-repeat,
+    var(--bg-court) var(--hero-bg-position-court) / var(--hero-bg-size) no-repeat,
     #080b10;
   padding: 22px;
 }
@@ -3109,7 +3109,7 @@ input[type="color"] {
   background:
     linear-gradient(90deg, rgba(5, 7, 10, 0.96) 0%, rgba(5, 7, 10, 0.72) 42%, rgba(5, 7, 10, 0.25) 100%),
     linear-gradient(180deg, rgba(5, 7, 10, 0.18), rgba(5, 7, 10, 0.94)),
-    var(--bg-action) center / cover no-repeat;
+    var(--bg-action) var(--hero-bg-position-action) / var(--hero-bg-size) no-repeat;
 }
 
 .landing-hero::after,
@@ -3307,7 +3307,7 @@ input[type="color"] {
   border-radius: var(--radius);
   background:
     linear-gradient(90deg, rgba(5, 7, 10, 0.94), rgba(5, 7, 10, 0.62), rgba(5, 7, 10, 0.92)),
-    var(--bg-action) center / cover no-repeat;
+    var(--bg-action) var(--hero-bg-position-action) / var(--hero-bg-size) no-repeat;
   box-shadow: var(--shadow);
   padding: 22px;
 }
@@ -3416,7 +3416,7 @@ input[type="color"] {
 .match-hero {
   background:
     linear-gradient(90deg, rgba(5, 7, 10, 0.95), rgba(5, 7, 10, 0.64), rgba(5, 7, 10, 0.92)),
-    var(--bg-hoop) center / cover no-repeat;
+    var(--bg-hoop) var(--hero-bg-position-hoop) / var(--hero-bg-size) no-repeat;
 }
 
 .team-hub-hero {
@@ -3430,7 +3430,7 @@ input[type="color"] {
   border-radius: var(--radius);
   background:
     linear-gradient(90deg, rgba(5, 7, 10, 0.94), rgba(5, 7, 10, 0.66)),
-    var(--bg-ball) center / cover no-repeat;
+    var(--bg-ball) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat;
   box-shadow: var(--shadow);
   padding: 24px;
 }
@@ -5379,7 +5379,7 @@ input[type="color"] {
   border-radius: var(--radius);
   background:
     linear-gradient(105deg, rgba(5, 7, 10, 0.96), rgba(5, 7, 10, 0.68), rgba(5, 7, 10, 0.94)),
-    var(--bg-ball) center / cover no-repeat;
+    var(--bg-ball) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat;
   box-shadow: var(--shadow);
   padding: 24px;
 }
@@ -5644,7 +5644,7 @@ input[type="color"] {
   border-color: rgba(70, 224, 182, 0.24);
   background:
     linear-gradient(135deg, rgba(8, 11, 16, 0.9), rgba(8, 11, 16, 0.7)),
-    var(--bg-ball) center / cover no-repeat;
+    var(--bg-ball) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat;
 }
 
 .queue-filter-grid {
@@ -5825,7 +5825,7 @@ input[type="color"] {
   border-color: rgba(255, 211, 108, 0.2);
   background:
     linear-gradient(145deg, rgba(10, 14, 21, 0.93), rgba(10, 14, 21, 0.78)),
-    var(--bg-hoop) center / cover no-repeat;
+    var(--bg-hoop) var(--hero-bg-position-hoop) / var(--hero-bg-size) no-repeat;
 }
 
 .tier-range-note {
@@ -6193,7 +6193,7 @@ input[type="color"] {
   border-radius: var(--radius);
   background:
     linear-gradient(90deg, rgba(5, 7, 10, 0.95), rgba(5, 7, 10, 0.66), rgba(5, 7, 10, 0.92)),
-    url("/assets/rankball-court-hero.png") center / cover no-repeat;
+    var(--bg-court) var(--hero-bg-position-court) / var(--hero-bg-size) no-repeat;
   box-shadow: var(--shadow);
   padding: 24px;
 }
@@ -7389,7 +7389,7 @@ html[data-theme="light"] .landing-backdrop {
   background:
     linear-gradient(90deg, rgba(246, 248, 242, 0.96) 0%, rgba(246, 248, 242, 0.72) 43%, rgba(246, 248, 242, 0.3) 100%),
     linear-gradient(180deg, rgba(246, 248, 242, 0.18), rgba(246, 248, 242, 0.88)),
-    var(--bg-action) center / cover no-repeat;
+    var(--bg-action) var(--hero-bg-position-action) / var(--hero-bg-size) no-repeat;
 }
 
 html[data-theme="light"] .broadcast-glass,
@@ -7462,34 +7462,34 @@ html[data-theme="light"] .opgg-search-card {
 html[data-theme="light"] .court-command {
   background:
     linear-gradient(90deg, rgba(246, 248, 242, 0.94), rgba(246, 248, 242, 0.7), rgba(246, 248, 242, 0.9)),
-    var(--bg-action) center / cover no-repeat;
+    var(--bg-action) var(--hero-bg-position-action) / var(--hero-bg-size) no-repeat;
 }
 
 html[data-theme="light"] .match-hero {
   background:
     linear-gradient(90deg, rgba(246, 248, 242, 0.96), rgba(246, 248, 242, 0.72), rgba(246, 248, 242, 0.92)),
-    var(--bg-hoop) center / cover no-repeat;
+    var(--bg-hoop) var(--hero-bg-position-hoop) / var(--hero-bg-size) no-repeat;
 }
 
 html[data-theme="light"] .team-hub-hero,
 html[data-theme="light"] .season-hero {
   background:
     linear-gradient(105deg, rgba(246, 248, 242, 0.96), rgba(246, 248, 242, 0.7), rgba(246, 248, 242, 0.93)),
-    var(--bg-ball) center / cover no-repeat;
+    var(--bg-ball) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat;
 }
 
 html[data-theme="light"] .profile-hero,
 html[data-theme="light"] .team-detail-hero {
   background:
     linear-gradient(90deg, rgba(246, 248, 242, 0.96), rgba(246, 248, 242, 0.72), rgba(246, 248, 242, 0.92)),
-    var(--bg-court) center / cover no-repeat;
+    var(--bg-court) var(--hero-bg-position-court) / var(--hero-bg-size) no-repeat;
 }
 
 html[data-theme="light"] .recruiting-board-card,
 html[data-theme="light"] .recruiting-compose-card {
   background:
     linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.7)),
-    var(--bg-hoop) center / cover no-repeat;
+    var(--bg-hoop) var(--hero-bg-position-hoop) / var(--hero-bg-size) no-repeat;
 }
 
 html[data-theme="light"] .court-command .tier-line,
@@ -7574,7 +7574,7 @@ html[data-theme="light"] .favorite-toggle-button.active.button-secondary {
 html[data-theme="light"] .auth-shell {
   background:
     linear-gradient(180deg, rgba(248, 252, 248, 0.76), rgba(242, 247, 244, 0.94)),
-    var(--bg-court) center / cover no-repeat,
+    var(--bg-court) var(--hero-bg-position-court) / var(--hero-bg-size) no-repeat,
     #f4f7f2;
 }
 
@@ -8375,6 +8375,7 @@ html[data-theme="light"] .recruiting-fit-panel {
 /* Unified app page surfaces */
 .page-header {
   --page-hero-bg: var(--bg-ball);
+  --page-hero-bg-position: var(--hero-bg-position-ball);
   position: relative;
   isolation: isolate;
   overflow: hidden;
@@ -8383,7 +8384,7 @@ html[data-theme="light"] .recruiting-fit-panel {
   border-radius: var(--radius);
   background:
     linear-gradient(90deg, rgba(5, 7, 10, 0.97), rgba(5, 7, 10, 0.76) 54%, rgba(5, 7, 10, 0.48)),
-    var(--page-hero-bg) center / cover no-repeat;
+    var(--page-hero-bg) var(--page-hero-bg-position) / var(--hero-bg-size) no-repeat;
   box-shadow: var(--shadow);
   padding: 24px;
 }
@@ -8428,14 +8429,17 @@ html[data-theme="light"] .recruiting-fit-panel {
 
 .profile-page .page-header {
   --page-hero-bg: var(--bg-court);
+  --page-hero-bg-position: var(--hero-bg-position-court);
 }
 
 .recorder-page .page-header {
   --page-hero-bg: var(--bg-hoop);
+  --page-hero-bg-position: var(--hero-bg-position-hoop);
 }
 
 .settings-page .page-header {
   --page-hero-bg: var(--bg-ball);
+  --page-hero-bg-position: var(--hero-bg-position-ball);
 }
 
 .team-hub-hero {
@@ -8452,7 +8456,7 @@ html[data-theme="light"] .team-hub-hero {
   border-color: rgba(32, 56, 68, 0.14);
   background:
     linear-gradient(90deg, rgba(246, 248, 242, 0.98), rgba(246, 248, 242, 0.88) 54%, rgba(246, 248, 242, 0.72)),
-    var(--page-hero-bg, var(--bg-ball)) center / cover no-repeat;
+    var(--page-hero-bg, var(--bg-ball)) var(--page-hero-bg-position, var(--hero-bg-position-ball)) / var(--hero-bg-size) no-repeat;
 }
 
 html[data-theme="light"] .page-header h1,
@@ -8534,7 +8538,7 @@ html[data-theme="light"] .team-hub-hero p:not(.eyebrow) {
   border-color: rgba(70, 224, 182, 0.22);
   background:
     linear-gradient(90deg, rgba(5, 7, 10, 0.97), rgba(5, 7, 10, 0.76) 54%, rgba(5, 7, 10, 0.48)),
-    var(--bg-ball) center / cover no-repeat;
+    var(--bg-ball) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat;
   box-shadow: var(--shadow);
 }
 
@@ -8672,7 +8676,7 @@ html[data-theme="light"] .opgg-search-hero {
   border-color: rgba(32, 56, 68, 0.14);
   background:
     linear-gradient(90deg, rgba(246, 248, 242, 0.98), rgba(246, 248, 242, 0.88) 54%, rgba(246, 248, 242, 0.72)),
-    var(--bg-ball) center / cover no-repeat;
+    var(--bg-ball) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat;
 }
 
 html[data-theme="light"] .opgg-search-hero h1 {

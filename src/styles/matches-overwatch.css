@@ -17,7 +17,7 @@
   border-radius: var(--radius);
   background:
     linear-gradient(90deg, rgba(5, 7, 10, 0.96), rgba(5, 7, 10, 0.76) 52%, rgba(5, 7, 10, 0.48)),
-    var(--bg-hoop) center / cover no-repeat;
+    var(--bg-hoop) var(--hero-bg-position-hoop) / var(--hero-bg-size) no-repeat;
   box-shadow: var(--shadow);
   padding: 24px;
 }
@@ -644,7 +644,7 @@
   border-radius: var(--radius);
   background:
     linear-gradient(145deg, rgba(10, 14, 21, 0.98), rgba(10, 14, 21, 0.92)),
-    var(--bg-hoop) center / cover no-repeat;
+    var(--bg-hoop) var(--hero-bg-position-hoop) / var(--hero-bg-size) no-repeat;
   box-shadow: 0 30px 120px rgba(0, 0, 0, 0.58);
   padding: 18px;
 }
@@ -725,7 +725,7 @@
   border-radius: var(--radius-lg);
   background:
     linear-gradient(105deg, rgba(8, 11, 16, 0.92), rgba(8, 11, 16, 0.66)),
-    var(--bg-hoop) center / cover no-repeat;
+    var(--bg-hoop) var(--hero-bg-position-hoop) / var(--hero-bg-size) no-repeat;
   padding: 26px;
 }
 
@@ -1763,7 +1763,7 @@
 html[data-theme="light"] .om-match-hero {
   background:
     linear-gradient(90deg, rgba(246, 248, 242, 0.98), rgba(246, 248, 242, 0.8) 52%, rgba(246, 248, 242, 0.55)),
-    var(--bg-hoop) center / cover no-repeat;
+    var(--bg-hoop) var(--hero-bg-position-hoop) / var(--hero-bg-size) no-repeat;
 }
 
 html[data-theme="light"] .om-match-copy p {
