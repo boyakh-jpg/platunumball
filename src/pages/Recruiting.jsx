@@ -403,7 +403,11 @@ function groupPartySlots(slots = []) {
     groups.push(canGroup ? { type: "party", partyKey: slot.partyKey, slots: [slot] } : { type: "slot", slots: [slot] });
   });
 
-  return groups;
+  return groups.map((group) => (
+    group.type === "party" && group.slots.length < 2
+      ? { type: "slot", slots: group.slots }
+      : group
+  ));
 }
 
 export function PlayerRoomSlot({

@@ -355,7 +355,38 @@ html[data-theme="light"] .gm-team-panel,
 html[data-theme="light"] .gm-score-core,
 html[data-theme="light"] .gm-reserve-line,
 html[data-theme="light"] .gm-room-actions > div {
-  background: rgba(255, 255, 255, 0.76);
+  border-color: rgba(32, 56, 68, 0.16);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 14px 34px rgba(35, 50, 59, 0.1);
+}
+
+html[data-theme="light"] .gm-player-slot {
+  border-color: rgba(15, 159, 126, 0.3);
+  background:
+    linear-gradient(180deg, rgba(15, 159, 126, 0.13), rgba(15, 159, 126, 0.045)),
+    rgba(245, 250, 247, 0.96);
+  color: #4e6068;
+}
+
+html[data-theme="light"] .gm-player-slot.ready {
+  border-color: rgba(15, 159, 126, 0.56);
+  background:
+    linear-gradient(180deg, rgba(15, 159, 126, 0.2), rgba(15, 159, 126, 0.07)),
+    rgba(238, 249, 244, 0.98);
+}
+
+html[data-theme="light"] .gm-player-slot.reserve.empty {
+  border-color: rgba(32, 56, 68, 0.22);
+  background: rgba(232, 240, 236, 0.88);
+}
+
+html[data-theme="light"] .gm-player-slot small {
+  background: rgba(53, 119, 212, 0.12);
+  color: #245a9f;
+}
+
+html[data-theme="light"] .gm-player-slot em {
+  color: #9a650f;
 }
 
 @media (max-width: 1180px) {
