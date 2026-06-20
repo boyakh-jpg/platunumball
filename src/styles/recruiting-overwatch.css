@@ -1623,6 +1623,12 @@ button.ow-room-player-slot {
   object-position: center 0%;
 }
 
+.ow-position-avatar[data-position="PG"] .ow-position-avatar-player,
+.ow-position-avatar[data-position="PF"] .ow-position-avatar-player {
+  width: 116%;
+  height: 138%;
+}
+
 .ow-room-player-slot strong,
 .ow-room-player-slot > span:not(.avatar),
 .ow-room-player-slot b,
