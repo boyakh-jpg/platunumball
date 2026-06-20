@@ -854,7 +854,7 @@ export function SideRoster({
     const partyEntry = isPartyEntry(entry);
     const partyLabel = partyEntry && entry.team ? entry.team.name : "개인 참여";
     const isSelfSlot = playerId === currentUserId;
-    const canOpenAction = isSelfSlot || Boolean(canManageEntry?.(entry));
+    const canOpenAction = Boolean(onSelfSlotAction) && (isSelfSlot || Boolean(canManageEntry?.(entry)));
     const displayPosition = getRoomSlotDisplayPosition(user, slotPositions, playerId, entry);
     return (
       <PlayerRoomSlot
@@ -969,7 +969,7 @@ export function ReserveLine({
     const assigned = recorderId === candidate.playerId;
     const readyText = canRecord ? (assigned ? "자동 기록자" : "기록 후보") : "후보";
     const isSelfSlot = candidate.playerId === currentUserId;
-    const canOpenAction = isSelfSlot || Boolean(canManageEntry?.(entry));
+    const canOpenAction = Boolean(onSelfSlotAction) && (isSelfSlot || Boolean(canManageEntry?.(entry)));
     const displayPosition = getRoomSlotDisplayPosition(user, slotPositions, candidate.playerId, entry);
     return (
       <PlayerRoomSlot
@@ -1108,7 +1108,7 @@ function RoomKickPanel({
   );
 }
 
-export function RoomChat({ messages, userById, teams, value, canChat, onChange, onSubmit }) {
+export function RoomChat({ messages, userById, teams, value, canChat, readOnly = false, onChange, onSubmit }) {
   return (
     <div className="ow-room-chat">
       <header>
@@ -1133,18 +1133,20 @@ export function RoomChat({ messages, userById, teams, value, canChat, onChange, 
           <div className="ow-chat-empty">아직 채팅 없음</div>
         )}
       </div>
-      <form className="ow-chat-form" onSubmit={onSubmit}>
-        <input
-          value={value}
-          disabled={!canChat}
-          maxLength={500}
-          onChange={(event) => onChange(event.target.value)}
-          placeholder={canChat ? "방 전체에 보낼 메시지" : "참여 후 채팅 가능"}
-        />
-        <Button type="submit" disabled={!canChat || !value.trim()}>
-          <Send size={16} /> 전송
-        </Button>
-      </form>
+      {!readOnly ? (
+        <form className="ow-chat-form" onSubmit={onSubmit}>
+          <input
+            value={value}
+            disabled={!canChat}
+            maxLength={500}
+            onChange={(event) => onChange(event.target.value)}
+            placeholder={canChat ? "방 전체에 보낼 메시지" : "참여 후 채팅 가능"}
+          />
+          <Button type="submit" disabled={!canChat || !value.trim()}>
+            <Send size={16} /> 전송
+          </Button>
+        </form>
+      ) : null}
     </div>
   );
 }
@@ -1647,8 +1649,8 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
           ...lobby.entries.flatMap((entry) => [entry.playerId, ...(entry.players ?? []), ...(entry.reserves ?? [])]),
           ...pendingInvitations.map((invitation) => invitation.targetUserId),
         ].filter(Boolean);
-        const activeInviteDraft = inviteDraft?.postId === selectedPost.id ? inviteDraft : null;
-        const activeSelfSlotDraft = slotActionDraft?.postId === selectedPost.id ? slotActionDraft : null;
+        const activeInviteDraftRaw = inviteDraft?.postId === selectedPost.id ? inviteDraft : null;
+        const activeSelfSlotDraftRaw = slotActionDraft?.postId === selectedPost.id ? slotActionDraft : null;
         const favoritePlayerIds = app.state.settings?.favoritePlayerIds ?? [];
         const favoriteTeamIds = app.state.settings?.favoriteTeamIds ?? [];
         const useSideNameHeader = selectedPost.visibility !== "private";
@@ -1663,6 +1665,10 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
         const needsPrivateConfirm = !matchRoom && !mine && selectedPost.visibility !== "public" && Boolean(myEntry && myEntry.status !== "ready");
         const roomReadyLabel = sourceMatch ? sourceMatchStatus.label : roomQueueStatus.label;
         const sourceMatchPhase = sourceMatch ? getMatchRoomPhase(sourceMatch) : null;
+        const sourceRoomReadOnly = Boolean(matchRoom && ["dispute", "record"].includes(sourceMatchPhase?.phase));
+        const activeInviteDraft = sourceRoomReadOnly ? null : activeInviteDraftRaw;
+        const activeSelfSlotDraft = sourceRoomReadOnly ? null : activeSelfSlotDraftRaw;
+        const canUseChat = canChat && !sourceRoomReadOnly;
         const sourceMatchStarted = Boolean(sourceMatch?.startedAt);
         const currentUserIsSourceReferee = Boolean(sourceMatch && isMatchReferee(sourceMatch, app.currentUser.id) && isEligibleReferee(app.currentUser, sourceMatch.refereeTrustMin));
         const currentUserCanOperateStartedSourceMatch = Boolean(sourceMatch && (sourceMatch.refereeId ? currentUserIsSourceReferee : mine));
@@ -1685,7 +1691,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
         );
         const canStartSourceMatch = Boolean(matchRoom && currentUserCanStartSourceMatch && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.result && !sourceMatch?.endedAt);
         const canEndSourceMatch = Boolean(matchRoom && currentUserCanOperateStartedSourceMatch && sourceMatchPhase?.phase === "live" && !sourceMatch?.result && !sourceMatch?.endedAt && sourceMatchStarted);
-        const canReviewSourceMatch = Boolean(matchRoom && currentUserCanOperateStartedSourceMatch && sourceMatchPhase?.phase === "dispute");
+        const canReviewSourceMatch = Boolean(matchRoom && !sourceRoomReadOnly && currentUserCanOperateStartedSourceMatch && sourceMatchPhase?.phase === "dispute");
         const canCancelSourceMatch = Boolean(matchRoom && sourceMatch && ["contract", "agreed"].includes(sourceMatch.status) && (sourceMatchStarted || sourceMatch.endedAt || sourceMatch.result ? currentUserCanOperateStartedSourceMatch : mine));
         const canManageMatchCheckin = Boolean(matchRoom && mine && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.startedAt && !sourceMatch?.endedAt && !sourceMatch?.result);
         const showSourceMatchRecordSummary = Boolean(
@@ -1918,11 +1924,11 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                       showCaptainBadge={showCaptainBadge}
                       roomState={roomState}
                       slotPositions={slotPositions}
-                      canInvite={canInviteSideFromRoom("teamA")}
-                      canManageEntry={canManageEntry}
+                      canInvite={!sourceRoomReadOnly && canInviteSideFromRoom("teamA")}
+                      canManageEntry={sourceRoomReadOnly ? null : canManageEntry}
                       canManage={mine}
-                      onInviteSlot={(sideName, reserve, slotKey, event) => openInviteSlot(selectedPost, sideName, reserve, slotKey, event)}
-                      onSelfSlotAction={(sideName, reserve, playerId, entryId, event) => openSelfSlotAction(selectedPost, sideName, reserve, playerId, entryId, event)}
+                      onInviteSlot={sourceRoomReadOnly ? null : ((sideName, reserve, slotKey, event) => openInviteSlot(selectedPost, sideName, reserve, slotKey, event))}
+                      onSelfSlotAction={sourceRoomReadOnly ? null : ((sideName, reserve, playerId, entryId, event) => openSelfSlotAction(selectedPost, sideName, reserve, playerId, entryId, event))}
                       onSetPlacement={(playerId, placement) => app.actions.setRecruitingApplicantPlacement(selectedPost.id, playerId, placement)}
                       onSetMemberReserve={(entryId, playerId, reserve) => app.actions.setRecruitingPartyPlayerReserve(selectedPost.id, entryId, playerId, reserve)}
                       onDetachMember={(entryId, playerId) => app.actions.detachRecruitingPartyPlayer(selectedPost.id, entryId, playerId)}
@@ -1957,11 +1963,11 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                       showCaptainBadge={showCaptainBadge}
                       roomState={roomState}
                       slotPositions={slotPositions}
-                      canInvite={canInviteSideFromRoom("teamB")}
-                      canManageEntry={canManageEntry}
+                      canInvite={!sourceRoomReadOnly && canInviteSideFromRoom("teamB")}
+                      canManageEntry={sourceRoomReadOnly ? null : canManageEntry}
                       canManage={mine}
-                      onInviteSlot={(sideName, reserve, slotKey, event) => openInviteSlot(selectedPost, sideName, reserve, slotKey, event)}
-                      onSelfSlotAction={(sideName, reserve, playerId, entryId, event) => openSelfSlotAction(selectedPost, sideName, reserve, playerId, entryId, event)}
+                      onInviteSlot={sourceRoomReadOnly ? null : ((sideName, reserve, slotKey, event) => openInviteSlot(selectedPost, sideName, reserve, slotKey, event))}
+                      onSelfSlotAction={sourceRoomReadOnly ? null : ((sideName, reserve, playerId, entryId, event) => openSelfSlotAction(selectedPost, sideName, reserve, playerId, entryId, event))}
                       onSetPlacement={(playerId, placement) => app.actions.setRecruitingApplicantPlacement(selectedPost.id, playerId, placement)}
                       onSetMemberReserve={(entryId, playerId, reserve) => app.actions.setRecruitingPartyPlayerReserve(selectedPost.id, entryId, playerId, reserve)}
                       onDetachMember={(entryId, playerId) => app.actions.detachRecruitingPartyPlayer(selectedPost.id, entryId, playerId)}
@@ -1985,13 +1991,13 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                     showCaptainBadge={showCaptainBadge}
                     roomState={roomState}
                     slotPositions={slotPositions}
-                    canInvite={canInviteSideFromRoom("teamA")}
-                    canManageEntry={canManageEntry}
+                    canInvite={!sourceRoomReadOnly && canInviteSideFromRoom("teamA")}
+                    canManageEntry={sourceRoomReadOnly ? null : canManageEntry}
                     canManage={mine}
                     recorderId={recorderIds.teamA}
                     lobby={lobby}
-                    onInviteSlot={(sideName, reserve, slotKey, event) => openInviteSlot(selectedPost, sideName, reserve, slotKey, event)}
-                    onSelfSlotAction={(sideName, reserve, playerId, entryId, event) => openSelfSlotAction(selectedPost, sideName, reserve, playerId, entryId, event)}
+                    onInviteSlot={sourceRoomReadOnly ? null : ((sideName, reserve, slotKey, event) => openInviteSlot(selectedPost, sideName, reserve, slotKey, event))}
+                    onSelfSlotAction={sourceRoomReadOnly ? null : ((sideName, reserve, playerId, entryId, event) => openSelfSlotAction(selectedPost, sideName, reserve, playerId, entryId, event))}
                     onMoveCandidate={moveCandidate}
                     onRemoveCandidate={removeCandidate}
                   />
@@ -2006,13 +2012,13 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                     showCaptainBadge={showCaptainBadge}
                     roomState={roomState}
                     slotPositions={slotPositions}
-                    canInvite={canInviteSideFromRoom("teamB")}
-                    canManageEntry={canManageEntry}
+                    canInvite={!sourceRoomReadOnly && canInviteSideFromRoom("teamB")}
+                    canManageEntry={sourceRoomReadOnly ? null : canManageEntry}
                     canManage={mine}
                     recorderId={recorderIds.teamB}
                     lobby={lobby}
-                    onInviteSlot={(sideName, reserve, slotKey, event) => openInviteSlot(selectedPost, sideName, reserve, slotKey, event)}
-                    onSelfSlotAction={(sideName, reserve, playerId, entryId, event) => openSelfSlotAction(selectedPost, sideName, reserve, playerId, entryId, event)}
+                    onInviteSlot={sourceRoomReadOnly ? null : ((sideName, reserve, slotKey, event) => openInviteSlot(selectedPost, sideName, reserve, slotKey, event))}
+                    onSelfSlotAction={sourceRoomReadOnly ? null : ((sideName, reserve, playerId, entryId, event) => openSelfSlotAction(selectedPost, sideName, reserve, playerId, entryId, event))}
                     onMoveCandidate={moveCandidate}
                     onRemoveCandidate={removeCandidate}
                   />
@@ -2050,17 +2056,19 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                 />
               ) : null}
 
-              <InvitationPanel
-                invitations={invitations}
-                userById={userById}
-                teams={app.state.teams}
-                currentUserId={app.currentUser.id}
-                alreadyApplied={alreadyApplied}
-                onAccept={(invitationId) => app.actions.acceptRecruitingInvitation(selectedPost.id, invitationId)}
-                onDecline={(invitationId) => app.actions.declineRecruitingInvitation(selectedPost.id, invitationId)}
-              />
+              {!sourceRoomReadOnly ? (
+                <InvitationPanel
+                  invitations={invitations}
+                  userById={userById}
+                  teams={app.state.teams}
+                  currentUserId={app.currentUser.id}
+                  alreadyApplied={alreadyApplied}
+                  onAccept={(invitationId) => app.actions.acceptRecruitingInvitation(selectedPost.id, invitationId)}
+                  onDecline={(invitationId) => app.actions.declineRecruitingInvitation(selectedPost.id, invitationId)}
+                />
+              ) : null}
 
-              {mine && (!matchRoom || canManageMatchCheckin) ? (
+              {!sourceRoomReadOnly && mine && (!matchRoom || canManageMatchCheckin) ? (
                 <RoomKickPanel
                   lobby={lobby}
                   userById={userById}
@@ -2082,7 +2090,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
               <div className="ow-room-rule-panel">
                 <div className="ow-room-rule-head">
                   <strong>규칙</strong>
-                  {mine && (!matchRoom || (sourceMatch && ["locked", "checkin"].includes(sourceMatchPhase?.phase) && !sourceMatch.endedAt && !sourceMatch.result)) ? (
+                  {!sourceRoomReadOnly && mine && (!matchRoom || (sourceMatch && ["locked", "checkin"].includes(sourceMatchPhase?.phase) && !sourceMatch.endedAt && !sourceMatch.result)) ? (
                     <Button type="button" size="sm" variant="secondary" onClick={() => (roomEditDraft ? closeRoomEdit(selectedPost) : openRoomEdit(selectedPost))}>
                       {roomEditDraft ? "수정 닫기" : "방 수정"}
                     </Button>
@@ -2121,7 +2129,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                     <span>{selectedPost.memo}</span>
                   </div>
                 ) : null}
-                {roomEditDraft ? (
+                {!sourceRoomReadOnly && roomEditDraft ? (
                   <div className="ow-room-edit-panel">
                     <div className="ow-field-grid three">
                       <label>
@@ -2207,7 +2215,8 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                 userById={userById}
                 teams={app.state.teams}
                 value={getChatDraft(selectedPost)}
-                canChat={canChat}
+                canChat={canUseChat}
+                readOnly={sourceRoomReadOnly}
                 onChange={(value) => updateChatDraft(selectedPost, value)}
                 onSubmit={(event) => submitChat(event, selectedPost)}
               />
@@ -2223,7 +2232,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                     {showSourceMatchRecordSummary ? (
                       <SourceMatchRecordSummary match={sourceMatch} userById={userById} />
                     ) : null}
-                    {sourceMatchAction.action && sourceMatchSideName ? (
+                    {!sourceRoomReadOnly && sourceMatchAction.action && sourceMatchSideName ? (
                       <Button
                         type="button"
                         onClick={() => {
@@ -2234,7 +2243,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                         {sourceMatchAction.button}
                       </Button>
                     ) : null}
-                    {canCheckInSourceMatch ? (
+                    {!sourceRoomReadOnly && canCheckInSourceMatch ? (
                       <Button
                         type="button"
                         variant={sourceMatchCheckedIn ? "secondary" : "primary"}
@@ -2254,17 +2263,17 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                         </Button>
                       </>
                     ) : null}
-                    {canStartSourceMatch ? (
+                    {!sourceRoomReadOnly && canStartSourceMatch ? (
                       <Button type="button" onClick={() => app.actions.startMatch(sourceMatch.id)}>
                         경기 시작
                       </Button>
                     ) : null}
-                    {canEndSourceMatch ? (
+                    {!sourceRoomReadOnly && canEndSourceMatch ? (
                       <Button type="button" variant="secondary" onClick={() => app.actions.endMatch(sourceMatch.id)}>
                         경기 종료
                       </Button>
                     ) : null}
-                    {canCancelSourceMatch ? (
+                    {!sourceRoomReadOnly && canCancelSourceMatch ? (
                       <Button type="button" variant="secondary" className="danger-button" onClick={() => app.actions.cancelMatch(sourceMatch.id)}>
                         경기 취소
                       </Button>
