@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   CheckCircle2,
+  CalendarDays,
   Clock3,
   Crown,
   MapPin,
@@ -40,7 +41,6 @@ import {
   getRecruitingTargetMmr,
   getRecruitingTierRange,
   getSelectableTeamPlayerIds,
-  hasRecruitingApplicant,
   hasPendingRecruitingInvitation,
   isRecruitingPostForUser,
   isNationalRecruitingPost,
@@ -639,20 +639,27 @@ function getRecruitingRuleSummary(post = {}) {
   ].filter(Boolean).join(" · ") || "룰 미정";
 }
 
+function getRecruitingRoomTypeLabel(room = {}, lobby = null) {
+  const lobbyTeamCount = lobby?.entries?.filter((entry) => entry.kind === "team").length ?? 0;
+  if (lobbyTeamCount >= 2) return "팀전";
+  if (lobbyTeamCount > 0 || room.hostJoinMode === "team") return "팀 파티 포함";
+  return "개인 매칭";
+}
+
 function QueueRoomBoard({ post, lobby, roomStatus = null }) {
   const status = roomStatus ?? getRecruitingRoomListStatus(lobby, { post });
   const filled = lobby.sides.teamA.projectedFilled + lobby.sides.teamB.projectedFilled;
   const capacity = getRecruitingSideCapacity(post) * 2;
 
   return (
-    <div className={lobby.canConfirm ? "ow-queue-board complete" : "ow-queue-board"}>
-      <div className="ow-summary-line">
-        <span className="ow-summary-side">A {lobby.sides.teamA.projectedFilled}/{lobby.sides.teamA.capacity}</span>
+    <div className={lobby.canConfirm ? "om-match-summary-box complete" : "om-match-summary-box"}>
+      <div className="om-summary-line">
+        <span className="om-summary-side">A {lobby.sides.teamA.projectedFilled}/{lobby.sides.teamA.capacity}</span>
         <strong>{filled}/{capacity}</strong>
-        <span className="ow-summary-side">B {lobby.sides.teamB.projectedFilled}/{lobby.sides.teamB.capacity}</span>
+        <span className="om-summary-side">B {lobby.sides.teamB.projectedFilled}/{lobby.sides.teamB.capacity}</span>
       </div>
-      <span className="ow-summary-meta">{getRecruitingRuleSummary(post)}</span>
-      {status.detail ? <span className="ow-summary-detail">{status.detail}</span> : null}
+      <span className="om-summary-meta">{getRecruitingRuleSummary(post)}</span>
+      {status.detail ? <span className="om-summary-detail">{status.detail}</span> : null}
     </div>
   );
 }
@@ -2709,15 +2716,10 @@ export default function Recruiting({ app }) {
       <section className="ow-recruit-list" aria-label="매치 큐 목록">
         {posts.length ? posts.map((post) => {
           const lobby = getRecruitingLobby(post, app.state);
-          const target = getRecruitingTargetMmr(post, app.state);
-          const range = getRecruitingTierRange(target, post.ranked !== false, post.mmrRangeMode ?? post.roomState?.mmrRangeMode);
           const roomOwnerId = getRecruitingRoomOwnerId(post);
           const host = userById[roomOwnerId] ?? userById[post.playerId];
           const hostTeam = post.teamId ? teamById[post.teamId] : null;
           const targetTeam = post.targetTeamId ? teamById[post.targetTeamId] : null;
-          const applicantEntry = { kind: "player", joinMode: "player", playerId: app.currentUser.id };
-          const applied = hasRecruitingApplicant(post, applicantEntry)
-            || myTeams.some((team) => hasRecruitingApplicant(post, { kind: "team", joinMode: "team", teamId: team.id }));
           const mine = roomOwnerId === app.currentUser.id;
           const myRoom = isRecruitingPostForUser(post, app.currentUser.id, myTeamIds);
           const invited = hasPendingRecruitingInvitation(post, app.currentUser.id);
@@ -2732,44 +2734,40 @@ export default function Recruiting({ app }) {
             <article
               id={`recruiting-room-${post.id}`}
               key={post.id}
-              className={`ow-recruit-card ow-lobby-card ${lobby.canConfirm ? "ow-state-ready" : ""} ${myRoom ? "ow-my-room" : ""} ${invited ? "ow-invited-room" : ""} ${targetPostId === post.id ? "ow-target-room" : ""}`}
+              className={`om-match-card om-status-contract ow-lobby-card ${lobby.canConfirm ? "ow-state-ready" : ""} ${myRoom ? "ow-my-room" : ""} ${invited ? "ow-invited-room" : ""} ${targetPostId === post.id ? "ow-target-room" : ""}`}
               onClick={() => setSelectedPostId(post.id)}
             >
-              <div className="ow-card-main">
-                <div className="ow-card-top">
-                  <span className="ow-type-tag">ROOM</span>
-                  {roomTag ? <span className={invited ? "ow-my-room-tag invited" : "ow-my-room-tag"}>{roomTag}</span> : null}
-                  <span className={`ow-queue-pill ${post.ranked === false ? "friendly" : "ranked"}`}>{post.ranked === false ? "친선전" : "정규전"}</span>
-                  <span className="ow-position-pill">{post.mode}</span>
-                  {targetTeam ? <span className="ow-position-pill">희망 상대 <TeamHoverCard team={targetTeam} as="span">{targetTeam.name}</TeamHoverCard></span> : null}
-                  {isNationalRecruitingPost(post, app.state) ? <span className="ow-position-pill">전국 노출</span> : null}
+              <div className="om-card-main">
+                <div className="om-card-kicker">
+                  <span className={`om-status-pill ${roomStatus.tone}`}>{roomStatus.label}</span>
+                  {roomTag ? <span className="om-card-official">{roomTag}</span> : null}
+                  <span className="om-card-mode">{post.mode}</span>
+                  <span className="om-card-official">{getRoomVisibilityLabel(post)}</span>
+                  <span className="om-card-official">{getRecruitingRoomTypeLabel(post, lobby)}</span>
+                  <span className="om-card-official">{getRoomCompetitionLabel(post)}</span>
+                  <span className="om-card-official">{getRoomRefereeLabel(post)}</span>
+                  {targetTeam ? <span className="om-card-official">희망 상대 <TeamHoverCard team={targetTeam} as="span">{targetTeam.name}</TeamHoverCard></span> : null}
+                  {isNationalRecruitingPost(post, app.state) ? <span className="om-card-official">전국 노출</span> : null}
                 </div>
                 <h3>{cleanRoomTitle(post.title, post.ranked === false ? "친선전" : "정규전")}</h3>
-                <div className="ow-card-meta">
-                  <MapPin size={15} />
-                  <span>
-                    {post.region} · <CourtHoverCard courtName={post.court} className="ow-card-hover-link">{post.court}</CourtHoverCard> ·{" "}
-                    {hostTeam ? (
-                      <TeamHoverCard team={hostTeam} as="span" className="ow-card-hover-link">{hostTeam.name}</TeamHoverCard>
-                    ) : (
-                      <PlayerHoverCard user={host} teams={app.state.teams} as="span" className="ow-card-hover-link">{host?.name ?? "방장"}</PlayerHoverCard>
-                    )}
-                  </span>
-                </div>
+                <p>
+                  <CalendarDays size={15} />
+                  {getRecruitingSchedule(post)} · <CourtHoverCard courtName={post.court}>{post.court}</CourtHoverCard> ·{" "}
+                  {hostTeam ? (
+                    <TeamHoverCard team={hostTeam} as="span">{hostTeam.name}</TeamHoverCard>
+                  ) : (
+                    <PlayerHoverCard user={host} teams={app.state.teams} as="span">{host?.name ?? "방장"}</PlayerHoverCard>
+                  )}
+                </p>
                 <QueueRoomBoard post={post} lobby={lobby} roomStatus={roomStatus} />
-                <div className="ow-card-bottom">
-                  <span>{getRecruitingSchedule(post)}</span>
-                  <span className="ow-tier-chip">{post.ranked === false ? "티어 자유" : range.label}</span>
-                  <span>{formatWhen(post.createdAt)}</span>
-                  <span className={`ow-room-list-state ${roomStatus.tone}`}>{roomStatus.label}</span>
-                </div>
               </div>
 
-              <div className="ow-card-side" onClick={(event) => event.stopPropagation()}>
-                <Button type="button" className="ow-card-action" onClick={() => setSelectedPostId(post.id)}>
-                  <Swords size={16} /> {roomStatus.actionLabel}
-                </Button>
-              </div>
+              <button type="button" className="button button-secondary button-md om-room-link" onClick={(event) => {
+                event.stopPropagation();
+                setSelectedPostId(post.id);
+              }}>
+                {roomStatus.actionLabel}
+              </button>
             </article>
           );
         }) : (
