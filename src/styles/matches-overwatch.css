@@ -306,6 +306,10 @@
   gap: 5px;
 }
 
+.om-calendar-grid {
+  grid-auto-rows: 42px;
+}
+
 .om-calendar-weekdays span {
   color: var(--muted);
   font-size: 0.72rem;
@@ -315,16 +319,22 @@
 
 .om-calendar-grid button,
 .om-calendar-grid > span {
-  min-height: 32px;
+  min-height: 42px;
+  height: 42px;
   border-radius: 8px;
 }
 
 .om-calendar-grid button {
   position: relative;
-  display: grid;
-  place-items: center;
-  gap: 1px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 4px 3px;
+}
+
+.om-calendar-grid button:has(span) {
+  align-items: flex-start;
+  padding-top: 5px;
 }
 
 .om-calendar-grid button.today {
@@ -341,6 +351,9 @@
 }
 
 .om-calendar-grid button span {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
   display: inline-flex;
   min-width: 19px;
   height: 18px;
@@ -352,6 +365,7 @@
   font-size: 0.68rem;
   font-weight: 950;
   line-height: 1;
+  transform: translateX(-50%);
 }
 
 .om-tournament-panel,
@@ -1952,7 +1966,8 @@ html[data-theme="light"] .tournament-schedule-list input {
 
   .om-calendar-grid button,
   .om-calendar-grid > span {
-    min-height: 34px;
+    min-height: 42px;
+    height: 42px;
   }
 
   .om-tournament-state,
