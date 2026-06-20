@@ -25,10 +25,14 @@
   --bg-hoop: url("/assets/Gemini_Generated_Image_veaa01veaa01veaa.png");
   --bg-ball: url("/assets/Gemini_Generated_Image_pkzbpxpkzbpxpkzb.png");
   --hero-bg-size: cover;
-  --hero-bg-position-court: center center;
-  --hero-bg-position-action: center center;
-  --hero-bg-position-hoop: center center;
-  --hero-bg-position-ball: center center;
+  --hero-crop-court: center center;
+  --hero-crop-action: center center;
+  --hero-crop-hoop: center center;
+  --hero-crop-ball: center center;
+  --hero-bg-position-court: var(--hero-crop-court);
+  --hero-bg-position-action: var(--hero-crop-action);
+  --hero-bg-position-hoop: var(--hero-crop-hoop);
+  --hero-bg-position-ball: var(--hero-crop-ball);
 }
 
 html[data-theme="light"] {
@@ -54,4 +58,8 @@ html[data-theme="light"] {
   --bg-action: url("/assets/rankball-action-day.png");
   --bg-hoop: url("/assets/rankball-hoop-day.png");
   --bg-ball: url("/assets/rankball-ball-day.png");
+  --hero-bg-position-court: var(--hero-crop-court);
+  --hero-bg-position-action: var(--hero-crop-action);
+  --hero-bg-position-hoop: var(--hero-crop-hoop);
+  --hero-bg-position-ball: var(--hero-crop-ball);
 }

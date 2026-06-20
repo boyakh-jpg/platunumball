@@ -8458,8 +8458,8 @@ html[data-theme="light"] .recruiting-fit-panel {
 }
 
 .settings-page .page-header {
-  --page-hero-bg: var(--bg-ball);
-  --page-hero-bg-position: var(--hero-bg-position-ball);
+  --page-hero-bg: var(--bg-court);
+  --page-hero-bg-position: var(--hero-bg-position-court);
 }
 
 .team-hub-hero {
