@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
-import { CalendarDays, MapPin, Minus, Plus, ShieldCheck, ThumbsUp, Trophy, UsersRound, X } from "lucide-react";
+import { CalendarDays, Crown, MapPin, Minus, Plus, ShieldCheck, ThumbsUp, Trophy, UsersRound, X } from "lucide-react";
 import AgreementPanel from "../components/match/AgreementPanel.jsx";
 import ApprovalPanel from "../components/match/ApprovalPanel.jsx";
 import MatchContract from "../components/match/MatchContract.jsx";
@@ -15,6 +15,7 @@ import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { DISPUTE_WINDOW_MINUTES, EVIDENCE_OPTIONS, PLAYER_STAT_FIELDS } from "../lib/constants.js";
 import { DEFAULT_REPORT_REASON, REPORT_REASONS } from "../lib/reportReasons.js";
+import { getRecruitingRoomOwnerId } from "../lib/recruiting.js";
 import {
   formatStatLine,
   getAllowedStatFields,
@@ -175,7 +176,7 @@ export default function MatchRoom({ app }) {
   const sourceRecruitingPost = match.recruitingPostId
     ? app.state.recruitingPosts?.find((post) => post.id === match.recruitingPostId)
     : null;
-  const matchHostPlayerId = match.createdBy || match.hostPlayerId || match.createdPlayerId || sourceRecruitingPost?.playerId || match.teamA?.players?.[0] || "";
+  const matchHostPlayerId = getRecruitingRoomOwnerId(sourceRecruitingPost) || match.createdBy || match.hostPlayerId || match.createdPlayerId || match.teamA?.players?.[0] || "";
   const isMatchHost = matchHostPlayerId === app.currentUser.id;
   const matchPhase = getMatchRoomPhase(match).phase;
   const startedAuthorityPhase = Boolean(match.startedAt || match.endedAt || match.result || ["live", "postgame", "dispute", "record"].includes(matchPhase));
@@ -219,12 +220,22 @@ export default function MatchRoom({ app }) {
           const user = userMap[playerId];
           const ready = agreement.approvals.includes(playerId) || match.status !== "contract";
           const captain = agreement.captainId === playerId;
+          const roleBadge = playerId === matchHostPlayerId
+            ? { tone: "host", label: "방장" }
+            : captain
+              ? { tone: "captain", label: "주장" }
+              : null;
           const slotLabel = match.status === "contract"
             ? ready ? "READY" : "WAIT"
             : captain ? "CAPT" : "READY";
 
           return (
             <PlayerHoverCard key={playerId} user={user} teams={app.state.teams} className={ready ? "gm-player-slot ready" : "gm-player-slot"}>
+              {roleBadge ? (
+                <span className={`gm-room-slot-crown ${roleBadge.tone}`} title={roleBadge.label} aria-label={roleBadge.label}>
+                  <Crown size={12} strokeWidth={3} />
+                </span>
+              ) : null}
               <span className="avatar" style={{ "--avatar": user?.avatarColor }}>{user?.name?.slice(0, 1) ?? "P"}</span>
               <strong>{user?.name ?? "플레이어"}</strong>
               <small>{user?.position ?? "-"}</small>
@@ -246,8 +257,14 @@ export default function MatchRoom({ app }) {
           {reservePlayerIds.map((playerId) => {
             const user = userMap[playerId];
             const recorder = statRecorders[sideName] === playerId;
+            const roleBadge = playerId === matchHostPlayerId ? { tone: "host", label: "방장" } : null;
             return (
               <PlayerHoverCard key={`${sideName}-reserve-${playerId}`} user={user} teams={app.state.teams} className="gm-player-slot reserve ready">
+                {roleBadge ? (
+                  <span className={`gm-room-slot-crown ${roleBadge.tone}`} title={roleBadge.label} aria-label={roleBadge.label}>
+                    <Crown size={12} strokeWidth={3} />
+                  </span>
+                ) : null}
                 <span className="avatar" style={{ "--avatar": user?.avatarColor }}>{user?.name?.slice(0, 1) ?? "P"}</span>
                 <strong>{user?.name ?? "플레이어"}</strong>
                 <small>{user?.position ?? "-"}</small>

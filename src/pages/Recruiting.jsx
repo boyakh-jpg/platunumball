@@ -295,11 +295,23 @@ function getTeamCaptainId(team) {
   return team?.members?.find((member) => member.role === "captain")?.userId ?? "";
 }
 
-function getRoomSlotBadge(playerId, entry, hostPlayerId, showCaptainBadge = false) {
+const ROOM_SLOT_BADGES = {
+  host: { tone: "host", label: "방장" },
+  partyLeader: { tone: "captain", label: "파티장" },
+  teamCaptain: { tone: "captain", label: "팀 주장" },
+};
+
+function getEntryPartyLeaderId(entry, hostPlayerId = "", roomState = {}) {
+  if (!entry) return "";
+  return roomState.partyLeaders?.[entry.id] ?? (entry.fixed ? hostPlayerId : entry.playerId) ?? "";
+}
+
+function getRoomSlotBadge(playerId, entry, hostPlayerId, showCaptainBadge = false, roomState = {}) {
   if (!playerId) return null;
-  if (playerId === hostPlayerId) return { tone: "host", label: "방장" };
+  if (playerId === hostPlayerId) return ROOM_SLOT_BADGES.host;
   if (!showCaptainBadge) return null;
-  if (isPartyEntry(entry) && entry?.playerId === playerId) return { tone: "captain", label: "파티장" };
+  if (isPartyEntry(entry) && getEntryPartyLeaderId(entry, hostPlayerId, roomState) === playerId) return ROOM_SLOT_BADGES.partyLeader;
+  if (isPartyEntry(entry) && getTeamCaptainId(entry.team) === playerId) return ROOM_SLOT_BADGES.teamCaptain;
   return null;
 }
 
@@ -629,11 +641,11 @@ function QueueRoomBoard({ post, lobby }) {
   );
 }
 
-function FillSlot({ candidate, lobby, userById, teams, hostPlayerId = "", currentUserId = "", showCaptainBadge = false, readyText = "READY", slotPositions = {}, canManageEntry = null, onSelfAction }) {
+function FillSlot({ candidate, lobby, userById, teams, hostPlayerId = "", currentUserId = "", showCaptainBadge = false, roomState = {}, readyText = "READY", slotPositions = {}, canManageEntry = null, onSelfAction }) {
   const user = candidate ? userById[candidate.playerId] : null;
   const readyLabel = candidate?.status === "ready" ? "READY" : "WAIT";
   const entry = candidate ? (lobby.entries ?? []).find((item) => item.id === candidate.entryId) : null;
-  const badge = getRoomSlotBadge(candidate?.playerId, entry, hostPlayerId, showCaptainBadge);
+  const badge = getRoomSlotBadge(candidate?.playerId, entry, hostPlayerId, showCaptainBadge, roomState);
   const isSelfSlot = candidate?.playerId === currentUserId;
   const canOpenAction = isSelfSlot || Boolean(entry && canManageEntry?.(entry));
   const displayPosition = getRoomSlotDisplayPosition(user, slotPositions, candidate?.playerId, entry);
@@ -815,6 +827,7 @@ export function SideRoster({
   hostPlayerId = "",
   currentUserId = "",
   showCaptainBadge = false,
+  roomState = {},
   slotPositions = {},
   canInvite = false,
   canManageEntry = null,
@@ -853,7 +866,7 @@ export function SideRoster({
         detail={partyLabel}
         mmr={user?.ratings?.integrated ?? getEntryMmr(entry)}
         position={displayPosition}
-        badge={getRoomSlotBadge(playerId, entry, hostPlayerId, showCaptainBadge)}
+        badge={getRoomSlotBadge(playerId, entry, hostPlayerId, showCaptainBadge, roomState)}
         onSelfAction={canOpenAction ? (event) => onSelfSlotAction?.(sideName, false, playerId, entry.id, event) : null}
       />
     );
@@ -888,6 +901,7 @@ export function SideRoster({
             hostPlayerId={hostPlayerId}
             currentUserId={currentUserId}
             showCaptainBadge={showCaptainBadge}
+            roomState={roomState}
             slotPositions={slotPositions}
             canManageEntry={canManageEntry}
             onSelfAction={(event) => onSelfSlotAction?.(sideName, false, candidate.playerId, candidate.entryId, event)}
@@ -927,6 +941,7 @@ export function ReserveLine({
   hostPlayerId = "",
   currentUserId = "",
   showCaptainBadge = false,
+  roomState = {},
   slotPositions = {},
   canInvite = false,
   canManageEntry = null,
@@ -966,7 +981,7 @@ export function ReserveLine({
         detail={candidate.sourceLabel}
         mmr={user.ratings?.integrated ?? 1200}
         position={displayPosition}
-        badge={getRoomSlotBadge(candidate.playerId, entry, hostPlayerId, showCaptainBadge)}
+        badge={getRoomSlotBadge(candidate.playerId, entry, hostPlayerId, showCaptainBadge, roomState)}
         onSelfAction={canOpenAction ? (event) => onSelfSlotAction?.(sideName, true, candidate.playerId, candidate.entryId, event) : null}
       />
     );
@@ -1901,6 +1916,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                       hostPlayerId={roomOwnerId}
                       currentUserId={app.currentUser.id}
                       showCaptainBadge={showCaptainBadge}
+                      roomState={roomState}
                       slotPositions={slotPositions}
                       canInvite={canInviteSideFromRoom("teamA")}
                       canManageEntry={canManageEntry}
@@ -1939,6 +1955,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                       hostPlayerId={roomOwnerId}
                       currentUserId={app.currentUser.id}
                       showCaptainBadge={showCaptainBadge}
+                      roomState={roomState}
                       slotPositions={slotPositions}
                       canInvite={canInviteSideFromRoom("teamB")}
                       canManageEntry={canManageEntry}
@@ -1966,6 +1983,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                     hostPlayerId={roomOwnerId}
                     currentUserId={app.currentUser.id}
                     showCaptainBadge={showCaptainBadge}
+                    roomState={roomState}
                     slotPositions={slotPositions}
                     canInvite={canInviteSideFromRoom("teamA")}
                     canManageEntry={canManageEntry}
@@ -1986,6 +2004,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                     hostPlayerId={roomOwnerId}
                     currentUserId={app.currentUser.id}
                     showCaptainBadge={showCaptainBadge}
+                    roomState={roomState}
                     slotPositions={slotPositions}
                     canInvite={canInviteSideFromRoom("teamB")}
                     canManageEntry={canManageEntry}
