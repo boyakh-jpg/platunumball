@@ -8550,6 +8550,22 @@ html[data-theme="light"] .team-hub-hero p:not(.eyebrow) {
   gap: 16px;
 }
 
+.opgg-home .opgg-search-hero {
+  display: none;
+}
+
+.opgg-home .opgg-summary-grid {
+  order: -3;
+}
+
+.opgg-home .home-search-panel {
+  order: -2;
+}
+
+.opgg-home .home-action-card {
+  order: -1;
+}
+
 .opgg-search-hero {
   position: relative;
   isolation: isolate;
@@ -8997,7 +9013,56 @@ html[data-theme="light"] .ranking-filter-card {
   background: rgba(255, 255, 255, 0.72);
 }
 
+.opgg-profile-card .opgg-rank-block {
+  position: relative;
+  overflow: hidden;
+  min-height: 128px;
+  border-color: rgba(255, 211, 108, 0.28);
+  background:
+    linear-gradient(90deg, rgba(5, 7, 10, 0.96), rgba(5, 7, 10, 0.78) 54%, rgba(5, 7, 10, 0.42)),
+    var(--bg-court) var(--hero-bg-position-court) / var(--hero-bg-size) no-repeat;
+  box-shadow: inset 0 0 0 1px rgba(255, 211, 108, 0.08);
+}
+
+.opgg-profile-card .opgg-rank-block .tier-emblem {
+  position: relative;
+  z-index: 1;
+}
+
+.opgg-profile-card .opgg-rank-block > div {
+  position: relative;
+  z-index: 1;
+}
+
+html[data-theme="light"] .opgg-profile-card .opgg-rank-block {
+  border-color: rgba(184, 118, 19, 0.24);
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.96), rgba(247, 251, 248, 0.86) 58%, rgba(247, 251, 248, 0.56)),
+    var(--bg-court) var(--hero-bg-position-court) / var(--hero-bg-size) no-repeat;
+  box-shadow: inset 0 0 0 1px rgba(184, 118, 19, 0.08), 0 12px 26px rgba(35, 87, 75, 0.1);
+}
+
 @media (max-width: 760px) {
+  .opgg-home .opgg-summary-grid {
+    display: contents;
+  }
+
+  .opgg-home .opgg-profile-card {
+    order: -3;
+  }
+
+  .opgg-home .home-search-panel {
+    order: -2;
+  }
+
+  .opgg-home .opgg-mode-card {
+    order: -1;
+  }
+
+  .opgg-home .opgg-leaderboard-card {
+    order: 0;
+  }
+
   .recent-match-row,
   .profile-record-row {
     grid-template-columns: 32px minmax(0, 1fr) auto;
