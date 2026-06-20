@@ -628,15 +628,31 @@ function TeamMemberPicker({
   );
 }
 
-function QueueRoomBoard({ post, lobby }) {
-  const roomStatus = getRecruitingRoomListStatus(lobby, { post });
+function getRecruitingRuleSummary(post = {}) {
+  const targetScore = Number(post.rules?.targetScore ?? 0);
+  const timeLimit = Number(post.rules?.timeLimit ?? 0);
+  return [
+    targetScore ? `${targetScore}점` : "",
+    timeLimit ? `${timeLimit}분` : "",
+    post.rules?.winByTwo ? "2점차" : "",
+    post.rules?.ball ?? "",
+  ].filter(Boolean).join(" · ") || "룰 미정";
+}
+
+function QueueRoomBoard({ post, lobby, roomStatus = null }) {
+  const status = roomStatus ?? getRecruitingRoomListStatus(lobby, { post });
+  const filled = lobby.sides.teamA.projectedFilled + lobby.sides.teamB.projectedFilled;
+  const capacity = getRecruitingSideCapacity(post) * 2;
 
   return (
     <div className={lobby.canConfirm ? "ow-queue-board complete" : "ow-queue-board"}>
-      <div className="ow-queue-board-head">
-        <span className={`ow-room-list-state ${roomStatus.tone}`}>{roomStatus.label}</span>
-        {roomStatus.detail ? <b>{roomStatus.detail}</b> : null}
+      <div className="ow-summary-line">
+        <span className="ow-summary-side">A {lobby.sides.teamA.projectedFilled}/{lobby.sides.teamA.capacity}</span>
+        <strong>{filled}/{capacity}</strong>
+        <span className="ow-summary-side">B {lobby.sides.teamB.projectedFilled}/{lobby.sides.teamB.capacity}</span>
       </div>
+      <span className="ow-summary-meta">{getRecruitingRuleSummary(post)}</span>
+      {status.detail ? <span className="ow-summary-detail">{status.detail}</span> : null}
     </div>
   );
 }
@@ -2740,7 +2756,7 @@ export default function Recruiting({ app }) {
                     )}
                   </span>
                 </div>
-                <QueueRoomBoard post={post} lobby={lobby} userById={userById} teams={app.state.teams} />
+                <QueueRoomBoard post={post} lobby={lobby} roomStatus={roomStatus} />
                 <div className="ow-card-bottom">
                   <span>{getRecruitingSchedule(post)}</span>
                   <span className="ow-tier-chip">{post.ranked === false ? "티어 자유" : range.label}</span>
@@ -2750,10 +2766,6 @@ export default function Recruiting({ app }) {
               </div>
 
               <div className="ow-card-side" onClick={(event) => event.stopPropagation()}>
-                <span className="ow-slot-count">
-                  <strong>{lobby.sides.teamA.projectedFilled + lobby.sides.teamB.projectedFilled}/{getRecruitingSideCapacity(post) * 2}</strong>
-                  <span>슬롯 현황</span>
-                </span>
                 <Button type="button" className="ow-card-action" onClick={() => setSelectedPostId(post.id)}>
                   <Swords size={16} /> {roomStatus.actionLabel}
                 </Button>

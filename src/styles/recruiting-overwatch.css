@@ -511,31 +511,9 @@
   gap: 8px;
 }
 
-.ow-slot-count {
-  display: grid;
-  justify-items: center;
-  gap: 2px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 7px;
-  background: rgba(255, 255, 255, 0.055);
-  padding: 8px;
-}
-
-.ow-slot-count strong {
-  color: var(--gold);
-  font-size: 1.4rem;
-  line-height: 1;
-}
-
-.ow-slot-count span {
-  color: var(--muted);
-  font-size: 0.7rem;
-  font-weight: 900;
-}
-
 .ow-card-action {
   width: 100%;
-  min-height: 38px;
+  min-height: 44px;
 }
 
 .ow-card-details {
@@ -1009,16 +987,56 @@
 .ow-queue-board {
   display: grid;
   min-width: 0;
-  gap: 8px;
-  border: 1px solid rgba(255, 211, 108, 0.14);
-  border-radius: 8px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.03));
-  padding: 9px;
+  align-content: center;
+  gap: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.045);
+  padding: 9px 10px;
+  text-align: center;
 }
 
 .ow-queue-board.complete {
   border-color: rgba(70, 224, 182, 0.42);
-  background: linear-gradient(135deg, rgba(70, 224, 182, 0.14), rgba(255, 255, 255, 0.035));
+  background: rgba(70, 224, 182, 0.075);
+}
+
+.ow-summary-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 42px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.ow-summary-side {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 950;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ow-summary-line > strong {
+  color: var(--gold);
+  font-size: 0.92rem;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.ow-summary-meta,
+.ow-summary-detail {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ow-summary-detail {
+  color: var(--gold);
 }
 
 .ow-queue-board-head {
@@ -2818,7 +2836,7 @@ html[data-theme="light"] .ow-compose-drawer {
   }
 
   .ow-card-side {
-    grid-template-columns: minmax(0, 0.72fr) minmax(0, 1fr);
+    grid-template-columns: 1fr;
   }
 }
 
@@ -2861,7 +2879,7 @@ html[data-theme="light"] .ow-compose-drawer {
   }
 
   .ow-card-side {
-    grid-template-columns: minmax(0, 0.72fr) minmax(0, 1fr);
+    grid-template-columns: 1fr;
   }
 
   .ow-submit-row {
