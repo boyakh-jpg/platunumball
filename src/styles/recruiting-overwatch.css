@@ -3219,3 +3219,134 @@ html[data-theme="light"] .ow-collapse-button {
     max-width: none;
   }
 }
+
+/* Queue card density and readable room action */
+.ow-recruit-card {
+  grid-template-columns: minmax(0, 1fr) 108px;
+  gap: 10px;
+  min-height: 112px;
+  padding: 10px;
+}
+
+.ow-card-main {
+  gap: 7px;
+}
+
+.ow-card-top,
+.ow-card-bottom {
+  gap: 5px;
+}
+
+.ow-recruit-card h3 {
+  font-size: 1.05rem;
+  line-height: 1.16;
+}
+
+.ow-card-meta {
+  gap: 5px;
+  font-size: 0.78rem;
+}
+
+.ow-card-bottom > span:not(.ow-tier-chip),
+.ow-summary-side,
+.ow-summary-meta,
+.ow-summary-detail {
+  font-size: 0.7rem;
+}
+
+.ow-queue-board {
+  gap: 4px;
+  padding: 7px 8px;
+}
+
+.ow-recruit-card .ow-queue-board {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 34px;
+  padding: 6px 8px;
+  text-align: left;
+}
+
+.ow-summary-line {
+  grid-template-columns: minmax(0, 1fr) 38px minmax(0, 1fr);
+  gap: 6px;
+}
+
+.ow-recruit-card .ow-summary-line {
+  display: contents;
+}
+
+.ow-recruit-card .ow-summary-side {
+  display: none;
+}
+
+.ow-summary-line > strong {
+  font-size: 0.86rem;
+}
+
+.ow-recruit-card .ow-summary-line > strong {
+  flex: 0 0 auto;
+  min-width: 44px;
+}
+
+.ow-card-side {
+  align-self: center;
+}
+
+.ow-card-action.button,
+.ow-card-action.button-secondary {
+  min-height: 42px;
+  height: 52px;
+  border-color: rgba(70, 224, 182, 0.42);
+  background: linear-gradient(180deg, rgba(70, 224, 182, 0.96), rgba(31, 190, 153, 0.92));
+  color: #07110f;
+  font-weight: 950;
+  box-shadow: 0 12px 28px rgba(70, 224, 182, 0.16);
+}
+
+.ow-card-action.button svg,
+.ow-card-action.button-secondary svg {
+  color: currentColor;
+}
+
+html[data-theme="light"] .ow-card-action.button,
+html[data-theme="light"] .ow-card-action.button-secondary {
+  border-color: rgba(15, 159, 126, 0.36);
+  background: linear-gradient(180deg, rgba(15, 159, 126, 0.96), rgba(8, 125, 100, 0.92));
+  color: #fff;
+  box-shadow: 0 12px 24px rgba(15, 159, 126, 0.18);
+}
+
+@media (max-width: 720px) {
+  .ow-recruit-card {
+    grid-template-columns: minmax(0, 1fr) 112px;
+    gap: 8px;
+  }
+
+  .ow-card-action.button,
+  .ow-card-action.button-secondary {
+    padding-inline: 8px;
+  }
+}
+
+@media (max-width: 430px) {
+  .ow-recruit-card {
+    grid-template-columns: minmax(0, 1fr) 96px;
+  }
+
+  .ow-recruit-card .ow-summary-meta {
+    display: none;
+  }
+
+  .ow-recruit-card .ow-card-bottom > span:nth-child(2),
+  .ow-recruit-card .ow-card-bottom > span:nth-child(3) {
+    display: none;
+  }
+
+  .ow-card-action.button,
+  .ow-card-action.button-secondary {
+    height: 46px;
+  }
+}
