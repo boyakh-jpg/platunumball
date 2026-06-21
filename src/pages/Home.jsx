@@ -465,6 +465,12 @@ export default function Home({ app }) {
               <span>{Math.round(user.ratings.integrated)} MMR</span>
             </div>
           </div>
+          <div className="opgg-rank-meta-line">
+            <Badge tone="gold">{Math.round(user.ratings.integrated)} MMR</Badge>
+            <Badge tone="green">시즌 점수</Badge>
+          </div>
+          <p className="opgg-rank-copy">팀 기여도가 안정적인 플레이어입니다.</p>
+          <p className="opgg-rank-note">{user.streak > 0 ? `${user.streak}연승 중. 다음 공식전이 티어를 흔듭니다.` : "꾸준히 경기에 참여하는 플레이어입니다."}</p>
           <div className="opgg-stat-grid">
             <span><strong>{myCompletedMatches.length}</strong>경기</span>
             <span><strong>{winRate}%</strong>승률</span>

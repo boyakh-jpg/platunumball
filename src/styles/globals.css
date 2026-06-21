@@ -8591,6 +8591,187 @@ html[data-theme="light"] .team-hub-hero p:not(.eyebrow) {
   font-weight: 800;
 }
 
+.opgg-home .home-rank-board-head {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 2px 4px 0;
+}
+
+.opgg-home .home-rank-board-head .button {
+  min-width: 132px;
+  box-shadow: 0 14px 28px rgba(70, 224, 182, 0.22);
+}
+
+.opgg-home .opgg-summary-grid {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  grid-template-columns: minmax(320px, 0.86fr) minmax(420px, 1.14fr);
+  min-height: 430px;
+  border: 1px solid rgba(70, 224, 182, 0.18);
+  border-radius: var(--radius);
+  padding: 26px;
+  background:
+    linear-gradient(90deg, rgba(3, 7, 12, 0.9), rgba(3, 7, 12, 0.62) 50%, rgba(3, 7, 12, 0.34)),
+    var(--bg-court) var(--hero-bg-position-court) / var(--hero-bg-size) no-repeat;
+  box-shadow: var(--shadow);
+}
+
+.opgg-home .opgg-summary-grid::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px) 0 0 / 100% 10px,
+    linear-gradient(90deg, rgba(70, 224, 182, 0.18), transparent 36%, rgba(255, 211, 108, 0.12));
+  opacity: 0.4;
+}
+
+.opgg-home .opgg-summary-grid > * {
+  position: relative;
+  z-index: 1;
+}
+
+.opgg-home .opgg-profile-card {
+  justify-content: center;
+  min-height: 360px;
+  padding: 30px;
+  border-color: rgba(255, 255, 255, 0.16);
+  background: linear-gradient(135deg, rgba(2, 5, 9, 0.74), rgba(5, 11, 18, 0.56));
+  box-shadow: inset 0 0 0 1px rgba(70, 224, 182, 0.08), 0 20px 42px rgba(0, 0, 0, 0.28);
+}
+
+.opgg-home .opgg-profile-card::before {
+  content: "RANK PROFILE";
+  width: max-content;
+  border: 1px solid rgba(70, 224, 182, 0.34);
+  border-radius: 999px;
+  background: rgba(70, 224, 182, 0.12);
+  color: var(--mint);
+  font-size: 0.72rem;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+  padding: 8px 12px;
+}
+
+.opgg-home .opgg-profile-head,
+.opgg-home .opgg-stat-grid,
+.opgg-home .opgg-profile-tabs {
+  display: none;
+}
+
+.opgg-home .opgg-rank-block {
+  grid-template-columns: 132px minmax(0, 1fr);
+  gap: 28px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+
+.opgg-home .opgg-rank-block .tier-emblem {
+  width: 132px;
+  height: 132px;
+}
+
+.opgg-home .opgg-rank-block strong {
+  color: #fff8dc;
+  font-size: clamp(2.4rem, 5.2vw, 4.3rem);
+  line-height: 0.94;
+  text-shadow: 0 8px 26px rgba(255, 211, 108, 0.18);
+}
+
+.opgg-home .opgg-rank-block span {
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 1rem;
+}
+
+.opgg-rank-meta-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.opgg-rank-copy,
+.opgg-rank-note {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.88);
+  font-weight: 850;
+}
+
+.opgg-rank-note {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.opgg-home .opgg-mode-card {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+
+.opgg-home .opgg-mode-card > .section-title-row {
+  display: none;
+}
+
+.opgg-home .opgg-mode-grid {
+  height: 100%;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.opgg-home .opgg-mode-pill {
+  position: relative;
+  grid-template-columns: minmax(0, 1fr) 76px;
+  align-content: start;
+  min-height: 168px;
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(4, 8, 14, 0.68);
+  padding: 18px 18px 42px;
+  box-shadow: inset 0 0 0 1px rgba(116, 169, 255, 0.08);
+}
+
+.opgg-home .opgg-mode-pill::after {
+  content: "";
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: 24px;
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--mint) 0 42%, var(--gold) 42% 78%, rgba(116, 169, 255, 0.42) 78%);
+}
+
+.opgg-home .opgg-mode-pill .tier-emblem-sm {
+  grid-column: 2;
+  grid-row: 1 / span 3;
+  justify-self: end;
+  width: 72px;
+}
+
+.opgg-home .opgg-mode-pill > div {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.opgg-home .opgg-mode-pill span {
+  color: var(--mint);
+}
+
+.opgg-home .opgg-mode-pill strong {
+  color: #fff;
+  font-size: 1.55rem;
+  line-height: 1;
+}
+
+.opgg-home .opgg-mode-pill em {
+  color: rgba(255, 255, 255, 0.86);
+}
+
 .opgg-search-hero {
   position: relative;
   isolation: isolate;
@@ -9080,6 +9261,55 @@ html[data-theme="light"] .opgg-profile-card .opgg-rank-block {
   .home-rank-board-head .button {
     width: 100%;
     justify-content: center;
+  }
+
+  .opgg-home .opgg-summary-grid {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+    padding: 14px;
+  }
+
+  .opgg-home .opgg-profile-card {
+    min-height: 0;
+    padding: 18px;
+  }
+
+  .opgg-home .opgg-rank-block {
+    grid-template-columns: 94px minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  .opgg-home .opgg-rank-block .tier-emblem {
+    width: 94px;
+    height: 94px;
+  }
+
+  .opgg-home .opgg-rank-block strong {
+    font-size: 2.25rem;
+  }
+
+  .opgg-home .opgg-mode-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .opgg-home .opgg-mode-pill {
+    grid-template-columns: minmax(0, 1fr) 52px;
+    min-height: 126px;
+    padding: 14px 12px 34px;
+  }
+
+  .opgg-home .opgg-mode-pill::after {
+    left: 12px;
+    right: 12px;
+    bottom: 18px;
+  }
+
+  .opgg-home .opgg-mode-pill .tier-emblem-sm {
+    width: 52px;
+  }
+
+  .opgg-home .opgg-mode-pill strong {
+    font-size: 1.18rem;
   }
 
   .recent-match-row,
