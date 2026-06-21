@@ -348,12 +348,12 @@ export default function Home({ app }) {
 
   return (
     <div className="page-stack opgg-home">
-      <section className="opgg-search-hero">
+      <section className="home-rank-board-head">
         <div className="opgg-hero-top">
           <div>
-            <p className="eyebrow">RANKBALL.GG</p>
-            <h1>전적 검색</h1>
-            <p>선수, 팀, 코트를 검색하고 최근 경기와 지역 랭킹을 바로 확인하세요.</p>
+            <p className="eyebrow">내 랭크 보드</p>
+            <h1>{user.name}님의 오늘 코트 현황</h1>
+            <p>{user.region} · {user.position} · 통합 {getTierDivision(user.ratings.integrated)} · {Math.round(user.ratings.integrated)} MMR</p>
           </div>
           <Link to="/app/create">
             <Button><PlusCircle size={18} /> 경기 만들기</Button>
@@ -499,26 +499,6 @@ export default function Home({ app }) {
             ))}
           </div>
         </Card>
-
-        <Card className="section-card opgg-leaderboard-card">
-          <div className="section-title-row">
-            <div>
-              <p className="eyebrow">Local Ranking</p>
-              <h2>{user.region} 랭킹</h2>
-            </div>
-            <Trophy size={20} />
-          </div>
-          <div className="opgg-rank-list">
-            {topRankers.map((row, index) => (
-              <PlayerHoverCard className="opgg-rank-row" key={row.id} user={row} teams={app.state.teams}>
-                <b>{index + 1}</b>
-                <span className="avatar small" style={{ "--avatar": row.avatarColor }}>{row.name.slice(0, 1)}</span>
-                <strong>{row.name}</strong>
-                <em>{Math.round(row.seasonScore)}점</em>
-              </PlayerHoverCard>
-            ))}
-          </div>
-        </Card>
       </section>
 
       <div className="content-grid home-dashboard-grid opgg-dashboard-grid">
@@ -580,6 +560,26 @@ export default function Home({ app }) {
           </Card>
         </div>
         <aside className="page-stack home-side-stack">
+          <Card className="section-card opgg-leaderboard-card">
+            <div className="section-title-row">
+              <div>
+                <p className="eyebrow">Local Ranking</p>
+                <h2>{user.region} 랭킹</h2>
+              </div>
+              <Trophy size={20} />
+            </div>
+            <div className="opgg-rank-list">
+              {topRankers.map((row, index) => (
+                <PlayerHoverCard className="opgg-rank-row" key={row.id} user={row} teams={app.state.teams}>
+                  <b>{index + 1}</b>
+                  <span className="avatar small" style={{ "--avatar": row.avatarColor }}>{row.name.slice(0, 1)}</span>
+                  <strong>{row.name}</strong>
+                  <em>{Math.round(row.seasonScore)}점</em>
+                </PlayerHoverCard>
+              ))}
+            </div>
+          </Card>
+
           <Card className="section-card season-mini-card">
             <div className="section-title-row">
               <div>

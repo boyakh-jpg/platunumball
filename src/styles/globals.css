@@ -4739,7 +4739,7 @@ input[type="color"] {
 
 .opgg-summary-grid {
   display: grid;
-  grid-template-columns: minmax(280px, 0.95fr) minmax(320px, 1.2fr) minmax(280px, 0.9fr);
+  grid-template-columns: minmax(280px, 0.95fr) minmax(340px, 1.15fr);
   gap: 14px;
   align-items: stretch;
 }
@@ -8550,8 +8550,8 @@ html[data-theme="light"] .team-hub-hero p:not(.eyebrow) {
   gap: 16px;
 }
 
-.opgg-home .opgg-search-hero {
-  display: none;
+.opgg-home .home-rank-board-head {
+  order: -4;
 }
 
 .opgg-home .opgg-summary-grid {
@@ -8564,6 +8564,31 @@ html[data-theme="light"] .team-hub-hero p:not(.eyebrow) {
 
 .opgg-home .home-action-card {
   order: -1;
+}
+
+.home-rank-board-head {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.home-rank-board-head .opgg-hero-top {
+  align-items: center;
+  gap: 16px;
+}
+
+.home-rank-board-head h1 {
+  margin: 4px 0 6px;
+  font-size: clamp(2rem, 4.8vw, 3.4rem);
+  line-height: 0.98;
+  letter-spacing: 0;
+}
+
+.home-rank-board-head p:not(.eyebrow) {
+  color: var(--muted);
+  font-weight: 800;
 }
 
 .opgg-search-hero {
@@ -9043,24 +9068,18 @@ html[data-theme="light"] .opgg-profile-card .opgg-rank-block {
 }
 
 @media (max-width: 760px) {
-  .opgg-home .opgg-summary-grid {
-    display: contents;
+  .home-rank-board-head {
+    padding: 16px;
   }
 
-  .opgg-home .opgg-profile-card {
-    order: -3;
+  .home-rank-board-head .opgg-hero-top {
+    align-items: stretch;
+    flex-direction: column;
   }
 
-  .opgg-home .home-search-panel {
-    order: -2;
-  }
-
-  .opgg-home .opgg-mode-card {
-    order: -1;
-  }
-
-  .opgg-home .opgg-leaderboard-card {
-    order: 0;
+  .home-rank-board-head .button {
+    width: 100%;
+    justify-content: center;
   }
 
   .recent-match-row,
