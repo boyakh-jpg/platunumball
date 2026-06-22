@@ -3129,7 +3129,7 @@ input[type="color"] {
   background:
     linear-gradient(90deg, rgba(5, 7, 10, 0.96) 0%, rgba(5, 7, 10, 0.72) 42%, rgba(5, 7, 10, 0.25) 100%),
     linear-gradient(180deg, rgba(5, 7, 10, 0.18), rgba(5, 7, 10, 0.94)),
-    var(--bg-action) var(--hero-bg-position-action) / var(--hero-bg-size) no-repeat;
+    var(--bg-action) center 32% / var(--hero-bg-size) no-repeat;
 }
 
 .landing-hero::after,
@@ -7409,7 +7409,7 @@ html[data-theme="light"] .landing-backdrop {
   background:
     linear-gradient(90deg, rgba(246, 248, 242, 0.96) 0%, rgba(246, 248, 242, 0.72) 43%, rgba(246, 248, 242, 0.3) 100%),
     linear-gradient(180deg, rgba(246, 248, 242, 0.18), rgba(246, 248, 242, 0.88)),
-    var(--bg-action) var(--hero-bg-position-action) / var(--hero-bg-size) no-repeat;
+    var(--bg-action) center 32% / var(--hero-bg-size) no-repeat;
 }
 
 html[data-theme="light"] .broadcast-glass,
@@ -8615,7 +8615,7 @@ html[data-theme="light"] .team-hub-hero p:not(.eyebrow) {
   padding: 26px;
   background:
     linear-gradient(90deg, rgba(3, 7, 12, 0.9), rgba(3, 7, 12, 0.62) 50%, rgba(3, 7, 12, 0.34)),
-    var(--bg-ball) center 60% / var(--hero-bg-size) no-repeat;
+    var(--bg-court) var(--hero-bg-position-court) / var(--hero-bg-size) no-repeat;
   box-shadow: var(--shadow);
 }
 
@@ -9271,7 +9271,7 @@ html[data-theme="light"] .opgg-home .opgg-profile-card .opgg-rank-block {
 html[data-theme="light"] .opgg-home .opgg-summary-grid {
   background:
     linear-gradient(90deg, rgba(255, 255, 255, 0.76), rgba(255, 255, 255, 0.48) 52%, rgba(255, 255, 255, 0.26)),
-    var(--bg-ball) center 60% / var(--hero-bg-size) no-repeat;
+    var(--bg-court) var(--hero-bg-position-court) / var(--hero-bg-size) no-repeat;
 }
 
 html[data-theme="light"] .opgg-home .opgg-profile-card {
