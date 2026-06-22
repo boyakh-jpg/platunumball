@@ -22,15 +22,18 @@
   --bottom-nav-height: 58px;
   --bg-court: url("/assets/rankball-court-hero.png");
   --bg-action: url("/assets/main.png");
+  --bg-profile: url("/assets/Gemini_Generated_Image_heoiwzheoiwzheoi.png");
   --bg-hoop: url("/assets/Gemini_Generated_Image_veaa01veaa01veaa.png");
   --bg-ball: url("/assets/Gemini_Generated_Image_pkzbpxpkzbpxpkzb.png");
   --hero-bg-size: cover;
   --hero-crop-court: center center;
   --hero-crop-action: center 32%;
+  --hero-crop-profile: center 36%;
   --hero-crop-hoop: center center;
   --hero-crop-ball: center center;
   --hero-bg-position-court: var(--hero-crop-court);
   --hero-bg-position-action: var(--hero-crop-action);
+  --hero-bg-position-profile: var(--hero-crop-profile);
   --hero-bg-position-hoop: var(--hero-crop-hoop);
   --hero-bg-position-ball: var(--hero-crop-ball);
 }
@@ -56,10 +59,12 @@ html[data-theme="light"] {
   --shadow: 0 18px 42px rgba(35, 50, 59, 0.14);
   --bg-court: url("/assets/rankball-court-hero-day.png");
   --bg-action: url("/assets/main-day.png");
+  --bg-profile: url("/assets/rankball-action-day.png");
   --bg-hoop: url("/assets/rankball-hoop-day.png");
   --bg-ball: url("/assets/rankball-ball-day.png");
   --hero-bg-position-court: var(--hero-crop-court);
   --hero-bg-position-action: var(--hero-crop-action);
+  --hero-bg-position-profile: var(--hero-crop-profile);
   --hero-bg-position-hoop: var(--hero-crop-hoop);
   --hero-bg-position-ball: var(--hero-crop-ball);
 }

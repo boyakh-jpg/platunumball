@@ -7629,8 +7629,8 @@ html[data-theme="light"] .team-search-popover button.selected {
 }
 
 .profile-page .page-header {
-  --page-hero-bg: var(--bg-court);
-  --page-hero-bg-position: var(--hero-bg-position-court);
+  --page-hero-bg: var(--bg-profile);
+  --page-hero-bg-position: var(--hero-bg-position-profile);
 }
 
 .recorder-page .page-header {

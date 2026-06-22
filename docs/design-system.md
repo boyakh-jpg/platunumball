@@ -69,6 +69,7 @@
 | --- | --- |
 | 코트 | `--bg-court` |
 | 액션 | `--bg-action` |
+| 나 메뉴 | `--bg-profile` |
 | 골대 | `--bg-hoop` |
 | 공/도시 | `--bg-ball` |
 | 크기 | `--hero-bg-size` |
