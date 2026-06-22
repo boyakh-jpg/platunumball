@@ -2565,3 +2565,48 @@ html[data-theme="light"] .om-score-box {
     font-size: 0.84rem;
   }
 }
+
+/* Flat list/filter surface standard. */
+.om-view-card,
+.om-calendar-summary,
+.om-calendar-box,
+.om-filter-bar,
+.om-list-head,
+.om-match-card,
+.om-score-box,
+.om-match-summary-box,
+.om-match-info-box {
+  background-image: none;
+}
+
+.om-filter-bar,
+.om-list-head,
+.om-match-card,
+.om-calendar-summary,
+.om-calendar-box,
+.om-view-card {
+  background-color: rgba(10, 14, 21, 0.9);
+}
+
+.om-score-box,
+.om-match-summary-box,
+.om-match-info-box {
+  background-color: rgba(255, 255, 255, 0.045);
+}
+
+html[data-theme="light"] .om-filter-bar,
+html[data-theme="light"] .om-list-head,
+html[data-theme="light"] .om-match-card,
+html[data-theme="light"] .om-calendar-summary,
+html[data-theme="light"] .om-calendar-box,
+html[data-theme="light"] .om-view-card {
+  background-color: rgba(250, 254, 252, 0.92);
+  background-image: none;
+}
+
+html[data-theme="light"] .om-score-box,
+html[data-theme="light"] .om-match-summary-box,
+html[data-theme="light"] .om-match-info-box {
+  background-color: rgba(255, 255, 255, 0.88);
+  background-image: none;
+}

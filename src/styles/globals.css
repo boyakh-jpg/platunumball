@@ -8771,3 +8771,124 @@ html[data-theme="light"] .profile-records-summary {
     gap: 8px;
   }
 }
+
+/* Flat card surface standard: no gradients inside content boxes. */
+.section-card,
+.team-card,
+.elite-team-card,
+.rating-card,
+.profile-records-summary,
+.selector-panel,
+.team-create-panel,
+.my-team-management-card,
+.team-rank-rule-card,
+.home-search-panel,
+.home-action-card,
+.opgg-profile-card,
+.opgg-mode-card,
+.opgg-leaderboard-card,
+.opgg-record-card,
+.match-focus-card,
+.home-recent-card,
+.season-mini-card,
+.rivalry-card,
+.recruiting-teaser-card,
+.home-my-teams-card,
+.home-side-stack > .card,
+.team-hub-board {
+  background-color: rgba(10, 14, 21, 0.9);
+  background-image: none;
+}
+
+.opgg-stat-grid span,
+.stat-strip span,
+.rank-rule-list > div,
+.opgg-record-main,
+.opgg-mode-pill,
+.team-card .member-row,
+.member-row,
+.ranking-row,
+.delta-row,
+.recent-match-row,
+.home-action-row,
+.home-invitation-row,
+.home-search-box,
+.home-search-results a,
+.home-search-results .team-hover-trigger,
+.opgg-quick-links a,
+.opgg-profile-tabs a,
+.opgg-rank-list .opgg-rank-row,
+.home-side-stack .compact-list a,
+.home-side-stack .compact-list > div,
+.home-team-list a,
+.home-team-list > div,
+.quick-picker button,
+.favorite-result-row,
+.favorite-mini-chip,
+.selector-panel .search-controls,
+.ranking-filter-card {
+  background-color: rgba(255, 255, 255, 0.045);
+  background-image: none;
+}
+
+.elite-team-card::before {
+  display: none;
+}
+
+html[data-theme="light"] .section-card,
+html[data-theme="light"] .team-card,
+html[data-theme="light"] .elite-team-card,
+html[data-theme="light"] .rating-card,
+html[data-theme="light"] .profile-records-summary,
+html[data-theme="light"] .selector-panel,
+html[data-theme="light"] .team-create-panel,
+html[data-theme="light"] .my-team-management-card,
+html[data-theme="light"] .team-rank-rule-card,
+html[data-theme="light"] .home-search-panel,
+html[data-theme="light"] .home-action-card,
+html[data-theme="light"] .opgg-profile-card,
+html[data-theme="light"] .opgg-mode-card,
+html[data-theme="light"] .opgg-leaderboard-card,
+html[data-theme="light"] .opgg-record-card,
+html[data-theme="light"] .match-focus-card,
+html[data-theme="light"] .home-recent-card,
+html[data-theme="light"] .season-mini-card,
+html[data-theme="light"] .rivalry-card,
+html[data-theme="light"] .recruiting-teaser-card,
+html[data-theme="light"] .home-my-teams-card,
+html[data-theme="light"] .home-side-stack > .card,
+html[data-theme="light"] .team-hub-board {
+  background-color: rgba(255, 255, 255, 0.9);
+  background-image: none;
+}
+
+html[data-theme="light"] .opgg-stat-grid span,
+html[data-theme="light"] .stat-strip span,
+html[data-theme="light"] .rank-rule-list > div,
+html[data-theme="light"] .opgg-record-main,
+html[data-theme="light"] .opgg-mode-pill,
+html[data-theme="light"] .team-card .member-row,
+html[data-theme="light"] .member-row,
+html[data-theme="light"] .ranking-row,
+html[data-theme="light"] .delta-row,
+html[data-theme="light"] .recent-match-row,
+html[data-theme="light"] .home-action-row,
+html[data-theme="light"] .home-invitation-row,
+html[data-theme="light"] .home-search-box,
+html[data-theme="light"] .home-search-results a,
+html[data-theme="light"] .home-search-results .team-hover-trigger,
+html[data-theme="light"] .opgg-quick-links a,
+html[data-theme="light"] .opgg-profile-tabs a,
+html[data-theme="light"] .opgg-rank-list .opgg-rank-row,
+html[data-theme="light"] .home-side-stack .compact-list a,
+html[data-theme="light"] .home-side-stack .compact-list > div,
+html[data-theme="light"] .home-team-list a,
+html[data-theme="light"] .home-team-list > div,
+html[data-theme="light"] .quick-picker button,
+html[data-theme="light"] .favorite-result-row,
+html[data-theme="light"] .favorite-mini-chip,
+html[data-theme="light"] .selector-panel .search-controls,
+html[data-theme="light"] .ranking-filter-card {
+  background-color: rgba(246, 252, 249, 0.78);
+  background-image: none;
+}

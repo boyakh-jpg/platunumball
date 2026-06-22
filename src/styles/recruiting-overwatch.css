@@ -3393,31 +3393,108 @@ html[data-theme="light"] .ow-card-action.button-secondary {
   }
 }
 
-/* Final CSS cleanup: actual queue list cards use om-match-card + ow-lobby-card. */
+/* Final CSS cleanup: actual queue list cards use the same surface as Matches. */
 .ow-lobby-card.om-match-card {
-  min-height: 108px;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 300px) 92px;
+  min-height: 116px;
+  background: rgba(10, 14, 21, 0.9);
+  background-image: none;
 }
 
 .ow-lobby-card .om-card-main {
+  display: contents;
   gap: 7px;
 }
 
+.ow-lobby-card .om-card-kicker,
+.ow-lobby-card h3,
+.ow-lobby-card p {
+  grid-column: 1;
+}
+
 .ow-lobby-card .om-match-summary-box {
-  min-height: 42px;
-  padding: 8px 10px;
+  grid-column: 2;
+  grid-row: 1 / span 3;
+  align-self: center;
+  min-height: 76px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.045);
+  background-image: none;
 }
 
 .ow-lobby-card .om-summary-meta,
 .ow-lobby-card .om-summary-detail {
-  display: none;
+  display: block;
+}
+
+.ow-lobby-card .om-room-link {
+  grid-column: 3;
+  grid-row: 1 / span 3;
+  align-self: center;
+}
+
+html[data-theme="light"] .ow-lobby-card.om-match-card {
+  background: rgba(250, 254, 252, 0.92);
+}
+
+html[data-theme="light"] .ow-lobby-card .om-match-summary-box {
+  background: rgba(255, 255, 255, 0.88);
 }
 
 @media (max-width: 760px) {
   .ow-lobby-card.om-match-card {
-    min-height: 96px;
+    grid-template-columns: minmax(0, 1fr) 92px;
+    min-height: 104px;
   }
 
   .ow-lobby-card .om-match-summary-box {
-    min-height: 40px;
+    grid-column: 1 / -1;
+    grid-row: auto;
+    min-height: 54px;
   }
+
+  .ow-lobby-card .om-match-summary-box .om-summary-meta {
+    display: none;
+  }
+
+  .ow-lobby-card .om-room-link {
+    grid-column: 2;
+    grid-row: 1;
+  }
+}
+
+@media (max-width: 420px) {
+  .ow-lobby-card.om-match-card {
+    grid-template-columns: minmax(0, 1fr) 86px;
+  }
+}
+
+/* Flat queue surfaces, aligned with Matches list cards. */
+.ow-filter-bar,
+.ow-queue-controls,
+.ow-lobby-card.om-match-card,
+.ow-lobby-card .om-match-summary-box {
+  background-image: none;
+}
+
+.ow-filter-bar,
+.ow-queue-controls,
+.ow-lobby-card.om-match-card {
+  background-color: rgba(10, 14, 21, 0.9);
+}
+
+.ow-lobby-card .om-match-summary-box {
+  background-color: rgba(255, 255, 255, 0.045);
+}
+
+html[data-theme="light"] .ow-filter-bar,
+html[data-theme="light"] .ow-queue-controls,
+html[data-theme="light"] .ow-lobby-card.om-match-card {
+  background-color: rgba(250, 254, 252, 0.92);
+  background-image: none;
+}
+
+html[data-theme="light"] .ow-lobby-card .om-match-summary-box {
+  background-color: rgba(255, 255, 255, 0.88);
+  background-image: none;
 }
