@@ -26,7 +26,7 @@
   --bg-ball: url("/assets/Gemini_Generated_Image_pkzbpxpkzbpxpkzb.png");
   --hero-bg-size: cover;
   --hero-crop-court: center center;
-  --hero-crop-action: center center;
+  --hero-crop-action: center 32%;
   --hero-crop-hoop: center center;
   --hero-crop-ball: center center;
   --hero-bg-position-court: var(--hero-crop-court);
