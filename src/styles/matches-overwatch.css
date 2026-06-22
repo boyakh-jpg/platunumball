@@ -2394,3 +2394,174 @@ html[data-theme="light"] .om-calendar-grid button {
     gap: 10px;
   }
 }
+
+/* Final CSS cleanup: shared match/queue list cards, calendar stability. */
+.om-match-card {
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 300px) 92px;
+  min-height: 116px;
+  gap: 10px;
+  background: rgba(10, 14, 21, 0.9);
+}
+
+.om-match-card h3 {
+  line-height: 1.16;
+}
+
+.om-room-link {
+  min-width: 82px;
+  min-height: 42px;
+  border-color: rgba(118, 169, 255, 0.28);
+  background: rgba(23, 36, 56, 0.94);
+  color: var(--text);
+  font-weight: 950;
+}
+
+.om-room-link:hover {
+  border-color: rgba(70, 224, 182, 0.44);
+  background: rgba(70, 224, 182, 0.14);
+}
+
+.om-match-summary-box,
+.om-score-box {
+  min-height: 76px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.om-summary-line {
+  min-height: 38px;
+}
+
+.om-summary-side,
+.om-summary-side .team-hover-trigger,
+.om-score-box a,
+.om-score-box > .team-hover-trigger {
+  color: var(--text);
+  font-size: clamp(0.92rem, 1.15vw, 1.12rem);
+  line-height: 1.1;
+}
+
+.om-summary-line > strong,
+.om-score-box strong {
+  color: var(--text);
+  font-size: clamp(1.2rem, 1.65vw, 1.55rem);
+  line-height: 1;
+}
+
+.om-summary-meta,
+.om-summary-detail,
+.om-score-box span {
+  font-size: 0.72rem;
+  line-height: 1.25;
+}
+
+.om-calendar-grid {
+  grid-auto-rows: 44px;
+}
+
+.om-calendar-grid button,
+.om-calendar-grid > span {
+  min-height: 44px;
+  height: 44px;
+}
+
+.om-calendar-grid button:has(span) {
+  align-items: center;
+  padding-top: 4px;
+}
+
+.om-calendar-grid button span {
+  bottom: 4px;
+}
+
+html[data-theme="light"] .om-match-card {
+  background: rgba(250, 254, 252, 0.92);
+}
+
+html[data-theme="light"] .om-room-link {
+  border-color: rgba(53, 119, 212, 0.24);
+  background: rgba(232, 243, 255, 0.92);
+  color: #13252d;
+}
+
+html[data-theme="light"] .om-room-link:hover {
+  border-color: rgba(15, 159, 126, 0.34);
+  background: rgba(222, 250, 241, 0.94);
+}
+
+html[data-theme="light"] .om-match-summary-box,
+html[data-theme="light"] .om-score-box {
+  background: rgba(255, 255, 255, 0.88);
+}
+
+@media (max-width: 760px) {
+  .om-match-card {
+    grid-template-columns: minmax(0, 1fr) 92px;
+    min-height: 104px;
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .om-card-kicker {
+    gap: 5px;
+  }
+
+  .om-status-pill,
+  .om-card-kicker span:not(.om-status-pill) {
+    padding: 5px 7px;
+    font-size: 0.66rem;
+  }
+
+  .om-match-card h3 {
+    font-size: 1rem;
+  }
+
+  .om-match-card p {
+    font-size: 0.74rem;
+  }
+
+  .om-match-summary-box,
+  .om-score-box,
+  .om-match-info-box {
+    min-height: 54px;
+  }
+
+  .om-match-summary-box .om-summary-meta {
+    display: none;
+  }
+
+  .om-room-link {
+    width: 92px;
+    min-width: 92px;
+    min-height: 42px;
+    padding-inline: 8px;
+  }
+
+  .om-calendar-grid {
+    grid-auto-rows: 44px;
+  }
+
+  .om-calendar-grid button,
+  .om-calendar-grid > span {
+    min-height: 44px;
+    height: 44px;
+  }
+}
+
+@media (max-width: 420px) {
+  .om-match-card {
+    grid-template-columns: minmax(0, 1fr) 86px;
+  }
+
+  .om-room-link {
+    width: 86px;
+    min-width: 86px;
+    font-size: 0.78rem;
+  }
+
+  .om-summary-side,
+  .om-summary-side .team-hover-trigger,
+  .om-score-box a,
+  .om-score-box > .team-hover-trigger {
+    font-size: 0.84rem;
+  }
+}
