@@ -55,7 +55,7 @@ html[data-theme="light"] {
   --danger: #c9394e;
   --shadow: 0 18px 42px rgba(35, 50, 59, 0.14);
   --bg-court: url("/assets/rankball-court-hero-day.png");
-  --bg-action: url("/assets/rankball-action-day.png");
+  --bg-action: url("/assets/main-day.png");
   --bg-hoop: url("/assets/rankball-hoop-day.png");
   --bg-ball: url("/assets/rankball-ball-day.png");
   --hero-bg-position-court: var(--hero-crop-court);
