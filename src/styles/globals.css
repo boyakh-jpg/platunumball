@@ -8615,7 +8615,7 @@ html[data-theme="light"] .team-hub-hero p:not(.eyebrow) {
   padding: 26px;
   background:
     linear-gradient(90deg, rgba(3, 7, 12, 0.9), rgba(3, 7, 12, 0.62) 50%, rgba(3, 7, 12, 0.34)),
-    var(--bg-court) var(--hero-bg-position-court) / var(--hero-bg-size) no-repeat;
+    var(--bg-ball) center 60% / var(--hero-bg-size) no-repeat;
   box-shadow: var(--shadow);
 }
 
@@ -9271,7 +9271,7 @@ html[data-theme="light"] .opgg-home .opgg-profile-card .opgg-rank-block {
 html[data-theme="light"] .opgg-home .opgg-summary-grid {
   background:
     linear-gradient(90deg, rgba(255, 255, 255, 0.76), rgba(255, 255, 255, 0.48) 52%, rgba(255, 255, 255, 0.26)),
-    var(--bg-court) var(--hero-bg-position-court) / var(--hero-bg-size) no-repeat;
+    var(--bg-ball) center 60% / var(--hero-bg-size) no-repeat;
 }
 
 html[data-theme="light"] .opgg-home .opgg-profile-card {
