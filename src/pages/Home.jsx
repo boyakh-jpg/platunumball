@@ -459,7 +459,7 @@ export default function Home({ app }) {
             </div>
           </div>
           <div className="opgg-rank-block">
-            <TierEmblem mmr={user.ratings.integrated} size="md" showLabel />
+            <TierEmblem mmr={user.ratings.integrated} size="md" />
             <div>
               <strong>{getTierDivision(user.ratings.integrated)}</strong>
               <span>{Math.round(user.ratings.integrated)} MMR</span>
