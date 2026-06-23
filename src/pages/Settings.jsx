@@ -11,6 +11,7 @@ import { formatStatLine, getMatchReservePlayerIds, getMatchSidePlayerIds } from 
 import { COURT_REQUEST_TRUST_MIN, COURTS, FALSE_COURT_REPORT_TRUST_PENALTY, REGIONS } from "../lib/constants.js";
 import { getCourtHashtag } from "../lib/handles.js";
 import { geocodeKakaoAddress, getKakaoMapAppKey, openDaumPostcodeSearch } from "../lib/kakaoAddress.js";
+import { hasAdminAccess } from "../lib/admin.js";
 import {
   REFEREE_EXAM_BANK_SIZE,
   REFEREE_EXAM_PASS_SCORE,
@@ -129,6 +130,7 @@ export default function Settings({ app, auth }) {
   const refereeExamAttempts = app.state.settings?.refereeExamAttempts ?? [];
   const currentTrustScore = Number(app.currentUser?.trustScore ?? 0);
   const canSubmitCourtRequest = currentTrustScore >= COURT_REQUEST_TRUST_MIN;
+  const canOpenAdminMenu = hasAdminAccess(app.currentUser);
   const rawCourtLat = String(courtDraft.lat ?? "").trim();
   const rawCourtLng = String(courtDraft.lng ?? "").trim();
   const numericCourtLat = Number(rawCourtLat);
@@ -537,6 +539,29 @@ export default function Settings({ app, auth }) {
               </label>
             </div>
           </Card>
+
+          {canOpenAdminMenu ? (
+            <Card className="section-card admin-menu-card">
+              <div className="section-title-row">
+                <div>
+                  <p className="eyebrow">Operations</p>
+                  <h2>관리자 메뉴</h2>
+                </div>
+                <ShieldCheck size={22} />
+              </div>
+              <div className="contract-grid single">
+                <div>
+                  <span>정렬 기준</span>
+                  <strong>구장 · 플레이어 · 경기</strong>
+                </div>
+                <div>
+                  <span>처리 대상</span>
+                  <strong>신고 · 기록 · 구장요청</strong>
+                </div>
+              </div>
+              <Link className="button button-secondary button-md" to="/app/admin">관리자 메뉴 열기</Link>
+            </Card>
+          ) : null}
 
           <Card className="section-card">
             <div className="section-title-row">

@@ -4,6 +4,7 @@ import RequireAuth from "./components/auth/RequireAuth.jsx";
 import AppShell from "./components/layout/AppShell.jsx";
 import { useAuthSession } from "./hooks/useAuthSession.js";
 import { useAppData } from "./hooks/useAppData.js";
+import Admin from "./pages/Admin.jsx";
 import Affiliations from "./pages/Affiliations.jsx";
 import CreateMatch from "./pages/CreateMatch.jsx";
 import Home from "./pages/Home.jsx";
@@ -68,6 +69,7 @@ export default function App() {
           <Route path="/app/profile/records" element={<ProfileRecords app={app} />} />
           <Route path="/app/affiliations" element={<Affiliations app={app} />} />
           <Route path="/app/notifications" element={<Notifications app={app} />} />
+          <Route path="/app/admin" element={<Admin app={app} />} />
           <Route path="/app/settings" element={<Settings app={app} auth={auth} />} />
           <Route path="/app/signup" element={<Signup app={app} auth={auth} />} />
         </Route>
