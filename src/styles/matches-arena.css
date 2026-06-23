@@ -1572,7 +1572,7 @@
   line-height: 1;
 }
 
-.om-score-box span {
+.om-score-box > span:not(.team-hover-trigger) {
   grid-column: 1 / -1;
   color: var(--gold);
   font-size: 0.72rem;
@@ -1894,7 +1894,7 @@ html[data-theme="light"] .tournament-schedule-list input {
     padding: 7px;
   }
 
-  .om-score-box span {
+  .om-score-box > span:not(.team-hover-trigger) {
     display: none;
   }
 
@@ -2485,7 +2485,7 @@ html[data-theme="light"] .om-calendar-grid button {
 
 .om-summary-meta,
 .om-summary-detail,
-.om-score-box span {
+.om-score-box > span:not(.team-hover-trigger) {
   font-size: 0.72rem;
   line-height: 1.25;
 }
@@ -2664,4 +2664,14 @@ html[data-theme="light"] .om-calendar-grid button.active {
   background-color: rgba(213, 250, 241, 0.94);
   background-image: none;
   color: #075f51;
+}
+
+.om-score-box > .team-hover-trigger {
+  font-size: clamp(1.85rem, 2.8vw, 2.42rem);
+  font-weight: 1000;
+  line-height: 1.08;
+}
+
+.om-score-box > strong {
+  font-size: clamp(1.02rem, 1.42vw, 1.24rem);
 }
