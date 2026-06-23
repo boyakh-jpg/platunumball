@@ -7,7 +7,8 @@ import SearchPicker from "../components/common/SearchPicker.jsx";
 import { getTierEmblemSrc } from "../components/rating/TierEmblem.jsx";
 import TeamCard from "../components/team/TeamCard.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
-import { COURTS, MAX_TEAM_MEMBERSHIPS, MAX_TEAM_NAME_LENGTH, REGIONS } from "../lib/constants.js";
+import { MAX_TEAM_MEMBERSHIPS, MAX_TEAM_NAME_LENGTH, REGIONS } from "../lib/constants.js";
+import { getRegisteredCourts } from "../lib/courts.js";
 import { getTierDivision } from "../lib/tier.js";
 
 const allRegions = ["전체", ...REGIONS];
@@ -55,7 +56,9 @@ function compareTeamRank(a, b) {
 }
 
 export default function Teams({ app }) {
-  const [draft, setDraft] = useState({ name: "New Court Crew", region: app.currentUser.region, homeCourt: COURTS[0].name, captainId: app.currentUser.id, accent: "#58d2c0" });
+  const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
+  const defaultHomeCourt = registeredCourts[0]?.name ?? "미정";
+  const [draft, setDraft] = useState({ name: "New Court Crew", region: app.currentUser.region, homeCourt: defaultHomeCourt, captainId: app.currentUser.id, accent: "#58d2c0" });
   const [query, setQuery] = useState("");
   const [region, setRegion] = useState(app.currentUser.region ?? "전체");
   const favoriteTeamIds = app.state.settings?.favoriteTeamIds ?? [];
@@ -116,7 +119,7 @@ export default function Teams({ app }) {
     event.preventDefault();
     if (teamNameInvalid) return;
     app.actions.createTeam(draft);
-    setDraft({ name: "New Court Crew", region: app.currentUser.region, homeCourt: COURTS[0].name, captainId: app.currentUser.id, accent: "#58d2c0" });
+    setDraft({ name: "New Court Crew", region: app.currentUser.region, homeCourt: defaultHomeCourt, captainId: app.currentUser.id, accent: "#58d2c0" });
   };
 
   return (
@@ -259,7 +262,7 @@ export default function Teams({ app }) {
             <label>
               홈 코트
               <select value={draft.homeCourt} onChange={(event) => update({ homeCourt: event.target.value })}>
-                {COURTS.filter((court) => court.region === draft.region || draft.region === "전체").map((court) => <option key={court.id} value={court.name}>{court.name}</option>)}
+                {registeredCourts.filter((court) => court.region === draft.region || draft.region === "전체").map((court) => <option key={court.id} value={court.name}>{court.name}</option>)}
               </select>
             </label>
             <label>

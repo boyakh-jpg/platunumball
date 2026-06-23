@@ -5,6 +5,7 @@ import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import {
   ADMIN_BACKEND_TODO,
+  APPOINTMENT_TERM_OPTIONS,
   ADMIN_REVIEW_ACTIONS,
   REFEREE_GRADE_META,
   SUSPENSION_TIERS,
@@ -19,6 +20,11 @@ const VIEW_OPTIONS = [
   { id: "matches", label: "경기별", icon: ClipboardList },
 ];
 const ACTION_OPTIONS = Object.entries(ADMIN_REVIEW_ACTIONS).map(([id, meta]) => ({ id, ...meta }));
+const APPOINTMENT_ACTION_OPTIONS = [
+  { id: "appointReferee", label: "심판 임명" },
+  { id: "appointAdmin", label: "관리자 임명" },
+  { id: "revokeAppointment", label: "임명 회수" },
+];
 
 function statusLabel(status) {
   if (status === "resolved") return "처리됨";
@@ -63,9 +69,26 @@ export default function Admin({ app }) {
     reason: "",
     feedback: "",
   });
+  const [appointmentDraft, setAppointmentDraft] = useState({
+    actionType: "appointReferee",
+    userId: "",
+    adminGrade: "support",
+    refereeGrade: "candidate",
+    termDays: 90,
+    appointmentId: "",
+    reason: "",
+  });
   const canAdmin = hasAdminAccess(app.currentUser, app.state.settings);
   const model = useMemo(() => buildAdminReviewModel(app.state), [app.state]);
   const appointments = useMemo(() => buildAdminAppointmentModel(app.state), [app.state]);
+  const appointmentUsers = useMemo(
+    () => [...app.state.users].sort((a, b) => a.name.localeCompare(b.name)),
+    [app.state.users],
+  );
+  const activeAppointmentOptions = useMemo(
+    () => appointments.rows.filter((row) => row.active && row.source !== "current_profile"),
+    [appointments.rows],
+  );
   const activeRows = model[view] ?? [];
   const selectedId = selectedIdByView[view];
   const selectedRow = activeRows.find((row) => row.id === selectedId) ?? activeRows[0] ?? null;
@@ -93,12 +116,20 @@ export default function Admin({ app }) {
   }, [selectedReport?.id, selectedRow?.id]);
 
   const updateActionDraft = (patch) => setActionDraft((current) => ({ ...current, ...patch }));
+  const updateAppointmentDraft = (patch) => setAppointmentDraft((current) => ({ ...current, ...patch }));
   const commitSelectedAction = () => {
     if (!selectedReport) return;
     app.actions.commitAdminReviewAction({
       ...actionDraft,
       targetUserId: selectedTargetUserId,
       reportId: selectedReport.id,
+    });
+  };
+  const commitAppointmentAction = () => {
+    app.actions.commitAdminAppointmentAction({
+      ...appointmentDraft,
+      userId: appointmentDraft.userId || appointmentUsers[0]?.id || "",
+      appointmentId: appointmentDraft.appointmentId || activeAppointmentOptions[0]?.id || "",
     });
   };
 
@@ -189,6 +220,17 @@ export default function Admin({ app }) {
             </div>
           ))}
         </div>
+        {appointments.refereeGrades.length ? (
+          <div className="admin-referee-score-list">
+            {appointments.refereeGrades.map((row) => (
+              <div key={row.userId}>
+                <strong>{row.userName}</strong>
+                <span>{row.gradeLabel} · 점수 {row.score}</span>
+                <em>심판 {row.matchCount}경기 · 따봉 {row.thumbsUp} · 신고 {row.reportCount}</em>
+              </div>
+            ))}
+          </div>
+        ) : null}
         <div className="admin-appointment-list">
           {appointments.rows.slice(0, 8).map((row) => (
             <div key={row.id} className="admin-appointment-row">
@@ -204,7 +246,70 @@ export default function Admin({ app }) {
           ))}
           {!appointments.rows.length ? <span className="admin-empty-line">임명 기록 없음</span> : null}
         </div>
-        <small>임명/회수 액션은 서버 권한과 auditLog 연결 뒤 활성화합니다.</small>
+        <div className="admin-action-panel admin-appointment-action-panel">
+          <div>
+            <strong>임명/회수 액션</strong>
+            <small>mock 커밋입니다. 배포 전 서버 권한, RLS, auditLog 트랜잭션으로 다시 묶어야 합니다.</small>
+          </div>
+          <div className="arena-field-grid">
+            <label>
+              액션
+              <select value={appointmentDraft.actionType} onChange={(event) => updateAppointmentDraft({ actionType: event.target.value })}>
+                {APPOINTMENT_ACTION_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+              </select>
+            </label>
+            {appointmentDraft.actionType === "revokeAppointment" ? (
+              <label>
+                회수 대상
+                <select value={appointmentDraft.appointmentId} onChange={(event) => updateAppointmentDraft({ appointmentId: event.target.value })}>
+                  {!activeAppointmentOptions.length ? <option value="">활성 임명 없음</option> : null}
+                  {activeAppointmentOptions.map((row) => <option key={row.id} value={row.id}>{row.userName} · {row.roleLabel} · {row.gradeLabel}</option>)}
+                </select>
+              </label>
+            ) : (
+              <label>
+                플레이어
+                <select value={appointmentDraft.userId || appointmentUsers[0]?.id || ""} onChange={(event) => updateAppointmentDraft({ userId: event.target.value })}>
+                  {appointmentUsers.map((user) => <option key={user.id} value={user.id}>{user.name} · 신뢰도 {user.trustScore ?? "-"}</option>)}
+                </select>
+              </label>
+            )}
+          </div>
+          {appointmentDraft.actionType !== "revokeAppointment" ? (
+            <div className="arena-field-grid">
+              <label>
+                등급
+                {appointmentDraft.actionType === "appointAdmin" ? (
+                  <select value={appointmentDraft.adminGrade} onChange={(event) => updateAppointmentDraft({ adminGrade: event.target.value })}>
+                    {appointments.grades.filter((grade) => grade.id !== "owner").map((grade) => <option key={grade.id} value={grade.id}>{grade.label}</option>)}
+                  </select>
+                ) : (
+                  <select value={appointmentDraft.refereeGrade} onChange={(event) => updateAppointmentDraft({ refereeGrade: event.target.value })}>
+                    {Object.entries(REFEREE_GRADE_META).map(([id, grade]) => <option key={id} value={id}>{grade.label}</option>)}
+                  </select>
+                )}
+              </label>
+              <label>
+                기간
+                <select value={appointmentDraft.termDays} onChange={(event) => updateAppointmentDraft({ termDays: Number(event.target.value) })}>
+                  {APPOINTMENT_TERM_OPTIONS.map((term) => <option key={term.id} value={term.days}>{term.label}</option>)}
+                </select>
+              </label>
+            </div>
+          ) : null}
+          <label>
+            사유
+            <textarea value={appointmentDraft.reason} placeholder="임명 또는 회수 사유" onChange={(event) => updateAppointmentDraft({ reason: event.target.value })} />
+          </label>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={appointmentDraft.actionType === "revokeAppointment" && !activeAppointmentOptions.length}
+            onClick={commitAppointmentAction}
+          >
+            임명/회수 커밋
+          </Button>
+        </div>
       </Card>
 
       <div className="admin-workbench">
@@ -353,7 +458,14 @@ export default function Admin({ app }) {
                       <strong>{request.name}</strong>
                       <em>{request.addressText} · {request.lat ?? "-"}, {request.lng ?? "-"}</em>
                     </span>
-                    <Badge tone={request.status === "reported" ? "orange" : "neutral"}>{statusLabel(request.status)}</Badge>
+                    <span className="admin-row-actions">
+                      <Badge tone={request.status === "reported" ? "orange" : request.status === "approved" ? "green" : "neutral"}>{statusLabel(request.status)}</Badge>
+                      {request.status !== "approved" ? (
+                        <Button type="button" variant="secondary" size="sm" onClick={() => app.actions.approveCourtRequest(request.id)}>
+                          승인
+                        </Button>
+                      ) : null}
+                    </span>
                   </div>
                 )) : null}
               </DetailList>

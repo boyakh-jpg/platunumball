@@ -7,7 +7,8 @@ import Card from "../components/common/Card.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
 import RuleSelector from "../components/match/RuleSelector.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
-import { COURTS, MATCH_MODES, REFEREE_TRUST_MIN, REGIONS } from "../lib/constants.js";
+import { MATCH_MODES, REFEREE_TRUST_MIN, REGIONS } from "../lib/constants.js";
+import { getRegisteredCourts } from "../lib/courts.js";
 import { getPublicRoomMaxDateInput, isEligibleReferee } from "../lib/matchUtils.js";
 import { AGE_GROUPS, getAgeGroupForUser } from "../lib/profileSetup.js";
 import { MMR_RANGE_POLICIES, getRecruitingSideCapacity, getRecruitingTierRange, getSelectableTeamPlayerIds, isMmrInRecruitingRange } from "../lib/recruiting.js";
@@ -284,6 +285,8 @@ export default function CreateMatch({ app }) {
     () => app.state.teams.filter((team) => team.members.some((member) => member.userId === app.currentUser.id)),
     [app.currentUser.id, app.state.teams],
   );
+  const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
+  const defaultCourt = registeredCourts[0] ?? { name: "미정", region: app.currentUser.region };
   const [teamQuery, setTeamQuery] = useState("");
   const [opponentTeamQuery, setOpponentTeamQuery] = useState("");
   const [courtQuery, setCourtQuery] = useState("");
@@ -304,7 +307,7 @@ export default function CreateMatch({ app }) {
     ageRestriction: defaultAgeRestriction,
     title: "오늘의 5v5 공식전",
     mode: "5v5",
-    court: COURTS[0].name,
+    court: defaultCourt.name,
     scheduledDate: today,
     scheduledTime: "20:30",
     teamAId: defaultTeamA?.id,
@@ -349,11 +352,11 @@ export default function CreateMatch({ app }) {
   }, [app.currentUser.region, app.state.teams, favoriteTeamIds, teamQuery, teamRegion]);
 
   const sortedCourts = useMemo(() => {
-    return COURTS
+    return registeredCourts
       .filter((court) => courtRegion === "전체" || court.region === courtRegion)
       .filter((court) => includesQuery(`${court.name} ${court.region} ${court.type}`, courtQuery))
       .sort((a, b) => Number(isFavoriteCourt(b)) - Number(isFavoriteCourt(a)) || Number(b.region === app.currentUser.region) - Number(a.region === app.currentUser.region) || a.name.localeCompare(b.name));
-  }, [app.currentUser.region, courtQuery, courtRegion, favoriteCourtIds]);
+  }, [app.currentUser.region, courtQuery, courtRegion, favoriteCourtIds, registeredCourts]);
 
   const favoriteTeams = useMemo(() => {
     return [...app.state.teams]
@@ -363,11 +366,11 @@ export default function CreateMatch({ app }) {
   }, [app.currentUser.region, app.state.teams, favoriteTeamIds]);
 
   const favoriteCourts = useMemo(() => {
-    return [...COURTS]
+    return [...registeredCourts]
       .filter(isFavoriteCourt)
       .sort((a, b) => Number(b.region === app.currentUser.region) - Number(a.region === app.currentUser.region) || a.name.localeCompare(b.name))
       .slice(0, 10);
-  }, [app.currentUser.region, favoriteCourtIds]);
+  }, [app.currentUser.region, favoriteCourtIds, registeredCourts]);
 
   const selectedTeamA = app.state.teams.find((team) => team.id === draft.teamAId);
   const selectedTeamB = app.state.teams.find((team) => team.id === draft.teamBId);
@@ -497,8 +500,8 @@ export default function CreateMatch({ app }) {
           ? "팀전은 A/B사이드 출전 슬롯이 모두 채워져야 생성할 수 있습니다."
           : "";
   const selectedCourt = useMemo(
-    () => COURTS.find((court) => court.name === draft.court) ?? COURTS[0],
-    [draft.court],
+    () => registeredCourts.find((court) => court.name === draft.court) ?? defaultCourt,
+    [defaultCourt, draft.court, registeredCourts],
   );
   const selectCourt = (court) => {
     update({ court: court.name });

@@ -9,7 +9,7 @@ import MatchCard from "../components/match/MatchCard.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
-import { COURTS } from "../lib/constants.js";
+import { getRegisteredCourts } from "../lib/courts.js";
 import { getCourtHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { getAllowedStatFields, getMatchRecordWindow, getMatchReservePlayerIds, getMatchRoomPhase, getPlayerSideName, getPlayerStatSubmitted, getPublicRoomTimingStatus, isInstantRoom } from "../lib/matchUtils.js";
 import { RECRUITING_TYPES, getPendingRecruitingInvitations, getRecruitingLobby, getRecruitingRoomOwnerId, isNationalRecruitingPost, isRecruitingPostForUser } from "../lib/recruiting.js";
@@ -112,6 +112,7 @@ export default function Home({ app }) {
   const pendingInvitations = useMemo(() => getPendingRecruitingInvitations(app.state, user.id), [app.state, user.id]);
   const myTeamCount = app.state.teams.filter((team) => team.members.some((member) => member.userId === user.id)).length;
   const blockedUserIds = app.state.settings?.blockedUserIds ?? [];
+  const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
   const season = getCurrentSeason(app.state);
   const seasonProgress = getSeasonProgress(season);
   const seasonRows = getPlayerSeasonRows(app.state.users, app.state.matches, season, user.region);
@@ -299,7 +300,7 @@ export default function Home({ app }) {
         hashtag,
       };
     });
-    const courts = COURTS.map((court) => {
+    const courts = registeredCourts.map((court) => {
       const hashtag = getCourtHashtag(court);
       return {
         id: `court-${court.id}`,
@@ -322,7 +323,7 @@ export default function Home({ app }) {
         return item.haystack.toLowerCase().includes(searchText);
       })
       .sort((a, b) => b.score - a.score || a.label.localeCompare(b.label));
-  }, [app.state.teams, app.state.users, blockedUserIds, searchText, user.region]);
+  }, [app.state.teams, app.state.users, blockedUserIds, registeredCourts, searchText, user.region]);
   const topRankers = seasonRows.slice(0, 5);
   const latestMyMatches = myCompletedMatches.slice(0, 5);
   const renderHomeSearchItem = (item) => (

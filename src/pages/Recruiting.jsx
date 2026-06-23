@@ -27,7 +27,8 @@ import TierBadge from "../components/rating/TierBadge.jsx";
 import { getTierEmblemSrc } from "../components/rating/TierEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
-import { COURTS, MATCH_MODES, PLAYER_POSITIONS, PLAYER_STAT_FIELDS, REGIONS } from "../lib/constants.js";
+import { MATCH_MODES, PLAYER_POSITIONS, PLAYER_STAT_FIELDS, REGIONS } from "../lib/constants.js";
+import { getRegisteredCourts } from "../lib/courts.js";
 import {
   MMR_RANGE_POLICIES,
   RECRUITING_JOIN_MODES,
@@ -2649,6 +2650,7 @@ export default function Recruiting({ app }) {
     () => app.state.teams.filter((team) => team.members.some((member) => member.userId === app.currentUser.id)),
     [app.currentUser.id, app.state.teams],
   );
+  const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
   const myTeamIds = useMemo(() => myTeams.map((team) => team.id), [myTeams]);
   const userById = useMemo(() => Object.fromEntries(app.state.users.map((user) => [user.id, user])), [app.state.users]);
   const teamById = useMemo(() => Object.fromEntries(app.state.teams.map((team) => [team.id, team])), [app.state.teams]);
@@ -2663,7 +2665,7 @@ export default function Recruiting({ app }) {
     hostJoinMode: myTeams[0]?.id ? "team" : "player",
     title: "",
     region: app.currentUser.region,
-    court: COURTS.find((court) => court.region === app.currentUser.region)?.name ?? COURTS[0].name,
+    court: registeredCourts.find((court) => court.region === app.currentUser.region)?.name ?? registeredCourts[0]?.name ?? "미정",
     timingType: "scheduled",
     scheduledDate: getTodayInputValue(),
     scheduledTime: "20:00",
@@ -3061,7 +3063,7 @@ export default function Recruiting({ app }) {
                     value={draft.region}
                     onChange={(event) => {
                       const region = event.target.value;
-                      update({ region, court: COURTS.find((court) => court.region === region)?.name ?? draft.court });
+                      update({ region, court: registeredCourts.find((court) => court.region === region)?.name ?? draft.court });
                     }}
                   >
                     {REGIONS.map((region) => <option key={region}>{region}</option>)}
@@ -3076,7 +3078,7 @@ export default function Recruiting({ app }) {
                 <label>
                   장소
                   <select value={draft.court} onChange={(event) => update({ court: event.target.value })}>
-                    {COURTS.filter((court) => court.region === draft.region || draft.region === "전체").map((court) => (
+                    {registeredCourts.filter((court) => court.region === draft.region || draft.region === "전체").map((court) => (
                       <option key={court.id} value={court.name}>{court.region} · {court.name}</option>
                     ))}
                   </select>

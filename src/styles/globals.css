@@ -5796,7 +5796,8 @@ html[data-theme="light"] .search-picker-result-row.selected {
 }
 
 .admin-grade-strip,
-.admin-referee-grade-strip {
+.admin-referee-grade-strip,
+.admin-referee-score-list {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
@@ -5804,6 +5805,7 @@ html[data-theme="light"] .search-picker-result-row.selected {
 
 .admin-grade-strip div,
 .admin-referee-grade-strip div,
+.admin-referee-score-list div,
 .admin-action-panel,
 .admin-appointment-row {
   min-width: 0;
@@ -5817,6 +5819,8 @@ html[data-theme="light"] .search-picker-result-row.selected {
 .admin-grade-strip em,
 .admin-referee-grade-strip div,
 .admin-referee-grade-strip em,
+.admin-referee-score-list div,
+.admin-referee-score-list em,
 .admin-action-panel,
 .admin-action-panel > div,
 .admin-appointment-list,
@@ -5829,6 +5833,8 @@ html[data-theme="light"] .search-picker-result-row.selected {
 .admin-grade-strip em,
 .admin-referee-grade-strip span,
 .admin-referee-grade-strip em,
+.admin-referee-score-list span,
+.admin-referee-score-list em,
 .admin-action-panel small,
 .admin-appointment-row em,
 .admin-appointment-row small,
@@ -5842,6 +5848,10 @@ html[data-theme="light"] .search-picker-result-row.selected {
 
 .admin-referee-grade-strip {
   grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.admin-referee-score-list {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .admin-action-panel {
@@ -5869,6 +5879,13 @@ html[data-theme="light"] .search-picker-result-row.selected {
 
 .admin-appointment-row > span:last-child {
   justify-items: end;
+}
+
+.admin-row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .admin-sort-list,

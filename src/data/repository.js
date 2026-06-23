@@ -61,7 +61,17 @@ import {
   normalizeRecruitingPost,
   normalizeRecruitingRoomState,
 } from "../lib/recruiting.js";
-import { ADMIN_REVIEW_ACTIONS, getSuspensionTier, hasAdminAccess } from "../lib/admin.js";
+import {
+  ADMIN_GRADE_META,
+  ADMIN_REVIEW_ACTIONS,
+  REFEREE_GRADE_META,
+  getActiveUserDiscipline,
+  getAdminGrade,
+  getAdminGradeMeta,
+  getSuspensionTier,
+  hasAdminAccess,
+  isAppointmentActive,
+} from "../lib/admin.js";
 import { clearState, readState, writeState } from "../lib/storage.js";
 import { isBulkRemoteWriteEnabled, isSupabaseConfigured, supabase } from "../lib/supabase.js";
 
@@ -78,6 +88,7 @@ const DEFAULT_SETTINGS = {
   favoritePlayerIds: [],
   favoriteTeamIds: [],
   favoriteCourtIds: [],
+  approvedCourts: [],
   courtRequests: [],
   refereeRequests: [],
   adminAppointments: [],
@@ -145,6 +156,24 @@ function getHostTrustBlockNotification(state, draft = {}) {
     title: "방장 신뢰도 부족",
     body: `${visibility === "public" ? "공개 정규전" : "정규전"} 방장은 신뢰도 ${requiredTrust}점 이상부터 가능합니다. 현재 ${trustScore}점입니다.`,
     tone: "orange",
+  };
+}
+
+function getDisciplineBlockedState(state, actionLabel = "이 작업") {
+  const discipline = getActiveUserDiscipline(state.settings, state.currentUserId);
+  if (!discipline) return null;
+  const until = discipline.endsAt ? new Date(discipline.endsAt).toLocaleString("ko-KR") : "제한 해제 전";
+  return {
+    ...state,
+    notifications: [
+      {
+        id: makeId("n"),
+        title: "이용 제한 중",
+        body: `${actionLabel}은 ${until}까지 제한됩니다. 사유: ${discipline.reason || "관리자 제재"}`,
+        tone: "orange",
+      },
+      ...state.notifications,
+    ],
   };
 }
 
@@ -506,6 +535,7 @@ function normalizeSettings(settings = {}) {
     favoritePlayerIds: settings.favoritePlayerIds ?? initialState.settings?.favoritePlayerIds ?? [],
     favoriteTeamIds: settings.favoriteTeamIds ?? initialState.settings?.favoriteTeamIds ?? [],
     favoriteCourtIds: settings.favoriteCourtIds ?? initialState.settings?.favoriteCourtIds ?? [],
+    approvedCourts: settings.approvedCourts ?? initialState.settings?.approvedCourts ?? [],
     courtRequests: settings.courtRequests ?? initialState.settings?.courtRequests ?? [],
     refereeRequests: settings.refereeRequests ?? initialState.settings?.refereeRequests ?? [],
     adminAppointments: settings.adminAppointments ?? initialState.settings?.adminAppointments ?? [],
@@ -1953,6 +1983,8 @@ export function runAutomaticStateMaintenance(state, now = new Date()) {
 }
 
 export function createMatch(state, draft) {
+  const disciplineBlock = getDisciplineBlockedState(state, "경기방 생성");
+  if (disciplineBlock) return disciplineBlock;
   const hostTrustBlock = getHostTrustBlockNotification(state, { ...draft, visibility: "private" });
   if (hostTrustBlock) return { ...state, notifications: [hostTrustBlock, ...state.notifications] };
   const mode = draft.mode ?? "5v5";
@@ -2028,6 +2060,8 @@ export function createMatch(state, draft) {
 }
 
 export function createTournament(state, draft) {
+  const disciplineBlock = getDisciplineBlockedState(state, "대회 생성");
+  if (disciplineBlock) return disciplineBlock;
   const tournamentStartDate = draft.scheduledDate || draft.tournamentStartDate || "";
   const tournamentEndDate = draft.tournamentEndDate || tournamentStartDate;
   if (!isScheduleDateInAllowedWindow(tournamentStartDate) || !isScheduleDateInAllowedWindow(tournamentEndDate)) {
@@ -2395,6 +2429,8 @@ export function agreeMatch(state, matchId, sideName, playerId) {
 }
 
 export function submitMatchResult(state, matchId, result) {
+  const disciplineBlock = getDisciplineBlockedState(state, "기록 저장");
+  if (disciplineBlock) return disciplineBlock;
   const match = state.matches.find((item) => item.id === matchId);
   if (!match) return state;
   const currentUserId = state.currentUserId;
@@ -2762,6 +2798,8 @@ export function approveMatch(state, matchId, sideName, playerId) {
 }
 
 export function disputeMatch(state, matchId, reason = "") {
+  const disciplineBlock = getDisciplineBlockedState(state, "이의제기");
+  if (disciplineBlock) return disciplineBlock;
   const match = state.matches.find((item) => item.id === matchId);
   if (!match?.result || match.status !== "approval") return state;
   if (!currentUserCanOperateStartedMatch(state, match)) {
@@ -2907,6 +2945,8 @@ function getMissingActiveAttendance(match = {}) {
 }
 
 export function checkInMatchPlayer(state, matchId, sideName, playerId) {
+  const disciplineBlock = getDisciplineBlockedState(state, "출석 처리");
+  if (disciplineBlock) return disciplineBlock;
   const match = state.matches.find((item) => item.id === matchId);
   if (!match || !playerId) return state;
   if (!currentUserCanStartMatch(state, match)) return state;
@@ -3196,6 +3236,8 @@ export function resumeMatchApproval(state, matchId, resultDraft = null) {
 }
 
 export function toggleMatchStar(state, matchId, targetUserId) {
+  const disciplineBlock = getDisciplineBlockedState(state, "경기 평가");
+  if (disciplineBlock) return disciplineBlock;
   const match = state.matches.find((item) => item.id === matchId);
   const feedbackIds = match ? getMatchTrustFeedbackParticipantIds(match) : [];
   if (!match || !isMatchTrustFeedbackOpen(match)) return state;
@@ -3246,6 +3288,8 @@ export function toggleMatchStar(state, matchId, targetUserId) {
 }
 
 export function submitMatchThumbs(state, matchId, targetUserIds = []) {
+  const disciplineBlock = getDisciplineBlockedState(state, "경기 평가");
+  if (disciplineBlock) return disciplineBlock;
   const match = state.matches.find((item) => item.id === matchId);
   const feedbackIds = match ? getMatchTrustFeedbackParticipantIds(match) : [];
   if (!match || !isMatchTrustFeedbackOpen(match)) {
@@ -3409,6 +3453,8 @@ export function toggleFavoriteCourt(state, courtId) {
 }
 
 export function submitCourtRequest(state, draft = {}) {
+  const disciplineBlock = getDisciplineBlockedState(state, "구장 등록요청");
+  if (disciplineBlock) return disciplineBlock;
   const currentUser = state.users.find((user) => user.id === state.currentUserId);
   const trustScore = Number(currentUser?.trustScore ?? 0);
   if (trustScore < COURT_REQUEST_TRUST_MIN) {
@@ -3475,7 +3521,6 @@ export function submitCourtRequest(state, draft = {}) {
     lng,
     courtKind: draft.courtKind === "official" ? "official" : "street_hoop",
     paid: Boolean(draft.paid),
-    reservation: Boolean(draft.reservation),
     createdAt: new Date().toISOString(),
   };
 
@@ -3573,6 +3618,8 @@ export function finishRefereeExamAttempt(state, attemptId, result = {}) {
 }
 
 export function submitRefereeRequest(state, draft = {}) {
+  const disciplineBlock = getDisciplineBlockedState(state, "심판 등록요청");
+  if (disciplineBlock) return disciplineBlock;
   const currentUser = state.users.find((user) => user.id === state.currentUserId);
   const qualification = draft.qualification === "official_license" ? "official_license" : "community_exam";
   const experience = String(draft.experience ?? "").trim();
@@ -3655,6 +3702,8 @@ function getReportableMatchUserIds(match = {}) {
 }
 
 export function reportMatch(state, matchId, reason = "", reportedUserIds = []) {
+  const disciplineBlock = getDisciplineBlockedState(state, "경기 신고");
+  if (disciplineBlock) return disciplineBlock;
   const match = state.matches.find((item) => item.id === matchId);
   if (!match) return state;
   const now = Date.now();
@@ -3719,6 +3768,8 @@ export function reportMatch(state, matchId, reason = "", reportedUserIds = []) {
 }
 
 export function reportCourtRequest(state, requestId, reason = "허위 구장 등록") {
+  const disciplineBlock = getDisciplineBlockedState(state, "구장 신고");
+  if (disciplineBlock) return disciplineBlock;
   const request = (state.settings?.courtRequests ?? []).find((item) => item.id === requestId);
   if (!request) return state;
   if (request.requestedBy === state.currentUserId) {
@@ -3803,6 +3854,28 @@ function getAdminActionNotification(body, tone = "orange") {
 
 function getReportTargetUserId(report = {}, fallbackUserId = "") {
   return report.reportedUserIds?.[0] ?? fallbackUserId ?? "";
+}
+
+function getAdminAuthorityLevel(state = {}) {
+  const currentUser = state.users?.find((user) => user.id === state.currentUserId) ?? {};
+  const profileLevel = getAdminGradeMeta(getAdminGrade(currentUser))?.level ?? 0;
+  const appointmentLevel = (state.settings?.adminAppointments ?? [])
+    .filter((appointment) => appointment.userId === state.currentUserId && (appointment.role ?? "admin") === "admin" && isAppointmentActive(appointment))
+    .reduce((max, appointment) => Math.max(max, getAdminGradeMeta(appointment.grade)?.level ?? 0), 0);
+  return Math.max(profileLevel, appointmentLevel);
+}
+
+function getAppointmentTermDays(role, grade, termDays) {
+  const requestedDays = Number(termDays);
+  if (Number.isFinite(requestedDays) && requestedDays > 0) return requestedDays;
+  if (role === "admin") return ADMIN_GRADE_META[grade]?.defaultTermDays ?? 90;
+  return 90;
+}
+
+function canManageAppointmentRole(authorityLevel, role) {
+  if (role === "admin") return authorityLevel >= ADMIN_GRADE_META.senior.level;
+  if (role === "referee") return authorityLevel >= ADMIN_GRADE_META.matchManager.level;
+  return false;
 }
 
 function makeDisciplinaryAction({ state, report, actionType, targetUserId, durationDays, reason, now }) {
@@ -3936,7 +4009,257 @@ export function commitAdminReviewAction(state, draft = {}) {
   };
 }
 
+export function commitAdminAppointmentAction(state, draft = {}) {
+  if (!hasAdminAccess(state.users.find((user) => user.id === state.currentUserId), state.settings)) {
+    return {
+      ...state,
+      notifications: [getAdminActionNotification("관리자 권한이 없습니다."), ...state.notifications],
+    };
+  }
+
+  const actionType = ["appointAdmin", "appointReferee", "revokeAppointment"].includes(draft.actionType)
+    ? draft.actionType
+    : "appointReferee";
+  const authorityLevel = getAdminAuthorityLevel(state);
+  const now = new Date().toISOString();
+
+  if (actionType === "revokeAppointment") {
+    const appointmentId = String(draft.appointmentId ?? "");
+    const adminAppointment = (state.settings?.adminAppointments ?? []).find((appointment) => appointment.id === appointmentId);
+    const refereeAppointment = (state.settings?.refereeAppointments ?? []).find((appointment) => appointment.id === appointmentId);
+    const appointment = adminAppointment ?? refereeAppointment;
+    const role = adminAppointment ? "admin" : refereeAppointment ? "referee" : "";
+    if (!appointment || !role) {
+      return {
+        ...state,
+        notifications: [getAdminActionNotification("회수할 임명 기록을 찾을 수 없습니다."), ...state.notifications],
+      };
+    }
+    if (!canManageAppointmentRole(authorityLevel, role)) {
+      return {
+        ...state,
+        notifications: [getAdminActionNotification("해당 임명을 회수할 권한이 없습니다."), ...state.notifications],
+      };
+    }
+    if (!isAppointmentActive(appointment)) {
+      return {
+        ...state,
+        notifications: [getAdminActionNotification("이미 비활성화된 임명입니다."), ...state.notifications],
+      };
+    }
+    const auditLog = {
+      id: makeId("aa"),
+      type: "appointment_action",
+      status: "committed",
+      actionType,
+      appointmentId,
+      targetUserId: appointment.userId,
+      role,
+      grade: appointment.grade,
+      reason: String(draft.reason ?? "").trim() || "임명 회수",
+      createdAt: now,
+      createdBy: state.currentUserId,
+    };
+    const patchAppointment = (item) => (
+      item.id === appointmentId
+        ? { ...item, status: "revoked", revokedAt: now, revokedBy: state.currentUserId, revokeReason: auditLog.reason }
+        : item
+    );
+    return {
+      ...state,
+      settings: normalizeSettings({
+        ...(state.settings ?? {}),
+        adminAppointments: role === "admin" ? (state.settings?.adminAppointments ?? []).map(patchAppointment) : (state.settings?.adminAppointments ?? []),
+        refereeAppointments: role === "referee" ? (state.settings?.refereeAppointments ?? []).map(patchAppointment) : (state.settings?.refereeAppointments ?? []),
+        adminAuditLog: [auditLog, ...(state.settings?.adminAuditLog ?? [])],
+      }),
+      notifications: [
+        getAdminActionNotification("임명 회수가 커밋되었습니다.", "team"),
+        {
+          id: makeId("n"),
+          targetUserId: appointment.userId,
+          title: "임명 회수",
+          body: auditLog.reason,
+          tone: "orange",
+        },
+        ...state.notifications,
+      ],
+    };
+  }
+
+  const role = actionType === "appointAdmin" ? "admin" : "referee";
+  if (!canManageAppointmentRole(authorityLevel, role)) {
+    return {
+      ...state,
+      notifications: [getAdminActionNotification("해당 임명을 처리할 권한이 없습니다."), ...state.notifications],
+    };
+  }
+  const userId = String(draft.userId ?? "");
+  if (!state.users.some((user) => user.id === userId)) {
+    return {
+      ...state,
+      notifications: [getAdminActionNotification("임명할 플레이어를 찾을 수 없습니다."), ...state.notifications],
+    };
+  }
+  const grade = role === "admin"
+    ? (ADMIN_GRADE_META[draft.adminGrade] ? draft.adminGrade : "support")
+    : (REFEREE_GRADE_META[draft.refereeGrade] ? draft.refereeGrade : "candidate");
+  if (role === "admin" && grade === "owner") {
+    return {
+      ...state,
+      notifications: [getAdminActionNotification("최고관리자는 추가 임명할 수 없습니다."), ...state.notifications],
+    };
+  }
+  const targetAppointments = role === "admin" ? (state.settings?.adminAppointments ?? []) : (state.settings?.refereeAppointments ?? []);
+  const duplicate = targetAppointments.some((appointment) => (
+    appointment.userId === userId &&
+    (appointment.role ?? role) === role &&
+    isAppointmentActive(appointment)
+  ));
+  if (duplicate) {
+    return {
+      ...state,
+      notifications: [getAdminActionNotification("이미 활성 임명이 있습니다."), ...state.notifications],
+    };
+  }
+  const termDays = getAppointmentTermDays(role, grade, draft.termDays);
+  const appointment = {
+    id: makeId("ap"),
+    role,
+    grade,
+    userId,
+    status: "active",
+    startsAt: now,
+    endsAt: new Date(new Date(now).getTime() + termDays * DAY_MS).toISOString(),
+    appointedBy: state.currentUserId,
+    reason: String(draft.reason ?? "").trim() || "관리자 임명",
+    createdAt: now,
+  };
+  const auditLog = {
+    id: makeId("aa"),
+    type: "appointment_action",
+    status: "committed",
+    actionType,
+    appointmentId: appointment.id,
+    targetUserId: userId,
+    role,
+    grade,
+    termDays,
+    reason: appointment.reason,
+    createdAt: now,
+    createdBy: state.currentUserId,
+  };
+
+  return {
+    ...state,
+    settings: normalizeSettings({
+      ...(state.settings ?? {}),
+      adminAppointments: role === "admin" ? [appointment, ...(state.settings?.adminAppointments ?? [])] : (state.settings?.adminAppointments ?? []),
+      refereeAppointments: role === "referee" ? [appointment, ...(state.settings?.refereeAppointments ?? [])] : (state.settings?.refereeAppointments ?? []),
+      adminAuditLog: [auditLog, ...(state.settings?.adminAuditLog ?? [])],
+    }),
+    notifications: [
+      getAdminActionNotification("임명 액션이 커밋되었습니다.", "team"),
+      {
+        id: makeId("n"),
+        targetUserId: userId,
+        title: role === "admin" ? "관리자 임명" : "심판 임명",
+        body: `${appointment.reason} · ${termDays}일`,
+        tone: "team",
+      },
+      ...state.notifications,
+    ],
+  };
+}
+
+export function approveCourtRequest(state, requestId) {
+  if (!hasAdminAccess(state.users.find((user) => user.id === state.currentUserId), state.settings)) {
+    return {
+      ...state,
+      notifications: [getAdminActionNotification("관리자 권한이 없습니다."), ...state.notifications],
+    };
+  }
+  const request = (state.settings?.courtRequests ?? []).find((item) => item.id === requestId);
+  if (!request) {
+    return {
+      ...state,
+      notifications: [getAdminActionNotification("승인할 구장 요청을 찾을 수 없습니다."), ...state.notifications],
+    };
+  }
+  if (request.status === "approved") {
+    return {
+      ...state,
+      notifications: [getAdminActionNotification("이미 승인된 구장 요청입니다."), ...state.notifications],
+    };
+  }
+  const alreadyRegistered = (state.settings?.approvedCourts ?? []).some((court) => (
+    court.sourceRequestId === requestId ||
+    (court.name === request.name && court.addressText === request.addressText)
+  )) || COURTS.some((court) => court.name === request.name || court.addressText === request.addressText);
+  if (alreadyRegistered) {
+    return {
+      ...state,
+      notifications: [getAdminActionNotification("이미 등록된 구장입니다."), ...state.notifications],
+    };
+  }
+  const now = new Date().toISOString();
+  const approvedCourt = {
+    id: makeId("court"),
+    name: request.name,
+    region: request.region,
+    type: request.type,
+    addressText: request.addressText,
+    locationNote: request.locationNote,
+    lat: request.lat,
+    lng: request.lng,
+    courtKind: request.courtKind,
+    hoopCount: request.courtKind === "official" ? 2 : 1,
+    lighting: false,
+    paid: Boolean(request.paid),
+    favorite: false,
+    approvedAt: now,
+    approvedBy: state.currentUserId,
+    sourceRequestId: requestId,
+  };
+  const auditLog = {
+    id: makeId("aa"),
+    type: "court_approval",
+    status: "committed",
+    requestId,
+    courtId: approvedCourt.id,
+    targetUserId: request.requestedBy,
+    createdAt: now,
+    createdBy: state.currentUserId,
+  };
+  return {
+    ...state,
+    settings: normalizeSettings({
+      ...(state.settings ?? {}),
+      approvedCourts: [approvedCourt, ...(state.settings?.approvedCourts ?? [])],
+      courtRequests: (state.settings?.courtRequests ?? []).map((item) => (
+        item.id === requestId
+          ? { ...item, status: "approved", approvedAt: now, approvedBy: state.currentUserId, approvedCourtId: approvedCourt.id }
+          : item
+      )),
+      adminAuditLog: [auditLog, ...(state.settings?.adminAuditLog ?? [])],
+    }),
+    notifications: [
+      getAdminActionNotification("구장 등록요청이 승인되어 등록 구장에 추가되었습니다.", "team"),
+      {
+        id: makeId("n"),
+        targetUserId: request.requestedBy,
+        title: "구장 등록 승인",
+        body: `${request.name} 구장 등록요청이 승인되었습니다.`,
+        tone: "team",
+      },
+      ...state.notifications,
+    ],
+  };
+}
+
 export function createRecruitingPost(state, draft) {
+  const disciplineBlock = getDisciplineBlockedState(state, "매칭방 생성");
+  if (disciplineBlock) return disciplineBlock;
   const hostJoinMode = draft.hostJoinMode === "player" ? "player" : "team";
   const visibility = draft.visibility === "private" ? "private" : "public";
   const teamOnly = visibility === "public" && hostJoinMode === "team" && draft.teamOnly === true;
@@ -4148,6 +4471,8 @@ export function createRecruitingPost(state, draft) {
 }
 
 export function interestRecruitingPost(state, postId, application = {}) {
+  const disciplineBlock = getDisciplineBlockedState(state, "매칭방 참여");
+  if (disciplineBlock) return disciplineBlock;
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   if (!post || post.status !== "open") return state;
   if (isRecruitingRoomOwner(post, state.currentUserId) || post.playerId === state.currentUserId) return state;
@@ -4327,6 +4652,8 @@ function getLobbySidePlayerTeamIds(lobby, sideName) {
 }
 
 export function setRecruitingReady(state, postId, ready = true) {
+  const disciplineBlock = getDisciplineBlockedState(state, "READY 변경");
+  if (disciplineBlock) return disciplineBlock;
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   if (!post || post.status !== "open") return state;
   const updatedAt = new Date().toISOString();
@@ -4725,6 +5052,8 @@ export function cancelRecruitingParticipation(state, postId) {
 }
 
 export function sendRecruitingChat(state, postId, body = "") {
+  const disciplineBlock = getDisciplineBlockedState(state, "방 채팅");
+  if (disciplineBlock) return disciplineBlock;
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   const text = String(body).trim().slice(0, 500);
   if (!post || !text || !isRecruitingRoomMember(post, state.currentUserId, state)) return state;
@@ -4747,6 +5076,8 @@ export function sendRecruitingChat(state, postId, body = "") {
 }
 
 export function inviteRecruitingPlayers(state, postId, invite = {}) {
+  const disciplineBlock = getDisciplineBlockedState(state, "매칭방 초대");
+  if (disciplineBlock) return disciplineBlock;
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   if (!post || post.status !== "open") return state;
   if (!isRecruitingRoomParticipant(post, state.currentUserId, state)) {
@@ -4908,6 +5239,8 @@ export function inviteRecruitingPlayers(state, postId, invite = {}) {
 }
 
 export function acceptRecruitingInvitation(state, postId, invitationId) {
+  const disciplineBlock = getDisciplineBlockedState(state, "초대 수락");
+  if (disciplineBlock) return disciplineBlock;
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   if (!post || post.status !== "open" || isRecruitingRoomOwner(post, state.currentUserId) || post.playerId === state.currentUserId) return state;
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
@@ -5236,6 +5569,8 @@ function getRecruitingEntryPlayerIds(entry, targetApplicant, post, capacity) {
 }
 
 export function setRecruitingApplicantPlacement(state, postId, playerId, placement = {}) {
+  const disciplineBlock = getDisciplineBlockedState(state, "매칭방 배치");
+  if (disciplineBlock) return disciplineBlock;
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   if (!isMutableRecruitingRoom(post) || !playerId) return state;
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
@@ -5299,6 +5634,8 @@ export function setRecruitingApplicantReserve(state, postId, playerId, reserve =
 }
 
 export function setRecruitingSlotPosition(state, postId, playerId, position = "") {
+  const disciplineBlock = getDisciplineBlockedState(state, "포지션 변경");
+  if (disciplineBlock) return disciplineBlock;
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   if (!isMutableRecruitingRoom(post) || !playerId || playerId !== state.currentUserId) return state;
 
@@ -5322,6 +5659,8 @@ export function setRecruitingSlotPosition(state, postId, playerId, position = ""
 }
 
 export function joinRecruitingSideParty(state, postId, teamId, sideName = "", entryId = "") {
+  const disciplineBlock = getDisciplineBlockedState(state, "팀 파티 합류");
+  if (disciplineBlock) return disciplineBlock;
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   if (!isMutableRecruitingRoom(post) || !teamId) return state;
 
@@ -5510,6 +5849,8 @@ export function joinRecruitingSideParty(state, postId, teamId, sideName = "", en
 }
 
 export function setRecruitingPartyPlayerReserve(state, postId, entryId, playerId, reserve = true) {
+  const disciplineBlock = getDisciplineBlockedState(state, "파티 예비 조정");
+  if (disciplineBlock) return disciplineBlock;
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   if (!isMutableRecruitingRoom(post) || !entryId || !playerId) return state;
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
@@ -5600,6 +5941,8 @@ export function setRecruitingPartyPlayerReserve(state, postId, entryId, playerId
 }
 
 export function setRecruitingPartyPlayerPlacement(state, postId, entryId, playerId, placement = {}) {
+  const disciplineBlock = getDisciplineBlockedState(state, "파티 배치");
+  if (disciplineBlock) return disciplineBlock;
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   if (!isMutableRecruitingRoom(post) || !entryId || !playerId) return state;
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
@@ -5623,6 +5966,8 @@ export function setRecruitingPartyPlayerPlacement(state, postId, entryId, player
 }
 
 export function detachRecruitingPartyPlayer(state, postId, entryId, playerId, placement = {}) {
+  const disciplineBlock = getDisciplineBlockedState(state, "파티 분리");
+  if (disciplineBlock) return disciplineBlock;
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   if (!isMutableRecruitingRoom(post) || !entryId || !playerId) return state;
 
@@ -5741,6 +6086,8 @@ export function detachRecruitingPartyPlayer(state, postId, entryId, playerId, pl
 }
 
 export function removeRecruitingPartyPlayer(state, postId, entryId, playerId) {
+  const disciplineBlock = getDisciplineBlockedState(state, "파티 인원 제거");
+  if (disciplineBlock) return disciplineBlock;
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   if (!post || post.status !== "open" || !isRecruitingRoomOwner(post, state.currentUserId) || !entryId || !playerId) return state;
 
@@ -5825,6 +6172,8 @@ export function removeRecruitingPartyPlayer(state, postId, entryId, playerId) {
 }
 
 export function setRecruitingStatRecorder(state, postId, sideName, playerId = "") {
+  const disciplineBlock = getDisciplineBlockedState(state, "기록자 지정");
+  if (disciplineBlock) return disciplineBlock;
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   if (!post || post.status !== "open" || !isRecruitingRoomOwner(post, state.currentUserId) || post.refereeId) return state;
   if (!["teamA", "teamB"].includes(sideName)) return state;
@@ -6237,6 +6586,8 @@ export function updateProfile(state, patch) {
 }
 
 export function createTeam(state, teamDraft) {
+  const disciplineBlock = getDisciplineBlockedState(state, "팀 생성");
+  if (disciplineBlock) return disciplineBlock;
   const teamName = String(teamDraft.name ?? "").trim().replace(/\s+/g, " ");
   if (!teamName || teamName.length > MAX_TEAM_NAME_LENGTH) {
     return {

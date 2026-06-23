@@ -47,6 +47,13 @@ export const APPOINTMENT_ROLE_META = {
   referee: { label: "심판", defaultTermDays: 90 },
 };
 
+export const APPOINTMENT_TERM_OPTIONS = [
+  { id: "30d", label: "30일", days: 30 },
+  { id: "90d", label: "90일", days: 90 },
+  { id: "180d", label: "180일", days: 180 },
+  { id: "365d", label: "1년", days: 365 },
+];
+
 function hasPermission(user = {}, permission) {
   return Array.isArray(user.adminPermissions) && user.adminPermissions.includes(permission);
 }
@@ -162,6 +169,57 @@ export function getSuspensionTier(days = 0) {
   return SUSPENSION_TIERS.find((tier) => tier.days === Number(days)) ?? SUSPENSION_TIERS[0];
 }
 
+export function getActiveUserDiscipline(settings = {}, userId = "", nowMs = Date.now()) {
+  if (!userId) return null;
+  return [...(settings.adminDisciplinaryActions ?? [])]
+    .filter((action) => (
+      action.userId === userId &&
+      action.type === "suspension" &&
+      action.status !== "revoked" &&
+      isAppointmentActive(action, nowMs)
+    ))
+    .sort((a, b) => getTime(b.endsAt) - getTime(a.endsAt) || Number(b.durationDays ?? 0) - Number(a.durationDays ?? 0))[0] ?? null;
+}
+
+function matchIncludesReferee(report = {}, matches = [], userId = "") {
+  const match = matches.find((item) => item.id === report.targetId);
+  return Boolean(match?.refereeId && match.refereeId === userId);
+}
+
+export function calculateRefereeGrade(user = {}, state = {}) {
+  const userId = user.id ?? "";
+  const matches = state.matches ?? [];
+  const reports = state.reports ?? [];
+  const refereeMatches = matches.filter((match) => match.refereeId === userId && match.status !== "cancelled").length;
+  const refereeReports = reports.filter((report) => (
+    report.status !== "dismissed" &&
+    (
+      (report.reportedUserIds ?? []).includes(userId) ||
+      (matchIncludesReferee(report, matches, userId) && String(report.reason ?? "").includes("심판"))
+    )
+  )).length;
+  const thumbsUp = matches.reduce((sum, match) => {
+    const stars = match.trustFeedback?.stars ?? {};
+    return sum + Object.values(stars).filter((ids) => Array.isArray(ids) && ids.includes(userId)).length;
+  }, 0);
+  const score = refereeMatches * 2 + thumbsUp * 3 - refereeReports * 8;
+  let grade = "candidate";
+  if (user.refereeGrade === "official" || user.officialReferee === true) grade = "official";
+  else if (refereeMatches >= 50 && refereeReports <= 1 && score >= 110) grade = "platinum";
+  else if (refereeMatches >= 20 && refereeReports <= 2 && score >= 45) grade = "gold";
+  else if (refereeMatches >= 5 && refereeReports <= 3 && score >= 10) grade = "silver";
+  return {
+    userId,
+    userName: user.name ?? "이름 없음",
+    grade,
+    gradeLabel: REFEREE_GRADE_META[grade]?.label ?? grade,
+    matchCount: refereeMatches,
+    reportCount: refereeReports,
+    thumbsUp,
+    score,
+  };
+}
+
 function normalizeAppointmentRow(appointment = {}, userMap = {}, fallbackRole = "admin") {
   const role = appointment.role === "referee" ? "referee" : fallbackRole;
   const grade = role === "admin" ? normalizeAdminGrade(appointment.grade || "support") : (appointment.grade || "candidate");
@@ -224,10 +282,17 @@ export function buildAdminAppointmentModel(state = {}) {
     source: "referee_request",
     reason: request.memo || request.qualification,
   }, userMap, "referee"));
+  const refereeGradeRows = users
+    .map((user) => calculateRefereeGrade(user, state))
+    .filter((row) => row.matchCount > 0 || row.grade !== "candidate")
+    .sort((a, b) => (REFEREE_GRADE_META[b.grade]?.level ?? 0) - (REFEREE_GRADE_META[a.grade]?.level ?? 0) || b.score - a.score)
+    .slice(0, 8);
 
   const rowsById = new Map([...adminRows, ...refereeRows, ...currentAdminRows, ...refereeRequestRows].map((row) => [row.id, row]));
   const rows = [...rowsById.values()].sort((a, b) => {
-    const gradeDiff = (ADMIN_GRADE_META[b.grade]?.level ?? 0) - (ADMIN_GRADE_META[a.grade]?.level ?? 0);
+    const aGradeMeta = a.role === "referee" ? REFEREE_GRADE_META[a.grade] : ADMIN_GRADE_META[a.grade];
+    const bGradeMeta = b.role === "referee" ? REFEREE_GRADE_META[b.grade] : ADMIN_GRADE_META[b.grade];
+    const gradeDiff = (bGradeMeta?.level ?? 0) - (aGradeMeta?.level ?? 0);
     return Number(b.status === "pending") - Number(a.status === "pending") ||
       Number(b.active) - Number(a.active) ||
       gradeDiff ||
@@ -238,6 +303,7 @@ export function buildAdminAppointmentModel(state = {}) {
   return {
     rows,
     grades: Object.entries(ADMIN_GRADE_META).map(([id, meta]) => ({ id, ...meta })),
+    refereeGrades: refereeGradeRows,
     summary: {
       adminAppointmentCount: rows.filter((row) => row.role === "admin" && row.active).length,
       refereeAppointmentCount: rows.filter((row) => row.role === "referee" && row.active).length,

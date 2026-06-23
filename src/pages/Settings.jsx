@@ -8,7 +8,8 @@ import SearchPicker from "../components/common/SearchPicker.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import { DEFAULT_REPORT_REASON, REPORT_REASONS } from "../lib/reportReasons.js";
 import { formatStatLine, getMatchReservePlayerIds, getMatchSidePlayerIds } from "../lib/matchUtils.js";
-import { COURT_REQUEST_TRUST_MIN, COURTS, FALSE_COURT_REPORT_TRUST_PENALTY, REGIONS } from "../lib/constants.js";
+import { COURT_REQUEST_TRUST_MIN, FALSE_COURT_REPORT_TRUST_PENALTY, REGIONS } from "../lib/constants.js";
+import { getRegisteredCourts } from "../lib/courts.js";
 import { getCourtHashtag } from "../lib/handles.js";
 import { geocodeKakaoAddress, getKakaoMapAppKey, openDaumPostcodeSearch } from "../lib/kakaoAddress.js";
 import { hasAdminAccess } from "../lib/admin.js";
@@ -34,7 +35,6 @@ const DEFAULT_COURT_REQUEST = {
   lng: "",
   courtKind: "street_hoop",
   paid: false,
-  reservation: false,
 };
 const DEFAULT_REFEREE_REQUEST = {
   qualification: "community_exam",
@@ -129,6 +129,7 @@ export default function Settings({ app, auth }) {
   const refereeRequests = app.state.settings?.refereeRequests ?? [];
   const refereeExamAttempts = app.state.settings?.refereeExamAttempts ?? [];
   const currentTrustScore = Number(app.currentUser?.trustScore ?? 0);
+  const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
   const canSubmitCourtRequest = currentTrustScore >= COURT_REQUEST_TRUST_MIN;
   const canOpenAdminMenu = hasAdminAccess(app.currentUser, app.state.settings);
   const rawCourtLat = String(courtDraft.lat ?? "").trim();
@@ -202,13 +203,13 @@ export default function Settings({ app, auth }) {
     : 0;
   const courtAddressResults = useMemo(() => {
     const keyword = courtAddressQuery.trim().toLowerCase();
-    return COURTS
+    return registeredCourts
       .filter((court) => {
         const haystack = `${court.name} ${court.region} ${court.addressText} ${court.locationNote} ${getCourtHashtag(court)}`.toLowerCase();
         return keyword ? haystack.includes(keyword) : court.region === courtDraft.region;
       })
       .slice(0, 5);
-  }, [courtAddressQuery, courtDraft.region]);
+  }, [courtAddressQuery, courtDraft.region, registeredCourts]);
   const refereeExamQuestions = useMemo(() => getRefereeExamSet(refereeExamSeed), [refereeExamSeed]);
   const answeredRefereeExamCount = Object.keys(refereeExamAnswers).length;
   const refereeExamRequired = refereeDraft.qualification === "community_exam";
@@ -309,7 +310,6 @@ export default function Settings({ app, auth }) {
       lng: court.lng ?? court.longitude ?? "",
       courtKind: court.courtKind,
       paid: court.paid,
-      reservation: court.reservation,
     });
     setCourtAddressQuery(`${court.name} ${court.addressText}`);
     setCourtLookupStatus(court.lat || court.latitude ? "등록된 구장 좌표를 불러왔습니다." : "주소를 불러왔습니다. 좌표는 직접 입력하세요.");
@@ -693,10 +693,6 @@ export default function Settings({ app, auth }) {
                   <input type="checkbox" checked={courtDraft.paid} onChange={(event) => updateCourtDraft({ paid: event.target.checked })} />
                   유료구장
                 </label>
-                <label>
-                  <input type="checkbox" checked={courtDraft.reservation} onChange={(event) => updateCourtDraft({ reservation: event.target.checked })} />
-                  구장예약됨
-                </label>
               </div>
               <Button type="submit" variant="secondary" disabled={!canSubmitCourtRequest || !courtDraft.name.trim() || !courtDraft.addressText.trim() || !hasCourtCoordinates}>
                 <Send size={16} /> 등록요청
@@ -722,7 +718,7 @@ export default function Settings({ app, auth }) {
                   </div>
                 );
               })}
-              {!courtRequests.length ? <div><span>요청한 구장이 없습니다.</span><strong>{COURTS.length}개 등록</strong></div> : null}
+              {!courtRequests.length ? <div><span>요청한 구장이 없습니다.</span><strong>{registeredCourts.length}개 등록</strong></div> : null}
             </div>
           </Card>
 
