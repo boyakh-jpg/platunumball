@@ -9173,6 +9173,11 @@ html[data-theme="light"] .ranking-filter-card {
   background-image: none;
 }
 
+.opgg-home .opgg-profile-card {
+  background-color: rgba(10, 14, 21, 0.9);
+  background-image: none;
+}
+
 html[data-theme="light"] .hover-portal-card {
   background-color: rgba(255, 255, 255, 0.98);
   background-image: none;
@@ -9200,6 +9205,11 @@ html[data-theme="light"] .settings-page .section-card {
 }
 
 html[data-theme="light"] .match-card {
+  background-color: rgba(255, 255, 255, 0.92);
+  background-image: none;
+}
+
+html[data-theme="light"] .opgg-home .opgg-profile-card {
   background-color: rgba(255, 255, 255, 0.92);
   background-image: none;
 }
