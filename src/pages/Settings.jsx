@@ -456,9 +456,7 @@ export default function Settings({ app, auth }) {
               </label>
             </div>
           </Card>
-        </div>
 
-        <aside className="page-stack">
           <Card className="section-card">
             <div className="section-title-row">
               <div>
@@ -468,6 +466,36 @@ export default function Settings({ app, auth }) {
             </div>
             <Button variant="secondary" onClick={app.actions.reset}>데모 데이터 초기화</Button>
           </Card>
+
+          <Card className="section-card">
+            <div className="section-title-row">
+              <div>
+                <p className="eyebrow">차단</p>
+                <h2>플레이어 숨김</h2>
+              </div>
+              <Badge tone={blockedUserIds.length ? "orange" : "neutral"}>{blockedUserIds.length}명</Badge>
+            </div>
+            <form className="form-stack" onSubmit={submitBlock}>
+              <label>
+                차단할 플레이어
+                <select value={selectedBlockUserId} onChange={(event) => setBlockUserId(event.target.value)}>
+                  {blockableUsers.map((user) => <option key={user.id} value={user.id}>{user.name} · {user.region}</option>)}
+                </select>
+              </label>
+              <Button type="submit" variant="secondary" disabled={!selectedBlockUserId}>차단</Button>
+            </form>
+            <div className="compact-list">
+              {blockedUserIds.length ? blockedUserIds.map((userId) => (
+                <div key={userId}>
+                  <span>{userMap[userId]?.name ?? "플레이어"}</span>
+                  <button type="button" onClick={() => app.actions.unblockUser(userId)}>해제</button>
+                </div>
+              )) : <div><span>차단한 플레이어가 없습니다.</span><strong>0</strong></div>}
+            </div>
+          </Card>
+        </div>
+
+        <aside className="page-stack">
 
           <Card className="section-card">
             <div className="section-title-row">
@@ -553,33 +581,6 @@ export default function Settings({ app, auth }) {
                 </div>
               ))}
               {!courtRequests.length ? <div><span>요청한 구장이 없습니다.</span><strong>{COURTS.length}개 등록</strong></div> : null}
-            </div>
-          </Card>
-
-          <Card className="section-card">
-            <div className="section-title-row">
-              <div>
-                <p className="eyebrow">차단</p>
-                <h2>플레이어 숨김</h2>
-              </div>
-              <Badge tone={blockedUserIds.length ? "orange" : "neutral"}>{blockedUserIds.length}명</Badge>
-            </div>
-            <form className="form-stack" onSubmit={submitBlock}>
-              <label>
-                차단할 플레이어
-                <select value={selectedBlockUserId} onChange={(event) => setBlockUserId(event.target.value)}>
-                  {blockableUsers.map((user) => <option key={user.id} value={user.id}>{user.name} · {user.region}</option>)}
-                </select>
-              </label>
-              <Button type="submit" variant="secondary" disabled={!selectedBlockUserId}>차단</Button>
-            </form>
-            <div className="compact-list">
-              {blockedUserIds.length ? blockedUserIds.map((userId) => (
-                <div key={userId}>
-                  <span>{userMap[userId]?.name ?? "플레이어"}</span>
-                  <button type="button" onClick={() => app.actions.unblockUser(userId)}>해제</button>
-                </div>
-              )) : <div><span>차단한 플레이어가 없습니다.</span><strong>0</strong></div>}
             </div>
           </Card>
 

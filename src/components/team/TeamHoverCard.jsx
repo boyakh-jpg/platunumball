@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import HoverPortal from "../common/HoverPortal.jsx";
-import TierBadge from "../rating/TierBadge.jsx";
 import TierEmblem from "../rating/TierEmblem.jsx";
 import useBodyScrollLock from "../../hooks/useBodyScrollLock.js";
 import { getTeamHashtag } from "../../lib/handles.js";
 import { clearPinnedHoverPreview, getPinnedHoverPreviewKey, pinHoverPreview, subscribePinnedHoverPreview } from "../../lib/hoverPreviewPin.js";
+import { getTierDivision } from "../../lib/tier.js";
 
 function isTouchPreviewEvent(event) {
   if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return false;
@@ -162,10 +162,10 @@ export default function TeamHoverCard({ team, children, className = "", as = "li
           </span>
         </span>
         <span className="team-hover-tier">
-          <TierEmblem mmr={team.mmr} size="md" showLabel />
+          <TierEmblem mmr={team.mmr} size="md" />
           <span>
             <b>팀 티어</b>
-            <TierBadge mmr={team.mmr} compact />
+            <span className="hover-tier-label">{getTierDivision(team.mmr)}</span>
             <em>{Math.round(team.mmr ?? 1200)} MMR</em>
           </span>
         </span>

@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import HoverPortal from "../common/HoverPortal.jsx";
-import TierBadge from "../rating/TierBadge.jsx";
 import TierEmblem from "../rating/TierEmblem.jsx";
 import useBodyScrollLock from "../../hooks/useBodyScrollLock.js";
 import { getTeamHashtag, getUserHashtag } from "../../lib/handles.js";
 import { clearPinnedHoverPreview, getPinnedHoverPreviewKey, pinHoverPreview, subscribePinnedHoverPreview } from "../../lib/hoverPreviewPin.js";
 import { getAgeGroupForUser, getAgeGroupLabel } from "../../lib/profileSetup.js";
+import { getTierDivision } from "../../lib/tier.js";
 
 const rolePriority = {
   captain: 0,
@@ -197,7 +197,7 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
               <TierEmblem mmr={Number(mmr)} size="sm" />
               <span>
                 <b>{mode}</b>
-                <TierBadge mmr={Number(mmr)} compact />
+                <span className="hover-tier-label">{getTierDivision(Number(mmr))}</span>
               </span>
             </span>
           ))}
@@ -209,7 +209,10 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
               <i style={{ "--team-color": activeTeam.accent }} />
               <strong>{activeTeam.name}</strong>
               <em>{getTeamHashtag(activeTeam)} · {roleLabel(activeTeam.myRole)}</em>
-              <TierBadge mmr={activeTeam.mmr} compact />
+              <span className="hover-team-tier">
+                <TierEmblem mmr={activeTeam.mmr} size="sm" />
+                <span className="hover-tier-label">{getTierDivision(activeTeam.mmr)}</span>
+              </span>
             </span>
           ) : (
             <em>없음</em>

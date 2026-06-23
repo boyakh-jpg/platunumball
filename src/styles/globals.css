@@ -8892,3 +8892,356 @@ html[data-theme="light"] .ranking-filter-card {
   background-color: rgba(246, 252, 249, 0.78);
   background-image: none;
 }
+
+/* 2026-06-23 dense surface cleanup: hover cards, home rail, teams, settings. */
+.hover-portal-card {
+  background-color: rgba(7, 11, 17, 0.98);
+  background-image: none;
+}
+
+.hover-portal-card.touch-open .hover-card-action {
+  background: var(--green);
+}
+
+.player-hover-tier-grid > span,
+.player-hover-team > span,
+.team-hover-tier,
+.team-hover-stats > span,
+.court-hover-address,
+.court-hover-note,
+.referee-hover-tier > span {
+  background-color: rgba(255, 255, 255, 0.045);
+  background-image: none;
+}
+
+.player-hover-tier-grid > span {
+  grid-template-columns: 68px minmax(0, 1fr);
+  min-height: 74px;
+  padding: 8px 10px;
+}
+
+.player-hover-card .tier-emblem-sm {
+  width: 62px;
+  max-width: 100%;
+}
+
+.hover-tier-label {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 0.88rem;
+  font-weight: 950;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.player-hover-team > span {
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  gap: 4px 8px;
+}
+
+.player-hover-team > span > em {
+  grid-column: 2;
+}
+
+.hover-team-tier {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+  display: flex;
+  max-width: 108px;
+  align-items: center;
+  gap: 5px;
+  justify-self: end;
+  min-width: 0;
+}
+
+.hover-team-tier .tier-emblem-sm {
+  width: 38px;
+  flex: 0 0 auto;
+}
+
+.team-hover-tier {
+  grid-template-columns: 112px minmax(0, 1fr);
+  min-height: 104px;
+}
+
+.team-hover-card .tier-emblem-md {
+  width: 104px;
+  max-width: 100%;
+}
+
+.team-hover-tier .tier-emblem figcaption {
+  display: none;
+}
+
+.home-side-stack {
+  gap: 14px;
+}
+
+.home-side-stack > .card,
+.home-action-card,
+.home-my-teams-card,
+.rivalry-card,
+.recruiting-teaser-card {
+  gap: 12px;
+  padding: 14px;
+}
+
+.home-side-stack .section-title-row,
+.home-action-card .section-title-row {
+  min-height: 0;
+  align-items: start;
+}
+
+.home-side-stack .section-title-row h2,
+.home-action-card .section-title-row h2 {
+  font-size: clamp(1.18rem, 2.2vw, 1.42rem);
+  line-height: 1.08;
+}
+
+.home-side-stack .compact-list,
+.home-team-list {
+  gap: 8px;
+}
+
+.home-side-stack .compact-list a,
+.home-side-stack .compact-list > div,
+.home-team-list a,
+.home-team-list > div,
+.home-side-stack .wide-button {
+  min-height: 42px;
+  border-radius: 8px;
+  padding: 9px 12px;
+}
+
+.home-side-stack .wide-button {
+  justify-content: center;
+}
+
+.rivalry-list strong {
+  color: var(--text);
+}
+
+.team-card {
+  gap: 12px;
+  padding: 16px;
+}
+
+.team-card .team-card-top {
+  grid-template-columns: minmax(0, 1fr) minmax(118px, 132px);
+  gap: 10px;
+}
+
+.team-card h3 {
+  font-size: clamp(1.45rem, 2.2vw, 1.9rem);
+}
+
+.team-card-actions {
+  justify-content: end;
+  min-width: 118px;
+}
+
+.team-card-actions .tier-emblem {
+  flex: 0 0 78px;
+  width: 78px;
+  max-width: 100%;
+}
+
+.team-card .stat-strip {
+  gap: 8px;
+}
+
+.team-card .stat-strip span {
+  min-height: 54px;
+  padding: 10px 12px;
+}
+
+.team-card .member-list {
+  gap: 8px;
+}
+
+.team-card .member-row {
+  min-height: 42px;
+  padding: 8px 10px;
+}
+
+.team-card > .badge {
+  width: fit-content;
+}
+
+.settings-page .content-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 14px;
+}
+
+.settings-page .page-stack {
+  gap: 14px;
+}
+
+.settings-page .section-card {
+  gap: 12px;
+  padding: 14px;
+}
+
+.settings-page .contract-grid.single {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.settings-page .contract-grid.single > div {
+  min-height: 58px;
+  padding: 10px 12px;
+}
+
+.settings-page .form-stack {
+  gap: 10px;
+}
+
+.settings-page label {
+  gap: 6px;
+}
+
+.settings-page input,
+.settings-page select {
+  min-height: 42px;
+}
+
+.settings-page textarea {
+  min-height: 72px;
+}
+
+.settings-page .compact-list {
+  gap: 8px;
+}
+
+.settings-page .compact-list a,
+.settings-page .compact-list > div {
+  min-height: 42px;
+  padding: 9px 12px;
+}
+
+.settings-page .settings-address-results,
+.settings-page .report-player-picker > div {
+  max-height: 240px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.settings-page .settings-address-results button,
+.settings-page .report-player-picker button {
+  min-height: 50px;
+  padding: 8px 10px;
+}
+
+.settings-page .admin-account-grid {
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  max-height: 260px;
+  overflow: auto;
+  gap: 8px;
+}
+
+.settings-page .admin-account-grid button {
+  min-height: 54px;
+  padding: 9px;
+}
+
+.settings-page .settings-toggle-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.settings-page .settings-referee-card {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+
+.settings-page .settings-referee-card > .section-title-row,
+.settings-page .settings-referee-card > .compact-list {
+  grid-column: 1 / -1;
+}
+
+.settings-page .referee-exam-list {
+  max-height: 520px;
+  overflow: auto;
+}
+
+.match-card {
+  background-color: rgba(10, 14, 21, 0.9);
+  background-image: none;
+}
+
+html[data-theme="light"] .hover-portal-card {
+  background-color: rgba(255, 255, 255, 0.98);
+  background-image: none;
+}
+
+html[data-theme="light"] .player-hover-tier-grid > span,
+html[data-theme="light"] .player-hover-team > span,
+html[data-theme="light"] .team-hover-tier,
+html[data-theme="light"] .team-hover-stats > span,
+html[data-theme="light"] .court-hover-address,
+html[data-theme="light"] .court-hover-note,
+html[data-theme="light"] .referee-hover-tier > span {
+  background-color: rgba(239, 251, 246, 0.86);
+  background-image: none;
+}
+
+html[data-theme="light"] .home-side-stack > .card,
+html[data-theme="light"] .home-action-card,
+html[data-theme="light"] .home-my-teams-card,
+html[data-theme="light"] .rivalry-card,
+html[data-theme="light"] .recruiting-teaser-card,
+html[data-theme="light"] .settings-page .section-card {
+  background-color: rgba(255, 255, 255, 0.92);
+  background-image: none;
+}
+
+html[data-theme="light"] .match-card {
+  background-color: rgba(255, 255, 255, 0.92);
+  background-image: none;
+}
+
+@media (max-width: 920px) {
+  .settings-page .content-grid,
+  .settings-page .settings-referee-card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .player-hover-tier-grid > span {
+    grid-template-columns: 60px minmax(0, 1fr);
+  }
+
+  .player-hover-card .tier-emblem-sm {
+    width: 56px;
+  }
+
+  .team-hover-tier {
+    grid-template-columns: 96px minmax(0, 1fr);
+  }
+
+  .team-hover-card .tier-emblem-md {
+    width: 92px;
+  }
+
+  .team-card {
+    padding: 14px;
+  }
+
+  .team-card .team-card-top {
+    grid-template-columns: minmax(0, 1fr) 112px;
+  }
+
+  .team-card-actions .tier-emblem {
+    flex-basis: 70px;
+    width: 70px;
+  }
+
+  .settings-page .contract-grid.single {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
