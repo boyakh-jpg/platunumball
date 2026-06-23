@@ -6,11 +6,11 @@ import Card from "../components/common/Card.jsx";
 import Badge from "../components/common/Badge.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
-import { DEFAULT_REPORT_REASON, REPORT_REASONS } from "../lib/reportReasons.js";
+import { REPORT_REASONS, REPORT_TARGET_TYPES, getReportTargetType } from "../lib/reportReasons.js";
 import { formatStatLine, getMatchReservePlayerIds, getMatchSidePlayerIds } from "../lib/matchUtils.js";
 import { COURT_REQUEST_TRUST_MIN, FALSE_COURT_REPORT_TRUST_PENALTY, REGIONS } from "../lib/constants.js";
 import { getRegisteredCourts } from "../lib/courts.js";
-import { getCourtHashtag } from "../lib/handles.js";
+import { getCourtHashtag, getMatchHashtag, getUserHashtag } from "../lib/handles.js";
 import { getKakaoMapAppKey, openDaumPostcodeSearch, openKakaoMapPinPicker } from "../lib/kakaoAddress.js";
 import { hasAdminAccess } from "../lib/admin.js";
 import {
@@ -121,13 +121,40 @@ function getReportParticipantRows(match = {}, userMap = {}) {
   return rows;
 }
 
+function getMatchReportTitle(match = {}) {
+  const versus = [match.teamA?.name, match.teamB?.name].filter(Boolean).join(" vs ");
+  return match.title || versus || "경기 기록";
+}
+
+function getReportTargetLabel(targetType) {
+  if (targetType === REPORT_TARGET_TYPES.player) return "선수 검색";
+  if (targetType === REPORT_TARGET_TYPES.match) return "경기기록 검색";
+  if (targetType === REPORT_TARGET_TYPES.courtRequest) return "구장요청 검색";
+  return "신고 대상 검색";
+}
+
+function getReportTargetPlaceholder(targetType) {
+  if (targetType === REPORT_TARGET_TYPES.player) return "선수명, 포지션, 경기, #경기기록 검색";
+  if (targetType === REPORT_TARGET_TYPES.match) return "경기명, 팀명, 구장, #경기기록 검색";
+  if (targetType === REPORT_TARGET_TYPES.courtRequest) return "구장명, 주소, #구장 검색";
+  return "선수, 경기, 구장, 해시태그 검색";
+}
+
+function getReportTargetEmptyText(targetType) {
+  if (targetType === REPORT_TARGET_TYPES.courtRequest) return "신고 가능한 구장요청 없음";
+  if (targetType === REPORT_TARGET_TYPES.player) return "신고 가능한 선수 없음";
+  return "신고 가능한 대상 없음";
+}
+
 export default function Settings({ app, auth }) {
   const privacy = app.state.settings?.privacy ?? {};
   const theme = app.state.settings?.theme === "light" ? "light" : "dark";
   const blockedUserIds = app.state.settings?.blockedUserIds ?? [];
   const [blockUserId, setBlockUserId] = useState(app.state.users.find((user) => user.id !== app.currentUserId)?.id ?? "");
-  const [reportMatchId, setReportMatchId] = useState(app.state.matches[0]?.id ?? "");
-  const [reportReason, setReportReason] = useState(DEFAULT_REPORT_REASON);
+  const [reportMatchId, setReportMatchId] = useState("");
+  const [reportReason, setReportReason] = useState("");
+  const [reportTargetQuery, setReportTargetQuery] = useState("");
+  const [reportCourtRequestId, setReportCourtRequestId] = useState("");
   const [reportMemo, setReportMemo] = useState("");
   const [reportedUserIds, setReportedUserIds] = useState([]);
   const [accountQuery, setAccountQuery] = useState("");
@@ -175,17 +202,99 @@ export default function Settings({ app, auth }) {
       .sort((a, b) => b.reportTime - a.reportTime)
       .map(({ match }) => match);
   }, [app.currentUserId, app.state.matches, userMap]);
-  const selectedReportMatchId = recentReportMatches.some((match) => match.id === reportMatchId) ? reportMatchId : recentReportMatches[0]?.id ?? "";
+  const reportTargetType = reportReason ? getReportTargetType(reportReason) : "";
+  const reportableCourtRequests = useMemo(() => (
+    courtRequests.filter((request) => {
+      const alreadyReported = app.state.reports?.some((report) => (
+        report.type === "court_request" &&
+        report.targetId === request.id &&
+        report.by === app.currentUserId &&
+        report.status !== "dismissed"
+      ));
+      return request.requestedBy !== app.currentUserId && request.status !== "approved" && !alreadyReported;
+    })
+  ), [app.currentUserId, app.state.reports, courtRequests]);
+  const selectedReportMatchId = recentReportMatches.some((match) => match.id === reportMatchId) ? reportMatchId : "";
   const selectedReportMatch = recentReportMatches.find((match) => match.id === selectedReportMatchId) ?? null;
+  const selectedReportCourtRequest = reportableCourtRequests.find((request) => request.id === reportCourtRequestId) ?? null;
   const reportParticipantRows = useMemo(
-    () => (selectedReportMatch ? getReportParticipantRows(selectedReportMatch, userMap) : []),
-    [selectedReportMatch, userMap],
+    () => (selectedReportMatch && reportTargetType !== REPORT_TARGET_TYPES.courtRequest ? getReportParticipantRows(selectedReportMatch, userMap) : []),
+    [reportTargetType, selectedReportMatch, userMap],
   );
   const reportParticipantIds = useMemo(
     () => reportParticipantRows.map((row) => row.userId),
     [reportParticipantRows],
   );
   const selectedReportedUserIds = reportedUserIds.filter((userId) => reportParticipantIds.includes(userId));
+  const reportTargetSearchItems = useMemo(() => {
+    if (!reportReason) return [];
+    const keyword = reportTargetQuery.trim().toLowerCase();
+    const includePlayers = reportTargetType === REPORT_TARGET_TYPES.player || reportTargetType === REPORT_TARGET_TYPES.mixed;
+    const includeMatches = reportTargetType === REPORT_TARGET_TYPES.match || reportTargetType === REPORT_TARGET_TYPES.mixed;
+    const includeCourtRequests = reportTargetType === REPORT_TARGET_TYPES.courtRequest || reportTargetType === REPORT_TARGET_TYPES.mixed;
+    const items = [];
+
+    if (includeMatches) {
+      recentReportMatches.forEach((match) => {
+        const hashtag = getMatchHashtag(match);
+        const title = getMatchReportTitle(match);
+        items.push({
+          id: `match:${match.id}`,
+          kind: "match",
+          match,
+          title,
+          subtitle: `${match.scheduledDate || match.scheduledAt || "일정 미정"} · ${match.court || "구장 미정"}`,
+          meta: hashtag,
+          haystack: `${title} ${hashtag} ${match.teamA?.name ?? ""} ${match.teamB?.name ?? ""} ${match.court ?? ""} ${match.scheduledDate ?? ""} ${match.scheduledTime ?? ""}`.toLowerCase(),
+        });
+      });
+    }
+
+    if (includePlayers) {
+      recentReportMatches.forEach((match) => {
+        const matchHashtag = getMatchHashtag(match);
+        getReportParticipantRows(match, userMap).forEach((row) => {
+          const userHashtag = getUserHashtag(row.user);
+          const matchTitle = getMatchReportTitle(match);
+          items.push({
+            id: `player:${match.id}:${row.userId}`,
+            kind: "player",
+            match,
+            row,
+            title: row.user.name,
+            subtitle: `${row.sideLabel} · ${row.teamName} · ${row.role} · ${matchTitle}`,
+            meta: `${userHashtag} · ${matchHashtag}`,
+            haystack: `${row.user.name} ${userHashtag} ${row.user.position} ${row.teamName} ${row.role} ${matchTitle} ${matchHashtag} ${match.court ?? ""}`.toLowerCase(),
+          });
+        });
+      });
+    }
+
+    if (includeCourtRequests) {
+      reportableCourtRequests.forEach((request) => {
+        const requester = userMap[request.requestedBy];
+        const hashtag = request.hashtag ? getCourtHashtag(request) : "";
+        items.push({
+          id: `court:${request.id}`,
+          kind: "court_request",
+          request,
+          title: request.name,
+          subtitle: `${request.addressText || "주소 미정"} · ${requester?.name ?? "요청자"}`,
+          meta: hashtag || "구장요청",
+          haystack: `${request.name} ${request.addressText ?? ""} ${request.region ?? ""} ${requester?.name ?? ""} ${hashtag}`.toLowerCase(),
+        });
+      });
+    }
+
+    return items.filter((item) => (keyword ? item.haystack.includes(keyword) : true));
+  }, [recentReportMatches, reportReason, reportTargetQuery, reportTargetType, reportableCourtRequests, userMap]);
+  const canSubmitReport = Boolean(reportReason) && (
+    reportTargetType === REPORT_TARGET_TYPES.courtRequest
+      ? Boolean(selectedReportCourtRequest)
+      : reportTargetType === REPORT_TARGET_TYPES.player
+        ? Boolean(selectedReportMatch && selectedReportedUserIds.length)
+        : Boolean(selectedReportMatch || selectedReportCourtRequest)
+  );
   const matchCountByUser = useMemo(() => {
     const counts = new Map();
     app.state.matches.forEach((match) => {
@@ -261,6 +370,31 @@ export default function Settings({ app, auth }) {
       <em>구장</em>
     </button>
   );
+  const selectReportTarget = (item) => {
+    setReportTargetQuery(`${item.title} ${item.meta ?? ""}`.trim());
+    if (item.kind === "court_request") {
+      setReportCourtRequestId(item.request.id);
+      setReportMatchId("");
+      setReportedUserIds([]);
+      return;
+    }
+    setReportCourtRequestId("");
+    setReportMatchId(item.match.id);
+    setReportedUserIds(item.kind === "player" ? [item.row.userId] : []);
+  };
+  const renderReportTargetSearchItem = (item) => (
+    <button
+      key={item.id}
+      type="button"
+      className="search-picker-result-row"
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={() => selectReportTarget(item)}
+    >
+      <strong>{item.title}</strong>
+      <span>{item.subtitle}</span>
+      <em>{item.meta}</em>
+    </button>
+  );
 
   const submitBlock = (event) => {
     event.preventDefault();
@@ -268,10 +402,25 @@ export default function Settings({ app, auth }) {
   };
   const submitReport = (event) => {
     event.preventDefault();
+    if (!canSubmitReport) return;
     const memo = reportMemo.trim();
+    if (selectedReportCourtRequest) {
+      app.actions.reportCourtRequest(selectedReportCourtRequest.id, [reportReason, memo].filter(Boolean).join(" · "));
+      setReportCourtRequestId("");
+      setReportTargetQuery("");
+      setReportMemo("");
+      return;
+    }
     const targetNames = selectedReportedUserIds.map((userId) => userMap[userId]?.name).filter(Boolean);
-    const targetLine = targetNames.length ? `대상: ${targetNames.join(", ")}` : "대상: 경기 전체";
-    if (selectedReportMatchId) app.actions.reportMatch(selectedReportMatchId, [reportReason, targetLine, memo].filter(Boolean).join(" · "), selectedReportedUserIds);
+    const targetLine = targetNames.length ? `대상: ${targetNames.join(", ")}` : "대상: 경기 기록";
+    const matchLine = selectedReportMatch ? getMatchHashtag(selectedReportMatch) : "";
+    if (selectedReportMatchId) {
+      app.actions.reportMatch(selectedReportMatchId, [reportReason, matchLine, targetLine, memo].filter(Boolean).join(" · "), selectedReportedUserIds);
+      setReportMatchId("");
+      setReportedUserIds([]);
+      setReportTargetQuery("");
+      setReportMemo("");
+    }
   };
   const updateCourtDraft = (patch) => setCourtDraft((current) => ({ ...current, ...patch }));
   const getCourtAddressRegion = (addressResult) => {
@@ -345,8 +494,12 @@ export default function Settings({ app, auth }) {
       region: app.currentUser?.region ?? DEFAULT_COURT_REQUEST.region,
     });
   };
-  const reportCourtRequest = (requestId) => {
-    app.actions.reportCourtRequest(requestId, `허위 구장 등록 · 신뢰도 ${FALSE_COURT_REPORT_TRUST_PENALTY}점 차감`);
+  const reportCourtRequest = (request) => {
+    setReportReason("허위 구장 등록");
+    setReportTargetQuery(`${request.name} ${request.hashtag ?? ""}`.trim());
+    setReportCourtRequestId(request.id);
+    setReportMatchId("");
+    setReportedUserIds([]);
   };
   const updateRefereeDraft = (patch) => setRefereeDraft((current) => ({ ...current, ...patch }));
   const startRefereeExam = () => {
@@ -726,13 +879,13 @@ export default function Settings({ app, auth }) {
                   report.by === app.currentUserId &&
                   report.status !== "dismissed"
                 ));
-                const canReportRequest = request.requestedBy !== app.currentUserId && !alreadyReported;
+                const canReportRequest = request.requestedBy !== app.currentUserId && request.status !== "approved" && !alreadyReported;
                 return (
                   <div key={request.id}>
                     <span>{request.name} · {request.addressText} · {requester?.name ?? "요청자"} 신뢰도 {request.requestedByTrustScore ?? requester?.trustScore ?? "-"}</span>
                     <strong>{request.status === "pending" ? "대기" : request.status === "reported" ? "신고됨" : request.status}</strong>
-                    <button type="button" disabled={!canReportRequest} onClick={() => reportCourtRequest(request.id)}>
-                      {alreadyReported ? "신고됨" : "허위 신고"}
+                    <button type="button" disabled={!canReportRequest} onClick={() => reportCourtRequest(request)}>
+                      {alreadyReported ? "신고됨" : "신고 선택"}
                     </button>
                   </div>
                 );
@@ -751,21 +904,68 @@ export default function Settings({ app, auth }) {
             </div>
             <form className="form-stack" onSubmit={submitReport}>
               <label>
-                경기
+                사유
                 <select
-                  value={selectedReportMatchId}
-                  disabled={!recentReportMatches.length}
+                  value={reportReason}
                   onChange={(event) => {
-                    setReportMatchId(event.target.value);
+                    setReportReason(event.target.value);
+                    setReportTargetQuery("");
+                    setReportMatchId("");
+                    setReportCourtRequestId("");
                     setReportedUserIds([]);
                   }}
                 >
-                  {!recentReportMatches.length ? <option value="">최근 7일 경기 없음</option> : null}
-                  {recentReportMatches.map((match) => <option key={match.id} value={match.id}>{match.title}</option>)}
+                  <option value="">신고 사유 선택</option>
+                  {REPORT_REASONS.map((reason) => <option key={reason} value={reason}>{reason}</option>)}
                 </select>
-                <small>최근 7일 내 내가 출전했거나 후보로 등록된 경기만 표시됩니다.</small>
               </label>
+              {reportReason ? (
+                <div className="settings-address-search report-target-search">
+                  <label>
+                    {getReportTargetLabel(reportTargetType)}
+                    <SearchPicker
+                      value={reportTargetQuery}
+                      onChange={setReportTargetQuery}
+                      placeholder={getReportTargetPlaceholder(reportTargetType)}
+                      items={reportTargetSearchItems}
+                      idleItems={reportTargetSearchItems}
+                      idleTitle="선택 가능한 대상"
+                      emptyText={getReportTargetEmptyText(reportTargetType)}
+                      showIdleOnFocus
+                      fieldClassName="admin-account-search"
+                      renderItem={renderReportTargetSearchItem}
+                    />
+                  </label>
+                  <small>
+                    {reportTargetType === REPORT_TARGET_TYPES.courtRequest
+                      ? "허위 구장 등록 사유는 신고 가능한 구장 등록요청만 표시됩니다."
+                      : "최근 7일 내 내가 출전했거나 후보로 등록된 경기 안에서만 검색됩니다."}
+                  </small>
+                </div>
+              ) : (
+                <div className="empty-state">신고 사유를 먼저 선택하세요.</div>
+              )}
               {selectedReportMatch ? (
+                <div className="arena-mini-note">
+                  <div>
+                    <span>선택 경기기록</span>
+                    <strong>{getMatchReportTitle(selectedReportMatch)}</strong>
+                    <em>{getMatchHashtag(selectedReportMatch)} · {selectedReportMatch.court || "구장 미정"}</em>
+                  </div>
+                  <Database size={18} />
+                </div>
+              ) : null}
+              {selectedReportCourtRequest ? (
+                <div className="arena-mini-note">
+                  <div>
+                    <span>선택 구장요청</span>
+                    <strong>{selectedReportCourtRequest.name}</strong>
+                    <em>{selectedReportCourtRequest.addressText || "주소 미정"}</em>
+                  </div>
+                  <MapPin size={18} />
+                </div>
+              ) : null}
+              {selectedReportMatch && reportTargetType !== REPORT_TARGET_TYPES.match ? (
                 <div className="report-player-picker">
                   <span>신고 대상</span>
                   <div>
@@ -783,27 +983,19 @@ export default function Settings({ app, auth }) {
                       );
                     })}
                   </div>
-                  <small>선택하지 않으면 경기 전체 신고로 접수됩니다.</small>
+                  <small>{reportTargetType === REPORT_TARGET_TYPES.player ? "선수 사유는 신고 대상을 1명 이상 선택해야 합니다." : "선택하지 않으면 경기 기록 전체 신고로 접수됩니다."}</small>
                 </div>
-              ) : (
-                <div className="empty-state">최근 7일 내 신고할 경기가 없습니다.</div>
-              )}
-              <label>
-                사유
-                <select value={reportReason} onChange={(event) => setReportReason(event.target.value)}>
-                  {REPORT_REASONS.map((reason) => <option key={reason} value={reason}>{reason}</option>)}
-                </select>
-              </label>
+              ) : null}
               <label>
                 상세 메모
                 <textarea value={reportMemo} placeholder="상황을 짧게 적어주세요." onChange={(event) => setReportMemo(event.target.value)} />
               </label>
-              <Button type="submit" variant="secondary" disabled={!selectedReportMatchId}>신고 접수</Button>
+              <Button type="submit" variant="secondary" disabled={!canSubmitReport}>신고 접수</Button>
             </form>
             <div className="compact-list">
               {app.state.reports?.slice(0, 4).map((report) => (
                 <div key={report.id}>
-                  <span>{report.type === "court_request" ? courtRequests.find((request) => request.id === report.targetId)?.name ?? "구장 등록요청" : matchMap[report.targetId]?.title ?? "경기"} · {report.reason}</span>
+                  <span>{report.type === "court_request" ? courtRequests.find((request) => request.id === report.targetId)?.name ?? "구장 등록요청" : matchMap[report.targetId] ? `${getMatchHashtag(matchMap[report.targetId])} ${matchMap[report.targetId].title ?? "경기"}` : "경기"} · {report.reason}</span>
                   <strong>{report.status}</strong>
                 </div>
               ))}

@@ -13,6 +13,7 @@ import {
   buildAdminReviewModel,
   hasAdminAccess,
 } from "../lib/admin.js";
+import { getMatchHashtag } from "../lib/handles.js";
 
 const VIEW_OPTIONS = [
   { id: "courts", label: "구장별", icon: MapPin },
@@ -93,6 +94,7 @@ export default function Admin({ app }) {
   const selectedId = selectedIdByView[view];
   const selectedRow = activeRows.find((row) => row.id === selectedId) ?? activeRows[0] ?? null;
   const userMap = useMemo(() => Object.fromEntries(app.state.users.map((user) => [user.id, user])), [app.state.users]);
+  const matchMap = useMemo(() => Object.fromEntries(app.state.matches.map((match) => [match.id, match])), [app.state.matches]);
   const selectedReport = selectedRow?.reports.find((report) => report.status === "open") ?? selectedRow?.reports[0] ?? null;
   const targetCandidates = useMemo(() => {
     const ids = new Set([
@@ -432,7 +434,7 @@ export default function Admin({ app }) {
                   <div key={report.id} className="admin-detail-row">
                     <span>
                       <strong>{report.reason}</strong>
-                      <em>{report.type} · {formatDate(report.createdAt)}</em>
+                      <em>{report.type === "match" && matchMap[report.targetId] ? `${getMatchHashtag(matchMap[report.targetId])} · ` : ""}{report.type} · {formatDate(report.createdAt)}</em>
                     </span>
                     <Badge tone={report.status === "open" ? "orange" : "neutral"}>{statusLabel(report.status)}</Badge>
                   </div>
@@ -443,7 +445,7 @@ export default function Admin({ app }) {
                 {selectedRow.matches.length ? selectedRow.matches.slice(0, 8).map((match) => (
                   <div key={match.id} className="admin-detail-row">
                     <span>
-                      <strong>{match.title ?? `${match.teamA?.name ?? "A"} vs ${match.teamB?.name ?? "B"}`}</strong>
+                      <strong>{getMatchHashtag(match)} · {match.title ?? `${match.teamA?.name ?? "A"} vs ${match.teamB?.name ?? "B"}`}</strong>
                       <em>{match.court ?? "미정 구장"} · {match.scheduledDate ?? ""} {match.scheduledTime ?? ""}</em>
                     </span>
                     <Badge tone={match.status === "disputed" ? "orange" : "neutral"}>{statusLabel(match.status)}</Badge>
