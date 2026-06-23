@@ -1431,7 +1431,8 @@ span.referee-hover-card {
 }
 
 .compact-list a,
-.compact-list > div {
+.compact-list > div,
+.compact-list > .team-hover-trigger {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -4079,7 +4080,8 @@ input[type="color"] {
 }
 
 .home-side-stack .compact-list a,
-.home-side-stack .compact-list > div {
+.home-side-stack .compact-list > div,
+.home-side-stack .compact-list > .team-hover-trigger {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   min-height: 50px;
@@ -7998,6 +8000,7 @@ html[data-theme="light"] .team-hub-hero p:not(.eyebrow) {
 .home-invitation-row,
 .home-side-stack .compact-list a,
 .home-side-stack .compact-list > div,
+.home-side-stack .compact-list > .team-hover-trigger,
 .home-team-list a,
 .home-team-list > div,
 .recent-match-row {
@@ -8053,6 +8056,7 @@ html[data-theme="light"] .team-hub-hero p:not(.eyebrow) {
 
 .home-side-stack .compact-list a,
 .home-side-stack .compact-list > div,
+.home-side-stack .compact-list > .team-hover-trigger,
 .home-team-list a,
 .home-team-list > div {
   min-height: 46px;
@@ -8102,6 +8106,7 @@ html[data-theme="light"] .home-action-row,
 html[data-theme="light"] .home-invitation-row,
 html[data-theme="light"] .home-side-stack .compact-list a,
 html[data-theme="light"] .home-side-stack .compact-list > div,
+html[data-theme="light"] .home-side-stack .compact-list > .team-hover-trigger,
 html[data-theme="light"] .home-team-list a,
 html[data-theme="light"] .home-team-list > div,
 html[data-theme="light"] .recent-match-row {
@@ -8170,6 +8175,7 @@ html[data-theme="light"] .recent-match-row {
 .rank-list .rank-row,
 .home-side-stack .compact-list a,
 .home-side-stack .compact-list > div,
+.home-side-stack .compact-list > .team-hover-trigger,
 .home-team-list a,
 .home-team-list > div,
 .quick-picker button,
@@ -8333,6 +8339,7 @@ html[data-theme="light"] .rank-profile-tabs a,
 html[data-theme="light"] .rank-list .rank-row,
 html[data-theme="light"] .home-side-stack .compact-list a,
 html[data-theme="light"] .home-side-stack .compact-list > div,
+html[data-theme="light"] .home-side-stack .compact-list > .team-hover-trigger,
 html[data-theme="light"] .home-team-list a,
 html[data-theme="light"] .home-team-list > div,
 html[data-theme="light"] .quick-picker button,
@@ -8820,6 +8827,7 @@ html[data-theme="light"] .profile-records-summary {
 .rank-list .rank-row,
 .home-side-stack .compact-list a,
 .home-side-stack .compact-list > div,
+.home-side-stack .compact-list > .team-hover-trigger,
 .home-team-list a,
 .home-team-list > div,
 .quick-picker button,
@@ -8882,6 +8890,7 @@ html[data-theme="light"] .rank-profile-tabs a,
 html[data-theme="light"] .rank-list .rank-row,
 html[data-theme="light"] .home-side-stack .compact-list a,
 html[data-theme="light"] .home-side-stack .compact-list > div,
+html[data-theme="light"] .home-side-stack .compact-list > .team-hover-trigger,
 html[data-theme="light"] .home-team-list a,
 html[data-theme="light"] .home-team-list > div,
 html[data-theme="light"] .quick-picker button,
@@ -9008,6 +9017,7 @@ html[data-theme="light"] .ranking-filter-card {
 
 .home-side-stack .compact-list a,
 .home-side-stack .compact-list > div,
+.home-side-stack .compact-list > .team-hover-trigger,
 .home-team-list a,
 .home-team-list > div,
 .home-side-stack .wide-button {
