@@ -2736,10 +2736,32 @@ html[data-theme="light"] .arena-room-party-group::before {
 
 html[data-theme="light"] .arena-room-party-group::after {
   height: 5px;
-  background: linear-gradient(90deg, rgba(143, 79, 0, 0.18), rgba(143, 79, 0, 0.96), rgba(143, 79, 0, 0.18));
+  background: linear-gradient(90deg, rgba(15, 159, 126, 0.18), rgba(15, 159, 126, 0.96), rgba(15, 159, 126, 0.18));
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.88),
-    0 0 12px rgba(143, 79, 0, 0.34);
+    0 0 12px rgba(15, 159, 126, 0.34);
+}
+
+html[data-theme="light"] .arena-room-party-group > .arena-room-player-slot-wrap .arena-room-player-slot.ready::before {
+  content: "";
+  position: absolute;
+  top: var(--party-link-y);
+  left: 0;
+  right: 0;
+  z-index: 0;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(15, 159, 126, 0.78);
+  box-shadow: 0 0 8px rgba(15, 159, 126, 0.22);
+  pointer-events: none;
+}
+
+html[data-theme="light"] .arena-room-party-group > .arena-room-player-slot-wrap:first-child .arena-room-player-slot.ready::before {
+  left: 50%;
+}
+
+html[data-theme="light"] .arena-room-party-group > .arena-room-player-slot-wrap:last-child .arena-room-player-slot.ready::before {
+  right: 50%;
 }
 
 html[data-theme="light"] .arena-invite-search,
