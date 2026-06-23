@@ -49,6 +49,7 @@ const VIEWS = [
     icon: CheckCircle2,
   },
 ];
+const CHILD_VIEW_IDS = ["todo", "scheduled", "closed"];
 
 class RoomModalErrorBoundary extends Component {
   constructor(props) {
@@ -296,16 +297,21 @@ function userNeedsAgreement(match, userId) {
   return Boolean(sideName && match.status === "contract" && !(match.agreements?.[sideName] ?? []).includes(userId));
 }
 
+function userNeedsMatchAction(match, userId) {
+  const phase = getMatchRoomPhase(match).phase;
+  if (userNeedsAgreement(match, userId)) return true;
+  if (userNeedsCheckin(match, userId)) return true;
+  return ["postgame", "dispute"].includes(phase) && !userDecisionDone(match, userId);
+}
+
 function shouldShowMatchForView(match, view, userId) {
   const phase = getMatchRoomPhase(match).phase;
-  if (view.id === "closed") return ["cancelled", "void"].includes(phase);
-  if (view.id === "scheduled") return ["locked", "checkin"].includes(phase);
-  if (view.id === "todo") {
-    if (userNeedsAgreement(match, userId)) return true;
-    if (userNeedsCheckin(match, userId)) return true;
-    return ["postgame", "dispute"].includes(phase) && !userDecisionDone(match, userId);
+  if (view.id === "active") {
+    return CHILD_VIEW_IDS.some((viewId) => shouldShowMatchForView(match, { id: viewId }, userId));
   }
-  if (view.id === "active") return true;
+  if (view.id === "closed") return ["cancelled", "void"].includes(phase);
+  if (view.id === "scheduled") return ["locked", "checkin"].includes(phase) && !userNeedsMatchAction(match, userId);
+  if (view.id === "todo") return userNeedsMatchAction(match, userId);
   return false;
 }
 
@@ -774,7 +780,7 @@ export default function Matches({ app }) {
       .filter((post) => modeFilter === "all" || post.mode === modeFilter);
   }, [app.currentUser.id, app.state, app.state.recruitingPosts, kindFilter, maxScheduleDate, modeFilter]);
   const getViewIdForDate = (day) => {
-    if (visibleRecruitingCandidates.some((post) => getMatchDate(post) === day)) return "active";
+    if (visibleRecruitingCandidates.some((post) => getMatchDate(post) === day)) return "scheduled";
     const dayMatches = baseFilteredMatches.filter((match) => getMatchDate(match) === day);
     const preferredView = VIEWS.find((view) => dayMatches.some((match) => shouldShowMatchForView(match, view, app.currentUser.id)));
     return preferredView?.id ?? (day < todayValue ? "history" : "active");
@@ -787,7 +793,7 @@ export default function Matches({ app }) {
   }, [app.currentUser.id, dateFilter, filteredMatches, selectedView]);
 
   const visibleRecruitingRooms = useMemo(() => {
-    if (viewId !== "active") return [];
+    if (!["active", "scheduled"].includes(viewId)) return [];
     return visibleRecruitingCandidates
       .filter((post) => {
         const postDate = getMatchDate(post);
@@ -807,10 +813,18 @@ export default function Matches({ app }) {
     ...visibleRecruitingRooms.map((post) => ({ type: "room", id: `room-${post.id}`, item: post })),
     ...visibleMatches.map((match) => ({ type: "match", id: `match-${match.id}`, item: match })),
   ].sort((a, b) => compareSchedule(a.item, b.item))), [visibleMatches, visibleRecruitingRooms]);
-  const activeCount = getViewCount(filteredMatches, VIEWS[0], app.currentUser.id) + filteredActiveRoomCount;
   const todoCount = getViewCount(filteredMatches, VIEWS[1], app.currentUser.id);
-  const scheduledCount = getViewCount(filteredMatches, VIEWS[2], app.currentUser.id);
-  const getViewButtonCount = (view) => getViewCount(baseFilteredMatches, view, app.currentUser.id) + (view.id === "active" ? activeRoomCount : 0);
+  const scheduledCount = getViewCount(filteredMatches, VIEWS[2], app.currentUser.id) + filteredActiveRoomCount;
+  const closedCount = getViewCount(filteredMatches, VIEWS[3], app.currentUser.id);
+  const activeCount = todoCount + scheduledCount + closedCount;
+  const viewButtonCounts = {
+    todo: getViewCount(baseFilteredMatches, VIEWS[1], app.currentUser.id),
+    scheduled: getViewCount(baseFilteredMatches, VIEWS[2], app.currentUser.id) + activeRoomCount,
+    closed: getViewCount(baseFilteredMatches, VIEWS[3], app.currentUser.id),
+  };
+  viewButtonCounts.active = viewButtonCounts.todo + viewButtonCounts.scheduled + viewButtonCounts.closed;
+  const getViewButtonCount = (view) => viewButtonCounts[view.id] ?? 0;
+  const listRecruitingRoomCount = ["active", "scheduled"].includes(viewId) ? filteredActiveRoomCount : 0;
   const saveTournamentSchedule = (event, tournamentId, matchId) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -1136,7 +1150,7 @@ export default function Matches({ app }) {
             <span className="om-kicker">{selectedView.code}</span>
             <h2>{dateFilter ? `${selectedView.title} · ${formatDateLabel(dateFilter)}` : selectedView.title}</h2>
           </div>
-          <span>내 일정 {matchesByView.length + filteredActiveRoomCount}개 중 {visibleScheduleItems.length}개 표시</span>
+          <span>내 일정 {matchesByView.length + listRecruitingRoomCount}개 중 {visibleScheduleItems.length}개 표시</span>
         </div>
 
         {visibleScheduleItems.length ? visibleScheduleItems.map(({ type, item }) => {
