@@ -2655,3 +2655,13 @@ html[data-theme="light"] .om-calendar-filter-bar {
   background-image: none;
   box-shadow: none;
 }
+
+html[data-theme="light"] .om-filter-bar .segmented-control button.active,
+html[data-theme="light"] .om-calendar-actions button.active,
+html[data-theme="light"] .om-history-range button.active,
+html[data-theme="light"] .om-calendar-grid button.active {
+  border-color: rgba(15, 159, 126, 0.34);
+  background-color: rgba(213, 250, 241, 0.94);
+  background-image: none;
+  color: #075f51;
+}
