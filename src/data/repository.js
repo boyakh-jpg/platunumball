@@ -3571,6 +3571,47 @@ export function toggleFavoriteCourt(state, courtId) {
   };
 }
 
+function getCourtAddressDong(draft = {}) {
+  const direct = String(draft.addressDong ?? draft.bname ?? draft.hname ?? "").trim();
+  if (direct) return direct;
+  const addressText = String(draft.addressText ?? draft.roadAddress ?? draft.jibunAddress ?? "").trim();
+  return addressText.match(/[가-힣0-9]+동/)?.[0] ?? "";
+}
+
+function getCourtRequestName(rawName = "", addressDong = "") {
+  const name = String(rawName ?? "").trim();
+  const dong = String(addressDong ?? "").trim();
+  if (!dong || name.startsWith(dong)) return name;
+  return `${dong} ${name}`;
+}
+
+function normalizeCourtHashtag(value = "") {
+  const raw = String(value ?? "").trim().replace(/^#+/, "");
+  return raw ? `#${raw}` : "";
+}
+
+function makeRandomCourtHashtag(state = {}) {
+  const used = new Set([
+    ...COURTS,
+    ...(state.settings?.approvedCourts ?? []),
+    ...(state.settings?.courtRequests ?? []),
+  ].map((court) => String(court.hashtag ?? "").toLowerCase()).filter(Boolean));
+
+  for (let index = 0; index < 20; index += 1) {
+    const candidate = `#${Math.floor(10000 + Math.random() * 90000)}`;
+    if (!used.has(candidate.toLowerCase())) return candidate;
+  }
+  return `#${Date.now().toString(36).slice(-5)}`;
+}
+
+function getOptionalCourtCoordinate(value, min, max) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return null;
+  const number = Number(raw);
+  if (!Number.isFinite(number) || number < min || number > max) return null;
+  return number;
+}
+
 export function submitCourtRequest(state, draft = {}) {
   const disciplineBlock = getDisciplineBlockedState(state, "구장 등록요청");
   if (disciplineBlock) return disciplineBlock;
@@ -3591,9 +3632,11 @@ export function submitCourtRequest(state, draft = {}) {
     };
   }
 
-  const name = String(draft.name ?? "").trim();
+  const rawName = String(draft.name ?? "").trim();
+  const addressDong = getCourtAddressDong(draft);
+  const name = getCourtRequestName(rawName, addressDong);
   const addressText = String(draft.addressText ?? "").trim();
-  if (!name || !addressText) {
+  if (!rawName || !addressText) {
     return {
       ...state,
       notifications: [
@@ -3607,24 +3650,9 @@ export function submitCourtRequest(state, draft = {}) {
       ],
     };
   }
-  const rawLat = String(draft.lat ?? "").trim();
-  const rawLng = String(draft.lng ?? "").trim();
-  const lat = Number(rawLat);
-  const lng = Number(rawLng);
-  if (!rawLat || !rawLng || !Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-    return {
-      ...state,
-      notifications: [
-        {
-          id: makeId("n"),
-          title: "구장 등록 보류",
-          body: "구장 위도/경도가 필요합니다.",
-          tone: "orange",
-        },
-        ...state.notifications,
-      ],
-    };
-  }
+  const lat = getOptionalCourtCoordinate(draft.lat, -90, 90);
+  const lng = getOptionalCourtCoordinate(draft.lng, -180, 180);
+  const hashtag = normalizeCourtHashtag(draft.hashtag) || makeRandomCourtHashtag(state);
 
   const request = {
     id: makeId("cr"),
@@ -3632,9 +3660,15 @@ export function submitCourtRequest(state, draft = {}) {
     requestedBy: state.currentUserId,
     requestedByTrustScore: trustScore,
     name,
-    region: String(draft.region ?? "").trim() || currentUser?.region || "미정",
+    baseName: rawName,
+    hashtag,
+    region: String(draft.region ?? "").trim() || addressDong || currentUser?.region || "미정",
     type: draft.type === "실내" ? "실내" : "야외",
     addressText,
+    roadAddress: String(draft.roadAddress ?? "").trim(),
+    jibunAddress: String(draft.jibunAddress ?? "").trim(),
+    addressDong,
+    zonecode: String(draft.zonecode ?? "").trim(),
     locationNote: String(draft.locationNote ?? "").trim(),
     lat,
     lng,
@@ -4325,9 +4359,15 @@ export function approveCourtRequest(state, requestId) {
   const approvedCourt = {
     id: makeId("court"),
     name: request.name,
+    baseName: request.baseName,
+    hashtag: request.hashtag,
     region: request.region,
     type: request.type,
     addressText: request.addressText,
+    roadAddress: request.roadAddress,
+    jibunAddress: request.jibunAddress,
+    addressDong: request.addressDong,
+    zonecode: request.zonecode,
     locationNote: request.locationNote,
     lat: request.lat,
     lng: request.lng,

@@ -456,7 +456,7 @@ export default function Admin({ app }) {
                   <div key={request.id} className="admin-detail-row">
                     <span>
                       <strong>{request.name}</strong>
-                      <em>{request.addressText} · {request.lat ?? "-"}, {request.lng ?? "-"}</em>
+                      <em>{request.addressText} · {request.hashtag ?? "해시태그 자동"}</em>
                     </span>
                     <span className="admin-row-actions">
                       <Badge tone={request.status === "reported" ? "orange" : request.status === "approved" ? "green" : "neutral"}>{statusLabel(request.status)}</Badge>

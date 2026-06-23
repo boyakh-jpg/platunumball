@@ -30,6 +30,7 @@ function getCourtNumericHandle(court = {}) {
 }
 
 export function getCourtHashtag(court = {}) {
+  if (court.hashtag) return toHashtag(court.hashtag, court.id ?? "court");
   return `#${getCourtNumericHandle(court)}`;
 }
 
