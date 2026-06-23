@@ -3,7 +3,6 @@ import { sourceDemoState as initialState } from "../src/lib/mockData.js";
 import { STORAGE_KEY } from "../src/lib/constants.js";
 import {
   acceptRecruitingInvitation,
-  approveMatch,
   cancelRecruitingParticipation,
   checkInMatchPlayer,
   confirmRecruitingMatch,
@@ -15,6 +14,7 @@ import {
   interestRecruitingPost,
   inviteRecruitingPlayers,
   joinRecruitingSideParty,
+  removeMatchRoomPlayer,
   resumeMatchApproval,
   runAutomaticStateMaintenance,
   sendRecruitingChat,
@@ -28,7 +28,7 @@ import {
   updateMatchRoomRules,
   updateRecruitingRoomRules,
 } from "../src/data/repository.js";
-import { getMatchPlayerIds, getMatchRoomPhase } from "../src/lib/matchUtils.js";
+import { getMatchPlayerIds, getMatchReservePlayerIds, getMatchRoomPhase } from "../src/lib/matchUtils.js";
 import { getRecruitingApplicantKey, getRecruitingLobby } from "../src/lib/recruiting.js";
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -425,7 +425,17 @@ state = withUser(state, "u1", (scoped) => updateMatchRoomRules(scoped, lifecycle
   memo: "현장 합의로 15점 10분",
   stakes: "구장 예약비 현장 정산",
 }));
-assertFlow(getMatch(state, lifecycleMatchId).rules.targetScore === 15, "경기준비방: 방장 룰 수정", {
+assertFlow(getMatch(state, lifecycleMatchId).rules.targetScore !== 15, "심판 배정 경기준비방: 방장 룰 수정 불가", {
+  targetScore: getMatch(state, lifecycleMatchId).rules.targetScore,
+});
+
+state = withUser(state, "u11", (scoped) => updateMatchRoomRules(scoped, lifecycleMatchId, {
+  targetScore: 15,
+  timeLimit: 10,
+  memo: "현장 합의로 15점 10분",
+  stakes: "구장 예약비 현장 정산",
+}));
+assertFlow(getMatch(state, lifecycleMatchId).rules.targetScore === 15, "심판 배정 경기준비방: 심판 룰 수정", {
   targetScore: getMatch(state, lifecycleMatchId).rules.targetScore,
 });
 
@@ -438,14 +448,35 @@ for (const sideName of ["teamA", "teamB"]) {
   }
 }
 assertFlow(
-  getMatch(state, lifecycleMatchId).attendance.teamA.length === getMatch(state, lifecycleMatchId).teamA.players.length &&
-    getMatch(state, lifecycleMatchId).attendance.teamB.length === getMatch(state, lifecycleMatchId).teamB.players.length,
-  "경기준비방: 출전선수 전원 출석체크",
+  getMatch(state, lifecycleMatchId).attendance.teamA.length === 0 &&
+    getMatch(state, lifecycleMatchId).attendance.teamB.length === 0,
+  "심판 배정 경기준비방: 방장 출석체크 불가",
+  { attendance: getMatch(state, lifecycleMatchId).attendance },
+);
+
+for (const sideName of ["teamA", "teamB"]) {
+  const attendanceTargets = [
+    ...getMatch(state, lifecycleMatchId)[sideName].players,
+    ...getMatchReservePlayerIds(getMatch(state, lifecycleMatchId), sideName),
+  ];
+  for (const playerId of attendanceTargets) {
+    state = withUser(state, "u11", (scoped) => checkInMatchPlayer(scoped, lifecycleMatchId, sideName, playerId));
+  }
+}
+assertFlow(
+  getMatch(state, lifecycleMatchId).attendance.teamA.length === getMatch(state, lifecycleMatchId).teamA.players.length + getMatchReservePlayerIds(getMatch(state, lifecycleMatchId), "teamA").length &&
+    getMatch(state, lifecycleMatchId).attendance.teamB.length === getMatch(state, lifecycleMatchId).teamB.players.length + getMatchReservePlayerIds(getMatch(state, lifecycleMatchId), "teamB").length,
+  "심판 배정 경기준비방: 출전+후보 전원 출석체크",
   { attendance: getMatch(state, lifecycleMatchId).attendance },
 );
 
 state = withUser(state, "u1", (scoped) => startMatch(scoped, lifecycleMatchId));
-assertFlow(getMatchRoomPhase(getMatch(state, lifecycleMatchId)).phase === "live", "방장 경기 시작", {
+assertFlow(getMatchRoomPhase(getMatch(state, lifecycleMatchId)).phase === "checkin", "심판 배정 경기준비방: 방장 시작 불가", {
+  phase: getMatchRoomPhase(getMatch(state, lifecycleMatchId)),
+});
+
+state = withUser(state, "u11", (scoped) => startMatch(scoped, lifecycleMatchId));
+assertFlow(getMatchRoomPhase(getMatch(state, lifecycleMatchId)).phase === "live", "심판 경기 시작", {
   phase: getMatchRoomPhase(getMatch(state, lifecycleMatchId)),
 });
 
@@ -465,28 +496,21 @@ assertFlow(getMatchRoomPhase(getMatch(state, lifecycleMatchId)).phase === "dispu
 });
 
 state = withUser(state, "u6", (scoped) => disputeMatch(scoped, lifecycleMatchId, "점수 재확인 요청"));
-assertFlow(getMatch(state, lifecycleMatchId).status === "approval", "심판 배정 경기: 상대 파티장 이의 처리 불가", {
+assertFlow(getMatch(state, lifecycleMatchId).status === "disputed", "참가자 이의신청 접수", {
   disputes: getMatch(state, lifecycleMatchId).disputes?.length,
 });
 
-state = withUser(state, "u11", (scoped) => disputeMatch(scoped, lifecycleMatchId, "점수 재확인 요청"));
-assertFlow(getMatch(state, lifecycleMatchId).status === "disputed", "심판 이의 처리 시작", {
-  disputes: getMatch(state, lifecycleMatchId).disputes?.length,
+state = withUser(state, "u6", (scoped) => resumeMatchApproval(scoped, lifecycleMatchId));
+assertFlow(getMatch(state, lifecycleMatchId).status === "disputed", "참가자는 이의 확정 불가", {
+  status: getMatch(state, lifecycleMatchId).status,
 });
 
 state = withUser(state, "u11", (scoped) => resumeMatchApproval(scoped, lifecycleMatchId));
-assertFlow(getMatch(state, lifecycleMatchId).status === "approval", "이의 처리 후 승인 재개", {});
-
-state = withUser(state, "u1", (scoped) => submitMatchThumbs(scoped, lifecycleMatchId, ["u6", "u7"]));
-for (const playerId of getMatch(state, lifecycleMatchId).teamA.players) {
-  state = withUser(state, playerId, (scoped) => approveMatch(scoped, lifecycleMatchId, "teamA", playerId));
-}
-for (const playerId of getMatch(state, lifecycleMatchId).teamB.players) {
-  state = withUser(state, playerId, (scoped) => approveMatch(scoped, lifecycleMatchId, "teamB", playerId));
-}
-assertFlow(getMatchRoomPhase(getMatch(state, lifecycleMatchId)).phase === "record", "양쪽 승인 후 기록방", {
+assertFlow(getMatchRoomPhase(getMatch(state, lifecycleMatchId)).phase === "record", "심판 이의 확정 후 기록방", {
   status: getMatch(state, lifecycleMatchId).status,
 });
+
+state = withUser(state, "u1", (scoped) => submitMatchThumbs(scoped, lifecycleMatchId, ["u6", "u7"]));
 
 room = createRoom(state, "u12", {
   title: "FLOW 후보 자동승격 3v3",
@@ -532,6 +556,24 @@ assertFlow(
     teamB: promoteMatch.teamB.players,
     reserves: promoteMatch.reservePlayers,
     promoted: promoteMatch.promotedReserveIds,
+  },
+);
+const checkinReserveId = promoteMatch.reservePlayers.teamA[0];
+const absentActiveId = promoteMatch.teamA.players.find((playerId) => playerId !== "u12");
+state = withUser(state, "u12", (scoped) => checkInMatchPlayer(scoped, promoteMatchId, "teamA", checkinReserveId));
+state = withUser(state, "u12", (scoped) => removeMatchRoomPlayer(scoped, promoteMatchId, absentActiveId));
+const promoteCheckinMatch = getMatch(state, promoteMatchId);
+assertFlow(
+  promoteCheckinMatch.teamA.players.includes(checkinReserveId) &&
+    !promoteCheckinMatch.teamA.players.includes(absentActiveId) &&
+    !getMatchReservePlayerIds(promoteCheckinMatch, "teamA").includes(checkinReserveId),
+  "경기준비방: 미출석 강퇴 후 출석 후보 자동출전",
+  {
+    absentActiveId,
+    checkinReserveId,
+    teamA: promoteCheckinMatch.teamA.players,
+    reserves: getMatchReservePlayerIds(promoteCheckinMatch, "teamA"),
+    attendance: promoteCheckinMatch.attendance.teamA,
   },
 );
 

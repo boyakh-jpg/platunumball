@@ -2802,14 +2802,14 @@ export function disputeMatch(state, matchId, reason = "") {
   if (disciplineBlock) return disciplineBlock;
   const match = state.matches.find((item) => item.id === matchId);
   if (!match?.result || match.status !== "approval") return state;
-  if (!currentUserCanOperateStartedMatch(state, match)) {
+  if (!currentUserCanFileMatchDispute(state, match)) {
     return {
       ...state,
       notifications: [
         {
           id: makeId("n"),
-          title: match.refereeId ? "심판 처리 전용" : "방장 처리 전용",
-          body: match.refereeId ? "심판이 있는 경기는 심판만 이의 처리를 시작할 수 있습니다." : "심판이 없는 경기는 방장만 이의 처리를 시작할 수 있습니다.",
+          title: "이의신청 권한 없음",
+          body: "경기 참가자, 후보, 기록자, 방장, 심판만 이의신청할 수 있습니다.",
           tone: "orange",
           matchId,
         },
@@ -2858,7 +2858,7 @@ export function disputeMatch(state, matchId, reason = "") {
       {
         id: makeId("n"),
         title: "이의제기 접수",
-        body: `${match.title} 결과가 보류됐습니다. 양팀 확인 후 재승인하거나 무효 처리하세요.`,
+        body: `${match.title} 결과가 보류됐습니다. ${match.refereeId ? "심판" : "방장"}이 수정안을 확정하거나 무효 처리합니다.`,
         tone: "match",
         matchId,
       },
@@ -2890,9 +2890,24 @@ function currentUserCanOperateStartedMatch(state, match) {
   return currentUserIsMatchHost(state, match);
 }
 
+function currentUserCanOperateMatchPreparation(state, match) {
+  if (!match) return false;
+  if (match.refereeId && getMatchRoomPhase(match).phase === "checkin") {
+    return currentUserIsEligibleMatchReferee(state, match);
+  }
+  return currentUserIsMatchHost(state, match);
+}
+
 function currentUserCanStartMatch(state, match) {
   if (!match) return false;
-  return currentUserIsMatchHost(state, match) || currentUserIsEligibleMatchReferee(state, match);
+  if (match.refereeId) return currentUserIsEligibleMatchReferee(state, match);
+  return currentUserIsMatchHost(state, match);
+}
+
+function currentUserCanFileMatchDispute(state, match) {
+  if (!match) return false;
+  if (currentUserCanOperateStartedMatch(state, match)) return true;
+  return getMatchTrustFeedbackParticipantIds(match).includes(state.currentUserId);
 }
 
 function getAllowedResultFieldIds(match, currentUserId, playerId, hostPostgameScore = false) {
@@ -2935,10 +2950,17 @@ function getMatchAttendance(match = {}) {
   };
 }
 
-function getMissingActiveAttendance(match = {}) {
+function getMatchAttendanceTargetIds(match = {}, sideName) {
+  return uniquePlayerIds([
+    ...(match[sideName]?.players ?? []),
+    ...getMatchReservePlayerIds(match, sideName),
+  ]);
+}
+
+function getMissingMatchAttendance(match = {}) {
   const attendance = getMatchAttendance(match);
   return ["teamA", "teamB"].flatMap((sideName) => (
-    uniquePlayerIds(match[sideName]?.players ?? [])
+    getMatchAttendanceTargetIds(match, sideName)
       .filter((playerId) => !attendance[sideName].includes(playerId))
       .map((playerId) => ({ sideName, playerId }))
   ));
@@ -2978,7 +3000,7 @@ export function startMatch(state, matchId) {
   if (!match || !["contract", "agreed"].includes(match.status) || match.result || match.endedAt) return state;
   if (!currentUserCanStartMatch(state, match)) return state;
   if (getMatchRoomPhase(match).phase !== "checkin") return state;
-  const missingAttendance = getMissingActiveAttendance(match);
+  const missingAttendance = getMissingMatchAttendance(match);
   if (missingAttendance.length) {
     return {
       ...state,
@@ -2986,7 +3008,7 @@ export function startMatch(state, matchId) {
         {
           id: makeId("n"),
           title: "출석체크 필요",
-          body: "출전선수 전원이 출석체크해야 경기 시작이 가능합니다.",
+          body: "출전선수와 후보 전원이 출석체크되거나 미도착 정리되어야 경기 시작이 가능합니다.",
           tone: "orange",
           matchId,
         },
@@ -4779,8 +4801,7 @@ export function updateRecruitingRoomRules(state, postId, patch = {}) {
 export function updateMatchRoomRules(state, matchId, patch = {}) {
   const match = state.matches.find((item) => item.id === matchId);
   if (!match || !["contract", "agreed"].includes(match.status) || match.result || match.endedAt) return state;
-  const hostPlayerId = getMatchHostPlayerId(state, match);
-  if (hostPlayerId && hostPlayerId !== state.currentUserId) return state;
+  if (!currentUserCanOperateMatchPreparation(state, match)) return state;
   const sideCapacity = Math.max(1, Math.min(5, Number(patch.sideCapacity ?? getRecruitingSideCapacity(match))));
   const teamAActiveCount = uniquePlayerIds(match.teamA?.players ?? []).length;
   const teamBActiveCount = uniquePlayerIds(match.teamB?.players ?? []).length;
@@ -4853,8 +4874,7 @@ export function updateMatchRoomRules(state, matchId, patch = {}) {
 
 function canEditMatchPreparation(state, match) {
   if (!match || !["contract", "agreed"].includes(match.status) || match.result || match.endedAt || match.startedAt) return false;
-  const hostPlayerId = getMatchHostPlayerId(state, match);
-  return !hostPlayerId || hostPlayerId === state.currentUserId;
+  return currentUserCanOperateMatchPreparation(state, match);
 }
 
 function getMatchPlayerPlacement(match = {}, playerId = "") {
@@ -4904,6 +4924,48 @@ function clearMatchPlayerDecision(nextMatch, playerId) {
   };
 }
 
+function autoPromoteMatchReservesForCheckin(match = {}, excludedPlayerIds = []) {
+  if (getMatchRoomPhase(match).phase !== "checkin" || match.startedAt || match.endedAt || match.result) return match;
+  const excludedIds = new Set(excludedPlayerIds);
+  const sideCapacity = getRecruitingSideCapacity(match);
+  let nextMatch = match;
+
+  for (const sideName of ["teamA", "teamB"]) {
+    let activeIds = uniquePlayerIds(nextMatch[sideName]?.players ?? []);
+    while (activeIds.length < sideCapacity) {
+      const attendance = getMatchAttendance(nextMatch);
+      const reserveId = getMatchReservePlayerIds(nextMatch, sideName).find((playerId) => (
+        !excludedIds.has(playerId) && attendance[sideName].includes(playerId)
+      ));
+      if (!reserveId) break;
+
+      const playerTeams = { ...(nextMatch[sideName]?.playerTeams ?? {}) };
+      const teamId = getMatchPlayerTeamId(nextMatch, sideName, reserveId);
+      if (teamId) playerTeams[reserveId] = teamId;
+      activeIds = uniquePlayerIds([...activeIds, reserveId]);
+      nextMatch = {
+        ...nextMatch,
+        [sideName]: {
+          ...(nextMatch[sideName] ?? {}),
+          players: activeIds,
+          playerTeams,
+        },
+        reservePlayers: {
+          ...(nextMatch.reservePlayers ?? {}),
+          [sideName]: getMatchReservePlayerIds(nextMatch, sideName).filter((playerId) => playerId !== reserveId),
+        },
+        parties: updateMatchPartiesForPlayer(nextMatch, reserveId, sideName, false),
+        promotedReserveIds: {
+          ...(nextMatch.promotedReserveIds ?? {}),
+          [sideName]: uniquePlayerIds([...(nextMatch.promotedReserveIds?.[sideName] ?? []), reserveId]),
+        },
+      };
+    }
+  }
+
+  return nextMatch;
+}
+
 export function setMatchRoomPlayerPlacement(state, matchId, playerId, placement = {}) {
   const match = state.matches.find((item) => item.id === matchId);
   if (!canEditMatchPreparation(state, match) || !playerId) return state;
@@ -4940,7 +5002,7 @@ export function setMatchRoomPlayerPlacement(state, matchId, playerId, placement 
     };
   }
 
-  const nextMatch = clearMatchPlayerDecision({
+  const nextMatch = autoPromoteMatchReservesForCheckin(clearMatchPlayerDecision({
     ...match,
     status: "agreed",
     teamA: { ...(match.teamA ?? {}), players: nextTeamAPlayers },
@@ -4948,7 +5010,7 @@ export function setMatchRoomPlayerPlacement(state, matchId, playerId, placement 
     reservePlayers: nextReservePlayers,
     parties: updateMatchPartiesForPlayer(match, playerId, targetSide, targetReserve),
     agreedAt: null,
-  }, playerId);
+  }, playerId), targetReserve ? [playerId] : []);
 
   return {
     ...state,
@@ -4966,7 +5028,7 @@ export function removeMatchRoomPlayer(state, matchId, playerId) {
     teamA: getMatchReservePlayerIds(match, "teamA").filter((id) => id !== playerId),
     teamB: getMatchReservePlayerIds(match, "teamB").filter((id) => id !== playerId),
   };
-  const nextMatch = clearMatchPlayerDecision({
+  const nextMatch = autoPromoteMatchReservesForCheckin(clearMatchPlayerDecision({
     ...match,
     status: "agreed",
     teamA: { ...(match.teamA ?? {}), players: uniquePlayerIds(match.teamA?.players ?? []).filter((id) => id !== playerId) },
@@ -4974,7 +5036,7 @@ export function removeMatchRoomPlayer(state, matchId, playerId) {
     reservePlayers: nextReservePlayers,
     parties: updateMatchPartiesForPlayer(match, playerId, placement.side, placement.reserve, true),
     agreedAt: null,
-  }, playerId);
+  }, playerId));
 
   return {
     ...state,
