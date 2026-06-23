@@ -1509,16 +1509,22 @@ span.referee-hover-card {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  min-height: 32px;
+  gap: 4px;
+  min-height: 28px;
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: 7px;
   background: rgba(255, 255, 255, 0.055);
   color: var(--muted);
   cursor: pointer;
-  font-size: 0.76rem;
+  font-size: 0.7rem;
   font-weight: 900;
-  padding: 0 9px;
+  padding: 0 8px;
+}
+
+.favorite-toggle svg,
+.favorite-toggle-button svg {
+  width: 13px;
+  height: 13px;
 }
 
 .favorite-toggle.active {
@@ -2243,6 +2249,9 @@ input[type="color"] {
 }
 
 .selector-panel {
+  position: relative;
+  z-index: 40;
+  overflow: visible;
   border-color: rgba(70, 224, 182, 0.2);
 }
 
@@ -2305,6 +2314,93 @@ input[type="color"] {
   color: var(--muted);
   font-size: 0.86rem;
   font-weight: 800;
+}
+
+.favorite-search-field {
+  position: relative;
+  display: grid;
+  min-width: 0;
+}
+
+.favorite-search-label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.favorite-search-popover {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  display: grid;
+  max-height: 280px;
+  overflow: auto;
+  border: 1px solid rgba(70, 224, 182, 0.24);
+  border-radius: 8px;
+  background: rgba(8, 13, 20, 0.98);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.34);
+  gap: 8px;
+  padding: 8px;
+}
+
+.favorite-search-section {
+  display: grid;
+  gap: 6px;
+}
+
+.favorite-search-section small {
+  color: var(--gold);
+  font-size: 0.68rem;
+  font-weight: 950;
+  padding-inline: 4px;
+}
+
+.favorite-search-section > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.favorite-search-section button {
+  display: inline-grid;
+  min-width: min(180px, 100%);
+  max-width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--text);
+  cursor: pointer;
+  gap: 2px;
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.favorite-search-section button:hover {
+  border-color: rgba(70, 224, 182, 0.48);
+  background: rgba(70, 224, 182, 0.1);
+}
+
+.favorite-search-section strong,
+.favorite-search-section span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.favorite-search-section strong {
+  color: var(--text);
+  font-size: 0.82rem;
+}
+
+.favorite-search-section span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 850;
 }
 
 .team-search-popover {
@@ -2439,7 +2535,12 @@ input[type="color"] {
 }
 
 .favorite-toggle-button {
-  gap: 7px;
+  width: max-content;
+  min-height: 30px;
+  gap: 4px;
+  border-radius: 7px;
+  font-size: 0.72rem;
+  padding: 0 9px;
 }
 
 .favorite-toggle-button.active.button-secondary {
@@ -4653,9 +4754,12 @@ input[type="color"] {
     flex-direction: column;
   }
 
-  .rank-hero-top .button,
-  .rank-team-hero .favorite-toggle-button {
+  .rank-hero-top .button {
     width: 100%;
+  }
+
+  .rank-team-hero .favorite-toggle-button {
+    width: max-content;
   }
 
   .rank-summary-grid,
@@ -6902,6 +7006,7 @@ html[data-theme="light"] .theme-choice-card,
 html[data-theme="light"] .selector-panel,
 html[data-theme="light"] .team-search-selected,
 html[data-theme="light"] .team-search-popover,
+html[data-theme="light"] .favorite-search-popover,
 html[data-theme="light"] .quick-picker button,
 html[data-theme="light"] .tier-range-note,
 html[data-theme="light"] .mmr-range-mode-control {
@@ -6950,11 +7055,13 @@ html[data-theme="light"] .button-primary {
 
 html[data-theme="light"] .team-search-popover button,
 html[data-theme="light"] .team-search-selected,
+html[data-theme="light"] .favorite-search-section button,
 html[data-theme="light"] .quick-picker button {
   border-color: rgba(32, 56, 68, 0.13);
 }
 
 html[data-theme="light"] .team-search-popover button:hover,
+html[data-theme="light"] .favorite-search-section button:hover,
 html[data-theme="light"] .quick-picker button:hover {
   border-color: rgba(15, 159, 126, 0.32);
   background:

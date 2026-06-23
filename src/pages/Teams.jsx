@@ -56,8 +56,10 @@ function compareTeamRank(a, b) {
 export default function Teams({ app }) {
   const [draft, setDraft] = useState({ name: "New Court Crew", region: app.currentUser.region, homeCourt: COURTS[0].name, captainId: app.currentUser.id, accent: "#58d2c0" });
   const [query, setQuery] = useState("");
+  const [searchPickerOpen, setSearchPickerOpen] = useState(false);
   const [region, setRegion] = useState(app.currentUser.region ?? "전체");
   const favoriteTeamIds = app.state.settings?.favoriteTeamIds ?? [];
+  const favoriteCourtIds = app.state.settings?.favoriteCourtIds ?? [];
   const isFavoriteTeam = (team) => favoriteTeamIds.includes(team.id);
   const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
   const teamCountByUser = useMemo(() => {
@@ -87,6 +89,13 @@ export default function Teams({ app }) {
       .filter(isFavoriteTeam)
       .slice(0, 10);
   }, [favoriteTeamIds, rankingTeams]);
+  const favoriteCourts = useMemo(() => {
+    return favoriteCourtIds
+      .map((courtId) => COURTS.find((court) => court.id === courtId))
+      .filter(Boolean)
+      .slice(0, 10);
+  }, [favoriteCourtIds]);
+  const hasSearchFavorites = Boolean(favoriteTeams.length || favoriteCourts.length);
   const visibleTeams = useMemo(() => {
     return rankingTeams
       .filter((team) => region === "전체" || team.region === region)
@@ -181,20 +190,74 @@ export default function Teams({ app }) {
               {allRegions.map((item) => <option key={item}>{item}</option>)}
             </select>
           </label>
-          <label>
-            팀명/홈코트
-            <input value={query} placeholder="Noeul, 마포, 한강..." onChange={(event) => setQuery(event.target.value)} />
-          </label>
-        </div>
-        <div className="quick-picker">
-          <p className="eyebrow">자주 찾는 팀 10</p>
-          <div>
-            {favoriteTeams.map((team) => (
-              <button key={team.id} type="button" onClick={() => { setRegion(team.region); setQuery(team.name); }}>
-                <TeamHoverCard team={team} as="span"><strong>{team.name}</strong></TeamHoverCard>
-                <span>{team.region} · {team.mmr} MMR</span>
-              </button>
-            ))}
+          <div className="favorite-search-label">
+            <span>팀명/홈코트</span>
+            <div className="favorite-search-field">
+              <input
+                value={query}
+                placeholder="Noeul, 마포, 한강..."
+                onClick={() => setSearchPickerOpen(true)}
+                onFocus={() => setSearchPickerOpen(true)}
+                onBlur={() => window.setTimeout(() => setSearchPickerOpen(false), 120)}
+                onChange={(event) => setQuery(event.target.value)}
+              />
+              {searchPickerOpen && hasSearchFavorites ? (
+                <div className="favorite-search-popover">
+                  {favoriteTeams.length ? (
+                    <div className="favorite-search-section">
+                      <small>즐겨찾기 팀</small>
+                      <div>
+                        {favoriteTeams.map((team) => (
+                          <button
+                            key={team.id}
+                            type="button"
+                            onMouseDown={() => {
+                              setRegion(team.region);
+                              setQuery(team.name);
+                              setSearchPickerOpen(false);
+                            }}
+                            onClick={() => {
+                              setRegion(team.region);
+                              setQuery(team.name);
+                              setSearchPickerOpen(false);
+                            }}
+                          >
+                            <strong>{team.name}</strong>
+                            <span>{team.region} · {team.mmr} MMR</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                  {favoriteCourts.length ? (
+                    <div className="favorite-search-section">
+                      <small>즐겨찾기 구장</small>
+                      <div>
+                        {favoriteCourts.map((court) => (
+                          <button
+                            key={court.id}
+                            type="button"
+                            onMouseDown={() => {
+                              setRegion(court.region);
+                              setQuery(court.name);
+                              setSearchPickerOpen(false);
+                            }}
+                            onClick={() => {
+                              setRegion(court.region);
+                              setQuery(court.name);
+                              setSearchPickerOpen(false);
+                            }}
+                          >
+                            <strong>{court.name}</strong>
+                            <span>{court.region} · {court.type}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
           </div>
         </div>
       </Card>
