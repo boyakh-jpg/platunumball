@@ -301,12 +301,6 @@ function getUserParticipantSideName(match, userId) {
   return null;
 }
 
-function userNeedsCheckin(match, userId) {
-  const sideName = getUserParticipantSideName(match, userId);
-  if (!sideName || getMatchRoomPhase(match).phase !== "checkin") return false;
-  return !(match.attendance?.[sideName] ?? []).includes(userId);
-}
-
 function userDecisionDone(match, userId) {
   const sideName = getUserSideName(match, userId);
   if (!sideName) return false;
@@ -323,7 +317,6 @@ function userNeedsAgreement(match, userId) {
 function userNeedsMatchAction(match, userId) {
   const phase = getMatchRoomPhase(match).phase;
   if (userNeedsAgreement(match, userId)) return true;
-  if (userNeedsCheckin(match, userId)) return true;
   return ["postgame", "dispute"].includes(phase) && !userDecisionDone(match, userId);
 }
 

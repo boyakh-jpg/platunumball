@@ -51,12 +51,6 @@ function userNeedsAgreement(match, userId) {
   return Boolean(sideName && match.status === "contract" && !(match.agreements?.[sideName] ?? []).includes(userId));
 }
 
-function userNeedsCheckin(match, userId) {
-  const sideName = getUserParticipantSide(match, userId);
-  if (!sideName || getMatchRoomPhase(match).phase !== "checkin") return false;
-  return !(match.attendance?.[sideName] ?? []).includes(userId);
-}
-
 function userNeedsApproval(match, userId) {
   const sideName = getUserSide(match, userId);
   if (getMatchRoomPhase(match).phase === "record") return false;
@@ -170,17 +164,6 @@ export default function Home({ app }) {
             meta: `${match.scheduledAt} · ${match.court}`,
             href: `/app/matches?match=${match.id}`,
             icon: Handshake,
-          };
-        }
-        if (userNeedsCheckin(match, user.id)) {
-          return {
-            id: `checkin-player-${match.id}`,
-            priority: 1,
-            label: "출석체크",
-            title: match.title,
-            meta: `${match.scheduledAt} · ${match.court}`,
-            href: `/app/matches?match=${match.id}`,
-            icon: ClipboardCheck,
           };
         }
         if (phase === "checkin" && match.createdBy === user.id) {

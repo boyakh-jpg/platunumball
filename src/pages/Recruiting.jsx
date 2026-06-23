@@ -1406,13 +1406,6 @@ function getSourceMatchUserSideName(match, userId) {
   return null;
 }
 
-function getSourceMatchParticipantSideName(match, userId) {
-  if (!match || !userId) return null;
-  if (match.teamA?.players?.includes(userId) || getMatchReservePlayerIds(match, "teamA").includes(userId)) return "teamA";
-  if (match.teamB?.players?.includes(userId) || getMatchReservePlayerIds(match, "teamB").includes(userId)) return "teamB";
-  return null;
-}
-
 function getSourceMatchDecisionSideName(match, userId, teams = []) {
   const playerSideName = getSourceMatchUserSideName(match, userId);
   if (playerSideName) return playerSideName;
@@ -1744,7 +1737,6 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
         const sourceMatchStatus = getSourceMatchStatus(sourceMatch, lobby, app.currentUser.id);
         const sourceMatchAction = getSourceMatchAction(sourceMatch, app.currentUser.id, app.state.teams, userById);
         const sourceMatchSideName = getSourceMatchDecisionSideName(sourceMatch, app.currentUser.id, app.state.teams);
-        const sourceMatchParticipantSideName = getSourceMatchParticipantSideName(sourceMatch, app.currentUser.id);
         const roomTimingStatus = getPublicRoomTimingStatus(selectedPost);
         const roomQueueStatus = getRecruitingRoomStatus(lobby, { post: selectedPost, myEntry, mine });
         const needsPrivateConfirm = !matchRoom && !mine && selectedPost.visibility !== "public" && Boolean(myEntry && myEntry.status !== "ready");
@@ -1763,19 +1755,6 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
           teamB: sourceMatch?.attendance?.teamB ?? [],
         };
         const canManageMatchCheckin = Boolean(matchRoom && currentUserCanStartSourceMatch && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.startedAt && !sourceMatch?.endedAt && !sourceMatch?.result);
-        const canCheckInSourceMatch = Boolean(
-          matchRoom &&
-          canManageMatchCheckin &&
-          sourceMatchParticipantSideName &&
-          sourceMatchPhase?.phase === "checkin" &&
-          !sourceMatch?.startedAt &&
-          !sourceMatch?.endedAt &&
-          !sourceMatch?.result,
-        );
-        const sourceMatchCheckedIn = Boolean(
-          sourceMatchParticipantSideName &&
-          sourceMatchAttendance[sourceMatchParticipantSideName]?.includes(app.currentUser.id),
-        );
         const canStartSourceMatch = Boolean(matchRoom && currentUserCanStartSourceMatch && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.result && !sourceMatch?.endedAt);
         const canEndSourceMatch = Boolean(matchRoom && currentUserCanOperateStartedSourceMatch && sourceMatchPhase?.phase === "live" && !sourceMatch?.result && !sourceMatch?.endedAt && sourceMatchStarted);
         const canReviewSourceMatch = Boolean(matchRoom && !sourceRoomReadOnly && currentUserCanOperateStartedSourceMatch && sourceMatchPhase?.phase === "dispute");
@@ -2328,16 +2307,6 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                         }}
                       >
                         {sourceMatchAction.button}
-                      </Button>
-                    ) : null}
-                    {!sourceRoomReadOnly && canCheckInSourceMatch ? (
-                      <Button
-                        type="button"
-                        variant={sourceMatchCheckedIn ? "secondary" : "primary"}
-                        disabled={sourceMatchCheckedIn}
-                        onClick={() => app.actions.checkInMatchPlayer(sourceMatch.id, sourceMatchParticipantSideName, app.currentUser.id)}
-                      >
-                        {sourceMatchCheckedIn ? "출석 완료" : "출석체크"}
                       </Button>
                     ) : null}
                     {sourceMatchAction.disputed && canReviewSourceMatch ? (
