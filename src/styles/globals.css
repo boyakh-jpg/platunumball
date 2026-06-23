@@ -9077,6 +9077,10 @@ html[data-theme="light"] .ranking-filter-card {
   padding: 8px 10px;
 }
 
+.team-card .member-row-compact {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
 .team-card > .badge {
   width: fit-content;
 }
