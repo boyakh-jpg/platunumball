@@ -28,7 +28,7 @@ import TierBadge from "../components/rating/TierBadge.jsx";
 import { getTierEmblemSrc } from "../components/rating/TierEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
-import { COURTS, MATCH_MODES, PLAYER_POSITIONS, REGIONS } from "../lib/constants.js";
+import { COURTS, MATCH_MODES, PLAYER_POSITIONS, PLAYER_STAT_FIELDS, REGIONS } from "../lib/constants.js";
 import {
   MMR_RANGE_POLICIES,
   RECRUITING_JOIN_MODES,
@@ -1443,7 +1443,7 @@ function getSourceMatchAction(match, userId, teams = [], userById = {}) {
   if (phase.phase === "dispute") {
     return {
       label: "이의신청방",
-      detail: "30분 안에 이의 사유를 확인하고 승인 재개 또는 무효 처리하세요.",
+      detail: "30분 안에 이의 사유를 확인하고 수정안 확정 또는 무효 처리하세요.",
       disputed: true,
     };
   }
@@ -1463,7 +1463,7 @@ function canShowRecruitingQueuePost(post, { roomScope, currentUserId, myTeamIds,
 
 function SourceMatchRecordSummary({ match, userById }) {
   if (!match?.result) return null;
-  const result = match.result;
+  const result = match.disputeDraftResult ?? match.result;
   const renderSide = (sideName) => {
     const sidePlayerIds = getMatchSidePlayerIds(match, sideName);
     const playerStats = normalizePlayerStats(result.playerStats, sidePlayerIds);
@@ -1494,6 +1494,94 @@ function SourceMatchRecordSummary({ match, userById }) {
         {["teamA", "teamB"].map(renderSide)}
       </div>
     </div>
+  );
+}
+
+function makeSourceMatchDraft(match) {
+  const result = match?.disputeDraftResult ?? match?.result ?? {};
+  const playerIds = ["teamA", "teamB"].flatMap((sideName) => getMatchSidePlayerIds(match, sideName));
+  return {
+    scoreA: Number(result.scoreA ?? match?.teamA?.score ?? 0),
+    scoreB: Number(result.scoreB ?? match?.teamB?.score ?? 0),
+    playerStats: normalizePlayerStats(result.playerStats, playerIds),
+    statSubmissions: result.statSubmissions ?? {},
+    submittedBy: result.submittedBy,
+    submittedAt: result.submittedAt,
+  };
+}
+
+function SourceMatchDisputeEditor({ match, userById, canReview, onSave, onResolve, onVoid }) {
+  const [draft, setDraft] = useState(() => makeSourceMatchDraft(match));
+
+  useEffect(() => {
+    setDraft(makeSourceMatchDraft(match));
+  }, [match?.id, match?.result?.updatedAt, match?.disputeDraftResult?.updatedAt]);
+
+  if (!match?.result) return null;
+
+  const updatePlayerStat = (playerId, fieldId, value) => {
+    setDraft((current) => ({
+      ...current,
+      playerStats: {
+        ...current.playerStats,
+        [playerId]: {
+          ...(current.playerStats[playerId] ?? {}),
+          [fieldId]: Math.max(0, Number(value ?? 0)),
+        },
+      },
+    }));
+  };
+
+  return (
+    <form className="arena-dispute-editor" onSubmit={(event) => { event.preventDefault(); onSave(draft); }}>
+      <div className="arena-dispute-score-row">
+        <label>
+          {match.teamA?.name ?? "A"}
+          <input type="number" min="0" disabled={!canReview} value={draft.scoreA} onChange={(event) => setDraft((current) => ({ ...current, scoreA: Number(event.target.value) }))} />
+        </label>
+        <strong>:</strong>
+        <label>
+          {match.teamB?.name ?? "B"}
+          <input type="number" min="0" disabled={!canReview} value={draft.scoreB} onChange={(event) => setDraft((current) => ({ ...current, scoreB: Number(event.target.value) }))} />
+        </label>
+      </div>
+      <div className="arena-dispute-stat-grid">
+        {["teamA", "teamB"].map((sideName) => (
+          <div className="arena-dispute-side" key={sideName}>
+            <strong>{match[sideName]?.name ?? SIDE_LABELS[sideName]}</strong>
+            {getMatchSidePlayerIds(match, sideName).map((playerId) => {
+              const player = userById[playerId];
+              const playerStats = draft.playerStats[playerId] ?? {};
+              return (
+                <div className="arena-dispute-player" key={playerId}>
+                  <span>{player?.name ?? "선수"}</span>
+                  <div>
+                    {PLAYER_STAT_FIELDS.map((field) => (
+                      <label key={field.id}>
+                        {field.shortLabel}
+                        <input
+                          type="number"
+                          min="0"
+                          disabled={!canReview}
+                          value={Number(playerStats[field.id] ?? 0)}
+                          onChange={(event) => updatePlayerStat(playerId, field.id, event.target.value)}
+                        />
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+      <div className="match-action-row">
+        <Button type="submit" disabled={!canReview}>수정안 저장</Button>
+        <Button type="button" disabled={!canReview} onClick={() => onResolve(draft)}>수정안 확정</Button>
+        <Button type="button" variant="secondary" className="danger-button" disabled={!canReview} onClick={onVoid}>무효 처리</Button>
+      </div>
+      <p className="muted">확정 후 불복은 신고로 처리합니다.</p>
+    </form>
   );
 }
 
@@ -1757,7 +1845,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
         const canManageMatchCheckin = Boolean(matchRoom && currentUserCanStartSourceMatch && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.startedAt && !sourceMatch?.endedAt && !sourceMatch?.result);
         const canStartSourceMatch = Boolean(matchRoom && currentUserCanStartSourceMatch && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.result && !sourceMatch?.endedAt);
         const canEndSourceMatch = Boolean(matchRoom && currentUserCanOperateStartedSourceMatch && sourceMatchPhase?.phase === "live" && !sourceMatch?.result && !sourceMatch?.endedAt && sourceMatchStarted);
-        const canReviewSourceMatch = Boolean(matchRoom && !sourceRoomReadOnly && currentUserCanOperateStartedSourceMatch && sourceMatchPhase?.phase === "dispute");
+        const canReviewSourceMatch = Boolean(matchRoom && currentUserCanOperateStartedSourceMatch && sourceMatchPhase?.phase === "dispute");
         const canCancelSourceMatch = Boolean(matchRoom && sourceMatch && ["contract", "agreed"].includes(sourceMatch.status) && (sourceMatchStarted || sourceMatch.endedAt || sourceMatch.result ? currentUserCanOperateStartedSourceMatch : mine));
         const showSourceMatchRecordSummary = Boolean(
           matchRoom &&
@@ -2298,6 +2386,16 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                     {showSourceMatchRecordSummary ? (
                       <SourceMatchRecordSummary match={sourceMatch} userById={userById} />
                     ) : null}
+                    {sourceMatchAction.disputed ? (
+                      <SourceMatchDisputeEditor
+                        match={sourceMatch}
+                        userById={userById}
+                        canReview={canReviewSourceMatch}
+                        onSave={(draft) => app.actions.submitMatchResult(sourceMatch.id, draft)}
+                        onResolve={(draft) => app.actions.resumeMatchApproval(sourceMatch.id, draft)}
+                        onVoid={() => app.actions.voidMatch(sourceMatch.id)}
+                      />
+                    ) : null}
                     {!sourceRoomReadOnly && sourceMatchAction.action && sourceMatchSideName ? (
                       <Button
                         type="button"
@@ -2308,16 +2406,6 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                       >
                         {sourceMatchAction.button}
                       </Button>
-                    ) : null}
-                    {sourceMatchAction.disputed && canReviewSourceMatch ? (
-                      <>
-                        <Button type="button" onClick={() => app.actions.resumeMatchApproval(sourceMatch.id)}>
-                          승인 재개
-                        </Button>
-                        <Button type="button" variant="secondary" className="danger-button" onClick={() => app.actions.voidMatch(sourceMatch.id)}>
-                          무효 처리
-                        </Button>
-                      </>
                     ) : null}
                     {!sourceRoomReadOnly && canStartSourceMatch ? (
                       <Button type="button" onClick={() => app.actions.startMatch(sourceMatch.id)}>

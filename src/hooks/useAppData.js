@@ -200,7 +200,7 @@ export function useAppData(authUserId = null) {
       disputeMatch: (matchId, reason) => setState((prev) => disputeMatch({ ...prev, currentUserId }, matchId, reason)),
       cancelMatch: (matchId) => setState((prev) => cancelMatch({ ...prev, currentUserId }, matchId)),
       voidMatch: (matchId) => setState((prev) => voidMatch({ ...prev, currentUserId }, matchId)),
-      resumeMatchApproval: (matchId) => setState((prev) => resumeMatchApproval({ ...prev, currentUserId }, matchId)),
+      resumeMatchApproval: (matchId, resultDraft = null) => setState((prev) => resumeMatchApproval({ ...prev, currentUserId }, matchId, resultDraft)),
       startMatch: (matchId) => setState((prev) => startMatch({ ...prev, currentUserId }, matchId)),
       endMatch: (matchId) => setState((prev) => endMatch({ ...prev, currentUserId }, matchId)),
       addMatchLatePlayer: (matchId, draft) => setState((prev) => addMatchLatePlayer({ ...prev, currentUserId }, matchId, draft)),

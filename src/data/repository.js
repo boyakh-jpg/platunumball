@@ -3138,11 +3138,11 @@ export function voidMatch(state, matchId) {
   };
 }
 
-export function resumeMatchApproval(state, matchId) {
+export function resumeMatchApproval(state, matchId, resultDraft = null) {
   const match = state.matches.find((item) => item.id === matchId);
   if (!match || match.status !== "disputed") return state;
   if (!currentUserCanOperateStartedMatch(state, match)) return state;
-  const result = match.disputeDraftResult ?? match.result;
+  const result = resultDraft ?? match.disputeDraftResult ?? match.result;
   if (!result) return state;
   const resolvedMatchForCheck = { ...match, result };
   const statStatus = getStatSubmissionStatus(resolvedMatchForCheck);
