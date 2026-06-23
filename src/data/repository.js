@@ -4664,6 +4664,7 @@ export function createRecruitingPost(state, draft) {
         tone: "match",
         targetUserId: invitation.targetUserId,
         recruitingPostId: post.id,
+        invitationId: invitation.id,
       })),
       ...initialRefereeInvitations.map((invitation) => ({
         id: makeId("n"),
@@ -4672,6 +4673,7 @@ export function createRecruitingPost(state, draft) {
         tone: "match",
         targetUserId: invitation.targetUserId,
         recruitingPostId: post.id,
+        invitationId: invitation.id,
       })),
       {
         id: makeId("n"),
@@ -4982,6 +4984,7 @@ export function interestRecruitingPost(state, postId, application = {}) {
         tone: "match",
         targetUserId: invitation.targetUserId,
         recruitingPostId: postId,
+        invitationId: invitation.id,
       })),
       ...state.notifications,
     ],
@@ -5609,21 +5612,19 @@ export function inviteRecruitingPlayers(state, postId, invite = {}) {
   }
 
   const now = new Date().toISOString();
-  const invitations = [
-    ...roomState.invitations,
-    ...targetUserIds.map((targetUserId) => ({
-      id: makeId("inv"),
-      role: "player",
-      targetUserId,
-      fromUserId: state.currentUserId,
-      teamId: invite.teamId ?? null,
-      side,
-      reserve,
-      status: "pending",
-      createdAt: now,
-      updatedAt: now,
-    })),
-  ];
+  const newInvitations = targetUserIds.map((targetUserId) => ({
+    id: makeId("inv"),
+    role: "player",
+    targetUserId,
+    fromUserId: state.currentUserId,
+    teamId: invite.teamId ?? null,
+    side,
+    reserve,
+    status: "pending",
+    createdAt: now,
+    updatedAt: now,
+  }));
+  const invitations = [...roomState.invitations, ...newInvitations];
 
   return {
     ...state,
@@ -5631,13 +5632,14 @@ export function inviteRecruitingPlayers(state, postId, invite = {}) {
       item.id === postId ? { ...item, roomState: { ...roomState, invitations } } : item
     )),
     notifications: [
-      ...targetUserIds.map((targetUserId) => ({
+      ...newInvitations.map((invitation) => ({
         id: makeId("n"),
         title: "매치방 초대",
         body: `${post.title} ${SIDE_LABEL_TEXT[side]} ${reserve ? "후보" : "빈 슬롯"} 초대장이 도착했습니다.`,
         tone: "match",
-        targetUserId,
+        targetUserId: invitation.targetUserId,
         recruitingPostId: postId,
+        invitationId: invitation.id,
       })),
       {
         id: makeId("n"),

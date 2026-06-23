@@ -5,6 +5,7 @@ export const DISCORD_NOTIFICATION_EVENTS = [
 ];
 
 const DISCORD_EVENT_IDS = new Set(DISCORD_NOTIFICATION_EVENTS.map((event) => event.id));
+const DISCORD_INVITE_ACTION_PREFIX = "rankball:invite";
 
 export function getDiscordChannel(settings = {}) {
   const discord = settings.notificationChannels?.discord ?? {};
@@ -77,6 +78,54 @@ export function getNotificationDiscordEvent(notification = {}) {
   return "match";
 }
 
+export function getAppBaseUrl() {
+  const configuredUrl = String(import.meta.env?.VITE_PUBLIC_APP_URL ?? "").trim().replace(/\/$/, "");
+  if (configuredUrl) return configuredUrl;
+  if (typeof window !== "undefined" && window.location?.origin) return window.location.origin;
+  return "";
+}
+
+export function getNotificationWebPath(notification = {}) {
+  if (notification.webPath) return notification.webPath;
+  if (notification.matchId) return `/app/matches?match=${encodeURIComponent(notification.matchId)}`;
+  if (notification.recruitingPostId) return `/app/recruiting?post=${encodeURIComponent(notification.recruitingPostId)}`;
+  return "/app/notifications";
+}
+
+export function getNotificationWebUrl(notification = {}) {
+  const webPath = getNotificationWebPath(notification);
+  const appBaseUrl = getAppBaseUrl();
+  return appBaseUrl ? `${appBaseUrl}${webPath}` : webPath;
+}
+
+function getDiscordActionId(action, recruitingPostId, invitationId) {
+  return [
+    DISCORD_INVITE_ACTION_PREFIX,
+    action,
+    encodeURIComponent(String(recruitingPostId ?? "")),
+    encodeURIComponent(String(invitationId ?? "")),
+  ].join(":");
+}
+
+export function getDiscordNotificationActions(notification = {}) {
+  if (Array.isArray(notification.discordActions)) return notification.discordActions;
+  if (!notification.recruitingPostId || !notification.invitationId) return [];
+  return [
+    {
+      id: "accept",
+      label: "수락",
+      style: "primary",
+      customId: getDiscordActionId("accept", notification.recruitingPostId, notification.invitationId),
+    },
+    {
+      id: "decline",
+      label: "거절",
+      style: "secondary",
+      customId: getDiscordActionId("decline", notification.recruitingPostId, notification.invitationId),
+    },
+  ];
+}
+
 export function syncDiscordNotificationDeliveries(state = {}) {
   const currentUserId = state.currentUserId;
   const notifications = state.notifications ?? [];
@@ -122,6 +171,9 @@ export function syncDiscordNotificationDeliveries(state = {}) {
         event,
         title: notification.title,
         body: notification.body,
+        webPath: getNotificationWebPath(notification),
+        webUrl: getNotificationWebUrl(notification),
+        actions: getDiscordNotificationActions(notification),
         status: "queued",
         queuedAt: now,
       };
