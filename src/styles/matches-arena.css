@@ -2234,17 +2234,13 @@ html[data-theme="light"] .om-match-info-box {
 }
 
 .om-calendar-filter-bar label {
-  display: flex;
   flex: 1 1 220px;
   max-width: none;
   min-width: 0;
-  align-items: center;
-  gap: 8px;
-  white-space: nowrap;
 }
 
 .om-calendar-filter-bar select {
-  flex: 1;
+  width: 100%;
   min-width: 0;
 }
 

@@ -904,8 +904,7 @@ export default function Matches({ app }) {
               <button type="button" className={kindFilter === "friendly" ? "active" : ""} onClick={() => setKindFilter("friendly")}>친선전</button>
             </div>
             <label>
-              방식
-              <select value={modeFilter} onChange={(event) => setModeFilter(event.target.value)}>
+              <select aria-label="경기 방식" value={modeFilter} onChange={(event) => setModeFilter(event.target.value)}>
                 <option value="all">전체 방식</option>
                 {MATCH_MODES.map((mode) => <option key={mode.id} value={mode.id}>{mode.label}</option>)}
               </select>
