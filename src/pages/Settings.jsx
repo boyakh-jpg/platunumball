@@ -8,7 +8,7 @@ import SearchPicker from "../components/common/SearchPicker.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import { DEFAULT_REPORT_REASON, REPORT_REASONS } from "../lib/reportReasons.js";
 import { formatStatLine, getMatchReservePlayerIds, getMatchSidePlayerIds } from "../lib/matchUtils.js";
-import { COURTS, REGIONS } from "../lib/constants.js";
+import { COURT_REQUEST_TRUST_MIN, COURTS, FALSE_COURT_REPORT_TRUST_PENALTY, REGIONS } from "../lib/constants.js";
 import { getCourtHashtag } from "../lib/handles.js";
 import {
   REFEREE_EXAM_BANK_SIZE,
@@ -123,6 +123,8 @@ export default function Settings({ app, auth }) {
   const courtRequests = app.state.settings?.courtRequests ?? [];
   const refereeRequests = app.state.settings?.refereeRequests ?? [];
   const refereeExamAttempts = app.state.settings?.refereeExamAttempts ?? [];
+  const currentTrustScore = Number(app.currentUser?.trustScore ?? 0);
+  const canSubmitCourtRequest = currentTrustScore >= COURT_REQUEST_TRUST_MIN;
   const [currentRefereeExamAttemptId, setCurrentRefereeExamAttemptId] = useState("");
   const [refereeExamNotice, setRefereeExamNotice] = useState("");
 
@@ -257,12 +259,16 @@ export default function Settings({ app, auth }) {
   };
   const submitCourtRequest = (event) => {
     event.preventDefault();
+    if (!canSubmitCourtRequest) return;
     app.actions.submitCourtRequest(courtDraft);
     setCourtAddressQuery("");
     setCourtDraft({
       ...DEFAULT_COURT_REQUEST,
       region: app.currentUser?.region ?? DEFAULT_COURT_REQUEST.region,
     });
+  };
+  const reportCourtRequest = (requestId) => {
+    app.actions.reportCourtRequest(requestId, `허위 구장 등록 · 신뢰도 ${FALSE_COURT_REPORT_TRUST_PENALTY}점 차감`);
   };
   const updateRefereeDraft = (patch) => setRefereeDraft((current) => ({ ...current, ...patch }));
   const startRefereeExam = () => {
@@ -523,6 +529,14 @@ export default function Settings({ app, auth }) {
                 <p className="eyebrow">Court</p>
                 <h2>구장 등록요청</h2>
               </div>
+              <Badge tone={canSubmitCourtRequest ? "green" : "orange"}>신뢰도 {currentTrustScore}</Badge>
+            </div>
+            <div className={canSubmitCourtRequest ? "tier-range-note" : "tier-range-note tier-range-note-warning"}>
+              <div>
+                <span>등록 권한</span>
+                <strong>{canSubmitCourtRequest ? "등록 가능" : "등록 제한"}</strong>
+                <em>신뢰도 {COURT_REQUEST_TRUST_MIN}점 이상 필요 · 허위 신고 시 {FALSE_COURT_REPORT_TRUST_PENALTY}점 차감</em>
+              </div>
               <MapPin size={22} />
             </div>
             <form className="form-stack" onSubmit={submitCourtRequest}>
@@ -587,17 +601,30 @@ export default function Settings({ app, auth }) {
                   구장예약됨
                 </label>
               </div>
-              <Button type="submit" variant="secondary" disabled={!courtDraft.name.trim() || !courtDraft.addressText.trim()}>
+              <Button type="submit" variant="secondary" disabled={!canSubmitCourtRequest || !courtDraft.name.trim() || !courtDraft.addressText.trim()}>
                 <Send size={16} /> 등록요청
               </Button>
             </form>
             <div className="compact-list">
-              {courtRequests.slice(0, 4).map((request) => (
-                <div key={request.id}>
-                  <span>{request.name} · {request.region}</span>
-                  <strong>{request.status === "pending" ? "대기" : request.status}</strong>
-                </div>
-              ))}
+              {courtRequests.slice(0, 4).map((request) => {
+                const requester = userMap[request.requestedBy];
+                const alreadyReported = app.state.reports?.some((report) => (
+                  report.type === "court_request" &&
+                  report.targetId === request.id &&
+                  report.by === app.currentUserId &&
+                  report.status !== "dismissed"
+                ));
+                const canReportRequest = request.requestedBy !== app.currentUserId && !alreadyReported;
+                return (
+                  <div key={request.id}>
+                    <span>{request.name} · {request.region} · {requester?.name ?? "요청자"} 신뢰도 {request.requestedByTrustScore ?? requester?.trustScore ?? "-"}</span>
+                    <strong>{request.status === "pending" ? "대기" : request.status === "reported" ? "신고됨" : request.status}</strong>
+                    <button type="button" disabled={!canReportRequest} onClick={() => reportCourtRequest(request.id)}>
+                      {alreadyReported ? "신고됨" : "허위 신고"}
+                    </button>
+                  </div>
+                );
+              })}
               {!courtRequests.length ? <div><span>요청한 구장이 없습니다.</span><strong>{COURTS.length}개 등록</strong></div> : null}
             </div>
           </Card>
@@ -664,7 +691,7 @@ export default function Settings({ app, auth }) {
             <div className="compact-list">
               {app.state.reports?.slice(0, 4).map((report) => (
                 <div key={report.id}>
-                  <span>{matchMap[report.targetId]?.title ?? "경기"} · {report.reason}</span>
+                  <span>{report.type === "court_request" ? courtRequests.find((request) => request.id === report.targetId)?.name ?? "구장 등록요청" : matchMap[report.targetId]?.title ?? "경기"} · {report.reason}</span>
                   <strong>{report.status}</strong>
                 </div>
               ))}

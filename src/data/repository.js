@@ -1,6 +1,8 @@
 import {
   COURTS,
+  COURT_REQUEST_TRUST_MIN,
   DISPUTE_WINDOW_MINUTES,
+  FALSE_COURT_REPORT_TRUST_PENALTY,
   MAX_TEAM_MEMBERSHIPS,
   MAX_TEAM_NAME_LENGTH,
   MODE_SIZES,
@@ -3398,6 +3400,23 @@ export function toggleFavoriteCourt(state, courtId) {
 }
 
 export function submitCourtRequest(state, draft = {}) {
+  const currentUser = state.users.find((user) => user.id === state.currentUserId);
+  const trustScore = Number(currentUser?.trustScore ?? 0);
+  if (trustScore < COURT_REQUEST_TRUST_MIN) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "구장 등록 제한",
+          body: `구장 등록요청은 신뢰도 ${COURT_REQUEST_TRUST_MIN}점 이상부터 가능합니다. 현재 ${trustScore}점입니다.`,
+          tone: "orange",
+        },
+        ...state.notifications,
+      ],
+    };
+  }
+
   const name = String(draft.name ?? "").trim();
   const addressText = String(draft.addressText ?? "").trim();
   if (!name || !addressText) {
@@ -3419,8 +3438,9 @@ export function submitCourtRequest(state, draft = {}) {
     id: makeId("cr"),
     status: "pending",
     requestedBy: state.currentUserId,
+    requestedByTrustScore: trustScore,
     name,
-    region: String(draft.region ?? "").trim() || state.users.find((user) => user.id === state.currentUserId)?.region || "미정",
+    region: String(draft.region ?? "").trim() || currentUser?.region || "미정",
     type: draft.type === "실내" ? "실내" : "야외",
     addressText,
     locationNote: String(draft.locationNote ?? "").trim(),
@@ -3663,6 +3683,80 @@ export function reportMatch(state, matchId, reason = "", reportedUserIds = []) {
         body: `${match.title} 신고가 접수됐습니다. 운영 검토 목록에 남겼습니다.`,
         tone: "match",
         matchId,
+      },
+      ...state.notifications,
+    ],
+  };
+}
+
+export function reportCourtRequest(state, requestId, reason = "허위 구장 등록") {
+  const request = (state.settings?.courtRequests ?? []).find((item) => item.id === requestId);
+  if (!request) return state;
+  if (request.requestedBy === state.currentUserId) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "구장 신고 보류",
+          body: "내가 올린 구장 등록요청은 직접 신고할 수 없습니다.",
+          tone: "orange",
+        },
+        ...state.notifications,
+      ],
+    };
+  }
+  const duplicate = (state.reports ?? []).some((report) => (
+    report.type === "court_request" &&
+    report.targetId === requestId &&
+    report.by === state.currentUserId &&
+    report.status !== "dismissed"
+  ));
+  if (duplicate) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "구장 신고 중복",
+          body: "이미 같은 구장 등록요청을 신고했습니다.",
+          tone: "orange",
+        },
+        ...state.notifications,
+      ],
+    };
+  }
+
+  const report = {
+    id: makeId("r"),
+    type: "court_request",
+    targetId: requestId,
+    by: state.currentUserId,
+    reportedUserIds: [request.requestedBy].filter(Boolean),
+    reason: String(reason || "허위 구장 등록").trim(),
+    status: "open",
+    createdAt: new Date().toISOString(),
+  };
+  const nextRequests = (state.settings?.courtRequests ?? []).map((item) => (
+    item.id === requestId
+      ? { ...item, status: "reported", reportedAt: report.createdAt, reportedBy: state.currentUserId }
+      : item
+  ));
+
+  return {
+    ...state,
+    users: adjustUserTrust(state.users, request.requestedBy, -FALSE_COURT_REPORT_TRUST_PENALTY),
+    settings: normalizeSettings({
+      ...(state.settings ?? {}),
+      courtRequests: nextRequests,
+    }),
+    reports: [report, ...(state.reports ?? [])],
+    notifications: [
+      {
+        id: makeId("n"),
+        title: "구장 허위 신고 접수",
+        body: `${request.name} 등록요청을 허위 구장으로 신고했습니다. 요청자 신뢰도 ${FALSE_COURT_REPORT_TRUST_PENALTY}점이 차감됩니다.`,
+        tone: "orange",
       },
       ...state.notifications,
     ],

@@ -13,6 +13,8 @@ export const MODE_SIZES = MATCH_MODES.reduce((map, mode) => {
 export const MAX_TEAM_MEMBERSHIPS = 3;
 export const MAX_TEAM_NAME_LENGTH = 14;
 export const REFEREE_TRUST_MIN = 90;
+export const COURT_REQUEST_TRUST_MIN = 70;
+export const FALSE_COURT_REPORT_TRUST_PENALTY = 8;
 export const STAT_ENTRY_WINDOW_MINUTES = 60;
 export const DISPUTE_WINDOW_MINUTES = 30;
 
