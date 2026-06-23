@@ -176,6 +176,7 @@
   display: grid;
   grid-template-columns: minmax(190px, 0.36fr) minmax(0, 0.64fr);
   gap: 10px;
+  align-items: stretch;
 }
 
 .om-calendar-summary,
@@ -192,7 +193,7 @@
   gap: 10px;
   align-content: start;
   align-items: start;
-  align-self: start;
+  align-self: stretch;
 }
 
 .om-calendar-summary h2 {
@@ -219,7 +220,7 @@
 .om-history-range {
   grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: 1fr repeat(3, minmax(0, 54px));
+  grid-template-columns: 1fr repeat(4, minmax(0, 54px));
   gap: 6px;
   align-items: center;
 }
@@ -1924,6 +1925,7 @@ html[data-theme="light"] .tournament-schedule-list input {
 @media (max-width: 640px) {
   .om-calendar-panel {
     grid-template-columns: 1fr;
+    align-items: start;
   }
 
   .om-calendar-summary {
@@ -2220,6 +2222,19 @@ html[data-theme="light"] .om-match-info-box {
   overflow-x: visible;
   gap: 8px;
   padding: 10px;
+}
+
+.om-calendar-filter-bar {
+  grid-column: 1 / -1;
+  align-self: end;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+
+.om-calendar-filter-bar label {
+  max-width: none;
 }
 
 .om-filter-bar .segmented-control {
@@ -2610,4 +2625,12 @@ html[data-theme="light"] .om-match-summary-box,
 html[data-theme="light"] .om-match-info-box {
   background-color: rgba(255, 255, 255, 0.88);
   background-image: none;
+}
+
+.om-calendar-filter-bar,
+html[data-theme="light"] .om-calendar-filter-bar {
+  border: 0;
+  background-color: transparent;
+  background-image: none;
+  box-shadow: none;
 }

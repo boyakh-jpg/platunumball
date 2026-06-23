@@ -24,28 +24,28 @@ const VIEWS = [
     id: "active",
     code: "MY",
     title: "내 일정",
-    desc: "진행, 예정, 지난 경기",
+    desc: "전체 상태",
     icon: CalendarDays,
   },
   {
     id: "todo",
     code: "ACTION",
     title: "처리 필요",
-    desc: "동의, 승인, 보류",
+    desc: "내 일정 중 액션",
     icon: ShieldAlert,
   },
   {
     id: "scheduled",
     code: "SOON",
     title: "예정",
-    desc: "진행 예정 경기",
+    desc: "내 일정 중 예정",
     icon: Swords,
   },
   {
     id: "closed",
     code: "CLOSED",
     title: "닫힘",
-    desc: "취소와 무효",
+    desc: "내 일정 중 닫힘",
     icon: CheckCircle2,
   },
 ];
@@ -304,7 +304,7 @@ function shouldShowMatchForView(match, view, userId) {
     if (userNeedsCheckin(match, userId)) return true;
     return ["postgame", "dispute"].includes(phase) && !userDecisionDone(match, userId);
   }
-  if (view.id === "active") return !["cancelled", "void", "record"].includes(phase);
+  if (view.id === "active") return true;
   return false;
 }
 
@@ -655,7 +655,7 @@ export default function Matches({ app }) {
   const [kindFilter, setKindFilter] = useState("all");
   const [modeFilter, setModeFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("");
-  const [historyRangeMonths, setHistoryRangeMonths] = useState(1);
+  const [historyRangeMonths, setHistoryRangeMonths] = useState(0);
   const [calendarMonth, setCalendarMonth] = useState(getMonthKey());
   const [tournamentPanelOpen, setTournamentPanelOpen] = useState(true);
   const [selectedTournamentId, setSelectedTournamentId] = useState(null);
@@ -886,17 +886,31 @@ export default function Matches({ app }) {
           </div>
           <div className="om-history-range" aria-label="지난 경기 표시 범위">
             <span>지난 경기</span>
-            {[1, 3, 6].map((month) => (
+            {[0, 1, 3, 6].map((month) => (
               <button
                 key={month}
                 type="button"
                 className={historyRangeMonths === month ? "active" : ""}
                 onClick={() => setHistoryRangeMonths(month)}
               >
-                {month}개월
+                {month ? `${month}개월` : "안보기"}
               </button>
             ))}
           </div>
+          <section className="om-filter-bar om-calendar-filter-bar" aria-label="경기 필터">
+            <div className="segmented-control compact-segments">
+              <button type="button" className={kindFilter === "all" ? "active" : ""} onClick={() => setKindFilter("all")}>전체</button>
+              <button type="button" className={kindFilter === "ranked" ? "active" : ""} onClick={() => setKindFilter("ranked")}>정규전</button>
+              <button type="button" className={kindFilter === "friendly" ? "active" : ""} onClick={() => setKindFilter("friendly")}>친선전</button>
+            </div>
+            <label>
+              방식
+              <select value={modeFilter} onChange={(event) => setModeFilter(event.target.value)}>
+                <option value="all">전체 방식</option>
+                {MATCH_MODES.map((mode) => <option key={mode.id} value={mode.id}>{mode.label}</option>)}
+              </select>
+            </label>
+          </section>
         </div>
 
         <div className="om-calendar-box">
@@ -1115,21 +1129,6 @@ export default function Matches({ app }) {
           onOpenMatch={(matchId) => setSelectedMatchId(matchId)}
         />
       ) : null}
-
-      <section className="om-filter-bar" aria-label="경기 필터">
-        <div className="segmented-control compact-segments">
-          <button type="button" className={kindFilter === "all" ? "active" : ""} onClick={() => setKindFilter("all")}>전체</button>
-          <button type="button" className={kindFilter === "ranked" ? "active" : ""} onClick={() => setKindFilter("ranked")}>정규전</button>
-          <button type="button" className={kindFilter === "friendly" ? "active" : ""} onClick={() => setKindFilter("friendly")}>친선전</button>
-        </div>
-        <label>
-          모드
-          <select value={modeFilter} onChange={(event) => setModeFilter(event.target.value)}>
-            <option value="all">전체 모드</option>
-            {MATCH_MODES.map((mode) => <option key={mode.id} value={mode.id}>{mode.label}</option>)}
-          </select>
-        </label>
-      </section>
 
       <section className="om-match-list" aria-label="경기 목록">
         <div className="om-list-head">
