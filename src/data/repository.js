@@ -22,12 +22,12 @@ import {
   getMatchRosterSideName,
   getMatchRoomPhase,
   getMatchReservePlayerIds,
+  getMatchSideLeaderId,
   getMatchSidePlayerIds,
   getMatchSideRecordPlayerIds,
   getMatchStartDate,
   getMatchTrustFeedbackLimit,
   getMatchTrustFeedbackParticipantIds,
-  getSideCaptainId,
   getPublicRoomTimingStatus,
   getMatchRecordWindow,
   getPlayerSideName,
@@ -2928,10 +2928,7 @@ function getMatchRefereeAbsenceOpponentLeaderId(state, match) {
   const hostId = getMatchHostPlayerId(state, match);
   const hostSideName = getMatchRosterSideName(match, hostId) ?? "teamA";
   const opponentSideName = hostSideName === "teamA" ? "teamB" : "teamA";
-  return getSideCaptainId(match, state.teams, opponentSideName)
-    ?? match?.[opponentSideName]?.players?.[0]
-    ?? getMatchReservePlayerIds(match, opponentSideName)[0]
-    ?? "";
+  return getMatchSideLeaderId(match, state.teams, opponentSideName);
 }
 
 function currentUserCanConfirmRefereeAbsence(state, match) {
@@ -6736,6 +6733,7 @@ export function confirmRecruitingMatch(state, postId) {
   const confirmedReserveIds = new Set([...teamAReservePlayers, ...teamBReservePlayers]);
   const refereeId = getTrustedRefereeId(state, promotedPost.refereeId, playerIds);
   const statRecorders = refereeId ? normalizeStatRecorders({}) : getRecruitingRoomStatRecorders(promotedPost, state);
+  const promotedRoomState = normalizeRecruitingRoomState(promotedPost.roomState ?? {});
   const mmrRangeMode = normalizeRecruitingMmrRangeMode(promotedPost.mmrRangeMode ?? promotedPost.roomState?.mmrRangeMode);
   const ranked = promotedPost.ranked !== false;
   const ratingScale = getRecruitingRatingScale({ ranked, mmrRangeMode });
@@ -6798,6 +6796,7 @@ export function confirmRecruitingMatch(state, postId) {
         side: entry.side,
         teamId: getLobbyEntryTeamId(entry),
         playerId: entry.playerId,
+        partyLeaderId: promotedRoomState.partyLeaders?.[entry.id] ?? (entry.fixed ? promotedPost.playerId : entry.playerId) ?? "",
         players: entry.reserve && entry.status !== "ready" ? [] : entry.players,
         reserves: (entry.reserves ?? []).filter((playerId) => confirmedReserveIds.has(playerId)),
         reserve: entry.reserve,

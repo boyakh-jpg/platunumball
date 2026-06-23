@@ -118,6 +118,18 @@ export function getMatchReservePlayerIds(match = {}, sideName) {
     .filter((playerId) => playerId && !activeIds.has(playerId));
 }
 
+export function getMatchSideLeaderId(match = {}, teams = [], sideName) {
+  const sidePlayerIds = getMatchSidePlayerIds(match, sideName);
+  const sideReserveIds = getMatchReservePlayerIds(match, sideName);
+  const sideRosterIds = uniquePlayerIds([...sidePlayerIds, ...sideReserveIds]);
+  const partyLeaderId = (match.parties ?? [])
+    .filter((party) => party.side === sideName)
+    .map((party) => party.partyLeaderId ?? party.leaderId ?? party.playerId ?? party.players?.[0] ?? "")
+    .find((playerId) => playerId && sideRosterIds.includes(playerId));
+  if (partyLeaderId) return partyLeaderId;
+  return sidePlayerIds[0] ?? sideReserveIds[0] ?? "";
+}
+
 export function getMatchSideRecordPlayerIds(match = {}, sideName, includeReserves = false) {
   return uniquePlayerIds([
     ...getMatchSidePlayerIds(match, sideName),

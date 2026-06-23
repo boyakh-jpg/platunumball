@@ -26,6 +26,7 @@ import {
   getMatchRoomPhase,
   getMatchPlayerIds,
   getMatchReservePlayerIds,
+  getMatchSideLeaderId,
   getMatchSidePlayerIds,
   getMatchTrustFeedbackClosesAt,
   getMatchTrustFeedbackLimit,
@@ -223,21 +224,22 @@ export default function MatchRoom({ app }) {
   const renderHeroRoster = (sideName) => {
     const team = match[sideName];
     const agreement = sideName === "teamA" ? teamAAgreement : teamBAgreement;
+    const sideLeaderId = getMatchSideLeaderId(match, app.state.teams, sideName);
 
     return (
       <div className="gm-roster-row">
         {team.players.map((playerId) => {
           const user = userMap[playerId];
           const ready = agreement.approvals.includes(playerId) || match.status !== "contract";
-          const captain = agreement.captainId === playerId;
+          const sideLeader = sideLeaderId === playerId;
           const roleBadge = playerId === matchHostPlayerId
             ? { tone: "host", label: "방장" }
-            : captain
-              ? { tone: "captain", label: "주장" }
+            : sideLeader
+              ? { tone: "captain", label: "사이드장" }
               : null;
           const slotLabel = match.status === "contract"
             ? ready ? "READY" : "WAIT"
-            : captain ? "CAPT" : "READY";
+            : sideLeader ? "LEAD" : "READY";
 
           return (
             <PlayerHoverCard key={playerId} user={user} teams={app.state.teams} className={ready ? "gm-player-slot ready" : "gm-player-slot"}>
@@ -259,6 +261,7 @@ export default function MatchRoom({ app }) {
   const renderHeroReserves = (sideName) => {
     const reservePlayerIds = getMatchReservePlayerIds(match, sideName).slice(0, 2);
     const openSlots = Math.max(0, 2 - reservePlayerIds.length);
+    const sideLeaderId = getMatchSideLeaderId(match, app.state.teams, sideName);
 
     return (
       <div className="gm-reserve-line">
@@ -267,7 +270,11 @@ export default function MatchRoom({ app }) {
           {reservePlayerIds.map((playerId) => {
             const user = userMap[playerId];
             const recorder = statRecorders[sideName] === playerId;
-            const roleBadge = playerId === matchHostPlayerId ? { tone: "host", label: "방장" } : null;
+            const roleBadge = playerId === matchHostPlayerId
+              ? { tone: "host", label: "방장" }
+              : sideLeaderId === playerId
+                ? { tone: "captain", label: "사이드장" }
+                : null;
             return (
               <PlayerHoverCard key={`${sideName}-reserve-${playerId}`} user={user} teams={app.state.teams} className="gm-player-slot reserve ready">
                 {roleBadge ? (

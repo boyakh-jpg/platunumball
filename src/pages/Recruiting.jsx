@@ -54,7 +54,7 @@ import {
   getRoomVisibilityLabel,
   getMatchRoomPhase,
   getMatchReservePlayerIds,
-  getSideCaptainId,
+  getMatchSideLeaderId,
   getMatchSidePlayerIds,
   normalizePlayerStats,
   getPublicRoomMaxDateInput,
@@ -334,7 +334,6 @@ function getTeamCaptainId(team) {
 const ROOM_SLOT_BADGES = {
   host: { tone: "host", label: "방장" },
   partyLeader: { tone: "captain", label: "파티장" },
-  teamCaptain: { tone: "captain", label: "팀 주장" },
 };
 
 function getEntryPartyLeaderId(entry, hostPlayerId = "", roomState = {}) {
@@ -344,11 +343,12 @@ function getEntryPartyLeaderId(entry, hostPlayerId = "", roomState = {}) {
 
 function getRoomSlotBadge(playerId, entry, hostPlayerId, showCaptainBadge = false, roomState = {}, options = {}) {
   const showPartyBadge = options.showPartyBadge !== false;
+  const sideLeaderId = options.sideLeaderId ?? "";
   if (!playerId) return null;
   if (playerId === hostPlayerId) return ROOM_SLOT_BADGES.host;
+  if (sideLeaderId && sideLeaderId === playerId) return ROOM_SLOT_BADGES.partyLeader;
   if (!showCaptainBadge || !showPartyBadge) return null;
   if (isPartyEntry(entry) && getEntryPartyLeaderId(entry, hostPlayerId, roomState) === playerId) return ROOM_SLOT_BADGES.partyLeader;
-  if (isPartyEntry(entry) && getTeamCaptainId(entry.team) === playerId) return ROOM_SLOT_BADGES.teamCaptain;
   return null;
 }
 
@@ -701,11 +701,11 @@ function QueueRoomBoard({ post, lobby }) {
   );
 }
 
-function FillSlot({ candidate, lobby, userById, teams, hostPlayerId = "", currentUserId = "", showCaptainBadge = false, roomState = {}, readyText = "READY", slotPositions = {}, canManageEntry = null, onSelfAction }) {
+function FillSlot({ candidate, lobby, userById, teams, hostPlayerId = "", currentUserId = "", showCaptainBadge = false, roomState = {}, sideLeaderId = "", readyText = "READY", slotPositions = {}, canManageEntry = null, onSelfAction }) {
   const user = candidate ? userById[candidate.playerId] : null;
   const readyLabel = candidate?.status === "ready" ? "READY" : "WAIT";
   const entry = candidate ? (lobby.entries ?? []).find((item) => item.id === candidate.entryId) : null;
-  const badge = getRoomSlotBadge(candidate?.playerId, entry, hostPlayerId, showCaptainBadge, roomState, { showPartyBadge: !candidate?.reserve });
+  const badge = getRoomSlotBadge(candidate?.playerId, entry, hostPlayerId, showCaptainBadge, roomState, { showPartyBadge: !candidate?.reserve, sideLeaderId });
   const isSelfSlot = candidate?.playerId === currentUserId;
   const canOpenAction = isSelfSlot || Boolean(entry && canManageEntry?.(entry));
   const displayPosition = getRoomSlotDisplayPosition(user, slotPositions, candidate?.playerId, entry);
@@ -888,6 +888,7 @@ export function SideRoster({
   currentUserId = "",
   showCaptainBadge = false,
   roomState = {},
+  sideLeaderId = "",
   slotPositions = {},
   canInvite = false,
   canManageEntry = null,
@@ -926,7 +927,7 @@ export function SideRoster({
         detail={partyLabel}
         mmr={user?.ratings?.integrated ?? getEntryMmr(entry)}
         position={displayPosition}
-        badge={getRoomSlotBadge(playerId, entry, hostPlayerId, showCaptainBadge, roomState)}
+        badge={getRoomSlotBadge(playerId, entry, hostPlayerId, showCaptainBadge, roomState, { sideLeaderId })}
         onSelfAction={canOpenAction ? (event) => onSelfSlotAction?.(sideName, false, playerId, entry.id, event) : null}
       />
     );
@@ -962,6 +963,7 @@ export function SideRoster({
             currentUserId={currentUserId}
             showCaptainBadge={showCaptainBadge}
             roomState={roomState}
+            sideLeaderId={sideLeaderId}
             slotPositions={slotPositions}
             canManageEntry={canManageEntry}
             onSelfAction={(event) => onSelfSlotAction?.(sideName, false, candidate.playerId, candidate.entryId, event)}
@@ -1002,6 +1004,7 @@ export function ReserveLine({
   currentUserId = "",
   showCaptainBadge = false,
   roomState = {},
+  sideLeaderId = "",
   slotPositions = {},
   canInvite = false,
   canManageEntry = null,
@@ -1041,7 +1044,7 @@ export function ReserveLine({
         detail={candidate.sourceLabel}
         mmr={user.ratings?.integrated ?? 1200}
         position={displayPosition}
-        badge={getRoomSlotBadge(candidate.playerId, entry, hostPlayerId, showCaptainBadge, roomState, { showPartyBadge: false })}
+        badge={getRoomSlotBadge(candidate.playerId, entry, hostPlayerId, showCaptainBadge, roomState, { showPartyBadge: false, sideLeaderId })}
         onSelfAction={canOpenAction ? (event) => onSelfSlotAction?.(sideName, true, candidate.playerId, candidate.entryId, event) : null}
       />
     );
@@ -1865,8 +1868,14 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
         const currentUserCanStartSourceMatch = Boolean(sourceMatch && (sourceMatch.refereeId ? currentUserIsSourceReferee : mine));
         const sourceMatchHostSideName = sourceMatch && getMatchSidePlayerIds(sourceMatch, "teamB").includes(sourceMatch.createdBy) ? "teamB" : "teamA";
         const sourceMatchOpponentSideName = sourceMatchHostSideName === "teamA" ? "teamB" : "teamA";
+        const sourceMatchSideLeaderIds = sourceMatch
+          ? {
+              teamA: getMatchSideLeaderId(sourceMatch, app.state.teams, "teamA"),
+              teamB: getMatchSideLeaderId(sourceMatch, app.state.teams, "teamB"),
+            }
+          : { teamA: "", teamB: "" };
         const sourceMatchOpponentLeaderId = sourceMatch
-          ? getSideCaptainId(sourceMatch, app.state.teams, sourceMatchOpponentSideName) ?? getMatchSidePlayerIds(sourceMatch, sourceMatchOpponentSideName)[0] ?? ""
+          ? sourceMatchSideLeaderIds[sourceMatchOpponentSideName] ?? ""
           : "";
         const sourceMatchAttendance = {
           teamA: sourceMatch?.attendance?.teamA ?? [],
@@ -1899,7 +1908,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
             : "개인 매칭";
         const roomPhaseBadge = sourceMatch ? sourceMatchPhase : roomQueueStatus;
         const referee = selectedPost.refereeId ? userById[selectedPost.refereeId] : null;
-        const showCaptainBadge = selectedPost.visibility === "private";
+        const showCaptainBadge = selectedPost.visibility === "private" || Boolean(sourceMatch);
         const activeSlotDraft = activeInviteDraft?.slotKey ? activeInviteDraft : null;
         const currentUserReserve = getEntryPlayerReserveState(myEntry, app.currentUser.id);
         const currentUserInEntry = Boolean(myEntry && (
@@ -2108,6 +2117,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                       currentUserId={app.currentUser.id}
                       showCaptainBadge={showCaptainBadge}
                       roomState={roomState}
+                      sideLeaderId={sourceMatchSideLeaderIds.teamA}
                       slotPositions={slotPositions}
                       canInvite={!sourceRoomReadOnly && canInviteSideFromRoom("teamA")}
                       canManageEntry={sourceRoomReadOnly ? null : canManageEntry}
@@ -2147,6 +2157,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                       currentUserId={app.currentUser.id}
                       showCaptainBadge={showCaptainBadge}
                       roomState={roomState}
+                      sideLeaderId={sourceMatchSideLeaderIds.teamB}
                       slotPositions={slotPositions}
                       canInvite={!sourceRoomReadOnly && canInviteSideFromRoom("teamB")}
                       canManageEntry={sourceRoomReadOnly ? null : canManageEntry}
@@ -2175,6 +2186,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                     currentUserId={app.currentUser.id}
                     showCaptainBadge={showCaptainBadge}
                     roomState={roomState}
+                    sideLeaderId={sourceMatchSideLeaderIds.teamA}
                     slotPositions={slotPositions}
                     canInvite={!sourceRoomReadOnly && canInviteSideFromRoom("teamA")}
                     canManageEntry={sourceRoomReadOnly ? null : canManageEntry}
@@ -2196,6 +2208,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                     currentUserId={app.currentUser.id}
                     showCaptainBadge={showCaptainBadge}
                     roomState={roomState}
+                    sideLeaderId={sourceMatchSideLeaderIds.teamB}
                     slotPositions={slotPositions}
                     canInvite={!sourceRoomReadOnly && canInviteSideFromRoom("teamB")}
                     canManageEntry={sourceRoomReadOnly ? null : canManageEntry}
