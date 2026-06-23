@@ -560,6 +560,65 @@ assertFlow(!refereeJoinLobby.entries.some((entry) => (entry.players ?? []).inclu
 });
 
 room = createRoom(state, "u1", {
+  title: "FLOW 공개 팀전 초대 2v2",
+  visibility: "public",
+  hostJoinMode: "team",
+  teamOnly: true,
+  teamId: "t1",
+  mode: "2v2",
+  sideCapacity: 2,
+  timingType: "scheduled",
+  scheduledDate: todayPlus(1),
+  scheduledTime: "19:00",
+  ranked: false,
+  official: false,
+  preRegistered: true,
+  playerIds: ["u1", "u2"],
+  court: "반포 선셋파크",
+});
+state = room.state;
+const publicTeamInvitePostId = room.postId;
+state = withUser(state, "u7", (scoped) => interestRecruitingPost(scoped, publicTeamInvitePostId, {
+  joinMode: "team",
+  teamId: "t2",
+  side: "teamB",
+  playerIds: ["u7", "u6"],
+  reservePlayerIds: ["u8"],
+}));
+let publicTeamInvitePost = getPost(state, publicTeamInvitePostId);
+let publicTeamInviteLobby = getRecruitingLobby(publicTeamInvitePost, state);
+assertFlow(
+  publicTeamInvitePost.roomState.partyLeaders["team:t2"] === "u7" &&
+    publicTeamInviteLobby.sides.teamB.players.includes("u7") &&
+    !publicTeamInviteLobby.sides.teamB.players.includes("u6"),
+  "공개 팀전: 참여자가 사이드장, 나머지는 초대 대기",
+  {
+    leader: publicTeamInvitePost.roomState.partyLeaders["team:t2"],
+    teamB: publicTeamInviteLobby.sides.teamB.players,
+    invitations: publicTeamInvitePost.roomState.invitations,
+  },
+);
+const publicTeamActiveInvite = publicTeamInvitePost.roomState.invitations.find((invitation) => invitation.targetUserId === "u6" && invitation.reserve === false);
+const publicTeamReserveInvite = publicTeamInvitePost.roomState.invitations.find((invitation) => invitation.targetUserId === "u8" && invitation.reserve === true);
+assertFlow(Boolean(publicTeamActiveInvite && publicTeamReserveInvite), "공개 팀전: 선택 팀원 초대장 발송", {
+  activeInvite: publicTeamActiveInvite,
+  reserveInvite: publicTeamReserveInvite,
+});
+state = withUser(state, "u6", (scoped) => acceptRecruitingInvitation(scoped, publicTeamInvitePostId, publicTeamActiveInvite.id));
+state = withUser(state, "u8", (scoped) => acceptRecruitingInvitation(scoped, publicTeamInvitePostId, publicTeamReserveInvite.id));
+publicTeamInvitePost = getPost(state, publicTeamInvitePostId);
+publicTeamInviteLobby = getRecruitingLobby(publicTeamInvitePost, state);
+assertFlow(
+  publicTeamInviteLobby.sides.teamB.players.includes("u6") &&
+    publicTeamInviteLobby.sides.teamB.reserveCandidates.some((candidate) => candidate.playerId === "u8"),
+  "공개 팀전: 초대 수락 후 팀 파티 합류",
+  {
+    teamB: publicTeamInviteLobby.sides.teamB.players,
+    reserves: publicTeamInviteLobby.sides.teamB.reserveCandidates,
+  },
+);
+
+room = createRoom(state, "u1", {
   title: "FLOW 심판 미출석 전환 1v1",
   visibility: "private",
   hostJoinMode: "team",
@@ -620,15 +679,27 @@ room = createRoom(state, "u12", {
 });
 state = room.state;
 const promotePostId = room.postId;
-[
+state = withUser(state, "u13", (scoped) => interestRecruitingPost(scoped, promotePostId, { joinMode: "player", side: "teamA", reserve: false, position: "SG" }));
+assertFlow(!getRecruitingLobby(getPost(state, promotePostId), state).entries.some((entry) => entry.playerId === "u13"), "비공개 개인전: 직접 참여 차단", {
+  notification: state.notifications?.[0],
+});
+const promoteInviteApplications = [
   ["u13", { joinMode: "player", side: "teamA", reserve: false, position: "SG" }],
   ["u14", { joinMode: "player", side: "teamA", reserve: true, position: "SF" }],
   ["u15", { joinMode: "player", side: "teamA", reserve: true, position: "PF" }],
   ["u16", { joinMode: "player", side: "teamB", reserve: false, position: "PG" }],
   ["u17", { joinMode: "player", side: "teamB", reserve: true, position: "SG" }],
   ["u18", { joinMode: "player", side: "teamB", reserve: true, position: "SF" }],
-].forEach(([userId, application]) => {
-  state = withUser(state, userId, (scoped) => interestRecruitingPost(scoped, promotePostId, application));
+];
+promoteInviteApplications.forEach(([userId, application]) => {
+  state = withUser(state, "u12", (scoped) => inviteRecruitingPlayers(scoped, promotePostId, {
+    side: application.side,
+    reserve: application.reserve,
+    playerIds: [userId],
+  }));
+  const invitation = getPost(state, promotePostId).roomState.invitations.find((item) => item.targetUserId === userId);
+  assertFlow(Boolean(invitation), "비공개 개인전: 초대장 발송", { userId, application });
+  state = withUser(state, userId, (scoped) => acceptRecruitingInvitation(scoped, promotePostId, invitation.id));
 });
 const promoteLobby = getRecruitingLobby(getPost(state, promotePostId), state);
 assertFlow(promoteLobby.canConfirm, "후보가 빈 출전 슬롯을 채우면 확정 가능", {

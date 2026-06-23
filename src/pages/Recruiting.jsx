@@ -1775,7 +1775,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
           (!teamOnlyRoom || selectedJoinPlayerIds.length >= getRecruitingSideCapacity(selectedPost))
         );
         const canJoinReferee = selectedPost.visibility === "public" && !selectedPost.refereeId && isEligibleReferee(app.currentUser, selectedPost.refereeTrustMin);
-        const canJoin = !matchRoom && !mine && !alreadyApplied && (
+        const canJoin = selectedPost.visibility === "public" && !matchRoom && !mine && !alreadyApplied && (
           joinDraft.joinMode === "referee"
             ? canJoinReferee
             : fit.allowed && (joinDraft.joinMode === "player" || teamJoinValid)
@@ -2492,6 +2492,11 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                   <div className="arena-owner-panel">
                     <strong>참여 중</strong>
                     <span>내 슬롯을 누르면 위치 변경, 후보 이동, 파티 조작을 할 수 있습니다.</span>
+                  </div>
+                ) : selectedPost.visibility === "private" ? (
+                  <div className="arena-owner-panel">
+                    <strong>비공개방</strong>
+                    <span>초대 수락으로만 참여할 수 있습니다.</span>
                   </div>
                 ) : (
                   <form className="arena-join-form" onSubmit={(event) => { event.preventDefault(); submitJoin(selectedPost); }}>
