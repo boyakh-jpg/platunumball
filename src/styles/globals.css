@@ -8880,9 +8880,11 @@ html[data-theme="light"] .profile-records-summary {
   }
 
   html[data-theme="light"] .bottom-nav {
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(226, 250, 243, 0.96)),
-      rgba(255, 255, 255, 0.96);
+    background: rgba(244, 255, 251, 0.96);
+  }
+
+  html[data-theme="light"] .bottom-nav a.active {
+    background: rgba(213, 250, 241, 0.94);
   }
 }
 
