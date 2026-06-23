@@ -3,10 +3,43 @@ import { getMatchPlayerIds } from "./matchUtils.js";
 export const ADMIN_BACKEND_TODO = "TODO backend: server-side admin auth, RLS, auditLog required before deployment.";
 
 export const ADMIN_GRADE_META = {
-  owner: { label: "오너", level: 100, defaultTermDays: 365, scope: "전체 권한" },
-  opsLead: { label: "운영장", level: 70, defaultTermDays: 180, scope: "관리자/심판 임명 제안" },
-  moderator: { label: "운영관리자", level: 50, defaultTermDays: 90, scope: "신고/기록 처리" },
+  owner: { label: "최고관리자", level: 100, defaultTermDays: 3650, scope: "전체 권한 · 1명" },
+  senior: { label: "선임관리자", level: 80, defaultTermDays: 180, scope: "관리자/심판 임명" },
+  regionManager: { label: "지역관리자", level: 60, defaultTermDays: 120, scope: "지역 구장/대회 관리" },
+  matchManager: { label: "경기관리자", level: 50, defaultTermDays: 90, scope: "플레이어/경기 신고 처리" },
   support: { label: "보조관리자", level: 30, defaultTermDays: 30, scope: "큐 검토" },
+};
+
+const ADMIN_GRADE_ALIASES = {
+  opsLead: "senior",
+  moderator: "matchManager",
+};
+
+export const REFEREE_GRADE_META = {
+  official: { label: "공인심판", level: 100, requirement: "공인 자격증 인증" },
+  platinum: { label: "플래티넘 심판", level: 80, requirement: "경기 수행 우수 · 신고 낮음 · 따봉 높음" },
+  gold: { label: "골드 심판", level: 60, requirement: "안정적 경기 수행" },
+  silver: { label: "실버 심판", level: 40, requirement: "기본 자격 유지" },
+  candidate: { label: "자격심판", level: 20, requirement: "커뮤니티 시험/심사 통과" },
+};
+
+export const SUSPENSION_TIERS = [
+  { id: "3d", label: "3일 정지", days: 3 },
+  { id: "1w", label: "1주일 정지", days: 7 },
+  { id: "2w", label: "2주일 정지", days: 14 },
+  { id: "4w", label: "4주 정지", days: 28 },
+  { id: "6w", label: "6주 정지", days: 42 },
+  { id: "8w", label: "8주 정지", days: 56 },
+  { id: "24w", label: "24주 정지", days: 168 },
+  { id: "40w", label: "40주 정지", days: 280 },
+];
+
+export const ADMIN_REVIEW_ACTIONS = {
+  validReport: { label: "신고 인정", feedback: "신고가 인정되어 조치되었습니다." },
+  dismissReport: { label: "신고 기각", feedback: "확인 결과 신고가 기각되었습니다." },
+  maliciousReporter: { label: "악성신고자 제재", feedback: "악성 신고로 판단되어 신고자에게 제재가 적용되었습니다." },
+  suspendTarget: { label: "대상 제재", feedback: "신고 대상에게 제재가 적용되었습니다." },
+  refereeDiscipline: { label: "심판 조치", feedback: "심판 권한 또는 등급 검토 조치가 등록되었습니다." },
 };
 
 export const APPOINTMENT_ROLE_META = {
@@ -18,17 +51,23 @@ function hasPermission(user = {}, permission) {
   return Array.isArray(user.adminPermissions) && user.adminPermissions.includes(permission);
 }
 
+function normalizeAdminGrade(grade = "") {
+  return ADMIN_GRADE_ALIASES[grade] ?? grade;
+}
+
 export function getAdminGrade(user = {}) {
-  if (ADMIN_GRADE_META[user.adminGrade]) return user.adminGrade;
+  const grade = normalizeAdminGrade(user.adminGrade);
+  if (ADMIN_GRADE_META[grade]) return grade;
   if (user.id === "u1") return "owner";
-  if (user.role === "admin" || user.isAdmin === true) return "opsLead";
-  if (hasPermission(user, "operations")) return "moderator";
+  if (user.role === "admin" || user.isAdmin === true) return "senior";
+  if (hasPermission(user, "region")) return "regionManager";
+  if (hasPermission(user, "operations")) return "matchManager";
   if (hasPermission(user, "admin")) return "support";
   return "";
 }
 
 export function getAdminGradeMeta(grade) {
-  return ADMIN_GRADE_META[grade] ?? null;
+  return ADMIN_GRADE_META[normalizeAdminGrade(grade)] ?? null;
 }
 
 export function isAppointmentActive(appointment = {}, nowMs = Date.now()) {
@@ -93,6 +132,7 @@ function pushGrouped(map, key, base, patch = {}) {
       matches: [],
       players: [],
       courtRequests: [],
+      disciplinaryActions: [],
       reportCount: 0,
       openCount: 0,
       latestAt: 0,
@@ -118,9 +158,13 @@ function getDatePlusDays(days) {
   return date.toISOString();
 }
 
+export function getSuspensionTier(days = 0) {
+  return SUSPENSION_TIERS.find((tier) => tier.days === Number(days)) ?? SUSPENSION_TIERS[0];
+}
+
 function normalizeAppointmentRow(appointment = {}, userMap = {}, fallbackRole = "admin") {
   const role = appointment.role === "referee" ? "referee" : fallbackRole;
-  const grade = role === "admin" ? (appointment.grade || "support") : (appointment.grade || "referee");
+  const grade = role === "admin" ? normalizeAdminGrade(appointment.grade || "support") : (appointment.grade || "candidate");
   const user = userMap[appointment.userId];
   const active = appointment.status === "pending" ? false : isAppointmentActive(appointment);
   const endsAt = appointment.endsAt || getDatePlusDays(APPOINTMENT_ROLE_META[role]?.defaultTermDays ?? 90);
@@ -129,7 +173,7 @@ function normalizeAppointmentRow(appointment = {}, userMap = {}, fallbackRole = 
     role,
     roleLabel: APPOINTMENT_ROLE_META[role]?.label ?? role,
     grade,
-    gradeLabel: ADMIN_GRADE_META[grade]?.label ?? (grade === "referee" ? "심판" : grade),
+    gradeLabel: role === "referee" ? (REFEREE_GRADE_META[grade]?.label ?? grade) : (ADMIN_GRADE_META[grade]?.label ?? grade),
     userId: appointment.userId,
     userName: user?.name ?? appointment.userName ?? "알 수 없음",
     status: appointment.status ?? (active ? "active" : "expired"),
@@ -171,7 +215,7 @@ export function buildAdminAppointmentModel(state = {}) {
   const refereeRequestRows = (settings.refereeRequests ?? []).map((request) => normalizeAppointmentRow({
     id: `referee-request:${request.id}`,
     role: "referee",
-    grade: "referee",
+    grade: "candidate",
     userId: request.userId,
     userName: userMap[request.userId]?.name,
     status: request.status === "pending" ? "pending" : request.status,
@@ -211,6 +255,7 @@ export function buildAdminReviewModel(state = {}) {
   const matches = state.matches ?? [];
   const reports = state.reports ?? [];
   const courtRequests = state.settings?.courtRequests ?? [];
+  const disciplinaryActions = state.settings?.adminDisciplinaryActions ?? [];
   const userMap = makeUserMap(users);
   const matchMap = makeMatchMap(matches);
   const courtMap = new Map();
@@ -257,6 +302,17 @@ export function buildAdminReviewModel(state = {}) {
       player: userMap[request.requestedBy],
     });
     requesterRow.courtRequests.push(request);
+  });
+
+  disciplinaryActions.forEach((action) => {
+    const player = userMap[action.userId];
+    const playerRow = pushGrouped(playerMap, action.userId, {
+      title: player?.name ?? "알 수 없음",
+      subtitle: `${player?.region ?? "지역 미정"} · ${player?.position ?? "-"} · 신뢰도 ${player?.trustScore ?? "-"}`,
+      player,
+    });
+    playerRow.disciplinaryActions.push(action);
+    playerRow.latestAt = Math.max(playerRow.latestAt, getTime(action.createdAt));
   });
 
   reports.forEach((report) => {
@@ -318,8 +374,9 @@ export function buildAdminReviewModel(state = {}) {
     ...row,
     matchCount: row.matches.length,
     courtRequestCount: row.courtRequests.length,
+    disciplinaryActionCount: row.disciplinaryActions.length,
     issueCount: row.openCount + row.matches.filter(isRecordIssueMatch).length,
-  })).sort(sortReviewRows);
+  })).filter((row) => row.reportCount > 0 || row.courtRequestCount > 0 || row.disciplinaryActionCount > 0).sort(sortReviewRows);
   const matchRows = [...matchReviewMap.values()].map((row) => ({
     ...row,
     matchCount: row.matches.length,
@@ -332,9 +389,10 @@ export function buildAdminReviewModel(state = {}) {
       reportCount: reports.length,
       openReportCount: getOpenCount(reports),
       courtCount: courtRows.length,
-      playerCount: playerRows.filter((row) => row.reportCount > 0).length,
+      playerCount: playerRows.length,
       matchIssueCount: matchRows.filter((row) => row.reportCount > 0 || isRecordIssueMatch(row.match)).length,
       courtRequestCount: courtRequests.length,
+      disciplinaryActionCount: disciplinaryActions.length,
     },
     courts: courtRows,
     players: playerRows,

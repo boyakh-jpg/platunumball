@@ -61,6 +61,7 @@ import {
   normalizeRecruitingPost,
   normalizeRecruitingRoomState,
 } from "../lib/recruiting.js";
+import { ADMIN_REVIEW_ACTIONS, getSuspensionTier, hasAdminAccess } from "../lib/admin.js";
 import { clearState, readState, writeState } from "../lib/storage.js";
 import { isBulkRemoteWriteEnabled, isSupabaseConfigured, supabase } from "../lib/supabase.js";
 
@@ -81,6 +82,8 @@ const DEFAULT_SETTINGS = {
   refereeRequests: [],
   adminAppointments: [],
   refereeAppointments: [],
+  adminAuditLog: [],
+  adminDisciplinaryActions: [],
   refereeExamAttempts: [],
 };
 const REMOTE_PAGE_SIZE = 1000;
@@ -507,6 +510,8 @@ function normalizeSettings(settings = {}) {
     refereeRequests: settings.refereeRequests ?? initialState.settings?.refereeRequests ?? [],
     adminAppointments: settings.adminAppointments ?? initialState.settings?.adminAppointments ?? [],
     refereeAppointments: settings.refereeAppointments ?? initialState.settings?.refereeAppointments ?? [],
+    adminAuditLog: settings.adminAuditLog ?? initialState.settings?.adminAuditLog ?? [],
+    adminDisciplinaryActions: settings.adminDisciplinaryActions ?? initialState.settings?.adminDisciplinaryActions ?? [],
     refereeExamAttempts: settings.refereeExamAttempts ?? initialState.settings?.refereeExamAttempts ?? [],
   };
 }
@@ -3782,6 +3787,150 @@ export function reportCourtRequest(state, requestId, reason = "허위 구장 등
         body: `${request.name} 등록요청을 허위 구장으로 신고했습니다. 요청자 신뢰도 ${FALSE_COURT_REPORT_TRUST_PENALTY}점이 차감됩니다.`,
         tone: "orange",
       },
+      ...state.notifications,
+    ],
+  };
+}
+
+function getAdminActionNotification(body, tone = "orange") {
+  return {
+    id: makeId("n"),
+    title: "관리자 처리",
+    body,
+    tone,
+  };
+}
+
+function getReportTargetUserId(report = {}, fallbackUserId = "") {
+  return report.reportedUserIds?.[0] ?? fallbackUserId ?? "";
+}
+
+function makeDisciplinaryAction({ state, report, actionType, targetUserId, durationDays, reason, now }) {
+  if (!["maliciousReporter", "suspendTarget", "refereeDiscipline"].includes(actionType)) return null;
+  const userId = actionType === "maliciousReporter" ? report.by : targetUserId;
+  if (!userId) return null;
+  const startsAt = now;
+  const endsAt = new Date(new Date(now).getTime() + durationDays * DAY_MS).toISOString();
+  return {
+    id: makeId("ad"),
+    userId,
+    type: actionType === "refereeDiscipline" ? "referee_discipline" : "suspension",
+    actionType,
+    sourceReportId: report.id,
+    reason,
+    startsAt,
+    endsAt,
+    durationDays,
+    createdAt: now,
+    createdBy: state.currentUserId,
+    status: "active",
+  };
+}
+
+export function commitAdminReviewAction(state, draft = {}) {
+  if (!hasAdminAccess(state.users.find((user) => user.id === state.currentUserId), state.settings)) {
+    return {
+      ...state,
+      notifications: [getAdminActionNotification("관리자 권한이 없습니다."), ...state.notifications],
+    };
+  }
+
+  const reportId = draft.reportId;
+  const report = (state.reports ?? []).find((item) => item.id === reportId);
+  if (!report) {
+    return {
+      ...state,
+      notifications: [getAdminActionNotification("처리할 신고를 찾을 수 없습니다."), ...state.notifications],
+    };
+  }
+
+  const alreadyCommitted = (state.settings?.adminAuditLog ?? []).some((item) => item.reportId === reportId && item.status === "committed");
+  if (alreadyCommitted || report.status !== "open") {
+    return {
+      ...state,
+      notifications: [getAdminActionNotification("이미 다른 관리자 처리 또는 이전 처리 결과가 있습니다."), ...state.notifications],
+    };
+  }
+
+  const actionType = ADMIN_REVIEW_ACTIONS[draft.actionType] ? draft.actionType : "validReport";
+  const reason = String(draft.reason ?? "").trim() || ADMIN_REVIEW_ACTIONS[actionType].label;
+  const feedback = String(draft.feedback ?? "").trim() || ADMIN_REVIEW_ACTIONS[actionType].feedback;
+  const durationDays = getSuspensionTier(draft.durationDays).days;
+  const targetUserId = draft.targetUserId || getReportTargetUserId(report);
+  const needsTarget = ["suspendTarget", "refereeDiscipline"].includes(actionType);
+  if (needsTarget && !targetUserId) {
+    return {
+      ...state,
+      notifications: [getAdminActionNotification("제재 대상을 선택해야 합니다."), ...state.notifications],
+    };
+  }
+
+  const now = new Date().toISOString();
+  const disciplinaryAction = makeDisciplinaryAction({ state, report, actionType, targetUserId, durationDays, reason, now });
+  const nextStatus = actionType === "dismissReport" || actionType === "maliciousReporter" ? "dismissed" : "resolved";
+  const nextReports = (state.reports ?? []).map((item) => (
+    item.id === reportId
+      ? {
+        ...item,
+        status: nextStatus,
+        resolvedAt: now,
+        resolvedBy: state.currentUserId,
+        resolution: {
+          actionType,
+          feedback,
+          reason,
+          targetUserId,
+          durationDays,
+        },
+      }
+      : item
+  ));
+  const auditLog = {
+    id: makeId("aa"),
+    type: "report_action",
+    status: "committed",
+    reportId,
+    actionType,
+    reason,
+    feedback,
+    targetUserId,
+    durationDays,
+    reportVersion: report.updatedAt ?? report.createdAt ?? "",
+    createdAt: now,
+    createdBy: state.currentUserId,
+  };
+  const reporterNotification = report.by
+    ? {
+      id: makeId("n"),
+      targetUserId: report.by,
+      title: "신고 처리 결과",
+      body: feedback,
+      tone: nextStatus === "resolved" ? "team" : "orange",
+    }
+    : null;
+  const targetNotification = disciplinaryAction?.userId
+    ? {
+      id: makeId("n"),
+      targetUserId: disciplinaryAction.userId,
+      title: "운영 제재 안내",
+      body: `${reason} · ${durationDays}일`,
+      tone: "orange",
+    }
+    : null;
+
+  return {
+    ...state,
+    reports: nextReports,
+    settings: normalizeSettings({
+      ...(state.settings ?? {}),
+      adminAuditLog: [auditLog, ...(state.settings?.adminAuditLog ?? [])],
+      adminDisciplinaryActions: disciplinaryAction
+        ? [disciplinaryAction, ...(state.settings?.adminDisciplinaryActions ?? [])]
+        : (state.settings?.adminDisciplinaryActions ?? []),
+    }),
+    notifications: [
+      getAdminActionNotification("관리자 처리 결과가 커밋되었습니다.", "team"),
+      ...[reporterNotification, targetNotification].filter(Boolean),
       ...state.notifications,
     ],
   };

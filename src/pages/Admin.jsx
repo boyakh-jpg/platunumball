@@ -1,14 +1,24 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, ClipboardList, Clock3, MapPin, ShieldCheck, UserRound } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
+import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
-import { ADMIN_BACKEND_TODO, buildAdminAppointmentModel, buildAdminReviewModel, hasAdminAccess } from "../lib/admin.js";
+import {
+  ADMIN_BACKEND_TODO,
+  ADMIN_REVIEW_ACTIONS,
+  REFEREE_GRADE_META,
+  SUSPENSION_TIERS,
+  buildAdminAppointmentModel,
+  buildAdminReviewModel,
+  hasAdminAccess,
+} from "../lib/admin.js";
 
 const VIEW_OPTIONS = [
   { id: "courts", label: "구장별", icon: MapPin },
   { id: "players", label: "플레이어별", icon: UserRound },
   { id: "matches", label: "경기별", icon: ClipboardList },
 ];
+const ACTION_OPTIONS = Object.entries(ADMIN_REVIEW_ACTIONS).map(([id, meta]) => ({ id, ...meta }));
 
 function statusLabel(status) {
   if (status === "resolved") return "처리됨";
@@ -46,12 +56,51 @@ function DetailList({ title, empty, children }) {
 export default function Admin({ app }) {
   const [view, setView] = useState("courts");
   const [selectedIdByView, setSelectedIdByView] = useState({});
+  const [actionDraft, setActionDraft] = useState({
+    actionType: "validReport",
+    durationDays: 3,
+    targetUserId: "",
+    reason: "",
+    feedback: "",
+  });
   const canAdmin = hasAdminAccess(app.currentUser, app.state.settings);
   const model = useMemo(() => buildAdminReviewModel(app.state), [app.state]);
   const appointments = useMemo(() => buildAdminAppointmentModel(app.state), [app.state]);
   const activeRows = model[view] ?? [];
   const selectedId = selectedIdByView[view];
   const selectedRow = activeRows.find((row) => row.id === selectedId) ?? activeRows[0] ?? null;
+  const userMap = useMemo(() => Object.fromEntries(app.state.users.map((user) => [user.id, user])), [app.state.users]);
+  const selectedReport = selectedRow?.reports.find((report) => report.status === "open") ?? selectedRow?.reports[0] ?? null;
+  const targetCandidates = useMemo(() => {
+    const ids = new Set([
+      ...(selectedReport?.reportedUserIds ?? []),
+      selectedRow?.player?.id,
+      ...(selectedRow?.courtRequests ?? []).map((request) => request.requestedBy),
+    ].filter(Boolean));
+    return [...ids].map((userId) => userMap[userId]).filter(Boolean);
+  }, [selectedReport, selectedRow, userMap]);
+  const selectedTargetUserId = targetCandidates.some((user) => user.id === actionDraft.targetUserId)
+    ? actionDraft.targetUserId
+    : targetCandidates[0]?.id ?? "";
+
+  useEffect(() => {
+    setActionDraft((current) => ({
+      ...current,
+      targetUserId: targetCandidates[0]?.id ?? "",
+      reason: "",
+      feedback: "",
+    }));
+  }, [selectedReport?.id, selectedRow?.id]);
+
+  const updateActionDraft = (patch) => setActionDraft((current) => ({ ...current, ...patch }));
+  const commitSelectedAction = () => {
+    if (!selectedReport) return;
+    app.actions.commitAdminReviewAction({
+      ...actionDraft,
+      targetUserId: selectedTargetUserId,
+      reportId: selectedReport.id,
+    });
+  };
 
   if (!canAdmin) {
     return (
@@ -128,6 +177,15 @@ export default function Admin({ app }) {
               <strong>{grade.label}</strong>
               <span>Lv.{grade.level}</span>
               <em>{grade.defaultTermDays}일 · {grade.scope}</em>
+            </div>
+          ))}
+        </div>
+        <div className="admin-referee-grade-strip">
+          {Object.entries(REFEREE_GRADE_META).map(([id, grade]) => (
+            <div key={id}>
+              <strong>{grade.label}</strong>
+              <span>Lv.{grade.level}</span>
+              <em>{grade.requirement}</em>
             </div>
           ))}
         </div>
@@ -222,6 +280,46 @@ export default function Admin({ app }) {
                   <span>구장요청</span>
                   <strong>{selectedRow.courtRequestCount ?? 0}</strong>
                 </div>
+              </div>
+
+              <div className="admin-action-panel">
+                <div>
+                  <strong>처리 액션</strong>
+                  <small>선택된 신고 기준으로 신고자 피드백과 제재 로그를 커밋합니다.</small>
+                </div>
+                <div className="arena-field-grid">
+                  <label>
+                    액션
+                    <select value={actionDraft.actionType} onChange={(event) => updateActionDraft({ actionType: event.target.value })}>
+                      {ACTION_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+                    </select>
+                  </label>
+                  <label>
+                    대상
+                    <select value={selectedTargetUserId} disabled={!targetCandidates.length} onChange={(event) => updateActionDraft({ targetUserId: event.target.value })}>
+                      {!targetCandidates.length ? <option value="">대상 없음</option> : null}
+                      {targetCandidates.map((user) => <option key={user.id} value={user.id}>{user.name} · 신뢰도 {user.trustScore ?? "-"}</option>)}
+                    </select>
+                  </label>
+                </div>
+                <label>
+                  제재 기간
+                  <select value={actionDraft.durationDays} onChange={(event) => updateActionDraft({ durationDays: Number(event.target.value) })}>
+                    {SUSPENSION_TIERS.map((tier) => <option key={tier.id} value={tier.days}>{tier.label}</option>)}
+                  </select>
+                </label>
+                <label>
+                  처리 사유
+                  <textarea value={actionDraft.reason} placeholder="관리자 처리 사유" onChange={(event) => updateActionDraft({ reason: event.target.value })} />
+                </label>
+                <label>
+                  신고자 피드백
+                  <textarea value={actionDraft.feedback} placeholder={ADMIN_REVIEW_ACTIONS[actionDraft.actionType]?.feedback} onChange={(event) => updateActionDraft({ feedback: event.target.value })} />
+                </label>
+                <Button type="button" variant="secondary" disabled={!selectedReport || selectedReport.status !== "open"} onClick={commitSelectedAction}>
+                  액션 커밋
+                </Button>
+                <small>mock/localStorage에서는 커밋 직전 상태만 확인합니다. 실시간 중복 방지는 서버 트랜잭션에서 다시 확인해야 합니다.</small>
               </div>
 
               <DetailList title="쌓인 신고" empty="신고 없음">
