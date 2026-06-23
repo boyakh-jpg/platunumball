@@ -2,6 +2,7 @@ import {
   COURTS,
   DISPUTE_WINDOW_MINUTES,
   MAX_TEAM_MEMBERSHIPS,
+  MAX_TEAM_NAME_LENGTH,
   MODE_SIZES,
   PLAYER_STAT_FIELDS,
   PLAYER_POSITIONS,
@@ -5868,6 +5869,22 @@ export function updateProfile(state, patch) {
 }
 
 export function createTeam(state, teamDraft) {
+  const teamName = String(teamDraft.name ?? "").trim().replace(/\s+/g, " ");
+  if (!teamName || teamName.length > MAX_TEAM_NAME_LENGTH) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "팀명 확인",
+          body: `팀명은 ${MAX_TEAM_NAME_LENGTH}자 이하로 입력해야 합니다.`,
+          tone: "team",
+        },
+        ...state.notifications,
+      ],
+    };
+  }
+
   const captainId = teamDraft.captainId || state.currentUserId;
   const captainTeamCount = state.teams.filter((team) => team.members.some((member) => member.userId === captainId)).length;
   if (captainTeamCount >= MAX_TEAM_MEMBERSHIPS) {
@@ -5887,7 +5904,7 @@ export function createTeam(state, teamDraft) {
 
   const team = {
     id: makeId("t"),
-    name: teamDraft.name,
+    name: teamName,
     homeCourt: teamDraft.homeCourt,
     region: teamDraft.region,
     mmr: 1200,

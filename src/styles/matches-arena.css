@@ -2349,6 +2349,10 @@ html[data-theme="light"] .om-match-info-box {
 .om-match-summary-box.count-summary .om-summary-side .team-hover-trigger {
   font-size: clamp(1.85rem, 2.8vw, 2.42rem);
   font-weight: 1000;
+  max-width: 9.5ch;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .om-match-summary-box.count-summary .om-summary-line > strong {

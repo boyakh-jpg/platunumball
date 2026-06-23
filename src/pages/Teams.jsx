@@ -6,7 +6,7 @@ import Card from "../components/common/Card.jsx";
 import { getTierEmblemSrc } from "../components/rating/TierEmblem.jsx";
 import TeamCard from "../components/team/TeamCard.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
-import { COURTS, MAX_TEAM_MEMBERSHIPS, REGIONS } from "../lib/constants.js";
+import { COURTS, MAX_TEAM_MEMBERSHIPS, MAX_TEAM_NAME_LENGTH, REGIONS } from "../lib/constants.js";
 import { getTierDivision } from "../lib/tier.js";
 
 const allRegions = ["전체", ...REGIONS];
@@ -60,6 +60,8 @@ export default function Teams({ app }) {
   const [region, setRegion] = useState(app.currentUser.region ?? "전체");
   const favoriteTeamIds = app.state.settings?.favoriteTeamIds ?? [];
   const favoriteCourtIds = app.state.settings?.favoriteCourtIds ?? [];
+  const teamName = draft.name.trim().replace(/\s+/g, " ");
+  const teamNameInvalid = !teamName || teamName.length > MAX_TEAM_NAME_LENGTH;
   const isFavoriteTeam = (team) => favoriteTeamIds.includes(team.id);
   const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
   const teamCountByUser = useMemo(() => {
@@ -104,6 +106,7 @@ export default function Teams({ app }) {
 
   const submit = (event) => {
     event.preventDefault();
+    if (teamNameInvalid) return;
     app.actions.createTeam(draft);
     setDraft({ name: "New Court Crew", region: app.currentUser.region, homeCourt: COURTS[0].name, captainId: app.currentUser.id, accent: "#58d2c0" });
   };
@@ -285,7 +288,14 @@ export default function Teams({ app }) {
           <form className="form-stack" onSubmit={submit}>
             <label>
               팀 이름
-              <input value={draft.name} onChange={(event) => update({ name: event.target.value })} />
+              <input
+                value={draft.name}
+                maxLength={MAX_TEAM_NAME_LENGTH}
+                onChange={(event) => update({ name: event.target.value.slice(0, MAX_TEAM_NAME_LENGTH) })}
+              />
+              <span className={teamNameInvalid ? "form-warning" : "form-chip"}>
+                {teamName.length}/{MAX_TEAM_NAME_LENGTH}자
+              </span>
             </label>
             <label>
               지역
@@ -319,7 +329,7 @@ export default function Teams({ app }) {
               팀 컬러
               <input type="color" value={draft.accent} onChange={(event) => update({ accent: event.target.value })} />
             </label>
-            <Button type="submit" disabled={captainLimitReached}><PlusCircle size={18} /> 팀 만들기</Button>
+            <Button type="submit" disabled={captainLimitReached || teamNameInvalid}><PlusCircle size={18} /> 팀 만들기</Button>
           </form>
         </Card>
       </div>

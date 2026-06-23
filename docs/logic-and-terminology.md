@@ -93,6 +93,10 @@ UI/CSS/반응형/라이트·다크 세부 기준은 `docs/design-system.md`를 �
 | `settings` | repository state | 테마, 즐겨찾기, 차단, 심판 시험 |
 | `reports` | repository state | 경기 후 신고, 설정 신고 |
 
+팀명:
+- 생성 시 최대 14자.
+- 경기/매칭 방 요약 박스에서 넘치는 팀명은 만들 수 없다.
+
 ## 중앙 계산 함수
 
 이 함수들은 화면마다 새로 만들면 안 된다.
