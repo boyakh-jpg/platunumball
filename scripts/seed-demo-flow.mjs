@@ -5,6 +5,7 @@ import {
   acceptRecruitingInvitation,
   cancelRecruitingParticipation,
   checkInMatchPlayer,
+  confirmMatchRefereeAbsence,
   confirmRecruitingMatch,
   createMatch,
   createRecruitingPost,
@@ -15,6 +16,7 @@ import {
   inviteRecruitingPlayers,
   joinRecruitingSideParty,
   removeMatchRoomPlayer,
+  requestMatchRefereeAbsence,
   resumeMatchApproval,
   runAutomaticStateMaintenance,
   sendRecruitingChat,
@@ -395,6 +397,17 @@ assertFlow(Boolean(lifecycleInvite), "비공개 팀전 즉시: B 파티장 초�
   targetUserId: lifecycleInvite?.targetUserId,
   scheduledAt: lifecyclePost.scheduledAt,
 });
+let lifecycleRefereeInvite = lifecyclePost.roomState.invitations.find((invitation) => invitation.role === "referee" && invitation.targetUserId === "u11");
+assertFlow(Boolean(lifecycleRefereeInvite), "비공개 심판 초대 발송", {
+  targetUserId: lifecycleRefereeInvite?.targetUserId,
+  role: lifecycleRefereeInvite?.role,
+});
+state = withUser(state, "u11", (scoped) => acceptRecruitingInvitation(scoped, lifecyclePostId, lifecycleRefereeInvite.id));
+lifecyclePost = getPost(state, lifecyclePostId);
+assertFlow(lifecyclePost.refereeId === "u11", "비공개 심판 초대 수락", {
+  refereeId: lifecyclePost.refereeId,
+});
+lifecycleInvite = lifecyclePost.roomState.invitations.find((invitation) => invitation.targetUserId === "u7");
 state = withUser(state, "u7", (scoped) => acceptRecruitingInvitation(scoped, lifecyclePostId, lifecycleInvite.id));
 let lifecycleLobby = getRecruitingLobby(getPost(state, lifecyclePostId), state);
 assertFlow(lifecycleLobby.canConfirm, "비공개 팀전 즉시: B 파티장 수락 후 확정 가능", {
@@ -417,6 +430,10 @@ const lifecycleMatchId = findNewId(beforeLifecycleMatchIds, state.matches);
 report.ids.lifecycleMatchId = lifecycleMatchId;
 assertFlow(getMatchRoomPhase(getMatch(state, lifecycleMatchId)).phase === "checkin", "확정 후 경기준비방", {
   phase: getMatchRoomPhase(getMatch(state, lifecycleMatchId)),
+});
+
+assertFlow(getMatch(state, lifecycleMatchId).refereeId === "u11", "수락된 심판만 확정 경기로 이동", {
+  refereeId: getMatch(state, lifecycleMatchId).refereeId,
 });
 
 state = withUser(state, "u1", (scoped) => updateMatchRoomRules(scoped, lifecycleMatchId, {
@@ -511,6 +528,79 @@ assertFlow(getMatchRoomPhase(getMatch(state, lifecycleMatchId)).phase === "recor
 });
 
 state = withUser(state, "u1", (scoped) => submitMatchThumbs(scoped, lifecycleMatchId, ["u6", "u7"]));
+
+room = createRoom(state, "u12", {
+  title: "FLOW 공개 심판 직접참여 2v2",
+  visibility: "public",
+  hostJoinMode: "player",
+  mode: "2v2",
+  sideCapacity: 2,
+  timingType: "scheduled",
+  scheduledDate: todayPlus(1),
+  scheduledTime: "18:30",
+  ranked: false,
+  official: false,
+  preRegistered: true,
+  court: "반포 선셋파크",
+});
+state = room.state;
+const refereeJoinPostId = room.postId;
+state = withUser(state, "u11", (scoped) => interestRecruitingPost(scoped, refereeJoinPostId, { joinMode: "referee" }));
+let refereeJoinPost = getPost(state, refereeJoinPostId);
+let refereeJoinLobby = getRecruitingLobby(refereeJoinPost, state);
+assertFlow(refereeJoinPost.refereeId === "u11", "공개방 심판 직접참여", {
+  refereeId: refereeJoinPost.refereeId,
+});
+assertFlow(!refereeJoinLobby.entries.some((entry) => (entry.players ?? []).includes("u11") || (entry.reserves ?? []).includes("u11")), "공개방 심판은 슬롯을 쓰지 않음", {
+  entries: refereeJoinLobby.entries,
+});
+
+room = createRoom(state, "u1", {
+  title: "FLOW 심판 미출석 전환 1v1",
+  visibility: "private",
+  hostJoinMode: "team",
+  teamId: "t1",
+  opponentTeamId: "t2",
+  mode: "1v1",
+  sideCapacity: 1,
+  timingType: "instant",
+  ranked: false,
+  official: false,
+  preRegistered: true,
+  playerIds: ["u1"],
+  opponentPlayerIds: ["u6"],
+  opponentLeaderId: "u6",
+  refereeId: "u11",
+  court: "성수 브릿지파크",
+});
+state = room.state;
+const refereeAbsentPostId = room.postId;
+let refereeAbsentPost = getPost(state, refereeAbsentPostId);
+const refereeAbsentInvite = refereeAbsentPost.roomState.invitations.find((invitation) => invitation.role === "referee" && invitation.targetUserId === "u11");
+const refereeAbsentOpponentInvite = refereeAbsentPost.roomState.invitations.find((invitation) => invitation.targetUserId === "u6");
+state = withUser(state, "u11", (scoped) => acceptRecruitingInvitation(scoped, refereeAbsentPostId, refereeAbsentInvite.id));
+state = withUser(state, "u6", (scoped) => acceptRecruitingInvitation(scoped, refereeAbsentPostId, refereeAbsentOpponentInvite.id));
+const beforeAbsentMatchIds = new Set(state.matches.map((match) => match.id));
+state = withUser(state, "u1", (scoped) => confirmRecruitingMatch(scoped, refereeAbsentPostId));
+const refereeAbsentMatchId = findNewId(beforeAbsentMatchIds, state.matches);
+assertFlow(getMatch(state, refereeAbsentMatchId).refereeId === "u11", "미출석 전환 전 심판 배정", {
+  refereeId: getMatch(state, refereeAbsentMatchId).refereeId,
+});
+state = withUser(state, "u1", (scoped) => requestMatchRefereeAbsence(scoped, refereeAbsentMatchId));
+assertFlow(getMatch(state, refereeAbsentMatchId).refereeAbsenceRequest?.status === "pending", "방장 심판 미출석 요청", {
+  request: getMatch(state, refereeAbsentMatchId).refereeAbsenceRequest,
+});
+state = withUser(state, "u6", (scoped) => confirmMatchRefereeAbsence(scoped, refereeAbsentMatchId));
+assertFlow(!getMatch(state, refereeAbsentMatchId).refereeId && getMatch(state, refereeAbsentMatchId).formerRefereeId === "u11", "상대 사이드장 심판 미출석 인정", {
+  refereeId: getMatch(state, refereeAbsentMatchId).refereeId,
+  formerRefereeId: getMatch(state, refereeAbsentMatchId).formerRefereeId,
+});
+state = withUser(state, "u1", (scoped) => checkInMatchPlayer(scoped, refereeAbsentMatchId, "teamA", "u1"));
+state = withUser(state, "u1", (scoped) => checkInMatchPlayer(scoped, refereeAbsentMatchId, "teamB", "u6"));
+state = withUser(state, "u1", (scoped) => startMatch(scoped, refereeAbsentMatchId));
+assertFlow(getMatchRoomPhase(getMatch(state, refereeAbsentMatchId)).phase === "live", "심판 미출석 인정 후 방장 시작", {
+  phase: getMatchRoomPhase(getMatch(state, refereeAbsentMatchId)),
+});
 
 room = createRoom(state, "u12", {
   title: "FLOW 후보 자동승격 3v3",

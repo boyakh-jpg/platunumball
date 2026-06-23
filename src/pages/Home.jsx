@@ -26,6 +26,10 @@ function matchHasUser(match, userId) {
   return Boolean(getUserParticipantSide(match, userId));
 }
 
+function matchNeedsUserOperation(match, userId) {
+  return matchHasUser(match, userId) || match.refereeId === userId;
+}
+
 function getUserResult(match, userId) {
   const sideName = getUserParticipantSide(match, userId) ?? "teamA";
   const otherSide = sideName === "teamA" ? "teamB" : "teamA";
@@ -59,12 +63,16 @@ function userNeedsApproval(match, userId) {
 }
 
 function userNeedsResultInput(match, userId) {
-  if (!["agreed", "approval", "disputed"].includes(match.status) || !matchHasUser(match, userId)) return false;
+  if (!["agreed", "approval", "disputed"].includes(match.status) || !matchNeedsUserOperation(match, userId)) return false;
   if (getPlayerStatSubmitted(match, userId)) return false;
   const recordWindow = getMatchRecordWindow(match);
   if (!recordWindow.statOpen) return false;
   const playerIds = [...(match.teamA?.players ?? []), ...(match.teamB?.players ?? [])];
   return playerIds.some((playerId) => getAllowedStatFields(match, userId, playerId).length > 0);
+}
+
+function userOperatesCheckin(match, userId) {
+  return match.refereeId ? match.refereeId === userId : match.createdBy === userId;
 }
 
 function getRecruitingSchedule(post) {
@@ -98,7 +106,7 @@ export default function Home({ app }) {
   const searchText = query.trim().toLowerCase();
   const approvalMatches = [...app.state.matches].filter((match) => userNeedsApproval(match, user.id));
   const upcomingMatches = [...app.state.matches]
-    .filter((match) => ["locked", "checkin"].includes(getMatchRoomPhase(match).phase) && matchHasUser(match, user.id))
+    .filter((match) => ["locked", "checkin"].includes(getMatchRoomPhase(match).phase) && matchNeedsUserOperation(match, user.id))
     .sort(compareSchedule);
   const completedMatches = [...app.state.matches].filter((match) => match.status === "confirmed");
   const myTeam = app.state.teams.find((team) => team.members.some((member) => member.userId === user.id));
@@ -153,7 +161,7 @@ export default function Home({ app }) {
           icon: Trophy,
         })));
     const matchItems = app.state.matches
-      .filter((match) => matchHasUser(match, user.id))
+      .filter((match) => matchNeedsUserOperation(match, user.id))
       .map((match) => {
         const phase = getMatchRoomPhase(match).phase;
         if (userNeedsAgreement(match, user.id)) {
@@ -167,7 +175,7 @@ export default function Home({ app }) {
             icon: Handshake,
           };
         }
-        if (phase === "checkin" && match.createdBy === user.id) {
+        if (phase === "checkin" && userOperatesCheckin(match, user.id)) {
           return {
             id: `checkin-${match.id}`,
             priority: 2,
@@ -240,7 +248,7 @@ export default function Home({ app }) {
     const invitationItems = pendingInvitations.map(({ post, invitation }) => ({
       id: `invite-${post.id}-${invitation.id}`,
       priority: 0,
-      label: "방 초대",
+      label: invitation.role === "referee" ? "심판 초대" : "방 초대",
       title: post.title,
       meta: `${getRecruitingSchedule(post)} · ${post.court}`,
       href: `/app/recruiting?filter=invited&post=${post.id}`,

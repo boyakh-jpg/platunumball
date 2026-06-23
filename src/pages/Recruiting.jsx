@@ -54,6 +54,7 @@ import {
   getRoomVisibilityLabel,
   getMatchRoomPhase,
   getMatchReservePlayerIds,
+  getSideCaptainId,
   getMatchSidePlayerIds,
   normalizePlayerStats,
   getPublicRoomMaxDateInput,
@@ -1386,13 +1387,16 @@ function InvitationPanel({ invitations, userById, teams, currentUserId, alreadyA
       {pending.map((invitation) => {
         const target = userById[invitation.targetUserId];
         const mine = invitation.targetUserId === currentUserId;
+        const inviteLabel = invitation.role === "referee"
+          ? "심판"
+          : `${SIDE_LABELS[invitation.side]} · ${invitation.reserve ? "후보" : "출전"}`;
         return (
           <div key={invitation.id} className={mine ? "mine" : ""}>
             <PlayerHoverCard as="span" user={target} teams={teams}>
               <span className="avatar small" style={{ "--avatar": target?.avatarColor }}>{target?.name?.slice(0, 1) ?? "?"}</span>
               <span>
                 <b>{target?.name ?? "선수"}</b>
-                <em>{SIDE_LABELS[invitation.side]} · {invitation.reserve ? "후보" : "출전"} · {getUserHashtag(target)}</em>
+                <em>{inviteLabel} · {getUserHashtag(target)}</em>
               </span>
             </PlayerHoverCard>
             {mine ? (
@@ -1619,7 +1623,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
     const baseDraft = getDefaultJoinDraft(roomPost, myTeams, app.currentUser, app.state);
     const storedDraft = joinDraftByPost[roomPost.id];
     if (!storedDraft) return baseDraft;
-    if (!isTeamOnlyRoom(roomPost) || storedDraft.joinMode === "team") return storedDraft;
+    if (!isTeamOnlyRoom(roomPost) || storedDraft.joinMode === "team" || storedDraft.joinMode === "referee") return storedDraft;
     return {
       ...baseDraft,
       ...storedDraft,
@@ -1755,6 +1759,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
           entry.reserves?.includes(app.currentUser.id)
         ));
         const alreadyApplied = Boolean(myEntry && !mine);
+        const currentUserIsRoomReferee = selectedPost.refereeId === app.currentUser.id;
         const canInviteFromRoom = !matchRoom && isCurrentUserRoomParticipant(selectedPost, lobby, app.currentUser.id);
         const canChat = Boolean(storedRoomPost) && isCurrentUserRoomParticipant(selectedPost, lobby, app.currentUser.id);
         const getJoinRosterPatch = (team, sideName = joinDraft.side, reserve = joinDraft.reserve) => (
@@ -1766,7 +1771,16 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
           selectedJoinPlayerIds.length > 0 &&
           (!teamOnlyRoom || selectedJoinPlayerIds.length >= getRecruitingSideCapacity(selectedPost))
         );
-        const canJoin = !matchRoom && !mine && !alreadyApplied && fit.allowed && (joinDraft.joinMode === "player" || teamJoinValid);
+        const canJoinReferee = selectedPost.visibility === "public" && !selectedPost.refereeId && isEligibleReferee(app.currentUser, selectedPost.refereeTrustMin);
+        const canJoin = !matchRoom && !mine && !alreadyApplied && (
+          joinDraft.joinMode === "referee"
+            ? canJoinReferee
+            : fit.allowed && (joinDraft.joinMode === "player" || teamJoinValid)
+        );
+        const joinModeEntries = [
+          ...Object.entries(RECRUITING_JOIN_MODES).filter(([mode]) => !teamOnlyRoom || mode === "team"),
+    ...(canJoinReferee ? [["referee", { label: "심판" }]] : []),
+        ];
         const selectedRange = getRecruitingTierRange(
           getRecruitingTargetMmr(selectedPost, app.state),
           selectedPost.ranked !== false,
@@ -1848,13 +1862,20 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
         const sourceMatchStarted = Boolean(sourceMatch?.startedAt);
         const currentUserIsSourceReferee = Boolean(sourceMatch && isMatchReferee(sourceMatch, app.currentUser.id) && isEligibleReferee(app.currentUser, sourceMatch.refereeTrustMin));
         const currentUserCanOperateStartedSourceMatch = Boolean(sourceMatch && (sourceMatch.refereeId ? currentUserIsSourceReferee : mine));
-        const currentUserCanStartSourceMatch = Boolean(sourceMatch && (mine || currentUserIsSourceReferee));
+        const currentUserCanStartSourceMatch = Boolean(sourceMatch && (sourceMatch.refereeId ? currentUserIsSourceReferee : mine));
+        const sourceMatchHostSideName = sourceMatch && getMatchSidePlayerIds(sourceMatch, "teamB").includes(sourceMatch.createdBy) ? "teamB" : "teamA";
+        const sourceMatchOpponentSideName = sourceMatchHostSideName === "teamA" ? "teamB" : "teamA";
+        const sourceMatchOpponentLeaderId = sourceMatch
+          ? getSideCaptainId(sourceMatch, app.state.teams, sourceMatchOpponentSideName) ?? getMatchSidePlayerIds(sourceMatch, sourceMatchOpponentSideName)[0] ?? ""
+          : "";
         const sourceMatchAttendance = {
           teamA: sourceMatch?.attendance?.teamA ?? [],
           teamB: sourceMatch?.attendance?.teamB ?? [],
         };
         const canManageMatchCheckin = Boolean(matchRoom && currentUserCanStartSourceMatch && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.startedAt && !sourceMatch?.endedAt && !sourceMatch?.result);
         const canStartSourceMatch = Boolean(matchRoom && currentUserCanStartSourceMatch && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.result && !sourceMatch?.endedAt);
+        const canRequestRefereeAbsence = Boolean(matchRoom && mine && sourceMatch?.refereeId && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.refereeAbsenceRequest?.confirmedAt && !sourceMatch?.startedAt && !sourceMatch?.endedAt && !sourceMatch?.result);
+        const canConfirmRefereeAbsence = Boolean(matchRoom && sourceMatchOpponentLeaderId === app.currentUser.id && sourceMatch?.refereeId && sourceMatch?.refereeAbsenceRequest && !sourceMatch.refereeAbsenceRequest.confirmedAt && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.startedAt && !sourceMatch?.endedAt && !sourceMatch?.result && sourceMatchSideName);
         const canEndSourceMatch = Boolean(matchRoom && currentUserCanOperateStartedSourceMatch && sourceMatchPhase?.phase === "live" && !sourceMatch?.result && !sourceMatch?.endedAt && sourceMatchStarted);
         const canReviewSourceMatch = Boolean(matchRoom && currentUserCanOperateStartedSourceMatch && sourceMatchPhase?.phase === "dispute");
         const canCancelSourceMatch = Boolean(matchRoom && sourceMatch && ["contract", "agreed"].includes(sourceMatch.status) && (sourceMatchStarted || sourceMatch.endedAt || sourceMatch.result ? currentUserCanOperateStartedSourceMatch : mine));
@@ -2418,6 +2439,16 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                         {sourceMatchAction.button}
                       </Button>
                     ) : null}
+                    {!sourceRoomReadOnly && canRequestRefereeAbsence ? (
+                      <Button type="button" variant="secondary" onClick={() => app.actions.requestMatchRefereeAbsence(sourceMatch.id)}>
+                        심판 미출석
+                      </Button>
+                    ) : null}
+                    {!sourceRoomReadOnly && canConfirmRefereeAbsence ? (
+                      <Button type="button" variant="secondary" onClick={() => app.actions.confirmMatchRefereeAbsence(sourceMatch.id)}>
+                        심판 미출석 인정
+                      </Button>
+                    ) : null}
                     {!sourceRoomReadOnly && canStartSourceMatch ? (
                       <Button type="button" onClick={() => app.actions.startMatch(sourceMatch.id)}>
                         경기 시작
@@ -2438,6 +2469,11 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                   <div className="arena-owner-panel">
                     <strong>방장 권한</strong>
                     <span>{roomQueueStatus.detail}</span>
+                  </div>
+                ) : currentUserIsRoomReferee ? (
+                  <div className="arena-owner-panel">
+                    <strong>심판 참여 중</strong>
+                    <span>슬롯 없이 심판으로 배정된 상태입니다.</span>
                   </div>
                 ) : alreadyApplied ? (
                   <div className="arena-owner-panel">
@@ -2462,7 +2498,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                       </div>
                     ) : null}
                     <div className="segmented-control compact-segments">
-                      {Object.entries(RECRUITING_JOIN_MODES).filter(([mode]) => !teamOnlyRoom || mode === "team").map(([mode, meta]) => (
+                      {joinModeEntries.map(([mode, meta]) => (
                         <button
                           key={mode}
                           type="button"
@@ -2476,6 +2512,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                             updateJoinDraft(selectedPost, {
                               joinMode: mode,
                               teamId,
+                              reserve: false,
                               ...rosterPatch,
                             });
                           }}
@@ -2522,6 +2559,15 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                           requiredPlayerId={app.currentUser.id}
                         />
                       </>
+                    ) : joinDraft.joinMode === "referee" ? (
+                      <div className="arena-mini-note">
+                        <div>
+                          <span>심판 참여</span>
+                          <strong>슬롯 사용 안 함</strong>
+                          <em>경기 시작 이후 운영 권한</em>
+                        </div>
+                        <ShieldCheck size={18} />
+                      </div>
                     ) : (
                       <label>
                         포지션
@@ -2530,6 +2576,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                         </select>
                       </label>
                     )}
+                    {joinDraft.joinMode !== "referee" ? (
                     <div className="arena-field-grid">
                       <label>
                         진영
@@ -2573,16 +2620,17 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                         </span>
                       </label>
                     </div>
+                    ) : null}
                     <div className="arena-mini-note">
                       <div>
-                        <span>{joinDraft.joinMode === "team" ? `팀 파티 ${selectedJoinPlayerIds.length}+${selectedJoinReserveIds.length}` : "개인 참여"}</span>
-                        <strong>{fit.label}</strong>
-                        <em>{fit.range.label}</em>
+                        <span>{joinDraft.joinMode === "team" ? `팀 파티 ${selectedJoinPlayerIds.length}+${selectedJoinReserveIds.length}` : joinDraft.joinMode === "referee" ? "심판 참여" : "개인 참여"}</span>
+                        <strong>{joinDraft.joinMode === "referee" ? "심판 가능" : fit.label}</strong>
+                        <em>{joinDraft.joinMode === "referee" ? "슬롯 사용 안 함" : fit.range.label}</em>
                       </div>
-                      <TierBadge mmr={candidateMmr || app.currentUser.ratings.integrated} compact />
+                      {joinDraft.joinMode === "referee" ? <ShieldCheck size={18} /> : <TierBadge mmr={candidateMmr || app.currentUser.ratings.integrated} compact />}
                     </div>
                     <Button type="submit" disabled={!canJoin}>
-                      {joinDraft.joinMode === "team" ? <UsersRound size={18} /> : <UserRound size={18} />}
+                      {joinDraft.joinMode === "team" ? <UsersRound size={18} /> : joinDraft.joinMode === "referee" ? <ShieldCheck size={18} /> : <UserRound size={18} />}
                       참여
                     </Button>
                   </form>

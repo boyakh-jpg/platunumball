@@ -243,6 +243,7 @@ export function normalizeRecruitingRoomState(roomState = {}) {
     ? roomState.invitations
         .map((item) => ({
           id: item.id ?? "",
+          role: item.role === "referee" ? "referee" : "player",
           targetUserId: item.targetUserId ?? item.userId ?? "",
           fromUserId: item.fromUserId ?? item.by ?? "",
           teamId: item.teamId ?? null,
@@ -331,6 +332,7 @@ export function isRecruitingPostForUser(post = {}, userId, teamIds = []) {
   if (!userId) return false;
   if (getRecruitingRoomOwnerId(post) === userId) return true;
   if (post.playerId === userId) return true;
+  if (post.refereeId === userId) return true;
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
   if (unique(post.playerIds ?? post.players ?? []).includes(userId)) return true;
   if ((roomState.partyReserves.host ?? []).includes(userId)) return true;
