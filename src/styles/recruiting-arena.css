@@ -3259,6 +3259,13 @@ html[data-theme="light"] .arena-recruit-card.arena-target-room {
 
 .arena-filter-bar .segmented-control button {
   flex: 1 0 auto;
+  border: 0;
+  background: transparent;
+}
+
+.arena-filter-bar .segmented-control button.active {
+  background: rgba(70, 224, 182, 0.12);
+  color: var(--green);
 }
 
 .arena-filter-select select {
@@ -3312,6 +3319,16 @@ html[data-theme="light"] .arena-filter-select select,
 html[data-theme="light"] .arena-collapse-button {
   border-color: rgba(41, 116, 99, 0.16);
   background: rgba(255, 255, 255, 0.72);
+}
+
+html[data-theme="light"] .arena-filter-bar .segmented-control button {
+  border: 0;
+  background: transparent;
+}
+
+html[data-theme="light"] .arena-filter-bar .segmented-control button.active {
+  background: rgba(15, 159, 126, 0.12);
+  color: var(--green);
 }
 
 @media (max-width: 720px) {
