@@ -18,6 +18,29 @@ Caveman mode.
 - Do not invent filenames.
 - Commit and push completed work unless user says not to.
 
+# Agent Instructions
+
+## User preferences
+- Make minimal safe changes.
+- Do not rewrite whole files unless necessary.
+- Do not delete assets unless explicitly asked.
+- Do not invent filenames.
+- Preserve existing UI/behavior unless the task explicitly requires a change.
+- Prefer small targeted patches.
+
+## Reporting format
+After every task, report:
+1. changed files
+2. exact changes
+3. commands run
+4. important warnings
+
+## Development rules
+- Inspect current files before editing.
+- If requirements are ambiguous, make the safest reasonable assumption and mention it.
+- If there are uncommitted changes, do not overwrite them.
+- If a build/test fails, include the exact failure summary.
+
 # Request Handling
 
 - Before implementing non-trivial requests, restate the request as a clean implementation prompt in Korean.
