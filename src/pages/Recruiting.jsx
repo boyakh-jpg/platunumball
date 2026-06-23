@@ -663,7 +663,7 @@ function QueueRoomBoard({ post, lobby }) {
   const ruleSummary = getRecruitingRuleSummary(post);
 
   return (
-    <div className={lobby.canConfirm ? "om-match-summary-box count-summary complete" : "om-match-summary-box count-summary"}>
+    <div className="om-match-summary-box count-summary">
       <div className="om-summary-line">
         <span className="om-summary-side">A {lobby.sides.teamA.projectedFilled}/{lobby.sides.teamA.capacity}</span>
         <strong>{filled}/{capacity}</strong>
