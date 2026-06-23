@@ -528,7 +528,7 @@ export default function Settings({ app, auth }) {
                 구장명
                 <input value={courtDraft.name} placeholder="예: 망원 나들목 골대" onChange={(event) => updateCourtDraft({ name: event.target.value })} />
               </label>
-              <div className="ow-field-grid">
+              <div className="arena-field-grid">
                 <label>
                   지역
                   <select value={courtDraft.region} onChange={(event) => updateCourtDraft({ region: event.target.value })}>

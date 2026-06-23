@@ -69,14 +69,14 @@ class RoomModalErrorBoundary extends Component {
 
 function RoomModalErrorView({ error, onClose }) {
   return (
-    <div className="ow-modal-backdrop" role="presentation" onMouseDown={onClose}>
-      <aside className="ow-room-modal" role="dialog" aria-modal="true" aria-label="경기방 오류" onMouseDown={(event) => event.stopPropagation()}>
-        <div className="ow-modal-status-row">
+    <div className="arena-modal-backdrop" role="presentation" onMouseDown={onClose}>
+      <aside className="arena-room-modal" role="dialog" aria-modal="true" aria-label="경기방 오류" onMouseDown={(event) => event.stopPropagation()}>
+        <div className="arena-modal-status-row">
           <Badge tone="orange">경기방 오류</Badge>
         </div>
-        <h2 className="ow-room-title">경기방을 열 수 없습니다</h2>
-        <p className="ow-room-subtitle">{String(error?.message ?? "방 데이터를 확인해야 합니다.")}</p>
-        <div className="ow-modal-close-row">
+        <h2 className="arena-room-title">경기방을 열 수 없습니다</h2>
+        <p className="arena-room-subtitle">{String(error?.message ?? "방 데이터를 확인해야 합니다.")}</p>
+        <div className="arena-modal-close-row">
           <Button type="button" variant="secondary" size="lg" onClick={onClose}>
             방 닫기
           </Button>

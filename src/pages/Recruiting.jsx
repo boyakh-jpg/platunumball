@@ -70,11 +70,11 @@ const SIDE_LABELS = {
 const RECORDABLE_RESERVE_SOURCES = new Set(["reserve-entry", "team-reserve"]);
 const MAX_RESERVE_PLAYERS_PER_SIDE = 2;
 const ROOM_SLOT_POSITION_AVATARS = {
-  PG: "/assets/position-avatars/PG.png",
-  SG: "/assets/position-avatars/SG.png",
-  SF: "/assets/position-avatars/SF.png",
-  PF: "/assets/position-avatars/PF.png",
-  C: "/assets/position-avatars/C.png",
+  PG: "/assets/position-avatars/PG.webp",
+  SG: "/assets/position-avatars/SG.webp",
+  SF: "/assets/position-avatars/SF.webp",
+  PF: "/assets/position-avatars/PF.webp",
+  C: "/assets/position-avatars/C.webp",
 };
 
 function formatWhen(value) {
@@ -268,9 +268,9 @@ function RoomSlotAvatar({ user, mmr = 1200, position = null }) {
   }
 
   return (
-    <span className="avatar ow-position-avatar" data-position={normalizedPosition} style={{ "--avatar": user?.avatarColor }}>
+    <span className="avatar arena-position-avatar" data-position={normalizedPosition} style={{ "--avatar": user?.avatarColor }}>
       <img
-        className="ow-position-avatar-tier"
+        className="arena-position-avatar-tier"
         src={getTierEmblemSrc(user?.ratings?.integrated ?? mmr)}
         alt=""
         aria-hidden="true"
@@ -280,7 +280,7 @@ function RoomSlotAvatar({ user, mmr = 1200, position = null }) {
         }}
       />
       <img
-        className="ow-position-avatar-player"
+        className="arena-position-avatar-player"
         src={avatarSrc}
         alt=""
         aria-hidden="true"
@@ -442,7 +442,7 @@ export function PlayerRoomSlot({
     return (
       <button
         type="button"
-        className={invite ? "ow-room-player-slot empty invite" : "ow-room-player-slot empty"}
+        className={invite ? "arena-room-player-slot empty invite" : "arena-room-player-slot empty"}
         disabled={!invite}
         onClick={onInvite}
       >
@@ -453,12 +453,12 @@ export function PlayerRoomSlot({
     );
   }
 
-  const slotClassName = status === "ready" ? "ow-room-player-slot ready" : "ow-room-player-slot";
+  const slotClassName = status === "ready" ? "arena-room-player-slot ready" : "arena-room-player-slot";
   const displayPosition = position ?? getPlayerPosition(user);
   const slotContent = (
     <>
       {badge ? (
-        <span className={`ow-room-slot-crown ${badge.tone}`} title={badge.label} aria-label={badge.label}>
+        <span className={`arena-room-slot-crown ${badge.tone}`} title={badge.label} aria-label={badge.label}>
           <Crown size={12} strokeWidth={3} />
         </span>
       ) : null}
@@ -471,7 +471,7 @@ export function PlayerRoomSlot({
   );
 
   return (
-    <div className="ow-room-player-slot-wrap">
+    <div className="arena-room-player-slot-wrap">
       {onSelfAction ? (
         <button type="button" className={`${slotClassName} self-action`} onClick={(event) => onSelfAction(event)}>
           {slotContent}
@@ -545,7 +545,7 @@ function TeamMemberPicker({
 }) {
   if (!team) {
     return (
-      <div className="ow-party-picker empty">
+      <div className="arena-party-picker empty">
         <span>선택할 팀이 없다.</span>
       </div>
     );
@@ -579,15 +579,15 @@ function TeamMemberPicker({
   };
 
   return (
-    <div className="ow-party-picker">
-      <div className="ow-party-picker-head">
+    <div className="arena-party-picker">
+      <div className="arena-party-picker-head">
         <span>참여 팀원</span>
         <strong>
           출전 {selectedIds.length}/{capacity}
           {canSelectReserves ? ` · 후보 ${reserveIds.length}/${reserveCapacity}` : ""}
         </strong>
       </div>
-      <div className="ow-party-picker-grid">
+      <div className="arena-party-picker-grid">
         {memberIds.map((playerId) => {
           const user = userById[playerId];
           const selected = selectedSet.has(playerId);
@@ -601,7 +601,7 @@ function TeamMemberPicker({
             <div
               key={playerId}
               className={[
-                "ow-party-member-card",
+                "arena-party-member-card",
                 selected ? "selected" : "",
                 reserve ? "reserve" : "",
                 required ? "required" : "",
@@ -613,7 +613,7 @@ function TeamMemberPicker({
                 <em>{required ? `${getPlayerPosition(user)} · 필수` : getPlayerPosition(user)}</em>
               </span>
               <TierBadge mmr={user?.ratings?.integrated ?? 1200} compact />
-              <div className="ow-party-role-buttons">
+              <div className="arena-party-role-buttons">
                 <button type="button" className={selected ? "active" : ""} disabled={activeLocked} onClick={() => setMemberRole(playerId, "active")}>출전</button>
                 {canSelectReserves ? (
                   <button type="button" className={reserve ? "active" : ""} disabled={reserveLocked} onClick={() => setMemberRole(playerId, "reserve")}>후보</button>
@@ -675,7 +675,7 @@ function FillSlot({ candidate, lobby, userById, teams, hostPlayerId = "", curren
   const displayPosition = getRoomSlotDisplayPosition(user, slotPositions, candidate?.playerId, entry);
   if (!user) {
     return (
-      <div className="ow-room-player-slot empty">
+      <div className="arena-room-player-slot empty">
         <UserRound size={17} />
         <span>후보 없음</span>
       </div>
@@ -683,15 +683,15 @@ function FillSlot({ candidate, lobby, userById, teams, hostPlayerId = "", curren
   }
 
   return (
-    <div className="ow-room-player-slot-wrap">
+    <div className="arena-room-player-slot-wrap">
       {canOpenAction && onSelfAction ? (
         <button
           type="button"
-          className={candidate.status === "ready" ? "ow-room-player-slot fill ready self-action" : "ow-room-player-slot fill self-action"}
+          className={candidate.status === "ready" ? "arena-room-player-slot fill ready self-action" : "arena-room-player-slot fill self-action"}
           onClick={(event) => onSelfAction(event)}
         >
           {badge ? (
-            <span className={`ow-room-slot-crown ${badge.tone}`} title={badge.label} aria-label={badge.label}>
+            <span className={`arena-room-slot-crown ${badge.tone}`} title={badge.label} aria-label={badge.label}>
               <Crown size={12} strokeWidth={3} />
             </span>
           ) : null}
@@ -702,9 +702,9 @@ function FillSlot({ candidate, lobby, userById, teams, hostPlayerId = "", curren
           <em>{candidate.status === "ready" ? readyText : readyLabel}</em>
         </button>
       ) : (
-      <PlayerHoverCard user={user} teams={teams} className={candidate.status === "ready" ? "ow-room-player-slot fill ready" : "ow-room-player-slot fill"}>
+      <PlayerHoverCard user={user} teams={teams} className={candidate.status === "ready" ? "arena-room-player-slot fill ready" : "arena-room-player-slot fill"}>
         {badge ? (
-          <span className={`ow-room-slot-crown ${badge.tone}`} title={badge.label} aria-label={badge.label}>
+          <span className={`arena-room-slot-crown ${badge.tone}`} title={badge.label} aria-label={badge.label}>
             <Crown size={12} strokeWidth={3} />
           </span>
         ) : null}
@@ -749,7 +749,7 @@ function CommandPopoverFrame({ floating = false, anchor = null, className = "", 
   if (!floating) return panel;
 
   return (
-    <div className="ow-slot-popover-backdrop" role="presentation" onPointerDown={onClose}>
+    <div className="arena-slot-popover-backdrop" role="presentation" onPointerDown={onClose}>
       {panel}
     </div>
   );
@@ -757,15 +757,15 @@ function CommandPopoverFrame({ floating = false, anchor = null, className = "", 
 
 export function SlotCommandPanel({ sideName, reserve = false, floating = false, anchor = null, canMoveHere = false, partyJoinOptions = [], onMoveHere, onJoinParty, onClose, children }) {
   return (
-    <CommandPopoverFrame floating={floating} anchor={anchor} className="ow-slot-command-popover" onClose={onClose}>
+    <CommandPopoverFrame floating={floating} anchor={anchor} className="arena-slot-command-popover" onClose={onClose}>
       <header>
         <div>
           <strong>{SIDE_LABELS[sideName]} {reserve ? "후보 슬롯" : "빈 슬롯"}</strong>
           <span>이 자리로 이동하거나 초대한다.</span>
         </div>
-        <button type="button" className="ow-icon-button" aria-label="닫기" onClick={onClose}><X size={16} /></button>
+        <button type="button" className="arena-icon-button" aria-label="닫기" onClick={onClose}><X size={16} /></button>
       </header>
-      <div className="ow-slot-command-actions">
+      <div className="arena-slot-command-actions">
         <Button type="button" size="sm" variant="secondary" disabled={!canMoveHere} onClick={onMoveHere}>
           이 자리로 이동
         </Button>
@@ -806,19 +806,19 @@ export function SelfSlotCommandPanel({
   const safeCurrentPosition = PLAYER_POSITIONS.includes(currentPosition) ? currentPosition : PLAYER_POSITIONS[0];
 
   return (
-    <CommandPopoverFrame floating anchor={anchor} className="ow-slot-command-popover ow-self-slot-popover" onClose={onClose}>
+    <CommandPopoverFrame floating anchor={anchor} className="arena-slot-command-popover arena-self-slot-popover" onClose={onClose}>
       <header>
         <div>
           <strong>{heading}</strong>
           <span>{SIDE_LABELS[sideName]} · {reserve ? "후보" : "출전"} · {partyText}</span>
         </div>
-        <button type="button" className="ow-icon-button" aria-label="닫기" onClick={onClose}><X size={16} /></button>
+        <button type="button" className="arena-icon-button" aria-label="닫기" onClick={onClose}><X size={16} /></button>
       </header>
-      <div className="ow-self-slot-status">
+      <div className="arena-self-slot-status">
         <Badge tone={inParty ? "green" : fromParty ? "orange" : "neutral"}>{partyText}</Badge>
       </div>
       {onPositionChange ? (
-        <label className="ow-self-position-control">
+        <label className="arena-self-position-control">
           <span>슬롯 포지션</span>
           <select value={safeCurrentPosition} onChange={(event) => onPositionChange(event.target.value)}>
             {PLAYER_POSITIONS.map((position) => <option key={position} value={position}>{position}</option>)}
@@ -826,7 +826,7 @@ export function SelfSlotCommandPanel({
         </label>
       ) : null}
       {children}
-      <div className="ow-slot-command-actions">
+      <div className="arena-slot-command-actions">
         {canLeaveParty ? (
           <Button type="button" size="sm" variant="secondary" onClick={onLeaveParty}>
             파티 나가기
@@ -896,19 +896,19 @@ export function SideRoster({
     );
   };
   return (
-    <section className="ow-side-roster">
+    <section className="arena-side-roster">
       <header>
         <div>
           <span>{SIDE_LABELS[sideName]}</span>
           <strong>{side.projectedFilled}/{side.capacity}</strong>
         </div>
       </header>
-      <div className="ow-room-slot-row" style={{ "--slot-count": 5 }}>
+      <div className="arena-room-slot-row" style={{ "--slot-count": 5 }}>
         {activeSlotGroups.map((group) => (
           group.type === "party" ? (
             <div
               key={`${sideName}-${group.partyKey}`}
-              className="ow-room-party-group"
+              className="arena-room-party-group"
               style={{ "--party-slot-count": group.slots.length, gridColumn: `span ${group.slots.length}` }}
             >
               {group.slots.map(renderActiveSlot)}
@@ -935,10 +935,10 @@ export function SideRoster({
           const slotKey = `${sideName}-active-${index}`;
           return (
             <Fragment key={slotKey}>
-              <div className="ow-room-player-slot-wrap">
+              <div className="arena-room-player-slot-wrap">
                 <button
                   type="button"
-                  className={canInvite ? "ow-room-player-slot empty invite" : "ow-room-player-slot empty"}
+                  className={canInvite ? "arena-room-player-slot empty invite" : "arena-room-player-slot empty"}
                   disabled={!canInvite}
                   onClick={(event) => onInviteSlot?.(sideName, false, slotKey, event)}
                 >
@@ -1011,14 +1011,14 @@ export function ReserveLine({
     );
   };
   return (
-    <div className="ow-reserve-line">
+    <div className="arena-reserve-line">
       <strong>{SIDE_LABELS[sideName]} 후보 {candidates.length}/{MAX_RESERVE_PLAYERS_PER_SIDE}</strong>
-      <div className="ow-room-reserve-row" style={{ "--slot-count": slotTrackCount }}>
+      <div className="arena-room-reserve-row" style={{ "--slot-count": slotTrackCount }}>
         {reserveSlotGroups.map((group) => (
           group.type === "party" ? (
             <div
               key={`${sideName}-reserve-${group.partyKey}`}
-              className="ow-room-party-group"
+              className="arena-room-party-group"
               style={{ "--party-slot-count": group.slots.length, gridColumn: `span ${group.slots.length}` }}
             >
               {group.slots.map(renderReserveSlot)}
@@ -1029,10 +1029,10 @@ export function ReserveLine({
           const slotKey = `${sideName}-reserve-${index}`;
           return (
             <Fragment key={slotKey}>
-              <div className="ow-room-player-slot-wrap">
+              <div className="arena-room-player-slot-wrap">
                 <button
                   type="button"
-                  className={canInvite ? "ow-room-player-slot empty invite" : "ow-room-player-slot empty"}
+                  className={canInvite ? "arena-room-player-slot empty invite" : "arena-room-player-slot empty"}
                   disabled={!canInvite}
                   onClick={(event) => onInviteSlot?.(sideName, true, slotKey, event)}
                 >
@@ -1081,17 +1081,17 @@ function RoomKickPanel({
   if (!rows.length) return null;
 
   return (
-    <div className="ow-host-kick-panel">
+    <div className="arena-host-kick-panel">
       <header>
         <strong>강퇴</strong>
         <span>방장은 팀 배치 대신 퇴장만 처리한다.</span>
       </header>
-      <div className="ow-host-kick-list">
+      <div className="arena-host-kick-list">
         {rows.map(({ entry, partyEntry, playerId, reserve, user }) => {
           const checkedIn = Boolean(attendanceBySide?.[entry.side]?.includes(playerId));
           const kickDisabled = requireMissingAttendance && checkedIn;
           return (
-            <div key={`${entry.id}-${playerId}`} className="ow-host-kick-row">
+            <div key={`${entry.id}-${playerId}`} className="arena-host-kick-row">
               <PlayerHoverCard user={user} teams={teams} as="span">
                 <span className="avatar small" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
                 <span>
@@ -1146,16 +1146,16 @@ function RoomKickPanel({
 
 export function RoomChat({ messages, userById, teams, value, canChat, readOnly = false, onChange, onSubmit }) {
   return (
-    <div className="ow-room-chat">
+    <div className="arena-room-chat">
       <header>
         <span><MessageSquare size={16} /> 방 채팅</span>
         <strong>{messages.length}</strong>
       </header>
-      <div className="ow-chat-list">
+      <div className="arena-chat-list">
         {messages.length ? messages.map((message) => {
           const user = userById[message.userId];
           return (
-            <div key={message.id || `${message.userId}-${message.createdAt}`} className="ow-chat-message">
+            <div key={message.id || `${message.userId}-${message.createdAt}`} className="arena-chat-message">
               <PlayerHoverCard user={user} teams={teams} as="span">
                 <span className="avatar small" style={{ "--avatar": user?.avatarColor }}>{user?.name?.slice(0, 1) ?? "?"}</span>
               </PlayerHoverCard>
@@ -1166,11 +1166,11 @@ export function RoomChat({ messages, userById, teams, value, canChat, readOnly =
             </div>
           );
         }) : (
-          <div className="ow-chat-empty">아직 채팅 없음</div>
+          <div className="arena-chat-empty">아직 채팅 없음</div>
         )}
       </div>
       {!readOnly ? (
-        <form className="ow-chat-form" onSubmit={onSubmit}>
+        <form className="arena-chat-form" onSubmit={onSubmit}>
           <input
             value={value}
             disabled={!canChat}
@@ -1223,7 +1223,7 @@ export function InvitePanel({
   const renderPlayerInvite = (player) => {
     const disabled = !player || disabledSet.has(player.id) || !isAllowedPlayer(player.id);
     return (
-      <button key={player.id} type="button" className="ow-invite-favorite" disabled={disabled} onClick={() => onInvitePlayers([player.id], null)}>
+      <button key={player.id} type="button" className="arena-invite-favorite" disabled={disabled} onClick={() => onInvitePlayers([player.id], null)}>
         <PlayerHoverCard as="span" user={player} teams={teams}>
           <span className="avatar small" style={{ "--avatar": player.avatarColor }}>{player.name.slice(0, 1)}</span>
           <span>
@@ -1237,23 +1237,23 @@ export function InvitePanel({
   };
 
   return (
-    <div className="ow-invite-panel">
+    <div className="arena-invite-panel">
       <header>
         <div>
           <strong>{SIDE_LABELS[sideName]} {reserve ? "후보" : "빈 슬롯"} 초대</strong>
           <span>{reserve ? "수락하면 해당 사이드의 후보 선수로 들어온다." : "선착순 수락이다. 방이 차면 수락 실패."}</span>
         </div>
-        <button type="button" className="ow-icon-button" aria-label="초대 닫기" onClick={onClose}><X size={18} /></button>
+        <button type="button" className="arena-icon-button" aria-label="초대 닫기" onClick={onClose}><X size={18} /></button>
       </header>
-      <label className="ow-invite-search">
+      <label className="arena-invite-search">
         <Search size={17} />
         <input value={query} placeholder={allowedTeam ? `${allowedTeam.name} 팀원 해시태그` : "#minjun 또는 #noeulkings"} onChange={(event) => onQueryChange(event.target.value)} />
       </label>
 
-      {allowedTeam ? <div className="ow-invite-empty">{allowedTeam.name} 팀원만 이 사이드에 초대할 수 있습니다.</div> : null}
+      {allowedTeam ? <div className="arena-invite-empty">{allowedTeam.name} 팀원만 이 사이드에 초대할 수 있습니다.</div> : null}
 
       {matchedUser ? (
-        <div className="ow-invite-result">
+        <div className="arena-invite-result">
           <PlayerHoverCard as="span" user={matchedUser} teams={teams}>
             <span className="avatar small" style={{ "--avatar": matchedUser.avatarColor }}>{matchedUser.name.slice(0, 1)}</span>
             <span>
@@ -1271,8 +1271,8 @@ export function InvitePanel({
       ) : null}
 
       {matchedTeam && (!allowedTeamId || matchedTeam.id === allowedTeamId) ? (
-        <div className="ow-invite-team-picker">
-          <div className="ow-invite-team-head">
+        <div className="arena-invite-team-picker">
+          <div className="arena-invite-team-head">
             <TeamHoverCard as="span" team={matchedTeam}>
               <span className="team-dot" style={{ "--team-color": matchedTeam.accent }} />
               <span>
@@ -1284,7 +1284,7 @@ export function InvitePanel({
               <Star size={15} fill={favoriteTeamIds.includes(matchedTeam.id) ? "currentColor" : "none"} />
             </button>
           </div>
-          <div className="ow-invite-member-grid">
+          <div className="arena-invite-member-grid">
             {teamMemberIds.map((playerId) => {
               const player = userById[playerId];
               const selected = selectedSet.has(playerId);
@@ -1306,14 +1306,14 @@ export function InvitePanel({
         </div>
       ) : null}
 
-      {query.trim() && !matchedUser && !matchedTeam ? <div className="ow-invite-empty">해시태그 결과 없음</div> : null}
+      {query.trim() && !matchedUser && !matchedTeam ? <div className="arena-invite-empty">해시태그 결과 없음</div> : null}
 
-      <div className="ow-invite-favorites">
+      <div className="arena-invite-favorites">
         <strong>즐겨찾기</strong>
         <div>
           {favoritePlayers.map(renderPlayerInvite)}
           {favoriteTeams.map((team) => (
-            <button key={team.id} type="button" className="ow-invite-favorite" onClick={() => onQueryChange(getTeamHashtag(team))}>
+            <button key={team.id} type="button" className="arena-invite-favorite" onClick={() => onQueryChange(getTeamHashtag(team))}>
               <TeamHoverCard as="span" team={team}>
                 <span className="team-dot" style={{ "--team-color": team.accent }} />
                 <span>
@@ -1335,7 +1335,7 @@ function InvitationPanel({ invitations, userById, teams, currentUserId, alreadyA
   const pending = invitations.filter((invitation) => invitation.status === "pending");
   if (!pending.length) return null;
   return (
-    <div className="ow-invitation-list">
+    <div className="arena-invitation-list">
       <strong>초대장</strong>
       {pending.map((invitation) => {
         const target = userById[invitation.targetUserId];
@@ -1350,7 +1350,7 @@ function InvitationPanel({ invitations, userById, teams, currentUserId, alreadyA
               </span>
             </PlayerHoverCard>
             {mine ? (
-              <span className="ow-invite-actions">
+              <span className="arena-invite-actions">
                 <Button type="button" size="sm" onClick={() => onAccept(invitation.id)}>수락</Button>
                 <Button type="button" size="sm" variant="secondary" onClick={() => onDecline(invitation.id)}>거절</Button>
               </span>
@@ -1431,7 +1431,7 @@ function SourceMatchRecordSummary({ match, userById }) {
     const sidePlayerIds = getMatchSidePlayerIds(match, sideName);
     const playerStats = normalizePlayerStats(result.playerStats, sidePlayerIds);
     return (
-    <div className="ow-source-record-side" key={sideName}>
+    <div className="arena-source-record-side" key={sideName}>
       <strong>{match[sideName]?.name ?? SIDE_LABELS[sideName]}</strong>
       {sidePlayerIds.map((playerId) => {
         const user = userById[playerId];
@@ -1447,13 +1447,13 @@ function SourceMatchRecordSummary({ match, userById }) {
   };
 
   return (
-    <div className="ow-source-record-summary">
-      <div className="ow-source-record-score">
+    <div className="arena-source-record-summary">
+      <div className="arena-source-record-score">
         <span>{match.teamA?.name ?? "A"}</span>
         <strong>{Number(result.scoreA ?? match.teamA?.score ?? 0)} : {Number(result.scoreB ?? match.teamB?.score ?? 0)}</strong>
         <span>{match.teamB?.name ?? "B"}</span>
       </div>
-      <div className="ow-source-record-grid">
+      <div className="arena-source-record-grid">
         {["teamA", "teamB"].map(renderSide)}
       </div>
     </div>
@@ -1856,7 +1856,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
               ]
             : selfPlacementActions;
           return (
-            <div className="ow-self-placement-actions">
+            <div className="arena-self-placement-actions">
               {actions.map((action) => {
                 const active = targetEntry.side === action.side && targetReserve === action.reserve;
                 const movable = targetIsParty
@@ -1924,10 +1924,10 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
         };
 
         return (
-          <div className="ow-compose-backdrop" role="presentation" onPointerDown={() => { setInviteDraft(null); setSlotActionDraft(null); closeModal(); }}>
-            <aside className="ow-lobby-modal" role="dialog" aria-modal="true" aria-label="매치방" onPointerDown={(event) => event.stopPropagation()}>
-              <div className="ow-lobby-arena">
-                <div className="ow-lobby-topline">
+          <div className="arena-compose-backdrop" role="presentation" onPointerDown={() => { setInviteDraft(null); setSlotActionDraft(null); closeModal(); }}>
+            <aside className="arena-lobby-modal" role="dialog" aria-modal="true" aria-label="매치방" onPointerDown={(event) => event.stopPropagation()}>
+              <div className="arena-lobby-arena">
+                <div className="arena-lobby-topline">
                   <div className="badge-row">
                     <Badge tone={roomPhaseBadge?.tone ?? "neutral"}>{roomPhaseBadge?.label ?? "대기방"}</Badge>
                     <Badge tone="neutral">{selectedPost.mode}</Badge>
@@ -1938,14 +1938,14 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                   </div>
                 </div>
 
-                <div className="ow-lobby-title">
+                <div className="arena-lobby-title">
                   <h2>{roomDisplayTitle}</h2>
                   <p><MapPin size={16} /><CourtHoverCard courtName={selectedPost.court}>{selectedPost.court}</CourtHoverCard> · {getRecruitingSchedule(selectedPost)}</p>
                 </div>
 
-                <div className="ow-lobby-versus-stage">
-                  <div className="ow-lobby-team-panel team-a">
-                    <div className="ow-lobby-team-head">
+                <div className="arena-lobby-versus-stage">
+                  <div className="arena-lobby-team-panel team-a">
+                    <div className="arena-lobby-team-head">
                       <span>{teamAMeta.label}</span>
                       <strong>{teamAMeta.name}</strong>
                       <em>{teamAMeta.mmr || "-"} MMR</em>
@@ -1976,15 +1976,15 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                     />
                   </div>
 
-                  <div className="ow-lobby-score-core">
+                  <div className="arena-lobby-score-core">
                     <strong>{lobby.sides.teamA.projectedFilled}/{lobby.sides.teamA.capacity}</strong>
                     <i>VS</i>
                     <strong>{lobby.sides.teamB.projectedFilled}/{lobby.sides.teamB.capacity}</strong>
                     <span>{roomReadyLabel}</span>
                   </div>
 
-                  <div className="ow-lobby-team-panel team-b">
-                    <div className="ow-lobby-team-head">
+                  <div className="arena-lobby-team-panel team-b">
+                    <div className="arena-lobby-team-head">
                       <span>{teamBMeta.label}</span>
                       <strong>{teamBMeta.name}</strong>
                       <em>{teamBMeta.mmr || "-"} MMR</em>
@@ -2016,7 +2016,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                   </div>
                 </div>
 
-                <div className="ow-reserve-panel">
+                <div className="arena-reserve-panel">
                   <ReserveLine
                     sideName="teamA"
                     candidates={lobby.sides.teamA.reserveCandidates}
@@ -2061,7 +2061,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                   />
                 </div>
 
-                <div className="ow-lobby-actions">
+                <div className="arena-lobby-actions">
                   <div><Clock3 size={17} /><span>{getRecruitingSchedule(selectedPost)}</span></div>
                   <div><UsersRound size={17} /><span>{getRecruitingSideCapacity(selectedPost)} vs {getRecruitingSideCapacity(selectedPost)}</span></div>
                   <div><ShieldCheck size={17} /><span>{selectedPost.ranked === false ? "티어 자유" : `MMR ${Math.round(selectedRatingScale * 100)}%`}</span></div>
@@ -2125,8 +2125,8 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                 />
               ) : null}
 
-              <div className="ow-room-rule-panel">
-                <div className="ow-room-rule-head">
+              <div className="arena-room-rule-panel">
+                <div className="arena-room-rule-head">
                   <strong>규칙</strong>
                   {!sourceRoomReadOnly && mine && (!matchRoom || (sourceMatch && ["locked", "checkin"].includes(sourceMatchPhase?.phase) && !sourceMatch.endedAt && !sourceMatch.result)) ? (
                     <Button type="button" size="sm" variant="secondary" onClick={() => (roomEditDraft ? closeRoomEdit(selectedPost) : openRoomEdit(selectedPost))}>
@@ -2134,20 +2134,20 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                     </Button>
                   ) : null}
                 </div>
-                <div className="ow-room-rule-summary">
+                <div className="arena-room-rule-summary">
                   <span>{getRecruitingSideCapacity(selectedPost)} vs {getRecruitingSideCapacity(selectedPost)}</span>
                   <span>{selectedPost.rules?.targetScore ?? 21}점 · {selectedPost.rules?.timeLimit ?? 12}분</span>
                   <span>{(selectedPost.rules?.winByTwo ?? true) ? "2점차" : "선착순"} · {selectedPost.rules?.ball ?? "7호 공"}</span>
                   {selectedPost.ranked !== false ? <span>{selectedRange.label}</span> : <span>친선 · 티어 자유</span>}
                 </div>
-                <div className="ow-room-rule-summary detail">
+                <div className="arena-room-rule-summary detail">
                   <span>공격권: {selectedPost.rules?.attackRule ?? "득점 후 공격권 교대"}</span>
                   <span>파울: {selectedPost.rules?.foulRule ?? "파울 콜 즉시 중단, 공격권 유지"}</span>
                 </div>
-                <div className="ow-room-referee-line">
+                <div className="arena-room-referee-line">
                   <strong>심판</strong>
                   {referee ? (
-                    <RefereeHoverCard user={referee} matches={app.state.matches} minTrust={selectedPost.refereeTrustMin} className="ow-room-referee-card">
+                    <RefereeHoverCard user={referee} matches={app.state.matches} minTrust={selectedPost.refereeTrustMin} className="arena-room-referee-card">
                       <span className="avatar small" style={{ "--avatar": referee.avatarColor }}>{referee.name.slice(0, 1)}</span>
                       <span>{referee.name}</span>
                     </RefereeHoverCard>
@@ -2156,20 +2156,20 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                   )}
                 </div>
                 {selectedPost.stakes ? (
-                  <div className="ow-details-memo">
+                  <div className="arena-details-memo">
                     <strong>약속/벌칙</strong>
                     <span>{selectedPost.stakes}</span>
                   </div>
                 ) : null}
                 {selectedPost.memo ? (
-                  <div className="ow-details-memo">
+                  <div className="arena-details-memo">
                     <strong>경기 메모</strong>
                     <span>{selectedPost.memo}</span>
                   </div>
                 ) : null}
                 {!sourceRoomReadOnly && roomEditDraft ? (
-                  <div className="ow-room-edit-panel">
-                    <div className="ow-field-grid three">
+                  <div className="arena-room-edit-panel">
+                    <div className="arena-field-grid three">
                       <label>
                         팀당 정원
                         <select value={roomEditDraft.sideCapacity} onChange={(event) => updateRoomEditDraft(selectedPost, { sideCapacity: Number(event.target.value) })}>
@@ -2194,7 +2194,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                         </label>
                       ) : null}
                     </div>
-                    <div className="ow-field-grid three">
+                    <div className="arena-field-grid three">
                       <label>
                         사용 공
                         <select value={roomEditDraft.ball} onChange={(event) => updateRoomEditDraft(selectedPost, { ball: event.target.value })}>
@@ -2217,7 +2217,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                       ) : null}
                     </div>
                     {roomEditRange ? <small>{roomEditRange.detail}</small> : null}
-                    <div className="ow-field-grid">
+                    <div className="arena-field-grid">
                       <label>
                         공격권 룰
                         <input value={roomEditDraft.attackRule} onChange={(event) => updateRoomEditDraft(selectedPost, { attackRule: event.target.value })} />
@@ -2236,7 +2236,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                       <textarea value={roomEditDraft.memo} onChange={(event) => updateRoomEditDraft(selectedPost, { memo: event.target.value })} />
                     </label>
                     {!roomEditCapacityValid ? <span className="form-warning">현재 출전 인원이 {maxSideFilled}명이라 정원을 그보다 낮출 수 없습니다.</span> : null}
-                    <div className="ow-room-edit-actions">
+                    <div className="arena-room-edit-actions">
                       <Button type="button" size="sm" variant="secondary" onClick={() => closeRoomEdit(selectedPost)}>취소</Button>
                       <Button type="button" size="sm" disabled={!roomEditCapacityValid} onClick={() => saveRoomEdit(selectedPost)}>수정 저장</Button>
                     </div>
@@ -2259,9 +2259,9 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                 onSubmit={(event) => submitChat(event, selectedPost)}
               />
 
-              <div className="ow-join-panel">
+              <div className="arena-join-panel">
                 {matchRoom ? (
-                  <div className="ow-owner-panel">
+                  <div className="arena-owner-panel">
                     <strong>{sourceMatchAction.label}</strong>
                     <span>{sourceMatchAction.detail}</span>
                     {sourceMatchAction.disputed && sourceMatch?.disputes?.[0]?.reason ? (
@@ -2318,19 +2318,19 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                     ) : null}
                   </div>
                 ) : mine ? (
-                  <div className="ow-owner-panel">
+                  <div className="arena-owner-panel">
                     <strong>방장 권한</strong>
                     <span>{roomQueueStatus.detail}</span>
                   </div>
                 ) : alreadyApplied ? (
-                  <div className="ow-owner-panel">
+                  <div className="arena-owner-panel">
                     <strong>참여 중</strong>
                     <span>내 슬롯을 누르면 위치 변경, 후보 이동, 파티 조작을 할 수 있습니다.</span>
                   </div>
                 ) : (
-                  <form className="ow-join-form" onSubmit={(event) => { event.preventDefault(); submitJoin(selectedPost); }}>
+                  <form className="arena-join-form" onSubmit={(event) => { event.preventDefault(); submitJoin(selectedPost); }}>
                     {sidePartyJoinOptions.length ? (
-                      <div className="ow-self-placement-actions">
+                      <div className="arena-self-placement-actions">
                         {sidePartyJoinOptions.map((option) => (
                           <Button
                             key={getPartyOptionKey(option)}
@@ -2368,10 +2368,10 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                     </div>
                     {joinDraft.joinMode === "team" ? (
                       <>
-                        <div className="ow-team-choice-field">
+                        <div className="arena-team-choice-field">
                           <span>참여 팀</span>
                           {myTeams.length ? (
-                            <div className="ow-team-choice-grid">
+                            <div className="arena-team-choice-grid">
                               {myTeams.map((team) => (
                                 <button
                                   key={team.id}
@@ -2414,7 +2414,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                         </select>
                       </label>
                     )}
-                    <div className="ow-field-grid">
+                    <div className="arena-field-grid">
                       <label>
                         진영
                         <select value={joinDraft.side} onChange={(event) => updateJoinDraft(selectedPost, { side: event.target.value })}>
@@ -2422,7 +2422,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                           <option value="teamB">B사이드</option>
                         </select>
                       </label>
-                      <label className="ow-check-row">
+                      <label className="arena-check-row">
                         <input type="checkbox" checked={joinDraft.reserve} onChange={(event) => updateJoinDraft(selectedPost, { reserve: event.target.checked })} />
                         <span>
                           후보로 참여
@@ -2430,7 +2430,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                         </span>
                       </label>
                     </div>
-                    <div className="ow-mini-note">
+                    <div className="arena-mini-note">
                       <div>
                         <span>{joinDraft.joinMode === "team" ? `팀 파티 ${selectedJoinPlayerIds.length}+${selectedJoinReserveIds.length}` : "개인 참여"}</span>
                         <strong>{fit.label}</strong>
@@ -2482,11 +2482,11 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                   </Button>
                 ) : null}
               </div>
-              <div className="ow-modal-close-row">
+              <div className="arena-modal-close-row">
                 <Button
                   type="button"
                   variant="secondary"
-                  className="ow-modal-close-button"
+                  className="arena-modal-close-button"
                   onClick={() => { setInviteDraft(null); closeModal(); }}
                 >
                   <X size={20} /> 방 닫기
@@ -2665,41 +2665,41 @@ export default function Recruiting({ app }) {
   };
 
   return (
-    <div className="page-stack ow-recruit-page">
-      <section className="ow-recruit-hero">
-        <div className="ow-hero-copy">
-          <span className="ow-kicker">MATCH QUEUE</span>
+    <div className="page-stack arena-recruit-page">
+      <section className="arena-recruit-hero">
+        <div className="arena-hero-copy">
+          <span className="arena-kicker">MATCH QUEUE</span>
           <h1>대기 매칭</h1>
           <p>개인/팀 모집을 나누지 않는다. 공개방을 열면 참가자가 개인이나 팀 파티로 들어온다.</p>
         </div>
-        <div className="ow-hero-panel">
-          <div className="ow-hero-stats">
+        <div className="arena-hero-panel">
+          <div className="arena-hero-stats">
             <span><strong>{scopedPosts.length}</strong>OPEN</span>
             <span><strong>{rankedCount}</strong>RANKED</span>
             <span><strong>{friendlyCount}</strong>FRIENDLY</span>
           </div>
           <Link to="/app/create">
-            <Button type="button" className="ow-hero-cta">
+            <Button type="button" className="arena-hero-cta">
               <PlusCircle size={18} /> 경기방 만들기
             </Button>
           </Link>
         </div>
       </section>
 
-      <section className={queueControlsOpen ? "ow-queue-controls" : "ow-queue-controls collapsed"}>
-        <div className="ow-queue-controls-head">
+      <section className={queueControlsOpen ? "arena-queue-controls" : "arena-queue-controls collapsed"}>
+        <div className="arena-queue-controls-head">
           <div>
-            <span className="ow-kicker">QUEUE FILTER</span>
+            <span className="arena-kicker">QUEUE FILTER</span>
             <strong>매치방 · {posts.length}개 표시</strong>
           </div>
-          <button type="button" className="ow-collapse-button" onClick={() => setQueueControlsOpen((current) => !current)}>
+          <button type="button" className="arena-collapse-button" onClick={() => setQueueControlsOpen((current) => !current)}>
             {queueControlsOpen ? "접기" : "펼치기"}
           </button>
         </div>
 
         {queueControlsOpen ? (
           <>
-            <section className="ow-filter-bar" aria-label="필터">
+            <section className="arena-filter-bar" aria-label="필터">
               <button type="button" className={scope === "local" ? "active" : ""} onClick={() => setScope("local")}>내 지역</button>
               <button type="button" className={scope === "all" ? "active" : ""} onClick={() => setScope("all")}>전체 지역</button>
               <button type="button" className={roomScope === "created" ? "active" : ""} onClick={() => selectRoomScope("created")}>내가 만든 방 {createdRoomCount}</button>
@@ -2708,18 +2708,18 @@ export default function Recruiting({ app }) {
               <button type="button" className={queue === "all" ? "active" : ""} onClick={() => setQueue("all")}>전체</button>
               <button type="button" className={queue === "ranked" ? "active" : ""} onClick={() => setQueue("ranked")}>정규전</button>
               <button type="button" className={queue === "friendly" ? "active" : ""} onClick={() => setQueue("friendly")}>친선전</button>
-              <label className="ow-filter-select">
+              <label className="arena-filter-select">
                 방식
                 <select value={modeFilter} onChange={(event) => setModeFilter(event.target.value)}>
                   <option value="all">전체</option>
                   {MATCH_MODES.map((mode) => <option key={mode.id} value={mode.id}>{mode.label}</option>)}
                 </select>
               </label>
-              <span className="ow-filter-count">{posts.length}개 표시</span>
+              <span className="arena-filter-count">{posts.length}개 표시</span>
             </section>
           </>
         ) : (
-          <div className="ow-queue-summary">
+          <div className="arena-queue-summary">
             <span>{scope === "local" ? "내 지역" : "전체 지역"}</span>
             <span>{queue === "ranked" ? "정규전" : queue === "friendly" ? "친선전" : "전체"}</span>
             <span>{modeFilter === "all" ? "전체 방식" : MATCH_MODES.find((mode) => mode.id === modeFilter)?.label ?? modeFilter}</span>
@@ -2728,7 +2728,7 @@ export default function Recruiting({ app }) {
         )}
       </section>
 
-      <section className="ow-recruit-list" aria-label="매치 큐 목록">
+      <section className="arena-recruit-list" aria-label="매치 큐 목록">
         {posts.length ? posts.map((post) => {
           const lobby = getRecruitingLobby(post, app.state);
           const roomOwnerId = getRecruitingRoomOwnerId(post);
@@ -2749,7 +2749,7 @@ export default function Recruiting({ app }) {
             <article
               id={`recruiting-room-${post.id}`}
               key={post.id}
-              className={`om-match-card om-status-contract ow-lobby-card ${lobby.canConfirm ? "ow-state-ready" : ""} ${myRoom ? "ow-my-room" : ""} ${invited ? "ow-invited-room" : ""} ${targetPostId === post.id ? "ow-target-room" : ""}`}
+              className={`om-match-card om-status-contract arena-lobby-card ${lobby.canConfirm ? "arena-state-ready" : ""} ${myRoom ? "arena-my-room" : ""} ${invited ? "arena-invited-room" : ""} ${targetPostId === post.id ? "arena-target-room" : ""}`}
               onClick={() => setSelectedPostId(post.id)}
             >
               <div className="om-card-main">
@@ -2786,7 +2786,7 @@ export default function Recruiting({ app }) {
             </article>
           );
         }) : (
-          <div className="ow-empty-state">
+          <div className="arena-empty-state">
             <div>
               <strong>조건에 맞는 매치방 없음</strong>
               <p>필터를 바꾸거나 새 매치방을 열어라.</p>
@@ -2805,17 +2805,17 @@ export default function Recruiting({ app }) {
       ) : null}
 
       {composeOpen ? (
-        <div className="ow-compose-backdrop" role="presentation" onMouseDown={() => setComposeOpen(false)}>
-          <aside className="ow-compose-drawer" role="dialog" aria-modal="true" aria-label="매치방 만들기" onMouseDown={(event) => event.stopPropagation()}>
-            <div className="ow-drawer-head">
+        <div className="arena-compose-backdrop" role="presentation" onMouseDown={() => setComposeOpen(false)}>
+          <aside className="arena-compose-drawer" role="dialog" aria-modal="true" aria-label="매치방 만들기" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="arena-drawer-head">
               <div>
-                <span className="ow-kicker">CREATE ROOM</span>
+                <span className="arena-kicker">CREATE ROOM</span>
                 <h2>매치방 만들기</h2>
               </div>
-              <button type="button" className="ow-icon-button" aria-label="닫기" onClick={() => setComposeOpen(false)}><X size={20} /></button>
+              <button type="button" className="arena-icon-button" aria-label="닫기" onClick={() => setComposeOpen(false)}><X size={20} /></button>
             </div>
 
-            <form className="ow-compose-form" onSubmit={submit}>
+            <form className="arena-compose-form" onSubmit={submit}>
               <div className="segmented-control compact-segments">
                 <button
                   type="button"
@@ -2840,7 +2840,7 @@ export default function Recruiting({ app }) {
               </div>
 
               {draft.ranked ? (
-                <div className="ow-range-control">
+                <div className="arena-range-control">
                   <div>
                     <span>정규전 허용구간</span>
                     <strong>{draftRange.label}</strong>
@@ -2876,7 +2876,7 @@ export default function Recruiting({ app }) {
                 <small>{draftInstant ? "지금 바로 모아서 정원 충족 시 바로 확정한다." : "공개 예약방은 5일 이내, 경기 4시간 이후만 가능하다."}</small>
               </div>
 
-              <div className="ow-field-grid">
+              <div className="arena-field-grid">
                 {!draftInstant ? (
                   <>
                     <label>
@@ -2889,7 +2889,7 @@ export default function Recruiting({ app }) {
                     </label>
                   </>
                 ) : (
-                  <div className="ow-mini-note">
+                  <div className="arena-mini-note">
                     <div>
                       <span>일정</span>
                       <strong>즉시</strong>
@@ -2900,7 +2900,7 @@ export default function Recruiting({ app }) {
                 )}
               </div>
 
-              <div className="ow-field-grid three">
+              <div className="arena-field-grid three">
                 <label>
                   지역
                   <select
@@ -2929,9 +2929,9 @@ export default function Recruiting({ app }) {
                 </label>
               </div>
 
-              <div className="ow-field-grid">
+              <div className="arena-field-grid">
                 {draft.hostJoinMode === "team" ? (
-                  <div className="ow-party-field">
+                  <div className="arena-party-field">
                     <label>
                       내 파티 팀
                       <select
@@ -2966,7 +2966,7 @@ export default function Recruiting({ app }) {
                     </select>
                   </label>
                 )}
-                <div className="ow-mini-note">
+                <div className="arena-mini-note">
                   <div>
                     <span>슬롯</span>
                     <strong>{draftCapacity} vs {draftCapacity}</strong>
@@ -2981,7 +2981,7 @@ export default function Recruiting({ app }) {
                 <textarea value={draft.memo} onChange={(event) => update({ memo: event.target.value })} />
               </label>
 
-              <div className="ow-submit-row">
+              <div className="arena-submit-row">
                 <span className={canPostRecruiting ? "queue-note" : "form-warning"}>
                   <ShieldCheck size={17} /> {canPostRecruiting ? "등록 가능" : hasSchedule ? (scheduleAllowed ? "팀/팀원 선택 필요" : draftTimingStatus.detail) : "날짜/시간/장소 필요"}
                 </span>

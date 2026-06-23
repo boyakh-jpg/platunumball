@@ -1,14 +1,14 @@
 import { getTier, getTierDivision } from "../../lib/tier.js";
 
 export const emblemByTier = {
-  Rookie: "/assets/tier-emblems/tier-rookie-v5.png",
-  Bronze: "/assets/tier-emblems/tier-bronze-v5.png",
-  Silver: "/assets/tier-emblems/tier-silver-v5.png",
-  Gold: "/assets/tier-emblems/tier-gold-v5.png",
-  Platinum: "/assets/tier-emblems/tier-platinum-v5.png",
-  Diamond: "/assets/tier-emblems/tier-diamond-v5.png",
-  Master: "/assets/tier-emblems/tier-master-v5.png",
-  Legend: "/assets/tier-emblems/tier-legend-v5.png",
+  Rookie: "/assets/tier-emblems/tier-rookie-v5.webp",
+  Bronze: "/assets/tier-emblems/tier-bronze-v5.webp",
+  Silver: "/assets/tier-emblems/tier-silver-v5.webp",
+  Gold: "/assets/tier-emblems/tier-gold-v5.webp",
+  Platinum: "/assets/tier-emblems/tier-platinum-v5.webp",
+  Diamond: "/assets/tier-emblems/tier-diamond-v5.webp",
+  Master: "/assets/tier-emblems/tier-master-v5.webp",
+  Legend: "/assets/tier-emblems/tier-legend-v5.webp",
 };
 
 export function getTierEmblemSrc(mmr) {

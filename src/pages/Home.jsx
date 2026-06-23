@@ -347,9 +347,9 @@ export default function Home({ app }) {
   const latestMyMatches = myCompletedMatches.slice(0, 5);
 
   return (
-    <div className="page-stack opgg-home">
+    <div className="page-stack rank-home">
       <section className="home-rank-board-head">
-        <div className="opgg-hero-top">
+        <div className="rank-hero-top">
           <div>
             <p className="eyebrow">내 랭크 보드</p>
             <h1>{user.name}님의 오늘 코트 현황</h1>
@@ -361,7 +361,7 @@ export default function Home({ app }) {
         </div>
       </section>
 
-      <Card className="home-search-panel opgg-search-card">
+      <Card className="home-search-panel rank-search-card">
         <div className="home-search-box">
           <Search size={24} />
           <input
@@ -373,19 +373,19 @@ export default function Home({ app }) {
             }}
           />
         </div>
-        <div className="opgg-quick-links">
+        <div className="rank-quick-links">
           <Link to="/app/rankings">랭킹</Link>
           <Link to="/app/matches">경기</Link>
           <Link to="/app/teams">팀</Link>
           <Link to="/app/recruiting">매칭</Link>
         </div>
         {searchText ? (
-          <div className="home-search-results unified opgg-search-results">
+          <div className="home-search-results unified rank-search-results">
             {visibleSearchResults.length ? visibleSearchResults.map((item) => (
               item.team ? (
                 <TeamHoverCard key={item.id} team={item.team}>
                   {item.teamColor ? <span className="team-mini-dot" style={{ "--team-color": item.teamColor }} /> : null}
-                  <span className="opgg-result-main">
+                  <span className="rank-result-main">
                     <strong>{item.label}</strong>
                     <em>{item.meta}</em>
                   </span>
@@ -395,7 +395,7 @@ export default function Home({ app }) {
                 <Link key={item.id} to={item.href}>
                   {item.avatar ? <span className="avatar small" style={{ "--avatar": item.avatar }}>{item.label.slice(0, 1)}</span> : null}
                   {item.court ? <span className="court-mini-dot" /> : null}
-                  <span className="opgg-result-main">
+                  <span className="rank-result-main">
                     <strong>{item.label}</strong>
                     <em>{item.meta}</em>
                   </span>
@@ -448,9 +448,9 @@ export default function Home({ app }) {
         </Card>
       ) : null}
 
-      <section className="opgg-summary-grid">
-        <Card className="section-card opgg-profile-card">
-          <div className="opgg-profile-head">
+      <section className="rank-summary-grid">
+        <Card className="section-card rank-profile-card">
+          <div className="rank-profile-head">
             <div className="avatar hero-avatar" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</div>
             <div>
               <p className="eyebrow">내 프로필</p>
@@ -458,33 +458,33 @@ export default function Home({ app }) {
               <span>{user.region} · {user.position} · 신뢰도 {user.trustScore}</span>
             </div>
           </div>
-          <div className="opgg-rank-block">
+          <div className="rank-tier-block">
             <TierEmblem mmr={user.ratings.integrated} size="md" />
             <div>
               <strong>{getTierDivision(user.ratings.integrated)}</strong>
               <span>{Math.round(user.ratings.integrated)} MMR</span>
             </div>
           </div>
-          <div className="opgg-rank-meta-line">
+          <div className="rank-tier-meta-line">
             <Badge tone="gold">{Math.round(user.ratings.integrated)} MMR</Badge>
             <Badge tone="green">시즌 점수</Badge>
           </div>
-          <p className="opgg-rank-copy">팀 기여도가 안정적인 플레이어입니다.</p>
-          <p className="opgg-rank-note">{user.streak > 0 ? `${user.streak}연승 중. 다음 공식전이 티어를 흔듭니다.` : "꾸준히 경기에 참여하는 플레이어입니다."}</p>
-          <div className="opgg-stat-grid">
+          <p className="rank-tier-copy">팀 기여도가 안정적인 플레이어입니다.</p>
+          <p className="rank-tier-note">{user.streak > 0 ? `${user.streak}연승 중. 다음 공식전이 티어를 흔듭니다.` : "꾸준히 경기에 참여하는 플레이어입니다."}</p>
+          <div className="rank-stat-grid">
             <span><strong>{myCompletedMatches.length}</strong>경기</span>
             <span><strong>{winRate}%</strong>승률</span>
             <span><strong>{mySeasonIndex >= 0 ? `${mySeasonIndex + 1}위` : "-"}</strong>{user.region}</span>
             <span><strong>{user.streak > 0 ? `${user.streak}연승` : user.streak < 0 ? `${Math.abs(user.streak)}연패` : "0"}</strong>흐름</span>
           </div>
-          <div className="opgg-profile-tabs">
+          <div className="rank-profile-tabs">
             <Link to={`/app/players/${user.id}`}>프로필</Link>
             <Link to="/app/season">시즌</Link>
             <Link to="/app/settings">설정</Link>
           </div>
         </Card>
 
-        <Card className="section-card opgg-mode-card">
+        <Card className="section-card rank-mode-card">
           <div className="section-title-row">
             <div>
               <p className="eyebrow">Queue Rating</p>
@@ -492,9 +492,9 @@ export default function Home({ app }) {
             </div>
             <Badge tone="gold">{Math.round(user.ratings.integrated)}</Badge>
           </div>
-          <div className="mode-grid opgg-mode-grid">
+          <div className="mode-grid rank-mode-grid">
             {Object.entries(user.ratings.modes).map(([mode, mmr]) => (
-              <div key={mode} className="opgg-mode-pill">
+              <div key={mode} className="rank-mode-pill">
                 <TierEmblem mmr={mmr} size="sm" />
                 <div>
                   <span>{mode}</span>
@@ -507,7 +507,7 @@ export default function Home({ app }) {
         </Card>
       </section>
 
-      <div className="content-grid home-dashboard-grid opgg-dashboard-grid">
+      <div className="content-grid home-dashboard-grid rank-dashboard-grid">
         <div className="page-stack home-primary-stack">
           <Card className="section-card match-focus-card">
             <div className="section-title-row">
@@ -566,7 +566,7 @@ export default function Home({ app }) {
           </Card>
         </div>
         <aside className="page-stack home-side-stack">
-          <Card className="section-card opgg-leaderboard-card">
+          <Card className="section-card rank-leaderboard-card">
             <div className="section-title-row">
               <div>
                 <p className="eyebrow">Local Ranking</p>
@@ -574,9 +574,9 @@ export default function Home({ app }) {
               </div>
               <Trophy size={20} />
             </div>
-            <div className="opgg-rank-list">
+            <div className="rank-list">
               {topRankers.map((row, index) => (
-                <PlayerHoverCard className="opgg-rank-row" key={row.id} user={row} teams={app.state.teams}>
+                <PlayerHoverCard className="rank-row" key={row.id} user={row} teams={app.state.teams}>
                   <b>{index + 1}</b>
                   <span className="avatar small" style={{ "--avatar": row.avatarColor }}>{row.name.slice(0, 1)}</span>
                   <strong>{row.name}</strong>

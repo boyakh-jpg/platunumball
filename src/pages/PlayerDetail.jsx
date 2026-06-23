@@ -100,9 +100,9 @@ export default function PlayerDetail({ app }) {
   );
 
   return (
-    <div className="page-stack profile-detail-page opgg-profile-page">
-      <section className="profile-hero opgg-profile-hero">
-        <div className="profile-identity opgg-profile-identity">
+    <div className="page-stack profile-detail-page rank-profile-page">
+      <section className="profile-hero rank-profile-hero">
+        <div className="profile-identity rank-profile-identity">
           <div className="avatar hero-avatar" style={{ "--avatar": player.avatarColor }}>{player.name.slice(0, 1)}</div>
           <div>
             <p className="eyebrow">Player Profile</p>
@@ -115,7 +115,7 @@ export default function PlayerDetail({ app }) {
             </div>
           </div>
         </div>
-        <div className="tier-statement opgg-tier-statement">
+        <div className="tier-statement rank-tier-statement">
           <TierEmblem mmr={player.ratings.integrated} size="hero" showLabel />
           <div>
             <span>{getTierDivision(player.ratings.integrated)}</span>
@@ -125,15 +125,15 @@ export default function PlayerDetail({ app }) {
         </div>
       </section>
 
-      <nav className="opgg-profile-tabs">
+      <nav className="rank-profile-tabs">
         <a href="#summary">종합</a>
         <a href="#history">전적</a>
         <a href="#teams">팀</a>
         <a href="#links">상대</a>
       </nav>
 
-      <section id="summary" className="opgg-profile-summary">
-        <Card className="section-card opgg-record-card">
+      <section id="summary" className="rank-profile-summary">
+        <Card className="section-card rank-record-card">
           <div className="section-title-row">
             <div>
               <p className="eyebrow">Ranked Solo</p>
@@ -141,7 +141,7 @@ export default function PlayerDetail({ app }) {
             </div>
             <Badge tone="gold">{Math.round(player.ratings.integrated)} MMR</Badge>
           </div>
-          <div className="opgg-record-main">
+          <div className="rank-record-main">
             <TierEmblem mmr={player.ratings.integrated} size="md" showLabel />
             <div>
               <strong>{getTierDivision(player.ratings.integrated)}</strong>
@@ -156,14 +156,14 @@ export default function PlayerDetail({ app }) {
             ))}
           </div>
         </Card>
-        <Card className="section-card opgg-record-card">
+        <Card className="section-card rank-record-card">
           <div className="section-title-row">
             <div>
               <p className="eyebrow">Career Totals</p>
               <h2>누적 스탯</h2>
             </div>
           </div>
-          <div className="opgg-stat-grid">
+          <div className="rank-stat-grid">
             {PLAYER_STAT_FIELDS.map((field) => (
               <span key={field.id}>
                 <strong>{totals[field.id]}</strong>
@@ -204,7 +204,7 @@ export default function PlayerDetail({ app }) {
                 const stats = match.result?.playerStats?.[player.id];
                 const outcome = getPlayerOutcome(match, player.id);
                 return (
-                  <article key={match.id} className={`history-item opgg-match-item ${outcome ? `opgg-match-${outcome}` : ""}`}>
+                  <article key={match.id} className={`history-item rank-match-item ${outcome ? `rank-match-${outcome}` : ""}`}>
                     <div>
                       <Link to={`/app/matches?match=${match.id}`}><strong>{match.title}</strong></Link>
                       <span>{match.court} · {match.scheduledAt}</span>

@@ -1,11 +1,11 @@
-/* Overwatch-style recruiting surface. Imported after globals.css. */
-.ow-recruit-page {
+/* arena-style recruiting surface. Imported after globals.css. */
+.arena-recruit-page {
   max-width: 1220px;
   margin: 0 auto;
   gap: 16px;
 }
 
-.ow-recruit-hero {
+.arena-recruit-hero {
   position: relative;
   isolation: isolate;
   overflow: hidden;
@@ -23,7 +23,7 @@
   padding: 24px;
 }
 
-.ow-recruit-hero::after {
+.arena-recruit-hero::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -36,13 +36,13 @@
   opacity: 0.34;
 }
 
-.ow-hero-copy,
-.ow-hero-panel {
+.arena-hero-copy,
+.arena-hero-panel {
   position: relative;
   z-index: 1;
 }
 
-.ow-kicker {
+.arena-kicker {
   color: var(--gold);
   font-size: 0.78rem;
   font-weight: 950;
@@ -50,7 +50,7 @@
   text-transform: uppercase;
 }
 
-.ow-hero-copy h1 {
+.arena-hero-copy h1 {
   margin-top: 8px;
   font-size: clamp(3.1rem, 7vw, 6rem);
   line-height: 0.88;
@@ -58,7 +58,7 @@
   text-transform: uppercase;
 }
 
-.ow-hero-copy p {
+.arena-hero-copy p {
   max-width: 520px;
   margin-top: 14px;
   color: #dce5ef;
@@ -67,7 +67,7 @@
   line-height: 1.55;
 }
 
-.ow-hero-panel {
+.arena-hero-panel {
   display: grid;
   width: min(330px, 100%);
   gap: 12px;
@@ -78,13 +78,13 @@
   padding: 16px;
 }
 
-.ow-hero-stats {
+.arena-hero-stats {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
 
-.ow-hero-stats span {
+.arena-hero-stats span {
   display: grid;
   gap: 3px;
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -98,18 +98,18 @@
   text-transform: uppercase;
 }
 
-.ow-hero-stats strong {
+.arena-hero-stats strong {
   color: var(--text);
   font-size: 1.35rem;
   line-height: 1;
 }
 
-.ow-hero-cta {
+.arena-hero-cta {
   width: 100%;
   min-height: 48px;
 }
 
-.ow-queue-controls {
+.arena-queue-controls {
   display: grid;
   gap: 12px;
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -118,20 +118,20 @@
   padding: 12px;
 }
 
-.ow-queue-controls-head {
+.arena-queue-controls-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
 
-.ow-queue-controls-head > div {
+.arena-queue-controls-head > div {
   display: grid;
   min-width: 0;
   gap: 3px;
 }
 
-.ow-queue-controls-head strong {
+.arena-queue-controls-head strong {
   overflow: hidden;
   color: var(--text);
   font-size: 0.98rem;
@@ -140,7 +140,7 @@
   white-space: nowrap;
 }
 
-.ow-collapse-button {
+.arena-collapse-button {
   min-height: 34px;
   border: 1px solid rgba(70, 224, 182, 0.28);
   border-radius: 7px;
@@ -153,13 +153,13 @@
   padding: 0 12px;
 }
 
-.ow-queue-summary {
+.arena-queue-summary {
   display: flex;
   flex-wrap: wrap;
   gap: 7px;
 }
 
-.ow-queue-summary span {
+.arena-queue-summary span {
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.055);
@@ -169,13 +169,13 @@
   padding: 6px 9px;
 }
 
-.ow-mode-grid {
+.arena-mode-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
-.ow-mode-card {
+.arena-mode-card {
   position: relative;
   overflow: hidden;
   display: grid;
@@ -196,14 +196,14 @@
   transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
 }
 
-.ow-mode-card:hover,
-.ow-mode-card.active {
+.arena-mode-card:hover,
+.arena-mode-card.active {
   transform: translateY(-2px);
   border-color: rgba(70, 224, 182, 0.58);
   box-shadow: 0 0 0 1px rgba(70, 224, 182, 0.22), 0 22px 60px rgba(0, 0, 0, 0.28);
 }
 
-.ow-mode-card.active::after {
+.arena-mode-card.active::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -211,7 +211,7 @@
   background: linear-gradient(90deg, rgba(70, 224, 182, 0.16), transparent 36%, rgba(255, 211, 108, 0.08));
 }
 
-.ow-mode-icon {
+.arena-mode-icon {
   display: grid;
   width: 42px;
   height: 42px;
@@ -221,13 +221,13 @@
   color: #07110f;
 }
 
-.ow-mode-copy {
+.arena-mode-copy {
   display: grid;
   gap: 4px;
 }
 
-.ow-mode-code,
-.ow-mode-count {
+.arena-mode-code,
+.arena-mode-count {
   color: var(--gold);
   font-size: 0.72rem;
   font-weight: 950;
@@ -235,18 +235,18 @@
   text-transform: uppercase;
 }
 
-.ow-mode-card h2 {
+.arena-mode-card h2 {
   font-size: 1.55rem;
   text-transform: uppercase;
 }
 
-.ow-mode-card p {
+.arena-mode-card p {
   color: var(--muted);
   font-size: 0.82rem;
   font-weight: 850;
 }
 
-.ow-filter-bar {
+.arena-filter-bar {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -258,7 +258,7 @@
   padding: 8px;
 }
 
-.ow-filter-bar button {
+.arena-filter-bar button {
   flex: 0 1 auto;
   min-height: 36px;
   border: 1px solid transparent;
@@ -271,13 +271,13 @@
   padding: 0 12px;
 }
 
-.ow-filter-bar button.active {
+.arena-filter-bar button.active {
   border-color: rgba(70, 224, 182, 0.44);
   background: rgba(70, 224, 182, 0.12);
   color: var(--green);
 }
 
-.ow-filter-select {
+.arena-filter-select {
   display: inline-grid;
   grid-template-columns: auto minmax(92px, 130px);
   align-items: center;
@@ -290,7 +290,7 @@
   white-space: nowrap;
 }
 
-.ow-filter-select select {
+.arena-filter-select select {
   min-height: 36px;
   border-radius: 7px;
   background: rgba(255, 255, 255, 0.055);
@@ -299,7 +299,7 @@
   padding: 0 8px;
 }
 
-.ow-filter-count {
+.arena-filter-count {
   margin-left: 0;
   color: var(--gold);
   font-size: 0.78rem;
@@ -307,12 +307,12 @@
   white-space: nowrap;
 }
 
-.ow-recruit-list {
+.arena-recruit-list {
   display: grid;
   gap: 10px;
 }
 
-.ow-recruit-card {
+.arena-recruit-card {
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 150px;
@@ -327,7 +327,7 @@
   padding: 14px;
 }
 
-.ow-recruit-card::before {
+.arena-recruit-card::before {
   content: "";
   position: absolute;
   top: 0;
@@ -337,25 +337,25 @@
   background: var(--green);
 }
 
-.ow-type-find_team::before {
+.arena-type-find_team::before {
   background: var(--gold);
 }
 
-.ow-type-need_team::before {
+.arena-type-need_team::before {
   background: var(--blue);
 }
 
-.ow-state-blocked,
-.ow-state-full {
+.arena-state-blocked,
+.arena-state-full {
   opacity: 0.68;
 }
 
-.ow-recruit-card.ow-my-room {
+.arena-recruit-card.arena-my-room {
   border-color: rgba(70, 224, 182, 0.5);
   box-shadow: 0 0 0 1px rgba(70, 224, 182, 0.14), 0 18px 50px rgba(0, 0, 0, 0.24);
 }
 
-.ow-recruit-card.ow-invited-room {
+.arena-recruit-card.arena-invited-room {
   border-color: rgba(255, 211, 108, 0.68);
   background:
     linear-gradient(135deg, rgba(255, 211, 108, 0.16), rgba(70, 224, 182, 0.055)),
@@ -363,12 +363,12 @@
   box-shadow: 0 0 0 1px rgba(255, 211, 108, 0.18), 0 18px 52px rgba(0, 0, 0, 0.28);
 }
 
-.ow-recruit-card.ow-target-room {
+.arena-recruit-card.arena-target-room {
   outline: 2px solid rgba(255, 211, 108, 0.72);
   outline-offset: 3px;
 }
 
-.ow-my-room-tag {
+.arena-my-room-tag {
   display: inline-flex;
   align-items: center;
   border-radius: 999px;
@@ -381,19 +381,19 @@
   white-space: nowrap;
 }
 
-.ow-my-room-tag.invited {
+.arena-my-room-tag.invited {
   background: rgba(255, 211, 108, 0.18);
   color: var(--gold);
 }
 
-.ow-card-main {
+.arena-card-main {
   display: grid;
   min-width: 0;
   gap: 8px;
 }
 
-.ow-card-top,
-.ow-card-bottom {
+.arena-card-top,
+.arena-card-bottom {
   display: flex;
   min-width: 0;
   align-items: center;
@@ -401,10 +401,10 @@
   gap: 7px;
 }
 
-.ow-type-tag,
-.ow-queue-pill,
-.ow-position-pill,
-.ow-tier-chip {
+.arena-type-tag,
+.arena-queue-pill,
+.arena-position-pill,
+.arena-tier-chip {
   display: inline-flex;
   align-items: center;
   border-radius: 999px;
@@ -415,24 +415,24 @@
   white-space: nowrap;
 }
 
-.ow-type-tag {
+.arena-type-tag {
   background: rgba(70, 224, 182, 0.14);
   color: var(--green);
   letter-spacing: 0.1em;
 }
 
-.ow-queue-pill.ranked {
+.arena-queue-pill.ranked {
   background: rgba(255, 211, 108, 0.12);
   color: var(--gold);
 }
 
-.ow-queue-pill.friendly,
-.ow-position-pill {
+.arena-queue-pill.friendly,
+.arena-position-pill {
   background: rgba(255, 255, 255, 0.07);
   color: var(--muted);
 }
 
-.ow-recruit-card h3 {
+.arena-recruit-card h3 {
   display: -webkit-box;
   overflow: hidden;
   font-size: 1.3rem;
@@ -442,7 +442,7 @@
   -webkit-line-clamp: 2;
 }
 
-.ow-card-meta {
+.arena-card-meta {
   display: flex;
   min-width: 0;
   align-items: center;
@@ -452,77 +452,77 @@
   font-weight: 850;
 }
 
-.ow-card-meta span {
+.arena-card-meta span {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.ow-card-meta .ow-card-hover-link {
+.arena-card-meta .arena-card-hover-link {
   overflow: visible;
   color: var(--text);
   font-weight: 900;
 }
 
-.ow-tier-chip {
+.arena-tier-chip {
   background: rgba(70, 224, 182, 0.1);
   color: var(--green);
 }
 
-.ow-card-bottom > span:not(.ow-tier-chip) {
+.arena-card-bottom > span:not(.arena-tier-chip) {
   color: var(--subtle);
   font-size: 0.78rem;
   font-weight: 850;
 }
 
-.ow-card-bottom > .ow-room-list-state,
-.ow-queue-board-head .ow-room-list-state {
+.arena-card-bottom > .arena-room-list-state,
+.arena-queue-board-head .arena-room-list-state {
   border: 1px solid transparent;
   border-radius: 999px;
   padding: 4px 8px;
   font-weight: 950;
 }
 
-.ow-card-bottom > .ow-room-list-state.blue,
-.ow-queue-board-head .ow-room-list-state.blue {
+.arena-card-bottom > .arena-room-list-state.blue,
+.arena-queue-board-head .arena-room-list-state.blue {
   border-color: rgba(118, 169, 255, 0.22);
   background: rgba(118, 169, 255, 0.11);
   color: var(--blue);
 }
 
-.ow-card-bottom > .ow-room-list-state.green,
-.ow-queue-board-head .ow-room-list-state.green {
+.arena-card-bottom > .arena-room-list-state.green,
+.arena-queue-board-head .arena-room-list-state.green {
   border-color: rgba(70, 224, 182, 0.22);
   background: rgba(70, 224, 182, 0.11);
   color: var(--green);
 }
 
-.ow-card-bottom > .ow-room-list-state.orange,
-.ow-queue-board-head .ow-room-list-state.orange {
+.arena-card-bottom > .arena-room-list-state.orange,
+.arena-queue-board-head .arena-room-list-state.orange {
   border-color: rgba(255, 211, 108, 0.24);
   background: rgba(255, 211, 108, 0.11);
   color: var(--gold);
 }
 
-.ow-card-side {
+.arena-card-side {
   display: grid;
   justify-items: stretch;
   gap: 8px;
 }
 
-.ow-card-action {
+.arena-card-action {
   width: 100%;
   min-height: 44px;
 }
 
-.ow-card-details {
+.arena-card-details {
   grid-column: 1 / -1;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   padding-top: 10px;
 }
 
-.ow-card-details summary {
+.arena-card-details summary {
   width: max-content;
   color: var(--muted);
   cursor: pointer;
@@ -530,15 +530,15 @@
   font-weight: 900;
 }
 
-.ow-details-grid {
+.arena-details-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   margin-top: 10px;
 }
 
-.ow-details-grid > span,
-.ow-details-grid > label {
+.arena-details-grid > span,
+.arena-details-grid > label {
   display: grid;
   gap: 4px;
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -550,37 +550,37 @@
   font-weight: 900;
 }
 
-.ow-details-grid b,
-.ow-details-grid a {
+.arena-details-grid b,
+.arena-details-grid a {
   min-width: 0;
   overflow-wrap: anywhere;
   color: var(--text);
   font-size: 0.9rem;
 }
 
-.ow-details-memo,
-.ow-applicant-strip {
+.arena-details-memo,
+.arena-applicant-strip {
   grid-column: 1 / -1;
 }
 
-.ow-details-memo {
+.arena-details-memo {
   color: var(--muted);
   line-height: 1.55;
 }
 
-.ow-applicant-strip {
+.arena-applicant-strip {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 7px;
 }
 
-.ow-applicant-strip small {
+.arena-applicant-strip small {
   color: var(--muted);
   font-weight: 850;
 }
 
-.ow-applicant-team {
+.arena-applicant-team {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -593,18 +593,18 @@
   font-weight: 850;
 }
 
-.ow-mini-dot {
+.arena-mini-dot {
   width: 18px;
   height: 18px;
   border-radius: 50%;
   background: var(--team-color, var(--green));
 }
 
-.ow-close-button {
+.arena-close-button {
   min-height: 36px;
 }
 
-.ow-empty-state {
+.arena-empty-state {
   display: grid;
   min-height: 220px;
   place-items: center;
@@ -616,14 +616,14 @@
   padding: 24px;
 }
 
-.ow-empty-state strong {
+.arena-empty-state strong {
   display: block;
   margin-bottom: 6px;
   color: var(--text);
   font-size: 1.1rem;
 }
 
-.ow-compose-backdrop {
+.arena-compose-backdrop {
   position: fixed;
   inset: 0;
   z-index: 60;
@@ -634,7 +634,7 @@
   padding: 18px;
 }
 
-.ow-compose-drawer {
+.arena-compose-drawer {
   width: min(760px, 100%);
   max-height: min(820px, calc(100vh - 36px));
   overflow-y: auto;
@@ -648,7 +648,7 @@
   padding: 18px;
 }
 
-.ow-drawer-head {
+.arena-drawer-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -656,13 +656,13 @@
   margin-bottom: 16px;
 }
 
-.ow-drawer-head h2 {
+.arena-drawer-head h2 {
   margin-top: 4px;
   font-size: 2rem;
   text-transform: uppercase;
 }
 
-.ow-icon-button {
+.arena-icon-button {
   display: grid;
   width: 38px;
   height: 38px;
@@ -675,18 +675,18 @@
   cursor: pointer;
 }
 
-.ow-compose-form {
+.arena-compose-form {
   display: grid;
   gap: 12px;
 }
 
-.ow-compose-type-grid {
+.arena-compose-type-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
 
-.ow-compose-type-grid button {
+.arena-compose-type-grid button {
   display: grid;
   min-height: 74px;
   align-content: center;
@@ -700,33 +700,33 @@
   text-align: left;
 }
 
-.ow-compose-type-grid button.active {
+.arena-compose-type-grid button.active {
   border-color: rgba(70, 224, 182, 0.5);
   background: rgba(70, 224, 182, 0.12);
   color: var(--text);
 }
 
-.ow-compose-type-grid strong {
+.arena-compose-type-grid strong {
   font-size: 1rem;
 }
 
-.ow-compose-type-grid span {
+.arena-compose-type-grid span {
   color: var(--subtle);
   font-size: 0.72rem;
   font-weight: 850;
 }
 
-.ow-field-grid {
+.arena-field-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
 
-.ow-field-grid.three {
+.arena-field-grid.three {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.ow-mini-note {
+.arena-mini-note {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
@@ -737,8 +737,8 @@
   padding: 12px;
 }
 
-.ow-mini-note span,
-.ow-mini-note em {
+.arena-mini-note span,
+.arena-mini-note em {
   display: block;
   color: var(--muted);
   font-size: 0.76rem;
@@ -746,14 +746,14 @@
   font-weight: 850;
 }
 
-.ow-mini-note strong {
+.arena-mini-note strong {
   display: block;
   margin: 3px 0;
   color: var(--gold);
   font-size: 1rem;
 }
 
-.ow-range-control {
+.arena-range-control {
   display: grid;
   gap: 10px;
   border: 1px solid rgba(255, 211, 108, 0.18);
@@ -762,36 +762,36 @@
   padding: 12px;
 }
 
-.ow-range-control > div:first-child {
+.arena-range-control > div:first-child {
   display: grid;
   gap: 3px;
 }
 
-.ow-range-control span {
+.arena-range-control span {
   color: var(--gold);
   font-size: 0.78rem;
   font-weight: 950;
 }
 
-.ow-range-control strong {
+.arena-range-control strong {
   color: var(--text);
   font-size: 1rem;
 }
 
-.ow-range-control em,
-.ow-range-control small {
+.arena-range-control em,
+.arena-range-control small {
   color: var(--muted);
   font-size: 0.78rem;
   font-style: normal;
   font-weight: 850;
 }
 
-.ow-party-field {
+.arena-party-field {
   display: grid;
   gap: 10px;
 }
 
-.ow-team-choice-field {
+.arena-team-choice-field {
   display: grid;
   gap: 7px;
   color: var(--muted);
@@ -799,13 +799,13 @@
   font-weight: 900;
 }
 
-.ow-team-choice-grid {
+.arena-team-choice-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 7px;
 }
 
-.ow-team-choice-grid button {
+.arena-team-choice-grid button {
   display: grid;
   gap: 3px;
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -817,28 +817,28 @@
   text-align: left;
 }
 
-.ow-team-choice-grid button.selected {
+.arena-team-choice-grid button.selected {
   border-color: rgba(70, 224, 182, 0.52);
   background: rgba(70, 224, 182, 0.14);
 }
 
-.ow-team-choice-grid strong,
-.ow-team-choice-grid em {
+.arena-team-choice-grid strong,
+.arena-team-choice-grid em {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.ow-team-choice-grid em,
-.ow-team-choice-field > em {
+.arena-team-choice-grid em,
+.arena-team-choice-field > em {
   color: var(--gold);
   font-size: 0.72rem;
   font-style: normal;
   font-weight: 850;
 }
 
-.ow-party-picker {
+.arena-party-picker {
   display: grid;
   gap: 8px;
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -847,13 +847,13 @@
   padding: 10px;
 }
 
-.ow-party-picker.empty {
+.arena-party-picker.empty {
   color: var(--muted);
   font-size: 0.82rem;
   font-weight: 850;
 }
 
-.ow-party-picker-head {
+.arena-party-picker-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -863,18 +863,18 @@
   font-weight: 900;
 }
 
-.ow-party-picker-head strong {
+.arena-party-picker-head strong {
   color: var(--gold);
 }
 
-.ow-party-picker-grid {
+.arena-party-picker-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
   gap: 7px;
 }
 
-.ow-party-picker-grid > button,
-.ow-party-member-card {
+.arena-party-picker-grid > button,
+.arena-party-member-card {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
@@ -889,57 +889,57 @@
   text-align: left;
 }
 
-.ow-party-picker-grid > button.selected,
-.ow-party-member-card.selected {
+.arena-party-picker-grid > button.selected,
+.arena-party-member-card.selected {
   border-color: rgba(70, 224, 182, 0.48);
   background: rgba(70, 224, 182, 0.13);
 }
 
-.ow-party-member-card.reserve {
+.arena-party-member-card.reserve {
   border-color: rgba(255, 210, 92, 0.4);
   background: rgba(255, 210, 92, 0.09);
 }
 
-.ow-party-picker-grid > button.required,
-.ow-party-member-card.required {
+.arena-party-picker-grid > button.required,
+.arena-party-member-card.required {
   cursor: default;
 }
 
-.ow-party-picker-grid > button:disabled,
-.ow-party-member-card button:disabled {
+.arena-party-picker-grid > button:disabled,
+.arena-party-member-card button:disabled {
   cursor: not-allowed;
   opacity: 0.48;
 }
 
-.ow-party-picker-grid > button > span:nth-child(2),
-.ow-party-member-card > span:nth-child(2) {
+.arena-party-picker-grid > button > span:nth-child(2),
+.arena-party-member-card > span:nth-child(2) {
   display: grid;
   min-width: 0;
   gap: 2px;
 }
 
-.ow-party-picker-grid strong {
+.arena-party-picker-grid strong {
   overflow-wrap: anywhere;
   color: var(--text);
   font-size: 0.82rem;
 }
 
-.ow-party-picker-grid em,
-.ow-party-picker > em {
+.arena-party-picker-grid em,
+.arena-party-picker > em {
   color: var(--gold);
   font-size: 0.72rem;
   font-style: normal;
   font-weight: 850;
 }
 
-.ow-party-role-buttons {
+.arena-party-role-buttons {
   grid-column: 1 / -1;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 5px;
 }
 
-.ow-party-role-buttons button {
+.arena-party-role-buttons button {
   min-height: 30px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 7px;
@@ -950,41 +950,41 @@
   font-weight: 900;
 }
 
-.ow-party-role-buttons button.active {
+.arena-party-role-buttons button.active {
   border-color: rgba(70, 224, 182, 0.55);
   background: rgba(70, 224, 182, 0.18);
   color: var(--mint);
 }
 
-.ow-submit-row {
+.arena-submit-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
   align-items: center;
 }
 
-.ow-submit-row .button {
+.arena-submit-row .button {
   min-height: 48px;
 }
 
-.ow-mode-card.static {
+.arena-mode-card.static {
   cursor: default;
 }
 
-.ow-mode-card.static:hover {
+.arena-mode-card.static:hover {
   transform: none;
 }
 
-.ow-lobby-card {
+.arena-lobby-card {
   cursor: pointer;
 }
 
-.ow-state-ready {
+.arena-state-ready {
   border-color: rgba(70, 224, 182, 0.52);
   box-shadow: 0 0 0 1px rgba(70, 224, 182, 0.18);
 }
 
-.ow-queue-board {
+.arena-queue-board {
   display: grid;
   min-width: 0;
   align-content: center;
@@ -996,19 +996,19 @@
   text-align: center;
 }
 
-.ow-queue-board.complete {
+.arena-queue-board.complete {
   border-color: rgba(70, 224, 182, 0.42);
   background: rgba(70, 224, 182, 0.075);
 }
 
-.ow-summary-line {
+.arena-summary-line {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 42px minmax(0, 1fr);
   align-items: center;
   gap: 8px;
 }
 
-.ow-summary-side {
+.arena-summary-side {
   min-width: 0;
   overflow: hidden;
   color: var(--text);
@@ -1018,15 +1018,15 @@
   white-space: nowrap;
 }
 
-.ow-summary-line > strong {
+.arena-summary-line > strong {
   color: var(--gold);
   font-size: 0.92rem;
   font-weight: 950;
   line-height: 1;
 }
 
-.ow-summary-meta,
-.ow-summary-detail {
+.arena-summary-meta,
+.arena-summary-detail {
   overflow: hidden;
   color: var(--muted);
   font-size: 0.72rem;
@@ -1035,11 +1035,11 @@
   white-space: nowrap;
 }
 
-.ow-summary-detail {
+.arena-summary-detail {
   color: var(--gold);
 }
 
-.ow-queue-board-head {
+.arena-queue-board-head {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -1047,8 +1047,8 @@
   min-width: 0;
 }
 
-.ow-queue-board-head span,
-.ow-queue-board-head b {
+.arena-queue-board-head span,
+.arena-queue-board-head b {
   display: inline-flex;
   align-items: center;
   min-height: 24px;
@@ -1059,26 +1059,26 @@
   white-space: nowrap;
 }
 
-.ow-queue-board-head span {
+.arena-queue-board-head span {
   border: 1px solid rgba(255, 211, 108, 0.22);
   background: rgba(255, 211, 108, 0.08);
   color: var(--gold);
 }
 
-.ow-queue-board-head b {
+.arena-queue-board-head b {
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(0, 0, 0, 0.18);
   color: var(--text);
 }
 
-.ow-queue-board-grid {
+.arena-queue-board-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 7px;
   min-width: 0;
 }
 
-.ow-queue-board-group {
+.arena-queue-board-group {
   display: grid;
   min-width: 0;
   gap: 6px;
@@ -1088,11 +1088,11 @@
   padding: 7px;
 }
 
-.ow-queue-board-group.reserve {
+.arena-queue-board-group.reserve {
   border-color: rgba(255, 211, 108, 0.18);
 }
 
-.ow-queue-board-group header {
+.arena-queue-board-group header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1100,19 +1100,19 @@
   gap: 6px;
 }
 
-.ow-queue-board-group header strong {
+.arena-queue-board-group header strong {
   color: var(--text);
   font-size: 0.74rem;
   font-weight: 950;
 }
 
-.ow-queue-board-group header small {
+.arena-queue-board-group header small {
   color: var(--gold);
   font-size: 0.68rem;
   font-weight: 950;
 }
 
-.ow-queue-board-group > div {
+.arena-queue-board-group > div {
   display: flex;
   align-items: stretch;
   flex-wrap: wrap;
@@ -1121,7 +1121,7 @@
   overflow: visible;
 }
 
-.ow-queue-board-group > div > span {
+.arena-queue-board-group > div > span {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
@@ -1136,38 +1136,38 @@
   padding: 5px 6px;
 }
 
-.ow-queue-board-group > div > span.ready {
+.arena-queue-board-group > div > span.ready {
   border-color: rgba(70, 224, 182, 0.34);
   background: rgba(70, 224, 182, 0.09);
 }
 
-.ow-queue-board-group > div > span.waiting {
+.arena-queue-board-group > div > span.waiting {
   border-color: rgba(255, 211, 108, 0.18);
 }
 
-.ow-queue-board-avatars {
+.arena-queue-board-avatars {
   display: inline-flex;
   align-items: center;
   min-width: 22px;
 }
 
-.ow-queue-board-avatars .player-hover-trigger {
+.arena-queue-board-avatars .player-hover-trigger {
   display: inline-flex;
   margin-left: -6px;
 }
 
-.ow-queue-board-avatars .player-hover-trigger:first-child {
+.arena-queue-board-avatars .player-hover-trigger:first-child {
   margin-left: 0;
 }
 
-.ow-queue-board-avatars .avatar.small {
+.arena-queue-board-avatars .avatar.small {
   width: 22px;
   height: 22px;
   border: 2px solid rgba(8, 12, 18, 0.94);
   font-size: 0.64rem;
 }
 
-.ow-queue-board-avatars i {
+.arena-queue-board-avatars i {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1183,15 +1183,15 @@
   font-weight: 950;
 }
 
-.ow-queue-board-name,
-.ow-queue-board-name .team-hover-trigger,
-.ow-queue-board-name .player-hover-trigger {
+.arena-queue-board-name,
+.arena-queue-board-name .team-hover-trigger,
+.arena-queue-board-name .player-hover-trigger {
   display: inline-flex;
   min-width: 0;
   max-width: 100%;
 }
 
-.ow-queue-board-name b {
+.arena-queue-board-name b {
   display: block;
   min-width: 0;
   overflow: hidden;
@@ -1202,7 +1202,7 @@
   white-space: nowrap;
 }
 
-.ow-queue-board-group em {
+.arena-queue-board-group em {
   color: var(--gold);
   font-size: 0.68rem;
   font-style: normal;
@@ -1210,11 +1210,11 @@
   white-space: nowrap;
 }
 
-.ow-queue-board-group .ready em {
+.arena-queue-board-group .ready em {
   color: var(--green);
 }
 
-.ow-queue-board-group .empty {
+.arena-queue-board-group .empty {
   display: inline-flex;
   align-items: center;
   min-height: 32px;
@@ -1223,7 +1223,7 @@
   font-weight: 850;
 }
 
-.ow-lobby-modal {
+.arena-lobby-modal {
   width: min(1240px, 100%);
   max-height: min(880px, calc(100vh - 36px));
   overflow-y: auto;
@@ -1235,7 +1235,7 @@
   padding: 18px;
 }
 
-.ow-lobby-arena {
+.arena-lobby-arena {
   --room-slot-gap: 8px;
   --room-slot-width: clamp(64px, 6.5vw, 78px);
   position: relative;
@@ -1253,7 +1253,7 @@
   padding: 18px;
 }
 
-.ow-lobby-arena::before {
+.arena-lobby-arena::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -1265,7 +1265,7 @@
   opacity: 0.74;
 }
 
-.ow-lobby-arena::after {
+.arena-lobby-arena::after {
   content: "";
   position: absolute;
   inset: auto 0 0;
@@ -1274,47 +1274,47 @@
   background: linear-gradient(0deg, rgba(16, 53, 128, 0.56), transparent);
 }
 
-.ow-lobby-topline,
-.ow-lobby-actions {
+.arena-lobby-topline,
+.arena-lobby-actions {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
 
-.ow-lobby-topline > div:last-child {
+.arena-lobby-topline > div:last-child {
   display: inline-flex;
   align-items: center;
   gap: 10px;
 }
 
-.ow-lobby-topline > div:last-child > span {
+.arena-lobby-topline > div:last-child > span {
   color: var(--gold);
   font-size: 0.86rem;
   font-weight: 950;
 }
 
-.ow-lobby-title {
+.arena-lobby-title {
   display: grid;
   max-width: 680px;
   gap: 8px;
 }
 
-.ow-lobby-title > span {
+.arena-lobby-title > span {
   color: var(--gold);
   font-size: 0.82rem;
   font-weight: 950;
   text-transform: uppercase;
 }
 
-.ow-lobby-title h2 {
+.arena-lobby-title h2 {
   color: var(--text);
   font-size: clamp(3.2rem, 7.4vw, 5.8rem);
   line-height: 0.85;
   text-transform: uppercase;
 }
 
-.ow-lobby-title p {
+.arena-lobby-title p {
   display: flex;
   align-items: center;
   gap: 7px;
@@ -1323,7 +1323,7 @@
   font-weight: 850;
 }
 
-.ow-lobby-versus-stage {
+.arena-lobby-versus-stage {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(150px, 210px) minmax(0, 1fr);
   gap: 16px;
@@ -1331,15 +1331,15 @@
   margin-top: auto;
 }
 
-.ow-lobby-team-panel,
-.ow-lobby-score-core,
-.ow-lobby-actions > div {
+.arena-lobby-team-panel,
+.arena-lobby-score-core,
+.arena-lobby-actions > div {
   border: 1px solid rgba(255, 255, 255, 0.13);
   background: rgba(5, 10, 18, 0.68);
   backdrop-filter: blur(16px);
 }
 
-.ow-lobby-team-panel {
+.arena-lobby-team-panel {
   display: grid;
   align-content: space-between;
   min-width: 0;
@@ -1349,20 +1349,20 @@
   padding: 14px;
 }
 
-.ow-lobby-team-head {
+.arena-lobby-team-head {
   display: grid;
   min-width: 0;
   gap: 5px;
 }
 
-.ow-lobby-team-head span {
+.arena-lobby-team-head span {
   color: var(--gold);
   font-size: 0.72rem;
   font-weight: 950;
   text-transform: uppercase;
 }
 
-.ow-lobby-team-head strong {
+.arena-lobby-team-head strong {
   overflow: hidden;
   color: var(--text);
   font-size: clamp(1.4rem, 2.4vw, 2.1rem);
@@ -1371,14 +1371,14 @@
   white-space: nowrap;
 }
 
-.ow-lobby-team-head em {
+.arena-lobby-team-head em {
   color: var(--muted);
   font-size: 0.82rem;
   font-style: normal;
   font-weight: 850;
 }
 
-.ow-lobby-score-core {
+.arena-lobby-score-core {
   display: grid;
   align-content: center;
   justify-items: center;
@@ -1388,31 +1388,31 @@
   text-align: center;
 }
 
-.ow-lobby-score-core strong {
+.arena-lobby-score-core strong {
   color: var(--text);
   font-size: clamp(2.7rem, 5vw, 4.6rem);
   line-height: 0.9;
 }
 
-.ow-lobby-score-core i {
+.arena-lobby-score-core i {
   color: var(--gold);
   font-size: 1.25rem;
   font-style: normal;
   font-weight: 950;
 }
 
-.ow-lobby-score-core span {
+.arena-lobby-score-core span {
   color: var(--green);
   font-size: 0.8rem;
   font-weight: 950;
 }
 
-.ow-lobby-actions {
+.arena-lobby-actions {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
-.ow-lobby-actions > div {
+.arena-lobby-actions > div {
   display: flex;
   min-width: 0;
   align-items: center;
@@ -1424,30 +1424,30 @@
   font-weight: 850;
 }
 
-.ow-lobby-actions svg {
+.arena-lobby-actions svg {
   color: var(--green);
   flex: 0 0 auto;
 }
 
-.ow-lobby-actions span {
+.arena-lobby-actions span {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.ow-lobby-team-panel .ow-side-roster {
+.arena-lobby-team-panel .arena-side-roster {
   border: 0;
   background: transparent;
   padding: 0;
 }
 
-.ow-lobby-team-panel .ow-side-roster > header {
+.arena-lobby-team-panel .arena-side-roster > header {
   display: none;
 }
 
-.ow-room-slot-row,
-.ow-room-reserve-row {
+.arena-room-slot-row,
+.arena-room-reserve-row {
   display: grid;
   grid-template-columns: repeat(var(--slot-count, 5), minmax(0, var(--room-slot-width)));
   justify-content: start;
@@ -1455,7 +1455,7 @@
   align-items: stretch;
 }
 
-.ow-room-player-slot-wrap {
+.arena-room-player-slot-wrap {
   position: relative;
   isolation: isolate;
   display: grid;
@@ -1463,7 +1463,7 @@
   gap: 6px;
 }
 
-.ow-room-party-group {
+.arena-room-party-group {
   position: relative;
   isolation: isolate;
   display: grid;
@@ -1473,7 +1473,7 @@
   --party-link-y: 30px;
 }
 
-.ow-room-party-group::before {
+.arena-room-party-group::before {
   content: "";
   position: absolute;
   inset: -8px -7px;
@@ -1488,7 +1488,7 @@
   pointer-events: none;
 }
 
-.ow-room-party-group::after {
+.arena-room-party-group::after {
   content: "";
   position: absolute;
   top: var(--party-link-y);
@@ -1502,11 +1502,11 @@
   pointer-events: none;
 }
 
-.ow-room-party-group > .ow-room-player-slot-wrap {
+.arena-room-party-group > .arena-room-player-slot-wrap {
   z-index: 2;
 }
 
-.ow-room-player-slot {
+.arena-room-player-slot {
   position: relative;
   z-index: 1;
   display: grid;
@@ -1524,28 +1524,28 @@
   text-align: center;
 }
 
-button.ow-room-player-slot {
+button.arena-room-player-slot {
   width: 100%;
   font: inherit;
 }
 
-.ow-room-player-slot.self-action {
+.arena-room-player-slot.self-action {
   cursor: pointer;
 }
 
-.ow-room-player-slot.self-action:hover,
-.ow-room-player-slot.self-action:focus-visible {
+.arena-room-player-slot.self-action:hover,
+.arena-room-player-slot.self-action:focus-visible {
   border-color: rgba(255, 211, 108, 0.72);
   box-shadow: 0 0 0 2px rgba(255, 211, 108, 0.16);
   outline: none;
 }
 
-.ow-room-player-slot.ready {
+.arena-room-player-slot.ready {
   border-color: rgba(70, 224, 182, 0.5);
   background: rgba(70, 224, 182, 0.13);
 }
 
-.ow-room-slot-crown {
+.arena-room-slot-crown {
   position: absolute;
   top: 5px;
   right: 5px;
@@ -1560,29 +1560,29 @@ button.ow-room-player-slot {
   pointer-events: none;
 }
 
-.ow-room-slot-crown.host {
+.arena-room-slot-crown.host {
   background: var(--gold);
   color: #141006;
 }
 
-.ow-room-slot-crown.captain {
+.arena-room-slot-crown.captain {
   border-color: rgba(118, 169, 255, 0.45);
   background: rgba(118, 169, 255, 0.22);
   color: var(--blue);
 }
 
-.ow-room-player-slot.empty {
+.arena-room-player-slot.empty {
   border-style: dashed;
   background: rgba(0, 0, 0, 0.18);
   cursor: default;
 }
 
-.ow-room-player-slot.empty.invite {
+.arena-room-player-slot.empty.invite {
   color: var(--gold);
   cursor: pointer;
 }
 
-.ow-room-player-slot .avatar {
+.arena-room-player-slot .avatar {
   grid-row: 1;
   align-self: center;
   width: 42px;
@@ -1590,7 +1590,7 @@ button.ow-room-player-slot {
   font-size: 1.02rem;
 }
 
-.ow-room-player-slot .ow-position-avatar {
+.arena-room-player-slot .arena-position-avatar {
   position: relative;
   overflow: hidden;
   border-radius: 0;
@@ -1599,14 +1599,14 @@ button.ow-room-player-slot {
   color: transparent;
 }
 
-.ow-position-avatar-tier,
-.ow-position-avatar-player {
+.arena-position-avatar-tier,
+.arena-position-avatar-player {
   position: absolute;
   pointer-events: none;
   user-select: none;
 }
 
-.ow-position-avatar-tier {
+.arena-position-avatar-tier {
   inset: 1px;
   z-index: 0;
   width: calc(100% - 2px);
@@ -1616,7 +1616,7 @@ button.ow-room-player-slot {
   filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.38));
 }
 
-.ow-position-avatar-player {
+.arena-position-avatar-player {
   left: 50%;
   top: 0;
   z-index: 1;
@@ -1634,39 +1634,39 @@ button.ow-room-player-slot {
   mask-size: 100% 100%;
 }
 
-.ow-position-avatar[data-position="C"] .ow-position-avatar-player {
+.arena-position-avatar[data-position="C"] .arena-position-avatar-player {
   top: 3px;
   width: 88%;
   height: 124%;
   object-position: center 0%;
 }
 
-.ow-position-avatar[data-position="PG"] .ow-position-avatar-player,
-.ow-position-avatar[data-position="PF"] .ow-position-avatar-player {
+.arena-position-avatar[data-position="PG"] .arena-position-avatar-player,
+.arena-position-avatar[data-position="PF"] .arena-position-avatar-player {
   width: 116%;
   height: 138%;
 }
 
-.ow-room-player-slot strong,
-.ow-room-player-slot > span:not(.avatar),
-.ow-room-player-slot b,
-.ow-room-player-slot small,
-.ow-room-player-slot em {
+.arena-room-player-slot strong,
+.arena-room-player-slot > span:not(.avatar),
+.arena-room-player-slot b,
+.arena-room-player-slot small,
+.arena-room-player-slot em {
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.ow-room-player-slot strong {
+.arena-room-player-slot strong {
   grid-row: 2;
   color: var(--text);
   font-size: 0.78rem;
   line-height: 1.1;
 }
 
-.ow-room-player-slot small,
-.ow-room-player-slot b {
+.arena-room-player-slot small,
+.arena-room-player-slot b {
   display: inline-flex;
   min-height: 18px;
   align-items: center;
@@ -1679,16 +1679,16 @@ button.ow-room-player-slot {
   padding: 2px 6px;
 }
 
-.ow-room-player-slot small {
+.arena-room-player-slot small {
   grid-row: 3;
 }
 
-.ow-room-player-slot b {
+.arena-room-player-slot b {
   grid-row: 4;
   color: var(--muted);
 }
 
-.ow-room-player-slot em {
+.arena-room-player-slot em {
   grid-row: 5;
   min-height: 16px;
   color: var(--gold);
@@ -1697,8 +1697,8 @@ button.ow-room-player-slot {
   font-weight: 950;
 }
 
-.ow-room-player-slot .tier-badge,
-.ow-room-player-slot .badge {
+.arena-room-player-slot .tier-badge,
+.arena-room-player-slot .badge {
   grid-row: 5;
   justify-content: center;
   width: 100%;
@@ -1708,11 +1708,11 @@ button.ow-room-player-slot {
   font-size: 0.54rem;
 }
 
-.ow-room-player-slot .tier-badge img {
+.arena-room-player-slot .tier-badge img {
   display: none;
 }
 
-.ow-slot-popover-backdrop {
+.arena-slot-popover-backdrop {
   position: fixed;
   inset: 0;
   z-index: 135;
@@ -1725,7 +1725,7 @@ button.ow-room-player-slot {
   padding: max(14px, env(safe-area-inset-top)) 12px max(18px, env(safe-area-inset-bottom));
 }
 
-.ow-slot-command-popover {
+.arena-slot-command-popover {
   display: grid;
   grid-column: 1 / -1;
   gap: 10px;
@@ -1739,7 +1739,7 @@ button.ow-room-player-slot {
   padding: 10px;
 }
 
-.ow-slot-command-popover.floating {
+.arena-slot-command-popover.floating {
   position: relative;
   top: auto;
   left: auto;
@@ -1750,7 +1750,7 @@ button.ow-room-player-slot {
   transform: none;
 }
 
-.ow-slot-command-popover.floating.anchored {
+.arena-slot-command-popover.floating.anchored {
   position: fixed;
   top: var(--popover-y);
   left: var(--popover-x);
@@ -1758,64 +1758,64 @@ button.ow-room-player-slot {
   max-height: min(70vh, 560px);
 }
 
-.ow-slot-command-popover.floating.anchored.below {
+.arena-slot-command-popover.floating.anchored.below {
   transform: translate(-50%, 0);
 }
 
-.ow-slot-command-popover.floating.anchored.above {
+.arena-slot-command-popover.floating.anchored.above {
   transform: translate(-50%, -100%);
 }
 
-.ow-slot-command-popover > header {
+.arena-slot-command-popover > header {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
 }
 
-.ow-slot-command-popover > header > div {
+.arena-slot-command-popover > header > div {
   display: grid;
   min-width: 0;
   gap: 3px;
 }
 
-.ow-slot-command-popover > header strong {
+.arena-slot-command-popover > header strong {
   color: var(--text);
   font-size: 0.9rem;
   font-weight: 950;
 }
 
-.ow-slot-command-popover > header span {
+.arena-slot-command-popover > header span {
   color: var(--muted);
   font-size: 0.76rem;
   font-weight: 850;
 }
 
-.ow-slot-command-actions {
+.arena-slot-command-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
 }
 
-.ow-self-slot-status {
+.arena-self-slot-status {
   display: flex;
   min-width: 0;
   flex-wrap: wrap;
   gap: 6px;
 }
 
-.ow-self-position-control {
+.arena-self-position-control {
   display: grid;
   gap: 5px;
 }
 
-.ow-self-position-control > span {
+.arena-self-position-control > span {
   color: var(--muted);
   font-size: 0.72rem;
   font-weight: 900;
 }
 
-.ow-self-position-control select {
+.arena-self-position-control select {
   min-height: 34px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
@@ -1825,54 +1825,54 @@ button.ow-room-player-slot {
   font-weight: 900;
 }
 
-.ow-slot-command-popover .ow-invite-panel {
+.arena-slot-command-popover .arena-invite-panel {
   margin-top: 0;
   border-color: rgba(70, 224, 182, 0.16);
   background: rgba(70, 224, 182, 0.045);
   padding: 10px;
 }
 
-.ow-reserve-panel {
+.arena-reserve-panel {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(150px, 210px) minmax(0, 1fr);
   gap: 16px;
 }
 
-.ow-reserve-panel > .ow-reserve-line:first-child {
+.arena-reserve-panel > .arena-reserve-line:first-child {
   grid-column: 1;
 }
 
-.ow-reserve-panel > .ow-reserve-line:nth-child(2) {
+.arena-reserve-panel > .arena-reserve-line:nth-child(2) {
   grid-column: 3;
 }
 
-.ow-reserve-line {
+.arena-reserve-line {
   display: grid;
   min-width: 0;
   gap: 8px;
   padding-inline: 14px;
 }
 
-.ow-reserve-line > strong {
+.arena-reserve-line > strong {
   color: var(--gold);
   font-size: 0.78rem;
   font-weight: 950;
 }
 
-.ow-drawer-head p {
+.arena-drawer-head p {
   margin-top: 6px;
   color: var(--muted);
   font-weight: 850;
 }
 
-.ow-lobby-summary {
+.arena-lobby-summary {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 12px;
 }
 
-.ow-lobby-summary span {
+.arena-lobby-summary span {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -1885,13 +1885,13 @@ button.ow-room-player-slot {
   font-weight: 900;
 }
 
-.ow-lobby-grid {
+.arena-lobby-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 
-.ow-side-roster {
+.arena-side-roster {
   display: grid;
   min-width: 0;
   gap: 10px;
@@ -1901,12 +1901,12 @@ button.ow-room-player-slot {
   padding: 12px;
 }
 
-.ow-side-roster header {
+.arena-side-roster header {
   display: grid;
   gap: 8px;
 }
 
-.ow-side-roster header > div:first-child {
+.arena-side-roster header > div:first-child {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1915,26 +1915,26 @@ button.ow-room-player-slot {
   font-weight: 950;
 }
 
-.ow-side-roster header strong {
+.arena-side-roster header strong {
   color: var(--gold);
   font-size: 1.15rem;
 }
 
-.ow-roster-stack {
+.arena-roster-stack {
   display: grid;
   gap: 8px;
 }
 
-.ow-owner-panel,
-.ow-room-rule-panel,
-.ow-reserve-panel,
-.ow-join-panel {
+.arena-owner-panel,
+.arena-room-rule-panel,
+.arena-reserve-panel,
+.arena-join-panel {
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.045);
 }
 
-.ow-room-rule-controls {
+.arena-room-rule-controls {
   display: flex;
   align-items: end;
   justify-content: space-between;
@@ -1942,7 +1942,7 @@ button.ow-room-player-slot {
   margin-bottom: 10px;
 }
 
-.ow-room-rule-controls label {
+.arena-room-rule-controls label {
   display: grid;
   min-width: 150px;
   gap: 5px;
@@ -1951,40 +1951,40 @@ button.ow-room-player-slot {
   font-weight: 900;
 }
 
-.ow-room-rule-controls small {
+.arena-room-rule-controls small {
   color: var(--muted);
   font-weight: 850;
 }
 
-.ow-room-rule-head,
-.ow-room-edit-actions {
+.arena-room-rule-head,
+.arena-room-edit-actions {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
 }
 
-.ow-room-rule-summary {
+.arena-room-rule-summary {
   display: flex;
   min-width: 0;
   flex-wrap: wrap;
   gap: 6px;
 }
 
-.ow-room-rule-summary span {
+.arena-room-rule-summary span {
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.055);
   padding: 5px 8px;
 }
 
-.ow-room-rule-summary.detail span {
+.arena-room-rule-summary.detail span {
   border-radius: 7px;
   white-space: normal;
   overflow-wrap: anywhere;
 }
 
-.ow-room-referee-line {
+.arena-room-referee-line {
   display: flex;
   min-width: 0;
   align-items: center;
@@ -1996,12 +1996,12 @@ button.ow-room-player-slot {
   padding: 8px 9px;
 }
 
-.ow-room-referee-line > strong {
+.arena-room-referee-line > strong {
   color: var(--gold);
   font-size: 0.78rem;
 }
 
-.ow-room-referee-card {
+.arena-room-referee-card {
   display: inline-flex;
   min-width: 0;
   align-items: center;
@@ -2010,13 +2010,13 @@ button.ow-room-player-slot {
   font-weight: 900;
 }
 
-.ow-room-referee-card > span:last-child {
+.arena-room-referee-card > span:last-child {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.ow-room-rule-panel .ow-details-memo {
+.arena-room-rule-panel .arena-details-memo {
   display: grid;
   gap: 5px;
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -2025,18 +2025,18 @@ button.ow-room-player-slot {
   padding: 9px;
 }
 
-.ow-room-rule-panel .ow-details-memo strong {
+.arena-room-rule-panel .arena-details-memo strong {
   color: var(--gold);
   font-size: 0.78rem;
 }
 
-.ow-room-rule-panel .ow-details-memo span {
+.arena-room-rule-panel .arena-details-memo span {
   color: var(--text);
   font-weight: 850;
   overflow-wrap: anywhere;
 }
 
-.ow-room-edit-panel {
+.arena-room-edit-panel {
   display: grid;
   gap: 10px;
   border: 1px solid rgba(70, 224, 182, 0.22);
@@ -2045,7 +2045,7 @@ button.ow-room-player-slot {
   padding: 10px;
 }
 
-.ow-room-edit-panel > label {
+.arena-room-edit-panel > label {
   display: grid;
   gap: 5px;
   color: var(--muted);
@@ -2053,13 +2053,13 @@ button.ow-room-player-slot {
   font-weight: 900;
 }
 
-.ow-room-edit-panel small {
+.arena-room-edit-panel small {
   color: var(--muted);
   font-size: 0.76rem;
   font-weight: 850;
 }
 
-.ow-self-placement-actions {
+.arena-self-placement-actions {
   display: flex;
   min-width: 0;
   flex-wrap: wrap;
@@ -2067,7 +2067,7 @@ button.ow-room-player-slot {
   margin-top: 8px;
 }
 
-.ow-host-kick-panel {
+.arena-host-kick-panel {
   display: grid;
   gap: 10px;
   border: 1px solid rgba(255, 95, 115, 0.18);
@@ -2076,30 +2076,30 @@ button.ow-room-player-slot {
   padding: 12px;
 }
 
-.ow-host-kick-panel header {
+.arena-host-kick-panel header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
 }
 
-.ow-host-kick-panel header strong {
+.arena-host-kick-panel header strong {
   color: var(--text);
   font-size: 0.92rem;
 }
 
-.ow-host-kick-panel header span {
+.arena-host-kick-panel header span {
   color: var(--muted);
   font-size: 0.74rem;
   font-weight: 850;
 }
 
-.ow-host-kick-list {
+.arena-host-kick-list {
   display: grid;
   gap: 7px;
 }
 
-.ow-host-kick-row {
+.arena-host-kick-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) repeat(3, auto);
   align-items: center;
@@ -2110,44 +2110,44 @@ button.ow-room-player-slot {
   padding: 8px;
 }
 
-.ow-host-kick-row > span {
+.arena-host-kick-row > span {
   display: flex;
   min-width: 0;
   align-items: center;
   gap: 8px;
 }
 
-.ow-host-kick-row > span > span:last-child {
+.arena-host-kick-row > span > span:last-child {
   display: grid;
   min-width: 0;
   gap: 2px;
 }
 
-.ow-host-kick-row strong,
-.ow-host-kick-row em,
-.ow-host-kick-row i {
+.arena-host-kick-row strong,
+.arena-host-kick-row em,
+.arena-host-kick-row i {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.ow-host-kick-row em {
+.arena-host-kick-row em {
   color: var(--muted);
   font-size: 0.72rem;
   font-style: normal;
   font-weight: 850;
 }
 
-.ow-host-kick-row i {
+.arena-host-kick-row i {
   color: var(--mint);
   font-size: 0.72rem;
   font-style: normal;
   font-weight: 950;
 }
 
-.ow-invite-panel,
-.ow-invitation-list {
+.arena-invite-panel,
+.arena-invitation-list {
   display: grid;
   gap: 10px;
   margin-top: 12px;
@@ -2157,38 +2157,38 @@ button.ow-room-player-slot {
   padding: 12px;
 }
 
-.ow-invite-panel header,
-.ow-invite-team-head,
-.ow-invitation-list > div {
+.arena-invite-panel header,
+.arena-invite-team-head,
+.arena-invitation-list > div {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
 }
 
-.ow-invite-panel header > div,
-.ow-invite-team-head .team-hover-trigger,
-.ow-invitation-list .player-hover-trigger {
+.arena-invite-panel header > div,
+.arena-invite-team-head .team-hover-trigger,
+.arena-invitation-list .player-hover-trigger {
   display: grid;
   min-width: 0;
   gap: 3px;
 }
 
-.ow-invite-panel header strong,
-.ow-invitation-list > strong {
+.arena-invite-panel header strong,
+.arena-invitation-list > strong {
   color: var(--text);
   font-weight: 950;
 }
 
-.ow-invite-panel header span,
-.ow-invite-empty,
-.ow-invite-favorites > em {
+.arena-invite-panel header span,
+.arena-invite-empty,
+.arena-invite-favorites > em {
   color: var(--muted);
   font-size: 0.82rem;
   font-weight: 850;
 }
 
-.ow-invite-search {
+.arena-invite-search {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
@@ -2199,7 +2199,7 @@ button.ow-room-player-slot {
   padding: 9px 10px;
 }
 
-.ow-invite-search input {
+.arena-invite-search input {
   min-width: 0;
   border: 0;
   background: transparent;
@@ -2207,18 +2207,18 @@ button.ow-room-player-slot {
   outline: none;
 }
 
-.ow-invite-result {
+.arena-invite-result {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 8px;
 }
 
-.ow-invite-result .player-hover-trigger,
-.ow-invite-team-head .team-hover-trigger,
-.ow-invite-favorite .player-hover-trigger,
-.ow-invite-favorite .team-hover-trigger,
-.ow-invitation-list .player-hover-trigger {
+.arena-invite-result .player-hover-trigger,
+.arena-invite-team-head .team-hover-trigger,
+.arena-invite-favorite .player-hover-trigger,
+.arena-invite-favorite .team-hover-trigger,
+.arena-invitation-list .player-hover-trigger {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
@@ -2228,29 +2228,29 @@ button.ow-room-player-slot {
   text-decoration: none;
 }
 
-.ow-invite-result .player-hover-trigger > span:last-child,
-.ow-invite-team-head .team-hover-trigger > span:last-child,
-.ow-invite-favorite .player-hover-trigger > span:last-child,
-.ow-invite-favorite .team-hover-trigger > span:last-child,
-.ow-invitation-list .player-hover-trigger > span:last-child {
+.arena-invite-result .player-hover-trigger > span:last-child,
+.arena-invite-team-head .team-hover-trigger > span:last-child,
+.arena-invite-favorite .player-hover-trigger > span:last-child,
+.arena-invite-favorite .team-hover-trigger > span:last-child,
+.arena-invitation-list .player-hover-trigger > span:last-child {
   display: grid;
   min-width: 0;
   gap: 2px;
 }
 
-.ow-invite-result strong,
-.ow-invite-team-head strong,
-.ow-invite-favorite strong,
-.ow-invitation-list b {
+.arena-invite-result strong,
+.arena-invite-team-head strong,
+.arena-invite-favorite strong,
+.arena-invitation-list b {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.ow-invite-result em,
-.ow-invite-team-head em,
-.ow-invite-favorite em,
-.ow-invitation-list em {
+.arena-invite-result em,
+.arena-invite-team-head em,
+.arena-invite-favorite em,
+.arena-invitation-list em {
   overflow: hidden;
   color: var(--muted);
   font-size: 0.72rem;
@@ -2260,8 +2260,8 @@ button.ow-room-player-slot {
   white-space: nowrap;
 }
 
-.ow-invite-result > button:not(.button),
-.ow-invite-team-head > button {
+.arena-invite-result > button:not(.button),
+.arena-invite-team-head > button {
   display: grid;
   place-items: center;
   width: 34px;
@@ -2272,26 +2272,26 @@ button.ow-room-player-slot {
   color: var(--muted);
 }
 
-.ow-invite-result > button.active,
-.ow-invite-team-head > button.active {
+.arena-invite-result > button.active,
+.arena-invite-team-head > button.active {
   border-color: rgba(255, 211, 108, 0.42);
   color: var(--gold);
 }
 
-.ow-invite-team-picker,
-.ow-invite-favorites {
+.arena-invite-team-picker,
+.arena-invite-favorites {
   display: grid;
   gap: 8px;
 }
 
-.ow-invite-member-grid {
+.arena-invite-member-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
   gap: 8px;
 }
 
-.ow-invite-member-grid button,
-.ow-invite-favorite {
+.arena-invite-member-grid button,
+.arena-invite-favorite {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
@@ -2305,102 +2305,102 @@ button.ow-room-player-slot {
   text-align: left;
 }
 
-.ow-invite-member-grid button.selected {
+.arena-invite-member-grid button.selected {
   border-color: rgba(70, 224, 182, 0.42);
   background: rgba(70, 224, 182, 0.13);
 }
 
-.ow-invite-member-grid button:disabled,
-.ow-invite-favorite:disabled {
+.arena-invite-member-grid button:disabled,
+.arena-invite-favorite:disabled {
   opacity: 0.48;
 }
 
-.ow-invite-member-grid button > span:last-child {
+.arena-invite-member-grid button > span:last-child {
   display: grid;
   min-width: 0;
   gap: 2px;
 }
 
-.ow-invite-favorites > div {
+.arena-invite-favorites > div {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 8px;
 }
 
-.ow-invite-favorite {
+.arena-invite-favorite {
   grid-template-columns: minmax(0, 1fr) auto;
 }
 
-.ow-invite-favorite b {
+.arena-invite-favorite b {
   color: var(--green);
   font-size: 0.74rem;
   font-weight: 950;
 }
 
-.ow-invite-actions {
+.arena-invite-actions {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 6px;
 }
 
-.ow-invitation-list > div.mine {
+.arena-invitation-list > div.mine {
   border: 1px solid rgba(255, 211, 108, 0.3);
   border-radius: 8px;
   background: rgba(255, 211, 108, 0.08);
   padding: 8px;
 }
 
-.ow-reserve-panel {
+.arena-reserve-panel {
   display: grid;
   gap: 8px;
   margin-top: 12px;
   padding: 10px;
 }
 
-.ow-reserve-panel > span {
+.arena-reserve-panel > span {
   color: var(--muted);
   font-size: 0.82rem;
   font-weight: 900;
 }
 
-.ow-reserve-line {
+.arena-reserve-line {
   display: grid;
   gap: 7px;
   padding-inline: 14px;
 }
 
-.ow-reserve-line strong {
+.arena-reserve-line strong {
   color: var(--gold);
   font-size: 0.8rem;
 }
 
-.ow-reserve-line > .ow-room-reserve-row {
+.arena-reserve-line > .arena-room-reserve-row {
   display: grid;
   grid-template-columns: repeat(var(--slot-count, 2), minmax(0, var(--room-slot-width)));
   justify-content: start;
   gap: var(--room-slot-gap);
 }
 
-.ow-room-rule-panel {
+.arena-room-rule-panel {
   display: grid;
   gap: 6px;
   margin-top: 12px;
   padding: 12px;
 }
 
-.ow-room-rule-panel strong {
+.arena-room-rule-panel strong {
   color: var(--text);
 }
 
-.ow-room-rule-panel span {
+.arena-room-rule-panel span {
   color: var(--muted);
   font-size: 0.84rem;
   font-weight: 850;
   line-height: 1.45;
 }
 
-.ow-room-chat {
+.arena-room-chat {
   display: grid;
   gap: 10px;
   margin-top: 12px;
@@ -2410,20 +2410,20 @@ button.ow-room-player-slot {
   padding: 12px;
 }
 
-.ow-chat-empty {
+.arena-chat-empty {
   color: var(--muted);
   font-size: 0.84rem;
   font-weight: 850;
 }
 
-.ow-room-chat header {
+.arena-room-chat header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
 }
 
-.ow-room-chat header span {
+.arena-room-chat header span {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -2432,26 +2432,26 @@ button.ow-room-player-slot {
   font-weight: 900;
 }
 
-.ow-chat-list {
+.arena-chat-list {
   display: grid;
   gap: 8px;
 }
 
-.ow-chat-list {
+.arena-chat-list {
   max-height: 240px;
   overflow: auto;
   overscroll-behavior: contain;
   padding-right: 2px;
 }
 
-.ow-chat-message {
+.arena-chat-message {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   gap: 8px;
   align-items: start;
 }
 
-.ow-chat-message > span:last-child {
+.arena-chat-message > span:last-child {
   display: grid;
   min-width: 0;
   gap: 3px;
@@ -2460,7 +2460,7 @@ button.ow-room-player-slot {
   padding: 8px;
 }
 
-.ow-chat-message strong {
+.arena-chat-message strong {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2468,7 +2468,7 @@ button.ow-room-player-slot {
   font-size: 0.78rem;
 }
 
-.ow-chat-message strong em {
+.arena-chat-message strong em {
   color: var(--muted);
   font-size: 0.7rem;
   font-style: normal;
@@ -2476,19 +2476,19 @@ button.ow-room-player-slot {
   white-space: nowrap;
 }
 
-.ow-chat-message b {
+.arena-chat-message b {
   overflow-wrap: anywhere;
   font-size: 0.86rem;
   line-height: 1.45;
 }
 
-.ow-chat-form {
+.arena-chat-form {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
 }
 
-.ow-join-panel {
+.arena-join-panel {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
@@ -2497,41 +2497,41 @@ button.ow-room-player-slot {
   padding: 12px;
 }
 
-.ow-modal-close-row {
+.arena-modal-close-row {
   display: grid;
   margin-top: 12px;
 }
 
-.ow-modal-close-button {
+.arena-modal-close-button {
   min-height: 56px;
   border-color: rgba(255, 255, 255, 0.18);
   font-size: 1rem;
   font-weight: 950;
 }
 
-.ow-join-form {
+.arena-join-form {
   display: grid;
   min-width: 0;
   gap: 10px;
 }
 
-.ow-owner-panel {
+.arena-owner-panel {
   display: grid;
   gap: 4px;
   padding: 10px;
 }
 
-.ow-owner-panel strong {
+.arena-owner-panel strong {
   color: var(--text);
 }
 
-.ow-owner-panel span {
+.arena-owner-panel span {
   color: var(--muted);
   font-size: 0.82rem;
   font-weight: 850;
 }
 
-.ow-source-record-summary {
+.arena-source-record-summary {
   display: grid;
   gap: 10px;
   margin-top: 8px;
@@ -2541,47 +2541,47 @@ button.ow-room-player-slot {
   padding: 10px;
 }
 
-.ow-source-record-score {
+.arena-source-record-score {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   gap: 8px;
 }
 
-.ow-source-record-score span {
+.arena-source-record-score span {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.ow-source-record-score span:last-child {
+.arena-source-record-score span:last-child {
   text-align: right;
 }
 
-.ow-source-record-score strong {
+.arena-source-record-score strong {
   color: var(--gold);
   font-size: 1.15rem;
 }
 
-.ow-source-record-grid {
+.arena-source-record-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 
-.ow-source-record-side {
+.arena-source-record-side {
   display: grid;
   min-width: 0;
   gap: 6px;
 }
 
-.ow-source-record-side > strong {
+.arena-source-record-side > strong {
   color: var(--text);
   font-size: 0.82rem;
 }
 
-.ow-source-record-side > div {
+.arena-source-record-side > div {
   display: grid;
   grid-template-columns: minmax(56px, 0.45fr) minmax(0, 1fr);
   gap: 8px;
@@ -2591,7 +2591,7 @@ button.ow-room-player-slot {
   padding: 6px 8px;
 }
 
-.ow-source-record-side span {
+.arena-source-record-side span {
   min-width: 0;
   overflow: hidden;
   color: var(--text);
@@ -2600,7 +2600,7 @@ button.ow-room-player-slot {
   white-space: nowrap;
 }
 
-.ow-source-record-side em {
+.arena-source-record-side em {
   min-width: 0;
   color: var(--text);
   font-style: normal;
@@ -2609,67 +2609,67 @@ button.ow-room-player-slot {
   white-space: normal;
 }
 
-.ow-check-row {
+.arena-check-row {
   align-content: center;
   grid-template-columns: auto minmax(0, 1fr);
   gap: 8px;
 }
 
-.ow-check-row input {
+.arena-check-row input {
   width: 18px;
   height: 18px;
 }
 
-.ow-check-row span {
+.arena-check-row span {
   display: grid;
   gap: 2px;
   min-width: 0;
 }
 
-.ow-check-row small {
+.arena-check-row small {
   color: var(--muted);
   font-size: 0.72rem;
   font-weight: 800;
   line-height: 1.25;
 }
 
-html[data-theme="light"] .ow-lobby-modal {
+html[data-theme="light"] .arena-lobby-modal {
   background: rgba(246, 248, 242, 0.96);
 }
 
-html[data-theme="light"] .ow-lobby-arena {
+html[data-theme="light"] .arena-lobby-arena {
   background:
     linear-gradient(90deg, rgba(246, 248, 242, 0.98), rgba(246, 248, 242, 0.82) 42%, rgba(246, 248, 242, 0.58)),
     var(--bg-hoop) var(--hero-bg-position-hoop) / var(--hero-bg-size) no-repeat;
 }
 
-html[data-theme="light"] .ow-lobby-title p {
+html[data-theme="light"] .arena-lobby-title p {
   color: var(--muted);
 }
 
-html[data-theme="light"] .ow-lobby-team-panel,
-html[data-theme="light"] .ow-lobby-score-core,
-html[data-theme="light"] .ow-lobby-actions > div {
+html[data-theme="light"] .arena-lobby-team-panel,
+html[data-theme="light"] .arena-lobby-score-core,
+html[data-theme="light"] .arena-lobby-actions > div {
   border-color: rgba(32, 56, 68, 0.16);
   background: rgba(255, 255, 255, 0.9);
   box-shadow: 0 14px 34px rgba(35, 50, 59, 0.1);
 }
 
-html[data-theme="light"] .ow-side-roster,
-html[data-theme="light"] .ow-owner-panel,
-html[data-theme="light"] .ow-room-rule-panel,
-html[data-theme="light"] .ow-room-chat,
-html[data-theme="light"] .ow-reserve-panel,
-html[data-theme="light"] .ow-join-panel,
-html[data-theme="light"] .ow-invite-panel,
-html[data-theme="light"] .ow-invitation-list,
-html[data-theme="light"] .ow-slot-command-popover,
-html[data-theme="light"] .ow-party-picker {
+html[data-theme="light"] .arena-side-roster,
+html[data-theme="light"] .arena-owner-panel,
+html[data-theme="light"] .arena-room-rule-panel,
+html[data-theme="light"] .arena-room-chat,
+html[data-theme="light"] .arena-reserve-panel,
+html[data-theme="light"] .arena-join-panel,
+html[data-theme="light"] .arena-invite-panel,
+html[data-theme="light"] .arena-invitation-list,
+html[data-theme="light"] .arena-slot-command-popover,
+html[data-theme="light"] .arena-party-picker {
   border-color: rgba(32, 56, 68, 0.16);
   background: rgba(255, 255, 255, 0.9);
 }
 
-html[data-theme="light"] .ow-room-player-slot {
+html[data-theme="light"] .arena-room-player-slot {
   border-color: rgba(15, 159, 126, 0.3);
   background:
     linear-gradient(180deg, rgba(15, 159, 126, 0.13), rgba(15, 159, 126, 0.045)),
@@ -2678,53 +2678,53 @@ html[data-theme="light"] .ow-room-player-slot {
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.72);
 }
 
-html[data-theme="light"] .ow-room-player-slot.ready {
+html[data-theme="light"] .arena-room-player-slot.ready {
   border-color: rgba(15, 159, 126, 0.56);
   background:
     linear-gradient(180deg, rgba(15, 159, 126, 0.2), rgba(15, 159, 126, 0.07)),
     rgba(238, 249, 244, 0.98);
 }
 
-html[data-theme="light"] .ow-room-player-slot.empty {
+html[data-theme="light"] .arena-room-player-slot.empty {
   border-color: rgba(32, 56, 68, 0.22);
   background: rgba(232, 240, 236, 0.88);
 }
 
-html[data-theme="light"] .ow-room-player-slot.empty.invite {
+html[data-theme="light"] .arena-room-player-slot.empty.invite {
   border-color: rgba(184, 118, 19, 0.38);
   background: rgba(255, 247, 224, 0.88);
 }
 
-html[data-theme="light"] .ow-room-player-slot small,
-html[data-theme="light"] .ow-room-player-slot b {
+html[data-theme="light"] .arena-room-player-slot small,
+html[data-theme="light"] .arena-room-player-slot b {
   background: rgba(53, 119, 212, 0.12);
   color: #245a9f;
 }
 
-html[data-theme="light"] .ow-room-player-slot b {
+html[data-theme="light"] .arena-room-player-slot b {
   background: rgba(32, 56, 68, 0.08);
   color: #465861;
 }
 
-html[data-theme="light"] .ow-room-player-slot em {
+html[data-theme="light"] .arena-room-player-slot em {
   color: #9a650f;
 }
 
-html[data-theme="light"] .ow-position-avatar {
+html[data-theme="light"] .arena-position-avatar {
   background:
     radial-gradient(circle at 50% 58%, rgba(255, 255, 255, 0.86) 0 28%, rgba(232, 240, 236, 0.5) 29% 48%, rgba(255, 255, 255, 0) 70%);
 }
 
-html[data-theme="light"] .ow-position-avatar-tier {
+html[data-theme="light"] .arena-position-avatar-tier {
   opacity: 0.82;
   filter: drop-shadow(0 3px 5px rgba(32, 56, 68, 0.18));
 }
 
-html[data-theme="light"] .ow-position-avatar-player {
+html[data-theme="light"] .arena-position-avatar-player {
   filter: drop-shadow(0 4px 6px rgba(32, 56, 68, 0.28));
 }
 
-html[data-theme="light"] .ow-room-party-group::before {
+html[data-theme="light"] .arena-room-party-group::before {
   border-color: rgba(15, 159, 126, 0.42);
   background:
     linear-gradient(180deg, rgba(15, 159, 126, 0.13), rgba(15, 159, 126, 0.045));
@@ -2733,50 +2733,50 @@ html[data-theme="light"] .ow-room-party-group::before {
     0 12px 26px rgba(35, 50, 59, 0.08);
 }
 
-html[data-theme="light"] .ow-room-party-group::after {
+html[data-theme="light"] .arena-room-party-group::after {
   background: linear-gradient(90deg, rgba(184, 118, 19, 0.08), rgba(184, 118, 19, 0.72), rgba(184, 118, 19, 0.08));
   box-shadow: 0 0 10px rgba(184, 118, 19, 0.2);
 }
 
-html[data-theme="light"] .ow-invite-search,
-html[data-theme="light"] .ow-invite-member-grid button,
-html[data-theme="light"] .ow-invite-favorite {
+html[data-theme="light"] .arena-invite-search,
+html[data-theme="light"] .arena-invite-member-grid button,
+html[data-theme="light"] .arena-invite-favorite {
   background: rgba(10, 18, 30, 0.04);
 }
 
-html[data-theme="light"] .ow-invite-member-grid button.selected,
-html[data-theme="light"] .ow-invitation-list > div.mine {
+html[data-theme="light"] .arena-invite-member-grid button.selected,
+html[data-theme="light"] .arena-invitation-list > div.mine {
   background: rgba(25, 148, 119, 0.12);
 }
 
-html[data-theme="light"] .ow-party-picker-grid > button,
-html[data-theme="light"] .ow-party-member-card,
-html[data-theme="light"] .ow-party-role-buttons button {
+html[data-theme="light"] .arena-party-picker-grid > button,
+html[data-theme="light"] .arena-party-member-card,
+html[data-theme="light"] .arena-party-role-buttons button {
   background: rgba(10, 18, 30, 0.04);
 }
 
-html[data-theme="light"] .ow-party-picker-grid > button.selected,
-html[data-theme="light"] .ow-party-member-card.selected {
+html[data-theme="light"] .arena-party-picker-grid > button.selected,
+html[data-theme="light"] .arena-party-member-card.selected {
   background: rgba(25, 148, 119, 0.12);
 }
 
-html[data-theme="light"] .ow-party-member-card.reserve {
+html[data-theme="light"] .arena-party-member-card.reserve {
   background: rgba(196, 143, 28, 0.1);
 }
 
-html[data-theme="light"] .ow-source-record-summary {
+html[data-theme="light"] .arena-source-record-summary {
   border-color: rgba(15, 159, 126, 0.2);
   background:
     linear-gradient(180deg, rgba(15, 159, 126, 0.1), rgba(53, 119, 212, 0.055)),
     rgba(247, 253, 250, 0.95);
 }
 
-html[data-theme="light"] .ow-source-record-side > div {
+html[data-theme="light"] .arena-source-record-side > div {
   background: rgba(15, 159, 126, 0.1);
   box-shadow: inset 0 0 0 1px rgba(15, 159, 126, 0.09);
 }
 
-html[data-theme="light"] .ow-source-record-side em {
+html[data-theme="light"] .arena-source-record-side em {
   color: #244f5d;
 }
 
@@ -2784,27 +2784,27 @@ html[data-theme="light"] .ow-source-record-side em {
   grid-template-columns: repeat(7, minmax(0, 1fr));
 }
 
-html[data-theme="light"] .ow-recruit-hero,
-html[data-theme="light"] .ow-compose-drawer {
+html[data-theme="light"] .arena-recruit-hero,
+html[data-theme="light"] .arena-compose-drawer {
   background:
     linear-gradient(90deg, rgba(246, 248, 242, 0.98), rgba(246, 248, 242, 0.78) 52%, rgba(246, 248, 242, 0.54)),
     var(--bg-ball) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat;
 }
 
-html[data-theme="light"] .ow-hero-copy p {
+html[data-theme="light"] .arena-hero-copy p {
   color: var(--muted);
 }
 
-html[data-theme="light"] .ow-mode-card,
-html[data-theme="light"] .ow-filter-bar,
-html[data-theme="light"] .ow-queue-controls,
-html[data-theme="light"] .ow-recruit-card,
-html[data-theme="light"] .ow-hero-panel,
-html[data-theme="light"] .ow-empty-state {
+html[data-theme="light"] .arena-mode-card,
+html[data-theme="light"] .arena-filter-bar,
+html[data-theme="light"] .arena-queue-controls,
+html[data-theme="light"] .arena-recruit-card,
+html[data-theme="light"] .arena-hero-panel,
+html[data-theme="light"] .arena-empty-state {
   background: rgba(255, 255, 255, 0.78);
 }
 
-html[data-theme="light"] .ow-recruit-card.ow-invited-room {
+html[data-theme="light"] .arena-recruit-card.arena-invited-room {
   border-color: rgba(184, 118, 19, 0.54);
   background:
     linear-gradient(135deg, rgba(255, 211, 108, 0.34), rgba(70, 224, 182, 0.12)),
@@ -2812,244 +2812,244 @@ html[data-theme="light"] .ow-recruit-card.ow-invited-room {
   box-shadow: 0 0 0 1px rgba(184, 118, 19, 0.12), 0 16px 38px rgba(88, 65, 18, 0.12);
 }
 
-html[data-theme="light"] .ow-compose-drawer {
+html[data-theme="light"] .arena-compose-drawer {
   background-color: rgba(255, 255, 255, 0.92);
 }
 
 @media (max-width: 1020px) {
-  .ow-recruit-hero {
+  .arena-recruit-hero {
     grid-template-columns: 1fr;
   }
 
-  .ow-hero-panel {
+  .arena-hero-panel {
     width: 100%;
   }
 
-  .ow-mode-grid {
+  .arena-mode-grid {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 920px) {
-  .ow-recruit-card {
+  .arena-recruit-card {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .ow-card-side {
+  .arena-card-side {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 720px) {
-  .ow-recruit-page {
+  .arena-recruit-page {
     gap: 12px;
   }
 
-  .ow-recruit-hero {
+  .arena-recruit-hero {
     min-height: 174px;
     padding: 18px;
   }
 
-  .ow-hero-copy h1 {
+  .arena-hero-copy h1 {
     font-size: 3rem;
   }
 
-  .ow-hero-panel {
+  .arena-hero-panel {
     display: none;
   }
 
-  .ow-hero-stats,
-  .ow-field-grid,
-  .ow-field-grid.three,
-  .ow-compose-type-grid,
-  .ow-details-grid,
-  .ow-lobby-grid,
-  .ow-chat-form,
-  .ow-invite-result,
-  .ow-invite-panel header,
-  .ow-invite-team-head,
-  .ow-invitation-list > div,
-  .ow-join-panel,
-  .ow-queue-board-grid {
+  .arena-hero-stats,
+  .arena-field-grid,
+  .arena-field-grid.three,
+  .arena-compose-type-grid,
+  .arena-details-grid,
+  .arena-lobby-grid,
+  .arena-chat-form,
+  .arena-invite-result,
+  .arena-invite-panel header,
+  .arena-invite-team-head,
+  .arena-invitation-list > div,
+  .arena-join-panel,
+  .arena-queue-board-grid {
     grid-template-columns: 1fr;
   }
 
-  .ow-recruit-card {
+  .arena-recruit-card {
     grid-template-columns: 1fr;
   }
 
-  .ow-card-side {
+  .arena-card-side {
     grid-template-columns: 1fr;
   }
 
-  .ow-submit-row {
+  .arena-submit-row {
     grid-template-columns: 1fr;
   }
 
-  .ow-compose-backdrop {
+  .arena-compose-backdrop {
     padding: 10px;
   }
 
-  .ow-compose-drawer {
+  .arena-compose-drawer {
     max-height: calc(100vh - 20px);
   }
 
-  .ow-lobby-modal {
+  .arena-lobby-modal {
     max-height: calc(100vh - 20px);
     padding: 12px;
   }
 
-  .ow-lobby-arena {
+  .arena-lobby-arena {
     --room-slot-gap: 5px;
     --room-slot-width: clamp(54px, 16vw, 68px);
     min-height: 0;
     padding: 14px;
   }
 
-  .ow-lobby-versus-stage {
+  .arena-lobby-versus-stage {
     grid-template-columns: 1fr;
   }
 
-  .ow-lobby-score-core {
+  .arena-lobby-score-core {
     grid-template-columns: 1fr auto 1fr;
   }
 
-  .ow-lobby-score-core span {
+  .arena-lobby-score-core span {
     grid-column: 1 / -1;
   }
 
-  .ow-lobby-title h2 {
+  .arena-lobby-title h2 {
     font-size: 3rem;
   }
 
-  .ow-lobby-topline {
+  .arena-lobby-topline {
     align-items: flex-start;
     flex-direction: column;
   }
 
-  .ow-lobby-actions {
+  .arena-lobby-actions {
     grid-template-columns: 1fr;
   }
 
-  .ow-reserve-panel {
+  .arena-reserve-panel {
     grid-template-columns: 1fr;
     gap: 8px;
     padding-inline: 0;
   }
 
-  .ow-reserve-panel > .ow-reserve-line:first-child,
-  .ow-reserve-panel > .ow-reserve-line:nth-child(2) {
+  .arena-reserve-panel > .arena-reserve-line:first-child,
+  .arena-reserve-panel > .arena-reserve-line:nth-child(2) {
     grid-column: auto;
   }
 
-  .ow-room-slot-row {
+  .arena-room-slot-row {
     grid-template-columns: repeat(var(--slot-count, 5), minmax(0, var(--room-slot-width)));
     gap: var(--room-slot-gap);
   }
 
-  .ow-room-reserve-row {
+  .arena-room-reserve-row {
     grid-template-columns: repeat(var(--slot-count, 2), minmax(0, var(--room-slot-width)));
     gap: var(--room-slot-gap);
   }
 
-  .ow-room-player-slot {
+  .arena-room-player-slot {
     grid-template-rows: 36px 15px 17px 17px 15px;
     min-height: 106px;
     gap: 2px;
     padding: 7px 4px;
   }
 
-  .ow-room-player-slot .avatar {
+  .arena-room-player-slot .avatar {
     width: 36px;
     height: 36px;
   }
 
-  .ow-room-party-group {
+  .arena-room-party-group {
     --party-link-y: 25px;
   }
 
-  .ow-join-panel {
+  .arena-join-panel {
     align-items: stretch;
   }
 
-  .ow-source-record-summary {
+  .arena-source-record-summary {
     padding: 8px;
   }
 
-  .ow-source-record-grid {
+  .arena-source-record-grid {
     gap: 6px;
   }
 
-  .ow-source-record-side {
+  .arena-source-record-side {
     gap: 5px;
   }
 
-  .ow-source-record-side > div {
+  .arena-source-record-side > div {
     grid-template-columns: minmax(0, 1fr);
     gap: 2px;
     align-items: start;
     padding: 6px;
   }
 
-  .ow-source-record-side span {
+  .arena-source-record-side span {
     font-size: 0.72rem;
   }
 
-  .ow-source-record-side em {
+  .arena-source-record-side em {
     font-size: 0.72rem;
   }
 }
 
 /* Unified app hero sizing */
-.ow-recruit-hero {
+.arena-recruit-hero {
   min-height: 214px;
   padding: 24px;
 }
 
-.ow-hero-copy h1 {
+.arena-hero-copy h1 {
   font-size: clamp(2.8rem, 6.4vw, 5.3rem);
   line-height: 0.92;
   letter-spacing: 0;
 }
 
 @media (max-width: 720px) {
-  .ow-recruit-hero {
+  .arena-recruit-hero {
     min-height: 174px;
     align-items: end;
     padding: 18px;
   }
 
-  .ow-hero-copy h1 {
+  .arena-hero-copy h1 {
     font-size: 3rem;
   }
 }
 
 @media (max-width: 480px) {
-  .ow-recruit-hero {
+  .arena-recruit-hero {
     min-height: 158px;
     padding: 16px;
   }
 
-  .ow-hero-copy h1 {
+  .arena-hero-copy h1 {
     font-size: 2.6rem;
   }
 }
 
 /* Final CSS cleanup: mobile record readability. */
-.ow-source-record-summary {
+.arena-source-record-summary {
   overflow: hidden;
 }
 
-.ow-source-record-grid {
+.arena-source-record-grid {
   align-items: start;
 }
 
-.ow-source-record-side > div {
+.arena-source-record-side > div {
   grid-template-columns: minmax(58px, 0.58fr) minmax(0, 1.42fr);
 }
 
-.ow-source-record-side span,
-.ow-source-record-side em {
+.arena-source-record-side span,
+.arena-source-record-side em {
   min-width: 0;
   overflow: visible;
   text-overflow: clip;
@@ -3057,35 +3057,35 @@ html[data-theme="light"] .ow-compose-drawer {
 }
 
 @media (max-width: 520px) {
-  .ow-source-record-grid {
+  .arena-source-record-grid {
     grid-template-columns: 1fr;
   }
 
-  .ow-source-record-side > div {
+  .arena-source-record-side > div {
     grid-template-columns: minmax(64px, 0.6fr) minmax(0, 1.4fr);
     gap: 8px;
     padding: 7px 8px;
   }
 
-  .ow-source-record-side span {
+  .arena-source-record-side span {
     font-size: 0.76rem;
   }
 
-  .ow-source-record-side em {
+  .arena-source-record-side em {
     font-size: 0.74rem;
     line-height: 1.25;
   }
 }
 
 /* Unified queue page surfaces */
-.ow-hero-panel,
-.ow-queue-controls,
-.ow-filter-bar,
-.ow-mode-card,
-.ow-recruit-card,
-.ow-card-details,
-.ow-card-action,
-.ow-empty-state {
+.arena-hero-panel,
+.arena-queue-controls,
+.arena-filter-bar,
+.arena-mode-card,
+.arena-recruit-card,
+.arena-card-details,
+.arena-card-action,
+.arena-empty-state {
   border-color: rgba(163, 185, 208, 0.16);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.052), rgba(255, 255, 255, 0.016)),
@@ -3093,47 +3093,47 @@ html[data-theme="light"] .ow-compose-drawer {
   box-shadow: 0 16px 44px rgba(0, 0, 0, 0.28);
 }
 
-.ow-recruit-card.ow-my-room,
-.ow-recruit-card.ow-invited-room,
-.ow-recruit-card.ow-target-room {
+.arena-recruit-card.arena-my-room,
+.arena-recruit-card.arena-invited-room,
+.arena-recruit-card.arena-target-room {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.052), rgba(255, 255, 255, 0.016)),
     rgba(10, 14, 21, 0.9);
 }
 
-.ow-recruit-card.ow-my-room {
+.arena-recruit-card.arena-my-room {
   border-color: rgba(70, 224, 182, 0.42);
   box-shadow: inset 3px 0 0 rgba(70, 224, 182, 0.72), 0 16px 44px rgba(0, 0, 0, 0.28);
 }
 
-.ow-recruit-card.ow-invited-room {
+.arena-recruit-card.arena-invited-room {
   border-color: rgba(255, 211, 108, 0.42);
   box-shadow: inset 3px 0 0 rgba(255, 211, 108, 0.72), 0 16px 44px rgba(0, 0, 0, 0.28);
 }
 
-.ow-recruit-card.ow-target-room {
+.arena-recruit-card.arena-target-room {
   border-color: rgba(116, 169, 255, 0.42);
   box-shadow: inset 3px 0 0 rgba(116, 169, 255, 0.72), 0 16px 44px rgba(0, 0, 0, 0.28);
 }
 
-.ow-mode-card:hover,
-.ow-mode-card.active {
+.arena-mode-card:hover,
+.arena-mode-card.active {
   transform: none;
   border-color: rgba(70, 224, 182, 0.42);
   box-shadow: inset 3px 0 0 rgba(70, 224, 182, 0.72), 0 16px 44px rgba(0, 0, 0, 0.28);
 }
 
-html[data-theme="light"] .ow-hero-panel,
-html[data-theme="light"] .ow-queue-controls,
-html[data-theme="light"] .ow-filter-bar,
-html[data-theme="light"] .ow-mode-card,
-html[data-theme="light"] .ow-recruit-card,
-html[data-theme="light"] .ow-card-details,
-html[data-theme="light"] .ow-card-action,
-html[data-theme="light"] .ow-empty-state,
-html[data-theme="light"] .ow-recruit-card.ow-my-room,
-html[data-theme="light"] .ow-recruit-card.ow-invited-room,
-html[data-theme="light"] .ow-recruit-card.ow-target-room {
+html[data-theme="light"] .arena-hero-panel,
+html[data-theme="light"] .arena-queue-controls,
+html[data-theme="light"] .arena-filter-bar,
+html[data-theme="light"] .arena-mode-card,
+html[data-theme="light"] .arena-recruit-card,
+html[data-theme="light"] .arena-card-details,
+html[data-theme="light"] .arena-card-action,
+html[data-theme="light"] .arena-empty-state,
+html[data-theme="light"] .arena-recruit-card.arena-my-room,
+html[data-theme="light"] .arena-recruit-card.arena-invited-room,
+html[data-theme="light"] .arena-recruit-card.arena-target-room {
   border-color: rgba(32, 56, 68, 0.14);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.66)),
@@ -3141,33 +3141,33 @@ html[data-theme="light"] .ow-recruit-card.ow-target-room {
   box-shadow: 0 18px 42px rgba(35, 50, 59, 0.14);
 }
 
-html[data-theme="light"] .ow-recruit-card.ow-my-room {
+html[data-theme="light"] .arena-recruit-card.arena-my-room {
   border-color: rgba(15, 159, 126, 0.44);
   box-shadow: inset 3px 0 0 rgba(15, 159, 126, 0.64), 0 18px 42px rgba(35, 50, 59, 0.14);
 }
 
-html[data-theme="light"] .ow-recruit-card.ow-invited-room {
+html[data-theme="light"] .arena-recruit-card.arena-invited-room {
   border-color: rgba(184, 118, 19, 0.44);
   box-shadow: inset 3px 0 0 rgba(184, 118, 19, 0.58), 0 18px 42px rgba(35, 50, 59, 0.14);
 }
 
-html[data-theme="light"] .ow-recruit-card.ow-target-room {
+html[data-theme="light"] .arena-recruit-card.arena-target-room {
   border-color: rgba(53, 119, 212, 0.42);
   box-shadow: inset 3px 0 0 rgba(53, 119, 212, 0.56), 0 18px 42px rgba(35, 50, 59, 0.14);
 }
 
 /* Queue list/filter convergence */
-.ow-queue-controls,
-.ow-filter-bar,
-.ow-recruit-card,
-.ow-queue-board {
+.arena-queue-controls,
+.arena-filter-bar,
+.arena-recruit-card,
+.arena-queue-board {
   border-color: rgba(163, 185, 208, 0.16);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.052), rgba(255, 255, 255, 0.016)),
     rgba(10, 14, 21, 0.9);
 }
 
-.ow-filter-bar {
+.arena-filter-bar {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -3176,132 +3176,132 @@ html[data-theme="light"] .ow-recruit-card.ow-target-room {
   padding: 10px;
 }
 
-.ow-filter-bar button,
-.ow-filter-select select,
-.ow-collapse-button {
+.arena-filter-bar button,
+.arena-filter-select select,
+.arena-collapse-button {
   border-color: rgba(163, 185, 208, 0.14);
   background: rgba(255, 255, 255, 0.045);
 }
 
-.ow-filter-bar button.active,
-.ow-collapse-button {
+.arena-filter-bar button.active,
+.arena-collapse-button {
   border-color: rgba(70, 224, 182, 0.42);
   background: rgba(70, 224, 182, 0.12);
   color: var(--green);
 }
 
-.ow-filter-select {
+.arena-filter-select {
   flex: 1 1 180px;
   max-width: 260px;
 }
 
-.ow-recruit-card {
+.arena-recruit-card {
   grid-template-columns: minmax(0, 1fr) 118px;
   min-height: 136px;
 }
 
-.ow-card-main {
+.arena-card-main {
   min-width: 0;
 }
 
-.ow-card-top,
-.ow-card-bottom {
+.arena-card-top,
+.arena-card-bottom {
   align-items: center;
   gap: 7px;
 }
 
-.ow-card-meta span,
-.ow-card-bottom span {
+.arena-card-meta span,
+.arena-card-bottom span {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.ow-queue-board {
+.arena-queue-board {
   box-shadow: none;
 }
 
-.ow-summary-line {
+.arena-summary-line {
   grid-template-columns: minmax(0, 1fr) 42px minmax(0, 1fr);
 }
 
-html[data-theme="light"] .ow-queue-controls,
-html[data-theme="light"] .ow-filter-bar,
-html[data-theme="light"] .ow-recruit-card,
-html[data-theme="light"] .ow-queue-board {
+html[data-theme="light"] .arena-queue-controls,
+html[data-theme="light"] .arena-filter-bar,
+html[data-theme="light"] .arena-recruit-card,
+html[data-theme="light"] .arena-queue-board {
   border-color: rgba(41, 116, 99, 0.16);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(239, 249, 245, 0.78)),
     rgba(246, 252, 249, 0.88);
 }
 
-html[data-theme="light"] .ow-filter-bar button,
-html[data-theme="light"] .ow-filter-select select,
-html[data-theme="light"] .ow-collapse-button {
+html[data-theme="light"] .arena-filter-bar button,
+html[data-theme="light"] .arena-filter-select select,
+html[data-theme="light"] .arena-collapse-button {
   border-color: rgba(41, 116, 99, 0.16);
   background: rgba(255, 255, 255, 0.72);
 }
 
 @media (max-width: 720px) {
-  .ow-recruit-card {
+  .arena-recruit-card {
     grid-template-columns: minmax(0, 1fr);
     gap: 10px;
   }
 
-  .ow-card-side {
+  .arena-card-side {
     grid-template-columns: 1fr;
   }
 
-  .ow-card-action {
+  .arena-card-action {
     min-height: 44px;
   }
 
-  .ow-filter-select {
+  .arena-filter-select {
     max-width: none;
   }
 }
 
 /* Queue card density and readable room action */
-.ow-recruit-card {
+.arena-recruit-card {
   grid-template-columns: minmax(0, 1fr) 108px;
   gap: 10px;
   min-height: 112px;
   padding: 10px;
 }
 
-.ow-card-main {
+.arena-card-main {
   gap: 7px;
 }
 
-.ow-card-top,
-.ow-card-bottom {
+.arena-card-top,
+.arena-card-bottom {
   gap: 5px;
 }
 
-.ow-recruit-card h3 {
+.arena-recruit-card h3 {
   font-size: 1.05rem;
   line-height: 1.16;
 }
 
-.ow-card-meta {
+.arena-card-meta {
   gap: 5px;
   font-size: 0.78rem;
 }
 
-.ow-card-bottom > span:not(.ow-tier-chip),
-.ow-summary-side,
-.ow-summary-meta,
-.ow-summary-detail {
+.arena-card-bottom > span:not(.arena-tier-chip),
+.arena-summary-side,
+.arena-summary-meta,
+.arena-summary-detail {
   font-size: 0.7rem;
 }
 
-.ow-queue-board {
+.arena-queue-board {
   gap: 4px;
   padding: 7px 8px;
 }
 
-.ow-recruit-card .ow-queue-board {
+.arena-recruit-card .arena-queue-board {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -3311,34 +3311,34 @@ html[data-theme="light"] .ow-collapse-button {
   text-align: left;
 }
 
-.ow-summary-line {
+.arena-summary-line {
   grid-template-columns: minmax(0, 1fr) 38px minmax(0, 1fr);
   gap: 6px;
 }
 
-.ow-recruit-card .ow-summary-line {
+.arena-recruit-card .arena-summary-line {
   display: contents;
 }
 
-.ow-recruit-card .ow-summary-side {
+.arena-recruit-card .arena-summary-side {
   display: none;
 }
 
-.ow-summary-line > strong {
+.arena-summary-line > strong {
   font-size: 0.86rem;
 }
 
-.ow-recruit-card .ow-summary-line > strong {
+.arena-recruit-card .arena-summary-line > strong {
   flex: 0 0 auto;
   min-width: 44px;
 }
 
-.ow-card-side {
+.arena-card-side {
   align-self: center;
 }
 
-.ow-card-action.button,
-.ow-card-action.button-secondary {
+.arena-card-action.button,
+.arena-card-action.button-secondary {
   min-height: 42px;
   height: 52px;
   border-color: rgba(70, 224, 182, 0.42);
@@ -3348,13 +3348,13 @@ html[data-theme="light"] .ow-collapse-button {
   box-shadow: 0 12px 28px rgba(70, 224, 182, 0.16);
 }
 
-.ow-card-action.button svg,
-.ow-card-action.button-secondary svg {
+.arena-card-action.button svg,
+.arena-card-action.button-secondary svg {
   color: currentColor;
 }
 
-html[data-theme="light"] .ow-card-action.button,
-html[data-theme="light"] .ow-card-action.button-secondary {
+html[data-theme="light"] .arena-card-action.button,
+html[data-theme="light"] .arena-card-action.button-secondary {
   border-color: rgba(15, 159, 126, 0.36);
   background: linear-gradient(180deg, rgba(15, 159, 126, 0.96), rgba(8, 125, 100, 0.92));
   color: #fff;
@@ -3362,57 +3362,57 @@ html[data-theme="light"] .ow-card-action.button-secondary {
 }
 
 @media (max-width: 720px) {
-  .ow-recruit-card {
+  .arena-recruit-card {
     grid-template-columns: minmax(0, 1fr) 112px;
     gap: 8px;
   }
 
-  .ow-card-action.button,
-  .ow-card-action.button-secondary {
+  .arena-card-action.button,
+  .arena-card-action.button-secondary {
     padding-inline: 8px;
   }
 }
 
 @media (max-width: 430px) {
-  .ow-recruit-card {
+  .arena-recruit-card {
     grid-template-columns: minmax(0, 1fr) 96px;
   }
 
-  .ow-recruit-card .ow-summary-meta {
+  .arena-recruit-card .arena-summary-meta {
     display: none;
   }
 
-  .ow-recruit-card .ow-card-bottom > span:nth-child(2),
-  .ow-recruit-card .ow-card-bottom > span:nth-child(3) {
+  .arena-recruit-card .arena-card-bottom > span:nth-child(2),
+  .arena-recruit-card .arena-card-bottom > span:nth-child(3) {
     display: none;
   }
 
-  .ow-card-action.button,
-  .ow-card-action.button-secondary {
+  .arena-card-action.button,
+  .arena-card-action.button-secondary {
     height: 46px;
   }
 }
 
 /* Final CSS cleanup: actual queue list cards use the same surface as Matches. */
-.ow-lobby-card.om-match-card {
+.arena-lobby-card.om-match-card {
   grid-template-columns: minmax(0, 1fr) minmax(220px, 300px) 92px;
   min-height: 116px;
   background: rgba(10, 14, 21, 0.9);
   background-image: none;
 }
 
-.ow-lobby-card .om-card-main {
+.arena-lobby-card .om-card-main {
   display: contents;
   gap: 7px;
 }
 
-.ow-lobby-card .om-card-kicker,
-.ow-lobby-card h3,
-.ow-lobby-card p {
+.arena-lobby-card .om-card-kicker,
+.arena-lobby-card h3,
+.arena-lobby-card p {
   grid-column: 1;
 }
 
-.ow-lobby-card .om-match-summary-box {
+.arena-lobby-card .om-match-summary-box {
   grid-column: 2;
   grid-row: 1 / span 3;
   align-self: center;
@@ -3422,79 +3422,79 @@ html[data-theme="light"] .ow-card-action.button-secondary {
   background-image: none;
 }
 
-.ow-lobby-card .om-summary-meta,
-.ow-lobby-card .om-summary-detail {
+.arena-lobby-card .om-summary-meta,
+.arena-lobby-card .om-summary-detail {
   display: block;
 }
 
-.ow-lobby-card .om-room-link {
+.arena-lobby-card .om-room-link {
   grid-column: 3;
   grid-row: 1 / span 3;
   align-self: center;
 }
 
-html[data-theme="light"] .ow-lobby-card.om-match-card {
+html[data-theme="light"] .arena-lobby-card.om-match-card {
   background: rgba(250, 254, 252, 0.92);
 }
 
-html[data-theme="light"] .ow-lobby-card .om-match-summary-box {
+html[data-theme="light"] .arena-lobby-card .om-match-summary-box {
   background: rgba(255, 255, 255, 0.88);
 }
 
 @media (max-width: 760px) {
-  .ow-lobby-card.om-match-card {
+  .arena-lobby-card.om-match-card {
     grid-template-columns: minmax(0, 1fr) 92px;
     min-height: 104px;
   }
 
-  .ow-lobby-card .om-match-summary-box {
+  .arena-lobby-card .om-match-summary-box {
     grid-column: 1 / -1;
     grid-row: auto;
     min-height: 54px;
   }
 
-  .ow-lobby-card .om-match-summary-box .om-summary-meta {
+  .arena-lobby-card .om-match-summary-box .om-summary-meta {
     display: none;
   }
 
-  .ow-lobby-card .om-room-link {
+  .arena-lobby-card .om-room-link {
     grid-column: 2;
     grid-row: 1;
   }
 }
 
 @media (max-width: 420px) {
-  .ow-lobby-card.om-match-card {
+  .arena-lobby-card.om-match-card {
     grid-template-columns: minmax(0, 1fr) 86px;
   }
 }
 
 /* Flat queue surfaces, aligned with Matches list cards. */
-.ow-filter-bar,
-.ow-queue-controls,
-.ow-lobby-card.om-match-card,
-.ow-lobby-card .om-match-summary-box {
+.arena-filter-bar,
+.arena-queue-controls,
+.arena-lobby-card.om-match-card,
+.arena-lobby-card .om-match-summary-box {
   background-image: none;
 }
 
-.ow-filter-bar,
-.ow-queue-controls,
-.ow-lobby-card.om-match-card {
+.arena-filter-bar,
+.arena-queue-controls,
+.arena-lobby-card.om-match-card {
   background-color: rgba(10, 14, 21, 0.9);
 }
 
-.ow-lobby-card .om-match-summary-box {
+.arena-lobby-card .om-match-summary-box {
   background-color: rgba(255, 255, 255, 0.045);
 }
 
-html[data-theme="light"] .ow-filter-bar,
-html[data-theme="light"] .ow-queue-controls,
-html[data-theme="light"] .ow-lobby-card.om-match-card {
+html[data-theme="light"] .arena-filter-bar,
+html[data-theme="light"] .arena-queue-controls,
+html[data-theme="light"] .arena-lobby-card.om-match-card {
   background-color: rgba(250, 254, 252, 0.92);
   background-image: none;
 }
 
-html[data-theme="light"] .ow-lobby-card .om-match-summary-box {
+html[data-theme="light"] .arena-lobby-card .om-match-summary-box {
   background-color: rgba(255, 255, 255, 0.88);
   background-image: none;
 }

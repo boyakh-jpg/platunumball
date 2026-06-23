@@ -117,8 +117,8 @@ export default function TeamDetail({ app }) {
   };
 
   return (
-    <div className="page-stack team-detail-page opgg-team-page">
-      <section className="team-detail-hero opgg-profile-hero opgg-team-hero" style={{ "--team-color": team.accent }}>
+    <div className="page-stack team-detail-page rank-team-page">
+      <section className="team-detail-hero rank-profile-hero rank-team-hero" style={{ "--team-color": team.accent }}>
         <div>
           <p className="eyebrow">Team Profile</p>
           <h1>{team.name}</h1>
@@ -144,14 +144,14 @@ export default function TeamDetail({ app }) {
         </div>
       </section>
 
-      <nav className="opgg-profile-tabs">
+      <nav className="rank-profile-tabs">
         <a href="#team-history">전적</a>
         <a href="#team-roster">로스터</a>
         <a href="#team-control">관리</a>
       </nav>
 
-      <section className="opgg-profile-summary">
-        <Card className="section-card opgg-record-card">
+      <section className="rank-profile-summary">
+        <Card className="section-card rank-record-card">
           <div className="section-title-row">
             <div>
               <p className="eyebrow">Team Ranked</p>
@@ -162,14 +162,14 @@ export default function TeamDetail({ app }) {
               <TierBadge mmr={team.mmr} compact />
             </div>
           </div>
-          <div className="opgg-stat-grid">
+          <div className="rank-stat-grid">
             <span><strong>{wins}승</strong>승리</span>
             <span><strong>{losses}패</strong>패배</span>
             <span><strong>{winRate}%</strong>승률</span>
             <span><strong>{history.length}</strong>전체 경기</span>
           </div>
         </Card>
-        <Card className="section-card opgg-record-card">
+        <Card className="section-card rank-record-card">
           <div className="section-title-row">
             <div>
               <p className="eyebrow">Roster</p>
@@ -177,7 +177,7 @@ export default function TeamDetail({ app }) {
             </div>
             <Badge tone="green">{team.members.length}명</Badge>
           </div>
-          <div className="opgg-stat-grid">
+          <div className="rank-stat-grid">
             <span><strong>{regularMembers.length}</strong>팀원</span>
             <span><strong>{reserveMembers.length}</strong>용병/게스트</span>
             <span><strong>{myTeamCountLabel(canManage)}</strong>권한</span>

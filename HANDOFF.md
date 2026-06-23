@@ -12,7 +12,7 @@ Main stack:
 - React Router routes are under `/app`.
 
 Important product goals:
-- Build a game-like basketball web app, closer to OP.GG plus Overwatch-style room UI.
+- Build a game-like basketball web app, closer to stat dashboard plus arena-style room UI.
 - Public/private match rooms should feel like one unified room system, not separate menu-specific implementations.
 - Responsive layout must work on desktop and mobile.
 - Light and dark themes must both be usable.

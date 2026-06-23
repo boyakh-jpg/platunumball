@@ -80,7 +80,7 @@ export default function ProfileRecords({ app }) {
           </div>
           <Badge tone="green">{records.length}경기</Badge>
         </div>
-        <div className="opgg-stat-grid">
+        <div className="rank-stat-grid">
           <span><strong>{wins}</strong>승</span>
           <span><strong>{losses}</strong>패</span>
           <span><strong>{draws}</strong>무</span>
