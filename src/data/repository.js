@@ -85,6 +85,16 @@ const DEFAULT_SETTINGS = {
     teamHistory: true,
     statSummary: true,
   },
+  notificationChannels: {
+    discord: {
+      enabled: false,
+      events: {
+        match: true,
+        approval: true,
+        report: true,
+      },
+    },
+  },
   blockedUserIds: [],
   favoritePlayerIds: [],
   favoriteTeamIds: [],
@@ -524,6 +534,7 @@ function normalizeMatch(match) {
 
 function normalizeSettings(settings = {}) {
   const theme = settings.theme === "light" ? "light" : "dark";
+  const discordChannel = settings.notificationChannels?.discord ?? {};
   return {
     ...DEFAULT_SETTINGS,
     ...settings,
@@ -531,6 +542,18 @@ function normalizeSettings(settings = {}) {
     privacy: {
       ...DEFAULT_SETTINGS.privacy,
       ...(settings.privacy ?? {}),
+    },
+    notificationChannels: {
+      ...DEFAULT_SETTINGS.notificationChannels,
+      ...(settings.notificationChannels ?? {}),
+      discord: {
+        ...DEFAULT_SETTINGS.notificationChannels.discord,
+        ...discordChannel,
+        events: {
+          ...DEFAULT_SETTINGS.notificationChannels.discord.events,
+          ...(discordChannel.events ?? {}),
+        },
+      },
     },
     blockedUserIds: settings.blockedUserIds ?? [],
     favoritePlayerIds: settings.favoritePlayerIds ?? initialState.settings?.favoritePlayerIds ?? [],

@@ -387,6 +387,7 @@ h3 {
   }
 
   .profile-side-grid .favorite-management-card,
+  .profile-side-grid .discord-link-card,
   .profile-side-grid .progression-card {
     grid-column: 1 / -1;
   }

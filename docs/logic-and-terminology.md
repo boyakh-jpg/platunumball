@@ -884,3 +884,12 @@ flowchart TD
 7. 심판 등급 산정은 공인심판은 자격증 인증값을 우선하고, 나머지는 심판 수행 경기수, 따봉 수, 신고 수를 점수화한다.
 8. 구장 등록요청 승인 시 `settings.approvedCourts`에 실제 구장 shape로 추가하고, 요청 상태를 `approved`로 바꾼다.
 9. 구장 등록요청에는 `reservation`을 저장하지 않는다. 예약 여부는 경기방의 `courtReserved` 룰로만 남긴다.
+
+## 2026-06-24 Discord 알림 연동 원칙
+
+1. Discord는 로그인 수단이 아니라 프로필 선택 연동이다.
+2. 기본 알림 경로는 항상 앱 내부 알림이다.
+3. `user.discordConnection`이 `linked`이고 `settings.notificationChannels.discord.enabled`가 true일 때만 Discord DM을 추가 발송한다.
+4. Discord DM 실패 시 앱 내부 알림은 유지한다.
+5. Bot token, client secret, DM 발송은 프론트에 두지 않는다.
+6. 배포 전 백엔드에는 Discord OAuth callback, `discordUserId` 저장, Bot DM 서버 액션, 실패 로그가 필요하다.

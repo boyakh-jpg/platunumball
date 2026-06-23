@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Search, Star } from "lucide-react";
+import { MessageCircle, Search, Star, Unlink2 } from "lucide-react";
+import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
@@ -52,6 +53,37 @@ function getAverageFouls(matches = [], userId) {
   if (!confirmed.length) return 0;
   const total = confirmed.reduce((sum, match) => sum + Number(match.result?.playerStats?.[userId]?.fouls ?? 0), 0);
   return total / confirmed.length;
+}
+
+const discordEventOptions = [
+  { id: "match", label: "초대/경기" },
+  { id: "approval", label: "승인/이의" },
+  { id: "report", label: "신고 결과" },
+];
+
+function getDiscordChannel(settings = {}) {
+  const discord = settings.notificationChannels?.discord ?? {};
+  return {
+    enabled: Boolean(discord.enabled),
+    events: {
+      match: true,
+      approval: true,
+      report: true,
+      ...(discord.events ?? {}),
+    },
+  };
+}
+
+function getDemoDiscordConnection(user = {}) {
+  const username = String(user.handle || user.name || "rankball").replace(/^@/, "");
+  return {
+    provider: "discord",
+    status: "linked",
+    userId: `demo-discord-${user.id}`,
+    username,
+    linkedAt: new Date().toISOString(),
+    source: "demo",
+  };
 }
 
 function RecentRecordCard({ records, userId }) {
@@ -114,6 +146,40 @@ export default function Profile({ app }) {
   const searchedUser = favoriteQuery.trim() ? findUserByHashtag(app.state.users, favoriteQuery) : null;
   const searchedTeam = favoriteQuery.trim() ? findTeamByHashtag(app.state.teams, favoriteQuery) : null;
   const averageFouls = getAverageFouls(app.state.matches, user.id);
+  const discordConnection = user.discordConnection ?? null;
+  const discordLinked = discordConnection?.status === "linked" && discordConnection?.userId;
+  const discordChannel = getDiscordChannel(app.state.settings);
+  const updateDiscordChannel = (patch) => {
+    const notificationChannels = app.state.settings?.notificationChannels ?? {};
+    app.actions.updateSettings({
+      notificationChannels: {
+        ...notificationChannels,
+        discord: {
+          ...discordChannel,
+          ...patch,
+          events: {
+            ...discordChannel.events,
+            ...(patch.events ?? {}),
+          },
+        },
+      },
+    });
+  };
+  const connectDiscord = () => {
+    app.actions.updateProfile({ discordConnection: getDemoDiscordConnection(user) });
+    updateDiscordChannel({ enabled: true });
+  };
+  const unlinkDiscord = () => {
+    app.actions.updateProfile({ discordConnection: null });
+    updateDiscordChannel({ enabled: false });
+  };
+  const toggleDiscordEvent = (eventId) => {
+    updateDiscordChannel({
+      events: {
+        [eventId]: !discordChannel.events[eventId],
+      },
+    });
+  };
 
   return (
     <div className="page-stack profile-page">
@@ -152,6 +218,67 @@ export default function Profile({ app }) {
           <RecentRecordCard records={myRecords} userId={user.id} />
         </div>
         <aside className="page-stack profile-side-grid">
+          <Card className="section-card discord-link-card">
+            <div className="section-title-row">
+              <div>
+                <p className="eyebrow">Discord</p>
+                <h2>디스코드 알림</h2>
+              </div>
+              <MessageCircle size={20} />
+            </div>
+            <div className="contract-grid single">
+              <div>
+                <span>연동 상태</span>
+                <strong>{discordLinked ? "연동됨" : "미연동"}</strong>
+              </div>
+              <div>
+                <span>알림 경로</span>
+                <strong>{discordLinked && discordChannel.enabled ? "앱 + Discord DM" : "앱 내부"}</strong>
+              </div>
+              {discordLinked ? (
+                <div>
+                  <span>Discord</span>
+                  <strong>@{discordConnection.username || discordConnection.userId}</strong>
+                </div>
+              ) : null}
+            </div>
+            <div className="settings-toggle-grid">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={Boolean(discordLinked && discordChannel.enabled)}
+                  disabled={!discordLinked}
+                  onChange={(event) => updateDiscordChannel({ enabled: event.target.checked })}
+                />
+                Discord DM
+              </label>
+              {discordEventOptions.map((option) => (
+                <label key={option.id}>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(discordChannel.events[option.id])}
+                    disabled={!discordLinked || !discordChannel.enabled}
+                    onChange={() => toggleDiscordEvent(option.id)}
+                  />
+                  {option.label}
+                </label>
+              ))}
+            </div>
+            <div className="settings-address-actions">
+              {discordLinked ? (
+                <Button type="button" variant="secondary" size="sm" onClick={unlinkDiscord}>
+                  <Unlink2 size={15} /> 연동 해제
+                </Button>
+              ) : (
+                <Button type="button" variant="secondary" size="sm" onClick={connectDiscord}>
+                  Discord 연동
+                </Button>
+              )}
+              <Badge tone={discordLinked && discordChannel.enabled ? "green" : "neutral"}>
+                {discordLinked && discordChannel.enabled ? "DM ON" : "앱 알림"}
+              </Badge>
+            </div>
+          </Card>
           <Card className="section-card favorite-management-card">
             <div className="section-title-row">
               <div>
