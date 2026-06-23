@@ -118,10 +118,30 @@ export function getMatchReservePlayerIds(match = {}, sideName) {
     .filter((playerId) => playerId && !activeIds.has(playerId));
 }
 
+export function getMatchSideRecordPlayerIds(match = {}, sideName, includeReserves = false) {
+  return uniquePlayerIds([
+    ...getMatchSidePlayerIds(match, sideName),
+    ...(includeReserves ? getMatchReservePlayerIds(match, sideName) : []),
+  ]);
+}
+
+export function getMatchRecordPlayerIds(match = {}, includeReserves = false) {
+  return uniquePlayerIds([
+    ...getMatchSideRecordPlayerIds(match, "teamA", includeReserves),
+    ...getMatchSideRecordPlayerIds(match, "teamB", includeReserves),
+  ]);
+}
+
 export function getPlayerSideName(match = {}, playerId) {
   if (getMatchSidePlayerIds(match, "teamA").includes(playerId)) return "teamA";
   if (getMatchSidePlayerIds(match, "teamB").includes(playerId)) return "teamB";
   return null;
+}
+
+export function getMatchRosterSideName(match = {}, playerId) {
+  return getPlayerSideName(match, playerId)
+    ?? (getMatchReservePlayerIds(match, "teamA").includes(playerId) ? "teamA" : null)
+    ?? (getMatchReservePlayerIds(match, "teamB").includes(playerId) ? "teamB" : null);
 }
 
 export function getMatchHostPlayerId(match = {}) {
@@ -396,7 +416,7 @@ export function getMatchRecordWindow(match = {}, now = Date.now()) {
 
 export function getAllowedStatFields(match = {}, userId, playerId = userId) {
   if (isMatchReferee(match, userId)) return PLAYER_STAT_FIELDS;
-  const playerSideName = getPlayerSideName(match, playerId);
+  const playerSideName = getMatchRosterSideName(match, playerId);
   const recorders = normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders);
   if (playerSideName && recorders[playerSideName]) {
     return recorders[playerSideName] === userId ? PLAYER_STAT_FIELDS : [];

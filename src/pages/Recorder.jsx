@@ -11,9 +11,10 @@ import {
   getAllowedStatFields,
   getMatchReservePlayerIds,
   getMatchPlayerIds,
+  getMatchRecordPlayerIds,
   getMatchRecordWindow,
   getMatchRoomPhase,
-  getMatchSidePlayerIds,
+  getMatchSideRecordPlayerIds,
   getPlayerSideName,
   getStatRecorderSides,
   isEligibleReferee,
@@ -36,7 +37,7 @@ const activeStatuses = new Set(["agreed", "approval", "disputed"]);
 
 function makeInitialStats(match) {
   return Object.fromEntries(
-    getMatchPlayerIds(match).map((playerId) => [
+    getMatchRecordPlayerIds(match, true).map((playerId) => [
       playerId,
       Object.fromEntries(
         PLAYER_STAT_FIELDS.map((field) => [field.id, Number(match.result?.playerStats?.[playerId]?.[field.id] ?? 0)]),
@@ -50,17 +51,17 @@ function getExistingScore(match, sideName) {
   return Number(match.result?.[scoreKey] ?? match[sideName]?.score ?? 0);
 }
 
-function sumSidePoints(match, stats, sideName) {
-  return getMatchSidePlayerIds(match, sideName).reduce((sum, playerId) => sum + Number(stats[playerId]?.points ?? 0), 0);
+function sumSidePoints(match, stats, sideName, includeReserves = false) {
+  return getMatchSideRecordPlayerIds(match, sideName, includeReserves).reduce((sum, playerId) => sum + Number(stats[playerId]?.points ?? 0), 0);
 }
 
-function hasSideStats(match, sideName) {
-  return getMatchSidePlayerIds(match, sideName).some((playerId) => match.result?.playerStats?.[playerId]);
+function hasSideStats(match, sideName, includeReserves = false) {
+  return getMatchSideRecordPlayerIds(match, sideName, includeReserves).some((playerId) => match.result?.playerStats?.[playerId]);
 }
 
-function getSideScore(match, stats, sideName, editablePlayerIds) {
-  const hasEditablePlayer = getMatchSidePlayerIds(match, sideName).some((playerId) => editablePlayerIds.includes(playerId));
-  if (hasEditablePlayer || hasSideStats(match, sideName)) return sumSidePoints(match, stats, sideName);
+function getSideScore(match, stats, sideName, editablePlayerIds, includeReserves = false) {
+  const hasEditablePlayer = getMatchSideRecordPlayerIds(match, sideName, includeReserves).some((playerId) => editablePlayerIds.includes(playerId));
+  if (hasEditablePlayer || hasSideStats(match, sideName, includeReserves)) return sumSidePoints(match, stats, sideName, includeReserves);
   return getExistingScore(match, sideName);
 }
 
@@ -120,7 +121,7 @@ export default function Recorder({ app }) {
   );
   const [selectedMatchId, setSelectedMatchId] = useState("");
   const selectedMatch = matches.find((match) => match.id === selectedMatchId) ?? matches[0] ?? null;
-  const selectedMatchPlayerKey = selectedMatch ? getMatchPlayerIds(selectedMatch).join("|") : "";
+  const selectedMatchPlayerKey = selectedMatch ? getMatchRecordPlayerIds(selectedMatch, true).join("|") : "";
   const [stats, setStats] = useState({});
   const [dirtyStats, setDirtyStats] = useState({});
   const [handoffDraft, setHandoffDraft] = useState({});
@@ -151,8 +152,9 @@ export default function Recorder({ app }) {
   const currentUserCanPostgameScore = Boolean(currentUserCanOperatePostStart && roomPhase === "postgame" && !["confirmed", "disputed"].includes(selectedMatch.status));
   const postStartOperatorLabel = selectedMatchHasReferee ? "심판" : "방장";
   const recorderSides = selectedMatch ? getStatRecorderSides(selectedMatch, user.id) : [];
+  const includeReserveStats = Boolean(recordWindow?.beforeEnd);
   const editablePlayerIds = selectedMatch
-    ? getMatchPlayerIds(selectedMatch).filter((playerId) => getRecorderAllowedFields(selectedMatch, app.state, user.id, playerId, currentUserCanPostgameScore).length > 0)
+    ? getMatchRecordPlayerIds(selectedMatch, includeReserveStats).filter((playerId) => getRecorderAllowedFields(selectedMatch, app.state, user.id, playerId, currentUserCanPostgameScore).length > 0)
     : [];
   const beforeStart = Boolean(recordWindow?.beforeStart);
   const saveWindowOpen = selectedMatch && !beforeStart && (recordWindow?.beforeEnd || recordWindow?.statOpen);
@@ -160,8 +162,8 @@ export default function Recorder({ app }) {
   const canSave = Boolean(selectedMatch && !["disputed", "confirmed"].includes(selectedMatch.status) && editablePlayerIds.length && saveWindowOpen && hasDirtyStats);
   const canEndLiveMatch = Boolean(selectedMatch && currentUserCanOperatePostStart && roomPhase === "live" && !selectedMatch.endedAt && !selectedMatch.result);
   const canEditPostgameRoster = Boolean(selectedMatch && currentUserCanOperatePostStart && roomPhase === "postgame" && recordWindow?.statOpen && !selectedMatch.result);
-  const scoreA = selectedMatch ? getSideScore(selectedMatch, stats, "teamA", editablePlayerIds) : 0;
-  const scoreB = selectedMatch ? getSideScore(selectedMatch, stats, "teamB", editablePlayerIds) : 0;
+  const scoreA = selectedMatch ? getSideScore(selectedMatch, stats, "teamA", editablePlayerIds, includeReserveStats) : 0;
+  const scoreB = selectedMatch ? getSideScore(selectedMatch, stats, "teamB", editablePlayerIds, includeReserveStats) : 0;
   const saveLockedReason = beforeStart
     ? "경기 시작 전"
     : selectedMatch?.status === "confirmed"
@@ -231,14 +233,14 @@ export default function Recorder({ app }) {
     const side = selectedMatch[sideName];
     const activePlayerIds = side.players ?? [];
     const reservePlayerIds = getMatchReservePlayerIds(selectedMatch, sideName);
-    const statPlayerIds = getMatchSidePlayerIds(selectedMatch, sideName);
+    const statPlayerIds = getMatchSideRecordPlayerIds(selectedMatch, sideName, includeReserveStats);
 
     return (
       <section className="recorder-side" key={sideName}>
         <header>
           <span>{sideLabels[sideName]}</span>
           <strong>{side.name}</strong>
-          <em>{sumSidePoints(selectedMatch, stats, sideName)} 득점</em>
+          <em>{sumSidePoints(selectedMatch, stats, sideName, includeReserveStats)} 득점</em>
         </header>
         <div className="recorder-player-list">
           {statPlayerIds.map((playerId) => {

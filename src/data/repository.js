@@ -16,9 +16,12 @@ import {
   getApprovalStatus,
   getAllowedStatFields,
   getMatchPlayerIds,
+  getMatchRecordPlayerIds,
+  getMatchRosterSideName,
   getMatchRoomPhase,
   getMatchReservePlayerIds,
   getMatchSidePlayerIds,
+  getMatchSideRecordPlayerIds,
   getMatchStartDate,
   getMatchTrustFeedbackLimit,
   getMatchTrustFeedbackParticipantIds,
@@ -2477,13 +2480,14 @@ export function submitMatchResult(state, matchId, result) {
   }
 
   const now = new Date().toISOString();
-  const existingStats = normalizePlayerStats(match.result?.playerStats ?? {}, playerIds);
   const liveEntry = recordWindow.beforeEnd && liveRecordAllowed;
+  const recordPlayerIds = getMatchRecordPlayerIds(match, liveEntry);
+  const existingStats = normalizePlayerStats(match.result?.playerStats ?? {}, recordPlayerIds);
   const endedAt = liveEntry ? match.endedAt : match.endedAt ?? recordWindow.endAt?.toISOString() ?? now;
-  const recorderPlayerIds = recorderSides.flatMap((sideName) => getMatchSidePlayerIds(match, sideName));
+  const recorderPlayerIds = recorderSides.flatMap((sideName) => getMatchSideRecordPlayerIds(match, sideName, liveEntry));
   const selfPlayerIds = currentSideName ? [currentUserId] : [];
   const hostPostgamePlayerIds = currentUserCanPostgameScore ? playerIds : [];
-  const targetPlayerIds = currentUserIsEligibleReferee ? playerIds : [...new Set([...recorderPlayerIds, ...selfPlayerIds, ...hostPostgamePlayerIds])]
+  const targetPlayerIds = currentUserIsEligibleReferee ? recordPlayerIds : [...new Set([...recorderPlayerIds, ...selfPlayerIds, ...hostPostgamePlayerIds])]
     .filter((playerId) => getAllowedResultFieldIds(match, currentUserId, playerId, currentUserCanPostgameScore).length > 0);
   if (!hasReferee && !targetPlayerIds.length) {
     return {
@@ -2516,10 +2520,27 @@ export function submitMatchResult(state, matchId, result) {
       ),
     };
   });
+  const reservePlayedPlayerIds = liveEntry
+    ? touchedPlayerIds.reduce((nextPlayedPlayerIds, playerId) => {
+        const sideName = getMatchRosterSideName(match, playerId);
+        if (!sideName || getMatchSidePlayerIds(match, sideName).includes(playerId)) return nextPlayedPlayerIds;
+        return {
+          ...nextPlayedPlayerIds,
+          [sideName]: uniquePlayerIds([...(nextPlayedPlayerIds[sideName] ?? []), playerId]),
+        };
+      }, match.playedPlayerIds ?? match.rules?.playedPlayerIds ?? {})
+    : (match.playedPlayerIds ?? match.rules?.playedPlayerIds ?? {});
+  const scoringMatch = liveEntry
+    ? {
+        ...match,
+        playedPlayerIds: reservePlayedPlayerIds,
+        rules: { ...(match.rules ?? {}), playedPlayerIds: reservePlayedPlayerIds },
+      }
+    : match;
   const nextSubmissions = {
     ...(match.result?.statSubmissions ?? {}),
     ...Object.fromEntries(touchedPlayerIds.map((playerId) => {
-      const sideName = getPlayerSideName(match, playerId);
+      const sideName = getMatchRosterSideName(scoringMatch, playerId);
       const source = currentUserIsEligibleReferee
         ? "referee"
         : isMatchStatRecorder(match, currentUserId, sideName)
@@ -2530,8 +2551,8 @@ export function submitMatchResult(state, matchId, result) {
       return [playerId, { by: currentUserId, side: sideName, source, submittedAt: now }];
     })),
   };
-  const nextScoreA = getMergedResultScore(match, nextPlayerStats, "teamA", result.scoreA);
-  const nextScoreB = getMergedResultScore(match, nextPlayerStats, "teamB", result.scoreB);
+  const nextScoreA = getMergedResultScore(scoringMatch, nextPlayerStats, "teamA", result.scoreA);
+  const nextScoreB = getMergedResultScore(scoringMatch, nextPlayerStats, "teamB", result.scoreB);
   const nextResult = {
     scoreA: nextScoreA,
     scoreB: nextScoreB,
@@ -2548,12 +2569,14 @@ export function submitMatchResult(state, matchId, result) {
       item.id === matchId
         ? {
             ...item,
+            playedPlayerIds: liveEntry ? reservePlayedPlayerIds : item.playedPlayerIds,
             status: liveEntry ? item.status : "approval",
             teamA: { ...item.teamA, score: nextResult.scoreA },
             teamB: { ...item.teamB, score: nextResult.scoreB },
             approvals: liveEntry ? item.approvals : { teamA: [], teamB: [] },
             result: nextResult,
             endedAt,
+            rules: liveEntry ? { ...(item.rules ?? {}), playedPlayerIds: reservePlayedPlayerIds } : item.rules,
           }
         : item,
     ),
