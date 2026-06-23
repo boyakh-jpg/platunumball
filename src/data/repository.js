@@ -5091,8 +5091,14 @@ function updateMatchPartiesForPlayer(match = {}, playerId = "", sideName = "", r
         if (reserve) nextReserves.push(playerId);
         else nextPlayers.push(playerId);
       }
+      const nextRosterIds = uniquePlayerIds([...nextPlayers, ...nextReserves]);
+      const currentLeaderId = party.partyLeaderId ?? party.leaderId ?? party.playerId ?? "";
+      const nextLeaderId = currentLeaderId && nextRosterIds.includes(currentLeaderId)
+        ? currentLeaderId
+        : nextRosterIds[0] ?? "";
       return {
         ...party,
+        partyLeaderId: nextLeaderId,
         players: uniquePlayerIds(nextPlayers),
         reserves: uniquePlayerIds(nextReserves),
         reserve: party.reserve && !nextPlayers.length,
@@ -5654,9 +5660,13 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
       : currentReserveIds.filter((playerId) => playerId !== state.currentUserId);
     const nextPartyReserves = { ...roomState.partyReserves, [reserveKey]: nextReserveIds };
     if (!nextReserveIds.length) delete nextPartyReserves[reserveKey];
+    const nextPartyLeaders = { ...(roomState.partyLeaders ?? {}) };
+    if (post.visibility === "private" && post.hostJoinMode === "team" && side === "teamB" && !reserve) {
+      nextPartyLeaders[reserveKey] = state.currentUserId;
+    }
     const nextRoomState = {
       ...updatePinnedReservePlayers(
-        { ...roomState, partyReserves: nextPartyReserves },
+        { ...roomState, partyReserves: nextPartyReserves, partyLeaders: nextPartyLeaders },
         side,
         state.currentUserId,
         reserve,

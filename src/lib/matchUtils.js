@@ -124,7 +124,13 @@ export function getMatchSideLeaderId(match = {}, teams = [], sideName) {
   const sideRosterIds = uniquePlayerIds([...sidePlayerIds, ...sideReserveIds]);
   const partyLeaderId = (match.parties ?? [])
     .filter((party) => party.side === sideName)
-    .map((party) => party.partyLeaderId ?? party.leaderId ?? party.playerId ?? party.players?.[0] ?? "")
+    .flatMap((party) => [
+      party.partyLeaderId,
+      party.leaderId,
+      party.playerId,
+      ...(party.players ?? []),
+      ...(party.reserves ?? []),
+    ])
     .find((playerId) => playerId && sideRosterIds.includes(playerId));
   if (partyLeaderId) return partyLeaderId;
   return sidePlayerIds[0] ?? sideReserveIds[0] ?? "";

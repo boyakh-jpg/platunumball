@@ -30,7 +30,7 @@ import {
   updateMatchRoomRules,
   updateRecruitingRoomRules,
 } from "../src/data/repository.js";
-import { getMatchPlayerIds, getMatchReservePlayerIds, getMatchRoomPhase } from "../src/lib/matchUtils.js";
+import { getMatchPlayerIds, getMatchReservePlayerIds, getMatchRoomPhase, getMatchSideLeaderId } from "../src/lib/matchUtils.js";
 import { getRecruitingApplicantKey, getRecruitingLobby } from "../src/lib/recruiting.js";
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -432,6 +432,10 @@ assertFlow(getMatchRoomPhase(getMatch(state, lifecycleMatchId)).phase === "check
   phase: getMatchRoomPhase(getMatch(state, lifecycleMatchId)),
 });
 
+assertFlow(getMatchSideLeaderId(getMatch(state, lifecycleMatchId), state.teams, "teamB") === "u7", "비공개 팀전: 초대 수락자가 B사이드장", {
+  leaderId: getMatchSideLeaderId(getMatch(state, lifecycleMatchId), state.teams, "teamB"),
+});
+
 assertFlow(getMatch(state, lifecycleMatchId).refereeId === "u11", "수락된 심판만 확정 경기로 이동", {
   refereeId: getMatch(state, lifecycleMatchId).refereeId,
 });
@@ -664,6 +668,22 @@ assertFlow(
     teamA: promoteCheckinMatch.teamA.players,
     reserves: getMatchReservePlayerIds(promoteCheckinMatch, "teamA"),
     attendance: promoteCheckinMatch.attendance.teamA,
+  },
+);
+const personalRoomLeaderBeforeKick = getMatchSideLeaderId(getMatch(state, promoteMatchId), state.teams, "teamB");
+state = withUser(state, "u12", (scoped) => removeMatchRoomPlayer(scoped, promoteMatchId, personalRoomLeaderBeforeKick));
+const personalRoomLeaderAfterKickMatch = getMatch(state, promoteMatchId);
+const personalRoomLeaderAfterKick = getMatchSideLeaderId(personalRoomLeaderAfterKickMatch, state.teams, "teamB");
+assertFlow(
+  Boolean(personalRoomLeaderBeforeKick) &&
+    personalRoomLeaderAfterKick &&
+    personalRoomLeaderAfterKick !== personalRoomLeaderBeforeKick &&
+    personalRoomLeaderAfterKickMatch.teamB.players.includes(personalRoomLeaderAfterKick),
+  "비공개 개인전: 사이드장 강퇴 후 다음 출전자가 사이드장",
+  {
+    before: personalRoomLeaderBeforeKick,
+    after: personalRoomLeaderAfterKick,
+    teamB: personalRoomLeaderAfterKickMatch.teamB.players,
   },
 );
 
