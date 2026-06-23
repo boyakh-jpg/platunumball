@@ -2345,6 +2345,16 @@ html[data-theme="light"] .om-match-info-box {
   line-height: 1;
 }
 
+.om-match-summary-box.count-summary .om-summary-side,
+.om-match-summary-box.count-summary .om-summary-side .team-hover-trigger {
+  font-size: clamp(1.85rem, 2.8vw, 2.42rem);
+  font-weight: 1000;
+}
+
+.om-match-summary-box.count-summary .om-summary-line > strong {
+  font-size: clamp(1.02rem, 1.42vw, 1.24rem);
+}
+
 .om-score-box {
   padding: 10px 12px;
 }

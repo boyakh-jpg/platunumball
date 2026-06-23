@@ -202,19 +202,20 @@ function getMatchPlayerCount(match) {
   return new Set([...(match.teamA?.players ?? []), ...(match.teamB?.players ?? [])]).size;
 }
 
-function formatMatchRules(match) {
-  const targetScore = Number(match.rules?.targetScore ?? 0);
-  const timeLimit = Number(match.rules?.timeLimit ?? 0);
+function formatMatchRules(match = {}) {
+  const rulesSource = match.rules ?? {};
+  const targetScore = Number(rulesSource.targetScore ?? 21);
+  const timeLimit = Number(rulesSource.timeLimit ?? 12);
   const rules = [
     targetScore ? `${targetScore}점` : "",
     timeLimit ? `${timeLimit}분` : "",
-    match.rules?.winByTwo ? "2점차" : "",
-    match.rules?.ball ?? "",
+    (rulesSource.winByTwo ?? true) ? "2점차" : "",
+    rulesSource.ball ?? "7호 공",
   ].filter(Boolean);
-  return rules.join(" · ") || "룰 미정";
+  return rules.join(" · ");
 }
 
-function MatchListSummary({ left, center = "vs", right, meta, detail, leftTeam = null, rightTeam = null }) {
+function MatchListSummary({ left, center = "vs", right, meta, detail, leftTeam = null, rightTeam = null, variant = "" }) {
   const renderSide = (label, team) => (
     <span className="om-summary-side">
       {team ? <TeamHoverCard team={team} as="span">{label}</TeamHoverCard> : label}
@@ -222,13 +223,13 @@ function MatchListSummary({ left, center = "vs", right, meta, detail, leftTeam =
   );
 
   return (
-    <div className="om-match-summary-box">
+    <div className={variant ? `om-match-summary-box ${variant}` : "om-match-summary-box"}>
       <div className="om-summary-line">
         {renderSide(left, leftTeam)}
         <strong>{center}</strong>
         {renderSide(right, rightTeam)}
       </div>
-      <span className="om-summary-meta">{meta}</span>
+      {meta ? <span className="om-summary-meta">{meta}</span> : null}
       {detail ? <span className="om-summary-detail">{detail}</span> : null}
     </div>
   );
@@ -1167,8 +1168,8 @@ export default function Matches({ app }) {
                   left={`A ${lobby.sides.teamA.projectedFilled}/${lobby.sides.teamA.capacity}`}
                   center={`${filled}/${capacity}`}
                   right={`B ${lobby.sides.teamB.projectedFilled}/${lobby.sides.teamB.capacity}`}
-                  meta={formatMatchRules(post)}
-                  detail={roomStatus.detail}
+                  detail={formatMatchRules(post)}
+                  variant="count-summary"
                 />
                 <button type="button" className="button button-secondary button-md om-room-link" onClick={() => setSelectedRecruitingPostId(post.id)}>
                   {needConfirm ? "확인하기" : roomStatus.actionLabel}
@@ -1215,6 +1216,7 @@ export default function Matches({ app }) {
                   rightTeam={teamById[match.teamB.teamId]}
                   meta={`참여 ${getMatchPlayerCount(match)}명 · A ${match.teamA.players?.length ?? 0} / B ${match.teamB.players?.length ?? 0}`}
                   detail={formatMatchRules(match)}
+                  variant="count-summary"
                 />
               )}
               <button type="button" className="button button-secondary button-md om-room-link" onClick={() => openSelectedMatch(match.id)}>

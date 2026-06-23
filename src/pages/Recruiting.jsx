@@ -630,14 +630,15 @@ function TeamMemberPicker({
 }
 
 function getRecruitingRuleSummary(post = {}) {
-  const targetScore = Number(post.rules?.targetScore ?? 0);
-  const timeLimit = Number(post.rules?.timeLimit ?? 0);
+  const rulesSource = post.rules ?? {};
+  const targetScore = Number(rulesSource.targetScore ?? 21);
+  const timeLimit = Number(rulesSource.timeLimit ?? 12);
   return [
     targetScore ? `${targetScore}점` : "",
     timeLimit ? `${timeLimit}분` : "",
-    post.rules?.winByTwo ? "2점차" : "",
-    post.rules?.ball ?? "",
-  ].filter(Boolean).join(" · ") || "룰 미정";
+    (rulesSource.winByTwo ?? true) ? "2점차" : "",
+    rulesSource.ball ?? "7호 공",
+  ].filter(Boolean).join(" · ");
 }
 
 function getRecruitingRoomTypeLabel(room = {}, lobby = null) {
@@ -647,20 +648,19 @@ function getRecruitingRoomTypeLabel(room = {}, lobby = null) {
   return "개인 매칭";
 }
 
-function QueueRoomBoard({ post, lobby, roomStatus = null }) {
-  const status = roomStatus ?? getRecruitingRoomListStatus(lobby, { post });
+function QueueRoomBoard({ post, lobby }) {
   const filled = lobby.sides.teamA.projectedFilled + lobby.sides.teamB.projectedFilled;
   const capacity = getRecruitingSideCapacity(post) * 2;
+  const ruleSummary = getRecruitingRuleSummary(post);
 
   return (
-    <div className={lobby.canConfirm ? "om-match-summary-box complete" : "om-match-summary-box"}>
+    <div className={lobby.canConfirm ? "om-match-summary-box count-summary complete" : "om-match-summary-box count-summary"}>
       <div className="om-summary-line">
         <span className="om-summary-side">A {lobby.sides.teamA.projectedFilled}/{lobby.sides.teamA.capacity}</span>
         <strong>{filled}/{capacity}</strong>
         <span className="om-summary-side">B {lobby.sides.teamB.projectedFilled}/{lobby.sides.teamB.capacity}</span>
       </div>
-      <span className="om-summary-meta">{getRecruitingRuleSummary(post)}</span>
-      {status.detail ? <span className="om-summary-detail">{status.detail}</span> : null}
+      {ruleSummary ? <span className="om-summary-detail">{ruleSummary}</span> : null}
     </div>
   );
 }
