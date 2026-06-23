@@ -3369,6 +3369,24 @@ input[type="color"] {
   color: var(--green);
 }
 
+.my-team-tier {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  color: var(--text);
+  font-size: 0.74rem;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+.my-team-tier img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 12px rgba(70, 224, 182, 0.2));
+}
+
 .team-rank-chip {
   background: rgba(255, 211, 108, 0.12);
   color: var(--gold);
@@ -7539,7 +7557,8 @@ html[data-theme="light"] .team-search-popover button.selected {
     white-space: normal;
   }
 
-  .my-team-row .tier-badge {
+  .my-team-row .tier-badge,
+  .my-team-row .my-team-tier {
     grid-column: 3;
     width: max-content;
     max-width: 100%;
