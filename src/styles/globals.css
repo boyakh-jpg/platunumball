@@ -8092,6 +8092,28 @@ html[data-theme="light"] .team-hub-hero p:not(.eyebrow) {
   box-shadow: var(--shadow);
 }
 
+.rank-home .rank-summary-grid .home-rank-board-head {
+  grid-column: 1 / -1;
+  width: 100%;
+  padding: 0 0 2px;
+}
+
+.rank-home .rank-summary-grid .rank-hero-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+}
+
+.rank-home .rank-summary-grid .home-rank-board-head h1 {
+  max-width: 760px;
+  color: #f7fbff;
+  font-size: 3.35rem;
+}
+
+.rank-home .rank-summary-grid .home-rank-board-head p:not(.eyebrow) {
+  color: rgba(246, 248, 251, 0.82);
+}
+
 .rank-home .rank-summary-grid::after {
   content: "";
   position: absolute;
@@ -8685,6 +8707,14 @@ html[data-theme="light"] .rank-home .rank-summary-grid {
     var(--bg-court) var(--hero-bg-position-court) / var(--hero-bg-size) no-repeat;
 }
 
+html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head h1 {
+  color: #142129;
+}
+
+html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head p:not(.eyebrow) {
+  color: #41535d;
+}
+
 html[data-theme="light"] .rank-home .rank-profile-card {
   border-color: rgba(35, 87, 75, 0.18);
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.82), rgba(246, 252, 248, 0.64));
@@ -8735,6 +8765,14 @@ html[data-theme="light"] .rank-home .rank-mode-pill em {
     grid-template-columns: minmax(0, 1fr);
     min-height: 0;
     padding: 14px;
+  }
+
+  .rank-home .rank-summary-grid .rank-hero-top {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rank-home .rank-summary-grid .home-rank-board-head h1 {
+    font-size: 2.4rem;
   }
 
   .rank-home .rank-profile-card {

@@ -331,19 +331,6 @@ export default function Home({ app }) {
 
   return (
     <div className="page-stack rank-home">
-      <section className="home-rank-board-head">
-        <div className="rank-hero-top">
-          <div>
-            <p className="eyebrow">내 랭크 보드</p>
-            <h1>{user.name}님의 오늘 코트 현황</h1>
-            <p>{user.region} · {user.position} · 통합 {getTierDivision(user.ratings.integrated)} · {Math.round(user.ratings.integrated)} MMR</p>
-          </div>
-          <Link to="/app/create">
-            <Button><PlusCircle size={18} /> 경기 만들기</Button>
-          </Link>
-        </div>
-      </section>
-
       <Card className="home-search-panel rank-search-card">
         <div className="home-search-box">
           <Search size={24} />
@@ -432,6 +419,18 @@ export default function Home({ app }) {
       ) : null}
 
       <section className="rank-summary-grid">
+        <div className="home-rank-board-head">
+          <div className="rank-hero-top">
+            <div>
+              <p className="eyebrow">내 랭크 보드</p>
+              <h1>{user.name}님의 오늘 코트 현황</h1>
+              <p>{user.region} · {user.position} · 통합 {getTierDivision(user.ratings.integrated)} · {Math.round(user.ratings.integrated)} MMR</p>
+            </div>
+            <Link to="/app/create">
+              <Button><PlusCircle size={18} /> 경기 만들기</Button>
+            </Link>
+          </div>
+        </div>
         <Card className="section-card rank-profile-card">
           <div className="rank-profile-head">
             <div className="avatar hero-avatar" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</div>
