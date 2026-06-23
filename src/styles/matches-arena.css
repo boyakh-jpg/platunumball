@@ -2465,8 +2465,9 @@ html[data-theme="light"] .om-calendar-grid button {
 }
 
 .om-calendar-grid button:has(span) {
-  align-items: center;
+  align-items: flex-start;
   padding-top: 4px;
+  padding-bottom: 20px;
 }
 
 .om-calendar-grid button span {
