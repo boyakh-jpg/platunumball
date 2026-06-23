@@ -9,6 +9,7 @@ import TeamCard from "../components/team/TeamCard.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { MAX_TEAM_MEMBERSHIPS, MAX_TEAM_NAME_LENGTH, REGIONS } from "../lib/constants.js";
 import { getRegisteredCourts } from "../lib/courts.js";
+import { getTeamHashtag } from "../lib/handles.js";
 import { getTierDivision } from "../lib/tier.js";
 
 const allRegions = ["전체", ...REGIONS];
@@ -55,6 +56,10 @@ function compareTeamRank(a, b) {
   return b.mmr - a.mmr || bWinRate - aWinRate || b.played - a.played || a.name.localeCompare(b.name);
 }
 
+function isHashtagQuery(query = "") {
+  return query.trim().startsWith("#");
+}
+
 export default function Teams({ app }) {
   const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
   const defaultHomeCourt = registeredCourts[0]?.name ?? "미정";
@@ -94,9 +99,10 @@ export default function Teams({ app }) {
       .slice(0, 10);
   }, [favoriteTeamIds, rankingTeams]);
   const visibleTeams = useMemo(() => {
+    const hashtagSearch = isHashtagQuery(query);
     return rankingTeams
-      .filter((team) => region === "전체" || team.region === region)
-      .filter((team) => `${team.name} ${team.region} ${team.homeCourt}`.toLowerCase().includes(query.trim().toLowerCase()));
+      .filter((team) => hashtagSearch || region === "전체" || team.region === region)
+      .filter((team) => `${team.name} ${getTeamHashtag(team)} ${team.region} ${team.homeCourt}`.toLowerCase().includes(query.trim().toLowerCase()));
   }, [query, rankingTeams, region]);
   const renderTeamSearchItem = (team) => (
     <button
@@ -111,7 +117,7 @@ export default function Teams({ app }) {
     >
       <strong>{team.name}</strong>
       <span>{team.region} · {team.mmr} MMR · {team.homeCourt}</span>
-      <em>{isFavoriteTeam(team) ? "즐겨찾기" : "팀"}</em>
+      <em>{getTeamHashtag(team)} · {isFavoriteTeam(team) ? "즐겨찾기" : "팀"}</em>
     </button>
   );
 

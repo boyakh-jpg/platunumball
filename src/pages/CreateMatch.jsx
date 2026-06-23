@@ -9,6 +9,7 @@ import RuleSelector from "../components/match/RuleSelector.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { MATCH_MODES, REFEREE_TRUST_MIN, REGIONS } from "../lib/constants.js";
 import { getRegisteredCourts } from "../lib/courts.js";
+import { getCourtHashtag, getTeamHashtag } from "../lib/handles.js";
 import { getPublicRoomMaxDateInput, isEligibleReferee } from "../lib/matchUtils.js";
 import { AGE_GROUPS, getAgeGroupForUser } from "../lib/profileSetup.js";
 import { MMR_RANGE_POLICIES, getRecruitingSideCapacity, getRecruitingTierRange, getSelectableTeamPlayerIds, isMmrInRecruitingRange } from "../lib/recruiting.js";
@@ -75,6 +76,10 @@ const MAX_PARTY_RESERVES = 2;
 
 function includesQuery(value, query) {
   return value.toLowerCase().includes(query.trim().toLowerCase());
+}
+
+function isHashtagQuery(query = "") {
+  return query.trim().startsWith("#");
 }
 
 function getUserTeam(teams, userId) {
@@ -345,16 +350,18 @@ export default function CreateMatch({ app }) {
   });
 
   const sortedTeams = useMemo(() => {
+    const hashtagSearch = isHashtagQuery(teamQuery);
     return [...app.state.teams]
-      .filter((team) => teamRegion === "전체" || team.region === teamRegion)
-      .filter((team) => includesQuery(`${team.name} ${team.region} ${team.homeCourt}`, teamQuery))
+      .filter((team) => hashtagSearch || teamRegion === "전체" || team.region === teamRegion)
+      .filter((team) => includesQuery(`${team.name} ${getTeamHashtag(team)} ${team.region} ${team.homeCourt}`, teamQuery))
       .sort((a, b) => Number(isFavoriteTeam(b)) - Number(isFavoriteTeam(a)) || Number(b.region === app.currentUser.region) - Number(a.region === app.currentUser.region) || b.mmr - a.mmr);
   }, [app.currentUser.region, app.state.teams, favoriteTeamIds, teamQuery, teamRegion]);
 
   const sortedCourts = useMemo(() => {
+    const hashtagSearch = isHashtagQuery(courtQuery);
     return registeredCourts
-      .filter((court) => courtRegion === "전체" || court.region === courtRegion)
-      .filter((court) => includesQuery(`${court.name} ${court.region} ${court.type}`, courtQuery))
+      .filter((court) => hashtagSearch || courtRegion === "전체" || court.region === courtRegion)
+      .filter((court) => includesQuery(`${court.name} ${getCourtHashtag(court)} ${court.region} ${court.type} ${court.addressText ?? ""}`, courtQuery))
       .sort((a, b) => Number(isFavoriteCourt(b)) - Number(isFavoriteCourt(a)) || Number(b.region === app.currentUser.region) - Number(a.region === app.currentUser.region) || a.name.localeCompare(b.name));
   }, [app.currentUser.region, courtQuery, courtRegion, favoriteCourtIds, registeredCourts]);
 
@@ -416,7 +423,7 @@ export default function CreateMatch({ app }) {
     return app.state.teams
       .filter((team) => team.id !== selectedTeamA.id)
       .filter((team) => getDefaultTeamPlayerIds(team, sideCapacity, ownerSidePlayerIds).length >= sideCapacity)
-      .filter((team) => !query || includesQuery(`${team.name} ${team.region} ${team.homeCourt}`, query))
+      .filter((team) => !query || includesQuery(`${team.name} ${getTeamHashtag(team)} ${team.region} ${team.homeCourt}`, query))
       .sort((a, b) => (
         Number(favoriteTeamIds.includes(b.id)) - Number(favoriteTeamIds.includes(a.id)) ||
         Number(b.region === app.currentUser.region) - Number(a.region === app.currentUser.region) ||
@@ -656,7 +663,7 @@ export default function CreateMatch({ app }) {
     >
       <strong>{court.name}</strong>
       <span>{court.region} · {court.type}</span>
-      <em>{isFavoriteCourt(court) ? "즐겨찾기" : "구장"}</em>
+      <em>{getCourtHashtag(court)} · {isFavoriteCourt(court) ? "즐겨찾기" : "구장"}</em>
     </button>
   );
   const renderCreateTeamSearchItem = (team) => {
@@ -676,7 +683,7 @@ export default function CreateMatch({ app }) {
       >
         <TeamHoverCard team={team} as="span"><strong>{team.name}</strong></TeamHoverCard>
         <span>{team.region} · {team.mmr} MMR · {team.homeCourt}</span>
-        <em>{isFavoriteTeam(team) ? "즐겨찾기" : actionLabel}</em>
+        <em>{getTeamHashtag(team)} · {isFavoriteTeam(team) ? "즐겨찾기" : actionLabel}</em>
       </button>
     );
   };
@@ -692,7 +699,7 @@ export default function CreateMatch({ app }) {
       >
         <TeamHoverCard team={team} as="span"><strong>{team.name}</strong></TeamHoverCard>
         <span>{team.region} · {team.mmr} MMR · {team.homeCourt}</span>
-        <em>{favoriteTeamIds.includes(team.id) ? "즐겨찾기" : mmrBlocked ? "MMR 범위 밖" : "B사이드"}</em>
+        <em>{getTeamHashtag(team)} · {favoriteTeamIds.includes(team.id) ? "즐겨찾기" : mmrBlocked ? "MMR 범위 밖" : "B사이드"}</em>
       </button>
     );
   };
