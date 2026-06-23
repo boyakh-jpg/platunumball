@@ -1813,8 +1813,14 @@ function applyAutomaticMatchDecisions(state, now = new Date()) {
     if ((current.status === "approval" || current.status === "disputed") && current.result) {
       const recordWindow = getMatchRecordWindow(current, nowMs);
       if (!recordWindow.disputeExpired) continue;
+      const result = current.disputeDraftResult ?? current.result;
       const nextMatch = {
         ...current,
+        result,
+        teamA: { ...current.teamA, score: result.scoreA },
+        teamB: { ...current.teamB, score: result.scoreB },
+        disputeDraftResult: undefined,
+        disputeDraftUpdatedAt: undefined,
         disputeMinutes: DISPUTE_WINDOW_MINUTES,
         approvals: fillMatchDecision(current, "approvals"),
         autoConfirmedAt: current.autoConfirmedAt ?? nowIso,
@@ -2390,8 +2396,9 @@ export function submitMatchResult(state, matchId, result) {
   const recorderSides = getStatRecorderSides(match, currentUserId);
   const roomPhase = getMatchRoomPhase(match).phase;
   const currentUserCanOperatePostStart = currentUserCanOperateStartedMatch(state, match);
+  const currentUserCanDisputeDraft = currentUserCanOperatePostStart && match.status === "disputed";
   const currentUserCanPostgameScore = currentUserCanOperatePostStart && roomPhase === "postgame" && !["confirmed", "disputed"].includes(match.status);
-  const currentUserCanRecord = currentUserIsEligibleReferee || currentUserCanPostgameScore || (!hasReferee && (recorderSides.length > 0 || Boolean(currentSideName)));
+  const currentUserCanRecord = currentUserIsEligibleReferee || currentUserCanDisputeDraft || currentUserCanPostgameScore || (!hasReferee && (recorderSides.length > 0 || Boolean(currentSideName)));
 
   if (hasReferee && !currentUserIsEligibleReferee) {
     return {
@@ -2439,14 +2446,14 @@ export function submitMatchResult(state, matchId, result) {
       ],
     };
   }
-  if (match.status === "disputed") {
+  if (match.status === "disputed" && !currentUserCanDisputeDraft) {
     return {
       ...state,
       notifications: [
         {
           id: makeId("n"),
           title: "이의신청 처리 중",
-          body: "이의신청 중에는 기록을 직접 덮어쓸 수 없습니다. 승인 재개 또는 무효 처리 후 다시 진행하세요.",
+          body: "이의신청 중에는 심판 또는 방장만 임시 수정안을 저장할 수 있습니다.",
           tone: "orange",
           matchId,
         },
@@ -2459,7 +2466,22 @@ export function submitMatchResult(state, matchId, result) {
   const matchStartsAt = getMatchStartDate(match);
   const beforeStart = !matchStartsAt || (Number.isFinite(matchStartsAt.getTime()) && Date.now() < matchStartsAt.getTime());
   const liveRecordAllowed = recordWindow.beforeEnd && !beforeStart && (currentUserIsEligibleReferee || (!hasReferee && (recorderSides.length > 0 || Boolean(currentSideName))));
-  if ((recordWindow.beforeEnd && !liveRecordAllowed) || (!recordWindow.beforeEnd && !recordWindow.statOpen)) {
+  if (currentUserCanDisputeDraft && !recordWindow.disputeOpen) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "이의 처리 마감",
+          body: "이의 처리 시간이 지나 수정안을 저장할 수 없습니다.",
+          tone: "match",
+          matchId,
+        },
+        ...state.notifications,
+      ],
+    };
+  }
+  if (!currentUserCanDisputeDraft && ((recordWindow.beforeEnd && !liveRecordAllowed) || (!recordWindow.beforeEnd && !recordWindow.statOpen))) {
     return {
       ...state,
       notifications: [
@@ -2480,15 +2502,18 @@ export function submitMatchResult(state, matchId, result) {
   }
 
   const now = new Date().toISOString();
-  const liveEntry = recordWindow.beforeEnd && liveRecordAllowed;
+  const draftEntry = currentUserCanDisputeDraft;
+  const liveEntry = !draftEntry && recordWindow.beforeEnd && liveRecordAllowed;
   const recordPlayerIds = getMatchRecordPlayerIds(match, liveEntry);
-  const existingStats = normalizePlayerStats(match.result?.playerStats ?? {}, recordPlayerIds);
+  const existingStats = normalizePlayerStats((draftEntry ? match.disputeDraftResult : match.result)?.playerStats ?? match.result?.playerStats ?? {}, recordPlayerIds);
   const endedAt = liveEntry ? match.endedAt : match.endedAt ?? recordWindow.endAt?.toISOString() ?? now;
   const recorderPlayerIds = recorderSides.flatMap((sideName) => getMatchSideRecordPlayerIds(match, sideName, liveEntry));
   const selfPlayerIds = currentSideName ? [currentUserId] : [];
   const hostPostgamePlayerIds = currentUserCanPostgameScore ? playerIds : [];
-  const targetPlayerIds = currentUserIsEligibleReferee ? recordPlayerIds : [...new Set([...recorderPlayerIds, ...selfPlayerIds, ...hostPostgamePlayerIds])]
-    .filter((playerId) => getAllowedResultFieldIds(match, currentUserId, playerId, currentUserCanPostgameScore).length > 0);
+  const targetPlayerIds = (currentUserIsEligibleReferee || draftEntry)
+    ? recordPlayerIds
+    : [...new Set([...recorderPlayerIds, ...selfPlayerIds, ...hostPostgamePlayerIds])]
+        .filter((playerId) => getAllowedResultFieldIds(match, currentUserId, playerId, currentUserCanPostgameScore).length > 0);
   if (!hasReferee && !targetPlayerIds.length) {
     return {
       ...state,
@@ -2516,7 +2541,7 @@ export function submitMatchResult(state, matchId, result) {
       ...currentStats,
       ...Object.fromEntries(
         Object.entries(submittedStatPatch[playerId])
-          .filter(([fieldId]) => currentUserIsEligibleReferee || allowedFieldIds.has(fieldId)),
+          .filter(([fieldId]) => currentUserIsEligibleReferee || draftEntry || allowedFieldIds.has(fieldId)),
       ),
     };
   });
@@ -2543,6 +2568,8 @@ export function submitMatchResult(state, matchId, result) {
       const sideName = getMatchRosterSideName(scoringMatch, playerId);
       const source = currentUserIsEligibleReferee
         ? "referee"
+        : draftEntry
+          ? "dispute_operator"
         : isMatchStatRecorder(match, currentUserId, sideName)
           ? "candidate_recorder"
           : currentUserCanPostgameScore && playerId !== currentUserId
@@ -2559,7 +2586,7 @@ export function submitMatchResult(state, matchId, result) {
     playerStats: nextPlayerStats,
     statSubmissions: nextSubmissions,
     submittedBy: currentUserId,
-    submittedAt: match.result?.submittedAt ?? now,
+    submittedAt: (draftEntry ? match.disputeDraftResult?.submittedAt : match.result?.submittedAt) ?? now,
     updatedAt: now,
   };
 
@@ -2567,7 +2594,13 @@ export function submitMatchResult(state, matchId, result) {
     ...state,
     matches: state.matches.map((item) =>
       item.id === matchId
-        ? {
+        ? draftEntry
+          ? {
+              ...item,
+              disputeDraftResult: nextResult,
+              disputeDraftUpdatedAt: now,
+            }
+          : {
             ...item,
             playedPlayerIds: liveEntry ? reservePlayedPlayerIds : item.playedPlayerIds,
             status: liveEntry ? item.status : "approval",
@@ -2583,8 +2616,10 @@ export function submitMatchResult(state, matchId, result) {
     notifications: [
       {
         id: makeId("n"),
-        title: currentUserIsEligibleReferee ? "심판 기록 제출" : recorderSides.length ? "후보 기록 제출" : "내 득점 제출",
-        body: currentUserIsEligibleReferee
+        title: draftEntry ? "이의 수정안 저장" : currentUserIsEligibleReferee ? "심판 기록 제출" : recorderSides.length ? "후보 기록 제출" : "내 득점 제출",
+        body: draftEntry
+          ? `${match.title} 이의 수정안이 임시 저장됐습니다. 확인하면 결과가 바로 확정됩니다.`
+          : currentUserIsEligibleReferee
           ? `${match.title} 스코어와 전체 개인 활약이 저장됐습니다.`
           : recorderSides.length
             ? `${match.title} 후보 기록자가 팀 개인 활약을 저장했습니다.`
@@ -2761,7 +2796,13 @@ export function disputeMatch(state, matchId, reason = "") {
     ...state,
     matches: state.matches.map((item) =>
       item.id === matchId
-        ? { ...item, status: "disputed", disputes: [dispute, ...(item.disputes ?? [])] }
+        ? {
+            ...item,
+            status: "disputed",
+            disputes: [dispute, ...(item.disputes ?? [])],
+            disputeDraftResult: clone(item.result),
+            disputeDraftUpdatedAt: new Date().toISOString(),
+          }
         : item,
     ),
     notifications: [
@@ -3101,19 +3142,46 @@ export function resumeMatchApproval(state, matchId) {
   const match = state.matches.find((item) => item.id === matchId);
   if (!match || match.status !== "disputed") return state;
   if (!currentUserCanOperateStartedMatch(state, match)) return state;
+  const result = match.disputeDraftResult ?? match.result;
+  if (!result) return state;
+  const resolvedMatchForCheck = { ...match, result };
+  const statStatus = getStatSubmissionStatus(resolvedMatchForCheck);
+  const pointAudit = getResultPointAudit(resolvedMatchForCheck, result);
+  if (!statStatus.complete || !pointAudit.matched) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "이의 확정 보류",
+          body: !statStatus.complete
+            ? `개인 기록 ${statStatus.submitted}/${statStatus.total}명 제출 상태입니다. 전원 기록 후 확정할 수 있습니다.`
+            : `득점 합계가 팀 스코어와 맞지 않습니다. A ${pointAudit.teamA.statPoints}/${pointAudit.teamA.teamScore}, B ${pointAudit.teamB.statPoints}/${pointAudit.teamB.teamScore}.`,
+          tone: "match",
+          matchId,
+        },
+        ...state.notifications,
+      ],
+    };
+  }
 
-  return {
-    ...state,
-    matches: state.matches.map((item) =>
-      item.id === matchId
-        ? { ...item, status: "approval", approvals: { teamA: [], teamB: [] }, reviewResumedAt: new Date().toISOString() }
-        : item,
-    ),
-    notifications: [
-      { id: makeId("n"), title: "승인 재개", body: `${match.title} 결과 승인을 다시 시작합니다.`, tone: "match", matchId },
-      ...state.notifications,
-    ],
+  const resolvedMatch = {
+    ...match,
+    result,
+    teamA: { ...match.teamA, score: result.scoreA },
+    teamB: { ...match.teamB, score: result.scoreB },
+    approvals: { teamA: [], teamB: [] },
+    disputeDraftResult: undefined,
+    disputeDraftUpdatedAt: undefined,
+    disputeResolvedAt: new Date().toISOString(),
   };
+  return finalizeMatch(
+    {
+      ...state,
+      matches: state.matches.map((item) => (item.id === matchId ? resolvedMatch : item)),
+    },
+    resolvedMatch,
+  );
 }
 
 export function toggleMatchStar(state, matchId, targetUserId) {

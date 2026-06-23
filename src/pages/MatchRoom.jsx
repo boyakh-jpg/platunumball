@@ -52,11 +52,12 @@ const statusMeta = {
 };
 
 function makeInitialStats(match) {
+  const sourceResult = match?.disputeDraftResult ?? match?.result;
   const playerIds = getMatchPlayerIds(match);
   return Object.fromEntries(
     playerIds.map((playerId) => [
       playerId,
-      Object.fromEntries(PLAYER_STAT_FIELDS.map((field) => [field.id, match?.result?.playerStats?.[playerId]?.[field.id] ?? 0])),
+      Object.fromEntries(PLAYER_STAT_FIELDS.map((field) => [field.id, sourceResult?.playerStats?.[playerId]?.[field.id] ?? 0])),
     ]),
   );
 }
@@ -66,8 +67,9 @@ function getTeamMmr(teams, teamId) {
 }
 
 function getDisplayScore(match, sideName) {
+  const sourceResult = match.disputeDraftResult ?? match.result;
   const resultKey = sideName === "teamA" ? "scoreA" : "scoreB";
-  return match.result?.[resultKey] ?? match[sideName].score ?? 0;
+  return sourceResult?.[resultKey] ?? match[sideName].score ?? 0;
 }
 
 function getPointAudit(match, score, sideName) {
@@ -128,12 +130,13 @@ export default function MatchRoom({ app }) {
 
   useEffect(() => {
     if (!match) return;
+    const sourceResult = match.disputeDraftResult ?? match.result;
     setScore({
-      scoreA: match.result?.scoreA ?? match.teamA.score ?? 21,
-      scoreB: match.result?.scoreB ?? match.teamB.score ?? 17,
+      scoreA: sourceResult?.scoreA ?? match.teamA.score ?? 21,
+      scoreB: sourceResult?.scoreB ?? match.teamB.score ?? 17,
       playerStats: makeInitialStats(match),
     });
-  }, [match?.id, match?.result?.updatedAt, match?.result?.submittedAt, matchPlayerKey]);
+  }, [match?.id, match?.result?.updatedAt, match?.result?.submittedAt, match?.disputeDraftResult?.updatedAt, matchPlayerKey]);
 
   if (!match) return <Navigate to="/app/create" replace />;
 
@@ -160,11 +163,6 @@ export default function MatchRoom({ app }) {
         .join(" · ") || "참가자 본인 득점";
   const currentRecorderSides = hasReferee ? [] : getStatRecorderSides(match, app.currentUser.id);
   const hasSideRecorders = !hasReferee && Boolean(statRecorders.teamA || statRecorders.teamB);
-  const currentUserEditablePlayerIds = hasReferee && currentUserIsEligibleReferee
-    ? allPlayerIds
-    : allPlayerIds.filter((playerId) => getAllowedStatFields(match, app.currentUser.id, playerId).length > 0);
-  const currentUserCanSubmit = hasReferee ? currentUserIsEligibleReferee : currentUserEditablePlayerIds.length > 0;
-  const canSubmitResult = ["agreed", "approval"].includes(match.status) && recordWindow.statOpen && currentUserCanSubmit;
   const statSubmissionStatus = getStatSubmissionStatus(match);
   const resultPointAudit = getResultPointAudit(match);
   const activeEvidenceIds = new Set(EVIDENCE_OPTIONS.map((item) => item.id));
@@ -181,6 +179,14 @@ export default function MatchRoom({ app }) {
   const matchPhase = getMatchRoomPhase(match).phase;
   const startedAuthorityPhase = Boolean(match.startedAt || match.endedAt || match.result || ["live", "postgame", "dispute", "record"].includes(matchPhase));
   const currentUserCanOperateStartedMatch = hasReferee ? currentUserIsEligibleReferee : isMatchHost;
+  const canEditDisputeDraft = match.status === "disputed" && currentUserCanOperateStartedMatch && recordWindow.disputeOpen;
+  const currentUserEditablePlayerIds = canEditDisputeDraft
+    ? allPlayerIds
+    : hasReferee && currentUserIsEligibleReferee
+      ? allPlayerIds
+      : allPlayerIds.filter((playerId) => getAllowedStatFields(match, app.currentUser.id, playerId).length > 0);
+  const currentUserCanSubmit = canEditDisputeDraft || (hasReferee ? currentUserIsEligibleReferee : currentUserEditablePlayerIds.length > 0);
+  const canSubmitResult = canEditDisputeDraft || (["agreed", "approval"].includes(match.status) && recordWindow.statOpen && currentUserCanSubmit);
   const canCancel = ["contract", "agreed"].includes(match.status) && (startedAuthorityPhase ? currentUserCanOperateStartedMatch : isMatchHost);
   const canDispute = Boolean(match.result) && match.status === "approval" && recordWindow.disputeOpen && currentUserCanOperateStartedMatch;
   const canVoid = match.status === "disputed" && currentUserCanOperateStartedMatch;
@@ -189,7 +195,7 @@ export default function MatchRoom({ app }) {
   const isContractStage = match.status === "contract";
   const shouldShowResultEntry =
     match.status === "approval" || Boolean(match.result) || (match.status === "agreed" && !recordWindow.beforeStart && !recordWindow.beforeEnd);
-  const shouldShowApprovalPanel = ["disputed", "confirmed"].includes(match.status) || (match.status === "approval" && approvalAccessReady);
+  const shouldShowApprovalPanel = match.status === "confirmed" || (match.status === "approval" && approvalAccessReady);
   const shouldShowWaitingPanel = false;
   const scoreA = getDisplayScore(match, "teamA");
   const scoreB = getDisplayScore(match, "teamB");
@@ -205,6 +211,10 @@ export default function MatchRoom({ app }) {
       ? "경기 종료 후 입력 가능"
     : recordWindow.statExpired
       ? "기록 입력 마감"
+      : canEditDisputeDraft
+        ? "이의 수정 가능"
+      : match.status === "disputed"
+        ? "이의 확인 중"
       : hasReferee && !currentUserIsReferee
         ? "심판만 입력"
         : !currentUserCanSubmit
@@ -307,8 +317,8 @@ export default function MatchRoom({ app }) {
   };
   const getSideLabel = (sideName) => (sideName === "teamA" ? "A사이드" : "B사이드");
   const getRecorderName = (sideName) => hasReferee ? "" : userMap[statRecorders[sideName]]?.name ?? "";
-  const canEditPlayerStat = (playerId) => canSubmitResult && getAllowedStatFields(match, app.currentUser.id, playerId).length > 0;
-  const editableStatFields = statEditorPlayerId ? getAllowedStatFields(match, app.currentUser.id, statEditorPlayerId) : [];
+  const canEditPlayerStat = (playerId) => canSubmitResult && (canEditDisputeDraft || getAllowedStatFields(match, app.currentUser.id, playerId).length > 0);
+  const editableStatFields = statEditorPlayerId ? (canEditDisputeDraft ? PLAYER_STAT_FIELDS : getAllowedStatFields(match, app.currentUser.id, statEditorPlayerId)) : [];
   const getPlayerStatState = (playerId, submitted) => {
     const sideName = getPlayerSideName(match, playerId);
     const recorderName = sideName ? getRecorderName(sideName) : "";
@@ -653,7 +663,7 @@ export default function MatchRoom({ app }) {
                 <input type="number" min="0" disabled={!canSubmitResult} value={score.scoreB} onChange={(event) => setScore((current) => ({ ...current, scoreB: event.target.value }))} />
               </label>
               <Button type="submit" disabled={!canSubmitResult}>
-                {hasReferee ? "심판 기록 제출" : currentRecorderSides.length ? "후보 기록 제출" : currentUserSubmitted ? "스코어/내 득점 다시 제출" : "스코어/내 득점 제출"}
+                {canEditDisputeDraft ? "이의 수정안 저장" : hasReferee ? "심판 기록 제출" : currentRecorderSides.length ? "후보 기록 제출" : currentUserSubmitted ? "스코어/내 득점 다시 제출" : "스코어/내 득점 제출"}
               </Button>
               <div className="stat-integrity-note">
                 {hasReferee
@@ -835,7 +845,9 @@ export default function MatchRoom({ app }) {
                 <div className="match-action-row">
                   <Button type="button" variant="secondary" disabled={!canDispute} onClick={() => app.actions.disputeMatch(match.id, disputeReason)}>이의제기</Button>
                   <Button type="button" variant="secondary" disabled={!canCancel} onClick={() => app.actions.cancelMatch(match.id)}>경기 취소</Button>
-                  <Button type="button" variant="secondary" disabled={!canResumeApproval} onClick={() => app.actions.resumeMatchApproval(match.id)}>승인 재개</Button>
+                  <Button type="button" variant="secondary" disabled={!canResumeApproval} onClick={() => app.actions.resumeMatchApproval(match.id)}>
+                    {match.disputeDraftResult ? "수정안 확정" : "결과 확정"}
+                  </Button>
                   <Button type="button" variant="secondary" disabled={!canVoid} onClick={() => app.actions.voidMatch(match.id)}>무효 처리</Button>
                   <Button type="button" variant="secondary" disabled={!canReport} onClick={() => app.actions.reportMatch(match.id, reportReason)}>신고 접수</Button>
                 </div>

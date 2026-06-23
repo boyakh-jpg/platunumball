@@ -36,19 +36,21 @@ const statusMeta = {
 const activeStatuses = new Set(["agreed", "approval", "disputed"]);
 
 function makeInitialStats(match) {
+  const sourceResult = match.disputeDraftResult ?? match.result;
   return Object.fromEntries(
     getMatchRecordPlayerIds(match, true).map((playerId) => [
       playerId,
       Object.fromEntries(
-        PLAYER_STAT_FIELDS.map((field) => [field.id, Number(match.result?.playerStats?.[playerId]?.[field.id] ?? 0)]),
+        PLAYER_STAT_FIELDS.map((field) => [field.id, Number(sourceResult?.playerStats?.[playerId]?.[field.id] ?? 0)]),
       ),
     ]),
   );
 }
 
 function getExistingScore(match, sideName) {
+  const sourceResult = match.disputeDraftResult ?? match.result;
   const scoreKey = sideName === "teamA" ? "scoreA" : "scoreB";
-  return Number(match.result?.[scoreKey] ?? match[sideName]?.score ?? 0);
+  return Number(sourceResult?.[scoreKey] ?? match[sideName]?.score ?? 0);
 }
 
 function sumSidePoints(match, stats, sideName, includeReserves = false) {
@@ -56,7 +58,8 @@ function sumSidePoints(match, stats, sideName, includeReserves = false) {
 }
 
 function hasSideStats(match, sideName, includeReserves = false) {
-  return getMatchSideRecordPlayerIds(match, sideName, includeReserves).some((playerId) => match.result?.playerStats?.[playerId]);
+  const sourceResult = match.disputeDraftResult ?? match.result;
+  return getMatchSideRecordPlayerIds(match, sideName, includeReserves).some((playerId) => sourceResult?.playerStats?.[playerId]);
 }
 
 function getSideScore(match, stats, sideName, editablePlayerIds, includeReserves = false) {
@@ -140,7 +143,7 @@ export default function Recorder({ app }) {
       setHandoffDraft({});
       setLatePlayerDraft((current) => ({ ...current, userId: "", name: "" }));
     }
-  }, [selectedMatch?.id, selectedMatch?.result?.updatedAt, selectedMatch?.result?.submittedAt, selectedMatchPlayerKey]);
+  }, [selectedMatch?.id, selectedMatch?.result?.updatedAt, selectedMatch?.result?.submittedAt, selectedMatch?.disputeDraftResult?.updatedAt, selectedMatchPlayerKey]);
 
   const recordWindow = selectedMatch ? getMatchRecordWindow(selectedMatch) : null;
   const roomPhase = selectedMatch ? getMatchRoomPhase(selectedMatch).phase : "";
@@ -152,14 +155,17 @@ export default function Recorder({ app }) {
   const currentUserCanPostgameScore = Boolean(currentUserCanOperatePostStart && roomPhase === "postgame" && !["confirmed", "disputed"].includes(selectedMatch.status));
   const postStartOperatorLabel = selectedMatchHasReferee ? "심판" : "방장";
   const recorderSides = selectedMatch ? getStatRecorderSides(selectedMatch, user.id) : [];
+  const canEditDisputeDraft = Boolean(selectedMatch?.status === "disputed" && currentUserCanOperatePostStart && recordWindow?.disputeOpen);
   const includeReserveStats = Boolean(recordWindow?.beforeEnd);
   const editablePlayerIds = selectedMatch
-    ? getMatchRecordPlayerIds(selectedMatch, includeReserveStats).filter((playerId) => getRecorderAllowedFields(selectedMatch, app.state, user.id, playerId, currentUserCanPostgameScore).length > 0)
+    ? getMatchRecordPlayerIds(selectedMatch, includeReserveStats).filter((playerId) => (
+        canEditDisputeDraft || getRecorderAllowedFields(selectedMatch, app.state, user.id, playerId, currentUserCanPostgameScore).length > 0
+      ))
     : [];
   const beforeStart = Boolean(recordWindow?.beforeStart);
-  const saveWindowOpen = selectedMatch && !beforeStart && (recordWindow?.beforeEnd || recordWindow?.statOpen);
+  const saveWindowOpen = selectedMatch && !beforeStart && (recordWindow?.beforeEnd || recordWindow?.statOpen || canEditDisputeDraft);
   const hasDirtyStats = Object.keys(dirtyStats).length > 0;
-  const canSave = Boolean(selectedMatch && !["disputed", "confirmed"].includes(selectedMatch.status) && editablePlayerIds.length && saveWindowOpen && hasDirtyStats);
+  const canSave = Boolean(selectedMatch && !["confirmed"].includes(selectedMatch.status) && (canEditDisputeDraft || selectedMatch.status !== "disputed") && editablePlayerIds.length && saveWindowOpen && hasDirtyStats);
   const canEndLiveMatch = Boolean(selectedMatch && currentUserCanOperatePostStart && roomPhase === "live" && !selectedMatch.endedAt && !selectedMatch.result);
   const canEditPostgameRoster = Boolean(selectedMatch && currentUserCanOperatePostStart && roomPhase === "postgame" && recordWindow?.statOpen && !selectedMatch.result);
   const scoreA = selectedMatch ? getSideScore(selectedMatch, stats, "teamA", editablePlayerIds, includeReserveStats) : 0;
@@ -206,7 +212,7 @@ export default function Recorder({ app }) {
     app.actions.submitMatchResult(selectedMatch.id, {
       scoreA,
       scoreB,
-      playerStats: dirtyStats,
+      playerStats: canEditDisputeDraft ? stats : dirtyStats,
     });
     setDirtyStats({});
   };
@@ -245,7 +251,10 @@ export default function Recorder({ app }) {
         <div className="recorder-player-list">
           {statPlayerIds.map((playerId) => {
             const player = userMap[playerId];
-            const allowedFields = new Set(getRecorderAllowedFields(selectedMatch, app.state, user.id, playerId, currentUserCanPostgameScore).map((field) => field.id));
+            const allowedFields = new Set(
+              (canEditDisputeDraft ? PLAYER_STAT_FIELDS : getRecorderAllowedFields(selectedMatch, app.state, user.id, playerId, currentUserCanPostgameScore))
+                .map((field) => field.id),
+            );
             const rosterLabel = activePlayerIds.includes(playerId)
               ? "출전 중"
               : reservePlayerIds.includes(playerId)
@@ -504,15 +513,15 @@ export default function Recorder({ app }) {
             ) : null}
 
             <div className="recorder-save-row">
-              <p>{recordWindow?.beforeEnd ? "경기 중 저장은 상태를 진행으로 유지합니다. 경기 종료 후 저장하면 결과 승인 단계로 넘어갑니다." : "저장하면 결과 승인 단계로 넘어갑니다."}</p>
+              <p>{canEditDisputeDraft ? "저장하면 기존 결과는 유지하고 이의 수정안만 임시 저장합니다." : recordWindow?.beforeEnd ? "경기 중 저장은 상태를 진행으로 유지합니다. 경기 종료 후 저장하면 결과 승인 단계로 넘어갑니다." : "저장하면 결과 승인 단계로 넘어갑니다."}</p>
               <Button onClick={saveStats} disabled={!canSave}>
                 <Save size={17} />
-                저장
+                {canEditDisputeDraft ? "수정안 저장" : "저장"}
               </Button>
             </div>
           </Card>
 
-          {["approval", "disputed"].includes(selectedMatch.status) ? (
+          {selectedMatch.status === "approval" ? (
             <ApprovalPanel
               match={selectedMatch}
               teams={app.state.teams}
@@ -543,7 +552,9 @@ export default function Recorder({ app }) {
                   <AlertTriangle size={16} />
                   이의제기
                 </Button>
-                <Button type="button" variant="secondary" disabled={!canResumeApproval} onClick={() => app.actions.resumeMatchApproval(selectedMatch.id)}>승인 재개</Button>
+                <Button type="button" variant="secondary" disabled={!canResumeApproval} onClick={() => app.actions.resumeMatchApproval(selectedMatch.id)}>
+                  {selectedMatch.disputeDraftResult ? "수정안 확정" : "결과 확정"}
+                </Button>
                 <Button type="button" variant="secondary" disabled={!canVoid} onClick={() => app.actions.voidMatch(selectedMatch.id)}>무효 처리</Button>
               </div>
             </Card>
