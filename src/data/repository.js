@@ -4711,10 +4711,25 @@ export function interestRecruitingPost(state, postId, application = {}) {
       ],
     };
   }
+  if (teamOnly && application.joinMode === "player") {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "팀전 참여 제한",
+          body: "팀전 방은 팀으로만 참여할 수 있습니다.",
+          tone: "orange",
+          recruitingPostId: postId,
+        },
+        ...state.notifications,
+      ],
+    };
+  }
   const requestedJoinMode = application.joinMode === "team" || application.teamId
     ? "team"
     : application.joinMode === "player"
-      ? (teamOnly ? "team" : "player")
+      ? "player"
       : getRecruitingApplicantKind(post);
   const applicantKind = requestedJoinMode === "team" ? "team" : "player";
   const myTeams = state.teams.filter((team) => team.members.some((member) => member.userId === state.currentUserId));
@@ -5676,7 +5691,7 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
 
   const lobby = getRecruitingLobby(post, state);
   const side = ["teamA", "teamB"].includes(invitation.side) ? invitation.side : getRecruitingBestSide(post, state);
-  const reserve = Boolean(invitation.reserve);
+  let reserve = Boolean(invitation.reserve);
   const invitedTeamCapacity = getRecruitingSideCapacity(post);
   const invitedTeamKey = invitedTeam ? `team:${invitedTeam.id}` : "";
   const existingInvitedTeamApplicant = invitedTeam
@@ -5690,11 +5705,14 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
       existingInvitedTeamApplicant.playerId,
     ).includes(state.currentUserId)
     : false;
-  if (reserve && (lobby.sides[side]?.reserveCandidates?.length ?? 0) >= MAX_RECRUITING_RESERVES_PER_SIDE) {
+  const reserveFull = (lobby.sides[side]?.reserveCandidates?.length ?? 0) >= MAX_RECRUITING_RESERVES_PER_SIDE;
+  const activeFull = lobby.sides[side].filled >= lobby.sides[side].capacity && !alreadyInInvitedTeamSlot;
+  if (reserve && reserveFull) {
     return expireInvitation(`${SIDE_LABEL_TEXT[side]} 후보가 이미 ${MAX_RECRUITING_RESERVES_PER_SIDE}명입니다.`);
   }
-  if (!reserve && lobby.sides[side].filled >= lobby.sides[side].capacity && !alreadyInInvitedTeamSlot) {
-    return expireInvitation("방이 꽉 찼습니다. 먼저 수락한 선수만 들어갑니다.");
+  if (!reserve && activeFull) {
+    if (reserveFull) return expireInvitation("출전 슬롯과 후보 슬롯이 모두 찼습니다.");
+    reserve = true;
   }
 
   const now = new Date().toISOString();
