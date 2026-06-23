@@ -130,7 +130,7 @@ export default function Settings({ app, auth }) {
   const refereeExamAttempts = app.state.settings?.refereeExamAttempts ?? [];
   const currentTrustScore = Number(app.currentUser?.trustScore ?? 0);
   const canSubmitCourtRequest = currentTrustScore >= COURT_REQUEST_TRUST_MIN;
-  const canOpenAdminMenu = hasAdminAccess(app.currentUser);
+  const canOpenAdminMenu = hasAdminAccess(app.currentUser, app.state.settings);
   const rawCourtLat = String(courtDraft.lat ?? "").trim();
   const rawCourtLng = String(courtDraft.lng ?? "").trim();
   const numericCourtLat = Number(rawCourtLat);

@@ -2,17 +2,54 @@ import { getMatchPlayerIds } from "./matchUtils.js";
 
 export const ADMIN_BACKEND_TODO = "TODO backend: server-side admin auth, RLS, auditLog required before deployment.";
 
+export const ADMIN_GRADE_META = {
+  owner: { label: "오너", level: 100, defaultTermDays: 365, scope: "전체 권한" },
+  opsLead: { label: "운영장", level: 70, defaultTermDays: 180, scope: "관리자/심판 임명 제안" },
+  moderator: { label: "운영관리자", level: 50, defaultTermDays: 90, scope: "신고/기록 처리" },
+  support: { label: "보조관리자", level: 30, defaultTermDays: 30, scope: "큐 검토" },
+};
+
+export const APPOINTMENT_ROLE_META = {
+  admin: { label: "관리자", defaultTermDays: 90 },
+  referee: { label: "심판", defaultTermDays: 90 },
+};
+
 function hasPermission(user = {}, permission) {
   return Array.isArray(user.adminPermissions) && user.adminPermissions.includes(permission);
 }
 
-export function hasAdminAccess(user = {}) {
+export function getAdminGrade(user = {}) {
+  if (ADMIN_GRADE_META[user.adminGrade]) return user.adminGrade;
+  if (user.id === "u1") return "owner";
+  if (user.role === "admin" || user.isAdmin === true) return "opsLead";
+  if (hasPermission(user, "operations")) return "moderator";
+  if (hasPermission(user, "admin")) return "support";
+  return "";
+}
+
+export function getAdminGradeMeta(grade) {
+  return ADMIN_GRADE_META[grade] ?? null;
+}
+
+export function isAppointmentActive(appointment = {}, nowMs = Date.now()) {
+  const startsAt = getTime(appointment.startsAt);
+  const endsAt = getTime(appointment.endsAt);
+  const afterStart = !startsAt || startsAt <= nowMs;
+  const beforeEnd = !endsAt || endsAt >= nowMs;
+  return appointment.status !== "revoked" && appointment.status !== "expired" && afterStart && beforeEnd;
+}
+
+export function hasAdminAccess(user = {}, settings = {}) {
+  const grade = getAdminGrade(user);
+  if (grade) return true;
+  const appointments = settings.adminAppointments ?? [];
   return Boolean(
-    user.role === "admin" ||
-    user.isAdmin === true ||
-    hasPermission(user, "admin") ||
-    hasPermission(user, "operations") ||
-    user.id === "u1"
+    user.id &&
+    appointments.some((appointment) => (
+      appointment.userId === user.id &&
+      appointment.role === "admin" &&
+      isAppointmentActive(appointment)
+    ))
   );
 }
 
@@ -73,6 +110,100 @@ function addReport(row, report) {
   row.reportCount = row.reports.length;
   row.openCount = getOpenCount(row.reports);
   row.latestAt = Math.max(row.latestAt, getTime(report.createdAt));
+}
+
+function getDatePlusDays(days) {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  return date.toISOString();
+}
+
+function normalizeAppointmentRow(appointment = {}, userMap = {}, fallbackRole = "admin") {
+  const role = appointment.role === "referee" ? "referee" : fallbackRole;
+  const grade = role === "admin" ? (appointment.grade || "support") : (appointment.grade || "referee");
+  const user = userMap[appointment.userId];
+  const active = appointment.status === "pending" ? false : isAppointmentActive(appointment);
+  const endsAt = appointment.endsAt || getDatePlusDays(APPOINTMENT_ROLE_META[role]?.defaultTermDays ?? 90);
+  return {
+    id: appointment.id ?? `${role}:${appointment.userId ?? "unknown"}`,
+    role,
+    roleLabel: APPOINTMENT_ROLE_META[role]?.label ?? role,
+    grade,
+    gradeLabel: ADMIN_GRADE_META[grade]?.label ?? (grade === "referee" ? "심판" : grade),
+    userId: appointment.userId,
+    userName: user?.name ?? appointment.userName ?? "알 수 없음",
+    status: appointment.status ?? (active ? "active" : "expired"),
+    startsAt: appointment.startsAt ?? "",
+    endsAt,
+    appointedBy: appointment.appointedBy ?? "",
+    source: appointment.source ?? "appointment",
+    reason: appointment.reason ?? "",
+    active,
+  };
+}
+
+export function buildAdminAppointmentModel(state = {}) {
+  const users = state.users ?? [];
+  const settings = state.settings ?? {};
+  const userMap = makeUserMap(users);
+  const nowMs = Date.now();
+  const adminRows = (settings.adminAppointments ?? [])
+    .map((appointment) => normalizeAppointmentRow(appointment, userMap, "admin"));
+  const refereeRows = (settings.refereeAppointments ?? [])
+    .map((appointment) => normalizeAppointmentRow({ ...appointment, role: "referee" }, userMap, "referee"));
+  const currentAdminRows = users
+    .map((user) => {
+      const grade = getAdminGrade(user);
+      if (!grade) return null;
+      return normalizeAppointmentRow({
+        id: `current-admin:${user.id}`,
+        role: "admin",
+        grade,
+        userId: user.id,
+        status: "active",
+        startsAt: "",
+        endsAt: "",
+        source: "current_profile",
+        reason: "현재 프로필 권한",
+      }, userMap, "admin");
+    })
+    .filter(Boolean);
+  const refereeRequestRows = (settings.refereeRequests ?? []).map((request) => normalizeAppointmentRow({
+    id: `referee-request:${request.id}`,
+    role: "referee",
+    grade: "referee",
+    userId: request.userId,
+    userName: userMap[request.userId]?.name,
+    status: request.status === "pending" ? "pending" : request.status,
+    startsAt: "",
+    endsAt: getDatePlusDays(APPOINTMENT_ROLE_META.referee.defaultTermDays),
+    source: "referee_request",
+    reason: request.memo || request.qualification,
+  }, userMap, "referee"));
+
+  const rowsById = new Map([...adminRows, ...refereeRows, ...currentAdminRows, ...refereeRequestRows].map((row) => [row.id, row]));
+  const rows = [...rowsById.values()].sort((a, b) => {
+    const gradeDiff = (ADMIN_GRADE_META[b.grade]?.level ?? 0) - (ADMIN_GRADE_META[a.grade]?.level ?? 0);
+    return Number(b.status === "pending") - Number(a.status === "pending") ||
+      Number(b.active) - Number(a.active) ||
+      gradeDiff ||
+      getTime(a.endsAt) - getTime(b.endsAt) ||
+      a.userName.localeCompare(b.userName);
+  });
+  const expiringSoonMs = nowMs + 14 * 24 * 60 * 60 * 1000;
+  return {
+    rows,
+    grades: Object.entries(ADMIN_GRADE_META).map(([id, meta]) => ({ id, ...meta })),
+    summary: {
+      adminAppointmentCount: rows.filter((row) => row.role === "admin" && row.active).length,
+      refereeAppointmentCount: rows.filter((row) => row.role === "referee" && row.active).length,
+      pendingAppointmentCount: rows.filter((row) => row.status === "pending").length,
+      expiringSoonCount: rows.filter((row) => {
+        const endsAt = getTime(row.endsAt);
+        return row.active && endsAt && endsAt <= expiringSoonMs;
+      }).length,
+    },
+  };
 }
 
 export function buildAdminReviewModel(state = {}) {

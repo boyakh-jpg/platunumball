@@ -5740,7 +5740,7 @@ html[data-theme="light"] .search-picker-result-row.selected {
 
 .admin-summary-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -5788,6 +5788,61 @@ html[data-theme="light"] .search-picker-result-row.selected {
   grid-template-columns: minmax(300px, 0.9fr) minmax(0, 1.4fr);
   gap: 12px;
   align-items: start;
+}
+
+.admin-appointment-card {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-grade-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.admin-grade-strip div,
+.admin-appointment-row {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.045);
+  padding: 10px;
+}
+
+.admin-grade-strip div,
+.admin-grade-strip em,
+.admin-appointment-list,
+.admin-appointment-row span {
+  display: grid;
+  gap: 4px;
+}
+
+.admin-grade-strip span,
+.admin-grade-strip em,
+.admin-appointment-row em,
+.admin-appointment-row small,
+.admin-appointment-card > small {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-style: normal;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.admin-appointment-list {
+  gap: 8px;
+}
+
+.admin-appointment-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-appointment-row > span:last-child {
+  justify-items: end;
 }
 
 .admin-sort-list,
@@ -5891,7 +5946,8 @@ html[data-theme="light"] .search-picker-result-row.selected {
 
 @media (max-width: 860px) {
   .admin-summary-grid,
-  .admin-workbench {
+  .admin-workbench,
+  .admin-grade-strip {
     grid-template-columns: 1fr;
   }
 

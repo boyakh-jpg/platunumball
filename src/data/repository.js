@@ -79,6 +79,8 @@ const DEFAULT_SETTINGS = {
   favoriteCourtIds: [],
   courtRequests: [],
   refereeRequests: [],
+  adminAppointments: [],
+  refereeAppointments: [],
   refereeExamAttempts: [],
 };
 const REMOTE_PAGE_SIZE = 1000;
@@ -503,6 +505,8 @@ function normalizeSettings(settings = {}) {
     favoriteCourtIds: settings.favoriteCourtIds ?? initialState.settings?.favoriteCourtIds ?? [],
     courtRequests: settings.courtRequests ?? initialState.settings?.courtRequests ?? [],
     refereeRequests: settings.refereeRequests ?? initialState.settings?.refereeRequests ?? [],
+    adminAppointments: settings.adminAppointments ?? initialState.settings?.adminAppointments ?? [],
+    refereeAppointments: settings.refereeAppointments ?? initialState.settings?.refereeAppointments ?? [],
     refereeExamAttempts: settings.refereeExamAttempts ?? initialState.settings?.refereeExamAttempts ?? [],
   };
 }

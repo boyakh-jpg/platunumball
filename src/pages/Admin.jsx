@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
-import { AlertTriangle, ClipboardList, MapPin, ShieldCheck, UserRound } from "lucide-react";
+import { AlertTriangle, ClipboardList, Clock3, MapPin, ShieldCheck, UserRound } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Card from "../components/common/Card.jsx";
-import { ADMIN_BACKEND_TODO, buildAdminReviewModel, hasAdminAccess } from "../lib/admin.js";
+import { ADMIN_BACKEND_TODO, buildAdminAppointmentModel, buildAdminReviewModel, hasAdminAccess } from "../lib/admin.js";
 
 const VIEW_OPTIONS = [
   { id: "courts", label: "구장별", icon: MapPin },
@@ -26,6 +26,14 @@ function formatDate(value) {
   return date.toLocaleDateString("ko-KR", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
+function appointmentStatusLabel(status) {
+  if (status === "active") return "활성";
+  if (status === "pending") return "대기";
+  if (status === "revoked") return "회수";
+  if (status === "expired") return "만료";
+  return status || "대기";
+}
+
 function DetailList({ title, empty, children }) {
   return (
     <div className="admin-detail-list">
@@ -38,8 +46,9 @@ function DetailList({ title, empty, children }) {
 export default function Admin({ app }) {
   const [view, setView] = useState("courts");
   const [selectedIdByView, setSelectedIdByView] = useState({});
-  const canAdmin = hasAdminAccess(app.currentUser);
+  const canAdmin = hasAdminAccess(app.currentUser, app.state.settings);
   const model = useMemo(() => buildAdminReviewModel(app.state), [app.state]);
+  const appointments = useMemo(() => buildAdminAppointmentModel(app.state), [app.state]);
   const activeRows = model[view] ?? [];
   const selectedId = selectedIdByView[view];
   const selectedRow = activeRows.find((row) => row.id === selectedId) ?? activeRows[0] ?? null;
@@ -93,11 +102,51 @@ export default function Admin({ app }) {
           <strong>{model.summary.courtRequestCount}</strong>
           <em>등록/허위 검토</em>
         </Card>
+        <Card className="section-card">
+          <span>임명 대기</span>
+          <strong>{appointments.summary.pendingAppointmentCount}</strong>
+          <em>심판/관리자</em>
+        </Card>
       </div>
 
       <Card className="section-card admin-backend-note">
         <AlertTriangle size={18} />
         <span>{ADMIN_BACKEND_TODO}</span>
+      </Card>
+
+      <Card className="section-card admin-appointment-card">
+        <div className="section-title-row">
+          <div>
+            <p className="eyebrow">Appointments</p>
+            <h2>임명 관리</h2>
+          </div>
+          <Clock3 size={22} />
+        </div>
+        <div className="admin-grade-strip">
+          {appointments.grades.map((grade) => (
+            <div key={grade.id}>
+              <strong>{grade.label}</strong>
+              <span>Lv.{grade.level}</span>
+              <em>{grade.defaultTermDays}일 · {grade.scope}</em>
+            </div>
+          ))}
+        </div>
+        <div className="admin-appointment-list">
+          {appointments.rows.slice(0, 8).map((row) => (
+            <div key={row.id} className="admin-appointment-row">
+              <span>
+                <strong>{row.userName}</strong>
+                <em>{row.roleLabel} · {row.gradeLabel} · {row.reason || row.source}</em>
+              </span>
+              <span>
+                <Badge tone={row.status === "pending" ? "orange" : row.active ? "green" : "neutral"}>{appointmentStatusLabel(row.status)}</Badge>
+                <small>{row.endsAt ? `만료 ${formatDate(row.endsAt)}` : "무기한"}</small>
+              </span>
+            </div>
+          ))}
+          {!appointments.rows.length ? <span className="admin-empty-line">임명 기록 없음</span> : null}
+        </div>
+        <small>임명/회수 액션은 서버 권한과 auditLog 연결 뒤 활성화합니다.</small>
       </Card>
 
       <div className="admin-workbench">
