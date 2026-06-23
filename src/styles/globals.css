@@ -3632,6 +3632,18 @@ input[type="color"] {
   gap: 8px;
 }
 
+.settings-address-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.settings-address-search small {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
 .settings-address-results {
   display: grid;
   gap: 8px;

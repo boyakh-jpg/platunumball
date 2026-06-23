@@ -3433,6 +3433,24 @@ export function submitCourtRequest(state, draft = {}) {
       ],
     };
   }
+  const rawLat = String(draft.lat ?? "").trim();
+  const rawLng = String(draft.lng ?? "").trim();
+  const lat = Number(rawLat);
+  const lng = Number(rawLng);
+  if (!rawLat || !rawLng || !Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "구장 등록 보류",
+          body: "구장 위도/경도가 필요합니다.",
+          tone: "orange",
+        },
+        ...state.notifications,
+      ],
+    };
+  }
 
   const request = {
     id: makeId("cr"),
@@ -3444,6 +3462,8 @@ export function submitCourtRequest(state, draft = {}) {
     type: draft.type === "실내" ? "실내" : "야외",
     addressText,
     locationNote: String(draft.locationNote ?? "").trim(),
+    lat,
+    lng,
     courtKind: draft.courtKind === "official" ? "official" : "street_hoop",
     paid: Boolean(draft.paid),
     reservation: Boolean(draft.reservation),

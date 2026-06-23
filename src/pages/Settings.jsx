@@ -10,6 +10,7 @@ import { DEFAULT_REPORT_REASON, REPORT_REASONS } from "../lib/reportReasons.js";
 import { formatStatLine, getMatchReservePlayerIds, getMatchSidePlayerIds } from "../lib/matchUtils.js";
 import { COURT_REQUEST_TRUST_MIN, COURTS, FALSE_COURT_REPORT_TRUST_PENALTY, REGIONS } from "../lib/constants.js";
 import { getCourtHashtag } from "../lib/handles.js";
+import { geocodeKakaoAddress, getKakaoMapAppKey, openDaumPostcodeSearch } from "../lib/kakaoAddress.js";
 import {
   REFEREE_EXAM_BANK_SIZE,
   REFEREE_EXAM_PASS_SCORE,
@@ -28,6 +29,8 @@ const DEFAULT_COURT_REQUEST = {
   type: "야외",
   addressText: "",
   locationNote: "",
+  lat: "",
+  lng: "",
   courtKind: "street_hoop",
   paid: false,
   reservation: false,
@@ -109,6 +112,7 @@ export default function Settings({ app, auth }) {
   const [reportedUserIds, setReportedUserIds] = useState([]);
   const [accountQuery, setAccountQuery] = useState("");
   const [courtAddressQuery, setCourtAddressQuery] = useState("");
+  const [courtLookupStatus, setCourtLookupStatus] = useState("");
   const [courtDraft, setCourtDraft] = useState(() => ({
     ...DEFAULT_COURT_REQUEST,
     region: app.currentUser?.region ?? DEFAULT_COURT_REQUEST.region,
@@ -125,6 +129,17 @@ export default function Settings({ app, auth }) {
   const refereeExamAttempts = app.state.settings?.refereeExamAttempts ?? [];
   const currentTrustScore = Number(app.currentUser?.trustScore ?? 0);
   const canSubmitCourtRequest = currentTrustScore >= COURT_REQUEST_TRUST_MIN;
+  const rawCourtLat = String(courtDraft.lat ?? "").trim();
+  const rawCourtLng = String(courtDraft.lng ?? "").trim();
+  const numericCourtLat = Number(rawCourtLat);
+  const numericCourtLng = Number(rawCourtLng);
+  const hasCourtCoordinates = Boolean(rawCourtLat && rawCourtLng) &&
+    Number.isFinite(numericCourtLat) &&
+    Number.isFinite(numericCourtLng) &&
+    numericCourtLat >= -90 &&
+    numericCourtLat <= 90 &&
+    numericCourtLng >= -180 &&
+    numericCourtLng <= 180;
   const [currentRefereeExamAttemptId, setCurrentRefereeExamAttemptId] = useState("");
   const [refereeExamNotice, setRefereeExamNotice] = useState("");
 
@@ -244,6 +259,43 @@ export default function Settings({ app, auth }) {
     if (selectedReportMatchId) app.actions.reportMatch(selectedReportMatchId, [reportReason, targetLine, memo].filter(Boolean).join(" · "), selectedReportedUserIds);
   };
   const updateCourtDraft = (patch) => setCourtDraft((current) => ({ ...current, ...patch }));
+  const applyCourtCoordinates = async (addressText) => {
+    const coords = await geocodeKakaoAddress(addressText);
+    updateCourtDraft({
+      lat: String(coords.lat),
+      lng: String(coords.lng),
+    });
+    setCourtLookupStatus("주소 좌표를 입력했습니다.");
+  };
+  const searchCourtAddress = async () => {
+    setCourtLookupStatus("주소 검색 중");
+    try {
+      const result = await openDaumPostcodeSearch();
+      if (!result.addressText) throw new Error("선택된 주소가 없습니다.");
+      const nextRegion = REGIONS.find((region) => result.addressText.includes(region)) ?? courtDraft.region;
+      updateCourtDraft({
+        name: courtDraft.name.trim() ? courtDraft.name : result.buildingName,
+        region: nextRegion,
+        addressText: result.addressText,
+      });
+      setCourtAddressQuery(result.addressText);
+      if (!getKakaoMapAppKey()) {
+        setCourtLookupStatus("주소 입력 완료. 좌표는 직접 입력하거나 VITE_KAKAO_MAP_APP_KEY를 설정하세요.");
+        return;
+      }
+      await applyCourtCoordinates(result.addressText);
+    } catch (error) {
+      setCourtLookupStatus(error.message || "주소 검색 실패");
+    }
+  };
+  const geocodeCurrentCourtAddress = async () => {
+    setCourtLookupStatus("좌표 변환 중");
+    try {
+      await applyCourtCoordinates(courtDraft.addressText);
+    } catch (error) {
+      setCourtLookupStatus(error.message || "좌표 변환 실패");
+    }
+  };
   const selectCourtAddress = (court) => {
     updateCourtDraft({
       name: courtDraft.name.trim() ? courtDraft.name : court.name,
@@ -251,11 +303,14 @@ export default function Settings({ app, auth }) {
       type: court.type,
       addressText: court.addressText,
       locationNote: court.locationNote,
+      lat: court.lat ?? court.latitude ?? "",
+      lng: court.lng ?? court.longitude ?? "",
       courtKind: court.courtKind,
       paid: court.paid,
       reservation: court.reservation,
     });
     setCourtAddressQuery(`${court.name} ${court.addressText}`);
+    setCourtLookupStatus(court.lat || court.latitude ? "등록된 구장 좌표를 불러왔습니다." : "주소를 불러왔습니다. 좌표는 직접 입력하세요.");
   };
   const submitCourtRequest = (event) => {
     event.preventDefault();
@@ -555,6 +610,13 @@ export default function Settings({ app, auth }) {
                     renderItem={renderCourtAddressSearchItem}
                   />
                 </label>
+                <div className="settings-address-actions">
+                  <Button type="button" variant="secondary" onClick={searchCourtAddress}>다음 주소 검색</Button>
+                  <Button type="button" variant="secondary" onClick={geocodeCurrentCourtAddress} disabled={!courtDraft.addressText.trim() || !getKakaoMapAppKey()}>
+                    좌표 변환
+                  </Button>
+                </div>
+                {courtLookupStatus ? <small>{courtLookupStatus}</small> : null}
               </div>
               <label>
                 구장명
@@ -579,6 +641,16 @@ export default function Settings({ app, auth }) {
                 주소
                 <input value={courtDraft.addressText} placeholder="도로명/근처 주소" onChange={(event) => updateCourtDraft({ addressText: event.target.value })} />
               </label>
+              <div className="arena-field-grid">
+                <label>
+                  위도
+                  <input inputMode="decimal" value={courtDraft.lat} placeholder="37.5665" onChange={(event) => updateCourtDraft({ lat: event.target.value })} />
+                </label>
+                <label>
+                  경도
+                  <input inputMode="decimal" value={courtDraft.lng} placeholder="126.9780" onChange={(event) => updateCourtDraft({ lng: event.target.value })} />
+                </label>
+              </div>
               <label>
                 찾아가는 메모
                 <textarea value={courtDraft.locationNote} placeholder="예: 나들목 지나 오른쪽 두 번째 골대" onChange={(event) => updateCourtDraft({ locationNote: event.target.value })} />
@@ -601,7 +673,7 @@ export default function Settings({ app, auth }) {
                   구장예약됨
                 </label>
               </div>
-              <Button type="submit" variant="secondary" disabled={!canSubmitCourtRequest || !courtDraft.name.trim() || !courtDraft.addressText.trim()}>
+              <Button type="submit" variant="secondary" disabled={!canSubmitCourtRequest || !courtDraft.name.trim() || !courtDraft.addressText.trim() || !hasCourtCoordinates}>
                 <Send size={16} /> 등록요청
               </Button>
             </form>
