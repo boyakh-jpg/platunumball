@@ -1114,6 +1114,12 @@ span.referee-hover-card {
 .tier-emblem img {
   height: auto;
   object-fit: contain;
+  -webkit-mask-image: radial-gradient(ellipse 58% 62% at 50% 52%, #000 0 72%, rgba(0, 0, 0, 0.86) 84%, rgba(0, 0, 0, 0.28) 95%, rgba(0, 0, 0, 0) 100%);
+  mask-image: radial-gradient(ellipse 58% 62% at 50% 52%, #000 0 72%, rgba(0, 0, 0, 0.86) 84%, rgba(0, 0, 0, 0.28) 95%, rgba(0, 0, 0, 0) 100%);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
 }
 
 .tier-emblem-sm {
