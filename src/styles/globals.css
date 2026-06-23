@@ -330,6 +330,35 @@ h3 {
   font-size: 0.8rem;
 }
 
+.avatar.image-avatar {
+  background-color: var(--avatar, var(--green));
+  background-position: center;
+  background-size: cover;
+  color: transparent;
+  overflow: hidden;
+}
+
+.discord-link-badge {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid rgba(88, 101, 242, 0.38);
+  border-radius: 999px;
+  background: rgba(88, 101, 242, 0.13);
+  color: var(--text);
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1;
+  padding: 6px 8px;
+}
+
+.discord-profile-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .page-stack {
   display: grid;
   gap: 20px;

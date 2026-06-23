@@ -893,3 +893,6 @@ flowchart TD
 4. Discord DM 실패 시 앱 내부 알림은 유지한다.
 5. Bot token, client secret, DM 발송은 프론트에 두지 않는다.
 6. 배포 전 백엔드에는 Discord OAuth callback, `discordUserId` 저장, Bot DM 서버 액션, 실패 로그가 필요하다.
+7. Discord 프로필 이미지가 있으면 `discordConnection.avatarUrl`을 개인 프로필 아바타로 우선 표시한다.
+8. Discord DM은 앱 내부 알림을 원본으로 삼아 발송 큐에 쌓고, 서버 Bot이 큐를 처리해야 한다.
+9. 방 채팅과 Discord 채팅 양방향 연동은 백엔드 채널/thread 매핑과 중복 방지 키가 생긴 뒤 구현한다.

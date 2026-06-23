@@ -21,6 +21,12 @@
 
 ## Production Migration TODO
 
+- Discord 연동은 로그인 수단이 아니라 프로필 부가 연동으로 둔다.
+- 프로필에는 `discordUserId`, `discordUsername`, `discordAvatarUrl`, `linkedAt`을 저장한다.
+- 알림은 앱 내부 `notifications`를 원본으로 두고, Discord DM은 `discordNotificationDeliveries` 같은 발송 큐에서 서버 Bot이 처리한다.
+- 홈의 해야 할 일은 별도 로직을 중복하지 말고 `notifications` 중 `actionRequired` 성격의 항목을 요약하는 방향으로 통합한다.
+- 방 채팅과 Discord 채팅 양방향 연동은 배포 후 백엔드에서 `roomId <-> discordChannelId/threadId` 매핑, 중복 방지 키, 삭제/신고/차단 정책을 둔 뒤 붙인다.
+
 - 심판 시험 문제 추첨, 채점, 주 1회 응시 제한은 서버 함수/DB 정책으로 이동. 클라이언트 번들에는 정답 bank를 두지 않는다.
 
 - 소유권 기준을 Supabase Auth ID로 이전:

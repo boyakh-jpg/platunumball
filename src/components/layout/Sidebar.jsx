@@ -2,6 +2,7 @@ import { CalendarDays, ClipboardList, Handshake, House, LogOut, Settings, UserRo
 import { NavLink } from "react-router-dom";
 import PlayerHoverCard from "../profile/PlayerHoverCard.jsx";
 import TierBadge from "../rating/TierBadge.jsx";
+import { getDiscordAvatarClassName, getDiscordAvatarStyle } from "../../lib/discord.js";
 
 const navItems = [
   { to: "/app", label: "홈", icon: House },
@@ -35,7 +36,7 @@ export default function Sidebar({ user, teams = [], auth }) {
         })}
       </nav>
       <PlayerHoverCard as="span" user={user} teams={teams} className="sidebar-profile">
-        <div className="avatar" style={{ "--avatar": user.avatarColor }}>
+        <div className={getDiscordAvatarClassName(user)} style={getDiscordAvatarStyle(user)}>
           {user.name.slice(0, 1)}
         </div>
         <div>

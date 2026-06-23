@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   addTeamMember,
   addMatchLatePlayer,
@@ -62,6 +62,7 @@ import {
   submitMatchThumbs,
   submitMatchResult,
   subscribeRemoteState,
+  syncNotificationDeliveries,
   removeTeamMember,
   toggleFavoriteCourt,
   toggleFavoritePlayer,
@@ -85,7 +86,10 @@ function sortByRating(items, selector) {
 }
 
 export function useAppData(authUserId = null) {
-  const [state, setState] = useState(() => loadState());
+  const [state, setRawState] = useState(() => syncNotificationDeliveries(loadState()));
+  const setState = useCallback((updater) => {
+    setRawState((prev) => syncNotificationDeliveries(typeof updater === "function" ? updater(prev) : updater));
+  }, []);
   const [profileBindings, setProfileBindings] = useState(() => readProfileBindings());
   const remoteReadyRef = useRef(!isSupabaseConfigured);
   const skipNextRemoteSaveRef = useRef(false);

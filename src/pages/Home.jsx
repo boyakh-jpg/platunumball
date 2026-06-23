@@ -15,6 +15,7 @@ import { getAllowedStatFields, getMatchRecordWindow, getMatchReservePlayerIds, g
 import { RECRUITING_TYPES, getPendingRecruitingInvitations, getRecruitingLobby, getRecruitingRoomOwnerId, isNationalRecruitingPost, isRecruitingPostForUser } from "../lib/recruiting.js";
 import { getCurrentSeason, getPlayerSeasonRows, getSeasonProgress } from "../lib/season.js";
 import { getTierDivision } from "../lib/tier.js";
+import { getDiscordAvatarClassName, getDiscordAvatarStyle } from "../lib/discord.js";
 
 function compareSchedule(a, b) {
   const instantDiff = Number(isInstantRoom(b)) - Number(isInstantRoom(a));
@@ -290,6 +291,7 @@ export default function Home({ app }) {
           score: Number(hashtag.toLowerCase() === searchText) * 100000 + Number(item.region === user.region) * 10000 + item.ratings.integrated,
           haystack: `${item.name} ${item.handle} ${hashtag} ${item.region} ${item.position} ${item.club}`,
           avatar: item.avatarColor,
+          user: item,
           hashtag,
         };
       });
@@ -346,7 +348,7 @@ export default function Home({ app }) {
       </TeamHoverCard>
     ) : (
       <Link key={item.id} to={item.href}>
-        {item.avatar ? <span className="avatar small" style={{ "--avatar": item.avatar }}>{item.label.slice(0, 1)}</span> : null}
+        {item.avatar ? <span className={getDiscordAvatarClassName(item.user, "avatar small")} style={getDiscordAvatarStyle(item.user)}>{item.label.slice(0, 1)}</span> : null}
         {item.court ? <span className="court-mini-dot" /> : null}
         <span className="rank-result-main">
           <strong>{item.label}</strong>
@@ -430,7 +432,7 @@ export default function Home({ app }) {
         </div>
         <Card className="section-card rank-profile-card">
           <div className="rank-profile-head">
-            <div className="avatar hero-avatar" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</div>
+            <div className={getDiscordAvatarClassName(user, "avatar hero-avatar")} style={getDiscordAvatarStyle(user)}>{user.name.slice(0, 1)}</div>
             <div>
               <p className="eyebrow">내 프로필</p>
               <h2>{user.name}</h2>
@@ -557,7 +559,7 @@ export default function Home({ app }) {
               {topRankers.map((row, index) => (
                 <PlayerHoverCard className="rank-row" key={row.id} user={row} teams={app.state.teams}>
                   <b>{index + 1}</b>
-                  <span className="avatar small" style={{ "--avatar": row.avatarColor }}>{row.name.slice(0, 1)}</span>
+                  <span className={getDiscordAvatarClassName(row, "avatar small")} style={getDiscordAvatarStyle(row)}>{row.name.slice(0, 1)}</span>
                   <strong>{row.name}</strong>
                   <em>{Math.round(row.seasonScore)}점</em>
                 </PlayerHoverCard>

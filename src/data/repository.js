@@ -75,6 +75,7 @@ import {
 } from "../lib/admin.js";
 import { clearState, readState, writeState } from "../lib/storage.js";
 import { isBulkRemoteWriteEnabled, isSupabaseConfigured, supabase } from "../lib/supabase.js";
+import { syncDiscordNotificationDeliveries } from "../lib/discord.js";
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const makeId = (prefix) => `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
@@ -635,6 +636,9 @@ function normalizeState(state) {
     matches: mergeById(state?.matches, initialState.matches).map(normalizeMatch),
     tournaments: mergeById(state?.tournaments, initialState.tournaments ?? []).map(normalizeTournament),
     notifications: notifications.map((notification) => ({ readAt: null, ...notification })),
+    discordNotificationDeliveries: state?.discordNotificationDeliveries ?? initialState.discordNotificationDeliveries ?? [],
+    discordNotificationSeenKeys: state?.discordNotificationSeenKeys ?? initialState.discordNotificationSeenKeys ?? [],
+    discordNotificationSeenUsers: state?.discordNotificationSeenUsers ?? initialState.discordNotificationSeenUsers ?? [],
     settings: normalizeSettings(state?.settings ?? initialState.settings),
     reports: state?.reports ?? initialState.reports ?? [],
     recruitingPosts: normalizeRecruitingSchedules(mergeById(state?.recruitingPosts, initialState.recruitingPosts ?? []))
@@ -649,6 +653,10 @@ export function loadState() {
 
 export function saveState(state) {
   writeState(state);
+}
+
+export function syncNotificationDeliveries(state) {
+  return syncDiscordNotificationDeliveries(state);
 }
 
 async function fetchAllRows(table, select = "*", order = "id") {

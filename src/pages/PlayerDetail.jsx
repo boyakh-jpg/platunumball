@@ -1,4 +1,5 @@
 import { Link, Navigate, useParams } from "react-router-dom";
+import { MessageCircle } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Card from "../components/common/Card.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
@@ -6,6 +7,7 @@ import ProgressionChecklist from "../components/rating/ProgressionChecklist.jsx"
 import RatingCard from "../components/rating/RatingCard.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
 import TierBadge from "../components/rating/TierBadge.jsx";
+import { getDiscordAvatarClassName, getDiscordAvatarStyle, getDiscordDisplayName, getDiscordProfileUrl } from "../lib/discord.js";
 import { PLAYER_STAT_FIELDS } from "../lib/constants.js";
 import { formatStatLine } from "../lib/matchUtils.js";
 import { getTierDivision, getTierQuote } from "../lib/tier.js";
@@ -74,6 +76,8 @@ export default function PlayerDetail({ app }) {
   const averageFouls = confirmedHistory.length
     ? confirmedHistory.reduce((sum, match) => sum + Number(match.result?.playerStats?.[player.id]?.fouls ?? 0), 0) / confirmedHistory.length
     : 0;
+  const discordProfileUrl = getDiscordProfileUrl(player);
+  const discordDisplayName = getDiscordDisplayName(player);
 
   const renderRelationship = (title, counts) => (
     <Card className="section-card">
@@ -103,7 +107,7 @@ export default function PlayerDetail({ app }) {
     <div className="page-stack profile-detail-page rank-profile-page">
       <section className="profile-hero rank-profile-hero">
         <div className="profile-identity rank-profile-identity">
-          <div className="avatar hero-avatar" style={{ "--avatar": player.avatarColor }}>{player.name.slice(0, 1)}</div>
+          <div className={getDiscordAvatarClassName(player, "avatar hero-avatar")} style={getDiscordAvatarStyle(player)}>{player.name.slice(0, 1)}</div>
           <div>
             <p className="eyebrow">Player Profile</p>
             <h1>{player.name}</h1>
@@ -112,6 +116,11 @@ export default function PlayerDetail({ app }) {
               <TierBadge mmr={player.ratings.integrated} />
               <Badge tone="green">{player.region}</Badge>
               <Badge tone="blue">{player.position}</Badge>
+              {discordProfileUrl ? (
+                <a className="discord-link-badge" href={discordProfileUrl} target="_blank" rel="noreferrer">
+                  <MessageCircle size={14} /> {discordDisplayName}
+                </a>
+              ) : null}
             </div>
           </div>
         </div>

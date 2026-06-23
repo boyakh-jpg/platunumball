@@ -9,6 +9,16 @@ import ProgressionChecklist from "../components/rating/ProgressionChecklist.jsx"
 import RatingCard from "../components/rating/RatingCard.jsx";
 import ShareCard from "../components/share/ShareCard.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
+import {
+  DISCORD_NOTIFICATION_EVENTS,
+  createDemoDiscordConnection,
+  getDiscordAvatarClassName,
+  getDiscordAvatarStyle,
+  getDiscordChannel,
+  getDiscordDisplayName,
+  getDiscordProfileUrl,
+  isDiscordLinked,
+} from "../lib/discord.js";
 import { findTeamByHashtag, findUserByHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 
 function compareRecent(a, b) {
@@ -53,37 +63,6 @@ function getAverageFouls(matches = [], userId) {
   if (!confirmed.length) return 0;
   const total = confirmed.reduce((sum, match) => sum + Number(match.result?.playerStats?.[userId]?.fouls ?? 0), 0);
   return total / confirmed.length;
-}
-
-const discordEventOptions = [
-  { id: "match", label: "초대/경기" },
-  { id: "approval", label: "승인/이의" },
-  { id: "report", label: "신고 결과" },
-];
-
-function getDiscordChannel(settings = {}) {
-  const discord = settings.notificationChannels?.discord ?? {};
-  return {
-    enabled: Boolean(discord.enabled),
-    events: {
-      match: true,
-      approval: true,
-      report: true,
-      ...(discord.events ?? {}),
-    },
-  };
-}
-
-function getDemoDiscordConnection(user = {}) {
-  const username = String(user.handle || user.name || "rankball").replace(/^@/, "");
-  return {
-    provider: "discord",
-    status: "linked",
-    userId: `demo-discord-${user.id}`,
-    username,
-    linkedAt: new Date().toISOString(),
-    source: "demo",
-  };
 }
 
 function RecentRecordCard({ records, userId }) {
@@ -146,9 +125,12 @@ export default function Profile({ app }) {
   const searchedUser = favoriteQuery.trim() ? findUserByHashtag(app.state.users, favoriteQuery) : null;
   const searchedTeam = favoriteQuery.trim() ? findTeamByHashtag(app.state.teams, favoriteQuery) : null;
   const averageFouls = getAverageFouls(app.state.matches, user.id);
-  const discordConnection = user.discordConnection ?? null;
-  const discordLinked = discordConnection?.status === "linked" && discordConnection?.userId;
+  const discordLinked = isDiscordLinked(user);
   const discordChannel = getDiscordChannel(app.state.settings);
+  const discordProfileUrl = getDiscordProfileUrl(user);
+  const discordDisplayName = getDiscordDisplayName(user);
+  const queuedDiscordDeliveries = (app.state.discordNotificationDeliveries ?? [])
+    .filter((delivery) => delivery.targetUserId === user.id && delivery.status === "queued");
   const updateDiscordChannel = (patch) => {
     const notificationChannels = app.state.settings?.notificationChannels ?? {};
     app.actions.updateSettings({
@@ -166,7 +148,7 @@ export default function Profile({ app }) {
     });
   };
   const connectDiscord = () => {
-    app.actions.updateProfile({ discordConnection: getDemoDiscordConnection(user) });
+    app.actions.updateProfile({ discordConnection: createDemoDiscordConnection(user) });
     updateDiscordChannel({ enabled: true });
   };
   const unlinkDiscord = () => {
@@ -224,9 +206,23 @@ export default function Profile({ app }) {
                 <p className="eyebrow">Discord</p>
                 <h2>디스코드 알림</h2>
               </div>
-              <MessageCircle size={20} />
+              {discordLinked ? (
+                <a className="discord-link-badge" href={discordProfileUrl} target="_blank" rel="noreferrer">
+                  <MessageCircle size={14} /> 연동됨
+                </a>
+              ) : (
+                <MessageCircle size={20} />
+              )}
             </div>
             <div className="contract-grid single">
+              {discordLinked ? (
+                <div className="discord-profile-line">
+                  <span className={getDiscordAvatarClassName(user, "avatar small")} style={getDiscordAvatarStyle(user)}>
+                    {user.name.slice(0, 1)}
+                  </span>
+                  <strong>@{discordDisplayName}</strong>
+                </div>
+              ) : null}
               <div>
                 <span>연동 상태</span>
                 <strong>{discordLinked ? "연동됨" : "미연동"}</strong>
@@ -237,8 +233,8 @@ export default function Profile({ app }) {
               </div>
               {discordLinked ? (
                 <div>
-                  <span>Discord</span>
-                  <strong>@{discordConnection.username || discordConnection.userId}</strong>
+                  <span>DM 큐</span>
+                  <strong>{queuedDiscordDeliveries.length}개 대기</strong>
                 </div>
               ) : null}
             </div>
@@ -252,7 +248,7 @@ export default function Profile({ app }) {
                 />
                 Discord DM
               </label>
-              {discordEventOptions.map((option) => (
+              {DISCORD_NOTIFICATION_EVENTS.map((option) => (
                 <label key={option.id}>
                   <input
                     type="checkbox"
@@ -295,7 +291,7 @@ export default function Profile({ app }) {
               {searchedUser ? (
                 <div className="favorite-result-row">
                   <PlayerHoverCard as="span" user={searchedUser} teams={app.state.teams}>
-                    <span className="avatar small" style={{ "--avatar": searchedUser.avatarColor }}>{searchedUser.name.slice(0, 1)}</span>
+                    <span className={getDiscordAvatarClassName(searchedUser, "avatar small")} style={getDiscordAvatarStyle(searchedUser)}>{searchedUser.name.slice(0, 1)}</span>
                     <span>
                       <strong>{searchedUser.name}</strong>
                       <em>{getUserHashtag(searchedUser)}</em>
@@ -325,7 +321,7 @@ export default function Profile({ app }) {
             <div className="favorite-chip-list">
               {favoritePlayers.map((player) => (
                 <PlayerHoverCard key={player.id} as="span" user={player} teams={app.state.teams} className="favorite-mini-chip">
-                  <span className="avatar small" style={{ "--avatar": player.avatarColor }}>{player.name.slice(0, 1)}</span>
+                  <span className={getDiscordAvatarClassName(player, "avatar small")} style={getDiscordAvatarStyle(player)}>{player.name.slice(0, 1)}</span>
                   <span>{getUserHashtag(player)}</span>
                 </PlayerHoverCard>
               ))}

@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { MessageCircle } from "lucide-react";
 import HoverPortal from "../common/HoverPortal.jsx";
 import TierEmblem from "../rating/TierEmblem.jsx";
 import useBodyScrollLock from "../../hooks/useBodyScrollLock.js";
+import { getDiscordAvatarClassName, getDiscordAvatarStyle, getDiscordDisplayName, getDiscordProfileUrl } from "../../lib/discord.js";
 import { getTeamHashtag, getUserHashtag } from "../../lib/handles.js";
 import { clearPinnedHoverPreview, getPinnedHoverPreviewKey, pinHoverPreview, subscribePinnedHoverPreview } from "../../lib/hoverPreviewPin.js";
 import { getAgeGroupForUser, getAgeGroupLabel } from "../../lib/profileSetup.js";
@@ -100,6 +102,8 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
 
   const userTeams = getUserTeams(user.id, teams);
   const activeTeam = userTeams[0];
+  const discordProfileUrl = getDiscordProfileUrl(user);
+  const discordDisplayName = getDiscordDisplayName(user);
   const modes = [
     ["통합", user.ratings?.integrated],
     ...Object.entries(user.ratings?.modes ?? {}),
@@ -183,10 +187,15 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
           closeTouch();
         }}>닫기</button>
         <span className="player-hover-head">
-          <span className="avatar" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
+          <span className={getDiscordAvatarClassName(user)} style={getDiscordAvatarStyle(user)}>{user.name.slice(0, 1)}</span>
           <span>
             <strong>{user.name}</strong>
             <span className="hover-hashtag">{getUserHashtag(user)}</span>
+            {discordProfileUrl ? (
+              <a className="discord-link-badge" href={discordProfileUrl} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>
+                <MessageCircle size={13} /> {discordDisplayName}
+              </a>
+            ) : null}
             <span className="hover-age-group">{getAgeGroupLabel(getAgeGroupForUser(user))}</span>
             <em>{user.region} · {user.position} · 신뢰도 {user.trustScore ?? "-"}</em>
           </span>
