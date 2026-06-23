@@ -50,6 +50,8 @@ const VIEWS = [
   },
 ];
 const CHILD_VIEW_IDS = ["todo", "scheduled", "closed"];
+const AUTO_ROOM_TITLE_PREFIX_PATTERN = /^(동의 대기|진행 예정|결과 승인|이의 확인|이의제기|확정|결과 입력|확정방|경기준비|경기시작|경기종료|결과승인|이의신청|기록 확정)\s*·\s*/;
+const GENERIC_ROOM_TITLE_PATTERN = /^(경기|경기방|매치 큐|정규전|친선전|동의 대기|진행 예정|결과 승인|이의 확인|이의제기|확정|결과 입력|확정방|확정 준비\s*\d*|모집 중\s*\d*|경기준비|경기시작|경기종료|결과승인|이의신청|기록 확정)$/;
 
 class RoomModalErrorBoundary extends Component {
   constructor(props) {
@@ -214,6 +216,27 @@ function formatMatchRules(match = {}) {
     rulesSource.ball ?? "7호 공",
   ].filter(Boolean);
   return rules.join(" · ");
+}
+
+function normalizeMatchupText(value = "") {
+  return String(value)
+    .replace(/\s+/g, " ")
+    .replace(/\s+vs\s+/i, " vs ")
+    .trim()
+    .toLowerCase();
+}
+
+function getRoomCardTitle(room, fallback = "") {
+  const title = cleanRoomTitle(room.title, "")
+    .replace(AUTO_ROOM_TITLE_PREFIX_PATTERN, "")
+    .replace(/^(정규전|친선전)\s+(1v1|2v2|3v3|5v5)\s*/i, "")
+    .replace(/\s+(1v1|2v2|3v3|5v5)$/i, "")
+    .trim();
+  const matchupTitle = [room.teamA?.name, room.teamB?.name].filter(Boolean).join(" vs ");
+
+  if (matchupTitle && normalizeMatchupText(title) === normalizeMatchupText(matchupTitle)) return "";
+  if (GENERIC_ROOM_TITLE_PATTERN.test(title)) return "";
+  return title || fallback;
 }
 
 function MatchListSummary({ left, center = "vs", right, meta, detail, leftTeam = null, rightTeam = null, variant = "" }) {
@@ -1163,7 +1186,7 @@ export default function Matches({ app }) {
             const roomStatus = getRecruitingRoomListStatus(lobby, { post, myEntry, mine });
             const filled = lobby.sides.teamA.projectedFilled + lobby.sides.teamB.projectedFilled;
             const capacity = getRecruitingSideCapacity(post) * 2;
-            const roomTitle = cleanRoomTitle(post.title, post.ranked === false ? "친선전" : "정규전");
+            const roomTitle = getRoomCardTitle(post);
             return (
               <article key={`room-${post.id}`} className="om-match-card om-status-contract">
                 <div className="om-card-main">
@@ -1175,7 +1198,7 @@ export default function Matches({ app }) {
                     <span className="om-card-official">{getRoomCompetitionLabel(post)}</span>
                     <span className="om-card-official">{getRoomRefereeLabel(post)}</span>
                   </div>
-                  <h3>{roomTitle}</h3>
+                  {roomTitle ? <h3>{roomTitle}</h3> : null}
                   <p><CalendarDays size={15} />{formatMatchTime(post)} · <CourtHoverCard courtName={post.court}>{post.court}</CourtHoverCard></p>
                 </div>
                 <MatchListSummary
@@ -1199,7 +1222,7 @@ export default function Matches({ app }) {
           const winner = getWinner(match);
           const sourcePost = match.recruitingPostId ? app.state.recruitingPosts.find((post) => post.id === match.recruitingPostId) : null;
           const visibilityLabel = getRoomVisibilityLabel(match, sourcePost);
-          const matchTitle = cleanRoomTitle(match.title, getRoomCompetitionLabel(match));
+          const matchTitle = getRoomCardTitle(match);
 
           return (
             <article key={`match-${match.id}`} className={`om-match-card om-status-${match.status}`}>
@@ -1212,7 +1235,7 @@ export default function Matches({ app }) {
                   <span className="om-card-official">{getRoomCompetitionLabel(match)}</span>
                   <span className="om-card-official">{getRoomRefereeLabel(match)}</span>
                 </div>
-                <h3>{matchTitle}</h3>
+                {matchTitle ? <h3>{matchTitle}</h3> : null}
                 <p><CalendarDays size={15} />{formatMatchTime(match)} · <CourtHoverCard courtName={match.court}>{match.court}</CourtHoverCard></p>
               </div>
               {showScoreBox ? (
