@@ -3,6 +3,7 @@ import { Crown, PlusCircle, Search, Shield, Swords } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
+import SearchPicker from "../components/common/SearchPicker.jsx";
 import { getTierEmblemSrc } from "../components/rating/TierEmblem.jsx";
 import TeamCard from "../components/team/TeamCard.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
@@ -56,10 +57,8 @@ function compareTeamRank(a, b) {
 export default function Teams({ app }) {
   const [draft, setDraft] = useState({ name: "New Court Crew", region: app.currentUser.region, homeCourt: COURTS[0].name, captainId: app.currentUser.id, accent: "#58d2c0" });
   const [query, setQuery] = useState("");
-  const [searchPickerOpen, setSearchPickerOpen] = useState(false);
   const [region, setRegion] = useState(app.currentUser.region ?? "전체");
   const favoriteTeamIds = app.state.settings?.favoriteTeamIds ?? [];
-  const favoriteCourtIds = app.state.settings?.favoriteCourtIds ?? [];
   const teamName = draft.name.trim().replace(/\s+/g, " ");
   const teamNameInvalid = !teamName || teamName.length > MAX_TEAM_NAME_LENGTH;
   const isFavoriteTeam = (team) => favoriteTeamIds.includes(team.id);
@@ -91,18 +90,27 @@ export default function Teams({ app }) {
       .filter(isFavoriteTeam)
       .slice(0, 10);
   }, [favoriteTeamIds, rankingTeams]);
-  const favoriteCourts = useMemo(() => {
-    return favoriteCourtIds
-      .map((courtId) => COURTS.find((court) => court.id === courtId))
-      .filter(Boolean)
-      .slice(0, 10);
-  }, [favoriteCourtIds]);
-  const hasSearchFavorites = Boolean(favoriteTeams.length || favoriteCourts.length);
   const visibleTeams = useMemo(() => {
     return rankingTeams
       .filter((team) => region === "전체" || team.region === region)
       .filter((team) => `${team.name} ${team.region} ${team.homeCourt}`.toLowerCase().includes(query.trim().toLowerCase()));
   }, [query, rankingTeams, region]);
+  const renderTeamSearchItem = (team) => (
+    <button
+      key={team.id}
+      type="button"
+      className="search-picker-result-row"
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={() => {
+        setRegion(team.region);
+        setQuery(team.name);
+      }}
+    >
+      <strong>{team.name}</strong>
+      <span>{team.region} · {team.mmr} MMR · {team.homeCourt}</span>
+      <em>{isFavoriteTeam(team) ? "즐겨찾기" : "팀"}</em>
+    </button>
+  );
 
   const submit = (event) => {
     event.preventDefault();
@@ -195,72 +203,17 @@ export default function Teams({ app }) {
           </label>
           <div className="favorite-search-label">
             <span>팀명/홈코트</span>
-            <div className="favorite-search-field">
-              <input
-                value={query}
-                placeholder="Noeul, 마포, 한강..."
-                onClick={() => setSearchPickerOpen(true)}
-                onFocus={() => setSearchPickerOpen(true)}
-                onBlur={() => window.setTimeout(() => setSearchPickerOpen(false), 120)}
-                onChange={(event) => setQuery(event.target.value)}
-              />
-              {searchPickerOpen && hasSearchFavorites ? (
-                <div className="favorite-search-popover">
-                  {favoriteTeams.length ? (
-                    <div className="favorite-search-section">
-                      <small>즐겨찾기 팀</small>
-                      <div>
-                        {favoriteTeams.map((team) => (
-                          <button
-                            key={team.id}
-                            type="button"
-                            onMouseDown={() => {
-                              setRegion(team.region);
-                              setQuery(team.name);
-                              setSearchPickerOpen(false);
-                            }}
-                            onClick={() => {
-                              setRegion(team.region);
-                              setQuery(team.name);
-                              setSearchPickerOpen(false);
-                            }}
-                          >
-                            <strong>{team.name}</strong>
-                            <span>{team.region} · {team.mmr} MMR</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-                  {favoriteCourts.length ? (
-                    <div className="favorite-search-section">
-                      <small>즐겨찾기 구장</small>
-                      <div>
-                        {favoriteCourts.map((court) => (
-                          <button
-                            key={court.id}
-                            type="button"
-                            onMouseDown={() => {
-                              setRegion(court.region);
-                              setQuery(court.name);
-                              setSearchPickerOpen(false);
-                            }}
-                            onClick={() => {
-                              setRegion(court.region);
-                              setQuery(court.name);
-                              setSearchPickerOpen(false);
-                            }}
-                          >
-                            <strong>{court.name}</strong>
-                            <span>{court.region} · {court.type}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
-            </div>
+            <SearchPicker
+              value={query}
+              onChange={setQuery}
+              placeholder="Noeul, 마포, 한강..."
+              items={visibleTeams}
+              idleItems={favoriteTeams}
+              idleTitle="즐겨찾기 팀"
+              showIdleOnFocus
+              floating
+              renderItem={renderTeamSearchItem}
+            />
           </div>
         </div>
       </Card>

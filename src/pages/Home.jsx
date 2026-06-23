@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { CalendarDays, ClipboardCheck, Handshake, PlusCircle, Search, ShieldAlert, Swords, Trophy, UserPlus } from "lucide-react";
+import { CalendarDays, ClipboardCheck, Handshake, PlusCircle, ShieldAlert, Swords, Trophy, UserPlus } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
+import SearchPicker from "../components/common/SearchPicker.jsx";
 import MatchCard from "../components/match/MatchCard.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
@@ -94,7 +95,6 @@ const SEARCH_DETAIL_LIMIT = 20;
 export default function Home({ app }) {
   const user = app.currentUser;
   const [query, setQuery] = useState("");
-  const [searchExpanded, setSearchExpanded] = useState(false);
   const searchText = query.trim().toLowerCase();
   const approvalMatches = [...app.state.matches].filter((match) => userNeedsApproval(match, user.id));
   const upcomingMatches = [...app.state.matches]
@@ -323,62 +323,50 @@ export default function Home({ app }) {
       })
       .sort((a, b) => b.score - a.score || a.label.localeCompare(b.label));
   }, [app.state.teams, app.state.users, blockedUserIds, searchText, user.region]);
-  const visibleSearchResults = searchResults.slice(0, searchExpanded ? SEARCH_DETAIL_LIMIT : SEARCH_PREVIEW_LIMIT);
-  const hasMoreSearchResults = searchResults.length > SEARCH_PREVIEW_LIMIT;
-  const hasTooManySearchResults = searchExpanded && searchResults.length > SEARCH_DETAIL_LIMIT;
   const topRankers = seasonRows.slice(0, 5);
   const latestMyMatches = myCompletedMatches.slice(0, 5);
+  const renderHomeSearchItem = (item) => (
+    item.team ? (
+      <TeamHoverCard key={item.id} team={item.team}>
+        {item.teamColor ? <span className="team-mini-dot" style={{ "--team-color": item.teamColor }} /> : null}
+        <span className="rank-result-main">
+          <strong>{item.label}</strong>
+          <em>{item.meta}</em>
+        </span>
+        <small>{item.kind} · {item.hashtag}</small>
+      </TeamHoverCard>
+    ) : (
+      <Link key={item.id} to={item.href}>
+        {item.avatar ? <span className="avatar small" style={{ "--avatar": item.avatar }}>{item.label.slice(0, 1)}</span> : null}
+        {item.court ? <span className="court-mini-dot" /> : null}
+        <span className="rank-result-main">
+          <strong>{item.label}</strong>
+          <em>{item.meta}</em>
+        </span>
+        <small>{item.kind} · {item.hashtag}</small>
+      </Link>
+    )
+  );
 
   return (
     <div className="page-stack rank-home">
       <Card className="home-search-panel rank-search-card">
-        <div className="home-search-box">
-          <Search size={24} />
-          <input
-            value={query}
-            placeholder="이름, 팀명, 코트명, 해시태그를 바로 검색"
-            onChange={(event) => {
-              setQuery(event.target.value);
-              setSearchExpanded(false);
-            }}
-          />
-        </div>
+        <SearchPicker
+          value={query}
+          onChange={setQuery}
+          placeholder="이름, 팀명, 코트명, 해시태그를 바로 검색"
+          items={searchResults}
+          renderItem={renderHomeSearchItem}
+          limit={SEARCH_PREVIEW_LIMIT}
+          detailLimit={SEARCH_DETAIL_LIMIT}
+          fieldClassName="home-search-box"
+        />
         <div className="rank-quick-links">
           <Link to="/app/rankings">랭킹</Link>
           <Link to="/app/matches">경기</Link>
           <Link to="/app/teams">팀</Link>
           <Link to="/app/recruiting">매칭</Link>
         </div>
-        {searchText ? (
-          <div className="home-search-results unified rank-search-results">
-            {visibleSearchResults.length ? visibleSearchResults.map((item) => (
-              item.team ? (
-                <TeamHoverCard key={item.id} team={item.team}>
-                  {item.teamColor ? <span className="team-mini-dot" style={{ "--team-color": item.teamColor }} /> : null}
-                  <span className="rank-result-main">
-                    <strong>{item.label}</strong>
-                    <em>{item.meta}</em>
-                  </span>
-                  <small>{item.kind} · {item.hashtag}</small>
-                </TeamHoverCard>
-              ) : (
-                <Link key={item.id} to={item.href}>
-                  {item.avatar ? <span className="avatar small" style={{ "--avatar": item.avatar }}>{item.label.slice(0, 1)}</span> : null}
-                  {item.court ? <span className="court-mini-dot" /> : null}
-                  <span className="rank-result-main">
-                    <strong>{item.label}</strong>
-                    <em>{item.meta}</em>
-                  </span>
-                  <small>{item.kind} · {item.hashtag}</small>
-                </Link>
-              )
-            )) : <div className="empty-state">검색 결과 없음</div>}
-            {hasMoreSearchResults && !searchExpanded ? (
-              <button type="button" className="home-search-more" onClick={() => setSearchExpanded(true)}>더보기</button>
-            ) : null}
-            {hasTooManySearchResults ? <div className="home-search-overflow">검색결과 너무 많음</div> : null}
-          </div>
-        ) : null}
       </Card>
 
       {actionItems.length ? (

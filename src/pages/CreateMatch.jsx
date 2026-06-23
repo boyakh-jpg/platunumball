@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Globe2, Lock, Star, Trophy } from "lucide-react";
+import { Globe2, Lock, Trophy } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
+import SearchPicker from "../components/common/SearchPicker.jsx";
 import RuleSelector from "../components/match/RuleSelector.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { COURTS, MATCH_MODES, REFEREE_TRUST_MIN, REGIONS } from "../lib/constants.js";
@@ -286,7 +287,6 @@ export default function CreateMatch({ app }) {
   const [teamQuery, setTeamQuery] = useState("");
   const [opponentTeamQuery, setOpponentTeamQuery] = useState("");
   const [courtQuery, setCourtQuery] = useState("");
-  const [courtPickerOpen, setCourtPickerOpen] = useState(false);
   const [teamRegion, setTeamRegion] = useState(app.currentUser.region ?? "전체");
   const [courtRegion, setCourtRegion] = useState(app.currentUser.region ?? "전체");
   const defaultAgeRestriction = getAgeGroupForUser(app.currentUser);
@@ -500,12 +500,10 @@ export default function CreateMatch({ app }) {
     () => COURTS.find((court) => court.name === draft.court) ?? COURTS[0],
     [draft.court],
   );
-  const courtPickerCourts = courtQuery.trim() ? sortedCourts : favoriteCourts.length ? favoriteCourts : sortedCourts.slice(0, 10);
   const selectCourt = (court) => {
     update({ court: court.name });
     setCourtQuery(court.name);
     setCourtRegion(court.region);
-    setCourtPickerOpen(false);
   };
 
   const update = (patch) => setDraft((current) => {
@@ -644,6 +642,56 @@ export default function CreateMatch({ app }) {
           : [...teamIds, teamId],
       };
     });
+  };
+  const renderCourtSearchItem = (court) => (
+    <button
+      key={court.id}
+      type="button"
+      className={draft.court === court.name ? "search-picker-result-row selected" : "search-picker-result-row"}
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={() => selectCourt(court)}
+    >
+      <strong>{court.name}</strong>
+      <span>{court.region} · {court.type}</span>
+      <em>{isFavoriteCourt(court) ? "즐겨찾기" : "구장"}</em>
+    </button>
+  );
+  const renderCreateTeamSearchItem = (team) => {
+    const invited = (draft.tournamentTeamIds ?? []).includes(team.id);
+    const selected = isTournamentRoom ? invited : isPublicRoom ? draft.teamAId === team.id : draft.teamAId === team.id;
+    const actionLabel = isTournamentRoom ? (invited ? "초대 해제" : "초대") : isPublicRoom ? "내 파티" : "A사이드";
+    return (
+      <button
+        key={team.id}
+        type="button"
+        className={selected ? "search-picker-result-row selected" : "search-picker-result-row"}
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={() => {
+          if (isTournamentRoom) toggleTournamentTeam(team.id);
+          else assignTeam(team.id, "A");
+        }}
+      >
+        <TeamHoverCard team={team} as="span"><strong>{team.name}</strong></TeamHoverCard>
+        <span>{team.region} · {team.mmr} MMR · {team.homeCourt}</span>
+        <em>{isFavoriteTeam(team) ? "즐겨찾기" : actionLabel}</em>
+      </button>
+    );
+  };
+  const renderOpponentTeamSearchItem = (team) => {
+    const mmrBlocked = draft.mmrLimitMode === "block" && draft.ranked && selectedTeamA && !isMmrInRecruitingRange(team.mmr, selectedTeamA.mmr, true, draft.mmrRangeMode);
+    return (
+      <button
+        key={team.id}
+        type="button"
+        className={team.id === draft.teamBId ? "search-picker-result-row selected" : "search-picker-result-row"}
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={() => selectTeamB(team.id)}
+      >
+        <TeamHoverCard team={team} as="span"><strong>{team.name}</strong></TeamHoverCard>
+        <span>{team.region} · {team.mmr} MMR · {team.homeCourt}</span>
+        <em>{favoriteTeamIds.includes(team.id) ? "즐겨찾기" : mmrBlocked ? "MMR 범위 밖" : "B사이드"}</em>
+      </button>
+    );
   };
   const submit = (event) => {
     event.preventDefault();
@@ -927,29 +975,17 @@ export default function CreateMatch({ app }) {
             </label>
             <label>
               코트명
-              <span className="court-search-field">
-                <input
-                  value={courtQuery}
-                  placeholder="코트, 지역, 실내/야외 검색"
-                  onFocus={() => setCourtPickerOpen(true)}
-                  onBlur={() => window.setTimeout(() => setCourtPickerOpen(false), 120)}
-                  onChange={(event) => {
-                    setCourtQuery(event.target.value);
-                    setCourtPickerOpen(true);
-                  }}
-                />
-                {courtPickerOpen ? (
-                  <div className="court-search-popover">
-                    <strong>{courtQuery.trim() ? "검색 결과" : favoriteCourts.length ? "자주 찾는 코트" : "추천 코트"}</strong>
-                    {courtPickerCourts.length ? courtPickerCourts.map((court) => (
-                      <button key={court.id} type="button" className={draft.court === court.name ? "selected" : ""} onMouseDown={(event) => event.preventDefault()} onClick={() => selectCourt(court)}>
-                        <span>{isFavoriteCourt(court) ? <Star size={14} fill="currentColor" /> : null}{court.name}</span>
-                        <em>{court.region} · {court.type}</em>
-                      </button>
-                    )) : <em>검색 결과 없음</em>}
-                  </div>
-                ) : null}
-              </span>
+              <SearchPicker
+                value={courtQuery}
+                onChange={setCourtQuery}
+                placeholder="코트, 지역, 실내/야외 검색"
+                items={sortedCourts}
+                idleItems={favoriteCourts.length ? favoriteCourts : sortedCourts.slice(0, 10)}
+                idleTitle={favoriteCourts.length ? "자주 찾는 코트" : "추천 코트"}
+                showIdleOnFocus
+                floating
+                renderItem={renderCourtSearchItem}
+              />
             </label>
           </div>
           <div className="court-reservation-row">
@@ -1061,36 +1097,18 @@ export default function CreateMatch({ app }) {
                 </label>
                 <label>
                   팀명
-                  <input value={teamQuery} placeholder="팀, 지역, 홈코트 검색" onChange={(event) => setTeamQuery(event.target.value)} />
+                  <SearchPicker
+                    value={teamQuery}
+                    onChange={setTeamQuery}
+                    placeholder="팀, 지역, 홈코트 검색"
+                    items={sortedTeams}
+                    idleItems={favoriteTeams}
+                    idleTitle="즐겨찾기 팀"
+                    showIdleOnFocus
+                    floating
+                    renderItem={renderCreateTeamSearchItem}
+                  />
                 </label>
-              </div>
-              <div className="quick-picker">
-                <p className="eyebrow">자주 찾는 팀</p>
-                <div>
-                  {favoriteTeams.map((team) => {
-                    const invited = (draft.tournamentTeamIds ?? []).includes(team.id);
-                    const selected = isTournamentRoom ? invited : isPublicRoom ? draft.teamAId === team.id : draft.teamAId === team.id || draft.teamBId === team.id;
-                    return (
-                      <button key={team.id} type="button" className={selected ? "favorite-pick selected" : "favorite-pick"}>
-                        <TeamHoverCard team={team} as="span"><strong><Star size={15} fill="currentColor" /> {team.name}</strong></TeamHoverCard>
-                        <span>{team.region} · {team.mmr} MMR</span>
-                        <small>
-                          {isTournamentRoom ? (
-                            <b onClick={() => toggleTournamentTeam(team.id)}>{invited ? "초대 해제" : "초대"}</b>
-                          ) : isPublicRoom ? (
-                            <b onClick={() => assignTeam(team.id, "A")}>내 파티</b>
-                          ) : (
-                            <>
-                              <b onClick={() => assignTeam(team.id, "A")}>A</b>
-                              <b onClick={() => assignTeam(team.id, "B")}>B</b>
-                            </>
-                          )}
-                          <b onClick={() => app.actions.toggleFavoriteTeam(team.id)}>즐겨찾기 해제</b>
-                        </small>
-                      </button>
-                    );
-                  })}
-                </div>
               </div>
             </>
           ) : null}
@@ -1147,32 +1165,17 @@ export default function CreateMatch({ app }) {
               {!isPublicRoom ? (
                 <div className={`team-search-field ${opponentTeamQuery.trim() ? "has-query" : ""}`}>
                   <span className="field-label">B사이드</span>
-                  <input
+                  <SearchPicker
                     value={opponentTeamQuery}
+                    onChange={setOpponentTeamQuery}
                     placeholder="상대 팀명 검색"
-                    onChange={(event) => setOpponentTeamQuery(event.target.value)}
+                    items={opponentTeamResults}
+                    idleItems={opponentTeamResults}
+                    idleTitle="추천 B사이드"
+                    showIdleOnFocus
+                    floating
+                    renderItem={renderOpponentTeamSearchItem}
                   />
-                  <div className="team-search-popover">
-                    <small>{opponentTeamQuery.trim() ? "검색 결과" : "즐겨찾기"}</small>
-                    {opponentTeamResults.length ? opponentTeamResults.map((team) => {
-                      const mmrBlocked = draft.mmrLimitMode === "block" && draft.ranked && selectedTeamA && !isMmrInRecruitingRange(team.mmr, selectedTeamA.mmr, true, draft.mmrRangeMode);
-                      return (
-                        <button
-                          key={team.id}
-                          type="button"
-                          className={team.id === draft.teamBId ? "selected" : ""}
-                          onMouseDown={(event) => {
-                            event.preventDefault();
-                            selectTeamB(team.id);
-                          }}
-                        >
-                          <TeamHoverCard team={team} as="span"><strong>{team.name}</strong></TeamHoverCard>
-                          <span>{team.region} · {team.mmr} MMR · {team.homeCourt}</span>
-                          <em>{favoriteTeamIds.includes(team.id) ? "즐겨찾기" : mmrBlocked ? "MMR 범위 밖" : "선택 가능"}</em>
-                        </button>
-                      );
-                    }) : <em>{opponentTeamQuery.trim() ? "검색 결과 없음" : "즐겨찾기 팀 없음"}</em>}
-                  </div>
                   {selectedTeamB ? (
                     <div className="team-search-selected">
                       <TeamHoverCard team={selectedTeamB} as="span"><strong>{selectedTeamB.name}</strong></TeamHoverCard>

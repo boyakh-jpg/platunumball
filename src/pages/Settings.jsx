@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { BookOpen, Database, MapPin, Moon, Search, Send, ShieldCheck, Sun, UserRound } from "lucide-react";
+import { BookOpen, Database, MapPin, Moon, Send, ShieldCheck, Sun, UserRound } from "lucide-react";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import Badge from "../components/common/Badge.jsx";
+import SearchPicker from "../components/common/SearchPicker.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import { DEFAULT_REPORT_REASON, REPORT_REASONS } from "../lib/reportReasons.js";
 import { formatStatLine, getMatchReservePlayerIds, getMatchSidePlayerIds } from "../lib/matchUtils.js";
@@ -200,6 +201,34 @@ export default function Settings({ app, auth }) {
   const refereeExamLockedUntilMs = latestRefereeExamAttempt?.availableAfter ? new Date(latestRefereeExamAttempt.availableAfter).getTime() : 0;
   const refereeExamLocked = Number.isFinite(refereeExamLockedUntilMs) && refereeExamLockedUntilMs > Date.now();
   const refereeExamLockLabel = refereeExamLocked ? formatKoreanDateTime(latestRefereeExamAttempt.availableAfter) : "";
+  const renderAccountSearchItem = (user) => (
+    <button
+      key={user.id}
+      type="button"
+      className={user.id === app.currentUserId ? "search-picker-result-row selected" : "search-picker-result-row"}
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={() => app.actions.switchUser(user.id)}
+    >
+      <PlayerHoverCard as="span" user={user} teams={app.state.teams}>
+        <strong>{user.name}</strong>
+      </PlayerHoverCard>
+      <span>{user.testLoginId} · {user.region} · {matchCountByUser.get(user.id) ?? 0}경기</span>
+      <em>{user.position}</em>
+    </button>
+  );
+  const renderCourtAddressSearchItem = (court) => (
+    <button
+      key={court.id}
+      type="button"
+      className="search-picker-result-row"
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={() => selectCourtAddress(court)}
+    >
+      <strong>{court.name}</strong>
+      <span>{court.region} · {court.addressText}</span>
+      <em>구장</em>
+    </button>
+  );
 
   const submitBlock = (event) => {
     event.preventDefault();
@@ -391,26 +420,17 @@ export default function Settings({ app, auth }) {
               </div>
               <UserRound size={22} />
             </div>
-            <div className="admin-account-search">
-              <Search size={18} />
-              <input value={accountQuery} placeholder="이름, 지역, 포지션, rankball-001 검색" onChange={(event) => setAccountQuery(event.target.value)} />
-            </div>
-            <div className="admin-account-grid">
-              {visibleTestAccounts.map((user) => (
-                <button
-                  key={user.id}
-                  type="button"
-                  className={user.id === app.currentUserId ? "active" : ""}
-                  onClick={() => app.actions.switchUser(user.id)}
-                >
-                  <PlayerHoverCard as="span" user={user} teams={app.state.teams}>
-                    <span className="avatar small" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
-                    <strong>{user.name}</strong>
-                  </PlayerHoverCard>
-                  <em>{user.testLoginId} · {user.region} · {matchCountByUser.get(user.id) ?? 0}경기</em>
-                </button>
-              ))}
-            </div>
+            <SearchPicker
+              value={accountQuery}
+              onChange={setAccountQuery}
+              placeholder="이름, 지역, 포지션, rankball-001 검색"
+              items={visibleTestAccounts}
+              idleItems={visibleTestAccounts}
+              idleTitle="테스트 계정"
+              showIdleOnFocus
+              fieldClassName="admin-account-search"
+              renderItem={renderAccountSearchItem}
+            />
             <label>
               전체 계정 선택
               <select value={app.currentUserId} onChange={(event) => app.actions.switchUser(event.target.value)}>
@@ -509,20 +529,18 @@ export default function Settings({ app, auth }) {
               <div className="settings-address-search">
                 <label>
                   주소 검색
-                  <div className="admin-account-search">
-                    <Search size={18} />
-                    <input value={courtAddressQuery} placeholder="코트명, 주소, #1 검색" onChange={(event) => setCourtAddressQuery(event.target.value)} />
-                  </div>
+                  <SearchPicker
+                    value={courtAddressQuery}
+                    onChange={setCourtAddressQuery}
+                    placeholder="코트명, 주소, #1 검색"
+                    items={courtAddressResults}
+                    idleItems={courtAddressResults}
+                    idleTitle="추천 구장"
+                    showIdleOnFocus
+                    fieldClassName="admin-account-search"
+                    renderItem={renderCourtAddressSearchItem}
+                  />
                 </label>
-                <div className="settings-address-results">
-                  {courtAddressResults.map((court) => (
-                    <button key={court.id} type="button" onClick={() => selectCourtAddress(court)}>
-                      <strong>{court.name}</strong>
-                      <span>{court.region} · {court.addressText}</span>
-                    </button>
-                  ))}
-                  {!courtAddressResults.length ? <span>검색 결과 없음. 직접 주소를 입력하세요.</span> : null}
-                </div>
               </div>
               <label>
                 구장명

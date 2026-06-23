@@ -4220,10 +4220,57 @@ input[type="color"] {
   box-shadow: none;
 }
 
+.search-picker {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+}
+
+.search-picker-field {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.search-picker-field input {
+  min-width: 0;
+}
+
 .home-search-results {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
+}
+
+.search-picker-results.is-floating {
+  position: absolute;
+  z-index: 90;
+  top: calc(100% + 8px);
+  right: 0;
+  left: 0;
+  max-height: 320px;
+  overflow: auto;
+  grid-template-columns: minmax(0, 1fr);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  padding: 10px;
+}
+
+.search-picker-title,
+.search-picker-results .empty-state,
+.search-picker-results .home-search-more {
+  grid-column: 1 / -1;
+}
+
+.search-picker-title {
+  color: var(--gold);
+  font-size: 0.72rem;
+  font-weight: 950;
+  padding-inline: 4px;
 }
 
 .home-search-results.unified {
@@ -4238,6 +4285,7 @@ input[type="color"] {
 
 .home-search-results a,
 .home-search-results .team-hover-trigger,
+.search-picker-result-row,
 .connection-list a {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -4247,6 +4295,63 @@ input[type="color"] {
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.045);
   padding: 10px;
+}
+
+.search-picker-result-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.search-picker-result-row.selected {
+  border-color: rgba(70, 224, 182, 0.58);
+  background: rgba(70, 224, 182, 0.12);
+}
+
+.search-picker-result-row:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.search-picker-result-row span,
+.search-picker-result-row .team-hover-trigger,
+.search-picker-result-row .player-hover-trigger {
+  min-width: 0;
+}
+
+.search-picker-result-row > span,
+.search-picker-result-row > .team-hover-trigger,
+.search-picker-result-row > .player-hover-trigger {
+  grid-column: 1;
+}
+
+.search-picker-result-row em {
+  grid-row: 1 / span 2;
+  grid-column: 2;
+  align-self: center;
+  color: var(--gold);
+  font-size: 0.7rem;
+  font-style: normal;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+html[data-theme="light"] .search-picker-results.is-floating {
+  border-color: rgba(41, 116, 99, 0.16);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 18px 42px rgba(35, 87, 75, 0.14);
+}
+
+html[data-theme="light"] .search-picker-result-row {
+  border-color: rgba(41, 116, 99, 0.16);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+html[data-theme="light"] .search-picker-result-row.selected {
+  border-color: rgba(15, 159, 126, 0.52);
+  background: rgba(15, 159, 126, 0.12);
 }
 
 .home-dashboard-grid {

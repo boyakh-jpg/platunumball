@@ -8,12 +8,10 @@ import {
   MapPin,
   MessageSquare,
   PlusCircle,
-  Search,
   Send,
   ShieldCheck,
   Star,
   Swords,
-  UserPlus,
   UserRound,
   UsersRound,
   X,
@@ -21,6 +19,7 @@ import {
 } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
+import SearchPicker from "../components/common/SearchPicker.jsx";
 import CourtHoverCard from "../components/court/CourtHoverCard.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import RefereeHoverCard from "../components/referee/RefereeHoverCard.jsx";
@@ -1241,7 +1240,6 @@ export function InvitePanel({
   onToggleFavoriteTeam,
   onClose,
 }) {
-  const matchedUser = query.trim() ? findUserByHashtag(users, query) : null;
   const matchedTeam = query.trim() ? findTeamByHashtag(teams, query) : null;
   const selectedSet = new Set(selectedPlayerIds);
   const disabledSet = new Set(disabledPlayerIds);
@@ -1254,19 +1252,61 @@ export function InvitePanel({
     .filter((team) => team && (!allowedTeamId || team.id === allowedTeamId));
   const teamMemberIds = matchedTeam && (!allowedTeamId || matchedTeam.id === allowedTeamId) ? getSelectableTeamPlayerIds(matchedTeam) : [];
   const selectedInvitableIds = selectedPlayerIds.filter((playerId) => !disabledSet.has(playerId) && isAllowedPlayer(playerId));
+  const inviteQuery = query.trim().toLowerCase();
+  const inviteSearchPlayers = inviteQuery
+    ? users
+      .filter((player) => isAllowedPlayer(player.id))
+      .filter((player) => `${player.name} ${getUserHashtag(player)} ${player.region} ${player.position}`.toLowerCase().includes(inviteQuery))
+      .slice(0, 8)
+      .map((player) => ({ type: "player", player }))
+    : [];
+  const inviteSearchTeams = inviteQuery && !allowedTeamId
+    ? teams
+      .filter((team) => `${team.name} ${getTeamHashtag(team)} ${team.region} ${team.homeCourt}`.toLowerCase().includes(inviteQuery))
+      .slice(0, 6)
+      .map((team) => ({ type: "team", team }))
+    : [];
+  const inviteSearchItems = [...inviteSearchPlayers, ...inviteSearchTeams];
+  const idleInviteItems = [
+    ...favoritePlayers.filter((player) => isAllowedPlayer(player.id)).map((player) => ({ type: "player", player })),
+    ...favoriteTeams.map((team) => ({ type: "team", team })),
+  ];
 
-  const renderPlayerInvite = (player) => {
-    const disabled = !player || disabledSet.has(player.id) || !isAllowedPlayer(player.id);
+  const renderInviteSearchItem = (item) => {
+    if (item.type === "team") {
+      const team = item.team;
+      return (
+        <button
+          key={`team-${team.id}`}
+          type="button"
+          className="search-picker-result-row"
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => onQueryChange(getTeamHashtag(team))}
+        >
+          <TeamHoverCard as="span" team={team}>
+            <strong>{team.name}</strong>
+          </TeamHoverCard>
+          <span>{getTeamHashtag(team)} · {team.mmr} MMR</span>
+          <em>팀</em>
+        </button>
+      );
+    }
+    const player = item.player;
+    const disabled = disabledSet.has(player.id) || !isAllowedPlayer(player.id);
     return (
-      <button key={player.id} type="button" className="arena-invite-favorite" disabled={disabled} onClick={() => onInvitePlayers([player.id], null)}>
+      <button
+        key={`player-${player.id}`}
+        type="button"
+        className="search-picker-result-row"
+        disabled={disabled}
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={() => onInvitePlayers([player.id], allowedTeamId || null)}
+      >
         <PlayerHoverCard as="span" user={player} teams={teams}>
-          <span className="avatar small" style={{ "--avatar": player.avatarColor }}>{player.name.slice(0, 1)}</span>
-          <span>
-            <strong>{player.name}</strong>
-            <em>{getUserHashtag(player)}</em>
-          </span>
+          <strong>{player.name}</strong>
         </PlayerHoverCard>
-        <b>{disabled ? "불가" : "초대"}</b>
+        <span>{getUserHashtag(player)} · {player.position}</span>
+        <em>{disabled ? "불가" : "초대"}</em>
       </button>
     );
   };
@@ -1280,30 +1320,20 @@ export function InvitePanel({
         </div>
         <button type="button" className="arena-icon-button" aria-label="초대 닫기" onClick={onClose}><X size={18} /></button>
       </header>
-      <label className="arena-invite-search">
-        <Search size={17} />
-        <input value={query} placeholder={allowedTeam ? `${allowedTeam.name} 팀원 해시태그` : "#minjun 또는 #noeulkings"} onChange={(event) => onQueryChange(event.target.value)} />
-      </label>
+      <SearchPicker
+        value={query}
+        onChange={onQueryChange}
+        placeholder={allowedTeam ? `${allowedTeam.name} 팀원 검색` : "선수 또는 팀 검색"}
+        items={inviteSearchItems}
+        idleItems={idleInviteItems}
+        idleTitle="즐겨찾기"
+        showIdleOnFocus
+        floating
+        fieldClassName="arena-invite-search"
+        renderItem={renderInviteSearchItem}
+      />
 
       {allowedTeam ? <div className="arena-invite-empty">{allowedTeam.name} 팀원만 이 사이드에 초대할 수 있습니다.</div> : null}
-
-      {matchedUser ? (
-        <div className="arena-invite-result">
-          <PlayerHoverCard as="span" user={matchedUser} teams={teams}>
-            <span className="avatar small" style={{ "--avatar": matchedUser.avatarColor }}>{matchedUser.name.slice(0, 1)}</span>
-            <span>
-              <strong>{matchedUser.name}</strong>
-              <em>{getUserHashtag(matchedUser)} · {matchedUser.position}</em>
-            </span>
-          </PlayerHoverCard>
-          <button type="button" className={favoritePlayerIds.includes(matchedUser.id) ? "active" : ""} onClick={() => onToggleFavoritePlayer(matchedUser.id)}>
-            <Star size={15} fill={favoritePlayerIds.includes(matchedUser.id) ? "currentColor" : "none"} />
-          </button>
-          <Button type="button" size="sm" disabled={disabledSet.has(matchedUser.id) || !isAllowedPlayer(matchedUser.id)} onClick={() => onInvitePlayers([matchedUser.id], allowedTeamId || null)}>
-            <UserPlus size={16} /> 초대
-          </Button>
-        </div>
-      ) : null}
 
       {matchedTeam && (!allowedTeamId || matchedTeam.id === allowedTeamId) ? (
         <div className="arena-invite-team-picker">
@@ -1341,27 +1371,7 @@ export function InvitePanel({
         </div>
       ) : null}
 
-      {query.trim() && !matchedUser && !matchedTeam ? <div className="arena-invite-empty">해시태그 결과 없음</div> : null}
-
-      <div className="arena-invite-favorites">
-        <strong>즐겨찾기</strong>
-        <div>
-          {favoritePlayers.map(renderPlayerInvite)}
-          {favoriteTeams.map((team) => (
-            <button key={team.id} type="button" className="arena-invite-favorite" onClick={() => onQueryChange(getTeamHashtag(team))}>
-              <TeamHoverCard as="span" team={team}>
-                <span className="team-dot" style={{ "--team-color": team.accent }} />
-                <span>
-                  <strong>{team.name}</strong>
-                  <em>{getTeamHashtag(team)}</em>
-                </span>
-              </TeamHoverCard>
-              <b>선택</b>
-            </button>
-          ))}
-          {!favoritePlayers.length && !favoriteTeams.length ? <em>나 메뉴에서 즐겨찾기를 저장해라.</em> : null}
-        </div>
-      </div>
+      {query.trim() && !inviteSearchItems.length && !matchedTeam ? <div className="arena-invite-empty">검색 결과 없음</div> : null}
     </div>
   );
 }
