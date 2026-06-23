@@ -3246,8 +3246,24 @@ html[data-theme="light"] .arena-recruit-card.arena-target-room {
 }
 
 .arena-filter-select {
-  flex: 1 1 180px;
-  max-width: 260px;
+  display: block;
+  flex: 1 1 220px;
+  max-width: none;
+}
+
+.arena-filter-segment {
+  width: auto;
+  max-width: 100%;
+  flex-wrap: wrap;
+}
+
+.arena-filter-bar .segmented-control button {
+  flex: 1 0 auto;
+}
+
+.arena-filter-select select {
+  width: 100%;
+  min-width: 0;
 }
 
 .arena-recruit-card {

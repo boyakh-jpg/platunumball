@@ -2781,18 +2781,23 @@ export default function Recruiting({ app }) {
         {queueControlsOpen ? (
           <>
             <section className="arena-filter-bar" aria-label="필터">
-              <button type="button" className={scope === "local" ? "active" : ""} onClick={() => setScope("local")}>내 지역</button>
-              <button type="button" className={scope === "all" ? "active" : ""} onClick={() => setScope("all")}>전체 지역</button>
-              <button type="button" className={roomScope === "created" ? "active" : ""} onClick={() => selectRoomScope("created")}>내가 만든 방 {createdRoomCount}</button>
-              <button type="button" className={roomScope === "joined" ? "active" : ""} onClick={() => selectRoomScope("joined")}>내 참여방 {joinedRoomCount}</button>
-              <button type="button" className={roomScope === "invited" ? "active" : ""} onClick={() => selectRoomScope("invited")}>초대받음 {invitedRoomCount}</button>
-              <button type="button" className={queue === "all" ? "active" : ""} onClick={() => setQueue("all")}>전체</button>
-              <button type="button" className={queue === "ranked" ? "active" : ""} onClick={() => setQueue("ranked")}>정규전</button>
-              <button type="button" className={queue === "friendly" ? "active" : ""} onClick={() => setQueue("friendly")}>친선전</button>
+              <div className="segmented-control compact-segments arena-filter-segment">
+                <button type="button" className={scope === "local" ? "active" : ""} onClick={() => setScope("local")}>내 지역</button>
+                <button type="button" className={scope === "all" ? "active" : ""} onClick={() => setScope("all")}>전체 지역</button>
+              </div>
+              <div className="segmented-control compact-segments arena-filter-segment">
+                <button type="button" className={roomScope === "created" ? "active" : ""} onClick={() => selectRoomScope("created")}>내가 만든 방 {createdRoomCount}</button>
+                <button type="button" className={roomScope === "joined" ? "active" : ""} onClick={() => selectRoomScope("joined")}>내 참여방 {joinedRoomCount}</button>
+                <button type="button" className={roomScope === "invited" ? "active" : ""} onClick={() => selectRoomScope("invited")}>초대받음 {invitedRoomCount}</button>
+              </div>
+              <div className="segmented-control compact-segments arena-filter-segment">
+                <button type="button" className={queue === "all" ? "active" : ""} onClick={() => setQueue("all")}>전체</button>
+                <button type="button" className={queue === "ranked" ? "active" : ""} onClick={() => setQueue("ranked")}>정규전</button>
+                <button type="button" className={queue === "friendly" ? "active" : ""} onClick={() => setQueue("friendly")}>친선전</button>
+              </div>
               <label className="arena-filter-select">
-                방식
-                <select value={modeFilter} onChange={(event) => setModeFilter(event.target.value)}>
-                  <option value="all">전체</option>
+                <select aria-label="경기 방식" value={modeFilter} onChange={(event) => setModeFilter(event.target.value)}>
+                  <option value="all">전체 방식</option>
                   {MATCH_MODES.map((mode) => <option key={mode.id} value={mode.id}>{mode.label}</option>)}
                 </select>
               </label>
