@@ -273,7 +273,8 @@ function addBulkDemoContent(state) {
 
   for (let index = 0; index < 24; index += 1) {
     const modeMeta = CONFIRMED_MODE_ROTATION[index % CONFIRMED_MODE_ROTATION.length];
-    const { hostTeam, opponentTeam, hostPlayers, opponentPlayers } = pickDisjointTeamPair(nextState, modeMeta.capacity, index);
+    const { hostTeam, opponentTeam, hostPlayers: pickedHostPlayers, opponentPlayers } = pickDisjointTeamPair(nextState, modeMeta.capacity, index);
+    const hostPlayers = ensureTrustedPartyLeader(nextState, hostTeam, pickedHostPlayers, index % 5 === 0 ? 80 : 70);
     const hostReserves = teamRoster(hostTeam, 2, index + modeMeta.capacity).filter((id) => !hostPlayers.includes(id));
     const opponentReserves = teamRoster(opponentTeam, 2, index + modeMeta.capacity + 1).filter((id) => !opponentPlayers.includes(id));
     const timingType = index % 4 === 0 ? "instant" : "scheduled";
@@ -308,8 +309,8 @@ function addBulkDemoContent(state) {
 
   for (let index = 0; index < 40; index += 1) {
     const modeMeta = MODE_ROTATION[(index + 1) % MODE_ROTATION.length];
-    const visibility = index % 5 === 0 ? "private" : "public";
-    const hostJoinMode = visibility === "private" ? "player" : index % 3 === 0 ? "team" : "player";
+    const visibility = "public";
+    const hostJoinMode = index % 3 === 0 ? "team" : "player";
     const teams = teamsWithSize(nextState, modeMeta.capacity);
     const hostTeam = teams[(index + 3) % teams.length];
     let hostPlayers = teamRoster(hostTeam, Math.max(1, Math.min(modeMeta.capacity, index % 2 ? 1 : modeMeta.capacity)), index);
@@ -324,8 +325,8 @@ function addBulkDemoContent(state) {
       teamId: hostJoinMode === "team" ? hostTeam.id : undefined,
       mode: modeMeta.mode,
       sideCapacity: modeMeta.capacity,
-      timingType: visibility === "private" && index % 4 === 0 ? "instant" : "scheduled",
-      scheduledDate: visibility === "public" ? todayPlus((index % 5) + 1) : todayPlus((index % 28) + 1),
+      timingType: "scheduled",
+      scheduledDate: todayPlus((index % 5) + 1),
       scheduledTime: `${String(12 + (index % 8)).padStart(2, "0")}:30`,
       ranked: index % 4 !== 0,
       official: false,
@@ -433,7 +434,7 @@ assertFlow(!getMatch(state, lifecycleMatchId).startedAt, "상대 파티장은 �
 
 for (const sideName of ["teamA", "teamB"]) {
   for (const playerId of getMatch(state, lifecycleMatchId)[sideName].players) {
-    state = withUser(state, playerId, (scoped) => checkInMatchPlayer(scoped, lifecycleMatchId, sideName, playerId));
+    state = withUser(state, "u1", (scoped) => checkInMatchPlayer(scoped, lifecycleMatchId, sideName, playerId));
   }
 }
 assertFlow(

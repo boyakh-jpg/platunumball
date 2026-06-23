@@ -342,7 +342,7 @@ const baseState = {
         { userId: "u7", role: "captain" },
         { userId: "u6", role: "regular" },
         { userId: "u9", role: "regular" },
-        { userId: "u3", role: "guest" },
+        { userId: "u13", role: "guest" },
       ],
     },
     {
@@ -357,9 +357,9 @@ const baseState = {
       favorite: true,
       members: [
         { userId: "u4", role: "captain" },
-        { userId: "u5", role: "regular" },
+        { userId: "u33", role: "regular" },
         { userId: "u10", role: "regular" },
-        { userId: "u1", role: "mercenary" },
+        { userId: "u34", role: "mercenary" },
       ],
     },
     {
@@ -373,10 +373,10 @@ const baseState = {
       accent: "#c792ff",
       favorite: true,
       members: [
-        { userId: "u8", role: "captain" },
-        { userId: "u9", role: "regular" },
-        { userId: "u2", role: "candidate" },
-        { userId: "u6", role: "regular" },
+        { userId: "u11", role: "captain" },
+        { userId: "u12", role: "regular" },
+        { userId: "u13", role: "candidate" },
+        { userId: "u14", role: "regular" },
       ],
     },
     {
@@ -390,9 +390,9 @@ const baseState = {
       accent: "#ffab4c",
       favorite: true,
       members: [
-        { userId: "u10", role: "captain" },
-        { userId: "u4", role: "regular" },
-        { userId: "u7", role: "candidate" },
+        { userId: "u15", role: "captain" },
+        { userId: "u16", role: "regular" },
+        { userId: "u17", role: "candidate" },
       ],
     },
     {
@@ -406,9 +406,9 @@ const baseState = {
       accent: "#ff755f",
       favorite: true,
       members: [
-        { userId: "u3", role: "captain" },
-        { userId: "u1", role: "regular" },
-        { userId: "u6", role: "guest" },
+        { userId: "u18", role: "captain" },
+        { userId: "u19", role: "regular" },
+        { userId: "u20", role: "guest" },
       ],
     },
     {
@@ -422,9 +422,9 @@ const baseState = {
       accent: "#8ac7db",
       favorite: false,
       members: [
-        { userId: "u5", role: "captain" },
-        { userId: "u2", role: "regular" },
-        { userId: "u9", role: "mercenary" },
+        { userId: "u21", role: "captain" },
+        { userId: "u22", role: "regular" },
+        { userId: "u23", role: "mercenary" },
       ],
     },
     {
@@ -438,9 +438,9 @@ const baseState = {
       accent: "#9aa4b2",
       favorite: false,
       members: [
-        { userId: "u6", role: "captain" },
-        { userId: "u8", role: "regular" },
-        { userId: "u4", role: "candidate" },
+        { userId: "u24", role: "captain" },
+        { userId: "u25", role: "regular" },
+        { userId: "u26", role: "candidate" },
       ],
     },
     {
@@ -454,9 +454,9 @@ const baseState = {
       accent: "#f05d5e",
       favorite: false,
       members: [
-        { userId: "u7", role: "captain" },
-        { userId: "u10", role: "regular" },
-        { userId: "u3", role: "regular" },
+        { userId: "u27", role: "captain" },
+        { userId: "u28", role: "regular" },
+        { userId: "u29", role: "regular" },
       ],
     },
     {
@@ -470,9 +470,9 @@ const baseState = {
       accent: "#74a8ff",
       favorite: false,
       members: [
-        { userId: "u1", role: "captain" },
-        { userId: "u8", role: "regular" },
-        { userId: "u9", role: "guest" },
+        { userId: "u30", role: "captain" },
+        { userId: "u31", role: "regular" },
+        { userId: "u32", role: "guest" },
       ],
     },
   ],
@@ -1356,7 +1356,7 @@ function makeRecruitingRoomPost(index, teams, users) {
   if (opponentTeam.id === hostTeam.id) opponentTeam = roomTeams[(index + 5) % roomTeams.length];
   const mode = cycle(["1v1", "2v2", "3v3", "5v5"], index);
   const sideCapacity = getDemoModeSize(mode);
-  const visibility = index % 4 === 0 ? "private" : "public";
+  const visibility = "public";
   const teamPartyRoom = index % 3 !== 1;
   const hostJoinMode = teamPartyRoom ? "team" : "player";
   const timingType = visibility === "private" && index % 17 === 0 ? "instant" : "scheduled";

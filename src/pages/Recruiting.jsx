@@ -67,6 +67,7 @@ const SIDE_LABELS = {
   teamA: "A사이드",
   teamB: "B사이드",
 };
+const AUTO_RECRUITING_TITLE_PATTERN = /^(모집 중\s*\d*|정규전|친선전|대기방|매치 큐)$/;
 const RECORDABLE_RESERVE_SOURCES = new Set(["reserve-entry", "team-reserve"]);
 const MAX_RESERVE_PLAYERS_PER_SIDE = 2;
 const ROOM_SLOT_POSITION_AVATARS = {
@@ -91,6 +92,14 @@ function formatWhen(value) {
 
 function getDefaultTitle(draft) {
   return `${draft.ranked ? "정규전" : "친선전"} ${draft.mode} 매치 큐`;
+}
+
+function getRecruitingCardTitle(post) {
+  const title = cleanRoomTitle(post.title, "")
+    .replace(/^(정규전|친선전)\s+(1v1|2v2|3v3|5v5)\s*/i, "")
+    .replace(/\s+(1v1|2v2|3v3|5v5)$/i, "")
+    .trim();
+  return AUTO_RECRUITING_TITLE_PATTERN.test(title) ? "" : title;
 }
 
 function getTodayInputValue() {
@@ -1424,6 +1433,15 @@ function getSourceMatchAction(match, userId, teams = [], userById = {}) {
   return { label: "경기 정보", detail: "현재 상태를 확인합니다." };
 }
 
+function canShowRecruitingQueuePost(post, { roomScope, currentUserId, myTeamIds, targetPostId }) {
+  if (post.visibility !== "private") return true;
+  if (post.id === targetPostId) return true;
+  if (roomScope === "created") return getRecruitingRoomOwnerId(post) === currentUserId;
+  if (roomScope === "joined") return getRecruitingRoomOwnerId(post) !== currentUserId && isRecruitingPostForUser(post, currentUserId, myTeamIds);
+  if (roomScope === "invited") return hasPendingRecruitingInvitation(post, currentUserId);
+  return false;
+}
+
 function SourceMatchRecordSummary({ match, userById }) {
   if (!match?.result) return null;
   const result = match.result;
@@ -2583,6 +2601,12 @@ export default function Recruiting({ app }) {
   const scopedPosts = useMemo(() => {
     return [...(app.state.recruitingPosts ?? [])]
       .filter((post) => post.status === "open")
+      .filter((post) => canShowRecruitingQueuePost(post, {
+        roomScope,
+        currentUserId: app.currentUser.id,
+        myTeamIds,
+        targetPostId,
+      }))
       .filter((post) => {
         const invited = hasPendingRecruitingInvitation(post, app.currentUser.id);
         return invited || scope !== "local" || post.region === app.currentUser.region || isNationalRecruitingPost(post, app.state);
@@ -2592,7 +2616,7 @@ export default function Recruiting({ app }) {
       .filter((post) => roomScope !== "created" || getRecruitingRoomOwnerId(post) === app.currentUser.id)
       .filter((post) => roomScope !== "joined" || (getRecruitingRoomOwnerId(post) !== app.currentUser.id && isRecruitingPostForUser(post, app.currentUser.id, myTeamIds)))
       .filter((post) => roomScope !== "invited" || hasPendingRecruitingInvitation(post, app.currentUser.id));
-  }, [app.currentUser.id, app.currentUser.region, app.state, modeFilter, myTeamIds, queue, roomScope, scope]);
+  }, [app.currentUser.id, app.currentUser.region, app.state, modeFilter, myTeamIds, queue, roomScope, scope, targetPostId]);
 
   const posts = useMemo(() => {
     return scopedPosts.sort((a, b) => {
@@ -2744,6 +2768,7 @@ export default function Recruiting({ app }) {
             entry.reserves?.includes(app.currentUser.id)
           ));
           const roomStatus = getRecruitingRoomListStatus(lobby, { post, myEntry, mine });
+          const roomTitle = getRecruitingCardTitle(post);
 
           return (
             <article
@@ -2764,7 +2789,7 @@ export default function Recruiting({ app }) {
                   {targetTeam ? <span className="om-card-official">희망 상대 <TeamHoverCard team={targetTeam} as="span">{targetTeam.name}</TeamHoverCard></span> : null}
                   {isNationalRecruitingPost(post, app.state) ? <span className="om-card-official">전국 노출</span> : null}
                 </div>
-                <h3>{cleanRoomTitle(post.title, post.ranked === false ? "친선전" : "정규전")}</h3>
+                {roomTitle ? <h3>{roomTitle}</h3> : null}
                 <p>
                   <CalendarDays size={15} />
                   {getRecruitingSchedule(post)} · <CourtHoverCard courtName={post.court}>{post.court}</CourtHoverCard> ·{" "}
