@@ -163,6 +163,29 @@ function getDefaultTeamReserveIds(team, activeIds = [], capacity = MAX_RESERVE_P
     .slice(0, capacity);
 }
 
+function getJoinActiveCapacity(post, lobby, sideName, reserve = false) {
+  const side = lobby?.sides?.[sideName];
+  if (!side) return getRecruitingSideCapacity(post);
+  if (reserve) return Math.max(0, MAX_RESERVE_PLAYERS_PER_SIDE - (side.reserveCandidates?.length ?? 0));
+  if (isTeamOnlyRoom(post)) return getRecruitingSideCapacity(post);
+  return Math.max(0, side.capacity - side.filled);
+}
+
+function getJoinReserveCapacity(lobby, sideName) {
+  const side = lobby?.sides?.[sideName];
+  if (!side) return MAX_RESERVE_PLAYERS_PER_SIDE;
+  return Math.max(0, MAX_RESERVE_PLAYERS_PER_SIDE - (side.reserveCandidates?.length ?? 0));
+}
+
+function getDefaultJoinRoster(post, lobby, team, currentUser, sideName, reserve = false) {
+  const capacity = getJoinActiveCapacity(post, lobby, sideName, reserve);
+  const playerIds = getDefaultTeamPlayerIds(team, capacity, currentUser.id);
+  return {
+    playerIds,
+    reservePlayerIds: reserve ? [] : getDefaultTeamReserveIds(team, playerIds, getJoinReserveCapacity(lobby, sideName)),
+  };
+}
+
 function getPlayerMmrAverage(playerIds = [], userById = {}, fallback = 1200) {
   const values = playerIds
     .map((playerId) => Number(userById[playerId]?.ratings?.integrated))
@@ -190,15 +213,18 @@ function getRoomEditDraft(post) {
 function getDefaultJoinDraft(post, teams, currentUser, state) {
   const teamId = getDefaultApplyTeamId(post, teams);
   const team = teams.find((item) => item.id === teamId) ?? null;
-  const capacity = getRecruitingSideCapacity(post);
   const teamOnly = isTeamOnlyRoom(post);
-  const playerIds = teamOnly ? getDefaultTeamPlayerIds(team, capacity, currentUser.id) : [];
+  const side = getRecruitingBestSide(post, state);
+  const lobby = getRecruitingLobby(post, state);
+  const roster = teamOnly
+    ? getDefaultJoinRoster(post, lobby, team, currentUser, side, false)
+    : { playerIds: [], reservePlayerIds: [] };
   return {
     joinMode: teamOnly ? "team" : "player",
     teamId,
-    playerIds,
-    reservePlayerIds: teamOnly ? getDefaultTeamReserveIds(team, playerIds) : [],
-    side: getRecruitingBestSide(post, state),
+    playerIds: roster.playerIds,
+    reservePlayerIds: roster.reservePlayerIds,
+    side,
     reserve: false,
     position: currentUser.position,
   };
@@ -1618,9 +1644,11 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
         const joinDraft = getJoinDraft(selectedPost);
         const teamOnlyRoom = isTeamOnlyRoom(selectedPost);
         const selectedJoinTeam = myTeams.find((team) => team.id === joinDraft.teamId) ?? myTeams[0] ?? null;
-        const joinCapacity = getRecruitingSideCapacity(selectedPost);
+        const joinCapacity = getJoinActiveCapacity(selectedPost, lobby, joinDraft.side, joinDraft.reserve);
         const selectedJoinPlayerIds = getPartyPlayerIds(selectedJoinTeam, joinDraft.playerIds, joinCapacity, app.currentUser.id);
-        const selectedJoinReserveIds = getPartyReserveIds(selectedJoinTeam, joinDraft.reservePlayerIds, selectedJoinPlayerIds);
+        const selectedJoinReserveIds = joinDraft.reserve
+          ? []
+          : getPartyReserveIds(selectedJoinTeam, joinDraft.reservePlayerIds, selectedJoinPlayerIds);
         const candidateMmr = joinDraft.joinMode === "team"
           ? getPlayerMmrAverage(selectedJoinPlayerIds, userById, selectedJoinTeam?.mmr ?? app.currentUser.ratings.integrated)
           : app.currentUser.ratings.integrated;
@@ -1637,11 +1665,14 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
         const alreadyApplied = Boolean(myEntry && !mine);
         const canInviteFromRoom = !matchRoom && isCurrentUserRoomParticipant(selectedPost, lobby, app.currentUser.id);
         const canChat = Boolean(storedRoomPost) && isCurrentUserRoomParticipant(selectedPost, lobby, app.currentUser.id);
+        const getJoinRosterPatch = (team, sideName = joinDraft.side, reserve = joinDraft.reserve) => (
+          getDefaultJoinRoster(selectedPost, lobby, team, app.currentUser, sideName, reserve)
+        );
         const teamJoinValid = joinDraft.joinMode !== "team" || (
           Boolean(selectedJoinTeam) &&
           selectedJoinPlayerIds.includes(app.currentUser.id) &&
           selectedJoinPlayerIds.length > 0 &&
-          (!teamOnlyRoom || selectedJoinPlayerIds.length >= joinCapacity)
+          (!teamOnlyRoom || selectedJoinPlayerIds.length >= getRecruitingSideCapacity(selectedPost))
         );
         const canJoin = !matchRoom && !mine && !alreadyApplied && fit.allowed && (joinDraft.joinMode === "player" || teamJoinValid);
         const selectedRange = getRecruitingTierRange(
@@ -2371,12 +2402,13 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                           onClick={() => {
                             const teamId = mode === "team" ? getDefaultApplyTeamId(selectedPost, myTeams) : "";
                             const team = myTeams.find((item) => item.id === teamId) ?? null;
-                            const playerIds = mode === "team" ? getDefaultTeamPlayerIds(team, joinCapacity, app.currentUser.id) : [];
+                            const rosterPatch = mode === "team"
+                              ? getJoinRosterPatch(team)
+                              : { playerIds: [], reservePlayerIds: [] };
                             updateJoinDraft(selectedPost, {
                               joinMode: mode,
                               teamId,
-                              playerIds,
-                              reservePlayerIds: mode === "team" ? getDefaultTeamReserveIds(team, playerIds) : [],
+                              ...rosterPatch,
                             });
                           }}
                         >
@@ -2396,11 +2428,9 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                                   type="button"
                                   className={joinDraft.teamId === team.id ? "selected" : ""}
                                   onClick={() => {
-                                    const playerIds = getDefaultTeamPlayerIds(team, joinCapacity, app.currentUser.id);
                                     updateJoinDraft(selectedPost, {
                                       teamId: team.id,
-                                      playerIds,
-                                      reservePlayerIds: getDefaultTeamReserveIds(team, playerIds),
+                                      ...getJoinRosterPatch(team),
                                     });
                                   }}
                                 >
@@ -2435,13 +2465,40 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                     <div className="arena-field-grid">
                       <label>
                         진영
-                        <select value={joinDraft.side} onChange={(event) => updateJoinDraft(selectedPost, { side: event.target.value })}>
+                        <select
+                          value={joinDraft.side}
+                          onChange={(event) => {
+                            const side = event.target.value;
+                            if (joinDraft.joinMode !== "team") {
+                              updateJoinDraft(selectedPost, { side });
+                              return;
+                            }
+                            updateJoinDraft(selectedPost, {
+                              side,
+                              ...getJoinRosterPatch(selectedJoinTeam, side, joinDraft.reserve),
+                            });
+                          }}
+                        >
                           <option value="teamA">A사이드</option>
                           <option value="teamB">B사이드</option>
                         </select>
                       </label>
                       <label className="arena-check-row">
-                        <input type="checkbox" checked={joinDraft.reserve} onChange={(event) => updateJoinDraft(selectedPost, { reserve: event.target.checked })} />
+                        <input
+                          type="checkbox"
+                          checked={joinDraft.reserve}
+                          onChange={(event) => {
+                            const reserve = event.target.checked;
+                            if (joinDraft.joinMode !== "team") {
+                              updateJoinDraft(selectedPost, { reserve });
+                              return;
+                            }
+                            updateJoinDraft(selectedPost, {
+                              reserve,
+                              ...getJoinRosterPatch(selectedJoinTeam, joinDraft.side, reserve),
+                            });
+                          }}
+                        />
                         <span>
                           후보로 참여
                           <small>출전선수 부족하면 자동으로 출전됩니다.</small>

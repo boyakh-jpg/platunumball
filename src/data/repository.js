@@ -2254,13 +2254,13 @@ function getAveragePlayerMmr(state = {}, playerIds = [], fallback = 1200) {
   return Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
 }
 
-function getSelectedReservePlayerIds(team = {}, activeIds = [], reserveIds = []) {
+function getSelectedReservePlayerIds(team = {}, activeIds = [], reserveIds = [], capacity = MAX_RECRUITING_RESERVES_PER_SIDE) {
   if (!team || !Array.isArray(reserveIds) || !reserveIds.length) return [];
   const activeSet = new Set(activeIds);
   const teamPlayerIds = new Set((team.members ?? []).map((member) => member.userId));
   return uniquePlayerIds(reserveIds)
     .filter((playerId) => teamPlayerIds.has(playerId) && !activeSet.has(playerId))
-    .slice(0, MAX_RECRUITING_RESERVES_PER_SIDE);
+    .slice(0, capacity);
 }
 
 function getMatchPlayerTeamId(match = {}, sideName, playerId) {
@@ -3822,11 +3822,23 @@ export function interestRecruitingPost(state, postId, application = {}) {
   }
 
   const sideCapacity = getRecruitingSideCapacity(post);
+  const side = ["teamA", "teamB"].includes(application.side) ? application.side : getRecruitingBestSide(post, state);
+  const lobby = getRecruitingLobby(post, state);
+  const reserveRequested = Boolean(application.reserve);
+  const sideState = lobby.sides[side];
+  const teamSelectionCapacity = applicantKind === "team"
+    ? teamOnly
+      ? sideCapacity
+      : reserveRequested
+        ? Math.max(0, MAX_RECRUITING_RESERVES_PER_SIDE - (sideState?.reserveCandidates?.length ?? 0))
+        : Math.max(0, (sideState?.capacity ?? sideCapacity) - (sideState?.filled ?? 0))
+    : sideCapacity;
+  const reserveSelectionCapacity = Math.max(0, MAX_RECRUITING_RESERVES_PER_SIDE - (sideState?.reserveCandidates?.length ?? 0));
   const selectedPlayerIds = applicantKind === "team"
-    ? ensureTeamPartyLeader(team, getSelectedTeamPlayerIds(team, sideCapacity, application.playerIds), state.currentUserId, sideCapacity)
+    ? ensureTeamPartyLeader(team, getSelectedTeamPlayerIds(team, teamSelectionCapacity, application.playerIds), state.currentUserId, teamSelectionCapacity)
     : [];
-  const selectedReservePlayerIds = applicantKind === "team"
-    ? getSelectedReservePlayerIds(team, selectedPlayerIds, application.reservePlayerIds)
+  const selectedReservePlayerIds = applicantKind === "team" && !reserveRequested
+    ? getSelectedReservePlayerIds(team, selectedPlayerIds, application.reservePlayerIds, reserveSelectionCapacity)
     : [];
   const candidateMmr = applicantKind === "team"
     ? getAveragePlayerMmr(state, selectedPlayerIds, team?.mmr ?? user?.ratings?.integrated ?? 1200)
@@ -3847,8 +3859,6 @@ export function interestRecruitingPost(state, postId, application = {}) {
     };
   }
 
-  const side = ["teamA", "teamB"].includes(application.side) ? application.side : getRecruitingBestSide(post, state);
-  const lobby = getRecruitingLobby(post, state);
   if (applicantKind === "team" && (!selectedPlayerIds.length || (teamOnly && selectedPlayerIds.length < sideCapacity))) {
     return {
       ...state,
