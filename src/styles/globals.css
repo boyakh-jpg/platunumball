@@ -2267,6 +2267,76 @@ input[type="color"] {
   gap: 12px;
 }
 
+.court-search-field {
+  position: relative;
+  display: block;
+}
+
+.court-search-popover {
+  position: absolute;
+  z-index: 80;
+  top: calc(100% + 8px);
+  right: 0;
+  left: 0;
+  display: grid;
+  max-height: 320px;
+  overflow: auto;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  padding: 10px;
+}
+
+.court-search-popover > strong,
+.court-search-popover > em {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-style: normal;
+  font-weight: 900;
+  padding: 2px 4px;
+}
+
+.court-search-popover button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  padding: 9px 10px;
+  text-align: left;
+}
+
+.court-search-popover button.selected {
+  border-color: rgba(70, 224, 182, 0.62);
+  background: rgba(70, 224, 182, 0.11);
+}
+
+.court-search-popover button span {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.86rem;
+  font-weight: 950;
+  overflow-wrap: anywhere;
+}
+
+.court-search-popover button em {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-style: normal;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
 .court-reservation-row {
   display: grid;
   grid-template-columns: minmax(0, max-content) minmax(min(180px, 100%), 1fr);

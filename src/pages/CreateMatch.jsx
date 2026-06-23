@@ -286,6 +286,7 @@ export default function CreateMatch({ app }) {
   const [teamQuery, setTeamQuery] = useState("");
   const [opponentTeamQuery, setOpponentTeamQuery] = useState("");
   const [courtQuery, setCourtQuery] = useState("");
+  const [courtPickerOpen, setCourtPickerOpen] = useState(false);
   const [teamRegion, setTeamRegion] = useState(app.currentUser.region ?? "전체");
   const [courtRegion, setCourtRegion] = useState(app.currentUser.region ?? "전체");
   const defaultAgeRestriction = getAgeGroupForUser(app.currentUser);
@@ -499,6 +500,13 @@ export default function CreateMatch({ app }) {
     () => COURTS.find((court) => court.name === draft.court) ?? COURTS[0],
     [draft.court],
   );
+  const courtPickerCourts = courtQuery.trim() ? sortedCourts : favoriteCourts.length ? favoriteCourts : sortedCourts.slice(0, 10);
+  const selectCourt = (court) => {
+    update({ court: court.name });
+    setCourtQuery(court.name);
+    setCourtRegion(court.region);
+    setCourtPickerOpen(false);
+  };
 
   const update = (patch) => setDraft((current) => {
     const next = { ...current, ...patch };
@@ -919,26 +927,31 @@ export default function CreateMatch({ app }) {
             </label>
             <label>
               코트명
-              <input value={courtQuery} placeholder="코트, 지역, 실내/야외 검색" onChange={(event) => setCourtQuery(event.target.value)} />
+              <span className="court-search-field">
+                <input
+                  value={courtQuery}
+                  placeholder="코트, 지역, 실내/야외 검색"
+                  onFocus={() => setCourtPickerOpen(true)}
+                  onBlur={() => window.setTimeout(() => setCourtPickerOpen(false), 120)}
+                  onChange={(event) => {
+                    setCourtQuery(event.target.value);
+                    setCourtPickerOpen(true);
+                  }}
+                />
+                {courtPickerOpen ? (
+                  <div className="court-search-popover">
+                    <strong>{courtQuery.trim() ? "검색 결과" : favoriteCourts.length ? "자주 찾는 코트" : "추천 코트"}</strong>
+                    {courtPickerCourts.length ? courtPickerCourts.map((court) => (
+                      <button key={court.id} type="button" className={draft.court === court.name ? "selected" : ""} onMouseDown={(event) => event.preventDefault()} onClick={() => selectCourt(court)}>
+                        <span>{isFavoriteCourt(court) ? <Star size={14} fill="currentColor" /> : null}{court.name}</span>
+                        <em>{court.region} · {court.type}</em>
+                      </button>
+                    )) : <em>검색 결과 없음</em>}
+                  </div>
+                ) : null}
+              </span>
             </label>
           </div>
-          <div className="quick-picker">
-            <p className="eyebrow">자주 찾는 코트</p>
-            <div>
-              {favoriteCourts.map((court) => (
-                <button key={court.id} type="button" className={draft.court === court.name ? "favorite-pick selected" : "favorite-pick"} onClick={() => update({ court: court.name })}>
-                  <strong><Star size={15} fill="currentColor" /> {court.name}</strong>
-                  <span>{court.region} · {court.type}</span>
-                  <small>
-                    <b onClick={(event) => { event.stopPropagation(); app.actions.toggleFavoriteCourt(court.id); }}>해제</b>
-                  </small>
-                </button>
-              ))}
-            </div>
-          </div>
-          <select value={draft.court} onChange={(event) => update({ court: event.target.value })}>
-            {sortedCourts.map((court) => <option key={court.id} value={court.name}>{court.region} · {court.name} · {court.type}</option>)}
-          </select>
           <div className="court-reservation-row">
             <label>
               <input type="checkbox" checked={draft.courtReserved} onChange={(event) => update({ courtReserved: event.target.checked })} />
@@ -948,15 +961,6 @@ export default function CreateMatch({ app }) {
               <input value={draft.courtFee} placeholder="예약 금액/메모" onChange={(event) => update({ courtFee: event.target.value })} />
             ) : null}
           </div>
-          <Button
-            type="button"
-            variant="secondary"
-            className={isFavoriteCourt(selectedCourt) ? "favorite-toggle-button active" : "favorite-toggle-button"}
-            onClick={() => app.actions.toggleFavoriteCourt(selectedCourt.id)}
-          >
-            <Star size={16} fill={isFavoriteCourt(selectedCourt) ? "currentColor" : "none"} />
-            {isFavoriteCourt(selectedCourt) ? "선택 코트 즐겨찾기 해제" : "선택 코트 즐겨찾기 추가"}
-          </Button>
         </Card>
 
         <Card className="section-card full-span selector-panel">
