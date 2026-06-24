@@ -180,6 +180,7 @@ export default function MatchRoom({ app }) {
   const matchPhase = getMatchRoomPhase(match).phase;
   const startedAuthorityPhase = Boolean(match.startedAt || match.endedAt || match.result || ["live", "postgame", "dispute", "record"].includes(matchPhase));
   const currentUserCanOperateStartedMatch = hasReferee ? currentUserIsEligibleReferee : isMatchHost;
+  const currentUserCanFileDispute = currentUserCanOperateStartedMatch || getMatchTrustFeedbackParticipantIds(match).includes(app.currentUser.id);
   const canEditDisputeDraft = match.status === "disputed" && currentUserCanOperateStartedMatch && recordWindow.disputeOpen;
   const currentUserEditablePlayerIds = canEditDisputeDraft
     ? allPlayerIds
@@ -189,7 +190,7 @@ export default function MatchRoom({ app }) {
   const currentUserCanSubmit = canEditDisputeDraft || (hasReferee ? currentUserIsEligibleReferee : currentUserEditablePlayerIds.length > 0);
   const canSubmitResult = canEditDisputeDraft || (["agreed", "approval"].includes(match.status) && recordWindow.statOpen && currentUserCanSubmit);
   const canCancel = ["contract", "agreed"].includes(match.status) && (startedAuthorityPhase ? currentUserCanOperateStartedMatch : isMatchHost);
-  const canDispute = Boolean(match.result) && match.status === "approval" && recordWindow.disputeOpen && currentUserCanOperateStartedMatch;
+  const canDispute = Boolean(match.result) && match.status === "approval" && recordWindow.disputeOpen && currentUserCanFileDispute;
   const canVoid = match.status === "disputed" && currentUserCanOperateStartedMatch;
   const canResumeApproval = match.status === "disputed" && currentUserCanOperateStartedMatch;
   const canReport = !["cancelled", "void"].includes(match.status) && (Boolean(match.endedAt) || Boolean(match.result) || ["approval", "disputed", "confirmed"].includes(match.status));

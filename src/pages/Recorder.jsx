@@ -15,6 +15,7 @@ import {
   getMatchRecordWindow,
   getMatchRoomPhase,
   getMatchSideRecordPlayerIds,
+  getMatchTrustFeedbackParticipantIds,
   getPlayerSideName,
   getStatRecorderSides,
   isEligibleReferee,
@@ -153,6 +154,7 @@ export default function Recorder({ app }) {
   const selectedMatchHasReferee = Boolean(selectedMatch?.refereeId);
   const currentUserIsEligibleReferee = Boolean(selectedMatch && isMatchReferee(selectedMatch, user.id) && isEligibleReferee(user, selectedMatch.refereeTrustMin));
   const currentUserCanOperatePostStart = Boolean(selectedMatch && (selectedMatchHasReferee ? currentUserIsEligibleReferee : currentUserIsHost));
+  const currentUserCanFileDispute = Boolean(selectedMatch && (currentUserCanOperatePostStart || getMatchTrustFeedbackParticipantIds(selectedMatch).includes(user.id)));
   const currentUserCanPostgameScore = Boolean(currentUserCanOperatePostStart && roomPhase === "postgame" && !["confirmed", "disputed"].includes(selectedMatch.status));
   const postStartOperatorLabel = selectedMatchHasReferee ? "심판" : "방장";
   const recorderSides = selectedMatch ? getStatRecorderSides(selectedMatch, user.id) : [];
@@ -182,7 +184,7 @@ export default function Recorder({ app }) {
       : !editablePlayerIds.length
         ? "기록 권한 없음"
         : "저장 가능";
-  const canDispute = Boolean(selectedMatch?.result) && selectedMatch?.status === "approval" && recordWindow?.disputeOpen && currentUserCanOperatePostStart;
+  const canDispute = Boolean(selectedMatch?.result) && selectedMatch?.status === "approval" && recordWindow?.disputeOpen && currentUserCanFileDispute;
   const canResumeApproval = selectedMatch?.status === "disputed" && currentUserCanOperatePostStart;
   const canVoid = selectedMatch?.status === "disputed" && currentUserCanOperatePostStart;
 
