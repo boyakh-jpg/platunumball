@@ -60,3 +60,12 @@
 - `court_requests` server action은 제출 직전에 신뢰도, 정지 상태, 승인/대기 중복, 주소/좌표 존재를 다시 검사한다.
 - 승인된 구장은 정규화한 `road_address`, `jibun_address`, `address_text`, `zonecode` 기준 unique constraint 또는 unique index로 중복을 막는다.
 - 허위 구장 신고 처리는 report 생성, 요청 상태 변경, 신뢰도 차감, 등록 제한 알림을 하나의 transaction으로 커밋한다.
+
+## 2026-06-24 normalized persistence bridge
+
+- `matches`에 출석, 심판 미출석, 이의 draft, 후보/사후 기록 필드를 저장할 수 있는 컬럼을 추가했다.
+- `notifications`, `reports`, `court_requests`, `approved_courts`, `referee_requests`, `referee_exam_attempts`, `admin_appointments`, `referee_appointments`, `admin_audit_log`, `admin_disciplinary_actions`, `discord_notification_deliveries` 테이블을 배포 전환용 브리지로 추가했다.
+- 브리지 테이블은 `payload` JSONB를 함께 저장해 현재 앱 state shape 손실을 줄인다.
+- `repository.js`는 브리지 테이블이 없거나 RLS로 막혀도 전체 원격 로드를 실패시키지 않는다.
+- 선택 테이블 write도 core profile/team/match 저장을 망가뜨리지 않게 optional write로 둔다.
+- 이 작업은 서버 권한화 완료가 아니다. 관리자 처리, 구장 승인, 허위 구장 신고, Discord DM 발송은 아직 server action/transaction/service role 경로가 필요하다.

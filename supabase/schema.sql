@@ -241,6 +241,18 @@ begin
     execute 'alter table public.matches add column if not exists dispute_minutes integer not null default 120';
     execute 'alter table public.matches add column if not exists ended_at timestamptz';
     execute 'alter table public.matches add column if not exists trust_feedback jsonb not null default ''{}''::jsonb';
+    execute 'alter table public.matches add column if not exists stat_recorders jsonb not null default ''{}''::jsonb';
+    execute 'alter table public.matches add column if not exists played_player_ids jsonb not null default ''{}''::jsonb';
+    execute 'alter table public.matches add column if not exists reserve_players jsonb not null default ''{}''::jsonb';
+    execute 'alter table public.matches add column if not exists promoted_reserve_ids jsonb not null default ''{}''::jsonb';
+    execute 'alter table public.matches add column if not exists attendance jsonb not null default ''{"teamA":[],"teamB":[]}''::jsonb';
+    execute 'alter table public.matches add column if not exists referee_absence_request jsonb';
+    execute 'alter table public.matches add column if not exists former_referee_id text';
+    execute 'alter table public.matches add column if not exists dispute_draft_result jsonb';
+    execute 'alter table public.matches add column if not exists dispute_draft_updated_at timestamptz';
+    execute 'alter table public.matches add column if not exists dispute_resolved_at timestamptz';
+    execute 'alter table public.matches add column if not exists mmr_excluded_player_ids jsonb not null default ''[]''::jsonb';
+    execute 'alter table public.matches add column if not exists anonymous_players jsonb not null default ''{}''::jsonb';
     execute 'create index if not exists matches_referee_id_idx on public.matches (referee_id)';
   end if;
 end;
@@ -405,6 +417,235 @@ begin
   end if;
 end;
 $$;
+
+create table if not exists public.notifications (
+  id text primary key,
+  user_id text,
+  target_user_id text,
+  title text not null,
+  body text,
+  tone text,
+  type text,
+  match_id text,
+  recruiting_post_id text,
+  invitation_id text,
+  discord_event text,
+  read_at timestamptz,
+  payload jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.reports (
+  id text primary key,
+  type text not null,
+  target_id text not null,
+  user_id text,
+  reported_user_ids jsonb not null default '[]'::jsonb,
+  reason text not null,
+  status text not null default 'open',
+  resolved_at timestamptz,
+  resolved_by text,
+  resolution jsonb,
+  payload jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.court_requests (
+  id text primary key,
+  requested_by text,
+  status text not null default 'pending',
+  name text not null,
+  hashtag text,
+  address_text text not null,
+  road_address text,
+  jibun_address text,
+  zonecode text,
+  lat double precision,
+  lng double precision,
+  payload jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.approved_courts (
+  id text primary key,
+  source_request_id text,
+  approved_by text,
+  name text not null,
+  hashtag text,
+  address_text text not null,
+  road_address text,
+  jibun_address text,
+  zonecode text,
+  lat double precision,
+  lng double precision,
+  payload jsonb not null default '{}'::jsonb,
+  approved_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.referee_requests (
+  id text primary key,
+  requested_by text,
+  status text not null default 'pending',
+  qualification text,
+  trust_score integer,
+  payload jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.referee_exam_attempts (
+  id text primary key,
+  user_id text,
+  status text not null default 'started',
+  exam_version text,
+  payload jsonb not null default '{}'::jsonb,
+  started_at timestamptz,
+  finished_at timestamptz,
+  available_after timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.admin_appointments (
+  id text primary key,
+  user_id text,
+  role text not null default 'admin',
+  grade text,
+  status text not null default 'active',
+  appointed_by text,
+  starts_at timestamptz,
+  ends_at timestamptz,
+  payload jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.referee_appointments (
+  id text primary key,
+  user_id text,
+  role text not null default 'referee',
+  grade text,
+  status text not null default 'active',
+  appointed_by text,
+  starts_at timestamptz,
+  ends_at timestamptz,
+  payload jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.admin_audit_log (
+  id text primary key,
+  type text,
+  status text,
+  report_id text,
+  request_id text,
+  appointment_id text,
+  target_user_id text,
+  created_by text,
+  payload jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.admin_disciplinary_actions (
+  id text primary key,
+  user_id text,
+  type text,
+  action_type text,
+  status text not null default 'active',
+  source_report_id text,
+  created_by text,
+  starts_at timestamptz,
+  ends_at timestamptz,
+  payload jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.discord_notification_deliveries (
+  id text primary key,
+  notification_id text,
+  target_user_id text,
+  discord_user_id text,
+  event text,
+  status text not null default 'queued',
+  payload jsonb not null default '{}'::jsonb,
+  queued_at timestamptz,
+  sent_at timestamptz,
+  failed_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+do $$
+begin
+  if to_regclass('public.notifications') is not null then
+    execute 'alter table public.notifications add column if not exists user_id text';
+    execute 'alter table public.notifications add column if not exists target_user_id text';
+    execute 'alter table public.notifications add column if not exists type text';
+    execute 'alter table public.notifications add column if not exists recruiting_post_id text';
+    execute 'alter table public.notifications add column if not exists invitation_id text';
+    execute 'alter table public.notifications add column if not exists discord_event text';
+    execute 'alter table public.notifications add column if not exists payload jsonb not null default ''{}''::jsonb';
+    execute 'alter table public.notifications add column if not exists updated_at timestamptz not null default now()';
+  end if;
+
+  if to_regclass('public.reports') is not null then
+    execute 'alter table public.reports add column if not exists reported_user_ids jsonb not null default ''[]''::jsonb';
+    execute 'alter table public.reports add column if not exists resolved_at timestamptz';
+    execute 'alter table public.reports add column if not exists resolved_by text';
+    execute 'alter table public.reports add column if not exists resolution jsonb';
+    execute 'alter table public.reports add column if not exists payload jsonb not null default ''{}''::jsonb';
+    execute 'alter table public.reports add column if not exists updated_at timestamptz not null default now()';
+  end if;
+end;
+$$;
+
+create unique index if not exists approved_courts_address_identity_unique
+on public.approved_courts (
+  lower(coalesce(nullif(road_address, ''), nullif(jibun_address, ''), address_text)),
+  coalesce(zonecode, '')
+);
+
+create index if not exists court_requests_status_idx on public.court_requests (status, created_at desc);
+create index if not exists reports_status_idx on public.reports (status, created_at desc);
+create index if not exists notifications_user_idx on public.notifications (user_id, created_at desc);
+create index if not exists discord_notification_deliveries_status_idx on public.discord_notification_deliveries (status, queued_at);
+
+do $$
+declare
+  table_name text;
+begin
+  foreach table_name in array array[
+    'notifications',
+    'reports',
+    'court_requests',
+    'approved_courts',
+    'referee_requests',
+    'referee_exam_attempts',
+    'admin_appointments',
+    'referee_appointments',
+    'admin_audit_log',
+    'admin_disciplinary_actions',
+    'discord_notification_deliveries'
+  ]
+  loop
+    execute format('alter table public.%I enable row level security', table_name);
+  end loop;
+end;
+$$;
+
+drop policy if exists approved_courts_select_public on public.approved_courts;
+create policy approved_courts_select_public
+on public.approved_courts
+for select
+to anon, authenticated
+using (true);
 
 do $$
 begin

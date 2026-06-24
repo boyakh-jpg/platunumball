@@ -677,6 +677,15 @@ async function fetchAllRows(table, select = "*", order = "id") {
   return rows;
 }
 
+async function fetchOptionalRows(table, select = "*", order = "id") {
+  try {
+    return await fetchAllRows(table, select, order);
+  } catch (error) {
+    console.warn(`Supabase optional table skipped: ${table}`, error.message);
+    return [];
+  }
+}
+
 function groupBy(rows, key) {
   return rows.reduce((map, row) => {
     const value = row[key];
@@ -726,6 +735,102 @@ function fromRemoteProfile(row) {
     discordConnection: row.discord_connection ?? null,
     discordUserId: row.discord_user_id ?? row.discord_connection?.userId ?? null,
     ratings: row.ratings ?? { integrated: 1200, modes: {} },
+  };
+}
+
+function getRemotePayload(row = {}) {
+  return row.payload && typeof row.payload === "object" && !Array.isArray(row.payload) ? row.payload : {};
+}
+
+function fromRemotePayloadRow(row = {}) {
+  const payload = getRemotePayload(row);
+  return {
+    ...payload,
+    id: row.id ?? payload.id,
+    status: row.status ?? payload.status,
+    createdAt: row.created_at ?? payload.createdAt,
+    updatedAt: row.updated_at ?? payload.updatedAt,
+  };
+}
+
+function fromRemoteNotification(row = {}) {
+  const payload = getRemotePayload(row);
+  return {
+    readAt: null,
+    ...payload,
+    id: row.id ?? payload.id,
+    title: row.title ?? payload.title,
+    body: row.body ?? payload.body,
+    tone: row.tone ?? payload.tone,
+    type: row.type ?? payload.type,
+    targetUserId: row.target_user_id ?? payload.targetUserId ?? row.user_id,
+    matchId: row.match_id ?? payload.matchId,
+    recruitingPostId: row.recruiting_post_id ?? payload.recruitingPostId,
+    invitationId: row.invitation_id ?? payload.invitationId,
+    discordEvent: row.discord_event ?? payload.discordEvent,
+    readAt: row.read_at ?? payload.readAt ?? null,
+    createdAt: row.created_at ?? payload.createdAt,
+    updatedAt: row.updated_at ?? payload.updatedAt,
+  };
+}
+
+function fromRemoteReport(row = {}) {
+  const payload = getRemotePayload(row);
+  return {
+    ...payload,
+    id: row.id ?? payload.id,
+    type: row.type ?? payload.type,
+    targetId: row.target_id ?? payload.targetId,
+    by: row.user_id ?? payload.by,
+    reportedUserIds: row.reported_user_ids ?? payload.reportedUserIds ?? [],
+    reason: row.reason ?? payload.reason,
+    status: row.status ?? payload.status ?? "open",
+    resolvedAt: row.resolved_at ?? payload.resolvedAt,
+    resolvedBy: row.resolved_by ?? payload.resolvedBy,
+    resolution: row.resolution ?? payload.resolution,
+    createdAt: row.created_at ?? payload.createdAt,
+    updatedAt: row.updated_at ?? payload.updatedAt,
+  };
+}
+
+function fromRemoteCourtRequest(row = {}) {
+  const payload = getRemotePayload(row);
+  return {
+    ...payload,
+    id: row.id ?? payload.id,
+    requestedBy: row.requested_by ?? payload.requestedBy,
+    status: row.status ?? payload.status ?? "pending",
+    name: row.name ?? payload.name,
+    hashtag: row.hashtag ?? payload.hashtag,
+    addressText: row.address_text ?? payload.addressText,
+    roadAddress: row.road_address ?? payload.roadAddress,
+    jibunAddress: row.jibun_address ?? payload.jibunAddress,
+    zonecode: row.zonecode ?? payload.zonecode,
+    lat: row.lat ?? payload.lat,
+    lng: row.lng ?? payload.lng,
+    createdAt: row.created_at ?? payload.createdAt,
+    updatedAt: row.updated_at ?? payload.updatedAt,
+  };
+}
+
+function fromRemoteApprovedCourt(row = {}) {
+  const payload = getRemotePayload(row);
+  return {
+    ...payload,
+    id: row.id ?? payload.id,
+    sourceRequestId: row.source_request_id ?? payload.sourceRequestId,
+    approvedBy: row.approved_by ?? payload.approvedBy,
+    name: row.name ?? payload.name,
+    hashtag: row.hashtag ?? payload.hashtag,
+    addressText: row.address_text ?? payload.addressText,
+    roadAddress: row.road_address ?? payload.roadAddress,
+    jibunAddress: row.jibun_address ?? payload.jibunAddress,
+    zonecode: row.zonecode ?? payload.zonecode,
+    lat: row.lat ?? payload.lat,
+    lng: row.lng ?? payload.lng,
+    approvedAt: row.approved_at ?? payload.approvedAt,
+    createdAt: row.created_at ?? payload.createdAt,
+    updatedAt: row.updated_at ?? payload.updatedAt,
   };
 }
 
@@ -788,6 +893,9 @@ function fromRemoteMatch(row, context) {
   const rawScheduledAt = toDateTime(row.scheduled_date, row.scheduled_time, row.scheduled_at);
   const timingType = row.rules?.timingType === "instant" || rawScheduledAt === "즉시" ? "instant" : "scheduled";
   const scheduledAt = timingType === "instant" ? "즉시" : rawScheduledAt;
+  const playedPlayerIds = row.played_player_ids ?? row.rules?.playedPlayerIds ?? {};
+  const mmrExcludedPlayerIds = row.mmr_excluded_player_ids ?? row.rules?.mmrExcludedPlayerIds ?? [];
+  const statRecorders = normalizeStatRecorders(row.stat_recorders ?? row.rules?.statRecorders);
 
   return {
     id: row.id,
@@ -801,7 +909,7 @@ function fromRemoteMatch(row, context) {
     status: row.status ?? "contract",
     official: Boolean(row.official),
     preRegistered: Boolean(row.pre_registered),
-    rules: row.rules ?? {},
+    rules: { ...(row.rules ?? {}), playedPlayerIds, mmrExcludedPlayerIds, statRecorders },
     memo: row.memo,
     stakes: row.stakes,
     ranked: row.ranked !== false,
@@ -811,7 +919,7 @@ function fromRemoteMatch(row, context) {
     trustFeedback: row.trust_feedback ?? {},
     refereeId: row.referee_id ?? "",
     refereeTrustMin: row.referee_trust_min ?? REFEREE_TRUST_MIN,
-    statRecorders: normalizeStatRecorders(row.stat_recorders ?? row.rules?.statRecorders),
+    statRecorders,
     statEntryMinutes: row.stat_entry_minutes ?? STAT_ENTRY_WINDOW_MINUTES,
     disputeMinutes: row.dispute_minutes ?? DISPUTE_WINDOW_MINUTES,
     tournamentId: row.tournament_id,
@@ -826,6 +934,17 @@ function fromRemoteMatch(row, context) {
     agreements,
     approvals,
     disputes,
+    playedPlayerIds,
+    reservePlayers: row.reserve_players ?? row.rules?.reservePlayers ?? {},
+    promotedReserveIds: row.promoted_reserve_ids ?? {},
+    attendance: row.attendance ?? { teamA: [], teamB: [] },
+    refereeAbsenceRequest: row.referee_absence_request ?? null,
+    formerRefereeId: row.former_referee_id ?? "",
+    disputeDraftResult: row.dispute_draft_result ?? null,
+    disputeDraftUpdatedAt: row.dispute_draft_updated_at ?? null,
+    disputeResolvedAt: row.dispute_resolved_at ?? null,
+    mmrExcludedPlayerIds,
+    anonymousPlayers: row.anonymous_players ?? {},
     result: resultRow
       ? {
           scoreA: resultRow.score_a,
@@ -879,6 +998,15 @@ async function loadNormalizedRemoteState() {
     affiliations,
     notifications,
     reports,
+    courtRequests,
+    approvedCourts,
+    refereeRequests,
+    refereeExamAttempts,
+    adminAppointments,
+    refereeAppointments,
+    adminAuditLog,
+    adminDisciplinaryActions,
+    discordNotificationDeliveries,
   ] = await Promise.all([
     fetchAllRows("profiles"),
     fetchAllRows("teams"),
@@ -898,8 +1026,17 @@ async function loadNormalizedRemoteState() {
     fetchAllRows("tournament_teams", "*", null),
     fetchAllRows("seasons"),
     fetchAllRows("affiliations"),
-    fetchAllRows("notifications", "*", "created_at"),
-    fetchAllRows("reports", "*", "created_at"),
+    fetchOptionalRows("notifications", "*", "created_at"),
+    fetchOptionalRows("reports", "*", "created_at"),
+    fetchOptionalRows("court_requests", "*", "created_at"),
+    fetchOptionalRows("approved_courts", "*", "created_at"),
+    fetchOptionalRows("referee_requests", "*", "created_at"),
+    fetchOptionalRows("referee_exam_attempts", "*", "created_at"),
+    fetchOptionalRows("admin_appointments", "*", "created_at"),
+    fetchOptionalRows("referee_appointments", "*", "created_at"),
+    fetchOptionalRows("admin_audit_log", "*", "created_at"),
+    fetchOptionalRows("admin_disciplinary_actions", "*", "created_at"),
+    fetchOptionalRows("discord_notification_deliveries", "*", "queued_at"),
   ]);
 
   if (!profiles.length || !matches.length) return null;
@@ -955,24 +1092,13 @@ async function loadNormalizedRemoteState() {
       rules: season.rules ?? [],
     })),
     notifications: notifications
-      .filter((notification) => !notification.user_id || notification.user_id === currentUserId)
-      .map((notification) => ({
-        id: notification.id,
-        title: notification.title,
-        body: notification.body,
-        tone: notification.tone,
-        matchId: notification.match_id,
-        readAt: notification.read_at,
-      })),
-    reports: reports.map((report) => ({
-      id: report.id,
-      type: report.type,
-      targetId: report.target_id,
-      by: report.user_id,
-      reason: report.reason,
-      status: report.status,
-      createdAt: report.created_at,
-    })),
+      .filter((notification) => (
+        (!notification.user_id || notification.user_id === currentUserId) &&
+        (!notification.target_user_id || notification.target_user_id === currentUserId)
+      ))
+      .map(fromRemoteNotification),
+    reports: reports.map(fromRemoteReport),
+    discordNotificationDeliveries: discordNotificationDeliveries.map(fromRemotePayloadRow),
     recruitingPosts: recruitingPosts.map((post) => {
       const rawScheduledAt = toDateTime(post.scheduled_date, post.scheduled_time, post.scheduled_at);
       const roomState = normalizeRecruitingRoomState(post.room_state ?? {});
@@ -1070,6 +1196,14 @@ async function loadNormalizedRemoteState() {
       favoritePlayerIds: favoriteRows.filter((favorite) => favorite.target_type === "player").map((favorite) => favorite.target_id),
       favoriteTeamIds: favoriteRows.filter((favorite) => favorite.target_type === "team").map((favorite) => favorite.target_id),
       favoriteCourtIds: favoriteRows.filter((favorite) => favorite.target_type === "court").map((favorite) => favorite.target_id),
+      approvedCourts: approvedCourts.map(fromRemoteApprovedCourt),
+      courtRequests: courtRequests.map(fromRemoteCourtRequest),
+      refereeRequests: refereeRequests.map(fromRemotePayloadRow),
+      refereeExamAttempts: refereeExamAttempts.map(fromRemotePayloadRow),
+      adminAppointments: adminAppointments.map(fromRemotePayloadRow),
+      refereeAppointments: refereeAppointments.map(fromRemotePayloadRow),
+      adminAuditLog: adminAuditLog.map(fromRemotePayloadRow),
+      adminDisciplinaryActions: adminDisciplinaryActions.map(fromRemotePayloadRow),
     },
   });
   return {
@@ -1080,6 +1214,10 @@ async function loadNormalizedRemoteState() {
       getMaxUpdatedAt(matches),
       getMaxUpdatedAt(recruitingPosts),
       getMaxUpdatedAt(tournaments),
+      getMaxUpdatedAt(courtRequests),
+      getMaxUpdatedAt(approvedCourts),
+      getMaxUpdatedAt(reports),
+      getMaxUpdatedAt(notifications),
     ),
   };
 }
@@ -1109,6 +1247,14 @@ async function upsertRemoteRows(table, rows, onConflict) {
   for (const chunk of chunkRows(rows)) {
     const { error } = await supabase.from(table).upsert(chunk, onConflict ? { onConflict } : undefined);
     if (error) throw error;
+  }
+}
+
+async function upsertOptionalRemoteRows(table, rows, onConflict) {
+  try {
+    await upsertRemoteRows(table, rows, onConflict);
+  } catch (error) {
+    console.warn(`Supabase optional table write skipped: ${table}`, error.message);
   }
 }
 
@@ -1145,6 +1291,97 @@ function courtIdByName(courtName) {
 
 function toDbTime(value) {
   return value ? String(value).slice(0, 5) : null;
+}
+
+function getItemTimestamp(item = {}) {
+  return item.updatedAt ?? item.createdAt ?? item.queuedAt ?? item.startedAt ?? item.approvedAt ?? item.resolvedAt ?? new Date().toISOString();
+}
+
+function toPayloadRow(item = {}) {
+  return {
+    id: item.id,
+    status: item.status ?? null,
+    payload: item,
+    created_at: item.createdAt ?? item.queuedAt ?? item.startedAt ?? item.approvedAt ?? new Date().toISOString(),
+    updated_at: getItemTimestamp(item),
+  };
+}
+
+function toNotificationRow(notification = {}, currentUserId = "") {
+  return {
+    id: notification.id,
+    user_id: notification.targetUserId ?? currentUserId,
+    target_user_id: notification.targetUserId ?? null,
+    title: notification.title,
+    body: notification.body ?? "",
+    tone: notification.tone ?? "match",
+    type: notification.type ?? null,
+    match_id: notification.matchId ?? null,
+    recruiting_post_id: notification.recruitingPostId ?? null,
+    invitation_id: notification.invitationId ?? null,
+    discord_event: notification.discordEvent ?? notification.eventType ?? null,
+    read_at: notification.readAt ?? null,
+    payload: notification,
+    created_at: notification.createdAt ?? new Date().toISOString(),
+    updated_at: getItemTimestamp(notification),
+  };
+}
+
+function toReportRow(report = {}) {
+  return {
+    id: report.id,
+    type: report.type,
+    target_id: report.targetId,
+    user_id: report.by ?? null,
+    reported_user_ids: report.reportedUserIds ?? [],
+    reason: report.reason ?? "기타 운영 확인 필요",
+    status: report.status ?? "open",
+    resolved_at: report.resolvedAt ?? null,
+    resolved_by: report.resolvedBy ?? null,
+    resolution: report.resolution ?? null,
+    payload: report,
+    created_at: report.createdAt ?? new Date().toISOString(),
+    updated_at: getItemTimestamp(report),
+  };
+}
+
+function toCourtRequestRow(request = {}) {
+  return {
+    id: request.id,
+    requested_by: request.requestedBy ?? null,
+    status: request.status ?? "pending",
+    name: request.name,
+    hashtag: request.hashtag ?? null,
+    address_text: request.addressText,
+    road_address: request.roadAddress ?? null,
+    jibun_address: request.jibunAddress ?? null,
+    zonecode: request.zonecode ?? null,
+    lat: request.lat ?? null,
+    lng: request.lng ?? null,
+    payload: request,
+    created_at: request.createdAt ?? new Date().toISOString(),
+    updated_at: getItemTimestamp(request),
+  };
+}
+
+function toApprovedCourtRow(court = {}) {
+  return {
+    id: court.id,
+    source_request_id: court.sourceRequestId ?? null,
+    approved_by: court.approvedBy ?? null,
+    name: court.name,
+    hashtag: court.hashtag ?? null,
+    address_text: court.addressText,
+    road_address: court.roadAddress ?? null,
+    jibun_address: court.jibunAddress ?? null,
+    zonecode: court.zonecode ?? null,
+    lat: court.lat ?? null,
+    lng: court.lng ?? null,
+    payload: court,
+    approved_at: court.approvedAt ?? null,
+    created_at: court.createdAt ?? court.approvedAt ?? new Date().toISOString(),
+    updated_at: getItemTimestamp(court),
+  };
 }
 
 async function saveNormalizedRemoteState(state) {
@@ -1209,9 +1446,21 @@ async function saveNormalizedRemoteState(state) {
     mmr_limit_mode: match.mmrLimitMode ?? "block",
     trust_feedback: match.trustFeedback ?? {},
     referee_id: match.refereeId || null,
+    former_referee_id: match.formerRefereeId || null,
     referee_trust_min: Number(match.refereeTrustMin ?? REFEREE_TRUST_MIN),
     stat_entry_minutes: Number(match.statEntryMinutes ?? STAT_ENTRY_WINDOW_MINUTES),
     dispute_minutes: Number(match.disputeMinutes ?? DISPUTE_WINDOW_MINUTES),
+    stat_recorders: normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders),
+    played_player_ids: match.playedPlayerIds ?? match.rules?.playedPlayerIds ?? {},
+    reserve_players: match.reservePlayers ?? match.rules?.reservePlayers ?? {},
+    promoted_reserve_ids: match.promotedReserveIds ?? {},
+    attendance: match.attendance ?? { teamA: [], teamB: [] },
+    referee_absence_request: match.refereeAbsenceRequest ?? null,
+    dispute_draft_result: match.disputeDraftResult ?? null,
+    dispute_draft_updated_at: match.disputeDraftUpdatedAt ?? null,
+    dispute_resolved_at: match.disputeResolvedAt ?? null,
+    mmr_excluded_player_ids: match.mmrExcludedPlayerIds ?? match.rules?.mmrExcludedPlayerIds ?? [],
+    anonymous_players: match.anonymousPlayers ?? {},
     tournament_id: match.tournamentId ?? null,
     tournament_format: match.tournamentFormat ?? null,
     tournament_round: match.tournamentRound ?? null,
@@ -1384,6 +1633,69 @@ async function saveNormalizedRemoteState(state) {
       approved_at: tournament.teamApprovals?.[teamId]?.approvedAt ?? null,
     })),
   );
+  const notificationRows = (state.notifications ?? []).map((notification) => toNotificationRow(notification, currentUserId)).filter((row) => row.id);
+  const reportRows = (state.reports ?? []).map(toReportRow).filter((row) => row.id && row.type && row.target_id);
+  const courtRequestRows = (state.settings?.courtRequests ?? []).map(toCourtRequestRow).filter((row) => row.id && row.name && row.address_text);
+  const approvedCourtRows = (state.settings?.approvedCourts ?? []).map(toApprovedCourtRow).filter((row) => row.id && row.name && row.address_text);
+  const refereeRequestRows = (state.settings?.refereeRequests ?? []).map(toPayloadRow).filter((row) => row.id);
+  const refereeExamAttemptRows = (state.settings?.refereeExamAttempts ?? []).map((attempt) => ({
+    ...toPayloadRow(attempt),
+    user_id: attempt.userId ?? null,
+    exam_version: attempt.examVersion ?? null,
+    started_at: attempt.startedAt ?? null,
+    finished_at: attempt.finishedAt ?? null,
+    available_after: attempt.availableAfter ?? null,
+  })).filter((row) => row.id);
+  const adminAppointmentRows = (state.settings?.adminAppointments ?? []).map((appointment) => ({
+    ...toPayloadRow(appointment),
+    user_id: appointment.userId ?? null,
+    role: appointment.role ?? "admin",
+    grade: appointment.grade ?? null,
+    appointed_by: appointment.appointedBy ?? null,
+    starts_at: appointment.startsAt ?? null,
+    ends_at: appointment.endsAt ?? null,
+  })).filter((row) => row.id);
+  const refereeAppointmentRows = (state.settings?.refereeAppointments ?? []).map((appointment) => ({
+    ...toPayloadRow(appointment),
+    user_id: appointment.userId ?? null,
+    role: appointment.role ?? "referee",
+    grade: appointment.grade ?? null,
+    appointed_by: appointment.appointedBy ?? null,
+    starts_at: appointment.startsAt ?? null,
+    ends_at: appointment.endsAt ?? null,
+  })).filter((row) => row.id);
+  const adminAuditRows = (state.settings?.adminAuditLog ?? []).map((log) => ({
+    id: log.id,
+    type: log.type ?? null,
+    status: log.status ?? null,
+    report_id: log.reportId ?? null,
+    request_id: log.requestId ?? null,
+    appointment_id: log.appointmentId ?? null,
+    target_user_id: log.targetUserId ?? null,
+    created_by: log.createdBy ?? null,
+    payload: log,
+    created_at: log.createdAt ?? new Date().toISOString(),
+  })).filter((row) => row.id);
+  const disciplinaryRows = (state.settings?.adminDisciplinaryActions ?? []).map((action) => ({
+    ...toPayloadRow(action),
+    user_id: action.userId ?? null,
+    type: action.type ?? null,
+    action_type: action.actionType ?? null,
+    source_report_id: action.sourceReportId ?? null,
+    created_by: action.createdBy ?? null,
+    starts_at: action.startsAt ?? null,
+    ends_at: action.endsAt ?? null,
+  })).filter((row) => row.id);
+  const discordDeliveryRows = (state.discordNotificationDeliveries ?? []).map((delivery) => ({
+    ...toPayloadRow(delivery),
+    notification_id: delivery.notificationId ?? null,
+    target_user_id: delivery.targetUserId ?? null,
+    discord_user_id: delivery.discordUserId ?? null,
+    event: delivery.event ?? null,
+    queued_at: delivery.queuedAt ?? null,
+    sent_at: delivery.sentAt ?? null,
+    failed_at: delivery.failedAt ?? null,
+  })).filter((row) => row.id);
 
   await softDeleteRemoteTeams(deletedTeamIds);
   await upsertRemoteRows("profiles", profileRows, "id");
@@ -1402,6 +1714,17 @@ async function saveNormalizedRemoteState(state) {
   await replaceRemoteRecruitingApplications(recruitingPostIds, applicationRows);
   await upsertRemoteRows("tournaments", tournamentRows, "id");
   await upsertRemoteRows("tournament_teams", tournamentTeamRows, "tournament_id,team_id");
+  await upsertOptionalRemoteRows("notifications", notificationRows, "id");
+  await upsertOptionalRemoteRows("reports", reportRows, "id");
+  await upsertOptionalRemoteRows("court_requests", courtRequestRows, "id");
+  await upsertOptionalRemoteRows("approved_courts", approvedCourtRows, "id");
+  await upsertOptionalRemoteRows("referee_requests", refereeRequestRows, "id");
+  await upsertOptionalRemoteRows("referee_exam_attempts", refereeExamAttemptRows, "id");
+  await upsertOptionalRemoteRows("admin_appointments", adminAppointmentRows, "id");
+  await upsertOptionalRemoteRows("referee_appointments", refereeAppointmentRows, "id");
+  await upsertOptionalRemoteRows("admin_audit_log", adminAuditRows, "id");
+  await upsertOptionalRemoteRows("admin_disciplinary_actions", disciplinaryRows, "id");
+  await upsertOptionalRemoteRows("discord_notification_deliveries", discordDeliveryRows, "id");
 }
 
 export async function saveRemoteState(state) {

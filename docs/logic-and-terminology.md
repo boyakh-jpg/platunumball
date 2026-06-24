@@ -946,3 +946,11 @@ flowchart TD
 4. 관리자 승인 시에도 같은 중복 기준을 다시 검사한다.
 5. 허위 구장 신고가 접수되면 요청자 신뢰도를 `FALSE_COURT_REPORT_TRUST_PENALTY`만큼 차감하고, 차감 후 `COURT_REQUEST_TRUST_MIN` 미만이면 추가 구장 등록요청을 막는다.
 6. 현재 enforcement는 mock/localStorage 기준이다. 배포 백엔드에서는 server action, DB unique constraint, RLS/admin 권한으로 같은 검사를 다시 해야 한다.
+
+## 2026-06-24 normalized persistence bridge
+
+1. 원격 저장은 전면 백엔드 전환이 아니라 브리지 단계다.
+2. 경기 진행 필드인 출석, 심판 미출석, 이의 draft, 후보, 사후 기록은 `matches` 컬럼으로 보존한다.
+3. 알림, 신고, 구장요청, 관리자 처리, Discord 발송 큐는 브리지 테이블의 `payload`에 현재 state shape를 보존한다.
+4. 브리지 테이블 load/write 실패는 기존 mock/localStorage 흐름을 막지 않는다.
+5. 관리자 처리, 허위 구장 신고 제재, Discord DM 발송, 실시간 중복 방지는 server action, RLS, transaction 전까지 완료 기능으로 보지 않는다.
