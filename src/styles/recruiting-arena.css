@@ -3586,3 +3586,44 @@ html[data-theme="light"] .arena-lobby-card .om-match-summary-box {
   background-color: rgba(255, 255, 255, 0.88);
   background-image: none;
 }
+
+/* Light room surfaces: keep court background visible without losing text contrast. */
+html[data-theme="light"] .arena-lobby-modal {
+  background: rgba(246, 248, 242, 0.84);
+}
+
+html[data-theme="light"] .arena-lobby-team-panel,
+html[data-theme="light"] .arena-lobby-score-core,
+html[data-theme="light"] .arena-lobby-actions > div,
+html[data-theme="light"] .arena-side-roster,
+html[data-theme="light"] .arena-owner-panel,
+html[data-theme="light"] .arena-room-rule-panel,
+html[data-theme="light"] .arena-room-chat,
+html[data-theme="light"] .arena-reserve-panel,
+html[data-theme="light"] .arena-join-panel,
+html[data-theme="light"] .arena-invite-panel,
+html[data-theme="light"] .arena-invitation-list,
+html[data-theme="light"] .arena-slot-command-popover,
+html[data-theme="light"] .arena-party-picker {
+  background: rgba(255, 255, 255, 0.56);
+  box-shadow: 0 14px 34px rgba(35, 50, 59, 0.08);
+}
+
+html[data-theme="light"] .arena-room-player-slot {
+  background: rgba(249, 253, 251, 0.48);
+  box-shadow:
+    inset 0 0 22px rgba(255, 255, 255, 0.28),
+    0 0 18px rgba(67, 236, 214, 0.08);
+}
+
+html[data-theme="light"] .arena-room-player-slot.ready {
+  background: rgba(237, 249, 244, 0.5);
+}
+
+html[data-theme="light"] .arena-room-player-slot.empty {
+  background: rgba(232, 240, 236, 0.46);
+}
+
+html[data-theme="light"] .arena-room-player-slot.empty.invite {
+  background: rgba(255, 247, 224, 0.48);
+}

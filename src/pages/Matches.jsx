@@ -150,6 +150,13 @@ function subtractMonths(dateValue, amount) {
   return toDateInputValue(date);
 }
 
+function shouldIncludeByHistoryRange(item, todayValue, historyRangeMonths, historyCutoffDate) {
+  const itemDate = getMatchDate(item);
+  if (!itemDate || itemDate >= todayValue) return true;
+  if (historyRangeMonths === 0) return false;
+  return itemDate >= historyCutoffDate;
+}
+
 function getCalendarDays(monthKey) {
   const [year, month] = monthKey.split("-").map(Number);
   const firstDay = new Date(year, month - 1, 1);
@@ -747,12 +754,11 @@ export default function Matches({ app }) {
         const matchDate = getMatchDate(match);
         if (!matchDate) return true;
         if (matchDate > maxScheduleDate) return false;
-        if (["confirmed", "cancelled", "void"].includes(match.status) && matchDate < historyCutoffDate) return false;
-        return true;
+        return shouldIncludeByHistoryRange(match, todayValue, historyRangeMonths, historyCutoffDate);
       })
       .filter((match) => kindFilter === "all" || (kindFilter === "ranked" ? match.ranked !== false : match.ranked === false))
       .filter((match) => modeFilter === "all" || match.mode === modeFilter);
-  }, [app.currentUser.id, app.state.matches, historyCutoffDate, kindFilter, maxScheduleDate, modeFilter]);
+  }, [app.currentUser.id, app.state.matches, historyCutoffDate, historyRangeMonths, kindFilter, maxScheduleDate, modeFilter, todayValue]);
 
   const filteredMatches = useMemo(() => {
     return baseFilteredMatches.filter((match) => !dateFilter || getMatchDate(match) === dateFilter);
@@ -764,7 +770,7 @@ export default function Matches({ app }) {
       .filter((post) => isRecruitingRoomInUserSchedule(post, app.state, app.currentUser.id))
       .filter((post) => {
         const postDate = getMatchDate(post);
-        return postDate && postDate <= maxScheduleDate;
+        return postDate && postDate <= maxScheduleDate && shouldIncludeByHistoryRange(post, todayValue, historyRangeMonths, historyCutoffDate);
       })
       .filter((post) => kindFilter === "all" || (kindFilter === "ranked" ? post.ranked !== false : post.ranked === false))
       .filter((post) => modeFilter === "all" || post.mode === modeFilter);
@@ -772,7 +778,7 @@ export default function Matches({ app }) {
       getMatchDate(match) && VIEWS.some((view) => shouldShowMatchForView(match, view, app.currentUser.id))
     ));
     return [...displayableMatches, ...recruitingRooms];
-  }, [app.currentUser.id, app.state, app.state.recruitingPosts, baseFilteredMatches, kindFilter, maxScheduleDate, modeFilter]);
+  }, [app.currentUser.id, app.state, app.state.recruitingPosts, baseFilteredMatches, historyCutoffDate, historyRangeMonths, kindFilter, maxScheduleDate, modeFilter, todayValue]);
 
   const calendarCounts = useMemo(() => {
     return calendarMatches.reduce((map, match) => {
@@ -790,11 +796,11 @@ export default function Matches({ app }) {
       .filter((post) => isRecruitingRoomInUserSchedule(post, app.state, app.currentUser.id))
       .filter((post) => {
         const postDate = getMatchDate(post);
-        return postDate && postDate <= maxScheduleDate;
+        return postDate && postDate <= maxScheduleDate && shouldIncludeByHistoryRange(post, todayValue, historyRangeMonths, historyCutoffDate);
       })
       .filter((post) => kindFilter === "all" || (kindFilter === "ranked" ? post.ranked !== false : post.ranked === false))
       .filter((post) => modeFilter === "all" || post.mode === modeFilter);
-  }, [app.currentUser.id, app.state, app.state.recruitingPosts, kindFilter, maxScheduleDate, modeFilter]);
+  }, [app.currentUser.id, app.state, app.state.recruitingPosts, historyCutoffDate, historyRangeMonths, kindFilter, maxScheduleDate, modeFilter, todayValue]);
   const getViewIdForDate = (day) => {
     if (visibleRecruitingCandidates.some((post) => getMatchDate(post) === day)) return "scheduled";
     const dayMatches = baseFilteredMatches.filter((match) => getMatchDate(match) === day);

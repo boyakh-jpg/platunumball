@@ -166,6 +166,10 @@ h3 {
   min-width: 0;
 }
 
+.sidebar-profile .tier-badge {
+  max-width: none;
+}
+
 .sidebar-signout {
   display: grid;
   width: 36px;
@@ -542,30 +546,42 @@ h3 {
 .tier-badge {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  border: 1px solid color-mix(in srgb, var(--tier-color) 48%, transparent);
+  max-width: 100%;
+  min-width: 0;
+  gap: 7px;
+  border: 0;
   border-radius: 999px;
-  padding: 7px 10px;
+  padding: 4px 2px;
   color: var(--text);
   font-size: 0.8rem;
   font-weight: 850;
+  white-space: nowrap;
 }
 
 .tier-badge img {
-  width: 24px;
-  height: 24px;
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
   object-fit: contain;
   filter: drop-shadow(0 5px 8px color-mix(in srgb, var(--tier-color) 28%, transparent));
 }
 
+.tier-badge span {
+  min-width: 0;
+  line-height: 1;
+  white-space: nowrap;
+  word-break: keep-all;
+}
+
 .tier-badge-compact {
-  padding: 5px 8px;
-  font-size: 0.72rem;
+  gap: 6px;
+  padding: 3px 1px;
+  font-size: 0.74rem;
 }
 
 .tier-badge-compact img {
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
 }
 
 .player-hover-trigger,

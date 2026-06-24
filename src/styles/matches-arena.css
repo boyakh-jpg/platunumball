@@ -2675,3 +2675,44 @@ html[data-theme="light"] .om-calendar-grid button.active {
 .om-score-box > strong {
   font-size: clamp(1.02rem, 1.42vw, 1.24rem);
 }
+
+/* Shared match/recruiting list readability standard. */
+@media (min-width: 761px) {
+  .om-match-card,
+  .arena-lobby-card.om-match-card {
+    grid-template-columns: minmax(0, 0.82fr) minmax(400px, 1.18fr) 92px;
+  }
+}
+
+.om-match-summary-box,
+.om-score-box {
+  width: 100%;
+}
+
+.om-summary-side,
+.om-summary-side .team-hover-trigger,
+.om-match-summary-box.count-summary .om-summary-side,
+.om-match-summary-box.count-summary .om-summary-side .team-hover-trigger,
+.om-score-box a,
+.om-score-box > .team-hover-trigger {
+  max-width: none;
+  overflow-wrap: normal;
+  word-break: keep-all;
+  hyphens: none;
+}
+
+.om-filter-bar select,
+.om-filter-bar .segmented-control button,
+.arena-filter-select select,
+.arena-filter-bar button {
+  min-height: 42px;
+  height: 42px;
+}
+
+html[data-theme="light"] .om-score-box,
+html[data-theme="light"] .om-match-summary-box,
+html[data-theme="light"] .om-match-info-box,
+html[data-theme="light"] .arena-lobby-card .om-match-summary-box {
+  background-color: rgba(255, 255, 255, 0.56);
+  background-image: none;
+}
