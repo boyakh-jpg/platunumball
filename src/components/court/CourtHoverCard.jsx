@@ -3,6 +3,7 @@ import { ExternalLink, MapPin, Navigation, Star } from "lucide-react";
 import HoverPortal from "../common/HoverPortal.jsx";
 import useBodyScrollLock from "../../hooks/useBodyScrollLock.js";
 import { COURTS } from "../../lib/constants.js";
+import { getCourtLayoutLabel, getCourtSurfaceLabel } from "../../lib/courts.js";
 import { getCourtHashtag } from "../../lib/handles.js";
 import { clearPinnedHoverPreview, getPinnedHoverPreviewKey, pinHoverPreview, subscribePinnedHoverPreview } from "../../lib/hoverPreviewPin.js";
 
@@ -137,10 +138,10 @@ export default function CourtHoverCard({ court, courtName = "", children, classN
           <span>{resolvedCourt.locationNote || "현장 접근 메모 없음"}</span>
         </span>
         <span className="court-hover-stats">
-          <span><b>{resolvedCourt.courtKind === "official" ? "정식구장" : "골대/길농"}</b><em>유형</em></span>
-          <span><b>{resolvedCourt.hoopCount ? `${resolvedCourt.hoopCount}개` : "-"}</b><em>골대</em></span>
+          <span><b>{getCourtSurfaceLabel(resolvedCourt)}</b><em>바닥</em></span>
+          <span><b>{getCourtLayoutLabel(resolvedCourt)}</b><em>형태</em></span>
+          <span><b>{resolvedCourt.courtKind === "official" ? "정식구장" : "골목/길농"}</b><em>유형</em></span>
           <span><b>{resolvedCourt.paid ? "유료" : "무료/미정"}</b><em>비용</em></span>
-          <span><b>{resolvedCourt.reservation ? "예약 가능" : "현장 사용"}</b><em>예약</em></span>
           <span><b>{resolvedCourt.lighting ? "조명 있음" : "확인 필요"}</b><em>야간</em></span>
           <span><b>{resolvedCourt.favorite ? "추천" : "일반"}</b><em><Star size={12} /> 상태</em></span>
         </span>

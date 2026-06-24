@@ -9,7 +9,7 @@ import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import { REPORT_REASONS, REPORT_TARGET_TYPES, getReportTargetType } from "../lib/reportReasons.js";
 import { formatStatLine, getMatchReservePlayerIds, getMatchSidePlayerIds } from "../lib/matchUtils.js";
 import { COURT_REQUEST_TRUST_MIN, FALSE_COURT_REPORT_TRUST_PENALTY, REGIONS } from "../lib/constants.js";
-import { getRegisteredCourts } from "../lib/courts.js";
+import { COURT_LAYOUT_OPTIONS, COURT_SURFACE_OPTIONS, getCourtLayoutLabel, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
 import { getCourtHashtag, getMatchHashtag, getUserHashtag } from "../lib/handles.js";
 import { getKakaoMapAppKey, openDaumPostcodeSearch, openKakaoMapPinPicker } from "../lib/kakaoAddress.js";
 import { hasAdminAccess } from "../lib/admin.js";
@@ -38,6 +38,8 @@ const DEFAULT_COURT_REQUEST = {
   lat: "",
   lng: "",
   courtKind: "street_hoop",
+  surfaceType: "asphalt",
+  courtLayout: "half",
   paid: false,
 };
 const DEFAULT_REFEREE_REQUEST = {
@@ -479,6 +481,8 @@ export default function Settings({ app, auth }) {
       lat: court.lat ?? court.latitude ?? "",
       lng: court.lng ?? court.longitude ?? "",
       courtKind: court.courtKind,
+      surfaceType: court.surfaceType ?? "unknown",
+      courtLayout: court.courtLayout ?? (court.hoopCount === 1 ? "half" : "full"),
       paid: court.paid,
     });
     setCourtAddressQuery(`${court.name} ${court.addressText}`);
@@ -863,6 +867,28 @@ export default function Settings({ app, auth }) {
                   <option value="실내">실내</option>
                 </select>
               </label>
+              <div className="form-grid two">
+                <label>
+                  바닥
+                  <select value={courtDraft.surfaceType} onChange={(event) => updateCourtDraft({ surfaceType: event.target.value })}>
+                    {COURT_SURFACE_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+                  </select>
+                </label>
+                <label>
+                  코트 형태
+                  <select value={courtDraft.courtLayout} onChange={(event) => updateCourtDraft({ courtLayout: event.target.value })}>
+                    {COURT_LAYOUT_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+                  </select>
+                </label>
+              </div>
+              <div className="arena-mini-note">
+                <div>
+                  <span>구장 속성</span>
+                  <strong>{getCourtSurfaceLabel(courtDraft)} · {getCourtLayoutLabel(courtDraft)}</strong>
+                  <em>반코트/골대 1개도 등록 가능하지만 경기방에서 5v5 경고를 표시합니다.</em>
+                </div>
+                <MapPin size={18} />
+              </div>
               <label>
                 찾아가는 메모
                 <textarea value={courtDraft.locationNote} placeholder="예: 나들목 지나 오른쪽 두 번째 골대" onChange={(event) => updateCourtDraft({ locationNote: event.target.value })} />

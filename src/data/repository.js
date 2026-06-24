@@ -13,6 +13,7 @@ import {
   TEAM_ROLES,
 } from "../lib/constants.js";
 import { initialState } from "../lib/mockData.js";
+import { normalizeCourtLayout, normalizeCourtSurfaceType } from "../lib/courts.js";
 import {
   getAgreementStatus,
   getApprovalStatus,
@@ -3766,6 +3767,8 @@ export function submitCourtRequest(state, draft = {}) {
     lat,
     lng,
     courtKind: draft.courtKind === "official" ? "official" : "street_hoop",
+    surfaceType: normalizeCourtSurfaceType(draft.surfaceType),
+    courtLayout: normalizeCourtLayout(draft.courtLayout),
     paid: Boolean(draft.paid),
     createdAt: new Date().toISOString(),
   };
@@ -4465,7 +4468,9 @@ export function approveCourtRequest(state, requestId) {
     lat: request.lat,
     lng: request.lng,
     courtKind: request.courtKind,
-    hoopCount: request.courtKind === "official" ? 2 : 1,
+    surfaceType: normalizeCourtSurfaceType(request.surfaceType),
+    courtLayout: normalizeCourtLayout(request.courtLayout),
+    hoopCount: ["half", "single_hoop"].includes(normalizeCourtLayout(request.courtLayout)) ? 1 : 2,
     lighting: false,
     paid: Boolean(request.paid),
     favorite: false,
@@ -5168,6 +5173,7 @@ export function updateRecruitingRoomRules(state, postId, patch = {}) {
     ...post,
     mode: `${sideCapacity}v${sideCapacity}`,
     sideCapacity,
+    court: patch.court === undefined ? post.court : String(patch.court || post.court || "미정").slice(0, 80),
     mmrRangeMode: nextMmrRangeMode,
     ratingScale: post.ranked === false ? 1 : getRecruitingRatingScale({ ...post, mmrRangeMode: nextMmrRangeMode }),
     rules: {
@@ -5246,6 +5252,7 @@ export function updateMatchRoomRules(state, matchId, patch = {}) {
     status: "agreed",
     rules: nextRules,
     sideCapacity,
+    court: patch.court === undefined ? match.court : String(patch.court || match.court || "미정").slice(0, 80),
     memo: patch.memo === undefined ? match.memo : String(patch.memo ?? "").slice(0, 500),
     stakes: patch.stakes === undefined ? match.stakes : String(patch.stakes ?? "").slice(0, 500),
     teamA: {

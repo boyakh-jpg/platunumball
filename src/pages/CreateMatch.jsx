@@ -8,7 +8,7 @@ import SearchPicker from "../components/common/SearchPicker.jsx";
 import RuleSelector from "../components/match/RuleSelector.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { MATCH_MODES, REFEREE_TRUST_MIN, REGIONS } from "../lib/constants.js";
-import { getRegisteredCourts } from "../lib/courts.js";
+import { getCourtLayoutLabel, getCourtPlayWarning, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
 import { getCourtHashtag, getTeamHashtag } from "../lib/handles.js";
 import { getPublicRoomMaxDateInput, isEligibleReferee } from "../lib/matchUtils.js";
 import { AGE_GROUPS, getAgeGroupForUser } from "../lib/profileSetup.js";
@@ -510,6 +510,7 @@ export default function CreateMatch({ app }) {
     () => registeredCourts.find((court) => court.name === draft.court) ?? defaultCourt,
     [defaultCourt, draft.court, registeredCourts],
   );
+  const courtPlayWarning = getCourtPlayWarning(selectedCourt, draft.mode);
   const selectCourt = (court) => {
     update({ court: court.name });
     setCourtQuery(court.name);
@@ -662,7 +663,7 @@ export default function CreateMatch({ app }) {
       onClick={() => selectCourt(court)}
     >
       <strong>{court.name}</strong>
-      <span>{court.region} · {court.type}</span>
+      <span>{court.region} / {court.type} / {getCourtSurfaceLabel(court)} / {getCourtLayoutLabel(court)}</span>
       <em>{getCourtHashtag(court)} · {isFavoriteCourt(court) ? "즐겨찾기" : "구장"}</em>
     </button>
   );
@@ -1006,6 +1007,14 @@ export default function CreateMatch({ app }) {
             {draft.courtReserved ? (
               <input value={draft.courtFee} placeholder="예약 금액/메모" onChange={(event) => update({ courtFee: event.target.value })} />
             ) : null}
+          </div>
+          <div className={courtPlayWarning ? "tier-range-note tier-range-note-warning" : "tier-range-note"}>
+            <div>
+              <span>구장 속성</span>
+              <strong>{getCourtSurfaceLabel(selectedCourt)} / {getCourtLayoutLabel(selectedCourt)}</strong>
+              <em>{courtPlayWarning || "선택한 방식과 구장 형태가 충돌하지 않습니다."}</em>
+            </div>
+            <Badge tone={courtPlayWarning ? "orange" : "green"}>{courtPlayWarning ? "경고" : "가능"}</Badge>
           </div>
         </Card>
 

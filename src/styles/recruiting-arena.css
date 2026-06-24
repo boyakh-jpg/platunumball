@@ -2089,6 +2089,10 @@ button.arena-room-player-slot {
   font-weight: 850;
 }
 
+.arena-room-edit-panel small.room-edit-warning {
+  color: var(--orange);
+}
+
 .arena-self-placement-actions {
   display: flex;
   min-width: 0;

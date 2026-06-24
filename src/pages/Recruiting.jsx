@@ -28,7 +28,7 @@ import { getTierEmblemSrc } from "../components/rating/TierEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { MATCH_MODES, PLAYER_POSITIONS, PLAYER_STAT_FIELDS, REGIONS } from "../lib/constants.js";
-import { getRegisteredCourts } from "../lib/courts.js";
+import { getCourtLayoutLabel, getCourtPlayWarning, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
 import {
   MMR_RANGE_POLICIES,
   RECRUITING_JOIN_MODES,
@@ -197,6 +197,7 @@ function getPlayerMmrAverage(playerIds = [], userById = {}, fallback = 1200) {
 
 function getRoomEditDraft(post) {
   return {
+    court: post.court ?? "",
     sideCapacity: getRecruitingSideCapacity(post),
     matchJoinMode: post.hostJoinMode === "team" ? "team" : "player",
     mmrRangeMode: post.mmrRangeMode ?? post.roomState?.mmrRangeMode ?? "narrow",
@@ -1613,6 +1614,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
   );
   const userById = useMemo(() => Object.fromEntries(app.state.users.map((user) => [user.id, user])), [app.state.users]);
   const teamById = useMemo(() => Object.fromEntries(app.state.teams.map((team) => [team.id, team])), [app.state.teams]);
+  const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
   const [joinDraftByPost, setJoinDraftByPost] = useState({});
   const [chatDraftByPost, setChatDraftByPost] = useState({});
   const [inviteDraft, setInviteDraft] = useState(null);
@@ -1796,6 +1798,10 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
         const roomEditRange = roomEditDraft
           ? getRecruitingTierRange(getRecruitingTargetMmr(selectedPost, app.state), selectedPost.ranked !== false, roomEditDraft.mmrRangeMode)
           : null;
+        const roomEditCourt = roomEditDraft
+          ? registeredCourts.find((court) => court.name === roomEditDraft.court) ?? registeredCourts.find((court) => court.name === selectedPost.court) ?? null
+          : null;
+        const roomEditCourtWarning = roomEditDraft && roomEditCourt ? getCourtPlayWarning(roomEditCourt, `${roomEditDraft.sideCapacity}v${roomEditDraft.sideCapacity}`) : "";
         const maxSideFilled = Math.max(lobby.sides.teamA.filled, lobby.sides.teamB.filled);
         const roomEditCapacityValid = !roomEditDraft || Number(roomEditDraft.sideCapacity) >= maxSideFilled;
         const playingIds = [...lobby.sides.teamA.projectedPlayers, ...lobby.sides.teamB.projectedPlayers];
@@ -2341,6 +2347,16 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                         </select>
                       </label>
                       <label>
+                        구장
+                        <select value={roomEditDraft.court} onChange={(event) => updateRoomEditDraft(selectedPost, { court: event.target.value })}>
+                          {registeredCourts.map((court) => (
+                            <option key={court.id ?? court.name} value={court.name}>
+                              {court.name} / {getCourtSurfaceLabel(court)} / {getCourtLayoutLabel(court)}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
                         목표 점수
                         <input type="number" min="7" max="31" value={roomEditDraft.targetScore} onChange={(event) => updateRoomEditDraft(selectedPost, { targetScore: event.target.value })} />
                       </label>
@@ -2381,6 +2397,12 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                       ) : null}
                     </div>
                     {roomEditRange ? <small>{roomEditRange.detail}</small> : null}
+                    {roomEditCourt ? (
+                      <small className={roomEditCourtWarning ? "room-edit-warning" : ""}>
+                        {getCourtSurfaceLabel(roomEditCourt)} / {getCourtLayoutLabel(roomEditCourt)}
+                        {roomEditCourtWarning ? ` · ${roomEditCourtWarning}` : " · 선택한 방식과 구장 형태가 충돌하지 않습니다."}
+                      </small>
+                    ) : null}
                     <div className="arena-field-grid">
                       <label>
                         공격권 룰
