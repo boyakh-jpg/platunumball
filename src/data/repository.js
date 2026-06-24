@@ -3044,6 +3044,20 @@ function getMatchAttendance(match = {}) {
   };
 }
 
+function applyOperatorAttendance(match = {}, operatorId = "") {
+  const placement = getMatchPlayerPlacement(match, operatorId);
+  if (!placement) return match;
+  const attendance = getMatchAttendance(match);
+  if (attendance[placement.side].includes(operatorId)) return match;
+  return {
+    ...match,
+    attendance: {
+      ...attendance,
+      [placement.side]: uniquePlayerIds([...attendance[placement.side], operatorId]),
+    },
+  };
+}
+
 function getMatchAttendanceTargetIds(match = {}, sideName) {
   return uniquePlayerIds([
     ...(match[sideName]?.players ?? []),
@@ -3065,6 +3079,21 @@ export function checkInMatchPlayer(state, matchId, sideName, playerId) {
   if (disciplineBlock) return disciplineBlock;
   const match = state.matches.find((item) => item.id === matchId);
   if (!match || !playerId) return state;
+  if (playerId === state.currentUserId) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "본인 출석 불가",
+          body: "출석체크는 심판 또는 방장이 다른 참가자만 처리합니다.",
+          tone: "orange",
+          matchId,
+        },
+        ...state.notifications,
+      ],
+    };
+  }
   if (!currentUserCanStartMatch(state, match)) return state;
   if (getMatchRoomPhase(match).phase !== "checkin" || match.startedAt || match.endedAt || match.result) return state;
   const placement = getMatchPlayerPlacement(match, playerId);
@@ -3155,7 +3184,8 @@ export function confirmMatchRefereeAbsence(state, matchId) {
 }
 
 export function startMatch(state, matchId) {
-  const match = state.matches.find((item) => item.id === matchId);
+  const rawMatch = state.matches.find((item) => item.id === matchId);
+  const match = applyOperatorAttendance(rawMatch, state.currentUserId);
   if (!match || !["contract", "agreed"].includes(match.status) || match.result || match.endedAt) return state;
   if (!currentUserCanStartMatch(state, match)) return state;
   if (getMatchRoomPhase(match).phase !== "checkin") return state;

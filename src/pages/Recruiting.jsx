@@ -1100,6 +1100,7 @@ function RoomKickPanel({
   allowSideMove = false,
   attendanceBySide = null,
   requireMissingAttendance = false,
+  currentUserId = "",
 }) {
   const rows = [];
   (lobby.entries ?? []).forEach((entry) => {
@@ -1110,7 +1111,7 @@ function RoomKickPanel({
       ...activeIds.map((playerId) => ({ playerId, reserve: false })),
       ...reserveIds.map((playerId) => ({ playerId, reserve: true })),
     ].forEach(({ playerId, reserve }) => {
-      if (!playerId || (entry.fixed && playerId === entry.playerId)) return;
+      if (!playerId || (!attendanceBySide && entry.fixed && playerId === entry.playerId)) return;
       const user = userById[playerId];
       if (!user) return;
       rows.push({ entry, partyEntry, playerId, reserve, user });
@@ -1128,7 +1129,8 @@ function RoomKickPanel({
       <div className="arena-host-kick-list">
         {rows.map(({ entry, partyEntry, playerId, reserve, user }) => {
           const checkedIn = Boolean(attendanceBySide?.[entry.side]?.includes(playerId));
-          const kickDisabled = requireMissingAttendance && checkedIn;
+          const selfRow = playerId === currentUserId;
+          const kickDisabled = selfRow || (requireMissingAttendance && checkedIn);
           return (
             <div key={`${entry.id}-${playerId}`} className="arena-host-kick-row">
               <PlayerHoverCard user={user} teams={teams} as="span">
@@ -1139,7 +1141,7 @@ function RoomKickPanel({
                   {attendanceBySide ? <i>{checkedIn ? "출석 완료" : "미출석"}</i> : null}
                 </span>
               </PlayerHoverCard>
-              {attendanceBySide && onCheckInPlayer ? (
+              {attendanceBySide && onCheckInPlayer && !selfRow ? (
                 <Button
                   type="button"
                   size="sm"
@@ -1149,7 +1151,7 @@ function RoomKickPanel({
                 >
                   {checkedIn ? "출석 완료" : "출석"}
                 </Button>
-              ) : null}
+              ) : attendanceBySide && selfRow ? <span className="form-chip">본인</span> : null}
               <Button
                 type="button"
                 size="sm"
@@ -2283,6 +2285,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                   allowSideMove={canMoveMatchSides}
                   attendanceBySide={matchRoom ? sourceMatchAttendance : null}
                   requireMissingAttendance={canManageMatchCheckin}
+                  currentUserId={app.currentUser.id}
                 />
               ) : null}
 
