@@ -166,6 +166,11 @@ export function getMatchHostPlayerId(match = {}) {
   return match.createdBy || match.hostPlayerId || match.createdPlayerId || match.playerId || match.teamA?.players?.[0] || "";
 }
 
+export function canUserResolveMatchDispute(match = {}, userId = "") {
+  if (!userId || match.status !== "disputed") return false;
+  return match.refereeId ? match.refereeId === userId : getMatchHostPlayerId(match) === userId;
+}
+
 export function getMatchTrustFeedbackParticipantIds(match = {}) {
   const statRecorders = normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders);
   return uniquePlayerIds([

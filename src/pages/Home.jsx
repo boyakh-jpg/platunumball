@@ -11,7 +11,7 @@ import TierEmblem from "../components/rating/TierEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { getRegisteredCourts } from "../lib/courts.js";
 import { getCourtHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
-import { getAllowedStatFields, getMatchHostPlayerId, getMatchRecordWindow, getMatchReservePlayerIds, getMatchRoomPhase, getPlayerSideName, getPlayerStatSubmitted, getPublicRoomTimingStatus, isInstantRoom } from "../lib/matchUtils.js";
+import { canUserResolveMatchDispute, getAllowedStatFields, getMatchRecordWindow, getMatchReservePlayerIds, getMatchRoomPhase, getPlayerSideName, getPlayerStatSubmitted, getPublicRoomTimingStatus, isInstantRoom } from "../lib/matchUtils.js";
 import { RECRUITING_TYPES, getPendingRecruitingInvitations, getRecruitingLobby, getRecruitingRoomOwnerId, isNationalRecruitingPost, isRecruitingPostForUser } from "../lib/recruiting.js";
 import { getCurrentSeason, getPlayerSeasonRows, getSeasonProgress } from "../lib/season.js";
 import { getTierDivision } from "../lib/tier.js";
@@ -61,11 +61,6 @@ function userNeedsApproval(match, userId) {
   const sideName = getUserSide(match, userId);
   if (getMatchRoomPhase(match).phase === "record") return false;
   return Boolean(sideName && match.status === "approval" && !(match.approvals?.[sideName] ?? []).includes(userId));
-}
-
-function userCanResolveDispute(match, userId) {
-  if (match.status !== "disputed") return false;
-  return match.refereeId ? match.refereeId === userId : getMatchHostPlayerId(match) === userId;
 }
 
 function userNeedsResultInput(match, userId) {
@@ -203,7 +198,7 @@ export default function Home({ app }) {
             icon: CalendarDays,
           };
         }
-        if (phase === "dispute" && (userNeedsApproval(match, user.id) || userCanResolveDispute(match, user.id))) {
+        if (phase === "dispute" && (userNeedsApproval(match, user.id) || canUserResolveMatchDispute(match, user.id))) {
           return {
             id: `approval-${match.id}`,
             priority: 4,
