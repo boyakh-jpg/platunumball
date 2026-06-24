@@ -102,6 +102,10 @@ function decodeBase64UrlJson(value) {
   return JSON.parse(window.atob(padded));
 }
 
+function getAppUserIdFromOAuthState(state = "") {
+  return String(state).split(".")[0] || "";
+}
+
 export function consumeDiscordOAuthResult(userId = "") {
   if (typeof window === "undefined") return null;
   const url = new URL(window.location.href);
@@ -126,14 +130,18 @@ export function consumeDiscordOAuthResult(userId = "") {
   window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
 
   const stateExpired = !stored?.createdAt || Date.now() - stored.createdAt > 10 * 60 * 1000;
-  if (!stored || stored.state !== state || stored.userId !== userId || stateExpired) {
+  if (!stored || stored.state !== state || stateExpired) {
     return { status: "error", error: "state_mismatch" };
   }
   if (error) return { status: "error", error };
 
   if (!encodedConnection) return { status: "error", error: "missing_connection" };
   try {
-    return { status: "linked", connection: decodeBase64UrlJson(encodedConnection) };
+    return {
+      status: "linked",
+      appUserId: stored.userId || getAppUserIdFromOAuthState(state) || userId,
+      connection: decodeBase64UrlJson(encodedConnection),
+    };
   } catch {
     return { status: "error", error: "invalid_connection" };
   }

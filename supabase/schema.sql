@@ -18,6 +18,14 @@ to authenticated
 using (false)
 with check (false);
 
+do $$
+begin
+  if to_regclass('public.profiles') is not null then
+    execute 'alter table public.profiles add column if not exists discord_connection jsonb';
+  end if;
+end;
+$$;
+
 create or replace function public.enforce_team_membership_limit()
 returns trigger
 language plpgsql

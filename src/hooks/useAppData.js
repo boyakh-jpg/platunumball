@@ -235,7 +235,7 @@ export function useAppData(authUserId = null) {
       startRefereeExamAttempt: (draft) => setState((prev) => startRefereeExamAttempt({ ...prev, currentUserId }, draft)),
       finishRefereeExamAttempt: (attemptId, result) => setState((prev) => finishRefereeExamAttempt({ ...prev, currentUserId }, attemptId, result)),
       submitRefereeRequest: (draft) => setState((prev) => submitRefereeRequest({ ...prev, currentUserId }, draft)),
-      updateProfile: (patch) => setState((prev) => updateProfile({ ...prev, currentUserId }, patch)),
+      updateProfile: (patch, targetUserId = currentUserId) => setState((prev) => updateProfile({ ...prev, currentUserId }, patch, targetUserId)),
       createTeam: (draft) => setState((prev) => createTeam({ ...prev, currentUserId }, draft)),
       deleteTeam: (teamId) => setState((prev) => deleteTeam({ ...prev, currentUserId }, teamId)),
       createRecruitingPost: (draft) => setState((prev) => createRecruitingPost({ ...prev, currentUserId }, draft)),

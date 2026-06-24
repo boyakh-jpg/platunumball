@@ -899,8 +899,9 @@ flowchart TD
 10. Discord DM 링크는 앱 내부 알림의 `recruitingPostId` 또는 `matchId`에서 만든 웹 경로를 포함한다.
 11. 초대 알림에만 Discord 수락/거절 버튼 payload를 붙인다. 버튼은 권한 원본이 아니며 서버가 `discordUserId -> userId`, 초대 대상, pending 상태, 방 정원, 후보 정원, 징계 상태를 다시 검증해야 한다.
 12. Discord 버튼 처리 실패 또는 충돌 시 앱 내부 초대/알림 상태를 원본으로 유지하고, Discord 응답은 웹 링크로 재확인하게 한다.
-13. `/api/auth/discord/start`와 `/api/auth/discord/callback`은 Discord 공개 프로필 정보를 받아 현재 앱 프로필에 저장하는 OAuth 연결 경로다.
-14. 현재 앱 상태는 localStorage 중심이므로 Discord DM 자동 발송과 버튼 수락/거절 커밋은 DB에 `discordNotificationDeliveries`와 초대 상태가 서버에서 읽히기 전까지 완료 기능으로 보지 않는다.
+13. `/api/auth/discord/start`와 `/api/auth/discord/callback`은 Discord 공개 프로필 정보를 받아 OAuth state에 기록된 앱 프로필에 저장하는 연결 경로다.
+14. normalized Supabase 저장에서는 `profiles.discord_connection`에 `discordConnection`을 보존한다.
+15. 현재 앱 상태는 localStorage 중심이므로 Discord DM 자동 발송과 버튼 수락/거절 커밋은 DB에 `discordNotificationDeliveries`와 초대 상태가 서버에서 읽히기 전까지 완료 기능으로 보지 않는다.
 
 ## 2026-06-24 내 진행 일정 지난 경기 필터
 

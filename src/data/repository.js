@@ -706,6 +706,7 @@ function fromRemoteProfile(row) {
     avatarColor: row.avatar_color,
     testLoginId: row.test_login_id,
     testPassword: "test-0000",
+    discordConnection: row.discord_connection ?? null,
     ratings: row.ratings ?? { integrated: 1200, modes: {} },
   };
 }
@@ -1145,6 +1146,7 @@ async function saveNormalizedRemoteState(state) {
     club: user.club,
     streak: user.streak ?? 0,
     test_login_id: user.testLoginId,
+    discord_connection: user.discordConnection ?? null,
     updated_at: new Date().toISOString(),
   }));
   const teamRows = state.teams.map((team) => ({
@@ -7059,10 +7061,11 @@ export function markAllNotificationsRead(state) {
   };
 }
 
-export function updateProfile(state, patch) {
+export function updateProfile(state, patch, targetUserId = state.currentUserId) {
+  const profileUserId = targetUserId || state.currentUserId;
   return {
     ...state,
-    users: state.users.map((user) => (user.id === state.currentUserId ? { ...user, ...patch } : user)),
+    users: state.users.map((user) => (user.id === profileUserId ? { ...user, ...patch } : user)),
   };
 }
 

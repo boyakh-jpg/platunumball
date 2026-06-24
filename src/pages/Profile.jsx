@@ -155,7 +155,9 @@ export default function Profile({ app }) {
       console.warn("Discord link failed.", discordOAuthResult.error);
       return;
     }
-    app.actions.updateProfile({ discordConnection: discordOAuthResult.connection });
+    const targetUserId = discordOAuthResult.appUserId || user.id;
+    app.actions.updateProfile({ discordConnection: discordOAuthResult.connection }, targetUserId);
+    if (targetUserId !== user.id) app.actions.switchUser(targetUserId);
     updateDiscordChannel({ enabled: true });
   }, [user.id]);
 
