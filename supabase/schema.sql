@@ -91,7 +91,7 @@ begin
       select 1
       from public.profiles
       where hashtag is not null
-      group by lower(regexp_replace(hashtag, ''^[@#]+'', ''''))
+      group by lower(regexp_replace(hashtag, '^[@#]+', ''))
       having count(*) > 1
     ) then
       execute 'create unique index if not exists profiles_hashtag_unique on public.profiles (lower(regexp_replace(hashtag, ''^[@#]+'', ''''))) where hashtag is not null';
