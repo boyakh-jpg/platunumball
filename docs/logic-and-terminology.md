@@ -81,6 +81,13 @@ UI/CSS/반응형/라이트·다크 세부 기준은 `docs/design-system.md`를 �
 | WAIT | 확인/동의 필요 | 대기방 상태와 섞지 않기 |
 | CONFIRM | 룰 변경 후 다시 확인하는 버튼 | 단순 참가 버튼으로 쓰지 않기 |
 
+## 2026-06-24 계정-프로필 1:1 원칙
+
+1. 실제 Google/Supabase `auth.users.id` 하나는 RankBall 프로필 하나에만 연결한다.
+2. 앱 상태에서는 `user.authUserId`로 연결하고, normalized Supabase에서는 `profiles.auth_user_id` unique index로 막는다.
+3. 실제 auth 프로필은 Settings의 테스트 계정 전환으로 바꾸지 못한다.
+4. `test-*`와 local demo 계정은 개발 검증용 전환을 유지한다.
+
 ## 데이터 축
 
 | 데이터 | 현재 위치 | 역할 |

@@ -36,7 +36,8 @@
 - 심판 시험 문제 추첨, 채점, 주 1회 응시 제한은 서버 함수/DB 정책으로 이동. 클라이언트 번들에는 정답 bank를 두지 않는다.
 
 - 소유권 기준을 Supabase Auth ID로 이전:
-  - `profiles.user_id = auth.users.id`
+  - `profiles.auth_user_id = auth.users.id`
+  - `profiles.auth_user_id`는 unique이며 Google/Supabase 계정 하나는 프로필 하나에만 연결한다.
   - match participants, recruiting posts, applications, notifications, favorites, reports는 `auth.users.id` 기준으로 연결
 - public write 정책을 owner/captain/referee/recorder 정책으로 교체.
 - 현재 app-state 동기화 방식을 normalized table read와 좁은 write로 분리.

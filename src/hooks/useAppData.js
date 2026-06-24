@@ -86,6 +86,28 @@ function sortByRating(items, selector) {
   return [...items].sort((a, b) => selector(b) - selector(a));
 }
 
+function isPersistentAuthUserId(authUserId) {
+  return Boolean(authUserId && !String(authUserId).startsWith("test-"));
+}
+
+function getBoundAuthProfileId(state, authUserId, profileBindings, profileKey) {
+  const users = state.users ?? [];
+  if (isPersistentAuthUserId(authUserId)) {
+    const ownedUser = users.find((user) => user.authUserId === authUserId);
+    if (ownedUser) return ownedUser.id;
+
+    const boundUser = users.find((user) => user.id === profileBindings[profileKey]);
+    if (boundUser && (!boundUser.authUserId || boundUser.authUserId === authUserId)) return boundUser.id;
+
+    const currentUser = users.find((user) => user.id === state.currentUserId);
+    if (currentUser && !currentUser.authUserId) return currentUser.id;
+
+    return users.find((user) => !user.authUserId)?.id ?? users[0]?.id;
+  }
+
+  return profileBindings[profileKey] ?? state.currentUserId ?? users[0]?.id;
+}
+
 function isLinkedDiscordConnection(connection) {
   return Boolean(connection?.status === "linked" && connection.userId);
 }
@@ -126,7 +148,8 @@ export function useAppData(authUserId = null) {
   const remoteReadyRef = useRef(!isSupabaseConfigured);
   const skipNextRemoteSaveRef = useRef(false);
   const profileKey = authUserId ?? "local-demo";
-  const currentUserId = profileBindings[profileKey] ?? state.currentUserId ?? state.users[0]?.id;
+  const profileLocked = isPersistentAuthUserId(authUserId);
+  const currentUserId = getBoundAuthProfileId(state, authUserId, profileBindings, profileKey);
 
   useEffect(() => {
     saveState(state);
@@ -182,6 +205,22 @@ export function useAppData(authUserId = null) {
     };
   }, []);
 
+  useEffect(() => {
+    if (!profileLocked || !authUserId || !currentUserId) return;
+    if (profileBindings[profileKey] !== currentUserId) {
+      setProfileBindings((current) => {
+        const next = { ...current, [profileKey]: currentUserId };
+        writeProfileBindings(next);
+        return next;
+      });
+    }
+    setState((prev) => {
+      const profile = prev.users.find((user) => user.id === currentUserId);
+      if (!profile || profile.authUserId === authUserId || (profile.authUserId && profile.authUserId !== authUserId)) return prev;
+      return updateProfile({ ...prev, currentUserId }, { authUserId }, currentUserId);
+    });
+  }, [authUserId, currentUserId, profileKey, profileLocked, profileBindings]);
+
   const currentUser = useMemo(
     () => state.users.find((user) => user.id === currentUserId) ?? state.users[0],
     [currentUserId, state.users],
@@ -200,12 +239,14 @@ export function useAppData(authUserId = null) {
   const actions = useMemo(
     () => ({
       switchUser: (userId) => {
+        if (profileLocked) return false;
         setProfileBindings((current) => {
           const next = { ...current, [profileKey]: userId };
           writeProfileBindings(next);
           return next;
         });
         setState((prev) => ({ ...prev, currentUserId: userId }));
+        return true;
       },
       createMatch: (draft) => {
         let createdId = null;
@@ -267,7 +308,11 @@ export function useAppData(authUserId = null) {
       startRefereeExamAttempt: (draft) => setState((prev) => startRefereeExamAttempt({ ...prev, currentUserId }, draft)),
       finishRefereeExamAttempt: (attemptId, result) => setState((prev) => finishRefereeExamAttempt({ ...prev, currentUserId }, attemptId, result)),
       submitRefereeRequest: (draft) => setState((prev) => submitRefereeRequest({ ...prev, currentUserId }, draft)),
-      updateProfile: (patch, targetUserId = currentUserId) => setState((prev) => updateProfile({ ...prev, currentUserId }, patch, targetUserId)),
+      updateProfile: (patch, targetUserId = currentUserId) => {
+        const safeTargetUserId = profileLocked ? currentUserId : targetUserId;
+        const safePatch = profileLocked ? { ...patch, authUserId } : patch;
+        setState((prev) => updateProfile({ ...prev, currentUserId }, safePatch, safeTargetUserId));
+      },
       createTeam: (draft) => setState((prev) => createTeam({ ...prev, currentUserId }, draft)),
       deleteTeam: (teamId) => setState((prev) => deleteTeam({ ...prev, currentUserId }, teamId)),
       createRecruitingPost: (draft) => setState((prev) => createRecruitingPost({ ...prev, currentUserId }, draft)),
@@ -326,8 +371,8 @@ export function useAppData(authUserId = null) {
       removeTeamMember: (teamId, userId) => setState((prev) => removeTeamMember({ ...prev, currentUserId }, teamId, userId)),
       reset: () => setState(resetState()),
     }),
-    [currentUserId, profileKey],
+    [authUserId, currentUserId, profileKey, profileLocked],
   );
 
-  return { state: { ...state, currentUserId }, currentUser, currentUserId, profileBound: true, rankings, actions };
+  return { state: { ...state, currentUserId }, currentUser, currentUserId, profileBound: true, profileLocked, rankings, actions };
 }

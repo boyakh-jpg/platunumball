@@ -657,25 +657,40 @@ export default function Settings({ app, auth }) {
               </div>
               <UserRound size={22} />
             </div>
-            <SearchPicker
-              value={accountQuery}
-              onChange={setAccountQuery}
-              placeholder="이름, 지역, 포지션, rankball-001 검색"
-              items={visibleTestAccounts}
-              idleItems={visibleTestAccounts}
-              idleTitle="테스트 계정"
-              showIdleOnFocus
-              fieldClassName="admin-account-search"
-              renderItem={renderAccountSearchItem}
-            />
-            <label>
-              전체 계정 선택
-              <select value={app.currentUserId} onChange={(event) => app.actions.switchUser(event.target.value)}>
-                {app.state.users.map((user) => (
-                  <option key={user.id} value={user.id}>{user.testLoginId ? `${user.testLoginId} · ` : ""}{user.name} · {user.region} · {user.position}</option>
-                ))}
-              </select>
-            </label>
+            {app.profileLocked ? (
+              <div className="contract-grid single">
+                <div>
+                  <span>프로필 고정</span>
+                  <strong>{app.currentUser?.name ?? app.currentUserId}</strong>
+                </div>
+                <div>
+                  <span>전환 제한</span>
+                  <strong>Google 계정당 1개</strong>
+                </div>
+              </div>
+            ) : (
+              <>
+                <SearchPicker
+                  value={accountQuery}
+                  onChange={setAccountQuery}
+                  placeholder="이름, 지역, 포지션, rankball-001 검색"
+                  items={visibleTestAccounts}
+                  idleItems={visibleTestAccounts}
+                  idleTitle="테스트 계정"
+                  showIdleOnFocus
+                  fieldClassName="admin-account-search"
+                  renderItem={renderAccountSearchItem}
+                />
+                <label>
+                  전체 계정 선택
+                  <select value={app.currentUserId} onChange={(event) => app.actions.switchUser(event.target.value)}>
+                    {app.state.users.map((user) => (
+                      <option key={user.id} value={user.id}>{user.testLoginId ? `${user.testLoginId} · ` : ""}{user.name} · {user.region} · {user.position}</option>
+                    ))}
+                  </select>
+                </label>
+              </>
+            )}
           </Card>
 
           <Card className="section-card">
