@@ -85,6 +85,36 @@ function sortByRating(items, selector) {
   return [...items].sort((a, b) => selector(b) - selector(a));
 }
 
+function isLinkedDiscordConnection(connection) {
+  return Boolean(connection?.status === "linked" && connection.userId);
+}
+
+function preserveLocalDiscordState(localState, remoteState) {
+  const localUsersById = new Map((localState?.users ?? []).map((user) => [user.id, user]));
+  const remoteUsers = remoteState?.users ?? [];
+  const users = remoteUsers.map((remoteUser) => {
+    const localConnection = localUsersById.get(remoteUser.id)?.discordConnection;
+    if (!isLinkedDiscordConnection(localConnection) || isLinkedDiscordConnection(remoteUser.discordConnection)) return remoteUser;
+    return { ...remoteUser, discordConnection: localConnection };
+  });
+  const localDiscordChannel = localState?.settings?.notificationChannels?.discord;
+  const remoteDiscordChannel = remoteState?.settings?.notificationChannels?.discord;
+  if (!users.some((user, index) => user !== remoteUsers[index]) && (!localDiscordChannel?.enabled || remoteDiscordChannel?.enabled)) {
+    return remoteState;
+  }
+  return {
+    ...remoteState,
+    users,
+    settings: {
+      ...remoteState.settings,
+      notificationChannels: {
+        ...remoteState.settings?.notificationChannels,
+        discord: localDiscordChannel?.enabled && !remoteDiscordChannel?.enabled ? localDiscordChannel : remoteDiscordChannel,
+      },
+    },
+  };
+}
+
 export function useAppData(authUserId = null) {
   const [state, setRawState] = useState(() => syncNotificationDeliveries(loadState()));
   const setState = useCallback((updater) => {
@@ -129,7 +159,7 @@ export function useAppData(authUserId = null) {
         if (remoteState) {
           const maintainedState = runAutomaticStateMaintenance(remoteState);
           skipNextRemoteSaveRef.current = maintainedState === remoteState;
-          setState(maintainedState);
+          setState((prev) => preserveLocalDiscordState(prev, maintainedState));
         }
         remoteReadyRef.current = true;
       })
@@ -141,7 +171,7 @@ export function useAppData(authUserId = null) {
     const unsubscribe = subscribeRemoteState((remoteState) => {
       const maintainedState = runAutomaticStateMaintenance(remoteState);
       skipNextRemoteSaveRef.current = maintainedState === remoteState;
-      setState(maintainedState);
+      setState((prev) => preserveLocalDiscordState(prev, maintainedState));
     });
 
     return () => {

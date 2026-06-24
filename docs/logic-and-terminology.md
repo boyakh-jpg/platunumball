@@ -901,7 +901,8 @@ flowchart TD
 12. Discord 버튼 처리 실패 또는 충돌 시 앱 내부 초대/알림 상태를 원본으로 유지하고, Discord 응답은 웹 링크로 재확인하게 한다.
 13. `/api/auth/discord/start`와 `/api/auth/discord/callback`은 Discord 공개 프로필 정보를 받아 OAuth state에 기록된 앱 프로필에 저장하는 연결 경로다.
 14. normalized Supabase 저장에서는 `profiles.discord_connection`에 `discordConnection`을 보존한다.
-15. 현재 앱 상태는 localStorage 중심이므로 Discord DM 자동 발송과 버튼 수락/거절 커밋은 DB에 `discordNotificationDeliveries`와 초대 상태가 서버에서 읽히기 전까지 완료 기능으로 보지 않는다.
+15. OAuth 승인 직후 아직 원격 저장 전인 로컬 `discordConnection`은 Supabase hydration/subscription이 예전 state를 내려도 지우지 않는다.
+16. 현재 앱 상태는 localStorage 중심이므로 Discord DM 자동 발송과 버튼 수락/거절 커밋은 DB에 `discordNotificationDeliveries`와 초대 상태가 서버에서 읽히기 전까지 완료 기능으로 보지 않는다.
 
 ## 2026-06-24 내 진행 일정 지난 경기 필터
 
