@@ -733,10 +733,16 @@ assertFlow(!getMatch(state, refereeAbsentMatchId).refereeId && getMatch(state, r
   formerRefereeId: getMatch(state, refereeAbsentMatchId).formerRefereeId,
 });
 state = withUser(state, "u1", (scoped) => checkInMatchPlayer(scoped, refereeAbsentMatchId, "teamA", "u1"));
+assertFlow(!getMatch(state, refereeAbsentMatchId).attendance.teamA.includes("u1"), "심판 미출석 전환 후 방장 self-check 금지", {
+  attendance: getMatch(state, refereeAbsentMatchId).attendance,
+});
 state = withUser(state, "u1", (scoped) => checkInMatchPlayer(scoped, refereeAbsentMatchId, "teamB", "u6"));
 state = withUser(state, "u1", (scoped) => startMatch(scoped, refereeAbsentMatchId));
 assertFlow(getMatchRoomPhase(getMatch(state, refereeAbsentMatchId)).phase === "live", "심판 미출석 인정 후 방장 시작", {
   phase: getMatchRoomPhase(getMatch(state, refereeAbsentMatchId)),
+});
+assertFlow(getMatch(state, refereeAbsentMatchId).attendance.teamA.includes("u1"), "심판 미출석 전환 후 방장 시작 시 본인 출석 자동기록", {
+  attendance: getMatch(state, refereeAbsentMatchId).attendance,
 });
 
 room = createRoom(state, "u12", {
