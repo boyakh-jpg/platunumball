@@ -236,6 +236,50 @@ h3 {
   padding: 10px;
 }
 
+.auth-browser-warning {
+  display: grid;
+  gap: 10px;
+  border: 1px solid rgba(255, 205, 96, 0.28);
+  border-radius: var(--radius);
+  background: rgba(255, 205, 96, 0.08);
+  padding: 12px;
+}
+
+.auth-browser-warning strong {
+  color: var(--gold);
+  font-size: 0.95rem;
+}
+
+.auth-browser-warning span,
+.auth-browser-warning small {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 750;
+  line-height: 1.45;
+}
+
+.auth-browser-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.auth-browser-actions button,
+.auth-browser-actions a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 38px;
+  border: 1px solid rgba(255, 205, 96, 0.28);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 900;
+  padding: 8px 11px;
+}
+
 .auth-session-line {
   display: flex;
   min-width: 0;

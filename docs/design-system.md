@@ -515,3 +515,9 @@ UI 수정 전:
 1. 심판 룰북 카드는 모든 사용자에게 보여준다.
 2. 심판 시험 패널과 심판 등록요청 폼은 신뢰도 기준 통과자에게만 렌더링한다.
 3. 신뢰도 미달 사용자는 시험 버튼 대신 필요한 신뢰도와 현재 신뢰도 안내만 본다.
+
+## 2026-06-24 Login OAuth browser guard
+
+1. Google OAuth는 KakaoTalk, Instagram, Naver app, Line 같은 embedded browser에서 시도하지 않는다.
+2. 로그인 화면은 embedded browser를 감지하면 작은 안내 패널, 링크 복사, 새 창 열기 액션을 먼저 보여준다.
+3. 안내 패널은 기존 `auth-card` 안의 flat warning surface로 처리하고 별도 모달을 만들지 않는다.
