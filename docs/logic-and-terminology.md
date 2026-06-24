@@ -966,3 +966,14 @@ flowchart TD
 7. 구장 승인은 `rankball_approve_court_request()`에서 승인 구장 생성, 요청 상태 변경, audit log, 알림을 한 transaction으로 처리한다.
 8. 허위 구장 신고는 `rankball_report_court_request()`에서 신고 생성, 요청자 신뢰도 차감, 요청 상태 변경, 알림을 한 transaction으로 처리한다.
 9. 일반 관리자 신고 처리, 임명/징계 처리, Discord DM 발송은 아직 별도 server action으로 분리해야 한다.
+
+## 2026-06-24 RLS hardening
+
+1. public tournament read는 `visibility='public'`만 허용한다.
+2. private tournament read는 생성자, 참가 팀 멤버, 승인자, 관리자만 허용한다.
+3. `profiles.auth_user_id`는 UUID와 `auth.users(id)` FK를 기준으로 한다.
+4. `profiles.auth_user_id` 중복, non-uuid, orphan 값은 migration 실패로 처리한다.
+5. 알림 읽음 처리는 row update가 아니라 `read_at` 전용 RPC로 처리한다.
+6. 신고 목록은 관리자 read policy로만 운영자가 볼 수 있다.
+7. 관리자/징계/audit write는 client policy를 만들지 않고 server action만 사용한다.
+8. 승인 구장 테이블은 authenticated read만 허용하고 내부 요청자/승인자 정보를 payload에 섞지 않는다.

@@ -21,7 +21,7 @@ with check (false);
 do $$
 begin
   if to_regclass('public.profiles') is not null then
-    execute 'alter table public.profiles add column if not exists auth_user_id text';
+    execute 'alter table public.profiles add column if not exists auth_user_id uuid';
     execute 'alter table public.profiles add column if not exists hashtag text';
     execute 'alter table public.profiles add column if not exists birth_year integer';
     execute 'alter table public.profiles add column if not exists age_group text';
@@ -36,15 +36,57 @@ begin
     execute 'alter table public.profiles add column if not exists discord_connection jsonb';
     execute 'alter table public.profiles add column if not exists discord_user_id text';
     execute 'update public.profiles set hashtag = lower(regexp_replace(coalesce(nullif(hashtag, ''''), handle, id), ''^[@#]+'', ''#'')) where hashtag is null';
-    if not exists (
+
+    if exists (
+      select 1
+      from public.profiles
+      where auth_user_id is not null
+        and auth_user_id::text !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+    ) then
+      raise exception 'profiles.auth_user_id contains non-uuid values';
+    end if;
+
+    if exists (
       select 1
       from public.profiles
       where auth_user_id is not null
       group by auth_user_id
       having count(*) > 1
     ) then
-      execute 'create unique index if not exists profiles_auth_user_id_unique on public.profiles (auth_user_id) where auth_user_id is not null';
+      raise exception 'profiles.auth_user_id contains duplicate values';
     end if;
+
+    if exists (
+      select 1
+      from information_schema.columns
+      where table_schema = 'public'
+        and table_name = 'profiles'
+        and column_name = 'auth_user_id'
+        and data_type <> 'uuid'
+    ) then
+      execute 'alter table public.profiles alter column auth_user_id type uuid using auth_user_id::uuid';
+    end if;
+
+    if exists (
+      select 1
+      from public.profiles p
+      where p.auth_user_id is not null
+        and not exists (select 1 from auth.users au where au.id = p.auth_user_id)
+    ) then
+      raise exception 'profiles.auth_user_id contains ids missing from auth.users';
+    end if;
+
+    execute 'create unique index if not exists profiles_auth_user_id_unique on public.profiles (auth_user_id) where auth_user_id is not null';
+
+    if not exists (
+      select 1
+      from pg_constraint
+      where conname = 'profiles_auth_user_id_fkey'
+        and conrelid = 'public.profiles'::regclass
+    ) then
+      execute 'alter table public.profiles add constraint profiles_auth_user_id_fkey foreign key (auth_user_id) references auth.users(id) on delete set null';
+    end if;
+
     if not exists (
       select 1
       from public.profiles
@@ -70,15 +112,65 @@ $$;
 
 create or replace function public.current_profile_id()
 returns text
-language sql
+language plpgsql
 stable
 security definer
 set search_path = public
 as $$
-  select p.id
+declare
+  profile_id text;
+  match_count integer;
+begin
+  select count(*), max(p.id)
+  into match_count, profile_id
   from public.profiles p
-  where p.auth_user_id = auth.uid()::text
-  limit 1
+  where p.auth_user_id = auth.uid();
+
+  if match_count > 1 then
+    raise exception 'duplicate auth_user_id for current auth user';
+  end if;
+
+  return profile_id;
+end;
+$$;
+
+create or replace function public.prevent_profile_auth_user_id_client_write()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if current_user in ('postgres', 'service_role') or current_setting('request.jwt.claim.role', true) = 'service_role' then
+    return new;
+  end if;
+
+  if tg_op = 'INSERT' and new.auth_user_id is not null then
+    raise exception 'auth_user_id is server-managed' using errcode = '42501';
+  end if;
+
+  if tg_op = 'UPDATE' and new.auth_user_id is distinct from old.auth_user_id then
+    raise exception 'auth_user_id is server-managed' using errcode = '42501';
+  end if;
+
+  return new;
+end;
+$$;
+
+do $$
+begin
+  if to_regclass('public.profiles') is not null then
+    execute 'drop trigger if exists profiles_auth_user_id_client_write_guard on public.profiles';
+    execute '
+      create trigger profiles_auth_user_id_client_write_guard
+      before insert or update of auth_user_id on public.profiles
+      for each row
+      execute function public.prevent_profile_auth_user_id_client_write()
+    ';
+    execute 'revoke insert (auth_user_id) on public.profiles from anon, authenticated';
+    execute 'revoke update (auth_user_id) on public.profiles from anon, authenticated';
+  end if;
+end;
 $$;
 
 create or replace function public.enforce_team_membership_limit()
@@ -180,13 +272,20 @@ create policy "tournaments_select_public"
 on public.tournaments
 for select
 to anon, authenticated
-using (true);
+using (visibility = 'public');
 
 create policy "tournament_teams_select_public"
 on public.tournament_teams
 for select
 to anon, authenticated
-using (true);
+using (
+  exists (
+    select 1
+    from public.tournaments t
+    where t.id = tournament_id
+      and t.visibility = 'public'
+  )
+);
 
 do $$
 begin
@@ -630,6 +729,85 @@ as $$
   select public.current_admin_level() >= min_level
 $$;
 
+create or replace function public.rankball_can_read_private_tournament(target_tournament_id text)
+returns boolean
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  profile_id text := public.current_profile_id();
+  owner_id text;
+  is_public boolean;
+  allowed boolean := false;
+begin
+  select created_by, visibility = 'public'
+  into owner_id, is_public
+  from public.tournaments
+  where id = target_tournament_id;
+
+  if not found then
+    return false;
+  end if;
+
+  if is_public then
+    return true;
+  end if;
+
+  if public.current_is_admin(30) then
+    return true;
+  end if;
+
+  if profile_id is null then
+    return false;
+  end if;
+
+  if owner_id = profile_id then
+    return true;
+  end if;
+
+  if exists (
+    select 1
+    from public.tournament_teams tt
+    where tt.tournament_id = target_tournament_id
+      and tt.approved_by = profile_id
+  ) then
+    return true;
+  end if;
+
+  if to_regclass('public.team_members') is not null then
+    execute '
+      select exists (
+        select 1
+        from public.tournament_teams tt
+        join public.team_members tm on tm.team_id = tt.team_id
+        where tt.tournament_id = $1
+          and tm.user_id = $2
+      )
+    '
+    into allowed
+    using target_tournament_id, profile_id;
+  end if;
+
+  return allowed;
+end;
+$$;
+
+drop policy if exists "tournaments_select_private_related" on public.tournaments;
+create policy "tournaments_select_private_related"
+on public.tournaments
+for select
+to authenticated
+using (public.rankball_can_read_private_tournament(id));
+
+drop policy if exists "tournament_teams_select_private_related" on public.tournament_teams;
+create policy "tournament_teams_select_private_related"
+on public.tournament_teams
+for select
+to authenticated
+using (public.rankball_can_read_private_tournament(tournament_id));
+
 create or replace function public.rankball_admin_level_for_profile(actor_profile_id text, override_level integer default 0)
 returns integer
 language sql
@@ -710,11 +888,25 @@ begin
     'court_' || request_row.id
   );
 
-  approved_payload := request_row.payload || jsonb_build_object(
+  approved_payload := jsonb_build_object(
     'id', approved_id,
-    'status', 'approved',
-    'sourceRequestId', request_row.id,
-    'approvedBy', actor_profile_id,
+    'name', request_row.name,
+    'hashtag', request_row.hashtag,
+    'addressText', request_row.address_text,
+    'roadAddress', request_row.road_address,
+    'jibunAddress', request_row.jibun_address,
+    'zonecode', request_row.zonecode,
+    'lat', request_row.lat,
+    'lng', request_row.lng,
+    'region', request_row.payload->>'region',
+    'type', request_row.payload->>'type',
+    'baseName', request_row.payload->>'baseName',
+    'addressDong', request_row.payload->>'addressDong',
+    'locationNote', request_row.payload->>'locationNote',
+    'courtKind', request_row.payload->>'courtKind',
+    'surfaceType', request_row.payload->>'surfaceType',
+    'courtLayout', request_row.payload->>'courtLayout',
+    'paid', coalesce(request_row.payload->'paid', 'false'::jsonb),
     'approvedAt', now_ts,
     'favorite', false
   );
@@ -973,6 +1165,25 @@ revoke all on function public.rankball_report_court_request(text, text, text) fr
 grant execute on function public.rankball_approve_court_request(text, integer, text) to service_role;
 grant execute on function public.rankball_report_court_request(text, text, text) to service_role;
 
+create or replace function public.rankball_mark_notification_read(notification_id text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  update public.notifications
+  set
+    read_at = coalesce(read_at, now()),
+    updated_at = now()
+  where id = notification_id
+    and (user_id = public.current_profile_id() or target_user_id = public.current_profile_id());
+end;
+$$;
+
+revoke all on function public.rankball_mark_notification_read(text) from public;
+grant execute on function public.rankball_mark_notification_read(text) to authenticated;
+
 do $$
 begin
   if to_regclass('public.notifications') is not null then
@@ -1002,6 +1213,27 @@ on public.approved_courts (
   lower(coalesce(nullif(road_address, ''), nullif(jibun_address, ''), address_text)),
   coalesce(zonecode, '')
 );
+
+update public.approved_courts
+set payload = payload
+  - 'requestedBy'
+  - 'requestedByTrustScore'
+  - 'reportedBy'
+  - 'reportedAt'
+  - 'requesterTrustAfterReport'
+  - 'trustPenalty'
+  - 'approvedBy'
+  - 'sourceRequestId'
+where payload ?| array[
+  'requestedBy',
+  'requestedByTrustScore',
+  'reportedBy',
+  'reportedAt',
+  'requesterTrustAfterReport',
+  'trustPenalty',
+  'approvedBy',
+  'sourceRequestId'
+];
 
 do $$
 begin
@@ -1056,11 +1288,39 @@ begin
 end;
 $$;
 
+do $$
+declare
+  policy_row record;
+begin
+  for policy_row in
+    select tablename, policyname
+    from pg_policies
+    where schemaname = 'public'
+      and tablename in (
+        'approved_courts',
+        'admin_appointments',
+        'referee_appointments',
+        'admin_audit_log',
+        'admin_disciplinary_actions'
+      )
+      and cmd in ('INSERT', 'UPDATE', 'DELETE', 'ALL')
+  loop
+    execute format('drop policy if exists %I on public.%I', policy_row.policyname, policy_row.tablename);
+  end loop;
+end;
+$$;
+
+revoke insert, update, delete on public.approved_courts from anon, authenticated;
+revoke insert, update, delete on public.admin_appointments from anon, authenticated;
+revoke insert, update, delete on public.referee_appointments from anon, authenticated;
+revoke insert, update, delete on public.admin_audit_log from anon, authenticated;
+revoke insert, update, delete on public.admin_disciplinary_actions from anon, authenticated;
+
 drop policy if exists approved_courts_select_public on public.approved_courts;
 create policy approved_courts_select_public
 on public.approved_courts
 for select
-to anon, authenticated
+to authenticated
 using (true);
 
 drop policy if exists court_requests_self_read on public.court_requests;
@@ -1088,12 +1348,12 @@ create policy referee_requests_self_read
 on public.referee_requests
 for select
 to authenticated
-using (user_id = public.current_profile_id());
+using (requested_by = public.current_profile_id());
 create policy referee_requests_self_insert
 on public.referee_requests
 for insert
 to authenticated
-with check (user_id = public.current_profile_id());
+with check (requested_by = public.current_profile_id());
 
 drop policy if exists referee_exam_attempts_self_read on public.referee_exam_attempts;
 drop policy if exists referee_exam_attempts_self_insert on public.referee_exam_attempts;
@@ -1131,15 +1391,16 @@ begin
     execute 'drop policy if exists notifications_read_all on public.notifications';
     execute 'drop policy if exists notifications_self_read on public.notifications';
     execute 'drop policy if exists notifications_self_update on public.notifications';
+    execute 'drop policy if exists notifications_read_at_update on public.notifications';
     if exists (
       select 1 from information_schema.columns
       where table_schema = 'public' and table_name = 'notifications' and column_name = 'user_id'
     ) then
       execute 'create policy notifications_self_read on public.notifications for select to authenticated using (user_id = public.current_profile_id() or target_user_id = public.current_profile_id())';
-      execute 'create policy notifications_self_update on public.notifications for update to authenticated using (user_id = public.current_profile_id() or target_user_id = public.current_profile_id()) with check (user_id = public.current_profile_id() or target_user_id = public.current_profile_id())';
     else
       execute 'create policy notifications_self_read on public.notifications for select to authenticated using (false)';
     end if;
+    execute 'revoke update on public.notifications from anon, authenticated';
   end if;
 end;
 $$;
@@ -1151,6 +1412,7 @@ begin
     execute 'drop policy if exists reports_read_all on public.reports';
     execute 'drop policy if exists reports_insert_authenticated on public.reports';
     execute 'drop policy if exists reports_no_public_read on public.reports';
+    execute 'drop policy if exists reports_admin_read on public.reports';
     if exists (
       select 1 from information_schema.columns
       where table_schema = 'public' and table_name = 'reports' and column_name = 'user_id'
@@ -1158,6 +1420,7 @@ begin
       execute 'create policy reports_insert_authenticated on public.reports for insert to authenticated with check (user_id = public.current_profile_id())';
     end if;
     execute 'create policy reports_no_public_read on public.reports for select to authenticated using (false)';
+    execute 'create policy reports_admin_read on public.reports for select to authenticated using (public.current_is_admin(30))';
   end if;
 end;
 $$;

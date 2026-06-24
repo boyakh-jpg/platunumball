@@ -82,3 +82,16 @@
 - `POST /api/court-requests/approve`는 `rankball_approve_court_request()` RPC로 승인 구장 생성, 요청 상태 변경, audit log, 알림을 한 transaction으로 처리한다.
 - `POST /api/court-requests/report`는 `rankball_report_court_request()` RPC로 신고 생성, 요청자 신뢰도 차감, 요청 상태 변경, 알림을 한 transaction으로 처리한다.
 - 아직 일반 관리자 신고 처리, 임명/징계 처리, Discord DM 발송 transaction API는 별도 구현이 필요하다.
+
+## 2026-06-24 RLS hardening
+
+- `tournaments`, `tournament_teams`의 anon read는 `visibility='public'`만 허용한다.
+- 비공개 tournament read는 생성자, 참가 팀 멤버, 승인자, 관리자만 허용한다.
+- `profiles.auth_user_id`는 `uuid references auth.users(id)`로 강제하며 중복, non-uuid, orphan 값이 있으면 migration을 실패시킨다.
+- 클라이언트는 `profiles.auth_user_id`를 insert/update 할 수 없다. 서버/service-role만 설정한다.
+- `notifications` 직접 update는 막고 `rankball_mark_notification_read()` RPC로 `read_at`만 바꾼다.
+- `reports`는 신고자 insert만 허용하고 관리자 read policy를 별도로 둔다.
+- `referee_requests` 소유자 컬럼은 `requested_by`다.
+- 관리자/심판 임명, audit, 징계, 승인 구장 write는 client 정책을 만들지 않는다. server/service-role만 처리한다.
+- `approved_courts`는 authenticated read만 허용하고 payload에서 요청자/신뢰도/승인자 내부값을 제거한다.
+- `affiliations`, `seasons` public read는 public-safe 데이터만 넣는 전제다.

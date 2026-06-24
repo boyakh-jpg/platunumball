@@ -4,7 +4,7 @@ const TABLE_CONFIG = {
   notifications: { onConflict: "id", ownerFields: ["user_id", "target_user_id"] },
   reports: { onConflict: "id", ownerFields: ["user_id"] },
   court_requests: { onConflict: "id", ownerFields: ["requested_by"] },
-  referee_requests: { onConflict: "id", ownerFields: ["user_id"] },
+  referee_requests: { onConflict: "id", ownerFields: ["requested_by"] },
   referee_exam_attempts: { onConflict: "id", ownerFields: ["user_id"] },
   discord_notification_deliveries: { onConflict: "id", ownerFields: ["target_user_id"] },
   approved_courts: { onConflict: "id", minAdminLevel: 30 },

@@ -1642,7 +1642,12 @@ async function saveNormalizedRemoteState(state) {
   const reportRows = (state.reports ?? []).map(toReportRow).filter((row) => row.id && row.type && row.target_id);
   const courtRequestRows = (state.settings?.courtRequests ?? []).map(toCourtRequestRow).filter((row) => row.id && row.name && row.address_text);
   const approvedCourtRows = (state.settings?.approvedCourts ?? []).map(toApprovedCourtRow).filter((row) => row.id && row.name && row.address_text);
-  const refereeRequestRows = (state.settings?.refereeRequests ?? []).map(toPayloadRow).filter((row) => row.id);
+  const refereeRequestRows = (state.settings?.refereeRequests ?? []).map((request) => ({
+    ...toPayloadRow(request),
+    requested_by: request.requestedBy ?? null,
+    qualification: request.qualification ?? null,
+    trust_score: request.trustScore ?? null,
+  })).filter((row) => row.id);
   const refereeExamAttemptRows = (state.settings?.refereeExamAttempts ?? []).map((attempt) => ({
     ...toPayloadRow(attempt),
     user_id: attempt.userId ?? null,
