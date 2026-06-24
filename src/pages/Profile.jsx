@@ -22,6 +22,7 @@ import {
   isDiscordLinked,
 } from "../lib/discord.js";
 import { findTeamByHashtag, findUserByHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
+import { canChangeProfileName, getNextNameChangeDate } from "../lib/profileSetup.js";
 
 function compareRecent(a, b) {
   return String(b.scheduledAt ?? b.createdAt ?? "").localeCompare(String(a.scheduledAt ?? a.createdAt ?? ""));
@@ -65,6 +66,11 @@ function getAverageFouls(matches = [], userId) {
   if (!confirmed.length) return 0;
   const total = confirmed.reduce((sum, match) => sum + Number(match.result?.playerStats?.[userId]?.fouls ?? 0), 0);
   return total / confirmed.length;
+}
+
+function formatDate(date) {
+  if (!date) return "";
+  return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, "0")}.${String(date.getDate()).padStart(2, "0")}`;
 }
 
 function RecentRecordCard({ records, userId }) {
@@ -111,10 +117,16 @@ export default function Profile({ app }) {
   });
   const [favoriteQuery, setFavoriteQuery] = useState("");
   const [discordLinkError, setDiscordLinkError] = useState("");
+  const [profileError, setProfileError] = useState("");
   const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
 
   const submit = (event) => {
     event.preventDefault();
+    if (draft.name !== user.name && !canChangeProfileName(user)) {
+      setProfileError(`닉네임은 월 1회만 변경할 수 있습니다. 다음 변경 가능일: ${formatDate(getNextNameChangeDate(user))}`);
+      return;
+    }
+    setProfileError("");
     app.actions.updateProfile(draft);
   };
   const myRecords = [...app.state.matches]
@@ -200,7 +212,7 @@ export default function Profile({ app }) {
             <div className="section-title-row">
               <div>
                 <p className="eyebrow">내 정보</p>
-                <h2>{user.handle}</h2>
+                <h2>{getUserHashtag(user)}</h2>
               </div>
             </div>
             <form className="form-grid" onSubmit={submit}>
@@ -210,6 +222,7 @@ export default function Profile({ app }) {
                   <input value={value} onChange={(event) => update({ [key]: event.target.value })} />
                 </label>
               ))}
+              {profileError ? <p className="form-warning">{profileError}</p> : null}
               <Button type="submit">저장</Button>
             </form>
           </Card>

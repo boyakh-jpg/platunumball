@@ -1,4 +1,4 @@
-function stripHandle(value, fallback = "") {
+export function stripHandle(value, fallback = "") {
   const raw = String(value || fallback || "")
     .trim()
     .replace(/^[@#]+/, "")

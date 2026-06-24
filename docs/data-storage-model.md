@@ -38,6 +38,9 @@
 - 소유권 기준을 Supabase Auth ID로 이전:
   - `profiles.auth_user_id = auth.users.id`
   - `profiles.auth_user_id`는 unique이며 Google/Supabase 계정 하나는 프로필 하나에만 연결한다.
+  - `profiles.hashtag`는 unique이며 `handle_locked_at` 이후 수정하지 않는다.
+  - `profiles.birth_year`는 `birth_year_locked_at` 이후 수정하지 않는다.
+  - `profiles.name_updated_at`으로 닉네임 월 1회 변경 제한을 건다.
   - match participants, recruiting posts, applications, notifications, favorites, reports는 `auth.users.id` 기준으로 연결
 - public write 정책을 owner/captain/referee/recorder 정책으로 교체.
 - 현재 app-state 동기화 방식을 normalized table read와 좁은 write로 분리.

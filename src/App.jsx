@@ -26,7 +26,7 @@ import Signup from "./pages/Signup.jsx";
 import TeamDetail from "./pages/TeamDetail.jsx";
 import Teams from "./pages/Teams.jsx";
 import TournamentDetail from "./pages/TournamentDetail.jsx";
-import { shouldRecheckAgeGroup } from "./lib/profileSetup.js";
+import { shouldRecheckAgeGroup, shouldSetupProfile } from "./lib/profileSetup.js";
 
 export default function App() {
   const auth = useAuthSession();
@@ -39,12 +39,18 @@ export default function App() {
       location.pathname !== "/app/signup" &&
       shouldRecheckAgeGroup(app.currentUser),
   );
+  const profileSetupRequired = Boolean(
+    auth.user &&
+      location.pathname.startsWith("/app") &&
+      location.pathname !== "/app/signup" &&
+      shouldSetupProfile(app.currentUser),
+  );
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
 
-  if (ageRecheckRequired) return <Navigate to="/app/signup" replace />;
+  if (profileSetupRequired || ageRecheckRequired) return <Navigate to="/app/signup" replace />;
 
   return (
     <Routes>

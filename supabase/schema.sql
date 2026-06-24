@@ -22,8 +22,20 @@ do $$
 begin
   if to_regclass('public.profiles') is not null then
     execute 'alter table public.profiles add column if not exists auth_user_id text';
+    execute 'alter table public.profiles add column if not exists hashtag text';
+    execute 'alter table public.profiles add column if not exists birth_year integer';
+    execute 'alter table public.profiles add column if not exists age_group text';
+    execute 'alter table public.profiles add column if not exists age_group_checked_season text';
+    execute 'alter table public.profiles add column if not exists region_sido text';
+    execute 'alter table public.profiles add column if not exists region_district text';
+    execute 'alter table public.profiles add column if not exists onboarding_complete boolean not null default false';
+    execute 'alter table public.profiles add column if not exists profile_version integer not null default 0';
+    execute 'alter table public.profiles add column if not exists handle_locked_at timestamptz';
+    execute 'alter table public.profiles add column if not exists birth_year_locked_at timestamptz';
+    execute 'alter table public.profiles add column if not exists name_updated_at timestamptz';
     execute 'alter table public.profiles add column if not exists discord_connection jsonb';
     execute 'alter table public.profiles add column if not exists discord_user_id text';
+    execute 'update public.profiles set hashtag = lower(regexp_replace(coalesce(nullif(hashtag, ''''), handle, id), ''^[@#]+'', ''#'')) where hashtag is null';
     if not exists (
       select 1
       from public.profiles
@@ -32,6 +44,15 @@ begin
       having count(*) > 1
     ) then
       execute 'create unique index if not exists profiles_auth_user_id_unique on public.profiles (auth_user_id) where auth_user_id is not null';
+    end if;
+    if not exists (
+      select 1
+      from public.profiles
+      where hashtag is not null
+      group by lower(regexp_replace(hashtag, ''^[@#]+'', ''''))
+      having count(*) > 1
+    ) then
+      execute 'create unique index if not exists profiles_hashtag_unique on public.profiles (lower(regexp_replace(hashtag, ''^[@#]+'', ''''))) where hashtag is not null';
     end if;
     execute 'update public.profiles set discord_user_id = nullif(discord_connection->>''userId'', '''') where discord_user_id is null';
     if not exists (

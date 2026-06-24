@@ -56,6 +56,23 @@ export function shouldRecheckAgeGroup(user, now = new Date()) {
   return Boolean(user?.birthYear && user?.onboardingComplete && user?.ageGroupCheckedSeason !== getAgeGroupSeasonForDate(now).id);
 }
 
+export function shouldSetupProfile(user = {}) {
+  return Boolean(!user?.onboardingComplete || !user?.handleLockedAt || !user?.birthYearLockedAt);
+}
+
+export function getNextNameChangeDate(user = {}) {
+  if (!user?.nameUpdatedAt) return null;
+  const date = new Date(user.nameUpdatedAt);
+  if (Number.isNaN(date.getTime())) return null;
+  date.setMonth(date.getMonth() + 1);
+  return date;
+}
+
+export function canChangeProfileName(user = {}, now = new Date()) {
+  const nextDate = getNextNameChangeDate(user);
+  return !user?.onboardingComplete || !nextDate || nextDate <= now;
+}
+
 export function getAgeGroupLabel(ageGroupId) {
   const group = AGE_GROUPS.find((item) => item.id === ageGroupId) ?? AGE_GROUPS[2];
   if (String(group.label).toLowerCase() === String(group.rangeLabel).toLowerCase()) return group.label;

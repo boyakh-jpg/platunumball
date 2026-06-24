@@ -88,6 +88,14 @@ UI/CSS/반응형/라이트·다크 세부 기준은 `docs/design-system.md`를 �
 3. 실제 auth 프로필은 Settings의 테스트 계정 전환으로 바꾸지 못한다.
 4. `test-*`와 local demo 계정은 개발 검증용 전환을 유지한다.
 
+## 2026-06-24 가입정보 고정 원칙
+
+1. 최초 로그인 후 `onboardingComplete`, `handleLockedAt`, `birthYearLockedAt` 중 하나라도 없으면 `/app/signup`으로 보낸다.
+2. 해시태그는 `#` 접두어를 쓰고 최초 등록 후 수정할 수 없다.
+3. 해시태그는 프로필 전체에서 중복될 수 없다.
+4. 출생연도는 최초 등록 후 수정할 수 없다.
+5. 닉네임은 변경 가능하지만 `nameUpdatedAt` 기준 월 1회만 허용한다.
+
 ## 데이터 축
 
 | 데이터 | 현재 위치 | 역할 |

@@ -464,6 +464,7 @@ UI 수정 전:
 - 모집 메뉴의 매치방 필터도 경기 메뉴 필터처럼 `segmented-control compact-segments` 묶음과 라벨 없는 방식 셀렉트를 쓴다.
 - 신고 폼은 사유 선택을 먼저 두고, 그 다음 공용 `SearchPicker`로 사유에 맞는 선수/경기기록/구장요청만 검색한다. 경기기록 검색 결과와 관리자 검토에는 같은 경기기록 해시태그를 노출한다.
 - 실제 Google/Supabase auth 프로필에서는 Settings의 테스트 계정 전환 UI를 숨기고 `Google 계정당 1개` 고정 상태만 flat `contract-grid`로 표시한다.
+- 가입정보 설정의 해시태그와 출생연도는 잠긴 뒤 disabled input과 짧은 `muted` 설명으로 표시하고, 중복/월 1회 제한은 `form-warning`으로 표시한다.
 
 ## 2026-06-24 목록/라이트 방 표준 정리
 

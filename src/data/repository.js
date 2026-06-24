@@ -76,9 +76,12 @@ import {
 import { clearState, readState, writeState } from "../lib/storage.js";
 import { isBulkRemoteWriteEnabled, isSupabaseConfigured, supabase } from "../lib/supabase.js";
 import { findDiscordConnectionOwner, getDiscordConnectionUserId, syncDiscordNotificationDeliveries } from "../lib/discord.js";
+import { sameHashtag, toHashtag } from "../lib/handles.js";
+import { canChangeProfileName } from "../lib/profileSetup.js";
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const makeId = (prefix) => `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+const getUserIdentityHashtag = (user = {}) => user.hashtag ?? user.handle ?? user.id;
 const DEFAULT_SETTINGS = {
   theme: "dark",
   privacy: {
@@ -707,6 +710,17 @@ function fromRemoteProfile(row) {
     testLoginId: row.test_login_id,
     testPassword: "test-0000",
     authUserId: row.auth_user_id ?? null,
+    hashtag: row.hashtag ?? null,
+    birthYear: row.birth_year ?? null,
+    ageGroup: row.age_group ?? null,
+    ageGroupCheckedSeason: row.age_group_checked_season ?? null,
+    regionSido: row.region_sido ?? null,
+    regionDistrict: row.region_district ?? null,
+    onboardingComplete: row.onboarding_complete ?? false,
+    profileVersion: row.profile_version ?? 0,
+    handleLockedAt: row.handle_locked_at ?? null,
+    birthYearLockedAt: row.birth_year_locked_at ?? null,
+    nameUpdatedAt: row.name_updated_at ?? null,
     discordConnection: row.discord_connection ?? null,
     discordUserId: row.discord_user_id ?? row.discord_connection?.userId ?? null,
     ratings: row.ratings ?? { integrated: 1200, modes: {} },
@@ -1138,6 +1152,17 @@ async function saveNormalizedRemoteState(state) {
     id: user.id,
     name: user.name,
     handle: user.handle,
+    hashtag: user.hashtag ?? null,
+    birth_year: user.birthYear ?? null,
+    age_group: user.ageGroup ?? null,
+    age_group_checked_season: user.ageGroupCheckedSeason ?? null,
+    region_sido: user.regionSido ?? null,
+    region_district: user.regionDistrict ?? null,
+    onboarding_complete: Boolean(user.onboardingComplete),
+    profile_version: user.profileVersion ?? 0,
+    handle_locked_at: user.handleLockedAt ?? null,
+    birth_year_locked_at: user.birthYearLockedAt ?? null,
+    name_updated_at: user.nameUpdatedAt ?? null,
     region: user.region,
     position: user.position,
     avatar_color: user.avatarColor,
@@ -7070,9 +7095,39 @@ export function updateProfile(state, patch, targetUserId = state.currentUserId) 
   if (patch.discordConnection?.status === "linked" && findDiscordConnectionOwner(state.users, patch.discordConnection, profileUserId)) {
     return state;
   }
-  const profilePatch = Object.prototype.hasOwnProperty.call(patch, "discordConnection")
-    ? { ...patch, discordUserId: getDiscordConnectionUserId(patch.discordConnection) || null }
-    : patch;
+  const currentUser = state.users.find((user) => user.id === profileUserId);
+  if (!currentUser) return state;
+  const nextHandle = patch.handle ?? patch.hashtag;
+  if (
+    nextHandle &&
+    (!currentUser.handleLockedAt || sameHashtag(nextHandle, currentUser.handle)) &&
+    state.users.some((user) => user.id !== profileUserId && sameHashtag(nextHandle, getUserIdentityHashtag(user)))
+  ) {
+    return state;
+  }
+  const profilePatch = { ...patch };
+  if (Object.prototype.hasOwnProperty.call(profilePatch, "discordConnection")) {
+    profilePatch.discordUserId = getDiscordConnectionUserId(profilePatch.discordConnection) || null;
+  }
+  if ((currentUser.handleLockedAt || currentUser.hashtagLockedAt) && profilePatch.handle && !sameHashtag(profilePatch.handle, currentUser.handle)) {
+    delete profilePatch.handle;
+    delete profilePatch.hashtag;
+  }
+  if (currentUser.birthYearLockedAt && profilePatch.birthYear && Number(profilePatch.birthYear) !== Number(currentUser.birthYear)) {
+    delete profilePatch.birthYear;
+  }
+  if (profilePatch.handle) {
+    profilePatch.handle = toHashtag(profilePatch.handle, currentUser.id);
+    profilePatch.hashtag = profilePatch.handle;
+    profilePatch.handleLockedAt = currentUser.handleLockedAt ?? profilePatch.handleLockedAt ?? new Date().toISOString();
+  }
+  if (profilePatch.birthYear && !currentUser.birthYearLockedAt) {
+    profilePatch.birthYearLockedAt = profilePatch.birthYearLockedAt ?? new Date().toISOString();
+  }
+  if (profilePatch.name && profilePatch.name !== currentUser.name) {
+    if (!canChangeProfileName(currentUser)) delete profilePatch.name;
+    else profilePatch.nameUpdatedAt = profilePatch.nameUpdatedAt ?? new Date().toISOString();
+  }
   return {
     ...state,
     users: state.users.map((user) => (user.id === profileUserId ? { ...user, ...profilePatch } : user)),
