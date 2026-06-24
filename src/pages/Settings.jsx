@@ -8,7 +8,7 @@ import SearchPicker from "../components/common/SearchPicker.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import { REPORT_REASONS, REPORT_TARGET_TYPES, getReportTargetType } from "../lib/reportReasons.js";
 import { formatStatLine, getMatchReservePlayerIds, getMatchSidePlayerIds } from "../lib/matchUtils.js";
-import { COURT_REQUEST_TRUST_MIN, FALSE_COURT_REPORT_TRUST_PENALTY, REGIONS } from "../lib/constants.js";
+import { COURT_REQUEST_TRUST_MIN, FALSE_COURT_REPORT_TRUST_PENALTY, REFEREE_TRUST_MIN, REGIONS } from "../lib/constants.js";
 import { COURT_LAYOUT_OPTIONS, COURT_SURFACE_OPTIONS, findCourtDuplicate, getCourtDuplicateMessage, getCourtLayoutLabel, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
 import { getCourtHashtag, getMatchHashtag, getUserHashtag } from "../lib/handles.js";
 import { getNaverMapClientId, openNaverMapPinPicker, searchNaverAddresses } from "../lib/naverAddress.js";
@@ -189,7 +189,9 @@ export default function Settings({ app, auth }) {
     [app.state, courtDisplayName, courtDraft],
   );
   const courtDuplicateMessage = getCourtDuplicateMessage(courtDuplicate);
-  const canSubmitCourtRequest = currentTrustScore >= COURT_REQUEST_TRUST_MIN && !courtDuplicate;
+  const canOpenCourtRequestForm = currentTrustScore >= COURT_REQUEST_TRUST_MIN;
+  const canSubmitCourtRequest = canOpenCourtRequestForm && !courtDuplicate;
+  const canOpenRefereeRequestForm = currentTrustScore >= REFEREE_TRUST_MIN;
   const [currentRefereeExamAttemptId, setCurrentRefereeExamAttemptId] = useState("");
   const [refereeExamNotice, setRefereeExamNotice] = useState("");
 
@@ -414,6 +416,10 @@ export default function Settings({ app, auth }) {
     return REGIONS.find((region) => text.includes(region)) ?? addressResult?.sigungu ?? app.currentUser?.region ?? "";
   };
   const searchCourtAddress = async () => {
+    if (!canOpenCourtRequestForm) {
+      setCourtLookupStatus(`구장 등록요청은 신뢰도 ${COURT_REQUEST_TRUST_MIN}점 이상부터 가능합니다.`);
+      return;
+    }
     if (!naverMapKeyReady) {
       setCourtLookupStatus("주소 검색은 VITE_NAVER_MAP_CLIENT_ID 설정 후 사용할 수 있습니다.");
       return;
@@ -485,6 +491,10 @@ export default function Settings({ app, auth }) {
   };
   const updateRefereeDraft = (patch) => setRefereeDraft((current) => ({ ...current, ...patch }));
   const startRefereeExam = () => {
+    if (!canOpenRefereeRequestForm) {
+      setRefereeExamNotice(`심판 시험은 신뢰도 ${REFEREE_TRUST_MIN}점 이상부터 가능합니다.`);
+      return;
+    }
     if (refereeExamOpen && !refereeExamResult) {
       setRefereeExamNotice("이미 진행 중인 시험이 있습니다.");
       return;
@@ -790,129 +800,131 @@ export default function Settings({ app, auth }) {
               </div>
               <MapPin size={22} />
             </div>
-            <form className="form-stack" onSubmit={submitCourtRequest}>
-              <div className="settings-address-search">
-                <label>
-                  주소 검색
-                  <input
-                    value={courtAddressQuery}
-                    onChange={(event) => {
-                      setCourtAddressQuery(event.target.value);
-                      setNaverAddressResults([]);
-                    }}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        event.preventDefault();
-                        searchCourtAddress();
-                      }
-                    }}
-                    placeholder="도로명 주소, 건물명, 구장명 검색"
-                  />
-                </label>
-                <div className="settings-address-actions">
-                  <Button type="button" variant="secondary" onClick={searchCourtAddress}>네이버 주소 검색</Button>
-                  <Button type="button" variant="secondary" onClick={pickCourtMapPin} disabled={!courtAddressSelected || !naverMapKeyReady}>
-                    지도 핀 저장
-                  </Button>
+            {canOpenCourtRequestForm ? (
+              <form className="form-stack" onSubmit={submitCourtRequest}>
+                <div className="settings-address-search">
+                  <label>
+                    주소 검색
+                    <input
+                      value={courtAddressQuery}
+                      onChange={(event) => {
+                        setCourtAddressQuery(event.target.value);
+                        setNaverAddressResults([]);
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          searchCourtAddress();
+                        }
+                      }}
+                      placeholder="도로명 주소, 건물명, 구장명 검색"
+                    />
+                  </label>
+                  <div className="settings-address-actions">
+                    <Button type="button" variant="secondary" onClick={searchCourtAddress}>네이버 주소 검색</Button>
+                    <Button type="button" variant="secondary" onClick={pickCourtMapPin} disabled={!courtAddressSelected || !naverMapKeyReady}>
+                      지도 핀 저장
+                    </Button>
+                  </div>
+                  {naverAddressResults.length ? (
+                    <div className="settings-address-results">
+                      {naverAddressResults.map((result) => (
+                        <button key={result.id} type="button" onClick={() => selectNaverAddress(result)}>
+                          <strong>{result.roadAddress || result.addressText}</strong>
+                          <span>{result.jibunAddress || result.addressText}</span>
+                          <em>네이버 주소</em>
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                  {courtLookupStatus ? <small>{courtLookupStatus}</small> : null}
                 </div>
-                {naverAddressResults.length ? (
-                  <div className="settings-address-results">
-                    {naverAddressResults.map((result) => (
-                      <button key={result.id} type="button" onClick={() => selectNaverAddress(result)}>
-                        <strong>{result.roadAddress || result.addressText}</strong>
-                        <span>{result.jibunAddress || result.addressText}</span>
-                        <em>네이버 주소</em>
-                      </button>
-                    ))}
+                <label>
+                  구장명
+                  <input value={courtDraft.name} placeholder="예: 나들목 골대" onChange={(event) => updateCourtDraft({ name: event.target.value })} />
+                </label>
+                {courtDisplayName ? (
+                  <div className="arena-mini-note">
+                    <div>
+                      <span>저장 구장명</span>
+                      <strong>{courtDisplayName}</strong>
+                      <em>구장 해시태그는 자동 생성됩니다.</em>
+                    </div>
+                    <MapPin size={18} />
                   </div>
                 ) : null}
-                {courtLookupStatus ? <small>{courtLookupStatus}</small> : null}
-              </div>
-              <label>
-                구장명
-                <input value={courtDraft.name} placeholder="예: 나들목 골대" onChange={(event) => updateCourtDraft({ name: event.target.value })} />
-              </label>
-              {courtDisplayName ? (
-                <div className="arena-mini-note">
-                  <div>
-                    <span>저장 구장명</span>
-                    <strong>{courtDisplayName}</strong>
-                    <em>구장 해시태그는 자동 생성됩니다.</em>
+                {courtAddressSelected ? (
+                  <div className="arena-mini-note">
+                    <div>
+                      <span>선택 주소</span>
+                      <strong>{courtDraft.addressText}</strong>
+                      <em>{courtHasMapPin ? "Naver 좌표 저장됨" : naverMapKeyReady ? "지도 핀 선택 가능" : "지도 핀은 VITE_NAVER_MAP_CLIENT_ID 설정 후 사용"}</em>
+                    </div>
+                    <MapPin size={18} />
                   </div>
-                  <MapPin size={18} />
-                </div>
-              ) : null}
-              {courtAddressSelected ? (
-                <div className="arena-mini-note">
-                  <div>
-                    <span>선택 주소</span>
-                    <strong>{courtDraft.addressText}</strong>
-                    <em>{courtHasMapPin ? "Naver 좌표 저장됨" : naverMapKeyReady ? "지도 핀 선택 가능" : "지도 핀은 VITE_NAVER_MAP_CLIENT_ID 설정 후 사용"}</em>
+                ) : null}
+                {courtDuplicate ? (
+                  <div className="arena-mini-note arena-mini-note-warning">
+                    <div>
+                      <span>중복 확인</span>
+                      <strong>{courtDuplicate.court?.name ?? "기존 구장"}</strong>
+                      <em>{courtDuplicateMessage}</em>
+                    </div>
+                    <MapPin size={18} />
                   </div>
-                  <MapPin size={18} />
-                </div>
-              ) : null}
-              {courtDuplicate ? (
-                <div className="arena-mini-note arena-mini-note-warning">
-                  <div>
-                    <span>중복 확인</span>
-                    <strong>{courtDuplicate.court?.name ?? "기존 구장"}</strong>
-                    <em>{courtDuplicateMessage}</em>
-                  </div>
-                  <MapPin size={18} />
-                </div>
-              ) : null}
-              <label>
-                유형
-                <select value={courtDraft.type} onChange={(event) => updateCourtDraft({ type: event.target.value })}>
-                  <option value="야외">야외</option>
-                  <option value="실내">실내</option>
-                </select>
-              </label>
-              <div className="form-grid two">
+                ) : null}
                 <label>
-                  바닥
-                  <select value={courtDraft.surfaceType} onChange={(event) => updateCourtDraft({ surfaceType: event.target.value })}>
-                    {COURT_SURFACE_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+                  유형
+                  <select value={courtDraft.type} onChange={(event) => updateCourtDraft({ type: event.target.value })}>
+                    <option value="야외">야외</option>
+                    <option value="실내">실내</option>
                   </select>
                 </label>
-                <label>
-                  코트 형태
-                  <select value={courtDraft.courtLayout} onChange={(event) => updateCourtDraft({ courtLayout: event.target.value })}>
-                    {COURT_LAYOUT_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
-                  </select>
-                </label>
-              </div>
-              <div className="arena-mini-note">
-                <div>
-                  <span>구장 속성</span>
-                  <strong>{getCourtSurfaceLabel(courtDraft)} · {getCourtLayoutLabel(courtDraft)}</strong>
-                  <em>반코트/골대 1개도 등록 가능하지만 경기방에서 5v5 경고를 표시합니다.</em>
+                <div className="form-grid two">
+                  <label>
+                    바닥
+                    <select value={courtDraft.surfaceType} onChange={(event) => updateCourtDraft({ surfaceType: event.target.value })}>
+                      {COURT_SURFACE_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+                    </select>
+                  </label>
+                  <label>
+                    코트 형태
+                    <select value={courtDraft.courtLayout} onChange={(event) => updateCourtDraft({ courtLayout: event.target.value })}>
+                      {COURT_LAYOUT_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+                    </select>
+                  </label>
                 </div>
-                <MapPin size={18} />
-              </div>
-              <label>
-                찾아가는 메모
-                <textarea value={courtDraft.locationNote} placeholder="예: 나들목 지나 오른쪽 두 번째 골대" onChange={(event) => updateCourtDraft({ locationNote: event.target.value })} />
-              </label>
-              <div className="settings-toggle-grid">
+                <div className="arena-mini-note">
+                  <div>
+                    <span>구장 속성</span>
+                    <strong>{getCourtSurfaceLabel(courtDraft)} · {getCourtLayoutLabel(courtDraft)}</strong>
+                    <em>반코트/골대 1개도 등록 가능하지만 경기방에서 5v5 경고를 표시합니다.</em>
+                  </div>
+                  <MapPin size={18} />
+                </div>
                 <label>
-                  <input
-                    type="checkbox"
-                    checked={courtDraft.courtKind === "official"}
-                    onChange={(event) => updateCourtDraft({ courtKind: event.target.checked ? "official" : "street_hoop" })}
-                  />
-                  정식구장
+                  찾아가는 메모
+                  <textarea value={courtDraft.locationNote} placeholder="예: 나들목 지나 오른쪽 두 번째 골대" onChange={(event) => updateCourtDraft({ locationNote: event.target.value })} />
                 </label>
-                <label>
-                  <input type="checkbox" checked={courtDraft.paid} onChange={(event) => updateCourtDraft({ paid: event.target.checked })} />
-                  유료구장
-                </label>
-              </div>
-              <Button type="submit" variant="secondary" disabled={!canSubmitCourtRequest || !courtDisplayName || !courtAddressSelected}>
-                <Send size={16} /> 등록요청
-              </Button>
-            </form>
+                <div className="settings-toggle-grid">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={courtDraft.courtKind === "official"}
+                      onChange={(event) => updateCourtDraft({ courtKind: event.target.checked ? "official" : "street_hoop" })}
+                    />
+                    정식구장
+                  </label>
+                  <label>
+                    <input type="checkbox" checked={courtDraft.paid} onChange={(event) => updateCourtDraft({ paid: event.target.checked })} />
+                    유료구장
+                  </label>
+                </div>
+                <Button type="submit" variant="secondary" disabled={!canSubmitCourtRequest || !courtDisplayName || !courtAddressSelected}>
+                  <Send size={16} /> 등록요청
+                </Button>
+              </form>
+            ) : null}
             <div className="compact-list">
               {courtRequests.slice(0, 4).map((request) => {
                 const requester = userMap[request.requestedBy];
@@ -1069,96 +1081,109 @@ export default function Settings({ app, auth }) {
                 <BookOpen size={16} /> 룰북 보기
               </Link>
             </div>
-            <div className="referee-exam-panel">
-              <div className="referee-exam-summary">
-                <span><strong>{REFEREE_EXAM_BANK_SIZE}</strong>문제은행</span>
-                <span><strong>{REFEREE_EXAM_SIZE}</strong>문항</span>
-                <span><strong>{REFEREE_EXAM_PASS_SCORE}</strong>점 통과</span>
-              </div>
-              <p className={`referee-exam-lock ${refereeExamLocked ? "locked" : ""}`}>
-                {refereeExamLocked
-                  ? `주 1회 제한 중 · 다음 응시 가능 ${refereeExamLockLabel}`
-                  : `시험 시작 후 ${REFEREE_EXAM_COOLDOWN_DAYS}일 동안 재응시할 수 없습니다.`}
-              </p>
-              {refereeExamNotice ? <p className="referee-exam-lock locked">{refereeExamNotice}</p> : null}
-              <div className="referee-exam-actions">
-                <Button type="button" variant="secondary" onClick={startRefereeExam} disabled={refereeExamLocked || (refereeExamOpen && !refereeExamResult)}>
-                  {refereeExamOpen && !refereeExamResult ? "시험 진행 중" : "심판 시험 시작"}
-                </Button>
-                {refereeExamResult ? (
-                  <Badge tone={refereeExamResult.passed ? "green" : "orange"}>
-                    {refereeExamResult.score}/{refereeExamResult.total} · {refereeExamResult.passed ? "통과" : "미통과"}
-                  </Badge>
-                ) : (
-                  <Badge tone="neutral">{answeredRefereeExamCount}/{REFEREE_EXAM_SIZE}</Badge>
-                )}
-              </div>
-              {refereeExamOpen ? (
-                <div className="referee-exam-list">
-                  {refereeExamQuestions.map((question) => (
-                    <div key={question.id} className="referee-exam-question">
-                      <strong>{question.number}. {question.stem}</strong>
-                      <div className="referee-exam-choice-grid">
-                        {question.choices.map((choice, index) => {
-                          const review = refereeExamResult?.reviewedById?.[question.id];
-                          const selected = refereeExamAnswers[question.id] === index;
-                          const checked = Boolean(refereeExamResult);
-                          const correct = checked && review?.answerIndex === index;
-                          const wrong = checked && selected && review?.answerIndex !== index;
-                          return (
-                            <button
-                              key={choice}
-                              type="button"
-                              className={`${selected ? "selected" : ""} ${correct ? "correct" : ""} ${wrong ? "wrong" : ""}`}
-                              onClick={() => selectRefereeExamAnswer(question.id, index)}
-                            >
-                              {choice}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      {refereeExamResult ? <small>{refereeExamResult.reviewedById?.[question.id]?.explanation}</small> : null}
+            {canOpenRefereeRequestForm ? (
+              <>
+                <div className="referee-exam-panel">
+                  <div className="referee-exam-summary">
+                    <span><strong>{REFEREE_EXAM_BANK_SIZE}</strong>문제은행</span>
+                    <span><strong>{REFEREE_EXAM_SIZE}</strong>문항</span>
+                    <span><strong>{REFEREE_EXAM_PASS_SCORE}</strong>점 통과</span>
+                  </div>
+                  <p className={`referee-exam-lock ${refereeExamLocked ? "locked" : ""}`}>
+                    {refereeExamLocked
+                      ? `주 1회 제한 중 · 다음 응시 가능 ${refereeExamLockLabel}`
+                      : `시험 시작 후 ${REFEREE_EXAM_COOLDOWN_DAYS}일 동안 재응시할 수 없습니다.`}
+                  </p>
+                  {refereeExamNotice ? <p className="referee-exam-lock locked">{refereeExamNotice}</p> : null}
+                  <div className="referee-exam-actions">
+                    <Button type="button" variant="secondary" onClick={startRefereeExam} disabled={refereeExamLocked || (refereeExamOpen && !refereeExamResult)}>
+                      {refereeExamOpen && !refereeExamResult ? "시험 진행 중" : "심판 시험 시작"}
+                    </Button>
+                    {refereeExamResult ? (
+                      <Badge tone={refereeExamResult.passed ? "green" : "orange"}>
+                        {refereeExamResult.score}/{refereeExamResult.total} · {refereeExamResult.passed ? "통과" : "미통과"}
+                      </Badge>
+                    ) : (
+                      <Badge tone="neutral">{answeredRefereeExamCount}/{REFEREE_EXAM_SIZE}</Badge>
+                    )}
+                  </div>
+                  {refereeExamOpen ? (
+                    <div className="referee-exam-list">
+                      {refereeExamQuestions.map((question) => (
+                        <div key={question.id} className="referee-exam-question">
+                          <strong>{question.number}. {question.stem}</strong>
+                          <div className="referee-exam-choice-grid">
+                            {question.choices.map((choice, index) => {
+                              const review = refereeExamResult?.reviewedById?.[question.id];
+                              const selected = refereeExamAnswers[question.id] === index;
+                              const checked = Boolean(refereeExamResult);
+                              const correct = checked && review?.answerIndex === index;
+                              const wrong = checked && selected && review?.answerIndex !== index;
+                              return (
+                                <button
+                                  key={choice}
+                                  type="button"
+                                  className={`${selected ? "selected" : ""} ${correct ? "correct" : ""} ${wrong ? "wrong" : ""}`}
+                                  onClick={() => selectRefereeExamAnswer(question.id, index)}
+                                >
+                                  {choice}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          {refereeExamResult ? <small>{refereeExamResult.reviewedById?.[question.id]?.explanation}</small> : null}
+                        </div>
+                      ))}
+                      <Button type="button" onClick={submitRefereeExam} disabled={answeredRefereeExamCount < REFEREE_EXAM_SIZE || Boolean(refereeExamResult)}>
+                        채점하기
+                      </Button>
+                    </div>
+                  ) : null}
+                </div>
+                <form className="form-stack" onSubmit={submitRefereeRequest}>
+                  <label>
+                    신청 유형
+                    <select value={refereeDraft.qualification} onChange={(event) => updateRefereeDraft({ qualification: event.target.value })}>
+                      <option value="community_exam">커뮤니티 심판 시험</option>
+                      <option value="official_license">정식 라이선스 보유</option>
+                    </select>
+                  </label>
+                  <label>
+                    심판 경험
+                    <input value={refereeDraft.experience} placeholder="예: 동호회 20경기, 학교대회 5경기" onChange={(event) => updateRefereeDraft({ experience: event.target.value })} />
+                  </label>
+                  <label>
+                    메모
+                    <textarea value={refereeDraft.memo} placeholder="자격증, 활동지역, 가능한 시간 등을 적어주세요." onChange={(event) => updateRefereeDraft({ memo: event.target.value })} />
+                  </label>
+                  <Button type="submit" variant="secondary" disabled={refereeExamRequired && !refereeExamPassed}>
+                    <Send size={16} /> 심판 등록요청
+                  </Button>
+                  {refereeExamRequired && !refereeExamPassed ? <small>커뮤니티 심판은 시험 통과 후 등록요청할 수 있습니다.</small> : null}
+                </form>
+                <div className="compact-list">
+                  {refereeRequests.slice(0, 4).map((request) => (
+                    <div key={request.id}>
+                      <span>
+                        {request.qualification === "official_license" ? "정식 라이선스" : "커뮤니티 시험"} · 신뢰도 {request.trustScore}
+                        {request.examTotal ? ` · 시험 ${request.examScore}/${request.examTotal}` : ""}
+                      </span>
+                      <strong>{request.status === "pending" ? "대기" : request.status}</strong>
                     </div>
                   ))}
-                  <Button type="button" onClick={submitRefereeExam} disabled={answeredRefereeExamCount < REFEREE_EXAM_SIZE || Boolean(refereeExamResult)}>
-                    채점하기
-                  </Button>
+                  {!refereeRequests.length ? <div><span>요청한 심판 등록이 없습니다.</span><strong>신뢰도 {app.currentUser?.trustScore ?? 0}</strong></div> : null}
                 </div>
-              ) : null}
-            </div>
-            <form className="form-stack" onSubmit={submitRefereeRequest}>
-              <label>
-                신청 유형
-                <select value={refereeDraft.qualification} onChange={(event) => updateRefereeDraft({ qualification: event.target.value })}>
-                  <option value="community_exam">커뮤니티 심판 시험</option>
-                  <option value="official_license">정식 라이선스 보유</option>
-                </select>
-              </label>
-              <label>
-                심판 경험
-                <input value={refereeDraft.experience} placeholder="예: 동호회 20경기, 학교대회 5경기" onChange={(event) => updateRefereeDraft({ experience: event.target.value })} />
-              </label>
-              <label>
-                메모
-                <textarea value={refereeDraft.memo} placeholder="자격증, 활동지역, 가능한 시간 등을 적어주세요." onChange={(event) => updateRefereeDraft({ memo: event.target.value })} />
-              </label>
-              <Button type="submit" variant="secondary" disabled={refereeExamRequired && !refereeExamPassed}>
-                <Send size={16} /> 심판 등록요청
-              </Button>
-              {refereeExamRequired && !refereeExamPassed ? <small>커뮤니티 심판은 시험 통과 후 등록요청할 수 있습니다.</small> : null}
-            </form>
-            <div className="compact-list">
-              {refereeRequests.slice(0, 4).map((request) => (
-                <div key={request.id}>
-                  <span>
-                    {request.qualification === "official_license" ? "정식 라이선스" : "커뮤니티 시험"} · 신뢰도 {request.trustScore}
-                    {request.examTotal ? ` · 시험 ${request.examScore}/${request.examTotal}` : ""}
-                  </span>
-                  <strong>{request.status === "pending" ? "대기" : request.status}</strong>
+              </>
+            ) : (
+              <div className="tier-range-note tier-range-note-warning">
+                <div>
+                  <span>시험 제한</span>
+                  <strong>신뢰도 {REFEREE_TRUST_MIN}점 이상 필요</strong>
+                  <em>현재 신뢰도 {currentTrustScore}점입니다. 룰북은 누구나 볼 수 있습니다.</em>
                 </div>
-              ))}
-              {!refereeRequests.length ? <div><span>요청한 심판 등록이 없습니다.</span><strong>신뢰도 {app.currentUser?.trustScore ?? 0}</strong></div> : null}
-            </div>
+                <ShieldCheck size={18} />
+              </div>
+            )}
       </Card>
     </div>
   );

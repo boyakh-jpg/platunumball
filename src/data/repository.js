@@ -3827,6 +3827,22 @@ function getRefereeExamLockNotification(availableAfter) {
 
 export function startRefereeExamAttempt(state, draft = {}) {
   const now = Date.now();
+  const currentUser = state.users.find((user) => user.id === state.currentUserId);
+  const trustScore = Number(currentUser?.trustScore ?? 0);
+  if (trustScore < REFEREE_TRUST_MIN) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "심판 시험 제한",
+          body: `심판 시험은 신뢰도 ${REFEREE_TRUST_MIN}점 이상부터 가능합니다. 현재 ${trustScore}점입니다.`,
+          tone: "orange",
+        },
+        ...state.notifications,
+      ],
+    };
+  }
   const latestAttempt = getLatestRefereeExamAttempt(state.settings, state.currentUserId);
   const lockedUntil = latestAttempt?.availableAfter ? new Date(latestAttempt.availableAfter).getTime() : 0;
   if (Number.isFinite(lockedUntil) && lockedUntil > now) {
@@ -3885,6 +3901,21 @@ export function submitRefereeRequest(state, draft = {}) {
   const disciplineBlock = getDisciplineBlockedState(state, "심판 등록요청");
   if (disciplineBlock) return disciplineBlock;
   const currentUser = state.users.find((user) => user.id === state.currentUserId);
+  const trustScore = Number(currentUser?.trustScore ?? 0);
+  if (trustScore < REFEREE_TRUST_MIN) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "심판 등록 제한",
+          body: `심판 등록요청은 신뢰도 ${REFEREE_TRUST_MIN}점 이상부터 가능합니다. 현재 ${trustScore}점입니다.`,
+          tone: "orange",
+        },
+        ...state.notifications,
+      ],
+    };
+  }
   const qualification = draft.qualification === "official_license" ? "official_license" : "community_exam";
   const experience = String(draft.experience ?? "").trim();
   const memo = String(draft.memo ?? "").trim();
@@ -3924,7 +3955,7 @@ export function submitRefereeRequest(state, draft = {}) {
     examTotal,
     examPassed: qualification === "community_exam" ? true : Boolean(draft.examPassed),
     examAttemptId: passedAttempt?.id ?? "",
-    trustScore: Number(currentUser?.trustScore ?? 0),
+    trustScore,
     createdAt: new Date().toISOString(),
   };
 
