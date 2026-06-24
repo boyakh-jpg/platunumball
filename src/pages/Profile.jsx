@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { MessageCircle, Search, Star, Unlink2 } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
@@ -11,11 +11,12 @@ import ShareCard from "../components/share/ShareCard.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import {
   DISCORD_NOTIFICATION_EVENTS,
-  createDemoDiscordConnection,
+  consumeDiscordOAuthResult,
   getDiscordAvatarClassName,
   getDiscordAvatarStyle,
   getDiscordChannel,
   getDiscordDisplayName,
+  getDiscordOAuthStartUrl,
   getDiscordProfileUrl,
   isDiscordLinked,
 } from "../lib/discord.js";
@@ -147,9 +148,19 @@ export default function Profile({ app }) {
       },
     });
   };
-  const connectDiscord = () => {
-    app.actions.updateProfile({ discordConnection: createDemoDiscordConnection(user) });
+  useEffect(() => {
+    const discordOAuthResult = consumeDiscordOAuthResult(user.id);
+    if (!discordOAuthResult) return;
+    if (discordOAuthResult.status !== "linked") {
+      console.warn("Discord link failed.", discordOAuthResult.error);
+      return;
+    }
+    app.actions.updateProfile({ discordConnection: discordOAuthResult.connection });
     updateDiscordChannel({ enabled: true });
+  }, [user.id]);
+
+  const connectDiscord = () => {
+    window.location.assign(getDiscordOAuthStartUrl(user.id));
   };
   const unlinkDiscord = () => {
     app.actions.updateProfile({ discordConnection: null });
