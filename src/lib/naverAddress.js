@@ -1,9 +1,20 @@
 const NAVER_MAP_SCRIPT_ID = "naver-map-sdk-script";
+const NAVER_MAP_READY_CALLBACK = "__rankballNaverMapsReady";
+let naverMapReadyPromise = null;
+
+function hasNaverGeocoder() {
+  return typeof window !== "undefined" && Boolean(window.naver?.maps?.Service?.geocode);
+}
 
 function loadExternalScript(id, src) {
   if (typeof window === "undefined") return Promise.reject(new Error("브라우저에서만 사용할 수 있습니다."));
 
-  const existing = document.getElementById(id);
+  let existing = document.getElementById(id);
+  const existingSrc = existing?.dataset.src || existing?.src || "";
+  if (existing && existingSrc && existingSrc !== src) {
+    existing.remove();
+    existing = null;
+  }
   if (existing?.dataset.loaded === "true") return Promise.resolve();
   if (existing?.dataset.loading === "true") {
     return new Promise((resolve, reject) => {
@@ -17,6 +28,7 @@ function loadExternalScript(id, src) {
     script.id = id;
     script.src = src;
     script.async = true;
+    script.dataset.src = src;
     script.dataset.loading = "true";
     script.addEventListener("load", () => {
       script.dataset.loaded = "true";
@@ -26,6 +38,35 @@ function loadExternalScript(id, src) {
     script.addEventListener("error", () => reject(new Error("지도 스크립트 로드 실패")), { once: true });
     document.head.appendChild(script);
   });
+}
+
+function waitForNaverGeocoder() {
+  if (hasNaverGeocoder()) return Promise.resolve();
+  if (naverMapReadyPromise) return naverMapReadyPromise;
+
+  naverMapReadyPromise = new Promise((resolve, reject) => {
+    let intervalId = 0;
+    let timeoutId = 0;
+    const finish = (error) => {
+      window.clearInterval(intervalId);
+      window.clearTimeout(timeoutId);
+      if (error) reject(error);
+      else resolve();
+    };
+    window[NAVER_MAP_READY_CALLBACK] = () => {
+      if (hasNaverGeocoder()) finish();
+    };
+    intervalId = window.setInterval(() => {
+      if (hasNaverGeocoder()) finish();
+    }, 50);
+    timeoutId = window.setTimeout(() => {
+      finish(new Error("Naver Maps Geocoder를 사용할 수 없습니다."));
+    }, 10000);
+  }).finally(() => {
+    naverMapReadyPromise = null;
+  });
+
+  return naverMapReadyPromise;
 }
 
 export function getNaverMapClientId() {
@@ -39,9 +80,11 @@ export function getNaverMapClientId() {
 
 async function loadNaverMapsSdk(clientId = getNaverMapClientId()) {
   if (!clientId) throw new Error("VITE_NAVER_MAP_CLIENT_ID가 없습니다.");
-  const src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${encodeURIComponent(clientId)}&submodules=geocoder`;
-  await loadExternalScript(NAVER_MAP_SCRIPT_ID, src);
-  if (!window.naver?.maps) throw new Error("Naver Maps SDK를 사용할 수 없습니다.");
+  if (typeof window === "undefined") throw new Error("브라우저에서만 사용할 수 있습니다.");
+  if (hasNaverGeocoder()) return;
+  const src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${encodeURIComponent(clientId)}&submodules=geocoder&callback=${NAVER_MAP_READY_CALLBACK}`;
+  const readyPromise = waitForNaverGeocoder();
+  await Promise.all([loadExternalScript(NAVER_MAP_SCRIPT_ID, src), readyPromise]);
 }
 
 function getAddressElement(address = {}, type = "") {

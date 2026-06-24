@@ -330,16 +330,6 @@ export default function Settings({ app, auth }) {
   const averageMatches = testAccounts.length
     ? Math.round(testAccounts.reduce((sum, user) => sum + (matchCountByUser.get(user.id) ?? 0), 0) / testAccounts.length)
     : 0;
-  const courtAddressResults = useMemo(() => {
-    const keyword = courtAddressQuery.trim().toLowerCase();
-    const fallbackRegion = app.currentUser?.region ?? "";
-    return registeredCourts
-      .filter((court) => {
-        const haystack = `${court.name} ${court.region} ${court.addressText} ${court.locationNote} ${getCourtHashtag(court)}`.toLowerCase();
-        return keyword ? haystack.includes(keyword) : court.region === fallbackRegion;
-      })
-      .slice(0, 5);
-  }, [app.currentUser?.region, courtAddressQuery, registeredCourts]);
   const refereeExamQuestions = useMemo(() => getRefereeExamSet(refereeExamSeed), [refereeExamSeed]);
   const answeredRefereeExamCount = Object.keys(refereeExamAnswers).length;
   const refereeExamRequired = refereeDraft.qualification === "community_exam";
@@ -364,19 +354,6 @@ export default function Settings({ app, auth }) {
       </PlayerHoverCard>
       <span>{user.testLoginId} · {user.region} · {matchCountByUser.get(user.id) ?? 0}경기</span>
       <em>{user.position}</em>
-    </button>
-  );
-  const renderCourtAddressSearchItem = (court) => (
-    <button
-      key={court.id}
-      type="button"
-      className="search-picker-result-row"
-      onMouseDown={(event) => event.preventDefault()}
-      onClick={() => selectCourtAddress(court)}
-    >
-      <strong>{court.name}</strong>
-      <span>{court.region} · {court.addressText}</span>
-      <em>구장</em>
     </button>
   );
   const selectReportTarget = (item) => {
@@ -483,32 +460,6 @@ export default function Settings({ app, auth }) {
     setCourtAddressQuery(result.addressText);
     setNaverAddressResults([]);
     setCourtLookupStatus("네이버 주소와 좌표를 저장했습니다. 필요하면 지도 핀으로 위치를 보정하세요.");
-  };
-  const selectCourtAddress = (court) => {
-    const addressDong = getCourtAddressDong(court);
-    const baseCourtName = addressDong && String(court.name ?? "").startsWith(addressDong)
-      ? String(court.name ?? "").slice(addressDong.length).trim()
-      : court.name;
-    updateCourtDraft({
-      name: courtDraft.name.trim() ? courtDraft.name : baseCourtName,
-      region: court.region,
-      type: court.type,
-      addressText: court.addressText,
-      roadAddress: court.roadAddress ?? "",
-      jibunAddress: court.jibunAddress ?? "",
-      addressDong,
-      zonecode: court.zonecode ?? "",
-      locationNote: court.locationNote,
-      lat: court.lat ?? court.latitude ?? "",
-      lng: court.lng ?? court.longitude ?? "",
-      courtKind: court.courtKind,
-      surfaceType: court.surfaceType ?? "unknown",
-      courtLayout: court.courtLayout ?? (court.hoopCount === 1 ? "half" : "full"),
-      paid: court.paid,
-    });
-    setNaverAddressResults([]);
-    setCourtAddressQuery(`${court.name} ${court.addressText}`);
-    setCourtLookupStatus(court.lat || court.latitude ? "등록된 구장 위치를 불러왔습니다." : "주소를 불러왔습니다.");
   };
   const submitCourtRequest = (event) => {
     event.preventDefault();
@@ -843,23 +794,23 @@ export default function Settings({ app, auth }) {
               <div className="settings-address-search">
                 <label>
                   주소 검색
-                  <SearchPicker
+                  <input
                     value={courtAddressQuery}
-                    onChange={(value) => {
-                      setCourtAddressQuery(value);
+                    onChange={(event) => {
+                      setCourtAddressQuery(event.target.value);
                       setNaverAddressResults([]);
                     }}
-                    placeholder="도로명, 건물명, 기존 구장 검색"
-                    items={courtAddressResults}
-                    idleItems={courtAddressResults}
-                    idleTitle="추천 구장"
-                    showIdleOnFocus
-                    fieldClassName="admin-account-search"
-                    renderItem={renderCourtAddressSearchItem}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        searchCourtAddress();
+                      }
+                    }}
+                    placeholder="도로명 주소, 건물명, 구장명 검색"
                   />
                 </label>
                 <div className="settings-address-actions">
-                  <Button type="button" variant="secondary" onClick={searchCourtAddress} disabled={!naverMapKeyReady}>네이버 주소 검색</Button>
+                  <Button type="button" variant="secondary" onClick={searchCourtAddress}>네이버 주소 검색</Button>
                   <Button type="button" variant="secondary" onClick={pickCourtMapPin} disabled={!courtAddressSelected || !naverMapKeyReady}>
                     지도 핀 저장
                   </Button>

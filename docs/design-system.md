@@ -506,3 +506,4 @@ UI 수정 전:
 1. Naver 키, 주소 선택, 좌표 저장, 중복 확인은 폼 안의 작은 `arena-mini-note` 또는 `tier-range-note`로만 표시한다.
 2. 중복 구장 경고는 orange tone note로 표시하고 제출 버튼은 비활성화한다.
 3. 지도 핀 버튼은 주소가 선택되고 Naver Maps JavaScript 키가 있을 때만 활성화한다.
+4. 구장등록 주소 입력은 공용 실시간 `SearchPicker`를 쓰지 않고 일반 input, `네이버 주소 검색` 버튼, 선택 결과 목록으로 처리한다.
