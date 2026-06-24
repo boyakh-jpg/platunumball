@@ -11,7 +11,7 @@ import { formatStatLine, getMatchReservePlayerIds, getMatchSidePlayerIds } from 
 import { COURT_REQUEST_TRUST_MIN, FALSE_COURT_REPORT_TRUST_PENALTY, REGIONS } from "../lib/constants.js";
 import { COURT_LAYOUT_OPTIONS, COURT_SURFACE_OPTIONS, findCourtDuplicate, getCourtDuplicateMessage, getCourtLayoutLabel, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
 import { getCourtHashtag, getMatchHashtag, getUserHashtag } from "../lib/handles.js";
-import { geocodeKakaoAddress, getKakaoMapAppKey, openDaumPostcodeSearch, openKakaoMapPinPicker } from "../lib/kakaoAddress.js";
+import { getNaverMapClientId, openNaverMapPinPicker, searchNaverAddresses } from "../lib/naverAddress.js";
 import { hasAdminAccess } from "../lib/admin.js";
 import {
   REFEREE_EXAM_BANK_SIZE,
@@ -161,6 +161,7 @@ export default function Settings({ app, auth }) {
   const [reportedUserIds, setReportedUserIds] = useState([]);
   const [accountQuery, setAccountQuery] = useState("");
   const [courtAddressQuery, setCourtAddressQuery] = useState("");
+  const [naverAddressResults, setNaverAddressResults] = useState([]);
   const [courtLookupStatus, setCourtLookupStatus] = useState("");
   const [courtDraft, setCourtDraft] = useState(() => ({
     ...DEFAULT_COURT_REQUEST,
@@ -179,7 +180,7 @@ export default function Settings({ app, auth }) {
   const currentTrustScore = Number(app.currentUser?.trustScore ?? 0);
   const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
   const canOpenAdminMenu = hasAdminAccess(app.currentUser, app.state.settings);
-  const kakaoMapKeyReady = Boolean(getKakaoMapAppKey());
+  const naverMapKeyReady = Boolean(getNaverMapClientId());
   const courtAddressSelected = Boolean(String(courtDraft.addressText ?? "").trim());
   const courtDisplayName = getCourtRequestDisplayName(courtDraft.name, courtDraft.addressDong);
   const courtHasMapPin = Boolean(String(courtDraft.lat ?? "").trim() && String(courtDraft.lng ?? "").trim());
@@ -436,46 +437,27 @@ export default function Settings({ app, auth }) {
     return REGIONS.find((region) => text.includes(region)) ?? addressResult?.sigungu ?? app.currentUser?.region ?? "";
   };
   const searchCourtAddress = async () => {
-    setCourtLookupStatus("주소 검색 중");
+    if (!naverMapKeyReady) {
+      setCourtLookupStatus("주소 검색은 VITE_NAVER_MAP_CLIENT_ID 설정 후 사용할 수 있습니다.");
+      return;
+    }
+    setCourtLookupStatus("네이버 주소 검색 중");
     try {
-      const result = await openDaumPostcodeSearch(courtAddressQuery);
-      if (!result.addressText) throw new Error("선택된 주소가 없습니다.");
-      const addressDong = getCourtAddressDong(result);
-      const nextDraft = {
-        name: courtDraft.name.trim() ? courtDraft.name : result.buildingName,
-        region: getCourtAddressRegion(result),
-        addressText: result.addressText,
-        roadAddress: result.roadAddress,
-        jibunAddress: result.jibunAddress,
-        addressDong,
-        zonecode: result.zonecode,
-      };
-      let nextStatus = "주소 선택 완료. 필요하면 지도 핀으로 위치를 보정하세요.";
-      if (kakaoMapKeyReady) {
-        try {
-          const coords = await geocodeKakaoAddress(result.addressText);
-          nextDraft.lat = String(coords.lat);
-          nextDraft.lng = String(coords.lng);
-          nextStatus = "주소 선택 완료. Kakao 좌표를 저장했습니다.";
-        } catch {
-          nextStatus = "주소 선택 완료. 좌표 변환은 실패했습니다. 지도 핀으로 보정하세요.";
-        }
-      }
-      updateCourtDraft(nextDraft);
-      setCourtAddressQuery(result.addressText);
-      setCourtLookupStatus(nextStatus);
+      const results = await searchNaverAddresses(courtAddressQuery);
+      setNaverAddressResults(results);
+      setCourtLookupStatus(results.length ? `${results.length}개 주소를 찾았습니다. 사용할 주소를 선택하세요.` : "주소 검색 결과가 없습니다.");
     } catch (error) {
       setCourtLookupStatus(error.message || "주소 검색 실패");
     }
   };
   const pickCourtMapPin = async () => {
-    if (!kakaoMapKeyReady) {
-      setCourtLookupStatus("지도 핀은 VITE_KAKAO_MAP_APP_KEY 설정 후 사용할 수 있습니다.");
+    if (!naverMapKeyReady) {
+      setCourtLookupStatus("지도 핀은 VITE_NAVER_MAP_CLIENT_ID 설정 후 사용할 수 있습니다.");
       return;
     }
     setCourtLookupStatus("지도 열기 중");
     try {
-      const pin = await openKakaoMapPinPicker(courtDraft);
+      const pin = await openNaverMapPinPicker(courtDraft);
       updateCourtDraft({
         lat: String(pin.lat),
         lng: String(pin.lng),
@@ -484,6 +466,23 @@ export default function Settings({ app, auth }) {
     } catch (error) {
       setCourtLookupStatus(error.message || "지도 핀 저장 실패");
     }
+  };
+  const selectNaverAddress = (result) => {
+    const addressDong = getCourtAddressDong(result);
+    updateCourtDraft({
+      name: courtDraft.name.trim() ? courtDraft.name : result.buildingName,
+      region: getCourtAddressRegion(result),
+      addressText: result.addressText,
+      roadAddress: result.roadAddress,
+      jibunAddress: result.jibunAddress,
+      addressDong,
+      zonecode: result.zonecode,
+      lat: result.lat ? String(result.lat) : "",
+      lng: result.lng ? String(result.lng) : "",
+    });
+    setCourtAddressQuery(result.addressText);
+    setNaverAddressResults([]);
+    setCourtLookupStatus("네이버 주소와 좌표를 저장했습니다. 필요하면 지도 핀으로 위치를 보정하세요.");
   };
   const selectCourtAddress = (court) => {
     const addressDong = getCourtAddressDong(court);
@@ -507,6 +506,7 @@ export default function Settings({ app, auth }) {
       courtLayout: court.courtLayout ?? (court.hoopCount === 1 ? "half" : "full"),
       paid: court.paid,
     });
+    setNaverAddressResults([]);
     setCourtAddressQuery(`${court.name} ${court.addressText}`);
     setCourtLookupStatus(court.lat || court.latitude ? "등록된 구장 위치를 불러왔습니다." : "주소를 불러왔습니다.");
   };
@@ -519,6 +519,7 @@ export default function Settings({ app, auth }) {
     if (!canSubmitCourtRequest) return;
     app.actions.submitCourtRequest(courtDraft);
     setCourtAddressQuery("");
+    setNaverAddressResults([]);
     setCourtDraft({
       ...DEFAULT_COURT_REQUEST,
       region: app.currentUser?.region ?? DEFAULT_COURT_REQUEST.region,
@@ -844,7 +845,10 @@ export default function Settings({ app, auth }) {
                   주소 검색
                   <SearchPicker
                     value={courtAddressQuery}
-                    onChange={setCourtAddressQuery}
+                    onChange={(value) => {
+                      setCourtAddressQuery(value);
+                      setNaverAddressResults([]);
+                    }}
                     placeholder="도로명, 건물명, 기존 구장 검색"
                     items={courtAddressResults}
                     idleItems={courtAddressResults}
@@ -855,11 +859,22 @@ export default function Settings({ app, auth }) {
                   />
                 </label>
                 <div className="settings-address-actions">
-                  <Button type="button" variant="secondary" onClick={searchCourtAddress}>카카오 주소 검색</Button>
-                  <Button type="button" variant="secondary" onClick={pickCourtMapPin} disabled={!courtAddressSelected || !kakaoMapKeyReady}>
+                  <Button type="button" variant="secondary" onClick={searchCourtAddress} disabled={!naverMapKeyReady}>네이버 주소 검색</Button>
+                  <Button type="button" variant="secondary" onClick={pickCourtMapPin} disabled={!courtAddressSelected || !naverMapKeyReady}>
                     지도 핀 저장
                   </Button>
                 </div>
+                {naverAddressResults.length ? (
+                  <div className="settings-address-results">
+                    {naverAddressResults.map((result) => (
+                      <button key={result.id} type="button" onClick={() => selectNaverAddress(result)}>
+                        <strong>{result.roadAddress || result.addressText}</strong>
+                        <span>{result.jibunAddress || result.addressText}</span>
+                        <em>네이버 주소</em>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
                 {courtLookupStatus ? <small>{courtLookupStatus}</small> : null}
               </div>
               <label>
@@ -881,7 +896,7 @@ export default function Settings({ app, auth }) {
                   <div>
                     <span>선택 주소</span>
                     <strong>{courtDraft.addressText}</strong>
-                    <em>{courtHasMapPin ? "Kakao 좌표 저장됨" : kakaoMapKeyReady ? "지도 핀 선택 가능" : "지도 핀은 VITE_KAKAO_MAP_APP_KEY 설정 후 사용"}</em>
+                    <em>{courtHasMapPin ? "Naver 좌표 저장됨" : naverMapKeyReady ? "지도 핀 선택 가능" : "지도 핀은 VITE_NAVER_MAP_CLIENT_ID 설정 후 사용"}</em>
                   </div>
                   <MapPin size={18} />
                 </div>

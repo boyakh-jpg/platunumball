@@ -55,8 +55,8 @@
 
 ## 2026-06-24 구장 등록 배포 TODO
 
-- Kakao Maps JavaScript 키는 frontend public env로만 둔다: `VITE_KAKAO_MAP_APP_KEY`, `VITE_KAKAO_JAVASCRIPT_KEY`, `VITE_KAKAO_APP_KEY` 중 하나.
-- Kakao REST/secret key는 browser bundle에 넣지 않는다.
+- Naver Maps JavaScript Client ID는 frontend public env로만 둔다: `VITE_NAVER_MAP_CLIENT_ID`.
+- Naver Client Secret은 browser bundle에 넣지 않는다.
 - `court_requests` server action은 제출 직전에 신뢰도, 정지 상태, 승인/대기 중복, 주소/좌표 존재를 다시 검사한다.
 - 승인된 구장은 정규화한 `road_address`, `jibun_address`, `address_text`, `zonecode` 기준 unique constraint 또는 unique index로 중복을 막는다.
 - 허위 구장 신고 처리는 report 생성, 요청 상태 변경, 신뢰도 차감, 등록 제한 알림을 하나의 transaction으로 커밋한다.
