@@ -2065,8 +2065,8 @@ begin
   if to_regclass('public.reports_court_request_active_reporter_unique') is null and not exists (
     select 1
     from public.reports
-    where type = ''court_request''
-      and status <> ''dismissed''
+    where type = 'court_request'
+      and status <> 'dismissed'
     group by target_id, user_id
     having count(*) > 1
   ) then
