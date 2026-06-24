@@ -10,6 +10,7 @@ const key =
 export const isSupabaseConfigured = Boolean(url && key);
 export const isBulkRemoteWriteEnabled = env.VITE_ENABLE_BULK_REMOTE_WRITE === "true";
 export const isServerBridgeWriteEnabled = env.VITE_ENABLE_SERVER_BRIDGE_WRITE === "true";
+export const isServerActionsEnabled = env.VITE_ENABLE_SERVER_ACTIONS === "true";
 export const supabase = isSupabaseConfigured
   ? createClient(url, key, {
       auth: {

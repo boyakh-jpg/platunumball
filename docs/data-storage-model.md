@@ -78,4 +78,7 @@
 - `approved_courts`, 관리자 임명, 심판 임명, audit log, 징계 row는 관리자 권한이 있어야 쓸 수 있다.
 - 서버 API에는 `SUPABASE_SERVICE_ROLE_KEY`가 필요하다. 프론트 env에 넣으면 안 된다.
 - 최초 최고관리자는 `RANKBALL_OWNER_AUTH_USER_IDS` 또는 `RANKBALL_OWNER_PROFILE_IDS` env로 지정하거나 DB에 active `admin_appointments`를 넣어야 한다.
-- 아직 구장 승인/허위 신고/관리자 처리 전체 transaction API는 별도 구현이 필요하다.
+- `VITE_ENABLE_SERVER_ACTIONS=true`이면 구장 신고/승인은 local state 갱신과 함께 서버 transaction API도 호출한다.
+- `POST /api/court-requests/approve`는 `rankball_approve_court_request()` RPC로 승인 구장 생성, 요청 상태 변경, audit log, 알림을 한 transaction으로 처리한다.
+- `POST /api/court-requests/report`는 `rankball_report_court_request()` RPC로 신고 생성, 요청자 신뢰도 차감, 요청 상태 변경, 알림을 한 transaction으로 처리한다.
+- 아직 일반 관리자 신고 처리, 임명/징계 처리, Discord DM 발송 transaction API는 별도 구현이 필요하다.

@@ -81,6 +81,7 @@ import {
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import { readProfileBindings, writeProfileBindings } from "../lib/storage.js";
 import { findDiscordConnectionOwner, getDiscordConnectionUserId } from "../lib/discord.js";
+import { postServerAction } from "../lib/serverActions.js";
 
 function sortByRating(items, selector) {
   return [...items].sort((a, b) => selector(b) - selector(a));
@@ -225,6 +226,11 @@ export function useAppData(authUserId = null) {
     () => state.users.find((user) => user.id === currentUserId) ?? state.users[0],
     [currentUserId, state.users],
   );
+  const runServerAction = useCallback((path, payload) => {
+    postServerAction(path, payload).catch((error) => {
+      console.warn(`Server action skipped: ${path}`, error.message);
+    });
+  }, []);
 
   const rankings = useMemo(
     () => ({
@@ -295,10 +301,16 @@ export function useAppData(authUserId = null) {
       blockUser: (userId) => setState((prev) => blockUser({ ...prev, currentUserId }, userId)),
       unblockUser: (userId) => setState((prev) => unblockUser({ ...prev, currentUserId }, userId)),
       reportMatch: (matchId, reason, reportedUserIds) => setState((prev) => reportMatch({ ...prev, currentUserId }, matchId, reason, reportedUserIds)),
-      reportCourtRequest: (requestId, reason) => setState((prev) => reportCourtRequest({ ...prev, currentUserId }, requestId, reason)),
+      reportCourtRequest: (requestId, reason) => {
+        setState((prev) => reportCourtRequest({ ...prev, currentUserId }, requestId, reason));
+        runServerAction("/api/court-requests/report", { requestId, reason });
+      },
       commitAdminReviewAction: (draft) => setState((prev) => commitAdminReviewAction({ ...prev, currentUserId }, draft)),
       commitAdminAppointmentAction: (draft) => setState((prev) => commitAdminAppointmentAction({ ...prev, currentUserId }, draft)),
-      approveCourtRequest: (requestId) => setState((prev) => approveCourtRequest({ ...prev, currentUserId }, requestId)),
+      approveCourtRequest: (requestId) => {
+        setState((prev) => approveCourtRequest({ ...prev, currentUserId }, requestId));
+        runServerAction("/api/court-requests/approve", { requestId });
+      },
       markNotificationRead: (notificationId) => setState((prev) => markNotificationRead(prev, notificationId)),
       markAllNotificationsRead: () => setState((prev) => markAllNotificationsRead(prev)),
       toggleFavoritePlayer: (userId) => setState((prev) => toggleFavoritePlayer(prev, userId)),
@@ -371,7 +383,7 @@ export function useAppData(authUserId = null) {
       removeTeamMember: (teamId, userId) => setState((prev) => removeTeamMember({ ...prev, currentUserId }, teamId, userId)),
       reset: () => setState(resetState()),
     }),
-    [authUserId, currentUserId, profileKey, profileLocked],
+    [authUserId, currentUserId, profileKey, profileLocked, runServerAction],
   );
 
   return { state: { ...state, currentUserId }, currentUser, currentUserId, profileBound: true, profileLocked, rankings, actions };

@@ -962,4 +962,7 @@ flowchart TD
 3. 서버는 Supabase access token을 확인하고 `profiles.auth_user_id`로 현재 앱 프로필을 찾는다.
 4. 일반 유저는 자기 row만 쓸 수 있고, 관리자 row는 관리자 권한이 있어야 쓸 수 있다.
 5. 최고관리자 bootstrap은 서버 env 또는 DB appointment로 한다.
-6. 구장 승인, 허위 구장 신고, 관리자 처리처럼 여러 row를 동시에 바꾸는 작업은 다음 단계에서 전용 transaction API로 분리한다.
+6. `VITE_ENABLE_SERVER_ACTIONS=true`일 때 구장 신고와 구장 승인은 전용 server action을 같이 호출한다.
+7. 구장 승인은 `rankball_approve_court_request()`에서 승인 구장 생성, 요청 상태 변경, audit log, 알림을 한 transaction으로 처리한다.
+8. 허위 구장 신고는 `rankball_report_court_request()`에서 신고 생성, 요청자 신뢰도 차감, 요청 상태 변경, 알림을 한 transaction으로 처리한다.
+9. 일반 관리자 신고 처리, 임명/징계 처리, Discord DM 발송은 아직 별도 server action으로 분리해야 한다.

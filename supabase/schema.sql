@@ -630,6 +630,349 @@ as $$
   select public.current_admin_level() >= min_level
 $$;
 
+create or replace function public.rankball_admin_level_for_profile(actor_profile_id text, override_level integer default 0)
+returns integer
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select greatest(
+    coalesce(override_level, 0),
+    coalesce(max(
+      case grade
+        when 'owner' then 100
+        when 'senior' then 80
+        when 'regionManager' then 60
+        when 'matchManager' then 50
+        when 'support' then 30
+        else 0
+      end
+    ), 0)
+  )
+  from public.admin_appointments
+  where user_id = actor_profile_id
+    and role = 'admin'
+    and status not in ('revoked', 'expired')
+    and (starts_at is null or starts_at <= now())
+    and (ends_at is null or ends_at >= now())
+$$;
+
+create or replace function public.rankball_approve_court_request(
+  actor_profile_id text,
+  actor_admin_level integer,
+  request_id text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  request_row public.court_requests%rowtype;
+  duplicate_id text;
+  approved_id text;
+  now_ts timestamptz := now();
+  approved_payload jsonb;
+begin
+  if public.rankball_admin_level_for_profile(actor_profile_id, actor_admin_level) < 30 then
+    raise exception 'admin_permission_required' using errcode = '42501';
+  end if;
+
+  select * into request_row
+  from public.court_requests
+  where id = request_id
+  for update;
+
+  if not found then
+    raise exception 'court_request_not_found' using errcode = 'P0002';
+  end if;
+
+  select id into duplicate_id
+  from public.approved_courts
+  where lower(coalesce(nullif(road_address, ''), nullif(jibun_address, ''), address_text)) =
+    lower(coalesce(nullif(request_row.road_address, ''), nullif(request_row.jibun_address, ''), request_row.address_text))
+    and coalesce(zonecode, '') = coalesce(request_row.zonecode, '')
+    and source_request_id is distinct from request_row.id
+  limit 1;
+
+  if duplicate_id is not null then
+    raise exception 'court_duplicate:%', duplicate_id using errcode = '23505';
+  end if;
+
+  approved_id := coalesce(
+    (
+      select id
+      from public.approved_courts
+      where source_request_id = request_row.id
+      limit 1
+    ),
+    'court_' || request_row.id
+  );
+
+  approved_payload := request_row.payload || jsonb_build_object(
+    'id', approved_id,
+    'status', 'approved',
+    'sourceRequestId', request_row.id,
+    'approvedBy', actor_profile_id,
+    'approvedAt', now_ts,
+    'favorite', false
+  );
+
+  insert into public.approved_courts (
+    id,
+    source_request_id,
+    approved_by,
+    name,
+    hashtag,
+    address_text,
+    road_address,
+    jibun_address,
+    zonecode,
+    lat,
+    lng,
+    payload,
+    approved_at,
+    created_at,
+    updated_at
+  )
+  values (
+    approved_id,
+    request_row.id,
+    actor_profile_id,
+    request_row.name,
+    request_row.hashtag,
+    request_row.address_text,
+    request_row.road_address,
+    request_row.jibun_address,
+    request_row.zonecode,
+    request_row.lat,
+    request_row.lng,
+    approved_payload,
+    now_ts,
+    now_ts,
+    now_ts
+  )
+  on conflict (id) do update set
+    approved_by = excluded.approved_by,
+    payload = excluded.payload,
+    approved_at = excluded.approved_at,
+    updated_at = excluded.updated_at;
+
+  update public.court_requests
+  set
+    status = 'approved',
+    payload = payload || jsonb_build_object(
+      'status', 'approved',
+      'approvedBy', actor_profile_id,
+      'approvedAt', now_ts,
+      'approvedCourtId', approved_id
+    ),
+    updated_at = now_ts
+  where id = request_row.id;
+
+  insert into public.admin_audit_log (
+    id,
+    type,
+    status,
+    request_id,
+    target_user_id,
+    created_by,
+    payload,
+    created_at
+  )
+  values (
+    'aa_' || md5(request_row.id || actor_profile_id || now_ts::text),
+    'court_approval',
+    'committed',
+    request_row.id,
+    request_row.requested_by,
+    actor_profile_id,
+    jsonb_build_object('requestId', request_row.id, 'courtId', approved_id),
+    now_ts
+  )
+  on conflict (id) do nothing;
+
+  insert into public.notifications (
+    id,
+    user_id,
+    target_user_id,
+    title,
+    body,
+    tone,
+    type,
+    payload,
+    created_at,
+    updated_at
+  )
+  values (
+    'n_' || md5('court-approved' || request_row.id || now_ts::text),
+    request_row.requested_by,
+    request_row.requested_by,
+    '구장 등록 승인',
+    request_row.name || ' 구장 등록요청이 승인되었습니다.',
+    'team',
+    'court_request',
+    jsonb_build_object('courtRequestId', request_row.id, 'approvedCourtId', approved_id),
+    now_ts,
+    now_ts
+  )
+  on conflict (id) do nothing;
+
+  return jsonb_build_object('ok', true, 'requestId', request_row.id, 'approvedCourtId', approved_id);
+end;
+$$;
+
+create or replace function public.rankball_report_court_request(
+  actor_profile_id text,
+  request_id text,
+  reason text default '허위 구장 등록'
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  request_row public.court_requests%rowtype;
+  duplicate_report_id text;
+  report_id text;
+  now_ts timestamptz := now();
+  next_trust integer;
+  safe_reason text := coalesce(nullif(trim(reason), ''), '허위 구장 등록');
+begin
+  select * into request_row
+  from public.court_requests
+  where id = request_id
+  for update;
+
+  if not found then
+    raise exception 'court_request_not_found' using errcode = 'P0002';
+  end if;
+
+  if request_row.requested_by = actor_profile_id then
+    raise exception 'cannot_report_own_court_request' using errcode = '42501';
+  end if;
+
+  select id into duplicate_report_id
+  from public.reports
+  where type = 'court_request'
+    and target_id = request_row.id
+    and user_id = actor_profile_id
+    and status <> 'dismissed'
+  limit 1;
+
+  if duplicate_report_id is not null then
+    return jsonb_build_object('ok', true, 'duplicate', true, 'reportId', duplicate_report_id);
+  end if;
+
+  report_id := 'r_' || md5(request_row.id || actor_profile_id || now_ts::text);
+
+  insert into public.reports (
+    id,
+    type,
+    target_id,
+    user_id,
+    reported_user_ids,
+    reason,
+    status,
+    payload,
+    created_at,
+    updated_at
+  )
+  values (
+    report_id,
+    'court_request',
+    request_row.id,
+    actor_profile_id,
+    to_jsonb(array[request_row.requested_by]),
+    safe_reason,
+    'open',
+    jsonb_build_object(
+      'id', report_id,
+      'type', 'court_request',
+      'targetId', request_row.id,
+      'by', actor_profile_id,
+      'reportedUserIds', jsonb_build_array(request_row.requested_by),
+      'reason', safe_reason,
+      'status', 'open',
+      'createdAt', now_ts
+    ),
+    now_ts,
+    now_ts
+  );
+
+  update public.profiles
+  set
+    trust_score = greatest(0, least(100, coalesce(trust_score, 80) - 8)),
+    updated_at = now_ts
+  where id = request_row.requested_by
+  returning trust_score into next_trust;
+
+  update public.court_requests
+  set
+    status = 'reported',
+    payload = payload || jsonb_build_object(
+      'status', 'reported',
+      'reportedAt', now_ts,
+      'reportedBy', actor_profile_id,
+      'trustPenalty', 8,
+      'requesterTrustAfterReport', next_trust
+    ),
+    updated_at = now_ts
+  where id = request_row.id;
+
+  insert into public.notifications (
+    id,
+    user_id,
+    target_user_id,
+    title,
+    body,
+    tone,
+    type,
+    payload,
+    created_at,
+    updated_at
+  )
+  values
+    (
+      'n_' || md5('court-report-requester' || request_row.id || now_ts::text),
+      request_row.requested_by,
+      request_row.requested_by,
+      case when coalesce(next_trust, 80) < 70 then '구장 등록 제한' else '구장 등록요청 신고됨' end,
+      case when coalesce(next_trust, 80) < 70
+        then '허위 구장 신고로 신뢰도 ' || coalesce(next_trust, 80)::text || '점이 되어 구장 등록요청이 제한됩니다.'
+        else '허위 구장 신고로 신뢰도 8점이 차감되었습니다. 현재 ' || coalesce(next_trust, 80)::text || '점입니다.'
+      end,
+      'orange',
+      'court_request',
+      jsonb_build_object('courtRequestId', request_row.id, 'reportId', report_id),
+      now_ts,
+      now_ts
+    ),
+    (
+      'n_' || md5('court-report-reporter' || request_row.id || actor_profile_id || now_ts::text),
+      actor_profile_id,
+      actor_profile_id,
+      '구장 허위 신고 접수',
+      request_row.name || ' 등록요청을 허위 구장으로 신고했습니다.',
+      'orange',
+      'court_request',
+      jsonb_build_object('courtRequestId', request_row.id, 'reportId', report_id),
+      now_ts,
+      now_ts
+    )
+  on conflict (id) do nothing;
+
+  return jsonb_build_object('ok', true, 'requestId', request_row.id, 'reportId', report_id, 'requesterTrustAfterReport', next_trust);
+end;
+$$;
+
+revoke all on function public.rankball_approve_court_request(text, integer, text) from public;
+revoke all on function public.rankball_report_court_request(text, text, text) from public;
+grant execute on function public.rankball_approve_court_request(text, integer, text) to service_role;
+grant execute on function public.rankball_report_court_request(text, text, text) to service_role;
+
 do $$
 begin
   if to_regclass('public.notifications') is not null then
@@ -659,6 +1002,31 @@ on public.approved_courts (
   lower(coalesce(nullif(road_address, ''), nullif(jibun_address, ''), address_text)),
   coalesce(zonecode, '')
 );
+
+do $$
+begin
+  if to_regclass('public.approved_courts_source_request_unique') is null and not exists (
+    select 1
+    from public.approved_courts
+    where source_request_id is not null
+    group by source_request_id
+    having count(*) > 1
+  ) then
+    execute 'create unique index approved_courts_source_request_unique on public.approved_courts (source_request_id) where source_request_id is not null';
+  end if;
+
+  if to_regclass('public.reports_court_request_active_reporter_unique') is null and not exists (
+    select 1
+    from public.reports
+    where type = ''court_request''
+      and status <> ''dismissed''
+    group by target_id, user_id
+    having count(*) > 1
+  ) then
+    execute 'create unique index reports_court_request_active_reporter_unique on public.reports (target_id, user_id) where type = ''court_request'' and status <> ''dismissed''';
+  end if;
+end;
+$$;
 
 create index if not exists court_requests_status_idx on public.court_requests (status, created_at desc);
 create index if not exists reports_status_idx on public.reports (status, created_at desc);
