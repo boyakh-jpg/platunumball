@@ -316,6 +316,11 @@ function userDecisionDone(match, userId) {
   return false;
 }
 
+function userCanResolveDispute(match, userId) {
+  if (match.status !== "disputed") return false;
+  return match.refereeId ? match.refereeId === userId : getMatchHostPlayerId(match) === userId;
+}
+
 function userNeedsAgreement(match, userId) {
   const sideName = getUserSideName(match, userId);
   return Boolean(sideName && match.status === "contract" && !(match.agreements?.[sideName] ?? []).includes(userId));
@@ -324,6 +329,7 @@ function userNeedsAgreement(match, userId) {
 function userNeedsMatchAction(match, userId) {
   const phase = getMatchRoomPhase(match).phase;
   if (userNeedsAgreement(match, userId)) return true;
+  if (phase === "dispute" && match.status === "disputed") return userCanResolveDispute(match, userId);
   return ["postgame", "dispute"].includes(phase) && !userDecisionDone(match, userId);
 }
 
