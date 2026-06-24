@@ -69,3 +69,13 @@
 - `repository.js`는 브리지 테이블이 없거나 RLS로 막혀도 전체 원격 로드를 실패시키지 않는다.
 - 선택 테이블 write도 core profile/team/match 저장을 망가뜨리지 않게 optional write로 둔다.
 - 이 작업은 서버 권한화 완료가 아니다. 관리자 처리, 구장 승인, 허위 구장 신고, Discord DM 발송은 아직 server action/transaction/service role 경로가 필요하다.
+
+## 2026-06-24 server bridge write
+
+- `VITE_ENABLE_SERVER_BRIDGE_WRITE=true`이면 optional bridge write는 browser Supabase upsert 대신 `POST /api/supabase/bridge`로 보낸다.
+- `/api/supabase/bridge`는 Supabase access token을 검증하고 `profiles.auth_user_id`로 앱 `profileId`를 찾는다.
+- 일반 유저는 자기 `notifications`, `reports`, `court_requests`, `referee_requests`, `referee_exam_attempts`, `discord_notification_deliveries` row만 쓸 수 있다.
+- `approved_courts`, 관리자 임명, 심판 임명, audit log, 징계 row는 관리자 권한이 있어야 쓸 수 있다.
+- 서버 API에는 `SUPABASE_SERVICE_ROLE_KEY`가 필요하다. 프론트 env에 넣으면 안 된다.
+- 최초 최고관리자는 `RANKBALL_OWNER_AUTH_USER_IDS` 또는 `RANKBALL_OWNER_PROFILE_IDS` env로 지정하거나 DB에 active `admin_appointments`를 넣어야 한다.
+- 아직 구장 승인/허위 신고/관리자 처리 전체 transaction API는 별도 구현이 필요하다.

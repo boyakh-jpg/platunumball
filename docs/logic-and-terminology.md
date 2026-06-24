@@ -954,3 +954,12 @@ flowchart TD
 3. 알림, 신고, 구장요청, 관리자 처리, Discord 발송 큐는 브리지 테이블의 `payload`에 현재 state shape를 보존한다.
 4. 브리지 테이블 load/write 실패는 기존 mock/localStorage 흐름을 막지 않는다.
 5. 관리자 처리, 허위 구장 신고 제재, Discord DM 발송, 실시간 중복 방지는 server action, RLS, transaction 전까지 완료 기능으로 보지 않는다.
+
+## 2026-06-24 server bridge write
+
+1. 브라우저는 service-role key를 절대 갖지 않는다.
+2. `VITE_ENABLE_SERVER_BRIDGE_WRITE=true`일 때 bridge write는 `/api/supabase/bridge`를 통해서만 보낸다.
+3. 서버는 Supabase access token을 확인하고 `profiles.auth_user_id`로 현재 앱 프로필을 찾는다.
+4. 일반 유저는 자기 row만 쓸 수 있고, 관리자 row는 관리자 권한이 있어야 쓸 수 있다.
+5. 최고관리자 bootstrap은 서버 env 또는 DB appointment로 한다.
+6. 구장 승인, 허위 구장 신고, 관리자 처리처럼 여러 row를 동시에 바꾸는 작업은 다음 단계에서 전용 transaction API로 분리한다.

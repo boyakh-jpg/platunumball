@@ -68,6 +68,19 @@ begin
 end;
 $$;
 
+create or replace function public.current_profile_id()
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select p.id
+  from public.profiles p
+  where p.auth_user_id = auth.uid()::text
+  limit 1
+$$;
+
 create or replace function public.enforce_team_membership_limit()
 returns trigger
 language plpgsql
@@ -582,6 +595,41 @@ create table if not exists public.discord_notification_deliveries (
   updated_at timestamptz not null default now()
 );
 
+create or replace function public.current_admin_level()
+returns integer
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(max(
+    case grade
+      when 'owner' then 100
+      when 'senior' then 80
+      when 'regionManager' then 60
+      when 'matchManager' then 50
+      when 'support' then 30
+      else 0
+    end
+  ), 0)
+  from public.admin_appointments
+  where user_id = public.current_profile_id()
+    and role = 'admin'
+    and status not in ('revoked', 'expired')
+    and (starts_at is null or starts_at <= now())
+    and (ends_at is null or ends_at >= now())
+$$;
+
+create or replace function public.current_is_admin(min_level integer default 30)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select public.current_admin_level() >= min_level
+$$;
+
 do $$
 begin
   if to_regclass('public.notifications') is not null then
@@ -647,6 +695,67 @@ for select
 to anon, authenticated
 using (true);
 
+drop policy if exists court_requests_self_read on public.court_requests;
+drop policy if exists court_requests_self_insert on public.court_requests;
+drop policy if exists court_requests_admin_read on public.court_requests;
+create policy court_requests_self_read
+on public.court_requests
+for select
+to authenticated
+using (requested_by = public.current_profile_id());
+create policy court_requests_self_insert
+on public.court_requests
+for insert
+to authenticated
+with check (requested_by = public.current_profile_id() and status = 'pending');
+create policy court_requests_admin_read
+on public.court_requests
+for select
+to authenticated
+using (public.current_is_admin(30));
+
+drop policy if exists referee_requests_self_read on public.referee_requests;
+drop policy if exists referee_requests_self_insert on public.referee_requests;
+create policy referee_requests_self_read
+on public.referee_requests
+for select
+to authenticated
+using (user_id = public.current_profile_id());
+create policy referee_requests_self_insert
+on public.referee_requests
+for insert
+to authenticated
+with check (user_id = public.current_profile_id());
+
+drop policy if exists referee_exam_attempts_self_read on public.referee_exam_attempts;
+drop policy if exists referee_exam_attempts_self_insert on public.referee_exam_attempts;
+create policy referee_exam_attempts_self_read
+on public.referee_exam_attempts
+for select
+to authenticated
+using (user_id = public.current_profile_id());
+create policy referee_exam_attempts_self_insert
+on public.referee_exam_attempts
+for insert
+to authenticated
+with check (user_id = public.current_profile_id());
+
+drop policy if exists admin_appointments_admin_read on public.admin_appointments;
+drop policy if exists referee_appointments_admin_read on public.referee_appointments;
+drop policy if exists admin_audit_log_admin_read on public.admin_audit_log;
+drop policy if exists admin_disciplinary_actions_admin_read on public.admin_disciplinary_actions;
+create policy admin_appointments_admin_read on public.admin_appointments for select to authenticated using (public.current_is_admin(30));
+create policy referee_appointments_admin_read on public.referee_appointments for select to authenticated using (public.current_is_admin(30));
+create policy admin_audit_log_admin_read on public.admin_audit_log for select to authenticated using (public.current_is_admin(30));
+create policy admin_disciplinary_actions_admin_read on public.admin_disciplinary_actions for select to authenticated using (public.current_is_admin(30));
+
+drop policy if exists discord_notification_deliveries_self_read on public.discord_notification_deliveries;
+create policy discord_notification_deliveries_self_read
+on public.discord_notification_deliveries
+for select
+to authenticated
+using (target_user_id = public.current_profile_id());
+
 do $$
 begin
   if to_regclass('public.notifications') is not null then
@@ -658,8 +767,8 @@ begin
       select 1 from information_schema.columns
       where table_schema = 'public' and table_name = 'notifications' and column_name = 'user_id'
     ) then
-      execute 'create policy notifications_self_read on public.notifications for select to authenticated using (user_id = auth.uid()::text)';
-      execute 'create policy notifications_self_update on public.notifications for update to authenticated using (user_id = auth.uid()::text) with check (user_id = auth.uid()::text)';
+      execute 'create policy notifications_self_read on public.notifications for select to authenticated using (user_id = public.current_profile_id() or target_user_id = public.current_profile_id())';
+      execute 'create policy notifications_self_update on public.notifications for update to authenticated using (user_id = public.current_profile_id() or target_user_id = public.current_profile_id()) with check (user_id = public.current_profile_id() or target_user_id = public.current_profile_id())';
     else
       execute 'create policy notifications_self_read on public.notifications for select to authenticated using (false)';
     end if;
@@ -678,7 +787,7 @@ begin
       select 1 from information_schema.columns
       where table_schema = 'public' and table_name = 'reports' and column_name = 'user_id'
     ) then
-      execute 'create policy reports_insert_authenticated on public.reports for insert to authenticated with check (user_id = auth.uid()::text)';
+      execute 'create policy reports_insert_authenticated on public.reports for insert to authenticated with check (user_id = public.current_profile_id())';
     end if;
     execute 'create policy reports_no_public_read on public.reports for select to authenticated using (false)';
   end if;

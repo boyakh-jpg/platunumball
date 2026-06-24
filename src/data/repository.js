@@ -76,7 +76,8 @@ import {
   isAppointmentActive,
 } from "../lib/admin.js";
 import { clearState, readState, writeState } from "../lib/storage.js";
-import { isBulkRemoteWriteEnabled, isSupabaseConfigured, supabase } from "../lib/supabase.js";
+import { isBulkRemoteWriteEnabled, isServerBridgeWriteEnabled, isSupabaseConfigured, supabase } from "../lib/supabase.js";
+import { writeServerBridgeRows } from "../lib/serverBridge.js";
 import { findDiscordConnectionOwner, getDiscordConnectionUserId, syncDiscordNotificationDeliveries } from "../lib/discord.js";
 import { sameHashtag, toHashtag } from "../lib/handles.js";
 import { canChangeProfileName } from "../lib/profileSetup.js";
@@ -1252,6 +1253,10 @@ async function upsertRemoteRows(table, rows, onConflict) {
 
 async function upsertOptionalRemoteRows(table, rows, onConflict) {
   try {
+    if (isServerBridgeWriteEnabled) {
+      await writeServerBridgeRows(table, rows);
+      return;
+    }
     await upsertRemoteRows(table, rows, onConflict);
   } catch (error) {
     console.warn(`Supabase optional table write skipped: ${table}`, error.message);
