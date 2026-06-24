@@ -80,6 +80,7 @@ import {
 } from "../data/repository.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import { readProfileBindings, writeProfileBindings } from "../lib/storage.js";
+import { findDiscordConnectionOwner, getDiscordConnectionUserId } from "../lib/discord.js";
 
 function sortByRating(items, selector) {
   return [...items].sort((a, b) => selector(b) - selector(a));
@@ -95,7 +96,8 @@ function preserveLocalDiscordState(localState, remoteState) {
   const users = remoteUsers.map((remoteUser) => {
     const localConnection = localUsersById.get(remoteUser.id)?.discordConnection;
     if (!isLinkedDiscordConnection(localConnection) || isLinkedDiscordConnection(remoteUser.discordConnection)) return remoteUser;
-    return { ...remoteUser, discordConnection: localConnection };
+    if (findDiscordConnectionOwner(remoteUsers, localConnection, remoteUser.id)) return remoteUser;
+    return { ...remoteUser, discordConnection: localConnection, discordUserId: getDiscordConnectionUserId(localConnection) || null };
   });
   const localDiscordChannel = localState?.settings?.notificationChannels?.discord;
   const remoteDiscordChannel = remoteState?.settings?.notificationChannels?.discord;

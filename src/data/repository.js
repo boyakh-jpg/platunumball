@@ -75,7 +75,7 @@ import {
 } from "../lib/admin.js";
 import { clearState, readState, writeState } from "../lib/storage.js";
 import { isBulkRemoteWriteEnabled, isSupabaseConfigured, supabase } from "../lib/supabase.js";
-import { syncDiscordNotificationDeliveries } from "../lib/discord.js";
+import { findDiscordConnectionOwner, getDiscordConnectionUserId, syncDiscordNotificationDeliveries } from "../lib/discord.js";
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const makeId = (prefix) => `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
@@ -707,6 +707,7 @@ function fromRemoteProfile(row) {
     testLoginId: row.test_login_id,
     testPassword: "test-0000",
     discordConnection: row.discord_connection ?? null,
+    discordUserId: row.discord_user_id ?? row.discord_connection?.userId ?? null,
     ratings: row.ratings ?? { integrated: 1200, modes: {} },
   };
 }
@@ -1147,6 +1148,7 @@ async function saveNormalizedRemoteState(state) {
     streak: user.streak ?? 0,
     test_login_id: user.testLoginId,
     discord_connection: user.discordConnection ?? null,
+    discord_user_id: getDiscordConnectionUserId(user.discordConnection) || null,
     updated_at: new Date().toISOString(),
   }));
   const teamRows = state.teams.map((team) => ({
@@ -7063,9 +7065,15 @@ export function markAllNotificationsRead(state) {
 
 export function updateProfile(state, patch, targetUserId = state.currentUserId) {
   const profileUserId = targetUserId || state.currentUserId;
+  if (patch.discordConnection?.status === "linked" && findDiscordConnectionOwner(state.users, patch.discordConnection, profileUserId)) {
+    return state;
+  }
+  const profilePatch = Object.prototype.hasOwnProperty.call(patch, "discordConnection")
+    ? { ...patch, discordUserId: getDiscordConnectionUserId(patch.discordConnection) || null }
+    : patch;
   return {
     ...state,
-    users: state.users.map((user) => (user.id === profileUserId ? { ...user, ...patch } : user)),
+    users: state.users.map((user) => (user.id === profileUserId ? { ...user, ...profilePatch } : user)),
   };
 }
 

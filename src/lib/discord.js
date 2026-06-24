@@ -25,9 +25,25 @@ export function getDiscordConnection(user = {}) {
   return user.discordConnection ?? null;
 }
 
+export function getDiscordConnectionUserId(connection = {}) {
+  return String(connection?.userId ?? "").trim();
+}
+
 export function isDiscordLinked(user = {}) {
   const connection = getDiscordConnection(user);
-  return Boolean(connection?.status === "linked" && connection.userId);
+  return Boolean(connection?.status === "linked" && getDiscordConnectionUserId(connection));
+}
+
+export function findDiscordConnectionOwner(users = [], connection = {}, exceptUserId = "") {
+  const discordUserId = getDiscordConnectionUserId(connection);
+  if (!discordUserId) return null;
+  return (
+    users.find((user) => {
+      if (!user || String(user.id) === String(exceptUserId)) return false;
+      const userConnection = getDiscordConnection(user);
+      return userConnection?.status === "linked" && getDiscordConnectionUserId(userConnection) === discordUserId;
+    }) ?? null
+  );
 }
 
 export function getDiscordDisplayName(user = {}) {

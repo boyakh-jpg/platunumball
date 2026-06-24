@@ -12,6 +12,7 @@ import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import {
   DISCORD_NOTIFICATION_EVENTS,
   consumeDiscordOAuthResult,
+  findDiscordConnectionOwner,
   getDiscordAvatarClassName,
   getDiscordAvatarStyle,
   getDiscordChannel,
@@ -109,6 +110,7 @@ export default function Profile({ app }) {
     company: user.company,
   });
   const [favoriteQuery, setFavoriteQuery] = useState("");
+  const [discordLinkError, setDiscordLinkError] = useState("");
   const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
 
   const submit = (event) => {
@@ -153,9 +155,16 @@ export default function Profile({ app }) {
     if (!discordOAuthResult) return;
     if (discordOAuthResult.status !== "linked") {
       console.warn("Discord link failed.", discordOAuthResult.error);
+      setDiscordLinkError("Discord 연동에 실패했습니다.");
       return;
     }
     const targetUserId = discordOAuthResult.appUserId || user.id;
+    const linkedOwner = findDiscordConnectionOwner(app.state.users, discordOAuthResult.connection, targetUserId);
+    if (linkedOwner) {
+      setDiscordLinkError(`이미 ${linkedOwner.name} 프로필에 연결된 Discord입니다.`);
+      return;
+    }
+    setDiscordLinkError("");
     app.actions.updateProfile({ discordConnection: discordOAuthResult.connection }, targetUserId);
     if (targetUserId !== user.id) app.actions.switchUser(targetUserId);
     updateDiscordChannel({ enabled: true });
@@ -251,6 +260,7 @@ export default function Profile({ app }) {
                 </div>
               ) : null}
             </div>
+            {discordLinkError ? <p className="form-warning">{discordLinkError}</p> : null}
             <div className="settings-toggle-grid">
               <label>
                 <input
