@@ -103,6 +103,7 @@ function canAccessActiveMatch(match, user, state) {
   if (getMatchRoomPhase(match).phase === "record") return false;
   const isHost = getMatchHostPlayerId(match, state) === user.id;
   const isReferee = isMatchReferee(match, user.id) && isEligibleReferee(user, match.refereeTrustMin);
+  if (match.status === "disputed") return isReferee || isHost;
   const isRecorder = !match.refereeId && getStatRecorderSides(match, user.id).length > 0;
   const isPlayer = getMatchPlayerIds(match).includes(user.id);
   const isReserve = ["teamA", "teamB"].some((sideName) => getMatchReservePlayerIds(match, sideName).includes(user.id));
