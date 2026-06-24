@@ -967,6 +967,18 @@ flowchart TD
 8. 허위 구장 신고는 `rankball_report_court_request()`에서 신고 생성, 요청자 신뢰도 차감, 요청 상태 변경, 알림을 한 transaction으로 처리한다.
 9. 일반 관리자 신고 처리, 임명/징계 처리, Discord DM 발송은 아직 별도 server action으로 분리해야 한다.
 
+## 2026-06-24 admin server actions
+
+1. 일반 관리자 신고 처리는 `rankball_commit_admin_review_action()`에서 report row를 lock한 뒤 상태 변경, audit log, 징계, 알림을 한 transaction으로 처리한다.
+2. 같은 신고는 `status=open`이고 `admin_audit_log.type=report_action`, `status=committed`가 없을 때만 처리할 수 있다.
+3. 신고 처리 권한은 관리자 level 30 이상이다. 직접 징계는 level 50 이상이다.
+4. 관리자 임명/회수는 level 80 이상, 심판 임명/회수는 level 50 이상만 가능하다.
+5. 최고관리자 `owner` 등급은 UI/server action에서 추가 임명하지 않는다. bootstrap owner는 server env 또는 DB seed로만 둔다.
+6. 임명 row, 징계 row, audit row는 client insert/update/delete 대상이 아니며 service-role server action으로만 변경한다.
+7. 징계 기간은 `3, 7, 14, 28, 42, 56, 168, 280`일 중 하나로 제한한다.
+8. 관리자끼리 중복 처리하지 않도록 server action은 대상 report/appointment row를 `for update`로 잠근다.
+9. Discord DM 발송은 `discord_notification_deliveries` 큐를 서버 worker가 처리한다. Discord 버튼 interaction과 `localStorage/mockData` 제거는 별도 단계로 남는다.
+
 ## 2026-06-24 RLS hardening
 
 1. public tournament read는 `visibility='public'`만 허용한다.

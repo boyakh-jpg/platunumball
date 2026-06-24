@@ -305,8 +305,14 @@ export function useAppData(authUserId = null) {
         setState((prev) => reportCourtRequest({ ...prev, currentUserId }, requestId, reason));
         runServerAction("/api/court-requests/report", { requestId, reason });
       },
-      commitAdminReviewAction: (draft) => setState((prev) => commitAdminReviewAction({ ...prev, currentUserId }, draft)),
-      commitAdminAppointmentAction: (draft) => setState((prev) => commitAdminAppointmentAction({ ...prev, currentUserId }, draft)),
+      commitAdminReviewAction: (draft) => {
+        setState((prev) => commitAdminReviewAction({ ...prev, currentUserId }, draft));
+        runServerAction("/api/admin/review-action", draft);
+      },
+      commitAdminAppointmentAction: (draft) => {
+        setState((prev) => commitAdminAppointmentAction({ ...prev, currentUserId }, draft));
+        runServerAction("/api/admin/appointment-action", draft);
+      },
       approveCourtRequest: (requestId) => {
         setState((prev) => approveCourtRequest({ ...prev, currentUserId }, requestId));
         runServerAction("/api/court-requests/approve", { requestId });

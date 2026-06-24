@@ -83,6 +83,24 @@
 - `POST /api/court-requests/report`는 `rankball_report_court_request()` RPC로 신고 생성, 요청자 신뢰도 차감, 요청 상태 변경, 알림을 한 transaction으로 처리한다.
 - 아직 일반 관리자 신고 처리, 임명/징계 처리, Discord DM 발송 transaction API는 별도 구현이 필요하다.
 
+## 2026-06-24 admin server actions
+
+- `POST /api/admin/review-action`은 `rankball_commit_admin_review_action()` RPC로 신고 상태 변경, audit log, 징계 row, 신고자/대상자 알림을 한 transaction으로 처리한다.
+- `POST /api/admin/appointment-action`은 `rankball_commit_admin_appointment_action()` RPC로 관리자/심판 임명과 회수, audit log, 대상자 알림을 한 transaction으로 처리한다.
+- `POST /api/admin/disciplinary-action`은 `rankball_commit_admin_disciplinary_action()` RPC로 직접 징계, audit log, 대상자 알림을 한 transaction으로 처리한다.
+- 브라우저는 `admin_audit_log`, `admin_disciplinary_actions`, `admin_appointments`, `referee_appointments`를 직접 insert/update/delete 하지 않는다.
+- `VITE_ENABLE_SERVER_ACTIONS=true`일 때 관리자 UI는 local state를 먼저 갱신하고 같은 draft를 server action에 전달한다. 배포 전에는 server action 성공 결과 기준으로 재조회/동기화해야 한다.
+- `localStorage/mockData` 제거는 아직 별도 남은 작업이다.
+
+## 2026-06-24 Discord DM worker
+
+- `POST /api/discord/dm-worker`는 `discord_notification_deliveries.status=queued` row를 `sending`으로 claim한 뒤 Discord Bot DM을 발송한다.
+- 성공하면 delivery row를 `sent`, 실패하면 `failed`로 커밋하고 `payload`에 Discord message/channel ID 또는 error를 남긴다.
+- worker 호출은 `DISCORD_WORKER_SECRET` 또는 `CRON_SECRET` bearer가 있으면 허용한다. secret이 없으면 관리자 Supabase bearer token과 admin level 30 이상이 필요하다.
+- 필요한 env는 `DISCORD_BOT_TOKEN`이다.
+- `vercel.json`은 `/api/discord/dm-worker`를 5분마다 호출하도록 설정한다. 배포 환경에는 `CRON_SECRET`을 넣어야 한다.
+- Discord interaction 버튼 수락/거절 처리와 채팅 양방향 연동은 아직 남은 작업이다.
+
 ## 2026-06-24 RLS hardening
 
 - `tournaments`, `tournament_teams`의 anon read는 `visibility='public'`만 허용한다.

@@ -1165,6 +1165,821 @@ revoke all on function public.rankball_report_court_request(text, text, text) fr
 grant execute on function public.rankball_approve_court_request(text, integer, text) to service_role;
 grant execute on function public.rankball_report_court_request(text, text, text) to service_role;
 
+create or replace function public.rankball_commit_admin_review_action(
+  p_actor_profile_id text,
+  p_actor_admin_level integer,
+  p_report_id text,
+  p_action_type text default 'validReport',
+  p_target_user_id text default null,
+  p_duration_days integer default 3,
+  p_reason text default null,
+  p_feedback text default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  report_row public.reports%rowtype;
+  now_ts timestamptz := now();
+  safe_admin_level integer;
+  safe_action_type text;
+  safe_reason text;
+  safe_feedback text;
+  safe_duration integer;
+  safe_target_user_id text;
+  disciplined_user_id text;
+  discipline_type text;
+  next_status text;
+  audit_id text;
+  disciplinary_id text;
+begin
+  safe_admin_level := public.rankball_admin_level_for_profile(p_actor_profile_id, p_actor_admin_level);
+  if safe_admin_level < 30 then
+    raise exception 'admin_permission_required' using errcode = '42501';
+  end if;
+
+  select * into report_row
+  from public.reports
+  where id = p_report_id
+  for update;
+
+  if not found then
+    raise exception 'report_not_found' using errcode = 'P0002';
+  end if;
+
+  if report_row.status <> 'open' or exists (
+    select 1
+    from public.admin_audit_log
+    where report_id = p_report_id
+      and type = 'report_action'
+      and status = 'committed'
+  ) then
+    raise exception 'report_already_processed' using errcode = '23505';
+  end if;
+
+  safe_action_type := case
+    when p_action_type in ('validReport', 'dismissReport', 'maliciousReporter', 'suspendTarget', 'refereeDiscipline')
+      then p_action_type
+    else 'validReport'
+  end;
+  safe_reason := coalesce(nullif(trim(p_reason), ''), case safe_action_type
+    when 'validReport' then '신고 인정'
+    when 'dismissReport' then '신고 기각'
+    when 'maliciousReporter' then '악성 신고자 제재'
+    when 'suspendTarget' then '대상 제재'
+    when 'refereeDiscipline' then '심판 조치'
+    else '관리자 처리'
+  end);
+  safe_feedback := coalesce(nullif(trim(p_feedback), ''), case safe_action_type
+    when 'dismissReport' then '확인 결과 신고가 기각되었습니다.'
+    when 'maliciousReporter' then '악성 신고로 판단되어 신고자에게 제재가 적용되었습니다.'
+    when 'suspendTarget' then '신고 대상에게 제재가 적용되었습니다.'
+    when 'refereeDiscipline' then '심판 권한 또는 등급 검토 조치가 등록되었습니다.'
+    else '신고가 인정되어 조치되었습니다.'
+  end);
+  safe_duration := case
+    when p_duration_days in (3, 7, 14, 28, 42, 56, 168, 280) then p_duration_days
+    else 3
+  end;
+  safe_target_user_id := coalesce(nullif(trim(p_target_user_id), ''), report_row.reported_user_ids->>0, '');
+
+  if safe_action_type in ('suspendTarget', 'refereeDiscipline') and safe_target_user_id = '' then
+    raise exception 'target_user_required' using errcode = '23502';
+  end if;
+
+  disciplined_user_id := case
+    when safe_action_type = 'maliciousReporter' then report_row.user_id
+    when safe_action_type in ('suspendTarget', 'refereeDiscipline') then safe_target_user_id
+    else null
+  end;
+
+  if safe_action_type = 'maliciousReporter' and coalesce(disciplined_user_id, '') = '' then
+    raise exception 'reporter_not_found' using errcode = '23502';
+  end if;
+
+  next_status := case
+    when safe_action_type in ('dismissReport', 'maliciousReporter') then 'dismissed'
+    else 'resolved'
+  end;
+  audit_id := 'aa_' || md5(p_report_id || p_actor_profile_id || safe_action_type || now_ts::text);
+
+  update public.reports
+  set
+    status = next_status,
+    resolved_at = now_ts,
+    resolved_by = p_actor_profile_id,
+    resolution = jsonb_build_object(
+      'actionType', safe_action_type,
+      'feedback', safe_feedback,
+      'reason', safe_reason,
+      'targetUserId', nullif(safe_target_user_id, ''),
+      'durationDays', safe_duration
+    ),
+    payload = payload || jsonb_build_object(
+      'status', next_status,
+      'resolvedAt', now_ts,
+      'resolvedBy', p_actor_profile_id,
+      'resolution', jsonb_build_object(
+        'actionType', safe_action_type,
+        'feedback', safe_feedback,
+        'reason', safe_reason,
+        'targetUserId', nullif(safe_target_user_id, ''),
+        'durationDays', safe_duration
+      )
+    ),
+    updated_at = now_ts
+  where id = report_row.id;
+
+  insert into public.admin_audit_log (
+    id,
+    type,
+    status,
+    report_id,
+    target_user_id,
+    created_by,
+    payload,
+    created_at
+  )
+  values (
+    audit_id,
+    'report_action',
+    'committed',
+    report_row.id,
+    nullif(coalesce(safe_target_user_id, disciplined_user_id), ''),
+    p_actor_profile_id,
+    jsonb_build_object(
+      'id', audit_id,
+      'type', 'report_action',
+      'status', 'committed',
+      'reportId', report_row.id,
+      'actionType', safe_action_type,
+      'reason', safe_reason,
+      'feedback', safe_feedback,
+      'targetUserId', nullif(safe_target_user_id, ''),
+      'durationDays', safe_duration,
+      'reportVersion', coalesce(report_row.updated_at, report_row.created_at),
+      'createdAt', now_ts,
+      'createdBy', p_actor_profile_id
+    ),
+    now_ts
+  );
+
+  if disciplined_user_id is not null then
+    discipline_type := case when safe_action_type = 'refereeDiscipline' then 'referee_discipline' else 'suspension' end;
+    disciplinary_id := 'ad_' || md5(report_row.id || disciplined_user_id || safe_action_type || now_ts::text);
+
+    insert into public.admin_disciplinary_actions (
+      id,
+      user_id,
+      type,
+      action_type,
+      status,
+      source_report_id,
+      created_by,
+      starts_at,
+      ends_at,
+      payload,
+      created_at,
+      updated_at
+    )
+    values (
+      disciplinary_id,
+      disciplined_user_id,
+      discipline_type,
+      safe_action_type,
+      'active',
+      report_row.id,
+      p_actor_profile_id,
+      now_ts,
+      now_ts + make_interval(days => safe_duration),
+      jsonb_build_object(
+        'id', disciplinary_id,
+        'userId', disciplined_user_id,
+        'type', discipline_type,
+        'actionType', safe_action_type,
+        'sourceReportId', report_row.id,
+        'reason', safe_reason,
+        'startsAt', now_ts,
+        'endsAt', now_ts + make_interval(days => safe_duration),
+        'durationDays', safe_duration,
+        'createdAt', now_ts,
+        'createdBy', p_actor_profile_id,
+        'status', 'active'
+      ),
+      now_ts,
+      now_ts
+    );
+  end if;
+
+  if report_row.user_id is not null then
+    insert into public.notifications (
+      id,
+      user_id,
+      target_user_id,
+      title,
+      body,
+      tone,
+      type,
+      payload,
+      created_at,
+      updated_at
+    )
+    values (
+      'n_' || md5('report-result' || report_row.id || report_row.user_id || now_ts::text),
+      report_row.user_id,
+      report_row.user_id,
+      '신고 처리 결과',
+      safe_feedback,
+      case when next_status = 'resolved' then 'team' else 'orange' end,
+      'report',
+      jsonb_build_object('reportId', report_row.id, 'actionType', safe_action_type),
+      now_ts,
+      now_ts
+    )
+    on conflict (id) do nothing;
+  end if;
+
+  if disciplined_user_id is not null then
+    insert into public.notifications (
+      id,
+      user_id,
+      target_user_id,
+      title,
+      body,
+      tone,
+      type,
+      payload,
+      created_at,
+      updated_at
+    )
+    values (
+      'n_' || md5('disciplinary' || report_row.id || disciplined_user_id || now_ts::text),
+      disciplined_user_id,
+      disciplined_user_id,
+      '운영 제재 안내',
+      safe_reason || ' · ' || safe_duration::text || '일',
+      'orange',
+      'disciplinary',
+      jsonb_build_object('reportId', report_row.id, 'disciplinaryActionId', disciplinary_id),
+      now_ts,
+      now_ts
+    )
+    on conflict (id) do nothing;
+  end if;
+
+  return jsonb_build_object(
+    'ok', true,
+    'reportId', report_row.id,
+    'actionType', safe_action_type,
+    'status', next_status,
+    'auditId', audit_id,
+    'disciplinaryActionId', disciplinary_id
+  );
+end;
+$$;
+
+create or replace function public.rankball_commit_admin_appointment_action(
+  p_actor_profile_id text,
+  p_actor_admin_level integer,
+  p_action_type text default 'appointReferee',
+  p_target_user_id text default null,
+  p_appointment_id text default null,
+  p_admin_grade text default null,
+  p_referee_grade text default null,
+  p_term_days integer default null,
+  p_reason text default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  admin_row public.admin_appointments%rowtype;
+  referee_row public.referee_appointments%rowtype;
+  now_ts timestamptz := now();
+  safe_admin_level integer;
+  safe_action_type text;
+  safe_role text;
+  safe_grade text;
+  safe_target_user_id text;
+  safe_term_days integer;
+  safe_reason text;
+  required_level integer;
+  appointment_id text;
+  audit_id text;
+  ends_ts timestamptz;
+begin
+  safe_admin_level := public.rankball_admin_level_for_profile(p_actor_profile_id, p_actor_admin_level);
+  safe_action_type := case
+    when p_action_type in ('appointAdmin', 'appointReferee', 'revokeAppointment') then p_action_type
+    else 'appointReferee'
+  end;
+
+  if safe_action_type = 'revokeAppointment' then
+    appointment_id := nullif(trim(p_appointment_id), '');
+    if appointment_id is null then
+      raise exception 'appointment_id_required' using errcode = '23502';
+    end if;
+
+    select * into admin_row
+    from public.admin_appointments
+    where id = appointment_id
+    for update;
+
+    if found then
+      safe_role := 'admin';
+      safe_grade := admin_row.grade;
+      safe_target_user_id := admin_row.user_id;
+    else
+      select * into referee_row
+      from public.referee_appointments
+      where id = appointment_id
+      for update;
+
+      if not found then
+        raise exception 'appointment_not_found' using errcode = 'P0002';
+      end if;
+
+      safe_role := 'referee';
+      safe_grade := referee_row.grade;
+      safe_target_user_id := referee_row.user_id;
+    end if;
+
+    required_level := case when safe_role = 'admin' then 80 else 50 end;
+    if safe_admin_level < required_level then
+      raise exception 'admin_permission_required' using errcode = '42501';
+    end if;
+
+    if safe_role = 'admin' then
+      if admin_row.status in ('revoked', 'expired') or (admin_row.ends_at is not null and admin_row.ends_at < now_ts) then
+        raise exception 'appointment_not_active' using errcode = '23505';
+      end if;
+
+      update public.admin_appointments
+      set
+        status = 'revoked',
+        payload = payload || jsonb_build_object('status', 'revoked', 'revokedAt', now_ts, 'revokedBy', p_actor_profile_id, 'revokeReason', coalesce(nullif(trim(p_reason), ''), '임명 회수')),
+        updated_at = now_ts
+      where id = appointment_id;
+    else
+      if referee_row.status in ('revoked', 'expired') or (referee_row.ends_at is not null and referee_row.ends_at < now_ts) then
+        raise exception 'appointment_not_active' using errcode = '23505';
+      end if;
+
+      update public.referee_appointments
+      set
+        status = 'revoked',
+        payload = payload || jsonb_build_object('status', 'revoked', 'revokedAt', now_ts, 'revokedBy', p_actor_profile_id, 'revokeReason', coalesce(nullif(trim(p_reason), ''), '임명 회수')),
+        updated_at = now_ts
+      where id = appointment_id;
+    end if;
+
+    safe_reason := coalesce(nullif(trim(p_reason), ''), '임명 회수');
+    audit_id := 'aa_' || md5(appointment_id || p_actor_profile_id || safe_action_type || now_ts::text);
+
+    insert into public.admin_audit_log (
+      id,
+      type,
+      status,
+      appointment_id,
+      target_user_id,
+      created_by,
+      payload,
+      created_at
+    )
+    values (
+      audit_id,
+      'appointment_action',
+      'committed',
+      appointment_id,
+      safe_target_user_id,
+      p_actor_profile_id,
+      jsonb_build_object(
+        'id', audit_id,
+        'type', 'appointment_action',
+        'status', 'committed',
+        'actionType', safe_action_type,
+        'appointmentId', appointment_id,
+        'targetUserId', safe_target_user_id,
+        'role', safe_role,
+        'grade', safe_grade,
+        'reason', safe_reason,
+        'createdAt', now_ts,
+        'createdBy', p_actor_profile_id
+      ),
+      now_ts
+    );
+
+    insert into public.notifications (
+      id,
+      user_id,
+      target_user_id,
+      title,
+      body,
+      tone,
+      type,
+      payload,
+      created_at,
+      updated_at
+    )
+    values (
+      'n_' || md5('appointment-revoke' || appointment_id || safe_target_user_id || now_ts::text),
+      safe_target_user_id,
+      safe_target_user_id,
+      '임명 회수',
+      safe_reason,
+      'orange',
+      'appointment',
+      jsonb_build_object('appointmentId', appointment_id, 'role', safe_role),
+      now_ts,
+      now_ts
+    )
+    on conflict (id) do nothing;
+
+    return jsonb_build_object('ok', true, 'actionType', safe_action_type, 'appointmentId', appointment_id);
+  end if;
+
+  safe_role := case when safe_action_type = 'appointAdmin' then 'admin' else 'referee' end;
+  required_level := case when safe_role = 'admin' then 80 else 50 end;
+  if safe_admin_level < required_level then
+    raise exception 'admin_permission_required' using errcode = '42501';
+  end if;
+
+  safe_target_user_id := nullif(trim(p_target_user_id), '');
+  if safe_target_user_id is null then
+    raise exception 'target_user_required' using errcode = '23502';
+  end if;
+
+  perform 1 from public.profiles where id = safe_target_user_id;
+  if not found then
+    raise exception 'profile_not_found' using errcode = 'P0002';
+  end if;
+
+  if safe_role = 'admin' then
+    safe_grade := case
+      when p_admin_grade in ('senior', 'regionManager', 'matchManager', 'support') then p_admin_grade
+      else 'support'
+    end;
+  else
+    safe_grade := case
+      when p_referee_grade in ('official', 'platinum', 'gold', 'silver', 'candidate') then p_referee_grade
+      else 'candidate'
+    end;
+  end if;
+
+  safe_term_days := case
+    when p_term_days is not null and p_term_days > 0 then p_term_days
+    when safe_role = 'admin' and safe_grade = 'senior' then 180
+    when safe_role = 'admin' and safe_grade = 'regionManager' then 120
+    when safe_role = 'admin' and safe_grade = 'matchManager' then 90
+    when safe_role = 'admin' and safe_grade = 'support' then 30
+    else 90
+  end;
+  safe_reason := coalesce(nullif(trim(p_reason), ''), '관리자 임명');
+  ends_ts := now_ts + make_interval(days => safe_term_days);
+  appointment_id := 'ap_' || md5(safe_role || safe_target_user_id || safe_grade || now_ts::text);
+  audit_id := 'aa_' || md5(appointment_id || p_actor_profile_id || safe_action_type || now_ts::text);
+
+  if safe_role = 'admin' and exists (
+    select 1
+    from public.admin_appointments
+    where user_id = safe_target_user_id
+      and role = 'admin'
+      and status not in ('revoked', 'expired')
+      and (starts_at is null or starts_at <= now_ts)
+      and (ends_at is null or ends_at >= now_ts)
+  ) then
+    raise exception 'active_appointment_exists' using errcode = '23505';
+  end if;
+
+  if safe_role = 'referee' and exists (
+    select 1
+    from public.referee_appointments
+    where user_id = safe_target_user_id
+      and role = 'referee'
+      and status not in ('revoked', 'expired')
+      and (starts_at is null or starts_at <= now_ts)
+      and (ends_at is null or ends_at >= now_ts)
+  ) then
+    raise exception 'active_appointment_exists' using errcode = '23505';
+  end if;
+
+  if safe_role = 'admin' then
+    insert into public.admin_appointments (
+      id,
+      user_id,
+      role,
+      grade,
+      status,
+      appointed_by,
+      starts_at,
+      ends_at,
+      payload,
+      created_at,
+      updated_at
+    )
+    values (
+      appointment_id,
+      safe_target_user_id,
+      'admin',
+      safe_grade,
+      'active',
+      p_actor_profile_id,
+      now_ts,
+      ends_ts,
+      jsonb_build_object(
+        'id', appointment_id,
+        'role', 'admin',
+        'grade', safe_grade,
+        'userId', safe_target_user_id,
+        'status', 'active',
+        'startsAt', now_ts,
+        'endsAt', ends_ts,
+        'appointedBy', p_actor_profile_id,
+        'reason', safe_reason,
+        'createdAt', now_ts
+      ),
+      now_ts,
+      now_ts
+    );
+  else
+    insert into public.referee_appointments (
+      id,
+      user_id,
+      role,
+      grade,
+      status,
+      appointed_by,
+      starts_at,
+      ends_at,
+      payload,
+      created_at,
+      updated_at
+    )
+    values (
+      appointment_id,
+      safe_target_user_id,
+      'referee',
+      safe_grade,
+      'active',
+      p_actor_profile_id,
+      now_ts,
+      ends_ts,
+      jsonb_build_object(
+        'id', appointment_id,
+        'role', 'referee',
+        'grade', safe_grade,
+        'userId', safe_target_user_id,
+        'status', 'active',
+        'startsAt', now_ts,
+        'endsAt', ends_ts,
+        'appointedBy', p_actor_profile_id,
+        'reason', safe_reason,
+        'createdAt', now_ts
+      ),
+      now_ts,
+      now_ts
+    );
+  end if;
+
+  insert into public.admin_audit_log (
+    id,
+    type,
+    status,
+    appointment_id,
+    target_user_id,
+    created_by,
+    payload,
+    created_at
+  )
+  values (
+    audit_id,
+    'appointment_action',
+    'committed',
+    appointment_id,
+    safe_target_user_id,
+    p_actor_profile_id,
+    jsonb_build_object(
+      'id', audit_id,
+      'type', 'appointment_action',
+      'status', 'committed',
+      'actionType', safe_action_type,
+      'appointmentId', appointment_id,
+      'targetUserId', safe_target_user_id,
+      'role', safe_role,
+      'grade', safe_grade,
+      'termDays', safe_term_days,
+      'reason', safe_reason,
+      'createdAt', now_ts,
+      'createdBy', p_actor_profile_id
+    ),
+    now_ts
+  );
+
+  insert into public.notifications (
+    id,
+    user_id,
+    target_user_id,
+    title,
+    body,
+    tone,
+    type,
+    payload,
+    created_at,
+    updated_at
+  )
+  values (
+    'n_' || md5('appointment' || appointment_id || safe_target_user_id || now_ts::text),
+    safe_target_user_id,
+    safe_target_user_id,
+    case when safe_role = 'admin' then '관리자 임명' else '심판 임명' end,
+    safe_reason || ' · ' || safe_term_days::text || '일',
+    'team',
+    'appointment',
+    jsonb_build_object('appointmentId', appointment_id, 'role', safe_role, 'grade', safe_grade),
+    now_ts,
+    now_ts
+  )
+  on conflict (id) do nothing;
+
+  return jsonb_build_object(
+    'ok', true,
+    'actionType', safe_action_type,
+    'appointmentId', appointment_id,
+    'role', safe_role,
+    'grade', safe_grade
+  );
+end;
+$$;
+
+create or replace function public.rankball_commit_admin_disciplinary_action(
+  p_actor_profile_id text,
+  p_actor_admin_level integer,
+  p_target_user_id text,
+  p_action_type text default 'suspendTarget',
+  p_type text default 'suspension',
+  p_duration_days integer default 3,
+  p_reason text default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  now_ts timestamptz := now();
+  safe_admin_level integer;
+  safe_target_user_id text;
+  safe_action_type text;
+  safe_type text;
+  safe_duration integer;
+  safe_reason text;
+  disciplinary_id text;
+  audit_id text;
+begin
+  safe_admin_level := public.rankball_admin_level_for_profile(p_actor_profile_id, p_actor_admin_level);
+  if safe_admin_level < 50 then
+    raise exception 'admin_permission_required' using errcode = '42501';
+  end if;
+
+  safe_target_user_id := nullif(trim(p_target_user_id), '');
+  if safe_target_user_id is null then
+    raise exception 'target_user_required' using errcode = '23502';
+  end if;
+
+  perform 1 from public.profiles where id = safe_target_user_id;
+  if not found then
+    raise exception 'profile_not_found' using errcode = 'P0002';
+  end if;
+
+  safe_type := case when p_type = 'referee_discipline' then 'referee_discipline' else 'suspension' end;
+  safe_action_type := case
+    when p_action_type in ('maliciousReporter', 'suspendTarget', 'refereeDiscipline') then p_action_type
+    when safe_type = 'referee_discipline' then 'refereeDiscipline'
+    else 'suspendTarget'
+  end;
+  safe_duration := case
+    when p_duration_days in (3, 7, 14, 28, 42, 56, 168, 280) then p_duration_days
+    else 3
+  end;
+  safe_reason := coalesce(nullif(trim(p_reason), ''), '관리자 직접 제재');
+  disciplinary_id := 'ad_' || md5(safe_target_user_id || safe_action_type || now_ts::text);
+  audit_id := 'aa_' || md5(disciplinary_id || p_actor_profile_id || now_ts::text);
+
+  insert into public.admin_disciplinary_actions (
+    id,
+    user_id,
+    type,
+    action_type,
+    status,
+    created_by,
+    starts_at,
+    ends_at,
+    payload,
+    created_at,
+    updated_at
+  )
+  values (
+    disciplinary_id,
+    safe_target_user_id,
+    safe_type,
+    safe_action_type,
+    'active',
+    p_actor_profile_id,
+    now_ts,
+    now_ts + make_interval(days => safe_duration),
+    jsonb_build_object(
+      'id', disciplinary_id,
+      'userId', safe_target_user_id,
+      'type', safe_type,
+      'actionType', safe_action_type,
+      'reason', safe_reason,
+      'startsAt', now_ts,
+      'endsAt', now_ts + make_interval(days => safe_duration),
+      'durationDays', safe_duration,
+      'createdAt', now_ts,
+      'createdBy', p_actor_profile_id,
+      'status', 'active'
+    ),
+    now_ts,
+    now_ts
+  );
+
+  insert into public.admin_audit_log (
+    id,
+    type,
+    status,
+    target_user_id,
+    created_by,
+    payload,
+    created_at
+  )
+  values (
+    audit_id,
+    'disciplinary_action',
+    'committed',
+    safe_target_user_id,
+    p_actor_profile_id,
+    jsonb_build_object(
+      'id', audit_id,
+      'type', 'disciplinary_action',
+      'status', 'committed',
+      'actionType', safe_action_type,
+      'disciplinaryActionId', disciplinary_id,
+      'targetUserId', safe_target_user_id,
+      'durationDays', safe_duration,
+      'reason', safe_reason,
+      'createdAt', now_ts,
+      'createdBy', p_actor_profile_id
+    ),
+    now_ts
+  );
+
+  insert into public.notifications (
+    id,
+    user_id,
+    target_user_id,
+    title,
+    body,
+    tone,
+    type,
+    payload,
+    created_at,
+    updated_at
+  )
+  values (
+    'n_' || md5('direct-disciplinary' || disciplinary_id || safe_target_user_id || now_ts::text),
+    safe_target_user_id,
+    safe_target_user_id,
+    '운영 제재 안내',
+    safe_reason || ' · ' || safe_duration::text || '일',
+    'orange',
+    'disciplinary',
+    jsonb_build_object('disciplinaryActionId', disciplinary_id),
+    now_ts,
+    now_ts
+  )
+  on conflict (id) do nothing;
+
+  return jsonb_build_object(
+    'ok', true,
+    'disciplinaryActionId', disciplinary_id,
+    'actionType', safe_action_type,
+    'type', safe_type
+  );
+end;
+$$;
+
+revoke all on function public.rankball_commit_admin_review_action(text, integer, text, text, text, integer, text, text) from public;
+revoke all on function public.rankball_commit_admin_appointment_action(text, integer, text, text, text, text, text, integer, text) from public;
+revoke all on function public.rankball_commit_admin_disciplinary_action(text, integer, text, text, text, integer, text) from public;
+grant execute on function public.rankball_commit_admin_review_action(text, integer, text, text, text, integer, text, text) to service_role;
+grant execute on function public.rankball_commit_admin_appointment_action(text, integer, text, text, text, text, text, integer, text) to service_role;
+grant execute on function public.rankball_commit_admin_disciplinary_action(text, integer, text, text, text, integer, text) to service_role;
+
 create or replace function public.rankball_mark_notification_read(notification_id text)
 returns void
 language plpgsql
