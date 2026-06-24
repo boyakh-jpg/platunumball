@@ -162,13 +162,26 @@ export function getMatchRosterSideName(match = {}, playerId) {
     ?? (getMatchReservePlayerIds(match, "teamB").includes(playerId) ? "teamB" : null);
 }
 
-export function getMatchHostPlayerId(match = {}) {
-  return match.createdBy || match.hostPlayerId || match.createdPlayerId || match.playerId || match.teamA?.players?.[0] || "";
+export function getMatchHostPlayerId(match = {}, sourcePost = null) {
+  const sourceRoomState = sourcePost?.roomState ?? {};
+  return sourcePost?.ownerId
+    || sourceRoomState.ownerId
+    || sourcePost?.createdBy
+    || sourcePost?.hostPlayerId
+    || sourcePost?.userId
+    || sourcePost?.createdPlayerId
+    || sourcePost?.playerId
+    || match.createdBy
+    || match.hostPlayerId
+    || match.createdPlayerId
+    || match.playerId
+    || match.teamA?.players?.[0]
+    || "";
 }
 
-export function canUserResolveMatchDispute(match = {}, userId = "") {
+export function canUserResolveMatchDispute(match = {}, userId = "", sourcePost = null) {
   if (!userId || match.status !== "disputed") return false;
-  return match.refereeId ? match.refereeId === userId : getMatchHostPlayerId(match) === userId;
+  return match.refereeId ? match.refereeId === userId : getMatchHostPlayerId(match, sourcePost) === userId;
 }
 
 export function getMatchTrustFeedbackParticipantIds(match = {}) {

@@ -13,6 +13,7 @@ import {
   getRoomCompetitionLabel,
   getRoomRefereeLabel,
   getRoomVisibilityLabel,
+  getMatchHostPlayerId,
   getMatchReservePlayerIds,
   getMatchRoomPhase,
   isInstantRoom,
@@ -414,13 +415,6 @@ function getRoomCapacity(match) {
   return Math.max(match.teamA?.players?.length ?? 0, match.teamB?.players?.length ?? 0, 5);
 }
 
-function getMatchHostPlayerId(match, state = null) {
-  const sourcePost = match.recruitingPostId
-    ? state?.recruitingPosts?.find((post) => post.id === match.recruitingPostId)
-    : null;
-  return getRecruitingRoomOwnerId(sourcePost) || match.createdBy || match.hostPlayerId || match.createdPlayerId || match.teamA?.players?.[0] || "";
-}
-
 function uniquePlayerIds(ids = []) {
   return Array.from(new Set(ids.filter(Boolean)));
 }
@@ -436,7 +430,7 @@ function getMatchRoomPost(match, state) {
   const sourcePost = match.recruitingPostId
     ? state.recruitingPosts?.find((post) => post.id === match.recruitingPostId)
     : null;
-  const hostPlayerId = getMatchHostPlayerId(match, state);
+  const hostPlayerId = getMatchHostPlayerId(match, sourcePost);
   const sideCapacity = getRoomCapacity(match);
   const teamAPlayers = uniquePlayerIds(match.teamA?.players ?? []);
   const teamBPlayers = uniquePlayerIds(match.teamB?.players ?? []);

@@ -19,6 +19,7 @@ import {
   getAllowedStatFields,
   getMatchPlayerIds,
   getMatchRecordPlayerIds,
+  getMatchHostPlayerId as getMatchHostPlayerIdFromMatch,
   getMatchRosterSideName,
   getMatchRoomPhase,
   getMatchReservePlayerIds,
@@ -2953,7 +2954,7 @@ function getMatchHostPlayerId(state, match) {
   const sourcePost = match?.recruitingPostId
     ? state.recruitingPosts?.find((post) => post.id === match.recruitingPostId)
     : null;
-  return getRecruitingRoomOwnerId(sourcePost) || match?.createdBy || match?.hostPlayerId || match?.createdPlayerId || match?.teamA?.players?.[0] || "";
+  return getMatchHostPlayerIdFromMatch(match, sourcePost);
 }
 
 function currentUserIsMatchHost(state, match) {

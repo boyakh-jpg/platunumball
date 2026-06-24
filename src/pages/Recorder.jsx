@@ -9,6 +9,7 @@ import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import { PLAYER_STAT_FIELDS } from "../lib/constants.js";
 import {
   getAllowedStatFields,
+  getMatchHostPlayerId,
   getMatchReservePlayerIds,
   getMatchPlayerIds,
   getMatchRecordPlayerIds,
@@ -83,13 +84,6 @@ function getRoleText(match, user, recorderSides) {
   return "경기 관계자";
 }
 
-function getMatchHostPlayerId(match, state) {
-  const sourcePost = match?.recruitingPostId
-    ? state.recruitingPosts?.find((post) => post.id === match.recruitingPostId)
-    : null;
-  return sourcePost?.createdBy || sourcePost?.hostPlayerId || sourcePost?.userId || match?.createdBy || match?.hostPlayerId || match?.createdPlayerId || match?.teamA?.players?.[0] || "";
-}
-
 function getRecorderAllowedFields(match, state, userId, playerId, allowPostgameScore = false) {
   const fields = getAllowedStatFields(match, userId, playerId);
   if (!allowPostgameScore) return fields;
@@ -102,7 +96,10 @@ function getRecorderAllowedFields(match, state, userId, playerId, allowPostgameS
 function canAccessActiveMatch(match, user, state) {
   if (!activeStatuses.has(match.status)) return false;
   if (getMatchRoomPhase(match).phase === "record") return false;
-  const isHost = getMatchHostPlayerId(match, state) === user.id;
+  const sourcePost = match?.recruitingPostId
+    ? state.recruitingPosts?.find((post) => post.id === match.recruitingPostId)
+    : null;
+  const isHost = getMatchHostPlayerId(match, sourcePost) === user.id;
   const isReferee = isMatchReferee(match, user.id) && isEligibleReferee(user, match.refereeTrustMin);
   if (match.status === "disputed") return isReferee || isHost;
   const isRecorder = !match.refereeId && getStatRecorderSides(match, user.id).length > 0;
@@ -149,7 +146,10 @@ export default function Recorder({ app }) {
 
   const recordWindow = selectedMatch ? getMatchRecordWindow(selectedMatch) : null;
   const roomPhase = selectedMatch ? getMatchRoomPhase(selectedMatch).phase : "";
-  const hostPlayerId = selectedMatch ? getMatchHostPlayerId(selectedMatch, app.state) : "";
+  const selectedMatchSourcePost = selectedMatch?.recruitingPostId
+    ? app.state.recruitingPosts?.find((post) => post.id === selectedMatch.recruitingPostId)
+    : null;
+  const hostPlayerId = selectedMatch ? getMatchHostPlayerId(selectedMatch, selectedMatchSourcePost) : "";
   const currentUserIsHost = Boolean(hostPlayerId && hostPlayerId === user.id);
   const selectedMatchHasReferee = Boolean(selectedMatch?.refereeId);
   const currentUserIsEligibleReferee = Boolean(selectedMatch && isMatchReferee(selectedMatch, user.id) && isEligibleReferee(user, selectedMatch.refereeTrustMin));

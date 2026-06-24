@@ -15,12 +15,12 @@ import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { DISPUTE_WINDOW_MINUTES, EVIDENCE_OPTIONS, PLAYER_STAT_FIELDS } from "../lib/constants.js";
 import { DEFAULT_REPORT_REASON, REPORT_REASONS } from "../lib/reportReasons.js";
-import { getRecruitingRoomOwnerId } from "../lib/recruiting.js";
 import {
   formatStatLine,
   getAllowedStatFields,
   getAgreementStatus,
   getApprovalStatus,
+  getMatchHostPlayerId,
   getMatchRecordWindow,
   getMatchReferee,
   getMatchRoomPhase,
@@ -175,7 +175,7 @@ export default function MatchRoom({ app }) {
   const sourceRecruitingPost = match.recruitingPostId
     ? app.state.recruitingPosts?.find((post) => post.id === match.recruitingPostId)
     : null;
-  const matchHostPlayerId = getRecruitingRoomOwnerId(sourceRecruitingPost) || match.createdBy || match.hostPlayerId || match.createdPlayerId || match.teamA?.players?.[0] || "";
+  const matchHostPlayerId = getMatchHostPlayerId(match, sourceRecruitingPost);
   const isMatchHost = matchHostPlayerId === app.currentUser.id;
   const matchPhase = getMatchRoomPhase(match).phase;
   const startedAuthorityPhase = Boolean(match.startedAt || match.endedAt || match.result || ["live", "postgame", "dispute", "record"].includes(matchPhase));
