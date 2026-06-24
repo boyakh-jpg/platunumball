@@ -13,7 +13,7 @@ import {
   TEAM_ROLES,
 } from "../lib/constants.js";
 import { initialState } from "../lib/mockData.js";
-import { normalizeCourtLayout, normalizeCourtSurfaceType } from "../lib/courts.js";
+import { findCourtDuplicate, getCourtDuplicateMessage, normalizeCourtLayout, normalizeCourtSurfaceType } from "../lib/courts.js";
 import {
   getAgreementStatus,
   getApprovalStatus,
@@ -3744,6 +3744,21 @@ export function submitCourtRequest(state, draft = {}) {
       ],
     };
   }
+  const duplicateCourt = findCourtDuplicate({ ...draft, name, addressText }, state);
+  if (duplicateCourt) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "구장 중복",
+          body: getCourtDuplicateMessage(duplicateCourt),
+          tone: "orange",
+        },
+        ...state.notifications,
+      ],
+    };
+  }
   const lat = getOptionalCourtCoordinate(draft.lat, -90, 90);
   const lng = getOptionalCourtCoordinate(draft.lng, -180, 180);
   const hashtag = normalizeCourtHashtag(draft.hashtag) || makeRandomCourtHashtag(state);
@@ -4056,6 +4071,10 @@ export function reportCourtRequest(state, requestId, reason = "허위 구장 등
     };
   }
 
+  const requester = state.users.find((user) => user.id === request.requestedBy);
+  const requesterNextTrustScore = clampTrustScore((requester?.trustScore ?? 80) - FALSE_COURT_REPORT_TRUST_PENALTY);
+  const requesterRestricted = requesterNextTrustScore < COURT_REQUEST_TRUST_MIN;
+
   const report = {
     id: makeId("r"),
     type: "court_request",
@@ -4068,7 +4087,14 @@ export function reportCourtRequest(state, requestId, reason = "허위 구장 등
   };
   const nextRequests = (state.settings?.courtRequests ?? []).map((item) => (
     item.id === requestId
-      ? { ...item, status: "reported", reportedAt: report.createdAt, reportedBy: state.currentUserId }
+      ? {
+        ...item,
+        status: "reported",
+        reportedAt: report.createdAt,
+        reportedBy: state.currentUserId,
+        trustPenalty: FALSE_COURT_REPORT_TRUST_PENALTY,
+        requesterTrustAfterReport: requesterNextTrustScore,
+      }
       : item
   ));
 
@@ -4081,6 +4107,15 @@ export function reportCourtRequest(state, requestId, reason = "허위 구장 등
     }),
     reports: [report, ...(state.reports ?? [])],
     notifications: [
+      {
+        id: makeId("n"),
+        targetUserId: request.requestedBy,
+        title: requesterRestricted ? "구장 등록 제한" : "구장 등록요청 신고됨",
+        body: requesterRestricted
+          ? `허위 구장 신고로 신뢰도 ${requesterNextTrustScore}점이 되어 구장 등록요청이 제한됩니다.`
+          : `허위 구장 신고로 신뢰도 ${FALSE_COURT_REPORT_TRUST_PENALTY}점이 차감되었습니다. 현재 ${requesterNextTrustScore}점입니다.`,
+        tone: "orange",
+      },
       {
         id: makeId("n"),
         title: "구장 허위 신고 접수",
@@ -4441,14 +4476,11 @@ export function approveCourtRequest(state, requestId) {
       notifications: [getAdminActionNotification("이미 승인된 구장 요청입니다."), ...state.notifications],
     };
   }
-  const alreadyRegistered = (state.settings?.approvedCourts ?? []).some((court) => (
-    court.sourceRequestId === requestId ||
-    (court.name === request.name && court.addressText === request.addressText)
-  )) || COURTS.some((court) => court.name === request.name || court.addressText === request.addressText);
-  if (alreadyRegistered) {
+  const duplicateCourt = findCourtDuplicate(request, state, { excludeRequestId: requestId, includeRequests: false });
+  if (duplicateCourt) {
     return {
       ...state,
-      notifications: [getAdminActionNotification("이미 등록된 구장입니다."), ...state.notifications],
+      notifications: [getAdminActionNotification(getCourtDuplicateMessage(duplicateCourt)), ...state.notifications],
     };
   }
   const now = new Date().toISOString();

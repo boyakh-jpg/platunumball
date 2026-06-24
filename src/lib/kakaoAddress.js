@@ -31,7 +31,12 @@ function loadExternalScript(id, src) {
 }
 
 export function getKakaoMapAppKey() {
-  return import.meta.env.VITE_KAKAO_MAP_APP_KEY ?? "";
+  return (
+    import.meta.env.VITE_KAKAO_MAP_APP_KEY ??
+    import.meta.env.VITE_KAKAO_JAVASCRIPT_KEY ??
+    import.meta.env.VITE_KAKAO_APP_KEY ??
+    ""
+  );
 }
 
 function getPostcodeConstructor() {

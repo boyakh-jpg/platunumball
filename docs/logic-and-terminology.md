@@ -934,3 +934,12 @@ flowchart TD
 3. `courtLayout`은 풀코트, 반코트, 골대 1개, 확인 필요 중 하나다.
 4. 반코트 또는 골대 1개 구장에서 5v5를 만들면 차단하지 않고 경고만 보여준다.
 5. 경기 시작 전 방 수정 권한자는 구장을 바꿀 수 있다.
+
+## 2026-06-24 구장 등록 실전 연결
+
+1. 구장 등록요청은 Kakao 주소검색으로 선택한 실제 주소를 기준으로 한다.
+2. Kakao Maps JavaScript 키가 있으면 주소 선택 직후 좌표 변환을 시도하고, 실패하면 지도 핀으로 보정한다.
+3. 승인된 구장 또는 대기/신고 상태 구장요청과 같은 도로명/지번/주소 identity가 있으면 새 요청을 막는다.
+4. 관리자 승인 시에도 같은 중복 기준을 다시 검사한다.
+5. 허위 구장 신고가 접수되면 요청자 신뢰도를 `FALSE_COURT_REPORT_TRUST_PENALTY`만큼 차감하고, 차감 후 `COURT_REQUEST_TRUST_MIN` 미만이면 추가 구장 등록요청을 막는다.
+6. 현재 enforcement는 mock/localStorage 기준이다. 배포 백엔드에서는 server action, DB unique constraint, RLS/admin 권한으로 같은 검사를 다시 해야 한다.

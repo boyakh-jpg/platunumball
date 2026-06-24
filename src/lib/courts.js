@@ -57,6 +57,72 @@ export function getCourtPlayWarning(court = {}, mode = "") {
   return "반코트/골대 1개 구장은 5v5 진행이 좁을 수 있습니다. 생성은 가능하지만 현장 합의를 먼저 확인하세요.";
 }
 
+function normalizeCourtIdentityText(value = "") {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "")
+    .replace(/[^\p{L}\p{N}#]/gu, "");
+}
+
+function getCourtIdentity(court = {}) {
+  return {
+    name: normalizeCourtIdentityText(court.name),
+    address: normalizeCourtIdentityText(court.addressText || court.roadAddress || court.jibunAddress),
+    roadAddress: normalizeCourtIdentityText(court.roadAddress),
+    jibunAddress: normalizeCourtIdentityText(court.jibunAddress),
+    zonecode: normalizeCourtIdentityText(court.zonecode),
+  };
+}
+
+function hasCourtLocationIdentity(identity = {}) {
+  return Boolean(identity.address || identity.roadAddress || identity.jibunAddress || identity.zonecode);
+}
+
+function isSameCourtIdentity(source = {}, target = {}) {
+  if (!hasCourtLocationIdentity(source) || !hasCourtLocationIdentity(target)) return false;
+  if (source.roadAddress && target.roadAddress && source.roadAddress === target.roadAddress) return true;
+  if (source.jibunAddress && target.jibunAddress && source.jibunAddress === target.jibunAddress) return true;
+  if (source.address && target.address && source.address === target.address) return true;
+  if (source.zonecode && target.zonecode && source.zonecode === target.zonecode) {
+    return Boolean(
+      (source.name && target.name && source.name === target.name) ||
+      (source.address && target.address && source.address === target.address),
+    );
+  }
+  return false;
+}
+
+export function findCourtDuplicate(draft = {}, stateOrSettings = {}, options = {}) {
+  const settings = stateOrSettings.settings ? stateOrSettings.settings : stateOrSettings;
+  const includeRequests = options.includeRequests !== false;
+  const source = getCourtIdentity(draft);
+  if (!hasCourtLocationIdentity(source)) return null;
+
+  const approvedCandidates = [
+    ...COURTS.map((court) => ({ type: "approved", court })),
+    ...(settings.approvedCourts ?? []).map((court) => ({ type: "approved", court })),
+  ];
+  const pendingCandidates = includeRequests
+    ? (settings.courtRequests ?? [])
+      .filter((request) => (
+        request.id !== options.excludeRequestId &&
+        !["approved", "rejected", "dismissed"].includes(request.status)
+      ))
+      .map((court) => ({ type: "request", court }))
+    : [];
+
+  return [...approvedCandidates, ...pendingCandidates].find((candidate) => (
+    (options.excludeRequestId && candidate.court?.sourceRequestId === options.excludeRequestId) ||
+    isSameCourtIdentity(source, getCourtIdentity(candidate.court))
+  )) ?? null;
+}
+
+export function getCourtDuplicateMessage(duplicate) {
+  if (!duplicate) return "";
+  return duplicate.type === "approved" ? "이미 등록된 구장입니다." : "이미 등록요청된 구장입니다.";
+}
+
 export function getRegisteredCourts(stateOrSettings = {}) {
   const settings = stateOrSettings.settings ? stateOrSettings.settings : stateOrSettings;
   const approvedCourts = settings.approvedCourts ?? [];

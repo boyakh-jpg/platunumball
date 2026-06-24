@@ -737,6 +737,11 @@
   padding: 12px;
 }
 
+.arena-mini-note-warning {
+  border-color: rgba(255, 159, 67, 0.38);
+  background: rgba(255, 159, 67, 0.075);
+}
+
 .arena-mini-note span,
 .arena-mini-note em {
   display: block;

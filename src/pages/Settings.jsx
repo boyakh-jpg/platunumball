@@ -9,9 +9,9 @@ import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import { REPORT_REASONS, REPORT_TARGET_TYPES, getReportTargetType } from "../lib/reportReasons.js";
 import { formatStatLine, getMatchReservePlayerIds, getMatchSidePlayerIds } from "../lib/matchUtils.js";
 import { COURT_REQUEST_TRUST_MIN, FALSE_COURT_REPORT_TRUST_PENALTY, REGIONS } from "../lib/constants.js";
-import { COURT_LAYOUT_OPTIONS, COURT_SURFACE_OPTIONS, getCourtLayoutLabel, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
+import { COURT_LAYOUT_OPTIONS, COURT_SURFACE_OPTIONS, findCourtDuplicate, getCourtDuplicateMessage, getCourtLayoutLabel, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
 import { getCourtHashtag, getMatchHashtag, getUserHashtag } from "../lib/handles.js";
-import { getKakaoMapAppKey, openDaumPostcodeSearch, openKakaoMapPinPicker } from "../lib/kakaoAddress.js";
+import { geocodeKakaoAddress, getKakaoMapAppKey, openDaumPostcodeSearch, openKakaoMapPinPicker } from "../lib/kakaoAddress.js";
 import { hasAdminAccess } from "../lib/admin.js";
 import {
   REFEREE_EXAM_BANK_SIZE,
@@ -178,11 +178,17 @@ export default function Settings({ app, auth }) {
   const refereeExamAttempts = app.state.settings?.refereeExamAttempts ?? [];
   const currentTrustScore = Number(app.currentUser?.trustScore ?? 0);
   const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
-  const canSubmitCourtRequest = currentTrustScore >= COURT_REQUEST_TRUST_MIN;
   const canOpenAdminMenu = hasAdminAccess(app.currentUser, app.state.settings);
+  const kakaoMapKeyReady = Boolean(getKakaoMapAppKey());
   const courtAddressSelected = Boolean(String(courtDraft.addressText ?? "").trim());
   const courtDisplayName = getCourtRequestDisplayName(courtDraft.name, courtDraft.addressDong);
   const courtHasMapPin = Boolean(String(courtDraft.lat ?? "").trim() && String(courtDraft.lng ?? "").trim());
+  const courtDuplicate = useMemo(
+    () => findCourtDuplicate({ ...courtDraft, name: courtDisplayName || courtDraft.name }, app.state),
+    [app.state, courtDisplayName, courtDraft],
+  );
+  const courtDuplicateMessage = getCourtDuplicateMessage(courtDuplicate);
+  const canSubmitCourtRequest = currentTrustScore >= COURT_REQUEST_TRUST_MIN && !courtDuplicate;
   const [currentRefereeExamAttemptId, setCurrentRefereeExamAttemptId] = useState("");
   const [refereeExamNotice, setRefereeExamNotice] = useState("");
 
@@ -435,7 +441,7 @@ export default function Settings({ app, auth }) {
       const result = await openDaumPostcodeSearch(courtAddressQuery);
       if (!result.addressText) throw new Error("선택된 주소가 없습니다.");
       const addressDong = getCourtAddressDong(result);
-      updateCourtDraft({
+      const nextDraft = {
         name: courtDraft.name.trim() ? courtDraft.name : result.buildingName,
         region: getCourtAddressRegion(result),
         addressText: result.addressText,
@@ -443,14 +449,30 @@ export default function Settings({ app, auth }) {
         jibunAddress: result.jibunAddress,
         addressDong,
         zonecode: result.zonecode,
-      });
+      };
+      let nextStatus = "주소 선택 완료. 필요하면 지도 핀으로 위치를 보정하세요.";
+      if (kakaoMapKeyReady) {
+        try {
+          const coords = await geocodeKakaoAddress(result.addressText);
+          nextDraft.lat = String(coords.lat);
+          nextDraft.lng = String(coords.lng);
+          nextStatus = "주소 선택 완료. Kakao 좌표를 저장했습니다.";
+        } catch {
+          nextStatus = "주소 선택 완료. 좌표 변환은 실패했습니다. 지도 핀으로 보정하세요.";
+        }
+      }
+      updateCourtDraft(nextDraft);
       setCourtAddressQuery(result.addressText);
-      setCourtLookupStatus("주소 선택 완료. 필요하면 지도 핀으로 위치를 보정하세요.");
+      setCourtLookupStatus(nextStatus);
     } catch (error) {
       setCourtLookupStatus(error.message || "주소 검색 실패");
     }
   };
   const pickCourtMapPin = async () => {
+    if (!kakaoMapKeyReady) {
+      setCourtLookupStatus("지도 핀은 VITE_KAKAO_MAP_APP_KEY 설정 후 사용할 수 있습니다.");
+      return;
+    }
     setCourtLookupStatus("지도 열기 중");
     try {
       const pin = await openKakaoMapPinPicker(courtDraft);
@@ -490,6 +512,10 @@ export default function Settings({ app, auth }) {
   };
   const submitCourtRequest = (event) => {
     event.preventDefault();
+    if (courtDuplicate) {
+      setCourtLookupStatus(courtDuplicateMessage);
+      return;
+    }
     if (!canSubmitCourtRequest) return;
     app.actions.submitCourtRequest(courtDraft);
     setCourtAddressQuery("");
@@ -807,8 +833,8 @@ export default function Settings({ app, auth }) {
             <div className={canSubmitCourtRequest ? "tier-range-note" : "tier-range-note tier-range-note-warning"}>
               <div>
                 <span>등록 권한</span>
-                <strong>{canSubmitCourtRequest ? "등록 가능" : "등록 제한"}</strong>
-                <em>신뢰도 {COURT_REQUEST_TRUST_MIN}점 이상 필요 · 허위 신고 시 {FALSE_COURT_REPORT_TRUST_PENALTY}점 차감</em>
+                <strong>{currentTrustScore < COURT_REQUEST_TRUST_MIN ? "등록 제한" : courtDuplicate ? "중복 확인 필요" : "등록 가능"}</strong>
+                <em>{courtDuplicateMessage || `신뢰도 ${COURT_REQUEST_TRUST_MIN}점 이상 필요 · 허위 신고 시 ${FALSE_COURT_REPORT_TRUST_PENALTY}점 차감`}</em>
               </div>
               <MapPin size={22} />
             </div>
@@ -830,7 +856,7 @@ export default function Settings({ app, auth }) {
                 </label>
                 <div className="settings-address-actions">
                   <Button type="button" variant="secondary" onClick={searchCourtAddress}>카카오 주소 검색</Button>
-                  <Button type="button" variant="secondary" onClick={pickCourtMapPin} disabled={!courtAddressSelected}>
+                  <Button type="button" variant="secondary" onClick={pickCourtMapPin} disabled={!courtAddressSelected || !kakaoMapKeyReady}>
                     지도 핀 저장
                   </Button>
                 </div>
@@ -855,7 +881,17 @@ export default function Settings({ app, auth }) {
                   <div>
                     <span>선택 주소</span>
                     <strong>{courtDraft.addressText}</strong>
-                    <em>{courtHasMapPin ? "지도 핀 저장됨" : getKakaoMapAppKey() ? "지도 핀 선택 가능" : "지도 핀은 VITE_KAKAO_MAP_APP_KEY 설정 후 사용"}</em>
+                    <em>{courtHasMapPin ? "Kakao 좌표 저장됨" : kakaoMapKeyReady ? "지도 핀 선택 가능" : "지도 핀은 VITE_KAKAO_MAP_APP_KEY 설정 후 사용"}</em>
+                  </div>
+                  <MapPin size={18} />
+                </div>
+              ) : null}
+              {courtDuplicate ? (
+                <div className="arena-mini-note arena-mini-note-warning">
+                  <div>
+                    <span>중복 확인</span>
+                    <strong>{courtDuplicate.court?.name ?? "기존 구장"}</strong>
+                    <em>{courtDuplicateMessage}</em>
                   </div>
                   <MapPin size={18} />
                 </div>
