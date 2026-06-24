@@ -3697,14 +3697,16 @@ input[type="color"] {
 
 .settings-address-results button {
   display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
   min-width: 0;
-  gap: 4px;
+  gap: 5px 10px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.045);
   color: var(--text);
   cursor: pointer;
-  padding: 10px;
+  padding: 10px 12px;
   text-align: left;
 }
 
@@ -3712,9 +3714,33 @@ input[type="color"] {
 .settings-address-results span {
   min-width: 0;
   overflow-wrap: anywhere;
+  line-height: 1.28;
+}
+
+.settings-address-results strong {
+  grid-column: 1;
+  grid-row: 1;
+  font-size: 0.92rem;
+}
+
+.settings-address-results em {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: start;
+  border: 1px solid rgba(70, 229, 197, 0.35);
+  border-radius: 999px;
+  color: var(--accent);
+  font-size: 0.68rem;
+  font-style: normal;
+  font-weight: 900;
+  line-height: 1;
+  padding: 4px 6px;
+  white-space: nowrap;
 }
 
 .settings-address-results span {
+  grid-column: 1 / -1;
+  grid-row: 2;
   color: var(--muted);
   font-size: 0.82rem;
   font-weight: 750;
@@ -9905,8 +9931,16 @@ html[data-theme="light"] .ranking-filter-card {
 
 .settings-page .settings-address-results button,
 .settings-page .report-player-picker button {
-  min-height: 50px;
   padding: 8px 10px;
+}
+
+.settings-page .settings-address-results button {
+  min-height: 70px;
+  padding: 10px 12px;
+}
+
+.settings-page .report-player-picker button {
+  min-height: 50px;
 }
 
 .settings-page .admin-account-grid {
