@@ -112,6 +112,10 @@ export function getRecruitingJoinMode(entry = {}) {
   return "player";
 }
 
+export function isSoloIndividualRecruitingRoom(post = {}) {
+  return getRecruitingSideCapacity(post) <= 1 && (post.hostJoinMode === "player" || !post.teamId);
+}
+
 export function getSelectableTeamPlayerIds(team = {}) {
   return (team?.members ?? [])
     .filter((member) => !RESERVE_ROLES.has(member.role))
@@ -480,20 +484,34 @@ export function getRecruitingApplicantEntry(applicant = {}, state = {}, post = {
   if (!normalized) return null;
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
   const capacity = getRecruitingSideCapacity(post);
-  const user = normalized.playerId ? state.users?.find((item) => item.id === normalized.playerId) ?? null : null;
-  const displayTeamId = normalized.kind === "team" ? normalized.teamId : normalized.sourceTeamId;
+  const soloIndividualRoom = isSoloIndividualRecruitingRoom(post);
+  const normalizedEntry = soloIndividualRoom && normalized.kind === "team"
+    ? {
+        ...normalized,
+        kind: "player",
+        joinMode: "player",
+        playerId: normalized.playerId || normalized.playerIds?.[0] || "",
+        teamId: null,
+        sourceTeamId: null,
+        sourceEntryId: null,
+        playerIds: [],
+      }
+    : normalized;
+  if (soloIndividualRoom && !normalizedEntry.playerId) return null;
+  const user = normalizedEntry.playerId ? state.users?.find((item) => item.id === normalizedEntry.playerId) ?? null : null;
+  const displayTeamId = normalizedEntry.kind === "team" ? normalizedEntry.teamId : normalizedEntry.sourceTeamId;
   const team = displayTeamId ? state.teams?.find((item) => item.id === displayTeamId) ?? null : null;
-  const players = normalized.kind === "team"
-    ? getActiveTeamPlayerIds(team, capacity, normalized.playerIds)
-    : [normalized.playerId].filter(Boolean);
-  const explicitReserves = normalized.kind === "team"
-    ? getExplicitTeamPlayerIds(team, Infinity, roomState.partyReserves[getRecruitingApplicantKey(normalized)] ?? [])
+  const players = normalizedEntry.kind === "team"
+    ? getActiveTeamPlayerIds(team, capacity, normalizedEntry.playerIds)
+    : [normalizedEntry.playerId].filter(Boolean);
+  const explicitReserves = normalizedEntry.kind === "team"
+    ? getExplicitTeamPlayerIds(team, Infinity, roomState.partyReserves[getRecruitingApplicantKey(normalizedEntry)] ?? [])
     : [];
-  const reserves = normalized.kind === "team" ? unique([...getReserveTeamPlayerIds(team), ...explicitReserves]).filter((playerId) => !players.includes(playerId)) : [];
+  const reserves = normalizedEntry.kind === "team" ? unique([...getReserveTeamPlayerIds(team), ...explicitReserves]).filter((playerId) => !players.includes(playerId)) : [];
 
   return {
-    ...normalized,
-    id: getRecruitingApplicantKey(normalized),
+    ...normalizedEntry,
+    id: getRecruitingApplicantKey(normalizedEntry),
     user,
     team,
     players,

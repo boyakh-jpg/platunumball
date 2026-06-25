@@ -42,6 +42,7 @@ import {
   getRecruitingTierRange,
   getSelectableTeamPlayerIds,
   hasPendingRecruitingInvitation,
+  isSoloIndividualRecruitingRoom,
   isRecruitingPostForUser,
   isNationalRecruitingPost,
 } from "../lib/recruiting.js";
@@ -215,7 +216,8 @@ function getRoomEditDraft(post) {
 function getDefaultJoinDraft(post, teams, currentUser, state) {
   const teamId = getDefaultApplyTeamId(post, teams);
   const team = teams.find((item) => item.id === teamId) ?? null;
-  const teamOnly = isTeamOnlyRoom(post);
+  const soloIndividualRoom = isSoloIndividualRecruitingRoom(post);
+  const teamOnly = isTeamOnlyRoom(post) && !soloIndividualRoom;
   const side = getRecruitingBestSide(post, state);
   const lobby = getRecruitingLobby(post, state);
   const roster = teamOnly
@@ -223,7 +225,7 @@ function getDefaultJoinDraft(post, teams, currentUser, state) {
     : { playerIds: [], reservePlayerIds: [] };
   return {
     joinMode: teamOnly ? "team" : "player",
-    teamId,
+    teamId: teamOnly ? teamId : "",
     playerIds: roster.playerIds,
     reservePlayerIds: roster.reservePlayerIds,
     side,
@@ -1722,6 +1724,16 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
     const baseDraft = getDefaultJoinDraft(roomPost, myTeams, app.currentUser, app.state);
     const storedDraft = joinDraftByPost[roomPost.id];
     if (!storedDraft) return baseDraft;
+    if (isSoloIndividualRecruitingRoom(roomPost) && storedDraft.joinMode === "team") {
+      return {
+        ...baseDraft,
+        ...storedDraft,
+        joinMode: "player",
+        teamId: "",
+        playerIds: [],
+        reservePlayerIds: [],
+      };
+    }
     if (!isTeamOnlyRoom(roomPost) || storedDraft.joinMode === "team" || storedDraft.joinMode === "referee") return storedDraft;
     return {
       ...baseDraft,
@@ -1837,14 +1849,15 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
   return (() => {
         const lobby = getRecruitingLobby(selectedPost, app.state);
         const joinDraft = getJoinDraft(selectedPost);
-        const teamOnlyRoom = isTeamOnlyRoom(selectedPost);
+        const soloIndividualRoom = isSoloIndividualRecruitingRoom(selectedPost);
+        const teamOnlyRoom = isTeamOnlyRoom(selectedPost) && !soloIndividualRoom;
         const selectedJoinTeam = myTeams.find((team) => team.id === joinDraft.teamId) ?? myTeams[0] ?? null;
         const joinCapacity = getJoinActiveCapacity(selectedPost, lobby, joinDraft.side, joinDraft.reserve);
         const selectedJoinPlayerIds = getPartyPlayerIds(selectedJoinTeam, joinDraft.playerIds, joinCapacity, app.currentUser.id);
         const selectedJoinReserveIds = joinDraft.reserve
           ? []
           : getPartyReserveIds(selectedJoinTeam, joinDraft.reservePlayerIds, selectedJoinPlayerIds);
-        const candidateMmr = joinDraft.joinMode === "team"
+        const candidateMmr = joinDraft.joinMode === "team" && !soloIndividualRoom
           ? getPlayerMmrAverage(selectedJoinPlayerIds, userById, selectedJoinTeam?.mmr ?? app.currentUser.ratings.integrated)
           : app.currentUser.ratings.integrated;
         const fit = getRecruitingFit(selectedPost, candidateMmr || app.currentUser.ratings.integrated, app.state);
@@ -1866,12 +1879,12 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
         const getJoinRosterPatch = (team, sideName = joinDraft.side, reserve = joinDraft.reserve) => (
           getDefaultJoinRoster(selectedPost, lobby, team, app.currentUser, sideName, reserve)
         );
-        const teamJoinValid = joinDraft.joinMode !== "team" || (
+        const teamJoinValid = !soloIndividualRoom && (joinDraft.joinMode !== "team" || (
           Boolean(selectedJoinTeam) &&
           selectedJoinPlayerIds.includes(app.currentUser.id) &&
           selectedJoinPlayerIds.length > 0 &&
           (!teamOnlyRoom || selectedJoinPlayerIds.length >= getRecruitingSideCapacity(selectedPost))
-        );
+        ));
         const canJoinReferee = selectedPost.visibility === "public" && refereeWanted && !selectedPost.refereeId && isEligibleReferee(app.currentUser, selectedPost.refereeTrustMin, app.state.settings?.refereeAppointments);
         const canJoin = selectedPost.visibility === "public" && !matchRoom && !mine && !alreadyApplied && (
           joinDraft.joinMode === "referee"
@@ -1879,7 +1892,10 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
             : fit.allowed && (joinDraft.joinMode === "player" || teamJoinValid)
         );
         const joinModeEntries = [
-          ...Object.entries(RECRUITING_JOIN_MODES).filter(([mode]) => !teamOnlyRoom || mode === "team"),
+          ...Object.entries(RECRUITING_JOIN_MODES).filter(([mode]) => {
+            if (mode === "team" && soloIndividualRoom) return false;
+            return !teamOnlyRoom || mode === "team";
+          }),
     ...(canJoinReferee ? [["referee", { label: "심판" }]] : []),
         ];
         const selectedRange = getRecruitingTierRange(
@@ -1899,8 +1915,8 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
         const maxSideFilled = Math.max(lobby.sides.teamA.filled, lobby.sides.teamB.filled);
         const roomEditCapacityValid = !roomEditDraft || Number(roomEditDraft.sideCapacity) >= maxSideFilled;
         const playingIds = [...lobby.sides.teamA.projectedPlayers, ...lobby.sides.teamB.projectedPlayers];
-        const partyJoinOptions = getSameSidePartyOptions(lobby, myEntry, myTeams);
-        const sidePartyJoinOptions = getJoinableSidePartyOptions(lobby, myTeams, app.currentUser.id);
+        const partyJoinOptions = soloIndividualRoom ? [] : getSameSidePartyOptions(lobby, myEntry, myTeams);
+        const sidePartyJoinOptions = soloIndividualRoom ? [] : getJoinableSidePartyOptions(lobby, myTeams, app.currentUser.id);
         const roomState = selectedRoomState;
         const recorderIds = getLobbyRecorderIds(lobby);
         const chatMessages = roomState.chatMessages ?? [];
@@ -2074,7 +2090,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
           const canMoveHere = Boolean(
             canMoveActiveUserToSlot(sideName, reserve),
           );
-          const targetPartyOptions = getSameSidePartyOptions(lobby, myEntry, myTeams, sideName);
+          const targetPartyOptions = soloIndividualRoom ? [] : getSameSidePartyOptions(lobby, myEntry, myTeams, sideName);
           return (
             <SlotCommandPanel
               sideName={sideName}
@@ -2168,7 +2184,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
           const canManageTarget = targetIsCurrentUser || canManageEntry(targetEntry);
           if (!canManageTarget) return null;
           const sourceTeam = targetIsCurrentUser && myEntry?.sourceTeamId ? teamById[myEntry.sourceTeamId] : null;
-          const targetPartyOptions = targetIsCurrentUser ? getSameSidePartyOptions(lobby, myEntry, myTeams, activeSelfSlotDraft.sideName) : [];
+          const targetPartyOptions = targetIsCurrentUser && !soloIndividualRoom ? getSameSidePartyOptions(lobby, myEntry, myTeams, activeSelfSlotDraft.sideName) : [];
           const currentSlotPosition = getRoomSlotDisplayPosition(targetUser, slotPositions, targetPlayerId, targetEntry);
           return (
             <SelfSlotCommandPanel

@@ -59,6 +59,7 @@ import {
   getSelectableTeamPlayerIds,
   getSelectedTeamPlayerIds,
   hasRecruitingApplicant,
+  isSoloIndividualRecruitingRoom,
   normalizeRecruitingMmrRangeMode,
   normalizeRecruitingApplicants,
   normalizeRecruitingPost,
@@ -5617,7 +5618,14 @@ export function interestRecruitingPost(state, postId, application = {}) {
       ],
     };
   }
-  if (teamOnly && application.joinMode === "player") {
+  const requestedJoinMode = application.joinMode === "team"
+    ? "team"
+    : application.joinMode === "player"
+      ? "player"
+      : application.teamId
+        ? "team"
+        : getRecruitingApplicantKind(post);
+  if (teamOnly && requestedJoinMode === "player") {
     return {
       ...state,
       notifications: [
@@ -5632,11 +5640,21 @@ export function interestRecruitingPost(state, postId, application = {}) {
       ],
     };
   }
-  const requestedJoinMode = application.joinMode === "team" || application.teamId
-    ? "team"
-    : application.joinMode === "player"
-      ? "player"
-      : getRecruitingApplicantKind(post);
+  if (isSoloIndividualRecruitingRoom(post) && requestedJoinMode === "team") {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "1v1 참여 제한",
+          body: "1v1 개인방은 개인 1명으로만 참여할 수 있습니다.",
+          tone: "orange",
+          recruitingPostId: postId,
+        },
+        ...state.notifications,
+      ],
+    };
+  }
   const applicantKind = requestedJoinMode === "team" ? "team" : "player";
   const myTeams = state.teams.filter((team) => team.members.some((member) => member.userId === state.currentUserId));
   const team = applicantKind === "team"
@@ -6743,7 +6761,7 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
   }
 
   const now = new Date().toISOString();
-  if (invitedTeam) {
+  if (invitedTeam && !isSoloIndividualRecruitingRoom(post)) {
     const capacity = invitedTeamCapacity;
     const applicants = normalizeRecruitingApplicants(post.applicants ?? []);
     const teamKey = invitedTeamKey;
@@ -6909,6 +6927,7 @@ export function declineRecruitingInvitation(state, postId, invitationId) {
 
 function buildRecruitingTeamAbsorbPost(post, state, applicants, roomState, playerId, sourceTeamId, sourceEntryId = null, placement = {}, updatedAt) {
   if (!sourceTeamId || !playerId) return null;
+  if (isSoloIndividualRecruitingRoom(post)) return null;
   const side = ["teamA", "teamB"].includes(placement.side) ? placement.side : null;
   if (!side) return null;
   const reserve = Boolean(placement.reserve);
@@ -7096,6 +7115,7 @@ export function joinRecruitingSideParty(state, postId, teamId, sideName = "", en
   if (disciplineBlock) return disciplineBlock;
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   if (!isMutableRecruitingRoom(post) || !teamId) return state;
+  if (isSoloIndividualRecruitingRoom(post)) return state;
 
   const team = state.teams.find((item) => item.id === teamId && item.members.some((member) => member.userId === state.currentUserId));
   if (!team) return state;
