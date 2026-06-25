@@ -20,6 +20,7 @@ export default function Login({ auth, app }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [copyMessage, setCopyMessage] = useState("");
+  const [selectedTestLoginId, setSelectedTestLoginId] = useState(auth.testAccounts?.[0]?.id ?? "rankball-001");
   const from = location.state?.from?.pathname && location.state.from.pathname !== "/login" ? location.state.from.pathname : "/app";
   const activeProviders = auth.configured ? providers.filter((provider) => provider.id === "google") : providers;
   const embeddedOAuthBrowser = auth.configured && isEmbeddedOAuthBrowser();
@@ -32,6 +33,10 @@ export default function Login({ auth, app }) {
       return;
     }
     const nextSession = await auth.signInWithProvider(providerId);
+    if (nextSession) enterApp();
+  };
+  const signInWithTestAccount = async () => {
+    const nextSession = await auth.signInWithTestAccount(selectedTestLoginId);
     if (nextSession) enterApp();
   };
   const copyBrowserOpenUrl = async () => {
@@ -95,6 +100,23 @@ export default function Login({ auth, app }) {
               </button>
             ))}
           </div>
+
+          {auth.testLoginAllowed ? (
+            <div className="auth-test-login">
+              <label>
+                테스트 계정
+                <select value={selectedTestLoginId} onChange={(event) => setSelectedTestLoginId(event.target.value)}>
+                  {auth.testAccounts.map((account) => (
+                    <option key={account.id} value={account.id}>{account.label}</option>
+                  ))}
+                </select>
+              </label>
+              <button type="button" className="provider-button provider-test" onClick={signInWithTestAccount}>
+                <span>T</span>
+                backend 테스트 로그인
+              </button>
+            </div>
+          ) : null}
 
           {auth.session ? (
             <>

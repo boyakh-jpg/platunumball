@@ -1039,3 +1039,11 @@ flowchart TD
 6. 신고 목록은 관리자 read policy로만 운영자가 볼 수 있다.
 7. 관리자/징계/audit write는 client policy를 만들지 않고 server action만 사용한다.
 8. 승인 구장 테이블은 authenticated read만 허용하고 내부 요청자/승인자 정보를 payload에 섞지 않는다.
+
+## 2026-06-25 테스트 계정 시뮬레이션 원칙
+
+1. 운영용 Google/Supabase 계정은 계속 `profiles.auth_user_id` 1:1 원칙을 따른다.
+2. 테스트 계정은 `auth_user_id`에 가짜 값을 넣지 않는다.
+3. 테스트 세션 ID는 `test:rankball-001` 형식으로 만들고, 현재 프로필은 `profiles.test_login_id`로 찾는다.
+4. 테스트 계정은 backend seed 데이터 시뮬레이션용이며 실제 사용자 소유권 검증과 분리한다.
+5. 운영 도메인에서 테스트 계정 로그인을 열려면 `VITE_DEMO_LOGIN=true`가 필요하다.

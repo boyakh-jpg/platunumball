@@ -90,7 +90,12 @@ function sortByRating(items, selector) {
 }
 
 function isPersistentAuthUserId(authUserId) {
-  return Boolean(authUserId && !String(authUserId).startsWith("test-"));
+  return Boolean(authUserId && !String(authUserId).startsWith("test-") && !getBackendTestLoginId(authUserId));
+}
+
+function getBackendTestLoginId(authUserId = "") {
+  const match = String(authUserId || "").toLowerCase().match(/^test:(rankball-\d{3})$/);
+  return match?.[1] ?? "";
 }
 
 function getBoundAuthProfileId(state, authUserId, profileBindings, profileKey) {

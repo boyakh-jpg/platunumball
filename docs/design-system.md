@@ -532,3 +532,10 @@ UI 수정 전:
 1. Google OAuth는 KakaoTalk, Instagram, Naver app, Line 같은 embedded browser에서 시도하지 않는다.
 2. 로그인 화면은 embedded browser를 감지하면 작은 안내 패널, 링크 복사, 새 창 열기 액션을 먼저 보여준다.
 3. 안내 패널은 기존 `auth-card` 안의 flat warning surface로 처리하고 별도 모달을 만들지 않는다.
+
+## 2026-06-25 테스트 로그인 UI
+
+1. 테스트 계정 선택기는 로그인 카드 안에만 둔다.
+2. Google OAuth 버튼과 테스트 계정 버튼은 같은 provider button 계열을 쓴다.
+3. 테스트 계정 선택기는 `VITE_DEMO_LOGIN=true` 또는 로컬/프리뷰에서만 보인다.
+4. 테스트 계정 UI는 실제 가입/프로필 설정 흐름을 대체하지 않는다.

@@ -161,6 +161,11 @@ function isRecruitingRoomOwner(post = {}, userId = "") {
 }
 let normalizedSaveWarningShown = false;
 
+function getBackendTestLoginId(authUserId = "") {
+  const match = String(authUserId || "").toLowerCase().match(/^test:(rankball-\d{3})$/);
+  return match?.[1] ?? "";
+}
+
 function makeDefaultRatings() {
   return { integrated: 1200, modes: { "1v1": 1200, "2v2": 1200, "3v3": 1200, "5v5": 1200 } };
 }
@@ -1156,10 +1161,13 @@ async function loadNormalizedRemoteState(authUserId = "", authEmail = "") {
   ]);
 
   const authUserIdText = String(authUserId || "");
+  const testLoginId = getBackendTestLoginId(authUserIdText);
   const currentProfile = authUserIdText
-    ? profiles.find((profile) => String(profile.auth_user_id ?? "") === authUserIdText)
+    ? testLoginId
+      ? profiles.find((profile) => String(profile.test_login_id ?? "").toLowerCase() === testLoginId)
+      : profiles.find((profile) => String(profile.auth_user_id ?? "") === authUserIdText)
     : null;
-  const shellUser = authUserIdText && !currentProfile ? createProfileShell(authUserIdText, authEmail) : null;
+  const shellUser = authUserIdText && !testLoginId && !currentProfile ? createProfileShell(authUserIdText, authEmail) : null;
   const currentUserId = currentProfile?.id ?? shellUser?.id ?? profiles[0]?.id ?? "";
   const teamMembersByTeam = groupBy(teamMembers, "team_id");
   const teamById = firstBy(teams, "id");

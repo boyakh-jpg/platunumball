@@ -356,6 +356,33 @@ h3 {
   border-color: rgba(116, 168, 255, 0.34);
 }
 
+.auth-test-login {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.045);
+  padding: 10px;
+}
+
+.auth-test-login label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.auth-test-login select {
+  min-height: 42px;
+  width: 100%;
+}
+
+.provider-test {
+  border-color: rgba(70, 224, 182, 0.34);
+  background: rgba(70, 224, 182, 0.1);
+}
+
 .bottom-nav {
   display: none;
 }
