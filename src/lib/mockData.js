@@ -1573,43 +1573,54 @@ function withDemoLeague(state) {
 }
 
 function withDemoRefereeQualifications(state) {
-  const refereeId = "u11";
-  const refereeAppointment = {
-    id: "demo-referee-u11",
+  const demoReferees = [
+    { userId: "u1", grade: "official", matchCount: 26, reportCount: 0, thumbsUp: 41 },
+    { userId: "u11", grade: "gold", matchCount: 18, reportCount: 1, thumbsUp: 24 },
+  ];
+  const refereeIds = new Set(demoReferees.map((item) => item.userId));
+  const refereeAppointmentsToAdd = demoReferees.map((item) => ({
+    id: `demo-referee-${item.userId}`,
     role: "referee",
-    grade: "gold",
-    userId: refereeId,
+    grade: item.grade,
+    userId: item.userId,
     status: "active",
     startsAt: "2026-01-01T00:00:00.000Z",
     endsAt: "2030-12-31T23:59:59.000Z",
     appointedBy: "u1",
     reason: "데모 심판 테스트 계정",
     createdAt: "2026-06-17T09:00:00.000Z",
-  };
+  }));
   const refereeAppointments = state.settings?.refereeAppointments ?? [];
-  const hasDemoAppointment = refereeAppointments.some((appointment) => appointment.id === refereeAppointment.id || appointment.userId === refereeId);
+  const existingRefereeAppointmentIds = new Set(refereeAppointments.map((appointment) => appointment.id));
+  const existingRefereeAppointmentUserIds = new Set(refereeAppointments.map((appointment) => appointment.userId));
 
   return {
     ...state,
-    users: (state.users ?? []).map((user) => (
-      user.id === refereeId
-        ? {
-            ...user,
-            refereeGrade: user.refereeGrade ?? "gold",
-            refereeProfile: {
-              grade: "gold",
-              status: "active",
-              matchCount: 18,
-              reportCount: 1,
-              thumbsUp: 24,
-              ...(user.refereeProfile ?? {}),
-            },
-          }
-        : user
-    )),
+    users: (state.users ?? []).map((user) => {
+      if (!refereeIds.has(user.id)) return user;
+      const demoReferee = demoReferees.find((item) => item.userId === user.id);
+      return {
+        ...user,
+        refereeGrade: user.refereeGrade ?? demoReferee.grade,
+        refereeProfile: {
+          grade: demoReferee.grade,
+          status: "active",
+          matchCount: demoReferee.matchCount,
+          reportCount: demoReferee.reportCount,
+          thumbsUp: demoReferee.thumbsUp,
+          ...(user.refereeProfile ?? {}),
+        },
+      };
+    }),
     settings: {
       ...(state.settings ?? {}),
-      refereeAppointments: hasDemoAppointment ? refereeAppointments : [refereeAppointment, ...refereeAppointments],
+      refereeAppointments: [
+        ...refereeAppointmentsToAdd.filter((appointment) => (
+          !existingRefereeAppointmentIds.has(appointment.id) &&
+          !existingRefereeAppointmentUserIds.has(appointment.userId)
+        )),
+        ...refereeAppointments,
+      ],
     },
   };
 }

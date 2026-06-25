@@ -5,6 +5,7 @@ import ApprovalPanel from "../components/match/ApprovalPanel.jsx";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
+import SearchPicker from "../components/common/SearchPicker.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import { PLAYER_STAT_FIELDS } from "../lib/constants.js";
 import {
@@ -36,6 +37,20 @@ const statusMeta = {
 };
 
 const activeStatuses = new Set(["agreed", "approval", "disputed"]);
+
+function getPlayerSearchHashtag(user = {}) {
+  return user.handle ? String(user.handle).replace(/^@/, "#") : "";
+}
+
+function includesPlayerQuery(user = {}, query = "") {
+  const normalizedQuery = query.trim().toLowerCase();
+  if (!normalizedQuery) return true;
+  return [user.name, user.handle, getPlayerSearchHashtag(user), user.position, user.region, user.club]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase()
+    .includes(normalizedQuery);
+}
 
 function makeInitialStats(match) {
   const sourceResult = match.disputeDraftResult ?? match.result;
@@ -127,7 +142,7 @@ export default function Recorder({ app }) {
   const [stats, setStats] = useState({});
   const [dirtyStats, setDirtyStats] = useState({});
   const [handoffDraft, setHandoffDraft] = useState({});
-  const [latePlayerDraft, setLatePlayerDraft] = useState({ sideName: "teamA", userId: "", name: "" });
+  const [latePlayerDraft, setLatePlayerDraft] = useState({ sideName: "teamA", userId: "", playerQuery: "", name: "" });
   const [disputeReason, setDisputeReason] = useState("스코어 또는 개인 기록 재확인 필요");
 
   useEffect(() => {
@@ -140,7 +155,7 @@ export default function Recorder({ app }) {
       setStats(makeInitialStats(selectedMatch));
       setDirtyStats({});
       setHandoffDraft({});
-      setLatePlayerDraft((current) => ({ ...current, userId: "", name: "" }));
+      setLatePlayerDraft((current) => ({ ...current, userId: "", playerQuery: "", name: "" }));
     }
   }, [selectedMatch?.id, selectedMatch?.result?.updatedAt, selectedMatch?.result?.submittedAt, selectedMatch?.disputeDraftResult?.updatedAt, selectedMatchPlayerKey]);
 
@@ -173,6 +188,14 @@ export default function Recorder({ app }) {
   const canEditPostgameRoster = Boolean(selectedMatch && currentUserCanOperatePostStart && roomPhase === "postgame" && recordWindow?.statOpen && !selectedMatch.result);
   const scoreA = selectedMatch ? getSideScore(selectedMatch, stats, "teamA", editablePlayerIds, includeReserveStats) : 0;
   const scoreB = selectedMatch ? getSideScore(selectedMatch, stats, "teamB", editablePlayerIds, includeReserveStats) : 0;
+  const latePlayerOptions = useMemo(() => {
+    if (!selectedMatch) return [];
+    const activeIds = new Set(getMatchPlayerIds(selectedMatch));
+    return app.state.users
+      .filter((item) => !activeIds.has(item.id))
+      .filter((item) => includesPlayerQuery(item, latePlayerDraft.playerQuery))
+      .sort((a, b) => String(a.name ?? "").localeCompare(String(b.name ?? ""), "ko"));
+  }, [app.state.users, latePlayerDraft.playerQuery, selectedMatch]);
   const saveLockedReason = beforeStart
     ? "경기 시작 전"
     : selectedMatch?.status === "confirmed"
@@ -227,7 +250,15 @@ export default function Recorder({ app }) {
       userId: anonymous ? "" : latePlayerDraft.userId,
       name: anonymous ? latePlayerDraft.name : "",
     });
-    setLatePlayerDraft((current) => ({ ...current, userId: "", name: "" }));
+    setLatePlayerDraft((current) => ({ ...current, userId: "", playerQuery: "", name: "" }));
+  };
+
+  const selectLatePlayer = (player) => {
+    setLatePlayerDraft((current) => ({
+      ...current,
+      userId: player.id,
+      playerQuery: player.name ?? "",
+    }));
   };
 
   const handoffRecorder = (sideName) => {
@@ -411,7 +442,7 @@ export default function Recorder({ app }) {
               <div className="recorder-late-player-panel">
                 <div>
                   <span className="eyebrow">POSTGAME ROSTER</span>
-                  <strong>경기 후 추가 출전 기록</strong>
+                  <strong>경기 후 인원 수정</strong>
                   <p>현장에서 추가로 뛴 사람만 기록 대상에 넣는다. 추가자는 MMR에 반영되지 않는다.</p>
                 </div>
                 <div className="recorder-late-player-form">
@@ -427,15 +458,32 @@ export default function Recorder({ app }) {
                   </label>
                   <label>
                     등록 선수
-                    <select
-                      value={latePlayerDraft.userId}
-                      onChange={(event) => setLatePlayerDraft((current) => ({ ...current, userId: event.target.value }))}
-                    >
-                      <option value="">선택</option>
-                      {app.state.users
-                        .filter((item) => !getMatchPlayerIds(selectedMatch).includes(item.id))
-                        .map((item) => <option value={item.id} key={item.id}>{item.name} · {item.position}</option>)}
-                    </select>
+                    <SearchPicker
+                      value={latePlayerDraft.playerQuery}
+                      onChange={(value) => setLatePlayerDraft((current) => ({ ...current, userId: "", playerQuery: value }))}
+                      placeholder="선수 이름, #해시태그, 포지션 검색"
+                      items={latePlayerOptions}
+                      idleItems={latePlayerOptions.slice(0, 10)}
+                      idleTitle="추가 가능한 선수"
+                      title="선수 검색 결과"
+                      showIdleOnFocus
+                      floating
+                      renderItem={(item) => (
+                        <button
+                          type="button"
+                          key={item.id}
+                          className={item.id === latePlayerDraft.userId ? "search-picker-result-row selected" : "search-picker-result-row"}
+                          onMouseDown={(event) => event.preventDefault()}
+                          onClick={() => selectLatePlayer(item)}
+                        >
+                          <span>
+                            <strong>{item.name}</strong>
+                            <em>{getPlayerSearchHashtag(item)} · {item.position} · {item.region}</em>
+                          </span>
+                          <small>{item.ratings?.integrated ?? "-"} MMR</small>
+                        </button>
+                      )}
+                    />
                   </label>
                   <Button type="button" variant="secondary" disabled={!latePlayerDraft.userId} onClick={() => addLatePlayer(false)}>
                     등록 선수 추가

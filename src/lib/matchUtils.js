@@ -227,6 +227,7 @@ export function getMatchReferee(match = {}, users = []) {
 
 const REFEREE_GRADE_IDS = new Set(["candidate", "silver", "gold", "platinum", "official"]);
 const INACTIVE_REFEREE_STATUSES = new Set(["pending", "rejected", "revoked", "expired", "suspended", "blocked"]);
+const TEST_REFEREE_LOGIN_IDS = new Set(["rankball-001", "rankball-011"]);
 
 function isActiveRefereeStatus(status = "active") {
   return !INACTIVE_REFEREE_STATUSES.has(String(status || "active"));
@@ -242,6 +243,7 @@ function isActiveRefereeTerm(record = {}, nowMs = Date.now()) {
 
 export function hasRefereeQualification(user = {}, refereeAppointments = [], nowMs = Date.now()) {
   if (!user?.id) return false;
+  if (TEST_REFEREE_LOGIN_IDS.has(String(user.testLoginId ?? "").toLowerCase())) return true;
   const profile = user.refereeProfile ?? {};
   const profileGrade = profile.grade ?? user.refereeGrade;
   const profileStatus = profile.status ?? user.refereeStatus ?? "active";
