@@ -131,15 +131,15 @@ function mergePayload(delivery, patch) {
 }
 
 export default async function handler(request, response) {
-  if (request.method !== "POST") {
-    response.setHeader("Allow", "POST");
+  if (!["GET", "POST"].includes(request.method)) {
+    response.setHeader("Allow", "GET, POST");
     sendJson(response, 405, { error: "method_not_allowed" });
     return;
   }
 
   try {
     await assertWorkerAccess(request);
-    const body = await readJsonBody(request);
+    const body = request.method === "POST" ? await readJsonBody(request) : {};
     const limit = getBatchLimit(body.limit);
     const supabase = getSupabaseAdminClient();
     const now = new Date().toISOString();
