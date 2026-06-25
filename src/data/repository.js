@@ -258,8 +258,20 @@ function getRecruitingParticipantEntry(post = {}, state = {}, userId, sideName =
   )) ?? null;
 }
 
+function inferSidePartyTeamIdForUser(post = {}, state = {}, sideName = "", userId = "") {
+  if (!userId || !["teamA", "teamB"].includes(sideName)) return null;
+  const lobby = getRecruitingLobby(post, state);
+  const matchingTeamIds = new Set(
+    (lobby.sides?.[sideName]?.entries ?? [])
+      .filter((entry) => isRecruitingTeamPartyEntry(entry) && entry.team?.members?.some((member) => member.userId === userId))
+      .map((entry) => entry.team?.id ?? entry.teamId)
+      .filter(Boolean),
+  );
+  return matchingTeamIds.size === 1 ? [...matchingTeamIds][0] : null;
+}
+
 function inferRecruitingInvitationTeamId(post = {}, state = {}, invitation = {}) {
-  return invitation.teamId || null;
+  return invitation.teamId || inferSidePartyTeamIdForUser(post, state, invitation.side, invitation.targetUserId) || null;
 }
 
 function getExplicitInvitationTeamPlayerIds(team = {}, capacity = Infinity, playerIds = [], fallbackPlayerId = "") {
@@ -2402,8 +2414,94 @@ function applyAutomaticRecruitingConfirmations(state) {
   return state;
 }
 
+function repairRecruitingSameTeamPersonalParties(state) {
+  let changed = false;
+  const recruitingPosts = (state.recruitingPosts ?? []).map((post) => {
+    if (!post || post.status !== "open" || post.visibility !== "public") return post;
+    let postChanged = false;
+    const normalizedPost = normalizeRecruitingPost(post);
+    let applicants = normalizeRecruitingApplicants(normalizedPost.applicants ?? []);
+    const lobby = getRecruitingLobby({ ...normalizedPost, applicants }, state);
+    const roomState = normalizeRecruitingRoomState(normalizedPost.roomState ?? {});
+    const capacity = getRecruitingSideCapacity(normalizedPost);
+    const partyTargetsBySide = ["teamA", "teamB"].reduce((acc, sideName) => {
+      acc[sideName] = (lobby.sides?.[sideName]?.entries ?? [])
+        .filter((entry) => isRecruitingTeamPartyEntry(entry) && entry.team?.id)
+        .map((entry) => ({
+          entryId: entry.id,
+          teamId: entry.team.id,
+          fixed: Boolean(entry.fixed),
+          memberIds: new Set((entry.team.members ?? []).map((member) => member.userId)),
+          playerIds: uniquePlayerIds(entry.players ?? []),
+        }));
+      return acc;
+    }, {});
+    const nextPartyReserves = { ...(roomState.partyReserves ?? {}) };
+
+    applicants.forEach((applicant) => {
+      if (
+        applicant.kind !== "player" ||
+        applicant.status !== "ready" ||
+        !applicant.playerId ||
+        applicant.sourceTeamId ||
+        applicant.sourceEntryId
+      ) return;
+
+      const targets = (partyTargetsBySide[applicant.side] ?? [])
+        .filter((target) => target.memberIds.has(applicant.playerId));
+      if (targets.length !== 1) return;
+
+      const target = targets[0];
+      const applicantKey = getRecruitingApplicantKey(applicant);
+      if (applicant.reserve) {
+        const reserveIds = uniquePlayerIds([...(nextPartyReserves[target.entryId] ?? []), applicant.playerId]);
+        nextPartyReserves[target.entryId] = reserveIds;
+      } else if (target.fixed) {
+        const currentPlayerIds = uniquePlayerIds(normalizedPost.playerIds ?? []);
+        const nextPlayerIds = uniquePlayerIds([...currentPlayerIds, applicant.playerId]).slice(0, capacity);
+        if (!nextPlayerIds.includes(applicant.playerId)) return;
+        normalizedPost.playerIds = nextPlayerIds;
+        target.playerIds = nextPlayerIds;
+      } else {
+        let absorbed = false;
+        applicants = applicants.map((item) => {
+          if (getRecruitingApplicantKey(item) !== target.entryId) return item;
+          const currentPlayerIds = uniquePlayerIds(item.playerIds ?? []);
+          const nextPlayerIds = uniquePlayerIds([...currentPlayerIds, applicant.playerId]).slice(0, capacity);
+          if (!nextPlayerIds.includes(applicant.playerId)) return item;
+          target.playerIds = nextPlayerIds;
+          absorbed = true;
+          return {
+            ...item,
+            playerId: nextPlayerIds.includes(item.playerId) ? item.playerId : nextPlayerIds[0],
+            playerIds: nextPlayerIds,
+          };
+        });
+        if (!absorbed) return;
+      }
+
+      applicants = applicants.filter((item) => getRecruitingApplicantKey(item) !== applicantKey);
+      postChanged = true;
+      changed = true;
+    });
+
+    return postChanged
+      ? {
+          ...post,
+          hostJoinMode: normalizedPost.hostJoinMode,
+          teamId: normalizedPost.teamId,
+          playerIds: normalizedPost.playerIds,
+          roomState: { ...roomState, partyReserves: nextPartyReserves },
+          applicants,
+        }
+      : post;
+  });
+
+  return changed ? { ...state, recruitingPosts } : state;
+}
+
 export function runAutomaticStateMaintenance(state, now = new Date()) {
-  return applyAutomaticRecruitingConfirmations(applyExpiredRecruitingRooms(applyAutomaticMatchDecisions(state, now), now));
+  return repairRecruitingSameTeamPersonalParties(applyAutomaticRecruitingConfirmations(applyExpiredRecruitingRooms(applyAutomaticMatchDecisions(state, now), now)));
 }
 
 export function createMatch(state, draft) {
@@ -6091,7 +6189,7 @@ export function inviteRecruitingPlayers(state, postId, invite = {}) {
     role: "player",
     targetUserId,
     fromUserId: state.currentUserId,
-    teamId: invite.teamId ?? null,
+    teamId: invite.teamId || inferSidePartyTeamIdForUser(post, state, side, targetUserId),
     side,
     reserve,
     status: "pending",
