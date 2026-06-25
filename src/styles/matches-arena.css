@@ -2684,6 +2684,32 @@ html[data-theme="light"] .om-calendar-grid button.active {
   }
 }
 
+@media (min-width: 761px) and (max-width: 960px) {
+  .om-match-card,
+  .arena-lobby-card.om-match-card {
+    grid-template-columns: minmax(0, 1fr) 92px;
+  }
+
+  .om-card-main {
+    grid-column: 1;
+  }
+
+  .om-match-summary-box,
+  .om-score-box,
+  .om-match-info-box,
+  .arena-lobby-card .om-match-summary-box {
+    grid-column: 1 / -1;
+    grid-row: auto;
+  }
+
+  .om-room-link,
+  .arena-lobby-card .om-room-link {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: center;
+  }
+}
+
 .om-match-summary-box,
 .om-score-box {
   width: 100%;
