@@ -225,8 +225,54 @@ export function getMatchReferee(match = {}, users = []) {
   return users.find((user) => user.id === match.refereeId) ?? null;
 }
 
-export function isEligibleReferee(user = {}, minTrust = REFEREE_TRUST_MIN) {
-  return Number(user?.trustScore ?? 0) >= Number(minTrust ?? REFEREE_TRUST_MIN);
+const REFEREE_GRADE_IDS = new Set(["candidate", "silver", "gold", "platinum", "official"]);
+const INACTIVE_REFEREE_STATUSES = new Set(["pending", "rejected", "revoked", "expired", "suspended", "blocked"]);
+
+function isActiveRefereeStatus(status = "active") {
+  return !INACTIVE_REFEREE_STATUSES.has(String(status || "active"));
+}
+
+function isActiveRefereeTerm(record = {}, nowMs = Date.now()) {
+  const startsAt = record.startsAt ? new Date(record.startsAt).getTime() : 0;
+  const endsAt = record.endsAt ? new Date(record.endsAt).getTime() : Infinity;
+  const normalizedStart = Number.isFinite(startsAt) ? startsAt : 0;
+  const normalizedEnd = Number.isFinite(endsAt) ? endsAt : Infinity;
+  return normalizedStart <= nowMs && nowMs <= normalizedEnd;
+}
+
+export function hasRefereeQualification(user = {}, refereeAppointments = [], nowMs = Date.now()) {
+  if (!user?.id) return false;
+  const profile = user.refereeProfile ?? {};
+  const profileGrade = profile.grade ?? user.refereeGrade;
+  const profileStatus = profile.status ?? user.refereeStatus ?? "active";
+  const profileQualified = (
+    user.officialReferee === true ||
+    user.refereeLicenseVerified === true ||
+    profile.licenseVerified === true ||
+    profile.examPassed === true ||
+    REFEREE_GRADE_IDS.has(profileGrade)
+  );
+  if (profileQualified && isActiveRefereeStatus(profileStatus) && isActiveRefereeTerm(profile, nowMs)) return true;
+
+  return refereeAppointments.some((appointment) => {
+    const appointmentUserId = appointment.userId ?? appointment.user_id;
+    const role = appointment.role ?? "referee";
+    const grade = appointment.grade ?? appointment.refereeGrade;
+    return (
+      appointmentUserId === user.id &&
+      role === "referee" &&
+      REFEREE_GRADE_IDS.has(grade) &&
+      isActiveRefereeStatus(appointment.status) &&
+      isActiveRefereeTerm(appointment, nowMs)
+    );
+  });
+}
+
+export function isEligibleReferee(user = {}, minTrust = REFEREE_TRUST_MIN, refereeAppointments = []) {
+  return (
+    Number(user?.trustScore ?? 0) >= Number(minTrust ?? REFEREE_TRUST_MIN) &&
+    hasRefereeQualification(user, refereeAppointments)
+  );
 }
 
 export function isMatchReferee(match = {}, userId) {

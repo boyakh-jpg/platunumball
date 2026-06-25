@@ -1929,7 +1929,7 @@ function getTeamPlayers(team, size) {
 function getTrustedRefereeId(state, refereeId, playerIds = []) {
   if (!refereeId || playerIds.includes(refereeId)) return "";
   const user = state.users.find((item) => item.id === refereeId);
-  return isEligibleReferee(user, REFEREE_TRUST_MIN) ? refereeId : "";
+  return isEligibleReferee(user, REFEREE_TRUST_MIN, state.settings?.refereeAppointments) ? refereeId : "";
 }
 
 function getRecruitingRoomParticipantIds(post, state) {
@@ -1947,7 +1947,7 @@ function getRecruitingRoomParticipantIds(post, state) {
 
 function currentUserCanRefereeRecruitingRoom(state, post) {
   const currentUser = state.users.find((item) => item.id === state.currentUserId);
-  if (!isEligibleReferee(currentUser, post.refereeTrustMin ?? REFEREE_TRUST_MIN)) return false;
+  if (!isEligibleReferee(currentUser, post.refereeTrustMin ?? REFEREE_TRUST_MIN, state.settings?.refereeAppointments)) return false;
   return !getRecruitingRoomParticipantIds(post, state).includes(state.currentUserId);
 }
 
@@ -3103,7 +3103,7 @@ export function submitMatchResult(state, matchId, result) {
   const hasReferee = Boolean(match.refereeId);
   const currentUser = state.users.find((user) => user.id === currentUserId);
   const currentUserIsReferee = isMatchReferee(match, currentUserId);
-  const currentUserIsEligibleReferee = currentUserIsReferee && isEligibleReferee(currentUser, match.refereeTrustMin);
+  const currentUserIsEligibleReferee = currentUserIsReferee && isEligibleReferee(currentUser, match.refereeTrustMin, state.settings?.refereeAppointments);
   const recorderSides = getStatRecorderSides(match, currentUserId);
   const roomPhase = getMatchRoomPhase(match).phase;
   const currentUserCanOperatePostStart = currentUserCanOperateStartedMatch(state, match);
@@ -3545,7 +3545,7 @@ function currentUserIsMatchHost(state, match) {
 
 function currentUserIsEligibleMatchReferee(state, match) {
   const currentUser = state.users.find((user) => user.id === state.currentUserId);
-  return Boolean(isMatchReferee(match, state.currentUserId) && isEligibleReferee(currentUser, match?.refereeTrustMin));
+  return Boolean(isMatchReferee(match, state.currentUserId) && isEligibleReferee(currentUser, match?.refereeTrustMin, state.settings?.refereeAppointments));
 }
 
 function currentUserCanOperateStartedMatch(state, match) {

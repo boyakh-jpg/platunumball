@@ -1779,7 +1779,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
           selectedJoinPlayerIds.length > 0 &&
           (!teamOnlyRoom || selectedJoinPlayerIds.length >= getRecruitingSideCapacity(selectedPost))
         );
-        const canJoinReferee = selectedPost.visibility === "public" && !selectedPost.refereeId && isEligibleReferee(app.currentUser, selectedPost.refereeTrustMin);
+        const canJoinReferee = selectedPost.visibility === "public" && !selectedPost.refereeId && isEligibleReferee(app.currentUser, selectedPost.refereeTrustMin, app.state.settings?.refereeAppointments);
         const canJoin = selectedPost.visibility === "public" && !matchRoom && !mine && !alreadyApplied && (
           joinDraft.joinMode === "referee"
             ? canJoinReferee
@@ -1872,7 +1872,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
         const activeSelfSlotDraft = sourceRoomReadOnly ? null : activeSelfSlotDraftRaw;
         const canUseChat = canChat && !sourceRoomReadOnly;
         const sourceMatchStarted = Boolean(sourceMatch?.startedAt);
-        const currentUserIsSourceReferee = Boolean(sourceMatch && isMatchReferee(sourceMatch, app.currentUser.id) && isEligibleReferee(app.currentUser, sourceMatch.refereeTrustMin));
+        const currentUserIsSourceReferee = Boolean(sourceMatch && isMatchReferee(sourceMatch, app.currentUser.id) && isEligibleReferee(app.currentUser, sourceMatch.refereeTrustMin, app.state.settings?.refereeAppointments));
         const currentUserCanOperateStartedSourceMatch = Boolean(sourceMatch && (sourceMatch.refereeId ? currentUserIsSourceReferee : mine));
         const currentUserCanStartSourceMatch = Boolean(sourceMatch && (sourceMatch.refereeId ? currentUserIsSourceReferee : mine));
         const sourceMatchHostSideName = sourceMatch && getMatchSidePlayerIds(sourceMatch, "teamB").includes(sourceMatch.createdBy) ? "teamB" : "teamA";

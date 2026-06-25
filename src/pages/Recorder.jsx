@@ -100,7 +100,7 @@ function canAccessActiveMatch(match, user, state) {
     ? state.recruitingPosts?.find((post) => post.id === match.recruitingPostId)
     : null;
   const isHost = getMatchHostPlayerId(match, sourcePost) === user.id;
-  const isReferee = isMatchReferee(match, user.id) && isEligibleReferee(user, match.refereeTrustMin);
+  const isReferee = isMatchReferee(match, user.id) && isEligibleReferee(user, match.refereeTrustMin, state.settings?.refereeAppointments);
   if (match.status === "disputed") return isReferee || isHost;
   const isRecorder = !match.refereeId && getStatRecorderSides(match, user.id).length > 0;
   const isPlayer = getMatchPlayerIds(match).includes(user.id);
@@ -119,7 +119,7 @@ export default function Recorder({ app }) {
       app.state.matches
         .filter((match) => canAccessActiveMatch(match, user, app.state))
         .sort((a, b) => String(a.scheduledAt ?? a.createdAt ?? "").localeCompare(String(b.scheduledAt ?? b.createdAt ?? ""))),
-    [app.state.matches, user],
+    [app.state.matches, app.state.settings?.refereeAppointments, user],
   );
   const [selectedMatchId, setSelectedMatchId] = useState("");
   const selectedMatch = matches.find((match) => match.id === selectedMatchId) ?? matches[0] ?? null;
@@ -152,7 +152,7 @@ export default function Recorder({ app }) {
   const hostPlayerId = selectedMatch ? getMatchHostPlayerId(selectedMatch, selectedMatchSourcePost) : "";
   const currentUserIsHost = Boolean(hostPlayerId && hostPlayerId === user.id);
   const selectedMatchHasReferee = Boolean(selectedMatch?.refereeId);
-  const currentUserIsEligibleReferee = Boolean(selectedMatch && isMatchReferee(selectedMatch, user.id) && isEligibleReferee(user, selectedMatch.refereeTrustMin));
+  const currentUserIsEligibleReferee = Boolean(selectedMatch && isMatchReferee(selectedMatch, user.id) && isEligibleReferee(user, selectedMatch.refereeTrustMin, app.state.settings?.refereeAppointments));
   const currentUserCanOperatePostStart = Boolean(selectedMatch && (selectedMatchHasReferee ? currentUserIsEligibleReferee : currentUserIsHost));
   const currentUserCanFileDispute = Boolean(selectedMatch && (currentUserCanOperatePostStart || getMatchTrustFeedbackParticipantIds(selectedMatch).includes(user.id)));
   const currentUserCanPostgameScore = Boolean(currentUserCanOperatePostStart && roomPhase === "postgame" && !["confirmed", "disputed"].includes(selectedMatch.status));

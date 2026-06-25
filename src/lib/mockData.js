@@ -1572,5 +1572,47 @@ function withDemoLeague(state) {
   };
 }
 
-export const sourceDemoState = withDemoLeague(baseState);
-export const initialState = demoFlowState ?? sourceDemoState;
+function withDemoRefereeQualifications(state) {
+  const refereeId = "u11";
+  const refereeAppointment = {
+    id: "demo-referee-u11",
+    role: "referee",
+    grade: "gold",
+    userId: refereeId,
+    status: "active",
+    startsAt: "2026-01-01T00:00:00.000Z",
+    endsAt: "2030-12-31T23:59:59.000Z",
+    appointedBy: "u1",
+    reason: "데모 심판 테스트 계정",
+    createdAt: "2026-06-17T09:00:00.000Z",
+  };
+  const refereeAppointments = state.settings?.refereeAppointments ?? [];
+  const hasDemoAppointment = refereeAppointments.some((appointment) => appointment.id === refereeAppointment.id || appointment.userId === refereeId);
+
+  return {
+    ...state,
+    users: (state.users ?? []).map((user) => (
+      user.id === refereeId
+        ? {
+            ...user,
+            refereeGrade: user.refereeGrade ?? "gold",
+            refereeProfile: {
+              grade: "gold",
+              status: "active",
+              matchCount: 18,
+              reportCount: 1,
+              thumbsUp: 24,
+              ...(user.refereeProfile ?? {}),
+            },
+          }
+        : user
+    )),
+    settings: {
+      ...(state.settings ?? {}),
+      refereeAppointments: hasDemoAppointment ? refereeAppointments : [refereeAppointment, ...refereeAppointments],
+    },
+  };
+}
+
+export const sourceDemoState = withDemoRefereeQualifications(withDemoLeague(baseState));
+export const initialState = withDemoRefereeQualifications(demoFlowState ?? sourceDemoState);

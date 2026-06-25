@@ -433,10 +433,10 @@ export default function CreateMatch({ app }) {
   }, [app.currentUser.region, app.state.teams, favoriteTeamIds, isPublicRoom, isTeamRoom, opponentTeamQuery, ownerSidePlayerIds, selectedTeamA, sideCapacity]);
   const refereeCandidates = useMemo(
     () => app.state.users
-      .filter((user) => isEligibleReferee(user, REFEREE_TRUST_MIN))
+      .filter((user) => isEligibleReferee(user, REFEREE_TRUST_MIN, app.state.settings?.refereeAppointments))
       .filter((user) => !activePlayerIds.has(user.id))
       .sort((a, b) => Number(b.trustScore ?? 0) - Number(a.trustScore ?? 0)),
-    [activePlayerIds, app.state.users],
+    [activePlayerIds, app.state.settings?.refereeAppointments, app.state.users],
   );
   const teamTierRange = getRecruitingTierRange(selectedTeamA?.mmr ?? 1200, draft.ranked, draft.mmrRangeMode);
   const personalTierRange = getRecruitingTierRange(app.currentUser.ratings?.integrated ?? 1200, draft.ranked, draft.mmrRangeMode);

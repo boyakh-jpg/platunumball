@@ -206,7 +206,7 @@ export default function MatchRoom({ app }) {
   const referee = getMatchReferee(match, app.state.users);
   const hasReferee = Boolean(match.refereeId);
   const currentUserIsReferee = isMatchReferee(match, app.currentUser.id);
-  const currentUserIsEligibleReferee = currentUserIsReferee && isEligibleReferee(app.currentUser, match.refereeTrustMin);
+  const currentUserIsEligibleReferee = currentUserIsReferee && isEligibleReferee(app.currentUser, match.refereeTrustMin, app.state.settings?.refereeAppointments);
   const statRecorders = hasReferee ? {} : match.statRecorders ?? match.rules?.statRecorders ?? {};
   const recorderSummary = referee
     ? `심판 ${referee.name}`
