@@ -4,15 +4,18 @@ import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 
 export default function Landing({ state }) {
-  const topUser = [...state.users].sort((a, b) => b.ratings.integrated - a.ratings.integrated)[0];
+  const users = state?.users ?? [];
+  const matches = state?.matches ?? [];
+  const teams = state?.teams ?? [];
+  const topUser = [...users].sort((a, b) => (b.ratings?.integrated ?? 0) - (a.ratings?.integrated ?? 0))[0];
   const featuredMatch =
-    state.matches.find((match) => ["approval", "agreed", "contract"].includes(match.status)) ??
-    state.matches.find((match) => match.status === "confirmed") ??
-    state.matches[0];
-  const approvalCount = state.matches.filter((match) => match.status === "approval").length;
-  const recruitingCount = state.recruitingPosts?.filter((post) => post.status !== "closed").length ?? 0;
+    matches.find((match) => ["approval", "agreed", "contract"].includes(match.status)) ??
+    matches.find((match) => match.status === "confirmed") ??
+    matches[0];
+  const approvalCount = matches.filter((match) => match.status === "approval").length;
+  const recruitingCount = state?.recruitingPosts?.filter((post) => post.status !== "closed").length ?? 0;
   const statusLabel = {
-    contract: "동의",
+    contract: "협의",
     agreed: "예정",
     approval: "승인",
     disputed: "보류",
@@ -29,11 +32,11 @@ export default function Landing({ state }) {
           <div className="landing-actions">
             <Link to="/app/create">
               <Button>
-                오늘 판 만들기 <ArrowRight size={18} />
+                경기 만들기 <ArrowRight size={18} />
               </Button>
             </Link>
             <Link to="/app">
-              <Button variant="secondary"><House size={18} /> 홈 화면</Button>
+              <Button variant="secondary"><House size={18} /> 홈</Button>
             </Link>
             <Link to="/app/rankings">
               <Button variant="secondary">랭크보드</Button>
@@ -43,9 +46,9 @@ export default function Landing({ state }) {
             </Link>
           </div>
           <div className="landing-stat-grid">
-            <span><strong>{state.matches.length}</strong> matches</span>
-            <span><strong>{state.teams.length}</strong> teams</span>
-            <span><strong>{topUser.ratings.integrated}</strong> top MMR</span>
+            <span><strong>{matches.length}</strong> matches</span>
+            <span><strong>{teams.length}</strong> teams</span>
+            <span><strong>{topUser?.ratings?.integrated ?? "-"}</strong> top MMR</span>
           </div>
         </div>
         <div className="broadcast-panel" aria-label="RankBall live board">
@@ -60,7 +63,7 @@ export default function Landing({ state }) {
               <span>{featuredMatch?.teamB.name ?? "Team B"}</span>
             </div>
             <div className="broadcast-list">
-              <span><Trophy size={17} /> {topUser.name} <b>{topUser.ratings.integrated}</b></span>
+              <span><Trophy size={17} /> {topUser?.name ?? "RankBall"} <b>{topUser?.ratings?.integrated ?? "-"}</b></span>
               <span><ClipboardCheck size={17} /> 승인 대기 <b>{approvalCount}</b></span>
               <span><ShieldCheck size={17} /> 대기 매칭 <b>{recruitingCount}</b></span>
               <span><BarChart3 size={17} /> 상태 <b>{statusLabel}</b></span>
