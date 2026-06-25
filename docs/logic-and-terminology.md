@@ -1074,3 +1074,11 @@ flowchart TD
 1. Supabase 모드에서 remote state 로드 전에는 방 생성, 경기 생성, 팀 생성, 토너먼트 생성, 방/경기/팀 변경을 실행하지 않는다.
 2. 테스트계정 로그인 직후 임시 shell profile로 만든 방/경기는 서버 권한 검사에서 거부될 수 있으므로 로컬 임시 성공으로 보여주지 않는다.
 3. server action 실패는 조용히 무시하지 않고 사용자 알림으로 노출한다.
+
+## 2026-06-26 auth/admin 남은 원칙
+
+1. RankBall 앱 유저 ID는 `profiles.id`다. Google/provider ID를 화면, 방, 경기, 팀, 신고의 공개 유저 ID로 쓰지 않는다.
+2. 실제 로그인 소유권은 `profiles.auth_user_id = auth.users.id` unique 매핑으로만 판단한다.
+3. 테스트 계정은 `profiles.test_login_id`와 `test-token-rankball-###`로만 매핑하고 `auth_user_id`를 만들지 않는다.
+4. 최고관리자 권한은 frontend seed ID가 아니라 server env 또는 DB `admin_appointments`에서 나온다.
+5. `src/lib/admin.js`의 `u1` owner fallback은 production 전 제거해야 하는 TODO다.

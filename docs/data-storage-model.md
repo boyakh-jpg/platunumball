@@ -260,3 +260,33 @@ Backend gaps:
 - 이 차단은 임시 shell profile로 생성한 로컬 방이 서버 권한 검사에서 거부된 뒤 새로고침 때 사라지는 문제를 막기 위한 것이다.
 - server action이 실패하거나 비활성 상태면 `서버 저장 실패` 알림을 띄운다.
 - 테스트계정은 `test-token-rankball-###` bearer token과 `profiles.test_login_id`가 매핑될 때만 백엔드 계정으로 본다.
+
+## 2026-06-26 backend migration TODO status
+
+Done:
+
+- Supabase schema/RLS hardening: `profiles.auth_user_id` uuid FK, duplicate hard failure, client write guard, admin/report/court/referee policy hardening.
+- Vercel Hobby API consolidation: one `api/index.js` function dispatches the server routes.
+- Server action/bridge paths exist for profile upsert, court request submit/approve/report, admin review, admin/referee appointment, disciplinary action, Discord DM worker, reports, recruiting, matches, teams, tournaments, referee requests, favorites, notification read, court reviews.
+- Remote hydration guard blocks local room/match/team/tournament actions before backend state is ready.
+- Test account server mapping uses `profiles.test_login_id` with `test-token-rankball-###`.
+
+Partial:
+
+- Frontend still has client reducer logic and sends snapshots to server sync bridges. This is not yet a fully authoritative room/match/team/tournament backend.
+- `mockData.js` and generated demo flow remain for non-Supabase local dev and seed generation, not production source of truth.
+- Admin UI calls server actions, but local UI state is still updated first and should be reloaded from server result before production.
+- Discord OAuth/profile badge/DM queue exists, but invite buttons and chat bridge are not complete.
+- Court reviews exist, but review reports/moderation are not connected.
+
+Remaining:
+
+- Remove client `u1` owner fallback from `src/lib/admin.js` before production.
+- Set owner authority through `RANKBALL_OWNER_AUTH_USER_IDS`, `RANKBALL_OWNER_PROFILE_IDS`, or DB `admin_appointments`; do not depend on frontend seed IDs.
+- Keep app user identity as `profiles.id`; never expose or use Google/provider ID as the public RankBall user id.
+- Finish authoritative RPC/server actions for recruiting create/join/invite/accept/ready/confirm, match attendance/start/record/end/dispute/approve, team membership, and tournament bracket generation.
+- Make frontend repository a thin server caller after the authoritative RPCs are ready.
+- Remove production reliance on localStorage state and mock fallback completely.
+- Add server-side participant eligibility checks for age/division on join and invite accept.
+- Add approved court reporting, hidden/disabled moderation state, and court review moderation.
+- Add Supabase Auth/test seed and cleanup scripts for realistic multi-user simulations.
