@@ -902,6 +902,7 @@ begin
     'type', request_row.payload->>'type',
     'baseName', request_row.payload->>'baseName',
     'addressDong', request_row.payload->>'addressDong',
+    'detailAddress', request_row.payload->>'detailAddress',
     'locationNote', request_row.payload->>'locationNote',
     'courtKind', request_row.payload->>'courtKind',
     'surfaceType', request_row.payload->>'surfaceType',

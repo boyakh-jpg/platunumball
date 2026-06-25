@@ -131,7 +131,7 @@ export default function CourtHoverCard({ court, courtName = "", children, classN
         </span>
         <span className="court-hover-address">
           <b>주소</b>
-          <span>{resolvedCourt.addressText || "주소 등록 필요"}</span>
+          <span>{[resolvedCourt.addressText, resolvedCourt.detailAddress].filter(Boolean).join(" ") || "주소 등록 필요"}</span>
         </span>
         <span className="court-hover-note">
           <b>찾아가는 메모</b>

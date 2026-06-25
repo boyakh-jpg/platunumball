@@ -34,6 +34,7 @@ const DEFAULT_COURT_REQUEST = {
   jibunAddress: "",
   addressDong: "",
   zonecode: "",
+  detailAddress: "",
   locationNote: "",
   lat: "",
   lng: "",
@@ -456,6 +457,7 @@ export default function Settings({ app, auth }) {
       jibunAddress: result.jibunAddress,
       addressDong,
       zonecode: result.zonecode,
+      detailAddress: "",
       lat: result.lat ? String(result.lat) : "",
       lng: result.lng ? String(result.lng) : "",
     });
@@ -859,6 +861,10 @@ export default function Settings({ app, auth }) {
                     <MapPin size={18} />
                   </div>
                 ) : null}
+                <label>
+                  상세주소
+                  <input value={courtDraft.detailAddress} placeholder="예: 체육관 B1, 공원 안쪽 2번 코트" onChange={(event) => updateCourtDraft({ detailAddress: event.target.value })} />
+                </label>
                 {courtDuplicate ? (
                   <div className="arena-mini-note arena-mini-note-warning">
                     <div>
