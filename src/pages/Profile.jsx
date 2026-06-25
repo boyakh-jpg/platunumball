@@ -120,14 +120,18 @@ export default function Profile({ app }) {
   const [profileError, setProfileError] = useState("");
   const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
 
-  const submit = (event) => {
+  const submit = async (event) => {
     event.preventDefault();
     if (draft.name !== user.name && !canChangeProfileName(user)) {
       setProfileError(`닉네임은 월 1회만 변경할 수 있습니다. 다음 변경 가능일: ${formatDate(getNextNameChangeDate(user))}`);
       return;
     }
     setProfileError("");
-    app.actions.updateProfile(draft);
+    try {
+      await app.actions.updateProfile(draft);
+    } catch (error) {
+      setProfileError(error.message || "프로필 저장에 실패했습니다.");
+    }
   };
   const myRecords = [...app.state.matches]
     .filter((match) => match.status === "confirmed" && getUserSide(match, user.id))

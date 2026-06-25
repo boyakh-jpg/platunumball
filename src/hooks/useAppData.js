@@ -253,7 +253,10 @@ export function useAppData(authUser = null) {
     });
   }, []);
   const persistProfileServer = useCallback((profile) => {
-    const promise = postServerAction("/api/profile/upsert", { profile });
+    const promise = postServerAction("/api/profile/upsert", { profile }, { allowWhenDisabled: true }).then((result) => {
+      if (!result) throw new Error("profile_server_action_unavailable");
+      return result;
+    });
     promise.catch((error) => {
       console.warn("Profile server action failed.", error.message);
     });

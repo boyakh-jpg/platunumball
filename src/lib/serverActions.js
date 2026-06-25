@@ -16,8 +16,9 @@ export async function getClientActionAccessToken() {
   }
 }
 
-export async function postServerAction(path, payload = {}) {
-  if (!isServerActionsEnabled || !isSupabaseConfigured) return false;
+export async function postServerAction(path, payload = {}, options = {}) {
+  if (!isSupabaseConfigured) return false;
+  if (!options.allowWhenDisabled && !isServerActionsEnabled) return false;
 
   const accessToken = await getClientActionAccessToken();
   if (!accessToken) return false;

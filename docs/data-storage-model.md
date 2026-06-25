@@ -97,6 +97,7 @@
 - `seed:supabase`는 `SUPABASE_SERVICE_ROLE_KEY`와 `SUPABASE_URL` 또는 `VITE_SUPABASE_URL`이 필요하다.
 - 테스트 계정 쓰기는 `test-token-rankball-###` bearer token을 서버가 `profiles.test_login_id`로 매핑할 때만 허용한다.
 - 테스트 계정 저장은 `profiles.auth_user_id`를 건드리지 않는다.
+- 프로필 저장은 가입 필수 경로라 `VITE_ENABLE_SERVER_ACTIONS`가 꺼져도 `/api/profile/upsert`를 시도하고, 실패하면 화면에 오류를 보여준다.
 
 ## 2026-06-25 Vercel Hobby API consolidation
 
