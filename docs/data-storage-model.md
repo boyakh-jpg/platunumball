@@ -253,3 +253,10 @@ Backend gaps:
 - `profiles`에는 birth year와 age group만 있고 나이 인증 상태, 신고 전 주장 나이, 관리자 검증 나이를 분리 저장할 컬럼이 없다.
 - 방 생성자는 연령 제한 밖이면 생성이 막히지만, recruiting 참여/초대 수락 시점의 연령 차단은 아직 authoritative server logic이 아니다.
 - abuse/integrity seed는 demo state 생성기에 들어갔다. Supabase Auth user 150명 이상을 만드는 service-role alpha seed script와 cleanup script는 별도 남은 작업이다.
+
+## 2026-06-26 server hydration guard
+
+- Supabase 설정 환경에서 remote hydration이 끝나기 전에는 방/경기/팀/토너먼트 생성과 방/경기/팀 변경을 막는다.
+- 이 차단은 임시 shell profile로 생성한 로컬 방이 서버 권한 검사에서 거부된 뒤 새로고침 때 사라지는 문제를 막기 위한 것이다.
+- server action이 실패하거나 비활성 상태면 `서버 저장 실패` 알림을 띄운다.
+- 테스트계정은 `test-token-rankball-###` bearer token과 `profiles.test_login_id`가 매핑될 때만 백엔드 계정으로 본다.

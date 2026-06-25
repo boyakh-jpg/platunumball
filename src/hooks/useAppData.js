@@ -99,6 +99,10 @@ function getBackendTestLoginId(authUserId = "") {
   return match?.[1] ?? "";
 }
 
+function makeClientNotificationId(prefix = "n") {
+  return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+}
+
 function getBoundAuthProfileId(state, authUserId, profileBindings, profileKey) {
   const users = state.users ?? [];
   if (isPersistentAuthUserId(authUserId)) {
@@ -248,11 +252,37 @@ export function useAppData(authUser = null) {
     () => state.users.find((user) => user.id === currentUserId) ?? state.users[0] ?? (profileLocked ? createProfileShell(authUserId, authEmail) : null),
     [authEmail, authUserId, currentUserId, profileLocked, state.users],
   );
+  const pushLocalWarning = useCallback((title, body, payload = {}) => {
+    setState((prev) => ({
+      ...prev,
+      notifications: [
+        {
+          id: makeClientNotificationId("n"),
+          title,
+          body,
+          tone: "orange",
+          createdAt: new Date().toISOString(),
+          ...payload,
+        },
+        ...(prev.notifications ?? []),
+      ],
+    }));
+  }, [setState]);
+  const ensureRemoteReady = useCallback((label = "저장") => {
+    if (!isSupabaseConfigured || remoteReadyRef.current) return true;
+    pushLocalWarning("서버 데이터 로드 중", `${label}은 서버 데이터 로드가 끝난 뒤 다시 시도하세요. 새로고침 후 사라지는 로컬 임시 데이터를 만들지 않기 위해 차단했습니다.`);
+    return false;
+  }, [pushLocalWarning]);
   const runServerAction = useCallback((path, payload) => {
-    postServerAction(path, payload).catch((error) => {
+    postServerAction(path, payload).then((result) => {
+      if (!result) throw new Error("server_action_unavailable");
+    }).catch((error) => {
       console.warn(`Server action skipped: ${path}`, error.message);
+      pushLocalWarning("서버 저장 실패", "서버에 저장되지 않았습니다. 새로고침하면 방/경기 변경이 사라질 수 있습니다.", {
+        payload: { path, error: error.message },
+      });
     });
-  }, []);
+  }, [pushLocalWarning]);
   const persistProfileServer = useCallback((profile) => {
     const promise = postServerAction("/api/profile/upsert", { profile }, { allowWhenDisabled: true }).then((result) => {
       if (!result) throw new Error("profile_server_action_unavailable");
@@ -352,6 +382,7 @@ export function useAppData(authUser = null) {
         ));
       };
       const applyRecruitingPostMutation = (postId, reducer) => {
+        if (!ensureRemoteReady("방 변경")) return;
         let syncedPost = null;
         let syncedNotifications = [];
         setState((prev) => {
@@ -363,6 +394,7 @@ export function useAppData(authUser = null) {
         if (syncedPost) syncRecruitingPostServer(syncedPost, syncedNotifications);
       };
       const applyMatchMutation = (matchId, reducer) => {
+        if (!ensureRemoteReady("경기 변경")) return;
         let syncedMatch = null;
         let syncedNotifications = [];
         setState((prev) => {
@@ -374,6 +406,7 @@ export function useAppData(authUser = null) {
         if (syncedMatch) syncMatchServer(syncedMatch, syncedNotifications);
       };
       const applyTeamMutation = (teamId, reducer) => {
+        if (!ensureRemoteReady("팀 변경")) return;
         let syncedTeam = null;
         let syncedNotifications = [];
         setState((prev) => {
@@ -397,6 +430,7 @@ export function useAppData(authUser = null) {
         return true;
       },
       createMatch: (draft) => {
+        if (!ensureRemoteReady("경기 생성")) return null;
         let createdId = null;
         let createdMatch = null;
         let syncedNotifications = [];
@@ -411,6 +445,7 @@ export function useAppData(authUser = null) {
         return createdId;
       },
       createTournament: (draft) => {
+        if (!ensureRemoteReady("토너먼트 생성")) return null;
         let createdId = null;
         let createdTournament = null;
         let createdMatches = [];
@@ -597,6 +632,7 @@ export function useAppData(authUser = null) {
         return serverProfileBound && nextProfile ? persistProfileServer(nextProfile) : Promise.resolve({ ok: true });
       },
       createTeam: (draft) => {
+        if (!ensureRemoteReady("팀 생성")) return;
         let createdTeam = null;
         let syncedNotifications = [];
         setState((prev) => {
@@ -621,6 +657,7 @@ export function useAppData(authUser = null) {
         if (deleted) deleteTeamServer(teamId, syncedNotifications);
       },
       createRecruitingPost: (draft) => {
+        if (!ensureRemoteReady("방 생성")) return;
         let createdPost = null;
         let syncedNotifications = [];
         setState((prev) => {
@@ -699,7 +736,7 @@ export function useAppData(authUser = null) {
       reset: () => setState(resetState({ includeDemo: !isSupabaseConfigured, authUserId, email: authEmail })),
       });
     },
-    [authEmail, authUserId, currentUserId, deleteTeamServer, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, runServerAction, serverProfileBound, submitReportServer, syncFavoriteServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncTeamServer, syncTournamentServer],
+    [authEmail, authUserId, currentUserId, deleteTeamServer, ensureRemoteReady, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, runServerAction, serverProfileBound, submitReportServer, syncFavoriteServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncTeamServer, syncTournamentServer],
   );
 
   const safeCurrentUserId = currentUserId ?? currentUser?.id ?? "";
