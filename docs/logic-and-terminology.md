@@ -182,6 +182,7 @@ UI/CSS/반응형/라이트·다크 세부 기준은 `docs/design-system.md`를 �
 8. 프론트 숨김은 API 사용량 완화용 UX일 뿐 보안이 아니다. 배포 백엔드는 읽기 전용 `GET /api/courts/address-search?q=...` endpoint에 인증, 신뢰도 검사, rate limit, 도메인 제한을 적용해야 한다.
 9. 주소검색은 기존 브라우저 Naver Maps geocoder를 우선 사용한다. `/api/courts/address-search`는 브라우저 geocoder 실패 시 보조 fallback이다.
 10. 서버 주소검색 fallback은 `VITE_NAVER_MAP_CLIENT_ID` 또는 `NAVER_MAP_CLIENT_ID`와 서버 전용 `NAVER_MAP_CLIENT_SECRET`이 필요하다.
+11. 서버 주소검색 fallback의 프로필/권한 오류는 브라우저 Naver Maps geocoder 오류를 덮어쓰지 않는다.
 
 ## 방 속성
 

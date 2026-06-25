@@ -118,7 +118,7 @@ function normalizeNaverAddress(address = {}, index = 0) {
 
 function getNaverAddressErrorMessage(errorCode = "") {
   if (errorCode === "missing_bearer_token" || errorCode === "invalid_bearer_token") return "로그인 세션을 다시 확인해주세요.";
-  if (errorCode === "profile_not_found") return "가입정보 설정 후 주소검색을 사용할 수 있습니다.";
+  if (errorCode === "profile_not_found") return "서버 프로필 저장 전이라 서버 주소검색을 사용할 수 없습니다.";
   if (errorCode === "court_request_trust_required") return "구장 등록요청 권한이 부족합니다.";
   if (errorCode === "address_search_rate_limited") return "주소검색 요청이 너무 많습니다. 잠시 후 다시 시도해주세요.";
   if (errorCode === "naver_client_id_missing") return "서버에 NAVER_MAP_CLIENT_ID 또는 VITE_NAVER_MAP_CLIENT_ID가 없습니다.";
@@ -141,7 +141,9 @@ async function searchNaverAddressesOnServer(searchQuery) {
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(getNaverAddressErrorMessage(payload.error));
+    const error = new Error(getNaverAddressErrorMessage(payload.error));
+    error.code = payload.error;
+    throw error;
   }
   return Array.isArray(payload.results) ? payload.results : [];
 }
@@ -165,8 +167,14 @@ export async function searchNaverAddresses(query, clientId = getNaverMapClientId
       });
     });
   } catch (clientError) {
-    const serverResults = await searchNaverAddressesOnServer(searchQuery);
-    if (serverResults) return serverResults;
+    try {
+      const serverResults = await searchNaverAddressesOnServer(searchQuery);
+      if (serverResults) return serverResults;
+    } catch (serverError) {
+      if (!["profile_not_found", "court_request_trust_required"].includes(serverError.code)) {
+        throw serverError;
+      }
+    }
     throw clientError;
   }
 }
