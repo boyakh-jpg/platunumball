@@ -95,6 +95,8 @@
 - `profileBindings` localStorage는 Supabase 모드의 프로필 선택 기준으로 쓰지 않는다. 실제 기준은 `profiles.auth_user_id`다.
 - 테스트 시나리오 데이터는 프론트가 직접 읽지 않고 `npm run seed:supabase`로 normalized Supabase tables에 넣는다.
 - `seed:supabase`는 `SUPABASE_SERVICE_ROLE_KEY`와 `SUPABASE_URL` 또는 `VITE_SUPABASE_URL`이 필요하다.
+- 테스트 계정 쓰기는 `test-token-rankball-###` bearer token을 서버가 `profiles.test_login_id`로 매핑할 때만 허용한다.
+- 테스트 계정 저장은 `profiles.auth_user_id`를 건드리지 않는다.
 
 ## 2026-06-25 Vercel Hobby API consolidation
 

@@ -61,6 +61,16 @@ function getEnvList(name) {
     .filter(Boolean);
 }
 
+function isTestLoginEnabled() {
+  return process.env.RANKBALL_ENABLE_TEST_LOGIN === "true" || process.env.VITE_DEMO_LOGIN === "true";
+}
+
+function getTestLoginIdFromToken(token = "") {
+  if (!isTestLoginEnabled()) return "";
+  const match = String(token || "").toLowerCase().match(/^test-token-(rankball-\d{3})$/);
+  return match?.[1] ?? "";
+}
+
 function isActiveAppointment(appointment = {}, nowMs = Date.now()) {
   if (appointment.status && !["active", "approved"].includes(appointment.status)) return false;
   const startsAt = appointment.starts_at ? new Date(appointment.starts_at).getTime() : 0;
@@ -68,13 +78,43 @@ function isActiveAppointment(appointment = {}, nowMs = Date.now()) {
   return (!startsAt || startsAt <= nowMs) && (!endsAt || endsAt >= nowMs);
 }
 
-export async function getAuthenticatedContext(request) {
+export async function getAuthenticatedContext(request, options = {}) {
+  const allowMissingProfile = Boolean(options.allowMissingProfile);
   const supabase = getSupabaseAdminClient();
   const token = getBearerToken(request);
   if (!token) {
     const error = new Error("missing_bearer_token");
     error.statusCode = 401;
     throw error;
+  }
+
+  const testLoginId = getTestLoginIdFromToken(token);
+  if (testLoginId) {
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("id, test_login_id")
+      .eq("test_login_id", testLoginId)
+      .maybeSingle();
+
+    if (profileError) throw profileError;
+    if (!profile?.id) {
+      const error = new Error("test_profile_not_found");
+      error.statusCode = 403;
+      throw error;
+    }
+
+    return {
+      supabase,
+      authUser: {
+        id: `test:${testLoginId}`,
+        email: `${testLoginId}@rankball.test`,
+        user_metadata: { providerName: `${testLoginId} test`, testLoginId },
+      },
+      authUserId: `test:${testLoginId}`,
+      profileId: profile.id,
+      testLoginId,
+      isTestAccount: true,
+    };
   }
 
   const { data: userData, error: userError } = await supabase.auth.getUser(token);
@@ -93,6 +133,15 @@ export async function getAuthenticatedContext(request) {
 
   if (profileError) throw profileError;
   if (!profile?.id) {
+    if (allowMissingProfile) {
+      return {
+        supabase,
+        authUser: userData.user,
+        authUserId,
+        profileId: null,
+        isProfileMissing: true,
+      };
+    }
     const error = new Error("profile_not_found");
     error.statusCode = 403;
     throw error;

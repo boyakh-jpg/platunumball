@@ -1,10 +1,10 @@
-import { isServerBridgeWriteEnabled, isSupabaseConfigured, supabase } from "./supabase.js";
+import { isServerBridgeWriteEnabled, isSupabaseConfigured } from "./supabase.js";
+import { getClientActionAccessToken } from "./serverActions.js";
 
 export async function writeServerBridgeRows(table, rows = []) {
   if (!isServerBridgeWriteEnabled || !isSupabaseConfigured || !rows.length) return false;
 
-  const { data } = await supabase.auth.getSession();
-  const accessToken = data?.session?.access_token;
+  const accessToken = await getClientActionAccessToken();
   if (!accessToken) return false;
 
   const response = await fetch("/api/supabase/bridge", {

@@ -1,4 +1,4 @@
-import { getBearerToken, getSupabaseAdminClient, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 
 const DEFAULT_RATINGS = { integrated: 1200, modes: { "1v1": 1200, "2v2": 1200, "3v3": 1200, "5v5": 1200 } };
 
@@ -30,7 +30,7 @@ function getDiscordUserId(connection) {
   return connection && typeof connection === "object" ? connection.userId ?? connection.id ?? null : null;
 }
 
-function buildProfileRow({ existing, profile, authUser, authUserId }) {
+function buildProfileRow({ existing, profile, authUser, authUserId, isTestAccount }) {
   const now = new Date().toISOString();
   const existingLockedHandle = existing?.handle_locked_at || existing?.hashtag_locked_at;
   const requestedHashtag = normalizeHashtag(profile.hashtag ?? profile.handle, profile.name ?? authUser.email);
@@ -43,7 +43,8 @@ function buildProfileRow({ existing, profile, authUser, authUserId }) {
 
   return {
     id: existing?.id ?? makeProfileId(authUserId),
-    auth_user_id: authUserId,
+    auth_user_id: isTestAccount ? existing?.auth_user_id ?? null : authUserId,
+    test_login_id: existing?.test_login_id ?? profile.testLoginId ?? null,
     name: nextName,
     handle: nextHashtag || existing?.handle || "",
     hashtag: nextHashtag || existing?.hashtag || null,
@@ -80,35 +81,27 @@ export default async function handler(request, response) {
   }
 
   try {
-    const token = getBearerToken(request);
-    if (!token) {
-      sendJson(response, 401, { error: "missing_bearer_token" });
-      return;
-    }
-
-    const supabase = getSupabaseAdminClient();
-    const { data: userData, error: userError } = await supabase.auth.getUser(token);
-    if (userError || !userData?.user?.id) {
-      sendJson(response, 401, { error: "invalid_bearer_token" });
-      return;
-    }
-
+    const context = await getAuthenticatedContext(request, { allowMissingProfile: true });
     const body = await readJsonBody(request);
     const profile = body.profile && typeof body.profile === "object" ? body.profile : {};
-    const authUserId = userData.user.id;
-    const { data: existing, error: selectError } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("auth_user_id", authUserId)
-      .maybeSingle();
+    const existingQuery = context.profileId
+      ? context.supabase.from("profiles").select("*").eq("id", context.profileId)
+      : context.supabase.from("profiles").select("*").eq("auth_user_id", context.authUserId);
+    const { data: existing, error: selectError } = await existingQuery.maybeSingle();
 
     if (selectError) throw selectError;
 
-    const row = buildProfileRow({ existing, profile, authUser: userData.user, authUserId });
+    const row = buildProfileRow({
+      existing,
+      profile,
+      authUser: context.authUser,
+      authUserId: context.authUserId,
+      isTestAccount: context.isTestAccount,
+    });
     const query = existing?.id
-      ? supabase.from("profiles").update(row).eq("id", existing.id)
-      : supabase.from("profiles").insert(row);
-    const { data, error } = await query.select("id, auth_user_id, updated_at").single();
+      ? context.supabase.from("profiles").update(row).eq("id", existing.id)
+      : context.supabase.from("profiles").insert(row);
+    const { data, error } = await query.select("id, auth_user_id, test_login_id, updated_at").single();
 
     if (error) throw error;
 

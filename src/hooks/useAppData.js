@@ -159,6 +159,8 @@ export function useAppData(authUser = null) {
   const skipNextRemoteSaveRef = useRef(false);
   const profileKey = authUserId ?? "local-demo";
   const profileLocked = isPersistentAuthUserId(authUserId);
+  const backendTestLoginId = getBackendTestLoginId(authUserId);
+  const serverProfileBound = profileLocked || Boolean(backendTestLoginId);
   const effectiveProfileBindings = isSupabaseConfigured ? {} : profileBindings;
   const currentUserId = getBoundAuthProfileId(state, authUserId, effectiveProfileBindings, profileKey);
 
@@ -580,7 +582,7 @@ export function useAppData(authUser = null) {
         if (createdRequest) syncRefereeServer("submitRequest", { request: createdRequest, notifications: syncedNotifications });
       },
       updateProfile: (patch, targetUserId = currentUserId) => {
-        const safeTargetUserId = profileLocked ? currentUserId : targetUserId;
+        const safeTargetUserId = serverProfileBound ? currentUserId : targetUserId;
         const safePatch = profileLocked ? { ...patch, authUserId } : patch;
         let nextProfile = null;
         setState((prev) => {
@@ -588,7 +590,7 @@ export function useAppData(authUser = null) {
           nextProfile = next.users.find((user) => user.id === safeTargetUserId) ?? null;
           return next;
         });
-        return profileLocked && nextProfile ? persistProfileServer(nextProfile) : Promise.resolve({ ok: true });
+        return serverProfileBound && nextProfile ? persistProfileServer(nextProfile) : Promise.resolve({ ok: true });
       },
       createTeam: (draft) => {
         let createdTeam = null;
@@ -692,7 +694,7 @@ export function useAppData(authUser = null) {
       reset: () => setState(resetState({ includeDemo: !isSupabaseConfigured, authUserId, email: authEmail })),
       });
     },
-    [authEmail, authUserId, currentUserId, deleteTeamServer, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, runServerAction, submitReportServer, syncFavoriteServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncTeamServer, syncTournamentServer],
+    [authEmail, authUserId, currentUserId, deleteTeamServer, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, runServerAction, serverProfileBound, submitReportServer, syncFavoriteServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncTeamServer, syncTournamentServer],
   );
 
   const safeCurrentUserId = currentUserId ?? currentUser?.id ?? "";
