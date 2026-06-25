@@ -96,6 +96,12 @@
 - 테스트 시나리오 데이터는 프론트가 직접 읽지 않고 `npm run seed:supabase`로 normalized Supabase tables에 넣는다.
 - `seed:supabase`는 `SUPABASE_SERVICE_ROLE_KEY`와 `SUPABASE_URL` 또는 `VITE_SUPABASE_URL`이 필요하다.
 
+## 2026-06-25 Vercel Hobby API consolidation
+
+- Hobby serverless function 한도를 피하기 위해 실제 Vercel API route는 `api/index.js` 하나로 둔다.
+- 기존 API handler 파일들은 `server/api/` 아래로 이동하고 `api/index.js`가 path 기준으로 dispatch한다.
+- `vercel.json`은 `/api/:path*`를 `/api?path=:path*`로 먼저 rewrite하고, 그 다음 SPA fallback을 `/index.html`로 보낸다.
+
 ## 2026-06-24 admin server actions
 
 - `POST /api/admin/review-action`은 `rankball_commit_admin_review_action()` RPC로 신고 상태 변경, audit log, 징계 row, 신고자/대상자 알림을 한 transaction으로 처리한다.

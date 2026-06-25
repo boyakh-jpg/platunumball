@@ -8,13 +8,14 @@
       "schedule": "0 0 * * *"
     }
   ],
-  "routes": [
+  "rewrites": [
     {
-      "handle": "filesystem"
+      "source": "/api/:path*",
+      "destination": "/api?path=:path*"
     },
     {
-      "src": "/.*",
-      "dest": "/index.html"
+      "source": "/:path*",
+      "destination": "/index.html"
     }
   ]
 }
