@@ -284,6 +284,9 @@ export function useAppData(authUser = null) {
     if (!targetType || !targetId) return;
     runServerAction("/api/favorites/sync", { targetType, targetId, active });
   }, [runServerAction]);
+  const markNotificationReadServer = useCallback((payload = {}) => {
+    runServerAction("/api/notifications/read", payload);
+  }, [runServerAction]);
 
   const rankings = useMemo(
     () => ({
@@ -484,8 +487,14 @@ export function useAppData(authUser = null) {
         setState((prev) => approveCourtRequest({ ...prev, currentUserId }, requestId));
         runServerAction("/api/court-requests/approve", { requestId });
       },
-      markNotificationRead: (notificationId) => setState((prev) => markNotificationRead(prev, notificationId)),
-      markAllNotificationsRead: () => setState((prev) => markAllNotificationsRead(prev)),
+      markNotificationRead: (notificationId) => {
+        setState((prev) => markNotificationRead(prev, notificationId));
+        markNotificationReadServer({ notificationId });
+      },
+      markAllNotificationsRead: () => {
+        setState((prev) => markAllNotificationsRead(prev));
+        markNotificationReadServer({ all: true });
+      },
       toggleFavoritePlayer: (userId) => {
         let active = false;
         setState((prev) => {
@@ -678,7 +687,7 @@ export function useAppData(authUser = null) {
       reset: () => setState(resetState({ includeDemo: !isSupabaseConfigured, authUserId, email: authEmail })),
       });
     },
-    [authEmail, authUserId, currentUserId, deleteTeamServer, persistProfileServer, profileKey, profileLocked, runServerAction, submitReportServer, syncFavoriteServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncTeamServer, syncTournamentServer],
+    [authEmail, authUserId, currentUserId, deleteTeamServer, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, runServerAction, submitReportServer, syncFavoriteServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncTeamServer, syncTournamentServer],
   );
 
   const safeCurrentUserId = currentUserId ?? currentUser?.id ?? "";

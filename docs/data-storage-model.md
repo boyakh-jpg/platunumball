@@ -200,6 +200,13 @@
 - 선수와 팀 즐겨찾기는 대상 존재 여부를 확인한다.
 - 구장은 정적 seed 구장과 승인 구장 id가 섞여 있어 현재 단계에서는 target id 존재 검사를 보류한다.
 
+## 2026-06-25 notification read bridge
+
+- `POST /api/notifications/read`를 추가했다.
+- 단일 알림 읽음은 `notificationId`, 전체 읽음은 `all=true`로 처리한다.
+- 서버는 현재 `profileId`가 `user_id` 또는 `target_user_id`인 row만 `read_at`, `updated_at`으로 갱신한다.
+- 브라우저의 직접 `notifications` update는 계속 금지한다.
+
 ## 2026-06-25 court review bridge
 
 - `court_reviews`는 구장별 리뷰 평균을 만들기 위한 서버 테이블이다.

@@ -11,6 +11,7 @@ import courtSubmitReview from "../server/api/courts/submit-review.js";
 import discordDmWorker from "../server/api/discord/dm-worker.js";
 import favoriteSync from "../server/api/favorites/sync.js";
 import matchSyncMatch from "../server/api/matches/sync-match.js";
+import notificationRead from "../server/api/notifications/read.js";
 import profileUpsert from "../server/api/profile/upsert.js";
 import refereeSync from "../server/api/referee/sync.js";
 import recruitingSyncPost from "../server/api/recruiting/sync-post.js";
@@ -33,6 +34,7 @@ const ROUTES = new Map([
   ["/discord/dm-worker", discordDmWorker],
   ["/favorites/sync", favoriteSync],
   ["/matches/sync-match", matchSyncMatch],
+  ["/notifications/read", notificationRead],
   ["/profile/upsert", profileUpsert],
   ["/referee/sync", refereeSync],
   ["/recruiting/sync-post", recruitingSyncPost],
