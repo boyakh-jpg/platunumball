@@ -309,6 +309,69 @@ create table if not exists public.recruiting_applications (
   constraint recruiting_applications_status_check check (status in ('waiting', 'ready', 'confirmed'))
 );
 
+do $$
+begin
+  if to_regclass('public.recruiting_posts') is not null then
+    execute 'alter table public.recruiting_posts add column if not exists type text not null default ''need_player''';
+    execute 'alter table public.recruiting_posts add column if not exists title text not null default ''모집방''';
+    execute 'alter table public.recruiting_posts add column if not exists visibility text not null default ''public''';
+    execute 'alter table public.recruiting_posts add column if not exists player_id text';
+    execute 'alter table public.recruiting_posts add column if not exists team_id text';
+    execute 'alter table public.recruiting_posts add column if not exists region text';
+    execute 'alter table public.recruiting_posts add column if not exists court_id text';
+    execute 'alter table public.recruiting_posts add column if not exists court_name text';
+    execute 'alter table public.recruiting_posts add column if not exists mode text';
+    execute 'alter table public.recruiting_posts add column if not exists ranked boolean not null default true';
+    execute 'alter table public.recruiting_posts add column if not exists official boolean not null default false';
+    execute 'alter table public.recruiting_posts add column if not exists pre_registered boolean not null default true';
+    execute 'alter table public.recruiting_posts add column if not exists rating_scale numeric not null default 1';
+    execute 'alter table public.recruiting_posts add column if not exists age_restriction text';
+    execute 'alter table public.recruiting_posts add column if not exists allowed_age_groups jsonb not null default ''[]''::jsonb';
+    execute 'alter table public.recruiting_posts add column if not exists rules jsonb not null default ''{}''::jsonb';
+    execute 'alter table public.recruiting_posts add column if not exists stakes text';
+    execute 'alter table public.recruiting_posts add column if not exists court_reserved boolean not null default false';
+    execute 'alter table public.recruiting_posts add column if not exists court_fee text';
+    execute 'alter table public.recruiting_posts add column if not exists spots integer not null default 0';
+    execute 'alter table public.recruiting_posts add column if not exists scheduled_date date';
+    execute 'alter table public.recruiting_posts add column if not exists scheduled_time time';
+    execute 'alter table public.recruiting_posts add column if not exists scheduled_at text';
+    execute 'alter table public.recruiting_posts add column if not exists confirmed_at timestamptz';
+    execute 'alter table public.recruiting_posts add column if not exists player_ids jsonb not null default ''[]''::jsonb';
+    execute 'alter table public.recruiting_posts add column if not exists room_state jsonb not null default ''{}''::jsonb';
+    execute 'alter table public.recruiting_posts add column if not exists host_join_mode text not null default ''team''';
+    execute 'alter table public.recruiting_posts add column if not exists host_side text not null default ''teamA''';
+    execute 'alter table public.recruiting_posts add column if not exists host_ready boolean not null default false';
+    execute 'alter table public.recruiting_posts add column if not exists side_capacity integer not null default 5';
+    execute 'alter table public.recruiting_posts add column if not exists position text';
+    execute 'alter table public.recruiting_posts add column if not exists memo text';
+    execute 'alter table public.recruiting_posts add column if not exists status text not null default ''open''';
+    execute 'alter table public.recruiting_posts add column if not exists target_team_id text';
+    execute 'alter table public.recruiting_posts add column if not exists referee_id text';
+    execute 'alter table public.recruiting_posts add column if not exists referee_trust_min integer not null default 90';
+    execute 'alter table public.recruiting_posts add column if not exists stat_entry_minutes integer not null default 60';
+    execute 'alter table public.recruiting_posts add column if not exists dispute_minutes integer not null default 120';
+    execute 'alter table public.recruiting_posts add column if not exists created_at timestamptz not null default now()';
+    execute 'alter table public.recruiting_posts add column if not exists updated_at timestamptz not null default now()';
+    execute 'alter table public.recruiting_posts drop constraint if exists recruiting_posts_visibility_check';
+    execute 'alter table public.recruiting_posts add constraint recruiting_posts_visibility_check check (visibility in (''public'', ''private''))';
+  end if;
+
+  if to_regclass('public.recruiting_applications') is not null then
+    execute 'alter table public.recruiting_applications add column if not exists team_id text';
+    execute 'alter table public.recruiting_applications add column if not exists kind text not null default ''player''';
+    execute 'alter table public.recruiting_applications add column if not exists side text not null default ''teamB''';
+    execute 'alter table public.recruiting_applications add column if not exists status text not null default ''waiting''';
+    execute 'alter table public.recruiting_applications add column if not exists reserve boolean not null default false';
+    execute 'alter table public.recruiting_applications add column if not exists position text';
+    execute 'alter table public.recruiting_applications add column if not exists player_ids jsonb not null default ''[]''::jsonb';
+    execute 'alter table public.recruiting_applications add column if not exists source_team_id text';
+    execute 'alter table public.recruiting_applications add column if not exists source_entry_id text';
+    execute 'alter table public.recruiting_applications add column if not exists created_at timestamptz not null default now()';
+    execute 'alter table public.recruiting_applications add column if not exists updated_at timestamptz';
+  end if;
+end;
+$$;
+
 create index if not exists recruiting_posts_created_at_idx on public.recruiting_posts (created_at desc);
 create index if not exists recruiting_posts_visibility_status_idx on public.recruiting_posts (visibility, status);
 create index if not exists recruiting_applications_post_side_idx on public.recruiting_applications (post_id, side, reserve);
