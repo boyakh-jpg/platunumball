@@ -6693,6 +6693,10 @@ html[data-theme="light"] .search-picker-result-row.selected {
 }
 
 .stat-integrity-note {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   border: 1px solid rgba(255, 211, 108, 0.2);
   border-radius: var(--radius);
   background: rgba(255, 211, 108, 0.075);
@@ -6701,6 +6705,10 @@ html[data-theme="light"] .search-picker-result-row.selected {
   font-weight: 850;
   line-height: 1.45;
   padding: 10px;
+}
+
+.stat-integrity-note .button {
+  flex: 0 0 auto;
 }
 
 .stat-referee-panel {

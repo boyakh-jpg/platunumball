@@ -9,7 +9,7 @@ import RuleSelector from "../components/match/RuleSelector.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { MATCH_MODES, REFEREE_TRUST_MIN, REGIONS } from "../lib/constants.js";
 import { getCourtLayoutLabel, getCourtPlayWarning, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
-import { getCourtHashtag, getTeamHashtag } from "../lib/handles.js";
+import { getCourtHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { getPublicRoomMaxDateInput, isEligibleReferee } from "../lib/matchUtils.js";
 import { AGE_GROUPS, getAgeGroupForUser } from "../lib/profileSetup.js";
 import { MMR_RANGE_POLICIES, getRecruitingSideCapacity, getRecruitingTierRange, getSelectableTeamPlayerIds, isMmrInRecruitingRange } from "../lib/recruiting.js";
@@ -295,6 +295,7 @@ export default function CreateMatch({ app }) {
   const [teamQuery, setTeamQuery] = useState("");
   const [opponentTeamQuery, setOpponentTeamQuery] = useState("");
   const [courtQuery, setCourtQuery] = useState("");
+  const [refereeQuery, setRefereeQuery] = useState("");
   const [teamRegion, setTeamRegion] = useState(app.currentUser.region ?? "전체");
   const [courtRegion, setCourtRegion] = useState(app.currentUser.region ?? "전체");
   const defaultAgeRestriction = getAgeGroupForUser(app.currentUser);
@@ -438,6 +439,14 @@ export default function CreateMatch({ app }) {
       .sort((a, b) => Number(b.trustScore ?? 0) - Number(a.trustScore ?? 0)),
     [activePlayerIds, app.state.settings?.refereeAppointments, app.state.users],
   );
+  const selectedReferee = refereeCandidates.find((user) => user.id === draft.refereeId) ?? null;
+  const refereeSearchResults = useMemo(() => {
+    const query = refereeQuery.trim();
+    return refereeCandidates.filter((user) => (
+      !query ||
+      includesQuery(`${user.name} ${user.handle} ${getUserHashtag(user)} ${user.position} ${user.region} 신뢰도 ${user.trustScore}`, query)
+    ));
+  }, [refereeCandidates, refereeQuery]);
   const teamTierRange = getRecruitingTierRange(selectedTeamA?.mmr ?? 1200, draft.ranked, draft.mmrRangeMode);
   const personalTierRange = getRecruitingTierRange(app.currentUser.ratings?.integrated ?? 1200, draft.ranked, draft.mmrRangeMode);
   const roomTierRange = isTeamRoom ? teamTierRange : personalTierRange;
@@ -526,6 +535,7 @@ export default function CreateMatch({ app }) {
     if (!draft.refereeId) return;
     if (refereeCandidates.some((user) => user.id === draft.refereeId)) return;
     setDraft((current) => ({ ...current, refereeId: "" }));
+    setRefereeQuery("");
   }, [draft.refereeId, refereeCandidates]);
 
   useEffect(() => {
@@ -704,6 +714,27 @@ export default function CreateMatch({ app }) {
       </button>
     );
   };
+  const selectReferee = (user) => {
+    update({ refereeId: user.id });
+    setRefereeQuery(user.name ?? "");
+  };
+  const clearReferee = () => {
+    update({ refereeId: "" });
+    setRefereeQuery("");
+  };
+  const renderRefereeSearchItem = (user) => (
+    <button
+      key={user.id}
+      type="button"
+      className={user.id === draft.refereeId ? "search-picker-result-row selected" : "search-picker-result-row"}
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={() => selectReferee(user)}
+    >
+      <strong>{user.name}</strong>
+      <span>{getUserHashtag(user)} · {user.position} · {user.region}</span>
+      <em>신뢰도 {user.trustScore} · {user.refereeProfile?.grade ?? user.refereeGrade ?? "심판"}</em>
+    </button>
+  );
   const submit = (event) => {
     event.preventDefault();
     if (submitDisabled) return;
@@ -940,13 +971,31 @@ export default function CreateMatch({ app }) {
               <>
                 <label>
                   심판
-                  <select value={draft.refereeId} onChange={(event) => update({ refereeId: event.target.value })}>
-                    <option value="">초대 안 함 · 개인 기록은 득점만</option>
-                    {refereeCandidates.map((user) => (
-                      <option key={user.id} value={user.id}>{user.name} · 신뢰도 {user.trustScore}</option>
-                    ))}
-                  </select>
+                  <SearchPicker
+                    value={refereeQuery}
+                    onChange={(value) => {
+                      setRefereeQuery(value);
+                      update({ refereeId: "" });
+                    }}
+                    placeholder="심판 이름, #해시태그, 지역 검색"
+                    items={refereeSearchResults}
+                    idleItems={refereeCandidates.slice(0, 8)}
+                    idleTitle="초대 가능한 심판"
+                    title="심판 검색 결과"
+                    emptyText="초대 가능한 심판 없음"
+                    showIdleOnFocus
+                    floating
+                    renderItem={renderRefereeSearchItem}
+                  />
                 </label>
+                <div className="stat-integrity-note">
+                  {selectedReferee
+                    ? `초대할 심판: ${selectedReferee.name} · 신뢰도 ${selectedReferee.trustScore}`
+                    : "심판 초대 안 함 · 심판 없으면 개인 기록은 득점 중심"}
+                  {selectedReferee ? (
+                    <Button type="button" variant="secondary" size="sm" onClick={clearReferee}>초대 해제</Button>
+                  ) : null}
+                </div>
                 <div className="stat-integrity-note">
                   심판은 신뢰도 {REFEREE_TRUST_MIN} 이상만 가능. 초대 시 심판만 득점/리바운드/어시스트/스틸/블록을 입력한다.
                 </div>
