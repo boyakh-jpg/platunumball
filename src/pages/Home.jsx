@@ -500,7 +500,7 @@ export default function Home({ app }) {
             </div>
             {upcomingMatches.length ? (
               <div className="match-stack">
-                {upcomingMatches.slice(0, 3).map((match) => <MatchCard key={match.id} match={match} teams={app.state.teams} />)}
+                {upcomingMatches.slice(0, 3).map((match) => <MatchCard key={match.id} match={match} teams={app.state.teams} courts={registeredCourts} />)}
               </div>
             ) : (
               <div className="empty-state">예정 경기 없음</div>

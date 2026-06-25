@@ -1615,6 +1615,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
   const userById = useMemo(() => Object.fromEntries(app.state.users.map((user) => [user.id, user])), [app.state.users]);
   const teamById = useMemo(() => Object.fromEntries(app.state.teams.map((team) => [team.id, team])), [app.state.teams]);
   const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
+  const courtByName = useMemo(() => Object.fromEntries(registeredCourts.map((court) => [court.name, court])), [registeredCourts]);
   const [joinDraftByPost, setJoinDraftByPost] = useState({});
   const [chatDraftByPost, setChatDraftByPost] = useState({});
   const [inviteDraft, setInviteDraft] = useState(null);
@@ -2105,7 +2106,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
 
                 <div className="arena-lobby-title">
                   <h2>{roomDisplayTitle}</h2>
-                  <p><MapPin size={16} /><CourtHoverCard courtName={selectedPost.court}>{selectedPost.court}</CourtHoverCard> · {getRecruitingSchedule(selectedPost)}</p>
+                  <p><MapPin size={16} /><CourtHoverCard court={courtByName[selectedPost.court]} courtName={selectedPost.court}>{selectedPost.court}</CourtHoverCard> · {getRecruitingSchedule(selectedPost)}</p>
                 </div>
 
                 <div className="arena-lobby-versus-stage">
@@ -2742,6 +2743,7 @@ export default function Recruiting({ app }) {
     [app.currentUser.id, app.state.teams],
   );
   const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
+  const courtByName = useMemo(() => Object.fromEntries(registeredCourts.map((court) => [court.name, court])), [registeredCourts]);
   const myTeamIds = useMemo(() => myTeams.map((team) => team.id), [myTeams]);
   const userById = useMemo(() => Object.fromEntries(app.state.users.map((user) => [user.id, user])), [app.state.users]);
   const teamById = useMemo(() => Object.fromEntries(app.state.teams.map((team) => [team.id, team])), [app.state.teams]);
@@ -3014,7 +3016,7 @@ export default function Recruiting({ app }) {
                 {roomTitle ? <h3>{roomTitle}</h3> : null}
                 <p>
                   <CalendarDays size={15} />
-                  {getRecruitingSchedule(post)} · <CourtHoverCard courtName={post.court}>{post.court}</CourtHoverCard> ·{" "}
+                  {getRecruitingSchedule(post)} · <CourtHoverCard court={courtByName[post.court]} courtName={post.court}>{post.court}</CourtHoverCard> ·{" "}
                   {hostTeam ? (
                     <TeamHoverCard team={hostTeam} as="span">{hostTeam.name}</TeamHoverCard>
                   ) : (

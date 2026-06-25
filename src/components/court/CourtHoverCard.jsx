@@ -80,6 +80,10 @@ export default function CourtHoverCard({ court, courtName = "", children, classN
   const hideHover = () => setHoverOpen(false);
   const open = pinnedOpen || (!pinnedHoverKey && canUseHoverPreview() && hoverOpen);
   const mapUrl = getCourtMapUrl(resolvedCourt);
+  const reviewSummary = resolvedCourt.reviewSummary ?? {};
+  const reviewCount = Number(reviewSummary.reviewCount ?? resolvedCourt.reviewCount ?? 0);
+  const averageRating = Number(reviewSummary.averageRating ?? resolvedCourt.rating ?? 0);
+  const ratingLabel = reviewCount && averageRating ? averageRating.toFixed(1) : "리뷰 없음";
 
   return (
     <span
@@ -143,7 +147,7 @@ export default function CourtHoverCard({ court, courtName = "", children, classN
           <span><b>{resolvedCourt.courtKind === "official" ? "정식구장" : "골목/길농"}</b><em>유형</em></span>
           <span><b>{resolvedCourt.paid ? "유료" : "무료/미정"}</b><em>비용</em></span>
           <span><b>{resolvedCourt.lighting ? "조명 있음" : "확인 필요"}</b><em>야간</em></span>
-          <span><b>{resolvedCourt.favorite ? "추천" : "일반"}</b><em><Star size={12} /> 상태</em></span>
+          <span><b>{ratingLabel}</b><em><Star size={12} /> 리뷰 {reviewCount}개</em></span>
         </span>
         <a className="hover-card-action" href={mapUrl} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>
           <Navigation size={16} /> 지도로 보기 <ExternalLink size={14} />

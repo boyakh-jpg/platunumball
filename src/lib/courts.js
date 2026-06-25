@@ -123,13 +123,49 @@ export function getCourtDuplicateMessage(duplicate) {
   return duplicate.type === "approved" ? "이미 등록된 구장입니다." : "이미 등록요청된 구장입니다.";
 }
 
+function getRatingAverage(reviews = [], field) {
+  const values = reviews
+    .map((review) => Number(review[field]))
+    .filter((value) => Number.isFinite(value) && value > 0);
+  if (!values.length) return null;
+  return Math.round((values.reduce((sum, value) => sum + value, 0) / values.length) * 10) / 10;
+}
+
+export function getCourtReviewSummary(court = {}, reviews = []) {
+  const courtId = String(court.id ?? "");
+  const courtName = String(court.name ?? "");
+  const relatedReviews = reviews.filter((review) => (
+    (courtId && review.courtId === courtId) ||
+    (courtName && review.courtName === courtName)
+  ));
+
+  return {
+    averageRating: getRatingAverage(relatedReviews, "rating"),
+    reviewCount: relatedReviews.length,
+    surfaceRating: getRatingAverage(relatedReviews, "surfaceRating"),
+    rimRating: getRatingAverage(relatedReviews, "rimRating"),
+    lightingRating: getRatingAverage(relatedReviews, "lightingRating"),
+    crowdRating: getRatingAverage(relatedReviews, "crowdRating"),
+    locationAccuracy: getRatingAverage(relatedReviews, "locationAccuracy"),
+  };
+}
+
 export function getRegisteredCourts(stateOrSettings = {}) {
   const settings = stateOrSettings.settings ? stateOrSettings.settings : stateOrSettings;
   const approvedCourts = settings.approvedCourts ?? [];
+  const courtReviews = settings.courtReviews ?? [];
   const byId = new Map(COURTS.map((court) => [court.id, court]));
   approvedCourts.forEach((court) => {
     if (!court?.id) return;
     byId.set(court.id, court);
   });
-  return [...byId.values()];
+  return [...byId.values()].map((court) => {
+    const reviewSummary = getCourtReviewSummary(court, courtReviews);
+    return {
+      ...court,
+      reviewSummary,
+      rating: reviewSummary.averageRating,
+      reviewCount: reviewSummary.reviewCount,
+    };
+  });
 }

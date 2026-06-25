@@ -7,6 +7,7 @@ import CourtHoverCard from "../components/court/CourtHoverCard.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { MATCH_MODES } from "../lib/constants.js";
+import { getRegisteredCourts } from "../lib/courts.js";
 import {
   canUserResolveMatchDispute,
   cleanRoomTitle,
@@ -695,6 +696,8 @@ export default function Matches({ app }) {
   const teamById = useMemo(() => Object.fromEntries(app.state.teams.map((team) => [team.id, team])), [app.state.teams]);
   const userById = useMemo(() => Object.fromEntries(app.state.users.map((user) => [user.id, user])), [app.state.users]);
   const matchesById = useMemo(() => Object.fromEntries(app.state.matches.map((match) => [match.id, match])), [app.state.matches]);
+  const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
+  const courtByName = useMemo(() => Object.fromEntries(registeredCourts.map((court) => [court.name, court])), [registeredCourts]);
   const myTeamIds = useMemo(
     () => app.state.teams
       .filter((team) => team.members.some((member) => member.userId === app.currentUser.id))
@@ -1194,7 +1197,7 @@ export default function Matches({ app }) {
                     <span className="om-card-official">{getRoomRefereeLabel(post)}</span>
                   </div>
                   {roomTitle ? <h3>{roomTitle}</h3> : null}
-                  <p><CalendarDays size={15} />{formatMatchTime(post)} · <CourtHoverCard courtName={post.court}>{post.court}</CourtHoverCard></p>
+                  <p><CalendarDays size={15} />{formatMatchTime(post)} · <CourtHoverCard court={courtByName[post.court]} courtName={post.court}>{post.court}</CourtHoverCard></p>
                 </div>
                 <MatchListSummary
                   left={`A ${lobby.sides.teamA.projectedFilled}/${lobby.sides.teamA.capacity}`}
@@ -1231,7 +1234,7 @@ export default function Matches({ app }) {
                   <span className="om-card-official">{getRoomRefereeLabel(match)}</span>
                 </div>
                 {matchTitle ? <h3>{matchTitle}</h3> : null}
-                <p><CalendarDays size={15} />{formatMatchTime(match)} · <CourtHoverCard courtName={match.court}>{match.court}</CourtHoverCard></p>
+                <p><CalendarDays size={15} />{formatMatchTime(match)} · <CourtHoverCard court={courtByName[match.court]} courtName={match.court}>{match.court}</CourtHoverCard></p>
               </div>
               {showScoreBox ? (
                 <div className="om-score-box">

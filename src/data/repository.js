@@ -108,6 +108,7 @@ const DEFAULT_SETTINGS = {
   favoriteCourtIds: [],
   approvedCourts: [],
   courtRequests: [],
+  courtReviews: [],
   refereeRequests: [],
   adminAppointments: [],
   refereeAppointments: [],
@@ -580,6 +581,7 @@ function normalizeSettings(settings = {}) {
     favoriteCourtIds: settings.favoriteCourtIds ?? initialState.settings?.favoriteCourtIds ?? [],
     approvedCourts: settings.approvedCourts ?? initialState.settings?.approvedCourts ?? [],
     courtRequests: settings.courtRequests ?? initialState.settings?.courtRequests ?? [],
+    courtReviews: settings.courtReviews ?? initialState.settings?.courtReviews ?? [],
     refereeRequests: settings.refereeRequests ?? initialState.settings?.refereeRequests ?? [],
     adminAppointments: settings.adminAppointments ?? initialState.settings?.adminAppointments ?? [],
     refereeAppointments: settings.refereeAppointments ?? initialState.settings?.refereeAppointments ?? [],
@@ -847,6 +849,29 @@ function fromRemoteApprovedCourt(row = {}) {
   };
 }
 
+function fromRemoteCourtReview(row = {}) {
+  const payload = getRemotePayload(row);
+  return {
+    ...payload,
+    id: row.id ?? payload.id,
+    courtId: row.court_id ?? payload.courtId,
+    courtName: row.court_name ?? payload.courtName,
+    matchId: row.match_id ?? payload.matchId,
+    reviewerId: row.reviewer_id ?? payload.reviewerId,
+    rating: Number(row.rating ?? payload.rating ?? 0),
+    surfaceRating: row.surface_rating ?? payload.surfaceRating ?? null,
+    rimRating: row.rim_rating ?? payload.rimRating ?? null,
+    lightingRating: row.lighting_rating ?? payload.lightingRating ?? null,
+    crowdRating: row.crowd_rating ?? payload.crowdRating ?? null,
+    locationAccuracy: row.location_accuracy ?? payload.locationAccuracy ?? null,
+    fitModes: row.fit_modes ?? payload.fitModes ?? [],
+    tags: row.tags ?? payload.tags ?? [],
+    memo: row.memo ?? payload.memo ?? "",
+    createdAt: row.created_at ?? payload.createdAt,
+    updatedAt: row.updated_at ?? payload.updatedAt,
+  };
+}
+
 function fromRemoteTeam(row, memberRows) {
   return {
     id: row.id,
@@ -1013,6 +1038,7 @@ async function loadNormalizedRemoteState() {
     reports,
     courtRequests,
     approvedCourts,
+    courtReviews,
     refereeRequests,
     refereeExamAttempts,
     adminAppointments,
@@ -1043,6 +1069,7 @@ async function loadNormalizedRemoteState() {
     fetchOptionalRows("reports", "*", "created_at"),
     fetchOptionalRows("court_requests", "*", "created_at"),
     fetchOptionalRows("approved_courts", "*", "created_at"),
+    fetchOptionalRows("court_reviews", "*", "created_at"),
     fetchOptionalRows("referee_requests", "*", "created_at"),
     fetchOptionalRows("referee_exam_attempts", "*", "created_at"),
     fetchOptionalRows("admin_appointments", "*", "created_at"),
@@ -1223,6 +1250,7 @@ async function loadNormalizedRemoteState() {
       favoriteCourtIds: favoriteRows.filter((favorite) => favorite.target_type === "court").map((favorite) => favorite.target_id),
       approvedCourts: approvedCourts.map(fromRemoteApprovedCourt),
       courtRequests: courtRequests.map(fromRemoteCourtRequest),
+      courtReviews: courtReviews.map(fromRemoteCourtReview),
       refereeRequests: refereeRequests.map(fromRemotePayloadRow),
       refereeExamAttempts: refereeExamAttempts.map(fromRemotePayloadRow),
       adminAppointments: adminAppointments.map(fromRemotePayloadRow),
@@ -1241,6 +1269,7 @@ async function loadNormalizedRemoteState() {
       getMaxUpdatedAt(tournaments),
       getMaxUpdatedAt(courtRequests),
       getMaxUpdatedAt(approvedCourts),
+      getMaxUpdatedAt(courtReviews),
       getMaxUpdatedAt(reports),
       getMaxUpdatedAt(notifications),
     ),

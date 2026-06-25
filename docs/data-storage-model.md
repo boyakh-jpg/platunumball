@@ -125,3 +125,12 @@
 - `recruiting_posts` 저장/로드 매핑에 `title`, `visibility`, `rules`, `official`, `preRegistered`, 구장예약, 연령 제한, `sourceTeamId/sourceEntryId`를 보존한다.
 - 이 단계는 아직 완전한 authoritative room engine이 아니다. 클라이언트의 기존 로컬 액션 결과를 서버에 커밋하는 과도기 브리지다.
 - 다음 단계는 생성/참여/초대/수락 계산 자체를 RPC 내부로 옮기고, 경기 확정 시 `matches` 생성도 같은 transaction으로 묶는 것이다.
+
+## 2026-06-25 court review bridge
+
+- `court_reviews`는 구장별 리뷰 평균을 만들기 위한 서버 테이블이다.
+- `POST /api/courts/submit-review`는 `rankball_submit_court_review()` RPC로 경기 참가자만 리뷰를 제출하게 한다.
+- 같은 경기에서 같은 사용자는 리뷰 1개만 유지한다. 재제출은 수정으로 처리한다.
+- 프론트는 `court_reviews`를 읽어 `getRegisteredCourts()`에서 `reviewSummary`, `rating`, `reviewCount`를 붙인다.
+- 구장 hover 카드의 별점 표시는 기존 UI를 재사용하며 `court_reviews.rating` 평균과 리뷰 수를 보여준다.
+- 리뷰 작성 UI는 아직 경기 종료 화면에 붙지 않았다. 다음 단계는 postgame 리뷰 입력과 신고/관리자 검토 연결이다.

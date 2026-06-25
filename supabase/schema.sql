@@ -788,6 +788,37 @@ create table if not exists public.approved_courts (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.court_reviews (
+  id text primary key,
+  court_id text not null,
+  court_name text,
+  match_id text not null,
+  reviewer_id text not null,
+  rating integer not null,
+  surface_rating integer,
+  rim_rating integer,
+  lighting_rating integer,
+  crowd_rating integer,
+  location_accuracy integer,
+  fit_modes jsonb not null default '[]'::jsonb,
+  tags jsonb not null default '[]'::jsonb,
+  memo text,
+  payload jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint court_reviews_rating_check check (rating between 1 and 5),
+  constraint court_reviews_surface_rating_check check (surface_rating is null or surface_rating between 1 and 5),
+  constraint court_reviews_rim_rating_check check (rim_rating is null or rim_rating between 1 and 5),
+  constraint court_reviews_lighting_rating_check check (lighting_rating is null or lighting_rating between 1 and 5),
+  constraint court_reviews_crowd_rating_check check (crowd_rating is null or crowd_rating between 1 and 5),
+  constraint court_reviews_location_accuracy_check check (location_accuracy is null or location_accuracy between 1 and 5)
+);
+
+create unique index if not exists court_reviews_match_reviewer_unique
+on public.court_reviews (match_id, reviewer_id);
+create index if not exists court_reviews_court_id_idx
+on public.court_reviews (court_id, created_at desc);
+
 create or replace function public.rankball_submit_court_request(
   actor_profile_id text,
   request_payload jsonb
@@ -1505,11 +1536,148 @@ begin
 end;
 $$;
 
+create or replace function public.rankball_submit_court_review(
+  actor_profile_id text,
+  review_payload jsonb
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  now_ts timestamptz := now();
+  safe_match_id text := nullif(btrim(review_payload->>'matchId'), '');
+  safe_rating integer := nullif(review_payload->>'rating', '')::integer;
+  safe_court_id text;
+  safe_court_name text;
+  review_id text := nullif(btrim(review_payload->>'id'), '');
+  match_row record;
+  safe_payload jsonb;
+begin
+  if actor_profile_id is null or btrim(actor_profile_id) = '' then
+    raise exception 'missing_actor_profile_id' using errcode = '42501';
+  end if;
+
+  if safe_match_id is null then
+    raise exception 'missing_match_id' using errcode = '22023';
+  end if;
+
+  if safe_rating is null or safe_rating < 1 or safe_rating > 5 then
+    raise exception 'invalid_court_rating' using errcode = '22023';
+  end if;
+
+  select id, court_id, court_name, status, ended_at
+  into match_row
+  from public.matches
+  where id = safe_match_id
+  for share;
+
+  if not found then
+    raise exception 'match_not_found' using errcode = 'P0002';
+  end if;
+
+  if match_row.ended_at is null and match_row.status not in ('approval', 'disputed', 'confirmed') then
+    raise exception 'court_review_match_not_finished' using errcode = '42501';
+  end if;
+
+  if not exists (
+    select 1
+    from public.match_players
+    where match_id = safe_match_id
+      and user_id = actor_profile_id
+  ) then
+    raise exception 'court_review_participant_required' using errcode = '42501';
+  end if;
+
+  safe_court_name := coalesce(nullif(match_row.court_name, ''), nullif(btrim(review_payload->>'courtName'), ''), '구장 미정');
+  safe_court_id := coalesce(nullif(match_row.court_id, ''), nullif(btrim(review_payload->>'courtId'), ''), 'court_' || md5(safe_court_name));
+
+  if review_id is null then
+    review_id := 'cvr_' || md5(safe_match_id || actor_profile_id);
+  end if;
+
+  safe_payload := review_payload || jsonb_build_object(
+    'id', review_id,
+    'courtId', safe_court_id,
+    'courtName', safe_court_name,
+    'matchId', safe_match_id,
+    'reviewerId', actor_profile_id,
+    'rating', safe_rating,
+    'createdAt', coalesce(review_payload->>'createdAt', now_ts::text),
+    'updatedAt', now_ts
+  );
+
+  insert into public.court_reviews (
+    id,
+    court_id,
+    court_name,
+    match_id,
+    reviewer_id,
+    rating,
+    surface_rating,
+    rim_rating,
+    lighting_rating,
+    crowd_rating,
+    location_accuracy,
+    fit_modes,
+    tags,
+    memo,
+    payload,
+    created_at,
+    updated_at
+  )
+  values (
+    review_id,
+    safe_court_id,
+    safe_court_name,
+    safe_match_id,
+    actor_profile_id,
+    safe_rating,
+    nullif(review_payload->>'surfaceRating', '')::integer,
+    nullif(review_payload->>'rimRating', '')::integer,
+    nullif(review_payload->>'lightingRating', '')::integer,
+    nullif(review_payload->>'crowdRating', '')::integer,
+    nullif(review_payload->>'locationAccuracy', '')::integer,
+    coalesce(review_payload->'fitModes', '[]'::jsonb),
+    coalesce(review_payload->'tags', '[]'::jsonb),
+    nullif(btrim(review_payload->>'memo'), ''),
+    safe_payload,
+    coalesce(nullif(review_payload->>'createdAt', '')::timestamptz, now_ts),
+    now_ts
+  )
+  on conflict (match_id, reviewer_id) do update set
+    court_id = excluded.court_id,
+    court_name = excluded.court_name,
+    rating = excluded.rating,
+    surface_rating = excluded.surface_rating,
+    rim_rating = excluded.rim_rating,
+    lighting_rating = excluded.lighting_rating,
+    crowd_rating = excluded.crowd_rating,
+    location_accuracy = excluded.location_accuracy,
+    fit_modes = excluded.fit_modes,
+    tags = excluded.tags,
+    memo = excluded.memo,
+    payload = excluded.payload,
+    updated_at = excluded.updated_at
+  returning id into review_id;
+
+  return jsonb_build_object(
+    'ok', true,
+    'reviewId', review_id,
+    'courtId', safe_court_id,
+    'matchId', safe_match_id
+  );
+end;
+$$;
+
 revoke all on function public.rankball_approve_court_request(text, integer, text) from public;
 revoke all on function public.rankball_report_court_request(text, text, text) from public;
+revoke all on function public.rankball_submit_court_review(text, jsonb) from public;
 revoke all on function public.rankball_submit_court_request(text, jsonb) from public;
 grant execute on function public.rankball_approve_court_request(text, integer, text) to service_role;
 grant execute on function public.rankball_report_court_request(text, text, text) to service_role;
+grant execute on function public.rankball_submit_court_review(text, jsonb) to service_role;
 grant execute on function public.rankball_submit_court_request(text, jsonb) to service_role;
 
 create or replace function public.rankball_commit_admin_review_action(
@@ -2436,6 +2604,7 @@ begin
     'reports',
     'court_requests',
     'approved_courts',
+    'court_reviews',
     'referee_requests',
     'referee_exam_attempts',
     'admin_appointments',
@@ -2460,6 +2629,7 @@ begin
     where schemaname = 'public'
       and tablename in (
         'approved_courts',
+        'court_reviews',
         'admin_appointments',
         'referee_appointments',
         'admin_audit_log',
@@ -2473,6 +2643,7 @@ end;
 $$;
 
 revoke insert, update, delete on public.approved_courts from anon, authenticated;
+revoke insert, update, delete on public.court_reviews from anon, authenticated;
 revoke insert, update, delete on public.admin_appointments from anon, authenticated;
 revoke insert, update, delete on public.referee_appointments from anon, authenticated;
 revoke insert, update, delete on public.admin_audit_log from anon, authenticated;
@@ -2481,6 +2652,13 @@ revoke insert, update, delete on public.admin_disciplinary_actions from anon, au
 drop policy if exists approved_courts_select_public on public.approved_courts;
 create policy approved_courts_select_public
 on public.approved_courts
+for select
+to authenticated
+using (true);
+
+drop policy if exists court_reviews_select_authenticated on public.court_reviews;
+create policy court_reviews_select_authenticated
+on public.court_reviews
 for select
 to authenticated
 using (true);

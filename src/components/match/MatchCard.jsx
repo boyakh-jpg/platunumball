@@ -25,9 +25,10 @@ const statusTone = {
   cancelled: "neutral",
 };
 
-export default function MatchCard({ match, teams = [] }) {
+export default function MatchCard({ match, teams = [], courts = [] }) {
   const teamA = teams.find((team) => team.id === match.teamA.teamId);
   const teamB = teams.find((team) => team.id === match.teamB.teamId);
+  const court = courts.find((item) => item.name === match.court);
 
   return (
     <Card className="match-card" as="article">
@@ -41,7 +42,7 @@ export default function MatchCard({ match, teams = [] }) {
         </Badge>
       </div>
       <div className="match-meta">
-        <span><MapPin size={15} /><CourtHoverCard courtName={match.court}>{match.court}</CourtHoverCard></span>
+        <span><MapPin size={15} /><CourtHoverCard court={court} courtName={match.court}>{match.court}</CourtHoverCard></span>
         <span><CalendarDays size={15} />{match.scheduledAt}</span>
       </div>
       <div className="score-line">
