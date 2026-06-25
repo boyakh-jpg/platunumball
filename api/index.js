@@ -15,6 +15,7 @@ import recruitingSyncPost from "../server/api/recruiting/sync-post.js";
 import reportSubmit from "../server/api/reports/submit.js";
 import supabaseBridge from "../server/api/supabase/bridge.js";
 import teamSyncTeam from "../server/api/teams/sync-team.js";
+import tournamentSyncTournament from "../server/api/tournaments/sync-tournament.js";
 
 const ROUTES = new Map([
   ["/admin/appointment-action", adminAppointmentAction],
@@ -34,6 +35,7 @@ const ROUTES = new Map([
   ["/reports/submit", reportSubmit],
   ["/supabase/bridge", supabaseBridge],
   ["/teams/sync-team", teamSyncTeam],
+  ["/tournaments/sync-tournament", tournamentSyncTournament],
 ]);
 
 function getRequestUrl(request) {

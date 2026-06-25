@@ -272,6 +272,10 @@ export function useAppData(authUser = null) {
     if (!deletedTeamId) return;
     runServerAction("/api/teams/sync-team", { deletedTeamId, notifications });
   }, [runServerAction]);
+  const syncTournamentServer = useCallback((tournament, notifications = [], meta = {}) => {
+    if (!tournament?.id) return;
+    runServerAction("/api/tournaments/sync-tournament", { tournament, notifications, ...meta });
+  }, [runServerAction]);
 
   const rankings = useMemo(
     () => ({
@@ -308,6 +312,14 @@ export function useAppData(authUser = null) {
         return (next.notifications ?? []).filter((notification) => (
           !beforeIds.has(notification.id) &&
           (notification.tone === "team" || notification.type === "team" || !notification.targetUserId)
+        ));
+      };
+      const getNewTournamentNotifications = (prev, next) => {
+        const beforeIds = new Set((prev.notifications ?? []).map((notification) => notification.id));
+        return (next.notifications ?? []).filter((notification) => (
+          !beforeIds.has(notification.id) &&
+          !notification.matchId &&
+          (notification.type === "tournament" || notification.tone === "match" || !notification.targetUserId)
         ));
       };
       const applyRecruitingPostMutation = (postId, reducer) => {
@@ -371,17 +383,40 @@ export function useAppData(authUser = null) {
       },
       createTournament: (draft) => {
         let createdId = null;
+        let createdTournament = null;
+        let createdMatches = [];
+        let syncedNotifications = [];
         setState((prev) => {
           const existingIds = new Set((prev.tournaments ?? []).map((tournament) => tournament.id));
+          const existingMatchIds = new Set((prev.matches ?? []).map((match) => match.id));
           const next = createTournament({ ...prev, currentUserId }, draft);
-          createdId = (next.tournaments ?? []).find((tournament) => !existingIds.has(tournament.id))?.id ?? null;
+          createdTournament = (next.tournaments ?? []).find((tournament) => !existingIds.has(tournament.id)) ?? null;
+          createdId = createdTournament?.id ?? null;
+          createdMatches = (next.matches ?? []).filter((match) => !existingMatchIds.has(match.id));
+          syncedNotifications = createdTournament ? getNewTournamentNotifications(prev, next) : [];
           return next;
         });
+        if (createdTournament) syncTournamentServer(createdTournament, syncedNotifications, { action: "create" });
+        createdMatches.forEach((match) => syncMatchServer(match, []));
         return createdId;
       },
-      approveTournamentTeam: (tournamentId, teamId) => setState((prev) => approveTournamentTeam({ ...prev, currentUserId }, tournamentId, teamId)),
+      approveTournamentTeam: (tournamentId, teamId) => {
+        let syncedTournament = null;
+        let createdMatches = [];
+        let syncedNotifications = [];
+        setState((prev) => {
+          const existingMatchIds = new Set((prev.matches ?? []).map((match) => match.id));
+          const next = approveTournamentTeam({ ...prev, currentUserId }, tournamentId, teamId);
+          syncedTournament = (next.tournaments ?? []).find((tournament) => tournament.id === tournamentId) ?? null;
+          createdMatches = (next.matches ?? []).filter((match) => !existingMatchIds.has(match.id));
+          syncedNotifications = syncedTournament ? getNewTournamentNotifications(prev, next) : [];
+          return next;
+        });
+        if (syncedTournament) syncTournamentServer(syncedTournament, syncedNotifications, { action: "approveTeam", teamId });
+        createdMatches.forEach((match) => syncMatchServer(match, []));
+      },
       updateTournamentMatchSchedule: (tournamentId, matchId, schedule) => {
-        setState((prev) => updateTournamentMatchSchedule({ ...prev, currentUserId }, tournamentId, matchId, schedule));
+        applyMatchMutation(matchId, (prev) => updateTournamentMatchSchedule({ ...prev, currentUserId }, tournamentId, matchId, schedule));
       },
       agreeMatch: (matchId, sideName, playerId) => applyMatchMutation(matchId, (prev) => agreeMatch({ ...prev, currentUserId }, matchId, sideName, playerId)),
       submitMatchResult: (matchId, result) => applyMatchMutation(matchId, (prev) => submitMatchResult({ ...prev, currentUserId }, matchId, result)),
@@ -574,7 +609,7 @@ export function useAppData(authUser = null) {
       reset: () => setState(resetState({ includeDemo: !isSupabaseConfigured, authUserId, email: authEmail })),
       });
     },
-    [authEmail, authUserId, currentUserId, deleteTeamServer, persistProfileServer, profileKey, profileLocked, runServerAction, submitReportServer, syncMatchServer, syncRecruitingPostServer, syncTeamServer],
+    [authEmail, authUserId, currentUserId, deleteTeamServer, persistProfileServer, profileKey, profileLocked, runServerAction, submitReportServer, syncMatchServer, syncRecruitingPostServer, syncTeamServer, syncTournamentServer],
   );
 
   const safeCurrentUserId = currentUserId ?? currentUser?.id ?? "";

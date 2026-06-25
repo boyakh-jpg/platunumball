@@ -172,6 +172,16 @@
 - 삭제는 `deleted_at` soft delete로 처리하고 `team_members`, 팀 즐겨찾기, 해당 팀 모집방 상태를 함께 정리한다.
 - 아직 완전한 team authority engine은 아니다. 클라이언트 reducer 결과를 서버에 커밋하는 과도기 브리지다.
 
+## 2026-06-25 tournament sync bridge
+
+- `POST /api/tournaments/sync-tournament`를 추가했다.
+- 토너먼트/리그 생성과 팀 승인 후 `tournaments`, `tournament_teams`, 관련 `notifications`를 서버에 저장한다.
+- 서버는 생성자는 전체 sync를 허용하고, 팀장은 `action=approveTeam`으로 자기 팀 승인 sync만 허용한다.
+- 초대팀 존재 여부와 토너먼트 최소 2팀 조건을 서버에서도 확인한다.
+- 승인 완료로 자동 생성된 경기는 기존 `POST /api/matches/sync-match`로 같이 저장한다.
+- 토너먼트 경기 일정 변경은 match snapshot 변경이므로 기존 match sync 경로를 사용한다.
+- 아직 완전한 tournament authority engine은 아니다. 팀 승인, 대진 생성, 경기 생성 계산은 클라이언트 reducer 결과를 커밋한다.
+
 ## 2026-06-25 court review bridge
 
 - `court_reviews`는 구장별 리뷰 평균을 만들기 위한 서버 테이블이다.
