@@ -925,6 +925,7 @@ flowchart TD
 16. OAuth 승인 직후 아직 원격 저장 전인 로컬 `discordConnection`은 Supabase hydration/subscription이 예전 state를 내려도 지우지 않는다. 단, 원격 state에 같은 Discord ID를 가진 다른 프로필이 있으면 보존하지 않는다.
 17. 현재 앱 상태는 localStorage 중심이므로 Discord DM 자동 발송과 버튼 수락/거절 커밋은 DB에 `discordNotificationDeliveries`와 초대 상태가 서버에서 읽히기 전까지 완료 기능으로 보지 않는다.
 18. `/api/discord/dm-worker`는 Vercel Cron 자동 실행용 `GET`과 관리자 수동 점검용 `POST`를 모두 허용한다. 둘 다 `Authorization: Bearer <CRON_SECRET 또는 DISCORD_WORKER_SECRET>` 검증을 통과해야 한다.
+19. Vercel Hobby/Free 배포에서는 Cron이 하루 1회까지만 허용된다. 5분 단위 Discord DM 큐 처리는 Pro 플랜 또는 외부 스케줄러가 `/api/discord/dm-worker`를 호출해야 한다.
 
 ## 2026-06-24 내 진행 일정 지난 경기 필터
 
