@@ -1384,6 +1384,92 @@ export function InvitePanel({
   );
 }
 
+function RefereeInvitePanel({
+  query,
+  onQueryChange,
+  candidates,
+  pendingInvitations,
+  userById,
+  matches,
+  minTrust,
+  canInvite,
+  canJoin,
+  onInviteReferee,
+  onJoin,
+}) {
+  const normalizedQuery = query.trim().toLowerCase();
+  const searchItems = canInvite
+    ? candidates
+      .filter((user) => (
+        !normalizedQuery ||
+        `${user.name} ${getUserHashtag(user)} ${user.region} ${user.position} 신뢰도 ${user.trustScore}`.toLowerCase().includes(normalizedQuery)
+      ))
+      .slice(0, 8)
+    : [];
+  const idleItems = canInvite ? candidates.slice(0, 8) : [];
+  const renderRefereeSearchItem = (user) => (
+    <button
+      key={user.id}
+      type="button"
+      className="search-picker-result-row"
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={() => onInviteReferee(user.id)}
+    >
+      <RefereeHoverCard as="span" user={user} matches={matches} minTrust={minTrust}>
+        <strong>{user.name}</strong>
+      </RefereeHoverCard>
+      <span>{getUserHashtag(user)} · 신뢰도 {user.trustScore}</span>
+      <em>초대</em>
+    </button>
+  );
+
+  return (
+    <div className="arena-invite-panel arena-referee-invite-panel">
+      <header>
+        <div>
+          <strong>심판 초대 슬롯</strong>
+          <span>심판 자격이 있고 이 방에 참여하지 않은 사람만 초대할 수 있습니다.</span>
+        </div>
+        {canJoin ? (
+          <Button type="button" size="sm" onClick={onJoin}>
+            <ShieldCheck size={16} /> 심판참여
+          </Button>
+        ) : null}
+      </header>
+
+      {canInvite ? (
+        <SearchPicker
+          value={query}
+          onChange={onQueryChange}
+          placeholder="심판 이름, #해시태그, 지역 검색"
+          items={searchItems}
+          idleItems={idleItems}
+          idleTitle="초대 가능한 심판"
+          showIdleOnFocus
+          floating
+          fieldClassName="arena-invite-search"
+          renderItem={renderRefereeSearchItem}
+        />
+      ) : (
+        <div className="arena-invite-empty">심판 초대 권한 없음</div>
+      )}
+
+      {pendingInvitations.length ? (
+        <div className="arena-referee-pending-list">
+          {pendingInvitations.map((invitation) => {
+            const target = userById[invitation.targetUserId];
+            return (
+              <span key={invitation.id}>
+                {target?.name ?? "심판"} · 초대 대기
+              </span>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function InvitationPanel({ invitations, userById, teams, currentUserId, alreadyApplied, onAccept, onDecline }) {
   const pending = invitations.filter((invitation) => invitation.status === "pending");
   if (!pending.length) return null;
@@ -1621,11 +1707,16 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
   const [inviteDraft, setInviteDraft] = useState(null);
   const [slotActionDraft, setSlotActionDraft] = useState(null);
   const [roomEditDraftByPost, setRoomEditDraftByPost] = useState({});
+  const [refereeInviteQueryByPost, setRefereeInviteQueryByPost] = useState({});
 
   const closeModal = () => {
     setInviteDraft(null);
     setSlotActionDraft(null);
     onClose?.();
+  };
+  const getRefereeInviteQuery = (roomPost) => refereeInviteQueryByPost[roomPost.id] ?? "";
+  const updateRefereeInviteQuery = (roomPost, query) => {
+    setRefereeInviteQueryByPost((current) => ({ ...current, [roomPost.id]: query }));
   };
   const getJoinDraft = (roomPost) => {
     const baseDraft = getDefaultJoinDraft(roomPost, myTeams, app.currentUser, app.state);
@@ -1770,6 +1861,8 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
         const currentUserIsRoomReferee = selectedPost.refereeId === app.currentUser.id;
         const canInviteFromRoom = !matchRoom && isCurrentUserRoomParticipant(selectedPost, lobby, app.currentUser.id);
         const canChat = Boolean(storedRoomPost) && isCurrentUserRoomParticipant(selectedPost, lobby, app.currentUser.id);
+        const selectedRoomState = selectedPost.roomState ?? {};
+        const refereeWanted = Boolean(selectedPost.refereeWanted || selectedRoomState.refereeWanted || selectedPost.refereeId);
         const getJoinRosterPatch = (team, sideName = joinDraft.side, reserve = joinDraft.reserve) => (
           getDefaultJoinRoster(selectedPost, lobby, team, app.currentUser, sideName, reserve)
         );
@@ -1779,7 +1872,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
           selectedJoinPlayerIds.length > 0 &&
           (!teamOnlyRoom || selectedJoinPlayerIds.length >= getRecruitingSideCapacity(selectedPost))
         );
-        const canJoinReferee = selectedPost.visibility === "public" && !selectedPost.refereeId && isEligibleReferee(app.currentUser, selectedPost.refereeTrustMin, app.state.settings?.refereeAppointments);
+        const canJoinReferee = selectedPost.visibility === "public" && refereeWanted && !selectedPost.refereeId && isEligibleReferee(app.currentUser, selectedPost.refereeTrustMin, app.state.settings?.refereeAppointments);
         const canJoin = selectedPost.visibility === "public" && !matchRoom && !mine && !alreadyApplied && (
           joinDraft.joinMode === "referee"
             ? canJoinReferee
@@ -1808,11 +1901,12 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
         const playingIds = [...lobby.sides.teamA.projectedPlayers, ...lobby.sides.teamB.projectedPlayers];
         const partyJoinOptions = getSameSidePartyOptions(lobby, myEntry, myTeams);
         const sidePartyJoinOptions = getJoinableSidePartyOptions(lobby, myTeams, app.currentUser.id);
-        const roomState = selectedPost.roomState ?? {};
+        const roomState = selectedRoomState;
         const recorderIds = getLobbyRecorderIds(lobby);
         const chatMessages = roomState.chatMessages ?? [];
         const invitations = roomState.invitations ?? [];
         const pendingInvitations = invitations.filter((invitation) => invitation.status === "pending");
+        const pendingRefereeInvitations = pendingInvitations.filter((invitation) => invitation.role === "referee");
         const getEntryPartyLeaderId = (entry) => roomState.partyLeaders?.[entry?.id]
           ?? (entry?.fixed ? selectedPost.playerId : entry?.playerId)
           ?? "";
@@ -1852,6 +1946,17 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
           ...lobby.entries.flatMap((entry) => [entry.playerId, ...(entry.players ?? []), ...(entry.reserves ?? [])]),
           ...pendingInvitations.map((invitation) => invitation.targetUserId),
         ].filter(Boolean);
+        const disabledRefereeIds = new Set([
+          ...disabledInvitePlayerIds,
+          selectedPost.refereeId,
+          ...pendingRefereeInvitations.map((invitation) => invitation.targetUserId),
+        ].filter(Boolean));
+        const refereeInviteCandidates = app.state.users
+          .filter((user) => !disabledRefereeIds.has(user.id))
+          .filter((user) => isEligibleReferee(user, selectedPost.refereeTrustMin, app.state.settings?.refereeAppointments))
+          .sort((a, b) => Number(b.trustScore ?? 0) - Number(a.trustScore ?? 0));
+        const showRefereeInviteSlot = refereeWanted && !selectedPost.refereeId;
+        const canInviteRefereeFromRoom = showRefereeInviteSlot && canInviteFromRoom;
         const activeInviteDraftRaw = inviteDraft?.postId === selectedPost.id ? inviteDraft : null;
         const activeSelfSlotDraftRaw = slotActionDraft?.postId === selectedPost.id ? slotActionDraft : null;
         const favoritePlayerIds = app.state.settings?.favoritePlayerIds ?? [];
@@ -2326,6 +2431,21 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
                     <span>없음</span>
                   )}
                 </div>
+                {!sourceRoomReadOnly && showRefereeInviteSlot ? (
+                  <RefereeInvitePanel
+                    query={getRefereeInviteQuery(selectedPost)}
+                    onQueryChange={(query) => updateRefereeInviteQuery(selectedPost, query)}
+                    candidates={refereeInviteCandidates}
+                    pendingInvitations={pendingRefereeInvitations}
+                    userById={userById}
+                    matches={app.state.matches}
+                    minTrust={selectedPost.refereeTrustMin}
+                    canInvite={canInviteRefereeFromRoom}
+                    canJoin={canJoinReferee && !mine && !matchRoom}
+                    onInviteReferee={(refereeId) => app.actions.inviteRecruitingReferee(selectedPost.id, refereeId)}
+                    onJoin={() => app.actions.interestRecruitingPost(selectedPost.id, { joinMode: "referee" })}
+                  />
+                ) : null}
                 {selectedPost.stakes ? (
                   <div className="arena-details-memo">
                     <strong>약속/벌칙</strong>

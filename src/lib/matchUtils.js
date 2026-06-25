@@ -429,7 +429,9 @@ export function getRoomCompetitionLabel(room = {}) {
 }
 
 export function getRoomRefereeLabel(room = {}) {
-  return room.refereeId ? "심판 있음" : "심판 없음";
+  if (room.refereeId) return "심판 있음";
+  if (room.refereeWanted || room.roomState?.refereeWanted) return "심판 모집";
+  return "심판 없음";
 }
 
 export function getMatchRoomPhase(match = {}, now = new Date()) {

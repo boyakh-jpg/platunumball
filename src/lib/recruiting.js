@@ -283,6 +283,7 @@ export function normalizeRecruitingRoomState(roomState = {}) {
   return {
     ...roomState,
     hostReserve: Boolean(roomState.hostReserve),
+    refereeWanted: Boolean(roomState.refereeWanted),
     chatMessages,
     kickLog,
     hostPenalties,
@@ -356,6 +357,7 @@ export function normalizeRecruitingPost(post = {}) {
   const timingType = post.timingType === "instant" || roomState.timingType === "instant" || post.scheduledAt === "즉시" ? "instant" : "scheduled";
   const ruleRevision = Number(roomState.ruleRevision ?? 0);
   const applicants = normalizeRecruitingApplicants(post.applicants ?? []);
+  const refereeWanted = Boolean(post.refereeWanted ?? roomState.refereeWanted ?? post.refereeId);
   return {
     ...post,
     type,
@@ -366,12 +368,13 @@ export function normalizeRecruitingPost(post = {}) {
     hostReady: ruleRevision && post.visibility !== "public" ? Boolean(post.hostReady) : true,
     sideCapacity: getRecruitingSideCapacity(post),
     ownerId,
+    refereeWanted,
     refereeId: post.refereeId ?? "",
     refereeTrustMin: Number(post.refereeTrustMin ?? REFEREE_TRUST_MIN),
     statEntryMinutes: Number(post.statEntryMinutes ?? STAT_ENTRY_WINDOW_MINUTES),
     disputeMinutes: Number(post.disputeMinutes ?? DISPUTE_WINDOW_MINUTES),
     timingType,
-    roomState: { ...roomState, ownerId, mmrRangeMode, timingType },
+    roomState: { ...roomState, ownerId, mmrRangeMode, timingType, refereeWanted },
     playerId: hostPlayerId,
     playerIds,
     applicants: ruleRevision && post.visibility !== "public" ? applicants : applicants.map((applicant) => ({ ...applicant, status: "ready" })),

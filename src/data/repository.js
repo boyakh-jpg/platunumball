@@ -1257,6 +1257,7 @@ async function loadNormalizedRemoteState(authUserId = "", authEmail = "") {
         spots: post.spots,
         teamId: post.team_id,
         targetTeamId: post.target_team_id,
+        refereeWanted: Boolean(roomState.refereeWanted || post.referee_id),
         refereeId: post.referee_id ?? "",
         refereeTrustMin: post.referee_trust_min ?? REFEREE_TRUST_MIN,
         statEntryMinutes: post.stat_entry_minutes ?? STAT_ENTRY_WINDOW_MINUTES,
@@ -1723,7 +1724,12 @@ export async function saveNormalizedRemoteState(state, options = {}) {
     referee_trust_min: Number(post.refereeTrustMin ?? REFEREE_TRUST_MIN),
     stat_entry_minutes: Number(post.statEntryMinutes ?? STAT_ENTRY_WINDOW_MINUTES),
     dispute_minutes: Number(post.disputeMinutes ?? DISPUTE_WINDOW_MINUTES),
-    room_state: { ...normalizeRecruitingRoomState(post.roomState ?? {}), ownerId: getRecruitingRoomOwnerId(post), timingType: post.timingType ?? post.roomState?.timingType ?? "scheduled" },
+    room_state: {
+      ...normalizeRecruitingRoomState(post.roomState ?? {}),
+      ownerId: getRecruitingRoomOwnerId(post),
+      timingType: post.timingType ?? post.roomState?.timingType ?? "scheduled",
+      refereeWanted: Boolean(post.refereeWanted ?? post.roomState?.refereeWanted ?? post.refereeId),
+    },
     host_join_mode: post.hostJoinMode ?? (post.teamId ? "team" : "player"),
     host_side: post.hostSide ?? "teamA",
     host_ready: Boolean(post.hostReady),
@@ -5334,6 +5340,7 @@ export function createRecruitingPost(state, draft) {
   const hostSize = hostJoinMode === "team" ? hostPlayerIds.length : 1;
   const opponentSize = orderedOpponentPlayerIds.length;
   const requestedRefereeId = getTrustedRefereeId(state, draft.refereeId, [state.currentUserId, ...hostPlayerIds, ...orderedOpponentPlayerIds]);
+  const refereeWanted = Boolean(draft.refereeWanted || requestedRefereeId);
   const refereeId = "";
   const timingType = draft.timingType === "instant" ? "instant" : "scheduled";
   const fallbackSchedule = timingType === "instant" ? null : getNextQueueSchedule(state.recruitingPosts ?? []);
@@ -5369,7 +5376,7 @@ export function createRecruitingPost(state, draft) {
     createdAt,
     updatedAt: createdAt,
   }));
-  const initialRefereeInvitations = visibility === "private" && requestedRefereeId
+  const initialRefereeInvitations = refereeWanted && requestedRefereeId
     ? [{
         id: makeId("inv"),
         role: "referee",
@@ -5418,6 +5425,7 @@ export function createRecruitingPost(state, draft) {
     spots: Math.max(0, sideCapacity * 2 - hostSize - opponentSize),
     teamId: hostJoinMode === "team" ? draft.teamId : null,
     targetTeamId: draft.targetTeamId ?? null,
+    refereeWanted,
     refereeId,
     refereeTrustMin: REFEREE_TRUST_MIN,
     statEntryMinutes: STAT_ENTRY_WINDOW_MINUTES,
@@ -5434,6 +5442,7 @@ export function createRecruitingPost(state, draft) {
       timingType,
       ruleRevision: 1,
       teamOnly,
+      refereeWanted,
       approvalModeA: draft.approvalModeA === "all" ? "all" : "leader",
       approvalModeB: draft.approvalModeB === "all" ? "all" : "leader",
       partyReserves,
@@ -5500,6 +5509,7 @@ export function interestRecruitingPost(state, postId, application = {}) {
   if (isRecruitingRoomOwner(post, state.currentUserId) || post.playerId === state.currentUserId) return state;
   const user = state.users.find((item) => item.id === state.currentUserId);
   const teamOnly = post.teamOnly === true || post.roomState?.teamOnly === true;
+  const refereeWanted = Boolean(post.refereeWanted || post.roomState?.refereeWanted || post.refereeId);
   if (application.joinMode === "referee") {
     if (post.visibility === "private") {
       return {
@@ -5509,6 +5519,21 @@ export function interestRecruitingPost(state, postId, application = {}) {
             id: makeId("n"),
             title: "심판 참여 제한",
             body: "비공개방 심판은 초대 수락으로만 배정됩니다.",
+            tone: "orange",
+            recruitingPostId: postId,
+          },
+          ...state.notifications,
+        ],
+      };
+    }
+    if (!refereeWanted) {
+      return {
+        ...state,
+        notifications: [
+          {
+            id: makeId("n"),
+            title: "?ы뙋 李몄뿬 ?쒗븳",
+            body: "?ы뙋??紐⑥쭛 以묒씤 諛⑸쭔 ?ы뙋?쇰줈 李몄뿬?????덉뒿?덈떎.",
             tone: "orange",
             recruitingPostId: postId,
           },
@@ -5553,9 +5578,11 @@ export function interestRecruitingPost(state, postId, application = {}) {
         item.id === postId
           ? {
               ...item,
+              refereeWanted: true,
               refereeId: state.currentUserId,
               roomState: {
                 ...roomState,
+                refereeWanted: true,
                 invitations: roomState.invitations.filter((invitation) => (
                   invitation.role !== "referee" || invitation.targetUserId !== state.currentUserId
                 )),
@@ -6460,6 +6487,123 @@ export function inviteRecruitingPlayers(state, postId, invite = {}) {
   };
 }
 
+export function inviteRecruitingReferee(state, postId, refereeId) {
+  const disciplineBlock = getDisciplineBlockedState(state, "심판 초대");
+  if (disciplineBlock) return disciplineBlock;
+  const post = state.recruitingPosts?.find((item) => item.id === postId);
+  if (!post || post.status !== "open") return state;
+  if (!isRecruitingRoomParticipant(post, state.currentUserId, state)) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "심판 초대 권한 없음",
+          body: "방에 참여한 사람만 심판을 초대할 수 있습니다.",
+          tone: "orange",
+          recruitingPostId: postId,
+        },
+        ...state.notifications,
+      ],
+    };
+  }
+  if (post.refereeId) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "심판 초대 제한",
+          body: "이미 배정된 심판이 있습니다.",
+          tone: "orange",
+          recruitingPostId: postId,
+        },
+        ...state.notifications,
+      ],
+    };
+  }
+
+  const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
+  const targetUser = state.users.find((user) => user.id === refereeId);
+  const participantIds = new Set(getRecruitingRoomParticipantIds(post, state));
+  const pendingRefereeInvite = roomState.invitations.some((invitation) => (
+    invitation.role === "referee" &&
+    invitation.targetUserId === refereeId &&
+    invitation.status === "pending"
+  ));
+  const canInviteReferee = Boolean(
+    targetUser &&
+    !participantIds.has(refereeId) &&
+    !pendingRefereeInvite &&
+    isEligibleReferee(targetUser, post.refereeTrustMin ?? REFEREE_TRUST_MIN, state.settings?.refereeAppointments)
+  );
+  if (!canInviteReferee) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "심판 초대 대상 아님",
+          body: "심판 자격이 있고 아직 방에 참여하지 않은 사람만 초대할 수 있습니다.",
+          tone: "orange",
+          recruitingPostId: postId,
+        },
+        ...state.notifications,
+      ],
+    };
+  }
+
+  const now = new Date().toISOString();
+  const invitation = {
+    id: makeId("inv"),
+    role: "referee",
+    targetUserId: refereeId,
+    fromUserId: state.currentUserId,
+    teamId: null,
+    side: "teamB",
+    reserve: false,
+    status: "pending",
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  return {
+    ...state,
+    recruitingPosts: (state.recruitingPosts ?? []).map((item) => (
+      item.id === postId
+        ? {
+            ...item,
+            refereeWanted: true,
+            roomState: {
+              ...roomState,
+              refereeWanted: true,
+              invitations: [...roomState.invitations, invitation],
+            },
+          }
+        : item
+    )),
+    notifications: [
+      {
+        id: makeId("n"),
+        title: "심판 초대",
+        body: `${post.title} 심판 초대가 도착했습니다. 수락하면 심판으로 배정됩니다.`,
+        tone: "match",
+        targetUserId: refereeId,
+        recruitingPostId: postId,
+        invitationId: invitation.id,
+      },
+      {
+        id: makeId("n"),
+        title: "심판 초대 발송",
+        body: `${targetUser.name}에게 심판 초대를 보냈습니다.`,
+        tone: "match",
+        recruitingPostId: postId,
+      },
+      ...state.notifications,
+    ],
+  };
+}
+
 export function acceptRecruitingInvitation(state, postId, invitationId) {
   const disciplineBlock = getDisciplineBlockedState(state, "초대 수락");
   if (disciplineBlock) return disciplineBlock;
@@ -6510,9 +6654,11 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
         item.id === postId
           ? {
               ...item,
+              refereeWanted: true,
               refereeId: state.currentUserId,
               roomState: {
                 ...roomState,
+                refereeWanted: true,
                 invitations: roomState.invitations.filter((candidate) => candidate.id !== invitationId),
               },
             }

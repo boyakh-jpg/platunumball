@@ -27,6 +27,7 @@ import {
   disputeMatch,
   endMatch,
   interestRecruitingPost,
+  inviteRecruitingReferee,
   inviteRecruitingPlayers,
   joinRecruitingSideParty,
   handoffMatchRecorder,
@@ -632,6 +633,7 @@ export function useAppData(authUser = null) {
         if (createdPost) syncRecruitingPostServer(createdPost, syncedNotifications);
       },
       interestRecruitingPost: (postId, application) => applyRecruitingPostMutation(postId, (prev) => interestRecruitingPost({ ...prev, currentUserId }, postId, application)),
+      inviteRecruitingReferee: (postId, refereeId) => applyRecruitingPostMutation(postId, (prev) => inviteRecruitingReferee({ ...prev, currentUserId }, postId, refereeId)),
       inviteRecruitingPlayers: (postId, invite) => applyRecruitingPostMutation(postId, (prev) => inviteRecruitingPlayers({ ...prev, currentUserId }, postId, invite)),
       acceptRecruitingInvitation: (postId, invitationId) => applyRecruitingPostMutation(postId, (prev) => acceptRecruitingInvitation({ ...prev, currentUserId }, postId, invitationId)),
       declineRecruitingInvitation: (postId, invitationId) => applyRecruitingPostMutation(postId, (prev) => declineRecruitingInvitation({ ...prev, currentUserId }, postId, invitationId)),

@@ -327,6 +327,7 @@ export default function CreateMatch({ app }) {
     approvalModeB: "leader",
     courtReserved: false,
     courtFee: "",
+    refereeWanted: false,
     refereeId: "",
     ranked: true,
     official: true,
@@ -715,11 +716,11 @@ export default function CreateMatch({ app }) {
     );
   };
   const selectReferee = (user) => {
-    update({ refereeId: user.id });
+    update({ refereeWanted: true, refereeId: user.id });
     setRefereeQuery(user.name ?? "");
   };
   const clearReferee = () => {
-    update({ refereeId: "" });
+    update({ refereeWanted: false, refereeId: "" });
     setRefereeQuery("");
   };
   const renderRefereeSearchItem = (user) => (
@@ -761,6 +762,7 @@ export default function CreateMatch({ app }) {
       opponentLeaderId: !isPublicRoom && isTeamRoom ? opponentLeaderId : "",
       approvalModeA: draft.approvalModeA,
       approvalModeB: draft.approvalModeB,
+      refereeWanted: draft.refereeWanted || Boolean(draft.refereeId),
       refereeId: draft.refereeId,
       targetTeamId: "",
       region: selectedCourt.region,
@@ -969,13 +971,25 @@ export default function CreateMatch({ app }) {
             ) : null}
             {!isTournamentRoom ? (
               <>
+                <label className="settings-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={draft.refereeWanted || Boolean(draft.refereeId)}
+                    onChange={(event) => {
+                      const refereeWanted = event.target.checked;
+                      update({ refereeWanted, refereeId: refereeWanted ? draft.refereeId : "" });
+                      if (!refereeWanted) setRefereeQuery("");
+                    }}
+                  />
+                  <span>심판 있음</span>
+                </label>
                 <label>
                   심판
                   <SearchPicker
                     value={refereeQuery}
                     onChange={(value) => {
                       setRefereeQuery(value);
-                      update({ refereeId: "" });
+                      update({ refereeWanted: true, refereeId: "" });
                     }}
                     placeholder="심판 이름, #해시태그, 지역 검색"
                     items={refereeSearchResults}

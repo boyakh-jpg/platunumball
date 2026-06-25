@@ -2246,6 +2246,25 @@ button.arena-room-player-slot {
   outline: none;
 }
 
+.arena-referee-invite-panel {
+  margin-top: 10px;
+}
+
+.arena-referee-pending-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.arena-referee-pending-list span {
+  border-radius: 999px;
+  background: rgba(255, 211, 106, 0.14);
+  color: var(--text);
+  padding: 6px 9px;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
 .arena-invite-result {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;

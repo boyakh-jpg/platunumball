@@ -1053,3 +1053,10 @@ flowchart TD
 7. 테스트 토큰은 `VITE_DEMO_LOGIN=true` 또는 `RANKBALL_ENABLE_TEST_LOGIN=true`일 때만 서버에서 허용한다.
 8. 테스트 계정 프로필 저장은 기존 `auth_user_id`를 만들거나 바꾸지 않고 `test_login_id` row만 갱신한다.
 9. 실제 Google 프로필 저장은 `test_login_id` 컬럼에 의존하지 않는다.
+## 2026-06-25 심판 있음 방 초대 슬롯
+
+1. 심판 있음 방은 `refereeWanted`를 가진다.
+2. `refereeWanted && !refereeId`이면 공개/비공개 모두 방 모달에 심판 초대 슬롯을 보여준다.
+3. 비공개방 심판은 심판 초대 수락으로만 `refereeId`가 배정된다.
+4. 공개방 심판 직접참여는 `refereeWanted` 방에서만 가능하다.
+5. 심판 초대 대상은 심판 자격이 있고 현재 방 참가자/선수 초대자가 아닌 사용자만 가능하다.
