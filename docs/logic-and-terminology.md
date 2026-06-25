@@ -968,6 +968,8 @@ flowchart TD
 7. 구장 승인은 `rankball_approve_court_request()`에서 승인 구장 생성, 요청 상태 변경, audit log, 알림을 한 transaction으로 처리한다.
 8. 허위 구장 신고는 `rankball_report_court_request()`에서 신고 생성, 요청자 신뢰도 차감, 요청 상태 변경, 알림을 한 transaction으로 처리한다.
 9. 일반 관리자 신고 처리, 임명/징계 처리, Discord DM 발송은 아직 별도 server action으로 분리해야 한다.
+10. `VITE_ENABLE_BULK_REMOTE_WRITE`가 꺼져 있어도 `VITE_ENABLE_SERVER_BRIDGE_WRITE=true`면 알림, 신고, 구장요청, 관리자 처리, Discord 발송 큐 같은 브리지 테이블은 `/api/supabase/bridge`로만 저장한다.
+11. 브리지 저장은 현재 프로필 소유 row만 통과시키고 같은 state에 섞인 다른 유저 row는 서버에서 무시한다. 관리자 권한 테이블은 기존 관리자 레벨 검증을 유지한다.
 
 ## 2026-06-24 admin server actions
 

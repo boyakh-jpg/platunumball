@@ -34,7 +34,7 @@ function validateRows({ rows, config, profileId, adminLevel }) {
     throw error;
   }
 
-  return rows.map((row) => {
+  return rows.flatMap((row) => {
     if (!row.id) {
       const error = new Error("missing_row_id");
       error.statusCode = 400;
@@ -42,12 +42,10 @@ function validateRows({ rows, config, profileId, adminLevel }) {
     }
 
     if (!config.minAdminLevel && !rowBelongsToProfile(row, profileId, config.ownerFields) && adminLevel < 30) {
-      const error = new Error("row_owner_mismatch");
-      error.statusCode = 403;
-      throw error;
+      return [];
     }
 
-    return row;
+    return [row];
   });
 }
 
@@ -76,6 +74,10 @@ export default async function handler(request, response) {
     const context = await getAuthenticatedContext(request);
     const adminLevel = await getAdminLevel(context);
     const safeRows = validateRows({ rows, config, profileId: context.profileId, adminLevel });
+    if (!safeRows.length) {
+      sendJson(response, 200, { ok: true, count: 0 });
+      return;
+    }
 
     const { error } = await context.supabase
       .from(table)

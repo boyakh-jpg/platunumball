@@ -161,11 +161,11 @@ export function useAppData(authUserId = null) {
     }
 
     const timeout = window.setTimeout(() => {
-      saveRemoteState(state);
+      saveRemoteState(state, currentUserId);
     }, 450);
 
     return () => window.clearTimeout(timeout);
-  }, [state]);
+  }, [currentUserId, state]);
 
   useEffect(() => {
     setState((prev) => runAutomaticStateMaintenance(prev));

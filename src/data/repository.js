@@ -1389,7 +1389,8 @@ function toApprovedCourtRow(court = {}) {
   };
 }
 
-async function saveNormalizedRemoteState(state) {
+async function saveNormalizedRemoteState(state, options = {}) {
+  const bridgeOnly = Boolean(options.bridgeOnly);
   const currentUserId = state.currentUserId ?? initialState.currentUserId;
   const deletedTeamIds = state.deletedTeamIds ?? [];
   const profileRows = state.users.map((user) => ({
@@ -1707,23 +1708,25 @@ async function saveNormalizedRemoteState(state) {
     failed_at: delivery.failedAt ?? null,
   })).filter((row) => row.id);
 
-  await softDeleteRemoteTeams(deletedTeamIds);
-  await upsertRemoteRows("profiles", profileRows, "id");
-  await upsertRemoteRows("teams", teamRows, "id");
-  await upsertRemoteRows("team_members", teamMemberRows, "team_id,user_id");
-  await upsertRemoteRows("matches", matchRows, "id");
-  await upsertRemoteRows("match_players", matchPlayerRows, "match_id,user_id");
-  await upsertRemoteRows("match_results", resultRows, "match_id");
-  await upsertRemoteRows("player_match_stats", statRows, "match_id,user_id");
-  await upsertRemoteRows("match_agreements", agreementRows, "match_id,user_id");
-  await upsertRemoteRows("match_approvals", approvalRows, "match_id,user_id");
+  if (!bridgeOnly) {
+    await softDeleteRemoteTeams(deletedTeamIds);
+    await upsertRemoteRows("profiles", profileRows, "id");
+    await upsertRemoteRows("teams", teamRows, "id");
+    await upsertRemoteRows("team_members", teamMemberRows, "team_id,user_id");
+    await upsertRemoteRows("matches", matchRows, "id");
+    await upsertRemoteRows("match_players", matchPlayerRows, "match_id,user_id");
+    await upsertRemoteRows("match_results", resultRows, "match_id");
+    await upsertRemoteRows("player_match_stats", statRows, "match_id,user_id");
+    await upsertRemoteRows("match_agreements", agreementRows, "match_id,user_id");
+    await upsertRemoteRows("match_approvals", approvalRows, "match_id,user_id");
 
-  await supabase.from("favorites").delete().eq("user_id", currentUserId);
-  await upsertRemoteRows("favorites", favoriteRows, "user_id,target_type,target_id");
-  await upsertRemoteRows("recruiting_posts", recruitingRows, "id");
-  await replaceRemoteRecruitingApplications(recruitingPostIds, applicationRows);
-  await upsertRemoteRows("tournaments", tournamentRows, "id");
-  await upsertRemoteRows("tournament_teams", tournamentTeamRows, "tournament_id,team_id");
+    await supabase.from("favorites").delete().eq("user_id", currentUserId);
+    await upsertRemoteRows("favorites", favoriteRows, "user_id,target_type,target_id");
+    await upsertRemoteRows("recruiting_posts", recruitingRows, "id");
+    await replaceRemoteRecruitingApplications(recruitingPostIds, applicationRows);
+    await upsertRemoteRows("tournaments", tournamentRows, "id");
+    await upsertRemoteRows("tournament_teams", tournamentTeamRows, "tournament_id,team_id");
+  }
   await upsertOptionalRemoteRows("notifications", notificationRows, "id");
   await upsertOptionalRemoteRows("reports", reportRows, "id");
   await upsertOptionalRemoteRows("court_requests", courtRequestRows, "id");
@@ -1737,13 +1740,17 @@ async function saveNormalizedRemoteState(state) {
   await upsertOptionalRemoteRows("discord_notification_deliveries", discordDeliveryRows, "id");
 }
 
-export async function saveRemoteState(state) {
+export async function saveRemoteState(state, profileUserId = "") {
   if (!isSupabaseConfigured) return;
-  if (!isBulkRemoteWriteEnabled) return;
+  const bridgeOnly = !isBulkRemoteWriteEnabled && isServerBridgeWriteEnabled;
+  if (!isBulkRemoteWriteEnabled && !bridgeOnly) return;
 
-  const sharedState = { ...state, currentUserId: initialState.currentUserId };
+  const sharedState = {
+    ...state,
+    currentUserId: bridgeOnly ? profileUserId || state.currentUserId || initialState.currentUserId : initialState.currentUserId,
+  };
   try {
-    await saveNormalizedRemoteState(sharedState);
+    await saveNormalizedRemoteState(sharedState, { bridgeOnly });
   } catch (normalizedError) {
     if (!normalizedSaveWarningShown) {
       normalizedSaveWarningShown = true;
