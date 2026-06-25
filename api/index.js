@@ -14,6 +14,7 @@ import profileUpsert from "../server/api/profile/upsert.js";
 import recruitingSyncPost from "../server/api/recruiting/sync-post.js";
 import reportSubmit from "../server/api/reports/submit.js";
 import supabaseBridge from "../server/api/supabase/bridge.js";
+import teamSyncTeam from "../server/api/teams/sync-team.js";
 
 const ROUTES = new Map([
   ["/admin/appointment-action", adminAppointmentAction],
@@ -32,6 +33,7 @@ const ROUTES = new Map([
   ["/recruiting/sync-post", recruitingSyncPost],
   ["/reports/submit", reportSubmit],
   ["/supabase/bridge", supabaseBridge],
+  ["/teams/sync-team", teamSyncTeam],
 ]);
 
 function getRequestUrl(request) {

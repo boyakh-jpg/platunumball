@@ -264,6 +264,14 @@ export function useAppData(authUser = null) {
     if (!report?.id) return;
     runServerAction("/api/reports/submit", { report, notifications });
   }, [runServerAction]);
+  const syncTeamServer = useCallback((team, notifications = []) => {
+    if (!team?.id) return;
+    runServerAction("/api/teams/sync-team", { team, notifications });
+  }, [runServerAction]);
+  const deleteTeamServer = useCallback((deletedTeamId, notifications = []) => {
+    if (!deletedTeamId) return;
+    runServerAction("/api/teams/sync-team", { deletedTeamId, notifications });
+  }, [runServerAction]);
 
   const rankings = useMemo(
     () => ({
@@ -295,6 +303,13 @@ export function useAppData(authUser = null) {
           (notification.matchId === report?.targetId || notification.type === "report" || !notification.targetUserId)
         ));
       };
+      const getNewTeamNotifications = (prev, next) => {
+        const beforeIds = new Set((prev.notifications ?? []).map((notification) => notification.id));
+        return (next.notifications ?? []).filter((notification) => (
+          !beforeIds.has(notification.id) &&
+          (notification.tone === "team" || notification.type === "team" || !notification.targetUserId)
+        ));
+      };
       const applyRecruitingPostMutation = (postId, reducer) => {
         let syncedPost = null;
         let syncedNotifications = [];
@@ -316,6 +331,17 @@ export function useAppData(authUser = null) {
           return next;
         });
         if (syncedMatch) syncMatchServer(syncedMatch, syncedNotifications);
+      };
+      const applyTeamMutation = (teamId, reducer) => {
+        let syncedTeam = null;
+        let syncedNotifications = [];
+        setState((prev) => {
+          const next = reducer(prev);
+          syncedTeam = (next.teams ?? []).find((team) => team.id === teamId) ?? null;
+          syncedNotifications = syncedTeam ? getNewTeamNotifications(prev, next) : [];
+          return next;
+        });
+        if (syncedTeam) syncTeamServer(syncedTeam, syncedNotifications);
       };
 
       return ({
@@ -446,8 +472,30 @@ export function useAppData(authUser = null) {
         });
         return profileLocked && nextProfile ? persistProfileServer(nextProfile) : Promise.resolve({ ok: true });
       },
-      createTeam: (draft) => setState((prev) => createTeam({ ...prev, currentUserId }, draft)),
-      deleteTeam: (teamId) => setState((prev) => deleteTeam({ ...prev, currentUserId }, teamId)),
+      createTeam: (draft) => {
+        let createdTeam = null;
+        let syncedNotifications = [];
+        setState((prev) => {
+          const existingIds = new Set((prev.teams ?? []).map((team) => team.id));
+          const next = createTeam({ ...prev, currentUserId }, draft);
+          createdTeam = (next.teams ?? []).find((team) => !existingIds.has(team.id)) ?? null;
+          syncedNotifications = createdTeam ? getNewTeamNotifications(prev, next) : [];
+          return next;
+        });
+        if (createdTeam) syncTeamServer(createdTeam, syncedNotifications);
+      },
+      deleteTeam: (teamId) => {
+        let deleted = false;
+        let syncedNotifications = [];
+        setState((prev) => {
+          const hadTeam = (prev.teams ?? []).some((team) => team.id === teamId);
+          const next = deleteTeam({ ...prev, currentUserId }, teamId);
+          deleted = hadTeam && !(next.teams ?? []).some((team) => team.id === teamId);
+          syncedNotifications = deleted ? getNewTeamNotifications(prev, next) : [];
+          return next;
+        });
+        if (deleted) deleteTeamServer(teamId, syncedNotifications);
+      },
       createRecruitingPost: (draft) => {
         let createdPost = null;
         let syncedNotifications = [];
@@ -520,13 +568,13 @@ export function useAppData(authUser = null) {
         return createdId;
       },
       closeRecruitingPost: (postId) => applyRecruitingPostMutation(postId, (prev) => closeRecruitingPost({ ...prev, currentUserId }, postId)),
-      addTeamMember: (teamId, draft) => setState((prev) => addTeamMember({ ...prev, currentUserId }, teamId, draft)),
-      updateTeamMemberRole: (teamId, userId, role) => setState((prev) => updateTeamMemberRole({ ...prev, currentUserId }, teamId, userId, role)),
-      removeTeamMember: (teamId, userId) => setState((prev) => removeTeamMember({ ...prev, currentUserId }, teamId, userId)),
+      addTeamMember: (teamId, draft) => applyTeamMutation(teamId, (prev) => addTeamMember({ ...prev, currentUserId }, teamId, draft)),
+      updateTeamMemberRole: (teamId, userId, role) => applyTeamMutation(teamId, (prev) => updateTeamMemberRole({ ...prev, currentUserId }, teamId, userId, role)),
+      removeTeamMember: (teamId, userId) => applyTeamMutation(teamId, (prev) => removeTeamMember({ ...prev, currentUserId }, teamId, userId)),
       reset: () => setState(resetState({ includeDemo: !isSupabaseConfigured, authUserId, email: authEmail })),
       });
     },
-    [authEmail, authUserId, currentUserId, persistProfileServer, profileKey, profileLocked, runServerAction, submitReportServer, syncMatchServer, syncRecruitingPostServer],
+    [authEmail, authUserId, currentUserId, deleteTeamServer, persistProfileServer, profileKey, profileLocked, runServerAction, submitReportServer, syncMatchServer, syncRecruitingPostServer, syncTeamServer],
   );
 
   const safeCurrentUserId = currentUserId ?? currentUser?.id ?? "";

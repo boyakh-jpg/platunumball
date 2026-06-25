@@ -162,6 +162,16 @@
 - `court_request` 신고는 중복 신고, 신뢰도 차감, 상태 변경이 묶인 기존 `POST /api/court-requests/report`만 사용한다.
 - 아직 신고 생성만 server action화한 단계다. 신고 판정/징계/피드백은 기존 관리자 RPC가 처리한다.
 
+## 2026-06-25 team sync bridge
+
+- `POST /api/teams/sync-team`을 추가했다.
+- 팀 생성, 삭제, 팀원 추가, 역할 변경, 팀원 제거 후 `teams`, `team_members`, 관련 `notifications`를 서버에 저장한다.
+- 서버는 Supabase bearer를 검증하고 기존 팀은 현재 `profileId`가 주장일 때만 변경한다.
+- 새 팀은 현재 `profileId`가 주장 멤버로 포함된 경우만 생성한다.
+- 서버는 팀명 14자 제한, 멤버 프로필 존재 여부, 1인 3팀 제한을 다시 검사한다.
+- 삭제는 `deleted_at` soft delete로 처리하고 `team_members`, 팀 즐겨찾기, 해당 팀 모집방 상태를 함께 정리한다.
+- 아직 완전한 team authority engine은 아니다. 클라이언트 reducer 결과를 서버에 커밋하는 과도기 브리지다.
+
 ## 2026-06-25 court review bridge
 
 - `court_reviews`는 구장별 리뷰 평균을 만들기 위한 서버 테이블이다.
