@@ -599,6 +599,161 @@ create table if not exists public.approved_courts (
   updated_at timestamptz not null default now()
 );
 
+create or replace function public.rankball_submit_court_request(
+  actor_profile_id text,
+  request_payload jsonb
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  now_ts timestamptz := now();
+  safe_id text := nullif(btrim(request_payload->>'id'), '');
+  safe_name text := nullif(btrim(request_payload->>'name'), '');
+  safe_hashtag text := nullif(btrim(request_payload->>'hashtag'), '');
+  safe_address_text text := nullif(btrim(request_payload->>'addressText'), '');
+  safe_road_address text := nullif(btrim(request_payload->>'roadAddress'), '');
+  safe_jibun_address text := nullif(btrim(request_payload->>'jibunAddress'), '');
+  safe_zonecode text := nullif(btrim(request_payload->>'zonecode'), '');
+  safe_lat double precision := nullif(request_payload->>'lat', '')::double precision;
+  safe_lng double precision := nullif(request_payload->>'lng', '')::double precision;
+  identity_address text;
+  actor_trust integer := 0;
+  safe_payload jsonb;
+begin
+  if actor_profile_id is null or btrim(actor_profile_id) = '' then
+    raise exception 'missing_actor_profile_id' using errcode = '42501';
+  end if;
+
+  if safe_id is null then
+    safe_id := 'cr_' || md5(actor_profile_id || now_ts::text || random()::text);
+  end if;
+
+  if safe_name is null or safe_address_text is null then
+    raise exception 'missing_court_request_fields' using errcode = '22023';
+  end if;
+
+  if safe_lat is not null and (safe_lat < -90 or safe_lat > 90) then
+    raise exception 'invalid_latitude' using errcode = '22023';
+  end if;
+
+  if safe_lng is not null and (safe_lng < -180 or safe_lng > 180) then
+    raise exception 'invalid_longitude' using errcode = '22023';
+  end if;
+
+  select coalesce(trust_score, 80)
+  into actor_trust
+  from public.profiles
+  where id = actor_profile_id;
+
+  if not found then
+    raise exception 'profile_not_found' using errcode = 'P0002';
+  end if;
+
+  if actor_trust < 70 then
+    raise exception 'court_request_trust_required' using errcode = '42501';
+  end if;
+
+  identity_address := lower(coalesce(nullif(safe_road_address, ''), nullif(safe_jibun_address, ''), safe_address_text));
+
+  if exists (
+    select 1
+    from public.court_requests
+    where id = safe_id
+      and (coalesce(requested_by, '') <> actor_profile_id or status <> 'pending')
+  ) then
+    raise exception 'court_request_locked' using errcode = '42501';
+  end if;
+
+  if exists (
+    select 1
+    from public.approved_courts
+    where lower(coalesce(nullif(road_address, ''), nullif(jibun_address, ''), address_text)) = identity_address
+      and coalesce(zonecode, '') = coalesce(safe_zonecode, '')
+  ) then
+    raise exception 'duplicate_approved_court' using errcode = '23505';
+  end if;
+
+  if exists (
+    select 1
+    from public.court_requests
+    where id <> safe_id
+      and status in ('pending', 'reported')
+      and lower(coalesce(nullif(road_address, ''), nullif(jibun_address, ''), address_text)) = identity_address
+      and coalesce(zonecode, '') = coalesce(safe_zonecode, '')
+  ) then
+    raise exception 'duplicate_pending_court_request' using errcode = '23505';
+  end if;
+
+  safe_payload := request_payload
+    || jsonb_build_object(
+      'id', safe_id,
+      'requestedBy', actor_profile_id,
+      'requestedByTrustScore', actor_trust,
+      'status', 'pending',
+      'name', safe_name,
+      'hashtag', safe_hashtag,
+      'addressText', safe_address_text,
+      'roadAddress', safe_road_address,
+      'jibunAddress', safe_jibun_address,
+      'zonecode', safe_zonecode,
+      'lat', safe_lat,
+      'lng', safe_lng,
+      'createdAt', coalesce(request_payload->>'createdAt', now_ts::text),
+      'updatedAt', now_ts
+    );
+
+  insert into public.court_requests (
+    id,
+    requested_by,
+    status,
+    name,
+    hashtag,
+    address_text,
+    road_address,
+    jibun_address,
+    zonecode,
+    lat,
+    lng,
+    payload,
+    created_at,
+    updated_at
+  )
+  values (
+    safe_id,
+    actor_profile_id,
+    'pending',
+    safe_name,
+    safe_hashtag,
+    safe_address_text,
+    safe_road_address,
+    safe_jibun_address,
+    safe_zonecode,
+    safe_lat,
+    safe_lng,
+    safe_payload,
+    coalesce(nullif(request_payload->>'createdAt', '')::timestamptz, now_ts),
+    now_ts
+  )
+  on conflict (id) do update set
+    status = case when public.court_requests.requested_by = actor_profile_id and public.court_requests.status = 'pending' then 'pending' else public.court_requests.status end,
+    name = case when public.court_requests.requested_by = actor_profile_id and public.court_requests.status = 'pending' then excluded.name else public.court_requests.name end,
+    hashtag = case when public.court_requests.requested_by = actor_profile_id and public.court_requests.status = 'pending' then excluded.hashtag else public.court_requests.hashtag end,
+    address_text = case when public.court_requests.requested_by = actor_profile_id and public.court_requests.status = 'pending' then excluded.address_text else public.court_requests.address_text end,
+    road_address = case when public.court_requests.requested_by = actor_profile_id and public.court_requests.status = 'pending' then excluded.road_address else public.court_requests.road_address end,
+    jibun_address = case when public.court_requests.requested_by = actor_profile_id and public.court_requests.status = 'pending' then excluded.jibun_address else public.court_requests.jibun_address end,
+    zonecode = case when public.court_requests.requested_by = actor_profile_id and public.court_requests.status = 'pending' then excluded.zonecode else public.court_requests.zonecode end,
+    lat = case when public.court_requests.requested_by = actor_profile_id and public.court_requests.status = 'pending' then excluded.lat else public.court_requests.lat end,
+    lng = case when public.court_requests.requested_by = actor_profile_id and public.court_requests.status = 'pending' then excluded.lng else public.court_requests.lng end,
+    payload = case when public.court_requests.requested_by = actor_profile_id and public.court_requests.status = 'pending' then excluded.payload else public.court_requests.payload end,
+    updated_at = case when public.court_requests.requested_by = actor_profile_id and public.court_requests.status = 'pending' then now_ts else public.court_requests.updated_at end;
+
+  return jsonb_build_object('ok', true, 'requestId', safe_id);
+end;
+$$;
+
 create table if not exists public.referee_requests (
   id text primary key,
   requested_by text,
@@ -1163,8 +1318,10 @@ $$;
 
 revoke all on function public.rankball_approve_court_request(text, integer, text) from public;
 revoke all on function public.rankball_report_court_request(text, text, text) from public;
+revoke all on function public.rankball_submit_court_request(text, jsonb) from public;
 grant execute on function public.rankball_approve_court_request(text, integer, text) to service_role;
 grant execute on function public.rankball_report_court_request(text, text, text) to service_role;
+grant execute on function public.rankball_submit_court_request(text, jsonb) to service_role;
 
 create or replace function public.rankball_commit_admin_review_action(
   p_actor_profile_id text,

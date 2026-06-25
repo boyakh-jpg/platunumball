@@ -322,7 +322,16 @@ export function useAppData(authUserId = null) {
       toggleFavoritePlayer: (userId) => setState((prev) => toggleFavoritePlayer(prev, userId)),
       toggleFavoriteTeam: (teamId) => setState((prev) => toggleFavoriteTeam(prev, teamId)),
       toggleFavoriteCourt: (courtId) => setState((prev) => toggleFavoriteCourt(prev, courtId)),
-      submitCourtRequest: (draft) => setState((prev) => submitCourtRequest({ ...prev, currentUserId }, draft)),
+      submitCourtRequest: (draft) => {
+        let createdRequest = null;
+        setState((prev) => {
+          const existingIds = new Set((prev.settings?.courtRequests ?? []).map((request) => request.id));
+          const next = submitCourtRequest({ ...prev, currentUserId }, draft);
+          createdRequest = (next.settings?.courtRequests ?? []).find((request) => !existingIds.has(request.id)) ?? null;
+          return next;
+        });
+        if (createdRequest) runServerAction("/api/court-requests/submit", { request: createdRequest });
+      },
       startRefereeExamAttempt: (draft) => setState((prev) => startRefereeExamAttempt({ ...prev, currentUserId }, draft)),
       finishRefereeExamAttempt: (attemptId, result) => setState((prev) => finishRefereeExamAttempt({ ...prev, currentUserId }, attemptId, result)),
       submitRefereeRequest: (draft) => setState((prev) => submitRefereeRequest({ ...prev, currentUserId }, draft)),
