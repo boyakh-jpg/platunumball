@@ -420,10 +420,6 @@ export default function Settings({ app, auth }) {
       setCourtLookupStatus(`구장 등록요청은 신뢰도 ${COURT_REQUEST_TRUST_MIN}점 이상부터 가능합니다.`);
       return;
     }
-    if (!naverMapKeyReady) {
-      setCourtLookupStatus("주소 검색은 VITE_NAVER_MAP_CLIENT_ID 설정 후 사용할 수 있습니다.");
-      return;
-    }
     setCourtLookupStatus("네이버 주소 검색 중");
     try {
       const results = await searchNaverAddresses(courtAddressQuery);

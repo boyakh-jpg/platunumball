@@ -1,3 +1,5 @@
+import { isSupabaseConfigured, supabase } from "./supabase.js";
+
 const NAVER_MAP_SCRIPT_ID = "naver-map-sdk-script";
 const NAVER_MAP_READY_CALLBACK = "__rankballNaverMapsReady";
 let naverMapReadyPromise = null;
@@ -114,15 +116,48 @@ function normalizeNaverAddress(address = {}, index = 0) {
   };
 }
 
+function getNaverAddressErrorMessage(errorCode = "") {
+  if (errorCode === "missing_bearer_token" || errorCode === "invalid_bearer_token") return "로그인 세션을 다시 확인해주세요.";
+  if (errorCode === "profile_not_found") return "가입정보 설정 후 주소검색을 사용할 수 있습니다.";
+  if (errorCode === "court_request_trust_required") return "구장 등록요청 권한이 부족합니다.";
+  if (errorCode === "address_search_rate_limited") return "주소검색 요청이 너무 많습니다. 잠시 후 다시 시도해주세요.";
+  if (errorCode === "naver_client_id_missing") return "서버에 NAVER_MAP_CLIENT_ID 또는 VITE_NAVER_MAP_CLIENT_ID가 없습니다.";
+  if (errorCode === "naver_client_secret_missing") return "서버에 NAVER_MAP_CLIENT_SECRET이 없습니다.";
+  if (String(errorCode).startsWith("naver_geocode_failed")) return "네이버 주소검색 API 호출이 실패했습니다. Naver Maps Geocoding 권한과 키를 확인해주세요.";
+  return errorCode || "주소 검색 실패";
+}
+
+async function searchNaverAddressesOnServer(searchQuery) {
+  if (!isSupabaseConfigured) return null;
+
+  const { data } = await supabase.auth.getSession();
+  const accessToken = data?.session?.access_token;
+  if (!accessToken) return null;
+
+  const response = await fetch(`/api/courts/address-search?q=${encodeURIComponent(searchQuery)}`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(getNaverAddressErrorMessage(payload.error));
+  }
+  return Array.isArray(payload.results) ? payload.results : [];
+}
+
 export async function searchNaverAddresses(query, clientId = getNaverMapClientId()) {
   const searchQuery = String(query ?? "").trim();
   if (!searchQuery) throw new Error("주소 검색어를 입력하세요.");
+  const serverResults = await searchNaverAddressesOnServer(searchQuery);
+  if (serverResults) return serverResults;
+
   await loadNaverMapsSdk(clientId);
 
   return new Promise((resolve, reject) => {
     window.naver.maps.Service.geocode({ query: searchQuery }, (status, response) => {
       if (status !== window.naver.maps.Service.Status.OK) {
-        reject(new Error("네이버 주소 검색 실패"));
+        reject(new Error("네이버 주소검색 API 호출이 실패했습니다. Naver Maps Geocoding 권한과 도메인 설정을 확인해주세요."));
         return;
       }
       const results = (response.v2?.addresses ?? [])
