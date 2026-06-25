@@ -143,6 +143,15 @@
 - 이 단계는 아직 완전한 authoritative room engine이 아니다. 클라이언트의 기존 로컬 액션 결과를 서버에 커밋하는 과도기 브리지다.
 - 다음 단계는 생성/참여/초대/수락 계산 자체를 RPC 내부로 옮기고, 경기 확정 시 `matches` 생성도 같은 transaction으로 묶는 것이다.
 
+## 2026-06-25 match server sync
+
+- `POST /api/matches/sync-match`를 추가했다.
+- 경기 생성, 동의, 출석, 심판 미출석, 경기 시작/종료, 기록 제출, 승인, 이의, 룰/슬롯 수정 후 해당 `match` snapshot을 서버에 즉시 upsert한다.
+- 서버는 Supabase bearer를 검증하고 현재 `profileId`가 경기 참가자, 심판, 기존 생성자 중 하나인지 확인한다.
+- 서버는 `matches`, `match_players`, `match_results`, `player_match_stats`, `match_agreements`, `match_approvals`, `match_disputes`, 관련 `notifications`를 갱신한다.
+- 이 단계는 아직 완전한 authoritative match engine이 아니다. 클라이언트 reducer 결과를 서버에 커밋하는 과도기 브리지다.
+- 다음 단계는 슬롯 점유, 출석 강퇴, 결과/이의 승인, MMR 반영을 RPC transaction으로 옮기는 것이다.
+
 ## 2026-06-25 court review bridge
 
 - `court_reviews`는 구장별 리뷰 평균을 만들기 위한 서버 테이블이다.

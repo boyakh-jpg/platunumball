@@ -1,0 +1,287 @@
+import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+
+function toArray(value) {
+  return Array.isArray(value) ? value.filter(Boolean) : [];
+}
+
+function toDbTime(value) {
+  return value ? String(value).slice(0, 5) : null;
+}
+
+function getTimestamp(item = {}) {
+  return item.updatedAt ?? item.createdAt ?? item.queuedAt ?? item.startedAt ?? item.approvedAt ?? new Date().toISOString();
+}
+
+function getSidePlayerRows(match = {}) {
+  return [
+    ...(match.teamA?.players ?? []).map((userId, index) => ({
+      match_id: match.id,
+      team_id: match.teamA.teamId ?? null,
+      user_id: userId,
+      side: "teamA",
+      slot_order: index,
+    })),
+    ...(match.teamB?.players ?? []).map((userId, index) => ({
+      match_id: match.id,
+      team_id: match.teamB.teamId ?? null,
+      user_id: userId,
+      side: "teamB",
+      slot_order: index,
+    })),
+  ].filter((row) => row.user_id);
+}
+
+function getParticipantIds(match = {}) {
+  return new Set([
+    match.createdBy,
+    match.refereeId,
+    match.formerRefereeId,
+    ...(match.teamA?.players ?? []),
+    ...(match.teamB?.players ?? []),
+    ...Object.values(match.reservePlayers ?? match.rules?.reservePlayers ?? {}).flatMap(toArray),
+    ...Object.values(match.playedPlayerIds ?? match.rules?.playedPlayerIds ?? {}).flatMap(toArray),
+    ...Object.values(match.attendance ?? {}).flatMap(toArray),
+  ].filter(Boolean));
+}
+
+function toMatchRow(match = {}, actorProfileId = "") {
+  const statRecorders = match.statRecorders ?? match.rules?.statRecorders ?? {};
+  const playedPlayerIds = match.playedPlayerIds ?? match.rules?.playedPlayerIds ?? {};
+  const mmrExcludedPlayerIds = match.mmrExcludedPlayerIds ?? match.rules?.mmrExcludedPlayerIds ?? [];
+  return {
+    id: match.id,
+    title: match.title ?? "경기",
+    mode: match.mode ?? "5v5",
+    court_id: match.courtId ?? null,
+    court_name: match.court ?? match.courtName ?? "미정",
+    status: match.status ?? "contract",
+    ranked: match.ranked !== false,
+    mmr_limit_mode: match.mmrLimitMode ?? "block",
+    trust_feedback: match.trustFeedback ?? {},
+    referee_id: match.refereeId || null,
+    former_referee_id: match.formerRefereeId || null,
+    referee_trust_min: Number(match.refereeTrustMin ?? 90),
+    stat_entry_minutes: Number(match.statEntryMinutes ?? 60),
+    dispute_minutes: Number(match.disputeMinutes ?? 120),
+    stat_recorders: statRecorders,
+    played_player_ids: playedPlayerIds,
+    reserve_players: match.reservePlayers ?? match.rules?.reservePlayers ?? {},
+    promoted_reserve_ids: match.promotedReserveIds ?? {},
+    attendance: match.attendance ?? { teamA: [], teamB: [] },
+    referee_absence_request: match.refereeAbsenceRequest ?? null,
+    dispute_draft_result: match.disputeDraftResult ?? null,
+    dispute_draft_updated_at: match.disputeDraftUpdatedAt ?? null,
+    dispute_resolved_at: match.disputeResolvedAt ?? null,
+    mmr_excluded_player_ids: mmrExcludedPlayerIds,
+    anonymous_players: match.anonymousPlayers ?? {},
+    tournament_id: match.tournamentId ?? null,
+    tournament_format: match.tournamentFormat ?? null,
+    tournament_round: match.tournamentRound ?? null,
+    tournament_fixture: match.tournamentFixture ?? null,
+    tournament_mmr_policy: match.tournamentMmrPolicy ?? null,
+    official: Boolean(match.official),
+    pre_registered: Boolean(match.preRegistered),
+    scheduled_at: match.scheduledAt && !["일정 미정", "즉시"].includes(match.scheduledAt) ? match.scheduledAt : null,
+    scheduled_date: match.scheduledDate || null,
+    scheduled_time: toDbTime(match.scheduledTime),
+    team_a_id: match.teamA?.teamId ?? null,
+    team_b_id: match.teamB?.teamId ?? null,
+    score_a: Number(match.result?.scoreA ?? match.teamA?.score ?? 0),
+    score_b: Number(match.result?.scoreB ?? match.teamB?.score ?? 0),
+    rules: {
+      ...(match.rules ?? {}),
+      timingType: match.timingType ?? match.rules?.timingType ?? "scheduled",
+      statRecorders,
+      playedPlayerIds,
+      mmrExcludedPlayerIds,
+    },
+    memo: match.memo ?? "",
+    stakes: match.stakes ?? "",
+    objection_window: match.objectionWindow ?? null,
+    evidence: match.evidence ?? [],
+    created_by: match.createdBy ?? match.teamA?.players?.[0] ?? actorProfileId,
+    created_at: match.createdAt ?? new Date().toISOString(),
+    agreed_at: match.agreedAt ?? null,
+    started_at: match.startedAt ?? null,
+    ended_at: match.endedAt ?? null,
+    confirmed_at: match.confirmedAt ?? null,
+    cancelled_at: match.cancelledAt ?? null,
+    voided_at: match.voidedAt ?? null,
+    rating_result: match.ratingResult ?? null,
+    team_rating_result: match.teamRatingResult ?? null,
+    updated_at: new Date().toISOString(),
+  };
+}
+
+function toResultRow(match = {}, actorProfileId = "") {
+  if (!match.result) return null;
+  return {
+    match_id: match.id,
+    submitted_by: match.result.submittedBy ?? match.refereeId ?? match.teamA?.players?.[0] ?? actorProfileId,
+    score_a: Number(match.result.scoreA ?? match.teamA?.score ?? 0),
+    score_b: Number(match.result.scoreB ?? match.teamB?.score ?? 0),
+    stat_submissions: match.result.statSubmissions ?? {},
+    submitted_at: match.result.submittedAt ?? new Date().toISOString(),
+  };
+}
+
+function toStatRows(match = {}) {
+  return Object.entries(match.result?.playerStats ?? {}).map(([userId, stat]) => ({
+    match_id: match.id,
+    user_id: userId,
+    recorded_by: match.result?.statSubmissions?.[userId]?.by ?? null,
+    record_source: match.result?.statSubmissions?.[userId]?.source ?? "player",
+    points: Number(stat.points ?? 0),
+    rebounds: Number(stat.rebounds ?? 0),
+    assists: Number(stat.assists ?? 0),
+    steals: Number(stat.steals ?? 0),
+    blocks: Number(stat.blocks ?? 0),
+    fouls: Number(stat.fouls ?? 0),
+    updated_at: new Date().toISOString(),
+  }));
+}
+
+function toAgreementRows(match = {}) {
+  return [
+    ...(match.agreements?.teamA ?? []).map((userId) => ({ match_id: match.id, user_id: userId, side: "teamA" })),
+    ...(match.agreements?.teamB ?? []).map((userId) => ({ match_id: match.id, user_id: userId, side: "teamB" })),
+  ];
+}
+
+function toApprovalRows(match = {}) {
+  return [
+    ...(match.approvals?.teamA ?? []).map((userId) => ({ match_id: match.id, user_id: userId, side: "teamA" })),
+    ...(match.approvals?.teamB ?? []).map((userId) => ({ match_id: match.id, user_id: userId, side: "teamB" })),
+  ];
+}
+
+function toDisputeRows(match = {}) {
+  return toArray(match.disputes).map((dispute) => ({
+    id: dispute.id,
+    match_id: match.id,
+    user_id: dispute.by ?? dispute.userId,
+    reason: dispute.reason ?? "",
+    created_at: dispute.createdAt ?? new Date().toISOString(),
+  })).filter((row) => row.id && row.user_id);
+}
+
+function toNotificationRows(notifications = [], fallbackProfileId = "") {
+  return toArray(notifications).map((notification) => ({
+    id: notification.id,
+    user_id: notification.targetUserId ?? fallbackProfileId,
+    target_user_id: notification.targetUserId ?? null,
+    title: notification.title ?? "알림",
+    body: notification.body ?? "",
+    tone: notification.tone ?? "match",
+    type: notification.type ?? null,
+    match_id: notification.matchId ?? null,
+    recruiting_post_id: notification.recruitingPostId ?? null,
+    invitation_id: notification.invitationId ?? null,
+    discord_event: notification.discordEvent ?? notification.eventType ?? null,
+    read_at: notification.readAt ?? null,
+    payload: notification,
+    created_at: notification.createdAt ?? new Date().toISOString(),
+    updated_at: getTimestamp(notification),
+  })).filter((row) => row.id);
+}
+
+function existingParticipantIds(existingMatch, existingPlayers = []) {
+  return new Set([
+    existingMatch?.created_by,
+    existingMatch?.referee_id,
+    existingMatch?.former_referee_id,
+    ...(existingPlayers ?? []).map((player) => player.user_id),
+  ].filter(Boolean));
+}
+
+function canSyncMatch(profileId, existingMatch, existingPlayers, nextMatch) {
+  if (!profileId || !nextMatch?.id) return false;
+  const nextParticipants = getParticipantIds(nextMatch);
+  if (!existingMatch) return nextParticipants.has(profileId);
+  return existingParticipantIds(existingMatch, existingPlayers).has(profileId) || nextParticipants.has(profileId);
+}
+
+async function deleteMatchChildren(supabase, table, matchId) {
+  const { error } = await supabase.from(table).delete().eq("match_id", matchId);
+  if (error) throw error;
+}
+
+async function upsertRows(supabase, table, rows, onConflict) {
+  if (!rows.length) return;
+  const { error } = await supabase.from(table).upsert(rows, { onConflict });
+  if (error) throw error;
+}
+
+export default async function handler(request, response) {
+  if (request.method !== "POST") {
+    response.setHeader("Allow", "POST");
+    sendJson(response, 405, { error: "method_not_allowed" });
+    return;
+  }
+
+  try {
+    const body = await readJsonBody(request);
+    const match = body.match && typeof body.match === "object" ? body.match : null;
+    if (!match?.id) {
+      sendJson(response, 400, { error: "missing_match" });
+      return;
+    }
+
+    const context = await getAuthenticatedContext(request);
+    const { data: existingMatch, error: existingError } = await context.supabase
+      .from("matches")
+      .select("id, created_by, referee_id, former_referee_id")
+      .eq("id", match.id)
+      .maybeSingle();
+    if (existingError) throw existingError;
+
+    const { data: existingPlayers, error: playerError } = await context.supabase
+      .from("match_players")
+      .select("user_id")
+      .eq("match_id", match.id);
+    if (playerError) throw playerError;
+
+    if (!canSyncMatch(context.profileId, existingMatch, existingPlayers, match)) {
+      sendJson(response, 403, { error: "match_sync_permission_denied" });
+      return;
+    }
+
+    const matchRow = toMatchRow(match, context.profileId);
+    const playerRows = getSidePlayerRows(match);
+    const resultRow = toResultRow(match, context.profileId);
+    const statRows = toStatRows(match);
+    const agreementRows = toAgreementRows(match);
+    const approvalRows = toApprovalRows(match);
+    const disputeRows = toDisputeRows(match);
+    const notificationRows = toNotificationRows(body.notifications, context.profileId);
+
+    const { error: matchError } = await context.supabase.from("matches").upsert(matchRow, { onConflict: "id" });
+    if (matchError) throw matchError;
+
+    await deleteMatchChildren(context.supabase, "match_players", match.id);
+    await deleteMatchChildren(context.supabase, "player_match_stats", match.id);
+    await deleteMatchChildren(context.supabase, "match_agreements", match.id);
+    await deleteMatchChildren(context.supabase, "match_approvals", match.id);
+    await deleteMatchChildren(context.supabase, "match_disputes", match.id);
+    await deleteMatchChildren(context.supabase, "match_results", match.id);
+
+    await upsertRows(context.supabase, "match_players", playerRows, "match_id,user_id");
+    if (resultRow) await upsertRows(context.supabase, "match_results", [resultRow], "match_id");
+    await upsertRows(context.supabase, "player_match_stats", statRows, "match_id,user_id");
+    await upsertRows(context.supabase, "match_agreements", agreementRows, "match_id,user_id");
+    await upsertRows(context.supabase, "match_approvals", approvalRows, "match_id,user_id");
+    await upsertRows(context.supabase, "match_disputes", disputeRows, "id");
+    await upsertRows(context.supabase, "notifications", notificationRows, "id");
+
+    sendJson(response, 200, {
+      ok: true,
+      matchId: match.id,
+      playerCount: playerRows.length,
+      statCount: statRows.length,
+      notificationCount: notificationRows.length,
+    });
+  } catch (error) {
+    console.error("Match sync failed.", error);
+    sendJson(response, error.statusCode || 500, { error: error.message || "match_sync_failed" });
+  }
+}

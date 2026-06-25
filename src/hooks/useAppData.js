@@ -256,6 +256,10 @@ export function useAppData(authUser = null) {
     if (!post?.id) return;
     runServerAction("/api/recruiting/sync-post", { post, notifications });
   }, [runServerAction]);
+  const syncMatchServer = useCallback((match, notifications = []) => {
+    if (!match?.id) return;
+    runServerAction("/api/matches/sync-match", { match, notifications });
+  }, [runServerAction]);
 
   const rankings = useMemo(
     () => ({
@@ -276,6 +280,10 @@ export function useAppData(authUser = null) {
           (notification.recruitingPostId === postId || notification.invitationId)
         ));
       };
+      const getNewMatchNotifications = (prev, next, matchId) => {
+        const beforeIds = new Set((prev.notifications ?? []).map((notification) => notification.id));
+        return (next.notifications ?? []).filter((notification) => !beforeIds.has(notification.id) && notification.matchId === matchId);
+      };
       const applyRecruitingPostMutation = (postId, reducer) => {
         let syncedPost = null;
         let syncedNotifications = [];
@@ -286,6 +294,17 @@ export function useAppData(authUser = null) {
           return next;
         });
         if (syncedPost) syncRecruitingPostServer(syncedPost, syncedNotifications);
+      };
+      const applyMatchMutation = (matchId, reducer) => {
+        let syncedMatch = null;
+        let syncedNotifications = [];
+        setState((prev) => {
+          const next = reducer(prev);
+          syncedMatch = (next.matches ?? []).find((match) => match.id === matchId) ?? null;
+          syncedNotifications = syncedMatch ? getNewMatchNotifications(prev, next, matchId) : [];
+          return next;
+        });
+        if (syncedMatch) syncMatchServer(syncedMatch, syncedNotifications);
       };
 
       return ({
@@ -301,11 +320,16 @@ export function useAppData(authUser = null) {
       },
       createMatch: (draft) => {
         let createdId = null;
+        let createdMatch = null;
+        let syncedNotifications = [];
         setState((prev) => {
           const next = createMatch({ ...prev, currentUserId }, draft);
           createdId = next.matches[0].id;
+          createdMatch = next.matches[0] ?? null;
+          syncedNotifications = createdMatch ? getNewMatchNotifications(prev, next, createdMatch.id) : [];
           return next;
         });
+        if (createdMatch) syncMatchServer(createdMatch, syncedNotifications);
         return createdId;
       },
       createTournament: (draft) => {
@@ -322,25 +346,25 @@ export function useAppData(authUser = null) {
       updateTournamentMatchSchedule: (tournamentId, matchId, schedule) => {
         setState((prev) => updateTournamentMatchSchedule({ ...prev, currentUserId }, tournamentId, matchId, schedule));
       },
-      agreeMatch: (matchId, sideName, playerId) => setState((prev) => agreeMatch({ ...prev, currentUserId }, matchId, sideName, playerId)),
-      submitMatchResult: (matchId, result) => setState((prev) => submitMatchResult({ ...prev, currentUserId }, matchId, result)),
+      agreeMatch: (matchId, sideName, playerId) => applyMatchMutation(matchId, (prev) => agreeMatch({ ...prev, currentUserId }, matchId, sideName, playerId)),
+      submitMatchResult: (matchId, result) => applyMatchMutation(matchId, (prev) => submitMatchResult({ ...prev, currentUserId }, matchId, result)),
       handoffMatchRecorder: (matchId, sideName, nextRecorderId) => {
-        setState((prev) => handoffMatchRecorder({ ...prev, currentUserId }, matchId, sideName, nextRecorderId));
+        applyMatchMutation(matchId, (prev) => handoffMatchRecorder({ ...prev, currentUserId }, matchId, sideName, nextRecorderId));
       },
-      approveMatch: (matchId, sideName, playerId) => setState((prev) => approveMatch({ ...prev, currentUserId }, matchId, sideName, playerId)),
-      checkInMatchPlayer: (matchId, sideName, playerId) => setState((prev) => checkInMatchPlayer({ ...prev, currentUserId }, matchId, sideName, playerId)),
-      requestMatchRefereeAbsence: (matchId) => setState((prev) => requestMatchRefereeAbsence({ ...prev, currentUserId }, matchId)),
-      confirmMatchRefereeAbsence: (matchId) => setState((prev) => confirmMatchRefereeAbsence({ ...prev, currentUserId }, matchId)),
-      toggleMatchStar: (matchId, targetUserId) => setState((prev) => toggleMatchStar({ ...prev, currentUserId }, matchId, targetUserId)),
-      submitMatchThumbs: (matchId, targetUserIds) => setState((prev) => submitMatchThumbs({ ...prev, currentUserId }, matchId, targetUserIds)),
-      disputeMatch: (matchId, reason) => setState((prev) => disputeMatch({ ...prev, currentUserId }, matchId, reason)),
-      cancelMatch: (matchId) => setState((prev) => cancelMatch({ ...prev, currentUserId }, matchId)),
-      voidMatch: (matchId) => setState((prev) => voidMatch({ ...prev, currentUserId }, matchId)),
-      resumeMatchApproval: (matchId, resultDraft = null) => setState((prev) => resumeMatchApproval({ ...prev, currentUserId }, matchId, resultDraft)),
-      startMatch: (matchId) => setState((prev) => startMatch({ ...prev, currentUserId }, matchId)),
-      endMatch: (matchId) => setState((prev) => endMatch({ ...prev, currentUserId }, matchId)),
-      addMatchLatePlayer: (matchId, draft) => setState((prev) => addMatchLatePlayer({ ...prev, currentUserId }, matchId, draft)),
-      removeMatchLatePlayer: (matchId, playerId) => setState((prev) => removeMatchLatePlayer({ ...prev, currentUserId }, matchId, playerId)),
+      approveMatch: (matchId, sideName, playerId) => applyMatchMutation(matchId, (prev) => approveMatch({ ...prev, currentUserId }, matchId, sideName, playerId)),
+      checkInMatchPlayer: (matchId, sideName, playerId) => applyMatchMutation(matchId, (prev) => checkInMatchPlayer({ ...prev, currentUserId }, matchId, sideName, playerId)),
+      requestMatchRefereeAbsence: (matchId) => applyMatchMutation(matchId, (prev) => requestMatchRefereeAbsence({ ...prev, currentUserId }, matchId)),
+      confirmMatchRefereeAbsence: (matchId) => applyMatchMutation(matchId, (prev) => confirmMatchRefereeAbsence({ ...prev, currentUserId }, matchId)),
+      toggleMatchStar: (matchId, targetUserId) => applyMatchMutation(matchId, (prev) => toggleMatchStar({ ...prev, currentUserId }, matchId, targetUserId)),
+      submitMatchThumbs: (matchId, targetUserIds) => applyMatchMutation(matchId, (prev) => submitMatchThumbs({ ...prev, currentUserId }, matchId, targetUserIds)),
+      disputeMatch: (matchId, reason) => applyMatchMutation(matchId, (prev) => disputeMatch({ ...prev, currentUserId }, matchId, reason)),
+      cancelMatch: (matchId) => applyMatchMutation(matchId, (prev) => cancelMatch({ ...prev, currentUserId }, matchId)),
+      voidMatch: (matchId) => applyMatchMutation(matchId, (prev) => voidMatch({ ...prev, currentUserId }, matchId)),
+      resumeMatchApproval: (matchId, resultDraft = null) => applyMatchMutation(matchId, (prev) => resumeMatchApproval({ ...prev, currentUserId }, matchId, resultDraft)),
+      startMatch: (matchId) => applyMatchMutation(matchId, (prev) => startMatch({ ...prev, currentUserId }, matchId)),
+      endMatch: (matchId) => applyMatchMutation(matchId, (prev) => endMatch({ ...prev, currentUserId }, matchId)),
+      addMatchLatePlayer: (matchId, draft) => applyMatchMutation(matchId, (prev) => addMatchLatePlayer({ ...prev, currentUserId }, matchId, draft)),
+      removeMatchLatePlayer: (matchId, playerId) => applyMatchMutation(matchId, (prev) => removeMatchLatePlayer({ ...prev, currentUserId }, matchId, playerId)),
       updateSettings: (patch) => setState((prev) => updateSettings({ ...prev, currentUserId }, patch)),
       updatePrivacySettings: (patch) => setState((prev) => updatePrivacySettings({ ...prev, currentUserId }, patch)),
       blockUser: (userId) => setState((prev) => blockUser({ ...prev, currentUserId }, userId)),
@@ -421,9 +445,9 @@ export function useAppData(authUser = null) {
       cancelRecruitingParticipation: (postId) => applyRecruitingPostMutation(postId, (prev) => cancelRecruitingParticipation({ ...prev, currentUserId }, postId)),
       setRecruitingReady: (postId, ready) => applyRecruitingPostMutation(postId, (prev) => setRecruitingReady({ ...prev, currentUserId }, postId, ready)),
       updateRecruitingRoomRules: (postId, patch) => applyRecruitingPostMutation(postId, (prev) => updateRecruitingRoomRules({ ...prev, currentUserId }, postId, patch)),
-      updateMatchRoomRules: (matchId, patch) => setState((prev) => updateMatchRoomRules({ ...prev, currentUserId }, matchId, patch)),
-      setMatchRoomPlayerPlacement: (matchId, playerId, placement) => setState((prev) => setMatchRoomPlayerPlacement({ ...prev, currentUserId }, matchId, playerId, placement)),
-      removeMatchRoomPlayer: (matchId, playerId) => setState((prev) => removeMatchRoomPlayer({ ...prev, currentUserId }, matchId, playerId)),
+      updateMatchRoomRules: (matchId, patch) => applyMatchMutation(matchId, (prev) => updateMatchRoomRules({ ...prev, currentUserId }, matchId, patch)),
+      setMatchRoomPlayerPlacement: (matchId, playerId, placement) => applyMatchMutation(matchId, (prev) => setMatchRoomPlayerPlacement({ ...prev, currentUserId }, matchId, playerId, placement)),
+      removeMatchRoomPlayer: (matchId, playerId) => applyMatchMutation(matchId, (prev) => removeMatchRoomPlayer({ ...prev, currentUserId }, matchId, playerId)),
       sendRecruitingChat: (postId, body) => applyRecruitingPostMutation(postId, (prev) => sendRecruitingChat({ ...prev, currentUserId }, postId, body)),
       setRecruitingApplicantReserve: (postId, playerId, reserve) => {
         applyRecruitingPostMutation(postId, (prev) => setRecruitingApplicantReserve({ ...prev, currentUserId }, postId, playerId, reserve));
@@ -455,17 +479,22 @@ export function useAppData(authUser = null) {
       kickRecruitingApplicant: (postId, playerId) => applyRecruitingPostMutation(postId, (prev) => kickRecruitingApplicant({ ...prev, currentUserId }, postId, playerId)),
       confirmRecruitingMatch: (postId) => {
         let createdId = null;
+        let createdMatch = null;
         let syncedPost = null;
         let syncedNotifications = [];
+        let syncedMatchNotifications = [];
         setState((prev) => {
           const existingIds = new Set((prev.matches ?? []).map((match) => match.id));
           const next = confirmRecruitingMatch({ ...prev, currentUserId }, postId);
           createdId = (next.matches ?? []).find((match) => !existingIds.has(match.id))?.id ?? null;
+          createdMatch = createdId ? (next.matches ?? []).find((match) => match.id === createdId) ?? null : null;
           syncedPost = (next.recruitingPosts ?? []).find((post) => post.id === postId) ?? null;
           syncedNotifications = syncedPost ? getNewRecruitingNotifications(prev, next, postId) : [];
+          syncedMatchNotifications = createdMatch ? getNewMatchNotifications(prev, next, createdMatch.id) : [];
           return next;
         });
         if (syncedPost) syncRecruitingPostServer(syncedPost, syncedNotifications);
+        if (createdMatch) syncMatchServer(createdMatch, syncedMatchNotifications);
         return createdId;
       },
       closeRecruitingPost: (postId) => applyRecruitingPostMutation(postId, (prev) => closeRecruitingPost({ ...prev, currentUserId }, postId)),
@@ -475,7 +504,7 @@ export function useAppData(authUser = null) {
       reset: () => setState(resetState({ includeDemo: !isSupabaseConfigured, authUserId, email: authEmail })),
       });
     },
-    [authEmail, authUserId, currentUserId, persistProfileServer, profileKey, profileLocked, runServerAction, syncRecruitingPostServer],
+    [authEmail, authUserId, currentUserId, persistProfileServer, profileKey, profileLocked, runServerAction, syncMatchServer, syncRecruitingPostServer],
   );
 
   const safeCurrentUserId = currentUserId ?? currentUser?.id ?? "";
