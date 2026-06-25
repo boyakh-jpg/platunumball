@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
-import { CalendarDays, Crown, MapPin, Minus, Plus, ShieldCheck, ThumbsUp, Trophy, UsersRound, X } from "lucide-react";
+import { CalendarDays, Crown, MapPin, Minus, Plus, ShieldCheck, Star, ThumbsUp, Trophy, UsersRound, X } from "lucide-react";
 import AgreementPanel from "../components/match/AgreementPanel.jsx";
 import ApprovalPanel from "../components/match/ApprovalPanel.jsx";
 import MatchContract from "../components/match/MatchContract.jsx";
@@ -105,6 +105,49 @@ function getTrustFeedbackRole(match, playerId) {
   return roles.length ? roles.join(" · ") : "관계자";
 }
 
+const COURT_REVIEW_FIELDS = [
+  { id: "surfaceRating", label: "바닥" },
+  { id: "rimRating", label: "림/골대" },
+  { id: "lightingRating", label: "조명" },
+  { id: "crowdRating", label: "혼잡도" },
+  { id: "locationAccuracy", label: "위치 정확도" },
+];
+
+function getCourtReviewDraft(review = {}) {
+  return {
+    rating: review.rating ?? 0,
+    surfaceRating: review.surfaceRating ?? "",
+    rimRating: review.rimRating ?? "",
+    lightingRating: review.lightingRating ?? "",
+    crowdRating: review.crowdRating ?? "",
+    locationAccuracy: review.locationAccuracy ?? "",
+    memo: review.memo ?? "",
+  };
+}
+
+function CourtReviewRating({ label, value, onChange, disabled = false }) {
+  const numericValue = Number(value ?? 0);
+  return (
+    <div className="court-review-rating-row">
+      <span>{label}</span>
+      <div className="court-review-stars">
+        {[1, 2, 3, 4, 5].map((rating) => (
+          <button
+            key={rating}
+            type="button"
+            className={numericValue >= rating ? "court-review-star-button selected" : "court-review-star-button"}
+            disabled={disabled}
+            onClick={() => onChange(rating)}
+            aria-label={`${label} ${rating}점`}
+          >
+            <Star size={15} fill={numericValue >= rating ? "currentColor" : "none"} />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function MatchRoom({ app }) {
   const { matchId } = useParams();
   const match = useMemo(
@@ -122,12 +165,21 @@ export default function MatchRoom({ app }) {
   const [statEditorPlayerId, setStatEditorPlayerId] = useState(null);
   const [reviewControlsOpen, setReviewControlsOpen] = useState(false);
   const [thumbDraftPlayerIds, setThumbDraftPlayerIds] = useState([]);
+  const existingCourtReview = useMemo(
+    () => (match ? (app.state.settings?.courtReviews ?? []).find((review) => review.matchId === match.id && review.reviewerId === app.currentUser.id) ?? null : null),
+    [app.currentUser.id, app.state.settings?.courtReviews, match?.id],
+  );
+  const [courtReviewDraft, setCourtReviewDraft] = useState(() => getCourtReviewDraft(existingCourtReview));
   useBodyScrollLock(Boolean(statEditorPlayerId));
 
   useEffect(() => {
     const participantIds = match ? getMatchTrustFeedbackParticipantIds(match) : [];
     setThumbDraftPlayerIds((match?.trustFeedback?.stars?.[app.currentUser.id] ?? []).filter((playerId) => participantIds.includes(playerId)));
   }, [app.currentUser.id, match?.id, match?.trustFeedback]);
+
+  useEffect(() => {
+    setCourtReviewDraft(getCourtReviewDraft(existingCourtReview));
+  }, [existingCourtReview?.id, existingCourtReview?.updatedAt, match?.id]);
 
   useEffect(() => {
     if (!match) return;
@@ -463,6 +515,9 @@ export default function MatchRoom({ app }) {
   const trustFeedbackClosesAt = getMatchTrustFeedbackClosesAt(match);
   const canSubmitThumbs = isMatchTrustFeedbackOpen(match) && feedbackParticipantIds.includes(app.currentUser.id);
   const shouldShowThumbReview = match.status === "confirmed" && feedbackParticipantIds.includes(app.currentUser.id);
+  const courtReviewMatchFinished = Boolean(match.endedAt || match.result || ["approval", "disputed", "confirmed"].includes(match.status));
+  const canSubmitCourtReview = courtReviewMatchFinished && !["void", "cancelled"].includes(match.status) && feedbackParticipantIds.includes(app.currentUser.id);
+  const courtReviewRatingReady = Number(courtReviewDraft.rating) > 0;
   const thumbTargets = feedbackParticipantIds.filter((playerId) => playerId !== app.currentUser.id);
   const thumbCountByPlayer = Object.values(thumbsByGiver).reduce((acc, targetIds = []) => {
     targetIds.forEach((targetId) => {
@@ -477,6 +532,11 @@ export default function MatchRoom({ app }) {
       if (current.length >= thumbLimit) return current;
       return [...current, targetUserId];
     });
+  };
+  const updateCourtReviewDraft = (patch) => setCourtReviewDraft((current) => ({ ...current, ...patch }));
+  const submitCourtReview = () => {
+    if (!canSubmitCourtReview || !courtReviewRatingReady) return;
+    app.actions.submitCourtReview(match.id, courtReviewDraft);
   };
   const ruleItems = [
     ["목표 점수", `${match.rules?.targetScore ?? 21}점`],
@@ -795,6 +855,42 @@ export default function MatchRoom({ app }) {
                 <ThumbsUp size={16} /> 따봉 제출하기
               </Button>
               {!canSubmitThumbs ? <p className="muted">제출 가능 시간이 지났거나 아직 기록확정 전이다. 마감: {formatWindowTime(trustFeedbackClosesAt)}</p> : null}
+            </Card>
+          ) : null}
+          {canSubmitCourtReview || existingCourtReview ? (
+            <Card className="section-card court-review-card">
+              <div className="section-title-row">
+                <div>
+                  <p className="eyebrow">Court review</p>
+                  <h2>구장 리뷰</h2>
+                </div>
+                <Badge tone={existingCourtReview ? "gold" : canSubmitCourtReview ? "green" : "neutral"}>{existingCourtReview ? "제출됨" : canSubmitCourtReview ? "작성 가능" : "잠김"}</Badge>
+              </div>
+              <p className="muted">{match.court}에서 경기한 참가자만 남길 수 있다. 별점은 구장 카드 평균에 반영된다.</p>
+              <CourtReviewRating label="종합 별점" value={courtReviewDraft.rating} disabled={!canSubmitCourtReview} onChange={(rating) => updateCourtReviewDraft({ rating })} />
+              <div className="court-review-detail-grid">
+                {COURT_REVIEW_FIELDS.map((field) => (
+                  <CourtReviewRating
+                    key={field.id}
+                    label={field.label}
+                    value={courtReviewDraft[field.id]}
+                    disabled={!canSubmitCourtReview}
+                    onChange={(rating) => updateCourtReviewDraft({ [field.id]: rating })}
+                  />
+                ))}
+              </div>
+              <label className="memo-label">
+                짧은 메모
+                <textarea
+                  disabled={!canSubmitCourtReview}
+                  value={courtReviewDraft.memo}
+                  onChange={(event) => updateCourtReviewDraft({ memo: event.target.value })}
+                  placeholder="바닥, 림, 조명, 위치 특이사항"
+                />
+              </label>
+              <Button type="button" disabled={!canSubmitCourtReview || !courtReviewRatingReady} onClick={submitCourtReview}>
+                <Star size={16} /> {existingCourtReview ? "리뷰 수정" : "리뷰 제출"}
+              </Button>
             </Card>
           ) : null}
           <Card className="section-card">

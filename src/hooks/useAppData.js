@@ -57,6 +57,7 @@ import {
   startMatch,
   startRefereeExamAttempt,
   submitCourtRequest,
+  submitCourtReview,
   finishRefereeExamAttempt,
   submitRefereeRequest,
   submitMatchThumbs,
@@ -355,6 +356,15 @@ export function useAppData(authUserId = null) {
           return next;
         });
         if (createdRequest) runServerAction("/api/court-requests/submit", { request: createdRequest });
+      },
+      submitCourtReview: (matchId, draft) => {
+        let submittedReview = null;
+        setState((prev) => {
+          const next = submitCourtReview({ ...prev, currentUserId }, matchId, draft);
+          submittedReview = (next.settings?.courtReviews ?? []).find((review) => review.matchId === matchId && review.reviewerId === currentUserId) ?? null;
+          return next;
+        });
+        if (submittedReview) runServerAction("/api/courts/submit-review", { review: submittedReview });
       },
       startRefereeExamAttempt: (draft) => setState((prev) => startRefereeExamAttempt({ ...prev, currentUserId }, draft)),
       finishRefereeExamAttempt: (attemptId, result) => setState((prev) => finishRefereeExamAttempt({ ...prev, currentUserId }, attemptId, result)),

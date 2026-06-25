@@ -13,7 +13,7 @@ import {
   TEAM_ROLES,
 } from "../lib/constants.js";
 import { initialState } from "../lib/mockData.js";
-import { findCourtDuplicate, getCourtDuplicateMessage, normalizeCourtLayout, normalizeCourtSurfaceType } from "../lib/courts.js";
+import { findCourtDuplicate, getCourtDuplicateMessage, getRegisteredCourts, normalizeCourtLayout, normalizeCourtSurfaceType } from "../lib/courts.js";
 import {
   getAgreementStatus,
   getApprovalStatus,
@@ -4055,6 +4055,100 @@ export function submitMatchThumbs(state, matchId, targetUserIds = []) {
         id: makeId("n"),
         title: "따봉 제출 완료",
         body: `${nextMyThumbs.length}명에게 따봉을 제출했습니다.`,
+        tone: "match",
+        matchId,
+      },
+      ...state.notifications,
+    ],
+  };
+}
+
+function normalizeCourtReviewRating(value, fallback = null) {
+  if (value === null || value === undefined || value === "") return fallback;
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.max(1, Math.min(5, Math.round(number)));
+}
+
+export function submitCourtReview(state, matchId, draft = {}) {
+  const disciplineBlock = getDisciplineBlockedState(state, "구장 리뷰");
+  if (disciplineBlock) return disciplineBlock;
+
+  const match = state.matches.find((item) => item.id === matchId);
+  const participantIds = match ? getMatchTrustFeedbackParticipantIds(match) : [];
+  const currentUserId = state.currentUserId;
+  const matchFinished = Boolean(match?.endedAt || match?.result || ["approval", "disputed", "confirmed"].includes(match?.status)) && !["void", "cancelled"].includes(match?.status);
+  if (!match || !matchFinished || !participantIds.includes(currentUserId)) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "구장 리뷰 불가",
+          body: "구장 리뷰는 해당 경기 참가자만 경기 후 작성할 수 있습니다.",
+          tone: "orange",
+          matchId,
+        },
+        ...state.notifications,
+      ],
+    };
+  }
+
+  const rating = normalizeCourtReviewRating(draft.rating, null);
+  if (!rating) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "별점 필요",
+          body: "구장 별점은 1점부터 5점까지 선택해야 합니다.",
+          tone: "orange",
+          matchId,
+        },
+        ...state.notifications,
+      ],
+    };
+  }
+
+  const reviews = state.settings?.courtReviews ?? [];
+  const existing = reviews.find((review) => review.matchId === matchId && review.reviewerId === currentUserId);
+  const registeredCourt = getRegisteredCourts(state).find((court) => court.name === match.court);
+  const now = new Date().toISOString();
+  const review = {
+    ...(existing ?? {}),
+    id: existing?.id ?? `cvr_${matchId}_${currentUserId}`.replace(/[^a-zA-Z0-9_]/g, "_"),
+    courtId: registeredCourt?.id ?? existing?.courtId ?? null,
+    courtName: match.court,
+    matchId,
+    reviewerId: currentUserId,
+    rating,
+    surfaceRating: normalizeCourtReviewRating(draft.surfaceRating, null),
+    rimRating: normalizeCourtReviewRating(draft.rimRating, null),
+    lightingRating: normalizeCourtReviewRating(draft.lightingRating, null),
+    crowdRating: normalizeCourtReviewRating(draft.crowdRating, null),
+    locationAccuracy: normalizeCourtReviewRating(draft.locationAccuracy, null),
+    fitModes: Array.isArray(draft.fitModes) ? draft.fitModes : existing?.fitModes ?? [],
+    tags: Array.isArray(draft.tags) ? draft.tags : existing?.tags ?? [],
+    memo: String(draft.memo ?? "").trim(),
+    createdAt: existing?.createdAt ?? now,
+    updatedAt: now,
+  };
+  const nextReviews = existing
+    ? reviews.map((item) => (item.id === existing.id ? review : item))
+    : [review, ...reviews];
+
+  return {
+    ...state,
+    settings: normalizeSettings({
+      ...(state.settings ?? {}),
+      courtReviews: nextReviews,
+    }),
+    notifications: [
+      {
+        id: makeId("n"),
+        title: existing ? "구장 리뷰 수정" : "구장 리뷰 제출",
+        body: `${match.court} 리뷰가 저장되었습니다.`,
         tone: "match",
         matchId,
       },

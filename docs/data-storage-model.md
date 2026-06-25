@@ -133,4 +133,5 @@
 - 같은 경기에서 같은 사용자는 리뷰 1개만 유지한다. 재제출은 수정으로 처리한다.
 - 프론트는 `court_reviews`를 읽어 `getRegisteredCourts()`에서 `reviewSummary`, `rating`, `reviewCount`를 붙인다.
 - 구장 hover 카드의 별점 표시는 기존 UI를 재사용하며 `court_reviews.rating` 평균과 리뷰 수를 보여준다.
-- 리뷰 작성 UI는 아직 경기 종료 화면에 붙지 않았다. 다음 단계는 postgame 리뷰 입력과 신고/관리자 검토 연결이다.
+- 경기방 postgame 보조 카드에서 참가자가 구장 리뷰를 작성하고 `POST /api/courts/submit-review`로 서버 저장한다.
+- 다음 단계는 구장 리뷰 신고/관리자 검토 연결이다.

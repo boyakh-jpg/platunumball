@@ -1577,6 +1577,10 @@ begin
     raise exception 'match_not_found' using errcode = 'P0002';
   end if;
 
+  if match_row.status in ('void', 'cancelled') then
+    raise exception 'court_review_match_closed' using errcode = '42501';
+  end if;
+
   if match_row.ended_at is null and match_row.status not in ('approval', 'disputed', 'confirmed') then
     raise exception 'court_review_match_not_finished' using errcode = '42501';
   end if;
