@@ -135,3 +135,37 @@
 - 구장 hover 카드의 별점 표시는 기존 UI를 재사용하며 `court_reviews.rating` 평균과 리뷰 수를 보여준다.
 - 경기방 postgame 보조 카드에서 참가자가 구장 리뷰를 작성하고 `POST /api/courts/submit-review`로 서버 저장한다.
 - 다음 단계는 구장 리뷰 신고/관리자 검토 연결이다.
+
+## 2026-06-25 abuse/integrity scenario seed
+
+- `scripts/seed-demo-flow.mjs`는 기존 `reports`, `settings.courtRequests`, `settings.adminAuditLog`, `settings.adminDisciplinaryActions`, `notifications`, `matches`, `users` shape만 사용해 abuse/integrity 시나리오를 추가한다.
+- 신고 status는 현재 관리자 UI/server action이 처리하는 `open`, `resolved`, `dismissed`만 사용한다.
+- 구장 신고는 현재 공식 target인 `type="court_request"`만 사용한다. `approved_courts` 직접 신고, hidden/disabled 상태는 아직 seed하지 않는다.
+- 나이 관련 seed는 `profiles.birth_year`, `profiles.age_group`, `recruiting_posts.ageRestriction`, `recruiting_posts.allowedAgeGroups`에 맞춘다. `claimed_birth_year`, `verified_birth_year`, `verification_status`는 현재 schema가 없어 만들지 않는다.
+- 완료된 경기의 사기 의심은 최종 결과를 직접 바꾸지 않고 `status="disputed"` match와 `reports`로 표현한다.
+- fraud report는 자동 ranking 변경을 만들지 않는다. 확정 제재 시나리오는 `adminDisciplinaryActions`와 낮은 `trustScore`로만 표현한다.
+
+Scenario map:
+
+| scenario | related rows | expected behavior |
+| --- | --- | --- |
+| `reported_court_wrong_location` | `cr_reported_court_wrong_location`, `r_reported_court_wrong_location` | 관리자 구장별 큐에 open 신고로 노출 |
+| `reported_court_closed` | `cr_reported_court_closed`, `r_reported_court_closed` | 폐쇄 구장 신고가 구장요청 기준으로 묶임 |
+| `reported_court_unsafe` | `cr_reported_court_unsafe`, `r_reported_court_unsafe`, `r_reported_court_broken_hoop` | 같은 구장요청에 여러 신고자 신고 누적 |
+| `age_fraud_u13_to_open` | `u32`, `r_age_fraud_u13_to_open` | 플레이어별 open 신고로 노출, ranking 자동 변경 없음 |
+| `age_fraud_u20_to_open` | `u35`, `r_age_fraud_u20_to_open` | resolved 신고와 active suspension row 노출 |
+| `age_verification_pending` | none | backend gap: verification status 없음 |
+| `age_verification_rejected` | none | backend gap: verification status 없음 |
+| `age_fraud_match_dispute` | disputed match, `r_age_fraud_match_dispute` | 경기별 큐에 이의/신고 같이 노출 |
+| `admin_resolved_age_fraud` | `aa_admin_resolved_age_fraud`, `n_admin_resolved_age_fraud` | 신고자 피드백 알림과 audit row 존재 |
+| `low_trust_after_confirmed_fraud` | `u35`, `ad_low_trust_after_confirmed_fraud` | 신뢰도 낮은 유저와 제재 row 존재 |
+| `blocked_user_wrong_division` | none | backend gap: 참여 시점 연령 자격 차단 미구현 |
+
+Backend gaps:
+
+- `reports`는 `target_type/reporter_id`가 아니라 `type/user_id` 구조다. seed와 server action은 이 구조를 따라야 한다.
+- 승인 구장(`approved_courts`) 신고, 구장 hidden/disabled moderation status가 없다.
+- 구장 리뷰 신고/숨김은 아직 `court_reviews`와 `reports` 사이 연결이 없다.
+- `profiles`에는 birth year와 age group만 있고 나이 인증 상태, 신고 전 주장 나이, 관리자 검증 나이를 분리 저장할 컬럼이 없다.
+- 방 생성자는 연령 제한 밖이면 생성이 막히지만, recruiting 참여/초대 수락 시점의 연령 차단은 아직 authoritative server logic이 아니다.
+- abuse/integrity seed는 demo state 생성기에 들어갔다. Supabase Auth user 150명 이상을 만드는 service-role alpha seed script와 cleanup script는 별도 남은 작업이다.

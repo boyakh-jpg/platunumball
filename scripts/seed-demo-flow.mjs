@@ -227,6 +227,10 @@ function userByIndex(state, index) {
   return state.users[index % state.users.length]?.id ?? "u1";
 }
 
+function uniqueById(items = []) {
+  return [...new Map(items.map((item) => [item.id, item])).values()];
+}
+
 function trustedUserByIndex(state, index, minTrust = 75) {
   const users = state.users.filter((user) => Number(user.trustScore ?? 0) >= minTrust);
   return users[index % users.length]?.id ?? userByIndex(state, index);
@@ -355,6 +359,293 @@ function addBulkDemoContent(state) {
   }
 
   return nextState;
+}
+
+const INTEGRITY_NOW = "2026-06-17T09:00:00.000Z";
+const INTEGRITY_RESOLVED_AT = "2026-06-18T10:30:00.000Z";
+
+function makeIntegrityReport({
+  id,
+  type,
+  targetId,
+  by,
+  reportedUserIds = [],
+  reason,
+  status = "open",
+  createdAt = INTEGRITY_NOW,
+  resolvedBy = null,
+  resolvedAt = null,
+  resolution = null,
+}) {
+  return {
+    id,
+    type,
+    targetId,
+    by,
+    reportedUserIds,
+    reason,
+    status,
+    createdAt,
+    ...(resolvedBy ? { resolvedBy } : {}),
+    ...(resolvedAt ? { resolvedAt } : {}),
+    ...(resolution ? { resolution } : {}),
+  };
+}
+
+function makeIntegrityCourtRequest({
+  id,
+  status = "reported",
+  requestedBy,
+  name,
+  hashtag,
+  region,
+  type = "야외",
+  addressText,
+  locationNote,
+  courtKind = "street_hoop",
+  surfaceType = "urethane",
+  courtLayout = "full",
+  lighting = true,
+  paid = false,
+}) {
+  return {
+    id,
+    status,
+    requestedBy,
+    requestedByTrustScore: 74,
+    name,
+    baseName: name.replace(/^[^ ]+ /, ""),
+    hashtag,
+    region,
+    type,
+    addressText,
+    roadAddress: addressText,
+    jibunAddress: "",
+    zonecode: "",
+    detailAddress: "",
+    locationNote,
+    lat: null,
+    lng: null,
+    courtKind,
+    surfaceType,
+    courtLayout,
+    lighting,
+    paid,
+    createdAt: INTEGRITY_NOW,
+    updatedAt: INTEGRITY_NOW,
+  };
+}
+
+function addIntegrityScenarioSeeds(state) {
+  const userPatches = {
+    u31: { birthYear: 2014, ageGroup: "junior", ageGroupCheckedSeason: "2026-h1", onboardingComplete: true, handleLockedAt: INTEGRITY_NOW, birthYearLockedAt: INTEGRITY_NOW },
+    u32: { birthYear: 2006, ageGroup: "open", ageGroupCheckedSeason: "2026-h1", onboardingComplete: true, handleLockedAt: INTEGRITY_NOW, birthYearLockedAt: INTEGRITY_NOW, trustScore: 58 },
+    u33: { birthYear: 2012, ageGroup: "junior", ageGroupCheckedSeason: "2026-h1", onboardingComplete: true, handleLockedAt: INTEGRITY_NOW, birthYearLockedAt: INTEGRITY_NOW },
+    u34: { birthYear: 2007, ageGroup: "rising", ageGroupCheckedSeason: "2026-h1", onboardingComplete: true, handleLockedAt: INTEGRITY_NOW, birthYearLockedAt: INTEGRITY_NOW },
+    u35: { birthYear: 2003, ageGroup: "open", ageGroupCheckedSeason: "2026-h1", onboardingComplete: true, handleLockedAt: INTEGRITY_NOW, birthYearLockedAt: INTEGRITY_NOW, trustScore: 52 },
+    u36: { birthYear: 2008, ageGroup: "rising", ageGroupCheckedSeason: "2026-h1", onboardingComplete: true, handleLockedAt: INTEGRITY_NOW, birthYearLockedAt: INTEGRITY_NOW },
+  };
+  const users = state.users.map((user) => ({
+    ...user,
+    ...(userPatches[user.id] ?? {}),
+  }));
+  const fallbackMatches = state.matches ?? [];
+  const ageDisputeMatchId = fallbackMatches[2]?.id ?? fallbackMatches[0]?.id ?? "";
+  const fakeScoreMatchId = fallbackMatches[3]?.id ?? fallbackMatches[0]?.id ?? "";
+  const manipulationMatchId = fallbackMatches[5]?.id ?? fallbackMatches[0]?.id ?? "";
+  const matches = fallbackMatches.map((match) => {
+    if (match.id !== ageDisputeMatchId) return match;
+    return {
+      ...match,
+      title: `나이 이의 확인 · ${match.teamA?.name ?? "A"} vs ${match.teamB?.name ?? "B"}`,
+      status: "disputed",
+      disputes: [
+        ...(match.disputes ?? []),
+        { id: "dispute_age_fraud_match", by: "u6", reason: "나이 속임 신고로 결과 보류", createdAt: INTEGRITY_NOW },
+      ],
+      disputeDraftResult: match.result ?? null,
+      disputeDraftUpdatedAt: INTEGRITY_NOW,
+    };
+  });
+  const courtRequests = [
+    makeIntegrityCourtRequest({
+      id: "cr_reported_court_wrong_location",
+      requestedBy: "u41",
+      name: "망원동 라인아웃 골대",
+      hashtag: "#courtm1",
+      region: "마포",
+      addressText: "서울특별시 마포구 망원동 205-5",
+      locationNote: "신고: 실제 핀과 주소가 다르다는 제보",
+    }),
+    makeIntegrityCourtRequest({
+      id: "cr_reported_court_closed",
+      requestedBy: "u42",
+      name: "성수동 브릿지 폐쇄코트",
+      hashtag: "#courtcl",
+      region: "성수",
+      addressText: "서울특별시 성동구 성수동1가 685-1",
+      locationNote: "신고: 공사로 폐쇄된 코트",
+    }),
+    makeIntegrityCourtRequest({
+      id: "cr_reported_court_unsafe",
+      requestedBy: "u43",
+      name: "서초동 미끄럼 코트",
+      hashtag: "#courtu1",
+      region: "서초",
+      addressText: "서울특별시 서초구 서초동 1320",
+      locationNote: "신고: 바닥 미끄러움과 골대 흔들림",
+      surfaceType: "asphalt",
+    }),
+    makeIntegrityCourtRequest({
+      id: "cr_reported_court_lighting",
+      requestedBy: "u44",
+      name: "잠실동 그림자 코트",
+      hashtag: "#courtlt",
+      region: "잠실",
+      addressText: "서울특별시 송파구 잠실동 10",
+      locationNote: "신고: 야간 조명 불량",
+      lighting: false,
+    }),
+    makeIntegrityCourtRequest({
+      id: "cr_reported_court_duplicate",
+      requestedBy: "u45",
+      name: "반포동 중복 골대",
+      hashtag: "#courtdp",
+      region: "서초",
+      addressText: "서울특별시 서초구 반포동 115-5",
+      locationNote: "신고: 기존 반포 선셋파크와 중복 의심",
+    }),
+    makeIntegrityCourtRequest({
+      id: "cr_reported_court_resolved",
+      status: "approved",
+      requestedBy: "u46",
+      name: "연남동 검증 코트",
+      hashtag: "#courtok",
+      region: "마포",
+      addressText: "서울특별시 마포구 연남동 250-9",
+      locationNote: "관리자 검증 완료",
+    }),
+    makeIntegrityCourtRequest({
+      id: "cr_reported_court_rejected",
+      status: "pending",
+      requestedBy: "u47",
+      name: "구로동 오인 신고 코트",
+      hashtag: "#courtno",
+      region: "구로",
+      addressText: "서울특별시 구로구 구로동 222-31",
+      locationNote: "신고 기각 시나리오",
+    }),
+  ];
+  const reports = [
+    makeIntegrityReport({ id: "r_reported_court_wrong_location", type: "court_request", targetId: "cr_reported_court_wrong_location", by: "u2", reportedUserIds: ["u41"], reason: "허위 구장 등록" }),
+    makeIntegrityReport({ id: "r_reported_court_closed", type: "court_request", targetId: "cr_reported_court_closed", by: "u3", reportedUserIds: ["u42"], reason: "허위 구장 등록" }),
+    makeIntegrityReport({ id: "r_reported_court_unsafe", type: "court_request", targetId: "cr_reported_court_unsafe", by: "u4", reportedUserIds: ["u43"], reason: "허위 구장 등록" }),
+    makeIntegrityReport({ id: "r_reported_court_broken_hoop", type: "court_request", targetId: "cr_reported_court_unsafe", by: "u5", reportedUserIds: ["u43"], reason: "허위 구장 등록" }),
+    makeIntegrityReport({ id: "r_reported_court_bad_lighting", type: "court_request", targetId: "cr_reported_court_lighting", by: "u6", reportedUserIds: ["u44"], reason: "허위 구장 등록" }),
+    makeIntegrityReport({ id: "r_reported_court_duplicate", type: "court_request", targetId: "cr_reported_court_duplicate", by: "u7", reportedUserIds: ["u45"], reason: "허위 구장 등록" }),
+    makeIntegrityReport({
+      id: "r_reported_court_resolved",
+      type: "court_request",
+      targetId: "cr_reported_court_resolved",
+      by: "u8",
+      reportedUserIds: ["u46"],
+      reason: "허위 구장 등록",
+      status: "resolved",
+      resolvedBy: "u1",
+      resolvedAt: INTEGRITY_RESOLVED_AT,
+      resolution: { actionType: "validReport", feedback: "위치 정보를 관리자 기준으로 정정했습니다.", reason: "주소 확인 완료" },
+    }),
+    makeIntegrityReport({
+      id: "r_reported_court_rejected",
+      type: "court_request",
+      targetId: "cr_reported_court_rejected",
+      by: "u9",
+      reportedUserIds: ["u47"],
+      reason: "허위 구장 등록",
+      status: "dismissed",
+      resolvedBy: "u1",
+      resolvedAt: INTEGRITY_RESOLVED_AT,
+      resolution: { actionType: "dismissReport", feedback: "확인 결과 신고가 기각되었습니다.", reason: "주소와 현장 정보 일치" },
+    }),
+    makeIntegrityReport({ id: "r_age_fraud_u13_to_open", type: "player", targetId: "u32", by: "u10", reportedUserIds: ["u32"], reason: "나이 속임" }),
+    makeIntegrityReport({ id: "r_age_fraud_u20_to_open", type: "player", targetId: "u35", by: "u11", reportedUserIds: ["u35"], reason: "나이 속임", status: "resolved", resolvedBy: "u1", resolvedAt: INTEGRITY_RESOLVED_AT, resolution: { actionType: "suspendTarget", feedback: "나이 정보 위반이 확인되어 제재되었습니다.", reason: "연령군 위반 확인", targetUserId: "u35", durationDays: 14 } }),
+    makeIntegrityReport({ id: "r_age_fraud_match_dispute", type: "match", targetId: ageDisputeMatchId, by: "u6", reportedUserIds: ["u32"], reason: "나이 속임" }),
+    makeIntegrityReport({ id: "r_identity_mismatch", type: "player", targetId: "u36", by: "u12", reportedUserIds: ["u36"], reason: "대리 참여" }),
+    makeIntegrityReport({ id: "r_duplicate_account_suspicion", type: "player", targetId: "u34", by: "u13", reportedUserIds: ["u34"], reason: "기타 운영 확인 필요" }),
+    makeIntegrityReport({ id: "r_player_no_show", type: "player", targetId: "u31", by: "u14", reportedUserIds: ["u31"], reason: "무단 불참" }),
+    makeIntegrityReport({ id: "r_fake_score", type: "match", targetId: fakeScoreMatchId, by: "u15", reportedUserIds: ["u32"], reason: "허위 경기 결과" }),
+    makeIntegrityReport({ id: "r_abusive_chat", type: "player", targetId: "u33", by: "u16", reportedUserIds: ["u33"], reason: "폭언/위협" }),
+    makeIntegrityReport({ id: "r_referee_no_show", type: "player", targetId: "u11", by: "u17", reportedUserIds: ["u11"], reason: "무단 불참" }),
+    makeIntegrityReport({ id: "r_team_eligibility_violation", type: "match", targetId: manipulationMatchId, by: "u18", reportedUserIds: ["u34"], reason: "대리 참여" }),
+    makeIntegrityReport({ id: "r_unauthorized_score_entry", type: "match", targetId: fakeScoreMatchId, by: "u19", reportedUserIds: ["u35"], reason: "기록 조작" }),
+    makeIntegrityReport({ id: "r_suspicious_ranking_manipulation", type: "player", targetId: "u35", by: "u20", reportedUserIds: ["u35"], reason: "티어/MMR 조작 의심" }),
+  ].filter((report) => report.targetId);
+  const notifications = [
+    {
+      id: "n_admin_resolved_age_fraud",
+      targetUserId: "u11",
+      title: "신고 처리 결과",
+      body: "나이 속임 신고가 인정되어 대상 제재가 적용되었습니다.",
+      tone: "report",
+      type: "report_action",
+      reportId: "r_age_fraud_u20_to_open",
+      createdAt: INTEGRITY_RESOLVED_AT,
+    },
+    {
+      id: "n_reported_court_resolved",
+      targetUserId: "u8",
+      title: "구장 신고 처리 결과",
+      body: "구장 위치 신고가 인정되어 관리자 검증 상태로 처리되었습니다.",
+      tone: "report",
+      type: "report_action",
+      reportId: "r_reported_court_resolved",
+      createdAt: INTEGRITY_RESOLVED_AT,
+    },
+  ];
+  const adminDisciplinaryActions = [
+    {
+      id: "ad_low_trust_after_confirmed_fraud",
+      userId: "u35",
+      type: "suspension",
+      actionType: "suspendTarget",
+      sourceReportId: "r_age_fraud_u20_to_open",
+      reason: "나이 속임 확정",
+      startsAt: INTEGRITY_RESOLVED_AT,
+      endsAt: "2026-07-02T10:30:00.000Z",
+      durationDays: 14,
+      createdAt: INTEGRITY_RESOLVED_AT,
+      createdBy: "u1",
+      status: "active",
+    },
+  ];
+  const adminAuditLog = [
+    {
+      id: "aa_admin_resolved_age_fraud",
+      type: "report_action",
+      status: "committed",
+      reportId: "r_age_fraud_u20_to_open",
+      targetUserId: "u35",
+      actionType: "suspendTarget",
+      reason: "나이 속임 확정",
+      feedback: "나이 정보 위반이 확인되어 제재되었습니다.",
+      createdAt: INTEGRITY_RESOLVED_AT,
+      createdBy: "u1",
+    },
+  ];
+
+  return {
+    ...state,
+    users,
+    matches,
+    reports: uniqueById([...reports, ...(state.reports ?? [])]),
+    notifications: uniqueById([...notifications, ...(state.notifications ?? [])]),
+    settings: {
+      ...(state.settings ?? {}),
+      courtRequests: uniqueById([...courtRequests, ...(state.settings?.courtRequests ?? [])]),
+      adminDisciplinaryActions: uniqueById([...adminDisciplinaryActions, ...(state.settings?.adminDisciplinaryActions ?? [])]),
+      adminAuditLog: uniqueById([...adminAuditLog, ...(state.settings?.adminAuditLog ?? [])]),
+    },
+  };
 }
 
 let state = buildBaseState();
@@ -919,6 +1210,38 @@ assertFlow(slotLobby.sides.teamB.players.includes("u20"), "내슬롯관리: 개�
 
 state = addBulkDemoContent(state);
 state = runAutomaticStateMaintenance(state);
+state = addIntegrityScenarioSeeds(state);
+report.integrityScenarios = [
+  { name: "reported_court_wrong_location", ids: ["cr_reported_court_wrong_location", "r_reported_court_wrong_location"], expected: "court_request report open; admin court queue shows warning" },
+  { name: "reported_court_closed", ids: ["cr_reported_court_closed", "r_reported_court_closed"], expected: "court_request report open; admin court queue shows warning" },
+  { name: "reported_court_unsafe", ids: ["cr_reported_court_unsafe", "r_reported_court_unsafe", "r_reported_court_broken_hoop"], expected: "multiple users can report the same court request" },
+  { name: "age_fraud_u13_to_open", ids: ["u32", "r_age_fraud_u13_to_open"], expected: "player report open; ranking unchanged until admin action" },
+  { name: "age_fraud_u20_to_open", ids: ["u35", "r_age_fraud_u20_to_open"], expected: "resolved player report with disciplinary action" },
+  { name: "age_verification_pending", ids: [], expected: "backend gap: no verification_status column" },
+  { name: "age_verification_rejected", ids: [], expected: "backend gap: no verification_status column" },
+  { name: "age_fraud_match_dispute", ids: [state.matches[2]?.id, "r_age_fraud_match_dispute"], expected: "match status disputed; final result not directly mutated" },
+  { name: "admin_resolved_age_fraud", ids: ["aa_admin_resolved_age_fraud", "n_admin_resolved_age_fraud"], expected: "reporter feedback notification and audit row are present" },
+  { name: "low_trust_after_confirmed_fraud", ids: ["u35", "ad_low_trust_after_confirmed_fraud"], expected: "low trust plus active suspension row" },
+  { name: "blocked_user_wrong_division", ids: [], expected: "backend gap: join-time age eligibility block is not enforced yet" },
+];
+report.integrityGaps = [
+  "approved_courts has no hidden/disabled moderation status; only court_requests can be reported with current UI/server action.",
+  "reports uses type/user_id, not target_type/reporter_id.",
+  "profiles has birth_year and age_group, but no claimed_birth_year, verified_birth_year, or verification_status.",
+  "CreateMatch blocks the creator outside selected age groups, but recruiting join/apply does not enforce age eligibility yet.",
+  "Fraud reports do not automatically change ranking; completed-match fraud is represented as a disputed match/report.",
+];
+assertFlow(
+  state.reports.some((item) => item.id === "r_age_fraud_match_dispute") &&
+    state.settings?.courtRequests?.some((item) => item.id === "cr_reported_court_wrong_location") &&
+    state.settings?.adminDisciplinaryActions?.some((item) => item.id === "ad_low_trust_after_confirmed_fraud"),
+  "abuse/integrity 시나리오 seed",
+  {
+    reports: state.reports.length,
+    courtRequests: state.settings?.courtRequests?.length ?? 0,
+    disciplinaryActions: state.settings?.adminDisciplinaryActions?.length ?? 0,
+  },
+);
 report.summary = {
   users: state.users.length,
   teams: state.teams.length,
