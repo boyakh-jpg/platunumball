@@ -22,6 +22,7 @@ do $$
 begin
   if to_regclass('public.profiles') is not null then
     execute 'alter table public.profiles add column if not exists auth_user_id uuid';
+    execute 'alter table public.profiles add column if not exists test_login_id text';
     execute 'alter table public.profiles add column if not exists hashtag text';
     execute 'alter table public.profiles add column if not exists birth_year integer';
     execute 'alter table public.profiles add column if not exists age_group text';
@@ -77,6 +78,7 @@ begin
     end if;
 
     execute 'create unique index if not exists profiles_auth_user_id_unique on public.profiles (auth_user_id) where auth_user_id is not null';
+    execute 'create unique index if not exists profiles_test_login_id_unique on public.profiles (test_login_id) where test_login_id is not null';
 
     if not exists (
       select 1

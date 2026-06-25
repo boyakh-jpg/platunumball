@@ -1932,6 +1932,35 @@ span.referee-hover-card {
   grid-template-columns: 1fr;
 }
 
+.prefixed-input {
+  display: flex;
+  align-items: center;
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--input);
+  overflow: hidden;
+}
+
+.prefixed-input > span {
+  flex: 0 0 auto;
+  padding-left: 12px;
+  color: var(--muted);
+  font-weight: 900;
+}
+
+.prefixed-input input {
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.prefixed-input input:focus {
+  outline: none;
+  box-shadow: none;
+}
+
 .create-submit-row {
   display: flex;
   align-items: center;

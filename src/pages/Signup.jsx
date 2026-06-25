@@ -5,7 +5,7 @@ import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import { PLAYER_POSITIONS } from "../lib/constants.js";
-import { getUserHashtag, sameHashtag, toHashtag } from "../lib/handles.js";
+import { getUserHashtag, sameHashtag, stripHandle, toHashtag } from "../lib/handles.js";
 import {
   AGE_GROUPS,
   canChangeProfileName,
@@ -31,7 +31,7 @@ export default function Signup({ app, auth }) {
   const inferredRegion = inferRegionSelection(user.region);
   const [draft, setDraft] = useState({
     name: user.name ?? "",
-    handle: getUserHashtag(user),
+    handle: user.handleLockedAt || user.hashtagLockedAt ? stripHandle(getUserHashtag(user)) : stripHandle(user.hashtag ?? user.handle ?? ""),
     birthYear: user.birthYear ?? "",
     position: POSITION_OPTIONS.includes(user.position) ? user.position : "PG",
     sido: user.regionSido ?? inferredRegion.sido,
@@ -48,8 +48,9 @@ export default function Signup({ app, auth }) {
   const birthYearLocked = Boolean(user.birthYearLockedAt);
   const nameChangeAllowed = canChangeProfileName(user);
   const nextNameChangeDate = getNextNameChangeDate(user);
-  const normalizedHandle = handleLocked ? getUserHashtag(user) : toHashtag(draft.handle, draft.name || user.id);
-  const handleDuplicate = !handleLocked && app.state.users.some((item) => item.id !== user.id && sameHashtag(normalizedHandle, getUserHashtag(item)));
+  const handleBody = handleLocked ? stripHandle(getUserHashtag(user)) : stripHandle(draft.handle);
+  const normalizedHandle = handleBody ? toHashtag(handleBody) : "";
+  const handleDuplicate = !handleLocked && Boolean(normalizedHandle) && app.state.users.some((item) => item.id !== user.id && sameHashtag(normalizedHandle, getUserHashtag(item)));
 
   const districtOptions = useMemo(() => selectedRegion.districts, [selectedRegion]);
   const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
@@ -63,6 +64,10 @@ export default function Signup({ app, auth }) {
     }
     if (handleDuplicate) {
       setFormError("이미 사용 중인 해시태그입니다.");
+      return;
+    }
+    if (!handleLocked && !handleBody) {
+      setFormError("해시태그를 직접 입력하세요.");
       return;
     }
     const birthYear = birthYearLocked ? Number(user.birthYear) : Number(draft.birthYear);
@@ -123,7 +128,10 @@ export default function Signup({ app, auth }) {
             </label>
             <label>
               해시태그
-              <input value={handleLocked ? getUserHashtag(user) : draft.handle} maxLength={22} placeholder="#minjun" disabled={handleLocked} onChange={(event) => update({ handle: event.target.value })} />
+              <span className="prefixed-input">
+                <span>#</span>
+                <input value={handleBody} maxLength={20} placeholder="minjun" disabled={handleLocked} onChange={(event) => update({ handle: stripHandle(event.target.value) })} />
+              </span>
               {handleDuplicate ? <span className="form-warning">이미 사용 중인 해시태그입니다.</span> : null}
               {handleLocked ? <span className="muted">해시태그는 최초 등록 후 수정할 수 없습니다.</span> : null}
             </label>

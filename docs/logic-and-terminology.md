@@ -96,6 +96,8 @@ UI/CSS/반응형/라이트·다크 세부 기준은 `docs/design-system.md`를 �
 3. 해시태그는 프로필 전체에서 중복될 수 없다.
 4. 출생연도는 최초 등록 후 수정할 수 없다.
 5. 닉네임은 변경 가능하지만 `nameUpdatedAt` 기준 월 1회만 허용한다.
+6. 가입 해시태그는 닉네임/email/user id로 추천 생성하지 않고 사용자가 직접 입력해야 한다.
+7. `#` 기호는 고정 prefix이며 저장값에는 항상 포함한다.
 
 ## 데이터 축
 
@@ -1050,3 +1052,4 @@ flowchart TD
 6. 테스트 계정 server action은 `test-token-rankball-001` 형식 bearer token을 `profiles.test_login_id`로 매핑한다.
 7. 테스트 토큰은 `VITE_DEMO_LOGIN=true` 또는 `RANKBALL_ENABLE_TEST_LOGIN=true`일 때만 서버에서 허용한다.
 8. 테스트 계정 프로필 저장은 기존 `auth_user_id`를 만들거나 바꾸지 않고 `test_login_id` row만 갱신한다.
+9. 실제 Google 프로필 저장은 `test_login_id` 컬럼에 의존하지 않는다.

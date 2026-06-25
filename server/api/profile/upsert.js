@@ -33,7 +33,7 @@ function getDiscordUserId(connection) {
 function buildProfileRow({ existing, profile, authUser, authUserId, isTestAccount }) {
   const now = new Date().toISOString();
   const existingLockedHandle = existing?.handle_locked_at || existing?.hashtag_locked_at;
-  const requestedHashtag = normalizeHashtag(profile.hashtag ?? profile.handle, profile.name ?? authUser.email);
+  const requestedHashtag = normalizeHashtag(profile.hashtag ?? profile.handle);
   const nextHashtag = existingLockedHandle ? existing.hashtag ?? existing.handle ?? "" : requestedHashtag;
   const requestedBirthYear = normalizeBirthYear(profile.birthYear);
   const nextBirthYear = existing?.birth_year_locked_at ? existing.birth_year : requestedBirthYear;
@@ -41,10 +41,15 @@ function buildProfileRow({ existing, profile, authUser, authUserId, isTestAccoun
   const nextName = existing && requestedName !== existing.name && !canChangeName(existing) ? existing.name : requestedName;
   const discordConnection = profile.discordConnection ?? existing?.discord_connection ?? null;
 
-  return {
+  if (profile.onboardingComplete && !existingLockedHandle && !nextHashtag) {
+    const error = new Error("hashtag_required");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const row = {
     id: existing?.id ?? makeProfileId(authUserId),
     auth_user_id: isTestAccount ? existing?.auth_user_id ?? null : authUserId,
-    test_login_id: existing?.test_login_id ?? profile.testLoginId ?? null,
     name: nextName,
     handle: nextHashtag || existing?.handle || "",
     hashtag: nextHashtag || existing?.hashtag || null,
@@ -71,6 +76,10 @@ function buildProfileRow({ existing, profile, authUser, authUserId, isTestAccoun
     discord_user_id: getDiscordUserId(discordConnection),
     updated_at: now,
   };
+
+  if (isTestAccount) row.test_login_id = existing?.test_login_id ?? profile.testLoginId ?? null;
+
+  return row;
 }
 
 export default async function handler(request, response) {
@@ -101,7 +110,7 @@ export default async function handler(request, response) {
     const query = existing?.id
       ? context.supabase.from("profiles").update(row).eq("id", existing.id)
       : context.supabase.from("profiles").insert(row);
-    const { data, error } = await query.select("id, auth_user_id, test_login_id, updated_at").single();
+    const { data, error } = await query.select("id, auth_user_id, updated_at").single();
 
     if (error) throw error;
 
