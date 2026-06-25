@@ -116,6 +116,23 @@ const DEFAULT_SETTINGS = {
   adminDisciplinaryActions: [],
   refereeExamAttempts: [],
 };
+const EMPTY_STATE = {
+  currentUserId: "",
+  deletedTeamIds: [],
+  users: [],
+  teams: [],
+  affiliations: [],
+  seasons: [],
+  matches: [],
+  tournaments: [],
+  notifications: [],
+  reports: [],
+  recruitingPosts: [],
+  discordNotificationDeliveries: [],
+  discordNotificationSeenKeys: [],
+  discordNotificationSeenUsers: [],
+  settings: DEFAULT_SETTINGS,
+};
 const REMOTE_PAGE_SIZE = 1000;
 const REMOTE_WRITE_CHUNK_SIZE = 500;
 const QUEUE_SCHEDULE_START_DATE = "2026-06-15";
@@ -143,6 +160,56 @@ function isRecruitingRoomOwner(post = {}, userId = "") {
   return Boolean(userId && getRecruitingRoomOwnerId(post) === userId);
 }
 let normalizedSaveWarningShown = false;
+
+function makeDefaultRatings() {
+  return { integrated: 1200, modes: { "1v1": 1200, "2v2": 1200, "3v3": 1200, "5v5": 1200 } };
+}
+
+function getProfileShellId(authUserId = "") {
+  const safeId = String(authUserId || "pending").replace(/[^a-zA-Z0-9]/g, "").slice(0, 18) || "pending";
+  return `p_${safeId}`;
+}
+
+export function createProfileShell(authUserId = "", email = "") {
+  const fallbackName = String(email || "").split("@")[0] || "신규 선수";
+  return {
+    id: getProfileShellId(authUserId),
+    name: fallbackName,
+    handle: "",
+    hashtag: "",
+    position: "PG",
+    region: "서울특별시 마포구",
+    regionSido: "서울특별시",
+    regionDistrict: "마포구",
+    school: "",
+    company: "",
+    club: "",
+    trustScore: 80,
+    streak: 0,
+    avatarColor: "#58d2c0",
+    authUserId: authUserId || null,
+    birthYear: null,
+    ageGroup: "open",
+    ageGroupCheckedSeason: null,
+    onboardingComplete: false,
+    profileVersion: 0,
+    handleLockedAt: null,
+    birthYearLockedAt: null,
+    nameUpdatedAt: null,
+    discordConnection: null,
+    discordUserId: null,
+    ratings: makeDefaultRatings(),
+  };
+}
+
+function createEmptyState({ authUserId = "", email = "" } = {}) {
+  const shellUser = authUserId ? createProfileShell(authUserId, email) : null;
+  return {
+    ...clone(EMPTY_STATE),
+    currentUserId: shellUser?.id ?? "",
+    users: shellUser ? [shellUser] : [],
+  };
+}
 
 function clampTrustScore(value) {
   return Math.max(0, Math.min(100, Math.round(Number(value ?? 80))));
@@ -552,7 +619,9 @@ function normalizeMatch(match) {
   return repairLifecycleTitle(pregameStartRepaired);
 }
 
-function normalizeSettings(settings = {}) {
+function normalizeSettings(settings = {}, options = {}) {
+  const includeDemo = options.includeDemo !== false;
+  const fallbackSettings = includeDemo ? initialState.settings ?? {} : {};
   const theme = settings.theme === "light" ? "light" : "dark";
   const discordChannel = settings.notificationChannels?.discord ?? {};
   return {
@@ -576,18 +645,18 @@ function normalizeSettings(settings = {}) {
       },
     },
     blockedUserIds: settings.blockedUserIds ?? [],
-    favoritePlayerIds: settings.favoritePlayerIds ?? initialState.settings?.favoritePlayerIds ?? [],
-    favoriteTeamIds: settings.favoriteTeamIds ?? initialState.settings?.favoriteTeamIds ?? [],
-    favoriteCourtIds: settings.favoriteCourtIds ?? initialState.settings?.favoriteCourtIds ?? [],
-    approvedCourts: settings.approvedCourts ?? initialState.settings?.approvedCourts ?? [],
-    courtRequests: settings.courtRequests ?? initialState.settings?.courtRequests ?? [],
-    courtReviews: settings.courtReviews ?? initialState.settings?.courtReviews ?? [],
-    refereeRequests: settings.refereeRequests ?? initialState.settings?.refereeRequests ?? [],
-    adminAppointments: settings.adminAppointments ?? initialState.settings?.adminAppointments ?? [],
-    refereeAppointments: settings.refereeAppointments ?? initialState.settings?.refereeAppointments ?? [],
-    adminAuditLog: settings.adminAuditLog ?? initialState.settings?.adminAuditLog ?? [],
-    adminDisciplinaryActions: settings.adminDisciplinaryActions ?? initialState.settings?.adminDisciplinaryActions ?? [],
-    refereeExamAttempts: settings.refereeExamAttempts ?? initialState.settings?.refereeExamAttempts ?? [],
+    favoritePlayerIds: settings.favoritePlayerIds ?? fallbackSettings.favoritePlayerIds ?? [],
+    favoriteTeamIds: settings.favoriteTeamIds ?? fallbackSettings.favoriteTeamIds ?? [],
+    favoriteCourtIds: settings.favoriteCourtIds ?? fallbackSettings.favoriteCourtIds ?? [],
+    approvedCourts: settings.approvedCourts ?? fallbackSettings.approvedCourts ?? [],
+    courtRequests: settings.courtRequests ?? fallbackSettings.courtRequests ?? [],
+    courtReviews: settings.courtReviews ?? fallbackSettings.courtReviews ?? [],
+    refereeRequests: settings.refereeRequests ?? fallbackSettings.refereeRequests ?? [],
+    adminAppointments: settings.adminAppointments ?? fallbackSettings.adminAppointments ?? [],
+    refereeAppointments: settings.refereeAppointments ?? fallbackSettings.refereeAppointments ?? [],
+    adminAuditLog: settings.adminAuditLog ?? fallbackSettings.adminAuditLog ?? [],
+    adminDisciplinaryActions: settings.adminDisciplinaryActions ?? fallbackSettings.adminDisciplinaryActions ?? [],
+    refereeExamAttempts: settings.refereeExamAttempts ?? fallbackSettings.refereeExamAttempts ?? [],
   };
 }
 
@@ -641,34 +710,41 @@ function ensureDemoRecruitingInvitation(post = {}) {
   };
 }
 
-function normalizeState(state) {
-  const notifications = state?.notifications?.length ? state.notifications : initialState.notifications;
+function normalizeState(state, options = {}) {
+  const includeDemo = options.includeDemo !== false;
+  const baseState = includeDemo ? clone(initialState) : clone(EMPTY_STATE);
+  const notifications = state?.notifications?.length ? state.notifications : includeDemo ? initialState.notifications : [];
   const deletedTeamIds = new Set(state?.deletedTeamIds ?? []);
+  const recruitingPosts = normalizeRecruitingSchedules(
+    includeDemo ? mergeById(state?.recruitingPosts, initialState.recruitingPosts ?? []) : state?.recruitingPosts ?? [],
+  );
 
   return {
-    ...clone(initialState),
+    ...baseState,
     ...state,
     deletedTeamIds: Array.from(deletedTeamIds),
-    users: mergeById(state?.users, initialState.users),
-    teams: mergeById(state?.teams, initialState.teams).filter((team) => !deletedTeamIds.has(team.id)),
-    affiliations: mergeById(state?.affiliations, initialState.affiliations).filter((affiliation) => affiliation.type !== "club"),
-    seasons: mergeById(state?.seasons, initialState.seasons ?? []),
-    matches: mergeById(state?.matches, initialState.matches).map(normalizeMatch),
-    tournaments: mergeById(state?.tournaments, initialState.tournaments ?? []).map(normalizeTournament),
+    users: includeDemo ? mergeById(state?.users, initialState.users) : state?.users ?? [],
+    teams: (includeDemo ? mergeById(state?.teams, initialState.teams) : state?.teams ?? []).filter((team) => !deletedTeamIds.has(team.id)),
+    affiliations: (includeDemo ? mergeById(state?.affiliations, initialState.affiliations) : state?.affiliations ?? []).filter((affiliation) => affiliation.type !== "club"),
+    seasons: includeDemo ? mergeById(state?.seasons, initialState.seasons ?? []) : state?.seasons ?? [],
+    matches: (includeDemo ? mergeById(state?.matches, initialState.matches) : state?.matches ?? []).map(normalizeMatch),
+    tournaments: (includeDemo ? mergeById(state?.tournaments, initialState.tournaments ?? []) : state?.tournaments ?? []).map(normalizeTournament),
     notifications: notifications.map((notification) => ({ readAt: null, ...notification })),
-    discordNotificationDeliveries: state?.discordNotificationDeliveries ?? initialState.discordNotificationDeliveries ?? [],
-    discordNotificationSeenKeys: state?.discordNotificationSeenKeys ?? initialState.discordNotificationSeenKeys ?? [],
-    discordNotificationSeenUsers: state?.discordNotificationSeenUsers ?? initialState.discordNotificationSeenUsers ?? [],
-    settings: normalizeSettings(state?.settings ?? initialState.settings),
-    reports: state?.reports ?? initialState.reports ?? [],
-    recruitingPosts: normalizeRecruitingSchedules(mergeById(state?.recruitingPosts, initialState.recruitingPosts ?? []))
-      .map(ensureDemoRecruitingInvitation)
+    discordNotificationDeliveries: state?.discordNotificationDeliveries ?? (includeDemo ? initialState.discordNotificationDeliveries ?? [] : []),
+    discordNotificationSeenKeys: state?.discordNotificationSeenKeys ?? (includeDemo ? initialState.discordNotificationSeenKeys ?? [] : []),
+    discordNotificationSeenUsers: state?.discordNotificationSeenUsers ?? (includeDemo ? initialState.discordNotificationSeenUsers ?? [] : []),
+    settings: normalizeSettings(state?.settings ?? (includeDemo ? initialState.settings : DEFAULT_SETTINGS), { includeDemo }),
+    reports: state?.reports ?? (includeDemo ? initialState.reports ?? [] : []),
+    recruitingPosts: (includeDemo ? recruitingPosts.map(ensureDemoRecruitingInvitation) : recruitingPosts)
       .map(normalizeRecruitingPost),
   };
 }
 
-export function loadState() {
-  return runAutomaticStateMaintenance(normalizeState(readState(clone(initialState))));
+export function loadState(options = {}) {
+  const includeDemo = options.includeDemo !== false;
+  const fallback = includeDemo ? clone(initialState) : createEmptyState(options);
+  const rawState = includeDemo ? readState(fallback) : fallback;
+  return runAutomaticStateMaintenance(normalizeState(rawState, { includeDemo }));
 }
 
 export function saveState(state) {
@@ -1014,7 +1090,7 @@ function getMaxUpdatedAt(rows) {
   return timestamps.length ? Math.max(...timestamps) : 0;
 }
 
-async function loadNormalizedRemoteState() {
+async function loadNormalizedRemoteState(authUserId = "", authEmail = "") {
   const [
     profiles,
     teams,
@@ -1079,9 +1155,12 @@ async function loadNormalizedRemoteState() {
     fetchOptionalRows("discord_notification_deliveries", "*", "queued_at"),
   ]);
 
-  if (!profiles.length || !matches.length) return null;
-
-  const currentUserId = initialState.currentUserId;
+  const authUserIdText = String(authUserId || "");
+  const currentProfile = authUserIdText
+    ? profiles.find((profile) => String(profile.auth_user_id ?? "") === authUserIdText)
+    : null;
+  const shellUser = authUserIdText && !currentProfile ? createProfileShell(authUserIdText, authEmail) : null;
+  const currentUserId = currentProfile?.id ?? shellUser?.id ?? profiles[0]?.id ?? "";
   const teamMembersByTeam = groupBy(teamMembers, "team_id");
   const teamById = firstBy(teams, "id");
   const courtById = firstBy(courts, "id");
@@ -1104,10 +1183,11 @@ async function loadNormalizedRemoteState() {
   const applicationsByPost = groupBy(recruitingApplications, "post_id");
   const tournamentTeamsByTournament = groupBy(tournamentTeams, "tournament_id");
 
+  const remoteUsers = profiles.map(fromRemoteProfile);
   const normalizedState = normalizeState({
     currentUserId,
     deletedTeamIds,
-    users: profiles.map(fromRemoteProfile),
+    users: shellUser ? [...remoteUsers, shellUser] : remoteUsers,
     teams: remoteTeams,
     matches: remoteMatches,
     affiliations: affiliations
@@ -1244,7 +1324,6 @@ async function loadNormalizedRemoteState() {
     }),
     settings: {
       ...DEFAULT_SETTINGS,
-      ...(initialState.settings ?? {}),
       favoritePlayerIds: favoriteRows.filter((favorite) => favorite.target_type === "player").map((favorite) => favorite.target_id),
       favoriteTeamIds: favoriteRows.filter((favorite) => favorite.target_type === "team").map((favorite) => favorite.target_id),
       favoriteCourtIds: favoriteRows.filter((favorite) => favorite.target_type === "court").map((favorite) => favorite.target_id),
@@ -1258,7 +1337,7 @@ async function loadNormalizedRemoteState() {
       adminAuditLog: adminAuditLog.map(fromRemotePayloadRow),
       adminDisciplinaryActions: adminDisciplinaryActions.map(fromRemotePayloadRow),
     },
-  });
+  }, { includeDemo: false });
   return {
     state: normalizedState,
     updatedAt: Math.max(
@@ -1276,14 +1355,14 @@ async function loadNormalizedRemoteState() {
   };
 }
 
-export async function loadRemoteState() {
+export async function loadRemoteState(authUserId = "", authEmail = "") {
   if (!isSupabaseConfigured) return null;
 
   try {
-    const normalizedRemote = await loadNormalizedRemoteState();
+    const normalizedRemote = await loadNormalizedRemoteState(authUserId, authEmail);
     return normalizedRemote?.state ? runAutomaticStateMaintenance(normalizedRemote.state) : null;
   } catch (error) {
-    console.warn("Supabase normalized state load failed. Local demo mode remains active.", error.message);
+    console.warn("Supabase normalized state load failed. Remote state remains empty.", error.message);
     return null;
   }
 }
@@ -1296,51 +1375,51 @@ function chunkRows(rows, size = REMOTE_WRITE_CHUNK_SIZE) {
   return chunks;
 }
 
-async function upsertRemoteRows(table, rows, onConflict) {
+async function upsertRemoteRows(table, rows, onConflict, client = supabase) {
   if (!rows.length) return;
   for (const chunk of chunkRows(rows)) {
-    const { error } = await supabase.from(table).upsert(chunk, onConflict ? { onConflict } : undefined);
+    const { error } = await client.from(table).upsert(chunk, onConflict ? { onConflict } : undefined);
     if (error) throw error;
   }
 }
 
-async function upsertOptionalRemoteRows(table, rows, onConflict) {
+async function upsertOptionalRemoteRows(table, rows, onConflict, client = supabase) {
   try {
-    if (isServerBridgeWriteEnabled) {
+    if (client === supabase && isServerBridgeWriteEnabled) {
       await writeServerBridgeRows(table, rows);
       return;
     }
-    await upsertRemoteRows(table, rows, onConflict);
+    await upsertRemoteRows(table, rows, onConflict, client);
   } catch (error) {
     console.warn(`Supabase optional table write skipped: ${table}`, error.message);
   }
 }
 
-async function softDeleteRemoteTeams(teamIds = []) {
+async function softDeleteRemoteTeams(teamIds = [], client = supabase) {
   if (!teamIds.length) return;
   for (const chunk of chunkRows(teamIds)) {
     const deletedAt = new Date().toISOString();
-    let response = await supabase.from("team_members").delete().in("team_id", chunk);
+    let response = await client.from("team_members").delete().in("team_id", chunk);
     if (response.error) throw response.error;
 
-    response = await supabase.from("favorites").delete().eq("target_type", "team").in("target_id", chunk);
+    response = await client.from("favorites").delete().eq("target_type", "team").in("target_id", chunk);
     if (response.error) throw response.error;
 
-    response = await supabase.from("recruiting_posts").update({ status: "closed", updated_at: deletedAt }).in("team_id", chunk);
+    response = await client.from("recruiting_posts").update({ status: "closed", updated_at: deletedAt }).in("team_id", chunk);
     if (response.error) throw response.error;
 
-    response = await supabase.from("teams").update({ deleted_at: deletedAt, updated_at: deletedAt }).in("id", chunk);
+    response = await client.from("teams").update({ deleted_at: deletedAt, updated_at: deletedAt }).in("id", chunk);
     if (response.error) throw response.error;
   }
 }
 
-async function replaceRemoteRecruitingApplications(postIds = [], applicationRows = []) {
+async function replaceRemoteRecruitingApplications(postIds = [], applicationRows = [], client = supabase) {
   for (const chunk of chunkRows(postIds)) {
-    const { error } = await supabase.from("recruiting_applications").delete().in("post_id", chunk);
+    const { error } = await client.from("recruiting_applications").delete().in("post_id", chunk);
     if (error) throw error;
   }
 
-  await upsertRemoteRows("recruiting_applications", applicationRows, "post_id,player_id,kind");
+  await upsertRemoteRows("recruiting_applications", applicationRows, "post_id,player_id,kind", client);
 }
 
 function courtIdByName(courtName) {
@@ -1442,9 +1521,10 @@ function toApprovedCourtRow(court = {}) {
   };
 }
 
-async function saveNormalizedRemoteState(state, options = {}) {
+export async function saveNormalizedRemoteState(state, options = {}) {
   const bridgeOnly = Boolean(options.bridgeOnly);
-  const currentUserId = state.currentUserId ?? initialState.currentUserId;
+  const client = options.client ?? supabase;
+  const currentUserId = state.currentUserId ?? "";
   const deletedTeamIds = state.deletedTeamIds ?? [];
   const profileRows = state.users.map((user) => ({
     id: user.id,
@@ -1775,35 +1855,35 @@ async function saveNormalizedRemoteState(state, options = {}) {
   })).filter((row) => row.id);
 
   if (!bridgeOnly) {
-    await softDeleteRemoteTeams(deletedTeamIds);
-    await upsertRemoteRows("profiles", profileRows, "id");
-    await upsertRemoteRows("teams", teamRows, "id");
-    await upsertRemoteRows("team_members", teamMemberRows, "team_id,user_id");
-    await upsertRemoteRows("matches", matchRows, "id");
-    await upsertRemoteRows("match_players", matchPlayerRows, "match_id,user_id");
-    await upsertRemoteRows("match_results", resultRows, "match_id");
-    await upsertRemoteRows("player_match_stats", statRows, "match_id,user_id");
-    await upsertRemoteRows("match_agreements", agreementRows, "match_id,user_id");
-    await upsertRemoteRows("match_approvals", approvalRows, "match_id,user_id");
+    await softDeleteRemoteTeams(deletedTeamIds, client);
+    await upsertRemoteRows("profiles", profileRows, "id", client);
+    await upsertRemoteRows("teams", teamRows, "id", client);
+    await upsertRemoteRows("team_members", teamMemberRows, "team_id,user_id", client);
+    await upsertRemoteRows("matches", matchRows, "id", client);
+    await upsertRemoteRows("match_players", matchPlayerRows, "match_id,user_id", client);
+    await upsertRemoteRows("match_results", resultRows, "match_id", client);
+    await upsertRemoteRows("player_match_stats", statRows, "match_id,user_id", client);
+    await upsertRemoteRows("match_agreements", agreementRows, "match_id,user_id", client);
+    await upsertRemoteRows("match_approvals", approvalRows, "match_id,user_id", client);
 
-    await supabase.from("favorites").delete().eq("user_id", currentUserId);
-    await upsertRemoteRows("favorites", favoriteRows, "user_id,target_type,target_id");
-    await upsertRemoteRows("recruiting_posts", recruitingRows, "id");
-    await replaceRemoteRecruitingApplications(recruitingPostIds, applicationRows);
-    await upsertRemoteRows("tournaments", tournamentRows, "id");
-    await upsertRemoteRows("tournament_teams", tournamentTeamRows, "tournament_id,team_id");
+    if (currentUserId) await client.from("favorites").delete().eq("user_id", currentUserId);
+    await upsertRemoteRows("favorites", favoriteRows, "user_id,target_type,target_id", client);
+    await upsertRemoteRows("recruiting_posts", recruitingRows, "id", client);
+    await replaceRemoteRecruitingApplications(recruitingPostIds, applicationRows, client);
+    await upsertRemoteRows("tournaments", tournamentRows, "id", client);
+    await upsertRemoteRows("tournament_teams", tournamentTeamRows, "tournament_id,team_id", client);
   }
-  await upsertOptionalRemoteRows("notifications", notificationRows, "id");
-  await upsertOptionalRemoteRows("reports", reportRows, "id");
-  await upsertOptionalRemoteRows("court_requests", courtRequestRows, "id");
-  await upsertOptionalRemoteRows("approved_courts", approvedCourtRows, "id");
-  await upsertOptionalRemoteRows("referee_requests", refereeRequestRows, "id");
-  await upsertOptionalRemoteRows("referee_exam_attempts", refereeExamAttemptRows, "id");
-  await upsertOptionalRemoteRows("admin_appointments", adminAppointmentRows, "id");
-  await upsertOptionalRemoteRows("referee_appointments", refereeAppointmentRows, "id");
-  await upsertOptionalRemoteRows("admin_audit_log", adminAuditRows, "id");
-  await upsertOptionalRemoteRows("admin_disciplinary_actions", disciplinaryRows, "id");
-  await upsertOptionalRemoteRows("discord_notification_deliveries", discordDeliveryRows, "id");
+  await upsertOptionalRemoteRows("notifications", notificationRows, "id", client);
+  await upsertOptionalRemoteRows("reports", reportRows, "id", client);
+  await upsertOptionalRemoteRows("court_requests", courtRequestRows, "id", client);
+  await upsertOptionalRemoteRows("approved_courts", approvedCourtRows, "id", client);
+  await upsertOptionalRemoteRows("referee_requests", refereeRequestRows, "id", client);
+  await upsertOptionalRemoteRows("referee_exam_attempts", refereeExamAttemptRows, "id", client);
+  await upsertOptionalRemoteRows("admin_appointments", adminAppointmentRows, "id", client);
+  await upsertOptionalRemoteRows("referee_appointments", refereeAppointmentRows, "id", client);
+  await upsertOptionalRemoteRows("admin_audit_log", adminAuditRows, "id", client);
+  await upsertOptionalRemoteRows("admin_disciplinary_actions", disciplinaryRows, "id", client);
+  await upsertOptionalRemoteRows("discord_notification_deliveries", discordDeliveryRows, "id", client);
 }
 
 export async function saveRemoteState(state, profileUserId = "") {
@@ -1813,7 +1893,7 @@ export async function saveRemoteState(state, profileUserId = "") {
 
   const sharedState = {
     ...state,
-    currentUserId: bridgeOnly ? profileUserId || state.currentUserId || initialState.currentUserId : initialState.currentUserId,
+    currentUserId: profileUserId || state.currentUserId || "",
   };
   try {
     await saveNormalizedRemoteState(sharedState, { bridgeOnly });
@@ -1829,9 +1909,9 @@ export function subscribeRemoteState() {
   return () => {};
 }
 
-export function resetState() {
+export function resetState(options = {}) {
   clearState();
-  return clone(initialState);
+  return options.includeDemo === false ? createEmptyState(options) : clone(initialState);
 }
 
 function getTeamPlayers(team, size) {

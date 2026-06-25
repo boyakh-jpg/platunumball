@@ -17,6 +17,7 @@ import {
   confirmRecruitingMatch,
   confirmMatchRefereeAbsence,
   createMatch,
+  createProfileShell,
   createRecruitingPost,
   createTeam,
   createTournament,
@@ -141,8 +142,10 @@ function preserveLocalDiscordState(localState, remoteState) {
   };
 }
 
-export function useAppData(authUserId = null) {
-  const [state, setRawState] = useState(() => syncNotificationDeliveries(loadState()));
+export function useAppData(authUser = null) {
+  const authUserId = typeof authUser === "string" ? authUser : authUser?.id ?? null;
+  const authEmail = typeof authUser === "object" ? authUser?.email ?? authUser?.user_metadata?.email ?? "" : "";
+  const [state, setRawState] = useState(() => syncNotificationDeliveries(loadState({ includeDemo: !isSupabaseConfigured, authUserId, email: authEmail })));
   const setState = useCallback((updater) => {
     setRawState((prev) => syncNotificationDeliveries(typeof updater === "function" ? updater(prev) : updater));
   }, []);
@@ -151,10 +154,20 @@ export function useAppData(authUserId = null) {
   const skipNextRemoteSaveRef = useRef(false);
   const profileKey = authUserId ?? "local-demo";
   const profileLocked = isPersistentAuthUserId(authUserId);
-  const currentUserId = getBoundAuthProfileId(state, authUserId, profileBindings, profileKey);
+  const effectiveProfileBindings = isSupabaseConfigured ? {} : profileBindings;
+  const currentUserId = getBoundAuthProfileId(state, authUserId, effectiveProfileBindings, profileKey);
 
   useEffect(() => {
-    saveState(state);
+    if (!isSupabaseConfigured || !authUserId) return;
+    setState((prev) => {
+      if (prev.users.some((user) => user.authUserId === authUserId)) return prev;
+      const shellUser = createProfileShell(authUserId, authEmail);
+      return { ...prev, currentUserId: shellUser.id, users: [shellUser, ...prev.users] };
+    });
+  }, [authEmail, authUserId, setState]);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) saveState(state);
     if (!isSupabaseConfigured || !remoteReadyRef.current) return undefined;
     if (skipNextRemoteSaveRef.current) {
       skipNextRemoteSaveRef.current = false;
@@ -177,10 +190,10 @@ export function useAppData(authUserId = null) {
   }, []);
 
   useEffect(() => {
-    if (!isSupabaseConfigured) return undefined;
+    if (!isSupabaseConfigured || !authUserId) return undefined;
 
     let mounted = true;
-    loadRemoteState()
+    loadRemoteState(authUserId, authEmail)
       .then((remoteState) => {
         if (!mounted) return;
         if (remoteState) {
@@ -191,7 +204,7 @@ export function useAppData(authUserId = null) {
         remoteReadyRef.current = true;
       })
       .catch((error) => {
-        console.warn("Supabase hydration failed. Local demo mode remains active.", error.message);
+        console.warn("Supabase hydration failed. Remote state remains empty.", error.message);
         remoteReadyRef.current = true;
       });
 
@@ -205,10 +218,10 @@ export function useAppData(authUserId = null) {
       mounted = false;
       unsubscribe();
     };
-  }, []);
+  }, [authEmail, authUserId]);
 
   useEffect(() => {
-    if (!profileLocked || !authUserId || !currentUserId) return;
+    if (!profileLocked || !authUserId || !currentUserId || isSupabaseConfigured) return;
     if (profileBindings[profileKey] !== currentUserId) {
       setProfileBindings((current) => {
         const next = { ...current, [profileKey]: currentUserId };
@@ -224,13 +237,20 @@ export function useAppData(authUserId = null) {
   }, [authUserId, currentUserId, profileKey, profileLocked, profileBindings]);
 
   const currentUser = useMemo(
-    () => state.users.find((user) => user.id === currentUserId) ?? state.users[0],
-    [currentUserId, state.users],
+    () => state.users.find((user) => user.id === currentUserId) ?? state.users[0] ?? (profileLocked ? createProfileShell(authUserId, authEmail) : null),
+    [authEmail, authUserId, currentUserId, profileLocked, state.users],
   );
   const runServerAction = useCallback((path, payload) => {
     postServerAction(path, payload).catch((error) => {
       console.warn(`Server action skipped: ${path}`, error.message);
     });
+  }, []);
+  const persistProfileServer = useCallback((profile) => {
+    const promise = postServerAction("/api/profile/upsert", { profile });
+    promise.catch((error) => {
+      console.warn("Profile server action failed.", error.message);
+    });
+    return promise;
   }, []);
   const syncRecruitingPostServer = useCallback((post, notifications = []) => {
     if (!post?.id) return;
@@ -372,7 +392,13 @@ export function useAppData(authUserId = null) {
       updateProfile: (patch, targetUserId = currentUserId) => {
         const safeTargetUserId = profileLocked ? currentUserId : targetUserId;
         const safePatch = profileLocked ? { ...patch, authUserId } : patch;
-        setState((prev) => updateProfile({ ...prev, currentUserId }, safePatch, safeTargetUserId));
+        let nextProfile = null;
+        setState((prev) => {
+          const next = updateProfile({ ...prev, currentUserId }, safePatch, safeTargetUserId);
+          nextProfile = next.users.find((user) => user.id === safeTargetUserId) ?? null;
+          return next;
+        });
+        return profileLocked && nextProfile ? persistProfileServer(nextProfile) : Promise.resolve({ ok: true });
       },
       createTeam: (draft) => setState((prev) => createTeam({ ...prev, currentUserId }, draft)),
       deleteTeam: (teamId) => setState((prev) => deleteTeam({ ...prev, currentUserId }, teamId)),
@@ -446,11 +472,12 @@ export function useAppData(authUserId = null) {
       addTeamMember: (teamId, draft) => setState((prev) => addTeamMember({ ...prev, currentUserId }, teamId, draft)),
       updateTeamMemberRole: (teamId, userId, role) => setState((prev) => updateTeamMemberRole({ ...prev, currentUserId }, teamId, userId, role)),
       removeTeamMember: (teamId, userId) => setState((prev) => removeTeamMember({ ...prev, currentUserId }, teamId, userId)),
-      reset: () => setState(resetState()),
+      reset: () => setState(resetState({ includeDemo: !isSupabaseConfigured, authUserId, email: authEmail })),
       });
     },
-    [authUserId, currentUserId, profileKey, profileLocked, runServerAction, syncRecruitingPostServer],
+    [authEmail, authUserId, currentUserId, persistProfileServer, profileKey, profileLocked, runServerAction, syncRecruitingPostServer],
   );
 
-  return { state: { ...state, currentUserId }, currentUser, currentUserId, profileBound: true, profileLocked, rankings, actions };
+  const safeCurrentUserId = currentUserId ?? currentUser?.id ?? "";
+  return { state: { ...state, currentUserId: safeCurrentUserId }, currentUser, currentUserId: safeCurrentUserId, profileBound: true, profileLocked, rankings, actions };
 }

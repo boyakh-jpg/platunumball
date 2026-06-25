@@ -7,6 +7,7 @@
     "dev": "vite --host 127.0.0.1",
     "build": "vite build",
     "seed:demo-flow": "node scripts/seed-demo-flow.mjs",
+    "seed:supabase": "node scripts/seed-supabase-state.mjs",
     "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {

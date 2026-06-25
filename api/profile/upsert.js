@@ -1,0 +1,120 @@
+import { getBearerToken, getSupabaseAdminClient, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+
+const DEFAULT_RATINGS = { integrated: 1200, modes: { "1v1": 1200, "2v2": 1200, "3v3": 1200, "5v5": 1200 } };
+
+function makeProfileId(authUserId = "") {
+  const safeId = String(authUserId || "pending").replace(/[^a-zA-Z0-9]/g, "").slice(0, 18) || "pending";
+  return `p_${safeId}`;
+}
+
+function normalizeHashtag(value = "", fallback = "") {
+  const raw = String(value || fallback || "").trim().replace(/^[@#]+/, "");
+  return raw ? `#${raw.toLowerCase().replace(/[^a-z0-9가-힣_-]/gi, "").slice(0, 20)}` : "";
+}
+
+function normalizeBirthYear(value) {
+  const year = Number(value);
+  const currentYear = new Date().getFullYear();
+  return Number.isInteger(year) && year >= 1900 && year <= currentYear ? year : null;
+}
+
+function canChangeName(existing = {}) {
+  if (!existing.onboarding_complete || !existing.name_updated_at) return true;
+  const nextDate = new Date(existing.name_updated_at);
+  if (Number.isNaN(nextDate.getTime())) return true;
+  nextDate.setMonth(nextDate.getMonth() + 1);
+  return nextDate <= new Date();
+}
+
+function getDiscordUserId(connection) {
+  return connection && typeof connection === "object" ? connection.userId ?? connection.id ?? null : null;
+}
+
+function buildProfileRow({ existing, profile, authUser, authUserId }) {
+  const now = new Date().toISOString();
+  const existingLockedHandle = existing?.handle_locked_at || existing?.hashtag_locked_at;
+  const requestedHashtag = normalizeHashtag(profile.hashtag ?? profile.handle, profile.name ?? authUser.email);
+  const nextHashtag = existingLockedHandle ? existing.hashtag ?? existing.handle ?? "" : requestedHashtag;
+  const requestedBirthYear = normalizeBirthYear(profile.birthYear);
+  const nextBirthYear = existing?.birth_year_locked_at ? existing.birth_year : requestedBirthYear;
+  const requestedName = String(profile.name ?? existing?.name ?? authUser.email?.split("@")[0] ?? "신규 선수").trim().slice(0, 20);
+  const nextName = existing && requestedName !== existing.name && !canChangeName(existing) ? existing.name : requestedName;
+  const discordConnection = profile.discordConnection ?? existing?.discord_connection ?? null;
+
+  return {
+    id: existing?.id ?? makeProfileId(authUserId),
+    auth_user_id: authUserId,
+    name: nextName,
+    handle: nextHashtag || existing?.handle || "",
+    hashtag: nextHashtag || existing?.hashtag || null,
+    birth_year: nextBirthYear,
+    age_group: profile.ageGroup ?? existing?.age_group ?? "open",
+    age_group_checked_season: profile.ageGroupCheckedSeason ?? existing?.age_group_checked_season ?? null,
+    region_sido: profile.regionSido ?? existing?.region_sido ?? "서울특별시",
+    region_district: profile.regionDistrict ?? existing?.region_district ?? "마포구",
+    onboarding_complete: Boolean(profile.onboardingComplete ?? existing?.onboarding_complete ?? false),
+    profile_version: Number(profile.profileVersion ?? existing?.profile_version ?? 1),
+    handle_locked_at: existingLockedHandle ?? (nextHashtag ? profile.handleLockedAt ?? now : null),
+    birth_year_locked_at: existing?.birth_year_locked_at ?? (nextBirthYear ? profile.birthYearLockedAt ?? now : null),
+    name_updated_at: nextName !== existing?.name ? profile.nameUpdatedAt ?? now : existing?.name_updated_at ?? null,
+    region: profile.region ?? existing?.region ?? `${profile.regionSido ?? "서울특별시"} ${profile.regionDistrict ?? "마포구"}`,
+    position: profile.position ?? existing?.position ?? "PG",
+    avatar_color: profile.avatarColor ?? existing?.avatar_color ?? "#58d2c0",
+    trust_score: Number(profile.trustScore ?? existing?.trust_score ?? 80),
+    ratings: profile.ratings ?? existing?.ratings ?? DEFAULT_RATINGS,
+    school: profile.school ?? existing?.school ?? "",
+    company: profile.company ?? existing?.company ?? "",
+    club: profile.club ?? existing?.club ?? "",
+    streak: Number(profile.streak ?? existing?.streak ?? 0),
+    discord_connection: discordConnection,
+    discord_user_id: getDiscordUserId(discordConnection),
+    updated_at: now,
+  };
+}
+
+export default async function handler(request, response) {
+  if (request.method !== "POST") {
+    response.setHeader("Allow", "POST");
+    sendJson(response, 405, { error: "method_not_allowed" });
+    return;
+  }
+
+  try {
+    const token = getBearerToken(request);
+    if (!token) {
+      sendJson(response, 401, { error: "missing_bearer_token" });
+      return;
+    }
+
+    const supabase = getSupabaseAdminClient();
+    const { data: userData, error: userError } = await supabase.auth.getUser(token);
+    if (userError || !userData?.user?.id) {
+      sendJson(response, 401, { error: "invalid_bearer_token" });
+      return;
+    }
+
+    const body = await readJsonBody(request);
+    const profile = body.profile && typeof body.profile === "object" ? body.profile : {};
+    const authUserId = userData.user.id;
+    const { data: existing, error: selectError } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("auth_user_id", authUserId)
+      .maybeSingle();
+
+    if (selectError) throw selectError;
+
+    const row = buildProfileRow({ existing, profile, authUser: userData.user, authUserId });
+    const query = existing?.id
+      ? supabase.from("profiles").update(row).eq("id", existing.id)
+      : supabase.from("profiles").insert(row);
+    const { data, error } = await query.select("id, auth_user_id, updated_at").single();
+
+    if (error) throw error;
+
+    sendJson(response, 200, { ok: true, profile: data });
+  } catch (error) {
+    console.error("Profile upsert failed.", error);
+    sendJson(response, error.statusCode || 500, { error: error.message || "profile_upsert_failed" });
+  }
+}

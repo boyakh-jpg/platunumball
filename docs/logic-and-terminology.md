@@ -48,9 +48,10 @@ UI/CSS/반응형/라이트·다크 세부 기준은 `docs/design-system.md`를 �
    - 손으로 만든 예외 shape은 버그 원인이 된다.
    - 데모는 `createRecruitingPost`, `confirmRecruitingMatch`, `startMatch`, `submitMatchResult` 같은 실제 함수 경로로 만든 데이터와 맞춰야 한다.
 
-10. `mockData/localStorage/Supabase` 혼합 구조는 당장 갈아엎지 않는다.
-    - 지금은 UI/로직 개발 우선.
-    - 프로덕션 전환 TODO는 `docs/data-storage-model.md`에 둔다.
+10. Supabase 설정 환경에서는 `mockData/localStorage`를 앱 데이터 원천으로 쓰지 않는다.
+    - `mockData`는 비-Supabase 개발/seed 생성용으로만 남긴다.
+    - Supabase 원격 로드가 실패해도 데모 state로 fallback하지 않는다.
+    - 실제 버그 검증은 normalized Supabase 데이터와 server action 기준으로 한다.
 
 ## 고정 용어
 
@@ -100,14 +101,14 @@ UI/CSS/반응형/라이트·다크 세부 기준은 `docs/design-system.md`를 �
 
 | 데이터 | 현재 위치 | 역할 |
 | --- | --- | --- |
-| `users` | `src/lib/mockData.js`, repository state | 프로필, 티어, 포지션, 신뢰도, 심판 자격 |
-| `teams` | repository state | 실제 팀, 팀원, 팀 MMR, 팀장 |
-| `recruitingPosts` | repository state | 대기방/매칭방 원본 |
-| `matches` | repository state | 확정 이후 실제 경기 원본 |
-| `tournaments` | repository state | 리그/토너먼트 |
-| `notifications` | repository state | 홈 액션/초대/오류 안내 |
-| `settings` | repository state | 테마, 즐겨찾기, 차단, 심판 시험 |
-| `reports` | repository state | 경기 후 신고, 설정 신고 |
+| `users` | Supabase `profiles`, repository state | 프로필, 티어, 포지션, 신뢰도, 심판 자격 |
+| `teams` | Supabase `teams/team_members`, repository state | 실제 팀, 팀원, 팀 MMR, 팀장 |
+| `recruitingPosts` | Supabase `recruiting_posts/recruiting_applications`, repository state | 대기방/매칭방 원본 |
+| `matches` | Supabase `matches/match_*`, repository state | 확정 이후 실제 경기 원본 |
+| `tournaments` | Supabase `tournaments/tournament_teams`, repository state | 리그/토너먼트 |
+| `notifications` | Supabase `notifications`, repository state | 홈 액션/초대/오류 안내 |
+| `settings` | Supabase bridge tables, repository state | 테마, 즐겨찾기, 차단, 심판 시험 |
+| `reports` | Supabase `reports`, repository state | 경기 후 신고, 설정 신고 |
 
 ## 관리자 메뉴 원칙
 
@@ -990,7 +991,7 @@ flowchart TD
 6. 임명 row, 징계 row, audit row는 client insert/update/delete 대상이 아니며 service-role server action으로만 변경한다.
 7. 징계 기간은 `3, 7, 14, 28, 42, 56, 168, 280`일 중 하나로 제한한다.
 8. 관리자끼리 중복 처리하지 않도록 server action은 대상 report/appointment row를 `for update`로 잠근다.
-9. Discord DM 발송은 `discord_notification_deliveries` 큐를 서버 worker가 처리한다. Discord 버튼 interaction과 `localStorage/mockData` 제거는 별도 단계로 남는다.
+9. Discord DM 발송은 `discord_notification_deliveries` 큐를 서버 worker가 처리한다. Discord 버튼 interaction은 별도 단계로 남는다.
 
 ## 2026-06-24 RLS hardening
 

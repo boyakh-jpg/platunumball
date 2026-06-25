@@ -30,7 +30,7 @@ import { shouldRecheckAgeGroup, shouldSetupProfile } from "./lib/profileSetup.js
 
 export default function App() {
   const auth = useAuthSession();
-  const app = useAppData(auth.user?.id ?? null);
+  const app = useAppData(auth.user ?? null);
   const location = useLocation();
   const theme = app.state.settings?.theme === "light" ? "light" : "dark";
   const ageRecheckRequired = Boolean(

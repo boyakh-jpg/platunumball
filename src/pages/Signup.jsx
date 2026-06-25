@@ -54,7 +54,7 @@ export default function Signup({ app, auth }) {
   const districtOptions = useMemo(() => selectedRegion.districts, [selectedRegion]);
   const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
 
-  const submit = (event) => {
+  const submit = async (event) => {
     event.preventDefault();
     const name = draft.name.trim() || user.name;
     if (user.onboardingComplete && name !== user.name && !nameChangeAllowed) {
@@ -72,23 +72,27 @@ export default function Signup({ app, auth }) {
     }
     const district = districtOptions.includes(draft.district) ? draft.district : districtOptions[0];
     const now = new Date().toISOString();
-    app.actions.updateProfile({
-      name,
-      ...(handleLocked ? {} : { handle: normalizedHandle, hashtag: normalizedHandle, handleLockedAt: now }),
-      ...(birthYearLocked ? {} : { birthYear, birthYearLockedAt: now }),
-      ageGroup: getAgeGroupByBirthYear(birthYear) ?? ageGroup,
-      ageGroupCheckedSeason: ageGroupSeason.id,
-      position: draft.position,
-      region: `${draft.sido} ${district}`,
-      regionSido: draft.sido,
-      regionDistrict: district,
-      school: "",
-      company: "",
-      onboardingComplete: true,
-      profileVersion: 1,
-      ...(name !== user.name ? { nameUpdatedAt: now } : {}),
-    });
-    navigate("/app/profile");
+    try {
+      await app.actions.updateProfile({
+        name,
+        ...(handleLocked ? {} : { handle: normalizedHandle, hashtag: normalizedHandle, handleLockedAt: now }),
+        ...(birthYearLocked ? {} : { birthYear, birthYearLockedAt: now }),
+        ageGroup: getAgeGroupByBirthYear(birthYear) ?? ageGroup,
+        ageGroupCheckedSeason: ageGroupSeason.id,
+        position: draft.position,
+        region: `${draft.sido} ${district}`,
+        regionSido: draft.sido,
+        regionDistrict: district,
+        school: "",
+        company: "",
+        onboardingComplete: true,
+        profileVersion: 1,
+        ...(name !== user.name ? { nameUpdatedAt: now } : {}),
+      });
+      navigate("/app/profile");
+    } catch (error) {
+      setFormError(error.message || "프로필 저장에 실패했습니다.");
+    }
   };
 
   return (

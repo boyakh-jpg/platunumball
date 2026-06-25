@@ -1,12 +1,12 @@
 # RankBall 데이터 저장 모델
 
-## 현재 유지 원칙
+## 현재 전환 원칙
 
-- UI와 기능 개발을 위해 현재 `mockData` / `localStorage` / Supabase 혼합 흐름을 유지한다.
-- 아직 전체 production schema migration을 하지 않는다.
-- `src/data/repository.js`를 전면 개편하지 않는다.
-- `src/lib/mockData.js`를 삭제하지 않는다.
-- Auth 구조를 전면 교체하지 않는다.
+- Supabase가 설정된 환경에서는 `mockData` / `localStorage`를 앱 데이터 원천으로 쓰지 않는다.
+- `src/lib/mockData.js`는 비-Supabase 개발과 seed 생성용으로만 남긴다.
+- 원격 로드 실패 시 데모 state로 fallback하지 않고 빈 원격 shell state를 유지한다.
+- 실제 프로필 생성/수정은 `POST /api/profile/upsert` service-role server action을 통과한다.
+- 아직 모든 방/경기 액션이 authoritative RPC로 이전된 것은 아니다. 과도기 액션은 기존 클라이언트 reducer 결과를 server action/bridge로 커밋한다.
 
 ## 지금 적용한 최소 보안 패치
 
@@ -85,6 +85,17 @@
 - `POST /api/court-requests/submit`은 `rankball_submit_court_request()` RPC로 구장 등록요청 제출 직전 신뢰도와 승인/대기 중복을 서버에서 다시 검사한다.
 - 일반 관리자 신고 처리, 임명/징계 처리, Discord DM worker API는 분리되어 있으며, Discord 버튼 interaction은 아직 남는다.
 
+## 2026-06-25 Supabase-only frontend bootstrap
+
+- `loadState({ includeDemo: false })`는 localStorage를 읽지 않고 빈 Supabase shell state를 만든다.
+- `normalizeState(..., { includeDemo: false })`는 `initialState`의 유저, 팀, 경기, 모집방, 신고, 즐겨찾기를 병합하지 않는다.
+- Supabase hydration은 `loadRemoteState(authUserId, authEmail)`로 현재 auth profile을 우선 선택한다.
+- 현재 auth profile이 아직 없으면 `createProfileShell()`로 `/app/signup`이 깨지지 않게 하고, 저장 시 `POST /api/profile/upsert`가 실제 `profiles.auth_user_id` row를 만든다.
+- Supabase 모드에서는 `rankball_state` localStorage 저장을 하지 않는다.
+- `profileBindings` localStorage는 Supabase 모드의 프로필 선택 기준으로 쓰지 않는다. 실제 기준은 `profiles.auth_user_id`다.
+- 테스트 시나리오 데이터는 프론트가 직접 읽지 않고 `npm run seed:supabase`로 normalized Supabase tables에 넣는다.
+- `seed:supabase`는 `SUPABASE_SERVICE_ROLE_KEY`와 `SUPABASE_URL` 또는 `VITE_SUPABASE_URL`이 필요하다.
+
 ## 2026-06-24 admin server actions
 
 - `POST /api/admin/review-action`은 `rankball_commit_admin_review_action()` RPC로 신고 상태 변경, audit log, 징계 row, 신고자/대상자 알림을 한 transaction으로 처리한다.
@@ -92,7 +103,7 @@
 - `POST /api/admin/disciplinary-action`은 `rankball_commit_admin_disciplinary_action()` RPC로 직접 징계, audit log, 대상자 알림을 한 transaction으로 처리한다.
 - 브라우저는 `admin_audit_log`, `admin_disciplinary_actions`, `admin_appointments`, `referee_appointments`를 직접 insert/update/delete 하지 않는다.
 - `VITE_ENABLE_SERVER_ACTIONS=true`일 때 관리자 UI는 local state를 먼저 갱신하고 같은 draft를 server action에 전달한다. 배포 전에는 server action 성공 결과 기준으로 재조회/동기화해야 한다.
-- `localStorage/mockData` 제거는 아직 별도 남은 작업이다.
+- Supabase 설정 환경의 프론트 bootstrap에서는 `localStorage/mockData` 앱 데이터 fallback을 제거했다. 남은 작업은 방/경기 reducer 자체를 authoritative RPC로 이전하는 것이다.
 
 ## 2026-06-24 Discord DM worker
 

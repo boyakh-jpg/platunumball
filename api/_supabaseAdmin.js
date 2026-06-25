@@ -48,7 +48,7 @@ export async function readJsonBody(request) {
   return raw ? JSON.parse(raw) : {};
 }
 
-function getBearerToken(request) {
+export function getBearerToken(request) {
   const header = request.headers.authorization || request.headers.Authorization || "";
   const match = String(header).match(/^Bearer\s+(.+)$/i);
   return match?.[1] ?? "";
