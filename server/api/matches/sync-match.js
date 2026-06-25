@@ -8,6 +8,12 @@ function toDbTime(value) {
   return value ? String(value).slice(0, 5) : null;
 }
 
+function reject(statusCode, message) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  throw error;
+}
+
 function getTimestamp(item = {}) {
   return item.updatedAt ?? item.createdAt ?? item.queuedAt ?? item.startedAt ?? item.approvedAt ?? new Date().toISOString();
 }
@@ -42,6 +48,34 @@ function getParticipantIds(match = {}) {
     ...Object.values(match.playedPlayerIds ?? match.rules?.playedPlayerIds ?? {}).flatMap(toArray),
     ...Object.values(match.attendance ?? {}).flatMap(toArray),
   ].filter(Boolean));
+}
+
+function getModeCapacity(mode = "5v5") {
+  const match = String(mode).match(/^(\d+)/);
+  const value = match ? Number(match[1]) : 5;
+  return Math.max(1, Math.min(5, Number.isFinite(value) ? value : 5));
+}
+
+function getMatchPlayerIds(match = {}) {
+  return [
+    ...(match.teamA?.players ?? []),
+    ...(match.teamB?.players ?? []),
+  ].filter(Boolean);
+}
+
+function getMatchReserveIds(match = {}) {
+  return Object.values(match.reservePlayers ?? match.rules?.reservePlayers ?? {}).flatMap(toArray);
+}
+
+function validateMatchShape(match = {}) {
+  const capacity = getModeCapacity(match.mode);
+  if ((match.teamA?.players ?? []).filter(Boolean).length > capacity) reject(400, "team_a_exceeds_mode_capacity");
+  if ((match.teamB?.players ?? []).filter(Boolean).length > capacity) reject(400, "team_b_exceeds_mode_capacity");
+
+  const allPlayerIds = [...getMatchPlayerIds(match), ...getMatchReserveIds(match)];
+  const duplicate = allPlayerIds.find((playerId, index) => allPlayerIds.indexOf(playerId) !== index);
+  if (duplicate) reject(400, "duplicate_match_player");
+  if (match.refereeId && allPlayerIds.includes(match.refereeId)) reject(400, "referee_cannot_be_player");
 }
 
 function toMatchRow(match = {}, actorProfileId = "") {
@@ -194,11 +228,69 @@ function existingParticipantIds(existingMatch, existingPlayers = []) {
   ].filter(Boolean));
 }
 
-function canSyncMatch(profileId, existingMatch, existingPlayers, nextMatch) {
+function getStatRecorderIds(match = {}) {
+  const recorders = match.statRecorders ?? match.rules?.statRecorders ?? {};
+  return Object.values(recorders).flatMap((value) => Array.isArray(value) ? value : [value]).filter(Boolean);
+}
+
+function isMatchOperator(profileId, existingMatch, nextMatch) {
+  return Boolean(profileId && [
+    existingMatch?.created_by,
+    existingMatch?.referee_id,
+    nextMatch?.createdBy,
+    nextMatch?.refereeId,
+  ].filter(Boolean).includes(profileId));
+}
+
+const CREATE_MATCH_ACTIONS = new Set([
+  "createMatch",
+  "confirmRecruitingMatch",
+  "createTournamentMatch",
+]);
+
+const OPERATOR_MATCH_ACTIONS = new Set([
+  "updateTournamentMatchSchedule",
+  "handoffMatchRecorder",
+  "checkInMatchPlayer",
+  "requestMatchRefereeAbsence",
+  "confirmMatchRefereeAbsence",
+  "cancelMatch",
+  "voidMatch",
+  "resumeMatchApproval",
+  "startMatch",
+  "endMatch",
+  "addMatchLatePlayer",
+  "removeMatchLatePlayer",
+  "updateMatchRoomRules",
+  "setMatchRoomPlayerPlacement",
+  "removeMatchRoomPlayer",
+]);
+
+const PARTICIPANT_MATCH_ACTIONS = new Set([
+  "agreeMatch",
+  "approveMatch",
+  "toggleMatchStar",
+  "submitMatchThumbs",
+  "disputeMatch",
+]);
+
+function canSubmitResult(profileId, existingMatch, nextMatch) {
+  const refereeId = nextMatch.refereeId || existingMatch?.referee_id;
+  if (refereeId) return profileId === refereeId;
+  const recorderIds = getStatRecorderIds(nextMatch);
+  if (recorderIds.length) return recorderIds.includes(profileId) || isMatchOperator(profileId, existingMatch, nextMatch);
+  return isMatchOperator(profileId, existingMatch, nextMatch) || getParticipantIds(nextMatch).has(profileId);
+}
+
+function canSyncMatchAction(profileId, existingMatch, existingPlayers, nextMatch, action) {
   if (!profileId || !nextMatch?.id) return false;
   const nextParticipants = getParticipantIds(nextMatch);
-  if (!existingMatch) return nextParticipants.has(profileId);
-  return existingParticipantIds(existingMatch, existingPlayers).has(profileId) || nextParticipants.has(profileId);
+  if (!existingMatch) return CREATE_MATCH_ACTIONS.has(action) && nextParticipants.has(profileId);
+  const existingParticipants = existingParticipantIds(existingMatch, existingPlayers);
+  if (OPERATOR_MATCH_ACTIONS.has(action)) return isMatchOperator(profileId, existingMatch, nextMatch);
+  if (action === "submitMatchResult") return canSubmitResult(profileId, existingMatch, nextMatch);
+  if (PARTICIPANT_MATCH_ACTIONS.has(action)) return existingParticipants.has(profileId) || nextParticipants.has(profileId);
+  return existingParticipants.has(profileId) || nextParticipants.has(profileId);
 }
 
 async function deleteMatchChildren(supabase, table, matchId) {
@@ -222,15 +314,17 @@ export default async function handler(request, response) {
   try {
     const body = await readJsonBody(request);
     const match = body.match && typeof body.match === "object" ? body.match : null;
+    const action = body.action ? String(body.action) : "sync";
     if (!match?.id) {
       sendJson(response, 400, { error: "missing_match" });
       return;
     }
+    validateMatchShape(match);
 
     const context = await getAuthenticatedContext(request);
     const { data: existingMatch, error: existingError } = await context.supabase
       .from("matches")
-      .select("id, created_by, referee_id, former_referee_id")
+      .select("id, created_by, referee_id, former_referee_id, stat_recorders")
       .eq("id", match.id)
       .maybeSingle();
     if (existingError) throw existingError;
@@ -241,7 +335,7 @@ export default async function handler(request, response) {
       .eq("match_id", match.id);
     if (playerError) throw playerError;
 
-    if (!canSyncMatch(context.profileId, existingMatch, existingPlayers, match)) {
+    if (!canSyncMatchAction(context.profileId, existingMatch, existingPlayers, match, action)) {
       sendJson(response, 403, { error: "match_sync_permission_denied" });
       return;
     }

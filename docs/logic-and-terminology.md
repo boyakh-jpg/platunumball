@@ -1083,3 +1083,17 @@ flowchart TD
 4. 최고관리자 권한은 frontend seed ID가 아니라 server env 또는 DB `admin_appointments`에서 나온다.
 5. `src/lib/admin.js`의 `u1` owner fallback은 제거한다. 프론트는 `POST /api/admin/context`가 확인한 현재 사용자 권한만 임시 `server_context` row로 보여준다.
 6. `server_context` row는 UI/로컬 reducer용이며 Supabase `admin_appointments` 저장 대상이 아니다.
+
+## 2026-06-26 match/recruiting sync action guard
+
+1. `POST /api/recruiting/sync-post`는 `action` 값을 받아 생성, 참여, 초대, 후보/슬롯 이동, 확정을 구분한다.
+2. 새 모집방 저장은 `createRecruitingPost` action이며 방장/생성자가 스냅샷 참가자에 포함되어야 한다.
+3. 기존 모집방의 방 수정, 기록자 지정, 강퇴, 확정, 닫기는 기존 방장만 서버 저장할 수 있다.
+4. 초대, READY, 채팅, 자기 슬롯/후보/파티 조정은 기존 참가자 또는 초대 대상자만 서버 저장할 수 있다.
+5. 공개 참여/파티 참여는 공개방 또는 기존 초대가 있는 비공개방에서만 서버 저장할 수 있다.
+6. `sideCapacity === 1`이고 `hostJoinMode === "player"`인 개인방은 팀/파티 applicant, teamId, party reserve를 서버에서 거부한다.
+7. 심판 초대, 심판 직접참여, 심판 초대 수락은 active `referee_appointments`가 있는 사용자만 서버 저장할 수 있다.
+8. `POST /api/matches/sync-match`는 `action` 값을 받아 생성, 출석, 시작/종료, 기록, 승인/이의, roster 수정을 구분한다.
+9. 출석, 시작/종료, 사후 roster/룰 수정은 방장 또는 배정 심판만 서버 저장할 수 있다.
+10. 심판 있음 경기의 결과 제출은 배정 심판만 서버 저장할 수 있다. 심판 없는 경기에서는 기록자, 방장, 참가자 경로를 허용한다.
+11. 경기 스냅샷은 모드별 출전 정원 초과, 중복 선수, 심판-선수 겸임을 서버에서 거부한다.

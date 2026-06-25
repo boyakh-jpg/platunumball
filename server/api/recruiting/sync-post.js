@@ -8,6 +8,12 @@ function toDbTime(value) {
   return value ? String(value).slice(0, 5) : null;
 }
 
+function reject(statusCode, message) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  throw error;
+}
+
 function getTimestamp(item = {}) {
   return item.updatedAt ?? item.createdAt ?? item.queuedAt ?? item.startedAt ?? item.approvedAt ?? new Date().toISOString();
 }
@@ -123,19 +129,144 @@ function participantIdsFromPost(post = {}) {
   ].filter(Boolean));
 }
 
-function canSyncRecruitingPost(profileId, existingPost, nextPost) {
+function isOwner(profileId, post = {}) {
+  const roomState = normalizeRoomState(post.roomState ?? post.room_state, post);
+  return Boolean(profileId && (profileId === post.ownerId || profileId === roomState.ownerId || profileId === post.playerId || profileId === post.player_id));
+}
+
+function hasInvitationFor(profileId, post = {}) {
+  const roomState = normalizeRoomState(post.roomState ?? post.room_state, post);
+  return toArray(roomState.invitations).some((invitation) => (
+    invitation.targetUserId === profileId && invitation.status !== "expired" && invitation.status !== "declined"
+  ));
+}
+
+function hasRefereeInvitationFor(profileId, post = {}) {
+  const roomState = normalizeRoomState(post.roomState ?? post.room_state, post);
+  return toArray(roomState.invitations).some((invitation) => (
+    invitation.role === "referee" &&
+    invitation.targetUserId === profileId &&
+    invitation.status !== "expired" &&
+    invitation.status !== "declined"
+  ));
+}
+
+function getSideCapacity(post = {}) {
+  const modeMatch = String(post.mode ?? "").match(/^(\d+)/);
+  const fallbackCapacity = modeMatch ? Number(modeMatch[1]) : 5;
+  return Math.max(1, Math.min(5, Number(post.sideCapacity ?? post.side_capacity ?? fallbackCapacity)));
+}
+
+function isSoloIndividualRoom(post = {}) {
+  return getSideCapacity(post) === 1 && (post.hostJoinMode ?? post.host_join_mode) === "player";
+}
+
+function validateRecruitingPostShape(post = {}) {
+  const capacity = getSideCapacity(post);
+  const applications = toArray(post.applicants);
+  const oversizedApplication = applications.find((application) => toArray(application.playerIds).length > capacity);
+  if (oversizedApplication) reject(400, "recruiting_party_exceeds_side_capacity");
+
+  if (!isSoloIndividualRoom(post)) return;
+  const roomState = normalizeRoomState(post.roomState, post);
+  if (post.teamId || post.targetTeamId || toArray(post.playerIds).length > 1) reject(400, "solo_room_team_party_not_allowed");
+  if (Object.values(roomState.partyReserves ?? {}).flatMap(toArray).length) reject(400, "solo_room_team_party_not_allowed");
+
+  const teamApplication = applications.find((application) => (
+    application.kind === "team" ||
+    application.teamId ||
+    application.sourceTeamId ||
+    application.sourceEntryId ||
+    toArray(application.playerIds).length > 1
+  ));
+  if (teamApplication) reject(400, "solo_room_team_party_not_allowed");
+}
+
+const OWNER_RECRUITING_ACTIONS = new Set([
+  "updateRecruitingRoomRules",
+  "setRecruitingStatRecorder",
+  "kickRecruitingApplicant",
+  "confirmRecruitingMatch",
+  "closeRecruitingPost",
+]);
+
+const PARTICIPANT_RECRUITING_ACTIONS = new Set([
+  "sendRecruitingChat",
+  "setRecruitingReady",
+  "cancelRecruitingParticipation",
+  "acceptRecruitingInvitation",
+  "declineRecruitingInvitation",
+  "inviteRecruitingPlayers",
+  "inviteRecruitingReferee",
+  "setRecruitingApplicantPlacement",
+  "setRecruitingApplicantReserve",
+  "setRecruitingSlotPosition",
+  "setRecruitingPartyPlayerPlacement",
+  "setRecruitingPartyPlayerReserve",
+  "detachRecruitingPartyPlayer",
+  "removeRecruitingPartyPlayer",
+]);
+
+const JOIN_RECRUITING_ACTIONS = new Set([
+  "interestRecruitingPost",
+  "joinRecruitingSideParty",
+]);
+
+function canSyncRecruitingAction(profileId, existingPost, nextPost, action) {
   if (!profileId || !nextPost?.id) return false;
   if (!existingPost) {
-    return participantIdsFromPost(nextPost).has(profileId) && (nextPost.ownerId === profileId || nextPost.playerId === profileId);
+    return action === "createRecruitingPost" && participantIdsFromPost(nextPost).has(profileId) && isOwner(profileId, nextPost);
   }
-  return participantIdsFromPost({
+  const existingParticipants = participantIdsFromPost({
     ...existingPost,
     ownerId: existingPost.room_state?.ownerId,
     playerId: existingPost.player_id,
     playerIds: existingPost.player_ids,
     applicants: [],
     roomState: existingPost.room_state,
-  }).has(profileId) || participantIdsFromPost(nextPost).has(profileId);
+  });
+  const nextParticipants = participantIdsFromPost(nextPost);
+
+  if (OWNER_RECRUITING_ACTIONS.has(action)) return isOwner(profileId, existingPost);
+  if (JOIN_RECRUITING_ACTIONS.has(action)) {
+    if (existingPost.visibility === "private" && !hasInvitationFor(profileId, existingPost)) return false;
+    return nextParticipants.has(profileId);
+  }
+  if (PARTICIPANT_RECRUITING_ACTIONS.has(action)) {
+    return existingParticipants.has(profileId) || nextParticipants.has(profileId) || hasInvitationFor(profileId, existingPost);
+  }
+  return existingParticipants.has(profileId) || nextParticipants.has(profileId);
+}
+
+async function isActiveReferee(supabase, userId) {
+  if (!userId) return false;
+  const { data, error } = await supabase
+    .from("referee_appointments")
+    .select("id, ends_at")
+    .eq("user_id", userId)
+    .eq("status", "active");
+  if (error) throw error;
+  const now = Date.now();
+  return toArray(data).some((row) => !row.ends_at || Date.parse(row.ends_at) > now);
+}
+
+async function validateRefereeAction(supabase, profileId, existingPost, nextPost, body) {
+  const action = body.action ?? "sync";
+  if (action === "inviteRecruitingReferee") {
+    if (!(await isActiveReferee(supabase, body.refereeId))) reject(403, "referee_not_eligible");
+    return;
+  }
+  if (action === "interestRecruitingPost" && body.joinMode === "referee") {
+    if (!(await isActiveReferee(supabase, profileId))) reject(403, "referee_not_eligible");
+    return;
+  }
+  if (action === "acceptRecruitingInvitation" && hasRefereeInvitationFor(profileId, existingPost)) {
+    if (!(await isActiveReferee(supabase, profileId))) reject(403, "referee_not_eligible");
+    return;
+  }
+  if (nextPost.refereeId && nextPost.refereeId !== existingPost?.referee_id && !(await isActiveReferee(supabase, nextPost.refereeId))) {
+    reject(403, "referee_not_eligible");
+  }
 }
 
 export default async function handler(request, response) {
@@ -148,23 +279,26 @@ export default async function handler(request, response) {
   try {
     const body = await readJsonBody(request);
     const post = body.post && typeof body.post === "object" ? body.post : null;
+    const action = body.action ? String(body.action) : "sync";
     if (!post?.id) {
       sendJson(response, 400, { error: "missing_recruiting_post" });
       return;
     }
+    validateRecruitingPostShape(post);
 
     const context = await getAuthenticatedContext(request);
     const { data: existingPost, error: existingError } = await context.supabase
       .from("recruiting_posts")
-      .select("id, player_id, player_ids, room_state")
+      .select("id, visibility, player_id, player_ids, referee_id, room_state")
       .eq("id", post.id)
       .maybeSingle();
 
     if (existingError) throw existingError;
-    if (!canSyncRecruitingPost(context.profileId, existingPost, post)) {
+    if (!canSyncRecruitingAction(context.profileId, existingPost, post, action)) {
       sendJson(response, 403, { error: "recruiting_sync_permission_denied" });
       return;
     }
+    await validateRefereeAction(context.supabase, context.profileId, existingPost, post, body);
 
     const postRow = toRecruitingPostRow(post);
     const applicationRows = toRecruitingApplicationRows(post);
