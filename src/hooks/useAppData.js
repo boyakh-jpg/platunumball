@@ -231,6 +231,10 @@ export function useAppData(authUserId = null) {
       console.warn(`Server action skipped: ${path}`, error.message);
     });
   }, []);
+  const syncRecruitingPostServer = useCallback((post, notifications = []) => {
+    if (!post?.id) return;
+    runServerAction("/api/recruiting/sync-post", { post, notifications });
+  }, [runServerAction]);
 
   const rankings = useMemo(
     () => ({
@@ -243,7 +247,27 @@ export function useAppData(authUserId = null) {
   );
 
   const actions = useMemo(
-    () => ({
+    () => {
+      const getNewRecruitingNotifications = (prev, next, postId) => {
+        const beforeIds = new Set((prev.notifications ?? []).map((notification) => notification.id));
+        return (next.notifications ?? []).filter((notification) => (
+          !beforeIds.has(notification.id) &&
+          (notification.recruitingPostId === postId || notification.invitationId)
+        ));
+      };
+      const applyRecruitingPostMutation = (postId, reducer) => {
+        let syncedPost = null;
+        let syncedNotifications = [];
+        setState((prev) => {
+          const next = reducer(prev);
+          syncedPost = (next.recruitingPosts ?? []).find((post) => post.id === postId) ?? null;
+          syncedNotifications = syncedPost ? getNewRecruitingNotifications(prev, next, postId) : [];
+          return next;
+        });
+        if (syncedPost) syncRecruitingPostServer(syncedPost, syncedNotifications);
+      };
+
+      return ({
       switchUser: (userId) => {
         if (profileLocked) return false;
         setProfileBindings((current) => {
@@ -342,63 +366,80 @@ export function useAppData(authUserId = null) {
       },
       createTeam: (draft) => setState((prev) => createTeam({ ...prev, currentUserId }, draft)),
       deleteTeam: (teamId) => setState((prev) => deleteTeam({ ...prev, currentUserId }, teamId)),
-      createRecruitingPost: (draft) => setState((prev) => createRecruitingPost({ ...prev, currentUserId }, draft)),
-      interestRecruitingPost: (postId, application) => setState((prev) => interestRecruitingPost({ ...prev, currentUserId }, postId, application)),
-      inviteRecruitingPlayers: (postId, invite) => setState((prev) => inviteRecruitingPlayers({ ...prev, currentUserId }, postId, invite)),
-      acceptRecruitingInvitation: (postId, invitationId) => setState((prev) => acceptRecruitingInvitation({ ...prev, currentUserId }, postId, invitationId)),
-      declineRecruitingInvitation: (postId, invitationId) => setState((prev) => declineRecruitingInvitation({ ...prev, currentUserId }, postId, invitationId)),
-      cancelRecruitingParticipation: (postId) => setState((prev) => cancelRecruitingParticipation({ ...prev, currentUserId }, postId)),
-      setRecruitingReady: (postId, ready) => setState((prev) => setRecruitingReady({ ...prev, currentUserId }, postId, ready)),
-      updateRecruitingRoomRules: (postId, patch) => setState((prev) => updateRecruitingRoomRules({ ...prev, currentUserId }, postId, patch)),
+      createRecruitingPost: (draft) => {
+        let createdPost = null;
+        let syncedNotifications = [];
+        setState((prev) => {
+          const existingIds = new Set((prev.recruitingPosts ?? []).map((post) => post.id));
+          const next = createRecruitingPost({ ...prev, currentUserId }, draft);
+          createdPost = (next.recruitingPosts ?? []).find((post) => !existingIds.has(post.id)) ?? null;
+          syncedNotifications = createdPost ? getNewRecruitingNotifications(prev, next, createdPost.id) : [];
+          return next;
+        });
+        if (createdPost) syncRecruitingPostServer(createdPost, syncedNotifications);
+      },
+      interestRecruitingPost: (postId, application) => applyRecruitingPostMutation(postId, (prev) => interestRecruitingPost({ ...prev, currentUserId }, postId, application)),
+      inviteRecruitingPlayers: (postId, invite) => applyRecruitingPostMutation(postId, (prev) => inviteRecruitingPlayers({ ...prev, currentUserId }, postId, invite)),
+      acceptRecruitingInvitation: (postId, invitationId) => applyRecruitingPostMutation(postId, (prev) => acceptRecruitingInvitation({ ...prev, currentUserId }, postId, invitationId)),
+      declineRecruitingInvitation: (postId, invitationId) => applyRecruitingPostMutation(postId, (prev) => declineRecruitingInvitation({ ...prev, currentUserId }, postId, invitationId)),
+      cancelRecruitingParticipation: (postId) => applyRecruitingPostMutation(postId, (prev) => cancelRecruitingParticipation({ ...prev, currentUserId }, postId)),
+      setRecruitingReady: (postId, ready) => applyRecruitingPostMutation(postId, (prev) => setRecruitingReady({ ...prev, currentUserId }, postId, ready)),
+      updateRecruitingRoomRules: (postId, patch) => applyRecruitingPostMutation(postId, (prev) => updateRecruitingRoomRules({ ...prev, currentUserId }, postId, patch)),
       updateMatchRoomRules: (matchId, patch) => setState((prev) => updateMatchRoomRules({ ...prev, currentUserId }, matchId, patch)),
       setMatchRoomPlayerPlacement: (matchId, playerId, placement) => setState((prev) => setMatchRoomPlayerPlacement({ ...prev, currentUserId }, matchId, playerId, placement)),
       removeMatchRoomPlayer: (matchId, playerId) => setState((prev) => removeMatchRoomPlayer({ ...prev, currentUserId }, matchId, playerId)),
-      sendRecruitingChat: (postId, body) => setState((prev) => sendRecruitingChat({ ...prev, currentUserId }, postId, body)),
+      sendRecruitingChat: (postId, body) => applyRecruitingPostMutation(postId, (prev) => sendRecruitingChat({ ...prev, currentUserId }, postId, body)),
       setRecruitingApplicantReserve: (postId, playerId, reserve) => {
-        setState((prev) => setRecruitingApplicantReserve({ ...prev, currentUserId }, postId, playerId, reserve));
+        applyRecruitingPostMutation(postId, (prev) => setRecruitingApplicantReserve({ ...prev, currentUserId }, postId, playerId, reserve));
       },
       setRecruitingApplicantPlacement: (postId, playerId, placement) => {
-        setState((prev) => setRecruitingApplicantPlacement({ ...prev, currentUserId: playerId || currentUserId }, postId, playerId, placement));
+        applyRecruitingPostMutation(postId, (prev) => setRecruitingApplicantPlacement({ ...prev, currentUserId: playerId || currentUserId }, postId, playerId, placement));
       },
       joinRecruitingSideParty: (postId, teamId, sideName, entryId) => {
-        setState((prev) => joinRecruitingSideParty({ ...prev, currentUserId }, postId, teamId, sideName, entryId));
+        applyRecruitingPostMutation(postId, (prev) => joinRecruitingSideParty({ ...prev, currentUserId }, postId, teamId, sideName, entryId));
       },
       setRecruitingSlotPosition: (postId, playerId, position) => {
-        setState((prev) => setRecruitingSlotPosition({ ...prev, currentUserId }, postId, playerId, position));
+        applyRecruitingPostMutation(postId, (prev) => setRecruitingSlotPosition({ ...prev, currentUserId }, postId, playerId, position));
       },
       setRecruitingPartyPlayerReserve: (postId, entryId, playerId, reserve) => {
-        setState((prev) => setRecruitingPartyPlayerReserve({ ...prev, currentUserId }, postId, entryId, playerId, reserve));
+        applyRecruitingPostMutation(postId, (prev) => setRecruitingPartyPlayerReserve({ ...prev, currentUserId }, postId, entryId, playerId, reserve));
       },
       setRecruitingPartyPlayerPlacement: (postId, entryId, playerId, placement) => {
-        setState((prev) => setRecruitingPartyPlayerPlacement({ ...prev, currentUserId }, postId, entryId, playerId, placement));
+        applyRecruitingPostMutation(postId, (prev) => setRecruitingPartyPlayerPlacement({ ...prev, currentUserId }, postId, entryId, playerId, placement));
       },
       detachRecruitingPartyPlayer: (postId, entryId, playerId, placement) => {
-        setState((prev) => detachRecruitingPartyPlayer({ ...prev, currentUserId: playerId || currentUserId }, postId, entryId, playerId, placement));
+        applyRecruitingPostMutation(postId, (prev) => detachRecruitingPartyPlayer({ ...prev, currentUserId: playerId || currentUserId }, postId, entryId, playerId, placement));
       },
       removeRecruitingPartyPlayer: (postId, entryId, playerId) => {
-        setState((prev) => removeRecruitingPartyPlayer({ ...prev, currentUserId }, postId, entryId, playerId));
+        applyRecruitingPostMutation(postId, (prev) => removeRecruitingPartyPlayer({ ...prev, currentUserId }, postId, entryId, playerId));
       },
       setRecruitingStatRecorder: (postId, sideName, playerId) => {
-        setState((prev) => setRecruitingStatRecorder({ ...prev, currentUserId }, postId, sideName, playerId));
+        applyRecruitingPostMutation(postId, (prev) => setRecruitingStatRecorder({ ...prev, currentUserId }, postId, sideName, playerId));
       },
-      kickRecruitingApplicant: (postId, playerId) => setState((prev) => kickRecruitingApplicant({ ...prev, currentUserId }, postId, playerId)),
+      kickRecruitingApplicant: (postId, playerId) => applyRecruitingPostMutation(postId, (prev) => kickRecruitingApplicant({ ...prev, currentUserId }, postId, playerId)),
       confirmRecruitingMatch: (postId) => {
         let createdId = null;
+        let syncedPost = null;
+        let syncedNotifications = [];
         setState((prev) => {
           const existingIds = new Set((prev.matches ?? []).map((match) => match.id));
           const next = confirmRecruitingMatch({ ...prev, currentUserId }, postId);
           createdId = (next.matches ?? []).find((match) => !existingIds.has(match.id))?.id ?? null;
+          syncedPost = (next.recruitingPosts ?? []).find((post) => post.id === postId) ?? null;
+          syncedNotifications = syncedPost ? getNewRecruitingNotifications(prev, next, postId) : [];
           return next;
         });
+        if (syncedPost) syncRecruitingPostServer(syncedPost, syncedNotifications);
         return createdId;
       },
-      closeRecruitingPost: (postId) => setState((prev) => closeRecruitingPost({ ...prev, currentUserId }, postId)),
+      closeRecruitingPost: (postId) => applyRecruitingPostMutation(postId, (prev) => closeRecruitingPost({ ...prev, currentUserId }, postId)),
       addTeamMember: (teamId, draft) => setState((prev) => addTeamMember({ ...prev, currentUserId }, teamId, draft)),
       updateTeamMemberRole: (teamId, userId, role) => setState((prev) => updateTeamMemberRole({ ...prev, currentUserId }, teamId, userId, role)),
       removeTeamMember: (teamId, userId) => setState((prev) => removeTeamMember({ ...prev, currentUserId }, teamId, userId)),
       reset: () => setState(resetState()),
-    }),
-    [authUserId, currentUserId, profileKey, profileLocked, runServerAction],
+      });
+    },
+    [authUserId, currentUserId, profileKey, profileLocked, runServerAction, syncRecruitingPostServer],
   );
 
   return { state: { ...state, currentUserId }, currentUser, currentUserId, profileBound: true, profileLocked, rankings, actions };

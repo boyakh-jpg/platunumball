@@ -115,3 +115,13 @@
 - 관리자/심판 임명, audit, 징계, 승인 구장 write는 client 정책을 만들지 않는다. server/service-role만 처리한다.
 - `approved_courts`는 authenticated read만 허용하고 payload에서 요청자/신뢰도/승인자 내부값을 제거한다.
 - `affiliations`, `seasons` public read는 public-safe 데이터만 넣는 전제다.
+
+## 2026-06-25 recruiting server sync
+
+- `POST /api/recruiting/sync-post`를 추가했다.
+- 생성/참여/초대/초대 수락/거절/READY/배치/파티/채팅/방닫기 후 해당 `recruitingPost` snapshot을 서버에 즉시 upsert한다.
+- 서버는 Supabase bearer를 검증하고 `profiles.auth_user_id`에 매핑된 `profileId`가 방장, 참여자, 초대 발신자, 초대 대상자 중 하나인지 확인한다.
+- 서버는 `recruiting_posts`, `recruiting_applications`, 관련 `notifications`를 갱신한다.
+- `recruiting_posts` 저장/로드 매핑에 `title`, `visibility`, `rules`, `official`, `preRegistered`, 구장예약, 연령 제한, `sourceTeamId/sourceEntryId`를 보존한다.
+- 이 단계는 아직 완전한 authoritative room engine이 아니다. 클라이언트의 기존 로컬 액션 결과를 서버에 커밋하는 과도기 브리지다.
+- 다음 단계는 생성/참여/초대/수락 계산 자체를 RPC 내부로 옮기고, 경기 확정 시 `matches` 생성도 같은 transaction으로 묶는 것이다.

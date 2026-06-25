@@ -241,8 +241,82 @@ create table if not exists public.tournament_teams (
 create index if not exists tournaments_created_at_idx on public.tournaments (created_at desc);
 create index if not exists tournament_teams_team_id_idx on public.tournament_teams (team_id);
 
+create table if not exists public.recruiting_posts (
+  id text primary key,
+  type text not null default 'need_player',
+  title text not null,
+  visibility text not null default 'public',
+  player_id text,
+  team_id text,
+  region text,
+  court_id text,
+  court_name text,
+  mode text,
+  scheduled_date date,
+  scheduled_time time,
+  scheduled_at text,
+  ranked boolean not null default true,
+  official boolean not null default false,
+  pre_registered boolean not null default true,
+  rating_scale numeric not null default 1,
+  age_restriction text,
+  allowed_age_groups jsonb not null default '[]'::jsonb,
+  rules jsonb not null default '{}'::jsonb,
+  stakes text,
+  court_reserved boolean not null default false,
+  court_fee text,
+  spots integer not null default 0,
+  target_team_id text,
+  referee_id text,
+  referee_trust_min integer not null default 90,
+  stat_entry_minutes integer not null default 60,
+  dispute_minutes integer not null default 120,
+  room_state jsonb not null default '{}'::jsonb,
+  host_join_mode text not null default 'team',
+  host_side text not null default 'teamA',
+  host_ready boolean not null default false,
+  side_capacity integer not null default 5,
+  player_ids jsonb not null default '[]'::jsonb,
+  position text,
+  memo text,
+  status text not null default 'open',
+  confirmed_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint recruiting_posts_visibility_check check (visibility in ('public', 'private')),
+  constraint recruiting_posts_host_join_mode_check check (host_join_mode in ('player', 'team')),
+  constraint recruiting_posts_host_side_check check (host_side in ('teamA', 'teamB')),
+  constraint recruiting_posts_side_capacity_check check (side_capacity between 1 and 5)
+);
+
+create table if not exists public.recruiting_applications (
+  post_id text not null references public.recruiting_posts(id) on delete cascade,
+  player_id text not null,
+  team_id text,
+  kind text not null default 'player',
+  side text not null default 'teamB',
+  status text not null default 'waiting',
+  reserve boolean not null default false,
+  position text,
+  player_ids jsonb not null default '[]'::jsonb,
+  source_team_id text,
+  source_entry_id text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz,
+  primary key (post_id, player_id, kind),
+  constraint recruiting_applications_kind_check check (kind in ('player', 'team')),
+  constraint recruiting_applications_side_check check (side in ('teamA', 'teamB')),
+  constraint recruiting_applications_status_check check (status in ('waiting', 'ready', 'confirmed'))
+);
+
+create index if not exists recruiting_posts_created_at_idx on public.recruiting_posts (created_at desc);
+create index if not exists recruiting_posts_visibility_status_idx on public.recruiting_posts (visibility, status);
+create index if not exists recruiting_applications_post_side_idx on public.recruiting_applications (post_id, side, reserve);
+
 alter table public.tournaments enable row level security;
 alter table public.tournament_teams enable row level security;
+alter table public.recruiting_posts enable row level security;
+alter table public.recruiting_applications enable row level security;
 
 drop policy if exists "tournaments_select_public" on public.tournaments;
 drop policy if exists "tournaments_insert_public" on public.tournaments;
@@ -284,6 +358,34 @@ using (
     from public.tournaments t
     where t.id = tournament_id
       and t.visibility = 'public'
+  )
+);
+
+drop policy if exists "recruiting_posts_select_public" on public.recruiting_posts;
+drop policy if exists "recruiting_posts_select_related_private" on public.recruiting_posts;
+
+create policy "recruiting_posts_select_public"
+on public.recruiting_posts
+for select
+to anon, authenticated
+using (visibility = 'public');
+
+create policy "recruiting_posts_select_related_private"
+on public.recruiting_posts
+for select
+to authenticated
+using (
+  visibility = 'private'
+  and (
+    player_id = public.current_profile_id()
+    or player_ids ? public.current_profile_id()
+    or room_state->>'ownerId' = public.current_profile_id()
+    or exists (
+      select 1
+      from jsonb_array_elements(coalesce(room_state->'invitations', '[]'::jsonb)) invitation
+      where invitation->>'targetUserId' = public.current_profile_id()
+         or invitation->>'fromUserId' = public.current_profile_id()
+    )
   )
 );
 
@@ -414,6 +516,16 @@ $$;
 do $$
 begin
   if to_regclass('public.recruiting_posts') is not null then
+    execute 'alter table public.recruiting_posts add column if not exists visibility text not null default ''public''';
+    execute 'alter table public.recruiting_posts add column if not exists official boolean not null default false';
+    execute 'alter table public.recruiting_posts add column if not exists pre_registered boolean not null default true';
+    execute 'alter table public.recruiting_posts add column if not exists rating_scale numeric not null default 1';
+    execute 'alter table public.recruiting_posts add column if not exists age_restriction text';
+    execute 'alter table public.recruiting_posts add column if not exists allowed_age_groups jsonb not null default ''[]''::jsonb';
+    execute 'alter table public.recruiting_posts add column if not exists rules jsonb not null default ''{}''::jsonb';
+    execute 'alter table public.recruiting_posts add column if not exists stakes text';
+    execute 'alter table public.recruiting_posts add column if not exists court_reserved boolean not null default false';
+    execute 'alter table public.recruiting_posts add column if not exists court_fee text';
     execute 'alter table public.recruiting_posts add column if not exists host_join_mode text not null default ''team''';
     execute 'alter table public.recruiting_posts add column if not exists host_side text not null default ''teamA''';
     execute 'alter table public.recruiting_posts add column if not exists host_ready boolean not null default false';
@@ -442,6 +554,8 @@ begin
     execute 'alter table public.recruiting_posts add constraint recruiting_posts_host_side_check check (host_side in (''teamA'', ''teamB''))';
     execute 'alter table public.recruiting_posts drop constraint if exists recruiting_posts_side_capacity_check';
     execute 'alter table public.recruiting_posts add constraint recruiting_posts_side_capacity_check check (side_capacity between 1 and 5)';
+    execute 'alter table public.recruiting_posts drop constraint if exists recruiting_posts_visibility_check';
+    execute 'alter table public.recruiting_posts add constraint recruiting_posts_visibility_check check (visibility in (''public'', ''private''))';
   end if;
 end;
 $$;
@@ -457,7 +571,11 @@ begin
     execute 'alter table public.recruiting_applications add column if not exists reserve boolean not null default false';
     execute 'alter table public.recruiting_applications add column if not exists position text';
     execute 'alter table public.recruiting_applications add column if not exists player_ids jsonb not null default ''[]''::jsonb';
+    execute 'alter table public.recruiting_applications add column if not exists source_team_id text';
+    execute 'alter table public.recruiting_applications add column if not exists source_entry_id text';
     execute 'alter table public.recruiting_applications add column if not exists updated_at timestamptz';
+    execute 'alter table public.recruiting_applications drop constraint if exists recruiting_applications_kind_check';
+    execute 'alter table public.recruiting_applications add constraint recruiting_applications_kind_check check (kind in (''player'', ''team''))';
     execute 'alter table public.recruiting_applications drop constraint if exists recruiting_applications_side_check';
     execute 'alter table public.recruiting_applications add constraint recruiting_applications_side_check check (side in (''teamA'', ''teamB''))';
     execute 'alter table public.recruiting_applications drop constraint if exists recruiting_applications_status_check';
@@ -481,15 +599,23 @@ begin
         for select
         to authenticated
         using (
-          player_id = auth.uid()::text
-          or player_ids ? auth.uid()::text
+          player_id = public.current_profile_id()
+          or player_ids ? public.current_profile_id()
           or exists (
             select 1
             from public.recruiting_posts post
             where post.id = recruiting_applications.post_id
               and (
-                post.player_id = auth.uid()::text
-                or post.player_ids ? auth.uid()::text
+                post.visibility = ''public''
+                or post.player_id = public.current_profile_id()
+                or post.player_ids ? public.current_profile_id()
+                or post.room_state->>''ownerId'' = public.current_profile_id()
+                or exists (
+                  select 1
+                  from jsonb_array_elements(coalesce(post.room_state->''invitations'', ''[]''::jsonb)) invitation
+                  where invitation->>''targetUserId'' = public.current_profile_id()
+                     or invitation->>''fromUserId'' = public.current_profile_id()
+                )
               )
           )
         )
@@ -501,8 +627,8 @@ begin
         for select
         to authenticated
         using (
-          player_id = auth.uid()::text
-          or player_ids ? auth.uid()::text
+          player_id = public.current_profile_id()
+          or player_ids ? public.current_profile_id()
         )
       ';
     end if;
