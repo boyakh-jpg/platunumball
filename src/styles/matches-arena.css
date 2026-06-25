@@ -2094,7 +2094,13 @@ html[data-theme="light"] .tournament-schedule-list input {
   }
 
   .om-match-card p {
-    display: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    overflow: visible;
+    line-height: 1.35;
+    text-overflow: clip;
+    white-space: normal;
   }
 
   .om-card-kicker {
