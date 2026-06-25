@@ -1966,6 +1966,16 @@ textarea {
   outline: none;
 }
 
+select option,
+select optgroup {
+  background-color: #f8fbfd;
+  color: #13252d;
+}
+
+select option:disabled {
+  color: #8a98a3;
+}
+
 textarea {
   min-height: 112px;
   resize: vertical;
