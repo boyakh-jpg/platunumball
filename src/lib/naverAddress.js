@@ -149,23 +149,26 @@ async function searchNaverAddressesOnServer(searchQuery) {
 export async function searchNaverAddresses(query, clientId = getNaverMapClientId()) {
   const searchQuery = String(query ?? "").trim();
   if (!searchQuery) throw new Error("주소 검색어를 입력하세요.");
-  const serverResults = await searchNaverAddressesOnServer(searchQuery);
-  if (serverResults) return serverResults;
 
-  await loadNaverMapsSdk(clientId);
-
-  return new Promise((resolve, reject) => {
-    window.naver.maps.Service.geocode({ query: searchQuery }, (status, response) => {
-      if (status !== window.naver.maps.Service.Status.OK) {
-        reject(new Error("네이버 주소검색 API 호출이 실패했습니다. Naver Maps Geocoding 권한과 도메인 설정을 확인해주세요."));
-        return;
-      }
-      const results = (response.v2?.addresses ?? [])
-        .map(normalizeNaverAddress)
-        .filter((address) => address.addressText);
-      resolve(results);
+  try {
+    await loadNaverMapsSdk(clientId);
+    return await new Promise((resolve, reject) => {
+      window.naver.maps.Service.geocode({ query: searchQuery }, (status, response) => {
+        if (status !== window.naver.maps.Service.Status.OK) {
+          reject(new Error("네이버 주소검색 API 호출이 실패했습니다. Naver Maps Geocoding 권한과 도메인 설정을 확인해주세요."));
+          return;
+        }
+        const results = (response.v2?.addresses ?? [])
+          .map(normalizeNaverAddress)
+          .filter((address) => address.addressText);
+        resolve(results);
+      });
     });
-  });
+  } catch (clientError) {
+    const serverResults = await searchNaverAddressesOnServer(searchQuery);
+    if (serverResults) return serverResults;
+    throw clientError;
+  }
 }
 
 export async function geocodeNaverAddress(addressText, clientId = getNaverMapClientId()) {
