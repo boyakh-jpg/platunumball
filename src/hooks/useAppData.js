@@ -353,13 +353,15 @@ export function useAppData(authUser = null) {
     return false;
   }, [pushLocalWarning]);
   const runServerAction = useCallback((path, payload) => {
-    postServerAction(path, payload).then((result) => {
+    return postServerAction(path, payload).then((result) => {
       if (!result) throw new Error("server_action_unavailable");
+      return true;
     }).catch((error) => {
       console.warn(`Server action skipped: ${path}`, error.message);
       pushLocalWarning("서버 저장 실패", "서버에 저장되지 않았습니다. 새로고침하면 방/경기 변경이 사라질 수 있습니다.", {
         payload: { path, error: error.message },
       });
+      return false;
     });
   }, [pushLocalWarning]);
   const persistProfileServer = useCallback((profile) => {
@@ -373,28 +375,28 @@ export function useAppData(authUser = null) {
     return promise;
   }, []);
   const syncRecruitingPostServer = useCallback((post, notifications = [], meta = {}) => {
-    if (!post?.id) return;
-    runServerAction("/api/recruiting/sync-post", { post, notifications, ...meta });
+    if (!post?.id) return Promise.resolve(false);
+    return runServerAction("/api/recruiting/sync-post", { post, notifications, ...meta });
   }, [runServerAction]);
   const syncMatchServer = useCallback((match, notifications = [], meta = {}) => {
-    if (!match?.id) return;
-    runServerAction("/api/matches/sync-match", { match, notifications, ...meta });
+    if (!match?.id) return Promise.resolve(false);
+    return runServerAction("/api/matches/sync-match", { match, notifications, ...meta });
   }, [runServerAction]);
   const submitReportServer = useCallback((report, notifications = []) => {
     if (!report?.id) return;
     runServerAction("/api/reports/submit", { report, notifications });
   }, [runServerAction]);
   const syncTeamServer = useCallback((team, notifications = []) => {
-    if (!team?.id) return;
-    runServerAction("/api/teams/sync-team", { team, notifications });
+    if (!team?.id) return Promise.resolve(false);
+    return runServerAction("/api/teams/sync-team", { team, notifications });
   }, [runServerAction]);
   const deleteTeamServer = useCallback((deletedTeamId, notifications = []) => {
-    if (!deletedTeamId) return;
-    runServerAction("/api/teams/sync-team", { deletedTeamId, notifications });
+    if (!deletedTeamId) return Promise.resolve(false);
+    return runServerAction("/api/teams/sync-team", { deletedTeamId, notifications });
   }, [runServerAction]);
   const syncTournamentServer = useCallback((tournament, notifications = [], meta = {}) => {
-    if (!tournament?.id) return;
-    runServerAction("/api/tournaments/sync-tournament", { tournament, notifications, ...meta });
+    if (!tournament?.id) return Promise.resolve(false);
+    return runServerAction("/api/tournaments/sync-tournament", { tournament, notifications, ...meta });
   }, [runServerAction]);
   const syncRefereeServer = useCallback((action, payload = {}) => {
     if (!action) return;
@@ -460,41 +462,75 @@ export function useAppData(authUser = null) {
           (notification.type === "referee" || notification.tone === "team" || !notification.targetUserId)
         ));
       };
+      const rollbackServerMutation = (snapshot, label, payload = {}) => {
+        if (!snapshot) return;
+        setState({
+          ...snapshot,
+          notifications: [
+            {
+              id: makeClientNotificationId("n"),
+              title: "서버 저장 실패",
+              body: `${label}이 서버에 저장되지 않아 화면 변경을 되돌렸습니다.`,
+              tone: "orange",
+              createdAt: new Date().toISOString(),
+              payload,
+            },
+            ...(snapshot.notifications ?? []),
+          ],
+        });
+      };
+      const rollbackIfServerFailed = (promise, snapshot, label, payload = {}) => {
+        Promise.resolve(promise).then((ok) => {
+          if (!ok) rollbackServerMutation(snapshot, label, payload);
+        });
+      };
       const applyRecruitingPostMutation = (postId, reducer, meta = {}) => {
         if (!ensureRemoteReady("방 변경")) return;
+        let rollbackState = null;
         let syncedPost = null;
         let syncedNotifications = [];
         setState((prev) => {
+          rollbackState = prev;
+          const beforePost = (prev.recruitingPosts ?? []).find((post) => post.id === postId) ?? null;
           const next = reducer(prev);
-          syncedPost = (next.recruitingPosts ?? []).find((post) => post.id === postId) ?? null;
+          const nextPost = (next.recruitingPosts ?? []).find((post) => post.id === postId) ?? null;
+          syncedPost = nextPost && nextPost !== beforePost ? nextPost : null;
           syncedNotifications = syncedPost ? getNewRecruitingNotifications(prev, next, postId) : [];
           return next;
         });
-        if (syncedPost) syncRecruitingPostServer(syncedPost, syncedNotifications, meta);
+        if (syncedPost) rollbackIfServerFailed(syncRecruitingPostServer(syncedPost, syncedNotifications, meta), rollbackState, "방 변경", { action: meta.action, postId });
       };
       const applyMatchMutation = (matchId, reducer, meta = {}) => {
         if (!ensureRemoteReady("경기 변경")) return;
+        let rollbackState = null;
         let syncedMatch = null;
         let syncedNotifications = [];
         setState((prev) => {
+          rollbackState = prev;
+          const beforeMatch = (prev.matches ?? []).find((match) => match.id === matchId) ?? null;
           const next = reducer(prev);
-          syncedMatch = (next.matches ?? []).find((match) => match.id === matchId) ?? null;
+          const nextMatch = (next.matches ?? []).find((match) => match.id === matchId) ?? null;
+          syncedMatch = nextMatch && nextMatch !== beforeMatch ? nextMatch : null;
           syncedNotifications = syncedMatch ? getNewMatchNotifications(prev, next, matchId) : [];
           return next;
         });
-        if (syncedMatch) syncMatchServer(syncedMatch, syncedNotifications, meta);
+        if (syncedMatch) rollbackIfServerFailed(syncMatchServer(syncedMatch, syncedNotifications, meta), rollbackState, "경기 변경", { action: meta.action, matchId });
       };
       const applyTeamMutation = (teamId, reducer) => {
         if (!ensureRemoteReady("팀 변경")) return;
+        let rollbackState = null;
         let syncedTeam = null;
         let syncedNotifications = [];
         setState((prev) => {
+          rollbackState = prev;
+          const beforeTeam = (prev.teams ?? []).find((team) => team.id === teamId) ?? null;
           const next = reducer(prev);
-          syncedTeam = (next.teams ?? []).find((team) => team.id === teamId) ?? null;
+          const nextTeam = (next.teams ?? []).find((team) => team.id === teamId) ?? null;
+          syncedTeam = nextTeam && nextTeam !== beforeTeam ? nextTeam : null;
           syncedNotifications = syncedTeam ? getNewTeamNotifications(prev, next) : [];
           return next;
         });
-        if (syncedTeam) syncTeamServer(syncedTeam, syncedNotifications);
+        if (syncedTeam) rollbackIfServerFailed(syncTeamServer(syncedTeam, syncedNotifications), rollbackState, "팀 변경", { teamId });
       };
 
       return ({
@@ -510,26 +546,30 @@ export function useAppData(authUser = null) {
       },
       createMatch: (draft) => {
         if (!ensureRemoteReady("경기 생성")) return null;
+        let rollbackState = null;
         let createdId = null;
         let createdMatch = null;
         let syncedNotifications = [];
         setState((prev) => {
+          rollbackState = prev;
           const next = createMatch({ ...prev, currentUserId }, draft);
           createdId = next.matches[0].id;
           createdMatch = next.matches[0] ?? null;
           syncedNotifications = createdMatch ? getNewMatchNotifications(prev, next, createdMatch.id) : [];
           return next;
         });
-        if (createdMatch) syncMatchServer(createdMatch, syncedNotifications, { action: "createMatch" });
+        if (createdMatch) rollbackIfServerFailed(syncMatchServer(createdMatch, syncedNotifications, { action: "createMatch" }), rollbackState, "경기 생성", { action: "createMatch", matchId: createdMatch.id });
         return createdId;
       },
       createTournament: (draft) => {
         if (!ensureRemoteReady("토너먼트 생성")) return null;
+        let rollbackState = null;
         let createdId = null;
         let createdTournament = null;
         let createdMatches = [];
         let syncedNotifications = [];
         setState((prev) => {
+          rollbackState = prev;
           const existingIds = new Set((prev.tournaments ?? []).map((tournament) => tournament.id));
           const existingMatchIds = new Set((prev.matches ?? []).map((match) => match.id));
           const next = createTournament({ ...prev, currentUserId }, draft);
@@ -539,15 +579,21 @@ export function useAppData(authUser = null) {
           syncedNotifications = createdTournament ? getNewTournamentNotifications(prev, next) : [];
           return next;
         });
-        if (createdTournament) syncTournamentServer(createdTournament, syncedNotifications, { action: "create" });
-        createdMatches.forEach((match) => syncMatchServer(match, [], { action: "createTournamentMatch", tournamentId: createdTournament?.id }));
+        if (createdTournament) {
+          rollbackIfServerFailed(Promise.all([
+            syncTournamentServer(createdTournament, syncedNotifications, { action: "create" }),
+            ...createdMatches.map((match) => syncMatchServer(match, [], { action: "createTournamentMatch", tournamentId: createdTournament?.id })),
+          ]).then((results) => results.every(Boolean)), rollbackState, "토너먼트 생성", { action: "createTournament", tournamentId: createdTournament.id });
+        }
         return createdId;
       },
       approveTournamentTeam: (tournamentId, teamId) => {
+        let rollbackState = null;
         let syncedTournament = null;
         let createdMatches = [];
         let syncedNotifications = [];
         setState((prev) => {
+          rollbackState = prev;
           const existingMatchIds = new Set((prev.matches ?? []).map((match) => match.id));
           const next = approveTournamentTeam({ ...prev, currentUserId }, tournamentId, teamId);
           syncedTournament = (next.tournaments ?? []).find((tournament) => tournament.id === tournamentId) ?? null;
@@ -555,8 +601,12 @@ export function useAppData(authUser = null) {
           syncedNotifications = syncedTournament ? getNewTournamentNotifications(prev, next) : [];
           return next;
         });
-        if (syncedTournament) syncTournamentServer(syncedTournament, syncedNotifications, { action: "approveTeam", teamId });
-        createdMatches.forEach((match) => syncMatchServer(match, [], { action: "createTournamentMatch", tournamentId }));
+        if (syncedTournament) {
+          rollbackIfServerFailed(Promise.all([
+            syncTournamentServer(syncedTournament, syncedNotifications, { action: "approveTeam", teamId }),
+            ...createdMatches.map((match) => syncMatchServer(match, [], { action: "createTournamentMatch", tournamentId })),
+          ]).then((results) => results.every(Boolean)), rollbackState, "토너먼트 팀 승인", { action: "approveTournamentTeam", tournamentId, teamId });
+        }
       },
       updateTournamentMatchSchedule: (tournamentId, matchId, schedule) => {
         applyMatchMutation(matchId, (prev) => updateTournamentMatchSchedule({ ...prev, currentUserId }, tournamentId, matchId, schedule), { action: "updateTournamentMatchSchedule", tournamentId });
@@ -712,41 +762,47 @@ export function useAppData(authUser = null) {
       },
       createTeam: (draft) => {
         if (!ensureRemoteReady("팀 생성")) return;
+        let rollbackState = null;
         let createdTeam = null;
         let syncedNotifications = [];
         setState((prev) => {
+          rollbackState = prev;
           const existingIds = new Set((prev.teams ?? []).map((team) => team.id));
           const next = createTeam({ ...prev, currentUserId }, draft);
           createdTeam = (next.teams ?? []).find((team) => !existingIds.has(team.id)) ?? null;
           syncedNotifications = createdTeam ? getNewTeamNotifications(prev, next) : [];
           return next;
         });
-        if (createdTeam) syncTeamServer(createdTeam, syncedNotifications);
+        if (createdTeam) rollbackIfServerFailed(syncTeamServer(createdTeam, syncedNotifications), rollbackState, "팀 생성", { teamId: createdTeam.id });
       },
       deleteTeam: (teamId) => {
+        let rollbackState = null;
         let deleted = false;
         let syncedNotifications = [];
         setState((prev) => {
+          rollbackState = prev;
           const hadTeam = (prev.teams ?? []).some((team) => team.id === teamId);
           const next = deleteTeam({ ...prev, currentUserId }, teamId);
           deleted = hadTeam && !(next.teams ?? []).some((team) => team.id === teamId);
           syncedNotifications = deleted ? getNewTeamNotifications(prev, next) : [];
           return next;
         });
-        if (deleted) deleteTeamServer(teamId, syncedNotifications);
+        if (deleted) rollbackIfServerFailed(deleteTeamServer(teamId, syncedNotifications), rollbackState, "팀 삭제", { teamId });
       },
       createRecruitingPost: (draft) => {
         if (!ensureRemoteReady("방 생성")) return;
+        let rollbackState = null;
         let createdPost = null;
         let syncedNotifications = [];
         setState((prev) => {
+          rollbackState = prev;
           const existingIds = new Set((prev.recruitingPosts ?? []).map((post) => post.id));
           const next = createRecruitingPost({ ...prev, currentUserId }, draft);
           createdPost = (next.recruitingPosts ?? []).find((post) => !existingIds.has(post.id)) ?? null;
           syncedNotifications = createdPost ? getNewRecruitingNotifications(prev, next, createdPost.id) : [];
           return next;
         });
-        if (createdPost) syncRecruitingPostServer(createdPost, syncedNotifications, { action: "createRecruitingPost" });
+        if (createdPost) rollbackIfServerFailed(syncRecruitingPostServer(createdPost, syncedNotifications, { action: "createRecruitingPost" }), rollbackState, "방 생성", { action: "createRecruitingPost", postId: createdPost.id });
       },
       interestRecruitingPost: (postId, application) => applyRecruitingPostMutation(postId, (prev) => interestRecruitingPost({ ...prev, currentUserId }, postId, application), { action: "interestRecruitingPost", joinMode: application?.joinMode }),
       inviteRecruitingReferee: (postId, refereeId) => applyRecruitingPostMutation(postId, (prev) => inviteRecruitingReferee({ ...prev, currentUserId }, postId, refereeId), { action: "inviteRecruitingReferee", refereeId }),
@@ -789,12 +845,14 @@ export function useAppData(authUser = null) {
       },
       kickRecruitingApplicant: (postId, playerId) => applyRecruitingPostMutation(postId, (prev) => kickRecruitingApplicant({ ...prev, currentUserId }, postId, playerId), { action: "kickRecruitingApplicant", playerId }),
       confirmRecruitingMatch: (postId) => {
+        let rollbackState = null;
         let createdId = null;
         let createdMatch = null;
         let syncedPost = null;
         let syncedNotifications = [];
         let syncedMatchNotifications = [];
         setState((prev) => {
+          rollbackState = prev;
           const existingIds = new Set((prev.matches ?? []).map((match) => match.id));
           const next = confirmRecruitingMatch({ ...prev, currentUserId }, postId);
           createdId = (next.matches ?? []).find((match) => !existingIds.has(match.id))?.id ?? null;
@@ -804,8 +862,12 @@ export function useAppData(authUser = null) {
           syncedMatchNotifications = createdMatch ? getNewMatchNotifications(prev, next, createdMatch.id) : [];
           return next;
         });
-        if (syncedPost) syncRecruitingPostServer(syncedPost, syncedNotifications, { action: "confirmRecruitingMatch" });
-        if (createdMatch) syncMatchServer(createdMatch, syncedMatchNotifications, { action: "confirmRecruitingMatch", recruitingPostId: postId });
+        if (syncedPost || createdMatch) {
+          rollbackIfServerFailed(Promise.all([
+            syncedPost ? syncRecruitingPostServer(syncedPost, syncedNotifications, { action: "confirmRecruitingMatch" }) : Promise.resolve(true),
+            createdMatch ? syncMatchServer(createdMatch, syncedMatchNotifications, { action: "confirmRecruitingMatch", recruitingPostId: postId }) : Promise.resolve(true),
+          ]).then((results) => results.every(Boolean)), rollbackState, "방 확정", { action: "confirmRecruitingMatch", postId, matchId: createdMatch?.id });
+        }
         return createdId;
       },
       closeRecruitingPost: (postId) => applyRecruitingPostMutation(postId, (prev) => closeRecruitingPost({ ...prev, currentUserId }, postId), { action: "closeRecruitingPost" }),
