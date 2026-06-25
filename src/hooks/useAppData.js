@@ -280,6 +280,10 @@ export function useAppData(authUser = null) {
     if (!action) return;
     runServerAction("/api/referee/sync", { action, ...payload });
   }, [runServerAction]);
+  const syncFavoriteServer = useCallback((targetType, targetId, active) => {
+    if (!targetType || !targetId) return;
+    runServerAction("/api/favorites/sync", { targetType, targetId, active });
+  }, [runServerAction]);
 
   const rankings = useMemo(
     () => ({
@@ -482,9 +486,33 @@ export function useAppData(authUser = null) {
       },
       markNotificationRead: (notificationId) => setState((prev) => markNotificationRead(prev, notificationId)),
       markAllNotificationsRead: () => setState((prev) => markAllNotificationsRead(prev)),
-      toggleFavoritePlayer: (userId) => setState((prev) => toggleFavoritePlayer(prev, userId)),
-      toggleFavoriteTeam: (teamId) => setState((prev) => toggleFavoriteTeam(prev, teamId)),
-      toggleFavoriteCourt: (courtId) => setState((prev) => toggleFavoriteCourt(prev, courtId)),
+      toggleFavoritePlayer: (userId) => {
+        let active = false;
+        setState((prev) => {
+          const next = toggleFavoritePlayer(prev, userId);
+          active = (next.settings?.favoritePlayerIds ?? []).includes(userId);
+          return next;
+        });
+        syncFavoriteServer("player", userId, active);
+      },
+      toggleFavoriteTeam: (teamId) => {
+        let active = false;
+        setState((prev) => {
+          const next = toggleFavoriteTeam(prev, teamId);
+          active = (next.settings?.favoriteTeamIds ?? []).includes(teamId);
+          return next;
+        });
+        syncFavoriteServer("team", teamId, active);
+      },
+      toggleFavoriteCourt: (courtId) => {
+        let active = false;
+        setState((prev) => {
+          const next = toggleFavoriteCourt(prev, courtId);
+          active = (next.settings?.favoriteCourtIds ?? []).includes(courtId);
+          return next;
+        });
+        syncFavoriteServer("court", courtId, active);
+      },
       submitCourtRequest: (draft) => {
         let createdRequest = null;
         setState((prev) => {
@@ -650,7 +678,7 @@ export function useAppData(authUser = null) {
       reset: () => setState(resetState({ includeDemo: !isSupabaseConfigured, authUserId, email: authEmail })),
       });
     },
-    [authEmail, authUserId, currentUserId, deleteTeamServer, persistProfileServer, profileKey, profileLocked, runServerAction, submitReportServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncTeamServer, syncTournamentServer],
+    [authEmail, authUserId, currentUserId, deleteTeamServer, persistProfileServer, profileKey, profileLocked, runServerAction, submitReportServer, syncFavoriteServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncTeamServer, syncTournamentServer],
   );
 
   const safeCurrentUserId = currentUserId ?? currentUser?.id ?? "";

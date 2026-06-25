@@ -1,0 +1,63 @@
+import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+
+const TARGET_TYPES = new Set(["player", "team", "court"]);
+
+async function assertTargetExists(context, targetType, targetId) {
+  if (targetType === "court") return;
+  const table = targetType === "player" ? "profiles" : "teams";
+  let query = context.supabase.from(table).select("id").eq("id", targetId);
+  if (targetType === "team") query = query.is("deleted_at", null);
+  const { data, error } = await query.maybeSingle();
+  if (error) throw error;
+  if (!data?.id) {
+    const targetError = new Error("favorite_target_not_found");
+    targetError.statusCode = 404;
+    throw targetError;
+  }
+}
+
+export default async function handler(request, response) {
+  if (request.method !== "POST") {
+    response.setHeader("Allow", "POST");
+    sendJson(response, 405, { error: "method_not_allowed" });
+    return;
+  }
+
+  try {
+    const body = await readJsonBody(request);
+    const targetType = String(body.targetType || "").trim();
+    const targetId = String(body.targetId || "").trim();
+    const active = Boolean(body.active);
+    if (!TARGET_TYPES.has(targetType) || !targetId) {
+      sendJson(response, 400, { error: "invalid_favorite_target" });
+      return;
+    }
+
+    const context = await getAuthenticatedContext(request);
+    await assertTargetExists(context, targetType, targetId);
+
+    if (active) {
+      const { error } = await context.supabase
+        .from("favorites")
+        .upsert({
+          user_id: context.profileId,
+          target_type: targetType,
+          target_id: targetId,
+        }, { onConflict: "user_id,target_type,target_id" });
+      if (error) throw error;
+    } else {
+      const { error } = await context.supabase
+        .from("favorites")
+        .delete()
+        .eq("user_id", context.profileId)
+        .eq("target_type", targetType)
+        .eq("target_id", targetId);
+      if (error) throw error;
+    }
+
+    sendJson(response, 200, { ok: true, targetType, targetId, active });
+  } catch (error) {
+    console.error("Favorite sync failed.", error);
+    sendJson(response, error.statusCode || 500, { error: error.message || "favorite_sync_failed" });
+  }
+}

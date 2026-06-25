@@ -192,6 +192,14 @@
 - 커뮤니티 심판 등록요청은 같은 사용자/시험버전의 passed attempt가 있어야 저장된다.
 - 심판 임명, 등급 부여, 회수는 기존 관리자 임명 server action 영역으로 남긴다.
 
+## 2026-06-25 favorites sync bridge
+
+- `POST /api/favorites/sync`를 추가했다.
+- 선수, 팀, 구장 즐겨찾기 토글 후 `favorites` row를 서버에 upsert/delete한다.
+- 서버는 `user_id`를 현재 `profileId`로 강제한다.
+- 선수와 팀 즐겨찾기는 대상 존재 여부를 확인한다.
+- 구장은 정적 seed 구장과 승인 구장 id가 섞여 있어 현재 단계에서는 target id 존재 검사를 보류한다.
+
 ## 2026-06-25 court review bridge
 
 - `court_reviews`는 구장별 리뷰 평균을 만들기 위한 서버 테이블이다.

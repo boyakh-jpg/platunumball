@@ -9,6 +9,7 @@ import courtRequestSubmit from "../server/api/court-requests/submit.js";
 import courtAddressSearch from "../server/api/courts/address-search.js";
 import courtSubmitReview from "../server/api/courts/submit-review.js";
 import discordDmWorker from "../server/api/discord/dm-worker.js";
+import favoriteSync from "../server/api/favorites/sync.js";
 import matchSyncMatch from "../server/api/matches/sync-match.js";
 import profileUpsert from "../server/api/profile/upsert.js";
 import refereeSync from "../server/api/referee/sync.js";
@@ -30,6 +31,7 @@ const ROUTES = new Map([
   ["/courts/address-search", courtAddressSearch],
   ["/courts/submit-review", courtSubmitReview],
   ["/discord/dm-worker", discordDmWorker],
+  ["/favorites/sync", favoriteSync],
   ["/matches/sync-match", matchSyncMatch],
   ["/profile/upsert", profileUpsert],
   ["/referee/sync", refereeSync],
