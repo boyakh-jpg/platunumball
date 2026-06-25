@@ -993,6 +993,15 @@ flowchart TD
 8. 관리자끼리 중복 처리하지 않도록 server action은 대상 report/appointment row를 `for update`로 잠근다.
 9. Discord DM 발송은 `discord_notification_deliveries` 큐를 서버 worker가 처리한다. Discord 버튼 interaction은 별도 단계로 남는다.
 
+## 2026-06-25 report submit server action
+
+1. 경기/선수 신고 생성은 `POST /api/reports/submit`으로 서버에 저장한다.
+2. 서버는 Supabase bearer를 검증하고 `profiles.auth_user_id`에 매핑된 `profileId`를 신고자 `user_id`로 강제한다.
+3. 클라이언트가 보낸 `by`, `status`, `resolvedAt`, `resolvedBy`, `resolution`은 신뢰하지 않는다. 새 신고는 항상 `status=open`으로 시작한다.
+4. `match` 신고는 경기 참가자, 후보, 출전 이력, 방장, 심판만 제출할 수 있으며 기존 7일 신고 기한을 서버에서도 확인한다.
+5. `court_request` 신고는 기존 `rankball_report_court_request()` 전용 server action만 사용한다.
+6. 이 단계는 신고 생성 저장 브리지다. 신고 판정, 징계, 피드백은 기존 관리자 server action에서 처리한다.
+
 ## 2026-06-24 RLS hardening
 
 1. public tournament read는 `visibility='public'`만 허용한다.

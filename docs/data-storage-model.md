@@ -152,6 +152,16 @@
 - 이 단계는 아직 완전한 authoritative match engine이 아니다. 클라이언트 reducer 결과를 서버에 커밋하는 과도기 브리지다.
 - 다음 단계는 슬롯 점유, 출석 강퇴, 결과/이의 승인, MMR 반영을 RPC transaction으로 옮기는 것이다.
 
+## 2026-06-25 report submit bridge
+
+- `POST /api/reports/submit`을 추가했다.
+- 경기 신고 생성 후 새 `report`와 신고 접수 `notifications`를 서버에 저장한다.
+- 서버는 Supabase bearer를 검증하고 신고자 `user_id`를 현재 `profileId`로 강제한다.
+- `match` 신고는 경기 참가자/후보/출전 이력/방장/심판만 가능하고 7일 신고 기한을 서버에서도 확인한다.
+- `player` 신고는 대상 프로필 존재 여부와 자기신고 금지만 확인한다.
+- `court_request` 신고는 중복 신고, 신뢰도 차감, 상태 변경이 묶인 기존 `POST /api/court-requests/report`만 사용한다.
+- 아직 신고 생성만 server action화한 단계다. 신고 판정/징계/피드백은 기존 관리자 RPC가 처리한다.
+
 ## 2026-06-25 court review bridge
 
 - `court_reviews`는 구장별 리뷰 평균을 만들기 위한 서버 테이블이다.

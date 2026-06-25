@@ -260,6 +260,10 @@ export function useAppData(authUser = null) {
     if (!match?.id) return;
     runServerAction("/api/matches/sync-match", { match, notifications });
   }, [runServerAction]);
+  const submitReportServer = useCallback((report, notifications = []) => {
+    if (!report?.id) return;
+    runServerAction("/api/reports/submit", { report, notifications });
+  }, [runServerAction]);
 
   const rankings = useMemo(
     () => ({
@@ -283,6 +287,13 @@ export function useAppData(authUser = null) {
       const getNewMatchNotifications = (prev, next, matchId) => {
         const beforeIds = new Set((prev.notifications ?? []).map((notification) => notification.id));
         return (next.notifications ?? []).filter((notification) => !beforeIds.has(notification.id) && notification.matchId === matchId);
+      };
+      const getNewReportNotifications = (prev, next, report) => {
+        const beforeIds = new Set((prev.notifications ?? []).map((notification) => notification.id));
+        return (next.notifications ?? []).filter((notification) => (
+          !beforeIds.has(notification.id) &&
+          (notification.matchId === report?.targetId || notification.type === "report" || !notification.targetUserId)
+        ));
       };
       const applyRecruitingPostMutation = (postId, reducer) => {
         let syncedPost = null;
@@ -369,7 +380,18 @@ export function useAppData(authUser = null) {
       updatePrivacySettings: (patch) => setState((prev) => updatePrivacySettings({ ...prev, currentUserId }, patch)),
       blockUser: (userId) => setState((prev) => blockUser({ ...prev, currentUserId }, userId)),
       unblockUser: (userId) => setState((prev) => unblockUser({ ...prev, currentUserId }, userId)),
-      reportMatch: (matchId, reason, reportedUserIds) => setState((prev) => reportMatch({ ...prev, currentUserId }, matchId, reason, reportedUserIds)),
+      reportMatch: (matchId, reason, reportedUserIds) => {
+        let createdReport = null;
+        let syncedNotifications = [];
+        setState((prev) => {
+          const existingIds = new Set((prev.reports ?? []).map((report) => report.id));
+          const next = reportMatch({ ...prev, currentUserId }, matchId, reason, reportedUserIds);
+          createdReport = (next.reports ?? []).find((report) => !existingIds.has(report.id)) ?? null;
+          syncedNotifications = createdReport ? getNewReportNotifications(prev, next, createdReport) : [];
+          return next;
+        });
+        if (createdReport) submitReportServer(createdReport, syncedNotifications);
+      },
       reportCourtRequest: (requestId, reason) => {
         setState((prev) => reportCourtRequest({ ...prev, currentUserId }, requestId, reason));
         runServerAction("/api/court-requests/report", { requestId, reason });
@@ -504,7 +526,7 @@ export function useAppData(authUser = null) {
       reset: () => setState(resetState({ includeDemo: !isSupabaseConfigured, authUserId, email: authEmail })),
       });
     },
-    [authEmail, authUserId, currentUserId, persistProfileServer, profileKey, profileLocked, runServerAction, syncMatchServer, syncRecruitingPostServer],
+    [authEmail, authUserId, currentUserId, persistProfileServer, profileKey, profileLocked, runServerAction, submitReportServer, syncMatchServer, syncRecruitingPostServer],
   );
 
   const safeCurrentUserId = currentUserId ?? currentUser?.id ?? "";

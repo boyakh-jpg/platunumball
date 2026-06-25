@@ -12,6 +12,7 @@ import discordDmWorker from "../server/api/discord/dm-worker.js";
 import matchSyncMatch from "../server/api/matches/sync-match.js";
 import profileUpsert from "../server/api/profile/upsert.js";
 import recruitingSyncPost from "../server/api/recruiting/sync-post.js";
+import reportSubmit from "../server/api/reports/submit.js";
 import supabaseBridge from "../server/api/supabase/bridge.js";
 
 const ROUTES = new Map([
@@ -29,6 +30,7 @@ const ROUTES = new Map([
   ["/matches/sync-match", matchSyncMatch],
   ["/profile/upsert", profileUpsert],
   ["/recruiting/sync-post", recruitingSyncPost],
+  ["/reports/submit", reportSubmit],
   ["/supabase/bridge", supabaseBridge],
 ]);
 
