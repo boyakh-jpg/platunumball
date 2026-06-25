@@ -182,6 +182,16 @@
 - 토너먼트 경기 일정 변경은 match snapshot 변경이므로 기존 match sync 경로를 사용한다.
 - 아직 완전한 tournament authority engine은 아니다. 팀 승인, 대진 생성, 경기 생성 계산은 클라이언트 reducer 결과를 커밋한다.
 
+## 2026-06-25 referee request bridge
+
+- `POST /api/referee/sync`를 추가했다.
+- 심판 시험 시작/종료는 `referee_exam_attempts`에 저장한다.
+- 심판 등록요청은 `referee_requests`와 관련 `notifications`에 저장한다.
+- 서버는 `user_id`, `requested_by`를 현재 `profileId`로 강제하고 신뢰도 90점 조건을 다시 확인한다.
+- 시험 시작은 서버에서 `available_after` 쿨다운을 확인한다.
+- 커뮤니티 심판 등록요청은 같은 사용자/시험버전의 passed attempt가 있어야 저장된다.
+- 심판 임명, 등급 부여, 회수는 기존 관리자 임명 server action 영역으로 남긴다.
+
 ## 2026-06-25 court review bridge
 
 - `court_reviews`는 구장별 리뷰 평균을 만들기 위한 서버 테이블이다.

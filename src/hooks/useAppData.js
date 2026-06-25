@@ -276,6 +276,10 @@ export function useAppData(authUser = null) {
     if (!tournament?.id) return;
     runServerAction("/api/tournaments/sync-tournament", { tournament, notifications, ...meta });
   }, [runServerAction]);
+  const syncRefereeServer = useCallback((action, payload = {}) => {
+    if (!action) return;
+    runServerAction("/api/referee/sync", { action, ...payload });
+  }, [runServerAction]);
 
   const rankings = useMemo(
     () => ({
@@ -320,6 +324,13 @@ export function useAppData(authUser = null) {
           !beforeIds.has(notification.id) &&
           !notification.matchId &&
           (notification.type === "tournament" || notification.tone === "match" || !notification.targetUserId)
+        ));
+      };
+      const getNewRefereeNotifications = (prev, next) => {
+        const beforeIds = new Set((prev.notifications ?? []).map((notification) => notification.id));
+        return (next.notifications ?? []).filter((notification) => (
+          !beforeIds.has(notification.id) &&
+          (notification.type === "referee" || notification.tone === "team" || !notification.targetUserId)
         ));
       };
       const applyRecruitingPostMutation = (postId, reducer) => {
@@ -493,9 +504,39 @@ export function useAppData(authUser = null) {
         });
         if (submittedReview) runServerAction("/api/courts/submit-review", { review: submittedReview });
       },
-      startRefereeExamAttempt: (draft) => setState((prev) => startRefereeExamAttempt({ ...prev, currentUserId }, draft)),
-      finishRefereeExamAttempt: (attemptId, result) => setState((prev) => finishRefereeExamAttempt({ ...prev, currentUserId }, attemptId, result)),
-      submitRefereeRequest: (draft) => setState((prev) => submitRefereeRequest({ ...prev, currentUserId }, draft)),
+      startRefereeExamAttempt: (draft) => {
+        let createdAttempt = null;
+        setState((prev) => {
+          const existingIds = new Set((prev.settings?.refereeExamAttempts ?? []).map((attempt) => attempt.id));
+          const next = startRefereeExamAttempt({ ...prev, currentUserId }, draft);
+          createdAttempt = (next.settings?.refereeExamAttempts ?? []).find((attempt) => !existingIds.has(attempt.id)) ?? null;
+          return next;
+        });
+        if (createdAttempt) syncRefereeServer("startExam", { attempt: createdAttempt });
+      },
+      finishRefereeExamAttempt: (attemptId, result) => {
+        let syncedAttempt = null;
+        setState((prev) => {
+          const beforeAttempt = (prev.settings?.refereeExamAttempts ?? []).find((attempt) => attempt.id === attemptId);
+          const next = finishRefereeExamAttempt({ ...prev, currentUserId }, attemptId, result);
+          const nextAttempt = (next.settings?.refereeExamAttempts ?? []).find((attempt) => attempt.id === attemptId) ?? null;
+          syncedAttempt = beforeAttempt && nextAttempt !== beforeAttempt ? nextAttempt : null;
+          return next;
+        });
+        if (syncedAttempt) syncRefereeServer("finishExam", { attempt: syncedAttempt });
+      },
+      submitRefereeRequest: (draft) => {
+        let createdRequest = null;
+        let syncedNotifications = [];
+        setState((prev) => {
+          const existingIds = new Set((prev.settings?.refereeRequests ?? []).map((request) => request.id));
+          const next = submitRefereeRequest({ ...prev, currentUserId }, draft);
+          createdRequest = (next.settings?.refereeRequests ?? []).find((request) => !existingIds.has(request.id)) ?? null;
+          syncedNotifications = createdRequest ? getNewRefereeNotifications(prev, next) : [];
+          return next;
+        });
+        if (createdRequest) syncRefereeServer("submitRequest", { request: createdRequest, notifications: syncedNotifications });
+      },
       updateProfile: (patch, targetUserId = currentUserId) => {
         const safeTargetUserId = profileLocked ? currentUserId : targetUserId;
         const safePatch = profileLocked ? { ...patch, authUserId } : patch;
@@ -609,7 +650,7 @@ export function useAppData(authUser = null) {
       reset: () => setState(resetState({ includeDemo: !isSupabaseConfigured, authUserId, email: authEmail })),
       });
     },
-    [authEmail, authUserId, currentUserId, deleteTeamServer, persistProfileServer, profileKey, profileLocked, runServerAction, submitReportServer, syncMatchServer, syncRecruitingPostServer, syncTeamServer, syncTournamentServer],
+    [authEmail, authUserId, currentUserId, deleteTeamServer, persistProfileServer, profileKey, profileLocked, runServerAction, submitReportServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncTeamServer, syncTournamentServer],
   );
 
   const safeCurrentUserId = currentUserId ?? currentUser?.id ?? "";

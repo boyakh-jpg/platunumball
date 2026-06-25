@@ -11,6 +11,7 @@ import courtSubmitReview from "../server/api/courts/submit-review.js";
 import discordDmWorker from "../server/api/discord/dm-worker.js";
 import matchSyncMatch from "../server/api/matches/sync-match.js";
 import profileUpsert from "../server/api/profile/upsert.js";
+import refereeSync from "../server/api/referee/sync.js";
 import recruitingSyncPost from "../server/api/recruiting/sync-post.js";
 import reportSubmit from "../server/api/reports/submit.js";
 import supabaseBridge from "../server/api/supabase/bridge.js";
@@ -31,6 +32,7 @@ const ROUTES = new Map([
   ["/discord/dm-worker", discordDmWorker],
   ["/matches/sync-match", matchSyncMatch],
   ["/profile/upsert", profileUpsert],
+  ["/referee/sync", refereeSync],
   ["/recruiting/sync-post", recruitingSyncPost],
   ["/reports/submit", reportSubmit],
   ["/supabase/bridge", supabaseBridge],

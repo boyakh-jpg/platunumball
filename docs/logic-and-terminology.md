@@ -1020,6 +1020,15 @@ flowchart TD
 5. 토너먼트 경기 일정 수정은 토너먼트 생성자만 가능하며, 변경된 match snapshot을 기존 match sync로 저장한다.
 6. 이 단계는 토너먼트 저장 브리지다. 대진 생성, 팀 승인, 경기 생성 계산 자체는 아직 클라이언트 reducer에 남아 있다.
 
+## 2026-06-25 referee request server action
+
+1. 심판 시험 시작/종료와 심판 등록요청은 `POST /api/referee/sync`으로 `referee_exam_attempts`, `referee_requests`에 저장한다.
+2. 서버는 Supabase bearer를 검증하고 `userId`, `requestedBy`를 현재 `profileId`로 강제한다.
+3. 시험 시작과 등록요청은 신뢰도 `90` 이상일 때만 허용한다.
+4. 시험 시작은 최근 attempt의 `available_after`를 확인해 주 1회 제한을 서버에서도 적용한다.
+5. 커뮤니티 심판 등록요청은 같은 사용자, 같은 시험 버전의 passed attempt가 있어야 한다.
+6. 이 단계는 심판 요청 저장 브리지다. 심판 임명/등급 부여는 기존 관리자 임명 server action에서 처리한다.
+
 ## 2026-06-24 RLS hardening
 
 1. public tournament read는 `visibility='public'`만 허용한다.
