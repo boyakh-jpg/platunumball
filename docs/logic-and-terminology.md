@@ -1081,4 +1081,5 @@ flowchart TD
 2. 실제 로그인 소유권은 `profiles.auth_user_id = auth.users.id` unique 매핑으로만 판단한다.
 3. 테스트 계정은 `profiles.test_login_id`와 `test-token-rankball-###`로만 매핑하고 `auth_user_id`를 만들지 않는다.
 4. 최고관리자 권한은 frontend seed ID가 아니라 server env 또는 DB `admin_appointments`에서 나온다.
-5. `src/lib/admin.js`의 `u1` owner fallback은 production 전 제거해야 하는 TODO다.
+5. `src/lib/admin.js`의 `u1` owner fallback은 제거한다. 프론트는 `POST /api/admin/context`가 확인한 현재 사용자 권한만 임시 `server_context` row로 보여준다.
+6. `server_context` row는 UI/로컬 reducer용이며 Supabase `admin_appointments` 저장 대상이 아니다.

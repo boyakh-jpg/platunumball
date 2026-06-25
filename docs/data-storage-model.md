@@ -270,18 +270,19 @@ Done:
 - Server action/bridge paths exist for profile upsert, court request submit/approve/report, admin review, admin/referee appointment, disciplinary action, Discord DM worker, reports, recruiting, matches, teams, tournaments, referee requests, favorites, notification read, court reviews.
 - Remote hydration guard blocks local room/match/team/tournament actions before backend state is ready.
 - Test account server mapping uses `profiles.test_login_id` with `test-token-rankball-###`.
+- Client `u1` owner fallback is removed. Admin menu authority now comes from server context or DB `admin_appointments`.
 
 Partial:
 
 - Frontend still has client reducer logic and sends snapshots to server sync bridges. This is not yet a fully authoritative room/match/team/tournament backend.
 - `mockData.js` and generated demo flow remain for non-Supabase local dev and seed generation, not production source of truth.
 - Admin UI calls server actions, but local UI state is still updated first and should be reloaded from server result before production.
+- Env owner support uses `POST /api/admin/context` to expose only the current user's admin level to the client.
 - Discord OAuth/profile badge/DM queue exists, but invite buttons and chat bridge are not complete.
 - Court reviews exist, but review reports/moderation are not connected.
 
 Remaining:
 
-- Remove client `u1` owner fallback from `src/lib/admin.js` before production.
 - Set owner authority through `RANKBALL_OWNER_AUTH_USER_IDS`, `RANKBALL_OWNER_PROFILE_IDS`, or DB `admin_appointments`; do not depend on frontend seed IDs.
 - Keep app user identity as `profiles.id`; never expose or use Google/provider ID as the public RankBall user id.
 - Finish authoritative RPC/server actions for recruiting create/join/invite/accept/ready/confirm, match attendance/start/record/end/dispute/approve, team membership, and tournament bracket generation.

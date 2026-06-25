@@ -1818,15 +1818,17 @@ export async function saveNormalizedRemoteState(state, options = {}) {
     finished_at: attempt.finishedAt ?? null,
     available_after: attempt.availableAfter ?? null,
   })).filter((row) => row.id);
-  const adminAppointmentRows = (state.settings?.adminAppointments ?? []).map((appointment) => ({
-    ...toPayloadRow(appointment),
-    user_id: appointment.userId ?? null,
-    role: appointment.role ?? "admin",
-    grade: appointment.grade ?? null,
-    appointed_by: appointment.appointedBy ?? null,
-    starts_at: appointment.startsAt ?? null,
-    ends_at: appointment.endsAt ?? null,
-  })).filter((row) => row.id);
+  const adminAppointmentRows = (state.settings?.adminAppointments ?? [])
+    .filter((appointment) => appointment.source !== "server_context")
+    .map((appointment) => ({
+      ...toPayloadRow(appointment),
+      user_id: appointment.userId ?? null,
+      role: appointment.role ?? "admin",
+      grade: appointment.grade ?? null,
+      appointed_by: appointment.appointedBy ?? null,
+      starts_at: appointment.startsAt ?? null,
+      ends_at: appointment.endsAt ?? null,
+    })).filter((row) => row.id);
   const refereeAppointmentRows = (state.settings?.refereeAppointments ?? []).map((appointment) => ({
     ...toPayloadRow(appointment),
     user_id: appointment.userId ?? null,

@@ -1,6 +1,6 @@
 import { getMatchPlayerIds } from "./matchUtils.js";
 
-export const ADMIN_BACKEND_TODO = "TODO backend: server-side admin auth, RLS, auditLog required before deployment.";
+export const ADMIN_BACKEND_TODO = "관리자 권한은 서버 env 또는 DB admin_appointments 기준입니다.";
 
 export const ADMIN_GRADE_META = {
   owner: { label: "최고관리자", level: 100, defaultTermDays: 3650, scope: "전체 권한 · 1명" },
@@ -54,22 +54,11 @@ export const APPOINTMENT_TERM_OPTIONS = [
   { id: "365d", label: "1년", days: 365 },
 ];
 
-function hasPermission(user = {}, permission) {
-  return Array.isArray(user.adminPermissions) && user.adminPermissions.includes(permission);
-}
-
 function normalizeAdminGrade(grade = "") {
   return ADMIN_GRADE_ALIASES[grade] ?? grade;
 }
 
-export function getAdminGrade(user = {}) {
-  const grade = normalizeAdminGrade(user.adminGrade);
-  if (ADMIN_GRADE_META[grade]) return grade;
-  if (user.id === "u1") return "owner";
-  if (user.role === "admin" || user.isAdmin === true) return "senior";
-  if (hasPermission(user, "region")) return "regionManager";
-  if (hasPermission(user, "operations")) return "matchManager";
-  if (hasPermission(user, "admin")) return "support";
+export function getAdminGrade() {
   return "";
 }
 

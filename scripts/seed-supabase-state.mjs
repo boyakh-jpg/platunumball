@@ -17,7 +17,41 @@ const supabase = createClient(url, serviceRoleKey, {
   },
 });
 
-const state = runAutomaticStateMaintenance(initialState);
+function withBootstrapAdminAppointment(state) {
+  const adminAppointments = state.settings?.adminAppointments ?? [];
+  const hasOwner = adminAppointments.some((appointment) => (
+    appointment.role === "admin" &&
+    appointment.grade === "owner" &&
+    appointment.status !== "revoked" &&
+    appointment.status !== "expired"
+  ));
+  if (hasOwner) return state;
+
+  return {
+    ...state,
+    settings: {
+      ...(state.settings ?? {}),
+      adminAppointments: [
+        {
+          id: "seed-owner-u1",
+          role: "admin",
+          grade: "owner",
+          userId: "u1",
+          status: "active",
+          startsAt: "2026-01-01T00:00:00.000Z",
+          endsAt: "2030-12-31T23:59:59.000Z",
+          appointedBy: "system",
+          reason: "Supabase seed owner for backend simulation",
+          source: "backend_seed",
+          createdAt: "2026-06-26T00:00:00.000Z",
+        },
+        ...adminAppointments,
+      ],
+    },
+  };
+}
+
+const state = withBootstrapAdminAppointment(runAutomaticStateMaintenance(initialState));
 
 await saveNormalizedRemoteState(state, { client: supabase });
 
@@ -28,4 +62,5 @@ console.log(JSON.stringify({
   matches: state.matches.length,
   recruitingPosts: state.recruitingPosts.length,
   tournaments: state.tournaments?.length ?? 0,
+  adminAppointments: state.settings?.adminAppointments?.length ?? 0,
 }, null, 2));

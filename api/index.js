@@ -1,4 +1,5 @@
 import adminAppointmentAction from "../server/api/admin/appointment-action.js";
+import adminContext from "../server/api/admin/context.js";
 import adminDisciplinaryAction from "../server/api/admin/disciplinary-action.js";
 import adminReviewAction from "../server/api/admin/review-action.js";
 import discordCallback from "../server/api/auth/discord/callback.js";
@@ -22,6 +23,7 @@ import tournamentSyncTournament from "../server/api/tournaments/sync-tournament.
 
 const ROUTES = new Map([
   ["/admin/appointment-action", adminAppointmentAction],
+  ["/admin/context", adminContext],
   ["/admin/disciplinary-action", adminDisciplinaryAction],
   ["/admin/review-action", adminReviewAction],
   ["/auth/discord/callback", discordCallback],

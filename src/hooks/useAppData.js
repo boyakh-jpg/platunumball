@@ -152,6 +152,52 @@ function preserveLocalDiscordState(localState, remoteState) {
   };
 }
 
+const EMPTY_ADMIN_CONTEXT = { profileId: "", level: 0, grade: "" };
+
+function normalizeAdminContext(result = {}) {
+  const level = Number(result.adminLevel ?? 0);
+  return {
+    profileId: result.profileId ?? "",
+    level: Number.isFinite(level) ? level : 0,
+    grade: result.adminGrade ?? "",
+  };
+}
+
+function withServerAdminContext(state, context = EMPTY_ADMIN_CONTEXT) {
+  const settings = state.settings ?? {};
+  const adminAppointments = (settings.adminAppointments ?? []).filter((appointment) => appointment.source !== "server_context");
+  if (!context.profileId || context.level < 30 || !context.grade) {
+    return {
+      ...state,
+      settings: {
+        ...settings,
+        adminAppointments,
+      },
+    };
+  }
+  return {
+    ...state,
+    settings: {
+      ...settings,
+      adminAppointments: [
+        {
+          id: `server-admin-context:${context.profileId}`,
+          role: "admin",
+          grade: context.grade,
+          userId: context.profileId,
+          status: "active",
+          startsAt: "",
+          endsAt: "",
+          appointedBy: "server",
+          reason: "서버 권한",
+          source: "server_context",
+        },
+        ...adminAppointments,
+      ],
+    },
+  };
+}
+
 export function useAppData(authUser = null) {
   const authUserId = typeof authUser === "string" ? authUser : authUser?.id ?? null;
   const authEmail = typeof authUser === "object" ? authUser?.email ?? authUser?.user_metadata?.email ?? "" : "";
@@ -160,6 +206,8 @@ export function useAppData(authUser = null) {
     setRawState((prev) => syncNotificationDeliveries(typeof updater === "function" ? updater(prev) : updater));
   }, []);
   const [profileBindings, setProfileBindings] = useState(() => readProfileBindings());
+  const [adminContext, setAdminContext] = useState(EMPTY_ADMIN_CONTEXT);
+  const adminContextRef = useRef(EMPTY_ADMIN_CONTEXT);
   const remoteReadyRef = useRef(!isSupabaseConfigured);
   const skipNextRemoteSaveRef = useRef(false);
   const profileKey = authUserId ?? "local-demo";
@@ -168,6 +216,7 @@ export function useAppData(authUser = null) {
   const serverProfileBound = profileLocked || Boolean(backendTestLoginId);
   const effectiveProfileBindings = isSupabaseConfigured ? {} : profileBindings;
   const currentUserId = getBoundAuthProfileId(state, authUserId, effectiveProfileBindings, profileKey);
+  const currentUserOnboardingComplete = Boolean(state.users.find((user) => user.id === currentUserId)?.onboardingComplete);
 
   useEffect(() => {
     if (!isSupabaseConfigured || !authUserId) return;
@@ -211,7 +260,7 @@ export function useAppData(authUser = null) {
         if (remoteState) {
           const maintainedState = runAutomaticStateMaintenance(remoteState);
           skipNextRemoteSaveRef.current = maintainedState === remoteState;
-          setState((prev) => preserveLocalDiscordState(prev, maintainedState));
+          setState((prev) => withServerAdminContext(preserveLocalDiscordState(prev, maintainedState), adminContextRef.current));
         }
         remoteReadyRef.current = true;
       })
@@ -223,7 +272,7 @@ export function useAppData(authUser = null) {
     const unsubscribe = subscribeRemoteState((remoteState) => {
       const maintainedState = runAutomaticStateMaintenance(remoteState);
       skipNextRemoteSaveRef.current = maintainedState === remoteState;
-      setState((prev) => preserveLocalDiscordState(prev, maintainedState));
+      setState((prev) => withServerAdminContext(preserveLocalDiscordState(prev, maintainedState), adminContextRef.current));
     });
 
     return () => {
@@ -231,6 +280,36 @@ export function useAppData(authUser = null) {
       unsubscribe();
     };
   }, [authEmail, authUserId]);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured || !authUserId) {
+      adminContextRef.current = EMPTY_ADMIN_CONTEXT;
+      setAdminContext(EMPTY_ADMIN_CONTEXT);
+      setState((prev) => withServerAdminContext(prev, EMPTY_ADMIN_CONTEXT));
+      return undefined;
+    }
+
+    let mounted = true;
+    postServerAction("/api/admin/context", {}, { allowWhenDisabled: true })
+      .then((result) => {
+        if (!mounted) return;
+        const context = normalizeAdminContext(result);
+        adminContextRef.current = context;
+        setAdminContext(context);
+        setState((prev) => withServerAdminContext(prev, context));
+      })
+      .catch((error) => {
+        if (!mounted) return;
+        console.warn("Admin context failed.", error.message);
+        adminContextRef.current = EMPTY_ADMIN_CONTEXT;
+        setAdminContext(EMPTY_ADMIN_CONTEXT);
+        setState((prev) => withServerAdminContext(prev, EMPTY_ADMIN_CONTEXT));
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [authUserId, currentUserId, currentUserOnboardingComplete, setState]);
 
   useEffect(() => {
     if (!profileLocked || !authUserId || !currentUserId || isSupabaseConfigured) return;
@@ -740,5 +819,5 @@ export function useAppData(authUser = null) {
   );
 
   const safeCurrentUserId = currentUserId ?? currentUser?.id ?? "";
-  return { state: { ...state, currentUserId: safeCurrentUserId }, currentUser, currentUserId: safeCurrentUserId, profileBound: true, profileLocked, rankings, actions };
+  return { state: { ...state, currentUserId: safeCurrentUserId }, currentUser, currentUserId: safeCurrentUserId, profileBound: true, profileLocked, adminContext, rankings, actions };
 }

@@ -87,7 +87,7 @@ export default function Admin({ app }) {
     [app.state.users],
   );
   const activeAppointmentOptions = useMemo(
-    () => appointments.rows.filter((row) => row.active && row.source !== "current_profile"),
+    () => appointments.rows.filter((row) => row.active && row.source !== "current_profile" && row.source !== "server_context"),
     [appointments.rows],
   );
   const activeRows = model[view] ?? [];
@@ -160,7 +160,7 @@ export default function Admin({ app }) {
           <p className="eyebrow">Admin Console</p>
           <h1>관리자 메뉴</h1>
         </div>
-        <Badge tone="orange">mock 권한</Badge>
+        <Badge tone="team">서버 권한</Badge>
       </header>
 
       <div className="admin-summary-grid">
@@ -251,7 +251,7 @@ export default function Admin({ app }) {
         <div className="admin-action-panel admin-appointment-action-panel">
           <div>
             <strong>임명/회수 액션</strong>
-            <small>mock 커밋입니다. 배포 전 서버 권한, RLS, auditLog 트랜잭션으로 다시 묶어야 합니다.</small>
+            <small>처리는 server action/RPC로 커밋됩니다. 화면 state는 커밋 후 서버 재조회 기준으로 맞춰야 합니다.</small>
           </div>
           <div className="arena-field-grid">
             <label>
@@ -426,7 +426,7 @@ export default function Admin({ app }) {
                 <Button type="button" variant="secondary" disabled={!selectedReport || selectedReport.status !== "open"} onClick={commitSelectedAction}>
                   액션 커밋
                 </Button>
-                <small>mock/localStorage에서는 커밋 직전 상태만 확인합니다. 실시간 중복 방지는 서버 트랜잭션에서 다시 확인해야 합니다.</small>
+                <small>실시간 중복 방지는 서버 트랜잭션에서 최종 확인합니다.</small>
               </div>
 
               <DetailList title="쌓인 신고" empty="신고 없음">
