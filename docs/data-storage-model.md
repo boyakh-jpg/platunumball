@@ -129,6 +129,7 @@
 - Match server action은 디코 연동된 경기 참가자/심판에게 시작 24시간 전, 2시간 전, 1시간 전, 경기 시작, 경기 종료, 종료 30분 이의신청 안내 delivery row를 만든다.
 - Match server action은 방관리자에게 시작 10분 전 참여자 도착 여부 확인 안내와 시작시간 시작 처리 안내를 만든다. 조기 시작 시 미발송 방관리자 안내 row는 삭제한다.
 - 점수 제출, 이의신청, 승인 처리, 이의 처리 재개가 일어나면 미발송 경기 종료 점수 입력 안내와 종료 30분 뒤 이의신청 안내 row는 삭제한다.
+- 경기 취소 또는 무효 처리 시 해당 경기의 미발송 Discord delivery row를 삭제한다.
 - Recruiting server action은 즉시방 생성 시 방 개설 delivery row를 만든다.
 
 ## 2026-06-24 RLS hardening

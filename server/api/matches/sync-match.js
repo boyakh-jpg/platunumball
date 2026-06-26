@@ -252,6 +252,18 @@ async function queueMatchDiscordDeliveries(supabase, match = {}, action = "sync"
       "match-dispute-check",
     ]);
   }
+  if (["cancelMatch", "voidMatch"].includes(action)) {
+    await cancelPendingDiscordDeliveryPrefixes(supabase, match.id, [
+      "match-reminder-24h",
+      "match-reminder-2h",
+      "match-reminder-1h",
+      "match-manager-checkin-10m",
+      "match-manager-start-now",
+      "match-started",
+      "match-ended-score",
+      "match-dispute-check",
+    ]);
+  }
 
   if (
     scheduledAt &&
