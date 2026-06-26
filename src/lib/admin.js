@@ -40,6 +40,8 @@ export const ADMIN_REVIEW_ACTIONS = {
   maliciousReporter: { label: "악성신고자 제재", feedback: "악성 신고로 판단되어 신고자에게 제재가 적용되었습니다." },
   suspendTarget: { label: "대상 제재", feedback: "신고 대상에게 제재가 적용되었습니다." },
   refereeDiscipline: { label: "심판 조치", feedback: "심판 권한 또는 등급 검토 조치가 등록되었습니다." },
+  hideCourt: { label: "구장 숨김", feedback: "신고된 구장이 숨김 처리되었습니다." },
+  hideCourtReview: { label: "구장 리뷰 숨김", feedback: "신고된 구장 리뷰가 숨김 처리되었습니다." },
 };
 
 export const APPOINTMENT_ROLE_META = {

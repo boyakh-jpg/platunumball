@@ -923,6 +923,10 @@ function fromRemoteApprovedCourt(row = {}) {
     zonecode: row.zonecode ?? payload.zonecode,
     lat: row.lat ?? payload.lat,
     lng: row.lng ?? payload.lng,
+    status: row.status ?? payload.status ?? "active",
+    hiddenAt: row.hidden_at ?? payload.hiddenAt,
+    hiddenBy: row.hidden_by ?? payload.hiddenBy,
+    hiddenReason: row.hidden_reason ?? payload.hiddenReason,
     approvedAt: row.approved_at ?? payload.approvedAt,
     createdAt: row.created_at ?? payload.createdAt,
     updatedAt: row.updated_at ?? payload.updatedAt,
@@ -947,6 +951,10 @@ function fromRemoteCourtReview(row = {}) {
     fitModes: row.fit_modes ?? payload.fitModes ?? [],
     tags: row.tags ?? payload.tags ?? [],
     memo: row.memo ?? payload.memo ?? "",
+    status: row.status ?? payload.status ?? "active",
+    hiddenAt: row.hidden_at ?? payload.hiddenAt,
+    hiddenBy: row.hidden_by ?? payload.hiddenBy,
+    hiddenReason: row.hidden_reason ?? payload.hiddenReason,
     createdAt: row.created_at ?? payload.createdAt,
     updatedAt: row.updated_at ?? payload.updatedAt,
   };
@@ -1531,6 +1539,10 @@ function toApprovedCourtRow(court = {}) {
     zonecode: court.zonecode ?? null,
     lat: court.lat ?? null,
     lng: court.lng ?? null,
+    status: court.status ?? "active",
+    hidden_at: court.hiddenAt ?? null,
+    hidden_by: court.hiddenBy ?? null,
+    hidden_reason: court.hiddenReason ?? null,
     payload: court,
     approved_at: court.approvedAt ?? null,
     created_at: court.createdAt ?? court.approvedAt ?? new Date().toISOString(),
@@ -5040,6 +5052,18 @@ export function commitAdminReviewAction(state, draft = {}) {
       notifications: [getAdminActionNotification("제재 대상을 선택해야 합니다."), ...state.notifications],
     };
   }
+  if (actionType === "hideCourt" && report.type !== "court") {
+    return {
+      ...state,
+      notifications: [getAdminActionNotification("구장 신고만 구장 숨김 처리할 수 있습니다."), ...state.notifications],
+    };
+  }
+  if (actionType === "hideCourtReview" && report.type !== "court_review") {
+    return {
+      ...state,
+      notifications: [getAdminActionNotification("구장 리뷰 신고만 리뷰 숨김 처리할 수 있습니다."), ...state.notifications],
+    };
+  }
 
   const now = new Date().toISOString();
   const disciplinaryAction = makeDisciplinaryAction({ state, report, actionType, targetUserId, durationDays, reason, now });
@@ -5075,6 +5099,20 @@ export function commitAdminReviewAction(state, draft = {}) {
     createdAt: now,
     createdBy: state.currentUserId,
   };
+  const nextApprovedCourts = actionType === "hideCourt"
+    ? (state.settings?.approvedCourts ?? []).map((court) => (
+      court.id === report.targetId
+        ? { ...court, status: "hidden", hiddenAt: now, hiddenBy: state.currentUserId, hiddenReason: reason }
+        : court
+    ))
+    : (state.settings?.approvedCourts ?? []);
+  const nextCourtReviews = actionType === "hideCourtReview"
+    ? (state.settings?.courtReviews ?? []).map((review) => (
+      review.id === report.targetId
+        ? { ...review, status: "hidden", hiddenAt: now, hiddenBy: state.currentUserId, hiddenReason: reason }
+        : review
+    ))
+    : (state.settings?.courtReviews ?? []);
   const reporterNotification = report.by
     ? {
       id: makeId("n"),
@@ -5099,6 +5137,8 @@ export function commitAdminReviewAction(state, draft = {}) {
     reports: nextReports,
     settings: normalizeSettings({
       ...(state.settings ?? {}),
+      approvedCourts: nextApprovedCourts,
+      courtReviews: nextCourtReviews,
       adminAuditLog: [auditLog, ...(state.settings?.adminAuditLog ?? [])],
       adminDisciplinaryActions: disciplinaryAction
         ? [disciplinaryAction, ...(state.settings?.adminDisciplinaryActions ?? [])]

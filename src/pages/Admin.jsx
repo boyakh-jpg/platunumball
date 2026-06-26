@@ -33,6 +33,9 @@ function statusLabel(status) {
   if (status === "reported") return "신고됨";
   if (status === "disputed") return "이의제기";
   if (status === "open") return "대기";
+  if (status === "active") return "활성";
+  if (status === "hidden") return "숨김";
+  if (status === "disabled") return "비활성";
   return status || "대기";
 }
 
@@ -96,6 +99,14 @@ export default function Admin({ app }) {
   const userMap = useMemo(() => Object.fromEntries(app.state.users.map((user) => [user.id, user])), [app.state.users]);
   const matchMap = useMemo(() => Object.fromEntries(app.state.matches.map((match) => [match.id, match])), [app.state.matches]);
   const selectedReport = selectedRow?.reports.find((report) => report.status === "open") ?? selectedRow?.reports[0] ?? null;
+  const visibleActionOptions = useMemo(() => {
+    const ids = ["validReport", "dismissReport", "maliciousReporter"];
+    if (selectedReport?.type === "court") ids.push("hideCourt");
+    if (selectedReport?.type === "court_review") ids.push("hideCourtReview", "suspendTarget");
+    if (selectedReport?.type === "match" || selectedReport?.type === "player") ids.push("suspendTarget", "refereeDiscipline");
+    if (selectedReport?.type === "court_request") ids.push("suspendTarget");
+    return ACTION_OPTIONS.filter((option) => ids.includes(option.id));
+  }, [selectedReport?.type]);
   const targetCandidates = useMemo(() => {
     const ids = new Set([
       ...(selectedReport?.reportedUserIds ?? []),
@@ -111,11 +122,12 @@ export default function Admin({ app }) {
   useEffect(() => {
     setActionDraft((current) => ({
       ...current,
+      actionType: visibleActionOptions.some((option) => option.id === current.actionType) ? current.actionType : visibleActionOptions[0]?.id ?? "validReport",
       targetUserId: targetCandidates[0]?.id ?? "",
       reason: "",
       feedback: "",
     }));
-  }, [selectedReport?.id, selectedRow?.id]);
+  }, [selectedReport?.id, selectedRow?.id, targetCandidates, visibleActionOptions]);
 
   const updateActionDraft = (patch) => setActionDraft((current) => ({ ...current, ...patch }));
   const updateAppointmentDraft = (patch) => setAppointmentDraft((current) => ({ ...current, ...patch }));
@@ -398,7 +410,7 @@ export default function Admin({ app }) {
                   <label>
                     액션
                     <select value={actionDraft.actionType} onChange={(event) => updateActionDraft({ actionType: event.target.value })}>
-                      {ACTION_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+                      {visibleActionOptions.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
                     </select>
                   </label>
                   <label>
@@ -479,7 +491,7 @@ export default function Admin({ app }) {
                       <strong>{review.courtName ?? "구장 리뷰"}</strong>
                       <em>{review.rating ?? "-"}점 · {review.memo || "메모 없음"}</em>
                     </span>
-                    <Badge tone="neutral">리뷰</Badge>
+                    <Badge tone={review.status === "hidden" ? "orange" : "neutral"}>{statusLabel(review.status ?? "active")}</Badge>
                   </div>
                 )) : null}
               </DetailList>

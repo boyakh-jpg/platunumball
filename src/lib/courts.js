@@ -131,13 +131,19 @@ function getRatingAverage(reviews = [], field) {
   return Math.round((values.reduce((sum, value) => sum + value, 0) / values.length) * 10) / 10;
 }
 
+function isActiveModerationItem(item = {}) {
+  return !item.status || item.status === "active";
+}
+
 export function getCourtReviewSummary(court = {}, reviews = []) {
   const courtId = String(court.id ?? "");
   const courtName = String(court.name ?? "");
-  const relatedReviews = reviews.filter((review) => (
-    (courtId && review.courtId === courtId) ||
-    (courtName && review.courtName === courtName)
-  ));
+  const relatedReviews = reviews
+    .filter(isActiveModerationItem)
+    .filter((review) => (
+      (courtId && review.courtId === courtId) ||
+      (courtName && review.courtName === courtName)
+    ));
 
   return {
     averageRating: getRatingAverage(relatedReviews, "rating"),
@@ -152,8 +158,8 @@ export function getCourtReviewSummary(court = {}, reviews = []) {
 
 export function getRegisteredCourts(stateOrSettings = {}) {
   const settings = stateOrSettings.settings ? stateOrSettings.settings : stateOrSettings;
-  const approvedCourts = settings.approvedCourts ?? [];
-  const courtReviews = settings.courtReviews ?? [];
+  const approvedCourts = (settings.approvedCourts ?? []).filter(isActiveModerationItem);
+  const courtReviews = (settings.courtReviews ?? []).filter(isActiveModerationItem);
   const byId = new Map(COURTS.map((court) => [court.id, court]));
   approvedCourts.forEach((court) => {
     if (!court?.id) return;

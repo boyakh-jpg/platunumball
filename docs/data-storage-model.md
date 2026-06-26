@@ -238,7 +238,7 @@
 
 - `scripts/seed-demo-flow.mjs`는 기존 `reports`, `settings.courtRequests`, `settings.adminAuditLog`, `settings.adminDisciplinaryActions`, `notifications`, `matches`, `users` shape만 사용해 abuse/integrity 시나리오를 추가한다.
 - 신고 status는 현재 관리자 UI/server action이 처리하는 `open`, `resolved`, `dismissed`만 사용한다.
-- 구장 신고는 현재 공식 target인 `type="court_request"`만 사용한다. `approved_courts` 직접 신고, hidden/disabled 상태는 아직 seed하지 않는다.
+- 구장 신고 seed는 아직 `type="court_request"` 중심이다. 신규 `court`, `court_review`, hidden 시나리오 seed 보강은 별도 남았다.
 - 나이 관련 seed는 `profiles.birth_year`, `profiles.age_group`, `recruiting_posts.ageRestriction`, `recruiting_posts.allowedAgeGroups`에 맞춘다. `claimed_birth_year`, `verified_birth_year`, `verification_status`는 현재 schema가 없어 만들지 않는다.
 - 완료된 경기의 사기 의심은 최종 결과를 직접 바꾸지 않고 `status="disputed"` match와 `reports`로 표현한다.
 - fraud report는 자동 ranking 변경을 만들지 않는다. 확정 제재 시나리오는 `adminDisciplinaryActions`와 낮은 `trustScore`로만 표현한다.
@@ -263,7 +263,7 @@ Backend gaps:
 
 - `reports`는 `target_type/reporter_id`가 아니라 `type/user_id` 구조다. seed와 server action은 이 구조를 따라야 한다.
 - 승인 구장(`approved_courts`) 신고는 `reports.type = 'court'`로 연결한다.
-- 구장 hidden/disabled moderation status와 구장 리뷰 숨김/삭제 action은 아직 없다.
+- 구장 hidden moderation status와 구장 리뷰 soft hide action은 있다. restore/hard delete 운영 도구는 없다.
 - `profiles`에는 birth year와 age group만 있고 나이 인증 상태, 신고 전 주장 나이, 관리자 검증 나이를 분리 저장할 컬럼이 없다.
 - 방 생성자는 연령 제한 밖이면 생성이 막히지만, recruiting 참여/초대 수락 시점의 연령 차단은 아직 authoritative server logic이 아니다.
 - abuse/integrity seed는 demo state 생성기에 들어갔다. Supabase Auth user 150명 이상을 만드는 service-role alpha seed script와 cleanup script는 별도 남은 작업이다.
@@ -296,7 +296,7 @@ Partial:
 - Admin UI calls server actions, but local UI state is still updated first and should be reloaded from server result before production.
 - Env owner support uses `POST /api/admin/context` to expose only the current user's admin level to the client.
 - Discord OAuth/profile badge/DM queue exists, but invite buttons and chat sync are not complete.
-- Court reviews exist, and `court` / `court_review` reports now submit through `/api/reports/submit`; hidden/disabled moderation state is still missing.
+- Court reviews exist, `court` / `court_review` reports submit through `/api/reports/submit`, and admin review actions can soft-hide approved courts and court reviews.
 
 Remaining:
 
@@ -307,7 +307,7 @@ Remaining:
 - Make frontend repository a thin server caller after the authoritative RPCs are ready.
 - Remove production reliance on localStorage state and mock fallback completely.
 - Add broader server-side eligibility checks for tournament brackets and match roster edits.
-- Add approved court hidden/disabled moderation state and court review hiding/removal action.
+- Add hard delete/restore tools for court moderation only if operational policy later requires it.
 - Add Supabase Auth/test seed and cleanup scripts for realistic multi-user simulations.
 
 ## 2026-06-26 Supabase test seed scripts

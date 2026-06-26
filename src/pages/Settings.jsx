@@ -245,7 +245,7 @@ export default function Settings({ app, auth }) {
         report.status !== "dismissed" &&
         report.status !== "resolved"
       ));
-      return court.id && !alreadyReported;
+      return court.id && (!court.status || court.status === "active") && !alreadyReported;
     })
   ), [app.currentUserId, app.state.reports, approvedCourts]);
   const reportableCourtReviews = useMemo(() => (
@@ -257,7 +257,7 @@ export default function Settings({ app, auth }) {
         report.status !== "dismissed" &&
         report.status !== "resolved"
       ));
-      return review.id && review.reviewerId !== app.currentUserId && !alreadyReported;
+      return review.id && (!review.status || review.status === "active") && review.reviewerId !== app.currentUserId && !alreadyReported;
     })
   ), [app.currentUserId, app.state.reports, courtReviews]);
   const selectedReportMatchId = recentReportMatches.some((match) => match.id === reportMatchId) ? reportMatchId : "";

@@ -137,13 +137,18 @@ async function assertCanSubmitPlayerReport(context, targetId, reportedUserIds) {
 async function assertCanSubmitCourtReport(context, targetId) {
   const { data: court, error: courtError } = await context.supabase
     .from("approved_courts")
-    .select("id, source_request_id")
+    .select("id, source_request_id, status")
     .eq("id", targetId)
     .maybeSingle();
   if (courtError) throw courtError;
   if (!court) {
     const error = new Error("court_not_found");
     error.statusCode = 404;
+    throw error;
+  }
+  if (court.status && court.status !== "active") {
+    const error = new Error("court_hidden");
+    error.statusCode = 400;
     throw error;
   }
 
@@ -160,13 +165,18 @@ async function assertCanSubmitCourtReport(context, targetId) {
 async function assertCanSubmitCourtReviewReport(context, targetId) {
   const { data: review, error: reviewError } = await context.supabase
     .from("court_reviews")
-    .select("id, reviewer_id")
+    .select("id, reviewer_id, status")
     .eq("id", targetId)
     .maybeSingle();
   if (reviewError) throw reviewError;
   if (!review) {
     const error = new Error("court_review_not_found");
     error.statusCode = 404;
+    throw error;
+  }
+  if (review.status && review.status !== "active") {
+    const error = new Error("court_review_hidden");
+    error.statusCode = 400;
     throw error;
   }
   if (review.reviewer_id === context.profileId) {

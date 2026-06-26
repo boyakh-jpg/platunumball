@@ -883,6 +883,7 @@ create table if not exists public.approved_courts (
   id text primary key,
   source_request_id text,
   approved_by text,
+  status text not null default 'active',
   name text not null,
   hashtag text,
   address_text text not null,
@@ -891,6 +892,9 @@ create table if not exists public.approved_courts (
   zonecode text,
   lat double precision,
   lng double precision,
+  hidden_at timestamptz,
+  hidden_by text,
+  hidden_reason text,
   payload jsonb not null default '{}'::jsonb,
   approved_at timestamptz,
   created_at timestamptz not null default now(),
@@ -912,6 +916,10 @@ create table if not exists public.court_reviews (
   fit_modes jsonb not null default '[]'::jsonb,
   tags jsonb not null default '[]'::jsonb,
   memo text,
+  status text not null default 'active',
+  hidden_at timestamptz,
+  hidden_by text,
+  hidden_reason text,
   payload jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -927,6 +935,28 @@ create unique index if not exists court_reviews_match_reviewer_unique
 on public.court_reviews (match_id, reviewer_id);
 create index if not exists court_reviews_court_id_idx
 on public.court_reviews (court_id, created_at desc);
+
+do $$
+begin
+  if to_regclass('public.approved_courts') is not null then
+    execute 'alter table public.approved_courts add column if not exists status text not null default ''active''';
+    execute 'alter table public.approved_courts add column if not exists hidden_at timestamptz';
+    execute 'alter table public.approved_courts add column if not exists hidden_by text';
+    execute 'alter table public.approved_courts add column if not exists hidden_reason text';
+    execute 'alter table public.approved_courts drop constraint if exists approved_courts_status_check';
+    execute 'alter table public.approved_courts add constraint approved_courts_status_check check (status in (''active'', ''hidden'', ''disabled''))';
+  end if;
+
+  if to_regclass('public.court_reviews') is not null then
+    execute 'alter table public.court_reviews add column if not exists status text not null default ''active''';
+    execute 'alter table public.court_reviews add column if not exists hidden_at timestamptz';
+    execute 'alter table public.court_reviews add column if not exists hidden_by text';
+    execute 'alter table public.court_reviews add column if not exists hidden_reason text';
+    execute 'alter table public.court_reviews drop constraint if exists court_reviews_status_check';
+    execute 'alter table public.court_reviews add constraint court_reviews_status_check check (status in (''active'', ''hidden''))';
+  end if;
+end;
+$$;
 
 create or replace function public.rankball_submit_court_request(
   actor_profile_id text,
@@ -2304,7 +2334,7 @@ begin
   end if;
 
   safe_action_type := case
-    when p_action_type in ('validReport', 'dismissReport', 'maliciousReporter', 'suspendTarget', 'refereeDiscipline')
+    when p_action_type in ('validReport', 'dismissReport', 'maliciousReporter', 'suspendTarget', 'refereeDiscipline', 'hideCourt', 'hideCourtReview')
       then p_action_type
     else 'validReport'
   end;
@@ -2314,6 +2344,8 @@ begin
     when 'maliciousReporter' then '악성 신고자 제재'
     when 'suspendTarget' then '대상 제재'
     when 'refereeDiscipline' then '심판 조치'
+    when 'hideCourt' then '구장 숨김'
+    when 'hideCourtReview' then '구장 리뷰 숨김'
     else '관리자 처리'
   end);
   safe_feedback := coalesce(nullif(trim(p_feedback), ''), case safe_action_type
@@ -2321,6 +2353,8 @@ begin
     when 'maliciousReporter' then '악성 신고로 판단되어 신고자에게 제재가 적용되었습니다.'
     when 'suspendTarget' then '신고 대상에게 제재가 적용되었습니다.'
     when 'refereeDiscipline' then '심판 권한 또는 등급 검토 조치가 등록되었습니다.'
+    when 'hideCourt' then '신고된 구장이 숨김 처리되었습니다.'
+    when 'hideCourtReview' then '신고된 구장 리뷰가 숨김 처리되었습니다.'
     else '신고가 인정되어 조치되었습니다.'
   end);
   safe_duration := case
@@ -2331,6 +2365,14 @@ begin
 
   if safe_action_type in ('suspendTarget', 'refereeDiscipline') and safe_target_user_id = '' then
     raise exception 'target_user_required' using errcode = '23502';
+  end if;
+
+  if safe_action_type = 'hideCourt' and report_row.type <> 'court' then
+    raise exception 'court_report_required' using errcode = '22023';
+  end if;
+
+  if safe_action_type = 'hideCourtReview' and report_row.type <> 'court_review' then
+    raise exception 'court_review_report_required' using errcode = '22023';
   end if;
 
   disciplined_user_id := case
@@ -2375,6 +2417,46 @@ begin
     ),
     updated_at = now_ts
   where id = report_row.id;
+
+  if safe_action_type = 'hideCourt' then
+    update public.approved_courts
+    set
+      status = 'hidden',
+      hidden_at = now_ts,
+      hidden_by = p_actor_profile_id,
+      hidden_reason = safe_reason,
+      payload = payload || jsonb_build_object(
+        'status', 'hidden',
+        'hiddenAt', now_ts,
+        'hiddenBy', p_actor_profile_id,
+        'hiddenReason', safe_reason
+      ),
+      updated_at = now_ts
+    where id = report_row.target_id;
+
+    if not found then
+      raise exception 'court_not_found' using errcode = 'P0002';
+    end if;
+  elsif safe_action_type = 'hideCourtReview' then
+    update public.court_reviews
+    set
+      status = 'hidden',
+      hidden_at = now_ts,
+      hidden_by = p_actor_profile_id,
+      hidden_reason = safe_reason,
+      payload = payload || jsonb_build_object(
+        'status', 'hidden',
+        'hiddenAt', now_ts,
+        'hiddenBy', p_actor_profile_id,
+        'hiddenReason', safe_reason
+      ),
+      updated_at = now_ts
+    where id = report_row.target_id;
+
+    if not found then
+      raise exception 'court_review_not_found' using errcode = 'P0002';
+    end if;
+  end if;
 
   insert into public.admin_audit_log (
     id,
@@ -3316,10 +3398,34 @@ begin
   ) then
     execute 'create unique index reports_court_request_active_reporter_unique on public.reports (target_id, user_id) where type = ''court_request'' and status <> ''dismissed''';
   end if;
+
+  if to_regclass('public.reports_court_active_reporter_unique') is null and not exists (
+    select 1
+    from public.reports
+    where type = 'court'
+      and status not in ('dismissed', 'resolved')
+    group by target_id, user_id
+    having count(*) > 1
+  ) then
+    execute 'create unique index reports_court_active_reporter_unique on public.reports (target_id, user_id) where type = ''court'' and status not in (''dismissed'', ''resolved'')';
+  end if;
+
+  if to_regclass('public.reports_court_review_active_reporter_unique') is null and not exists (
+    select 1
+    from public.reports
+    where type = 'court_review'
+      and status not in ('dismissed', 'resolved')
+    group by target_id, user_id
+    having count(*) > 1
+  ) then
+    execute 'create unique index reports_court_review_active_reporter_unique on public.reports (target_id, user_id) where type = ''court_review'' and status not in (''dismissed'', ''resolved'')';
+  end if;
 end;
 $$;
 
 create index if not exists court_requests_status_idx on public.court_requests (status, created_at desc);
+create index if not exists approved_courts_status_idx on public.approved_courts (status, updated_at desc);
+create index if not exists court_reviews_status_idx on public.court_reviews (status, updated_at desc);
 create index if not exists reports_status_idx on public.reports (status, created_at desc);
 create index if not exists notifications_user_idx on public.notifications (user_id, created_at desc);
 create index if not exists discord_notification_deliveries_status_idx on public.discord_notification_deliveries (status, queued_at);
@@ -3379,18 +3485,30 @@ revoke insert, update, delete on public.admin_audit_log from anon, authenticated
 revoke insert, update, delete on public.admin_disciplinary_actions from anon, authenticated;
 
 drop policy if exists approved_courts_select_public on public.approved_courts;
+drop policy if exists approved_courts_admin_read on public.approved_courts;
 create policy approved_courts_select_public
 on public.approved_courts
 for select
 to authenticated
-using (true);
+using (status = 'active');
+create policy approved_courts_admin_read
+on public.approved_courts
+for select
+to authenticated
+using (public.current_is_admin(30));
 
 drop policy if exists court_reviews_select_authenticated on public.court_reviews;
+drop policy if exists court_reviews_admin_read on public.court_reviews;
 create policy court_reviews_select_authenticated
 on public.court_reviews
 for select
 to authenticated
-using (true);
+using (status = 'active');
+create policy court_reviews_admin_read
+on public.court_reviews
+for select
+to authenticated
+using (public.current_is_admin(30));
 
 drop policy if exists court_requests_self_read on public.court_requests;
 drop policy if exists court_requests_self_insert on public.court_requests;
