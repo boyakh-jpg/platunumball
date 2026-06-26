@@ -285,7 +285,7 @@ Backend gaps:
 ## 2026-06-26 server state hydration
 
 - `POST /api/state/load` is the preferred Supabase hydration path.
-- `POST /api/state/load` supports screen scope. `scope: "matches"` loads match-page rows without notifications, reports, settings, recruiting, tournaments, seasons, or affiliations.
+- `POST /api/state/load` supports screen scope. `scope: "matches"` loads match-page rows without notifications, reports, settings, recruiting, tournaments, seasons, or affiliations, and reads only related profile/team/court rows for match page pagination.
 - The endpoint maps real Supabase users and backend test tokens on the server.
 - It returns public rows plus private rows related to the current profile.
 - Direct `loadRemoteState()` Supabase reads are fallback only.

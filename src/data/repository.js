@@ -866,6 +866,13 @@ async function fetchOptionalFilteredRows(table, select = "*", order = "id", clie
   }
 }
 
+async function fetchRowsByIds(table, select = "*", column = "id", ids = [], order = "id", client = supabase, optional = false) {
+  const scopedIds = uniqueScopeIds(ids);
+  if (!scopedIds.length) return [];
+  const fetcher = optional ? fetchOptionalFilteredRows : fetchFilteredRows;
+  return fetcher(table, select, order, client, (query) => applyIdScope(query, column, scopedIds));
+}
+
 function groupBy(rows, key) {
   return rows.reduce((map, row) => {
     const value = row[key];
@@ -1220,6 +1227,52 @@ function getMaxUpdatedAt(rows) {
   return timestamps.length ? Math.max(...timestamps) : 0;
 }
 
+function flattenIdValues(value) {
+  if (Array.isArray(value)) return value.flatMap(flattenIdValues);
+  if (value && typeof value === "object") return Object.values(value).flatMap(flattenIdValues);
+  return value ? [String(value)] : [];
+}
+
+function collectMatchPageScope(matches = [], matchPlayers = [], matchResults = [], playerStats = [], agreements = [], approvals = [], disputes = [], profileIds = []) {
+  const teamIds = [];
+  const courtIds = [];
+  const scopedProfileIds = [...profileIds];
+  matches.forEach((match) => {
+    teamIds.push(match.team_a_id, match.team_b_id);
+    courtIds.push(match.court_id);
+    scopedProfileIds.push(
+      match.created_by,
+      match.referee_id,
+      match.former_referee_id,
+      ...flattenIdValues(match.stat_recorders),
+      ...flattenIdValues(match.played_player_ids),
+      ...flattenIdValues(match.reserve_players),
+      ...flattenIdValues(match.promoted_reserve_ids),
+      ...flattenIdValues(match.attendance),
+      ...flattenIdValues(match.referee_absence_request),
+      ...flattenIdValues(match.dispute_draft_result),
+    );
+  });
+  matchPlayers.forEach((row) => {
+    teamIds.push(row.team_id);
+    scopedProfileIds.push(row.user_id);
+  });
+  matchResults.forEach((row) => {
+    scopedProfileIds.push(row.submitted_by, ...flattenIdValues(row.stat_submissions));
+  });
+  playerStats.forEach((row) => {
+    scopedProfileIds.push(row.user_id, row.recorded_by);
+  });
+  agreements.forEach((row) => scopedProfileIds.push(row.user_id));
+  approvals.forEach((row) => scopedProfileIds.push(row.user_id));
+  disputes.forEach((row) => scopedProfileIds.push(row.user_id));
+  return {
+    teamIds: uniqueScopeIds(teamIds),
+    courtIds: uniqueScopeIds(courtIds),
+    profileIds: uniqueScopeIds(scopedProfileIds),
+  };
+}
+
 export async function loadNormalizedRemoteStateFromClient(client = supabase, authUserId = "", authEmail = "", options = {}) {
   const clientState = options.clientState === true;
   const scope = String(options.scope || "full");
@@ -1228,6 +1281,7 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
   const includeTournaments = scope === "full" || scope === "tournaments";
   const includeAppMeta = scope === "full";
   const includeUserScoped = scope === "full";
+  const matchPageScope = scope === "matches";
   const authUserIdText = String(authUserId || "");
   const testLoginId = getBackendTestLoginId(authUserIdText);
   const matchScopeIds = uniqueScopeIds(options.matchIds ?? options.matchId);
@@ -1253,31 +1307,36 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
   const matchLimit = matchScopeIds.length ? null : clientState ? getClientLimit(options.matchLimit, REMOTE_CLIENT_MATCH_LIMIT) : null;
   const recruitingLimit = recruitingScopeIds.length ? null : clientState ? getClientLimit(options.recruitingLimit, REMOTE_CLIENT_RECRUITING_LIMIT) : null;
   const tournamentLimit = tournamentScopeIds.length ? null : clientState ? getClientLimit(options.tournamentLimit, REMOTE_CLIENT_TOURNAMENT_LIMIT) : null;
+  let publicProfiles = [];
+  let teams = [];
+  let teamMembers = [];
+  let courts = [];
   const [
-    publicProfiles,
     privateProfiles,
-    teams,
-    teamMembers,
-    courts,
     matches,
     recruitingPosts,
     tournaments,
     seasons,
     affiliations,
   ] = await Promise.all([
-    fetchOptionalRows("public_profiles", PUBLIC_PROFILE_COLUMNS, "id", client),
     privateProfileFilter
       ? fetchOptionalFilteredRows("profiles", PRIVATE_PROFILE_COLUMNS, "id", client, privateProfileFilter)
       : fetchOptionalRows("profiles", PRIVATE_PROFILE_COLUMNS, "id", client),
-    fetchAllRows("teams", TEAM_COLUMNS, "id", client),
-    fetchAllRows("team_members", TEAM_MEMBER_COLUMNS, null, client),
-    fetchAllRows("courts", COURT_COLUMNS, "id", client),
     includeMatches ? fetchFilteredRows("matches", MATCH_COLUMNS, "updated_at", client, matchFilter, matchLimit, !matchLimit) : [],
     includeRecruiting ? fetchFilteredRows("recruiting_posts", RECRUITING_POST_COLUMNS, "updated_at", client, recruitingFilter, recruitingLimit, !recruitingLimit) : [],
     includeTournaments ? fetchFilteredRows("tournaments", TOURNAMENT_COLUMNS, "updated_at", client, tournamentFilter, tournamentLimit, !tournamentLimit) : [],
     includeAppMeta ? fetchAllRows("seasons", SEASON_COLUMNS, "id", client) : [],
     includeAppMeta ? fetchAllRows("affiliations", AFFILIATION_COLUMNS, "id", client) : [],
   ]);
+
+  if (!matchPageScope) {
+    [publicProfiles, teams, teamMembers, courts] = await Promise.all([
+      fetchOptionalRows("public_profiles", PUBLIC_PROFILE_COLUMNS, "id", client),
+      fetchAllRows("teams", TEAM_COLUMNS, "id", client),
+      fetchAllRows("team_members", TEAM_MEMBER_COLUMNS, null, client),
+      fetchAllRows("courts", COURT_COLUMNS, "id", client),
+    ]);
+  }
 
   const privateProfileById = new Map((privateProfiles ?? []).map((profile) => [profile.id, profile]));
   const profiles = (publicProfiles ?? []).map((profile) => ({ ...profile, ...(privateProfileById.get(profile.id) ?? {}) }));
@@ -1393,6 +1452,31 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
     shouldFilterRecruitingChildren && !loadedRecruitingPostIds.length ? [] : fetchFilteredRows("recruiting_applications", RECRUITING_APPLICATION_COLUMNS, null, client, recruitingChildFilter),
     shouldFilterTournamentChildren && !loadedTournamentIds.length ? [] : fetchFilteredRows("tournament_teams", TOURNAMENT_TEAM_COLUMNS, null, client, tournamentChildFilter),
   ]);
+
+  if (matchPageScope) {
+    const scopedProfileIds = privateProfiles.map((profile) => profile.id);
+    const scoped = collectMatchPageScope(matches, matchPlayers, matchResults, playerStats, agreements, approvals, disputes, scopedProfileIds);
+    [teams, teamMembers, courts] = await Promise.all([
+      fetchRowsByIds("teams", TEAM_COLUMNS, "id", scoped.teamIds, "id", client),
+      fetchRowsByIds("team_members", TEAM_MEMBER_COLUMNS, "team_id", scoped.teamIds, null, client),
+      fetchRowsByIds("courts", COURT_COLUMNS, "id", scoped.courtIds, "id", client),
+    ]);
+    publicProfiles = await fetchRowsByIds(
+      "public_profiles",
+      PUBLIC_PROFILE_COLUMNS,
+      "id",
+      [...scoped.profileIds, ...teamMembers.map((member) => member.user_id)],
+      "id",
+      client,
+      true,
+    );
+    publicProfiles.forEach((profile) => {
+      const mergedProfile = { ...profile, ...(privateProfileById.get(profile.id) ?? {}) };
+      const existingIndex = profiles.findIndex((item) => item.id === mergedProfile.id);
+      if (existingIndex >= 0) profiles[existingIndex] = { ...profiles[existingIndex], ...mergedProfile };
+      else profiles.push(mergedProfile);
+    });
+  }
   const teamMembersByTeam = groupBy(teamMembers, "team_id");
   const teamById = firstBy(teams, "id");
   const courtById = firstBy(courts, "id");
