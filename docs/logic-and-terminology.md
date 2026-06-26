@@ -1293,6 +1293,7 @@ flowchart TD
 7. Initial `/api/state/load` client hydrate may set `matchListOnly: true`; match detail rows are then fetched lazily through `/api/matches/detail`.
 8. Initial `/api/state/load` may set `directoryScope: "related"` so it loads only users/teams related to the first match/recruiting/tournament page and favorites.
 9. Full user/team directory data is loaded on demand through `/api/directory/load` for Rankings, Teams, Create Match, and Settings.
+10. Initial client hydrate uses 30 matches and 30 recruiting posts; additional list pages use 50 rows.
 
 ## 2026-06-27 report scoped reads
 

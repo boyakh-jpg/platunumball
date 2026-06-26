@@ -81,6 +81,8 @@ import {
   updateRecruitingRoomRules,
   unblockUser,
   voidMatch,
+  REMOTE_CLIENT_INITIAL_MATCH_LIMIT,
+  REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT,
   REMOTE_CLIENT_MATCH_LIMIT,
   REMOTE_CLIENT_RECRUITING_LIMIT,
 } from "../data/repository.js";
@@ -350,7 +352,7 @@ async function loadBackendState(authUserId, authEmail) {
   try {
     const result = await postServerAction(
       "/api/state/load",
-      { authUserId, authEmail, matchLimit: REMOTE_CLIENT_MATCH_LIMIT, recruitingLimit: REMOTE_CLIENT_RECRUITING_LIMIT, matchListOnly: true, directoryScope: "related" },
+      { authUserId, authEmail, matchLimit: REMOTE_CLIENT_INITIAL_MATCH_LIMIT, recruitingLimit: REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT, matchListOnly: true, directoryScope: "related" },
       { allowWhenDisabled: true },
     );
     if (result?.state) return result.state;
@@ -358,8 +360,8 @@ async function loadBackendState(authUserId, authEmail) {
     console.warn("Server state load failed. Falling back to direct Supabase read.", error.message);
   }
   return loadRemoteState(authUserId, authEmail, {
-    matchLimit: REMOTE_CLIENT_MATCH_LIMIT,
-    recruitingLimit: REMOTE_CLIENT_RECRUITING_LIMIT,
+    matchLimit: REMOTE_CLIENT_INITIAL_MATCH_LIMIT,
+    recruitingLimit: REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT,
     matchListOnly: true,
     directoryScope: "related",
   });
@@ -433,8 +435,8 @@ export function useAppData(authUser = null) {
         if (remoteState) {
           const maintainedState = runAutomaticStateMaintenance(remoteState);
           setState((prev) => withServerAdminContext(preserveLocalDiscordState(prev, maintainedState), adminContextRef.current));
-          setMatchPagination({ loading: false, exhausted: (maintainedState.matches?.length ?? 0) < REMOTE_CLIENT_MATCH_LIMIT, error: "" });
-          setRecruitingPagination({ loading: false, exhausted: (maintainedState.recruitingPosts?.length ?? 0) < REMOTE_CLIENT_RECRUITING_LIMIT, error: "" });
+          setMatchPagination({ loading: false, exhausted: (maintainedState.matches?.length ?? 0) < REMOTE_CLIENT_INITIAL_MATCH_LIMIT, error: "" });
+          setRecruitingPagination({ loading: false, exhausted: (maintainedState.recruitingPosts?.length ?? 0) < REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT, error: "" });
         }
         remoteReadyRef.current = true;
         setRemoteReady(true);
