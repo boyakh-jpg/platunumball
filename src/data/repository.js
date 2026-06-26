@@ -808,7 +808,7 @@ async function fetchFilteredRows(table, select = "*", order = "id", client = sup
     const to = maxRows ? Math.min(from + REMOTE_PAGE_SIZE - 1, maxRows - 1) : from + REMOTE_PAGE_SIZE - 1;
     const baseQuery = client.from(table).select(select).range(from, to);
     const query = applyFilter ? applyFilter(baseQuery) : baseQuery;
-    const { data, error } = order ? await query.order(order, { ascending }) : await query;
+    const { data, error } = order ? await query.order(order, { ascending, nullsFirst: false }) : await query;
     if (error) throw error;
     rows.push(...(data ?? []));
     if (!data || data.length < REMOTE_PAGE_SIZE) break;
@@ -1202,9 +1202,9 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
     fetchAllRows("teams", TEAM_COLUMNS, "id", client),
     fetchAllRows("team_members", TEAM_MEMBER_COLUMNS, null, client),
     fetchAllRows("courts", COURT_COLUMNS, "id", client),
-    fetchFilteredRows("matches", MATCH_COLUMNS, "created_at", client, matchFilter, matchLimit, !matchLimit),
-    fetchFilteredRows("recruiting_posts", RECRUITING_POST_COLUMNS, "created_at", client, recruitingFilter, recruitingLimit, !recruitingLimit),
-    fetchFilteredRows("tournaments", TOURNAMENT_COLUMNS, "created_at", client, tournamentFilter, tournamentLimit, !tournamentLimit),
+    fetchFilteredRows("matches", MATCH_COLUMNS, "updated_at", client, matchFilter, matchLimit, !matchLimit),
+    fetchFilteredRows("recruiting_posts", RECRUITING_POST_COLUMNS, "updated_at", client, recruitingFilter, recruitingLimit, !recruitingLimit),
+    fetchFilteredRows("tournaments", TOURNAMENT_COLUMNS, "updated_at", client, tournamentFilter, tournamentLimit, !tournamentLimit),
     fetchAllRows("seasons", SEASON_COLUMNS, "id", client),
     fetchAllRows("affiliations", AFFILIATION_COLUMNS, "id", client),
     fetchOptionalRows("reports", REPORT_COLUMNS, "created_at", client),
