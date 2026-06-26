@@ -339,14 +339,18 @@ async function loadBackendState(authUserId, authEmail) {
   try {
     const result = await postServerAction(
       "/api/state/load",
-      { authUserId, authEmail, matchLimit: REMOTE_CLIENT_MATCH_LIMIT, recruitingLimit: REMOTE_CLIENT_RECRUITING_LIMIT },
+      { authUserId, authEmail, matchLimit: REMOTE_CLIENT_MATCH_LIMIT, recruitingLimit: REMOTE_CLIENT_RECRUITING_LIMIT, matchListOnly: true },
       { allowWhenDisabled: true },
     );
     if (result?.state) return result.state;
   } catch (error) {
     console.warn("Server state load failed. Falling back to direct Supabase read.", error.message);
   }
-  return loadRemoteState(authUserId, authEmail);
+  return loadRemoteState(authUserId, authEmail, {
+    matchLimit: REMOTE_CLIENT_MATCH_LIMIT,
+    recruitingLimit: REMOTE_CLIENT_RECRUITING_LIMIT,
+    matchListOnly: true,
+  });
 }
 
 export function useAppData(authUser = null) {

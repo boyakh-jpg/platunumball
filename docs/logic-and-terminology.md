@@ -1290,6 +1290,7 @@ flowchart TD
 4. Match scope state loads must fetch only related profiles, teams, team members, courts, and match child rows for loaded matches.
 5. `/api/matches/list` is list-only and skips match result/stat/agreement/approval/dispute child rows.
 6. Match room/detail open uses `/api/matches/detail` to load one full match before modal actions need record or approval data.
+7. Initial `/api/state/load` client hydrate may set `matchListOnly: true`; match detail rows are then fetched lazily through `/api/matches/detail`.
 
 ## 2026-06-27 report scoped reads
 

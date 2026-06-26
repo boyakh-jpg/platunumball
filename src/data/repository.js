@@ -1349,12 +1349,12 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
   const includeUserScoped = scope === "full";
   const matchPageScope = scope === "matches";
   const recruitingPageScope = scope === "recruiting";
-  const matchListOnly = matchPageScope && options.matchListOnly === true && !options.matchId && !options.matchIds;
   const authUserIdText = String(authUserId || "");
   const testLoginId = getBackendTestLoginId(authUserIdText);
   const matchScopeIds = uniqueScopeIds(options.matchIds ?? options.matchId);
   const recruitingScopeIds = uniqueScopeIds(options.recruitingPostIds ?? options.recruitingPostId ?? options.postId);
   const tournamentScopeIds = uniqueScopeIds(options.tournamentIds ?? options.tournamentId);
+  const matchListOnly = options.matchListOnly === true && !matchScopeIds.length;
   const matchFilter = composeFilters(
     matchScopeIds.length ? (query) => applyIdScope(query, "id", matchScopeIds) : null,
     !matchScopeIds.length ? (query) => applyUpdatedBefore(query, "updated_at", options.matchUpdatedBefore ?? options.matchCursor) : null,
@@ -1770,11 +1770,11 @@ async function loadNormalizedRemoteState(authUserId = "", authEmail = "", option
   return loadNormalizedRemoteStateFromClient(supabase, authUserId, authEmail, options);
 }
 
-export async function loadRemoteState(authUserId = "", authEmail = "") {
+export async function loadRemoteState(authUserId = "", authEmail = "", options = {}) {
   if (!isSupabaseConfigured) return null;
 
   try {
-    const normalizedRemote = await loadNormalizedRemoteState(authUserId, authEmail, { clientState: true });
+    const normalizedRemote = await loadNormalizedRemoteState(authUserId, authEmail, { clientState: true, ...options });
     return normalizedRemote?.state ? runAutomaticStateMaintenance(normalizedRemote.state) : null;
   } catch (error) {
     console.warn("Supabase normalized state load failed. Remote state remains empty.", error.message);
