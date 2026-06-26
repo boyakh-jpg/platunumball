@@ -1,295 +1,550 @@
-# RankBall Handoff
+# RankBall HANDOFF
 
-## 1. Project Overview
+Updated: 2026-06-26
 
-RankBall is a basketball matchmaking, team, ranking, recording, and referee workflow web app.
+## 1. New Thread Start Order
 
-Main stack:
-- Vite
-- React
-- CSS modules are not used; most UI styling is centralized in `src/styles/globals.css` plus feature CSS files.
-- Supabase is configured for auth/data, but the app still uses a mixed mockData/localStorage/Supabase structure for development.
-- React Router routes are under `/app`.
+Read first:
+1. `AGENTS.md`
+2. `HANDOFF.md`
+3. `docs/logic-and-terminology.md`
+4. `docs/design-system.md`
+5. current files before editing
 
-Important product goals:
-- Build a game-like basketball web app, closer to stat dashboard plus arena-style room UI.
-- Public/private match rooms should feel like one unified room system, not separate menu-specific implementations.
-- Responsive layout must work on desktop and mobile.
-- Light and dark themes must both be usable.
-- Cards, buttons, list rows, room slots, hover cards, and modals should follow shared visual rules.
-- Do not overcomplicate user actions. The app should reduce unnecessary access points and repeated confirmations.
+Important rule:
+- Trust actual files over this handoff if they conflict.
+- Do not overwrite uncommitted user work.
+- Do not delete assets.
+- Commit and push completed work unless user says not.
 
-Important UI direction:
-- Match and recruiting room cards should use the same visual language.
-- Content cards should be flat surfaces.
-- Gradients are allowed only for hero/tier/image presentation areas, not ordinary content boxes.
-- Tier should usually be shown with an emblem, not repeated text badges.
-- Hover cards should show one clear large emblem, not duplicate emblems.
+## 2. Current Repo State
 
-## 2. Current Task
+Latest pushed commit:
+- `fe8ec51 Fix light assets and local queue filter`
 
-The latest task was to clean up visual inconsistency and wasted space outside the match/recruiting room flows.
+Recent relevant commits:
+- `fe8ec51 Fix light assets and local queue filter`
+- `7f4610f Fix scoped state ordering`
+- `b0554df Scope remote state reads`
+- `a82c6a3 Fix remote season column select`
+- `b6b49cf Fix remote affiliation column select`
+- `795c91d Reduce Supabase state payload size`
+- `95b5e6a Improve backend simulation diagnostics`
+- `1eba2f9 Stabilize backend match simulation`
+- `929296e Avoid local asset URLs in base CSS`
+- `46ae9bc Support remote asset base URL`
+- `7931742 Seed backend simulation test actors`
+- `9b169f7 Extend backend simulation for referee flow`
 
-Requested fixes:
-- Find popup cards where tier emblems appeared twice and reduce them to one larger emblem.
-- Remove borders around emblem-only displays inside hover cards.
-- Fix Home boxes/buttons that violated the current CSS standard.
-- Fix spacing and alignment issues in Team cards.
-- Fix Settings desktop layout where one column was much taller and space was wasted.
-- Reduce excessive card spacing across non-match menus.
-- Recheck repeatedly until overflow and obvious layout breaks were gone.
+Known current `git status --short`:
+- `?? pnpm-lock.yaml`
+- `?? pnpm-workspace.yaml`
 
-Why:
-- UI had become inconsistent after many iterative changes.
-- Some cards had gradients while others used flat surfaces.
-- Team cards had uneven rows and emblem sizing problems.
-- Settings desktop layout had the right column much taller than the left.
-- Popup tier cards duplicated emblem visuals.
+These two files are untracked and were not touched in the last fixes. Do not stage them unless the user explicitly asks.
 
-Current status:
-- Done for the scoped UI cleanup.
-- Committed and pushed in `6c98bbb Polish dense card surfaces`.
-- No known uncommitted changes before creating this handoff.
+## 3. What Was Just Fixed
 
-## 3. Files Changed
+### Empty recruiting list
 
-### `docs/design-system.md`
+Symptom:
+- User said match/recruiting list showed nothing.
 
-What changed:
-- Added a `2026-06-23 dense surface pass` section.
-- Documented hover popup tier rules, flat content surface rules, Settings compact layout rules, and Team card row/emblem rules.
+Finding:
+- `/api/state/load` production response was not empty.
+- Example with `test-token-rankball-010`:
+  - `matches: 200`
+  - `recruitingPosts: 65`
+  - `openPosts: 58`
+- Actual bug was local filter.
+- User region was `서울특별시 마포구`.
+- Old queue room region values were like `마포`.
+- Old comparison used exact `post.region === app.currentUser.region`, so local queue count became `0`.
 
-Why:
-- Project instructions require design behavior changes to update the design system.
-- Future agents need a clear standard to avoid reintroducing duplicate badges or gradients.
-
-Risky parts:
-- None functionally.
-- File line endings may show CRLF warnings on Windows.
-
-### `src/components/profile/PlayerHoverCard.jsx`
-
-What changed:
-- Removed `TierBadge` from the hover tier grid.
-- Added `getTierDivision`.
-- Player tier rows now show `TierEmblem` plus text label only.
-- Active team section now uses one small `TierEmblem` plus text label.
-
-Why:
-- Screenshot showed duplicated emblems inside popup cards.
-- Hover card standard is one emblem plus one readable label.
-
-Risky parts:
-- Only display output changed.
-- Hover/touch/link logic was intentionally not changed.
-
-### `src/components/team/TeamHoverCard.jsx`
-
-What changed:
-- Removed `TierBadge`.
-- Added `getTierDivision`.
-- Team hover card now shows one larger `TierEmblem` and a text tier label.
-
-Why:
-- Same duplicate-emblem problem existed in team hover cards.
-
-Risky parts:
-- Only display output changed.
-- Hover/touch/link logic was intentionally not changed.
-
-### `src/pages/Settings.jsx`
-
-What changed:
-- Moved the block-player card from the right column to the left column.
-- Did not remove any Settings feature.
-
-Why:
-- Settings desktop layout had one column much taller than the other.
-- Moving the small block-player card balanced the columns.
-
-Risky parts:
-- Low risk.
-- It changes visual order of Settings sections only.
-
-### `src/styles/globals.css`
-
-What changed:
-- Added dense surface cleanup rules for:
-  - hover cards
-  - player/team hover tier grids
-  - Home side cards
-  - Team cards
-  - Settings cards
-  - generic `match-card`
-  - light theme equivalents
-- Removed gradients from standard content cards.
-- Enlarged hover-card emblems without wrapping them in extra bordered pills.
-- Made Team card member rows consistent height.
-- Made Team card emblem sizing stable on desktop/mobile.
-- Made Settings columns compact.
-- Made Settings address results and report participant lists internally scroll instead of stretching the entire card.
-
-Why:
-- Needed one consistent card surface rule.
-- Needed to reduce wasted space and fix alignment.
-- Needed to prevent overflow on desktop and mobile.
-
-Risky parts:
-- This file has many existing overlapping rules.
-- New rules were appended near the end to win cascade safely.
-- Future cleanup should consolidate duplicated CSS carefully, not rewrite the whole file.
-
-## 4. Important Decisions
-
-Design decisions:
-- Ordinary content cards use flat surfaces, not gradients.
-- Gradients remain reserved for hero/tier/image presentation.
-- Hover popup tier display must be `TierEmblem` plus text label, not `TierBadge compact`.
-- Team cards show one team tier emblem on the right.
-- Settings long helper lists should scroll inside the card instead of pushing the whole page height.
-
-Architecture decisions:
-- No room logic was changed.
-- No match/recruiting state logic was changed.
-- No new component abstraction was introduced.
-- CSS was adjusted conservatively because existing styles are centralized and overlapping.
-
-State/data-flow decisions:
-- No state shape changed.
-- No mock data changed.
-- No Supabase schema changed.
-- No localStorage/repository behavior changed.
-
-Things intentionally avoided:
-- Did not rewrite `globals.css`.
-- Did not delete assets.
-- Did not change room phase, party, invite, referee, record, MMR, tournament, team, or auth logic.
-- Did not create separate menu-specific room modal logic.
-- Did not touch Match/Recruiting room logic because the current request was visual cleanup outside those flows.
-
-## 5. Current Repo State
-
-Known repo state before this handoff:
-- Last pushed commit: `6c98bbb Polish dense card surfaces`
-- `git status --short` was clean before adding `HANDOFF.md`.
-
-Files that should not be overwritten casually:
-- `docs/logic-and-terminology.md`
-- `docs/design-system.md`
-- `src/styles/globals.css`
+Fix:
 - `src/pages/Recruiting.jsx`
-- `src/pages/Matches.jsx`
-- room modal / slot / party helpers
-- existing assets under `public/assets`
+- Added region normalization:
+  - `서울특별시 마포구`
+  - `마포구`
+  - `마포`
+  are treated as the same local district.
 
-Generated files/assets:
-- `dist/` exists from build output.
-- `node_modules/` exists.
-- Do not delete existing image assets unless the user explicitly asks.
-- Do not recreate or rename assets unless necessary.
+Verified:
+- Production data for `u10`:
+  - exact local count: `0`
+  - normalized local count: `12`
 
-## 6. Known Issues / Bugs
+### Light mode background image missing
 
-Existing known issues:
-- Vite build still warns that the main JS chunk is larger than 500 kB.
-- `src/styles/globals.css` has many overlapping legacy CSS rules. It works, but is hard to reason about.
-- Some terminal output may show mojibake for Korean text, but source files are UTF-8 and browser text renders normally.
-- Match/recruiting room logic has historically been fragile. Do not modify it without checking `docs/logic-and-terminology.md`.
-- Settings page still has long forms. The latest pass reduced the worst imbalance but did not redesign Settings.
+Symptom:
+- User said background image did not show, emblem still showed, especially in light mode.
 
-Suspected causes:
-- Styling drift came from appending menu-specific CSS instead of a single card surface system.
-- Duplicate hover emblems came from combining `TierEmblem` and `TierBadge compact`.
-- Settings imbalance came from stacking several large forms in one column.
+Finding:
+- `src/lib/assets.js` injected CSS as `[data-theme="light"]`.
+- `src/styles/tokens.css` defined `html[data-theme="light"]`.
+- `html[data-theme="light"]` has higher specificity, so `--bg-court: none` won.
 
-Things not yet verified:
-- Full manual screenshot pass after the final Settings compact adjustment.
-- All light-mode visual details across every page.
-- Production deployment rendering after Vercel build.
-- Chunk splitting or bundle-size optimization.
+Fix:
+- `src/lib/assets.js`
+- Changed injected selector:
+  - `[data-theme="light"]`
+  - to `html[data-theme="light"]`
 
-## 7. Commands Run
+Verified:
+- Production bundle contains:
+  - `rankball-remote-assets`
+  - `html[data-theme`
+  - `rankball-court-hero-day.webp`
+  - `regionDistrict`
 
-Commands already run:
+## 4. Current Architecture
+
+### Vercel API
+
+Hobby plan serverless function limit was hit earlier.
+
+Current shape:
+- Only one Vercel function exists:
+  - `api/index.js`
+- `vercel.json` rewrites:
+  - `/api/:path*` to `/api?path=:path*`
+  - SPA fallback after API rewrite
+
+Do not add many files directly under `api/`.
+New API routes should go under `server/api/**` and be routed through `api/index.js`.
+
+### Server API files
+
+Important routes:
+- `server/api/state/load.js`
+- `server/api/matches/sync-match.js`
+- `server/api/recruiting/sync-post.js`
+- `server/api/tournaments/sync-tournament.js`
+- `server/api/teams/sync-team.js`
+- `server/api/profile/upsert.js`
+- `server/api/admin/review-action.js`
+- `server/api/admin/appointment-action.js`
+- `server/api/admin/disciplinary-action.js`
+- `server/api/discord/dm-worker.js`
+- `server/api/discord/interactions.js`
+- `server/api/discord/sync-deliveries.js`
+- `server/api/courts/address-search.js`
+- `server/api/court-requests/submit.js`
+- `server/api/court-requests/approve.js`
+- `server/api/reports/submit.js`
+
+### Frontend state
+
+Important files:
+- `src/hooks/useAppData.js`
+- `src/data/repository.js`
+- `src/lib/mockData.js`
+
+Current state:
+- Supabase is active.
+- Server actions exist.
+- `useAppData.js` still has optimistic frontend reducer logic.
+- `repository.js` still imports `initialState` from `src/lib/mockData.js`.
+- This is not fully DB-authoritative yet.
+
+Do not claim mock/localStorage/demo dependency is completely gone.
+
+## 5. Supabase/PostREST Egress Work
+
+Problem:
+- Supabase Free egress was rising.
+- User confirmed most was PostREST egress.
+
+Main cause found:
+- Full state loads were too broad.
+- Earlier code fetched too much data through PostREST.
+
+Already done:
+- Removed broad `select("*")` usage in current searched source paths.
+- Added explicit column selects in `src/data/repository.js`.
+- Scoped user-only data:
+  - `favorites`
+  - `notifications`
+  - `discord_notification_deliveries`
+- Limited client state load:
+  - matches: `200`
+  - recruiting posts: `160`
+  - tournaments: `80`
+- Child tables are now fetched only for loaded parent IDs where possible:
+  - match children by loaded match IDs
+  - recruiting applications by loaded post IDs
+  - tournament teams by loaded tournament IDs
+- Server action load uses operation scope where possible:
+  - match operation loads target match scope
+  - recruiting operation loads target post scope
+  - tournament operation loads target tournament scope
+- `approveMatch` still uses `{ clientState: true }` because rating/MMR repeat factor still needs recent match history.
+- Ordering fixed:
+  - recent `matches`, `recruiting_posts`, `tournaments` load by `updated_at`
+  - `nullsFirst: false`
+
+Important warning:
+- This reduced egress, but did not finish the egress project.
+- `profiles`, `teams`, `team_members`, `courts`, and settings-related tables can still be broad.
+- Next step is real screen-specific endpoints/RPC and pagination.
+
+## 6. Backend Simulation
+
+Script:
+- `scripts/simulate-backend-flow.mjs`
+
+Production command:
+
+```powershell
+$env:RANKBALL_SIM_TIMEOUT_MS='45000'
+C:\Users\user\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe .\scripts\simulate-backend-flow.mjs --base-url=https://platunumball.vercel.app
+```
+
+Last known pass:
+- basic 1v1 no-referee flow
+- referee 1v1 flow
+- both reached `confirmed`
+- cleanup succeeded
+
+Known limitation:
+- Simulation currently covers only basic 1v1 no-referee and referee 1v1.
+- It does not yet cover:
+  - 3v3
+  - 5v5
+  - team party join
+  - invite/accept expiry
+  - reserve auto-promotion
+  - referee no-show
+  - recorder handoff
+  - dispute draft to commit
+  - tournament bracket
+
+## 7. Discord / Cron
+
+Current state:
+- Discord OAuth/DM pieces exist.
+- `server/api/discord/dm-worker.js` exists.
+- `CRON_SECRET` is used to protect worker calls.
+- cron-job.org test returned:
+  - `200 OK`
+  - `{"ok":true,"processed":0,"sent":0,"failed":0}`
+- Test DM by Discord username worked after bot invite/token setup.
+
+Important:
+- Do not print or commit secrets.
+- Do not put secret keys in `VITE_*`.
+- `VITE_*` values are public browser values.
+
+Remaining Discord work:
+- invite accept/decline button interaction hardening
+- Discord chat to web chat sync
+- web chat to Discord sync
+- scheduled match reminder creation from match lifecycle
+- cancel/void should cancel pending reminders
+- if match starts early, start-time reminder should not be sent
+- if result moves to dispute/approval early, stale reminder should not be sent
+
+## 8. Asset / R2 State
+
+Current state:
+- `src/lib/assets.js` supports:
+  - `VITE_ASSET_BASE_URL`
+  - `VITE_PUBLIC_ASSET_BASE_URL`
+- Local fallback path is `/assets/...`.
+- Base CSS no longer hardcodes image URLs directly.
+- `src/lib/assets.js` injects `--bg-*` variables.
+
+Required env:
+- `VITE_ASSET_BASE_URL=https://your-r2-public-domain`
+
+Important:
+- R2 public URL must contain files under matching paths:
+  - `/assets/main.webp`
+  - `/assets/main-day.webp`
+  - `/assets/rankball-court-hero.webp`
+  - `/assets/rankball-court-hero-day.webp`
+  - `/assets/rankball-ball-night.webp`
+  - `/assets/rankball-ball-day.webp`
+  - `/assets/rankball-hoop-night.webp`
+  - `/assets/rankball-hoop-day.webp`
+  - `/assets/rankball-profile-night.webp`
+  - `/assets/rankball-action-day.webp`
+
+If backgrounds disappear again:
+1. Check Vercel `VITE_ASSET_BASE_URL`.
+2. Check R2 path includes `/assets/...`.
+3. Check DevTools Network image response code.
+4. Check injected style tag id `rankball-remote-assets`.
+
+## 9. Naver Address Search
+
+Current state:
+- Naver address API frontend/server connection exists.
+- User reported it worked in production domain but not preview.
+- Naver app domain config matters.
+
+Important:
+- Naver wildcard like `https://*.vercel.app` may not behave like expected for all preview URLs.
+- Production domain should be added exactly.
+- Local dev URLs should be added separately if needed:
+  - `http://localhost:5173`
+  - `http://127.0.0.1:5173`
+
+Do not switch to Kakao unless user asks again.
+
+## 10. Auth / Profile State
+
+Current direction:
+- Google account should map to one RankBall profile.
+- `profiles.auth_user_id` should be populated for real Google users.
+- Test accounts use `test_login_id`.
+- Hashtag should start with `#`, not `@`.
+- Hashtag is locked after initial setup.
+- Birth year is locked after initial setup.
+- Nickname can change but should be limited.
+
+Known issues to keep checking:
+- User saw signup/profile setup appearing repeatedly.
+- User found real profile row with `auth_user_id` set and test row with `auth_user_id: null`.
+- Need verify hydration gate does not redirect to `/app/signup` before remote profile load completes.
+- Need verify all test handles use `#`.
+- Need cleanup plan for old `@` handles if any remain.
+
+Important file:
+- `src/lib/profileSetup.js`
+- `src/pages/Signup.jsx`
+- `src/hooks/useAuthSession.js`
+- `src/hooks/useAppData.js`
+- `server/api/profile/upsert.js`
+
+## 11. High Priority Remaining Work
+
+### A. Fully DB-authoritative transactions
+
+Current:
+- Server actions exist.
+- They still use normalized state and snapshot-style persistence in places.
+
+Need:
+- Recruiting DB RPC transactions:
+  - create
+  - join
+  - invite
+  - accept/decline
+  - ready
+  - confirm
+  - close
+- Match DB RPC transactions:
+  - attendance
+  - start
+  - end
+  - result submit
+  - dispute draft
+  - dispute resolve
+  - approve
+  - MMR/rating commit
+- Team membership DB RPC:
+  - create/update/delete team
+  - member update
+  - captain permissions
+- Tournament DB RPC:
+  - bracket generation
+  - team approval
+  - schedule changes
+- Eligibility server validation:
+  - roster
+  - age group
+  - referee eligibility
+  - team-only room restrictions
+  - division rules
+
+### B. Frontend thin caller
+
+Current:
+- `useAppData.js` still runs frontend reducers and optimistic mutations.
+
+Need:
+- Production path should trust server result.
+- Frontend should become a thin caller for server actions.
+- Avoid local fallback as source of truth in Supabase mode.
+- Keep optimistic UI only if rollback is clean and server result replaces it.
+
+### C. Screen-specific state endpoints
+
+Current:
+- `/api/state/load` still returns one broad state object.
+
+Need:
+- Split into endpoints/RPC like:
+  - `/api/profile/me`
+  - `/api/recruiting/list`
+  - `/api/recruiting/detail`
+  - `/api/matches/list`
+  - `/api/matches/detail`
+  - `/api/teams/list`
+  - `/api/teams/detail`
+  - `/api/settings/context`
+  - `/api/admin/context`
+- Add pagination/cursors.
+- Do not load all profiles for every screen.
+- Do not load all child tables for list screens.
+
+### D. More simulations
+
+Need scenarios:
+- 3v3 party
+- 5v5 party
+- public room with team party
+- private team room
+- individual room where team party is blocked/allowed correctly by rules
+- invite before slots fill
+- invite expires if slots/reserves full
+- reserve auto-promotion
+- referee eligible join
+- referee ineligible blocked
+- private referee invite
+- referee no-show accepted by other side leader
+- recorder handoff
+- dispute draft to approval/commit
+- cancelled match reminders removed
+- tournament bracket generation
+
+### E. Court / report / moderation
+
+Need:
+- approved court hidden/disabled server action fully wired
+- court review hide/delete admin action
+- false court report trust penalty transaction
+- court registration trust threshold enforced server-side
+- reporter feedback notification
+- malicious reporter penalty
+- regional admin scope checks
+
+### F. Discord
+
+Need:
+- invite button interaction robustly mapped to current profile
+- Discord user ID uniqueness across RankBall profiles
+- DM queue scheduled events from match lifecycle
+- chat sync, later
+
+### G. Bundle size
+
+Current warning:
+- main JS chunk over `500KB`.
+
+Need later:
+- code split heavy routes:
+  - Admin
+  - Settings
+  - Recruiting modal
+  - Matches room
+  - Referee rulebook
+- Do not do this before backend state stabilizes unless user asks.
+
+## 12. Current Warnings
+
+- `pnpm-lock.yaml` and `pnpm-workspace.yaml` are untracked.
+- Do not stage those unless intentionally switching package manager.
+- `docs/logic-and-terminology.md` may show mojibake in PowerShell output, but browser/source can still be OK.
+- Build succeeds but chunk warning remains.
+- Supabase egress is reduced, not solved.
+- Match list shows only user-related schedule by design; public browsing is in Recruiting/Matching list.
+- If user says "경기 목록이 비었다", first check whether they mean:
+  - `/app/matches` my schedule
+  - `/app/recruiting` public matching queue
+  - a selected filter/date/history state
+
+## 13. Useful Commands
+
+Status:
 
 ```powershell
 git status --short
-git log -5 --oneline
-Get-ChildItem -Name
-rg -n "TierBadge|hover-tier-label|team-card|settings-page|home-side-stack|match-card" src docs/design-system.md
-Get-Content -Path src\pages\Settings.jsx -TotalCount 520
-Get-Content -Path src\pages\Settings.jsx -TotalCount 980 | Select-Object -Skip 520
-git diff -- src\components\profile\PlayerHoverCard.jsx src\components\team\TeamHoverCard.jsx src\pages\Settings.jsx src\styles\globals.css docs\design-system.md
-git diff --check
-git diff --stat
-& 'C:\Users\user\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe' .\node_modules\vite\bin\vite.js build
-git add docs/design-system.md src/components/profile/PlayerHoverCard.jsx src/components/team/TeamHoverCard.jsx src/pages/Settings.jsx src/styles/globals.css
-git commit -m "Polish dense card surfaces"
-git push origin main
+git log -8 --oneline
 ```
 
-Browser checks run through the in-app browser:
-- Desktop Home, Teams, Settings DOM metrics.
-- Mobile Home, Teams, Settings DOM metrics with viewport `390x844`.
-- Verified:
-  - horizontal overflow `0`
-  - standard-card gradient count `0`
-  - Team card row heights `44px`
-  - Team card emblem width `78px` desktop, `70px` mobile
-  - Settings columns after final compact pass about `1682px / 1705px`
+Build:
 
-Build result:
-- Build succeeded.
+```powershell
+C:\Users\user\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe .\node_modules\vite\bin\vite.js build
+```
 
-Existing build warning:
+Production state count check:
+
+```powershell
+@'
+const response = await fetch('https://platunumball.vercel.app/api/state/load', {
+  method: 'POST',
+  headers: { authorization: 'Bearer test-token-rankball-010', 'content-type': 'application/json' },
+  body: JSON.stringify({})
+});
+const json = await response.json();
+const state = json.state ?? {};
+console.log({
+  currentUserId: state.currentUserId,
+  users: state.users?.length,
+  matches: state.matches?.length,
+  recruitingPosts: state.recruitingPosts?.length,
+  tournaments: state.tournaments?.length,
+});
+'@ | C:\Users\user\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe --input-type=module -
+```
+
+Production backend simulation:
+
+```powershell
+$env:RANKBALL_SIM_TIMEOUT_MS='45000'
+C:\Users\user\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe .\scripts\simulate-backend-flow.mjs --base-url=https://platunumball.vercel.app
+```
+
+Search wide Supabase payload patterns:
+
+```powershell
+rg -n 'select\("\*"\)|select\(''\*''\)|profiles\(\*\)|courts\(\*\)|match_players\(\*\)|reports\(\*\)|reviews\(\*\)|player_match_stats\(\*\)' .\src .\server .\api .\scripts
+```
+
+## 14. Suggested Next Thread Prompt
+
+Paste this into the next thread:
 
 ```text
-(!) Some chunks are larger than 500 kB after minification.
-```
+Continue from this repository: C:\Users\user\Documents\rankball
 
-Failures encountered:
-- `npm run build` failed earlier because `npm` was not available in PATH.
-- A `pnpm run build` attempt triggered package-manager side effects and failed on esbuild ignored builds. Generated `pnpm-lock.yaml` and `pnpm-workspace.yaml` were removed. Final build was run directly with the bundled Node runtime and Vite.
-- A combined PowerShell command using `&&` failed because this shell version did not accept `&&` as a statement separator. Commands were rerun separately.
+First read:
+- AGENTS.md
+- HANDOFF.md
+- docs/logic-and-terminology.md
+- docs/design-system.md
+- relevant source files before editing
 
-## 8. How To Continue
+Current priority:
+Keep reducing Supabase PostREST egress and continue backend migration, but do not break the just-fixed recruiting list and light-mode background.
 
-Recommended next steps:
-1. Run `git status --short` before editing.
-2. If changing UI/CSS, read `docs/design-system.md` first.
-3. If changing room, match, party, invite, referee, record, MMR, team, tournament, or auth logic, read `docs/logic-and-terminology.md` first.
-4. Inspect current components before editing. Do not rely only on this handoff.
-5. For visual work, prefer a small CSS patch and verify:
-   - desktop
-   - mobile
-   - dark theme
-   - light theme
-6. For room logic, verify at least:
-   - host
-   - party leader
-   - regular player
-   - reserve player
-   - referee/no-referee paths
-7. Keep changes scoped. Avoid broad refactors unless the user explicitly asks.
-8. Commit and push completed work unless the user says not to.
+Known latest fixes:
+- fe8ec51 fixed light background selector and local recruiting queue region matching.
+- 7f4610f fixed scoped state ordering.
+- b0554df scoped remote state reads.
 
-Recommended order for likely next cleanup:
-1. Manual screenshot check Home/Teams/Settings in dark mode.
-2. Manual screenshot check Home/Teams/Settings in light mode.
-3. If remaining visual drift exists, add small end-of-file CSS overrides.
-4. Only after UI is stable, consider backend/Supabase migration planning.
-
-## 9. Guardrails
-
+Rules:
+- Korean only.
+- Minimal safe changes.
 - Do not rewrite whole files unless necessary.
 - Do not delete assets.
-- Do not change unrelated UI.
-- Preserve existing behavior unless explicitly requested.
-- Before editing, inspect current files.
-- Use `apply_patch` for manual file edits.
-- Do not create separate menu-specific room modals.
-- Do not duplicate slot, phase, party, or permission calculations in page components.
-- If logic changes, update `docs/logic-and-terminology.md` in the same commit.
-- If design behavior changes, update `docs/design-system.md` in the same commit.
-- If demo data changes, keep it compatible with the real creation flow.
-- After editing, report changed files, exact changes, commands run, and warnings.
+- Do not stage pnpm-lock.yaml or pnpm-workspace.yaml unless I explicitly ask.
+- Do not create many files under api/. Vercel Hobby limit means use api/index.js and server/api routes.
+- If changing room/match/referee/record/team/tournament/auth logic, check docs/logic-and-terminology.md first and update it if logic changes.
+- If changing UI/CSS/theme/layout, check docs/design-system.md first and update it if design behavior changes.
+- After editing, report changed files, exact changes, commands run, test/build result, warnings.
+
+Start by running:
+- git status --short
+- git log -8 --oneline
+- production state count check from HANDOFF.md
+
+Then continue the highest priority backend work:
+1. screen-specific state endpoints/pagination to reduce PostREST egress
+2. recruiting/match DB-authoritative transaction work
+3. frontend useAppData thin caller cleanup
+4. expand backend simulation scenarios
+```
+
