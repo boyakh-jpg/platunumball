@@ -441,7 +441,8 @@ export function useAppData(authUser = null) {
   const syncRecruitingPostServer = useCallback((post, notifications = [], meta = {}) => {
     if (!post?.id) return Promise.resolve(false);
     const operation = getServerOperation(meta);
-    return runServerAction("/api/recruiting/sync-post", { post, notifications, ...meta, operation }).then((result) => {
+    const payload = operation ? { operation } : { post, notifications, ...meta };
+    return runServerAction("/api/recruiting/sync-post", payload).then((result) => {
       if (result?.post || result?.createdMatch) setState((prev) => mergeServerRoomResult(prev, result));
       return result;
     });
@@ -449,7 +450,8 @@ export function useAppData(authUser = null) {
   const syncMatchServer = useCallback((match, notifications = [], meta = {}) => {
     if (!match?.id) return Promise.resolve(false);
     const operation = getServerOperation(meta);
-    return runServerAction("/api/matches/sync-match", { match, notifications, ...meta, operation }).then((result) => {
+    const payload = operation ? { operation } : { match, notifications, ...meta };
+    return runServerAction("/api/matches/sync-match", payload).then((result) => {
       if (result?.match) setState((prev) => mergeServerRoomResult(prev, result));
       return result;
     });
@@ -468,7 +470,9 @@ export function useAppData(authUser = null) {
   }, [runServerAction]);
   const syncTournamentServer = useCallback((tournament, notifications = [], meta = {}) => {
     if (!tournament?.id) return Promise.resolve(false);
-    return runServerAction("/api/tournaments/sync-tournament", { tournament, notifications, ...meta });
+    const operation = getServerOperation(meta);
+    const payload = operation ? { operation } : { tournament, notifications, ...meta };
+    return runServerAction("/api/tournaments/sync-tournament", payload);
   }, [runServerAction]);
   const syncRefereeServer = useCallback((action, payload = {}) => {
     if (!action) return;

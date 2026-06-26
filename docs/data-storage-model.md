@@ -285,6 +285,7 @@ Done:
 - Server action paths exist for profile upsert, court request submit/approve/report, admin review, admin/referee appointment, disciplinary action, Discord DM worker, Discord delivery queue sync, reports, recruiting, matches, teams, tournaments, referee requests, favorites, notification read, court reviews.
 - Team membership save/delete now commits through `rankball_sync_team_membership()` / `rankball_delete_team()` DB RPC transactions.
 - Tournament create/approve now replays the reducer on the server and persists generated tournament matches inside `sync-tournament`.
+- Room, match, and tournament frontend callers now send `{ operation }` only when operation replay is available; full snapshot sync is legacy fallback.
 - Remote hydration guard blocks local room/match/team/tournament actions before backend state is ready.
 - Test account server mapping uses `profiles.test_login_id` with `test-token-rankball-###`.
 - Client `u1` owner fallback is removed. Admin menu authority now comes from server context or DB `admin_appointments`.

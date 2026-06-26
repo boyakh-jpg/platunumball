@@ -1152,6 +1152,12 @@ flowchart TD
 5. Match sides with `teamId` must keep active players, reserve players, and `playedPlayerIds` inside that team's `team_members` roster.
 6. Personal sides without `teamId` are not team-membership gated.
 
+## 2026-06-26 frontend server caller thinning
+
+1. Supabase mode room, match, and tournament mutations keep the optimistic UI reducer, but the server action payload must prefer `{ operation }` over full client snapshots when the action supports operation replay.
+2. The server loads current Supabase state and reruns the central reducer for operation payloads.
+3. Full snapshot payload remains only as a legacy fallback for paths that do not yet provide an operation.
+
 ## 2026-06-26 match rating commit transaction
 
 1. `approveMatch`가 양쪽 승인 완료로 `confirmed`가 되면 서버 reducer가 변경된 `profiles`와 `teams` 경쟁 수치만 추출한다.
