@@ -1202,11 +1202,23 @@ create table if not exists public.discord_notification_deliveries (
   status text not null default 'queued',
   payload jsonb not null default '{}'::jsonb,
   queued_at timestamptz,
+  send_at timestamptz not null default now(),
   sent_at timestamptz,
   failed_at timestamptz,
+  last_error text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table if exists public.discord_notification_deliveries
+  add column if not exists send_at timestamptz not null default now();
+
+alter table if exists public.discord_notification_deliveries
+  add column if not exists last_error text;
+
+update public.discord_notification_deliveries
+set send_at = coalesce(send_at, queued_at, created_at, now())
+where send_at is null;
 
 create or replace function public.current_admin_level()
 returns integer
@@ -3847,6 +3859,7 @@ create index if not exists court_reviews_status_idx on public.court_reviews (sta
 create index if not exists reports_status_idx on public.reports (status, created_at desc);
 create index if not exists notifications_user_idx on public.notifications (user_id, created_at desc);
 create index if not exists discord_notification_deliveries_status_idx on public.discord_notification_deliveries (status, queued_at);
+create index if not exists discord_notification_deliveries_due_idx on public.discord_notification_deliveries (status, send_at, queued_at) where sent_at is null;
 
 do $$
 declare

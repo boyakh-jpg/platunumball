@@ -1889,8 +1889,10 @@ export async function saveNormalizedRemoteState(state, options = {}) {
     discord_user_id: delivery.discordUserId ?? null,
     event: delivery.event ?? null,
     queued_at: delivery.queuedAt ?? null,
+    send_at: delivery.sendAt ?? delivery.queuedAt ?? null,
     sent_at: delivery.sentAt ?? null,
     failed_at: delivery.failedAt ?? null,
+    last_error: delivery.lastError ?? null,
   })).filter((row) => row.id);
 
   await softDeleteRemoteTeams(deletedTeamIds, client);

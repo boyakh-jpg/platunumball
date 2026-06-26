@@ -42,6 +42,7 @@ function toDeliveryRow(delivery, profileId, discordUserId) {
   const notificationId = trimText(delivery.notificationId, 160);
   const event = ALLOWED_EVENTS.has(delivery.event) ? delivery.event : "match";
   const queuedAt = delivery.queuedAt || new Date().toISOString();
+  const sendAt = delivery.sendAt || queuedAt;
   if (!id || !notificationId) return null;
   if (delivery.targetUserId && delivery.targetUserId !== profileId) return null;
   if (delivery.status && delivery.status !== "queued") return null;
@@ -59,6 +60,7 @@ function toDeliveryRow(delivery, profileId, discordUserId) {
     actions: normalizeActions(delivery.actions),
     status: "queued",
     queuedAt,
+    sendAt,
   };
 
   return {
@@ -70,6 +72,7 @@ function toDeliveryRow(delivery, profileId, discordUserId) {
     status: "queued",
     payload,
     queued_at: queuedAt,
+    send_at: sendAt,
     created_at: queuedAt,
     updated_at: new Date().toISOString(),
   };

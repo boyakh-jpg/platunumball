@@ -1,4 +1,4 @@
-import { getAdminLevel, getAuthenticatedContext, getSupabaseAdminClient, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { getSupabaseAdminClient, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 
 const DISCORD_API_BASE = "https://discord.com/api/v10";
 const MAX_BATCH_SIZE = 25;
@@ -10,25 +10,14 @@ function getBearerToken(request) {
 }
 
 function getWorkerSecret() {
-  return process.env.DISCORD_WORKER_SECRET || process.env.CRON_SECRET || "";
+  return process.env.CRON_SECRET || "";
 }
 
 async function assertWorkerAccess(request) {
   const workerSecret = getWorkerSecret();
-  if (workerSecret) {
-    if (getBearerToken(request) !== workerSecret) {
-      const error = new Error("invalid_worker_secret");
-      error.statusCode = 401;
-      throw error;
-    }
-    return;
-  }
-
-  const context = await getAuthenticatedContext(request);
-  const adminLevel = await getAdminLevel(context);
-  if (adminLevel < 30) {
-    const error = new Error("admin_permission_required");
-    error.statusCode = 403;
+  if (!workerSecret || getBearerToken(request) !== workerSecret) {
+    const error = new Error("invalid_cron_secret");
+    error.statusCode = 401;
     throw error;
   }
 }
@@ -146,8 +135,11 @@ export default async function handler(request, response) {
 
     const { data: queuedRows, error: queueError } = await supabase
       .from("discord_notification_deliveries")
-      .select("id, notification_id, target_user_id, discord_user_id, event, status, payload, queued_at")
+      .select("id, notification_id, target_user_id, discord_user_id, event, status, payload, queued_at, send_at")
       .eq("status", "queued")
+      .is("sent_at", null)
+      .lte("send_at", now)
+      .order("send_at", { ascending: true, nullsFirst: true })
       .order("queued_at", { ascending: true, nullsFirst: true })
       .limit(limit);
 
@@ -163,7 +155,9 @@ export default async function handler(request, response) {
       .update({ status: "sending", updated_at: now })
       .in("id", ids)
       .eq("status", "queued")
-      .select("id, notification_id, target_user_id, discord_user_id, event, status, payload, queued_at");
+      .is("sent_at", null)
+      .lte("send_at", now)
+      .select("id, notification_id, target_user_id, discord_user_id, event, status, payload, queued_at, send_at");
 
     if (claimError) throw claimError;
 
@@ -180,6 +174,7 @@ export default async function handler(request, response) {
             status: "sent",
             sent_at: sentAt,
             failed_at: null,
+            last_error: null,
             payload: mergePayload(delivery, {
               status: "sent",
               sentAt,
@@ -195,10 +190,11 @@ export default async function handler(request, response) {
         await supabase
           .from("discord_notification_deliveries")
           .update({
-            status: "failed",
+            status: "queued",
             failed_at: failedAt,
+            last_error: deliveryError.message || "discord_dm_failed",
             payload: mergePayload(delivery, {
-              status: "failed",
+              status: "queued",
               failedAt,
               error: deliveryError.message || "discord_dm_failed",
             }),
