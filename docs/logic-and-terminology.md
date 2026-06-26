@@ -937,12 +937,13 @@ flowchart TD
 17. Discord DM 큐는 DB `discordNotificationDeliveries`에 저장하고 `/api/discord/dm-worker`가 처리한다. 버튼 수락/거절 커밋은 `/api/discord/interactions`가 Discord signature 검증 후 초대 서버 action으로 처리한다.
 18. `/api/discord/dm-worker`는 외부 스케줄러용 `GET`과 수동 점검용 `POST`를 모두 허용한다. 둘 다 `Authorization: Bearer <CRON_SECRET>` 검증을 통과해야 한다.
 19. Vercel Hobby Cron은 알림 worker에 쓰지 않는다. 알파 테스트에서는 cron-job.org가 5분마다 `/api/discord/dm-worker`를 호출한다.
-20. 경기 Discord 자동 알림은 match server action이 `discord_notification_deliveries`에 직접 저장한다. 예정 경기는 시작 24시간 전, 2시간 전, 1시간 전 리마인더를 만들고, 경기 시작/종료는 즉시 발송 큐로 넣는다.
-21. 경기 종료 알림은 점수 입력을 요청한다. 종료 30분 뒤에는 결과 확인과 이의신청 안내를 다시 보낸다.
-22. 즉시 모집방 생성은 방 개설 DM을 즉시 발송 큐로 넣는다. 초대장 수락/거절 버튼은 cron reminder가 아니라 Discord interaction server action으로 처리한다.
-23. 방관리자 Discord 알림은 심판이 있으면 심판, 없으면 방장에게 보낸다. 경기 10분 전에는 참여자 도착 여부 확인 안내, 경기 시작시간에는 준비 완료 후 시작 처리 안내를 보낸다. 경기를 일찍 시작하면 아직 발송되지 않은 방관리자 출석/시작 안내는 취소한다.
-24. 점수 제출, 이의신청, 승인 처리, 이의 처리 재개가 일어나면 아직 발송되지 않은 경기 종료 점수 입력 안내와 종료 30분 뒤 이의신청 안내는 취소한다.
-25. 경기 취소 또는 무효 처리 시 아직 발송되지 않은 해당 경기의 시작 전 리마인더, 방관리자 안내, 시작/종료/이의 안내는 모두 취소한다.
+20. 수동 테스트 DM은 username을 받을 수 있지만 서버가 봇이 들어간 Discord 서버 멤버 검색으로 숫자 `discord_user_id`를 찾은 뒤 보낸다. 자동 발송 큐와 프로필 연동 원본은 username이 아니라 숫자 `discord_user_id`다.
+21. 경기 Discord 자동 알림은 match server action이 `discord_notification_deliveries`에 직접 저장한다. 예정 경기는 시작 24시간 전, 2시간 전, 1시간 전 리마인더를 만들고, 경기 시작/종료는 즉시 발송 큐로 넣는다.
+22. 경기 종료 알림은 점수 입력을 요청한다. 종료 30분 뒤에는 결과 확인과 이의신청 안내를 다시 보낸다.
+23. 즉시 모집방 생성은 방 개설 DM을 즉시 발송 큐로 넣는다. 초대장 수락/거절 버튼은 cron reminder가 아니라 Discord interaction server action으로 처리한다.
+24. 방관리자 Discord 알림은 심판이 있으면 심판, 없으면 방장에게 보낸다. 경기 10분 전에는 참여자 도착 여부 확인 안내, 경기 시작시간에는 준비 완료 후 시작 처리 안내를 보낸다. 경기를 일찍 시작하면 아직 발송되지 않은 방관리자 출석/시작 안내는 취소한다.
+25. 점수 제출, 이의신청, 승인 처리, 이의 처리 재개가 일어나면 아직 발송되지 않은 경기 종료 점수 입력 안내와 종료 30분 뒤 이의신청 안내는 취소한다.
+26. 경기 취소 또는 무효 처리 시 아직 발송되지 않은 해당 경기의 시작 전 리마인더, 방관리자 안내, 시작/종료/이의 안내는 모두 취소한다.
 
 ## 2026-06-24 내 진행 일정 지난 경기 필터
 

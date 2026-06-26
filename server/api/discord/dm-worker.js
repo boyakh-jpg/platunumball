@@ -2,6 +2,7 @@ import { getSupabaseAdminClient, readJsonBody, sendJson } from "../_supabaseAdmi
 
 const DISCORD_API_BASE = "https://discord.com/api/v10";
 const MAX_BATCH_SIZE = 25;
+const DISCORD_SNOWFLAKE_RE = /^\d{17,20}$/;
 
 function getBearerToken(request) {
   const header = request.headers.authorization || request.headers.Authorization || "";
@@ -26,6 +27,12 @@ function getBatchLimit(value) {
   const limit = Number(value);
   if (!Number.isFinite(limit) || limit <= 0) return 10;
   return Math.min(MAX_BATCH_SIZE, Math.floor(limit));
+}
+
+function httpError(message, statusCode = 400) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  return error;
 }
 
 async function discordFetch(path, options = {}) {
@@ -58,6 +65,69 @@ async function discordFetch(path, options = {}) {
 
 function trimDiscordText(value, maxLength) {
   return String(value ?? "").trim().slice(0, maxLength);
+}
+
+function normalizeDiscordUsername(value = "") {
+  return String(value || "")
+    .trim()
+    .replace(/^@+/, "")
+    .toLowerCase();
+}
+
+function getConfiguredGuildIds() {
+  return String(
+    process.env.DISCORD_GUILD_IDS ||
+      process.env.DISCORD_GUILD_ID ||
+      process.env.DISCORD_SERVER_IDS ||
+      process.env.DISCORD_SERVER_ID ||
+      "",
+  )
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
+async function getBotGuildIds() {
+  const configuredGuildIds = getConfiguredGuildIds();
+  if (configuredGuildIds.length) return configuredGuildIds;
+
+  const guilds = await discordFetch("/users/@me/guilds", { method: "GET" });
+  return (guilds ?? []).map((guild) => String(guild.id || "").trim()).filter(Boolean);
+}
+
+function isExactDiscordUsernameMatch(user = {}, targetUsername = "") {
+  const username = normalizeDiscordUsername(user.username);
+  if (username && username === targetUsername) return true;
+  const discriminator = String(user.discriminator || "").trim();
+  const legacyUsername = discriminator && discriminator !== "0" ? `${username}#${discriminator}` : "";
+  return Boolean(legacyUsername && legacyUsername === targetUsername);
+}
+
+async function resolveDiscordUserIdByUsername(username) {
+  const targetUsername = normalizeDiscordUsername(username);
+  if (!targetUsername) throw httpError("missing_discord_username");
+  if (DISCORD_SNOWFLAKE_RE.test(targetUsername)) return targetUsername;
+
+  const guildIds = await getBotGuildIds();
+  if (!guildIds.length) throw httpError("discord_bot_has_no_guilds", 404);
+
+  const matchedUsers = new Map();
+  for (const guildId of guildIds) {
+    const members = await discordFetch(
+      `/guilds/${encodeURIComponent(guildId)}/members/search?query=${encodeURIComponent(targetUsername)}&limit=10`,
+      { method: "GET" },
+    );
+    for (const member of members ?? []) {
+      const user = member?.user ?? {};
+      if (user.id && isExactDiscordUsernameMatch(user, targetUsername)) {
+        matchedUsers.set(String(user.id), user);
+      }
+    }
+  }
+
+  if (matchedUsers.size === 1) return [...matchedUsers.keys()][0];
+  if (matchedUsers.size > 1) throw httpError("discord_username_ambiguous", 409);
+  throw httpError("discord_username_not_found_in_bot_guild", 404);
 }
 
 function getDiscordComponents(actions = []) {
@@ -112,6 +182,31 @@ async function sendDiscordDm(delivery) {
   };
 }
 
+async function sendTestDiscordDm(body = {}) {
+  const discordUserId = String(body.discordUserId || body.discord_user_id || "").trim();
+  const username = body.discordUsername || body.username || body.testUsername;
+  const resolvedUserId = discordUserId || (await resolveDiscordUserIdByUsername(username));
+  const now = new Date().toISOString();
+  const result = await sendDiscordDm({
+    discord_user_id: resolvedUserId,
+    event: "test",
+    payload: {
+      title: trimDiscordText(body.title || "RankBall 테스트 DM", 120),
+      body: trimDiscordText(body.message || body.body || "RankBall Discord 알림 테스트입니다.", 1200),
+      webUrl: trimDiscordText(body.webUrl || process.env.VITE_PUBLIC_APP_URL || "", 500),
+      sentAt: now,
+    },
+  });
+
+  return {
+    ok: true,
+    test: true,
+    discordUserId: resolvedUserId,
+    channelId: result.channelId,
+    messageId: result.messageId,
+  };
+}
+
 function mergePayload(delivery, patch) {
   return {
     ...(delivery.payload ?? {}),
@@ -129,6 +224,11 @@ export default async function handler(request, response) {
   try {
     await assertWorkerAccess(request);
     const body = request.method === "POST" ? await readJsonBody(request) : {};
+    if (request.method === "POST" && (body.testDm || body.discordUsername || body.username || body.testUsername || body.discordUserId || body.discord_user_id)) {
+      sendJson(response, 200, await sendTestDiscordDm(body));
+      return;
+    }
+
     const limit = getBatchLimit(body.limit);
     const supabase = getSupabaseAdminClient();
     const now = new Date().toISOString();
