@@ -22,9 +22,9 @@
   --bottom-nav-height: 58px;
   --bg-court: url("/assets/rankball-court-hero.webp");
   --bg-action: url("/assets/main.webp");
-  --bg-profile: url("/assets/Gemini_Generated_Image_heoiwzheoiwzheoi.webp");
-  --bg-hoop: url("/assets/Gemini_Generated_Image_veaa01veaa01veaa.webp");
-  --bg-ball: url("/assets/Gemini_Generated_Image_pkzbpxpkzbpxpkzb.webp");
+  --bg-profile: url("/assets/rankball-profile-night.webp");
+  --bg-hoop: url("/assets/rankball-hoop-night.webp");
+  --bg-ball: url("/assets/rankball-ball-night.webp");
   --hero-bg-size: cover;
   --hero-crop-court: center center;
   --hero-crop-action: center 32%;
