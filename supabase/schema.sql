@@ -611,9 +611,31 @@ $$;
 do $$
 begin
   if to_regclass('public.matches') is not null then
+    execute 'alter table public.matches add column if not exists title text not null default ''Match''';
+    execute 'alter table public.matches add column if not exists mode text not null default ''5v5''';
+    execute 'alter table public.matches add column if not exists court_id text';
+    execute 'alter table public.matches add column if not exists court_name text';
     execute 'alter table public.matches add column if not exists visibility text not null default ''public''';
+    execute 'alter table public.matches add column if not exists status text not null default ''contract''';
+    execute 'alter table public.matches add column if not exists ranked boolean not null default true';
+    execute 'alter table public.matches add column if not exists official boolean not null default false';
+    execute 'alter table public.matches add column if not exists pre_registered boolean not null default true';
+    execute 'alter table public.matches add column if not exists scheduled_at text';
+    execute 'alter table public.matches add column if not exists scheduled_date date';
+    execute 'alter table public.matches add column if not exists scheduled_time time';
+    execute 'alter table public.matches add column if not exists team_a_id text';
+    execute 'alter table public.matches add column if not exists team_b_id text';
     execute 'alter table public.matches add column if not exists score_a integer not null default 0';
     execute 'alter table public.matches add column if not exists score_b integer not null default 0';
+    execute 'alter table public.matches add column if not exists rules jsonb not null default ''{}''::jsonb';
+    execute 'alter table public.matches add column if not exists memo text';
+    execute 'alter table public.matches add column if not exists stakes text';
+    execute 'alter table public.matches add column if not exists objection_window text';
+    execute 'alter table public.matches add column if not exists evidence jsonb not null default ''[]''::jsonb';
+    execute 'alter table public.matches add column if not exists created_by text';
+    execute 'alter table public.matches add column if not exists created_at timestamptz not null default now()';
+    execute 'alter table public.matches add column if not exists agreed_at timestamptz';
+    execute 'alter table public.matches add column if not exists started_at timestamptz';
     execute 'alter table public.matches add column if not exists mmr_limit_mode text not null default ''block''';
     execute 'alter table public.matches add column if not exists referee_id text';
     execute 'alter table public.matches add column if not exists referee_trust_min integer not null default 90';
@@ -621,6 +643,8 @@ begin
     execute 'alter table public.matches add column if not exists dispute_minutes integer not null default 120';
     execute 'alter table public.matches add column if not exists ended_at timestamptz';
     execute 'alter table public.matches add column if not exists confirmed_at timestamptz';
+    execute 'alter table public.matches add column if not exists cancelled_at timestamptz';
+    execute 'alter table public.matches add column if not exists voided_at timestamptz';
     execute 'alter table public.matches add column if not exists trust_feedback jsonb not null default ''{}''::jsonb';
     execute 'alter table public.matches add column if not exists stat_recorders jsonb not null default ''{}''::jsonb';
     execute 'alter table public.matches add column if not exists played_player_ids jsonb not null default ''{}''::jsonb';
@@ -636,6 +660,7 @@ begin
     execute 'alter table public.matches add column if not exists anonymous_players jsonb not null default ''{}''::jsonb';
     execute 'alter table public.matches add column if not exists rating_result jsonb';
     execute 'alter table public.matches add column if not exists team_rating_result jsonb';
+    execute 'alter table public.matches add column if not exists updated_at timestamptz not null default now()';
     execute 'alter table public.matches drop constraint if exists matches_visibility_check';
     execute 'alter table public.matches add constraint matches_visibility_check check (visibility in (''public'', ''private''))';
     execute 'create index if not exists matches_visibility_idx on public.matches (visibility, created_at desc)';
