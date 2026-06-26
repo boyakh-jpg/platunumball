@@ -8,6 +8,7 @@ import Card from "../components/common/Card.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import { PLAYER_STAT_FIELDS } from "../lib/constants.js";
+import { getUserHashtag } from "../lib/handles.js";
 import {
   getAllowedStatFields,
   getMatchHostPlayerId,
@@ -39,13 +40,13 @@ const statusMeta = {
 const activeStatuses = new Set(["agreed", "approval", "disputed"]);
 
 function getPlayerSearchHashtag(user = {}) {
-  return user.handle ? String(user.handle).replace(/^@/, "#") : "";
+  return getUserHashtag(user);
 }
 
 function includesPlayerQuery(user = {}, query = "") {
   const normalizedQuery = query.trim().toLowerCase();
   if (!normalizedQuery) return true;
-  return [user.name, user.handle, getPlayerSearchHashtag(user), user.position, user.region, user.club]
+  return [user.name, getPlayerSearchHashtag(user), user.position, user.region, user.club]
     .filter(Boolean)
     .join(" ")
     .toLowerCase()

@@ -8,6 +8,7 @@ import RatingCard from "../components/rating/RatingCard.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
 import TierBadge from "../components/rating/TierBadge.jsx";
 import { getDiscordAvatarClassName, getDiscordAvatarStyle, getDiscordDisplayName, getDiscordProfileUrl } from "../lib/discord.js";
+import { getUserHashtag } from "../lib/handles.js";
 import { PLAYER_STAT_FIELDS } from "../lib/constants.js";
 import { formatStatLine } from "../lib/matchUtils.js";
 import { getTierDivision, getTierQuote } from "../lib/tier.js";
@@ -111,7 +112,7 @@ export default function PlayerDetail({ app }) {
           <div>
             <p className="eyebrow">Player Profile</p>
             <h1>{player.name}</h1>
-            <p>{player.handle} · 신뢰도 {player.trustScore}</p>
+            <p>{getUserHashtag(player)} · 신뢰도 {player.trustScore}</p>
             <div className="badge-row">
               <TierBadge mmr={player.ratings.integrated} />
               <Badge tone="green">{player.region}</Badge>

@@ -9,6 +9,7 @@ import {
   STAT_ENTRY_WINDOW_MINUTES,
 } from "./constants.js";
 import { demoFlowState } from "./demoFlowState.js";
+import { toHashtag } from "./handles.js";
 
 const DEMO_TODAY = "2026-06-18";
 const DEMO_NOW = "2026-06-18T12:00:00";
@@ -135,7 +136,8 @@ const baseState = {
     {
       id: "u1",
       name: "민준",
-      handle: "@minjun",
+      handle: "#minjun",
+      hashtag: "#minjun",
       position: "PG",
       region: "마포",
       school: "연희대",
@@ -149,7 +151,8 @@ const baseState = {
     {
       id: "u2",
       name: "서윤",
-      handle: "@seoyun",
+      handle: "#seoyun",
+      hashtag: "#seoyun",
       position: "SG",
       region: "마포",
       school: "연희대",
@@ -163,7 +166,8 @@ const baseState = {
     {
       id: "u3",
       name: "지후",
-      handle: "@jihoo",
+      handle: "#jihoo",
+      hashtag: "#jihoo",
       position: "SF",
       region: "마포",
       school: "동교고",
@@ -177,7 +181,8 @@ const baseState = {
     {
       id: "u4",
       name: "태오",
-      handle: "@taeo",
+      handle: "#taeo",
+      hashtag: "#taeo",
       position: "PF",
       region: "마포",
       school: "연희대",
@@ -191,7 +196,8 @@ const baseState = {
     {
       id: "u5",
       name: "하린",
-      handle: "@harin",
+      handle: "#harin",
+      hashtag: "#harin",
       position: "C",
       region: "마포",
       school: "서강대",
@@ -205,7 +211,8 @@ const baseState = {
     {
       id: "u6",
       name: "도윤",
-      handle: "@doyun",
+      handle: "#doyun",
+      hashtag: "#doyun",
       position: "PG",
       region: "성수",
       school: "건대",
@@ -219,7 +226,8 @@ const baseState = {
     {
       id: "u7",
       name: "나은",
-      handle: "@naeun",
+      handle: "#naeun",
+      hashtag: "#naeun",
       position: "SG",
       region: "성수",
       school: "건대",
@@ -233,7 +241,8 @@ const baseState = {
     {
       id: "u8",
       name: "현우",
-      handle: "@hyunwoo",
+      handle: "#hyunwoo",
+      hashtag: "#hyunwoo",
       position: "SF",
       region: "성수",
       school: "한양대",
@@ -247,7 +256,8 @@ const baseState = {
     {
       id: "u9",
       name: "유나",
-      handle: "@yuna",
+      handle: "#yuna",
+      hashtag: "#yuna",
       position: "PF",
       region: "성수",
       school: "한양대",
@@ -261,7 +271,8 @@ const baseState = {
     {
       id: "u10",
       name: "시온",
-      handle: "@sion",
+      handle: "#sion",
+      hashtag: "#sion",
       position: "C",
       region: "성수",
       school: "건대",
@@ -812,10 +823,12 @@ function makeDemoUser(index) {
   const position = cycle(PLAYER_POSITIONS.slice(1), index - 1);
   const mmr = 980 + ((index * 43) % 640);
   const name = `${cycle(demoSurnames, index)}${cycle(demoGivenNames, index * 3)}`;
+  const hashtag = `#rankball${padNumber(index)}`;
   return {
     id: `u${index}`,
     name,
-    handle: `@rankball${padNumber(index)}`,
+    handle: hashtag,
+    hashtag,
     position,
     region,
     school: cycle(demoSchools, index),
@@ -1545,6 +1558,22 @@ function uniqueById(items) {
   return [...new Map(items.map((item) => [item.id, item])).values()];
 }
 
+function normalizeDemoUserHashtag(user = {}) {
+  const hashtag = toHashtag(user.hashtag ?? user.handle ?? user.id, user.id);
+  return {
+    ...user,
+    handle: hashtag,
+    hashtag,
+  };
+}
+
+function withCanonicalUserHashtags(state) {
+  return {
+    ...state,
+    users: (state.users ?? []).map(normalizeDemoUserHashtag),
+  };
+}
+
 function withDemoLeague(state) {
   const users = buildDemoUsers(state.users);
   const teams = buildDemoTeams(state.teams, users);
@@ -1625,5 +1654,5 @@ function withDemoRefereeQualifications(state) {
   };
 }
 
-export const sourceDemoState = withDemoRefereeQualifications(withDemoLeague(baseState));
-export const initialState = withDemoRefereeQualifications(demoFlowState ?? sourceDemoState);
+export const sourceDemoState = withCanonicalUserHashtags(withDemoRefereeQualifications(withDemoLeague(baseState)));
+export const initialState = withCanonicalUserHashtags(withDemoRefereeQualifications(demoFlowState ?? sourceDemoState));

@@ -289,7 +289,7 @@ export default function Home({ app }) {
           meta: `${item.region} · ${item.position} · ${item.ratings.integrated}`,
           href: `/app/players/${item.id}`,
           score: Number(hashtag.toLowerCase() === searchText) * 100000 + Number(item.region === user.region) * 10000 + item.ratings.integrated,
-          haystack: `${item.name} ${item.handle} ${hashtag} ${item.region} ${item.position} ${item.club}`,
+          haystack: `${item.name} ${hashtag} ${item.region} ${item.position} ${item.club}`,
           avatar: item.avatarColor,
           user: item,
           hashtag,
@@ -305,7 +305,7 @@ export default function Home({ app }) {
         href: `/app/teams/${team.id}`,
         team,
         score: Number(hashtag.toLowerCase() === searchText) * 100000 + Number(team.region === user.region) * 10000 + team.mmr,
-        haystack: `${team.name} ${team.handle ?? ""} ${hashtag} ${team.region} ${team.homeCourt}`,
+        haystack: `${team.name} ${hashtag} ${team.region} ${team.homeCourt}`,
         teamColor: team.accent,
         hashtag,
       };

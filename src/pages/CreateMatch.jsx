@@ -445,7 +445,7 @@ export default function CreateMatch({ app }) {
     const query = refereeQuery.trim();
     return refereeCandidates.filter((user) => (
       !query ||
-      includesQuery(`${user.name} ${user.handle} ${getUserHashtag(user)} ${user.position} ${user.region} 신뢰도 ${user.trustScore}`, query)
+      includesQuery(`${user.name} ${getUserHashtag(user)} ${user.position} ${user.region} 신뢰도 ${user.trustScore}`, query)
     ));
   }, [refereeCandidates, refereeQuery]);
   const teamTierRange = getRecruitingTierRange(selectedTeamA?.mmr ?? 1200, draft.ranked, draft.mmrRangeMode);

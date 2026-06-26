@@ -1,3 +1,5 @@
+import { getUserHashtag, stripHandle } from "./handles.js";
+
 export const DISCORD_NOTIFICATION_EVENTS = [
   { id: "match", label: "초대/경기" },
   { id: "approval", label: "승인/이의" },
@@ -74,7 +76,7 @@ export function getDiscordAvatarStyle(user = {}) {
 }
 
 export function createDemoDiscordConnection(user = {}) {
-  const username = String(user.handle || user.name || "rankball").replace(/^@/, "");
+  const username = stripHandle(getUserHashtag(user), user.name || "rankball");
   const seed = Math.abs(Number(String(user.id ?? "").replace(/\D/g, "")) || 0) % 5;
   return {
     provider: "discord",

@@ -325,7 +325,7 @@ export default function Settings({ app, auth }) {
     return testAccounts
       .filter((user) => (
         keyword
-          ? `${user.name} ${user.handle} ${user.region} ${user.position} ${user.testLoginId}`.toLowerCase().includes(keyword)
+          ? `${user.name} ${getUserHashtag(user)} ${user.region} ${user.position} ${user.testLoginId}`.toLowerCase().includes(keyword)
           : true
       ))
       .slice(0, 12);

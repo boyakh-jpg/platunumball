@@ -1104,3 +1104,11 @@ flowchart TD
 2. 서버가 권한, 정원, 심판 자격, 중복 선수, 1v1 파티 금지 같은 규칙으로 거부하면 해당 변경은 새로고침 전에도 남기지 않는다.
 3. rollback은 사용자에게 `서버 저장 실패` 알림을 남긴다.
 4. 이 단계는 프론트 optimistic rollback이다. 최종 완료 기준은 match/recruiting/team write를 DB transaction/RPC 단위로 옮기는 것이다.
+
+## 2026-06-26 hashtag canonical identity
+
+1. 공개 사용자 식별자는 `profiles.hashtag`와 `getUserHashtag()`를 기준으로 한다.
+2. `profiles.handle`은 기존 row와 과거 seed 호환용 alias이며, 신규 저장 시 `hashtag`와 같은 `#...` 값으로만 mirror한다.
+3. UI 표시, 검색 haystack, Discord demo username 생성은 raw `.handle`을 직접 사용하지 않는다.
+4. `@...` 형식은 신규 seed/runtime state에서 정규화되어 `#...`로 바뀌어야 한다.
+5. DB에서 `handle` 컬럼을 삭제하는 것은 모든 서버 action, seed, migration, `handle_locked_at` 의존 정리가 끝난 뒤 별도 hard migration으로만 한다.
