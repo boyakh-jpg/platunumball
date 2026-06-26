@@ -470,6 +470,16 @@ function validateParticipantResultUnchanged(action, existingResult, existingStat
   }
 }
 
+function validateResultOnlyOnSubmission(action, existingResult, existingStats, nextMatch) {
+  if (action === "submitMatchResult" || !nextMatch.result) return;
+  const existingSnapshot = normalizeResultSnapshot(existingResult, existingStats);
+  const nextSnapshot = normalizeResultSnapshot(nextMatch.result);
+  if (!existingSnapshot && !nextSnapshot) return;
+  if (JSON.stringify(existingSnapshot) !== JSON.stringify(nextSnapshot)) {
+    reject(403, "match_result_submission_required");
+  }
+}
+
 async function deleteMatchChildren(supabase, table, matchId) {
   const { error } = await supabase.from(table).delete().eq("match_id", matchId);
   if (error) throw error;
@@ -502,7 +512,7 @@ export default async function handler(request, response) {
     const context = await getAuthenticatedContext(request);
     const { data: existingMatch, error: existingError } = await context.supabase
       .from("matches")
-      .select("id, created_by, referee_id, former_referee_id, referee_trust_min, stat_recorders")
+      .select("id, created_by, referee_id, former_referee_id, referee_trust_min, stat_recorders, score_a, score_b, rating_result, team_rating_result")
       .eq("id", match.id)
       .maybeSingle();
     if (existingError) throw existingError;
@@ -532,12 +542,19 @@ export default async function handler(request, response) {
     }
     validateLockedMatchCore(existingMatch, existingPlayers, match, action);
     validateParticipantResultUnchanged(action, existingResult, existingStats, match);
+    validateResultOnlyOnSubmission(action, existingResult, existingStats, match);
     await validateRefereeEligibility(context.supabase, existingMatch, match, action);
 
     const matchRow = toMatchRow(match, context.profileId);
     const playerRows = getSidePlayerRows(match);
-    const resultRow = toResultRow(match, context.profileId);
-    const statRows = toStatRows(match);
+    if (action !== "submitMatchResult" && existingMatch) {
+      matchRow.score_a = Number(existingMatch.score_a ?? 0);
+      matchRow.score_b = Number(existingMatch.score_b ?? 0);
+      matchRow.rating_result = existingMatch.rating_result ?? null;
+      matchRow.team_rating_result = existingMatch.team_rating_result ?? null;
+    }
+    const resultRow = action === "submitMatchResult" ? toResultRow(match, context.profileId) : null;
+    const statRows = action === "submitMatchResult" ? toStatRows(match) : [];
     const agreementRows = toAgreementRows(match);
     const approvalRows = toApprovalRows(match);
     const disputeRows = toDisputeRows(match);
@@ -547,11 +564,13 @@ export default async function handler(request, response) {
     if (matchError) throw matchError;
 
     await deleteMatchChildren(context.supabase, "match_players", match.id);
-    await deleteMatchChildren(context.supabase, "player_match_stats", match.id);
     await deleteMatchChildren(context.supabase, "match_agreements", match.id);
     await deleteMatchChildren(context.supabase, "match_approvals", match.id);
     await deleteMatchChildren(context.supabase, "match_disputes", match.id);
-    await deleteMatchChildren(context.supabase, "match_results", match.id);
+    if (action === "submitMatchResult") {
+      await deleteMatchChildren(context.supabase, "player_match_stats", match.id);
+      await deleteMatchChildren(context.supabase, "match_results", match.id);
+    }
 
     await upsertRows(context.supabase, "match_players", playerRows, "match_id,user_id");
     if (resultRow) await upsertRows(context.supabase, "match_results", [resultRow], "match_id");
