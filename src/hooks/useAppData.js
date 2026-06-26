@@ -228,6 +228,17 @@ function mergeRemoteRecruitingPage(state, remoteState = {}) {
   };
 }
 
+function mergeRemoteDirectory(state, remoteState = {}) {
+  return {
+    ...state,
+    users: mergeById(state.users, remoteState.users),
+    teams: mergeById(state.teams, remoteState.teams),
+    affiliations: remoteState.affiliations?.length ? remoteState.affiliations : state.affiliations,
+    seasons: remoteState.seasons?.length ? remoteState.seasons : state.seasons,
+    settings: remoteState.settings ? { ...state.settings, ...remoteState.settings } : state.settings,
+  };
+}
+
 function mergeServerRoomResult(state, result = {}) {
   if (!result || typeof result !== "object") return state;
   const nextPost = result.post ?? null;
@@ -339,7 +350,7 @@ async function loadBackendState(authUserId, authEmail) {
   try {
     const result = await postServerAction(
       "/api/state/load",
-      { authUserId, authEmail, matchLimit: REMOTE_CLIENT_MATCH_LIMIT, recruitingLimit: REMOTE_CLIENT_RECRUITING_LIMIT, matchListOnly: true },
+      { authUserId, authEmail, matchLimit: REMOTE_CLIENT_MATCH_LIMIT, recruitingLimit: REMOTE_CLIENT_RECRUITING_LIMIT, matchListOnly: true, directoryScope: "related" },
       { allowWhenDisabled: true },
     );
     if (result?.state) return result.state;
@@ -350,6 +361,7 @@ async function loadBackendState(authUserId, authEmail) {
     matchLimit: REMOTE_CLIENT_MATCH_LIMIT,
     recruitingLimit: REMOTE_CLIENT_RECRUITING_LIMIT,
     matchListOnly: true,
+    directoryScope: "related",
   });
 }
 
@@ -364,9 +376,11 @@ export function useAppData(authUser = null) {
   const [adminContext, setAdminContext] = useState(EMPTY_ADMIN_CONTEXT);
   const [matchPagination, setMatchPagination] = useState({ loading: false, exhausted: !isSupabaseConfigured, error: "" });
   const [recruitingPagination, setRecruitingPagination] = useState({ loading: false, exhausted: !isSupabaseConfigured, error: "" });
+  const [directoryStatus, setDirectoryStatus] = useState({ loading: false, loaded: !isSupabaseConfigured, error: "" });
   const [remoteReady, setRemoteReady] = useState(!isSupabaseConfigured);
   const adminContextRef = useRef(EMPTY_ADMIN_CONTEXT);
   const remoteReadyRef = useRef(!isSupabaseConfigured);
+  const directoryPromiseRef = useRef(null);
   const syncedDiscordDeliveryIdsRef = useRef(new Set());
   const profileKey = authUserId ?? "local-demo";
   const profileLocked = isPersistentAuthUserId(authUserId);
@@ -404,12 +418,15 @@ export function useAppData(authUser = null) {
       setRemoteReady(!isSupabaseConfigured);
       setMatchPagination({ loading: false, exhausted: true, error: "" });
       setRecruitingPagination({ loading: false, exhausted: true, error: "" });
+      setDirectoryStatus({ loading: false, loaded: true, error: "" });
       return undefined;
     }
 
     let mounted = true;
     remoteReadyRef.current = false;
     setRemoteReady(false);
+    directoryPromiseRef.current = null;
+    setDirectoryStatus({ loading: false, loaded: false, error: "" });
     loadBackendState(authUserId, authEmail)
       .then((remoteState) => {
         if (!mounted) return;
@@ -697,6 +714,32 @@ export function useAppData(authUser = null) {
     }
   }, [authEmail, authUserId, recruitingPagination.exhausted, recruitingPagination.loading, setState, state.recruitingPosts]);
 
+  const loadDirectory = useCallback(async () => {
+    if (!isSupabaseConfigured || !authUserId) return false;
+    if (directoryStatus.loaded) return true;
+    if (directoryPromiseRef.current) return directoryPromiseRef.current;
+
+    setDirectoryStatus((prev) => ({ ...prev, loading: true, error: "" }));
+    const promise = postServerAction(
+      "/api/directory/load",
+      { authUserId, authEmail },
+      { allowWhenDisabled: true },
+    ).then((result) => {
+      const remoteState = result?.state ?? {};
+      setState((prev) => mergeRemoteDirectory(prev, remoteState));
+      setDirectoryStatus({ loading: false, loaded: true, error: "" });
+      return true;
+    }).catch((error) => {
+      console.warn("Directory load failed.", error.message);
+      setDirectoryStatus({ loading: false, loaded: false, error: error.message ?? "directory_load_failed" });
+      return false;
+    }).finally(() => {
+      directoryPromiseRef.current = null;
+    });
+    directoryPromiseRef.current = promise;
+    return promise;
+  }, [authEmail, authUserId, directoryStatus.loaded, setState]);
+
   useEffect(() => {
     if (!isSupabaseConfigured || !remoteReadyRef.current || !currentUserId) return;
     const deliveries = (state.discordNotificationDeliveries ?? [])
@@ -853,6 +896,7 @@ export function useAppData(authUser = null) {
 
       return ({
         loadMatchDetail,
+        loadDirectory,
         loadMoreMatches,
         loadMoreRecruiting,
         switchUser: (userId) => {
@@ -1303,10 +1347,10 @@ export function useAppData(authUser = null) {
       reset: () => setState(resetState({ includeDemo: !isSupabaseConfigured, authUserId, email: authEmail })),
       });
     },
-    [authEmail, authUserId, currentUserId, deleteTeamServer, ensureRemoteReady, ensureServerActionAvailable, loadMatchDetail, loadMoreMatches, loadMoreRecruiting, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, runServerAction, serverProfileBound, submitReportServer, syncFavoriteServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncSettingsServer, syncTeamServer, syncTournamentServer],
+    [authEmail, authUserId, currentUserId, deleteTeamServer, ensureRemoteReady, ensureServerActionAvailable, loadDirectory, loadMatchDetail, loadMoreMatches, loadMoreRecruiting, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, runServerAction, serverProfileBound, submitReportServer, syncFavoriteServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncSettingsServer, syncTeamServer, syncTournamentServer],
   );
 
   const safeCurrentUserId = currentUserId ?? currentUser?.id ?? "";
   const safeCurrentUser = currentUser ?? createProfileShell(authUserId ?? safeCurrentUserId, authEmail);
-  return { state: { ...state, currentUserId: safeCurrentUserId || safeCurrentUser.id }, currentUser: safeCurrentUser, currentUserId: safeCurrentUserId || safeCurrentUser.id, profileBound: true, profileLocked, remoteReady, adminContext, matchPagination, recruitingPagination, rankings, actions };
+  return { state: { ...state, currentUserId: safeCurrentUserId || safeCurrentUser.id }, currentUser: safeCurrentUser, currentUserId: safeCurrentUserId || safeCurrentUser.id, profileBound: true, profileLocked, remoteReady, adminContext, matchPagination, recruitingPagination, directoryStatus, rankings, actions };
 }

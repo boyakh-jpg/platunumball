@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Crown, PlusCircle, Search, Shield, Swords } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
@@ -61,6 +61,9 @@ function isHashtagQuery(query = "") {
 }
 
 export default function Teams({ app }) {
+  useEffect(() => {
+    app.actions.loadDirectory?.();
+  }, [app.actions]);
   const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
   const defaultHomeCourt = registeredCourts[0]?.name ?? "미정";
   const [draft, setDraft] = useState({ name: "New Court Crew", region: app.currentUser.region, homeCourt: defaultHomeCourt, captainId: app.currentUser.id, accent: "#58d2c0" });

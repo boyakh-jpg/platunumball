@@ -156,6 +156,9 @@ function getReportTargetEmptyText(targetType) {
 }
 
 export default function Settings({ app, auth }) {
+  useEffect(() => {
+    app.actions.loadDirectory?.();
+  }, [app.actions]);
   const privacy = app.state.settings?.privacy ?? {};
   const theme = app.state.settings?.theme === "light" ? "light" : "dark";
   const [themeDraft, setThemeDraft] = useState(theme);

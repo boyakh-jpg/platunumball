@@ -336,6 +336,9 @@ function PublicPartyPicker({ team, users, selectedIds, capacity, onChange }) {
 
 export default function CreateMatch({ app }) {
   const navigate = useNavigate();
+  useEffect(() => {
+    app.actions.loadDirectory?.();
+  }, [app.actions]);
   const defaultTeamA = getUserTeam(app.state.teams, app.currentUser.id) ?? app.state.teams[0];
   const defaultCapacity = getRecruitingSideCapacity({ mode: "5v5" });
   const defaultTeamAPlayerIds = getDefaultTeamPlayerIds(defaultTeamA, defaultCapacity, [], app.currentUser.id);

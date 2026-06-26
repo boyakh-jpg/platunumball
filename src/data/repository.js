@@ -1339,6 +1339,27 @@ function collectRecruitingPageScope(posts = [], applications = [], profileIds = 
   };
 }
 
+function collectTournamentPageScope(tournaments = [], tournamentTeams = [], profileIds = []) {
+  const teamIds = [];
+  const scopedProfileIds = [...profileIds];
+  tournaments.forEach((tournament) => {
+    scopedProfileIds.push(
+      tournament.created_by,
+      ...flattenIdValues(tournament.team_approvals),
+      ...flattenIdValues(tournament.bracket),
+    );
+  });
+  tournamentTeams.forEach((row) => {
+    teamIds.push(row.team_id);
+    scopedProfileIds.push(row.approved_by);
+  });
+  return {
+    teamIds: uniqueScopeIds(teamIds),
+    courtIds: [],
+    profileIds: uniqueScopeIds(scopedProfileIds),
+  };
+}
+
 export async function loadNormalizedRemoteStateFromClient(client = supabase, authUserId = "", authEmail = "", options = {}) {
   const clientState = options.clientState === true;
   const scope = String(options.scope || "full");
@@ -1349,6 +1370,7 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
   const includeUserScoped = scope === "full";
   const matchPageScope = scope === "matches";
   const recruitingPageScope = scope === "recruiting";
+  const relatedDirectoryScope = scope === "full" && options.directoryScope === "related";
   const authUserIdText = String(authUserId || "");
   const testLoginId = getBackendTestLoginId(authUserIdText);
   const matchScopeIds = uniqueScopeIds(options.matchIds ?? options.matchId);
@@ -1397,7 +1419,7 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
     includeAppMeta ? fetchAllRows("affiliations", AFFILIATION_COLUMNS, "id", client) : [],
   ]);
 
-  if (!matchPageScope && !recruitingPageScope) {
+  if (!matchPageScope && !recruitingPageScope && !relatedDirectoryScope) {
     [publicProfiles, teams, teamMembers, courts] = await Promise.all([
       fetchOptionalRows("public_profiles", PUBLIC_PROFILE_COLUMNS, "id", client),
       fetchAllRows("teams", TEAM_COLUMNS, "id", client),
@@ -1557,6 +1579,39 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
       PUBLIC_PROFILE_COLUMNS,
       "id",
       [...scoped.profileIds, ...teamMembers.map((member) => member.user_id)],
+      "id",
+      client,
+      true,
+    );
+    publicProfiles.forEach((profile) => {
+      const mergedProfile = { ...profile, ...(privateProfileById.get(profile.id) ?? {}) };
+      const existingIndex = profiles.findIndex((item) => item.id === mergedProfile.id);
+      if (existingIndex >= 0) profiles[existingIndex] = { ...profiles[existingIndex], ...mergedProfile };
+      else profiles.push(mergedProfile);
+    });
+  }
+  if (relatedDirectoryScope) {
+    const scopedProfileIds = [
+      ...privateProfiles.map((profile) => profile.id),
+      ...favorites.filter((favorite) => favorite.target_type === "player").map((favorite) => favorite.target_id),
+    ];
+    const scopedTeamIds = favorites.filter((favorite) => favorite.target_type === "team").map((favorite) => favorite.target_id);
+    const matchScope = collectMatchPageScope(matches, matchPlayers, matchResults, playerStats, agreements, approvals, disputes, scopedProfileIds);
+    const recruitingScope = collectRecruitingPageScope(recruitingPosts, recruitingApplications);
+    const tournamentScope = collectTournamentPageScope(tournaments, tournamentTeams);
+    const teamIds = uniqueScopeIds([...matchScope.teamIds, ...recruitingScope.teamIds, ...tournamentScope.teamIds, ...scopedTeamIds]);
+    const courtIds = uniqueScopeIds([...matchScope.courtIds, ...recruitingScope.courtIds, ...tournamentScope.courtIds]);
+    const profileIds = uniqueScopeIds([...matchScope.profileIds, ...recruitingScope.profileIds, ...tournamentScope.profileIds]);
+    [teams, teamMembers, courts] = await Promise.all([
+      fetchRowsByIds("teams", TEAM_COLUMNS, "id", teamIds, "id", client),
+      fetchRowsByIds("team_members", TEAM_MEMBER_COLUMNS, "team_id", teamIds, null, client),
+      fetchRowsByIds("courts", COURT_COLUMNS, "id", courtIds, "id", client),
+    ]);
+    publicProfiles = await fetchRowsByIds(
+      "public_profiles",
+      PUBLIC_PROFILE_COLUMNS,
+      "id",
+      [...profileIds, ...teamMembers.map((member) => member.user_id)],
       "id",
       client,
       true,

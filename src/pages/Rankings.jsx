@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Badge from "../components/common/Badge.jsx";
 import Card from "../components/common/Card.jsx";
 import RankingTable from "../components/ranking/RankingTable.jsx";
@@ -16,6 +16,9 @@ const tabs = [
 
 export default function Rankings({ app }) {
   const [tab, setTab] = useState("local");
+  useEffect(() => {
+    app.actions.loadDirectory?.();
+  }, [app.actions]);
   const myRegion = app.currentUser.region;
   const hiddenUserIds = new Set(app.state.settings?.blockedUserIds ?? []);
   if (app.state.settings?.privacy?.regionRanking === false) hiddenUserIds.add(app.currentUser.id);

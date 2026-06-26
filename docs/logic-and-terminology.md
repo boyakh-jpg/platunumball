@@ -1291,6 +1291,8 @@ flowchart TD
 5. `/api/matches/list` is list-only and skips match result/stat/agreement/approval/dispute child rows.
 6. Match room/detail open uses `/api/matches/detail` to load one full match before modal actions need record or approval data.
 7. Initial `/api/state/load` client hydrate may set `matchListOnly: true`; match detail rows are then fetched lazily through `/api/matches/detail`.
+8. Initial `/api/state/load` may set `directoryScope: "related"` so it loads only users/teams related to the first match/recruiting/tournament page and favorites.
+9. Full user/team directory data is loaded on demand through `/api/directory/load` for Rankings, Teams, Create Match, and Settings.
 
 ## 2026-06-27 report scoped reads
 
