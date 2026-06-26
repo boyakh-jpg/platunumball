@@ -304,6 +304,7 @@ const OWNER_RECRUITING_ACTIONS = new Set([
   "kickRecruitingApplicant",
   "confirmRecruitingMatch",
   "closeRecruitingPost",
+  "inviteRecruitingReferee",
 ]);
 
 const PARTICIPANT_RECRUITING_ACTIONS = new Set([
@@ -313,7 +314,6 @@ const PARTICIPANT_RECRUITING_ACTIONS = new Set([
   "acceptRecruitingInvitation",
   "declineRecruitingInvitation",
   "inviteRecruitingPlayers",
-  "inviteRecruitingReferee",
   "setRecruitingApplicantPlacement",
   "setRecruitingApplicantReserve",
   "setRecruitingSlotPosition",
