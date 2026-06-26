@@ -123,7 +123,7 @@
 - `POST /api/discord/dm-worker` 또는 `GET /api/discord/dm-worker`는 `discord_notification_deliveries.status=queued`, `sent_at is null`, `send_at <= now()` row를 `sending`으로 claim한 뒤 Discord Bot DM을 발송한다.
 - 성공하면 delivery row를 `sent`로 커밋하고 `sent_at`과 Discord message/channel ID를 남긴다. 실패하면 `queued`로 되돌리고 `last_error`를 남겨 다음 worker 호출에서 재시도한다.
 - worker 호출은 `Authorization: Bearer <CRON_SECRET>`가 일치할 때만 허용한다.
-- 필요한 env는 `DISCORD_BOT_TOKEN`이다.
+- 필요한 env는 `DISCORD_BOT_TOKEN`이다. 값은 가능하면 `Bot ` prefix 없이 순수 Bot token만 넣는다.
 - Vercel Hobby Cron은 알림 worker에 쓰지 않는다. 알파 테스트에서는 cron-job.org가 5분마다 `/api/discord/dm-worker`를 호출한다.
 - Discord interaction 버튼 수락/거절 처리는 `/api/discord/interactions`가 담당한다. 채팅 양방향 연동은 아직 남은 작업이다.
 - 수동 테스트 DM은 `/api/discord/dm-worker` `POST`에서만 Discord username을 받을 수 있다. 서버는 봇이 들어간 Discord 서버 멤버 검색으로 숫자 `discord_user_id`를 찾은 뒤 발송한다. 자동 발송 큐와 프로필 저장 원본은 계속 숫자 `discord_user_id`다.

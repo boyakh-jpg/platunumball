@@ -36,15 +36,16 @@ function httpError(message, statusCode = 400) {
 }
 
 async function discordFetch(path, options = {}) {
-  const token = process.env.DISCORD_BOT_TOKEN;
+  const token = String(process.env.DISCORD_BOT_TOKEN || "").trim();
   if (!token) {
     throw new Error("discord_bot_token_not_configured");
   }
+  const authorization = /^Bot\s+/i.test(token) ? token : `Bot ${token}`;
 
   const response = await fetch(`${DISCORD_API_BASE}${path}`, {
     ...options,
     headers: {
-      Authorization: `Bot ${token}`,
+      Authorization: authorization,
       "Content-Type": "application/json",
       ...(options.headers ?? {}),
     },
