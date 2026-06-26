@@ -941,7 +941,9 @@ export default async function handler(request, response) {
     let action = body.action ? String(body.action) : "sync";
     let ratingCommit = null;
 
-    if (operation) {
+    if (operation && match && operation.action !== "approveMatch") {
+      action = operation.action;
+    } else if (operation) {
       const state = await loadAuthoritativeState(context, { operation });
       const result = applyAuthoritativeMatchOperation(state, operation);
       match = result.match;

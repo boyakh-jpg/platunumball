@@ -1244,3 +1244,10 @@ flowchart TD
 2. `rankball_match_action()`은 경기 action persist를 위한 단일 DB RPC 진입점이다.
 3. 1단계에서는 기존 JS reducer와 server-side 권한/룰 검증을 유지하고, DB row lock과 snapshot persist를 action RPC 안에서 처리한다.
 4. 다음 단계는 개별 action reducer를 SQL 내부로 옮겨 server action의 state load/read call을 더 줄이는 것이다.
+
+## 2026-06-26 recruiting/match action snapshot fast path
+
+1. Frontend server action payload may include both `operation` and the already reduced `post` or `match` snapshot.
+2. When a valid snapshot is present, recruiting/match server actions skip `loadAuthoritativeState()` and persist through `rankball_recruiting_action()` or `rankball_match_action()`.
+3. `confirmRecruitingMatch` may include `createdMatch` so the recruiting action can persist both the closed recruiting room and the created match without reloading full state.
+4. `approveMatch` remains on server replay because rating commit extraction needs before/after profile and team deltas.

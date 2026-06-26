@@ -461,7 +461,9 @@ export function useAppData(authUser = null) {
   const syncRecruitingPostServer = useCallback((post, notifications = [], meta = {}) => {
     if (!post?.id) return Promise.resolve(false);
     const operation = getServerOperation(meta);
-    const payload = operation ? { operation } : { post, notifications, ...meta };
+    const payload = operation
+      ? { operation, post, notifications, createdMatch: meta.createdMatch ?? null }
+      : { post, notifications, ...meta };
     return runServerAction("/api/recruiting/sync-post", payload).then((result) => {
       if (result?.post || result?.createdMatch) setState((prev) => mergeServerRoomResult(prev, result));
       return result;
@@ -470,7 +472,7 @@ export function useAppData(authUser = null) {
   const syncMatchServer = useCallback((match, notifications = [], meta = {}) => {
     if (!match?.id) return Promise.resolve(false);
     const operation = getServerOperation(meta);
-    const payload = operation ? { operation } : { match, notifications, ...meta };
+    const payload = operation ? { operation, match, notifications } : { match, notifications, ...meta };
     return runServerAction("/api/matches/sync-match", payload).then((result) => {
       if (result?.match) setState((prev) => mergeServerRoomResult(prev, result));
       return result;
@@ -1067,7 +1069,7 @@ export function useAppData(authUser = null) {
         if (syncedPost || createdMatch) {
           rollbackIfServerFailed(
             syncedPost
-              ? syncRecruitingPostServer(syncedPost, [...syncedNotifications, ...syncedMatchNotifications], { action: "confirmRecruitingMatch", postId, preferredMatchId: createdMatch?.id })
+              ? syncRecruitingPostServer(syncedPost, [...syncedNotifications, ...syncedMatchNotifications], { action: "confirmRecruitingMatch", postId, preferredMatchId: createdMatch?.id, createdMatch })
               : syncMatchServer(createdMatch, syncedMatchNotifications, { action: "confirmRecruitingMatch", matchId: createdMatch?.id, recruitingPostId: postId }),
             rollbackState,
             "방 확정",
