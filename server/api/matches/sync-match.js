@@ -74,6 +74,10 @@ function getMatchReserveIds(match = {}) {
   return Object.values(match.reservePlayers ?? match.rules?.reservePlayers ?? {}).flatMap(toArray);
 }
 
+function getMatchPlayedIds(match = {}) {
+  return Object.values(match.playedPlayerIds ?? match.rules?.playedPlayerIds ?? {}).flatMap(toArray);
+}
+
 function validateMatchShape(match = {}) {
   const capacity = getModeCapacity(match.mode);
   if ((match.teamA?.players ?? []).filter(Boolean).length > capacity) reject(400, "team_a_exceeds_mode_capacity");
@@ -83,6 +87,30 @@ function validateMatchShape(match = {}) {
   const duplicate = allPlayerIds.find((playerId, index) => allPlayerIds.indexOf(playerId) !== index);
   if (duplicate) reject(400, "duplicate_match_player");
   if (match.refereeId && allPlayerIds.includes(match.refereeId)) reject(400, "referee_cannot_be_player");
+}
+
+function validateResultShape(match = {}, action = "sync") {
+  if (action !== "submitMatchResult" || !match.result) return;
+
+  const scoreA = toFiniteNumber(match.result.scoreA, -1);
+  const scoreB = toFiniteNumber(match.result.scoreB, -1);
+  if (scoreA < 0 || scoreA > 999 || scoreB < 0 || scoreB > 999) reject(400, "invalid_match_score");
+
+  const recordableIds = new Set([
+    ...getMatchPlayerIds(match),
+    ...getMatchReserveIds(match),
+    ...getMatchPlayedIds(match),
+  ].filter(Boolean));
+  const invalidPlayerId = Object.keys(match.result.playerStats ?? {}).find((userId) => !recordableIds.has(userId));
+  if (invalidPlayerId) reject(400, "stat_player_not_in_match");
+
+  const invalidStat = Object.values(match.result.playerStats ?? {}).some((stat) => (
+    PLAYER_STAT_FIELDS.some((field) => {
+      const value = toFiniteNumber(stat?.[field], -1);
+      return value < 0 || value > 999;
+    })
+  ));
+  if (invalidStat) reject(400, "invalid_player_stat");
 }
 
 function toMatchRow(match = {}, actorProfileId = "") {
@@ -469,6 +497,7 @@ export default async function handler(request, response) {
       return;
     }
     validateMatchShape(match);
+    validateResultShape(match, action);
 
     const context = await getAuthenticatedContext(request);
     const { data: existingMatch, error: existingError } = await context.supabase

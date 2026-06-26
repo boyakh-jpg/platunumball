@@ -1124,6 +1124,7 @@ flowchart TD
 2. Participant actions, check-in, start/end, and result submission must not change `refereeId`; referee absence confirmation is the explicit exception.
 3. Roster edits must go through explicit roster actions such as late-player add/remove or room player placement actions.
 4. Participant actions must not mutate score or player stats. Approval/dispute/thumb actions only carry their own action state.
+5. Result submission stats may only target match players, reserves, or `playedPlayerIds`; scores and stat values must stay within server bounds.
 
 ## 2026-06-26 Supabase test seed
 
