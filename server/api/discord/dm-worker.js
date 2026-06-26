@@ -59,9 +59,40 @@ async function discordFetch(path, options = {}) {
   }
   if (!response.ok) {
     const message = body?.message || text || `discord_api_failed:${response.status}`;
-    throw new Error(String(message).slice(0, 300));
+    const error = new Error(`discord_api_failed:${response.status}:${path}:${message}`.slice(0, 300));
+    error.statusCode = 502;
+    throw error;
   }
   return body;
+}
+
+async function getDiscordBotStatus() {
+  const token = String(process.env.DISCORD_BOT_TOKEN || "").trim();
+  const configuredGuildIds = getConfiguredGuildIds();
+  if (!token) {
+    return {
+      ok: false,
+      tokenConfigured: false,
+      configuredGuildCount: configuredGuildIds.length,
+    };
+  }
+
+  const bot = await discordFetch("/users/@me", { method: "GET" });
+  const guilds = await discordFetch("/users/@me/guilds", { method: "GET" });
+
+  return {
+    ok: true,
+    tokenConfigured: true,
+    tokenHasBotPrefix: /^Bot\s+/i.test(token),
+    bot: {
+      id: bot?.id ?? null,
+      username: bot?.username ?? null,
+      globalName: bot?.global_name ?? null,
+    },
+    guildCount: (guilds ?? []).length,
+    configuredGuildCount: configuredGuildIds.length,
+    configuredGuildIds,
+  };
 }
 
 function trimDiscordText(value, maxLength) {
@@ -225,6 +256,11 @@ export default async function handler(request, response) {
   try {
     await assertWorkerAccess(request);
     const body = request.method === "POST" ? await readJsonBody(request) : {};
+    if (request.method === "POST" && body.botCheck) {
+      sendJson(response, 200, await getDiscordBotStatus());
+      return;
+    }
+
     if (request.method === "POST" && (body.testDm || body.discordUsername || body.username || body.testUsername || body.discordUserId || body.discord_user_id)) {
       sendJson(response, 200, await sendTestDiscordDm(body));
       return;
