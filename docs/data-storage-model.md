@@ -124,7 +124,7 @@
 - 성공하면 delivery row를 `sent`, 실패하면 `failed`로 커밋하고 `payload`에 Discord message/channel ID 또는 error를 남긴다.
 - worker 호출은 `DISCORD_WORKER_SECRET` 또는 `CRON_SECRET` bearer가 있으면 허용한다. secret이 없으면 관리자 Supabase bearer token과 admin level 30 이상이 필요하다.
 - 필요한 env는 `DISCORD_BOT_TOKEN`이다.
-- `vercel.json`은 `/api/discord/dm-worker`를 5분마다 호출하도록 설정한다. 배포 환경에는 `CRON_SECRET`을 넣어야 한다.
+- `vercel.json`은 Hobby 제한에 맞춰 `/api/discord/dm-worker`를 하루 1회 호출한다. 더 빠른 DM 발송은 외부 스케줄러나 Pro Cron이 필요하다.
 - Discord interaction 버튼 수락/거절 처리와 채팅 양방향 연동은 아직 남은 작업이다.
 
 ## 2026-06-24 RLS hardening
