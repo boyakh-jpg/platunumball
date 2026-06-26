@@ -206,6 +206,19 @@ function makeResult(match) {
 
 async function cleanup() {
   if (keepRows) return { skipped: true, reason: "keep_requested" };
+  if (usesRemoteApi && schemaHealthSecret) {
+    const response = await fetch(`${remoteBaseUrl}/api/system/cleanup-sim`, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${schemaHealthSecret}`,
+        "content-type": "application/json",
+      },
+      body: "{}",
+    });
+    const text = await response.text();
+    if (!response.ok) return { skipped: true, reason: `remote_cleanup_failed:${response.status}:${text}` };
+    return text ? JSON.parse(text) : { ok: true };
+  }
   if (!supabase) return { skipped: true, reason: "service_role_key_missing" };
 
   const deletions = [
