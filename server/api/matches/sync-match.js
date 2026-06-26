@@ -144,6 +144,10 @@ function getParticipantIds(match = {}) {
   ].filter(Boolean));
 }
 
+function getRoomManagerIds(match = {}) {
+  return [match.refereeId || match.createdBy || match.ownerId || match.playerId].filter(Boolean);
+}
+
 export async function getDiscordProfiles(supabase, profileIds = []) {
   const ids = Array.from(new Set(profileIds.filter(Boolean)));
   if (!ids.length) return [];
@@ -209,13 +213,39 @@ export async function upsertDiscordDeliveryRows(supabase, rows = []) {
   return pendingRows.length;
 }
 
+async function cancelPendingDiscordDeliveryPrefixes(supabase, matchId, prefixes = []) {
+  const ids = prefixes
+    .filter(Boolean)
+    .map((prefix) => `discord-${prefix}-${matchId}`)
+    .filter(Boolean);
+  if (!ids.length) return 0;
+  const orClause = ids.map((id) => `id.like.${id}-%`).join(",");
+  const { data, error } = await supabase
+    .from("discord_notification_deliveries")
+    .delete()
+    .eq("status", "queued")
+    .is("sent_at", null)
+    .or(orClause)
+    .select("id");
+  if (error) throw error;
+  return data?.length ?? 0;
+}
+
 async function queueMatchDiscordDeliveries(supabase, match = {}, action = "sync") {
   const profiles = await getDiscordProfiles(supabase, Array.from(getParticipantIds(match)));
-  if (!profiles.length) return 0;
+  const managerProfiles = await getDiscordProfiles(supabase, getRoomManagerIds(match));
+  if (!profiles.length && !managerProfiles.length) return 0;
 
   const nowMs = Date.now();
   const scheduledAt = parseMatchScheduleDate(match.scheduledAt);
   const rows = [];
+
+  if (action === "startMatch") {
+    await cancelPendingDiscordDeliveryPrefixes(supabase, match.id, [
+      "match-manager-checkin-10m",
+      "match-manager-start-now",
+    ]);
+  }
 
   if (
     scheduledAt &&
@@ -235,6 +265,22 @@ async function queueMatchDiscordDeliveries(supabase, match = {}, action = "sync"
         sendAt: new Date(sendAtMs).toISOString(),
       }));
     });
+
+    const checkinAtMs = scheduledAt.getTime() - 10 * 60 * 1000;
+    if (checkinAtMs > nowMs) {
+      rows.push(...toDiscordDeliveryRows(match, managerProfiles, {
+        idPrefix: "match-manager-checkin-10m",
+        title: "출석체크 필요",
+        intro: "경기 10분 전입니다. 출석체크를 진행하고, 안 온 사람은 정리해주세요.",
+        sendAt: new Date(checkinAtMs).toISOString(),
+      }));
+    }
+    rows.push(...toDiscordDeliveryRows(match, managerProfiles, {
+      idPrefix: "match-manager-start-now",
+      title: "경기 시작 처리",
+      intro: "경기 시작시간입니다. 출석이 정리됐으면 경기 시작을 눌러주세요.",
+      sendAt: scheduledAt.toISOString(),
+    }));
   }
 
   if (action === "startMatch") {
