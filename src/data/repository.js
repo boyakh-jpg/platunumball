@@ -138,6 +138,7 @@ const REMOTE_WRITE_CHUNK_SIZE = 500;
 const REMOTE_CLIENT_MATCH_LIMIT = 200;
 const REMOTE_CLIENT_RECRUITING_LIMIT = 160;
 const REMOTE_CLIENT_TOURNAMENT_LIMIT = 80;
+const REMOTE_CLIENT_MAX_LIMIT = 500;
 const PUBLIC_PROFILE_COLUMNS = "id,name,handle,hashtag,position,region,region_sido,region_district,school,company,club,trust_score,streak,avatar_color,ratings,age_group,age_group_checked_season,onboarding_complete,test_login_id,updated_at,discord_connection";
 const PRIVATE_PROFILE_COLUMNS = "id,name,handle,region,school,company,club,trust_score,streak,avatar_color,test_login_id,auth_user_id,hashtag,birth_year,age_group,age_group_checked_season,region_sido,region_district,onboarding_complete,profile_version,handle_locked_at,birth_year_locked_at,name_updated_at,discord_connection,discord_user_id,ratings,created_at,updated_at,position";
 const TEAM_COLUMNS = "id,name,home_court,region,mmr,wins,losses,accent,deleted_at,updated_at,created_at";
@@ -800,6 +801,24 @@ function applyIdScope(query, column, ids = []) {
   return ids.length === 1 ? query.eq(column, ids[0]) : query.in(column, ids);
 }
 
+function applyUpdatedBefore(query, column, value) {
+  const cursor = String(value ?? "").trim();
+  return cursor ? query.lt(column, cursor) : query;
+}
+
+function composeFilters(...filters) {
+  const activeFilters = filters.filter(Boolean);
+  if (!activeFilters.length) return null;
+  return (query) => activeFilters.reduce((currentQuery, filter) => filter(currentQuery), query);
+}
+
+function getClientLimit(value, fallback) {
+  if (value === undefined || value === null || value === "") return fallback;
+  const number = Number(value);
+  if (!Number.isFinite(number) || number <= 0) return fallback;
+  return Math.min(REMOTE_CLIENT_MAX_LIMIT, Math.floor(number));
+}
+
 async function fetchFilteredRows(table, select = "*", order = "id", client = supabase, applyFilter = null, limit = null, ascending = true) {
   const rows = [];
   const maxRows = Number.isFinite(Number(limit)) && Number(limit) > 0 ? Number(limit) : null;
@@ -1166,15 +1185,31 @@ function getMaxUpdatedAt(rows) {
 
 export async function loadNormalizedRemoteStateFromClient(client = supabase, authUserId = "", authEmail = "", options = {}) {
   const clientState = options.clientState === true;
+  const authUserIdText = String(authUserId || "");
+  const testLoginId = getBackendTestLoginId(authUserIdText);
   const matchScopeIds = uniqueScopeIds(options.matchIds ?? options.matchId);
   const recruitingScopeIds = uniqueScopeIds(options.recruitingPostIds ?? options.recruitingPostId ?? options.postId);
   const tournamentScopeIds = uniqueScopeIds(options.tournamentIds ?? options.tournamentId);
-  const matchFilter = matchScopeIds.length ? (query) => applyIdScope(query, "id", matchScopeIds) : null;
-  const recruitingFilter = recruitingScopeIds.length ? (query) => applyIdScope(query, "id", recruitingScopeIds) : null;
-  const tournamentFilter = tournamentScopeIds.length ? (query) => applyIdScope(query, "id", tournamentScopeIds) : null;
-  const matchLimit = matchScopeIds.length ? null : clientState ? REMOTE_CLIENT_MATCH_LIMIT : null;
-  const recruitingLimit = recruitingScopeIds.length ? null : clientState ? REMOTE_CLIENT_RECRUITING_LIMIT : null;
-  const tournamentLimit = tournamentScopeIds.length ? null : clientState ? REMOTE_CLIENT_TOURNAMENT_LIMIT : null;
+  const matchFilter = composeFilters(
+    matchScopeIds.length ? (query) => applyIdScope(query, "id", matchScopeIds) : null,
+    !matchScopeIds.length ? (query) => applyUpdatedBefore(query, "updated_at", options.matchUpdatedBefore ?? options.matchCursor) : null,
+  );
+  const recruitingFilter = composeFilters(
+    recruitingScopeIds.length ? (query) => applyIdScope(query, "id", recruitingScopeIds) : null,
+    !recruitingScopeIds.length ? (query) => applyUpdatedBefore(query, "updated_at", options.recruitingUpdatedBefore ?? options.recruitingCursor) : null,
+  );
+  const tournamentFilter = composeFilters(
+    tournamentScopeIds.length ? (query) => applyIdScope(query, "id", tournamentScopeIds) : null,
+    !tournamentScopeIds.length ? (query) => applyUpdatedBefore(query, "updated_at", options.tournamentUpdatedBefore ?? options.tournamentCursor) : null,
+  );
+  const privateProfileFilter = clientState && authUserIdText
+    ? testLoginId
+      ? (query) => query.eq("test_login_id", testLoginId)
+      : (query) => query.eq("auth_user_id", authUserIdText)
+    : null;
+  const matchLimit = matchScopeIds.length ? null : clientState ? getClientLimit(options.matchLimit, REMOTE_CLIENT_MATCH_LIMIT) : null;
+  const recruitingLimit = recruitingScopeIds.length ? null : clientState ? getClientLimit(options.recruitingLimit, REMOTE_CLIENT_RECRUITING_LIMIT) : null;
+  const tournamentLimit = tournamentScopeIds.length ? null : clientState ? getClientLimit(options.tournamentLimit, REMOTE_CLIENT_TOURNAMENT_LIMIT) : null;
   const [
     publicProfiles,
     privateProfiles,
@@ -1198,7 +1233,9 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
     adminDisciplinaryActions,
   ] = await Promise.all([
     fetchOptionalRows("public_profiles", PUBLIC_PROFILE_COLUMNS, "id", client),
-    fetchOptionalRows("profiles", PRIVATE_PROFILE_COLUMNS, "id", client),
+    privateProfileFilter
+      ? fetchOptionalFilteredRows("profiles", PRIVATE_PROFILE_COLUMNS, "id", client, privateProfileFilter)
+      : fetchOptionalRows("profiles", PRIVATE_PROFILE_COLUMNS, "id", client),
     fetchAllRows("teams", TEAM_COLUMNS, "id", client),
     fetchAllRows("team_members", TEAM_MEMBER_COLUMNS, null, client),
     fetchAllRows("courts", COURT_COLUMNS, "id", client),
@@ -1225,8 +1262,6 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
     if (!profiles.some((profile) => profile.id === privateProfile.id)) profiles.push(privateProfile);
   }
 
-  const authUserIdText = String(authUserId || "");
-  const testLoginId = getBackendTestLoginId(authUserIdText);
   const currentProfile = authUserIdText
     ? testLoginId
       ? profiles.find((profile) => String(profile.test_login_id ?? "").toLowerCase() === testLoginId)

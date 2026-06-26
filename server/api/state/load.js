@@ -1,4 +1,4 @@
-import { getAdminLevel, getAuthenticatedContext, sendJson } from "../_supabaseAdmin.js";
+import { getAdminLevel, getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import { loadNormalizedRemoteStateFromClient } from "../../../src/data/repository.js";
 
 function toArray(value) {
@@ -144,6 +144,19 @@ function filterStateForProfile(state = {}, profileId = "", isAdmin = false) {
   };
 }
 
+function getStateLoadOptions(body = {}) {
+  const pagination = body.pagination && typeof body.pagination === "object" ? body.pagination : {};
+  return {
+    clientState: true,
+    matchLimit: body.matchLimit ?? pagination.matches?.limit,
+    matchUpdatedBefore: body.matchUpdatedBefore ?? body.matchCursor ?? pagination.matches?.updatedBefore ?? pagination.matches?.cursor,
+    recruitingLimit: body.recruitingLimit ?? pagination.recruiting?.limit,
+    recruitingUpdatedBefore: body.recruitingUpdatedBefore ?? body.recruitingCursor ?? pagination.recruiting?.updatedBefore ?? pagination.recruiting?.cursor,
+    tournamentLimit: body.tournamentLimit ?? pagination.tournaments?.limit,
+    tournamentUpdatedBefore: body.tournamentUpdatedBefore ?? body.tournamentCursor ?? pagination.tournaments?.updatedBefore ?? pagination.tournaments?.cursor,
+  };
+}
+
 export default async function handler(request, response) {
   if (request.method !== "POST") {
     sendJson(response, 405, { error: "method_not_allowed" });
@@ -151,15 +164,16 @@ export default async function handler(request, response) {
   }
 
   try {
+    const body = await readJsonBody(request);
     const context = await getAuthenticatedContext(request, { allowMissingProfile: true });
+    const adminLevel = context.profileId ? await getAdminLevel(context) : 0;
     const normalized = await loadNormalizedRemoteStateFromClient(
       context.supabase,
       context.authUserId,
       context.authUser?.email ?? "",
-      { clientState: true },
+      getStateLoadOptions(body),
     );
     const profileId = context.profileId ?? normalized?.state?.currentUserId ?? "";
-    const adminLevel = context.profileId ? await getAdminLevel(context) : 0;
     const state = filterStateForProfile(normalized?.state ?? {}, profileId, adminLevel >= 30);
     sendJson(response, 200, { ok: true, state, updatedAt: normalized?.updatedAt ?? 0 });
   } catch (error) {

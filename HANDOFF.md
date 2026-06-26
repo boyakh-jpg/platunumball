@@ -165,10 +165,18 @@ Already done:
   - `favorites`
   - `notifications`
   - `discord_notification_deliveries`
+- Scoped client-state private profile reads:
+  - `/api/state/load` still returns public profile rows needed by screens.
+  - Supabase `profiles` private columns are fetched only for the current auth/test profile in client-state mode.
 - Limited client state load:
   - matches: `200`
   - recruiting posts: `160`
   - tournaments: `80`
+- Added optional `/api/state/load` pagination inputs:
+  - `matchLimit`, `matchUpdatedBefore`
+  - `recruitingLimit`, `recruitingUpdatedBefore`
+  - `tournamentLimit`, `tournamentUpdatedBefore`
+  - nested `pagination.matches/recruiting/tournaments` aliases also work.
 - Child tables are now fetched only for loaded parent IDs where possible:
   - match children by loaded match IDs
   - recruiting applications by loaded post IDs
@@ -547,4 +555,3 @@ Then continue the highest priority backend work:
 3. frontend useAppData thin caller cleanup
 4. expand backend simulation scenarios
 ```
-
