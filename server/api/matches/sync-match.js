@@ -480,6 +480,10 @@ function validateResultOnlyOnSubmission(action, existingResult, existingStats, n
   }
 }
 
+function canCommitRatingResult(action, existingResult, nextMatch) {
+  return action === "approveMatch" && Boolean(existingResult) && nextMatch?.status === "confirmed";
+}
+
 async function deleteMatchChildren(supabase, table, matchId) {
   const { error } = await supabase.from(table).delete().eq("match_id", matchId);
   if (error) throw error;
@@ -550,8 +554,10 @@ export default async function handler(request, response) {
     if (action !== "submitMatchResult" && existingMatch) {
       matchRow.score_a = Number(existingMatch.score_a ?? 0);
       matchRow.score_b = Number(existingMatch.score_b ?? 0);
-      matchRow.rating_result = existingMatch.rating_result ?? null;
-      matchRow.team_rating_result = existingMatch.team_rating_result ?? null;
+      if (!canCommitRatingResult(action, existingResult, match)) {
+        matchRow.rating_result = existingMatch.rating_result ?? null;
+        matchRow.team_rating_result = existingMatch.team_rating_result ?? null;
+      }
     }
     const resultRow = action === "submitMatchResult" ? toResultRow(match, context.profileId) : null;
     const statRows = action === "submitMatchResult" ? toStatRows(match) : [];

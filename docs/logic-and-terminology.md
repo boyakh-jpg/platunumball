@@ -1133,7 +1133,8 @@ flowchart TD
 3. Roster edits must go through explicit roster actions such as late-player add/remove or room player placement actions.
 4. Participant actions must not mutate score or player stats. Approval/dispute/thumb actions only carry their own action state.
 5. Result submission stats may only target match players, reserves, or `playedPlayerIds`; scores and stat values must stay within server bounds.
-6. Match score, player stats, `ratingResult`, and `teamRatingResult` may only be written through `submitMatchResult`; other match actions preserve existing DB result fields.
+6. Match score and player stats may only be written through `submitMatchResult`; other match actions preserve existing DB score/stat fields.
+7. `ratingResult` and `teamRatingResult` may be written only when `approveMatch` confirms an existing submitted result.
 
 ## 2026-06-26 Supabase test seed
 
