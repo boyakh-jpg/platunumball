@@ -57,7 +57,6 @@ const REQUIRED_COLUMNS = {
     "user_id",
     "side",
     "slot_order",
-    "role",
   ],
   match_results: [
     "match_id",

@@ -35,7 +35,7 @@ export default async function handler(request, response) {
     assertAccess(request);
     const client = getSupabaseAdminClient();
     const checks = [];
-    checks.push(await deleteLike(client, "discord_notification_deliveries", "match_id", "sim_m_%"));
+    checks.push(await deleteLike(client, "discord_notification_deliveries", "id", "discord-%-sim_m_%"));
     checks.push(await deleteLike(client, "notifications", "match_id", "sim_m_%"));
     checks.push(await deleteLike(client, "notifications", "recruiting_post_id", "sim_q_%"));
     checks.push(await deleteLike(client, "player_match_stats", "match_id", "sim_m_%"));
