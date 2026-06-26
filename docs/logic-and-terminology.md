@@ -109,7 +109,7 @@ UI/CSS/반응형/라이트·다크 세부 기준은 `docs/design-system.md`를 �
 | `matches` | Supabase `matches/match_*`, repository state | 확정 이후 실제 경기 원본 |
 | `tournaments` | Supabase `tournaments/tournament_teams`, repository state | 리그/토너먼트 |
 | `notifications` | Supabase `notifications`, repository state | 홈 액션/초대/오류 안내 |
-| `settings` | Supabase bridge tables, repository state | 테마, 즐겨찾기, 차단, 심판 시험 |
+| `settings` | Supabase settings-related tables, repository state | 테마, 즐겨찾기, 차단, 심판 시험 |
 | `reports` | Supabase `reports`, repository state | 경기 후 신고, 설정 신고 |
 
 ## 관리자 메뉴 원칙
@@ -934,7 +934,7 @@ flowchart TD
 14. normalized Supabase 저장에서는 `profiles.discord_connection`에 `discordConnection`을 보존한다.
 15. Discord 계정 하나는 앱 프로필 하나에만 연결한다. 같은 `discordConnection.userId`가 다른 프로필에 있으면 새 연동은 거절한다.
 16. OAuth 승인 직후 아직 원격 저장 전인 로컬 `discordConnection`은 Supabase hydration/subscription이 예전 state를 내려도 지우지 않는다. 단, 원격 state에 같은 Discord ID를 가진 다른 프로필이 있으면 보존하지 않는다.
-17. 현재 앱 상태는 localStorage 중심이므로 Discord DM 자동 발송과 버튼 수락/거절 커밋은 DB에 `discordNotificationDeliveries`와 초대 상태가 서버에서 읽히기 전까지 완료 기능으로 보지 않는다.
+17. Discord DM 큐는 DB `discordNotificationDeliveries`에 저장하고 `/api/discord/dm-worker`가 처리한다. 버튼 수락/거절 커밋은 Discord interaction server action 전까지 완료 기능으로 보지 않는다.
 18. `/api/discord/dm-worker`는 Vercel Cron 자동 실행용 `GET`과 관리자 수동 점검용 `POST`를 모두 허용한다. 둘 다 `Authorization: Bearer <CRON_SECRET 또는 DISCORD_WORKER_SECRET>` 검증을 통과해야 한다.
 19. Vercel Hobby/Free 배포에서는 Cron이 하루 1회까지만 허용된다. 5분 단위 Discord DM 큐 처리는 Pro 플랜 또는 외부 스케줄러가 `/api/discord/dm-worker`를 호출해야 한다.
 
@@ -960,28 +960,28 @@ flowchart TD
 5. 허위 구장 신고가 접수되면 요청자 신뢰도를 `FALSE_COURT_REPORT_TRUST_PENALTY`만큼 차감하고, 차감 후 `COURT_REQUEST_TRUST_MIN` 미만이면 추가 구장 등록요청을 막는다.
 6. 현재 enforcement는 mock/localStorage 기준이다. 배포 백엔드에서는 server action, DB unique constraint, RLS/admin 권한으로 같은 검사를 다시 해야 한다.
 
-## 2026-06-24 normalized persistence bridge
+## 2026-06-24 normalized persistence tables
 
-1. 원격 저장은 전면 백엔드 전환이 아니라 브리지 단계다.
+1. Supabase 환경에서 원격 저장은 전체 state snapshot 저장이 아니다.
 2. 경기 진행 필드인 출석, 심판 미출석, 이의 draft, 후보, 사후 기록은 `matches` 컬럼으로 보존한다.
-3. 알림, 신고, 구장요청, 관리자 처리, Discord 발송 큐는 브리지 테이블의 `payload`에 현재 state shape를 보존한다.
-4. 브리지 테이블 load/write 실패는 기존 mock/localStorage 흐름을 막지 않는다.
-5. 관리자 처리, 허위 구장 신고 제재, Discord DM 발송, 실시간 중복 방지는 server action, RLS, transaction 전까지 완료 기능으로 보지 않는다.
+3. 알림, 신고, 구장요청, 관리자 처리, Discord 발송 큐는 전용 server action 또는 worker가 저장한다.
+4. `mockData` / `localStorage`는 Supabase 환경의 앱 데이터 원천으로 쓰지 않는다.
+5. 경기방/매칭방 계산 자체는 아직 전부 authoritative RPC가 아니다. 클라이언트 reducer 결과를 전용 server action으로 커밋하는 단계다.
 
-## 2026-06-24 server bridge write
+## 2026-06-26 dedicated server action write
 
 1. 브라우저는 service-role key를 절대 갖지 않는다.
-2. Supabase 설정 환경에서 bridge write는 기본적으로 `/api/supabase/bridge`를 통해 보낸다. 끄려면 `VITE_ENABLE_SERVER_BRIDGE_WRITE=false`를 명시한다.
+2. Supabase 설정 환경에서 브라우저는 전체 app state를 자동 저장하지 않는다.
 3. 서버는 Supabase access token을 확인하고 `profiles.auth_user_id`로 현재 앱 프로필을 찾는다.
-4. 일반 유저는 자기 row만 쓸 수 있고, 관리자 row는 관리자 권한이 있어야 쓸 수 있다.
+4. 일반 유저는 전용 server action이 허용한 자기 row만 쓸 수 있고, 관리자 row는 관리자 권한이 있어야 쓸 수 있다.
 5. 최고관리자 bootstrap은 서버 env 또는 DB appointment로 한다.
 6. Supabase 설정 환경에서는 구장 등록요청 제출, 구장 신고, 구장 승인이 전용 server action을 같이 호출한다. 끄려면 `VITE_ENABLE_SERVER_ACTIONS=false`를 명시한다.
 7. 구장 승인은 `rankball_approve_court_request()`에서 승인 구장 생성, 요청 상태 변경, audit log, 알림을 한 transaction으로 처리한다.
 8. 허위 구장 신고는 `rankball_report_court_request()`에서 신고 생성, 요청자 신뢰도 차감, 요청 상태 변경, 알림을 한 transaction으로 처리한다.
 9. 구장 등록요청 제출은 `rankball_submit_court_request()`에서 신뢰도와 승인/대기 중복을 서버에서 다시 검사한다.
 10. 일반 관리자 신고 처리, 임명/징계 처리, Discord DM 발송은 별도 server action으로 분리되어 있으며, Discord 버튼 interaction은 아직 남는다.
-11. `VITE_ENABLE_BULK_REMOTE_WRITE`가 꺼져 있어도 server bridge write가 켜져 있으면 알림, 신고, 관리자 처리, Discord 발송 큐 같은 브리지 테이블은 `/api/supabase/bridge`로만 저장한다. 구장요청 write는 전용 server action만 사용한다.
-12. 브리지 저장은 현재 프로필 소유 row만 통과시키고 같은 state에 섞인 다른 유저 row는 서버에서 무시한다. 관리자 권한 테이블은 기존 관리자 레벨 검증을 유지한다.
+11. Discord DM 발송 큐는 `POST /api/discord/sync-deliveries`가 현재 프로필의 `discord_user_id` 기준으로만 저장한다.
+12. `/api/supabase/bridge`, `VITE_ENABLE_SERVER_BRIDGE_WRITE`, `VITE_ENABLE_BULK_REMOTE_WRITE`는 제거한다.
 
 ## 2026-06-24 admin server actions
 

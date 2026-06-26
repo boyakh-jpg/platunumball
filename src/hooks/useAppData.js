@@ -45,7 +45,6 @@ import {
   removeMatchRoomPlayer,
   removeRecruitingPartyPlayer,
   runAutomaticStateMaintenance,
-  saveRemoteState,
   saveState,
   sendRecruitingChat,
   setRecruitingApplicantPlacement,
@@ -209,7 +208,7 @@ export function useAppData(authUser = null) {
   const [adminContext, setAdminContext] = useState(EMPTY_ADMIN_CONTEXT);
   const adminContextRef = useRef(EMPTY_ADMIN_CONTEXT);
   const remoteReadyRef = useRef(!isSupabaseConfigured);
-  const skipNextRemoteSaveRef = useRef(false);
+  const syncedDiscordDeliveryIdsRef = useRef(new Set());
   const profileKey = authUserId ?? "local-demo";
   const profileLocked = isPersistentAuthUserId(authUserId);
   const backendTestLoginId = getBackendTestLoginId(authUserId);
@@ -229,18 +228,8 @@ export function useAppData(authUser = null) {
 
   useEffect(() => {
     if (!isSupabaseConfigured) saveState(state);
-    if (!isSupabaseConfigured || !remoteReadyRef.current) return undefined;
-    if (skipNextRemoteSaveRef.current) {
-      skipNextRemoteSaveRef.current = false;
-      return undefined;
-    }
-
-    const timeout = window.setTimeout(() => {
-      saveRemoteState(state, currentUserId);
-    }, 450);
-
-    return () => window.clearTimeout(timeout);
-  }, [currentUserId, state]);
+    return undefined;
+  }, [state]);
 
   useEffect(() => {
     setState((prev) => runAutomaticStateMaintenance(prev));
@@ -259,7 +248,6 @@ export function useAppData(authUser = null) {
         if (!mounted) return;
         if (remoteState) {
           const maintainedState = runAutomaticStateMaintenance(remoteState);
-          skipNextRemoteSaveRef.current = maintainedState === remoteState;
           setState((prev) => withServerAdminContext(preserveLocalDiscordState(prev, maintainedState), adminContextRef.current));
         }
         remoteReadyRef.current = true;
@@ -271,7 +259,6 @@ export function useAppData(authUser = null) {
 
     const unsubscribe = subscribeRemoteState((remoteState) => {
       const maintainedState = runAutomaticStateMaintenance(remoteState);
-      skipNextRemoteSaveRef.current = maintainedState === remoteState;
       setState((prev) => withServerAdminContext(preserveLocalDiscordState(prev, maintainedState), adminContextRef.current));
     });
 
@@ -409,6 +396,21 @@ export function useAppData(authUser = null) {
   const markNotificationReadServer = useCallback((payload = {}) => {
     runServerAction("/api/notifications/read", payload);
   }, [runServerAction]);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured || !remoteReadyRef.current || !currentUserId) return;
+    const deliveries = (state.discordNotificationDeliveries ?? [])
+      .filter((delivery) => delivery?.id && delivery.status === "queued")
+      .filter((delivery) => delivery.targetUserId === currentUserId)
+      .filter((delivery) => !syncedDiscordDeliveryIdsRef.current.has(delivery.id));
+    if (!deliveries.length) return;
+
+    deliveries.forEach((delivery) => syncedDiscordDeliveryIdsRef.current.add(delivery.id));
+    postServerAction("/api/discord/sync-deliveries", { deliveries }, { allowWhenDisabled: true }).catch((error) => {
+      deliveries.forEach((delivery) => syncedDiscordDeliveryIdsRef.current.delete(delivery.id));
+      console.warn("Discord delivery sync failed.", error.message);
+    });
+  }, [currentUserId, state.discordNotificationDeliveries]);
 
   const rankings = useMemo(
     () => ({

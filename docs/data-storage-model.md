@@ -7,7 +7,7 @@
 - 원격 로드 실패 시 데모 state로 fallback하지 않고 빈 원격 shell state를 유지한다.
 - 실제 프로필 생성/수정은 `POST /api/profile/upsert` service-role server action을 통과한다.
 - `POST /api/profile/upsert`는 일반 프로필 저장에서 `trust_score`, `ratings`, `streak` 클라이언트 변경을 무시하고 DB 기존값 또는 기본값만 유지한다.
-- 아직 모든 방/경기 액션이 authoritative RPC로 이전된 것은 아니다. 과도기 액션은 기존 클라이언트 reducer 결과를 server action/bridge로 커밋한다.
+- 아직 모든 방/경기 액션이 authoritative RPC로 이전된 것은 아니다. 다만 Supabase 환경에서 전체 app state 자동 저장은 하지 않고, 변경 단위별 server action으로만 커밋한다.
 
 ## 지금 적용한 최소 보안 패치
 
@@ -63,24 +63,24 @@
 - 승인된 구장은 정규화한 `road_address`, `jibun_address`, `address_text`, `zonecode` 기준 unique constraint 또는 unique index로 중복을 막는다.
 - 허위 구장 신고 처리는 report 생성, 요청 상태 변경, 신뢰도 차감, 등록 제한 알림을 하나의 transaction으로 커밋한다.
 
-## 2026-06-24 normalized persistence bridge
+## 2026-06-24 normalized persistence tables
 
 - `matches`에 출석, 심판 미출석, 이의 draft, 후보/사후 기록 필드를 저장할 수 있는 컬럼을 추가했다.
-- `notifications`, `reports`, `court_requests`, `approved_courts`, `referee_requests`, `referee_exam_attempts`, `admin_appointments`, `referee_appointments`, `admin_audit_log`, `admin_disciplinary_actions`, `discord_notification_deliveries` 테이블을 배포 전환용 브리지로 추가했다.
-- 브리지 테이블은 `payload` JSONB를 함께 저장해 현재 앱 state shape 손실을 줄인다.
-- `repository.js`는 브리지 테이블이 없거나 RLS로 막혀도 전체 원격 로드를 실패시키지 않는다.
+- `notifications`, `reports`, `court_requests`, `approved_courts`, `referee_requests`, `referee_exam_attempts`, `admin_appointments`, `referee_appointments`, `admin_audit_log`, `admin_disciplinary_actions`, `discord_notification_deliveries` 테이블을 배포용 정규 테이블로 추가했다.
+- 일부 테이블은 `payload` JSONB를 함께 저장해 현재 앱 state shape 손실을 줄인다.
+- `repository.js`는 선택 테이블이 없거나 RLS로 막혀도 전체 원격 로드를 실패시키지 않는다.
 - 선택 테이블 write도 core profile/team/match 저장을 망가뜨리지 않게 optional write로 둔다.
 - 이 작업은 서버 권한화 완료가 아니다. 관리자 처리, 구장 승인, 허위 구장 신고, Discord DM 발송은 아직 server action/transaction/service role 경로가 필요하다.
 
-## 2026-06-24 server bridge write
+## 2026-06-26 dedicated server action write
 
-- Supabase 설정 환경이면 optional bridge write는 기본적으로 browser Supabase upsert 대신 `POST /api/supabase/bridge`로 보낸다. 끄려면 `VITE_ENABLE_SERVER_BRIDGE_WRITE=false`를 명시한다.
-- `/api/supabase/bridge`는 Supabase access token을 검증하고 `profiles.auth_user_id`로 앱 `profileId`를 찾는다.
-- `reports`는 일반 bridge write에서 제외한다. 신고 생성은 `POST /api/reports/submit`, 구장요청 신고는 `POST /api/court-requests/report`만 사용한다.
-- `referee_requests`, `referee_exam_attempts`는 일반 bridge write에서 제외한다. 심판 시험/요청은 `POST /api/referee/sync`만 사용한다.
-- 일반 유저는 자기 `notifications`, `discord_notification_deliveries` row만 브리지로 쓸 수 있다.
-- `court_requests` write는 브리지를 우회하지 않고 `POST /api/court-requests/submit`, `approve`, `report` server action으로 처리한다.
-- `approved_courts`, 관리자 임명, 심판 임명, audit log, 징계 row는 bridge에서 직접 쓸 수 없고 전용 server action/RPC만 사용한다.
+- Supabase 설정 환경이면 browser가 전체 app state를 자동 저장하지 않는다.
+- `/api/supabase/bridge`, `VITE_ENABLE_SERVER_BRIDGE_WRITE`, `VITE_ENABLE_BULK_REMOTE_WRITE` 경로는 제거했다.
+- 신고 생성은 `POST /api/reports/submit`, 구장요청 신고는 `POST /api/court-requests/report`만 사용한다.
+- 심판 시험/요청은 `POST /api/referee/sync`만 사용한다.
+- Discord DM 발송 큐는 `POST /api/discord/sync-deliveries`가 현재 프로필의 `discord_user_id` 기준으로만 저장한다.
+- `court_requests` write는 `POST /api/court-requests/submit`, `approve`, `report` server action으로 처리한다.
+- `approved_courts`, 관리자 임명, 심판 임명, audit log, 징계 row는 전용 server action/RPC만 사용한다.
 - 서버 API에는 `SUPABASE_SERVICE_ROLE_KEY`가 필요하다. 프론트 env에 넣으면 안 된다.
 - 최초 최고관리자는 `RANKBALL_OWNER_AUTH_USER_IDS` 또는 `RANKBALL_OWNER_PROFILE_IDS` env로 지정하거나 DB에 active `admin_appointments`를 넣어야 한다.
 - Supabase 설정 환경이면 구장 등록요청 제출/신고/승인은 local state 갱신과 함께 서버 transaction API도 호출한다. 끄려면 `VITE_ENABLE_SERVER_ACTIONS=false`를 명시한다.
@@ -159,7 +159,7 @@
 - 이 단계는 아직 완전한 authoritative match engine이 아니다. 클라이언트 reducer 결과를 서버에 커밋하는 과도기 브리지다.
 - 다음 단계는 슬롯 점유, 출석 강퇴, 결과/이의 승인, MMR 반영을 RPC transaction으로 옮기는 것이다.
 
-## 2026-06-25 report submit bridge
+## 2026-06-25 report submit server action
 
 - `POST /api/reports/submit`을 추가했다.
 - 경기 신고 생성 후 새 `report`와 신고 접수 `notifications`를 서버에 저장한다.
@@ -171,7 +171,7 @@
 - `court_request` 신고는 중복 신고, 신뢰도 차감, 상태 변경이 묶인 기존 `POST /api/court-requests/report`만 사용한다.
 - 아직 신고 생성만 server action화한 단계다. 신고 판정/징계/피드백은 기존 관리자 RPC가 처리한다.
 
-## 2026-06-25 team sync bridge
+## 2026-06-25 team sync server action
 
 - `POST /api/teams/sync-team`을 추가했다.
 - 팀 생성, 삭제, 팀원 추가, 역할 변경, 팀원 제거 후 `teams`, `team_members`, 관련 `notifications`를 서버에 저장한다.
@@ -181,7 +181,7 @@
 - 삭제는 `deleted_at` soft delete로 처리하고 `team_members`, 팀 즐겨찾기, 해당 팀 모집방 상태를 함께 정리한다.
 - 아직 완전한 team authority engine은 아니다. 클라이언트 reducer 결과를 서버에 커밋하는 과도기 브리지다.
 
-## 2026-06-25 tournament sync bridge
+## 2026-06-25 tournament sync server action
 
 - `POST /api/tournaments/sync-tournament`를 추가했다.
 - 토너먼트/리그 생성과 팀 승인 후 `tournaments`, `tournament_teams`, 관련 `notifications`를 서버에 저장한다.
@@ -191,7 +191,7 @@
 - 토너먼트 경기 일정 변경은 match snapshot 변경이므로 기존 match sync 경로를 사용한다.
 - 아직 완전한 tournament authority engine은 아니다. 팀 승인, 대진 생성, 경기 생성 계산은 클라이언트 reducer 결과를 커밋한다.
 
-## 2026-06-25 referee request bridge
+## 2026-06-25 referee request server action
 
 - `POST /api/referee/sync`를 추가했다.
 - 심판 시험 시작/종료는 `referee_exam_attempts`에 저장한다.
@@ -201,7 +201,7 @@
 - 커뮤니티 심판 등록요청은 같은 사용자/시험버전의 passed attempt가 있어야 저장된다.
 - 심판 임명, 등급 부여, 회수는 기존 관리자 임명 server action 영역으로 남긴다.
 
-## 2026-06-25 favorites sync bridge
+## 2026-06-25 favorites sync server action
 
 - `POST /api/favorites/sync`를 추가했다.
 - 선수, 팀, 구장 즐겨찾기 토글 후 `favorites` row를 서버에 upsert/delete한다.
@@ -209,14 +209,14 @@
 - 선수, 팀, 구장 즐겨찾기는 대상 존재 여부를 확인한다.
 - 구장 즐겨찾기는 `courts` 또는 `approved_courts`에 존재하는 id만 허용한다.
 
-## 2026-06-25 notification read bridge
+## 2026-06-25 notification read server action
 
 - `POST /api/notifications/read`를 추가했다.
 - 단일 알림 읽음은 `notificationId`, 전체 읽음은 `all=true`로 처리한다.
 - 서버는 현재 `profileId`가 `user_id` 또는 `target_user_id`인 row만 `read_at`, `updated_at`으로 갱신한다.
 - 브라우저의 직접 `notifications` update는 계속 금지한다.
 
-## 2026-06-25 court review bridge
+## 2026-06-25 court review server action
 
 - `court_reviews`는 구장별 리뷰 평균을 만들기 위한 서버 테이블이다.
 - `POST /api/courts/submit-review`는 `rankball_submit_court_review()` RPC로 경기 참가자만 리뷰를 제출하게 한다.
@@ -273,18 +273,18 @@ Done:
 
 - Supabase schema/RLS hardening: `profiles.auth_user_id` uuid FK, duplicate hard failure, client write guard, admin/report/court/referee policy hardening.
 - Vercel Hobby API consolidation: one `api/index.js` function dispatches the server routes.
-- Server action/bridge paths exist for profile upsert, court request submit/approve/report, admin review, admin/referee appointment, disciplinary action, Discord DM worker, reports, recruiting, matches, teams, tournaments, referee requests, favorites, notification read, court reviews.
+- Server action paths exist for profile upsert, court request submit/approve/report, admin review, admin/referee appointment, disciplinary action, Discord DM worker, Discord delivery queue sync, reports, recruiting, matches, teams, tournaments, referee requests, favorites, notification read, court reviews.
 - Remote hydration guard blocks local room/match/team/tournament actions before backend state is ready.
 - Test account server mapping uses `profiles.test_login_id` with `test-token-rankball-###`.
 - Client `u1` owner fallback is removed. Admin menu authority now comes from server context or DB `admin_appointments`.
 
 Partial:
 
-- Frontend still has client reducer logic and sends snapshots to server sync bridges. This is not yet a fully authoritative room/match/team/tournament backend.
+- Frontend still has client reducer logic and sends changed room/match/team/tournament snapshots to dedicated server sync actions. This is not yet a fully authoritative room/match/team/tournament backend.
 - `mockData.js` and generated demo flow remain for non-Supabase local dev and seed generation, not production source of truth.
 - Admin UI calls server actions, but local UI state is still updated first and should be reloaded from server result before production.
 - Env owner support uses `POST /api/admin/context` to expose only the current user's admin level to the client.
-- Discord OAuth/profile badge/DM queue exists, but invite buttons and chat bridge are not complete.
+- Discord OAuth/profile badge/DM queue exists, but invite buttons and chat sync are not complete.
 - Court reviews exist, but review reports/moderation are not connected.
 
 Remaining:

@@ -77,8 +77,7 @@ import {
   isAppointmentActive,
 } from "../lib/admin.js";
 import { clearState, readState, writeState } from "../lib/storage.js";
-import { isBulkRemoteWriteEnabled, isServerBridgeWriteEnabled, isSupabaseConfigured, supabase } from "../lib/supabase.js";
-import { writeServerBridgeRows } from "../lib/serverBridge.js";
+import { isSupabaseConfigured, supabase } from "../lib/supabase.js";
 import { findDiscordConnectionOwner, getDiscordConnectionUserId, syncDiscordNotificationDeliveries } from "../lib/discord.js";
 import { getUserHashtag, sameHashtag, toHashtag } from "../lib/handles.js";
 import { canChangeProfileName } from "../lib/profileSetup.js";
@@ -160,8 +159,6 @@ const HOST_TRUST_MIN = {
 function isRecruitingRoomOwner(post = {}, userId = "") {
   return Boolean(userId && getRecruitingRoomOwnerId(post) === userId);
 }
-let normalizedSaveWarningShown = false;
-
 function getBackendTestLoginId(authUserId = "") {
   const match = String(authUserId || "").toLowerCase().match(/^test:(rankball-\d{3})$/);
   return match?.[1] ?? "";
@@ -1396,10 +1393,6 @@ async function upsertRemoteRows(table, rows, onConflict, client = supabase) {
 
 async function upsertOptionalRemoteRows(table, rows, onConflict, client = supabase) {
   try {
-    if (client === supabase && isServerBridgeWriteEnabled) {
-      await writeServerBridgeRows(table, rows);
-      return;
-    }
     await upsertRemoteRows(table, rows, onConflict, client);
   } catch (error) {
     console.warn(`Supabase optional table write skipped: ${table}`, error.message);
@@ -1533,7 +1526,6 @@ function toApprovedCourtRow(court = {}) {
 }
 
 export async function saveNormalizedRemoteState(state, options = {}) {
-  const bridgeOnly = Boolean(options.bridgeOnly);
   const client = options.client ?? supabase;
   const currentUserId = state.currentUserId ?? "";
   const deletedTeamIds = state.deletedTeamIds ?? [];
@@ -1875,25 +1867,23 @@ export async function saveNormalizedRemoteState(state, options = {}) {
     failed_at: delivery.failedAt ?? null,
   })).filter((row) => row.id);
 
-  if (!bridgeOnly) {
-    await softDeleteRemoteTeams(deletedTeamIds, client);
-    await upsertRemoteRows("profiles", profileRows, "id", client);
-    await upsertRemoteRows("teams", teamRows, "id", client);
-    await upsertRemoteRows("team_members", teamMemberRows, "team_id,user_id", client);
-    await upsertRemoteRows("matches", matchRows, "id", client);
-    await upsertRemoteRows("match_players", matchPlayerRows, "match_id,user_id", client);
-    await upsertRemoteRows("match_results", resultRows, "match_id", client);
-    await upsertRemoteRows("player_match_stats", statRows, "match_id,user_id", client);
-    await upsertRemoteRows("match_agreements", agreementRows, "match_id,user_id", client);
-    await upsertRemoteRows("match_approvals", approvalRows, "match_id,user_id", client);
+  await softDeleteRemoteTeams(deletedTeamIds, client);
+  await upsertRemoteRows("profiles", profileRows, "id", client);
+  await upsertRemoteRows("teams", teamRows, "id", client);
+  await upsertRemoteRows("team_members", teamMemberRows, "team_id,user_id", client);
+  await upsertRemoteRows("matches", matchRows, "id", client);
+  await upsertRemoteRows("match_players", matchPlayerRows, "match_id,user_id", client);
+  await upsertRemoteRows("match_results", resultRows, "match_id", client);
+  await upsertRemoteRows("player_match_stats", statRows, "match_id,user_id", client);
+  await upsertRemoteRows("match_agreements", agreementRows, "match_id,user_id", client);
+  await upsertRemoteRows("match_approvals", approvalRows, "match_id,user_id", client);
 
-    if (currentUserId) await client.from("favorites").delete().eq("user_id", currentUserId);
-    await upsertRemoteRows("favorites", favoriteRows, "user_id,target_type,target_id", client);
-    await upsertRemoteRows("recruiting_posts", recruitingRows, "id", client);
-    await replaceRemoteRecruitingApplications(recruitingPostIds, applicationRows, client);
-    await upsertRemoteRows("tournaments", tournamentRows, "id", client);
-    await upsertRemoteRows("tournament_teams", tournamentTeamRows, "tournament_id,team_id", client);
-  }
+  if (currentUserId) await client.from("favorites").delete().eq("user_id", currentUserId);
+  await upsertRemoteRows("favorites", favoriteRows, "user_id,target_type,target_id", client);
+  await upsertRemoteRows("recruiting_posts", recruitingRows, "id", client);
+  await replaceRemoteRecruitingApplications(recruitingPostIds, applicationRows, client);
+  await upsertRemoteRows("tournaments", tournamentRows, "id", client);
+  await upsertRemoteRows("tournament_teams", tournamentTeamRows, "tournament_id,team_id", client);
   await upsertOptionalRemoteRows("notifications", notificationRows, "id", client);
   await upsertOptionalRemoteRows("reports", reportRows, "id", client);
   await upsertOptionalRemoteRows("court_requests", courtRequestRows, "id", client);
@@ -1905,25 +1895,6 @@ export async function saveNormalizedRemoteState(state, options = {}) {
   await upsertOptionalRemoteRows("admin_audit_log", adminAuditRows, "id", client);
   await upsertOptionalRemoteRows("admin_disciplinary_actions", disciplinaryRows, "id", client);
   await upsertOptionalRemoteRows("discord_notification_deliveries", discordDeliveryRows, "id", client);
-}
-
-export async function saveRemoteState(state, profileUserId = "") {
-  if (!isSupabaseConfigured) return;
-  const bridgeOnly = !isBulkRemoteWriteEnabled && isServerBridgeWriteEnabled;
-  if (!isBulkRemoteWriteEnabled && !bridgeOnly) return;
-
-  const sharedState = {
-    ...state,
-    currentUserId: profileUserId || state.currentUserId || "",
-  };
-  try {
-    await saveNormalizedRemoteState(sharedState, { bridgeOnly });
-  } catch (normalizedError) {
-    if (!normalizedSaveWarningShown) {
-      normalizedSaveWarningShown = true;
-      console.warn("Supabase normalized save failed. Local state remains available.", normalizedError.message);
-    }
-  }
 }
 
 export function subscribeRemoteState() {

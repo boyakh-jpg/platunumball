@@ -10,6 +10,7 @@ import courtRequestSubmit from "../server/api/court-requests/submit.js";
 import courtAddressSearch from "../server/api/courts/address-search.js";
 import courtSubmitReview from "../server/api/courts/submit-review.js";
 import discordDmWorker from "../server/api/discord/dm-worker.js";
+import discordSyncDeliveries from "../server/api/discord/sync-deliveries.js";
 import favoriteSync from "../server/api/favorites/sync.js";
 import matchSyncMatch from "../server/api/matches/sync-match.js";
 import notificationRead from "../server/api/notifications/read.js";
@@ -17,7 +18,6 @@ import profileUpsert from "../server/api/profile/upsert.js";
 import refereeSync from "../server/api/referee/sync.js";
 import recruitingSyncPost from "../server/api/recruiting/sync-post.js";
 import reportSubmit from "../server/api/reports/submit.js";
-import supabaseBridge from "../server/api/supabase/bridge.js";
 import teamSyncTeam from "../server/api/teams/sync-team.js";
 import tournamentSyncTournament from "../server/api/tournaments/sync-tournament.js";
 
@@ -34,6 +34,7 @@ const ROUTES = new Map([
   ["/courts/address-search", courtAddressSearch],
   ["/courts/submit-review", courtSubmitReview],
   ["/discord/dm-worker", discordDmWorker],
+  ["/discord/sync-deliveries", discordSyncDeliveries],
   ["/favorites/sync", favoriteSync],
   ["/matches/sync-match", matchSyncMatch],
   ["/notifications/read", notificationRead],
@@ -41,7 +42,6 @@ const ROUTES = new Map([
   ["/referee/sync", refereeSync],
   ["/recruiting/sync-post", recruitingSyncPost],
   ["/reports/submit", reportSubmit],
-  ["/supabase/bridge", supabaseBridge],
   ["/teams/sync-team", teamSyncTeam],
   ["/tournaments/sync-tournament", tournamentSyncTournament],
 ]);
