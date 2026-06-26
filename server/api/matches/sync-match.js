@@ -246,6 +246,12 @@ async function queueMatchDiscordDeliveries(supabase, match = {}, action = "sync"
       "match-manager-start-now",
     ]);
   }
+  if (["submitMatchResult", "disputeMatch", "approveMatch", "resumeMatchApproval"].includes(action)) {
+    await cancelPendingDiscordDeliveryPrefixes(supabase, match.id, [
+      "match-ended-score",
+      "match-dispute-check",
+    ]);
+  }
 
   if (
     scheduledAt &&
