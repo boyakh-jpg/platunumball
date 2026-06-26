@@ -26,7 +26,7 @@
 - 프로필에는 `discordConnection`을 저장한다. normalized Supabase에서는 `profiles.discord_connection` JSONB와 unique용 `profiles.discord_user_id`에 보존한다.
 - 알림은 앱 내부 `notifications`를 원본으로 두고, Discord DM은 `discordNotificationDeliveries` 같은 발송 큐에서 서버 Bot이 처리한다.
 - Discord DM 큐에는 `webPath`, `webUrl`, `actions`를 저장한다. `actions.customId`는 `rankball:invite:{accept|decline}:{postId}:{invitationId}` 형식이다.
-- 배포 전 백엔드는 `POST /api/discord/interactions`에서 Discord signature를 검증하고, 버튼 요청을 같은 초대 수락/거절 서버 액션으로 연결해야 한다.
+- 백엔드는 `POST /api/discord/interactions`에서 Discord signature를 검증하고, 초대 수락/거절 버튼 요청을 같은 초대 서버 액션으로 연결한다.
 - `/api/auth/discord/start`와 `/api/auth/discord/callback`은 Discord OAuth `identify` 결과를 프론트로 돌려보내고, 프론트가 OAuth state에 기록된 profile state의 `discordConnection`에 저장한다.
 - 같은 `discord_user_id`는 프로필 하나에만 연결한다. 중복이 있으면 앱 로직은 새 연동을 거절하고, DB는 중복 정리 후 unique index로 막는다.
 - 프로필 저장 서버 액션도 `discord_user_id` 중복을 다시 확인한다. `discordConnection: null`은 명시적 연결 해제로 처리한다.
@@ -87,7 +87,7 @@
 - `POST /api/court-requests/approve`는 `rankball_approve_court_request()` RPC로 승인 구장 생성, 요청 상태 변경, audit log, 알림을 한 transaction으로 처리한다.
 - `POST /api/court-requests/report`는 `rankball_report_court_request()` RPC로 신고 생성, 요청자 신뢰도 차감, 요청 상태 변경, 알림을 한 transaction으로 처리한다.
 - `POST /api/court-requests/submit`은 `rankball_submit_court_request()` RPC로 구장 등록요청 제출 직전 신뢰도와 승인/대기 중복을 서버에서 다시 검사한다.
-- 일반 관리자 신고 처리, 임명/징계 처리, Discord DM worker API는 분리되어 있으며, Discord 버튼 interaction은 아직 남는다.
+- 일반 관리자 신고 처리, 임명/징계 처리, Discord DM worker API, Discord 초대 버튼 interaction은 분리된 server action이다.
 
 ## 2026-06-25 Supabase-only frontend bootstrap
 
@@ -125,7 +125,7 @@
 - worker 호출은 `DISCORD_WORKER_SECRET` 또는 `CRON_SECRET` bearer가 있으면 허용한다. secret이 없으면 관리자 Supabase bearer token과 admin level 30 이상이 필요하다.
 - 필요한 env는 `DISCORD_BOT_TOKEN`이다.
 - `vercel.json`은 Hobby 제한에 맞춰 `/api/discord/dm-worker`를 하루 1회 호출한다. 더 빠른 DM 발송은 외부 스케줄러나 Pro Cron이 필요하다.
-- Discord interaction 버튼 수락/거절 처리와 채팅 양방향 연동은 아직 남은 작업이다.
+- Discord interaction 버튼 수락/거절 처리는 `/api/discord/interactions`가 담당한다. 채팅 양방향 연동은 아직 남은 작업이다.
 
 ## 2026-06-24 RLS hardening
 
@@ -297,7 +297,7 @@ Partial:
 - `mockData.js` and generated demo flow remain for non-Supabase local dev and seed generation, not production source of truth.
 - Admin UI calls server actions, but local UI state is still updated first and should be reloaded from server result before production.
 - Env owner support uses `POST /api/admin/context` to expose only the current user's admin level to the client.
-- Discord OAuth/profile badge/DM queue exists, but invite buttons and chat sync are not complete.
+- Discord OAuth/profile badge/DM queue and invite button interactions exist, but chat sync is not complete.
 - Court reviews exist, `court` / `court_review` reports submit through `/api/reports/submit`, and admin review actions can soft-hide approved courts and court reviews.
 
 Remaining:

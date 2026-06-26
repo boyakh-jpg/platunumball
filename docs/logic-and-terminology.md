@@ -934,7 +934,7 @@ flowchart TD
 14. normalized Supabase 저장에서는 `profiles.discord_connection`에 `discordConnection`을 보존한다.
 15. Discord 계정 하나는 앱 프로필 하나에만 연결한다. 같은 `discordConnection.userId`가 다른 프로필에 있으면 새 연동은 거절한다.
 16. OAuth 승인 직후 아직 원격 저장 전인 로컬 `discordConnection`은 Supabase hydration/subscription이 예전 state를 내려도 지우지 않는다. 단, 원격 state에 같은 Discord ID를 가진 다른 프로필이 있으면 보존하지 않는다.
-17. Discord DM 큐는 DB `discordNotificationDeliveries`에 저장하고 `/api/discord/dm-worker`가 처리한다. 버튼 수락/거절 커밋은 Discord interaction server action 전까지 완료 기능으로 보지 않는다.
+17. Discord DM 큐는 DB `discordNotificationDeliveries`에 저장하고 `/api/discord/dm-worker`가 처리한다. 버튼 수락/거절 커밋은 `/api/discord/interactions`가 Discord signature 검증 후 초대 서버 action으로 처리한다.
 18. `/api/discord/dm-worker`는 Vercel Cron 자동 실행용 `GET`과 관리자 수동 점검용 `POST`를 모두 허용한다. 둘 다 `Authorization: Bearer <CRON_SECRET 또는 DISCORD_WORKER_SECRET>` 검증을 통과해야 한다.
 19. Vercel Hobby/Free 배포에서는 Cron이 하루 1회까지만 허용된다. 5분 단위 Discord DM 큐 처리는 Pro 플랜 또는 외부 스케줄러가 `/api/discord/dm-worker`를 호출해야 한다.
 
@@ -980,7 +980,7 @@ flowchart TD
 7. 구장 승인은 `rankball_approve_court_request()`에서 승인 구장 생성, 요청 상태 변경, audit log, 알림을 한 transaction으로 처리한다.
 8. 허위 구장 신고는 `rankball_report_court_request()`에서 신고 생성, 요청자 신뢰도 차감, 요청 상태 변경, 알림을 한 transaction으로 처리한다.
 9. 구장 등록요청 제출은 `rankball_submit_court_request()`에서 신뢰도와 승인/대기 중복을 서버에서 다시 검사한다.
-10. 일반 관리자 신고 처리, 임명/징계 처리, Discord DM 발송은 별도 server action으로 분리되어 있으며, Discord 버튼 interaction은 아직 남는다.
+10. 일반 관리자 신고 처리, 임명/징계 처리, Discord DM 발송, Discord 초대 버튼 interaction은 별도 server action으로 분리한다.
 11. Discord DM 발송 큐는 `POST /api/discord/sync-deliveries`가 현재 프로필의 `discord_user_id` 기준으로만 저장한다.
 12. `/api/supabase/bridge`, `VITE_ENABLE_SERVER_BRIDGE_WRITE`, `VITE_ENABLE_BULK_REMOTE_WRITE`는 제거한다.
 
