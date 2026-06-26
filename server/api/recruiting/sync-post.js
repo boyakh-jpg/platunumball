@@ -569,7 +569,9 @@ export async function persistRecruitingPostSnapshot(context, { post, notificatio
   const applicationRows = toRecruitingApplicationRows(post);
   const notificationRows = toNotificationRows(notifications, context.profileId);
 
-  const { data: persistResult, error: persistError } = await context.supabase.rpc("rankball_persist_recruiting_snapshot", {
+  const { data: persistResult, error: persistError } = await context.supabase.rpc("rankball_recruiting_action", {
+    p_actor_profile_id: context.profileId,
+    p_action: action,
     p_post_row: postRow,
     p_application_rows: applicationRows,
     p_notification_rows: notificationRows,

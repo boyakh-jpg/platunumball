@@ -883,7 +883,9 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
   const disputeRows = toDisputeRows(match);
   const notificationRows = toNotificationRows(notifications, context.profileId);
 
-  const { data: persistResult, error: persistError } = await context.supabase.rpc("rankball_persist_match_snapshot", {
+  const { data: persistResult, error: persistError } = await context.supabase.rpc("rankball_match_action", {
+    p_actor_profile_id: context.profileId,
+    p_action: action,
     p_match_row: matchRow,
     p_player_rows: playerRows,
     p_result_row: resultRow,

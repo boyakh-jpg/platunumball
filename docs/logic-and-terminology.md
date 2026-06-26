@@ -1237,3 +1237,10 @@ flowchart TD
 2. DB `matches.created_by`는 생성자 프로필이며 A사이드 첫 선수가 아니다.
 3. 방/경기 생성 reducer가 경고만 추가하고 새 row를 만들지 않으면 frontend action은 id를 반환하지 않고 성공처럼 이동하지 않는다.
 4. 방/대회 생성 화면은 server action 저장 성공 id를 받은 뒤에만 목록 화면으로 이동한다.
+
+## 2026-06-26 recruiting/match action RPC 1단계
+
+1. `rankball_recruiting_action()`은 모집방 action persist를 위한 단일 DB RPC 진입점이다.
+2. `rankball_match_action()`은 경기 action persist를 위한 단일 DB RPC 진입점이다.
+3. 1단계에서는 기존 JS reducer와 server-side 권한/룰 검증을 유지하고, DB row lock과 snapshot persist를 action RPC 안에서 처리한다.
+4. 다음 단계는 개별 action reducer를 SQL 내부로 옮겨 server action의 state load/read call을 더 줄이는 것이다.
