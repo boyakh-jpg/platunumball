@@ -530,6 +530,12 @@ h3 {
   gap: 16px;
 }
 
+.section-card:has(.search-picker.is-floating:focus-within) {
+  position: relative;
+  z-index: 160;
+  overflow: visible;
+}
+
 .section-title-row {
   display: flex;
   align-items: flex-start;
