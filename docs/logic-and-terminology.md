@@ -1224,6 +1224,13 @@ flowchart TD
 9. 일반 사용자는 active 구장/리뷰만 읽고, 관리자만 hidden row를 검토용으로 읽는다.
 10. 물리 삭제는 신고/audit 추적을 깨므로 기본 운영 action으로 만들지 않는다.
 
+## 2026-06-26 settings persistence
+
+1. Supabase 모드에서 화면 테마는 `profiles.app_settings.theme`에 저장한다.
+2. 밝기 UI는 선택과 저장을 분리하고, 저장 실패 시 로컬 변경을 롤백한다.
+3. 관리자 메뉴 노출은 `POST /api/admin/context`의 `adminLevel >= 30` 또는 활성 admin appointment 기준이다. `u1` frontend seed fallback은 쓰지 않는다.
+4. 구장 등록요청 제출은 server action 성공 후에만 폼을 초기화한다.
+
 ## 2026-06-26 경기 생성자 저장 원칙
 
 1. 직접 경기 생성은 `createdBy = state.currentUserId`를 저장한다.

@@ -504,6 +504,12 @@ export function useAppData(authUser = null) {
   const markNotificationReadServer = useCallback((payload = {}) => {
     runServerAction("/api/notifications/read", payload);
   }, [runServerAction]);
+  const syncSettingsServer = useCallback((settingsPatch = {}) => {
+    return runServerAction("/api/settings/sync", { settings: settingsPatch }).then((result) => {
+      if (result?.settings) setState((prev) => updateSettings({ ...prev, currentUserId }, result.settings));
+      return result;
+    });
+  }, [currentUserId, runServerAction, setState]);
 
   useEffect(() => {
     if (!isSupabaseConfigured || !remoteReadyRef.current || !currentUserId) return;
@@ -765,6 +771,25 @@ export function useAppData(authUser = null) {
       removeMatchLatePlayer: (matchId, playerId) => applyMatchMutation(matchId, (prev) => removeMatchLatePlayer({ ...prev, currentUserId }, matchId, playerId), { action: "removeMatchLatePlayer", playerId }),
       updateSettings: (patch) => setState((prev) => updateSettings({ ...prev, currentUserId }, patch)),
       updatePrivacySettings: (patch) => setState((prev) => updatePrivacySettings({ ...prev, currentUserId }, patch)),
+      saveTheme: (theme) => {
+        const nextTheme = theme === "light" ? "light" : "dark";
+        if (!isSupabaseConfigured) {
+          setState((prev) => updateSettings({ ...prev, currentUserId }, { theme: nextTheme }));
+          return Promise.resolve(true);
+        }
+        if (!ensureRemoteReady("밝기 저장")) return Promise.resolve(false);
+        let rollbackState = null;
+        setState((prev) => {
+          rollbackState = prev;
+          return updateSettings({ ...prev, currentUserId }, { theme: nextTheme });
+        });
+        return rollbackIfServerFailed(
+          syncSettingsServer({ theme: nextTheme }),
+          rollbackState,
+          "밝기 저장",
+          { theme: nextTheme },
+        ).then(Boolean);
+      },
       blockUser: (userId) => setState((prev) => blockUser({ ...prev, currentUserId }, userId)),
       unblockUser: (userId) => setState((prev) => unblockUser({ ...prev, currentUserId }, userId)),
       reportMatch: (matchId, reason, reportedUserIds) => {
@@ -855,14 +880,24 @@ export function useAppData(authUser = null) {
         syncFavoriteServer("court", courtId, active);
       },
       submitCourtRequest: (draft) => {
+        if (!ensureRemoteReady("구장 등록요청")) return Promise.resolve(null);
         let createdRequest = null;
+        let rollbackState = null;
         setState((prev) => {
+          rollbackState = prev;
           const existingIds = new Set((prev.settings?.courtRequests ?? []).map((request) => request.id));
           const next = submitCourtRequest({ ...prev, currentUserId }, draft);
           createdRequest = (next.settings?.courtRequests ?? []).find((request) => !existingIds.has(request.id)) ?? null;
           return next;
         });
-        if (createdRequest) runServerAction("/api/court-requests/submit", { request: createdRequest });
+        if (!createdRequest) return Promise.resolve(null);
+        if (!isSupabaseConfigured) return Promise.resolve(createdRequest.id);
+        return rollbackIfServerFailed(
+          runServerAction("/api/court-requests/submit", { request: createdRequest }),
+          rollbackState,
+          "구장 등록요청",
+          { requestId: createdRequest.id },
+        ).then((result) => (result ? result.requestId ?? createdRequest.id : null));
       },
       submitCourtReview: (matchId, draft) => {
         let submittedReview = null;
@@ -1044,7 +1079,7 @@ export function useAppData(authUser = null) {
       reset: () => setState(resetState({ includeDemo: !isSupabaseConfigured, authUserId, email: authEmail })),
       });
     },
-    [authEmail, authUserId, currentUserId, deleteTeamServer, ensureRemoteReady, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, runServerAction, serverProfileBound, submitReportServer, syncFavoriteServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncTeamServer, syncTournamentServer],
+    [authEmail, authUserId, currentUserId, deleteTeamServer, ensureRemoteReady, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, runServerAction, serverProfileBound, submitReportServer, syncFavoriteServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncSettingsServer, syncTeamServer, syncTournamentServer],
   );
 
   const safeCurrentUserId = currentUserId ?? currentUser?.id ?? "";

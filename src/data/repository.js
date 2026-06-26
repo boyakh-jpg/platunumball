@@ -141,6 +141,7 @@ const REMOTE_CLIENT_TOURNAMENT_LIMIT = 80;
 const REMOTE_CLIENT_MAX_LIMIT = 500;
 const PUBLIC_PROFILE_COLUMNS = "id,name,handle,hashtag,position,region,region_sido,region_district,school,company,club,trust_score,streak,avatar_color,ratings,age_group,age_group_checked_season,onboarding_complete,test_login_id,updated_at,discord_connection";
 const PRIVATE_PROFILE_COLUMNS = "id,name,handle,region,school,company,club,trust_score,streak,avatar_color,test_login_id,auth_user_id,hashtag,birth_year,age_group,age_group_checked_season,region_sido,region_district,onboarding_complete,profile_version,handle_locked_at,birth_year_locked_at,name_updated_at,discord_connection,discord_user_id,ratings,created_at,updated_at,position";
+const PROFILE_SETTINGS_COLUMNS = "id,app_settings";
 const TEAM_COLUMNS = "id,name,home_court,region,mmr,wins,losses,accent,deleted_at,updated_at,created_at";
 const TEAM_MEMBER_COLUMNS = "team_id,user_id,role";
 const COURT_COLUMNS = "id,name";
@@ -927,6 +928,22 @@ function fromRemotePayloadRow(row = {}) {
   };
 }
 
+function getRemoteAppSettings(profile = {}) {
+  const settings = profile?.app_settings && typeof profile.app_settings === "object" && !Array.isArray(profile.app_settings)
+    ? profile.app_settings
+    : {};
+  const theme = settings.theme === "light" ? "light" : settings.theme === "dark" ? "dark" : null;
+  const privacy = settings.privacy && typeof settings.privacy === "object" && !Array.isArray(settings.privacy) ? settings.privacy : null;
+  const notificationChannels = settings.notificationChannels && typeof settings.notificationChannels === "object" && !Array.isArray(settings.notificationChannels)
+    ? settings.notificationChannels
+    : null;
+  return {
+    ...(theme ? { theme } : {}),
+    ...(privacy ? { privacy } : {}),
+    ...(notificationChannels ? { notificationChannels } : {}),
+  };
+}
+
 function fromRemoteNotification(row = {}) {
   const payload = getRemotePayload(row);
   return {
@@ -1269,7 +1286,7 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
     : null;
   const shellUser = authUserIdText && !testLoginId && !currentProfile ? createProfileShell(authUserIdText, authEmail) : null;
   const currentUserId = currentProfile?.id ?? shellUser?.id ?? profiles[0]?.id ?? "";
-  const [favorites, notifications, discordNotificationDeliveries] = await Promise.all([
+  const [favorites, notifications, discordNotificationDeliveries, profileSettingsRows] = await Promise.all([
     currentUserId
       ? fetchFilteredRows("favorites", FAVORITE_COLUMNS, null, client, (query) => query.eq("user_id", currentUserId))
       : [],
@@ -1280,6 +1297,9 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
       : [],
     currentUserId
       ? fetchOptionalFilteredRows("discord_notification_deliveries", DISCORD_DELIVERY_COLUMNS, "queued_at", client, (query) => query.eq("target_user_id", currentUserId))
+      : [],
+    currentUserId
+      ? fetchOptionalFilteredRows("profiles", PROFILE_SETTINGS_COLUMNS, null, client, (query) => query.eq("id", currentUserId))
       : [],
   ]);
   const loadedMatchIds = matches.map((match) => match.id).filter(Boolean);
@@ -1331,6 +1351,7 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
   const favoriteRows = favorites.filter((favorite) => favorite.user_id === currentUserId);
   const applicationsByPost = groupBy(recruitingApplications, "post_id");
   const tournamentTeamsByTournament = groupBy(tournamentTeams, "tournament_id");
+  const remoteAppSettings = getRemoteAppSettings(profileSettingsRows[0]);
 
   const remoteUsers = profiles.map(fromRemoteProfile);
   const normalizedState = normalizeState({
@@ -1474,6 +1495,7 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
     }),
     settings: {
       ...DEFAULT_SETTINGS,
+      ...remoteAppSettings,
       favoritePlayerIds: favoriteRows.filter((favorite) => favorite.target_type === "player").map((favorite) => favorite.target_id),
       favoriteTeamIds: favoriteRows.filter((favorite) => favorite.target_type === "team").map((favorite) => favorite.target_id),
       favoriteCourtIds: favoriteRows.filter((favorite) => favorite.target_type === "court").map((favorite) => favorite.target_id),

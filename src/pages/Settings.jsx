@@ -158,6 +158,8 @@ function getReportTargetEmptyText(targetType) {
 export default function Settings({ app, auth }) {
   const privacy = app.state.settings?.privacy ?? {};
   const theme = app.state.settings?.theme === "light" ? "light" : "dark";
+  const [themeDraft, setThemeDraft] = useState(theme);
+  const [themeSaveStatus, setThemeSaveStatus] = useState("");
   const blockedUserIds = app.state.settings?.blockedUserIds ?? [];
   const [blockUserId, setBlockUserId] = useState(app.state.users.find((user) => user.id !== app.currentUserId)?.id ?? "");
   const [reportMatchId, setReportMatchId] = useState("");
@@ -190,7 +192,9 @@ export default function Settings({ app, auth }) {
   const refereeExamAttempts = app.state.settings?.refereeExamAttempts ?? [];
   const currentTrustScore = Number(app.currentUser?.trustScore ?? 0);
   const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
-  const canOpenAdminMenu = hasAdminAccess(app.currentUser, app.state.settings);
+  const serverAdminLevel = Number(app.adminContext?.level ?? 0);
+  const canOpenAdminMenu = serverAdminLevel >= 30 || hasAdminAccess(app.currentUser, app.state.settings);
+  const themeDirty = themeDraft !== theme;
   const naverMapKeyReady = Boolean(getNaverMapClientId());
   const courtAddressSelected = Boolean(String(courtDraft.addressText ?? "").trim());
   const courtDisplayName = getCourtRequestDisplayName(courtDraft.name, courtDraft.addressDong);
@@ -205,6 +209,11 @@ export default function Settings({ app, auth }) {
   const canOpenRefereeRequestForm = currentTrustScore >= REFEREE_TRUST_MIN;
   const [currentRefereeExamAttemptId, setCurrentRefereeExamAttemptId] = useState("");
   const [refereeExamNotice, setRefereeExamNotice] = useState("");
+
+  useEffect(() => {
+    setThemeDraft(theme);
+    setThemeSaveStatus("");
+  }, [theme]);
 
   const blockableUsers = useMemo(
     () => app.state.users.filter((user) => user.id !== app.currentUserId && !blockedUserIds.includes(user.id)),
@@ -581,20 +590,34 @@ export default function Settings({ app, auth }) {
     setNaverAddressResults([]);
     setCourtLookupStatus("네이버 주소와 좌표를 저장했습니다. 필요하면 지도 핀으로 위치를 보정하세요.");
   };
-  const submitCourtRequest = (event) => {
+  const saveTheme = async () => {
+    setThemeSaveStatus("");
+    try {
+      const saved = await app.actions.saveTheme?.(themeDraft);
+      setThemeSaveStatus(saved ? "저장됨" : "저장 실패");
+    } catch {
+      setThemeSaveStatus("저장 실패");
+    }
+  };
+  const submitCourtRequest = async (event) => {
     event.preventDefault();
     if (courtDuplicate) {
       setCourtLookupStatus(courtDuplicateMessage);
       return;
     }
     if (!canSubmitCourtRequest) return;
-    app.actions.submitCourtRequest(courtDraft);
+    const requestId = await app.actions.submitCourtRequest(courtDraft);
+    if (!requestId) {
+      setCourtLookupStatus("구장 등록요청 저장 실패");
+      return;
+    }
     setCourtAddressQuery("");
     setNaverAddressResults([]);
     setCourtDraft({
       ...DEFAULT_COURT_REQUEST,
       region: app.currentUser?.region ?? DEFAULT_COURT_REQUEST.region,
     });
+    setCourtLookupStatus("구장 등록요청 저장됨");
   };
   const reportCourtRequest = (request) => {
     setReportReason("허위 구장 등록");
@@ -709,23 +732,27 @@ export default function Settings({ app, auth }) {
                 <p className="eyebrow">화면 테마</p>
                 <h2>밝기</h2>
               </div>
-              {theme === "light" ? <Sun size={22} /> : <Moon size={22} />}
+              {themeDraft === "light" ? <Sun size={22} /> : <Moon size={22} />}
             </div>
             <div className="segmented-control">
               <button
                 type="button"
-                className={theme === "light" ? "active" : ""}
-                onClick={() => app.actions.updateSettings({ theme: "light" })}
+                className={themeDraft === "light" ? "active" : ""}
+                onClick={() => setThemeDraft("light")}
               >
                 라이트
               </button>
               <button
                 type="button"
-                className={theme === "dark" ? "active" : ""}
-                onClick={() => app.actions.updateSettings({ theme: "dark" })}
+                className={themeDraft === "dark" ? "active" : ""}
+                onClick={() => setThemeDraft("dark")}
               >
                 다크
               </button>
+            </div>
+            <div className="settings-save-row">
+              <small>{themeSaveStatus || (themeDirty ? "변경 있음" : "저장됨")}</small>
+              <Button type="button" variant="secondary" onClick={saveTheme} disabled={!themeDirty}>저장</Button>
             </div>
           </Card>
 

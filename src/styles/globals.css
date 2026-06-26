@@ -4404,6 +4404,20 @@ input[type="color"] {
   flex: 1 1 0;
 }
 
+.settings-save-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.settings-save-row small {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
 @media (max-width: 1020px) {
   .landing-hero,
   .team-hub-hero,

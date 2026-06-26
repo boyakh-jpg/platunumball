@@ -19,6 +19,7 @@ import profileUpsert from "../server/api/profile/upsert.js";
 import refereeSync from "../server/api/referee/sync.js";
 import recruitingSyncPost from "../server/api/recruiting/sync-post.js";
 import reportSubmit from "../server/api/reports/submit.js";
+import settingsSync from "../server/api/settings/sync.js";
 import stateLoad from "../server/api/state/load.js";
 import systemCleanupSim from "../server/api/system/cleanup-sim.js";
 import systemSchemaHealth from "../server/api/system/schema-health.js";
@@ -47,6 +48,7 @@ const ROUTES = new Map([
   ["/referee/sync", refereeSync],
   ["/recruiting/sync-post", recruitingSyncPost],
   ["/reports/submit", reportSubmit],
+  ["/settings/sync", settingsSync],
   ["/state/load", stateLoad],
   ["/system/cleanup-sim", systemCleanupSim],
   ["/system/schema-health", systemSchemaHealth],

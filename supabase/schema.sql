@@ -36,6 +36,7 @@ begin
     execute 'alter table public.profiles add column if not exists name_updated_at timestamptz';
     execute 'alter table public.profiles add column if not exists discord_connection jsonb';
     execute 'alter table public.profiles add column if not exists discord_user_id text';
+    execute 'alter table public.profiles add column if not exists app_settings jsonb not null default ''{}''::jsonb';
     execute 'update public.profiles set hashtag = lower(''#'' || regexp_replace(coalesce(nullif(hashtag, ''''), handle, id), ''^[@#]+'', ''''))';
     if exists (
       select 1
