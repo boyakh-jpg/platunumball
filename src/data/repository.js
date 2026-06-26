@@ -873,6 +873,25 @@ async function fetchRowsByIds(table, select = "*", column = "id", ids = [], orde
   return fetcher(table, select, order, client, (query) => applyIdScope(query, column, scopedIds));
 }
 
+function uniqueRowsById(rows = []) {
+  const byId = new Map();
+  rows.forEach((row) => {
+    if (row?.id) byId.set(row.id, row);
+  });
+  return [...byId.values()];
+}
+
+async function fetchCurrentUserReports(currentUserId = "", client = supabase) {
+  if (!currentUserId) return [];
+  const [byReporter, byTarget, byReportedUser] = await Promise.all([
+    fetchOptionalFilteredRows("reports", REPORT_COLUMNS, "created_at", client, (query) => query.eq("user_id", currentUserId)),
+    fetchOptionalFilteredRows("reports", REPORT_COLUMNS, "created_at", client, (query) => query.eq("target_id", currentUserId)),
+    fetchOptionalFilteredRows("reports", REPORT_COLUMNS, "created_at", client, (query) => query.contains("reported_user_ids", [currentUserId])),
+  ]);
+  return uniqueRowsById([...byReporter, ...byTarget, ...byReportedUser])
+    .sort((a, b) => String(a.created_at ?? "").localeCompare(String(b.created_at ?? "")));
+}
+
 function groupBy(rows, key) {
   return rows.reduce((map, row) => {
     const value = row[key];
@@ -1433,8 +1452,7 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
       ? []
       : isAdminStateLoad
         ? fetchOptionalRows("reports", REPORT_COLUMNS, "created_at", client)
-        : fetchOptionalFilteredRows("reports", REPORT_COLUMNS, "created_at", client, (query) => query
-          .or(`user_id.eq.${currentUserId},target_id.eq.${currentUserId},reported_user_ids.cs.{${currentUserId}}`)),
+        : fetchCurrentUserReports(currentUserId, client),
     !includeUserScoped || !currentUserId
       ? []
       : isAdminStateLoad

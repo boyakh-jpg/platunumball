@@ -1290,3 +1290,8 @@ flowchart TD
 4. Match scope state loads must fetch only related profiles, teams, team members, courts, and match child rows for loaded matches.
 5. `/api/matches/list` is list-only and skips match result/stat/agreement/approval/dispute child rows.
 6. Match room/detail open uses `/api/matches/detail` to load one full match before modal actions need record or approval data.
+
+## 2026-06-27 report scoped reads
+
+1. Current-user report reads include rows where the profile is `user_id`, `target_id`, or inside `reported_user_ids`.
+2. `reported_user_ids` is read with JSON contains `[currentUserId]`, not PostREST array syntax.
