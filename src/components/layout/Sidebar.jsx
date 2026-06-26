@@ -15,6 +15,9 @@ const navItems = [
 ];
 
 export default function Sidebar({ user, teams = [], auth }) {
+  const safeUser = user ?? {};
+  const displayName = safeUser.name || auth?.user?.user_metadata?.providerName || auth?.user?.email || "RankBall";
+  const integratedRating = safeUser.ratings?.integrated ?? 1200;
   return (
     <aside className="sidebar">
       <NavLink to="/" className="brand">
@@ -35,14 +38,14 @@ export default function Sidebar({ user, teams = [], auth }) {
           );
         })}
       </nav>
-      <PlayerHoverCard as="span" user={user} teams={teams} className="sidebar-profile">
-        <div className={getDiscordAvatarClassName(user)} style={getDiscordAvatarStyle(user)}>
-          {user.name.slice(0, 1)}
+      <PlayerHoverCard as="span" user={safeUser} teams={teams} className="sidebar-profile">
+        <div className={getDiscordAvatarClassName(safeUser)} style={getDiscordAvatarStyle(safeUser)}>
+          {displayName.slice(0, 1)}
         </div>
         <div>
-          <strong>{user.name}</strong>
+          <strong>{displayName}</strong>
           {auth?.user ? <small>{auth.user.user_metadata?.providerName ?? auth.user.email}</small> : null}
-          <TierBadge mmr={user.ratings.integrated} compact />
+          <TierBadge mmr={integratedRating} compact />
         </div>
         {auth?.session ? (
           <button type="button" className="sidebar-signout" onClick={auth.signOut} aria-label="로그아웃">

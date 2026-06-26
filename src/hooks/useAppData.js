@@ -445,10 +445,14 @@ export function useAppData(authUser = null) {
     });
   }, [authUserId, currentUserId, profileKey, profileLocked, profileBindings]);
 
-  const currentUser = useMemo(
-    () => state.users.find((user) => user.id === currentUserId) ?? state.users[0] ?? (profileLocked ? createProfileShell(authUserId, authEmail) : null),
-    [authEmail, authUserId, currentUserId, profileLocked, state.users],
-  );
+  const currentUser = useMemo(() => {
+    const boundUser = state.users.find((user) => user.id === currentUserId);
+    if (boundUser) return boundUser;
+    const ownedUser = authUserId ? state.users.find((user) => user.authUserId === authUserId) : null;
+    if (ownedUser) return ownedUser;
+    if (profileLocked || authUserId) return createProfileShell(authUserId, authEmail);
+    return state.users[0] ?? createProfileShell("", authEmail);
+  }, [authEmail, authUserId, currentUserId, profileLocked, state.users]);
   const pushLocalWarning = useCallback((title, body, payload = {}) => {
     setState((prev) => ({
       ...prev,
@@ -1177,5 +1181,6 @@ export function useAppData(authUser = null) {
   );
 
   const safeCurrentUserId = currentUserId ?? currentUser?.id ?? "";
-  return { state: { ...state, currentUserId: safeCurrentUserId }, currentUser, currentUserId: safeCurrentUserId, profileBound: true, profileLocked, remoteReady, adminContext, matchPagination, rankings, actions };
+  const safeCurrentUser = currentUser ?? createProfileShell(authUserId ?? safeCurrentUserId, authEmail);
+  return { state: { ...state, currentUserId: safeCurrentUserId || safeCurrentUser.id }, currentUser: safeCurrentUser, currentUserId: safeCurrentUserId || safeCurrentUser.id, profileBound: true, profileLocked, remoteReady, adminContext, matchPagination, rankings, actions };
 }

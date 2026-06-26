@@ -1714,7 +1714,14 @@ function SourceMatchDisputeEditor({ match, userById, canReview, onSave, onResolv
   );
 }
 
-export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, sourceMatch = null }) {
+export function RecruitingRoomModal(props) {
+  if (!props.app?.currentUser?.id) {
+    return null;
+  }
+  return <RecruitingRoomModalReady {...props} />;
+}
+
+function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sourceMatch = null }) {
   const selectedPost = post;
   const myTeams = useMemo(
     () => app.state.teams.filter((team) => team.members.some((member) => member.userId === app.currentUser.id)),
@@ -2889,7 +2896,7 @@ export function RecruitingRoomModal({ app, post, onClose, onOpenMatch = null, so
       })();
 }
 
-export default function Recruiting({ app }) {
+function RecruitingReady({ app }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const targetPostId = searchParams.get("post") ?? "";
@@ -3398,4 +3405,15 @@ export default function Recruiting({ app }) {
       ) : null}
     </div>
   );
+}
+
+export default function Recruiting({ app }) {
+  if (!app?.currentUser?.id) {
+    return (
+      <div className="page-stack">
+        <div className="empty-state">프로필을 불러오는 중입니다.</div>
+      </div>
+    );
+  }
+  return <RecruitingReady app={app} />;
 }

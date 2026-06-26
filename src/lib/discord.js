@@ -24,7 +24,7 @@ export function getDiscordChannel(settings = {}) {
 }
 
 export function getDiscordConnection(user = {}) {
-  return user.discordConnection ?? null;
+  return user?.discordConnection ?? null;
 }
 
 export function getDiscordConnectionUserId(connection = {}) {
@@ -71,8 +71,8 @@ export function getDiscordAvatarClassName(user = {}, className = "avatar") {
 export function getDiscordAvatarStyle(user = {}) {
   const avatarUrl = getDiscordAvatarUrl(user);
   return avatarUrl
-    ? { "--avatar": user.avatarColor, backgroundImage: `url("${avatarUrl}")` }
-    : { "--avatar": user.avatarColor };
+    ? { "--avatar": user?.avatarColor, backgroundImage: `url("${avatarUrl}")` }
+    : { "--avatar": user?.avatarColor };
 }
 
 export function createDemoDiscordConnection(user = {}) {
@@ -250,6 +250,7 @@ export function syncDiscordNotificationDeliveries(state = {}) {
   const existingDeliveries = state.discordNotificationDeliveries ?? [];
   const queuedNotificationIds = new Set(existingDeliveries.map((delivery) => delivery.notificationId));
   const now = new Date().toISOString();
+  const discordUserId = getDiscordConnectionUserId(getDiscordConnection(targetUser));
   const nextDeliveries = notifications
     .filter((notification) => notification?.id && !notification.readAt)
     .filter((notification) => !queuedNotificationIds.has(notification.id))
@@ -262,7 +263,7 @@ export function syncDiscordNotificationDeliveries(state = {}) {
         id: `discord-${currentUserId}-${notification.id}`,
         notificationId: notification.id,
         targetUserId: currentUserId,
-        discordUserId: getDiscordConnection(targetUser).userId,
+        discordUserId,
         event,
         title: notification.title,
         body: notification.body,
