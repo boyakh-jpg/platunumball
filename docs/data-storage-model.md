@@ -80,7 +80,7 @@
 - `referee_requests`, `referee_exam_attempts`는 일반 bridge write에서 제외한다. 심판 시험/요청은 `POST /api/referee/sync`만 사용한다.
 - 일반 유저는 자기 `notifications`, `discord_notification_deliveries` row만 브리지로 쓸 수 있다.
 - `court_requests` write는 브리지를 우회하지 않고 `POST /api/court-requests/submit`, `approve`, `report` server action으로 처리한다.
-- `approved_courts`, 관리자 임명, 심판 임명, audit log, 징계 row는 관리자 권한이 있어야 쓸 수 있다.
+- `approved_courts`, 관리자 임명, 심판 임명, audit log, 징계 row는 bridge에서 직접 쓸 수 없고 전용 server action/RPC만 사용한다.
 - 서버 API에는 `SUPABASE_SERVICE_ROLE_KEY`가 필요하다. 프론트 env에 넣으면 안 된다.
 - 최초 최고관리자는 `RANKBALL_OWNER_AUTH_USER_IDS` 또는 `RANKBALL_OWNER_PROFILE_IDS` env로 지정하거나 DB에 active `admin_appointments`를 넣어야 한다.
 - Supabase 설정 환경이면 구장 등록요청 제출/신고/승인은 local state 갱신과 함께 서버 transaction API도 호출한다. 끄려면 `VITE_ENABLE_SERVER_ACTIONS=false`를 명시한다.

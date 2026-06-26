@@ -1,13 +1,8 @@
-import { getAdminLevel, getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 
 const TABLE_CONFIG = {
   notifications: { onConflict: "id", ownerFields: ["user_id", "target_user_id"] },
   discord_notification_deliveries: { onConflict: "id", ownerFields: ["target_user_id"] },
-  approved_courts: { onConflict: "id", minAdminLevel: 30 },
-  admin_appointments: { onConflict: "id", minAdminLevel: 80 },
-  referee_appointments: { onConflict: "id", minAdminLevel: 50 },
-  admin_audit_log: { onConflict: "id", minAdminLevel: 30 },
-  admin_disciplinary_actions: { onConflict: "id", minAdminLevel: 50 },
 };
 
 const MAX_ROWS = 500;
@@ -23,13 +18,7 @@ function rowBelongsToProfile(row, profileId, ownerFields = []) {
   return ownerFields.some((field) => row[field] && row[field] === profileId);
 }
 
-function validateRows({ rows, config, profileId, adminLevel }) {
-  if (config.minAdminLevel && adminLevel < config.minAdminLevel) {
-    const error = new Error("admin_permission_required");
-    error.statusCode = 403;
-    throw error;
-  }
-
+function validateRows({ rows, config, profileId }) {
   return rows.flatMap((row) => {
     if (!row.id) {
       const error = new Error("missing_row_id");
@@ -37,7 +26,7 @@ function validateRows({ rows, config, profileId, adminLevel }) {
       throw error;
     }
 
-    if (!config.minAdminLevel && !rowBelongsToProfile(row, profileId, config.ownerFields) && adminLevel < 30) {
+    if (!rowBelongsToProfile(row, profileId, config.ownerFields)) {
       return [];
     }
 
@@ -68,8 +57,7 @@ export default async function handler(request, response) {
     }
 
     const context = await getAuthenticatedContext(request);
-    const adminLevel = await getAdminLevel(context);
-    const safeRows = validateRows({ rows, config, profileId: context.profileId, adminLevel });
+    const safeRows = validateRows({ rows, config, profileId: context.profileId });
     if (!safeRows.length) {
       sendJson(response, 200, { ok: true, count: 0 });
       return;
