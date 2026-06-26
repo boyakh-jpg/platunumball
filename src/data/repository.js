@@ -1222,6 +1222,12 @@ function getMaxUpdatedAt(rows) {
 
 export async function loadNormalizedRemoteStateFromClient(client = supabase, authUserId = "", authEmail = "", options = {}) {
   const clientState = options.clientState === true;
+  const scope = String(options.scope || "full");
+  const includeMatches = scope === "full" || scope === "matches";
+  const includeRecruiting = scope === "full" || scope === "recruiting";
+  const includeTournaments = scope === "full" || scope === "tournaments";
+  const includeAppMeta = scope === "full";
+  const includeUserScoped = scope === "full";
   const authUserIdText = String(authUserId || "");
   const testLoginId = getBackendTestLoginId(authUserIdText);
   const matchScopeIds = uniqueScopeIds(options.matchIds ?? options.matchId);
@@ -1266,11 +1272,11 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
     fetchAllRows("teams", TEAM_COLUMNS, "id", client),
     fetchAllRows("team_members", TEAM_MEMBER_COLUMNS, null, client),
     fetchAllRows("courts", COURT_COLUMNS, "id", client),
-    fetchFilteredRows("matches", MATCH_COLUMNS, "updated_at", client, matchFilter, matchLimit, !matchLimit),
-    fetchFilteredRows("recruiting_posts", RECRUITING_POST_COLUMNS, "updated_at", client, recruitingFilter, recruitingLimit, !recruitingLimit),
-    fetchFilteredRows("tournaments", TOURNAMENT_COLUMNS, "updated_at", client, tournamentFilter, tournamentLimit, !tournamentLimit),
-    fetchAllRows("seasons", SEASON_COLUMNS, "id", client),
-    fetchAllRows("affiliations", AFFILIATION_COLUMNS, "id", client),
+    includeMatches ? fetchFilteredRows("matches", MATCH_COLUMNS, "updated_at", client, matchFilter, matchLimit, !matchLimit) : [],
+    includeRecruiting ? fetchFilteredRows("recruiting_posts", RECRUITING_POST_COLUMNS, "updated_at", client, recruitingFilter, recruitingLimit, !recruitingLimit) : [],
+    includeTournaments ? fetchFilteredRows("tournaments", TOURNAMENT_COLUMNS, "updated_at", client, tournamentFilter, tournamentLimit, !tournamentLimit) : [],
+    includeAppMeta ? fetchAllRows("seasons", SEASON_COLUMNS, "id", client) : [],
+    includeAppMeta ? fetchAllRows("affiliations", AFFILIATION_COLUMNS, "id", client) : [],
   ]);
 
   const privateProfileById = new Map((privateProfiles ?? []).map((profile) => [profile.id, profile]));
@@ -1288,18 +1294,18 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
   const currentUserId = currentProfile?.id ?? shellUser?.id ?? profiles[0]?.id ?? "";
   const isAdminStateLoad = options.isAdmin === true;
   const [favorites, notifications, discordNotificationDeliveries, profileSettingsRows] = await Promise.all([
-    currentUserId
+    includeUserScoped && currentUserId
       ? fetchFilteredRows("favorites", FAVORITE_COLUMNS, null, client, (query) => query.eq("user_id", currentUserId))
       : [],
-    currentUserId
+    includeUserScoped && currentUserId
       ? fetchOptionalFilteredRows("notifications", NOTIFICATION_COLUMNS, "created_at", client, (query) => query
         .or(`user_id.is.null,user_id.eq.${currentUserId}`)
         .or(`target_user_id.is.null,target_user_id.eq.${currentUserId}`))
       : [],
-    currentUserId
+    includeUserScoped && currentUserId
       ? fetchOptionalFilteredRows("discord_notification_deliveries", DISCORD_DELIVERY_COLUMNS, "queued_at", client, (query) => query.eq("target_user_id", currentUserId))
       : [],
-    currentUserId
+    includeUserScoped && currentUserId
       ? fetchOptionalFilteredRows("profiles", PROFILE_SETTINGS_COLUMNS, null, client, (query) => query.eq("id", currentUserId))
       : [],
   ]);
@@ -1315,41 +1321,45 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
     adminAuditLog,
     adminDisciplinaryActions,
   ] = await Promise.all([
-    !currentUserId
+    !includeUserScoped || !currentUserId
       ? []
       : isAdminStateLoad
         ? fetchOptionalRows("reports", REPORT_COLUMNS, "created_at", client)
         : fetchOptionalFilteredRows("reports", REPORT_COLUMNS, "created_at", client, (query) => query
           .or(`user_id.eq.${currentUserId},target_id.eq.${currentUserId},reported_user_ids.cs.{${currentUserId}}`)),
-    !currentUserId
+    !includeUserScoped || !currentUserId
       ? []
       : isAdminStateLoad
         ? fetchOptionalRows("court_requests", COURT_REQUEST_COLUMNS, "created_at", client)
         : fetchOptionalFilteredRows("court_requests", COURT_REQUEST_COLUMNS, "created_at", client, (query) => query.eq("requested_by", currentUserId)),
-    isAdminStateLoad
+    !includeUserScoped
+      ? []
+      : isAdminStateLoad
       ? fetchOptionalRows("approved_courts", APPROVED_COURT_COLUMNS, "created_at", client)
       : fetchOptionalFilteredRows("approved_courts", APPROVED_COURT_COLUMNS, "created_at", client, (query) => query.or("status.is.null,status.eq.active")),
-    isAdminStateLoad
+    !includeUserScoped
+      ? []
+      : isAdminStateLoad
       ? fetchOptionalRows("court_reviews", COURT_REVIEW_COLUMNS, "created_at", client)
       : fetchOptionalFilteredRows("court_reviews", COURT_REVIEW_COLUMNS, "created_at", client, (query) => query.or("status.is.null,status.eq.active")),
-    !currentUserId
+    !includeUserScoped || !currentUserId
       ? []
       : isAdminStateLoad
         ? fetchOptionalRows("referee_requests", REFEREE_REQUEST_COLUMNS, "created_at", client)
         : fetchOptionalFilteredRows("referee_requests", REFEREE_REQUEST_COLUMNS, "created_at", client, (query) => query.eq("requested_by", currentUserId)),
-    !currentUserId
+    !includeUserScoped || !currentUserId
       ? []
       : isAdminStateLoad
         ? fetchOptionalRows("referee_exam_attempts", REFEREE_EXAM_ATTEMPT_COLUMNS, "created_at", client)
         : fetchOptionalFilteredRows("referee_exam_attempts", REFEREE_EXAM_ATTEMPT_COLUMNS, "created_at", client, (query) => query.eq("user_id", currentUserId)),
-    !currentUserId
+    !includeUserScoped || !currentUserId
       ? []
       : isAdminStateLoad
         ? fetchOptionalRows("admin_appointments", APPOINTMENT_COLUMNS, "created_at", client)
         : fetchOptionalFilteredRows("admin_appointments", APPOINTMENT_COLUMNS, "created_at", client, (query) => query.eq("user_id", currentUserId)),
-    fetchOptionalRows("referee_appointments", APPOINTMENT_COLUMNS, "created_at", client),
-    isAdminStateLoad ? fetchOptionalRows("admin_audit_log", ADMIN_AUDIT_COLUMNS, "created_at", client) : [],
-    !currentUserId
+    includeUserScoped ? fetchOptionalRows("referee_appointments", APPOINTMENT_COLUMNS, "created_at", client) : [],
+    includeUserScoped && isAdminStateLoad ? fetchOptionalRows("admin_audit_log", ADMIN_AUDIT_COLUMNS, "created_at", client) : [],
+    !includeUserScoped || !currentUserId
       ? []
       : isAdminStateLoad
         ? fetchOptionalRows("admin_disciplinary_actions", ADMIN_DISCIPLINARY_COLUMNS, "created_at", client)

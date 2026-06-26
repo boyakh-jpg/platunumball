@@ -561,6 +561,7 @@ export function useAppData(authUser = null) {
       const result = await postServerAction(
         "/api/state/load",
         {
+          scope: "matches",
           authUserId,
           authEmail,
           matchLimit: REMOTE_CLIENT_MATCH_LIMIT,

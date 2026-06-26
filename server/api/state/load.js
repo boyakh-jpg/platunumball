@@ -149,6 +149,7 @@ function getStateLoadOptions(body = {}, meta = {}) {
   return {
     clientState: true,
     isAdmin: meta.isAdmin === true,
+    scope: body.scope ?? pagination.scope,
     matchLimit: body.matchLimit ?? pagination.matches?.limit,
     matchUpdatedBefore: body.matchUpdatedBefore ?? body.matchCursor ?? pagination.matches?.updatedBefore ?? pagination.matches?.cursor,
     recruitingLimit: body.recruitingLimit ?? pagination.recruiting?.limit,
