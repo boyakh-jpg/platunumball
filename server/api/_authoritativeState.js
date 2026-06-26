@@ -120,7 +120,9 @@ function getAuthoritativeLoadScope(operation = {}) {
   if (!operation || typeof operation !== "object") return {};
   const action = String(operation.action || "");
   if (action === "approveMatch") return { clientState: true };
+  const scope = action.includes("Recruiting") ? "recruiting" : undefined;
   return {
+    scope,
     matchIds: [
       operation.matchId,
       operation.preferredMatchId,

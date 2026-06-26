@@ -461,10 +461,21 @@ const JOIN_RECRUITING_ACTIONS = new Set([
   "joinRecruitingSideParty",
 ]);
 
+const AUTHORITATIVE_REPLAY_RECRUITING_ACTIONS = new Set([
+  "interestRecruitingPost",
+  "joinRecruitingSideParty",
+  "setRecruitingApplicantPlacement",
+  "setRecruitingSlotPosition",
+]);
+
 const CORE_LOCKED_RECRUITING_ACTIONS = new Set([
   ...PARTICIPANT_RECRUITING_ACTIONS,
   ...JOIN_RECRUITING_ACTIONS,
 ]);
+
+function shouldReplayRecruitingOperation(operation = {}) {
+  return AUTHORITATIVE_REPLAY_RECRUITING_ACTIONS.has(String(operation?.action ?? ""));
+}
 
 function canSyncRecruitingAction(profileId, existingPost, nextPost, action, body = {}) {
   if (!profileId || !nextPost?.id) return false;
@@ -613,7 +624,7 @@ export default async function handler(request, response) {
     let action = body.action ? String(body.action) : "sync";
     let createdMatch = null;
 
-    if (operation && (!post || operation.action === "createRecruitingPost")) {
+    if (operation && (!post || operation.action === "createRecruitingPost" || shouldReplayRecruitingOperation(operation))) {
       const state = await loadAuthoritativeState(context, { operation });
       const result = applyAuthoritativeRecruitingOperation(state, operation);
       post = result.post;
@@ -644,6 +655,12 @@ export default async function handler(request, response) {
     sendJson(response, 200, result);
   } catch (error) {
     console.error("Recruiting post sync failed.", error);
-    sendJson(response, error.statusCode || 500, { error: error.message || "recruiting_post_sync_failed" });
+    sendJson(response, error.statusCode || 500, {
+      error: error.message || "recruiting_post_sync_failed",
+      details: {
+        reason: error.message || "recruiting_post_sync_failed",
+        statusCode: error.statusCode || 500,
+      },
+    });
   }
 }

@@ -1253,3 +1253,4 @@ flowchart TD
 3. `confirmRecruitingMatch` may include `createdMatch` so the recruiting action can persist both the closed recruiting room and the created match without reloading full state.
 4. `approveMatch` remains on server replay because rating commit extraction needs before/after profile and team deltas.
 5. `createRecruitingPost` and `createMatch` do not use the fast path; server actions replay the reducer with authenticated `profileId` so Google login profile ids become the room owner and creator.
+6. Google/auth actor-sensitive recruiting actions such as public join, side party join, applicant placement, and slot position change replay the reducer on the server with `context.profileId` and target recruiting scope instead of trusting a client snapshot.

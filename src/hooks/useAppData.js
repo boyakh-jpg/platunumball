@@ -105,6 +105,10 @@ function makeClientNotificationId(prefix = "n") {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
 }
 
+function getServerActionErrorText(error = {}) {
+  return String(error.details?.reason || error.code || error.message || "server_action_failed");
+}
+
 const SERVER_OPERATION_ACTIONS = new Set([
   "createMatch",
   "updateTournamentMatchSchedule",
@@ -479,12 +483,16 @@ export function useAppData(authUser = null) {
       if (!result) throw new Error("server_action_unavailable");
       return result;
     }).catch((error) => {
-      const errorCode = error.code || error.message || "server_action_failed";
-      console.warn(`Server action skipped: ${path}`, error.message);
-      pushLocalWarning("서버 저장 실패", "서버에 저장되지 않았습니다. 새로고침하면 방/경기 변경이 사라질 수 있습니다.", {
-        payload: { path, error: errorCode, statusCode: error.statusCode ?? null },
+      const errorCode = getServerActionErrorText(error);
+      console.warn(`Server action skipped: ${path}`, {
+        reason: errorCode,
+        statusCode: error.statusCode ?? null,
+        details: error.details ?? null,
       });
-      return { ok: false, error: errorCode, statusCode: error.statusCode ?? null, path };
+      pushLocalWarning("서버 저장 실패", `서버에 저장되지 않았습니다. 이유: ${errorCode}`, {
+        payload: { path, error: errorCode, statusCode: error.statusCode ?? null, details: error.details ?? null },
+      });
+      return { ok: false, error: errorCode, statusCode: error.statusCode ?? null, path, details: error.details ?? null };
     });
   }, [pushLocalWarning]);
   const persistProfileServer = useCallback((profile) => {
@@ -656,13 +664,14 @@ export function useAppData(authUser = null) {
       };
       const rollbackServerMutation = (snapshot, label, payload = {}) => {
         if (!snapshot) return;
+        const reason = payload.error ? ` 이유: ${payload.error}` : "";
         setState({
           ...snapshot,
           notifications: [
             {
               id: makeClientNotificationId("n"),
               title: "서버 저장 실패",
-              body: `${label}이 서버에 저장되지 않아 화면 변경을 되돌렸습니다.`,
+              body: `${label}이 서버에 저장되지 않아 화면 변경을 되돌렸습니다.${reason}`,
               tone: "orange",
               createdAt: new Date().toISOString(),
               payload,
@@ -678,6 +687,7 @@ export function useAppData(authUser = null) {
               ...payload,
               error: result?.error ?? payload.error,
               statusCode: result?.statusCode ?? payload.statusCode,
+              details: result?.details ?? payload.details,
             });
             return result || false;
           }
