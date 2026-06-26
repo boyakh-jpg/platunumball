@@ -1190,6 +1190,7 @@ flowchart TD
 5. Real Google accounts still use `profiles.auth_user_id = auth.users.id` for ownership.
 6. Seed cleanup actually deletes rows only when `RANKBALL_CONFIRM_CLEANUP=rankball` is set.
 7. This is backend simulation data setup, not completed authoritative room/match RPC migration.
+8. Seeded test accounts are treated as onboarding-complete profiles. Missing `birthYear`, `ageGroup`, `handleLockedAt`, or `birthYearLockedAt` is backfilled for `profiles.test_login_id` rows so test login does not enter `/app/signup`.
 
 ## 2026-06-26 hashtag canonical identity
 

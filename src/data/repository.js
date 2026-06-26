@@ -155,6 +155,10 @@ const HOST_TRUST_MIN = {
   rankedPublic: 75,
   official: 80,
 };
+const TEST_PROFILE_SETUP_AT = "2026-06-17T09:00:00.000Z";
+const TEST_PROFILE_BIRTH_YEAR = 2000;
+const TEST_PROFILE_AGE_GROUP = "open";
+const TEST_PROFILE_AGE_GROUP_SEASON = "2026-h1";
 
 function isRecruitingRoomOwner(post = {}, userId = "") {
   return Boolean(userId && getRecruitingRoomOwnerId(post) === userId);
@@ -801,6 +805,8 @@ function toDateTime(date, time, fallback) {
 
 function fromRemoteProfile(row) {
   const hashtag = toHashtag(row.hashtag ?? row.handle ?? row.id, row.id);
+  const isTestProfile = Boolean(row.test_login_id);
+  const testSetupAt = row.updated_at ?? row.created_at ?? TEST_PROFILE_SETUP_AT;
   return {
     id: row.id,
     name: row.name,
@@ -817,15 +823,15 @@ function fromRemoteProfile(row) {
     testPassword: "test-0000",
     authUserId: row.auth_user_id ?? null,
     hashtag,
-    birthYear: row.birth_year ?? null,
-    ageGroup: row.age_group ?? null,
-    ageGroupCheckedSeason: row.age_group_checked_season ?? null,
+    birthYear: row.birth_year ?? (isTestProfile ? TEST_PROFILE_BIRTH_YEAR : null),
+    ageGroup: row.age_group ?? (isTestProfile ? TEST_PROFILE_AGE_GROUP : null),
+    ageGroupCheckedSeason: row.age_group_checked_season ?? (isTestProfile ? TEST_PROFILE_AGE_GROUP_SEASON : null),
     regionSido: row.region_sido ?? null,
     regionDistrict: row.region_district ?? null,
-    onboardingComplete: row.onboarding_complete ?? false,
+    onboardingComplete: Boolean(row.onboarding_complete || isTestProfile),
     profileVersion: row.profile_version ?? 0,
-    handleLockedAt: row.handle_locked_at ?? null,
-    birthYearLockedAt: row.birth_year_locked_at ?? null,
+    handleLockedAt: row.handle_locked_at ?? (isTestProfile ? testSetupAt : null),
+    birthYearLockedAt: row.birth_year_locked_at ?? (isTestProfile ? testSetupAt : null),
     nameUpdatedAt: row.name_updated_at ?? null,
     discordConnection: row.discord_connection ?? null,
     discordUserId: row.discord_user_id ?? row.discord_connection?.userId ?? null,
@@ -1556,20 +1562,22 @@ export async function saveNormalizedRemoteState(state, options = {}) {
   const deletedTeamIds = state.deletedTeamIds ?? [];
   const profileRows = state.users.map((user) => {
     const hashtag = getUserHashtag(user);
+    const isTestProfile = Boolean(user.testLoginId);
+    const setupAt = user.updatedAt ?? user.createdAt ?? TEST_PROFILE_SETUP_AT;
     return {
       id: user.id,
       name: user.name,
       handle: hashtag,
       hashtag,
-      birth_year: user.birthYear ?? null,
-      age_group: user.ageGroup ?? null,
-      age_group_checked_season: user.ageGroupCheckedSeason ?? null,
+      birth_year: user.birthYear ?? (isTestProfile ? TEST_PROFILE_BIRTH_YEAR : null),
+      age_group: user.ageGroup ?? (isTestProfile ? TEST_PROFILE_AGE_GROUP : null),
+      age_group_checked_season: user.ageGroupCheckedSeason ?? (isTestProfile ? TEST_PROFILE_AGE_GROUP_SEASON : null),
       region_sido: user.regionSido ?? null,
       region_district: user.regionDistrict ?? null,
-      onboarding_complete: Boolean(user.onboardingComplete),
+      onboarding_complete: Boolean(user.onboardingComplete || isTestProfile),
       profile_version: user.profileVersion ?? 0,
-      handle_locked_at: user.handleLockedAt ?? null,
-      birth_year_locked_at: user.birthYearLockedAt ?? null,
+      handle_locked_at: user.handleLockedAt ?? (isTestProfile ? setupAt : null),
+      birth_year_locked_at: user.birthYearLockedAt ?? (isTestProfile ? setupAt : null),
       name_updated_at: user.nameUpdatedAt ?? null,
       region: user.region,
       position: user.position,

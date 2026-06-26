@@ -19,6 +19,10 @@ const supabase = createClient(url, serviceRoleKey, {
 
 const TEST_LOGIN_PREFIX = process.env.RANKBALL_TEST_LOGIN_PREFIX || "rankball";
 const DEFAULT_TEST_PASSWORD = process.env.RANKBALL_TEST_PASSWORD || "test-0000";
+const TEST_PROFILE_SETUP_AT = "2026-06-17T09:00:00.000Z";
+const TEST_PROFILE_BIRTH_YEAR = 2000;
+const TEST_PROFILE_AGE_GROUP = "open";
+const TEST_PROFILE_AGE_GROUP_SEASON = "2026-h1";
 
 function getSeedUserNumber(userId = "", fallbackIndex = 0) {
   const match = String(userId).match(/^u(\d+)$/);
@@ -38,6 +42,13 @@ function withBackendTestLogins(state) {
       testLoginId: user.testLoginId ?? getSeedTestLoginId(user.id, index),
       testPassword: user.testPassword ?? DEFAULT_TEST_PASSWORD,
       authUserId: user.authUserId ?? null,
+      birthYear: user.birthYear ?? TEST_PROFILE_BIRTH_YEAR,
+      ageGroup: user.ageGroup ?? TEST_PROFILE_AGE_GROUP,
+      ageGroupCheckedSeason: user.ageGroupCheckedSeason ?? TEST_PROFILE_AGE_GROUP_SEASON,
+      onboardingComplete: true,
+      profileVersion: user.profileVersion ?? 1,
+      handleLockedAt: user.handleLockedAt ?? TEST_PROFILE_SETUP_AT,
+      birthYearLockedAt: user.birthYearLockedAt ?? TEST_PROFILE_SETUP_AT,
     })),
   };
 }

@@ -325,6 +325,7 @@ Remaining:
 - Mapping rule: `u1 -> rankball-001`, `u2 -> rankball-002`, and so on.
 - Test login bearer tokens remain `test-token-rankball-001`, `test-token-rankball-002`, and so on.
 - Test seed profiles keep `profiles.auth_user_id = null`; real Google accounts still use `profiles.auth_user_id`.
+- Test seed profiles are saved as onboarding-complete rows. If older `profiles.test_login_id` rows lack onboarding lock fields, the client maps them as completed test profiles until the seed is rerun.
 - `npm run seed:supabase:cleanup` is dry-run by default.
 - Actual cleanup requires `RANKBALL_CONFIRM_CLEANUP=rankball npm run seed:supabase:cleanup`.
 - Cleanup deletes only ids derived from the current demo seed state plus `seed-owner-u1`.
