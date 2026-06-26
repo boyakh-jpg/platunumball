@@ -1274,6 +1274,13 @@ flowchart TD
 1. Supabase 모드 방/경기/팀 write는 optimistic update 전에 server action 가능 여부를 확인한다.
 2. Google OAuth session access token이 없으면 로컬 화면만 먼저 바꾸지 않는다.
 3. 테스트 로그인은 localhost 기본 허용과 `VITE_DEMO_LOGIN=true` 명시 허용만 사용한다. `.vercel.app` 도메인이라는 이유만으로 허용하지 않는다.
+
+## 2026-06-27 Google profile binding
+
+1. Persistent Supabase auth의 currentUser 바인딩은 `authUserId`가 일치하는 프로필을 우선한다.
+2. 소유권이 확인되지 않으면 관련 없는 public/demo user로 fallback하지 않는다.
+3. 방/경기/대회 생성 local reducer 차단 응답은 `currentUserId`, `trustScore`, `authBound` actor debug를 포함해 stale binding과 DB 검증 실패를 구분한다.
+
 ## 2026-06-27 recruiting list pagination
 
 1. Recruiting list reads use `/api/recruiting/list` for additional pages.

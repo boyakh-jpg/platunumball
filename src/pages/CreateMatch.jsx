@@ -83,6 +83,15 @@ function getActionErrorCode(result) {
   return String(result.error || result.message || "server_action_failed");
 }
 
+function formatActionDebugDetails(details = null) {
+  if (!details || typeof details !== "object") return "";
+  const detailText = Object.entries(details)
+    .filter(([, value]) => value !== "" && value !== null && value !== undefined)
+    .map(([key, value]) => `${key}=${value}`)
+    .join(", ");
+  return detailText ? `[${detailText}]` : "";
+}
+
 function getDefaultCreateTitle(mode = "5v5") {
   return `오늘의 ${mode} 공식전`;
 }
@@ -95,9 +104,11 @@ function formatCreateSaveError(result, fallback) {
   const errorCode = getActionErrorCode(result);
   if (!errorCode) return fallback;
   const detail = typeof result?.message === "string" ? result.message : "";
+  const debugDetail = formatActionDebugDetails(result?.details);
   const lowerCode = errorCode.toLowerCase();
   let reason = "";
   if (errorCode === "local_reducer_blocked") {
+    if (debugDetail && detail) return `${detail} ${debugDetail} 원문: ${errorCode}`;
     reason = detail || "화면 입력값이 생성 조건을 통과하지 못했습니다.";
   } else if (lowerCode.includes("rankball_recruiting_action") || lowerCode.includes("rankball_match_action") || lowerCode.includes("could not find the function")) {
     reason = "Supabase DB에 최신 SQL 함수가 아직 적용되지 않았습니다. `supabase/schema.sql`의 action RPC를 먼저 배포해야 합니다.";

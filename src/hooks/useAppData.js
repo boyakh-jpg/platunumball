@@ -117,6 +117,25 @@ function getNewItems(before = [], after = []) {
   return (after ?? []).filter((item) => item?.id && !beforeIds.has(item.id));
 }
 
+function getClientProfileShellId(authUserId = "") {
+  const safeId = String(authUserId || "pending").replace(/[^a-zA-Z0-9]/g, "").slice(0, 18) || "pending";
+  return `p_${safeId}`;
+}
+
+function isPersistentProfileId(userId = "") {
+  return /^p_[a-z0-9]/i.test(String(userId || ""));
+}
+
+function getActionActorDebug(state = {}, currentUserId = "") {
+  const actor = (state.users ?? []).find((user) => user.id === currentUserId) ?? null;
+  return {
+    currentUserId,
+    actorName: actor?.name ?? "",
+    trustScore: actor?.trustScore ?? "",
+    authBound: Boolean(actor?.authUserId),
+  };
+}
+
 const SERVER_OPERATION_ACTIONS = new Set([
   "createMatch",
   "updateTournamentMatchSchedule",
@@ -256,16 +275,21 @@ function mergeServerRoomResult(state, result = {}) {
 function getBoundAuthProfileId(state, authUserId, profileBindings, profileKey) {
   const users = state.users ?? [];
   if (isPersistentAuthUserId(authUserId)) {
-    const ownedUser = users.find((user) => user.authUserId === authUserId);
-    if (ownedUser) return ownedUser.id;
+    const currentUser = users.find((user) => user.id === state.currentUserId);
+    if (currentUser?.authUserId === authUserId) return currentUser.id;
+
+    const shellId = getClientProfileShellId(authUserId);
+    const ownedUsers = users.filter((user) => user.authUserId === authUserId);
+    const realOwnedUser = ownedUsers.find((user) => user.id !== shellId);
+    if (realOwnedUser) return realOwnedUser.id;
+    if (ownedUsers[0]) return ownedUsers[0].id;
 
     const boundUser = users.find((user) => user.id === profileBindings[profileKey]);
-    if (boundUser && (!boundUser.authUserId || boundUser.authUserId === authUserId)) return boundUser.id;
+    if (boundUser && (boundUser.authUserId === authUserId || (!boundUser.authUserId && isPersistentProfileId(boundUser.id)))) return boundUser.id;
 
-    const currentUser = users.find((user) => user.id === state.currentUserId);
-    if (currentUser && !currentUser.authUserId) return currentUser.id;
+    if (currentUser && !currentUser.authUserId && isPersistentProfileId(currentUser.id)) return currentUser.id;
 
-    return users.find((user) => !user.authUserId)?.id ?? users[0]?.id;
+    return "";
   }
 
   return profileBindings[profileKey] ?? state.currentUserId ?? users[0]?.id;
@@ -920,6 +944,7 @@ export function useAppData(authUser = null) {
         let createdMatch = null;
         let syncedNotifications = [];
         let localBlockNotification = null;
+        let localBlockDebug = {};
         setState((prev) => {
           rollbackState = prev;
           const existingIds = new Set((prev.matches ?? []).map((match) => match.id));
@@ -928,11 +953,13 @@ export function useAppData(authUser = null) {
           createdId = createdMatch?.id ?? null;
           syncedNotifications = createdMatch ? getNewMatchNotifications(prev, next, createdMatch.id) : [];
           localBlockNotification = createdMatch ? null : getNewItems(prev.notifications ?? [], next.notifications ?? [])[0] ?? null;
+          localBlockDebug = createdMatch ? {} : getActionActorDebug(prev, currentUserId);
           return next;
         });
         if (!createdMatch) return Promise.resolve({
           ok: false,
           error: "local_reducer_blocked",
+          details: localBlockDebug,
           message: localBlockNotification ? `${localBlockNotification.title}: ${localBlockNotification.body}` : "경기 생성 조건을 통과하지 못했습니다.",
         });
         return rollbackIfServerFailed(
@@ -952,6 +979,7 @@ export function useAppData(authUser = null) {
         let createdMatches = [];
         let syncedNotifications = [];
         let localBlockNotification = null;
+        let localBlockDebug = {};
         setState((prev) => {
           rollbackState = prev;
           const existingIds = new Set((prev.tournaments ?? []).map((tournament) => tournament.id));
@@ -962,11 +990,13 @@ export function useAppData(authUser = null) {
           createdMatches = (next.matches ?? []).filter((match) => !existingMatchIds.has(match.id));
           syncedNotifications = createdTournament ? getNewTournamentNotifications(prev, next) : [];
           localBlockNotification = createdTournament ? null : getNewItems(prev.notifications ?? [], next.notifications ?? [])[0] ?? null;
+          localBlockDebug = createdTournament ? {} : getActionActorDebug(prev, currentUserId);
           return next;
         });
         if (!createdTournament) return Promise.resolve({
           ok: false,
           error: "local_reducer_blocked",
+          details: localBlockDebug,
           message: localBlockNotification ? `${localBlockNotification.title}: ${localBlockNotification.body}` : "대회 생성 조건을 통과하지 못했습니다.",
         });
         const preferredMatchIds = createdMatches.map((match) => match.id);
@@ -1251,6 +1281,7 @@ export function useAppData(authUser = null) {
         let createdPost = null;
         let syncedNotifications = [];
         let localBlockNotification = null;
+        let localBlockDebug = {};
         setState((prev) => {
           rollbackState = prev;
           const existingIds = new Set((prev.recruitingPosts ?? []).map((post) => post.id));
@@ -1258,11 +1289,13 @@ export function useAppData(authUser = null) {
           createdPost = (next.recruitingPosts ?? []).find((post) => !existingIds.has(post.id)) ?? null;
           syncedNotifications = createdPost ? getNewRecruitingNotifications(prev, next, createdPost.id) : [];
           localBlockNotification = createdPost ? null : getNewItems(prev.notifications ?? [], next.notifications ?? [])[0] ?? null;
+          localBlockDebug = createdPost ? {} : getActionActorDebug(prev, currentUserId);
           return next;
         });
         if (!createdPost) return Promise.resolve({
           ok: false,
           error: "local_reducer_blocked",
+          details: localBlockDebug,
           message: localBlockNotification ? `${localBlockNotification.title}: ${localBlockNotification.body}` : "방 생성 조건을 통과하지 못했습니다.",
         });
         return rollbackIfServerFailed(
