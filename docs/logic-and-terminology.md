@@ -1254,3 +1254,11 @@ flowchart TD
 4. `approveMatch` remains on server replay because rating commit extraction needs before/after profile and team deltas.
 5. `createRecruitingPost` and `createMatch` do not use the fast path; server actions replay the reducer with authenticated `profileId` so Google login profile ids become the room owner and creator.
 6. Google/auth actor-sensitive recruiting actions such as public join, side party join, applicant placement, and slot position change replay the reducer on the server with `context.profileId` and target recruiting scope instead of trusting a client snapshot.
+
+## 2026-06-27 server action auth 실패 노출
+
+1. Supabase 모드 write action은 브라우저 action access token이 없을 때 조용히 skip하지 않는다.
+2. 브라우저 access token 없음은 `server_action_missing_access_token`으로 노출한다.
+3. server action 비활성화는 `server_actions_disabled`로 노출한다.
+4. 모집/경기/팀/토너먼트 optimistic UI는 실패 시 rollback하고 정확한 server action 사유를 보여준다.
+5. `VITE_ENABLE_SERVER_ACTIONS`는 문자열 `true` 또는 `false`만 사용한다. 잘못된 값은 Supabase 설정 기본값으로 fallback되며 배포 env에서 고쳐야 한다.

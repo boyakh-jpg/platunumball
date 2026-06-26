@@ -512,6 +512,111 @@ async function runOneOnOneScenario({
   };
 }
 
+async function runRecruitingActorScenario({
+  label,
+  hostLogin,
+  opponentLogin,
+}) {
+  ids = makeScenarioIds(label);
+  const hostId = await step(`${ids.label}:resolveProfile:host`, () => getProfileIdForLogin(hostLogin));
+  const opponentId = await step(`${ids.label}:resolveProfile:opponent`, () => getProfileIdForLogin(opponentLogin));
+  assertFlow(hostId !== opponentId, "host and opponent must be different profiles", { hostId, opponentId });
+
+  const createResult = await step(`${ids.label}:createRecruitingPost`, () => syncRecruitingAs(hostLogin, {
+    action: "createRecruitingPost",
+    preferredPostId: ids.postId,
+    draft: {
+      id: ids.postId,
+      title: `Backend simulation ${ids.label}`,
+      visibility: "public",
+      hostJoinMode: "player",
+      mode: "2v2",
+      sideCapacity: 2,
+      timingType: "instant",
+      ranked: false,
+      official: false,
+      preRegistered: true,
+      teamOnly: false,
+      refereeWanted: false,
+      region: "Backend Simulation",
+      court: "Backend Simulation Court",
+      position: "PG",
+      memo: "Backend simulation row. Safe to delete.",
+      rules: {
+        targetScore: 21,
+        timeLimit: 12,
+        winByTwo: true,
+        ball: "7",
+      },
+    },
+  }));
+  let post = createResult?.post;
+  assertFlow(post?.id === ids.postId, "created actor post not returned", createResult);
+  assertFlow(post.ownerId === hostId || post.playerId === hostId, "created actor post owner mismatch", { hostId, post });
+
+  const joinResult = await step(`${ids.label}:interestRecruitingPost:opponent`, () => syncRecruitingAs(opponentLogin, {
+    action: "interestRecruitingPost",
+    postId: ids.postId,
+    application: {
+      joinMode: "player",
+      side: "teamB",
+      position: "SG",
+    },
+    joinMode: "player",
+  }));
+  post = joinResult?.post;
+  let applicant = post?.applicants?.find((item) => item.playerId === opponentId);
+  assertFlow(Boolean(applicant), "actor opponent join not persisted", { opponentId, post });
+  assertFlow(applicant.position === "SG", "actor join position not persisted", { opponentId, applicant });
+
+  const positionResult = await step(`${ids.label}:setRecruitingSlotPosition:opponent`, () => syncRecruitingAs(opponentLogin, {
+    action: "setRecruitingSlotPosition",
+    postId: ids.postId,
+    playerId: opponentId,
+    position: "SF",
+  }));
+  post = positionResult?.post;
+  assertFlow(post?.roomState?.slotPositions?.[opponentId] === "SF", "actor slot position not persisted", { opponentId, post });
+
+  const reserveResult = await step(`${ids.label}:setRecruitingApplicantPlacement:reserve`, () => syncRecruitingAs(opponentLogin, {
+    action: "setRecruitingApplicantPlacement",
+    postId: ids.postId,
+    playerId: opponentId,
+    placement: {
+      side: "teamB",
+      reserve: true,
+    },
+  }));
+  post = reserveResult?.post;
+  applicant = post?.applicants?.find((item) => item.playerId === opponentId);
+  assertFlow(applicant?.reserve === true, "actor reserve placement not persisted", { opponentId, applicant, post });
+
+  const activeResult = await step(`${ids.label}:setRecruitingApplicantPlacement:active`, () => syncRecruitingAs(opponentLogin, {
+    action: "setRecruitingApplicantPlacement",
+    postId: ids.postId,
+    playerId: opponentId,
+    placement: {
+      side: "teamB",
+      reserve: false,
+    },
+  }));
+  post = activeResult?.post;
+  applicant = post?.applicants?.find((item) => item.playerId === opponentId);
+  assertFlow(applicant?.reserve === false, "actor active placement not persisted", { opponentId, applicant, post });
+  assertFlow(post?.roomState?.slotPositions?.[opponentId] === "SF", "actor position lost after placement", { opponentId, post });
+
+  return {
+    label: ids.label,
+    hostLogin,
+    opponentLogin,
+    hostId,
+    opponentId,
+    postId: ids.postId,
+    position: post.roomState.slotPositions[opponentId],
+    reserve: applicant.reserve,
+  };
+}
+
 async function main() {
   const schemaHealth = await assertRemoteSchemaHealth();
   const basicHostLogin = process.env.RANKBALL_SIM_HOST || "rankball-010";
@@ -519,8 +624,15 @@ async function main() {
   const refereeHostLogin = process.env.RANKBALL_SIM_REF_HOST || "rankball-012";
   const refereeOpponentLogin = process.env.RANKBALL_SIM_REF_OPPONENT || "rankball-013";
   const refereeLogin = process.env.RANKBALL_SIM_REFEREE || "rankball-001";
+  const actorHostLogin = process.env.RANKBALL_SIM_ACTOR_HOST || "rankball-014";
+  const actorOpponentLogin = process.env.RANKBALL_SIM_ACTOR_OPPONENT || "rankball-015";
 
   const scenarios = [];
+  scenarios.push(await runRecruitingActorScenario({
+    label: "recruiting_actor_join_position",
+    hostLogin: actorHostLogin,
+    opponentLogin: actorOpponentLogin,
+  }));
   scenarios.push(await runOneOnOneScenario({
     label: "basic_1v1_no_referee",
     hostLogin: basicHostLogin,

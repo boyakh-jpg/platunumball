@@ -2,6 +2,13 @@ import { isServerActionsEnabled, isSupabaseConfigured, supabase } from "./supaba
 
 const TEST_SESSION_KEY = "rankball.auth.testSession.v1";
 
+function createServerActionError(code, details = {}) {
+  const error = new Error(code);
+  error.code = code;
+  error.details = { reason: code, ...details };
+  return error;
+}
+
 export async function getClientActionAccessToken() {
   const { data } = await supabase.auth.getSession();
   const accessToken = data?.session?.access_token;
@@ -18,10 +25,14 @@ export async function getClientActionAccessToken() {
 
 export async function postServerAction(path, payload = {}, options = {}) {
   if (!isSupabaseConfigured) return false;
-  if (!options.allowWhenDisabled && !isServerActionsEnabled) return false;
+  if (!options.allowWhenDisabled && !isServerActionsEnabled) {
+    throw createServerActionError("server_actions_disabled", { path });
+  }
 
   const accessToken = await getClientActionAccessToken();
-  if (!accessToken) return false;
+  if (!accessToken) {
+    throw createServerActionError("server_action_missing_access_token", { path });
+  }
 
   const response = await fetch(path, {
     method: "POST",

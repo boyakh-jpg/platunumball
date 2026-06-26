@@ -10,8 +10,9 @@ const key =
 export const isSupabaseConfigured = Boolean(url && key);
 
 function isEnabledFlag(value, defaultValue = false) {
-  if (value === "true") return true;
-  if (value === "false") return false;
+  const normalized = String(value ?? "").trim().toLowerCase();
+  if (normalized === "true") return true;
+  if (normalized === "false") return false;
   return defaultValue;
 }
 

@@ -3415,5 +3415,12 @@ export default function Recruiting({ app }) {
       </div>
     );
   }
+  if (app.remoteReady === false) {
+    return (
+      <div className="page-stack">
+        <div className="empty-state">서버 데이터를 불러오는 중입니다.</div>
+      </div>
+    );
+  }
   return <RecruitingReady app={app} />;
 }
