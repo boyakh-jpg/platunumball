@@ -294,7 +294,12 @@ function getViewCount(matches, view, userId) {
 }
 
 function matchHasUser(match, userId) {
-  return Boolean(getUserParticipantSideName(match, userId));
+  return Boolean(
+    getUserParticipantSideName(match, userId) ||
+    match.createdBy === userId ||
+    match.refereeId === userId ||
+    match.formerRefereeId === userId
+  );
 }
 
 function getUserSideName(match, userId) {

@@ -608,7 +608,7 @@ export function useAppData(authUser = null) {
           syncedNotifications = syncedPost ? getNewRecruitingNotifications(prev, next, postId) : [];
           return next;
         });
-        if (syncedPost) rollbackIfServerFailed(syncRecruitingPostServer(syncedPost, syncedNotifications, meta), rollbackState, "방 변경", { action: meta.action, postId });
+        if (syncedPost) rollbackIfServerFailed(syncRecruitingPostServer(syncedPost, syncedNotifications, { ...meta, postId }), rollbackState, "방 변경", { action: meta.action, postId });
       };
       const applyMatchMutation = (matchId, reducer, meta = {}) => {
         if (!ensureRemoteReady("경기 변경")) return;
@@ -624,7 +624,7 @@ export function useAppData(authUser = null) {
           syncedNotifications = syncedMatch ? getNewMatchNotifications(prev, next, matchId) : [];
           return next;
         });
-        if (syncedMatch) rollbackIfServerFailed(syncMatchServer(syncedMatch, syncedNotifications, meta), rollbackState, "경기 변경", { action: meta.action, matchId });
+        if (syncedMatch) rollbackIfServerFailed(syncMatchServer(syncedMatch, syncedNotifications, { ...meta, matchId }), rollbackState, "경기 변경", { action: meta.action, matchId });
       };
       const applyTeamMutation = (teamId, reducer) => {
         if (!ensureRemoteReady("팀 변경")) return;
@@ -1012,8 +1012,8 @@ export function useAppData(authUser = null) {
         if (syncedPost || createdMatch) {
           rollbackIfServerFailed(
             syncedPost
-              ? syncRecruitingPostServer(syncedPost, [...syncedNotifications, ...syncedMatchNotifications], { action: "confirmRecruitingMatch", preferredMatchId: createdMatch?.id })
-              : syncMatchServer(createdMatch, syncedMatchNotifications, { action: "confirmRecruitingMatch", recruitingPostId: postId }),
+              ? syncRecruitingPostServer(syncedPost, [...syncedNotifications, ...syncedMatchNotifications], { action: "confirmRecruitingMatch", postId, preferredMatchId: createdMatch?.id })
+              : syncMatchServer(createdMatch, syncedMatchNotifications, { action: "confirmRecruitingMatch", matchId: createdMatch?.id, recruitingPostId: postId }),
             rollbackState,
             "방 확정",
             { action: "confirmRecruitingMatch", postId, matchId: createdMatch?.id },

@@ -21,6 +21,7 @@ function getMatchActorIds(match = {}) {
     ...toArray(match.agreements),
     ...toArray(match.approvals),
     ...(match.disputes ?? []).map((dispute) => dispute.by),
+    match.createdBy,
     match.refereeId,
     match.formerRefereeId,
     match.result?.submittedBy,
