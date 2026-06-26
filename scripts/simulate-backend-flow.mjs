@@ -235,6 +235,19 @@ async function syncMatchAs(testLoginId, operation) {
   return callHandler("/api/matches/sync-match", syncMatchHandler, token(testLoginId), { operation });
 }
 
+async function expectRejected(label, action, expectedErrors = []) {
+  try {
+    const payload = await step(label, action);
+    throw new Error(`${label} unexpectedly succeeded: ${JSON.stringify(payload)}`);
+  } catch (error) {
+    const message = String(error?.message || "");
+    if (expectedErrors.length && !expectedErrors.some((expected) => message.includes(expected))) {
+      throw error;
+    }
+    return { rejected: true, message };
+  }
+}
+
 function findPost(state) {
   return (state.recruitingPosts ?? []).find((post) => post.id === ids.postId);
 }
@@ -624,6 +637,90 @@ async function runRecruitingActorScenario({
   };
 }
 
+async function runSoloRoomTeamBlockedScenario({
+  label,
+  hostLogin,
+  teamLogin,
+  teamId,
+}) {
+  ids = makeScenarioIds(label);
+  const hostId = await step(`${ids.label}:resolveProfile:host`, () => getProfileIdForLogin(hostLogin));
+  const teamActorId = await step(`${ids.label}:resolveProfile:teamActor`, () => getProfileIdForLogin(teamLogin));
+  assertFlow(hostId !== teamActorId, "host and team actor must be different profiles", { hostId, teamActorId });
+
+  const createResult = await step(`${ids.label}:createRecruitingPost`, () => syncRecruitingAs(hostLogin, {
+    action: "createRecruitingPost",
+    preferredPostId: ids.postId,
+    draft: {
+      id: ids.postId,
+      title: `Backend simulation ${ids.label}`,
+      visibility: "public",
+      hostJoinMode: "player",
+      mode: "1v1",
+      sideCapacity: 1,
+      timingType: "instant",
+      ranked: false,
+      official: false,
+      preRegistered: true,
+      teamOnly: false,
+      refereeWanted: false,
+      region: "Backend Simulation",
+      court: "Backend Simulation Court",
+      position: "PG",
+      memo: "Backend simulation row. Safe to delete.",
+      rules: {
+        targetScore: 21,
+        timeLimit: 12,
+        winByTwo: true,
+        ball: "7",
+      },
+    },
+  }));
+  const createdPost = createResult?.post;
+  assertFlow(createdPost?.id === ids.postId, "created solo block post not returned", createResult);
+
+  const rejection = await expectRejected(
+    `${ids.label}:interestRecruitingPost:teamBlocked`,
+    () => syncRecruitingAs(teamLogin, {
+      action: "interestRecruitingPost",
+      postId: ids.postId,
+      application: {
+        joinMode: "team",
+        teamId,
+        side: "teamB",
+        playerIds: [teamActorId],
+        position: "PG",
+      },
+      joinMode: "team",
+    }),
+    ["solo_room_team_party_not_allowed", "recruiting_sync_permission_denied", "recruiting_operation_noop"],
+  );
+
+  const stateAfterReject = await step(`${ids.label}:loadAfterReject`, () => loadStateAs(hostLogin));
+  const post = findPost(stateAfterReject);
+  const applications = post?.applicants ?? [];
+  assertFlow(Boolean(post), "solo block post missing after rejection", stateAfterReject);
+  assertFlow(!applications.some((application) => application.teamId || application.kind === "team"), "blocked team application persisted", {
+    applications,
+    post,
+  });
+  assertFlow(!applications.some((application) => application.playerId === teamActorId), "blocked team actor persisted as applicant", {
+    teamActorId,
+    applications,
+  });
+
+  return {
+    label: ids.label,
+    hostLogin,
+    teamLogin,
+    teamId,
+    hostId,
+    teamActorId,
+    postId: ids.postId,
+    rejected: rejection.rejected,
+  };
+}
+
 async function main() {
   const schemaHealth = await assertRemoteSchemaHealth();
   const basicHostLogin = process.env.RANKBALL_SIM_HOST || "rankball-010";
@@ -633,12 +730,21 @@ async function main() {
   const refereeLogin = process.env.RANKBALL_SIM_REFEREE || "rankball-001";
   const actorHostLogin = process.env.RANKBALL_SIM_ACTOR_HOST || "rankball-014";
   const actorOpponentLogin = process.env.RANKBALL_SIM_ACTOR_OPPONENT || "rankball-015";
+  const teamBlockedHostLogin = process.env.RANKBALL_SIM_SOLO_BLOCK_HOST || "rankball-014";
+  const teamBlockedLogin = process.env.RANKBALL_SIM_SOLO_BLOCK_TEAM_LOGIN || "rankball-001";
+  const teamBlockedTeamId = process.env.RANKBALL_SIM_SOLO_BLOCK_TEAM_ID || "t1";
 
   const scenarios = [];
   scenarios.push(await runRecruitingActorScenario({
     label: "recruiting_actor_join_position",
     hostLogin: actorHostLogin,
     opponentLogin: actorOpponentLogin,
+  }));
+  scenarios.push(await runSoloRoomTeamBlockedScenario({
+    label: "solo_1v1_team_join_blocked",
+    hostLogin: teamBlockedHostLogin,
+    teamLogin: teamBlockedLogin,
+    teamId: teamBlockedTeamId,
   }));
   scenarios.push(await runOneOnOneScenario({
     label: "basic_1v1_no_referee",
