@@ -165,6 +165,11 @@ const COURT_REQUEST_COLUMNS = "id,requested_by,status,name,hashtag,address_text,
 const APPROVED_COURT_COLUMNS = "id,source_request_id,approved_by,name,hashtag,address_text,road_address,jibun_address,zonecode,lat,lng,status,hidden_at,hidden_by,hidden_reason,payload,approved_at,created_at,updated_at";
 const COURT_REVIEW_COLUMNS = "id,court_id,court_name,match_id,reviewer_id,rating,surface_rating,rim_rating,lighting_rating,crowd_rating,location_accuracy,fit_modes,tags,memo,status,hidden_at,hidden_by,hidden_reason,payload,created_at,updated_at";
 const PAYLOAD_ROW_COLUMNS = "id,status,payload,created_at,updated_at";
+const REFEREE_REQUEST_COLUMNS = "id,requested_by,status,qualification,trust_score,payload,created_at,updated_at";
+const REFEREE_EXAM_ATTEMPT_COLUMNS = "id,user_id,status,exam_version,payload,started_at,finished_at,available_after,created_at,updated_at";
+const APPOINTMENT_COLUMNS = "id,user_id,role,grade,status,appointed_by,starts_at,ends_at,payload,created_at,updated_at";
+const ADMIN_AUDIT_COLUMNS = "id,type,status,report_id,request_id,appointment_id,target_user_id,created_by,payload,created_at";
+const ADMIN_DISCIPLINARY_COLUMNS = "id,user_id,type,action_type,status,source_report_id,created_by,starts_at,ends_at,payload,created_at,updated_at";
 const DISCORD_DELIVERY_COLUMNS = "id,status,payload,target_user_id,created_at,updated_at,queued_at";
 const QUEUE_SCHEDULE_START_DATE = "2026-06-15";
 const QUEUE_SCHEDULE_TIMES = ["10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00", "21:00"];
@@ -923,6 +928,17 @@ function fromRemotePayloadRow(row = {}) {
     ...payload,
     id: row.id ?? payload.id,
     status: row.status ?? payload.status,
+    requestedBy: row.requested_by ?? payload.requestedBy,
+    userId: row.user_id ?? payload.userId,
+    targetUserId: row.target_user_id ?? payload.targetUserId,
+    role: row.role ?? payload.role,
+    grade: row.grade ?? payload.grade,
+    type: row.type ?? payload.type,
+    actionType: row.action_type ?? payload.actionType,
+    startsAt: row.starts_at ?? payload.startsAt,
+    endsAt: row.ends_at ?? payload.endsAt,
+    appointedBy: row.appointed_by ?? payload.appointedBy,
+    createdBy: row.created_by ?? payload.createdBy,
     createdAt: row.created_at ?? payload.createdAt,
     updatedAt: row.updated_at ?? payload.updatedAt,
   };
@@ -1238,16 +1254,6 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
     tournaments,
     seasons,
     affiliations,
-    reports,
-    courtRequests,
-    approvedCourts,
-    courtReviews,
-    refereeRequests,
-    refereeExamAttempts,
-    adminAppointments,
-    refereeAppointments,
-    adminAuditLog,
-    adminDisciplinaryActions,
   ] = await Promise.all([
     fetchOptionalRows("public_profiles", PUBLIC_PROFILE_COLUMNS, "id", client),
     privateProfileFilter
@@ -1261,16 +1267,6 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
     fetchFilteredRows("tournaments", TOURNAMENT_COLUMNS, "updated_at", client, tournamentFilter, tournamentLimit, !tournamentLimit),
     fetchAllRows("seasons", SEASON_COLUMNS, "id", client),
     fetchAllRows("affiliations", AFFILIATION_COLUMNS, "id", client),
-    fetchOptionalRows("reports", REPORT_COLUMNS, "created_at", client),
-    fetchOptionalRows("court_requests", COURT_REQUEST_COLUMNS, "created_at", client),
-    fetchOptionalRows("approved_courts", APPROVED_COURT_COLUMNS, "created_at", client),
-    fetchOptionalRows("court_reviews", COURT_REVIEW_COLUMNS, "created_at", client),
-    fetchOptionalRows("referee_requests", PAYLOAD_ROW_COLUMNS, "created_at", client),
-    fetchOptionalRows("referee_exam_attempts", PAYLOAD_ROW_COLUMNS, "created_at", client),
-    fetchOptionalRows("admin_appointments", PAYLOAD_ROW_COLUMNS, "created_at", client),
-    fetchOptionalRows("referee_appointments", PAYLOAD_ROW_COLUMNS, "created_at", client),
-    fetchOptionalRows("admin_audit_log", PAYLOAD_ROW_COLUMNS, "created_at", client),
-    fetchOptionalRows("admin_disciplinary_actions", PAYLOAD_ROW_COLUMNS, "created_at", client),
   ]);
 
   const privateProfileById = new Map((privateProfiles ?? []).map((profile) => [profile.id, profile]));
@@ -1286,6 +1282,7 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
     : null;
   const shellUser = authUserIdText && !testLoginId && !currentProfile ? createProfileShell(authUserIdText, authEmail) : null;
   const currentUserId = currentProfile?.id ?? shellUser?.id ?? profiles[0]?.id ?? "";
+  const isAdminStateLoad = options.isAdmin === true;
   const [favorites, notifications, discordNotificationDeliveries, profileSettingsRows] = await Promise.all([
     currentUserId
       ? fetchFilteredRows("favorites", FAVORITE_COLUMNS, null, client, (query) => query.eq("user_id", currentUserId))
@@ -1301,6 +1298,58 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
     currentUserId
       ? fetchOptionalFilteredRows("profiles", PROFILE_SETTINGS_COLUMNS, null, client, (query) => query.eq("id", currentUserId))
       : [],
+  ]);
+  const [
+    reports,
+    courtRequests,
+    approvedCourts,
+    courtReviews,
+    refereeRequests,
+    refereeExamAttempts,
+    adminAppointments,
+    refereeAppointments,
+    adminAuditLog,
+    adminDisciplinaryActions,
+  ] = await Promise.all([
+    !currentUserId
+      ? []
+      : isAdminStateLoad
+        ? fetchOptionalRows("reports", REPORT_COLUMNS, "created_at", client)
+        : fetchOptionalFilteredRows("reports", REPORT_COLUMNS, "created_at", client, (query) => query
+          .or(`user_id.eq.${currentUserId},target_id.eq.${currentUserId},reported_user_ids.cs.{${currentUserId}}`)),
+    !currentUserId
+      ? []
+      : isAdminStateLoad
+        ? fetchOptionalRows("court_requests", COURT_REQUEST_COLUMNS, "created_at", client)
+        : fetchOptionalFilteredRows("court_requests", COURT_REQUEST_COLUMNS, "created_at", client, (query) => query.eq("requested_by", currentUserId)),
+    isAdminStateLoad
+      ? fetchOptionalRows("approved_courts", APPROVED_COURT_COLUMNS, "created_at", client)
+      : fetchOptionalFilteredRows("approved_courts", APPROVED_COURT_COLUMNS, "created_at", client, (query) => query.or("status.is.null,status.eq.active")),
+    isAdminStateLoad
+      ? fetchOptionalRows("court_reviews", COURT_REVIEW_COLUMNS, "created_at", client)
+      : fetchOptionalFilteredRows("court_reviews", COURT_REVIEW_COLUMNS, "created_at", client, (query) => query.or("status.is.null,status.eq.active")),
+    !currentUserId
+      ? []
+      : isAdminStateLoad
+        ? fetchOptionalRows("referee_requests", REFEREE_REQUEST_COLUMNS, "created_at", client)
+        : fetchOptionalFilteredRows("referee_requests", REFEREE_REQUEST_COLUMNS, "created_at", client, (query) => query.eq("requested_by", currentUserId)),
+    !currentUserId
+      ? []
+      : isAdminStateLoad
+        ? fetchOptionalRows("referee_exam_attempts", REFEREE_EXAM_ATTEMPT_COLUMNS, "created_at", client)
+        : fetchOptionalFilteredRows("referee_exam_attempts", REFEREE_EXAM_ATTEMPT_COLUMNS, "created_at", client, (query) => query.eq("user_id", currentUserId)),
+    !currentUserId
+      ? []
+      : isAdminStateLoad
+        ? fetchOptionalRows("admin_appointments", APPOINTMENT_COLUMNS, "created_at", client)
+        : fetchOptionalFilteredRows("admin_appointments", APPOINTMENT_COLUMNS, "created_at", client, (query) => query.eq("user_id", currentUserId)),
+    fetchOptionalRows("referee_appointments", APPOINTMENT_COLUMNS, "created_at", client),
+    isAdminStateLoad ? fetchOptionalRows("admin_audit_log", ADMIN_AUDIT_COLUMNS, "created_at", client) : [],
+    !currentUserId
+      ? []
+      : isAdminStateLoad
+        ? fetchOptionalRows("admin_disciplinary_actions", ADMIN_DISCIPLINARY_COLUMNS, "created_at", client)
+        : fetchOptionalFilteredRows("admin_disciplinary_actions", ADMIN_DISCIPLINARY_COLUMNS, "created_at", client, (query) => query.eq("user_id", currentUserId)),
   ]);
   const loadedMatchIds = matches.map((match) => match.id).filter(Boolean);
   const loadedRecruitingPostIds = recruitingPosts.map((post) => post.id).filter(Boolean);

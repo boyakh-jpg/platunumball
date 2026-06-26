@@ -1210,6 +1210,7 @@ flowchart TD
 5. service-role로 읽은 전체 state를 그대로 클라이언트에 내려주지 않는다. 관리자 전용 row, 비공개 신고/징계/요청 row, 다른 사용자의 민감 프로필 값은 현재 프로필 기준으로 필터한다.
 6. 방/경기 mutation server action은 operation payload에 반드시 `postId` 또는 `matchId`를 포함한다. 화면에서 찾은 객체 스냅샷은 rollback/fallback용이고 서버 reducer replay의 기본 키가 아니다.
 7. 경기 목록의 "내 경기" 판정은 출전/후보뿐 아니라 `createdBy`, `refereeId`, `formerRefereeId`도 포함한다.
+8. `reports`, `court_requests`, `referee_requests`, `referee_exam_attempts`, `admin_appointments`, `admin_audit_log`, `admin_disciplinary_actions`는 가능한 경우 DB query 단계에서 현재 프로필/관리자 여부로 먼저 좁힌다.
 
 ## 2026-06-26 court report server path
 

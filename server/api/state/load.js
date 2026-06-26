@@ -144,10 +144,11 @@ function filterStateForProfile(state = {}, profileId = "", isAdmin = false) {
   };
 }
 
-function getStateLoadOptions(body = {}) {
+function getStateLoadOptions(body = {}, meta = {}) {
   const pagination = body.pagination && typeof body.pagination === "object" ? body.pagination : {};
   return {
     clientState: true,
+    isAdmin: meta.isAdmin === true,
     matchLimit: body.matchLimit ?? pagination.matches?.limit,
     matchUpdatedBefore: body.matchUpdatedBefore ?? body.matchCursor ?? pagination.matches?.updatedBefore ?? pagination.matches?.cursor,
     recruitingLimit: body.recruitingLimit ?? pagination.recruiting?.limit,
@@ -171,7 +172,7 @@ export default async function handler(request, response) {
       context.supabase,
       context.authUserId,
       context.authUser?.email ?? "",
-      getStateLoadOptions(body),
+      getStateLoadOptions(body, { isAdmin: adminLevel >= 30 }),
     );
     const profileId = context.profileId ?? normalized?.state?.currentUserId ?? "";
     const state = filterStateForProfile(normalized?.state ?? {}, profileId, adminLevel >= 30);
