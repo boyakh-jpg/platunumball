@@ -536,17 +536,6 @@ async function commitMatchRating(context, ratingCommit = {}) {
   return data ?? { ok: true };
 }
 
-async function deleteMatchChildren(supabase, table, matchId) {
-  const { error } = await supabase.from(table).delete().eq("match_id", matchId);
-  if (error) throw error;
-}
-
-async function upsertRows(supabase, table, rows, onConflict) {
-  if (!rows.length) return;
-  const { error } = await supabase.from(table).upsert(rows, { onConflict });
-  if (error) throw error;
-}
-
 export async function persistMatchSnapshot(context, { match, notifications = [], action = "sync", body = {}, ratingCommit = null }) {
   if (!match?.id) reject(400, "missing_match");
   validateMatchShape(match);
@@ -618,34 +607,27 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
   const disputeRows = toDisputeRows(match);
   const notificationRows = toNotificationRows(notifications, context.profileId);
 
-  const { error: matchError } = await context.supabase.from("matches").upsert(matchRow, { onConflict: "id" });
-  if (matchError) throw matchError;
-
-  await deleteMatchChildren(context.supabase, "match_players", match.id);
-  await deleteMatchChildren(context.supabase, "match_agreements", match.id);
-  await deleteMatchChildren(context.supabase, "match_approvals", match.id);
-  await deleteMatchChildren(context.supabase, "match_disputes", match.id);
-  if (action === "submitMatchResult") {
-    await deleteMatchChildren(context.supabase, "player_match_stats", match.id);
-    await deleteMatchChildren(context.supabase, "match_results", match.id);
-  }
-
-  await upsertRows(context.supabase, "match_players", playerRows, "match_id,user_id");
-  if (resultRow) await upsertRows(context.supabase, "match_results", [resultRow], "match_id");
-  await upsertRows(context.supabase, "player_match_stats", statRows, "match_id,user_id");
-  await upsertRows(context.supabase, "match_agreements", agreementRows, "match_id,user_id");
-  await upsertRows(context.supabase, "match_approvals", approvalRows, "match_id,user_id");
-  await upsertRows(context.supabase, "match_disputes", disputeRows, "id");
-  await upsertRows(context.supabase, "notifications", notificationRows, "id");
+  const { data: persistResult, error: persistError } = await context.supabase.rpc("rankball_persist_match_snapshot", {
+    p_match_row: matchRow,
+    p_player_rows: playerRows,
+    p_result_row: resultRow,
+    p_stat_rows: statRows,
+    p_agreement_rows: agreementRows,
+    p_approval_rows: approvalRows,
+    p_dispute_rows: disputeRows,
+    p_notification_rows: notificationRows,
+    p_replace_result: action === "submitMatchResult",
+  });
+  if (persistError) throw persistError;
   const ratingCommitResult = shouldCommitRating ? await commitMatchRating(context, ratingCommit) : null;
 
   return {
     ok: true,
     match,
     matchId: match.id,
-    playerCount: playerRows.length,
-    statCount: statRows.length,
-    notificationCount: notificationRows.length,
+    playerCount: Number(persistResult?.playerCount ?? playerRows.length),
+    statCount: Number(persistResult?.statCount ?? statRows.length),
+    notificationCount: Number(persistResult?.notificationCount ?? notificationRows.length),
     ratingCommitted: Boolean(ratingCommitResult?.ok),
     ratingAlreadyCommitted: Boolean(ratingCommitResult?.alreadyCommitted),
   };

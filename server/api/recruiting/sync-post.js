@@ -478,32 +478,20 @@ export async function persistRecruitingPostSnapshot(context, { post, notificatio
   const applicationRows = toRecruitingApplicationRows(post);
   const notificationRows = toNotificationRows(notifications, context.profileId);
 
-  const { error: postError } = await context.supabase
-      .from("recruiting_posts")
-      .upsert(postRow, { onConflict: "id" });
-  if (postError) throw postError;
+  const { data: persistResult, error: persistError } = await context.supabase.rpc("rankball_persist_recruiting_snapshot", {
+    p_post_row: postRow,
+    p_application_rows: applicationRows,
+    p_notification_rows: notificationRows,
+  });
+  if (persistError) throw persistError;
 
-  const { error: deleteError } = await context.supabase
-      .from("recruiting_applications")
-      .delete()
-      .eq("post_id", post.id);
-  if (deleteError) throw deleteError;
-
-  if (applicationRows.length) {
-    const { error: appError } = await context.supabase
-        .from("recruiting_applications")
-        .upsert(applicationRows, { onConflict: "post_id,player_id,kind" });
-    if (appError) throw appError;
-  }
-
-  if (notificationRows.length) {
-    const { error: notificationError } = await context.supabase
-        .from("notifications")
-        .upsert(notificationRows, { onConflict: "id" });
-    if (notificationError) throw notificationError;
-  }
-
-  return { ok: true, post, postId: post.id, applicationCount: applicationRows.length, notificationCount: notificationRows.length };
+  return {
+    ok: true,
+    post,
+    postId: post.id,
+    applicationCount: Number(persistResult?.applicationCount ?? applicationRows.length),
+    notificationCount: Number(persistResult?.notificationCount ?? notificationRows.length),
+  };
 }
 
 export default async function handler(request, response) {

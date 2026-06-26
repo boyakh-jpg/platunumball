@@ -1158,6 +1158,13 @@ flowchart TD
 2. The server loads current Supabase state and reruns the central reducer for operation payloads.
 3. Full snapshot payload remains only as a legacy fallback for paths that do not yet provide an operation.
 
+## 2026-06-26 room snapshot DB transaction RPC
+
+1. `rankball_persist_recruiting_snapshot()` commits `recruiting_posts`, `recruiting_applications`, and related notifications in one DB function.
+2. `rankball_persist_match_snapshot()` commits `matches`, match players, agreements, approvals, disputes, submitted results/stats, and related notifications in one DB function.
+3. `rankball_persist_tournament_snapshot()` commits `tournaments`, `tournament_teams`, and related notifications in one DB function.
+4. Server actions still calculate the next room/match/tournament state by loading Supabase state and rerunning the central reducer. The DB RPCs make persistence atomic, not reducer calculation fully SQL-native.
+
 ## 2026-06-26 match rating commit transaction
 
 1. `approveMatch`가 양쪽 승인 완료로 `confirmed`가 되면 서버 reducer가 변경된 `profiles`와 `teams` 경쟁 수치만 추출한다.

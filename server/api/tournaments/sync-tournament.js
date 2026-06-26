@@ -322,32 +322,14 @@ export default async function handler(request, response) {
     if (!operation) validateTeamApprovalScope(context, existingTournament, existingTeamRows, tournament, action, teamId);
     await assertTeamsExist(context.supabase, tournament.teamIds);
 
-    const { error: tournamentError } = await context.supabase
-      .from("tournaments")
-      .upsert(toTournamentRow(tournament), { onConflict: "id" });
-    if (tournamentError) throw tournamentError;
-
-    const { error: deleteError } = await context.supabase
-      .from("tournament_teams")
-      .delete()
-      .eq("tournament_id", tournament.id);
-    if (deleteError) throw deleteError;
-
     const teamRows = toTournamentTeamRows(tournament);
-    if (teamRows.length) {
-      const { error: teamError } = await context.supabase
-        .from("tournament_teams")
-        .upsert(teamRows, { onConflict: "tournament_id,team_id" });
-      if (teamError) throw teamError;
-    }
-
     const notificationRows = toNotificationRows(notifications, context.profileId);
-    if (notificationRows.length) {
-      const { error: notificationError } = await context.supabase
-        .from("notifications")
-        .upsert(notificationRows, { onConflict: "id" });
-      if (notificationError) throw notificationError;
-    }
+    const { data: persistResult, error: persistError } = await context.supabase.rpc("rankball_persist_tournament_snapshot", {
+      p_tournament_row: toTournamentRow(tournament),
+      p_team_rows: teamRows,
+      p_notification_rows: notificationRows,
+    });
+    if (persistError) throw persistError;
 
     for (const match of createdMatches) {
       await persistMatchSnapshot(context, { match, notifications: [], action: "createTournamentMatch", body: {} });
@@ -356,8 +338,8 @@ export default async function handler(request, response) {
     sendJson(response, 200, {
       ok: true,
       tournamentId: tournament.id,
-      teamCount: teamRows.length,
-      notificationCount: notificationRows.length,
+      teamCount: Number(persistResult?.teamCount ?? teamRows.length),
+      notificationCount: Number(persistResult?.notificationCount ?? notificationRows.length),
       createdMatchCount: createdMatches.length,
     });
   } catch (error) {

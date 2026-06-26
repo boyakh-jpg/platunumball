@@ -2279,6 +2279,424 @@ revoke all on function public.rankball_delete_team(text, text, jsonb) from publi
 grant execute on function public.rankball_sync_team_membership(text, jsonb, jsonb) to service_role;
 grant execute on function public.rankball_delete_team(text, text, jsonb) to service_role;
 
+create or replace function public.rankball_persist_recruiting_snapshot(
+  p_post_row jsonb,
+  p_application_rows jsonb default '[]'::jsonb,
+  p_notification_rows jsonb default '[]'::jsonb
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  safe_post_id text := nullif(btrim(p_post_row->>'id'), '');
+  application_count integer := 0;
+  notification_count integer := 0;
+begin
+  if safe_post_id is null then
+    raise exception 'missing_recruiting_post' using errcode = '22023';
+  end if;
+
+  insert into public.recruiting_posts (
+    id, type, title, visibility, player_id, team_id, region, court_id, court_name, mode,
+    scheduled_date, scheduled_time, scheduled_at, ranked, official, pre_registered,
+    rating_scale, age_restriction, allowed_age_groups, rules, stakes, court_reserved,
+    court_fee, spots, target_team_id, referee_id, referee_trust_min, stat_entry_minutes,
+    dispute_minutes, room_state, host_join_mode, host_side, host_ready, side_capacity,
+    player_ids, position, memo, status, confirmed_at, created_at, updated_at
+  )
+  select
+    id, type, title, visibility, player_id, team_id, region, court_id, court_name, mode,
+    scheduled_date, scheduled_time, scheduled_at, ranked, official, pre_registered,
+    rating_scale, age_restriction, allowed_age_groups, rules, stakes, court_reserved,
+    court_fee, spots, target_team_id, referee_id, referee_trust_min, stat_entry_minutes,
+    dispute_minutes, room_state, host_join_mode, host_side, host_ready, side_capacity,
+    player_ids, position, memo, status, confirmed_at, created_at, updated_at
+  from jsonb_populate_record(null::public.recruiting_posts, p_post_row)
+  on conflict (id) do update set
+    type = excluded.type,
+    title = excluded.title,
+    visibility = excluded.visibility,
+    player_id = excluded.player_id,
+    team_id = excluded.team_id,
+    region = excluded.region,
+    court_id = excluded.court_id,
+    court_name = excluded.court_name,
+    mode = excluded.mode,
+    scheduled_date = excluded.scheduled_date,
+    scheduled_time = excluded.scheduled_time,
+    scheduled_at = excluded.scheduled_at,
+    ranked = excluded.ranked,
+    official = excluded.official,
+    pre_registered = excluded.pre_registered,
+    rating_scale = excluded.rating_scale,
+    age_restriction = excluded.age_restriction,
+    allowed_age_groups = excluded.allowed_age_groups,
+    rules = excluded.rules,
+    stakes = excluded.stakes,
+    court_reserved = excluded.court_reserved,
+    court_fee = excluded.court_fee,
+    spots = excluded.spots,
+    target_team_id = excluded.target_team_id,
+    referee_id = excluded.referee_id,
+    referee_trust_min = excluded.referee_trust_min,
+    stat_entry_minutes = excluded.stat_entry_minutes,
+    dispute_minutes = excluded.dispute_minutes,
+    room_state = excluded.room_state,
+    host_join_mode = excluded.host_join_mode,
+    host_side = excluded.host_side,
+    host_ready = excluded.host_ready,
+    side_capacity = excluded.side_capacity,
+    player_ids = excluded.player_ids,
+    position = excluded.position,
+    memo = excluded.memo,
+    status = excluded.status,
+    confirmed_at = excluded.confirmed_at,
+    updated_at = excluded.updated_at;
+
+  delete from public.recruiting_applications where post_id = safe_post_id;
+
+  insert into public.recruiting_applications (
+    post_id, player_id, team_id, kind, side, status, reserve, position,
+    player_ids, source_team_id, source_entry_id, created_at, updated_at
+  )
+  select
+    post_id, player_id, team_id, kind, side, status, reserve, position,
+    player_ids, source_team_id, source_entry_id, created_at, updated_at
+  from jsonb_populate_recordset(null::public.recruiting_applications, coalesce(p_application_rows, '[]'::jsonb));
+  get diagnostics application_count = row_count;
+
+  insert into public.notifications (
+    id, user_id, target_user_id, title, body, tone, type, match_id,
+    recruiting_post_id, invitation_id, discord_event, read_at, payload, created_at, updated_at
+  )
+  select
+    id, user_id, target_user_id, title, body, tone, type, match_id,
+    recruiting_post_id, invitation_id, discord_event, read_at, payload, created_at, updated_at
+  from jsonb_populate_recordset(null::public.notifications, coalesce(p_notification_rows, '[]'::jsonb))
+  on conflict (id) do update set
+    user_id = excluded.user_id,
+    target_user_id = excluded.target_user_id,
+    title = excluded.title,
+    body = excluded.body,
+    tone = excluded.tone,
+    type = excluded.type,
+    match_id = excluded.match_id,
+    recruiting_post_id = excluded.recruiting_post_id,
+    invitation_id = excluded.invitation_id,
+    discord_event = excluded.discord_event,
+    read_at = excluded.read_at,
+    payload = excluded.payload,
+    updated_at = excluded.updated_at;
+  get diagnostics notification_count = row_count;
+
+  return jsonb_build_object('ok', true, 'postId', safe_post_id, 'applicationCount', application_count, 'notificationCount', notification_count);
+end;
+$$;
+
+revoke all on function public.rankball_persist_recruiting_snapshot(jsonb, jsonb, jsonb) from public;
+grant execute on function public.rankball_persist_recruiting_snapshot(jsonb, jsonb, jsonb) to service_role;
+
+create or replace function public.rankball_persist_match_snapshot(
+  p_match_row jsonb,
+  p_player_rows jsonb default '[]'::jsonb,
+  p_result_row jsonb default null,
+  p_stat_rows jsonb default '[]'::jsonb,
+  p_agreement_rows jsonb default '[]'::jsonb,
+  p_approval_rows jsonb default '[]'::jsonb,
+  p_dispute_rows jsonb default '[]'::jsonb,
+  p_notification_rows jsonb default '[]'::jsonb,
+  p_replace_result boolean default false
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  safe_match_id text := nullif(btrim(p_match_row->>'id'), '');
+  player_count integer := 0;
+  stat_count integer := 0;
+  notification_count integer := 0;
+begin
+  if safe_match_id is null then
+    raise exception 'missing_match' using errcode = '22023';
+  end if;
+
+  insert into public.matches (
+    id, title, mode, court_id, court_name, visibility, status, ranked, mmr_limit_mode,
+    trust_feedback, referee_id, former_referee_id, referee_trust_min, stat_entry_minutes,
+    dispute_minutes, stat_recorders, played_player_ids, reserve_players, promoted_reserve_ids,
+    attendance, referee_absence_request, dispute_draft_result, dispute_draft_updated_at,
+    dispute_resolved_at, mmr_excluded_player_ids, anonymous_players, tournament_id,
+    tournament_format, tournament_round, tournament_fixture, tournament_mmr_policy,
+    official, pre_registered, scheduled_at, scheduled_date, scheduled_time, team_a_id,
+    team_b_id, score_a, score_b, rules, memo, stakes, objection_window, evidence,
+    created_by, created_at, agreed_at, started_at, ended_at, confirmed_at, cancelled_at,
+    voided_at, rating_result, team_rating_result, updated_at
+  )
+  select
+    id, title, mode, court_id, court_name, visibility, status, ranked, mmr_limit_mode,
+    trust_feedback, referee_id, former_referee_id, referee_trust_min, stat_entry_minutes,
+    dispute_minutes, stat_recorders, played_player_ids, reserve_players, promoted_reserve_ids,
+    attendance, referee_absence_request, dispute_draft_result, dispute_draft_updated_at,
+    dispute_resolved_at, mmr_excluded_player_ids, anonymous_players, tournament_id,
+    tournament_format, tournament_round, tournament_fixture, tournament_mmr_policy,
+    official, pre_registered, scheduled_at, scheduled_date, scheduled_time, team_a_id,
+    team_b_id, score_a, score_b, rules, memo, stakes, objection_window, evidence,
+    created_by, created_at, agreed_at, started_at, ended_at, confirmed_at, cancelled_at,
+    voided_at, rating_result, team_rating_result, updated_at
+  from jsonb_populate_record(null::public.matches, p_match_row)
+  on conflict (id) do update set
+    title = excluded.title,
+    mode = excluded.mode,
+    court_id = excluded.court_id,
+    court_name = excluded.court_name,
+    visibility = excluded.visibility,
+    status = excluded.status,
+    ranked = excluded.ranked,
+    mmr_limit_mode = excluded.mmr_limit_mode,
+    trust_feedback = excluded.trust_feedback,
+    referee_id = excluded.referee_id,
+    former_referee_id = excluded.former_referee_id,
+    referee_trust_min = excluded.referee_trust_min,
+    stat_entry_minutes = excluded.stat_entry_minutes,
+    dispute_minutes = excluded.dispute_minutes,
+    stat_recorders = excluded.stat_recorders,
+    played_player_ids = excluded.played_player_ids,
+    reserve_players = excluded.reserve_players,
+    promoted_reserve_ids = excluded.promoted_reserve_ids,
+    attendance = excluded.attendance,
+    referee_absence_request = excluded.referee_absence_request,
+    dispute_draft_result = excluded.dispute_draft_result,
+    dispute_draft_updated_at = excluded.dispute_draft_updated_at,
+    dispute_resolved_at = excluded.dispute_resolved_at,
+    mmr_excluded_player_ids = excluded.mmr_excluded_player_ids,
+    anonymous_players = excluded.anonymous_players,
+    tournament_id = excluded.tournament_id,
+    tournament_format = excluded.tournament_format,
+    tournament_round = excluded.tournament_round,
+    tournament_fixture = excluded.tournament_fixture,
+    tournament_mmr_policy = excluded.tournament_mmr_policy,
+    official = excluded.official,
+    pre_registered = excluded.pre_registered,
+    scheduled_at = excluded.scheduled_at,
+    scheduled_date = excluded.scheduled_date,
+    scheduled_time = excluded.scheduled_time,
+    team_a_id = excluded.team_a_id,
+    team_b_id = excluded.team_b_id,
+    score_a = excluded.score_a,
+    score_b = excluded.score_b,
+    rules = excluded.rules,
+    memo = excluded.memo,
+    stakes = excluded.stakes,
+    objection_window = excluded.objection_window,
+    evidence = excluded.evidence,
+    created_by = excluded.created_by,
+    agreed_at = excluded.agreed_at,
+    started_at = excluded.started_at,
+    ended_at = excluded.ended_at,
+    confirmed_at = excluded.confirmed_at,
+    cancelled_at = excluded.cancelled_at,
+    voided_at = excluded.voided_at,
+    rating_result = excluded.rating_result,
+    team_rating_result = excluded.team_rating_result,
+    updated_at = excluded.updated_at;
+
+  delete from public.match_players where match_id = safe_match_id;
+  delete from public.match_agreements where match_id = safe_match_id;
+  delete from public.match_approvals where match_id = safe_match_id;
+  delete from public.match_disputes where match_id = safe_match_id;
+
+  if p_replace_result then
+    delete from public.player_match_stats where match_id = safe_match_id;
+    delete from public.match_results where match_id = safe_match_id;
+  end if;
+
+  insert into public.match_players (match_id, team_id, user_id, side, slot_order)
+  select match_id, team_id, user_id, side, slot_order
+  from jsonb_populate_recordset(null::public.match_players, coalesce(p_player_rows, '[]'::jsonb));
+  get diagnostics player_count = row_count;
+
+  if p_result_row is not null and jsonb_typeof(p_result_row) = 'object' then
+    insert into public.match_results (
+      match_id, submitted_by, score_a, score_b, stat_submissions, submitted_at
+    )
+    select match_id, submitted_by, score_a, score_b, stat_submissions, submitted_at
+    from jsonb_populate_record(null::public.match_results, p_result_row)
+    on conflict (match_id) do update set
+      submitted_by = excluded.submitted_by,
+      score_a = excluded.score_a,
+      score_b = excluded.score_b,
+      stat_submissions = excluded.stat_submissions,
+      submitted_at = excluded.submitted_at;
+  end if;
+
+  insert into public.player_match_stats (
+    match_id, user_id, recorded_by, record_source, points, rebounds, assists, steals, blocks, fouls, updated_at
+  )
+  select match_id, user_id, recorded_by, record_source, points, rebounds, assists, steals, blocks, fouls, updated_at
+  from jsonb_populate_recordset(null::public.player_match_stats, coalesce(p_stat_rows, '[]'::jsonb))
+  on conflict (match_id, user_id) do update set
+    recorded_by = excluded.recorded_by,
+    record_source = excluded.record_source,
+    points = excluded.points,
+    rebounds = excluded.rebounds,
+    assists = excluded.assists,
+    steals = excluded.steals,
+    blocks = excluded.blocks,
+    fouls = excluded.fouls,
+    updated_at = excluded.updated_at;
+  get diagnostics stat_count = row_count;
+
+  insert into public.match_agreements (match_id, user_id, side)
+  select match_id, user_id, side
+  from jsonb_populate_recordset(null::public.match_agreements, coalesce(p_agreement_rows, '[]'::jsonb))
+  on conflict (match_id, user_id) do update set side = excluded.side;
+
+  insert into public.match_approvals (match_id, user_id, side)
+  select match_id, user_id, side
+  from jsonb_populate_recordset(null::public.match_approvals, coalesce(p_approval_rows, '[]'::jsonb))
+  on conflict (match_id, user_id) do update set side = excluded.side;
+
+  insert into public.match_disputes (id, match_id, user_id, reason, created_at)
+  select id, match_id, user_id, reason, created_at
+  from jsonb_populate_recordset(null::public.match_disputes, coalesce(p_dispute_rows, '[]'::jsonb))
+  on conflict (id) do update set
+    match_id = excluded.match_id,
+    user_id = excluded.user_id,
+    reason = excluded.reason;
+
+  insert into public.notifications (
+    id, user_id, target_user_id, title, body, tone, type, match_id,
+    recruiting_post_id, invitation_id, discord_event, read_at, payload, created_at, updated_at
+  )
+  select
+    id, user_id, target_user_id, title, body, tone, type, match_id,
+    recruiting_post_id, invitation_id, discord_event, read_at, payload, created_at, updated_at
+  from jsonb_populate_recordset(null::public.notifications, coalesce(p_notification_rows, '[]'::jsonb))
+  on conflict (id) do update set
+    user_id = excluded.user_id,
+    target_user_id = excluded.target_user_id,
+    title = excluded.title,
+    body = excluded.body,
+    tone = excluded.tone,
+    type = excluded.type,
+    match_id = excluded.match_id,
+    recruiting_post_id = excluded.recruiting_post_id,
+    invitation_id = excluded.invitation_id,
+    discord_event = excluded.discord_event,
+    read_at = excluded.read_at,
+    payload = excluded.payload,
+    updated_at = excluded.updated_at;
+  get diagnostics notification_count = row_count;
+
+  return jsonb_build_object('ok', true, 'matchId', safe_match_id, 'playerCount', player_count, 'statCount', stat_count, 'notificationCount', notification_count);
+end;
+$$;
+
+revoke all on function public.rankball_persist_match_snapshot(jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, boolean) from public;
+grant execute on function public.rankball_persist_match_snapshot(jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, boolean) to service_role;
+
+create or replace function public.rankball_persist_tournament_snapshot(
+  p_tournament_row jsonb,
+  p_team_rows jsonb default '[]'::jsonb,
+  p_notification_rows jsonb default '[]'::jsonb
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  safe_tournament_id text := nullif(btrim(p_tournament_row->>'id'), '');
+  team_count integer := 0;
+  notification_count integer := 0;
+begin
+  if safe_tournament_id is null then
+    raise exception 'missing_tournament_id' using errcode = '22023';
+  end if;
+
+  insert into public.tournaments (
+    id, title, format, visibility, status, region, court_name, mode, ranked, official,
+    start_date, end_date, schedule_policy, schedule_note, mmr_limit_mode, max_mmr_gap,
+    mmr_policy, rules, memo, created_by, created_at, started_at, match_ids,
+    team_statuses, team_approvals, bracket, updated_at
+  )
+  select
+    id, title, format, visibility, status, region, court_name, mode, ranked, official,
+    start_date, end_date, schedule_policy, schedule_note, mmr_limit_mode, max_mmr_gap,
+    mmr_policy, rules, memo, created_by, created_at, started_at, match_ids,
+    team_statuses, team_approvals, bracket, updated_at
+  from jsonb_populate_record(null::public.tournaments, p_tournament_row)
+  on conflict (id) do update set
+    title = excluded.title,
+    format = excluded.format,
+    visibility = excluded.visibility,
+    status = excluded.status,
+    region = excluded.region,
+    court_name = excluded.court_name,
+    mode = excluded.mode,
+    ranked = excluded.ranked,
+    official = excluded.official,
+    start_date = excluded.start_date,
+    end_date = excluded.end_date,
+    schedule_policy = excluded.schedule_policy,
+    schedule_note = excluded.schedule_note,
+    mmr_limit_mode = excluded.mmr_limit_mode,
+    max_mmr_gap = excluded.max_mmr_gap,
+    mmr_policy = excluded.mmr_policy,
+    rules = excluded.rules,
+    memo = excluded.memo,
+    created_by = excluded.created_by,
+    started_at = excluded.started_at,
+    match_ids = excluded.match_ids,
+    team_statuses = excluded.team_statuses,
+    team_approvals = excluded.team_approvals,
+    bracket = excluded.bracket,
+    updated_at = excluded.updated_at;
+
+  delete from public.tournament_teams where tournament_id = safe_tournament_id;
+
+  insert into public.tournament_teams (
+    tournament_id, team_id, seed_order, status, approved_by, approved_at
+  )
+  select tournament_id, team_id, seed_order, status, approved_by, approved_at
+  from jsonb_populate_recordset(null::public.tournament_teams, coalesce(p_team_rows, '[]'::jsonb));
+  get diagnostics team_count = row_count;
+
+  insert into public.notifications (
+    id, user_id, target_user_id, title, body, tone, type, match_id,
+    recruiting_post_id, invitation_id, discord_event, read_at, payload, created_at, updated_at
+  )
+  select
+    id, user_id, target_user_id, title, body, tone, type, match_id,
+    recruiting_post_id, invitation_id, discord_event, read_at, payload, created_at, updated_at
+  from jsonb_populate_recordset(null::public.notifications, coalesce(p_notification_rows, '[]'::jsonb))
+  on conflict (id) do update set
+    user_id = excluded.user_id,
+    target_user_id = excluded.target_user_id,
+    title = excluded.title,
+    body = excluded.body,
+    tone = excluded.tone,
+    type = excluded.type,
+    match_id = excluded.match_id,
+    recruiting_post_id = excluded.recruiting_post_id,
+    invitation_id = excluded.invitation_id,
+    discord_event = excluded.discord_event,
+    read_at = excluded.read_at,
+    payload = excluded.payload,
+    updated_at = excluded.updated_at;
+  get diagnostics notification_count = row_count;
+
+  return jsonb_build_object('ok', true, 'tournamentId', safe_tournament_id, 'teamCount', team_count, 'notificationCount', notification_count);
+end;
+$$;
+
+revoke all on function public.rankball_persist_tournament_snapshot(jsonb, jsonb, jsonb) from public;
+grant execute on function public.rankball_persist_tournament_snapshot(jsonb, jsonb, jsonb) to service_role;
+
 create or replace function public.rankball_commit_admin_review_action(
   p_actor_profile_id text,
   p_actor_admin_level integer,

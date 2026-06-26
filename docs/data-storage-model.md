@@ -286,6 +286,7 @@ Done:
 - Team membership save/delete now commits through `rankball_sync_team_membership()` / `rankball_delete_team()` DB RPC transactions.
 - Tournament create/approve now replays the reducer on the server and persists generated tournament matches inside `sync-tournament`.
 - Room, match, and tournament frontend callers now send `{ operation }` only when operation replay is available; full snapshot sync is legacy fallback.
+- Recruiting, match, and tournament snapshot persistence now uses DB RPC transaction functions instead of multi-step client-side table upserts.
 - Remote hydration guard blocks local room/match/team/tournament actions before backend state is ready.
 - Test account server mapping uses `profiles.test_login_id` with `test-token-rankball-###`.
 - Client `u1` owner fallback is removed. Admin menu authority now comes from server context or DB `admin_appointments`.
@@ -304,7 +305,7 @@ Remaining:
 - Set owner authority through `RANKBALL_OWNER_AUTH_USER_IDS`, `RANKBALL_OWNER_PROFILE_IDS`, or DB `admin_appointments`; do not depend on frontend seed IDs.
 - Keep app user identity as `profiles.id`; never expose or use Google/provider ID as the public RankBall user id.
 - Finish authoritative RPC/server actions for recruiting create/join/invite/accept/ready/confirm and match attendance/start/record/end/dispute/approve.
-- Move tournament generation from server reducer replay to a DB RPC transaction if row-level lock semantics are required.
+- Move operation calculation itself from server reducer replay to DB RPC if stricter row-level lock semantics are required.
 - Make frontend repository a thin server caller after the authoritative RPCs are ready.
 - Remove production reliance on localStorage state and mock fallback completely.
 - Add broader server-side eligibility checks for tournament brackets and match roster edits.
