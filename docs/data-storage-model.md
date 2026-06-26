@@ -126,6 +126,8 @@
 - 필요한 env는 `DISCORD_BOT_TOKEN`이다.
 - Vercel Hobby Cron은 알림 worker에 쓰지 않는다. 알파 테스트에서는 cron-job.org가 5분마다 `/api/discord/dm-worker`를 호출한다.
 - Discord interaction 버튼 수락/거절 처리는 `/api/discord/interactions`가 담당한다. 채팅 양방향 연동은 아직 남은 작업이다.
+- Match server action은 디코 연동된 경기 참가자/심판에게 시작 24시간 전, 2시간 전, 1시간 전, 경기 시작, 경기 종료, 종료 30분 이의신청 안내 delivery row를 만든다.
+- Recruiting server action은 즉시방 생성 시 방 개설 delivery row를 만든다.
 
 ## 2026-06-24 RLS hardening
 

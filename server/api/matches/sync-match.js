@@ -11,6 +11,26 @@ function toArray(value) {
 }
 
 const PLAYER_STAT_FIELDS = ["points", "rebounds", "assists", "steals", "blocks", "fouls"];
+const MATCH_REMINDER_OFFSETS = [
+  {
+    suffix: "24h",
+    offsetMs: 24 * 60 * 60 * 1000,
+    title: "내일 경기",
+    intro: "내일 경기입니다. 일정과 구장을 확인해주세요.",
+  },
+  {
+    suffix: "2h",
+    offsetMs: 2 * 60 * 60 * 1000,
+    title: "경기 2시간 전",
+    intro: "경기 2시간 전입니다. 이동 준비를 시작해주세요.",
+  },
+  {
+    suffix: "1h",
+    offsetMs: 60 * 60 * 1000,
+    title: "경기 1시간 전",
+    intro: "경기 시작 전에 출석체크해요. 모여주세요.",
+  },
+];
 
 function toFiniteNumber(value, fallback = 0) {
   const number = Number(value ?? fallback);
@@ -29,6 +49,67 @@ function reject(statusCode, message) {
 
 function getTimestamp(item = {}) {
   return item.updatedAt ?? item.createdAt ?? item.queuedAt ?? item.startedAt ?? item.approvedAt ?? new Date().toISOString();
+}
+
+function getPublicAppUrl() {
+  return String(process.env.VITE_PUBLIC_APP_URL || process.env.PUBLIC_APP_URL || "").trim().replace(/\/$/, "");
+}
+
+function getMatchWebPath(matchId = "") {
+  return `/app/matches?match=${encodeURIComponent(String(matchId))}`;
+}
+
+function getMatchWebUrl(matchId = "") {
+  const baseUrl = getPublicAppUrl();
+  const path = getMatchWebPath(matchId);
+  return baseUrl ? `${baseUrl}${path}` : path;
+}
+
+function parseMatchScheduleDate(value) {
+  const raw = String(value ?? "").trim();
+  if (!raw || raw === "즉시" || raw === "일정 미정") return null;
+  const kstMatch = raw.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})(?::\d{2})?$/);
+  const date = new Date(kstMatch ? `${kstMatch[1]}T${kstMatch[2]}:00+09:00` : raw);
+  return Number.isFinite(date.getTime()) ? date : null;
+}
+
+function formatKstDateTime(date) {
+  if (!date || !Number.isFinite(date.getTime())) return "일정 미정";
+  return new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date);
+}
+
+function getMatchCapacity(match = {}) {
+  return getModeCapacity(match.mode) * 2;
+}
+
+function getMatchSummaryLines(match = {}) {
+  const scheduledAt = parseMatchScheduleDate(match.scheduledAt);
+  const playerCount = getMatchPlayerIds(match).length;
+  const reserveCount = getMatchReserveIds(match).length;
+  const capacity = getMatchCapacity(match);
+  return [
+    match.title || "경기",
+    `일정: ${scheduledAt ? formatKstDateTime(scheduledAt) : match.scheduledAt || "즉시"}`,
+    `구장: ${match.court || "구장 미정"}`,
+    `인원: ${playerCount}/${capacity}${reserveCount ? ` · 후보 ${reserveCount}` : ""}`,
+  ];
+}
+
+function getMatchDiscordPayload(match = {}, title, intro) {
+  return {
+    title,
+    body: [intro, ...getMatchSummaryLines(match)].join("\n"),
+    webPath: getMatchWebPath(match.id),
+    webUrl: getMatchWebUrl(match.id),
+    actions: [],
+  };
 }
 
 function getSidePlayerRows(match = {}) {
@@ -61,6 +142,125 @@ function getParticipantIds(match = {}) {
     ...Object.values(match.playedPlayerIds ?? match.rules?.playedPlayerIds ?? {}).flatMap(toArray),
     ...Object.values(match.attendance ?? {}).flatMap(toArray),
   ].filter(Boolean));
+}
+
+export async function getDiscordProfiles(supabase, profileIds = []) {
+  const ids = Array.from(new Set(profileIds.filter(Boolean)));
+  if (!ids.length) return [];
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, discord_user_id")
+    .in("id", ids)
+    .not("discord_user_id", "is", null);
+  if (error) throw error;
+  return (data ?? []).filter((profile) => profile.id && profile.discord_user_id);
+}
+
+function toDiscordDeliveryRows(match = {}, profiles = [], notification = {}) {
+  const now = new Date().toISOString();
+  const sendAt = notification.sendAt ?? now;
+  const payload = getMatchDiscordPayload(match, notification.title, notification.intro);
+  return profiles.map((profile) => {
+    const id = `discord-${notification.idPrefix}-${match.id}-${profile.id}`;
+    return {
+      id,
+      notification_id: id,
+      target_user_id: profile.id,
+      discord_user_id: profile.discord_user_id,
+      event: "match",
+      status: "queued",
+      payload: {
+        ...payload,
+        id,
+        matchId: match.id,
+        targetUserId: profile.id,
+        status: "queued",
+        queuedAt: now,
+        sendAt,
+      },
+      queued_at: now,
+      send_at: sendAt,
+      sent_at: null,
+      failed_at: null,
+      last_error: null,
+      created_at: now,
+      updated_at: now,
+    };
+  });
+}
+
+export async function upsertDiscordDeliveryRows(supabase, rows = []) {
+  if (!rows.length) return 0;
+  const ids = rows.map((row) => row.id).filter(Boolean);
+  const { data: existingRows, error: existingError } = await supabase
+    .from("discord_notification_deliveries")
+    .select("id, sent_at")
+    .in("id", ids);
+  if (existingError) throw existingError;
+
+  const sentIds = new Set((existingRows ?? []).filter((row) => row.sent_at).map((row) => row.id));
+  const pendingRows = rows.filter((row) => !sentIds.has(row.id));
+  if (!pendingRows.length) return 0;
+
+  const { error } = await supabase
+    .from("discord_notification_deliveries")
+    .upsert(pendingRows, { onConflict: "id" });
+  if (error) throw error;
+  return pendingRows.length;
+}
+
+async function queueMatchDiscordDeliveries(supabase, match = {}, action = "sync") {
+  const profiles = await getDiscordProfiles(supabase, Array.from(getParticipantIds(match)));
+  if (!profiles.length) return 0;
+
+  const nowMs = Date.now();
+  const scheduledAt = parseMatchScheduleDate(match.scheduledAt);
+  const rows = [];
+
+  if (
+    scheduledAt &&
+    scheduledAt.getTime() > nowMs &&
+    ["contract", "agreed"].includes(match.status) &&
+    !match.startedAt &&
+    !match.endedAt &&
+    !match.result
+  ) {
+    MATCH_REMINDER_OFFSETS.forEach((reminder) => {
+      const sendAtMs = scheduledAt.getTime() - reminder.offsetMs;
+      if (sendAtMs <= nowMs) return;
+      rows.push(...toDiscordDeliveryRows(match, profiles, {
+        idPrefix: `match-reminder-${reminder.suffix}`,
+        title: reminder.title,
+        intro: reminder.intro,
+        sendAt: new Date(sendAtMs).toISOString(),
+      }));
+    });
+  }
+
+  if (action === "startMatch") {
+    rows.push(...toDiscordDeliveryRows(match, profiles, {
+      idPrefix: "match-started",
+      title: "경기 시작",
+      intro: "경기가 시작됐습니다.",
+    }));
+  }
+
+  if (action === "endMatch") {
+    const endedAt = match.endedAt ? new Date(match.endedAt) : new Date();
+    rows.push(...toDiscordDeliveryRows(match, profiles, {
+      idPrefix: "match-ended-score",
+      title: "경기 종료",
+      intro: "경기가 종료됐습니다. 점수를 입력해주세요.",
+    }));
+    rows.push(...toDiscordDeliveryRows(match, profiles, {
+      idPrefix: "match-dispute-check",
+      title: "이의신청 확인",
+      intro: "경기 종료 30분이 지났습니다. 점수가 입력됐다면 결과를 확인하고, 문제가 있으면 이의신청해주세요.",
+      sendAt: new Date(endedAt.getTime() + 30 * 60 * 1000).toISOString(),
+    }));
+  }
+
+  return upsertDiscordDeliveryRows(supabase, rows);
 }
 
 function getModeCapacity(mode = "5v5") {
@@ -620,6 +820,14 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
   });
   if (persistError) throw persistError;
   const ratingCommitResult = shouldCommitRating ? await commitMatchRating(context, ratingCommit) : null;
+  let discordDeliveryCount = 0;
+  let discordDeliveryError = null;
+  try {
+    discordDeliveryCount = await queueMatchDiscordDeliveries(context.supabase, match, action);
+  } catch (deliveryError) {
+    discordDeliveryError = deliveryError.message || "discord_match_delivery_failed";
+    console.error("Match Discord delivery queue failed.", deliveryError);
+  }
 
   return {
     ok: true,
@@ -628,6 +836,8 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
     playerCount: Number(persistResult?.playerCount ?? playerRows.length),
     statCount: Number(persistResult?.statCount ?? statRows.length),
     notificationCount: Number(persistResult?.notificationCount ?? notificationRows.length),
+    discordDeliveryCount,
+    discordDeliveryError,
     ratingCommitted: Boolean(ratingCommitResult?.ok),
     ratingAlreadyCommitted: Boolean(ratingCommitResult?.alreadyCommitted),
   };

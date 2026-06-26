@@ -5,7 +5,7 @@ import {
   loadAuthoritativeState,
 } from "../_authoritativeState.js";
 import { addTeamRoster, assertProfilesExist, assertTeamRosterMembers } from "../_rosterEligibility.js";
-import { persistMatchSnapshot } from "../matches/sync-match.js";
+import { getDiscordProfiles, persistMatchSnapshot, upsertDiscordDeliveryRows } from "../matches/sync-match.js";
 
 function toArray(value) {
   return Array.isArray(value) ? value.filter(Boolean) : [];
@@ -159,6 +159,94 @@ function participantIdsFromPost(post = {}) {
     ...(toArray(roomState.invitations).map((invitation) => invitation.targetUserId)),
     ...(toArray(roomState.invitations).map((invitation) => invitation.fromUserId)),
   ].filter(Boolean));
+}
+
+function getPublicAppUrl() {
+  return String(process.env.VITE_PUBLIC_APP_URL || process.env.PUBLIC_APP_URL || "").trim().replace(/\/$/, "");
+}
+
+function getRecruitingWebPath(postId = "") {
+  return `/app/recruiting?post=${encodeURIComponent(String(postId))}`;
+}
+
+function getRecruitingWebUrl(postId = "") {
+  const baseUrl = getPublicAppUrl();
+  const path = getRecruitingWebPath(postId);
+  return baseUrl ? `${baseUrl}${path}` : path;
+}
+
+function getModeCapacity(mode = "5v5") {
+  const match = String(mode).match(/^(\d+)/);
+  const value = match ? Number(match[1]) : 5;
+  return Math.max(1, Math.min(5, Number.isFinite(value) ? value : 5));
+}
+
+function getRecruitingPlayerCount(post = {}) {
+  return [
+    ...(toArray(post.playerIds)),
+    ...(toArray(post.applicants).flatMap((application) => [
+      application.playerId,
+      ...(toArray(application.playerIds)),
+    ])),
+  ].filter(Boolean).length;
+}
+
+function isInstantRecruitingPost(post = {}) {
+  return post.timingType === "instant" || post.roomState?.timingType === "instant" || post.scheduledAt === "즉시";
+}
+
+function toRoomOpenedDiscordRows(post = {}, profiles = []) {
+  const now = new Date().toISOString();
+  const capacity = getModeCapacity(post.mode) * 2;
+  const playerCount = getRecruitingPlayerCount(post);
+  const payload = {
+    title: "방 개설",
+    body: [
+      "즉시 매칭방이 열렸습니다.",
+      post.title || "매칭방",
+      `구장: ${post.court || "구장 미정"}`,
+      `인원: ${playerCount}/${capacity}`,
+      `방식: ${post.mode || "5v5"}`,
+    ].join("\n"),
+    webPath: getRecruitingWebPath(post.id),
+    webUrl: getRecruitingWebUrl(post.id),
+    actions: [],
+  };
+
+  return profiles.map((profile) => {
+    const id = `discord-room-opened-${post.id}-${profile.id}`;
+    return {
+      id,
+      notification_id: id,
+      target_user_id: profile.id,
+      discord_user_id: profile.discord_user_id,
+      event: "match",
+      status: "queued",
+      payload: {
+        ...payload,
+        id,
+        recruitingPostId: post.id,
+        targetUserId: profile.id,
+        status: "queued",
+        queuedAt: now,
+        sendAt: now,
+      },
+      queued_at: now,
+      send_at: now,
+      sent_at: null,
+      failed_at: null,
+      last_error: null,
+      created_at: now,
+      updated_at: now,
+    };
+  });
+}
+
+async function queueInstantRoomOpenedDiscordDeliveries(supabase, post = {}, action = "sync") {
+  if (action !== "createRecruitingPost" || !isInstantRecruitingPost(post)) return 0;
+  const profiles = await getDiscordProfiles(supabase, Array.from(participantIdsFromPost(post)));
+  const rows = toRoomOpenedDiscordRows(post, profiles);
+  return upsertDiscordDeliveryRows(supabase, rows);
 }
 
 const AGE_GROUP_IDS = ["junior", "rising", "open"];
@@ -484,6 +572,14 @@ export async function persistRecruitingPostSnapshot(context, { post, notificatio
     p_notification_rows: notificationRows,
   });
   if (persistError) throw persistError;
+  let discordDeliveryCount = 0;
+  let discordDeliveryError = null;
+  try {
+    discordDeliveryCount = await queueInstantRoomOpenedDiscordDeliveries(context.supabase, post, action);
+  } catch (deliveryError) {
+    discordDeliveryError = deliveryError.message || "discord_room_opened_delivery_failed";
+    console.error("Recruiting Discord delivery queue failed.", deliveryError);
+  }
 
   return {
     ok: true,
@@ -491,6 +587,8 @@ export async function persistRecruitingPostSnapshot(context, { post, notificatio
     postId: post.id,
     applicationCount: Number(persistResult?.applicationCount ?? applicationRows.length),
     notificationCount: Number(persistResult?.notificationCount ?? notificationRows.length),
+    discordDeliveryCount,
+    discordDeliveryError,
   };
 }
 
