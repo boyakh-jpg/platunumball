@@ -4,6 +4,7 @@ import {
   getOperation,
   loadAuthoritativeState,
 } from "../_authoritativeState.js";
+import { addTeamRoster, assertProfilesExist, assertTeamRosterMembers } from "../_rosterEligibility.js";
 import { persistMatchSnapshot } from "../matches/sync-match.js";
 
 function toArray(value) {
@@ -251,6 +252,44 @@ async function validateAgeEligibility(supabase, profileId, existingPost, nextPos
   if (blockedUserId) reject(403, "age_group_not_allowed");
 }
 
+function getRecruitingApplicantKey(application = {}) {
+  return application.kind === "team" || application.teamId
+    ? `team:${application.teamId}`
+    : `player:${application.playerId}`;
+}
+
+async function validateRecruitingRosterEligibility(supabase, post = {}) {
+  const roomState = normalizeRoomState(post.roomState, post);
+  await assertProfilesExist(supabase, getPlayerEligibilityIds(post), "recruiting_player_not_found");
+
+  const rostersByTeam = new Map();
+  if ((post.hostJoinMode ?? post.host_join_mode) !== "player" && post.teamId) {
+    addTeamRoster(rostersByTeam, post.teamId, [
+      post.playerId,
+      ...(toArray(post.playerIds)),
+      ...(toArray(roomState.partyReserves?.host)),
+    ]);
+  }
+
+  toArray(post.applicants).forEach((application) => {
+    const teamId = application.teamId ?? application.sourceTeamId ?? null;
+    if (!teamId) return;
+    addTeamRoster(rostersByTeam, teamId, [
+      application.playerId,
+      ...(toArray(application.playerIds)),
+      ...(toArray(application.reservePlayerIds)),
+      ...(toArray(roomState.partyReserves?.[getRecruitingApplicantKey(application)])),
+    ]);
+  });
+
+  toArray(roomState.invitations).forEach((invitation) => {
+    if (invitation.role === "referee" || !invitation.teamId) return;
+    addTeamRoster(rostersByTeam, invitation.teamId, [invitation.targetUserId]);
+  });
+
+  await assertTeamRosterMembers(supabase, rostersByTeam, "recruiting_team_roster_not_member");
+}
+
 function isOwner(profileId, post = {}) {
   const roomState = normalizeRoomState(post.roomState ?? post.room_state, post);
   return Boolean(profileId && (profileId === post.ownerId || profileId === roomState.ownerId || profileId === post.playerId || profileId === post.player_id));
@@ -432,6 +471,7 @@ export async function persistRecruitingPostSnapshot(context, { post, notificatio
   }
   validateLockedRecruitingCore(context.profileId, existingPost, post, actionBody);
   await validateRefereeAction(context.supabase, context.profileId, existingPost, post, actionBody);
+  await validateRecruitingRosterEligibility(context.supabase, post);
   await validateAgeEligibility(context.supabase, context.profileId, existingPost, post, actionBody);
 
   const postRow = toRecruitingPostRow(post);

@@ -1143,6 +1143,15 @@ flowchart TD
 6. Match score and player stats may only be written through `submitMatchResult`; other match actions preserve existing DB score/stat fields.
 7. `ratingResult` and `teamRatingResult` may be written only when `approveMatch` confirms an existing submitted result.
 
+## 2026-06-26 roster membership server guard
+
+1. `POST /api/recruiting/sync-post` must reject roster snapshots that reference missing profile ids.
+2. Team-hosted recruiting rooms must keep host active players and host reserves inside the host `team_members` roster.
+3. Team applicant, source-team applicant, team invitation, and party reserve ids must belong to the referenced team.
+4. `POST /api/matches/sync-match` must reject missing match roster profile ids.
+5. Match sides with `teamId` must keep active players, reserve players, and `playedPlayerIds` inside that team's `team_members` roster.
+6. Personal sides without `teamId` are not team-membership gated.
+
 ## 2026-06-26 match rating commit transaction
 
 1. `approveMatch`가 양쪽 승인 완료로 `confirmed`가 되면 서버 reducer가 변경된 `profiles`와 `teams` 경쟁 수치만 추출한다.

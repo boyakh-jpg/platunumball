@@ -4,6 +4,7 @@ import {
   getOperation,
   loadAuthoritativeState,
 } from "../_authoritativeState.js";
+import { addTeamRoster, assertProfilesExist, assertTeamRosterMembers } from "../_rosterEligibility.js";
 
 function toArray(value) {
   return Array.isArray(value) ? value.filter(Boolean) : [];
@@ -92,6 +93,31 @@ function validateMatchShape(match = {}) {
   const duplicate = allPlayerIds.find((playerId, index) => allPlayerIds.indexOf(playerId) !== index);
   if (duplicate) reject(400, "duplicate_match_player");
   if (match.refereeId && allPlayerIds.includes(match.refereeId)) reject(400, "referee_cannot_be_player");
+}
+
+function getSideScopedIds(match = {}, sideName) {
+  return [
+    ...(toArray(match[sideName]?.players)),
+    ...(toArray((match.reservePlayers ?? match.rules?.reservePlayers ?? {})[sideName])),
+    ...(toArray((match.playedPlayerIds ?? match.rules?.playedPlayerIds ?? {})[sideName])),
+  ];
+}
+
+async function validateMatchRosterEligibility(supabase, match = {}) {
+  const rosterIds = [
+    ...getMatchPlayerIds(match),
+    ...getMatchReserveIds(match),
+    ...getMatchPlayedIds(match),
+  ];
+  await assertProfilesExist(supabase, rosterIds, "match_player_not_found");
+
+  const rostersByTeam = new Map();
+  ["teamA", "teamB"].forEach((sideName) => {
+    const teamId = match[sideName]?.teamId;
+    if (!teamId) return;
+    addTeamRoster(rostersByTeam, teamId, getSideScopedIds(match, sideName));
+  });
+  await assertTeamRosterMembers(supabase, rostersByTeam, "match_team_roster_not_member");
 }
 
 function validateResultShape(match = {}, action = "sync") {
@@ -559,6 +585,7 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
   validateParticipantResultUnchanged(action, existingResult, existingStats, match);
   validateResultOnlyOnSubmission(action, existingResult, existingStats, match);
   await validateRefereeEligibility(context.supabase, existingMatch, match, action);
+  await validateMatchRosterEligibility(context.supabase, match);
 
   const matchRow = toMatchRow(match, context.profileId);
   const playerRows = getSidePlayerRows(match);
