@@ -721,6 +721,80 @@ async function runSoloRoomTeamBlockedScenario({
   };
 }
 
+async function runIneligibleRefereeBlockedScenario({
+  label,
+  hostLogin,
+  refereeLogin,
+}) {
+  ids = makeScenarioIds(label);
+  const hostId = await step(`${ids.label}:resolveProfile:host`, () => getProfileIdForLogin(hostLogin));
+  const refereeCandidateId = await step(`${ids.label}:resolveProfile:refereeCandidate`, () => getProfileIdForLogin(refereeLogin));
+  assertFlow(hostId !== refereeCandidateId, "host and referee candidate must be different profiles", { hostId, refereeCandidateId });
+
+  const createResult = await step(`${ids.label}:createRecruitingPost`, () => syncRecruitingAs(hostLogin, {
+    action: "createRecruitingPost",
+    preferredPostId: ids.postId,
+    draft: {
+      id: ids.postId,
+      title: `Backend simulation ${ids.label}`,
+      visibility: "public",
+      hostJoinMode: "player",
+      mode: "1v1",
+      sideCapacity: 1,
+      timingType: "instant",
+      ranked: false,
+      official: false,
+      preRegistered: true,
+      teamOnly: false,
+      refereeWanted: true,
+      refereeTrustMin: 70,
+      region: "Backend Simulation",
+      court: "Backend Simulation Court",
+      position: "PG",
+      memo: "Backend simulation row. Safe to delete.",
+      rules: {
+        targetScore: 21,
+        timeLimit: 12,
+        winByTwo: true,
+        ball: "7",
+      },
+    },
+  }));
+  const createdPost = createResult?.post;
+  assertFlow(createdPost?.id === ids.postId, "created referee block post not returned", createResult);
+
+  const rejection = await expectRejected(
+    `${ids.label}:interestRecruitingPost:refereeBlocked`,
+    () => syncRecruitingAs(refereeLogin, {
+      action: "interestRecruitingPost",
+      postId: ids.postId,
+      application: {
+        joinMode: "referee",
+      },
+      joinMode: "referee",
+    }),
+    ["referee_not_eligible", "recruiting_sync_permission_denied", "recruiting_operation_noop"],
+  );
+
+  const stateAfterReject = await step(`${ids.label}:loadAfterReject`, () => loadStateAs(hostLogin));
+  const post = findPost(stateAfterReject);
+  assertFlow(Boolean(post), "referee block post missing after rejection", stateAfterReject);
+  assertFlow(post.refereeId !== refereeCandidateId, "ineligible referee persisted", {
+    refereeCandidateId,
+    post,
+  });
+
+  return {
+    label: ids.label,
+    hostLogin,
+    refereeLogin,
+    hostId,
+    refereeCandidateId,
+    postId: ids.postId,
+    rejected: rejection.rejected,
+  };
+}
+
 async function main() {
   const schemaHealth = await assertRemoteSchemaHealth();
   const basicHostLogin = process.env.RANKBALL_SIM_HOST || "rankball-010";
@@ -733,6 +807,8 @@ async function main() {
   const teamBlockedHostLogin = process.env.RANKBALL_SIM_SOLO_BLOCK_HOST || "rankball-014";
   const teamBlockedLogin = process.env.RANKBALL_SIM_SOLO_BLOCK_TEAM_LOGIN || "rankball-001";
   const teamBlockedTeamId = process.env.RANKBALL_SIM_SOLO_BLOCK_TEAM_ID || "t1";
+  const refereeBlockedHostLogin = process.env.RANKBALL_SIM_REF_BLOCK_HOST || "rankball-014";
+  const refereeBlockedLogin = process.env.RANKBALL_SIM_REF_BLOCK_CANDIDATE || "rankball-015";
 
   const scenarios = [];
   scenarios.push(await runRecruitingActorScenario({
@@ -745,6 +821,11 @@ async function main() {
     hostLogin: teamBlockedHostLogin,
     teamLogin: teamBlockedLogin,
     teamId: teamBlockedTeamId,
+  }));
+  scenarios.push(await runIneligibleRefereeBlockedScenario({
+    label: "ineligible_referee_join_blocked",
+    hostLogin: refereeBlockedHostLogin,
+    refereeLogin: refereeBlockedLogin,
   }));
   scenarios.push(await runOneOnOneScenario({
     label: "basic_1v1_no_referee",
