@@ -68,6 +68,21 @@ function toTeamRow(team = {}) {
   };
 }
 
+function withLockedCompetitiveFields(team = {}, existingTeam = null) {
+  if (!existingTeam) return { ...team, mmr: 1200, wins: 0, losses: 0 };
+  if (existingTeam.deleted_at) {
+    const error = new Error("team_deleted");
+    error.statusCode = 403;
+    throw error;
+  }
+  return {
+    ...team,
+    mmr: Number(existingTeam.mmr ?? 1200),
+    wins: Number(existingTeam.wins ?? 0),
+    losses: Number(existingTeam.losses ?? 0),
+  };
+}
+
 function toMemberRows(team = {}) {
   return team.members.map((member) => ({
     team_id: team.id,
@@ -109,6 +124,16 @@ async function getExistingCaptainIds(supabase, teamId) {
   return new Set((data ?? []).filter((member) => member.role === "captain").map((member) => member.user_id));
 }
 
+async function getExistingTeam(supabase, teamId) {
+  const { data, error } = await supabase
+    .from("teams")
+    .select("id, mmr, wins, losses, deleted_at")
+    .eq("id", teamId)
+    .maybeSingle();
+  if (error) throw error;
+  return data ?? null;
+}
+
 async function assertMembersExist(supabase, memberIds = []) {
   if (!memberIds.length) return;
   const { data, error } = await supabase
@@ -147,6 +172,7 @@ async function assertMembershipLimit(supabase, teamId, memberIds = []) {
 
 async function syncTeam(context, rawTeam, notifications = []) {
   const team = normalizeTeam(rawTeam, context.profileId);
+  const existingTeam = await getExistingTeam(context.supabase, team.id);
   const existingCaptainIds = await getExistingCaptainIds(context.supabase, team.id);
   if (existingCaptainIds.size && !existingCaptainIds.has(context.profileId)) {
     const error = new Error("team_sync_permission_denied");
@@ -157,10 +183,11 @@ async function syncTeam(context, rawTeam, notifications = []) {
   const memberIds = team.members.map((member) => member.userId);
   await assertMembersExist(context.supabase, memberIds);
   await assertMembershipLimit(context.supabase, team.id, memberIds);
+  const safeTeam = withLockedCompetitiveFields(team, existingTeam);
 
   const { error: teamError } = await context.supabase
     .from("teams")
-    .upsert(toTeamRow(team), { onConflict: "id" });
+    .upsert(toTeamRow(safeTeam), { onConflict: "id" });
   if (teamError) throw teamError;
 
   const { error: deleteError } = await context.supabase

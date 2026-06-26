@@ -1011,7 +1011,8 @@ flowchart TD
 3. 새 팀 생성은 현재 `profileId`가 주장으로 포함된 경우만 허용한다.
 4. 서버는 팀명 14자 제한, 멤버 프로필 존재 여부, 1인 최대 3팀 제한을 다시 확인한다.
 5. 팀 삭제는 `teams.deleted_at` soft delete, `team_members` 삭제, 팀 즐겨찾기 삭제, 해당 팀 모집방 닫기를 함께 수행한다.
-6. 이 단계는 팀 저장 브리지다. 팀 초대/가입 승인 같은 별도 팀 운영 플로우는 아직 authoritative RPC가 아니다.
+6. 팀 MMR, 승수, 패수는 클라이언트 스냅샷으로 수정하지 않는다. 새 팀은 기본값으로 시작하고 기존 팀은 DB 기존 값을 유지한다.
+7. 이 단계는 팀 저장 브리지다. 팀 초대/가입 승인 같은 별도 팀 운영 플로우는 아직 authoritative RPC가 아니다.
 
 ## 2026-06-25 tournament sync server action
 
