@@ -1280,3 +1280,4 @@ flowchart TD
 2. Recruiting first client load and additional page load use `REMOTE_CLIENT_RECRUITING_LIMIT = 80`.
 3. Additional recruiting pages must merge by id and keep server rows as source of truth.
 4. List pagination must not load match result/stat child tables.
+5. Recruiting scope state loads must fetch only related profiles, teams, team members, and courts for loaded recruiting rows.

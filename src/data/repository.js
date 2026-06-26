@@ -1273,6 +1273,53 @@ function collectMatchPageScope(matches = [], matchPlayers = [], matchResults = [
   };
 }
 
+function collectTeamIdsFromRoomKeys(value = {}) {
+  return Object.keys(value ?? {})
+    .map((key) => String(key || "").match(/^team:(.+)$/)?.[1] ?? "")
+    .filter(Boolean);
+}
+
+function collectRecruitingPageScope(posts = [], applications = [], profileIds = []) {
+  const teamIds = [];
+  const courtIds = [];
+  const scopedProfileIds = [...profileIds];
+  posts.forEach((post) => {
+    const roomState = post.room_state ?? {};
+    const invitations = Array.isArray(roomState.invitations) ? roomState.invitations : [];
+    teamIds.push(
+      post.team_id,
+      post.target_team_id,
+      ...collectTeamIdsFromRoomKeys(roomState.partyLeaders),
+      ...collectTeamIdsFromRoomKeys(roomState.partyReserves),
+    );
+    courtIds.push(post.court_id);
+    scopedProfileIds.push(
+      post.player_id,
+      post.referee_id,
+      ...flattenIdValues(post.player_ids),
+      roomState.ownerId,
+      ...flattenIdValues(roomState.partyLeaders),
+      ...flattenIdValues(roomState.partyReserves),
+      ...flattenIdValues(roomState.pinnedReservePlayers),
+      ...flattenIdValues(roomState.reserveReady),
+      ...invitations.flatMap((invitation) => [
+        invitation.targetUserId,
+        invitation.fromUserId,
+        ...(invitation.playerIds ?? []),
+      ]),
+    );
+  });
+  applications.forEach((application) => {
+    teamIds.push(application.team_id, application.source_team_id);
+    scopedProfileIds.push(application.player_id, ...flattenIdValues(application.player_ids));
+  });
+  return {
+    teamIds: uniqueScopeIds(teamIds),
+    courtIds: uniqueScopeIds(courtIds),
+    profileIds: uniqueScopeIds(scopedProfileIds),
+  };
+}
+
 export async function loadNormalizedRemoteStateFromClient(client = supabase, authUserId = "", authEmail = "", options = {}) {
   const clientState = options.clientState === true;
   const scope = String(options.scope || "full");
@@ -1282,6 +1329,7 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
   const includeAppMeta = scope === "full";
   const includeUserScoped = scope === "full";
   const matchPageScope = scope === "matches";
+  const recruitingPageScope = scope === "recruiting";
   const authUserIdText = String(authUserId || "");
   const testLoginId = getBackendTestLoginId(authUserIdText);
   const matchScopeIds = uniqueScopeIds(options.matchIds ?? options.matchId);
@@ -1329,7 +1377,7 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
     includeAppMeta ? fetchAllRows("affiliations", AFFILIATION_COLUMNS, "id", client) : [],
   ]);
 
-  if (!matchPageScope) {
+  if (!matchPageScope && !recruitingPageScope) {
     [publicProfiles, teams, teamMembers, courts] = await Promise.all([
       fetchOptionalRows("public_profiles", PUBLIC_PROFILE_COLUMNS, "id", client),
       fetchAllRows("teams", TEAM_COLUMNS, "id", client),
@@ -1456,6 +1504,30 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
   if (matchPageScope) {
     const scopedProfileIds = privateProfiles.map((profile) => profile.id);
     const scoped = collectMatchPageScope(matches, matchPlayers, matchResults, playerStats, agreements, approvals, disputes, scopedProfileIds);
+    [teams, teamMembers, courts] = await Promise.all([
+      fetchRowsByIds("teams", TEAM_COLUMNS, "id", scoped.teamIds, "id", client),
+      fetchRowsByIds("team_members", TEAM_MEMBER_COLUMNS, "team_id", scoped.teamIds, null, client),
+      fetchRowsByIds("courts", COURT_COLUMNS, "id", scoped.courtIds, "id", client),
+    ]);
+    publicProfiles = await fetchRowsByIds(
+      "public_profiles",
+      PUBLIC_PROFILE_COLUMNS,
+      "id",
+      [...scoped.profileIds, ...teamMembers.map((member) => member.user_id)],
+      "id",
+      client,
+      true,
+    );
+    publicProfiles.forEach((profile) => {
+      const mergedProfile = { ...profile, ...(privateProfileById.get(profile.id) ?? {}) };
+      const existingIndex = profiles.findIndex((item) => item.id === mergedProfile.id);
+      if (existingIndex >= 0) profiles[existingIndex] = { ...profiles[existingIndex], ...mergedProfile };
+      else profiles.push(mergedProfile);
+    });
+  }
+  if (recruitingPageScope) {
+    const scopedProfileIds = privateProfiles.map((profile) => profile.id);
+    const scoped = collectRecruitingPageScope(recruitingPosts, recruitingApplications, scopedProfileIds);
     [teams, teamMembers, courts] = await Promise.all([
       fetchRowsByIds("teams", TEAM_COLUMNS, "id", scoped.teamIds, "id", client),
       fetchRowsByIds("team_members", TEAM_MEMBER_COLUMNS, "team_id", scoped.teamIds, null, client),
