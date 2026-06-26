@@ -489,6 +489,20 @@ function canCommitRatingResult(action, existingResult, nextMatch) {
   return action === "approveMatch" && Boolean(existingResult) && nextMatch?.status === "confirmed";
 }
 
+async function commitMatchRating(context, ratingCommit = {}) {
+  const { data, error } = await context.supabase.rpc("rankball_commit_match_rating", {
+    p_match_id: ratingCommit.matchId,
+    p_actor_profile_id: context.profileId,
+    p_rating_result: ratingCommit.ratingResult ?? [],
+    p_team_rating_result: ratingCommit.teamRatingResult ?? {},
+    p_profile_updates: ratingCommit.profileUpdates ?? [],
+    p_team_updates: ratingCommit.teamUpdates ?? [],
+    p_confirmed_at: ratingCommit.confirmedAt ?? new Date().toISOString(),
+  });
+  if (error) throw error;
+  return data ?? { ok: true };
+}
+
 async function deleteMatchChildren(supabase, table, matchId) {
   const { error } = await supabase.from(table).delete().eq("match_id", matchId);
   if (error) throw error;
@@ -500,14 +514,14 @@ async function upsertRows(supabase, table, rows, onConflict) {
   if (error) throw error;
 }
 
-export async function persistMatchSnapshot(context, { match, notifications = [], action = "sync", body = {} }) {
+export async function persistMatchSnapshot(context, { match, notifications = [], action = "sync", body = {}, ratingCommit = null }) {
   if (!match?.id) reject(400, "missing_match");
   validateMatchShape(match);
   validateResultShape(match, action);
 
   const { data: existingMatch, error: existingError } = await context.supabase
       .from("matches")
-      .select("id, created_by, referee_id, former_referee_id, referee_trust_min, stat_recorders, score_a, score_b, rating_result, team_rating_result")
+      .select("id, status, created_by, referee_id, former_referee_id, referee_trust_min, stat_recorders, score_a, score_b, rating_result, team_rating_result, confirmed_at")
       .eq("id", match.id)
       .maybeSingle();
   if (existingError) throw existingError;
@@ -541,10 +555,17 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
 
   const matchRow = toMatchRow(match, context.profileId);
   const playerRows = getSidePlayerRows(match);
+  const shouldCommitRating = canCommitRatingResult(action, existingResult, match);
+  if (shouldCommitRating && !ratingCommit) reject(400, "missing_rating_commit");
   if (action !== "submitMatchResult" && existingMatch) {
     matchRow.score_a = Number(existingMatch.score_a ?? 0);
     matchRow.score_b = Number(existingMatch.score_b ?? 0);
-    if (!canCommitRatingResult(action, existingResult, match)) {
+    if (shouldCommitRating) {
+      matchRow.status = existingMatch.status ?? "approval";
+      matchRow.rating_result = existingMatch.rating_result ?? null;
+      matchRow.team_rating_result = existingMatch.team_rating_result ?? null;
+      matchRow.confirmed_at = existingMatch.confirmed_at ?? null;
+    } else {
       matchRow.rating_result = existingMatch.rating_result ?? null;
       matchRow.team_rating_result = existingMatch.team_rating_result ?? null;
     }
@@ -575,6 +596,7 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
   await upsertRows(context.supabase, "match_approvals", approvalRows, "match_id,user_id");
   await upsertRows(context.supabase, "match_disputes", disputeRows, "id");
   await upsertRows(context.supabase, "notifications", notificationRows, "id");
+  const ratingCommitResult = shouldCommitRating ? await commitMatchRating(context, ratingCommit) : null;
 
   return {
     ok: true,
@@ -583,6 +605,8 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
     playerCount: playerRows.length,
     statCount: statRows.length,
     notificationCount: notificationRows.length,
+    ratingCommitted: Boolean(ratingCommitResult?.ok),
+    ratingAlreadyCommitted: Boolean(ratingCommitResult?.alreadyCommitted),
   };
 }
 
@@ -600,6 +624,7 @@ export default async function handler(request, response) {
     let match = body.match && typeof body.match === "object" ? body.match : null;
     let notifications = body.notifications ?? [];
     let action = body.action ? String(body.action) : "sync";
+    let ratingCommit = null;
 
     if (operation) {
       const state = await loadAuthoritativeState(context);
@@ -607,9 +632,10 @@ export default async function handler(request, response) {
       match = result.match;
       notifications = result.notifications;
       action = operation.action;
+      ratingCommit = result.ratingCommit;
     }
 
-    const result = await persistMatchSnapshot(context, { match, notifications, action, body });
+    const result = await persistMatchSnapshot(context, { match, notifications, action, body, ratingCommit });
     sendJson(response, 200, result);
   } catch (error) {
     console.error("Match sync failed.", error);

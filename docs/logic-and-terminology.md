@@ -1139,6 +1139,14 @@ flowchart TD
 6. Match score and player stats may only be written through `submitMatchResult`; other match actions preserve existing DB score/stat fields.
 7. `ratingResult` and `teamRatingResult` may be written only when `approveMatch` confirms an existing submitted result.
 
+## 2026-06-26 match rating commit transaction
+
+1. `approveMatch`가 양쪽 승인 완료로 `confirmed`가 되면 서버 reducer가 변경된 `profiles`와 `teams` 경쟁 수치만 추출한다.
+2. MMR, streak, trust reward, team wins/losses는 `rankball_commit_match_rating()` RPC에서만 최종 커밋한다.
+3. RPC는 `matches` row를 `for update`로 잠그고 `rating_result is not null`이면 재커밋하지 않는다.
+4. `ratingResult/teamRatingResult/confirmedAt`이 포함된 경기 확정 상태는 RPC가 match row에 저장한다.
+5. 경기 생성/기록 제출/출석/이의/룰 수정은 아직 별도 row upsert 경로이며, full DB RPC migration은 남아 있다.
+
 ## 2026-06-26 Supabase test seed
 
 1. `npm run seed:supabase` gives demo profiles `testLoginId` and stores them in `profiles.test_login_id`.

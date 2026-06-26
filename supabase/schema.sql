@@ -528,6 +528,7 @@ begin
     execute 'alter table public.matches add column if not exists stat_entry_minutes integer not null default 60';
     execute 'alter table public.matches add column if not exists dispute_minutes integer not null default 120';
     execute 'alter table public.matches add column if not exists ended_at timestamptz';
+    execute 'alter table public.matches add column if not exists confirmed_at timestamptz';
     execute 'alter table public.matches add column if not exists trust_feedback jsonb not null default ''{}''::jsonb';
     execute 'alter table public.matches add column if not exists stat_recorders jsonb not null default ''{}''::jsonb';
     execute 'alter table public.matches add column if not exists played_player_ids jsonb not null default ''{}''::jsonb';
@@ -541,6 +542,8 @@ begin
     execute 'alter table public.matches add column if not exists dispute_resolved_at timestamptz';
     execute 'alter table public.matches add column if not exists mmr_excluded_player_ids jsonb not null default ''[]''::jsonb';
     execute 'alter table public.matches add column if not exists anonymous_players jsonb not null default ''{}''::jsonb';
+    execute 'alter table public.matches add column if not exists rating_result jsonb';
+    execute 'alter table public.matches add column if not exists team_rating_result jsonb';
     execute 'create index if not exists matches_referee_id_idx on public.matches (referee_id)';
   end if;
 end;
@@ -2509,6 +2512,166 @@ revoke all on function public.rankball_commit_admin_disciplinary_action(text, in
 grant execute on function public.rankball_commit_admin_review_action(text, integer, text, text, text, integer, text, text) to service_role;
 grant execute on function public.rankball_commit_admin_appointment_action(text, integer, text, text, text, text, text, integer, text) to service_role;
 grant execute on function public.rankball_commit_admin_disciplinary_action(text, integer, text, text, text, integer, text) to service_role;
+
+create or replace function public.rankball_commit_match_rating(
+  p_match_id text,
+  p_actor_profile_id text,
+  p_rating_result jsonb,
+  p_team_rating_result jsonb,
+  p_profile_updates jsonb default '[]'::jsonb,
+  p_team_updates jsonb default '[]'::jsonb,
+  p_confirmed_at timestamptz default now()
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  locked_match record;
+  rating_change jsonb;
+  profile_update jsonb;
+  team_update jsonb;
+  safe_mode text;
+  affected_count integer := 0;
+  rating_count integer := 0;
+  profile_count integer := 0;
+  team_count integer := 0;
+begin
+  if nullif(p_match_id, '') is null then
+    raise exception 'missing_match_id';
+  end if;
+
+  select id, status, mode, rating_result
+    into locked_match
+    from public.matches
+    where id = p_match_id
+    for update;
+
+  if not found then
+    raise exception 'match_not_found';
+  end if;
+
+  if locked_match.rating_result is not null then
+    return jsonb_build_object('ok', true, 'alreadyCommitted', true, 'profileCount', 0, 'teamCount', 0);
+  end if;
+
+  if locked_match.status in ('void', 'cancelled') then
+    raise exception 'match_not_committable';
+  end if;
+
+  if p_rating_result is null or jsonb_typeof(p_rating_result) <> 'array' then
+    raise exception 'invalid_rating_result';
+  end if;
+
+  if coalesce(jsonb_typeof(p_profile_updates), 'array') <> 'array' then
+    raise exception 'invalid_profile_updates';
+  end if;
+
+  if coalesce(jsonb_typeof(p_team_updates), 'array') <> 'array' then
+    raise exception 'invalid_team_updates';
+  end if;
+
+  safe_mode := coalesce(nullif(locked_match.mode, ''), '5v5');
+
+  for rating_change in
+    select value from jsonb_array_elements(p_rating_result)
+  loop
+    if nullif(rating_change->>'playerId', '') is null then
+      raise exception 'invalid_rating_change';
+    end if;
+
+    update public.profiles
+    set
+      ratings = jsonb_set(
+        jsonb_set(
+          coalesce(ratings, jsonb_build_object('integrated', 1200, 'modes', '{}'::jsonb)),
+          '{integrated}',
+          to_jsonb(greatest(0, round(coalesce((ratings->>'integrated')::numeric, 1200) + coalesce(nullif(rating_change->>'integratedDelta', '')::numeric, 0))::integer)),
+          true
+        ),
+        array['modes', safe_mode],
+        to_jsonb(greatest(0, round(coalesce((ratings #>> array['modes', safe_mode])::numeric, coalesce((ratings->>'integrated')::numeric, 1200)) + coalesce(nullif(rating_change->>'modeDelta', '')::numeric, 0))::integer)),
+        true
+      ),
+      updated_at = now()
+    where id = rating_change->>'playerId';
+
+    get diagnostics affected_count = row_count;
+    if affected_count <> 1 then
+      raise exception 'rating_profile_not_found';
+    end if;
+    rating_count := rating_count + 1;
+  end loop;
+
+  for profile_update in
+    select value from jsonb_array_elements(coalesce(p_profile_updates, '[]'::jsonb))
+  loop
+    if nullif(profile_update->>'id', '') is null then
+      raise exception 'invalid_profile_update';
+    end if;
+
+    update public.profiles
+    set
+      trust_score = greatest(0, least(100, coalesce(trust_score, 80) + coalesce(nullif(profile_update->>'trustDelta', '')::integer, 0))),
+      streak = case profile_update->>'streakResult'
+        when 'win' then greatest(1, coalesce(streak, 0) + 1)
+        when 'loss' then least(-1, coalesce(streak, 0) - 1)
+        else coalesce(streak, 0)
+      end,
+      updated_at = now()
+    where id = profile_update->>'id';
+
+    get diagnostics affected_count = row_count;
+    if affected_count <> 1 then
+      raise exception 'rating_profile_not_found';
+    end if;
+    profile_count := profile_count + 1;
+  end loop;
+
+  for team_update in
+    select value from jsonb_array_elements(coalesce(p_team_updates, '[]'::jsonb))
+  loop
+    if nullif(team_update->>'id', '') is null then
+      raise exception 'invalid_team_update';
+    end if;
+
+    update public.teams
+    set
+      mmr = greatest(0, round(coalesce(mmr, 1200) + coalesce(nullif(team_update->>'mmrDelta', '')::numeric, 0))::integer),
+      wins = greatest(0, coalesce(wins, 0) + coalesce(nullif(team_update->>'winDelta', '')::integer, 0)),
+      losses = greatest(0, coalesce(losses, 0) + coalesce(nullif(team_update->>'lossDelta', '')::integer, 0)),
+      updated_at = now()
+    where id = team_update->>'id';
+
+    get diagnostics affected_count = row_count;
+    if affected_count <> 1 then
+      raise exception 'rating_team_not_found';
+    end if;
+    team_count := team_count + 1;
+  end loop;
+
+  update public.matches
+  set
+    status = 'confirmed',
+    rating_result = p_rating_result,
+    team_rating_result = coalesce(p_team_rating_result, '{}'::jsonb),
+    confirmed_at = coalesce(p_confirmed_at, now()),
+    updated_at = now()
+  where id = p_match_id;
+
+  return jsonb_build_object(
+    'ok', true,
+    'alreadyCommitted', false,
+    'ratingCount', rating_count,
+    'profileCount', profile_count,
+    'teamCount', team_count
+  );
+end;
+$$;
+
+revoke all on function public.rankball_commit_match_rating(text, text, jsonb, jsonb, jsonb, jsonb, timestamptz) from public;
+grant execute on function public.rankball_commit_match_rating(text, text, jsonb, jsonb, jsonb, jsonb, timestamptz) to service_role;
 
 create or replace function public.rankball_mark_notification_read(notification_id text)
 returns void

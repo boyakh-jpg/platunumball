@@ -62,6 +62,50 @@ function getCreatedItem(beforeItems = [], afterItems = []) {
   return afterItems.find((item) => item?.id && !beforeIds.has(item.id)) ?? null;
 }
 
+function getMatchRatingCommit(beforeState = {}, afterState = {}, match = null, action = "") {
+  if (action !== "approveMatch" || match?.status !== "confirmed" || !match?.ratingResult) return null;
+  const beforeUsersById = new Map((beforeState.users ?? []).map((user) => [user.id, user]));
+  const beforeTeamsById = new Map((beforeState.teams ?? []).map((team) => [team.id, team]));
+  const ratingChangeByPlayerId = new Map((match.ratingResult ?? []).map((change) => [change.playerId, change]));
+  const profileUpdates = (afterState.users ?? [])
+    .filter((user) => {
+      const before = beforeUsersById.get(user.id);
+      const ratingChange = ratingChangeByPlayerId.get(user.id);
+      return before && (
+        ratingChange ||
+        Number(before.trustScore ?? 80) !== Number(user.trustScore ?? 80)
+      );
+    })
+    .map((user) => ({
+      id: user.id,
+      trustDelta: Number(user.trustScore ?? 80) - Number(beforeUsersById.get(user.id)?.trustScore ?? 80),
+      streakResult: ratingChangeByPlayerId.get(user.id)?.result ?? null,
+    }));
+  const teamUpdates = (afterState.teams ?? [])
+    .filter((team) => {
+      const before = beforeTeamsById.get(team.id);
+      return before && (
+        Number(before.mmr ?? 1200) !== Number(team.mmr ?? 1200) ||
+        Number(before.wins ?? 0) !== Number(team.wins ?? 0) ||
+        Number(before.losses ?? 0) !== Number(team.losses ?? 0)
+      );
+    })
+    .map((team) => ({
+      id: team.id,
+      mmrDelta: Number(team.mmr ?? 1200) - Number(beforeTeamsById.get(team.id)?.mmr ?? 1200),
+      winDelta: Number(team.wins ?? 0) - Number(beforeTeamsById.get(team.id)?.wins ?? 0),
+      lossDelta: Number(team.losses ?? 0) - Number(beforeTeamsById.get(team.id)?.losses ?? 0),
+    }));
+  return {
+    matchId: match.id,
+    ratingResult: match.ratingResult,
+    teamRatingResult: match.teamRatingResult ?? {},
+    confirmedAt: match.confirmedAt ?? new Date().toISOString(),
+    profileUpdates,
+    teamUpdates,
+  };
+}
+
 export function getOperation(body = {}, fallbackAction = "sync") {
   const operation = body.operation && typeof body.operation === "object" && !Array.isArray(body.operation)
     ? body.operation
@@ -262,5 +306,5 @@ export function applyAuthoritativeMatchOperation(state, operation = {}) {
   if (!match || next === state) reject(409, "match_operation_noop");
 
   const notifications = getNewItems(state.notifications ?? [], next.notifications ?? [], (notification) => notification.matchId === match.id);
-  return { nextState: next, match, notifications };
+  return { nextState: next, match, notifications, ratingCommit: getMatchRatingCommit(state, next, match, action) };
 }

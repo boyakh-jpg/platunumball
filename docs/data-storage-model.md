@@ -160,6 +160,13 @@
 - operation을 지원하지 않는 legacy 경로는 기존 snapshot 검증/upsert fallback만 허용한다.
 - 이 단계는 전체 state 저장 브리지 제거 이후의 전용 server action sync다. 아직 DB row-level RPC transaction 엔진은 아니므로 동시성 잠금과 MMR 커밋은 남아 있다.
 
+## 2026-06-26 match rating commit RPC
+
+- `approveMatch`가 양쪽 승인으로 `confirmed`가 되면 서버 reducer가 변경된 profile/team 경쟁 수치만 `ratingCommit` payload로 만든다.
+- `POST /api/matches/sync-match`는 `rankball_commit_match_rating()` RPC를 호출해 match row를 `for update`로 잠근 뒤 `profiles.ratings/trust_score/streak`, `teams.mmr/wins/losses`, `matches.rating_result/team_rating_result/confirmed_at`을 한 transaction으로 커밋한다.
+- 이미 `matches.rating_result`가 있으면 RPC는 `alreadyCommitted=true`로 반환하고 MMR을 다시 적용하지 않는다.
+- 경기 생성/기록 제출/출석/이의/룰 수정은 아직 기존 server action 저장 경로를 쓴다.
+
 ## 2026-06-25 report submit server action
 
 - `POST /api/reports/submit`을 추가했다.
