@@ -941,15 +941,15 @@ export default async function handler(request, response) {
     let action = body.action ? String(body.action) : "sync";
     let ratingCommit = null;
 
-    if (operation && match && operation.action !== "approveMatch") {
-      action = operation.action;
-    } else if (operation) {
+    if (operation && (!match || operation.action === "createMatch" || operation.action === "approveMatch")) {
       const state = await loadAuthoritativeState(context, { operation });
       const result = applyAuthoritativeMatchOperation(state, operation);
       match = result.match;
       notifications = result.notifications;
       action = operation.action;
       ratingCommit = result.ratingCommit;
+    } else if (operation && match) {
+      action = operation.action;
     }
 
     const result = await persistMatchSnapshot(context, { match, notifications, action, body, ratingCommit });

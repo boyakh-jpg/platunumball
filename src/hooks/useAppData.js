@@ -81,6 +81,7 @@ import {
   updateRecruitingRoomRules,
   unblockUser,
   voidMatch,
+  REMOTE_CLIENT_MATCH_LIMIT,
 } from "../data/repository.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import { readProfileBindings, writeProfileBindings } from "../lib/storage.js";
@@ -165,6 +166,36 @@ function getServerOperation(meta = {}) {
 function upsertById(items = [], item = null) {
   if (!item?.id) return items;
   return [item, ...items.filter((current) => current.id !== item.id)];
+}
+
+function mergeById(current = [], incoming = []) {
+  const merged = new Map((current ?? []).filter((item) => item?.id).map((item) => [item.id, item]));
+  (incoming ?? []).forEach((item) => {
+    if (item?.id) merged.set(item.id, item);
+  });
+  return [...merged.values()];
+}
+
+function sortMatchesByRemoteCursor(matches = []) {
+  return [...matches].sort((a, b) => String(b.updatedAt ?? b.createdAt ?? "").localeCompare(String(a.updatedAt ?? a.createdAt ?? "")));
+}
+
+function getMatchPaginationCursor(matches = []) {
+  const oldest = sortMatchesByRemoteCursor(matches).at(-1);
+  return oldest?.updatedAt ?? oldest?.createdAt ?? "";
+}
+
+function mergeRemoteMatchPage(state, remoteState = {}) {
+  const nextMatches = remoteState.matches ?? [];
+  if (!nextMatches.length) return state;
+  return {
+    ...state,
+    users: mergeById(state.users, remoteState.users),
+    teams: mergeById(state.teams, remoteState.teams),
+    matches: sortMatchesByRemoteCursor(mergeById(state.matches, nextMatches)),
+    tournaments: mergeById(state.tournaments, remoteState.tournaments),
+    recruitingPosts: mergeById(state.recruitingPosts, remoteState.recruitingPosts),
+  };
 }
 
 function mergeServerRoomResult(state, result = {}) {
@@ -276,7 +307,7 @@ function withServerAdminContext(state, context = EMPTY_ADMIN_CONTEXT) {
 
 async function loadBackendState(authUserId, authEmail) {
   try {
-    const result = await postServerAction("/api/state/load", { authUserId, authEmail }, { allowWhenDisabled: true });
+    const result = await postServerAction("/api/state/load", { authUserId, authEmail, matchLimit: REMOTE_CLIENT_MATCH_LIMIT }, { allowWhenDisabled: true });
     if (result?.state) return result.state;
   } catch (error) {
     console.warn("Server state load failed. Falling back to direct Supabase read.", error.message);
@@ -293,6 +324,7 @@ export function useAppData(authUser = null) {
   }, []);
   const [profileBindings, setProfileBindings] = useState(() => readProfileBindings());
   const [adminContext, setAdminContext] = useState(EMPTY_ADMIN_CONTEXT);
+  const [matchPagination, setMatchPagination] = useState({ loading: false, exhausted: !isSupabaseConfigured, error: "" });
   const [remoteReady, setRemoteReady] = useState(!isSupabaseConfigured);
   const adminContextRef = useRef(EMPTY_ADMIN_CONTEXT);
   const remoteReadyRef = useRef(!isSupabaseConfigured);
@@ -331,6 +363,7 @@ export function useAppData(authUser = null) {
     if (!isSupabaseConfigured || !authUserId) {
       remoteReadyRef.current = !isSupabaseConfigured;
       setRemoteReady(!isSupabaseConfigured);
+      setMatchPagination({ loading: false, exhausted: true, error: "" });
       return undefined;
     }
 
@@ -343,6 +376,7 @@ export function useAppData(authUser = null) {
         if (remoteState) {
           const maintainedState = runAutomaticStateMaintenance(remoteState);
           setState((prev) => withServerAdminContext(preserveLocalDiscordState(prev, maintainedState), adminContextRef.current));
+          setMatchPagination({ loading: false, exhausted: (maintainedState.matches?.length ?? 0) < REMOTE_CLIENT_MATCH_LIMIT, error: "" });
         }
         remoteReadyRef.current = true;
         setRemoteReady(true);
@@ -350,6 +384,7 @@ export function useAppData(authUser = null) {
       .catch((error) => {
         console.warn("Supabase hydration failed. Remote state remains empty.", error.message);
         remoteReadyRef.current = true;
+        setMatchPagination({ loading: false, exhausted: true, error: error.message ?? "state_load_failed" });
         if (mounted) setRemoteReady(true);
       });
 
@@ -514,6 +549,39 @@ export function useAppData(authUser = null) {
     });
   }, [currentUserId, runServerAction, setState]);
 
+  const loadMoreMatches = useCallback(async () => {
+    if (!isSupabaseConfigured || !authUserId || matchPagination.loading || matchPagination.exhausted) return false;
+    const cursor = getMatchPaginationCursor(state.matches);
+    if (!cursor) {
+      setMatchPagination({ loading: false, exhausted: true, error: "" });
+      return false;
+    }
+    setMatchPagination((prev) => ({ ...prev, loading: true, error: "" }));
+    try {
+      const result = await postServerAction(
+        "/api/state/load",
+        {
+          authUserId,
+          authEmail,
+          matchLimit: REMOTE_CLIENT_MATCH_LIMIT,
+          matchUpdatedBefore: cursor,
+          recruitingLimit: 0,
+          tournamentLimit: 0,
+        },
+        { allowWhenDisabled: true },
+      );
+      const remoteState = result?.state ?? {};
+      const nextMatches = remoteState.matches ?? [];
+      setState((prev) => mergeRemoteMatchPage(prev, remoteState));
+      setMatchPagination({ loading: false, exhausted: nextMatches.length < REMOTE_CLIENT_MATCH_LIMIT, error: "" });
+      return nextMatches.length;
+    } catch (error) {
+      console.warn("More match load failed.", error.message);
+      setMatchPagination({ loading: false, exhausted: false, error: error.message ?? "match_page_load_failed" });
+      return false;
+    }
+  }, [authEmail, authUserId, matchPagination.exhausted, matchPagination.loading, setState, state.matches]);
+
   useEffect(() => {
     if (!isSupabaseConfigured || !remoteReadyRef.current || !currentUserId) return;
     const deliveries = (state.discordNotificationDeliveries ?? [])
@@ -661,7 +729,8 @@ export function useAppData(authUser = null) {
       };
 
       return ({
-      switchUser: (userId) => {
+        loadMoreMatches,
+        switchUser: (userId) => {
         if (profileLocked) return false;
         setProfileBindings((current) => {
           const next = { ...current, [profileKey]: userId };
@@ -1103,9 +1172,9 @@ export function useAppData(authUser = null) {
       reset: () => setState(resetState({ includeDemo: !isSupabaseConfigured, authUserId, email: authEmail })),
       });
     },
-    [authEmail, authUserId, currentUserId, deleteTeamServer, ensureRemoteReady, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, runServerAction, serverProfileBound, submitReportServer, syncFavoriteServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncSettingsServer, syncTeamServer, syncTournamentServer],
+    [authEmail, authUserId, currentUserId, deleteTeamServer, ensureRemoteReady, loadMoreMatches, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, runServerAction, serverProfileBound, submitReportServer, syncFavoriteServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncSettingsServer, syncTeamServer, syncTournamentServer],
   );
 
   const safeCurrentUserId = currentUserId ?? currentUser?.id ?? "";
-  return { state: { ...state, currentUserId: safeCurrentUserId }, currentUser, currentUserId: safeCurrentUserId, profileBound: true, profileLocked, remoteReady, adminContext, rankings, actions };
+  return { state: { ...state, currentUserId: safeCurrentUserId }, currentUser, currentUserId: safeCurrentUserId, profileBound: true, profileLocked, remoteReady, adminContext, matchPagination, rankings, actions };
 }

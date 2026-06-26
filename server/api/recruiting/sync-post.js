@@ -613,16 +613,16 @@ export default async function handler(request, response) {
     let action = body.action ? String(body.action) : "sync";
     let createdMatch = null;
 
-    if (operation && post) {
-      action = operation.action;
-      if (body.createdMatch && typeof body.createdMatch === "object") createdMatch = body.createdMatch;
-    } else if (operation) {
+    if (operation && (!post || operation.action === "createRecruitingPost")) {
       const state = await loadAuthoritativeState(context, { operation });
       const result = applyAuthoritativeRecruitingOperation(state, operation);
       post = result.post;
       createdMatch = result.createdMatch;
       notifications = result.notifications;
       action = operation.action;
+    } else if (operation && post) {
+      action = operation.action;
+      if (body.createdMatch && typeof body.createdMatch === "object") createdMatch = body.createdMatch;
     }
 
     const recruitingNotifications = createdMatch

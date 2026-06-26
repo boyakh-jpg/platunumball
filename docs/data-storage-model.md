@@ -11,7 +11,7 @@
 
 ## 지금 적용한 최소 보안 패치
 
-- `rankball_state`는 RLS로 계속 봉인한다. public read/write 정책을 만들지 않는다.
+- legacy `rankball_state` 테이블은 런타임 미사용이지만 데이터 손실 방지를 위해 삭제하지 않고 RLS로 봉인한다.
 - `tournaments`는 public read만 유지한다. public insert/update 정책은 제거한다.
 - `tournament_teams`는 public read만 유지한다. public insert/update 정책은 제거한다.
 - `recruiting_applications` read는 authenticated related-user로 제한한다:
@@ -52,7 +52,7 @@
   - 방장은 자기 방 application을 읽을 수 있음
   - 신청자는 자기 application을 읽을 수 있음
   - public은 tournament를 insert/update 할 수 없음
-  - public은 `rankball_state`를 read/write 할 수 없음
+  - public은 legacy `rankball_state`를 read/write 할 수 없음
 - OAuth/profile 소유권이 안정된 뒤에만 demo login을 `VITE_DEMO_LOGIN=true` 뒤로 이동.
 
 ## 2026-06-24 구장 등록 배포 TODO

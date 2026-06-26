@@ -135,7 +135,7 @@ const EMPTY_STATE = {
 };
 const REMOTE_PAGE_SIZE = 1000;
 const REMOTE_WRITE_CHUNK_SIZE = 500;
-const REMOTE_CLIENT_MATCH_LIMIT = 200;
+export const REMOTE_CLIENT_MATCH_LIMIT = 80;
 const REMOTE_CLIENT_RECRUITING_LIMIT = 160;
 const REMOTE_CLIENT_TOURNAMENT_LIMIT = 80;
 const REMOTE_CLIENT_MAX_LIMIT = 500;
@@ -821,13 +821,16 @@ function composeFilters(...filters) {
 function getClientLimit(value, fallback) {
   if (value === undefined || value === null || value === "") return fallback;
   const number = Number(value);
-  if (!Number.isFinite(number) || number <= 0) return fallback;
+  if (!Number.isFinite(number) || number < 0) return fallback;
   return Math.min(REMOTE_CLIENT_MAX_LIMIT, Math.floor(number));
 }
 
 async function fetchFilteredRows(table, select = "*", order = "id", client = supabase, applyFilter = null, limit = null, ascending = true) {
   const rows = [];
-  const maxRows = Number.isFinite(Number(limit)) && Number(limit) > 0 ? Number(limit) : null;
+  const hasLimit = limit !== undefined && limit !== null && limit !== "";
+  const numericLimit = Number(limit);
+  if (hasLimit && Number.isFinite(numericLimit) && numericLimit <= 0) return rows;
+  const maxRows = hasLimit && Number.isFinite(numericLimit) ? numericLimit : null;
   for (let from = 0; ; from += REMOTE_PAGE_SIZE) {
     if (maxRows && rows.length >= maxRows) break;
     const to = maxRows ? Math.min(from + REMOTE_PAGE_SIZE - 1, maxRows - 1) : from + REMOTE_PAGE_SIZE - 1;
@@ -1204,6 +1207,7 @@ function fromRemoteMatch(row, context) {
     confirmedAt: row.confirmed_at,
     cancelledAt: row.cancelled_at,
     voidedAt: row.voided_at,
+    updatedAt: row.updated_at ?? row.created_at,
   };
 }
 

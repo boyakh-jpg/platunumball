@@ -95,6 +95,10 @@ function formatCreateSaveError(result, fallback) {
     reason = "Supabase DB에 최신 SQL 함수가 아직 적용되지 않았습니다. `supabase/schema.sql`의 action RPC를 먼저 배포해야 합니다.";
   } else if (errorCode === "recruiting_sync_permission_denied" || errorCode === "match_sync_permission_denied") {
     reason = "현재 계정에 이 방/경기를 저장할 권한이 없습니다.";
+  } else if (errorCode === "recruiting_team_roster_not_member" || errorCode === "match_team_roster_not_member" || errorCode === "team_roster_not_member") {
+    reason = "선택한 팀 명단에 방장 또는 참가 선수가 없습니다. 팀 멤버를 먼저 등록해야 합니다.";
+  } else if (errorCode === "recruiting_player_not_found" || errorCode === "match_player_not_found") {
+    reason = "선택한 참가 선수 프로필을 DB에서 찾지 못했습니다.";
   } else if (errorCode === "referee_not_eligible") {
     reason = "선택한 심판이 활성 심판 조건을 통과하지 못했습니다.";
   } else if (errorCode === "team_roster_not_member") {
@@ -105,6 +109,8 @@ function formatCreateSaveError(result, fallback) {
     reason = "로그인 토큰이 없거나 만료되었습니다. 다시 로그인해야 합니다.";
   } else if (errorCode === "age_group_not_allowed") {
     reason = "선택한 연령 제한과 참가자 연령대가 맞지 않습니다.";
+  } else if (errorCode === "invalid_schedule_window") {
+    reason = "일정이 생성 가능한 기간 밖입니다.";
   } else if (errorCode === "recruiting_core_locked" || errorCode === "match_roster_locked" || errorCode === "match_referee_locked") {
     reason = "서버가 핵심 방/경기 정보를 잠금 상태로 판단했습니다.";
   } else if (errorCode === "supabase_admin_not_configured") {

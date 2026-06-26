@@ -1252,3 +1252,4 @@ flowchart TD
 2. When a valid snapshot is present, recruiting/match server actions skip `loadAuthoritativeState()` and persist through `rankball_recruiting_action()` or `rankball_match_action()`.
 3. `confirmRecruitingMatch` may include `createdMatch` so the recruiting action can persist both the closed recruiting room and the created match without reloading full state.
 4. `approveMatch` remains on server replay because rating commit extraction needs before/after profile and team deltas.
+5. `createRecruitingPost` and `createMatch` do not use the fast path; server actions replay the reducer with authenticated `profileId` so Google login profile ids become the room owner and creator.

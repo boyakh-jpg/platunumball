@@ -839,6 +839,7 @@ export default function Matches({ app }) {
     ...visibleRecruitingRooms.map((post) => ({ type: "room", id: `room-${post.id}`, item: post })),
     ...visibleMatches.map((match) => ({ type: "match", id: `match-${match.id}`, item: match })),
   ].sort((a, b) => compareSchedule(a.item, b.item))), [visibleMatches, visibleRecruitingRooms]);
+  const matchPagination = app.matchPagination ?? { loading: false, exhausted: true, error: "" };
   const todoCount = getViewCount(filteredMatches, VIEWS[1], app.currentUser.id);
   const scheduledCount = getViewCount(filteredMatches, VIEWS[2], app.currentUser.id) + filteredActiveRoomCount;
   const closedCount = getViewCount(filteredMatches, VIEWS[3], app.currentUser.id);
@@ -1179,7 +1180,9 @@ export default function Matches({ app }) {
           <span>내 일정 {matchesByView.length + listRecruitingRoomCount}개 중 {visibleScheduleItems.length}개 표시</span>
         </div>
 
-        {visibleScheduleItems.length ? visibleScheduleItems.map(({ type, item }) => {
+        {visibleScheduleItems.length ? (
+          <>
+        {visibleScheduleItems.map(({ type, item }) => {
           if (type === "room") {
             const post = item;
             const lobby = getRecruitingLobby(post, app.state);
@@ -1264,7 +1267,17 @@ export default function Matches({ app }) {
               </button>
             </article>
           );
-        }) : (
+        })}
+        {!matchPagination.exhausted ? (
+          <div className="om-load-more">
+            <button type="button" className="button button-secondary button-md" disabled={matchPagination.loading} onClick={() => app.actions.loadMoreMatches?.()}>
+              {matchPagination.loading ? "불러오는 중" : "더 보기"}
+            </button>
+            {matchPagination.error ? <span>추가 경기 로드 실패</span> : null}
+          </div>
+        ) : null}
+          </>
+        ) : (
           <div className="om-empty-state">
             <strong>해당 큐 없음</strong>
             <p>다른 상태를 선택하거나 새 경기를 만든다.</p>
