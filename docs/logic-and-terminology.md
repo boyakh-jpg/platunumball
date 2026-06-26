@@ -1019,9 +1019,10 @@ flowchart TD
 1. 토너먼트/리그 생성과 팀 승인 후 `POST /api/tournaments/sync-tournament`으로 `tournaments`, `tournament_teams`를 서버에 저장한다.
 2. 새 토너먼트는 현재 `profileId`가 `createdBy`인 경우만 생성한다.
 3. 기존 토너먼트 수정은 생성자만 가능하다. 단, 팀 참가 승인은 해당 팀 주장도 `action=approveTeam`으로 저장할 수 있다.
-4. 승인 완료로 생성된 경기들은 기존 `POST /api/matches/sync-match` 경로로 함께 저장한다.
-5. 토너먼트 경기 일정 수정은 토너먼트 생성자만 가능하며, 변경된 match snapshot을 기존 match sync로 저장한다.
-6. 이 단계는 토너먼트 저장 브리지다. 대진 생성, 팀 승인, 경기 생성 계산 자체는 아직 클라이언트 reducer에 남아 있다.
+4. 팀 주장의 `approveTeam`은 자기 팀 승인 상태와 승인자 정보만 바꿀 수 있고, 대회 핵심 설정, 팀 목록, 상태, bracket, matchIds는 바꿀 수 없다.
+5. 승인 완료로 생성된 경기들은 기존 `POST /api/matches/sync-match` 경로로 함께 저장한다.
+6. 토너먼트 경기 일정 수정은 토너먼트 생성자만 가능하며, 변경된 match snapshot을 기존 match sync로 저장한다.
+7. 이 단계는 토너먼트 저장 브리지다. 대진 생성, 팀 승인, 경기 생성 계산 자체는 아직 클라이언트 reducer에 남아 있다.
 
 ## 2026-06-25 referee request server action
 

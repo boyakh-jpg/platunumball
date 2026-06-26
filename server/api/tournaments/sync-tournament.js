@@ -24,6 +24,49 @@ function getTeamIds(tournament = {}) {
   return Array.from(new Set(toArray(tournament.teamIds || tournament.team_ids).map((teamId) => String(teamId).trim()).filter(Boolean)));
 }
 
+function sameJson(left, right) {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function sortPlainObject(value) {
+  if (Array.isArray(value)) return value.map(sortPlainObject);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortPlainObject(value[key])]));
+}
+
+function getTournamentCoreSnapshot(tournament = {}, teamRows = []) {
+  const teamIds = teamRows.length
+    ? [...teamRows]
+        .sort((a, b) => Number(a.seed_order ?? 0) - Number(b.seed_order ?? 0))
+        .map((row) => row.team_id)
+    : getTeamIds(tournament);
+  return sortPlainObject({
+    title: tournament.title,
+    format: tournament.format,
+    visibility: tournament.visibility,
+    status: tournament.status,
+    region: tournament.region ?? null,
+    court: tournament.court ?? tournament.courtName ?? tournament.court_name ?? null,
+    mode: tournament.mode,
+    ranked: tournament.ranked !== false,
+    official: Boolean(tournament.official),
+    startDate: toDbDate(tournament.startDate ?? tournament.start_date),
+    endDate: toDbDate(tournament.endDate ?? tournament.end_date),
+    schedulePolicy: tournament.schedulePolicy ?? tournament.schedule_policy ?? "weekly",
+    scheduleNote: tournament.scheduleNote ?? tournament.schedule_note ?? "",
+    mmrLimitMode: tournament.mmrLimitMode ?? tournament.mmr_limit_mode ?? "warn",
+    maxMmrGap: Number(tournament.maxMmrGap ?? tournament.max_mmr_gap ?? 250),
+    mmrPolicy: tournament.mmrPolicy ?? tournament.mmr_policy ?? "gap_adjusted",
+    rules: tournament.rules ?? {},
+    memo: tournament.memo ?? "",
+    createdBy: tournament.createdBy ?? tournament.created_by ?? "",
+    startedAt: tournament.startedAt ?? tournament.started_at ?? null,
+    matchIds: toArray(tournament.matchIds ?? tournament.match_ids),
+    bracket: tournament.bracket ?? {},
+    teamIds,
+  });
+}
+
 function normalizeTournament(tournament = {}, actorProfileId = "") {
   const id = String(tournament.id || "").trim();
   const title = String(tournament.title || "").trim();
@@ -194,6 +237,39 @@ async function assertCanSyncTournament(context, existingTournament, tournament, 
   throw error;
 }
 
+function getExistingTeamStatusMap(teamRows = []) {
+  return Object.fromEntries(toArray(teamRows).map((row) => [row.team_id, row.status ?? "invited"]));
+}
+
+function validateTeamApprovalScope(context, existingTournament, existingTeamRows, tournament, action, teamId) {
+  if (!existingTournament || existingTournament.created_by === context.profileId || action !== "approveTeam") return;
+
+  const existingCore = getTournamentCoreSnapshot(existingTournament, existingTeamRows);
+  const nextCore = getTournamentCoreSnapshot(tournament);
+  if (!sameJson(existingCore, nextCore)) {
+    const error = new Error("tournament_core_locked");
+    error.statusCode = 403;
+    throw error;
+  }
+
+  const existingStatuses = getExistingTeamStatusMap(existingTeamRows);
+  const nextStatuses = tournament.teamStatuses ?? {};
+  for (const existingTeamId of Object.keys(existingStatuses)) {
+    const expectedStatus = existingTeamId === teamId ? "accepted" : existingStatuses[existingTeamId];
+    if ((nextStatuses[existingTeamId] ?? "invited") !== expectedStatus) {
+      const error = new Error("tournament_team_status_locked");
+      error.statusCode = 403;
+      throw error;
+    }
+  }
+
+  if ((tournament.teamApprovals?.[teamId]?.by ?? tournament.teamApprovals?.[teamId]?.approvedBy) !== context.profileId) {
+    const error = new Error("tournament_team_approval_required");
+    error.statusCode = 403;
+    throw error;
+  }
+}
+
 export default async function handler(request, response) {
   if (request.method !== "POST") {
     response.setHeader("Allow", "POST");
@@ -210,12 +286,19 @@ export default async function handler(request, response) {
 
     const { data: existingTournament, error: existingError } = await context.supabase
       .from("tournaments")
-      .select("id, created_by")
+      .select("id, title, format, visibility, status, region, court_name, mode, ranked, official, start_date, end_date, schedule_policy, schedule_note, mmr_limit_mode, max_mmr_gap, mmr_policy, rules, memo, created_by, started_at, match_ids, bracket")
       .eq("id", tournament.id)
       .maybeSingle();
     if (existingError) throw existingError;
 
+    const { data: existingTeamRows, error: existingTeamError } = await context.supabase
+      .from("tournament_teams")
+      .select("team_id, status, seed_order")
+      .eq("tournament_id", tournament.id);
+    if (existingTeamError) throw existingTeamError;
+
     await assertCanSyncTournament(context, existingTournament, tournament, action, teamId);
+    validateTeamApprovalScope(context, existingTournament, existingTeamRows, tournament, action, teamId);
     await assertTeamsExist(context.supabase, tournament.teamIds);
 
     const { error: tournamentError } = await context.supabase
