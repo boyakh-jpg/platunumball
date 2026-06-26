@@ -135,6 +135,32 @@ const EMPTY_STATE = {
 };
 const REMOTE_PAGE_SIZE = 1000;
 const REMOTE_WRITE_CHUNK_SIZE = 500;
+const PUBLIC_PROFILE_COLUMNS = "id,name,handle,hashtag,position,region,region_sido,region_district,school,company,club,trust_score,streak,avatar_color,ratings,age_group,age_group_checked_season,onboarding_complete,test_login_id,updated_at,discord_connection";
+const PRIVATE_PROFILE_COLUMNS = "id,name,handle,region,school,company,club,trust_score,streak,avatar_color,test_login_id,auth_user_id,hashtag,birth_year,age_group,age_group_checked_season,region_sido,region_district,onboarding_complete,profile_version,handle_locked_at,birth_year_locked_at,name_updated_at,discord_connection,discord_user_id,ratings,created_at,updated_at,position";
+const TEAM_COLUMNS = "id,name,home_court,region,mmr,wins,losses,accent,deleted_at,updated_at,created_at";
+const TEAM_MEMBER_COLUMNS = "team_id,user_id,role";
+const COURT_COLUMNS = "id,name";
+const MATCH_COLUMNS = "id,title,mode,court_id,court_name,visibility,status,ranked,mmr_limit_mode,trust_feedback,referee_id,former_referee_id,referee_trust_min,stat_entry_minutes,dispute_minutes,stat_recorders,played_player_ids,reserve_players,promoted_reserve_ids,attendance,referee_absence_request,dispute_draft_result,dispute_draft_updated_at,dispute_resolved_at,mmr_excluded_player_ids,anonymous_players,tournament_id,tournament_format,tournament_round,tournament_fixture,tournament_mmr_policy,official,pre_registered,scheduled_at,scheduled_date,scheduled_time,team_a_id,team_b_id,score_a,score_b,rules,memo,stakes,objection_window,evidence,created_by,created_at,agreed_at,started_at,ended_at,confirmed_at,cancelled_at,voided_at,rating_result,team_rating_result,updated_at";
+const MATCH_PLAYER_COLUMNS = "match_id,team_id,user_id,side,slot_order";
+const MATCH_RESULT_COLUMNS = "match_id,submitted_by,score_a,score_b,stat_submissions,submitted_at";
+const PLAYER_STAT_COLUMNS = "match_id,user_id,recorded_by,record_source,points,rebounds,assists,steals,blocks,fouls,updated_at";
+const MATCH_AGREEMENT_COLUMNS = "match_id,user_id,side";
+const MATCH_APPROVAL_COLUMNS = "match_id,user_id,side";
+const MATCH_DISPUTE_COLUMNS = "id,match_id,user_id,reason,created_at";
+const FAVORITE_COLUMNS = "id,user_id,target_type,target_id,created_at";
+const RECRUITING_POST_COLUMNS = "id,type,title,visibility,region,court_id,court_name,mode,scheduled_at,scheduled_date,scheduled_time,ranked,official,pre_registered,rating_scale,age_restriction,allowed_age_groups,rules,stakes,court_reserved,court_fee,spots,team_id,target_team_id,referee_id,referee_trust_min,stat_entry_minutes,dispute_minutes,room_state,host_join_mode,host_side,host_ready,side_capacity,player_ids,position,player_id,memo,status,confirmed_at,created_at,updated_at";
+const RECRUITING_APPLICATION_COLUMNS = "post_id,kind,team_id,player_id,side,status,reserve,position,player_ids,source_team_id,source_entry_id,created_at,updated_at";
+const TOURNAMENT_COLUMNS = "id,title,format,visibility,status,region,court_name,mode,ranked,official,start_date,end_date,schedule_policy,schedule_note,mmr_limit_mode,max_mmr_gap,mmr_policy,rules,memo,created_by,started_at,match_ids,bracket,team_statuses,team_approvals,created_at,updated_at";
+const TOURNAMENT_TEAM_COLUMNS = "tournament_id,team_id,status,seed_order,approved_by,approved_at";
+const SEASON_COLUMNS = "id,name,subtitle,starts_at,ends_at,active,regions,promotion_line,rules,updated_at,created_at";
+const AFFILIATION_COLUMNS = "id,type,name,score,wins,losses,updated_at,created_at";
+const NOTIFICATION_COLUMNS = "id,user_id,target_user_id,title,body,tone,type,match_id,recruiting_post_id,invitation_id,discord_event,read_at,payload,created_at,updated_at";
+const REPORT_COLUMNS = "id,type,target_id,user_id,reported_user_ids,reason,status,resolved_at,resolved_by,resolution,payload,created_at,updated_at";
+const COURT_REQUEST_COLUMNS = "id,requested_by,status,name,hashtag,address_text,road_address,jibun_address,zonecode,lat,lng,payload,created_at,updated_at";
+const APPROVED_COURT_COLUMNS = "id,source_request_id,approved_by,name,hashtag,address_text,road_address,jibun_address,zonecode,lat,lng,status,hidden_at,hidden_by,hidden_reason,payload,approved_at,created_at,updated_at";
+const COURT_REVIEW_COLUMNS = "id,court_id,court_name,match_id,reviewer_id,rating,surface_rating,rim_rating,lighting_rating,crowd_rating,location_accuracy,fit_modes,tags,memo,status,hidden_at,hidden_by,hidden_reason,payload,created_at,updated_at";
+const PAYLOAD_ROW_COLUMNS = "id,status,payload,created_at,updated_at";
+const DISCORD_DELIVERY_COLUMNS = "id,status,payload,target_user_id,created_at,updated_at,queued_at";
 const QUEUE_SCHEDULE_START_DATE = "2026-06-15";
 const QUEUE_SCHEDULE_TIMES = ["10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00", "21:00"];
 const POST_MATCH_STATUSES = new Set(["approval", "disputed"]);
@@ -762,11 +788,12 @@ export function syncNotificationDeliveries(state) {
   return syncDiscordNotificationDeliveries(state);
 }
 
-async function fetchAllRows(table, select = "*", order = "id", client = supabase) {
+async function fetchFilteredRows(table, select = "*", order = "id", client = supabase, applyFilter = null) {
   const rows = [];
   for (let from = 0; ; from += REMOTE_PAGE_SIZE) {
     const to = from + REMOTE_PAGE_SIZE - 1;
-    const query = client.from(table).select(select).range(from, to);
+    const baseQuery = client.from(table).select(select).range(from, to);
+    const query = applyFilter ? applyFilter(baseQuery) : baseQuery;
     const { data, error } = order ? await query.order(order, { ascending: true }) : await query;
     if (error) throw error;
     rows.push(...(data ?? []));
@@ -775,9 +802,22 @@ async function fetchAllRows(table, select = "*", order = "id", client = supabase
   return rows;
 }
 
+async function fetchAllRows(table, select = "*", order = "id", client = supabase) {
+  return fetchFilteredRows(table, select, order, client);
+}
+
 async function fetchOptionalRows(table, select = "*", order = "id", client = supabase) {
   try {
     return await fetchAllRows(table, select, order, client);
+  } catch (error) {
+    console.warn(`Supabase optional table skipped: ${table}`, error.message);
+    return [];
+  }
+}
+
+async function fetchOptionalFilteredRows(table, select = "*", order = "id", client = supabase, applyFilter = null) {
+  try {
+    return await fetchFilteredRows(table, select, order, client, applyFilter);
   } catch (error) {
     console.warn(`Supabase optional table skipped: ${table}`, error.message);
     return [];
@@ -1124,14 +1164,12 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
     agreements,
     approvals,
     disputes,
-    favorites,
     recruitingPosts,
     recruitingApplications,
     tournaments,
     tournamentTeams,
     seasons,
     affiliations,
-    notifications,
     reports,
     courtRequests,
     approvedCourts,
@@ -1142,39 +1180,35 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
     refereeAppointments,
     adminAuditLog,
     adminDisciplinaryActions,
-    discordNotificationDeliveries,
   ] = await Promise.all([
-    fetchOptionalRows("public_profiles", "*", "id", client),
-    fetchOptionalRows("profiles", "*", "id", client),
-    fetchAllRows("teams", "*", "id", client),
-    fetchAllRows("team_members", "*", null, client),
-    fetchAllRows("courts", "*", "id", client),
-    fetchAllRows("matches", "*", "created_at", client),
-    fetchAllRows("match_players", "*", null, client),
-    fetchAllRows("match_results", "*", null, client),
-    fetchAllRows("player_match_stats", "*", null, client),
-    fetchAllRows("match_agreements", "*", null, client),
-    fetchAllRows("match_approvals", "*", null, client),
-    fetchOptionalRows("match_disputes", "*", null, client),
-    fetchAllRows("favorites", "*", null, client),
-    fetchAllRows("recruiting_posts", "*", "created_at", client),
-    fetchAllRows("recruiting_applications", "*", null, client),
-    fetchAllRows("tournaments", "*", "created_at", client),
-    fetchAllRows("tournament_teams", "*", null, client),
-    fetchAllRows("seasons", "*", "id", client),
-    fetchAllRows("affiliations", "*", "id", client),
-    fetchOptionalRows("notifications", "*", "created_at", client),
-    fetchOptionalRows("reports", "*", "created_at", client),
-    fetchOptionalRows("court_requests", "*", "created_at", client),
-    fetchOptionalRows("approved_courts", "*", "created_at", client),
-    fetchOptionalRows("court_reviews", "*", "created_at", client),
-    fetchOptionalRows("referee_requests", "*", "created_at", client),
-    fetchOptionalRows("referee_exam_attempts", "*", "created_at", client),
-    fetchOptionalRows("admin_appointments", "*", "created_at", client),
-    fetchOptionalRows("referee_appointments", "*", "created_at", client),
-    fetchOptionalRows("admin_audit_log", "*", "created_at", client),
-    fetchOptionalRows("admin_disciplinary_actions", "*", "created_at", client),
-    fetchOptionalRows("discord_notification_deliveries", "*", "queued_at", client),
+    fetchOptionalRows("public_profiles", PUBLIC_PROFILE_COLUMNS, "id", client),
+    fetchOptionalRows("profiles", PRIVATE_PROFILE_COLUMNS, "id", client),
+    fetchAllRows("teams", TEAM_COLUMNS, "id", client),
+    fetchAllRows("team_members", TEAM_MEMBER_COLUMNS, null, client),
+    fetchAllRows("courts", COURT_COLUMNS, "id", client),
+    fetchAllRows("matches", MATCH_COLUMNS, "created_at", client),
+    fetchAllRows("match_players", MATCH_PLAYER_COLUMNS, null, client),
+    fetchAllRows("match_results", MATCH_RESULT_COLUMNS, null, client),
+    fetchAllRows("player_match_stats", PLAYER_STAT_COLUMNS, null, client),
+    fetchAllRows("match_agreements", MATCH_AGREEMENT_COLUMNS, null, client),
+    fetchAllRows("match_approvals", MATCH_APPROVAL_COLUMNS, null, client),
+    fetchOptionalRows("match_disputes", MATCH_DISPUTE_COLUMNS, null, client),
+    fetchAllRows("recruiting_posts", RECRUITING_POST_COLUMNS, "created_at", client),
+    fetchAllRows("recruiting_applications", RECRUITING_APPLICATION_COLUMNS, null, client),
+    fetchAllRows("tournaments", TOURNAMENT_COLUMNS, "created_at", client),
+    fetchAllRows("tournament_teams", TOURNAMENT_TEAM_COLUMNS, null, client),
+    fetchAllRows("seasons", SEASON_COLUMNS, "id", client),
+    fetchAllRows("affiliations", AFFILIATION_COLUMNS, "id", client),
+    fetchOptionalRows("reports", REPORT_COLUMNS, "created_at", client),
+    fetchOptionalRows("court_requests", COURT_REQUEST_COLUMNS, "created_at", client),
+    fetchOptionalRows("approved_courts", APPROVED_COURT_COLUMNS, "created_at", client),
+    fetchOptionalRows("court_reviews", COURT_REVIEW_COLUMNS, "created_at", client),
+    fetchOptionalRows("referee_requests", PAYLOAD_ROW_COLUMNS, "created_at", client),
+    fetchOptionalRows("referee_exam_attempts", PAYLOAD_ROW_COLUMNS, "created_at", client),
+    fetchOptionalRows("admin_appointments", PAYLOAD_ROW_COLUMNS, "created_at", client),
+    fetchOptionalRows("referee_appointments", PAYLOAD_ROW_COLUMNS, "created_at", client),
+    fetchOptionalRows("admin_audit_log", PAYLOAD_ROW_COLUMNS, "created_at", client),
+    fetchOptionalRows("admin_disciplinary_actions", PAYLOAD_ROW_COLUMNS, "created_at", client),
   ]);
 
   const privateProfileById = new Map((privateProfiles ?? []).map((profile) => [profile.id, profile]));
@@ -1192,6 +1226,19 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
     : null;
   const shellUser = authUserIdText && !testLoginId && !currentProfile ? createProfileShell(authUserIdText, authEmail) : null;
   const currentUserId = currentProfile?.id ?? shellUser?.id ?? profiles[0]?.id ?? "";
+  const [favorites, notifications, discordNotificationDeliveries] = await Promise.all([
+    currentUserId
+      ? fetchFilteredRows("favorites", FAVORITE_COLUMNS, null, client, (query) => query.eq("user_id", currentUserId))
+      : [],
+    currentUserId
+      ? fetchOptionalFilteredRows("notifications", NOTIFICATION_COLUMNS, "created_at", client, (query) => query
+        .or(`user_id.is.null,user_id.eq.${currentUserId}`)
+        .or(`target_user_id.is.null,target_user_id.eq.${currentUserId}`))
+      : [],
+    currentUserId
+      ? fetchOptionalFilteredRows("discord_notification_deliveries", DISCORD_DELIVERY_COLUMNS, "queued_at", client, (query) => query.eq("target_user_id", currentUserId))
+      : [],
+  ]);
   const teamMembersByTeam = groupBy(teamMembers, "team_id");
   const teamById = firstBy(teams, "id");
   const courtById = firstBy(courts, "id");

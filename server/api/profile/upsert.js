@@ -1,6 +1,7 @@
 import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 
 const DEFAULT_RATINGS = { integrated: 1200, modes: { "1v1": 1200, "2v2": 1200, "3v3": 1200, "5v5": 1200 } };
+const EXISTING_PROFILE_COLUMNS = "id,auth_user_id,name,handle,hashtag,birth_year,age_group,age_group_checked_season,region_sido,region_district,onboarding_complete,profile_version,handle_locked_at,birth_year_locked_at,name_updated_at,region,position,avatar_color,trust_score,ratings,school,company,club,streak,discord_connection,test_login_id";
 
 function makeProfileId(authUserId = "") {
   const safeId = String(authUserId || "pending").replace(/[^a-zA-Z0-9]/g, "").slice(0, 18) || "pending";
@@ -142,8 +143,8 @@ export default async function handler(request, response) {
     const body = await readJsonBody(request);
     const profile = body.profile && typeof body.profile === "object" ? body.profile : {};
     const existingQuery = context.profileId
-      ? context.supabase.from("profiles").select("*").eq("id", context.profileId)
-      : context.supabase.from("profiles").select("*").eq("auth_user_id", context.authUserId);
+      ? context.supabase.from("profiles").select(EXISTING_PROFILE_COLUMNS).eq("id", context.profileId)
+      : context.supabase.from("profiles").select(EXISTING_PROFILE_COLUMNS).eq("auth_user_id", context.authUserId);
     const { data: existing, error: selectError } = await existingQuery.maybeSingle();
 
     if (selectError) throw selectError;
