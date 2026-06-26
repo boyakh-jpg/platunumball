@@ -19,6 +19,7 @@ import profileUpsert from "../server/api/profile/upsert.js";
 import refereeSync from "../server/api/referee/sync.js";
 import recruitingSyncPost from "../server/api/recruiting/sync-post.js";
 import reportSubmit from "../server/api/reports/submit.js";
+import stateLoad from "../server/api/state/load.js";
 import teamSyncTeam from "../server/api/teams/sync-team.js";
 import tournamentSyncTournament from "../server/api/tournaments/sync-tournament.js";
 
@@ -44,6 +45,7 @@ const ROUTES = new Map([
   ["/referee/sync", refereeSync],
   ["/recruiting/sync-post", recruitingSyncPost],
   ["/reports/submit", reportSubmit],
+  ["/state/load", stateLoad],
   ["/teams/sync-team", teamSyncTeam],
   ["/tournaments/sync-tournament", tournamentSyncTournament],
 ]);

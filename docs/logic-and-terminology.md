@@ -1201,6 +1201,14 @@ flowchart TD
 4. `@...` 형식은 신규 seed/runtime state에서 정규화되어 `#...`로 바뀌어야 한다.
 5. DB에서 `handle` 컬럼을 삭제하는 것은 모든 서버 action, seed, migration, `handle_locked_at` 의존 정리가 끝난 뒤 별도 hard migration으로만 한다.
 
+## 2026-06-26 서버 상태 열람 규칙
+
+1. Supabase 설정 환경의 초기 상태 로드는 `POST /api/state/load`를 우선 사용한다.
+2. 실제 Google 계정은 Supabase Auth token으로, 테스트 계정은 `test-token-rankball-###`로 서버에서 현재 `profiles.id`를 확정한다.
+3. 서버 상태 로드는 공개 경기/모집방/토너먼트는 모든 로그인 사용자에게 내려주고, 비공개 항목은 현재 프로필이 참여자, 초대자, 심판, 관련 팀원, 또는 관리자일 때만 내려준다.
+4. 테스트 계정은 실제 Supabase Auth JWT가 없으므로 직접 anon RLS read 결과를 권한 판단의 기준으로 삼지 않는다.
+5. service-role로 읽은 전체 state를 그대로 클라이언트에 내려주지 않는다. 관리자 전용 row, 비공개 신고/징계/요청 row, 다른 사용자의 민감 프로필 값은 현재 프로필 기준으로 필터한다.
+
 ## 2026-06-26 court report server path
 
 1. 구장 신고는 새 `target_type/reporter_id` 컬럼을 만들지 않고 기존 `reports.type/target_id/user_id` 구조를 쓴다.

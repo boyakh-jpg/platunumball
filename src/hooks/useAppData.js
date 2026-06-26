@@ -274,6 +274,16 @@ function withServerAdminContext(state, context = EMPTY_ADMIN_CONTEXT) {
   };
 }
 
+async function loadBackendState(authUserId, authEmail) {
+  try {
+    const result = await postServerAction("/api/state/load", { authUserId, authEmail }, { allowWhenDisabled: true });
+    if (result?.state) return result.state;
+  } catch (error) {
+    console.warn("Server state load failed. Falling back to direct Supabase read.", error.message);
+  }
+  return loadRemoteState(authUserId, authEmail);
+}
+
 export function useAppData(authUser = null) {
   const authUserId = typeof authUser === "string" ? authUser : authUser?.id ?? null;
   const authEmail = typeof authUser === "object" ? authUser?.email ?? authUser?.user_metadata?.email ?? "" : "";
@@ -327,7 +337,7 @@ export function useAppData(authUser = null) {
     let mounted = true;
     remoteReadyRef.current = false;
     setRemoteReady(false);
-    loadRemoteState(authUserId, authEmail)
+    loadBackendState(authUserId, authEmail)
       .then((remoteState) => {
         if (!mounted) return;
         if (remoteState) {

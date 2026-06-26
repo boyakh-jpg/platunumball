@@ -282,6 +282,14 @@ Backend gaps:
 - server action이 실패하거나 비활성 상태면 `서버 저장 실패` 알림을 띄운다.
 - 테스트계정은 `test-token-rankball-###` bearer token과 `profiles.test_login_id`가 매핑될 때만 백엔드 계정으로 본다.
 
+## 2026-06-26 server state hydration
+
+- `POST /api/state/load` is the preferred Supabase hydration path.
+- The endpoint maps real Supabase users and backend test tokens on the server.
+- It returns public rows plus private rows related to the current profile.
+- Direct `loadRemoteState()` Supabase reads are fallback only.
+- Test accounts must not depend on anon RLS reads because they do not have a real Supabase Auth JWT.
+
 ## 2026-06-26 backend migration TODO status
 
 Done:
