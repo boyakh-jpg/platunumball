@@ -270,15 +270,15 @@ async function queueMatchDiscordDeliveries(supabase, match = {}, action = "sync"
     if (checkinAtMs > nowMs) {
       rows.push(...toDiscordDeliveryRows(match, managerProfiles, {
         idPrefix: "match-manager-checkin-10m",
-        title: "출석체크 필요",
-        intro: "경기 10분 전입니다. 출석체크를 진행하고, 안 온 사람은 정리해주세요.",
+        title: "출석 확인 안내",
+        intro: "경기 10분 전입니다. 참여자 도착 여부를 확인하고, 필요하면 명단을 정리해주세요.",
         sendAt: new Date(checkinAtMs).toISOString(),
       }));
     }
     rows.push(...toDiscordDeliveryRows(match, managerProfiles, {
       idPrefix: "match-manager-start-now",
-      title: "경기 시작 처리",
-      intro: "경기 시작시간입니다. 출석이 정리됐으면 경기 시작을 눌러주세요.",
+      title: "경기 시작 안내",
+      intro: "경기 시작시간입니다. 준비가 끝났다면 경기 시작 처리를 진행해주세요.",
       sendAt: scheduledAt.toISOString(),
     }));
   }
