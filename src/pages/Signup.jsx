@@ -1,11 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, CheckCircle2 } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import { PLAYER_POSITIONS } from "../lib/constants.js";
-import { getUserHashtag, sameHashtag, stripHandle, toHashtag } from "../lib/handles.js";
+import { getUserHashtag, makeRandomDigitSuffix, makeSuggestedHashtagBody, sameHashtag, stripHandle, toHashtag } from "../lib/handles.js";
 import {
   AGE_GROUPS,
   canChangeProfileName,
@@ -25,18 +25,25 @@ function formatDate(date) {
   return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, "0")}.${String(date.getDate()).padStart(2, "0")}`;
 }
 
+function getInitialHandleBody(user = {}, suffix = "") {
+  if (user.handleLockedAt || user.hashtagLockedAt) return stripHandle(getUserHashtag(user));
+  return stripHandle(user.hashtag ?? user.handle ?? "") || makeSuggestedHashtagBody(user.name, suffix);
+}
+
 export default function Signup({ app, auth }) {
   const navigate = useNavigate();
   const user = app.currentUser;
   const inferredRegion = inferRegionSelection(user.region);
-  const [draft, setDraft] = useState({
+  const [suggestionSuffix] = useState(makeRandomDigitSuffix);
+  const [handleTouched, setHandleTouched] = useState(() => Boolean(stripHandle(user.hashtag ?? user.handle ?? "")));
+  const [draft, setDraft] = useState(() => ({
     name: user.name ?? "",
-    handle: user.handleLockedAt || user.hashtagLockedAt ? stripHandle(getUserHashtag(user)) : stripHandle(user.hashtag ?? user.handle ?? ""),
+    handle: getInitialHandleBody(user, suggestionSuffix),
     birthYear: user.birthYear ?? "",
     position: POSITION_OPTIONS.includes(user.position) ? user.position : "PG",
     sido: user.regionSido ?? inferredRegion.sido,
     district: user.regionDistrict ?? inferredRegion.district,
-  });
+  }));
   const [formError, setFormError] = useState("");
   const selectedRegion = REGION_TREE.find((item) => item.sido === draft.sido) ?? REGION_TREE[0];
   const ageGroup = getAgeGroupByBirthYear(draft.birthYear) ?? user.ageGroup ?? "open";
@@ -54,6 +61,12 @@ export default function Signup({ app, auth }) {
 
   const districtOptions = useMemo(() => selectedRegion.districts, [selectedRegion]);
   const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
+
+  useEffect(() => {
+    if (handleLocked || handleTouched) return;
+    const nextHandle = makeSuggestedHashtagBody(draft.name || user.name, suggestionSuffix);
+    setDraft((current) => (current.handle === nextHandle ? current : { ...current, handle: nextHandle }));
+  }, [draft.name, handleLocked, handleTouched, suggestionSuffix, user.name]);
 
   const submit = async (event) => {
     event.preventDefault();
@@ -130,7 +143,10 @@ export default function Signup({ app, auth }) {
               해시태그
               <span className="prefixed-input">
                 <span>#</span>
-                <input value={handleBody} maxLength={20} placeholder="minjun" disabled={handleLocked} onChange={(event) => update({ handle: stripHandle(event.target.value) })} />
+                <input value={handleBody} maxLength={20} disabled={handleLocked} onChange={(event) => {
+                  setHandleTouched(true);
+                  update({ handle: stripHandle(event.target.value) });
+                }} />
               </span>
               {handleDuplicate ? <span className="form-warning">이미 사용 중인 해시태그입니다.</span> : null}
               {handleLocked ? <span className="muted">해시태그는 최초 등록 후 수정할 수 없습니다.</span> : null}

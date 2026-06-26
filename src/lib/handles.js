@@ -12,6 +12,39 @@ export function toHashtag(value, fallback = "rankball") {
   return `#${slug || stripHandle(fallback) || "rankball"}`;
 }
 
+const HANGUL_BASE = 0xac00;
+const HANGUL_LAST = 0xd7a3;
+const HANGUL_MEDIAL_COUNT = 21;
+const HANGUL_FINAL_COUNT = 28;
+const HANGUL_INITIALS = ["g", "kk", "n", "d", "tt", "r", "m", "b", "pp", "s", "ss", "", "j", "jj", "ch", "k", "t", "p", "h"];
+const HANGUL_MEDIALS = ["a", "ae", "ya", "yae", "eo", "e", "yeo", "ye", "o", "wa", "wae", "oe", "yo", "u", "wo", "we", "wi", "yu", "eu", "ui", "i"];
+const HANGUL_FINALS = ["", "g", "kk", "gs", "n", "nj", "nh", "d", "l", "lg", "lm", "lb", "ls", "lt", "lp", "lh", "m", "b", "bs", "s", "ss", "ng", "j", "ch", "k", "t", "p", "h"];
+
+function romanizeHangul(value = "") {
+  return Array.from(String(value)).map((char) => {
+    const code = char.charCodeAt(0);
+    if (code < HANGUL_BASE || code > HANGUL_LAST) return char;
+    const index = code - HANGUL_BASE;
+    const initialIndex = Math.floor(index / (HANGUL_MEDIAL_COUNT * HANGUL_FINAL_COUNT));
+    const medialIndex = Math.floor((index % (HANGUL_MEDIAL_COUNT * HANGUL_FINAL_COUNT)) / HANGUL_FINAL_COUNT);
+    const finalIndex = index % HANGUL_FINAL_COUNT;
+    return `${HANGUL_INITIALS[initialIndex]}${HANGUL_MEDIALS[medialIndex]}${HANGUL_FINALS[finalIndex]}`;
+  }).join("");
+}
+
+export function makeRandomDigitSuffix() {
+  return String(Math.floor(Math.random() * 10000)).padStart(4, "0");
+}
+
+export function makeSuggestedHashtagBody(name = "", suffix = makeRandomDigitSuffix()) {
+  const romanized = romanizeHangul(name)
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+  const base = romanized.replace(/[^a-z0-9]+/g, "").slice(0, 8) || "rankball";
+  return `${base}${suffix}`;
+}
+
 export function getUserHashtag(user = {}) {
   return toHashtag(user.hashtag ?? user.handle ?? user.name ?? user.id, user.id ?? "player");
 }
