@@ -1112,6 +1112,12 @@ flowchart TD
 3. Existing DB room age rules are authoritative over client snapshot rules for existing recruiting posts.
 4. This is a server sync guard, not full authoritative match/tournament eligibility migration.
 
+## 2026-06-26 recruiting locked core server guard
+
+1. Participant and join actions must not change room core fields such as visibility, host side, mode, schedule, ranked/official flags, age rule, side capacity, host player/team, player ids, or referee id.
+2. Referee direct join and referee invitation accept are the only participant/join actions allowed to assign `refereeId`.
+3. Owner room-rule actions remain the explicit path for core room edits.
+
 ## 2026-06-26 match referee server guard
 
 1. Match sync must reject `refereeId` assignment when the referee has no active `referee_appointments` row.

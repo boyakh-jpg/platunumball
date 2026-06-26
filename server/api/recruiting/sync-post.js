@@ -26,6 +26,31 @@ function normalizeRoomState(roomState = {}, post = {}) {
   };
 }
 
+function sameJson(left, right) {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function getRecruitingCoreSnapshot(post = {}) {
+  return {
+    visibility: post.visibility === "private" ? "private" : "public",
+    playerId: post.playerId ?? post.player_id ?? "",
+    teamId: post.teamId ?? post.team_id ?? null,
+    targetTeamId: post.targetTeamId ?? post.target_team_id ?? null,
+    mode: post.mode ?? "5v5",
+    scheduledDate: post.scheduledDate ?? post.scheduled_date ?? null,
+    scheduledTime: toDbTime(post.scheduledTime ?? post.scheduled_time) ?? null,
+    ranked: post.ranked !== false,
+    official: Boolean(post.official),
+    ageRestriction: post.ageRestriction ?? post.age_restriction ?? null,
+    allowedAgeGroups: toArray(post.allowedAgeGroups ?? post.allowed_age_groups).map(String).sort(),
+    sideCapacity: Math.max(1, Math.min(5, Number(post.sideCapacity ?? post.side_capacity ?? 5))),
+    hostJoinMode: (post.hostJoinMode ?? post.host_join_mode) === "player" ? "player" : "team",
+    hostSide: (post.hostSide ?? post.host_side) === "teamB" ? "teamB" : "teamA",
+    playerIds: toArray(post.playerIds ?? post.player_ids),
+    refereeId: post.refereeId || post.referee_id || "",
+  };
+}
+
 function toRecruitingPostRow(post = {}) {
   const roomState = normalizeRoomState(post.roomState, post);
   return {
@@ -303,6 +328,11 @@ const JOIN_RECRUITING_ACTIONS = new Set([
   "joinRecruitingSideParty",
 ]);
 
+const CORE_LOCKED_RECRUITING_ACTIONS = new Set([
+  ...PARTICIPANT_RECRUITING_ACTIONS,
+  ...JOIN_RECRUITING_ACTIONS,
+]);
+
 function canSyncRecruitingAction(profileId, existingPost, nextPost, action) {
   if (!profileId || !nextPost?.id) return false;
   if (!existingPost) {
@@ -327,6 +357,25 @@ function canSyncRecruitingAction(profileId, existingPost, nextPost, action) {
     return existingParticipants.has(profileId) || nextParticipants.has(profileId) || hasInvitationFor(profileId, existingPost);
   }
   return existingParticipants.has(profileId) || nextParticipants.has(profileId);
+}
+
+function actionCanAssignReferee(profileId, existingPost, body = {}) {
+  const action = body.action ?? "sync";
+  return (
+    (action === "interestRecruitingPost" && body.joinMode === "referee") ||
+    (action === "acceptRecruitingInvitation" && hasRefereeInvitationFor(profileId, existingPost))
+  );
+}
+
+function validateLockedRecruitingCore(profileId, existingPost, nextPost, body = {}) {
+  const action = body.action ?? "sync";
+  if (!existingPost || !CORE_LOCKED_RECRUITING_ACTIONS.has(action)) return;
+
+  const existingCore = getRecruitingCoreSnapshot(existingPost);
+  const nextCore = getRecruitingCoreSnapshot(nextPost);
+  if (actionCanAssignReferee(profileId, existingPost, body)) existingCore.refereeId = nextCore.refereeId;
+
+  if (!sameJson(existingCore, nextCore)) reject(403, "recruiting_core_locked");
 }
 
 async function isActiveReferee(supabase, userId) {
@@ -380,7 +429,7 @@ export default async function handler(request, response) {
     const context = await getAuthenticatedContext(request);
     const { data: existingPost, error: existingError } = await context.supabase
       .from("recruiting_posts")
-      .select("id, visibility, player_id, player_ids, referee_id, room_state, age_restriction, allowed_age_groups")
+      .select("id, visibility, player_id, team_id, target_team_id, mode, scheduled_date, scheduled_time, ranked, official, side_capacity, host_join_mode, host_side, player_ids, referee_id, room_state, age_restriction, allowed_age_groups")
       .eq("id", post.id)
       .maybeSingle();
 
@@ -389,6 +438,7 @@ export default async function handler(request, response) {
       sendJson(response, 403, { error: "recruiting_sync_permission_denied" });
       return;
     }
+    validateLockedRecruitingCore(context.profileId, existingPost, post, body);
     await validateRefereeAction(context.supabase, context.profileId, existingPost, post, body);
     await validateAgeEligibility(context.supabase, context.profileId, existingPost, post, body);
 
