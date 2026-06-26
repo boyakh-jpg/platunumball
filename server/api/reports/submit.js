@@ -153,15 +153,16 @@ async function buildReportRow(context, report = {}) {
     ? await assertCanSubmitMatchReport(context, targetId, rawReportedUserIds)
     : await assertCanSubmitPlayerReport(context, targetId, rawReportedUserIds);
   const now = new Date().toISOString();
-  const createdAt = report.createdAt || report.created_at || now;
+  const createdAt = now;
   const id = String(report.id || `r_${randomUUID()}`).trim();
+  const reason = String(report.reason || "기타 운영 확인 필요").trim().slice(0, 500) || "기타 운영 확인 필요";
   return {
     id,
     type,
     target_id: targetId,
     user_id: context.profileId,
     reported_user_ids: reportedUserIds,
-    reason: String(report.reason || "기타 운영 확인 필요").trim() || "기타 운영 확인 필요",
+    reason,
     status: "open",
     resolved_at: null,
     resolved_by: null,
@@ -173,6 +174,7 @@ async function buildReportRow(context, report = {}) {
       targetId,
       by: context.profileId,
       reportedUserIds,
+      reason,
       status: "open",
       createdAt,
     },

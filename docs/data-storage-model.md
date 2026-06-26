@@ -162,6 +162,8 @@
 - 서버는 Supabase bearer를 검증하고 신고자 `user_id`를 현재 `profileId`로 강제한다.
 - `match` 신고는 경기 참가자/후보/출전 이력/방장/심판만 가능하고 7일 신고 기한을 서버에서도 확인한다.
 - `player` 신고는 대상 프로필 존재 여부와 자기신고 금지만 확인한다.
+- 신고 `created_at`은 클라이언트 값이 아니라 서버 접수 시각으로 고정한다.
+- 신고 사유는 서버에서 최대 500자로 제한한다.
 - `court_request` 신고는 중복 신고, 신뢰도 차감, 상태 변경이 묶인 기존 `POST /api/court-requests/report`만 사용한다.
 - 아직 신고 생성만 server action화한 단계다. 신고 판정/징계/피드백은 기존 관리자 RPC가 처리한다.
 
@@ -200,8 +202,8 @@
 - `POST /api/favorites/sync`를 추가했다.
 - 선수, 팀, 구장 즐겨찾기 토글 후 `favorites` row를 서버에 upsert/delete한다.
 - 서버는 `user_id`를 현재 `profileId`로 강제한다.
-- 선수와 팀 즐겨찾기는 대상 존재 여부를 확인한다.
-- 구장은 정적 seed 구장과 승인 구장 id가 섞여 있어 현재 단계에서는 target id 존재 검사를 보류한다.
+- 선수, 팀, 구장 즐겨찾기는 대상 존재 여부를 확인한다.
+- 구장 즐겨찾기는 `courts` 또는 `approved_courts`에 존재하는 id만 허용한다.
 
 ## 2026-06-25 notification read bridge
 

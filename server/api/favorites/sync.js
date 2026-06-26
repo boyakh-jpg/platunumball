@@ -3,7 +3,28 @@ import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdm
 const TARGET_TYPES = new Set(["player", "team", "court"]);
 
 async function assertTargetExists(context, targetType, targetId) {
-  if (targetType === "court") return;
+  if (targetType === "court") {
+    const { data: court, error: courtError } = await context.supabase
+      .from("courts")
+      .select("id")
+      .eq("id", targetId)
+      .maybeSingle();
+    if (courtError) throw courtError;
+    if (court?.id) return;
+
+    const { data: approvedCourt, error: approvedCourtError } = await context.supabase
+      .from("approved_courts")
+      .select("id")
+      .eq("id", targetId)
+      .maybeSingle();
+    if (approvedCourtError) throw approvedCourtError;
+    if (approvedCourt?.id) return;
+
+    const targetError = new Error("favorite_target_not_found");
+    targetError.statusCode = 404;
+    throw targetError;
+  }
+
   const table = targetType === "player" ? "profiles" : "teams";
   let query = context.supabase.from(table).select("id").eq("id", targetId);
   if (targetType === "team") query = query.is("deleted_at", null);
