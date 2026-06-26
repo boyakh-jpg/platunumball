@@ -688,7 +688,7 @@ export function useAppData(authUser = null) {
         ).then((ok) => (ok ? createdId : null));
       },
       createTournament: (draft) => {
-        if (!ensureRemoteReady("토너먼트 생성")) return null;
+        if (!ensureRemoteReady("토너먼트 생성")) return Promise.resolve(null);
         let rollbackState = null;
         let createdId = null;
         let createdTournament = null;
@@ -705,19 +705,18 @@ export function useAppData(authUser = null) {
           syncedNotifications = createdTournament ? getNewTournamentNotifications(prev, next) : [];
           return next;
         });
-        if (createdTournament) {
-          const preferredMatchIds = createdMatches.map((match) => match.id);
-          rollbackIfServerFailed(syncTournamentServer(createdTournament, syncedNotifications, {
-            action: "create",
-            operation: {
-              action: "createTournament",
-              draft: { ...draft, id: createdTournament.id, preferredMatchIds },
-              preferredTournamentId: createdTournament.id,
-              preferredMatchIds,
-            },
-          }), rollbackState, "토너먼트 생성", { action: "createTournament", tournamentId: createdTournament.id });
-        }
-        return createdId;
+        if (!createdTournament) return Promise.resolve(null);
+        const preferredMatchIds = createdMatches.map((match) => match.id);
+        return rollbackIfServerFailed(syncTournamentServer(createdTournament, syncedNotifications, {
+          action: "create",
+          operation: {
+            action: "createTournament",
+            draft: { ...draft, id: createdTournament.id, preferredMatchIds },
+            preferredTournamentId: createdTournament.id,
+            preferredMatchIds,
+          },
+        }), rollbackState, "토너먼트 생성", { action: "createTournament", tournamentId: createdTournament.id })
+          .then((ok) => (ok ? createdId : null));
       },
       approveTournamentTeam: (tournamentId, teamId) => {
         let rollbackState = null;

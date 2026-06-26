@@ -351,6 +351,7 @@ export default function CreateMatch({ app }) {
     tournamentMaxMmrGap: 250,
   });
   const [submitting, setSubmitting] = useState(false);
+  const [submitFeedback, setSubmitFeedback] = useState("");
 
   const sortedTeams = useMemo(() => {
     const hashtagSearch = isHashtagQuery(teamQuery);
@@ -501,6 +502,20 @@ export default function CreateMatch({ app }) {
       tournamentMmrSpread > Number(draft.tournamentMaxMmrGap ?? 250),
   );
   const tournamentInvalid = !draft.title.trim() || tournamentTeams.length < 2 || tournamentMmrBlocked;
+  const publicTeamInvalidReason = !myTeams.some((team) => team.id === draft.teamAId)
+    ? "내 팀을 먼저 선택해야 팀방을 만들 수 있습니다."
+    : !publicPartyPlayerIds.length
+      ? "A사이드 출전 선수를 1명 이상 선택해야 생성할 수 있습니다."
+      : draft.teamOnly && publicPartyPlayerIds.length < sideCapacity
+        ? `팀 전용 공개방은 A사이드 출전 슬롯 ${sideCapacity}명을 모두 채워야 생성할 수 있습니다.`
+        : "";
+  const tournamentInvalidReason = !draft.title.trim()
+    ? "대회 이름을 입력해야 생성할 수 있습니다."
+    : tournamentTeams.length < 2
+      ? "대회는 최소 2개 팀을 선택해야 생성할 수 있습니다."
+      : tournamentMmrBlocked
+        ? "대회 팀 MMR 차이가 허용값을 넘었습니다. MMR 제한을 경고만 또는 제한 없음으로 바꾸면 생성할 수 있습니다."
+        : "";
   const submitDisabled = !scheduleAllowed || !tournamentEndAllowed || ageRestrictionBlocked || (isTournamentRoom
     ? tournamentInvalid
     : isPublicRoom
@@ -516,6 +531,10 @@ export default function CreateMatch({ app }) {
           ? "생성자가 선택한 연령 제한 밖입니다. 연령 제한을 바꾸면 생성할 수 있습니다."
           : privateTeamInvalid
           ? "팀전은 A/B사이드 출전 슬롯이 모두 채워져야 생성할 수 있습니다."
+          : isTournamentRoom && tournamentInvalidReason
+            ? tournamentInvalidReason
+            : isPublicRoom && publicTeamInvalidReason
+              ? publicTeamInvalidReason
           : "";
   const selectedCourt = useMemo(
     () => registeredCourts.find((court) => court.name === draft.court) ?? defaultCourt,
@@ -528,11 +547,14 @@ export default function CreateMatch({ app }) {
     setCourtRegion(court.region);
   };
 
-  const update = (patch) => setDraft((current) => {
-    const next = { ...current, ...patch };
-    if (patch.ranked === false) next.official = false;
-    return next;
-  });
+  const update = (patch) => {
+    setSubmitFeedback("");
+    setDraft((current) => {
+      const next = { ...current, ...patch };
+      if (patch.ranked === false) next.official = false;
+      return next;
+    });
+  };
   useEffect(() => {
     if (!draft.refereeId) return;
     if (refereeCandidates.some((user) => user.id === draft.refereeId)) return;
@@ -739,16 +761,24 @@ export default function CreateMatch({ app }) {
   );
   const submit = async (event) => {
     event.preventDefault();
-    if (submitDisabled || submitting) return;
+    if (submitting) return;
+    if (submitDisabled) {
+      setSubmitFeedback(submitDisabledReason || "경기 생성 조건을 확인하세요.");
+      return;
+    }
+    setSubmitFeedback("");
     if (isTournamentRoom) {
       setSubmitting(true);
-      const tournamentId = app.actions.createTournament({
+      const tournamentId = await app.actions.createTournament({
         ...draft,
         teamIds: draft.tournamentTeamIds,
         region: selectedCourt.region,
       });
       if (tournamentId) navigate("/app/matches");
-      else setSubmitting(false);
+      else {
+        setSubmitFeedback("대회 저장에 실패했습니다. 팀, 일정, 권한 조건을 확인하세요.");
+        setSubmitting(false);
+      }
       return;
     }
     setSubmitting(true);
@@ -801,7 +831,10 @@ export default function CreateMatch({ app }) {
       ].filter(Boolean).join("\n"),
     });
     if (postId) navigate(`/app/recruiting?post=${encodeURIComponent(postId)}`);
-    else setSubmitting(false);
+    else {
+      setSubmitFeedback("경기 저장에 실패했습니다. 팀, 구장, 일정, 권한 조건을 확인하세요.");
+      setSubmitting(false);
+    }
     return;
   };
 
@@ -1412,7 +1445,7 @@ export default function CreateMatch({ app }) {
         </Card>
       </div>
       <div className="create-submit-row">
-        {submitDisabledReason ? <span className="create-submit-warning">{submitDisabledReason}</span> : null}
+        {submitFeedback || submitDisabledReason ? <span className="create-submit-warning">{submitFeedback || submitDisabledReason}</span> : null}
         <Button type="submit" disabled={submitDisabled || submitting}>{isTournamentRoom ? "대회 생성" : "경기 생성"}</Button>
       </div>
     </form>

@@ -1236,3 +1236,4 @@ flowchart TD
 1. 직접 경기 생성은 `createdBy = state.currentUserId`를 저장한다.
 2. DB `matches.created_by`는 생성자 프로필이며 A사이드 첫 선수가 아니다.
 3. 방/경기 생성 reducer가 경고만 추가하고 새 row를 만들지 않으면 frontend action은 id를 반환하지 않고 성공처럼 이동하지 않는다.
+4. 방/대회 생성 화면은 server action 저장 성공 id를 받은 뒤에만 목록 화면으로 이동한다.
