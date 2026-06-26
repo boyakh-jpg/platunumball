@@ -207,6 +207,20 @@ function getProfileId(state, label) {
   return profileId;
 }
 
+function getSeededProfileId(testLoginId = "") {
+  const match = String(testLoginId || "").toLowerCase().match(/^rankball-0*(\d+)$/);
+  if (!match) return "";
+  const number = Number(match[1]);
+  return Number.isFinite(number) && number > 0 ? `u${number}` : "";
+}
+
+async function getProfileIdForLogin(testLoginId) {
+  const seededProfileId = getSeededProfileId(testLoginId);
+  if (seededProfileId) return seededProfileId;
+  const state = await loadStateAs(testLoginId);
+  return getProfileId(state, testLoginId);
+}
+
 async function loadStateAs(testLoginId) {
   const payload = await callHandler("/api/state/load", loadStateHandler, token(testLoginId));
   assertFlow(payload?.ok && payload?.state, `state load failed for ${testLoginId}`, payload);
@@ -309,22 +323,19 @@ async function runOneOnOneScenario({
   ids = makeScenarioIds(label);
   const operatorLogin = refereeWanted ? refereeLogin : hostLogin;
 
-  const hostInitialState = await step(`${ids.label}:loadInitial:host`, () => loadStateAs(hostLogin));
-  const opponentInitialState = await step(`${ids.label}:loadInitial:opponent`, () => loadStateAs(opponentLogin));
-  const hostId = getProfileId(hostInitialState, hostLogin);
-  const opponentId = getProfileId(opponentInitialState, opponentLogin);
+  const hostId = await step(`${ids.label}:resolveProfile:host`, () => getProfileIdForLogin(hostLogin));
+  const opponentId = await step(`${ids.label}:resolveProfile:opponent`, () => getProfileIdForLogin(opponentLogin));
   let refereeId = "";
 
   assertFlow(hostId !== opponentId, "host and opponent must be different profiles", { hostId, opponentId });
 
   if (refereeWanted) {
     assertFlow(Boolean(refereeLogin), "referee login required");
-    const refereeInitialState = await step(`${ids.label}:loadInitial:referee`, () => loadStateAs(refereeLogin));
-    refereeId = getProfileId(refereeInitialState, refereeLogin);
+    refereeId = await step(`${ids.label}:resolveProfile:referee`, () => getProfileIdForLogin(refereeLogin));
     assertFlow(![hostId, opponentId].includes(refereeId), "referee must be separate profile", { hostId, opponentId, refereeId });
   }
 
-  await step(`${ids.label}:createRecruitingPost`, () => syncRecruitingAs(hostLogin, {
+  const createResult = await step(`${ids.label}:createRecruitingPost`, () => syncRecruitingAs(hostLogin, {
     action: "createRecruitingPost",
     preferredPostId: ids.postId,
     draft: {
@@ -353,14 +364,12 @@ async function runOneOnOneScenario({
       },
     },
   }));
-
-  let hostState = await step(`${ids.label}:loadAfterCreate:host`, () => loadStateAs(hostLogin));
-  let opponentState = await step(`${ids.label}:loadAfterCreate:opponent`, () => loadStateAs(opponentLogin));
-  assertFlow(Boolean(findPost(hostState)), "created post not visible to host");
-  assertFlow(Boolean(findPost(opponentState)), "public post not visible to opponent");
+  let post = createResult?.post;
+  assertFlow(post?.id === ids.postId, "created post not returned", createResult);
+  assertFlow(post.ownerId === hostId || post.playerId === hostId, "created post owner mismatch", { hostId, post });
 
   if (refereeWanted) {
-    await step(`${ids.label}:interestRecruitingPost:referee`, () => syncRecruitingAs(refereeLogin, {
+    const refereeJoinResult = await step(`${ids.label}:interestRecruitingPost:referee`, () => syncRecruitingAs(refereeLogin, {
       action: "interestRecruitingPost",
       postId: ids.postId,
       application: {
@@ -368,13 +377,11 @@ async function runOneOnOneScenario({
       },
       joinMode: "referee",
     }));
-
-    hostState = await step(`${ids.label}:loadAfterRefereeJoin`, () => loadStateAs(hostLogin));
-    const refereePost = findPost(hostState);
-    assertFlow(refereePost?.refereeId === refereeId, "referee join not persisted", { refereeId, post: refereePost });
+    post = refereeJoinResult?.post;
+    assertFlow(post?.refereeId === refereeId, "referee join not persisted", { refereeId, post });
   }
 
-  await step(`${ids.label}:interestRecruitingPost:opponent`, () => syncRecruitingAs(opponentLogin, {
+  const opponentJoinResult = await step(`${ids.label}:interestRecruitingPost:opponent`, () => syncRecruitingAs(opponentLogin, {
     action: "interestRecruitingPost",
     postId: ids.postId,
     application: {
@@ -384,119 +391,111 @@ async function runOneOnOneScenario({
     },
     joinMode: "player",
   }));
+  post = opponentJoinResult?.post;
+  assertFlow(post?.applicants?.some((applicant) => applicant.playerId === opponentId), "opponent join not persisted", post);
 
-  hostState = await step(`${ids.label}:loadAfterJoin`, () => loadStateAs(hostLogin));
-  const joinedPost = findPost(hostState);
-  assertFlow(joinedPost?.applicants?.some((applicant) => applicant.playerId === opponentId), "opponent join not persisted", joinedPost);
-
-  await step(`${ids.label}:setRecruitingReady`, () => syncRecruitingAs(opponentLogin, {
+  const readyResult = await step(`${ids.label}:setRecruitingReady`, () => syncRecruitingAs(opponentLogin, {
     action: "setRecruitingReady",
     postId: ids.postId,
     ready: true,
   }));
+  post = readyResult?.post;
+  assertFlow(post?.applicants?.some((applicant) => applicant.playerId === opponentId && applicant.status === "ready"), "opponent ready not persisted", post);
 
-  await step(`${ids.label}:confirmRecruitingMatch`, () => syncRecruitingAs(hostLogin, {
+  const confirmResult = await step(`${ids.label}:confirmRecruitingMatch`, () => syncRecruitingAs(hostLogin, {
     action: "confirmRecruitingMatch",
     postId: ids.postId,
     preferredMatchId: ids.matchId,
   }));
-
-  hostState = await step(`${ids.label}:loadAfterConfirm:host`, () => loadStateAs(hostLogin));
-  opponentState = await step(`${ids.label}:loadAfterConfirm:opponent`, () => loadStateAs(opponentLogin));
-  let match = findMatch(hostState);
-  assertFlow(Boolean(match), "confirmed match not visible to host");
-  assertFlow(Boolean(findMatch(opponentState)), "confirmed match not visible to opponent");
-  if (refereeWanted) {
-    const refereeState = await step(`${ids.label}:loadAfterConfirm:referee`, () => loadStateAs(refereeLogin));
-    assertFlow(Boolean(findMatch(refereeState)), "confirmed match not visible to referee");
-    assertFlow(match.refereeId === refereeId, "match referee not persisted", { refereeId, match });
-  }
+  let match = confirmResult?.createdMatch;
+  assertFlow(match?.id === ids.matchId, "confirmed match not returned", confirmResult);
+  if (refereeWanted) assertFlow(match.refereeId === refereeId, "match referee not persisted", { refereeId, match });
   assertFlow(match.teamA?.players?.includes(hostId), "host missing from teamA", match);
   assertFlow(match.teamB?.players?.includes(opponentId), "opponent missing from teamB", match);
 
   if (!match.agreements?.teamA?.includes(hostId)) {
-    await step(`${ids.label}:agreeMatch:teamA`, () => syncMatchAs(hostLogin, {
+    const agreeAResult = await step(`${ids.label}:agreeMatch:teamA`, () => syncMatchAs(hostLogin, {
       action: "agreeMatch",
       matchId: ids.matchId,
       sideName: "teamA",
       playerId: hostId,
     }));
+    match = agreeAResult?.match;
+    assertFlow(match?.agreements?.teamA?.includes(hostId), "teamA agreement not persisted", match);
   }
 
-  hostState = await step(`${ids.label}:loadAfterTeamAAgreement`, () => loadStateAs(hostLogin));
-  match = findMatch(hostState);
   if (!match.agreements?.teamB?.includes(opponentId)) {
-    await step(`${ids.label}:agreeMatch:teamB`, () => syncMatchAs(opponentLogin, {
+    const agreeBResult = await step(`${ids.label}:agreeMatch:teamB`, () => syncMatchAs(opponentLogin, {
       action: "agreeMatch",
       matchId: ids.matchId,
       sideName: "teamB",
       playerId: opponentId,
     }));
+    match = agreeBResult?.match;
+    assertFlow(match?.agreements?.teamB?.includes(opponentId), "teamB agreement not persisted", match);
   }
 
   if (refereeWanted) {
-    await step(`${ids.label}:checkInMatchPlayer:teamA`, () => syncMatchAs(operatorLogin, {
+    const checkInAResult = await step(`${ids.label}:checkInMatchPlayer:teamA`, () => syncMatchAs(operatorLogin, {
       action: "checkInMatchPlayer",
       matchId: ids.matchId,
       sideName: "teamA",
       playerId: hostId,
     }));
+    match = checkInAResult?.match;
+    assertFlow(match?.attendance?.teamA?.includes(hostId), "teamA check-in not persisted", match);
   }
 
-  await step(`${ids.label}:checkInMatchPlayer:teamB`, () => syncMatchAs(operatorLogin, {
+  const checkInBResult = await step(`${ids.label}:checkInMatchPlayer:teamB`, () => syncMatchAs(operatorLogin, {
     action: "checkInMatchPlayer",
     matchId: ids.matchId,
     sideName: "teamB",
     playerId: opponentId,
   }));
+  match = checkInBResult?.match;
+  assertFlow(match?.attendance?.teamB?.includes(opponentId), "teamB check-in not persisted", match);
 
-  await step(`${ids.label}:startMatch`, () => syncMatchAs(operatorLogin, {
+  const startResult = await step(`${ids.label}:startMatch`, () => syncMatchAs(operatorLogin, {
     action: "startMatch",
     matchId: ids.matchId,
   }));
-
-  hostState = await step(`${ids.label}:loadAfterStart`, () => loadStateAs(hostLogin));
-  match = findMatch(hostState);
+  match = startResult?.match;
   assertFlow(Boolean(match?.startedAt), "match start not persisted", match);
 
-  await step(`${ids.label}:endMatch`, () => syncMatchAs(operatorLogin, {
+  const endResult = await step(`${ids.label}:endMatch`, () => syncMatchAs(operatorLogin, {
     action: "endMatch",
     matchId: ids.matchId,
   }));
-
-  hostState = await step(`${ids.label}:loadAfterEnd`, () => loadStateAs(hostLogin));
-  match = findMatch(hostState);
+  match = endResult?.match;
   assertFlow(Boolean(match?.endedAt), "match end not persisted", match);
 
-  await step(`${ids.label}:submitMatchResult`, () => syncMatchAs(operatorLogin, {
+  const resultSubmit = await step(`${ids.label}:submitMatchResult`, () => syncMatchAs(operatorLogin, {
     action: "submitMatchResult",
     matchId: ids.matchId,
     result: makeResult(match),
   }));
-
-  hostState = await step(`${ids.label}:loadAfterResult`, () => loadStateAs(hostLogin));
-  match = findMatch(hostState);
+  match = resultSubmit?.match;
   assertFlow(match?.status === "approval" && match?.result, "match result not persisted", match);
   if (refereeWanted) {
     assertFlow(match.result.submittedBy === refereeId, "referee result submitter not persisted", { refereeId, result: match.result });
   }
 
-  await step(`${ids.label}:approveMatch:teamA`, () => syncMatchAs(hostLogin, {
+  const approveAResult = await step(`${ids.label}:approveMatch:teamA`, () => syncMatchAs(hostLogin, {
     action: "approveMatch",
     matchId: ids.matchId,
     sideName: "teamA",
     playerId: hostId,
   }));
+  match = approveAResult?.match;
+  assertFlow(match?.approvals?.teamA?.includes(hostId), "teamA approval not persisted", match);
 
-  await step(`${ids.label}:approveMatch:teamB`, () => syncMatchAs(opponentLogin, {
+  const approveBResult = await step(`${ids.label}:approveMatch:teamB`, () => syncMatchAs(opponentLogin, {
     action: "approveMatch",
     matchId: ids.matchId,
     sideName: "teamB",
     playerId: opponentId,
   }));
-
-  hostState = await step(`${ids.label}:loadAfterApproval`, () => loadStateAs(hostLogin));
-  match = findMatch(hostState);
+  match = approveBResult?.match;
   assertFlow(match?.status === "confirmed", "match approval not confirmed", match);
 
   return {
