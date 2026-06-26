@@ -3220,6 +3220,15 @@ function RecruitingReady({ app }) {
         )}
       </section>
 
+      {!app.recruitingPagination?.exhausted ? (
+        <div className="om-load-more">
+          <button type="button" className="button button-secondary button-md" disabled={app.recruitingPagination?.loading} onClick={() => app.actions.loadMoreRecruiting?.()}>
+            {app.recruitingPagination?.loading ? "불러오는 중" : "더 보기"}
+          </button>
+          {app.recruitingPagination?.error ? <span>추가 매치방 로드 실패</span> : null}
+        </div>
+      ) : null}
+
       {selectedPost ? (
         <RecruitingRoomModal
           app={app}

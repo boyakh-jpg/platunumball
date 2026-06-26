@@ -1274,3 +1274,9 @@ flowchart TD
 1. Supabase 모드 방/경기/팀 write는 optimistic update 전에 server action 가능 여부를 확인한다.
 2. Google OAuth session access token이 없으면 로컬 화면만 먼저 바꾸지 않는다.
 3. 테스트 로그인은 localhost 기본 허용과 `VITE_DEMO_LOGIN=true` 명시 허용만 사용한다. `.vercel.app` 도메인이라는 이유만으로 허용하지 않는다.
+## 2026-06-27 recruiting list pagination
+
+1. Recruiting list reads use `/api/recruiting/list` for additional pages.
+2. Recruiting first client load and additional page load use `REMOTE_CLIENT_RECRUITING_LIMIT = 80`.
+3. Additional recruiting pages must merge by id and keep server rows as source of truth.
+4. List pagination must not load match result/stat child tables.

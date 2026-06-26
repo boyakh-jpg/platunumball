@@ -136,7 +136,7 @@ const EMPTY_STATE = {
 const REMOTE_PAGE_SIZE = 1000;
 const REMOTE_WRITE_CHUNK_SIZE = 500;
 export const REMOTE_CLIENT_MATCH_LIMIT = 80;
-const REMOTE_CLIENT_RECRUITING_LIMIT = 160;
+export const REMOTE_CLIENT_RECRUITING_LIMIT = 80;
 const REMOTE_CLIENT_TOURNAMENT_LIMIT = 80;
 const REMOTE_CLIENT_MAX_LIMIT = 500;
 const PUBLIC_PROFILE_COLUMNS = "id,name,handle,hashtag,position,region,region_sido,region_district,school,company,club,trust_score,streak,avatar_color,ratings,age_group,age_group_checked_season,onboarding_complete,test_login_id,updated_at,discord_connection";
@@ -1584,6 +1584,7 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
         status: post.status,
         confirmedAt: post.confirmed_at,
         createdAt: post.created_at,
+        updatedAt: post.updated_at,
         applicants: (applicationsByPost.get(post.id) ?? []).map((application) => ({
           kind: application.kind,
           joinMode: application.kind,

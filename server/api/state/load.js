@@ -98,7 +98,7 @@ function sanitizeUser(user = {}, profileId = "", isAdmin = false) {
   return publicUser;
 }
 
-function filterStateForProfile(state = {}, profileId = "", isAdmin = false) {
+export function filterStateForProfile(state = {}, profileId = "", isAdmin = false) {
   const userTeamIds = getUserTeamIds(state.teams ?? [], profileId);
   return {
     ...state,

@@ -8,6 +8,12 @@
 1. 경기 생성 기본 제목은 선택한 mode와 맞아야 한다.
 2. 사용자가 직접 바꾼 제목은 mode 변경으로 덮어쓰지 않는다.
 
+# 2026-06-27 recruiting load-more UI
+
+1. Recruiting list uses the same centered `om-load-more` row as Matches.
+2. List pages show 80 rows or fewer first, then use `더 보기` for additional rows.
+3. Pagination failure is shown inline beside the load-more button.
+
 # RankBall Design System
 
 이 문서는 UI/CSS/반응형/라이트/다크 수정 기준이다.
