@@ -117,6 +117,52 @@ begin
     ) then
       execute 'create unique index if not exists profiles_discord_user_id_unique on public.profiles (discord_user_id) where discord_user_id is not null';
     end if;
+
+    execute 'drop policy if exists profiles_read_all on public.profiles';
+    execute 'drop policy if exists profiles_select_all on public.profiles';
+    execute 'drop policy if exists profiles_public_read on public.profiles';
+    execute 'drop policy if exists profiles_self_read on public.profiles';
+
+    execute 'drop view if exists public.public_profiles';
+    execute $view$
+      create view public.public_profiles as
+      select
+        id,
+        name,
+        handle,
+        hashtag,
+        position,
+        region,
+        region_sido,
+        region_district,
+        school,
+        company,
+        club,
+        trust_score,
+        streak,
+        avatar_color,
+        ratings,
+        age_group,
+        age_group_checked_season,
+        onboarding_complete,
+        test_login_id,
+        updated_at,
+        case
+          when discord_connection is null then null
+          else jsonb_strip_nulls(jsonb_build_object(
+            'status', discord_connection->>'status',
+            'userId', discord_connection->>'userId',
+            'username', discord_connection->>'username',
+            'avatarUrl', discord_connection->>'avatarUrl',
+            'linkedAt', discord_connection->>'linkedAt'
+          ))
+        end as discord_connection
+      from public.profiles
+    $view$;
+
+    execute 'revoke all on public.profiles from anon, authenticated';
+    execute 'grant select on public.profiles to authenticated';
+    execute 'grant select on public.public_profiles to anon, authenticated';
   end if;
 end;
 $$;
@@ -142,6 +188,31 @@ begin
   end if;
 
   return profile_id;
+end;
+$$;
+
+do $$
+declare
+  policy_row record;
+begin
+  if to_regclass('public.profiles') is not null then
+    execute 'alter table public.profiles enable row level security';
+    execute 'drop policy if exists profiles_read_all on public.profiles';
+    execute 'drop policy if exists profiles_select_all on public.profiles';
+    execute 'drop policy if exists profiles_public_read on public.profiles';
+    execute 'drop policy if exists profiles_self_read on public.profiles';
+    for policy_row in
+      select policyname
+      from pg_policies
+      where schemaname = 'public'
+        and tablename = 'profiles'
+        and cmd = 'SELECT'
+        and qual in ('true', '(true)')
+    loop
+      execute format('drop policy if exists %I on public.profiles', policy_row.policyname);
+    end loop;
+    execute 'create policy profiles_self_read on public.profiles for select to authenticated using (id = public.current_profile_id())';
+  end if;
 end;
 $$;
 
@@ -437,6 +508,26 @@ using (
 
 drop policy if exists "recruiting_posts_select_public" on public.recruiting_posts;
 drop policy if exists "recruiting_posts_select_related_private" on public.recruiting_posts;
+drop policy if exists recruiting_read_all on public.recruiting_posts;
+drop policy if exists recruiting_posts_read_all on public.recruiting_posts;
+drop policy if exists recruiting_posts_select_all on public.recruiting_posts;
+
+do $$
+declare
+  policy_row record;
+begin
+  for policy_row in
+    select policyname
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'recruiting_posts'
+      and cmd = 'SELECT'
+      and qual in ('true', '(true)')
+  loop
+    execute format('drop policy if exists %I on public.recruiting_posts', policy_row.policyname);
+  end loop;
+end;
+$$;
 
 create policy "recruiting_posts_select_public"
 on public.recruiting_posts
@@ -520,6 +611,7 @@ $$;
 do $$
 begin
   if to_regclass('public.matches') is not null then
+    execute 'alter table public.matches add column if not exists visibility text not null default ''public''';
     execute 'alter table public.matches add column if not exists score_a integer not null default 0';
     execute 'alter table public.matches add column if not exists score_b integer not null default 0';
     execute 'alter table public.matches add column if not exists mmr_limit_mode text not null default ''block''';
@@ -544,6 +636,9 @@ begin
     execute 'alter table public.matches add column if not exists anonymous_players jsonb not null default ''{}''::jsonb';
     execute 'alter table public.matches add column if not exists rating_result jsonb';
     execute 'alter table public.matches add column if not exists team_rating_result jsonb';
+    execute 'alter table public.matches drop constraint if exists matches_visibility_check';
+    execute 'alter table public.matches add constraint matches_visibility_check check (visibility in (''public'', ''private''))';
+    execute 'create index if not exists matches_visibility_idx on public.matches (visibility, created_at desc)';
     execute 'create index if not exists matches_referee_id_idx on public.matches (referee_id)';
   end if;
 end;
@@ -1116,6 +1211,80 @@ security definer
 set search_path = public
 as $$
   select public.current_admin_level() >= min_level
+$$;
+
+create or replace function public.rankball_is_match_actor(target_match_id text)
+returns boolean
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  profile_id text := public.current_profile_id();
+begin
+  if public.current_is_admin(30) then
+    return true;
+  end if;
+
+  if profile_id is null then
+    return false;
+  end if;
+
+  if exists (
+    select 1
+    from public.matches m
+    where m.id = target_match_id
+      and profile_id in (m.created_by, m.referee_id, m.former_referee_id)
+  ) then
+    return true;
+  end if;
+
+  if exists (
+    select 1
+    from public.match_players mp
+    where mp.match_id = target_match_id
+      and mp.user_id = profile_id
+  ) then
+    return true;
+  end if;
+
+  if exists (
+    select 1
+    from public.matches m
+    where m.id = target_match_id
+      and (
+        jsonb_path_exists(coalesce(m.reserve_players, '{}'::jsonb), '$.** ? (@ == $profileId)', jsonb_build_object('profileId', profile_id))
+        or jsonb_path_exists(coalesce(m.played_player_ids, '{}'::jsonb), '$.** ? (@ == $profileId)', jsonb_build_object('profileId', profile_id))
+        or jsonb_path_exists(coalesce(m.stat_recorders, '{}'::jsonb), '$.** ? (@ == $profileId)', jsonb_build_object('profileId', profile_id))
+      )
+  ) then
+    return true;
+  end if;
+
+  return false;
+end;
+$$;
+
+create or replace function public.rankball_can_read_match(target_match_id text)
+returns boolean
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+begin
+  if exists (
+    select 1
+    from public.matches m
+    where m.id = target_match_id
+      and coalesce(m.visibility, 'public') = 'public'
+  ) then
+    return true;
+  end if;
+
+  return public.rankball_is_match_actor(target_match_id);
+end;
 $$;
 
 create or replace function public.rankball_can_read_private_tournament(target_tournament_id text)
@@ -3326,11 +3495,72 @@ end;
 $$;
 
 do $$
+declare
+  table_name text;
+  policy_row record;
 begin
+  foreach table_name in array array[
+    'matches',
+    'match_players',
+    'match_results',
+    'player_match_stats',
+    'match_agreements',
+    'match_approvals',
+    'match_disputes'
+  ]
+  loop
+    if to_regclass(format('public.%I', table_name)) is null then
+      continue;
+    end if;
+
+    execute format('alter table public.%I enable row level security', table_name);
+    execute format('drop policy if exists %I on public.%I', table_name || '_read_all', table_name);
+    execute format('drop policy if exists %I on public.%I', table_name || '_select_all', table_name);
+
+    for policy_row in
+      select policyname
+      from pg_policies
+      where schemaname = 'public'
+        and tablename = table_name
+        and cmd = 'SELECT'
+        and qual in ('true', '(true)')
+    loop
+      execute format('drop policy if exists %I on public.%I', policy_row.policyname, table_name);
+    end loop;
+  end loop;
+
+  if to_regclass('public.matches') is not null then
+    execute 'drop policy if exists matches_select_public on public.matches';
+    execute 'drop policy if exists matches_select_related_private on public.matches';
+    execute 'create policy matches_select_public on public.matches for select to anon, authenticated using (coalesce(visibility, ''public'') = ''public'')';
+    execute 'create policy matches_select_related_private on public.matches for select to authenticated using (public.rankball_can_read_match(id))';
+  end if;
+
+  foreach table_name in array array[
+    'match_players',
+    'match_results',
+    'player_match_stats',
+    'match_agreements',
+    'match_approvals'
+  ]
+  loop
+    if to_regclass(format('public.%I', table_name)) is null then
+      continue;
+    end if;
+
+    execute format('drop policy if exists %I on public.%I', table_name || '_select_match_readable', table_name);
+    execute format(
+      'create policy %I on public.%I for select to anon, authenticated using (public.rankball_can_read_match(match_id))',
+      table_name || '_select_match_readable',
+      table_name
+    );
+  end loop;
+
   if to_regclass('public.match_disputes') is not null then
     execute 'drop policy if exists match_disputes_read_all on public.match_disputes';
     execute 'drop policy if exists match_disputes_no_public_read on public.match_disputes';
-    execute 'create policy match_disputes_no_public_read on public.match_disputes for select to authenticated using (false)';
+    execute 'drop policy if exists match_disputes_select_actor on public.match_disputes';
+    execute 'create policy match_disputes_select_actor on public.match_disputes for select to authenticated using (public.rankball_is_match_actor(match_id))';
   end if;
 end;
 $$;

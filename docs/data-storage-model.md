@@ -280,6 +280,7 @@ Backend gaps:
 Done:
 
 - Supabase schema/RLS hardening: `profiles.auth_user_id` uuid FK, duplicate hard failure, client write guard, admin/report/court/referee policy hardening.
+- RLS read hardening: recruiting permissive read policies are dropped, profile directory reads use `public_profiles`, and match tables read through `matches.visibility` plus participant/admin checks.
 - Vercel Hobby API consolidation: one `api/index.js` function dispatches the server routes.
 - Server action paths exist for profile upsert, court request submit/approve/report, admin review, admin/referee appointment, disciplinary action, Discord DM worker, Discord delivery queue sync, reports, recruiting, matches, teams, tournaments, referee requests, favorites, notification read, court reviews.
 - Team membership save/delete now commits through `rankball_sync_team_membership()` / `rankball_delete_team()` DB RPC transactions.

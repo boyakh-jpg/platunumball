@@ -128,6 +128,7 @@ function toMatchRow(match = {}, actorProfileId = "") {
     mode: match.mode ?? "5v5",
     court_id: match.courtId ?? null,
     court_name: match.court ?? match.courtName ?? "미정",
+    visibility: match.visibility ?? match.rules?.visibility ?? "private",
     status: match.status ?? "contract",
     ranked: match.ranked !== false,
     mmr_limit_mode: match.mmrLimitMode ?? "block",
@@ -165,6 +166,7 @@ function toMatchRow(match = {}, actorProfileId = "") {
     rules: {
       ...(match.rules ?? {}),
       timingType: match.timingType ?? match.rules?.timingType ?? "scheduled",
+      visibility: match.visibility ?? match.rules?.visibility ?? "private",
       statRecorders,
       playedPlayerIds,
       mmrExcludedPlayerIds,
@@ -447,6 +449,11 @@ async function validateRefereeEligibility(supabase, existingMatch, nextMatch, ac
 
 function validateLockedMatchCore(existingMatch, existingPlayers, nextMatch, action) {
   if (!existingMatch) return;
+  const existingVisibility = existingMatch.visibility || "public";
+  const nextVisibility = nextMatch.visibility ?? nextMatch.rules?.visibility ?? existingVisibility;
+  if (existingVisibility !== nextVisibility && action !== "updateMatchRoomRules") {
+    reject(403, "match_visibility_locked");
+  }
 
   if (ROSTER_LOCKED_MATCH_ACTIONS.has(action)) {
     const existingTeamA = getExistingSidePlayerIds(existingPlayers, "teamA");
@@ -521,7 +528,7 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
 
   const { data: existingMatch, error: existingError } = await context.supabase
       .from("matches")
-      .select("id, status, created_by, referee_id, former_referee_id, referee_trust_min, stat_recorders, score_a, score_b, rating_result, team_rating_result, confirmed_at")
+      .select("id, visibility, status, created_by, referee_id, former_referee_id, referee_trust_min, stat_recorders, score_a, score_b, rating_result, team_rating_result, confirmed_at")
       .eq("id", match.id)
       .maybeSingle();
   if (existingError) throw existingError;
@@ -558,6 +565,13 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
   const shouldCommitRating = canCommitRatingResult(action, existingResult, match);
   if (shouldCommitRating && !ratingCommit) reject(400, "missing_rating_commit");
   if (action !== "submitMatchResult" && existingMatch) {
+    if (action !== "updateMatchRoomRules") {
+      matchRow.visibility = existingMatch.visibility ?? matchRow.visibility;
+      matchRow.rules = {
+        ...(matchRow.rules ?? {}),
+        visibility: matchRow.visibility,
+      };
+    }
     matchRow.score_a = Number(existingMatch.score_a ?? 0);
     matchRow.score_b = Number(existingMatch.score_b ?? 0);
     if (shouldCommitRating) {

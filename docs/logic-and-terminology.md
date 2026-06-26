@@ -1044,6 +1044,10 @@ flowchart TD
 6. 신고 목록은 관리자 read policy로만 운영자가 볼 수 있다.
 7. 관리자/징계/audit write는 client policy를 만들지 않고 server action만 사용한다.
 8. 승인 구장 테이블은 authenticated read만 허용하고 내부 요청자/승인자 정보를 payload에 섞지 않는다.
+9. `recruiting_posts`는 `recruiting_read_all` 같은 permissive `SELECT true` 정책을 허용하지 않는다. 공개방은 `visibility='public'`, 비공개방은 관계자만 읽는다.
+10. `profiles` 전체 row는 공개 read 대상이 아니다. 공개 목록은 `public_profiles` view를 사용하고, 직접 `profiles` read는 현재 본인 row만 허용한다.
+11. `matches.visibility`는 `public/private`를 가진다. 공개 경기는 public read, 비공개 경기는 방장/심판/출전자/후보/기록자/관리자만 read한다.
+12. `match_disputes`는 공개 경기라도 전체 공개하지 않고 경기 관계자와 관리자만 read한다.
 
 ## 2026-06-25 테스트 계정 시뮬레이션 원칙
 

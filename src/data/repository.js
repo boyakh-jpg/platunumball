@@ -1020,6 +1020,7 @@ function fromRemoteMatch(row, context) {
     title: row.title,
     mode: row.mode,
     court: row.court_name ?? context.courtById[row.court_id]?.name ?? "미정",
+    visibility: row.visibility ?? row.rules?.visibility ?? "public",
     scheduledDate: row.scheduled_date,
     scheduledTime: row.scheduled_time ? String(row.scheduled_time).slice(0, 5) : "",
     scheduledAt,
@@ -1096,7 +1097,8 @@ function getMaxUpdatedAt(rows) {
 
 export async function loadNormalizedRemoteStateFromClient(client = supabase, authUserId = "", authEmail = "") {
   const [
-    profiles,
+    publicProfiles,
+    privateProfiles,
     teams,
     teamMembers,
     courts,
@@ -1127,7 +1129,8 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
     adminDisciplinaryActions,
     discordNotificationDeliveries,
   ] = await Promise.all([
-    fetchAllRows("profiles", "*", "id", client),
+    fetchOptionalRows("public_profiles", "*", "id", client),
+    fetchOptionalRows("profiles", "*", "id", client),
     fetchAllRows("teams", "*", "id", client),
     fetchAllRows("team_members", "*", null, client),
     fetchAllRows("courts", "*", "id", client),
@@ -1137,7 +1140,7 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
     fetchAllRows("player_match_stats", "*", null, client),
     fetchAllRows("match_agreements", "*", null, client),
     fetchAllRows("match_approvals", "*", null, client),
-    fetchAllRows("match_disputes", "*", null, client),
+    fetchOptionalRows("match_disputes", "*", null, client),
     fetchAllRows("favorites", "*", null, client),
     fetchAllRows("recruiting_posts", "*", "created_at", client),
     fetchAllRows("recruiting_applications", "*", null, client),
@@ -1158,6 +1161,12 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
     fetchOptionalRows("admin_disciplinary_actions", "*", "created_at", client),
     fetchOptionalRows("discord_notification_deliveries", "*", "queued_at", client),
   ]);
+
+  const privateProfileById = new Map((privateProfiles ?? []).map((profile) => [profile.id, profile]));
+  const profiles = (publicProfiles ?? []).map((profile) => ({ ...profile, ...(privateProfileById.get(profile.id) ?? {}) }));
+  for (const privateProfile of privateProfiles ?? []) {
+    if (!profiles.some((profile) => profile.id === privateProfile.id)) profiles.push(privateProfile);
+  }
 
   const authUserIdText = String(authUserId || "");
   const testLoginId = getBackendTestLoginId(authUserIdText);
@@ -1590,6 +1599,7 @@ export async function saveNormalizedRemoteState(state, options = {}) {
     mode: match.mode,
     court_id: courtIdByName(match.court),
     court_name: match.court,
+    visibility: match.visibility ?? match.rules?.visibility ?? "private",
     status: match.status ?? "contract",
     ranked: match.ranked !== false,
     mmr_limit_mode: match.mmrLimitMode ?? "block",
@@ -1624,7 +1634,7 @@ export async function saveNormalizedRemoteState(state, options = {}) {
     team_b_id: match.teamB?.teamId,
     score_a: Number(match.result?.scoreA ?? match.teamA?.score ?? 0),
     score_b: Number(match.result?.scoreB ?? match.teamB?.score ?? 0),
-    rules: { ...(match.rules ?? {}), timingType: match.timingType ?? match.rules?.timingType ?? "scheduled", statRecorders: normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders) },
+    rules: { ...(match.rules ?? {}), timingType: match.timingType ?? match.rules?.timingType ?? "scheduled", visibility: match.visibility ?? match.rules?.visibility ?? "private", statRecorders: normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders) },
     memo: match.memo,
     stakes: match.stakes,
     objection_window: match.objectionWindow,
@@ -2133,6 +2143,7 @@ function makeTournamentMatch(tournament, teamA, teamB, pairing, now, matchId = "
     scheduledDate: "",
     scheduledTime: "",
     scheduledAt: "일정 미정",
+    visibility: tournament.visibility ?? "private",
     status: "agreed",
     ranked: tournament.ranked !== false,
     official: Boolean(tournament.official),
@@ -2147,7 +2158,7 @@ function makeTournamentMatch(tournament, teamA, teamB, pairing, now, matchId = "
     tournamentFixture: pairing.fixture,
     tournamentBracketMatch: pairing.bracketMatch ?? pairing.fixture,
     tournamentMmrPolicy: tournament.mmrPolicy,
-    rules: tournament.rules ?? {},
+    rules: { ...(tournament.rules ?? {}), visibility: tournament.visibility ?? "private" },
     memo: tournament.memo || "대회 경기입니다.",
     stakes: "대회 경기 MMR 가중치가 적용됩니다.",
     mmrLimitMode: tournament.mmrLimitMode ?? "warn",
@@ -2667,6 +2678,7 @@ export function createMatch(state, draft) {
     scheduledTime: timingType === "instant" ? "" : draft.scheduledTime,
     scheduledAt: scheduledAt || "일정 미정",
     timingType,
+    visibility: "private",
     status: "agreed",
     ranked,
     official: ranked && Boolean(draft.official),
@@ -2684,6 +2696,7 @@ export function createMatch(state, draft) {
       foulRule: draft.foulRule || "파울은 콜한 쪽 기준으로 즉시 중단",
       mmrRangeMode,
       ratingScale,
+      visibility: "private",
     },
     memo: draft.memo || "결과 승인 대기.",
     stakes: draft.stakes || "다음 경기 우선권.",
@@ -7877,6 +7890,7 @@ export function confirmRecruitingMatch(state, postId, options = {}) {
     scheduledTime: timingType === "instant" ? "" : (promotedPost.scheduledTime ?? ""),
     scheduledAt,
     timingType,
+    visibility: promotedPost.visibility ?? "public",
     status: "agreed",
     official: ranked && Boolean(promotedPost.official),
     preRegistered: true,
@@ -7889,6 +7903,7 @@ export function confirmRecruitingMatch(state, postId, options = {}) {
       ...defaultRules,
       ...(promotedPost.rules ?? {}),
       timingType,
+      visibility: promotedPost.visibility ?? "public",
       mmrRangeMode,
       ratingScale,
     },
