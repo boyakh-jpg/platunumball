@@ -30,6 +30,54 @@ function getDiscordUserId(connection) {
   return connection && typeof connection === "object" ? connection.userId ?? connection.id ?? null : null;
 }
 
+function getRequestedDiscordConnection(profile = {}, existing = {}) {
+  if (!Object.prototype.hasOwnProperty.call(profile, "discordConnection")) {
+    return existing?.discord_connection ?? null;
+  }
+  if (!profile.discordConnection) return null;
+  if (typeof profile.discordConnection !== "object") return existing?.discord_connection ?? null;
+  const userId = String(getDiscordUserId(profile.discordConnection) || "").trim();
+  if (!userId || profile.discordConnection.status !== "linked") return existing?.discord_connection ?? null;
+  return {
+    provider: "discord",
+    status: "linked",
+    userId,
+    username: String(profile.discordConnection.username || "").trim().slice(0, 80),
+    globalName: String(profile.discordConnection.globalName || profile.discordConnection.username || "").trim().slice(0, 80),
+    avatarUrl: String(profile.discordConnection.avatarUrl || "").trim().slice(0, 500),
+    linkedAt: profile.discordConnection.linkedAt || new Date().toISOString(),
+    source: "discord",
+  };
+}
+
+function getLockedRatings(existing = {}) {
+  return existing?.ratings ?? DEFAULT_RATINGS;
+}
+
+function getLockedTrustScore(existing = {}) {
+  return Number(existing?.trust_score ?? 80);
+}
+
+function getLockedStreak(existing = {}) {
+  return Number(existing?.streak ?? 0);
+}
+
+async function assertDiscordUserAvailable(context, discordUserId = "", profileId = "") {
+  if (!discordUserId) return;
+  const { data, error } = await context.supabase
+    .from("profiles")
+    .select("id")
+    .eq("discord_user_id", discordUserId)
+    .neq("id", profileId)
+    .maybeSingle();
+  if (error) throw error;
+  if (data?.id) {
+    const duplicateError = new Error("discord_user_already_linked");
+    duplicateError.statusCode = 409;
+    throw duplicateError;
+  }
+}
+
 function buildProfileRow({ existing, profile, authUser, authUserId, isTestAccount }) {
   const now = new Date().toISOString();
   const existingLockedHandle = existing?.handle_locked_at || existing?.hashtag_locked_at;
@@ -39,7 +87,7 @@ function buildProfileRow({ existing, profile, authUser, authUserId, isTestAccoun
   const nextBirthYear = existing?.birth_year_locked_at ? existing.birth_year : requestedBirthYear;
   const requestedName = String(profile.name ?? existing?.name ?? authUser.email?.split("@")[0] ?? "신규 선수").trim().slice(0, 20);
   const nextName = existing && requestedName !== existing.name && !canChangeName(existing) ? existing.name : requestedName;
-  const discordConnection = profile.discordConnection ?? existing?.discord_connection ?? null;
+  const discordConnection = getRequestedDiscordConnection(profile, existing);
 
   if (profile.onboardingComplete && !existingLockedHandle && !nextHashtag) {
     const error = new Error("hashtag_required");
@@ -66,12 +114,12 @@ function buildProfileRow({ existing, profile, authUser, authUserId, isTestAccoun
     region: profile.region ?? existing?.region ?? `${profile.regionSido ?? "서울특별시"} ${profile.regionDistrict ?? "마포구"}`,
     position: profile.position ?? existing?.position ?? "PG",
     avatar_color: profile.avatarColor ?? existing?.avatar_color ?? "#58d2c0",
-    trust_score: Number(profile.trustScore ?? existing?.trust_score ?? 80),
-    ratings: profile.ratings ?? existing?.ratings ?? DEFAULT_RATINGS,
+    trust_score: getLockedTrustScore(existing),
+    ratings: getLockedRatings(existing),
     school: profile.school ?? existing?.school ?? "",
     company: profile.company ?? existing?.company ?? "",
     club: profile.club ?? existing?.club ?? "",
-    streak: Number(profile.streak ?? existing?.streak ?? 0),
+    streak: getLockedStreak(existing),
     discord_connection: discordConnection,
     discord_user_id: getDiscordUserId(discordConnection),
     updated_at: now,
@@ -107,6 +155,8 @@ export default async function handler(request, response) {
       authUserId: context.authUserId,
       isTestAccount: context.isTestAccount,
     });
+    await assertDiscordUserAvailable(context, row.discord_user_id, row.id);
+
     const query = existing?.id
       ? context.supabase.from("profiles").update(row).eq("id", existing.id)
       : context.supabase.from("profiles").insert(row);

@@ -6,6 +6,7 @@
 - `src/lib/mockData.js`는 비-Supabase 개발과 seed 생성용으로만 남긴다.
 - 원격 로드 실패 시 데모 state로 fallback하지 않고 빈 원격 shell state를 유지한다.
 - 실제 프로필 생성/수정은 `POST /api/profile/upsert` service-role server action을 통과한다.
+- `POST /api/profile/upsert`는 일반 프로필 저장에서 `trust_score`, `ratings`, `streak` 클라이언트 변경을 무시하고 DB 기존값 또는 기본값만 유지한다.
 - 아직 모든 방/경기 액션이 authoritative RPC로 이전된 것은 아니다. 과도기 액션은 기존 클라이언트 reducer 결과를 server action/bridge로 커밋한다.
 
 ## 지금 적용한 최소 보안 패치
@@ -28,6 +29,7 @@
 - 배포 전 백엔드는 `POST /api/discord/interactions`에서 Discord signature를 검증하고, 버튼 요청을 같은 초대 수락/거절 서버 액션으로 연결해야 한다.
 - `/api/auth/discord/start`와 `/api/auth/discord/callback`은 Discord OAuth `identify` 결과를 프론트로 돌려보내고, 프론트가 OAuth state에 기록된 profile state의 `discordConnection`에 저장한다.
 - 같은 `discord_user_id`는 프로필 하나에만 연결한다. 중복이 있으면 앱 로직은 새 연동을 거절하고, DB는 중복 정리 후 unique index로 막는다.
+- 프로필 저장 서버 액션도 `discord_user_id` 중복을 다시 확인한다. `discordConnection: null`은 명시적 연결 해제로 처리한다.
 - OAuth 승인 직후 원격 state가 늦게 hydrate되더라도 로컬에 이미 붙은 `discordConnection`은 원격 저장 전까지 보존한다. 단, 원격 state에 같은 Discord ID가 다른 프로필에 이미 연결돼 있으면 보존하지 않는다.
 - Bot DM 발송은 브라우저 localStorage 큐를 직접 신뢰하지 않는다. 배포용으로는 서버가 DB의 미발송 `discordNotificationDeliveries`를 읽고 성공/실패 상태를 커밋해야 한다.
 - 홈의 해야 할 일은 별도 로직을 중복하지 말고 `notifications` 중 `actionRequired` 성격의 항목을 요약하는 방향으로 통합한다.
