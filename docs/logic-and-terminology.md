@@ -1280,6 +1280,9 @@ flowchart TD
 1. Persistent Supabase auth의 currentUser 바인딩은 `authUserId`가 일치하는 프로필을 우선한다.
 2. 소유권이 확인되지 않으면 관련 없는 public/demo user로 fallback하지 않는다.
 3. 방/경기/대회 생성 local reducer 차단 응답은 `currentUserId`, `trustScore`, `authBound` actor debug를 포함해 stale binding과 DB 검증 실패를 구분한다.
+4. 테스트 로그인 currentUser 바인딩은 `profiles.test_login_id`와 `test:rankball-###` 세션 매핑을 우선한다.
+5. Supabase 방/경기 생성, 참여, 포지션 변경은 local reducer가 stale state로 no-op 또는 block이어도 operation payload로 server action replay를 호출한다.
+6. 서버 action 성공 결과가 `post`, `match`, `createdMatch`를 반환하면 클라이언트 state는 그 서버 결과를 source of truth로 merge한다.
 
 ## 2026-06-27 recruiting list pagination
 

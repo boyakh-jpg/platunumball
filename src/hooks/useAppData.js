@@ -274,6 +274,15 @@ function mergeServerRoomResult(state, result = {}) {
 
 function getBoundAuthProfileId(state, authUserId, profileBindings, profileKey) {
   const users = state.users ?? [];
+  const backendTestLoginId = getBackendTestLoginId(authUserId);
+  if (backendTestLoginId) {
+    const currentUser = users.find((user) => user.id === state.currentUserId);
+    if (String(currentUser?.testLoginId ?? "").toLowerCase() === backendTestLoginId) return currentUser.id;
+    const testUser = users.find((user) => String(user.testLoginId ?? "").toLowerCase() === backendTestLoginId);
+    if (testUser) return testUser.id;
+    return state.currentUserId ?? "";
+  }
+
   if (isPersistentAuthUserId(authUserId)) {
     const currentUser = users.find((user) => user.id === state.currentUserId);
     if (currentUser?.authUserId === authUserId) return currentUser.id;
@@ -289,7 +298,7 @@ function getBoundAuthProfileId(state, authUserId, profileBindings, profileKey) {
 
     if (currentUser && !currentUser.authUserId && isPersistentProfileId(currentUser.id)) return currentUser.id;
 
-    return "";
+    return getClientProfileShellId(authUserId);
   }
 
   return profileBindings[profileKey] ?? state.currentUserId ?? users[0]?.id;
@@ -601,10 +610,10 @@ export function useAppData(authUser = null) {
     return promise;
   }, []);
   const syncRecruitingPostServer = useCallback((post, notifications = [], meta = {}) => {
-    if (!post?.id) return Promise.resolve(false);
     const operation = getServerOperation(meta);
+    if (!post?.id && !operation) return Promise.resolve(false);
     const payload = operation
-      ? { operation, post, notifications, createdMatch: meta.createdMatch ?? null }
+      ? { operation, ...(post?.id ? { post } : {}), notifications, createdMatch: meta.createdMatch ?? null }
       : { post, notifications, ...meta };
     return runServerAction("/api/recruiting/sync-post", payload).then((result) => {
       if (result?.post || result?.createdMatch) setState((prev) => mergeServerRoomResult(prev, result));
@@ -612,9 +621,9 @@ export function useAppData(authUser = null) {
     });
   }, [runServerAction, setState]);
   const syncMatchServer = useCallback((match, notifications = [], meta = {}) => {
-    if (!match?.id) return Promise.resolve(false);
     const operation = getServerOperation(meta);
-    const payload = operation ? { operation, match, notifications } : { match, notifications, ...meta };
+    if (!match?.id && !operation) return Promise.resolve(false);
+    const payload = operation ? { operation, ...(match?.id ? { match } : {}), notifications } : { match, notifications, ...meta };
     return runServerAction("/api/matches/sync-match", payload).then((result) => {
       if (result?.match) setState((prev) => mergeServerRoomResult(prev, result));
       return result;
@@ -869,6 +878,7 @@ export function useAppData(authUser = null) {
         const serverReady = await ensureServerActionAvailable("/api/recruiting/sync-post", "방 변경");
         if (serverReady !== true) return serverReady;
         if (!ensureRemoteReady("방 변경")) return;
+        const operation = getServerOperation({ ...meta, postId });
         let rollbackState = null;
         let syncedPost = null;
         let syncedNotifications = [];
@@ -879,14 +889,16 @@ export function useAppData(authUser = null) {
           const nextPost = (next.recruitingPosts ?? []).find((post) => post.id === postId) ?? null;
           syncedPost = nextPost && nextPost !== beforePost ? nextPost : null;
           syncedNotifications = syncedPost ? getNewRecruitingNotifications(prev, next, postId) : [];
-          return next;
+          return !syncedPost && operation && isSupabaseConfigured ? prev : next;
         });
         if (syncedPost) rollbackIfServerFailed(syncRecruitingPostServer(syncedPost, syncedNotifications, { ...meta, postId }), rollbackState, "방 변경", { action: meta.action, postId });
+        else if (operation) rollbackIfServerFailed(syncRecruitingPostServer(null, [], { ...meta, postId }), rollbackState, "방 변경", { action: meta.action, postId });
       };
       const applyMatchMutation = async (matchId, reducer, meta = {}) => {
         const serverReady = await ensureServerActionAvailable("/api/matches/sync-match", "경기 변경");
         if (serverReady !== true) return serverReady;
         if (!ensureRemoteReady("경기 변경")) return;
+        const operation = getServerOperation({ ...meta, matchId });
         let rollbackState = null;
         let syncedMatch = null;
         let syncedNotifications = [];
@@ -897,9 +909,10 @@ export function useAppData(authUser = null) {
           const nextMatch = (next.matches ?? []).find((match) => match.id === matchId) ?? null;
           syncedMatch = nextMatch && nextMatch !== beforeMatch ? nextMatch : null;
           syncedNotifications = syncedMatch ? getNewMatchNotifications(prev, next, matchId) : [];
-          return next;
+          return !syncedMatch && operation && isSupabaseConfigured ? prev : next;
         });
         if (syncedMatch) rollbackIfServerFailed(syncMatchServer(syncedMatch, syncedNotifications, { ...meta, matchId }), rollbackState, "경기 변경", { action: meta.action, matchId });
+        else if (operation) rollbackIfServerFailed(syncMatchServer(null, [], { ...meta, matchId }), rollbackState, "경기 변경", { action: meta.action, matchId });
       };
       const applyTeamMutation = async (teamId, reducer) => {
         const serverReady = await ensureServerActionAvailable("/api/teams/sync-team", "팀 변경");
@@ -954,14 +967,24 @@ export function useAppData(authUser = null) {
           syncedNotifications = createdMatch ? getNewMatchNotifications(prev, next, createdMatch.id) : [];
           localBlockNotification = createdMatch ? null : getNewItems(prev.notifications ?? [], next.notifications ?? [])[0] ?? null;
           localBlockDebug = createdMatch ? {} : getActionActorDebug(prev, currentUserId);
-          return next;
+          return !createdMatch && isSupabaseConfigured ? prev : next;
         });
-        if (!createdMatch) return Promise.resolve({
-          ok: false,
-          error: "local_reducer_blocked",
-          details: localBlockDebug,
-          message: localBlockNotification ? `${localBlockNotification.title}: ${localBlockNotification.body}` : "경기 생성 조건을 통과하지 못했습니다.",
-        });
+        if (!createdMatch) {
+          if (isSupabaseConfigured) {
+            return rollbackIfServerFailed(
+              syncMatchServer(null, [], { action: "createMatch", draft }),
+              rollbackState,
+              "경기 생성",
+              { action: "createMatch", details: localBlockDebug },
+            ).then((result) => (result?.ok === false ? result : result?.matchId ?? result?.match?.id ?? null));
+          }
+          return Promise.resolve({
+            ok: false,
+            error: "local_reducer_blocked",
+            details: localBlockDebug,
+            message: localBlockNotification ? `${localBlockNotification.title}: ${localBlockNotification.body}` : "경기 생성 조건을 통과하지 못했습니다.",
+          });
+        }
         return rollbackIfServerFailed(
           syncMatchServer(createdMatch, syncedNotifications, { action: "createMatch", draft, preferredMatchId: createdMatch.id }),
           rollbackState,
@@ -1290,14 +1313,24 @@ export function useAppData(authUser = null) {
           syncedNotifications = createdPost ? getNewRecruitingNotifications(prev, next, createdPost.id) : [];
           localBlockNotification = createdPost ? null : getNewItems(prev.notifications ?? [], next.notifications ?? [])[0] ?? null;
           localBlockDebug = createdPost ? {} : getActionActorDebug(prev, currentUserId);
-          return next;
+          return !createdPost && isSupabaseConfigured ? prev : next;
         });
-        if (!createdPost) return Promise.resolve({
-          ok: false,
-          error: "local_reducer_blocked",
-          details: localBlockDebug,
-          message: localBlockNotification ? `${localBlockNotification.title}: ${localBlockNotification.body}` : "방 생성 조건을 통과하지 못했습니다.",
-        });
+        if (!createdPost) {
+          if (isSupabaseConfigured) {
+            return rollbackIfServerFailed(
+              syncRecruitingPostServer(null, [], { action: "createRecruitingPost", draft }),
+              rollbackState,
+              "방 생성",
+              { action: "createRecruitingPost", details: localBlockDebug },
+            ).then((result) => (result?.ok === false ? result : result?.postId ?? result?.post?.id ?? null));
+          }
+          return Promise.resolve({
+            ok: false,
+            error: "local_reducer_blocked",
+            details: localBlockDebug,
+            message: localBlockNotification ? `${localBlockNotification.title}: ${localBlockNotification.body}` : "방 생성 조건을 통과하지 못했습니다.",
+          });
+        }
         return rollbackIfServerFailed(
           syncRecruitingPostServer(createdPost, syncedNotifications, { action: "createRecruitingPost", draft, preferredPostId: createdPost.id }),
           rollbackState,
