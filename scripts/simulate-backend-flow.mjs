@@ -21,6 +21,8 @@ loadEnvFile(".env.production");
 const baseUrlArg = process.argv.find((arg) => arg.startsWith("--base-url="));
 const remoteBaseUrl = (baseUrlArg ? baseUrlArg.slice("--base-url=".length) : process.env.RANKBALL_SIM_BASE_URL || "").replace(/\/+$/, "");
 const usesRemoteApi = Boolean(remoteBaseUrl);
+const secretArg = process.argv.find((arg) => arg.startsWith("--secret="));
+const schemaHealthSecret = secretArg ? secretArg.slice("--secret=".length) : process.env.RANKBALL_SIM_SECRET || process.env.CRON_SECRET || "";
 const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -113,6 +115,31 @@ async function callHandler(route, handler, bearerToken, body = {}) {
     throw new Error(`${route} failed ${response.statusCode}: ${detail}`);
   }
   return response.payload;
+}
+
+async function assertRemoteSchemaHealth() {
+  if (!usesRemoteApi || !schemaHealthSecret) return { skipped: true };
+  const response = await fetch(`${remoteBaseUrl}/api/system/schema-health`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${schemaHealthSecret}`,
+      "content-type": "application/json",
+    },
+    body: "{}",
+  });
+  const text = await response.text();
+  const payload = text ? JSON.parse(text) : null;
+  if (!response.ok) {
+    throw new Error(`/api/system/schema-health failed ${response.status}: ${text}`);
+  }
+  if (!payload?.ok) {
+    const failed = (payload?.checks ?? [])
+      .filter((check) => !check.ok)
+      .map((check) => `${check.table}: ${check.error}`)
+      .join("; ");
+    throw new Error(`schema health failed: ${failed}`);
+  }
+  return payload;
 }
 
 function assertFlow(condition, label, detail = {}) {
@@ -209,6 +236,7 @@ async function cleanup() {
 async function main() {
   const hostLogin = process.env.RANKBALL_SIM_HOST || "rankball-010";
   const opponentLogin = process.env.RANKBALL_SIM_OPPONENT || "rankball-011";
+  const schemaHealth = await assertRemoteSchemaHealth();
 
   const hostInitialState = await loadStateAs(hostLogin);
   const opponentInitialState = await loadStateAs(opponentLogin);
@@ -362,6 +390,7 @@ async function main() {
     postId: ids.postId,
     matchId: ids.matchId,
     finalStatus: match.status,
+    schemaHealth: schemaHealth?.skipped ? "skipped" : "ok",
     cleanup: await cleanup(),
   }, null, 2));
 }
