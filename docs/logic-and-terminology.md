@@ -1105,6 +1105,16 @@ flowchart TD
 3. rollback은 사용자에게 `서버 저장 실패` 알림을 남긴다.
 4. 이 단계는 프론트 optimistic rollback이다. 최종 완료 기준은 match/recruiting/team write를 DB transaction/RPC 단위로 옮기는 것이다.
 
+## 2026-06-26 Supabase test seed
+
+1. `npm run seed:supabase` gives demo profiles `testLoginId` and stores them in `profiles.test_login_id`.
+2. Default mapping is `u1 -> rankball-001`, `u2 -> rankball-002`, `u10 -> rankball-010`.
+3. Test account bearer tokens use `test-token-rankball-001`.
+4. Test account seed does not create or change `profiles.auth_user_id`.
+5. Real Google accounts still use `profiles.auth_user_id = auth.users.id` for ownership.
+6. Seed cleanup actually deletes rows only when `RANKBALL_CONFIRM_CLEANUP=rankball` is set.
+7. This is backend simulation data setup, not completed authoritative room/match RPC migration.
+
 ## 2026-06-26 hashtag canonical identity
 
 1. 공개 사용자 식별자는 `profiles.hashtag`와 `getUserHashtag()`를 기준으로 한다.

@@ -17,6 +17,31 @@ const supabase = createClient(url, serviceRoleKey, {
   },
 });
 
+const TEST_LOGIN_PREFIX = process.env.RANKBALL_TEST_LOGIN_PREFIX || "rankball";
+const DEFAULT_TEST_PASSWORD = process.env.RANKBALL_TEST_PASSWORD || "test-0000";
+
+function getSeedUserNumber(userId = "", fallbackIndex = 0) {
+  const match = String(userId).match(/^u(\d+)$/);
+  return match ? Number(match[1]) : fallbackIndex + 1;
+}
+
+function getSeedTestLoginId(userId = "", fallbackIndex = 0) {
+  const userNumber = getSeedUserNumber(userId, fallbackIndex);
+  return `${TEST_LOGIN_PREFIX}-${String(userNumber).padStart(3, "0")}`;
+}
+
+function withBackendTestLogins(state) {
+  return {
+    ...state,
+    users: (state.users ?? []).map((user, index) => ({
+      ...user,
+      testLoginId: user.testLoginId ?? getSeedTestLoginId(user.id, index),
+      testPassword: user.testPassword ?? DEFAULT_TEST_PASSWORD,
+      authUserId: user.authUserId ?? null,
+    })),
+  };
+}
+
 function withBootstrapAdminAppointment(state) {
   const adminAppointments = state.settings?.adminAppointments ?? [];
   const hasOwner = adminAppointments.some((appointment) => (
@@ -51,13 +76,15 @@ function withBootstrapAdminAppointment(state) {
   };
 }
 
-const state = withBootstrapAdminAppointment(runAutomaticStateMaintenance(initialState));
+const state = withBackendTestLogins(withBootstrapAdminAppointment(runAutomaticStateMaintenance(initialState)));
 
 await saveNormalizedRemoteState(state, { client: supabase });
 
 console.log(JSON.stringify({
   ok: true,
   profiles: state.users.length,
+  testLogins: state.users.filter((user) => user.testLoginId).length,
+  testLoginRange: state.users.length ? `${state.users[0].testLoginId}..${state.users.at(-1).testLoginId}` : null,
   teams: state.teams.length,
   matches: state.matches.length,
   recruitingPosts: state.recruitingPosts.length,
