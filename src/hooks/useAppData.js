@@ -440,11 +440,12 @@ export function useAppData(authUser = null) {
       if (!result) throw new Error("server_action_unavailable");
       return result;
     }).catch((error) => {
+      const errorCode = error.code || error.message || "server_action_failed";
       console.warn(`Server action skipped: ${path}`, error.message);
       pushLocalWarning("서버 저장 실패", "서버에 저장되지 않았습니다. 새로고침하면 방/경기 변경이 사라질 수 있습니다.", {
-        payload: { path, error: error.message },
+        payload: { path, error: errorCode, statusCode: error.statusCode ?? null },
       });
-      return false;
+      return { ok: false, error: errorCode, statusCode: error.statusCode ?? null, path };
     });
   }, [pushLocalWarning]);
   const persistProfileServer = useCallback((profile) => {
@@ -596,12 +597,16 @@ export function useAppData(authUser = null) {
         });
       };
       const rollbackIfServerFailed = (promise, snapshot, label, payload = {}) => {
-        return Promise.resolve(promise).then((ok) => {
-          if (!ok) {
-            rollbackServerMutation(snapshot, label, payload);
-            return false;
+        return Promise.resolve(promise).then((result) => {
+          if (!result || result.ok === false) {
+            rollbackServerMutation(snapshot, label, {
+              ...payload,
+              error: result?.error ?? payload.error,
+              statusCode: result?.statusCode ?? payload.statusCode,
+            });
+            return result || false;
           }
-          return ok;
+          return result;
         });
       };
       const applyRecruitingPostMutation = (postId, reducer, meta = {}) => {
@@ -685,7 +690,7 @@ export function useAppData(authUser = null) {
           rollbackState,
           "경기 생성",
           { action: "createMatch", matchId: createdMatch.id },
-        ).then((ok) => (ok ? createdId : null));
+        ).then((result) => (result?.ok === false ? result : createdId));
       },
       createTournament: (draft) => {
         if (!ensureRemoteReady("토너먼트 생성")) return Promise.resolve(null);
@@ -716,7 +721,7 @@ export function useAppData(authUser = null) {
             preferredMatchIds,
           },
         }), rollbackState, "토너먼트 생성", { action: "createTournament", tournamentId: createdTournament.id })
-          .then((ok) => (ok ? createdId : null));
+          .then((result) => (result?.ok === false ? result : createdId));
       },
       approveTournamentTeam: (tournamentId, teamId) => {
         let rollbackState = null;
@@ -787,7 +792,7 @@ export function useAppData(authUser = null) {
           rollbackState,
           "밝기 저장",
           { theme: nextTheme },
-        ).then(Boolean);
+        ).then((result) => Boolean(result && result.ok !== false));
       },
       blockUser: (userId) => setState((prev) => blockUser({ ...prev, currentUserId }, userId)),
       unblockUser: (userId) => setState((prev) => unblockUser({ ...prev, currentUserId }, userId)),
@@ -896,7 +901,7 @@ export function useAppData(authUser = null) {
           rollbackState,
           "구장 등록요청",
           { requestId: createdRequest.id },
-        ).then((result) => (result ? result.requestId ?? createdRequest.id : null));
+        ).then((result) => (result && result.ok !== false ? result.requestId ?? createdRequest.id : null));
       },
       submitCourtReview: (matchId, draft) => {
         let submittedReview = null;
@@ -999,7 +1004,7 @@ export function useAppData(authUser = null) {
           rollbackState,
           "방 생성",
           { action: "createRecruitingPost", postId: createdPost.id },
-        ).then((ok) => (ok ? createdPost.id : null));
+        ).then((result) => (result?.ok === false ? result : createdPost.id));
       },
       interestRecruitingPost: (postId, application) => applyRecruitingPostMutation(postId, (prev) => interestRecruitingPost({ ...prev, currentUserId }, postId, application), { action: "interestRecruitingPost", application, joinMode: application?.joinMode }),
       inviteRecruitingReferee: (postId, refereeId) => applyRecruitingPostMutation(postId, (prev) => inviteRecruitingReferee({ ...prev, currentUserId }, postId, refereeId), { action: "inviteRecruitingReferee", refereeId }),

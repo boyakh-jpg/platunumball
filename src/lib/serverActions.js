@@ -34,7 +34,12 @@ export async function postServerAction(path, payload = {}, options = {}) {
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
-    throw new Error(body.error || `server_action_failed:${response.status}`);
+    const errorCode = body.error || `server_action_failed:${response.status}`;
+    const error = new Error(errorCode);
+    error.code = errorCode;
+    error.statusCode = response.status;
+    error.details = body.details ?? null;
+    throw error;
   }
 
   return response.json().catch(() => ({ ok: true }));

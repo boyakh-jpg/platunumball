@@ -78,6 +78,40 @@ function includesQuery(value, query) {
   return value.toLowerCase().includes(query.trim().toLowerCase());
 }
 
+function getActionErrorCode(result) {
+  if (!result || typeof result !== "object" || result.ok !== false) return "";
+  return String(result.error || result.message || "server_action_failed");
+}
+
+function formatCreateSaveError(result, fallback) {
+  const errorCode = getActionErrorCode(result);
+  if (!errorCode) return fallback;
+  const lowerCode = errorCode.toLowerCase();
+  let reason = "";
+  if (lowerCode.includes("rankball_recruiting_action") || lowerCode.includes("rankball_match_action") || lowerCode.includes("could not find the function")) {
+    reason = "Supabase DB에 최신 SQL 함수가 아직 적용되지 않았습니다. `supabase/schema.sql`의 action RPC를 먼저 배포해야 합니다.";
+  } else if (errorCode === "recruiting_sync_permission_denied" || errorCode === "match_sync_permission_denied") {
+    reason = "현재 계정에 이 방/경기를 저장할 권한이 없습니다.";
+  } else if (errorCode === "referee_not_eligible") {
+    reason = "선택한 심판이 활성 심판 조건을 통과하지 못했습니다.";
+  } else if (errorCode === "team_roster_not_member") {
+    reason = "선택한 출전/후보 선수가 해당 팀 roster에 없습니다.";
+  } else if (errorCode === "profile_not_found" || errorCode === "missing_actor_profile_id") {
+    reason = "로그인 계정과 연결된 프로필을 서버에서 찾지 못했습니다.";
+  } else if (errorCode === "missing_bearer_token" || errorCode === "invalid_bearer_token") {
+    reason = "로그인 토큰이 없거나 만료되었습니다. 다시 로그인해야 합니다.";
+  } else if (errorCode === "age_group_not_allowed") {
+    reason = "선택한 연령 제한과 참가자 연령대가 맞지 않습니다.";
+  } else if (errorCode === "recruiting_core_locked" || errorCode === "match_roster_locked" || errorCode === "match_referee_locked") {
+    reason = "서버가 핵심 방/경기 정보를 잠금 상태로 판단했습니다.";
+  } else if (errorCode === "supabase_admin_not_configured") {
+    reason = "서버 Supabase service role 환경변수가 설정되지 않았습니다.";
+  } else {
+    reason = "서버가 저장 요청을 거부했습니다.";
+  }
+  return `${reason} 원문: ${errorCode}`;
+}
+
 function isHashtagQuery(query = "") {
   return query.trim().startsWith("#");
 }
@@ -769,14 +803,14 @@ export default function CreateMatch({ app }) {
     setSubmitFeedback("");
     if (isTournamentRoom) {
       setSubmitting(true);
-      const tournamentId = await app.actions.createTournament({
+      const tournamentResult = await app.actions.createTournament({
         ...draft,
         teamIds: draft.tournamentTeamIds,
         region: selectedCourt.region,
       });
-      if (tournamentId) navigate("/app/matches");
+      if (typeof tournamentResult === "string" && tournamentResult) navigate("/app/matches");
       else {
-        setSubmitFeedback("대회 저장에 실패했습니다. 팀, 일정, 권한 조건을 확인하세요.");
+        setSubmitFeedback(formatCreateSaveError(tournamentResult, "대회 저장에 실패했습니다."));
         setSubmitting(false);
       }
       return;
@@ -830,9 +864,9 @@ export default function CreateMatch({ app }) {
         isPublicRoom ? "공개방: 빈 슬롯은 방에서 공개 모집합니다." : "비공개방: 초대/선택된 인원만 참여합니다.",
       ].filter(Boolean).join("\n"),
     });
-    if (postId) navigate(`/app/recruiting?post=${encodeURIComponent(postId)}`);
+    if (typeof postId === "string" && postId) navigate(`/app/recruiting?post=${encodeURIComponent(postId)}`);
     else {
-      setSubmitFeedback("경기 저장에 실패했습니다. 팀, 구장, 일정, 권한 조건을 확인하세요.");
+      setSubmitFeedback(formatCreateSaveError(postId, "경기 저장에 실패했습니다."));
       setSubmitting(false);
     }
     return;
