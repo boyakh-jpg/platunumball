@@ -226,8 +226,12 @@ export function useAuthSession() {
       setError("");
       setMessage("");
       writeTestSession(null);
-      if (isSupabaseConfigured) await supabase.auth.signOut();
       setSession(null);
+      setLoading(false);
+      if (isSupabaseConfigured) {
+        const { error: signOutError } = await supabase.auth.signOut();
+        if (signOutError) setError(formatAuthError(signOutError.message));
+      }
     },
     signInWithTestAccount: async (testLoginId) => {
       setError("");
@@ -237,8 +241,11 @@ export function useAuthSession() {
         return null;
       }
       const nextSession = makeBackendTestSession(testLoginId);
+      if (isSupabaseConfigured) {
+        setSession(null);
+        await supabase.auth.signOut();
+      }
       writeTestSession(nextSession);
-      if (isSupabaseConfigured) await supabase.auth.signOut();
       setSession(nextSession);
       return nextSession;
     },

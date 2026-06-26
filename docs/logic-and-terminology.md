@@ -99,6 +99,7 @@ UI/CSS/반응형/라이트·다크 세부 기준은 `docs/design-system.md`를 �
 6. 가입 해시태그는 닉네임을 영문 slug로 바꾼 앞 8자와 임의 숫자 4자리로 기본 추천값을 채운다. 사용자는 최초 저장 전까지 수정할 수 있다.
 7. `#` 기호는 고정 prefix이며 저장값에는 항상 포함한다.
 8. Supabase 로그인 직후 원격 프로필 hydration이 끝나기 전에는 shell profile만 보고 `/app/signup`으로 redirect하지 않는다.
+9. 로그아웃은 local/test session과 React session을 먼저 지우고 Supabase signOut을 후처리한다. 로그아웃 중 이전 세션이 남아 `/app/signup` 또는 가입정보 버튼을 다시 띄우면 안 된다.
 
 ## 데이터 축
 
