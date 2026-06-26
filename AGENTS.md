@@ -40,6 +40,8 @@ After every task, report:
 - If requirements are ambiguous, make the safest reasonable assumption and mention it.
 - If there are uncommitted changes, do not overwrite them.
 - If a build/test fails, include the exact failure summary.
+- Supabase SQL Editor migration SQL must avoid data loss by default: do not use `DROP TABLE`, `TRUNCATE`, or `DELETE` unless explicitly requested after risk confirmation.
+- Supabase migration SQL should use `ALTER TABLE`, `CREATE POLICY`, `DROP POLICY IF EXISTS`, and `IF EXISTS` / `IF NOT EXISTS` for objects that may already exist.
 
 # Request Handling
 
