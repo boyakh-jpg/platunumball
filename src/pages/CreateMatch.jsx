@@ -86,9 +86,12 @@ function getActionErrorCode(result) {
 function formatCreateSaveError(result, fallback) {
   const errorCode = getActionErrorCode(result);
   if (!errorCode) return fallback;
+  const detail = typeof result?.message === "string" ? result.message : "";
   const lowerCode = errorCode.toLowerCase();
   let reason = "";
-  if (lowerCode.includes("rankball_recruiting_action") || lowerCode.includes("rankball_match_action") || lowerCode.includes("could not find the function")) {
+  if (errorCode === "local_reducer_blocked") {
+    reason = detail || "화면 입력값이 생성 조건을 통과하지 못했습니다.";
+  } else if (lowerCode.includes("rankball_recruiting_action") || lowerCode.includes("rankball_match_action") || lowerCode.includes("could not find the function")) {
     reason = "Supabase DB에 최신 SQL 함수가 아직 적용되지 않았습니다. `supabase/schema.sql`의 action RPC를 먼저 배포해야 합니다.";
   } else if (errorCode === "recruiting_sync_permission_denied" || errorCode === "match_sync_permission_denied") {
     reason = "현재 계정에 이 방/경기를 저장할 권한이 없습니다.";

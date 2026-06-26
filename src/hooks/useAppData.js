@@ -677,6 +677,7 @@ export function useAppData(authUser = null) {
         let createdId = null;
         let createdMatch = null;
         let syncedNotifications = [];
+        let localBlockNotification = null;
         setState((prev) => {
           rollbackState = prev;
           const existingIds = new Set((prev.matches ?? []).map((match) => match.id));
@@ -684,9 +685,14 @@ export function useAppData(authUser = null) {
           createdMatch = (next.matches ?? []).find((match) => !existingIds.has(match.id)) ?? null;
           createdId = createdMatch?.id ?? null;
           syncedNotifications = createdMatch ? getNewMatchNotifications(prev, next, createdMatch.id) : [];
+          localBlockNotification = createdMatch ? null : getNewItems(prev.notifications ?? [], next.notifications ?? [])[0] ?? null;
           return next;
         });
-        if (!createdMatch) return Promise.resolve(null);
+        if (!createdMatch) return Promise.resolve({
+          ok: false,
+          error: "local_reducer_blocked",
+          message: localBlockNotification ? `${localBlockNotification.title}: ${localBlockNotification.body}` : "경기 생성 조건을 통과하지 못했습니다.",
+        });
         return rollbackIfServerFailed(
           syncMatchServer(createdMatch, syncedNotifications, { action: "createMatch", draft, preferredMatchId: createdMatch.id }),
           rollbackState,
@@ -701,6 +707,7 @@ export function useAppData(authUser = null) {
         let createdTournament = null;
         let createdMatches = [];
         let syncedNotifications = [];
+        let localBlockNotification = null;
         setState((prev) => {
           rollbackState = prev;
           const existingIds = new Set((prev.tournaments ?? []).map((tournament) => tournament.id));
@@ -710,9 +717,14 @@ export function useAppData(authUser = null) {
           createdId = createdTournament?.id ?? null;
           createdMatches = (next.matches ?? []).filter((match) => !existingMatchIds.has(match.id));
           syncedNotifications = createdTournament ? getNewTournamentNotifications(prev, next) : [];
+          localBlockNotification = createdTournament ? null : getNewItems(prev.notifications ?? [], next.notifications ?? [])[0] ?? null;
           return next;
         });
-        if (!createdTournament) return Promise.resolve(null);
+        if (!createdTournament) return Promise.resolve({
+          ok: false,
+          error: "local_reducer_blocked",
+          message: localBlockNotification ? `${localBlockNotification.title}: ${localBlockNotification.body}` : "대회 생성 조건을 통과하지 못했습니다.",
+        });
         const preferredMatchIds = createdMatches.map((match) => match.id);
         return rollbackIfServerFailed(syncTournamentServer(createdTournament, syncedNotifications, {
           action: "create",
@@ -992,15 +1004,21 @@ export function useAppData(authUser = null) {
         let rollbackState = null;
         let createdPost = null;
         let syncedNotifications = [];
+        let localBlockNotification = null;
         setState((prev) => {
           rollbackState = prev;
           const existingIds = new Set((prev.recruitingPosts ?? []).map((post) => post.id));
           const next = createRecruitingPost({ ...prev, currentUserId }, draft);
           createdPost = (next.recruitingPosts ?? []).find((post) => !existingIds.has(post.id)) ?? null;
           syncedNotifications = createdPost ? getNewRecruitingNotifications(prev, next, createdPost.id) : [];
+          localBlockNotification = createdPost ? null : getNewItems(prev.notifications ?? [], next.notifications ?? [])[0] ?? null;
           return next;
         });
-        if (!createdPost) return Promise.resolve(null);
+        if (!createdPost) return Promise.resolve({
+          ok: false,
+          error: "local_reducer_blocked",
+          message: localBlockNotification ? `${localBlockNotification.title}: ${localBlockNotification.body}` : "방 생성 조건을 통과하지 못했습니다.",
+        });
         return rollbackIfServerFailed(
           syncRecruitingPostServer(createdPost, syncedNotifications, { action: "createRecruitingPost", draft, preferredPostId: createdPost.id }),
           rollbackState,
