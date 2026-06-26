@@ -705,7 +705,7 @@ begin
     execute 'alter table public.player_match_stats add column if not exists fouls integer not null default 0';
     execute 'update public.player_match_stats set fouls = 0 where fouls is null';
     execute 'alter table public.player_match_stats drop constraint if exists player_match_stats_record_source_check';
-    execute 'alter table public.player_match_stats add constraint player_match_stats_record_source_check check (record_source in (''player'', ''referee'', ''candidate_recorder''))';
+    execute 'alter table public.player_match_stats add constraint player_match_stats_record_source_check check (record_source in (''player'', ''referee'', ''candidate_recorder'', ''host_postgame'', ''dispute_operator''))';
   end if;
 end;
 $$;

@@ -54,6 +54,12 @@ const ids = {
   postId: `sim_q_${suffix}`,
   matchId: `sim_m_${suffix}`,
 };
+let currentStep = "init";
+
+async function step(label, action) {
+  currentStep = label;
+  return action();
+}
 
 function token(testLoginId) {
   return `test-token-${testLoginId}`;
@@ -258,7 +264,7 @@ async function main() {
 
   assertFlow(hostId !== opponentId, "host and opponent must be different profiles", { hostId, opponentId });
 
-  await syncRecruitingAs(hostLogin, {
+  await step("createRecruitingPost", () => syncRecruitingAs(hostLogin, {
     action: "createRecruitingPost",
     preferredPostId: ids.postId,
     draft: {
@@ -285,14 +291,14 @@ async function main() {
         ball: "7",
       },
     },
-  });
+  }));
 
-  let hostState = await loadStateAs(hostLogin);
-  let opponentState = await loadStateAs(opponentLogin);
+  let hostState = await step("loadAfterCreate:host", () => loadStateAs(hostLogin));
+  let opponentState = await step("loadAfterCreate:opponent", () => loadStateAs(opponentLogin));
   assertFlow(Boolean(findPost(hostState)), "created post not visible to host");
   assertFlow(Boolean(findPost(opponentState)), "public post not visible to opponent");
 
-  await syncRecruitingAs(opponentLogin, {
+  await step("interestRecruitingPost", () => syncRecruitingAs(opponentLogin, {
     action: "interestRecruitingPost",
     postId: ids.postId,
     application: {
@@ -301,96 +307,102 @@ async function main() {
       position: "PG",
     },
     joinMode: "player",
-  });
+  }));
 
-  hostState = await loadStateAs(hostLogin);
+  hostState = await step("loadAfterJoin", () => loadStateAs(hostLogin));
   const joinedPost = findPost(hostState);
   assertFlow(joinedPost?.applicants?.some((applicant) => applicant.playerId === opponentId), "opponent join not persisted", joinedPost);
 
-  await syncRecruitingAs(opponentLogin, {
+  await step("setRecruitingReady", () => syncRecruitingAs(opponentLogin, {
     action: "setRecruitingReady",
     postId: ids.postId,
     ready: true,
-  });
+  }));
 
-  await syncRecruitingAs(hostLogin, {
+  await step("confirmRecruitingMatch", () => syncRecruitingAs(hostLogin, {
     action: "confirmRecruitingMatch",
     postId: ids.postId,
     preferredMatchId: ids.matchId,
-  });
+  }));
 
-  hostState = await loadStateAs(hostLogin);
-  opponentState = await loadStateAs(opponentLogin);
+  hostState = await step("loadAfterConfirm:host", () => loadStateAs(hostLogin));
+  opponentState = await step("loadAfterConfirm:opponent", () => loadStateAs(opponentLogin));
   let match = findMatch(hostState);
   assertFlow(Boolean(match), "confirmed match not visible to host");
   assertFlow(Boolean(findMatch(opponentState)), "confirmed match not visible to opponent");
   assertFlow(match.teamA?.players?.includes(hostId), "host missing from teamA", match);
   assertFlow(match.teamB?.players?.includes(opponentId), "opponent missing from teamB", match);
 
-  await syncMatchAs(hostLogin, {
-    action: "agreeMatch",
-    matchId: ids.matchId,
-    sideName: "teamA",
-    playerId: hostId,
-  });
+  if (!match.agreements?.teamA?.includes(hostId)) {
+    await step("agreeMatch:teamA", () => syncMatchAs(hostLogin, {
+      action: "agreeMatch",
+      matchId: ids.matchId,
+      sideName: "teamA",
+      playerId: hostId,
+    }));
+  }
 
-  await syncMatchAs(opponentLogin, {
-    action: "agreeMatch",
-    matchId: ids.matchId,
-    sideName: "teamB",
-    playerId: opponentId,
-  });
+  hostState = await step("loadAfterTeamAAgreement", () => loadStateAs(hostLogin));
+  match = findMatch(hostState);
+  if (!match.agreements?.teamB?.includes(opponentId)) {
+    await step("agreeMatch:teamB", () => syncMatchAs(opponentLogin, {
+      action: "agreeMatch",
+      matchId: ids.matchId,
+      sideName: "teamB",
+      playerId: opponentId,
+    }));
+  }
 
-  await syncMatchAs(hostLogin, {
+  await step("checkInMatchPlayer:teamB", () => syncMatchAs(hostLogin, {
     action: "checkInMatchPlayer",
     matchId: ids.matchId,
     sideName: "teamB",
     playerId: opponentId,
-  });
+  }));
 
-  await syncMatchAs(hostLogin, {
+  await step("startMatch", () => syncMatchAs(hostLogin, {
     action: "startMatch",
     matchId: ids.matchId,
-  });
+  }));
 
-  hostState = await loadStateAs(hostLogin);
+  hostState = await step("loadAfterStart", () => loadStateAs(hostLogin));
   match = findMatch(hostState);
   assertFlow(Boolean(match?.startedAt), "match start not persisted", match);
 
-  await syncMatchAs(hostLogin, {
+  await step("endMatch", () => syncMatchAs(hostLogin, {
     action: "endMatch",
     matchId: ids.matchId,
-  });
+  }));
 
-  hostState = await loadStateAs(hostLogin);
+  hostState = await step("loadAfterEnd", () => loadStateAs(hostLogin));
   match = findMatch(hostState);
   assertFlow(Boolean(match?.endedAt), "match end not persisted", match);
 
-  await syncMatchAs(hostLogin, {
+  await step("submitMatchResult", () => syncMatchAs(hostLogin, {
     action: "submitMatchResult",
     matchId: ids.matchId,
     result: makeResult(match),
-  });
+  }));
 
-  hostState = await loadStateAs(hostLogin);
+  hostState = await step("loadAfterResult", () => loadStateAs(hostLogin));
   match = findMatch(hostState);
   assertFlow(match?.status === "approval" && match?.result, "match result not persisted", match);
 
-  await syncMatchAs(hostLogin, {
+  await step("approveMatch:teamA", () => syncMatchAs(hostLogin, {
     action: "approveMatch",
     matchId: ids.matchId,
     sideName: "teamA",
     playerId: hostId,
-  });
+  }));
 
-  await syncMatchAs(opponentLogin, {
+  await step("approveMatch:teamB", () => syncMatchAs(opponentLogin, {
     action: "approveMatch",
     matchId: ids.matchId,
     sideName: "teamB",
     playerId: opponentId,
-  });
+  }));
 
-  hostState = await loadStateAs(hostLogin);
+  hostState = await step("loadAfterApproval", () => loadStateAs(hostLogin));
   match = findMatch(hostState);
   assertFlow(match?.status === "confirmed", "match approval not confirmed", match);
 
@@ -416,6 +428,7 @@ try {
     ok: false,
     postId: ids.postId,
     matchId: ids.matchId,
+    step: currentStep,
     error: error.message,
     cleanup: cleanupResult,
   }, null, 2));
