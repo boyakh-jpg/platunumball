@@ -350,6 +350,7 @@ export default function CreateMatch({ app }) {
     tournamentMmrPolicy: "gap_adjusted",
     tournamentMaxMmrGap: 250,
   });
+  const [submitting, setSubmitting] = useState(false);
 
   const sortedTeams = useMemo(() => {
     const hashtagSearch = isHashtagQuery(teamQuery);
@@ -736,19 +737,22 @@ export default function CreateMatch({ app }) {
       <em>신뢰도 {user.trustScore} · {user.refereeProfile?.grade ?? user.refereeGrade ?? "심판"}</em>
     </button>
   );
-  const submit = (event) => {
+  const submit = async (event) => {
     event.preventDefault();
-    if (submitDisabled) return;
+    if (submitDisabled || submitting) return;
     if (isTournamentRoom) {
+      setSubmitting(true);
       const tournamentId = app.actions.createTournament({
         ...draft,
         teamIds: draft.tournamentTeamIds,
         region: selectedCourt.region,
       });
       if (tournamentId) navigate("/app/matches");
+      else setSubmitting(false);
       return;
     }
-    app.actions.createRecruitingPost({
+    setSubmitting(true);
+    const postId = await app.actions.createRecruitingPost({
       visibility: draft.visibility,
       title: draft.title,
       hostJoinMode: draft.hostJoinMode,
@@ -796,7 +800,8 @@ export default function CreateMatch({ app }) {
         isPublicRoom ? "공개방: 빈 슬롯은 방에서 공개 모집합니다." : "비공개방: 초대/선택된 인원만 참여합니다.",
       ].filter(Boolean).join("\n"),
     });
-    navigate("/app/recruiting");
+    if (postId) navigate(`/app/recruiting?post=${encodeURIComponent(postId)}`);
+    else setSubmitting(false);
     return;
   };
 
@@ -1408,7 +1413,7 @@ export default function CreateMatch({ app }) {
       </div>
       <div className="create-submit-row">
         {submitDisabledReason ? <span className="create-submit-warning">{submitDisabledReason}</span> : null}
-        <Button type="submit" disabled={submitDisabled}>{isTournamentRoom ? "대회 생성" : "경기 생성"}</Button>
+        <Button type="submit" disabled={submitDisabled || submitting}>{isTournamentRoom ? "대회 생성" : "경기 생성"}</Button>
       </div>
     </form>
   );

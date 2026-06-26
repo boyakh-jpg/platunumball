@@ -590,8 +590,12 @@ export function useAppData(authUser = null) {
         });
       };
       const rollbackIfServerFailed = (promise, snapshot, label, payload = {}) => {
-        Promise.resolve(promise).then((ok) => {
-          if (!ok) rollbackServerMutation(snapshot, label, payload);
+        return Promise.resolve(promise).then((ok) => {
+          if (!ok) {
+            rollbackServerMutation(snapshot, label, payload);
+            return false;
+          }
+          return ok;
         });
       };
       const applyRecruitingPostMutation = (postId, reducer, meta = {}) => {
@@ -662,14 +666,20 @@ export function useAppData(authUser = null) {
         let syncedNotifications = [];
         setState((prev) => {
           rollbackState = prev;
+          const existingIds = new Set((prev.matches ?? []).map((match) => match.id));
           const next = createMatch({ ...prev, currentUserId }, draft);
-          createdId = next.matches[0].id;
-          createdMatch = next.matches[0] ?? null;
+          createdMatch = (next.matches ?? []).find((match) => !existingIds.has(match.id)) ?? null;
+          createdId = createdMatch?.id ?? null;
           syncedNotifications = createdMatch ? getNewMatchNotifications(prev, next, createdMatch.id) : [];
           return next;
         });
-        if (createdMatch) rollbackIfServerFailed(syncMatchServer(createdMatch, syncedNotifications, { action: "createMatch", draft, preferredMatchId: createdMatch.id }), rollbackState, "경기 생성", { action: "createMatch", matchId: createdMatch.id });
-        return createdId;
+        if (!createdMatch) return Promise.resolve(null);
+        return rollbackIfServerFailed(
+          syncMatchServer(createdMatch, syncedNotifications, { action: "createMatch", draft, preferredMatchId: createdMatch.id }),
+          rollbackState,
+          "경기 생성",
+          { action: "createMatch", matchId: createdMatch.id },
+        ).then((ok) => (ok ? createdId : null));
       },
       createTournament: (draft) => {
         if (!ensureRemoteReady("토너먼트 생성")) return null;
@@ -937,7 +947,7 @@ export function useAppData(authUser = null) {
         if (deleted) rollbackIfServerFailed(deleteTeamServer(teamId, syncedNotifications), rollbackState, "팀 삭제", { teamId });
       },
       createRecruitingPost: (draft) => {
-        if (!ensureRemoteReady("방 생성")) return;
+        if (!ensureRemoteReady("방 생성")) return Promise.resolve(null);
         let rollbackState = null;
         let createdPost = null;
         let syncedNotifications = [];
@@ -949,7 +959,13 @@ export function useAppData(authUser = null) {
           syncedNotifications = createdPost ? getNewRecruitingNotifications(prev, next, createdPost.id) : [];
           return next;
         });
-        if (createdPost) rollbackIfServerFailed(syncRecruitingPostServer(createdPost, syncedNotifications, { action: "createRecruitingPost", draft, preferredPostId: createdPost.id }), rollbackState, "방 생성", { action: "createRecruitingPost", postId: createdPost.id });
+        if (!createdPost) return Promise.resolve(null);
+        return rollbackIfServerFailed(
+          syncRecruitingPostServer(createdPost, syncedNotifications, { action: "createRecruitingPost", draft, preferredPostId: createdPost.id }),
+          rollbackState,
+          "방 생성",
+          { action: "createRecruitingPost", postId: createdPost.id },
+        ).then((ok) => (ok ? createdPost.id : null));
       },
       interestRecruitingPost: (postId, application) => applyRecruitingPostMutation(postId, (prev) => interestRecruitingPost({ ...prev, currentUserId }, postId, application), { action: "interestRecruitingPost", application, joinMode: application?.joinMode }),
       inviteRecruitingReferee: (postId, refereeId) => applyRecruitingPostMutation(postId, (prev) => inviteRecruitingReferee({ ...prev, currentUserId }, postId, refereeId), { action: "inviteRecruitingReferee", refereeId }),

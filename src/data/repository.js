@@ -2853,6 +2853,7 @@ export function createMatch(state, draft) {
     disputes: [],
     result: null,
     ratingResult: null,
+    createdBy: state.currentUserId,
     agreedAt: new Date().toISOString(),
     createdAt: new Date().toISOString(),
   };

@@ -1223,3 +1223,9 @@ flowchart TD
 8. 관리자 `hideCourtReview` action은 `court_reviews.status = 'hidden'`으로 soft hide한다.
 9. 일반 사용자는 active 구장/리뷰만 읽고, 관리자만 hidden row를 검토용으로 읽는다.
 10. 물리 삭제는 신고/audit 추적을 깨므로 기본 운영 action으로 만들지 않는다.
+
+## 2026-06-26 경기 생성자 저장 원칙
+
+1. 직접 경기 생성은 `createdBy = state.currentUserId`를 저장한다.
+2. DB `matches.created_by`는 생성자 프로필이며 A사이드 첫 선수가 아니다.
+3. 방/경기 생성 reducer가 경고만 추가하고 새 row를 만들지 않으면 frontend action은 id를 반환하지 않고 성공처럼 이동하지 않는다.
