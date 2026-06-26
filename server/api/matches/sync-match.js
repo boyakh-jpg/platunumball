@@ -228,6 +228,19 @@ function existingParticipantIds(existingMatch, existingPlayers = []) {
   ].filter(Boolean));
 }
 
+function getExistingSidePlayerIds(existingPlayers = [], side) {
+  return toArray(existingPlayers)
+    .filter((player) => player.side === side)
+    .sort((a, b) => Number(a.slot_order ?? 0) - Number(b.slot_order ?? 0))
+    .map((player) => player.user_id)
+    .filter(Boolean);
+}
+
+function sameOrderedIds(left = [], right = []) {
+  if (left.length !== right.length) return false;
+  return left.every((id, index) => id === right[index]);
+}
+
 function getStatRecorderIds(match = {}) {
   const recorders = match.statRecorders ?? match.rules?.statRecorders ?? {};
   return Object.values(recorders).flatMap((value) => Array.isArray(value) ? value : [value]).filter(Boolean);
@@ -310,6 +323,25 @@ const REFEREE_ELIGIBILITY_ACTIONS = new Set([
   "submitMatchResult",
 ]);
 
+const ROSTER_LOCKED_MATCH_ACTIONS = new Set([
+  ...PARTICIPANT_MATCH_ACTIONS,
+  "checkInMatchPlayer",
+  "requestMatchRefereeAbsence",
+  "confirmMatchRefereeAbsence",
+  "startMatch",
+  "endMatch",
+  "submitMatchResult",
+]);
+
+const REFEREE_LOCKED_MATCH_ACTIONS = new Set([
+  ...PARTICIPANT_MATCH_ACTIONS,
+  "checkInMatchPlayer",
+  "requestMatchRefereeAbsence",
+  "startMatch",
+  "endMatch",
+  "submitMatchResult",
+]);
+
 function canSubmitResult(profileId, existingMatch, nextMatch) {
   const refereeId = nextMatch.refereeId || existingMatch?.referee_id;
   if (refereeId) return profileId === refereeId;
@@ -338,6 +370,26 @@ async function validateRefereeEligibility(supabase, existingMatch, nextMatch, ac
 
   const minTrust = Number(nextMatch.refereeTrustMin ?? existingMatch?.referee_trust_min ?? 90);
   if (!(await isActiveReferee(supabase, refereeId, minTrust))) reject(403, "referee_not_eligible");
+}
+
+function validateLockedMatchCore(existingMatch, existingPlayers, nextMatch, action) {
+  if (!existingMatch) return;
+
+  if (ROSTER_LOCKED_MATCH_ACTIONS.has(action)) {
+    const existingTeamA = getExistingSidePlayerIds(existingPlayers, "teamA");
+    const existingTeamB = getExistingSidePlayerIds(existingPlayers, "teamB");
+    const nextTeamA = toArray(nextMatch.teamA?.players);
+    const nextTeamB = toArray(nextMatch.teamB?.players);
+    if (!sameOrderedIds(existingTeamA, nextTeamA) || !sameOrderedIds(existingTeamB, nextTeamB)) {
+      reject(403, "match_roster_locked");
+    }
+  }
+
+  if (REFEREE_LOCKED_MATCH_ACTIONS.has(action)) {
+    const existingRefereeId = existingMatch.referee_id || "";
+    const nextRefereeId = nextMatch.refereeId || "";
+    if (existingRefereeId !== nextRefereeId) reject(403, "match_referee_locked");
+  }
 }
 
 async function deleteMatchChildren(supabase, table, matchId) {
@@ -378,7 +430,7 @@ export default async function handler(request, response) {
 
     const { data: existingPlayers, error: playerError } = await context.supabase
       .from("match_players")
-      .select("user_id")
+      .select("user_id, side, slot_order")
       .eq("match_id", match.id);
     if (playerError) throw playerError;
 
@@ -386,6 +438,7 @@ export default async function handler(request, response) {
       sendJson(response, 403, { error: "match_sync_permission_denied" });
       return;
     }
+    validateLockedMatchCore(existingMatch, existingPlayers, match, action);
     await validateRefereeEligibility(context.supabase, existingMatch, match, action);
 
     const matchRow = toMatchRow(match, context.profileId);

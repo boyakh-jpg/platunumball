@@ -1118,6 +1118,12 @@ flowchart TD
 2. Referee trust must be checked against `refereeTrustMin` before create/confirm/start/end/result sync can keep a referee on the match.
 3. Referee absence confirmation may remove `refereeId` and should not require the missing referee to stay eligible.
 
+## 2026-06-26 match locked core server guard
+
+1. Participant actions, check-in, start/end, and result submission must not change A/B roster order through a client snapshot.
+2. Participant actions, check-in, start/end, and result submission must not change `refereeId`; referee absence confirmation is the explicit exception.
+3. Roster edits must go through explicit roster actions such as late-player add/remove or room player placement actions.
+
 ## 2026-06-26 Supabase test seed
 
 1. `npm run seed:supabase` gives demo profiles `testLoginId` and stores them in `profiles.test_login_id`.
