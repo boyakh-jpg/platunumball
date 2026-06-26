@@ -96,7 +96,7 @@ function toRecruitingPostRow(post = {}) {
     host_ready: Boolean(post.hostReady),
     side_capacity: Math.max(1, Math.min(5, Number(post.sideCapacity ?? 5))),
     player_ids: toArray(post.playerIds),
-    position: post.position ?? null,
+    position: roomState.slotPositions?.[post.playerId] ?? post.position ?? null,
     memo: post.memo ?? "",
     status: post.status ?? "open",
     confirmed_at: post.confirmedAt ?? null,
@@ -106,6 +106,7 @@ function toRecruitingPostRow(post = {}) {
 }
 
 function toRecruitingApplicationRows(post = {}) {
+  const roomState = normalizeRoomState(post.roomState, post);
   return toArray(post.applicants).map((application) => ({
     post_id: post.id,
     player_id: application.playerId,
@@ -114,7 +115,7 @@ function toRecruitingApplicationRows(post = {}) {
     side: application.side === "teamA" ? "teamA" : "teamB",
     status: ["waiting", "ready", "confirmed"].includes(application.status) ? application.status : "waiting",
     reserve: Boolean(application.reserve),
-    position: application.position ?? null,
+    position: roomState.slotPositions?.[application.playerId] ?? application.position ?? null,
     player_ids: toArray(application.playerIds),
     source_team_id: application.sourceTeamId ?? null,
     source_entry_id: application.sourceEntryId ?? null,

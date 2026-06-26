@@ -577,6 +577,13 @@ async function runRecruitingActorScenario({
   }));
   post = positionResult?.post;
   assertFlow(post?.roomState?.slotPositions?.[opponentId] === "SF", "actor slot position not persisted", { opponentId, post });
+  const stateAfterPosition = await step(`${ids.label}:loadAfterPosition`, () => loadStateAs(opponentLogin));
+  const reloadedPostAfterPosition = findPost(stateAfterPosition);
+  const reloadedApplicantAfterPosition = reloadedPostAfterPosition?.applicants?.find((item) => item.playerId === opponentId);
+  assertFlow(reloadedApplicantAfterPosition?.position === "SF", "actor application position column not persisted", {
+    opponentId,
+    reloadedApplicantAfterPosition,
+  });
 
   const reserveResult = await step(`${ids.label}:setRecruitingApplicantPlacement:reserve`, () => syncRecruitingAs(opponentLogin, {
     action: "setRecruitingApplicantPlacement",

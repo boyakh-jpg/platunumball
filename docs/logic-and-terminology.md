@@ -1262,3 +1262,9 @@ flowchart TD
 3. server action 비활성화는 `server_actions_disabled`로 노출한다.
 4. 모집/경기/팀/토너먼트 optimistic UI는 실패 시 rollback하고 정확한 server action 사유를 보여준다.
 5. `VITE_ENABLE_SERVER_ACTIONS`는 문자열 `true` 또는 `false`만 사용한다. 잘못된 값은 Supabase 설정 기본값으로 fallback되며 배포 env에서 고쳐야 한다.
+
+## 2026-06-27 모집 포지션 저장
+
+1. 모집 슬롯별 최종 포지션은 `roomState.slotPositions`를 우선한다.
+2. 서버 persist 시 `recruiting_posts.position`과 `recruiting_applications.position` 컬럼도 같은 최종 포지션으로 저장한다.
+3. DB 테이블을 직접 확인해도 UI에서 보이는 슬롯 포지션과 어긋나면 안 된다.
