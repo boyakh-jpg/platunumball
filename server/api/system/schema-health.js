@@ -1,4 +1,4 @@
-import { getSupabaseAdminClient, sendJson } from "../_supabaseAdmin.js";
+import { getSupabaseAdminClient, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 
 const REQUIRED_COLUMNS = {
   profiles: [
@@ -103,6 +103,74 @@ async function checkTable(client, table, columns) {
   };
 }
 
+async function ensureSimulationTestActors(client) {
+  const { data: profiles, error: profileError } = await client
+    .from("profiles")
+    .select("id, test_login_id")
+    .eq("test_login_id", "rankball-001")
+    .limit(1);
+  if (profileError) throw profileError;
+
+  const profile = profiles?.[0];
+  if (!profile?.id) return { ok: false, error: "rankball_001_profile_missing" };
+
+  const now = new Date().toISOString();
+  const actorPayload = {
+    source: "backend_simulation",
+    testLoginId: "rankball-001",
+  };
+  const rows = [
+    {
+      table: "admin_appointments",
+      row: {
+        id: "sim_admin_rankball_001",
+        user_id: profile.id,
+        role: "admin",
+        grade: "owner",
+        status: "active",
+        appointed_by: profile.id,
+        starts_at: now,
+        ends_at: null,
+        payload: actorPayload,
+        created_at: now,
+        updated_at: now,
+      },
+    },
+    {
+      table: "referee_appointments",
+      row: {
+        id: "sim_referee_rankball_001",
+        user_id: profile.id,
+        role: "referee",
+        grade: "gold",
+        status: "active",
+        appointed_by: profile.id,
+        starts_at: now,
+        ends_at: null,
+        payload: actorPayload,
+        created_at: now,
+        updated_at: now,
+      },
+    },
+  ];
+
+  const checks = [];
+  for (const item of rows) {
+    const { error } = await client
+      .from(item.table)
+      .upsert(item.row, { onConflict: "id" });
+    checks.push({ table: item.table, ok: !error, error: error?.message ?? null });
+  }
+
+  const failed = checks.filter((check) => !check.ok);
+  return {
+    ok: failed.length === 0,
+    profileId: profile.id,
+    testLoginId: profile.test_login_id,
+    checks,
+  };
+}
+
 export default async function handler(request, response) {
   if (!["GET", "POST"].includes(request.method)) {
     response.setHeader("Allow", "GET, POST");
@@ -112,15 +180,20 @@ export default async function handler(request, response) {
 
   try {
     assertAccess(request);
+    const body = request.method === "POST" ? await readJsonBody(request) : {};
     const client = getSupabaseAdminClient();
     const checks = await Promise.all(
       Object.entries(REQUIRED_COLUMNS).map(([table, columns]) => checkTable(client, table, columns)),
     );
     const failed = checks.filter((check) => !check.ok);
+    const simulationSeed = body?.ensureTestActors === true
+      ? await ensureSimulationTestActors(client)
+      : null;
     sendJson(response, 200, {
-      ok: failed.length === 0,
+      ok: failed.length === 0 && (!simulationSeed || simulationSeed.ok),
       failedCount: failed.length,
       checks,
+      simulationSeed,
     });
   } catch (error) {
     sendJson(response, error.statusCode || 500, { error: error.message || "schema_health_failed" });

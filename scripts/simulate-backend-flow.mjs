@@ -158,7 +158,7 @@ async function assertRemoteSchemaHealth() {
       authorization: `Bearer ${schemaHealthSecret}`,
       "content-type": "application/json",
     },
-    body: "{}",
+    body: JSON.stringify({ ensureTestActors: true }),
   });
   const text = await response.text();
   const payload = text ? JSON.parse(text) : null;
@@ -170,7 +170,10 @@ async function assertRemoteSchemaHealth() {
       .filter((check) => !check.ok)
       .map((check) => `${check.table}: ${check.error}`)
       .join("; ");
-    throw new Error(`schema health failed: ${failed}`);
+    const seedError = payload?.simulationSeed && !payload.simulationSeed.ok
+      ? `simulationSeed: ${payload.simulationSeed.error || JSON.stringify(payload.simulationSeed.checks ?? [])}`
+      : "";
+    throw new Error(`schema health failed: ${[failed, seedError].filter(Boolean).join("; ")}`);
   }
   return payload;
 }
