@@ -966,7 +966,8 @@ flowchart TD
 2. 경기 진행 필드인 출석, 심판 미출석, 이의 draft, 후보, 사후 기록은 `matches` 컬럼으로 보존한다.
 3. 알림, 신고, 구장요청, 관리자 처리, Discord 발송 큐는 전용 server action 또는 worker가 저장한다.
 4. `mockData` / `localStorage`는 Supabase 환경의 앱 데이터 원천으로 쓰지 않는다.
-5. 경기방/매칭방 계산 자체는 아직 전부 authoritative RPC가 아니다. 클라이언트 reducer 결과를 전용 server action으로 커밋하는 단계다.
+5. 경기방/매칭방 전용 server action은 `operation` payload가 있으면 DB 현재 상태를 로드하고 중앙 reducer를 서버에서 다시 실행한 결과를 저장한다.
+6. 아직 모든 방/경기 계산이 DB row-level authoritative RPC는 아니다. transaction 잠금, MMR 커밋, 토너먼트 경기 생성은 남은 작업이다.
 
 ## 2026-06-26 dedicated server action write
 
@@ -1106,7 +1107,8 @@ flowchart TD
 1. Supabase/server action 모드에서 경기, 모집방, 팀, 토너먼트 생성/변경은 먼저 화면에 반영하되 server action 실패 시 이전 화면 상태로 되돌린다.
 2. 서버가 권한, 정원, 심판 자격, 중복 선수, 1v1 파티 금지 같은 규칙으로 거부하면 해당 변경은 새로고침 전에도 남기지 않는다.
 3. rollback은 사용자에게 `서버 저장 실패` 알림을 남긴다.
-4. 이 단계는 프론트 optimistic rollback이다. 최종 완료 기준은 match/recruiting/team write를 DB transaction/RPC 단위로 옮기는 것이다.
+4. match/recruiting operation은 서버가 현재 Supabase 상태를 다시 로드하고 중앙 reducer를 실행한 뒤 저장한다.
+5. 최종 완료 기준은 match/recruiting/team write를 DB transaction/RPC 단위로 옮기는 것이다.
 
 ## 2026-06-26 recruiting age eligibility server guard
 

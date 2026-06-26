@@ -1,4 +1,9 @@
 import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import {
+  applyAuthoritativeMatchOperation,
+  getOperation,
+  loadAuthoritativeState,
+} from "../_authoritativeState.js";
 
 function toArray(value) {
   return Array.isArray(value) ? value.filter(Boolean) : [];
@@ -495,6 +500,92 @@ async function upsertRows(supabase, table, rows, onConflict) {
   if (error) throw error;
 }
 
+export async function persistMatchSnapshot(context, { match, notifications = [], action = "sync", body = {} }) {
+  if (!match?.id) reject(400, "missing_match");
+  validateMatchShape(match);
+  validateResultShape(match, action);
+
+  const { data: existingMatch, error: existingError } = await context.supabase
+      .from("matches")
+      .select("id, created_by, referee_id, former_referee_id, referee_trust_min, stat_recorders, score_a, score_b, rating_result, team_rating_result")
+      .eq("id", match.id)
+      .maybeSingle();
+  if (existingError) throw existingError;
+
+  const { data: existingPlayers, error: playerError } = await context.supabase
+      .from("match_players")
+      .select("user_id, side, slot_order")
+      .eq("match_id", match.id);
+  if (playerError) throw playerError;
+
+  const { data: existingResult, error: resultError } = await context.supabase
+      .from("match_results")
+      .select("score_a, score_b")
+      .eq("match_id", match.id)
+      .maybeSingle();
+  if (resultError) throw resultError;
+
+  const { data: existingStats, error: statError } = await context.supabase
+      .from("player_match_stats")
+      .select("user_id, points, rebounds, assists, steals, blocks, fouls")
+      .eq("match_id", match.id);
+  if (statError) throw statError;
+
+  if (!canSyncMatchAction(context.profileId, existingMatch, existingPlayers, match, action)) {
+    reject(403, "match_sync_permission_denied");
+  }
+  validateLockedMatchCore(existingMatch, existingPlayers, match, action);
+  validateParticipantResultUnchanged(action, existingResult, existingStats, match);
+  validateResultOnlyOnSubmission(action, existingResult, existingStats, match);
+  await validateRefereeEligibility(context.supabase, existingMatch, match, action);
+
+  const matchRow = toMatchRow(match, context.profileId);
+  const playerRows = getSidePlayerRows(match);
+  if (action !== "submitMatchResult" && existingMatch) {
+    matchRow.score_a = Number(existingMatch.score_a ?? 0);
+    matchRow.score_b = Number(existingMatch.score_b ?? 0);
+    if (!canCommitRatingResult(action, existingResult, match)) {
+      matchRow.rating_result = existingMatch.rating_result ?? null;
+      matchRow.team_rating_result = existingMatch.team_rating_result ?? null;
+    }
+  }
+  const resultRow = action === "submitMatchResult" ? toResultRow(match, context.profileId) : null;
+  const statRows = action === "submitMatchResult" ? toStatRows(match) : [];
+  const agreementRows = toAgreementRows(match);
+  const approvalRows = toApprovalRows(match);
+  const disputeRows = toDisputeRows(match);
+  const notificationRows = toNotificationRows(notifications, context.profileId);
+
+  const { error: matchError } = await context.supabase.from("matches").upsert(matchRow, { onConflict: "id" });
+  if (matchError) throw matchError;
+
+  await deleteMatchChildren(context.supabase, "match_players", match.id);
+  await deleteMatchChildren(context.supabase, "match_agreements", match.id);
+  await deleteMatchChildren(context.supabase, "match_approvals", match.id);
+  await deleteMatchChildren(context.supabase, "match_disputes", match.id);
+  if (action === "submitMatchResult") {
+    await deleteMatchChildren(context.supabase, "player_match_stats", match.id);
+    await deleteMatchChildren(context.supabase, "match_results", match.id);
+  }
+
+  await upsertRows(context.supabase, "match_players", playerRows, "match_id,user_id");
+  if (resultRow) await upsertRows(context.supabase, "match_results", [resultRow], "match_id");
+  await upsertRows(context.supabase, "player_match_stats", statRows, "match_id,user_id");
+  await upsertRows(context.supabase, "match_agreements", agreementRows, "match_id,user_id");
+  await upsertRows(context.supabase, "match_approvals", approvalRows, "match_id,user_id");
+  await upsertRows(context.supabase, "match_disputes", disputeRows, "id");
+  await upsertRows(context.supabase, "notifications", notificationRows, "id");
+
+  return {
+    ok: true,
+    match,
+    matchId: match.id,
+    playerCount: playerRows.length,
+    statCount: statRows.length,
+    notificationCount: notificationRows.length,
+  };
+}
+
 export default async function handler(request, response) {
   if (request.method !== "POST") {
     response.setHeader("Allow", "POST");
@@ -504,95 +595,22 @@ export default async function handler(request, response) {
 
   try {
     const body = await readJsonBody(request);
-    const match = body.match && typeof body.match === "object" ? body.match : null;
-    const action = body.action ? String(body.action) : "sync";
-    if (!match?.id) {
-      sendJson(response, 400, { error: "missing_match" });
-      return;
-    }
-    validateMatchShape(match);
-    validateResultShape(match, action);
-
     const context = await getAuthenticatedContext(request);
-    const { data: existingMatch, error: existingError } = await context.supabase
-      .from("matches")
-      .select("id, created_by, referee_id, former_referee_id, referee_trust_min, stat_recorders, score_a, score_b, rating_result, team_rating_result")
-      .eq("id", match.id)
-      .maybeSingle();
-    if (existingError) throw existingError;
+    const operation = getOperation(body, body.action ? String(body.action) : "sync");
+    let match = body.match && typeof body.match === "object" ? body.match : null;
+    let notifications = body.notifications ?? [];
+    let action = body.action ? String(body.action) : "sync";
 
-    const { data: existingPlayers, error: playerError } = await context.supabase
-      .from("match_players")
-      .select("user_id, side, slot_order")
-      .eq("match_id", match.id);
-    if (playerError) throw playerError;
-
-    const { data: existingResult, error: resultError } = await context.supabase
-      .from("match_results")
-      .select("score_a, score_b")
-      .eq("match_id", match.id)
-      .maybeSingle();
-    if (resultError) throw resultError;
-
-    const { data: existingStats, error: statError } = await context.supabase
-      .from("player_match_stats")
-      .select("user_id, points, rebounds, assists, steals, blocks, fouls")
-      .eq("match_id", match.id);
-    if (statError) throw statError;
-
-    if (!canSyncMatchAction(context.profileId, existingMatch, existingPlayers, match, action)) {
-      sendJson(response, 403, { error: "match_sync_permission_denied" });
-      return;
-    }
-    validateLockedMatchCore(existingMatch, existingPlayers, match, action);
-    validateParticipantResultUnchanged(action, existingResult, existingStats, match);
-    validateResultOnlyOnSubmission(action, existingResult, existingStats, match);
-    await validateRefereeEligibility(context.supabase, existingMatch, match, action);
-
-    const matchRow = toMatchRow(match, context.profileId);
-    const playerRows = getSidePlayerRows(match);
-    if (action !== "submitMatchResult" && existingMatch) {
-      matchRow.score_a = Number(existingMatch.score_a ?? 0);
-      matchRow.score_b = Number(existingMatch.score_b ?? 0);
-      if (!canCommitRatingResult(action, existingResult, match)) {
-        matchRow.rating_result = existingMatch.rating_result ?? null;
-        matchRow.team_rating_result = existingMatch.team_rating_result ?? null;
-      }
-    }
-    const resultRow = action === "submitMatchResult" ? toResultRow(match, context.profileId) : null;
-    const statRows = action === "submitMatchResult" ? toStatRows(match) : [];
-    const agreementRows = toAgreementRows(match);
-    const approvalRows = toApprovalRows(match);
-    const disputeRows = toDisputeRows(match);
-    const notificationRows = toNotificationRows(body.notifications, context.profileId);
-
-    const { error: matchError } = await context.supabase.from("matches").upsert(matchRow, { onConflict: "id" });
-    if (matchError) throw matchError;
-
-    await deleteMatchChildren(context.supabase, "match_players", match.id);
-    await deleteMatchChildren(context.supabase, "match_agreements", match.id);
-    await deleteMatchChildren(context.supabase, "match_approvals", match.id);
-    await deleteMatchChildren(context.supabase, "match_disputes", match.id);
-    if (action === "submitMatchResult") {
-      await deleteMatchChildren(context.supabase, "player_match_stats", match.id);
-      await deleteMatchChildren(context.supabase, "match_results", match.id);
+    if (operation) {
+      const state = await loadAuthoritativeState(context);
+      const result = applyAuthoritativeMatchOperation(state, operation);
+      match = result.match;
+      notifications = result.notifications;
+      action = operation.action;
     }
 
-    await upsertRows(context.supabase, "match_players", playerRows, "match_id,user_id");
-    if (resultRow) await upsertRows(context.supabase, "match_results", [resultRow], "match_id");
-    await upsertRows(context.supabase, "player_match_stats", statRows, "match_id,user_id");
-    await upsertRows(context.supabase, "match_agreements", agreementRows, "match_id,user_id");
-    await upsertRows(context.supabase, "match_approvals", approvalRows, "match_id,user_id");
-    await upsertRows(context.supabase, "match_disputes", disputeRows, "id");
-    await upsertRows(context.supabase, "notifications", notificationRows, "id");
-
-    sendJson(response, 200, {
-      ok: true,
-      matchId: match.id,
-      playerCount: playerRows.length,
-      statCount: statRows.length,
-      notificationCount: notificationRows.length,
-    });
+    const result = await persistMatchSnapshot(context, { match, notifications, action, body });
+    sendJson(response, 200, result);
   } catch (error) {
     console.error("Match sync failed.", error);
     sendJson(response, error.statusCode || 500, { error: error.message || "match_sync_failed" });

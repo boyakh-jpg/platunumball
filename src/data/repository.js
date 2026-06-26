@@ -758,11 +758,11 @@ export function syncNotificationDeliveries(state) {
   return syncDiscordNotificationDeliveries(state);
 }
 
-async function fetchAllRows(table, select = "*", order = "id") {
+async function fetchAllRows(table, select = "*", order = "id", client = supabase) {
   const rows = [];
   for (let from = 0; ; from += REMOTE_PAGE_SIZE) {
     const to = from + REMOTE_PAGE_SIZE - 1;
-    const query = supabase.from(table).select(select).range(from, to);
+    const query = client.from(table).select(select).range(from, to);
     const { data, error } = order ? await query.order(order, { ascending: true }) : await query;
     if (error) throw error;
     rows.push(...(data ?? []));
@@ -771,9 +771,9 @@ async function fetchAllRows(table, select = "*", order = "id") {
   return rows;
 }
 
-async function fetchOptionalRows(table, select = "*", order = "id") {
+async function fetchOptionalRows(table, select = "*", order = "id", client = supabase) {
   try {
-    return await fetchAllRows(table, select, order);
+    return await fetchAllRows(table, select, order, client);
   } catch (error) {
     console.warn(`Supabase optional table skipped: ${table}`, error.message);
     return [];
@@ -1094,7 +1094,7 @@ function getMaxUpdatedAt(rows) {
   return timestamps.length ? Math.max(...timestamps) : 0;
 }
 
-async function loadNormalizedRemoteState(authUserId = "", authEmail = "") {
+export async function loadNormalizedRemoteStateFromClient(client = supabase, authUserId = "", authEmail = "") {
   const [
     profiles,
     teams,
@@ -1127,36 +1127,36 @@ async function loadNormalizedRemoteState(authUserId = "", authEmail = "") {
     adminDisciplinaryActions,
     discordNotificationDeliveries,
   ] = await Promise.all([
-    fetchAllRows("profiles"),
-    fetchAllRows("teams"),
-    fetchAllRows("team_members", "*", null),
-    fetchAllRows("courts"),
-    fetchAllRows("matches", "*", "created_at"),
-    fetchAllRows("match_players", "*", null),
-    fetchAllRows("match_results", "*", null),
-    fetchAllRows("player_match_stats", "*", null),
-    fetchAllRows("match_agreements", "*", null),
-    fetchAllRows("match_approvals", "*", null),
-    fetchAllRows("match_disputes", "*", null),
-    fetchAllRows("favorites", "*", null),
-    fetchAllRows("recruiting_posts", "*", "created_at"),
-    fetchAllRows("recruiting_applications", "*", null),
-    fetchAllRows("tournaments", "*", "created_at"),
-    fetchAllRows("tournament_teams", "*", null),
-    fetchAllRows("seasons"),
-    fetchAllRows("affiliations"),
-    fetchOptionalRows("notifications", "*", "created_at"),
-    fetchOptionalRows("reports", "*", "created_at"),
-    fetchOptionalRows("court_requests", "*", "created_at"),
-    fetchOptionalRows("approved_courts", "*", "created_at"),
-    fetchOptionalRows("court_reviews", "*", "created_at"),
-    fetchOptionalRows("referee_requests", "*", "created_at"),
-    fetchOptionalRows("referee_exam_attempts", "*", "created_at"),
-    fetchOptionalRows("admin_appointments", "*", "created_at"),
-    fetchOptionalRows("referee_appointments", "*", "created_at"),
-    fetchOptionalRows("admin_audit_log", "*", "created_at"),
-    fetchOptionalRows("admin_disciplinary_actions", "*", "created_at"),
-    fetchOptionalRows("discord_notification_deliveries", "*", "queued_at"),
+    fetchAllRows("profiles", "*", "id", client),
+    fetchAllRows("teams", "*", "id", client),
+    fetchAllRows("team_members", "*", null, client),
+    fetchAllRows("courts", "*", "id", client),
+    fetchAllRows("matches", "*", "created_at", client),
+    fetchAllRows("match_players", "*", null, client),
+    fetchAllRows("match_results", "*", null, client),
+    fetchAllRows("player_match_stats", "*", null, client),
+    fetchAllRows("match_agreements", "*", null, client),
+    fetchAllRows("match_approvals", "*", null, client),
+    fetchAllRows("match_disputes", "*", null, client),
+    fetchAllRows("favorites", "*", null, client),
+    fetchAllRows("recruiting_posts", "*", "created_at", client),
+    fetchAllRows("recruiting_applications", "*", null, client),
+    fetchAllRows("tournaments", "*", "created_at", client),
+    fetchAllRows("tournament_teams", "*", null, client),
+    fetchAllRows("seasons", "*", "id", client),
+    fetchAllRows("affiliations", "*", "id", client),
+    fetchOptionalRows("notifications", "*", "created_at", client),
+    fetchOptionalRows("reports", "*", "created_at", client),
+    fetchOptionalRows("court_requests", "*", "created_at", client),
+    fetchOptionalRows("approved_courts", "*", "created_at", client),
+    fetchOptionalRows("court_reviews", "*", "created_at", client),
+    fetchOptionalRows("referee_requests", "*", "created_at", client),
+    fetchOptionalRows("referee_exam_attempts", "*", "created_at", client),
+    fetchOptionalRows("admin_appointments", "*", "created_at", client),
+    fetchOptionalRows("referee_appointments", "*", "created_at", client),
+    fetchOptionalRows("admin_audit_log", "*", "created_at", client),
+    fetchOptionalRows("admin_disciplinary_actions", "*", "created_at", client),
+    fetchOptionalRows("discord_notification_deliveries", "*", "queued_at", client),
   ]);
 
   const authUserIdText = String(authUserId || "");
@@ -1361,6 +1361,10 @@ async function loadNormalizedRemoteState(authUserId = "", authEmail = "") {
       getMaxUpdatedAt(notifications),
     ),
   };
+}
+
+async function loadNormalizedRemoteState(authUserId = "", authEmail = "") {
+  return loadNormalizedRemoteStateFromClient(supabase, authUserId, authEmail);
 }
 
 export async function loadRemoteState(authUserId = "", authEmail = "") {
@@ -2653,7 +2657,7 @@ export function createMatch(state, draft) {
   const ranked = draft.ranked !== false;
   const ratingScale = ranked ? getRecruitingRatingScale({ ranked, mmrRangeMode }) : 1;
   const match = {
-    id: makeId("m"),
+    id: draft.id || makeId("m"),
     title: draft.title || `${draft.court} ${mode} 판`,
     mode,
     court: draft.court,
@@ -5385,7 +5389,7 @@ export function createRecruitingPost(state, draft) {
       ]
     : [];
   const post = {
-    id: makeId("q"),
+    id: draft.id || makeId("q"),
     type: postType,
     title: draft.title?.trim() || `${draft.ranked === false ? "친선전" : "정규전"} ${draft.mode || "5v5"} 매치 큐`,
     region: draft.region || state.users.find((user) => user.id === state.currentUserId)?.region || "전체",
@@ -7790,7 +7794,7 @@ function promoteRecruitingReservesForConfirmation(post, state, lobby) {
   };
 }
 
-export function confirmRecruitingMatch(state, postId) {
+export function confirmRecruitingMatch(state, postId, options = {}) {
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   if (!post || post.status !== "open" || !isRecruitingRoomOwner(post, state.currentUserId)) return state;
   const promotion = promoteRecruitingReservesForConfirmation(post, state, getRecruitingLobby(post, state));
@@ -7859,7 +7863,7 @@ export function confirmRecruitingMatch(state, postId) {
     foulRule: "파울 콜 즉시 중단, 공격권 유지",
   };
   const match = {
-    id: makeId("m"),
+    id: options.matchId || makeId("m"),
     title: promotedPost.title,
     mode: promotedPost.mode,
     court: promotedPost.court,

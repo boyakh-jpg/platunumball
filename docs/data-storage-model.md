@@ -143,21 +143,22 @@
 ## 2026-06-25 recruiting server sync
 
 - `POST /api/recruiting/sync-post`를 추가했다.
-- 생성/참여/초대/초대 수락/거절/READY/배치/파티/채팅/방닫기 후 해당 `recruitingPost` snapshot을 서버에 즉시 upsert한다.
+- 생성/참여/초대/초대 수락/거절/READY/배치/파티/채팅/방닫기 후 `operation` payload가 있으면 서버가 현재 DB 상태를 로드하고 중앙 reducer를 다시 실행한 결과를 upsert한다.
 - 서버는 Supabase bearer를 검증하고 `profiles.auth_user_id`에 매핑된 `profileId`가 방장, 참여자, 초대 발신자, 초대 대상자 중 하나인지 확인한다.
 - 서버는 `recruiting_posts`, `recruiting_applications`, 관련 `notifications`를 갱신한다.
 - `recruiting_posts` 저장/로드 매핑에 `title`, `visibility`, `rules`, `official`, `preRegistered`, 구장예약, 연령 제한, `sourceTeamId/sourceEntryId`를 보존한다.
-- 이 단계는 아직 완전한 authoritative room engine이 아니다. 클라이언트의 기존 로컬 액션 결과를 서버에 커밋하는 과도기 브리지다.
-- 다음 단계는 생성/참여/초대/수락 계산 자체를 RPC 내부로 옮기고, 경기 확정 시 `matches` 생성도 같은 transaction으로 묶는 것이다.
+- operation을 지원하지 않는 legacy 경로는 기존 snapshot 검증/upsert fallback만 허용한다.
+- 모집방 확정은 recruiting server action이 `recruiting_posts`와 생성된 `matches`를 같은 요청 안에서 저장한다.
+- 이 단계는 전체 state 저장 브리지 제거 이후의 전용 server action sync다. 아직 DB row-level RPC transaction 엔진은 아니므로 동시성 잠금과 MMR 커밋은 남아 있다.
 
 ## 2026-06-25 match server sync
 
 - `POST /api/matches/sync-match`를 추가했다.
-- 경기 생성, 동의, 출석, 심판 미출석, 경기 시작/종료, 기록 제출, 승인, 이의, 룰/슬롯 수정 후 해당 `match` snapshot을 서버에 즉시 upsert한다.
+- 경기 생성, 동의, 출석, 심판 미출석, 경기 시작/종료, 기록 제출, 승인, 이의, 룰/슬롯 수정 후 `operation` payload가 있으면 서버가 현재 DB 상태를 로드하고 중앙 reducer를 다시 실행한 결과를 upsert한다.
 - 서버는 Supabase bearer를 검증하고 현재 `profileId`가 경기 참가자, 심판, 기존 생성자 중 하나인지 확인한다.
 - 서버는 `matches`, `match_players`, `match_results`, `player_match_stats`, `match_agreements`, `match_approvals`, `match_disputes`, 관련 `notifications`를 갱신한다.
-- 이 단계는 아직 완전한 authoritative match engine이 아니다. 클라이언트 reducer 결과를 서버에 커밋하는 과도기 브리지다.
-- 다음 단계는 슬롯 점유, 출석 강퇴, 결과/이의 승인, MMR 반영을 RPC transaction으로 옮기는 것이다.
+- operation을 지원하지 않는 legacy 경로는 기존 snapshot 검증/upsert fallback만 허용한다.
+- 이 단계는 전체 state 저장 브리지 제거 이후의 전용 server action sync다. 아직 DB row-level RPC transaction 엔진은 아니므로 동시성 잠금과 MMR 커밋은 남아 있다.
 
 ## 2026-06-25 report submit server action
 

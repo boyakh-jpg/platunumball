@@ -102,6 +102,81 @@ function makeClientNotificationId(prefix = "n") {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
 }
 
+const SERVER_OPERATION_ACTIONS = new Set([
+  "createMatch",
+  "updateTournamentMatchSchedule",
+  "agreeMatch",
+  "submitMatchResult",
+  "handoffMatchRecorder",
+  "approveMatch",
+  "checkInMatchPlayer",
+  "requestMatchRefereeAbsence",
+  "confirmMatchRefereeAbsence",
+  "toggleMatchStar",
+  "submitMatchThumbs",
+  "disputeMatch",
+  "cancelMatch",
+  "voidMatch",
+  "resumeMatchApproval",
+  "startMatch",
+  "endMatch",
+  "addMatchLatePlayer",
+  "removeMatchLatePlayer",
+  "updateMatchRoomRules",
+  "setMatchRoomPlayerPlacement",
+  "removeMatchRoomPlayer",
+  "createRecruitingPost",
+  "interestRecruitingPost",
+  "inviteRecruitingReferee",
+  "inviteRecruitingPlayers",
+  "acceptRecruitingInvitation",
+  "declineRecruitingInvitation",
+  "cancelRecruitingParticipation",
+  "setRecruitingReady",
+  "updateRecruitingRoomRules",
+  "sendRecruitingChat",
+  "setRecruitingApplicantReserve",
+  "setRecruitingApplicantPlacement",
+  "joinRecruitingSideParty",
+  "setRecruitingSlotPosition",
+  "setRecruitingPartyPlayerReserve",
+  "setRecruitingPartyPlayerPlacement",
+  "detachRecruitingPartyPlayer",
+  "removeRecruitingPartyPlayer",
+  "setRecruitingStatRecorder",
+  "kickRecruitingApplicant",
+  "confirmRecruitingMatch",
+  "closeRecruitingPost",
+]);
+
+function getServerOperation(meta = {}) {
+  if (meta.operation) {
+    const explicitAction = String(meta.operation.action || meta.action || "");
+    return SERVER_OPERATION_ACTIONS.has(explicitAction) ? meta.operation : null;
+  }
+  if (!meta.action) return null;
+  if (!SERVER_OPERATION_ACTIONS.has(String(meta.action))) return null;
+  const { operation: _operation, ...payload } = meta;
+  return payload;
+}
+
+function upsertById(items = [], item = null) {
+  if (!item?.id) return items;
+  return [item, ...items.filter((current) => current.id !== item.id)];
+}
+
+function mergeServerRoomResult(state, result = {}) {
+  if (!result || typeof result !== "object") return state;
+  const nextPost = result.post ?? null;
+  const nextMatch = result.createdMatch ?? result.match ?? null;
+  if (!nextPost && !nextMatch) return state;
+  return {
+    ...state,
+    recruitingPosts: nextPost ? upsertById(state.recruitingPosts ?? [], nextPost) : state.recruitingPosts,
+    matches: nextMatch ? upsertById(state.matches ?? [], nextMatch) : state.matches,
+  };
+}
+
 function getBoundAuthProfileId(state, authUserId, profileBindings, profileKey) {
   const users = state.users ?? [];
   if (isPersistentAuthUserId(authUserId)) {
@@ -342,7 +417,7 @@ export function useAppData(authUser = null) {
   const runServerAction = useCallback((path, payload) => {
     return postServerAction(path, payload).then((result) => {
       if (!result) throw new Error("server_action_unavailable");
-      return true;
+      return result;
     }).catch((error) => {
       console.warn(`Server action skipped: ${path}`, error.message);
       pushLocalWarning("서버 저장 실패", "서버에 저장되지 않았습니다. 새로고침하면 방/경기 변경이 사라질 수 있습니다.", {
@@ -363,12 +438,20 @@ export function useAppData(authUser = null) {
   }, []);
   const syncRecruitingPostServer = useCallback((post, notifications = [], meta = {}) => {
     if (!post?.id) return Promise.resolve(false);
-    return runServerAction("/api/recruiting/sync-post", { post, notifications, ...meta });
-  }, [runServerAction]);
+    const operation = getServerOperation(meta);
+    return runServerAction("/api/recruiting/sync-post", { post, notifications, ...meta, operation }).then((result) => {
+      if (result?.post || result?.createdMatch) setState((prev) => mergeServerRoomResult(prev, result));
+      return result;
+    });
+  }, [runServerAction, setState]);
   const syncMatchServer = useCallback((match, notifications = [], meta = {}) => {
     if (!match?.id) return Promise.resolve(false);
-    return runServerAction("/api/matches/sync-match", { match, notifications, ...meta });
-  }, [runServerAction]);
+    const operation = getServerOperation(meta);
+    return runServerAction("/api/matches/sync-match", { match, notifications, ...meta, operation }).then((result) => {
+      if (result?.match) setState((prev) => mergeServerRoomResult(prev, result));
+      return result;
+    });
+  }, [runServerAction, setState]);
   const submitReportServer = useCallback((report, notifications = []) => {
     if (!report?.id) return;
     runServerAction("/api/reports/submit", { report, notifications });
@@ -560,7 +643,7 @@ export function useAppData(authUser = null) {
           syncedNotifications = createdMatch ? getNewMatchNotifications(prev, next, createdMatch.id) : [];
           return next;
         });
-        if (createdMatch) rollbackIfServerFailed(syncMatchServer(createdMatch, syncedNotifications, { action: "createMatch" }), rollbackState, "경기 생성", { action: "createMatch", matchId: createdMatch.id });
+        if (createdMatch) rollbackIfServerFailed(syncMatchServer(createdMatch, syncedNotifications, { action: "createMatch", draft, preferredMatchId: createdMatch.id }), rollbackState, "경기 생성", { action: "createMatch", matchId: createdMatch.id });
         return createdId;
       },
       createTournament: (draft) => {
@@ -611,10 +694,10 @@ export function useAppData(authUser = null) {
         }
       },
       updateTournamentMatchSchedule: (tournamentId, matchId, schedule) => {
-        applyMatchMutation(matchId, (prev) => updateTournamentMatchSchedule({ ...prev, currentUserId }, tournamentId, matchId, schedule), { action: "updateTournamentMatchSchedule", tournamentId });
+        applyMatchMutation(matchId, (prev) => updateTournamentMatchSchedule({ ...prev, currentUserId }, tournamentId, matchId, schedule), { action: "updateTournamentMatchSchedule", tournamentId, schedule });
       },
       agreeMatch: (matchId, sideName, playerId) => applyMatchMutation(matchId, (prev) => agreeMatch({ ...prev, currentUserId }, matchId, sideName, playerId), { action: "agreeMatch", sideName, playerId }),
-      submitMatchResult: (matchId, result) => applyMatchMutation(matchId, (prev) => submitMatchResult({ ...prev, currentUserId }, matchId, result), { action: "submitMatchResult" }),
+      submitMatchResult: (matchId, result) => applyMatchMutation(matchId, (prev) => submitMatchResult({ ...prev, currentUserId }, matchId, result), { action: "submitMatchResult", result }),
       handoffMatchRecorder: (matchId, sideName, nextRecorderId) => {
         applyMatchMutation(matchId, (prev) => handoffMatchRecorder({ ...prev, currentUserId }, matchId, sideName, nextRecorderId), { action: "handoffMatchRecorder", sideName, nextRecorderId });
       },
@@ -624,13 +707,13 @@ export function useAppData(authUser = null) {
       confirmMatchRefereeAbsence: (matchId) => applyMatchMutation(matchId, (prev) => confirmMatchRefereeAbsence({ ...prev, currentUserId }, matchId), { action: "confirmMatchRefereeAbsence" }),
       toggleMatchStar: (matchId, targetUserId) => applyMatchMutation(matchId, (prev) => toggleMatchStar({ ...prev, currentUserId }, matchId, targetUserId), { action: "toggleMatchStar", targetUserId }),
       submitMatchThumbs: (matchId, targetUserIds) => applyMatchMutation(matchId, (prev) => submitMatchThumbs({ ...prev, currentUserId }, matchId, targetUserIds), { action: "submitMatchThumbs", targetUserIds }),
-      disputeMatch: (matchId, reason) => applyMatchMutation(matchId, (prev) => disputeMatch({ ...prev, currentUserId }, matchId, reason), { action: "disputeMatch" }),
+      disputeMatch: (matchId, reason) => applyMatchMutation(matchId, (prev) => disputeMatch({ ...prev, currentUserId }, matchId, reason), { action: "disputeMatch", reason }),
       cancelMatch: (matchId) => applyMatchMutation(matchId, (prev) => cancelMatch({ ...prev, currentUserId }, matchId), { action: "cancelMatch" }),
       voidMatch: (matchId) => applyMatchMutation(matchId, (prev) => voidMatch({ ...prev, currentUserId }, matchId), { action: "voidMatch" }),
-      resumeMatchApproval: (matchId, resultDraft = null) => applyMatchMutation(matchId, (prev) => resumeMatchApproval({ ...prev, currentUserId }, matchId, resultDraft), { action: "resumeMatchApproval" }),
+      resumeMatchApproval: (matchId, resultDraft = null) => applyMatchMutation(matchId, (prev) => resumeMatchApproval({ ...prev, currentUserId }, matchId, resultDraft), { action: "resumeMatchApproval", resultDraft }),
       startMatch: (matchId) => applyMatchMutation(matchId, (prev) => startMatch({ ...prev, currentUserId }, matchId), { action: "startMatch" }),
       endMatch: (matchId) => applyMatchMutation(matchId, (prev) => endMatch({ ...prev, currentUserId }, matchId), { action: "endMatch" }),
-      addMatchLatePlayer: (matchId, draft) => applyMatchMutation(matchId, (prev) => addMatchLatePlayer({ ...prev, currentUserId }, matchId, draft), { action: "addMatchLatePlayer" }),
+      addMatchLatePlayer: (matchId, draft) => applyMatchMutation(matchId, (prev) => addMatchLatePlayer({ ...prev, currentUserId }, matchId, draft), { action: "addMatchLatePlayer", draft }),
       removeMatchLatePlayer: (matchId, playerId) => applyMatchMutation(matchId, (prev) => removeMatchLatePlayer({ ...prev, currentUserId }, matchId, playerId), { action: "removeMatchLatePlayer", playerId }),
       updateSettings: (patch) => setState((prev) => updateSettings({ ...prev, currentUserId }, patch)),
       updatePrivacySettings: (patch) => setState((prev) => updatePrivacySettings({ ...prev, currentUserId }, patch)),
@@ -804,20 +887,20 @@ export function useAppData(authUser = null) {
           syncedNotifications = createdPost ? getNewRecruitingNotifications(prev, next, createdPost.id) : [];
           return next;
         });
-        if (createdPost) rollbackIfServerFailed(syncRecruitingPostServer(createdPost, syncedNotifications, { action: "createRecruitingPost" }), rollbackState, "방 생성", { action: "createRecruitingPost", postId: createdPost.id });
+        if (createdPost) rollbackIfServerFailed(syncRecruitingPostServer(createdPost, syncedNotifications, { action: "createRecruitingPost", draft, preferredPostId: createdPost.id }), rollbackState, "방 생성", { action: "createRecruitingPost", postId: createdPost.id });
       },
-      interestRecruitingPost: (postId, application) => applyRecruitingPostMutation(postId, (prev) => interestRecruitingPost({ ...prev, currentUserId }, postId, application), { action: "interestRecruitingPost", joinMode: application?.joinMode }),
+      interestRecruitingPost: (postId, application) => applyRecruitingPostMutation(postId, (prev) => interestRecruitingPost({ ...prev, currentUserId }, postId, application), { action: "interestRecruitingPost", application, joinMode: application?.joinMode }),
       inviteRecruitingReferee: (postId, refereeId) => applyRecruitingPostMutation(postId, (prev) => inviteRecruitingReferee({ ...prev, currentUserId }, postId, refereeId), { action: "inviteRecruitingReferee", refereeId }),
-      inviteRecruitingPlayers: (postId, invite) => applyRecruitingPostMutation(postId, (prev) => inviteRecruitingPlayers({ ...prev, currentUserId }, postId, invite), { action: "inviteRecruitingPlayers" }),
+      inviteRecruitingPlayers: (postId, invite) => applyRecruitingPostMutation(postId, (prev) => inviteRecruitingPlayers({ ...prev, currentUserId }, postId, invite), { action: "inviteRecruitingPlayers", invite }),
       acceptRecruitingInvitation: (postId, invitationId) => applyRecruitingPostMutation(postId, (prev) => acceptRecruitingInvitation({ ...prev, currentUserId }, postId, invitationId), { action: "acceptRecruitingInvitation", invitationId }),
       declineRecruitingInvitation: (postId, invitationId) => applyRecruitingPostMutation(postId, (prev) => declineRecruitingInvitation({ ...prev, currentUserId }, postId, invitationId), { action: "declineRecruitingInvitation", invitationId }),
       cancelRecruitingParticipation: (postId) => applyRecruitingPostMutation(postId, (prev) => cancelRecruitingParticipation({ ...prev, currentUserId }, postId), { action: "cancelRecruitingParticipation" }),
       setRecruitingReady: (postId, ready) => applyRecruitingPostMutation(postId, (prev) => setRecruitingReady({ ...prev, currentUserId }, postId, ready), { action: "setRecruitingReady", ready }),
-      updateRecruitingRoomRules: (postId, patch) => applyRecruitingPostMutation(postId, (prev) => updateRecruitingRoomRules({ ...prev, currentUserId }, postId, patch), { action: "updateRecruitingRoomRules" }),
-      updateMatchRoomRules: (matchId, patch) => applyMatchMutation(matchId, (prev) => updateMatchRoomRules({ ...prev, currentUserId }, matchId, patch), { action: "updateMatchRoomRules" }),
+      updateRecruitingRoomRules: (postId, patch) => applyRecruitingPostMutation(postId, (prev) => updateRecruitingRoomRules({ ...prev, currentUserId }, postId, patch), { action: "updateRecruitingRoomRules", patch }),
+      updateMatchRoomRules: (matchId, patch) => applyMatchMutation(matchId, (prev) => updateMatchRoomRules({ ...prev, currentUserId }, matchId, patch), { action: "updateMatchRoomRules", patch }),
       setMatchRoomPlayerPlacement: (matchId, playerId, placement) => applyMatchMutation(matchId, (prev) => setMatchRoomPlayerPlacement({ ...prev, currentUserId }, matchId, playerId, placement), { action: "setMatchRoomPlayerPlacement", playerId, placement }),
       removeMatchRoomPlayer: (matchId, playerId) => applyMatchMutation(matchId, (prev) => removeMatchRoomPlayer({ ...prev, currentUserId }, matchId, playerId), { action: "removeMatchRoomPlayer", playerId }),
-      sendRecruitingChat: (postId, body) => applyRecruitingPostMutation(postId, (prev) => sendRecruitingChat({ ...prev, currentUserId }, postId, body), { action: "sendRecruitingChat" }),
+      sendRecruitingChat: (postId, body) => applyRecruitingPostMutation(postId, (prev) => sendRecruitingChat({ ...prev, currentUserId }, postId, body), { action: "sendRecruitingChat", body }),
       setRecruitingApplicantReserve: (postId, playerId, reserve) => {
         applyRecruitingPostMutation(postId, (prev) => setRecruitingApplicantReserve({ ...prev, currentUserId }, postId, playerId, reserve), { action: "setRecruitingApplicantReserve", playerId, reserve });
       },
@@ -865,10 +948,14 @@ export function useAppData(authUser = null) {
           return next;
         });
         if (syncedPost || createdMatch) {
-          rollbackIfServerFailed(Promise.all([
-            syncedPost ? syncRecruitingPostServer(syncedPost, syncedNotifications, { action: "confirmRecruitingMatch" }) : Promise.resolve(true),
-            createdMatch ? syncMatchServer(createdMatch, syncedMatchNotifications, { action: "confirmRecruitingMatch", recruitingPostId: postId }) : Promise.resolve(true),
-          ]).then((results) => results.every(Boolean)), rollbackState, "방 확정", { action: "confirmRecruitingMatch", postId, matchId: createdMatch?.id });
+          rollbackIfServerFailed(
+            syncedPost
+              ? syncRecruitingPostServer(syncedPost, [...syncedNotifications, ...syncedMatchNotifications], { action: "confirmRecruitingMatch", preferredMatchId: createdMatch?.id })
+              : syncMatchServer(createdMatch, syncedMatchNotifications, { action: "confirmRecruitingMatch", recruitingPostId: postId }),
+            rollbackState,
+            "방 확정",
+            { action: "confirmRecruitingMatch", postId, matchId: createdMatch?.id },
+          );
         }
         return createdId;
       },

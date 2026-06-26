@@ -1,4 +1,10 @@
 import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import {
+  applyAuthoritativeRecruitingOperation,
+  getOperation,
+  loadAuthoritativeState,
+} from "../_authoritativeState.js";
+import { persistMatchSnapshot } from "../matches/sync-match.js";
 
 function toArray(value) {
   return Array.isArray(value) ? value.filter(Boolean) : [];
@@ -409,6 +415,57 @@ async function validateRefereeAction(supabase, profileId, existingPost, nextPost
   }
 }
 
+export async function persistRecruitingPostSnapshot(context, { post, notifications = [], action = "sync", body = {} }) {
+  if (!post?.id) reject(400, "missing_recruiting_post");
+  validateRecruitingPostShape(post);
+
+  const actionBody = { ...body, action };
+  const { data: existingPost, error: existingError } = await context.supabase
+      .from("recruiting_posts")
+      .select("id, visibility, player_id, team_id, target_team_id, mode, scheduled_date, scheduled_time, ranked, official, side_capacity, host_join_mode, host_side, player_ids, referee_id, room_state, age_restriction, allowed_age_groups")
+      .eq("id", post.id)
+      .maybeSingle();
+
+  if (existingError) throw existingError;
+  if (!canSyncRecruitingAction(context.profileId, existingPost, post, action)) {
+    reject(403, "recruiting_sync_permission_denied");
+  }
+  validateLockedRecruitingCore(context.profileId, existingPost, post, actionBody);
+  await validateRefereeAction(context.supabase, context.profileId, existingPost, post, actionBody);
+  await validateAgeEligibility(context.supabase, context.profileId, existingPost, post, actionBody);
+
+  const postRow = toRecruitingPostRow(post);
+  const applicationRows = toRecruitingApplicationRows(post);
+  const notificationRows = toNotificationRows(notifications, context.profileId);
+
+  const { error: postError } = await context.supabase
+      .from("recruiting_posts")
+      .upsert(postRow, { onConflict: "id" });
+  if (postError) throw postError;
+
+  const { error: deleteError } = await context.supabase
+      .from("recruiting_applications")
+      .delete()
+      .eq("post_id", post.id);
+  if (deleteError) throw deleteError;
+
+  if (applicationRows.length) {
+    const { error: appError } = await context.supabase
+        .from("recruiting_applications")
+        .upsert(applicationRows, { onConflict: "post_id,player_id,kind" });
+    if (appError) throw appError;
+  }
+
+  if (notificationRows.length) {
+    const { error: notificationError } = await context.supabase
+        .from("notifications")
+        .upsert(notificationRows, { onConflict: "id" });
+    if (notificationError) throw notificationError;
+  }
+
+  return { ok: true, post, postId: post.id, applicationCount: applicationRows.length, notificationCount: notificationRows.length };
+}
+
 export default async function handler(request, response) {
   if (request.method !== "POST") {
     response.setHeader("Allow", "POST");
@@ -418,60 +475,35 @@ export default async function handler(request, response) {
 
   try {
     const body = await readJsonBody(request);
-    const post = body.post && typeof body.post === "object" ? body.post : null;
-    const action = body.action ? String(body.action) : "sync";
-    if (!post?.id) {
-      sendJson(response, 400, { error: "missing_recruiting_post" });
-      return;
-    }
-    validateRecruitingPostShape(post);
-
     const context = await getAuthenticatedContext(request);
-    const { data: existingPost, error: existingError } = await context.supabase
-      .from("recruiting_posts")
-      .select("id, visibility, player_id, team_id, target_team_id, mode, scheduled_date, scheduled_time, ranked, official, side_capacity, host_join_mode, host_side, player_ids, referee_id, room_state, age_restriction, allowed_age_groups")
-      .eq("id", post.id)
-      .maybeSingle();
+    const operation = getOperation(body, body.action ? String(body.action) : "sync");
+    let post = body.post && typeof body.post === "object" ? body.post : null;
+    let notifications = body.notifications ?? [];
+    let action = body.action ? String(body.action) : "sync";
+    let createdMatch = null;
 
-    if (existingError) throw existingError;
-    if (!canSyncRecruitingAction(context.profileId, existingPost, post, action)) {
-      sendJson(response, 403, { error: "recruiting_sync_permission_denied" });
-      return;
-    }
-    validateLockedRecruitingCore(context.profileId, existingPost, post, body);
-    await validateRefereeAction(context.supabase, context.profileId, existingPost, post, body);
-    await validateAgeEligibility(context.supabase, context.profileId, existingPost, post, body);
-
-    const postRow = toRecruitingPostRow(post);
-    const applicationRows = toRecruitingApplicationRows(post);
-    const notificationRows = toNotificationRows(body.notifications, context.profileId);
-
-    const { error: postError } = await context.supabase
-      .from("recruiting_posts")
-      .upsert(postRow, { onConflict: "id" });
-    if (postError) throw postError;
-
-    const { error: deleteError } = await context.supabase
-      .from("recruiting_applications")
-      .delete()
-      .eq("post_id", post.id);
-    if (deleteError) throw deleteError;
-
-    if (applicationRows.length) {
-      const { error: appError } = await context.supabase
-        .from("recruiting_applications")
-        .upsert(applicationRows, { onConflict: "post_id,player_id,kind" });
-      if (appError) throw appError;
+    if (operation) {
+      const state = await loadAuthoritativeState(context);
+      const result = applyAuthoritativeRecruitingOperation(state, operation);
+      post = result.post;
+      createdMatch = result.createdMatch;
+      notifications = result.notifications;
+      action = operation.action;
     }
 
-    if (notificationRows.length) {
-      const { error: notificationError } = await context.supabase
-        .from("notifications")
-        .upsert(notificationRows, { onConflict: "id" });
-      if (notificationError) throw notificationError;
+    const result = await persistRecruitingPostSnapshot(context, { post, notifications, action, body: { ...body, ...(operation ?? {}) } });
+    if (createdMatch) {
+      const matchResult = await persistMatchSnapshot(context, {
+        match: createdMatch,
+        notifications,
+        action: "confirmRecruitingMatch",
+        body: { ...body, ...(operation ?? {}) },
+      });
+      result.createdMatch = matchResult.match;
+      result.matchId = matchResult.matchId;
     }
 
-    sendJson(response, 200, { ok: true, postId: post.id, applicationCount: applicationRows.length, notificationCount: notificationRows.length });
+    sendJson(response, 200, result);
   } catch (error) {
     console.error("Recruiting post sync failed.", error);
     sendJson(response, error.statusCode || 500, { error: error.message || "recruiting_post_sync_failed" });
