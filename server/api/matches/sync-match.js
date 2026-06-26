@@ -4,6 +4,13 @@ function toArray(value) {
   return Array.isArray(value) ? value.filter(Boolean) : [];
 }
 
+const PLAYER_STAT_FIELDS = ["points", "rebounds", "assists", "steals", "blocks", "fouls"];
+
+function toFiniteNumber(value, fallback = 0) {
+  const number = Number(value ?? fallback);
+  return Number.isFinite(number) ? number : fallback;
+}
+
 function toDbTime(value) {
   return value ? String(value).slice(0, 5) : null;
 }
@@ -241,6 +248,39 @@ function sameOrderedIds(left = [], right = []) {
   return left.every((id, index) => id === right[index]);
 }
 
+function sortPlainObject(value) {
+  if (Array.isArray(value)) return value.map(sortPlainObject);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortPlainObject(value[key])]));
+}
+
+function normalizePlayerStats(stats = {}) {
+  return Object.fromEntries(Object.entries(stats ?? {})
+    .filter(([userId]) => Boolean(userId))
+    .map(([userId, stat]) => [
+      userId,
+      Object.fromEntries(PLAYER_STAT_FIELDS.map((field) => [field, toFiniteNumber(stat?.[field])])),
+    ]));
+}
+
+function normalizeStatRows(rows = []) {
+  return Object.fromEntries(toArray(rows)
+    .filter((row) => Boolean(row.user_id))
+    .map((row) => [
+      row.user_id,
+      Object.fromEntries(PLAYER_STAT_FIELDS.map((field) => [field, toFiniteNumber(row[field])])),
+    ]));
+}
+
+function normalizeResultSnapshot(result = null, statRows = []) {
+  if (!result) return null;
+  return sortPlainObject({
+    scoreA: toFiniteNumber(result.score_a ?? result.scoreA),
+    scoreB: toFiniteNumber(result.score_b ?? result.scoreB),
+    playerStats: result.playerStats ? normalizePlayerStats(result.playerStats) : normalizeStatRows(statRows),
+  });
+}
+
 function getStatRecorderIds(match = {}) {
   const recorders = match.statRecorders ?? match.rules?.statRecorders ?? {};
   return Object.values(recorders).flatMap((value) => Array.isArray(value) ? value : [value]).filter(Boolean);
@@ -392,6 +432,16 @@ function validateLockedMatchCore(existingMatch, existingPlayers, nextMatch, acti
   }
 }
 
+function validateParticipantResultUnchanged(action, existingResult, existingStats, nextMatch) {
+  if (!PARTICIPANT_MATCH_ACTIONS.has(action)) return;
+  const existingSnapshot = normalizeResultSnapshot(existingResult, existingStats);
+  const nextSnapshot = normalizeResultSnapshot(nextMatch.result);
+  if (!existingSnapshot && !nextSnapshot) return;
+  if (JSON.stringify(existingSnapshot) !== JSON.stringify(nextSnapshot)) {
+    reject(403, "participant_cannot_change_result");
+  }
+}
+
 async function deleteMatchChildren(supabase, table, matchId) {
   const { error } = await supabase.from(table).delete().eq("match_id", matchId);
   if (error) throw error;
@@ -434,11 +484,25 @@ export default async function handler(request, response) {
       .eq("match_id", match.id);
     if (playerError) throw playerError;
 
+    const { data: existingResult, error: resultError } = await context.supabase
+      .from("match_results")
+      .select("score_a, score_b")
+      .eq("match_id", match.id)
+      .maybeSingle();
+    if (resultError) throw resultError;
+
+    const { data: existingStats, error: statError } = await context.supabase
+      .from("player_match_stats")
+      .select("user_id, points, rebounds, assists, steals, blocks, fouls")
+      .eq("match_id", match.id);
+    if (statError) throw statError;
+
     if (!canSyncMatchAction(context.profileId, existingMatch, existingPlayers, match, action)) {
       sendJson(response, 403, { error: "match_sync_permission_denied" });
       return;
     }
     validateLockedMatchCore(existingMatch, existingPlayers, match, action);
+    validateParticipantResultUnchanged(action, existingResult, existingStats, match);
     await validateRefereeEligibility(context.supabase, existingMatch, match, action);
 
     const matchRow = toMatchRow(match, context.profileId);
