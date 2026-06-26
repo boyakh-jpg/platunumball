@@ -36,7 +36,7 @@ export function installRemoteAssetVariables() {
   --bg-ball: ${cssUrl("/assets/rankball-ball-night.webp")};
 }
 
-[data-theme="light"] {
+html[data-theme="light"] {
   --bg-court: ${cssUrl("/assets/rankball-court-hero-day.webp")};
   --bg-action: ${cssUrl("/assets/main-day.webp")};
   --bg-profile: ${cssUrl("/assets/rankball-action-day.webp")};

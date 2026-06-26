@@ -1571,6 +1571,25 @@ function canShowRecruitingQueuePost(post, { roomScope, currentUserId, myTeamIds,
   return false;
 }
 
+function normalizeRegionText(value = "") {
+  return String(value || "").replace(/\s+/g, "").toLowerCase();
+}
+
+function stripRegionSuffix(value = "") {
+  return normalizeRegionText(value).replace(/[시군구]$/u, "");
+}
+
+function isLocalRecruitingPost(post = {}, user = {}) {
+  const postRegion = normalizeRegionText(post.region);
+  if (!postRegion) return false;
+  const aliases = [
+    user.region,
+    user.regionDistrict,
+    stripRegionSuffix(user.regionDistrict),
+  ].map(normalizeRegionText).filter(Boolean);
+  return aliases.some((alias) => postRegion === alias || postRegion.includes(alias) || alias.includes(postRegion));
+}
+
 function SourceMatchRecordSummary({ match, userById }) {
   if (!match?.result) return null;
   const result = match.disputeDraftResult ?? match.result;
@@ -2965,19 +2984,19 @@ export default function Recruiting({ app }) {
       }))
       .filter((post) => {
         const invited = hasPendingRecruitingInvitation(post, app.currentUser.id);
-        return invited || scope !== "local" || post.region === app.currentUser.region || isNationalRecruitingPost(post, app.state);
+        return invited || scope !== "local" || isLocalRecruitingPost(post, app.currentUser) || isNationalRecruitingPost(post, app.state);
       })
       .filter((post) => queue === "all" || (queue === "ranked" ? post.ranked !== false : post.ranked === false))
       .filter((post) => modeFilter === "all" || post.mode === modeFilter)
       .filter((post) => roomScope !== "created" || getRecruitingRoomOwnerId(post) === app.currentUser.id)
       .filter((post) => roomScope !== "joined" || (getRecruitingRoomOwnerId(post) !== app.currentUser.id && isRecruitingPostForUser(post, app.currentUser.id, myTeamIds)))
       .filter((post) => roomScope !== "invited" || hasPendingRecruitingInvitation(post, app.currentUser.id));
-  }, [app.currentUser.id, app.currentUser.region, app.state, modeFilter, myTeamIds, queue, roomScope, scope, targetPostId]);
+  }, [app.currentUser, app.currentUser.id, app.state, modeFilter, myTeamIds, queue, roomScope, scope, targetPostId]);
 
   const posts = useMemo(() => {
     return scopedPosts.sort((a, b) => {
-      const aLocal = Number(a.region === app.currentUser.region);
-      const bLocal = Number(b.region === app.currentUser.region);
+      const aLocal = Number(isLocalRecruitingPost(a, app.currentUser));
+      const bLocal = Number(isLocalRecruitingPost(b, app.currentUser));
       const aMine = Number(isRecruitingPostForUser(a, app.currentUser.id, myTeamIds));
       const bMine = Number(isRecruitingPostForUser(b, app.currentUser.id, myTeamIds));
       const aNational = Number(isNationalRecruitingPost(a, app.state));
@@ -2986,7 +3005,7 @@ export default function Recruiting({ app }) {
       const bInstant = Number(isInstantRoom(b));
       return bMine - aMine || bInstant - aInstant || bLocal - aLocal || bNational - aNational || new Date(b.createdAt) - new Date(a.createdAt);
     });
-  }, [app.currentUser.id, app.currentUser.region, app.state, myTeamIds, scopedPosts]);
+  }, [app.currentUser, app.currentUser.id, app.state, myTeamIds, scopedPosts]);
 
   const selectedPost = selectedPostId
     ? app.state.recruitingPosts.find((post) => post.id === selectedPostId)
