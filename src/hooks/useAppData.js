@@ -283,6 +283,7 @@ export function useAppData(authUser = null) {
   }, []);
   const [profileBindings, setProfileBindings] = useState(() => readProfileBindings());
   const [adminContext, setAdminContext] = useState(EMPTY_ADMIN_CONTEXT);
+  const [remoteReady, setRemoteReady] = useState(!isSupabaseConfigured);
   const adminContextRef = useRef(EMPTY_ADMIN_CONTEXT);
   const remoteReadyRef = useRef(!isSupabaseConfigured);
   const syncedDiscordDeliveryIdsRef = useRef(new Set());
@@ -317,9 +318,15 @@ export function useAppData(authUser = null) {
   }, []);
 
   useEffect(() => {
-    if (!isSupabaseConfigured || !authUserId) return undefined;
+    if (!isSupabaseConfigured || !authUserId) {
+      remoteReadyRef.current = !isSupabaseConfigured;
+      setRemoteReady(!isSupabaseConfigured);
+      return undefined;
+    }
 
     let mounted = true;
+    remoteReadyRef.current = false;
+    setRemoteReady(false);
     loadRemoteState(authUserId, authEmail)
       .then((remoteState) => {
         if (!mounted) return;
@@ -328,10 +335,12 @@ export function useAppData(authUser = null) {
           setState((prev) => withServerAdminContext(preserveLocalDiscordState(prev, maintainedState), adminContextRef.current));
         }
         remoteReadyRef.current = true;
+        setRemoteReady(true);
       })
       .catch((error) => {
         console.warn("Supabase hydration failed. Remote state remains empty.", error.message);
         remoteReadyRef.current = true;
+        if (mounted) setRemoteReady(true);
       });
 
     const unsubscribe = subscribeRemoteState((remoteState) => {
@@ -1013,5 +1022,5 @@ export function useAppData(authUser = null) {
   );
 
   const safeCurrentUserId = currentUserId ?? currentUser?.id ?? "";
-  return { state: { ...state, currentUserId: safeCurrentUserId }, currentUser, currentUserId: safeCurrentUserId, profileBound: true, profileLocked, adminContext, rankings, actions };
+  return { state: { ...state, currentUserId: safeCurrentUserId }, currentUser, currentUserId: safeCurrentUserId, profileBound: true, profileLocked, remoteReady, adminContext, rankings, actions };
 }

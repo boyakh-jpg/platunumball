@@ -98,6 +98,7 @@ UI/CSS/반응형/라이트·다크 세부 기준은 `docs/design-system.md`를 �
 5. 닉네임은 변경 가능하지만 `nameUpdatedAt` 기준 월 1회만 허용한다.
 6. 가입 해시태그는 닉네임/email/user id로 추천 생성하지 않고 사용자가 직접 입력해야 한다.
 7. `#` 기호는 고정 prefix이며 저장값에는 항상 포함한다.
+8. Supabase 로그인 직후 원격 프로필 hydration이 끝나기 전에는 shell profile만 보고 `/app/signup`으로 redirect하지 않는다.
 
 ## 데이터 축
 

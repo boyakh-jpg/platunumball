@@ -33,14 +33,17 @@ export default function App() {
   const app = useAppData(auth.user ?? null);
   const location = useLocation();
   const theme = app.state.settings?.theme === "light" ? "light" : "dark";
+  const profileGateReady = Boolean(!auth.user || app.remoteReady);
   const ageRecheckRequired = Boolean(
     auth.user &&
+      profileGateReady &&
       location.pathname.startsWith("/app") &&
       location.pathname !== "/app/signup" &&
       shouldRecheckAgeGroup(app.currentUser),
   );
   const profileSetupRequired = Boolean(
     auth.user &&
+      profileGateReady &&
       location.pathname.startsWith("/app") &&
       location.pathname !== "/app/signup" &&
       shouldSetupProfile(app.currentUser),
