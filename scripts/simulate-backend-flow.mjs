@@ -123,7 +123,7 @@ async function callHandler(route, handler, bearerToken, body = {}) {
       },
       body: JSON.stringify(body),
     });
-    const text = await response.text();
+    const text = await readResponseTextWithTimeout(response, route);
     const payload = text ? JSON.parse(text) : null;
     if (!response.ok) {
       throw new Error(`${route} failed ${response.status}: ${text}`);
@@ -150,6 +150,14 @@ async function fetchWithTimeout(resource, options = {}) {
   }
 }
 
+async function readResponseTextWithTimeout(response, label = "response") {
+  let timeoutId;
+  const timeout = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(`${label}_body_timeout`)), requestTimeoutMs);
+  });
+  return Promise.race([response.text(), timeout]).finally(() => clearTimeout(timeoutId));
+}
+
 async function assertRemoteSchemaHealth() {
   if (!usesRemoteApi || !schemaHealthSecret) return { skipped: true };
   const response = await fetchWithTimeout(`${remoteBaseUrl}/api/system/schema-health`, {
@@ -160,7 +168,7 @@ async function assertRemoteSchemaHealth() {
     },
     body: JSON.stringify({ ensureTestActors: true }),
   });
-  const text = await response.text();
+  const text = await readResponseTextWithTimeout(response, "schema_health");
   const payload = text ? JSON.parse(text) : null;
   if (!response.ok) {
     throw new Error(`/api/system/schema-health failed ${response.status}: ${text}`);
@@ -251,7 +259,7 @@ async function cleanup() {
       },
       body: "{}",
     });
-    const text = await response.text();
+    const text = await readResponseTextWithTimeout(response, "cleanup_sim");
     if (!response.ok) return { skipped: true, reason: `remote_cleanup_failed:${response.status}:${text}` };
     return text ? JSON.parse(text) : { ok: true };
   }
@@ -414,6 +422,15 @@ async function runOneOnOneScenario({
       matchId: ids.matchId,
       sideName: "teamB",
       playerId: opponentId,
+    }));
+  }
+
+  if (refereeWanted) {
+    await step(`${ids.label}:checkInMatchPlayer:teamA`, () => syncMatchAs(operatorLogin, {
+      action: "checkInMatchPlayer",
+      matchId: ids.matchId,
+      sideName: "teamA",
+      playerId: hostId,
     }));
   }
 

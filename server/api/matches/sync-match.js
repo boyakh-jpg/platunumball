@@ -11,6 +11,10 @@ function toArray(value) {
 }
 
 const PLAYER_STAT_FIELDS = ["points", "rebounds", "assists", "steals", "blocks", "fouls"];
+const configuredDiscordQueueTimeoutMs = Number(process.env.DISCORD_QUEUE_TIMEOUT_MS || 2500);
+const DISCORD_QUEUE_TIMEOUT_MS = Number.isFinite(configuredDiscordQueueTimeoutMs) && configuredDiscordQueueTimeoutMs > 0
+  ? configuredDiscordQueueTimeoutMs
+  : 2500;
 const MATCH_REMINDER_OFFSETS = [
   {
     suffix: "24h",
@@ -45,6 +49,14 @@ function reject(statusCode, message) {
   const error = new Error(message);
   error.statusCode = statusCode;
   throw error;
+}
+
+function withTimeout(promise, timeoutMs, message) {
+  let timeoutId;
+  const timeout = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(message)), timeoutMs);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timeoutId));
 }
 
 function getTimestamp(item = {}) {
@@ -887,7 +899,11 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
   let discordDeliveryCount = 0;
   let discordDeliveryError = null;
   try {
-    discordDeliveryCount = await queueMatchDiscordDeliveries(context.supabase, match, action);
+    discordDeliveryCount = await withTimeout(
+      queueMatchDiscordDeliveries(context.supabase, match, action),
+      DISCORD_QUEUE_TIMEOUT_MS,
+      "discord_match_delivery_timeout",
+    );
   } catch (deliveryError) {
     discordDeliveryError = deliveryError.message || "discord_match_delivery_failed";
     console.error("Match Discord delivery queue failed.", deliveryError);
