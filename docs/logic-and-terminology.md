@@ -1277,7 +1277,7 @@ flowchart TD
 ## 2026-06-27 recruiting list pagination
 
 1. Recruiting list reads use `/api/recruiting/list` for additional pages.
-2. Recruiting first client load and additional page load use `REMOTE_CLIENT_RECRUITING_LIMIT = 80`.
+2. Recruiting first client load and additional page load use `REMOTE_CLIENT_RECRUITING_LIMIT = 50`.
 3. Additional recruiting pages must merge by id and keep server rows as source of truth.
 4. List pagination must not load match result/stat child tables.
 5. Recruiting scope state loads must fetch only related profiles, teams, team members, and courts for loaded recruiting rows.
@@ -1285,7 +1285,7 @@ flowchart TD
 ## 2026-06-27 match list pagination
 
 1. Match list additional pages use `/api/matches/list`.
-2. Match additional page load uses `REMOTE_CLIENT_MATCH_LIMIT = 80`.
+2. Match additional page load uses `REMOTE_CLIENT_MATCH_LIMIT = 50`.
 3. Match list scope must not return recruiting posts or tournaments.
 4. Match scope state loads must fetch only related profiles, teams, team members, courts, and match child rows for loaded matches.
 5. `/api/matches/list` is list-only and skips match result/stat/agreement/approval/dispute child rows.
