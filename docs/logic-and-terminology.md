@@ -1105,6 +1105,13 @@ flowchart TD
 3. rollback은 사용자에게 `서버 저장 실패` 알림을 남긴다.
 4. 이 단계는 프론트 optimistic rollback이다. 최종 완료 기준은 match/recruiting/team write를 DB transaction/RPC 단위로 옮기는 것이다.
 
+## 2026-06-26 recruiting age eligibility server guard
+
+1. Recruiting create/join/team party join/player invite/invite accept must be rejected by the server when any player is outside the room `allowedAgeGroups`.
+2. Referee join/invite accept is not age-group gated because referee eligibility is handled by referee appointment rules.
+3. Existing DB room age rules are authoritative over client snapshot rules for existing recruiting posts.
+4. This is a server sync guard, not full authoritative match/tournament eligibility migration.
+
 ## 2026-06-26 Supabase test seed
 
 1. `npm run seed:supabase` gives demo profiles `testLoginId` and stores them in `profiles.test_login_id`.

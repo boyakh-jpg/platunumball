@@ -243,7 +243,7 @@ Scenario map:
 | `age_fraud_match_dispute` | disputed match, `r_age_fraud_match_dispute` | 경기별 큐에 이의/신고 같이 노출 |
 | `admin_resolved_age_fraud` | `aa_admin_resolved_age_fraud`, `n_admin_resolved_age_fraud` | 신고자 피드백 알림과 audit row 존재 |
 | `low_trust_after_confirmed_fraud` | `u35`, `ad_low_trust_after_confirmed_fraud` | 신뢰도 낮은 유저와 제재 row 존재 |
-| `blocked_user_wrong_division` | none | backend gap: 참여 시점 연령 자격 차단 미구현 |
+| `blocked_user_wrong_division` | recruiting server action | join/invite accept sync rejects users outside `allowedAgeGroups` |
 
 Backend gaps:
 
@@ -288,7 +288,7 @@ Remaining:
 - Finish authoritative RPC/server actions for recruiting create/join/invite/accept/ready/confirm, match attendance/start/record/end/dispute/approve, team membership, and tournament bracket generation.
 - Make frontend repository a thin server caller after the authoritative RPCs are ready.
 - Remove production reliance on localStorage state and mock fallback completely.
-- Add server-side participant eligibility checks for age/division on join and invite accept.
+- Add broader server-side eligibility checks for tournament brackets and match roster edits.
 - Add approved court reporting, hidden/disabled moderation state, and court review moderation.
 - Add Supabase Auth/test seed and cleanup scripts for realistic multi-user simulations.
 

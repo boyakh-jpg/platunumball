@@ -129,6 +129,97 @@ function participantIdsFromPost(post = {}) {
   ].filter(Boolean));
 }
 
+const AGE_GROUP_IDS = ["junior", "rising", "open"];
+
+function getAgeGroupByBirthYear(birthYear, now = new Date()) {
+  const year = Number(birthYear);
+  if (!Number.isInteger(year) || year < 1900 || year > now.getFullYear()) return null;
+  const age = now.getFullYear() - year;
+  if (age <= 12) return "junior";
+  if (age <= 19) return "rising";
+  return "open";
+}
+
+function normalizeAllowedAgeGroups(post = {}) {
+  const explicitGroups = toArray(post.allowedAgeGroups ?? post.allowed_age_groups)
+    .map((group) => String(group).toLowerCase())
+    .filter((group) => AGE_GROUP_IDS.includes(group));
+  if (explicitGroups.length) return [...new Set(explicitGroups)];
+
+  const restriction = String(post.ageRestriction ?? post.age_restriction ?? "any").toLowerCase();
+  if (!restriction || restriction === "any") return [];
+  return [...new Set(restriction.split("_").filter((group) => AGE_GROUP_IDS.includes(group)))];
+}
+
+function getPlayerEligibilityIds(post = {}) {
+  const roomState = normalizeRoomState(post.roomState, post);
+  return [...new Set([
+    post.ownerId,
+    roomState.ownerId,
+    post.playerId,
+    ...(toArray(post.playerIds)),
+    ...(toArray(post.applicants).flatMap((application) => [
+      application.playerId,
+      ...(toArray(application.playerIds)),
+      ...(toArray(application.reservePlayerIds)),
+    ])),
+    ...(Object.values(roomState.partyReserves ?? {}).flatMap(toArray)),
+    ...(toArray(roomState.invitations)
+      .filter((invitation) => invitation.role !== "referee")
+      .map((invitation) => invitation.targetUserId)),
+  ].filter(Boolean))];
+}
+
+const AGE_ELIGIBILITY_ACTIONS = new Set([
+  "createRecruitingPost",
+  "interestRecruitingPost",
+  "joinRecruitingSideParty",
+  "acceptRecruitingInvitation",
+  "inviteRecruitingPlayers",
+]);
+
+function shouldValidateAgeEligibility(action, profileId, existingPost, body = {}) {
+  if (!AGE_ELIGIBILITY_ACTIONS.has(action)) return false;
+  if (action === "interestRecruitingPost" && body.joinMode === "referee") return false;
+  if (action === "acceptRecruitingInvitation" && hasRefereeInvitationFor(profileId, existingPost)) return false;
+  return true;
+}
+
+async function validateAgeEligibility(supabase, profileId, existingPost, nextPost, body = {}) {
+  const action = body.action ?? "sync";
+  if (!shouldValidateAgeEligibility(action, profileId, existingPost, body)) return;
+
+  const ruleSource = existingPost
+    ? {
+        allowed_age_groups: existingPost.allowed_age_groups,
+        age_restriction: existingPost.age_restriction,
+      }
+    : nextPost;
+  const allowedGroups = normalizeAllowedAgeGroups(ruleSource);
+  if (!allowedGroups.length || allowedGroups.length >= AGE_GROUP_IDS.length) return;
+
+  const userIds = getPlayerEligibilityIds(nextPost);
+  if (!userIds.length) return;
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, birth_year, age_group")
+    .in("id", userIds);
+  if (error) throw error;
+
+  const profilesById = new Map(toArray(data).map((profile) => [profile.id, profile]));
+  const blockedUserId = userIds.find((userId) => {
+    const profile = profilesById.get(userId);
+    if (!profile) return true;
+    const ageGroup = AGE_GROUP_IDS.includes(profile.age_group)
+      ? profile.age_group
+      : getAgeGroupByBirthYear(profile.birth_year) ?? "open";
+    return !allowedGroups.includes(ageGroup);
+  });
+
+  if (blockedUserId) reject(403, "age_group_not_allowed");
+}
+
 function isOwner(profileId, post = {}) {
   const roomState = normalizeRoomState(post.roomState ?? post.room_state, post);
   return Boolean(profileId && (profileId === post.ownerId || profileId === roomState.ownerId || profileId === post.playerId || profileId === post.player_id));
@@ -289,7 +380,7 @@ export default async function handler(request, response) {
     const context = await getAuthenticatedContext(request);
     const { data: existingPost, error: existingError } = await context.supabase
       .from("recruiting_posts")
-      .select("id, visibility, player_id, player_ids, referee_id, room_state")
+      .select("id, visibility, player_id, player_ids, referee_id, room_state, age_restriction, allowed_age_groups")
       .eq("id", post.id)
       .maybeSingle();
 
@@ -299,6 +390,7 @@ export default async function handler(request, response) {
       return;
     }
     await validateRefereeAction(context.supabase, context.profileId, existingPost, post, body);
+    await validateAgeEligibility(context.supabase, context.profileId, existingPost, post, body);
 
     const postRow = toRecruitingPostRow(post);
     const applicationRows = toRecruitingApplicationRows(post);
