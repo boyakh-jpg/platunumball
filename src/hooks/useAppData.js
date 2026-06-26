@@ -619,15 +619,12 @@ export function useAppData(authUser = null) {
     setMatchPagination((prev) => ({ ...prev, loading: true, error: "" }));
     try {
       const result = await postServerAction(
-        "/api/state/load",
+        "/api/matches/list",
         {
-          scope: "matches",
           authUserId,
           authEmail,
-          matchLimit: REMOTE_CLIENT_MATCH_LIMIT,
-          matchUpdatedBefore: cursor,
-          recruitingLimit: 0,
-          tournamentLimit: 0,
+          limit: REMOTE_CLIENT_MATCH_LIMIT,
+          cursor,
         },
         { allowWhenDisabled: true },
       );

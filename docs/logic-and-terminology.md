@@ -1281,3 +1281,10 @@ flowchart TD
 3. Additional recruiting pages must merge by id and keep server rows as source of truth.
 4. List pagination must not load match result/stat child tables.
 5. Recruiting scope state loads must fetch only related profiles, teams, team members, and courts for loaded recruiting rows.
+
+## 2026-06-27 match list pagination
+
+1. Match list additional pages use `/api/matches/list`.
+2. Match additional page load uses `REMOTE_CLIENT_MATCH_LIMIT = 80`.
+3. Match list scope must not return recruiting posts or tournaments.
+4. Match scope state loads must fetch only related profiles, teams, team members, courts, and match child rows for loaded matches.
