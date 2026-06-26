@@ -1579,14 +1579,27 @@ function stripRegionSuffix(value = "") {
   return normalizeRegionText(value).replace(/[시군구]$/u, "");
 }
 
+function getRegionAliases(user = {}) {
+  const region = String(user.region ?? "");
+  const regionSido = String(user.regionSido ?? "");
+  const regionDistrict = String(user.regionDistrict ?? "");
+  const regionParts = region.split(/\s+/).filter(Boolean);
+  const districtFromRegion = regionParts.at(-1) ?? "";
+  return [
+    region,
+    regionDistrict,
+    stripRegionSuffix(regionDistrict),
+    districtFromRegion,
+    stripRegionSuffix(districtFromRegion),
+    regionSido && regionDistrict ? `${regionSido}${regionDistrict}` : "",
+    regionSido && districtFromRegion ? `${regionSido}${districtFromRegion}` : "",
+  ].map(normalizeRegionText).filter(Boolean);
+}
+
 function isLocalRecruitingPost(post = {}, user = {}) {
   const postRegion = normalizeRegionText(post.region);
   if (!postRegion) return false;
-  const aliases = [
-    user.region,
-    user.regionDistrict,
-    stripRegionSuffix(user.regionDistrict),
-  ].map(normalizeRegionText).filter(Boolean);
+  const aliases = getRegionAliases(user);
   return aliases.some((alias) => postRegion === alias || postRegion.includes(alias) || alias.includes(postRegion));
 }
 

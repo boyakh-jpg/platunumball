@@ -23,6 +23,14 @@ export async function getClientActionAccessToken() {
   }
 }
 
+export async function getServerActionAvailability(path = "") {
+  if (!isSupabaseConfigured) return { ok: false, error: "supabase_not_configured", path };
+  if (!isServerActionsEnabled) return { ok: false, error: "server_actions_disabled", path };
+  const accessToken = await getClientActionAccessToken();
+  if (!accessToken) return { ok: false, error: "server_action_missing_access_token", path };
+  return { ok: true, accessToken, path };
+}
+
 export async function postServerAction(path, payload = {}, options = {}) {
   if (!isSupabaseConfigured) return false;
   if (!options.allowWhenDisabled && !isServerActionsEnabled) {

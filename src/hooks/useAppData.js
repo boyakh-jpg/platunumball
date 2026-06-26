@@ -86,7 +86,7 @@ import {
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import { readProfileBindings, writeProfileBindings } from "../lib/storage.js";
 import { findDiscordConnectionOwner, getDiscordConnectionUserId } from "../lib/discord.js";
-import { postServerAction } from "../lib/serverActions.js";
+import { getServerActionAvailability, postServerAction } from "../lib/serverActions.js";
 
 function sortByRating(items, selector) {
   return [...items].sort((a, b) => selector(b) - selector(a));
@@ -107,6 +107,11 @@ function makeClientNotificationId(prefix = "n") {
 
 function getServerActionErrorText(error = {}) {
   return String(error.details?.reason || error.code || error.message || "server_action_failed");
+}
+
+function getNewItems(before = [], after = []) {
+  const beforeIds = new Set((before ?? []).map((item) => item?.id).filter(Boolean));
+  return (after ?? []).filter((item) => item?.id && !beforeIds.has(item.id));
 }
 
 const SERVER_OPERATION_ACTIONS = new Set([
@@ -478,6 +483,20 @@ export function useAppData(authUser = null) {
     pushLocalWarning("서버 데이터 로드 중", `${label}은 서버 데이터 로드가 끝난 뒤 다시 시도하세요. 새로고침 후 사라지는 로컬 임시 데이터를 만들지 않기 위해 차단했습니다.`);
     return false;
   }, [pushLocalWarning]);
+  const ensureServerActionAvailable = useCallback(async (path, label = "저장") => {
+    if (!isSupabaseConfigured) return true;
+    const availability = await getServerActionAvailability(path);
+    if (availability.ok) return true;
+    const errorCode = availability.error || "server_action_unavailable";
+    console.warn(`Server action unavailable before optimistic update: ${path}`, {
+      reason: errorCode,
+      path,
+    });
+    pushLocalWarning("서버 저장 실패", `${label}이 서버에 저장되지 않았습니다. 이유: ${errorCode}`, {
+      payload: { path, error: errorCode },
+    });
+    return { ok: false, error: errorCode, path };
+  }, [pushLocalWarning]);
   const runServerAction = useCallback((path, payload) => {
     return postServerAction(path, payload).then((result) => {
       if (!result) throw new Error("server_action_unavailable");
@@ -694,7 +713,9 @@ export function useAppData(authUser = null) {
           return result;
         });
       };
-      const applyRecruitingPostMutation = (postId, reducer, meta = {}) => {
+      const applyRecruitingPostMutation = async (postId, reducer, meta = {}) => {
+        const serverReady = await ensureServerActionAvailable("/api/recruiting/sync-post", "방 변경");
+        if (serverReady !== true) return serverReady;
         if (!ensureRemoteReady("방 변경")) return;
         let rollbackState = null;
         let syncedPost = null;
@@ -710,7 +731,9 @@ export function useAppData(authUser = null) {
         });
         if (syncedPost) rollbackIfServerFailed(syncRecruitingPostServer(syncedPost, syncedNotifications, { ...meta, postId }), rollbackState, "방 변경", { action: meta.action, postId });
       };
-      const applyMatchMutation = (matchId, reducer, meta = {}) => {
+      const applyMatchMutation = async (matchId, reducer, meta = {}) => {
+        const serverReady = await ensureServerActionAvailable("/api/matches/sync-match", "경기 변경");
+        if (serverReady !== true) return serverReady;
         if (!ensureRemoteReady("경기 변경")) return;
         let rollbackState = null;
         let syncedMatch = null;
@@ -726,7 +749,9 @@ export function useAppData(authUser = null) {
         });
         if (syncedMatch) rollbackIfServerFailed(syncMatchServer(syncedMatch, syncedNotifications, { ...meta, matchId }), rollbackState, "경기 변경", { action: meta.action, matchId });
       };
-      const applyTeamMutation = (teamId, reducer) => {
+      const applyTeamMutation = async (teamId, reducer) => {
+        const serverReady = await ensureServerActionAvailable("/api/teams/sync-team", "팀 변경");
+        if (serverReady !== true) return serverReady;
         if (!ensureRemoteReady("팀 변경")) return;
         let rollbackState = null;
         let syncedTeam = null;
@@ -755,7 +780,9 @@ export function useAppData(authUser = null) {
         setState((prev) => ({ ...prev, currentUserId: userId }));
         return true;
       },
-      createMatch: (draft) => {
+      createMatch: async (draft) => {
+        const serverReady = await ensureServerActionAvailable("/api/matches/sync-match", "경기 생성");
+        if (serverReady !== true) return serverReady;
         if (!ensureRemoteReady("경기 생성")) return null;
         let rollbackState = null;
         let createdId = null;
@@ -784,7 +811,9 @@ export function useAppData(authUser = null) {
           { action: "createMatch", matchId: createdMatch.id },
         ).then((result) => (result?.ok === false ? result : createdId));
       },
-      createTournament: (draft) => {
+      createTournament: async (draft) => {
+        const serverReady = await ensureServerActionAvailable("/api/tournaments/sync-tournament", "토너먼트 생성");
+        if (serverReady !== true) return serverReady;
         if (!ensureRemoteReady("토너먼트 생성")) return Promise.resolve(null);
         let rollbackState = null;
         let createdId = null;
@@ -1083,7 +1112,9 @@ export function useAppData(authUser = null) {
         });
         if (deleted) rollbackIfServerFailed(deleteTeamServer(teamId, syncedNotifications), rollbackState, "팀 삭제", { teamId });
       },
-      createRecruitingPost: (draft) => {
+      createRecruitingPost: async (draft) => {
+        const serverReady = await ensureServerActionAvailable("/api/recruiting/sync-post", "방 생성");
+        if (serverReady !== true) return serverReady;
         if (!ensureRemoteReady("방 생성")) return Promise.resolve(null);
         let rollbackState = null;
         let createdPost = null;
@@ -1187,7 +1218,7 @@ export function useAppData(authUser = null) {
       reset: () => setState(resetState({ includeDemo: !isSupabaseConfigured, authUserId, email: authEmail })),
       });
     },
-    [authEmail, authUserId, currentUserId, deleteTeamServer, ensureRemoteReady, loadMoreMatches, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, runServerAction, serverProfileBound, submitReportServer, syncFavoriteServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncSettingsServer, syncTeamServer, syncTournamentServer],
+    [authEmail, authUserId, currentUserId, deleteTeamServer, ensureRemoteReady, ensureServerActionAvailable, loadMoreMatches, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, runServerAction, serverProfileBound, submitReportServer, syncFavoriteServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncSettingsServer, syncTeamServer, syncTournamentServer],
   );
 
   const safeCurrentUserId = currentUserId ?? currentUser?.id ?? "";

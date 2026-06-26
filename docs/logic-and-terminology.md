@@ -1064,7 +1064,7 @@ flowchart TD
 2. 테스트 계정은 `auth_user_id`에 가짜 값을 넣지 않는다.
 3. 테스트 세션 ID는 `test:rankball-001` 형식으로 만들고, 현재 프로필은 `profiles.test_login_id`로 찾는다.
 4. 테스트 계정은 backend seed 데이터 시뮬레이션용이며 실제 사용자 소유권 검증과 분리한다.
-5. Vercel 배포 도메인에서는 테스트 계정 로그인을 기본 허용하되, 숨기려면 `VITE_DEMO_LOGIN=false`가 필요하다.
+5. Vercel 배포 도메인에서는 테스트 계정 로그인을 기본 허용하지 않는다. 필요하면 `VITE_DEMO_LOGIN=true`를 명시한다.
 6. 테스트 계정 server action은 `test-token-rankball-001` 형식 bearer token을 `profiles.test_login_id`로 매핑한다.
 7. 테스트 토큰은 `VITE_DEMO_LOGIN=true` 또는 `RANKBALL_ENABLE_TEST_LOGIN=true`일 때만 서버에서 허용한다.
 8. 테스트 계정 프로필 저장은 기존 `auth_user_id`를 만들거나 바꾸지 않고 `test_login_id` row만 갱신한다.
@@ -1268,3 +1268,9 @@ flowchart TD
 1. 모집 슬롯별 최종 포지션은 `roomState.slotPositions`를 우선한다.
 2. 서버 persist 시 `recruiting_posts.position`과 `recruiting_applications.position` 컬럼도 같은 최종 포지션으로 저장한다.
 3. DB 테이블을 직접 확인해도 UI에서 보이는 슬롯 포지션과 어긋나면 안 된다.
+
+## 2026-06-27 Google write preflight
+
+1. Supabase 모드 방/경기/팀 write는 optimistic update 전에 server action 가능 여부를 확인한다.
+2. Google OAuth session access token이 없으면 로컬 화면만 먼저 바꾸지 않는다.
+3. 테스트 로그인은 localhost 기본 허용과 `VITE_DEMO_LOGIN=true` 명시 허용만 사용한다. `.vercel.app` 도메인이라는 이유만으로 허용하지 않는다.

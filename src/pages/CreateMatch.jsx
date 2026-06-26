@@ -83,6 +83,14 @@ function getActionErrorCode(result) {
   return String(result.error || result.message || "server_action_failed");
 }
 
+function getDefaultCreateTitle(mode = "5v5") {
+  return `오늘의 ${mode} 공식전`;
+}
+
+function isDefaultCreateTitle(title = "") {
+  return /^오늘의\s+(1v1|2v2|3v3|5v5)\s+공식전$/i.test(String(title).trim());
+}
+
 function formatCreateSaveError(result, fallback) {
   const errorCode = getActionErrorCode(result);
   if (!errorCode) return fallback;
@@ -107,6 +115,10 @@ function formatCreateSaveError(result, fallback) {
     reason = "로그인 계정과 연결된 프로필을 서버에서 찾지 못했습니다.";
   } else if (errorCode === "missing_bearer_token" || errorCode === "invalid_bearer_token") {
     reason = "로그인 토큰이 없거나 만료되었습니다. 다시 로그인해야 합니다.";
+  } else if (errorCode === "server_action_missing_access_token") {
+    reason = "브라우저에 Google 로그인 access token이 없어 서버 저장을 보낼 수 없습니다. 다시 로그인해야 합니다.";
+  } else if (errorCode === "server_actions_disabled") {
+    reason = "서버 저장 액션이 비활성화되어 있습니다. 배포 환경의 `VITE_ENABLE_SERVER_ACTIONS` 값을 확인해야 합니다.";
   } else if (errorCode === "age_group_not_allowed") {
     reason = "선택한 연령 제한과 참가자 연령대가 맞지 않습니다.";
   } else if (errorCode === "invalid_schedule_window") {
@@ -354,7 +366,7 @@ export default function CreateMatch({ app }) {
     mmrLimitMode: "block",
     mmrRangeMode: "narrow",
     ageRestriction: defaultAgeRestriction,
-    title: "오늘의 5v5 공식전",
+    title: getDefaultCreateTitle("5v5"),
     mode: "5v5",
     court: defaultCourt.name,
     scheduledDate: today,
@@ -1026,6 +1038,7 @@ export default function CreateMatch({ app }) {
                 const opponentPlayerIds = !isPublicRoom && isTeamRoom ? getDefaultTeamPlayerIds(selectedTeamB, nextCapacity, playerIds) : [];
                 update({
                   mode,
+                  title: isDefaultCreateTitle(draft.title) ? getDefaultCreateTitle(mode) : draft.title,
                   ...(isTeamRoom ? {
                     playerIds,
                     reservePlayerIds: getDefaultTeamReserveIds(selectedTeamA, playerIds),
