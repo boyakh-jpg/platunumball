@@ -1,4 +1,10 @@
 import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import {
+  applyAuthoritativeTournamentOperation,
+  getOperation,
+  loadAuthoritativeState,
+} from "../_authoritativeState.js";
+import { persistMatchSnapshot } from "../matches/sync-match.js";
 
 const FORMATS = new Set(["league", "tournament"]);
 const VISIBILITIES = new Set(["private", "public"]);
@@ -228,7 +234,7 @@ async function assertCanSyncTournament(context, existingTournament, tournament, 
 
   if (existingTournament.created_by === context.profileId) return;
 
-  if (action === "approveTeam" && tournament.teamIds.includes(teamId) && await isTeamCaptain(context.supabase, teamId, context.profileId)) {
+  if (["approveTeam", "approveTournamentTeam"].includes(action) && tournament.teamIds.includes(teamId) && await isTeamCaptain(context.supabase, teamId, context.profileId)) {
     return;
   }
 
@@ -280,9 +286,24 @@ export default async function handler(request, response) {
   try {
     const body = await readJsonBody(request);
     const context = await getAuthenticatedContext(request);
-    const tournament = normalizeTournament(body.tournament, context.profileId);
-    const action = String(body.action || "sync");
-    const teamId = String(body.teamId || "").trim();
+    const operation = getOperation(body, body.action ? String(body.action) : "sync");
+    let tournament = null;
+    let notifications = body.notifications ?? [];
+    let createdMatches = [];
+    let action = String(body.action || "sync");
+    let teamId = String(body.teamId || "").trim();
+
+    if (operation) {
+      const state = await loadAuthoritativeState(context);
+      const result = applyAuthoritativeTournamentOperation(state, operation);
+      tournament = normalizeTournament(result.tournament, context.profileId);
+      notifications = result.notifications;
+      createdMatches = result.createdMatches;
+      action = operation.action;
+      teamId = String(operation.teamId || teamId || "").trim();
+    } else {
+      tournament = normalizeTournament(body.tournament, context.profileId);
+    }
 
     const { data: existingTournament, error: existingError } = await context.supabase
       .from("tournaments")
@@ -298,7 +319,7 @@ export default async function handler(request, response) {
     if (existingTeamError) throw existingTeamError;
 
     await assertCanSyncTournament(context, existingTournament, tournament, action, teamId);
-    validateTeamApprovalScope(context, existingTournament, existingTeamRows, tournament, action, teamId);
+    if (!operation) validateTeamApprovalScope(context, existingTournament, existingTeamRows, tournament, action, teamId);
     await assertTeamsExist(context.supabase, tournament.teamIds);
 
     const { error: tournamentError } = await context.supabase
@@ -320,7 +341,7 @@ export default async function handler(request, response) {
       if (teamError) throw teamError;
     }
 
-    const notificationRows = toNotificationRows(body.notifications, context.profileId);
+    const notificationRows = toNotificationRows(notifications, context.profileId);
     if (notificationRows.length) {
       const { error: notificationError } = await context.supabase
         .from("notifications")
@@ -328,11 +349,16 @@ export default async function handler(request, response) {
       if (notificationError) throw notificationError;
     }
 
+    for (const match of createdMatches) {
+      await persistMatchSnapshot(context, { match, notifications: [], action: "createTournamentMatch", body: {} });
+    }
+
     sendJson(response, 200, {
       ok: true,
       tournamentId: tournament.id,
       teamCount: teamRows.length,
       notificationCount: notificationRows.length,
+      createdMatchCount: createdMatches.length,
     });
   } catch (error) {
     console.error("Tournament sync failed.", error);

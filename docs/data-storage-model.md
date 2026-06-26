@@ -282,6 +282,8 @@ Done:
 - Supabase schema/RLS hardening: `profiles.auth_user_id` uuid FK, duplicate hard failure, client write guard, admin/report/court/referee policy hardening.
 - Vercel Hobby API consolidation: one `api/index.js` function dispatches the server routes.
 - Server action paths exist for profile upsert, court request submit/approve/report, admin review, admin/referee appointment, disciplinary action, Discord DM worker, Discord delivery queue sync, reports, recruiting, matches, teams, tournaments, referee requests, favorites, notification read, court reviews.
+- Team membership save/delete now commits through `rankball_sync_team_membership()` / `rankball_delete_team()` DB RPC transactions.
+- Tournament create/approve now replays the reducer on the server and persists generated tournament matches inside `sync-tournament`.
 - Remote hydration guard blocks local room/match/team/tournament actions before backend state is ready.
 - Test account server mapping uses `profiles.test_login_id` with `test-token-rankball-###`.
 - Client `u1` owner fallback is removed. Admin menu authority now comes from server context or DB `admin_appointments`.
@@ -299,7 +301,8 @@ Remaining:
 
 - Set owner authority through `RANKBALL_OWNER_AUTH_USER_IDS`, `RANKBALL_OWNER_PROFILE_IDS`, or DB `admin_appointments`; do not depend on frontend seed IDs.
 - Keep app user identity as `profiles.id`; never expose or use Google/provider ID as the public RankBall user id.
-- Finish authoritative RPC/server actions for recruiting create/join/invite/accept/ready/confirm, match attendance/start/record/end/dispute/approve, team membership, and tournament bracket generation.
+- Finish authoritative RPC/server actions for recruiting create/join/invite/accept/ready/confirm and match attendance/start/record/end/dispute/approve.
+- Move tournament generation from server reducer replay to a DB RPC transaction if row-level lock semantics are required.
 - Make frontend repository a thin server caller after the authoritative RPCs are ready.
 - Remove production reliance on localStorage state and mock fallback completely.
 - Add broader server-side eligibility checks for tournament brackets and match roster edits.

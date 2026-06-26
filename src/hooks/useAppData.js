@@ -665,10 +665,16 @@ export function useAppData(authUser = null) {
           return next;
         });
         if (createdTournament) {
-          rollbackIfServerFailed(Promise.all([
-            syncTournamentServer(createdTournament, syncedNotifications, { action: "create" }),
-            ...createdMatches.map((match) => syncMatchServer(match, [], { action: "createTournamentMatch", tournamentId: createdTournament?.id })),
-          ]).then((results) => results.every(Boolean)), rollbackState, "토너먼트 생성", { action: "createTournament", tournamentId: createdTournament.id });
+          const preferredMatchIds = createdMatches.map((match) => match.id);
+          rollbackIfServerFailed(syncTournamentServer(createdTournament, syncedNotifications, {
+            action: "create",
+            operation: {
+              action: "createTournament",
+              draft: { ...draft, id: createdTournament.id, preferredMatchIds },
+              preferredTournamentId: createdTournament.id,
+              preferredMatchIds,
+            },
+          }), rollbackState, "토너먼트 생성", { action: "createTournament", tournamentId: createdTournament.id });
         }
         return createdId;
       },
@@ -687,10 +693,17 @@ export function useAppData(authUser = null) {
           return next;
         });
         if (syncedTournament) {
-          rollbackIfServerFailed(Promise.all([
-            syncTournamentServer(syncedTournament, syncedNotifications, { action: "approveTeam", teamId }),
-            ...createdMatches.map((match) => syncMatchServer(match, [], { action: "createTournamentMatch", tournamentId })),
-          ]).then((results) => results.every(Boolean)), rollbackState, "토너먼트 팀 승인", { action: "approveTournamentTeam", tournamentId, teamId });
+          const preferredMatchIds = createdMatches.map((match) => match.id);
+          rollbackIfServerFailed(syncTournamentServer(syncedTournament, syncedNotifications, {
+            action: "approveTeam",
+            teamId,
+            operation: {
+              action: "approveTournamentTeam",
+              tournamentId,
+              teamId,
+              preferredMatchIds,
+            },
+          }), rollbackState, "토너먼트 팀 승인", { action: "approveTournamentTeam", tournamentId, teamId });
         }
       },
       updateTournamentMatchSchedule: (tournamentId, matchId, schedule) => {

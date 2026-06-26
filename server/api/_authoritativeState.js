@@ -11,6 +11,7 @@ import {
   confirmRecruitingMatch,
   createMatch,
   createRecruitingPost,
+  createTournament,
   declineRecruitingInvitation,
   detachRecruitingPartyPlayer,
   disputeMatch,
@@ -28,6 +29,7 @@ import {
   requestMatchRefereeAbsence,
   resumeMatchApproval,
   sendRecruitingChat,
+  approveTournamentTeam,
   setMatchRoomPlayerPlacement,
   setRecruitingApplicantPlacement,
   setRecruitingApplicantReserve,
@@ -307,4 +309,41 @@ export function applyAuthoritativeMatchOperation(state, operation = {}) {
 
   const notifications = getNewItems(state.notifications ?? [], next.notifications ?? [], (notification) => notification.matchId === match.id);
   return { nextState: next, match, notifications, ratingCommit: getMatchRatingCommit(state, next, match, action) };
+}
+
+export function applyAuthoritativeTournamentOperation(state, operation = {}) {
+  const action = String(operation.action || "");
+  const beforeTournaments = state.tournaments ?? [];
+  const beforeMatches = state.matches ?? [];
+  let next = state;
+
+  switch (action) {
+    case "createTournament":
+      next = createTournament(state, {
+        ...(operation.draft ?? {}),
+        id: operation.preferredTournamentId || operation.tournamentId || operation.draft?.id,
+        preferredMatchIds: operation.preferredMatchIds ?? operation.draft?.preferredMatchIds,
+      });
+      break;
+    case "approveTournamentTeam":
+      next = approveTournamentTeam(state, operation.tournamentId, operation.teamId, {
+        preferredMatchIds: operation.preferredMatchIds,
+      });
+      break;
+    default:
+      reject(400, "unsupported_tournament_operation");
+  }
+
+  const tournament = operation.tournamentId || operation.preferredTournamentId
+    ? (next.tournaments ?? []).find((item) => item.id === (operation.tournamentId || operation.preferredTournamentId)) ?? null
+    : getCreatedItem(beforeTournaments, next.tournaments ?? []);
+  if (!tournament || next === state) reject(409, "tournament_operation_noop");
+
+  const createdMatches = getNewItems(beforeMatches, next.matches ?? [], (match) => match.tournamentId === tournament.id);
+  const notifications = getNewItems(state.notifications ?? [], next.notifications ?? [], (notification) => (
+    (!notification.matchId && (notification.type === "tournament" || notification.tone === "match" || !notification.targetUserId)) ||
+    (notification.matchId && createdMatches.some((match) => match.id === notification.matchId))
+  ));
+
+  return { nextState: next, tournament, createdMatches, notifications };
 }

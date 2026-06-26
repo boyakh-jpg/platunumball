@@ -1007,23 +1007,23 @@ flowchart TD
 
 ## 2026-06-25 team sync server action
 
-1. 팀 생성, 삭제, 팀원 추가, 역할 변경, 팀원 제거 후 `POST /api/teams/sync-team`으로 `teams`, `team_members`를 서버에 저장한다.
-2. 서버는 Supabase bearer를 검증하고 현재 `profileId`가 해당 팀 주장인지 확인한다.
+1. 팀 생성, 삭제, 팀원 추가, 역할 변경, 팀원 제거 후 `POST /api/teams/sync-team`이 DB RPC transaction을 호출해 `teams`, `team_members`, 관련 알림을 한 번에 커밋한다.
+2. 서버는 Supabase bearer를 검증하고 RPC가 현재 `profileId`가 해당 팀 주장인지 다시 확인한다.
 3. 새 팀 생성은 현재 `profileId`가 주장으로 포함된 경우만 허용한다.
 4. 서버는 팀명 14자 제한, 멤버 프로필 존재 여부, 1인 최대 3팀 제한을 다시 확인한다.
 5. 팀 삭제는 `teams.deleted_at` soft delete, `team_members` 삭제, 팀 즐겨찾기 삭제, 해당 팀 모집방 닫기를 함께 수행한다.
 6. 팀 MMR, 승수, 패수는 클라이언트 스냅샷으로 수정하지 않는다. 새 팀은 기본값으로 시작하고 기존 팀은 DB 기존 값을 유지한다.
-7. 이 단계는 팀 저장 브리지다. 팀 초대/가입 승인 같은 별도 팀 운영 플로우는 아직 authoritative RPC가 아니다.
+7. 팀 저장/삭제는 `rankball_sync_team_membership()` / `rankball_delete_team()` RPC가 원본이다. 팀 초대/가입 승인 같은 별도 팀 운영 플로우는 아직 authoritative RPC가 아니다.
 
 ## 2026-06-25 tournament sync server action
 
-1. 토너먼트/리그 생성과 팀 승인 후 `POST /api/tournaments/sync-tournament`으로 `tournaments`, `tournament_teams`를 서버에 저장한다.
+1. 토너먼트/리그 생성과 팀 승인 후 `POST /api/tournaments/sync-tournament`이 서버 state를 다시 읽고 `createTournament` / `approveTournamentTeam` reducer를 서버에서 재실행한다.
 2. 새 토너먼트는 현재 `profileId`가 `createdBy`인 경우만 생성한다.
 3. 기존 토너먼트 수정은 생성자만 가능하다. 단, 팀 참가 승인은 해당 팀 주장도 `action=approveTeam`으로 저장할 수 있다.
-4. 팀 주장의 `approveTeam`은 자기 팀 승인 상태와 승인자 정보만 바꿀 수 있고, 대회 핵심 설정, 팀 목록, 상태, bracket, matchIds는 바꿀 수 없다.
-5. 승인 완료로 생성된 경기들은 기존 `POST /api/matches/sync-match` 경로로 함께 저장한다.
+4. operation 없는 fallback snapshot 경로에서 팀 주장의 `approveTeam`은 자기 팀 승인 상태와 승인자 정보만 바꿀 수 있고, 대회 핵심 설정, 팀 목록, 상태, bracket, matchIds는 바꿀 수 없다.
+5. 승인 완료로 생성된 경기들은 `sync-tournament` 안에서 `persistMatchSnapshot()`으로 함께 저장한다.
 6. 토너먼트 경기 일정 수정은 토너먼트 생성자만 가능하며, 변경된 match snapshot을 기존 match sync로 저장한다.
-7. 이 단계는 토너먼트 저장 브리지다. 대진 생성, 팀 승인, 경기 생성 계산 자체는 아직 클라이언트 reducer에 남아 있다.
+7. 토너먼트 생성/팀 승인/대진 1차 생성은 서버 reducer 재실행 경로가 원본이다. 완전한 DB RPC transaction과 후속 라운드 자동 생성은 아직 남아 있다.
 
 ## 2026-06-25 referee request server action
 

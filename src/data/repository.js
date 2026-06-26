@@ -2118,7 +2118,7 @@ function buildTournamentPairings(teamIds = []) {
   return { seedOrder, bracketSize, slots, firstRound, pairings, byes };
 }
 
-function makeTournamentMatch(tournament, teamA, teamB, pairing, now) {
+function makeTournamentMatch(tournament, teamA, teamB, pairing, now, matchId = "") {
   const mode = tournament.mode || "5v5";
   const size = MODE_SIZES[mode] ?? 5;
   const roundLabel = tournament.format === "tournament" ? `${pairing.round}R-${pairing.fixture}` : `L-${pairing.fixture}`;
@@ -2126,7 +2126,7 @@ function makeTournamentMatch(tournament, teamA, teamB, pairing, now) {
   const teamBPlayers = getTeamPlayers(teamB, size);
 
   return {
-    id: makeId("m"),
+    id: matchId || makeId("m"),
     title: `${tournament.title} ${roundLabel} · ${teamA.name} vs ${teamB.name}`,
     mode,
     court: tournament.court || "미정",
@@ -2160,12 +2160,13 @@ function makeTournamentMatch(tournament, teamA, teamB, pairing, now) {
     disputes: [],
     result: null,
     ratingResult: null,
+    createdBy: tournament.createdBy,
     agreedAt: now,
     createdAt: now,
   };
 }
 
-function generateTournamentMatches(state, tournament) {
+function generateTournamentMatches(state, tournament, options = {}) {
   if (tournament.matchIds?.length) return { matches: [], tournament };
 
   const teamById = Object.fromEntries(state.teams.map((team) => [team.id, team]));
@@ -2173,12 +2174,13 @@ function generateTournamentMatches(state, tournament) {
   const pairSource = tournament.format === "tournament"
     ? buildTournamentPairings(tournament.teamIds ?? [])
     : { seedOrder: tournament.teamIds ?? [], pairings: buildLeaguePairings(tournament.teamIds ?? []), byes: [] };
+  const preferredMatchIds = Array.isArray(options.preferredMatchIds) ? options.preferredMatchIds : [];
   const matches = pairSource.pairings
-    .map((pairing) => {
+    .map((pairing, index) => {
       const teamA = teamById[pairing.teamAId];
       const teamB = teamById[pairing.teamBId];
       if (!teamA || !teamB) return null;
-      return makeTournamentMatch(tournament, teamA, teamB, pairing, now);
+      return makeTournamentMatch(tournament, teamA, teamB, pairing, now, preferredMatchIds[index]);
     })
     .filter(Boolean);
   const matchIds = matches.map((match) => match.id);
@@ -2771,7 +2773,7 @@ export function createTournament(state, draft) {
       .map((teamId) => [teamId, { by: state.currentUserId, approvedAt: createdAt }]),
   );
   const tournament = {
-    id: makeId("trn"),
+    id: draft.id || makeId("trn"),
     title: draft.title?.trim() || `${draft.mode || "5v5"} 비공개 대회`,
     format: draft.tournamentFormat ?? "league",
     visibility: "private",
@@ -2806,7 +2808,9 @@ export function createTournament(state, draft) {
     bracket: null,
   };
   const allAccepted = teamIds.every((teamId) => teamStatuses[teamId] === "accepted");
-  const generated = allAccepted ? generateTournamentMatches(state, tournament) : { matches: [], tournament };
+  const generated = allAccepted
+    ? generateTournamentMatches(state, tournament, { preferredMatchIds: draft.preferredMatchIds })
+    : { matches: [], tournament };
 
   return {
     ...state,
@@ -2826,7 +2830,7 @@ export function createTournament(state, draft) {
   };
 }
 
-export function approveTournamentTeam(state, tournamentId, teamId) {
+export function approveTournamentTeam(state, tournamentId, teamId, options = {}) {
   const tournament = (state.tournaments ?? []).find((item) => item.id === tournamentId);
   if (!tournament || tournament.status !== "draft" || !(tournament.teamIds ?? []).includes(teamId)) return state;
 
@@ -2854,7 +2858,9 @@ export function approveTournamentTeam(state, tournamentId, teamId) {
   };
   const approvedTournament = { ...tournament, teamStatuses, teamApprovals };
   const allAccepted = (approvedTournament.teamIds ?? []).every((id) => teamStatuses[id] === "accepted");
-  const generated = allAccepted ? generateTournamentMatches(state, approvedTournament) : { matches: [], tournament: approvedTournament };
+  const generated = allAccepted
+    ? generateTournamentMatches(state, approvedTournament, { preferredMatchIds: options.preferredMatchIds })
+    : { matches: [], tournament: approvedTournament };
 
   return {
     ...state,

@@ -1698,6 +1698,388 @@ grant execute on function public.rankball_report_court_request(text, text, text)
 grant execute on function public.rankball_submit_court_review(text, jsonb) to service_role;
 grant execute on function public.rankball_submit_court_request(text, jsonb) to service_role;
 
+create or replace function public.rankball_sync_team_membership(
+  p_actor_profile_id text,
+  p_team jsonb,
+  p_notifications jsonb default '[]'::jsonb
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  now_ts timestamptz := now();
+  safe_team_id text := nullif(btrim(p_team->>'id'), '');
+  safe_name text := nullif(btrim(regexp_replace(coalesce(p_team->>'name', ''), '\s+', ' ', 'g')), '');
+  safe_region text := nullif(btrim(p_team->>'region'), '');
+  safe_home_court text := coalesce(nullif(btrim(p_team->>'homeCourt'), ''), nullif(btrim(p_team->>'home_court'), ''));
+  safe_accent text := coalesce(nullif(btrim(p_team->>'accent'), ''), '#58d2c0');
+  existing_mmr integer;
+  existing_wins integer;
+  existing_losses integer;
+  existing_deleted_at timestamptz;
+  team_exists boolean := false;
+  has_existing_members boolean := false;
+  actor_is_existing_captain boolean := false;
+  actor_is_new_captain boolean := false;
+  member_value jsonb;
+  member_rows jsonb := '[]'::jsonb;
+  member_ids text[] := array[]::text[];
+  safe_member_id text;
+  safe_role text;
+  member_count integer := 0;
+  captain_count integer := 0;
+  other_team_count integer;
+  notification_value jsonb;
+  safe_notification_id text;
+  safe_target_user_id text;
+  notification_count integer := 0;
+begin
+  if p_actor_profile_id is null or btrim(p_actor_profile_id) = '' then
+    raise exception 'missing_actor_profile_id' using errcode = '42501';
+  end if;
+
+  if safe_team_id is null then
+    raise exception 'missing_team_id' using errcode = '23502';
+  end if;
+
+  if safe_name is null or char_length(safe_name) > 14 then
+    raise exception 'invalid_team_name' using errcode = '22023';
+  end if;
+
+  if jsonb_typeof(coalesce(p_team->'members', '[]'::jsonb)) <> 'array' then
+    raise exception 'invalid_team_members' using errcode = '22023';
+  end if;
+
+  select mmr, wins, losses, deleted_at
+  into existing_mmr, existing_wins, existing_losses, existing_deleted_at
+  from public.teams
+  where id = safe_team_id
+  for update;
+
+  team_exists := found;
+
+  if team_exists and existing_deleted_at is not null then
+    raise exception 'team_deleted' using errcode = '42501';
+  end if;
+
+  select exists(select 1 from public.team_members where team_id = safe_team_id)
+  into has_existing_members;
+
+  select exists(
+    select 1
+    from public.team_members
+    where team_id = safe_team_id
+      and user_id = p_actor_profile_id
+      and role = 'captain'
+  )
+  into actor_is_existing_captain;
+
+  if has_existing_members and not actor_is_existing_captain then
+    raise exception 'team_sync_permission_denied' using errcode = '42501';
+  end if;
+
+  for member_value in
+    select value from jsonb_array_elements(coalesce(p_team->'members', '[]'::jsonb))
+  loop
+    safe_member_id := nullif(btrim(coalesce(member_value->>'userId', member_value->>'user_id')), '');
+    if safe_member_id is null or safe_member_id = any(member_ids) then
+      continue;
+    end if;
+
+    perform 1 from public.profiles where id = safe_member_id;
+    if not found then
+      raise exception 'team_member_profile_not_found' using errcode = 'P0002';
+    end if;
+
+    select count(distinct team_id)
+    into other_team_count
+    from public.team_members
+    where user_id = safe_member_id
+      and team_id <> safe_team_id;
+
+    if other_team_count >= 3 then
+      raise exception 'team_membership_limit_exceeded' using errcode = '23514';
+    end if;
+
+    safe_role := case when member_value->>'role' = 'captain' then 'captain' else 'regular' end;
+    if safe_role = 'captain' then
+      captain_count := captain_count + 1;
+    end if;
+    if safe_member_id = p_actor_profile_id and safe_role = 'captain' then
+      actor_is_new_captain := true;
+    end if;
+
+    member_ids := array_append(member_ids, safe_member_id);
+    member_rows := member_rows || jsonb_build_array(jsonb_build_object(
+      'team_id', safe_team_id,
+      'user_id', safe_member_id,
+      'role', safe_role
+    ));
+  end loop;
+
+  member_count := jsonb_array_length(member_rows);
+
+  if member_count = 0 then
+    raise exception 'team_member_required' using errcode = '23502';
+  end if;
+
+  if captain_count = 0 or not actor_is_new_captain then
+    raise exception 'team_captain_required' using errcode = '42501';
+  end if;
+
+  insert into public.teams (
+    id,
+    name,
+    region,
+    home_court,
+    mmr,
+    wins,
+    losses,
+    accent,
+    deleted_at,
+    updated_at
+  )
+  values (
+    safe_team_id,
+    safe_name,
+    safe_region,
+    safe_home_court,
+    case when team_exists then coalesce(existing_mmr, 1200) else 1200 end,
+    case when team_exists then coalesce(existing_wins, 0) else 0 end,
+    case when team_exists then coalesce(existing_losses, 0) else 0 end,
+    safe_accent,
+    null,
+    now_ts
+  )
+  on conflict (id) do update set
+    name = excluded.name,
+    region = excluded.region,
+    home_court = excluded.home_court,
+    accent = excluded.accent,
+    deleted_at = null,
+    updated_at = excluded.updated_at;
+
+  delete from public.team_members
+  where team_id = safe_team_id;
+
+  insert into public.team_members (team_id, user_id, role)
+  select
+    value->>'team_id',
+    value->>'user_id',
+    value->>'role'
+  from jsonb_array_elements(member_rows);
+
+  for notification_value in
+    select value from jsonb_array_elements(coalesce(p_notifications, '[]'::jsonb))
+  loop
+    safe_notification_id := nullif(btrim(notification_value->>'id'), '');
+    safe_target_user_id := coalesce(nullif(btrim(notification_value->>'targetUserId'), ''), p_actor_profile_id);
+    if safe_notification_id is null or safe_target_user_id <> p_actor_profile_id then
+      continue;
+    end if;
+
+    insert into public.notifications (
+      id,
+      user_id,
+      target_user_id,
+      title,
+      body,
+      tone,
+      type,
+      match_id,
+      recruiting_post_id,
+      invitation_id,
+      discord_event,
+      read_at,
+      payload,
+      created_at,
+      updated_at
+    )
+    values (
+      safe_notification_id,
+      p_actor_profile_id,
+      safe_target_user_id,
+      coalesce(nullif(notification_value->>'title', ''), '팀 변경'),
+      notification_value->>'body',
+      coalesce(nullif(notification_value->>'tone', ''), 'team'),
+      coalesce(nullif(notification_value->>'type', ''), 'team'),
+      nullif(notification_value->>'matchId', ''),
+      nullif(notification_value->>'recruitingPostId', ''),
+      nullif(notification_value->>'invitationId', ''),
+      coalesce(nullif(notification_value->>'discordEvent', ''), nullif(notification_value->>'eventType', '')),
+      nullif(notification_value->>'readAt', '')::timestamptz,
+      notification_value,
+      coalesce(nullif(notification_value->>'createdAt', '')::timestamptz, now_ts),
+      coalesce(nullif(notification_value->>'updatedAt', '')::timestamptz, now_ts)
+    )
+    on conflict (id) do update set
+      title = excluded.title,
+      body = excluded.body,
+      tone = excluded.tone,
+      type = excluded.type,
+      match_id = excluded.match_id,
+      recruiting_post_id = excluded.recruiting_post_id,
+      invitation_id = excluded.invitation_id,
+      discord_event = excluded.discord_event,
+      read_at = excluded.read_at,
+      payload = excluded.payload,
+      updated_at = excluded.updated_at;
+
+    notification_count := notification_count + 1;
+  end loop;
+
+  return jsonb_build_object(
+    'ok', true,
+    'teamId', safe_team_id,
+    'memberCount', member_count,
+    'notificationCount', notification_count
+  );
+end;
+$$;
+
+create or replace function public.rankball_delete_team(
+  p_actor_profile_id text,
+  p_team_id text,
+  p_notifications jsonb default '[]'::jsonb
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  now_ts timestamptz := now();
+  safe_team_id text := nullif(btrim(p_team_id), '');
+  existing_deleted_at timestamptz;
+  notification_value jsonb;
+  safe_notification_id text;
+  safe_target_user_id text;
+  notification_count integer := 0;
+begin
+  if p_actor_profile_id is null or btrim(p_actor_profile_id) = '' then
+    raise exception 'missing_actor_profile_id' using errcode = '42501';
+  end if;
+
+  if safe_team_id is null then
+    raise exception 'missing_team_id' using errcode = '23502';
+  end if;
+
+  select deleted_at
+  into existing_deleted_at
+  from public.teams
+  where id = safe_team_id
+  for update;
+
+  if not found then
+    raise exception 'team_not_found' using errcode = 'P0002';
+  end if;
+
+  if existing_deleted_at is not null then
+    return jsonb_build_object('ok', true, 'teamId', safe_team_id, 'deleted', true, 'notificationCount', 0);
+  end if;
+
+  if not exists (
+    select 1
+    from public.team_members
+    where team_id = safe_team_id
+      and user_id = p_actor_profile_id
+      and role = 'captain'
+  ) then
+    raise exception 'team_delete_permission_denied' using errcode = '42501';
+  end if;
+
+  delete from public.team_members
+  where team_id = safe_team_id;
+
+  delete from public.favorites
+  where target_type = 'team'
+    and target_id = safe_team_id;
+
+  update public.recruiting_posts
+  set status = 'closed',
+      updated_at = now_ts
+  where team_id = safe_team_id;
+
+  update public.teams
+  set deleted_at = now_ts,
+      updated_at = now_ts
+  where id = safe_team_id;
+
+  for notification_value in
+    select value from jsonb_array_elements(coalesce(p_notifications, '[]'::jsonb))
+  loop
+    safe_notification_id := nullif(btrim(notification_value->>'id'), '');
+    safe_target_user_id := coalesce(nullif(btrim(notification_value->>'targetUserId'), ''), p_actor_profile_id);
+    if safe_notification_id is null or safe_target_user_id <> p_actor_profile_id then
+      continue;
+    end if;
+
+    insert into public.notifications (
+      id,
+      user_id,
+      target_user_id,
+      title,
+      body,
+      tone,
+      type,
+      match_id,
+      recruiting_post_id,
+      invitation_id,
+      discord_event,
+      read_at,
+      payload,
+      created_at,
+      updated_at
+    )
+    values (
+      safe_notification_id,
+      p_actor_profile_id,
+      safe_target_user_id,
+      coalesce(nullif(notification_value->>'title', ''), '팀 변경'),
+      notification_value->>'body',
+      coalesce(nullif(notification_value->>'tone', ''), 'team'),
+      coalesce(nullif(notification_value->>'type', ''), 'team'),
+      nullif(notification_value->>'matchId', ''),
+      nullif(notification_value->>'recruitingPostId', ''),
+      nullif(notification_value->>'invitationId', ''),
+      coalesce(nullif(notification_value->>'discordEvent', ''), nullif(notification_value->>'eventType', '')),
+      nullif(notification_value->>'readAt', '')::timestamptz,
+      notification_value,
+      coalesce(nullif(notification_value->>'createdAt', '')::timestamptz, now_ts),
+      coalesce(nullif(notification_value->>'updatedAt', '')::timestamptz, now_ts)
+    )
+    on conflict (id) do update set
+      title = excluded.title,
+      body = excluded.body,
+      tone = excluded.tone,
+      type = excluded.type,
+      match_id = excluded.match_id,
+      recruiting_post_id = excluded.recruiting_post_id,
+      invitation_id = excluded.invitation_id,
+      discord_event = excluded.discord_event,
+      read_at = excluded.read_at,
+      payload = excluded.payload,
+      updated_at = excluded.updated_at;
+
+    notification_count := notification_count + 1;
+  end loop;
+
+  return jsonb_build_object(
+    'ok', true,
+    'teamId', safe_team_id,
+    'deleted', true,
+    'notificationCount', notification_count
+  );
+end;
+$$;
+
+revoke all on function public.rankball_sync_team_membership(text, jsonb, jsonb) from public;
+revoke all on function public.rankball_delete_team(text, text, jsonb) from public;
+grant execute on function public.rankball_sync_team_membership(text, jsonb, jsonb) to service_role;
+grant execute on function public.rankball_delete_team(text, text, jsonb) to service_role;
+
 create or replace function public.rankball_commit_admin_review_action(
   p_actor_profile_id text,
   p_actor_admin_level integer,
