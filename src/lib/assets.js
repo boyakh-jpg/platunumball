@@ -21,7 +21,7 @@ function cssUrl(path) {
 }
 
 export function installRemoteAssetVariables() {
-  if (!getAssetBaseUrl() || typeof document === "undefined") return;
+  if (typeof document === "undefined") return;
   const styleId = "rankball-remote-assets";
   if (document.getElementById(styleId)) return;
 
