@@ -466,7 +466,7 @@ const CORE_LOCKED_RECRUITING_ACTIONS = new Set([
   ...JOIN_RECRUITING_ACTIONS,
 ]);
 
-function canSyncRecruitingAction(profileId, existingPost, nextPost, action) {
+function canSyncRecruitingAction(profileId, existingPost, nextPost, action, body = {}) {
   if (!profileId || !nextPost?.id) return false;
   if (!existingPost) {
     return action === "createRecruitingPost" && participantIdsFromPost(nextPost).has(profileId) && isOwner(profileId, nextPost);
@@ -483,6 +483,9 @@ function canSyncRecruitingAction(profileId, existingPost, nextPost, action) {
 
   if (OWNER_RECRUITING_ACTIONS.has(action)) return isOwner(profileId, existingPost);
   if (JOIN_RECRUITING_ACTIONS.has(action)) {
+    if (action === "interestRecruitingPost" && body.joinMode === "referee") {
+      return existingPost.visibility !== "private" && nextPost.refereeId === profileId;
+    }
     if (existingPost.visibility === "private" && !hasInvitationFor(profileId, existingPost)) return false;
     return nextParticipants.has(profileId);
   }
@@ -554,7 +557,7 @@ export async function persistRecruitingPostSnapshot(context, { post, notificatio
       .maybeSingle();
 
   if (existingError) throw existingError;
-  if (!canSyncRecruitingAction(context.profileId, existingPost, post, action)) {
+  if (!canSyncRecruitingAction(context.profileId, existingPost, post, action, actionBody)) {
     reject(403, "recruiting_sync_permission_denied");
   }
   validateLockedRecruitingCore(context.profileId, existingPost, post, actionBody);

@@ -25,6 +25,7 @@ const secretArg = process.argv.find((arg) => arg.startsWith("--secret="));
 const schemaHealthSecret = secretArg ? secretArg.slice("--secret=".length) : process.env.RANKBALL_SIM_SECRET || process.env.CRON_SECRET || "";
 const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const requestTimeoutMs = Number(process.env.RANKBALL_SIM_TIMEOUT_MS || 20000);
 
 if (!process.env.RANKBALL_ENABLE_TEST_LOGIN && !process.env.VITE_DEMO_LOGIN) {
   process.env.RANKBALL_ENABLE_TEST_LOGIN = "true";
@@ -50,14 +51,30 @@ const supabase = url && serviceRoleKey
 
 const keepRows = process.argv.includes("--keep") || process.env.RANKBALL_SIM_KEEP === "1";
 const suffix = `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
-const ids = {
-  postId: `sim_q_${suffix}`,
-  matchId: `sim_m_${suffix}`,
+const scenarioIds = [];
+
+function makeScenarioIds(label) {
+  const safeLabel = String(label || "scenario").replace(/[^a-z0-9]+/gi, "_").replace(/^_+|_+$/g, "").toLowerCase();
+  const nextIds = {
+    label: safeLabel,
+    postId: `sim_q_${safeLabel}_${suffix}`,
+    matchId: `sim_m_${safeLabel}_${suffix}`,
+  };
+  scenarioIds.push(nextIds);
+  return nextIds;
+}
+
+let ids = {
+  label: "init",
+  postId: `sim_q_init_${suffix}`,
+  matchId: `sim_m_init_${suffix}`,
 };
 let currentStep = "init";
+const verbose = !process.argv.includes("--quiet");
 
 async function step(label, action) {
   currentStep = label;
+  if (verbose) console.error(`[sim] ${label}`);
   return action();
 }
 
@@ -98,7 +115,7 @@ function makeResponse(route) {
 
 async function callHandler(route, handler, bearerToken, body = {}) {
   if (usesRemoteApi) {
-    const response = await fetch(`${remoteBaseUrl}${route}`, {
+    const response = await fetchWithTimeout(`${remoteBaseUrl}${route}`, {
       method: "POST",
       headers: {
         authorization: `Bearer ${bearerToken}`,
@@ -123,9 +140,19 @@ async function callHandler(route, handler, bearerToken, body = {}) {
   return response.payload;
 }
 
+async function fetchWithTimeout(resource, options = {}) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), requestTimeoutMs);
+  try {
+    return await fetch(resource, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function assertRemoteSchemaHealth() {
   if (!usesRemoteApi || !schemaHealthSecret) return { skipped: true };
-  const response = await fetch(`${remoteBaseUrl}/api/system/schema-health`, {
+  const response = await fetchWithTimeout(`${remoteBaseUrl}/api/system/schema-health`, {
     method: "POST",
     headers: {
       authorization: `Bearer ${schemaHealthSecret}`,
@@ -213,7 +240,7 @@ function makeResult(match) {
 async function cleanup() {
   if (keepRows) return { skipped: true, reason: "keep_requested" };
   if (usesRemoteApi && schemaHealthSecret) {
-    const response = await fetch(`${remoteBaseUrl}/api/system/cleanup-sim`, {
+    const response = await fetchWithTimeout(`${remoteBaseUrl}/api/system/cleanup-sim`, {
       method: "POST",
       headers: {
         authorization: `Bearer ${schemaHealthSecret}`,
@@ -227,20 +254,20 @@ async function cleanup() {
   }
   if (!supabase) return { skipped: true, reason: "service_role_key_missing" };
 
-  const deletions = [
-    ["discord_notification_deliveries", "match_id", ids.matchId],
-    ["notifications", "match_id", ids.matchId],
-    ["notifications", "recruiting_post_id", ids.postId],
-    ["player_match_stats", "match_id", ids.matchId],
-    ["match_results", "match_id", ids.matchId],
-    ["match_disputes", "match_id", ids.matchId],
-    ["match_approvals", "match_id", ids.matchId],
-    ["match_agreements", "match_id", ids.matchId],
-    ["match_players", "match_id", ids.matchId],
-    ["matches", "id", ids.matchId],
-    ["recruiting_applications", "post_id", ids.postId],
-    ["recruiting_posts", "id", ids.postId],
-  ];
+  const deletions = scenarioIds.flatMap((scenario) => [
+    ["discord_notification_deliveries", "match_id", scenario.matchId],
+    ["notifications", "match_id", scenario.matchId],
+    ["notifications", "recruiting_post_id", scenario.postId],
+    ["player_match_stats", "match_id", scenario.matchId],
+    ["match_results", "match_id", scenario.matchId],
+    ["match_disputes", "match_id", scenario.matchId],
+    ["match_approvals", "match_id", scenario.matchId],
+    ["match_agreements", "match_id", scenario.matchId],
+    ["match_players", "match_id", scenario.matchId],
+    ["matches", "id", scenario.matchId],
+    ["recruiting_applications", "post_id", scenario.postId],
+    ["recruiting_posts", "id", scenario.postId],
+  ]);
 
   const errors = [];
   for (const [table, column, value] of deletions) {
@@ -252,24 +279,37 @@ async function cleanup() {
   return { skipped: false, errors };
 }
 
-async function main() {
-  const hostLogin = process.env.RANKBALL_SIM_HOST || "rankball-010";
-  const opponentLogin = process.env.RANKBALL_SIM_OPPONENT || "rankball-011";
-  const schemaHealth = await assertRemoteSchemaHealth();
+async function runOneOnOneScenario({
+  label,
+  hostLogin,
+  opponentLogin,
+  refereeLogin = "",
+  refereeWanted = false,
+}) {
+  ids = makeScenarioIds(label);
+  const operatorLogin = refereeWanted ? refereeLogin : hostLogin;
 
-  const hostInitialState = await loadStateAs(hostLogin);
-  const opponentInitialState = await loadStateAs(opponentLogin);
+  const hostInitialState = await step(`${ids.label}:loadInitial:host`, () => loadStateAs(hostLogin));
+  const opponentInitialState = await step(`${ids.label}:loadInitial:opponent`, () => loadStateAs(opponentLogin));
   const hostId = getProfileId(hostInitialState, hostLogin);
   const opponentId = getProfileId(opponentInitialState, opponentLogin);
+  let refereeId = "";
 
   assertFlow(hostId !== opponentId, "host and opponent must be different profiles", { hostId, opponentId });
 
-  await step("createRecruitingPost", () => syncRecruitingAs(hostLogin, {
+  if (refereeWanted) {
+    assertFlow(Boolean(refereeLogin), "referee login required");
+    const refereeInitialState = await step(`${ids.label}:loadInitial:referee`, () => loadStateAs(refereeLogin));
+    refereeId = getProfileId(refereeInitialState, refereeLogin);
+    assertFlow(![hostId, opponentId].includes(refereeId), "referee must be separate profile", { hostId, opponentId, refereeId });
+  }
+
+  await step(`${ids.label}:createRecruitingPost`, () => syncRecruitingAs(hostLogin, {
     action: "createRecruitingPost",
     preferredPostId: ids.postId,
     draft: {
       id: ids.postId,
-      title: "Backend simulation 1v1",
+      title: `Backend simulation ${ids.label}`,
       visibility: "public",
       hostJoinMode: "player",
       mode: "1v1",
@@ -279,7 +319,8 @@ async function main() {
       official: false,
       preRegistered: true,
       teamOnly: false,
-      refereeWanted: false,
+      refereeWanted,
+      refereeTrustMin: 70,
       region: "Backend Simulation",
       court: "Backend Simulation Court",
       position: "PG",
@@ -293,12 +334,27 @@ async function main() {
     },
   }));
 
-  let hostState = await step("loadAfterCreate:host", () => loadStateAs(hostLogin));
-  let opponentState = await step("loadAfterCreate:opponent", () => loadStateAs(opponentLogin));
+  let hostState = await step(`${ids.label}:loadAfterCreate:host`, () => loadStateAs(hostLogin));
+  let opponentState = await step(`${ids.label}:loadAfterCreate:opponent`, () => loadStateAs(opponentLogin));
   assertFlow(Boolean(findPost(hostState)), "created post not visible to host");
   assertFlow(Boolean(findPost(opponentState)), "public post not visible to opponent");
 
-  await step("interestRecruitingPost", () => syncRecruitingAs(opponentLogin, {
+  if (refereeWanted) {
+    await step(`${ids.label}:interestRecruitingPost:referee`, () => syncRecruitingAs(refereeLogin, {
+      action: "interestRecruitingPost",
+      postId: ids.postId,
+      application: {
+        joinMode: "referee",
+      },
+      joinMode: "referee",
+    }));
+
+    hostState = await step(`${ids.label}:loadAfterRefereeJoin`, () => loadStateAs(hostLogin));
+    const refereePost = findPost(hostState);
+    assertFlow(refereePost?.refereeId === refereeId, "referee join not persisted", { refereeId, post: refereePost });
+  }
+
+  await step(`${ids.label}:interestRecruitingPost:opponent`, () => syncRecruitingAs(opponentLogin, {
     action: "interestRecruitingPost",
     postId: ids.postId,
     application: {
@@ -309,32 +365,37 @@ async function main() {
     joinMode: "player",
   }));
 
-  hostState = await step("loadAfterJoin", () => loadStateAs(hostLogin));
+  hostState = await step(`${ids.label}:loadAfterJoin`, () => loadStateAs(hostLogin));
   const joinedPost = findPost(hostState);
   assertFlow(joinedPost?.applicants?.some((applicant) => applicant.playerId === opponentId), "opponent join not persisted", joinedPost);
 
-  await step("setRecruitingReady", () => syncRecruitingAs(opponentLogin, {
+  await step(`${ids.label}:setRecruitingReady`, () => syncRecruitingAs(opponentLogin, {
     action: "setRecruitingReady",
     postId: ids.postId,
     ready: true,
   }));
 
-  await step("confirmRecruitingMatch", () => syncRecruitingAs(hostLogin, {
+  await step(`${ids.label}:confirmRecruitingMatch`, () => syncRecruitingAs(hostLogin, {
     action: "confirmRecruitingMatch",
     postId: ids.postId,
     preferredMatchId: ids.matchId,
   }));
 
-  hostState = await step("loadAfterConfirm:host", () => loadStateAs(hostLogin));
-  opponentState = await step("loadAfterConfirm:opponent", () => loadStateAs(opponentLogin));
+  hostState = await step(`${ids.label}:loadAfterConfirm:host`, () => loadStateAs(hostLogin));
+  opponentState = await step(`${ids.label}:loadAfterConfirm:opponent`, () => loadStateAs(opponentLogin));
   let match = findMatch(hostState);
   assertFlow(Boolean(match), "confirmed match not visible to host");
   assertFlow(Boolean(findMatch(opponentState)), "confirmed match not visible to opponent");
+  if (refereeWanted) {
+    const refereeState = await step(`${ids.label}:loadAfterConfirm:referee`, () => loadStateAs(refereeLogin));
+    assertFlow(Boolean(findMatch(refereeState)), "confirmed match not visible to referee");
+    assertFlow(match.refereeId === refereeId, "match referee not persisted", { refereeId, match });
+  }
   assertFlow(match.teamA?.players?.includes(hostId), "host missing from teamA", match);
   assertFlow(match.teamB?.players?.includes(opponentId), "opponent missing from teamB", match);
 
   if (!match.agreements?.teamA?.includes(hostId)) {
-    await step("agreeMatch:teamA", () => syncMatchAs(hostLogin, {
+    await step(`${ids.label}:agreeMatch:teamA`, () => syncMatchAs(hostLogin, {
       action: "agreeMatch",
       matchId: ids.matchId,
       sideName: "teamA",
@@ -342,10 +403,10 @@ async function main() {
     }));
   }
 
-  hostState = await step("loadAfterTeamAAgreement", () => loadStateAs(hostLogin));
+  hostState = await step(`${ids.label}:loadAfterTeamAAgreement`, () => loadStateAs(hostLogin));
   match = findMatch(hostState);
   if (!match.agreements?.teamB?.includes(opponentId)) {
-    await step("agreeMatch:teamB", () => syncMatchAs(opponentLogin, {
+    await step(`${ids.label}:agreeMatch:teamB`, () => syncMatchAs(opponentLogin, {
       action: "agreeMatch",
       matchId: ids.matchId,
       sideName: "teamB",
@@ -353,68 +414,101 @@ async function main() {
     }));
   }
 
-  await step("checkInMatchPlayer:teamB", () => syncMatchAs(hostLogin, {
+  await step(`${ids.label}:checkInMatchPlayer:teamB`, () => syncMatchAs(operatorLogin, {
     action: "checkInMatchPlayer",
     matchId: ids.matchId,
     sideName: "teamB",
     playerId: opponentId,
   }));
 
-  await step("startMatch", () => syncMatchAs(hostLogin, {
+  await step(`${ids.label}:startMatch`, () => syncMatchAs(operatorLogin, {
     action: "startMatch",
     matchId: ids.matchId,
   }));
 
-  hostState = await step("loadAfterStart", () => loadStateAs(hostLogin));
+  hostState = await step(`${ids.label}:loadAfterStart`, () => loadStateAs(hostLogin));
   match = findMatch(hostState);
   assertFlow(Boolean(match?.startedAt), "match start not persisted", match);
 
-  await step("endMatch", () => syncMatchAs(hostLogin, {
+  await step(`${ids.label}:endMatch`, () => syncMatchAs(operatorLogin, {
     action: "endMatch",
     matchId: ids.matchId,
   }));
 
-  hostState = await step("loadAfterEnd", () => loadStateAs(hostLogin));
+  hostState = await step(`${ids.label}:loadAfterEnd`, () => loadStateAs(hostLogin));
   match = findMatch(hostState);
   assertFlow(Boolean(match?.endedAt), "match end not persisted", match);
 
-  await step("submitMatchResult", () => syncMatchAs(hostLogin, {
+  await step(`${ids.label}:submitMatchResult`, () => syncMatchAs(operatorLogin, {
     action: "submitMatchResult",
     matchId: ids.matchId,
     result: makeResult(match),
   }));
 
-  hostState = await step("loadAfterResult", () => loadStateAs(hostLogin));
+  hostState = await step(`${ids.label}:loadAfterResult`, () => loadStateAs(hostLogin));
   match = findMatch(hostState);
   assertFlow(match?.status === "approval" && match?.result, "match result not persisted", match);
+  if (refereeWanted) {
+    assertFlow(match.result.submittedBy === refereeId, "referee result submitter not persisted", { refereeId, result: match.result });
+  }
 
-  await step("approveMatch:teamA", () => syncMatchAs(hostLogin, {
+  await step(`${ids.label}:approveMatch:teamA`, () => syncMatchAs(hostLogin, {
     action: "approveMatch",
     matchId: ids.matchId,
     sideName: "teamA",
     playerId: hostId,
   }));
 
-  await step("approveMatch:teamB", () => syncMatchAs(opponentLogin, {
+  await step(`${ids.label}:approveMatch:teamB`, () => syncMatchAs(opponentLogin, {
     action: "approveMatch",
     matchId: ids.matchId,
     sideName: "teamB",
     playerId: opponentId,
   }));
 
-  hostState = await step("loadAfterApproval", () => loadStateAs(hostLogin));
+  hostState = await step(`${ids.label}:loadAfterApproval`, () => loadStateAs(hostLogin));
   match = findMatch(hostState);
   assertFlow(match?.status === "confirmed", "match approval not confirmed", match);
 
-  console.log(JSON.stringify({
-    ok: true,
+  return {
+    label: ids.label,
     hostLogin,
     opponentLogin,
+    refereeLogin: refereeWanted ? refereeLogin : "",
     hostId,
     opponentId,
+    refereeId,
     postId: ids.postId,
     matchId: ids.matchId,
     finalStatus: match.status,
+  };
+}
+
+async function main() {
+  const schemaHealth = await assertRemoteSchemaHealth();
+  const basicHostLogin = process.env.RANKBALL_SIM_HOST || "rankball-010";
+  const basicOpponentLogin = process.env.RANKBALL_SIM_OPPONENT || "rankball-011";
+  const refereeHostLogin = process.env.RANKBALL_SIM_REF_HOST || "rankball-012";
+  const refereeOpponentLogin = process.env.RANKBALL_SIM_REF_OPPONENT || "rankball-013";
+  const refereeLogin = process.env.RANKBALL_SIM_REFEREE || "rankball-001";
+
+  const scenarios = [];
+  scenarios.push(await runOneOnOneScenario({
+    label: "basic_1v1_no_referee",
+    hostLogin: basicHostLogin,
+    opponentLogin: basicOpponentLogin,
+  }));
+  scenarios.push(await runOneOnOneScenario({
+    label: "referee_1v1",
+    hostLogin: refereeHostLogin,
+    opponentLogin: refereeOpponentLogin,
+    refereeLogin,
+    refereeWanted: true,
+  }));
+
+  console.log(JSON.stringify({
+    ok: true,
+    scenarios,
     schemaHealth: schemaHealth?.skipped ? "skipped" : "ok",
     cleanup: await cleanup(),
   }, null, 2));
