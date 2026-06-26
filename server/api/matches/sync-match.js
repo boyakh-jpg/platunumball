@@ -940,7 +940,7 @@ export default async function handler(request, response) {
     let ratingCommit = null;
 
     if (operation) {
-      const state = await loadAuthoritativeState(context);
+      const state = await loadAuthoritativeState(context, { operation });
       const result = applyAuthoritativeMatchOperation(state, operation);
       match = result.match;
       notifications = result.notifications;

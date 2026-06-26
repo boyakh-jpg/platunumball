@@ -135,6 +135,9 @@ const EMPTY_STATE = {
 };
 const REMOTE_PAGE_SIZE = 1000;
 const REMOTE_WRITE_CHUNK_SIZE = 500;
+const REMOTE_CLIENT_MATCH_LIMIT = 200;
+const REMOTE_CLIENT_RECRUITING_LIMIT = 160;
+const REMOTE_CLIENT_TOURNAMENT_LIMIT = 80;
 const PUBLIC_PROFILE_COLUMNS = "id,name,handle,hashtag,position,region,region_sido,region_district,school,company,club,trust_score,streak,avatar_color,ratings,age_group,age_group_checked_season,onboarding_complete,test_login_id,updated_at,discord_connection";
 const PRIVATE_PROFILE_COLUMNS = "id,name,handle,region,school,company,club,trust_score,streak,avatar_color,test_login_id,auth_user_id,hashtag,birth_year,age_group,age_group_checked_season,region_sido,region_district,onboarding_complete,profile_version,handle_locked_at,birth_year_locked_at,name_updated_at,discord_connection,discord_user_id,ratings,created_at,updated_at,position";
 const TEAM_COLUMNS = "id,name,home_court,region,mmr,wins,losses,accent,deleted_at,updated_at,created_at";
@@ -788,13 +791,24 @@ export function syncNotificationDeliveries(state) {
   return syncDiscordNotificationDeliveries(state);
 }
 
-async function fetchFilteredRows(table, select = "*", order = "id", client = supabase, applyFilter = null) {
+function uniqueScopeIds(values = []) {
+  return [...new Set([values].flat().filter(Boolean).map((value) => String(value)))];
+}
+
+function applyIdScope(query, column, ids = []) {
+  if (!ids.length) return query;
+  return ids.length === 1 ? query.eq(column, ids[0]) : query.in(column, ids);
+}
+
+async function fetchFilteredRows(table, select = "*", order = "id", client = supabase, applyFilter = null, limit = null, ascending = true) {
   const rows = [];
+  const maxRows = Number.isFinite(Number(limit)) && Number(limit) > 0 ? Number(limit) : null;
   for (let from = 0; ; from += REMOTE_PAGE_SIZE) {
-    const to = from + REMOTE_PAGE_SIZE - 1;
+    if (maxRows && rows.length >= maxRows) break;
+    const to = maxRows ? Math.min(from + REMOTE_PAGE_SIZE - 1, maxRows - 1) : from + REMOTE_PAGE_SIZE - 1;
     const baseQuery = client.from(table).select(select).range(from, to);
     const query = applyFilter ? applyFilter(baseQuery) : baseQuery;
-    const { data, error } = order ? await query.order(order, { ascending: true }) : await query;
+    const { data, error } = order ? await query.order(order, { ascending }) : await query;
     if (error) throw error;
     rows.push(...(data ?? []));
     if (!data || data.length < REMOTE_PAGE_SIZE) break;
@@ -1150,7 +1164,17 @@ function getMaxUpdatedAt(rows) {
   return timestamps.length ? Math.max(...timestamps) : 0;
 }
 
-export async function loadNormalizedRemoteStateFromClient(client = supabase, authUserId = "", authEmail = "") {
+export async function loadNormalizedRemoteStateFromClient(client = supabase, authUserId = "", authEmail = "", options = {}) {
+  const clientState = options.clientState === true;
+  const matchScopeIds = uniqueScopeIds(options.matchIds ?? options.matchId);
+  const recruitingScopeIds = uniqueScopeIds(options.recruitingPostIds ?? options.recruitingPostId ?? options.postId);
+  const tournamentScopeIds = uniqueScopeIds(options.tournamentIds ?? options.tournamentId);
+  const matchFilter = matchScopeIds.length ? (query) => applyIdScope(query, "id", matchScopeIds) : null;
+  const recruitingFilter = recruitingScopeIds.length ? (query) => applyIdScope(query, "id", recruitingScopeIds) : null;
+  const tournamentFilter = tournamentScopeIds.length ? (query) => applyIdScope(query, "id", tournamentScopeIds) : null;
+  const matchLimit = matchScopeIds.length ? null : clientState ? REMOTE_CLIENT_MATCH_LIMIT : null;
+  const recruitingLimit = recruitingScopeIds.length ? null : clientState ? REMOTE_CLIENT_RECRUITING_LIMIT : null;
+  const tournamentLimit = tournamentScopeIds.length ? null : clientState ? REMOTE_CLIENT_TOURNAMENT_LIMIT : null;
   const [
     publicProfiles,
     privateProfiles,
@@ -1158,16 +1182,8 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
     teamMembers,
     courts,
     matches,
-    matchPlayers,
-    matchResults,
-    playerStats,
-    agreements,
-    approvals,
-    disputes,
     recruitingPosts,
-    recruitingApplications,
     tournaments,
-    tournamentTeams,
     seasons,
     affiliations,
     reports,
@@ -1186,17 +1202,9 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
     fetchAllRows("teams", TEAM_COLUMNS, "id", client),
     fetchAllRows("team_members", TEAM_MEMBER_COLUMNS, null, client),
     fetchAllRows("courts", COURT_COLUMNS, "id", client),
-    fetchAllRows("matches", MATCH_COLUMNS, "created_at", client),
-    fetchAllRows("match_players", MATCH_PLAYER_COLUMNS, null, client),
-    fetchAllRows("match_results", MATCH_RESULT_COLUMNS, null, client),
-    fetchAllRows("player_match_stats", PLAYER_STAT_COLUMNS, null, client),
-    fetchAllRows("match_agreements", MATCH_AGREEMENT_COLUMNS, null, client),
-    fetchAllRows("match_approvals", MATCH_APPROVAL_COLUMNS, null, client),
-    fetchOptionalRows("match_disputes", MATCH_DISPUTE_COLUMNS, null, client),
-    fetchAllRows("recruiting_posts", RECRUITING_POST_COLUMNS, "created_at", client),
-    fetchAllRows("recruiting_applications", RECRUITING_APPLICATION_COLUMNS, null, client),
-    fetchAllRows("tournaments", TOURNAMENT_COLUMNS, "created_at", client),
-    fetchAllRows("tournament_teams", TOURNAMENT_TEAM_COLUMNS, null, client),
+    fetchFilteredRows("matches", MATCH_COLUMNS, "created_at", client, matchFilter, matchLimit, !matchLimit),
+    fetchFilteredRows("recruiting_posts", RECRUITING_POST_COLUMNS, "created_at", client, recruitingFilter, recruitingLimit, !recruitingLimit),
+    fetchFilteredRows("tournaments", TOURNAMENT_COLUMNS, "created_at", client, tournamentFilter, tournamentLimit, !tournamentLimit),
     fetchAllRows("seasons", SEASON_COLUMNS, "id", client),
     fetchAllRows("affiliations", AFFILIATION_COLUMNS, "id", client),
     fetchOptionalRows("reports", REPORT_COLUMNS, "created_at", client),
@@ -1238,6 +1246,34 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
     currentUserId
       ? fetchOptionalFilteredRows("discord_notification_deliveries", DISCORD_DELIVERY_COLUMNS, "queued_at", client, (query) => query.eq("target_user_id", currentUserId))
       : [],
+  ]);
+  const loadedMatchIds = matches.map((match) => match.id).filter(Boolean);
+  const loadedRecruitingPostIds = recruitingPosts.map((post) => post.id).filter(Boolean);
+  const loadedTournamentIds = tournaments.map((tournament) => tournament.id).filter(Boolean);
+  const shouldFilterMatchChildren = Boolean(matchScopeIds.length || clientState || matchLimit);
+  const shouldFilterRecruitingChildren = Boolean(recruitingScopeIds.length || clientState || recruitingLimit);
+  const shouldFilterTournamentChildren = Boolean(tournamentScopeIds.length || clientState || tournamentLimit);
+  const matchChildFilter = shouldFilterMatchChildren ? (query) => applyIdScope(query, "match_id", loadedMatchIds) : null;
+  const recruitingChildFilter = shouldFilterRecruitingChildren ? (query) => applyIdScope(query, "post_id", loadedRecruitingPostIds) : null;
+  const tournamentChildFilter = shouldFilterTournamentChildren ? (query) => applyIdScope(query, "tournament_id", loadedTournamentIds) : null;
+  const [
+    matchPlayers,
+    matchResults,
+    playerStats,
+    agreements,
+    approvals,
+    disputes,
+    recruitingApplications,
+    tournamentTeams,
+  ] = await Promise.all([
+    shouldFilterMatchChildren && !loadedMatchIds.length ? [] : fetchFilteredRows("match_players", MATCH_PLAYER_COLUMNS, null, client, matchChildFilter),
+    shouldFilterMatchChildren && !loadedMatchIds.length ? [] : fetchFilteredRows("match_results", MATCH_RESULT_COLUMNS, null, client, matchChildFilter),
+    shouldFilterMatchChildren && !loadedMatchIds.length ? [] : fetchFilteredRows("player_match_stats", PLAYER_STAT_COLUMNS, null, client, matchChildFilter),
+    shouldFilterMatchChildren && !loadedMatchIds.length ? [] : fetchFilteredRows("match_agreements", MATCH_AGREEMENT_COLUMNS, null, client, matchChildFilter),
+    shouldFilterMatchChildren && !loadedMatchIds.length ? [] : fetchFilteredRows("match_approvals", MATCH_APPROVAL_COLUMNS, null, client, matchChildFilter),
+    shouldFilterMatchChildren && !loadedMatchIds.length ? [] : fetchOptionalFilteredRows("match_disputes", MATCH_DISPUTE_COLUMNS, null, client, matchChildFilter),
+    shouldFilterRecruitingChildren && !loadedRecruitingPostIds.length ? [] : fetchFilteredRows("recruiting_applications", RECRUITING_APPLICATION_COLUMNS, null, client, recruitingChildFilter),
+    shouldFilterTournamentChildren && !loadedTournamentIds.length ? [] : fetchFilteredRows("tournament_teams", TOURNAMENT_TEAM_COLUMNS, null, client, tournamentChildFilter),
   ]);
   const teamMembersByTeam = groupBy(teamMembers, "team_id");
   const teamById = firstBy(teams, "id");
@@ -1434,15 +1470,15 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
   };
 }
 
-async function loadNormalizedRemoteState(authUserId = "", authEmail = "") {
-  return loadNormalizedRemoteStateFromClient(supabase, authUserId, authEmail);
+async function loadNormalizedRemoteState(authUserId = "", authEmail = "", options = {}) {
+  return loadNormalizedRemoteStateFromClient(supabase, authUserId, authEmail, options);
 }
 
 export async function loadRemoteState(authUserId = "", authEmail = "") {
   if (!isSupabaseConfigured) return null;
 
   try {
-    const normalizedRemote = await loadNormalizedRemoteState(authUserId, authEmail);
+    const normalizedRemote = await loadNormalizedRemoteState(authUserId, authEmail, { clientState: true });
     return normalizedRemote?.state ? runAutomaticStateMaintenance(normalizedRemote.state) : null;
   } catch (error) {
     console.warn("Supabase normalized state load failed. Remote state remains empty.", error.message);

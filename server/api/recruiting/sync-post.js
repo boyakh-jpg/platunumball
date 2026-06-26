@@ -612,7 +612,7 @@ export default async function handler(request, response) {
     let createdMatch = null;
 
     if (operation) {
-      const state = await loadAuthoritativeState(context);
+      const state = await loadAuthoritativeState(context, { operation });
       const result = applyAuthoritativeRecruitingOperation(state, operation);
       post = result.post;
       createdMatch = result.createdMatch;

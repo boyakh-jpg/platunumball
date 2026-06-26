@@ -116,11 +116,35 @@ export function getOperation(body = {}, fallbackAction = "sync") {
   return { ...operation, action: String(operation.action || fallbackAction) };
 }
 
-export async function loadAuthoritativeState(context) {
+function getAuthoritativeLoadScope(operation = {}) {
+  if (!operation || typeof operation !== "object") return {};
+  const action = String(operation.action || "");
+  if (action === "approveMatch") return { clientState: true };
+  return {
+    matchIds: [
+      operation.matchId,
+      operation.preferredMatchId,
+      operation.draft?.id,
+    ].filter(Boolean),
+    recruitingPostIds: [
+      operation.postId,
+      operation.preferredPostId,
+      operation.draft?.id,
+    ].filter(Boolean),
+    tournamentIds: [
+      operation.tournamentId,
+      operation.preferredTournamentId,
+      operation.draft?.id,
+    ].filter(Boolean),
+  };
+}
+
+export async function loadAuthoritativeState(context, options = {}) {
   const result = await loadNormalizedRemoteStateFromClient(
     context.supabase,
     context.authUserId,
     context.authUser?.email ?? "",
+    getAuthoritativeLoadScope(options.operation),
   );
   return {
     ...(result?.state ?? {}),

@@ -156,6 +156,7 @@ export default async function handler(request, response) {
       context.supabase,
       context.authUserId,
       context.authUser?.email ?? "",
+      { clientState: true },
     );
     const profileId = context.profileId ?? normalized?.state?.currentUserId ?? "";
     const adminLevel = context.profileId ? await getAdminLevel(context) : 0;

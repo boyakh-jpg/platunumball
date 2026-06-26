@@ -294,7 +294,7 @@ export default async function handler(request, response) {
     let teamId = String(body.teamId || "").trim();
 
     if (operation) {
-      const state = await loadAuthoritativeState(context);
+      const state = await loadAuthoritativeState(context, { operation });
       const result = applyAuthoritativeTournamentOperation(state, operation);
       tournament = normalizeTournament(result.tournament, context.profileId);
       notifications = result.notifications;

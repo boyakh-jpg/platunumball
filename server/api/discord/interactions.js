@@ -116,7 +116,7 @@ async function handleInviteAction(interaction) {
     authUserId: `discord:${discordUserId}`,
     authUser: { id: `discord:${discordUserId}` },
   };
-  const state = await loadAuthoritativeState(context);
+  const state = await loadAuthoritativeState(context, { operation });
   const result = applyAuthoritativeRecruitingOperation(state, operation);
   await persistRecruitingPostSnapshot(context, {
     post: result.post,
