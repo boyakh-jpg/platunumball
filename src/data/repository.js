@@ -4840,6 +4840,112 @@ export function reportCourtRequest(state, requestId, reason = "허위 구장 등
   };
 }
 
+export function reportCourt(state, courtId, reason = "구장 위치 오류") {
+  const disciplineBlock = getDisciplineBlockedState(state, "구장 신고");
+  if (disciplineBlock) return disciplineBlock;
+  const court = (state.settings?.approvedCourts ?? []).find((item) => item.id === courtId);
+  if (!court) return state;
+  const duplicate = (state.reports ?? []).some((report) => (
+    report.type === "court" &&
+    report.targetId === courtId &&
+    report.by === state.currentUserId &&
+    report.status !== "dismissed" &&
+    report.status !== "resolved"
+  ));
+  if (duplicate) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "구장 신고 중복",
+          body: "이미 같은 구장을 신고했습니다.",
+          tone: "orange",
+        },
+        ...state.notifications,
+      ],
+    };
+  }
+
+  const report = {
+    id: makeId("r"),
+    type: "court",
+    targetId: courtId,
+    by: state.currentUserId,
+    reportedUserIds: [],
+    reason: String(reason || "구장 위치 오류").trim(),
+    status: "open",
+    createdAt: new Date().toISOString(),
+  };
+
+  return {
+    ...state,
+    reports: [report, ...(state.reports ?? [])],
+    notifications: [
+      {
+        id: makeId("n"),
+        title: "구장 신고 접수",
+        body: `${court.name} 신고가 접수됐습니다. 운영 검토 목록에 남겼습니다.`,
+        tone: "orange",
+      },
+      ...state.notifications,
+    ],
+  };
+}
+
+export function reportCourtReview(state, reviewId, reason = "구장 리뷰 문제") {
+  const disciplineBlock = getDisciplineBlockedState(state, "구장 리뷰 신고");
+  if (disciplineBlock) return disciplineBlock;
+  const review = (state.settings?.courtReviews ?? []).find((item) => item.id === reviewId);
+  if (!review || review.reviewerId === state.currentUserId) return state;
+  const duplicate = (state.reports ?? []).some((report) => (
+    report.type === "court_review" &&
+    report.targetId === reviewId &&
+    report.by === state.currentUserId &&
+    report.status !== "dismissed" &&
+    report.status !== "resolved"
+  ));
+  if (duplicate) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "리뷰 신고 중복",
+          body: "이미 같은 구장 리뷰를 신고했습니다.",
+          tone: "orange",
+        },
+        ...state.notifications,
+      ],
+    };
+  }
+
+  const report = {
+    id: makeId("r"),
+    type: "court_review",
+    targetId: reviewId,
+    by: state.currentUserId,
+    reportedUserIds: [review.reviewerId].filter(Boolean),
+    reason: String(reason || "구장 리뷰 문제").trim(),
+    status: "open",
+    createdAt: new Date().toISOString(),
+  };
+
+  return {
+    ...state,
+    reports: [report, ...(state.reports ?? [])],
+    notifications: [
+      {
+        id: makeId("n"),
+        title: "구장 리뷰 신고 접수",
+        body: `${review.courtName ?? "구장"} 리뷰 신고가 접수됐습니다.`,
+        tone: "orange",
+      },
+      ...state.notifications,
+    ],
+  };
+}
+
 function getAdminActionNotification(body, tone = "orange") {
   return {
     id: makeId("n"),

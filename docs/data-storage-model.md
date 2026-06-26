@@ -232,7 +232,7 @@
 - 프론트는 `court_reviews`를 읽어 `getRegisteredCourts()`에서 `reviewSummary`, `rating`, `reviewCount`를 붙인다.
 - 구장 hover 카드의 별점 표시는 기존 UI를 재사용하며 `court_reviews.rating` 평균과 리뷰 수를 보여준다.
 - 경기방 postgame 보조 카드에서 참가자가 구장 리뷰를 작성하고 `POST /api/courts/submit-review`로 서버 저장한다.
-- 다음 단계는 구장 리뷰 신고/관리자 검토 연결이다.
+- 구장 리뷰 신고는 `reports.type = 'court_review'`로 관리자 큐에 연결한다.
 
 ## 2026-06-25 abuse/integrity scenario seed
 
@@ -262,8 +262,8 @@ Scenario map:
 Backend gaps:
 
 - `reports`는 `target_type/reporter_id`가 아니라 `type/user_id` 구조다. seed와 server action은 이 구조를 따라야 한다.
-- 승인 구장(`approved_courts`) 신고, 구장 hidden/disabled moderation status가 없다.
-- 구장 리뷰 신고/숨김은 아직 `court_reviews`와 `reports` 사이 연결이 없다.
+- 승인 구장(`approved_courts`) 신고는 `reports.type = 'court'`로 연결한다.
+- 구장 hidden/disabled moderation status와 구장 리뷰 숨김/삭제 action은 아직 없다.
 - `profiles`에는 birth year와 age group만 있고 나이 인증 상태, 신고 전 주장 나이, 관리자 검증 나이를 분리 저장할 컬럼이 없다.
 - 방 생성자는 연령 제한 밖이면 생성이 막히지만, recruiting 참여/초대 수락 시점의 연령 차단은 아직 authoritative server logic이 아니다.
 - abuse/integrity seed는 demo state 생성기에 들어갔다. Supabase Auth user 150명 이상을 만드는 service-role alpha seed script와 cleanup script는 별도 남은 작업이다.
@@ -296,7 +296,7 @@ Partial:
 - Admin UI calls server actions, but local UI state is still updated first and should be reloaded from server result before production.
 - Env owner support uses `POST /api/admin/context` to expose only the current user's admin level to the client.
 - Discord OAuth/profile badge/DM queue exists, but invite buttons and chat sync are not complete.
-- Court reviews exist, but review reports/moderation are not connected.
+- Court reviews exist, and `court` / `court_review` reports now submit through `/api/reports/submit`; hidden/disabled moderation state is still missing.
 
 Remaining:
 
@@ -307,7 +307,7 @@ Remaining:
 - Make frontend repository a thin server caller after the authoritative RPCs are ready.
 - Remove production reliance on localStorage state and mock fallback completely.
 - Add broader server-side eligibility checks for tournament brackets and match roster edits.
-- Add approved court reporting, hidden/disabled moderation state, and court review moderation.
+- Add approved court hidden/disabled moderation state and court review hiding/removal action.
 - Add Supabase Auth/test seed and cleanup scripts for realistic multi-user simulations.
 
 ## 2026-06-26 Supabase test seed scripts

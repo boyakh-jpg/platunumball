@@ -128,6 +128,7 @@ function pushGrouped(map, key, base, patch = {}) {
       matches: [],
       players: [],
       courtRequests: [],
+      courtReviews: [],
       disciplinaryActions: [],
       reportCount: 0,
       openCount: 0,
@@ -310,6 +311,8 @@ export function buildAdminReviewModel(state = {}) {
   const matches = state.matches ?? [];
   const reports = state.reports ?? [];
   const courtRequests = state.settings?.courtRequests ?? [];
+  const approvedCourts = state.settings?.approvedCourts ?? [];
+  const courtReviews = state.settings?.courtReviews ?? [];
   const disciplinaryActions = state.settings?.adminDisciplinaryActions ?? [];
   const userMap = makeUserMap(users);
   const matchMap = makeMatchMap(matches);
@@ -416,6 +419,58 @@ export function buildAdminReviewModel(state = {}) {
         });
         addReport(playerRow, report);
       });
+      return;
+    }
+
+    if (report.type === "court") {
+      const court = approvedCourts.find((item) => item.id === report.targetId);
+      const courtRow = pushGrouped(courtMap, court?.name || "구장", {
+        title: court?.name || "구장",
+        subtitle: `${court?.addressText ?? "주소 미정"} · 승인 구장 신고`,
+      });
+      addReport(courtRow, report);
+
+      (report.reportedUserIds ?? []).filter(Boolean).forEach((playerId) => {
+        const player = userMap[playerId];
+        const playerRow = pushGrouped(playerMap, playerId, {
+          title: player?.name ?? "알 수 없음",
+          subtitle: `${player?.region ?? "지역 미정"} · ${player?.position ?? "-"} · 신뢰도 ${player?.trustScore ?? "-"}`,
+          player,
+        });
+        addReport(playerRow, report);
+      });
+      return;
+    }
+
+    if (report.type === "court_review") {
+      const review = courtReviews.find((item) => item.id === report.targetId);
+      const match = review?.matchId ? matchMap[review.matchId] : null;
+      const courtName = review?.courtName || match?.court || "구장 리뷰";
+      const courtRow = pushGrouped(courtMap, courtName, {
+        title: courtName,
+        subtitle: `${review?.rating ?? "-"}점 · 구장 리뷰 신고`,
+      });
+      if (review && !courtRow.courtReviews.some((item) => item.id === review.id)) courtRow.courtReviews.push(review);
+      addReport(courtRow, report);
+
+      if (match) {
+        const matchRow = pushGrouped(matchReviewMap, match.id, {
+          title: match.title ?? `${match.teamA?.name ?? "A"} vs ${match.teamB?.name ?? "B"}`,
+          subtitle: `${match.court ?? "미정 구장"} · ${match.scheduledDate ?? ""} ${match.scheduledTime ?? ""}`.trim(),
+          match,
+        });
+        addReport(matchRow, report);
+      }
+
+      (report.reportedUserIds ?? [review?.reviewerId]).filter(Boolean).forEach((playerId) => {
+        const player = userMap[playerId];
+        const playerRow = pushGrouped(playerMap, playerId, {
+          title: player?.name ?? "알 수 없음",
+          subtitle: `${player?.region ?? "지역 미정"} · ${player?.position ?? "-"} · 신뢰도 ${player?.trustScore ?? "-"}`,
+          player,
+        });
+        addReport(playerRow, report);
+      });
     }
   });
 
@@ -423,19 +478,22 @@ export function buildAdminReviewModel(state = {}) {
     ...row,
     matchCount: row.matches.length,
     courtRequestCount: row.courtRequests.length,
+    courtReviewCount: row.courtReviews.length,
     issueCount: row.openCount + row.matches.filter(isRecordIssueMatch).length,
   })).sort(sortReviewRows);
   const playerRows = [...playerMap.values()].map((row) => ({
     ...row,
     matchCount: row.matches.length,
     courtRequestCount: row.courtRequests.length,
+    courtReviewCount: row.courtReviews.length,
     disciplinaryActionCount: row.disciplinaryActions.length,
     issueCount: row.openCount + row.matches.filter(isRecordIssueMatch).length,
-  })).filter((row) => row.reportCount > 0 || row.courtRequestCount > 0 || row.disciplinaryActionCount > 0).sort(sortReviewRows);
+  })).filter((row) => row.reportCount > 0 || row.courtRequestCount > 0 || row.courtReviewCount > 0 || row.disciplinaryActionCount > 0).sort(sortReviewRows);
   const matchRows = [...matchReviewMap.values()].map((row) => ({
     ...row,
     matchCount: row.matches.length,
     courtRequestCount: row.courtRequests.length,
+    courtReviewCount: row.courtReviews.length,
     issueCount: row.openCount + (isRecordIssueMatch(row.match) ? 1 : 0),
   })).sort(sortReviewRows);
 

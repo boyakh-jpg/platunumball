@@ -36,7 +36,9 @@ import {
   loadState,
   markAllNotificationsRead,
   markNotificationRead,
+  reportCourt,
   reportCourtRequest,
+  reportCourtReview,
   reportMatch,
   resetState,
   requestMatchRefereeAbsence,
@@ -747,6 +749,30 @@ export function useAppData(authUser = null) {
       reportCourtRequest: (requestId, reason) => {
         setState((prev) => reportCourtRequest({ ...prev, currentUserId }, requestId, reason));
         runServerAction("/api/court-requests/report", { requestId, reason });
+      },
+      reportCourt: (courtId, reason) => {
+        let createdReport = null;
+        let syncedNotifications = [];
+        setState((prev) => {
+          const existingIds = new Set((prev.reports ?? []).map((report) => report.id));
+          const next = reportCourt({ ...prev, currentUserId }, courtId, reason);
+          createdReport = (next.reports ?? []).find((report) => !existingIds.has(report.id)) ?? null;
+          syncedNotifications = createdReport ? getNewReportNotifications(prev, next, createdReport) : [];
+          return next;
+        });
+        if (createdReport) submitReportServer(createdReport, syncedNotifications);
+      },
+      reportCourtReview: (reviewId, reason) => {
+        let createdReport = null;
+        let syncedNotifications = [];
+        setState((prev) => {
+          const existingIds = new Set((prev.reports ?? []).map((report) => report.id));
+          const next = reportCourtReview({ ...prev, currentUserId }, reviewId, reason);
+          createdReport = (next.reports ?? []).find((report) => !existingIds.has(report.id)) ?? null;
+          syncedNotifications = createdReport ? getNewReportNotifications(prev, next, createdReport) : [];
+          return next;
+        });
+        if (createdReport) submitReportServer(createdReport, syncedNotifications);
       },
       commitAdminReviewAction: (draft) => {
         setState((prev) => commitAdminReviewAction({ ...prev, currentUserId }, draft));

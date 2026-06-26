@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 
 const REPORT_MATCH_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
-const ALLOWED_REPORT_TYPES = new Set(["match", "player"]);
+const ALLOWED_REPORT_TYPES = new Set(["match", "player", "court", "court_review"]);
 
 function toArray(value) {
   return Array.isArray(value) ? value.filter(Boolean) : [];
@@ -134,6 +134,49 @@ async function assertCanSubmitPlayerReport(context, targetId, reportedUserIds) {
   return ids.length ? ids.filter((profileId) => profileId === targetId) : [targetId];
 }
 
+async function assertCanSubmitCourtReport(context, targetId) {
+  const { data: court, error: courtError } = await context.supabase
+    .from("approved_courts")
+    .select("id, source_request_id")
+    .eq("id", targetId)
+    .maybeSingle();
+  if (courtError) throw courtError;
+  if (!court) {
+    const error = new Error("court_not_found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (!court.source_request_id) return [];
+  const { data: request, error: requestError } = await context.supabase
+    .from("court_requests")
+    .select("requested_by")
+    .eq("id", court.source_request_id)
+    .maybeSingle();
+  if (requestError) throw requestError;
+  return request?.requested_by && request.requested_by !== context.profileId ? [request.requested_by] : [];
+}
+
+async function assertCanSubmitCourtReviewReport(context, targetId) {
+  const { data: review, error: reviewError } = await context.supabase
+    .from("court_reviews")
+    .select("id, reviewer_id")
+    .eq("id", targetId)
+    .maybeSingle();
+  if (reviewError) throw reviewError;
+  if (!review) {
+    const error = new Error("court_review_not_found");
+    error.statusCode = 404;
+    throw error;
+  }
+  if (review.reviewer_id === context.profileId) {
+    const error = new Error("cannot_report_self");
+    error.statusCode = 400;
+    throw error;
+  }
+  return [review.reviewer_id].filter(Boolean);
+}
+
 async function buildReportRow(context, report = {}) {
   const type = String(report.type || "").trim();
   const targetId = String(report.targetId || report.target_id || "").trim();
@@ -149,9 +192,11 @@ async function buildReportRow(context, report = {}) {
   }
 
   const rawReportedUserIds = uniqueStrings(report.reportedUserIds || report.reported_user_ids);
-  const reportedUserIds = type === "match"
-    ? await assertCanSubmitMatchReport(context, targetId, rawReportedUserIds)
-    : await assertCanSubmitPlayerReport(context, targetId, rawReportedUserIds);
+  let reportedUserIds = [];
+  if (type === "match") reportedUserIds = await assertCanSubmitMatchReport(context, targetId, rawReportedUserIds);
+  if (type === "player") reportedUserIds = await assertCanSubmitPlayerReport(context, targetId, rawReportedUserIds);
+  if (type === "court") reportedUserIds = await assertCanSubmitCourtReport(context, targetId);
+  if (type === "court_review") reportedUserIds = await assertCanSubmitCourtReviewReport(context, targetId);
   const now = new Date().toISOString();
   const createdAt = now;
   const id = String(report.id || `r_${randomUUID()}`).trim();
@@ -199,7 +244,12 @@ export default async function handler(request, response) {
     const { data: existingReport, error: existingError } = await context.supabase
       .from("reports")
       .select("id, user_id")
-      .eq("id", reportRow.id)
+      .eq("type", reportRow.type)
+      .eq("target_id", reportRow.target_id)
+      .eq("user_id", context.profileId)
+      .neq("status", "resolved")
+      .neq("status", "dismissed")
+      .limit(1)
       .maybeSingle();
     if (existingError) throw existingError;
     if (existingReport) {

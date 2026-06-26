@@ -471,6 +471,18 @@ export default function Admin({ app }) {
                   </div>
                 )) : null}
               </DetailList>
+
+              <DetailList title="구장 리뷰" empty="관련 리뷰 없음">
+                {selectedRow.courtReviews?.length ? selectedRow.courtReviews.slice(0, 8).map((review) => (
+                  <div key={review.id} className="admin-detail-row">
+                    <span>
+                      <strong>{review.courtName ?? "구장 리뷰"}</strong>
+                      <em>{review.rating ?? "-"}점 · {review.memo || "메모 없음"}</em>
+                    </span>
+                    <Badge tone="neutral">리뷰</Badge>
+                  </div>
+                )) : null}
+              </DetailList>
             </>
           ) : (
             <div className="empty-state">검토할 큐가 없습니다.</div>

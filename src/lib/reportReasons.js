@@ -8,6 +8,9 @@ export const REPORT_REASONS = [
   "기록 조작",
   "허위 경기 결과",
   "허위 구장 등록",
+  "구장 위치 오류",
+  "구장 상태 위험",
+  "구장 리뷰 문제",
   "기타 운영 확인 필요",
 ];
 
@@ -17,6 +20,8 @@ export const REPORT_TARGET_TYPES = {
   player: "player",
   match: "match",
   courtRequest: "court_request",
+  court: "court",
+  courtReview: "court_review",
   mixed: "mixed",
 };
 
@@ -30,6 +35,9 @@ const REPORT_REASON_TARGET_TYPES = {
   "기록 조작": REPORT_TARGET_TYPES.match,
   "허위 경기 결과": REPORT_TARGET_TYPES.match,
   "허위 구장 등록": REPORT_TARGET_TYPES.courtRequest,
+  "구장 위치 오류": REPORT_TARGET_TYPES.court,
+  "구장 상태 위험": REPORT_TARGET_TYPES.court,
+  "구장 리뷰 문제": REPORT_TARGET_TYPES.courtReview,
   "기타 운영 확인 필요": REPORT_TARGET_TYPES.mixed,
 };
 
