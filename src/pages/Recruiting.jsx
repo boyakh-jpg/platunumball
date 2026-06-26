@@ -47,6 +47,7 @@ import {
   isNationalRecruitingPost,
 } from "../lib/recruiting.js";
 import { findTeamByHashtag, findUserByHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
+import { assetUrl } from "../lib/assets.js";
 import {
   cleanRoomTitle,
   formatStatLine,
@@ -73,11 +74,11 @@ const AUTO_RECRUITING_TITLE_PATTERN = /^(모집 중\s*\d*|정규전|친선전|�
 const RECORDABLE_RESERVE_SOURCES = new Set(["reserve-entry", "team-reserve"]);
 const MAX_RESERVE_PLAYERS_PER_SIDE = 2;
 const ROOM_SLOT_POSITION_AVATARS = {
-  PG: "/assets/position-avatars/PG.webp",
-  SG: "/assets/position-avatars/SG.webp",
-  SF: "/assets/position-avatars/SF.webp",
-  PF: "/assets/position-avatars/PF.webp",
-  C: "/assets/position-avatars/C.webp",
+  PG: assetUrl("/assets/position-avatars/PG.webp"),
+  SG: assetUrl("/assets/position-avatars/SG.webp"),
+  SF: assetUrl("/assets/position-avatars/SF.webp"),
+  PF: assetUrl("/assets/position-avatars/PF.webp"),
+  C: assetUrl("/assets/position-avatars/C.webp"),
 };
 
 function formatWhen(value) {

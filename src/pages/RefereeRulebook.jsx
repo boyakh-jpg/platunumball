@@ -2,6 +2,7 @@ import { ArrowLeft, BookOpen, ClipboardCheck, ShieldCheck } from "lucide-react";
 import { Link } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import Card from "../components/common/Card.jsx";
+import { assetUrl } from "../lib/assets.js";
 import {
   REFEREE_RULEBOOK_CHECKLIST,
   REFEREE_RULEBOOK_NOTICE,
@@ -35,7 +36,7 @@ function RulebookIllustration({ scene }) {
   const title = SCENE_COPY[scene] ?? SCENE_COPY.standard;
   return (
     <figure className="rulebook-asset">
-      <img src={`/assets/referee-rulebook/${scene}.svg`} alt={`${title} 일러스트`} loading="lazy" />
+      <img src={assetUrl(`/assets/referee-rulebook/${scene}.svg`)} alt={`${title} 일러스트`} loading="lazy" />
       <figcaption>{title}</figcaption>
     </figure>
   );

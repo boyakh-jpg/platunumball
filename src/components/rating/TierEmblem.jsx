@@ -1,4 +1,5 @@
 import { getTier, getTierDivision } from "../../lib/tier.js";
+import { assetUrl } from "../../lib/assets.js";
 
 export const emblemByTier = {
   Rookie: "/assets/tier-emblems/tier-rookie-v5.webp",
@@ -13,7 +14,7 @@ export const emblemByTier = {
 
 export function getTierEmblemSrc(mmr) {
   const tier = getTier(mmr);
-  return emblemByTier[tier.name] ?? emblemByTier.Rookie;
+  return assetUrl(emblemByTier[tier.name] ?? emblemByTier.Rookie);
 }
 
 export default function TierEmblem({ mmr, size = "md", showLabel = false }) {
