@@ -617,11 +617,15 @@ export default async function handler(request, response) {
       action = operation.action;
     }
 
-    const result = await persistRecruitingPostSnapshot(context, { post, notifications, action, body: { ...body, ...(operation ?? {}) } });
+    const recruitingNotifications = createdMatch
+      ? notifications.filter((notification) => !notification.matchId || notification.matchId !== createdMatch.id)
+      : notifications;
+    const result = await persistRecruitingPostSnapshot(context, { post, notifications: recruitingNotifications, action, body: { ...body, ...(operation ?? {}) } });
     if (createdMatch) {
+      const matchNotifications = notifications.filter((notification) => notification.matchId === createdMatch.id);
       const matchResult = await persistMatchSnapshot(context, {
         match: createdMatch,
-        notifications,
+        notifications: matchNotifications,
         action: "confirmRecruitingMatch",
         body: { ...body, ...(operation ?? {}) },
       });

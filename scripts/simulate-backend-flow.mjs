@@ -18,6 +18,9 @@ function loadEnvFile(path) {
 loadEnvFile(".env.local");
 loadEnvFile(".env.production");
 
+const baseUrlArg = process.argv.find((arg) => arg.startsWith("--base-url="));
+const remoteBaseUrl = (baseUrlArg ? baseUrlArg.slice("--base-url=".length) : process.env.RANKBALL_SIM_BASE_URL || "").replace(/\/+$/, "");
+const usesRemoteApi = Boolean(remoteBaseUrl);
 const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -25,7 +28,7 @@ if (!process.env.RANKBALL_ENABLE_TEST_LOGIN && !process.env.VITE_DEMO_LOGIN) {
   process.env.RANKBALL_ENABLE_TEST_LOGIN = "true";
 }
 
-if (!url || !serviceRoleKey) {
+if (!usesRemoteApi && (!url || !serviceRoleKey)) {
   const missing = [
     url ? "" : "SUPABASE_URL/VITE_SUPABASE_URL/NEXT_PUBLIC_SUPABASE_URL",
     serviceRoleKey ? "" : "SUPABASE_SERVICE_ROLE_KEY",
@@ -34,12 +37,14 @@ if (!url || !serviceRoleKey) {
   process.exit(1);
 }
 
-const supabase = createClient(url, serviceRoleKey, {
-  auth: {
-    persistSession: false,
-    autoRefreshToken: false,
-  },
-});
+const supabase = url && serviceRoleKey
+  ? createClient(url, serviceRoleKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    })
+  : null;
 
 const keepRows = process.argv.includes("--keep") || process.env.RANKBALL_SIM_KEEP === "1";
 const suffix = `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
@@ -84,6 +89,23 @@ function makeResponse(route) {
 }
 
 async function callHandler(route, handler, bearerToken, body = {}) {
+  if (usesRemoteApi) {
+    const response = await fetch(`${remoteBaseUrl}${route}`, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${bearerToken}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+    const text = await response.text();
+    const payload = text ? JSON.parse(text) : null;
+    if (!response.ok) {
+      throw new Error(`${route} failed ${response.status}: ${text}`);
+    }
+    return payload;
+  }
+
   const response = makeResponse(route);
   await handler(makeRequest(bearerToken, body), response);
   if (response.statusCode >= 400) {
@@ -156,7 +178,8 @@ function makeResult(match) {
 }
 
 async function cleanup() {
-  if (keepRows) return { skipped: true };
+  if (keepRows) return { skipped: true, reason: "keep_requested" };
+  if (!supabase) return { skipped: true, reason: "service_role_key_missing" };
 
   const deletions = [
     ["discord_notification_deliveries", "match_id", ids.matchId],
