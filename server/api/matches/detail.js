@@ -1,13 +1,6 @@
 import { getAdminLevel, getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
-import { loadNormalizedRemoteStateFromClient, REMOTE_CLIENT_MATCH_LIMIT } from "../../../src/data/repository.js";
+import { loadNormalizedRemoteStateFromClient } from "../../../src/data/repository.js";
 import { filterStateForProfile } from "../state/load.js";
-
-function getMatchCursor(matches = []) {
-  const oldest = [...matches]
-    .sort((a, b) => String(a.updatedAt ?? a.createdAt ?? "").localeCompare(String(b.updatedAt ?? b.createdAt ?? "")))
-    .at(0);
-  return oldest?.updatedAt ?? oldest?.createdAt ?? "";
-}
 
 export default async function handler(request, response) {
   if (request.method !== "POST") {
@@ -17,10 +10,14 @@ export default async function handler(request, response) {
 
   try {
     const body = await readJsonBody(request);
+    const matchId = String(body.matchId ?? body.id ?? "").trim();
+    if (!matchId) {
+      sendJson(response, 400, { error: "match_id_required" });
+      return;
+    }
+
     const context = await getAuthenticatedContext(request, { allowMissingProfile: true });
     const adminLevel = context.profileId ? await getAdminLevel(context) : 0;
-    const requestedLimit = Number(body.limit ?? body.matchLimit ?? REMOTE_CLIENT_MATCH_LIMIT);
-    const limit = Number.isFinite(requestedLimit) && requestedLimit > 0 ? requestedLimit : REMOTE_CLIENT_MATCH_LIMIT;
     const normalized = await loadNormalizedRemoteStateFromClient(
       context.supabase,
       context.authUserId,
@@ -29,32 +26,30 @@ export default async function handler(request, response) {
         clientState: true,
         isAdmin: adminLevel >= 30,
         scope: "matches",
-        matchListOnly: true,
-        matchLimit: limit,
-        matchUpdatedBefore: body.cursor ?? body.matchUpdatedBefore ?? "",
+        matchId,
         recruitingLimit: 0,
         tournamentLimit: 0,
       },
     );
     const profileId = context.profileId ?? normalized?.state?.currentUserId ?? "";
     const state = filterStateForProfile(normalized?.state ?? {}, profileId, adminLevel >= 30);
-    const matches = state.matches ?? [];
+    const match = (state.matches ?? []).find((item) => item.id === matchId) ?? null;
+    if (!match) {
+      sendJson(response, 404, { error: "match_not_found", matchId });
+      return;
+    }
+
     sendJson(response, 200, {
       ok: true,
       state: {
         ...state,
+        matches: [match],
         recruitingPosts: [],
         tournaments: [],
-      },
-      page: {
-        limit,
-        count: matches.length,
-        cursor: getMatchCursor(matches),
-        exhausted: matches.length < limit,
       },
       updatedAt: normalized?.updatedAt ?? 0,
     });
   } catch (error) {
-    sendJson(response, error.statusCode || 500, { error: error.message || "matches_list_failed" });
+    sendJson(response, error.statusCode || 500, { error: error.message || "matches_detail_failed" });
   }
 }

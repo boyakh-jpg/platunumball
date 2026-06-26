@@ -13,6 +13,7 @@ import discordDmWorker from "../server/api/discord/dm-worker.js";
 import discordInteractions from "../server/api/discord/interactions.js";
 import discordSyncDeliveries from "../server/api/discord/sync-deliveries.js";
 import favoriteSync from "../server/api/favorites/sync.js";
+import matchDetail from "../server/api/matches/detail.js";
 import matchList from "../server/api/matches/list.js";
 import matchSyncMatch from "../server/api/matches/sync-match.js";
 import notificationRead from "../server/api/notifications/read.js";
@@ -44,6 +45,7 @@ const ROUTES = new Map([
   ["/discord/interactions", discordInteractions],
   ["/discord/sync-deliveries", discordSyncDeliveries],
   ["/favorites/sync", favoriteSync],
+  ["/matches/detail", matchDetail],
   ["/matches/list", matchList],
   ["/matches/sync-match", matchSyncMatch],
   ["/notifications/read", notificationRead],

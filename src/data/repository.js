@@ -1330,6 +1330,7 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
   const includeUserScoped = scope === "full";
   const matchPageScope = scope === "matches";
   const recruitingPageScope = scope === "recruiting";
+  const matchListOnly = matchPageScope && options.matchListOnly === true && !options.matchId && !options.matchIds;
   const authUserIdText = String(authUserId || "");
   const testLoginId = getBackendTestLoginId(authUserIdText);
   const matchScopeIds = uniqueScopeIds(options.matchIds ?? options.matchId);
@@ -1492,11 +1493,11 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
     tournamentTeams,
   ] = await Promise.all([
     shouldFilterMatchChildren && !loadedMatchIds.length ? [] : fetchFilteredRows("match_players", MATCH_PLAYER_COLUMNS, null, client, matchChildFilter),
-    shouldFilterMatchChildren && !loadedMatchIds.length ? [] : fetchFilteredRows("match_results", MATCH_RESULT_COLUMNS, null, client, matchChildFilter),
-    shouldFilterMatchChildren && !loadedMatchIds.length ? [] : fetchFilteredRows("player_match_stats", PLAYER_STAT_COLUMNS, null, client, matchChildFilter),
-    shouldFilterMatchChildren && !loadedMatchIds.length ? [] : fetchFilteredRows("match_agreements", MATCH_AGREEMENT_COLUMNS, null, client, matchChildFilter),
-    shouldFilterMatchChildren && !loadedMatchIds.length ? [] : fetchFilteredRows("match_approvals", MATCH_APPROVAL_COLUMNS, null, client, matchChildFilter),
-    shouldFilterMatchChildren && !loadedMatchIds.length ? [] : fetchOptionalFilteredRows("match_disputes", MATCH_DISPUTE_COLUMNS, null, client, matchChildFilter),
+    matchListOnly || (shouldFilterMatchChildren && !loadedMatchIds.length) ? [] : fetchFilteredRows("match_results", MATCH_RESULT_COLUMNS, null, client, matchChildFilter),
+    matchListOnly || (shouldFilterMatchChildren && !loadedMatchIds.length) ? [] : fetchFilteredRows("player_match_stats", PLAYER_STAT_COLUMNS, null, client, matchChildFilter),
+    matchListOnly || (shouldFilterMatchChildren && !loadedMatchIds.length) ? [] : fetchFilteredRows("match_agreements", MATCH_AGREEMENT_COLUMNS, null, client, matchChildFilter),
+    matchListOnly || (shouldFilterMatchChildren && !loadedMatchIds.length) ? [] : fetchFilteredRows("match_approvals", MATCH_APPROVAL_COLUMNS, null, client, matchChildFilter),
+    matchListOnly || (shouldFilterMatchChildren && !loadedMatchIds.length) ? [] : fetchOptionalFilteredRows("match_disputes", MATCH_DISPUTE_COLUMNS, null, client, matchChildFilter),
     shouldFilterRecruitingChildren && !loadedRecruitingPostIds.length ? [] : fetchFilteredRows("recruiting_applications", RECRUITING_APPLICATION_COLUMNS, null, client, recruitingChildFilter),
     shouldFilterTournamentChildren && !loadedTournamentIds.length ? [] : fetchFilteredRows("tournament_teams", TOURNAMENT_TEAM_COLUMNS, null, client, tournamentChildFilter),
   ]);

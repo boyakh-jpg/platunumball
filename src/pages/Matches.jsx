@@ -1,4 +1,4 @@
-import { Component, useMemo, useState } from "react";
+import { Component, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, PlusCircle, ShieldAlert, Swords, X } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
@@ -701,6 +701,7 @@ export default function Matches({ app }) {
   const teamById = useMemo(() => Object.fromEntries(app.state.teams.map((team) => [team.id, team])), [app.state.teams]);
   const userById = useMemo(() => Object.fromEntries(app.state.users.map((user) => [user.id, user])), [app.state.users]);
   const matchesById = useMemo(() => Object.fromEntries(app.state.matches.map((match) => [match.id, match])), [app.state.matches]);
+  const requestedMatchDetailsRef = useRef(new Set());
   const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
   const courtByName = useMemo(() => Object.fromEntries(registeredCourts.map((court) => [court.name, court])), [registeredCourts]);
   const myTeamIds = useMemo(
@@ -743,8 +744,28 @@ export default function Matches({ app }) {
     next.delete("match");
     setSearchParams(next, { replace: true });
   };
+  const requestMatchDetail = (matchId) => {
+    if (!matchId || requestedMatchDetailsRef.current.has(matchId)) return;
+    requestedMatchDetailsRef.current.add(matchId);
+    const request = app.actions.loadMatchDetail?.(matchId);
+    if (!request?.then) {
+      if (!request) requestedMatchDetailsRef.current.delete(matchId);
+      return;
+    }
+    request.then((count) => {
+      if (!count) requestedMatchDetailsRef.current.delete(matchId);
+    }).catch(() => {
+      requestedMatchDetailsRef.current.delete(matchId);
+    });
+  };
+  useEffect(() => {
+    if (!queryMatchId) return;
+    setSelectedMatchId(queryMatchId);
+    requestMatchDetail(queryMatchId);
+  }, [app.currentUser.id, queryMatchId]);
   const openSelectedMatch = (matchId) => {
     if (!matchId) return;
+    requestMatchDetail(matchId);
     setSelectedMatchId(matchId);
     const next = new URLSearchParams(searchParams);
     next.set("match", matchId);
@@ -1167,7 +1188,7 @@ export default function Matches({ app }) {
           app={app}
           post={selectedRecruitingPost}
           onClose={() => setSelectedRecruitingPostId(null)}
-          onOpenMatch={(matchId) => setSelectedMatchId(matchId)}
+          onOpenMatch={openSelectedMatch}
         />
       ) : null}
 

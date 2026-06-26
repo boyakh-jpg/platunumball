@@ -640,6 +640,28 @@ export function useAppData(authUser = null) {
     }
   }, [authEmail, authUserId, matchPagination.exhausted, matchPagination.loading, setState, state.matches]);
 
+  const loadMatchDetail = useCallback(async (matchId) => {
+    if (!isSupabaseConfigured || !authUserId || !matchId) return false;
+    try {
+      const result = await postServerAction(
+        "/api/matches/detail",
+        {
+          authUserId,
+          authEmail,
+          matchId,
+        },
+        { allowWhenDisabled: true },
+      );
+      const remoteState = result?.state ?? {};
+      const nextMatches = remoteState.matches ?? [];
+      setState((prev) => mergeRemoteMatchPage(prev, remoteState));
+      return nextMatches.length;
+    } catch (error) {
+      console.warn("Match detail load failed.", error.message);
+      return false;
+    }
+  }, [authEmail, authUserId, setState]);
+
   const loadMoreRecruiting = useCallback(async () => {
     if (!isSupabaseConfigured || !authUserId || recruitingPagination.loading || recruitingPagination.exhausted) return false;
     const cursor = getRecruitingPaginationCursor(state.recruitingPosts);
@@ -826,6 +848,7 @@ export function useAppData(authUser = null) {
       };
 
       return ({
+        loadMatchDetail,
         loadMoreMatches,
         loadMoreRecruiting,
         switchUser: (userId) => {
@@ -1276,7 +1299,7 @@ export function useAppData(authUser = null) {
       reset: () => setState(resetState({ includeDemo: !isSupabaseConfigured, authUserId, email: authEmail })),
       });
     },
-    [authEmail, authUserId, currentUserId, deleteTeamServer, ensureRemoteReady, ensureServerActionAvailable, loadMoreMatches, loadMoreRecruiting, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, runServerAction, serverProfileBound, submitReportServer, syncFavoriteServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncSettingsServer, syncTeamServer, syncTournamentServer],
+    [authEmail, authUserId, currentUserId, deleteTeamServer, ensureRemoteReady, ensureServerActionAvailable, loadMatchDetail, loadMoreMatches, loadMoreRecruiting, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, runServerAction, serverProfileBound, submitReportServer, syncFavoriteServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncSettingsServer, syncTeamServer, syncTournamentServer],
   );
 
   const safeCurrentUserId = currentUserId ?? currentUser?.id ?? "";
