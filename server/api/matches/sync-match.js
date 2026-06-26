@@ -233,6 +233,33 @@ function getStatRecorderIds(match = {}) {
   return Object.values(recorders).flatMap((value) => Array.isArray(value) ? value : [value]).filter(Boolean);
 }
 
+async function isActiveReferee(supabase, userId, minTrust = 90) {
+  if (!userId) return false;
+
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("trust_score")
+    .eq("id", userId)
+    .maybeSingle();
+  if (profileError) throw profileError;
+  if (Number(profile?.trust_score ?? 0) < Number(minTrust ?? 90)) return false;
+
+  const { data, error } = await supabase
+    .from("referee_appointments")
+    .select("id, role, status, starts_at, ends_at")
+    .eq("user_id", userId)
+    .eq("role", "referee")
+    .eq("status", "active");
+  if (error) throw error;
+
+  const now = Date.now();
+  return toArray(data).some((row) => {
+    const startsAt = row.starts_at ? Date.parse(row.starts_at) : 0;
+    const endsAt = row.ends_at ? Date.parse(row.ends_at) : 0;
+    return (!startsAt || startsAt <= now) && (!endsAt || endsAt > now);
+  });
+}
+
 function isMatchOperator(profileId, existingMatch, nextMatch) {
   return Boolean(profileId && [
     existingMatch?.created_by,
@@ -274,6 +301,15 @@ const PARTICIPANT_MATCH_ACTIONS = new Set([
   "disputeMatch",
 ]);
 
+const REFEREE_ELIGIBILITY_ACTIONS = new Set([
+  "createMatch",
+  "confirmRecruitingMatch",
+  "createTournamentMatch",
+  "startMatch",
+  "endMatch",
+  "submitMatchResult",
+]);
+
 function canSubmitResult(profileId, existingMatch, nextMatch) {
   const refereeId = nextMatch.refereeId || existingMatch?.referee_id;
   if (refereeId) return profileId === refereeId;
@@ -291,6 +327,17 @@ function canSyncMatchAction(profileId, existingMatch, existingPlayers, nextMatch
   if (action === "submitMatchResult") return canSubmitResult(profileId, existingMatch, nextMatch);
   if (PARTICIPANT_MATCH_ACTIONS.has(action)) return existingParticipants.has(profileId) || nextParticipants.has(profileId);
   return existingParticipants.has(profileId) || nextParticipants.has(profileId);
+}
+
+async function validateRefereeEligibility(supabase, existingMatch, nextMatch, action) {
+  const refereeId = nextMatch.refereeId || existingMatch?.referee_id;
+  if (!refereeId) return;
+
+  const refereeChanged = refereeId !== existingMatch?.referee_id;
+  if (!refereeChanged && !REFEREE_ELIGIBILITY_ACTIONS.has(action)) return;
+
+  const minTrust = Number(nextMatch.refereeTrustMin ?? existingMatch?.referee_trust_min ?? 90);
+  if (!(await isActiveReferee(supabase, refereeId, minTrust))) reject(403, "referee_not_eligible");
 }
 
 async function deleteMatchChildren(supabase, table, matchId) {
@@ -324,7 +371,7 @@ export default async function handler(request, response) {
     const context = await getAuthenticatedContext(request);
     const { data: existingMatch, error: existingError } = await context.supabase
       .from("matches")
-      .select("id, created_by, referee_id, former_referee_id, stat_recorders")
+      .select("id, created_by, referee_id, former_referee_id, referee_trust_min, stat_recorders")
       .eq("id", match.id)
       .maybeSingle();
     if (existingError) throw existingError;
@@ -339,6 +386,7 @@ export default async function handler(request, response) {
       sendJson(response, 403, { error: "match_sync_permission_denied" });
       return;
     }
+    await validateRefereeEligibility(context.supabase, existingMatch, match, action);
 
     const matchRow = toMatchRow(match, context.profileId);
     const playerRows = getSidePlayerRows(match);

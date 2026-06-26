@@ -1112,6 +1112,12 @@ flowchart TD
 3. Existing DB room age rules are authoritative over client snapshot rules for existing recruiting posts.
 4. This is a server sync guard, not full authoritative match/tournament eligibility migration.
 
+## 2026-06-26 match referee server guard
+
+1. Match sync must reject `refereeId` assignment when the referee has no active `referee_appointments` row.
+2. Referee trust must be checked against `refereeTrustMin` before create/confirm/start/end/result sync can keep a referee on the match.
+3. Referee absence confirmation may remove `refereeId` and should not require the missing referee to stay eligible.
+
 ## 2026-06-26 Supabase test seed
 
 1. `npm run seed:supabase` gives demo profiles `testLoginId` and stores them in `profiles.test_login_id`.
