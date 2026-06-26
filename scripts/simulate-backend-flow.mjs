@@ -71,10 +71,11 @@ let ids = {
 };
 let currentStep = "init";
 const verbose = !process.argv.includes("--quiet");
+const startedAtMs = Date.now();
 
 async function step(label, action) {
   currentStep = label;
-  if (verbose) console.error(`[sim] ${label}`);
+  if (verbose) console.error(`[sim +${((Date.now() - startedAtMs) / 1000).toFixed(1)}s] ${label}`);
   return action();
 }
 
@@ -156,6 +157,14 @@ async function readResponseTextWithTimeout(response, label = "response") {
     timeoutId = setTimeout(() => reject(new Error(`${label}_body_timeout`)), requestTimeoutMs);
   });
   return Promise.race([response.text(), timeout]).finally(() => clearTimeout(timeoutId));
+}
+
+async function withTimeout(promise, label = "operation") {
+  let timeoutId;
+  const timeout = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(`${label}_timeout`)), requestTimeoutMs);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timeoutId));
 }
 
 async function assertRemoteSchemaHealth() {
@@ -537,14 +546,15 @@ async function main() {
 try {
   await main();
 } catch (error) {
-  const cleanupResult = await cleanup().catch((cleanupError) => ({ failed: cleanupError.message }));
-  console.error(JSON.stringify({
+  const failure = {
     ok: false,
     postId: ids.postId,
     matchId: ids.matchId,
     step: currentStep,
     error: error.message,
-    cleanup: cleanupResult,
-  }, null, 2));
+  };
+  console.error(JSON.stringify({ ...failure, cleanup: "pending" }, null, 2));
+  const cleanupResult = await withTimeout(cleanup(), "cleanup").catch((cleanupError) => ({ failed: cleanupError.message }));
+  console.error(JSON.stringify({ ...failure, cleanup: cleanupResult }, null, 2));
   process.exit(1);
 }
