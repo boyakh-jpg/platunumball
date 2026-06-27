@@ -805,12 +805,18 @@ function canCommitRatingResult(action, existingResult, nextMatch) {
 }
 
 const SQL_REDUCER_MATCH_ACTIONS = new Set([
+  "addMatchLatePlayer",
   "endMatch",
+  "removeMatchLatePlayer",
 ]);
 
 function isMissingSqlMatchReducer(error = {}) {
   const message = String(error?.message ?? "");
-  return error?.code === "PGRST202" || message.includes("rankball_match_end_action");
+  return (
+    error?.code === "PGRST202" ||
+    message.includes("rankball_match_end_action") ||
+    message.includes("rankball_match_late_player_action")
+  );
 }
 
 function shouldUseSqlMatchAction(operation = {}) {
@@ -818,6 +824,29 @@ function shouldUseSqlMatchAction(operation = {}) {
 }
 
 async function applySqlMatchAction(context, operation = {}, match = {}) {
+  if (["addMatchLatePlayer", "removeMatchLatePlayer"].includes(operation.action) && match?.id) {
+    const { data, error } = await context.supabase.rpc("rankball_match_late_player_action", {
+      p_actor_profile_id: context.profileId,
+      p_action: operation.action,
+      p_match_id: operation.matchId ?? match.id,
+      p_player_id: operation.playerId ?? "",
+      p_played_player_ids: match.playedPlayerIds ?? match.rules?.playedPlayerIds ?? {},
+      p_reserve_players: match.reservePlayers ?? match.rules?.reservePlayers ?? {},
+      p_anonymous_players: match.anonymousPlayers ?? {},
+      p_mmr_excluded_player_ids: match.mmrExcludedPlayerIds ?? match.rules?.mmrExcludedPlayerIds ?? [],
+    });
+    if (error) {
+      if (isMissingSqlMatchReducer(error)) return null;
+      throw error;
+    }
+    if (data?.fallback) return null;
+    return {
+      ok: true,
+      ...(data && typeof data === "object" ? data : {}),
+      matchId: operation.matchId ?? match.id,
+    };
+  }
+
   if (operation.action !== "endMatch" || !match?.id) return null;
   const { data, error } = await context.supabase.rpc("rankball_match_end_action", {
     p_actor_profile_id: context.profileId,

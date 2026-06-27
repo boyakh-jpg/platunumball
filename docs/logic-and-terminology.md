@@ -1318,6 +1318,7 @@ flowchart TD
 17. `/api/matches/list` list-only reads must not fetch full `team_members` rosters for related teams; full roster data belongs to `/api/matches/detail` or directory loads.
 18. `/api/profile/me` bootstraps the current user's own teams, those teams' member ids, and those members' public profiles so team-room creation and mine/joined filters do not wait for broad list hydration.
 19. `endMatch` may use `rankball_match_end_action()` as a SQL reducer only for no-referee host-operated matches. Referee matches and unsupported states must fall back to the existing authoritative match action path.
+20. `addMatchLatePlayer`/`removeMatchLatePlayer` may use `rankball_match_late_player_action()` as a SQL reducer only for no-referee host-operated postgame matches inside the stat entry window. The SQL path only accepts a single anonymous late-player add or a single excluded late-player remove; registered late-player add and unsupported states fall back to the existing authoritative match action path.
 
 ## 2026-06-27 report scoped reads
 

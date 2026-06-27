@@ -120,6 +120,19 @@ const REQUIRED_RPCS = [
     name: "rankball_match_end_action",
     args: { p_actor_profile_id: "", p_match_id: "", p_started_at: "", p_ended_at: "" },
   },
+  {
+    name: "rankball_match_late_player_action",
+    args: {
+      p_actor_profile_id: "",
+      p_action: "addMatchLatePlayer",
+      p_match_id: "",
+      p_player_id: "",
+      p_played_player_ids: {},
+      p_reserve_players: {},
+      p_anonymous_players: {},
+      p_mmr_excluded_player_ids: [],
+    },
+  },
 ];
 
 function getBearerToken(request) {

@@ -3770,6 +3770,225 @@ $$;
 revoke all on function public.rankball_match_end_action(text, text, text, text) from public;
 grant execute on function public.rankball_match_end_action(text, text, text, text) to service_role;
 
+create or replace function public.rankball_match_late_player_action(
+  p_actor_profile_id text,
+  p_action text,
+  p_match_id text,
+  p_player_id text default '',
+  p_played_player_ids jsonb default '{}'::jsonb,
+  p_reserve_players jsonb default '{}'::jsonb,
+  p_anonymous_players jsonb default '{}'::jsonb,
+  p_mmr_excluded_player_ids jsonb default '[]'::jsonb
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  safe_actor_id text := nullif(btrim(p_actor_profile_id), '');
+  safe_action text := nullif(btrim(p_action), '');
+  safe_match_id text := nullif(btrim(p_match_id), '');
+  requested_player_id text := nullif(btrim(p_player_id), '');
+  current_match public.matches%rowtype;
+  current_played jsonb;
+  current_reserve jsonb;
+  current_anonymous jsonb;
+  current_excluded jsonb;
+  requested_played jsonb;
+  requested_anonymous jsonb;
+  requested_excluded jsonb;
+  added_ids text[];
+  removed_ids text[];
+  delta_player_id text;
+  delta_side text;
+  current_side_ids jsonb;
+  next_team_a_ids jsonb;
+  next_team_b_ids jsonb;
+  next_reserve_team_a_ids jsonb;
+  next_reserve_team_b_ids jsonb;
+  next_played jsonb;
+  next_reserve jsonb;
+  next_anonymous jsonb;
+  next_excluded jsonb;
+  next_rules jsonb;
+  anonymous_payload jsonb;
+begin
+  if safe_actor_id is null then
+    raise exception 'missing_actor_profile_id' using errcode = '22023';
+  end if;
+  if safe_match_id is null then
+    raise exception 'missing_match' using errcode = '22023';
+  end if;
+  if safe_action not in ('addMatchLatePlayer', 'removeMatchLatePlayer') then
+    raise exception 'unsupported_late_player_action' using errcode = '22023';
+  end if;
+
+  select *
+  into current_match
+  from public.matches
+  where id = safe_match_id
+  for update;
+
+  if not found then
+    raise exception 'match_not_found' using errcode = '22023';
+  end if;
+  if current_match.referee_id is not null and current_match.referee_id <> '' then
+    return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'referee_match_requires_replay', 'matchId', safe_match_id);
+  end if;
+  if current_match.created_by <> safe_actor_id then
+    raise exception 'match_late_player_permission_denied' using errcode = '42501';
+  end if;
+  if current_match.status in ('approval', 'confirmed', 'void', 'cancelled', 'disputed') then
+    return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'match_late_player_locked', 'matchId', safe_match_id);
+  end if;
+  if current_match.ended_at is null then
+    return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'match_not_postgame', 'matchId', safe_match_id);
+  end if;
+  if current_match.ended_at + ((coalesce(current_match.stat_entry_minutes, 60)::text || ' minutes')::interval) < now() then
+    return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'stat_entry_window_expired', 'matchId', safe_match_id);
+  end if;
+  if exists (select 1 from public.match_results result where result.match_id = safe_match_id) then
+    return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'match_result_exists', 'matchId', safe_match_id);
+  end if;
+
+  current_played := case
+    when jsonb_typeof(current_match.played_player_ids) = 'object' then current_match.played_player_ids
+    when jsonb_typeof(current_match.rules->'playedPlayerIds') = 'object' then current_match.rules->'playedPlayerIds'
+    else '{}'::jsonb
+  end;
+  current_reserve := case
+    when jsonb_typeof(current_match.reserve_players) = 'object' then current_match.reserve_players
+    when jsonb_typeof(current_match.rules->'reservePlayers') = 'object' then current_match.rules->'reservePlayers'
+    else '{}'::jsonb
+  end;
+  current_anonymous := case
+    when jsonb_typeof(current_match.anonymous_players) = 'object' then current_match.anonymous_players
+    else '{}'::jsonb
+  end;
+  current_excluded := case
+    when jsonb_typeof(current_match.mmr_excluded_player_ids) = 'array' then current_match.mmr_excluded_player_ids
+    when jsonb_typeof(current_match.rules->'mmrExcludedPlayerIds') = 'array' then current_match.rules->'mmrExcludedPlayerIds'
+    else '[]'::jsonb
+  end;
+  requested_played := case when jsonb_typeof(p_played_player_ids) = 'object' then p_played_player_ids else '{}'::jsonb end;
+  requested_anonymous := case when jsonb_typeof(p_anonymous_players) = 'object' then p_anonymous_players else '{}'::jsonb end;
+  requested_excluded := case when jsonb_typeof(p_mmr_excluded_player_ids) = 'array' then p_mmr_excluded_player_ids else '[]'::jsonb end;
+
+  if safe_action = 'addMatchLatePlayer' then
+    select coalesce(array_agg(value), '{}'::text[])
+    into added_ids
+    from jsonb_array_elements_text(requested_excluded) ids(value)
+    where not (current_excluded ? value);
+
+    select coalesce(array_agg(value), '{}'::text[])
+    into removed_ids
+    from jsonb_array_elements_text(current_excluded) ids(value)
+    where not (requested_excluded ? value);
+
+    if array_length(added_ids, 1) is distinct from 1 or array_length(removed_ids, 1) is not null then
+      return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'late_player_delta_not_single_add', 'matchId', safe_match_id);
+    end if;
+
+    delta_player_id := added_ids[1];
+    if delta_player_id not like 'anon_%' then
+      return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'registered_late_player_requires_replay', 'matchId', safe_match_id);
+    end if;
+
+    if (case when jsonb_typeof(requested_played->'teamA') = 'array' then requested_played->'teamA' else '[]'::jsonb end) ? delta_player_id then
+      delta_side := 'teamA';
+    end if;
+    if (case when jsonb_typeof(requested_played->'teamB') = 'array' then requested_played->'teamB' else '[]'::jsonb end) ? delta_player_id then
+      if delta_side is not null then
+        return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'late_player_multiple_sides', 'matchId', safe_match_id);
+      end if;
+      delta_side := 'teamB';
+    end if;
+    if delta_side is null then
+      return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'late_player_side_missing', 'matchId', safe_match_id);
+    end if;
+
+    anonymous_payload := requested_anonymous->delta_player_id;
+    if jsonb_typeof(anonymous_payload) <> 'object' or nullif(btrim(anonymous_payload->>'name'), '') is null then
+      return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'anonymous_late_player_name_missing', 'matchId', safe_match_id);
+    end if;
+
+    current_side_ids := case when jsonb_typeof(current_played->delta_side) = 'array' then current_played->delta_side else '[]'::jsonb end;
+    if current_side_ids ? delta_player_id then
+      return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'late_player_already_played', 'matchId', safe_match_id);
+    end if;
+
+    next_played := jsonb_set(current_played, array[delta_side], current_side_ids || jsonb_build_array(delta_player_id), true);
+    next_excluded := current_excluded || jsonb_build_array(delta_player_id);
+    next_anonymous := jsonb_set(current_anonymous, array[delta_player_id], anonymous_payload, true);
+  else
+    delta_player_id := requested_player_id;
+    if delta_player_id is null then
+      select coalesce(array_agg(value), '{}'::text[])
+      into removed_ids
+      from jsonb_array_elements_text(current_excluded) ids(value)
+      where not (requested_excluded ? value);
+      if array_length(removed_ids, 1) is distinct from 1 then
+        return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'late_player_delta_not_single_remove', 'matchId', safe_match_id);
+      end if;
+      delta_player_id := removed_ids[1];
+    end if;
+
+    if not (current_excluded ? delta_player_id) then
+      return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'late_player_not_excluded', 'matchId', safe_match_id);
+    end if;
+
+    select coalesce(jsonb_agg(to_jsonb(value)) filter (where value <> delta_player_id), '[]'::jsonb)
+    into next_team_a_ids
+    from jsonb_array_elements_text(case when jsonb_typeof(current_played->'teamA') = 'array' then current_played->'teamA' else '[]'::jsonb end) ids(value);
+    select coalesce(jsonb_agg(to_jsonb(value)) filter (where value <> delta_player_id), '[]'::jsonb)
+    into next_team_b_ids
+    from jsonb_array_elements_text(case when jsonb_typeof(current_played->'teamB') = 'array' then current_played->'teamB' else '[]'::jsonb end) ids(value);
+    next_played := jsonb_set(jsonb_set(current_played, '{teamA}', next_team_a_ids, true), '{teamB}', next_team_b_ids, true);
+
+    select coalesce(jsonb_agg(to_jsonb(value)) filter (where value <> delta_player_id), '[]'::jsonb)
+    into next_excluded
+    from jsonb_array_elements_text(current_excluded) ids(value);
+    next_anonymous := current_anonymous - delta_player_id;
+  end if;
+
+  select coalesce(jsonb_agg(to_jsonb(value)) filter (where value <> delta_player_id), '[]'::jsonb)
+  into next_reserve_team_a_ids
+  from jsonb_array_elements_text(case when jsonb_typeof(current_reserve->'teamA') = 'array' then current_reserve->'teamA' else '[]'::jsonb end) ids(value);
+  select coalesce(jsonb_agg(to_jsonb(value)) filter (where value <> delta_player_id), '[]'::jsonb)
+  into next_reserve_team_b_ids
+  from jsonb_array_elements_text(case when jsonb_typeof(current_reserve->'teamB') = 'array' then current_reserve->'teamB' else '[]'::jsonb end) ids(value);
+  next_reserve := jsonb_set(jsonb_set(current_reserve, '{teamA}', next_reserve_team_a_ids, true), '{teamB}', next_reserve_team_b_ids, true);
+
+  next_rules := coalesce(current_match.rules, '{}'::jsonb);
+  next_rules := jsonb_set(next_rules, '{playedPlayerIds}', next_played, true);
+  next_rules := jsonb_set(next_rules, '{reservePlayers}', next_reserve, true);
+  next_rules := jsonb_set(next_rules, '{mmrExcludedPlayerIds}', next_excluded, true);
+
+  update public.matches
+  set
+    played_player_ids = next_played,
+    reserve_players = next_reserve,
+    anonymous_players = next_anonymous,
+    mmr_excluded_player_ids = next_excluded,
+    rules = next_rules,
+    updated_at = now()
+  where id = safe_match_id;
+
+  return jsonb_build_object(
+    'ok', true,
+    'action', safe_action,
+    'matchId', safe_match_id,
+    'playerId', delta_player_id,
+    'actorProfileId', safe_actor_id,
+    'sqlReducer', true
+  );
+end;
+$$;
+
+revoke all on function public.rankball_match_late_player_action(text, text, text, text, jsonb, jsonb, jsonb, jsonb) from public;
+grant execute on function public.rankball_match_late_player_action(text, text, text, text, jsonb, jsonb, jsonb, jsonb) to service_role;
+
 create or replace function public.rankball_match_action(
   p_actor_profile_id text,
   p_action text,

@@ -231,8 +231,8 @@ async function syncRecruitingAs(testLoginId, operation) {
   return callHandler("/api/recruiting/sync-post", syncRecruitingPostHandler, token(testLoginId), { operation });
 }
 
-async function syncMatchAs(testLoginId, operation) {
-  return callHandler("/api/matches/sync-match", syncMatchHandler, token(testLoginId), { operation });
+async function syncMatchAs(testLoginId, operation, extra = {}) {
+  return callHandler("/api/matches/sync-match", syncMatchHandler, token(testLoginId), { operation, ...extra });
 }
 
 async function expectRejected(label, action, expectedErrors = []) {
@@ -254,6 +254,10 @@ function findPost(state) {
 
 function findMatch(state) {
   return (state.matches ?? []).find((match) => match.id === ids.matchId);
+}
+
+function uniqueIds(values = []) {
+  return [...new Set(values.filter(Boolean))];
 }
 
 async function getRecruitingPostAfterResult(result, login, label) {
@@ -292,6 +296,66 @@ function makeResult(match) {
         blocks: 0,
         fouls: 2,
       },
+    },
+  };
+}
+
+function withLateAnonymousPlayer(match = {}, playerId = "", sideName = "teamA", name = "Backend Anonymous") {
+  const playedPlayerIds = match.playedPlayerIds ?? match.rules?.playedPlayerIds ?? {};
+  const mmrExcludedPlayerIds = match.mmrExcludedPlayerIds ?? match.rules?.mmrExcludedPlayerIds ?? [];
+  const reservePlayers = match.reservePlayers ?? match.rules?.reservePlayers ?? {};
+  const nextPlayedPlayerIds = {
+    ...playedPlayerIds,
+    [sideName]: uniqueIds([...(playedPlayerIds[sideName] ?? []), playerId]),
+  };
+  const nextReservePlayers = {
+    teamA: uniqueIds(reservePlayers.teamA ?? []).filter((id) => id !== playerId),
+    teamB: uniqueIds(reservePlayers.teamB ?? []).filter((id) => id !== playerId),
+  };
+  const nextExcludedIds = uniqueIds([...mmrExcludedPlayerIds, playerId]);
+  return {
+    ...match,
+    playedPlayerIds: nextPlayedPlayerIds,
+    reservePlayers: nextReservePlayers,
+    anonymousPlayers: {
+      ...(match.anonymousPlayers ?? {}),
+      [playerId]: {
+        id: playerId,
+        name,
+        position: "-",
+        avatarColor: "#64748b",
+        trustScore: "-",
+        ratings: { integrated: 0, modes: {} },
+      },
+    },
+    mmrExcludedPlayerIds: nextExcludedIds,
+    rules: {
+      ...(match.rules ?? {}),
+      playedPlayerIds: nextPlayedPlayerIds,
+      mmrExcludedPlayerIds: nextExcludedIds,
+    },
+  };
+}
+
+function withoutLatePlayer(match = {}, playerId = "") {
+  const playedPlayerIds = match.playedPlayerIds ?? match.rules?.playedPlayerIds ?? {};
+  const mmrExcludedPlayerIds = match.mmrExcludedPlayerIds ?? match.rules?.mmrExcludedPlayerIds ?? [];
+  const anonymousPlayers = { ...(match.anonymousPlayers ?? {}) };
+  delete anonymousPlayers[playerId];
+  const nextPlayedPlayerIds = {
+    teamA: uniqueIds(playedPlayerIds.teamA ?? []).filter((id) => id !== playerId),
+    teamB: uniqueIds(playedPlayerIds.teamB ?? []).filter((id) => id !== playerId),
+  };
+  const nextExcludedIds = uniqueIds(mmrExcludedPlayerIds).filter((id) => id !== playerId);
+  return {
+    ...match,
+    playedPlayerIds: nextPlayedPlayerIds,
+    anonymousPlayers,
+    mmrExcludedPlayerIds: nextExcludedIds,
+    rules: {
+      ...(match.rules ?? {}),
+      playedPlayerIds: nextPlayedPlayerIds,
+      mmrExcludedPlayerIds: nextExcludedIds,
     },
   };
 }
@@ -489,6 +553,37 @@ async function runOneOnOneScenario({
   match = await getMatchAfterResult(endResult, operatorLogin, `${ids.label}:loadAfterEndMatch`);
   assertFlow(Boolean(match?.endedAt), "match end not persisted", match);
 
+  let latePlayerSqlReducers = null;
+  if (!refereeWanted) {
+    const latePlayerId = `anon_${ids.label}_${suffix}`;
+    const matchWithLatePlayer = withLateAnonymousPlayer(match, latePlayerId, "teamA", "Backend Anonymous");
+    const addLateResult = await step(`${ids.label}:addMatchLatePlayer:anonymous`, () => syncMatchAs(operatorLogin, {
+      action: "addMatchLatePlayer",
+      matchId: ids.matchId,
+      draft: {
+        sideName: "teamA",
+        name: "Backend Anonymous",
+      },
+    }, { match: matchWithLatePlayer }));
+    match = await getMatchAfterResult(addLateResult, operatorLogin, `${ids.label}:loadAfterLatePlayerAdd`);
+    assertFlow(Boolean(match?.anonymousPlayers?.[latePlayerId]), "anonymous late player not persisted", { latePlayerId, match });
+    assertFlow((match?.playedPlayerIds?.teamA ?? []).includes(latePlayerId), "anonymous late player not in played ids", { latePlayerId, match });
+
+    const matchWithoutLatePlayer = withoutLatePlayer(match, latePlayerId);
+    const removeLateResult = await step(`${ids.label}:removeMatchLatePlayer:anonymous`, () => syncMatchAs(operatorLogin, {
+      action: "removeMatchLatePlayer",
+      matchId: ids.matchId,
+      playerId: latePlayerId,
+    }, { match: matchWithoutLatePlayer }));
+    match = await getMatchAfterResult(removeLateResult, operatorLogin, `${ids.label}:loadAfterLatePlayerRemove`);
+    assertFlow(!match?.anonymousPlayers?.[latePlayerId], "anonymous late player remove not persisted", { latePlayerId, match });
+    assertFlow(!(match?.playedPlayerIds?.teamA ?? []).includes(latePlayerId), "anonymous late player still in played ids", { latePlayerId, match });
+    latePlayerSqlReducers = {
+      add: Boolean(addLateResult?.sqlReducer),
+      remove: Boolean(removeLateResult?.sqlReducer),
+    };
+  }
+
   const resultSubmit = await step(`${ids.label}:submitMatchResult`, () => syncMatchAs(operatorLogin, {
     action: "submitMatchResult",
     matchId: ids.matchId,
@@ -531,6 +626,7 @@ async function runOneOnOneScenario({
     finalStatus: match.status,
     sqlReducers: {
       endMatch: Boolean(endResult?.sqlReducer),
+      latePlayer: latePlayerSqlReducers,
     },
   };
 }
