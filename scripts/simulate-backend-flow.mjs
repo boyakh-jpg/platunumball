@@ -541,7 +541,7 @@ async function runOneOnOneScenario({
       sideName: "teamA",
       playerId: hostId,
     }));
-    match = checkInAResult?.match;
+    match = await getMatchAfterResult(checkInAResult, operatorLogin, `${ids.label}:loadAfterCheckInTeamA`);
     assertFlow(match?.attendance?.teamA?.includes(hostId), "teamA check-in not persisted", match);
   }
 
@@ -551,7 +551,7 @@ async function runOneOnOneScenario({
     sideName: "teamB",
     playerId: opponentId,
   }));
-  match = checkInBResult?.match;
+  match = await getMatchAfterResult(checkInBResult, operatorLogin, `${ids.label}:loadAfterCheckInTeamB`);
   assertFlow(match?.attendance?.teamB?.includes(opponentId), "teamB check-in not persisted", match);
 
   const startResult = await step(`${ids.label}:startMatch`, () => syncMatchAs(operatorLogin, {
@@ -642,6 +642,7 @@ async function runOneOnOneScenario({
     finalStatus: match.status,
     sqlReducers: {
       setRecruitingReady: Boolean(readyResult?.sqlReducer),
+      checkInMatchPlayer: Boolean(checkInBResult?.sqlReducer),
       startMatch: Boolean(startResult?.sqlReducer),
       endMatch: Boolean(endResult?.sqlReducer),
       latePlayer: latePlayerSqlReducers,

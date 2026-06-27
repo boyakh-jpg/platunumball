@@ -3870,6 +3870,143 @@ $$;
 revoke all on function public.rankball_persist_match_snapshot(jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, boolean) from public;
 grant execute on function public.rankball_persist_match_snapshot(jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, boolean) to service_role;
 
+create or replace function public.rankball_match_checkin_action(
+  p_actor_profile_id text,
+  p_match_id text,
+  p_side text,
+  p_player_id text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  safe_actor_id text := nullif(btrim(p_actor_profile_id), '');
+  safe_match_id text := nullif(btrim(p_match_id), '');
+  safe_side text := nullif(btrim(p_side), '');
+  safe_player_id text := nullif(btrim(p_player_id), '');
+  current_match public.matches%rowtype;
+  current_attendance jsonb;
+  current_side_attendance jsonb;
+  next_side_attendance jsonb;
+  next_attendance jsonb;
+  current_reserve jsonb;
+  scheduled_at_kst timestamptz;
+  reserve_count integer := 0;
+begin
+  if safe_actor_id is null then
+    raise exception 'missing_actor_profile_id' using errcode = '22023';
+  end if;
+  if safe_match_id is null then
+    raise exception 'missing_match' using errcode = '22023';
+  end if;
+  if safe_side not in ('teamA', 'teamB') or safe_player_id is null then
+    raise exception 'invalid_match_checkin_target' using errcode = '22023';
+  end if;
+
+  select *
+  into current_match
+  from public.matches
+  where id = safe_match_id
+  for update;
+
+  if not found then
+    raise exception 'match_not_found' using errcode = '22023';
+  end if;
+  if current_match.referee_id is not null and current_match.referee_id <> '' then
+    return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'referee_match_requires_replay', 'matchId', safe_match_id);
+  end if;
+  if current_match.created_by <> safe_actor_id then
+    raise exception 'match_checkin_permission_denied' using errcode = '42501';
+  end if;
+  if safe_actor_id = safe_player_id then
+    return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'self_checkin_requires_replay', 'matchId', safe_match_id);
+  end if;
+  if current_match.status not in ('contract', 'agreed') or current_match.started_at is not null or current_match.ended_at is not null then
+    return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'match_checkin_locked', 'matchId', safe_match_id);
+  end if;
+  if exists (select 1 from public.match_results result where result.match_id = safe_match_id) then
+    return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'match_result_exists', 'matchId', safe_match_id);
+  end if;
+
+  if coalesce(current_match.rules->>'timingType', 'scheduled') <> 'instant' then
+    if current_match.scheduled_date is null or current_match.scheduled_time is null then
+      return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'match_schedule_requires_replay', 'matchId', safe_match_id);
+    end if;
+    scheduled_at_kst := (current_match.scheduled_date + current_match.scheduled_time) at time zone 'Asia/Seoul';
+    if now() < scheduled_at_kst then
+      return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'match_not_checkin_time', 'matchId', safe_match_id);
+    end if;
+  end if;
+
+  current_reserve := case
+    when jsonb_typeof(current_match.reserve_players) = 'object' then current_match.reserve_players
+    when jsonb_typeof(current_match.rules->'reservePlayers') = 'object' then current_match.rules->'reservePlayers'
+    else '{}'::jsonb
+  end;
+  select count(*)
+  into reserve_count
+  from jsonb_each(current_reserve) item
+  cross join lateral jsonb_array_elements_text(case when jsonb_typeof(item.value) = 'array' then item.value else '[]'::jsonb end) ids(value);
+
+  if reserve_count > 0 then
+    return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'reserve_checkin_requires_replay', 'matchId', safe_match_id);
+  end if;
+  if jsonb_typeof(current_match.rules->'parties') = 'array' and jsonb_array_length(current_match.rules->'parties') > 0 then
+    return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'party_checkin_requires_replay', 'matchId', safe_match_id);
+  end if;
+  if not exists (
+    select 1
+    from public.match_players mp
+    where mp.match_id = safe_match_id
+      and mp.side = safe_side
+      and mp.user_id = safe_player_id
+  ) then
+    return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'match_checkin_player_not_found', 'matchId', safe_match_id);
+  end if;
+
+  current_attendance := case when jsonb_typeof(current_match.attendance) = 'object' then current_match.attendance else '{}'::jsonb end;
+  current_side_attendance := case
+    when jsonb_typeof(current_attendance->safe_side) = 'array' then current_attendance->safe_side
+    else '[]'::jsonb
+  end;
+
+  select coalesce(jsonb_agg(to_jsonb(value)), '[]'::jsonb)
+  into next_side_attendance
+  from (
+    select distinct value
+    from (
+      select value from jsonb_array_elements_text(current_side_attendance) ids(value)
+      union all
+      select safe_player_id
+    ) values_to_attend
+    where value is not null and value <> ''
+  ) distinct_values;
+
+  next_attendance := jsonb_set(current_attendance, array[safe_side], next_side_attendance, true);
+
+  update public.matches
+  set
+    attendance = next_attendance,
+    updated_at = now()
+  where id = safe_match_id;
+
+  return jsonb_build_object(
+    'ok', true,
+    'action', 'checkInMatchPlayer',
+    'matchId', safe_match_id,
+    'actorProfileId', safe_actor_id,
+    'playerId', safe_player_id,
+    'sideName', safe_side,
+    'sqlReducer', true
+  );
+end;
+$$;
+
+revoke all on function public.rankball_match_checkin_action(text, text, text, text) from public;
+grant execute on function public.rankball_match_checkin_action(text, text, text, text) to service_role;
+
 create or replace function public.rankball_match_start_action(
   p_actor_profile_id text,
   p_match_id text,
@@ -4363,6 +4500,15 @@ begin
   end if;
   if safe_match_id is null then
     raise exception 'missing_match' using errcode = '22023';
+  end if;
+
+  if safe_action = 'checkInMatchPlayer' and p_match_row ? '__operation' then
+    return public.rankball_match_checkin_action(
+      safe_actor_id,
+      safe_match_id,
+      p_match_row #>> '{__operation,sideName}',
+      p_match_row #>> '{__operation,playerId}'
+    );
   end if;
 
   if safe_action = 'startMatch' and p_match_row ? '__operation' then

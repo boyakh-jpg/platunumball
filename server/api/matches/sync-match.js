@@ -806,6 +806,7 @@ function canCommitRatingResult(action, existingResult, nextMatch) {
 
 const SQL_REDUCER_MATCH_ACTIONS = new Set([
   "addMatchLatePlayer",
+  "checkInMatchPlayer",
   "endMatch",
   "removeMatchLatePlayer",
   "startMatch",
@@ -815,6 +816,7 @@ function isMissingSqlMatchReducer(error = {}) {
   const message = String(error?.message ?? "");
   return (
     error?.code === "PGRST202" ||
+    message.includes("rankball_match_checkin_action") ||
     message.includes("rankball_match_end_action") ||
     message.includes("rankball_match_late_player_action") ||
     message.includes("rankball_match_start_action")
@@ -826,6 +828,25 @@ function shouldUseSqlMatchAction(operation = {}) {
 }
 
 async function applySqlMatchAction(context, operation = {}, match = {}) {
+  if (operation.action === "checkInMatchPlayer" && match?.id) {
+    const { data, error } = await context.supabase.rpc("rankball_match_checkin_action", {
+      p_actor_profile_id: context.profileId,
+      p_match_id: operation.matchId ?? match.id,
+      p_side: operation.sideName ?? "",
+      p_player_id: operation.playerId ?? "",
+    });
+    if (error) {
+      if (isMissingSqlMatchReducer(error)) return null;
+      throw error;
+    }
+    if (data?.fallback) return null;
+    return {
+      ok: true,
+      ...(data && typeof data === "object" ? data : {}),
+      matchId: operation.matchId ?? match.id,
+    };
+  }
+
   if (operation.action === "startMatch" && match?.id) {
     const { data, error } = await context.supabase.rpc("rankball_match_start_action", {
       p_actor_profile_id: context.profileId,
