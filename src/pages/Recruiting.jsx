@@ -3037,14 +3037,45 @@ function RecruitingReady({ app }) {
 
   useEffect(() => {
     if (!app.remoteReady || !app.currentUser.id) return undefined;
-    if (myRecruitingLoadRef.current === app.currentUser.id) return undefined;
-    myRecruitingLoadRef.current = app.currentUser.id;
+    const userId = app.currentUser.id;
+    const pendingKey = `${userId}:pending`;
+    if (myRecruitingLoadRef.current === userId || myRecruitingLoadRef.current === pendingKey) return undefined;
+    let cancelled = false;
+    let retryTimeoutId = null;
+    let attempts = 0;
+    const runLoad = () => {
+      attempts += 1;
+      myRecruitingLoadRef.current = pendingKey;
+      Promise.resolve(app.actions.loadMyRecruitingPosts?.()).then((result) => {
+        if (cancelled || myRecruitingLoadRef.current !== pendingKey) return;
+        if (result === false && attempts < 3) {
+          myRecruitingLoadRef.current = "";
+          retryTimeoutId = window.setTimeout(runLoad, 1200);
+          return;
+        }
+        myRecruitingLoadRef.current = result === false ? "" : userId;
+      }).catch(() => {
+        if (cancelled || myRecruitingLoadRef.current !== pendingKey) return;
+        myRecruitingLoadRef.current = "";
+        if (attempts < 3) retryTimeoutId = window.setTimeout(runLoad, 1200);
+      });
+    };
     if ("requestIdleCallback" in window) {
-      const idleId = window.requestIdleCallback(() => app.actions.loadMyRecruitingPosts?.(), { timeout: 1500 });
-      return () => window.cancelIdleCallback?.(idleId);
+      const idleId = window.requestIdleCallback(runLoad, { timeout: 1500 });
+      return () => {
+        cancelled = true;
+        window.cancelIdleCallback?.(idleId);
+        if (retryTimeoutId) window.clearTimeout(retryTimeoutId);
+        if (myRecruitingLoadRef.current === pendingKey) myRecruitingLoadRef.current = "";
+      };
     }
-    const timeoutId = window.setTimeout(() => app.actions.loadMyRecruitingPosts?.(), 700);
-    return () => window.clearTimeout(timeoutId);
+    const timeoutId = window.setTimeout(runLoad, 700);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+      if (retryTimeoutId) window.clearTimeout(retryTimeoutId);
+      if (myRecruitingLoadRef.current === pendingKey) myRecruitingLoadRef.current = "";
+    };
   }, [app.actions, app.currentUser.id, app.remoteReady]);
 
   useEffect(() => {

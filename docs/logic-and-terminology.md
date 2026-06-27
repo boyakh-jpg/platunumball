@@ -1336,6 +1336,7 @@ flowchart TD
 13. Supabase auth 사용자가 바뀌면 이전 계정의 room/list state를 화면에 남기지 않고 shell state로 비운 뒤 새 서버 state를 로드한다.
 
 14. `setRecruitingSlotPosition`은 첫 SQL reducer 이식 대상이다. 서버는 `rankball_recruiting_slot_position_action()`을 우선 호출하고, SQL이 아직 적용되지 않았으면 기존 authoritative replay 경로로 fallback한다. `rankball_recruiting_action(...)`도 `p_post_row.__operation`이 있는 같은 action을 이 helper로 위임할 수 있다.
+15. Recruiting/Matches 화면의 `scope: "mine"` 보강 로드는 요청이 성공했을 때만 완료 처리한다. 초기 auth/token 타이밍 실패가 나면 재시도하고, 실패한 1회 요청 때문에 `내가 만든 방`/`내 참여방` 카운트를 초기 목록 상태로 고정하지 않는다.
 
 ## 2026-06-27 simulation cleanup safety
 
