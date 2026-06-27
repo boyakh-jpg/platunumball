@@ -1342,6 +1342,7 @@ flowchart TD
 28. `/api/matches/list` 첫 페이지는 경기 메뉴 false-empty를 막기 위해 현재 사용자의 open 모집방 일정도 compact state로 함께 반환할 수 있다. 추가 match page는 모집방을 다시 싣지 않는다.
 29. If the first `/api/matches/list` response marks `page.recruitingScheduleChecked=true`, `/app/matches` must not run the delayed `scope=mine` recruiting reload for the same entry. This avoids late schedule count/card changes from duplicate reads.
 30. `/app/recorder` must load `recorderOnly` match state on direct entry or after thin-route navigation before showing the final empty state. Recorder state includes only active `agreed`/`approval`/`disputed` matches related to the current profile.
+31. `/api/matches/list` with `listOnly:false` must not force `matchListOnly:true`; recorder/detail-like reads need `match_results` and `player_match_stats`.
 
 ## 2026-06-27 report scoped reads
 

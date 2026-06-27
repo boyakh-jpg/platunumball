@@ -386,7 +386,7 @@ async function loadNormalizedMatchList(context, body = {}, adminLevel = 0, limit
       clientState: true,
       isAdmin: adminLevel >= 30,
       scope: "matches",
-      matchListOnly: true,
+      matchListOnly: false,
       matchLimit: limit,
       matchUpdatedBefore: body.cursor ?? body.matchUpdatedBefore ?? "",
       recruitingLimit: 0,
