@@ -32,6 +32,23 @@ function toClientTeam(team = {}, memberRows = []) {
   };
 }
 
+function fromTeamMemberProfile(row = {}) {
+  const profile = fromRemoteProfile(row);
+  return {
+    id: profile.id,
+    name: profile.name,
+    handle: profile.handle,
+    position: profile.position,
+    trustScore: profile.trustScore,
+    avatarColor: profile.avatarColor,
+    hashtag: profile.hashtag,
+    ageGroup: profile.ageGroup,
+    ageGroupCheckedSeason: profile.ageGroupCheckedSeason,
+    onboardingComplete: profile.onboardingComplete,
+    ratings: profile.ratings,
+  };
+}
+
 async function loadCurrentUserTeams(supabase, profileId = "") {
   if (!profileId) return { teams: [], users: [] };
   const { data: ownMemberships, error: ownMembershipsError } = await supabase
@@ -65,7 +82,7 @@ async function loadCurrentUserTeams(supabase, profileId = "") {
 
   return {
     teams: (teamRows ?? []).map((team) => toClientTeam(team, membersByTeam.get(team.id) ?? [])),
-    users: (profileRows ?? []).map(fromRemoteProfile),
+    users: (profileRows ?? []).map(fromTeamMemberProfile),
   };
 }
 
