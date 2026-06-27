@@ -1352,6 +1352,7 @@ flowchart TD
 33. Match `status='closed'` is a cleanup soft-close state, not a normal record-confirmed match state. `/api/matches/list` and `rankball_match_list()` exclude it from default current-user feed pages.
 34. Match room phase `record` is a normal completed-record phase and belongs to the Matches closed/history view. Selecting a past range must make record-phase matches visible instead of leaving them outside every view.
 35. `/app/matches` default list is not a paged "더 보기" feed. It loads current-user active matches in one request with `activeOnly=true` up to the active-feed cap, excluding normal past record rows (`confirmed`) and terminal hidden rows (`cancelled`, `void`, `closed`). Past-history expansion must be a separate deliberate read, not the default match menu load.
+36. `/api/matches/list` defaults to match feed only. It includes recruiting schedule rooms only when `includeRecruitingSchedule=true`; previously loaded recruiting state from `/app/recruiting` must not change `/app/matches` list results.
 
 ## 2026-06-27 report scoped reads
 

@@ -789,8 +789,13 @@ export default function Matches({ app }) {
     return baseFilteredMatches.filter((match) => !dateFilter || getMatchDate(match) === dateFilter);
   }, [baseFilteredMatches, dateFilter]);
 
+  const matchPagination = app.matchPagination ?? { loading: false, exhausted: true, error: "", recruitingScheduleChecked: false };
+  const matchPageRecruitingPosts = useMemo(() => (
+    matchPagination.recruitingScheduleChecked ? app.state.recruitingPosts ?? [] : []
+  ), [app.state.recruitingPosts, matchPagination.recruitingScheduleChecked]);
+
   const calendarMatches = useMemo(() => {
-    const recruitingRooms = [...(app.state.recruitingPosts ?? [])]
+    const recruitingRooms = [...matchPageRecruitingPosts]
       .filter((post) => post.status === "open")
       .filter((post) => isRecruitingRoomInUserSchedule(post, app.state, app.currentUser.id))
       .filter((post) => {
@@ -803,7 +808,7 @@ export default function Matches({ app }) {
       getMatchDate(match) && VIEWS.some((view) => shouldShowMatchForView(match, view, app.currentUser.id))
     ));
     return [...displayableMatches, ...recruitingRooms];
-  }, [app.currentUser.id, app.state, app.state.recruitingPosts, baseFilteredMatches, historyCutoffDate, historyRangeMonths, kindFilter, maxScheduleDate, modeFilter, todayValue]);
+  }, [app.currentUser.id, app.state, baseFilteredMatches, historyCutoffDate, historyRangeMonths, kindFilter, matchPageRecruitingPosts, maxScheduleDate, modeFilter, todayValue]);
 
   const calendarCounts = useMemo(() => {
     return calendarMatches.reduce((map, match) => {
@@ -816,7 +821,7 @@ export default function Matches({ app }) {
   const calendarDays = useMemo(() => getCalendarDays(calendarMonth), [calendarMonth]);
   const calendarMonthCount = calendarDays.reduce((sum, day) => sum + (calendarCounts.get(day) ?? 0), 0);
   const visibleRecruitingCandidates = useMemo(() => {
-    return [...(app.state.recruitingPosts ?? [])]
+    return [...matchPageRecruitingPosts]
       .filter((post) => post.status === "open")
       .filter((post) => isRecruitingRoomInUserSchedule(post, app.state, app.currentUser.id))
       .filter((post) => {
@@ -825,7 +830,7 @@ export default function Matches({ app }) {
       })
       .filter((post) => kindFilter === "all" || (kindFilter === "ranked" ? post.ranked !== false : post.ranked === false))
       .filter((post) => modeFilter === "all" || post.mode === modeFilter);
-  }, [app.currentUser.id, app.state, app.state.recruitingPosts, historyCutoffDate, historyRangeMonths, kindFilter, maxScheduleDate, modeFilter, todayValue]);
+  }, [app.currentUser.id, app.state, historyCutoffDate, historyRangeMonths, kindFilter, matchPageRecruitingPosts, maxScheduleDate, modeFilter, todayValue]);
   const getViewIdForDate = (day) => {
     if (visibleRecruitingCandidates.some((post) => getMatchDate(post) === day)) return "scheduled";
     const dayMatches = baseFilteredMatches.filter((match) => getMatchDate(match) === day);
@@ -860,7 +865,6 @@ export default function Matches({ app }) {
     ...visibleRecruitingRooms.map((post) => ({ type: "room", id: `room-${post.id}`, item: post })),
     ...visibleMatches.map((match) => ({ type: "match", id: `match-${match.id}`, item: match })),
   ].sort((a, b) => compareSchedule(a.item, b.item))), [visibleMatches, visibleRecruitingRooms]);
-  const matchPagination = app.matchPagination ?? { loading: false, exhausted: true, error: "" };
   const todoCount = getViewCount(filteredMatches, VIEWS[1], app.currentUser.id);
   const scheduledCount = getViewCount(filteredMatches, VIEWS[2], app.currentUser.id) + filteredActiveRoomCount;
   const closedCount = getViewCount(filteredMatches, VIEWS[3], app.currentUser.id);
