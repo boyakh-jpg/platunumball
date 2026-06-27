@@ -865,7 +865,7 @@ export default function Matches({ app }) {
     const postDate = getMatchDate(post);
     return !dateFilter || postDate === dateFilter;
   }).length;
-  const visibleMatches = matchesByView.slice(0, 60);
+  const visibleMatches = matchesByView;
   const visibleScheduleItems = useMemo(() => ([
     ...visibleRecruitingRooms.map((post) => ({ type: "room", id: `room-${post.id}`, item: post })),
     ...visibleMatches.map((match) => ({ type: "match", id: `match-${match.id}`, item: match })),

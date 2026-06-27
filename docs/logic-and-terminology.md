@@ -1347,6 +1347,7 @@ flowchart TD
 30. `/app/recorder` must load `recorderOnly` match state on direct entry or after thin-route navigation before showing the final empty state. Recorder state includes only active `agreed`/`approval`/`disputed` matches related to the current profile.
 31. `/api/matches/list` with `listOnly:false` must not force `matchListOnly:true`; recorder/detail-like reads need `match_results` and `player_match_stats`.
 32. `/api/matches/list` may return `page.source` and optional `debugTiming` for diagnosis. `page.source='rpc_card'` or `feed_card` means list cards came directly from `user_room_feed.card_json`; `page.source='feed'` means feed ids are active but card_json was missing; `page.source='fallback_mine'` means production is still using current-profile fallback and the feed SQL/deployment needs verification.
+33. Match `status='closed'` is a cleanup soft-close state, not a normal record-confirmed match state. `/api/matches/list` and `rankball_match_list()` exclude it from default current-user feed pages.
 
 ## 2026-06-27 report scoped reads
 

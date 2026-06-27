@@ -4007,6 +4007,7 @@ as $$
     where feed.entity_type = 'match'
       and feed.profile_id = params.profile_id
       and feed.is_active = true
+      and coalesce(feed.status, '') <> 'closed'
       and feed.relation in ('owner', 'participant', 'referee')
     group by feed.entity_id
   ),

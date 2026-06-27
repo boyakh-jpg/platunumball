@@ -150,6 +150,7 @@ async function fetchMatchFeedPage(client, profileId = "", limit = REMOTE_CLIENT_
     .eq("entity_type", "match")
     .eq("profile_id", profileId)
     .eq("is_active", true)
+    .neq("status", "closed")
     .in("relation", ["owner", "participant", "referee"])
     .order("sort_at", { ascending: false, nullsFirst: false })
     .order("entity_id", { ascending: false })
