@@ -120,6 +120,7 @@ export default async function handler(request, response) {
     const mineLimit = mineOnly ? limit : REMOTE_CLIENT_RECRUITING_LIMIT;
     const currentUserPostIds = includeMine ? await fetchCurrentUserRecruitingPostIds(context.supabase, context.profileId, mineLimit) : [];
     const explicitPostIds = getTargetPostIds(body);
+    const listOnly = body.listOnly === true && !explicitPostIds.length;
     const offset = getPageOffset(body);
     const shouldPageList = !mineOnly && !explicitPostIds.length;
     const pagePostIds = shouldPageList ? await fetchRecruitingPagePostIds(context.supabase, limit, offset) : [];
@@ -132,6 +133,7 @@ export default async function handler(request, response) {
         clientState: true,
         isAdmin: adminLevel >= 30,
         scope: "recruiting",
+        recruitingListOnly: listOnly,
         recruitingPostIds: targetPostIds,
         recruitingLimit: 0,
         matchLimit: 0,
@@ -154,6 +156,7 @@ export default async function handler(request, response) {
             clientState: true,
             isAdmin: adminLevel >= 30,
             scope: "recruiting",
+            recruitingListOnly: listOnly,
             recruitingPostIds: missingMineIds,
             recruitingLimit: 0,
             matchLimit: 0,

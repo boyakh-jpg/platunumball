@@ -276,7 +276,7 @@ function mergeRemoteRecruitingPage(state, remoteState = {}) {
   return {
     ...state,
     users: mergeById(state.users, remoteState.users),
-    teams: mergeById(state.teams, remoteState.teams),
+    teams: mergeTeamsById(state.teams, remoteState.teams),
     recruitingPosts: sortRecruitingByRemoteCursor(mergeById(state.recruitingPosts, nextPosts)),
   };
 }
@@ -500,6 +500,7 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
           authEmail,
           limit: loadOptions.recruitingLimit,
           includeMine: true,
+          listOnly: true,
           adminContext: false,
         },
         { allowWhenDisabled: true },
@@ -891,6 +892,7 @@ export function useAppData(authUser = null) {
           authEmail,
           limit: REMOTE_CLIENT_RECRUITING_LIMIT,
           offset,
+          listOnly: true,
           adminContext: false,
         },
         { allowWhenDisabled: true },

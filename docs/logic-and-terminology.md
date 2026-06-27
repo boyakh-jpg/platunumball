@@ -1295,6 +1295,7 @@ flowchart TD
 6. Recruiting first list load includes current user's open owned/joined rooms in the same `/api/recruiting/list` response so room-scope counts do not change after a delayed mine-only background load.
 7. Recruiting pagination uses server `offset`/`nextOffset` from the first public page, not older current-user rooms merged into the response. Timestamp-only cursors must not be used because equal `updated_at` rows can be skipped.
 8. Recruiting public page reads must select only `status='open'` and `visibility='public'`; current-user owned/joined/private rooms are merged only through `includeMine` or `scope='mine'`.
+9. `/api/recruiting/list` list-only reads keep room participants and team member ids, but do not fetch profiles for every member of related teams. Single `postId` detail loads still fetch full related profiles.
 
 ## 2026-06-27 match list pagination
 

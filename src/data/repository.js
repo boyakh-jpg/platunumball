@@ -1378,6 +1378,7 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
   const includeProfileSettings = includeUserScoped || profileScope;
   const matchPageScope = scope === "matches";
   const recruitingPageScope = scope === "recruiting";
+  const recruitingListOnly = options.recruitingListOnly === true;
   const relatedDirectoryScope = scope === "full" && options.directoryScope === "related";
   const authUserIdText = String(authUserId || "");
   const testLoginId = getBackendTestLoginId(authUserIdText);
@@ -1587,7 +1588,7 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
       "public_profiles",
       PUBLIC_PROFILE_COLUMNS,
       "id",
-      [...scoped.profileIds, ...teamMembers.map((member) => member.user_id)],
+      [...scoped.profileIds, ...(recruitingListOnly ? [] : teamMembers.map((member) => member.user_id))],
       "id",
       client,
       true,
