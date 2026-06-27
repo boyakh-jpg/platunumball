@@ -85,6 +85,7 @@ function compactTeam(team = {}) {
     wins: team.wins,
     losses: team.losses,
     accent: team.accent,
+    membersPartial: true,
     members: team.members ?? [],
   };
 }

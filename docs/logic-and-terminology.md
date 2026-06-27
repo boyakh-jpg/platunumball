@@ -1314,6 +1314,7 @@ flowchart TD
 14. `/app/matches` first page uses `/api/matches/list` directly with compact current-profile data; it does not wait for `/api/profile/me` before loading the list.
 15. `/api/matches/list` returns compact card state by default: no recruiting/tournament rows, no notifications/reports/seasons, and only the users/teams needed by returned match cards. Full match room data must come from `/api/matches/detail`.
 16. Match pagination cursor follows the server page cursor, not a cursor recalculated from locally merged match rows.
+17. `/api/matches/list` list-only reads must not fetch full `team_members` rosters for related teams; full roster data belongs to `/api/matches/detail` or directory loads.
 
 ## 2026-06-27 report scoped reads
 

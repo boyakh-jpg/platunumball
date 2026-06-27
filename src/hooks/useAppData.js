@@ -207,6 +207,24 @@ function mergeById(current = [], incoming = []) {
   return [...merged.values()];
 }
 
+function mergeTeamsById(current = [], incoming = []) {
+  const merged = new Map((current ?? []).filter((item) => item?.id).map((item) => [item.id, item]));
+  (incoming ?? []).forEach((item) => {
+    if (!item?.id) return;
+    const existing = merged.get(item.id);
+    if (existing && item.membersPartial) {
+      merged.set(item.id, {
+        ...existing,
+        ...item,
+        members: existing.members?.length ? existing.members : item.members ?? [],
+      });
+      return;
+    }
+    merged.set(item.id, item);
+  });
+  return [...merged.values()];
+}
+
 function sortMatchesByRemoteCursor(matches = []) {
   return [...matches].sort((a, b) => String(b.updatedAt ?? b.createdAt ?? "").localeCompare(String(a.updatedAt ?? a.createdAt ?? "")));
 }
@@ -245,7 +263,7 @@ function mergeRemoteMatchPage(state, remoteState = {}) {
   return {
     ...state,
     users: mergeById(state.users, remoteState.users),
-    teams: mergeById(state.teams, remoteState.teams),
+    teams: mergeTeamsById(state.teams, remoteState.teams),
     matches: sortMatchesByRemoteCursor(mergeById(state.matches, nextMatches)),
     tournaments: mergeById(state.tournaments, remoteState.tournaments),
     recruitingPosts: mergeById(state.recruitingPosts, remoteState.recruitingPosts),
