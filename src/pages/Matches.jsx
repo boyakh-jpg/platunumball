@@ -948,6 +948,10 @@ export default function Matches({ app }) {
   const scheduleCountLabel = scheduleLoading
     ? "내 일정 확인 중"
     : `내 일정 ${matchesByView.length + listRecruitingRoomCount}개 중 ${displayScheduleItems.length}개 표시`;
+  const displayActiveCount = scheduleLoading ? "..." : activeCount;
+  const displayTodoCount = scheduleLoading ? "..." : todoCount;
+  const displayScheduledCount = scheduleLoading ? "..." : scheduledCount;
+  const getDisplayViewButtonCount = (view) => (scheduleLoading ? "..." : getViewButtonCount(view));
   const saveTournamentSchedule = (event, tournamentId, matchId) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -967,9 +971,9 @@ export default function Matches({ app }) {
         </div>
         <div className="om-match-panel">
           <div className="om-match-stats">
-            <span><strong>{activeCount}</strong>MY</span>
-            <span><strong>{todoCount}</strong>ACTION</span>
-            <span><strong>{scheduledCount}</strong>SOON</span>
+            <span><strong>{displayActiveCount}</strong>MY</span>
+            <span><strong>{displayTodoCount}</strong>ACTION</span>
+            <span><strong>{displayScheduledCount}</strong>SOON</span>
           </div>
           <Link to="/app/create">
             <Button className="om-match-create"><PlusCircle size={18} /> 경기 만들기</Button>
@@ -994,7 +998,7 @@ export default function Matches({ app }) {
                 <strong>{view.title}</strong>
                 <em>{view.desc}</em>
               </span>
-              <b>{getViewButtonCount(view)}</b>
+              <b>{getDisplayViewButtonCount(view)}</b>
             </button>
           );
         })}
@@ -1057,7 +1061,7 @@ export default function Matches({ app }) {
             </button>
             <strong>
               {formatMonthLabel(calendarMonth)}
-              <span>{calendarMonthCount}경기</span>
+              <span>{scheduleLoading ? "확인 중" : `${calendarMonthCount}경기`}</span>
             </strong>
             <button type="button" aria-label="다음 달" onClick={() => setCalendarMonth((month) => addMonths(month, 1))}>
               <ChevronRight size={18} />
@@ -1068,7 +1072,7 @@ export default function Matches({ app }) {
           </div>
           <div className="om-calendar-grid">
             {calendarDays.map((day, index) => {
-              const count = calendarCounts.get(day) ?? 0;
+              const count = scheduleLoading ? 0 : calendarCounts.get(day) ?? 0;
               const selected = day && day === dateFilter;
               const isToday = day && day === todayValue;
               return day ? (
