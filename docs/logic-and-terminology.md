@@ -1367,6 +1367,8 @@ flowchart TD
 
 17. `rankball_recruiting_slot_position_action()`은 선택 포지션을 `room_state.slotPositions`뿐 아니라 방장은 `recruiting_posts.position`, 개인 신청자는 `recruiting_applications.position`에도 저장한다.
 
+18. `setRecruitingReady` may use `rankball_recruiting_ready_action()` for active host/direct player readiness. Team-party, reserve, and other complex readiness cases must fall back to authoritative replay.
+
 ## 2026-06-27 simulation cleanup safety
 
 1. 운영 시뮬레이션 정리는 물리 삭제하지 않는다.

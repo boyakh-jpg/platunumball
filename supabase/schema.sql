@@ -3158,6 +3158,174 @@ $$;
 revoke all on function public.rankball_recruiting_interest_player_action(text, text, text, text, text, boolean, text) from public;
 grant execute on function public.rankball_recruiting_interest_player_action(text, text, text, text, text, boolean, text) to service_role;
 
+create or replace function public.rankball_recruiting_ready_action(
+  p_actor_profile_id text,
+  p_post_id text,
+  p_ready boolean default true
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  safe_actor_id text := nullif(btrim(p_actor_profile_id), '');
+  safe_post_id text := nullif(btrim(p_post_id), '');
+  safe_ready boolean := coalesce(p_ready, true);
+  current_post public.recruiting_posts%rowtype;
+  current_application public.recruiting_applications%rowtype;
+  current_room_state jsonb;
+  next_room_state jsonb;
+  next_stat_recorders jsonb;
+  is_host_player boolean := false;
+  has_application boolean := false;
+  is_complex_member boolean := false;
+begin
+  if safe_actor_id is null then
+    raise exception 'missing_actor_profile_id' using errcode = '22023';
+  end if;
+  if safe_post_id is null then
+    raise exception 'missing_recruiting_post' using errcode = '22023';
+  end if;
+
+  select *
+  into current_post
+  from public.recruiting_posts
+  where id = safe_post_id
+  for update;
+
+  if not found then
+    raise exception 'recruiting_post_not_found' using errcode = '22023';
+  end if;
+  if current_post.status <> 'open' then
+    raise exception 'recruiting_room_not_mutable' using errcode = '42501';
+  end if;
+
+  current_room_state := coalesce(current_post.room_state, '{}'::jsonb);
+  is_host_player := (
+    current_post.player_id = safe_actor_id
+    or coalesce(current_post.player_ids, '[]'::jsonb) ? safe_actor_id
+  );
+
+  next_room_state := current_room_state;
+  if not safe_ready then
+    select coalesce(jsonb_object_agg(key, to_jsonb(value)), '{}'::jsonb)
+    into next_stat_recorders
+    from jsonb_each_text(
+      case when jsonb_typeof(current_room_state->'statRecorders') = 'object'
+        then current_room_state->'statRecorders'
+        else '{}'::jsonb
+      end
+    ) entry(key, value)
+    where value <> safe_actor_id;
+    next_room_state := jsonb_set(next_room_state, '{statRecorders}', coalesce(next_stat_recorders, '{}'::jsonb), true);
+  end if;
+
+  if is_host_player then
+    update public.recruiting_posts
+    set
+      host_ready = safe_ready,
+      room_state = next_room_state,
+      updated_at = now()
+    where id = safe_post_id;
+
+    return jsonb_build_object(
+      'ok', true,
+      'action', 'setRecruitingReady',
+      'postId', safe_post_id,
+      'actorProfileId', safe_actor_id,
+      'ready', safe_ready,
+      'target', 'host',
+      'sqlReducer', true
+    );
+  end if;
+
+  select *
+  into current_application
+  from public.recruiting_applications application
+  where application.post_id = safe_post_id
+    and application.player_id = safe_actor_id
+  for update;
+  has_application := found;
+
+  if has_application then
+    if current_application.kind <> 'player'
+      or current_application.reserve = true
+      or jsonb_array_length(
+        case when jsonb_typeof(current_application.player_ids) = 'array'
+          then current_application.player_ids
+          else '[]'::jsonb
+        end
+      ) > 0 then
+      return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'ready_complex_application_requires_replay', 'postId', safe_post_id);
+    end if;
+
+    update public.recruiting_applications
+    set
+      status = case when safe_ready then 'ready' else 'waiting' end,
+      updated_at = now()
+    where post_id = safe_post_id
+      and player_id = safe_actor_id
+      and kind = current_application.kind;
+
+    update public.recruiting_posts
+    set
+      room_state = next_room_state,
+      updated_at = now()
+    where id = safe_post_id;
+
+    return jsonb_build_object(
+      'ok', true,
+      'action', 'setRecruitingReady',
+      'postId', safe_post_id,
+      'actorProfileId', safe_actor_id,
+      'ready', safe_ready,
+      'target', 'application',
+      'sqlReducer', true
+    );
+  end if;
+
+  select (
+    exists (
+      select 1
+      from public.recruiting_applications application
+      where application.post_id = safe_post_id
+        and coalesce(application.player_ids, '[]'::jsonb) ? safe_actor_id
+    )
+    or exists (
+      select 1
+      from jsonb_each(
+        case when jsonb_typeof(current_room_state->'partyReserves') = 'object'
+          then current_room_state->'partyReserves'
+          else '{}'::jsonb
+        end
+      ) entry(key, value)
+      where (case when jsonb_typeof(value) = 'array' then value else '[]'::jsonb end) ? safe_actor_id
+    )
+    or exists (
+      select 1
+      from jsonb_each(
+        case when jsonb_typeof(current_room_state->'pinnedReservePlayers') = 'object'
+          then current_room_state->'pinnedReservePlayers'
+          else '{}'::jsonb
+        end
+      ) entry(key, value)
+      where (case when jsonb_typeof(value) = 'array' then value else '[]'::jsonb end) ? safe_actor_id
+    )
+  )
+  into is_complex_member;
+
+  if is_complex_member then
+    return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'ready_complex_member_requires_replay', 'postId', safe_post_id);
+  end if;
+
+  raise exception 'recruiting_room_member_required' using errcode = '42501';
+end;
+$$;
+
+revoke all on function public.rankball_recruiting_ready_action(text, text, boolean) from public;
+grant execute on function public.rankball_recruiting_ready_action(text, text, boolean) to service_role;
+
 create or replace function public.rankball_recruiting_applicant_placement_action(
   p_actor_profile_id text,
   p_post_id text,

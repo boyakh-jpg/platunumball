@@ -498,7 +498,7 @@ async function runOneOnOneScenario({
     postId: ids.postId,
     ready: true,
   }));
-  post = readyResult?.post;
+  post = await getRecruitingPostAfterResult(readyResult, opponentLogin, `${ids.label}:loadAfterReady`);
   assertFlow(post?.applicants?.some((applicant) => applicant.playerId === opponentId && applicant.status === "ready"), "opponent ready not persisted", post);
 
   const confirmResult = await step(`${ids.label}:confirmRecruitingMatch`, () => syncRecruitingAs(hostLogin, {
@@ -641,6 +641,7 @@ async function runOneOnOneScenario({
     matchId: ids.matchId,
     finalStatus: match.status,
     sqlReducers: {
+      setRecruitingReady: Boolean(readyResult?.sqlReducer),
       endMatch: Boolean(endResult?.sqlReducer),
       latePlayer: latePlayerSqlReducers,
     },
