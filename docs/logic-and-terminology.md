@@ -1309,3 +1309,11 @@ flowchart TD
 
 1. Current-user report reads include rows where the profile is `user_id`, `target_id`, or inside `reported_user_ids`.
 2. `reported_user_ids` is read with JSON contains `[currentUserId]`, not PostREST array syntax.
+
+## 2026-06-27 recruiting personal create and mine load
+
+1. 경기 만들기에서 내 팀이 없는 사용자는 기본 `hostJoinMode`를 `player`로 시작한다.
+2. 경기 방식이 `1v1`로 바뀌면 개인전으로 보고 `hostJoinMode = "player"`를 우선 적용한다.
+3. 공개방 전환은 사용자가 이미 고른 개인전/팀방 방식을 임의로 `team`으로 덮어쓰지 않는다.
+4. `/api/recruiting/list`는 `postId`/`recruitingPostIds` 단일 로드와 `scope: "mine"` 로드를 지원한다.
+5. Recruiting 화면은 최초 30개 목록 밖에 있는 내 생성/참여 open 방을 `scope: "mine"`로 보강 로드한다.

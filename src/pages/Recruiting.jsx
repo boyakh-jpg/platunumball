@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   CheckCircle2,
@@ -2930,6 +2930,8 @@ function RecruitingReady({ app }) {
   const [queueControlsOpen, setQueueControlsOpen] = useState(true);
   const [composeOpen, setComposeOpen] = useState(false);
   const [selectedPostId, setSelectedPostId] = useState(null);
+  const targetPostLoadRef = useRef("");
+  const myRecruitingLoadRef = useRef("");
   const [draft, setDraft] = useState(() => ({
     hostJoinMode: myTeams[0]?.id ? "team" : "player",
     title: "",
@@ -3031,6 +3033,25 @@ function RecruitingReady({ app }) {
     ? app.state.recruitingPosts.find((post) => post.id === selectedPostId)
     : null;
   useBodyScrollLock(Boolean(selectedPost) || composeOpen);
+
+  useEffect(() => {
+    if (!app.remoteReady || !app.currentUser.id) return;
+    if (myRecruitingLoadRef.current === app.currentUser.id) return;
+    myRecruitingLoadRef.current = app.currentUser.id;
+    app.actions.loadMyRecruitingPosts?.();
+  }, [app.actions, app.currentUser.id, app.remoteReady]);
+
+  useEffect(() => {
+    if (!targetPostId || !app.remoteReady) return;
+    const targetPost = app.state.recruitingPosts.find((post) => post.id === targetPostId);
+    if (targetPost) {
+      targetPostLoadRef.current = "";
+      return;
+    }
+    if (targetPostLoadRef.current === targetPostId) return;
+    targetPostLoadRef.current = targetPostId;
+    app.actions.loadRecruitingPost?.(targetPostId);
+  }, [app.actions, app.remoteReady, app.state.recruitingPosts, targetPostId]);
 
   useEffect(() => {
     if (!targetPostId) return;

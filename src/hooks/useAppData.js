@@ -749,6 +749,52 @@ export function useAppData(authUser = null) {
     }
   }, [authEmail, authUserId, recruitingPagination.exhausted, recruitingPagination.loading, setState, state.recruitingPosts]);
 
+  const loadRecruitingPost = useCallback(async (postId) => {
+    if (!isSupabaseConfigured || !authUserId || !postId) return false;
+    try {
+      const result = await postServerAction(
+        "/api/recruiting/list",
+        {
+          authUserId,
+          authEmail,
+          postId,
+          limit: 1,
+        },
+        { allowWhenDisabled: true },
+      );
+      const remoteState = result?.state ?? {};
+      const nextPosts = remoteState.recruitingPosts ?? [];
+      setState((prev) => mergeRemoteRecruitingPage(prev, remoteState));
+      return nextPosts.length;
+    } catch (error) {
+      console.warn("Recruiting post load failed.", error.message);
+      return false;
+    }
+  }, [authEmail, authUserId, setState]);
+
+  const loadMyRecruitingPosts = useCallback(async () => {
+    if (!isSupabaseConfigured || !authUserId) return false;
+    try {
+      const result = await postServerAction(
+        "/api/recruiting/list",
+        {
+          authUserId,
+          authEmail,
+          scope: "mine",
+          limit: REMOTE_CLIENT_RECRUITING_LIMIT,
+        },
+        { allowWhenDisabled: true },
+      );
+      const remoteState = result?.state ?? {};
+      const nextPosts = remoteState.recruitingPosts ?? [];
+      setState((prev) => mergeRemoteRecruitingPage(prev, remoteState));
+      return nextPosts.length;
+    } catch (error) {
+      console.warn("My recruiting load failed.", error.message);
+      return false;
+    }
+  }, [authEmail, authUserId, setState]);
+
   const loadDirectory = useCallback(async () => {
     if (!isSupabaseConfigured || !authUserId) return false;
     if (directoryStatus.loaded) return true;
@@ -938,6 +984,8 @@ export function useAppData(authUser = null) {
         loadDirectory,
         loadMoreMatches,
         loadMoreRecruiting,
+        loadRecruitingPost,
+        loadMyRecruitingPosts,
         switchUser: (userId) => {
         if (profileLocked) return false;
         setProfileBindings((current) => {
@@ -1415,7 +1463,7 @@ export function useAppData(authUser = null) {
       reset: () => setState(resetState({ includeDemo: !isSupabaseConfigured, authUserId, email: authEmail })),
       });
     },
-    [authEmail, authUserId, currentUserId, deleteTeamServer, ensureRemoteReady, ensureServerActionAvailable, loadDirectory, loadMatchDetail, loadMoreMatches, loadMoreRecruiting, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, runServerAction, serverProfileBound, submitReportServer, syncFavoriteServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncSettingsServer, syncTeamServer, syncTournamentServer],
+    [authEmail, authUserId, currentUserId, deleteTeamServer, ensureRemoteReady, ensureServerActionAvailable, loadDirectory, loadMatchDetail, loadMoreMatches, loadMoreRecruiting, loadRecruitingPost, loadMyRecruitingPosts, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, runServerAction, serverProfileBound, submitReportServer, syncFavoriteServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncSettingsServer, syncTeamServer, syncTournamentServer],
   );
 
   const safeCurrentUserId = currentUserId ?? currentUser?.id ?? "";
