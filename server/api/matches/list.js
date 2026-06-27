@@ -12,7 +12,7 @@ import { filterStateForProfile } from "../state/load.js";
 
 const PROFILE_ME_COLUMNS = "id,name,handle,hashtag,position,region,region_sido,region_district,school,company,club,trust_score,streak,avatar_color,test_login_id,auth_user_id,birth_year,age_group,age_group_checked_season,onboarding_complete,profile_version,handle_locked_at,birth_year_locked_at,name_updated_at,discord_connection,discord_user_id,ratings,created_at,updated_at,app_settings";
 const PROFILE_PUBLIC_COLUMNS = "id,name,handle,hashtag,position,region,region_sido,region_district,school,company,club,trust_score,streak,avatar_color,ratings,age_group,age_group_checked_season,onboarding_complete,test_login_id,updated_at,discord_connection";
-const MATCH_LIST_COLUMNS = "id,title,mode,court_id,court_name,visibility,status,ranked,referee_id,former_referee_id,stat_entry_minutes,dispute_minutes,stat_recorders,played_player_ids,reserve_players,official,pre_registered,scheduled_at,scheduled_date,scheduled_time,team_a_id,team_b_id,score_a,score_b,rules,created_by,agreed_at,started_at,ended_at,confirmed_at,cancelled_at,voided_at,tournament_id,recruiting_post_id,updated_at,created_at";
+const MATCH_LIST_COLUMNS = "id,title,mode,court_id,court_name,visibility,status,ranked,referee_id,former_referee_id,stat_entry_minutes,dispute_minutes,stat_recorders,played_player_ids,reserve_players,official,pre_registered,scheduled_at,scheduled_date,scheduled_time,team_a_id,team_b_id,score_a,score_b,rules,created_by,agreed_at,started_at,ended_at,confirmed_at,cancelled_at,voided_at,tournament_id,updated_at,created_at";
 const MATCH_PLAYER_COLUMNS = "match_id,team_id,user_id,side,slot_order";
 const TEAM_COLUMNS = "id,name,home_court,region,mmr,wins,losses,accent,deleted_at";
 const COURT_COLUMNS = "id,name";
@@ -219,7 +219,7 @@ function toClientMatch(row = {}, playersByMatch = new Map(), teamById = {}, cour
     formerRefereeId: row.former_referee_id ?? "",
     refereeWanted: Boolean(row.referee_id || row.rules?.refereeWanted),
     createdBy: row.created_by ?? "",
-    recruitingPostId: row.recruiting_post_id ?? "",
+    recruitingPostId: row.rules?.recruitingPostId ?? "",
     tournamentId: row.tournament_id ?? "",
     teamA: toClientMatchSide(row, "teamA", playersByMatch, teamById),
     teamB: toClientMatchSide(row, "teamB", playersByMatch, teamById),
