@@ -23,6 +23,12 @@
 2. Remote profile/state remains authoritative and must replace cached theme/tier after the server response.
 3. Theme application uses a layout effect so a saved light/dark choice does not visibly flip after paint.
 
+# 2026-06-28 remote load basketball loader
+
+1. Remote DB hydration may show a centered basketball bounce loader after a short delay.
+2. The loader is CSS-only and must look like a bouncing basketball, not a generic spinner.
+3. The loader is status feedback and must not block clicks after remote data is ready.
+
 # RankBall Design System
 
 2026-06-27: Score result cards keep side/team names secondary and the numeric score as the visual center.
