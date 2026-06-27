@@ -1260,6 +1260,11 @@ flowchart TD
 7. `interestRecruitingPost` must replay the JS reducer until the SQL reducer calculates full-side auto-reserve placement. A full active side must save new participants as reserve/candidate, not overfill the active slot.
 8. Recruiting core lock compares canonical room shape. `side_capacity` cannot exceed mode size, and rooms without `team_id` are treated as player-hosted even if older DB rows still say `host_join_mode='team'`.
 
+## 2026-06-27 recruiting mine scope
+
+1. `scope=mine` 모집방 로드는 `player_id`, `player_ids`, 신청/파티 신청뿐 아니라 `room_state.ownerId`도 현재 프로필의 방장 기준으로 포함한다.
+2. RPC가 0행을 반환해도 stale SQL 가능성이 있으므로 서버 fallback은 같은 방장/참여 기준을 다시 확인한다.
+
 ## 2026-06-27 server action auth 실패 노출
 
 1. Supabase 모드 write action은 브라우저 action access token이 없을 때 조용히 skip하지 않는다.

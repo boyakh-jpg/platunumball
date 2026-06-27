@@ -295,13 +295,17 @@ async function fetchCurrentUserRecruitingPostIds(client, profileId = "", limit =
       p_limit: cappedLimit,
     });
     if (!rpcError) {
-      return uniqueIds((rpcRows ?? []).map((row) => row?.post_id ?? row?.id ?? row)).slice(0, cappedLimit);
+      const rpcPostIds = uniqueIds((rpcRows ?? []).map((row) => row?.post_id ?? row?.id ?? row)).slice(0, cappedLimit);
+      if (rpcPostIds.length) return rpcPostIds;
+      console.warn("Current user recruiting RPC returned no rows; checking fallback.");
+    } else {
+      currentUserRecruitingRpcAvailable = false;
+      console.warn("Current user recruiting RPC skipped.", rpcError.message);
     }
-    currentUserRecruitingRpcAvailable = false;
-    console.warn("Current user recruiting RPC skipped.", rpcError.message);
   }
-  const [ownedPostIds, hostedPlayerPostIds, refereedPostIds, applicantPostIds, applicantPartyPostIds] = await Promise.all([
+  const [ownedPostIds, roomOwnerPostIds, hostedPlayerPostIds, refereedPostIds, applicantPostIds, applicantPartyPostIds] = await Promise.all([
     fetchPostIds(client.from("recruiting_posts").select("id").eq("status", "open").eq("player_id", profileId).order("updated_at", { ascending: false }).limit(cappedLimit)),
+    fetchPostIds(client.from("recruiting_posts").select("id").eq("status", "open").eq("room_state->>ownerId", profileId).order("updated_at", { ascending: false }).limit(cappedLimit)),
     fetchPostIds(client.from("recruiting_posts").select("id").eq("status", "open").contains("player_ids", [profileId]).order("updated_at", { ascending: false }).limit(cappedLimit)),
     fetchPostIds(client.from("recruiting_posts").select("id").eq("status", "open").eq("referee_id", profileId).order("updated_at", { ascending: false }).limit(cappedLimit)),
     fetchPostIds(client.from("recruiting_applications").select("post_id,updated_at").eq("player_id", profileId).order("updated_at", { ascending: false }).limit(cappedLimit), "post_id"),
@@ -309,6 +313,7 @@ async function fetchCurrentUserRecruitingPostIds(client, profileId = "", limit =
   ]);
   return uniqueIds([
     ...ownedPostIds,
+    ...roomOwnerPostIds,
     ...hostedPlayerPostIds,
     ...refereedPostIds,
     ...applicantPostIds,
