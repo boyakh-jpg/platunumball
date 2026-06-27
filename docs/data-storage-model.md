@@ -347,3 +347,7 @@ Remaining:
 - Actual cleanup requires `RANKBALL_CONFIRM_CLEANUP=rankball npm run seed:supabase:cleanup`.
 - Cleanup deletes only ids derived from the current demo seed state plus `seed-owner-u1`.
 - This finishes the basic backend test-account seed/cleanup path, but not the authoritative room/match RPC migration.
+## 2026-06-27 경기 유지보수 worker
+
+- `/api/system/maintenance`는 `CRON_SECRET`으로 보호되는 서버 전용 경기 유지보수 endpoint다.
+- 기존 외부 스케줄러가 `/api/discord/dm-worker`를 호출할 때 같은 경기 유지보수도 함께 실행한다.

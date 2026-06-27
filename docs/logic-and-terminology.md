@@ -1385,3 +1385,4 @@ flowchart TD
 3. 첫 유지보수 범위는 `status = 'approval'`, 결과 row 있음, dispute draft 없음, rating commit 없음, 이의제기 시간이 만료된 경기로 제한한다.
 4. 유지보수는 경기를 1개씩 로드하고 기존 JS 자동 reducer를 실행한 뒤 `rankball_commit_match_rating()`으로 레이팅을 커밋하고 누락된 승인 row를 upsert한다.
 5. 제출된 결과가 없는 postgame 경기는 자동 확정하지 않고, 허용된 기록자/운영자가 결과를 제출할 때까지 postgame에 남긴다.
+6. 기존 외부 스케줄러가 `/api/discord/dm-worker`를 호출할 때도 같은 유지보수를 함께 실행한다.

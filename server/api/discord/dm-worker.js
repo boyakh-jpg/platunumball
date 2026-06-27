@@ -1,4 +1,5 @@
 import { getSupabaseAdminClient, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { runSystemMaintenance } from "../system/maintenance.js";
 
 const DISCORD_API_BASE = "https://discord.com/api/v10";
 const MAX_BATCH_SIZE = 25;
@@ -269,6 +270,7 @@ export default async function handler(request, response) {
     const limit = getBatchLimit(body.limit);
     const supabase = getSupabaseAdminClient();
     const now = new Date().toISOString();
+    const maintenance = await runSystemMaintenance(supabase, { limit: body.maintenanceLimit });
 
     const { data: queuedRows, error: queueError } = await supabase
       .from("discord_notification_deliveries")
@@ -282,7 +284,7 @@ export default async function handler(request, response) {
 
     if (queueError) throw queueError;
     if (!queuedRows?.length) {
-      sendJson(response, 200, { ok: true, processed: 0, sent: 0, failed: 0 });
+      sendJson(response, 200, { ok: true, processed: 0, sent: 0, failed: 0, maintenance });
       return;
     }
 
@@ -347,6 +349,7 @@ export default async function handler(request, response) {
       processed: sent.length + failed.length,
       sent: sent.length,
       failed: failed.length,
+      maintenance,
       sentIds: sent,
       failedRows: failed,
     });

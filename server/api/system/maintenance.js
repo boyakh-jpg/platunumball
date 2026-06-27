@@ -21,10 +21,14 @@ function assertAccess(request) {
   }
 }
 
-function getLimit(request) {
-  const raw = Number(request.query?.limit ?? process.env.RANKBALL_MAINTENANCE_MATCH_LIMIT ?? DEFAULT_MATCH_LIMIT);
+function normalizeLimit(value) {
+  const raw = Number(value);
   if (!Number.isFinite(raw) || raw <= 0) return DEFAULT_MATCH_LIMIT;
   return Math.max(1, Math.min(50, Math.floor(raw)));
+}
+
+function getLimit(request) {
+  return normalizeLimit(request.query?.limit ?? process.env.RANKBALL_MAINTENANCE_MATCH_LIMIT ?? DEFAULT_MATCH_LIMIT);
 }
 
 function getApprovalRows(match = {}) {
@@ -128,6 +132,24 @@ async function processMatch(client, matchId, now) {
   };
 }
 
+export async function runSystemMaintenance(client = getSupabaseAdminClient(), options = {}) {
+  const limit = normalizeLimit(options.limit ?? process.env.RANKBALL_MAINTENANCE_MATCH_LIMIT ?? DEFAULT_MATCH_LIMIT);
+  const now = options.now instanceof Date ? options.now : new Date();
+  const candidateIds = await getCandidateMatchIds(client, limit, now.getTime());
+  const results = [];
+
+  for (const matchId of candidateIds) {
+    results.push(await processMatch(client, matchId, now));
+  }
+
+  return {
+    ok: results.every((result) => result.ok || result.skipped),
+    candidateCount: candidateIds.length,
+    confirmedCount: results.filter((result) => result.ok).length,
+    results,
+  };
+}
+
 export default async function handler(request, response) {
   if (request.method !== "POST") {
     response.setHeader("Allow", "POST");
@@ -138,21 +160,7 @@ export default async function handler(request, response) {
   try {
     assertAccess(request);
     const client = getSupabaseAdminClient();
-    const limit = getLimit(request);
-    const now = new Date();
-    const candidateIds = await getCandidateMatchIds(client, limit, now.getTime());
-    const results = [];
-
-    for (const matchId of candidateIds) {
-      results.push(await processMatch(client, matchId, now));
-    }
-
-    sendJson(response, 200, {
-      ok: results.every((result) => result.ok || result.skipped),
-      candidateCount: candidateIds.length,
-      confirmedCount: results.filter((result) => result.ok).length,
-      results,
-    });
+    sendJson(response, 200, await runSystemMaintenance(client, { limit: getLimit(request) }));
   } catch (error) {
     console.error("System maintenance failed.", error);
     sendJson(response, error.statusCode || 500, { error: error.message || "maintenance_failed" });
