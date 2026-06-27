@@ -872,12 +872,14 @@ export function useAppData(authUser = null) {
         },
         { allowWhenDisabled: true },
       );
-      const remoteState = normalizeServerState(filterPendingMatches(result?.state ?? {}, pendingMatchIdsRef.current, recentMatchMutationTimesRef.current));
+      const rawRemoteState = result?.state ?? {};
+      const rawMatchCount = rawRemoteState.matches?.length ?? 0;
+      const remoteState = normalizeServerState(filterPendingMatches(rawRemoteState, pendingMatchIdsRef.current, recentMatchMutationTimesRef.current));
       const nextMatches = remoteState.matches ?? [];
       setState((prev) => mergeRemoteMatchPage(prev, remoteState));
       setMatchPagination({
         loading: false,
-        exhausted: Boolean(result?.page?.exhausted) || nextMatches.length < pageLimit,
+        exhausted: Boolean(result?.page?.exhausted) || rawMatchCount < pageLimit,
         error: "",
         cursor: result?.page?.cursor ?? cursor,
       });
@@ -928,16 +930,18 @@ export function useAppData(authUser = null) {
         },
         { allowWhenDisabled: true },
       );
-      const remoteState = normalizeServerState(filterPendingRecruitingPosts(result?.state ?? {}, pendingRecruitingPostIdsRef.current, recentRecruitingMutationTimesRef.current));
+      const rawRemoteState = result?.state ?? {};
+      const rawPostCount = rawRemoteState.recruitingPosts?.length ?? 0;
+      const remoteState = normalizeServerState(filterPendingRecruitingPosts(rawRemoteState, pendingRecruitingPostIdsRef.current, recentRecruitingMutationTimesRef.current));
       const nextPosts = remoteState.recruitingPosts ?? [];
       setState((prev) => mergeRemoteRecruitingPage(prev, remoteState));
       const pageHasExhausted = typeof result?.page?.exhausted === "boolean";
       setRecruitingPagination({
         loading: false,
-        exhausted: pageHasExhausted ? result.page.exhausted : nextPosts.length < REMOTE_CLIENT_RECRUITING_LIMIT,
+        exhausted: pageHasExhausted ? result.page.exhausted : rawPostCount < REMOTE_CLIENT_RECRUITING_LIMIT,
         error: "",
-        cursor: result?.page?.cursor ?? String(offset + nextPosts.length),
-        offset: getRecruitingPaginationOffset(result?.page, offset + nextPosts.length),
+        cursor: result?.page?.cursor ?? String(offset + rawPostCount),
+        offset: getRecruitingPaginationOffset(result?.page, offset + rawPostCount),
       });
       return nextPosts.length;
     } catch (error) {

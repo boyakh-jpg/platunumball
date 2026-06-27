@@ -1379,6 +1379,7 @@ flowchart TD
 2. 경기 write action 직후에는 `/api/matches/list`, `/api/matches/detail` 응답이 같은 match의 이전 row로 기록판/점수/무기명 선수 변경을 덮지 않는다.
 3. 서버 action 결과가 `post`, `createdMatch`, `match`를 반환하면 그 결과를 source of truth로 merge한다.
 4. stale 보호는 짧은 mutation window에서만 적용하고, 이후 일반 서버 load는 다시 DB source of truth를 따른다.
+5. stale 보호로 pending row를 client merge에서 제외해도 pagination exhausted/cursor/offset은 필터 전 서버 page count 기준으로 계산한다.
 
 ## 2026-06-27 simulation cleanup safety
 
