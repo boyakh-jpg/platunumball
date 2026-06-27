@@ -29,27 +29,32 @@ function getMatchTeamIds(match = {}) {
   return unique([match.teamA?.teamId, match.teamB?.teamId]);
 }
 
-function compactUser(user = {}) {
-  return {
+function compactUser(user = {}, profileId = "") {
+  const compact = {
     id: user.id,
     name: user.name,
     handle: user.handle,
     hashtag: user.hashtag,
     position: user.position,
     region: user.region,
+    avatarColor: user.avatarColor,
+    trustScore: user.trustScore,
+    ratings: Number.isFinite(Number(user.ratings?.integrated)) ? { integrated: user.ratings.integrated } : undefined,
+    ageGroup: user.ageGroup,
+  };
+  if (user.id !== profileId) return compact;
+  return {
+    ...compact,
     regionSido: user.regionSido,
     regionDistrict: user.regionDistrict,
     school: user.school,
     company: user.company,
     club: user.club,
-    avatarColor: user.avatarColor,
-    trustScore: user.trustScore,
     streak: user.streak,
     ratings: user.ratings,
     authUserId: user.authUserId,
     testLoginId: user.testLoginId,
     birthYear: user.birthYear,
-    ageGroup: user.ageGroup,
     ageGroupCheckedSeason: user.ageGroupCheckedSeason,
     onboardingComplete: user.onboardingComplete,
     profileVersion: user.profileVersion,
@@ -58,6 +63,15 @@ function compactUser(user = {}) {
     nameUpdatedAt: user.nameUpdatedAt,
     discordConnection: user.discordConnection,
     discordUserId: user.discordUserId,
+  };
+}
+
+function compactMatchSide(side = {}) {
+  return {
+    teamId: side.teamId,
+    name: side.name,
+    players: side.players ?? [],
+    score: side.score,
   };
 }
 
@@ -75,13 +89,67 @@ function compactTeam(team = {}) {
   };
 }
 
+function compactMatch(match = {}) {
+  const rules = match.rules ?? {};
+  return {
+    id: match.id,
+    title: match.title,
+    mode: match.mode,
+    court: match.court,
+    visibility: match.visibility,
+    scheduledDate: match.scheduledDate,
+    scheduledTime: match.scheduledTime,
+    scheduledAt: match.scheduledAt,
+    timingType: match.timingType,
+    status: match.status,
+    official: match.official,
+    preRegistered: match.preRegistered,
+    ranked: match.ranked,
+    refereeId: match.refereeId,
+    formerRefereeId: match.formerRefereeId,
+    refereeWanted: match.refereeWanted,
+    createdBy: match.createdBy,
+    recruitingPostId: match.recruitingPostId,
+    tournamentId: match.tournamentId,
+    teamA: compactMatchSide(match.teamA),
+    teamB: compactMatchSide(match.teamB),
+    agreements: match.agreements,
+    approvals: match.approvals,
+    disputes: match.disputes,
+    playedPlayerIds: match.playedPlayerIds,
+    reservePlayers: match.reservePlayers,
+    parties: match.parties,
+    result: match.result,
+    rules: {
+      targetScore: rules.targetScore,
+      timeLimit: rules.timeLimit,
+      winByTwo: rules.winByTwo,
+      ball: rules.ball,
+      playedPlayerIds: rules.playedPlayerIds,
+      statRecorders: rules.statRecorders,
+    },
+    statRecorders: match.statRecorders,
+    statEntryMinutes: match.statEntryMinutes,
+    disputeMinutes: match.disputeMinutes,
+    createdAt: match.createdAt,
+    agreedAt: match.agreedAt,
+    startedAt: match.startedAt,
+    endedAt: match.endedAt,
+    confirmedAt: match.confirmedAt,
+    cancelledAt: match.cancelledAt,
+    voidedAt: match.voidedAt,
+    updatedAt: match.updatedAt,
+  };
+}
+
 function compactMatchListState(state = {}, profileId = "") {
-  const matches = state.matches ?? [];
+  const matches = (state.matches ?? []).map(compactMatch);
   const userIds = new Set(unique([profileId, ...matches.flatMap(getMatchUserIds)]));
   const teamIds = new Set(matches.flatMap(getMatchTeamIds));
   return {
     ...state,
-    users: (state.users ?? []).filter((user) => userIds.has(user.id)).map(compactUser),
+    matches,
+    users: (state.users ?? []).filter((user) => userIds.has(user.id)).map((user) => compactUser(user, profileId)),
     teams: (state.teams ?? []).filter((team) => teamIds.has(team.id)).map(compactTeam),
     affiliations: [],
     seasons: [],
