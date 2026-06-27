@@ -1,7 +1,9 @@
 import { STORAGE_KEY } from "./constants.js";
 
 const PROFILE_BINDINGS_KEY = "rankball.auth.profile.v1";
+const PROFILE_CACHE_KEY = "rankball.auth.profileCache.v1";
 const MAX_LOCAL_STATE_CHARS = 1_800_000;
+const MAX_PROFILE_CACHE_ENTRIES = 8;
 
 export function readState(fallback) {
   if (typeof window === "undefined") return fallback;
@@ -53,4 +55,49 @@ export function clearProfileBinding(authUserId) {
   const bindings = readProfileBindings();
   delete bindings[authUserId];
   writeProfileBindings(bindings);
+}
+
+function readProfileCacheMap() {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(PROFILE_CACHE_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeProfileCacheMap(cache) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(cache));
+  } catch (error) {
+    window.localStorage.removeItem(PROFILE_CACHE_KEY);
+    console.warn("RankBall profile cache skipped.", error);
+  }
+}
+
+export function readProfileCache(authUserId) {
+  if (!authUserId) return null;
+  const entry = readProfileCacheMap()[authUserId];
+  if (!entry || typeof entry !== "object") return null;
+  if (!entry.user?.id) return null;
+  return entry;
+}
+
+export function writeProfileCache(authUserId, entry = {}) {
+  if (!authUserId || !entry?.user?.id) return;
+  const cache = readProfileCacheMap();
+  cache[authUserId] = {
+    user: entry.user,
+    settings: entry.settings && typeof entry.settings === "object" ? entry.settings : {},
+    updatedAt: Date.now(),
+  };
+  const trimmed = Object.fromEntries(
+    Object.entries(cache)
+      .sort(([, a], [, b]) => Number(b?.updatedAt ?? 0) - Number(a?.updatedAt ?? 0))
+      .slice(0, MAX_PROFILE_CACHE_ENTRIES),
+  );
+  writeProfileCacheMap(trimmed);
 }

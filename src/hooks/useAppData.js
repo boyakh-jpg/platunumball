@@ -88,7 +88,7 @@ import {
   REMOTE_CLIENT_RECRUITING_LIMIT,
 } from "../data/repository.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
-import { readProfileBindings, writeProfileBindings } from "../lib/storage.js";
+import { readProfileBindings, readProfileCache, writeProfileBindings, writeProfileCache } from "../lib/storage.js";
 import { findDiscordConnectionOwner, getDiscordConnectionUserId } from "../lib/discord.js";
 import { getServerActionAvailability, postServerAction } from "../lib/serverActions.js";
 
@@ -469,6 +469,29 @@ function normalizeServerState(state) {
   return state ? normalizeState(state, { includeDemo: false }) : state;
 }
 
+function getCachedBootstrapState(authUserId, authEmail) {
+  const baseState = loadState({ includeDemo: !isSupabaseConfigured, authUserId, email: authEmail });
+  if (!isSupabaseConfigured || !authUserId) return baseState;
+  const cached = readProfileCache(authUserId);
+  if (!cached?.user?.id) return baseState;
+  return normalizeState({
+    ...baseState,
+    currentUserId: cached.user.id,
+    users: [cached.user, ...(baseState.users ?? []).filter((user) => user.id !== cached.user.id)],
+    settings: { ...(baseState.settings ?? {}), ...(cached.settings ?? {}) },
+  }, { includeDemo: false });
+}
+
+function cacheCurrentProfileState(authUserId, state = {}) {
+  if (!isSupabaseConfigured || !authUserId) return;
+  const currentUser = (state.users ?? []).find((user) => user.id === state.currentUserId);
+  if (!currentUser?.id) return;
+  writeProfileCache(authUserId, {
+    user: currentUser,
+    settings: state.settings ?? {},
+  });
+}
+
 async function loadProfileState(authUserId, authEmail) {
   try {
     const result = await postServerAction(
@@ -561,7 +584,7 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
 export function useAppData(authUser = null) {
   const authUserId = typeof authUser === "string" ? authUser : authUser?.id ?? null;
   const authEmail = typeof authUser === "object" ? authUser?.email ?? authUser?.user_metadata?.email ?? "" : "";
-  const [state, setRawState] = useState(() => syncNotificationDeliveries(loadState({ includeDemo: !isSupabaseConfigured, authUserId, email: authEmail })));
+  const [state, setRawState] = useState(() => syncNotificationDeliveries(getCachedBootstrapState(authUserId, authEmail)));
   const setState = useCallback((updater) => {
     setRawState((prev) => syncNotificationDeliveries(typeof updater === "function" ? updater(prev) : updater));
   }, []);
@@ -610,6 +633,11 @@ export function useAppData(authUser = null) {
   }, []);
 
   useEffect(() => {
+    if (!isSupabaseConfigured || !authUserId || !remoteReady) return;
+    cacheCurrentProfileState(authUserId, state);
+  }, [authUserId, remoteReady, state.currentUserId, state.settings, state.users]);
+
+  useEffect(() => {
     if (!isSupabaseConfigured || !authUserId) {
       remoteReadyRef.current = !isSupabaseConfigured;
       setRemoteReady(!isSupabaseConfigured);
@@ -627,7 +655,7 @@ export function useAppData(authUser = null) {
     recentRecruitingMutationTimesRef.current = new Map();
     pendingMatchIdsRef.current = new Set();
     recentMatchMutationTimesRef.current = new Map();
-    setState(loadState({ includeDemo: false, authUserId, email: authEmail }));
+    setState(getCachedBootstrapState(authUserId, authEmail));
     setDirectoryStatus({ loading: false, loaded: false, error: "" });
     const initialLoadOptions = getInitialStateLoadOptions();
     const initialLoad = initialLoadOptions.profileOnly
@@ -641,6 +669,7 @@ export function useAppData(authUser = null) {
           const maintainedState = isSupabaseConfigured ? remoteState : runAutomaticStateMaintenance(remoteState);
           const initialMatchLimit = Number(initialLoadOptions.matchLimit ?? 0);
           const initialRecruitingLimit = Number(initialLoadOptions.recruitingLimit ?? 0);
+          cacheCurrentProfileState(authUserId, maintainedState);
           setState((prev) => withServerAdminContext(preserveLocalDiscordState(prev, maintainedState), adminContextRef.current));
           setMatchPagination({
             loading: false,
@@ -875,10 +904,16 @@ export function useAppData(authUser = null) {
   }, [runServerAction]);
   const syncSettingsServer = useCallback((settingsPatch = {}) => {
     return runServerAction("/api/settings/sync", { settings: settingsPatch }).then((result) => {
-      if (result?.settings) setState((prev) => updateSettings({ ...prev, currentUserId }, result.settings));
+      if (result?.settings) {
+        setState((prev) => {
+          const nextState = updateSettings({ ...prev, currentUserId }, result.settings);
+          cacheCurrentProfileState(authUserId, nextState);
+          return nextState;
+        });
+      }
       return result;
     });
-  }, [currentUserId, runServerAction, setState]);
+  }, [authUserId, currentUserId, runServerAction, setState]);
 
   const loadMoreMatches = useCallback(async () => {
     if (!isSupabaseConfigured || !authUserId || matchPagination.loading || matchPagination.exhausted) return false;

@@ -17,6 +17,12 @@
 2. List pages show 80 rows or fewer first, then use `더 보기` for additional rows.
 3. Pagination failure is shown inline beside the load-more button.
 
+# 2026-06-27 profile bootstrap display
+
+1. Saved theme and current-user tier may use the last successful local profile cache for the first paint.
+2. Remote profile/state remains authoritative and must replace cached theme/tier after the server response.
+3. Theme application uses a layout effect so a saved light/dark choice does not visibly flip after paint.
+
 # RankBall Design System
 
 2026-06-27: Score result cards keep side/team names secondary and the numeric score as the visual center.

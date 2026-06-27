@@ -1,4 +1,4 @@
-import { Component, Suspense, lazy, useEffect } from "react";
+import { Component, Suspense, lazy, useLayoutEffect } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import RequireAuth from "./components/auth/RequireAuth.jsx";
 import AppShell from "./components/layout/AppShell.jsx";
@@ -87,7 +87,7 @@ export default function App() {
       shouldSetupProfile(app.currentUser),
   );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
 
