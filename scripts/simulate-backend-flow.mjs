@@ -512,6 +512,8 @@ async function runOneOnOneScenario({
   assertFlow(match.teamA?.players?.includes(hostId), "host missing from teamA", match);
   assertFlow(match.teamB?.players?.includes(opponentId), "opponent missing from teamB", match);
 
+  let agreeASqlReducer = false;
+  let agreeBSqlReducer = false;
   if (!match.agreements?.teamA?.includes(hostId)) {
     const agreeAResult = await step(`${ids.label}:agreeMatch:teamA`, () => syncMatchAs(hostLogin, {
       action: "agreeMatch",
@@ -519,7 +521,8 @@ async function runOneOnOneScenario({
       sideName: "teamA",
       playerId: hostId,
     }));
-    match = agreeAResult?.match;
+    agreeASqlReducer = Boolean(agreeAResult?.sqlReducer);
+    match = await getMatchAfterResult(agreeAResult, hostLogin, `${ids.label}:loadAfterAgreeTeamA`);
     assertFlow(match?.agreements?.teamA?.includes(hostId), "teamA agreement not persisted", match);
   }
 
@@ -530,7 +533,8 @@ async function runOneOnOneScenario({
       sideName: "teamB",
       playerId: opponentId,
     }));
-    match = agreeBResult?.match;
+    agreeBSqlReducer = Boolean(agreeBResult?.sqlReducer);
+    match = await getMatchAfterResult(agreeBResult, opponentLogin, `${ids.label}:loadAfterAgreeTeamB`);
     assertFlow(match?.agreements?.teamB?.includes(opponentId), "teamB agreement not persisted", match);
   }
 
@@ -642,6 +646,7 @@ async function runOneOnOneScenario({
     finalStatus: match.status,
     sqlReducers: {
       setRecruitingReady: Boolean(readyResult?.sqlReducer),
+      agreeMatch: agreeASqlReducer || agreeBSqlReducer,
       checkInMatchPlayer: Boolean(checkInBResult?.sqlReducer),
       startMatch: Boolean(startResult?.sqlReducer),
       endMatch: Boolean(endResult?.sqlReducer),

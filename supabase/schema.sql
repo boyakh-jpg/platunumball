@@ -3870,6 +3870,134 @@ $$;
 revoke all on function public.rankball_persist_match_snapshot(jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, boolean) from public;
 grant execute on function public.rankball_persist_match_snapshot(jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, boolean) to service_role;
 
+create or replace function public.rankball_match_agree_action(
+  p_actor_profile_id text,
+  p_match_id text,
+  p_side text,
+  p_player_id text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  safe_actor_id text := nullif(btrim(p_actor_profile_id), '');
+  safe_match_id text := nullif(btrim(p_match_id), '');
+  safe_side text := nullif(btrim(p_side), '');
+  safe_player_id text := nullif(btrim(p_player_id), '');
+  current_match public.matches%rowtype;
+  team_a_player_count integer := 0;
+  team_b_player_count integer := 0;
+  team_a_agreement_count integer := 0;
+  team_b_agreement_count integer := 0;
+  team_a_needed integer := 1;
+  team_b_needed integer := 1;
+begin
+  if safe_actor_id is null then
+    raise exception 'missing_actor_profile_id' using errcode = '22023';
+  end if;
+  if safe_match_id is null then
+    raise exception 'missing_match' using errcode = '22023';
+  end if;
+  if safe_side not in ('teamA', 'teamB') or safe_player_id is null then
+    raise exception 'invalid_match_agreement_target' using errcode = '22023';
+  end if;
+  if safe_actor_id <> safe_player_id then
+    raise exception 'match_agreement_actor_mismatch' using errcode = '42501';
+  end if;
+
+  select *
+  into current_match
+  from public.matches
+  where id = safe_match_id
+  for update;
+
+  if not found then
+    raise exception 'match_not_found' using errcode = '22023';
+  end if;
+  if current_match.status not in ('contract', 'agreed') then
+    return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'match_agreement_locked', 'matchId', safe_match_id);
+  end if;
+  if current_match.team_a_id is not null or current_match.team_b_id is not null then
+    return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'team_agreement_requires_replay', 'matchId', safe_match_id);
+  end if;
+  if jsonb_typeof(current_match.rules->'parties') = 'array' and jsonb_array_length(current_match.rules->'parties') > 0 then
+    return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'party_agreement_requires_replay', 'matchId', safe_match_id);
+  end if;
+  if not exists (
+    select 1
+    from public.match_players mp
+    where mp.match_id = safe_match_id
+      and mp.side = safe_side
+      and mp.user_id = safe_player_id
+  ) then
+    return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'match_agreement_player_not_found', 'matchId', safe_match_id);
+  end if;
+  if exists (
+    select 1
+    from public.match_agreements agreement
+    where agreement.match_id = safe_match_id
+      and agreement.user_id = safe_player_id
+  ) then
+    return jsonb_build_object('ok', true, 'action', 'agreeMatch', 'matchId', safe_match_id, 'actorProfileId', safe_actor_id, 'playerId', safe_player_id, 'sideName', safe_side, 'sqlReducer', true, 'alreadyAgreed', true);
+  end if;
+
+  select
+    count(*) filter (where mp.side = 'teamA'),
+    count(*) filter (where mp.side = 'teamB')
+  into team_a_player_count, team_b_player_count
+  from public.match_players mp
+  where mp.match_id = safe_match_id
+    and mp.user_id is not null
+    and mp.user_id <> ''
+    and mp.side in ('teamA', 'teamB');
+
+  if team_a_player_count = 0 or team_b_player_count = 0 then
+    return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'match_agreement_players_missing', 'matchId', safe_match_id);
+  end if;
+
+  select
+    count(distinct agreement.user_id) filter (where agreement.side = 'teamA'),
+    count(distinct agreement.user_id) filter (where agreement.side = 'teamB')
+  into team_a_agreement_count, team_b_agreement_count
+  from public.match_agreements agreement
+  where agreement.match_id = safe_match_id;
+
+  if safe_side = 'teamA' then
+    team_a_agreement_count := team_a_agreement_count + 1;
+  else
+    team_b_agreement_count := team_b_agreement_count + 1;
+  end if;
+
+  team_a_needed := floor(team_a_player_count / 2.0)::integer + 1;
+  team_b_needed := floor(team_b_player_count / 2.0)::integer + 1;
+
+  if current_match.status <> 'agreed'
+    and team_a_agreement_count >= team_a_needed
+    and team_b_agreement_count >= team_b_needed then
+    return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'match_agreement_completion_requires_replay', 'matchId', safe_match_id);
+  end if;
+
+  insert into public.match_agreements (match_id, user_id, side)
+  values (safe_match_id, safe_player_id, safe_side)
+  on conflict (match_id, user_id) do update set side = excluded.side;
+
+  return jsonb_build_object(
+    'ok', true,
+    'action', 'agreeMatch',
+    'matchId', safe_match_id,
+    'actorProfileId', safe_actor_id,
+    'playerId', safe_player_id,
+    'sideName', safe_side,
+    'sqlReducer', true
+  );
+end;
+$$;
+
+revoke all on function public.rankball_match_agree_action(text, text, text, text) from public;
+grant execute on function public.rankball_match_agree_action(text, text, text, text) to service_role;
+
 create or replace function public.rankball_match_checkin_action(
   p_actor_profile_id text,
   p_match_id text,
@@ -4500,6 +4628,15 @@ begin
   end if;
   if safe_match_id is null then
     raise exception 'missing_match' using errcode = '22023';
+  end if;
+
+  if safe_action = 'agreeMatch' and p_match_row ? '__operation' then
+    return public.rankball_match_agree_action(
+      safe_actor_id,
+      safe_match_id,
+      p_match_row #>> '{__operation,sideName}',
+      p_match_row #>> '{__operation,playerId}'
+    );
   end if;
 
   if safe_action = 'checkInMatchPlayer' and p_match_row ? '__operation' then
