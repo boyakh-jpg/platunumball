@@ -780,6 +780,7 @@ export default function Matches({ app }) {
     if (!app.remoteReady || !app.currentUser.id || !loadMyRecruitingPosts) {
       return undefined;
     }
+    if (app.matchPagination?.recruitingScheduleChecked) return undefined;
     const userId = app.currentUser.id;
     const pendingKey = `${userId}:pending`;
     if (myRecruitingLoadRef.current === userId || myRecruitingLoadRef.current === pendingKey) return undefined;
@@ -827,7 +828,7 @@ export default function Matches({ app }) {
       if (myRecruitingLoadRef.current === pendingKey) myRecruitingLoadRef.current = "";
       setMyRecruitingLoading(false);
     };
-  }, [app.actions.loadMyRecruitingPosts, app.currentUser.id, app.remoteReady]);
+  }, [app.actions.loadMyRecruitingPosts, app.currentUser.id, app.matchPagination?.recruitingScheduleChecked, app.remoteReady]);
   const openSelectedMatch = (matchId) => {
     if (!matchId) return;
     requestMatchDetail(matchId);

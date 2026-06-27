@@ -1340,6 +1340,7 @@ flowchart TD
 26. Match `parties` must be an array in client state. DB/API rows that carry `rules.parties` or `parties` as an object are normalized to an array before room/list helpers read them.
 27. Matches 화면의 idle `scope: "mine"` 모집 context load는 현재 user id마다 최대 1번만 실행한다. app state merge마다 다시 실행하면 첫 렌더 몇 초 뒤 내가 만든 방/참여방 숫자가 바뀐 것처럼 보일 수 있다.
 28. `/api/matches/list` 첫 페이지는 경기 메뉴 false-empty를 막기 위해 현재 사용자의 open 모집방 일정도 compact state로 함께 반환할 수 있다. 추가 match page는 모집방을 다시 싣지 않는다.
+29. If the first `/api/matches/list` response marks `page.recruitingScheduleChecked=true`, `/app/matches` must not run the delayed `scope=mine` recruiting reload for the same entry. This avoids late schedule count/card changes from duplicate reads.
 
 ## 2026-06-27 report scoped reads
 

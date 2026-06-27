@@ -391,6 +391,8 @@ async function loadNormalizedMatchList(context, body = {}, adminLevel = 0, limit
       count: matches.length,
       cursor: getMatchCursor(matches),
       exhausted: matches.length < limit,
+      recruitingScheduleChecked: false,
+      recruitingScheduleCount: 0,
     },
     updatedAt: normalized?.updatedAt ?? 0,
   };
@@ -398,7 +400,8 @@ async function loadNormalizedMatchList(context, body = {}, adminLevel = 0, limit
 
 async function loadCompactMatchList(context, body = {}, adminLevel = 0, limit = REMOTE_CLIENT_MATCH_LIMIT) {
   const cursor = String(body.cursor ?? body.matchUpdatedBefore ?? "").trim();
-  const recruitingSchedulePromise = !cursor && body.includeRecruitingSchedule !== false
+  const shouldLoadRecruitingSchedule = !cursor && body.includeRecruitingSchedule !== false;
+  const recruitingSchedulePromise = shouldLoadRecruitingSchedule
     ? loadCurrentRecruitingSchedule(context, adminLevel)
     : Promise.resolve(null);
   let matchQuery = context.supabase
@@ -474,6 +477,7 @@ async function loadCompactMatchList(context, body = {}, adminLevel = 0, limit = 
   }, { includeDemo: false });
   const recruitingSchedule = await recruitingSchedulePromise;
   const recruitingState = recruitingSchedule?.state ?? {};
+  const recruitingScheduleCount = recruitingState.recruitingPosts?.length ?? 0;
   const mergedState = {
     ...state,
     users: mergeById(state.users, recruitingState.users),
@@ -496,6 +500,8 @@ async function loadCompactMatchList(context, body = {}, adminLevel = 0, limit = 
       count: matches.length,
       cursor: getRowCursor(matchRows ?? []),
       exhausted: (matchRows ?? []).length < limit,
+      recruitingScheduleChecked: shouldLoadRecruitingSchedule,
+      recruitingScheduleCount,
     },
     updatedAt: Math.max(
       ...[...(matchRows ?? []), context.profile].filter(Boolean)
