@@ -1307,6 +1307,7 @@ flowchart TD
 11. `/app/recruiting` first hydrate does not load match rows; direct `?post=` entry also skips recruiting list rows. Recruiting list screens add more rows only through `더 보기` or targeted detail loads.
 12. `/app/matches` first hydrate uses `scope: "matches"` and does not load recruiting or tournament rows. Direct `?match=` entry starts with 0 list rows and loads the target match through detail load. User-related recruiting rooms are loaded later in idle time for schedule context.
 13. Direct detail entry (`/app/recruiting?post=...`, `/app/matches?match=...`) uses `/api/profile/me` first, then loads only the requested post or match detail.
+14. `/app/matches` first page uses `/api/profile/me` followed by `/api/matches/list`; it does not use `/api/state/load` for the initial match list.
 
 ## 2026-06-27 report scoped reads
 
@@ -1332,3 +1333,9 @@ flowchart TD
 11. `interestRecruitingPost`, `joinRecruitingSideParty`, `acceptRecruitingInvitation`이 아닌 recruiting snapshot 저장은 기존 DB roster에 없던 참가자를 새로 끼워 넣을 수 없다.
 12. Recruiting 단일 방 상세 로드는 최신 서버 row가 기준이다. 목록 보강 로드의 최근 mutation 보호막으로 단일 상세 row를 버리면 안 된다.
 13. Supabase auth 사용자가 바뀌면 이전 계정의 room/list state를 화면에 남기지 않고 shell state로 비운 뒤 새 서버 state를 로드한다.
+
+## 2026-06-27 simulation cleanup safety
+
+1. 운영 시뮬레이션 정리는 물리 삭제하지 않는다.
+2. `/api/system/cleanup-sim`과 backend simulation cleanup은 `sim_m_%` 경기와 `sim_q_%` 모집방을 `status = 'closed'`로 soft close한다.
+3. child row, notification, stat row는 감사/재현 근거이므로 cleanup endpoint에서 지우지 않는다.

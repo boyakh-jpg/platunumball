@@ -702,6 +702,7 @@ export default function Matches({ app }) {
   const userById = useMemo(() => Object.fromEntries(app.state.users.map((user) => [user.id, user])), [app.state.users]);
   const matchesById = useMemo(() => Object.fromEntries(app.state.matches.map((match) => [match.id, match])), [app.state.matches]);
   const requestedMatchDetailsRef = useRef(new Set());
+  const initialMatchListLoadRef = useRef("");
   const myRecruitingLoadRef = useRef("");
   const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
   const courtByName = useMemo(() => Object.fromEntries(registeredCourts.map((court) => [court.name, court])), [registeredCourts]);
@@ -764,6 +765,14 @@ export default function Matches({ app }) {
     setSelectedMatchId(queryMatchId);
     requestMatchDetail(queryMatchId);
   }, [app.currentUser.id, queryMatchId]);
+  useEffect(() => {
+    if (!app.remoteReady || !app.currentUser.id || queryMatchId) return;
+    if ((app.state.matches ?? []).length > 0) return;
+    if (app.matchPagination?.loading || app.matchPagination?.exhausted) return;
+    if (initialMatchListLoadRef.current === app.currentUser.id) return;
+    initialMatchListLoadRef.current = app.currentUser.id;
+    app.actions.loadMoreMatches?.();
+  }, [app.actions, app.currentUser.id, app.matchPagination?.exhausted, app.matchPagination?.loading, app.remoteReady, app.state.matches, queryMatchId]);
   useEffect(() => {
     if (!app.remoteReady || !app.currentUser.id) return undefined;
     if (myRecruitingLoadRef.current === app.currentUser.id) return undefined;

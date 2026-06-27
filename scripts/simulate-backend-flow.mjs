@@ -301,24 +301,19 @@ async function cleanup() {
   }
   if (!supabase) return { skipped: true, reason: "service_role_key_missing" };
 
-  const deletions = scenarioIds.flatMap((scenario) => [
-    ["discord_notification_deliveries", "match_id", scenario.matchId],
-    ["notifications", "match_id", scenario.matchId],
-    ["notifications", "recruiting_post_id", scenario.postId],
-    ["player_match_stats", "match_id", scenario.matchId],
-    ["match_results", "match_id", scenario.matchId],
-    ["match_disputes", "match_id", scenario.matchId],
-    ["match_approvals", "match_id", scenario.matchId],
-    ["match_agreements", "match_id", scenario.matchId],
-    ["match_players", "match_id", scenario.matchId],
+  const closedAt = new Date().toISOString();
+  const closures = scenarioIds.flatMap((scenario) => [
     ["matches", "id", scenario.matchId],
-    ["recruiting_applications", "post_id", scenario.postId],
     ["recruiting_posts", "id", scenario.postId],
   ]);
 
   const errors = [];
-  for (const [table, column, value] of deletions) {
-    const { error } = await supabase.from(table).delete().eq(column, value);
+  for (const [table, column, value] of closures) {
+    const { error } = await supabase
+      .from(table)
+      .update({ status: "closed", updated_at: closedAt })
+      .eq(column, value)
+      .neq("status", "closed");
     if (error && !String(error.message || "").includes("does not exist")) {
       errors.push({ table, message: error.message });
     }

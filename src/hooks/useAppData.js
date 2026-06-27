@@ -392,8 +392,7 @@ function getInitialStateLoadOptions() {
   const pathname = typeof window !== "undefined" ? window.location.pathname.replace(/\/$/, "") : "";
   const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
   if (pathname === "/app/matches") {
-    if (searchParams?.get("match")) return { profileOnly: true, matchLimit: 0, recruitingLimit: 0, tournamentLimit: 0 };
-    return { scope: "matches", matchLimit: REMOTE_CLIENT_INITIAL_MATCH_LIMIT, recruitingLimit: 0, tournamentLimit: 0 };
+    return { profileOnly: true, matchLimit: 0, recruitingLimit: 0, tournamentLimit: 0 };
   }
   if (pathname === "/app/recruiting") {
     if (searchParams?.get("post")) return { profileOnly: true, matchLimit: 0, recruitingLimit: 0, tournamentLimit: 0 };
@@ -733,10 +732,11 @@ export function useAppData(authUser = null) {
   const loadMoreMatches = useCallback(async () => {
     if (!isSupabaseConfigured || !authUserId || matchPagination.loading || matchPagination.exhausted) return false;
     const cursor = getMatchPaginationCursor(state.matches);
-    if (!cursor) {
+    if (!cursor && (state.matches?.length ?? 0) > 0) {
       setMatchPagination({ loading: false, exhausted: true, error: "" });
       return false;
     }
+    const pageLimit = cursor ? REMOTE_CLIENT_MATCH_LIMIT : REMOTE_CLIENT_INITIAL_MATCH_LIMIT;
     setMatchPagination((prev) => ({ ...prev, loading: true, error: "" }));
     try {
       const result = await postServerAction(
@@ -744,8 +744,9 @@ export function useAppData(authUser = null) {
         {
           authUserId,
           authEmail,
-          limit: REMOTE_CLIENT_MATCH_LIMIT,
-          cursor,
+          limit: pageLimit,
+          ...(cursor ? { cursor } : {}),
+          listOnly: true,
           adminContext: false,
         },
         { allowWhenDisabled: true },
@@ -753,7 +754,7 @@ export function useAppData(authUser = null) {
       const remoteState = result?.state ?? {};
       const nextMatches = remoteState.matches ?? [];
       setState((prev) => mergeRemoteMatchPage(prev, remoteState));
-      setMatchPagination({ loading: false, exhausted: nextMatches.length < REMOTE_CLIENT_MATCH_LIMIT, error: "" });
+      setMatchPagination({ loading: false, exhausted: nextMatches.length < pageLimit, error: "" });
       return nextMatches.length;
     } catch (error) {
       console.warn("More match load failed.", error.message);
