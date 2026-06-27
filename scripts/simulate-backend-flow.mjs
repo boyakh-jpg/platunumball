@@ -805,7 +805,7 @@ async function runSoloRoomTeamBlockedScenario({
       },
       joinMode: "team",
     }),
-    ["solo_room_team_party_not_allowed", "recruiting_sync_permission_denied", "recruiting_operation_noop"],
+    ["solo_room_team_party_not_allowed", "recruiting_operation_blocked", "recruiting_sync_permission_denied", "recruiting_operation_noop"],
   );
 
   const stateAfterReject = await step(`${ids.label}:loadAfterReject`, () => loadStateAs(hostLogin));
@@ -885,7 +885,7 @@ async function runIneligibleRefereeBlockedScenario({
       },
       joinMode: "referee",
     }),
-    ["referee_not_eligible", "recruiting_sync_permission_denied", "recruiting_operation_noop"],
+    ["referee_not_eligible", "recruiting_operation_blocked", "recruiting_sync_permission_denied", "recruiting_operation_noop"],
   );
 
   const stateAfterReject = await step(`${ids.label}:loadAfterReject`, () => loadStateAs(hostLogin));

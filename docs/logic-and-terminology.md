@@ -1365,6 +1365,8 @@ flowchart TD
 15. Recruiting/Matches 화면의 `scope: "mine"` 보강 로드는 요청이 성공했을 때만 완료 처리한다. 초기 auth/token 타이밍 실패가 나면 재시도하고, 실패한 1회 요청 때문에 `내가 만든 방`/`내 참여방` 카운트를 초기 목록 상태로 고정하지 않는다.
 16. Supabase remote state는 서버/DB가 source of truth다. 클라이언트 자동관리 함수는 원격 모집방/경기 상태를 로컬에서 임의로 취소/종료 처리하지 않는다. 만료, 자동취소, 자동확정 같은 lifecycle 변경은 server action/RPC로 저장된 뒤에만 화면 source of truth로 취급한다.
 
+17. `rankball_recruiting_slot_position_action()`은 선택 포지션을 `room_state.slotPositions`뿐 아니라 방장은 `recruiting_posts.position`, 개인 신청자는 `recruiting_applications.position`에도 저장한다.
+
 ## 2026-06-27 simulation cleanup safety
 
 1. 운영 시뮬레이션 정리는 물리 삭제하지 않는다.

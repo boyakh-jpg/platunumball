@@ -2543,6 +2543,20 @@ begin
     updated_at = now()
   where id = safe_post_id;
 
+  update public.recruiting_posts
+  set
+    position = nullif(safe_position, ''),
+    updated_at = now()
+  where id = safe_post_id
+    and player_id = safe_player_id;
+
+  update public.recruiting_applications
+  set
+    position = nullif(safe_position, ''),
+    updated_at = now()
+  where post_id = safe_post_id
+    and player_id = safe_player_id;
+
   return jsonb_build_object(
     'ok', true,
     'action', 'setRecruitingSlotPosition',
