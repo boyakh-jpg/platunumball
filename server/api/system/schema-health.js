@@ -75,6 +75,45 @@ const REQUIRED_COLUMNS = {
   ],
 };
 
+const REQUIRED_RPCS = [
+  {
+    name: "rankball_current_recruiting_post_ids",
+    args: { p_profile_id: "", p_limit: 1 },
+  },
+  {
+    name: "rankball_recruiting_slot_position_action",
+    args: { p_actor_profile_id: "", p_post_id: "", p_player_id: "", p_position: "" },
+  },
+  {
+    name: "rankball_recruiting_cancel_participation_action",
+    args: { p_actor_profile_id: "", p_post_id: "" },
+  },
+  {
+    name: "rankball_recruiting_interest_player_action",
+    args: { p_actor_profile_id: "", p_post_id: "", p_join_mode: "", p_team_id: "", p_side: "", p_reserve: false, p_position: "" },
+  },
+  {
+    name: "rankball_recruiting_action",
+    args: { p_actor_profile_id: "", p_action: "", p_post_row: {}, p_application_rows: [], p_notification_rows: [] },
+  },
+  {
+    name: "rankball_match_action",
+    args: {
+      p_actor_profile_id: "",
+      p_action: "",
+      p_match_row: {},
+      p_player_rows: [],
+      p_result_row: null,
+      p_stat_rows: [],
+      p_agreement_rows: [],
+      p_approval_rows: [],
+      p_dispute_rows: [],
+      p_notification_rows: [],
+      p_replace_result: false,
+    },
+  },
+];
+
 function getBearerToken(request) {
   const header = request.headers.authorization || request.headers.Authorization || "";
   const match = String(header).match(/^Bearer\s+(.+)$/i);
@@ -100,6 +139,18 @@ async function checkTable(client, table, columns) {
     ok: !error,
     error: error?.message ?? null,
     columns,
+  };
+}
+
+async function checkRpc(client, name, args) {
+  const { error } = await client.rpc(name, args);
+  const message = error?.message ?? "";
+  const missing = error?.code === "PGRST202" || /could not find|not found|does not exist/i.test(message);
+  return {
+    rpc: name,
+    ok: !missing,
+    error: missing ? message : null,
+    probeError: !missing ? message || null : null,
   };
 }
 
@@ -185,14 +236,18 @@ export default async function handler(request, response) {
     const checks = await Promise.all(
       Object.entries(REQUIRED_COLUMNS).map(([table, columns]) => checkTable(client, table, columns)),
     );
+    const rpcChecks = await Promise.all(REQUIRED_RPCS.map((rpc) => checkRpc(client, rpc.name, rpc.args)));
     const failed = checks.filter((check) => !check.ok);
+    const failedRpcs = rpcChecks.filter((check) => !check.ok);
     const simulationSeed = body?.ensureTestActors === true
       ? await ensureSimulationTestActors(client)
       : null;
     sendJson(response, 200, {
-      ok: failed.length === 0 && (!simulationSeed || simulationSeed.ok),
+      ok: failed.length === 0 && failedRpcs.length === 0 && (!simulationSeed || simulationSeed.ok),
       failedCount: failed.length,
+      failedRpcCount: failedRpcs.length,
       checks,
+      rpcChecks,
       simulationSeed,
     });
   } catch (error) {
