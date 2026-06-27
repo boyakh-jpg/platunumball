@@ -170,7 +170,8 @@ export default async function handler(request, response) {
   try {
     const body = await readJsonBody(request);
     const context = await getAuthenticatedContext(request, { allowMissingProfile: true });
-    const adminLevel = context.profileId ? await getAdminLevel(context) : 0;
+    const shouldLoadAdminContext = body.adminContext !== false && body.includeAdminContext !== false;
+    const adminLevel = shouldLoadAdminContext && context.profileId ? await getAdminLevel(context) : 0;
     const normalized = await loadNormalizedRemoteStateFromClient(
       context.supabase,
       context.authUserId,

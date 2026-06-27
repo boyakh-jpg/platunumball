@@ -3036,10 +3036,15 @@ function RecruitingReady({ app }) {
   useBodyScrollLock(Boolean(selectedPost) || composeOpen);
 
   useEffect(() => {
-    if (!app.remoteReady || !app.currentUser.id) return;
-    if (myRecruitingLoadRef.current === app.currentUser.id) return;
+    if (!app.remoteReady || !app.currentUser.id) return undefined;
+    if (myRecruitingLoadRef.current === app.currentUser.id) return undefined;
     myRecruitingLoadRef.current = app.currentUser.id;
-    app.actions.loadMyRecruitingPosts?.();
+    if ("requestIdleCallback" in window) {
+      const idleId = window.requestIdleCallback(() => app.actions.loadMyRecruitingPosts?.(), { timeout: 1500 });
+      return () => window.cancelIdleCallback?.(idleId);
+    }
+    const timeoutId = window.setTimeout(() => app.actions.loadMyRecruitingPosts?.(), 700);
+    return () => window.clearTimeout(timeoutId);
   }, [app.actions, app.currentUser.id, app.remoteReady]);
 
   useEffect(() => {

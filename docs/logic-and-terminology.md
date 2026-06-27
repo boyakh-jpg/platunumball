@@ -1287,7 +1287,7 @@ flowchart TD
 ## 2026-06-27 recruiting list pagination
 
 1. Recruiting list reads use `/api/recruiting/list` for additional pages.
-2. Recruiting first client load and additional page load use `REMOTE_CLIENT_RECRUITING_LIMIT = 50`.
+2. Recruiting first client load uses `REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT = 20`; additional page load uses `REMOTE_CLIENT_RECRUITING_LIMIT = 50`.
 3. Additional recruiting pages must merge by id and keep server rows as source of truth.
 4. List pagination must not load match result/stat child tables.
 5. Recruiting scope state loads must fetch only related profiles, teams, team members, and courts for loaded recruiting rows.
@@ -1303,7 +1303,7 @@ flowchart TD
 7. Initial `/api/state/load` client hydrate may set `matchListOnly: true`; match detail rows are then fetched lazily through `/api/matches/detail`.
 8. Initial `/api/state/load` may set `directoryScope: "related"` so it loads only users/teams related to the first match/recruiting/tournament page and favorites.
 9. Full user/team directory data is loaded on demand through `/api/directory/load` for Rankings, Teams, Create Match, and Settings.
-10. Initial client hydrate uses 30 matches and 30 recruiting posts; additional list pages use 50 rows.
+10. Initial client hydrate uses 20 matches and 20 recruiting posts; additional list pages use 50 rows.
 
 ## 2026-06-27 report scoped reads
 
@@ -1320,7 +1320,8 @@ flowchart TD
 2. 경기 방식이 `1v1`로 바뀌면 개인전으로 보고 `hostJoinMode = "player"`를 우선 적용한다.
 3. 공개방 전환은 사용자가 이미 고른 개인전/팀방 방식을 임의로 `team`으로 덮어쓰지 않는다.
 4. `/api/recruiting/list`는 `postId`/`recruitingPostIds` 단일 로드와 `scope: "mine"` 로드를 지원한다.
-5. Recruiting 화면은 최초 30개 목록 밖에 있는 내 생성/참여 open 방을 `scope: "mine"`로 보강 로드한다.
-6. Recruiting mutation이 진행 중이거나 직후인 post는 목록 보강 로드가 오래된 row로 덮어쓰지 않는다.
-7. 서버 core lock 검증은 구버전 DB row의 빈 `host_join_mode`, `age_restriction` 값을 앱 normalization 기본값과 같은 기준으로 비교한다.
-8. 서버 reducer가 참여를 차단하면 `recruiting_sync_permission_denied`로 뭉개지 말고 reducer notification의 실제 차단 사유를 반환한다.
+5. Recruiting 화면은 최초 20개 목록 밖에 있는 내 생성/참여 open 방을 `scope: "mine"`로 보강 로드한다.
+6. `scope: "mine"`은 `rankball_current_recruiting_post_ids()`를 우선 사용하고, DB 함수가 없으면 기존 PostREST id 조회 fallback을 사용한다.
+7. Recruiting mutation이 진행 중이거나 직후인 post는 목록 보강 로드가 오래된 row로 덮어쓰지 않는다.
+8. 서버 core lock 검증은 구버전 DB row의 빈 `host_join_mode`, `age_restriction` 값을 앱 normalization 기본값과 같은 기준으로 비교한다.
+9. 서버 reducer가 참여를 차단하면 `recruiting_sync_permission_denied`로 뭉개지 말고 reducer notification의 실제 차단 사유를 반환한다.

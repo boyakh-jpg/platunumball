@@ -2,6 +2,8 @@ import { getAdminLevel, getAuthenticatedContext, readJsonBody, sendJson } from "
 import { loadNormalizedRemoteStateFromClient, REMOTE_CLIENT_RECRUITING_LIMIT } from "../../../src/data/repository.js";
 import { filterStateForProfile } from "../state/load.js";
 
+let currentUserRecruitingRpcAvailable = true;
+
 function getRecruitingCursor(posts = []) {
   const oldest = [...posts]
     .sort((a, b) => String(a.updatedAt ?? a.createdAt ?? "").localeCompare(String(b.updatedAt ?? b.createdAt ?? "")))
@@ -33,6 +35,17 @@ async function fetchPostIds(query, idColumn = "id") {
 async function fetchCurrentUserRecruitingPostIds(client, profileId = "", limit = REMOTE_CLIENT_RECRUITING_LIMIT) {
   if (!profileId) return [];
   const cappedLimit = Math.max(1, Math.min(80, Number(limit) || REMOTE_CLIENT_RECRUITING_LIMIT));
+  if (currentUserRecruitingRpcAvailable) {
+    const { data: rpcRows, error: rpcError } = await client.rpc("rankball_current_recruiting_post_ids", {
+      p_profile_id: profileId,
+      p_limit: cappedLimit,
+    });
+    if (!rpcError) {
+      return uniqueIds((rpcRows ?? []).map((row) => row?.post_id ?? row?.id ?? row)).slice(0, cappedLimit);
+    }
+    currentUserRecruitingRpcAvailable = false;
+    console.warn("Current user recruiting RPC skipped.", rpcError.message);
+  }
   const [ownedPostIds, hostedPlayerPostIds, refereedPostIds, applicantPostIds, applicantPartyPostIds] = await Promise.all([
     fetchPostIds(client.from("recruiting_posts").select("id").eq("status", "open").eq("player_id", profileId).order("updated_at", { ascending: false }).limit(cappedLimit)),
     fetchPostIds(client.from("recruiting_posts").select("id").eq("status", "open").contains("player_ids", [profileId]).order("updated_at", { ascending: false }).limit(cappedLimit)),
@@ -58,7 +71,8 @@ export default async function handler(request, response) {
   try {
     const body = await readJsonBody(request);
     const context = await getAuthenticatedContext(request, { allowMissingProfile: true });
-    const adminLevel = context.profileId ? await getAdminLevel(context) : 0;
+    const shouldLoadAdminContext = body.adminContext !== false && body.includeAdminContext !== false;
+    const adminLevel = shouldLoadAdminContext && context.profileId ? await getAdminLevel(context) : 0;
     const requestedLimit = Number(body.limit ?? body.recruitingLimit ?? REMOTE_CLIENT_RECRUITING_LIMIT);
     const limit = Number.isFinite(requestedLimit) && requestedLimit > 0 ? requestedLimit : REMOTE_CLIENT_RECRUITING_LIMIT;
     const mineOnly = body.scope === "mine" || body.mine === true || body.includeMine === true;

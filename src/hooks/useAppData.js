@@ -392,7 +392,7 @@ async function loadBackendState(authUserId, authEmail) {
   try {
     const result = await postServerAction(
       "/api/state/load",
-      { authUserId, authEmail, matchLimit: REMOTE_CLIENT_INITIAL_MATCH_LIMIT, recruitingLimit: REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT, matchListOnly: true, directoryScope: "related" },
+      { authUserId, authEmail, matchLimit: REMOTE_CLIENT_INITIAL_MATCH_LIMIT, recruitingLimit: REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT, matchListOnly: true, directoryScope: "related", adminContext: false },
       { allowWhenDisabled: true },
     );
     if (result?.state) return result.state;
@@ -404,6 +404,7 @@ async function loadBackendState(authUserId, authEmail) {
     recruitingLimit: REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT,
     matchListOnly: true,
     directoryScope: "related",
+    adminContext: false,
   });
 }
 
@@ -432,7 +433,6 @@ export function useAppData(authUser = null) {
   const serverProfileBound = profileLocked || Boolean(backendTestLoginId);
   const effectiveProfileBindings = isSupabaseConfigured ? {} : profileBindings;
   const currentUserId = getBoundAuthProfileId(state, authUserId, effectiveProfileBindings, profileKey);
-  const currentUserOnboardingComplete = Boolean(state.users.find((user) => user.id === currentUserId)?.onboardingComplete);
 
   useEffect(() => {
     if (!isSupabaseConfigured || !authUserId) return;
@@ -503,34 +503,33 @@ export function useAppData(authUser = null) {
   }, [authEmail, authUserId]);
 
   useEffect(() => {
+    adminContextRef.current = EMPTY_ADMIN_CONTEXT;
+    setAdminContext(EMPTY_ADMIN_CONTEXT);
+    setState((prev) => withServerAdminContext(prev, EMPTY_ADMIN_CONTEXT));
+  }, [authUserId, setState]);
+
+  const loadAdminContext = useCallback(async () => {
     if (!isSupabaseConfigured || !authUserId) {
       adminContextRef.current = EMPTY_ADMIN_CONTEXT;
       setAdminContext(EMPTY_ADMIN_CONTEXT);
       setState((prev) => withServerAdminContext(prev, EMPTY_ADMIN_CONTEXT));
-      return undefined;
+      return EMPTY_ADMIN_CONTEXT;
     }
-
-    let mounted = true;
-    postServerAction("/api/admin/context", {}, { allowWhenDisabled: true })
-      .then((result) => {
-        if (!mounted) return;
-        const context = normalizeAdminContext(result);
-        adminContextRef.current = context;
-        setAdminContext(context);
-        setState((prev) => withServerAdminContext(prev, context));
-      })
-      .catch((error) => {
-        if (!mounted) return;
-        console.warn("Admin context failed.", error.message);
-        adminContextRef.current = EMPTY_ADMIN_CONTEXT;
-        setAdminContext(EMPTY_ADMIN_CONTEXT);
-        setState((prev) => withServerAdminContext(prev, EMPTY_ADMIN_CONTEXT));
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, [authUserId, currentUserId, currentUserOnboardingComplete, setState]);
+    try {
+      const result = await postServerAction("/api/admin/context", {}, { allowWhenDisabled: true });
+      const context = normalizeAdminContext(result);
+      adminContextRef.current = context;
+      setAdminContext(context);
+      setState((prev) => withServerAdminContext(prev, context));
+      return context;
+    } catch (error) {
+      console.warn("Admin context failed.", error.message);
+      adminContextRef.current = EMPTY_ADMIN_CONTEXT;
+      setAdminContext(EMPTY_ADMIN_CONTEXT);
+      setState((prev) => withServerAdminContext(prev, EMPTY_ADMIN_CONTEXT));
+      return EMPTY_ADMIN_CONTEXT;
+    }
+  }, [authUserId, setState]);
 
   useEffect(() => {
     if (!profileLocked || !authUserId || !currentUserId || isSupabaseConfigured) return;
@@ -704,6 +703,7 @@ export function useAppData(authUser = null) {
           authEmail,
           limit: REMOTE_CLIENT_MATCH_LIMIT,
           cursor,
+          adminContext: false,
         },
         { allowWhenDisabled: true },
       );
@@ -757,6 +757,7 @@ export function useAppData(authUser = null) {
           authEmail,
           limit: REMOTE_CLIENT_RECRUITING_LIMIT,
           cursor,
+          adminContext: false,
         },
         { allowWhenDisabled: true },
       );
@@ -782,6 +783,7 @@ export function useAppData(authUser = null) {
           authEmail,
           postId,
           limit: 1,
+          adminContext: false,
         },
         { allowWhenDisabled: true },
       );
@@ -805,6 +807,7 @@ export function useAppData(authUser = null) {
           authEmail,
           scope: "mine",
           limit: REMOTE_CLIENT_RECRUITING_LIMIT,
+          adminContext: false,
         },
         { allowWhenDisabled: true },
       );
@@ -1005,6 +1008,7 @@ export function useAppData(authUser = null) {
       return ({
         loadMatchDetail,
         loadDirectory,
+        loadAdminContext,
         loadMoreMatches,
         loadMoreRecruiting,
         loadRecruitingPost,
@@ -1499,7 +1503,7 @@ export function useAppData(authUser = null) {
       reset: () => setState(resetState({ includeDemo: !isSupabaseConfigured, authUserId, email: authEmail })),
       });
     },
-    [authEmail, authUserId, currentUserId, deleteTeamServer, ensureRemoteReady, ensureServerActionAvailable, loadDirectory, loadMatchDetail, loadMoreMatches, loadMoreRecruiting, loadRecruitingPost, loadMyRecruitingPosts, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, runServerAction, serverProfileBound, submitReportServer, syncFavoriteServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncSettingsServer, syncTeamServer, syncTournamentServer],
+    [authEmail, authUserId, currentUserId, deleteTeamServer, ensureRemoteReady, ensureServerActionAvailable, loadAdminContext, loadDirectory, loadMatchDetail, loadMoreMatches, loadMoreRecruiting, loadRecruitingPost, loadMyRecruitingPosts, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, runServerAction, serverProfileBound, submitReportServer, syncFavoriteServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncSettingsServer, syncTeamServer, syncTournamentServer],
   );
 
   const safeCurrentUserId = currentUserId ?? currentUser?.id ?? "";

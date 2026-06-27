@@ -18,7 +18,8 @@ export default async function handler(request, response) {
   try {
     const body = await readJsonBody(request);
     const context = await getAuthenticatedContext(request, { allowMissingProfile: true });
-    const adminLevel = context.profileId ? await getAdminLevel(context) : 0;
+    const shouldLoadAdminContext = body.adminContext !== false && body.includeAdminContext !== false;
+    const adminLevel = shouldLoadAdminContext && context.profileId ? await getAdminLevel(context) : 0;
     const requestedLimit = Number(body.limit ?? body.matchLimit ?? REMOTE_CLIENT_MATCH_LIMIT);
     const limit = Number.isFinite(requestedLimit) && requestedLimit > 0 ? requestedLimit : REMOTE_CLIENT_MATCH_LIMIT;
     const normalized = await loadNormalizedRemoteStateFromClient(

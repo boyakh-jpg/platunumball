@@ -64,6 +64,10 @@ function DetailList({ title, empty, children }) {
 }
 
 export default function Admin({ app }) {
+  useEffect(() => {
+    app.actions.loadAdminContext?.();
+    app.actions.loadDirectory?.();
+  }, [app.actions]);
   const [view, setView] = useState("courts");
   const [selectedIdByView, setSelectedIdByView] = useState({});
   const [actionDraft, setActionDraft] = useState({
@@ -82,7 +86,7 @@ export default function Admin({ app }) {
     appointmentId: "",
     reason: "",
   });
-  const canAdmin = hasAdminAccess(app.currentUser, app.state.settings);
+  const canAdmin = Number(app.adminContext?.level ?? 0) >= 30 || hasAdminAccess(app.currentUser, app.state.settings);
   const model = useMemo(() => buildAdminReviewModel(app.state), [app.state]);
   const appointments = useMemo(() => buildAdminAppointmentModel(app.state), [app.state]);
   const appointmentUsers = useMemo(
