@@ -449,16 +449,20 @@ export function getRecruitingHostEntry(post = {}, state = {}) {
   const user = state.users?.find((item) => item.id === post.playerId) ?? null;
   const team = post.teamId ? state.teams?.find((item) => item.id === post.teamId) ?? null : null;
   const capacity = getRecruitingSideCapacity(post);
-  const joinMode = post.hostJoinMode === "player" || !team ? "player" : "team";
-  const activeTeamPlayerIds = joinMode === "team" ? getActiveTeamPlayerIds(team, capacity, post.playerIds) : [];
+  const joinMode = post.hostJoinMode === "team" && (team || post.teamId || post.playerIds?.length) ? "team" : "player";
+  const activeTeamPlayerIds = joinMode === "team"
+    ? (team ? getActiveTeamPlayerIds(team, capacity, post.playerIds) : unique(post.playerIds ?? []).slice(0, capacity))
+    : [];
   const fallbackTeamPlayerId = post.playerId && getTeamPlayerIds(team).includes(post.playerId)
     ? post.playerId
     : getSelectableTeamPlayerIds(team)[0];
   const players = joinMode === "team"
     ? (activeTeamPlayerIds.length ? activeTeamPlayerIds : [fallbackTeamPlayerId].filter(Boolean))
     : [post.playerId].filter(Boolean);
-  const explicitReserves = joinMode === "team" ? getExplicitTeamPlayerIds(team, Infinity, roomState.partyReserves.host ?? []) : [];
-  const reserves = joinMode === "team" ? unique([...getReserveTeamPlayerIds(team), ...explicitReserves]).filter((playerId) => !players.includes(playerId)) : [];
+  const explicitReserves = joinMode === "team"
+    ? (team ? getExplicitTeamPlayerIds(team, Infinity, roomState.partyReserves.host ?? []) : unique(roomState.partyReserves.host ?? []))
+    : [];
+  const reserves = joinMode === "team" ? unique([...(team ? getReserveTeamPlayerIds(team) : []), ...explicitReserves]).filter((playerId) => !players.includes(playerId)) : [];
 
   return {
     id: "host",
@@ -469,7 +473,7 @@ export function getRecruitingHostEntry(post = {}, state = {}) {
     status: post.hostReady ? "ready" : "waiting",
     reserve: roomState.hostReserve,
     playerId: post.playerId,
-    teamId: team?.id ?? null,
+    teamId: team?.id ?? post.teamId ?? null,
     user,
     team,
     players,
@@ -501,12 +505,12 @@ export function getRecruitingApplicantEntry(applicant = {}, state = {}, post = {
   const displayTeamId = normalizedEntry.kind === "team" ? normalizedEntry.teamId : normalizedEntry.sourceTeamId;
   const team = displayTeamId ? state.teams?.find((item) => item.id === displayTeamId) ?? null : null;
   const players = normalizedEntry.kind === "team"
-    ? getActiveTeamPlayerIds(team, capacity, normalizedEntry.playerIds)
+    ? (team ? getActiveTeamPlayerIds(team, capacity, normalizedEntry.playerIds) : unique(normalizedEntry.playerIds ?? []).slice(0, capacity))
     : [normalizedEntry.playerId].filter(Boolean);
   const explicitReserves = normalizedEntry.kind === "team"
-    ? getExplicitTeamPlayerIds(team, Infinity, roomState.partyReserves[getRecruitingApplicantKey(normalizedEntry)] ?? [])
+    ? (team ? getExplicitTeamPlayerIds(team, Infinity, roomState.partyReserves[getRecruitingApplicantKey(normalizedEntry)] ?? []) : unique(roomState.partyReserves[getRecruitingApplicantKey(normalizedEntry)] ?? []))
     : [];
-  const reserves = normalizedEntry.kind === "team" ? unique([...getReserveTeamPlayerIds(team), ...explicitReserves]).filter((playerId) => !players.includes(playerId)) : [];
+  const reserves = normalizedEntry.kind === "team" ? unique([...(team ? getReserveTeamPlayerIds(team) : []), ...explicitReserves]).filter((playerId) => !players.includes(playerId)) : [];
 
   return {
     ...normalizedEntry,

@@ -1314,6 +1314,8 @@ flowchart TD
 14. If `user_room_feed` is unavailable, `scope='mine'` and room-scope counts must still include pending `room_state.invitations.targetUserId` so invited rooms do not disappear before the feed SQL is applied.
 15. Recruiting queue region selection uses `user_room_feed` `region_public` pages with a concrete `regionKey`. The default is the current user's local district; selecting another district reloads the first page for that region and `더 보기` continues the same region cursor. The frontend must not default to broad all-region loading.
 16. Recruiting room-scope loads may pass `roomScope: "created" | "joined" | "invited"`. `초대받음` must read the `invited` feed relation directly, not depend on the combined 50-row mine feed.
+17. `/api/recruiting/list` default region pages use `user_room_feed.card_json` first. When every page row has a card, the endpoint must not read `recruiting_posts`, `recruiting_applications`, `public_profiles`, teams, or courts for that page.
+18. Recruiting list-card posts may omit full team rows. Central lobby helpers must still calculate team host/applicant slots from stored `playerIds` when a team object is not loaded.
 
 ## 2026-06-27 match list pagination
 

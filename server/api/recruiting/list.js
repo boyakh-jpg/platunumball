@@ -115,6 +115,25 @@ function mergeStateById(current = {}, incoming = {}) {
   };
 }
 
+function normalizeFeedCard(row = {}) {
+  const card = row?.card_json ?? row?.cardJson ?? null;
+  if (!card || typeof card !== "object" || Array.isArray(card) || !Object.keys(card).length) return null;
+  const id = card.id ?? row.entity_id ?? row.entityId;
+  return id ? { ...card, id } : null;
+}
+
+function uniqueFeedCards(rows = [], ids = []) {
+  const idSet = new Set(ids);
+  const cards = new Map();
+  (rows ?? []).forEach((row) => {
+    const id = row?.entity_id ?? row?.entityId;
+    if (!id || !idSet.has(id) || cards.has(id)) return;
+    const card = normalizeFeedCard(row);
+    if (card) cards.set(id, card);
+  });
+  return ids.map((id) => cards.get(id)).filter(Boolean);
+}
+
 function compactUser(user = {}, profileId = "") {
   const compact = {
     id: user.id,
@@ -226,11 +245,15 @@ function compactRecruitingPost(post = {}, profileId = "") {
   const rules = post.rules ?? {};
   return {
     id: post.id,
+    listCardOnly: post.listCardOnly,
     type: post.type,
     title: post.title,
     visibility: post.visibility,
     region: post.region,
     court: post.court,
+    hostName: post.hostName,
+    hostTeamName: post.hostTeamName,
+    targetTeamName: post.targetTeamName,
     mode: post.mode,
     scheduledDate: post.scheduledDate,
     scheduledTime: post.scheduledTime,
@@ -319,12 +342,33 @@ async function fetchRecruitingFeedPostIds(client, {
   limit = REMOTE_CLIENT_RECRUITING_LIMIT,
   offset = 0,
 } = {}) {
+  const page = await fetchRecruitingFeedPage(client, {
+    profileId,
+    relations,
+    status,
+    regionKey,
+    limit,
+    offset,
+    includeCards: false,
+  });
+  return page?.ids ?? page;
+}
+
+async function fetchRecruitingFeedPage(client, {
+  profileId = "*",
+  relations = [],
+  status = "open",
+  regionKey = "",
+  limit = REMOTE_CLIENT_RECRUITING_LIMIT,
+  offset = 0,
+  includeCards = false,
+} = {}) {
   if (!userRoomFeedAvailable) return null;
   const cappedLimit = Math.max(1, Math.min(80, Number(limit) || REMOTE_CLIENT_RECRUITING_LIMIT));
   const safeOffset = Math.max(0, Math.floor(Number(offset) || 0));
   let query = client
     .from("user_room_feed")
-    .select("entity_id,sort_at,relation")
+    .select(includeCards ? "entity_id,sort_at,relation,card_json" : "entity_id,sort_at,relation")
     .eq("entity_type", "recruiting")
     .eq("profile_id", profileId)
     .eq("is_active", true)
@@ -343,7 +387,15 @@ async function fetchRecruitingFeedPostIds(client, {
     }
     throw error;
   }
-  return uniqueIds((data ?? []).map((row) => row?.entity_id));
+  const rows = data ?? [];
+  const ids = uniqueIds(rows.map((row) => row?.entity_id)).slice(0, cappedLimit);
+  const cards = includeCards ? uniqueFeedCards(rows, ids) : [];
+  return {
+    ids,
+    cards,
+    source: includeCards && cards.length === ids.length ? "feed_card" : "feed",
+    exhausted: rows.length < cappedLimit || ids.length < cappedLimit,
+  };
 }
 
 async function fetchRecruitingFeedCounts(client, profileId = "") {
@@ -452,18 +504,19 @@ export async function fetchCurrentUserRecruitingPostIds(client, profileId = "", 
   return uniqueIds(relations.flatMap((relation) => fallbackIdsByRelation[relation] ?? [])).slice(0, cappedLimit);
 }
 
-async function fetchRecruitingPagePostIds(client, limit = REMOTE_CLIENT_RECRUITING_LIMIT, offset = 0, regionKey = "") {
+async function fetchRecruitingPage(client, limit = REMOTE_CLIENT_RECRUITING_LIMIT, offset = 0, regionKey = "", includeCards = false) {
   const cappedLimit = Math.max(1, Math.min(80, Number(limit) || REMOTE_CLIENT_RECRUITING_LIMIT));
   const safeOffset = Math.max(0, Math.floor(Number(offset) || 0));
-  const feedPostIds = await fetchRecruitingFeedPostIds(client, {
+  const feedPage = await fetchRecruitingFeedPage(client, {
     profileId: "*",
     relations: ["region_public"],
     regionKey,
     limit: cappedLimit,
     offset: safeOffset,
+    includeCards,
   });
-  if (feedPostIds?.length) return feedPostIds;
-  if (feedPostIds && safeOffset > 0) return [];
+  if (feedPage?.ids?.length) return feedPage;
+  if (feedPage && safeOffset > 0) return { ids: [], cards: [], source: feedPage.source ?? "feed", exhausted: true };
   let query = client
     .from("recruiting_posts")
     .select("id")
@@ -475,7 +528,8 @@ async function fetchRecruitingPagePostIds(client, limit = REMOTE_CLIENT_RECRUITI
   if (regionKey) query = query.or(`region.eq.${regionKey},region.eq.${regionKey}구,region.ilike.%${regionKey}%`);
   const { data, error } = await query;
   if (error) throw error;
-  return (data ?? []).map((row) => row?.id).filter(Boolean);
+  const ids = (data ?? []).map((row) => row?.id).filter(Boolean);
+  return { ids, cards: [], source: "fallback_public", exhausted: ids.length < cappedLimit };
 }
 
 async function fetchRecruitingRowsByIds(client, postIds = []) {
@@ -625,6 +679,9 @@ export async function loadCompactRecruitingList(context, {
   includeMine = false,
   mineOnly = false,
   pagePostIds = [],
+  pageCards = [],
+  pageSource = "",
+  pageExhausted = null,
   feedCounts = null,
   limit = REMOTE_CLIENT_RECRUITING_LIMIT,
   offset = 0,
@@ -632,6 +689,50 @@ export async function loadCompactRecruitingList(context, {
   regionKey = "",
 } = {}) {
   const targetPostIds = uniqueIds([...explicitPostIds, ...(mineOnly ? currentUserPostIds : pagePostIds), ...(includeMine ? currentUserPostIds : [])]);
+  const canUsePageCards = pageCards.length > 0
+    && pageCards.length === pagePostIds.length
+    && !explicitPostIds.length
+    && !mineOnly
+    && !includeMine;
+  const currentUser = context.profile
+    ? fromRemoteProfile(context.profile)
+    : createProfileShell(context.authUserId, context.authUser?.email ?? "");
+  const settings = {
+    ...DEFAULT_SETTINGS,
+    ...getRemoteAppSettings(context.profile),
+  };
+
+  if (canUsePageCards) {
+    const state = normalizeState({
+      currentUserId: currentUser.id,
+      users: [currentUser],
+      teams: [],
+      recruitingPosts: pageCards,
+      settings,
+    }, { includeDemo: false });
+    return {
+      state: compactRecruitingListState(state, currentUser.id),
+      page: {
+        limit,
+        count: pagePostIds.length,
+        offset,
+        nextOffset: offset + pagePostIds.length,
+        cursor: String(offset + pagePostIds.length),
+        exhausted: typeof pageExhausted === "boolean" ? pageExhausted : pagePostIds.length < limit,
+        regionScope: regionKey ? "region" : regionScope,
+        regionKey,
+        source: pageSource || "feed_card",
+        feedCounts,
+      },
+      updatedAt: Math.max(
+        ...[...pageCards, context.profile].filter(Boolean)
+          .map((row) => new Date(row.updatedAt ?? row.updated_at ?? row.createdAt ?? row.created_at ?? 0).getTime())
+          .filter((value) => Number.isFinite(value)),
+        0,
+      ),
+    };
+  }
+
   const postRows = await fetchRecruitingRowsByIds(context.supabase, targetPostIds);
   const postIds = postRows.map((post) => post.id).filter(Boolean);
   const { data: applicationRows, error: applicationError } = postIds.length
@@ -659,9 +760,6 @@ export async function loadCompactRecruitingList(context, {
   if (profileError) throw profileError;
   if (courtError) throw courtError;
 
-  const currentUser = context.profile
-    ? fromRemoteProfile(context.profile)
-    : createProfileShell(context.authUserId, context.authUser?.email ?? "");
   const userById = new Map((profileRows ?? []).map((row) => {
     const user = fromRemoteProfile(row);
     return [user.id, user];
@@ -672,10 +770,6 @@ export async function loadCompactRecruitingList(context, {
   const courtById = firstBy(courtRows ?? [], "id");
   const applicationsByPost = groupBy(applicationRows ?? [], "post_id");
   const posts = postRows.map((post) => fromRemoteRecruitingPost(post, applicationsByPost, courtById));
-  const settings = {
-    ...DEFAULT_SETTINGS,
-    ...getRemoteAppSettings(context.profile),
-  };
   const state = normalizeState({
     currentUserId: currentUser.id,
     users: [...userById.values()],
@@ -693,9 +787,10 @@ export async function loadCompactRecruitingList(context, {
       offset,
       nextOffset: offset + pagePostIds.length,
       cursor: String(offset + pagePostIds.length),
-      exhausted: mineOnly || Boolean(explicitPostIds.length) || pagePostIds.length < limit,
+      exhausted: mineOnly || Boolean(explicitPostIds.length) || (typeof pageExhausted === "boolean" ? pageExhausted : pagePostIds.length < limit),
       regionScope: regionKey ? "region" : regionScope,
       regionKey,
+      source: pageSource || "row",
       feedCounts,
     },
     updatedAt: Math.max(
@@ -731,11 +826,15 @@ export default async function handler(request, response) {
     const regionKey = regionScope === "all"
       ? ""
       : normalizeRegionKey(body.regionKey || body.regionDistrict || getProfileRegionKey(context.profile));
-    const [currentUserPostIds, pagePostIds, feedCountsResult] = await Promise.all([
+    const [currentUserPostIds, pageResult, feedCountsResult] = await Promise.all([
       includeMine ? fetchCurrentUserRecruitingPostIds(context.supabase, context.profileId, mineLimit, roomScope) : Promise.resolve([]),
-      shouldPageList ? fetchRecruitingPagePostIds(context.supabase, limit, offset, regionKey) : Promise.resolve([]),
+      shouldPageList ? fetchRecruitingPage(context.supabase, limit, offset, regionKey, listOnly && !includeMine) : Promise.resolve({ ids: [], cards: [], source: "", exhausted: true }),
       context.profileId ? fetchRecruitingFeedCounts(context.supabase, context.profileId) : Promise.resolve(null),
     ]);
+    const pagePostIds = pageResult?.ids ?? [];
+    const pageCards = pageResult?.cards ?? [];
+    const pageSource = pageResult?.source ?? "";
+    const pageExhausted = typeof pageResult?.exhausted === "boolean" ? pageResult.exhausted : null;
     const feedCounts = feedCountsResult ?? (context.profileId ? await fetchRecruitingFallbackCounts(context.supabase, context.profileId) : null);
     const targetPostIds = uniqueIds([...explicitPostIds, ...(mineOnly ? currentUserPostIds : pagePostIds)]);
     if (listOnly) {
@@ -746,6 +845,9 @@ export default async function handler(request, response) {
         includeMine,
         mineOnly,
         pagePostIds,
+        pageCards,
+        pageSource,
+        pageExhausted,
         feedCounts,
         limit,
         offset,
@@ -814,9 +916,10 @@ export default async function handler(request, response) {
         offset,
         nextOffset: offset + pagePostIds.length,
         cursor: String(offset + pagePostIds.length),
-        exhausted: mineOnly || Boolean(explicitPostIds.length) || pagePostIds.length < limit,
+        exhausted: mineOnly || Boolean(explicitPostIds.length) || (typeof pageExhausted === "boolean" ? pageExhausted : pagePostIds.length < limit),
         regionScope: regionKey ? "region" : regionScope,
         regionKey,
+        source: pageSource || "row",
         feedCounts,
       },
       updatedAt: normalized?.updatedAt ?? 0,

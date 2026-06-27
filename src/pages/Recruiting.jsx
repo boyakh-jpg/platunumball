@@ -3282,6 +3282,8 @@ function RecruitingReady({ app }) {
           const host = userById[roomOwnerId] ?? userById[post.playerId];
           const hostTeam = post.teamId ? teamById[post.teamId] : null;
           const targetTeam = post.targetTeamId ? teamById[post.targetTeamId] : null;
+          const hostName = host?.name ?? post.hostName ?? "방장";
+          const hostTeamName = hostTeam?.name ?? post.hostTeamName ?? "";
           const mine = roomOwnerId === app.currentUser.id;
           const myRoom = isRecruitingPostForUser(post, app.currentUser.id, myTeamIds);
           const invited = hasPendingRecruitingInvitation(post, app.currentUser.id);
@@ -3309,7 +3311,7 @@ function RecruitingReady({ app }) {
                   <span className="om-card-official">{getRecruitingRoomTypeLabel(post, lobby)}</span>
                   <span className="om-card-official">{getRoomCompetitionLabel(post)}</span>
                   <span className="om-card-official">{getRoomRefereeLabel(post)}</span>
-                  {targetTeam ? <span className="om-card-official">희망 상대 <TeamHoverCard team={targetTeam} as="span">{targetTeam.name}</TeamHoverCard></span> : null}
+                  {targetTeam ? <span className="om-card-official">희망 상대 <TeamHoverCard team={targetTeam} as="span">{targetTeam.name}</TeamHoverCard></span> : post.targetTeamName ? <span className="om-card-official">희망 상대 {post.targetTeamName}</span> : null}
                   {isNationalRecruitingPost(post, app.state) ? <span className="om-card-official">전국 노출</span> : null}
                 </div>
                 {roomTitle ? <h3>{roomTitle}</h3> : null}
@@ -3318,8 +3320,10 @@ function RecruitingReady({ app }) {
                   {getRecruitingSchedule(post)} · <CourtHoverCard court={courtByName[post.court]} courtName={post.court}>{post.court}</CourtHoverCard> ·{" "}
                   {hostTeam ? (
                     <TeamHoverCard team={hostTeam} as="span">{hostTeam.name}</TeamHoverCard>
+                  ) : post.teamId && hostTeamName ? (
+                    <span>{hostTeamName}</span>
                   ) : (
-                    <PlayerHoverCard user={host} teams={app.state.teams} as="span">{host?.name ?? "방장"}</PlayerHoverCard>
+                    <PlayerHoverCard user={host} teams={app.state.teams} as="span">{hostName}</PlayerHoverCard>
                   )}
                 </p>
                 <QueueRoomBoard post={post} lobby={lobby} roomStatus={roomStatus} />
