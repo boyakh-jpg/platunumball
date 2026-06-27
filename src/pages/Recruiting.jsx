@@ -1871,6 +1871,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
   };
   const openInviteSlot = (roomPost, sideName, reserve = false, slotKey = '', event = null) => {
     setSlotActionDraft(null);
+    app.actions.loadDirectory?.();
     setInviteDraft({ postId: roomPost.id, sideName, reserve, slotKey, query: '', selectedPlayerIds: [], anchor: getCommandAnchor(event) });
   };
   const openSelfSlotAction = (roomPost, sideName, reserve = false, playerId = '', entryId = '', event = null) => {
