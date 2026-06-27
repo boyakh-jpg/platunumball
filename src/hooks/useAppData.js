@@ -289,6 +289,13 @@ function filterPendingRecruitingPosts(remoteState = {}, pendingIds = new Set(), 
   return filteredPosts.length === nextPosts.length ? remoteState : { ...remoteState, recruitingPosts: filteredPosts };
 }
 
+function filterPendingMatches(remoteState = {}, pendingIds = new Set(), recentMutationTimes = new Map()) {
+  const nextMatches = remoteState.matches ?? [];
+  if ((!pendingIds.size && !recentMutationTimes.size) || !nextMatches.length) return remoteState;
+  const filteredMatches = nextMatches.filter((match) => !pendingIds.has(match.id) && !recentMutationTimes.has(match.id));
+  return filteredMatches.length === nextMatches.length ? remoteState : { ...remoteState, matches: filteredMatches };
+}
+
 function mergeRemoteDirectory(state, remoteState = {}) {
   return {
     ...state,
@@ -542,6 +549,8 @@ export function useAppData(authUser = null) {
   const directoryPromiseRef = useRef(null);
   const pendingRecruitingPostIdsRef = useRef(new Set());
   const recentRecruitingMutationTimesRef = useRef(new Map());
+  const pendingMatchIdsRef = useRef(new Set());
+  const recentMatchMutationTimesRef = useRef(new Map());
   const syncedDiscordDeliveryIdsRef = useRef(new Set());
   const profileKey = authUserId ?? "local-demo";
   const profileLocked = isPersistentAuthUserId(authUserId);
@@ -589,6 +598,8 @@ export function useAppData(authUser = null) {
     directoryPromiseRef.current = null;
     pendingRecruitingPostIdsRef.current = new Set();
     recentRecruitingMutationTimesRef.current = new Map();
+    pendingMatchIdsRef.current = new Set();
+    recentMatchMutationTimesRef.current = new Map();
     setState(loadState({ includeDemo: false, authUserId, email: authEmail }));
     setDirectoryStatus({ loading: false, loaded: false, error: "" });
     const initialLoadOptions = getInitialStateLoadOptions();
@@ -783,10 +794,24 @@ export function useAppData(authUser = null) {
   const syncMatchServer = useCallback((match, notifications = [], meta = {}) => {
     const operation = getServerOperation(meta);
     if (!match?.id && !operation) return Promise.resolve(false);
+    const pendingMatchId = match?.id ?? operation?.matchId ?? meta.matchId ?? "";
+    const mutationStartedAt = Date.now();
+    if (pendingMatchId) {
+      pendingMatchIdsRef.current.add(pendingMatchId);
+      recentMatchMutationTimesRef.current.set(pendingMatchId, mutationStartedAt);
+    }
     const payload = operation ? { operation, ...(match?.id ? { match } : {}), notifications } : { match, notifications, ...meta };
     return runServerAction("/api/matches/sync-match", payload).then((result) => {
       if (result?.match) setState((prev) => mergeServerRoomResult(prev, result));
       return result;
+    }).finally(() => {
+      if (!pendingMatchId) return;
+      pendingMatchIdsRef.current.delete(pendingMatchId);
+      globalThis.setTimeout(() => {
+        if (recentMatchMutationTimesRef.current.get(pendingMatchId) === mutationStartedAt) {
+          recentMatchMutationTimesRef.current.delete(pendingMatchId);
+        }
+      }, 10000);
     });
   }, [runServerAction, setState]);
   const submitReportServer = useCallback((report, notifications = []) => {
@@ -847,7 +872,7 @@ export function useAppData(authUser = null) {
         },
         { allowWhenDisabled: true },
       );
-      const remoteState = normalizeServerState(result?.state ?? {});
+      const remoteState = normalizeServerState(filterPendingMatches(result?.state ?? {}, pendingMatchIdsRef.current, recentMatchMutationTimesRef.current));
       const nextMatches = remoteState.matches ?? [];
       setState((prev) => mergeRemoteMatchPage(prev, remoteState));
       setMatchPagination({
@@ -876,7 +901,7 @@ export function useAppData(authUser = null) {
         },
         { allowWhenDisabled: true },
       );
-      const remoteState = normalizeServerState(result?.state ?? {});
+      const remoteState = normalizeServerState(filterPendingMatches(result?.state ?? {}, pendingMatchIdsRef.current, recentMatchMutationTimesRef.current));
       const nextMatches = remoteState.matches ?? [];
       setState((prev) => mergeRemoteMatchPage(prev, remoteState));
       return nextMatches.length;
@@ -936,7 +961,7 @@ export function useAppData(authUser = null) {
         },
         { allowWhenDisabled: true },
       );
-      const remoteState = normalizeServerState(result?.state ?? {});
+      const remoteState = normalizeServerState(filterPendingRecruitingPosts(result?.state ?? {}, pendingRecruitingPostIdsRef.current, recentRecruitingMutationTimesRef.current));
       const nextPosts = remoteState.recruitingPosts ?? [];
       setState((prev) => mergeRemoteRecruitingPage(prev, remoteState));
       return nextPosts.length;

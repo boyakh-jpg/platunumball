@@ -1373,6 +1373,13 @@ flowchart TD
 
 18. `setRecruitingReady` may use `rankball_recruiting_ready_action()` for active host/direct player readiness. Team-party, reserve, and other complex readiness cases must fall back to authoritative replay.
 
+## 2026-06-27 remote mutation stale guard
+
+1. 모집방 write action 직후에는 `/api/recruiting/list` 목록, 내방, 단일 상세 응답이 같은 post의 이전 row로 로컬 최신 상태를 덮지 않는다.
+2. 경기 write action 직후에는 `/api/matches/list`, `/api/matches/detail` 응답이 같은 match의 이전 row로 기록판/점수/무기명 선수 변경을 덮지 않는다.
+3. 서버 action 결과가 `post`, `createdMatch`, `match`를 반환하면 그 결과를 source of truth로 merge한다.
+4. stale 보호는 짧은 mutation window에서만 적용하고, 이후 일반 서버 load는 다시 DB source of truth를 따른다.
+
 ## 2026-06-27 simulation cleanup safety
 
 1. 운영 시뮬레이션 정리는 물리 삭제하지 않는다.
