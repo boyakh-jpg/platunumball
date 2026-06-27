@@ -801,7 +801,7 @@ export default function Matches({ app }) {
       });
     };
     if ("requestIdleCallback" in window) {
-      const idleId = window.requestIdleCallback(runLoad, { timeout: 2000 });
+      const idleId = window.requestIdleCallback(runLoad, { timeout: 500 });
       return () => {
         cancelled = true;
         window.cancelIdleCallback?.(idleId);
@@ -809,7 +809,7 @@ export default function Matches({ app }) {
         if (myRecruitingLoadRef.current === pendingKey) myRecruitingLoadRef.current = "";
       };
     }
-    const timeoutId = window.setTimeout(runLoad, 900);
+    const timeoutId = window.setTimeout(runLoad, 250);
     return () => {
       cancelled = true;
       window.clearTimeout(timeoutId);
@@ -927,6 +927,7 @@ export default function Matches({ app }) {
   viewButtonCounts.active = viewButtonCounts.todo + viewButtonCounts.scheduled + viewButtonCounts.closed;
   const getViewButtonCount = (view) => viewButtonCounts[view.id] ?? 0;
   const listRecruitingRoomCount = ["active", "scheduled"].includes(viewId) ? filteredActiveRoomCount : 0;
+  const scheduleLoading = app.remoteReady === false || (matchPagination.loading && !visibleScheduleItems.length);
   const saveTournamentSchedule = (event, tournamentId, matchId) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -1354,8 +1355,8 @@ export default function Matches({ app }) {
           </>
         ) : (
           <div className="om-empty-state">
-            <strong>해당 큐 없음</strong>
-            <p>다른 상태를 선택하거나 새 경기를 만든다.</p>
+            <strong>{scheduleLoading ? "서버 데이터 불러오는 중" : "해당 큐 없음"}</strong>
+            <p>{scheduleLoading ? "내 일정과 경기 목록을 확인하고 있다." : "다른 상태를 선택하거나 새 경기를 만든다."}</p>
           </div>
         )}
       </section>
