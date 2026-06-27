@@ -787,7 +787,7 @@ export function useAppData(authUser = null) {
         },
         { allowWhenDisabled: true },
       );
-      const remoteState = filterPendingRecruitingPosts(result?.state ?? {}, pendingRecruitingPostIdsRef.current, recentRecruitingMutationTimesRef.current);
+      const remoteState = result?.state ?? {};
       const nextPosts = remoteState.recruitingPosts ?? [];
       setState((prev) => mergeRemoteRecruitingPage(prev, remoteState));
       return nextPosts.length;

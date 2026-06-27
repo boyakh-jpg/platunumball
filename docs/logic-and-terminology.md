@@ -1327,3 +1327,4 @@ flowchart TD
 9. 서버 reducer가 참여를 차단하면 `recruiting_sync_permission_denied`로 뭉개지 말고 reducer notification의 실제 차단 사유를 반환한다.
 10. 초대받은 방은 초대 상태일 뿐 `내 참여방`으로 세지 않는다.
 11. `interestRecruitingPost`, `joinRecruitingSideParty`, `acceptRecruitingInvitation`이 아닌 recruiting snapshot 저장은 기존 DB roster에 없던 참가자를 새로 끼워 넣을 수 없다.
+12. Recruiting 단일 방 상세 로드는 최신 서버 row가 기준이다. 목록 보강 로드의 최근 mutation 보호막으로 단일 상세 row를 버리면 안 된다.
