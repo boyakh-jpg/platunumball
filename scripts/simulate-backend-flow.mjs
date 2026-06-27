@@ -608,7 +608,7 @@ async function runRecruitingActorScenario({
       reserve: true,
     },
   }));
-  post = reserveResult?.post;
+  post = await getRecruitingPostAfterResult(reserveResult, opponentLogin, `${ids.label}:loadAfterReservePlacement`);
   applicant = post?.applicants?.find((item) => item.playerId === opponentId);
   assertFlow(applicant?.reserve === true, "actor reserve placement not persisted", { opponentId, applicant, post });
 
@@ -621,7 +621,7 @@ async function runRecruitingActorScenario({
       reserve: false,
     },
   }));
-  post = activeResult?.post;
+  post = await getRecruitingPostAfterResult(activeResult, opponentLogin, `${ids.label}:loadAfterActivePlacement`);
   applicant = post?.applicants?.find((item) => item.playerId === opponentId);
   assertFlow(applicant?.reserve === false, "actor active placement not persisted", { opponentId, applicant, post });
   assertFlow(post?.roomState?.slotPositions?.[opponentId] === "SF", "actor position lost after placement", { opponentId, post });
@@ -638,6 +638,8 @@ async function runRecruitingActorScenario({
     sqlReducers: {
       interestRecruitingPost: Boolean(joinResult?.sqlReducer),
       setRecruitingSlotPosition: Boolean(positionResult?.sqlReducer),
+      reservePlacement: Boolean(reserveResult?.sqlReducer),
+      activePlacement: Boolean(activeResult?.sqlReducer),
     },
   };
 }

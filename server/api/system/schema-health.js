@@ -93,6 +93,10 @@ const REQUIRED_RPCS = [
     args: { p_actor_profile_id: "", p_post_id: "", p_join_mode: "", p_team_id: "", p_side: "", p_reserve: false, p_position: "" },
   },
   {
+    name: "rankball_recruiting_applicant_placement_action",
+    args: { p_actor_profile_id: "", p_post_id: "", p_player_id: "", p_side: "", p_reserve: false },
+  },
+  {
     name: "rankball_recruiting_action",
     args: { p_actor_profile_id: "", p_action: "", p_post_row: {}, p_application_rows: [], p_notification_rows: [] },
   },
