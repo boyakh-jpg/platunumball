@@ -623,6 +623,12 @@ function normalizeDisputeMinutes(match) {
   return Math.min(minutes, DISPUTE_WINDOW_MINUTES);
 }
 
+function normalizeMatchParties(parties) {
+  if (Array.isArray(parties)) return parties;
+  if (!parties || typeof parties !== "object") return [];
+  return Object.values(parties).filter((party) => party && typeof party === "object");
+}
+
 function normalizeMatch(match) {
   const startedStatuses = ["agreed", "approval", "confirmed", "disputed", "void", "cancelled"];
   const started = startedStatuses.includes(match.status);
@@ -649,6 +655,7 @@ function normalizeMatch(match) {
     statEntryMinutes: Number(match.statEntryMinutes ?? STAT_ENTRY_WINDOW_MINUTES),
     disputeMinutes: normalizeDisputeMinutes(match),
     trustFeedback: match.trustFeedback ?? {},
+    parties: normalizeMatchParties(match.parties ?? match.rules?.parties),
     playedPlayerIds: normalizedPlayedPlayerIds,
     rules: {
       ...(match.rules ?? {}),
