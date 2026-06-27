@@ -11,7 +11,7 @@ import {
 import { filterStateForProfile } from "../state/load.js";
 
 const PROFILE_ME_COLUMNS = "id,name,handle,hashtag,position,region,region_sido,region_district,school,company,club,trust_score,streak,avatar_color,test_login_id,auth_user_id,birth_year,age_group,age_group_checked_season,onboarding_complete,profile_version,handle_locked_at,birth_year_locked_at,name_updated_at,discord_connection,discord_user_id,ratings,created_at,updated_at,app_settings";
-const PROFILE_PUBLIC_COLUMNS = "id,name,handle,hashtag,position,region,region_sido,region_district,school,company,club,trust_score,streak,avatar_color,ratings,age_group,age_group_checked_season,onboarding_complete,test_login_id,updated_at,discord_connection";
+const PROFILE_CARD_COLUMNS = "id,name,handle,hashtag,position,region,trust_score,avatar_color,ratings,age_group,updated_at";
 const MATCH_LIST_COLUMNS = "id,title,mode,court_id,court_name,visibility,status,ranked,referee_id,former_referee_id,stat_entry_minutes,dispute_minutes,stat_recorders,played_player_ids,reserve_players,official,pre_registered,scheduled_at,scheduled_date,scheduled_time,team_a_id,team_b_id,score_a,score_b,rules,created_by,agreed_at,started_at,ended_at,confirmed_at,cancelled_at,voided_at,tournament_id,updated_at,created_at";
 const MATCH_PLAYER_COLUMNS = "match_id,team_id,user_id,side,slot_order";
 const TEAM_COLUMNS = "id,name,home_court,region,mmr,wins,losses,accent,deleted_at";
@@ -400,7 +400,7 @@ async function loadCompactMatchList(context, body = {}, adminLevel = 0, limit = 
       ? context.supabase.from("courts").select(COURT_COLUMNS).in("id", courtIds)
       : Promise.resolve({ data: [], error: null }),
     profileIds.length
-      ? context.supabase.from("public_profiles").select(PROFILE_PUBLIC_COLUMNS).in("id", profileIds)
+      ? context.supabase.from("public_profiles").select(PROFILE_CARD_COLUMNS).in("id", profileIds)
       : Promise.resolve({ data: [], error: null }),
   ]);
   if (teamError) throw teamError;
@@ -415,7 +415,7 @@ async function loadCompactMatchList(context, body = {}, adminLevel = 0, limit = 
     return [user.id, user];
   }));
   userById.set(currentUser.id, { ...(userById.get(currentUser.id) ?? {}), ...currentUser });
-  const users = [...userById.values()];
+  const users = [...userById.values()].map((user) => compactUser(user, currentUser.id));
 
   const teams = (teamRows ?? []).map(toClientTeam);
   const teamById = Object.fromEntries(teams.map((team) => [team.id, team]));
