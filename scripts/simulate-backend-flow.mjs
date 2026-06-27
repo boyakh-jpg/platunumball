@@ -375,6 +375,45 @@ function withEndedMatch(match = {}) {
   };
 }
 
+function withAgreement(match = {}, sideName = "teamA", playerId = "") {
+  return {
+    ...match,
+    agreements: {
+      ...(match.agreements ?? { teamA: [], teamB: [] }),
+      [sideName]: uniqueIds([...(match.agreements?.[sideName] ?? []), playerId]),
+    },
+  };
+}
+
+function withAttendance(match = {}, sideName = "teamA", playerId = "") {
+  return {
+    ...match,
+    attendance: {
+      ...(match.attendance ?? { teamA: [], teamB: [] }),
+      [sideName]: uniqueIds([...(match.attendance?.[sideName] ?? []), playerId]),
+    },
+  };
+}
+
+function withStartedMatch(match = {}, operatorId = "") {
+  const now = new Date().toISOString();
+  const teamASide = (match.teamA?.players ?? []).includes(operatorId) ? "teamA" : "";
+  const teamBSide = (match.teamB?.players ?? []).includes(operatorId) ? "teamB" : "";
+  const operatorSide = teamASide || teamBSide;
+  const matchWithOperatorAttendance = operatorSide ? withAttendance(match, operatorSide, operatorId) : match;
+  const startedAt = matchWithOperatorAttendance.startedAt ?? now;
+  return {
+    ...matchWithOperatorAttendance,
+    status: "agreed",
+    agreedAt: matchWithOperatorAttendance.agreedAt ?? now,
+    startedAt,
+    rules: {
+      ...(matchWithOperatorAttendance.rules ?? {}),
+      startedAt: matchWithOperatorAttendance.rules?.startedAt ?? startedAt,
+    },
+  };
+}
+
 async function cleanup() {
   if (keepRows) return { skipped: true, reason: "keep_requested" };
   if (usesRemoteApi && schemaHealthSecret) {
@@ -515,53 +554,58 @@ async function runOneOnOneScenario({
   let agreeASqlReducer = false;
   let agreeBSqlReducer = false;
   if (!match.agreements?.teamA?.includes(hostId)) {
+    const matchWithHostAgreement = withAgreement(match, "teamA", hostId);
     const agreeAResult = await step(`${ids.label}:agreeMatch:teamA`, () => syncMatchAs(hostLogin, {
       action: "agreeMatch",
       matchId: ids.matchId,
       sideName: "teamA",
       playerId: hostId,
-    }));
+    }, { match: matchWithHostAgreement }));
     agreeASqlReducer = Boolean(agreeAResult?.sqlReducer);
     match = await getMatchAfterResult(agreeAResult, hostLogin, `${ids.label}:loadAfterAgreeTeamA`);
     assertFlow(match?.agreements?.teamA?.includes(hostId), "teamA agreement not persisted", match);
   }
 
   if (!match.agreements?.teamB?.includes(opponentId)) {
+    const matchWithOpponentAgreement = withAgreement(match, "teamB", opponentId);
     const agreeBResult = await step(`${ids.label}:agreeMatch:teamB`, () => syncMatchAs(opponentLogin, {
       action: "agreeMatch",
       matchId: ids.matchId,
       sideName: "teamB",
       playerId: opponentId,
-    }));
+    }, { match: matchWithOpponentAgreement }));
     agreeBSqlReducer = Boolean(agreeBResult?.sqlReducer);
     match = await getMatchAfterResult(agreeBResult, opponentLogin, `${ids.label}:loadAfterAgreeTeamB`);
     assertFlow(match?.agreements?.teamB?.includes(opponentId), "teamB agreement not persisted", match);
   }
 
   if (refereeWanted) {
+    const matchWithHostAttendance = withAttendance(match, "teamA", hostId);
     const checkInAResult = await step(`${ids.label}:checkInMatchPlayer:teamA`, () => syncMatchAs(operatorLogin, {
       action: "checkInMatchPlayer",
       matchId: ids.matchId,
       sideName: "teamA",
       playerId: hostId,
-    }));
+    }, { match: matchWithHostAttendance }));
     match = await getMatchAfterResult(checkInAResult, operatorLogin, `${ids.label}:loadAfterCheckInTeamA`);
     assertFlow(match?.attendance?.teamA?.includes(hostId), "teamA check-in not persisted", match);
   }
 
+  const matchWithOpponentAttendance = withAttendance(match, "teamB", opponentId);
   const checkInBResult = await step(`${ids.label}:checkInMatchPlayer:teamB`, () => syncMatchAs(operatorLogin, {
     action: "checkInMatchPlayer",
     matchId: ids.matchId,
     sideName: "teamB",
     playerId: opponentId,
-  }));
+  }, { match: matchWithOpponentAttendance }));
   match = await getMatchAfterResult(checkInBResult, operatorLogin, `${ids.label}:loadAfterCheckInTeamB`);
   assertFlow(match?.attendance?.teamB?.includes(opponentId), "teamB check-in not persisted", match);
 
+  const matchWithStart = withStartedMatch(match, operatorLogin === hostLogin ? hostId : refereeId);
   const startResult = await step(`${ids.label}:startMatch`, () => syncMatchAs(operatorLogin, {
     action: "startMatch",
     matchId: ids.matchId,
-  }));
+  }, { match: matchWithStart }));
   match = await getMatchAfterResult(startResult, operatorLogin, `${ids.label}:loadAfterStartMatch`);
   assertFlow(Boolean(match?.startedAt), "match start not persisted", match);
 
