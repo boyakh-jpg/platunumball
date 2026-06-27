@@ -3994,6 +3994,8 @@ begin
 end;
 $$;
 
+select pg_notify('pgrst', 'reload schema');
+
 create or replace function public.rankball_recruiting_action(
   p_actor_profile_id text,
   p_action text,
