@@ -256,6 +256,12 @@ function findMatch(state) {
   return (state.matches ?? []).find((match) => match.id === ids.matchId);
 }
 
+async function getRecruitingPostAfterResult(result, login, label) {
+  if (result?.post) return result.post;
+  const state = await step(label, () => loadStateAs(login));
+  return findPost(state);
+}
+
 function makeResult(match) {
   const teamAPlayer = match.teamA?.players?.[0];
   const teamBPlayer = match.teamB?.players?.[0];
@@ -572,7 +578,7 @@ async function runRecruitingActorScenario({
     },
     joinMode: "player",
   }));
-  post = joinResult?.post;
+  post = await getRecruitingPostAfterResult(joinResult, opponentLogin, `${ids.label}:loadAfterJoin`);
   let applicant = post?.applicants?.find((item) => item.playerId === opponentId);
   assertFlow(Boolean(applicant), "actor opponent join not persisted", { opponentId, post });
   assertFlow(applicant.position === "SG", "actor join position not persisted", { opponentId, applicant });
@@ -583,7 +589,7 @@ async function runRecruitingActorScenario({
     playerId: opponentId,
     position: "SF",
   }));
-  post = positionResult?.post;
+  post = await getRecruitingPostAfterResult(positionResult, opponentLogin, `${ids.label}:loadAfterSlotPosition`);
   assertFlow(post?.roomState?.slotPositions?.[opponentId] === "SF", "actor slot position not persisted", { opponentId, post });
   const stateAfterPosition = await step(`${ids.label}:loadAfterPosition`, () => loadStateAs(opponentLogin));
   const reloadedPostAfterPosition = findPost(stateAfterPosition);
@@ -629,6 +635,10 @@ async function runRecruitingActorScenario({
     postId: ids.postId,
     position: post.roomState.slotPositions[opponentId],
     reserve: applicant.reserve,
+    sqlReducers: {
+      interestRecruitingPost: Boolean(joinResult?.sqlReducer),
+      setRecruitingSlotPosition: Boolean(positionResult?.sqlReducer),
+    },
   };
 }
 
