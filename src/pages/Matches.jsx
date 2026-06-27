@@ -694,6 +694,7 @@ export default function Matches({ app }) {
   const [selectedMatchId, setSelectedMatchId] = useState(null);
   const [selectedRecruitingPostId, setSelectedRecruitingPostId] = useState(null);
   const [myRecruitingLoading, setMyRecruitingLoading] = useState(false);
+  const [myRecruitingSettledKey, setMyRecruitingSettledKey] = useState("");
   const queryMatchId = searchParams.get("match");
   const todayValue = toDateInputValue();
   const maxScheduleDate = addDays(todayValue, 365);
@@ -777,10 +778,13 @@ export default function Matches({ app }) {
   }, [app.actions.loadMoreMatches, app.currentUser.id, app.matchPagination?.exhausted, app.matchPagination?.loading, app.remoteReady, app.state.matches, queryMatchId]);
   useEffect(() => {
     const loadMyRecruitingPosts = app.actions.loadMyRecruitingPosts;
-    if (!app.remoteReady || !app.currentUser.id || !loadMyRecruitingPosts) return undefined;
+    if (!app.remoteReady || !app.currentUser.id || !loadMyRecruitingPosts) {
+      setMyRecruitingSettledKey("");
+      return undefined;
+    }
     const userId = app.currentUser.id;
     const pendingKey = `${userId}:pending`;
-    if (myRecruitingLoadRef.current === userId || myRecruitingLoadRef.current === pendingKey) return undefined;
+    if (myRecruitingLoadRef.current === pendingKey) return undefined;
     setMyRecruitingLoading(true);
     let cancelled = false;
     let retryTimeoutId = null;
@@ -796,6 +800,7 @@ export default function Matches({ app }) {
           return;
         }
         myRecruitingLoadRef.current = result === false ? "" : userId;
+        if (result !== false) setMyRecruitingSettledKey(userId);
         setMyRecruitingLoading(false);
       }).catch(() => {
         if (cancelled || myRecruitingLoadRef.current !== pendingKey) return;
@@ -804,6 +809,7 @@ export default function Matches({ app }) {
           retryTimeoutId = window.setTimeout(runLoad, 1200);
           return;
         }
+        setMyRecruitingSettledKey(userId);
         setMyRecruitingLoading(false);
       });
     };
@@ -936,7 +942,8 @@ export default function Matches({ app }) {
   viewButtonCounts.active = viewButtonCounts.todo + viewButtonCounts.scheduled + viewButtonCounts.closed;
   const getViewButtonCount = (view) => viewButtonCounts[view.id] ?? 0;
   const listRecruitingRoomCount = ["active", "scheduled"].includes(viewId) ? filteredActiveRoomCount : 0;
-  const scheduleLoading = app.remoteReady === false || myRecruitingLoading || (matchPagination.loading && !visibleScheduleItems.length);
+  const myRecruitingSettled = !app.actions.loadMyRecruitingPosts || !app.currentUser.id || myRecruitingSettledKey === app.currentUser.id;
+  const scheduleLoading = app.remoteReady === false || !myRecruitingSettled || myRecruitingLoading || (matchPagination.loading && !visibleScheduleItems.length);
   const saveTournamentSchedule = (event, tournamentId, matchId) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
