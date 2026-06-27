@@ -1118,8 +1118,9 @@ export function useAppData(authUser = null) {
     }
   }, [authEmail, authUserId, setState]);
 
-  const loadMyRecruitingPosts = useCallback(async () => {
+  const loadMyRecruitingPosts = useCallback(async (roomScope = "") => {
     if (!isSupabaseConfigured || !authUserId) return false;
+    const requestedRoomScope = ["created", "joined", "invited"].includes(roomScope) ? roomScope : "";
     try {
       const result = await postServerAction(
         "/api/recruiting/list",
@@ -1127,6 +1128,7 @@ export function useAppData(authUser = null) {
           authUserId,
           authEmail,
           scope: "mine",
+          ...(requestedRoomScope ? { roomScope: requestedRoomScope } : {}),
           limit: REMOTE_CLIENT_RECRUITING_LIMIT,
           adminContext: false,
         },

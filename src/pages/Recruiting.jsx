@@ -3193,11 +3193,11 @@ function RecruitingReady({ app }) {
     setRoomScope(target);
     if (target === "all" || !app.remoteReady || !app.currentUser.id) return;
     const userId = app.currentUser.id;
-    const pendingKey = `${userId}:pending`;
-    if (myRecruitingLoadRef.current === userId || myRecruitingLoadRef.current === pendingKey) return;
+    const pendingKey = `${userId}:${target}:pending`;
+    if (myRecruitingLoadRef.current === pendingKey) return;
     myRecruitingLoadRef.current = pendingKey;
-    Promise.resolve(app.actions.loadMyRecruitingPosts?.()).then((result) => {
-      myRecruitingLoadRef.current = result === false ? "" : userId;
+    Promise.resolve(app.actions.loadMyRecruitingPosts?.(target)).then(() => {
+      myRecruitingLoadRef.current = "";
     }).catch(() => {
       myRecruitingLoadRef.current = "";
     });

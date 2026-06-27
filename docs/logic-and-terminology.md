@@ -1313,6 +1313,7 @@ flowchart TD
 13. Recruiting room-scope counts come from `user_room_feed`, not from how many cards are currently loaded in `state.recruitingPosts`.
 14. If `user_room_feed` is unavailable, `scope='mine'` and room-scope counts must still include pending `room_state.invitations.targetUserId` so invited rooms do not disappear before the feed SQL is applied.
 15. Recruiting queue region selection uses `user_room_feed` `region_public` pages with a concrete `regionKey`. The default is the current user's local district; selecting another district reloads the first page for that region and `더 보기` continues the same region cursor. The frontend must not default to broad all-region loading.
+16. Recruiting room-scope loads may pass `roomScope: "created" | "joined" | "invited"`. `초대받음` must read the `invited` feed relation directly, not depend on the combined 50-row mine feed.
 
 ## 2026-06-27 match list pagination
 

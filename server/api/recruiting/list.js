@@ -403,16 +403,24 @@ async function fetchRecruitingFallbackCounts(client, profileId = "") {
   };
 }
 
-export async function fetchCurrentUserRecruitingPostIds(client, profileId = "", limit = REMOTE_CLIENT_RECRUITING_LIMIT) {
+function getRecruitingMineRelations(scope = "") {
+  if (scope === "created") return ["owner"];
+  if (scope === "joined") return ["participant", "referee"];
+  if (scope === "invited") return ["invited"];
+  return ["owner", "participant", "invited", "referee"];
+}
+
+export async function fetchCurrentUserRecruitingPostIds(client, profileId = "", limit = REMOTE_CLIENT_RECRUITING_LIMIT, roomScope = "") {
   if (!profileId) return [];
   const cappedLimit = Math.max(1, Math.min(80, Number(limit) || REMOTE_CLIENT_RECRUITING_LIMIT));
+  const relations = getRecruitingMineRelations(roomScope);
   const feedPostIds = await fetchRecruitingFeedPostIds(client, {
     profileId,
-    relations: ["owner", "participant", "invited", "referee"],
+    relations,
     limit: cappedLimit,
   });
   if (feedPostIds?.length) return feedPostIds.slice(0, cappedLimit);
-  if (currentUserRecruitingRpcAvailable) {
+  if (!roomScope && currentUserRecruitingRpcAvailable) {
     const { data: rpcRows, error: rpcError } = await client.rpc("rankball_current_recruiting_post_ids", {
       p_profile_id: profileId,
       p_limit: cappedLimit,
@@ -435,15 +443,13 @@ export async function fetchCurrentUserRecruitingPostIds(client, profileId = "", 
     fetchPostIds(client.from("recruiting_applications").select("post_id,updated_at").eq("player_id", profileId).order("updated_at", { ascending: false }).limit(cappedLimit), "post_id"),
     fetchPostIds(client.from("recruiting_applications").select("post_id,updated_at").contains("player_ids", [profileId]).order("updated_at", { ascending: false }).limit(cappedLimit), "post_id"),
   ]);
-  return uniqueIds([
-    ...ownedPostIds,
-    ...roomOwnerPostIds,
-    ...hostedPlayerPostIds,
-    ...refereedPostIds,
-    ...invitedPostIds,
-    ...applicantPostIds,
-    ...applicantPartyPostIds,
-  ]).slice(0, cappedLimit);
+  const fallbackIdsByRelation = {
+    owner: [...ownedPostIds, ...roomOwnerPostIds],
+    participant: [...hostedPlayerPostIds, ...applicantPostIds, ...applicantPartyPostIds],
+    invited: invitedPostIds,
+    referee: refereedPostIds,
+  };
+  return uniqueIds(relations.flatMap((relation) => fallbackIdsByRelation[relation] ?? [])).slice(0, cappedLimit);
 }
 
 async function fetchRecruitingPagePostIds(client, limit = REMOTE_CLIENT_RECRUITING_LIMIT, offset = 0, regionKey = "") {
@@ -714,6 +720,7 @@ export default async function handler(request, response) {
     const adminLevel = shouldLoadAdminContext && context.profileId ? await getAdminLevel(context) : 0;
     const limit = getCappedLimit(body.limit ?? body.recruitingLimit ?? REMOTE_CLIENT_RECRUITING_LIMIT);
     const mineOnly = body.scope === "mine" || body.mine === true;
+    const roomScope = ["created", "joined", "invited"].includes(body.roomScope) ? body.roomScope : "";
     const includeMine = mineOnly || body.includeMine === true;
     const mineLimit = mineOnly ? limit : REMOTE_CLIENT_RECRUITING_LIMIT;
     const explicitPostIds = getTargetPostIds(body);
@@ -725,7 +732,7 @@ export default async function handler(request, response) {
       ? ""
       : normalizeRegionKey(body.regionKey || body.regionDistrict || getProfileRegionKey(context.profile));
     const [currentUserPostIds, pagePostIds, feedCountsResult] = await Promise.all([
-      includeMine ? fetchCurrentUserRecruitingPostIds(context.supabase, context.profileId, mineLimit) : Promise.resolve([]),
+      includeMine ? fetchCurrentUserRecruitingPostIds(context.supabase, context.profileId, mineLimit, roomScope) : Promise.resolve([]),
       shouldPageList ? fetchRecruitingPagePostIds(context.supabase, limit, offset, regionKey) : Promise.resolve([]),
       context.profileId ? fetchRecruitingFeedCounts(context.supabase, context.profileId) : Promise.resolve(null),
     ]);
