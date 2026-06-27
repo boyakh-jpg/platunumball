@@ -2557,6 +2557,255 @@ $$;
 revoke all on function public.rankball_recruiting_slot_position_action(text, text, text, text) from public;
 grant execute on function public.rankball_recruiting_slot_position_action(text, text, text, text) to service_role;
 
+create or replace function public.rankball_recruiting_cancel_participation_action(
+  p_actor_profile_id text,
+  p_post_id text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  safe_actor_id text := nullif(btrim(p_actor_profile_id), '');
+  safe_post_id text := nullif(btrim(p_post_id), '');
+  current_status text;
+  current_player_id text;
+  current_player_ids jsonb;
+  current_room_state jsonb;
+  next_player_ids jsonb;
+  next_party_reserves jsonb;
+  next_pinned_reserve_players jsonb;
+  next_reserve_ready jsonb;
+  next_slot_positions jsonb;
+  next_stat_recorders jsonb;
+  next_room_state jsonb;
+  is_room_member boolean := false;
+  application_delete_count integer := 0;
+  application_update_count integer := 0;
+  deleted_empty_application_count integer := 0;
+begin
+  if safe_actor_id is null then
+    raise exception 'missing_actor_profile_id' using errcode = '22023';
+  end if;
+  if safe_post_id is null then
+    raise exception 'missing_recruiting_post' using errcode = '22023';
+  end if;
+
+  select
+    status,
+    player_id,
+    coalesce(player_ids, '[]'::jsonb),
+    coalesce(room_state, '{}'::jsonb)
+  into current_status, current_player_id, current_player_ids, current_room_state
+  from public.recruiting_posts
+  where id = safe_post_id
+  for update;
+
+  if not found then
+    raise exception 'recruiting_post_not_found' using errcode = '22023';
+  end if;
+  if current_status <> 'open' then
+    raise exception 'recruiting_room_not_mutable' using errcode = '42501';
+  end if;
+  if current_player_id = safe_actor_id or current_room_state->>'ownerId' = safe_actor_id then
+    raise exception 'recruiting_owner_cannot_cancel_participation' using errcode = '42501';
+  end if;
+
+  select (
+    coalesce(current_player_ids, '[]'::jsonb) ? safe_actor_id
+    or exists (
+      select 1
+      from public.recruiting_applications application
+      where application.post_id = safe_post_id
+        and (
+          application.player_id = safe_actor_id
+          or coalesce(application.player_ids, '[]'::jsonb) ? safe_actor_id
+        )
+    )
+    or exists (
+      select 1
+      from jsonb_each(
+        case when jsonb_typeof(current_room_state->'partyReserves') = 'object'
+          then current_room_state->'partyReserves'
+          else '{}'::jsonb
+        end
+      ) entry(key, value)
+      where (case when jsonb_typeof(value) = 'array' then value else '[]'::jsonb end) ? safe_actor_id
+    )
+    or exists (
+      select 1
+      from jsonb_each(
+        case when jsonb_typeof(current_room_state->'pinnedReservePlayers') = 'object'
+          then current_room_state->'pinnedReservePlayers'
+          else '{}'::jsonb
+        end
+      ) entry(key, value)
+      where (case when jsonb_typeof(value) = 'array' then value else '[]'::jsonb end) ? safe_actor_id
+    )
+    or (
+      case when jsonb_typeof(current_room_state->'reserveReady') = 'object'
+        then current_room_state->'reserveReady'
+        else '{}'::jsonb
+      end
+    ) ? safe_actor_id
+    or (
+      case when jsonb_typeof(current_room_state->'slotPositions') = 'object'
+        then current_room_state->'slotPositions'
+        else '{}'::jsonb
+      end
+    ) ? safe_actor_id
+    or exists (
+      select 1
+      from jsonb_each_text(
+        case when jsonb_typeof(current_room_state->'statRecorders') = 'object'
+          then current_room_state->'statRecorders'
+          else '{}'::jsonb
+        end
+      ) entry(key, value)
+      where value = safe_actor_id
+    )
+  )
+  into is_room_member;
+
+  if not is_room_member then
+    raise exception 'recruiting_room_member_required' using errcode = '42501';
+  end if;
+
+  select coalesce(jsonb_agg(to_jsonb(value)) filter (where value <> safe_actor_id), '[]'::jsonb)
+  into next_player_ids
+  from jsonb_array_elements_text(
+    case when jsonb_typeof(current_player_ids) = 'array' then current_player_ids else '[]'::jsonb end
+  ) ids(value);
+
+  select coalesce(jsonb_object_agg(key, filtered_ids), '{}'::jsonb)
+  into next_party_reserves
+  from (
+    select
+      key,
+      coalesce(jsonb_agg(to_jsonb(value)) filter (where value is not null and value <> safe_actor_id), '[]'::jsonb) as filtered_ids
+    from jsonb_each(
+      case when jsonb_typeof(current_room_state->'partyReserves') = 'object'
+        then current_room_state->'partyReserves'
+        else '{}'::jsonb
+      end
+    ) entry(key, raw_ids)
+    left join lateral jsonb_array_elements_text(
+      case when jsonb_typeof(raw_ids) = 'array' then raw_ids else '[]'::jsonb end
+    ) ids(value) on true
+    group by key
+  ) cleaned
+  where jsonb_array_length(filtered_ids) > 0;
+
+  select coalesce(jsonb_object_agg(key, filtered_ids), '{}'::jsonb)
+  into next_pinned_reserve_players
+  from (
+    select
+      key,
+      coalesce(jsonb_agg(to_jsonb(value)) filter (where value is not null and value <> safe_actor_id), '[]'::jsonb) as filtered_ids
+    from jsonb_each(
+      case when jsonb_typeof(current_room_state->'pinnedReservePlayers') = 'object'
+        then current_room_state->'pinnedReservePlayers'
+        else '{}'::jsonb
+      end
+    ) entry(key, raw_ids)
+    left join lateral jsonb_array_elements_text(
+      case when jsonb_typeof(raw_ids) = 'array' then raw_ids else '[]'::jsonb end
+    ) ids(value) on true
+    group by key
+  ) cleaned
+  where jsonb_array_length(filtered_ids) > 0;
+
+  next_reserve_ready := (
+    case when jsonb_typeof(current_room_state->'reserveReady') = 'object'
+      then current_room_state->'reserveReady'
+      else '{}'::jsonb
+    end
+  ) - safe_actor_id;
+
+  next_slot_positions := (
+    case when jsonb_typeof(current_room_state->'slotPositions') = 'object'
+      then current_room_state->'slotPositions'
+      else '{}'::jsonb
+    end
+  ) - safe_actor_id;
+
+  select coalesce(jsonb_object_agg(key, to_jsonb(value)), '{}'::jsonb)
+  into next_stat_recorders
+  from jsonb_each_text(
+    case when jsonb_typeof(current_room_state->'statRecorders') = 'object'
+      then current_room_state->'statRecorders'
+      else '{}'::jsonb
+    end
+  ) entry(key, value)
+  where value <> safe_actor_id;
+
+  next_room_state := current_room_state;
+  next_room_state := jsonb_set(next_room_state, '{partyReserves}', coalesce(next_party_reserves, '{}'::jsonb), true);
+  next_room_state := jsonb_set(next_room_state, '{pinnedReservePlayers}', coalesce(next_pinned_reserve_players, '{}'::jsonb), true);
+  next_room_state := jsonb_set(next_room_state, '{reserveReady}', coalesce(next_reserve_ready, '{}'::jsonb), true);
+  next_room_state := jsonb_set(next_room_state, '{slotPositions}', coalesce(next_slot_positions, '{}'::jsonb), true);
+  next_room_state := jsonb_set(next_room_state, '{statRecorders}', coalesce(next_stat_recorders, '{}'::jsonb), true);
+
+  delete from public.recruiting_applications
+  where post_id = safe_post_id
+    and player_id = safe_actor_id;
+  get diagnostics application_delete_count = row_count;
+
+  delete from public.recruiting_applications
+  where post_id = safe_post_id
+    and coalesce(player_ids, '[]'::jsonb) ? safe_actor_id
+    and jsonb_array_length(case when jsonb_typeof(player_ids) = 'array' then player_ids else '[]'::jsonb end) <= 1;
+  get diagnostics deleted_empty_application_count = row_count;
+  application_delete_count := application_delete_count + deleted_empty_application_count;
+
+  with next_applications as (
+    select
+      application.post_id,
+      application.player_id,
+      application.kind,
+      (
+        select coalesce(jsonb_agg(to_jsonb(value)) filter (where value <> safe_actor_id), '[]'::jsonb)
+        from jsonb_array_elements_text(
+          case when jsonb_typeof(application.player_ids) = 'array' then application.player_ids else '[]'::jsonb end
+        ) ids(value)
+      ) as next_player_ids
+    from public.recruiting_applications application
+    where application.post_id = safe_post_id
+      and coalesce(application.player_ids, '[]'::jsonb) ? safe_actor_id
+  )
+  update public.recruiting_applications application
+  set
+    player_ids = next_applications.next_player_ids,
+    updated_at = now()
+  from next_applications
+  where application.post_id = next_applications.post_id
+    and application.player_id = next_applications.player_id
+    and application.kind = next_applications.kind;
+  get diagnostics application_update_count = row_count;
+
+  update public.recruiting_posts
+  set
+    player_ids = coalesce(next_player_ids, '[]'::jsonb),
+    room_state = next_room_state,
+    updated_at = now()
+  where id = safe_post_id;
+
+  return jsonb_build_object(
+    'ok', true,
+    'action', 'cancelRecruitingParticipation',
+    'postId', safe_post_id,
+    'actorProfileId', safe_actor_id,
+    'applicationDeleteCount', application_delete_count,
+    'applicationUpdateCount', application_update_count,
+    'sqlReducer', true
+  );
+end;
+$$;
+
+revoke all on function public.rankball_recruiting_cancel_participation_action(text, text) from public;
+grant execute on function public.rankball_recruiting_cancel_participation_action(text, text) to service_role;
+
 create or replace function public.rankball_recruiting_action(
   p_actor_profile_id text,
   p_action text,
@@ -2588,6 +2837,13 @@ begin
       safe_post_id,
       p_post_row #>> '{__operation,playerId}',
       p_post_row #>> '{__operation,position}'
+    );
+  end if;
+
+  if safe_action = 'cancelRecruitingParticipation' and p_post_row ? '__operation' then
+    return public.rankball_recruiting_cancel_participation_action(
+      safe_actor_id,
+      safe_post_id
     );
   end if;
 
