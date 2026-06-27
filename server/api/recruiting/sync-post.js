@@ -15,6 +15,11 @@ function toDbTime(value) {
   return value ? String(value).slice(0, 5) : null;
 }
 
+function nullableText(value) {
+  const text = String(value ?? "").trim();
+  return text || null;
+}
+
 function reject(statusCode, message) {
   const error = new Error(message);
   error.statusCode = statusCode;
@@ -38,13 +43,13 @@ function sameJson(left, right) {
 }
 
 function getRecruitingCoreSnapshot(post = {}) {
-  const teamId = post.teamId ?? post.team_id ?? null;
+  const teamId = nullableText(post.teamId ?? post.team_id);
   const hostJoinMode = post.hostJoinMode ?? post.host_join_mode;
   return {
     visibility: post.visibility === "private" ? "private" : "public",
     playerId: post.playerId ?? post.player_id ?? "",
     teamId,
-    targetTeamId: post.targetTeamId ?? post.target_team_id ?? null,
+    targetTeamId: nullableText(post.targetTeamId ?? post.target_team_id),
     mode: post.mode ?? "5v5",
     scheduledDate: post.scheduledDate ?? post.scheduled_date ?? null,
     scheduledTime: toDbTime(post.scheduledTime ?? post.scheduled_time) ?? null,
@@ -68,9 +73,9 @@ function toRecruitingPostRow(post = {}) {
     title: String(post.title ?? "").trim() || "매칭방",
     visibility: post.visibility === "private" ? "private" : "public",
     player_id: post.playerId,
-    team_id: post.teamId ?? null,
-    region: post.region ?? null,
-    court_id: post.courtId ?? null,
+    team_id: nullableText(post.teamId),
+    region: nullableText(post.region),
+    court_id: nullableText(post.courtId),
     court_name: post.court ?? post.courtName ?? "미정",
     mode: post.mode ?? "5v5",
     scheduled_date: post.scheduledDate || null,
@@ -85,10 +90,10 @@ function toRecruitingPostRow(post = {}) {
     rules: post.rules ?? {},
     stakes: post.stakes ?? "",
     court_reserved: Boolean(post.courtReserved),
-    court_fee: post.courtFee ?? "",
+    court_fee: nullableText(post.courtFee),
     spots: Number(post.spots ?? 0),
-    target_team_id: post.targetTeamId ?? null,
-    referee_id: post.refereeId || null,
+    target_team_id: nullableText(post.targetTeamId),
+    referee_id: nullableText(post.refereeId),
     referee_trust_min: Number(post.refereeTrustMin ?? 90),
     stat_entry_minutes: Number(post.statEntryMinutes ?? 60),
     dispute_minutes: Number(post.disputeMinutes ?? 120),
@@ -109,21 +114,24 @@ function toRecruitingPostRow(post = {}) {
 
 function toRecruitingApplicationRows(post = {}) {
   const roomState = normalizeRoomState(post.roomState, post);
-  return toArray(post.applicants).map((application) => ({
-    post_id: post.id,
-    player_id: application.playerId,
-    team_id: application.teamId ?? null,
-    kind: application.kind === "team" || application.teamId ? "team" : "player",
-    side: application.side === "teamA" ? "teamA" : "teamB",
-    status: ["waiting", "ready", "confirmed"].includes(application.status) ? application.status : "waiting",
-    reserve: Boolean(application.reserve),
-    position: roomState.slotPositions?.[application.playerId] ?? application.position ?? null,
-    player_ids: toArray(application.playerIds),
-    source_team_id: application.sourceTeamId ?? null,
-    source_entry_id: application.sourceEntryId ?? null,
-    created_at: application.createdAt ?? new Date().toISOString(),
-    updated_at: application.updatedAt ?? application.createdAt ?? new Date().toISOString(),
-  })).filter((row) => row.player_id);
+  return toArray(post.applicants).map((application) => {
+    const teamId = nullableText(application.teamId);
+    return {
+      post_id: post.id,
+      player_id: application.playerId,
+      team_id: teamId,
+      kind: application.kind === "team" || teamId ? "team" : "player",
+      side: application.side === "teamA" ? "teamA" : "teamB",
+      status: ["waiting", "ready", "confirmed"].includes(application.status) ? application.status : "waiting",
+      reserve: Boolean(application.reserve),
+      position: roomState.slotPositions?.[application.playerId] ?? application.position ?? null,
+      player_ids: toArray(application.playerIds),
+      source_team_id: nullableText(application.sourceTeamId),
+      source_entry_id: nullableText(application.sourceEntryId),
+      created_at: application.createdAt ?? new Date().toISOString(),
+      updated_at: application.updatedAt ?? application.createdAt ?? new Date().toISOString(),
+    };
+  }).filter((row) => row.player_id);
 }
 
 function fromRecruitingApplicationRows(rows = []) {

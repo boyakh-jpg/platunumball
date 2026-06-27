@@ -11,7 +11,7 @@
 
 ## 지금 적용한 최소 보안 패치
 
-- legacy `rankball_state` 테이블은 런타임 미사용이지만 데이터 손실 방지를 위해 삭제하지 않고 RLS로 봉인한다.
+- legacy `rankball_state` 테이블은 런타임 미사용이며 schema migration에서 제거한다.
 - `tournaments`는 public read만 유지한다. public insert/update 정책은 제거한다.
 - `tournament_teams`는 public read만 유지한다. public insert/update 정책은 제거한다.
 - `recruiting_applications` read는 authenticated related-user로 제한한다:
@@ -52,7 +52,7 @@
   - 방장은 자기 방 application을 읽을 수 있음
   - 신청자는 자기 application을 읽을 수 있음
   - public은 tournament를 insert/update 할 수 없음
-  - public은 legacy `rankball_state`를 read/write 할 수 없음
+  - legacy `rankball_state`는 앱 경로에서 쓰지 않고 DB에서도 제거 대상임
 - OAuth/profile 소유권이 안정된 뒤에만 demo login을 `VITE_DEMO_LOGIN=true` 뒤로 이동.
 
 ## 2026-06-24 구장 등록 배포 TODO
@@ -96,6 +96,14 @@
 - Supabase hydration은 `loadRemoteState(authUserId, authEmail)`로 현재 auth profile을 우선 선택한다.
 - 현재 auth profile이 아직 없으면 `createProfileShell()`로 `/app/signup`이 깨지지 않게 하고, 저장 시 `POST /api/profile/upsert`가 실제 `profiles.auth_user_id` row를 만든다.
 - Supabase 모드에서는 `rankball_state` localStorage 저장을 하지 않는다.
+
+## DB 정리 기준
+
+- `recruiting_posts`는 모집방 원본이다. `room_state`는 초대, 파티장, 슬롯 포지션 같은 방 내부 상태 snapshot으로만 둔다.
+- `recruiting_applications`는 모집방 참여자 원본이다. 참여/포지션 유지 여부는 이 테이블과 `recruiting_posts.room_state.slotPositions`를 함께 본다.
+- `matches`는 확정 경기 본체와 빠른 카드 표시용 snapshot을 같이 가진다.
+- `match_players`, `match_results`, `player_match_stats`, `match_agreements`, `match_approvals`, `match_disputes`는 현재 경기 상세/기록/승인 원본 경로라 삭제하지 않는다.
+- FK처럼 쓰는 text 컬럼은 빈 문자열을 저장하지 않는다. 없으면 `null`이다.
 - `profileBindings` localStorage는 Supabase 모드의 프로필 선택 기준으로 쓰지 않는다. 실제 기준은 `profiles.auth_user_id`다.
 - 테스트 시나리오 데이터는 프론트가 직접 읽지 않고 `npm run seed:supabase`로 normalized Supabase tables에 넣는다.
 - `seed:supabase`는 `SUPABASE_SERVICE_ROLE_KEY`와 `SUPABASE_URL` 또는 `VITE_SUPABASE_URL`이 필요하다.

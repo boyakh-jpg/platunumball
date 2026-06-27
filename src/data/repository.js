@@ -84,6 +84,10 @@ import { canChangeProfileName } from "../lib/profileSetup.js";
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const makeId = (prefix) => `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+const nullableText = (value) => {
+  const text = String(value ?? "").trim();
+  return text || null;
+};
 const getUserIdentityHashtag = (user = {}) => getUserHashtag(user);
 export const DEFAULT_SETTINGS = {
   theme: "dark",
@@ -2170,9 +2174,9 @@ export async function saveNormalizedRemoteState(state, options = {}) {
     title: post.title,
     visibility: post.visibility ?? "public",
     player_id: post.playerId,
-    team_id: post.teamId,
+    team_id: nullableText(post.teamId),
     region: post.region,
-    court_id: courtIdByName(post.court),
+    court_id: nullableText(courtIdByName(post.court)),
     court_name: post.court,
     mode: post.mode,
     scheduled_date: post.scheduledDate || null,
@@ -2187,9 +2191,9 @@ export async function saveNormalizedRemoteState(state, options = {}) {
     rules: post.rules ?? {},
     stakes: post.stakes ?? "",
     court_reserved: Boolean(post.courtReserved),
-    court_fee: post.courtFee ?? "",
+    court_fee: nullableText(post.courtFee),
     spots: post.spots ?? 1,
-    target_team_id: post.targetTeamId ?? null,
+    target_team_id: nullableText(post.targetTeamId),
     referee_id: post.refereeId || null,
     referee_trust_min: Number(post.refereeTrustMin ?? REFEREE_TRUST_MIN),
     stat_entry_minutes: Number(post.statEntryMinutes ?? STAT_ENTRY_WINDOW_MINUTES),
@@ -2216,15 +2220,15 @@ export async function saveNormalizedRemoteState(state, options = {}) {
     (post.applicants ?? []).map((application) => ({
       post_id: post.id,
       player_id: application.playerId,
-      team_id: application.teamId,
+      team_id: nullableText(application.teamId),
       kind: application.kind ?? "player",
       side: application.side ?? "teamB",
       status: application.status ?? "waiting",
       reserve: Boolean(application.reserve),
       position: application.position ?? null,
       player_ids: application.playerIds ?? [],
-      source_team_id: application.sourceTeamId ?? null,
-      source_entry_id: application.sourceEntryId ?? null,
+      source_team_id: nullableText(application.sourceTeamId),
+      source_entry_id: nullableText(application.sourceEntryId),
       created_at: application.createdAt,
       updated_at: application.updatedAt ?? application.createdAt,
     })),

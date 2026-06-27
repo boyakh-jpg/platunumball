@@ -1,22 +1,13 @@
-create table if not exists public.rankball_state (
-  id text primary key,
-  state jsonb not null,
-  updated_at timestamptz not null default now()
-);
-
-alter table public.rankball_state enable row level security;
-
-drop policy if exists "rankball_state_select_public" on public.rankball_state;
-drop policy if exists "rankball_state_insert_public" on public.rankball_state;
-drop policy if exists "rankball_state_update_public" on public.rankball_state;
-drop policy if exists "rankball_state_admin_only" on public.rankball_state;
-
-create policy "rankball_state_admin_only"
-on public.rankball_state
-for all
-to authenticated
-using (false)
-with check (false);
+do $$
+begin
+  if to_regclass('public.rankball_state') is not null then
+    execute 'drop policy if exists "rankball_state_select_public" on public.rankball_state';
+    execute 'drop policy if exists "rankball_state_insert_public" on public.rankball_state';
+    execute 'drop policy if exists "rankball_state_update_public" on public.rankball_state';
+    execute 'drop policy if exists "rankball_state_admin_only" on public.rankball_state';
+    execute 'drop table if exists public.rankball_state';
+  end if;
+end $$;
 
 do $$
 begin
@@ -451,6 +442,31 @@ begin
     execute 'alter table public.recruiting_applications add column if not exists source_entry_id text';
     execute 'alter table public.recruiting_applications add column if not exists created_at timestamptz not null default now()';
     execute 'alter table public.recruiting_applications add column if not exists updated_at timestamptz';
+  end if;
+end;
+$$;
+
+do $$
+begin
+  if to_regclass('public.recruiting_posts') is not null then
+    execute $stmt$update public.recruiting_posts set target_team_id = null where target_team_id is not null and btrim(target_team_id) = ''$stmt$;
+    execute $stmt$update public.recruiting_posts set court_fee = null where court_fee is not null and btrim(court_fee) = ''$stmt$;
+    execute 'alter table public.recruiting_posts drop constraint if exists recruiting_posts_target_team_id_not_blank';
+    execute $stmt$alter table public.recruiting_posts add constraint recruiting_posts_target_team_id_not_blank check (target_team_id is null or btrim(target_team_id) <> '') not valid$stmt$;
+    execute 'alter table public.recruiting_posts drop constraint if exists recruiting_posts_court_fee_not_blank';
+    execute $stmt$alter table public.recruiting_posts add constraint recruiting_posts_court_fee_not_blank check (court_fee is null or btrim(court_fee) <> '') not valid$stmt$;
+  end if;
+
+  if to_regclass('public.recruiting_applications') is not null then
+    execute $stmt$update public.recruiting_applications set team_id = null where team_id is not null and btrim(team_id) = ''$stmt$;
+    execute $stmt$update public.recruiting_applications set source_team_id = null where source_team_id is not null and btrim(source_team_id) = ''$stmt$;
+    execute $stmt$update public.recruiting_applications set source_entry_id = null where source_entry_id is not null and btrim(source_entry_id) = ''$stmt$;
+    execute 'alter table public.recruiting_applications drop constraint if exists recruiting_applications_team_id_not_blank';
+    execute $stmt$alter table public.recruiting_applications add constraint recruiting_applications_team_id_not_blank check (team_id is null or btrim(team_id) <> '') not valid$stmt$;
+    execute 'alter table public.recruiting_applications drop constraint if exists recruiting_applications_source_team_id_not_blank';
+    execute $stmt$alter table public.recruiting_applications add constraint recruiting_applications_source_team_id_not_blank check (source_team_id is null or btrim(source_team_id) <> '') not valid$stmt$;
+    execute 'alter table public.recruiting_applications drop constraint if exists recruiting_applications_source_entry_id_not_blank';
+    execute $stmt$alter table public.recruiting_applications add constraint recruiting_applications_source_entry_id_not_blank check (source_entry_id is null or btrim(source_entry_id) <> '') not valid$stmt$;
   end if;
 end;
 $$;
