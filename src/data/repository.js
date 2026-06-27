@@ -1365,11 +1365,13 @@ function collectTournamentPageScope(tournaments = [], tournamentTeams = [], prof
 export async function loadNormalizedRemoteStateFromClient(client = supabase, authUserId = "", authEmail = "", options = {}) {
   const clientState = options.clientState === true;
   const scope = String(options.scope || "full");
+  const profileScope = scope === "profile";
   const includeMatches = scope === "full" || scope === "matches";
   const includeRecruiting = scope === "full" || scope === "recruiting";
   const includeTournaments = scope === "full" || scope === "tournaments";
   const includeAppMeta = scope === "full";
   const includeUserScoped = scope === "full";
+  const includeProfileSettings = includeUserScoped || profileScope;
   const matchPageScope = scope === "matches";
   const recruitingPageScope = scope === "recruiting";
   const relatedDirectoryScope = scope === "full" && options.directoryScope === "related";
@@ -1421,7 +1423,7 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
     includeAppMeta ? fetchAllRows("affiliations", AFFILIATION_COLUMNS, "id", client) : [],
   ]);
 
-  if (!matchPageScope && !recruitingPageScope && !relatedDirectoryScope) {
+  if (!profileScope && !matchPageScope && !recruitingPageScope && !relatedDirectoryScope) {
     [publicProfiles, teams, teamMembers, courts] = await Promise.all([
       fetchOptionalRows("public_profiles", PUBLIC_PROFILE_COLUMNS, "id", client),
       fetchAllRows("teams", TEAM_COLUMNS, "id", client),
@@ -1456,7 +1458,7 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
     includeUserScoped && currentUserId
       ? fetchOptionalFilteredRows("discord_notification_deliveries", DISCORD_DELIVERY_COLUMNS, "queued_at", client, (query) => query.eq("target_user_id", currentUserId))
       : [],
-    includeUserScoped && currentUserId
+    includeProfileSettings && currentUserId
       ? fetchOptionalFilteredRows("profiles", PROFILE_SETTINGS_COLUMNS, null, client, (query) => query.eq("id", currentUserId))
       : [],
   ]);

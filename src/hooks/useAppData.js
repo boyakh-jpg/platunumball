@@ -392,12 +392,33 @@ function getInitialStateLoadOptions() {
   const pathname = typeof window !== "undefined" ? window.location.pathname.replace(/\/$/, "") : "";
   const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
   if (pathname === "/app/matches") {
-    return { scope: "matches", matchLimit: searchParams?.get("match") ? 0 : REMOTE_CLIENT_INITIAL_MATCH_LIMIT, recruitingLimit: 0, tournamentLimit: 0 };
+    if (searchParams?.get("match")) return { profileOnly: true, matchLimit: 0, recruitingLimit: 0, tournamentLimit: 0 };
+    return { scope: "matches", matchLimit: REMOTE_CLIENT_INITIAL_MATCH_LIMIT, recruitingLimit: 0, tournamentLimit: 0 };
   }
   if (pathname === "/app/recruiting") {
-    return { matchLimit: 0, recruitingLimit: searchParams?.get("post") ? 0 : REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT };
+    if (searchParams?.get("post")) return { profileOnly: true, matchLimit: 0, recruitingLimit: 0, tournamentLimit: 0 };
+    return { matchLimit: 0, recruitingLimit: REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT, tournamentLimit: 0 };
   }
   return { matchLimit: REMOTE_CLIENT_INITIAL_MATCH_LIMIT, recruitingLimit: REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT };
+}
+
+async function loadProfileState(authUserId, authEmail) {
+  try {
+    const result = await postServerAction(
+      "/api/profile/me",
+      { authUserId, authEmail },
+      { allowWhenDisabled: true },
+    );
+    if (result?.state) return result.state;
+  } catch (error) {
+    console.warn("Server profile load failed. Falling back to direct Supabase read.", error.message);
+  }
+  return loadRemoteState(authUserId, authEmail, {
+    scope: "profile",
+    matchLimit: 0,
+    recruitingLimit: 0,
+    tournamentLimit: 0,
+  });
 }
 
 async function loadBackendState(authUserId, authEmail, options = getInitialStateLoadOptions()) {
@@ -490,7 +511,10 @@ export function useAppData(authUser = null) {
     setState(loadState({ includeDemo: false, authUserId, email: authEmail }));
     setDirectoryStatus({ loading: false, loaded: false, error: "" });
     const initialLoadOptions = getInitialStateLoadOptions();
-    loadBackendState(authUserId, authEmail, initialLoadOptions)
+    const initialLoad = initialLoadOptions.profileOnly
+      ? loadProfileState(authUserId, authEmail)
+      : loadBackendState(authUserId, authEmail, initialLoadOptions);
+    initialLoad
       .then((remoteState) => {
         if (!mounted) return;
         if (remoteState) {

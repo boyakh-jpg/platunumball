@@ -18,6 +18,7 @@ import matchDetail from "../server/api/matches/detail.js";
 import matchList from "../server/api/matches/list.js";
 import matchSyncMatch from "../server/api/matches/sync-match.js";
 import notificationRead from "../server/api/notifications/read.js";
+import profileMe from "../server/api/profile/me.js";
 import profileUpsert from "../server/api/profile/upsert.js";
 import refereeSync from "../server/api/referee/sync.js";
 import recruitingList from "../server/api/recruiting/list.js";
@@ -51,6 +52,7 @@ const ROUTES = new Map([
   ["/matches/list", matchList],
   ["/matches/sync-match", matchSyncMatch],
   ["/notifications/read", notificationRead],
+  ["/profile/me", profileMe],
   ["/profile/upsert", profileUpsert],
   ["/referee/sync", refereeSync],
   ["/recruiting/list", recruitingList],
