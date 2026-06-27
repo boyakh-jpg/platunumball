@@ -17,7 +17,8 @@ import { DISPUTE_WINDOW_MINUTES, EVIDENCE_OPTIONS, PLAYER_STAT_FIELDS } from "..
 import { DEFAULT_REPORT_REASON, REPORT_REASONS } from "../lib/reportReasons.js";
 import {
   formatStatLine,
-  getAllowedStatFields,
+  canOperatorSubmitMissingPostgameResult,
+  getAllowedResultStatFields,
   getAgreementStatus,
   getApprovalStatus,
   getMatchHostPlayerId,
@@ -193,7 +194,7 @@ export default function MatchRoom({ app }) {
 
   if (!match) return <Navigate to="/app/create" replace />;
 
-  const userMap = Object.fromEntries(app.state.users.map((user) => [user.id, user]));
+  const userMap = Object.fromEntries([...app.state.users, ...Object.values(match.anonymousPlayers ?? {})].map((user) => [user.id, user]));
   const statEditorPlayer = statEditorPlayerId ? userMap[statEditorPlayerId] : null;
   const status = statusMeta[match.status] ?? { label: match.status, tone: "blue" };
   const teamAAgreement = getAgreementStatus(match, app.state.teams, "teamA");
@@ -234,13 +235,15 @@ export default function MatchRoom({ app }) {
   const currentUserCanOperateStartedMatch = hasReferee ? currentUserIsEligibleReferee : isMatchHost;
   const currentUserCanFileDispute = currentUserCanOperateStartedMatch || getMatchTrustFeedbackParticipantIds(match).includes(app.currentUser.id);
   const canEditDisputeDraft = match.status === "disputed" && currentUserCanOperateStartedMatch && recordWindow.disputeOpen;
+  const currentUserCanPostgameScore = currentUserCanOperateStartedMatch && matchPhase === "postgame" && !["confirmed", "disputed"].includes(match.status);
+  const currentUserCanSubmitMissingPostgameResult = canOperatorSubmitMissingPostgameResult(match, currentUserCanOperateStartedMatch);
   const currentUserEditablePlayerIds = canEditDisputeDraft
     ? allPlayerIds
     : hasReferee && currentUserIsEligibleReferee
       ? allPlayerIds
-      : allPlayerIds.filter((playerId) => getAllowedStatFields(match, app.currentUser.id, playerId).length > 0);
+      : allPlayerIds.filter((playerId) => getAllowedResultStatFields(match, app.currentUser.id, playerId, currentUserCanPostgameScore).length > 0);
   const currentUserCanSubmit = canEditDisputeDraft || (hasReferee ? currentUserIsEligibleReferee : currentUserEditablePlayerIds.length > 0);
-  const canSubmitResult = canEditDisputeDraft || (["agreed", "approval"].includes(match.status) && recordWindow.statOpen && currentUserCanSubmit);
+  const canSubmitResult = canEditDisputeDraft || (currentUserCanSubmit && ((["agreed", "approval"].includes(match.status) && recordWindow.statOpen) || currentUserCanSubmitMissingPostgameResult));
   const canCancel = ["contract", "agreed"].includes(match.status) && (startedAuthorityPhase ? currentUserCanOperateStartedMatch : isMatchHost);
   const canDispute = Boolean(match.result) && match.status === "approval" && recordWindow.disputeOpen && currentUserCanFileDispute;
   const canVoid = match.status === "disputed" && currentUserCanOperateStartedMatch;
@@ -263,6 +266,8 @@ export default function MatchRoom({ app }) {
     ? "경기 시작 전"
     : recordWindow.beforeEnd
       ? "경기 종료 후 입력 가능"
+    : currentUserCanSubmitMissingPostgameResult
+      ? "결과 입력 필요"
     : recordWindow.statExpired
       ? "기록 입력 마감"
       : canEditDisputeDraft
@@ -377,8 +382,8 @@ export default function MatchRoom({ app }) {
   };
   const getSideLabel = (sideName) => (sideName === "teamA" ? "A사이드" : "B사이드");
   const getRecorderName = (sideName) => hasReferee ? "" : userMap[statRecorders[sideName]]?.name ?? "";
-  const canEditPlayerStat = (playerId) => canSubmitResult && (canEditDisputeDraft || getAllowedStatFields(match, app.currentUser.id, playerId).length > 0);
-  const editableStatFields = statEditorPlayerId ? (canEditDisputeDraft ? PLAYER_STAT_FIELDS : getAllowedStatFields(match, app.currentUser.id, statEditorPlayerId)) : [];
+  const canEditPlayerStat = (playerId) => canSubmitResult && (canEditDisputeDraft || getAllowedResultStatFields(match, app.currentUser.id, playerId, currentUserCanPostgameScore).length > 0);
+  const editableStatFields = statEditorPlayerId ? (canEditDisputeDraft ? PLAYER_STAT_FIELDS : getAllowedResultStatFields(match, app.currentUser.id, statEditorPlayerId, currentUserCanPostgameScore)) : [];
   const getPlayerStatState = (playerId, submitted) => {
     const sideName = getPlayerSideName(match, playerId);
     const recorderName = sideName ? getRecorderName(sideName) : "";

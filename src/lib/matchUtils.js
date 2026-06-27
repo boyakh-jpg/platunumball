@@ -518,6 +518,15 @@ export function getAllowedStatFields(match = {}, userId, playerId = userId) {
   return PLAYER_STAT_FIELDS.filter((field) => field.id === "points");
 }
 
+export function getAllowedResultStatFields(match = {}, userId, playerId = userId, operatorPostgameScore = false) {
+  const fields = getAllowedStatFields(match, userId, playerId);
+  if (!operatorPostgameScore) return fields;
+  const fieldById = Object.fromEntries(fields.map((field) => [field.id, field]));
+  const pointsField = PLAYER_STAT_FIELDS.find((field) => field.id === "points");
+  if (pointsField) fieldById.points = pointsField;
+  return Object.values(fieldById);
+}
+
 export function normalizePlayerStats(playerStats = {}, playerIds = []) {
   return Object.fromEntries(
     playerIds.map((playerId) => {

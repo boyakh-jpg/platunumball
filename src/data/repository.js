@@ -18,6 +18,7 @@ import {
   canOperatorSubmitMissingPostgameResult,
   getAgreementStatus,
   getApprovalStatus,
+  getAllowedResultStatFields,
   getAllowedStatFields,
   getMatchPlayerIds,
   getMatchRecordPlayerIds,
@@ -4072,12 +4073,7 @@ function currentUserCanFileMatchDispute(state, match) {
 }
 
 function getAllowedResultFieldIds(match, currentUserId, playerId, hostPostgameScore = false) {
-  const fields = getAllowedStatFields(match, currentUserId, playerId);
-  if (!hostPostgameScore) return fields;
-  const fieldById = Object.fromEntries(fields.map((field) => [field.id, field]));
-  const pointsField = PLAYER_STAT_FIELDS.find((field) => field.id === "points");
-  if (pointsField) fieldById.points = pointsField;
-  return Object.values(fieldById);
+  return getAllowedResultStatFields(match, currentUserId, playerId, hostPostgameScore);
 }
 
 function getSubmittedStatPatch(playerStats = {}, targetPlayerIds = []) {

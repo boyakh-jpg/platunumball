@@ -12,7 +12,7 @@ import { filterStateForProfile } from "../state/load.js";
 
 const PROFILE_ME_COLUMNS = "id,name,handle,hashtag,position,region,region_sido,region_district,school,company,club,trust_score,streak,avatar_color,test_login_id,auth_user_id,birth_year,age_group,age_group_checked_season,onboarding_complete,profile_version,handle_locked_at,birth_year_locked_at,name_updated_at,discord_connection,discord_user_id,ratings,created_at,updated_at,app_settings";
 const PROFILE_CARD_COLUMNS = "id,name,handle,hashtag,position,region,trust_score,avatar_color,ratings,age_group,updated_at";
-const MATCH_LIST_COLUMNS = "id,title,mode,court_id,court_name,visibility,status,ranked,referee_id,former_referee_id,stat_entry_minutes,dispute_minutes,stat_recorders,played_player_ids,reserve_players,official,pre_registered,scheduled_at,scheduled_date,scheduled_time,team_a_id,team_b_id,score_a,score_b,rules,created_by,agreed_at,started_at,ended_at,confirmed_at,cancelled_at,voided_at,tournament_id,updated_at,created_at";
+const MATCH_LIST_COLUMNS = "id,title,mode,court_id,court_name,visibility,status,ranked,referee_id,former_referee_id,stat_entry_minutes,dispute_minutes,stat_recorders,played_player_ids,reserve_players,mmr_excluded_player_ids,anonymous_players,official,pre_registered,scheduled_at,scheduled_date,scheduled_time,team_a_id,team_b_id,score_a,score_b,rules,created_by,agreed_at,started_at,ended_at,confirmed_at,cancelled_at,voided_at,tournament_id,updated_at,created_at";
 const MATCH_PLAYER_COLUMNS = "match_id,team_id,user_id,side,slot_order";
 const TEAM_COLUMNS = "id,name,home_court,region,mmr,wins,losses,accent,deleted_at";
 const COURT_COLUMNS = "id,name";
@@ -200,6 +200,8 @@ function toClientMatch(row = {}, playersByMatch = new Map(), teamById = {}, cour
   const timingType = row.rules?.timingType === "instant" || rawScheduledAt === "\uC989\uC2DC" ? "instant" : "scheduled";
   const playedPlayerIds = row.played_player_ids ?? row.rules?.playedPlayerIds ?? {};
   const reservePlayers = row.reserve_players ?? row.rules?.reservePlayers ?? {};
+  const mmrExcludedPlayerIds = row.mmr_excluded_player_ids ?? row.rules?.mmrExcludedPlayerIds ?? [];
+  const anonymousPlayers = row.anonymous_players ?? {};
   const statRecorders = row.stat_recorders ?? row.rules?.statRecorders ?? {};
   return {
     id: row.id,
@@ -228,6 +230,8 @@ function toClientMatch(row = {}, playersByMatch = new Map(), teamById = {}, cour
     disputes: [],
     playedPlayerIds,
     reservePlayers,
+    mmrExcludedPlayerIds,
+    anonymousPlayers,
     parties: row.rules?.parties ?? {},
     result: null,
     rules: {
@@ -236,6 +240,7 @@ function toClientMatch(row = {}, playersByMatch = new Map(), teamById = {}, cour
       winByTwo: row.rules?.winByTwo,
       ball: row.rules?.ball,
       playedPlayerIds,
+      mmrExcludedPlayerIds,
       statRecorders,
     },
     statRecorders,
@@ -281,6 +286,8 @@ function compactMatch(match = {}) {
     disputes: match.disputes,
     playedPlayerIds: match.playedPlayerIds,
     reservePlayers: match.reservePlayers,
+    mmrExcludedPlayerIds: match.mmrExcludedPlayerIds,
+    anonymousPlayers: match.anonymousPlayers,
     parties: match.parties,
     result: match.result,
     rules: {
@@ -289,6 +296,7 @@ function compactMatch(match = {}) {
       winByTwo: rules.winByTwo,
       ball: rules.ball,
       playedPlayerIds: rules.playedPlayerIds,
+      mmrExcludedPlayerIds: rules.mmrExcludedPlayerIds,
       statRecorders: rules.statRecorders,
     },
     statRecorders: match.statRecorders,
