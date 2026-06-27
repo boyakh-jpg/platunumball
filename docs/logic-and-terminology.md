@@ -1256,6 +1256,7 @@ flowchart TD
 5. `createRecruitingPost` and `createMatch` do not use the fast path; server actions replay the reducer with authenticated `profileId` so Google login profile ids become the room owner and creator.
 6. Google/auth actor-sensitive recruiting actions such as public join, side party join, applicant placement, and slot position change replay the reducer on the server with `context.profileId` and target recruiting scope instead of trusting a client snapshot.
 7. `interestRecruitingPost` must replay the JS reducer until the SQL reducer calculates full-side auto-reserve placement. A full active side must save new participants as reserve/candidate, not overfill the active slot.
+8. Recruiting core lock compares canonical room shape. `side_capacity` cannot exceed mode size, and rooms without `team_id` are treated as player-hosted even if older DB rows still say `host_join_mode='team'`.
 
 ## 2026-06-27 server action auth 실패 노출
 

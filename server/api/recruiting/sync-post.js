@@ -44,7 +44,6 @@ function sameJson(left, right) {
 
 function getRecruitingCoreSnapshot(post = {}) {
   const teamId = nullableText(post.teamId ?? post.team_id);
-  const hostJoinMode = post.hostJoinMode ?? post.host_join_mode;
   return {
     visibility: post.visibility === "private" ? "private" : "public",
     playerId: post.playerId ?? post.player_id ?? "",
@@ -57,8 +56,8 @@ function getRecruitingCoreSnapshot(post = {}) {
     official: Boolean(post.official),
     ageRestriction: post.ageRestriction ?? post.age_restriction ?? "any",
     allowedAgeGroups: toArray(post.allowedAgeGroups ?? post.allowed_age_groups).map(String).sort(),
-    sideCapacity: Math.max(1, Math.min(5, Number(post.sideCapacity ?? post.side_capacity ?? 5))),
-    hostJoinMode: hostJoinMode === "player" || (!teamId && hostJoinMode !== "team") ? "player" : "team",
+    sideCapacity: getCanonicalSideCapacity(post),
+    hostJoinMode: getCanonicalHostJoinMode(post),
     hostSide: (post.hostSide ?? post.host_side) === "teamB" ? "teamB" : "teamA",
     playerIds: toArray(post.playerIds ?? post.player_ids),
     refereeId: post.refereeId || post.referee_id || "",
@@ -229,6 +228,19 @@ function getModeCapacity(mode = "5v5") {
   const match = String(mode).match(/^(\d+)/);
   const value = match ? Number(match[1]) : 5;
   return Math.max(1, Math.min(5, Number.isFinite(value) ? value : 5));
+}
+
+function getCanonicalSideCapacity(post = {}) {
+  const modeCapacity = getModeCapacity(post.mode);
+  const rawCapacity = Number(post.sideCapacity ?? post.side_capacity ?? modeCapacity);
+  const safeCapacity = Number.isFinite(rawCapacity) ? rawCapacity : modeCapacity;
+  return Math.max(1, Math.min(5, modeCapacity, safeCapacity));
+}
+
+function getCanonicalHostJoinMode(post = {}) {
+  const teamId = nullableText(post.teamId ?? post.team_id);
+  const hostJoinMode = post.hostJoinMode ?? post.host_join_mode;
+  return hostJoinMode === "player" || !teamId ? "player" : "team";
 }
 
 function getRecruitingPlayerCount(post = {}) {
@@ -451,13 +463,12 @@ function hasRefereeInvitationFor(profileId, post = {}) {
 }
 
 function getSideCapacity(post = {}) {
-  const modeMatch = String(post.mode ?? "").match(/^(\d+)/);
-  const fallbackCapacity = modeMatch ? Number(modeMatch[1]) : 5;
-  return Math.max(1, Math.min(5, Number(post.sideCapacity ?? post.side_capacity ?? fallbackCapacity)));
+  return getCanonicalSideCapacity(post);
 }
 
 function isSoloIndividualRoom(post = {}) {
-  return getSideCapacity(post) === 1 && (post.hostJoinMode ?? post.host_join_mode) === "player";
+  const teamId = nullableText(post.teamId ?? post.team_id);
+  return getSideCapacity(post) === 1 && (getCanonicalHostJoinMode(post) === "player" || !teamId);
 }
 
 function validateRecruitingPostShape(post = {}) {
