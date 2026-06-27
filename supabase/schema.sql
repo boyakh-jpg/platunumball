@@ -3617,6 +3617,18 @@ create index if not exists user_room_feed_region_idx
 create index if not exists user_room_feed_entity_idx
   on public.user_room_feed (entity_type, entity_id);
 
+create index if not exists match_players_user_match_idx
+  on public.match_players (user_id, match_id);
+
+create index if not exists matches_created_by_updated_idx
+  on public.matches (created_by, updated_at desc, id desc);
+
+create index if not exists matches_referee_updated_idx
+  on public.matches (referee_id, updated_at desc, id desc);
+
+create index if not exists matches_former_referee_updated_idx
+  on public.matches (former_referee_id, updated_at desc, id desc);
+
 alter table public.user_room_feed enable row level security;
 
 drop policy if exists user_room_feed_select_related on public.user_room_feed;

@@ -58,6 +58,16 @@ const REQUIRED_COLUMNS = {
     "side",
     "slot_order",
   ],
+  user_room_feed: [
+    "profile_id",
+    "entity_type",
+    "entity_id",
+    "relation",
+    "region_key",
+    "status",
+    "sort_at",
+    "is_active",
+  ],
   match_results: [
     "match_id",
     "score_a",

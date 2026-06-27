@@ -27,13 +27,6 @@ function getMatchCursor(matches = []) {
   return oldest?.updatedAt ?? oldest?.createdAt ?? "";
 }
 
-function getRowCursor(rows = []) {
-  const oldest = [...rows]
-    .sort((a, b) => String(a.updated_at ?? a.created_at ?? "").localeCompare(String(b.updated_at ?? b.created_at ?? "")))
-    .at(0);
-  return oldest?.updated_at ?? oldest?.created_at ?? "";
-}
-
 function unique(values = []) {
   return [...new Set(values.filter(Boolean))];
 }
@@ -48,6 +41,22 @@ function getFeedOffsetCursor(value = "") {
   if (!text.startsWith("feed:")) return 0;
   const offset = Number(text.slice(5));
   return Number.isFinite(offset) && offset > 0 ? Math.floor(offset) : 0;
+}
+
+function getMineOffsetCursor(value = "") {
+  const text = String(value ?? "");
+  if (!text.startsWith("mine:")) return 0;
+  const offset = Number(text.slice(5));
+  return Number.isFinite(offset) && offset > 0 ? Math.floor(offset) : 0;
+}
+
+async function timeStep(debugTiming, key, callback) {
+  const startedAt = Date.now();
+  try {
+    return await callback();
+  } finally {
+    if (debugTiming) debugTiming[key] = (debugTiming[key] ?? 0) + Date.now() - startedAt;
+  }
 }
 
 function mergeById(current = [], incoming = []) {
@@ -93,6 +102,7 @@ function getCappedLimit(value) {
 
 async function fetchMatchFeedPage(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT, cursor = "") {
   if (!profileId || !userRoomFeedAvailable) return null;
+  if (String(cursor ?? "").startsWith("mine:")) return null;
   const cappedLimit = Math.max(1, Math.min(80, Number(limit) || REMOTE_CLIENT_MATCH_LIMIT));
   const offset = getFeedOffsetCursor(cursor);
   const rowLimit = Math.min(320, cappedLimit * 4);
@@ -132,6 +142,76 @@ async function fetchMatchRowsByIds(client, matchIds = []) {
   if (error) throw error;
   const order = new Map(ids.map((id, index) => [id, index]));
   return [...(data ?? [])].sort((a, b) => (order.get(a.id) ?? 9999) - (order.get(b.id) ?? 9999));
+}
+
+async function fetchCurrentUserMatchCandidateIds(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT) {
+  if (!profileId) return [];
+  const candidateLimit = Math.max(80, Math.min(500, Number(limit || REMOTE_CLIENT_MATCH_LIMIT) * 10));
+  const [
+    { data: playerRows, error: playerError },
+    { data: createdRows, error: createdError },
+    { data: refereeRows, error: refereeError },
+    { data: formerRefereeRows, error: formerRefereeError },
+  ] = await Promise.all([
+    client
+      .from("match_players")
+      .select("match_id")
+      .eq("user_id", profileId)
+      .limit(candidateLimit),
+    client
+      .from("matches")
+      .select("id")
+      .eq("created_by", profileId)
+      .order("updated_at", { ascending: false, nullsFirst: false })
+      .order("id", { ascending: false })
+      .limit(candidateLimit),
+    client
+      .from("matches")
+      .select("id")
+      .eq("referee_id", profileId)
+      .order("updated_at", { ascending: false, nullsFirst: false })
+      .order("id", { ascending: false })
+      .limit(candidateLimit),
+    client
+      .from("matches")
+      .select("id")
+      .eq("former_referee_id", profileId)
+      .order("updated_at", { ascending: false, nullsFirst: false })
+      .order("id", { ascending: false })
+      .limit(candidateLimit),
+  ]);
+  if (playerError) throw playerError;
+  if (createdError) throw createdError;
+  if (refereeError) throw refereeError;
+  if (formerRefereeError) throw formerRefereeError;
+  return unique([
+    ...(playerRows ?? []).map((row) => row.match_id),
+    ...(createdRows ?? []).map((row) => row.id),
+    ...(refereeRows ?? []).map((row) => row.id),
+    ...(formerRefereeRows ?? []).map((row) => row.id),
+  ]);
+}
+
+async function fetchCurrentUserMatchPage(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT, cursor = "") {
+  if (!profileId) return null;
+  const cappedLimit = Math.max(1, Math.min(80, Number(limit) || REMOTE_CLIENT_MATCH_LIMIT));
+  const offset = getMineOffsetCursor(cursor);
+  const candidateIds = await fetchCurrentUserMatchCandidateIds(client, profileId, cappedLimit);
+  if (!candidateIds.length) {
+    return { rows: [], cursor: "", exhausted: true };
+  }
+  const rows = await fetchMatchRowsByIds(client, candidateIds);
+  const sortedRows = [...rows].sort((a, b) => (
+    String(b.updated_at ?? b.created_at ?? "").localeCompare(String(a.updated_at ?? a.created_at ?? ""))
+      || String(b.id ?? "").localeCompare(String(a.id ?? ""))
+  ));
+  const pageRows = sortedRows.slice(offset, offset + cappedLimit);
+  const nextOffset = offset + pageRows.length;
+  return {
+    rows: pageRows,
+    cursor: nextOffset < sortedRows.length ? `mine:${nextOffset}` : "",
+    exhausted: nextOffset >= sortedRows.length,
+  };
 }
 
 function getMatchUserIds(match = {}) {
@@ -477,34 +557,38 @@ async function loadNormalizedMatchList(context, body = {}, adminLevel = 0, limit
   };
 }
 
-async function loadCompactMatchList(context, body = {}, adminLevel = 0, limit = REMOTE_CLIENT_MATCH_LIMIT) {
+async function loadCompactMatchList(context, body = {}, adminLevel = 0, limit = REMOTE_CLIENT_MATCH_LIMIT, debugTiming = null) {
   const cursor = String(body.cursor ?? body.matchUpdatedBefore ?? "").trim();
   const shouldLoadRecruitingSchedule = !cursor && body.includeRecruitingSchedule !== false;
   const recruitingSchedulePromise = shouldLoadRecruitingSchedule
     ? loadCurrentRecruitingSchedule(context, adminLevel)
     : Promise.resolve(null);
-  const feedPage = await fetchMatchFeedPage(context.supabase, context.profileId, limit, cursor);
+  const feedPage = await timeStep(debugTiming, "feedMs", () => (
+    fetchMatchFeedPage(context.supabase, context.profileId, limit, cursor)
+  ));
+  let pageSource = "feed";
+  let pageCursor = feedPage?.cursor ?? "";
+  let pageExhausted = feedPage?.exhausted ?? true;
   let matchRows = [];
   if (feedPage) {
-    matchRows = await fetchMatchRowsByIds(context.supabase, feedPage.ids);
+    matchRows = await timeStep(debugTiming, "matchRowsMs", () => (
+      fetchMatchRowsByIds(context.supabase, feedPage.ids)
+    ));
   } else {
-    const legacyCursor = cursor.startsWith("feed:") ? "" : cursor;
-    let matchQuery = context.supabase
-      .from("matches")
-      .select(MATCH_LIST_COLUMNS)
-      .order("updated_at", { ascending: false, nullsFirst: false })
-      .order("id", { ascending: false })
-      .limit(limit);
-    if (legacyCursor) matchQuery = matchQuery.lt("updated_at", legacyCursor);
-
-    const { data, error } = await matchQuery;
-    if (error) throw error;
-    matchRows = data ?? [];
+    pageSource = "fallback_mine";
+    const minePage = await timeStep(debugTiming, "fallbackMineMs", () => (
+      fetchCurrentUserMatchPage(context.supabase, context.profileId, limit, cursor)
+    ));
+    matchRows = minePage?.rows ?? [];
+    pageCursor = minePage?.cursor ?? "";
+    pageExhausted = minePage?.exhausted ?? true;
   }
 
   const matchIds = (matchRows ?? []).map((row) => row.id).filter(Boolean);
   const { data: playerRows, error: playerError } = matchIds.length
-    ? await context.supabase.from("match_players").select(MATCH_PLAYER_COLUMNS).in("match_id", matchIds)
+    ? await timeStep(debugTiming, "matchPlayersMs", () => (
+      context.supabase.from("match_players").select(MATCH_PLAYER_COLUMNS).in("match_id", matchIds)
+    ))
     : { data: [], error: null };
   if (playerError) throw playerError;
 
@@ -520,7 +604,7 @@ async function loadCompactMatchList(context, body = {}, adminLevel = 0, limit = 
     { data: teamRows, error: teamError },
     { data: courtRows, error: courtError },
     { data: profileRows, error: profileError },
-  ] = await Promise.all([
+  ] = await timeStep(debugTiming, "relatedRowsMs", () => Promise.all([
     teamIds.length
       ? context.supabase.from("teams").select(TEAM_COLUMNS).in("id", teamIds).is("deleted_at", null)
       : Promise.resolve({ data: [], error: null }),
@@ -530,7 +614,7 @@ async function loadCompactMatchList(context, body = {}, adminLevel = 0, limit = 
     profileIds.length
       ? context.supabase.from("public_profiles").select(PROFILE_CARD_COLUMNS).in("id", profileIds)
       : Promise.resolve({ data: [], error: null }),
-  ]);
+  ]));
   if (teamError) throw teamError;
   if (courtError) throw courtError;
   if (profileError) throw profileError;
@@ -562,7 +646,7 @@ async function loadCompactMatchList(context, body = {}, adminLevel = 0, limit = 
     matches,
     settings,
   }, { includeDemo: false });
-  const recruitingSchedule = await recruitingSchedulePromise;
+  const recruitingSchedule = await timeStep(debugTiming, "recruitingScheduleMs", () => recruitingSchedulePromise);
   const recruitingState = recruitingSchedule?.state ?? {};
   const recruitingScheduleCount = recruitingState.recruitingPosts?.length ?? 0;
   const mergedState = {
@@ -585,8 +669,9 @@ async function loadCompactMatchList(context, body = {}, adminLevel = 0, limit = 
     page: {
       limit,
       count: matches.length,
-      cursor: feedPage ? feedPage.cursor : getRowCursor(matchRows ?? []),
-      exhausted: feedPage ? feedPage.exhausted : (matchRows ?? []).length < limit,
+      cursor: pageCursor,
+      exhausted: pageExhausted,
+      source: pageSource,
       recruitingScheduleChecked: shouldLoadRecruitingSchedule,
       recruitingScheduleCount,
     },
@@ -606,17 +691,25 @@ export default async function handler(request, response) {
   }
 
   try {
+    const startedAt = Date.now();
     const body = await readJsonBody(request);
-    const context = await getAuthenticatedContext(request, { allowMissingProfile: true, profileSelect: PROFILE_ME_COLUMNS });
+    const debugTiming = body.debugTiming === true ? {} : null;
+    const context = await timeStep(debugTiming, "authMs", () => (
+      getAuthenticatedContext(request, { allowMissingProfile: true, profileSelect: PROFILE_ME_COLUMNS })
+    ));
     const shouldLoadAdminContext = body.adminContext !== false && body.includeAdminContext !== false;
-    const adminLevel = shouldLoadAdminContext && context.profileId ? await getAdminLevel(context) : 0;
+    const adminLevel = shouldLoadAdminContext && context.profileId
+      ? await timeStep(debugTiming, "adminMs", () => getAdminLevel(context))
+      : 0;
     const limit = getCappedLimit(body.limit ?? body.matchLimit ?? REMOTE_CLIENT_MATCH_LIMIT);
     const result = body.listOnly === false
       ? await loadNormalizedMatchList(context, body, adminLevel, limit)
-      : await loadCompactMatchList(context, body, adminLevel, limit);
+      : await loadCompactMatchList(context, body, adminLevel, limit, debugTiming);
+    if (debugTiming) debugTiming.totalMs = Date.now() - startedAt;
     sendJson(response, 200, {
       ok: true,
       ...result,
+      debugTiming: debugTiming ?? undefined,
     });
   } catch (error) {
     sendJson(response, error.statusCode || 500, { error: error.message || "matches_list_failed" });

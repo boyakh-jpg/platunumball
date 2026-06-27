@@ -1343,9 +1343,10 @@ flowchart TD
 26. Match `parties` must be an array in client state. DB/API rows that carry `rules.parties` or `parties` as an object are normalized to an array before room/list helpers read them.
 27. Matches 화면은 idle `scope: "mine"` 모집 context load를 실행하지 않는다. 경기 메뉴 첫 화면은 current-profile match feed만 먼저 로드한다.
 28. `/api/matches/list` can still include current-user open recruiting schedule rows when explicitly requested, but `/app/matches` first load sends `includeRecruitingSchedule=false`.
-29. `user_room_feed` match rows are the first-page source for owned/participant/referee matches. Broad `matches` reads are only fallback when the feed table is unavailable.
+29. `user_room_feed` match rows are the first-page source for owned/participant/referee matches. If the feed table is unavailable, `/api/matches/list` must fall back to current-profile candidate ids from `match_players.user_id`, `matches.created_by`, `matches.referee_id`, and `matches.former_referee_id`; it must not page through broad latest `matches` rows.
 30. `/app/recorder` must load `recorderOnly` match state on direct entry or after thin-route navigation before showing the final empty state. Recorder state includes only active `agreed`/`approval`/`disputed` matches related to the current profile.
 31. `/api/matches/list` with `listOnly:false` must not force `matchListOnly:true`; recorder/detail-like reads need `match_results` and `player_match_stats`.
+32. `/api/matches/list` may return `page.source` and optional `debugTiming` for diagnosis. `page.source='feed'` means `user_room_feed` is active; `page.source='fallback_mine'` means production is still using current-profile fallback and the feed SQL/deployment needs verification.
 
 ## 2026-06-27 report scoped reads
 
