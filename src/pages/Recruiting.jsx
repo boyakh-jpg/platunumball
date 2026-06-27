@@ -221,8 +221,9 @@ function getDefaultJoinDraft(post, teams, currentUser, state) {
   const teamOnly = isTeamOnlyRoom(post) && !soloIndividualRoom;
   const side = getRecruitingBestSide(post, state);
   const lobby = getRecruitingLobby(post, state);
+  const reserve = !teamOnly && getJoinActiveCapacity(post, lobby, side, false) <= 0 && getJoinReserveCapacity(lobby, side) > 0;
   const roster = teamOnly
-    ? getDefaultJoinRoster(post, lobby, team, currentUser, side, false)
+    ? getDefaultJoinRoster(post, lobby, team, currentUser, side, reserve)
     : { playerIds: [], reservePlayerIds: [] };
   return {
     joinMode: teamOnly ? "team" : "player",
@@ -230,7 +231,7 @@ function getDefaultJoinDraft(post, teams, currentUser, state) {
     playerIds: roster.playerIds,
     reservePlayerIds: roster.reservePlayerIds,
     side,
-    reserve: false,
+    reserve,
     position: currentUser.position,
   };
 }
@@ -1792,7 +1793,13 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
   };
   const submitJoin = (roomPost) => {
     const joinDraft = getJoinDraft(roomPost);
-    app.actions.interestRecruitingPost(roomPost.id, joinDraft);
+    const lobby = getRecruitingLobby(roomPost, app.state);
+    const shouldReserve = joinDraft.joinMode !== "referee" &&
+      !isTeamOnlyRoom(roomPost) &&
+      !joinDraft.reserve &&
+      getJoinActiveCapacity(roomPost, lobby, joinDraft.side, false) <= 0 &&
+      getJoinReserveCapacity(lobby, joinDraft.side) > 0;
+    app.actions.interestRecruitingPost(roomPost.id, shouldReserve ? { ...joinDraft, reserve: true } : joinDraft);
   };
   const getChatDraft = (roomPost) => chatDraftByPost[roomPost.id] ?? '';
   const updateChatDraft = (roomPost, value) => {
