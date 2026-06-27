@@ -390,8 +390,11 @@ function withServerAdminContext(state, context = EMPTY_ADMIN_CONTEXT) {
 
 function getInitialStateLoadOptions() {
   const pathname = typeof window !== "undefined" ? window.location.pathname.replace(/\/$/, "") : "";
+  const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+  if (pathname === "/app/matches") {
+    return { scope: "matches", matchLimit: searchParams?.get("match") ? 0 : REMOTE_CLIENT_INITIAL_MATCH_LIMIT, recruitingLimit: 0, tournamentLimit: 0 };
+  }
   if (pathname === "/app/recruiting") {
-    const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
     return { matchLimit: 0, recruitingLimit: searchParams?.get("post") ? 0 : REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT };
   }
   return { matchLimit: REMOTE_CLIENT_INITIAL_MATCH_LIMIT, recruitingLimit: REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT };
@@ -399,8 +402,10 @@ function getInitialStateLoadOptions() {
 
 async function loadBackendState(authUserId, authEmail, options = getInitialStateLoadOptions()) {
   const loadOptions = {
+    scope: options.scope,
     matchLimit: options.matchLimit ?? REMOTE_CLIENT_INITIAL_MATCH_LIMIT,
     recruitingLimit: options.recruitingLimit ?? REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT,
+    tournamentLimit: options.tournamentLimit,
     matchListOnly: true,
     directoryScope: "related",
     adminContext: false,

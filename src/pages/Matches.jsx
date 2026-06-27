@@ -702,6 +702,7 @@ export default function Matches({ app }) {
   const userById = useMemo(() => Object.fromEntries(app.state.users.map((user) => [user.id, user])), [app.state.users]);
   const matchesById = useMemo(() => Object.fromEntries(app.state.matches.map((match) => [match.id, match])), [app.state.matches]);
   const requestedMatchDetailsRef = useRef(new Set());
+  const myRecruitingLoadRef = useRef("");
   const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
   const courtByName = useMemo(() => Object.fromEntries(registeredCourts.map((court) => [court.name, court])), [registeredCourts]);
   const myTeamIds = useMemo(
@@ -763,6 +764,17 @@ export default function Matches({ app }) {
     setSelectedMatchId(queryMatchId);
     requestMatchDetail(queryMatchId);
   }, [app.currentUser.id, queryMatchId]);
+  useEffect(() => {
+    if (!app.remoteReady || !app.currentUser.id) return undefined;
+    if (myRecruitingLoadRef.current === app.currentUser.id) return undefined;
+    myRecruitingLoadRef.current = app.currentUser.id;
+    if ("requestIdleCallback" in window) {
+      const idleId = window.requestIdleCallback(() => app.actions.loadMyRecruitingPosts?.(), { timeout: 2000 });
+      return () => window.cancelIdleCallback?.(idleId);
+    }
+    const timeoutId = window.setTimeout(() => app.actions.loadMyRecruitingPosts?.(), 900);
+    return () => window.clearTimeout(timeoutId);
+  }, [app.actions, app.currentUser.id, app.remoteReady]);
   const openSelectedMatch = (matchId) => {
     if (!matchId) return;
     requestMatchDetail(matchId);

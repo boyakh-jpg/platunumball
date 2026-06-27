@@ -1305,6 +1305,7 @@ flowchart TD
 9. Full user/team directory data is loaded on demand through `/api/directory/load` for Rankings, Teams, Create Match, and Settings.
 10. Initial client hydrate uses 5 matches and 5 recruiting posts; additional list pages use 50 rows.
 11. `/app/recruiting` first hydrate does not load match rows; direct `?post=` entry also skips recruiting list rows. Recruiting list screens add more rows only through `더 보기` or targeted detail loads.
+12. `/app/matches` first hydrate uses `scope: "matches"` and does not load recruiting or tournament rows. Direct `?match=` entry starts with 0 list rows and loads the target match through detail load. User-related recruiting rooms are loaded later in idle time for schedule context.
 
 ## 2026-06-27 report scoped reads
 
