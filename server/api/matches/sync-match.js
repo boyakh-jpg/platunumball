@@ -962,7 +962,7 @@ async function applySqlMatchAction(context, operation = {}, match = {}) {
   };
 }
 
-async function commitMatchRating(context, ratingCommit = {}) {
+export async function commitMatchRating(context, ratingCommit = {}) {
   const { data, error } = await context.supabase.rpc("rankball_commit_match_rating", {
     p_match_id: ratingCommit.matchId,
     p_actor_profile_id: context.profileId,

@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import loadStateHandler from "../server/api/state/load.js";
 import syncRecruitingPostHandler from "../server/api/recruiting/sync-post.js";
 import syncMatchHandler from "../server/api/matches/sync-match.js";
+import maintenanceHandler from "../server/api/system/maintenance.js";
 
 function loadEnvFile(path) {
   if (!existsSync(path)) return;
@@ -193,6 +194,31 @@ async function assertRemoteSchemaHealth() {
     throw new Error(`schema health failed: ${[failed, seedError].filter(Boolean).join("; ")}`);
   }
   return payload;
+}
+
+async function runSystemMaintenanceProbe() {
+  if (!schemaHealthSecret) return { skipped: true, reason: "secret_missing" };
+  if (usesRemoteApi) {
+    const response = await fetchWithTimeout(`${remoteBaseUrl}/api/system/maintenance`, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${schemaHealthSecret}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({}),
+    });
+    const text = await readResponseTextWithTimeout(response, "system_maintenance");
+    if (!response.ok) throw new Error(`/api/system/maintenance failed ${response.status}: ${text}`);
+    return text ? JSON.parse(text) : { ok: true };
+  }
+
+  const response = makeResponse("/api/system/maintenance");
+  await maintenanceHandler(makeRequest(schemaHealthSecret, {}), response);
+  if (response.statusCode >= 400) {
+    const detail = response.payload ? JSON.stringify(response.payload) : "";
+    throw new Error(`/api/system/maintenance failed ${response.statusCode}: ${detail}`);
+  }
+  return response.payload ?? { ok: true };
 }
 
 function assertFlow(condition, label, detail = {}) {
@@ -1024,6 +1050,7 @@ async function main() {
     ok: true,
     scenarios,
     schemaHealth: schemaHealth?.skipped ? "skipped" : "ok",
+    maintenance: await runSystemMaintenanceProbe(),
     cleanup: await cleanup(),
   }, null, 2));
 }

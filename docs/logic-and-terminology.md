@@ -1377,3 +1377,11 @@ flowchart TD
 1. 운영 시뮬레이션 정리는 물리 삭제하지 않는다.
 2. `/api/system/cleanup-sim`과 backend simulation cleanup은 `sim_m_%` 경기와 `sim_q_%` 모집방을 `status = 'closed'`로 soft close한다.
 3. child row, notification, stat row는 감사/재현 근거이므로 cleanup endpoint에서 지우지 않는다.
+
+## 2026-06-27 시스템 경기 유지보수
+
+1. Supabase remote mode에서는 클라이언트가 경기 lifecycle write를 실행하지 않는다.
+2. `/api/system/maintenance`는 서버 전용 유지보수 진입점이고 `CRON_SECRET`이 필요하다.
+3. 첫 유지보수 범위는 `status = 'approval'`, 결과 row 있음, dispute draft 없음, rating commit 없음, 이의제기 시간이 만료된 경기로 제한한다.
+4. 유지보수는 경기를 1개씩 로드하고 기존 JS 자동 reducer를 실행한 뒤 `rankball_commit_match_rating()`으로 레이팅을 커밋하고 누락된 승인 row를 upsert한다.
+5. 제출된 결과가 없는 postgame 경기는 자동 확정하지 않고, 허용된 기록자/운영자가 결과를 제출할 때까지 postgame에 남긴다.

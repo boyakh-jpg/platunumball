@@ -65,8 +65,8 @@ function getCreatedItem(beforeItems = [], afterItems = []) {
   return afterItems.find((item) => item?.id && !beforeIds.has(item.id)) ?? null;
 }
 
-function getMatchRatingCommit(beforeState = {}, afterState = {}, match = null, action = "") {
-  if (action !== "approveMatch" || match?.status !== "confirmed" || !match?.ratingResult) return null;
+export function getMatchRatingCommit(beforeState = {}, afterState = {}, match = null, action = "") {
+  if (!["approveMatch", "autoConfirmMatch"].includes(action) || match?.status !== "confirmed" || !match?.ratingResult) return null;
   const beforeUsersById = new Map((beforeState.users ?? []).map((user) => [user.id, user]));
   const beforeTeamsById = new Map((beforeState.teams ?? []).map((team) => [team.id, team]));
   const ratingChangeByPlayerId = new Map((match.ratingResult ?? []).map((change) => [change.playerId, change]));

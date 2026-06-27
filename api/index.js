@@ -27,6 +27,7 @@ import reportSubmit from "../server/api/reports/submit.js";
 import settingsSync from "../server/api/settings/sync.js";
 import stateLoad from "../server/api/state/load.js";
 import systemCleanupSim from "../server/api/system/cleanup-sim.js";
+import systemMaintenance from "../server/api/system/maintenance.js";
 import systemSchemaHealth from "../server/api/system/schema-health.js";
 import teamSyncTeam from "../server/api/teams/sync-team.js";
 import tournamentSyncTournament from "../server/api/tournaments/sync-tournament.js";
@@ -61,6 +62,7 @@ const ROUTES = new Map([
   ["/settings/sync", settingsSync],
   ["/state/load", stateLoad],
   ["/system/cleanup-sim", systemCleanupSim],
+  ["/system/maintenance", systemMaintenance],
   ["/system/schema-health", systemSchemaHealth],
   ["/teams/sync-team", teamSyncTeam],
   ["/tournaments/sync-tournament", tournamentSyncTournament],
