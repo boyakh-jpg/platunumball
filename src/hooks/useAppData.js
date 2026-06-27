@@ -249,6 +249,13 @@ function mergeRemoteRecruitingPage(state, remoteState = {}) {
   };
 }
 
+function filterPendingRecruitingPosts(remoteState = {}, pendingIds = new Set(), recentMutationTimes = new Map()) {
+  const nextPosts = remoteState.recruitingPosts ?? [];
+  if ((!pendingIds.size && !recentMutationTimes.size) || !nextPosts.length) return remoteState;
+  const filteredPosts = nextPosts.filter((post) => !pendingIds.has(post.id) && !recentMutationTimes.has(post.id));
+  return filteredPosts.length === nextPosts.length ? remoteState : { ...remoteState, recruitingPosts: filteredPosts };
+}
+
 function mergeRemoteDirectory(state, remoteState = {}) {
   return {
     ...state,
@@ -416,6 +423,8 @@ export function useAppData(authUser = null) {
   const adminContextRef = useRef(EMPTY_ADMIN_CONTEXT);
   const remoteReadyRef = useRef(!isSupabaseConfigured);
   const directoryPromiseRef = useRef(null);
+  const pendingRecruitingPostIdsRef = useRef(new Set());
+  const recentRecruitingMutationTimesRef = useRef(new Map());
   const syncedDiscordDeliveryIdsRef = useRef(new Set());
   const profileKey = authUserId ?? "local-demo";
   const profileLocked = isPersistentAuthUserId(authUserId);
@@ -612,12 +621,26 @@ export function useAppData(authUser = null) {
   const syncRecruitingPostServer = useCallback((post, notifications = [], meta = {}) => {
     const operation = getServerOperation(meta);
     if (!post?.id && !operation) return Promise.resolve(false);
+    const pendingPostId = post?.id ?? operation?.postId ?? meta.postId ?? "";
+    const mutationStartedAt = Date.now();
+    if (pendingPostId) {
+      pendingRecruitingPostIdsRef.current.add(pendingPostId);
+      recentRecruitingMutationTimesRef.current.set(pendingPostId, mutationStartedAt);
+    }
     const payload = operation
       ? { operation, ...(post?.id ? { post } : {}), notifications, createdMatch: meta.createdMatch ?? null }
       : { post, notifications, ...meta };
     return runServerAction("/api/recruiting/sync-post", payload).then((result) => {
       if (result?.post || result?.createdMatch) setState((prev) => mergeServerRoomResult(prev, result));
       return result;
+    }).finally(() => {
+      if (!pendingPostId) return;
+      pendingRecruitingPostIdsRef.current.delete(pendingPostId);
+      globalThis.setTimeout(() => {
+        if (recentRecruitingMutationTimesRef.current.get(pendingPostId) === mutationStartedAt) {
+          recentRecruitingMutationTimesRef.current.delete(pendingPostId);
+        }
+      }, 10000);
     });
   }, [runServerAction, setState]);
   const syncMatchServer = useCallback((match, notifications = [], meta = {}) => {
@@ -737,7 +760,7 @@ export function useAppData(authUser = null) {
         },
         { allowWhenDisabled: true },
       );
-      const remoteState = result?.state ?? {};
+      const remoteState = filterPendingRecruitingPosts(result?.state ?? {}, pendingRecruitingPostIdsRef.current, recentRecruitingMutationTimesRef.current);
       const nextPosts = remoteState.recruitingPosts ?? [];
       setState((prev) => mergeRemoteRecruitingPage(prev, remoteState));
       setRecruitingPagination({ loading: false, exhausted: Boolean(result?.page?.exhausted) || nextPosts.length < REMOTE_CLIENT_RECRUITING_LIMIT, error: "" });
@@ -762,7 +785,7 @@ export function useAppData(authUser = null) {
         },
         { allowWhenDisabled: true },
       );
-      const remoteState = result?.state ?? {};
+      const remoteState = filterPendingRecruitingPosts(result?.state ?? {}, pendingRecruitingPostIdsRef.current, recentRecruitingMutationTimesRef.current);
       const nextPosts = remoteState.recruitingPosts ?? [];
       setState((prev) => mergeRemoteRecruitingPage(prev, remoteState));
       return nextPosts.length;
@@ -785,7 +808,7 @@ export function useAppData(authUser = null) {
         },
         { allowWhenDisabled: true },
       );
-      const remoteState = result?.state ?? {};
+      const remoteState = filterPendingRecruitingPosts(result?.state ?? {}, pendingRecruitingPostIdsRef.current, recentRecruitingMutationTimesRef.current);
       const nextPosts = remoteState.recruitingPosts ?? [];
       setState((prev) => mergeRemoteRecruitingPage(prev, remoteState));
       return nextPosts.length;

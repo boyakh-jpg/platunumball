@@ -1317,3 +1317,4 @@ flowchart TD
 3. 공개방 전환은 사용자가 이미 고른 개인전/팀방 방식을 임의로 `team`으로 덮어쓰지 않는다.
 4. `/api/recruiting/list`는 `postId`/`recruitingPostIds` 단일 로드와 `scope: "mine"` 로드를 지원한다.
 5. Recruiting 화면은 최초 30개 목록 밖에 있는 내 생성/참여 open 방을 `scope: "mine"`로 보강 로드한다.
+6. Recruiting mutation이 진행 중이거나 직후인 post는 목록 보강 로드가 오래된 row로 덮어쓰지 않는다.
