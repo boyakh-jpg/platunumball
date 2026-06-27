@@ -1,8 +1,23 @@
 import { getAdminLevel, getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
-import { loadNormalizedRemoteStateFromClient, REMOTE_CLIENT_RECRUITING_LIMIT } from "../../../src/data/repository.js";
+import {
+  DEFAULT_SETTINGS,
+  createProfileShell,
+  fromRemoteProfile,
+  getRemoteAppSettings,
+  loadNormalizedRemoteStateFromClient,
+  normalizeState,
+  REMOTE_CLIENT_RECRUITING_LIMIT,
+} from "../../../src/data/repository.js";
 import { filterStateForProfile } from "../state/load.js";
 
 let currentUserRecruitingRpcAvailable = true;
+
+const PROFILE_ME_COLUMNS = "id,name,handle,hashtag,position,region,region_sido,region_district,school,company,club,trust_score,streak,avatar_color,test_login_id,auth_user_id,birth_year,age_group,age_group_checked_season,onboarding_complete,profile_version,handle_locked_at,birth_year_locked_at,name_updated_at,discord_connection,discord_user_id,ratings,created_at,updated_at,app_settings";
+const PROFILE_PUBLIC_COLUMNS = "id,name,handle,hashtag,position,region,region_sido,region_district,school,company,club,trust_score,streak,avatar_color,ratings,age_group,age_group_checked_season,onboarding_complete,test_login_id,updated_at,discord_connection";
+const TEAM_COLUMNS = "id,name,home_court,region,mmr,wins,losses,accent,deleted_at";
+const COURT_COLUMNS = "id,name";
+const RECRUITING_POST_COLUMNS = "id,type,title,visibility,region,court_id,court_name,mode,scheduled_at,scheduled_date,scheduled_time,ranked,official,pre_registered,rating_scale,age_restriction,allowed_age_groups,rules,stakes,court_reserved,court_fee,spots,team_id,target_team_id,referee_id,referee_trust_min,stat_entry_minutes,dispute_minutes,room_state,host_join_mode,host_side,host_ready,side_capacity,player_ids,position,player_id,memo,status,confirmed_at,created_at,updated_at";
+const RECRUITING_APPLICATION_COLUMNS = "post_id,kind,team_id,player_id,side,status,reserve,position,player_ids,source_team_id,source_entry_id,created_at,updated_at";
 
 function getPageOffset(body = {}) {
   const rawOffset = body.offset ?? body.recruitingOffset ?? body.nextOffset;
@@ -24,6 +39,39 @@ function getTargetPostIds(body = {}) {
 
 function uniqueIds(ids = []) {
   return [...new Set(ids.map((id) => String(id ?? "").trim()).filter(Boolean))];
+}
+
+function flattenIdValues(value) {
+  if (Array.isArray(value)) return value.flatMap(flattenIdValues);
+  if (value && typeof value === "object") return Object.values(value).flatMap(flattenIdValues);
+  return value ? [String(value)] : [];
+}
+
+function groupBy(rows = [], key = "id") {
+  return rows.reduce((map, row) => {
+    const value = row?.[key];
+    if (!value) return map;
+    const current = map.get(value) ?? [];
+    current.push(row);
+    map.set(value, current);
+    return map;
+  }, new Map());
+}
+
+function firstBy(rows = [], key = "id") {
+  return Object.fromEntries((rows ?? []).filter((row) => row?.[key]).map((row) => [row[key], row]));
+}
+
+function toDateTime(date, time, fallback) {
+  if (date && time) return `${date} ${String(time).slice(0, 5)}`;
+  if (date) return date;
+  return fallback ?? "\uBBF8\uC815";
+}
+
+function getCappedLimit(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number <= 0) return REMOTE_CLIENT_RECRUITING_LIMIT;
+  return Math.max(1, Math.min(80, Math.floor(number)));
 }
 
 function mergeById(current = [], incoming = []) {
@@ -289,6 +337,233 @@ async function fetchRecruitingPagePostIds(client, limit = REMOTE_CLIENT_RECRUITI
   return (data ?? []).map((row) => row?.id).filter(Boolean);
 }
 
+async function fetchRecruitingRowsByIds(client, postIds = []) {
+  const ids = uniqueIds(postIds);
+  if (!ids.length) return [];
+  const { data, error } = await client
+    .from("recruiting_posts")
+    .select(RECRUITING_POST_COLUMNS)
+    .in("id", ids);
+  if (error) throw error;
+  const order = new Map(ids.map((id, index) => [id, index]));
+  return [...(data ?? [])].sort((a, b) => (order.get(a.id) ?? 9999) - (order.get(b.id) ?? 9999));
+}
+
+function collectTeamIdsFromRoomKeys(value = {}) {
+  return Object.keys(value ?? {})
+    .map((key) => String(key).startsWith("team:") ? String(key).slice(5) : "")
+    .filter(Boolean);
+}
+
+function collectRecruitingScope(postRows = [], applicationRows = [], profileId = "") {
+  const profileIds = [profileId];
+  const teamIds = [];
+  const courtIds = [];
+  postRows.forEach((post) => {
+    const roomState = post.room_state && typeof post.room_state === "object" ? post.room_state : {};
+    profileIds.push(
+      post.player_id,
+      post.referee_id,
+      ...flattenIdValues(post.player_ids),
+      roomState.ownerId,
+      ...flattenIdValues(roomState.partyLeaders),
+      ...flattenIdValues(roomState.partyReserves),
+      ...flattenIdValues(roomState.reserveReady),
+      ...flattenIdValues(roomState.pinnedReservePlayers),
+      ...flattenIdValues(roomState.slotPositions),
+      ...(Array.isArray(roomState.invitations) ? roomState.invitations.flatMap((invitation) => [
+        invitation.targetUserId,
+        invitation.fromUserId,
+        ...(invitation.playerIds ?? []),
+      ]) : []),
+    );
+    teamIds.push(
+      post.team_id,
+      post.target_team_id,
+      ...collectTeamIdsFromRoomKeys(roomState.partyLeaders),
+      ...collectTeamIdsFromRoomKeys(roomState.partyReserves),
+    );
+    courtIds.push(post.court_id);
+  });
+  applicationRows.forEach((application) => {
+    profileIds.push(application.player_id, ...flattenIdValues(application.player_ids));
+    teamIds.push(application.team_id, application.source_team_id);
+  });
+  return {
+    profileIds: uniqueIds(profileIds),
+    teamIds: uniqueIds(teamIds),
+    courtIds: uniqueIds(courtIds),
+  };
+}
+
+function toClientTeam(row = {}) {
+  return {
+    id: row.id,
+    name: row.name,
+    homeCourt: row.home_court,
+    region: row.region,
+    mmr: row.mmr ?? 1200,
+    wins: row.wins ?? 0,
+    losses: row.losses ?? 0,
+    accent: row.accent,
+    membersPartial: true,
+    members: [],
+  };
+}
+
+function fromRemoteRecruitingApplication(row = {}) {
+  return {
+    kind: row.kind,
+    joinMode: row.kind,
+    teamId: row.team_id,
+    playerId: row.player_id,
+    side: row.side,
+    status: row.status,
+    reserve: row.reserve,
+    position: row.position,
+    playerIds: row.player_ids ?? [],
+    sourceTeamId: row.source_team_id ?? null,
+    sourceEntryId: row.source_entry_id ?? null,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function fromRemoteRecruitingPost(row = {}, applicationsByPost = new Map(), courtById = {}) {
+  const rawScheduledAt = toDateTime(row.scheduled_date, row.scheduled_time, row.scheduled_at);
+  const roomState = row.room_state && typeof row.room_state === "object" ? row.room_state : {};
+  const timingType = roomState.timingType === "instant" || rawScheduledAt === "\uC989\uC2DC" ? "instant" : "scheduled";
+  return {
+    id: row.id,
+    type: row.type,
+    title: row.title,
+    visibility: row.visibility ?? "public",
+    region: row.region,
+    court: row.court_name ?? courtById[row.court_id]?.name ?? "\uBBF8\uC815",
+    mode: row.mode,
+    scheduledDate: row.scheduled_date,
+    scheduledTime: row.scheduled_time ? String(row.scheduled_time).slice(0, 5) : "",
+    scheduledAt: timingType === "instant" ? "\uC989\uC2DC" : rawScheduledAt,
+    timingType,
+    ranked: row.ranked,
+    official: Boolean(row.official),
+    preRegistered: row.pre_registered !== false,
+    ratingScale: Number(row.rating_scale ?? 1),
+    ageRestriction: row.age_restriction ?? "any",
+    allowedAgeGroups: row.allowed_age_groups ?? [],
+    rules: row.rules ?? {},
+    stakes: row.stakes ?? "",
+    courtReserved: Boolean(row.court_reserved),
+    courtFee: row.court_fee ?? "",
+    spots: row.spots,
+    teamId: row.team_id,
+    targetTeamId: row.target_team_id,
+    refereeWanted: Boolean(roomState.refereeWanted || row.referee_id),
+    refereeId: row.referee_id ?? "",
+    refereeTrustMin: row.referee_trust_min ?? 90,
+    statEntryMinutes: row.stat_entry_minutes ?? 60,
+    disputeMinutes: row.dispute_minutes ?? 30,
+    roomState,
+    teamOnly: roomState.teamOnly === true,
+    hostJoinMode: row.host_join_mode,
+    hostSide: row.host_side,
+    hostReady: row.host_ready,
+    sideCapacity: row.side_capacity,
+    playerIds: row.player_ids ?? [],
+    position: row.position,
+    playerId: row.player_id,
+    memo: row.memo,
+    status: row.status,
+    confirmedAt: row.confirmed_at,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    applicants: (applicationsByPost.get(row.id) ?? []).map(fromRemoteRecruitingApplication),
+  };
+}
+
+async function loadCompactRecruitingList(context, {
+  adminLevel = 0,
+  currentUserPostIds = [],
+  explicitPostIds = [],
+  includeMine = false,
+  mineOnly = false,
+  pagePostIds = [],
+  limit = REMOTE_CLIENT_RECRUITING_LIMIT,
+  offset = 0,
+} = {}) {
+  const targetPostIds = uniqueIds([...explicitPostIds, ...(mineOnly ? currentUserPostIds : pagePostIds), ...(includeMine ? currentUserPostIds : [])]);
+  const postRows = await fetchRecruitingRowsByIds(context.supabase, targetPostIds);
+  const postIds = postRows.map((post) => post.id).filter(Boolean);
+  const { data: applicationRows, error: applicationError } = postIds.length
+    ? await context.supabase.from("recruiting_applications").select(RECRUITING_APPLICATION_COLUMNS).in("post_id", postIds)
+    : { data: [], error: null };
+  if (applicationError) throw applicationError;
+
+  const scope = collectRecruitingScope(postRows, applicationRows ?? [], context.profileId ?? "");
+  const [
+    { data: teamRows, error: teamError },
+    { data: profileRows, error: profileError },
+    { data: courtRows, error: courtError },
+  ] = await Promise.all([
+    scope.teamIds.length
+      ? context.supabase.from("teams").select(TEAM_COLUMNS).in("id", scope.teamIds).is("deleted_at", null)
+      : Promise.resolve({ data: [], error: null }),
+    scope.profileIds.length
+      ? context.supabase.from("public_profiles").select(PROFILE_PUBLIC_COLUMNS).in("id", scope.profileIds)
+      : Promise.resolve({ data: [], error: null }),
+    scope.courtIds.length
+      ? context.supabase.from("courts").select(COURT_COLUMNS).in("id", scope.courtIds)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (teamError) throw teamError;
+  if (profileError) throw profileError;
+  if (courtError) throw courtError;
+
+  const currentUser = context.profile
+    ? fromRemoteProfile(context.profile)
+    : createProfileShell(context.authUserId, context.authUser?.email ?? "");
+  const userById = new Map((profileRows ?? []).map((row) => {
+    const user = fromRemoteProfile(row);
+    return [user.id, user];
+  }));
+  userById.set(currentUser.id, { ...(userById.get(currentUser.id) ?? {}), ...currentUser });
+
+  const teams = (teamRows ?? []).map(toClientTeam);
+  const courtById = firstBy(courtRows ?? [], "id");
+  const applicationsByPost = groupBy(applicationRows ?? [], "post_id");
+  const posts = postRows.map((post) => fromRemoteRecruitingPost(post, applicationsByPost, courtById));
+  const settings = {
+    ...DEFAULT_SETTINGS,
+    ...getRemoteAppSettings(context.profile),
+  };
+  const state = normalizeState({
+    currentUserId: currentUser.id,
+    users: [...userById.values()],
+    teams,
+    recruitingPosts: posts,
+    settings,
+  }, { includeDemo: false });
+  const responseState = compactRecruitingListState(state, currentUser.id);
+
+  return {
+    state: responseState,
+    page: {
+      limit,
+      count: mineOnly ? posts.length : pagePostIds.length,
+      offset,
+      nextOffset: offset + pagePostIds.length,
+      cursor: String(offset + pagePostIds.length),
+      exhausted: mineOnly || Boolean(explicitPostIds.length) || pagePostIds.length < limit,
+    },
+    updatedAt: Math.max(
+      ...[...postRows, context.profile].filter(Boolean)
+        .map((row) => new Date(row.updated_at ?? row.created_at ?? 0).getTime())
+        .filter((value) => Number.isFinite(value)),
+      0,
+    ),
+  };
+}
+
 export default async function handler(request, response) {
   if (request.method !== "POST") {
     sendJson(response, 405, { error: "method_not_allowed" });
@@ -297,11 +572,10 @@ export default async function handler(request, response) {
 
   try {
     const body = await readJsonBody(request);
-    const context = await getAuthenticatedContext(request, { allowMissingProfile: true });
+    const context = await getAuthenticatedContext(request, { allowMissingProfile: true, profileSelect: PROFILE_ME_COLUMNS });
     const shouldLoadAdminContext = body.adminContext !== false && body.includeAdminContext !== false;
     const adminLevel = shouldLoadAdminContext && context.profileId ? await getAdminLevel(context) : 0;
-    const requestedLimit = Number(body.limit ?? body.recruitingLimit ?? REMOTE_CLIENT_RECRUITING_LIMIT);
-    const limit = Number.isFinite(requestedLimit) && requestedLimit > 0 ? requestedLimit : REMOTE_CLIENT_RECRUITING_LIMIT;
+    const limit = getCappedLimit(body.limit ?? body.recruitingLimit ?? REMOTE_CLIENT_RECRUITING_LIMIT);
     const mineOnly = body.scope === "mine" || body.mine === true;
     const includeMine = mineOnly || body.includeMine === true;
     const mineLimit = mineOnly ? limit : REMOTE_CLIENT_RECRUITING_LIMIT;
@@ -312,6 +586,23 @@ export default async function handler(request, response) {
     const shouldPageList = !mineOnly && !explicitPostIds.length;
     const pagePostIds = shouldPageList ? await fetchRecruitingPagePostIds(context.supabase, limit, offset) : [];
     const targetPostIds = uniqueIds([...explicitPostIds, ...(mineOnly ? currentUserPostIds : pagePostIds)]);
+    if (listOnly) {
+      const compactResult = await loadCompactRecruitingList(context, {
+        adminLevel,
+        currentUserPostIds,
+        explicitPostIds,
+        includeMine,
+        mineOnly,
+        pagePostIds,
+        limit,
+        offset,
+      });
+      sendJson(response, 200, {
+        ok: true,
+        ...compactResult,
+      });
+      return;
+    }
     const normalized = await loadNormalizedRemoteStateFromClient(
       context.supabase,
       context.authUserId,
