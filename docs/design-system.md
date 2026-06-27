@@ -16,6 +16,8 @@
 
 # RankBall Design System
 
+2026-06-27: Score result cards keep side/team names secondary and the numeric score as the visual center.
+
 이 문서는 UI/CSS/반응형/라이트/다크 수정 기준이다.
 디자인 변경 시 이 문서를 같이 갱신한다.
 

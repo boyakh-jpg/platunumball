@@ -2687,13 +2687,24 @@ html[data-theme="light"] .om-calendar-grid button.active {
 }
 
 .om-score-box > .team-hover-trigger {
-  font-size: clamp(1.85rem, 2.8vw, 2.42rem);
-  font-weight: 1000;
-  line-height: 1.08;
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: clamp(0.78rem, 0.95vw, 0.92rem);
+  font-weight: 900;
+  line-height: 1.12;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .om-score-box > strong {
-  font-size: clamp(1.02rem, 1.42vw, 1.24rem);
+  min-width: 4.5ch;
+  font-size: clamp(1.35rem, 1.9vw, 1.72rem);
+  font-weight: 1000;
+  text-align: center;
 }
 
 /* Shared match/recruiting list readability standard. */
