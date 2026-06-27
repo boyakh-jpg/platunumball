@@ -9,6 +9,91 @@ function getMatchCursor(matches = []) {
   return oldest?.updatedAt ?? oldest?.createdAt ?? "";
 }
 
+function unique(values = []) {
+  return [...new Set(values.filter(Boolean))];
+}
+
+function getMatchUserIds(match = {}) {
+  return unique([
+    match.createdBy,
+    match.refereeId,
+    match.formerRefereeId,
+    ...(match.teamA?.players ?? []),
+    ...(match.teamB?.players ?? []),
+    ...(match.reservePlayers?.teamA ?? []),
+    ...(match.reservePlayers?.teamB ?? []),
+  ]);
+}
+
+function getMatchTeamIds(match = {}) {
+  return unique([match.teamA?.teamId, match.teamB?.teamId]);
+}
+
+function compactUser(user = {}) {
+  return {
+    id: user.id,
+    name: user.name,
+    handle: user.handle,
+    hashtag: user.hashtag,
+    position: user.position,
+    region: user.region,
+    regionSido: user.regionSido,
+    regionDistrict: user.regionDistrict,
+    school: user.school,
+    company: user.company,
+    club: user.club,
+    avatarColor: user.avatarColor,
+    trustScore: user.trustScore,
+    streak: user.streak,
+    ratings: user.ratings,
+    authUserId: user.authUserId,
+    testLoginId: user.testLoginId,
+    birthYear: user.birthYear,
+    ageGroup: user.ageGroup,
+    ageGroupCheckedSeason: user.ageGroupCheckedSeason,
+    onboardingComplete: user.onboardingComplete,
+    profileVersion: user.profileVersion,
+    handleLockedAt: user.handleLockedAt,
+    birthYearLockedAt: user.birthYearLockedAt,
+    nameUpdatedAt: user.nameUpdatedAt,
+    discordConnection: user.discordConnection,
+    discordUserId: user.discordUserId,
+  };
+}
+
+function compactTeam(team = {}) {
+  return {
+    id: team.id,
+    name: team.name,
+    homeCourt: team.homeCourt,
+    region: team.region,
+    mmr: team.mmr,
+    wins: team.wins,
+    losses: team.losses,
+    accent: team.accent,
+    members: team.members ?? [],
+  };
+}
+
+function compactMatchListState(state = {}, profileId = "") {
+  const matches = state.matches ?? [];
+  const userIds = new Set(unique([profileId, ...matches.flatMap(getMatchUserIds)]));
+  const teamIds = new Set(matches.flatMap(getMatchTeamIds));
+  return {
+    ...state,
+    users: (state.users ?? []).filter((user) => userIds.has(user.id)).map(compactUser),
+    teams: (state.teams ?? []).filter((team) => teamIds.has(team.id)).map(compactTeam),
+    affiliations: [],
+    seasons: [],
+    reports: [],
+    notifications: [],
+    discordNotificationDeliveries: [],
+    settings: {
+      theme: state.settings?.theme === "light" ? "light" : "dark",
+    },
+  };
+}
+
 export default async function handler(request, response) {
   if (request.method !== "POST") {
     sendJson(response, 405, { error: "method_not_allowed" });
@@ -40,10 +125,11 @@ export default async function handler(request, response) {
     const profileId = context.profileId ?? normalized?.state?.currentUserId ?? "";
     const state = filterStateForProfile(normalized?.state ?? {}, profileId, adminLevel >= 30);
     const matches = state.matches ?? [];
+    const responseState = body.listOnly === false ? state : compactMatchListState(state, profileId);
     sendJson(response, 200, {
       ok: true,
       state: {
-        ...state,
+        ...responseState,
         recruitingPosts: [],
         tournaments: [],
       },

@@ -1308,6 +1308,7 @@ flowchart TD
 12. `/app/matches` first hydrate uses `scope: "matches"` and does not load recruiting or tournament rows. Direct `?match=` entry starts with 0 list rows and loads the target match through detail load. User-related recruiting rooms are loaded later in idle time for schedule context.
 13. Direct detail entry (`/app/recruiting?post=...`, `/app/matches?match=...`) uses `/api/profile/me` first, then loads only the requested post or match detail.
 14. `/app/matches` first page uses `/api/profile/me` followed by `/api/matches/list`; it does not use `/api/state/load` for the initial match list.
+15. `/api/matches/list` returns compact card state by default: no recruiting/tournament rows, no notifications/reports/seasons, and only the users/teams needed by returned match cards. Full match room data must come from `/api/matches/detail`.
 
 ## 2026-06-27 report scoped reads
 

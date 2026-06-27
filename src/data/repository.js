@@ -85,7 +85,7 @@ import { canChangeProfileName } from "../lib/profileSetup.js";
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const makeId = (prefix) => `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
 const getUserIdentityHashtag = (user = {}) => getUserHashtag(user);
-const DEFAULT_SETTINGS = {
+export const DEFAULT_SETTINGS = {
   theme: "dark",
   privacy: {
     regionRanking: true,
@@ -755,7 +755,7 @@ function ensureDemoRecruitingInvitation(post = {}) {
   };
 }
 
-function normalizeState(state, options = {}) {
+export function normalizeState(state, options = {}) {
   const includeDemo = options.includeDemo !== false;
   const baseState = includeDemo ? clone(initialState) : clone(EMPTY_STATE);
   const notifications = state?.notifications?.length ? state.notifications : includeDemo ? initialState.notifications : [];
@@ -913,7 +913,7 @@ function toDateTime(date, time, fallback) {
   return fallback ?? "일정 미정";
 }
 
-function fromRemoteProfile(row) {
+export function fromRemoteProfile(row) {
   const hashtag = toHashtag(row.hashtag ?? row.handle ?? row.id, row.id);
   const isTestProfile = Boolean(row.test_login_id);
   const testSetupAt = row.updated_at ?? row.created_at ?? TEST_PROFILE_SETUP_AT;
@@ -975,7 +975,7 @@ function fromRemotePayloadRow(row = {}) {
   };
 }
 
-function getRemoteAppSettings(profile = {}) {
+export function getRemoteAppSettings(profile = {}) {
   const settings = profile?.app_settings && typeof profile.app_settings === "object" && !Array.isArray(profile.app_settings)
     ? profile.app_settings
     : {};

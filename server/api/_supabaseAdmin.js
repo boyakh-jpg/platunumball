@@ -80,6 +80,7 @@ function isActiveAppointment(appointment = {}, nowMs = Date.now()) {
 
 export async function getAuthenticatedContext(request, options = {}) {
   const allowMissingProfile = Boolean(options.allowMissingProfile);
+  const profileSelect = options.profileSelect || "id, auth_user_id";
   const supabase = getSupabaseAdminClient();
   const token = getBearerToken(request);
   if (!token) {
@@ -92,7 +93,7 @@ export async function getAuthenticatedContext(request, options = {}) {
   if (testLoginId) {
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("id, test_login_id")
+      .select(profileSelect)
       .eq("test_login_id", testLoginId)
       .maybeSingle();
 
@@ -112,6 +113,7 @@ export async function getAuthenticatedContext(request, options = {}) {
       },
       authUserId: `test:${testLoginId}`,
       profileId: profile.id,
+      profile,
       testLoginId,
       isTestAccount: true,
     };
@@ -127,7 +129,7 @@ export async function getAuthenticatedContext(request, options = {}) {
   const authUserId = userData.user.id;
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("id, auth_user_id")
+    .select(profileSelect)
     .eq("auth_user_id", authUserId)
     .maybeSingle();
 
@@ -152,6 +154,7 @@ export async function getAuthenticatedContext(request, options = {}) {
     authUser: userData.user,
     authUserId,
     profileId: profile.id,
+    profile,
   };
 }
 
