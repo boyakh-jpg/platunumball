@@ -9,6 +9,7 @@ import {
   REMOTE_CLIENT_MATCH_LIMIT,
 } from "../../../src/data/repository.js";
 import { filterStateForProfile } from "../state/load.js";
+import { fetchCurrentUserRecruitingPostIds, loadCompactRecruitingList } from "../recruiting/list.js";
 
 const PROFILE_ME_COLUMNS = "id,name,handle,hashtag,position,region,region_sido,region_district,school,company,club,trust_score,streak,avatar_color,test_login_id,auth_user_id,birth_year,age_group,age_group_checked_season,onboarding_complete,profile_version,handle_locked_at,birth_year_locked_at,name_updated_at,discord_connection,discord_user_id,ratings,created_at,updated_at,app_settings";
 const PROFILE_CARD_COLUMNS = "id,name,handle,hashtag,position,region,trust_score,avatar_color,ratings,age_group,updated_at";
@@ -33,6 +34,14 @@ function getRowCursor(rows = []) {
 
 function unique(values = []) {
   return [...new Set(values.filter(Boolean))];
+}
+
+function mergeById(current = [], incoming = []) {
+  const merged = new Map((current ?? []).filter((item) => item?.id).map((item) => [item.id, item]));
+  (incoming ?? []).forEach((item) => {
+    if (item?.id) merged.set(item.id, item);
+  });
+  return [...merged.values()];
 }
 
 function flattenIdValues(value) {
@@ -333,6 +342,24 @@ function compactMatchListState(state = {}, profileId = "") {
   };
 }
 
+async function loadCurrentRecruitingSchedule(context, adminLevel = 0) {
+  if (!context.profileId) return null;
+  try {
+    const currentUserPostIds = await fetchCurrentUserRecruitingPostIds(context.supabase, context.profileId, 12);
+    if (!currentUserPostIds.length) return null;
+    return await loadCompactRecruitingList(context, {
+      adminLevel,
+      currentUserPostIds,
+      includeMine: true,
+      mineOnly: true,
+      limit: 12,
+    });
+  } catch (error) {
+    console.warn("Match list recruiting schedule skipped.", error.message);
+    return null;
+  }
+}
+
 async function loadNormalizedMatchList(context, body = {}, adminLevel = 0, limit = REMOTE_CLIENT_MATCH_LIMIT) {
   const normalized = await loadNormalizedRemoteStateFromClient(
     context.supabase,
@@ -371,6 +398,9 @@ async function loadNormalizedMatchList(context, body = {}, adminLevel = 0, limit
 
 async function loadCompactMatchList(context, body = {}, adminLevel = 0, limit = REMOTE_CLIENT_MATCH_LIMIT) {
   const cursor = String(body.cursor ?? body.matchUpdatedBefore ?? "").trim();
+  const recruitingSchedulePromise = !cursor && body.includeRecruitingSchedule !== false
+    ? loadCurrentRecruitingSchedule(context, adminLevel)
+    : Promise.resolve(null);
   let matchQuery = context.supabase
     .from("matches")
     .select(MATCH_LIST_COLUMNS)
@@ -442,11 +472,18 @@ async function loadCompactMatchList(context, body = {}, adminLevel = 0, limit = 
     matches,
     settings,
   }, { includeDemo: false });
+  const recruitingSchedule = await recruitingSchedulePromise;
+  const recruitingState = recruitingSchedule?.state ?? {};
+  const mergedState = {
+    ...state,
+    users: mergeById(state.users, recruitingState.users),
+    teams: mergeById(state.teams, recruitingState.teams),
+    recruitingPosts: recruitingState.recruitingPosts ?? [],
+  };
 
   return {
     state: {
-      ...state,
-      recruitingPosts: [],
+      ...mergedState,
       tournaments: [],
       affiliations: [],
       seasons: [],

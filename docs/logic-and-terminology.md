@@ -1323,10 +1323,10 @@ flowchart TD
 9. Full user/team directory data is loaded on demand through `/api/directory/load` for Rankings, Teams, Create Match, and Settings.
 10. Initial client hydrate uses 5 matches and 5 recruiting posts; additional list pages use 50 rows.
 11. `/app/recruiting` first hydrate does not load match rows; direct `?post=` entry also skips recruiting list rows. Recruiting list screens add more rows only through `더 보기` or targeted detail loads.
-12. `/app/matches` first hydrate uses `scope: "matches"` and does not load recruiting or tournament rows. Direct `?match=` entry starts with 0 list rows and loads the target match through detail load. User-related recruiting rooms are loaded later in idle time for schedule context.
+12. `/app/matches` first hydrate uses `/api/matches/list` compact scope and does not load tournaments. Direct `?match=` entry starts with 0 list rows and loads the target match through detail load. User-related open recruiting rooms may be included in the first compact match list response for schedule context.
 13. Direct detail entry (`/app/recruiting?post=...`, `/app/matches?match=...`) uses `/api/profile/me` first, then loads only the requested post or match detail.
 14. `/app/matches` first page uses `/api/matches/list` directly with compact current-profile data; it does not wait for `/api/profile/me` before loading the list.
-15. `/api/matches/list` returns compact card state by default: no recruiting/tournament rows, no notifications/reports/seasons, and only the users/teams needed by returned match cards. Full match room data must come from `/api/matches/detail`.
+15. `/api/matches/list` returns compact card state by default: no tournament rows, no notifications/reports/seasons, and only the users/teams needed by returned match cards plus current-user open recruiting schedule rows on the first page. Full match room data must come from `/api/matches/detail`.
 16. Match pagination cursor follows the server page cursor, not a cursor recalculated from locally merged match rows.
 17. `/api/matches/list` list-only reads must not fetch full `team_members` rosters for related teams; full roster data belongs to `/api/matches/detail` or directory loads.
 18. `/api/profile/me` bootstraps the current user's own teams, those teams' member ids, and compact public profiles for other team members so team-room creation and mine/joined filters do not wait for broad list hydration. It must not fetch the current user's public profile again after the private profile is already loaded.
@@ -1335,10 +1335,11 @@ flowchart TD
 21. `checkInMatchPlayer` may use `rankball_match_checkin_action()` as a SQL reducer only for no-referee host-operated active-player check-in. Referee, reserve, party, self-check-in, future scheduled, and unsupported states must fall back to the existing authoritative match action path.
 22. `startMatch` may use `rankball_match_start_action()` as a SQL reducer only for no-referee host-operated matches with active-player attendance complete. Referee, reserve, party, future scheduled, and unsupported states must fall back to the existing authoritative match action path.
 23. `addMatchLatePlayer`/`removeMatchLatePlayer` may use `rankball_match_late_player_action()` as a SQL reducer only for no-referee host-operated postgame matches inside the stat entry window. The SQL path only accepts a single anonymous late-player add or a single excluded late-player remove; registered late-player add and unsupported states fall back to the existing authoritative match action path.
-24. `/api/matches/list` default reads are direct list-card queries. They load only match rows, match_players, the current profile, compact teams, and compact courts. Full authoritative match state still belongs to `/api/matches/detail` or `listOnly=false`.
+24. `/api/matches/list` default reads are direct list-card queries. They load match rows, match_players, the current profile, compact teams, compact courts, and only on the first page current-user open recruiting schedule rows. Full authoritative match state still belongs to `/api/matches/detail` or `listOnly=false`.
 25. Screen-specific server state such as `/api/profile/me`, `/api/matches/list`, `/api/recruiting/list`, and `/api/state/load` is normalized on the client before render so direct route entry receives the same base arrays/settings shape as other app routes.
 26. Match `parties` must be an array in client state. DB/API rows that carry `rules.parties` or `parties` as an object are normalized to an array before room/list helpers read them.
 27. Matches 화면의 idle `scope: "mine"` 모집 context load는 현재 user id마다 최대 1번만 실행한다. app state merge마다 다시 실행하면 첫 렌더 몇 초 뒤 내가 만든 방/참여방 숫자가 바뀐 것처럼 보일 수 있다.
+28. `/api/matches/list` 첫 페이지는 경기 메뉴 false-empty를 막기 위해 현재 사용자의 open 모집방 일정도 compact state로 함께 반환할 수 있다. 추가 match page는 모집방을 다시 싣지 않는다.
 
 ## 2026-06-27 report scoped reads
 

@@ -286,7 +286,7 @@ async function fetchPostIds(query, idColumn = "id") {
   return (data ?? []).map((row) => row?.[idColumn]).filter(Boolean);
 }
 
-async function fetchCurrentUserRecruitingPostIds(client, profileId = "", limit = REMOTE_CLIENT_RECRUITING_LIMIT) {
+export async function fetchCurrentUserRecruitingPostIds(client, profileId = "", limit = REMOTE_CLIENT_RECRUITING_LIMIT) {
   if (!profileId) return [];
   const cappedLimit = Math.max(1, Math.min(80, Number(limit) || REMOTE_CLIENT_RECRUITING_LIMIT));
   if (currentUserRecruitingRpcAvailable) {
@@ -471,7 +471,7 @@ function fromRemoteRecruitingPost(row = {}, applicationsByPost = new Map(), cour
   };
 }
 
-async function loadCompactRecruitingList(context, {
+export async function loadCompactRecruitingList(context, {
   adminLevel = 0,
   currentUserPostIds = [],
   explicitPostIds = [],
