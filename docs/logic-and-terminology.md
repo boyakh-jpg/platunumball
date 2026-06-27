@@ -1334,7 +1334,7 @@ flowchart TD
 3. 공개방 전환은 사용자가 이미 고른 개인전/팀방 방식을 임의로 `team`으로 덮어쓰지 않는다.
 4. `/api/recruiting/list`는 `postId`/`recruitingPostIds` 단일 로드와 `scope: "mine"` 로드를 지원한다.
 5. Recruiting 화면은 최초 5개 목록 밖에 있는 내 생성/참여 open 방을 `scope: "mine"`로 보강 로드한다.
-6. `scope: "mine"`은 `rankball_current_recruiting_post_ids()`를 우선 사용하고, DB 함수가 없으면 기존 PostREST id 조회 fallback을 사용한다.
+6. `scope: "mine"`은 `rankball_current_recruiting_post_ids()` DB RPC를 우선 사용해 open owned/joined/referee recruiting post id를 한 번에 읽고, DB 함수가 없을 때만 기존 PostREST id 조회 fallback을 사용한다.
 7. Recruiting mutation이 진행 중이거나 직후인 post는 목록 보강 로드가 오래된 row로 덮어쓰지 않는다.
 8. 서버 core lock 검증은 구버전 DB row의 빈 `host_join_mode`, `age_restriction` 값을 앱 normalization 기본값과 같은 기준으로 비교한다.
 9. 서버 reducer가 참여를 차단하면 `recruiting_sync_permission_denied`로 뭉개지 말고 reducer notification의 실제 차단 사유를 반환한다.

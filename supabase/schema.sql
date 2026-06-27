@@ -3144,6 +3144,64 @@ $$;
 revoke all on function public.rankball_recruiting_interest_player_action(text, text, text, text, text, boolean, text) from public;
 grant execute on function public.rankball_recruiting_interest_player_action(text, text, text, text, text, boolean, text) to service_role;
 
+create or replace function public.rankball_current_recruiting_post_ids(
+  p_profile_id text,
+  p_limit integer default 50
+)
+returns table(post_id text, updated_at timestamptz)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  with params as (
+    select
+      nullif(btrim(p_profile_id), '') as profile_id,
+      greatest(1, least(80, coalesce(p_limit, 50)))::integer as row_limit
+  ),
+  candidate_rows as (
+    select post.id as post_id, post.updated_at
+    from public.recruiting_posts post, params
+    where params.profile_id is not null
+      and post.status = 'open'
+      and (
+        post.player_id = params.profile_id
+        or post.room_state->>'ownerId' = params.profile_id
+        or coalesce(post.player_ids, '[]'::jsonb) ? params.profile_id
+        or post.referee_id = params.profile_id
+      )
+
+    union all
+
+    select
+      post.id as post_id,
+      greatest(coalesce(post.updated_at, post.created_at), coalesce(application.updated_at, application.created_at)) as updated_at
+    from public.recruiting_applications application
+    join public.recruiting_posts post on post.id = application.post_id
+    cross join params
+    where params.profile_id is not null
+      and post.status = 'open'
+      and (
+        application.player_id = params.profile_id
+        or coalesce(application.player_ids, '[]'::jsonb) ? params.profile_id
+      )
+  ),
+  ranked_rows as (
+    select
+      candidate_rows.post_id,
+      max(candidate_rows.updated_at) as updated_at
+    from candidate_rows
+    group by candidate_rows.post_id
+  )
+  select ranked_rows.post_id, ranked_rows.updated_at
+  from ranked_rows, params
+  order by ranked_rows.updated_at desc nulls last, ranked_rows.post_id desc
+  limit (select row_limit from params);
+$$;
+
+revoke all on function public.rankball_current_recruiting_post_ids(text, integer) from public;
+grant execute on function public.rankball_current_recruiting_post_ids(text, integer) to service_role;
+
 create or replace function public.rankball_recruiting_action(
   p_actor_profile_id text,
   p_action text,
