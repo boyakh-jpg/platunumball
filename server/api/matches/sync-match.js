@@ -360,6 +360,10 @@ function getMatchPlayedIds(match = {}) {
   return Object.values(match.playedPlayerIds ?? match.rules?.playedPlayerIds ?? {}).flatMap(toArray);
 }
 
+function getAnonymousPlayerIds(match = {}) {
+  return new Set(Object.keys(match.anonymousPlayers ?? {}).filter(Boolean));
+}
+
 function validateMatchShape(match = {}) {
   const capacity = getModeCapacity(match.mode);
   if ((match.teamA?.players ?? []).filter(Boolean).length > capacity) reject(400, "team_a_exceeds_mode_capacity");
@@ -380,18 +384,20 @@ function getSideScopedIds(match = {}, sideName) {
 }
 
 async function validateMatchRosterEligibility(supabase, match = {}) {
+  const anonymousPlayerIds = getAnonymousPlayerIds(match);
+  const realProfileIds = (ids = []) => ids.filter((userId) => !anonymousPlayerIds.has(userId));
   const rosterIds = [
     ...getMatchPlayerIds(match),
     ...getMatchReserveIds(match),
     ...getMatchPlayedIds(match),
   ];
-  await assertProfilesExist(supabase, rosterIds, "match_player_not_found");
+  await assertProfilesExist(supabase, realProfileIds(rosterIds), "match_player_not_found");
 
   const rostersByTeam = new Map();
   ["teamA", "teamB"].forEach((sideName) => {
     const teamId = match[sideName]?.teamId;
     if (!teamId) return;
-    addTeamRoster(rostersByTeam, teamId, getSideScopedIds(match, sideName));
+    addTeamRoster(rostersByTeam, teamId, realProfileIds(getSideScopedIds(match, sideName)));
   });
   await assertTeamRosterMembers(supabase, rostersByTeam, "match_team_roster_not_member");
 }

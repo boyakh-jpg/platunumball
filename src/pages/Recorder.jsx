@@ -184,6 +184,7 @@ export default function Recorder({ app }) {
   const beforeStart = Boolean(recordWindow?.beforeStart);
   const saveWindowOpen = selectedMatch && !beforeStart && (recordWindow?.beforeEnd || recordWindow?.statOpen || canEditDisputeDraft);
   const hasDirtyStats = Object.keys(dirtyStats).length > 0;
+  const canEditStats = Boolean(selectedMatch && !["confirmed"].includes(selectedMatch.status) && (canEditDisputeDraft || selectedMatch.status !== "disputed") && editablePlayerIds.length && saveWindowOpen);
   const canSave = Boolean(selectedMatch && !["confirmed"].includes(selectedMatch.status) && (canEditDisputeDraft || selectedMatch.status !== "disputed") && editablePlayerIds.length && saveWindowOpen && hasDirtyStats);
   const canEndLiveMatch = Boolean(selectedMatch && currentUserCanOperatePostStart && roomPhase === "live" && !selectedMatch.endedAt && !selectedMatch.result);
   const canEditPostgameRoster = Boolean(selectedMatch && currentUserCanOperatePostStart && roomPhase === "postgame" && recordWindow?.statOpen && !selectedMatch.result);
@@ -308,7 +309,7 @@ export default function Recorder({ app }) {
                 <div className="recorder-stat-grid">
                   {PLAYER_STAT_FIELDS.map((field) => {
                     const value = Number(stats[playerId]?.[field.id] ?? 0);
-                    const editable = canSave && allowedFields.has(field.id);
+                    const editable = canEditStats && allowedFields.has(field.id);
 
                     return (
                       <div className={editable ? "recorder-stat-stepper editable" : "recorder-stat-stepper"} key={field.id}>

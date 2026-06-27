@@ -1160,6 +1160,7 @@ flowchart TD
 4. `POST /api/matches/sync-match` must reject missing match roster profile ids.
 5. Match sides with `teamId` must keep active players, reserve players, and `playedPlayerIds` inside that team's `team_members` roster.
 6. Personal sides without `teamId` are not team-membership gated.
+7. Match postgame anonymous players stored in `anonymousPlayers` may appear in `playedPlayerIds` and result stats without a `profiles` row or `team_members` row.
 
 ## 2026-06-26 frontend server caller thinning
 
