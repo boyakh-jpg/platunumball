@@ -225,6 +225,20 @@ function getRecruitingPaginationCursor(posts = []) {
   return oldest?.updatedAt ?? oldest?.createdAt ?? "";
 }
 
+function getRecruitingPaginationOffset(page = null, fallbackOffset = 0) {
+  const nextOffset = Number(page?.nextOffset ?? page?.cursor);
+  if (Number.isFinite(nextOffset) && nextOffset >= 0) return Math.floor(nextOffset);
+
+  const offset = Number(page?.offset);
+  const count = Number(page?.count);
+  if (Number.isFinite(offset) && offset >= 0 && Number.isFinite(count) && count >= 0) {
+    return Math.floor(offset + count);
+  }
+
+  const fallback = Number(fallbackOffset);
+  return Number.isFinite(fallback) && fallback >= 0 ? Math.floor(fallback) : 0;
+}
+
 function mergeRemoteMatchPage(state, remoteState = {}) {
   const nextMatches = remoteState.matches ?? [];
   if (!nextMatches.length) return state;
@@ -496,7 +510,7 @@ export function useAppData(authUser = null) {
   const [profileBindings, setProfileBindings] = useState(() => readProfileBindings());
   const [adminContext, setAdminContext] = useState(EMPTY_ADMIN_CONTEXT);
   const [matchPagination, setMatchPagination] = useState({ loading: false, exhausted: !isSupabaseConfigured, error: "", cursor: "" });
-  const [recruitingPagination, setRecruitingPagination] = useState({ loading: false, exhausted: !isSupabaseConfigured, error: "", cursor: "" });
+  const [recruitingPagination, setRecruitingPagination] = useState({ loading: false, exhausted: !isSupabaseConfigured, error: "", cursor: "", offset: 0 });
   const [directoryStatus, setDirectoryStatus] = useState({ loading: false, loaded: !isSupabaseConfigured, error: "" });
   const [remoteReady, setRemoteReady] = useState(!isSupabaseConfigured);
   const adminContextRef = useRef(EMPTY_ADMIN_CONTEXT);
@@ -539,7 +553,7 @@ export function useAppData(authUser = null) {
       remoteReadyRef.current = !isSupabaseConfigured;
       setRemoteReady(!isSupabaseConfigured);
       setMatchPagination({ loading: false, exhausted: true, error: "", cursor: "" });
-      setRecruitingPagination({ loading: false, exhausted: true, error: "", cursor: "" });
+      setRecruitingPagination({ loading: false, exhausted: true, error: "", cursor: "", offset: 0 });
       setDirectoryStatus({ loading: false, loaded: true, error: "" });
       return undefined;
     }
@@ -576,6 +590,7 @@ export function useAppData(authUser = null) {
             exhausted: initialRecruitingLimit <= 0 || Boolean(remoteMeta.recruitingPage?.exhausted) || (maintainedState.recruitingPosts?.length ?? 0) < initialRecruitingLimit,
             error: "",
             cursor: remoteMeta.recruitingPage?.cursor ?? getRecruitingPaginationCursor(maintainedState.recruitingPosts),
+            offset: getRecruitingPaginationOffset(remoteMeta.recruitingPage, maintainedState.recruitingPosts?.length ?? 0),
           });
         }
         remoteReadyRef.current = true;
@@ -585,7 +600,7 @@ export function useAppData(authUser = null) {
         console.warn("Supabase hydration failed. Remote state remains empty.", error.message);
         remoteReadyRef.current = true;
         setMatchPagination({ loading: false, exhausted: true, error: error.message ?? "state_load_failed", cursor: "" });
-        setRecruitingPagination({ loading: false, exhausted: true, error: error.message ?? "state_load_failed", cursor: "" });
+        setRecruitingPagination({ loading: false, exhausted: true, error: error.message ?? "state_load_failed", cursor: "", offset: 0 });
         if (mounted) setRemoteReady(true);
       });
 
@@ -848,11 +863,7 @@ export function useAppData(authUser = null) {
 
   const loadMoreRecruiting = useCallback(async () => {
     if (!isSupabaseConfigured || !authUserId || recruitingPagination.loading || recruitingPagination.exhausted) return false;
-    const cursor = recruitingPagination.cursor || getRecruitingPaginationCursor(state.recruitingPosts);
-    if (!cursor) {
-      setRecruitingPagination({ loading: false, exhausted: true, error: "", cursor: "" });
-      return false;
-    }
+    const offset = getRecruitingPaginationOffset(recruitingPagination, state.recruitingPosts?.length ?? 0);
     setRecruitingPagination((prev) => ({ ...prev, loading: true, error: "" }));
     try {
       const result = await postServerAction(
@@ -861,7 +872,7 @@ export function useAppData(authUser = null) {
           authUserId,
           authEmail,
           limit: REMOTE_CLIENT_RECRUITING_LIMIT,
-          cursor,
+          offset,
           adminContext: false,
         },
         { allowWhenDisabled: true },
@@ -869,19 +880,21 @@ export function useAppData(authUser = null) {
       const remoteState = filterPendingRecruitingPosts(result?.state ?? {}, pendingRecruitingPostIdsRef.current, recentRecruitingMutationTimesRef.current);
       const nextPosts = remoteState.recruitingPosts ?? [];
       setState((prev) => mergeRemoteRecruitingPage(prev, remoteState));
+      const pageHasExhausted = typeof result?.page?.exhausted === "boolean";
       setRecruitingPagination({
         loading: false,
-        exhausted: Boolean(result?.page?.exhausted) || nextPosts.length < REMOTE_CLIENT_RECRUITING_LIMIT,
+        exhausted: pageHasExhausted ? result.page.exhausted : nextPosts.length < REMOTE_CLIENT_RECRUITING_LIMIT,
         error: "",
-        cursor: result?.page?.cursor ?? cursor,
+        cursor: result?.page?.cursor ?? String(offset + nextPosts.length),
+        offset: getRecruitingPaginationOffset(result?.page, offset + nextPosts.length),
       });
       return nextPosts.length;
     } catch (error) {
       console.warn("More recruiting load failed.", error.message);
-      setRecruitingPagination({ loading: false, exhausted: false, error: error.message ?? "recruiting_page_load_failed", cursor });
+      setRecruitingPagination((prev) => ({ ...prev, loading: false, exhausted: false, error: error.message ?? "recruiting_page_load_failed" }));
       return false;
     }
-  }, [authEmail, authUserId, recruitingPagination.cursor, recruitingPagination.exhausted, recruitingPagination.loading, setState, state.recruitingPosts]);
+  }, [authEmail, authUserId, recruitingPagination, setState, state.recruitingPosts]);
 
   const loadRecruitingPost = useCallback(async (postId) => {
     if (!isSupabaseConfigured || !authUserId || !postId) return false;
