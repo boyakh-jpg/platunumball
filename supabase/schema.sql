@@ -3552,6 +3552,12 @@ as $$
         or post.room_state->>'ownerId' = params.profile_id
         or coalesce(post.player_ids, '[]'::jsonb) ? params.profile_id
         or post.referee_id = params.profile_id
+        or exists (
+          select 1
+          from jsonb_array_elements(coalesce(post.room_state->'invitations', '[]'::jsonb)) invitation
+          where invitation->>'targetUserId' = params.profile_id
+            and coalesce(invitation->>'status', 'pending') = 'pending'
+        )
       )
 
     union all
@@ -3725,7 +3731,7 @@ begin
   row_sort_at := coalesce(post_row.updated_at, post_row.created_at, now());
   owner_id := coalesce(nullif(post_row.room_state->>'ownerId', ''), nullif(post_row.player_id, ''));
 
-  if post_row.status = 'open' and post_row.visibility = 'public' then
+  if post_row.status = 'open' and coalesce(post_row.visibility, 'public') = 'public' then
     perform public.rankball_upsert_room_feed(
       '*',
       'recruiting',
@@ -3733,7 +3739,7 @@ begin
       'region_public',
       region_key,
       post_row.status,
-      post_row.visibility,
+      coalesce(post_row.visibility, 'public'),
       row_sort_at,
       '{}'::jsonb
     );
@@ -3744,11 +3750,11 @@ begin
   end if;
 
   if owner_id is not null then
-    perform public.rankball_upsert_room_feed(owner_id, 'recruiting', post_row.id, 'owner', region_key, post_row.status, post_row.visibility, row_sort_at, '{}'::jsonb);
+    perform public.rankball_upsert_room_feed(owner_id, 'recruiting', post_row.id, 'owner', region_key, post_row.status, coalesce(post_row.visibility, 'public'), row_sort_at, '{}'::jsonb);
   end if;
 
   if nullif(post_row.player_id, '') is not null and post_row.player_id is distinct from owner_id then
-    perform public.rankball_upsert_room_feed(post_row.player_id, 'recruiting', post_row.id, 'participant', region_key, post_row.status, post_row.visibility, row_sort_at, '{}'::jsonb);
+    perform public.rankball_upsert_room_feed(post_row.player_id, 'recruiting', post_row.id, 'participant', region_key, post_row.status, coalesce(post_row.visibility, 'public'), row_sort_at, '{}'::jsonb);
   end if;
 
   for player_value in
@@ -3756,12 +3762,12 @@ begin
     from jsonb_array_elements_text(coalesce(post_row.player_ids, '[]'::jsonb))
   loop
     if nullif(player_value, '') is not null and player_value is distinct from owner_id then
-      perform public.rankball_upsert_room_feed(player_value, 'recruiting', post_row.id, 'participant', region_key, post_row.status, post_row.visibility, row_sort_at, '{}'::jsonb);
+      perform public.rankball_upsert_room_feed(player_value, 'recruiting', post_row.id, 'participant', region_key, post_row.status, coalesce(post_row.visibility, 'public'), row_sort_at, '{}'::jsonb);
     end if;
   end loop;
 
   if nullif(post_row.referee_id, '') is not null then
-    perform public.rankball_upsert_room_feed(post_row.referee_id, 'recruiting', post_row.id, 'referee', region_key, post_row.status, post_row.visibility, row_sort_at, '{}'::jsonb);
+    perform public.rankball_upsert_room_feed(post_row.referee_id, 'recruiting', post_row.id, 'referee', region_key, post_row.status, coalesce(post_row.visibility, 'public'), row_sort_at, '{}'::jsonb);
   end if;
 
   for application_row in
@@ -3770,7 +3776,7 @@ begin
     where post_id = post_row.id
   loop
     if nullif(application_row.player_id, '') is not null then
-      perform public.rankball_upsert_room_feed(application_row.player_id, 'recruiting', post_row.id, 'participant', region_key, post_row.status, post_row.visibility, coalesce(application_row.updated_at, application_row.created_at, row_sort_at), '{}'::jsonb);
+      perform public.rankball_upsert_room_feed(application_row.player_id, 'recruiting', post_row.id, 'participant', region_key, post_row.status, coalesce(post_row.visibility, 'public'), coalesce(application_row.updated_at, application_row.created_at, row_sort_at), '{}'::jsonb);
     end if;
 
     for player_value in
@@ -3778,7 +3784,7 @@ begin
       from jsonb_array_elements_text(coalesce(application_row.player_ids, '[]'::jsonb))
     loop
       if nullif(player_value, '') is not null then
-        perform public.rankball_upsert_room_feed(player_value, 'recruiting', post_row.id, 'participant', region_key, post_row.status, post_row.visibility, coalesce(application_row.updated_at, application_row.created_at, row_sort_at), '{}'::jsonb);
+        perform public.rankball_upsert_room_feed(player_value, 'recruiting', post_row.id, 'participant', region_key, post_row.status, coalesce(post_row.visibility, 'public'), coalesce(application_row.updated_at, application_row.created_at, row_sort_at), '{}'::jsonb);
       end if;
     end loop;
   end loop;
@@ -3795,7 +3801,7 @@ begin
         'invited',
         region_key,
         post_row.status,
-        post_row.visibility,
+        coalesce(post_row.visibility, 'public'),
         coalesce(nullif(invitation_row->>'updatedAt', '')::timestamptz, nullif(invitation_row->>'createdAt', '')::timestamptz, row_sort_at),
         '{}'::jsonb
       );

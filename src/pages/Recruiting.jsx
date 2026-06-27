@@ -71,7 +71,7 @@ const SIDE_LABELS = {
   teamA: "A사이드",
   teamB: "B사이드",
 };
-const AUTO_RECRUITING_TITLE_PATTERN = /^(모집 중\s*\d*|정규전|친선전|대기방|매치 큐)$/;
+const AUTO_RECRUITING_TITLE_PATTERN = /^(모집방|모집 중\s*\d*|정규전|친선전|대기방|매치 큐)$/;
 const RECORDABLE_RESERVE_SOURCES = new Set(["reserve-entry", "team-reserve"]);
 const MAX_RESERVE_PLAYERS_PER_SIDE = 2;
 const ROOM_SLOT_POSITION_AVATARS = {
@@ -104,6 +104,15 @@ function getRecruitingCardTitle(post) {
     .replace(/\s+(1v1|2v2|3v3|5v5)$/i, "")
     .trim();
   return AUTO_RECRUITING_TITLE_PATTERN.test(title) ? "" : title;
+}
+
+function getRecruitingFallbackTitle(post = {}) {
+  const competition = post.ranked === false ? "친선전" : "정규전";
+  return `${competition} ${post.mode || "매치"} 매치 큐`;
+}
+
+function getRecruitingDisplayTitle(post = {}, fallback = "") {
+  return getRecruitingCardTitle(post) || fallback || getRecruitingFallbackTitle(post);
 }
 
 function getTodayInputValue() {
@@ -2085,7 +2094,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         );
         const canMoveMatchSides = Boolean(canManageMatchCheckin && selectedPost.hostJoinMode !== "team");
         const roomCompetitionLabel = getRoomCompetitionLabel(selectedPost);
-        const roomDisplayTitle = cleanRoomTitle(selectedPost.title, roomCompetitionLabel);
+        const roomDisplayTitle = getRecruitingDisplayTitle(selectedPost, `${roomCompetitionLabel} ${selectedPost.mode || ""} 매치 큐`.trim());
         const roomVisibilityLabel = getRoomVisibilityLabel(sourceMatch ?? selectedPost, selectedPost);
         const roomVisibilityTone = roomVisibilityLabel === "대회방" ? "gold" : roomVisibilityLabel === "비공개방" ? "blue" : "green";
         const sourceTeamSideCount = ["teamA", "teamB"].filter((sideName) => Boolean(sourceMatch?.[sideName]?.teamId)).length;
