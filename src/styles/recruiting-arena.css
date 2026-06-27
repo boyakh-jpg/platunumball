@@ -2986,6 +2986,31 @@ html[data-theme="light"] .arena-compose-drawer {
     padding: 12px;
   }
 
+  .arena-slot-popover-backdrop {
+    align-items: center;
+    padding: max(12px, env(safe-area-inset-top)) 10px max(16px, env(safe-area-inset-bottom));
+  }
+
+  .arena-slot-command-popover.floating.anchored,
+  .arena-slot-command-popover.floating.anchored.below,
+  .arena-slot-command-popover.floating.anchored.above {
+    position: relative;
+    top: auto;
+    left: auto;
+    width: calc(100vw - 20px);
+    max-height: calc(100dvh - 24px);
+    overflow: auto;
+    transform: none;
+  }
+
+  .arena-slot-command-popover .search-picker-results.is-floating {
+    position: static;
+    min-height: min(190px, 36dvh);
+    max-height: min(420px, 48dvh);
+    overflow: auto;
+    margin-top: 8px;
+  }
+
   .arena-lobby-arena {
     --room-slot-gap: 5px;
     --room-slot-width: clamp(54px, 16vw, 68px);
