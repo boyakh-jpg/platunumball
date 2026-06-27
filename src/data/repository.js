@@ -15,6 +15,7 @@ import {
 import { initialState } from "../lib/mockData.js";
 import { findCourtDuplicate, getCourtDuplicateMessage, getRegisteredCourts, normalizeCourtLayout, normalizeCourtSurfaceType } from "../lib/courts.js";
 import {
+  canOperatorSubmitMissingPostgameResult,
   getAgreementStatus,
   getApprovalStatus,
   getAllowedStatFields,
@@ -3592,6 +3593,7 @@ export function submitMatchResult(state, matchId, result) {
   const currentUserCanOperatePostStart = currentUserCanOperateStartedMatch(state, match);
   const currentUserCanDisputeDraft = currentUserCanOperatePostStart && match.status === "disputed";
   const currentUserCanPostgameScore = currentUserCanOperatePostStart && roomPhase === "postgame" && !["confirmed", "disputed"].includes(match.status);
+  const currentUserCanSubmitMissingPostgameResult = canOperatorSubmitMissingPostgameResult(match, currentUserCanOperatePostStart);
   const currentUserCanRecord = currentUserIsEligibleReferee || currentUserCanDisputeDraft || currentUserCanPostgameScore || (!hasReferee && (recorderSides.length > 0 || Boolean(currentSideName)));
 
   if (hasReferee && !currentUserIsEligibleReferee) {
@@ -3675,7 +3677,7 @@ export function submitMatchResult(state, matchId, result) {
       ],
     };
   }
-  if (!currentUserCanDisputeDraft && ((recordWindow.beforeEnd && !liveRecordAllowed) || (!recordWindow.beforeEnd && !recordWindow.statOpen))) {
+  if (!currentUserCanDisputeDraft && ((recordWindow.beforeEnd && !liveRecordAllowed) || (!recordWindow.beforeEnd && !recordWindow.statOpen && !currentUserCanSubmitMissingPostgameResult))) {
     return {
       ...state,
       notifications: [
@@ -4318,8 +4320,9 @@ export function endMatch(state, matchId) {
 function canEditPostgameRoster(state, match) {
   if (!match || ["approval", "confirmed", "void", "cancelled", "disputed"].includes(match.status)) return false;
   if (getMatchRoomPhase(match).phase !== "postgame") return false;
-  if (getMatchRecordWindow(match).statExpired) return false;
-  return currentUserCanOperateStartedMatch(state, match);
+  const canOperatePostStart = currentUserCanOperateStartedMatch(state, match);
+  if (getMatchRecordWindow(match).statExpired && !canOperatorSubmitMissingPostgameResult(match, canOperatePostStart)) return false;
+  return canOperatePostStart;
 }
 
 function makeAnonymousMatchPlayer(playerId, name) {

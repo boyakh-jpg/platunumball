@@ -500,6 +500,13 @@ export function getMatchRecordWindow(match = {}, now = Date.now()) {
   };
 }
 
+export function canOperatorSubmitMissingPostgameResult(match = {}, canOperatePostStart = false, now = Date.now()) {
+  if (!canOperatePostStart || match.result) return false;
+  if (["confirmed", "void", "cancelled", "disputed"].includes(match.status)) return false;
+  if (!getMatchEndDate(match)) return false;
+  return getMatchRoomPhase(match, now).phase === "postgame";
+}
+
 export function getAllowedStatFields(match = {}, userId, playerId = userId) {
   if (isMatchReferee(match, userId)) return PLAYER_STAT_FIELDS;
   const playerSideName = getMatchRosterSideName(match, playerId);

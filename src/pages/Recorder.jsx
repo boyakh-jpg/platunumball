@@ -10,6 +10,7 @@ import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import { PLAYER_STAT_FIELDS } from "../lib/constants.js";
 import { getUserHashtag } from "../lib/handles.js";
 import {
+  canOperatorSubmitMissingPostgameResult,
   getAllowedStatFields,
   getMatchHostPlayerId,
   getMatchReservePlayerIds,
@@ -172,6 +173,7 @@ export default function Recorder({ app }) {
   const currentUserCanOperatePostStart = Boolean(selectedMatch && (selectedMatchHasReferee ? currentUserIsEligibleReferee : currentUserIsHost));
   const currentUserCanFileDispute = Boolean(selectedMatch && (currentUserCanOperatePostStart || getMatchTrustFeedbackParticipantIds(selectedMatch).includes(user.id)));
   const currentUserCanPostgameScore = Boolean(currentUserCanOperatePostStart && roomPhase === "postgame" && !["confirmed", "disputed"].includes(selectedMatch.status));
+  const currentUserCanSubmitMissingPostgameResult = canOperatorSubmitMissingPostgameResult(selectedMatch, currentUserCanOperatePostStart);
   const postStartOperatorLabel = selectedMatchHasReferee ? "심판" : "방장";
   const recorderSides = selectedMatch ? getStatRecorderSides(selectedMatch, user.id) : [];
   const canEditDisputeDraft = Boolean(selectedMatch?.status === "disputed" && currentUserCanOperatePostStart && recordWindow?.disputeOpen);
@@ -182,12 +184,12 @@ export default function Recorder({ app }) {
       ))
     : [];
   const beforeStart = Boolean(recordWindow?.beforeStart);
-  const saveWindowOpen = selectedMatch && !beforeStart && (recordWindow?.beforeEnd || recordWindow?.statOpen || canEditDisputeDraft);
+  const saveWindowOpen = selectedMatch && !beforeStart && (recordWindow?.beforeEnd || recordWindow?.statOpen || canEditDisputeDraft || currentUserCanSubmitMissingPostgameResult);
   const hasDirtyStats = Object.keys(dirtyStats).length > 0;
   const canEditStats = Boolean(selectedMatch && !["confirmed"].includes(selectedMatch.status) && (canEditDisputeDraft || selectedMatch.status !== "disputed") && editablePlayerIds.length && saveWindowOpen);
   const canSave = Boolean(selectedMatch && !["confirmed"].includes(selectedMatch.status) && (canEditDisputeDraft || selectedMatch.status !== "disputed") && editablePlayerIds.length && saveWindowOpen && hasDirtyStats);
   const canEndLiveMatch = Boolean(selectedMatch && currentUserCanOperatePostStart && roomPhase === "live" && !selectedMatch.endedAt && !selectedMatch.result);
-  const canEditPostgameRoster = Boolean(selectedMatch && currentUserCanOperatePostStart && roomPhase === "postgame" && recordWindow?.statOpen && !selectedMatch.result);
+  const canEditPostgameRoster = Boolean(selectedMatch && currentUserCanOperatePostStart && roomPhase === "postgame" && (recordWindow?.statOpen || currentUserCanSubmitMissingPostgameResult) && !selectedMatch.result);
   const scoreA = selectedMatch ? getSideScore(selectedMatch, stats, "teamA", editablePlayerIds, includeReserveStats) : 0;
   const scoreB = selectedMatch ? getSideScore(selectedMatch, stats, "teamB", editablePlayerIds, includeReserveStats) : 0;
   const latePlayerOptions = useMemo(() => {
@@ -204,6 +206,8 @@ export default function Recorder({ app }) {
       ? "결과 확정"
     : selectedMatch?.status === "disputed"
       ? "이의 확인 중"
+    : currentUserCanSubmitMissingPostgameResult
+      ? "결과 입력 필요"
     : recordWindow?.statExpired
       ? "기록 마감"
       : !editablePlayerIds.length
