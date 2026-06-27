@@ -944,6 +944,10 @@ export default function Matches({ app }) {
   const listRecruitingRoomCount = ["active", "scheduled"].includes(viewId) ? filteredActiveRoomCount : 0;
   const myRecruitingSettled = !app.actions.loadMyRecruitingPosts || !app.currentUser.id || myRecruitingSettledKey === app.currentUser.id;
   const scheduleLoading = app.remoteReady === false || !myRecruitingSettled || myRecruitingLoading || (matchPagination.loading && !visibleScheduleItems.length);
+  const displayScheduleItems = scheduleLoading ? [] : visibleScheduleItems;
+  const scheduleCountLabel = scheduleLoading
+    ? "내 일정 확인 중"
+    : `내 일정 ${matchesByView.length + listRecruitingRoomCount}개 중 ${displayScheduleItems.length}개 표시`;
   const saveTournamentSchedule = (event, tournamentId, matchId) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -1269,12 +1273,12 @@ export default function Matches({ app }) {
             <span className="om-kicker">{selectedView.code}</span>
             <h2>{dateFilter ? `${selectedView.title} · ${formatDateLabel(dateFilter)}` : selectedView.title}</h2>
           </div>
-          <span>내 일정 {matchesByView.length + listRecruitingRoomCount}개 중 {visibleScheduleItems.length}개 표시</span>
+          <span>{scheduleCountLabel}</span>
         </div>
 
-        {visibleScheduleItems.length ? (
+        {displayScheduleItems.length ? (
           <>
-        {visibleScheduleItems.map(({ type, item }) => {
+        {displayScheduleItems.map(({ type, item }) => {
           if (type === "room") {
             const post = item;
             const lobby = getRecruitingLobby(post, app.state);
