@@ -784,7 +784,7 @@ export default function Matches({ app }) {
     }
     const userId = app.currentUser.id;
     const pendingKey = `${userId}:pending`;
-    if (myRecruitingLoadRef.current === pendingKey) return undefined;
+    if (myRecruitingLoadRef.current === userId || myRecruitingLoadRef.current === pendingKey) return undefined;
     setMyRecruitingLoading(true);
     let cancelled = false;
     let retryTimeoutId = null;

@@ -1338,6 +1338,7 @@ flowchart TD
 24. `/api/matches/list` default reads are direct list-card queries. They load only match rows, match_players, the current profile, compact teams, and compact courts. Full authoritative match state still belongs to `/api/matches/detail` or `listOnly=false`.
 25. Screen-specific server state such as `/api/profile/me`, `/api/matches/list`, `/api/recruiting/list`, and `/api/state/load` is normalized on the client before render so direct route entry receives the same base arrays/settings shape as other app routes.
 26. Match `parties` must be an array in client state. DB/API rows that carry `rules.parties` or `parties` as an object are normalized to an array before room/list helpers read them.
+27. Matches 화면의 idle `scope: "mine"` 모집 context load는 현재 user id마다 최대 1번만 실행한다. app state merge마다 다시 실행하면 첫 렌더 몇 초 뒤 내가 만든 방/참여방 숫자가 바뀐 것처럼 보일 수 있다.
 
 ## 2026-06-27 report scoped reads
 
