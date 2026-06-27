@@ -290,7 +290,7 @@ function getMatchActionLabel(match) {
 }
 
 function getViewCount(matches, view, userId) {
-  return matches.filter((match) => shouldShowMatchInList(match, view, userId, false)).length;
+  return matches.filter((match) => shouldShowMatchForView(match, view, userId)).length;
 }
 
 function matchHasUser(match, userId) {
@@ -341,7 +341,7 @@ function shouldShowMatchForView(match, view, userId) {
   if (view.id === "active") {
     return CHILD_VIEW_IDS.some((viewId) => shouldShowMatchForView(match, { id: viewId }, userId));
   }
-  if (view.id === "closed") return ["cancelled", "void"].includes(phase);
+  if (view.id === "closed") return ["record", "cancelled", "void"].includes(phase);
   if (view.id === "scheduled") return ["locked", "checkin"].includes(phase) && !userNeedsMatchAction(match, userId);
   if (view.id === "todo") return userNeedsMatchAction(match, userId);
   return false;
@@ -845,9 +845,9 @@ export default function Matches({ app }) {
 
   const matchesByView = useMemo(() => {
     return filteredMatches
-      .filter((match) => shouldShowMatchInList(match, selectedView, app.currentUser.id, Boolean(dateFilter)))
+      .filter((match) => shouldShowMatchInList(match, selectedView, app.currentUser.id, Boolean(dateFilter || historyRangeMonths > 0)))
       .sort(compareSchedule);
-  }, [app.currentUser.id, dateFilter, filteredMatches, selectedView]);
+  }, [app.currentUser.id, dateFilter, filteredMatches, historyRangeMonths, selectedView]);
 
   const visibleRecruitingRooms = useMemo(() => {
     if (!["active", "scheduled"].includes(viewId)) return [];
