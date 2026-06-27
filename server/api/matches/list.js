@@ -89,6 +89,23 @@ function getMatchUserIds(match = {}) {
   ]);
 }
 
+function getRecorderMatchUserIds(match = {}) {
+  return unique([
+    ...getMatchUserIds(match),
+    match.result?.submittedBy,
+    ...Object.keys(match.result?.playerStats ?? {}),
+    ...flattenIdValues(match.result?.statSubmissions),
+    ...flattenIdValues(match.statRecorders),
+    ...flattenIdValues(match.rules?.statRecorders),
+  ]);
+}
+
+function isRecorderMatch(match = {}, profileId = "", isAdmin = false) {
+  if (!["agreed", "approval", "disputed"].includes(match.status)) return false;
+  if (isAdmin) return true;
+  return getRecorderMatchUserIds(match).includes(profileId);
+}
+
 function getMatchRowActorIds(row = {}, players = []) {
   return unique([
     row.created_by,
@@ -378,8 +395,13 @@ async function loadNormalizedMatchList(context, body = {}, adminLevel = 0, limit
   );
   const profileId = context.profileId ?? normalized?.state?.currentUserId ?? "";
   const state = filterStateForProfile(normalized?.state ?? {}, profileId, adminLevel >= 30);
-  const matches = state.matches ?? [];
-  const responseState = body.listOnly === false ? state : compactMatchListState(state, profileId);
+  const scopedState = body.recorderOnly
+    ? { ...state, matches: (state.matches ?? []).filter((match) => isRecorderMatch(match, profileId, adminLevel >= 30)) }
+    : state;
+  const matches = scopedState.matches ?? [];
+  const responseState = body.listOnly === false && !body.recorderOnly
+    ? scopedState
+    : compactMatchListState(scopedState, profileId);
   return {
     state: {
       ...responseState,

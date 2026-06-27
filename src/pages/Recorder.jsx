@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { AlertTriangle, ClipboardList, Minus, Plus, RotateCcw, Save, ShieldCheck, Square } from "lucide-react";
 import ApprovalPanel from "../components/match/ApprovalPanel.jsx";
@@ -146,6 +146,20 @@ export default function Recorder({ app }) {
   const [handoffDraft, setHandoffDraft] = useState({});
   const [latePlayerDraft, setLatePlayerDraft] = useState({ sideName: "teamA", userId: "", playerQuery: "", name: "" });
   const [disputeReason, setDisputeReason] = useState("스코어 또는 개인 기록 재확인 필요");
+  const [recorderLoading, setRecorderLoading] = useState(false);
+  const recorderLoadRef = useRef("");
+
+  useEffect(() => {
+    if (!app.remoteReady || !user.id || matches.length) return;
+    const loadRecorderMatches = app.actions.loadRecorderMatches;
+    if (!loadRecorderMatches) return;
+    if (recorderLoadRef.current === user.id) return;
+    recorderLoadRef.current = user.id;
+    setRecorderLoading(true);
+    Promise.resolve(loadRecorderMatches()).finally(() => {
+      setRecorderLoading(false);
+    });
+  }, [app.actions.loadRecorderMatches, app.remoteReady, matches.length, user.id]);
 
   useEffect(() => {
     if (!selectedMatch || selectedMatchId === selectedMatch.id) return;
@@ -349,8 +363,8 @@ export default function Recorder({ app }) {
         </header>
         <Card className="recorder-empty">
           <ShieldCheck size={34} />
-          <strong>처리할 진행 경기 없음</strong>
-          <p>경기가 확정 완료되면 이 메뉴에서 자동으로 사라집니다.</p>
+          <strong>{recorderLoading ? "진행 경기 확인 중" : "처리할 진행 경기 없음"}</strong>
+          <p>{recorderLoading ? "서버에서 기록 가능한 경기를 확인하고 있습니다." : "경기가 확정 완료되면 이 메뉴에서 자동으로 사라집니다."}</p>
           <Link to="/app/matches" className="button button-secondary button-md">경기 보기</Link>
         </Card>
       </div>
