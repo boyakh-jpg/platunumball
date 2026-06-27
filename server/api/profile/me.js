@@ -8,7 +8,7 @@ import {
 } from "../../../src/data/repository.js";
 
 const PROFILE_ME_COLUMNS = "id,name,handle,hashtag,position,region,region_sido,region_district,school,company,club,trust_score,streak,avatar_color,test_login_id,auth_user_id,birth_year,age_group,age_group_checked_season,onboarding_complete,profile_version,handle_locked_at,birth_year_locked_at,name_updated_at,discord_connection,discord_user_id,ratings,created_at,updated_at,app_settings";
-const PROFILE_PUBLIC_COLUMNS = "id,name,handle,hashtag,position,region,region_sido,region_district,school,company,club,trust_score,streak,avatar_color,ratings,age_group,age_group_checked_season,onboarding_complete,test_login_id,updated_at,discord_connection";
+const PROFILE_TEAM_MEMBER_COLUMNS = "id,name,handle,hashtag,position,trust_score,avatar_color,ratings,age_group,age_group_checked_season,onboarding_complete,test_login_id,updated_at";
 const TEAM_COLUMNS = "id,name,home_court,region,mmr,wins,losses,accent,deleted_at";
 const TEAM_MEMBER_COLUMNS = "team_id,user_id,role";
 
@@ -50,9 +50,9 @@ async function loadCurrentUserTeams(supabase, profileId = "") {
   if (teamError) throw teamError;
   if (memberError) throw memberError;
 
-  const memberProfileIds = unique((memberRows ?? []).map((row) => row.user_id));
+  const memberProfileIds = unique((memberRows ?? []).map((row) => row.user_id)).filter((userId) => userId !== profileId);
   const { data: profileRows, error: profileError } = memberProfileIds.length
-    ? await supabase.from("public_profiles").select(PROFILE_PUBLIC_COLUMNS).in("id", memberProfileIds)
+    ? await supabase.from("public_profiles").select(PROFILE_TEAM_MEMBER_COLUMNS).in("id", memberProfileIds)
     : { data: [], error: null };
   if (profileError) throw profileError;
 
