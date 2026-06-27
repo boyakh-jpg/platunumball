@@ -66,6 +66,41 @@ function isMissingUserRoomFeed(error = {}) {
   return error?.code === "PGRST205" || error?.code === "42P01" || message.includes("user_room_feed");
 }
 
+function createTimingProbe() {
+  const startedAt = Date.now();
+  const steps = [];
+  return {
+    async track(name, task) {
+      const stepStartedAt = Date.now();
+      try {
+        return await task();
+      } finally {
+        steps.push({ name, ms: Date.now() - stepStartedAt });
+      }
+    },
+    payload() {
+      return { totalMs: Date.now() - startedAt, steps };
+    },
+    header() {
+      const timing = this.payload();
+      return [
+        ...steps.map((step) => `${step.name};dur=${Math.max(0, step.ms)}`),
+        `total;dur=${Math.max(0, timing.totalMs)}`,
+      ].join(", ");
+    },
+  };
+}
+
+function sendTimedJson(response, statusCode, payload, timing, includeTiming = false) {
+  if (typeof response.setHeader === "function") {
+    response.setHeader("Server-Timing", timing.header());
+  }
+  const nextPayload = includeTiming
+    ? { ...payload, debugTiming: timing.payload() }
+    : payload;
+  sendJson(response, statusCode, nextPayload);
+}
+
 function groupBy(rows = [], key = "id") {
   return rows.reduce((map, row) => {
     const value = row?.[key];
@@ -803,16 +838,21 @@ export async function loadCompactRecruitingList(context, {
 }
 
 export default async function handler(request, response) {
+  const timing = createTimingProbe();
   if (request.method !== "POST") {
-    sendJson(response, 405, { error: "method_not_allowed" });
+    sendTimedJson(response, 405, { error: "method_not_allowed" }, timing);
     return;
   }
 
+  let debugTiming = false;
   try {
-    const body = await readJsonBody(request);
-    const context = await getAuthenticatedContext(request, { allowMissingProfile: true, profileSelect: PROFILE_ME_COLUMNS });
+    const body = await timing.track("body", () => readJsonBody(request));
+    debugTiming = body.debugTiming === true;
+    const context = await timing.track("auth", () => getAuthenticatedContext(request, { allowMissingProfile: true, profileSelect: PROFILE_ME_COLUMNS }));
     const shouldLoadAdminContext = body.adminContext !== false && body.includeAdminContext !== false;
-    const adminLevel = shouldLoadAdminContext && context.profileId ? await getAdminLevel(context) : 0;
+    const adminLevel = shouldLoadAdminContext && context.profileId
+      ? await timing.track("admin", () => getAdminLevel(context))
+      : 0;
     const limit = getCappedLimit(body.limit ?? body.recruitingLimit ?? REMOTE_CLIENT_RECRUITING_LIMIT);
     const mineOnly = body.scope === "mine" || body.mine === true;
     const roomScope = ["created", "joined", "invited"].includes(body.roomScope) ? body.roomScope : "";
@@ -827,18 +867,24 @@ export default async function handler(request, response) {
       ? ""
       : normalizeRegionKey(body.regionKey || body.regionDistrict || getProfileRegionKey(context.profile));
     const [currentUserPostIds, pageResult, feedCountsResult] = await Promise.all([
-      includeMine ? fetchCurrentUserRecruitingPostIds(context.supabase, context.profileId, mineLimit, roomScope) : Promise.resolve([]),
-      shouldPageList ? fetchRecruitingPage(context.supabase, limit, offset, regionKey, listOnly && !includeMine) : Promise.resolve({ ids: [], cards: [], source: "", exhausted: true }),
-      context.profileId ? fetchRecruitingFeedCounts(context.supabase, context.profileId) : Promise.resolve(null),
+      includeMine
+        ? timing.track("mine", () => fetchCurrentUserRecruitingPostIds(context.supabase, context.profileId, mineLimit, roomScope))
+        : Promise.resolve([]),
+      shouldPageList
+        ? timing.track("page", () => fetchRecruitingPage(context.supabase, limit, offset, regionKey, listOnly && !includeMine))
+        : Promise.resolve({ ids: [], cards: [], source: "", exhausted: true }),
+      context.profileId
+        ? timing.track("counts", () => fetchRecruitingFeedCounts(context.supabase, context.profileId))
+        : Promise.resolve(null),
     ]);
     const pagePostIds = pageResult?.ids ?? [];
     const pageCards = pageResult?.cards ?? [];
     const pageSource = pageResult?.source ?? "";
     const pageExhausted = typeof pageResult?.exhausted === "boolean" ? pageResult.exhausted : null;
-    const feedCounts = feedCountsResult ?? (context.profileId ? await fetchRecruitingFallbackCounts(context.supabase, context.profileId) : null);
+    const feedCounts = feedCountsResult ?? (context.profileId ? await timing.track("fallbackCounts", () => fetchRecruitingFallbackCounts(context.supabase, context.profileId)) : null);
     const targetPostIds = uniqueIds([...explicitPostIds, ...(mineOnly ? currentUserPostIds : pagePostIds)]);
     if (listOnly) {
-      const compactResult = await loadCompactRecruitingList(context, {
+      const compactResult = await timing.track("compact", () => loadCompactRecruitingList(context, {
         adminLevel,
         currentUserPostIds,
         explicitPostIds,
@@ -853,14 +899,14 @@ export default async function handler(request, response) {
         offset,
         regionScope: regionKey ? "region" : regionScope,
         regionKey,
-      });
-      sendJson(response, 200, {
+      }));
+      sendTimedJson(response, 200, {
         ok: true,
         ...compactResult,
-      });
+      }, timing, debugTiming);
       return;
     }
-    const normalized = await loadNormalizedRemoteStateFromClient(
+    const normalized = await timing.track("state", () => loadNormalizedRemoteStateFromClient(
       context.supabase,
       context.authUserId,
       context.authUser?.email ?? "",
@@ -874,7 +920,7 @@ export default async function handler(request, response) {
         matchLimit: 0,
         tournamentLimit: 0,
       },
-    );
+    ));
     const profileId = context.profileId ?? normalized?.state?.currentUserId ?? "";
     const pageState = filterStateForProfile(normalized?.state ?? {}, profileId, adminLevel >= 30);
     const pagePosts = pageState.recruitingPosts ?? [];
@@ -883,7 +929,7 @@ export default async function handler(request, response) {
       const loadedIds = new Set(pagePosts.map((post) => post.id));
       const missingMineIds = currentUserPostIds.filter((postId) => !loadedIds.has(postId));
       if (missingMineIds.length) {
-        const mineNormalized = await loadNormalizedRemoteStateFromClient(
+        const mineNormalized = await timing.track("missingMine", () => loadNormalizedRemoteStateFromClient(
           context.supabase,
           context.authUserId,
           context.authUser?.email ?? "",
@@ -897,13 +943,13 @@ export default async function handler(request, response) {
             matchLimit: 0,
             tournamentLimit: 0,
           },
-        );
+        ));
         const mineState = filterStateForProfile(mineNormalized?.state ?? {}, profileId, adminLevel >= 30);
         state = mergeStateById(pageState, mineState);
       }
     }
     const responseState = listOnly ? compactRecruitingListState(state, profileId) : state;
-    sendJson(response, 200, {
+    sendTimedJson(response, 200, {
       ok: true,
       state: {
         ...responseState,
@@ -923,8 +969,8 @@ export default async function handler(request, response) {
         feedCounts,
       },
       updatedAt: normalized?.updatedAt ?? 0,
-    });
+    }, timing, debugTiming);
   } catch (error) {
-    sendJson(response, error.statusCode || 500, { error: error.message || "recruiting_list_failed" });
+    sendTimedJson(response, error.statusCode || 500, { error: error.message || "recruiting_list_failed" }, timing, debugTiming);
   }
 }
