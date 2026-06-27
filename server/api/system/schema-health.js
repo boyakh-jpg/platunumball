@@ -116,6 +116,10 @@ const REQUIRED_RPCS = [
       p_replace_result: false,
     },
   },
+  {
+    name: "rankball_match_end_action",
+    args: { p_actor_profile_id: "", p_match_id: "", p_started_at: "", p_ended_at: "" },
+  },
 ];
 
 function getBearerToken(request) {

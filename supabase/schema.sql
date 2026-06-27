@@ -3688,6 +3688,88 @@ $$;
 revoke all on function public.rankball_persist_match_snapshot(jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, boolean) from public;
 grant execute on function public.rankball_persist_match_snapshot(jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, boolean) to service_role;
 
+create or replace function public.rankball_match_end_action(
+  p_actor_profile_id text,
+  p_match_id text,
+  p_started_at text default null,
+  p_ended_at text default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  safe_actor_id text := nullif(btrim(p_actor_profile_id), '');
+  safe_match_id text := nullif(btrim(p_match_id), '');
+  requested_started_at timestamptz := nullif(btrim(p_started_at), '')::timestamptz;
+  requested_ended_at timestamptz := nullif(btrim(p_ended_at), '')::timestamptz;
+  current_match public.matches%rowtype;
+  next_started_at timestamptz;
+  next_ended_at timestamptz;
+  next_rules jsonb;
+begin
+  if safe_actor_id is null then
+    raise exception 'missing_actor_profile_id' using errcode = '22023';
+  end if;
+  if safe_match_id is null then
+    raise exception 'missing_match' using errcode = '22023';
+  end if;
+
+  select *
+  into current_match
+  from public.matches
+  where id = safe_match_id
+  for update;
+
+  if not found then
+    raise exception 'match_not_found' using errcode = '22023';
+  end if;
+  if current_match.referee_id is not null and current_match.referee_id <> '' then
+    return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'referee_match_requires_replay', 'matchId', safe_match_id);
+  end if;
+  if current_match.created_by <> safe_actor_id then
+    raise exception 'match_end_permission_denied' using errcode = '42501';
+  end if;
+  if current_match.status <> 'agreed' or current_match.ended_at is not null then
+    return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'match_not_endable', 'matchId', safe_match_id);
+  end if;
+  if exists (select 1 from public.match_results result where result.match_id = safe_match_id) then
+    return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'match_result_exists', 'matchId', safe_match_id);
+  end if;
+
+  next_started_at := coalesce(current_match.started_at, requested_started_at, now());
+  next_ended_at := coalesce(requested_ended_at, now());
+  next_rules := jsonb_set(
+    coalesce(current_match.rules, '{}'::jsonb),
+    '{startedAt}',
+    to_jsonb(coalesce(current_match.rules->>'startedAt', next_started_at::text)),
+    true
+  );
+
+  update public.matches
+  set
+    started_at = next_started_at,
+    ended_at = next_ended_at,
+    rules = next_rules,
+    updated_at = now()
+  where id = safe_match_id;
+
+  return jsonb_build_object(
+    'ok', true,
+    'action', 'endMatch',
+    'matchId', safe_match_id,
+    'actorProfileId', safe_actor_id,
+    'startedAt', next_started_at,
+    'endedAt', next_ended_at,
+    'sqlReducer', true
+  );
+end;
+$$;
+
+revoke all on function public.rankball_match_end_action(text, text, text, text) from public;
+grant execute on function public.rankball_match_end_action(text, text, text, text) to service_role;
+
 create or replace function public.rankball_match_action(
   p_actor_profile_id text,
   p_action text,
@@ -3717,6 +3799,15 @@ begin
   end if;
   if safe_match_id is null then
     raise exception 'missing_match' using errcode = '22023';
+  end if;
+
+  if safe_action = 'endMatch' and p_match_row ? '__operation' then
+    return public.rankball_match_end_action(
+      safe_actor_id,
+      safe_match_id,
+      p_match_row #>> '{started_at}',
+      p_match_row #>> '{ended_at}'
+    );
   end if;
 
   perform 1

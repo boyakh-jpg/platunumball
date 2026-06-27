@@ -804,6 +804,55 @@ function canCommitRatingResult(action, existingResult, nextMatch) {
   return action === "approveMatch" && Boolean(existingResult) && nextMatch?.status === "confirmed";
 }
 
+const SQL_REDUCER_MATCH_ACTIONS = new Set([
+  "endMatch",
+]);
+
+function isMissingSqlMatchReducer(error = {}) {
+  const message = String(error?.message ?? "");
+  return error?.code === "PGRST202" || message.includes("rankball_match_end_action");
+}
+
+function shouldUseSqlMatchAction(operation = {}) {
+  return SQL_REDUCER_MATCH_ACTIONS.has(String(operation?.action ?? ""));
+}
+
+async function applySqlMatchAction(context, operation = {}, match = {}) {
+  if (operation.action !== "endMatch" || !match?.id) return null;
+  const { data, error } = await context.supabase.rpc("rankball_match_end_action", {
+    p_actor_profile_id: context.profileId,
+    p_match_id: operation.matchId ?? match.id,
+    p_started_at: match.startedAt ?? match.rules?.startedAt ?? "",
+    p_ended_at: match.endedAt ?? "",
+  });
+  if (error) {
+    if (isMissingSqlMatchReducer(error)) return null;
+    throw error;
+  }
+  if (data?.fallback) return null;
+
+  let discordDeliveryCount = 0;
+  let discordDeliveryError = null;
+  try {
+    discordDeliveryCount = await withTimeout(
+      queueMatchDiscordDeliveries(context.supabase, match, operation.action),
+      DISCORD_QUEUE_TIMEOUT_MS,
+      "discord_match_delivery_timeout",
+    );
+  } catch (deliveryError) {
+    discordDeliveryError = deliveryError.message || "discord_match_delivery_failed";
+    console.error("Match Discord delivery queue failed.", deliveryError);
+  }
+
+  return {
+    ok: true,
+    ...(data && typeof data === "object" ? data : {}),
+    matchId: operation.matchId ?? match.id,
+    discordDeliveryCount,
+    discordDeliveryError,
+  };
+}
+
 async function commitMatchRating(context, ratingCommit = {}) {
   const { data, error } = await context.supabase.rpc("rankball_commit_match_rating", {
     p_match_id: ratingCommit.matchId,
@@ -946,6 +995,14 @@ export default async function handler(request, response) {
     let notifications = body.notifications ?? [];
     let action = body.action ? String(body.action) : "sync";
     let ratingCommit = null;
+
+    if (operation && match && shouldUseSqlMatchAction(operation)) {
+      const sqlResult = await applySqlMatchAction(context, operation, match);
+      if (sqlResult) {
+        sendJson(response, 200, sqlResult);
+        return;
+      }
+    }
 
     if (operation && (!match || operation.action === "createMatch" || operation.action === "approveMatch")) {
       const state = await loadAuthoritativeState(context, { operation });

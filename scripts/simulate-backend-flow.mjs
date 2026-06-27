@@ -262,6 +262,12 @@ async function getRecruitingPostAfterResult(result, login, label) {
   return findPost(state);
 }
 
+async function getMatchAfterResult(result, login, label) {
+  if (result?.match) return result.match;
+  const state = await step(label, () => loadStateAs(login));
+  return findMatch(state);
+}
+
 function makeResult(match) {
   const teamAPlayer = match.teamA?.players?.[0];
   const teamBPlayer = match.teamB?.players?.[0];
@@ -480,7 +486,7 @@ async function runOneOnOneScenario({
     action: "endMatch",
     matchId: ids.matchId,
   }));
-  match = endResult?.match;
+  match = await getMatchAfterResult(endResult, operatorLogin, `${ids.label}:loadAfterEndMatch`);
   assertFlow(Boolean(match?.endedAt), "match end not persisted", match);
 
   const resultSubmit = await step(`${ids.label}:submitMatchResult`, () => syncMatchAs(operatorLogin, {
@@ -523,6 +529,9 @@ async function runOneOnOneScenario({
     postId: ids.postId,
     matchId: ids.matchId,
     finalStatus: match.status,
+    sqlReducers: {
+      endMatch: Boolean(endResult?.sqlReducer),
+    },
   };
 }
 

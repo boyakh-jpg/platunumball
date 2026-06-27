@@ -1317,6 +1317,7 @@ flowchart TD
 16. Match pagination cursor follows the server page cursor, not a cursor recalculated from locally merged match rows.
 17. `/api/matches/list` list-only reads must not fetch full `team_members` rosters for related teams; full roster data belongs to `/api/matches/detail` or directory loads.
 18. `/api/profile/me` bootstraps the current user's own teams, those teams' member ids, and those members' public profiles so team-room creation and mine/joined filters do not wait for broad list hydration.
+19. `endMatch` may use `rankball_match_end_action()` as a SQL reducer only for no-referee host-operated matches. Referee matches and unsupported states must fall back to the existing authoritative match action path.
 
 ## 2026-06-27 report scoped reads
 
