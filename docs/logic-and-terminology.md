@@ -1339,8 +1339,8 @@ flowchart TD
 25. Screen-specific server state such as `/api/profile/me`, `/api/matches/list`, `/api/recruiting/list`, and `/api/state/load` is normalized on the client before render so direct route entry receives the same base arrays/settings shape as other app routes.
 26. Match `parties` must be an array in client state. DB/API rows that carry `rules.parties` or `parties` as an object are normalized to an array before room/list helpers read them.
 27. Matches 화면의 idle `scope: "mine"` 모집 context load는 현재 user id마다 최대 1번만 실행한다. app state merge마다 다시 실행하면 첫 렌더 몇 초 뒤 내가 만든 방/참여방 숫자가 바뀐 것처럼 보일 수 있다.
-28. `/api/matches/list` 첫 페이지는 경기 메뉴 false-empty를 막기 위해 현재 사용자의 open 모집방 일정도 compact state로 함께 반환할 수 있다. 추가 match page는 모집방을 다시 싣지 않는다.
-29. If the first `/api/matches/list` response marks `page.recruitingScheduleChecked=true`, `/app/matches` must not run the delayed `scope=mine` recruiting reload for the same entry. This avoids late schedule count/card changes from duplicate reads.
+28. `/api/matches/list` 첫 페이지는 API 차원에서 현재 사용자의 open 모집방 일정도 compact state로 함께 반환할 수 있지만, `/app/matches` 클라이언트 첫 로드는 속도를 위해 `includeRecruitingSchedule=false`로 요청하고 배경 `scope=mine` 보강 로드가 모집 일정을 채운다.
+29. If a `/api/matches/list` response marks `page.recruitingScheduleChecked=true`, `/app/matches` must not run the delayed `scope=mine` recruiting reload for the same entry. This avoids late schedule count/card changes from duplicate reads.
 30. `/app/recorder` must load `recorderOnly` match state on direct entry or after thin-route navigation before showing the final empty state. Recorder state includes only active `agreed`/`approval`/`disputed` matches related to the current profile.
 31. `/api/matches/list` with `listOnly:false` must not force `matchListOnly:true`; recorder/detail-like reads need `match_results` and `player_match_stats`.
 

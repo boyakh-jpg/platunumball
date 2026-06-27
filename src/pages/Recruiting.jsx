@@ -763,6 +763,16 @@ function FillSlot({ candidate, lobby, userById, teams, hostPlayerId = "", curren
 
 function CommandPopoverFrame({ floating = false, anchor = null, className = "", onClose, children }) {
   const anchored = Boolean(floating && anchor);
+  const viewportWidth = typeof window !== "undefined" ? window.innerWidth : 1024;
+  const panelWidth = anchored
+    ? Math.min(Math.max(Number(anchor.width) || 0, 420), Math.max(240, viewportWidth - 24))
+    : null;
+  const panelX = anchored
+    ? Math.min(
+      Math.max(Number(anchor.x) || viewportWidth / 2, 12 + panelWidth / 2),
+      Math.max(12 + panelWidth / 2, viewportWidth - 12 - panelWidth / 2),
+    )
+    : null;
   const panelClassName = [
     className,
     floating ? "floating" : "",
@@ -772,9 +782,9 @@ function CommandPopoverFrame({ floating = false, anchor = null, className = "", 
   ].filter(Boolean).join(" ");
   const panelStyle = anchored
     ? {
-        "--popover-x": `${anchor.x}px`,
+        "--popover-x": `${panelX}px`,
         "--popover-y": `${anchor.y}px`,
-        "--popover-width": `${anchor.width}px`,
+        "--popover-width": `${panelWidth}px`,
       }
     : undefined;
   const panel = (
@@ -1885,7 +1895,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
   const sendInvites = (roomPost, playerIds, teamId = null) => {
     if (!inviteDraft || !playerIds.length) return;
     app.actions.inviteRecruitingPlayers(roomPost.id, { side: inviteDraft.sideName, reserve: Boolean(inviteDraft.reserve), playerIds, teamId });
-    setInviteDraft((current) => (current ? { ...current, selectedPlayerIds: [] } : current));
+    setInviteDraft(null);
   };
   const confirmQueueRoom = async (roomPost) => {
     const matchId = await app.actions.confirmRecruitingMatch(roomPost.id);

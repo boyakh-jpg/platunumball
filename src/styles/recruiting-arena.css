@@ -1781,7 +1781,7 @@ button.arena-room-player-slot {
   z-index: 140;
   width: min(560px, calc(100vw - 24px));
   max-height: min(78vh, 720px);
-  overflow: auto;
+  overflow: visible;
   transform: none;
 }
 
@@ -1865,6 +1865,10 @@ button.arena-room-player-slot {
   border-color: rgba(70, 224, 182, 0.16);
   background: rgba(70, 224, 182, 0.045);
   padding: 10px;
+}
+
+.arena-slot-command-popover .search-picker-results.is-floating {
+  z-index: 160;
 }
 
 .arena-reserve-panel {
