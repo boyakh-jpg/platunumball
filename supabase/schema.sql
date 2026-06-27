@@ -3976,7 +3976,8 @@ $$;
 create or replace function public.rankball_match_list(
   p_profile_id text,
   p_limit integer default 5,
-  p_cursor text default ''
+  p_cursor text default '',
+  p_active_only boolean default false
 )
 returns jsonb
 language sql
@@ -3986,7 +3987,7 @@ as $$
   with params as (
     select
       nullif(btrim(p_profile_id), '') as profile_id,
-      greatest(1, least(80, coalesce(p_limit, 5))) as row_limit,
+      greatest(1, least(200, coalesce(p_limit, 5))) as row_limit,
       case
         when coalesce(p_cursor, '') like 'feed:%' and substring(coalesce(p_cursor, '') from 6) ~ '^[0-9]+$'
           then greatest(0, substring(coalesce(p_cursor, '') from 6)::integer)
@@ -4008,6 +4009,10 @@ as $$
       and feed.profile_id = params.profile_id
       and feed.is_active = true
       and coalesce(feed.status, '') <> 'closed'
+      and (
+        not coalesce(p_active_only, false)
+        or coalesce(feed.status, '') not in ('confirmed', 'cancelled', 'void', 'closed')
+      )
       and feed.relation in ('owner', 'participant', 'referee')
     group by feed.entity_id
   ),
@@ -4050,8 +4055,8 @@ as $$
   from numbered, params;
 $$;
 
-revoke all on function public.rankball_match_list(text, integer, text) from public;
-grant execute on function public.rankball_match_list(text, integer, text) to service_role;
+revoke all on function public.rankball_match_list(text, integer, text, boolean) from public;
+grant execute on function public.rankball_match_list(text, integer, text, boolean) to service_role;
 
 create or replace function public.rankball_refresh_recruiting_feed_trigger()
 returns trigger

@@ -128,7 +128,7 @@ const REQUIRED_RPCS = [
   },
   {
     name: "rankball_match_list",
-    args: { p_profile_id: "", p_limit: 1, p_cursor: "" },
+    args: { p_profile_id: "", p_limit: 1, p_cursor: "", p_active_only: true },
   },
   {
     name: "rankball_match_end_action",

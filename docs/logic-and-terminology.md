@@ -1312,6 +1312,7 @@ flowchart TD
 12. `user_room_feed` is the DB-maintained index for recruiting owner/participant/invited/referee and local public rows. SQL triggers/reducers update it; the frontend must not create or trust this feed.
 13. Recruiting room-scope counts come from `user_room_feed`, not from how many cards are currently loaded in `state.recruitingPosts`.
 14. If `user_room_feed` is unavailable, `scope='mine'` and room-scope counts must still include pending `room_state.invitations.targetUserId` so invited rooms do not disappear before the feed SQL is applied.
+15. Recruiting queue region selection uses `user_room_feed` `region_public` pages with a concrete `regionKey`. The default is the current user's local district; selecting another district reloads the first page for that region and `더 보기` continues the same region cursor. The frontend must not default to broad all-region loading.
 
 ## 2026-06-27 match list pagination
 
@@ -1349,6 +1350,7 @@ flowchart TD
 32. `/api/matches/list` may return `page.source` and optional `debugTiming` for diagnosis. `page.source='rpc_card'` or `feed_card` means list cards came directly from `user_room_feed.card_json`; `page.source='feed'` means feed ids are active but card_json was missing; `page.source='fallback_mine'` means production is still using current-profile fallback and the feed SQL/deployment needs verification.
 33. Match `status='closed'` is a cleanup soft-close state, not a normal record-confirmed match state. `/api/matches/list` and `rankball_match_list()` exclude it from default current-user feed pages.
 34. Match room phase `record` is a normal completed-record phase and belongs to the Matches closed/history view. Selecting a past range must make record-phase matches visible instead of leaving them outside every view.
+35. `/app/matches` default list is not a paged "더 보기" feed. It loads current-user active matches in one request with `activeOnly=true` up to the active-feed cap, excluding normal past record rows (`confirmed`) and terminal hidden rows (`cancelled`, `void`, `closed`). Past-history expansion must be a separate deliberate read, not the default match menu load.
 
 ## 2026-06-27 report scoped reads
 

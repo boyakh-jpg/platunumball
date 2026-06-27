@@ -19,6 +19,8 @@ const TEAM_COLUMNS = "id,name,home_court,region,mmr,wins,losses,accent,deleted_a
 const COURT_COLUMNS = "id,name";
 
 let userRoomFeedAvailable = true;
+const MATCH_LIST_MAX_LIMIT = 200;
+const ACTIVE_MATCH_EXCLUDED_STATUSES = new Set(["confirmed", "cancelled", "void", "closed"]);
 
 function getMatchCursor(matches = []) {
   const oldest = [...matches]
@@ -116,18 +118,19 @@ function toDateTime(date, time, fallback) {
 function getCappedLimit(value) {
   const number = Number(value);
   if (!Number.isFinite(number) || number <= 0) return REMOTE_CLIENT_MATCH_LIMIT;
-  return Math.max(1, Math.min(80, Math.floor(number)));
+  return Math.max(1, Math.min(MATCH_LIST_MAX_LIMIT, Math.floor(number)));
 }
 
-async function fetchMatchFeedPage(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT, cursor = "") {
+async function fetchMatchFeedPage(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT, cursor = "", activeOnly = false) {
   if (!profileId || !userRoomFeedAvailable) return null;
   if (String(cursor ?? "").startsWith("mine:")) return null;
-  const cappedLimit = Math.max(1, Math.min(80, Number(limit) || REMOTE_CLIENT_MATCH_LIMIT));
+  const cappedLimit = Math.max(1, Math.min(MATCH_LIST_MAX_LIMIT, Number(limit) || REMOTE_CLIENT_MATCH_LIMIT));
   const offset = getFeedOffsetCursor(cursor);
   const { data: rpcData, error: rpcError } = await client.rpc("rankball_match_list", {
     p_profile_id: profileId,
     p_limit: cappedLimit,
     p_cursor: cursor,
+    p_active_only: activeOnly,
   });
   if (!rpcError) {
     const rows = Array.isArray(rpcData?.rows) ? rpcData.rows : [];
@@ -144,14 +147,16 @@ async function fetchMatchFeedPage(client, profileId = "", limit = REMOTE_CLIENT_
   if (!isMissingUserRoomFeed(rpcError) && rpcError?.code !== "PGRST202") throw rpcError;
 
   const rowLimit = Math.min(320, cappedLimit * 4);
-  const { data, error } = await client
+  let query = client
     .from("user_room_feed")
     .select("entity_id,sort_at,relation,card_json")
     .eq("entity_type", "match")
     .eq("profile_id", profileId)
     .eq("is_active", true)
     .neq("status", "closed")
-    .in("relation", ["owner", "participant", "referee"])
+    .in("relation", ["owner", "participant", "referee"]);
+  if (activeOnly) query = query.not("status", "in", "(confirmed,cancelled,void,closed)");
+  const { data, error } = await query
     .order("sort_at", { ascending: false, nullsFirst: false })
     .order("entity_id", { ascending: false })
     .range(offset, offset + rowLimit - 1);
@@ -235,16 +240,19 @@ async function fetchCurrentUserMatchCandidateIds(client, profileId = "", limit =
   ]);
 }
 
-async function fetchCurrentUserMatchPage(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT, cursor = "") {
+async function fetchCurrentUserMatchPage(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT, cursor = "", activeOnly = false) {
   if (!profileId) return null;
-  const cappedLimit = Math.max(1, Math.min(80, Number(limit) || REMOTE_CLIENT_MATCH_LIMIT));
+  const cappedLimit = Math.max(1, Math.min(MATCH_LIST_MAX_LIMIT, Number(limit) || REMOTE_CLIENT_MATCH_LIMIT));
   const offset = getMineOffsetCursor(cursor);
   const candidateIds = await fetchCurrentUserMatchCandidateIds(client, profileId, cappedLimit);
   if (!candidateIds.length) {
     return { rows: [], cursor: "", exhausted: true };
   }
   const rows = await fetchMatchRowsByIds(client, candidateIds);
-  const sortedRows = [...rows].sort((a, b) => (
+  const filteredRows = activeOnly
+    ? rows.filter((row) => !ACTIVE_MATCH_EXCLUDED_STATUSES.has(String(row.status ?? "")))
+    : rows;
+  const sortedRows = [...filteredRows].sort((a, b) => (
     String(b.updated_at ?? b.created_at ?? "").localeCompare(String(a.updated_at ?? a.created_at ?? ""))
       || String(b.id ?? "").localeCompare(String(a.id ?? ""))
   ));
@@ -603,11 +611,12 @@ async function loadNormalizedMatchList(context, body = {}, adminLevel = 0, limit
 async function loadCompactMatchList(context, body = {}, adminLevel = 0, limit = REMOTE_CLIENT_MATCH_LIMIT, debugTiming = null) {
   const cursor = String(body.cursor ?? body.matchUpdatedBefore ?? "").trim();
   const shouldLoadRecruitingSchedule = !cursor && body.includeRecruitingSchedule !== false;
+  const activeOnly = body.activeOnly === true;
   const recruitingSchedulePromise = shouldLoadRecruitingSchedule
     ? loadCurrentRecruitingSchedule(context, adminLevel)
     : Promise.resolve(null);
   const feedPage = await timeStep(debugTiming, "feedMs", () => (
-    fetchMatchFeedPage(context.supabase, context.profileId, limit, cursor)
+    fetchMatchFeedPage(context.supabase, context.profileId, limit, cursor, activeOnly)
   ));
   let pageSource = "feed";
   let pageCursor = feedPage?.cursor ?? "";
@@ -626,7 +635,7 @@ async function loadCompactMatchList(context, body = {}, adminLevel = 0, limit = 
   } else {
     pageSource = "fallback_mine";
     const minePage = await timeStep(debugTiming, "fallbackMineMs", () => (
-      fetchCurrentUserMatchPage(context.supabase, context.profileId, limit, cursor)
+      fetchCurrentUserMatchPage(context.supabase, context.profileId, limit, cursor, activeOnly)
     ));
     matchRows = minePage?.rows ?? [];
     pageCursor = minePage?.cursor ?? "";

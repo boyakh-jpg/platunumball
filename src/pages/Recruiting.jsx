@@ -1624,6 +1624,21 @@ function isLocalRecruitingPost(post = {}, user = {}) {
   return aliases.some((alias) => postRegion === alias || postRegion.includes(alias) || alias.includes(postRegion));
 }
 
+function isRegionRecruitingPost(post = {}, regionKey = "", user = {}) {
+  if (!regionKey || regionKey === "local") return isLocalRecruitingPost(post, user);
+  const postRegion = normalizeRegionText(post.region);
+  const selectedRegion = stripRegionSuffix(regionKey);
+  return Boolean(postRegion && selectedRegion && (
+    postRegion === selectedRegion ||
+    postRegion.includes(selectedRegion) ||
+    selectedRegion.includes(postRegion)
+  ));
+}
+
+function getDefaultRecruitingRegionKey(user = {}) {
+  return stripRegionSuffix(user.regionDistrict || String(user.region ?? "").split(/\s+/).filter(Boolean).at(-1) || "");
+}
+
 function SourceMatchRecordSummary({ match, userById }) {
   if (!match?.result) return null;
   const result = match.disputeDraftResult ?? match.result;
@@ -2962,6 +2977,7 @@ function RecruitingReady({ app }) {
   const teamById = useMemo(() => Object.fromEntries(app.state.teams.map((team) => [team.id, team])), [app.state.teams]);
   const [queue, setQueue] = useState("all");
   const [roomScope, setRoomScope] = useState(() => (targetFilter === "invited" ? "invited" : "all"));
+  const [regionFilter, setRegionFilter] = useState("local");
   const [modeFilter, setModeFilter] = useState("all");
   const [queueControlsOpen, setQueueControlsOpen] = useState(true);
   const [composeOpen, setComposeOpen] = useState(false);
@@ -2969,6 +2985,7 @@ function RecruitingReady({ app }) {
   const targetPostLoadRef = useRef("");
   const selectedPostRefreshRef = useRef("");
   const myRecruitingLoadRef = useRef("");
+  const regionLoadRef = useRef("");
   const [draft, setDraft] = useState(() => ({
     hostJoinMode: myTeams[0]?.id ? "team" : "player",
     title: "",
@@ -3002,6 +3019,8 @@ function RecruitingReady({ app }) {
   const draftTimingStatus = getPublicRoomTimingStatus(draft);
   const scheduleAllowed = draftInstant || (draft.scheduledDate >= minScheduleDate && draft.scheduledDate <= maxScheduleDate && draftTimingStatus.canCreate);
   const canPostRecruiting = hasSchedule && scheduleAllowed && (!hostNeedsTeam || (Boolean(selectedTeam) && selectedHostPlayerIds.length > 0));
+  const localRegionKey = getDefaultRecruitingRegionKey(app.currentUser);
+  const selectedRegionKey = regionFilter === "local" ? localRegionKey : regionFilter;
 
   useEffect(() => {
     if (targetFilter === "invited") {
@@ -3013,6 +3032,28 @@ function RecruitingReady({ app }) {
     setModeFilter("all");
     setRoomScope("all");
   }, [targetFilter, targetPostId]);
+
+  useEffect(() => {
+    if (!app.remoteReady || !app.currentUser.id) return;
+    const regionKey = selectedRegionKey;
+    const currentScope = app.recruitingPagination?.regionScope ?? "local";
+    const currentKey = app.recruitingPagination?.regionKey ?? "";
+    const hasCurrentRegionRows = (app.state.recruitingPosts ?? []).some((post) => isRegionRecruitingPost(post, regionKey, app.currentUser));
+    const currentPageMatchesRegion = regionFilter === "local"
+      ? ((currentScope === "local" && !currentKey) || (currentScope === "region" && currentKey === regionKey))
+      : (currentScope === "region" && currentKey === regionKey);
+    if (
+      currentPageMatchesRegion &&
+      (hasCurrentRegionRows || app.recruitingPagination?.exhausted)
+    ) return;
+    const loadKey = `${app.currentUser.id}:${regionFilter}:${regionKey}`;
+    if (regionLoadRef.current === loadKey) return;
+    regionLoadRef.current = loadKey;
+    app.actions.loadRecruitingRegion?.({
+      regionScope: regionFilter === "local" ? "local" : "region",
+      regionKey: regionFilter === "local" ? "" : regionKey,
+    });
+  }, [app.actions, app.currentUser, app.currentUser.id, app.remoteReady, app.recruitingPagination, app.state.recruitingPosts, regionFilter, selectedRegionKey]);
 
   useEffect(() => {
     if (!hostNeedsTeam) return;
@@ -3042,14 +3083,14 @@ function RecruitingReady({ app }) {
       .filter((post) => {
         const invited = hasPendingRecruitingInvitation(post, app.currentUser.id);
         const relationScoped = roomScope !== "all";
-        return invited || relationScoped || post.id === targetPostId || isLocalRecruitingPost(post, app.currentUser) || isNationalRecruitingPost(post, app.state);
+        return invited || relationScoped || post.id === targetPostId || isRegionRecruitingPost(post, selectedRegionKey, app.currentUser) || isNationalRecruitingPost(post, app.state);
       })
       .filter((post) => queue === "all" || (queue === "ranked" ? post.ranked !== false : post.ranked === false))
       .filter((post) => modeFilter === "all" || post.mode === modeFilter)
       .filter((post) => roomScope !== "created" || getRecruitingRoomOwnerId(post) === app.currentUser.id)
       .filter((post) => roomScope !== "joined" || (getRecruitingRoomOwnerId(post) !== app.currentUser.id && isRecruitingPostForUser(post, app.currentUser.id, myTeamIds)))
       .filter((post) => roomScope !== "invited" || hasPendingRecruitingInvitation(post, app.currentUser.id));
-  }, [app.currentUser, app.currentUser.id, app.state, modeFilter, myTeamIds, queue, roomScope, targetPostId]);
+  }, [app.currentUser, app.currentUser.id, app.state, modeFilter, myTeamIds, queue, roomScope, selectedRegionKey, targetPostId]);
 
   const posts = useMemo(() => {
     return scopedPosts.sort((a, b) => {
@@ -3198,6 +3239,12 @@ function RecruitingReady({ app }) {
         {queueControlsOpen ? (
           <>
             <section className="arena-filter-bar" aria-label="필터">
+              <label className="arena-filter-select">
+                <select aria-label="지역" value={regionFilter} onChange={(event) => setRegionFilter(event.target.value)}>
+                  <option value="local">내 지역{localRegionKey ? ` · ${localRegionKey}` : ""}</option>
+                  {REGIONS.map((region) => <option key={region} value={region}>{region}</option>)}
+                </select>
+              </label>
               <div className="segmented-control compact-segments arena-filter-segment">
                 <button type="button" className={roomScope === "created" ? "active" : ""} onClick={() => selectRoomScope("created")}>내가 만든 방 {createdRoomCount}</button>
                 <button type="button" className={roomScope === "joined" ? "active" : ""} onClick={() => selectRoomScope("joined")}>내 참여방 {joinedRoomCount}</button>
@@ -3219,6 +3266,7 @@ function RecruitingReady({ app }) {
           </>
         ) : (
           <div className="arena-queue-summary">
+            <span>{regionFilter === "local" ? `내 지역${localRegionKey ? ` · ${localRegionKey}` : ""}` : regionFilter}</span>
             <span>{queue === "ranked" ? "정규전" : queue === "friendly" ? "친선전" : "전체"}</span>
             <span>{modeFilter === "all" ? "전체 방식" : MATCH_MODES.find((mode) => mode.id === modeFilter)?.label ?? modeFilter}</span>
             <span>{roomScope === "created" ? `내가 만든 방 ${createdRoomCount}` : roomScope === "joined" ? `내 참여방 ${joinedRoomCount}` : roomScope === "invited" ? `초대받음 ${invitedRoomCount}` : "전체 방"}</span>

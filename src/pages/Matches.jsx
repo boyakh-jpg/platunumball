@@ -702,7 +702,6 @@ export default function Matches({ app }) {
   const userById = useMemo(() => Object.fromEntries(app.state.users.map((user) => [user.id, user])), [app.state.users]);
   const matchesById = useMemo(() => Object.fromEntries(app.state.matches.map((match) => [match.id, match])), [app.state.matches]);
   const requestedMatchDetailsRef = useRef(new Set());
-  const initialMatchListLoadRef = useRef("");
   const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
   const courtByName = useMemo(() => Object.fromEntries(registeredCourts.map((court) => [court.name, court])), [registeredCourts]);
   const myTeamIds = useMemo(
@@ -764,15 +763,6 @@ export default function Matches({ app }) {
     setSelectedMatchId(queryMatchId);
     requestMatchDetail(queryMatchId);
   }, [app.currentUser.id, queryMatchId]);
-  useEffect(() => {
-    const loadMoreMatches = app.actions.loadMoreMatches;
-    if (!app.remoteReady || !app.currentUser.id || queryMatchId) return;
-    if ((app.state.matches ?? []).length > 0) return;
-    if (app.matchPagination?.loading || app.matchPagination?.exhausted) return;
-    if (initialMatchListLoadRef.current === app.currentUser.id) return;
-    initialMatchListLoadRef.current = app.currentUser.id;
-    loadMoreMatches?.();
-  }, [app.actions.loadMoreMatches, app.currentUser.id, app.matchPagination?.exhausted, app.matchPagination?.loading, app.remoteReady, app.state.matches, queryMatchId]);
   const openSelectedMatch = (matchId) => {
     if (!matchId) return;
     requestMatchDetail(matchId);
@@ -1308,14 +1298,7 @@ export default function Matches({ app }) {
             </article>
           );
         })}
-        {!matchPagination.exhausted ? (
-          <div className="om-load-more">
-            <button type="button" className="button button-secondary button-md" disabled={matchPagination.loading} onClick={() => app.actions.loadMoreMatches?.()}>
-              {matchPagination.loading ? "불러오는 중" : "더 보기"}
-            </button>
-            {matchPagination.error ? <span>추가 경기 로드 실패</span> : null}
-          </div>
-        ) : null}
+        {matchPagination.error ? <div className="om-load-more"><span>경기 목록 로드 실패</span></div> : null}
           </>
         ) : (
           <div className="om-empty-state">

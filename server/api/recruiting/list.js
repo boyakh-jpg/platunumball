@@ -622,6 +622,8 @@ export async function loadCompactRecruitingList(context, {
   feedCounts = null,
   limit = REMOTE_CLIENT_RECRUITING_LIMIT,
   offset = 0,
+  regionScope = "local",
+  regionKey = "",
 } = {}) {
   const targetPostIds = uniqueIds([...explicitPostIds, ...(mineOnly ? currentUserPostIds : pagePostIds), ...(includeMine ? currentUserPostIds : [])]);
   const postRows = await fetchRecruitingRowsByIds(context.supabase, targetPostIds);
@@ -686,6 +688,8 @@ export async function loadCompactRecruitingList(context, {
       nextOffset: offset + pagePostIds.length,
       cursor: String(offset + pagePostIds.length),
       exhausted: mineOnly || Boolean(explicitPostIds.length) || pagePostIds.length < limit,
+      regionScope: regionKey ? "region" : regionScope,
+      regionKey,
       feedCounts,
     },
     updatedAt: Math.max(
@@ -738,6 +742,8 @@ export default async function handler(request, response) {
         feedCounts,
         limit,
         offset,
+        regionScope: regionKey ? "region" : regionScope,
+        regionKey,
       });
       sendJson(response, 200, {
         ok: true,
@@ -802,6 +808,8 @@ export default async function handler(request, response) {
         nextOffset: offset + pagePostIds.length,
         cursor: String(offset + pagePostIds.length),
         exhausted: mineOnly || Boolean(explicitPostIds.length) || pagePostIds.length < limit,
+        regionScope: regionKey ? "region" : regionScope,
+        regionKey,
         feedCounts,
       },
       updatedAt: normalized?.updatedAt ?? 0,
