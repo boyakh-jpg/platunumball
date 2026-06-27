@@ -41,12 +41,6 @@ function uniqueIds(ids = []) {
   return [...new Set(ids.map((id) => String(id ?? "").trim()).filter(Boolean))];
 }
 
-function flattenIdValues(value) {
-  if (Array.isArray(value)) return value.flatMap(flattenIdValues);
-  if (value && typeof value === "object") return Object.values(value).flatMap(flattenIdValues);
-  return value ? [String(value)] : [];
-}
-
 function groupBy(rows = [], key = "id") {
   return rows.reduce((map, row) => {
     const value = row?.[key];
@@ -364,18 +358,10 @@ function collectRecruitingScope(postRows = [], applicationRows = [], profileId =
     profileIds.push(
       post.player_id,
       post.referee_id,
-      ...flattenIdValues(post.player_ids),
       roomState.ownerId,
-      ...flattenIdValues(roomState.partyLeaders),
-      ...flattenIdValues(roomState.partyReserves),
-      ...flattenIdValues(roomState.reserveReady),
-      ...flattenIdValues(roomState.pinnedReservePlayers),
-      ...flattenIdValues(roomState.slotPositions),
-      ...(Array.isArray(roomState.invitations) ? roomState.invitations.flatMap((invitation) => [
-        invitation.targetUserId,
-        invitation.fromUserId,
-        ...(invitation.playerIds ?? []),
-      ]) : []),
+      ...(Array.isArray(roomState.invitations) ? roomState.invitations
+        .filter((invitation) => invitation.targetUserId === profileId || invitation.fromUserId === profileId)
+        .flatMap((invitation) => [invitation.targetUserId, invitation.fromUserId]) : []),
     );
     teamIds.push(
       post.team_id,
@@ -386,7 +372,6 @@ function collectRecruitingScope(postRows = [], applicationRows = [], profileId =
     courtIds.push(post.court_id);
   });
   applicationRows.forEach((application) => {
-    profileIds.push(application.player_id, ...flattenIdValues(application.player_ids));
     teamIds.push(application.team_id, application.source_team_id);
   });
   return {

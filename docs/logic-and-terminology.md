@@ -1296,7 +1296,7 @@ flowchart TD
 7. Recruiting pagination uses server `offset`/`nextOffset` from the first public page, not older current-user rooms merged into the response. Timestamp-only cursors must not be used because equal `updated_at` rows can be skipped.
 8. Recruiting public page reads must select only `status='open'` and `visibility='public'`; current-user owned/joined/private rooms are merged only through `includeMine` or `scope='mine'`.
 9. `/api/recruiting/list` list-only reads keep room participants and team member ids, but do not fetch profiles for every member of related teams. Single `postId` detail loads still fetch full related profiles.
-10. `/api/recruiting/list` default reads are direct compact list-card queries when no explicit `postId` is requested. They load only recruiting_posts, recruiting_applications, related compact profiles/teams/courts, and current profile settings. Chat, old notifications, reports, matches, tournaments, and broad app metadata stay out of the list response; full room state still comes from single post detail load or `listOnly=false`.
+10. `/api/recruiting/list` default reads are direct compact list-card queries when no explicit `postId` is requested. They load only recruiting_posts, recruiting_applications, current/host/referee compact profiles, compact teams/courts, and current profile settings. Chat, old notifications, reports, matches, tournaments, and broad app metadata stay out of the list response; full room state still comes from single post detail load or `listOnly=false`.
 
 ## 2026-06-27 match list pagination
 
