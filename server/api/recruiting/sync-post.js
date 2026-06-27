@@ -38,20 +38,22 @@ function sameJson(left, right) {
 }
 
 function getRecruitingCoreSnapshot(post = {}) {
+  const teamId = post.teamId ?? post.team_id ?? null;
+  const hostJoinMode = post.hostJoinMode ?? post.host_join_mode;
   return {
     visibility: post.visibility === "private" ? "private" : "public",
     playerId: post.playerId ?? post.player_id ?? "",
-    teamId: post.teamId ?? post.team_id ?? null,
+    teamId,
     targetTeamId: post.targetTeamId ?? post.target_team_id ?? null,
     mode: post.mode ?? "5v5",
     scheduledDate: post.scheduledDate ?? post.scheduled_date ?? null,
     scheduledTime: toDbTime(post.scheduledTime ?? post.scheduled_time) ?? null,
     ranked: post.ranked !== false,
     official: Boolean(post.official),
-    ageRestriction: post.ageRestriction ?? post.age_restriction ?? null,
+    ageRestriction: post.ageRestriction ?? post.age_restriction ?? "any",
     allowedAgeGroups: toArray(post.allowedAgeGroups ?? post.allowed_age_groups).map(String).sort(),
     sideCapacity: Math.max(1, Math.min(5, Number(post.sideCapacity ?? post.side_capacity ?? 5))),
-    hostJoinMode: (post.hostJoinMode ?? post.host_join_mode) === "player" ? "player" : "team",
+    hostJoinMode: hostJoinMode === "player" || (!teamId && hostJoinMode !== "team") ? "player" : "team",
     hostSide: (post.hostSide ?? post.host_side) === "teamB" ? "teamB" : "teamA",
     playerIds: toArray(post.playerIds ?? post.player_ids),
     refereeId: post.refereeId || post.referee_id || "",
@@ -659,6 +661,7 @@ export default async function handler(request, response) {
     sendJson(response, error.statusCode || 500, {
       error: error.message || "recruiting_post_sync_failed",
       details: {
+        ...(error.details && typeof error.details === "object" ? error.details : {}),
         reason: error.message || "recruiting_post_sync_failed",
         statusCode: error.statusCode || 500,
       },

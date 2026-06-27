@@ -48,9 +48,10 @@ import {
   voidMatch,
 } from "../../src/data/repository.js";
 
-function reject(statusCode, message) {
+function reject(statusCode, message, details = {}) {
   const error = new Error(message);
   error.statusCode = statusCode;
+  error.details = details;
   throw error;
 }
 
@@ -240,11 +241,21 @@ export function applyAuthoritativeRecruitingOperation(state, operation = {}) {
   if (!post || next === state) reject(409, "recruiting_operation_noop");
 
   const createdMatch = getCreatedItem(beforeMatches, next.matches ?? []);
-  const notifications = getNewItems(state.notifications ?? [], next.notifications ?? [], (notification) => (
+  const allNewNotifications = getNewItems(state.notifications ?? [], next.notifications ?? []);
+  const notifications = allNewNotifications.filter((notification) => (
     notification.recruitingPostId === post.id ||
     notification.invitationId ||
     (createdMatch && notification.matchId === createdMatch.id)
   ));
+  const beforePost = beforePosts.find((item) => item.id === post.id) ?? null;
+  if (beforePost && JSON.stringify(beforePost) === JSON.stringify(post)) {
+    const notification = notifications[0] ?? allNewNotifications[0] ?? null;
+    reject(409, "recruiting_operation_blocked", {
+      notification,
+      title: notification?.title ?? "",
+      message: notification?.body ?? "",
+    });
+  }
 
   return { nextState: next, post, createdMatch, notifications };
 }

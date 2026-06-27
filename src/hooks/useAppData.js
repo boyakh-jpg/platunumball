@@ -109,7 +109,7 @@ function makeClientNotificationId(prefix = "n") {
 }
 
 function getServerActionErrorText(error = {}) {
-  return String(error.details?.reason || error.code || error.message || "server_action_failed");
+  return String(error.details?.message || error.details?.notification?.body || error.details?.reason || error.code || error.message || "server_action_failed");
 }
 
 function getNewItems(before = [], after = []) {
