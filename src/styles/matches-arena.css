@@ -2746,6 +2746,15 @@ html[data-theme="light"] .om-calendar-grid button.active {
   width: 100%;
 }
 
+.om-score-box {
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) minmax(4.8rem, auto) minmax(0, 1fr);
+}
+
+.om-score-box > strong {
+  white-space: nowrap;
+}
+
 .om-summary-side,
 .om-summary-side .team-hover-trigger,
 .om-match-summary-box.count-summary .om-summary-side,
@@ -2772,4 +2781,20 @@ html[data-theme="light"] .om-match-info-box,
 html[data-theme="light"] .arena-lobby-card .om-match-summary-box {
   background-color: rgba(255, 255, 255, 0.56);
   background-image: none;
+}
+
+@media (max-width: 760px) {
+  .om-match-summary-box,
+  .om-score-box,
+  .om-match-info-box,
+  .arena-lobby-card .om-match-summary-box {
+    grid-column: 1 / -1;
+  }
+
+  .om-room-link,
+  .arena-lobby-card .om-room-link {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: center;
+  }
 }
