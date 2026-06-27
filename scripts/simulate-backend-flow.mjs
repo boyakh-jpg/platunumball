@@ -558,7 +558,7 @@ async function runOneOnOneScenario({
     action: "startMatch",
     matchId: ids.matchId,
   }));
-  match = startResult?.match;
+  match = await getMatchAfterResult(startResult, operatorLogin, `${ids.label}:loadAfterStartMatch`);
   assertFlow(Boolean(match?.startedAt), "match start not persisted", match);
 
   const matchWithEnd = withEndedMatch(match);
@@ -642,6 +642,7 @@ async function runOneOnOneScenario({
     finalStatus: match.status,
     sqlReducers: {
       setRecruitingReady: Boolean(readyResult?.sqlReducer),
+      startMatch: Boolean(startResult?.sqlReducer),
       endMatch: Boolean(endResult?.sqlReducer),
       latePlayer: latePlayerSqlReducers,
     },

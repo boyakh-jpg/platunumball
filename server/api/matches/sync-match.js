@@ -808,6 +808,7 @@ const SQL_REDUCER_MATCH_ACTIONS = new Set([
   "addMatchLatePlayer",
   "endMatch",
   "removeMatchLatePlayer",
+  "startMatch",
 ]);
 
 function isMissingSqlMatchReducer(error = {}) {
@@ -815,7 +816,8 @@ function isMissingSqlMatchReducer(error = {}) {
   return (
     error?.code === "PGRST202" ||
     message.includes("rankball_match_end_action") ||
-    message.includes("rankball_match_late_player_action")
+    message.includes("rankball_match_late_player_action") ||
+    message.includes("rankball_match_start_action")
   );
 }
 
@@ -824,6 +826,42 @@ function shouldUseSqlMatchAction(operation = {}) {
 }
 
 async function applySqlMatchAction(context, operation = {}, match = {}) {
+  if (operation.action === "startMatch" && match?.id) {
+    const { data, error } = await context.supabase.rpc("rankball_match_start_action", {
+      p_actor_profile_id: context.profileId,
+      p_match_id: operation.matchId ?? match.id,
+      p_started_at: match.startedAt ?? match.rules?.startedAt ?? "",
+      p_agreed_at: match.agreedAt ?? "",
+      p_attendance: match.attendance ?? { teamA: [], teamB: [] },
+    });
+    if (error) {
+      if (isMissingSqlMatchReducer(error)) return null;
+      throw error;
+    }
+    if (data?.fallback) return null;
+
+    let discordDeliveryCount = 0;
+    let discordDeliveryError = null;
+    try {
+      discordDeliveryCount = await withTimeout(
+        queueMatchDiscordDeliveries(context.supabase, match, operation.action),
+        DISCORD_QUEUE_TIMEOUT_MS,
+        "discord_match_delivery_timeout",
+      );
+    } catch (deliveryError) {
+      discordDeliveryError = deliveryError.message || "discord_match_delivery_failed";
+      console.error("Match Discord delivery queue failed.", deliveryError);
+    }
+
+    return {
+      ok: true,
+      ...(data && typeof data === "object" ? data : {}),
+      matchId: operation.matchId ?? match.id,
+      discordDeliveryCount,
+      discordDeliveryError,
+    };
+  }
+
   if (["addMatchLatePlayer", "removeMatchLatePlayer"].includes(operation.action) && match?.id) {
     const { data, error } = await context.supabase.rpc("rankball_match_late_player_action", {
       p_actor_profile_id: context.profileId,
