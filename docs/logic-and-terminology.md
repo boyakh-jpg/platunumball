@@ -1287,7 +1287,7 @@ flowchart TD
 ## 2026-06-27 recruiting list pagination
 
 1. Recruiting list reads use `/api/recruiting/list` for additional pages.
-2. Recruiting first client load uses `REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT = 20`; additional page load uses `REMOTE_CLIENT_RECRUITING_LIMIT = 50`.
+2. Recruiting first client load uses `REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT = 5`; direct `?post=` entry starts with 0 list rows and loads the target room through detail load. Additional page load uses `REMOTE_CLIENT_RECRUITING_LIMIT = 50`.
 3. Additional recruiting pages must merge by id and keep server rows as source of truth.
 4. List pagination must not load match result/stat child tables.
 5. Recruiting scope state loads must fetch only related profiles, teams, team members, and courts for loaded recruiting rows.
@@ -1303,7 +1303,8 @@ flowchart TD
 7. Initial `/api/state/load` client hydrate may set `matchListOnly: true`; match detail rows are then fetched lazily through `/api/matches/detail`.
 8. Initial `/api/state/load` may set `directoryScope: "related"` so it loads only users/teams related to the first match/recruiting/tournament page and favorites.
 9. Full user/team directory data is loaded on demand through `/api/directory/load` for Rankings, Teams, Create Match, and Settings.
-10. Initial client hydrate uses 10 matches and 10 recruiting posts; additional list pages use 50 rows.
+10. Initial client hydrate uses 5 matches and 5 recruiting posts; additional list pages use 50 rows.
+11. `/app/recruiting` first hydrate does not load match rows; direct `?post=` entry also skips recruiting list rows. Recruiting list screens add more rows only through `더 보기` or targeted detail loads.
 
 ## 2026-06-27 report scoped reads
 

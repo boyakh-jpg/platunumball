@@ -388,24 +388,34 @@ function withServerAdminContext(state, context = EMPTY_ADMIN_CONTEXT) {
   };
 }
 
-async function loadBackendState(authUserId, authEmail) {
+function getInitialStateLoadOptions() {
+  const pathname = typeof window !== "undefined" ? window.location.pathname.replace(/\/$/, "") : "";
+  if (pathname === "/app/recruiting") {
+    const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+    return { matchLimit: 0, recruitingLimit: searchParams?.get("post") ? 0 : REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT };
+  }
+  return { matchLimit: REMOTE_CLIENT_INITIAL_MATCH_LIMIT, recruitingLimit: REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT };
+}
+
+async function loadBackendState(authUserId, authEmail, options = getInitialStateLoadOptions()) {
+  const loadOptions = {
+    matchLimit: options.matchLimit ?? REMOTE_CLIENT_INITIAL_MATCH_LIMIT,
+    recruitingLimit: options.recruitingLimit ?? REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT,
+    matchListOnly: true,
+    directoryScope: "related",
+    adminContext: false,
+  };
   try {
     const result = await postServerAction(
       "/api/state/load",
-      { authUserId, authEmail, matchLimit: REMOTE_CLIENT_INITIAL_MATCH_LIMIT, recruitingLimit: REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT, matchListOnly: true, directoryScope: "related", adminContext: false },
+      { authUserId, authEmail, ...loadOptions },
       { allowWhenDisabled: true },
     );
     if (result?.state) return result.state;
   } catch (error) {
     console.warn("Server state load failed. Falling back to direct Supabase read.", error.message);
   }
-  return loadRemoteState(authUserId, authEmail, {
-    matchLimit: REMOTE_CLIENT_INITIAL_MATCH_LIMIT,
-    recruitingLimit: REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT,
-    matchListOnly: true,
-    directoryScope: "related",
-    adminContext: false,
-  });
+  return loadRemoteState(authUserId, authEmail, loadOptions);
 }
 
 export function useAppData(authUser = null) {
@@ -474,14 +484,15 @@ export function useAppData(authUser = null) {
     recentRecruitingMutationTimesRef.current = new Map();
     setState(loadState({ includeDemo: false, authUserId, email: authEmail }));
     setDirectoryStatus({ loading: false, loaded: false, error: "" });
-    loadBackendState(authUserId, authEmail)
+    const initialLoadOptions = getInitialStateLoadOptions();
+    loadBackendState(authUserId, authEmail, initialLoadOptions)
       .then((remoteState) => {
         if (!mounted) return;
         if (remoteState) {
           const maintainedState = runAutomaticStateMaintenance(remoteState);
           setState((prev) => withServerAdminContext(preserveLocalDiscordState(prev, maintainedState), adminContextRef.current));
-          setMatchPagination({ loading: false, exhausted: (maintainedState.matches?.length ?? 0) < REMOTE_CLIENT_INITIAL_MATCH_LIMIT, error: "" });
-          setRecruitingPagination({ loading: false, exhausted: (maintainedState.recruitingPosts?.length ?? 0) < REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT, error: "" });
+          setMatchPagination({ loading: false, exhausted: (maintainedState.matches?.length ?? 0) < initialLoadOptions.matchLimit, error: "" });
+          setRecruitingPagination({ loading: false, exhausted: (maintainedState.recruitingPosts?.length ?? 0) < initialLoadOptions.recruitingLimit, error: "" });
         }
         remoteReadyRef.current = true;
         setRemoteReady(true);
