@@ -766,15 +766,17 @@ export default function Matches({ app }) {
     requestMatchDetail(queryMatchId);
   }, [app.currentUser.id, queryMatchId]);
   useEffect(() => {
+    const loadMoreMatches = app.actions.loadMoreMatches;
     if (!app.remoteReady || !app.currentUser.id || queryMatchId) return;
     if ((app.state.matches ?? []).length > 0) return;
     if (app.matchPagination?.loading || app.matchPagination?.exhausted) return;
     if (initialMatchListLoadRef.current === app.currentUser.id) return;
     initialMatchListLoadRef.current = app.currentUser.id;
-    app.actions.loadMoreMatches?.();
-  }, [app.actions, app.currentUser.id, app.matchPagination?.exhausted, app.matchPagination?.loading, app.remoteReady, app.state.matches, queryMatchId]);
+    loadMoreMatches?.();
+  }, [app.actions.loadMoreMatches, app.currentUser.id, app.matchPagination?.exhausted, app.matchPagination?.loading, app.remoteReady, app.state.matches, queryMatchId]);
   useEffect(() => {
-    if (!app.remoteReady || !app.currentUser.id) return undefined;
+    const loadMyRecruitingPosts = app.actions.loadMyRecruitingPosts;
+    if (!app.remoteReady || !app.currentUser.id || !loadMyRecruitingPosts) return undefined;
     const userId = app.currentUser.id;
     const pendingKey = `${userId}:pending`;
     if (myRecruitingLoadRef.current === userId || myRecruitingLoadRef.current === pendingKey) return undefined;
@@ -784,7 +786,7 @@ export default function Matches({ app }) {
     const runLoad = () => {
       attempts += 1;
       myRecruitingLoadRef.current = pendingKey;
-      Promise.resolve(app.actions.loadMyRecruitingPosts?.()).then((result) => {
+      Promise.resolve(loadMyRecruitingPosts()).then((result) => {
         if (cancelled || myRecruitingLoadRef.current !== pendingKey) return;
         if (result === false && attempts < 3) {
           myRecruitingLoadRef.current = "";
@@ -814,7 +816,7 @@ export default function Matches({ app }) {
       if (retryTimeoutId) window.clearTimeout(retryTimeoutId);
       if (myRecruitingLoadRef.current === pendingKey) myRecruitingLoadRef.current = "";
     };
-  }, [app.actions, app.currentUser.id, app.remoteReady]);
+  }, [app.actions.loadMyRecruitingPosts, app.currentUser.id, app.remoteReady]);
   const openSelectedMatch = (matchId) => {
     if (!matchId) return;
     requestMatchDetail(matchId);
