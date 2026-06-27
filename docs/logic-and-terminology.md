@@ -1266,6 +1266,7 @@ flowchart TD
 2. 브라우저 access token 없음은 `server_action_missing_access_token`으로 노출한다.
 3. server action 비활성화는 `server_actions_disabled`로 노출한다.
 4. 모집/경기/팀/토너먼트 optimistic UI는 실패 시 rollback하고 정확한 server action 사유를 보여준다.
+5. 브라우저 server action access token은 로그인 훅이 받은 session에서 메모리 캐시할 수 있다. 만료 30초 이내 token은 쓰지 않고 Supabase session 재조회로 fallback한다.
 5. `VITE_ENABLE_SERVER_ACTIONS`는 문자열 `true` 또는 `false`만 사용한다. 잘못된 값은 Supabase 설정 기본값으로 fallback되며 배포 env에서 고쳐야 한다.
 
 ## 2026-06-27 모집 포지션 저장

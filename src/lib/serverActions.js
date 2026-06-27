@@ -1,6 +1,14 @@
 import { isServerActionsEnabled, isSupabaseConfigured, supabase } from "./supabase.js";
 
 const TEST_SESSION_KEY = "rankball.auth.testSession.v1";
+let cachedActionSession = { accessToken: "", expiresAtMs: 0 };
+
+export function setClientActionSession(session = null) {
+  cachedActionSession = {
+    accessToken: session?.access_token ?? "",
+    expiresAtMs: Number(session?.expires_at ?? 0) * 1000,
+  };
+}
 
 function createServerActionError(code, details = {}) {
   const error = new Error(code);
@@ -10,9 +18,19 @@ function createServerActionError(code, details = {}) {
 }
 
 export async function getClientActionAccessToken() {
+  if (
+    cachedActionSession.accessToken &&
+    (!cachedActionSession.expiresAtMs || cachedActionSession.expiresAtMs - Date.now() > 30000)
+  ) {
+    return cachedActionSession.accessToken;
+  }
+
   const { data } = await supabase.auth.getSession();
   const accessToken = data?.session?.access_token;
-  if (accessToken) return accessToken;
+  if (accessToken) {
+    setClientActionSession(data.session);
+    return accessToken;
+  }
 
   if (typeof window === "undefined") return "";
   try {

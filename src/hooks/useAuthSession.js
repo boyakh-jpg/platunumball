@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { isSupabaseConfigured, supabase } from "../lib/supabase.js";
+import { setClientActionSession } from "../lib/serverActions.js";
 
 const TEST_SESSION_KEY = "rankball.auth.testSession.v1";
 const PROVIDER_LABELS = { naver: "Naver", kakao: "Kakao", google: "Google" };
@@ -141,7 +142,9 @@ export function useAuthSession() {
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
-      setSession(readTestSession());
+      const testSession = readTestSession();
+      setClientActionSession(testSession);
+      setSession(testSession);
       setLoading(false);
       return undefined;
     }
@@ -152,6 +155,7 @@ export function useAuthSession() {
 
     if (callbackError) {
       writeTestSession(null);
+      setClientActionSession(null);
       cleanOAuthCallbackUrl();
       setError(formatAuthError(callbackError));
       setSession(null);
@@ -161,16 +165,19 @@ export function useAuthSession() {
 
     const previewSession = readTestSession();
     if (!hasCallback && previewSession && isDemoLoginAllowed()) {
+      setClientActionSession(previewSession);
       setSession(previewSession);
       setLoading(false);
       return undefined;
     }
 
     writeTestSession(null);
+    setClientActionSession(null);
 
     let mounted = true;
     let resolvingInitialSession = true;
     const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setClientActionSession(nextSession);
       setSession(nextSession ?? null);
       if (!resolvingInitialSession) setLoading(false);
     });
@@ -181,12 +188,14 @@ export function useAuthSession() {
       if (!mounted) return;
       resolvingInitialSession = false;
       if (sessionError) setError(formatAuthError(sessionError.message));
+      setClientActionSession(sessionData.session);
       setSession(sessionData.session ?? null);
       if (hasCallback && !authCode) cleanOAuthCallbackUrl();
       setLoading(false);
     }).catch((sessionError) => {
       if (!mounted) return;
       resolvingInitialSession = false;
+      setClientActionSession(null);
       setError(formatAuthError(sessionError?.message) || "OAuth 세션 확인에 실패했습니다.");
       setSession(null);
       setLoading(false);
@@ -219,6 +228,7 @@ export function useAuthSession() {
 
       const nextSession = makeTestSession(provider);
       writeTestSession(nextSession);
+      setClientActionSession(nextSession);
       setSession(nextSession);
       return nextSession;
     },
@@ -226,6 +236,7 @@ export function useAuthSession() {
       setError("");
       setMessage("");
       writeTestSession(null);
+      setClientActionSession(null);
       setSession(null);
       setLoading(false);
       if (isSupabaseConfigured) {
@@ -246,6 +257,7 @@ export function useAuthSession() {
         await supabase.auth.signOut();
       }
       writeTestSession(nextSession);
+      setClientActionSession(nextSession);
       setSession(nextSession);
       return nextSession;
     },
