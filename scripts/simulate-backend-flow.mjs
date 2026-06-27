@@ -360,6 +360,21 @@ function withoutLatePlayer(match = {}, playerId = "") {
   };
 }
 
+function withEndedMatch(match = {}) {
+  const now = new Date().toISOString();
+  const startedAt = match.startedAt ?? match.rules?.startedAt ?? now;
+  const endedAt = match.endedAt ?? now;
+  return {
+    ...match,
+    startedAt,
+    endedAt,
+    rules: {
+      ...(match.rules ?? {}),
+      startedAt: match.rules?.startedAt ?? startedAt,
+    },
+  };
+}
+
 async function cleanup() {
   if (keepRows) return { skipped: true, reason: "keep_requested" };
   if (usesRemoteApi && schemaHealthSecret) {
@@ -475,7 +490,7 @@ async function runOneOnOneScenario({
     },
     joinMode: "player",
   }));
-  post = opponentJoinResult?.post;
+  post = await getRecruitingPostAfterResult(opponentJoinResult, opponentLogin, `${ids.label}:loadAfterJoin`);
   assertFlow(post?.applicants?.some((applicant) => applicant.playerId === opponentId), "opponent join not persisted", post);
 
   const readyResult = await step(`${ids.label}:setRecruitingReady`, () => syncRecruitingAs(opponentLogin, {
@@ -546,10 +561,11 @@ async function runOneOnOneScenario({
   match = startResult?.match;
   assertFlow(Boolean(match?.startedAt), "match start not persisted", match);
 
+  const matchWithEnd = withEndedMatch(match);
   const endResult = await step(`${ids.label}:endMatch`, () => syncMatchAs(operatorLogin, {
     action: "endMatch",
     matchId: ids.matchId,
-  }));
+  }, { match: matchWithEnd }));
   match = await getMatchAfterResult(endResult, operatorLogin, `${ids.label}:loadAfterEndMatch`);
   assertFlow(Boolean(match?.endedAt), "match end not persisted", match);
 
