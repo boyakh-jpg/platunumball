@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { Component, useEffect } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import RequireAuth from "./components/auth/RequireAuth.jsx";
 import AppShell from "./components/layout/AppShell.jsx";
@@ -28,6 +28,43 @@ import Teams from "./pages/Teams.jsx";
 import TournamentDetail from "./pages/TournamentDetail.jsx";
 import { shouldRecheckAgeGroup, shouldSetupProfile } from "./lib/profileSetup.js";
 
+class AppErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+
+  componentDidUpdate(prevProps) {
+    if (prevProps.resetKey !== this.props.resetKey && this.state.error) {
+      this.setState({ error: null });
+    }
+  }
+
+  componentDidCatch(error, info) {
+    console.error("RankBall render failed.", error, info);
+  }
+
+  render() {
+    if (!this.state.error) return this.props.children;
+    return (
+      <main className="auth-shell">
+        <section className="auth-card">
+          <p className="eyebrow">RankBall</p>
+          <h1>화면을 불러오지 못했습니다</h1>
+          <p>{String(this.state.error?.message ?? "render_failed")}</p>
+          <button type="button" className="button button-primary button-md" onClick={() => window.location.reload()}>
+            새로고침
+          </button>
+        </section>
+      </main>
+    );
+  }
+}
+
 export default function App() {
   const auth = useAuthSession();
   const app = useAppData(auth.user ?? null);
@@ -56,7 +93,8 @@ export default function App() {
   if (profileSetupRequired || ageRecheckRequired) return <Navigate to="/app/signup" replace />;
 
   return (
-    <Routes>
+    <AppErrorBoundary resetKey={location.pathname}>
+      <Routes>
       <Route path="/" element={<Landing state={app.state} />} />
       <Route path="/login" element={<Login auth={auth} app={app} />} />
       <Route element={<RequireAuth auth={auth} />}>
@@ -84,6 +122,7 @@ export default function App() {
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/app" replace />} />
-    </Routes>
+      </Routes>
+    </AppErrorBoundary>
   );
 }
