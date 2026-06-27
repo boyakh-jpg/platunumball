@@ -67,6 +67,25 @@ function mergeById(current = [], incoming = []) {
   return [...merged.values()];
 }
 
+function normalizeFeedCard(row = {}) {
+  const card = row?.card_json ?? row?.cardJson ?? row?.card ?? null;
+  if (!card || typeof card !== "object" || Array.isArray(card)) return null;
+  const id = card.id ?? row.entity_id ?? row.entityId;
+  return id ? { ...card, id } : null;
+}
+
+function uniqueFeedCards(rows = [], ids = []) {
+  const idSet = new Set(ids);
+  const cards = new Map();
+  (rows ?? []).forEach((row) => {
+    const id = row?.entity_id ?? row?.entityId;
+    if (!id || !idSet.has(id) || cards.has(id)) return;
+    const card = normalizeFeedCard(row);
+    if (card) cards.set(id, card);
+  });
+  return ids.map((id) => cards.get(id)).filter(Boolean);
+}
+
 function flattenIdValues(value) {
   if (Array.isArray(value)) return value.flatMap(flattenIdValues);
   if (value && typeof value === "object") return Object.values(value).flatMap(flattenIdValues);
@@ -105,10 +124,29 @@ async function fetchMatchFeedPage(client, profileId = "", limit = REMOTE_CLIENT_
   if (String(cursor ?? "").startsWith("mine:")) return null;
   const cappedLimit = Math.max(1, Math.min(80, Number(limit) || REMOTE_CLIENT_MATCH_LIMIT));
   const offset = getFeedOffsetCursor(cursor);
+  const { data: rpcData, error: rpcError } = await client.rpc("rankball_match_list", {
+    p_profile_id: profileId,
+    p_limit: cappedLimit,
+    p_cursor: cursor,
+  });
+  if (!rpcError) {
+    const rows = Array.isArray(rpcData?.rows) ? rpcData.rows : [];
+    const ids = unique(rows.map((row) => row?.entity_id ?? row?.entityId).filter(Boolean));
+    const cards = uniqueFeedCards(rows, ids);
+    return {
+      ids,
+      cards: cards.length === rows.length ? cards : [],
+      cursor: String(rpcData?.cursor ?? ""),
+      exhausted: rpcData?.exhausted !== false,
+      source: cards.length === rows.length ? "rpc_card" : "rpc",
+    };
+  }
+  if (!isMissingUserRoomFeed(rpcError) && rpcError?.code !== "PGRST202") throw rpcError;
+
   const rowLimit = Math.min(320, cappedLimit * 4);
   const { data, error } = await client
     .from("user_room_feed")
-    .select("entity_id,sort_at,relation")
+    .select("entity_id,sort_at,relation,card_json")
     .eq("entity_type", "match")
     .eq("profile_id", profileId)
     .eq("is_active", true)
@@ -125,10 +163,14 @@ async function fetchMatchFeedPage(client, profileId = "", limit = REMOTE_CLIENT_
     throw error;
   }
   const ids = unique((data ?? []).map((row) => row?.entity_id)).slice(0, cappedLimit);
+  const rows = (data ?? []).filter((row) => ids.includes(row?.entity_id));
+  const cards = uniqueFeedCards(rows, ids);
   return {
     ids,
+    cards: cards.length === ids.length ? cards : [],
     cursor: ids.length ? `feed:${offset + (data ?? []).length}` : "",
     exhausted: (data ?? []).length < rowLimit || ids.length < cappedLimit,
+    source: cards.length === ids.length ? "feed_card" : "feed",
   };
 }
 
@@ -570,10 +612,16 @@ async function loadCompactMatchList(context, body = {}, adminLevel = 0, limit = 
   let pageCursor = feedPage?.cursor ?? "";
   let pageExhausted = feedPage?.exhausted ?? true;
   let matchRows = [];
+  let matches = [];
   if (feedPage) {
-    matchRows = await timeStep(debugTiming, "matchRowsMs", () => (
-      fetchMatchRowsByIds(context.supabase, feedPage.ids)
-    ));
+    pageSource = feedPage.source ?? "feed";
+    if (feedPage.cards?.length) {
+      matches = feedPage.cards;
+    } else {
+      matchRows = await timeStep(debugTiming, "matchRowsMs", () => (
+        fetchMatchRowsByIds(context.supabase, feedPage.ids)
+      ));
+    }
   } else {
     pageSource = "fallback_mine";
     const minePage = await timeStep(debugTiming, "fallbackMineMs", () => (
@@ -582,6 +630,60 @@ async function loadCompactMatchList(context, body = {}, adminLevel = 0, limit = 
     matchRows = minePage?.rows ?? [];
     pageCursor = minePage?.cursor ?? "";
     pageExhausted = minePage?.exhausted ?? true;
+  }
+
+  const currentUser = context.profile
+    ? fromRemoteProfile(context.profile)
+    : createProfileShell(context.authUserId, context.authUser?.email ?? "");
+  const settings = {
+    ...DEFAULT_SETTINGS,
+    ...getRemoteAppSettings(context.profile),
+  };
+
+  if (matches.length) {
+    const state = normalizeState({
+      currentUserId: currentUser.id,
+      users: [compactUser(currentUser, currentUser.id)],
+      teams: [],
+      matches,
+      settings,
+    }, { includeDemo: false });
+    const recruitingSchedule = await timeStep(debugTiming, "recruitingScheduleMs", () => recruitingSchedulePromise);
+    const recruitingState = recruitingSchedule?.state ?? {};
+    const recruitingScheduleCount = recruitingState.recruitingPosts?.length ?? 0;
+    const mergedState = {
+      ...state,
+      users: mergeById(state.users, recruitingState.users),
+      teams: mergeById(state.teams, recruitingState.teams),
+      recruitingPosts: recruitingState.recruitingPosts ?? [],
+    };
+
+    return {
+      state: {
+        ...mergedState,
+        tournaments: [],
+        affiliations: [],
+        seasons: [],
+        reports: [],
+        notifications: [],
+        discordNotificationDeliveries: [],
+      },
+      page: {
+        limit,
+        count: matches.length,
+        cursor: pageCursor,
+        exhausted: pageExhausted,
+        source: pageSource,
+        recruitingScheduleChecked: shouldLoadRecruitingSchedule,
+        recruitingScheduleCount,
+      },
+      updatedAt: Math.max(
+        ...[...matches, context.profile].filter(Boolean)
+          .map((row) => new Date(row.updatedAt ?? row.updated_at ?? row.createdAt ?? row.created_at ?? 0).getTime())
+          .filter((value) => Number.isFinite(value)),
+        0,
+      ),
+    };
   }
 
   const matchIds = (matchRows ?? []).map((row) => row.id).filter(Boolean);
@@ -619,9 +721,6 @@ async function loadCompactMatchList(context, body = {}, adminLevel = 0, limit = 
   if (courtError) throw courtError;
   if (profileError) throw profileError;
 
-  const currentUser = context.profile
-    ? fromRemoteProfile(context.profile)
-    : createProfileShell(context.authUserId, context.authUser?.email ?? "");
   const userById = new Map((profileRows ?? []).map((row) => {
     const user = fromRemoteProfile(row);
     return [user.id, user];
@@ -632,13 +731,9 @@ async function loadCompactMatchList(context, body = {}, adminLevel = 0, limit = 
   const teams = (teamRows ?? []).map(toClientTeam);
   const teamById = Object.fromEntries(teams.map((team) => [team.id, team]));
   const courtById = firstBy(courtRows ?? [], "id");
-  const matches = readableRows
+  matches = readableRows
     .map((row) => toClientMatch(row, playersByMatch, teamById, courtById))
     .sort((a, b) => String(b.updatedAt ?? b.createdAt ?? "").localeCompare(String(a.updatedAt ?? a.createdAt ?? "")));
-  const settings = {
-    ...DEFAULT_SETTINGS,
-    ...getRemoteAppSettings(context.profile),
-  };
   const state = normalizeState({
     currentUserId: currentUser.id,
     users,

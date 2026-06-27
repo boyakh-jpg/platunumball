@@ -3832,6 +3832,12 @@ declare
   match_row public.matches%rowtype;
   region_key text;
   row_sort_at timestamptz;
+  card_json jsonb;
+  court_display_name text;
+  team_a_name text;
+  team_b_name text;
+  team_a_players jsonb := '[]'::jsonb;
+  team_b_players jsonb := '[]'::jsonb;
   player_row record;
 begin
   update public.user_room_feed
@@ -3851,17 +3857,108 @@ begin
 
   region_key := public.rankball_room_feed_region_key(match_row.rules->>'region');
   row_sort_at := coalesce(match_row.updated_at, match_row.ended_at, match_row.started_at, match_row.agreed_at, match_row.created_at, now());
+  court_display_name := match_row.court_name;
+
+  if court_display_name is null and match_row.court_id is not null then
+    select name into court_display_name
+    from public.courts
+    where id = match_row.court_id;
+  end if;
+
+  if match_row.team_a_id is not null then
+    select name into team_a_name
+    from public.teams
+    where id = match_row.team_a_id;
+  end if;
+
+  if match_row.team_b_id is not null then
+    select name into team_b_name
+    from public.teams
+    where id = match_row.team_b_id;
+  end if;
+
+  select
+    coalesce(jsonb_agg(mp.user_id order by mp.slot_order, mp.user_id) filter (where mp.side = 'teamA'), '[]'::jsonb),
+    coalesce(jsonb_agg(mp.user_id order by mp.slot_order, mp.user_id) filter (where mp.side = 'teamB'), '[]'::jsonb)
+  into team_a_players, team_b_players
+  from public.match_players mp
+  where mp.match_id = match_row.id;
+
+  card_json := jsonb_build_object(
+    'id', match_row.id,
+    'listCardOnly', true,
+    'title', match_row.title,
+    'mode', match_row.mode,
+    'court', coalesce(court_display_name, '미정'),
+    'visibility', coalesce(match_row.visibility, match_row.rules->>'visibility', 'public'),
+    'scheduledDate', match_row.scheduled_date,
+    'scheduledTime', case when match_row.scheduled_time is null then '' else left(match_row.scheduled_time::text, 5) end,
+    'scheduledAt', case
+      when match_row.rules->>'timingType' = 'instant' then '즉시'
+      when match_row.scheduled_date is not null and match_row.scheduled_time is not null then match_row.scheduled_date::text || ' ' || left(match_row.scheduled_time::text, 5)
+      when match_row.scheduled_date is not null then match_row.scheduled_date::text
+      else coalesce(match_row.scheduled_at::text, '미정')
+    end,
+    'timingType', case when match_row.rules->>'timingType' = 'instant' then 'instant' else 'scheduled' end,
+    'status', coalesce(match_row.status, 'contract'),
+    'official', coalesce(match_row.official, false),
+    'preRegistered', coalesce(match_row.pre_registered, false),
+    'ranked', coalesce(match_row.ranked, true),
+    'refereeId', coalesce(match_row.referee_id, ''),
+    'formerRefereeId', coalesce(match_row.former_referee_id, ''),
+    'refereeWanted', coalesce(match_row.referee_id, '') <> '' or coalesce((match_row.rules->>'refereeWanted')::boolean, false),
+    'createdBy', coalesce(match_row.created_by, ''),
+    'recruitingPostId', coalesce(match_row.rules->>'recruitingPostId', ''),
+    'tournamentId', coalesce(match_row.tournament_id, ''),
+    'teamA', jsonb_build_object(
+      'teamId', coalesce(match_row.team_a_id, ''),
+      'name', coalesce(team_a_name, 'Team A'),
+      'players', team_a_players,
+      'score', coalesce(match_row.score_a, 0)
+    ),
+    'teamB', jsonb_build_object(
+      'teamId', coalesce(match_row.team_b_id, ''),
+      'name', coalesce(team_b_name, 'Team B'),
+      'players', team_b_players,
+      'score', coalesce(match_row.score_b, 0)
+    ),
+    'agreements', jsonb_build_object('teamA', '[]'::jsonb, 'teamB', '[]'::jsonb),
+    'approvals', jsonb_build_object('teamA', '[]'::jsonb, 'teamB', '[]'::jsonb),
+    'disputes', '[]'::jsonb,
+    'playedPlayerIds', coalesce(match_row.played_player_ids, match_row.rules->'playedPlayerIds', '{}'::jsonb),
+    'reservePlayers', coalesce(match_row.reserve_players, match_row.rules->'reservePlayers', '{}'::jsonb),
+    'mmrExcludedPlayerIds', coalesce(match_row.mmr_excluded_player_ids, match_row.rules->'mmrExcludedPlayerIds', '[]'::jsonb),
+    'anonymousPlayers', coalesce(match_row.anonymous_players, '{}'::jsonb),
+    'parties', coalesce(match_row.rules->'parties', '[]'::jsonb),
+    'result', null,
+    'rules', coalesce(match_row.rules, '{}'::jsonb) || jsonb_build_object(
+      'playedPlayerIds', coalesce(match_row.played_player_ids, match_row.rules->'playedPlayerIds', '{}'::jsonb),
+      'mmrExcludedPlayerIds', coalesce(match_row.mmr_excluded_player_ids, match_row.rules->'mmrExcludedPlayerIds', '[]'::jsonb),
+      'statRecorders', coalesce(match_row.stat_recorders, match_row.rules->'statRecorders', '{}'::jsonb)
+    ),
+    'statRecorders', coalesce(match_row.stat_recorders, match_row.rules->'statRecorders', '{}'::jsonb),
+    'statEntryMinutes', coalesce(match_row.stat_entry_minutes, 60),
+    'disputeMinutes', coalesce(match_row.dispute_minutes, 30),
+    'createdAt', match_row.created_at,
+    'agreedAt', match_row.agreed_at,
+    'startedAt', match_row.started_at,
+    'endedAt', match_row.ended_at,
+    'confirmedAt', match_row.confirmed_at,
+    'cancelledAt', match_row.cancelled_at,
+    'voidedAt', match_row.voided_at,
+    'updatedAt', coalesce(match_row.updated_at, match_row.created_at)
+  );
 
   if nullif(match_row.created_by, '') is not null then
-    perform public.rankball_upsert_room_feed(match_row.created_by, 'match', match_row.id, 'owner', region_key, match_row.status, match_row.visibility, row_sort_at, '{}'::jsonb);
+    perform public.rankball_upsert_room_feed(match_row.created_by, 'match', match_row.id, 'owner', region_key, match_row.status, match_row.visibility, row_sort_at, card_json);
   end if;
 
   if nullif(match_row.referee_id, '') is not null then
-    perform public.rankball_upsert_room_feed(match_row.referee_id, 'match', match_row.id, 'referee', region_key, match_row.status, match_row.visibility, row_sort_at, '{}'::jsonb);
+    perform public.rankball_upsert_room_feed(match_row.referee_id, 'match', match_row.id, 'referee', region_key, match_row.status, match_row.visibility, row_sort_at, card_json);
   end if;
 
   if nullif(match_row.former_referee_id, '') is not null then
-    perform public.rankball_upsert_room_feed(match_row.former_referee_id, 'match', match_row.id, 'referee', region_key, match_row.status, match_row.visibility, row_sort_at, '{}'::jsonb);
+    perform public.rankball_upsert_room_feed(match_row.former_referee_id, 'match', match_row.id, 'referee', region_key, match_row.status, match_row.visibility, row_sort_at, card_json);
   end if;
 
   for player_row in
@@ -3870,11 +3967,90 @@ begin
     where match_id = match_row.id
   loop
     if nullif(player_row.user_id, '') is not null then
-      perform public.rankball_upsert_room_feed(player_row.user_id, 'match', match_row.id, 'participant', region_key, match_row.status, match_row.visibility, row_sort_at, '{}'::jsonb);
+      perform public.rankball_upsert_room_feed(player_row.user_id, 'match', match_row.id, 'participant', region_key, match_row.status, match_row.visibility, row_sort_at, card_json);
     end if;
   end loop;
 end;
 $$;
+
+create or replace function public.rankball_match_list(
+  p_profile_id text,
+  p_limit integer default 5,
+  p_cursor text default ''
+)
+returns jsonb
+language sql
+security definer
+set search_path = public
+as $$
+  with params as (
+    select
+      nullif(btrim(p_profile_id), '') as profile_id,
+      greatest(1, least(80, coalesce(p_limit, 5))) as row_limit,
+      case
+        when coalesce(p_cursor, '') like 'feed:%' and substring(coalesce(p_cursor, '') from 6) ~ '^[0-9]+$'
+          then greatest(0, substring(coalesce(p_cursor, '') from 6)::integer)
+        else 0
+      end as row_offset
+  ),
+  grouped as (
+    select
+      feed.entity_id,
+      max(feed.sort_at) as sort_at,
+      max(feed.status) as status,
+      coalesce(
+        (array_agg(feed.card_json order by feed.sort_at desc, feed.relation))[1],
+        '{}'::jsonb
+      ) as card_json,
+      jsonb_agg(distinct feed.relation) as relations
+    from public.user_room_feed feed, params
+    where feed.entity_type = 'match'
+      and feed.profile_id = params.profile_id
+      and feed.is_active = true
+      and feed.relation in ('owner', 'participant', 'referee')
+    group by feed.entity_id
+  ),
+  paged as (
+    select grouped.*
+    from grouped, params
+    order by grouped.sort_at desc nulls last, grouped.entity_id desc
+    offset (select row_offset from params)
+    limit (select row_limit + 1 from params)
+  ),
+  numbered as (
+    select
+      paged.*,
+      row_number() over (order by paged.sort_at desc nulls last, paged.entity_id desc) as rn
+    from paged
+  )
+  select jsonb_build_object(
+    'rows',
+    coalesce(
+      jsonb_agg(
+        jsonb_build_object(
+          'entity_id', numbered.entity_id,
+          'sort_at', numbered.sort_at,
+          'status', numbered.status,
+          'relations', numbered.relations,
+          'card_json', numbered.card_json
+        )
+        order by numbered.sort_at desc nulls last, numbered.entity_id desc
+      ) filter (where numbered.rn <= (select row_limit from params)),
+      '[]'::jsonb
+    ),
+    'cursor',
+    case
+      when count(*) > (select row_limit from params) then 'feed:' || ((select row_offset from params) + (select row_limit from params))::text
+      else ''
+    end,
+    'exhausted',
+    count(*) <= (select row_limit from params)
+  )
+  from numbered, params;
+$$;
+
+revoke all on function public.rankball_match_list(text, integer, text) from public;
+grant execute on function public.rankball_match_list(text, integer, text) to service_role;
 
 create or replace function public.rankball_refresh_recruiting_feed_trigger()
 returns trigger
