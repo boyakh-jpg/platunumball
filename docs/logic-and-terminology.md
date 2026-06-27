@@ -1310,6 +1310,10 @@ flowchart TD
 1. Current-user report reads include rows where the profile is `user_id`, `target_id`, or inside `reported_user_ids`.
 2. `reported_user_ids` is read with JSON contains `[currentUserId]`, not PostREST array syntax.
 
+## 2026-06-27 recruiting confirm stale cache
+
+1. 경기 확정은 클라이언트 recruiting cache가 stale일 수 있으므로 단일 방 재조회와 server action replay 결과를 기준으로 matchId를 확정한다.
+
 ## 2026-06-27 recruiting personal create and mine load
 
 1. 경기 만들기에서 내 팀이 없는 사용자는 기본 `hostJoinMode`를 `player`로 시작한다.

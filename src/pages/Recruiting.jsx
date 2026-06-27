@@ -1878,8 +1878,8 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
     app.actions.inviteRecruitingPlayers(roomPost.id, { side: inviteDraft.sideName, reserve: Boolean(inviteDraft.reserve), playerIds, teamId });
     setInviteDraft((current) => (current ? { ...current, selectedPlayerIds: [] } : current));
   };
-  const confirmQueueRoom = (roomPost) => {
-    const matchId = app.actions.confirmRecruitingMatch(roomPost.id);
+  const confirmQueueRoom = async (roomPost) => {
+    const matchId = await app.actions.confirmRecruitingMatch(roomPost.id);
     if (!matchId) return;
     closeModal();
     onOpenMatch?.(matchId);
@@ -2931,6 +2931,7 @@ function RecruitingReady({ app }) {
   const [composeOpen, setComposeOpen] = useState(false);
   const [selectedPostId, setSelectedPostId] = useState(null);
   const targetPostLoadRef = useRef("");
+  const selectedPostRefreshRef = useRef("");
   const myRecruitingLoadRef = useRef("");
   const [draft, setDraft] = useState(() => ({
     hostJoinMode: myTeams[0]?.id ? "team" : "player",
@@ -3052,6 +3053,18 @@ function RecruitingReady({ app }) {
     targetPostLoadRef.current = targetPostId;
     app.actions.loadRecruitingPost?.(targetPostId);
   }, [app.actions, app.remoteReady, app.state.recruitingPosts, targetPostId]);
+
+  useEffect(() => {
+    if (!selectedPostId) {
+      selectedPostRefreshRef.current = "";
+      return;
+    }
+    if (!app.remoteReady || !app.currentUser.id) return;
+    const refreshKey = `${selectedPostId}:${app.currentUser.id}`;
+    if (selectedPostRefreshRef.current === refreshKey) return;
+    selectedPostRefreshRef.current = refreshKey;
+    app.actions.loadRecruitingPost?.(selectedPostId);
+  }, [app.actions, app.currentUser.id, app.remoteReady, selectedPostId]);
 
   useEffect(() => {
     if (!targetPostId) return;
