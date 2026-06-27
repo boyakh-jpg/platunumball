@@ -2436,6 +2436,111 @@ $$;
 revoke all on function public.rankball_persist_recruiting_snapshot(jsonb, jsonb, jsonb) from public;
 grant execute on function public.rankball_persist_recruiting_snapshot(jsonb, jsonb, jsonb) to service_role;
 
+create or replace function public.rankball_recruiting_slot_position_action(
+  p_actor_profile_id text,
+  p_post_id text,
+  p_player_id text default null,
+  p_position text default ''
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  safe_actor_id text := nullif(btrim(p_actor_profile_id), '');
+  safe_post_id text := nullif(btrim(p_post_id), '');
+  safe_player_id text := coalesce(nullif(btrim(p_player_id), ''), safe_actor_id);
+  safe_position text := coalesce(nullif(btrim(p_position), ''), '');
+  current_status text;
+  current_room_state jsonb;
+  next_slot_positions jsonb;
+  is_room_member boolean := false;
+begin
+  if safe_actor_id is null then
+    raise exception 'missing_actor_profile_id' using errcode = '22023';
+  end if;
+  if safe_post_id is null then
+    raise exception 'missing_recruiting_post' using errcode = '22023';
+  end if;
+  if safe_player_id is null or safe_player_id <> safe_actor_id then
+    raise exception 'recruiting_slot_position_permission_denied' using errcode = '42501';
+  end if;
+
+  if safe_position not in ('상관없음', 'PG', 'SG', 'SF', 'PF', 'C') then
+    safe_position := '';
+  end if;
+
+  select status, coalesce(room_state, '{}'::jsonb)
+  into current_status, current_room_state
+  from public.recruiting_posts
+  where id = safe_post_id
+  for update;
+
+  if not found then
+    raise exception 'recruiting_post_not_found' using errcode = '22023';
+  end if;
+  if current_status <> 'open' then
+    raise exception 'recruiting_room_not_mutable' using errcode = '42501';
+  end if;
+
+  select (
+    exists (
+      select 1
+      from public.recruiting_posts post
+      where post.id = safe_post_id
+        and (
+          post.player_id = safe_player_id
+          or coalesce(post.player_ids, '[]'::jsonb) ? safe_player_id
+        )
+    )
+    or exists (
+      select 1
+      from public.recruiting_applications application
+      where application.post_id = safe_post_id
+        and (
+          application.player_id = safe_player_id
+          or coalesce(application.player_ids, '[]'::jsonb) ? safe_player_id
+        )
+    )
+  )
+  into is_room_member;
+
+  if not is_room_member then
+    raise exception 'recruiting_room_member_required' using errcode = '42501';
+  end if;
+
+  next_slot_positions := case
+    when jsonb_typeof(current_room_state->'slotPositions') = 'object' then current_room_state->'slotPositions'
+    else '{}'::jsonb
+  end;
+
+  if safe_position = '' then
+    next_slot_positions := next_slot_positions - safe_player_id;
+  else
+    next_slot_positions := jsonb_set(next_slot_positions, array[safe_player_id], to_jsonb(safe_position), true);
+  end if;
+
+  update public.recruiting_posts
+  set
+    room_state = jsonb_set(current_room_state, '{slotPositions}', next_slot_positions, true),
+    updated_at = now()
+  where id = safe_post_id;
+
+  return jsonb_build_object(
+    'ok', true,
+    'action', 'setRecruitingSlotPosition',
+    'postId', safe_post_id,
+    'playerId', safe_player_id,
+    'position', safe_position,
+    'sqlReducer', true
+  );
+end;
+$$;
+
+revoke all on function public.rankball_recruiting_slot_position_action(text, text, text, text) from public;
+grant execute on function public.rankball_recruiting_slot_position_action(text, text, text, text) to service_role;
+
 create or replace function public.rankball_recruiting_action(
   p_actor_profile_id text,
   p_action text,
@@ -2459,6 +2564,15 @@ begin
   end if;
   if safe_post_id is null then
     raise exception 'missing_recruiting_post' using errcode = '22023';
+  end if;
+
+  if safe_action = 'setRecruitingSlotPosition' and p_post_row ? '__operation' then
+    return public.rankball_recruiting_slot_position_action(
+      safe_actor_id,
+      safe_post_id,
+      p_post_row #>> '{__operation,playerId}',
+      p_post_row #>> '{__operation,position}'
+    );
   end if;
 
   perform 1

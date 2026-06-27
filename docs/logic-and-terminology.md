@@ -1335,6 +1335,8 @@ flowchart TD
 12. Recruiting 단일 방 상세 로드는 최신 서버 row가 기준이다. 목록 보강 로드의 최근 mutation 보호막으로 단일 상세 row를 버리면 안 된다.
 13. Supabase auth 사용자가 바뀌면 이전 계정의 room/list state를 화면에 남기지 않고 shell state로 비운 뒤 새 서버 state를 로드한다.
 
+14. `setRecruitingSlotPosition`은 첫 SQL reducer 이식 대상이다. 서버는 `rankball_recruiting_slot_position_action()`을 우선 호출하고, SQL이 아직 적용되지 않았으면 기존 authoritative replay 경로로 fallback한다. `rankball_recruiting_action(...)`도 `p_post_row.__operation`이 있는 같은 action을 이 helper로 위임할 수 있다.
+
 ## 2026-06-27 simulation cleanup safety
 
 1. 운영 시뮬레이션 정리는 물리 삭제하지 않는다.

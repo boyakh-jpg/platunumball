@@ -517,6 +517,10 @@ const AUTHORITATIVE_REPLAY_RECRUITING_ACTIONS = new Set([
   "setRecruitingSlotPosition",
 ]);
 
+const SQL_REDUCER_RECRUITING_ACTIONS = new Set([
+  "setRecruitingSlotPosition",
+]);
+
 const CORE_LOCKED_RECRUITING_ACTIONS = new Set([
   ...PARTICIPANT_RECRUITING_ACTIONS,
   ...JOIN_RECRUITING_ACTIONS,
@@ -524,6 +528,34 @@ const CORE_LOCKED_RECRUITING_ACTIONS = new Set([
 
 function shouldReplayRecruitingOperation(operation = {}) {
   return AUTHORITATIVE_REPLAY_RECRUITING_ACTIONS.has(String(operation?.action ?? ""));
+}
+
+function isMissingSqlReducer(error = {}) {
+  const message = String(error?.message ?? "");
+  return error?.code === "PGRST202" || message.includes("rankball_recruiting_slot_position_action");
+}
+
+function shouldUseSqlRecruitingAction(operation = {}) {
+  return SQL_REDUCER_RECRUITING_ACTIONS.has(String(operation?.action ?? ""));
+}
+
+async function applySqlRecruitingAction(context, operation = {}) {
+  if (operation.action !== "setRecruitingSlotPosition") return null;
+  const { data, error } = await context.supabase.rpc("rankball_recruiting_slot_position_action", {
+    p_actor_profile_id: context.profileId,
+    p_post_id: operation.postId,
+    p_player_id: operation.playerId ?? context.profileId,
+    p_position: operation.position ?? "",
+  });
+  if (error) {
+    if (isMissingSqlReducer(error)) return null;
+    throw error;
+  }
+  return {
+    ok: true,
+    ...(data && typeof data === "object" ? data : {}),
+    postId: operation.postId,
+  };
 }
 
 function canSyncRecruitingAction(profileId, existingPost, nextPost, action, body = {}) {
@@ -701,6 +733,14 @@ export default async function handler(request, response) {
     let notifications = body.notifications ?? [];
     let action = body.action ? String(body.action) : "sync";
     let createdMatch = null;
+
+    if (operation && shouldUseSqlRecruitingAction(operation)) {
+      const sqlResult = await applySqlRecruitingAction(context, operation);
+      if (sqlResult) {
+        sendJson(response, 200, sqlResult);
+        return;
+      }
+    }
 
     if (operation && (!post || operation.action === "createRecruitingPost" || shouldReplayRecruitingOperation(operation))) {
       const state = await loadAuthoritativeState(context, { operation });
