@@ -1303,7 +1303,7 @@ flowchart TD
 7. Initial `/api/state/load` client hydrate may set `matchListOnly: true`; match detail rows are then fetched lazily through `/api/matches/detail`.
 8. Initial `/api/state/load` may set `directoryScope: "related"` so it loads only users/teams related to the first match/recruiting/tournament page and favorites.
 9. Full user/team directory data is loaded on demand through `/api/directory/load` for Rankings, Teams, Create Match, and Settings.
-10. Initial client hydrate uses 20 matches and 20 recruiting posts; additional list pages use 50 rows.
+10. Initial client hydrate uses 10 matches and 10 recruiting posts; additional list pages use 50 rows.
 
 ## 2026-06-27 report scoped reads
 
@@ -1328,3 +1328,4 @@ flowchart TD
 10. 초대받은 방은 초대 상태일 뿐 `내 참여방`으로 세지 않는다.
 11. `interestRecruitingPost`, `joinRecruitingSideParty`, `acceptRecruitingInvitation`이 아닌 recruiting snapshot 저장은 기존 DB roster에 없던 참가자를 새로 끼워 넣을 수 없다.
 12. Recruiting 단일 방 상세 로드는 최신 서버 row가 기준이다. 목록 보강 로드의 최근 mutation 보호막으로 단일 상세 row를 버리면 안 된다.
+13. Supabase auth 사용자가 바뀌면 이전 계정의 room/list state를 화면에 남기지 않고 shell state로 비운 뒤 새 서버 state를 로드한다.

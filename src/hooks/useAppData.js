@@ -470,6 +470,9 @@ export function useAppData(authUser = null) {
     remoteReadyRef.current = false;
     setRemoteReady(false);
     directoryPromiseRef.current = null;
+    pendingRecruitingPostIdsRef.current = new Set();
+    recentRecruitingMutationTimesRef.current = new Map();
+    setState(loadState({ includeDemo: false, authUserId, email: authEmail }));
     setDirectoryStatus({ loading: false, loaded: false, error: "" });
     loadBackendState(authUserId, authEmail)
       .then((remoteState) => {
