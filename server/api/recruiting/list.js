@@ -564,12 +564,14 @@ export default async function handler(request, response) {
     const mineOnly = body.scope === "mine" || body.mine === true;
     const includeMine = mineOnly || body.includeMine === true;
     const mineLimit = mineOnly ? limit : REMOTE_CLIENT_RECRUITING_LIMIT;
-    const currentUserPostIds = includeMine ? await fetchCurrentUserRecruitingPostIds(context.supabase, context.profileId, mineLimit) : [];
     const explicitPostIds = getTargetPostIds(body);
     const listOnly = body.listOnly !== false && !explicitPostIds.length;
     const offset = getPageOffset(body);
     const shouldPageList = !mineOnly && !explicitPostIds.length;
-    const pagePostIds = shouldPageList ? await fetchRecruitingPagePostIds(context.supabase, limit, offset) : [];
+    const [currentUserPostIds, pagePostIds] = await Promise.all([
+      includeMine ? fetchCurrentUserRecruitingPostIds(context.supabase, context.profileId, mineLimit) : Promise.resolve([]),
+      shouldPageList ? fetchRecruitingPagePostIds(context.supabase, limit, offset) : Promise.resolve([]),
+    ]);
     const targetPostIds = uniqueIds([...explicitPostIds, ...(mineOnly ? currentUserPostIds : pagePostIds)]);
     if (listOnly) {
       const compactResult = await loadCompactRecruitingList(context, {

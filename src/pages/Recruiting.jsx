@@ -3044,7 +3044,7 @@ function RecruitingReady({ app }) {
 
   useEffect(() => {
     const loadMyRecruitingPosts = app.actions.loadMyRecruitingPosts;
-    if (!app.remoteReady || !app.currentUser.id || !loadMyRecruitingPosts) return undefined;
+    if (!targetPostId || !app.remoteReady || !app.currentUser.id || !loadMyRecruitingPosts) return undefined;
     const userId = app.currentUser.id;
     const pendingKey = `${userId}:pending`;
     if (myRecruitingLoadRef.current === userId || myRecruitingLoadRef.current === pendingKey) return undefined;
@@ -3084,7 +3084,7 @@ function RecruitingReady({ app }) {
       if (retryTimeoutId) window.clearTimeout(retryTimeoutId);
       if (myRecruitingLoadRef.current === pendingKey) myRecruitingLoadRef.current = "";
     };
-  }, [app.actions.loadMyRecruitingPosts, app.currentUser.id, app.remoteReady]);
+  }, [app.actions.loadMyRecruitingPosts, app.currentUser.id, app.remoteReady, targetPostId]);
 
   useEffect(() => {
     if (!targetPostId || !app.remoteReady) return;
