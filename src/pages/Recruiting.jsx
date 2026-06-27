@@ -2851,7 +2851,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                     </div>
                     <Button type="submit" disabled={!canJoin}>
                       {joinDraft.joinMode === "team" ? <UsersRound size={18} /> : joinDraft.joinMode === "referee" ? <ShieldCheck size={18} /> : <UserRound size={18} />}
-                      참여
+                      참여하기
                     </Button>
                   </form>
                 )}
