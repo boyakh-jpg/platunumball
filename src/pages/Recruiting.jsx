@@ -59,6 +59,7 @@ import {
   getMatchSideLeaderId,
   getMatchSidePlayerIds,
   normalizePlayerStats,
+  canOperatorSubmitMissingPostgameResult,
   getPublicRoomMaxDateInput,
   getPublicRoomTimingStatus,
   isEligibleReferee,
@@ -1653,14 +1654,15 @@ function makeSourceMatchDraft(match) {
   };
 }
 
-function SourceMatchDisputeEditor({ match, userById, canReview, onSave, onResolve, onVoid }) {
+function SourceMatchDisputeEditor({ match, userById, canReview, onSave, onResolve = null, onVoid = null }) {
   const [draft, setDraft] = useState(() => makeSourceMatchDraft(match));
 
   useEffect(() => {
     setDraft(makeSourceMatchDraft(match));
   }, [match?.id, match?.result?.updatedAt, match?.disputeDraftResult?.updatedAt]);
 
-  if (!match?.result) return null;
+  if (!match) return null;
+  const hasResult = Boolean(match.result);
 
   const updatePlayerStat = (playerId, fieldId, value) => {
     setDraft((current) => ({
@@ -1719,11 +1721,11 @@ function SourceMatchDisputeEditor({ match, userById, canReview, onSave, onResolv
         ))}
       </div>
       <div className="match-action-row">
-        <Button type="submit" disabled={!canReview}>수정안 저장</Button>
-        <Button type="button" disabled={!canReview} onClick={() => onResolve(draft)}>수정안 확정</Button>
-        <Button type="button" variant="secondary" className="danger-button" disabled={!canReview} onClick={onVoid}>무효 처리</Button>
+        <Button type="submit" disabled={!canReview}>{hasResult ? "수정안 저장" : "결과 저장"}</Button>
+        {hasResult && onResolve ? <Button type="button" disabled={!canReview} onClick={() => onResolve(draft)}>수정안 확정</Button> : null}
+        {hasResult && onVoid ? <Button type="button" variant="secondary" className="danger-button" disabled={!canReview} onClick={onVoid}>무효 처리</Button> : null}
       </div>
-      <p className="muted">확정 후 불복은 신고로 처리합니다.</p>
+      <p className="muted">{hasResult ? "확정 후 불복은 신고로 처리합니다." : "결과 저장 후 양쪽 승인 단계로 넘어갑니다."}</p>
     </form>
   );
 }
@@ -2064,6 +2066,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const canConfirmRefereeAbsence = Boolean(matchRoom && sourceMatchOpponentLeaderId === app.currentUser.id && sourceMatch?.refereeId && sourceMatch?.refereeAbsenceRequest && !sourceMatch.refereeAbsenceRequest.confirmedAt && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.startedAt && !sourceMatch?.endedAt && !sourceMatch?.result && sourceMatchSideName);
         const canEndSourceMatch = Boolean(matchRoom && currentUserCanOperateStartedSourceMatch && sourceMatchPhase?.phase === "live" && !sourceMatch?.result && !sourceMatch?.endedAt && sourceMatchStarted);
         const canReviewSourceMatch = Boolean(matchRoom && currentUserCanOperateStartedSourceMatch && sourceMatchPhase?.phase === "dispute");
+        const canSubmitSourceMatchPostgameResult = Boolean(matchRoom && canOperatorSubmitMissingPostgameResult(sourceMatch, currentUserCanOperateStartedSourceMatch));
         const canCancelSourceMatch = Boolean(matchRoom && sourceMatch && ["contract", "agreed"].includes(sourceMatch.status) && (sourceMatchStarted || sourceMatch.endedAt || sourceMatch.result ? currentUserCanOperateStartedSourceMatch : mine));
         const showSourceMatchRecordSummary = Boolean(
           matchRoom &&
@@ -2648,6 +2651,14 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                         onSave={(draft) => app.actions.submitMatchResult(sourceMatch.id, draft)}
                         onResolve={(draft) => app.actions.resumeMatchApproval(sourceMatch.id, draft)}
                         onVoid={() => app.actions.voidMatch(sourceMatch.id)}
+                      />
+                    ) : null}
+                    {!sourceMatchAction.disputed && canSubmitSourceMatchPostgameResult ? (
+                      <SourceMatchDisputeEditor
+                        match={sourceMatch}
+                        userById={userById}
+                        canReview
+                        onSave={(draft) => app.actions.submitMatchResult(sourceMatch.id, draft)}
                       />
                     ) : null}
                     {!sourceRoomReadOnly && sourceMatchAction.action && sourceMatchSideName ? (
