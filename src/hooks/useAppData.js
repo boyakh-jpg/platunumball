@@ -560,6 +560,7 @@ export function useAppData(authUser = null) {
   }, [state]);
 
   useEffect(() => {
+    if (isSupabaseConfigured) return undefined;
     setState((prev) => runAutomaticStateMaintenance(prev));
     const interval = window.setInterval(() => {
       setState((prev) => runAutomaticStateMaintenance(prev));
@@ -594,7 +595,7 @@ export function useAppData(authUser = null) {
         if (!mounted) return;
         if (remoteState) {
           const remoteMeta = getRemoteMeta(remoteState);
-          const maintainedState = runAutomaticStateMaintenance(remoteState);
+          const maintainedState = isSupabaseConfigured ? remoteState : runAutomaticStateMaintenance(remoteState);
           const initialMatchLimit = Number(initialLoadOptions.matchLimit ?? 0);
           const initialRecruitingLimit = Number(initialLoadOptions.recruitingLimit ?? 0);
           setState((prev) => withServerAdminContext(preserveLocalDiscordState(prev, maintainedState), adminContextRef.current));
@@ -624,7 +625,7 @@ export function useAppData(authUser = null) {
       });
 
     const unsubscribe = subscribeRemoteState((remoteState) => {
-      const maintainedState = runAutomaticStateMaintenance(remoteState);
+      const maintainedState = isSupabaseConfigured ? remoteState : runAutomaticStateMaintenance(remoteState);
       setState((prev) => withServerAdminContext(preserveLocalDiscordState(prev, maintainedState), adminContextRef.current));
     });
 

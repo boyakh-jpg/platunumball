@@ -1347,6 +1347,7 @@ flowchart TD
 
 14. `setRecruitingSlotPosition`, `setRecruitingApplicantPlacement`, `cancelRecruitingParticipation`, 기본 공개 개인 `interestRecruitingPost`는 SQL reducer 이식 대상이다. 서버는 `rankball_recruiting_slot_position_action()`/`rankball_recruiting_applicant_placement_action()`/`rankball_recruiting_cancel_participation_action()`/`rankball_recruiting_interest_player_action()`을 우선 호출하고, SQL이 아직 적용되지 않았거나 팀/심판/비공개/제한 조건처럼 SQL reducer가 지원하지 않는 케이스면 기존 authoritative replay 경로로 fallback한다. `rankball_recruiting_action(...)`도 `p_post_row.__operation`이 있는 같은 action을 helper로 위임할 수 있다.
 15. Recruiting/Matches 화면의 `scope: "mine"` 보강 로드는 요청이 성공했을 때만 완료 처리한다. 초기 auth/token 타이밍 실패가 나면 재시도하고, 실패한 1회 요청 때문에 `내가 만든 방`/`내 참여방` 카운트를 초기 목록 상태로 고정하지 않는다.
+16. Supabase remote state는 서버/DB가 source of truth다. 클라이언트 자동관리 함수는 원격 모집방/경기 상태를 로컬에서 임의로 취소/종료 처리하지 않는다. 만료, 자동취소, 자동확정 같은 lifecycle 변경은 server action/RPC로 저장된 뒤에만 화면 source of truth로 취급한다.
 
 ## 2026-06-27 simulation cleanup safety
 

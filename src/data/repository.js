@@ -1841,7 +1841,7 @@ export async function loadRemoteState(authUserId = "", authEmail = "", options =
 
   try {
     const normalizedRemote = await loadNormalizedRemoteState(authUserId, authEmail, { clientState: true, ...options });
-    return normalizedRemote?.state ? runAutomaticStateMaintenance(normalizedRemote.state) : null;
+    return normalizedRemote?.state ?? null;
   } catch (error) {
     console.warn("Supabase normalized state load failed. Remote state remains empty.", error.message);
     return null;
