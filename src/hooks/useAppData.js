@@ -36,6 +36,7 @@ import {
   loadState,
   markAllNotificationsRead,
   markNotificationRead,
+  normalizeState,
   reportCourt,
   reportCourtRequest,
   reportCourtReview,
@@ -448,6 +449,10 @@ function getInitialStateLoadOptions() {
   return { matchLimit: REMOTE_CLIENT_INITIAL_MATCH_LIMIT, recruitingLimit: REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT };
 }
 
+function normalizeServerState(state) {
+  return state ? normalizeState(state, { includeDemo: false }) : state;
+}
+
 async function loadProfileState(authUserId, authEmail) {
   try {
     const result = await postServerAction(
@@ -455,7 +460,7 @@ async function loadProfileState(authUserId, authEmail) {
       { authUserId, authEmail },
       { allowWhenDisabled: true },
     );
-    if (result?.state) return result.state;
+    if (result?.state) return normalizeServerState(result.state);
   } catch (error) {
     console.warn("Server profile load failed. Falling back to direct Supabase read.", error.message);
   }
@@ -490,7 +495,7 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
         },
         { allowWhenDisabled: true },
       );
-      if (result?.state) return attachRemoteMeta(result.state, { matchPage: result.page ?? null });
+      if (result?.state) return attachRemoteMeta(normalizeServerState(result.state), { matchPage: result.page ?? null });
     }
     if (options.endpoint === "recruitingList") {
       const result = await postServerAction(
@@ -505,14 +510,14 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
         },
         { allowWhenDisabled: true },
       );
-      if (result?.state) return attachRemoteMeta(result.state, { recruitingPage: result.page ?? null });
+      if (result?.state) return attachRemoteMeta(normalizeServerState(result.state), { recruitingPage: result.page ?? null });
     }
     const result = await postServerAction(
       "/api/state/load",
       { authUserId, authEmail, ...loadOptions },
       { allowWhenDisabled: true },
     );
-    if (result?.state) return attachRemoteMeta(result.state, { recruitingPage: result.page ?? null });
+    if (result?.state) return attachRemoteMeta(normalizeServerState(result.state), { recruitingPage: result.page ?? null });
   } catch (error) {
     console.warn("Server state load failed. Falling back to direct Supabase read.", error.message);
   }

@@ -1321,6 +1321,7 @@ flowchart TD
 19. `endMatch` may use `rankball_match_end_action()` as a SQL reducer only for no-referee host-operated matches. Referee matches and unsupported states must fall back to the existing authoritative match action path.
 20. `addMatchLatePlayer`/`removeMatchLatePlayer` may use `rankball_match_late_player_action()` as a SQL reducer only for no-referee host-operated postgame matches inside the stat entry window. The SQL path only accepts a single anonymous late-player add or a single excluded late-player remove; registered late-player add and unsupported states fall back to the existing authoritative match action path.
 21. `/api/matches/list` default reads are direct list-card queries. They load only match rows, match_players, the current profile, compact teams, and compact courts. Full authoritative match state still belongs to `/api/matches/detail` or `listOnly=false`.
+22. Screen-specific server state such as `/api/profile/me`, `/api/matches/list`, `/api/recruiting/list`, and `/api/state/load` is normalized on the client before render so direct route entry receives the same base arrays/settings shape as other app routes.
 
 ## 2026-06-27 report scoped reads
 
