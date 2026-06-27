@@ -515,7 +515,8 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
           authUserId,
           authEmail,
           limit: loadOptions.recruitingLimit,
-          includeMine: true,
+          includeMine: false,
+          regionScope: "local",
           listOnly: true,
           adminContext: false,
         },
@@ -560,7 +561,7 @@ export function useAppData(authUser = null) {
   const [profileBindings, setProfileBindings] = useState(() => readProfileBindings());
   const [adminContext, setAdminContext] = useState(EMPTY_ADMIN_CONTEXT);
   const [matchPagination, setMatchPagination] = useState({ loading: false, exhausted: !isSupabaseConfigured, error: "", cursor: "", recruitingScheduleChecked: false });
-  const [recruitingPagination, setRecruitingPagination] = useState({ loading: false, exhausted: !isSupabaseConfigured, error: "", cursor: "", offset: 0 });
+  const [recruitingPagination, setRecruitingPagination] = useState({ loading: false, exhausted: !isSupabaseConfigured, error: "", cursor: "", offset: 0, feedCounts: null });
   const [directoryStatus, setDirectoryStatus] = useState({ loading: false, loaded: !isSupabaseConfigured, error: "" });
   const [remoteReady, setRemoteReady] = useState(!isSupabaseConfigured);
   const adminContextRef = useRef(EMPTY_ADMIN_CONTEXT);
@@ -606,7 +607,7 @@ export function useAppData(authUser = null) {
       remoteReadyRef.current = !isSupabaseConfigured;
       setRemoteReady(!isSupabaseConfigured);
       setMatchPagination({ loading: false, exhausted: true, error: "", cursor: "", recruitingScheduleChecked: false });
-      setRecruitingPagination({ loading: false, exhausted: true, error: "", cursor: "", offset: 0 });
+      setRecruitingPagination({ loading: false, exhausted: true, error: "", cursor: "", offset: 0, feedCounts: null });
       setDirectoryStatus({ loading: false, loaded: true, error: "" });
       return undefined;
     }
@@ -647,6 +648,7 @@ export function useAppData(authUser = null) {
             error: "",
             cursor: remoteMeta.recruitingPage?.cursor ?? getRecruitingPaginationCursor(maintainedState.recruitingPosts),
             offset: getRecruitingPaginationOffset(remoteMeta.recruitingPage, maintainedState.recruitingPosts?.length ?? 0),
+            feedCounts: remoteMeta.recruitingPage?.feedCounts ?? null,
           });
         }
         remoteReadyRef.current = true;
@@ -656,7 +658,7 @@ export function useAppData(authUser = null) {
         console.warn("Supabase hydration failed. Remote state remains empty.", error.message);
         remoteReadyRef.current = true;
         setMatchPagination({ loading: false, exhausted: true, error: error.message ?? "state_load_failed", cursor: "", recruitingScheduleChecked: false });
-        setRecruitingPagination({ loading: false, exhausted: true, error: error.message ?? "state_load_failed", cursor: "", offset: 0 });
+        setRecruitingPagination({ loading: false, exhausted: true, error: error.message ?? "state_load_failed", cursor: "", offset: 0, feedCounts: null });
         if (mounted) setRemoteReady(true);
       });
 
@@ -972,6 +974,7 @@ export function useAppData(authUser = null) {
           authEmail,
           limit: REMOTE_CLIENT_RECRUITING_LIMIT,
           offset,
+          regionScope: "local",
           listOnly: true,
           adminContext: false,
         },
@@ -989,6 +992,7 @@ export function useAppData(authUser = null) {
         error: "",
         cursor: result?.page?.cursor ?? String(offset + rawPostCount),
         offset: getRecruitingPaginationOffset(result?.page, offset + rawPostCount),
+        feedCounts: result?.page?.feedCounts ?? recruitingPagination.feedCounts ?? null,
       });
       return nextPosts.length;
     } catch (error) {
@@ -1015,6 +1019,10 @@ export function useAppData(authUser = null) {
       const remoteState = normalizeServerState(filterPendingRecruitingPosts(result?.state ?? {}, pendingRecruitingPostIdsRef.current, recentRecruitingMutationTimesRef.current));
       const nextPosts = remoteState.recruitingPosts ?? [];
       setState((prev) => mergeRemoteRecruitingPage(prev, remoteState));
+      setRecruitingPagination((prev) => ({
+        ...prev,
+        feedCounts: result?.page?.feedCounts ?? prev.feedCounts ?? null,
+      }));
       return nextPosts.length;
     } catch (error) {
       console.warn("Recruiting post load failed.", error.message);
@@ -1039,6 +1047,10 @@ export function useAppData(authUser = null) {
       const remoteState = normalizeServerState(filterPendingRecruitingPosts(result?.state ?? {}, pendingRecruitingPostIdsRef.current, recentRecruitingMutationTimesRef.current));
       const nextPosts = remoteState.recruitingPosts ?? [];
       setState((prev) => mergeRemoteRecruitingPage(prev, remoteState));
+      setRecruitingPagination((prev) => ({
+        ...prev,
+        feedCounts: result?.page?.feedCounts ?? prev.feedCounts ?? null,
+      }));
       return nextPosts.length;
     } catch (error) {
       console.warn("My recruiting load failed.", error.message);

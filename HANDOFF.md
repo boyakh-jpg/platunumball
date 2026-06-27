@@ -1,6 +1,6 @@
 # RankBall HANDOFF
 
-Updated: 2026-06-26
+Updated: 2026-06-27
 
 ## 1. New Thread Start Order
 
@@ -20,9 +20,12 @@ Important rule:
 ## 2. Current Repo State
 
 Latest pushed commit:
-- `fe8ec51 Fix light assets and local queue filter`
+- `8ac175f6 Fix mobile invite search panel`
 
 Recent relevant commits:
+- `8ac175f6 Fix mobile invite search panel`
+- `7129c297 Fix invite popover and match list load`
+- `57c236b6 Split frontend chunks`
 - `fe8ec51 Fix light assets and local queue filter`
 - `7f4610f Fix scoped state ordering`
 - `b0554df Scope remote state reads`
@@ -185,6 +188,15 @@ Already done:
   - match operation loads target match scope
   - recruiting operation loads target post scope
   - tournament operation loads target tournament scope
+- Added `user_room_feed` DB-maintained index:
+  - recruiting `region_public`, `owner`, `participant`, `invited`, `referee`
+  - match `owner`, `participant`, `referee`
+  - trigger refresh uses soft `is_active=false`, no table/data deletion
+- `/api/recruiting/list` reads local region public ids from `user_room_feed` first and returns feed-based room-scope counts.
+- `/api/matches/list` reads current-profile match ids from `user_room_feed` first.
+- `/app/recruiting` no longer does first-load `includeMine`; `내가 만든 방`/`내 참여방`/`초대받음` load only on user click.
+- `/app/recruiting` removed the default `전체 지역` toggle. First list is local region; later region/district picker should be explicit.
+- `/app/matches` no longer runs idle `scope=mine` recruiting background load.
 - `approveMatch` still uses `{ clientState: true }` because rating/MMR repeat factor still needs recent match history.
 - Ordering fixed:
   - recent `matches`, `recruiting_posts`, `tournaments` load by `updated_at`
@@ -193,7 +205,8 @@ Already done:
 Important warning:
 - This reduced egress, but did not finish the egress project.
 - `profiles`, `teams`, `team_members`, `courts`, and settings-related tables can still be broad.
-- Next step is real screen-specific endpoints/RPC and pagination.
+- `user_room_feed` SQL must be applied in Supabase before production uses the feed path. Until then API falls back to older RPC/PostREST reads.
+- Next step is moving more action reducers into SQL and making list-card payloads thinner.
 
 ## 6. Backend Simulation
 
@@ -379,15 +392,13 @@ Need:
 ### C. Screen-specific state endpoints
 
 Current:
-- `/api/state/load` still returns one broad state object.
+- `/api/profile/me`, `/api/recruiting/list`, `/api/matches/list`, `/api/matches/detail`, and recorder-specific match reads exist.
+- `/api/state/load` still exists for broad fallback/older routes.
+- Recruiting/match list endpoints now have feed-first paths but still load row details through PostREST after ids are chosen.
 
 Need:
 - Split into endpoints/RPC like:
-  - `/api/profile/me`
-  - `/api/recruiting/list`
   - `/api/recruiting/detail`
-  - `/api/matches/list`
-  - `/api/matches/detail`
   - `/api/teams/list`
   - `/api/teams/detail`
   - `/api/settings/context`
@@ -437,24 +448,19 @@ Need:
 
 ### G. Bundle size
 
-Current warning:
-- main JS chunk over `500KB`.
+Current:
+- Last direct Vite build split chunks below the `500KB` warning threshold.
 
 Need later:
-- code split heavy routes:
-  - Admin
-  - Settings
-  - Recruiting modal
-  - Matches room
-  - Referee rulebook
-- Do not do this before backend state stabilizes unless user asks.
+- keep heavy routes lazy-loaded.
+- split CSS later if first paint still feels heavy.
 
 ## 12. Current Warnings
 
 - `pnpm-lock.yaml` and `pnpm-workspace.yaml` are untracked.
 - Do not stage those unless intentionally switching package manager.
 - `docs/logic-and-terminology.md` may show mojibake in PowerShell output, but browser/source can still be OK.
-- Build succeeds but chunk warning remains.
+- Direct Vite build succeeds with chunk split.
 - Supabase egress is reduced, not solved.
 - Match list shows only user-related schedule by design; public browsing is in Recruiting/Matching list.
 - If user says "경기 목록이 비었다", first check whether they mean:
@@ -526,9 +532,13 @@ First read:
 - relevant source files before editing
 
 Current priority:
-Keep reducing Supabase PostREST egress and continue backend migration, but do not break the just-fixed recruiting list and light-mode background.
+Keep reducing Supabase PostREST egress and continue backend migration, but do not break the feed-based recruiting/match list, recruiting local filter, and light-mode background.
 
 Known latest fixes:
+- user_room_feed feed-first recruiting/match list work is in current repo state. Check latest git log for exact commit after this handoff.
+- 8ac175f6 fixed mobile invite search panel.
+- 7129c297 fixed invite popover and match list load.
+- 57c236b6 split frontend chunks.
 - fe8ec51 fixed light background selector and local recruiting queue region matching.
 - 7f4610f fixed scoped state ordering.
 - b0554df scoped remote state reads.
@@ -550,8 +560,9 @@ Start by running:
 - production state count check from HANDOFF.md
 
 Then continue the highest priority backend work:
-1. screen-specific state endpoints/pagination to reduce PostREST egress
-2. recruiting/match DB-authoritative transaction work
-3. frontend useAppData thin caller cleanup
-4. expand backend simulation scenarios
+1. apply/verify user_room_feed SQL in Supabase if not already applied
+2. recruiting/match SQL reducer migration for action stability and lower read calls
+3. make list-card payloads thinner, especially related users/teams
+4. frontend useAppData thin caller cleanup
+5. expand backend simulation scenarios
 ```

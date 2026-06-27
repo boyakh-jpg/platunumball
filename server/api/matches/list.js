@@ -18,6 +18,8 @@ const MATCH_PLAYER_COLUMNS = "match_id,team_id,user_id,side,slot_order";
 const TEAM_COLUMNS = "id,name,home_court,region,mmr,wins,losses,accent,deleted_at";
 const COURT_COLUMNS = "id,name";
 
+let userRoomFeedAvailable = true;
+
 function getMatchCursor(matches = []) {
   const oldest = [...matches]
     .sort((a, b) => String(a.updatedAt ?? a.createdAt ?? "").localeCompare(String(b.updatedAt ?? b.createdAt ?? "")))
@@ -34,6 +36,18 @@ function getRowCursor(rows = []) {
 
 function unique(values = []) {
   return [...new Set(values.filter(Boolean))];
+}
+
+function isMissingUserRoomFeed(error = {}) {
+  const message = String(error?.message ?? "");
+  return error?.code === "PGRST205" || error?.code === "42P01" || message.includes("user_room_feed");
+}
+
+function getFeedOffsetCursor(value = "") {
+  const text = String(value ?? "");
+  if (!text.startsWith("feed:")) return 0;
+  const offset = Number(text.slice(5));
+  return Number.isFinite(offset) && offset > 0 ? Math.floor(offset) : 0;
 }
 
 function mergeById(current = [], incoming = []) {
@@ -75,6 +89,49 @@ function getCappedLimit(value) {
   const number = Number(value);
   if (!Number.isFinite(number) || number <= 0) return REMOTE_CLIENT_MATCH_LIMIT;
   return Math.max(1, Math.min(80, Math.floor(number)));
+}
+
+async function fetchMatchFeedPage(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT, cursor = "") {
+  if (!profileId || !userRoomFeedAvailable) return null;
+  const cappedLimit = Math.max(1, Math.min(80, Number(limit) || REMOTE_CLIENT_MATCH_LIMIT));
+  const offset = getFeedOffsetCursor(cursor);
+  const rowLimit = Math.min(320, cappedLimit * 4);
+  const { data, error } = await client
+    .from("user_room_feed")
+    .select("entity_id,sort_at,relation")
+    .eq("entity_type", "match")
+    .eq("profile_id", profileId)
+    .eq("is_active", true)
+    .in("relation", ["owner", "participant", "referee"])
+    .order("sort_at", { ascending: false, nullsFirst: false })
+    .order("entity_id", { ascending: false })
+    .range(offset, offset + rowLimit - 1);
+  if (error) {
+    if (isMissingUserRoomFeed(error)) {
+      userRoomFeedAvailable = false;
+      console.warn("Match feed skipped.", error.message);
+      return null;
+    }
+    throw error;
+  }
+  const ids = unique((data ?? []).map((row) => row?.entity_id)).slice(0, cappedLimit);
+  return {
+    ids,
+    cursor: ids.length ? `feed:${offset + (data ?? []).length}` : "",
+    exhausted: (data ?? []).length < rowLimit || ids.length < cappedLimit,
+  };
+}
+
+async function fetchMatchRowsByIds(client, matchIds = []) {
+  const ids = unique(matchIds);
+  if (!ids.length) return [];
+  const { data, error } = await client
+    .from("matches")
+    .select(MATCH_LIST_COLUMNS)
+    .in("id", ids);
+  if (error) throw error;
+  const order = new Map(ids.map((id, index) => [id, index]));
+  return [...(data ?? [])].sort((a, b) => (order.get(a.id) ?? 9999) - (order.get(b.id) ?? 9999));
 }
 
 function getMatchUserIds(match = {}) {
@@ -426,16 +483,24 @@ async function loadCompactMatchList(context, body = {}, adminLevel = 0, limit = 
   const recruitingSchedulePromise = shouldLoadRecruitingSchedule
     ? loadCurrentRecruitingSchedule(context, adminLevel)
     : Promise.resolve(null);
-  let matchQuery = context.supabase
-    .from("matches")
-    .select(MATCH_LIST_COLUMNS)
-    .order("updated_at", { ascending: false, nullsFirst: false })
-    .order("id", { ascending: false })
-    .limit(limit);
-  if (cursor) matchQuery = matchQuery.lt("updated_at", cursor);
+  const feedPage = await fetchMatchFeedPage(context.supabase, context.profileId, limit, cursor);
+  let matchRows = [];
+  if (feedPage) {
+    matchRows = await fetchMatchRowsByIds(context.supabase, feedPage.ids);
+  } else {
+    const legacyCursor = cursor.startsWith("feed:") ? "" : cursor;
+    let matchQuery = context.supabase
+      .from("matches")
+      .select(MATCH_LIST_COLUMNS)
+      .order("updated_at", { ascending: false, nullsFirst: false })
+      .order("id", { ascending: false })
+      .limit(limit);
+    if (legacyCursor) matchQuery = matchQuery.lt("updated_at", legacyCursor);
 
-  const { data: matchRows, error: matchError } = await matchQuery;
-  if (matchError) throw matchError;
+    const { data, error } = await matchQuery;
+    if (error) throw error;
+    matchRows = data ?? [];
+  }
 
   const matchIds = (matchRows ?? []).map((row) => row.id).filter(Boolean);
   const { data: playerRows, error: playerError } = matchIds.length
@@ -520,8 +585,8 @@ async function loadCompactMatchList(context, body = {}, adminLevel = 0, limit = 
     page: {
       limit,
       count: matches.length,
-      cursor: getRowCursor(matchRows ?? []),
-      exhausted: (matchRows ?? []).length < limit,
+      cursor: feedPage ? feedPage.cursor : getRowCursor(matchRows ?? []),
+      exhausted: feedPage ? feedPage.exhausted : (matchRows ?? []).length < limit,
       recruitingScheduleChecked: shouldLoadRecruitingSchedule,
       recruitingScheduleCount,
     },

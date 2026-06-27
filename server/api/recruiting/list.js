@@ -11,6 +11,7 @@ import {
 import { filterStateForProfile } from "../state/load.js";
 
 let currentUserRecruitingRpcAvailable = true;
+let userRoomFeedAvailable = true;
 
 const PROFILE_ME_COLUMNS = "id,name,handle,hashtag,position,region,region_sido,region_district,school,company,club,trust_score,streak,avatar_color,test_login_id,auth_user_id,birth_year,age_group,age_group_checked_season,onboarding_complete,profile_version,handle_locked_at,birth_year_locked_at,name_updated_at,discord_connection,discord_user_id,ratings,created_at,updated_at,app_settings";
 const PROFILE_PUBLIC_COLUMNS = "id,name,handle,hashtag,position,region,trust_score,avatar_color,ratings,age_group,updated_at";
@@ -39,6 +40,24 @@ function getTargetPostIds(body = {}) {
 
 function uniqueIds(ids = []) {
   return [...new Set(ids.map((id) => String(id ?? "").trim()).filter(Boolean))];
+}
+
+function normalizeRegionKey(value = "") {
+  const parts = String(value ?? "").trim().split(/\s+/).filter(Boolean);
+  const district = parts.at(-1) || String(value ?? "");
+  return district
+    .replace(/\s+/g, "")
+    .toLowerCase()
+    .replace(/(특별시|광역시|특별자치시|특별자치도|자치구|시|군|구)$/u, "");
+}
+
+function getProfileRegionKey(profile = {}) {
+  return normalizeRegionKey(profile?.region_district || profile?.region || "");
+}
+
+function isMissingUserRoomFeed(error = {}) {
+  const message = String(error?.message ?? "");
+  return error?.code === "PGRST205" || error?.code === "42P01" || message.includes("user_room_feed");
 }
 
 function groupBy(rows = [], key = "id") {
@@ -286,9 +305,85 @@ async function fetchPostIds(query, idColumn = "id") {
   return (data ?? []).map((row) => row?.[idColumn]).filter(Boolean);
 }
 
+async function fetchRecruitingFeedPostIds(client, {
+  profileId = "*",
+  relations = [],
+  status = "open",
+  regionKey = "",
+  limit = REMOTE_CLIENT_RECRUITING_LIMIT,
+  offset = 0,
+} = {}) {
+  if (!userRoomFeedAvailable) return null;
+  const cappedLimit = Math.max(1, Math.min(80, Number(limit) || REMOTE_CLIENT_RECRUITING_LIMIT));
+  const safeOffset = Math.max(0, Math.floor(Number(offset) || 0));
+  let query = client
+    .from("user_room_feed")
+    .select("entity_id,sort_at,relation")
+    .eq("entity_type", "recruiting")
+    .eq("profile_id", profileId)
+    .eq("is_active", true)
+    .eq("status", status)
+    .order("sort_at", { ascending: false, nullsFirst: false })
+    .order("entity_id", { ascending: false })
+    .range(safeOffset, safeOffset + cappedLimit - 1);
+  if (relations.length) query = query.in("relation", relations);
+  if (regionKey) query = query.eq("region_key", regionKey);
+  const { data, error } = await query;
+  if (error) {
+    if (isMissingUserRoomFeed(error)) {
+      userRoomFeedAvailable = false;
+      console.warn("User room feed skipped.", error.message);
+      return null;
+    }
+    throw error;
+  }
+  return uniqueIds((data ?? []).map((row) => row?.entity_id));
+}
+
+async function fetchRecruitingFeedCounts(client, profileId = "") {
+  if (!profileId || !userRoomFeedAvailable) return null;
+  const { data, error } = await client
+    .from("user_room_feed")
+    .select("entity_id,relation")
+    .eq("entity_type", "recruiting")
+    .eq("profile_id", profileId)
+    .eq("is_active", true)
+    .eq("status", "open")
+    .in("relation", ["owner", "participant", "invited", "referee"]);
+  if (error) {
+    if (isMissingUserRoomFeed(error)) {
+      userRoomFeedAvailable = false;
+      console.warn("User room feed counts skipped.", error.message);
+      return null;
+    }
+    throw error;
+  }
+  const created = new Set();
+  const joined = new Set();
+  const invited = new Set();
+  (data ?? []).forEach((row) => {
+    if (!row?.entity_id) return;
+    if (row.relation === "owner") created.add(row.entity_id);
+    if (row.relation === "participant" || row.relation === "referee") joined.add(row.entity_id);
+    if (row.relation === "invited") invited.add(row.entity_id);
+  });
+  created.forEach((postId) => joined.delete(postId));
+  return {
+    created: created.size,
+    joined: joined.size,
+    invited: invited.size,
+  };
+}
+
 export async function fetchCurrentUserRecruitingPostIds(client, profileId = "", limit = REMOTE_CLIENT_RECRUITING_LIMIT) {
   if (!profileId) return [];
   const cappedLimit = Math.max(1, Math.min(80, Number(limit) || REMOTE_CLIENT_RECRUITING_LIMIT));
+  const feedPostIds = await fetchRecruitingFeedPostIds(client, {
+    profileId,
+    relations: ["owner", "participant", "invited", "referee"],
+    limit: cappedLimit,
+  });
+  if (feedPostIds) return feedPostIds.slice(0, cappedLimit);
   if (currentUserRecruitingRpcAvailable) {
     const { data: rpcRows, error: rpcError } = await client.rpc("rankball_current_recruiting_post_ids", {
       p_profile_id: profileId,
@@ -321,9 +416,17 @@ export async function fetchCurrentUserRecruitingPostIds(client, profileId = "", 
   ]).slice(0, cappedLimit);
 }
 
-async function fetchRecruitingPagePostIds(client, limit = REMOTE_CLIENT_RECRUITING_LIMIT, offset = 0) {
+async function fetchRecruitingPagePostIds(client, limit = REMOTE_CLIENT_RECRUITING_LIMIT, offset = 0, regionKey = "") {
   const cappedLimit = Math.max(1, Math.min(80, Number(limit) || REMOTE_CLIENT_RECRUITING_LIMIT));
   const safeOffset = Math.max(0, Math.floor(Number(offset) || 0));
+  const feedPostIds = await fetchRecruitingFeedPostIds(client, {
+    profileId: "*",
+    relations: ["region_public"],
+    regionKey,
+    limit: cappedLimit,
+    offset: safeOffset,
+  });
+  if (feedPostIds) return feedPostIds;
   const { data, error } = await client
     .from("recruiting_posts")
     .select("id")
@@ -478,6 +581,7 @@ export async function loadCompactRecruitingList(context, {
   includeMine = false,
   mineOnly = false,
   pagePostIds = [],
+  feedCounts = null,
   limit = REMOTE_CLIENT_RECRUITING_LIMIT,
   offset = 0,
 } = {}) {
@@ -544,6 +648,7 @@ export async function loadCompactRecruitingList(context, {
       nextOffset: offset + pagePostIds.length,
       cursor: String(offset + pagePostIds.length),
       exhausted: mineOnly || Boolean(explicitPostIds.length) || pagePostIds.length < limit,
+      feedCounts,
     },
     updatedAt: Math.max(
       ...[...postRows, context.profile].filter(Boolean)
@@ -573,9 +678,14 @@ export default async function handler(request, response) {
     const listOnly = body.listOnly !== false && !explicitPostIds.length;
     const offset = getPageOffset(body);
     const shouldPageList = !mineOnly && !explicitPostIds.length;
-    const [currentUserPostIds, pagePostIds] = await Promise.all([
+    const regionScope = body.regionScope === "all" ? "all" : "local";
+    const regionKey = regionScope === "all"
+      ? ""
+      : normalizeRegionKey(body.regionKey || body.regionDistrict || getProfileRegionKey(context.profile));
+    const [currentUserPostIds, pagePostIds, feedCounts] = await Promise.all([
       includeMine ? fetchCurrentUserRecruitingPostIds(context.supabase, context.profileId, mineLimit) : Promise.resolve([]),
-      shouldPageList ? fetchRecruitingPagePostIds(context.supabase, limit, offset) : Promise.resolve([]),
+      shouldPageList ? fetchRecruitingPagePostIds(context.supabase, limit, offset, regionKey) : Promise.resolve([]),
+      context.profileId ? fetchRecruitingFeedCounts(context.supabase, context.profileId) : Promise.resolve(null),
     ]);
     const targetPostIds = uniqueIds([...explicitPostIds, ...(mineOnly ? currentUserPostIds : pagePostIds)]);
     if (listOnly) {
@@ -586,6 +696,7 @@ export default async function handler(request, response) {
         includeMine,
         mineOnly,
         pagePostIds,
+        feedCounts,
         limit,
         offset,
       });
@@ -652,6 +763,7 @@ export default async function handler(request, response) {
         nextOffset: offset + pagePostIds.length,
         cursor: String(offset + pagePostIds.length),
         exhausted: mineOnly || Boolean(explicitPostIds.length) || pagePostIds.length < limit,
+        feedCounts,
       },
       updatedAt: normalized?.updatedAt ?? 0,
     });

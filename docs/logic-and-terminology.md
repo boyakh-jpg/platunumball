@@ -1303,12 +1303,14 @@ flowchart TD
 3. Additional recruiting pages must merge by id and keep server rows as source of truth.
 4. List pagination must not load match result/stat child tables.
 5. Recruiting scope state loads must fetch only related profiles, teams, team members, and courts for loaded recruiting rows.
-6. Recruiting first list load includes current user's open owned/joined rooms in the same `/api/recruiting/list` response so room-scope counts do not change after a delayed mine-only background load.
-7. `/app/recruiting` base list must not immediately call `scope='mine'` again after the first `includeMine` list response; direct post links may still background-load mine state.
+6. Recruiting first list load uses `user_room_feed` region_public rows for the current user's local region only. It does not merge current-user owned/joined rooms into the base card list.
+7. `/app/recruiting` base list and direct `?post=` entry must not run background `scope='mine'`. Direct post links load only that post detail; room-scope buttons load current-user related rooms on demand.
 8. Recruiting pagination uses server `offset`/`nextOffset` from the first public page, not older current-user rooms merged into the response. Timestamp-only cursors must not be used because equal `updated_at` rows can be skipped.
-9. Recruiting public page reads must select only `status='open'` and `visibility='public'`; current-user owned/joined/private rooms are merged only through `includeMine` or `scope='mine'`.
+9. Recruiting public page reads must select only `status='open'` and `visibility='public'`; current-user owned/joined/private rooms are merged only through explicit `scope='mine'` user actions.
 10. `/api/recruiting/list` list-only reads keep room participants and team member ids, but do not fetch profiles for every member of related teams. Single `postId` detail loads still fetch full related profiles.
 11. `/api/recruiting/list` default reads are direct compact list-card queries when no explicit `postId` is requested. They load only recruiting_posts, recruiting_applications, current/host/referee compact profiles, compact teams/courts, and current profile settings. Chat, old notifications, reports, matches, tournaments, and broad app metadata stay out of the list response; full room state still comes from single post detail load or `listOnly=false`.
+12. `user_room_feed` is the DB-maintained index for recruiting owner/participant/invited/referee and local public rows. SQL triggers/reducers update it; the frontend must not create or trust this feed.
+13. Recruiting room-scope counts come from `user_room_feed`, not from how many cards are currently loaded in `state.recruitingPosts`.
 
 ## 2026-06-27 match list pagination
 
@@ -1323,10 +1325,10 @@ flowchart TD
 9. Full user/team directory data is loaded on demand through `/api/directory/load` for Rankings, Teams, Create Match, and Settings.
 10. Initial client hydrate uses 5 matches and 5 recruiting posts; additional list pages use 50 rows.
 11. `/app/recruiting` first hydrate does not load match rows; direct `?post=` entry also skips recruiting list rows. Recruiting list screens add more rows only through `더 보기` or targeted detail loads.
-12. `/app/matches` first hydrate uses `/api/matches/list` compact scope and does not load tournaments. Direct `?match=` entry starts with 0 list rows and loads the target match through detail load. User-related open recruiting rooms may be included in the first compact match list response for schedule context.
+12. `/app/matches` first hydrate uses `/api/matches/list` compact scope and does not load tournaments or recruiting schedule rows by default. Direct `?match=` entry starts with 0 list rows and loads the target match through detail load.
 13. Direct detail entry (`/app/recruiting?post=...`, `/app/matches?match=...`) uses `/api/profile/me` first, then loads only the requested post or match detail.
 14. `/app/matches` first page uses `/api/matches/list` directly with compact current-profile data; it does not wait for `/api/profile/me` before loading the list.
-15. `/api/matches/list` returns compact card state by default: no tournament rows, no notifications/reports/seasons, and only the users/teams needed by returned match cards plus current-user open recruiting schedule rows on the first page. Full match room data must come from `/api/matches/detail`.
+15. `/api/matches/list` returns compact card state by default: no tournament rows, no notifications/reports/seasons, and only the users/teams needed by returned match cards. Full match room data must come from `/api/matches/detail`.
 16. Match pagination cursor follows the server page cursor, not a cursor recalculated from locally merged match rows.
 17. `/api/matches/list` list-only reads must not fetch full `team_members` rosters for related teams; full roster data belongs to `/api/matches/detail` or directory loads.
 18. `/api/profile/me` bootstraps the current user's own teams, those teams' member ids, and compact public profiles for other team members so team-room creation and mine/joined filters do not wait for broad list hydration. It must not fetch the current user's public profile again after the private profile is already loaded.
@@ -1335,12 +1337,12 @@ flowchart TD
 21. `checkInMatchPlayer` may use `rankball_match_checkin_action()` as a SQL reducer only for no-referee host-operated active-player check-in. Referee, reserve, party, self-check-in, future scheduled, and unsupported states must fall back to the existing authoritative match action path.
 22. `startMatch` may use `rankball_match_start_action()` as a SQL reducer only for no-referee host-operated matches with active-player attendance complete. Referee, reserve, party, future scheduled, and unsupported states must fall back to the existing authoritative match action path.
 23. `addMatchLatePlayer`/`removeMatchLatePlayer` may use `rankball_match_late_player_action()` as a SQL reducer only for no-referee host-operated postgame matches inside the stat entry window. The SQL path only accepts a single anonymous late-player add or a single excluded late-player remove; registered late-player add and unsupported states fall back to the existing authoritative match action path.
-24. `/api/matches/list` default reads are direct list-card queries. They load match rows, match_players, the current profile, compact teams, compact courts, and only on the first page current-user open recruiting schedule rows. Full authoritative match state still belongs to `/api/matches/detail` or `listOnly=false`.
+24. `/api/matches/list` default reads use `user_room_feed` current-profile match rows first, then load match rows, match_players, the current profile, compact teams, and compact courts. Full authoritative match state still belongs to `/api/matches/detail` or `listOnly=false`.
 25. Screen-specific server state such as `/api/profile/me`, `/api/matches/list`, `/api/recruiting/list`, and `/api/state/load` is normalized on the client before render so direct route entry receives the same base arrays/settings shape as other app routes.
 26. Match `parties` must be an array in client state. DB/API rows that carry `rules.parties` or `parties` as an object are normalized to an array before room/list helpers read them.
-27. Matches 화면의 idle `scope: "mine"` 모집 context load는 현재 user id마다 최대 1번만 실행한다. app state merge마다 다시 실행하면 첫 렌더 몇 초 뒤 내가 만든 방/참여방 숫자가 바뀐 것처럼 보일 수 있다.
-28. `/api/matches/list` 첫 페이지는 API 차원에서 현재 사용자의 open 모집방 일정도 compact state로 함께 반환할 수 있지만, `/app/matches` 클라이언트 첫 로드는 속도를 위해 `includeRecruitingSchedule=false`로 요청하고 배경 `scope=mine` 보강 로드가 모집 일정을 채운다.
-29. If a `/api/matches/list` response marks `page.recruitingScheduleChecked=true`, `/app/matches` must not run the delayed `scope=mine` recruiting reload for the same entry. This avoids late schedule count/card changes from duplicate reads.
+27. Matches 화면은 idle `scope: "mine"` 모집 context load를 실행하지 않는다. 경기 메뉴 첫 화면은 current-profile match feed만 먼저 로드한다.
+28. `/api/matches/list` can still include current-user open recruiting schedule rows when explicitly requested, but `/app/matches` first load sends `includeRecruitingSchedule=false`.
+29. `user_room_feed` match rows are the first-page source for owned/participant/referee matches. Broad `matches` reads are only fallback when the feed table is unavailable.
 30. `/app/recorder` must load `recorderOnly` match state on direct entry or after thin-route navigation before showing the final empty state. Recorder state includes only active `agreed`/`approval`/`disputed` matches related to the current profile.
 31. `/api/matches/list` with `listOnly:false` must not force `matchListOnly:true`; recorder/detail-like reads need `match_results` and `player_match_stats`.
 
@@ -1359,8 +1361,8 @@ flowchart TD
 2. 경기 방식이 `1v1`로 바뀌면 개인전으로 보고 `hostJoinMode = "player"`를 우선 적용한다.
 3. 공개방 전환은 사용자가 이미 고른 개인전/팀방 방식을 임의로 `team`으로 덮어쓰지 않는다.
 4. `/api/recruiting/list`는 `postId`/`recruitingPostIds` 단일 로드와 `scope: "mine"` 로드를 지원한다.
-5. Recruiting 화면은 최초 5개 목록 밖에 있는 내 생성/참여 open 방을 `scope: "mine"`로 보강 로드한다.
-6. `scope: "mine"`은 `rankball_current_recruiting_post_ids()` DB RPC를 우선 사용해 open owned/joined/referee recruiting post id를 한 번에 읽고, DB 함수가 없을 때만 기존 PostREST id 조회 fallback을 사용한다.
+5. Recruiting 화면은 최초 5개 목록 밖에 있는 내 생성/참여 open 방을 배경에서 보강 로드하지 않는다. 사용자가 `내가 만든 방`/`내 참여방`/`초대받음`을 누를 때만 `scope: "mine"`로 로드한다.
+6. `scope: "mine"`은 `user_room_feed`를 우선 사용해 open owned/joined/invited/referee recruiting post id를 읽고, feed가 없을 때만 `rankball_current_recruiting_post_ids()` RPC와 기존 PostREST id 조회 fallback을 사용한다.
 7. Recruiting mutation이 진행 중이거나 직후인 post는 목록 보강 로드가 오래된 row로 덮어쓰지 않는다.
 8. 서버 core lock 검증은 구버전 DB row의 빈 `host_join_mode`, `age_restriction` 값을 앱 normalization 기본값과 같은 기준으로 비교한다.
 9. 서버 reducer가 참여를 차단하면 `recruiting_sync_permission_denied`로 뭉개지 말고 reducer notification의 실제 차단 사유를 반환한다.
@@ -1370,7 +1372,7 @@ flowchart TD
 13. Supabase auth 사용자가 바뀌면 이전 계정의 room/list state를 화면에 남기지 않고 shell state로 비운 뒤 새 서버 state를 로드한다.
 
 14. `setRecruitingSlotPosition`, `setRecruitingApplicantPlacement`, `cancelRecruitingParticipation`, 기본 공개 개인 `interestRecruitingPost`는 SQL reducer 이식 대상이다. 서버는 `rankball_recruiting_slot_position_action()`/`rankball_recruiting_applicant_placement_action()`/`rankball_recruiting_cancel_participation_action()`/`rankball_recruiting_interest_player_action()`을 우선 호출하고, SQL이 아직 적용되지 않았거나 팀/심판/비공개/제한 조건처럼 SQL reducer가 지원하지 않는 케이스면 기존 authoritative replay 경로로 fallback한다. `rankball_recruiting_action(...)`도 `p_post_row.__operation`이 있는 같은 action을 helper로 위임할 수 있다.
-15. Recruiting/Matches 화면의 `scope: "mine"` 보강 로드는 요청이 성공했을 때만 완료 처리한다. 초기 auth/token 타이밍 실패가 나면 재시도하고, 실패한 1회 요청 때문에 `내가 만든 방`/`내 참여방` 카운트를 초기 목록 상태로 고정하지 않는다.
+15. Recruiting 화면의 user-triggered `scope: "mine"` 로드는 요청이 성공했을 때만 완료 처리한다. 초기 auth/token 타이밍 실패가 나면 재시도하고, 실패한 1회 요청 때문에 `내가 만든 방`/`내 참여방` 카운트를 초기 목록 상태로 고정하지 않는다.
 16. Supabase remote state는 서버/DB가 source of truth다. 클라이언트 자동관리 함수는 원격 모집방/경기 상태를 로컬에서 임의로 취소/종료 처리하지 않는다. 만료, 자동취소, 자동확정 같은 lifecycle 변경은 server action/RPC로 저장된 뒤에만 화면 source of truth로 취급한다.
 
 17. `rankball_recruiting_slot_position_action()`은 선택 포지션을 `room_state.slotPositions`뿐 아니라 방장은 `recruiting_posts.position`, 개인 신청자는 `recruiting_applications.position`에도 저장한다.

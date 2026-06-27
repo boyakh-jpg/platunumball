@@ -3585,6 +3585,397 @@ $$;
 revoke all on function public.rankball_current_recruiting_post_ids(text, integer) from public;
 grant execute on function public.rankball_current_recruiting_post_ids(text, integer) to service_role;
 
+create table if not exists public.user_room_feed (
+  profile_id text not null,
+  entity_type text not null,
+  entity_id text not null,
+  relation text not null,
+  region_key text,
+  status text,
+  visibility text,
+  sort_at timestamptz not null default now(),
+  is_active boolean not null default true,
+  card_json jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now(),
+  primary key (profile_id, entity_type, entity_id, relation),
+  constraint user_room_feed_entity_type_check check (entity_type in ('recruiting', 'match')),
+  constraint user_room_feed_relation_check check (relation in ('region_public', 'owner', 'participant', 'invited', 'referee'))
+);
+
+create index if not exists user_room_feed_profile_idx
+  on public.user_room_feed (entity_type, profile_id, is_active, status, sort_at desc, entity_id desc);
+
+create index if not exists user_room_feed_region_idx
+  on public.user_room_feed (entity_type, relation, region_key, is_active, status, sort_at desc, entity_id desc);
+
+create index if not exists user_room_feed_entity_idx
+  on public.user_room_feed (entity_type, entity_id);
+
+alter table public.user_room_feed enable row level security;
+
+drop policy if exists user_room_feed_select_related on public.user_room_feed;
+create policy user_room_feed_select_related
+on public.user_room_feed
+for select
+to authenticated
+using (profile_id = '*' or profile_id = public.current_profile_id());
+
+grant select on public.user_room_feed to authenticated;
+
+create or replace function public.rankball_room_feed_region_key(p_value text)
+returns text
+language sql
+immutable
+as $$
+  with normalized as (
+    select regexp_replace(lower(btrim(coalesce(p_value, ''))), '\s+', ' ', 'g') as value
+  ),
+  district as (
+    select coalesce((regexp_split_to_array(value, ' '))[array_length(regexp_split_to_array(value, ' '), 1)], value) as value
+    from normalized
+  )
+  select nullif(regexp_replace(value, '(특별시|광역시|특별자치시|특별자치도|자치구|시|군|구)$', '', 'g'), '')
+  from district;
+$$;
+
+create or replace function public.rankball_upsert_room_feed(
+  p_profile_id text,
+  p_entity_type text,
+  p_entity_id text,
+  p_relation text,
+  p_region_key text,
+  p_status text,
+  p_visibility text,
+  p_sort_at timestamptz,
+  p_card_json jsonb default '{}'::jsonb
+)
+returns void
+language sql
+security definer
+set search_path = public
+as $$
+  insert into public.user_room_feed (
+    profile_id,
+    entity_type,
+    entity_id,
+    relation,
+    region_key,
+    status,
+    visibility,
+    sort_at,
+    is_active,
+    card_json,
+    updated_at
+  )
+  values (
+    nullif(btrim(p_profile_id), ''),
+    p_entity_type,
+    p_entity_id,
+    p_relation,
+    p_region_key,
+    p_status,
+    p_visibility,
+    coalesce(p_sort_at, now()),
+    true,
+    coalesce(p_card_json, '{}'::jsonb),
+    now()
+  )
+  on conflict (profile_id, entity_type, entity_id, relation)
+  do update set
+    region_key = excluded.region_key,
+    status = excluded.status,
+    visibility = excluded.visibility,
+    sort_at = excluded.sort_at,
+    is_active = true,
+    card_json = excluded.card_json,
+    updated_at = now();
+$$;
+
+create or replace function public.rankball_refresh_recruiting_feed_for_post(p_post_id text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  post_row public.recruiting_posts%rowtype;
+  owner_id text;
+  region_key text;
+  row_sort_at timestamptz;
+  player_value text;
+  application_row record;
+  invitation_row jsonb;
+begin
+  update public.user_room_feed
+  set is_active = false, updated_at = now()
+  where entity_type = 'recruiting'
+    and entity_id = p_post_id
+    and is_active = true;
+
+  select *
+  into post_row
+  from public.recruiting_posts
+  where id = p_post_id;
+
+  if not found then
+    return;
+  end if;
+
+  region_key := public.rankball_room_feed_region_key(post_row.region);
+  row_sort_at := coalesce(post_row.updated_at, post_row.created_at, now());
+  owner_id := coalesce(nullif(post_row.room_state->>'ownerId', ''), nullif(post_row.player_id, ''));
+
+  if post_row.status = 'open' and post_row.visibility = 'public' then
+    perform public.rankball_upsert_room_feed(
+      '*',
+      'recruiting',
+      post_row.id,
+      'region_public',
+      region_key,
+      post_row.status,
+      post_row.visibility,
+      row_sort_at,
+      '{}'::jsonb
+    );
+  end if;
+
+  if post_row.status <> 'open' then
+    return;
+  end if;
+
+  if owner_id is not null then
+    perform public.rankball_upsert_room_feed(owner_id, 'recruiting', post_row.id, 'owner', region_key, post_row.status, post_row.visibility, row_sort_at, '{}'::jsonb);
+  end if;
+
+  if nullif(post_row.player_id, '') is not null and post_row.player_id is distinct from owner_id then
+    perform public.rankball_upsert_room_feed(post_row.player_id, 'recruiting', post_row.id, 'participant', region_key, post_row.status, post_row.visibility, row_sort_at, '{}'::jsonb);
+  end if;
+
+  for player_value in
+    select value
+    from jsonb_array_elements_text(coalesce(post_row.player_ids, '[]'::jsonb))
+  loop
+    if nullif(player_value, '') is not null and player_value is distinct from owner_id then
+      perform public.rankball_upsert_room_feed(player_value, 'recruiting', post_row.id, 'participant', region_key, post_row.status, post_row.visibility, row_sort_at, '{}'::jsonb);
+    end if;
+  end loop;
+
+  if nullif(post_row.referee_id, '') is not null then
+    perform public.rankball_upsert_room_feed(post_row.referee_id, 'recruiting', post_row.id, 'referee', region_key, post_row.status, post_row.visibility, row_sort_at, '{}'::jsonb);
+  end if;
+
+  for application_row in
+    select *
+    from public.recruiting_applications
+    where post_id = post_row.id
+  loop
+    if nullif(application_row.player_id, '') is not null then
+      perform public.rankball_upsert_room_feed(application_row.player_id, 'recruiting', post_row.id, 'participant', region_key, post_row.status, post_row.visibility, coalesce(application_row.updated_at, application_row.created_at, row_sort_at), '{}'::jsonb);
+    end if;
+
+    for player_value in
+      select value
+      from jsonb_array_elements_text(coalesce(application_row.player_ids, '[]'::jsonb))
+    loop
+      if nullif(player_value, '') is not null then
+        perform public.rankball_upsert_room_feed(player_value, 'recruiting', post_row.id, 'participant', region_key, post_row.status, post_row.visibility, coalesce(application_row.updated_at, application_row.created_at, row_sort_at), '{}'::jsonb);
+      end if;
+    end loop;
+  end loop;
+
+  for invitation_row in
+    select value
+    from jsonb_array_elements(coalesce(post_row.room_state->'invitations', '[]'::jsonb))
+  loop
+    if invitation_row->>'status' = 'pending' and nullif(invitation_row->>'targetUserId', '') is not null then
+      perform public.rankball_upsert_room_feed(
+        invitation_row->>'targetUserId',
+        'recruiting',
+        post_row.id,
+        'invited',
+        region_key,
+        post_row.status,
+        post_row.visibility,
+        coalesce(nullif(invitation_row->>'updatedAt', '')::timestamptz, nullif(invitation_row->>'createdAt', '')::timestamptz, row_sort_at),
+        '{}'::jsonb
+      );
+    end if;
+  end loop;
+end;
+$$;
+
+create or replace function public.rankball_refresh_match_feed_for_match(p_match_id text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  match_row public.matches%rowtype;
+  region_key text;
+  row_sort_at timestamptz;
+  player_row record;
+begin
+  update public.user_room_feed
+  set is_active = false, updated_at = now()
+  where entity_type = 'match'
+    and entity_id = p_match_id
+    and is_active = true;
+
+  select *
+  into match_row
+  from public.matches
+  where id = p_match_id;
+
+  if not found then
+    return;
+  end if;
+
+  region_key := public.rankball_room_feed_region_key(match_row.rules->>'region');
+  row_sort_at := coalesce(match_row.updated_at, match_row.ended_at, match_row.started_at, match_row.agreed_at, match_row.created_at, now());
+
+  if nullif(match_row.created_by, '') is not null then
+    perform public.rankball_upsert_room_feed(match_row.created_by, 'match', match_row.id, 'owner', region_key, match_row.status, match_row.visibility, row_sort_at, '{}'::jsonb);
+  end if;
+
+  if nullif(match_row.referee_id, '') is not null then
+    perform public.rankball_upsert_room_feed(match_row.referee_id, 'match', match_row.id, 'referee', region_key, match_row.status, match_row.visibility, row_sort_at, '{}'::jsonb);
+  end if;
+
+  if nullif(match_row.former_referee_id, '') is not null then
+    perform public.rankball_upsert_room_feed(match_row.former_referee_id, 'match', match_row.id, 'referee', region_key, match_row.status, match_row.visibility, row_sort_at, '{}'::jsonb);
+  end if;
+
+  for player_row in
+    select user_id
+    from public.match_players
+    where match_id = match_row.id
+  loop
+    if nullif(player_row.user_id, '') is not null then
+      perform public.rankball_upsert_room_feed(player_row.user_id, 'match', match_row.id, 'participant', region_key, match_row.status, match_row.visibility, row_sort_at, '{}'::jsonb);
+    end if;
+  end loop;
+end;
+$$;
+
+create or replace function public.rankball_refresh_recruiting_feed_trigger()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if tg_op = 'DELETE' then
+    perform public.rankball_refresh_recruiting_feed_for_post(old.id);
+    return old;
+  end if;
+
+  perform public.rankball_refresh_recruiting_feed_for_post(new.id);
+  return new;
+end;
+$$;
+
+create or replace function public.rankball_refresh_recruiting_application_feed_trigger()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if tg_op = 'DELETE' then
+    perform public.rankball_refresh_recruiting_feed_for_post(old.post_id);
+    return old;
+  end if;
+
+  if tg_op = 'UPDATE' and old.post_id is distinct from new.post_id then
+    perform public.rankball_refresh_recruiting_feed_for_post(old.post_id);
+  end if;
+
+  perform public.rankball_refresh_recruiting_feed_for_post(new.post_id);
+  return new;
+end;
+$$;
+
+create or replace function public.rankball_refresh_match_feed_trigger()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if tg_op = 'DELETE' then
+    perform public.rankball_refresh_match_feed_for_match(old.id);
+    return old;
+  end if;
+
+  perform public.rankball_refresh_match_feed_for_match(new.id);
+  return new;
+end;
+$$;
+
+create or replace function public.rankball_refresh_match_player_feed_trigger()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if tg_op = 'DELETE' then
+    perform public.rankball_refresh_match_feed_for_match(old.match_id);
+    return old;
+  end if;
+
+  if tg_op = 'UPDATE' and old.match_id is distinct from new.match_id then
+    perform public.rankball_refresh_match_feed_for_match(old.match_id);
+  end if;
+
+  perform public.rankball_refresh_match_feed_for_match(new.match_id);
+  return new;
+end;
+$$;
+
+do $$
+begin
+  if to_regclass('public.recruiting_posts') is not null then
+    execute 'drop trigger if exists rankball_recruiting_posts_feed_refresh on public.recruiting_posts';
+    execute 'create trigger rankball_recruiting_posts_feed_refresh after insert or update or delete on public.recruiting_posts for each row execute function public.rankball_refresh_recruiting_feed_trigger()';
+  end if;
+
+  if to_regclass('public.recruiting_applications') is not null then
+    execute 'drop trigger if exists rankball_recruiting_applications_feed_refresh on public.recruiting_applications';
+    execute 'create trigger rankball_recruiting_applications_feed_refresh after insert or update or delete on public.recruiting_applications for each row execute function public.rankball_refresh_recruiting_application_feed_trigger()';
+  end if;
+
+  if to_regclass('public.matches') is not null then
+    execute 'drop trigger if exists rankball_matches_feed_refresh on public.matches';
+    execute 'create trigger rankball_matches_feed_refresh after insert or update or delete on public.matches for each row execute function public.rankball_refresh_match_feed_trigger()';
+  end if;
+
+  if to_regclass('public.match_players') is not null then
+    execute 'drop trigger if exists rankball_match_players_feed_refresh on public.match_players';
+    execute 'create trigger rankball_match_players_feed_refresh after insert or update or delete on public.match_players for each row execute function public.rankball_refresh_match_player_feed_trigger()';
+  end if;
+end;
+$$;
+
+do $$
+declare
+  row_id text;
+begin
+  if to_regclass('public.recruiting_posts') is not null then
+    for row_id in select id from public.recruiting_posts loop
+      perform public.rankball_refresh_recruiting_feed_for_post(row_id);
+    end loop;
+  end if;
+
+  if to_regclass('public.matches') is not null then
+    for row_id in select id from public.matches loop
+      perform public.rankball_refresh_match_feed_for_match(row_id);
+    end loop;
+  end if;
+end;
+$$;
+
 create or replace function public.rankball_recruiting_action(
   p_actor_profile_id text,
   p_action text,

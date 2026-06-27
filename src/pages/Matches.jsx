@@ -693,7 +693,6 @@ export default function Matches({ app }) {
   const [selectedTournamentId, setSelectedTournamentId] = useState(null);
   const [selectedMatchId, setSelectedMatchId] = useState(null);
   const [selectedRecruitingPostId, setSelectedRecruitingPostId] = useState(null);
-  const [myRecruitingLoading, setMyRecruitingLoading] = useState(false);
   const queryMatchId = searchParams.get("match");
   const todayValue = toDateInputValue();
   const maxScheduleDate = addDays(todayValue, 365);
@@ -704,7 +703,6 @@ export default function Matches({ app }) {
   const matchesById = useMemo(() => Object.fromEntries(app.state.matches.map((match) => [match.id, match])), [app.state.matches]);
   const requestedMatchDetailsRef = useRef(new Set());
   const initialMatchListLoadRef = useRef("");
-  const myRecruitingLoadRef = useRef("");
   const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
   const courtByName = useMemo(() => Object.fromEntries(registeredCourts.map((court) => [court.name, court])), [registeredCourts]);
   const myTeamIds = useMemo(
@@ -775,60 +773,6 @@ export default function Matches({ app }) {
     initialMatchListLoadRef.current = app.currentUser.id;
     loadMoreMatches?.();
   }, [app.actions.loadMoreMatches, app.currentUser.id, app.matchPagination?.exhausted, app.matchPagination?.loading, app.remoteReady, app.state.matches, queryMatchId]);
-  useEffect(() => {
-    const loadMyRecruitingPosts = app.actions.loadMyRecruitingPosts;
-    if (!app.remoteReady || !app.currentUser.id || !loadMyRecruitingPosts) {
-      return undefined;
-    }
-    if (app.matchPagination?.recruitingScheduleChecked) return undefined;
-    const userId = app.currentUser.id;
-    const pendingKey = `${userId}:pending`;
-    if (myRecruitingLoadRef.current === userId || myRecruitingLoadRef.current === pendingKey) return undefined;
-    let cancelled = false;
-    let retryTimeoutId = null;
-    let attempts = 0;
-    const runLoad = () => {
-      attempts += 1;
-      myRecruitingLoadRef.current = pendingKey;
-      setMyRecruitingLoading(true);
-      Promise.resolve(loadMyRecruitingPosts()).then((result) => {
-        if (cancelled || myRecruitingLoadRef.current !== pendingKey) return;
-        if (result === false && attempts < 3) {
-          myRecruitingLoadRef.current = "";
-          retryTimeoutId = window.setTimeout(runLoad, 1200);
-          return;
-        }
-        myRecruitingLoadRef.current = result === false ? "" : userId;
-        setMyRecruitingLoading(false);
-      }).catch(() => {
-        if (cancelled || myRecruitingLoadRef.current !== pendingKey) return;
-        myRecruitingLoadRef.current = "";
-        if (attempts < 3) {
-          retryTimeoutId = window.setTimeout(runLoad, 1200);
-          return;
-        }
-        setMyRecruitingLoading(false);
-      });
-    };
-    if ("requestIdleCallback" in window) {
-      const idleId = window.requestIdleCallback(runLoad, { timeout: 500 });
-      return () => {
-        cancelled = true;
-        window.cancelIdleCallback?.(idleId);
-        if (retryTimeoutId) window.clearTimeout(retryTimeoutId);
-        if (myRecruitingLoadRef.current === pendingKey) myRecruitingLoadRef.current = "";
-        setMyRecruitingLoading(false);
-      };
-    }
-    const timeoutId = window.setTimeout(runLoad, 250);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timeoutId);
-      if (retryTimeoutId) window.clearTimeout(retryTimeoutId);
-      if (myRecruitingLoadRef.current === pendingKey) myRecruitingLoadRef.current = "";
-      setMyRecruitingLoading(false);
-    };
-  }, [app.actions.loadMyRecruitingPosts, app.currentUser.id, app.matchPagination?.recruitingScheduleChecked, app.remoteReady]);
   const openSelectedMatch = (matchId) => {
     if (!matchId) return;
     requestMatchDetail(matchId);
@@ -939,7 +883,7 @@ export default function Matches({ app }) {
   viewButtonCounts.active = viewButtonCounts.todo + viewButtonCounts.scheduled + viewButtonCounts.closed;
   const getViewButtonCount = (view) => viewButtonCounts[view.id] ?? 0;
   const listRecruitingRoomCount = ["active", "scheduled"].includes(viewId) ? filteredActiveRoomCount : 0;
-  const scheduleLoading = app.remoteReady === false || ((matchPagination.loading || myRecruitingLoading) && !visibleScheduleItems.length);
+  const scheduleLoading = app.remoteReady === false || (matchPagination.loading && !visibleScheduleItems.length);
   const displayScheduleItems = scheduleLoading ? [] : visibleScheduleItems;
   const scheduleCountLabel = scheduleLoading
     ? "내 일정 확인 중"
