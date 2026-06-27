@@ -93,6 +93,8 @@ async function fetchRecruitingPagePostIds(client, limit = REMOTE_CLIENT_RECRUITI
   const { data, error } = await client
     .from("recruiting_posts")
     .select("id")
+    .eq("status", "open")
+    .eq("visibility", "public")
     .order("updated_at", { ascending: false, nullsFirst: false })
     .order("id", { ascending: false })
     .range(safeOffset, safeOffset + cappedLimit - 1);
