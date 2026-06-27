@@ -126,6 +126,24 @@ function toRecruitingApplicationRows(post = {}) {
   })).filter((row) => row.player_id);
 }
 
+function fromRecruitingApplicationRows(rows = []) {
+  return toArray(rows).map((application) => ({
+    kind: application.kind === "team" || application.team_id ? "team" : "player",
+    joinMode: application.kind === "team" || application.team_id ? "team" : "player",
+    teamId: application.team_id ?? null,
+    playerId: application.player_id,
+    side: application.side,
+    status: application.status,
+    reserve: application.reserve,
+    position: application.position,
+    playerIds: toArray(application.player_ids),
+    sourceTeamId: application.source_team_id ?? null,
+    sourceEntryId: application.source_entry_id ?? null,
+    createdAt: application.created_at,
+    updatedAt: application.updated_at,
+  })).filter((application) => application.playerId);
+}
+
 function toNotificationRows(notifications = [], fallbackProfileId = "") {
   return toArray(notifications).map((notification) => ({
     id: notification.id,
@@ -161,6 +179,27 @@ function participantIdsFromPost(post = {}) {
     ...(Object.values(roomState.partyReserves ?? {}).flatMap(toArray)),
     ...(toArray(roomState.invitations).map((invitation) => invitation.targetUserId)),
     ...(toArray(roomState.invitations).map((invitation) => invitation.fromUserId)),
+  ].filter(Boolean));
+}
+
+function rosterIdsFromPost(post = {}) {
+  const roomState = normalizeRoomState(post.roomState ?? post.room_state, post);
+  return new Set([
+    post.ownerId,
+    roomState.ownerId,
+    post.playerId,
+    post.player_id,
+    post.refereeId,
+    post.referee_id,
+    ...(toArray(post.playerIds ?? post.player_ids)),
+    ...(toArray(post.applicants).flatMap((application) => [
+      application.playerId,
+      application.player_id,
+      ...(toArray(application.playerIds ?? application.player_ids)),
+      ...(toArray(application.reservePlayerIds)),
+    ])),
+    ...(Object.values(roomState.partyReserves ?? {}).flatMap(toArray)),
+    ...(Object.values(roomState.pinnedReservePlayers ?? {}).flatMap(toArray)),
   ].filter(Boolean));
 }
 
@@ -464,6 +503,13 @@ const JOIN_RECRUITING_ACTIONS = new Set([
   "joinRecruitingSideParty",
 ]);
 
+const MEMBERSHIP_ADD_RECRUITING_ACTIONS = new Set([
+  "createRecruitingPost",
+  "interestRecruitingPost",
+  "joinRecruitingSideParty",
+  "acceptRecruitingInvitation",
+]);
+
 const AUTHORITATIVE_REPLAY_RECRUITING_ACTIONS = new Set([
   "interestRecruitingPost",
   "joinRecruitingSideParty",
@@ -485,15 +531,15 @@ function canSyncRecruitingAction(profileId, existingPost, nextPost, action, body
   if (!existingPost) {
     return action === "createRecruitingPost" && participantIdsFromPost(nextPost).has(profileId) && isOwner(profileId, nextPost);
   }
-  const existingParticipants = participantIdsFromPost({
+  const existingParticipants = rosterIdsFromPost({
     ...existingPost,
     ownerId: existingPost.room_state?.ownerId,
     playerId: existingPost.player_id,
     playerIds: existingPost.player_ids,
-    applicants: [],
+    refereeId: existingPost.referee_id,
     roomState: existingPost.room_state,
   });
-  const nextParticipants = participantIdsFromPost(nextPost);
+  const nextParticipants = rosterIdsFromPost(nextPost);
 
   if (OWNER_RECRUITING_ACTIONS.has(action)) return isOwner(profileId, existingPost);
   if (JOIN_RECRUITING_ACTIONS.has(action)) {
@@ -504,9 +550,19 @@ function canSyncRecruitingAction(profileId, existingPost, nextPost, action, body
     return nextParticipants.has(profileId);
   }
   if (PARTICIPANT_RECRUITING_ACTIONS.has(action)) {
-    return existingParticipants.has(profileId) || nextParticipants.has(profileId) || hasInvitationFor(profileId, existingPost);
+    return existingParticipants.has(profileId) || hasInvitationFor(profileId, existingPost);
   }
   return existingParticipants.has(profileId) || nextParticipants.has(profileId);
+}
+
+function validateNoUnexpectedRosterInsert(existingPost, nextPost, action) {
+  if (!existingPost || MEMBERSHIP_ADD_RECRUITING_ACTIONS.has(action)) return;
+  const existingRoster = rosterIdsFromPost(existingPost);
+  const nextRoster = rosterIdsFromPost(nextPost);
+  const insertedIds = [...nextRoster].filter((profileId) => !existingRoster.has(profileId));
+  if (insertedIds.length) {
+    reject(403, "recruiting_unexpected_participant_insert");
+  }
 }
 
 function actionCanAssignReferee(profileId, existingPost, body = {}) {
@@ -571,13 +627,32 @@ export async function persistRecruitingPostSnapshot(context, { post, notificatio
       .maybeSingle();
 
   if (existingError) throw existingError;
-  if (!canSyncRecruitingAction(context.profileId, existingPost, post, action, actionBody)) {
+  const { data: existingApplications, error: existingApplicationsError } = existingPost
+    ? await context.supabase
+      .from("recruiting_applications")
+      .select("kind,team_id,player_id,side,status,reserve,position,player_ids,source_team_id,source_entry_id,created_at,updated_at")
+      .eq("post_id", post.id)
+    : { data: [], error: null };
+  if (existingApplicationsError) throw existingApplicationsError;
+  const existingPostSnapshot = existingPost
+    ? {
+        ...existingPost,
+        ownerId: existingPost.room_state?.ownerId,
+        playerId: existingPost.player_id,
+        playerIds: existingPost.player_ids,
+        refereeId: existingPost.referee_id,
+        roomState: existingPost.room_state,
+        applicants: fromRecruitingApplicationRows(existingApplications),
+      }
+    : null;
+  if (!canSyncRecruitingAction(context.profileId, existingPostSnapshot, post, action, actionBody)) {
     reject(403, "recruiting_sync_permission_denied");
   }
-  validateLockedRecruitingCore(context.profileId, existingPost, post, actionBody);
-  await validateRefereeAction(context.supabase, context.profileId, existingPost, post, actionBody);
+  validateNoUnexpectedRosterInsert(existingPostSnapshot, post, action);
+  validateLockedRecruitingCore(context.profileId, existingPostSnapshot, post, actionBody);
+  await validateRefereeAction(context.supabase, context.profileId, existingPostSnapshot, post, actionBody);
   await validateRecruitingRosterEligibility(context.supabase, post);
-  await validateAgeEligibility(context.supabase, context.profileId, existingPost, post, actionBody);
+  await validateAgeEligibility(context.supabase, context.profileId, existingPostSnapshot, post, actionBody);
 
   const postRow = toRecruitingPostRow(post);
   const applicationRows = toRecruitingApplicationRows(post);

@@ -1325,3 +1325,5 @@ flowchart TD
 7. Recruiting mutation이 진행 중이거나 직후인 post는 목록 보강 로드가 오래된 row로 덮어쓰지 않는다.
 8. 서버 core lock 검증은 구버전 DB row의 빈 `host_join_mode`, `age_restriction` 값을 앱 normalization 기본값과 같은 기준으로 비교한다.
 9. 서버 reducer가 참여를 차단하면 `recruiting_sync_permission_denied`로 뭉개지 말고 reducer notification의 실제 차단 사유를 반환한다.
+10. 초대받은 방은 초대 상태일 뿐 `내 참여방`으로 세지 않는다.
+11. `interestRecruitingPost`, `joinRecruitingSideParty`, `acceptRecruitingInvitation`이 아닌 recruiting snapshot 저장은 기존 DB roster에 없던 참가자를 새로 끼워 넣을 수 없다.

@@ -341,7 +341,6 @@ export function isRecruitingPostForUser(post = {}, userId, teamIds = []) {
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
   if (unique(post.playerIds ?? post.players ?? []).includes(userId)) return true;
   if ((roomState.partyReserves.host ?? []).includes(userId)) return true;
-  if (hasPendingRecruitingInvitation(post, userId)) return true;
   return normalizeRecruitingApplicants(post.applicants ?? []).some((applicant) => {
     if (applicant.playerId === userId) return true;
     if ((applicant.playerIds ?? []).includes(userId)) return true;
