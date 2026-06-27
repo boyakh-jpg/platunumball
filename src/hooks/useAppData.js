@@ -279,6 +279,20 @@ function mergeServerRoomResult(state, result = {}) {
   };
 }
 
+function attachRemoteMeta(state = null, meta = {}) {
+  if (!state || typeof state !== "object") return state;
+  Object.defineProperty(state, "__rankballLoadMeta", {
+    value: meta,
+    enumerable: false,
+    configurable: true,
+  });
+  return state;
+}
+
+function getRemoteMeta(state = null) {
+  return state?.__rankballLoadMeta ?? {};
+}
+
 function getBoundAuthProfileId(state, authUserId, profileBindings, profileKey) {
   const users = state.users ?? [];
   const backendTestLoginId = getBackendTestLoginId(authUserId);
@@ -396,7 +410,7 @@ function getInitialStateLoadOptions() {
   }
   if (pathname === "/app/recruiting") {
     if (searchParams?.get("post")) return { profileOnly: true, matchLimit: 0, recruitingLimit: 0, tournamentLimit: 0 };
-    return { matchLimit: 0, recruitingLimit: REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT, tournamentLimit: 0 };
+    return { endpoint: "recruitingList", matchLimit: 0, recruitingLimit: REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT, tournamentLimit: 0 };
   }
   return { matchLimit: REMOTE_CLIENT_INITIAL_MATCH_LIMIT, recruitingLimit: REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT };
 }
@@ -431,12 +445,26 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
     adminContext: false,
   };
   try {
+    if (options.endpoint === "recruitingList") {
+      const result = await postServerAction(
+        "/api/recruiting/list",
+        {
+          authUserId,
+          authEmail,
+          limit: loadOptions.recruitingLimit,
+          includeMine: true,
+          adminContext: false,
+        },
+        { allowWhenDisabled: true },
+      );
+      if (result?.state) return attachRemoteMeta(result.state, { recruitingPage: result.page ?? null });
+    }
     const result = await postServerAction(
       "/api/state/load",
       { authUserId, authEmail, ...loadOptions },
       { allowWhenDisabled: true },
     );
-    if (result?.state) return result.state;
+    if (result?.state) return attachRemoteMeta(result.state, { recruitingPage: result.page ?? null });
   } catch (error) {
     console.warn("Server state load failed. Falling back to direct Supabase read.", error.message);
   }
@@ -453,7 +481,7 @@ export function useAppData(authUser = null) {
   const [profileBindings, setProfileBindings] = useState(() => readProfileBindings());
   const [adminContext, setAdminContext] = useState(EMPTY_ADMIN_CONTEXT);
   const [matchPagination, setMatchPagination] = useState({ loading: false, exhausted: !isSupabaseConfigured, error: "" });
-  const [recruitingPagination, setRecruitingPagination] = useState({ loading: false, exhausted: !isSupabaseConfigured, error: "" });
+  const [recruitingPagination, setRecruitingPagination] = useState({ loading: false, exhausted: !isSupabaseConfigured, error: "", cursor: "" });
   const [directoryStatus, setDirectoryStatus] = useState({ loading: false, loaded: !isSupabaseConfigured, error: "" });
   const [remoteReady, setRemoteReady] = useState(!isSupabaseConfigured);
   const adminContextRef = useRef(EMPTY_ADMIN_CONTEXT);
@@ -496,7 +524,7 @@ export function useAppData(authUser = null) {
       remoteReadyRef.current = !isSupabaseConfigured;
       setRemoteReady(!isSupabaseConfigured);
       setMatchPagination({ loading: false, exhausted: true, error: "" });
-      setRecruitingPagination({ loading: false, exhausted: true, error: "" });
+      setRecruitingPagination({ loading: false, exhausted: true, error: "", cursor: "" });
       setDirectoryStatus({ loading: false, loaded: true, error: "" });
       return undefined;
     }
@@ -517,10 +545,17 @@ export function useAppData(authUser = null) {
       .then((remoteState) => {
         if (!mounted) return;
         if (remoteState) {
+          const remoteMeta = getRemoteMeta(remoteState);
           const maintainedState = runAutomaticStateMaintenance(remoteState);
+          const initialRecruitingLimit = Number(initialLoadOptions.recruitingLimit ?? 0);
           setState((prev) => withServerAdminContext(preserveLocalDiscordState(prev, maintainedState), adminContextRef.current));
           setMatchPagination({ loading: false, exhausted: (maintainedState.matches?.length ?? 0) < initialLoadOptions.matchLimit, error: "" });
-          setRecruitingPagination({ loading: false, exhausted: (maintainedState.recruitingPosts?.length ?? 0) < initialLoadOptions.recruitingLimit, error: "" });
+          setRecruitingPagination({
+            loading: false,
+            exhausted: initialRecruitingLimit <= 0 || Boolean(remoteMeta.recruitingPage?.exhausted) || (maintainedState.recruitingPosts?.length ?? 0) < initialRecruitingLimit,
+            error: "",
+            cursor: remoteMeta.recruitingPage?.cursor ?? getRecruitingPaginationCursor(maintainedState.recruitingPosts),
+          });
         }
         remoteReadyRef.current = true;
         setRemoteReady(true);
@@ -529,7 +564,7 @@ export function useAppData(authUser = null) {
         console.warn("Supabase hydration failed. Remote state remains empty.", error.message);
         remoteReadyRef.current = true;
         setMatchPagination({ loading: false, exhausted: true, error: error.message ?? "state_load_failed" });
-        setRecruitingPagination({ loading: false, exhausted: true, error: error.message ?? "state_load_failed" });
+        setRecruitingPagination({ loading: false, exhausted: true, error: error.message ?? "state_load_failed", cursor: "" });
         if (mounted) setRemoteReady(true);
       });
 
@@ -787,9 +822,9 @@ export function useAppData(authUser = null) {
 
   const loadMoreRecruiting = useCallback(async () => {
     if (!isSupabaseConfigured || !authUserId || recruitingPagination.loading || recruitingPagination.exhausted) return false;
-    const cursor = getRecruitingPaginationCursor(state.recruitingPosts);
+    const cursor = recruitingPagination.cursor || getRecruitingPaginationCursor(state.recruitingPosts);
     if (!cursor) {
-      setRecruitingPagination({ loading: false, exhausted: true, error: "" });
+      setRecruitingPagination({ loading: false, exhausted: true, error: "", cursor: "" });
       return false;
     }
     setRecruitingPagination((prev) => ({ ...prev, loading: true, error: "" }));
@@ -808,14 +843,19 @@ export function useAppData(authUser = null) {
       const remoteState = filterPendingRecruitingPosts(result?.state ?? {}, pendingRecruitingPostIdsRef.current, recentRecruitingMutationTimesRef.current);
       const nextPosts = remoteState.recruitingPosts ?? [];
       setState((prev) => mergeRemoteRecruitingPage(prev, remoteState));
-      setRecruitingPagination({ loading: false, exhausted: Boolean(result?.page?.exhausted) || nextPosts.length < REMOTE_CLIENT_RECRUITING_LIMIT, error: "" });
+      setRecruitingPagination({
+        loading: false,
+        exhausted: Boolean(result?.page?.exhausted) || nextPosts.length < REMOTE_CLIENT_RECRUITING_LIMIT,
+        error: "",
+        cursor: result?.page?.cursor ?? cursor,
+      });
       return nextPosts.length;
     } catch (error) {
       console.warn("More recruiting load failed.", error.message);
-      setRecruitingPagination({ loading: false, exhausted: false, error: error.message ?? "recruiting_page_load_failed" });
+      setRecruitingPagination({ loading: false, exhausted: false, error: error.message ?? "recruiting_page_load_failed", cursor });
       return false;
     }
-  }, [authEmail, authUserId, recruitingPagination.exhausted, recruitingPagination.loading, setState, state.recruitingPosts]);
+  }, [authEmail, authUserId, recruitingPagination.cursor, recruitingPagination.exhausted, recruitingPagination.loading, setState, state.recruitingPosts]);
 
   const loadRecruitingPost = useCallback(async (postId) => {
     if (!isSupabaseConfigured || !authUserId || !postId) return false;

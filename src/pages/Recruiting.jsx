@@ -3036,7 +3036,8 @@ function RecruitingReady({ app }) {
   useBodyScrollLock(Boolean(selectedPost) || composeOpen);
 
   useEffect(() => {
-    if (!app.remoteReady || !app.currentUser.id) return undefined;
+    const loadMyRecruitingPosts = app.actions.loadMyRecruitingPosts;
+    if (!app.remoteReady || !app.currentUser.id || !loadMyRecruitingPosts) return undefined;
     const userId = app.currentUser.id;
     const pendingKey = `${userId}:pending`;
     if (myRecruitingLoadRef.current === userId || myRecruitingLoadRef.current === pendingKey) return undefined;
@@ -3046,7 +3047,7 @@ function RecruitingReady({ app }) {
     const runLoad = () => {
       attempts += 1;
       myRecruitingLoadRef.current = pendingKey;
-      Promise.resolve(app.actions.loadMyRecruitingPosts?.()).then((result) => {
+      Promise.resolve(loadMyRecruitingPosts()).then((result) => {
         if (cancelled || myRecruitingLoadRef.current !== pendingKey) return;
         if (result === false && attempts < 3) {
           myRecruitingLoadRef.current = "";
@@ -3076,7 +3077,7 @@ function RecruitingReady({ app }) {
       if (retryTimeoutId) window.clearTimeout(retryTimeoutId);
       if (myRecruitingLoadRef.current === pendingKey) myRecruitingLoadRef.current = "";
     };
-  }, [app.actions, app.currentUser.id, app.remoteReady]);
+  }, [app.actions.loadMyRecruitingPosts, app.currentUser.id, app.remoteReady]);
 
   useEffect(() => {
     if (!targetPostId || !app.remoteReady) return;

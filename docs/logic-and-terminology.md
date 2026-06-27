@@ -1291,6 +1291,8 @@ flowchart TD
 3. Additional recruiting pages must merge by id and keep server rows as source of truth.
 4. List pagination must not load match result/stat child tables.
 5. Recruiting scope state loads must fetch only related profiles, teams, team members, and courts for loaded recruiting rows.
+6. Recruiting first list load includes current user's open owned/joined rooms in the same `/api/recruiting/list` response so room-scope counts do not change after a delayed mine-only background load.
+7. Recruiting pagination cursor follows the first public page, not older current-user rooms merged into the response.
 
 ## 2026-06-27 match list pagination
 

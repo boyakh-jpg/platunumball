@@ -23,6 +23,28 @@ function uniqueIds(ids = []) {
   return [...new Set(ids.map((id) => String(id ?? "").trim()).filter(Boolean))];
 }
 
+function mergeById(current = [], incoming = []) {
+  const merged = new Map((current ?? []).filter((item) => item?.id).map((item) => [item.id, item]));
+  (incoming ?? []).forEach((item) => {
+    if (item?.id) merged.set(item.id, item);
+  });
+  return [...merged.values()];
+}
+
+function mergeStateById(current = {}, incoming = {}) {
+  return {
+    ...current,
+    ...incoming,
+    users: mergeById(current.users, incoming.users),
+    teams: mergeById(current.teams, incoming.teams),
+    recruitingPosts: mergeById(current.recruitingPosts, incoming.recruitingPosts),
+    settings: {
+      ...(current.settings ?? {}),
+      ...(incoming.settings ?? {}),
+    },
+  };
+}
+
 async function fetchPostIds(query, idColumn = "id") {
   const { data, error } = await query;
   if (error) {
@@ -75,9 +97,12 @@ export default async function handler(request, response) {
     const adminLevel = shouldLoadAdminContext && context.profileId ? await getAdminLevel(context) : 0;
     const requestedLimit = Number(body.limit ?? body.recruitingLimit ?? REMOTE_CLIENT_RECRUITING_LIMIT);
     const limit = Number.isFinite(requestedLimit) && requestedLimit > 0 ? requestedLimit : REMOTE_CLIENT_RECRUITING_LIMIT;
-    const mineOnly = body.scope === "mine" || body.mine === true || body.includeMine === true;
-    const currentUserPostIds = mineOnly ? await fetchCurrentUserRecruitingPostIds(context.supabase, context.profileId, limit) : [];
-    const targetPostIds = uniqueIds([...getTargetPostIds(body), ...currentUserPostIds]);
+    const mineOnly = body.scope === "mine" || body.mine === true;
+    const includeMine = mineOnly || body.includeMine === true;
+    const mineLimit = mineOnly ? limit : REMOTE_CLIENT_RECRUITING_LIMIT;
+    const currentUserPostIds = includeMine ? await fetchCurrentUserRecruitingPostIds(context.supabase, context.profileId, mineLimit) : [];
+    const explicitPostIds = getTargetPostIds(body);
+    const targetPostIds = uniqueIds([...explicitPostIds, ...(mineOnly ? currentUserPostIds : [])]);
     const normalized = await loadNormalizedRemoteStateFromClient(
       context.supabase,
       context.authUserId,
@@ -94,7 +119,31 @@ export default async function handler(request, response) {
       },
     );
     const profileId = context.profileId ?? normalized?.state?.currentUserId ?? "";
-    const state = filterStateForProfile(normalized?.state ?? {}, profileId, adminLevel >= 30);
+    const pageState = filterStateForProfile(normalized?.state ?? {}, profileId, adminLevel >= 30);
+    const pagePosts = pageState.recruitingPosts ?? [];
+    let state = pageState;
+    if (includeMine && !mineOnly) {
+      const loadedIds = new Set(pagePosts.map((post) => post.id));
+      const missingMineIds = currentUserPostIds.filter((postId) => !loadedIds.has(postId));
+      if (missingMineIds.length) {
+        const mineNormalized = await loadNormalizedRemoteStateFromClient(
+          context.supabase,
+          context.authUserId,
+          context.authUser?.email ?? "",
+          {
+            clientState: true,
+            isAdmin: adminLevel >= 30,
+            scope: "recruiting",
+            recruitingPostIds: missingMineIds,
+            recruitingLimit: 0,
+            matchLimit: 0,
+            tournamentLimit: 0,
+          },
+        );
+        const mineState = filterStateForProfile(mineNormalized?.state ?? {}, profileId, adminLevel >= 30);
+        state = mergeStateById(pageState, mineState);
+      }
+    }
     const posts = state.recruitingPosts ?? [];
     sendJson(response, 200, {
       ok: true,
@@ -105,9 +154,9 @@ export default async function handler(request, response) {
       },
       page: {
         limit,
-        count: posts.length,
-        cursor: getRecruitingCursor(posts),
-        exhausted: mineOnly || Boolean(targetPostIds.length) || posts.length < limit,
+        count: pagePosts.length,
+        cursor: getRecruitingCursor(pagePosts),
+        exhausted: mineOnly || Boolean(targetPostIds.length) || pagePosts.length < limit,
       },
       updatedAt: normalized?.updatedAt ?? 0,
     });
