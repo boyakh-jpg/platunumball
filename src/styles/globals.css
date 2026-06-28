@@ -10423,6 +10423,13 @@ html[data-theme="light"] .rank-home .rank-profile-card {
   background-image: none;
 }
 
+.rank-home .rank-mode-card,
+html[data-theme="light"] .rank-home .rank-mode-card {
+  background-color: transparent;
+  background-image: none;
+  box-shadow: none;
+}
+
 @media (max-width: 920px) {
   .settings-page .content-grid,
   .settings-page .settings-referee-card {
