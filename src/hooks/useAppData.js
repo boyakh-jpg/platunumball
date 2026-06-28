@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  addTeamMember,
   acceptTeamInvitation,
   addMatchLatePlayer,
   acceptRecruitingInvitation,
@@ -1973,7 +1972,6 @@ export function useAppData(authUser = null) {
         return createdId;
       },
       closeRecruitingPost: (postId) => applyRecruitingPostMutation(postId, (prev) => closeRecruitingPost({ ...prev, currentUserId }, postId), { action: "closeRecruitingPost" }),
-      addTeamMember: (teamId, draft) => applyTeamMutation(teamId, (prev) => addTeamMember({ ...prev, currentUserId }, teamId, draft)),
       inviteTeamMember: (teamId, targetUserId) => applyTeamInvitationMutation(
         "팀 초대",
         (prev) => inviteTeamMember({ ...prev, currentUserId }, teamId, targetUserId),

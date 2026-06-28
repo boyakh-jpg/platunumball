@@ -57,6 +57,18 @@ function normalizeTeam(team = {}, actorProfileId = "") {
 
 async function syncTeam(context, rawTeam, notifications = []) {
   const team = normalizeTeam(rawTeam, context.profileId);
+  const { data: existingMembers, error: existingMembersError } = await context.supabase
+    .from("team_members")
+    .select("user_id")
+    .eq("team_id", team.id);
+  if (existingMembersError) throw existingMembersError;
+  const existingMemberIds = new Set(toArray(existingMembers).map((member) => member.user_id));
+  const isExistingTeam = existingMemberIds.size > 0;
+  if (isExistingTeam && team.members.some((member) => !existingMemberIds.has(member.userId))) {
+    const error = new Error("team_member_invite_required");
+    error.statusCode = 400;
+    throw error;
+  }
   const { data, error } = await context.supabase.rpc("rankball_sync_team_membership", {
     p_actor_profile_id: context.profileId,
     p_team: team,
