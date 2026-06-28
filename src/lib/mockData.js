@@ -11,6 +11,7 @@ import {
 import { demoFlowState } from "./demoFlowState.js";
 import { toHashtag } from "./handles.js";
 
+// P-DEMO-CLEANUP: seed/local-dev only. Production app must not import this module.
 const DEMO_TODAY = "2026-06-18";
 const DEMO_NOW = "2026-06-18T12:00:00";
 const DEMO_QUEUE_START = "2026-06-18";

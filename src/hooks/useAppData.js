@@ -559,8 +559,10 @@ function normalizeServerState(state) {
 let demoInitialStatePromise = null;
 async function ensureLocalDemoInitialState() {
   if (isSupabaseConfigured || hasDemoInitialState()) return null;
+  if (!import.meta.env.DEV) return null;
   if (!demoInitialStatePromise) {
-    demoInitialStatePromise = import("../lib/mockData.js").then((module) => {
+    // P-DEMO-CLEANUP: local development fallback only. Do not load demo data in production builds.
+    demoInitialStatePromise = import(/* @vite-ignore */ "/src/lib/mockData.js").then((module) => {
       setDemoInitialState(module.initialState);
       return module.initialState;
     });

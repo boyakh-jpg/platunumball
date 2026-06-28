@@ -4,7 +4,7 @@
 
 - Supabase가 설정된 환경에서는 `mockData` / `localStorage`를 앱 데이터 원천으로 쓰지 않는다.
 - `src/lib/mockData.js`는 비-Supabase 개발과 seed 생성용으로만 남긴다.
-- 프론트 `repository.js`는 `mockData.js`를 정적으로 import하지 않는다. 비-Supabase local/demo 모드에서만 `useAppData`가 동적으로 demo state를 로드한다.
+- 프론트 `repository.js`는 `mockData.js`를 정적으로 import하지 않는다. `useAppData`는 개발 빌드의 비-Supabase local/demo 모드에서만 demo state를 동적으로 로드한다.
 - 원격 로드 실패 시 데모 state로 fallback하지 않고 빈 원격 shell state를 유지한다.
 - 실제 프로필 생성/수정은 `POST /api/profile/upsert` service-role server action을 통과한다.
 - `POST /api/profile/upsert`는 일반 프로필 저장에서 `trust_score`, `ratings`, `streak` 클라이언트 변경을 무시하고 DB 기존값 또는 기본값만 유지한다.

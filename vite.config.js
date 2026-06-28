@@ -14,9 +14,6 @@ export default defineConfig({
           if (id.includes("node_modules/@supabase")) {
             return "vendor-supabase";
           }
-          if (id.includes("src/lib/mockData.js")) {
-            return "demo-data";
-          }
           if (id.includes("src/data/repository.js")) {
             return "state-core";
           }
