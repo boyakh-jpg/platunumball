@@ -531,7 +531,7 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
           limit: loadOptions.matchLimit,
           listOnly: true,
           activeOnly: true,
-          includeRecruitingSchedule: false,
+          includeRecruitingSchedule: true,
           adminContext: false,
         },
         { allowWhenDisabled: true },
