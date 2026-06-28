@@ -350,6 +350,13 @@ function filterPendingRecruitingPosts(remoteState = {}, pendingIds = new Set(), 
   return filteredPosts.length === nextPosts.length ? remoteState : { ...remoteState, recruitingPosts: filteredPosts };
 }
 
+function incrementFeedCount(feedCounts, key) {
+  if (!feedCounts) return feedCounts;
+  const current = Number(feedCounts[key]);
+  if (!Number.isFinite(current)) return feedCounts;
+  return { ...feedCounts, [key]: current + 1 };
+}
+
 function filterPendingMatches(remoteState = {}, pendingIds = new Set(), recentMutationTimes = new Map()) {
   const nextMatches = remoteState.matches ?? [];
   if ((!pendingIds.size && !recentMutationTimes.size) || !nextMatches.length) return remoteState;
@@ -604,7 +611,7 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
           regionScope: "local",
           listOnly: true,
           adminContext: false,
-          includeFeedCounts: false,
+          includeFeedCounts: true,
         },
         { allowWhenDisabled: true },
       );
@@ -1023,7 +1030,7 @@ export function useAppData(authUser = null) {
         {
           authUserId,
           authEmail,
-          limit: 1,
+          limit: REMOTE_CLIENT_MATCH_LIMIT,
           listOnly: true,
           activeOnly: true,
           includeRecruitingSchedule: true,
@@ -1844,7 +1851,13 @@ export function useAppData(authUser = null) {
           rollbackState,
           "방 생성",
           { action: "createRecruitingPost", postId: createdPost.id },
-        ).then((result) => (result?.ok === false ? result : result?.post?.id ?? result?.postId ?? createdPost.id));
+        ).then((result) => {
+          if (!result || result?.ok === false) return result;
+          setRecruitingPagination((prev) => ({ ...prev, feedCounts: incrementFeedCount(prev.feedCounts, "created") }));
+          setMatchPagination((prev) => ({ ...prev, error: "", recruitingScheduleChecked: false }));
+          loadMatchRecruitingSchedule();
+          return result?.post?.id ?? result?.postId ?? createdPost.id;
+        });
       },
       interestRecruitingPost: (postId, application) => applyRecruitingPostMutation(postId, (prev) => interestRecruitingPost({ ...prev, currentUserId }, postId, application), { action: "interestRecruitingPost", application, joinMode: application?.joinMode }),
       inviteRecruitingReferee: (postId, refereeId) => applyRecruitingPostMutation(postId, (prev) => inviteRecruitingReferee({ ...prev, currentUserId }, postId, refereeId), { action: "inviteRecruitingReferee", refereeId }),
