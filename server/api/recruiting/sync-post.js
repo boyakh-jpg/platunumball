@@ -20,6 +20,10 @@ function nullableText(value) {
   return text || null;
 }
 
+function isTrue(value) {
+  return value === true || value === "true";
+}
+
 function reject(statusCode, message) {
   const error = new Error(message);
   error.statusCode = statusCode;
@@ -463,6 +467,27 @@ function hasRefereeInvitationFor(profileId, post = {}) {
   ));
 }
 
+function getPendingRefereeInvitation(profileId, post = {}, invitationId = "") {
+  const roomState = normalizeRoomState(post.roomState ?? post.room_state, post);
+  return toArray(roomState.invitations).find((invitation) => (
+    invitation.role === "referee" &&
+    invitation.targetUserId === profileId &&
+    invitation.status === "pending" &&
+    (!invitationId || invitation.id === invitationId)
+  )) ?? null;
+}
+
+function getRefereeTrustMin(existingPost = {}, nextPost = {}) {
+  const rawValue = existingPost?.referee_trust_min ?? existingPost?.refereeTrustMin ?? nextPost?.refereeTrustMin ?? nextPost?.referee_trust_min ?? 0;
+  const value = Number(rawValue);
+  return Number.isFinite(value) ? value : 0;
+}
+
+function hasOpenRefereeSlot(post = {}) {
+  const roomState = normalizeRoomState(post.roomState ?? post.room_state, post);
+  return isTrue(roomState.refereeWanted) && !nullableText(post.refereeId ?? post.referee_id);
+}
+
 function getSideCapacity(post = {}) {
   return getCanonicalSideCapacity(post);
 }
@@ -499,7 +524,6 @@ const OWNER_RECRUITING_ACTIONS = new Set([
   "kickRecruitingApplicant",
   "confirmRecruitingMatch",
   "closeRecruitingPost",
-  "inviteRecruitingReferee",
 ]);
 
 const PARTICIPANT_RECRUITING_ACTIONS = new Set([
@@ -516,6 +540,7 @@ const PARTICIPANT_RECRUITING_ACTIONS = new Set([
   "setRecruitingPartyPlayerReserve",
   "detachRecruitingPartyPlayer",
   "removeRecruitingPartyPlayer",
+  "inviteRecruitingReferee",
 ]);
 
 const JOIN_RECRUITING_ACTIONS = new Set([
@@ -533,6 +558,10 @@ const MEMBERSHIP_ADD_RECRUITING_ACTIONS = new Set([
 const AUTHORITATIVE_REPLAY_RECRUITING_ACTIONS = new Set([
   "cancelRecruitingParticipation",
   "interestRecruitingPost",
+  "inviteRecruitingPlayers",
+  "inviteRecruitingReferee",
+  "acceptRecruitingInvitation",
+  "declineRecruitingInvitation",
   "joinRecruitingSideParty",
   "setRecruitingApplicantPlacement",
   "setRecruitingSlotPosition",
@@ -702,7 +731,10 @@ function canSyncRecruitingAction(profileId, existingPost, nextPost, action, body
     return nextParticipants.has(profileId);
   }
   if (PARTICIPANT_RECRUITING_ACTIONS.has(action)) {
-    return existingParticipants.has(profileId) || hasInvitationFor(profileId, existingPost);
+    if (action === "acceptRecruitingInvitation" || action === "declineRecruitingInvitation") {
+      return existingParticipants.has(profileId) || hasInvitationFor(profileId, existingPost);
+    }
+    return existingParticipants.has(profileId);
   }
   return existingParticipants.has(profileId) || nextParticipants.has(profileId);
 }
@@ -721,7 +753,7 @@ function actionCanAssignReferee(profileId, existingPost, body = {}) {
   const action = body.action ?? "sync";
   return (
     (action === "interestRecruitingPost" && body.joinMode === "referee") ||
-    (action === "acceptRecruitingInvitation" && hasRefereeInvitationFor(profileId, existingPost))
+    (action === "acceptRecruitingInvitation" && getPendingRefereeInvitation(profileId, existingPost, body.invitationId))
   );
 }
 
@@ -736,33 +768,47 @@ function validateLockedRecruitingCore(profileId, existingPost, nextPost, body = 
   if (!sameJson(existingCore, nextCore)) reject(403, "recruiting_core_locked");
 }
 
-async function isActiveReferee(supabase, userId) {
+async function isActiveReferee(supabase, userId, minTrust = 0) {
   if (!userId) return false;
-  const { data, error } = await supabase
+  const [{ data, error }, { data: profile, error: profileError }] = await Promise.all([
+    supabase
     .from("referee_appointments")
     .select("id, ends_at")
     .eq("user_id", userId)
-    .eq("status", "active");
+      .eq("status", "active"),
+    supabase
+      .from("profiles")
+      .select("id, trust_score")
+      .eq("id", userId)
+      .maybeSingle(),
+  ]);
   if (error) throw error;
+  if (profileError) throw profileError;
+  if (Number(profile?.trust_score ?? 0) < Number(minTrust || 0)) return false;
   const now = Date.now();
   return toArray(data).some((row) => !row.ends_at || Date.parse(row.ends_at) > now);
 }
 
 async function validateRefereeAction(supabase, profileId, existingPost, nextPost, body) {
   const action = body.action ?? "sync";
+  const minTrust = getRefereeTrustMin(existingPost, nextPost);
   if (action === "inviteRecruitingReferee") {
-    if (!(await isActiveReferee(supabase, body.refereeId))) reject(403, "referee_not_eligible");
+    if (!(await isActiveReferee(supabase, body.refereeId, minTrust))) reject(403, "referee_not_eligible");
     return;
   }
   if (action === "interestRecruitingPost" && body.joinMode === "referee") {
-    if (!(await isActiveReferee(supabase, profileId))) reject(403, "referee_not_eligible");
+    if (!hasOpenRefereeSlot(existingPost)) reject(403, "referee_join_not_allowed");
+    if (nextPost.refereeId !== profileId) reject(403, "referee_assignment_mismatch");
+    if (!(await isActiveReferee(supabase, profileId, minTrust))) reject(403, "referee_not_eligible");
     return;
   }
-  if (action === "acceptRecruitingInvitation" && hasRefereeInvitationFor(profileId, existingPost)) {
-    if (!(await isActiveReferee(supabase, profileId))) reject(403, "referee_not_eligible");
+  if (action === "acceptRecruitingInvitation" && getPendingRefereeInvitation(profileId, existingPost, body.invitationId)) {
+    if (existingPost?.referee_id) reject(403, "referee_already_assigned");
+    if (nextPost.refereeId !== profileId) reject(403, "referee_assignment_mismatch");
+    if (!(await isActiveReferee(supabase, profileId, minTrust))) reject(403, "referee_not_eligible");
     return;
   }
-  if (nextPost.refereeId && nextPost.refereeId !== existingPost?.referee_id && !(await isActiveReferee(supabase, nextPost.refereeId))) {
+  if (nextPost.refereeId && nextPost.refereeId !== existingPost?.referee_id && !(await isActiveReferee(supabase, nextPost.refereeId, minTrust))) {
     reject(403, "referee_not_eligible");
   }
 }
@@ -774,7 +820,7 @@ export async function persistRecruitingPostSnapshot(context, { post, notificatio
   const actionBody = { ...body, action };
   const { data: existingPost, error: existingError } = await context.supabase
       .from("recruiting_posts")
-      .select("id, visibility, player_id, team_id, target_team_id, mode, scheduled_date, scheduled_time, ranked, official, side_capacity, host_join_mode, host_side, player_ids, referee_id, room_state, age_restriction, allowed_age_groups")
+      .select("id, visibility, player_id, team_id, target_team_id, mode, scheduled_date, scheduled_time, ranked, official, side_capacity, host_join_mode, host_side, player_ids, referee_id, referee_trust_min, room_state, age_restriction, allowed_age_groups")
       .eq("id", post.id)
       .maybeSingle();
 

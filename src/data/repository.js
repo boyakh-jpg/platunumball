@@ -6936,7 +6936,7 @@ export function cancelRecruitingParticipation(state, postId) {
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   if (!post || post.status !== "open" || isRecruitingRoomOwner(post, state.currentUserId) || post.playerId === state.currentUserId) return state;
   const currentUserId = state.currentUserId;
-  const removeUserFromRoomState = (roomState = {}) => {
+  const removeUserFromRoomState = (roomState = {}, applicants = [], playerIds = []) => {
     const normalizedRoomState = normalizeRecruitingRoomState(roomState);
     const nextPartyReserves = Object.fromEntries(
       Object.entries(normalizedRoomState.partyReserves ?? {})
@@ -6950,14 +6950,28 @@ export function cancelRecruitingParticipation(state, postId) {
     );
     const nextReserveReady = { ...(normalizedRoomState.reserveReady ?? {}) };
     const nextSlotPositions = { ...(normalizedRoomState.slotPositions ?? {}) };
+    const nextPartyLeaders = { ...(normalizedRoomState.partyLeaders ?? {}) };
     delete nextReserveReady[currentUserId];
     delete nextSlotPositions[currentUserId];
+    Object.entries(nextPartyLeaders).forEach(([key, leaderId]) => {
+      if (leaderId !== currentUserId) return;
+      const applicant = applicants.find((item) => getRecruitingApplicantKey(item) === key);
+      const nextLeaderId = key === "host"
+        ? playerIds.find((playerId) => playerId !== currentUserId)
+        : applicant?.playerId ?? applicant?.playerIds?.find((playerId) => playerId !== currentUserId) ?? "";
+      if (nextLeaderId) nextPartyLeaders[key] = nextLeaderId;
+      else delete nextPartyLeaders[key];
+    });
     return {
       ...normalizedRoomState,
       partyReserves: nextPartyReserves,
+      partyLeaders: nextPartyLeaders,
       pinnedReservePlayers: nextPinnedReservePlayers,
       reserveReady: nextReserveReady,
       slotPositions: nextSlotPositions,
+      invitations: normalizedRoomState.invitations.filter((invitation) => !(
+        invitation.status === "pending" && invitation.fromUserId === currentUserId
+      )),
     };
   };
 
@@ -6967,8 +6981,7 @@ export function cancelRecruitingParticipation(state, postId) {
       if (item.id !== postId) return item;
       const applicants = normalizeRecruitingApplicants(item.applicants ?? [])
         .map((applicant) => {
-          if (applicant.playerId === currentUserId) return null;
-          if (applicant.kind !== "team") return applicant;
+          if (applicant.kind !== "team") return applicant.playerId === currentUserId ? null : applicant;
           const nextPlayerIds = (applicant.playerIds ?? []).filter((playerId) => playerId !== currentUserId);
           if (!nextPlayerIds.length) return null;
           return {
@@ -6980,11 +6993,11 @@ export function cancelRecruitingParticipation(state, postId) {
         .filter(Boolean);
       const playerIds = Array.isArray(item.playerIds)
         ? item.playerIds.filter((playerId) => playerId !== currentUserId)
-        : item.playerIds;
+        : [];
       return cleanRecruitingRoomStatRecorders({
         ...item,
         playerIds,
-        roomState: removeUserFromRoomState(item.roomState ?? {}),
+        roomState: removeUserFromRoomState(item.roomState ?? {}, applicants, playerIds),
         applicants,
       }, state);
     }),
@@ -7295,6 +7308,20 @@ export function inviteRecruitingReferee(state, postId, refereeId) {
   };
 }
 
+function removeAcceptedRecruitingInvitations(invitations = [], acceptedInvitation = {}, targetUserId = "") {
+  if (acceptedInvitation.role === "referee") {
+    return invitations.filter((candidate) => candidate.role !== "referee");
+  }
+  return invitations.filter((candidate) => {
+    if (candidate.id === acceptedInvitation.id) return false;
+    return !(
+      candidate.role !== "referee" &&
+      candidate.status === "pending" &&
+      candidate.targetUserId === targetUserId
+    );
+  });
+}
+
 export function acceptRecruitingInvitation(state, postId, invitationId) {
   const disciplineBlock = getDisciplineBlockedState(state, "초대 수락");
   if (disciplineBlock) return disciplineBlock;
@@ -7350,7 +7377,7 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
               roomState: {
                 ...roomState,
                 refereeWanted: true,
-                invitations: roomState.invitations.filter((candidate) => candidate.id !== invitationId),
+                invitations: removeAcceptedRecruitingInvitations(roomState.invitations, invitation, state.currentUserId),
               },
             }
           : item
@@ -7468,7 +7495,7 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
         state.currentUserId,
         reserve,
       ),
-      invitations: roomState.invitations.filter((candidate) => candidate.id !== invitationId),
+      invitations: removeAcceptedRecruitingInvitations(roomState.invitations, invitation, state.currentUserId),
     };
     const nextApplicant = existingApplicant
       ? null
@@ -7564,7 +7591,7 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
             applicants: [...normalizeRecruitingApplicants(item.applicants ?? []), nextApplicant],
             roomState: {
               ...updatePinnedReservePlayers(roomState, side, state.currentUserId, reserve),
-              invitations: roomState.invitations.filter((candidate) => candidate.id !== invitationId),
+              invitations: removeAcceptedRecruitingInvitations(roomState.invitations, invitation, state.currentUserId),
             },
           }
         : item

@@ -1362,6 +1362,11 @@ flowchart TD
 37. `/app/matches`는 SPA 이동으로 들어왔고 `recruitingScheduleChecked`가 false이면 현재 사용자 모집방 일정을 다시 로드한다. 경기 목록이 비어 있어도 match-page merge는 모집방 일정 row를 보존해야 한다.
 38. `/app/recruiting` 첫 목록 로드는 `feedCounts`를 같이 받아야 한다. `내가 만든 방/참여방/초대받음` 숫자는 클릭 전에도 current-user feed count 기준이어야 하며, 목록 일부 로드 fallback 숫자에 의존하지 않는다.
 39. 모집방 생성 서버 저장이 성공하면 클라이언트는 `created` feed count를 즉시 반영하고 경기 메뉴 모집 일정도 다시 읽는다.
+40. 모집방 선수/심판 초대는 기존 방 참가자만 보낼 수 있다. 단, 초대 수락/거절은 아직 참가자가 아니어도 자기 pending invitation이 있으면 가능하다.
+41. `inviteRecruitingReferee`는 프론트와 서버 모두 기존 방 참가자 action이다. 초대 대상 심판은 active `referee_appointments`가 있어야 하며, pending invitation만 가진 사용자는 심판/선수 초대를 새로 보낼 수 없다.
+42. 선수/심판 초대 생성, 초대 수락, 초대 거절은 stale 클라이언트 snapshot을 그대로 저장하지 않고 서버 최신 모집방 row 기준으로 replay한다.
+43. 심판 직접참여는 DB row 기준 `refereeWanted=true`이고 아직 `referee_id`가 없을 때만 허용한다. 심판 초대 수락은 해당 pending invitation의 대상자 본인만 `refereeId`로 배정될 수 있고, 방의 `refereeTrustMin`을 통과해야 한다.
+44. 초대 수락 성공 후 같은 대상자의 다른 pending 선수 초대는 정리하고, 심판 배정 후 다른 pending 심판 초대도 정리한다. 팀 파티장이 나가면 남은 파티원에게 리더를 넘기고, 나간 사람이 보낸 pending 초대는 제거한다.
 
 ## 2026-06-27 report scoped reads
 
