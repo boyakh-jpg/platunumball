@@ -549,6 +549,7 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
           regionScope: "local",
           listOnly: true,
           adminContext: false,
+          includeFeedCounts: false,
         },
         { allowWhenDisabled: true },
       );
@@ -1022,6 +1023,7 @@ export function useAppData(authUser = null) {
           ...(regionRequest.regionKey ? { regionKey: regionRequest.regionKey } : {}),
           listOnly: true,
           adminContext: false,
+          includeFeedCounts: false,
         },
         { allowWhenDisabled: true },
       );
@@ -1064,6 +1066,7 @@ export function useAppData(authUser = null) {
           ...(regionRequest.regionKey ? { regionKey: regionRequest.regionKey } : {}),
           listOnly: true,
           adminContext: false,
+          includeFeedCounts: false,
         },
         { allowWhenDisabled: true },
       );
