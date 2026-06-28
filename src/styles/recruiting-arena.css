@@ -3335,7 +3335,10 @@ html[data-theme="light"] .arena-recruit-card.arena-target-room {
   flex-wrap: wrap;
   overflow-x: visible;
   gap: 8px;
-  padding: 10px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  background-image: none;
 }
 
 .arena-filter-bar button,
@@ -3391,14 +3394,11 @@ html[data-theme="light"] .arena-recruit-card.arena-target-room {
   color: #ff9aa8;
 }
 
-.arena-filter-bar .arena-start-date-filter button.sat.active {
-  background: rgba(80, 150, 255, 0.16);
-  color: #b7d2ff;
-}
-
+.arena-filter-bar .arena-start-date-filter button.sat.active,
 .arena-filter-bar .arena-start-date-filter button.sun.active {
-  background: rgba(255, 101, 121, 0.16);
-  color: #ffc3cc;
+  border-color: rgba(70, 224, 182, 0.42);
+  background: rgba(70, 224, 182, 0.12);
+  color: var(--green);
 }
 
 .arena-filter-select select {

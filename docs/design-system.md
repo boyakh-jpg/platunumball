@@ -52,6 +52,8 @@
 2. Weekend date chips keep the same size as weekday chips; Saturday uses blue tone and Sunday uses red tone.
 3. The row must not force horizontal scrolling on mobile.
 4. Date chips keep a fixed upper width and use visible gaps instead of stretching across wide desktop rows. Recruiting filter selects and filter buttons use the same 42px minimum height.
+5. Selected date chips use one shared active fill color. Saturday/Sunday colors are idle hints only, not separate selected backgrounds.
+6. Recruiting filter groups avoid an extra outer frame/padding around the buttons so the filter row stays compact.
 
 # RankBall Design System
 
