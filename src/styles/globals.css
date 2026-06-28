@@ -1143,6 +1143,47 @@ span.referee-hover-card {
   gap: 8px;
 }
 
+.favorite-type-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.favorite-type-grid button {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  cursor: pointer;
+  padding: 8px 6px;
+  text-align: center;
+}
+
+.favorite-type-grid button.active {
+  border-color: rgba(70, 224, 182, 0.5);
+  background: rgba(70, 224, 182, 0.12);
+}
+
+.favorite-type-grid span,
+.favorite-type-grid strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.favorite-type-grid span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.favorite-type-grid strong {
+  font-size: 0.86rem;
+}
+
 .favorite-result-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -1189,15 +1230,18 @@ span.referee-hover-card {
   white-space: nowrap;
 }
 
-.favorite-chip-list {
-  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
-}
-
 .favorite-mini-chip {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.04);
   padding: 8px;
+}
+
+.favorite-mini-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
 }
 
 .favorite-chip-list > em {
