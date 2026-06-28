@@ -27,9 +27,10 @@
 
 1. Remote DB hydration may show a centered basketball bounce loader after a short delay.
 2. The loader may use the R2-hosted `bounding_ball2.gif` asset when the file stays under 100KB.
-3. The CSS basketball fallback must remain for asset load failure and `prefers-reduced-motion`.
+3. The CSS basketball fallback must remain for asset load failure.
 4. The loader is status feedback and must not block clicks after remote data is ready.
 5. The remote GIF loader renders without a card background, border, shadow, or blur frame.
+6. `prefers-reduced-motion` may stop CSS fallback animation but must not replace a loaded GIF with the fallback ball.
 
 # 2026-06-28 referee rulebook images
 

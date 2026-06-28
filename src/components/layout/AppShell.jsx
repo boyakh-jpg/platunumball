@@ -4,11 +4,15 @@ import BottomNav from "./BottomNav.jsx";
 import Sidebar from "./Sidebar.jsx";
 import { assetUrl } from "../../lib/assets.js";
 
-const remoteLoaderBallSrc = assetUrl("/assets/bounding_ball2.gif");
+const remoteLoaderBallSources = [
+  assetUrl("/assets/bounding_ball2.gif"),
+  "https://pub-ace5b2a3eb5a41dfba7488c3de616118.r2.dev/assets/bounding_ball2.gif",
+];
 
 export default function AppShell({ app, auth }) {
   const [showRemoteLoader, setShowRemoteLoader] = useState(false);
   const [remoteLoaderImageFailed, setRemoteLoaderImageFailed] = useState(false);
+  const [remoteLoaderImageIndex, setRemoteLoaderImageIndex] = useState(0);
 
   useEffect(() => {
     if (app.remoteReady !== false) {
@@ -39,12 +43,19 @@ export default function AppShell({ app, auth }) {
               {remoteLoaderImageFailed ? null : (
                 <img
                   className="basketball-loader-gif"
-                  src={remoteLoaderBallSrc}
+                  src={remoteLoaderBallSources[remoteLoaderImageIndex]}
                   width="50"
                   height="50"
                   alt=""
                   decoding="async"
-                  onError={() => setRemoteLoaderImageFailed(true)}
+                  onError={() => {
+                    setRemoteLoaderImageIndex((currentIndex) => {
+                      const nextIndex = currentIndex + 1;
+                      if (nextIndex < remoteLoaderBallSources.length) return nextIndex;
+                      setRemoteLoaderImageFailed(true);
+                      return currentIndex;
+                    });
+                  }}
                 />
               )}
               <span className={remoteLoaderImageFailed ? "basketball-loader-ball active" : "basketball-loader-ball"} />
