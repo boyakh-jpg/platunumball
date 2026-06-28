@@ -3,6 +3,7 @@ import {
   COURT_REQUEST_TRUST_MIN,
   DISPUTE_WINDOW_MINUTES,
   FALSE_COURT_REPORT_TRUST_PENALTY,
+  MAX_TEAM_MEMBERS,
   MAX_TEAM_MEMBERSHIPS,
   MAX_TEAM_NAME_LENGTH,
   MODE_SIZES,
@@ -8896,6 +8897,20 @@ export function addTeamMember(state, teamId, memberDraft) {
           id: makeId("n"),
           title: "팀 관리 권한 없음",
           body: "주장만 팀원을 관리할 수 있습니다.",
+          tone: "team",
+        },
+        ...state.notifications,
+      ],
+    };
+  }
+  if (team.members.length >= MAX_TEAM_MEMBERS) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "팀원 추가 제한",
+          body: `팀원은 최대 ${MAX_TEAM_MEMBERS}명까지 등록할 수 있습니다.`,
           tone: "team",
         },
         ...state.notifications,

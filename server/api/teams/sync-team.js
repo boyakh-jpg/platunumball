@@ -1,6 +1,7 @@
 import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 
 const MAX_TEAM_NAME_LENGTH = 14;
+const MAX_TEAM_MEMBERS = 10;
 
 function toArray(value) {
   return Array.isArray(value) ? value.filter(Boolean) : [];
@@ -38,6 +39,11 @@ function normalizeTeam(team = {}, actorProfileId = "") {
   }
   if (!members.some((member) => member.role === "captain")) {
     members[0] = { ...members[0], role: "captain" };
+  }
+  if (members.length > MAX_TEAM_MEMBERS) {
+    const error = new Error("team_members_limit_exceeded");
+    error.statusCode = 400;
+    throw error;
   }
   return {
     id: String(team.id),

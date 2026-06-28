@@ -9,7 +9,7 @@ import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import TierBadge from "../components/rating/TierBadge.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
-import { MAX_TEAM_MEMBERSHIPS, TEAM_ROLES } from "../lib/constants.js";
+import { MAX_TEAM_MEMBERS, MAX_TEAM_MEMBERSHIPS, TEAM_ROLES } from "../lib/constants.js";
 
 function getTeamSide(match, teamId) {
   if (match.teamA?.teamId === teamId) return "teamA";
@@ -64,7 +64,8 @@ export default function TeamDetail({ app }) {
   const firstAddableUser = availableUsers.find((user) => (membershipCounts.get(user.id) ?? 0) < MAX_TEAM_MEMBERSHIPS);
   const addUserId = availableUsers.some((user) => user.id === memberDraft.userId) ? memberDraft.userId : firstAddableUser?.id ?? availableUsers[0]?.id ?? "";
   const selectedCount = membershipCounts.get(addUserId) ?? 0;
-  const canAddMember = canManage && Boolean(addUserId) && selectedCount < MAX_TEAM_MEMBERSHIPS;
+  const teamFull = team.members.length >= MAX_TEAM_MEMBERS;
+  const canAddMember = canManage && Boolean(addUserId) && selectedCount < MAX_TEAM_MEMBERSHIPS && !teamFull;
   const history = app.state.matches.filter((match) => getTeamSide(match, team.id));
   const loadedWins = history.filter((match) => {
     const sideName = getTeamSide(match, team.id);
@@ -264,7 +265,7 @@ export default function TeamDetail({ app }) {
                 <p className="eyebrow">Member Control</p>
                 <h2>팀원 관리</h2>
               </div>
-              <Badge tone="green">{team.members.length}명</Badge>
+              <Badge tone={teamFull ? "orange" : "green"}>{team.members.length}/{MAX_TEAM_MEMBERS}명</Badge>
             </div>
             {canManage ? (
               <>
@@ -289,7 +290,8 @@ export default function TeamDetail({ app }) {
                     </select>
                   </label>
                   <Button type="submit" disabled={!canAddMember || !availableUsers.length}>팀원 추가</Button>
-                  {!canAddMember ? <span className="form-warning">팀 한도 {MAX_TEAM_MEMBERSHIPS}/{MAX_TEAM_MEMBERSHIPS}</span> : null}
+                  {teamFull ? <span className="form-warning">팀원은 최대 {MAX_TEAM_MEMBERS}명까지 등록할 수 있습니다.</span> : null}
+                  {!teamFull && !canAddMember ? <span className="form-warning">선수 팀 한도 {MAX_TEAM_MEMBERSHIPS}/{MAX_TEAM_MEMBERSHIPS}</span> : null}
                 </form>
                 <div className="member-control-list">
                   {team.members.map((member) => {
