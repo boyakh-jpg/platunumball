@@ -800,7 +800,8 @@ export default function Matches({ app }) {
       .filter((post) => isRecruitingRoomInUserSchedule(post, app.state, app.currentUser.id))
       .filter((post) => {
         const postDate = getMatchDate(post);
-        return postDate && postDate <= maxScheduleDate && shouldIncludeByHistoryRange(post, todayValue, historyRangeMonths, historyCutoffDate);
+        if (!postDate) return isInstantRoom(post);
+        return postDate <= maxScheduleDate && shouldIncludeByHistoryRange(post, todayValue, historyRangeMonths, historyCutoffDate);
       })
       .filter((post) => kindFilter === "all" || (kindFilter === "ranked" ? post.ranked !== false : post.ranked === false))
       .filter((post) => modeFilter === "all" || post.mode === modeFilter);
@@ -849,6 +850,7 @@ export default function Matches({ app }) {
     return visibleRecruitingCandidates
       .filter((post) => {
         const postDate = getMatchDate(post);
+        if (!postDate) return viewId === "active" && isInstantRoom(post) && !dateFilter;
         return !dateFilter || postDate === dateFilter;
       })
       .sort(compareSchedule)
