@@ -22,6 +22,7 @@ import {
   gradeRefereeExam,
 } from "../lib/refereeExamBank.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
+import "../styles/recruiting-arena.css";
 
 const REPORT_MATCH_WINDOW_DAYS = 7;
 const REFEREE_EXAM_COOLDOWN_DAYS = 7;

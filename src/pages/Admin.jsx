@@ -14,6 +14,7 @@ import {
   hasAdminAccess,
 } from "../lib/admin.js";
 import { getMatchHashtag } from "../lib/handles.js";
+import "../styles/recruiting-arena.css";
 
 const VIEW_OPTIONS = [
   { id: "courts", label: "구장별", icon: MapPin },

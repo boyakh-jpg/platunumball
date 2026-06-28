@@ -66,6 +66,8 @@ import {
   isInstantRoom,
   isMatchReferee,
 } from "../lib/matchUtils.js";
+import "../styles/recruiting-arena.css";
+import "../styles/matches-arena.css";
 
 const SIDE_LABELS = {
   teamA: "A사이드",

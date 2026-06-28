@@ -6,9 +6,6 @@ import ScrollToTop from "./components/common/ScrollToTop.jsx";
 import { installRemoteAssetVariables } from "./lib/assets.js";
 import "./styles/tokens.css";
 import "./styles/globals.css";
-import "./styles/recruiting-arena.css";
-import "./styles/matches-arena.css";
-import "./styles/matchroom-arena.css";
 
 installRemoteAssetVariables();
 

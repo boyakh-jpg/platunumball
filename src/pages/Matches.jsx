@@ -21,6 +21,8 @@ import {
 } from "../lib/matchUtils.js";
 import { getRecruitingLobby, getRecruitingRoomOwnerId, getRecruitingSideCapacity } from "../lib/recruiting.js";
 import { RecruitingRoomModal, getRecruitingRoomListStatus } from "./Recruiting.jsx";
+import "../styles/recruiting-arena.css";
+import "../styles/matches-arena.css";
 
 const VIEWS = [
   {

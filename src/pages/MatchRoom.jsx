@@ -42,6 +42,7 @@ import {
   isMatchStatRecorder,
   isMatchTrustFeedbackOpen,
 } from "../lib/matchUtils.js";
+import "../styles/matchroom-arena.css";
 
 const statusMeta = {
   contract: { label: "WAIT", tone: "blue" },

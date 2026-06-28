@@ -3,6 +3,7 @@ import { CalendarDays, ChevronLeft, Save, ShieldCheck, Trophy } from "lucide-rea
 import Badge from "../components/common/Badge.jsx";
 import TierBadge from "../components/rating/TierBadge.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
+import "../styles/matches-arena.css";
 
 function toDateInputValue(date = new Date()) {
   return [
