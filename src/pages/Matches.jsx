@@ -832,6 +832,7 @@ export default function Matches({ app }) {
       .filter((post) => post.status === "open")
       .filter((post) => isRecruitingRoomInUserSchedule(post, app.state, app.currentUser.id))
       .filter((post) => {
+        if (isInstantScheduleRoom(post)) return true;
         const postDate = getMatchDate(post);
         return postDate && postDate <= maxScheduleDate && shouldIncludeByHistoryRange(post, todayValue, historyRangeMonths, historyCutoffDate);
       })
