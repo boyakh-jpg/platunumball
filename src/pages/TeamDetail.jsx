@@ -4,6 +4,7 @@ import { Star, Trash2 } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
+import SearchPicker from "../components/common/SearchPicker.jsx";
 import MemberTypeBadge from "../components/team/MemberTypeBadge.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import TierBadge from "../components/rating/TierBadge.jsx";
@@ -32,11 +33,11 @@ const historyStatusLabel = {
   cancelled: "취소",
 };
 const externalTeamRoles = new Set(["mercenary", "guest"]);
-const managedTeamRoleOptions = [["regular", TEAM_ROLES.regular]];
+const managedTeamRoleOptions = ["regular", "candidate", "substitute", "mercenary", "guest"].map((role) => [role, TEAM_ROLES[role] ?? role]);
+const inviteRoleOptions = managedTeamRoleOptions;
 
 function getManagedRoleOptions(member, captainId) {
   if (member.userId === captainId) return [["captain", TEAM_ROLES.captain]];
-  if (member.role && member.role !== "regular") return [[member.role, TEAM_ROLES[member.role] ?? member.role], ...managedTeamRoleOptions];
   return managedTeamRoleOptions;
 }
 
@@ -44,6 +45,8 @@ export default function TeamDetail({ app }) {
   const { teamId } = useParams();
   const team = app.state.teams.find((item) => item.id === teamId);
   const [memberDraft, setMemberDraft] = useState({ userId: app.state.users[0]?.id, role: "regular" });
+  const [memberQuery, setMemberQuery] = useState("");
+  const [selectedInviteProfile, setSelectedInviteProfile] = useState(null);
   const [deleteArmed, setDeleteArmed] = useState(false);
   const captain = team?.members.find((member) => member.role === "captain");
   const canManage = captain?.userId === app.currentUser.id;
@@ -73,7 +76,13 @@ export default function TeamDetail({ app }) {
     !pendingTargetIds.has(user.id)
   ));
   const firstAddableUser = availableUsers.find((user) => (membershipCounts.get(user.id) ?? 0) < MAX_TEAM_MEMBERSHIPS);
-  const addUserId = availableUsers.some((user) => user.id === memberDraft.userId) ? memberDraft.userId : firstAddableUser?.id ?? availableUsers[0]?.id ?? "";
+  const selectedRemoteUser = selectedInviteProfile?.id === memberDraft.userId &&
+    !team.members.some((member) => member.userId === selectedInviteProfile.id) &&
+    !pendingTargetIds.has(selectedInviteProfile.id)
+    ? selectedInviteProfile
+    : null;
+  const addUserId = selectedRemoteUser?.id ?? (availableUsers.some((user) => user.id === memberDraft.userId) ? memberDraft.userId : firstAddableUser?.id ?? availableUsers[0]?.id ?? "");
+  const selectedInviteUser = selectedRemoteUser ?? availableUsers.find((user) => user.id === addUserId) ?? null;
   const selectedCount = membershipCounts.get(addUserId) ?? 0;
   const teamFull = team.members.length >= MAX_TEAM_MEMBERS;
   const canAddMember = canManage && Boolean(addUserId) && selectedCount < MAX_TEAM_MEMBERSHIPS && !teamFull;
@@ -125,9 +134,35 @@ export default function TeamDetail({ app }) {
   const inviteMember = (event) => {
     event.preventDefault();
     if (!canAddMember) return;
-    app.actions.inviteTeamMember(team.id, addUserId);
+    app.actions.inviteTeamMember(team.id, addUserId, memberDraft.role);
     const nextUser = availableUsers.find((user) => user.id !== addUserId);
     setMemberDraft({ userId: nextUser?.id ?? app.state.users[0]?.id, role: "regular" });
+    setMemberQuery("");
+    setSelectedInviteProfile(null);
+  };
+  const renderInviteSearchItem = (user) => {
+    const count = membershipCounts.get(user.id) ?? 0;
+    const blocked = teamFull || team.members.some((member) => member.userId === user.id) || pendingTargetIds.has(user.id) || count >= MAX_TEAM_MEMBERSHIPS;
+    return (
+      <button
+        key={user.id}
+        type="button"
+        className={user.id === addUserId ? "search-picker-result-row selected" : "search-picker-result-row"}
+        disabled={blocked}
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={() => {
+          setMemberDraft((current) => ({ ...current, userId: user.id }));
+          setMemberQuery(user.name ?? "");
+          setSelectedInviteProfile(user);
+        }}
+      >
+        <PlayerHoverCard user={user} teams={app.state.teams} as="span">
+          <strong>{user.name}</strong>
+        </PlayerHoverCard>
+        <span>{user.region} · {user.position} · {count}/{MAX_TEAM_MEMBERSHIPS}팀</span>
+        <em>{blocked ? "초대 불가" : "초대 대상"}</em>
+      </button>
+    );
   };
   const deleteTeam = () => {
     if (!deleteArmed) {
@@ -283,18 +318,33 @@ export default function TeamDetail({ app }) {
                 <form className="member-add-form" onSubmit={inviteMember}>
                   <label>
                     초대할 선수
-                    <select value={addUserId} onChange={(event) => setMemberDraft((current) => ({ ...current, userId: event.target.value }))}>
-                      {availableUsers.map((user) => {
-                        const count = membershipCounts.get(user.id) ?? 0;
-                        return (
-                          <option key={user.id} value={user.id} disabled={count >= MAX_TEAM_MEMBERSHIPS}>
-                            {user.name} · {count}/{MAX_TEAM_MEMBERSHIPS}팀
-                          </option>
-                        );
-                      })}
+                    <SearchPicker
+                      value={memberQuery}
+                      onChange={(value) => {
+                        setMemberQuery(value);
+                        setMemberDraft((current) => ({ ...current, userId: "" }));
+                        setSelectedInviteProfile(null);
+                      }}
+                      placeholder="선수 이름, #해시태그, 지역 검색"
+                      items={availableUsers}
+                      remoteSearchType="profile"
+                      idleItems={availableUsers.slice(0, 10)}
+                      idleTitle="초대 가능한 선수"
+                      title="선수 검색 결과"
+                      emptyText="초대 가능한 선수 없음"
+                      showIdleOnFocus
+                      floating
+                      renderItem={renderInviteSearchItem}
+                    />
+                  </label>
+                  <label>
+                    초대 역할
+                    <select value={memberDraft.role} onChange={(event) => setMemberDraft((current) => ({ ...current, role: event.target.value }))}>
+                      {inviteRoleOptions.map(([role, label]) => <option key={role} value={role}>{label}</option>)}
                     </select>
                   </label>
-                  <Button type="submit" disabled={!canAddMember || !availableUsers.length}>초대 발송</Button>
+                  {selectedInviteUser ? <span className="form-chip">선택: {selectedInviteUser.name} · {selectedCount}/{MAX_TEAM_MEMBERSHIPS}팀</span> : null}
+                  <Button type="submit" disabled={!canAddMember}>초대 발송</Button>
                   {teamFull ? <span className="form-warning">팀원은 최대 {MAX_TEAM_MEMBERS}명까지 등록할 수 있습니다.</span> : null}
                   {!teamFull && !canAddMember ? <span className="form-warning">선수 팀 한도 {MAX_TEAM_MEMBERSHIPS}/{MAX_TEAM_MEMBERSHIPS}</span> : null}
                 </form>
@@ -306,7 +356,7 @@ export default function TeamDetail({ app }) {
                         <div key={invitation.id} className="member-control-row">
                           <span>
                             <strong>{user?.name ?? "초대 대상"}</strong>
-                            <small>초대 대기</small>
+                            <small>초대 대기 · {TEAM_ROLES[invitation.role] ?? TEAM_ROLES.regular}</small>
                           </span>
                           <Badge tone="orange">pending</Badge>
                           <button type="button" onClick={() => app.actions.cancelTeamInvitation(invitation.id)}>취소</button>

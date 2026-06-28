@@ -12,7 +12,7 @@ const PROFILE_ME_COLUMNS = "id,name,handle,hashtag,position,region,region_sido,r
 const PROFILE_TEAM_MEMBER_COLUMNS = "id,name,handle,hashtag,position,region,trust_score,avatar_color,ratings,age_group,age_group_checked_season,onboarding_complete,updated_at";
 const TEAM_COLUMNS = "id,name,home_court,region,mmr,wins,losses,accent,deleted_at,updated_at";
 const TEAM_MEMBER_COLUMNS = "team_id,user_id,role";
-const TEAM_INVITATION_COLUMNS = "id,team_id,from_user_id,target_user_id,status,created_at,updated_at";
+const TEAM_INVITATION_COLUMNS = "id,team_id,from_user_id,target_user_id,role,status,created_at,updated_at";
 
 function unique(values = []) {
   return [...new Set(values.filter(Boolean))];

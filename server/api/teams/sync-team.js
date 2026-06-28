@@ -2,6 +2,7 @@ import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdm
 
 const MAX_TEAM_NAME_LENGTH = 14;
 const MAX_TEAM_MEMBERS = 10;
+const TEAM_INVITE_ROLES = new Set(["regular", "candidate", "substitute", "mercenary", "guest"]);
 
 function toArray(value) {
   return Array.isArray(value) ? value.filter(Boolean) : [];
@@ -96,11 +97,13 @@ async function deleteTeam(context, teamId, notifications = []) {
 }
 
 async function inviteTeamMember(context, body = {}) {
+  const role = String(body.role || "regular").trim();
   const { data, error } = await context.supabase.rpc("rankball_invite_team_member", {
     p_actor_profile_id: context.profileId,
     p_team_id: String(body.teamId || "").trim(),
     p_target_user_id: String(body.targetUserId || "").trim(),
     p_invitation_id: String(body.invitationId || "").trim() || null,
+    p_role: TEAM_INVITE_ROLES.has(role) ? role : "regular",
   });
   if (error) throw error;
   return data ?? { ok: true };

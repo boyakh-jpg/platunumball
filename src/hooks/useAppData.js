@@ -2056,9 +2056,9 @@ export function useAppData(authUser = null) {
         return createdId;
       },
       closeRecruitingPost: (postId) => applyRecruitingPostMutation(postId, (prev) => closeRecruitingPost({ ...prev, currentUserId }, postId), { action: "closeRecruitingPost" }),
-      inviteTeamMember: (teamId, targetUserId) => applyTeamInvitationMutation(
+      inviteTeamMember: (teamId, targetUserId, role = "regular") => applyTeamInvitationMutation(
         "팀 초대",
-        (prev) => inviteTeamMember({ ...prev, currentUserId }, teamId, targetUserId),
+        (prev) => inviteTeamMember({ ...prev, currentUserId }, teamId, targetUserId, role),
         "invite",
         (_before, after) => {
           const invitation = (after.teamInvitations ?? []).find((item) => (
@@ -2067,7 +2067,7 @@ export function useAppData(authUser = null) {
             item.fromUserId === currentUserId &&
             item.status === "pending"
           ));
-          return { teamId, targetUserId, invitationId: invitation?.id };
+          return { teamId, targetUserId, role, invitationId: invitation?.id };
         },
       ),
       acceptTeamInvitation: (invitationId) => applyTeamInvitationMutation(

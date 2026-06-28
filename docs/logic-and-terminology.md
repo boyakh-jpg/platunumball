@@ -1466,7 +1466,8 @@ flowchart TD
 2. 팀원 추가, 역할 변경, 제외는 현재 주장만 실행할 수 있다. UI 숨김에만 의존하지 않고 reducer도 권한을 확인한다.
 3. 주장 본인 강등/제외와 암묵적 주장 자동 이전은 금지한다. 별도 주장 이전 기능/RPC가 생기기 전까지 팀 삭제 또는 유지 중 하나만 가능하다.
 4. 팀 저장 payload는 클라이언트의 `mmr`, `wins`, `losses`를 원본으로 보내지 않는다. DB/RPC가 기존 팀 전적을 보존한다.
-5. 팀 멤버 role은 팀 관리 맥락에서 `captain`과 `regular`만 쓴다. 용병/게스트/후보 성격은 경기 또는 모집 맥락에서 다룬다.
+5. 팀 멤버 role은 `captain`, `regular`, `candidate`, `substitute`, `mercenary`, `guest`를 쓴다. `captain`은 기존 주장에게만 유지하고, 초대/관리 드롭다운은 주장 제외 모든 관리 가능 역할을 열어둔다.
+5-1. 팀 초대는 role을 함께 저장하고, 대상자가 수락하면 `team_invitations.role`이 `team_members.role`로 보존된다. `regular/candidate/substitute`는 정식 로스터 계열, `mercenary/guest`는 외부 참여/기록 계열이다.
 6. 한 팀의 등록 인원은 최대 10명이다. 5v5 주전 5명과 교체/후보 5명을 감당하는 운영 단위로 보며 프론트, 서버 action, DB RPC/trigger가 모두 차단한다.
 7. 팀 가입은 주장의 직접 추가가 아니라 pending 팀 초대 발송 후 대상자가 수락하는 흐름이다. 팀 정원 10명 도달 시 같은 서버 transaction에서 남은 pending 팀 가입 초대를 `expired`로 만료 처리한다. 정원 도달 뒤 새 팀 가입 초대 발송도 막는다.
 8. 경기 만들기에서 팀전은 내 팀이 있는 사용자만 만들 수 있다. A사이드는 내 소속 팀만 선택하고, B사이드는 상대 팀 검색/초대로만 선택한다.

@@ -615,6 +615,7 @@ begin
         constraint team_invitations_status_check check (status in (''pending'', ''accepted'', ''declined'', ''cancelled'', ''expired''))
       )
     ';
+    execute 'alter table public.team_invitations add column if not exists role text not null default ''regular''';
     execute 'create index if not exists team_invitations_team_status_idx on public.team_invitations (team_id, status)';
     execute 'create index if not exists team_invitations_target_status_idx on public.team_invitations (target_user_id, status)';
     execute 'create unique index if not exists team_invitations_one_pending_target on public.team_invitations (team_id, target_user_id) where status = ''pending''';
@@ -2112,7 +2113,10 @@ begin
       raise exception 'team_membership_limit_exceeded' using errcode = '23514';
     end if;
 
-    safe_role := case when member_value->>'role' = 'captain' then 'captain' else 'regular' end;
+    safe_role := case
+      when member_value->>'role' in ('captain', 'regular', 'candidate', 'substitute', 'mercenary', 'guest') then member_value->>'role'
+      else 'regular'
+    end;
     if safe_role = 'captain' then
       captain_count := captain_count + 1;
     end if;
@@ -2256,7 +2260,8 @@ create or replace function public.rankball_invite_team_member(
   p_actor_profile_id text,
   p_team_id text,
   p_target_user_id text,
-  p_invitation_id text default null
+  p_invitation_id text default null,
+  p_role text default 'regular'
 )
 returns jsonb
 language plpgsql
@@ -2269,6 +2274,10 @@ declare
   member_count integer;
   target_team_count integer;
   team_name text;
+  safe_role text := case
+    when p_role in ('regular', 'candidate', 'substitute', 'mercenary', 'guest') then p_role
+    else 'regular'
+  end;
 begin
   if nullif(btrim(p_actor_profile_id), '') is null or nullif(btrim(p_team_id), '') is null or nullif(btrim(p_target_user_id), '') is null then
     raise exception 'missing_team_invitation_input' using errcode = '22023';
@@ -2319,14 +2328,15 @@ begin
   end if;
 
   insert into public.team_invitations (
-    id, team_id, from_user_id, target_user_id, status, created_at, updated_at
+    id, team_id, from_user_id, target_user_id, role, status, created_at, updated_at
   )
   values (
-    safe_invitation_id, p_team_id, p_actor_profile_id, p_target_user_id, 'pending', now_ts, now_ts
+    safe_invitation_id, p_team_id, p_actor_profile_id, p_target_user_id, safe_role, 'pending', now_ts, now_ts
   )
   on conflict (team_id, target_user_id) where status = 'pending'
   do update set
     from_user_id = excluded.from_user_id,
+    role = excluded.role,
     updated_at = excluded.updated_at
   returning id into safe_invitation_id;
 
@@ -2360,7 +2370,8 @@ begin
       'type', 'team_invite',
       'teamId', p_team_id,
       'teamInvitationId', safe_invitation_id,
-      'targetUserId', p_target_user_id
+      'targetUserId', p_target_user_id,
+      'role', safe_role
     ),
     now_ts,
     now_ts
@@ -2372,6 +2383,26 @@ begin
 
   return jsonb_build_object('ok', true, 'teamId', p_team_id, 'invitationId', safe_invitation_id);
 end;
+$$;
+
+create or replace function public.rankball_invite_team_member(
+  p_actor_profile_id text,
+  p_team_id text,
+  p_target_user_id text,
+  p_invitation_id text default null
+)
+returns jsonb
+language sql
+security definer
+set search_path = public
+as $$
+  select public.rankball_invite_team_member(
+    p_actor_profile_id,
+    p_team_id,
+    p_target_user_id,
+    p_invitation_id,
+    'regular'
+  );
 $$;
 
 create or replace function public.rankball_respond_team_invitation(
@@ -2390,6 +2421,7 @@ declare
   member_count integer;
   target_team_count integer;
   actor_is_captain boolean := false;
+  safe_role text;
 begin
   if nullif(btrim(p_actor_profile_id), '') is null or nullif(btrim(p_invitation_id), '') is null then
     raise exception 'missing_team_invitation_input' using errcode = '22023';
@@ -2478,8 +2510,13 @@ begin
     raise exception 'team_membership_limit_exceeded' using errcode = '23514';
   end if;
 
+  safe_role := case
+    when invitation_row.role in ('regular', 'candidate', 'substitute', 'mercenary', 'guest') then invitation_row.role
+    else 'regular'
+  end;
+
   insert into public.team_members (team_id, user_id, role)
-  values (invitation_row.team_id, p_actor_profile_id, 'regular');
+  values (invitation_row.team_id, p_actor_profile_id, safe_role);
 
   update public.team_invitations
   set status = 'accepted', updated_at = now_ts
@@ -2634,10 +2671,12 @@ $$;
 
 revoke all on function public.rankball_sync_team_membership(text, jsonb, jsonb) from public;
 revoke all on function public.rankball_invite_team_member(text, text, text, text) from public;
+revoke all on function public.rankball_invite_team_member(text, text, text, text, text) from public;
 revoke all on function public.rankball_respond_team_invitation(text, text, text) from public;
 revoke all on function public.rankball_delete_team(text, text, jsonb) from public;
 grant execute on function public.rankball_sync_team_membership(text, jsonb, jsonb) to service_role;
 grant execute on function public.rankball_invite_team_member(text, text, text, text) to service_role;
+grant execute on function public.rankball_invite_team_member(text, text, text, text, text) to service_role;
 grant execute on function public.rankball_respond_team_invitation(text, text, text) to service_role;
 grant execute on function public.rankball_delete_team(text, text, jsonb) to service_role;
 

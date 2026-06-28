@@ -166,7 +166,7 @@ const PRIVATE_PROFILE_COLUMNS = "id,name,handle,region,school,company,club,trust
 const PROFILE_SETTINGS_COLUMNS = "id,app_settings";
 const TEAM_COLUMNS = "id,name,home_court,region,mmr,wins,losses,accent,deleted_at,updated_at,created_at";
 const TEAM_MEMBER_COLUMNS = "team_id,user_id,role";
-const TEAM_INVITATION_COLUMNS = "id,team_id,from_user_id,target_user_id,status,created_at,updated_at";
+const TEAM_INVITATION_COLUMNS = "id,team_id,from_user_id,target_user_id,role,status,created_at,updated_at";
 const COURT_COLUMNS = "id,name";
 const MATCH_COLUMNS = "id,title,mode,court_id,court_name,visibility,status,ranked,mmr_limit_mode,trust_feedback,referee_id,former_referee_id,referee_trust_min,stat_entry_minutes,dispute_minutes,stat_recorders,played_player_ids,reserve_players,promoted_reserve_ids,attendance,referee_absence_request,dispute_draft_result,dispute_draft_updated_at,dispute_resolved_at,mmr_excluded_player_ids,anonymous_players,tournament_id,tournament_format,tournament_round,tournament_fixture,tournament_mmr_policy,official,pre_registered,scheduled_at,scheduled_date,scheduled_time,team_a_id,team_b_id,score_a,score_b,rules,memo,stakes,objection_window,evidence,created_by,created_at,agreed_at,started_at,ended_at,confirmed_at,cancelled_at,voided_at,rating_result,team_rating_result,updated_at";
 const MATCH_PLAYER_COLUMNS = "match_id,team_id,user_id,side,slot_order";
@@ -1078,6 +1078,7 @@ export function fromRemoteTeamInvitation(row = {}) {
     teamId: row.team_id,
     fromUserId: row.from_user_id,
     targetUserId: row.target_user_id,
+    role: row.role ?? "regular",
     status: row.status ?? "pending",
     createdAt: row.created_at,
     updatedAt: row.updated_at ?? row.created_at,
@@ -8991,7 +8992,11 @@ function getTeamInvitation(state, invitationId) {
   return (state.teamInvitations ?? []).find((invitation) => invitation.id === invitationId) ?? null;
 }
 
-export function inviteTeamMember(state, teamId, targetUserId) {
+function normalizeTeamInviteRole(role = "regular") {
+  return ["regular", "candidate", "substitute", "mercenary", "guest"].includes(role) ? role : "regular";
+}
+
+export function inviteTeamMember(state, teamId, targetUserId, role = "regular") {
   const team = state.teams.find((item) => item.id === teamId);
   if (!team || !targetUserId || team.members.some((member) => member.userId === targetUserId)) return state;
   const captain = team.members.find((member) => member.role === "captain");
@@ -9039,11 +9044,13 @@ export function inviteTeamMember(state, teamId, targetUserId) {
     };
   }
   const now = new Date().toISOString();
+  const safeRole = normalizeTeamInviteRole(role);
   const invitation = {
     id: makeId("ti"),
     teamId,
     fromUserId: state.currentUserId,
     targetUserId,
+    role: safeRole,
     status: "pending",
     createdAt: now,
     updatedAt: now,
@@ -9103,7 +9110,7 @@ export function acceptTeamInvitation(state, invitationId) {
   return {
     ...state,
     teams: state.teams.map((item) => (
-      item.id === team.id ? { ...item, members: [...item.members, { userId: state.currentUserId, role: "regular" }] } : item
+      item.id === team.id ? { ...item, members: [...item.members, { userId: state.currentUserId, role: normalizeTeamInviteRole(invitation.role) }] } : item
     )),
     teamInvitations: nextMemberCount >= MAX_TEAM_MEMBERS ? expirePendingTeamInvitations(nextInvitations, team.id, now) : nextInvitations,
     notifications: [
@@ -9175,7 +9182,7 @@ export function updateTeamMemberRole(state, teamId, userId, role) {
       return {
         ...team,
         members: team.members.map((member) => (
-          member.userId === userId ? { ...member, role: "regular" } : member
+          member.userId === userId ? { ...member, role: normalizeTeamInviteRole(role) } : member
         )),
       };
     }),
