@@ -664,7 +664,7 @@ function normalizeMatchSide(side = {}, fallbackName = "") {
   return {
     ...source,
     name: source.name ?? fallbackName,
-    teamId: source.teamId ?? "",
+    teamId: source.teamId || null,
     players: normalizeMatchIdList(source.players),
     score: Number.isFinite(Number(source.score)) ? Number(source.score) : 0,
   };
@@ -2169,8 +2169,8 @@ export async function saveNormalizedRemoteState(state, options = {}) {
     scheduled_at: match.scheduledAt && !["일정 미정", "즉시"].includes(match.scheduledAt) ? match.scheduledAt : null,
     scheduled_date: match.scheduledDate || null,
     scheduled_time: toDbTime(match.scheduledTime),
-    team_a_id: match.teamA?.teamId,
-    team_b_id: match.teamB?.teamId,
+    team_a_id: match.teamA?.teamId || null,
+    team_b_id: match.teamB?.teamId || null,
     score_a: Number(match.result?.scoreA ?? match.teamA?.score ?? 0),
     score_b: Number(match.result?.scoreB ?? match.teamB?.score ?? 0),
     rules: { ...(match.rules ?? {}), timingType: match.timingType ?? match.rules?.timingType ?? "scheduled", visibility: match.visibility ?? match.rules?.visibility ?? "private", statRecorders: normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders) },
