@@ -26,7 +26,7 @@
 # 2026-06-28 remote load basketball loader
 
 1. Remote DB hydration may show a centered basketball bounce loader immediately while remote data is not ready.
-2. The loader uses the R2-hosted `bounding_ball.gif` asset because `bounding_ball2.gif` is not browser-decodable.
+2. The loader uses the R2-hosted `bounding_ball2.gif` asset, which must stay browser-decodable and under 100KB.
 3. The CSS basketball fallback is not used.
 4. The loader is status feedback and must not block clicks after remote data is ready.
 5. The remote GIF loader renders without a card background, border, shadow, or blur frame.

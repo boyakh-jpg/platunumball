@@ -5,7 +5,7 @@ import Sidebar from "./Sidebar.jsx";
 import { assetUrl } from "../../lib/assets.js";
 
 const remoteLoaderBallSources = [
-  "https://pub-ace5b2a3eb5a41dfba7488c3de616118.r2.dev/assets/bounding_ball.gif",
+  "https://pub-ace5b2a3eb5a41dfba7488c3de616118.r2.dev/assets/bounding_ball2.gif",
 ];
 
 export default function AppShell({ app, auth }) {
