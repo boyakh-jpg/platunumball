@@ -127,38 +127,10 @@ h3 {
   object-fit: contain;
 }
 
-.basketball-loader-shadow {
-  width: 50px;
-  height: 10px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.38);
-  filter: blur(1px);
-  animation: basketball-loader-shadow 0.82s ease-in-out infinite;
-}
-
 .basketball-loader-text {
   color: var(--gold);
   font-size: 0.78rem;
   font-weight: 950;
-}
-
-@keyframes basketball-loader-shadow {
-  0%,
-  100% {
-    opacity: 0.44;
-    transform: scaleX(1);
-  }
-
-  50% {
-    opacity: 0.16;
-    transform: scaleX(0.48);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .basketball-loader-shadow {
-    animation: none;
-  }
 }
 
 .sidebar {
