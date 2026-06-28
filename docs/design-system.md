@@ -44,6 +44,7 @@
 5. The remote GIF loader renders without a card background, border, shadow, or blur frame.
 6. The blocking overlay uses a light veil so stale page content is visibly unavailable until remote data is ready.
 7. The GIF must render above the blocking veil and reset its failed state each time remote loading starts.
+8. While `html.rankball-remote-loading` is active, the global overlay is the only visible loading indicator; page-level inline loaders stay hidden.
 
 # 2026-06-28 referee rulebook images
 
