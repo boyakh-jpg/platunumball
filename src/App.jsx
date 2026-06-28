@@ -1,6 +1,7 @@
 import { Component, Suspense, lazy, useLayoutEffect } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import RequireAuth from "./components/auth/RequireAuth.jsx";
+import BasketballLoader from "./components/common/BasketballLoader.jsx";
 import AppShell from "./components/layout/AppShell.jsx";
 import { useAuthSession } from "./hooks/useAuthSession.js";
 import { useAppData } from "./hooks/useAppData.js";
@@ -95,7 +96,7 @@ export default function App() {
 
   return (
     <AppErrorBoundary resetKey={location.pathname}>
-      <Suspense fallback={null}>
+      <Suspense fallback={<BasketballLoader label="페이지 불러오는 중" />}>
         <Routes>
         <Route path="/" element={<Landing state={app.state} />} />
         <Route path="/login" element={<Login auth={auth} app={app} />} />

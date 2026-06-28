@@ -1,4 +1,5 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
+import BasketballLoader from "../common/BasketballLoader.jsx";
 
 export default function RequireAuth({ auth }) {
   const location = useLocation();
@@ -8,7 +9,7 @@ export default function RequireAuth({ auth }) {
       <main className="auth-shell">
         <section className="auth-card">
           <p className="eyebrow">RankBall</p>
-          <h1>로그인 확인 중</h1>
+          <BasketballLoader label="로그인 확인 중" />
         </section>
       </main>
     );

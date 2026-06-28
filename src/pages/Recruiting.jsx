@@ -18,6 +18,7 @@ import {
   XCircle,
 } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
+import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Button from "../components/common/Button.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
 import CourtHoverCard from "../components/court/CourtHoverCard.jsx";
@@ -3676,14 +3677,14 @@ export default function Recruiting({ app }) {
   if (!app?.currentUser?.id) {
     return (
       <div className="page-stack">
-        <div className="empty-state">프로필을 불러오는 중입니다.</div>
+        <div className="empty-state"><BasketballLoader label="프로필 불러오는 중" /></div>
       </div>
     );
   }
   if (app.remoteReady === false) {
     return (
       <div className="page-stack">
-        <div className="empty-state">서버 데이터를 불러오는 중입니다.</div>
+        <div className="empty-state"><BasketballLoader label="서버 데이터 불러오는 중" /></div>
       </div>
     );
   }

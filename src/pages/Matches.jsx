@@ -2,6 +2,7 @@ import { Component, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, PlusCircle, ShieldAlert, Swords, X } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
+import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Button from "../components/common/Button.jsx";
 import CourtHoverCard from "../components/court/CourtHoverCard.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
@@ -1336,8 +1337,14 @@ export default function Matches({ app }) {
           </>
         ) : (
           <div className="om-empty-state">
-            <strong>{scheduleLoading ? "서버 데이터 불러오는 중" : "해당 큐 없음"}</strong>
-            <p>{scheduleLoading ? "내 일정과 경기 목록을 확인하고 있다." : "다른 상태를 선택하거나 새 경기를 만든다."}</p>
+            {scheduleLoading ? (
+              <BasketballLoader label="서버 데이터 불러오는 중" />
+            ) : (
+              <>
+                <strong>해당 큐 없음</strong>
+                <p>다른 상태를 선택하거나 새 경기를 만든다.</p>
+              </>
+            )}
           </div>
         )}
       </section>

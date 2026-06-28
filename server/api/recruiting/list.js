@@ -958,7 +958,7 @@ export default async function handler(request, response) {
     const regionKey = regionScope === "all"
       ? ""
       : normalizeRegionKey(body.regionKey || body.regionDistrict || getProfileRegionKey(context.profile));
-    const [currentUserPostIds, pageResult, feedCountsResult] = await Promise.all([
+    const [currentUserPostIds, pageResult, feedCountsResult, fallbackCountsResult] = await Promise.all([
       includeMine
         ? timing.track("mine", () => fetchCurrentUserRecruitingPostIds(context.supabase, context.profileId, mineLimit, roomScope))
         : Promise.resolve([]),
@@ -968,10 +968,10 @@ export default async function handler(request, response) {
       context.profileId && includeFeedCounts
         ? timing.track("counts", () => fetchRecruitingFeedCounts(context.supabase, context.profileId))
         : Promise.resolve(null),
+      context.profileId && includeFeedCounts
+        ? timing.track("fallbackCounts", () => fetchRecruitingFallbackCounts(context.supabase, context.profileId))
+        : Promise.resolve(null),
     ]);
-    const fallbackCountsResult = context.profileId && includeFeedCounts
-      ? await timing.track("fallbackCounts", () => fetchRecruitingFallbackCounts(context.supabase, context.profileId))
-      : null;
     const pagePostIds = pageResult?.ids ?? [];
     const pageCards = pageResult?.cards ?? [];
     const pageSource = pageResult?.source ?? "";

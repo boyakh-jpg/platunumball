@@ -468,7 +468,34 @@ $$;
 
 create index if not exists recruiting_posts_created_at_idx on public.recruiting_posts (created_at desc);
 create index if not exists recruiting_posts_visibility_status_idx on public.recruiting_posts (visibility, status);
+create index if not exists recruiting_posts_open_public_updated_idx
+on public.recruiting_posts (updated_at desc, id desc)
+where status = 'open' and visibility = 'public';
+
+create index if not exists recruiting_posts_open_player_updated_idx
+on public.recruiting_posts (player_id, updated_at desc, id desc)
+where status = 'open';
+
+create index if not exists recruiting_posts_open_owner_updated_idx
+on public.recruiting_posts ((room_state->>'ownerId'), updated_at desc, id desc)
+where status = 'open';
+
+create index if not exists recruiting_posts_open_referee_updated_idx
+on public.recruiting_posts (referee_id, updated_at desc, id desc)
+where status = 'open';
+
+create index if not exists recruiting_posts_player_ids_gin_idx
+on public.recruiting_posts using gin (player_ids);
+
+create index if not exists recruiting_posts_room_state_gin_idx
+on public.recruiting_posts using gin (room_state);
+
 create index if not exists recruiting_applications_post_side_idx on public.recruiting_applications (post_id, side, reserve);
+create index if not exists recruiting_applications_player_updated_idx
+on public.recruiting_applications (player_id, updated_at desc, post_id);
+
+create index if not exists recruiting_applications_player_ids_gin_idx
+on public.recruiting_applications using gin (player_ids);
 
 alter table public.tournaments enable row level security;
 alter table public.tournament_teams enable row level security;
@@ -3895,11 +3922,17 @@ create index if not exists user_room_feed_profile_idx
 create index if not exists user_room_feed_region_idx
   on public.user_room_feed (entity_type, relation, region_key, is_active, status, sort_at desc, entity_id desc);
 
+create index if not exists user_room_feed_profile_relation_idx
+  on public.user_room_feed (entity_type, profile_id, is_active, status, relation, entity_id);
+
 create index if not exists user_room_feed_entity_idx
   on public.user_room_feed (entity_type, entity_id);
 
 create index if not exists match_players_user_match_idx
   on public.match_players (user_id, match_id);
+
+create index if not exists match_players_match_user_idx
+  on public.match_players (match_id, user_id);
 
 create index if not exists matches_created_by_updated_idx
   on public.matches (created_by, updated_at desc, id desc);

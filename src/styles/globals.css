@@ -109,6 +109,12 @@ h3 {
   backdrop-filter: saturate(0.78) blur(2px);
 }
 
+.basketball-loader-inline {
+  display: grid;
+  place-items: center;
+  min-height: 104px;
+}
+
 html.rankball-remote-loading,
 html.rankball-remote-loading body {
   overflow: hidden;

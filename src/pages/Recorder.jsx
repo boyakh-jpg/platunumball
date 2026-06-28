@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { AlertTriangle, ClipboardList, Minus, Plus, RotateCcw, Save, ShieldCheck, Square } from "lucide-react";
 import ApprovalPanel from "../components/match/ApprovalPanel.jsx";
 import Badge from "../components/common/Badge.jsx";
+import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
@@ -362,9 +363,15 @@ export default function Recorder({ app }) {
           </div>
         </header>
         <Card className="recorder-empty">
-          <ShieldCheck size={34} />
-          <strong>{recorderLoading ? "진행 경기 확인 중" : "처리할 진행 경기 없음"}</strong>
-          <p>{recorderLoading ? "서버에서 기록 가능한 경기를 확인하고 있습니다." : "경기가 확정 완료되면 이 메뉴에서 자동으로 사라집니다."}</p>
+          {recorderLoading ? (
+            <BasketballLoader label="진행 경기 확인 중" />
+          ) : (
+            <>
+              <ShieldCheck size={34} />
+              <strong>처리할 진행 경기 없음</strong>
+              <p>경기가 확정 완료되면 이 메뉴에서 자동으로 사라집니다.</p>
+            </>
+          )}
           <Link to="/app/matches" className="button button-secondary button-md">경기 보기</Link>
         </Card>
       </div>
