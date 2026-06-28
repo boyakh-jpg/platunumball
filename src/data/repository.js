@@ -1648,9 +1648,13 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
   if (recruitingPageScope) {
     const scopedProfileIds = privateProfiles.map((profile) => profile.id);
     const scoped = collectRecruitingPageScope(recruitingPosts, recruitingApplications, scopedProfileIds);
-    const teamMemberTeamIds = recruitingListOnly ? [] : scoped.teamIds;
+    const currentUserTeamMemberships = options.includeCurrentUserTeams && currentUserId
+      ? await fetchFilteredRows("team_members", TEAM_MEMBER_COLUMNS, null, client, (query) => query.eq("user_id", currentUserId))
+      : [];
+    const teamIds = uniqueScopeIds([...scoped.teamIds, ...currentUserTeamMemberships.map((member) => member.team_id)]);
+    const teamMemberTeamIds = recruitingListOnly ? [] : teamIds;
     [teams, teamMembers, courts] = await Promise.all([
-      fetchRowsByIds("teams", TEAM_COLUMNS, "id", scoped.teamIds, "id", client),
+      fetchRowsByIds("teams", TEAM_COLUMNS, "id", teamIds, "id", client),
       fetchRowsByIds("team_members", TEAM_MEMBER_COLUMNS, "team_id", teamMemberTeamIds, null, client),
       fetchCourtRows(client, scoped.courtIds),
     ]);

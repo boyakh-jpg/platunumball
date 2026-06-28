@@ -124,6 +124,7 @@ function getAuthoritativeLoadScope(operation = {}) {
   const scope = action.includes("Recruiting") ? "recruiting" : undefined;
   return {
     scope,
+    includeCurrentUserTeams: scope === "recruiting",
     matchIds: [
       operation.matchId,
       operation.preferredMatchId,
