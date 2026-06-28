@@ -19,7 +19,7 @@ import {
   getMatchRoomPhase,
   isInstantRoom,
 } from "../lib/matchUtils.js";
-import { getRecruitingLobby, getRecruitingRoomOwnerId, getRecruitingSideCapacity } from "../lib/recruiting.js";
+import { getRecruitingLobby, getRecruitingRoomOwnerId, getRecruitingSideCapacity, isRecruitingPartyEntry } from "../lib/recruiting.js";
 import { RecruitingRoomModal, getRecruitingRoomListStatus } from "./Recruiting.jsx";
 import "../styles/recruiting-arena.css";
 import "../styles/matches-arena.css";
@@ -277,11 +277,11 @@ function MatchListSummary({ left, center = "vs", right, meta, detail, leftTeam =
 }
 
 function getRoomTypeLabel(room = {}, lobby = null) {
-  const matchTeamCount = ["teamA", "teamB"].filter((sideName) => Boolean(room[sideName]?.teamId)).length;
-  const matchPartyCount = (room.parties ?? []).filter((party) => party.teamId).length;
-  const lobbyTeamCount = lobby?.entries?.filter((entry) => entry.kind === "team").length ?? 0;
+  const matchTeamCount = ["teamA", "teamB"].filter((sideName) => isMatchSideTeamParty(room, sideName)).length;
+  const matchPartyCount = (room.parties ?? []).filter((party) => isMatchPartyTeamParty(party)).length;
+  const lobbyTeamCount = lobby?.entries?.filter((entry) => isRecruitingPartyEntry(entry)).length ?? 0;
   if (matchTeamCount >= 2 || lobbyTeamCount >= 2) return "팀전";
-  if (matchTeamCount > 0 || matchPartyCount > 0 || lobbyTeamCount > 0 || room.hostJoinMode === "team") return "팀 파티 포함";
+  if (matchTeamCount > 0 || matchPartyCount > 0 || lobbyTeamCount > 0) return "팀 파티 포함";
   return "개인 매칭";
 }
 
@@ -432,6 +432,18 @@ function uniquePlayerIds(ids = []) {
   return Array.from(new Set(ids.filter(Boolean)));
 }
 
+function getMatchSideRosterIds(match = {}, sideName = "") {
+  return uniquePlayerIds([...(match[sideName]?.players ?? []), ...getMatchReservePlayerIds(match, sideName)]);
+}
+
+function isMatchSideTeamParty(match = {}, sideName = "") {
+  return Boolean(match[sideName]?.teamId) && getMatchSideRosterIds(match, sideName).length >= 2;
+}
+
+function isMatchPartyTeamParty(party = {}) {
+  return Boolean(party.teamId) && uniquePlayerIds([...(party.players ?? []), ...(party.reserves ?? [])]).length >= 2;
+}
+
 function getSideAgreementReady(match, sideName) {
   if (match.status !== "contract") return true;
   const players = match[sideName]?.players ?? [];
@@ -459,7 +471,7 @@ function getMatchRoomPost(match, state) {
       players: uniquePlayerIds(party.players ?? []),
       reserves: uniquePlayerIds(party.reserves ?? []),
     }))
-    .filter((party) => party.players.length || party.reserves.length || party.playerId);
+    .filter((party) => party.teamId ? isMatchPartyTeamParty(party) : party.players.length || party.reserves.length || party.playerId);
   const partyHasHost = (party) => (
     party.playerId === hostPlayerId ||
     party.players.includes(hostPlayerId) ||
@@ -467,7 +479,7 @@ function getMatchRoomPost(match, state) {
   );
   const hostParty = matchParties.find(partyHasHost) ?? matchParties.find((party) => party.side === "teamA") ?? null;
   const hostSide = hostParty?.side ?? "teamA";
-  const hostJoinMode = hostParty?.teamId || match[hostSide]?.teamId ? "team" : "player";
+  const hostJoinMode = hostParty?.teamId || isMatchSideTeamParty(match, hostSide) ? "team" : "player";
   const hostTeamId = hostJoinMode === "team" ? (hostParty?.teamId ?? match[hostSide]?.teamId ?? null) : null;
   const hostPlayers = hostJoinMode === "team"
     ? uniquePlayerIds(hostParty?.players?.length ? hostParty.players : match[hostSide]?.players ?? [])
@@ -551,7 +563,7 @@ function getMatchRoomPost(match, state) {
     partyReserves.host = teamAReserves;
   }
 
-  if (!matchParties.length && match.teamB?.teamId) {
+  if (!matchParties.length && isMatchSideTeamParty(match, "teamB")) {
     applicants.push({
       kind: "team",
       joinMode: "team",

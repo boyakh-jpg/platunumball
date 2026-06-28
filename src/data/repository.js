@@ -62,6 +62,7 @@ import {
   getSelectableTeamPlayerIds,
   getSelectedTeamPlayerIds,
   hasRecruitingApplicant,
+  isRecruitingPartyEntry,
   isSoloIndividualRecruitingRoom,
   normalizeRecruitingMmrRangeMode,
   normalizeRecruitingApplicants,
@@ -3534,6 +3535,14 @@ function uniquePlayerIds(playerIds = []) {
   return [...new Set(playerIds.filter(Boolean))];
 }
 
+function isMatchSideTeamParty(match = {}, sideName = "") {
+  return Boolean(match[sideName]?.teamId) && uniquePlayerIds([...(match[sideName]?.players ?? []), ...getMatchReservePlayerIds(match, sideName)]).length >= 2;
+}
+
+function isMatchPartyTeamParty(party = {}) {
+  return Boolean(party.teamId) && uniquePlayerIds([...(party.players ?? []), ...(party.reserves ?? [])]).length >= 2;
+}
+
 function ensureTeamPartyLeader(team = {}, playerIds = [], leaderId = "", capacity = Infinity) {
   const selectableIds = new Set(getSelectableTeamPlayerIds(team));
   const safePlayerIds = uniquePlayerIds(playerIds).filter((playerId) => selectableIds.has(playerId));
@@ -6554,11 +6563,11 @@ function getLobbySideName(lobby, sideName) {
 }
 
 function getLobbyPrimaryTeamId(lobby, sideName) {
-  return getLobbyEntryTeamId(lobby.sides[sideName].entries.find((entry) => getLobbyEntryTeamId(entry))) ?? null;
+  return getLobbyEntryTeamId(lobby.sides[sideName].entries.find((entry) => isRecruitingPartyEntry(entry))) ?? null;
 }
 
 function getLobbyEntryTeamId(entry = {}) {
-  if (!entry.fixed && entry.kind !== "team") return null;
+  if (!isRecruitingPartyEntry(entry)) return null;
   return entry.team?.id ?? entry.teamId ?? null;
 }
 
@@ -6882,7 +6891,11 @@ export function setMatchRoomPlayerPlacement(state, matchId, playerId, placement 
   const targetSide = ["teamA", "teamB"].includes(placement.side) ? placement.side : currentPlacement.side;
   const targetReserve = Boolean(placement.reserve);
   const sideCapacity = getRecruitingSideCapacity(match);
-  const teamMatchLocked = Boolean(match.teamA?.teamId || match.teamB?.teamId || (match.parties ?? []).some((party) => party.teamId));
+  const teamMatchLocked = Boolean(
+    isMatchSideTeamParty(match, "teamA") ||
+    isMatchSideTeamParty(match, "teamB") ||
+    (match.parties ?? []).some((party) => isMatchPartyTeamParty(party))
+  );
   if (teamMatchLocked && targetSide !== currentPlacement.side) return state;
 
   const baseTeamAPlayers = uniquePlayerIds(match.teamA?.players ?? []).filter((id) => id !== playerId);
@@ -7725,7 +7738,7 @@ function buildRecruitingTeamAbsorbPost(post, state, applicants, roomState, playe
 }
 
 function isRecruitingTeamPartyEntry(entry) {
-  return entry?.kind === "team";
+  return isRecruitingPartyEntry(entry);
 }
 
 function isMutableRecruitingRoom(post) {
@@ -8659,6 +8672,7 @@ export function confirmRecruitingMatch(state, postId, options = {}) {
       score: 0,
     },
     parties: lobby.entries
+      .filter((entry) => isRecruitingPartyEntry(entry))
       .map((entry) => ({
         kind: entry.kind,
         side: entry.side,

@@ -60,6 +60,14 @@ function unique(items = []) {
   return Array.from(new Set(items.filter(Boolean)));
 }
 
+export function getRecruitingEntryParticipantIds(entry = {}) {
+  return unique([...(entry.players ?? []), ...(entry.reserves ?? [])]);
+}
+
+export function isRecruitingPartyEntry(entry = {}) {
+  return entry?.kind === "team" && getRecruitingEntryParticipantIds(entry).length >= 2;
+}
+
 function compareCandidates(a, b) {
   const readyDiff = Number(b.status === "ready") - Number(a.status === "ready");
   if (readyDiff) return readyDiff;

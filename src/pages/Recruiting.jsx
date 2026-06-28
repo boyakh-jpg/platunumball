@@ -42,6 +42,7 @@ import {
   getRecruitingTierRange,
   getSelectableTeamPlayerIds,
   hasPendingRecruitingInvitation,
+  isRecruitingPartyEntry,
   isSoloIndividualRecruitingRoom,
   isRecruitingPostForUser,
   isNationalRecruitingPost,
@@ -398,6 +399,10 @@ function uniqueIds(ids = []) {
   return Array.from(new Set(ids.filter(Boolean)));
 }
 
+function isMatchSideTeamParty(match = {}, sideName = "") {
+  return Boolean(match[sideName]?.teamId) && uniqueIds([...(match[sideName]?.players ?? []), ...getMatchReservePlayerIds(match, sideName)]).length >= 2;
+}
+
 export function getLobbyRecorderIds(lobby) {
   const playingIds = new Set([...lobby.sides.teamA.projectedPlayers, ...lobby.sides.teamB.projectedPlayers]);
   return ["teamA", "teamB"].reduce((acc, sideName) => {
@@ -463,7 +468,7 @@ function getJoinableSidePartyOptions(lobby, myTeams = [], currentUserId = "", ta
 }
 
 export function isPartyEntry(entry) {
-  return entry?.kind === "team";
+  return isRecruitingPartyEntry(entry);
 }
 
 function getEntryTeamGroupId(entry) {
@@ -720,9 +725,9 @@ function getRecruitingRuleSummary(post = {}) {
 }
 
 function getRecruitingRoomTypeLabel(room = {}, lobby = null) {
-  const lobbyTeamCount = lobby?.entries?.filter((entry) => entry.kind === "team").length ?? 0;
+  const lobbyTeamCount = lobby?.entries?.filter((entry) => isPartyEntry(entry)).length ?? 0;
   if (lobbyTeamCount >= 2) return "팀전";
-  if (lobbyTeamCount > 0 || room.hostJoinMode === "team") return "팀 파티 포함";
+  if (lobbyTeamCount > 0) return "팀 파티 포함";
   return "개인 매칭";
 }
 
@@ -2140,7 +2145,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const roomDisplayTitle = getRecruitingDisplayTitle(selectedPost, `${roomCompetitionLabel} ${selectedPost.mode || ""} 매치 큐`.trim());
         const roomVisibilityLabel = getRoomVisibilityLabel(sourceMatch ?? selectedPost, selectedPost);
         const roomVisibilityTone = roomVisibilityLabel === "대회방" ? "gold" : roomVisibilityLabel === "비공개방" ? "blue" : "green";
-        const sourceTeamSideCount = ["teamA", "teamB"].filter((sideName) => Boolean(sourceMatch?.[sideName]?.teamId)).length;
+        const sourceTeamSideCount = ["teamA", "teamB"].filter((sideName) => isMatchSideTeamParty(sourceMatch, sideName)).length;
         const lobbyTeamEntryCount = (lobby.entries ?? []).filter((entry) => isPartyEntry(entry)).length;
         const teamMatchSideLocked = sourceTeamSideCount >= 2 || (selectedPost.hostJoinMode === "team" && lobbyTeamEntryCount > 0);
         const roomMatchTypeLabel = sourceTeamSideCount >= 2 || (selectedPost.visibility === "private" && lobbyTeamEntryCount >= 2)
