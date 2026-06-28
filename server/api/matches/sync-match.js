@@ -45,6 +45,11 @@ function toDbTime(value) {
   return value ? String(value).slice(0, 5) : null;
 }
 
+function nullableText(value) {
+  const text = String(value ?? "").trim();
+  return text || null;
+}
+
 function reject(statusCode, message) {
   const error = new Error(message);
   error.statusCode = statusCode;
@@ -468,8 +473,8 @@ function toMatchRow(match = {}, actorProfileId = "") {
     scheduled_at: match.scheduledAt && !["일정 미정", "즉시"].includes(match.scheduledAt) ? match.scheduledAt : null,
     scheduled_date: match.scheduledDate || null,
     scheduled_time: toDbTime(match.scheduledTime),
-    team_a_id: match.teamA?.teamId ?? null,
-    team_b_id: match.teamB?.teamId ?? null,
+    team_a_id: nullableText(match.teamA?.teamId),
+    team_b_id: nullableText(match.teamB?.teamId),
     score_a: Number(match.result?.scoreA ?? match.teamA?.score ?? 0),
     score_b: Number(match.result?.scoreB ?? match.teamB?.score ?? 0),
     rules: {
