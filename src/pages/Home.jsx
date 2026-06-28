@@ -306,6 +306,7 @@ export default function Home({ app }) {
     if (homeRefreshKeyRef.current === user.id) return;
     homeRefreshKeyRef.current = user.id;
     const requests = [
+      app.actions.refreshCurrentProfile?.(),
       app.actions.loadMyRecruitingPosts?.(),
       !app.matchPagination?.recruitingScheduleChecked ? app.actions.loadMatchRecruitingSchedule?.() : true,
     ].filter(Boolean);

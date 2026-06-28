@@ -393,6 +393,20 @@ function mergeRemoteDirectory(state, remoteState = {}) {
   };
 }
 
+function mergeRemoteProfileState(state, remoteState = {}) {
+  const profileUserId = remoteState.currentUserId ?? state.currentUserId;
+  const nextState = mergeRemoteDirectory(state, remoteState);
+  if (!Array.isArray(remoteState.teamInvitations) || !profileUserId) return nextState;
+  const unrelatedInvitations = (state.teamInvitations ?? []).filter((invitation) => (
+    invitation.fromUserId !== profileUserId &&
+    invitation.targetUserId !== profileUserId
+  ));
+  return {
+    ...nextState,
+    teamInvitations: [...remoteState.teamInvitations, ...unrelatedInvitations],
+  };
+}
+
 function mergeServerRoomResult(state, result = {}) {
   if (!result || typeof result !== "object") return state;
   const nextPost = result.post ?? null;
@@ -1051,6 +1065,22 @@ export function useAppData(authUser = null) {
     });
   }, [authUserId, currentUserId, runServerAction, setState]);
 
+  const refreshCurrentProfile = useCallback(async () => {
+    if (!isSupabaseConfigured || !authUserId) return false;
+    try {
+      const remoteState = await loadProfileState(authUserId, authEmail);
+      setState((prev) => {
+        const nextState = mergeRemoteProfileState(prev, remoteState ?? {});
+        cacheCurrentProfileState(authUserId, nextState);
+        return nextState;
+      });
+      return true;
+    } catch (error) {
+      console.warn("Profile refresh failed.", error.message);
+      return false;
+    }
+  }, [authEmail, authUserId, setState]);
+
   const loadMoreMatches = useCallback(async () => {
     if (!isSupabaseConfigured || !authUserId || matchPagination.loading || matchPagination.exhausted) return false;
     const cursor = matchPagination.cursor || getMatchPaginationCursor(state.matches);
@@ -1527,6 +1557,7 @@ export function useAppData(authUser = null) {
       return ({
         loadMatchDetail,
         loadMatchRecruitingSchedule,
+        refreshCurrentProfile,
         loadDirectory,
         loadAdminContext,
         loadMoreMatches,
@@ -2093,7 +2124,7 @@ export function useAppData(authUser = null) {
       reset: () => setState(resetState({ includeDemo: !isSupabaseConfigured, authUserId, email: authEmail })),
       });
     },
-    [authEmail, authUserId, currentUserId, deleteTeamServer, ensureRemoteReady, ensureServerActionAvailable, loadAdminContext, loadDirectory, loadMatchDetail, loadMatchRecruitingSchedule, loadMoreMatches, loadMoreRecruiting, loadRecruitingRegion, loadRecruitingPost, loadMyRecruitingPosts, loadRecorderMatches, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, runServerAction, serverProfileBound, submitReportServer, syncFavoriteServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncSettingsServer, syncTeamInvitationServer, syncTeamServer, syncTournamentServer],
+    [authEmail, authUserId, currentUserId, deleteTeamServer, ensureRemoteReady, ensureServerActionAvailable, loadAdminContext, loadDirectory, loadMatchDetail, loadMatchRecruitingSchedule, loadMoreMatches, loadMoreRecruiting, loadRecruitingRegion, loadRecruitingPost, loadMyRecruitingPosts, loadRecorderMatches, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, refreshCurrentProfile, runServerAction, serverProfileBound, submitReportServer, syncFavoriteServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncSettingsServer, syncTeamInvitationServer, syncTeamServer, syncTournamentServer],
   );
 
   const safeCurrentUserId = currentUserId ?? currentUser?.id ?? "";
