@@ -3007,7 +3007,7 @@ function RecruitingReady({ app }) {
   const [roomScope, setRoomScope] = useState(() => (targetFilter === "invited" ? "invited" : "all"));
   const [regionFilter, setRegionFilter] = useState("local");
   const [modeFilter, setModeFilter] = useState("all");
-  const [startFilter, setStartFilter] = useState("all");
+  const [startFilter, setStartFilter] = useState("instant");
   const [queueControlsOpen, setQueueControlsOpen] = useState(true);
   const [composeOpen, setComposeOpen] = useState(false);
   const [selectedPostId, setSelectedPostId] = useState(null);
@@ -3050,7 +3050,8 @@ function RecruitingReady({ app }) {
   const canPostRecruiting = hasSchedule && scheduleAllowed && (!hostNeedsTeam || (Boolean(selectedTeam) && selectedHostPlayerIds.length > 0));
   const localRegionKey = getDefaultRecruitingRegionKey(app.currentUser);
   const selectedRegionKey = regionFilter === "local" ? localRegionKey : regionFilter;
-  const startDateOptions = useMemo(() => getStartDateFilterOptions(), []);
+  const startDateKey = getTodayInputValue();
+  const startDateOptions = useMemo(() => getStartDateFilterOptions(), [startDateKey]);
   const startFilterLabel = startDateOptions.find((option) => option.id === startFilter)?.label ?? "전체 시작일";
 
   useEffect(() => {
