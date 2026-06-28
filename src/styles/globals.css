@@ -99,10 +99,20 @@ h3 {
 .basketball-loader-overlay {
   position: fixed;
   inset: 0;
-  z-index: 85;
+  z-index: 4000;
   display: grid;
   place-items: center;
-  pointer-events: none;
+  background: rgba(255, 255, 255, 0.72);
+  pointer-events: auto;
+  touch-action: none;
+  overscroll-behavior: contain;
+  backdrop-filter: saturate(0.78) blur(2px);
+}
+
+html.rankball-remote-loading,
+html.rankball-remote-loading body {
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 
 .basketball-loader {

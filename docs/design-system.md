@@ -28,8 +28,9 @@
 1. Remote DB hydration may show a centered basketball bounce loader immediately while remote data is not ready.
 2. The loader uses the R2-hosted `bounding_ball2.gif` asset, which must stay browser-decodable and under 100KB.
 3. The CSS basketball fallback is not used.
-4. The loader is status feedback and must not block clicks after remote data is ready.
+4. The loader blocks clicks, modal interaction, touch scroll, and wheel scroll while remote data is not ready.
 5. The remote GIF loader renders without a card background, border, shadow, or blur frame.
+6. The blocking overlay uses a light veil so stale page content is visibly unavailable until remote data is ready.
 
 # 2026-06-28 referee rulebook images
 

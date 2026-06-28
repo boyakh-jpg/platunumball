@@ -1,8 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
 import BottomNav from "./BottomNav.jsx";
 import Sidebar from "./Sidebar.jsx";
-import { assetUrl } from "../../lib/assets.js";
 
 const remoteLoaderBallSources = [
   "https://pub-ace5b2a3eb5a41dfba7488c3de616118.r2.dev/assets/bounding_ball2.gif",
@@ -11,6 +10,14 @@ const remoteLoaderBallSources = [
 export default function AppShell({ app, auth }) {
   const [remoteLoaderImageFailed, setRemoteLoaderImageFailed] = useState(false);
   const [remoteLoaderImageIndex, setRemoteLoaderImageIndex] = useState(0);
+  const remoteLoading = app.remoteReady === false;
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("rankball-remote-loading", remoteLoading);
+    return () => {
+      document.documentElement.classList.remove("rankball-remote-loading");
+    };
+  }, [remoteLoading]);
 
   return (
     <div className="app-shell">
@@ -19,8 +26,15 @@ export default function AppShell({ app, auth }) {
         <Outlet />
       </main>
       <BottomNav />
-      {app.remoteReady === false ? (
-        <div className="basketball-loader-overlay" role="status" aria-live="polite" aria-label="서버 데이터를 불러오는 중">
+      {remoteLoading ? (
+        <div
+          className="basketball-loader-overlay"
+          role="status"
+          aria-live="polite"
+          aria-label="서버 데이터를 불러오는 중"
+          onTouchMove={(event) => event.preventDefault()}
+          onWheel={(event) => event.preventDefault()}
+        >
           <div className="basketball-loader">
             <span className="basketball-loader-visual" aria-hidden="true">
               {remoteLoaderImageFailed ? null : (
