@@ -3246,6 +3246,7 @@ function RecruitingReady({ app }) {
   const rankedCount = scopedPosts.filter((post) => post.ranked !== false).length;
   const friendlyCount = scopedPosts.length - rankedCount;
   const feedCounts = app.recruitingPagination?.feedCounts ?? null;
+  const roomCountsLoading = app.remoteReady === false || (feedCounts == null && !app.recruitingPagination?.error);
   const getFeedCount = (key, fallback) => {
     const count = Number(feedCounts?.[key]);
     return Number.isFinite(count) ? count : fallback;
@@ -3266,6 +3267,7 @@ function RecruitingReady({ app }) {
   const createdRoomCount = getFeedCount("created", fallbackCreatedRoomCount);
   const joinedRoomCount = getFeedCount("joined", fallbackJoinedRoomCount);
   const invitedRoomCount = getFeedCount("invited", fallbackInvitedRoomCount);
+  const formatRoomCount = (count) => (roomCountsLoading ? "..." : count);
   const missingCurrentUserRoomCount = Math.max(0, createdRoomCount - fallbackCreatedRoomCount)
     + Math.max(0, joinedRoomCount - fallbackJoinedRoomCount)
     + Math.max(0, invitedRoomCount - fallbackInvitedRoomCount);
@@ -3352,9 +3354,9 @@ function RecruitingReady({ app }) {
                 </select>
               </label>
               <div className="segmented-control compact-segments arena-filter-segment">
-                <button type="button" className={roomScope === "created" ? "active" : ""} onClick={() => selectRoomScope("created")}>내가 만든 방 {createdRoomCount}</button>
-                <button type="button" className={roomScope === "joined" ? "active" : ""} onClick={() => selectRoomScope("joined")}>내 참여방 {joinedRoomCount}</button>
-                <button type="button" className={roomScope === "invited" ? "active" : ""} onClick={() => selectRoomScope("invited")}>초대받음 {invitedRoomCount}</button>
+                <button type="button" className={roomScope === "created" ? "active" : ""} onClick={() => selectRoomScope("created")}>내가 만든 방 {formatRoomCount(createdRoomCount)}</button>
+                <button type="button" className={roomScope === "joined" ? "active" : ""} onClick={() => selectRoomScope("joined")}>내 참여방 {formatRoomCount(joinedRoomCount)}</button>
+                <button type="button" className={roomScope === "invited" ? "active" : ""} onClick={() => selectRoomScope("invited")}>초대받음 {formatRoomCount(invitedRoomCount)}</button>
               </div>
               <div className="segmented-control compact-segments arena-filter-segment">
                 <button type="button" className={queue === "all" ? "active" : ""} onClick={() => setQueue("all")}>전체</button>
@@ -3394,7 +3396,7 @@ function RecruitingReady({ app }) {
             <span>{queue === "ranked" ? "정규전" : queue === "friendly" ? "친선전" : "전체"}</span>
             <span>{modeFilter === "all" ? "전체 방식" : MATCH_MODES.find((mode) => mode.id === modeFilter)?.label ?? modeFilter}</span>
             <span>{startFilterLabel}</span>
-            <span>{roomScope === "created" ? `내가 만든 방 ${createdRoomCount}` : roomScope === "joined" ? `내 참여방 ${joinedRoomCount}` : roomScope === "invited" ? `초대받음 ${invitedRoomCount}` : "전체 방"}</span>
+            <span>{roomScope === "created" ? `내가 만든 방 ${formatRoomCount(createdRoomCount)}` : roomScope === "joined" ? `내 참여방 ${formatRoomCount(joinedRoomCount)}` : roomScope === "invited" ? `초대받음 ${formatRoomCount(invitedRoomCount)}` : "전체 방"}</span>
           </div>
         )}
       </section>
