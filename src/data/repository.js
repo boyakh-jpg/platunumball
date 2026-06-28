@@ -8804,7 +8804,7 @@ export function createTeam(state, teamDraft) {
     };
   }
 
-  const captainId = teamDraft.captainId || state.currentUserId;
+  const captainId = state.currentUserId;
   const captainTeamCount = state.teams.filter((team) => team.members.some((member) => member.userId === captainId)).length;
   if (captainTeamCount >= MAX_TEAM_MEMBERSHIPS) {
     return {
@@ -8887,6 +8887,21 @@ export function addTeamMember(state, teamId, memberDraft) {
   const userId = memberDraft.userId;
   const team = state.teams.find((item) => item.id === teamId);
   if (!team || team.members.some((member) => member.userId === userId)) return state;
+  const captain = team.members.find((member) => member.role === "captain");
+  if (captain?.userId !== state.currentUserId) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "팀 관리 권한 없음",
+          body: "주장만 팀원을 관리할 수 있습니다.",
+          tone: "team",
+        },
+        ...state.notifications,
+      ],
+    };
+  }
 
   const membershipCount = state.teams.filter((item) => item.members.some((member) => member.userId === userId)).length;
   if (membershipCount >= MAX_TEAM_MEMBERSHIPS) {
@@ -8908,39 +8923,97 @@ export function addTeamMember(state, teamId, memberDraft) {
     ...state,
     teams: state.teams.map((item) =>
       item.id === teamId
-        ? { ...item, members: [...item.members, { userId, role: memberDraft.role || "regular" }] }
+        ? { ...item, members: [...item.members, { userId, role: "regular" }] }
         : item,
     ),
   };
 }
 
 export function updateTeamMemberRole(state, teamId, userId, role) {
+  const team = state.teams.find((item) => item.id === teamId);
+  if (!team) return state;
+  const captain = team.members.find((member) => member.role === "captain");
+  if (captain?.userId !== state.currentUserId) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "팀 관리 권한 없음",
+          body: "주장만 팀원을 관리할 수 있습니다.",
+          tone: "team",
+        },
+        ...state.notifications,
+      ],
+    };
+  }
+  if (role === "captain" || userId === captain.userId) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "주장 변경 제한",
+          body: "주장 이전은 별도 기능이 생길 때까지 지원하지 않습니다.",
+          tone: "team",
+        },
+        ...state.notifications,
+      ],
+    };
+  }
   return {
     ...state,
     teams: state.teams.map((team) => {
       if (team.id !== teamId) return team;
-      const nextMembers = team.members.map((member) => (
-        member.userId === userId ? { ...member, role } : member
-      ));
-      const hasCaptain = nextMembers.some((member) => member.role === "captain");
       return {
         ...team,
-        members: hasCaptain ? nextMembers : nextMembers.map((member, index) => (index === 0 ? { ...member, role: "captain" } : member)),
+        members: team.members.map((member) => (
+          member.userId === userId ? { ...member, role: "regular" } : member
+        )),
       };
     }),
   };
 }
 
 export function removeTeamMember(state, teamId, userId) {
+  const team = state.teams.find((item) => item.id === teamId);
+  if (!team) return state;
+  const captain = team.members.find((member) => member.role === "captain");
+  if (captain?.userId !== state.currentUserId) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "팀 관리 권한 없음",
+          body: "주장만 팀원을 관리할 수 있습니다.",
+          tone: "team",
+        },
+        ...state.notifications,
+      ],
+    };
+  }
+  if (userId === captain.userId || team.members.length <= 1) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "주장 제외 제한",
+          body: "주장은 팀 삭제 또는 별도 이전 기능으로만 변경할 수 있습니다.",
+          tone: "team",
+        },
+        ...state.notifications,
+      ],
+    };
+  }
   return {
     ...state,
     teams: state.teams.map((team) => {
       if (team.id !== teamId) return team;
-      const nextMembers = team.members.filter((member) => member.userId !== userId);
-      const hasCaptain = nextMembers.some((member) => member.role === "captain");
       return {
         ...team,
-        members: hasCaptain ? nextMembers : nextMembers.map((member, index) => (index === 0 ? { ...member, role: "captain" } : member)),
+        members: team.members.filter((member) => member.userId !== userId),
       };
     }),
   };

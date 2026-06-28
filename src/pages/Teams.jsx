@@ -23,37 +23,17 @@ const roleLabels = {
   guest: "게스트",
 };
 
-function getTeamSide(match, teamId) {
-  if (match.teamA.teamId === teamId) return "teamA";
-  if (match.teamB.teamId === teamId) return "teamB";
-  return null;
-}
-
-function getSideScore(match, sideName) {
-  const resultKey = sideName === "teamA" ? "scoreA" : "scoreB";
-  return Number(match.result?.[resultKey] ?? match[sideName]?.score ?? 0);
-}
-
-function getTeamRecord(matches, teamId) {
-  return matches.reduce((record, match) => {
-    if (match.status !== "confirmed") return record;
-    const sideName = getTeamSide(match, teamId);
-    if (!sideName) return record;
-    const oppositeSide = sideName === "teamA" ? "teamB" : "teamA";
-    const score = getSideScore(match, sideName);
-    const opponentScore = getSideScore(match, oppositeSide);
-    if (score > opponentScore) record.wins += 1;
-    if (score < opponentScore) record.losses += 1;
-    if (score === opponentScore) record.draws += 1;
-    record.played += 1;
-    return record;
-  }, { wins: 0, losses: 0, draws: 0, played: 0 });
-}
-
 function compareTeamRank(a, b) {
   const aWinRate = a.played ? a.wins / a.played : 0;
   const bWinRate = b.played ? b.wins / b.played : 0;
   return b.mmr - a.mmr || bWinRate - aWinRate || b.played - a.played || a.name.localeCompare(b.name);
+}
+
+function getStoredTeamRecord(team) {
+  const wins = Number(team.wins ?? 0);
+  const losses = Number(team.losses ?? 0);
+  const draws = Number(team.draws ?? 0);
+  return { wins, losses, draws, played: wins + losses + draws };
 }
 
 function isHashtagQuery(query = "") {
@@ -81,14 +61,14 @@ export default function Teams({ app }) {
     });
     return counts;
   }, [app.state.teams]);
-  const selectedCaptainTeamCount = teamCountByUser.get(draft.captainId) ?? 0;
+  const selectedCaptainTeamCount = teamCountByUser.get(app.currentUser.id) ?? 0;
   const captainLimitReached = selectedCaptainTeamCount >= MAX_TEAM_MEMBERSHIPS;
   const rankingTeams = useMemo(() => {
     return app.state.teams
-      .map((team) => ({ ...team, ...getTeamRecord(app.state.matches, team.id) }))
+      .map((team) => ({ ...team, ...getStoredTeamRecord(team) }))
       .sort(compareTeamRank)
       .map((team, index) => ({ ...team, rank: index + 1 }));
-  }, [app.state.matches, app.state.teams]);
+  }, [app.state.teams]);
   const topTeam = rankingTeams[0];
   const myTeams = useMemo(() => {
     return rankingTeams
@@ -127,7 +107,7 @@ export default function Teams({ app }) {
   const submit = (event) => {
     event.preventDefault();
     if (teamNameInvalid) return;
-    app.actions.createTeam(draft);
+    app.actions.createTeam({ ...draft, captainId: app.currentUser.id });
     setDraft({ name: "New Court Crew", region: app.currentUser.region, homeCourt: defaultHomeCourt, captainId: app.currentUser.id, accent: "#58d2c0" });
   };
 
@@ -276,18 +256,9 @@ export default function Teams({ app }) {
             </label>
             <label>
               주장
-              <select value={draft.captainId} onChange={(event) => update({ captainId: event.target.value })}>
-                {app.state.users.map((user) => {
-                  const count = teamCountByUser.get(user.id) ?? 0;
-                  return (
-                    <option key={user.id} value={user.id} disabled={count >= MAX_TEAM_MEMBERSHIPS}>
-                      {user.name} · {user.position} · {count}/{MAX_TEAM_MEMBERSHIPS}팀
-                    </option>
-                  );
-                })}
-              </select>
+              <input value={`${app.currentUser.name} · ${selectedCaptainTeamCount}/${MAX_TEAM_MEMBERSHIPS}팀`} readOnly disabled />
               <span className={captainLimitReached ? "form-warning" : "form-chip"}>
-                {selectedCaptainTeamCount}/{MAX_TEAM_MEMBERSHIPS}팀
+                팀 생성자는 주장으로 고정됩니다.
               </span>
             </label>
             <label>

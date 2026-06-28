@@ -44,9 +44,6 @@ function normalizeTeam(team = {}, actorProfileId = "") {
     name,
     region: team.region || null,
     homeCourt: team.homeCourt || team.home_court || null,
-    mmr: Number(team.mmr ?? 1200),
-    wins: Number(team.wins ?? 0),
-    losses: Number(team.losses ?? 0),
     accent: team.accent || "#58d2c0",
     members,
   };

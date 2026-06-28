@@ -12,8 +12,8 @@ import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { MAX_TEAM_MEMBERSHIPS, TEAM_ROLES } from "../lib/constants.js";
 
 function getTeamSide(match, teamId) {
-  if (match.teamA.teamId === teamId) return "teamA";
-  if (match.teamB.teamId === teamId) return "teamB";
+  if (match.teamA?.teamId === teamId) return "teamA";
+  if (match.teamB?.teamId === teamId) return "teamB";
   return null;
 }
 
@@ -32,6 +32,13 @@ const historyStatusLabel = {
   cancelled: "취소",
 };
 const externalTeamRoles = new Set(["mercenary", "guest"]);
+const managedTeamRoleOptions = [["regular", TEAM_ROLES.regular]];
+
+function getManagedRoleOptions(member, captainId) {
+  if (member.userId === captainId) return [["captain", TEAM_ROLES.captain]];
+  if (member.role && member.role !== "regular") return [[member.role, TEAM_ROLES[member.role] ?? member.role], ...managedTeamRoleOptions];
+  return managedTeamRoleOptions;
+}
 
 export default function TeamDetail({ app }) {
   const { teamId } = useParams();
@@ -59,16 +66,18 @@ export default function TeamDetail({ app }) {
   const selectedCount = membershipCounts.get(addUserId) ?? 0;
   const canAddMember = canManage && Boolean(addUserId) && selectedCount < MAX_TEAM_MEMBERSHIPS;
   const history = app.state.matches.filter((match) => getTeamSide(match, team.id));
-  const wins = history.filter((match) => {
+  const loadedWins = history.filter((match) => {
     const sideName = getTeamSide(match, team.id);
     const oppositeSide = sideName === "teamA" ? "teamB" : "teamA";
     return match.status === "confirmed" && getSideScore(match, sideName) > getSideScore(match, oppositeSide);
   }).length;
-  const losses = history.filter((match) => {
+  const loadedLosses = history.filter((match) => {
     const sideName = getTeamSide(match, team.id);
     const oppositeSide = sideName === "teamA" ? "teamB" : "teamA";
     return match.status === "confirmed" && getSideScore(match, sideName) < getSideScore(match, oppositeSide);
   }).length;
+  const wins = Number(team.wins ?? loadedWins);
+  const losses = Number(team.losses ?? loadedLosses);
   const confirmedCount = wins + losses;
   const winRate = confirmedCount ? Math.round((wins / confirmedCount) * 100) : 0;
 
@@ -202,7 +211,7 @@ export default function TeamDetail({ app }) {
                 const oppositeSide = sideName === "teamA" ? "teamB" : "teamA";
                 const side = match[sideName];
                 const opponent = match[oppositeSide];
-                const reserveUsed = side.players
+                const reserveUsed = (side?.players ?? [])
                   .map((id) => team.members.find((member) => member.userId === id))
                   .filter((member) => member && externalTeamRoles.has(member.role));
                 return (
@@ -216,7 +225,7 @@ export default function TeamDetail({ app }) {
                       <strong>{getSideScore(match, sideName)}:{getSideScore(match, oppositeSide)}</strong>
                     </div>
                     <div className="roster compact-roster">
-                      {side.players.map((id) => {
+                      {(side?.players ?? []).map((id) => {
                         const user = userMap[id];
                         return user ? <PlayerHoverCard key={id} user={user} teams={app.state.teams}><i style={{ "--avatar": user.avatarColor }} />{user.name}</PlayerHoverCard> : null;
                       })}
@@ -276,7 +285,7 @@ export default function TeamDetail({ app }) {
                   <label>
                     역할
                     <select value={memberDraft.role} onChange={(event) => setMemberDraft((current) => ({ ...current, role: event.target.value }))}>
-                      {Object.entries(TEAM_ROLES).map(([role, label]) => <option key={role} value={role}>{label}</option>)}
+                      {managedTeamRoleOptions.map(([role, label]) => <option key={role} value={role}>{label}</option>)}
                     </select>
                   </label>
                   <Button type="submit" disabled={!canAddMember || !availableUsers.length}>팀원 추가</Button>
@@ -286,16 +295,18 @@ export default function TeamDetail({ app }) {
                   {team.members.map((member) => {
                     const user = userMap[member.userId];
                     if (!user) return null;
+                    const isCaptainMember = member.userId === captain?.userId;
+                    const roleOptions = getManagedRoleOptions(member, captain?.userId);
                     return (
                       <div key={`${team.id}-${member.userId}-control`} className="member-control-row">
                         <PlayerHoverCard user={user} teams={app.state.teams}>
                           <span className="avatar small" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
                           <strong>{user.name}</strong>
                         </PlayerHoverCard>
-                        <select value={member.role} onChange={(event) => app.actions.updateTeamMemberRole(team.id, member.userId, event.target.value)}>
-                          {Object.entries(TEAM_ROLES).map(([role, label]) => <option key={role} value={role}>{label}</option>)}
+                        <select value={member.role} disabled={isCaptainMember} onChange={(event) => app.actions.updateTeamMemberRole(team.id, member.userId, event.target.value)}>
+                          {roleOptions.map(([role, label]) => <option key={role} value={role}>{label}</option>)}
                         </select>
-                        <button type="button" disabled={team.members.length <= 1} onClick={() => app.actions.removeTeamMember(team.id, member.userId)}>제외</button>
+                        <button type="button" disabled={isCaptainMember || team.members.length <= 1} onClick={() => app.actions.removeTeamMember(team.id, member.userId)}>제외</button>
                       </div>
                     );
                   })}

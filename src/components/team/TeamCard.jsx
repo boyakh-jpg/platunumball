@@ -2,11 +2,14 @@ import Badge from "../common/Badge.jsx";
 import Card from "../common/Card.jsx";
 import TierEmblem from "../rating/TierEmblem.jsx";
 import TeamHoverCard from "./TeamHoverCard.jsx";
-import TeamMemberList from "./TeamMemberList.jsx";
 
 export default function TeamCard({ team, users, teams = [team], compact = false, linked = true, rank }) {
-  const winRate = Math.round((team.wins / Math.max(1, team.wins + team.losses)) * 100);
-  const regularCount = team.members.filter((member) => member.role === "regular" || member.role === "captain").length;
+  const wins = Number(team.wins ?? 0);
+  const losses = Number(team.losses ?? 0);
+  const played = wins + losses;
+  const members = Array.isArray(team.members) ? team.members : [];
+  const winRate = played ? Math.round((wins / played) * 100) : 0;
+  const regularCount = members.filter((member) => member.role === "regular" || member.role === "captain").length;
 
   return (
     <Card className="team-card elite-team-card">
@@ -34,11 +37,10 @@ export default function TeamCard({ team, users, teams = [team], compact = false,
           승률
         </span>
         <span>
-          <strong>{team.members.length}</strong>
+          <strong>{members.length}</strong>
           로스터
         </span>
       </div>
-      {compact ? null : <TeamMemberList team={team} users={users} teams={teams} compact />}
       <Badge tone="green">정규멤버 {regularCount}</Badge>
     </Card>
   );
