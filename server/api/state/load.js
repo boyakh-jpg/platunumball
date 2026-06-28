@@ -136,6 +136,9 @@ export function filterStateForProfile(state = {}, profileId = "", isAdmin = fals
       adminAppointments: isAdmin
         ? state.settings?.adminAppointments ?? []
         : (state.settings?.adminAppointments ?? []).filter((appointment) => appointment.userId === profileId),
+      refereeAppointments: isAdmin
+        ? state.settings?.refereeAppointments ?? []
+        : (state.settings?.refereeAppointments ?? []).filter((appointment) => appointment.userId === profileId),
       adminAuditLog: isAdmin ? state.settings?.adminAuditLog ?? [] : [],
       adminDisciplinaryActions: isAdmin
         ? state.settings?.adminDisciplinaryActions ?? []

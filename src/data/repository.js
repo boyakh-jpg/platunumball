@@ -147,7 +147,7 @@ export const REMOTE_CLIENT_INITIAL_MATCH_LIMIT = 5;
 export const REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT = 5;
 const REMOTE_CLIENT_TOURNAMENT_LIMIT = 80;
 const REMOTE_CLIENT_MAX_LIMIT = 500;
-const PUBLIC_PROFILE_COLUMNS = "id,name,handle,hashtag,position,region,region_sido,region_district,school,company,club,trust_score,streak,avatar_color,ratings,age_group,age_group_checked_season,onboarding_complete,updated_at";
+const PUBLIC_PROFILE_COLUMNS = "id,name,handle,hashtag,position,region,region_sido,region_district,trust_score,streak,avatar_color,ratings,age_group,age_group_checked_season,onboarding_complete,updated_at";
 const PRIVATE_PROFILE_COLUMNS = "id,name,handle,region,school,company,club,trust_score,streak,avatar_color,test_login_id,auth_user_id,hashtag,birth_year,age_group,age_group_checked_season,region_sido,region_district,onboarding_complete,profile_version,handle_locked_at,birth_year_locked_at,name_updated_at,discord_connection,discord_user_id,ratings,created_at,updated_at,position";
 const PROFILE_SETTINGS_COLUMNS = "id,app_settings";
 const TEAM_COLUMNS = "id,name,home_court,region,mmr,wins,losses,accent,deleted_at,updated_at,created_at";
@@ -214,6 +214,19 @@ function getBackendTestLoginId(authUserId = "") {
 
 function makeDefaultRatings() {
   return { integrated: 1200, modes: { "1v1": 1200, "2v2": 1200, "3v3": 1200, "5v5": 1200 } };
+}
+
+function normalizeRatings(ratings = {}) {
+  const defaults = makeDefaultRatings();
+  const integrated = Number(ratings?.integrated);
+  return {
+    integrated: Number.isFinite(integrated) ? integrated : defaults.integrated,
+    modes: { ...defaults.modes, ...(ratings?.modes && typeof ratings.modes === "object" ? ratings.modes : {}) },
+  };
+}
+
+function normalizeUser(user = {}) {
+  return { ...user, ratings: normalizeRatings(user.ratings) };
 }
 
 function getProfileShellId(authUserId = "") {
@@ -781,7 +794,7 @@ export function normalizeState(state, options = {}) {
     ...baseState,
     ...state,
     deletedTeamIds: Array.from(deletedTeamIds),
-    users: includeDemo ? mergeById(state?.users, initialState.users) : state?.users ?? [],
+    users: (includeDemo ? mergeById(state?.users, initialState.users) : state?.users ?? []).map(normalizeUser),
     teams: (includeDemo ? mergeById(state?.teams, initialState.teams) : state?.teams ?? []).filter((team) => !deletedTeamIds.has(team.id)),
     affiliations: (includeDemo ? mergeById(state?.affiliations, initialState.affiliations) : state?.affiliations ?? []).filter((affiliation) => affiliation.type !== "club"),
     seasons: includeDemo ? mergeById(state?.seasons, initialState.seasons ?? []) : state?.seasons ?? [],
@@ -973,7 +986,7 @@ export function fromRemoteProfile(row) {
     nameUpdatedAt: row.name_updated_at ?? null,
     discordConnection: row.discord_connection ?? null,
     discordUserId: row.discord_user_id ?? row.discord_connection?.userId ?? null,
-    ratings: row.ratings ?? { integrated: 1200, modes: {} },
+    ratings: normalizeRatings(row.ratings),
   };
 }
 
@@ -2056,7 +2069,7 @@ export async function saveNormalizedRemoteState(state, options = {}) {
       position: user.position,
       avatar_color: user.avatarColor,
       trust_score: user.trustScore ?? 80,
-      ratings: user.ratings ?? {},
+      ratings: normalizeRatings(user.ratings),
       school: user.school,
       company: user.company,
       club: user.club,

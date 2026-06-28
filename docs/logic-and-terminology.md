@@ -1056,7 +1056,7 @@ flowchart TD
 6. 신고 목록은 관리자 read policy로만 운영자가 볼 수 있다.
 7. 관리자/징계/audit write는 client policy를 만들지 않고 server action만 사용한다.
 8. 승인 구장 테이블은 authenticated read만 허용하고 내부 요청자/승인자 정보를 payload에 섞지 않는다.
-9. `recruiting_posts`는 `recruiting_read_all` 같은 permissive `SELECT true` 정책을 허용하지 않는다. 공개방은 `visibility='public'`, 비공개방은 관계자만 읽는다.
+9. `recruiting_posts`는 `recruiting_read_all` 같은 permissive `SELECT true` 정책을 허용하지 않는다. raw table은 anon/public 전체 read를 허용하지 않고 authenticated 현재 프로필이 `player_id`, `player_ids`, `room_state.ownerId`, `room_state.invitations`, `referee_id` 중 하나와 관련될 때만 읽는다.
 10. `profiles` 전체 row는 공개 read 대상이 아니다. 공개 목록은 `public_profiles` view를 사용하고, 직접 `profiles` read는 현재 본인 row만 허용한다.
 11. `matches.visibility`는 `public/private`를 가진다. 공개 경기는 public read, 비공개 경기는 방장/심판/출전자/후보/기록자/관리자만 read한다.
 12. `match_disputes`는 공개 경기라도 전체 공개하지 않고 경기 관계자와 관리자만 read한다.
@@ -1104,6 +1104,7 @@ flowchart TD
 4. 최고관리자 권한은 frontend seed ID가 아니라 server env 또는 DB `admin_appointments`에서 나온다.
 5. `src/lib/admin.js`의 `u1` owner fallback은 제거한다. 프론트는 `POST /api/admin/context`가 확인한 현재 사용자 권한만 임시 `server_context` row로 보여준다.
 6. `server_context` row는 UI/로컬 reducer용이며 Supabase `admin_appointments` 저장 대상이 아니다.
+7. 비관리자 state 응답은 본인 `adminAppointments`와 본인 `refereeAppointments`만 포함한다.
 
 ## 2026-06-26 match/recruiting sync action guard
 
@@ -1393,7 +1394,7 @@ flowchart TD
 
 ## 2026-06-28 public feed access
 
-1. `public_profiles`는 공개 표시용 프로필 컬럼만 제공한다. 테스트 로그인 ID와 Discord 연결 원본은 현재 사용자 private profile 또는 server action에서만 읽는다.
+1. `public_profiles`는 공개 표시용 프로필 컬럼만 제공한다. `school`, `company`, `club`, 테스트 로그인 ID와 Discord 연결 원본은 현재 사용자 private profile 또는 server action에서만 읽는다.
 2. `user_room_feed.profile_id='*'` 지역 공개 feed는 서버 API/service-role 전용 source다. 브라우저 RLS 직접 read는 현재 프로필 feed row만 허용한다.
 3. 구장 이름 fallback은 `courts`가 없으면 `approved_courts` active row를 사용한다. hidden/disabled approved court는 공개 목록 fallback에 쓰지 않는다.
 
@@ -1401,9 +1402,10 @@ flowchart TD
 
 1. 모집방 write action 직후에는 `/api/recruiting/list` 목록, 내방, 단일 상세 응답이 같은 post의 이전 row로 로컬 최신 상태를 덮지 않는다.
 2. 경기 write action 직후에는 `/api/matches/list`, `/api/matches/detail` 응답이 같은 match의 이전 row로 기록판/점수/무기명 선수 변경을 덮지 않는다.
-3. 서버 action 결과가 `post`, `createdMatch`, `match`를 반환하면 그 결과를 source of truth로 merge한다.
-4. stale 보호는 짧은 mutation window에서만 적용하고, 이후 일반 서버 load는 다시 DB source of truth를 따른다.
-5. stale 보호로 pending row를 client merge에서 제외해도 pagination exhausted/cursor/offset은 필터 전 서버 page count 기준으로 계산한다.
+3. SQL reducer가 성공한 모집방 action은 최신 post를 응답에 포함한다. SQL reducer fallback인 경기 action은 local optimistic snapshot을 저장하지 않고 authoritative replay를 강제한다.
+4. 서버 action 결과가 `post`, `createdMatch`, `match`를 반환하면 그 결과를 source of truth로 merge한다.
+5. stale 보호는 짧은 mutation window에서만 적용하고, 이후 일반 서버 load는 다시 DB source of truth를 따른다.
+6. stale 보호로 pending row를 client merge에서 제외해도 pagination exhausted/cursor/offset은 필터 전 서버 page count 기준으로 계산한다.
 
 ## 2026-06-27 simulation cleanup safety
 

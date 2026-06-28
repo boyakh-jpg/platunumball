@@ -84,6 +84,7 @@ const REQUIRED_COLUMNS = {
     "relation",
     "region_key",
     "status",
+    "card_json",
     "sort_at",
     "is_active",
   ],

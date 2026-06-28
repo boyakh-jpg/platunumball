@@ -226,6 +226,54 @@ function mergeTeamsById(current = [], incoming = []) {
   return [...merged.values()];
 }
 
+function hasItems(value) {
+  if (Array.isArray(value)) return value.length > 0;
+  return Boolean(value && typeof value === "object" && Object.values(value).some((item) => (
+    Array.isArray(item) ? item.length > 0 : item !== null && item !== undefined && item !== ""
+  )));
+}
+
+function preserveExistingWhenEmpty(incoming, existing, keys = []) {
+  if (!existing) return incoming;
+  const next = { ...existing, ...incoming };
+  keys.forEach((key) => {
+    if (!hasItems(incoming?.[key]) && hasItems(existing?.[key])) next[key] = existing[key];
+  });
+  return next;
+}
+
+function mergeMatchesById(current = [], incoming = []) {
+  const merged = new Map((current ?? []).filter((item) => item?.id).map((item) => [item.id, item]));
+  (incoming ?? []).forEach((item) => {
+    if (!item?.id) return;
+    merged.set(item.id, preserveExistingWhenEmpty(item, merged.get(item.id), [
+      "agreements",
+      "approvals",
+      "disputes",
+      "playedPlayerIds",
+      "reservePlayers",
+      "anonymousPlayers",
+      "parties",
+      "result",
+    ]));
+  });
+  return [...merged.values()];
+}
+
+function mergeRecruitingPostsById(current = [], incoming = []) {
+  const merged = new Map((current ?? []).filter((item) => item?.id).map((item) => [item.id, item]));
+  (incoming ?? []).forEach((item) => {
+    if (!item?.id) return;
+    const existing = merged.get(item.id);
+    const next = preserveExistingWhenEmpty(item, existing, ["applicants"]);
+    if (existing?.roomState && item?.roomState) {
+      next.roomState = preserveExistingWhenEmpty(item.roomState, existing.roomState, ["chatMessages", "kickLog", "invitations"]);
+    }
+    merged.set(item.id, next);
+  });
+  return [...merged.values()];
+}
+
 function sortMatchesByRemoteCursor(matches = []) {
   return [...matches].sort((a, b) => String(b.updatedAt ?? b.createdAt ?? "").localeCompare(String(a.updatedAt ?? a.createdAt ?? "")));
 }
@@ -271,9 +319,9 @@ function mergeRemoteMatchPage(state, remoteState = {}) {
     ...state,
     users: mergeById(state.users, remoteState.users),
     teams: mergeTeamsById(state.teams, remoteState.teams),
-    matches: sortMatchesByRemoteCursor(mergeById(state.matches, nextMatches)),
+    matches: sortMatchesByRemoteCursor(mergeMatchesById(state.matches, nextMatches)),
     tournaments: mergeById(state.tournaments, remoteState.tournaments),
-    recruitingPosts: mergeById(state.recruitingPosts, remoteState.recruitingPosts),
+    recruitingPosts: mergeRecruitingPostsById(state.recruitingPosts, remoteState.recruitingPosts),
   };
 }
 
@@ -284,7 +332,7 @@ function mergeRemoteRecruitingPage(state, remoteState = {}) {
     ...state,
     users: mergeById(state.users, remoteState.users),
     teams: mergeTeamsById(state.teams, remoteState.teams),
-    recruitingPosts: sortRecruitingByRemoteCursor(mergeById(state.recruitingPosts, nextPosts)),
+    recruitingPosts: sortRecruitingByRemoteCursor(mergeRecruitingPostsById(state.recruitingPosts, nextPosts)),
   };
 }
 
@@ -971,7 +1019,7 @@ export function useAppData(authUser = null) {
         },
         { allowWhenDisabled: true },
       );
-      const remoteState = normalizeServerState(filterPendingMatches(result?.state ?? {}, pendingMatchIdsRef.current, recentMatchMutationTimesRef.current));
+      const remoteState = normalizeServerState(result?.state ?? {});
       const nextMatches = remoteState.matches ?? [];
       setState((prev) => mergeRemoteMatchPage(prev, remoteState));
       return nextMatches.length;
@@ -1107,7 +1155,7 @@ export function useAppData(authUser = null) {
         },
         { allowWhenDisabled: true },
       );
-      const remoteState = normalizeServerState(filterPendingRecruitingPosts(result?.state ?? {}, pendingRecruitingPostIdsRef.current, recentRecruitingMutationTimesRef.current));
+      const remoteState = normalizeServerState(result?.state ?? {});
       const nextPosts = remoteState.recruitingPosts ?? [];
       setState((prev) => mergeRemoteRecruitingPage(prev, remoteState));
       setRecruitingPagination((prev) => ({
@@ -1194,8 +1242,8 @@ export function useAppData(authUser = null) {
 
   const rankings = useMemo(
     () => ({
-      players: sortByRating(state.users, (user) => user.ratings.integrated),
-      mode: (mode) => sortByRating(state.users, (user) => user.ratings.modes[mode] ?? user.ratings.integrated),
+      players: sortByRating(state.users, (user) => user.ratings?.integrated ?? 1200),
+      mode: (mode) => sortByRating(state.users, (user) => user.ratings?.modes?.[mode] ?? user.ratings?.integrated ?? 1200),
       teams: sortByRating(state.teams, (team) => team.mmr),
       affiliations: sortByRating(state.affiliations.filter((affiliation) => affiliation.type !== "club"), (affiliation) => affiliation.score),
     }),

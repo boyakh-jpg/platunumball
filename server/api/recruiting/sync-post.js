@@ -571,6 +571,12 @@ function shouldUseSqlRecruitingAction(operation = {}) {
   return SQL_REDUCER_RECRUITING_ACTIONS.has(String(operation?.action ?? ""));
 }
 
+async function loadSyncedRecruitingPost(context, postId = "") {
+  if (!postId) return null;
+  const state = await loadAuthoritativeState(context, { operation: { postId } });
+  return (state.recruitingPosts ?? []).find((post) => post.id === postId) ?? null;
+}
+
 async function applySqlRecruitingAction(context, operation = {}) {
   if (operation.action === "setRecruitingReady") {
     const { data, error } = await context.supabase.rpc("rankball_recruiting_ready_action", {
@@ -851,7 +857,11 @@ export default async function handler(request, response) {
     if (operation && shouldUseSqlRecruitingAction(operation)) {
       const sqlResult = await applySqlRecruitingAction(context, operation);
       if (sqlResult) {
-        sendJson(response, 200, sqlResult);
+        const syncedPost = await loadSyncedRecruitingPost(context, sqlResult.postId ?? operation.postId);
+        sendJson(response, 200, {
+          ...sqlResult,
+          ...(syncedPost ? { post: syncedPost } : {}),
+        });
         return;
       }
     }

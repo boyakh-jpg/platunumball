@@ -9,13 +9,13 @@ async function assertTargetExists(context, targetType, targetId) {
       .select("id")
       .eq("id", targetId)
       .maybeSingle();
-    if (courtError) throw courtError;
-    if (court?.id) return;
+    if (!courtError && court?.id) return;
 
     const { data: approvedCourt, error: approvedCourtError } = await context.supabase
       .from("approved_courts")
       .select("id")
       .eq("id", targetId)
+      .or("status.is.null,status.eq.active")
       .maybeSingle();
     if (approvedCourtError) throw approvedCourtError;
     if (approvedCourt?.id) return;

@@ -19,6 +19,8 @@
   - 신청 row의 `player_ids`에 포함된 유저
   - 방장 `recruiting_posts.player_id`
   - 방 row의 `recruiting_posts.player_ids`에 포함된 유저
+  - 방 row의 `room_state.ownerId`, `room_state.invitations` 관련 유저, `referee_id`
+- `recruiting_posts` raw table read는 anon/public 전체 공개가 아니다. authenticated 현재 프로필이 `player_id`, `player_ids`, `room_state.ownerId`, `room_state.invitations`, `referee_id` 중 하나와 관련될 때만 허용한다.
 
 ## Production Migration TODO
 
@@ -351,7 +353,7 @@ Remaining:
 
 ## 2026-06-28 public data and court fallback
 
-- `public_profiles`는 공개 프로필 표시용 컬럼만 제공한다. `test_login_id`, `discord_connection`, `discord_user_id`, `auth_user_id`는 공개 view에 넣지 않는다.
+- `public_profiles`는 공개 프로필 표시용 컬럼만 제공한다. `school`, `company`, `club`, `test_login_id`, `discord_connection`, `discord_user_id`, `auth_user_id`는 공개 view에 넣지 않는다.
 - `user_room_feed` 직접 RLS read는 현재 프로필 row만 허용한다. `profile_id='*'` 지역 공개 feed는 서버 API/service-role 경로에서만 읽는다.
 - `courts` 테이블이 없는 배포도 `approved_courts`로 구장 이름을 보정한다. 목록/상세 API는 `courts`와 `approved_courts`를 병합하되 hidden/disabled approved court는 공개 fallback에서 제외한다.
 - SPA fallback은 `/assets/*`에 적용하지 않는다. 오래된 hashed JS asset 요청은 `index.html`이 아니라 404가 되어야 한다.

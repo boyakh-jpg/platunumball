@@ -1112,6 +1112,7 @@ export default async function handler(request, response) {
         sendJson(response, 200, sqlResult);
         return;
       }
+      match = null;
     }
 
     if (operation && (!match || operation.action === "createMatch" || operation.action === "approveMatch")) {

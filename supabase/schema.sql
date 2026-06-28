@@ -127,9 +127,6 @@ begin
         region,
         region_sido,
         region_district,
-        school,
-        company,
-        club,
         trust_score,
         streak,
         avatar_color,
@@ -514,6 +511,7 @@ using (
 
 drop policy if exists "recruiting_posts_select_public" on public.recruiting_posts;
 drop policy if exists "recruiting_posts_select_related_private" on public.recruiting_posts;
+drop policy if exists "recruiting_posts_select_related" on public.recruiting_posts;
 drop policy if exists recruiting_read_all on public.recruiting_posts;
 drop policy if exists recruiting_posts_read_all on public.recruiting_posts;
 drop policy if exists recruiting_posts_select_all on public.recruiting_posts;
@@ -535,28 +533,20 @@ begin
 end;
 $$;
 
-create policy "recruiting_posts_select_public"
-on public.recruiting_posts
-for select
-to anon, authenticated
-using (visibility = 'public');
-
-create policy "recruiting_posts_select_related_private"
+create policy "recruiting_posts_select_related"
 on public.recruiting_posts
 for select
 to authenticated
 using (
-  visibility = 'private'
-  and (
-    player_id = public.current_profile_id()
-    or player_ids ? public.current_profile_id()
-    or room_state->>'ownerId' = public.current_profile_id()
-    or exists (
-      select 1
-      from jsonb_array_elements(coalesce(room_state->'invitations', '[]'::jsonb)) invitation
-      where invitation->>'targetUserId' = public.current_profile_id()
-         or invitation->>'fromUserId' = public.current_profile_id()
-    )
+  player_id = public.current_profile_id()
+  or player_ids ? public.current_profile_id()
+  or room_state->>'ownerId' = public.current_profile_id()
+  or referee_id = public.current_profile_id()
+  or exists (
+    select 1
+    from jsonb_array_elements(coalesce(room_state->'invitations', '[]'::jsonb)) invitation
+    where invitation->>'targetUserId' = public.current_profile_id()
+       or invitation->>'fromUserId' = public.current_profile_id()
   )
 );
 
@@ -809,10 +799,10 @@ begin
             from public.recruiting_posts post
             where post.id = recruiting_applications.post_id
               and (
-                post.visibility = ''public''
-                or post.player_id = public.current_profile_id()
+                post.player_id = public.current_profile_id()
                 or post.player_ids ? public.current_profile_id()
                 or post.room_state->>''ownerId'' = public.current_profile_id()
+                or post.referee_id = public.current_profile_id()
                 or exists (
                   select 1
                   from jsonb_array_elements(coalesce(post.room_state->''invitations'', ''[]''::jsonb)) invitation
