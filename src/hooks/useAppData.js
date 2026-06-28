@@ -1119,7 +1119,7 @@ export function useAppData(authUser = null) {
           ...(regionRequest.regionKey ? { regionKey: regionRequest.regionKey } : {}),
           listOnly: true,
           adminContext: false,
-          includeFeedCounts: false,
+          includeFeedCounts: true,
         },
         { allowWhenDisabled: true },
       );

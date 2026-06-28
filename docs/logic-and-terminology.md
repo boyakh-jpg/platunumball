@@ -1361,6 +1361,7 @@ flowchart TD
 36. `/api/matches/list` defaults to match feed only. It includes recruiting schedule rooms only when `includeRecruitingSchedule=true`; previously loaded recruiting state from `/app/recruiting` must not change `/app/matches` list results.
 37. `/app/matches`는 SPA 이동으로 들어왔고 `recruitingScheduleChecked`가 false이면 현재 사용자 모집방 일정을 다시 로드한다. 경기 목록이 비어 있어도 match-page merge는 모집방 일정 row를 보존해야 한다.
 38. `/app/recruiting` 첫 목록 로드는 `feedCounts`를 같이 받아야 한다. `내가 만든 방/참여방/초대받음` 숫자는 클릭 전에도 current-user feed count 기준이어야 하며, 목록 일부 로드 fallback 숫자에 의존하지 않는다.
+38-1. `/app/recruiting` SPA 진입 때 기존 목록 row가 이미 있어도 `feedCounts`가 없으면 지역 첫 페이지를 다시 읽어 count를 채운다.
 39. 모집방 생성 서버 저장이 성공하면 클라이언트는 `created` feed count를 즉시 반영하고 경기 메뉴 모집 일정도 다시 읽는다.
 40. 모집방 선수/심판 초대는 기존 방 참가자만 보낼 수 있다. 단, 초대 수락/거절은 아직 참가자가 아니어도 자기 pending invitation이 있으면 가능하다.
 41. `inviteRecruitingReferee`는 프론트와 서버 모두 기존 방 참가자 action이다. 초대 대상 심판은 active `referee_appointments`가 있어야 하며, pending invitation만 가진 사용자는 심판/선수 초대를 새로 보낼 수 없다.
