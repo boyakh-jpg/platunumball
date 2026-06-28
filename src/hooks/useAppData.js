@@ -73,6 +73,7 @@ import {
   cancelTeamInvitation,
   toggleFavoriteCourt,
   toggleFavoritePlayer,
+  toggleFavoriteReferee,
   toggleFavoriteTeam,
   toggleMatchStar,
   updateSettings,
@@ -1770,6 +1771,15 @@ export function useAppData(authUser = null) {
           return next;
         });
         syncFavoriteServer("court", courtId, active);
+      },
+      toggleFavoriteReferee: (userId) => {
+        let active = false;
+        setState((prev) => {
+          const next = toggleFavoriteReferee(prev, userId);
+          active = (next.settings?.favoriteRefereeIds ?? []).includes(userId);
+          return next;
+        });
+        syncFavoriteServer("referee", userId, active);
       },
       submitCourtRequest: (draft) => {
         if (!ensureRemoteReady("구장 등록요청")) return Promise.resolve(null);

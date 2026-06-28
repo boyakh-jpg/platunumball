@@ -8,8 +8,9 @@ import SearchPicker from "../components/common/SearchPicker.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import CourtHoverCard from "../components/court/CourtHoverCard.jsx";
+import RefereeHoverCard from "../components/referee/RefereeHoverCard.jsx";
 import { REPORT_REASONS, REPORT_TARGET_TYPES, getReportTargetType } from "../lib/reportReasons.js";
-import { formatStatLine, getMatchReservePlayerIds, getMatchSidePlayerIds } from "../lib/matchUtils.js";
+import { formatStatLine, getMatchReservePlayerIds, getMatchSidePlayerIds, isEligibleReferee } from "../lib/matchUtils.js";
 import { COURT_REQUEST_TRUST_MIN, FALSE_COURT_REPORT_TRUST_PENALTY, REFEREE_TRUST_MIN, REGIONS } from "../lib/constants.js";
 import { COURT_LAYOUT_OPTIONS, COURT_SURFACE_OPTIONS, findCourtDuplicate, getCourtDuplicateMessage, getCourtLayoutLabel, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
 import { findCourtByHashtag, findTeamByHashtag, findUserByHashtag, getCourtHashtag, getMatchHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
@@ -203,10 +204,15 @@ export default function Settings({ app, auth }) {
   const favoritePlayerIds = app.state.settings?.favoritePlayerIds ?? [];
   const favoriteTeamIds = app.state.settings?.favoriteTeamIds ?? [];
   const favoriteCourtIds = app.state.settings?.favoriteCourtIds ?? [];
+  const favoriteRefereeIds = app.state.settings?.favoriteRefereeIds ?? [];
   const favoritePlayers = favoritePlayerIds.map((playerId) => app.state.users.find((item) => item.id === playerId)).filter(Boolean);
   const favoriteTeams = favoriteTeamIds.map((teamId) => app.state.teams.find((item) => item.id === teamId)).filter(Boolean);
   const favoriteCourts = favoriteCourtIds.map((courtId) => registeredCourts.find((item) => item.id === courtId)).filter(Boolean);
+  const favoriteReferees = favoriteRefereeIds
+    .map((userId) => app.state.users.find((item) => item.id === userId))
+    .filter((user) => user && isEligibleReferee(user, REFEREE_TRUST_MIN, app.state.settings?.refereeAppointments));
   const searchedFavoriteUser = favoriteQuery.trim() ? findUserByHashtag(app.state.users, favoriteQuery) : null;
+  const searchedFavoriteReferee = searchedFavoriteUser && isEligibleReferee(searchedFavoriteUser, REFEREE_TRUST_MIN, app.state.settings?.refereeAppointments) ? searchedFavoriteUser : null;
   const searchedFavoriteTeam = favoriteQuery.trim() ? findTeamByHashtag(app.state.teams, favoriteQuery) : null;
   const searchedFavoriteCourt = favoriteQuery.trim() ? findCourtByHashtag(registeredCourts, favoriteQuery) : null;
   const serverAdminLevel = Number(app.adminContext?.level ?? 0);
@@ -789,7 +795,7 @@ export default function Settings({ app, auth }) {
               <div><span>프로필</span><strong>{favoritePlayerIds.length}/10</strong></div>
               <div><span>팀</span><strong>{favoriteTeamIds.length}/10</strong></div>
               <div><span>구장</span><strong>{favoriteCourtIds.length}/10</strong></div>
-              <div><span>심판</span><strong>준비중</strong></div>
+              <div><span>심판</span><strong>{favoriteRefereeIds.length}/10</strong></div>
             </div>
             <div className="favorite-result-stack">
               {searchedFavoriteUser ? (
@@ -803,6 +809,20 @@ export default function Settings({ app, auth }) {
                   </PlayerHoverCard>
                   <Button type="button" size="sm" variant={favoritePlayerIds.includes(searchedFavoriteUser.id) ? "primary" : "secondary"} onClick={() => app.actions.toggleFavoritePlayer(searchedFavoriteUser.id)}>
                     {favoritePlayerIds.includes(searchedFavoriteUser.id) ? "해제" : "저장"}
+                  </Button>
+                </div>
+              ) : null}
+              {searchedFavoriteReferee ? (
+                <div className="favorite-result-row">
+                  <RefereeHoverCard as="span" user={searchedFavoriteReferee} matches={app.state.matches} minTrust={REFEREE_TRUST_MIN}>
+                    <span className="avatar small" style={{ "--avatar": searchedFavoriteReferee.avatarColor }}>{searchedFavoriteReferee.name.slice(0, 1)}</span>
+                    <span>
+                      <strong>{searchedFavoriteReferee.name}</strong>
+                      <em>{getUserHashtag(searchedFavoriteReferee)} · 신뢰도 {searchedFavoriteReferee.trustScore}</em>
+                    </span>
+                  </RefereeHoverCard>
+                  <Button type="button" size="sm" variant={favoriteRefereeIds.includes(searchedFavoriteReferee.id) ? "primary" : "secondary"} onClick={() => app.actions.toggleFavoriteReferee(searchedFavoriteReferee.id)}>
+                    {favoriteRefereeIds.includes(searchedFavoriteReferee.id) ? "해제" : "저장"}
                   </Button>
                 </div>
               ) : null}
@@ -834,7 +854,7 @@ export default function Settings({ app, auth }) {
                   </Button>
                 </div>
               ) : null}
-              {favoriteQuery.trim() && !searchedFavoriteUser && !searchedFavoriteTeam && !searchedFavoriteCourt ? <div className="empty-state">해시태그 결과 없음</div> : null}
+              {favoriteQuery.trim() && !searchedFavoriteUser && !searchedFavoriteReferee && !searchedFavoriteTeam && !searchedFavoriteCourt ? <div className="empty-state">해시태그 결과 없음</div> : null}
             </div>
             <div className="favorite-chip-list">
               {favoritePlayers.map((player) => (
@@ -855,7 +875,13 @@ export default function Settings({ app, auth }) {
                   <span>{getCourtHashtag(court)}</span>
                 </CourtHoverCard>
               ))}
-              {!favoritePlayers.length && !favoriteTeams.length && !favoriteCourts.length ? <em>저장된 즐겨찾기 없음</em> : null}
+              {favoriteReferees.map((referee) => (
+                <RefereeHoverCard key={referee.id} user={referee} matches={app.state.matches} minTrust={REFEREE_TRUST_MIN} className="favorite-mini-chip">
+                  <ShieldCheck size={14} />
+                  <span>{getUserHashtag(referee)}</span>
+                </RefereeHoverCard>
+              ))}
+              {!favoritePlayers.length && !favoriteTeams.length && !favoriteCourts.length && !favoriteReferees.length ? <em>저장된 즐겨찾기 없음</em> : null}
             </div>
           </Card>
 

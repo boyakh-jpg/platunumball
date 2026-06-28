@@ -376,6 +376,7 @@ export default function CreateMatch({ app }) {
   const defaultAgeRestriction = getAgeGroupForUser(app.currentUser);
   const favoriteTeamIds = app.state.settings?.favoriteTeamIds ?? [];
   const favoriteCourtIds = app.state.settings?.favoriteCourtIds ?? [];
+  const favoriteRefereeIds = app.state.settings?.favoriteRefereeIds ?? [];
   const isFavoriteTeam = (team) => favoriteTeamIds.includes(team.id);
   const isFavoriteCourt = (court) => favoriteCourtIds.includes(court.id);
   const [draft, setDraft] = useState({
@@ -530,6 +531,12 @@ export default function CreateMatch({ app }) {
     [activePlayerIds, app.state.settings?.refereeAppointments, app.state.users],
   );
   const selectedReferee = refereeCandidates.find((user) => user.id === draft.refereeId) ?? null;
+  const favoriteReferees = useMemo(
+    () => favoriteRefereeIds
+      .map((userId) => refereeCandidates.find((user) => user.id === userId))
+      .filter(Boolean),
+    [favoriteRefereeIds, refereeCandidates],
+  );
   const refereeSearchResults = useMemo(() => {
     const query = refereeQuery.trim();
     return refereeCandidates.filter((user) => (
@@ -809,19 +816,30 @@ export default function CreateMatch({ app }) {
       };
     });
   };
-  const renderCourtSearchItem = (court) => (
-    <button
-      key={court.id}
-      type="button"
-      className={draft.court === court.name ? "search-picker-result-row selected" : "search-picker-result-row"}
-      onMouseDown={(event) => event.preventDefault()}
-      onClick={() => selectCourt(court)}
-    >
-      <strong>{court.name}</strong>
-      <span>{court.region} / {court.type} / {getCourtSurfaceLabel(court)} / {getCourtLayoutLabel(court)}</span>
-      <em>{getCourtHashtag(court)} · {isFavoriteCourt(court) ? "즐겨찾기" : "구장"}</em>
-    </button>
-  );
+  const renderCourtSearchItem = (court) => {
+    const favorite = isFavoriteCourt(court);
+    return (
+      <div
+        key={court.id}
+        className={draft.court === court.name ? "search-picker-result-row search-picker-result-row-actionable selected" : "search-picker-result-row search-picker-result-row-actionable"}
+        onMouseDown={(event) => event.preventDefault()}
+      >
+        <button type="button" className="search-picker-result-main" onClick={() => selectCourt(court)}>
+          <strong>{court.name}</strong>
+          <span>{court.region} / {court.type} / {getCourtSurfaceLabel(court)} / {getCourtLayoutLabel(court)}</span>
+          <em>{getCourtHashtag(court)} · {favorite ? "즐겨찾기" : "구장"}</em>
+        </button>
+        <button
+          type="button"
+          className={favorite ? "search-picker-result-action active" : "search-picker-result-action"}
+          aria-label={favorite ? "즐겨찾기 해제" : "즐겨찾기 추가"}
+          onClick={() => app.actions.toggleFavoriteCourt(court.id)}
+        >
+          <Star size={15} fill={favorite ? "currentColor" : "none"} />
+        </button>
+      </div>
+    );
+  };
   const renderCreateTeamSearchItem = (team) => {
     const invited = (draft.tournamentTeamIds ?? []).includes(team.id);
     const selected = isTournamentRoom ? invited : isPublicRoom ? draft.teamAId === team.id : draft.teamAId === team.id;
@@ -876,19 +894,30 @@ export default function CreateMatch({ app }) {
     update({ refereeWanted: false, refereeId: "" });
     setRefereeQuery("");
   };
-  const renderRefereeSearchItem = (user) => (
-    <button
-      key={user.id}
-      type="button"
-      className={user.id === draft.refereeId ? "search-picker-result-row selected" : "search-picker-result-row"}
-      onMouseDown={(event) => event.preventDefault()}
-      onClick={() => selectReferee(user)}
-    >
-      <strong>{user.name}</strong>
-      <span>{getUserHashtag(user)} · {user.position} · {user.region}</span>
-      <em>신뢰도 {user.trustScore} · {user.refereeProfile?.grade ?? user.refereeGrade ?? "심판"}</em>
-    </button>
-  );
+  const renderRefereeSearchItem = (user) => {
+    const favorite = favoriteRefereeIds.includes(user.id);
+    return (
+      <div
+        key={user.id}
+        className={user.id === draft.refereeId ? "search-picker-result-row search-picker-result-row-actionable selected" : "search-picker-result-row search-picker-result-row-actionable"}
+        onMouseDown={(event) => event.preventDefault()}
+      >
+        <button type="button" className="search-picker-result-main" onClick={() => selectReferee(user)}>
+          <strong>{user.name}</strong>
+          <span>{getUserHashtag(user)} · {user.position} · {user.region}</span>
+          <em>{favorite ? "즐겨찾기 · " : ""}신뢰도 {user.trustScore} · {user.refereeProfile?.grade ?? user.refereeGrade ?? "심판"}</em>
+        </button>
+        <button
+          type="button"
+          className={favorite ? "search-picker-result-action active" : "search-picker-result-action"}
+          aria-label={favorite ? "즐겨찾기 해제" : "즐겨찾기 추가"}
+          onClick={() => app.actions.toggleFavoriteReferee(user.id)}
+        >
+          <Star size={15} fill={favorite ? "currentColor" : "none"} />
+        </button>
+      </div>
+    );
+  };
   const submit = async (event) => {
     event.preventDefault();
     if (submitting) return;
@@ -1174,8 +1203,8 @@ export default function CreateMatch({ app }) {
                     }}
                     placeholder="심판 이름, #해시태그, 지역 검색"
                     items={refereeSearchResults}
-                    idleItems={refereeCandidates.slice(0, 8)}
-                    idleTitle="초대 가능한 심판"
+                    idleItems={favoriteReferees.length ? favoriteReferees : refereeCandidates.slice(0, 8)}
+                    idleTitle={favoriteReferees.length ? "즐겨찾기 심판" : "초대 가능한 심판"}
                     title="심판 검색 결과"
                     emptyText="초대 가능한 심판 없음"
                     showIdleOnFocus

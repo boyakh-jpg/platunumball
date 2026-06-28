@@ -114,6 +114,7 @@ export const DEFAULT_SETTINGS = {
   favoritePlayerIds: [],
   favoriteTeamIds: [],
   favoriteCourtIds: [],
+  favoriteRefereeIds: [],
   approvedCourts: [],
   courtRequests: [],
   courtReviews: [],
@@ -755,6 +756,7 @@ function normalizeSettings(settings = {}, options = {}) {
     favoritePlayerIds: settings.favoritePlayerIds ?? fallbackSettings.favoritePlayerIds ?? [],
     favoriteTeamIds: settings.favoriteTeamIds ?? fallbackSettings.favoriteTeamIds ?? [],
     favoriteCourtIds: settings.favoriteCourtIds ?? fallbackSettings.favoriteCourtIds ?? [],
+    favoriteRefereeIds: settings.favoriteRefereeIds ?? fallbackSettings.favoriteRefereeIds ?? [],
     approvedCourts: settings.approvedCourts ?? fallbackSettings.approvedCourts ?? [],
     courtRequests: settings.courtRequests ?? fallbackSettings.courtRequests ?? [],
     courtReviews: settings.courtReviews ?? fallbackSettings.courtReviews ?? [],
@@ -1701,6 +1703,7 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
     const scopedProfileIds = [
       ...privateProfiles.map((profile) => profile.id),
       ...favorites.filter((favorite) => favorite.target_type === "player").map((favorite) => favorite.target_id),
+      ...favorites.filter((favorite) => favorite.target_type === "referee").map((favorite) => favorite.target_id),
     ];
     const scopedTeamIds = favorites.filter((favorite) => favorite.target_type === "team").map((favorite) => favorite.target_id);
     const matchScope = collectMatchPageScope(matches, matchPlayers, matchResults, playerStats, agreements, approvals, disputes, scopedProfileIds);
@@ -1901,6 +1904,7 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
       favoritePlayerIds: favoriteRows.filter((favorite) => favorite.target_type === "player").map((favorite) => favorite.target_id),
       favoriteTeamIds: favoriteRows.filter((favorite) => favorite.target_type === "team").map((favorite) => favorite.target_id),
       favoriteCourtIds: favoriteRows.filter((favorite) => favorite.target_type === "court").map((favorite) => favorite.target_id),
+      favoriteRefereeIds: favoriteRows.filter((favorite) => favorite.target_type === "referee").map((favorite) => favorite.target_id),
       approvedCourts: approvedCourts.map(fromRemoteApprovedCourt),
       courtRequests: courtRequests.map(fromRemoteCourtRequest),
       courtReviews: courtReviews.map(fromRemoteCourtReview),
@@ -2272,6 +2276,7 @@ export async function saveNormalizedRemoteState(state, options = {}) {
     ...(state.settings?.favoritePlayerIds ?? []).map((targetId) => ({ user_id: currentUserId, target_type: "player", target_id: targetId })),
     ...(state.settings?.favoriteTeamIds ?? []).map((targetId) => ({ user_id: currentUserId, target_type: "team", target_id: targetId })),
     ...(state.settings?.favoriteCourtIds ?? []).map((targetId) => ({ user_id: currentUserId, target_type: "court", target_id: targetId })),
+    ...(state.settings?.favoriteRefereeIds ?? []).map((targetId) => ({ user_id: currentUserId, target_type: "referee", target_id: targetId })),
   ];
   const recruitingRows = (state.recruitingPosts ?? []).map((post) => ({
     id: post.id,
@@ -4915,11 +4920,24 @@ export function toggleFavoriteTeam(state, teamId) {
 }
 
 export function toggleFavoriteCourt(state, courtId) {
+  if (!getRegisteredCourts(state).some((court) => court.id === courtId)) return state;
   return {
     ...state,
     settings: normalizeSettings({
       ...(state.settings ?? {}),
       favoriteCourtIds: toggleId(state.settings?.favoriteCourtIds, courtId, FAVORITE_LIMIT),
+    }),
+  };
+}
+
+export function toggleFavoriteReferee(state, userId) {
+  const referee = state.users.find((user) => user.id === userId);
+  if (!referee || !isEligibleReferee(referee, REFEREE_TRUST_MIN, state.settings?.refereeAppointments)) return state;
+  return {
+    ...state,
+    settings: normalizeSettings({
+      ...(state.settings ?? {}),
+      favoriteRefereeIds: toggleId(state.settings?.favoriteRefereeIds, userId, FAVORITE_LIMIT),
     }),
   };
 }

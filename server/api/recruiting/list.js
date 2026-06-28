@@ -374,6 +374,7 @@ function compactRecruitingListState(state = {}, profileId = "") {
       favoritePlayerIds: state.settings?.favoritePlayerIds ?? [],
       favoriteTeamIds: state.settings?.favoriteTeamIds ?? [],
       favoriteCourtIds: state.settings?.favoriteCourtIds ?? [],
+      favoriteRefereeIds: state.settings?.favoriteRefereeIds ?? [],
       approvedCourts: state.settings?.approvedCourts ?? [],
       refereeAppointments: state.settings?.refereeAppointments ?? [],
     },

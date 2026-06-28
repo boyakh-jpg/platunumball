@@ -1339,39 +1339,56 @@ export function InvitePanel({
   const renderInviteSearchItem = (item) => {
     if (item.type === "team") {
       const team = item.team;
+      const favorite = favoriteTeamIds.includes(team.id);
       return (
-        <button
+        <div
           key={`team-${team.id}`}
-          type="button"
-          className="search-picker-result-row"
+          className="search-picker-result-row search-picker-result-row-actionable"
           onMouseDown={(event) => event.preventDefault()}
-          onClick={() => onQueryChange(getTeamHashtag(team))}
         >
-          <TeamHoverCard as="span" team={team}>
-            <strong>{team.name}</strong>
-          </TeamHoverCard>
-          <span>{getTeamHashtag(team)} · {team.mmr} MMR</span>
-          <em>팀</em>
-        </button>
+          <button type="button" className="search-picker-result-main" onClick={() => onQueryChange(getTeamHashtag(team))}>
+            <TeamHoverCard as="span" team={team}>
+              <strong>{team.name}</strong>
+            </TeamHoverCard>
+            <span>{getTeamHashtag(team)} · {team.mmr} MMR</span>
+            <em>팀</em>
+          </button>
+          <button
+            type="button"
+            className={favorite ? "search-picker-result-action active" : "search-picker-result-action"}
+            aria-label={favorite ? "즐겨찾기 해제" : "즐겨찾기 추가"}
+            onClick={() => onToggleFavoriteTeam(team.id)}
+          >
+            <Star size={15} fill={favorite ? "currentColor" : "none"} />
+          </button>
+        </div>
       );
     }
     const player = item.player;
     const disabled = disabledSet.has(player.id) || !isAllowedPlayer(player.id);
+    const favorite = favoritePlayerIds.includes(player.id);
     return (
-      <button
+      <div
         key={`player-${player.id}`}
-        type="button"
-        className="search-picker-result-row"
-        disabled={disabled}
+        className="search-picker-result-row search-picker-result-row-actionable"
         onMouseDown={(event) => event.preventDefault()}
-        onClick={() => onInvitePlayers([player.id], allowedTeamId || null)}
       >
-        <PlayerHoverCard as="span" user={player} teams={teams}>
-          <strong>{player.name}</strong>
-        </PlayerHoverCard>
-        <span>{getUserHashtag(player)} · {player.position}</span>
-        <em>{disabled ? "불가" : "초대"}</em>
-      </button>
+        <button type="button" className="search-picker-result-main" disabled={disabled} onClick={() => onInvitePlayers([player.id], allowedTeamId || null)}>
+          <PlayerHoverCard as="span" user={player} teams={teams}>
+            <strong>{player.name}</strong>
+          </PlayerHoverCard>
+          <span>{getUserHashtag(player)} · {player.position}</span>
+          <em>{disabled ? "불가" : "초대"}</em>
+        </button>
+        <button
+          type="button"
+          className={favorite ? "search-picker-result-action active" : "search-picker-result-action"}
+          aria-label={favorite ? "즐겨찾기 해제" : "즐겨찾기 추가"}
+          onClick={() => onToggleFavoritePlayer(player.id)}
+        >
+          <Star size={15} fill={favorite ? "currentColor" : "none"} />
+        </button>
+      </div>
     );
   };
 
@@ -1444,6 +1461,7 @@ function RefereeInvitePanel({
   query,
   onQueryChange,
   candidates,
+  favoriteRefereeIds = [],
   pendingInvitations,
   userById,
   matches,
@@ -1451,6 +1469,7 @@ function RefereeInvitePanel({
   canInvite,
   canJoin,
   onInviteReferee,
+  onToggleFavoriteReferee,
   onJoin,
 }) {
   const normalizedQuery = query.trim().toLowerCase();
@@ -1462,22 +1481,36 @@ function RefereeInvitePanel({
       ))
       .slice(0, 8)
     : [];
-  const idleItems = canInvite ? candidates.slice(0, 8) : [];
-  const renderRefereeSearchItem = (user) => (
-    <button
-      key={user.id}
-      type="button"
-      className="search-picker-result-row"
-      onMouseDown={(event) => event.preventDefault()}
-      onClick={() => onInviteReferee(user.id)}
-    >
-      <RefereeHoverCard as="span" user={user} matches={matches} minTrust={minTrust}>
-        <strong>{user.name}</strong>
-      </RefereeHoverCard>
-      <span>{getUserHashtag(user)} · 신뢰도 {user.trustScore}</span>
-      <em>초대</em>
-    </button>
-  );
+  const favoriteReferees = favoriteRefereeIds
+    .map((userId) => candidates.find((user) => user.id === userId))
+    .filter(Boolean);
+  const idleItems = canInvite ? (favoriteReferees.length ? favoriteReferees : candidates.slice(0, 8)) : [];
+  const renderRefereeSearchItem = (user) => {
+    const favorite = favoriteRefereeIds.includes(user.id);
+    return (
+      <div
+        key={user.id}
+        className="search-picker-result-row search-picker-result-row-actionable"
+        onMouseDown={(event) => event.preventDefault()}
+      >
+        <button type="button" className="search-picker-result-main" onClick={() => onInviteReferee(user.id)}>
+          <RefereeHoverCard as="span" user={user} matches={matches} minTrust={minTrust}>
+            <strong>{user.name}</strong>
+          </RefereeHoverCard>
+          <span>{getUserHashtag(user)} · 신뢰도 {user.trustScore}</span>
+          <em>초대</em>
+        </button>
+        <button
+          type="button"
+          className={favorite ? "search-picker-result-action active" : "search-picker-result-action"}
+          aria-label={favorite ? "즐겨찾기 해제" : "즐겨찾기 추가"}
+          onClick={() => onToggleFavoriteReferee?.(user.id)}
+        >
+          <Star size={15} fill={favorite ? "currentColor" : "none"} />
+        </button>
+      </div>
+    );
+  };
 
   return (
     <div className="arena-invite-panel arena-referee-invite-panel">
@@ -1500,7 +1533,7 @@ function RefereeInvitePanel({
           placeholder="심판 이름, #해시태그, 지역 검색"
           items={searchItems}
           idleItems={idleItems}
-          idleTitle="초대 가능한 심판"
+          idleTitle={favoriteReferees.length ? "즐겨찾기 심판" : "초대 가능한 심판"}
           showIdleOnFocus
           floating
           fieldClassName="arena-invite-search"
@@ -2093,6 +2126,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const activeSelfSlotDraftRaw = slotActionDraft?.postId === selectedPost.id ? slotActionDraft : null;
         const favoritePlayerIds = app.state.settings?.favoritePlayerIds ?? [];
         const favoriteTeamIds = app.state.settings?.favoriteTeamIds ?? [];
+        const favoriteRefereeIds = app.state.settings?.favoriteRefereeIds ?? [];
         const useSideNameHeader = selectedPost.visibility !== "private";
         const teamAMeta = getLobbySideMeta(lobby, "teamA", userById, { useSideName: useSideNameHeader });
         const teamBMeta = getLobbySideMeta(lobby, "teamB", userById, { useSideName: useSideNameHeader });
@@ -2569,6 +2603,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                     query={getRefereeInviteQuery(selectedPost)}
                     onQueryChange={(query) => updateRefereeInviteQuery(selectedPost, query)}
                     candidates={refereeInviteCandidates}
+                    favoriteRefereeIds={favoriteRefereeIds}
                     pendingInvitations={pendingRefereeInvitations}
                     userById={userById}
                     matches={app.state.matches}
@@ -2576,6 +2611,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                     canInvite={canInviteRefereeFromRoom}
                     canJoin={canJoinReferee && !mine && !matchRoom}
                     onInviteReferee={(refereeId) => app.actions.inviteRecruitingReferee(selectedPost.id, refereeId)}
+                    onToggleFavoriteReferee={(refereeId) => app.actions.toggleFavoriteReferee(refereeId)}
                     onJoin={() => app.actions.interestRecruitingPost(selectedPost.id, { joinMode: "referee" })}
                   />
                 ) : null}

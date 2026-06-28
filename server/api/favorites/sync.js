@@ -1,7 +1,16 @@
 import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import { FAVORITE_LIMIT } from "../../../src/data/repository.js";
+import { REFEREE_TRUST_MIN } from "../../../src/lib/constants.js";
 
-const TARGET_TYPES = new Set(["player", "team", "court"]);
+const TARGET_TYPES = new Set(["player", "team", "court", "referee"]);
+const REFEREE_GRADES = new Set(["official", "platinum", "gold", "silver", "candidate"]);
+
+function isActiveAppointment(appointment = {}, nowMs = Date.now()) {
+  if (appointment.status && appointment.status !== "active") return false;
+  const startsAt = appointment.starts_at ? new Date(appointment.starts_at).getTime() : 0;
+  const endsAt = appointment.ends_at ? new Date(appointment.ends_at).getTime() : 0;
+  return (!startsAt || startsAt <= nowMs) && (!endsAt || endsAt >= nowMs);
+}
 
 async function assertTargetExists(context, targetType, targetId) {
   if (targetType === "court") {
@@ -26,8 +35,9 @@ async function assertTargetExists(context, targetType, targetId) {
     throw targetError;
   }
 
-  const table = targetType === "player" ? "profiles" : "teams";
+  const table = targetType === "player" || targetType === "referee" ? "profiles" : "teams";
   let query = context.supabase.from(table).select("id").eq("id", targetId);
+  if (targetType === "referee") query = context.supabase.from(table).select("id, trust_score").eq("id", targetId).gte("trust_score", REFEREE_TRUST_MIN);
   if (targetType === "team") query = query.is("deleted_at", null);
   const { data, error } = await query.maybeSingle();
   if (error) throw error;
@@ -35,6 +45,20 @@ async function assertTargetExists(context, targetType, targetId) {
     const targetError = new Error("favorite_target_not_found");
     targetError.statusCode = 404;
     throw targetError;
+  }
+  if (targetType === "referee") {
+    const { data: appointments, error: appointmentError } = await context.supabase
+      .from("referee_appointments")
+      .select("grade, status, starts_at, ends_at")
+      .eq("user_id", targetId)
+      .eq("role", "referee");
+    if (appointmentError) throw appointmentError;
+    const qualified = (appointments ?? []).some((appointment) => REFEREE_GRADES.has(appointment.grade) && isActiveAppointment(appointment));
+    if (!qualified) {
+      const targetError = new Error("favorite_target_not_found");
+      targetError.statusCode = 404;
+      throw targetError;
+    }
   }
 }
 
