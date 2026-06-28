@@ -116,9 +116,6 @@ export default function Home({ app }) {
   const homeRefreshKeyRef = useRef("");
   const searchText = query.trim().toLowerCase();
   const approvalMatches = [...app.state.matches].filter((match) => userNeedsApproval(match, user.id));
-  const upcomingMatches = [...app.state.matches]
-    .filter((match) => ["locked", "checkin"].includes(getMatchRoomPhase(match).phase) && matchNeedsUserOperation(match, user.id))
-    .sort(compareSchedule);
   const completedMatches = [...app.state.matches].filter((match) => match.status === "confirmed");
   const myTeam = app.state.teams.find((team) => team.members.some((member) => member.userId === user.id));
   const teamById = useMemo(() => Object.fromEntries(app.state.teams.map((team) => [team.id, team])), [app.state.teams]);
@@ -128,6 +125,16 @@ export default function Home({ app }) {
     .sort((a, b) => Number(b.myRole === "captain") - Number(a.myRole === "captain") || b.mmr - a.mmr);
   const captainTeamIds = useMemo(() => myTeams.filter((team) => team.myRole === "captain").map((team) => team.id), [myTeams]);
   const myTeamIds = useMemo(() => myTeams.map((team) => team.id), [myTeams]);
+  const upcomingItems = useMemo(() => {
+    const matchItems = [...app.state.matches]
+      .filter((match) => ["locked", "checkin"].includes(getMatchRoomPhase(match).phase) && matchNeedsUserOperation(match, user.id))
+      .map((match) => ({ type: "match", id: `match-${match.id}`, item: match }));
+    const roomItems = [...(app.state.recruitingPosts ?? [])]
+      .filter((post) => post.status === "open")
+      .filter((post) => isRecruitingPostForUser(post, user.id, myTeamIds))
+      .map((post) => ({ type: "room", id: `room-${post.id}`, item: post }));
+    return [...matchItems, ...roomItems].sort((a, b) => compareSchedule(a.item, b.item));
+  }, [app.state.matches, app.state.recruitingPosts, myTeamIds, user.id]);
   const pendingInvitations = useMemo(() => getPendingRecruitingInvitations(app.state, user.id), [app.state, user.id]);
   const pendingTeamInvitations = useMemo(() => (app.state.teamInvitations ?? []).filter((invitation) => (
     invitation.targetUserId === user.id &&
@@ -581,11 +588,26 @@ export default function Home({ app }) {
                 <p className="eyebrow">Upcoming</p>
                 <h2>진행 예정 경기</h2>
               </div>
-              <Badge tone={upcomingMatches.length ? "orange" : "neutral"}>{upcomingMatches.length}개</Badge>
+              <Badge tone={upcomingItems.length ? "orange" : "neutral"}>{upcomingItems.length}개</Badge>
             </div>
-            {upcomingMatches.length ? (
+            {upcomingItems.length ? (
               <div className="match-stack">
-                {upcomingMatches.slice(0, 3).map((match) => <MatchCard key={match.id} match={match} teams={app.state.teams} courts={registeredCourts} />)}
+                {upcomingItems.slice(0, 3).map((entry) => {
+                  if (entry.type === "match") {
+                    return <MatchCard key={entry.id} match={entry.item} teams={app.state.teams} courts={registeredCourts} />;
+                  }
+                  const post = entry.item;
+                  return (
+                    <Link key={entry.id} to={`/app/recruiting?post=${post.id}`} className="home-action-row priority-1">
+                      <span className="home-action-icon"><CalendarDays size={18} /></span>
+                      <span className="home-action-main">
+                        <strong>{post.title}</strong>
+                        <em>{getRecruitingSchedule(post)} · {post.court}</em>
+                      </span>
+                      <b>모집방</b>
+                    </Link>
+                  );
+                })}
               </div>
             ) : (
               <div className="empty-state">예정 경기 없음</div>
