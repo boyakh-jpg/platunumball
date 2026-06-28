@@ -44,6 +44,7 @@
 1. Recruiting start-date filter uses one compact row of 8 buttons: instant plus 7 real calendar dates.
 2. Weekend date chips keep the same size as weekday chips; Saturday uses blue tone and Sunday uses red tone.
 3. The row must not force horizontal scrolling on mobile.
+4. Date chips keep a fixed upper width and use visible gaps instead of stretching across wide desktop rows. Recruiting filter selects and filter buttons use the same 42px minimum height.
 
 # RankBall Design System
 

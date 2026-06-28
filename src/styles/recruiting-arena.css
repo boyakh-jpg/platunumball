@@ -260,7 +260,7 @@
 
 .arena-filter-bar button {
   flex: 0 1 auto;
-  min-height: 36px;
+  min-height: 42px;
   border: 1px solid transparent;
   border-radius: 7px;
   background: rgba(255, 255, 255, 0.055);
@@ -291,7 +291,7 @@
 }
 
 .arena-filter-select select {
-  min-height: 36px;
+  min-height: 42px;
   border-radius: 7px;
   background: rgba(255, 255, 255, 0.055);
   font-size: 0.82rem;
@@ -309,9 +309,12 @@
 
 .arena-start-date-filter {
   display: grid;
-  grid-template-columns: repeat(8, minmax(0, 1fr));
-  gap: 5px;
-  flex: 1 1 100%;
+  grid-template-columns: repeat(8, minmax(34px, 72px));
+  justify-content: space-between;
+  gap: clamp(5px, 0.8vw, 10px);
+  flex: 0 1 760px;
+  max-width: 760px;
+  width: 100%;
   min-width: 0;
 }
 
@@ -321,6 +324,7 @@
   gap: 1px;
   min-width: 0;
   min-height: 42px;
+  max-width: 72px;
   padding: 3px 2px;
   text-align: center;
   line-height: 1.05;
@@ -3373,6 +3377,7 @@ html[data-theme="light"] .arena-recruit-card.arena-target-room {
 
 .arena-filter-bar .arena-start-date-filter button {
   min-height: 42px;
+  max-width: 72px;
   padding: 3px 2px;
 }
 
