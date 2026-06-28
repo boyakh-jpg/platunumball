@@ -3727,13 +3727,20 @@ begin
   region_key := public.rankball_room_feed_region_key(post_row.region);
   row_sort_at := coalesce(post_row.updated_at, post_row.created_at, now());
   owner_id := coalesce(nullif(post_row.room_state->>'ownerId', ''), nullif(post_row.player_id, ''));
-  court_display_name := post_row.court_name;
+  court_display_name := nullif(btrim(post_row.court_name), '');
 
   if court_display_name is null and post_row.court_id is not null then
-    select name into court_display_name
+    select nullif(btrim(name), '') into court_display_name
     from public.approved_courts
     where id = post_row.court_id
       and coalesce(status, 'active') = 'active';
+  end if;
+
+  if court_display_name is null and post_row.court_id is not null and to_regclass('public.courts') is not null then
+    execute 'select name from public.courts where id = $1 limit 1'
+    into court_display_name
+    using post_row.court_id;
+    court_display_name := nullif(btrim(court_display_name), '');
   end if;
 
   if owner_id is not null then
@@ -3964,13 +3971,20 @@ begin
 
   region_key := public.rankball_room_feed_region_key(match_row.rules->>'region');
   row_sort_at := coalesce(match_row.updated_at, match_row.ended_at, match_row.started_at, match_row.agreed_at, match_row.created_at, now());
-  court_display_name := match_row.court_name;
+  court_display_name := nullif(btrim(match_row.court_name), '');
 
   if court_display_name is null and match_row.court_id is not null then
-    select name into court_display_name
+    select nullif(btrim(name), '') into court_display_name
     from public.approved_courts
     where id = match_row.court_id
       and coalesce(status, 'active') = 'active';
+  end if;
+
+  if court_display_name is null and match_row.court_id is not null and to_regclass('public.courts') is not null then
+    execute 'select name from public.courts where id = $1 limit 1'
+    into court_display_name
+    using match_row.court_id;
+    court_display_name := nullif(btrim(court_display_name), '');
   end if;
 
   if match_row.team_a_id is not null then
@@ -6815,13 +6829,18 @@ begin
     execute 'drop policy if exists reports_insert_authenticated on public.reports';
     execute 'drop policy if exists reports_no_public_read on public.reports';
     execute 'drop policy if exists reports_admin_read on public.reports';
+    execute 'drop policy if exists reports_self_read on public.reports';
     if exists (
       select 1 from information_schema.columns
       where table_schema = 'public' and table_name = 'reports' and column_name = 'user_id'
     ) then
       execute 'create policy reports_insert_authenticated on public.reports for insert to authenticated with check (user_id = public.current_profile_id())';
     end if;
-    execute 'create policy reports_no_public_read on public.reports for select to authenticated using (false)';
+    execute 'create policy reports_self_read on public.reports for select to authenticated using (
+      user_id = public.current_profile_id()
+      or target_id = public.current_profile_id()
+      or coalesce(reported_user_ids, ''[]''::jsonb) @> jsonb_build_array(public.current_profile_id())
+    )';
     execute 'create policy reports_admin_read on public.reports for select to authenticated using (public.current_is_admin(30))';
   end if;
 end;

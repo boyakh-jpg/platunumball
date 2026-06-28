@@ -229,6 +229,17 @@ function normalizeUser(user = {}) {
   return { ...user, ratings: normalizeRatings(user.ratings) };
 }
 
+function normalizeTeam(team = {}) {
+  const source = team && typeof team === "object" ? team : {};
+  const members = Array.isArray(source.members) ? source.members : [];
+  return {
+    ...source,
+    members: members
+      .filter((member) => member && typeof member === "object" && member.userId)
+      .map((member) => ({ ...member, role: member.role ?? "regular" })),
+  };
+}
+
 function getProfileShellId(authUserId = "") {
   const safeId = String(authUserId || "pending").replace(/[^a-zA-Z0-9]/g, "").slice(0, 18) || "pending";
   return `p_${safeId}`;
@@ -644,36 +655,56 @@ function normalizeMatchParties(parties) {
   return Object.values(parties).filter((party) => party && typeof party === "object");
 }
 
-function normalizeMatch(match) {
+function normalizeMatchIdList(value) {
+  return Array.isArray(value) ? uniquePlayerIds(value) : [];
+}
+
+function normalizeMatchSide(side = {}, fallbackName = "") {
+  const source = side && typeof side === "object" ? side : {};
+  return {
+    ...source,
+    name: source.name ?? fallbackName,
+    teamId: source.teamId ?? "",
+    players: normalizeMatchIdList(source.players),
+    score: Number.isFinite(Number(source.score)) ? Number(source.score) : 0,
+  };
+}
+
+function normalizeMatch(match = {}) {
+  const source = match && typeof match === "object" ? match : {};
   const startedStatuses = ["agreed", "approval", "confirmed", "disputed", "void", "cancelled"];
-  const started = startedStatuses.includes(match.status);
-  const teamAPlayers = match.teamA?.players ?? [];
-  const teamBPlayers = match.teamB?.players ?? [];
-  const playedPlayerIds = match.playedPlayerIds ?? match.rules?.playedPlayerIds ?? {};
+  const started = startedStatuses.includes(source.status);
+  const teamA = normalizeMatchSide(source.teamA, "Team A");
+  const teamB = normalizeMatchSide(source.teamB, "Team B");
+  const teamAPlayers = teamA.players;
+  const teamBPlayers = teamB.players;
+  const playedPlayerIds = source.playedPlayerIds ?? source.rules?.playedPlayerIds ?? {};
   const normalizedPlayedPlayerIds = {
-    teamA: uniquePlayerIds(playedPlayerIds.teamA ?? []),
-    teamB: uniquePlayerIds(playedPlayerIds.teamB ?? []),
+    teamA: normalizeMatchIdList(playedPlayerIds.teamA),
+    teamB: normalizeMatchIdList(playedPlayerIds.teamB),
   };
 
   const normalized = {
-    ...match,
-    status: match.status ?? "contract",
-    agreements: match.agreements ?? {
+    ...source,
+    status: source.status ?? "contract",
+    teamA,
+    teamB,
+    agreements: source.agreements ?? {
       teamA: started ? [...teamAPlayers] : [],
       teamB: started ? [...teamBPlayers] : [],
     },
-    approvals: match.approvals ?? { teamA: [], teamB: [] },
-    disputes: match.disputes ?? [],
-    refereeId: match.refereeId ?? "",
-    refereeTrustMin: Number(match.refereeTrustMin ?? REFEREE_TRUST_MIN),
-    statRecorders: normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders),
-    statEntryMinutes: Number(match.statEntryMinutes ?? STAT_ENTRY_WINDOW_MINUTES),
-    disputeMinutes: normalizeDisputeMinutes(match),
-    trustFeedback: match.trustFeedback ?? {},
-    parties: normalizeMatchParties(match.parties ?? match.rules?.parties),
+    approvals: source.approvals ?? { teamA: [], teamB: [] },
+    disputes: source.disputes ?? [],
+    refereeId: source.refereeId ?? "",
+    refereeTrustMin: Number(source.refereeTrustMin ?? REFEREE_TRUST_MIN),
+    statRecorders: normalizeStatRecorders(source.statRecorders ?? source.rules?.statRecorders),
+    statEntryMinutes: Number(source.statEntryMinutes ?? STAT_ENTRY_WINDOW_MINUTES),
+    disputeMinutes: normalizeDisputeMinutes(source),
+    trustFeedback: source.trustFeedback ?? {},
+    parties: normalizeMatchParties(source.parties ?? source.rules?.parties),
     playedPlayerIds: normalizedPlayedPlayerIds,
     rules: {
-      ...(match.rules ?? {}),
+      ...(source.rules ?? {}),
       playedPlayerIds: normalizedPlayedPlayerIds,
     },
   };
@@ -795,7 +826,9 @@ export function normalizeState(state, options = {}) {
     ...state,
     deletedTeamIds: Array.from(deletedTeamIds),
     users: (includeDemo ? mergeById(state?.users, initialState.users) : state?.users ?? []).map(normalizeUser),
-    teams: (includeDemo ? mergeById(state?.teams, initialState.teams) : state?.teams ?? []).filter((team) => !deletedTeamIds.has(team.id)),
+    teams: (includeDemo ? mergeById(state?.teams, initialState.teams) : state?.teams ?? [])
+      .filter((team) => team && typeof team === "object" && !deletedTeamIds.has(team.id))
+      .map(normalizeTeam),
     affiliations: (includeDemo ? mergeById(state?.affiliations, initialState.affiliations) : state?.affiliations ?? []).filter((affiliation) => affiliation.type !== "club"),
     seasons: includeDemo ? mergeById(state?.seasons, initialState.seasons ?? []) : state?.seasons ?? [],
     matches: (includeDemo ? mergeById(state?.matches, initialState.matches) : state?.matches ?? []).map(normalizeMatch),

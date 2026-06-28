@@ -1346,6 +1346,7 @@ flowchart TD
 23. `addMatchLatePlayer`/`removeMatchLatePlayer` may use `rankball_match_late_player_action()` as a SQL reducer only for no-referee host-operated postgame matches inside the stat entry window. The SQL path only accepts a single anonymous late-player add or a single excluded late-player remove; registered late-player add and unsupported states fall back to the existing authoritative match action path.
 24. `/api/matches/list` default reads use `rankball_match_list()` / `user_room_feed.card_json` current-profile match cards first. It must not load `matches`, `match_players`, `public_profiles`, teams, or courts for the default card list when `card_json` is present. Full authoritative match state still belongs to `/api/matches/detail` or `listOnly=false`.
 25. Screen-specific server state such as `/api/profile/me`, `/api/matches/list`, `/api/recruiting/list`, and `/api/state/load` is normalized on the client before render so direct route entry receives the same base arrays/settings shape as other app routes.
+25-1. 클라이언트 정규화는 목록/방 컴포넌트 렌더 전에 `teams.members`를 배열로, `matches.teamA/teamB.players`를 기본 사이드 객체의 배열로 유지해야 한다.
 26. Match `parties` must be an array in client state. DB/API rows that carry `rules.parties` or `parties` as an object are normalized to an array before room/list helpers read them.
 27. Matches 화면은 idle `scope: "mine"` 모집 context load를 실행하지 않는다. 경기 메뉴 첫 화면은 current-profile match feed와 current-user open recruiting schedule만 명시적으로 로드한다.
 28. `/api/matches/list` can include current-user open recruiting schedule rows when explicitly requested, and `/app/matches` first load sends `includeRecruitingSchedule=true` so owned/joined/invited matching rooms appear in the match menu schedule.
@@ -1363,6 +1364,7 @@ flowchart TD
 
 1. Current-user report reads include rows where the profile is `user_id`, `target_id`, or inside `reported_user_ids`.
 2. `reported_user_ids` is read with JSON contains `[currentUserId]`, not PostREST array syntax.
+3. `reports_self_read` RLS는 인증 사용자가 신고자/대상자/신고 대상자에 해당하는 본인 관련 row만 읽게 한다. 더 넓은 신고 조회는 관리자 정책 또는 server action을 사용한다.
 
 ## 2026-06-27 recruiting confirm stale cache
 
@@ -1396,7 +1398,7 @@ flowchart TD
 
 1. `public_profiles`는 공개 표시용 프로필 컬럼만 제공한다. `school`, `company`, `club`, 테스트 로그인 ID와 Discord 연결 원본은 현재 사용자 private profile 또는 server action에서만 읽는다.
 2. `user_room_feed.profile_id='*'` 지역 공개 feed는 서버 API/service-role 전용 source다. 브라우저 RLS 직접 read는 현재 프로필 feed row만 허용한다.
-3. 구장 이름 fallback은 `courts`가 없으면 `approved_courts` active row를 사용한다. hidden/disabled approved court는 공개 목록 fallback에 쓰지 않는다.
+3. 구장 이름 fallback은 `court_name` -> `approved_courts` active row -> legacy `courts` 순서로 보정한다. hidden/disabled approved court는 공개 목록 fallback에 쓰지 않는다.
 
 ## 2026-06-27 remote mutation stale guard
 

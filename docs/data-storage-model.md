@@ -76,6 +76,8 @@
 
 ## 2026-06-26 dedicated server action write
 
+- `reports_self_read` RLS는 신고자, 대상자, `reported_user_ids` 포함 사용자만 본인 관련 신고 row를 읽게 한다. 전체 신고 큐는 관리자 정책 또는 server action 경로만 사용한다.
+
 - Supabase 설정 환경이면 browser가 전체 app state를 자동 저장하지 않는다.
 - `/api/supabase/bridge`, `VITE_ENABLE_SERVER_BRIDGE_WRITE`, `VITE_ENABLE_BULK_REMOTE_WRITE` 경로는 제거했다.
 - 신고 생성은 `POST /api/reports/submit`, 구장요청 신고는 `POST /api/court-requests/report`만 사용한다.
@@ -355,7 +357,7 @@ Remaining:
 
 - `public_profiles`는 공개 프로필 표시용 컬럼만 제공한다. `school`, `company`, `club`, `test_login_id`, `discord_connection`, `discord_user_id`, `auth_user_id`는 공개 view에 넣지 않는다.
 - `user_room_feed` 직접 RLS read는 현재 프로필 row만 허용한다. `profile_id='*'` 지역 공개 feed는 서버 API/service-role 경로에서만 읽는다.
-- `courts` 테이블이 없는 배포도 `approved_courts`로 구장 이름을 보정한다. 목록/상세 API는 `courts`와 `approved_courts`를 병합하되 hidden/disabled approved court는 공개 fallback에서 제외한다.
+- 구장 이름 fallback은 `court_name` -> `approved_courts` active row -> legacy `courts` 순서로 보정한다. 목록/상세 API는 `courts`와 `approved_courts`를 병합하되 hidden/disabled approved court는 공개 fallback에서 제외한다.
 - SPA fallback은 `/assets/*`에 적용하지 않는다. 오래된 hashed JS asset 요청은 `index.html`이 아니라 404가 되어야 한다.
 ## 2026-06-27 경기 유지보수 worker
 
