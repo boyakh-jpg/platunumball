@@ -123,6 +123,7 @@ async function handleInviteAction(interaction) {
     notifications: result.notifications,
     action: operation.action,
     body: operation,
+    expectedUpdatedAt: result.baseUpdatedAt ?? null,
   });
 
   return operation.action === "acceptRecruitingInvitation"

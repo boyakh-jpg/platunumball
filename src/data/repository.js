@@ -6233,8 +6233,8 @@ export function interestRecruitingPost(state, postId, application = {}) {
         notifications: [
           {
             id: makeId("n"),
-            title: "?ы뙋 李몄뿬 ?쒗븳",
-            body: "?ы뙋??紐⑥쭛 以묒씤 諛⑸쭔 ?ы뙋?쇰줈 李몄뿬?????덉뒿?덈떎.",
+            title: "심판 참여 제한",
+            body: "심판을 모집 중인 방만 심판으로 참여할 수 있습니다.",
             tone: "orange",
             recruitingPostId: postId,
           },
@@ -6285,7 +6285,7 @@ export function interestRecruitingPost(state, postId, application = {}) {
                 ...roomState,
                 refereeWanted: true,
                 invitations: roomState.invitations.filter((invitation) => (
-                  invitation.role !== "referee" || invitation.targetUserId !== state.currentUserId
+                  invitation.role !== "referee"
                 )),
               },
             }

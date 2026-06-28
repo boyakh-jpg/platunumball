@@ -276,7 +276,7 @@ export function applyAuthoritativeRecruitingOperation(state, operation = {}) {
     });
   }
 
-  return { nextState: next, post, createdMatch, notifications };
+  return { nextState: next, post, createdMatch, notifications, baseUpdatedAt: beforePost?.updatedAt ?? null };
 }
 
 export function applyAuthoritativeMatchOperation(state, operation = {}) {

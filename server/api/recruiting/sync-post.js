@@ -807,6 +807,7 @@ async function validateRefereeAction(supabase, profileId, existingPost, nextPost
     return;
   }
   if (action === "acceptRecruitingInvitation" && getPendingRefereeInvitation(profileId, existingPost, body.invitationId)) {
+    if ((nextPost.refereeId ?? null) === (existingPost?.referee_id ?? null)) return;
     if (existingPost?.referee_id) reject(403, "referee_already_assigned");
     if (nextPost.refereeId !== profileId) reject(403, "referee_assignment_mismatch");
     if (!(await isActiveReferee(supabase, profileId, minTrust))) reject(403, "referee_not_eligible");
@@ -817,7 +818,7 @@ async function validateRefereeAction(supabase, profileId, existingPost, nextPost
   }
 }
 
-export async function persistRecruitingPostSnapshot(context, { post, notifications = [], action = "sync", body = {} }) {
+export async function persistRecruitingPostSnapshot(context, { post, notifications = [], action = "sync", body = {}, expectedUpdatedAt = null }) {
   if (!post?.id) reject(400, "missing_recruiting_post");
   validateRecruitingPostShape(post);
 
@@ -856,7 +857,10 @@ export async function persistRecruitingPostSnapshot(context, { post, notificatio
   await validateRecruitingRosterEligibility(context.supabase, post);
   await validateAgeEligibility(context.supabase, context.profileId, existingPostSnapshot, post, actionBody);
 
-  const postRow = toRecruitingPostRow(post);
+  const postRow = {
+    ...toRecruitingPostRow(post),
+    ...(expectedUpdatedAt ? { __expectedUpdatedAt: expectedUpdatedAt } : {}),
+  };
   const applicationRows = toRecruitingApplicationRows(post);
   const notificationRows = toNotificationRows(notifications, context.profileId);
 
@@ -866,7 +870,6 @@ export async function persistRecruitingPostSnapshot(context, { post, notificatio
     p_post_row: postRow,
     p_application_rows: applicationRows,
     p_notification_rows: notificationRows,
-    p_expected_updated_at: existingPost?.updated_at ?? null,
   });
   if (persistError) {
     if (persistError.code === "40001" || String(persistError.message ?? "").includes("recruiting_stale_snapshot")) {
@@ -909,6 +912,7 @@ export default async function handler(request, response) {
     let notifications = body.notifications ?? [];
     let action = body.action ? String(body.action) : "sync";
     let createdMatch = null;
+    let replayResult = null;
 
     if (operation && shouldUseSqlRecruitingAction(operation)) {
       const sqlResult = await applySqlRecruitingAction(context, operation);
@@ -925,6 +929,7 @@ export default async function handler(request, response) {
     if (operation && (!post || operation.action === "createRecruitingPost" || shouldReplayRecruitingOperation(operation))) {
       const state = await loadAuthoritativeState(context, { operation });
       const result = applyAuthoritativeRecruitingOperation(state, operation);
+      replayResult = result;
       post = result.post;
       createdMatch = result.createdMatch;
       notifications = result.notifications;
@@ -937,7 +942,13 @@ export default async function handler(request, response) {
     const recruitingNotifications = createdMatch
       ? notifications.filter((notification) => !notification.matchId || notification.matchId !== createdMatch.id)
       : notifications;
-    const result = await persistRecruitingPostSnapshot(context, { post, notifications: recruitingNotifications, action, body: { ...body, ...(operation ?? {}) } });
+    const result = await persistRecruitingPostSnapshot(context, {
+      post,
+      notifications: recruitingNotifications,
+      action,
+      body: { ...body, ...(operation ?? {}) },
+      expectedUpdatedAt: operation ? replayResult?.baseUpdatedAt ?? null : null,
+    });
     if (createdMatch) {
       const matchNotifications = notifications.filter((notification) => notification.matchId === createdMatch.id);
       const matchResult = await persistMatchSnapshot(context, {
