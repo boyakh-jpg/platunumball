@@ -60,7 +60,12 @@ export default function TeamDetail({ app }) {
   const canManage = captain?.userId === app.currentUser.id;
   const regularMembers = team.members.filter((member) => !externalTeamRoles.has(member.role));
   const reserveMembers = team.members.filter((member) => externalTeamRoles.has(member.role));
-  const availableUsers = app.state.users.filter((user) => !team.members.some((member) => member.userId === user.id));
+  const pendingTeamInvitations = (app.state.teamInvitations ?? []).filter((invitation) => invitation.teamId === team.id && invitation.status === "pending");
+  const pendingTargetIds = new Set(pendingTeamInvitations.map((invitation) => invitation.targetUserId));
+  const availableUsers = app.state.users.filter((user) => (
+    !team.members.some((member) => member.userId === user.id) &&
+    !pendingTargetIds.has(user.id)
+  ));
   const firstAddableUser = availableUsers.find((user) => (membershipCounts.get(user.id) ?? 0) < MAX_TEAM_MEMBERSHIPS);
   const addUserId = availableUsers.some((user) => user.id === memberDraft.userId) ? memberDraft.userId : firstAddableUser?.id ?? availableUsers[0]?.id ?? "";
   const selectedCount = membershipCounts.get(addUserId) ?? 0;
@@ -111,10 +116,10 @@ export default function TeamDetail({ app }) {
     </Card>
   );
 
-  const addMember = (event) => {
+  const inviteMember = (event) => {
     event.preventDefault();
     if (!canAddMember) return;
-    app.actions.addTeamMember(team.id, { ...memberDraft, userId: addUserId });
+    app.actions.inviteTeamMember(team.id, addUserId);
     const nextUser = availableUsers.find((user) => user.id !== addUserId);
     setMemberDraft({ userId: nextUser?.id ?? app.state.users[0]?.id, role: "regular" });
   };
@@ -269,9 +274,9 @@ export default function TeamDetail({ app }) {
             </div>
             {canManage ? (
               <>
-                <form className="member-add-form" onSubmit={addMember}>
+                <form className="member-add-form" onSubmit={inviteMember}>
                   <label>
-                    추가할 선수
+                    초대할 선수
                     <select value={addUserId} onChange={(event) => setMemberDraft((current) => ({ ...current, userId: event.target.value }))}>
                       {availableUsers.map((user) => {
                         const count = membershipCounts.get(user.id) ?? 0;
@@ -283,16 +288,27 @@ export default function TeamDetail({ app }) {
                       })}
                     </select>
                   </label>
-                  <label>
-                    역할
-                    <select value={memberDraft.role} onChange={(event) => setMemberDraft((current) => ({ ...current, role: event.target.value }))}>
-                      {managedTeamRoleOptions.map(([role, label]) => <option key={role} value={role}>{label}</option>)}
-                    </select>
-                  </label>
-                  <Button type="submit" disabled={!canAddMember || !availableUsers.length}>팀원 추가</Button>
+                  <Button type="submit" disabled={!canAddMember || !availableUsers.length}>초대 발송</Button>
                   {teamFull ? <span className="form-warning">팀원은 최대 {MAX_TEAM_MEMBERS}명까지 등록할 수 있습니다.</span> : null}
                   {!teamFull && !canAddMember ? <span className="form-warning">선수 팀 한도 {MAX_TEAM_MEMBERSHIPS}/{MAX_TEAM_MEMBERSHIPS}</span> : null}
                 </form>
+                {pendingTeamInvitations.length ? (
+                  <div className="member-control-list">
+                    {pendingTeamInvitations.map((invitation) => {
+                      const user = userMap[invitation.targetUserId];
+                      return (
+                        <div key={invitation.id} className="member-control-row">
+                          <span>
+                            <strong>{user?.name ?? "초대 대상"}</strong>
+                            <small>초대 대기</small>
+                          </span>
+                          <Badge tone="orange">pending</Badge>
+                          <button type="button" onClick={() => app.actions.cancelTeamInvitation(invitation.id)}>취소</button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : null}
                 <div className="member-control-list">
                   {team.members.map((member) => {
                     const user = userMap[member.userId];

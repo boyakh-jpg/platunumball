@@ -247,6 +247,15 @@ begin
     raise exception 'team membership limit exceeded: max 3 teams per user';
   end if;
 
+  if (
+    select count(*)
+    from public.team_members
+    where team_id = new.team_id
+      and user_id <> new.user_id
+  ) >= 10 then
+    raise exception 'team member limit exceeded: max 10 members per team';
+  end if;
+
   return new;
 end;
 $$;
@@ -559,6 +568,47 @@ begin
       before insert or update of user_id, team_id on public.team_members
       for each row
       execute function public.enforce_team_membership_limit()
+    ';
+  end if;
+end;
+$$;
+
+do $$
+begin
+  if to_regclass('public.teams') is not null and to_regclass('public.profiles') is not null then
+    execute '
+      create table if not exists public.team_invitations (
+        id text primary key,
+        team_id text not null references public.teams(id) on delete cascade,
+        from_user_id text not null references public.profiles(id) on delete cascade,
+        target_user_id text not null references public.profiles(id) on delete cascade,
+        status text not null default ''pending'',
+        created_at timestamptz not null default now(),
+        updated_at timestamptz not null default now(),
+        constraint team_invitations_status_check check (status in (''pending'', ''accepted'', ''declined'', ''cancelled'', ''expired''))
+      )
+    ';
+    execute 'create index if not exists team_invitations_team_status_idx on public.team_invitations (team_id, status)';
+    execute 'create index if not exists team_invitations_target_status_idx on public.team_invitations (target_user_id, status)';
+    execute 'create unique index if not exists team_invitations_one_pending_target on public.team_invitations (team_id, target_user_id) where status = ''pending''';
+    execute 'alter table public.team_invitations enable row level security';
+    execute 'drop policy if exists team_invitations_related_read on public.team_invitations';
+    execute '
+      create policy team_invitations_related_read
+      on public.team_invitations
+      for select
+      to authenticated
+      using (
+        from_user_id = public.current_profile_id()
+        or target_user_id = public.current_profile_id()
+        or exists (
+          select 1
+          from public.team_members tm
+          where tm.team_id = team_invitations.team_id
+            and tm.user_id = public.current_profile_id()
+            and tm.role = ''captain''
+        )
+      )
     ';
   end if;
 end;
@@ -2057,6 +2107,10 @@ begin
     raise exception 'team_member_required' using errcode = '23502';
   end if;
 
+  if member_count > 10 then
+    raise exception 'team_members_limit_exceeded' using errcode = '23514';
+  end if;
+
   if captain_count = 0 or not actor_is_new_captain then
     raise exception 'team_captain_required' using errcode = '42501';
   end if;
@@ -2168,6 +2222,250 @@ begin
     'memberCount', member_count,
     'notificationCount', notification_count
   );
+end;
+$$;
+
+create or replace function public.rankball_invite_team_member(
+  p_actor_profile_id text,
+  p_team_id text,
+  p_target_user_id text,
+  p_invitation_id text default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  now_ts timestamptz := now();
+  safe_invitation_id text := coalesce(nullif(btrim(p_invitation_id), ''), 'ti_' || md5(random()::text || clock_timestamp()::text));
+  member_count integer;
+  target_team_count integer;
+  team_name text;
+begin
+  if nullif(btrim(p_actor_profile_id), '') is null or nullif(btrim(p_team_id), '') is null or nullif(btrim(p_target_user_id), '') is null then
+    raise exception 'missing_team_invitation_input' using errcode = '22023';
+  end if;
+
+  select t.name
+  into team_name
+  from public.teams t
+  where t.id = p_team_id
+    and t.deleted_at is null
+  for update;
+
+  if not found then
+    raise exception 'team_not_found' using errcode = 'P0002';
+  end if;
+
+  if not exists (
+    select 1
+    from public.team_members
+    where team_id = p_team_id
+      and user_id = p_actor_profile_id
+      and role = 'captain'
+  ) then
+    raise exception 'team_invite_permission_denied' using errcode = '42501';
+  end if;
+
+  if exists (
+    select 1
+    from public.team_members
+    where team_id = p_team_id
+      and user_id = p_target_user_id
+  ) then
+    raise exception 'team_member_already_exists' using errcode = '23505';
+  end if;
+
+  select count(*) into member_count from public.team_members where team_id = p_team_id;
+  if member_count >= 10 then
+    update public.team_invitations
+    set status = 'expired', updated_at = now_ts
+    where team_id = p_team_id
+      and status = 'pending';
+    raise exception 'team_members_limit_exceeded' using errcode = '23514';
+  end if;
+
+  select count(*) into target_team_count from public.team_members where user_id = p_target_user_id;
+  if target_team_count >= 3 then
+    raise exception 'team_membership_limit_exceeded' using errcode = '23514';
+  end if;
+
+  insert into public.team_invitations (
+    id, team_id, from_user_id, target_user_id, status, created_at, updated_at
+  )
+  values (
+    safe_invitation_id, p_team_id, p_actor_profile_id, p_target_user_id, 'pending', now_ts, now_ts
+  )
+  on conflict (team_id, target_user_id) where status = 'pending'
+  do update set
+    from_user_id = excluded.from_user_id,
+    updated_at = excluded.updated_at
+  returning id into safe_invitation_id;
+
+  insert into public.notifications (
+    id,
+    user_id,
+    target_user_id,
+    title,
+    body,
+    tone,
+    type,
+    invitation_id,
+    payload,
+    created_at,
+    updated_at
+  )
+  values (
+    'n_' || safe_invitation_id,
+    p_target_user_id,
+    p_target_user_id,
+    '팀 초대',
+    coalesce(team_name, '팀') || ' 팀 초대가 도착했습니다.',
+    'team',
+    'team_invite',
+    safe_invitation_id,
+    jsonb_build_object(
+      'id', 'n_' || safe_invitation_id,
+      'title', '팀 초대',
+      'body', coalesce(team_name, '팀') || ' 팀 초대가 도착했습니다.',
+      'tone', 'team',
+      'type', 'team_invite',
+      'teamId', p_team_id,
+      'teamInvitationId', safe_invitation_id,
+      'targetUserId', p_target_user_id
+    ),
+    now_ts,
+    now_ts
+  )
+  on conflict (id) do update set
+    body = excluded.body,
+    payload = excluded.payload,
+    updated_at = excluded.updated_at;
+
+  return jsonb_build_object('ok', true, 'teamId', p_team_id, 'invitationId', safe_invitation_id);
+end;
+$$;
+
+create or replace function public.rankball_respond_team_invitation(
+  p_actor_profile_id text,
+  p_invitation_id text,
+  p_action text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  now_ts timestamptz := now();
+  invitation_row public.team_invitations%rowtype;
+  member_count integer;
+  target_team_count integer;
+  actor_is_captain boolean := false;
+begin
+  if nullif(btrim(p_actor_profile_id), '') is null or nullif(btrim(p_invitation_id), '') is null then
+    raise exception 'missing_team_invitation_input' using errcode = '22023';
+  end if;
+
+  select *
+  into invitation_row
+  from public.team_invitations
+  where id = p_invitation_id
+  for update;
+
+  if not found then
+    raise exception 'team_invitation_not_found' using errcode = 'P0002';
+  end if;
+
+  select exists(
+    select 1
+    from public.team_members
+    where team_id = invitation_row.team_id
+      and user_id = p_actor_profile_id
+      and role = 'captain'
+  )
+  into actor_is_captain;
+
+  if p_action = 'cancel' then
+    if p_actor_profile_id <> invitation_row.from_user_id and not actor_is_captain then
+      raise exception 'team_invitation_cancel_denied' using errcode = '42501';
+    end if;
+    update public.team_invitations
+    set status = 'cancelled', updated_at = now_ts
+    where id = p_invitation_id
+      and status = 'pending';
+    return jsonb_build_object('ok', true, 'teamId', invitation_row.team_id, 'invitationId', p_invitation_id, 'status', 'cancelled');
+  end if;
+
+  if p_actor_profile_id <> invitation_row.target_user_id then
+    raise exception 'team_invitation_target_denied' using errcode = '42501';
+  end if;
+
+  if invitation_row.status <> 'pending' then
+    return jsonb_build_object('ok', true, 'teamId', invitation_row.team_id, 'invitationId', p_invitation_id, 'status', invitation_row.status);
+  end if;
+
+  if p_action = 'decline' then
+    update public.team_invitations
+    set status = 'declined', updated_at = now_ts
+    where id = p_invitation_id;
+    return jsonb_build_object('ok', true, 'teamId', invitation_row.team_id, 'invitationId', p_invitation_id, 'status', 'declined');
+  end if;
+
+  if p_action <> 'accept' then
+    raise exception 'invalid_team_invitation_action' using errcode = '22023';
+  end if;
+
+  perform 1 from public.teams where id = invitation_row.team_id and deleted_at is null for update;
+  if not found then
+    raise exception 'team_not_found' using errcode = 'P0002';
+  end if;
+
+  if exists (
+    select 1
+    from public.team_members
+    where team_id = invitation_row.team_id
+      and user_id = p_actor_profile_id
+  ) then
+    update public.team_invitations
+    set status = 'accepted', updated_at = now_ts
+    where id = p_invitation_id;
+    return jsonb_build_object('ok', true, 'teamId', invitation_row.team_id, 'invitationId', p_invitation_id, 'status', 'accepted');
+  end if;
+
+  select count(*) into member_count from public.team_members where team_id = invitation_row.team_id;
+  if member_count >= 10 then
+    update public.team_invitations
+    set status = 'expired', updated_at = now_ts
+    where team_id = invitation_row.team_id
+      and status = 'pending';
+    raise exception 'team_members_limit_exceeded' using errcode = '23514';
+  end if;
+
+  select count(*) into target_team_count from public.team_members where user_id = p_actor_profile_id;
+  if target_team_count >= 3 then
+    update public.team_invitations
+    set status = 'expired', updated_at = now_ts
+    where id = p_invitation_id;
+    raise exception 'team_membership_limit_exceeded' using errcode = '23514';
+  end if;
+
+  insert into public.team_members (team_id, user_id, role)
+  values (invitation_row.team_id, p_actor_profile_id, 'regular');
+
+  update public.team_invitations
+  set status = 'accepted', updated_at = now_ts
+  where id = p_invitation_id;
+
+  if member_count + 1 >= 10 then
+    update public.team_invitations
+    set status = 'expired', updated_at = now_ts
+    where team_id = invitation_row.team_id
+      and status = 'pending';
+  end if;
+
+  return jsonb_build_object('ok', true, 'teamId', invitation_row.team_id, 'invitationId', p_invitation_id, 'status', 'accepted', 'memberCount', member_count + 1);
 end;
 $$;
 
@@ -2308,8 +2606,12 @@ end;
 $$;
 
 revoke all on function public.rankball_sync_team_membership(text, jsonb, jsonb) from public;
+revoke all on function public.rankball_invite_team_member(text, text, text, text) from public;
+revoke all on function public.rankball_respond_team_invitation(text, text, text) from public;
 revoke all on function public.rankball_delete_team(text, text, jsonb) from public;
 grant execute on function public.rankball_sync_team_membership(text, jsonb, jsonb) to service_role;
+grant execute on function public.rankball_invite_team_member(text, text, text, text) to service_role;
+grant execute on function public.rankball_respond_team_invitation(text, text, text) to service_role;
 grant execute on function public.rankball_delete_team(text, text, jsonb) to service_role;
 
 create or replace function public.rankball_persist_recruiting_snapshot(

@@ -21,9 +21,17 @@ export default function Notifications({ app }) {
   const visibleNotifications = app.state.notifications.filter((notification) => !notification.targetUserId || notification.targetUserId === app.currentUser.id);
   const unreadCount = visibleNotifications.filter((notification) => !notification.readAt).length;
   const pendingInvitations = getPendingRecruitingInvitations(app.state, app.currentUser.id);
+  const pendingTeamInvitations = (app.state.teamInvitations ?? []).filter((invitation) => (
+    invitation.targetUserId === app.currentUser.id &&
+    invitation.status === "pending"
+  ));
   const acceptInvitation = (postId, invitationId) => {
     app.actions.acceptRecruitingInvitation(postId, invitationId);
     navigate(`/app/recruiting?post=${postId}`);
+  };
+  const acceptTeamInvite = (invitation) => {
+    app.actions.acceptTeamInvitation(invitation.id);
+    navigate(`/app/teams/${invitation.teamId}`);
   };
 
   return (
@@ -60,6 +68,36 @@ export default function Notifications({ app }) {
                 </span>
               </div>
             ))}
+          </div>
+        </Card>
+      ) : null}
+      {pendingTeamInvitations.length ? (
+        <Card className="section-card notification-invitation-card">
+          <div className="section-title-row">
+            <div>
+              <p className="eyebrow">Team Invitations</p>
+              <h2>받은 팀 초대</h2>
+            </div>
+            <Badge tone="green">{pendingTeamInvitations.length}개</Badge>
+          </div>
+          <div className="home-invitation-list">
+            {pendingTeamInvitations.map((invitation) => {
+              const team = app.state.teams.find((item) => item.id === invitation.teamId);
+              const sender = app.state.users.find((user) => user.id === invitation.fromUserId);
+              return (
+                <div key={invitation.id} className="home-invitation-row">
+                  <span className="home-action-main">
+                    <strong>{team?.name ?? "팀 초대"}</strong>
+                    <em>{sender?.name ?? "주장"} · 팀 가입 초대</em>
+                  </span>
+                  <span className="home-invitation-actions">
+                    <Button size="sm" type="button" onClick={() => acceptTeamInvite(invitation)}>수락</Button>
+                    <Button size="sm" type="button" variant="secondary" onClick={() => app.actions.declineTeamInvitation(invitation.id)}>거절</Button>
+                    <Link className="button button-secondary button-sm" to={`/app/teams/${invitation.teamId}`}>팀 보기</Link>
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </Card>
       ) : null}

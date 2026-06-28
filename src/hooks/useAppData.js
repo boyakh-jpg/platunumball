@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   addTeamMember,
+  acceptTeamInvitation,
   addMatchLatePlayer,
   acceptRecruitingInvitation,
   agreeMatch,
@@ -23,6 +24,7 @@ import {
   createTournament,
   deleteTeam,
   detachRecruitingPartyPlayer,
+  declineTeamInvitation,
   declineRecruitingInvitation,
   disputeMatch,
   endMatch,
@@ -69,12 +71,14 @@ import {
   subscribeRemoteState,
   syncNotificationDeliveries,
   removeTeamMember,
+  cancelTeamInvitation,
   toggleFavoriteCourt,
   toggleFavoritePlayer,
   toggleFavoriteTeam,
   toggleMatchStar,
   updateSettings,
   updateTeamMemberRole,
+  inviteTeamMember,
   updateMatchRoomRules,
   updateTournamentMatchSchedule,
   updatePrivacySettings,
@@ -955,6 +959,10 @@ export function useAppData(authUser = null) {
     if (!deletedTeamId) return Promise.resolve(false);
     return runServerAction("/api/teams/sync-team", { deletedTeamId, notifications });
   }, [runServerAction]);
+  const syncTeamInvitationServer = useCallback((teamInviteAction, payload = {}) => {
+    if (!teamInviteAction) return Promise.resolve(false);
+    return runServerAction("/api/teams/sync-team", { teamInviteAction, ...payload });
+  }, [runServerAction]);
   const syncTournamentServer = useCallback((tournament, notifications = [], meta = {}) => {
     if (!tournament?.id) return Promise.resolve(false);
     const operation = getServerOperation(meta);
@@ -1436,6 +1444,21 @@ export function useAppData(authUser = null) {
           return next;
         });
         if (syncedTeam) rollbackIfServerFailed(syncTeamServer(syncedTeam, syncedNotifications), rollbackState, "팀 변경", { teamId });
+      };
+      const applyTeamInvitationMutation = async (label, reducer, action, payloadFactory) => {
+        const serverReady = await ensureServerActionAvailable("/api/teams/sync-team", label);
+        if (serverReady !== true) return serverReady;
+        if (!ensureRemoteReady(label)) return;
+        let rollbackState = null;
+        let nextStateSnapshot = null;
+        setState((prev) => {
+          rollbackState = prev;
+          const next = reducer(prev);
+          nextStateSnapshot = next;
+          return next;
+        });
+        const payload = payloadFactory?.(rollbackState, nextStateSnapshot) ?? {};
+        rollbackIfServerFailed(syncTeamInvitationServer(action, payload), rollbackState, label, { action, ...payload });
       };
 
       return ({
@@ -1951,12 +1974,44 @@ export function useAppData(authUser = null) {
       },
       closeRecruitingPost: (postId) => applyRecruitingPostMutation(postId, (prev) => closeRecruitingPost({ ...prev, currentUserId }, postId), { action: "closeRecruitingPost" }),
       addTeamMember: (teamId, draft) => applyTeamMutation(teamId, (prev) => addTeamMember({ ...prev, currentUserId }, teamId, draft)),
+      inviteTeamMember: (teamId, targetUserId) => applyTeamInvitationMutation(
+        "팀 초대",
+        (prev) => inviteTeamMember({ ...prev, currentUserId }, teamId, targetUserId),
+        "invite",
+        (_before, after) => {
+          const invitation = (after.teamInvitations ?? []).find((item) => (
+            item.teamId === teamId &&
+            item.targetUserId === targetUserId &&
+            item.fromUserId === currentUserId &&
+            item.status === "pending"
+          ));
+          return { teamId, targetUserId, invitationId: invitation?.id };
+        },
+      ),
+      acceptTeamInvitation: (invitationId) => applyTeamInvitationMutation(
+        "팀 초대 수락",
+        (prev) => acceptTeamInvitation({ ...prev, currentUserId }, invitationId),
+        "accept",
+        () => ({ invitationId }),
+      ),
+      declineTeamInvitation: (invitationId) => applyTeamInvitationMutation(
+        "팀 초대 거절",
+        (prev) => declineTeamInvitation({ ...prev, currentUserId }, invitationId),
+        "decline",
+        () => ({ invitationId }),
+      ),
+      cancelTeamInvitation: (invitationId) => applyTeamInvitationMutation(
+        "팀 초대 취소",
+        (prev) => cancelTeamInvitation({ ...prev, currentUserId }, invitationId),
+        "cancel",
+        () => ({ invitationId }),
+      ),
       updateTeamMemberRole: (teamId, userId, role) => applyTeamMutation(teamId, (prev) => updateTeamMemberRole({ ...prev, currentUserId }, teamId, userId, role)),
       removeTeamMember: (teamId, userId) => applyTeamMutation(teamId, (prev) => removeTeamMember({ ...prev, currentUserId }, teamId, userId)),
       reset: () => setState(resetState({ includeDemo: !isSupabaseConfigured, authUserId, email: authEmail })),
       });
     },
-    [authEmail, authUserId, currentUserId, deleteTeamServer, ensureRemoteReady, ensureServerActionAvailable, loadAdminContext, loadDirectory, loadMatchDetail, loadMatchRecruitingSchedule, loadMoreMatches, loadMoreRecruiting, loadRecruitingRegion, loadRecruitingPost, loadMyRecruitingPosts, loadRecorderMatches, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, runServerAction, serverProfileBound, submitReportServer, syncFavoriteServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncSettingsServer, syncTeamServer, syncTournamentServer],
+    [authEmail, authUserId, currentUserId, deleteTeamServer, ensureRemoteReady, ensureServerActionAvailable, loadAdminContext, loadDirectory, loadMatchDetail, loadMatchRecruitingSchedule, loadMoreMatches, loadMoreRecruiting, loadRecruitingRegion, loadRecruitingPost, loadMyRecruitingPosts, loadRecorderMatches, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, runServerAction, serverProfileBound, submitReportServer, syncFavoriteServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncSettingsServer, syncTeamInvitationServer, syncTeamServer, syncTournamentServer],
   );
 
   const safeCurrentUserId = currentUserId ?? currentUser?.id ?? "";

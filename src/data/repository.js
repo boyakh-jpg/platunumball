@@ -128,6 +128,7 @@ const EMPTY_STATE = {
   deletedTeamIds: [],
   users: [],
   teams: [],
+  teamInvitations: [],
   affiliations: [],
   seasons: [],
   matches: [],
@@ -153,6 +154,7 @@ const PRIVATE_PROFILE_COLUMNS = "id,name,handle,region,school,company,club,trust
 const PROFILE_SETTINGS_COLUMNS = "id,app_settings";
 const TEAM_COLUMNS = "id,name,home_court,region,mmr,wins,losses,accent,deleted_at,updated_at,created_at";
 const TEAM_MEMBER_COLUMNS = "team_id,user_id,role";
+const TEAM_INVITATION_COLUMNS = "id,team_id,from_user_id,target_user_id,status,created_at,updated_at";
 const COURT_COLUMNS = "id,name";
 const MATCH_COLUMNS = "id,title,mode,court_id,court_name,visibility,status,ranked,mmr_limit_mode,trust_feedback,referee_id,former_referee_id,referee_trust_min,stat_entry_minutes,dispute_minutes,stat_recorders,played_player_ids,reserve_players,promoted_reserve_ids,attendance,referee_absence_request,dispute_draft_result,dispute_draft_updated_at,dispute_resolved_at,mmr_excluded_player_ids,anonymous_players,tournament_id,tournament_format,tournament_round,tournament_fixture,tournament_mmr_policy,official,pre_registered,scheduled_at,scheduled_date,scheduled_time,team_a_id,team_b_id,score_a,score_b,rules,memo,stakes,objection_window,evidence,created_by,created_at,agreed_at,started_at,ended_at,confirmed_at,cancelled_at,voided_at,rating_result,team_rating_result,updated_at";
 const MATCH_PLAYER_COLUMNS = "match_id,team_id,user_id,side,slot_order";
@@ -830,6 +832,7 @@ export function normalizeState(state, options = {}) {
     teams: (includeDemo ? mergeById(state?.teams, initialState.teams) : state?.teams ?? [])
       .filter((team) => team && typeof team === "object" && !deletedTeamIds.has(team.id))
       .map(normalizeTeam),
+    teamInvitations: state?.teamInvitations ?? (includeDemo ? initialState.teamInvitations ?? [] : []),
     affiliations: (includeDemo ? mergeById(state?.affiliations, initialState.affiliations) : state?.affiliations ?? []).filter((affiliation) => affiliation.type !== "club"),
     seasons: includeDemo ? mergeById(state?.seasons, initialState.seasons ?? []) : state?.seasons ?? [],
     matches: (includeDemo ? mergeById(state?.matches, initialState.matches) : state?.matches ?? []).map(normalizeMatch),
@@ -1084,6 +1087,18 @@ function fromRemoteNotification(row = {}) {
     readAt: row.read_at ?? payload.readAt ?? null,
     createdAt: row.created_at ?? payload.createdAt,
     updatedAt: row.updated_at ?? payload.updatedAt,
+  };
+}
+
+function fromRemoteTeamInvitation(row = {}) {
+  return {
+    id: row.id,
+    teamId: row.team_id,
+    fromUserId: row.from_user_id,
+    targetUserId: row.target_user_id,
+    status: row.status ?? "pending",
+    createdAt: row.created_at,
+    updatedAt: row.updated_at ?? row.created_at,
   };
 }
 
@@ -1522,7 +1537,7 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
   const shellUser = authUserIdText && !testLoginId && !currentProfile ? createProfileShell(authUserIdText, authEmail) : null;
   const currentUserId = currentProfile?.id ?? shellUser?.id ?? profiles[0]?.id ?? "";
   const isAdminStateLoad = options.isAdmin === true;
-  const [favorites, notifications, discordNotificationDeliveries, profileSettingsRows] = await Promise.all([
+  const [favorites, notifications, discordNotificationDeliveries, profileSettingsRows, teamInvitations] = await Promise.all([
     includeUserScoped && currentUserId
       ? fetchFilteredRows("favorites", FAVORITE_COLUMNS, null, client, (query) => query.eq("user_id", currentUserId))
       : [],
@@ -1535,6 +1550,10 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
       : [],
     includeProfileSettings && currentUserId
       ? fetchOptionalFilteredRows("profiles", PROFILE_SETTINGS_COLUMNS, null, client, (query) => query.eq("id", currentUserId))
+      : [],
+    includeUserScoped && currentUserId
+      ? fetchOptionalFilteredRows("team_invitations", TEAM_INVITATION_COLUMNS, "created_at", client, (query) => query
+        .or(`from_user_id.eq.${currentUserId},target_user_id.eq.${currentUserId}`))
       : [],
   ]);
   const [
@@ -1737,6 +1756,7 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
     deletedTeamIds,
     users: shellUser ? [...remoteUsers, shellUser] : remoteUsers,
     teams: remoteTeams,
+    teamInvitations: teamInvitations.map(fromRemoteTeamInvitation),
     matches: remoteMatches,
     affiliations: affiliations
       .filter((affiliation) => affiliation.type !== "club")
@@ -1897,6 +1917,7 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
       getMaxUpdatedAt(matches),
       getMaxUpdatedAt(recruitingPosts),
       getMaxUpdatedAt(tournaments),
+      getMaxUpdatedAt(teamInvitations),
       getMaxUpdatedAt(courtRequests),
       getMaxUpdatedAt(approvedCourts),
       getMaxUpdatedAt(courtReviews),
@@ -8941,6 +8962,163 @@ export function addTeamMember(state, teamId, memberDraft) {
         ? { ...item, members: [...item.members, { userId, role: "regular" }] }
         : item,
     ),
+  };
+}
+
+function expirePendingTeamInvitations(teamInvitations = [], teamId, updatedAt) {
+  return (teamInvitations ?? []).map((invitation) => (
+    invitation.teamId === teamId && invitation.status === "pending"
+      ? { ...invitation, status: "expired", updatedAt }
+      : invitation
+  ));
+}
+
+function getTeamInvitation(state, invitationId) {
+  return (state.teamInvitations ?? []).find((invitation) => invitation.id === invitationId) ?? null;
+}
+
+export function inviteTeamMember(state, teamId, targetUserId) {
+  const team = state.teams.find((item) => item.id === teamId);
+  if (!team || !targetUserId || team.members.some((member) => member.userId === targetUserId)) return state;
+  const captain = team.members.find((member) => member.role === "captain");
+  if (captain?.userId !== state.currentUserId) {
+    return {
+      ...state,
+      notifications: [
+        { id: makeId("n"), title: "팀 초대 권한 없음", body: "주장만 팀원을 초대할 수 있습니다.", tone: "team" },
+        ...state.notifications,
+      ],
+    };
+  }
+  if (team.members.length >= MAX_TEAM_MEMBERS) {
+    return {
+      ...state,
+      teamInvitations: expirePendingTeamInvitations(state.teamInvitations, teamId, new Date().toISOString()),
+      notifications: [
+        { id: makeId("n"), title: "팀 초대 제한", body: `팀원은 최대 ${MAX_TEAM_MEMBERS}명까지 등록할 수 있습니다.`, tone: "team" },
+        ...state.notifications,
+      ],
+    };
+  }
+  const membershipCount = state.teams.filter((item) => item.members.some((member) => member.userId === targetUserId)).length;
+  if (membershipCount >= MAX_TEAM_MEMBERSHIPS) {
+    return {
+      ...state,
+      notifications: [
+        { id: makeId("n"), title: "팀 초대 제한", body: `상대가 이미 팀 한도 ${MAX_TEAM_MEMBERSHIPS}/${MAX_TEAM_MEMBERSHIPS}에 도달했습니다.`, tone: "team" },
+        ...state.notifications,
+      ],
+    };
+  }
+  const existingPending = (state.teamInvitations ?? []).some((invitation) => (
+    invitation.teamId === teamId &&
+    invitation.targetUserId === targetUserId &&
+    invitation.status === "pending"
+  ));
+  if (existingPending) {
+    return {
+      ...state,
+      notifications: [
+        { id: makeId("n"), title: "팀 초대 대기 중", body: "이미 보낸 팀 초대가 대기 중입니다.", tone: "team" },
+        ...state.notifications,
+      ],
+    };
+  }
+  const now = new Date().toISOString();
+  const invitation = {
+    id: makeId("ti"),
+    teamId,
+    fromUserId: state.currentUserId,
+    targetUserId,
+    status: "pending",
+    createdAt: now,
+    updatedAt: now,
+  };
+  return {
+    ...state,
+    teamInvitations: [invitation, ...(state.teamInvitations ?? [])],
+    notifications: [
+      {
+        id: makeId("n"),
+        title: "팀 초대",
+        body: `${team.name} 팀 초대가 도착했습니다.`,
+        tone: "team",
+        type: "team_invite",
+        teamId,
+        teamInvitationId: invitation.id,
+        targetUserId,
+        createdAt: now,
+        updatedAt: now,
+      },
+      ...state.notifications,
+    ],
+  };
+}
+
+export function acceptTeamInvitation(state, invitationId) {
+  const invitation = getTeamInvitation(state, invitationId);
+  if (!invitation || invitation.status !== "pending" || invitation.targetUserId !== state.currentUserId) return state;
+  const team = state.teams.find((item) => item.id === invitation.teamId);
+  if (!team || team.members.some((member) => member.userId === state.currentUserId)) return state;
+  const now = new Date().toISOString();
+  if (team.members.length >= MAX_TEAM_MEMBERS) {
+    return {
+      ...state,
+      teamInvitations: expirePendingTeamInvitations(state.teamInvitations, team.id, now),
+      notifications: [
+        { id: makeId("n"), title: "팀 초대 만료", body: `${team.name} 팀 정원이 가득 찼습니다.`, tone: "team" },
+        ...state.notifications,
+      ],
+    };
+  }
+  const membershipCount = state.teams.filter((item) => item.members.some((member) => member.userId === state.currentUserId)).length;
+  if (membershipCount >= MAX_TEAM_MEMBERSHIPS) {
+    return {
+      ...state,
+      teamInvitations: (state.teamInvitations ?? []).map((item) => item.id === invitationId ? { ...item, status: "expired", updatedAt: now } : item),
+      notifications: [
+        { id: makeId("n"), title: "팀 가입 제한", body: `팀 한도 ${MAX_TEAM_MEMBERSHIPS}/${MAX_TEAM_MEMBERSHIPS}`, tone: "team" },
+        ...state.notifications,
+      ],
+    };
+  }
+  const nextMemberCount = team.members.length + 1;
+  const nextInvitations = (state.teamInvitations ?? []).map((item) => (
+    item.id === invitationId ? { ...item, status: "accepted", updatedAt: now } : item
+  ));
+  return {
+    ...state,
+    teams: state.teams.map((item) => (
+      item.id === team.id ? { ...item, members: [...item.members, { userId: state.currentUserId, role: "regular" }] } : item
+    )),
+    teamInvitations: nextMemberCount >= MAX_TEAM_MEMBERS ? expirePendingTeamInvitations(nextInvitations, team.id, now) : nextInvitations,
+    notifications: [
+      { id: makeId("n"), title: "팀 가입 완료", body: `${team.name} 팀에 가입했습니다.`, tone: "team", teamId: team.id, createdAt: now, updatedAt: now },
+      ...state.notifications,
+    ],
+  };
+}
+
+export function declineTeamInvitation(state, invitationId) {
+  const invitation = getTeamInvitation(state, invitationId);
+  if (!invitation || invitation.status !== "pending" || invitation.targetUserId !== state.currentUserId) return state;
+  const now = new Date().toISOString();
+  return {
+    ...state,
+    teamInvitations: (state.teamInvitations ?? []).map((item) => item.id === invitationId ? { ...item, status: "declined", updatedAt: now } : item),
+  };
+}
+
+export function cancelTeamInvitation(state, invitationId) {
+  const invitation = getTeamInvitation(state, invitationId);
+  if (!invitation || invitation.status !== "pending") return state;
+  const team = state.teams.find((item) => item.id === invitation.teamId);
+  const captain = team?.members.find((member) => member.role === "captain");
+  if (invitation.fromUserId !== state.currentUserId && captain?.userId !== state.currentUserId) return state;
+  const now = new Date().toISOString();
+  return {
+    ...state,
+    teamInvitations: (state.teamInvitations ?? []).map((item) => item.id === invitationId ? { ...item, status: "cancelled", updatedAt: now } : item),
   };
 }
 

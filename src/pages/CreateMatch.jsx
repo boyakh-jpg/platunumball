@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Globe2, Lock, Trophy } from "lucide-react";
+import { Globe2, Lock, Star, Trophy } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
@@ -293,7 +293,8 @@ function SideRosterPicker({
           );
         })}
       </div>
-      {requiredActive && activeIds.length < capacity ? <em>팀전은 출전 슬롯을 모두 채워야 확정할 수 있습니다.</em> : null}
+      {memberIds.length < capacity ? <em>{team.name} 팀은 출전 가능 팀원이 {memberIds.length}명이라 {capacity}명을 채울 수 없습니다.</em> : null}
+      {requiredActive && memberIds.length >= capacity && activeIds.length < capacity ? <em>팀전은 출전 슬롯 {capacity}명을 모두 채워야 확정할 수 있습니다.</em> : null}
     </div>
   );
 }
@@ -597,6 +598,19 @@ export default function CreateMatch({ app }) {
       : draft.teamOnly && publicPartyPlayerIds.length < sideCapacity
         ? `팀 전용 공개방은 A사이드 출전 슬롯 ${sideCapacity}명을 모두 채워야 생성할 수 있습니다.`
         : "";
+  const privateTeamInvalidReason = !ownsSelectedTeamA
+    ? "팀전은 내 팀을 A사이드로 선택해야 만들 수 있습니다."
+    : !selectedTeamB
+      ? "B사이드 상대 팀을 검색해서 선택해야 합니다."
+      : selectedTeamA?.id === selectedTeamB.id
+        ? "A/B사이드는 서로 다른 팀이어야 합니다."
+        : privateTeamDuplicate
+          ? "A/B사이드 출전 선수는 중복될 수 없습니다."
+          : publicPartyPlayerIds.length < sideCapacity
+            ? `A사이드 출전 슬롯 ${sideCapacity}명을 채워야 합니다.`
+            : opponentPartyPlayerIds.length < sideCapacity
+              ? `B사이드 출전 슬롯 ${sideCapacity}명을 채워야 합니다.`
+              : "";
   const tournamentInvalidReason = !draft.title.trim()
     ? "대회 이름을 입력해야 생성할 수 있습니다."
     : tournamentTeams.length < 2
@@ -618,9 +632,7 @@ export default function CreateMatch({ app }) {
         : ageRestrictionBlocked
           ? "생성자가 선택한 연령 제한 밖입니다. 연령 제한을 바꾸면 생성할 수 있습니다."
           : privateTeamInvalid
-          ? !ownsSelectedTeamA
-            ? "팀전은 내 팀을 A사이드로 선택해야 만들 수 있습니다."
-            : "팀전은 A/B사이드 출전 슬롯이 모두 채워져야 생성할 수 있습니다."
+          ? privateTeamInvalidReason || "팀전은 A/B사이드 출전 슬롯이 모두 채워져야 생성할 수 있습니다."
           : isTournamentRoom && tournamentInvalidReason
             ? tournamentInvalidReason
             : isPublicRoom && publicTeamInvalidReason
@@ -833,18 +845,27 @@ export default function CreateMatch({ app }) {
   };
   const renderOpponentTeamSearchItem = (team) => {
     const mmrBlocked = draft.mmrLimitMode === "block" && draft.ranked && selectedTeamA && !isMmrInRecruitingRange(team.mmr, selectedTeamA.mmr, true, draft.mmrRangeMode);
+    const favorite = favoriteTeamIds.includes(team.id);
     return (
-      <button
+      <div
         key={team.id}
-        type="button"
-        className={team.id === draft.teamBId ? "search-picker-result-row selected" : "search-picker-result-row"}
+        className={team.id === draft.teamBId ? "search-picker-result-row search-picker-result-row-actionable selected" : "search-picker-result-row search-picker-result-row-actionable"}
         onMouseDown={(event) => event.preventDefault()}
-        onClick={() => selectTeamB(team.id)}
       >
-        <TeamHoverCard team={team} as="span"><strong>{team.name}</strong></TeamHoverCard>
-        <span>{team.region} · {team.mmr} MMR · {team.homeCourt}</span>
-        <em>{getTeamHashtag(team)} · {favoriteTeamIds.includes(team.id) ? "즐겨찾기" : mmrBlocked ? "MMR 범위 밖" : "B사이드"}</em>
-      </button>
+        <button type="button" className="search-picker-result-main" onClick={() => selectTeamB(team.id)}>
+          <TeamHoverCard team={team} as="span"><strong>{team.name}</strong></TeamHoverCard>
+          <span>{team.region} · {team.mmr} MMR · {team.homeCourt}</span>
+          <em>{getTeamHashtag(team)} · {favorite ? "즐겨찾기" : mmrBlocked ? "MMR 범위 밖" : "B사이드"}</em>
+        </button>
+        <button
+          type="button"
+          className={favorite ? "search-picker-result-action active" : "search-picker-result-action"}
+          aria-label={favorite ? "즐겨찾기 해제" : "즐겨찾기 추가"}
+          onClick={() => app.actions.toggleFavoriteTeam(team.id)}
+        >
+          <Star size={15} fill={favorite ? "currentColor" : "none"} />
+        </button>
+      </div>
     );
   };
   const selectReferee = (user) => {

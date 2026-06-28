@@ -83,6 +83,27 @@ async function deleteTeam(context, teamId, notifications = []) {
   return data ?? { ok: true, teamId: safeTeamId, deleted: true };
 }
 
+async function inviteTeamMember(context, body = {}) {
+  const { data, error } = await context.supabase.rpc("rankball_invite_team_member", {
+    p_actor_profile_id: context.profileId,
+    p_team_id: String(body.teamId || "").trim(),
+    p_target_user_id: String(body.targetUserId || "").trim(),
+    p_invitation_id: String(body.invitationId || "").trim() || null,
+  });
+  if (error) throw error;
+  return data ?? { ok: true };
+}
+
+async function respondTeamInvitation(context, body = {}) {
+  const { data, error } = await context.supabase.rpc("rankball_respond_team_invitation", {
+    p_actor_profile_id: context.profileId,
+    p_invitation_id: String(body.invitationId || "").trim(),
+    p_action: String(body.teamInviteAction || "").trim(),
+  });
+  if (error) throw error;
+  return data ?? { ok: true };
+}
+
 export default async function handler(request, response) {
   if (request.method !== "POST") {
     response.setHeader("Allow", "POST");
@@ -93,7 +114,12 @@ export default async function handler(request, response) {
   try {
     const body = await readJsonBody(request);
     const context = await getAuthenticatedContext(request);
-    const result = body.deletedTeamId
+    const teamInviteAction = String(body.teamInviteAction || "").trim();
+    const result = teamInviteAction === "invite"
+      ? await inviteTeamMember(context, body)
+      : ["accept", "decline", "cancel"].includes(teamInviteAction)
+        ? await respondTeamInvitation(context, body)
+        : body.deletedTeamId
       ? await deleteTeam(context, body.deletedTeamId, body.notifications)
       : await syncTeam(context, body.team, body.notifications);
     sendJson(response, 200, result);
