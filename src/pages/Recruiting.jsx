@@ -125,6 +125,31 @@ function getTodayInputValue() {
   return `${year}-${month}-${day}`;
 }
 
+function getDateInputValue(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getStartDateFilterOptions() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const dateOptions = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(today);
+    date.setDate(today.getDate() + index);
+    const day = date.getDay();
+    return {
+      id: getDateInputValue(date),
+      type: "date",
+      label: `${date.getMonth() + 1}/${date.getDate()}`,
+      subLabel: index === 0 ? "오늘" : index === 1 ? "내일" : ["일", "월", "화", "수", "목", "금", "토"][day],
+      weekend: day === 0 ? "sun" : day === 6 ? "sat" : "",
+    };
+  });
+  return [{ id: "instant", type: "instant", label: "즉시", subLabel: "바로" }, ...dateOptions];
+}
+
 function getMaxInputValue() {
   return getPublicRoomMaxDateInput();
 }
@@ -2982,6 +3007,7 @@ function RecruitingReady({ app }) {
   const [roomScope, setRoomScope] = useState(() => (targetFilter === "invited" ? "invited" : "all"));
   const [regionFilter, setRegionFilter] = useState("local");
   const [modeFilter, setModeFilter] = useState("all");
+  const [startFilter, setStartFilter] = useState("all");
   const [queueControlsOpen, setQueueControlsOpen] = useState(true);
   const [composeOpen, setComposeOpen] = useState(false);
   const [selectedPostId, setSelectedPostId] = useState(null);
@@ -3024,6 +3050,8 @@ function RecruitingReady({ app }) {
   const canPostRecruiting = hasSchedule && scheduleAllowed && (!hostNeedsTeam || (Boolean(selectedTeam) && selectedHostPlayerIds.length > 0));
   const localRegionKey = getDefaultRecruitingRegionKey(app.currentUser);
   const selectedRegionKey = regionFilter === "local" ? localRegionKey : regionFilter;
+  const startDateOptions = useMemo(() => getStartDateFilterOptions(), []);
+  const startFilterLabel = startDateOptions.find((option) => option.id === startFilter)?.label ?? "전체 시작일";
 
   useEffect(() => {
     if (targetFilter === "invited") {
@@ -3096,10 +3124,15 @@ function RecruitingReady({ app }) {
       })
       .filter((post) => queue === "all" || (queue === "ranked" ? post.ranked !== false : post.ranked === false))
       .filter((post) => modeFilter === "all" || post.mode === modeFilter)
+      .filter((post) => {
+        if (startFilter === "all" || post.id === targetPostId) return true;
+        if (startFilter === "instant") return isInstantRoom(post);
+        return !isInstantRoom(post) && post.scheduledDate === startFilter;
+      })
       .filter((post) => roomScope !== "created" || getRecruitingRoomOwnerId(post) === app.currentUser.id)
       .filter((post) => roomScope !== "joined" || (getRecruitingRoomOwnerId(post) !== app.currentUser.id && isRecruitingPostForUser(post, app.currentUser.id, myTeamIds)))
       .filter((post) => roomScope !== "invited" || hasPendingRecruitingInvitation(post, app.currentUser.id));
-  }, [app.currentUser, app.currentUser.id, app.state, modeFilter, myTeamIds, queue, roomScope, selectedRegionKey, targetPostId]);
+  }, [app.currentUser, app.currentUser.id, app.state, modeFilter, myTeamIds, queue, roomScope, selectedRegionKey, startFilter, targetPostId]);
 
   const posts = useMemo(() => {
     return scopedPosts.sort((a, b) => {
@@ -3270,6 +3303,24 @@ function RecruitingReady({ app }) {
                   {MATCH_MODES.map((mode) => <option key={mode.id} value={mode.id}>{mode.label}</option>)}
                 </select>
               </label>
+              <div className="arena-start-date-filter" aria-label="start date">
+                {startDateOptions.map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    className={[
+                      startFilter === option.id ? "active" : "",
+                      option.weekend === "sat" ? "sat" : "",
+                      option.weekend === "sun" ? "sun" : "",
+                    ].filter(Boolean).join(" ")}
+                    aria-pressed={startFilter === option.id}
+                    onClick={() => setStartFilter((current) => (current === option.id ? "all" : option.id))}
+                  >
+                    <strong>{option.label}</strong>
+                    <span>{option.subLabel}</span>
+                  </button>
+                ))}
+              </div>
               <span className="arena-filter-count">{posts.length}개 표시</span>
             </section>
           </>
@@ -3278,6 +3329,7 @@ function RecruitingReady({ app }) {
             <span>{regionFilter === "local" ? `내 지역${localRegionKey ? ` · ${localRegionKey}` : ""}` : regionFilter}</span>
             <span>{queue === "ranked" ? "정규전" : queue === "friendly" ? "친선전" : "전체"}</span>
             <span>{modeFilter === "all" ? "전체 방식" : MATCH_MODES.find((mode) => mode.id === modeFilter)?.label ?? modeFilter}</span>
+            <span>{startFilterLabel}</span>
             <span>{roomScope === "created" ? `내가 만든 방 ${createdRoomCount}` : roomScope === "joined" ? `내 참여방 ${joinedRoomCount}` : roomScope === "invited" ? `초대받음 ${invitedRoomCount}` : "전체 방"}</span>
           </div>
         )}

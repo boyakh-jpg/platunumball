@@ -307,6 +307,52 @@
   white-space: nowrap;
 }
 
+.arena-start-date-filter {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 5px;
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+.arena-start-date-filter button {
+  display: grid;
+  align-content: center;
+  gap: 1px;
+  min-width: 0;
+  min-height: 42px;
+  padding: 3px 2px;
+  text-align: center;
+  line-height: 1.05;
+}
+
+.arena-start-date-filter strong,
+.arena-start-date-filter span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.arena-start-date-filter strong {
+  font-size: 0.76rem;
+}
+
+.arena-start-date-filter span {
+  font-size: 0.68rem;
+  opacity: 0.82;
+}
+
+.arena-start-date-filter button.sat {
+  border-color: rgba(80, 150, 255, 0.32);
+  color: #8fbaff;
+}
+
+.arena-start-date-filter button.sun {
+  border-color: rgba(255, 101, 121, 0.34);
+  color: #ff9aa8;
+}
+
 .arena-recruit-list {
   display: grid;
   gap: 10px;
@@ -3323,6 +3369,31 @@ html[data-theme="light"] .arena-recruit-card.arena-target-room {
 .arena-filter-bar .segmented-control button.active {
   background: rgba(70, 224, 182, 0.12);
   color: var(--green);
+}
+
+.arena-filter-bar .arena-start-date-filter button {
+  min-height: 42px;
+  padding: 3px 2px;
+}
+
+.arena-filter-bar .arena-start-date-filter button.sat {
+  border-color: rgba(80, 150, 255, 0.38);
+  color: #8fbaff;
+}
+
+.arena-filter-bar .arena-start-date-filter button.sun {
+  border-color: rgba(255, 101, 121, 0.42);
+  color: #ff9aa8;
+}
+
+.arena-filter-bar .arena-start-date-filter button.sat.active {
+  background: rgba(80, 150, 255, 0.16);
+  color: #b7d2ff;
+}
+
+.arena-filter-bar .arena-start-date-filter button.sun.active {
+  background: rgba(255, 101, 121, 0.16);
+  color: #ffc3cc;
 }
 
 .arena-filter-select select {

@@ -1363,6 +1363,7 @@ flowchart TD
 38. `/app/recruiting` 첫 목록 로드는 `feedCounts`를 같이 받아야 한다. `내가 만든 방/참여방/초대받음` 숫자는 클릭 전에도 current-user feed count 기준이어야 하며, 목록 일부 로드 fallback 숫자에 의존하지 않는다.
 38-1. `/app/recruiting` SPA 진입 때 기존 목록 row가 이미 있어도 `feedCounts`가 없으면 지역 첫 페이지를 다시 읽어 count를 채운다.
 38-2. `/api/recruiting/list`는 feed가 늦거나 일부 relation을 만들지 못해도 첫 지역 목록, `scope: "mine"`, `roomScope`, `feedCounts`, `/api/matches/list includeRecruitingSchedule=true`에서 open recruiting room을 숨기지 않아야 한다. 서버는 feed id/count와 direct DB fallback id/count를 병합하고, fallback joined 판정은 `player_ids`, `referee_id`, `recruiting_applications.player_id/player_ids`, `room_state.partyReserves`, `room_state.pinnedReservePlayers`, `room_state.reserveReady`를 포함한다.
+38-3. `/app/recruiting` 시작일 필터는 클라이언트 표시 필터다. 기본값은 전체 시작일이며, 버튼을 누르면 즉시방 또는 해당 `scheduledDate`의 공개/내방 목록만 좁혀 보여준다. 직접 링크로 열린 `post`는 날짜 필터 때문에 숨기지 않는다.
 39. 모집방 생성 서버 저장이 성공하면 클라이언트는 `created` feed count를 즉시 반영하고 경기 메뉴 모집 일정도 다시 읽는다.
 40. 모집방 선수/심판 초대는 기존 방 참가자만 보낼 수 있다. 단, 초대 수락/거절은 아직 참가자가 아니어도 자기 pending invitation이 있으면 가능하다.
 41. `inviteRecruitingReferee`는 프론트와 서버 모두 기존 방 참가자 action이다. 초대 대상 심판은 active `referee_appointments`가 있어야 하며, pending invitation만 가진 사용자는 심판/선수 초대를 새로 보낼 수 없다.

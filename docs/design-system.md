@@ -39,6 +39,12 @@
 2. The app theme chooses the dark or light image path.
 3. Existing `assets/referee-rulebook/{scene}.svg` files remain as load-failure fallback only.
 
+# 2026-06-28 recruiting start date filter
+
+1. Recruiting start-date filter uses one compact row of 8 buttons: instant plus 7 real calendar dates.
+2. Weekend date chips keep the same size as weekday chips; Saturday uses blue tone and Sunday uses red tone.
+3. The row must not force horizontal scrolling on mobile.
+
 # RankBall Design System
 
 2026-06-27: Score result cards keep side/team names secondary and the numeric score as the visual center.
