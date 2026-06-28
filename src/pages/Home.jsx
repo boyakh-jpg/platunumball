@@ -9,9 +9,11 @@ import MatchCard from "../components/match/MatchCard.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
+import { MAX_TEAM_MEMBERSHIPS } from "../lib/constants.js";
 import { getRegisteredCourts } from "../lib/courts.js";
 import { getCourtHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { canUserResolveMatchDispute, getAllowedStatFields, getMatchRecordWindow, getMatchReservePlayerIds, getMatchRoomPhase, getPlayerSideName, getPlayerStatSubmitted, getPublicRoomTimingStatus, isInstantRoom } from "../lib/matchUtils.js";
+import { inferRegionSelection } from "../lib/profileSetup.js";
 import { RECRUITING_TYPES, getPendingRecruitingInvitations, getRecruitingLobby, getRecruitingRoomOwnerId, isNationalRecruitingPost, isRecruitingPostForUser } from "../lib/recruiting.js";
 import { getCurrentSeason, getPlayerSeasonRows, getSeasonProgress } from "../lib/season.js";
 import { getTierDivision } from "../lib/tier.js";
@@ -29,6 +31,13 @@ function matchHasUser(match, userId) {
 
 function matchNeedsUserOperation(match, userId) {
   return matchHasUser(match, userId) || match.refereeId === userId;
+}
+
+function isSameRecruitingRegion(post = {}, user = {}) {
+  if (!post.region) return false;
+  const postRegion = inferRegionSelection(post.region ?? "");
+  const userRegion = inferRegionSelection(user.regionDistrict ?? user.region ?? "");
+  return postRegion.sido === userRegion.sido && postRegion.district === userRegion.district;
 }
 
 function getUserResult(match, userId) {
@@ -119,6 +128,10 @@ export default function Home({ app }) {
   const captainTeamIds = useMemo(() => myTeams.filter((team) => team.myRole === "captain").map((team) => team.id), [myTeams]);
   const myTeamIds = useMemo(() => myTeams.map((team) => team.id), [myTeams]);
   const pendingInvitations = useMemo(() => getPendingRecruitingInvitations(app.state, user.id), [app.state, user.id]);
+  const pendingTeamInvitations = useMemo(() => (app.state.teamInvitations ?? []).filter((invitation) => (
+    invitation.targetUserId === user.id &&
+    invitation.status === "pending"
+  )), [app.state.teamInvitations, user.id]);
   const myTeamCount = app.state.teams.filter((team) => team.members.some((member) => member.userId === user.id)).length;
   const blockedUserIds = app.state.settings?.blockedUserIds ?? [];
   const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
@@ -140,9 +153,9 @@ export default function Home({ app }) {
   const localRecruitingPosts = useMemo(() => {
     return [...(app.state.recruitingPosts ?? [])]
       .filter((post) => post.status === "open")
-      .filter((post) => post.region === user.region || isNationalRecruitingPost(post, app.state))
+      .filter((post) => isSameRecruitingRegion(post, user) || isNationalRecruitingPost(post, app.state))
       .slice(0, 3);
-  }, [app.state, app.state.recruitingPosts, user.region]);
+  }, [app.state, app.state.recruitingPosts, user.region, user.regionDistrict]);
   const myCompletedMatches = completedMatches.filter((match) => matchHasUser(match, user.id));
   const myWins = myCompletedMatches.filter((match) => getUserResult(match, user.id) === "W").length;
   const winRate = myCompletedMatches.length ? Math.round((myWins / myCompletedMatches.length) * 100) : 0;
@@ -151,7 +164,7 @@ export default function Home({ app }) {
       .filter((tournament) => tournament.status === "draft")
       .flatMap((tournament) => captainTeamIds
         .filter((teamId) => (tournament.teamIds ?? []).includes(teamId))
-        .filter((teamId) => (tournament.teamStatuses?.[teamId] ?? "invited") !== "accepted")
+        .filter((teamId) => (tournament.teamStatuses?.[teamId] ?? "invited") === "invited")
         .map((teamId) => ({
           id: `tournament-${tournament.id}-${teamId}`,
           priority: 0,
@@ -255,6 +268,18 @@ export default function Home({ app }) {
       href: `/app/recruiting?filter=invited&post=${post.id}`,
       icon: UserPlus,
     }));
+    const teamInvitationItems = pendingTeamInvitations.map((invitation) => {
+      const team = teamById[invitation.teamId];
+      return {
+        id: `team-invite-${invitation.id}`,
+        priority: 0,
+        label: "팀 초대",
+        title: team?.name ?? "팀 초대",
+        meta: "팀 가입 초대 · 수락/거절 필요",
+        href: "/app/notifications",
+        icon: UserPlus,
+      };
+    });
     const cancelledRoomItems = (app.state.recruitingPosts ?? [])
       .filter((post) => post.status === "cancelled")
       .filter((post) => isRecruitingPostForUser(post, user.id, myTeamIds))
@@ -270,9 +295,9 @@ export default function Home({ app }) {
         icon: ShieldAlert,
       }));
 
-    return [...invitationItems, ...tournamentInviteItems, ...readyRoomItems, ...confirmableRoomItems, ...matchItems, ...cancelledRoomItems]
+    return [...invitationItems, ...teamInvitationItems, ...tournamentInviteItems, ...readyRoomItems, ...confirmableRoomItems, ...matchItems, ...cancelledRoomItems]
       .sort((a, b) => a.priority - b.priority || String(a.meta).localeCompare(String(b.meta)));
-  }, [app.state, app.state.matches, app.state.recruitingPosts, app.state.tournaments, captainTeamIds, myTeamIds, pendingInvitations, teamById, user.id]);
+  }, [app.state, app.state.matches, app.state.recruitingPosts, app.state.tournaments, captainTeamIds, myTeamIds, pendingInvitations, pendingTeamInvitations, teamById, user.id]);
   const priorityItems = actionItems.slice(0, 5);
 
   const searchResults = useMemo(() => {
@@ -698,7 +723,7 @@ export default function Home({ app }) {
                 <p className="eyebrow">My Teams</p>
                 <h2>내 소속 팀</h2>
               </div>
-              <Badge tone={myTeamCount ? "green" : "neutral"}>{myTeamCount}/5</Badge>
+              <Badge tone={myTeamCount > MAX_TEAM_MEMBERSHIPS ? "orange" : myTeamCount ? "green" : "neutral"}>{myTeamCount}/{MAX_TEAM_MEMBERSHIPS}</Badge>
             </div>
             <div className="home-team-list">
               {myTeams.length ? myTeams.slice(0, 5).map((team) => (
