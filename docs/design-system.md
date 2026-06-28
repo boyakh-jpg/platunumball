@@ -30,6 +30,12 @@
 3. The CSS basketball fallback must remain for asset load failure and `prefers-reduced-motion`.
 4. The loader is status feedback and must not block clicks after remote data is ready.
 
+# 2026-06-28 referee rulebook images
+
+1. Rulebook illustrations use R2 `assets/named/{dark|light}/webp/{scene}.webp` assets.
+2. The app theme chooses the dark or light image path.
+3. Existing `assets/referee-rulebook/{scene}.svg` files remain as load-failure fallback only.
+
 # RankBall Design System
 
 2026-06-27: Score result cards keep side/team names secondary and the numeric score as the visual center.

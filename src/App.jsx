@@ -106,7 +106,7 @@ export default function App() {
             <Route path="/app/matches/:matchId" element={<MatchRoom app={app} />} />
             <Route path="/app/matches" element={<Matches app={app} />} />
             <Route path="/app/recorder" element={<Recorder app={app} />} />
-            <Route path="/app/referee-rulebook" element={<RefereeRulebook />} />
+            <Route path="/app/referee-rulebook" element={<RefereeRulebook theme={theme} />} />
             <Route path="/app/season" element={<Season app={app} />} />
             <Route path="/app/rankings" element={<Rankings app={app} />} />
             <Route path="/app/recruiting" element={<Recruiting app={app} />} />

@@ -32,17 +32,32 @@ const SCENE_COPY = {
   foul: "파울",
 };
 
-function RulebookIllustration({ scene }) {
+function getRulebookImageTheme(theme) {
+  return theme === "light" ? "light" : "dark";
+}
+
+function RulebookIllustration({ scene, theme = "dark" }) {
   const title = SCENE_COPY[scene] ?? SCENE_COPY.standard;
+  const imageTheme = getRulebookImageTheme(theme);
+  const fallbackSrc = assetUrl(`/assets/referee-rulebook/${scene}.svg`);
   return (
     <figure className="rulebook-asset">
-      <img src={assetUrl(`/assets/referee-rulebook/${scene}.svg`)} alt={`${title} 일러스트`} loading="lazy" />
+      <img
+        src={assetUrl(`/assets/named/${imageTheme}/webp/${scene}.webp`)}
+        alt={`${title} 일러스트`}
+        loading="lazy"
+        onError={(event) => {
+          if (event.currentTarget.dataset.fallback === "true") return;
+          event.currentTarget.dataset.fallback = "true";
+          event.currentTarget.src = fallbackSrc;
+        }}
+      />
       <figcaption>{title}</figcaption>
     </figure>
   );
 }
 
-export default function RefereeRulebook() {
+export default function RefereeRulebook({ theme = "dark" }) {
   return (
     <div className="page-stack referee-rulebook-page">
       <header className="page-header">
@@ -64,7 +79,7 @@ export default function RefereeRulebook() {
             점수, 파울, 개인활약, 이의신청을 정리하는 운영자다.
           </p>
         </div>
-        <RulebookIllustration scene="standard" />
+        <RulebookIllustration scene="standard" theme={theme} />
       </section>
 
       <div className="referee-rulebook-notice">
@@ -92,7 +107,7 @@ export default function RefereeRulebook() {
       <section className="referee-rulebook-section-grid">
         {REFEREE_RULEBOOK_SECTIONS.map((section) => (
           <Card key={section.title} className="referee-rulebook-section-card">
-            <RulebookIllustration scene={section.scene} />
+            <RulebookIllustration scene={section.scene} theme={theme} />
             <div className="referee-rulebook-section-body">
               <strong>{section.title}</strong>
               <p>{section.summary}</p>
@@ -129,7 +144,7 @@ export default function RefereeRulebook() {
         <div className="referee-stat-guide-grid">
           {REFEREE_STAT_GUIDELINES.map((stat) => (
             <Card key={stat.stat} className="referee-stat-guide-card">
-              <RulebookIllustration scene={stat.scene} />
+              <RulebookIllustration scene={stat.scene} theme={theme} />
               <div>
                 <Badge tone="green">{stat.stat}</Badge>
                 <strong>{stat.summary}</strong>
