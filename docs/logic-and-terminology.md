@@ -5,6 +5,7 @@
 - `/api/recruiting/list`는 feed count와 fallback count를 순차 대기하지 않는다. feed, page, mine, fallback count는 가능한 병렬로 계산한다.
 - 모집/경기 목록 성능 정리는 데이터 삭제가 아니라 `CREATE INDEX IF NOT EXISTS` 기반으로만 한다.
 - 목록 응답은 `user_room_feed.card_json`을 우선 쓰고, fallback은 feed 누락/보정용으로 유지한다.
+- 경기 메뉴 `MY/내 일정` 카운트는 실제 목록에 쓰는 `shouldShowMatchInList` 기준과 일치해야 한다. 숨기는 확정/기록방을 숫자에만 포함하지 않는다.
 
 ## 2026-06-28 팀 파티 판정 원칙
 

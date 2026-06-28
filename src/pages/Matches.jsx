@@ -301,6 +301,10 @@ function getViewCount(matches, view, userId) {
   return matches.filter((match) => shouldShowMatchForView(match, view, userId)).length;
 }
 
+function getViewListCount(matches, view, userId, hasDateFilter) {
+  return matches.filter((match) => shouldShowMatchInList(match, view, userId, hasDateFilter)).length;
+}
+
 function matchHasUser(match, userId) {
   return Boolean(
     getUserParticipantSideName(match, userId) ||
@@ -896,16 +900,18 @@ export default function Matches({ app }) {
     ...visibleRecruitingRooms.map((post) => ({ type: "room", id: `room-${post.id}`, item: post })),
     ...visibleMatches.map((match) => ({ type: "match", id: `match-${match.id}`, item: match })),
   ].sort((a, b) => compareSchedule(a.item, b.item))), [visibleMatches, visibleRecruitingRooms]);
+  const hasDateFilter = Boolean(dateFilter || historyRangeMonths > 0);
+  const activeMatchCount = getViewListCount(filteredMatches, VIEWS[0], app.currentUser.id, hasDateFilter);
   const todoCount = getViewCount(filteredMatches, VIEWS[1], app.currentUser.id);
   const scheduledCount = getViewCount(filteredMatches, VIEWS[2], app.currentUser.id) + scheduledRecruitingRoomCount;
   const closedCount = getViewCount(filteredMatches, VIEWS[3], app.currentUser.id);
-  const activeCount = todoCount + scheduledCount + closedCount + instantRecruitingRoomCount;
+  const activeCount = activeMatchCount + instantRecruitingRoomCount;
   const viewButtonCounts = {
     todo: getViewCount(baseFilteredMatches, VIEWS[1], app.currentUser.id),
     scheduled: getViewCount(baseFilteredMatches, VIEWS[2], app.currentUser.id) + scheduledRecruitingRoomCount,
     closed: getViewCount(baseFilteredMatches, VIEWS[3], app.currentUser.id),
   };
-  viewButtonCounts.active = viewButtonCounts.todo + viewButtonCounts.scheduled + viewButtonCounts.closed + instantRecruitingRoomCount;
+  viewButtonCounts.active = getViewListCount(baseFilteredMatches, VIEWS[0], app.currentUser.id, hasDateFilter) + instantRecruitingRoomCount;
   const getViewButtonCount = (view) => viewButtonCounts[view.id] ?? 0;
   const listRecruitingRoomCount = ["active", "scheduled"].includes(viewId) ? visibleRecruitingRooms.length : 0;
   const scheduleLoading = app.remoteReady === false || (matchPagination.recruitingScheduleLoading && !visibleScheduleItems.length);
