@@ -4607,7 +4607,8 @@ create or replace function public.rankball_recruiting_action(
   p_action text,
   p_post_row jsonb,
   p_application_rows jsonb default '[]'::jsonb,
-  p_notification_rows jsonb default '[]'::jsonb
+  p_notification_rows jsonb default '[]'::jsonb,
+  p_expected_updated_at timestamptz default null
 )
 returns jsonb
 language plpgsql
@@ -4618,6 +4619,7 @@ declare
   safe_actor_id text := nullif(btrim(p_actor_profile_id), '');
   safe_action text := coalesce(nullif(btrim(p_action), ''), 'sync');
   safe_post_id text := nullif(btrim(p_post_row->>'id'), '');
+  current_updated_at timestamptz;
   persist_result jsonb;
 begin
   if safe_actor_id is null then
@@ -4665,10 +4667,15 @@ begin
     );
   end if;
 
-  perform 1
+  select updated_at
+  into current_updated_at
   from public.recruiting_posts
   where id = safe_post_id
   for update;
+
+  if p_expected_updated_at is not null and current_updated_at is not null and current_updated_at <> p_expected_updated_at then
+    raise exception 'recruiting_stale_snapshot' using errcode = '40001';
+  end if;
 
   persist_result := public.rankball_persist_recruiting_snapshot(
     p_post_row,
@@ -4682,6 +4689,10 @@ begin
   );
 end;
 $$;
+
+revoke all on function public.rankball_recruiting_action(text, text, jsonb, jsonb, jsonb, timestamptz) from public;
+grant execute on function public.rankball_recruiting_action(text, text, jsonb, jsonb, jsonb, timestamptz) to service_role;
+select pg_notify('pgrst', 'reload schema');
 
 revoke all on function public.rankball_recruiting_action(text, text, jsonb, jsonb, jsonb) from public;
 grant execute on function public.rankball_recruiting_action(text, text, jsonb, jsonb, jsonb) to service_role;

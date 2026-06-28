@@ -824,7 +824,7 @@ export async function persistRecruitingPostSnapshot(context, { post, notificatio
   const actionBody = { ...body, action };
   const { data: existingPost, error: existingError } = await context.supabase
       .from("recruiting_posts")
-      .select("id, visibility, player_id, team_id, target_team_id, mode, scheduled_date, scheduled_time, ranked, official, side_capacity, host_join_mode, host_side, player_ids, referee_id, referee_trust_min, room_state, age_restriction, allowed_age_groups")
+      .select("id, visibility, player_id, team_id, target_team_id, mode, scheduled_date, scheduled_time, ranked, official, side_capacity, host_join_mode, host_side, player_ids, referee_id, referee_trust_min, room_state, age_restriction, allowed_age_groups, updated_at")
       .eq("id", post.id)
       .maybeSingle();
 
@@ -866,8 +866,14 @@ export async function persistRecruitingPostSnapshot(context, { post, notificatio
     p_post_row: postRow,
     p_application_rows: applicationRows,
     p_notification_rows: notificationRows,
+    p_expected_updated_at: existingPost?.updated_at ?? null,
   });
-  if (persistError) throw persistError;
+  if (persistError) {
+    if (persistError.code === "40001" || String(persistError.message ?? "").includes("recruiting_stale_snapshot")) {
+      reject(409, "recruiting_stale_snapshot");
+    }
+    throw persistError;
+  }
   let discordDeliveryCount = 0;
   let discordDeliveryError = null;
   try {
