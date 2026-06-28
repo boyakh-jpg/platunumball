@@ -46,6 +46,7 @@ export default function TeamDetail({ app }) {
   const [memberDraft, setMemberDraft] = useState({ userId: app.state.users[0]?.id, role: "regular" });
   const [deleteArmed, setDeleteArmed] = useState(false);
 
+  if (!team && !app.remoteReady) return null;
   if (!team) return <Navigate to="/app/teams" replace />;
 
   const userMap = Object.fromEntries(app.state.users.map((user) => [user.id, user]));

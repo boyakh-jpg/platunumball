@@ -29,6 +29,7 @@ import stateLoad from "../server/api/state/load.js";
 import systemCleanupSim from "../server/api/system/cleanup-sim.js";
 import systemMaintenance from "../server/api/system/maintenance.js";
 import systemSchemaHealth from "../server/api/system/schema-health.js";
+import teamList from "../server/api/teams/list.js";
 import teamSyncTeam from "../server/api/teams/sync-team.js";
 import tournamentSyncTournament from "../server/api/tournaments/sync-tournament.js";
 
@@ -64,6 +65,8 @@ const ROUTES = new Map([
   ["/system/cleanup-sim", systemCleanupSim],
   ["/system/maintenance", systemMaintenance],
   ["/system/schema-health", systemSchemaHealth],
+  ["/teams/detail", teamList],
+  ["/teams/list", teamList],
   ["/teams/sync-team", teamSyncTeam],
   ["/tournaments/sync-tournament", tournamentSyncTournament],
 ]);
@@ -105,5 +108,6 @@ export default async function handler(request, response) {
     return;
   }
 
+  request.rankballRoutePath = routePath;
   return routeHandler(request, response);
 }

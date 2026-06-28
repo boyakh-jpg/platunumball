@@ -527,6 +527,13 @@ function withServerAdminContext(state, context = EMPTY_ADMIN_CONTEXT) {
 function getInitialStateLoadOptions() {
   const pathname = typeof window !== "undefined" ? window.location.pathname.replace(/\/$/, "") : "";
   const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+  const teamDetailMatch = pathname.match(/^\/app\/teams\/([^/]+)$/);
+  if (teamDetailMatch) {
+    return { endpoint: "teamDetail", teamId: decodeURIComponent(teamDetailMatch[1]), matchLimit: 0, recruitingLimit: 0, tournamentLimit: 0 };
+  }
+  if (pathname === "/app/teams") {
+    return { endpoint: "teamsList", matchLimit: 0, recruitingLimit: 0, tournamentLimit: 0 };
+  }
   if (pathname === "/app/matches") {
     if (searchParams?.get("match")) return { profileOnly: true, matchLimit: 0, recruitingLimit: 0, tournamentLimit: 0 };
     return { endpoint: "matchesList", matchLimit: 200, recruitingLimit: 0, tournamentLimit: 0 };
@@ -598,6 +605,22 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
     adminContext: false,
   };
   try {
+    if (options.endpoint === "teamsList") {
+      const result = await postServerAction(
+        "/api/teams/list",
+        { authUserId, authEmail },
+        { allowWhenDisabled: true },
+      );
+      if (result?.state) return attachRemoteMeta(normalizeServerState(result.state), { directoryLoaded: true });
+    }
+    if (options.endpoint === "teamDetail") {
+      const result = await postServerAction(
+        "/api/teams/detail",
+        { authUserId, authEmail, teamId: options.teamId },
+        { allowWhenDisabled: true },
+      );
+      if (result?.state) return attachRemoteMeta(normalizeServerState(result.state), { directoryLoaded: true });
+    }
     if (options.endpoint === "matchesList") {
       const result = await postServerAction(
         "/api/matches/list",
@@ -764,6 +787,9 @@ export function useAppData(authUser = null) {
             ...getRecruitingRegionRequest(remoteMeta.recruitingPage),
             feedCounts: remoteMeta.recruitingPage?.feedCounts ?? null,
           });
+          if (remoteMeta.directoryLoaded) {
+            setDirectoryStatus({ loading: false, loaded: true, error: "" });
+          }
         }
         remoteReadyRef.current = true;
         setRemoteReady(true);
@@ -1266,9 +1292,12 @@ export function useAppData(authUser = null) {
     if (directoryStatus.loaded) return true;
     if (directoryPromiseRef.current) return directoryPromiseRef.current;
 
+    const pathname = typeof window !== "undefined" ? window.location.pathname.replace(/\/$/, "") : "";
+    const useTeamDirectory = pathname === "/app/teams" || pathname.startsWith("/app/teams/");
+    const endpoint = useTeamDirectory ? "/api/teams/list" : "/api/directory/load";
     setDirectoryStatus((prev) => ({ ...prev, loading: true, error: "" }));
     const promise = postServerAction(
-      "/api/directory/load",
+      endpoint,
       { authUserId, authEmail },
       { allowWhenDisabled: true },
     ).then((result) => {

@@ -1372,6 +1372,8 @@ flowchart TD
 43. 심판 직접참여는 DB row 기준 `refereeWanted=true`이고 아직 `referee_id`가 없을 때만 허용한다. 심판 초대 수락은 해당 pending invitation의 대상자 본인만 `refereeId`로 배정될 수 있고, 방의 `refereeTrustMin`을 통과해야 한다.
 44. 초대 수락 성공 후 같은 대상자의 다른 pending 선수 초대는 정리하고, 심판 배정 후 다른 pending 심판 초대도 정리한다. 팀 파티장이 나가면 남은 파티원에게 리더를 넘기고, 나간 사람이 보낸 pending 초대는 제거한다.
 
+45. `/app/teams`와 `/app/teams/:teamId` 초기 로드는 `/api/teams/list` 또는 `/api/teams/detail`을 사용해 팀, 팀원, 관련 공개 프로필, 현재 설정, 현재 사용자 팀 초대만 읽는다. 팀 화면 첫 렌더는 넓은 `/api/directory/load`에 의존하면 안 된다.
+
 ## 2026-06-27 report scoped reads
 
 1. Current-user report reads include rows where the profile is `user_id`, `target_id`, or inside `reported_user_ids`.
