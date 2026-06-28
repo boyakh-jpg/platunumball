@@ -108,7 +108,7 @@ h3 {
 .basketball-loader {
   display: grid;
   justify-items: center;
-  gap: 8px;
+  gap: 7px;
   min-width: 118px;
   padding: 18px 20px 16px;
   border: 1px solid rgba(255, 211, 108, 0.28);
@@ -118,8 +118,23 @@ h3 {
   backdrop-filter: blur(14px);
 }
 
+.basketball-loader-visual {
+  position: relative;
+  display: grid;
+  width: 58px;
+  height: 58px;
+  place-items: center;
+}
+
+.basketball-loader-gif {
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+}
+
 .basketball-loader-ball {
   position: relative;
+  display: none;
   width: 58px;
   height: 58px;
   border: 2px solid rgba(61, 31, 13, 0.82);
@@ -133,6 +148,10 @@ h3 {
     inset -10px -12px 0 rgba(126, 53, 18, 0.28),
     0 8px 20px rgba(244, 122, 34, 0.26);
   animation: basketball-loader-bounce 0.82s cubic-bezier(0.22, 0.62, 0.2, 1) infinite;
+}
+
+.basketball-loader-ball.active {
+  display: block;
 }
 
 .basketball-loader-ball::before,
@@ -204,12 +223,17 @@ h3 {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .basketball-loader-gif {
+    display: none;
+  }
+
   .basketball-loader-ball,
   .basketball-loader-shadow {
     animation: none;
   }
 
   .basketball-loader-ball {
+    display: block;
     transform: translateY(-18px);
   }
 }

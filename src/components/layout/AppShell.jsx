@@ -2,9 +2,13 @@ import { useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
 import BottomNav from "./BottomNav.jsx";
 import Sidebar from "./Sidebar.jsx";
+import { assetUrl } from "../../lib/assets.js";
+
+const remoteLoaderBallSrc = assetUrl("/assets/bounding_ball2.gif");
 
 export default function AppShell({ app, auth }) {
   const [showRemoteLoader, setShowRemoteLoader] = useState(false);
+  const [remoteLoaderImageFailed, setRemoteLoaderImageFailed] = useState(false);
 
   useEffect(() => {
     if (app.remoteReady !== false) {
@@ -31,7 +35,20 @@ export default function AppShell({ app, auth }) {
       {showRemoteLoader ? (
         <div className="basketball-loader-overlay" role="status" aria-live="polite" aria-label="서버 데이터를 불러오는 중">
           <div className="basketball-loader">
-            <span className="basketball-loader-ball" aria-hidden="true" />
+            <span className="basketball-loader-visual" aria-hidden="true">
+              {remoteLoaderImageFailed ? null : (
+                <img
+                  className="basketball-loader-gif"
+                  src={remoteLoaderBallSrc}
+                  width="50"
+                  height="50"
+                  alt=""
+                  decoding="async"
+                  onError={() => setRemoteLoaderImageFailed(true)}
+                />
+              )}
+              <span className={remoteLoaderImageFailed ? "basketball-loader-ball active" : "basketball-loader-ball"} />
+            </span>
             <span className="basketball-loader-shadow" aria-hidden="true" />
             <span className="basketball-loader-text">불러오는 중</span>
           </div>
