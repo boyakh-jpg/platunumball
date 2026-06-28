@@ -130,6 +130,11 @@ function getMatchDate(match) {
   return createdText.match(/\d{4}-\d{2}-\d{2}/)?.[0] ?? "";
 }
 
+function isInstantScheduleRoom(room) {
+  const scheduledAt = String(room?.scheduledAt ?? "").trim().toLowerCase();
+  return isInstantRoom(room) || scheduledAt === "instant" || scheduledAt === "\uC989\uC2DC";
+}
+
 function getMonthKey(value = toDateInputValue()) {
   return String(value).slice(0, 7);
 }
@@ -800,7 +805,7 @@ export default function Matches({ app }) {
       .filter((post) => isRecruitingRoomInUserSchedule(post, app.state, app.currentUser.id))
       .filter((post) => {
         const postDate = getMatchDate(post);
-        if (!postDate) return isInstantRoom(post);
+        if (!postDate) return isInstantScheduleRoom(post);
         return postDate <= maxScheduleDate && shouldIncludeByHistoryRange(post, todayValue, historyRangeMonths, historyCutoffDate);
       })
       .filter((post) => kindFilter === "all" || (kindFilter === "ranked" ? post.ranked !== false : post.ranked === false))
@@ -850,7 +855,7 @@ export default function Matches({ app }) {
     return visibleRecruitingCandidates
       .filter((post) => {
         const postDate = getMatchDate(post);
-        if (!postDate) return viewId === "active" && isInstantRoom(post) && !dateFilter;
+        if (!postDate) return viewId === "active" && isInstantScheduleRoom(post) && !dateFilter;
         return !dateFilter || postDate === dateFilter;
       })
       .sort(compareSchedule)
