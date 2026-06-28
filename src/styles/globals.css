@@ -111,11 +111,6 @@ h3 {
   gap: 7px;
   min-width: 118px;
   padding: 18px 20px 16px;
-  border: 1px solid rgba(255, 211, 108, 0.28);
-  border-radius: var(--radius);
-  background: rgba(8, 11, 16, 0.84);
-  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.32);
-  backdrop-filter: blur(14px);
 }
 
 .basketball-loader-visual {

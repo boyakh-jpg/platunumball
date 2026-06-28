@@ -29,6 +29,7 @@
 2. The loader may use the R2-hosted `bounding_ball2.gif` asset when the file stays under 100KB.
 3. The CSS basketball fallback must remain for asset load failure and `prefers-reduced-motion`.
 4. The loader is status feedback and must not block clicks after remote data is ready.
+5. The remote GIF loader renders without a card background, border, shadow, or blur frame.
 
 # 2026-06-28 referee rulebook images
 
