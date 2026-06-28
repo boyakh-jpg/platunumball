@@ -15,11 +15,12 @@ function assertAccess(request) {
   }
 }
 
-async function closeLike(client, table, column, pattern) {
+async function closePrefix(client, table, column, prefix) {
   const { count, error } = await client
     .from(table)
     .update({ status: "closed", updated_at: new Date().toISOString() }, { count: "exact" })
-    .like(column, pattern)
+    .gte(column, prefix)
+    .lt(column, `${prefix}\uffff`)
     .neq("status", "closed");
   if (error) return { table, ok: false, error: error.message, closed: 0 };
   return { table, ok: true, error: null, closed: count ?? 0 };
@@ -36,8 +37,8 @@ export default async function handler(request, response) {
     assertAccess(request);
     const client = getSupabaseAdminClient();
     const checks = [];
-    checks.push(await closeLike(client, "matches", "id", "sim_m_%"));
-    checks.push(await closeLike(client, "recruiting_posts", "id", "sim_q_%"));
+    checks.push(await closePrefix(client, "matches", "id", "sim_m_"));
+    checks.push(await closePrefix(client, "recruiting_posts", "id", "sim_q_"));
 
     const failed = checks.filter((check) => !check.ok);
     sendJson(response, 200, {
