@@ -116,6 +116,8 @@ html.rankball-remote-loading body {
 }
 
 .basketball-loader {
+  position: relative;
+  z-index: 1;
   display: grid;
   justify-items: center;
   gap: 7px;
@@ -126,14 +128,15 @@ html.rankball-remote-loading body {
 .basketball-loader-visual {
   position: relative;
   display: grid;
-  width: 58px;
-  height: 58px;
+  width: 76px;
+  height: 76px;
   place-items: center;
 }
 
 .basketball-loader-gif {
-  width: 50px;
-  height: 50px;
+  display: block;
+  width: 72px;
+  height: 72px;
   object-fit: contain;
 }
 

@@ -19,6 +19,12 @@ export default function AppShell({ app, auth }) {
     };
   }, [remoteLoading]);
 
+  useEffect(() => {
+    if (!remoteLoading) return;
+    setRemoteLoaderImageFailed(false);
+    setRemoteLoaderImageIndex(0);
+  }, [remoteLoading]);
+
   return (
     <div className="app-shell">
       <Sidebar user={app.currentUser} teams={app.state.teams} auth={auth} />
@@ -45,6 +51,7 @@ export default function AppShell({ app, auth }) {
                   height="50"
                   alt=""
                   decoding="async"
+                  loading="eager"
                   onError={() => {
                     setRemoteLoaderImageIndex((currentIndex) => {
                       const nextIndex = currentIndex + 1;
