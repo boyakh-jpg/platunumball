@@ -13,7 +13,6 @@ import {
   STAT_ENTRY_WINDOW_MINUTES,
   TEAM_ROLES,
 } from "../lib/constants.js";
-import { initialState } from "../lib/mockData.js";
 import { findCourtDuplicate, getCourtDuplicateMessage, getRegisteredCourts, normalizeCourtLayout, normalizeCourtSurfaceType } from "../lib/courts.js";
 import {
   canOperatorSubmitMissingPostgameResult,
@@ -143,6 +142,16 @@ const EMPTY_STATE = {
   discordNotificationSeenUsers: [],
   settings: DEFAULT_SETTINGS,
 };
+let demoInitialState = null;
+export function setDemoInitialState(state = null) {
+  demoInitialState = state && typeof state === "object" ? state : null;
+}
+export function hasDemoInitialState() {
+  return Boolean(demoInitialState);
+}
+function getDemoInitialState() {
+  return demoInitialState ?? EMPTY_STATE;
+}
 const REMOTE_PAGE_SIZE = 1000;
 const REMOTE_WRITE_CHUNK_SIZE = 500;
 export const REMOTE_CLIENT_MATCH_LIMIT = 50;
@@ -729,7 +738,8 @@ function normalizeMatch(match = {}) {
 
 function normalizeSettings(settings = {}, options = {}) {
   const includeDemo = options.includeDemo !== false;
-  const fallbackSettings = includeDemo ? initialState.settings ?? {} : {};
+  const demoState = includeDemo ? getDemoInitialState() : EMPTY_STATE;
+  const fallbackSettings = includeDemo ? demoState.settings ?? {} : {};
   const theme = settings.theme === "light" ? "light" : "dark";
   const discordChannel = settings.notificationChannels?.discord ?? {};
   return {
@@ -787,74 +797,42 @@ function normalizeTournament(tournament = {}) {
   };
 }
 
-function ensureDemoRecruitingInvitation(post = {}) {
-  if (post.id !== "q2" || post.status === "closed") return post;
-  const alreadyApplied = hasRecruitingApplicant(post, { kind: "player", playerId: "u1" });
-  if (alreadyApplied) return post;
-  const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
-  if (roomState.demoInviteQ2Seeded) return { ...post, roomState };
-  const hasInvite = roomState.invitations.some((invitation) => invitation.targetUserId === "u1");
-  if (hasInvite) return { ...post, roomState: { ...roomState, demoInviteQ2Seeded: true } };
-
-  return {
-    ...post,
-    roomState: {
-      ...roomState,
-      demoInviteQ2Seeded: true,
-      invitations: [
-        ...roomState.invitations,
-        {
-          id: "inv-demo-q2-u1",
-          targetUserId: "u1",
-          fromUserId: "u9",
-          teamId: null,
-          side: "teamA",
-          reserve: false,
-          status: "pending",
-          createdAt: "2026-06-15T09:05:00.000Z",
-          updatedAt: "2026-06-15T09:05:00.000Z",
-        },
-      ],
-    },
-  };
-}
-
 export function normalizeState(state, options = {}) {
   const includeDemo = options.includeDemo !== false;
-  const baseState = includeDemo ? clone(initialState) : clone(EMPTY_STATE);
-  const notifications = state?.notifications?.length ? state.notifications : includeDemo ? initialState.notifications : [];
+  const demoState = includeDemo ? getDemoInitialState() : EMPTY_STATE;
+  const baseState = includeDemo ? clone(demoState) : clone(EMPTY_STATE);
+  const notifications = state?.notifications?.length ? state.notifications : includeDemo ? demoState.notifications : [];
   const deletedTeamIds = new Set(state?.deletedTeamIds ?? []);
   const recruitingPosts = normalizeRecruitingSchedules(
-    includeDemo ? mergeById(state?.recruitingPosts, initialState.recruitingPosts ?? []) : state?.recruitingPosts ?? [],
+    includeDemo ? mergeById(state?.recruitingPosts, demoState.recruitingPosts ?? []) : state?.recruitingPosts ?? [],
   );
 
   return {
     ...baseState,
     ...state,
     deletedTeamIds: Array.from(deletedTeamIds),
-    users: (includeDemo ? mergeById(state?.users, initialState.users) : state?.users ?? []).map(normalizeUser),
-    teams: (includeDemo ? mergeById(state?.teams, initialState.teams) : state?.teams ?? [])
+    users: (includeDemo ? mergeById(state?.users, demoState.users) : state?.users ?? []).map(normalizeUser),
+    teams: (includeDemo ? mergeById(state?.teams, demoState.teams) : state?.teams ?? [])
       .filter((team) => team && typeof team === "object" && !deletedTeamIds.has(team.id))
       .map(normalizeTeam),
-    teamInvitations: state?.teamInvitations ?? (includeDemo ? initialState.teamInvitations ?? [] : []),
-    affiliations: (includeDemo ? mergeById(state?.affiliations, initialState.affiliations) : state?.affiliations ?? []).filter((affiliation) => affiliation.type !== "club"),
-    seasons: includeDemo ? mergeById(state?.seasons, initialState.seasons ?? []) : state?.seasons ?? [],
-    matches: (includeDemo ? mergeById(state?.matches, initialState.matches) : state?.matches ?? []).map(normalizeMatch),
-    tournaments: (includeDemo ? mergeById(state?.tournaments, initialState.tournaments ?? []) : state?.tournaments ?? []).map(normalizeTournament),
+    teamInvitations: state?.teamInvitations ?? (includeDemo ? demoState.teamInvitations ?? [] : []),
+    affiliations: (includeDemo ? mergeById(state?.affiliations, demoState.affiliations) : state?.affiliations ?? []).filter((affiliation) => affiliation.type !== "club"),
+    seasons: includeDemo ? mergeById(state?.seasons, demoState.seasons ?? []) : state?.seasons ?? [],
+    matches: (includeDemo ? mergeById(state?.matches, demoState.matches) : state?.matches ?? []).map(normalizeMatch),
+    tournaments: (includeDemo ? mergeById(state?.tournaments, demoState.tournaments ?? []) : state?.tournaments ?? []).map(normalizeTournament),
     notifications: notifications.map((notification) => ({ readAt: null, ...notification })),
-    discordNotificationDeliveries: state?.discordNotificationDeliveries ?? (includeDemo ? initialState.discordNotificationDeliveries ?? [] : []),
-    discordNotificationSeenKeys: state?.discordNotificationSeenKeys ?? (includeDemo ? initialState.discordNotificationSeenKeys ?? [] : []),
-    discordNotificationSeenUsers: state?.discordNotificationSeenUsers ?? (includeDemo ? initialState.discordNotificationSeenUsers ?? [] : []),
-    settings: normalizeSettings(state?.settings ?? (includeDemo ? initialState.settings : DEFAULT_SETTINGS), { includeDemo }),
-    reports: state?.reports ?? (includeDemo ? initialState.reports ?? [] : []),
-    recruitingPosts: (includeDemo ? recruitingPosts.map(ensureDemoRecruitingInvitation) : recruitingPosts)
-      .map(normalizeRecruitingPost),
+    discordNotificationDeliveries: state?.discordNotificationDeliveries ?? (includeDemo ? demoState.discordNotificationDeliveries ?? [] : []),
+    discordNotificationSeenKeys: state?.discordNotificationSeenKeys ?? (includeDemo ? demoState.discordNotificationSeenKeys ?? [] : []),
+    discordNotificationSeenUsers: state?.discordNotificationSeenUsers ?? (includeDemo ? demoState.discordNotificationSeenUsers ?? [] : []),
+    settings: normalizeSettings(state?.settings ?? (includeDemo ? demoState.settings : DEFAULT_SETTINGS), { includeDemo }),
+    reports: state?.reports ?? (includeDemo ? demoState.reports ?? [] : []),
+    recruitingPosts: recruitingPosts.map(normalizeRecruitingPost),
   };
 }
 
 export function loadState(options = {}) {
   const includeDemo = options.includeDemo !== false;
-  const fallback = includeDemo ? clone(initialState) : createEmptyState(options);
+  const fallback = includeDemo ? clone(getDemoInitialState()) : createEmptyState(options);
   const rawState = includeDemo ? readState(fallback) : fallback;
   return runAutomaticStateMaintenance(normalizeState(rawState, { includeDemo }));
 }
@@ -2492,7 +2470,7 @@ export function subscribeRemoteState() {
 
 export function resetState(options = {}) {
   clearState();
-  return options.includeDemo === false ? createEmptyState(options) : clone(initialState);
+  return options.includeDemo === false ? createEmptyState(options) : clone(getDemoInitialState());
 }
 
 function getTeamPlayers(team, size) {

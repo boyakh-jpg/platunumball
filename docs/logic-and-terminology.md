@@ -55,6 +55,7 @@ UI/CSS/반응형/라이트·다크 세부 기준은 `docs/design-system.md`를 �
 
 10. Supabase 설정 환경에서는 `mockData/localStorage`를 앱 데이터 원천으로 쓰지 않는다.
     - `mockData`는 비-Supabase 개발/seed 생성용으로만 남긴다.
+    - `repository.js`는 `mockData.js`를 정적으로 import하지 않고, local/demo 모드에서만 동적으로 주입된 demo state를 쓴다.
     - Supabase 원격 로드가 실패해도 데모 state로 fallback하지 않는다.
     - 실제 버그 검증은 normalized Supabase 데이터와 server action 기준으로 한다.
 

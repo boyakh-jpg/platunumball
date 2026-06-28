@@ -32,6 +32,7 @@ import {
   inviteRecruitingPlayers,
   joinRecruitingSideParty,
   handoffMatchRecorder,
+  hasDemoInitialState,
   kickRecruitingApplicant,
   loadRemoteState,
   loadState,
@@ -53,6 +54,7 @@ import {
   sendRecruitingChat,
   setRecruitingApplicantPlacement,
   setRecruitingApplicantReserve,
+  setDemoInitialState,
   setRecruitingSlotPosition,
   setMatchRoomPlayerPlacement,
   setRecruitingPartyPlayerPlacement,
@@ -554,6 +556,18 @@ function normalizeServerState(state) {
   return state ? normalizeState(state, { includeDemo: false }) : state;
 }
 
+let demoInitialStatePromise = null;
+async function ensureLocalDemoInitialState() {
+  if (isSupabaseConfigured || hasDemoInitialState()) return null;
+  if (!demoInitialStatePromise) {
+    demoInitialStatePromise = import("../lib/mockData.js").then((module) => {
+      setDemoInitialState(module.initialState);
+      return module.initialState;
+    });
+  }
+  return demoInitialStatePromise;
+}
+
 function getCachedBootstrapState(authUserId, authEmail) {
   const baseState = loadState({ includeDemo: !isSupabaseConfigured, authUserId, email: authEmail });
   if (!isSupabaseConfigured || !authUserId) return baseState;
@@ -721,9 +735,23 @@ export function useAppData(authUser = null) {
   }, [authEmail, authUserId, setState]);
 
   useEffect(() => {
-    if (!isSupabaseConfigured) saveState(state);
+    if (!isSupabaseConfigured && hasDemoInitialState()) saveState(state);
     return undefined;
   }, [state]);
+
+  useEffect(() => {
+    if (isSupabaseConfigured || hasDemoInitialState()) return undefined;
+    let mounted = true;
+    ensureLocalDemoInitialState()
+      .then(() => {
+        if (!mounted) return;
+        setState(loadState({ includeDemo: true, authUserId, email: authEmail }));
+      })
+      .catch((error) => console.warn("Local demo state load failed.", error.message));
+    return () => {
+      mounted = false;
+    };
+  }, [authEmail, authUserId, setState]);
 
   useEffect(() => {
     if (isSupabaseConfigured) return undefined;
