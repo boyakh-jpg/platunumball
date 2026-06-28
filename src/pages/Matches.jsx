@@ -773,9 +773,9 @@ export default function Matches({ app }) {
 
   useEffect(() => {
     const pagination = app.matchPagination ?? {};
-    if (app.remoteReady === false || pagination.loading || pagination.error || pagination.recruitingScheduleChecked) return;
+    if (app.remoteReady === false || pagination.recruitingScheduleLoading || pagination.error || pagination.recruitingScheduleChecked) return;
     app.actions.loadMatchRecruitingSchedule?.();
-  }, [app.actions, app.matchPagination?.error, app.matchPagination?.loading, app.matchPagination?.recruitingScheduleChecked, app.remoteReady]);
+  }, [app.actions, app.matchPagination?.error, app.matchPagination?.recruitingScheduleChecked, app.matchPagination?.recruitingScheduleLoading, app.remoteReady]);
 
   const openSelectedMatch = (matchId) => {
     if (!matchId) return;
@@ -803,7 +803,7 @@ export default function Matches({ app }) {
     return baseFilteredMatches.filter((match) => !dateFilter || getMatchDate(match) === dateFilter);
   }, [baseFilteredMatches, dateFilter]);
 
-  const matchPagination = app.matchPagination ?? { loading: false, exhausted: true, error: "", recruitingScheduleChecked: false };
+  const matchPagination = app.matchPagination ?? { loading: false, exhausted: true, error: "", recruitingScheduleChecked: false, recruitingScheduleLoading: false };
   const matchPageRecruitingPosts = useMemo(() => (
     app.state.recruitingPosts ?? []
   ), [app.state.recruitingPosts]);
@@ -896,7 +896,7 @@ export default function Matches({ app }) {
   viewButtonCounts.active = viewButtonCounts.todo + viewButtonCounts.scheduled + viewButtonCounts.closed + instantRecruitingRoomCount;
   const getViewButtonCount = (view) => viewButtonCounts[view.id] ?? 0;
   const listRecruitingRoomCount = ["active", "scheduled"].includes(viewId) ? visibleRecruitingRooms.length : 0;
-  const scheduleLoading = app.remoteReady === false || (matchPagination.loading && !visibleScheduleItems.length);
+  const scheduleLoading = app.remoteReady === false || (matchPagination.recruitingScheduleLoading && !visibleScheduleItems.length);
   const displayScheduleItems = scheduleLoading ? [] : visibleScheduleItems;
   const scheduleCountLabel = scheduleLoading
     ? "내 일정 확인 중"

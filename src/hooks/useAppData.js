@@ -644,7 +644,7 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
           authUserId,
           authEmail,
           limit: loadOptions.recruitingLimit,
-          includeMine: false,
+          includeMine: true,
           regionScope: "local",
           listOnly: true,
           adminContext: false,
@@ -690,7 +690,7 @@ export function useAppData(authUser = null) {
   }, []);
   const [profileBindings, setProfileBindings] = useState(() => readProfileBindings());
   const [adminContext, setAdminContext] = useState(EMPTY_ADMIN_CONTEXT);
-  const [matchPagination, setMatchPagination] = useState({ loading: false, exhausted: !isSupabaseConfigured, error: "", cursor: "", recruitingScheduleChecked: false });
+  const [matchPagination, setMatchPagination] = useState({ loading: false, exhausted: !isSupabaseConfigured, error: "", cursor: "", recruitingScheduleChecked: false, recruitingScheduleLoading: false });
   const [recruitingPagination, setRecruitingPagination] = useState({ loading: false, exhausted: !isSupabaseConfigured, error: "", cursor: "", offset: 0, regionScope: "local", regionKey: "", feedCounts: null });
   const [directoryStatus, setDirectoryStatus] = useState({ loading: false, loaded: !isSupabaseConfigured, error: "" });
   const [remoteReady, setRemoteReady] = useState(!isSupabaseConfigured);
@@ -741,7 +741,7 @@ export function useAppData(authUser = null) {
     if (!isSupabaseConfigured || !authUserId) {
       remoteReadyRef.current = !isSupabaseConfigured;
       setRemoteReady(!isSupabaseConfigured);
-      setMatchPagination({ loading: false, exhausted: true, error: "", cursor: "", recruitingScheduleChecked: false });
+      setMatchPagination({ loading: false, exhausted: true, error: "", cursor: "", recruitingScheduleChecked: false, recruitingScheduleLoading: false });
       setRecruitingPagination({ loading: false, exhausted: true, error: "", cursor: "", offset: 0, regionScope: "local", regionKey: "", feedCounts: null });
       setDirectoryStatus({ loading: false, loaded: true, error: "" });
       return undefined;
@@ -777,6 +777,7 @@ export function useAppData(authUser = null) {
             error: "",
             cursor: remoteMeta.matchPage?.cursor ?? getMatchPaginationCursor(maintainedState.matches),
             recruitingScheduleChecked: Boolean(remoteMeta.matchPage?.recruitingScheduleChecked),
+            recruitingScheduleLoading: false,
           });
           setRecruitingPagination({
             loading: false,
@@ -797,7 +798,7 @@ export function useAppData(authUser = null) {
       .catch((error) => {
         console.warn("Supabase hydration failed. Remote state remains empty.", error.message);
         remoteReadyRef.current = true;
-        setMatchPagination({ loading: false, exhausted: true, error: error.message ?? "state_load_failed", cursor: "", recruitingScheduleChecked: false });
+        setMatchPagination({ loading: false, exhausted: true, error: error.message ?? "state_load_failed", cursor: "", recruitingScheduleChecked: false, recruitingScheduleLoading: false });
         setRecruitingPagination({ loading: false, exhausted: true, error: error.message ?? "state_load_failed", cursor: "", offset: 0, regionScope: "local", regionKey: "", feedCounts: null });
         if (mounted) setRemoteReady(true);
       });
@@ -1052,6 +1053,7 @@ export function useAppData(authUser = null) {
         error: "",
         cursor: result?.page?.cursor ?? cursor,
         recruitingScheduleChecked: prev.recruitingScheduleChecked || Boolean(result?.page?.recruitingScheduleChecked),
+        recruitingScheduleLoading: prev.recruitingScheduleLoading,
       }));
       return nextMatches.length;
     } catch (error) {
@@ -1062,8 +1064,8 @@ export function useAppData(authUser = null) {
   }, [authEmail, authUserId, matchPagination.cursor, matchPagination.exhausted, matchPagination.loading, setState, state.matches]);
 
   const loadMatchRecruitingSchedule = useCallback(async () => {
-    if (!isSupabaseConfigured || !authUserId || matchPagination.loading) return false;
-    setMatchPagination((prev) => ({ ...prev, loading: true, error: "" }));
+    if (!isSupabaseConfigured || !authUserId || matchPagination.recruitingScheduleLoading) return false;
+    setMatchPagination((prev) => ({ ...prev, recruitingScheduleLoading: true, error: "" }));
     try {
       const result = await postServerAction(
         "/api/matches/list",
@@ -1082,7 +1084,7 @@ export function useAppData(authUser = null) {
       setState((prev) => mergeRemoteMatchPage(prev, remoteState));
       setMatchPagination((prev) => ({
         ...prev,
-        loading: false,
+        recruitingScheduleLoading: false,
         error: "",
         recruitingScheduleChecked: true,
         cursor: prev.cursor || result?.page?.cursor || getMatchPaginationCursor(remoteState.matches ?? []),
@@ -1090,10 +1092,10 @@ export function useAppData(authUser = null) {
       return remoteState.recruitingPosts?.length ?? 0;
     } catch (error) {
       console.warn("Match recruiting schedule load failed.", error.message);
-      setMatchPagination((prev) => ({ ...prev, loading: false, error: error.message ?? "match_recruiting_schedule_load_failed" }));
+      setMatchPagination((prev) => ({ ...prev, recruitingScheduleLoading: false, error: error.message ?? "match_recruiting_schedule_load_failed" }));
       return false;
     }
-  }, [authEmail, authUserId, matchPagination.loading, setState]);
+  }, [authEmail, authUserId, matchPagination.recruitingScheduleLoading, setState]);
 
   const loadMatchDetail = useCallback(async (matchId) => {
     if (!isSupabaseConfigured || !authUserId || !matchId) return false;
@@ -1200,6 +1202,7 @@ export function useAppData(authUser = null) {
           offset: 0,
           regionScope: "local",
           ...(regionRequest.regionKey ? { regionKey: regionRequest.regionKey } : {}),
+          includeMine: true,
           listOnly: true,
           adminContext: false,
           includeFeedCounts: true,

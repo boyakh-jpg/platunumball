@@ -3127,6 +3127,7 @@ function RecruitingReady({ app }) {
       .filter((post) => modeFilter === "all" || post.mode === modeFilter)
       .filter((post) => {
         if (startFilter === "all" || post.id === targetPostId) return true;
+        if (roomScope !== "all") return true;
         if (startFilter === "instant") return isInstantRoom(post);
         return !isInstantRoom(post) && post.scheduledDate === startFilter;
       })
@@ -3225,7 +3226,9 @@ function RecruitingReady({ app }) {
     const loadKey = `${app.currentUser.id}:mine:auto:${createdRoomCount}:${joinedRoomCount}:${invitedRoomCount}`;
     if (myRecruitingLoadRef.current === loadKey) return;
     myRecruitingLoadRef.current = loadKey;
-    Promise.resolve(app.actions.loadMyRecruitingPosts?.()).catch(() => {});
+    Promise.resolve(app.actions.loadMyRecruitingPosts?.()).finally(() => {
+      if (myRecruitingLoadRef.current === loadKey) myRecruitingLoadRef.current = "";
+    });
   }, [app.actions, app.currentUser.id, app.remoteReady, createdRoomCount, invitedRoomCount, joinedRoomCount, missingCurrentUserRoomCount]);
 
   const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
