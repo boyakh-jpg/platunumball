@@ -3216,6 +3216,17 @@ function RecruitingReady({ app }) {
   const createdRoomCount = getFeedCount("created", fallbackCreatedRoomCount);
   const joinedRoomCount = getFeedCount("joined", fallbackJoinedRoomCount);
   const invitedRoomCount = getFeedCount("invited", fallbackInvitedRoomCount);
+  const missingCurrentUserRoomCount = Math.max(0, createdRoomCount - fallbackCreatedRoomCount)
+    + Math.max(0, joinedRoomCount - fallbackJoinedRoomCount)
+    + Math.max(0, invitedRoomCount - fallbackInvitedRoomCount);
+
+  useEffect(() => {
+    if (!missingCurrentUserRoomCount || !app.remoteReady || !app.currentUser.id) return;
+    const loadKey = `${app.currentUser.id}:mine:auto:${createdRoomCount}:${joinedRoomCount}:${invitedRoomCount}`;
+    if (myRecruitingLoadRef.current === loadKey) return;
+    myRecruitingLoadRef.current = loadKey;
+    Promise.resolve(app.actions.loadMyRecruitingPosts?.()).catch(() => {});
+  }, [app.actions, app.currentUser.id, app.remoteReady, createdRoomCount, invitedRoomCount, joinedRoomCount, missingCurrentUserRoomCount]);
 
   const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
   const submit = (event) => {

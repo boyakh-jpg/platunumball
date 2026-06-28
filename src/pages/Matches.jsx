@@ -805,8 +805,8 @@ export default function Matches({ app }) {
 
   const matchPagination = app.matchPagination ?? { loading: false, exhausted: true, error: "", recruitingScheduleChecked: false };
   const matchPageRecruitingPosts = useMemo(() => (
-    matchPagination.recruitingScheduleChecked ? app.state.recruitingPosts ?? [] : []
-  ), [app.state.recruitingPosts, matchPagination.recruitingScheduleChecked]);
+    app.state.recruitingPosts ?? []
+  ), [app.state.recruitingPosts]);
 
   const calendarMatches = useMemo(() => {
     const recruitingRooms = [...matchPageRecruitingPosts]
