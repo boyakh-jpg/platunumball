@@ -3054,9 +3054,13 @@ function RecruitingReady({ app }) {
     const loadKey = `${app.currentUser.id}:${regionFilter}:${regionKey}`;
     if (regionLoadRef.current === loadKey) return;
     regionLoadRef.current = loadKey;
-    app.actions.loadRecruitingRegion?.({
+    Promise.resolve(app.actions.loadRecruitingRegion?.({
       regionScope: regionFilter === "local" ? "local" : "region",
       regionKey: regionFilter === "local" ? "" : regionKey,
+    })).then((count) => {
+      if (count !== false) regionLoadRef.current = "";
+    }).catch(() => {
+      // Keep the key on failure so the effect does not retry in a tight loop.
     });
   }, [app.actions, app.currentUser, app.currentUser.id, app.remoteReady, app.recruitingPagination, app.state.recruitingPosts, regionFilter, selectedRegionKey]);
 

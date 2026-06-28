@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Outlet } from "react-router-dom";
 import BottomNav from "./BottomNav.jsx";
 import Sidebar from "./Sidebar.jsx";
@@ -10,24 +10,8 @@ const remoteLoaderBallSources = [
 ];
 
 export default function AppShell({ app, auth }) {
-  const [showRemoteLoader, setShowRemoteLoader] = useState(false);
   const [remoteLoaderImageFailed, setRemoteLoaderImageFailed] = useState(false);
   const [remoteLoaderImageIndex, setRemoteLoaderImageIndex] = useState(0);
-
-  useEffect(() => {
-    if (app.remoteReady !== false) {
-      setShowRemoteLoader(false);
-      return undefined;
-    }
-
-    const timer = window.setTimeout(() => {
-      setShowRemoteLoader(true);
-    }, 300);
-
-    return () => {
-      window.clearTimeout(timer);
-    };
-  }, [app.remoteReady]);
 
   return (
     <div className="app-shell">
@@ -36,7 +20,7 @@ export default function AppShell({ app, auth }) {
         <Outlet />
       </main>
       <BottomNav />
-      {showRemoteLoader ? (
+      {app.remoteReady === false ? (
         <div className="basketball-loader-overlay" role="status" aria-live="polite" aria-label="서버 데이터를 불러오는 중">
           <div className="basketball-loader">
             <span className="basketball-loader-visual" aria-hidden="true">

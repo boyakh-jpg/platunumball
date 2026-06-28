@@ -242,11 +242,21 @@ function preserveExistingWhenEmpty(incoming, existing, keys = []) {
   return next;
 }
 
+function shouldUseIncomingRoomRow(incoming, existing) {
+  if (!existing) return true;
+  const incomingTime = new Date(incoming?.updatedAt ?? incoming?.createdAt ?? 0).getTime();
+  const existingTime = new Date(existing?.updatedAt ?? existing?.createdAt ?? 0).getTime();
+  if (!Number.isFinite(incomingTime) || !Number.isFinite(existingTime)) return true;
+  return incomingTime >= existingTime;
+}
+
 function mergeMatchesById(current = [], incoming = []) {
   const merged = new Map((current ?? []).filter((item) => item?.id).map((item) => [item.id, item]));
   (incoming ?? []).forEach((item) => {
     if (!item?.id) return;
-    merged.set(item.id, preserveExistingWhenEmpty(item, merged.get(item.id), [
+    const existing = merged.get(item.id);
+    if (!shouldUseIncomingRoomRow(item, existing)) return;
+    merged.set(item.id, preserveExistingWhenEmpty(item, existing, [
       "agreements",
       "approvals",
       "disputes",
@@ -265,6 +275,7 @@ function mergeRecruitingPostsById(current = [], incoming = []) {
   (incoming ?? []).forEach((item) => {
     if (!item?.id) return;
     const existing = merged.get(item.id);
+    if (!shouldUseIncomingRoomRow(item, existing)) return;
     const next = preserveExistingWhenEmpty(item, existing, ["applicants"]);
     if (existing?.roomState && item?.roomState) {
       next.roomState = preserveExistingWhenEmpty(item.roomState, existing.roomState, ["chatMessages", "kickLog", "invitations"]);
@@ -906,11 +917,9 @@ export function useAppData(authUser = null) {
     }).finally(() => {
       if (!pendingPostId) return;
       pendingRecruitingPostIdsRef.current.delete(pendingPostId);
-      globalThis.setTimeout(() => {
-        if (recentRecruitingMutationTimesRef.current.get(pendingPostId) === mutationStartedAt) {
-          recentRecruitingMutationTimesRef.current.delete(pendingPostId);
-        }
-      }, 10000);
+      if (recentRecruitingMutationTimesRef.current.get(pendingPostId) === mutationStartedAt) {
+        recentRecruitingMutationTimesRef.current.delete(pendingPostId);
+      }
     });
   }, [runServerAction, setState]);
   const syncMatchServer = useCallback((match, notifications = [], meta = {}) => {
@@ -929,11 +938,9 @@ export function useAppData(authUser = null) {
     }).finally(() => {
       if (!pendingMatchId) return;
       pendingMatchIdsRef.current.delete(pendingMatchId);
-      globalThis.setTimeout(() => {
-        if (recentMatchMutationTimesRef.current.get(pendingMatchId) === mutationStartedAt) {
-          recentMatchMutationTimesRef.current.delete(pendingMatchId);
-        }
-      }, 10000);
+      if (recentMatchMutationTimesRef.current.get(pendingMatchId) === mutationStartedAt) {
+        recentMatchMutationTimesRef.current.delete(pendingMatchId);
+      }
     });
   }, [runServerAction, setState]);
   const submitReportServer = useCallback((report, notifications = []) => {
@@ -1162,7 +1169,7 @@ export function useAppData(authUser = null) {
           ...(regionRequest.regionKey ? { regionKey: regionRequest.regionKey } : {}),
           listOnly: true,
           adminContext: false,
-          includeFeedCounts: false,
+          includeFeedCounts: true,
         },
         { allowWhenDisabled: true },
       );
