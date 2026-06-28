@@ -804,8 +804,9 @@ export default function Matches({ app }) {
       .filter((post) => post.status === "open")
       .filter((post) => isRecruitingRoomInUserSchedule(post, app.state, app.currentUser.id))
       .filter((post) => {
+        if (isInstantScheduleRoom(post)) return true;
         const postDate = getMatchDate(post);
-        if (!postDate) return isInstantScheduleRoom(post);
+        if (!postDate) return false;
         return postDate <= maxScheduleDate && shouldIncludeByHistoryRange(post, todayValue, historyRangeMonths, historyCutoffDate);
       })
       .filter((post) => kindFilter === "all" || (kindFilter === "ranked" ? post.ranked !== false : post.ranked === false))
@@ -854,16 +855,17 @@ export default function Matches({ app }) {
     if (!["active", "scheduled"].includes(viewId)) return [];
     return visibleRecruitingCandidates
       .filter((post) => {
+        if (isInstantScheduleRoom(post)) return viewId === "active" && !dateFilter;
         const postDate = getMatchDate(post);
-        if (!postDate) return viewId === "active" && isInstantScheduleRoom(post) && !dateFilter;
         return !dateFilter || postDate === dateFilter;
       })
       .sort(compareSchedule)
       .slice(0, 12);
   }, [dateFilter, viewId, visibleRecruitingCandidates]);
 
-  const activeRoomCount = visibleRecruitingCandidates.length;
-  const filteredActiveRoomCount = visibleRecruitingCandidates.filter((post) => {
+  const instantRecruitingRoomCount = visibleRecruitingCandidates.filter((post) => isInstantScheduleRoom(post) && !dateFilter).length;
+  const scheduledRecruitingRoomCount = visibleRecruitingCandidates.filter((post) => {
+    if (isInstantScheduleRoom(post)) return false;
     const postDate = getMatchDate(post);
     return !dateFilter || postDate === dateFilter;
   }).length;
@@ -873,17 +875,17 @@ export default function Matches({ app }) {
     ...visibleMatches.map((match) => ({ type: "match", id: `match-${match.id}`, item: match })),
   ].sort((a, b) => compareSchedule(a.item, b.item))), [visibleMatches, visibleRecruitingRooms]);
   const todoCount = getViewCount(filteredMatches, VIEWS[1], app.currentUser.id);
-  const scheduledCount = getViewCount(filteredMatches, VIEWS[2], app.currentUser.id) + filteredActiveRoomCount;
+  const scheduledCount = getViewCount(filteredMatches, VIEWS[2], app.currentUser.id) + scheduledRecruitingRoomCount;
   const closedCount = getViewCount(filteredMatches, VIEWS[3], app.currentUser.id);
-  const activeCount = todoCount + scheduledCount + closedCount;
+  const activeCount = todoCount + scheduledCount + closedCount + instantRecruitingRoomCount;
   const viewButtonCounts = {
     todo: getViewCount(baseFilteredMatches, VIEWS[1], app.currentUser.id),
-    scheduled: getViewCount(baseFilteredMatches, VIEWS[2], app.currentUser.id) + activeRoomCount,
+    scheduled: getViewCount(baseFilteredMatches, VIEWS[2], app.currentUser.id) + scheduledRecruitingRoomCount,
     closed: getViewCount(baseFilteredMatches, VIEWS[3], app.currentUser.id),
   };
-  viewButtonCounts.active = viewButtonCounts.todo + viewButtonCounts.scheduled + viewButtonCounts.closed;
+  viewButtonCounts.active = viewButtonCounts.todo + viewButtonCounts.scheduled + viewButtonCounts.closed + instantRecruitingRoomCount;
   const getViewButtonCount = (view) => viewButtonCounts[view.id] ?? 0;
-  const listRecruitingRoomCount = ["active", "scheduled"].includes(viewId) ? filteredActiveRoomCount : 0;
+  const listRecruitingRoomCount = ["active", "scheduled"].includes(viewId) ? visibleRecruitingRooms.length : 0;
   const scheduleLoading = app.remoteReady === false || (matchPagination.loading && !visibleScheduleItems.length);
   const displayScheduleItems = scheduleLoading ? [] : visibleScheduleItems;
   const scheduleCountLabel = scheduleLoading
