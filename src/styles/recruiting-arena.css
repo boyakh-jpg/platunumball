@@ -3338,6 +3338,7 @@ html[data-theme="light"] .arena-recruit-card.arena-target-room {
   padding: 0;
   border: 0;
   background: transparent;
+  background-color: transparent;
   background-image: none;
 }
 
@@ -3365,6 +3366,16 @@ html[data-theme="light"] .arena-recruit-card.arena-target-room {
   width: auto;
   max-width: 100%;
   flex-wrap: wrap;
+  gap: 6px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.arena-filter-bar .segmented-control {
+  border: 0;
+  padding: 0;
+  background: transparent;
 }
 
 .arena-filter-bar .segmented-control button {
@@ -3396,6 +3407,12 @@ html[data-theme="light"] .arena-recruit-card.arena-target-room {
 
 .arena-filter-bar .arena-start-date-filter button.sat.active,
 .arena-filter-bar .arena-start-date-filter button.sun.active {
+  border-color: rgba(70, 224, 182, 0.42);
+  background: rgba(70, 224, 182, 0.12);
+  color: var(--green);
+}
+
+.arena-filter-bar .arena-start-date-filter button.active {
   border-color: rgba(70, 224, 182, 0.42);
   background: rgba(70, 224, 182, 0.12);
   color: var(--green);
@@ -3462,6 +3479,15 @@ html[data-theme="light"] .arena-filter-bar .segmented-control button {
 html[data-theme="light"] .arena-filter-bar .segmented-control button.active {
   background: rgba(15, 159, 126, 0.12);
   color: var(--green);
+}
+
+html[data-theme="light"] .arena-filter-bar button.active,
+html[data-theme="light"] .arena-filter-bar .arena-start-date-filter button.active,
+html[data-theme="light"] .arena-filter-bar .arena-start-date-filter button.sat.active,
+html[data-theme="light"] .arena-filter-bar .arena-start-date-filter button.sun.active {
+  border-color: rgba(15, 159, 126, 0.34);
+  background: rgba(213, 250, 241, 0.94);
+  color: #075f51;
 }
 
 @media (max-width: 720px) {
@@ -3704,6 +3730,10 @@ html[data-theme="light"] .arena-lobby-card .om-match-summary-box {
   background-color: rgba(10, 14, 21, 0.9);
 }
 
+.arena-filter-bar {
+  background-color: transparent;
+}
+
 .arena-lobby-card .om-match-summary-box {
   background-color: rgba(255, 255, 255, 0.045);
 }
@@ -3713,6 +3743,10 @@ html[data-theme="light"] .arena-queue-controls,
 html[data-theme="light"] .arena-lobby-card.om-match-card {
   background-color: rgba(250, 254, 252, 0.92);
   background-image: none;
+}
+
+html[data-theme="light"] .arena-filter-bar {
+  background-color: transparent;
 }
 
 html[data-theme="light"] .arena-lobby-card .om-match-summary-box {
