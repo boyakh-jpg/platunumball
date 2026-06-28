@@ -1,0 +1,244 @@
+import { getAuthenticatedContext, readJsonBody, sendJson } from "./_supabaseAdmin.js";
+
+const PROFILE_COLUMNS = "id,name,handle,hashtag,position,region,trust_score,avatar_color,ratings,age_group,updated_at";
+const TEAM_COLUMNS = "id,name,home_court,region,mmr,wins,losses,accent,deleted_at,updated_at";
+const TEAM_MEMBER_COLUMNS = "team_id,user_id,role";
+const COURT_COLUMNS = "id,name,hashtag,address_text,road_address,jibun_address,zonecode,lat,lng,status,payload,approved_at,created_at,updated_at";
+const REFEREE_APPOINTMENT_COLUMNS = "user_id,role,grade,status,starts_at,ends_at";
+const TYPE_ALIASES = {
+  all: ["profile", "team", "court", "referee"],
+  player: ["profile"],
+  profile: ["profile"],
+  team: ["team"],
+  court: ["court"],
+  referee: ["referee"],
+};
+const REFEREE_GRADES = new Set(["associate", "official", "senior", "master", "regional", "national", "admin"]);
+
+function normalizeSearchQuery(value = "") {
+  return String(value ?? "")
+    .normalize("NFKC")
+    .trim()
+    .replace(/\s+/g, " ")
+    .slice(0, 48);
+}
+
+function stripHash(value = "") {
+  return normalizeSearchQuery(value).replace(/^#+/, "");
+}
+
+function sanitizeIlike(value = "") {
+  return normalizeSearchQuery(value).replace(/[,%()*"']/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function getQueryMinLength(query = "") {
+  const text = normalizeSearchQuery(query).replace(/\s+/g, "");
+  if (!text) return 2;
+  if (text.startsWith("#")) return 2;
+  if (/[가-힣ㄱ-ㅎㅏ-ㅣ]/.test(text)) return 2;
+  return 4;
+}
+
+function getRequestedTypes(value = "all") {
+  const rawTypes = Array.isArray(value) ? value : [value];
+  const expanded = rawTypes.flatMap((type) => TYPE_ALIASES[String(type || "").trim()] ?? []);
+  return [...new Set(expanded.length ? expanded : TYPE_ALIASES.all)];
+}
+
+function clampLimit(value) {
+  const limit = Number(value);
+  if (!Number.isFinite(limit)) return 10;
+  return Math.min(Math.max(Math.floor(limit), 1), 10);
+}
+
+function searchFilter(fields = [], query = "") {
+  const raw = sanitizeIlike(query);
+  const plain = sanitizeIlike(stripHash(query));
+  const values = [...new Set([raw, plain, plain ? `#${plain}` : ""].filter(Boolean))];
+  return fields
+    .flatMap((field) => values.map((value) => `${field}.ilike.%${value}%`))
+    .join(",");
+}
+
+function activeTerm(row = {}, nowMs = Date.now()) {
+  const startsAt = row.starts_at ? new Date(row.starts_at).getTime() : 0;
+  const endsAt = row.ends_at ? new Date(row.ends_at).getTime() : 0;
+  return (!startsAt || startsAt <= nowMs) && (!endsAt || endsAt >= nowMs);
+}
+
+function isActiveRefereeAppointment(row = {}) {
+  const status = row.status || "active";
+  const role = row.role || "referee";
+  return role === "referee" && ["active", "approved"].includes(status) && REFEREE_GRADES.has(row.grade) && activeTerm(row);
+}
+
+function getPayload(row = {}) {
+  return row.payload && typeof row.payload === "object" && !Array.isArray(row.payload) ? row.payload : {};
+}
+
+function toProfile(row = {}, kind = "profile") {
+  return {
+    kind,
+    id: row.id,
+    name: row.name,
+    handle: row.handle,
+    hashtag: row.hashtag,
+    position: row.position,
+    region: row.region,
+    trustScore: row.trust_score ?? 0,
+    avatarColor: row.avatar_color,
+    ratings: row.ratings ?? {},
+    ageGroup: row.age_group,
+    searchText: [row.name, row.hashtag, row.handle, row.region, row.position].filter(Boolean).join(" "),
+  };
+}
+
+function toTeam(row = {}, memberRows = []) {
+  return {
+    kind: "team",
+    id: row.id,
+    name: row.name,
+    homeCourt: row.home_court,
+    region: row.region,
+    mmr: row.mmr ?? 1200,
+    wins: row.wins ?? 0,
+    losses: row.losses ?? 0,
+    accent: row.accent,
+    members: memberRows.map((member) => ({ userId: member.user_id, role: member.role ?? "regular" })),
+    searchText: [row.name, row.region, row.home_court, row.id].filter(Boolean).join(" "),
+  };
+}
+
+function toCourt(row = {}) {
+  const payload = getPayload(row);
+  return {
+    ...payload,
+    kind: "court",
+    id: row.id,
+    name: row.name ?? payload.name,
+    hashtag: row.hashtag ?? payload.hashtag,
+    addressText: row.address_text ?? payload.addressText,
+    roadAddress: row.road_address ?? payload.roadAddress,
+    jibunAddress: row.jibun_address ?? payload.jibunAddress,
+    zonecode: row.zonecode ?? payload.zonecode,
+    lat: row.lat ?? payload.lat,
+    lng: row.lng ?? payload.lng,
+    status: row.status ?? payload.status ?? "active",
+    region: payload.region,
+    type: payload.type,
+    surfaceType: payload.surfaceType,
+    courtLayout: payload.courtLayout,
+    courtKind: payload.courtKind,
+    paid: payload.paid,
+    searchText: [row.name, row.hashtag, row.address_text, payload.region, payload.type].filter(Boolean).join(" "),
+  };
+}
+
+async function searchProfiles(supabase, query, limit) {
+  const { data, error } = await supabase
+    .from("public_profiles")
+    .select(PROFILE_COLUMNS)
+    .or(searchFilter(["name", "hashtag", "handle", "region", "position"], query))
+    .order("trust_score", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []).map((row) => toProfile(row, "profile"));
+}
+
+async function searchTeams(supabase, query, limit) {
+  const { data, error } = await supabase
+    .from("teams")
+    .select(TEAM_COLUMNS)
+    .is("deleted_at", null)
+    .or(searchFilter(["name", "home_court", "region", "id"], query))
+    .order("mmr", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  const teamRows = data ?? [];
+  const teamIds = teamRows.map((team) => team.id).filter(Boolean);
+  const { data: memberRows, error: memberError } = teamIds.length
+    ? await supabase.from("team_members").select(TEAM_MEMBER_COLUMNS).in("team_id", teamIds)
+    : { data: [], error: null };
+  if (memberError) throw memberError;
+  const membersByTeam = (memberRows ?? []).reduce((map, member) => {
+    const list = map.get(member.team_id) ?? [];
+    list.push(member);
+    map.set(member.team_id, list);
+    return map;
+  }, new Map());
+  return teamRows.map((team) => toTeam(team, membersByTeam.get(team.id) ?? []));
+}
+
+async function searchCourts(supabase, query, limit) {
+  const { data, error } = await supabase
+    .from("approved_courts")
+    .select(COURT_COLUMNS)
+    .eq("status", "active")
+    .or(searchFilter(["name", "hashtag", "address_text", "road_address", "jibun_address"], query))
+    .order("updated_at", { ascending: false, nullsFirst: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []).map(toCourt);
+}
+
+async function searchReferees(supabase, query, limit) {
+  const { data, error } = await supabase
+    .from("public_profiles")
+    .select(PROFILE_COLUMNS)
+    .gte("trust_score", 90)
+    .or(searchFilter(["name", "hashtag", "handle", "region", "position"], query))
+    .order("trust_score", { ascending: false })
+    .limit(limit * 3);
+  if (error) throw error;
+  const profileRows = data ?? [];
+  const profileIds = profileRows.map((profile) => profile.id).filter(Boolean);
+  const { data: appointmentRows, error: appointmentError } = profileIds.length
+    ? await supabase.from("referee_appointments").select(REFEREE_APPOINTMENT_COLUMNS).in("user_id", profileIds)
+    : { data: [], error: null };
+  if (appointmentError) throw appointmentError;
+  const appointedIds = new Set((appointmentRows ?? []).filter(isActiveRefereeAppointment).map((row) => row.user_id));
+  return profileRows
+    .filter((profile) => appointedIds.has(profile.id))
+    .slice(0, limit)
+    .map((row) => toProfile(row, "referee"));
+}
+
+export default async function handler(request, response) {
+  if (request.method !== "POST") {
+    response.setHeader("Allow", "POST");
+    sendJson(response, 405, { error: "method_not_allowed" });
+    return;
+  }
+
+  try {
+    const body = await readJsonBody(request);
+    const query = normalizeSearchQuery(body.query ?? body.q ?? "");
+    const minLength = getQueryMinLength(query);
+    if (query.replace(/\s+/g, "").length < minLength) {
+      sendJson(response, 200, { ok: true, items: [] });
+      return;
+    }
+
+    const limit = clampLimit(body.limit);
+    const types = getRequestedTypes(body.type ?? body.types ?? "all");
+    const context = await getAuthenticatedContext(request, { allowMissingProfile: true });
+    const loaders = {
+      profile: () => searchProfiles(context.supabase, query, limit),
+      team: () => searchTeams(context.supabase, query, limit),
+      court: () => searchCourts(context.supabase, query, limit),
+      referee: () => searchReferees(context.supabase, query, limit),
+    };
+    const chunks = await Promise.all(types.map((type) => loaders[type]?.() ?? []));
+    const seen = new Set();
+    const items = chunks.flat().filter((item) => {
+      const key = `${item.kind}:${item.id}`;
+      if (!item.id || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).slice(0, limit);
+    sendJson(response, 200, { ok: true, items });
+  } catch (error) {
+    console.warn("Search failed.", error.message);
+    sendJson(response, error.statusCode || 500, { error: "search_failed" });
+  }
+}

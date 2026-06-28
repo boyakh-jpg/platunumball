@@ -25,6 +25,7 @@ import recruitingList from "../server/api/recruiting/list.js";
 import recruitingSyncPost from "../server/api/recruiting/sync-post.js";
 import reportSubmit from "../server/api/reports/submit.js";
 import settingsSync from "../server/api/settings/sync.js";
+import search from "../server/api/search.js";
 import stateLoad from "../server/api/state/load.js";
 import systemCleanupSim from "../server/api/system/cleanup-sim.js";
 import systemMaintenance from "../server/api/system/maintenance.js";
@@ -61,6 +62,7 @@ const ROUTES = new Map([
   ["/recruiting/sync-post", recruitingSyncPost],
   ["/reports/submit", reportSubmit],
   ["/settings/sync", settingsSync],
+  ["/search", search],
   ["/state/load", stateLoad],
   ["/system/cleanup-sim", systemCleanupSim],
   ["/system/maintenance", systemMaintenance],

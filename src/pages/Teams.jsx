@@ -237,6 +237,7 @@ export default function Teams({ app }) {
               onChange={setQuery}
               placeholder="Noeul, 마포, 한강..."
               items={visibleTeams}
+              remoteSearchType="team"
               idleItems={favoriteTeams}
               idleTitle="즐겨찾기 팀"
               showIdleOnFocus
@@ -295,6 +296,7 @@ export default function Teams({ app }) {
                 onChange={setCourtQuery}
                 placeholder="구장 이름, 지역, 해시태그"
                 items={visibleCourts}
+                remoteSearchType="court"
                 idleItems={favoriteCourts.length ? favoriteCourts : visibleCourts.slice(0, 10)}
                 idleTitle={favoriteCourts.length ? "즐겨찾기 구장" : "추천 구장"}
                 showIdleOnFocus

@@ -65,6 +65,7 @@
 2026-06-28: 즐겨찾기 검색은 프로필, 팀, 구장, 심판을 각각 최대 10개까지 저장하고, 관련 SearchPicker의 idle 목록과 검색 결과 별 토글에 연결한다.
 2026-06-28: 설정 즐겨찾기 목록은 저장 직후 전체를 누적 노출하지 않고, 프로필/팀/구장/심판 4개 타입 버튼을 한 줄에 두어 선택한 타입 목록만 연다.
 2026-06-28: `SearchPicker`는 서버 호출 없이 2글자 이상부터 클라이언트 부분검색을 수행하고 기본 결과를 10개만 보여준다.
+2026-06-28: `SearchPicker` 원격 검색은 검색창별 도메인을 `profile`, `team`, `court`, `referee`, `all`로 제한하고 한글/# 검색은 2글자, 영문/숫자 검색은 4글자부터 300ms debounce 후 최대 10개만 요청한다.
 
 2026-06-27: Score result cards keep side/team names secondary and the numeric score as the visual center.
 

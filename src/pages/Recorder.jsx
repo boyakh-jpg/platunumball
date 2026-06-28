@@ -490,6 +490,7 @@ export default function Recorder({ app }) {
                       onChange={(value) => setLatePlayerDraft((current) => ({ ...current, userId: "", playerQuery: value }))}
                       placeholder="선수 이름, #해시태그, 포지션 검색"
                       items={latePlayerOptions}
+                      remoteSearchType="profile"
                       idleItems={latePlayerOptions.slice(0, 10)}
                       idleTitle="추가 가능한 선수"
                       title="선수 검색 결과"

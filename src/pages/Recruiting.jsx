@@ -1407,6 +1407,12 @@ export function InvitePanel({
         onChange={onQueryChange}
         placeholder={allowedTeam ? `${allowedTeam.name} 팀원 검색` : "선수 또는 팀 검색"}
         items={inviteSearchItems}
+        remoteSearchType={allowedTeamId ? "profile" : ["profile", "team"]}
+        mapRemoteItem={(item) => {
+          if (item.kind === "team") return allowedTeamId ? null : { type: "team", team: item };
+          if (!isAllowedPlayer(item.id)) return null;
+          return { type: "player", player: item };
+        }}
         idleItems={idleInviteItems}
         idleTitle="즐겨찾기"
         showIdleOnFocus
@@ -1533,6 +1539,7 @@ function RefereeInvitePanel({
           onChange={onQueryChange}
           placeholder="심판 이름, #해시태그, 지역 검색"
           items={searchItems}
+          remoteSearchType="referee"
           idleItems={idleItems}
           idleTitle={favoriteReferees.length ? "즐겨찾기 심판" : "초대 가능한 심판"}
           showIdleOnFocus

@@ -1203,6 +1203,7 @@ export default function CreateMatch({ app }) {
                     }}
                     placeholder="심판 이름, #해시태그, 지역 검색"
                     items={refereeSearchResults}
+                    remoteSearchType="referee"
                     idleItems={favoriteReferees.length ? favoriteReferees : refereeCandidates.slice(0, 8)}
                     idleTitle={favoriteReferees.length ? "즐겨찾기 심판" : "초대 가능한 심판"}
                     title="심판 검색 결과"
@@ -1264,6 +1265,7 @@ export default function CreateMatch({ app }) {
                 onChange={setCourtQuery}
                 placeholder="코트, 지역, 실내/야외 검색"
                 items={sortedCourts}
+                remoteSearchType="court"
                 idleItems={favoriteCourts.length ? favoriteCourts : sortedCourts.slice(0, 10)}
                 idleTitle={favoriteCourts.length ? "자주 찾는 코트" : "추천 코트"}
                 showIdleOnFocus
@@ -1394,6 +1396,7 @@ export default function CreateMatch({ app }) {
                     onChange={setTeamQuery}
                     placeholder="팀, 지역, 홈코트 검색"
                     items={sortedTeams}
+                    remoteSearchType="team"
                     idleItems={favoriteTeams}
                     idleTitle="즐겨찾기 팀"
                     showIdleOnFocus
@@ -1462,6 +1465,7 @@ export default function CreateMatch({ app }) {
                     onChange={setOpponentTeamQuery}
                     placeholder="상대 팀명 검색"
                     items={opponentTeamResults}
+                    remoteSearchType="team"
                     idleItems={favoriteOpponentTeams.length ? favoriteOpponentTeams : opponentTeamResults}
                     idleTitle={favoriteOpponentTeams.length ? "즐겨찾기 팀" : "추천 B사이드"}
                     limit={10}

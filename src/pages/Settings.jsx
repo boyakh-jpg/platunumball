@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { BookOpen, Database, MapPin, Moon, Search, Send, ShieldCheck, Star, Sun, UserRound } from "lucide-react";
+import { BookOpen, Database, MapPin, Moon, Send, ShieldCheck, Star, Sun, UserRound } from "lucide-react";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import Badge from "../components/common/Badge.jsx";
@@ -221,6 +221,76 @@ export default function Settings({ app, auth }) {
     team: { label: "팀", count: favoriteTeamIds.length },
     court: { label: "구장", count: favoriteCourtIds.length },
     referee: { label: "심판", count: favoriteRefereeIds.length },
+  };
+  const favoriteSearchIdleItems = [
+    ...favoritePlayers.map((item) => ({ ...item, kind: "profile" })),
+    ...favoriteTeams.map((item) => ({ ...item, kind: "team" })),
+    ...favoriteCourts.map((item) => ({ ...item, kind: "court" })),
+    ...favoriteReferees.map((item) => ({ ...item, kind: "referee" })),
+  ].slice(0, 10);
+  const renderFavoriteSearchItem = (item) => {
+    if (item.kind === "team") {
+      return (
+        <div key={`favorite-team-${item.id}`} className="favorite-result-row" onMouseDown={(event) => event.preventDefault()}>
+          <TeamHoverCard as="span" team={item}>
+            <span className="team-emblem small" style={{ "--team-color": item.accent }}>{item.name.slice(0, 1)}</span>
+            <span>
+              <strong>{item.name}</strong>
+              <em>{getTeamHashtag(item)}</em>
+            </span>
+          </TeamHoverCard>
+          <Button type="button" size="sm" variant={favoriteTeamIds.includes(item.id) ? "primary" : "secondary"} onClick={() => app.actions.toggleFavoriteTeam(item.id)}>
+            {favoriteTeamIds.includes(item.id) ? "해제" : "저장"}
+          </Button>
+        </div>
+      );
+    }
+    if (item.kind === "court") {
+      return (
+        <div key={`favorite-court-${item.id}`} className="favorite-result-row" onMouseDown={(event) => event.preventDefault()}>
+          <CourtHoverCard court={item}>
+            <span className="team-dot" />
+            <span>
+              <strong>{item.name}</strong>
+              <em>{getCourtHashtag(item)}</em>
+            </span>
+          </CourtHoverCard>
+          <Button type="button" size="sm" variant={favoriteCourtIds.includes(item.id) ? "primary" : "secondary"} onClick={() => app.actions.toggleFavoriteCourt(item.id)}>
+            {favoriteCourtIds.includes(item.id) ? "해제" : "저장"}
+          </Button>
+        </div>
+      );
+    }
+    if (item.kind === "referee") {
+      return (
+        <div key={`favorite-referee-${item.id}`} className="favorite-result-row" onMouseDown={(event) => event.preventDefault()}>
+          <RefereeHoverCard as="span" user={item} matches={app.state.matches} minTrust={REFEREE_TRUST_MIN}>
+            <span className="avatar small" style={{ "--avatar": item.avatarColor }}>{item.name.slice(0, 1)}</span>
+            <span>
+              <strong>{item.name}</strong>
+              <em>{getUserHashtag(item)} · 신뢰도 {item.trustScore}</em>
+            </span>
+          </RefereeHoverCard>
+          <Button type="button" size="sm" variant={favoriteRefereeIds.includes(item.id) ? "primary" : "secondary"} onClick={() => app.actions.toggleFavoriteReferee(item.id)}>
+            {favoriteRefereeIds.includes(item.id) ? "해제" : "저장"}
+          </Button>
+        </div>
+      );
+    }
+    return (
+      <div key={`favorite-player-${item.id}`} className="favorite-result-row" onMouseDown={(event) => event.preventDefault()}>
+        <PlayerHoverCard as="span" user={item} teams={app.state.teams}>
+          <span className="avatar small" style={{ "--avatar": item.avatarColor }}>{item.name.slice(0, 1)}</span>
+          <span>
+            <strong>{item.name}</strong>
+            <em>{getUserHashtag(item)}</em>
+          </span>
+        </PlayerHoverCard>
+        <Button type="button" size="sm" variant={favoritePlayerIds.includes(item.id) ? "primary" : "secondary"} onClick={() => app.actions.toggleFavoritePlayer(item.id)}>
+          {favoritePlayerIds.includes(item.id) ? "해제" : "저장"}
+        </Button>
+      </div>
+    );
   };
   const serverAdminLevel = Number(app.adminContext?.level ?? 0);
   const canOpenAdminMenu = serverAdminLevel >= 30 || hasAdminAccess(app.currentUser, app.state.settings);
@@ -794,10 +864,21 @@ export default function Settings({ app, auth }) {
               </div>
               <Star size={20} />
             </div>
-            <div className="favorite-search-row">
-              <Search size={17} />
-              <input value={favoriteQuery} placeholder="#minjun, #noeulkings, #12345" onChange={(event) => setFavoriteQuery(event.target.value)} />
-            </div>
+            <SearchPicker
+              value={favoriteQuery}
+              onChange={setFavoriteQuery}
+              placeholder="#minjun, #noeulkings, #12345"
+              items={[]}
+              remoteSearchType="all"
+              idleItems={favoriteSearchIdleItems}
+              idleTitle="저장한 즐겨찾기"
+              title="즐겨찾기 검색 결과"
+              emptyText="해시태그 결과 없음"
+              showIdleOnFocus
+              floating
+              fieldClassName="favorite-search-row"
+              renderItem={renderFavoriteSearchItem}
+            />
             <div className="favorite-type-grid">
               {Object.entries(favoriteListConfig).map(([type, config]) => (
                 <button

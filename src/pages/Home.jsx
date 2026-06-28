@@ -358,6 +358,47 @@ export default function Home({ app }) {
       </Link>
     )
   );
+  const mapRemoteHomeSearchItem = (item) => {
+    if (item.kind === "team") {
+      const hashtag = getTeamHashtag(item);
+      return {
+        id: `remote-team-${item.id}`,
+        label: item.name,
+        kind: "TEAM",
+        meta: `${item.region ?? "지역 미정"} · ${item.homeCourt ?? "홈코트 미정"} · ${item.mmr ?? 1200}`,
+        href: `/app/teams/${item.id}`,
+        team: item,
+        teamColor: item.accent,
+        hashtag,
+        searchText: item.searchText,
+      };
+    }
+    if (item.kind === "court") {
+      const hashtag = getCourtHashtag(item);
+      return {
+        id: `remote-court-${item.id}`,
+        label: item.name,
+        kind: "COURT",
+        meta: `${item.region ?? "지역 미정"} · ${item.type ?? "구장"}`,
+        href: "/app/create",
+        court: true,
+        hashtag,
+        searchText: item.searchText,
+      };
+    }
+    const hashtag = getUserHashtag(item);
+    return {
+      id: `remote-${item.kind}-${item.id}`,
+      label: item.name,
+      kind: item.kind === "referee" ? "REFEREE" : "PLAYER",
+      meta: `${item.region ?? "지역 미정"} · ${item.position ?? "포지션"} · ${item.ratings?.integrated ?? item.trustScore ?? "-"}`,
+      href: `/app/players/${item.id}`,
+      avatar: item.avatarColor,
+      user: item,
+      hashtag,
+      searchText: item.searchText,
+    };
+  };
 
   return (
     <div className="page-stack rank-home">
@@ -367,6 +408,8 @@ export default function Home({ app }) {
           onChange={setQuery}
           placeholder="이름, 팀명, 코트명, 해시태그를 바로 검색"
           items={searchResults}
+          remoteSearchType="all"
+          mapRemoteItem={mapRemoteHomeSearchItem}
           renderItem={renderHomeSearchItem}
           limit={SEARCH_PREVIEW_LIMIT}
           detailLimit={SEARCH_DETAIL_LIMIT}

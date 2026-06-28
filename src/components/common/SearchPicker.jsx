@@ -1,8 +1,21 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Search } from "lucide-react";
+import { postServerAction } from "../../lib/serverActions.js";
 
 function normalizeSearchText(value = "") {
   return String(value ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function getSearchLengthText(value = "") {
+  return normalizeSearchText(value).replace(/\s+/g, "");
+}
+
+function getQueryMinSearchLength(value = "", fallback = 2) {
+  const text = getSearchLengthText(value);
+  if (!text) return fallback;
+  if (text.startsWith("#")) return 2;
+  if (/[가-힣ㄱ-ㅎㅏ-ㅣ]/.test(text)) return 2;
+  return 4;
 }
 
 function getDefaultSearchText(item = {}) {
@@ -38,6 +51,21 @@ function getSearchScore(text = "", query = "") {
   return -1;
 }
 
+function getItemKey(item = {}) {
+  return [item.kind, item.type, item.id, item.label, item.name].filter(Boolean).join(":");
+}
+
+function mergeSearchItems(localItems = [], remoteItems = []) {
+  const seen = new Set();
+  return [...localItems, ...remoteItems].filter((item) => {
+    const key = getItemKey(item);
+    if (!key) return true;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 export default function SearchPicker({
   value,
   onChange,
@@ -52,6 +80,9 @@ export default function SearchPicker({
   detailLimit = 24,
   minSearchLength = 2,
   getSearchText = getDefaultSearchText,
+  remoteSearchType = "",
+  remoteSearchContext = null,
+  mapRemoteItem = (item) => item,
   showIdleOnFocus = false,
   floating = false,
   className = "",
@@ -60,11 +91,17 @@ export default function SearchPicker({
 }) {
   const [focused, setFocused] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [remoteItems, setRemoteItems] = useState([]);
+  const [remoteLoading, setRemoteLoading] = useState(false);
+  const remoteRequestIdRef = useRef(0);
   const query = value.trim();
-  const canSearch = normalizeSearchText(query).length >= minSearchLength;
+  const remoteSearchKey = Array.isArray(remoteSearchType) ? remoteSearchType.join(",") : String(remoteSearchType || "");
+  const dynamicMinSearchLength = getQueryMinSearchLength(query, minSearchLength);
+  const canSearch = getSearchLengthText(query).length >= dynamicMinSearchLength;
+  const mappedRemoteItems = useMemo(() => remoteItems.map(mapRemoteItem).filter(Boolean), [mapRemoteItem, remoteItems]);
   const activeItems = useMemo(() => {
     if (!canSearch) return idleItems;
-    return (items ?? [])
+    const localItems = (items ?? [])
       .map((item, index) => ({
         item,
         index,
@@ -73,13 +110,44 @@ export default function SearchPicker({
       .filter((entry) => entry.score >= 0)
       .sort((a, b) => b.score - a.score || a.index - b.index)
       .map((entry) => entry.item);
-  }, [canSearch, getSearchText, idleItems, items, query]);
+    return mergeSearchItems(localItems, mappedRemoteItems);
+  }, [canSearch, getSearchText, idleItems, items, mappedRemoteItems, query]);
   const canShow = floating
     ? focused && (canSearch || showIdleOnFocus)
     : canSearch || (showIdleOnFocus && focused);
   const visibleItems = activeItems.slice(0, expanded ? detailLimit : limit);
   const hasMore = activeItems.length > limit && !expanded;
   const resultTitle = query ? title : idleTitle;
+
+  useEffect(() => {
+    if (!remoteSearchKey || !canSearch) {
+      setRemoteItems([]);
+      setRemoteLoading(false);
+      return undefined;
+    }
+
+    const requestId = remoteRequestIdRef.current + 1;
+    remoteRequestIdRef.current = requestId;
+    const timer = window.setTimeout(async () => {
+      setRemoteLoading(true);
+      try {
+        const result = await postServerAction("/api/search", {
+          query,
+          type: remoteSearchType,
+          limit,
+          context: remoteSearchContext,
+        });
+        if (remoteRequestIdRef.current !== requestId) return;
+        setRemoteItems(Array.isArray(result?.items) ? result.items : []);
+      } catch {
+        if (remoteRequestIdRef.current === requestId) setRemoteItems([]);
+      } finally {
+        if (remoteRequestIdRef.current === requestId) setRemoteLoading(false);
+      }
+    }, 300);
+
+    return () => window.clearTimeout(timer);
+  }, [canSearch, limit, query, remoteSearchContext, remoteSearchKey]);
 
   return (
     <div className={`search-picker${floating ? " is-floating" : ""}${className ? ` ${className}` : ""}`}>
@@ -99,7 +167,7 @@ export default function SearchPicker({
       {canShow ? (
         <div className={`home-search-results unified search-picker-results${floating ? " is-floating" : ""}${resultsClassName ? ` ${resultsClassName}` : ""}`}>
           {resultTitle ? <strong className="search-picker-title">{resultTitle}</strong> : null}
-          {visibleItems.length ? visibleItems.map(renderItem) : <div className="empty-state">{emptyText}</div>}
+          {visibleItems.length ? visibleItems.map(renderItem) : <div className="empty-state">{remoteLoading ? "검색 중..." : emptyText}</div>}
           {hasMore ? (
             <button type="button" className="home-search-more" onMouseDown={(event) => event.preventDefault()} onClick={() => setExpanded(true)}>
               더보기
