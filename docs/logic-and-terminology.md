@@ -1402,7 +1402,7 @@ flowchart TD
 17. `rankball_recruiting_slot_position_action()`은 선택 포지션을 `room_state.slotPositions`뿐 아니라 방장은 `recruiting_posts.position`, 개인 신청자는 `recruiting_applications.position`에도 저장한다.
 
 18. `setRecruitingReady` may use `rankball_recruiting_ready_action()` for active host/direct player readiness. Team-party, reserve, and other complex readiness cases must fall back to authoritative replay.
-19. Recruiting server action replay must load the acting profile's current teams and team members. Team-hosted room creation and team-party participation cannot rely only on teams already related to the target recruiting post.
+19. Recruiting server action replay must load the acting profile's current teams, explicit draft/application team ids, and their team members. Team-hosted room creation, private opponent team creation, and team-party participation cannot rely only on teams already related to the target recruiting post.
 
 ## 2026-06-28 public feed access
 

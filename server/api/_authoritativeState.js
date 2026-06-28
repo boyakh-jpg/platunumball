@@ -130,6 +130,15 @@ function getAuthoritativeLoadScope(operation = {}) {
       operation.preferredMatchId,
       operation.draft?.id,
     ].filter(Boolean),
+    teamIds: [
+      operation.teamId,
+      operation.draft?.teamId,
+      operation.draft?.teamAId,
+      operation.draft?.opponentTeamId,
+      operation.draft?.targetTeamId,
+      operation.application?.teamId,
+      operation.invite?.teamId,
+    ].filter(Boolean),
     recruitingPostIds: [
       operation.postId,
       operation.preferredPostId,
