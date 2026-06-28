@@ -1090,7 +1090,7 @@ function fromRemoteNotification(row = {}) {
   };
 }
 
-function fromRemoteTeamInvitation(row = {}) {
+export function fromRemoteTeamInvitation(row = {}) {
   return {
     id: row.id,
     teamId: row.team_id,
@@ -1400,6 +1400,7 @@ function collectRecruitingPageScope(posts = [], applications = [], profileIds = 
     teamIds.push(
       post.team_id,
       post.target_team_id,
+      ...invitations.map((invitation) => invitation.teamId ?? invitation.team_id),
       ...collectTeamIdsFromRoomKeys(roomState.partyLeaders),
       ...collectTeamIdsFromRoomKeys(roomState.partyReserves),
     );
@@ -1666,7 +1667,7 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
     });
   }
   if (recruitingPageScope) {
-    const scopedProfileIds = privateProfiles.map((profile) => profile.id);
+    const scopedProfileIds = [...privateProfiles.map((profile) => profile.id), ...uniqueScopeIds(options.profileIds)];
     const scoped = collectRecruitingPageScope(recruitingPosts, recruitingApplications, scopedProfileIds);
     const currentUserTeamMemberships = options.includeCurrentUserTeams && currentUserId
       ? await fetchFilteredRows("team_members", TEAM_MEMBER_COLUMNS, null, client, (query) => query.eq("user_id", currentUserId))

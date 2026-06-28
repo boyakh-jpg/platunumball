@@ -122,6 +122,7 @@ function getAuthoritativeLoadScope(operation = {}) {
   const action = String(operation.action || "");
   if (action === "approveMatch") return { clientState: true };
   const scope = action.includes("Recruiting") ? "recruiting" : undefined;
+  const invite = operation.invite && typeof operation.invite === "object" ? operation.invite : {};
   return {
     scope,
     includeCurrentUserTeams: scope === "recruiting",
@@ -138,6 +139,14 @@ function getAuthoritativeLoadScope(operation = {}) {
       operation.draft?.targetTeamId,
       operation.application?.teamId,
       operation.invite?.teamId,
+    ].filter(Boolean),
+    profileIds: [
+      operation.refereeId,
+      operation.playerId,
+      operation.targetUserId,
+      operation.invitation?.targetUserId,
+      invite.playerId,
+      ...(Array.isArray(invite.playerIds) ? invite.playerIds : []),
     ].filter(Boolean),
     recruitingPostIds: [
       operation.postId,

@@ -2,6 +2,7 @@ import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdm
 import {
   DEFAULT_SETTINGS,
   createProfileShell,
+  fromRemoteTeamInvitation,
   fromRemoteProfile,
   getRemoteAppSettings,
   normalizeState,
@@ -11,6 +12,7 @@ const PROFILE_ME_COLUMNS = "id,name,handle,hashtag,position,region,region_sido,r
 const PROFILE_TEAM_MEMBER_COLUMNS = "id,name,handle,hashtag,position,trust_score,avatar_color,ratings,age_group,age_group_checked_season,onboarding_complete,updated_at";
 const TEAM_COLUMNS = "id,name,home_court,region,mmr,wins,losses,accent,deleted_at";
 const TEAM_MEMBER_COLUMNS = "team_id,user_id,role";
+const TEAM_INVITATION_COLUMNS = "id,team_id,from_user_id,target_user_id,status,created_at,updated_at";
 
 function unique(values = []) {
   return [...new Set(values.filter(Boolean))];
@@ -49,7 +51,21 @@ function fromTeamMemberProfile(row = {}) {
   };
 }
 
-async function loadCurrentUserTeams(supabase, profileId = "") {
+async function loadCurrentUserTeamInvitations(supabase, profileId = "") {
+  if (!profileId) return [];
+  const { data, error } = await supabase
+    .from("team_invitations")
+    .select(TEAM_INVITATION_COLUMNS)
+    .or(`from_user_id.eq.${profileId},target_user_id.eq.${profileId}`)
+    .order("created_at", { ascending: false });
+  if (error) {
+    if (["42P01", "PGRST205"].includes(error.code)) return [];
+    throw error;
+  }
+  return (data ?? []).map(fromRemoteTeamInvitation);
+}
+
+async function loadCurrentUserTeams(supabase, profileId = "", extraTeamIds = []) {
   if (!profileId) return { teams: [], users: [] };
   const { data: ownMemberships, error: ownMembershipsError } = await supabase
     .from("team_members")
@@ -57,7 +73,7 @@ async function loadCurrentUserTeams(supabase, profileId = "") {
     .eq("user_id", profileId);
   if (ownMembershipsError) throw ownMembershipsError;
 
-  const teamIds = unique((ownMemberships ?? []).map((row) => row.team_id));
+  const teamIds = unique([...(ownMemberships ?? []).map((row) => row.team_id), ...extraTeamIds]);
   if (!teamIds.length) return { teams: [], users: [] };
 
   const [{ data: teamRows, error: teamError }, { data: memberRows, error: memberError }] = await Promise.all([
@@ -100,7 +116,12 @@ export default async function handler(request, response) {
     const user = profile
       ? fromRemoteProfile(profile)
       : createProfileShell(context.authUserId, context.authUser?.email ?? "");
-    const currentUserTeams = await loadCurrentUserTeams(context.supabase, profile?.id ?? "");
+    const teamInvitations = await loadCurrentUserTeamInvitations(context.supabase, profile?.id ?? "");
+    const currentUserTeams = await loadCurrentUserTeams(
+      context.supabase,
+      profile?.id ?? "",
+      teamInvitations.filter((invitation) => invitation.status === "pending").map((invitation) => invitation.teamId),
+    );
     const userById = new Map(currentUserTeams.users.map((item) => [item.id, item]));
     userById.set(user.id, user);
     const settings = {
@@ -111,6 +132,7 @@ export default async function handler(request, response) {
       currentUserId: user.id,
       users: [...userById.values()],
       teams: currentUserTeams.teams,
+      teamInvitations,
       settings,
     }, { includeDemo: false });
 

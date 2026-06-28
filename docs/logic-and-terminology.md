@@ -1406,6 +1406,7 @@ flowchart TD
 
 18. `setRecruitingReady` may use `rankball_recruiting_ready_action()` for active host/direct player readiness. Team-party, reserve, and other complex readiness cases must fall back to authoritative replay.
 19. Recruiting server action replay must load the acting profile's current teams, explicit draft/application team ids, and their team members. Team-hosted room creation, private opponent team creation, and team-party participation cannot rely only on teams already related to the target recruiting post.
+20. Recruiting replay scope must also include explicit invite targets, referee invite targets, and team ids stored on pending room invitations. Expired, declined, or cancelled invitations are not active eligibility targets and must not block age/team roster validation.
 
 ## 2026-06-28 public feed access
 
@@ -1449,3 +1450,4 @@ flowchart TD
 7. 팀 가입은 주장의 직접 추가가 아니라 pending 팀 초대 발송 후 대상자가 수락하는 흐름이다. 팀 정원 10명 도달 시 같은 서버 transaction에서 남은 pending 팀 가입 초대를 `expired`로 만료 처리한다. 정원 도달 뒤 새 팀 가입 초대 발송도 막는다.
 8. 경기 만들기에서 팀전은 내 팀이 있는 사용자만 만들 수 있다. A사이드는 내 소속 팀만 선택하고, B사이드는 상대 팀 검색/초대로만 선택한다.
 9. 기존 팀에 새 멤버를 넣는 것은 `/api/teams/sync-team`의 일반 팀 저장 payload로 허용하지 않는다. 새 가입은 `rankball_invite_team_member`와 `rankball_respond_team_invitation` 수락 경로만 쓴다.
+10. `/api/profile/me` 초기 부트스트랩은 현재 사용자 소속 팀뿐 아니라 관련 pending 팀 초대와 초대 대상 팀 정보를 함께 싣는다. 전체 state 로드 전에도 팀 초대 수락/거절 UI가 빈 상태로 보이면 안 된다.

@@ -352,9 +352,13 @@ function getPlayerEligibilityIds(post = {}) {
     ])),
     ...(Object.values(roomState.partyReserves ?? {}).flatMap(toArray)),
     ...(toArray(roomState.invitations)
-      .filter((invitation) => invitation.role !== "referee")
+      .filter((invitation) => invitation.role !== "referee" && isPendingInvitation(invitation))
       .map((invitation) => invitation.targetUserId)),
   ].filter(Boolean))];
+}
+
+function isPendingInvitation(invitation = {}) {
+  return String(invitation.status ?? "pending") === "pending";
 }
 
 const AGE_ELIGIBILITY_ACTIONS = new Set([
@@ -438,7 +442,7 @@ async function validateRecruitingRosterEligibility(supabase, post = {}) {
   });
 
   toArray(roomState.invitations).forEach((invitation) => {
-    if (invitation.role === "referee" || !invitation.teamId) return;
+    if (invitation.role === "referee" || !invitation.teamId || !isPendingInvitation(invitation)) return;
     addTeamRoster(rostersByTeam, invitation.teamId, [invitation.targetUserId]);
   });
 
