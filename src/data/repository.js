@@ -147,7 +147,7 @@ export const REMOTE_CLIENT_INITIAL_MATCH_LIMIT = 5;
 export const REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT = 5;
 const REMOTE_CLIENT_TOURNAMENT_LIMIT = 80;
 const REMOTE_CLIENT_MAX_LIMIT = 500;
-const PUBLIC_PROFILE_COLUMNS = "id,name,handle,hashtag,position,region,region_sido,region_district,school,company,club,trust_score,streak,avatar_color,ratings,age_group,age_group_checked_season,onboarding_complete,test_login_id,updated_at,discord_connection";
+const PUBLIC_PROFILE_COLUMNS = "id,name,handle,hashtag,position,region,region_sido,region_district,school,company,club,trust_score,streak,avatar_color,ratings,age_group,age_group_checked_season,onboarding_complete,updated_at";
 const PRIVATE_PROFILE_COLUMNS = "id,name,handle,region,school,company,club,trust_score,streak,avatar_color,test_login_id,auth_user_id,hashtag,birth_year,age_group,age_group_checked_season,region_sido,region_district,onboarding_complete,profile_version,handle_locked_at,birth_year_locked_at,name_updated_at,discord_connection,discord_user_id,ratings,created_at,updated_at,position";
 const PROFILE_SETTINGS_COLUMNS = "id,app_settings";
 const TEAM_COLUMNS = "id,name,home_court,region,mmr,wins,losses,accent,deleted_at,updated_at,created_at";
@@ -896,6 +896,21 @@ function uniqueRowsById(rows = []) {
   return [...byId.values()];
 }
 
+async function fetchCourtRows(client = supabase, ids = []) {
+  const scopedIds = uniqueScopeIds(ids);
+  const approvedFilter = (query) => {
+    const activeQuery = query.or("status.is.null,status.eq.active");
+    return scopedIds.length ? applyIdScope(activeQuery, "id", scopedIds) : activeQuery;
+  };
+  const [legacyRows, approvedRows] = await Promise.all([
+    scopedIds.length
+      ? fetchRowsByIds("courts", COURT_COLUMNS, "id", scopedIds, "id", client, true)
+      : fetchOptionalRows("courts", COURT_COLUMNS, "id", client),
+    fetchOptionalFilteredRows("approved_courts", COURT_COLUMNS, "id", client, approvedFilter),
+  ]);
+  return uniqueRowsById([...legacyRows, ...approvedRows]);
+}
+
 async function fetchCurrentUserReports(currentUserId = "", client = supabase) {
   if (!currentUserId) return [];
   const [byReporter, byTarget, byReportedUser] = await Promise.all([
@@ -1442,7 +1457,7 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
       fetchOptionalRows("public_profiles", PUBLIC_PROFILE_COLUMNS, "id", client),
       fetchAllRows("teams", TEAM_COLUMNS, "id", client),
       fetchAllRows("team_members", TEAM_MEMBER_COLUMNS, null, client),
-      fetchAllRows("courts", COURT_COLUMNS, "id", client),
+      fetchCourtRows(client),
     ]);
   }
 
@@ -1466,8 +1481,7 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
       : [],
     includeUserScoped && currentUserId
       ? fetchOptionalFilteredRows("notifications", NOTIFICATION_COLUMNS, "created_at", client, (query) => query
-        .or(`user_id.is.null,user_id.eq.${currentUserId}`)
-        .or(`target_user_id.is.null,target_user_id.eq.${currentUserId}`))
+        .or(`user_id.eq.${currentUserId},target_user_id.eq.${currentUserId}`))
       : [],
     includeUserScoped && currentUserId
       ? fetchOptionalFilteredRows("discord_notification_deliveries", DISCORD_DELIVERY_COLUMNS, "queued_at", client, (query) => query.eq("target_user_id", currentUserId))
@@ -1567,7 +1581,7 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
     [teams, teamMembers, courts] = await Promise.all([
       fetchRowsByIds("teams", TEAM_COLUMNS, "id", scoped.teamIds, "id", client),
       fetchRowsByIds("team_members", TEAM_MEMBER_COLUMNS, "team_id", teamMemberTeamIds, null, client),
-      fetchRowsByIds("courts", COURT_COLUMNS, "id", scoped.courtIds, "id", client),
+      fetchCourtRows(client, scoped.courtIds),
     ]);
     publicProfiles = await fetchRowsByIds(
       "public_profiles",
@@ -1592,7 +1606,7 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
     [teams, teamMembers, courts] = await Promise.all([
       fetchRowsByIds("teams", TEAM_COLUMNS, "id", scoped.teamIds, "id", client),
       fetchRowsByIds("team_members", TEAM_MEMBER_COLUMNS, "team_id", teamMemberTeamIds, null, client),
-      fetchRowsByIds("courts", COURT_COLUMNS, "id", scoped.courtIds, "id", client),
+      fetchCourtRows(client, scoped.courtIds),
     ]);
     publicProfiles = await fetchRowsByIds(
       "public_profiles",
@@ -1625,7 +1639,7 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
     [teams, teamMembers, courts] = await Promise.all([
       fetchRowsByIds("teams", TEAM_COLUMNS, "id", teamIds, "id", client),
       fetchRowsByIds("team_members", TEAM_MEMBER_COLUMNS, "team_id", teamIds, null, client),
-      fetchRowsByIds("courts", COURT_COLUMNS, "id", courtIds, "id", client),
+      fetchCourtRows(client, courtIds),
     ]);
     publicProfiles = await fetchRowsByIds(
       "public_profiles",
@@ -1912,6 +1926,10 @@ function courtIdByName(courtName) {
   return COURTS.find((court) => court.name === courtName)?.id ?? null;
 }
 
+function getCourtId(court = {}) {
+  return court.courtId ?? court.court_id ?? court.approvedCourtId ?? court.registeredCourtId ?? courtIdByName(court.court ?? court.courtName);
+}
+
 function toDbTime(value) {
   return value ? String(value).slice(0, 5) : null;
 }
@@ -2072,7 +2090,7 @@ export async function saveNormalizedRemoteState(state, options = {}) {
     id: match.id,
     title: match.title,
     mode: match.mode,
-    court_id: courtIdByName(match.court),
+    court_id: getCourtId(match),
     court_name: match.court,
     visibility: match.visibility ?? match.rules?.visibility ?? "private",
     status: match.status ?? "contract",
@@ -2188,7 +2206,7 @@ export async function saveNormalizedRemoteState(state, options = {}) {
     player_id: post.playerId,
     team_id: nullableText(post.teamId),
     region: post.region,
-    court_id: nullableText(courtIdByName(post.court)),
+    court_id: nullableText(getCourtId(post)),
     court_name: post.court,
     mode: post.mode,
     scheduled_date: post.scheduledDate || null,

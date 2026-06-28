@@ -9,6 +9,25 @@ const REQUIRED_COLUMNS = {
     "onboarding_complete",
     "discord_user_id",
   ],
+  public_profiles: [
+    "id",
+    "name",
+    "hashtag",
+    "trust_score",
+    "updated_at",
+  ],
+  teams: [
+    "id",
+    "name",
+    "home_court",
+    "region",
+    "deleted_at",
+  ],
+  team_members: [
+    "team_id",
+    "user_id",
+    "role",
+  ],
   recruiting_posts: [
     "id",
     "visibility",
@@ -74,6 +93,42 @@ const REQUIRED_COLUMNS = {
     "score_b",
     "submitted_by",
     "stat_submissions",
+  ],
+  player_match_stats: [
+    "match_id",
+    "user_id",
+    "points",
+    "rebounds",
+    "assists",
+    "steals",
+    "blocks",
+    "fouls",
+  ],
+  match_agreements: [
+    "match_id",
+    "user_id",
+    "side",
+  ],
+  match_approvals: [
+    "match_id",
+    "user_id",
+    "side",
+  ],
+  match_disputes: [
+    "match_id",
+    "user_id",
+    "reason",
+  ],
+  favorites: [
+    "user_id",
+    "target_type",
+    "target_id",
+  ],
+  approved_courts: [
+    "id",
+    "name",
+    "status",
+    "updated_at",
   ],
   notifications: [
     "id",

@@ -33,6 +33,26 @@ function unique(values = []) {
   return [...new Set(values.filter(Boolean))];
 }
 
+function isMissingTable(error = {}, table = "") {
+  const message = String(error?.message ?? "");
+  return error?.code === "PGRST205" || error?.code === "42P01" || (table && message.includes(table));
+}
+
+async function fetchCourtRowsByIds(supabase, courtIds = []) {
+  const ids = unique(courtIds);
+  if (!ids.length) return { data: [], error: null };
+  const [legacyResult, approvedResult] = await Promise.all([
+    supabase.from("courts").select(COURT_COLUMNS).in("id", ids),
+    supabase.from("approved_courts").select(COURT_COLUMNS).in("id", ids).or("status.is.null,status.eq.active"),
+  ]);
+  if (legacyResult.error && !isMissingTable(legacyResult.error, "courts")) return legacyResult;
+  if (approvedResult.error) return approvedResult;
+  const rowsById = new Map();
+  (legacyResult.data ?? []).forEach((row) => rowsById.set(row.id, row));
+  (approvedResult.data ?? []).forEach((row) => rowsById.set(row.id, row));
+  return { data: [...rowsById.values()], error: null };
+}
+
 function isMissingUserRoomFeed(error = {}) {
   const message = String(error?.message ?? "");
   return error?.code === "PGRST205" || error?.code === "42P01" || message.includes("user_room_feed");
@@ -720,9 +740,7 @@ async function loadCompactMatchList(context, body = {}, adminLevel = 0, limit = 
     teamIds.length
       ? context.supabase.from("teams").select(TEAM_COLUMNS).in("id", teamIds).is("deleted_at", null)
       : Promise.resolve({ data: [], error: null }),
-    courtIds.length
-      ? context.supabase.from("courts").select(COURT_COLUMNS).in("id", courtIds)
-      : Promise.resolve({ data: [], error: null }),
+    fetchCourtRowsByIds(context.supabase, courtIds),
     profileIds.length
       ? context.supabase.from("public_profiles").select(PROFILE_CARD_COLUMNS).in("id", profileIds)
       : Promise.resolve({ data: [], error: null }),

@@ -66,6 +66,7 @@ function getRecruitingCoreSnapshot(post = {}) {
 
 function toRecruitingPostRow(post = {}) {
   const roomState = normalizeRoomState(post.roomState, post);
+  const courtId = post.courtId ?? post.court_id ?? post.approvedCourtId ?? post.registeredCourtId ?? null;
   return {
     id: post.id,
     type: post.type ?? "need_player",
@@ -74,7 +75,7 @@ function toRecruitingPostRow(post = {}) {
     player_id: post.playerId,
     team_id: nullableText(post.teamId),
     region: nullableText(post.region),
-    court_id: nullableText(post.courtId),
+    court_id: nullableText(courtId),
     court_name: post.court ?? post.courtName ?? "미정",
     mode: post.mode ?? "5v5",
     scheduled_date: post.scheduledDate || null,

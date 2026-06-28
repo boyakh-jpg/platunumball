@@ -42,6 +42,26 @@ function uniqueIds(ids = []) {
   return [...new Set(ids.map((id) => String(id ?? "").trim()).filter(Boolean))];
 }
 
+function isMissingTable(error = {}, table = "") {
+  const message = String(error?.message ?? "");
+  return error?.code === "PGRST205" || error?.code === "42P01" || (table && message.includes(table));
+}
+
+async function fetchCourtRowsByIds(supabase, courtIds = []) {
+  const ids = uniqueIds(courtIds);
+  if (!ids.length) return { data: [], error: null };
+  const [legacyResult, approvedResult] = await Promise.all([
+    supabase.from("courts").select(COURT_COLUMNS).in("id", ids),
+    supabase.from("approved_courts").select(COURT_COLUMNS).in("id", ids).or("status.is.null,status.eq.active"),
+  ]);
+  if (legacyResult.error && !isMissingTable(legacyResult.error, "courts")) return legacyResult;
+  if (approvedResult.error) return approvedResult;
+  const rowsById = new Map();
+  (legacyResult.data ?? []).forEach((row) => rowsById.set(row.id, row));
+  (approvedResult.data ?? []).forEach((row) => rowsById.set(row.id, row));
+  return { data: [...rowsById.values()], error: null };
+}
+
 function flattenIdValues(value) {
   if (Array.isArray(value)) return value.flatMap(flattenIdValues);
   if (value && typeof value === "object") return Object.values(value).flatMap(flattenIdValues);
@@ -787,9 +807,7 @@ export async function loadCompactRecruitingList(context, {
     scope.profileIds.length
       ? context.supabase.from("public_profiles").select(PROFILE_PUBLIC_COLUMNS).in("id", scope.profileIds)
       : Promise.resolve({ data: [], error: null }),
-    scope.courtIds.length
-      ? context.supabase.from("courts").select(COURT_COLUMNS).in("id", scope.courtIds)
-      : Promise.resolve({ data: [], error: null }),
+    fetchCourtRowsByIds(context.supabase, scope.courtIds),
   ]);
   if (teamError) throw teamError;
   if (profileError) throw profileError;

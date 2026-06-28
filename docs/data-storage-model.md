@@ -347,6 +347,13 @@ Remaining:
 - Actual cleanup requires `RANKBALL_CONFIRM_CLEANUP=rankball npm run seed:supabase:cleanup`.
 - Cleanup deletes only ids derived from the current demo seed state plus `seed-owner-u1`.
 - This finishes the basic backend test-account seed/cleanup path, but not the authoritative room/match RPC migration.
+
+## 2026-06-28 public data and court fallback
+
+- `public_profiles`는 공개 프로필 표시용 컬럼만 제공한다. `test_login_id`, `discord_connection`, `discord_user_id`, `auth_user_id`는 공개 view에 넣지 않는다.
+- `user_room_feed` 직접 RLS read는 현재 프로필 row만 허용한다. `profile_id='*'` 지역 공개 feed는 서버 API/service-role 경로에서만 읽는다.
+- `courts` 테이블이 없는 배포도 `approved_courts`로 구장 이름을 보정한다. 목록/상세 API는 `courts`와 `approved_courts`를 병합하되 hidden/disabled approved court는 공개 fallback에서 제외한다.
+- SPA fallback은 `/assets/*`에 적용하지 않는다. 오래된 hashed JS asset 요청은 `index.html`이 아니라 404가 되어야 한다.
 ## 2026-06-27 경기 유지보수 worker
 
 - `/api/system/maintenance`는 `CRON_SECRET`으로 보호되는 서버 전용 경기 유지보수 endpoint다.

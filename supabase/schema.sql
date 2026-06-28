@@ -137,18 +137,7 @@ begin
         age_group,
         age_group_checked_season,
         onboarding_complete,
-        test_login_id,
-        updated_at,
-        case
-          when discord_connection is null then null
-          else jsonb_strip_nulls(jsonb_build_object(
-            'status', discord_connection->>'status',
-            'userId', discord_connection->>'userId',
-            'username', discord_connection->>'username',
-            'avatarUrl', discord_connection->>'avatarUrl',
-            'linkedAt', discord_connection->>'linkedAt'
-          ))
-        end as discord_connection
+        updated_at
       from public.profiles
     $view$;
 
@@ -3636,7 +3625,7 @@ create policy user_room_feed_select_related
 on public.user_room_feed
 for select
 to authenticated
-using (profile_id = '*' or profile_id = public.current_profile_id());
+using (profile_id = public.current_profile_id());
 
 grant select on public.user_room_feed to authenticated;
 
@@ -3752,8 +3741,9 @@ begin
 
   if court_display_name is null and post_row.court_id is not null then
     select name into court_display_name
-    from public.courts
-    where id = post_row.court_id;
+    from public.approved_courts
+    where id = post_row.court_id
+      and coalesce(status, 'active') = 'active';
   end if;
 
   if owner_id is not null then
@@ -3988,8 +3978,9 @@ begin
 
   if court_display_name is null and match_row.court_id is not null then
     select name into court_display_name
-    from public.courts
-    where id = match_row.court_id;
+    from public.approved_courts
+    where id = match_row.court_id
+      and coalesce(status, 'active') = 'active';
   end if;
 
   if match_row.team_a_id is not null then

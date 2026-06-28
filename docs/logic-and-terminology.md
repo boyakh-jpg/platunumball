@@ -1390,6 +1390,12 @@ flowchart TD
 
 18. `setRecruitingReady` may use `rankball_recruiting_ready_action()` for active host/direct player readiness. Team-party, reserve, and other complex readiness cases must fall back to authoritative replay.
 
+## 2026-06-28 public feed access
+
+1. `public_profiles`는 공개 표시용 프로필 컬럼만 제공한다. 테스트 로그인 ID와 Discord 연결 원본은 현재 사용자 private profile 또는 server action에서만 읽는다.
+2. `user_room_feed.profile_id='*'` 지역 공개 feed는 서버 API/service-role 전용 source다. 브라우저 RLS 직접 read는 현재 프로필 feed row만 허용한다.
+3. 구장 이름 fallback은 `courts`가 없으면 `approved_courts` active row를 사용한다. hidden/disabled approved court는 공개 목록 fallback에 쓰지 않는다.
+
 ## 2026-06-27 remote mutation stale guard
 
 1. 모집방 write action 직후에는 `/api/recruiting/list` 목록, 내방, 단일 상세 응답이 같은 post의 이전 row로 로컬 최신 상태를 덮지 않는다.

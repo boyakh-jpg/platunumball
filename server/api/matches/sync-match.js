@@ -430,11 +430,12 @@ function toMatchRow(match = {}, actorProfileId = "") {
   const statRecorders = match.statRecorders ?? match.rules?.statRecorders ?? {};
   const playedPlayerIds = match.playedPlayerIds ?? match.rules?.playedPlayerIds ?? {};
   const mmrExcludedPlayerIds = match.mmrExcludedPlayerIds ?? match.rules?.mmrExcludedPlayerIds ?? [];
+  const courtId = match.courtId ?? match.court_id ?? match.approvedCourtId ?? match.registeredCourtId ?? null;
   return {
     id: match.id,
     title: match.title ?? "경기",
     mode: match.mode ?? "5v5",
-    court_id: match.courtId ?? null,
+    court_id: courtId,
     court_name: match.court ?? match.courtName ?? "미정",
     visibility: match.visibility ?? match.rules?.visibility ?? "private",
     status: match.status ?? "contract",
