@@ -37,7 +37,19 @@
       "destination": "/api?path=:path*"
     },
     {
-      "source": "^/(?!api(?:/|$)|assets/).*$",
+      "source": "/",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/login",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/app",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/app/:path*",
       "destination": "/index.html"
     }
   ]
