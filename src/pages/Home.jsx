@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { CalendarDays, ClipboardCheck, Handshake, PlusCircle, ShieldAlert, Swords, Trophy, UserPlus } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
@@ -113,6 +113,7 @@ const SEARCH_DETAIL_LIMIT = 20;
 export default function Home({ app }) {
   const user = app.currentUser;
   const [query, setQuery] = useState("");
+  const homeRefreshKeyRef = useRef("");
   const searchText = query.trim().toLowerCase();
   const approvalMatches = [...app.state.matches].filter((match) => userNeedsApproval(match, user.id));
   const upcomingMatches = [...app.state.matches]
@@ -299,6 +300,21 @@ export default function Home({ app }) {
       .sort((a, b) => a.priority - b.priority || String(a.meta).localeCompare(String(b.meta)));
   }, [app.state, app.state.matches, app.state.recruitingPosts, app.state.tournaments, captainTeamIds, myTeamIds, pendingInvitations, pendingTeamInvitations, teamById, user.id]);
   const priorityItems = actionItems.slice(0, 5);
+
+  useEffect(() => {
+    if (app.remoteReady === false || !user.id) return;
+    if (homeRefreshKeyRef.current === user.id) return;
+    homeRefreshKeyRef.current = user.id;
+    const requests = [
+      app.actions.loadMyRecruitingPosts?.(),
+      !app.matchPagination?.recruitingScheduleChecked ? app.actions.loadMatchRecruitingSchedule?.() : true,
+    ].filter(Boolean);
+    Promise.allSettled(requests).then((results) => {
+      if (results.some((result) => result.status === "rejected" || result.value === false)) {
+        homeRefreshKeyRef.current = "";
+      }
+    });
+  }, [app.actions, app.matchPagination?.recruitingScheduleChecked, app.remoteReady, user.id]);
 
   const searchResults = useMemo(() => {
     if (!searchText) return [];
