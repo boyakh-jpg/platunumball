@@ -127,49 +127,6 @@ h3 {
   object-fit: contain;
 }
 
-.basketball-loader-ball {
-  position: relative;
-  display: none;
-  width: 58px;
-  height: 58px;
-  border: 2px solid rgba(61, 31, 13, 0.82);
-  border-radius: 999px;
-  background:
-    radial-gradient(circle at 34% 26%, rgba(255, 234, 172, 0.72), transparent 17%),
-    linear-gradient(90deg, transparent 44%, rgba(50, 27, 16, 0.82) 45% 49%, transparent 50%),
-    linear-gradient(0deg, transparent 45%, rgba(50, 27, 16, 0.82) 46% 50%, transparent 51%),
-    #f47a22;
-  box-shadow:
-    inset -10px -12px 0 rgba(126, 53, 18, 0.28),
-    0 8px 20px rgba(244, 122, 34, 0.26);
-  animation: basketball-loader-bounce 0.82s cubic-bezier(0.22, 0.62, 0.2, 1) infinite;
-}
-
-.basketball-loader-ball.active {
-  display: block;
-}
-
-.basketball-loader-ball::before,
-.basketball-loader-ball::after {
-  position: absolute;
-  inset: 7px;
-  content: "";
-  border-radius: 999px;
-  pointer-events: none;
-}
-
-.basketball-loader-ball::before {
-  border-left: 3px solid rgba(50, 27, 16, 0.78);
-  border-right: 3px solid rgba(50, 27, 16, 0.78);
-  transform: rotate(26deg);
-}
-
-.basketball-loader-ball::after {
-  border-top: 3px solid rgba(50, 27, 16, 0.78);
-  border-bottom: 3px solid rgba(50, 27, 16, 0.78);
-  transform: rotate(-20deg);
-}
-
 .basketball-loader-shadow {
   width: 50px;
   height: 10px;
@@ -183,25 +140,6 @@ h3 {
   color: var(--gold);
   font-size: 0.78rem;
   font-weight: 950;
-}
-
-@keyframes basketball-loader-bounce {
-  0%,
-  100% {
-    transform: translateY(0) scale(1.08, 0.92) rotate(0deg);
-  }
-
-  18% {
-    transform: translateY(-28px) scale(0.98, 1.02) rotate(78deg);
-  }
-
-  50% {
-    transform: translateY(-68px) scale(0.96, 1.04) rotate(180deg);
-  }
-
-  82% {
-    transform: translateY(-28px) scale(0.98, 1.02) rotate(282deg);
-  }
 }
 
 @keyframes basketball-loader-shadow {
@@ -218,14 +156,8 @@ h3 {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .basketball-loader-ball,
   .basketball-loader-shadow {
     animation: none;
-  }
-
-  .basketball-loader-ball {
-    display: block;
-    transform: translateY(-18px);
   }
 }
 

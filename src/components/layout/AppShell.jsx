@@ -58,7 +58,6 @@ export default function AppShell({ app, auth }) {
                   }}
                 />
               )}
-              <span className={remoteLoaderImageFailed ? "basketball-loader-ball active" : "basketball-loader-ball"} />
             </span>
             <span className="basketball-loader-shadow" aria-hidden="true" />
             <span className="basketball-loader-text">불러오는 중</span>
