@@ -770,6 +770,13 @@ export default function Matches({ app }) {
     setSelectedMatchId(queryMatchId);
     requestMatchDetail(queryMatchId);
   }, [app.currentUser.id, queryMatchId]);
+
+  useEffect(() => {
+    const pagination = app.matchPagination ?? {};
+    if (app.remoteReady === false || pagination.loading || pagination.error || pagination.recruitingScheduleChecked) return;
+    app.actions.loadMatchRecruitingSchedule?.();
+  }, [app.actions, app.matchPagination?.error, app.matchPagination?.loading, app.matchPagination?.recruitingScheduleChecked, app.remoteReady]);
+
   const openSelectedMatch = (matchId) => {
     if (!matchId) return;
     requestMatchDetail(matchId);

@@ -314,14 +314,15 @@ function getRecruitingRegionRequest(page = {}) {
 
 function mergeRemoteMatchPage(state, remoteState = {}) {
   const nextMatches = remoteState.matches ?? [];
-  if (!nextMatches.length) return state;
+  const nextPosts = remoteState.recruitingPosts ?? [];
+  if (!nextMatches.length && !nextPosts.length) return state;
   return {
     ...state,
     users: mergeById(state.users, remoteState.users),
     teams: mergeTeamsById(state.teams, remoteState.teams),
-    matches: sortMatchesByRemoteCursor(mergeMatchesById(state.matches, nextMatches)),
+    matches: nextMatches.length ? sortMatchesByRemoteCursor(mergeMatchesById(state.matches, nextMatches)) : state.matches,
     tournaments: mergeById(state.tournaments, remoteState.tournaments),
-    recruitingPosts: mergeRecruitingPostsById(state.recruitingPosts, remoteState.recruitingPosts),
+    recruitingPosts: nextPosts.length ? mergeRecruitingPostsById(state.recruitingPosts, nextPosts) : state.recruitingPosts,
   };
 }
 
@@ -339,7 +340,13 @@ function mergeRemoteRecruitingPage(state, remoteState = {}) {
 function filterPendingRecruitingPosts(remoteState = {}, pendingIds = new Set(), recentMutationTimes = new Map()) {
   const nextPosts = remoteState.recruitingPosts ?? [];
   if ((!pendingIds.size && !recentMutationTimes.size) || !nextPosts.length) return remoteState;
-  const filteredPosts = nextPosts.filter((post) => !pendingIds.has(post.id) && !recentMutationTimes.has(post.id));
+  const filteredPosts = nextPosts.filter((post) => {
+    if (pendingIds.has(post.id)) return false;
+    const mutationStartedAt = recentMutationTimes.get(post.id);
+    if (!mutationStartedAt) return true;
+    const rowUpdatedAt = new Date(post.updatedAt ?? post.createdAt ?? 0).getTime();
+    return Number.isFinite(rowUpdatedAt) && rowUpdatedAt >= mutationStartedAt;
+  });
   return filteredPosts.length === nextPosts.length ? remoteState : { ...remoteState, recruitingPosts: filteredPosts };
 }
 
@@ -1007,6 +1014,40 @@ export function useAppData(authUser = null) {
     }
   }, [authEmail, authUserId, matchPagination.cursor, matchPagination.exhausted, matchPagination.loading, setState, state.matches]);
 
+  const loadMatchRecruitingSchedule = useCallback(async () => {
+    if (!isSupabaseConfigured || !authUserId || matchPagination.loading) return false;
+    setMatchPagination((prev) => ({ ...prev, loading: true, error: "" }));
+    try {
+      const result = await postServerAction(
+        "/api/matches/list",
+        {
+          authUserId,
+          authEmail,
+          limit: 1,
+          listOnly: true,
+          activeOnly: true,
+          includeRecruitingSchedule: true,
+          adminContext: false,
+        },
+        { allowWhenDisabled: true },
+      );
+      const remoteState = normalizeServerState(filterPendingRecruitingPosts(result?.state ?? {}, pendingRecruitingPostIdsRef.current, recentRecruitingMutationTimesRef.current));
+      setState((prev) => mergeRemoteMatchPage(prev, remoteState));
+      setMatchPagination((prev) => ({
+        ...prev,
+        loading: false,
+        error: "",
+        recruitingScheduleChecked: true,
+        cursor: prev.cursor || result?.page?.cursor || getMatchPaginationCursor(remoteState.matches ?? []),
+      }));
+      return remoteState.recruitingPosts?.length ?? 0;
+    } catch (error) {
+      console.warn("Match recruiting schedule load failed.", error.message);
+      setMatchPagination((prev) => ({ ...prev, loading: false, error: error.message ?? "match_recruiting_schedule_load_failed" }));
+      return false;
+    }
+  }, [authEmail, authUserId, matchPagination.loading, setState]);
+
   const loadMatchDetail = useCallback(async (matchId) => {
     if (!isSupabaseConfigured || !authUserId || !matchId) return false;
     try {
@@ -1385,6 +1426,7 @@ export function useAppData(authUser = null) {
 
       return ({
         loadMatchDetail,
+        loadMatchRecruitingSchedule,
         loadDirectory,
         loadAdminContext,
         loadMoreMatches,
@@ -1802,7 +1844,7 @@ export function useAppData(authUser = null) {
           rollbackState,
           "방 생성",
           { action: "createRecruitingPost", postId: createdPost.id },
-        ).then((result) => (result?.ok === false ? result : createdPost.id));
+        ).then((result) => (result?.ok === false ? result : result?.post?.id ?? result?.postId ?? createdPost.id));
       },
       interestRecruitingPost: (postId, application) => applyRecruitingPostMutation(postId, (prev) => interestRecruitingPost({ ...prev, currentUserId }, postId, application), { action: "interestRecruitingPost", application, joinMode: application?.joinMode }),
       inviteRecruitingReferee: (postId, refereeId) => applyRecruitingPostMutation(postId, (prev) => inviteRecruitingReferee({ ...prev, currentUserId }, postId, refereeId), { action: "inviteRecruitingReferee", refereeId }),
@@ -1894,7 +1936,7 @@ export function useAppData(authUser = null) {
       reset: () => setState(resetState({ includeDemo: !isSupabaseConfigured, authUserId, email: authEmail })),
       });
     },
-    [authEmail, authUserId, currentUserId, deleteTeamServer, ensureRemoteReady, ensureServerActionAvailable, loadAdminContext, loadDirectory, loadMatchDetail, loadMoreMatches, loadMoreRecruiting, loadRecruitingRegion, loadRecruitingPost, loadMyRecruitingPosts, loadRecorderMatches, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, runServerAction, serverProfileBound, submitReportServer, syncFavoriteServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncSettingsServer, syncTeamServer, syncTournamentServer],
+    [authEmail, authUserId, currentUserId, deleteTeamServer, ensureRemoteReady, ensureServerActionAvailable, loadAdminContext, loadDirectory, loadMatchDetail, loadMatchRecruitingSchedule, loadMoreMatches, loadMoreRecruiting, loadRecruitingRegion, loadRecruitingPost, loadMyRecruitingPosts, loadRecorderMatches, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, runServerAction, serverProfileBound, submitReportServer, syncFavoriteServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncSettingsServer, syncTeamServer, syncTournamentServer],
   );
 
   const safeCurrentUserId = currentUserId ?? currentUser?.id ?? "";

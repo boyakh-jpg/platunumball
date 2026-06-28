@@ -1359,6 +1359,7 @@ flowchart TD
 34. Match room phase `record` is a normal completed-record phase and belongs to the Matches closed/history view. Selecting a past range must make record-phase matches visible instead of leaving them outside every view.
 35. `/app/matches` default list is not a paged "더 보기" feed. It loads current-user active matches in one request with `activeOnly=true` up to the active-feed cap, excluding normal past record rows (`confirmed`) and terminal hidden rows (`cancelled`, `void`, `closed`). Past-history expansion must be a separate deliberate read, not the default match menu load.
 36. `/api/matches/list` defaults to match feed only. It includes recruiting schedule rooms only when `includeRecruitingSchedule=true`; previously loaded recruiting state from `/app/recruiting` must not change `/app/matches` list results.
+37. `/app/matches`는 SPA 이동으로 들어왔고 `recruitingScheduleChecked`가 false이면 현재 사용자 모집방 일정을 다시 로드한다. 경기 목록이 비어 있어도 match-page merge는 모집방 일정 row를 보존해야 한다.
 
 ## 2026-06-27 report scoped reads
 
