@@ -96,6 +96,7 @@
 - Supabase hydration은 `loadRemoteState(authUserId, authEmail)`로 현재 auth profile을 우선 선택한다.
 - 현재 auth profile이 아직 없으면 `createProfileShell()`로 `/app/signup`이 깨지지 않게 하고, 저장 시 `POST /api/profile/upsert`가 실제 `profiles.auth_user_id` row를 만든다.
 - Supabase 모드에서는 `rankball_state` localStorage 저장을 하지 않는다.
+- 프로필 저장 실패는 로컬 optimistic profile 상태를 되돌려 `/app/signup`에서 다시 수정 가능하게 한다.
 
 ## DB 정리 기준
 

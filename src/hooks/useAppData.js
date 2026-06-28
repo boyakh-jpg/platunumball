@@ -1666,13 +1666,24 @@ export function useAppData(authUser = null) {
       updateProfile: (patch, targetUserId = currentUserId) => {
         const safeTargetUserId = serverProfileBound ? currentUserId : targetUserId;
         const safePatch = profileLocked ? { ...patch, authUserId } : patch;
+        let rollbackState = null;
         let nextProfile = null;
         setState((prev) => {
+          rollbackState = prev;
           const next = updateProfile({ ...prev, currentUserId }, safePatch, safeTargetUserId);
           nextProfile = next.users.find((user) => user.id === safeTargetUserId) ?? null;
           return next;
         });
-        return serverProfileBound && nextProfile ? persistProfileServer(nextProfile) : Promise.resolve({ ok: true });
+        if (!serverProfileBound || !nextProfile) return Promise.resolve({ ok: true });
+        return persistProfileServer(nextProfile).catch((error) => {
+          rollbackServerMutation(rollbackState, "프로필 저장", {
+            profileId: safeTargetUserId,
+            error: getServerActionErrorText(error),
+            statusCode: error.statusCode ?? null,
+            details: error.details ?? null,
+          });
+          throw error;
+        });
       },
       createTeam: (draft) => {
         if (!ensureRemoteReady("팀 생성")) return;
