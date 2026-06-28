@@ -147,6 +147,7 @@ export const REMOTE_CLIENT_MATCH_LIMIT = 50;
 export const REMOTE_CLIENT_RECRUITING_LIMIT = 50;
 export const REMOTE_CLIENT_INITIAL_MATCH_LIMIT = 5;
 export const REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT = 5;
+export const FAVORITE_LIMIT = 10;
 const REMOTE_CLIENT_TOURNAMENT_LIMIT = 80;
 const REMOTE_CLIENT_MAX_LIMIT = 500;
 const PUBLIC_PROFILE_COLUMNS = "id,name,handle,hashtag,position,region,region_sido,region_district,trust_score,streak,avatar_color,ratings,age_group,age_group_checked_season,onboarding_complete,updated_at";
@@ -4876,8 +4877,10 @@ export function unblockUser(state, userId) {
   };
 }
 
-function toggleId(list = [], id) {
-  return list.includes(id) ? list.filter((item) => item !== id) : [id, ...list];
+function toggleId(list = [], id, limit = Infinity) {
+  if (list.includes(id)) return list.filter((item) => item !== id);
+  if (list.length >= limit) return list;
+  return [id, ...list];
 }
 
 export function toggleFavoritePlayer(state, userId) {
@@ -4886,7 +4889,7 @@ export function toggleFavoritePlayer(state, userId) {
     ...state,
     settings: normalizeSettings({
       ...(state.settings ?? {}),
-      favoritePlayerIds: toggleId(state.settings?.favoritePlayerIds, userId),
+      favoritePlayerIds: toggleId(state.settings?.favoritePlayerIds, userId, FAVORITE_LIMIT),
     }),
   };
 }
@@ -4897,7 +4900,7 @@ export function toggleFavoriteTeam(state, teamId) {
     ...state,
     settings: normalizeSettings({
       ...(state.settings ?? {}),
-      favoriteTeamIds: toggleId(state.settings?.favoriteTeamIds, teamId),
+      favoriteTeamIds: toggleId(state.settings?.favoriteTeamIds, teamId, FAVORITE_LIMIT),
     }),
   };
 }
@@ -4907,7 +4910,7 @@ export function toggleFavoriteCourt(state, courtId) {
     ...state,
     settings: normalizeSettings({
       ...(state.settings ?? {}),
-      favoriteCourtIds: toggleId(state.settings?.favoriteCourtIds, courtId),
+      favoriteCourtIds: toggleId(state.settings?.favoriteCourtIds, courtId, FAVORITE_LIMIT),
     }),
   };
 }

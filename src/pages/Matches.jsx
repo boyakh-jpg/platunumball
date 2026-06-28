@@ -869,8 +869,7 @@ export default function Matches({ app }) {
         const postDate = getMatchDate(post);
         return !dateFilter || postDate === dateFilter;
       })
-      .sort(compareSchedule)
-      .slice(0, 12);
+      .sort(compareSchedule);
   }, [dateFilter, viewId, visibleRecruitingCandidates]);
 
   const instantRecruitingRoomCount = visibleRecruitingCandidates.filter((post) => isInstantScheduleRoom(post) && !dateFilter).length;

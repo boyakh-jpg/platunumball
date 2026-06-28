@@ -1,16 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { BookOpen, Database, MapPin, Moon, Send, ShieldCheck, Sun, UserRound } from "lucide-react";
+import { BookOpen, Database, MapPin, Moon, Search, Send, ShieldCheck, Star, Sun, UserRound } from "lucide-react";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import Badge from "../components/common/Badge.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
+import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
+import CourtHoverCard from "../components/court/CourtHoverCard.jsx";
 import { REPORT_REASONS, REPORT_TARGET_TYPES, getReportTargetType } from "../lib/reportReasons.js";
 import { formatStatLine, getMatchReservePlayerIds, getMatchSidePlayerIds } from "../lib/matchUtils.js";
 import { COURT_REQUEST_TRUST_MIN, FALSE_COURT_REPORT_TRUST_PENALTY, REFEREE_TRUST_MIN, REGIONS } from "../lib/constants.js";
 import { COURT_LAYOUT_OPTIONS, COURT_SURFACE_OPTIONS, findCourtDuplicate, getCourtDuplicateMessage, getCourtLayoutLabel, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
-import { getCourtHashtag, getMatchHashtag, getUserHashtag } from "../lib/handles.js";
+import { findCourtByHashtag, findTeamByHashtag, findUserByHashtag, getCourtHashtag, getMatchHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { getNaverMapClientId, openNaverMapPinPicker, searchNaverAddresses } from "../lib/naverAddress.js";
 import { hasAdminAccess } from "../lib/admin.js";
 import {
@@ -176,6 +178,7 @@ export default function Settings({ app, auth }) {
   const [reportMemo, setReportMemo] = useState("");
   const [reportedUserIds, setReportedUserIds] = useState([]);
   const [accountQuery, setAccountQuery] = useState("");
+  const [favoriteQuery, setFavoriteQuery] = useState("");
   const [courtAddressQuery, setCourtAddressQuery] = useState("");
   const [naverAddressResults, setNaverAddressResults] = useState([]);
   const [courtLookupStatus, setCourtLookupStatus] = useState("");
@@ -197,6 +200,15 @@ export default function Settings({ app, auth }) {
   const refereeExamAttempts = app.state.settings?.refereeExamAttempts ?? [];
   const currentTrustScore = Number(app.currentUser?.trustScore ?? 0);
   const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
+  const favoritePlayerIds = app.state.settings?.favoritePlayerIds ?? [];
+  const favoriteTeamIds = app.state.settings?.favoriteTeamIds ?? [];
+  const favoriteCourtIds = app.state.settings?.favoriteCourtIds ?? [];
+  const favoritePlayers = favoritePlayerIds.map((playerId) => app.state.users.find((item) => item.id === playerId)).filter(Boolean);
+  const favoriteTeams = favoriteTeamIds.map((teamId) => app.state.teams.find((item) => item.id === teamId)).filter(Boolean);
+  const favoriteCourts = favoriteCourtIds.map((courtId) => registeredCourts.find((item) => item.id === courtId)).filter(Boolean);
+  const searchedFavoriteUser = favoriteQuery.trim() ? findUserByHashtag(app.state.users, favoriteQuery) : null;
+  const searchedFavoriteTeam = favoriteQuery.trim() ? findTeamByHashtag(app.state.teams, favoriteQuery) : null;
+  const searchedFavoriteCourt = favoriteQuery.trim() ? findCourtByHashtag(registeredCourts, favoriteQuery) : null;
   const serverAdminLevel = Number(app.adminContext?.level ?? 0);
   const canOpenAdminMenu = serverAdminLevel >= 30 || hasAdminAccess(app.currentUser, app.state.settings);
   const themeDirty = themeDraft !== theme;
@@ -758,6 +770,92 @@ export default function Settings({ app, auth }) {
             <div className="settings-save-row">
               <small>{themeSaveStatus || (themeDirty ? "변경 있음" : "저장됨")}</small>
               <Button type="button" variant="secondary" onClick={saveTheme} disabled={!themeDirty}>저장</Button>
+            </div>
+          </Card>
+
+          <Card className="section-card favorite-management-card">
+            <div className="section-title-row">
+              <div>
+                <p className="eyebrow">Favorites</p>
+                <h2>즐겨찾기 설정</h2>
+              </div>
+              <Star size={20} />
+            </div>
+            <div className="favorite-search-row">
+              <Search size={17} />
+              <input value={favoriteQuery} placeholder="#minjun, #noeulkings, #12345" onChange={(event) => setFavoriteQuery(event.target.value)} />
+            </div>
+            <div className="contract-grid">
+              <div><span>프로필</span><strong>{favoritePlayerIds.length}/10</strong></div>
+              <div><span>팀</span><strong>{favoriteTeamIds.length}/10</strong></div>
+              <div><span>구장</span><strong>{favoriteCourtIds.length}/10</strong></div>
+              <div><span>심판</span><strong>준비중</strong></div>
+            </div>
+            <div className="favorite-result-stack">
+              {searchedFavoriteUser ? (
+                <div className="favorite-result-row">
+                  <PlayerHoverCard as="span" user={searchedFavoriteUser} teams={app.state.teams}>
+                    <span className="avatar small" style={{ "--avatar": searchedFavoriteUser.avatarColor }}>{searchedFavoriteUser.name.slice(0, 1)}</span>
+                    <span>
+                      <strong>{searchedFavoriteUser.name}</strong>
+                      <em>{getUserHashtag(searchedFavoriteUser)}</em>
+                    </span>
+                  </PlayerHoverCard>
+                  <Button type="button" size="sm" variant={favoritePlayerIds.includes(searchedFavoriteUser.id) ? "primary" : "secondary"} onClick={() => app.actions.toggleFavoritePlayer(searchedFavoriteUser.id)}>
+                    {favoritePlayerIds.includes(searchedFavoriteUser.id) ? "해제" : "저장"}
+                  </Button>
+                </div>
+              ) : null}
+              {searchedFavoriteTeam ? (
+                <div className="favorite-result-row">
+                  <TeamHoverCard as="span" team={searchedFavoriteTeam}>
+                    <span className="team-emblem small" style={{ "--team-color": searchedFavoriteTeam.accent }}>{searchedFavoriteTeam.name.slice(0, 1)}</span>
+                    <span>
+                      <strong>{searchedFavoriteTeam.name}</strong>
+                      <em>{getTeamHashtag(searchedFavoriteTeam)}</em>
+                    </span>
+                  </TeamHoverCard>
+                  <Button type="button" size="sm" variant={favoriteTeamIds.includes(searchedFavoriteTeam.id) ? "primary" : "secondary"} onClick={() => app.actions.toggleFavoriteTeam(searchedFavoriteTeam.id)}>
+                    {favoriteTeamIds.includes(searchedFavoriteTeam.id) ? "해제" : "저장"}
+                  </Button>
+                </div>
+              ) : null}
+              {searchedFavoriteCourt ? (
+                <div className="favorite-result-row">
+                  <CourtHoverCard court={searchedFavoriteCourt}>
+                    <span className="team-dot" />
+                    <span>
+                      <strong>{searchedFavoriteCourt.name}</strong>
+                      <em>{getCourtHashtag(searchedFavoriteCourt)}</em>
+                    </span>
+                  </CourtHoverCard>
+                  <Button type="button" size="sm" variant={favoriteCourtIds.includes(searchedFavoriteCourt.id) ? "primary" : "secondary"} onClick={() => app.actions.toggleFavoriteCourt(searchedFavoriteCourt.id)}>
+                    {favoriteCourtIds.includes(searchedFavoriteCourt.id) ? "해제" : "저장"}
+                  </Button>
+                </div>
+              ) : null}
+              {favoriteQuery.trim() && !searchedFavoriteUser && !searchedFavoriteTeam && !searchedFavoriteCourt ? <div className="empty-state">해시태그 결과 없음</div> : null}
+            </div>
+            <div className="favorite-chip-list">
+              {favoritePlayers.map((player) => (
+                <PlayerHoverCard key={player.id} as="span" user={player} teams={app.state.teams} className="favorite-mini-chip">
+                  <span className="avatar small" style={{ "--avatar": player.avatarColor }}>{player.name.slice(0, 1)}</span>
+                  <span>{getUserHashtag(player)}</span>
+                </PlayerHoverCard>
+              ))}
+              {favoriteTeams.map((team) => (
+                <TeamHoverCard key={team.id} as="span" team={team} className="favorite-mini-chip">
+                  <span className="team-dot" style={{ "--team-color": team.accent }} />
+                  <span>{getTeamHashtag(team)}</span>
+                </TeamHoverCard>
+              ))}
+              {favoriteCourts.map((court) => (
+                <CourtHoverCard key={court.id} court={court} className="favorite-mini-chip">
+                  <span className="team-dot" />
+                  <span>{getCourtHashtag(court)}</span>
+                </CourtHoverCard>
+              ))}
+              {!favoritePlayers.length && !favoriteTeams.length && !favoriteCourts.length ? <em>저장된 즐겨찾기 없음</em> : null}
             </div>
           </Card>
 

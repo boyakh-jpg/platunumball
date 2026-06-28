@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { Star, Trash2 } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
@@ -45,6 +45,13 @@ export default function TeamDetail({ app }) {
   const team = app.state.teams.find((item) => item.id === teamId);
   const [memberDraft, setMemberDraft] = useState({ userId: app.state.users[0]?.id, role: "regular" });
   const [deleteArmed, setDeleteArmed] = useState(false);
+  const captain = team?.members.find((member) => member.role === "captain");
+  const canManage = captain?.userId === app.currentUser.id;
+
+  useEffect(() => {
+    if (!team || !canManage || app.directoryStatus?.loaded || app.directoryStatus?.loading) return;
+    app.actions.loadDirectory?.();
+  }, [app.actions, app.directoryStatus?.loaded, app.directoryStatus?.loading, canManage, team]);
 
   if (!team && !app.remoteReady) return null;
   if (!team) return <Navigate to="/app/teams" replace />;
@@ -55,10 +62,8 @@ export default function TeamDetail({ app }) {
   app.state.teams.forEach((item) => {
     item.members.forEach((member) => membershipCounts.set(member.userId, (membershipCounts.get(member.userId) ?? 0) + 1));
   });
-  const captain = team.members.find((member) => member.role === "captain");
   const favoriteTeamIds = app.state.settings?.favoriteTeamIds ?? [];
   const isFavoriteTeam = favoriteTeamIds.includes(team.id);
-  const canManage = captain?.userId === app.currentUser.id;
   const regularMembers = team.members.filter((member) => !externalTeamRoles.has(member.role));
   const reserveMembers = team.members.filter((member) => externalTeamRoles.has(member.role));
   const pendingTeamInvitations = (app.state.teamInvitations ?? []).filter((invitation) => invitation.teamId === team.id && invitation.status === "pending");

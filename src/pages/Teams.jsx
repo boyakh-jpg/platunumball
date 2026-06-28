@@ -8,8 +8,8 @@ import { getTierEmblemSrc } from "../components/rating/TierEmblem.jsx";
 import TeamCard from "../components/team/TeamCard.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { MAX_TEAM_MEMBERSHIPS, MAX_TEAM_NAME_LENGTH, REGIONS } from "../lib/constants.js";
-import { getRegisteredCourts } from "../lib/courts.js";
-import { getTeamHashtag } from "../lib/handles.js";
+import { getCourtLayoutLabel, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
+import { getCourtHashtag, getTeamHashtag } from "../lib/handles.js";
 import { getTierDivision } from "../lib/tier.js";
 
 const allRegions = ["전체", ...REGIONS];
@@ -49,10 +49,14 @@ export default function Teams({ app }) {
   const [draft, setDraft] = useState({ name: "New Court Crew", region: app.currentUser.region, homeCourt: defaultHomeCourt, captainId: app.currentUser.id, accent: "#58d2c0" });
   const [query, setQuery] = useState("");
   const [region, setRegion] = useState(app.currentUser.region ?? "전체");
+  const [courtQuery, setCourtQuery] = useState(defaultHomeCourt);
+  const [courtRegion, setCourtRegion] = useState(app.currentUser.region ?? "전체");
   const favoriteTeamIds = app.state.settings?.favoriteTeamIds ?? [];
+  const favoriteCourtIds = app.state.settings?.favoriteCourtIds ?? [];
   const teamName = draft.name.trim().replace(/\s+/g, " ");
   const teamNameInvalid = !teamName || teamName.length > MAX_TEAM_NAME_LENGTH;
   const isFavoriteTeam = (team) => favoriteTeamIds.includes(team.id);
+  const isFavoriteCourt = (court) => favoriteCourtIds.includes(court.id);
   const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
   const teamCountByUser = useMemo(() => {
     const counts = new Map();
@@ -81,6 +85,19 @@ export default function Teams({ app }) {
       .filter(isFavoriteTeam)
       .slice(0, 10);
   }, [favoriteTeamIds, rankingTeams]);
+  const visibleCourts = useMemo(() => {
+    const keyword = courtQuery.trim().toLowerCase();
+    return registeredCourts
+      .filter((court) => courtRegion === "전체" || court.region === courtRegion)
+      .filter((court) => `${court.name} ${getCourtHashtag(court)} ${court.region} ${court.type} ${court.addressText ?? ""}`.toLowerCase().includes(keyword))
+      .sort((a, b) => Number(isFavoriteCourt(b)) - Number(isFavoriteCourt(a)) || Number(b.region === app.currentUser.region) - Number(a.region === app.currentUser.region) || a.name.localeCompare(b.name));
+  }, [app.currentUser.region, courtQuery, courtRegion, favoriteCourtIds, registeredCourts]);
+  const favoriteCourts = useMemo(() => {
+    return registeredCourts
+      .filter(isFavoriteCourt)
+      .sort((a, b) => Number(b.region === app.currentUser.region) - Number(a.region === app.currentUser.region) || a.name.localeCompare(b.name))
+      .slice(0, 10);
+  }, [app.currentUser.region, favoriteCourtIds, registeredCourts]);
   const visibleTeams = useMemo(() => {
     const hashtagSearch = isHashtagQuery(query);
     return rankingTeams
@@ -103,12 +120,32 @@ export default function Teams({ app }) {
       <em>{getTeamHashtag(team)} · {isFavoriteTeam(team) ? "즐겨찾기" : "팀"}</em>
     </button>
   );
+  const selectCourt = (court) => {
+    update({ homeCourt: court.name });
+    setCourtQuery(court.name);
+    setCourtRegion(court.region);
+  };
+  const renderCourtSearchItem = (court) => (
+    <button
+      key={court.id}
+      type="button"
+      className={draft.homeCourt === court.name ? "search-picker-result-row selected" : "search-picker-result-row"}
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={() => selectCourt(court)}
+    >
+      <strong>{court.name}</strong>
+      <span>{court.region} · {court.type} · {getCourtSurfaceLabel(court)} · {getCourtLayoutLabel(court)}</span>
+      <em>{getCourtHashtag(court)} · {isFavoriteCourt(court) ? "즐겨찾기" : "구장"}</em>
+    </button>
+  );
 
   const submit = (event) => {
     event.preventDefault();
     if (teamNameInvalid) return;
     app.actions.createTeam({ ...draft, captainId: app.currentUser.id });
     setDraft({ name: "New Court Crew", region: app.currentUser.region, homeCourt: defaultHomeCourt, captainId: app.currentUser.id, accent: "#58d2c0" });
+    setCourtQuery(defaultHomeCourt);
+    setCourtRegion(app.currentUser.region ?? "전체");
   };
 
   return (
@@ -244,15 +281,27 @@ export default function Teams({ app }) {
             </label>
             <label>
               지역
-              <select value={draft.region} onChange={(event) => update({ region: event.target.value })}>
+              <select value={draft.region} onChange={(event) => {
+                update({ region: event.target.value });
+                setCourtRegion(event.target.value);
+              }}>
                 {REGIONS.map((item) => <option key={item}>{item}</option>)}
               </select>
             </label>
             <label>
               홈 코트
-              <select value={draft.homeCourt} onChange={(event) => update({ homeCourt: event.target.value })}>
-                {registeredCourts.filter((court) => court.region === draft.region || draft.region === "전체").map((court) => <option key={court.id} value={court.name}>{court.name}</option>)}
-              </select>
+              <SearchPicker
+                value={courtQuery}
+                onChange={setCourtQuery}
+                placeholder="구장 이름, 지역, 해시태그"
+                items={visibleCourts}
+                idleItems={favoriteCourts.length ? favoriteCourts : visibleCourts.slice(0, 10)}
+                idleTitle={favoriteCourts.length ? "즐겨찾기 구장" : "추천 구장"}
+                showIdleOnFocus
+                floating
+                renderItem={renderCourtSearchItem}
+              />
+              <span className="form-chip">{draft.homeCourt}</span>
             </label>
             <label>
               주장

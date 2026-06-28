@@ -1,4 +1,5 @@
 import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { FAVORITE_LIMIT } from "../../../src/data/repository.js";
 
 const TARGET_TYPES = new Set(["player", "team", "court"]);
 
@@ -58,6 +59,17 @@ export default async function handler(request, response) {
     await assertTargetExists(context, targetType, targetId);
 
     if (active) {
+      const { count, error: countError } = await context.supabase
+        .from("favorites")
+        .select("target_id", { count: "exact", head: true })
+        .eq("user_id", context.profileId)
+        .eq("target_type", targetType)
+        .neq("target_id", targetId);
+      if (countError) throw countError;
+      if ((count ?? 0) >= FAVORITE_LIMIT) {
+        sendJson(response, 400, { error: "favorite_limit_exceeded", limit: FAVORITE_LIMIT, targetType });
+        return;
+      }
       const { error } = await context.supabase
         .from("favorites")
         .upsert({

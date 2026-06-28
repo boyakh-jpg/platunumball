@@ -570,14 +570,14 @@ function compactMatchListState(state = {}, profileId = "") {
 async function loadCurrentRecruitingSchedule(context, adminLevel = 0) {
   if (!context.profileId) return null;
   try {
-    const currentUserPostIds = await fetchCurrentUserRecruitingPostIds(context.supabase, context.profileId, 12);
+    const currentUserPostIds = await fetchCurrentUserRecruitingPostIds(context.supabase, context.profileId, REMOTE_CLIENT_MATCH_LIMIT);
     if (!currentUserPostIds.length) return null;
     return await loadCompactRecruitingList(context, {
       adminLevel,
       currentUserPostIds,
       includeMine: true,
       mineOnly: true,
-      limit: 12,
+      limit: REMOTE_CLIENT_MATCH_LIMIT,
     });
   } catch (error) {
     console.warn("Match list recruiting schedule skipped.", error.message);

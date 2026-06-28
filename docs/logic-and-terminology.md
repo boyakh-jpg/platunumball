@@ -1237,6 +1237,8 @@ flowchart TD
 2. 밝기 UI는 선택과 저장을 분리하고, 저장 실패 시 로컬 변경을 롤백한다.
 3. 관리자 메뉴 노출은 `POST /api/admin/context`의 `adminLevel >= 30` 또는 활성 admin appointment 기준이다. `u1` frontend seed fallback은 쓰지 않는다.
 4. 구장 등록요청 제출은 server action 성공 후에만 폼을 초기화한다.
+5. 프로필/팀/구장 즐겨찾기는 타입별 최대 10개만 저장한다. 클라이언트 reducer와 `/api/favorites/sync`가 같은 제한을 적용한다.
+6. 저장 버튼이 없는 설정 토글은 로컬 state 변경 뒤 `/api/settings/sync`로 즉시 저장한다.
 
 ## 2026-06-26 경기 생성자 저장 원칙
 
@@ -1351,6 +1353,7 @@ flowchart TD
 27. Matches 화면은 idle `scope: "mine"` 모집 context load를 실행하지 않는다. 경기 메뉴 첫 화면은 current-profile match feed와 current-user open recruiting schedule만 명시적으로 로드한다.
 28. `/api/matches/list` can include current-user open recruiting schedule rows when explicitly requested, and `/app/matches` first load sends `includeRecruitingSchedule=true` so owned/joined/invited matching rooms appear in the match menu schedule.
 28-1. Instant recruiting rooms have no calendar date, but they still appear in the Matches `active` list when they are related to the current profile. They do not create calendar day counts or appear under the scheduled/date-filtered view.
+28-2. Matches recruiting schedule rows are current-user relation rows, not a preview list. The API and UI must not cap them to 12; they load up to the active match-list cap and render all loaded related rooms without a "more" click.
 29. `user_room_feed` match rows are the first-page source for owned/participant/referee matches. `rankball_refresh_match_feed_for_match()` must keep match list `card_json` fresh whenever match or match player rows change. If the feed table/RPC is unavailable, `/api/matches/list` must fall back to current-profile candidate ids from `match_players.user_id`, `matches.created_by`, `matches.referee_id`, and `matches.former_referee_id`; it must not page through broad latest `matches` rows.
 30. `/app/recorder` must load `recorderOnly` match state on direct entry or after thin-route navigation before showing the final empty state. Recorder state includes only active `agreed`/`approval`/`disputed` matches related to the current profile.
 31. `/api/matches/list` with `listOnly:false` must not force `matchListOnly:true`; recorder/detail-like reads need `match_results` and `player_match_stats`.
@@ -1457,3 +1460,4 @@ flowchart TD
 8. 경기 만들기에서 팀전은 내 팀이 있는 사용자만 만들 수 있다. A사이드는 내 소속 팀만 선택하고, B사이드는 상대 팀 검색/초대로만 선택한다.
 9. 기존 팀에 새 멤버를 넣는 것은 `/api/teams/sync-team`의 일반 팀 저장 payload로 허용하지 않는다. 새 가입은 `rankball_invite_team_member`와 `rankball_respond_team_invitation` 수락 경로만 쓴다.
 10. `/api/profile/me` 초기 부트스트랩은 현재 사용자 소속 팀뿐 아니라 관련 pending 팀 초대와 초대 대상 팀 정보를 함께 싣는다. 전체 state 로드 전에도 팀 초대 수락/거절 UI가 빈 상태로 보이면 안 된다.
+11. `/app/teams/:teamId` 직접 진입한 주장 화면은 팀 관리 후보와 pending 팀 초대 상태를 위해 팀 디렉터리를 보강 로드하고, 디렉터리 응답의 `teamInvitations`를 기존 state에 병합해야 한다.

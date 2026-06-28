@@ -383,6 +383,7 @@ function mergeRemoteDirectory(state, remoteState = {}) {
     ...state,
     users: mergeById(state.users, remoteState.users),
     teams: mergeById(state.teams, remoteState.teams),
+    teamInvitations: mergeById(state.teamInvitations, remoteState.teamInvitations),
     affiliations: remoteState.affiliations?.length ? remoteState.affiliations : state.affiliations,
     seasons: remoteState.seasons?.length ? remoteState.seasons : state.seasons,
     settings: remoteState.settings ? { ...state.settings, ...remoteState.settings } : state.settings,
@@ -1649,8 +1650,19 @@ export function useAppData(authUser = null) {
       endMatch: (matchId) => applyMatchMutation(matchId, (prev) => endMatch({ ...prev, currentUserId }, matchId), { action: "endMatch" }),
       addMatchLatePlayer: (matchId, draft) => applyMatchMutation(matchId, (prev) => addMatchLatePlayer({ ...prev, currentUserId }, matchId, draft), { action: "addMatchLatePlayer", draft }),
       removeMatchLatePlayer: (matchId, playerId) => applyMatchMutation(matchId, (prev) => removeMatchLatePlayer({ ...prev, currentUserId }, matchId, playerId), { action: "removeMatchLatePlayer", playerId }),
-      updateSettings: (patch) => setState((prev) => updateSettings({ ...prev, currentUserId }, patch)),
-      updatePrivacySettings: (patch) => setState((prev) => updatePrivacySettings({ ...prev, currentUserId }, patch)),
+      updateSettings: (patch) => {
+        setState((prev) => updateSettings({ ...prev, currentUserId }, patch));
+        syncSettingsServer(patch);
+      },
+      updatePrivacySettings: (patch) => {
+        let nextPrivacy = null;
+        setState((prev) => {
+          const next = updatePrivacySettings({ ...prev, currentUserId }, patch);
+          nextPrivacy = next.settings?.privacy ?? null;
+          return next;
+        });
+        if (nextPrivacy) syncSettingsServer({ privacy: nextPrivacy });
+      },
       saveTheme: (theme) => {
         const nextTheme = theme === "light" ? "light" : "dark";
         if (!isSupabaseConfigured) {
