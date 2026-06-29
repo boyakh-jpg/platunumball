@@ -375,6 +375,7 @@ function getRecruitingEntryForUser(lobby, userId) {
 function isRecruitingRoomInUserSchedule(post, state, userId) {
   if (!post || !userId) return false;
   if (getRecruitingRoomOwnerId(post) === userId) return true;
+  if (post.refereeId === userId) return true;
   if (post.playerId === userId || (post.playerIds ?? post.players ?? []).includes(userId)) return true;
   const lobby = getRecruitingLobby(post, state);
   return Boolean(getRecruitingEntryForUser(lobby, userId));
