@@ -7403,6 +7403,7 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
     item.status === "pending"
   ));
   if (!invitation) return state;
+  const invitationOwnerId = getRecruitingRoomOwnerId(post) || invitation.fromUserId || post.playerId || "";
 
   if (invitation.role === "referee") {
     const expireRefereeInvitation = (body) => ({
@@ -7530,6 +7531,21 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
   }
 
   const now = new Date().toISOString();
+  const makeOwnerAcceptNotifications = (body) => (
+    invitationOwnerId && invitationOwnerId !== state.currentUserId
+      ? [{
+          id: makeId("n"),
+          title: "초대 수락",
+          body,
+          tone: "match",
+          targetUserId: invitationOwnerId,
+          recruitingPostId: postId,
+          invitationId,
+          createdAt: now,
+          updatedAt: now,
+        }]
+      : []
+  );
   if (invitedTeam && !isSoloIndividualRecruitingRoom(post)) {
     const capacity = invitedTeamCapacity;
     const applicants = normalizeRecruitingApplicants(post.applicants ?? []);
@@ -7626,6 +7642,7 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
         item.id === postId ? cleanRecruitingRoomStatRecorders(nextPost, state) : item
       )),
       notifications: [
+        ...makeOwnerAcceptNotifications(`${post.title} ${SIDE_LABEL_TEXT[side]} ${reserve ? "후보" : "출전"} 초대가 수락되었습니다.`),
         {
           id: makeId("n"),
           title: "초대 수락",
@@ -7666,6 +7683,7 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
         : item
     )),
     notifications: [
+      ...makeOwnerAcceptNotifications(`${post.title} ${SIDE_LABEL_TEXT[side]} ${reserve ? "후보" : "출전"} 초대가 수락되었습니다.`),
       {
         id: makeId("n"),
         title: "초대 수락",

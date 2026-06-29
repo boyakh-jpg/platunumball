@@ -26,11 +26,16 @@ function compareSchedule(a, b) {
 }
 
 function matchHasUser(match, userId) {
-  return Boolean(getUserParticipantSide(match, userId));
+  return Boolean(
+    getUserParticipantSide(match, userId) ||
+    match.createdBy === userId ||
+    match.refereeId === userId ||
+    match.formerRefereeId === userId
+  );
 }
 
 function matchNeedsUserOperation(match, userId) {
-  return matchHasUser(match, userId) || match.refereeId === userId;
+  return matchHasUser(match, userId);
 }
 
 function isSameRecruitingRegion(post = {}, user = {}) {
@@ -313,10 +318,11 @@ export default function Home({ app }) {
     if (homeRefreshKeyRef.current === user.id) return;
     homeRefreshKeyRef.current = user.id;
     const scheduleChecked = Boolean(app.matchPagination?.recruitingScheduleChecked);
+    const feedCountsLoaded = app.recruitingPagination?.feedCounts != null;
     const profileLoaded = Boolean(app.directoryStatus?.loaded);
     const requests = [
       profileLoaded ? true : app.actions.refreshCurrentProfile?.(),
-      scheduleChecked ? true : app.actions.loadMyRecruitingPosts?.(),
+      feedCountsLoaded ? true : app.actions.loadMyRecruitingPosts?.(),
       scheduleChecked ? true : app.actions.loadMatchRecruitingSchedule?.(),
     ].filter(Boolean);
     Promise.allSettled(requests).then((results) => {
@@ -324,7 +330,7 @@ export default function Home({ app }) {
         homeRefreshKeyRef.current = "";
       }
     });
-  }, [app.actions, app.directoryStatus?.loaded, app.matchPagination?.recruitingScheduleChecked, app.remoteReady, user.id]);
+  }, [app.actions, app.directoryStatus?.loaded, app.matchPagination?.recruitingScheduleChecked, app.recruitingPagination?.feedCounts, app.remoteReady, user.id]);
 
   const searchResults = useMemo(() => {
     if (!searchText) return [];

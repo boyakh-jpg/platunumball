@@ -908,23 +908,20 @@ export default function Matches({ app }) {
       .sort(compareSchedule);
   }, [app.currentUser.id, dateFilter, filteredMatches, historyRangeMonths, selectedView]);
 
-  const visibleRecruitingRooms = useMemo(() => {
-    if (!["active", "scheduled"].includes(viewId)) return [];
-    return visibleRecruitingCandidates
-      .filter((post) => {
-        if (isInstantScheduleRoom(post)) return viewId === "active" && !dateFilter;
-        const postDate = getMatchDate(post);
-        return !dateFilter || postDate === dateFilter;
-      })
-      .sort(compareSchedule);
-  }, [dateFilter, viewId, visibleRecruitingCandidates]);
-
-  const instantRecruitingRoomCount = visibleRecruitingCandidates.filter((post) => isInstantScheduleRoom(post) && !dateFilter).length;
-  const scheduledRecruitingRoomCount = visibleRecruitingCandidates.filter((post) => {
-    if (isInstantScheduleRoom(post)) return false;
+  const dateScopedRecruitingCandidates = useMemo(() => visibleRecruitingCandidates.filter((post) => {
+    if (isInstantScheduleRoom(post)) return !dateFilter;
     const postDate = getMatchDate(post);
     return !dateFilter || postDate === dateFilter;
-  }).length;
+  }), [dateFilter, visibleRecruitingCandidates]);
+
+  const visibleRecruitingRooms = useMemo(() => {
+    if (!["active", "scheduled"].includes(viewId)) return [];
+    return dateScopedRecruitingCandidates
+      .filter((post) => viewId === "active" || !isInstantScheduleRoom(post))
+      .sort(compareSchedule);
+  }, [dateScopedRecruitingCandidates, viewId]);
+
+  const scheduledRecruitingRoomCount = dateScopedRecruitingCandidates.filter((post) => !isInstantScheduleRoom(post)).length;
   const visibleMatches = matchesByView;
   const visibleScheduleItems = useMemo(() => ([
     ...visibleRecruitingRooms.map((post) => ({ type: "room", id: `room-${post.id}`, item: post })),
@@ -935,13 +932,13 @@ export default function Matches({ app }) {
   const todoCount = getViewCount(filteredMatches, VIEWS[1], app.currentUser.id);
   const scheduledCount = getViewCount(filteredMatches, VIEWS[2], app.currentUser.id) + scheduledRecruitingRoomCount;
   const closedCount = getViewCount(filteredMatches, VIEWS[3], app.currentUser.id);
-  const activeCount = activeMatchCount + instantRecruitingRoomCount + scheduledRecruitingRoomCount;
+  const activeCount = activeMatchCount + dateScopedRecruitingCandidates.length;
   const viewButtonCounts = {
-    todo: getViewCount(baseFilteredMatches, VIEWS[1], app.currentUser.id),
-    scheduled: getViewCount(baseFilteredMatches, VIEWS[2], app.currentUser.id) + scheduledRecruitingRoomCount,
-    closed: getViewCount(baseFilteredMatches, VIEWS[3], app.currentUser.id),
+    todo: todoCount,
+    scheduled: scheduledCount,
+    closed: closedCount,
   };
-  viewButtonCounts.active = getViewListCount(baseFilteredMatches, VIEWS[0], app.currentUser.id, hasDateFilter) + instantRecruitingRoomCount + scheduledRecruitingRoomCount;
+  viewButtonCounts.active = activeCount;
   const getViewButtonCount = (view) => viewButtonCounts[view.id] ?? 0;
   const listRecruitingRoomCount = ["active", "scheduled"].includes(viewId) ? visibleRecruitingRooms.length : 0;
   const scheduleLoading = app.remoteReady === false || (matchPagination.recruitingScheduleLoading && !visibleScheduleItems.length);

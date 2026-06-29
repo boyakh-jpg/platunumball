@@ -1536,3 +1536,10 @@ flowchart TD
 2. `/api/profile/me` 실패 후 직접 Supabase profile fallback을 쓰더라도 현재 사용자 관련 `team_invitations`, 소속 팀, 초대 대상 팀은 함께 읽는다. 초대장이 loader 이후 따로 붙는 상태를 기본 흐름으로 만들지 않는다.
 3. 모집방 초대 수락은 `recruiting_applications`와 `recruiting_posts.room_state.invitations`가 서버에 반영된 뒤 상세 조회 결과가 권위 상태다. 열린 모집방/경기 메뉴 방 모달은 해당 `postId` 상세만 주기적으로 재조회해 상대 화면의 stale 참가자 표시를 줄인다.
 4. 팀 사이드 경기초대 검색은 오래된 로컬 `team.members`만 믿지 않고 서버 `team_members` 기준 검색 결과도 허용한다. 알림 화면은 현재 프로필뿐 아니라 `roomScope="invited"` 모집방도 같이 보강 로드해 초대 수락 카드가 늦게 붙거나 빠지지 않게 한다.
+
+## 2026-06-29 홈/경기 feed 보강 호출
+
+- `/api/home/load`가 현재 프로필, 내 모집 feed count, 경기 메뉴 모집 일정을 이미 반환하면 홈 화면은 같은 데이터를 즉시 다시 호출하지 않는다.
+- 홈 보강 호출은 프로필/디렉터리, 모집 feed count, 경기 모집 일정 중 빠진 항목만 개별 호출한다.
+- 경기 메뉴의 `MY/ACTION/SOON/CLOSED` 숫자는 현재 화면 필터와 같은 후보 배열에서 계산한다. 상단 숫자, 상태 버튼 숫자, 실제 목록 숫자가 서로 다른 기준을 쓰면 안 된다.
+- 모집방 초대 수락은 수락자 상태만 바꾸지 않고 방장에게도 `targetUserId`가 있는 알림을 남긴다.
