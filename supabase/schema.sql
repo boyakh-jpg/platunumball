@@ -4917,6 +4917,48 @@ begin
 end;
 $$;
 
+create or replace function public.rankball_refresh_team_member_feed_dependency_trigger()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if tg_op = 'DELETE' then
+    perform public.rankball_refresh_team_feed_dependency(old.team_id);
+    return old;
+  end if;
+
+  if tg_op = 'UPDATE' and old.team_id is distinct from new.team_id then
+    perform public.rankball_refresh_team_feed_dependency(old.team_id);
+  end if;
+
+  perform public.rankball_refresh_team_feed_dependency(new.team_id);
+  return new;
+end;
+$$;
+
+create or replace function public.rankball_refresh_match_record_feed_dependency_trigger()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if tg_op = 'DELETE' then
+    perform public.rankball_refresh_match_feed_for_match(old.match_id);
+    return old;
+  end if;
+
+  if tg_op = 'UPDATE' and old.match_id is distinct from new.match_id then
+    perform public.rankball_refresh_match_feed_for_match(old.match_id);
+  end if;
+
+  perform public.rankball_refresh_match_feed_for_match(new.match_id);
+  return new;
+end;
+$$;
+
 do $$
 begin
   if to_regclass('public.recruiting_posts') is not null then
@@ -4937,6 +4979,39 @@ begin
   if to_regclass('public.match_players') is not null then
     execute 'drop trigger if exists rankball_match_players_feed_refresh on public.match_players';
     execute 'create trigger rankball_match_players_feed_refresh after insert or update or delete on public.match_players for each row execute function public.rankball_refresh_match_player_feed_trigger()';
+  end if;
+
+  if to_regclass('public.team_members') is not null and exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'team_members'
+      and column_name = 'team_id'
+  ) then
+    execute 'drop trigger if exists rankball_team_members_feed_dependency_refresh on public.team_members';
+    execute 'create trigger rankball_team_members_feed_dependency_refresh after insert or update of team_id or delete on public.team_members for each row execute function public.rankball_refresh_team_member_feed_dependency_trigger()';
+  end if;
+
+  if to_regclass('public.match_results') is not null and exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'match_results'
+      and column_name = 'match_id'
+  ) then
+    execute 'drop trigger if exists rankball_match_results_feed_refresh on public.match_results';
+    execute 'create trigger rankball_match_results_feed_refresh after insert or update or delete on public.match_results for each row execute function public.rankball_refresh_match_record_feed_dependency_trigger()';
+  end if;
+
+  if to_regclass('public.player_match_stats') is not null and exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'player_match_stats'
+      and column_name = 'match_id'
+  ) then
+    execute 'drop trigger if exists rankball_player_match_stats_feed_refresh on public.player_match_stats';
+    execute 'create trigger rankball_player_match_stats_feed_refresh after insert or update or delete on public.player_match_stats for each row execute function public.rankball_refresh_match_record_feed_dependency_trigger()';
   end if;
 
   if to_regclass('public.profiles') is not null then
