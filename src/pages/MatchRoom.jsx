@@ -80,6 +80,17 @@ function getDisplayScore(match, sideName) {
   return sourceResult?.[resultKey] ?? match[sideName]?.score ?? 0;
 }
 
+function getSafeMatchSide(match, sideName) {
+  const fallbackName = sideName === "teamA" ? "A" : "B";
+  const side = match?.[sideName] ?? {};
+  return {
+    ...side,
+    name: side.name || fallbackName,
+    teamId: side.teamId || "",
+    players: Array.isArray(side.players) ? side.players : [],
+  };
+}
+
 function getPointAudit(match, score, sideName) {
   const scoreKey = sideName === "teamA" ? "scoreA" : "scoreB";
   const teamScore = Number(score[scoreKey] ?? 0);
@@ -289,11 +300,13 @@ export default function MatchRoom({ app }) {
   const shouldShowWaitingPanel = false;
   const scoreA = getDisplayScore(match, "teamA");
   const scoreB = getDisplayScore(match, "teamB");
-  const teamA = app.state.teams.find((team) => team.id === match.teamA.teamId);
-  const teamB = app.state.teams.find((team) => team.id === match.teamB.teamId);
-  const teamAMmr = teamA?.mmr ?? getTeamMmr(app.state.teams, match.teamA.teamId);
-  const teamBMmr = teamB?.mmr ?? getTeamMmr(app.state.teams, match.teamB.teamId);
-  const winnerName = Number(scoreA) === Number(scoreB) ? "" : Number(scoreA) > Number(scoreB) ? match.teamA.name : match.teamB.name;
+  const teamASide = getSafeMatchSide(match, "teamA");
+  const teamBSide = getSafeMatchSide(match, "teamB");
+  const teamA = app.state.teams.find((team) => team.id === teamASide.teamId);
+  const teamB = app.state.teams.find((team) => team.id === teamBSide.teamId);
+  const teamAMmr = teamA?.mmr ?? getTeamMmr(app.state.teams, teamASide.teamId);
+  const teamBMmr = teamB?.mmr ?? getTeamMmr(app.state.teams, teamBSide.teamId);
+  const winnerName = Number(scoreA) === Number(scoreB) ? "" : Number(scoreA) > Number(scoreB) ? teamASide.name : teamBSide.name;
   const matchKind = match.ranked === false ? "친선전" : "정규전";
   const recordLockReason = recordWindow.beforeStart
     ? "경기 시작 전"
@@ -313,7 +326,7 @@ export default function MatchRoom({ app }) {
           ? "참가자/후보 기록자만 입력"
         : "입력 가능";
   const renderHeroRoster = (sideName) => {
-    const team = match[sideName];
+    const team = getSafeMatchSide(match, sideName);
     const agreement = sideName === "teamA" ? teamAAgreement : teamBAgreement;
     const sideLeaderId = getMatchSideLeaderId(match, app.state.teams, sideName);
 
@@ -610,7 +623,7 @@ export default function MatchRoom({ app }) {
           <div className="gm-team-panel team-a">
             <div className="gm-team-head">
               <span>HOME TEAM</span>
-              <TeamHoverCard team={teamA} to={`/app/teams/${match.teamA.teamId}`}>{match.teamA.name}</TeamHoverCard>
+              <TeamHoverCard team={teamA} to={teamASide.teamId ? `/app/teams/${teamASide.teamId}` : undefined}>{teamASide.name}</TeamHoverCard>
               <em>{teamAMmr || "-"} MMR</em>
             </div>
             {renderHeroRoster("teamA")}
@@ -626,7 +639,7 @@ export default function MatchRoom({ app }) {
           <div className="gm-team-panel team-b">
             <div className="gm-team-head">
               <span>OPPONENT</span>
-              <TeamHoverCard team={teamB} to={`/app/teams/${match.teamB.teamId}`}>{match.teamB.name}</TeamHoverCard>
+              <TeamHoverCard team={teamB} to={teamBSide.teamId ? `/app/teams/${teamBSide.teamId}` : undefined}>{teamBSide.name}</TeamHoverCard>
               <em>{teamBMmr || "-"} MMR</em>
             </div>
             {renderHeroRoster("teamB")}
@@ -640,7 +653,7 @@ export default function MatchRoom({ app }) {
 
         <div className="gm-room-actions">
           <div><CalendarDays size={17} /><span>{match.scheduledDate ?? "일정"} {match.scheduledTime ?? ""}</span></div>
-          <div><UsersRound size={17} /><span>{match.teamA.players.length} vs {match.teamB.players.length}</span></div>
+          <div><UsersRound size={17} /><span>{teamASide.players.length} vs {teamBSide.players.length}</span></div>
           <div><ShieldCheck size={17} /><span>{match.ranked === false ? "티어 자유" : "MMR 반영"}</span></div>
           <div><Trophy size={17} /><span>{match.rules?.targetScore ?? 21}점 · {match.rules?.timeLimit ?? 12}분</span></div>
         </div>
@@ -760,12 +773,12 @@ export default function MatchRoom({ app }) {
             </div>
             <form className="score-form" onSubmit={submitResult}>
               <label>
-                {match.teamA.name}
+                {teamASide.name}
                 <input type="number" min="0" disabled={!canSubmitResult} value={score.scoreA} onChange={(event) => setScore((current) => ({ ...current, scoreA: event.target.value }))} />
               </label>
               <span>:</span>
               <label>
-                {match.teamB.name}
+                {teamBSide.name}
                 <input type="number" min="0" disabled={!canSubmitResult} value={score.scoreB} onChange={(event) => setScore((current) => ({ ...current, scoreB: event.target.value }))} />
               </label>
               <Button type="submit" disabled={!canSubmitResult}>
@@ -798,7 +811,7 @@ export default function MatchRoom({ app }) {
               <div className="stat-entry-grid compact-stat-entry">
                 {["teamA", "teamB"].map((sideName) => (
                   <div key={sideName} className="stat-entry-side">
-                    <h3>{match[sideName].name} 개인 기록</h3>
+                    <h3>{(sideName === "teamA" ? teamASide : teamBSide).name} 개인 기록</h3>
                     {getMatchSideRecordPlayerIds(match, sideName, matchPhase === "live").map((playerId) => {
                       const user = userMap[playerId];
                       const canEdit = canEditPlayerStat(playerId);

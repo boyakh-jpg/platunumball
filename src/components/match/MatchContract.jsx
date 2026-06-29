@@ -13,13 +13,26 @@ const mmrLimitLabels = {
   block: "생성 차단",
 };
 
-export default function MatchContract({ match, users, teams = [], matches = [] }) {
+function getSafeSide(side = {}, fallbackName = "") {
+  return {
+    ...side,
+    name: side?.name || fallbackName,
+    teamId: side?.teamId || "",
+    players: Array.isArray(side?.players) ? side.players : [],
+  };
+}
+
+export default function MatchContract({ match, users = [], teams = [], matches = [] }) {
+  if (!match) return null;
+  const rules = match.rules ?? {};
+  const sideA = getSafeSide(match.teamA, "A");
+  const sideB = getSafeSide(match.teamB, "B");
   const activeEvidenceIds = new Set(EVIDENCE_OPTIONS.map((item) => item.id));
   const evidenceItems = (match.evidence ?? []).filter((evidence) => activeEvidenceIds.has(evidence.id ?? evidence.type));
   const userMap = Object.fromEntries(users.map((user) => [user.id, user]));
   const credibility = CREDIBILITY_LEVELS[getCredibilityLevel(match)] ?? CREDIBILITY_LEVELS.street_majority;
   const referee = getMatchReferee(match, users);
-  const statRecorders = normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders);
+  const statRecorders = normalizeStatRecorders(match.statRecorders ?? rules.statRecorders);
   const recorderLabel = referee
     ? ""
     : ["teamA", "teamB"]
@@ -69,11 +82,11 @@ export default function MatchContract({ match, users, teams = [], matches = [] }
         </div>
         <div>
           <span>목표 점수</span>
-          <strong>{match.rules.targetScore}점</strong>
+          <strong>{rules.targetScore ?? 21}점</strong>
         </div>
         <div>
           <span>제한 시간</span>
-          <strong>{match.rules.timeLimit}분</strong>
+          <strong>{rules.timeLimit ?? 12}분</strong>
         </div>
         <div>
           <span>정규전 반영</span>
@@ -111,21 +124,21 @@ export default function MatchContract({ match, users, teams = [], matches = [] }
         </div>
         <div>
           <span>공격권</span>
-          <strong>{match.rules.attackRule ?? "득점 후 공격권 교대"}</strong>
+          <strong>{rules.attackRule ?? "득점 후 공격권 교대"}</strong>
         </div>
         <div>
           <span>파울 룰</span>
-          <strong>{match.rules.foulRule ?? "현장 합의"}</strong>
+          <strong>{rules.foulRule ?? "현장 합의"}</strong>
         </div>
       </div>
       <div className="two-column">
         <div>
-          <Link to={`/app/teams/${match.teamA.teamId}`}><h3>{match.teamA.name}</h3></Link>
-          {renderRoster(match.teamA)}
+          {sideA.teamId ? <Link to={`/app/teams/${sideA.teamId}`}><h3>{sideA.name}</h3></Link> : <h3>{sideA.name}</h3>}
+          {renderRoster(sideA)}
         </div>
         <div>
-          <Link to={`/app/teams/${match.teamB.teamId}`}><h3>{match.teamB.name}</h3></Link>
-          {renderRoster(match.teamB)}
+          {sideB.teamId ? <Link to={`/app/teams/${sideB.teamId}`}><h3>{sideB.name}</h3></Link> : <h3>{sideB.name}</h3>}
+          {renderRoster(sideB)}
         </div>
       </div>
       <div className="contract-note-grid">

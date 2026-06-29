@@ -25,9 +25,21 @@ const statusTone = {
   cancelled: "neutral",
 };
 
+function getSafeSide(side = {}, fallbackName = "") {
+  return {
+    ...side,
+    name: side?.name || fallbackName,
+    teamId: side?.teamId || "",
+    score: side?.score ?? 0,
+  };
+}
+
 export default function MatchCard({ match, teams = [], courts = [] }) {
-  const teamA = teams.find((team) => team.id === match.teamA.teamId);
-  const teamB = teams.find((team) => team.id === match.teamB.teamId);
+  if (!match) return null;
+  const sideA = getSafeSide(match.teamA, "A");
+  const sideB = getSafeSide(match.teamB, "B");
+  const teamA = teams.find((team) => team.id === sideA.teamId);
+  const teamB = teams.find((team) => team.id === sideB.teamId);
   const court = courts.find((item) => item.name === match.court);
 
   return (
@@ -46,9 +58,9 @@ export default function MatchCard({ match, teams = [], courts = [] }) {
         <span><CalendarDays size={15} />{match.scheduledAt}</span>
       </div>
       <div className="score-line">
-        <TeamHoverCard team={teamA} to={`/app/teams/${match.teamA.teamId}`}>{match.teamA.name}</TeamHoverCard>
-        <strong>{match.teamA.score ?? 0} : {match.teamB.score ?? 0}</strong>
-        <TeamHoverCard team={teamB} to={`/app/teams/${match.teamB.teamId}`}>{match.teamB.name}</TeamHoverCard>
+        <TeamHoverCard team={teamA} to={sideA.teamId ? `/app/teams/${sideA.teamId}` : undefined}>{sideA.name}</TeamHoverCard>
+        <strong>{sideA.score} : {sideB.score}</strong>
+        <TeamHoverCard team={teamB} to={sideB.teamId ? `/app/teams/${sideB.teamId}` : undefined}>{sideB.name}</TeamHoverCard>
       </div>
       <Link className="button button-secondary button-md" to={`/app/matches?match=${match.id}`}>
         방 보기

@@ -3,7 +3,7 @@ import Card from "../common/Card.jsx";
 import { getTier, TIERS } from "../../lib/tier.js";
 
 function playerInMatch(match, userId) {
-  return match.teamA.players.includes(userId) || match.teamB.players.includes(userId);
+  return (match?.teamA?.players ?? []).includes(userId) || (match?.teamB?.players ?? []).includes(userId);
 }
 
 function countMatches(matches, userId, predicate) {

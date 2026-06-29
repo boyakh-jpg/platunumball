@@ -48,8 +48,8 @@ function isSameRecruitingRegion(post = {}, user = {}) {
 function getUserResult(match, userId) {
   const sideName = getUserParticipantSide(match, userId) ?? "teamA";
   const otherSide = sideName === "teamA" ? "teamB" : "teamA";
-  const sideScore = Number((sideName === "teamA" ? match.result?.scoreA : match.result?.scoreB) ?? match[sideName].score ?? 0);
-  const otherScore = Number((otherSide === "teamA" ? match.result?.scoreA : match.result?.scoreB) ?? match[otherSide].score ?? 0);
+  const sideScore = Number((sideName === "teamA" ? match.result?.scoreA : match.result?.scoreB) ?? match?.[sideName]?.score ?? 0);
+  const otherScore = Number((otherSide === "teamA" ? match.result?.scoreA : match.result?.scoreB) ?? match?.[otherSide]?.score ?? 0);
   if (sideScore === otherScore) return "D";
   return sideScore > otherScore ? "W" : "L";
 }
