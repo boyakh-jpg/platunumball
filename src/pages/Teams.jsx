@@ -7,21 +7,12 @@ import SearchPicker from "../components/common/SearchPicker.jsx";
 import { getTierEmblemSrc } from "../components/rating/TierEmblem.jsx";
 import TeamCard from "../components/team/TeamCard.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
-import { MAX_TEAM_MEMBERSHIPS, MAX_TEAM_NAME_LENGTH, REGIONS } from "../lib/constants.js";
+import { MAX_TEAM_MEMBERSHIPS, MAX_TEAM_NAME_LENGTH, REGIONS, TEAM_ROLES } from "../lib/constants.js";
 import { getCourtLayoutLabel, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
 import { getCourtHashtag, getTeamHashtag } from "../lib/handles.js";
 import { getTierDivision } from "../lib/tier.js";
 
 const allRegions = ["전체", ...REGIONS];
-
-const roleLabels = {
-  captain: "주장",
-  regular: "정규",
-  candidate: "정식",
-  substitute: "정식",
-  mercenary: "용병",
-  guest: "게스트",
-};
 
 function compareTeamRank(a, b) {
   const aWinRate = a.played ? a.wins / a.played : 0;
@@ -185,7 +176,7 @@ export default function Teams({ app }) {
                   <span className="team-rank-chip">#{team.rank}</span>
                   <span className="team-mini-dot" style={{ "--team-color": team.accent }} />
                   <strong>{team.name}</strong>
-                  <em>{roleLabels[team.myRole] ?? team.myRole} · {team.mmr} MMR · {winRate}%</em>
+                  <em>{TEAM_ROLES[team.myRole] ?? team.myRole} · {team.mmr} MMR · {winRate}%</em>
                   <span className="my-team-tier">
                     <img src={getTierEmblemSrc(team.mmr)} alt={`${getTierDivision(team.mmr)} emblem`} loading="lazy" />
                     <span>{getTierDivision(team.mmr)}</span>

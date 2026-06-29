@@ -22,10 +22,10 @@ export const DISPUTE_WINDOW_MINUTES = 30;
 export const PLAYER_POSITIONS = ["상관없음", "PG", "SG", "SF", "PF", "C"];
 
 export const TEAM_ROLES = {
-  captain: "팀장",
+  captain: "주장",
   regular: "정규멤버",
-  candidate: "정식팀원",
-  substitute: "정식팀원",
+  candidate: "후보멤버",
+  substitute: "교체멤버",
   mercenary: "용병",
   guest: "게스트",
 };
