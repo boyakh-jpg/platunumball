@@ -205,6 +205,19 @@ const REQUIRED_RPCS = [
   },
 ];
 
+const REQUIRED_FEED_TRIGGERS = [
+  "rankball_recruiting_posts_feed_refresh",
+  "rankball_recruiting_applications_feed_refresh",
+  "rankball_matches_feed_refresh",
+  "rankball_match_players_feed_refresh",
+  "rankball_team_members_feed_dependency_refresh",
+  "rankball_match_results_feed_refresh",
+  "rankball_player_match_stats_feed_refresh",
+  "rankball_profiles_feed_dependency_refresh",
+  "rankball_teams_feed_dependency_refresh",
+  "rankball_approved_courts_feed_dependency_refresh",
+];
+
 function getBearerToken(request) {
   const header = request.headers.authorization || request.headers.Authorization || "";
   const match = String(header).match(/^Bearer\s+(.+)$/i);
@@ -242,6 +255,28 @@ async function checkRpc(client, name, args) {
     ok: !missing,
     error: missing ? message : null,
     probeError: !missing ? message || null : null,
+  };
+}
+
+async function checkFeedTriggers(client) {
+  const { data, error } = await client.rpc("rankball_feed_trigger_health");
+  if (error) {
+    return {
+      ok: false,
+      error: error.message || "feed_trigger_health_failed",
+      missing: REQUIRED_FEED_TRIGGERS,
+      triggers: [],
+    };
+  }
+
+  const triggers = Array.isArray(data) ? data : [];
+  const triggerNames = new Set(triggers.map((row) => row.trigger_name).filter(Boolean));
+  const missing = REQUIRED_FEED_TRIGGERS.filter((name) => !triggerNames.has(name));
+  return {
+    ok: missing.length === 0,
+    error: null,
+    missing,
+    triggers,
   };
 }
 
@@ -328,17 +363,20 @@ export default async function handler(request, response) {
       Object.entries(REQUIRED_COLUMNS).map(([table, columns]) => checkTable(client, table, columns)),
     );
     const rpcChecks = await Promise.all(REQUIRED_RPCS.map((rpc) => checkRpc(client, rpc.name, rpc.args)));
+    const feedTriggerCheck = await checkFeedTriggers(client);
     const failed = checks.filter((check) => !check.ok);
     const failedRpcs = rpcChecks.filter((check) => !check.ok);
     const simulationSeed = body?.ensureTestActors === true
       ? await ensureSimulationTestActors(client)
       : null;
     sendJson(response, 200, {
-      ok: failed.length === 0 && failedRpcs.length === 0 && (!simulationSeed || simulationSeed.ok),
+      ok: failed.length === 0 && failedRpcs.length === 0 && feedTriggerCheck.ok && (!simulationSeed || simulationSeed.ok),
       failedCount: failed.length,
       failedRpcCount: failedRpcs.length,
+      failedFeedTriggerCount: feedTriggerCheck.missing.length,
       checks,
       rpcChecks,
+      feedTriggerCheck,
       simulationSeed,
     });
   } catch (error) {
