@@ -51,10 +51,6 @@ const RESERVE_ROLES = new Set();
 const VALID_SIDES = new Set(["teamA", "teamB"]);
 const VALID_APPLICATION_STATUS = new Set(["waiting", "ready", "confirmed"]);
 
-function clampIndex(index) {
-  return Math.min(TIERS.length - 1, Math.max(0, index));
-}
-
 function unique(items = []) {
   return Array.from(new Set(items.filter(Boolean)));
 }

@@ -283,21 +283,6 @@ function getEntryMmr(entry) {
     : entry.user?.ratings?.integrated ?? 1200;
 }
 
-function getEntryTitle(entry) {
-  if (entry.fixed && entry.team) return `${entry.team.name} · 방장 파티`;
-  if (entry.kind === "team" && entry.team) return `${entry.team.name} · 팀 파티`;
-  if (entry.fixed) return `${entry.user?.name ?? "방장"} · 방장`;
-  return `${entry.user?.name ?? "플레이어"} · 개인`;
-}
-
-function getReadyTitle(entry) {
-  if (isPartyEntry(entry) && entry.team) {
-    const leader = entry.user?.name ? ` · ${entry.user.name}` : "";
-    return `${entry.team?.name ?? "팀"}${leader}`;
-  }
-  return entry.user?.name ?? "플레이어";
-}
-
 export function getLobbySideMeta(lobby, sideName, userById, { useSideName = false } = {}) {
   const side = lobby.sides[sideName];
   const teamEntry = side.entries.find((entry) => isPartyEntry(entry) && entry.team);

@@ -406,18 +406,6 @@ function isRecruitingRoomParticipant(post = {}, userId, state = null) {
   ));
 }
 
-function getRecruitingParticipantEntry(post = {}, state = {}, userId, sideName = null) {
-  const lobby = getRecruitingLobby(post, state);
-  return (lobby.entries ?? []).find((entry) => (
-    (!sideName || entry.side === sideName) &&
-    (
-      entry.playerId === userId ||
-      (entry.players ?? []).includes(userId) ||
-      (entry.reserves ?? []).includes(userId)
-    )
-  )) ?? null;
-}
-
 function inferSidePartyTeamIdForUser(post = {}, state = {}, sideName = "", userId = "") {
   if (!userId || !["teamA", "teamB"].includes(sideName)) return null;
   const lobby = getRecruitingLobby(post, state);

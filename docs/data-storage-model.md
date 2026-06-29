@@ -364,3 +364,42 @@ Remaining:
 
 - `/api/system/maintenance`는 `CRON_SECRET`으로 보호되는 서버 전용 경기 유지보수 endpoint다.
 - 기존 외부 스케줄러가 `/api/discord/dm-worker`를 호출할 때 같은 경기 유지보수도 함께 실행한다.
+
+## 2026-06-30 cleanup audit
+
+### 안전 삭제
+
+- `src/data/repository.js`의 `getRecruitingParticipantEntry`는 참조 0개라 제거했다.
+- `src/lib/recruiting.js`의 `clampIndex`는 참조 0개라 제거했다.
+- `src/pages/Recruiting.jsx`의 `getEntryTitle`, `getReadyTitle`은 참조 0개라 제거했다.
+
+### 보류
+
+- `src/pages/CreateMatch.jsx`의 `PublicPartyPicker`는 참조 0개 후보지만 JSX UI 블록이라 생성 플로우 UI 패스에서 별도 확인 후 제거한다.
+- `src/lib/mockData.js`, `src/lib/demoFlowState.js`는 비-Supabase dev/seed 경로라 즉시 삭제하지 않는다. production source of truth는 아니다.
+- legacy `courts` 테이블 fallback은 `approved_courts` 이전 데이터 보정용이라 즉시 삭제하지 않는다.
+- legacy `rankball_state`는 런타임 미사용 제거 대상이지만 DB destructive cleanup은 별도 migration 확인 후 처리한다.
+
+### DB table/column 참조표
+
+| table | 주요 columns | 현재 참조 | 처리 |
+| --- | --- | --- | --- |
+| `user_room_feed` | `profile_id`, `entity_type`, `entity_id`, `relation`, `status`, `sort_at`, `card_json`, `is_active` | `server/api/matches/list.js`, `server/api/recruiting/list.js`, `server/api/system/maintenance.js`, feed trigger/RPC | 유지 |
+| `matches` | `id`, `status`, `visibility`, `created_by`, `scheduled_at`, `team_a_id`, `team_b_id`, `room_state`, `rating_result` | match list/detail/sync, report, maintenance | 유지 |
+| `match_players` | `match_id`, `user_id`, `side`, `slot_order`, `role` | match list/sync/detail, record flow | 유지 |
+| `match_results` | `match_id`, `score_a`, `score_b`, `stat_submissions`, `submitted_by` | match sync, maintenance, feed trigger | 유지 |
+| `match_approvals` | `match_id`, `user_id`, `side`, `approved_at` | match sync, maintenance, feed trigger | 유지 |
+| `match_disputes` | `id`, `match_id`, `user_id`, `reason`, `created_at` | match sync, feed trigger | 유지 |
+| `player_match_stats` | `match_id`, `user_id`, `points`, `rebounds`, `assists`, `steals`, `blocks`, `fouls` | match sync/detail, feed trigger | 유지 |
+| `recruiting_posts` | `id`, `status`, `visibility`, `player_id`, `player_ids`, `room_state`, `scheduled_date`, `scheduled_time` | recruiting list/sync, match schedule bridge | 유지 |
+| `recruiting_applications` | `post_id`, `player_id`, `player_ids`, `team_id`, `side`, `status`, `reserve`, `position` | recruiting list/sync, feed trigger | 유지 |
+| `profiles` | `id`, `auth_user_id`, `test_login_id`, `hashtag`, `ratings`, `trust_score`, `app_settings` | auth/profile/server validation/settings | 유지 |
+| `public_profiles` | `id`, `name`, `hashtag`, `avatar_color`, `position`, `ratings`, `trust_score` | list/search/card display | 유지 |
+| `teams` | `id`, `name`, `captain_id`, `mmr`, `deleted_at` | team list/search/sync, room cards | 유지 |
+| `team_members` | `team_id`, `user_id`, `role` | team roster/profile/search/feed dependency | 유지 |
+| `favorites` | `user_id`, `target_type`, `target_id` | settings/search/favorites sync | 유지 |
+| `notifications` | `id`, `user_id`, `target_user_id`, `type`, `payload`, `read_at` | home/invite/action notices, Discord queue source | 유지 |
+| `discord_notification_deliveries` | `id`, `notification_id`, `target_user_id`, `discord_user_id`, `status`, `send_at` | Discord DM worker | 유지 |
+| `approved_courts` | `id`, `name`, `address`, `region`, `status`, `hidden_at` | court search/favorites/feed fallback | 유지 |
+| `courts` | `id`, `name`, `address`, `region` | legacy court fallback | 보류 |
+| `rankball_state` | legacy snapshot | runtime 미사용, schema cleanup 대상 | 보류 |
