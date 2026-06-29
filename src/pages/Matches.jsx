@@ -906,13 +906,13 @@ export default function Matches({ app }) {
   const todoCount = getViewCount(filteredMatches, VIEWS[1], app.currentUser.id);
   const scheduledCount = getViewCount(filteredMatches, VIEWS[2], app.currentUser.id) + scheduledRecruitingRoomCount;
   const closedCount = getViewCount(filteredMatches, VIEWS[3], app.currentUser.id);
-  const activeCount = activeMatchCount + instantRecruitingRoomCount;
+  const activeCount = activeMatchCount + instantRecruitingRoomCount + scheduledRecruitingRoomCount;
   const viewButtonCounts = {
     todo: getViewCount(baseFilteredMatches, VIEWS[1], app.currentUser.id),
     scheduled: getViewCount(baseFilteredMatches, VIEWS[2], app.currentUser.id) + scheduledRecruitingRoomCount,
     closed: getViewCount(baseFilteredMatches, VIEWS[3], app.currentUser.id),
   };
-  viewButtonCounts.active = getViewListCount(baseFilteredMatches, VIEWS[0], app.currentUser.id, hasDateFilter) + instantRecruitingRoomCount;
+  viewButtonCounts.active = getViewListCount(baseFilteredMatches, VIEWS[0], app.currentUser.id, hasDateFilter) + instantRecruitingRoomCount + scheduledRecruitingRoomCount;
   const getViewButtonCount = (view) => viewButtonCounts[view.id] ?? 0;
   const listRecruitingRoomCount = ["active", "scheduled"].includes(viewId) ? visibleRecruitingRooms.length : 0;
   const scheduleLoading = app.remoteReady === false || (matchPagination.recruitingScheduleLoading && !visibleScheduleItems.length);
