@@ -312,10 +312,11 @@ export default function Home({ app }) {
     if (app.remoteReady === false || !user.id) return;
     if (homeRefreshKeyRef.current === user.id) return;
     homeRefreshKeyRef.current = user.id;
+    const scheduleChecked = Boolean(app.matchPagination?.recruitingScheduleChecked);
     const requests = [
       app.actions.refreshCurrentProfile?.(),
-      app.actions.loadMyRecruitingPosts?.(),
-      !app.matchPagination?.recruitingScheduleChecked ? app.actions.loadMatchRecruitingSchedule?.() : true,
+      scheduleChecked ? true : app.actions.loadMyRecruitingPosts?.(),
+      scheduleChecked ? true : app.actions.loadMatchRecruitingSchedule?.(),
     ].filter(Boolean);
     Promise.allSettled(requests).then((results) => {
       if (results.some((result) => result.status === "rejected" || result.value === false)) {

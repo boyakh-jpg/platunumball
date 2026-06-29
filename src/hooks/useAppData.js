@@ -575,6 +575,9 @@ function getInitialStateLoadOptions() {
   if (pathname === "/app/recorder") {
     return { endpoint: "recorderMatches", matchLimit: REMOTE_CLIENT_MATCH_LIMIT, recruitingLimit: 0, tournamentLimit: 0 };
   }
+  if (pathname === "/app" || pathname === "/login") {
+    return { endpoint: "matchesList", matchLimit: 200, recruitingLimit: 0, tournamentLimit: 0 };
+  }
   return { matchLimit: REMOTE_CLIENT_INITIAL_MATCH_LIMIT, recruitingLimit: REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT };
 }
 

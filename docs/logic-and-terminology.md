@@ -4,6 +4,11 @@
 
 - `favorites` 테이블이 `favoritePlayerIds`, `favoriteTeamIds`, `favoriteCourtIds`, `favoriteRefereeIds`의 원본이다. 얇은 profile/directory 응답의 기본 빈 settings 배열이 이 값들을 덮어쓰면 안 된다.
 
+## 2026-06-29 홈 feed 초기 로드
+
+- `/login` auth 직후와 `/app` 첫 remote load는 broad `/api/state/load`가 아니라 current-profile `/api/matches/list` feed 경로를 우선 사용한다.
+- `/api/matches/list includeRecruitingSchedule=true`로 current-user 모집 일정 확인이 끝났으면 홈 진입 effect가 같은 모집 일정을 `scope=mine`/schedule 호출로 즉시 다시 읽지 않는다.
+
 ## 2026-06-28 목록 응답 속도 원칙
 
 - `/api/recruiting/list`는 feed count와 fallback count를 순차 대기하지 않는다. feed, page, mine, fallback count는 가능한 병렬로 계산한다.
