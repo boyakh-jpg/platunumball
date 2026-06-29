@@ -992,6 +992,7 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
   if (!match?.id) reject(400, "missing_match");
   validateMatchShape(match);
   validateResultShape(match, action);
+  const expectedUpdatedAt = body?.expectedUpdatedAt ?? body?.baseUpdatedAt ?? body?.operation?.expectedUpdatedAt ?? body?.operation?.baseUpdatedAt ?? null;
 
   const { data: existingMatch, error: existingError } = await context.supabase
       .from("matches")
@@ -1029,6 +1030,7 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
   await validateMatchRosterEligibility(context.supabase, match);
 
   const matchRow = toMatchRow(match, context.profileId);
+  if (expectedUpdatedAt) matchRow.__expectedUpdatedAt = expectedUpdatedAt;
   const playerRows = getSidePlayerRows(match);
   const shouldCommitRating = canCommitRatingResult(action, existingResult, match);
   if (shouldCommitRating && !ratingCommit) reject(400, "missing_rating_commit");
@@ -1146,6 +1148,7 @@ export default async function handler(request, response) {
     sendJson(response, 200, result);
   } catch (error) {
     console.error("Match sync failed.", error);
-    sendJson(response, error.statusCode || 500, { error: error.message || "match_sync_failed" });
+    const statusCode = error.statusCode || (error.code === "40001" || error.message === "match_stale_snapshot" ? 409 : 500);
+    sendJson(response, statusCode, { error: error.message || "match_sync_failed" });
   }
 }

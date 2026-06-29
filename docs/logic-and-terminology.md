@@ -1483,6 +1483,7 @@ flowchart TD
 4. 서버 action 결과가 `post`, `createdMatch`, `match`를 반환하면 그 결과를 source of truth로 merge한다.
 5. stale 보호는 write 요청 진행 중인 row에만 적용한다. 요청 완료 후에는 fixed delay를 두지 않고, client merge가 `updatedAt`/`createdAt` 기준으로 더 오래된 room row를 덮지 않는다.
 6. stale 보호로 pending row를 client merge에서 제외해도 pagination exhausted/cursor/offset은 필터 전 서버 page count 기준으로 계산한다.
+7. 경기 snapshot persist는 reducer 적용 전 match `updatedAt`을 `__expectedUpdatedAt`으로 전달하고, DB `rankball_match_action()`은 현재 row와 다르면 `match_stale_snapshot`으로 거부한다.
 
 ## 2026-06-27 simulation cleanup safety
 

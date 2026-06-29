@@ -1622,19 +1622,22 @@ export function useAppData(authUser = null) {
         if (!ensureRemoteReady("경기 변경")) return;
         const operation = getServerOperation({ ...meta, matchId });
         let rollbackState = null;
+        let baseUpdatedAt = null;
         let syncedMatch = null;
         let syncedNotifications = [];
         setState((prev) => {
           rollbackState = prev;
           const beforeMatch = (prev.matches ?? []).find((match) => match.id === matchId) ?? null;
+          baseUpdatedAt = beforeMatch?.updatedAt ?? beforeMatch?.createdAt ?? null;
           const next = reducer(prev);
           const nextMatch = (next.matches ?? []).find((match) => match.id === matchId) ?? null;
           syncedMatch = nextMatch && nextMatch !== beforeMatch ? nextMatch : null;
           syncedNotifications = syncedMatch ? getNewMatchNotifications(prev, next, matchId) : [];
           return !syncedMatch && operation && isSupabaseConfigured ? prev : next;
         });
-        if (syncedMatch) rollbackIfServerFailed(syncMatchServer(syncedMatch, syncedNotifications, { ...meta, matchId }), rollbackState, "경기 변경", { action: meta.action, matchId });
-        else if (operation) rollbackIfServerFailed(syncMatchServer(null, [], { ...meta, matchId }), rollbackState, "경기 변경", { action: meta.action, matchId });
+        const syncMeta = { ...meta, matchId, baseUpdatedAt };
+        if (syncedMatch) rollbackIfServerFailed(syncMatchServer(syncedMatch, syncedNotifications, syncMeta), rollbackState, "경기 변경", { action: meta.action, matchId });
+        else if (operation) rollbackIfServerFailed(syncMatchServer(null, [], syncMeta), rollbackState, "경기 변경", { action: meta.action, matchId });
       };
       const applyTeamMutation = async (teamId, reducer) => {
         const serverReady = await ensureServerActionAvailable("/api/teams/sync-team", "팀 변경");

@@ -6102,6 +6102,8 @@ declare
   safe_actor_id text := nullif(btrim(p_actor_profile_id), '');
   safe_action text := coalesce(nullif(btrim(p_action), ''), 'sync');
   safe_match_id text := nullif(btrim(p_match_row->>'id'), '');
+  expected_updated_at timestamptz := nullif(p_match_row->>'__expectedUpdatedAt', '')::timestamptz;
+  current_updated_at timestamptz;
   persist_result jsonb;
 begin
   if safe_actor_id is null then
@@ -6148,13 +6150,18 @@ begin
     );
   end if;
 
-  perform 1
+  select updated_at
+  into current_updated_at
   from public.matches
   where id = safe_match_id
   for update;
 
+  if expected_updated_at is not null and current_updated_at is not null and current_updated_at <> expected_updated_at then
+    raise exception 'match_stale_snapshot' using errcode = '40001';
+  end if;
+
   persist_result := public.rankball_persist_match_snapshot(
-    p_match_row,
+    p_match_row - '__expectedUpdatedAt',
     p_player_rows,
     p_result_row,
     p_stat_rows,
