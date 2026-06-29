@@ -76,7 +76,7 @@ function getPayload(row = {}) {
   return row.payload && typeof row.payload === "object" && !Array.isArray(row.payload) ? row.payload : {};
 }
 
-function toProfile(row = {}, kind = "profile") {
+function toProfile(row = {}, kind = "profile", extra = {}) {
   return {
     kind,
     id: row.id,
@@ -90,6 +90,7 @@ function toProfile(row = {}, kind = "profile") {
     ratings: row.ratings ?? {},
     ageGroup: row.age_group,
     searchText: [row.name, row.hashtag, row.handle, row.region, row.position].filter(Boolean).join(" "),
+    ...extra,
   };
 }
 
@@ -134,15 +135,35 @@ function toCourt(row = {}) {
   };
 }
 
-async function searchProfiles(supabase, query, limit) {
+function getContextTeamId(context = {}) {
+  const value = String(context?.teamId ?? "").trim();
+  return value.length <= 80 ? value : "";
+}
+
+async function getTeamMemberIds(supabase, teamId) {
+  if (!teamId) return [];
   const { data, error } = await supabase
+    .from("team_members")
+    .select("user_id")
+    .eq("team_id", teamId);
+  if (error) throw error;
+  return [...new Set((data ?? []).map((row) => row.user_id).filter(Boolean))];
+}
+
+async function searchProfiles(supabase, query, limit, searchContext = {}) {
+  const teamId = getContextTeamId(searchContext);
+  const teamMemberIds = teamId ? await getTeamMemberIds(supabase, teamId) : [];
+  if (teamId && !teamMemberIds.length) return [];
+  let request = supabase
     .from("public_profiles")
     .select(PROFILE_COLUMNS)
-    .or(searchFilter(["name", "hashtag", "handle", "region", "position"], query))
+    .or(searchFilter(["name", "hashtag", "handle", "region", "position"], query));
+  if (teamId) request = request.in("id", teamMemberIds);
+  const { data, error } = await request
     .order("trust_score", { ascending: false })
     .limit(limit);
   if (error) throw error;
-  return (data ?? []).map((row) => toProfile(row, "profile"));
+  return (data ?? []).map((row) => toProfile(row, "profile", teamId ? { teamIds: [teamId] } : {}));
 }
 
 async function searchTeams(supabase, query, limit) {
@@ -222,8 +243,9 @@ export default async function handler(request, response) {
     const limit = clampLimit(body.limit);
     const types = getRequestedTypes(body.type ?? body.types ?? "all");
     const context = await getAuthenticatedContext(request, { allowMissingProfile: true });
+    const searchContext = body.context && typeof body.context === "object" ? body.context : {};
     const loaders = {
-      profile: () => searchProfiles(context.supabase, query, limit),
+      profile: () => searchProfiles(context.supabase, query, limit, searchContext),
       team: () => searchTeams(context.supabase, query, limit),
       court: () => searchCourts(context.supabase, query, limit),
       referee: () => searchReferees(context.supabase, query, limit),

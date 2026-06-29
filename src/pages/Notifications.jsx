@@ -40,8 +40,11 @@ export default function Notifications({ app }) {
     if (app.remoteReady === false || !app.currentUser.id) return;
     if (refreshKeyRef.current === app.currentUser.id) return;
     refreshKeyRef.current = app.currentUser.id;
-    Promise.resolve(app.actions.refreshCurrentProfile?.()).then((result) => {
-      if (result === false) refreshKeyRef.current = "";
+    Promise.all([
+      Promise.resolve(app.actions.refreshCurrentProfile?.()),
+      Promise.resolve(app.actions.loadMyRecruitingPosts?.("invited")),
+    ]).then((results) => {
+      if (results.some((result) => result === false)) refreshKeyRef.current = "";
     }).catch(() => {
       refreshKeyRef.current = "";
     });

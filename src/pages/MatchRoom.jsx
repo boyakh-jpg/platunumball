@@ -24,11 +24,13 @@ import {
   getMatchHostPlayerId,
   getMatchRecordWindow,
   getMatchReferee,
+  getMatchRecordPlayerIds,
   getMatchRoomPhase,
   getMatchPlayerIds,
   getMatchReservePlayerIds,
   getMatchSideLeaderId,
   getMatchSidePlayerIds,
+  getMatchSideRecordPlayerIds,
   getMatchTrustFeedbackClosesAt,
   getMatchTrustFeedbackLimit,
   getMatchTrustFeedbackParticipantIds,
@@ -56,7 +58,7 @@ const statusMeta = {
 
 function makeInitialStats(match) {
   const sourceResult = match?.disputeDraftResult ?? match?.result;
-  const playerIds = getMatchPlayerIds(match);
+  const playerIds = getMatchRecordPlayerIds(match, true);
   return Object.fromEntries(
     playerIds.map((playerId) => [
       playerId,
@@ -78,7 +80,7 @@ function getDisplayScore(match, sideName) {
 function getPointAudit(match, score, sideName) {
   const scoreKey = sideName === "teamA" ? "scoreA" : "scoreB";
   const teamScore = Number(score[scoreKey] ?? 0);
-  const statPoints = getMatchSidePlayerIds(match, sideName).reduce((sum, playerId) => sum + Number(score.playerStats[playerId]?.points ?? 0), 0);
+  const statPoints = getMatchSideRecordPlayerIds(match, sideName, true).reduce((sum, playerId) => sum + Number(score.playerStats[playerId]?.points ?? 0), 0);
   return {
     teamScore,
     statPoints,
@@ -244,7 +246,8 @@ export default function MatchRoom({ app }) {
       ? allPlayerIds
       : allPlayerIds.filter((playerId) => getAllowedResultStatFields(match, app.currentUser.id, playerId, currentUserCanPostgameScore).length > 0);
   const currentUserCanSubmit = canEditDisputeDraft || (hasReferee ? currentUserIsEligibleReferee : currentUserEditablePlayerIds.length > 0);
-  const canSubmitResult = canEditDisputeDraft || (currentUserCanSubmit && ((["agreed", "approval"].includes(match.status) && recordWindow.statOpen) || currentUserCanSubmitMissingPostgameResult));
+  const canSubmitLiveResult = currentUserCanSubmit && match.status === "agreed" && recordWindow.beforeEnd && !recordWindow.beforeStart;
+  const canSubmitResult = canEditDisputeDraft || canSubmitLiveResult || (currentUserCanSubmit && ((["agreed", "approval"].includes(match.status) && recordWindow.statOpen) || currentUserCanSubmitMissingPostgameResult));
   const canCancel = ["contract", "agreed"].includes(match.status) && (startedAuthorityPhase ? currentUserCanOperateStartedMatch : isMatchHost);
   const canDispute = Boolean(match.result) && match.status === "approval" && recordWindow.disputeOpen && currentUserCanFileDispute;
   const canVoid = match.status === "disputed" && currentUserCanOperateStartedMatch;
@@ -252,7 +255,7 @@ export default function MatchRoom({ app }) {
   const canReport = !["cancelled", "void"].includes(match.status) && (Boolean(match.endedAt) || Boolean(match.result) || ["approval", "disputed", "confirmed"].includes(match.status));
   const isContractStage = match.status === "contract";
   const shouldShowResultEntry =
-    match.status === "approval" || Boolean(match.result) || (match.status === "agreed" && !recordWindow.beforeStart && !recordWindow.beforeEnd);
+    match.status === "approval" || Boolean(match.result) || (match.status === "agreed" && !recordWindow.beforeStart);
   const shouldShowApprovalPanel = match.status === "confirmed" || (match.status === "approval" && approvalAccessReady);
   const shouldShowWaitingPanel = false;
   const scoreA = getDisplayScore(match, "teamA");
@@ -266,7 +269,7 @@ export default function MatchRoom({ app }) {
   const recordLockReason = recordWindow.beforeStart
     ? "경기 시작 전"
     : recordWindow.beforeEnd
-      ? "경기 종료 후 입력 가능"
+      ? canSubmitLiveResult ? "실시간 기록 가능" : "경기 종료 후 입력 가능"
     : currentUserCanSubmitMissingPostgameResult
       ? "결과 입력 필요"
     : recordWindow.statExpired
@@ -737,7 +740,7 @@ export default function MatchRoom({ app }) {
                 <input type="number" min="0" disabled={!canSubmitResult} value={score.scoreB} onChange={(event) => setScore((current) => ({ ...current, scoreB: event.target.value }))} />
               </label>
               <Button type="submit" disabled={!canSubmitResult}>
-                {canEditDisputeDraft ? "이의 수정안 저장" : hasReferee ? "심판 기록 제출" : currentRecorderSides.length ? "후보 기록 제출" : currentUserSubmitted ? "스코어/내 득점 다시 제출" : "스코어/내 득점 제출"}
+                {canEditDisputeDraft ? "이의 수정안 저장" : canSubmitLiveResult ? "실시간 기록 저장" : hasReferee ? "심판 기록 제출" : currentRecorderSides.length ? "후보 기록 제출" : currentUserSubmitted ? "스코어/내 득점 다시 제출" : "스코어/내 득점 제출"}
               </Button>
               <div className="stat-integrity-note">
                 {hasReferee
@@ -767,7 +770,7 @@ export default function MatchRoom({ app }) {
                 {["teamA", "teamB"].map((sideName) => (
                   <div key={sideName} className="stat-entry-side">
                     <h3>{match[sideName].name} 개인 기록</h3>
-                    {getMatchSidePlayerIds(match, sideName).map((playerId) => {
+                    {getMatchSideRecordPlayerIds(match, sideName, matchPhase === "live").map((playerId) => {
                       const user = userMap[playerId];
                       const canEdit = canEditPlayerStat(playerId);
                       const submitted = getPlayerStatSubmitted(match, playerId);

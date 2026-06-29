@@ -1503,3 +1503,4 @@ flowchart TD
 1. 팀 초대 `invite/accept/decline/cancel`은 RPC 성공 뒤 현재 사용자 `/api/profile/me` 범위 state를 같이 반환하고, 프론트는 그 state를 즉시 병합한다. 화면은 optimistic state가 아니라 서버 최신 팀/초대 상태로 정렬되어야 한다.
 2. `/api/profile/me` 실패 후 직접 Supabase profile fallback을 쓰더라도 현재 사용자 관련 `team_invitations`, 소속 팀, 초대 대상 팀은 함께 읽는다. 초대장이 loader 이후 따로 붙는 상태를 기본 흐름으로 만들지 않는다.
 3. 모집방 초대 수락은 `recruiting_applications`와 `recruiting_posts.room_state.invitations`가 서버에 반영된 뒤 상세 조회 결과가 권위 상태다. 열린 모집방/경기 메뉴 방 모달은 해당 `postId` 상세만 주기적으로 재조회해 상대 화면의 stale 참가자 표시를 줄인다.
+4. 팀 사이드 경기초대 검색은 오래된 로컬 `team.members`만 믿지 않고 서버 `team_members` 기준 검색 결과도 허용한다. 알림 화면은 현재 프로필뿐 아니라 `roomScope="invited"` 모집방도 같이 보강 로드해 초대 수락 카드가 늦게 붙거나 빠지지 않게 한다.

@@ -60,6 +60,7 @@ import {
   getMatchReservePlayerIds,
   getMatchSideLeaderId,
   getMatchSidePlayerIds,
+  getMatchSideRecordPlayerIds,
   normalizePlayerStats,
   canOperatorSubmitMissingPostgameResult,
   getPublicRoomMaxDateInput,
@@ -1311,17 +1312,17 @@ export function InvitePanel({
   const disabledSet = new Set(disabledPlayerIds);
   const allowedTeam = allowedTeamId ? teams.find((team) => team.id === allowedTeamId) : null;
   const allowedTeamMemberIds = new Set(allowedTeam ? getSelectableTeamPlayerIds(allowedTeam) : []);
-  const isAllowedPlayer = (playerId) => !allowedTeamId || allowedTeamMemberIds.has(playerId);
+  const isAllowedPlayer = (playerId, player = null) => !allowedTeamId || allowedTeamMemberIds.has(playerId) || (player?.teamIds ?? []).includes(allowedTeamId);
   const favoritePlayers = favoritePlayerIds.map((playerId) => userById[playerId]).filter(Boolean);
   const favoriteTeams = favoriteTeamIds
     .map((teamId) => teams.find((team) => team.id === teamId))
     .filter((team) => team && (!allowedTeamId || team.id === allowedTeamId));
   const teamMemberIds = matchedTeam && (!allowedTeamId || matchedTeam.id === allowedTeamId) ? getSelectableTeamPlayerIds(matchedTeam) : [];
-  const selectedInvitableIds = selectedPlayerIds.filter((playerId) => !disabledSet.has(playerId) && isAllowedPlayer(playerId));
+  const selectedInvitableIds = selectedPlayerIds.filter((playerId) => !disabledSet.has(playerId) && isAllowedPlayer(playerId, userById[playerId]));
   const inviteQuery = query.trim().toLowerCase();
   const inviteSearchPlayers = inviteQuery
     ? users
-      .filter((player) => isAllowedPlayer(player.id))
+      .filter((player) => isAllowedPlayer(player.id, player))
       .filter((player) => `${player.name} ${getUserHashtag(player)} ${player.region} ${player.position}`.toLowerCase().includes(inviteQuery))
       .slice(0, 8)
       .map((player) => ({ type: "player", player }))
@@ -1334,7 +1335,7 @@ export function InvitePanel({
     : [];
   const inviteSearchItems = [...inviteSearchPlayers, ...inviteSearchTeams];
   const idleInviteItems = [
-    ...favoritePlayers.filter((player) => isAllowedPlayer(player.id)).map((player) => ({ type: "player", player })),
+    ...favoritePlayers.filter((player) => isAllowedPlayer(player.id, player)).map((player) => ({ type: "player", player })),
     ...favoriteTeams.map((team) => ({ type: "team", team })),
   ];
 
@@ -1367,7 +1368,7 @@ export function InvitePanel({
       );
     }
     const player = item.player;
-    const disabled = disabledSet.has(player.id) || !isAllowedPlayer(player.id);
+    const disabled = disabledSet.has(player.id) || !isAllowedPlayer(player.id, player);
     const favorite = favoritePlayerIds.includes(player.id);
     return (
       <div
@@ -1409,9 +1410,10 @@ export function InvitePanel({
         placeholder={allowedTeam ? `${allowedTeam.name} 팀원 검색` : "선수 또는 팀 검색"}
         items={inviteSearchItems}
         remoteSearchType={allowedTeamId ? "profile" : ["profile", "team"]}
+        remoteSearchContext={allowedTeamId ? { teamId: allowedTeamId } : null}
         mapRemoteItem={(item) => {
           if (item.kind === "team") return allowedTeamId ? null : { type: "team", team: item };
-          if (!isAllowedPlayer(item.id)) return null;
+          if (!isAllowedPlayer(item.id, item)) return null;
           return { type: "player", player: item };
         }}
         idleItems={idleInviteItems}
@@ -1632,6 +1634,25 @@ function getSourceMatchStatus(match, lobby, userId = "") {
 function getSourceMatchAction(match, userId, teams = [], userById = {}) {
   const sideName = getSourceMatchDecisionSideName(match, userId, teams);
   if (!match || !sideName) return { label: "경기 정보", detail: "명단과 룰을 확인합니다." };
+  if (match.status === "contract") {
+    const agreed = (match.agreements?.[sideName] ?? []).includes(userId);
+    return agreed
+      ? { label: "확정방", detail: "다른 참가자 READY를 기다립니다." }
+      : { label: "확정방", detail: "현재 명단과 룰에 READY하면 경기준비로 넘어갑니다.", action: "agree", button: "READY" };
+  }
+  if (match.status === "approval") {
+    const approved = (match.approvals?.[sideName] ?? []).includes(userId);
+    return approved
+      ? { label: "결과 승인", detail: "다른 참가자 승인만 남았습니다." }
+      : { label: "결과 승인", detail: "기록과 득점 합계가 맞으면 승인합니다.", action: "approve", button: "승인" };
+  }
+  if (match.status === "disputed") {
+    return {
+      label: "이의신청방",
+      detail: "30분 안에 이의 사유를 확인하고 수정안 확정 또는 무효 처리하세요.",
+      disputed: true,
+    };
+  }
   const phase = getMatchRoomPhase(match);
   if (phase.phase === "locked") {
     return { label: "확정방", detail: "경기 전까지 방 수정만 가능합니다." };
@@ -1645,13 +1666,7 @@ function getSourceMatchAction(match, userId, teams = [], userById = {}) {
   if (phase.phase === "postgame") {
     return { label: "경기종료", detail: "파울, 점수, 따봉을 빠르게 정리하고 기록완료를 기다립니다." };
   }
-  if (phase.phase === "dispute") {
-    return {
-      label: "이의신청방",
-      detail: "30분 안에 이의 사유를 확인하고 수정안 확정 또는 무효 처리하세요.",
-      disputed: true,
-    };
-  }
+  if (phase.phase === "dispute") return { label: "결과 확인", detail: "이의신청 시간 안에 기록을 확인합니다." };
   if (phase.phase === "record") return { label: "기록방", detail: "확정된 점수, 개인활약, 파울을 열람합니다." };
   if (phase.phase === "cancelled" || phase.phase === "void") return { label: phase.label, detail: "닫힌 방입니다." };
   return { label: "경기 정보", detail: "현재 상태를 확인합니다." };
@@ -1717,7 +1732,7 @@ function SourceMatchRecordSummary({ match, userById }) {
   if (!match?.result) return null;
   const result = match.disputeDraftResult ?? match.result;
   const renderSide = (sideName) => {
-    const sidePlayerIds = getMatchSidePlayerIds(match, sideName);
+    const sidePlayerIds = getMatchSideRecordPlayerIds(match, sideName, false);
     const playerStats = normalizePlayerStats(result.playerStats, sidePlayerIds);
     return (
     <div className="arena-source-record-side" key={sideName}>
@@ -1751,7 +1766,8 @@ function SourceMatchRecordSummary({ match, userById }) {
 
 function makeSourceMatchDraft(match) {
   const result = match?.disputeDraftResult ?? match?.result ?? {};
-  const playerIds = ["teamA", "teamB"].flatMap((sideName) => getMatchSidePlayerIds(match, sideName));
+  const includeReserves = getMatchRoomPhase(match).phase === "live";
+  const playerIds = ["teamA", "teamB"].flatMap((sideName) => getMatchSideRecordPlayerIds(match, sideName, includeReserves));
   return {
     scoreA: Number(result.scoreA ?? match?.teamA?.score ?? 0),
     scoreB: Number(result.scoreB ?? match?.teamB?.score ?? 0),
@@ -1764,6 +1780,7 @@ function makeSourceMatchDraft(match) {
 
 function SourceMatchDisputeEditor({ match, userById, canReview, onSave, onResolve = null, onVoid = null }) {
   const [draft, setDraft] = useState(() => makeSourceMatchDraft(match));
+  const includeReserves = getMatchRoomPhase(match).phase === "live";
 
   useEffect(() => {
     setDraft(makeSourceMatchDraft(match));
@@ -1802,7 +1819,7 @@ function SourceMatchDisputeEditor({ match, userById, canReview, onSave, onResolv
         {["teamA", "teamB"].map((sideName) => (
           <div className="arena-dispute-side" key={sideName}>
             <strong>{match[sideName]?.name ?? SIDE_LABELS[sideName]}</strong>
-            {getMatchSidePlayerIds(match, sideName).map((playerId) => {
+            {getMatchSideRecordPlayerIds(match, sideName, includeReserves).map((playerId) => {
               const player = userById[playerId];
               const playerStats = draft.playerStats[playerId] ?? {};
               return (
@@ -2147,7 +2164,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const needsPrivateConfirm = !matchRoom && !mine && selectedPost.visibility !== "public" && Boolean(myEntry && myEntry.status !== "ready");
         const roomReadyLabel = sourceMatch ? sourceMatchStatus.label : roomQueueStatus.label;
         const sourceMatchPhase = sourceMatch ? getMatchRoomPhase(sourceMatch) : null;
-        const sourceRoomReadOnly = Boolean(matchRoom && ["dispute", "record"].includes(sourceMatchPhase?.phase));
+        const sourceRoomReadOnly = Boolean(matchRoom && (sourceMatch?.status === "disputed" || ["record", "cancelled", "void"].includes(sourceMatchPhase?.phase)));
         const activeInviteDraft = sourceRoomReadOnly ? null : activeInviteDraftRaw;
         const activeSelfSlotDraft = sourceRoomReadOnly ? null : activeSelfSlotDraftRaw;
         const canUseChat = canChat && !sourceRoomReadOnly;
@@ -2176,6 +2193,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const canConfirmRefereeAbsence = Boolean(matchRoom && sourceMatchOpponentLeaderId === app.currentUser.id && sourceMatch?.refereeId && sourceMatch?.refereeAbsenceRequest && !sourceMatch.refereeAbsenceRequest.confirmedAt && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.startedAt && !sourceMatch?.endedAt && !sourceMatch?.result && sourceMatchSideName);
         const canEndSourceMatch = Boolean(matchRoom && currentUserCanOperateStartedSourceMatch && sourceMatchPhase?.phase === "live" && !sourceMatch?.result && !sourceMatch?.endedAt && sourceMatchStarted);
         const canReviewSourceMatch = Boolean(matchRoom && currentUserCanOperateStartedSourceMatch && sourceMatchPhase?.phase === "dispute");
+        const canSubmitSourceMatchLiveResult = Boolean(matchRoom && sourceMatch?.status === "agreed" && sourceMatchPhase?.phase === "live" && currentUserCanOperateStartedSourceMatch && sourceMatchStarted && !sourceMatch?.endedAt && !sourceMatch?.result);
         const canSubmitSourceMatchPostgameResult = Boolean(matchRoom && canOperatorSubmitMissingPostgameResult(sourceMatch, currentUserCanOperateStartedSourceMatch));
         const canCancelSourceMatch = Boolean(matchRoom && sourceMatch && ["contract", "agreed"].includes(sourceMatch.status) && (sourceMatchStarted || sourceMatch.endedAt || sourceMatch.result ? currentUserCanOperateStartedSourceMatch : mine));
         const showSourceMatchRecordSummary = Boolean(
@@ -2184,6 +2202,16 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
           ["postgame", "dispute", "record"].includes(sourceMatchPhase?.phase),
         );
         const canMoveMatchSides = Boolean(canManageMatchCheckin && selectedPost.hostJoinMode !== "team");
+        const canEditSourceRoomRules = Boolean(
+          !sourceRoomReadOnly &&
+          (!matchRoom || (
+            sourceMatch &&
+            ["locked", "checkin"].includes(sourceMatchPhase?.phase) &&
+            !sourceMatch.endedAt &&
+            !sourceMatch.result &&
+            (sourceMatch.refereeId && sourceMatchPhase?.phase === "checkin" ? currentUserIsSourceReferee : mine)
+          )),
+        );
         const roomCompetitionLabel = getRoomCompetitionLabel(selectedPost);
         const roomDisplayTitle = getRecruitingDisplayTitle(selectedPost, `${roomCompetitionLabel} ${selectedPost.mode || ""} 매치 큐`.trim());
         const roomVisibilityLabel = getRoomVisibilityLabel(sourceMatch ?? selectedPost, selectedPost);
@@ -2580,7 +2608,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
               <div className="arena-room-rule-panel">
                 <div className="arena-room-rule-head">
                   <strong>규칙</strong>
-                  {!sourceRoomReadOnly && mine && (!matchRoom || (sourceMatch && ["locked", "checkin"].includes(sourceMatchPhase?.phase) && !sourceMatch.endedAt && !sourceMatch.result)) ? (
+                  {canEditSourceRoomRules ? (
                     <Button type="button" size="sm" variant="secondary" onClick={() => (roomEditDraft ? closeRoomEdit(selectedPost) : openRoomEdit(selectedPost))}>
                       {roomEditDraft ? "수정 닫기" : "방 수정"}
                     </Button>
@@ -2765,7 +2793,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                         onVoid={() => app.actions.voidMatch(sourceMatch.id)}
                       />
                     ) : null}
-                    {!sourceMatchAction.disputed && canSubmitSourceMatchPostgameResult ? (
+                    {!sourceMatchAction.disputed && (canSubmitSourceMatchLiveResult || canSubmitSourceMatchPostgameResult) ? (
                       <SourceMatchDisputeEditor
                         match={sourceMatch}
                         userById={userById}
