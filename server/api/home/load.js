@@ -1,10 +1,11 @@
 import { getAdminLevel, getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import { loadCompactMatchList } from "../matches/list.js";
 import { loadCurrentProfileState, PROFILE_ME_COLUMNS } from "../profile/me.js";
-import { loadCurrentUserRecruitingFeedList } from "../recruiting/list.js";
+import { loadCurrentUserRecruitingFeedList, loadLocalRecruitingFeedList } from "../recruiting/list.js";
 import { REMOTE_CLIENT_MATCH_LIMIT } from "../../../src/data/repository.js";
 
 const HOME_RECENT_MATCH_LIMIT = 80;
+const HOME_LOCAL_RECRUITING_LIMIT = 3;
 
 function mergeById(current = [], incoming = []) {
   const merged = new Map((current ?? []).filter((item) => item?.id).map((item) => [item.id, item]));
@@ -54,7 +55,7 @@ export default async function handler(request, response) {
     const matchLimit = getCappedMatchLimit(body.matchLimit ?? body.limit ?? REMOTE_CLIENT_MATCH_LIMIT);
 
     const recentMatchLimit = Math.min(HOME_RECENT_MATCH_LIMIT, matchLimit);
-    const [profileResult, matchResult, recentMatchResult, recruitingResult] = await Promise.all([
+    const [profileResult, matchResult, recentMatchResult, recruitingResult, localRecruitingResult] = await Promise.all([
       loadCurrentProfileState(context),
       loadCompactMatchList(context, {
         limit: matchLimit,
@@ -71,6 +72,7 @@ export default async function handler(request, response) {
         adminContext: false,
       }, adminLevel, recentMatchLimit, debugTiming),
       loadCurrentUserRecruitingFeedList(context, { adminLevel, limit: matchLimit }),
+      loadLocalRecruitingFeedList(context, { adminLevel, limit: HOME_LOCAL_RECRUITING_LIMIT }),
     ]);
 
     if (debugTiming) debugTiming.totalMs = Date.now() - startedAt;
@@ -82,13 +84,22 @@ export default async function handler(request, response) {
 
     sendJson(response, 200, {
       ok: true,
-      state: mergeHomeState(mergeHomeState(mergeHomeState(profileResult.state, matchResult.state), recentConfirmedState), recruitingResult.state),
+      state: mergeHomeState(
+        mergeHomeState(
+          mergeHomeState(
+            mergeHomeState(profileResult.state, matchResult.state),
+            recentConfirmedState,
+          ),
+          recruitingResult.state,
+        ),
+        localRecruitingResult.state,
+      ),
       page: {
         ...matchResult.page,
         recruitingScheduleChecked: true,
         recruitingScheduleCount: recruitingPosts.length,
       },
-      updatedAt: Math.max(profileResult.updatedAt ?? 0, matchResult.updatedAt ?? 0, recentMatchResult.updatedAt ?? 0, recruitingResult.updatedAt ?? 0),
+      updatedAt: Math.max(profileResult.updatedAt ?? 0, matchResult.updatedAt ?? 0, recentMatchResult.updatedAt ?? 0, recruitingResult.updatedAt ?? 0, localRecruitingResult.updatedAt ?? 0),
       debugTiming: debugTiming ?? undefined,
     });
   } catch (error) {

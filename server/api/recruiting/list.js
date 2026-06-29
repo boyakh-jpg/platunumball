@@ -961,6 +961,33 @@ export async function loadCurrentUserRecruitingFeedList(context, {
   });
 }
 
+export async function loadLocalRecruitingFeedList(context, {
+  adminLevel = 0,
+  limit = 3,
+} = {}) {
+  const regionKey = getProfileRegionKey(context.profile);
+  const pageResult = await fetchRecruitingFeedPage(context.supabase, {
+    profileId: "*",
+    relations: ["region_public"],
+    regionKey,
+    limit,
+    includeCards: true,
+  });
+  if (!pageResult) {
+    return loadCompactRecruitingList(context, { adminLevel, limit });
+  }
+  return loadCompactRecruitingList(context, {
+    adminLevel,
+    pagePostIds: pageResult.ids ?? [],
+    pageCards: pageResult.cards ?? [],
+    pageSource: pageResult.source ?? "feed",
+    pageExhausted: pageResult.exhausted,
+    limit,
+    regionScope: regionKey ? "region" : "local",
+    regionKey,
+  });
+}
+
 export default async function handler(request, response) {
   const timing = createTimingProbe();
   if (request.method !== "POST") {
