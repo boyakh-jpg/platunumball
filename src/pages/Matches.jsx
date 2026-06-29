@@ -442,7 +442,8 @@ function getMatchSideRosterIds(match = {}, sideName = "") {
 }
 
 function isMatchSideTeamParty(match = {}, sideName = "") {
-  return Boolean(match[sideName]?.teamId) && getMatchSideRosterIds(match, sideName).length >= 2;
+  const sourceMatch = match ?? {};
+  return Boolean(sourceMatch[sideName]?.teamId) && getMatchSideRosterIds(sourceMatch, sideName).length >= 2;
 }
 
 function isMatchPartyTeamParty(party = {}) {

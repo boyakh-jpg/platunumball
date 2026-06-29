@@ -401,7 +401,8 @@ function uniqueIds(ids = []) {
 }
 
 function isMatchSideTeamParty(match = {}, sideName = "") {
-  return Boolean(match[sideName]?.teamId) && uniqueIds([...(match[sideName]?.players ?? []), ...getMatchReservePlayerIds(match, sideName)]).length >= 2;
+  const sourceMatch = match ?? {};
+  return Boolean(sourceMatch[sideName]?.teamId) && uniqueIds([...(sourceMatch[sideName]?.players ?? []), ...getMatchReservePlayerIds(sourceMatch, sideName)]).length >= 2;
 }
 
 export function getLobbyRecorderIds(lobby) {
