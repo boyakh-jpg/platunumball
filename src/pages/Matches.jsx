@@ -783,6 +783,11 @@ export default function Matches({ app }) {
       requestedMatchDetailsRef.current.delete(matchId);
     });
   };
+  const openSelectedRecruitingPost = (postId) => {
+    if (!postId) return;
+    app.actions.loadRecruitingPost?.(postId);
+    setSelectedRecruitingPostId(postId);
+  };
   useEffect(() => {
     if (!queryMatchId) return;
     setSelectedMatchId(queryMatchId);
@@ -794,6 +799,15 @@ export default function Matches({ app }) {
     if (app.remoteReady === false || pagination.recruitingScheduleLoading || pagination.error || pagination.recruitingScheduleChecked) return;
     app.actions.loadMatchRecruitingSchedule?.();
   }, [app.actions, app.matchPagination?.error, app.matchPagination?.recruitingScheduleChecked, app.matchPagination?.recruitingScheduleLoading, app.remoteReady]);
+
+  useEffect(() => {
+    if (!selectedRecruitingPostId || !app.remoteReady || !app.currentUser.id) return undefined;
+    app.actions.loadRecruitingPost?.(selectedRecruitingPostId);
+    const intervalId = window.setInterval(() => {
+      app.actions.loadRecruitingPost?.(selectedRecruitingPostId);
+    }, 4000);
+    return () => window.clearInterval(intervalId);
+  }, [app.actions, app.currentUser.id, app.remoteReady, selectedRecruitingPostId]);
 
   const openSelectedMatch = (matchId) => {
     if (!matchId) return;
@@ -1286,7 +1300,7 @@ export default function Matches({ app }) {
                   detail={formatMatchRules(post)}
                   variant="count-summary"
                 />
-                <button type="button" className="button button-secondary button-md om-room-link" onClick={() => setSelectedRecruitingPostId(post.id)}>
+                <button type="button" className="button button-secondary button-md om-room-link" onClick={() => openSelectedRecruitingPost(post.id)}>
                   {needConfirm ? "확인하기" : roomStatus.actionLabel}
                 </button>
               </article>

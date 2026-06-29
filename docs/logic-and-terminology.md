@@ -1496,3 +1496,8 @@ flowchart TD
 9. 기존 팀에 새 멤버를 넣는 것은 `/api/teams/sync-team`의 일반 팀 저장 payload로 허용하지 않는다. 새 가입은 `rankball_invite_team_member`와 `rankball_respond_team_invitation` 수락 경로만 쓴다.
 10. `/api/profile/me` 초기 부트스트랩은 현재 사용자 소속 팀뿐 아니라 관련 pending 팀 초대와 초대 대상 팀 정보를 함께 싣는다. 전체 state 로드 전에도 팀 초대 수락/거절 UI가 빈 상태로 보이면 안 된다.
 11. `/app/teams/:teamId` 직접 진입한 주장 화면은 팀 관리 후보와 pending 팀 초대 상태를 위해 팀 디렉터리를 보강 로드하고, 디렉터리 응답의 `teamInvitations`를 기존 state에 병합해야 한다.
+
+## 2026-06-29 초대 수락 서버 반영 원칙
+1. 팀 초대 `invite/accept/decline/cancel`은 RPC 성공 뒤 현재 사용자 `/api/profile/me` 범위 state를 같이 반환하고, 프론트는 그 state를 즉시 병합한다. 화면은 optimistic state가 아니라 서버 최신 팀/초대 상태로 정렬되어야 한다.
+2. `/api/profile/me` 실패 후 직접 Supabase profile fallback을 쓰더라도 현재 사용자 관련 `team_invitations`, 소속 팀, 초대 대상 팀은 함께 읽는다. 초대장이 loader 이후 따로 붙는 상태를 기본 흐름으로 만들지 않는다.
+3. 모집방 초대 수락은 `recruiting_applications`와 `recruiting_posts.room_state.invitations`가 서버에 반영된 뒤 상세 조회 결과가 권위 상태다. 열린 모집방/경기 메뉴 방 모달은 해당 `postId` 상세만 주기적으로 재조회해 상대 화면의 stale 참가자 표시를 줄인다.

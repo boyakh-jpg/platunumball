@@ -3230,6 +3230,14 @@ function RecruitingReady({ app }) {
   }, [app.actions, app.currentUser.id, app.remoteReady, selectedPostId]);
 
   useEffect(() => {
+    if (!selectedPostId || !app.remoteReady || !app.currentUser.id) return undefined;
+    const intervalId = window.setInterval(() => {
+      app.actions.loadRecruitingPost?.(selectedPostId);
+    }, 4000);
+    return () => window.clearInterval(intervalId);
+  }, [app.actions, app.currentUser.id, app.remoteReady, selectedPostId]);
+
+  useEffect(() => {
     if (!targetPostId) return;
     const targetPost = app.state.recruitingPosts.find((post) => post.id === targetPostId && post.status !== "closed");
     if (!targetPost) return;

@@ -1070,8 +1070,14 @@ export function useAppData(authUser = null) {
   }, [runServerAction]);
   const syncTeamInvitationServer = useCallback((teamInviteAction, payload = {}) => {
     if (!teamInviteAction) return Promise.resolve(false);
-    return runServerAction("/api/teams/sync-team", { teamInviteAction, ...payload });
-  }, [runServerAction]);
+    return runServerAction("/api/teams/sync-team", { teamInviteAction, ...payload }).then((result) => {
+      if (result?.state) {
+        const remoteState = normalizeServerState(result.state);
+        setState((prev) => mergeRemoteProfileState(prev, remoteState ?? {}));
+      }
+      return result;
+    });
+  }, [runServerAction, setState]);
   const syncTournamentServer = useCallback((tournament, notifications = [], meta = {}) => {
     if (!tournament?.id) return Promise.resolve(false);
     const operation = getServerOperation(meta);

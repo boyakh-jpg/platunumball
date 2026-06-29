@@ -1,4 +1,5 @@
 import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { loadCurrentProfileState, PROFILE_ME_COLUMNS } from "../profile/me.js";
 
 const MAX_TEAM_NAME_LENGTH = 14;
 const MAX_TEAM_MEMBERS = 10;
@@ -119,6 +120,20 @@ async function respondTeamInvitation(context, body = {}) {
   return data ?? { ok: true };
 }
 
+async function withCurrentProfileState(context, result = {}) {
+  try {
+    const profileResult = await loadCurrentProfileState(context);
+    return {
+      ...(result ?? { ok: true }),
+      state: profileResult.state,
+      updatedAt: profileResult.updatedAt,
+    };
+  } catch (error) {
+    console.warn("Team sync profile reload failed.", error.message);
+    return result ?? { ok: true };
+  }
+}
+
 export default async function handler(request, response) {
   if (request.method !== "POST") {
     response.setHeader("Allow", "POST");
@@ -128,12 +143,12 @@ export default async function handler(request, response) {
 
   try {
     const body = await readJsonBody(request);
-    const context = await getAuthenticatedContext(request);
+    const context = await getAuthenticatedContext(request, { profileSelect: PROFILE_ME_COLUMNS });
     const teamInviteAction = String(body.teamInviteAction || "").trim();
     const result = teamInviteAction === "invite"
-      ? await inviteTeamMember(context, body)
+      ? await withCurrentProfileState(context, await inviteTeamMember(context, body))
       : ["accept", "decline", "cancel"].includes(teamInviteAction)
-        ? await respondTeamInvitation(context, body)
+        ? await withCurrentProfileState(context, await respondTeamInvitation(context, body))
         : body.deletedTeamId
       ? await deleteTeam(context, body.deletedTeamId, body.notifications)
       : await syncTeam(context, body.team, body.notifications);

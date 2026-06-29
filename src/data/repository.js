@@ -1445,6 +1445,7 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
   const includeTournaments = scope === "full" || scope === "tournaments";
   const includeAppMeta = scope === "full";
   const includeUserScoped = scope === "full";
+  const includeProfileTeams = includeUserScoped || profileScope;
   const includeProfileSettings = includeUserScoped || profileScope;
   const matchPageScope = scope === "matches";
   const recruitingPageScope = scope === "recruiting";
@@ -1535,11 +1536,33 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
     includeProfileSettings && currentUserId
       ? fetchOptionalFilteredRows("profiles", PROFILE_SETTINGS_COLUMNS, null, client, (query) => query.eq("id", currentUserId))
       : [],
-    includeUserScoped && currentUserId
+    includeProfileTeams && currentUserId
       ? fetchOptionalFilteredRows("team_invitations", TEAM_INVITATION_COLUMNS, "created_at", client, (query) => query
         .or(`from_user_id.eq.${currentUserId},target_user_id.eq.${currentUserId}`))
       : [],
   ]);
+
+  if (profileScope && currentUserId) {
+    const currentUserTeamMemberships = await fetchOptionalFilteredRows("team_members", TEAM_MEMBER_COLUMNS, null, client, (query) => query.eq("user_id", currentUserId));
+    const teamIds = uniqueScopeIds([
+      ...currentUserTeamMemberships.map((member) => member.team_id),
+      ...teamInvitations.map((invitation) => invitation.team_id),
+    ]);
+    const teamMemberRows = await fetchRowsByIds("team_members", TEAM_MEMBER_COLUMNS, "team_id", teamIds, null, client, true);
+    const memberProfileIds = uniqueScopeIds(teamMemberRows.map((member) => member.user_id));
+    [teams, teamMembers, publicProfiles] = await Promise.all([
+      fetchRowsByIds("teams", TEAM_COLUMNS, "id", teamIds, "id", client, true),
+      Promise.resolve(teamMemberRows),
+      fetchRowsByIds("public_profiles", PUBLIC_PROFILE_COLUMNS, "id", memberProfileIds, "id", client, true),
+    ]);
+    publicProfiles.forEach((profile) => {
+      const mergedProfile = { ...profile, ...(privateProfileById.get(profile.id) ?? {}) };
+      const existingIndex = profiles.findIndex((item) => item.id === mergedProfile.id);
+      if (existingIndex >= 0) profiles[existingIndex] = { ...profiles[existingIndex], ...mergedProfile };
+      else profiles.push(mergedProfile);
+    });
+  }
+
   const [
     reports,
     courtRequests,
