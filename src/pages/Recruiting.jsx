@@ -1377,8 +1377,20 @@ export function InvitePanel({
         key={`player-${player.id}`}
         className={selected ? "search-picker-result-row search-picker-result-row-actionable selected" : "search-picker-result-row search-picker-result-row-actionable"}
         onMouseDown={(event) => event.preventDefault()}
+        onClick={() => {
+          if (!disabled) onTogglePlayer(player.id);
+        }}
       >
-        <button type="button" className="search-picker-result-main" disabled={disabled} aria-pressed={selected} onClick={() => onTogglePlayer(player.id)}>
+        <button
+          type="button"
+          className="search-picker-result-main"
+          disabled={disabled}
+          aria-pressed={selected}
+          onClick={(event) => {
+            event.stopPropagation();
+            onTogglePlayer(player.id);
+          }}
+        >
           <strong>{player.name}</strong>
           <span>{getUserHashtag(player)} · {player.position}</span>
           <em>{disabled ? "불가" : selected ? "선택됨" : "선택"}</em>
@@ -1387,7 +1399,10 @@ export function InvitePanel({
           type="button"
           className={favorite ? "search-picker-result-action active" : "search-picker-result-action"}
           aria-label={favorite ? "즐겨찾기 해제" : "즐겨찾기 추가"}
-          onClick={() => onToggleFavoritePlayer(player.id)}
+          onClick={(event) => {
+            event.stopPropagation();
+            onToggleFavoritePlayer(player.id);
+          }}
         >
           <Star size={15} fill={favorite ? "currentColor" : "none"} />
         </button>
