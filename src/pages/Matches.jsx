@@ -444,12 +444,13 @@ function getTournamentPairingPreview(tournament) {
     : tournament.bracket?.fixtures ?? [];
 }
 
-function getRoomCapacity(match) {
-  const fromRules = Number(match.rules?.sideCapacity);
+function getRoomCapacity(match = {}) {
+  const sourceMatch = match ?? {};
+  const fromRules = Number(sourceMatch.rules?.sideCapacity);
   if (Number.isFinite(fromRules) && fromRules > 0) return fromRules;
-  const fromMode = Number(String(match.mode ?? "").match(/(\d+)\s*v/i)?.[1]);
+  const fromMode = Number(String(sourceMatch.mode ?? "").match(/(\d+)\s*v/i)?.[1]);
   if (Number.isFinite(fromMode) && fromMode > 0) return fromMode;
-  return Math.max(match.teamA?.players?.length ?? 0, match.teamB?.players?.length ?? 0, 5);
+  return Math.max(sourceMatch.teamA?.players?.length ?? 0, sourceMatch.teamB?.players?.length ?? 0, 5);
 }
 
 function uniquePlayerIds(ids = []) {
@@ -469,23 +470,27 @@ function isMatchPartyTeamParty(party = {}) {
   return Boolean(party.teamId) && uniquePlayerIds([...(party.players ?? []), ...(party.reserves ?? [])]).length >= 2;
 }
 
-function getSideAgreementReady(match, sideName) {
-  if (match.status !== "contract") return true;
-  const players = match[sideName]?.players ?? [];
-  const agreements = new Set(match.agreements?.[sideName] ?? []);
+function getSideAgreementReady(match = {}, sideName) {
+  const sourceMatch = match ?? {};
+  if (sourceMatch.status !== "contract") return true;
+  const players = sourceMatch[sideName]?.players ?? [];
+  const agreements = new Set(sourceMatch.agreements?.[sideName] ?? []);
   return players.length > 0 && players.every((playerId) => agreements.has(playerId));
 }
 
 function getMatchRoomPost(match, state) {
-  const sourcePost = match.recruitingPostId
-    ? state.recruitingPosts?.find((post) => post.id === match.recruitingPostId)
+  if (!match) return null;
+  const sourceMatch = match;
+  const sourceState = state ?? {};
+  const sourcePost = sourceMatch.recruitingPostId
+    ? sourceState.recruitingPosts?.find((post) => post.id === sourceMatch.recruitingPostId)
     : null;
-  const hostPlayerId = getMatchHostPlayerId(match, sourcePost);
-  const sideCapacity = getRoomCapacity(match);
-  const teamAPlayers = uniquePlayerIds(match.teamA?.players ?? []);
-  const teamBPlayers = uniquePlayerIds(match.teamB?.players ?? []);
-  const teamAReserves = uniquePlayerIds(getMatchReservePlayerIds(match, "teamA"));
-  const teamBReserves = uniquePlayerIds(getMatchReservePlayerIds(match, "teamB"));
+  const hostPlayerId = getMatchHostPlayerId(sourceMatch, sourcePost);
+  const sideCapacity = getRoomCapacity(sourceMatch);
+  const teamAPlayers = uniquePlayerIds(sourceMatch.teamA?.players ?? []);
+  const teamBPlayers = uniquePlayerIds(sourceMatch.teamB?.players ?? []);
+  const teamAReserves = uniquePlayerIds(getMatchReservePlayerIds(sourceMatch, "teamA"));
+  const teamBReserves = uniquePlayerIds(getMatchReservePlayerIds(sourceMatch, "teamB"));
   const applicants = [];
   const partyReserves = {};
   const matchParties = (match.parties ?? [])

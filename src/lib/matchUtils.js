@@ -100,29 +100,32 @@ export function getMatchPlayerIds(match = {}) {
 }
 
 export function getMatchSidePlayerIds(match = {}, sideName) {
-  const side = match[sideName] ?? {};
-  const playedPlayerIds = match.playedPlayerIds ?? match.rules?.playedPlayerIds ?? {};
+  const sourceMatch = match ?? {};
+  const side = sourceMatch[sideName] ?? {};
+  const playedPlayerIds = sourceMatch.playedPlayerIds ?? sourceMatch.rules?.playedPlayerIds ?? {};
   return uniquePlayerIds([...(side.players ?? []), ...(playedPlayerIds[sideName] ?? [])]);
 }
 
 export function getMatchReservePlayerIds(match = {}, sideName) {
-  const activeIds = new Set(match[sideName]?.players ?? []);
-  const reserveIds = (match.parties ?? [])
+  const sourceMatch = match ?? {};
+  const activeIds = new Set(sourceMatch[sideName]?.players ?? []);
+  const reserveIds = (sourceMatch.parties ?? [])
     .filter((party) => party.side === sideName)
     .flatMap((party) => [
       ...(party.reserve ? party.players ?? [] : []),
       ...(party.reserves ?? []),
     ]);
 
-  return [...new Set([...(match.reservePlayers?.[sideName] ?? []), ...reserveIds])]
+  return [...new Set([...(sourceMatch.reservePlayers?.[sideName] ?? []), ...reserveIds])]
     .filter((playerId) => playerId && !activeIds.has(playerId));
 }
 
 export function getMatchSideLeaderId(match = {}, teams = [], sideName) {
+  const sourceMatch = match ?? {};
   const sidePlayerIds = getMatchSidePlayerIds(match, sideName);
   const sideReserveIds = getMatchReservePlayerIds(match, sideName);
   const sideRosterIds = uniquePlayerIds([...sidePlayerIds, ...sideReserveIds]);
-  const partyLeaderId = (match.parties ?? [])
+  const partyLeaderId = (sourceMatch.parties ?? [])
     .filter((party) => party.side === sideName)
     .flatMap((party) => [
       party.partyLeaderId,
