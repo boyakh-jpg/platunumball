@@ -203,11 +203,6 @@ function getServerOperation(meta = {}) {
   return payload;
 }
 
-function upsertById(items = [], item = null) {
-  if (!item?.id) return items;
-  return [item, ...items.filter((current) => current.id !== item.id)];
-}
-
 function mergeById(current = [], incoming = []) {
   const merged = new Map((current ?? []).filter((item) => item?.id).map((item) => [item.id, item]));
   (incoming ?? []).forEach((item) => {
@@ -428,8 +423,8 @@ function mergeServerRoomResult(state, result = {}) {
   if (!nextPost && !nextMatch) return state;
   return {
     ...state,
-    recruitingPosts: nextPost ? upsertById(state.recruitingPosts ?? [], nextPost) : state.recruitingPosts,
-    matches: nextMatch ? upsertById(state.matches ?? [], nextMatch) : state.matches,
+    recruitingPosts: nextPost ? mergeRecruitingPostsById(state.recruitingPosts ?? [], [nextPost]) : state.recruitingPosts,
+    matches: nextMatch ? mergeMatchesById(state.matches ?? [], [nextMatch]) : state.matches,
   };
 }
 
