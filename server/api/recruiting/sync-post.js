@@ -950,6 +950,10 @@ export default async function handler(request, response) {
       body: { ...body, ...(operation ?? {}) },
       expectedUpdatedAt: operation ? replayResult?.baseUpdatedAt ?? null : null,
     });
+    if (operation && shouldReplayRecruitingOperation(operation) && result?.postId) {
+      const syncedPost = await loadSyncedRecruitingPost(context, result.postId);
+      if (syncedPost) result.post = syncedPost;
+    }
     if (createdMatch) {
       const matchNotifications = notifications.filter((notification) => notification.matchId === createdMatch.id);
       const matchResult = await persistMatchSnapshot(context, {

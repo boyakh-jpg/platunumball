@@ -3258,13 +3258,16 @@ function RecruitingReady({ app }) {
     if (!targetPostId || !app.remoteReady) return;
     const targetPost = app.state.recruitingPosts.find((post) => post.id === targetPostId);
     if (targetPost) {
+      if (targetPostLoadRef.current === targetPostId && app.currentUser.id) {
+        selectedPostRefreshRef.current = `${targetPostId}:${app.currentUser.id}`;
+      }
       targetPostLoadRef.current = "";
       return;
     }
     if (targetPostLoadRef.current === targetPostId) return;
     targetPostLoadRef.current = targetPostId;
     app.actions.loadRecruitingPost?.(targetPostId);
-  }, [app.actions, app.remoteReady, app.state.recruitingPosts, targetPostId]);
+  }, [app.actions, app.currentUser.id, app.remoteReady, app.state.recruitingPosts, targetPostId]);
 
   useEffect(() => {
     if (!selectedPostId) {
@@ -3335,7 +3338,9 @@ function RecruitingReady({ app }) {
     const loadKey = `${app.currentUser.id}:mine:auto:${createdRoomCount}:${joinedRoomCount}:${invitedRoomCount}`;
     if (myRecruitingLoadRef.current === loadKey) return;
     myRecruitingLoadRef.current = loadKey;
-    Promise.resolve(app.actions.loadMyRecruitingPosts?.()).finally(() => {
+    Promise.resolve(app.actions.loadMyRecruitingPosts?.()).then((count) => {
+      if (count === false && myRecruitingLoadRef.current === loadKey) myRecruitingLoadRef.current = "";
+    }).catch(() => {
       if (myRecruitingLoadRef.current === loadKey) myRecruitingLoadRef.current = "";
     });
   }, [app.actions, app.currentUser.id, app.remoteReady, createdRoomCount, invitedRoomCount, joinedRoomCount, missingCurrentUserRoomCount]);

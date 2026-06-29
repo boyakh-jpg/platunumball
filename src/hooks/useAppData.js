@@ -1059,11 +1059,19 @@ export function useAppData(authUser = null) {
       pendingRecruitingPostIdsRef.current.add(pendingPostId);
       recentRecruitingMutationTimesRef.current.set(pendingPostId, mutationStartedAt);
     }
+    const clearPendingRecruitingPost = () => {
+      if (!pendingPostId) return;
+      pendingRecruitingPostIdsRef.current.delete(pendingPostId);
+      if (recentRecruitingMutationTimesRef.current.get(pendingPostId) === mutationStartedAt) {
+        recentRecruitingMutationTimesRef.current.delete(pendingPostId);
+      }
+    };
     const payload = operation
       ? { operation, ...(post?.id ? { post } : {}), notifications, createdMatch: meta.createdMatch ?? null }
       : { post, notifications, ...meta };
     return runServerAction("/api/recruiting/sync-post", payload).then((result) => {
       if (result?.post || result?.createdMatch) setState((prev) => mergeServerRoomResult(prev, result));
+      if (result && result.ok !== false) clearPendingRecruitingPost();
       if (result && result.ok !== false && typeof meta.onSuccess === "function") {
         try {
           const refreshResult = meta.onSuccess(result);
@@ -1074,11 +1082,7 @@ export function useAppData(authUser = null) {
       }
       return result;
     }).finally(() => {
-      if (!pendingPostId) return;
-      pendingRecruitingPostIdsRef.current.delete(pendingPostId);
-      if (recentRecruitingMutationTimesRef.current.get(pendingPostId) === mutationStartedAt) {
-        recentRecruitingMutationTimesRef.current.delete(pendingPostId);
-      }
+      clearPendingRecruitingPost();
     });
   }, [runServerAction, setState]);
   const syncMatchServer = useCallback((match, notifications = [], meta = {}) => {
