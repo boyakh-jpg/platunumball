@@ -928,6 +928,39 @@ export async function loadCompactRecruitingList(context, {
   };
 }
 
+export async function loadCurrentUserRecruitingFeedList(context, {
+  adminLevel = 0,
+  limit = REMOTE_CLIENT_RECRUITING_LIMIT,
+} = {}) {
+  if (!context.profileId) {
+    return loadCompactRecruitingList(context, { adminLevel, limit, mineOnly: true });
+  }
+  const pageResult = await fetchRecruitingFeedPage(context.supabase, {
+    profileId: context.profileId,
+    relations: ["owner", "participant", "invited", "referee"],
+    limit,
+    includeCards: true,
+  });
+  if (pageResult) {
+    return loadCompactRecruitingList(context, {
+      adminLevel,
+      pagePostIds: pageResult.ids ?? [],
+      pageCards: pageResult.cards ?? [],
+      pageSource: pageResult.source ?? "feed",
+      pageExhausted: pageResult.exhausted,
+      limit,
+    });
+  }
+  const currentUserPostIds = await fetchCurrentUserRecruitingFallbackPostIds(context.supabase, context.profileId, limit);
+  return loadCompactRecruitingList(context, {
+    adminLevel,
+    currentUserPostIds,
+    includeMine: true,
+    mineOnly: true,
+    limit,
+  });
+}
+
 export default async function handler(request, response) {
   const timing = createTimingProbe();
   if (request.method !== "POST") {
@@ -958,7 +991,7 @@ export default async function handler(request, response) {
     const regionKey = regionScope === "all"
       ? ""
       : normalizeRegionKey(body.regionKey || body.regionDistrict || getProfileRegionKey(context.profile));
-    const [currentUserPostIds, pageResult, feedCountsResult, fallbackCountsResult] = await Promise.all([
+    const [currentUserPostIds, pageResult, feedCountsResult] = await Promise.all([
       includeMine
         ? timing.track("mine", () => fetchCurrentUserRecruitingPostIds(context.supabase, context.profileId, mineLimit, roomScope))
         : Promise.resolve([]),
@@ -968,10 +1001,10 @@ export default async function handler(request, response) {
       context.profileId && includeFeedCounts
         ? timing.track("counts", () => fetchRecruitingFeedCounts(context.supabase, context.profileId))
         : Promise.resolve(null),
-      context.profileId && includeFeedCounts
-        ? timing.track("fallbackCounts", () => fetchRecruitingFallbackCounts(context.supabase, context.profileId))
-        : Promise.resolve(null),
     ]);
+    const fallbackCountsResult = context.profileId && includeFeedCounts && !feedCountsResult
+      ? await timing.track("fallbackCounts", () => fetchRecruitingFallbackCounts(context.supabase, context.profileId))
+      : null;
     const pagePostIds = pageResult?.ids ?? [];
     const pageCards = pageResult?.cards ?? [];
     const pageSource = pageResult?.source ?? "";

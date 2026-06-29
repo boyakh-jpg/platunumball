@@ -12,7 +12,7 @@
 
 ## 2026-06-28 목록 응답 속도 원칙
 
-- `/api/recruiting/list`는 feed count와 fallback count를 순차 대기하지 않는다. feed, page, mine, fallback count는 가능한 병렬로 계산한다.
+- `/api/recruiting/list`는 feed count query가 성공하면 fallback count를 읽지 않는다. fallback count는 feed count가 null일 때만 보정용으로 읽는다.
 - 모집/경기 목록 성능 정리는 데이터 삭제가 아니라 `CREATE INDEX IF NOT EXISTS` 기반으로만 한다.
 - 목록 응답은 `user_room_feed.card_json`을 우선 쓰고, fallback은 feed 누락/보정용으로 유지한다.
 - 경기 메뉴 `MY/내 일정` 카운트는 실제 목록에 쓰는 `shouldShowMatchInList` 기준과 일치해야 한다. 숨기는 확정/기록방을 숫자에만 포함하지 않는다.
@@ -1395,7 +1395,7 @@ flowchart TD
 37. `/app/matches`는 SPA 이동으로 들어왔고 `recruitingScheduleChecked`가 false이면 현재 사용자 모집방 일정을 다시 로드한다. 경기 목록이 비어 있어도 match-page merge는 모집방 일정 row를 보존해야 한다.
 38. `/app/recruiting` 첫 목록 로드는 `feedCounts`를 같이 받아야 한다. `내가 만든 방/참여방/초대받음` 숫자는 클릭 전에도 current-user feed count 기준이어야 하며, 목록 일부 로드 fallback 숫자에 의존하지 않는다.
 38-1. `/app/recruiting` SPA 진입 때 기존 목록 row가 이미 있어도 `feedCounts`가 없으면 지역 첫 페이지를 다시 읽어 count를 채운다.
-38-2. `/api/recruiting/list`는 feed가 늦거나 일부 relation을 만들지 못해도 첫 지역 목록, `scope: "mine"`, `roomScope`, `feedCounts`, `/api/matches/list includeRecruitingSchedule=true`에서 open recruiting room을 숨기지 않아야 한다. 서버는 feed id/count와 direct DB fallback id/count를 병합하고, fallback joined 판정은 `player_ids`, `referee_id`, `recruiting_applications.player_id/player_ids`, `room_state.partyReserves`, `room_state.pinnedReservePlayers`, `room_state.reserveReady`를 포함한다.
+38-2. `/api/recruiting/list`는 feed가 늦거나 일부 relation을 만들지 못해도 첫 지역 목록, `scope: "mine"`, `roomScope`, `/api/matches/list includeRecruitingSchedule=true`에서 open recruiting room을 숨기지 않아야 한다. 서버는 feed id와 direct DB fallback id를 병합하고, `feedCounts`는 feed count query가 null일 때만 fallback count를 읽는다. fallback joined 판정은 `player_ids`, `referee_id`, `recruiting_applications.player_id/player_ids`, `room_state.partyReserves`, `room_state.pinnedReservePlayers`, `room_state.reserveReady`를 포함한다.
 38-3. `/app/recruiting` 시작일 필터는 클라이언트 표시 필터다. 기본값은 즉시방이며, 버튼을 누르면 즉시방 또는 해당 `scheduledDate`의 공개/내방 목록만 좁혀 보여준다. 즉시방과 오늘 예약방은 별도 개념으로 분리한다. 직접 링크로 열린 `post`는 날짜 필터 때문에 숨기지 않는다.
 38-4. `/app/recruiting`는 `feedCounts`가 현재 로드된 내방 수보다 크면 버튼 클릭을 기다리지 않고 `scope: "mine"` 보강 로드를 즉시 1회 실행한다. `/app/matches`는 모집 일정 재확인 전이라도 이미 클라이언트 state에 있는 관련 모집방을 숨기지 않는다.
 38-5. `/app/recruiting` 초기 목록 요청은 `includeMine=true`로 현재 사용자의 생성/참여/초대 방을 같은 응답에 포함한다. count 차이를 본 뒤 `scope: "mine"`을 다시 호출하는 로직은 누락 방 보강 fallback으로만 남긴다.

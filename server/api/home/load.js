@@ -1,6 +1,7 @@
 import { getAdminLevel, getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import { loadCompactMatchList } from "../matches/list.js";
 import { loadCurrentProfileState, PROFILE_ME_COLUMNS } from "../profile/me.js";
+import { loadCurrentUserRecruitingFeedList } from "../recruiting/list.js";
 import { REMOTE_CLIENT_MATCH_LIMIT } from "../../../src/data/repository.js";
 
 function mergeById(current = [], incoming = []) {
@@ -49,24 +50,30 @@ export default async function handler(request, response) {
     const adminLevel = shouldLoadAdminContext && context.profileId ? await getAdminLevel(context) : 0;
     const matchLimit = getCappedMatchLimit(body.matchLimit ?? body.limit ?? REMOTE_CLIENT_MATCH_LIMIT);
 
-    const [profileResult, matchResult] = await Promise.all([
+    const [profileResult, matchResult, recruitingResult] = await Promise.all([
       loadCurrentProfileState(context),
       loadCompactMatchList(context, {
         limit: matchLimit,
         listOnly: true,
         activeOnly: true,
-        includeRecruitingSchedule: true,
+        includeRecruitingSchedule: false,
         adminContext: false,
       }, adminLevel, matchLimit, debugTiming),
+      loadCurrentUserRecruitingFeedList(context, { adminLevel, limit: matchLimit }),
     ]);
 
     if (debugTiming) debugTiming.totalMs = Date.now() - startedAt;
+    const recruitingPosts = recruitingResult.state?.recruitingPosts ?? [];
 
     sendJson(response, 200, {
       ok: true,
-      state: mergeHomeState(profileResult.state, matchResult.state),
-      page: matchResult.page,
-      updatedAt: Math.max(profileResult.updatedAt ?? 0, matchResult.updatedAt ?? 0),
+      state: mergeHomeState(mergeHomeState(profileResult.state, matchResult.state), recruitingResult.state),
+      page: {
+        ...matchResult.page,
+        recruitingScheduleChecked: true,
+        recruitingScheduleCount: recruitingPosts.length,
+      },
+      updatedAt: Math.max(profileResult.updatedAt ?? 0, matchResult.updatedAt ?? 0, recruitingResult.updatedAt ?? 0),
       debugTiming: debugTiming ?? undefined,
     });
   } catch (error) {
