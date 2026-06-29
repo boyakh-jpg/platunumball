@@ -96,7 +96,7 @@ export default function App() {
 
   return (
     <AppErrorBoundary resetKey={location.pathname}>
-      <Suspense fallback={<BasketballLoader label="페이지 불러오는 중" />}>
+      <Suspense fallback={<BasketballLoader overlay label="페이지 불러오는 중" />}>
         <Routes>
         <Route path="/" element={<Landing state={app.state} />} />
         <Route path="/login" element={<Login auth={auth} app={app} />} />

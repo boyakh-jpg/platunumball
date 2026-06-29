@@ -364,7 +364,7 @@ export default function Recorder({ app }) {
         </header>
         <Card className="recorder-empty">
           {recorderLoading ? (
-            <BasketballLoader label="진행 경기 확인 중" />
+            <BasketballLoader overlay label="진행 경기 확인 중" />
           ) : (
             <>
               <ShieldCheck size={34} />

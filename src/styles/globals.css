@@ -98,14 +98,15 @@ h3 {
 
 .basketball-loader-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
+  inset: 0;
   z-index: 10000;
   display: flex;
   width: 100vw;
-  height: 100dvh;
+  min-height: 100vh;
+  min-height: 100dvh;
   align-items: center;
   justify-content: center;
+  box-sizing: border-box;
   background: rgba(255, 255, 255, 0.72);
   pointer-events: auto;
   touch-action: none;

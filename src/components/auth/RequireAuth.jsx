@@ -9,7 +9,7 @@ export default function RequireAuth({ auth }) {
       <main className="auth-shell">
         <section className="auth-card">
           <p className="eyebrow">RankBall</p>
-          <BasketballLoader label="로그인 확인 중" />
+          <BasketballLoader overlay label="로그인 확인 중" />
         </section>
       </main>
     );

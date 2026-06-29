@@ -46,6 +46,7 @@
 6. The blocking overlay uses a light veil so stale page content is visibly unavailable until remote data is ready.
 7. The GIF must render above the blocking veil and reset its failed state each time remote loading starts.
 8. While `html.rankball-remote-loading` is active, the global overlay is the only visible loading indicator; page-level inline loaders stay hidden.
+9. Blocking/page overlay loaders render at `document.body` level so they are centered against the full viewport, not a card, section, or page div.
 
 # 2026-06-28 referee rulebook images
 

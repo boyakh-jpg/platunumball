@@ -1345,7 +1345,7 @@ export default function Matches({ app }) {
         ) : (
           <div className="om-empty-state">
             {scheduleLoading ? (
-              <BasketballLoader label="서버 데이터 불러오는 중" />
+              <BasketballLoader overlay label="서버 데이터 불러오는 중" />
             ) : (
               <>
                 <strong>해당 큐 없음</strong>

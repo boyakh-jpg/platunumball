@@ -3687,7 +3687,7 @@ export default function Recruiting({ app }) {
   if (!app?.currentUser?.id) {
     return (
       <div className="page-stack">
-        <div className="empty-state"><BasketballLoader label="프로필 불러오는 중" /></div>
+        <div className="empty-state"><BasketballLoader overlay={app.remoteReady !== false} label="프로필 불러오는 중" /></div>
       </div>
     );
   }
