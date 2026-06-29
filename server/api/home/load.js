@@ -4,6 +4,8 @@ import { loadCurrentProfileState, PROFILE_ME_COLUMNS } from "../profile/me.js";
 import { loadCurrentUserRecruitingFeedList } from "../recruiting/list.js";
 import { REMOTE_CLIENT_MATCH_LIMIT } from "../../../src/data/repository.js";
 
+const HOME_RECENT_MATCH_LIMIT = 80;
+
 function mergeById(current = [], incoming = []) {
   const merged = new Map((current ?? []).filter((item) => item?.id).map((item) => [item.id, item]));
   (incoming ?? []).forEach((item) => {
@@ -19,8 +21,9 @@ function mergeHomeState(profileState = {}, feedState = {}) {
     users: mergeById(profileState.users, feedState.users),
     teams: mergeById(profileState.teams, feedState.teams),
     teamInvitations: profileState.teamInvitations ?? [],
-    matches: feedState.matches ?? [],
-    recruitingPosts: feedState.recruitingPosts ?? [],
+    matches: mergeById(profileState.matches, feedState.matches),
+    recruitingPosts: mergeById(profileState.recruitingPosts, feedState.recruitingPosts),
+    tournaments: mergeById(profileState.tournaments, feedState.tournaments),
     settings: {
       ...(profileState.settings ?? {}),
       ...(feedState.settings ?? {}),
@@ -50,7 +53,8 @@ export default async function handler(request, response) {
     const adminLevel = shouldLoadAdminContext && context.profileId ? await getAdminLevel(context) : 0;
     const matchLimit = getCappedMatchLimit(body.matchLimit ?? body.limit ?? REMOTE_CLIENT_MATCH_LIMIT);
 
-    const [profileResult, matchResult, recruitingResult] = await Promise.all([
+    const recentMatchLimit = Math.min(HOME_RECENT_MATCH_LIMIT, matchLimit);
+    const [profileResult, matchResult, recentMatchResult, recruitingResult] = await Promise.all([
       loadCurrentProfileState(context),
       loadCompactMatchList(context, {
         limit: matchLimit,
@@ -59,21 +63,32 @@ export default async function handler(request, response) {
         includeRecruitingSchedule: false,
         adminContext: false,
       }, adminLevel, matchLimit, debugTiming),
+      loadCompactMatchList(context, {
+        limit: recentMatchLimit,
+        listOnly: true,
+        activeOnly: false,
+        includeRecruitingSchedule: false,
+        adminContext: false,
+      }, adminLevel, recentMatchLimit, debugTiming),
       loadCurrentUserRecruitingFeedList(context, { adminLevel, limit: matchLimit }),
     ]);
 
     if (debugTiming) debugTiming.totalMs = Date.now() - startedAt;
     const recruitingPosts = recruitingResult.state?.recruitingPosts ?? [];
+    const recentConfirmedState = {
+      ...recentMatchResult.state,
+      matches: (recentMatchResult.state?.matches ?? []).filter((match) => match.status === "confirmed"),
+    };
 
     sendJson(response, 200, {
       ok: true,
-      state: mergeHomeState(mergeHomeState(profileResult.state, matchResult.state), recruitingResult.state),
+      state: mergeHomeState(mergeHomeState(mergeHomeState(profileResult.state, matchResult.state), recentConfirmedState), recruitingResult.state),
       page: {
         ...matchResult.page,
         recruitingScheduleChecked: true,
         recruitingScheduleCount: recruitingPosts.length,
       },
-      updatedAt: Math.max(profileResult.updatedAt ?? 0, matchResult.updatedAt ?? 0, recruitingResult.updatedAt ?? 0),
+      updatedAt: Math.max(profileResult.updatedAt ?? 0, matchResult.updatedAt ?? 0, recentMatchResult.updatedAt ?? 0, recruitingResult.updatedAt ?? 0),
       debugTiming: debugTiming ?? undefined,
     });
   } catch (error) {

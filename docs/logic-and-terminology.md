@@ -8,6 +8,7 @@
 
 - `/login` auth 직후와 `/app` 첫 remote load는 broad `/api/state/load`가 아니라 `/api/home/load`를 사용한다.
 - `/api/home/load`는 current-profile profile/team bootstrap과 `/api/matches/list` feed 기반 active match/recruiting schedule을 한 번에 합친다.
+- `/api/home/load`는 홈 승률/최근전적이 비지 않도록 active match feed와 별도로 current-user recent match feed를 소량 병합한다.
 - `/api/home/load`에서 current-user 모집 일정 확인과 profile bootstrap이 끝났으면 홈 진입 effect가 같은 데이터를 `profile/me`, `scope=mine`/schedule 호출로 즉시 다시 읽지 않는다.
 
 ## 2026-06-28 목록 응답 속도 원칙
