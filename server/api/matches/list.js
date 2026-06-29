@@ -95,7 +95,10 @@ function normalizeFeedCard(row = {}) {
   const card = row?.card_json ?? row?.cardJson ?? row?.card ?? null;
   if (!card || typeof card !== "object" || Array.isArray(card)) return null;
   const id = card.id ?? row.entity_id ?? row.entityId;
-  return id ? { ...card, id } : null;
+  const nextCard = id ? { ...card, id } : null;
+  if (!nextCard?.teamA || typeof nextCard.teamA !== "object") return null;
+  if (!nextCard?.teamB || typeof nextCard.teamB !== "object") return null;
+  return nextCard;
 }
 
 function uniqueFeedCards(rows = [], ids = []) {

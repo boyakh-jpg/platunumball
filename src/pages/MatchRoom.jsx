@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { CalendarDays, Crown, MapPin, Minus, Plus, ShieldCheck, Star, ThumbsUp, Trophy, UsersRound, X } from "lucide-react";
 import AgreementPanel from "../components/match/AgreementPanel.jsx";
 import ApprovalPanel from "../components/match/ApprovalPanel.jsx";
+import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import MatchContract from "../components/match/MatchContract.jsx";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
@@ -57,6 +58,7 @@ const statusMeta = {
 };
 
 function makeInitialStats(match) {
+  if (!match) return {};
   const sourceResult = match?.disputeDraftResult ?? match?.result;
   const playerIds = getMatchRecordPlayerIds(match, true);
   return Object.fromEntries(
@@ -72,9 +74,10 @@ function getTeamMmr(teams, teamId) {
 }
 
 function getDisplayScore(match, sideName) {
+  if (!match) return 0;
   const sourceResult = match.disputeDraftResult ?? match.result;
   const resultKey = sideName === "teamA" ? "scoreA" : "scoreB";
-  return sourceResult?.[resultKey] ?? match[sideName].score ?? 0;
+  return sourceResult?.[resultKey] ?? match[sideName]?.score ?? 0;
 }
 
 function getPointAudit(match, score, sideName) {
@@ -155,12 +158,14 @@ function CourtReviewRating({ label, value, onChange, disabled = false }) {
 export default function MatchRoom({ app }) {
   const { matchId } = useParams();
   const match = useMemo(
-    () => app.state.matches.find((item) => item.id === matchId) ?? app.state.matches[0],
+    () => app.state.matches.find((item) => item?.id === matchId) ?? null,
     [app.state.matches, matchId],
   );
+  const requestedMatchIdRef = useRef("");
+  const [matchDetailMissing, setMatchDetailMissing] = useState(false);
   const [score, setScore] = useState({
-    scoreA: match?.result?.scoreA ?? match?.teamA.score ?? 21,
-    scoreB: match?.result?.scoreB ?? match?.teamB.score ?? 17,
+    scoreA: match?.result?.scoreA ?? match?.teamA?.score ?? 21,
+    scoreB: match?.result?.scoreB ?? match?.teamB?.score ?? 17,
     playerStats: makeInitialStats(match),
   });
   const matchPlayerKey = match ? getMatchPlayerIds(match).join("|") : "";
@@ -177,6 +182,27 @@ export default function MatchRoom({ app }) {
   useBodyScrollLock(Boolean(statEditorPlayerId));
 
   useEffect(() => {
+    if (match) {
+      setMatchDetailMissing(false);
+      return;
+    }
+    if (!matchId || app.remoteReady === false || requestedMatchIdRef.current === matchId) return;
+    requestedMatchIdRef.current = matchId;
+    setMatchDetailMissing(false);
+    const request = app.actions.loadMatchDetail?.(matchId);
+    if (!request?.then) {
+      if (!request) setMatchDetailMissing(true);
+      return;
+    }
+    request.then((count) => {
+      if (!count) setMatchDetailMissing(true);
+    }).catch(() => {
+      requestedMatchIdRef.current = "";
+      setMatchDetailMissing(true);
+    });
+  }, [app.actions, app.remoteReady, match, matchId]);
+
+  useEffect(() => {
     const participantIds = match ? getMatchTrustFeedbackParticipantIds(match) : [];
     setThumbDraftPlayerIds((match?.trustFeedback?.stars?.[app.currentUser.id] ?? []).filter((playerId) => participantIds.includes(playerId)));
   }, [app.currentUser.id, match?.id, match?.trustFeedback]);
@@ -189,13 +215,16 @@ export default function MatchRoom({ app }) {
     if (!match) return;
     const sourceResult = match.disputeDraftResult ?? match.result;
     setScore({
-      scoreA: sourceResult?.scoreA ?? match.teamA.score ?? 21,
-      scoreB: sourceResult?.scoreB ?? match.teamB.score ?? 17,
+      scoreA: sourceResult?.scoreA ?? match.teamA?.score ?? 21,
+      scoreB: sourceResult?.scoreB ?? match.teamB?.score ?? 17,
       playerStats: makeInitialStats(match),
     });
   }, [match?.id, match?.result?.updatedAt, match?.result?.submittedAt, match?.disputeDraftResult?.updatedAt, matchPlayerKey]);
 
-  if (!match) return <Navigate to="/app/create" replace />;
+  if (!match) {
+    if (matchDetailMissing) return <Navigate to="/app/matches" replace />;
+    return <BasketballLoader overlay label="경기방 불러오는 중" />;
+  }
 
   const userMap = Object.fromEntries([...app.state.users, ...Object.values(match.anonymousPlayers ?? {})].map((user) => [user.id, user]));
   const statEditorPlayer = statEditorPlayerId ? userMap[statEditorPlayerId] : null;
