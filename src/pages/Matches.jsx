@@ -809,7 +809,6 @@ export default function Matches({ app }) {
   };
   const openSelectedRecruitingPost = (postId) => {
     if (!postId) return;
-    app.actions.loadRecruitingPost?.(postId);
     setSelectedRecruitingPostId(postId);
   };
   useEffect(() => {

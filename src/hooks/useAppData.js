@@ -1707,11 +1707,9 @@ export function useAppData(authUser = null) {
         return rollbackIfServerFailed(syncTeamInvitationServer(action, payload), rollbackState, label, { action, ...payload });
       };
       const refreshRecruitingRelations = () => {
-        setMatchPagination((prev) => ({ ...prev, error: "", recruitingScheduleChecked: false }));
         return Promise.allSettled([
           refreshCurrentProfile(),
           loadMyRecruitingPosts(),
-          loadMatchRecruitingSchedule(),
         ]).then((results) => !results.some((result) => result.status === "rejected" || result.value === false));
       };
 
@@ -2165,8 +2163,6 @@ export function useAppData(authUser = null) {
         ).then((result) => {
           if (!result || result?.ok === false) return result;
           setRecruitingPagination((prev) => ({ ...prev, feedCounts: incrementFeedCount(prev.feedCounts, "created") }));
-          setMatchPagination((prev) => ({ ...prev, error: "", recruitingScheduleChecked: false }));
-          loadMatchRecruitingSchedule();
           return result?.post?.id ?? result?.postId ?? createdPost.id;
         });
       },
