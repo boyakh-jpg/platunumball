@@ -542,6 +542,7 @@ const PARTICIPANT_RECRUITING_ACTIONS = new Set([
   "setRecruitingSlotPosition",
   "setRecruitingPartyPlayerPlacement",
   "setRecruitingPartyPlayerReserve",
+  "setRecruitingTeamPartyRoster",
   "detachRecruitingPartyPlayer",
   "removeRecruitingPartyPlayer",
   "inviteRecruitingReferee",
@@ -557,6 +558,7 @@ const MEMBERSHIP_ADD_RECRUITING_ACTIONS = new Set([
   "interestRecruitingPost",
   "joinRecruitingSideParty",
   "acceptRecruitingInvitation",
+  "setRecruitingTeamPartyRoster",
 ]);
 
 const AUTHORITATIVE_REPLAY_RECRUITING_ACTIONS = new Set([
@@ -569,6 +571,7 @@ const AUTHORITATIVE_REPLAY_RECRUITING_ACTIONS = new Set([
   "joinRecruitingSideParty",
   "setRecruitingApplicantPlacement",
   "setRecruitingSlotPosition",
+  "setRecruitingTeamPartyRoster",
 ]);
 
 const SQL_REDUCER_RECRUITING_ACTIONS = new Set([

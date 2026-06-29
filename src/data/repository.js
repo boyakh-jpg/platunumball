@@ -6028,18 +6028,23 @@ export function createRecruitingPost(state, draft) {
   const rawHostPlayerIds = hostJoinMode === "team" ? getSelectedTeamPlayerIds(hostTeam, sideCapacity, draft.playerIds) : [];
   const hostPlayerIds = hostJoinMode === "team" ? ensureTeamPartyLeader(hostTeam, rawHostPlayerIds, state.currentUserId, sideCapacity) : [];
   const hostReservePlayerIds = hostJoinMode === "team" ? getSelectedReservePlayerIds(hostTeam, hostPlayerIds, draft.reservePlayerIds) : [];
+  const privateTeamInviteOnly = visibility === "private" && hostJoinMode === "team";
   const opponentTeam = visibility === "private" && hostJoinMode === "team"
     ? state.teams.find((team) => team.id === (draft.opponentTeamId ?? draft.targetTeamId))
     : null;
   const hostSidePlayerIds = new Set([...hostPlayerIds, ...hostReservePlayerIds]);
-  const opponentPlayerIds = opponentTeam
+  const rawOpponentPlayerIds = opponentTeam
     ? getSelectedTeamPlayerIds(opponentTeam, sideCapacity, draft.opponentPlayerIds).filter((playerId) => !hostSidePlayerIds.has(playerId))
     : [];
-  const opponentLeaderId = opponentPlayerIds.includes(draft.opponentLeaderId) ? draft.opponentLeaderId : opponentPlayerIds[0] ?? "";
+  const requestedOpponentLeaderId = String(draft.opponentLeaderId || draft.opponentPlayerIds?.[0] || "").trim();
+  const opponentMemberIds = new Set(getSelectableTeamPlayerIds(opponentTeam));
+  const opponentLeaderId = privateTeamInviteOnly
+    ? (requestedOpponentLeaderId && opponentMemberIds.has(requestedOpponentLeaderId) && !hostSidePlayerIds.has(requestedOpponentLeaderId) ? requestedOpponentLeaderId : "")
+    : rawOpponentPlayerIds.includes(draft.opponentLeaderId) ? draft.opponentLeaderId : rawOpponentPlayerIds[0] ?? "";
   const orderedOpponentPlayerIds = opponentTeam
-    ? ensureTeamPartyLeader(opponentTeam, opponentPlayerIds, opponentLeaderId, sideCapacity)
+    ? (privateTeamInviteOnly ? [] : ensureTeamPartyLeader(opponentTeam, rawOpponentPlayerIds, opponentLeaderId, sideCapacity))
     : [];
-  const opponentReservePlayerIds = opponentTeam
+  const opponentReservePlayerIds = opponentTeam && !privateTeamInviteOnly
     ? getSelectedReservePlayerIds(opponentTeam, orderedOpponentPlayerIds, draft.opponentReservePlayerIds).filter((playerId) => !hostSidePlayerIds.has(playerId))
     : [];
   const hostPlayerId = state.currentUserId;
@@ -6057,14 +6062,14 @@ export function createRecruitingPost(state, draft) {
       ],
     };
   }
-  if (visibility === "private" && hostJoinMode === "team" && (!opponentTeam || opponentTeam.id === hostTeam?.id || orderedOpponentPlayerIds.length < sideCapacity)) {
+  if (privateTeamInviteOnly && (!opponentTeam || opponentTeam.id === hostTeam?.id || !opponentLeaderId)) {
     return {
       ...state,
       notifications: [
         {
           id: makeId("n"),
           title: "상대 사이드 필요",
-          body: "비공개 팀전은 A/B사이드 출전 슬롯이 모두 채워져야 방을 만들 수 있습니다.",
+          body: "비공개 팀전은 A사이드 출전 슬롯과 B사이드 초대 대상 1명이 필요합니다.",
           tone: "team",
         },
         ...state.notifications,
@@ -6182,7 +6187,7 @@ export function createRecruitingPost(state, draft) {
       partyReserves,
       partyLeaders: {
         host: state.currentUserId,
-        ...(opponentTeam && opponentLeaderId ? { [`team:${opponentTeam.id}`]: opponentLeaderId } : {}),
+        ...(opponentTeam && orderedOpponentPlayerIds.length && opponentLeaderId ? { [`team:${opponentTeam.id}`]: opponentLeaderId } : {}),
       },
       invitations: [...initialInvitations, ...initialRefereeInvitations],
     },
@@ -8054,6 +8059,92 @@ export function joinRecruitingSideParty(state, postId, teamId, sideName = "", en
     return {
       ...state,
       notifications: [getRecruitingReserveLimitNotification(postId, side), ...state.notifications],
+    };
+  }
+
+  return {
+    ...state,
+    recruitingPosts: (state.recruitingPosts ?? []).map((item) => (
+      item.id === postId ? cleanRecruitingRoomStatRecorders(nextPost, state) : item
+    )),
+  };
+}
+
+export function setRecruitingTeamPartyRoster(state, postId, entryId, roster = {}) {
+  const disciplineBlock = getDisciplineBlockedState(state, "팀 파티 명단 조정");
+  if (disciplineBlock) return disciplineBlock;
+  const post = state.recruitingPosts?.find((item) => item.id === postId);
+  if (!isMutableRecruitingRoom(post) || !entryId) return state;
+  if (isSoloIndividualRecruitingRoom(post)) return state;
+
+  const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
+  const lobby = getRecruitingLobby(post, state);
+  const entry = (lobby.entries ?? []).find((item) => item.id === entryId);
+  if (entry.kind !== "team" || !entry?.team) return state;
+
+  const partyLeaderId = roomState.partyLeaders?.[entryId] ?? (entry.fixed ? post.playerId : entry.playerId) ?? "";
+  if (partyLeaderId !== state.currentUserId) return state;
+
+  const capacity = getRecruitingSideCapacity(post);
+  const teamPlayerIds = new Set(getSelectableTeamPlayerIds(entry.team));
+  const occupiedPlayerIds = new Set(
+    (lobby.entries ?? [])
+      .filter((item) => item.id !== entry.id)
+      .flatMap((item) => [item.playerId, ...(item.players ?? []), ...(item.reserves ?? [])])
+      .filter(Boolean),
+  );
+  const requestedActiveIds = uniquePlayerIds(roster.playerIds ?? [])
+    .filter((playerId) => teamPlayerIds.has(playerId) && !occupiedPlayerIds.has(playerId));
+  const activeWithLeader = partyLeaderId && teamPlayerIds.has(partyLeaderId) && !occupiedPlayerIds.has(partyLeaderId)
+    ? [partyLeaderId, ...requestedActiveIds.filter((playerId) => playerId !== partyLeaderId)]
+    : requestedActiveIds;
+  const nextPlayerIds = activeWithLeader.slice(0, capacity);
+  if (!nextPlayerIds.length) return state;
+
+  const nextPlayerSet = new Set(nextPlayerIds);
+  const nextReservePlayerIds = uniquePlayerIds(roster.reservePlayerIds ?? [])
+    .filter((playerId) => teamPlayerIds.has(playerId) && !occupiedPlayerIds.has(playerId) && !nextPlayerSet.has(playerId))
+    .slice(0, MAX_RECRUITING_RESERVES_PER_SIDE);
+  const nextPartyReserves = { ...roomState.partyReserves, [entry.id]: nextReservePlayerIds };
+  if (!nextReservePlayerIds.length) delete nextPartyReserves[entry.id];
+  const nextRoomState = updateManyPinnedReservePlayers(
+    updateManyPinnedReservePlayers({ ...roomState, partyReserves: nextPartyReserves }, entry.side, nextPlayerIds, false),
+    entry.side,
+    nextReservePlayerIds,
+    true,
+  );
+  const updatedAt = new Date().toISOString();
+  const applicants = normalizeRecruitingApplicants(post.applicants ?? []);
+  const targetApplicant = entry.fixed
+    ? null
+    : applicants.find((applicant) => getRecruitingApplicantKey(applicant) === entry.id);
+  if (!entry.fixed && !targetApplicant) return state;
+
+  const nextPost = entry.fixed
+    ? { ...post, hostReady: false, playerIds: nextPlayerIds, roomState: nextRoomState }
+    : {
+        ...post,
+        roomState: nextRoomState,
+        applicants: applicants.map((applicant) => (
+          getRecruitingApplicantKey(applicant) === entry.id
+            ? {
+                ...applicant,
+                playerId: partyLeaderId,
+                reserve: false,
+                status: "waiting",
+                playerIds: nextPlayerIds,
+                updatedAt,
+              }
+            : applicant
+        )),
+      };
+
+  const nextLobby = getRecruitingLobby(nextPost, state);
+  if (nextLobby.sides[entry.side].projectedFilled > nextLobby.sides[entry.side].capacity) return state;
+  if (isRecruitingReserveLimitExceeded(nextPost, state, entry.side)) {
+    return {
+      ...state,
+      notifications: [getRecruitingReserveLimitNotification(postId, entry.side), ...state.notifications],
     };
   }
 

@@ -2374,6 +2374,14 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
           const sourceTeam = targetIsCurrentUser && myEntry?.sourceTeamId ? teamById[myEntry.sourceTeamId] : null;
           const targetPartyOptions = targetIsCurrentUser && !soloIndividualRoom ? getSameSidePartyOptions(lobby, myEntry, myTeams, activeSelfSlotDraft.sideName) : [];
           const currentSlotPosition = getRoomSlotDisplayPosition(targetUser, slotPositions, targetPlayerId, targetEntry);
+          const canManageTeamRoster = targetEntry.kind === "team" && targetEntry.team && getEntryPartyLeaderId(targetEntry) === app.currentUser.id;
+          const teamRosterCapacity = getRecruitingSideCapacity(selectedPost);
+          const teamRosterActiveIds = canManageTeamRoster
+            ? getPartyPlayerIds(targetEntry.team, targetEntry.players ?? [], teamRosterCapacity, app.currentUser.id)
+            : [];
+          const teamRosterReserveIds = canManageTeamRoster
+            ? getPartyReserveIds(targetEntry.team, roomState.partyReserves?.[targetEntry.id] ?? [], teamRosterActiveIds)
+            : [];
           return (
             <SelfSlotCommandPanel
               entry={targetEntry}
@@ -2394,6 +2402,23 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
               onClose={() => setSlotActionDraft(null)}
             >
               {renderSlotPlacementActions(targetEntry, targetPlayerId)}
+              {canManageTeamRoster ? (
+                <TeamMemberPicker
+                  team={targetEntry.team}
+                  userById={userById}
+                  selectedIds={teamRosterActiveIds}
+                  reserveIds={teamRosterReserveIds}
+                  capacity={teamRosterCapacity}
+                  reserveCapacity={MAX_RESERVE_PLAYERS_PER_SIDE}
+                  requiredPlayerId={app.currentUser.id}
+                  requiredActive
+                  onRosterChange={({ selectedIds, reserveIds }) => app.actions.setRecruitingTeamPartyRoster(selectedPost.id, targetEntry.id, {
+                    teamId: targetEntry.team.id,
+                    playerIds: selectedIds,
+                    reservePlayerIds: reserveIds,
+                  })}
+                />
+              ) : null}
             </SelfSlotCommandPanel>
           );
         };

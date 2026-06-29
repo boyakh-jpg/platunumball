@@ -35,6 +35,7 @@ import {
   setRecruitingApplicantReserve,
   setRecruitingPartyPlayerPlacement,
   setRecruitingPartyPlayerReserve,
+  setRecruitingTeamPartyRoster,
   setRecruitingReady,
   setRecruitingSlotPosition,
   setRecruitingStatRecorder,
@@ -139,6 +140,7 @@ function getAuthoritativeLoadScope(operation = {}) {
       operation.draft?.targetTeamId,
       operation.application?.teamId,
       operation.invite?.teamId,
+      operation.roster?.teamId,
     ].filter(Boolean),
     profileIds: [
       operation.refereeId,
@@ -147,6 +149,8 @@ function getAuthoritativeLoadScope(operation = {}) {
       operation.invitation?.targetUserId,
       invite.playerId,
       ...(Array.isArray(invite.playerIds) ? invite.playerIds : []),
+      ...(Array.isArray(operation.roster?.playerIds) ? operation.roster.playerIds : []),
+      ...(Array.isArray(operation.roster?.reservePlayerIds) ? operation.roster.reservePlayerIds : []),
     ].filter(Boolean),
     recruitingPostIds: [
       operation.postId,
@@ -231,6 +235,9 @@ export function applyAuthoritativeRecruitingOperation(state, operation = {}) {
       break;
     case "setRecruitingPartyPlayerPlacement":
       next = setRecruitingPartyPlayerPlacement(state, operation.postId, operation.entryId, operation.playerId, operation.placement);
+      break;
+    case "setRecruitingTeamPartyRoster":
+      next = setRecruitingTeamPartyRoster(state, operation.postId, operation.entryId, operation.roster ?? {});
       break;
     case "detachRecruitingPartyPlayer":
       next = detachRecruitingPartyPlayer({ ...state, currentUserId: operation.playerId || state.currentUserId }, operation.postId, operation.entryId, operation.playerId, operation.placement);

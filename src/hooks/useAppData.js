@@ -59,6 +59,7 @@ import {
   setMatchRoomPlayerPlacement,
   setRecruitingPartyPlayerPlacement,
   setRecruitingPartyPlayerReserve,
+  setRecruitingTeamPartyRoster,
   setRecruitingReady,
   setRecruitingStatRecorder,
   startMatch,
@@ -182,6 +183,7 @@ const SERVER_OPERATION_ACTIONS = new Set([
   "setRecruitingSlotPosition",
   "setRecruitingPartyPlayerReserve",
   "setRecruitingPartyPlayerPlacement",
+  "setRecruitingTeamPartyRoster",
   "detachRecruitingPartyPlayer",
   "removeRecruitingPartyPlayer",
   "setRecruitingStatRecorder",
@@ -2092,6 +2094,9 @@ export function useAppData(authUser = null) {
       },
       setRecruitingPartyPlayerPlacement: (postId, entryId, playerId, placement) => {
         applyRecruitingPostMutation(postId, (prev) => setRecruitingPartyPlayerPlacement({ ...prev, currentUserId }, postId, entryId, playerId, placement), { action: "setRecruitingPartyPlayerPlacement", entryId, playerId, placement });
+      },
+      setRecruitingTeamPartyRoster: (postId, entryId, roster) => {
+        applyRecruitingPostMutation(postId, (prev) => setRecruitingTeamPartyRoster({ ...prev, currentUserId }, postId, entryId, roster), { action: "setRecruitingTeamPartyRoster", entryId, roster });
       },
       detachRecruitingPartyPlayer: (postId, entryId, playerId, placement) => {
         applyRecruitingPostMutation(postId, (prev) => detachRecruitingPartyPlayer({ ...prev, currentUserId: playerId || currentUserId }, postId, entryId, playerId, placement), { action: "detachRecruitingPartyPlayer", entryId, playerId, placement });
