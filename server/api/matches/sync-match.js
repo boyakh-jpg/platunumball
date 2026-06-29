@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import {
   applyAuthoritativeMatchOperation,
@@ -545,9 +546,16 @@ function toApprovalRows(match = {}) {
   ];
 }
 
+function toUuid(value = "") {
+  const text = String(value || "");
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(text)
+    ? text
+    : randomUUID();
+}
+
 function toDisputeRows(match = {}) {
   return toArray(match.disputes).map((dispute) => ({
-    id: dispute.id,
+    id: toUuid(dispute.id),
     match_id: match.id,
     user_id: dispute.by ?? dispute.userId,
     reason: dispute.reason ?? "",

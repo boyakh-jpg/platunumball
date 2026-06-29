@@ -725,6 +725,274 @@ async function runOneOnOneScenario({
   };
 }
 
+async function runRecruitingInviteAcceptScenario({
+  label,
+  hostLogin,
+  inviteeLogin,
+}) {
+  ids = makeScenarioIds(label);
+  const hostId = await step(`${ids.label}:resolveProfile:host`, () => getProfileIdForLogin(hostLogin));
+  const inviteeId = await step(`${ids.label}:resolveProfile:invitee`, () => getProfileIdForLogin(inviteeLogin));
+  assertFlow(hostId !== inviteeId, "host and invitee must be different profiles", { hostId, inviteeId });
+
+  const createResult = await step(`${ids.label}:createRecruitingPost`, () => syncRecruitingAs(hostLogin, {
+    action: "createRecruitingPost",
+    preferredPostId: ids.postId,
+    draft: {
+      id: ids.postId,
+      title: `Backend simulation ${ids.label}`,
+      visibility: "private",
+      hostJoinMode: "player",
+      mode: "1v1",
+      sideCapacity: 1,
+      timingType: "instant",
+      ranked: false,
+      official: false,
+      preRegistered: true,
+      teamOnly: false,
+      refereeWanted: false,
+      region: "Backend Simulation",
+      court: "Backend Simulation Court",
+      position: "PG",
+      memo: "Backend simulation row. Safe to delete.",
+      rules: {
+        targetScore: 21,
+        timeLimit: 12,
+        winByTwo: true,
+        ball: "7",
+      },
+    },
+  }));
+  let post = createResult?.post;
+  assertFlow(post?.id === ids.postId, "created invite post not returned", createResult);
+  assertFlow(post.ownerId === hostId || post.playerId === hostId, "created invite post owner mismatch", { hostId, post });
+
+  const inviteResult = await step(`${ids.label}:inviteRecruitingPlayers:invitee`, () => syncRecruitingAs(hostLogin, {
+    action: "inviteRecruitingPlayers",
+    postId: ids.postId,
+    invite: {
+      side: "teamB",
+      reserve: false,
+      joinMode: "player",
+      playerIds: [inviteeId],
+    },
+  }));
+  post = await getRecruitingPostAfterResult(inviteResult, hostLogin, `${ids.label}:loadAfterInvite`);
+  const invitation = post?.roomState?.invitations?.find((item) => (
+    item.targetUserId === inviteeId &&
+    item.status === "pending" &&
+    item.role !== "referee"
+  ));
+  assertFlow(Boolean(invitation), "player invitation not persisted", { inviteeId, post });
+
+  const acceptResult = await step(`${ids.label}:acceptRecruitingInvitation`, () => syncRecruitingAs(inviteeLogin, {
+    action: "acceptRecruitingInvitation",
+    postId: ids.postId,
+    invitationId: invitation.id,
+  }));
+  post = await getRecruitingPostAfterResult(acceptResult, inviteeLogin, `${ids.label}:loadAfterAccept`);
+  const applicant = post?.applicants?.find((item) => item.playerId === inviteeId);
+  const pendingInvite = post?.roomState?.invitations?.find((item) => item.id === invitation.id && item.status === "pending");
+  assertFlow(applicant?.status === "ready" && applicant.side === "teamB", "accepted invitee not ready on teamB", {
+    inviteeId,
+    applicant,
+    post,
+  });
+  assertFlow(!pendingInvite, "accepted invitation still pending", { invitationId: invitation.id, post });
+
+  const confirmResult = await step(`${ids.label}:confirmRecruitingMatch`, () => syncRecruitingAs(hostLogin, {
+    action: "confirmRecruitingMatch",
+    postId: ids.postId,
+    preferredMatchId: ids.matchId,
+  }));
+  const match = confirmResult?.createdMatch;
+  assertFlow(match?.id === ids.matchId, "invite match not returned", confirmResult);
+  assertFlow(match.teamA?.players?.includes(hostId), "invite host missing from teamA", match);
+  assertFlow(match.teamB?.players?.includes(inviteeId), "invitee missing from teamB", match);
+
+  return {
+    label: ids.label,
+    hostLogin,
+    inviteeLogin,
+    hostId,
+    inviteeId,
+    postId: ids.postId,
+    matchId: ids.matchId,
+    inviteAccepted: true,
+    matchCreated: true,
+  };
+}
+
+async function runDisputeResumeThumbsScenario({
+  label,
+  hostLogin,
+  opponentLogin,
+}) {
+  ids = makeScenarioIds(label);
+  const hostId = await step(`${ids.label}:resolveProfile:host`, () => getProfileIdForLogin(hostLogin));
+  const opponentId = await step(`${ids.label}:resolveProfile:opponent`, () => getProfileIdForLogin(opponentLogin));
+  assertFlow(hostId !== opponentId, "host and opponent must be different profiles", { hostId, opponentId });
+
+  const createResult = await step(`${ids.label}:createRecruitingPost`, () => syncRecruitingAs(hostLogin, {
+    action: "createRecruitingPost",
+    preferredPostId: ids.postId,
+    draft: {
+      id: ids.postId,
+      title: `Backend simulation ${ids.label}`,
+      visibility: "public",
+      hostJoinMode: "player",
+      mode: "1v1",
+      sideCapacity: 1,
+      timingType: "instant",
+      ranked: false,
+      official: false,
+      preRegistered: true,
+      teamOnly: false,
+      refereeWanted: false,
+      region: "Backend Simulation",
+      court: "Backend Simulation Court",
+      position: "PG",
+      memo: "Backend simulation row. Safe to delete.",
+      rules: {
+        targetScore: 21,
+        timeLimit: 12,
+        winByTwo: true,
+        ball: "7",
+      },
+    },
+  }));
+  let post = createResult?.post;
+  assertFlow(post?.id === ids.postId, "created dispute post not returned", createResult);
+
+  const opponentJoinResult = await step(`${ids.label}:interestRecruitingPost:opponent`, () => syncRecruitingAs(opponentLogin, {
+    action: "interestRecruitingPost",
+    postId: ids.postId,
+    application: {
+      joinMode: "player",
+      side: "teamB",
+      position: "PG",
+    },
+    joinMode: "player",
+  }));
+  post = await getRecruitingPostAfterResult(opponentJoinResult, opponentLogin, `${ids.label}:loadAfterJoin`);
+  assertFlow(post?.applicants?.some((applicant) => applicant.playerId === opponentId), "dispute opponent join not persisted", post);
+
+  const readyResult = await step(`${ids.label}:setRecruitingReady`, () => syncRecruitingAs(opponentLogin, {
+    action: "setRecruitingReady",
+    postId: ids.postId,
+    ready: true,
+  }));
+  post = await getRecruitingPostAfterResult(readyResult, opponentLogin, `${ids.label}:loadAfterReady`);
+  assertFlow(post?.applicants?.some((applicant) => applicant.playerId === opponentId && applicant.status === "ready"), "dispute opponent ready not persisted", post);
+
+  const confirmResult = await step(`${ids.label}:confirmRecruitingMatch`, () => syncRecruitingAs(hostLogin, {
+    action: "confirmRecruitingMatch",
+    postId: ids.postId,
+    preferredMatchId: ids.matchId,
+  }));
+  let match = confirmResult?.createdMatch;
+  assertFlow(match?.id === ids.matchId, "dispute match not returned", confirmResult);
+
+  if (!match.agreements?.teamA?.includes(hostId)) {
+    const agreeAResult = await step(`${ids.label}:agreeMatch:teamA`, () => syncMatchAs(hostLogin, {
+      action: "agreeMatch",
+      matchId: ids.matchId,
+      sideName: "teamA",
+      playerId: hostId,
+    }, { match: withAgreement(match, "teamA", hostId) }));
+    match = await getMatchAfterResult(agreeAResult, hostLogin, `${ids.label}:loadAfterAgreeTeamA`);
+    assertFlow(match?.agreements?.teamA?.includes(hostId), "dispute teamA agreement not persisted", match);
+  }
+
+  if (!match.agreements?.teamB?.includes(opponentId)) {
+    const agreeBResult = await step(`${ids.label}:agreeMatch:teamB`, () => syncMatchAs(opponentLogin, {
+      action: "agreeMatch",
+      matchId: ids.matchId,
+      sideName: "teamB",
+      playerId: opponentId,
+    }, { match: withAgreement(match, "teamB", opponentId) }));
+    match = await getMatchAfterResult(agreeBResult, opponentLogin, `${ids.label}:loadAfterAgreeTeamB`);
+    assertFlow(match?.agreements?.teamB?.includes(opponentId), "dispute teamB agreement not persisted", match);
+  }
+
+  const checkInBResult = await step(`${ids.label}:checkInMatchPlayer:teamB`, () => syncMatchAs(hostLogin, {
+    action: "checkInMatchPlayer",
+    matchId: ids.matchId,
+    sideName: "teamB",
+    playerId: opponentId,
+  }, { match: withAttendance(match, "teamB", opponentId) }));
+  match = await getMatchAfterResult(checkInBResult, hostLogin, `${ids.label}:loadAfterCheckInTeamB`);
+  assertFlow(match?.attendance?.teamB?.includes(opponentId), "dispute teamB check-in not persisted", match);
+
+  const startResult = await step(`${ids.label}:startMatch`, () => syncMatchAs(hostLogin, {
+    action: "startMatch",
+    matchId: ids.matchId,
+  }, { match: withStartedMatch(match, hostId) }));
+  match = await getMatchAfterResult(startResult, hostLogin, `${ids.label}:loadAfterStartMatch`);
+  assertFlow(Boolean(match?.startedAt), "dispute match start not persisted", match);
+
+  const endResult = await step(`${ids.label}:endMatch`, () => syncMatchAs(hostLogin, {
+    action: "endMatch",
+    matchId: ids.matchId,
+  }, { match: withEndedMatch(match) }));
+  match = await getMatchAfterResult(endResult, hostLogin, `${ids.label}:loadAfterEndMatch`);
+  assertFlow(Boolean(match?.endedAt), "dispute match end not persisted", match);
+
+  const resultSubmit = await step(`${ids.label}:submitMatchResult`, () => syncMatchAs(hostLogin, {
+    action: "submitMatchResult",
+    matchId: ids.matchId,
+    result: makeResult(match),
+  }));
+  match = resultSubmit?.match;
+  assertFlow(match?.status === "approval" && match?.result, "dispute result not persisted", match);
+
+  const disputeResult = await step(`${ids.label}:disputeMatch`, () => syncMatchAs(opponentLogin, {
+    action: "disputeMatch",
+    matchId: ids.matchId,
+    reason: "Backend simulation dispute",
+  }));
+  match = disputeResult?.match;
+  assertFlow(match?.status === "disputed" && (match.disputes ?? []).some((item) => item.by === opponentId), "dispute not persisted", match);
+
+  const resumeResult = await step(`${ids.label}:resumeMatchApproval`, () => syncMatchAs(hostLogin, {
+    action: "resumeMatchApproval",
+    matchId: ids.matchId,
+  }));
+  match = resumeResult?.match;
+  assertFlow(match?.status === "confirmed", "dispute resume did not confirm match", match);
+
+  const thumbsResult = await step(`${ids.label}:submitMatchThumbs`, () => syncMatchAs(hostLogin, {
+    action: "submitMatchThumbs",
+    matchId: ids.matchId,
+    targetUserIds: [opponentId],
+  }));
+  match = thumbsResult?.match;
+  assertFlow((match?.trustFeedback?.stars?.[hostId] ?? []).includes(opponentId), "match thumbs not persisted", {
+    hostId,
+    opponentId,
+    match,
+  });
+
+  return {
+    label: ids.label,
+    hostLogin,
+    opponentLogin,
+    hostId,
+    opponentId,
+    postId: ids.postId,
+    matchId: ids.matchId,
+    finalStatus: match.status,
+    disputed: true,
+    thumbsSubmitted: true,
+    sqlReducers: {
+      setRecruitingReady: Boolean(readyResult?.sqlReducer),
+      checkInMatchPlayer: Boolean(checkInBResult?.sqlReducer),
+      startMatch: Boolean(startResult?.sqlReducer),
+      endMatch: Boolean(endResult?.sqlReducer),
+    },
+  };
+}
+
 async function runRecruitingActorScenario({
   label,
   hostLogin,
@@ -1015,8 +1283,17 @@ async function main() {
   const teamBlockedTeamId = process.env.RANKBALL_SIM_SOLO_BLOCK_TEAM_ID || "t1";
   const refereeBlockedHostLogin = process.env.RANKBALL_SIM_REF_BLOCK_HOST || "rankball-014";
   const refereeBlockedLogin = process.env.RANKBALL_SIM_REF_BLOCK_CANDIDATE || "rankball-015";
+  const inviteHostLogin = process.env.RANKBALL_SIM_INVITE_HOST || "rankball-016";
+  const inviteeLogin = process.env.RANKBALL_SIM_INVITEE || "rankball-015";
+  const disputeHostLogin = process.env.RANKBALL_SIM_DISPUTE_HOST || "rankball-010";
+  const disputeOpponentLogin = process.env.RANKBALL_SIM_DISPUTE_OPPONENT || "rankball-011";
 
   const scenarios = [];
+  scenarios.push(await runRecruitingInviteAcceptScenario({
+    label: "private_player_invite_accept",
+    hostLogin: inviteHostLogin,
+    inviteeLogin,
+  }));
   scenarios.push(await runRecruitingActorScenario({
     label: "recruiting_actor_join_position",
     hostLogin: actorHostLogin,
@@ -1037,6 +1314,11 @@ async function main() {
     label: "basic_1v1_no_referee",
     hostLogin: basicHostLogin,
     opponentLogin: basicOpponentLogin,
+  }));
+  scenarios.push(await runDisputeResumeThumbsScenario({
+    label: "dispute_resume_thumbs",
+    hostLogin: disputeHostLogin,
+    opponentLogin: disputeOpponentLogin,
   }));
   scenarios.push(await runOneOnOneScenario({
     label: "referee_1v1",
