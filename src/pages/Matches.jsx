@@ -893,13 +893,6 @@ export default function Matches({ app }) {
       .filter((post) => kindFilter === "all" || (kindFilter === "ranked" ? post.ranked !== false : post.ranked === false))
       .filter((post) => modeFilter === "all" || post.mode === modeFilter);
   }, [app.currentUser.id, app.state, historyCutoffDate, historyRangeMonths, kindFilter, matchPageRecruitingPosts, maxScheduleDate, modeFilter, myTeamIds, todayValue]);
-  const getViewIdForDate = (day) => {
-    if (visibleRecruitingCandidates.some((post) => !isInstantScheduleRoom(post) && getMatchDate(post) === day)) return "scheduled";
-    const dayMatches = baseFilteredMatches.filter((match) => getMatchDate(match) === day);
-    const preferredView = VIEWS.find((view) => dayMatches.some((match) => shouldShowMatchForView(match, view, app.currentUser.id)));
-    return preferredView?.id ?? (day < todayValue ? "closed" : "active");
-  };
-
   const dateScopedRecruitingCandidates = useMemo(() => visibleRecruitingCandidates.filter((post) => {
     if (isInstantScheduleRoom(post)) return !dateFilter;
     const postDate = getMatchDate(post);
@@ -1064,7 +1057,7 @@ export default function Matches({ app }) {
                   className={`${selected ? "active" : ""} ${isToday ? "today" : ""}`}
                   onClick={() => {
                     setDateFilter(day);
-                    setViewId(getViewIdForDate(day));
+                    setViewId("active");
                   }}
                 >
                   <strong>{Number(day.slice(-2))}</strong>
