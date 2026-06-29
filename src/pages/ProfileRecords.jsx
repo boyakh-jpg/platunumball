@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import Card from "../components/common/Card.jsx";
@@ -53,6 +54,13 @@ function getTotals(records, userId) {
 
 export default function ProfileRecords({ app }) {
   const user = app.currentUser;
+  const loadKeyRef = useRef("");
+  useEffect(() => {
+    if (!app.remoteReady || !app.actions.loadProfileRecords) return;
+    if (loadKeyRef.current === user.id) return;
+    loadKeyRef.current = user.id;
+    app.actions.loadProfileRecords();
+  }, [app.actions, app.remoteReady, user.id]);
   const records = [...app.state.matches]
     .filter((match) => match.status === "confirmed" && getUserSide(match, user.id))
     .sort(compareRecent);

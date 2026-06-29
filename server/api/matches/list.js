@@ -285,6 +285,37 @@ async function fetchCurrentUserMatchPage(client, profileId = "", limit = REMOTE_
   };
 }
 
+async function fetchCurrentUserCompletedMatchIds(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT) {
+  if (!profileId || !userRoomFeedAvailable) return null;
+  const cappedLimit = Math.max(1, Math.min(MATCH_LIST_MAX_LIMIT, Number(limit) || REMOTE_CLIENT_MATCH_LIMIT));
+  const rowLimit = Math.min(600, cappedLimit * 3);
+  const { data, error } = await client
+    .from("user_room_feed")
+    .select("entity_id,sort_at,relation")
+    .eq("entity_type", "match")
+    .eq("profile_id", profileId)
+    .eq("is_active", true)
+    .eq("status", "confirmed")
+    .eq("relation", "participant")
+    .order("sort_at", { ascending: false, nullsFirst: false })
+    .order("entity_id", { ascending: false })
+    .range(0, rowLimit - 1);
+  if (error) {
+    if (isMissingUserRoomFeed(error)) {
+      userRoomFeedAvailable = false;
+      console.warn("Completed match feed skipped.", error.message);
+      return null;
+    }
+    throw error;
+  }
+  const rows = data ?? [];
+  const ids = unique(rows.map((row) => row?.entity_id)).slice(0, cappedLimit);
+  return {
+    ids,
+    exhausted: rows.length < rowLimit || ids.length < cappedLimit,
+  };
+}
+
 function getMatchUserIds(match = {}) {
   return unique([
     match.createdBy,
@@ -294,6 +325,13 @@ function getMatchUserIds(match = {}) {
     ...(match.teamB?.players ?? []),
     ...(match.reservePlayers?.teamA ?? []),
     ...(match.reservePlayers?.teamB ?? []),
+  ]);
+}
+
+function getMatchPlayerIds(match = {}) {
+  return unique([
+    ...(match.teamA?.players ?? []),
+    ...(match.teamB?.players ?? []),
   ]);
 }
 
@@ -582,6 +620,39 @@ async function loadCurrentRecruitingSchedule(context, adminLevel = 0) {
 }
 
 async function loadNormalizedMatchList(context, body = {}, adminLevel = 0, limit = REMOTE_CLIENT_MATCH_LIMIT) {
+  const completedOnly = body.completedOnly === true;
+  const completedPage = completedOnly
+    ? await fetchCurrentUserCompletedMatchIds(context.supabase, context.profileId, limit)
+    : null;
+  if (completedOnly && completedPage && !completedPage.ids.length) {
+    const currentUser = context.profile
+      ? fromRemoteProfile(context.profile)
+      : createProfileShell(context.authUserId, context.authUser?.email ?? "");
+    const settings = {
+      ...DEFAULT_SETTINGS,
+      ...getRemoteAppSettings(context.profile),
+    };
+    return {
+      state: normalizeState({
+        currentUserId: currentUser.id,
+        users: [currentUser],
+        matches: [],
+        recruitingPosts: [],
+        tournaments: [],
+        settings,
+      }, { includeDemo: false }),
+      page: {
+        limit,
+        count: 0,
+        cursor: "",
+        exhausted: true,
+        source: "completed_feed",
+        recruitingScheduleChecked: false,
+        recruitingScheduleCount: 0,
+      },
+      updatedAt: Number(new Date(context.profile?.updated_at ?? 0).getTime()) || 0,
+    };
+  }
   const normalized = await loadNormalizedRemoteStateFromClient(
     context.supabase,
     context.authUserId,
@@ -591,6 +662,7 @@ async function loadNormalizedMatchList(context, body = {}, adminLevel = 0, limit
       isAdmin: adminLevel >= 30,
       scope: "matches",
       matchListOnly: false,
+      matchIds: completedPage?.ids ?? undefined,
       matchLimit: limit,
       matchUpdatedBefore: body.cursor ?? body.matchUpdatedBefore ?? "",
       recruitingLimit: 0,
@@ -601,7 +673,9 @@ async function loadNormalizedMatchList(context, body = {}, adminLevel = 0, limit
   const state = filterStateForProfile(normalized?.state ?? {}, profileId, adminLevel >= 30);
   const scopedState = body.recorderOnly
     ? { ...state, matches: (state.matches ?? []).filter((match) => isRecorderMatch(match, profileId, adminLevel >= 30)) }
-    : state;
+    : completedOnly
+      ? { ...state, matches: (state.matches ?? []).filter((match) => match.status === "confirmed" && getMatchPlayerIds(match).includes(profileId)) }
+      : state;
   const matches = scopedState.matches ?? [];
   const responseState = body.listOnly === false && !body.recorderOnly
     ? scopedState
@@ -616,7 +690,8 @@ async function loadNormalizedMatchList(context, body = {}, adminLevel = 0, limit
       limit,
       count: matches.length,
       cursor: getMatchCursor(matches),
-      exhausted: matches.length < limit,
+      exhausted: completedPage ? completedPage.exhausted : matches.length < limit,
+      source: completedOnly && completedPage ? "completed_feed" : undefined,
       recruitingScheduleChecked: false,
       recruitingScheduleCount: 0,
     },
