@@ -6,6 +6,8 @@
 - 포함 필드: `teamA/teamB`, `agreements`, `approvals`, `disputes`, `result.statSubmissions`, `result.playerStats`, `startedAt`, `endedAt`, `confirmedAt`, `cancelledAt`, `voidedAt`.
 - `match_agreements`, `match_approvals`, `match_disputes`, `match_results`, `player_match_stats` 변경은 match feed를 즉시 갱신해야 한다.
 - 경기/홈 첫 목록은 feed 카드만으로 `todo`, `scheduled`, `record` 분류가 가능해야 하며, 상세 통계/기록 원본은 방 상세나 기록 화면 진입 때만 넓게 불러온다.
+- `/api/system/maintenance` cron은 source room/match row를 삭제하지 않고 `user_room_feed.is_active=false`로만 만료 feed를 숨긴다. 모집방 feed는 orphan, `closed/cancelled`, 60분 지난 즉시방, 시작 시각이 지난 예약방을 숨긴다. 경기 feed는 orphan과 `closed`만 숨기며 `confirmed` 기록방은 기록 화면 진입 때 별도 로드한다.
+- 경기 메뉴의 상태/날짜 버튼은 이미 받은 feed snapshot만 필터링한다. 추가 모집 일정 재호출은 하지 않으며, 과거 1/3/6개월 보기처럼 기록 범위가 필요한 경우에만 기록 API를 호출한다.
 
 ## 2026-06-29 초대 수락 최신화
 

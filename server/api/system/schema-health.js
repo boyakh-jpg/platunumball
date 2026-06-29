@@ -187,6 +187,10 @@ const REQUIRED_RPCS = [
     args: { p_profile_id: "", p_limit: 1, p_cursor: "", p_active_only: true },
   },
   {
+    name: "rankball_cleanup_room_feed",
+    args: { p_now: new Date(0).toISOString() },
+  },
+  {
     name: "rankball_match_end_action",
     args: { p_actor_profile_id: "", p_match_id: "", p_started_at: "", p_ended_at: "" },
   },

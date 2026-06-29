@@ -311,14 +311,6 @@ function getMatchActionLabel(match) {
   return getMatchRoomPhase(match).actionLabel;
 }
 
-function getViewCount(matches, view, userId) {
-  return matches.filter((match) => shouldShowMatchForView(match, view, userId)).length;
-}
-
-function getViewListCount(matches, view, userId, hasDateFilter) {
-  return matches.filter((match) => shouldShowMatchInList(match, view, userId, hasDateFilter)).length;
-}
-
 function matchHasUser(match, userId) {
   return Boolean(
     getUserParticipantSideName(match, userId) ||
@@ -377,6 +369,20 @@ function shouldShowMatchInList(match, view, userId, hasDateFilter) {
   if (!shouldShowMatchForView(match, view, userId)) return false;
   if (view.id === "active" && match.status === "confirmed" && !hasDateFilter) return false;
   return true;
+}
+
+function getRecruitingRoomsForView(posts = [], view) {
+  if (!["active", "scheduled"].includes(view.id)) return [];
+  return posts.filter((post) => view.id === "active" || !isInstantScheduleRoom(post));
+}
+
+function getScheduleItemsForView(matches = [], recruitingPosts = [], view, userId, hasDateFilter) {
+  return [
+    ...getRecruitingRoomsForView(recruitingPosts, view).map((post) => ({ type: "room", id: `room-${post.id}`, item: post })),
+    ...matches
+      .filter((match) => shouldShowMatchInList(match, view, userId, hasDateFilter))
+      .map((match) => ({ type: "match", id: `match-${match.id}`, item: match })),
+  ].sort((a, b) => compareSchedule(a.item, b.item));
 }
 
 function getRecruitingEntryForUser(lobby, userId) {
@@ -808,12 +814,6 @@ export default function Matches({ app }) {
   }, [app.currentUser.id, queryMatchId]);
 
   useEffect(() => {
-    const pagination = app.matchPagination ?? {};
-    if (app.remoteReady === false || pagination.recruitingScheduleLoading || pagination.error || pagination.recruitingScheduleChecked) return;
-    app.actions.loadMatchRecruitingSchedule?.();
-  }, [app.actions, app.matchPagination?.error, app.matchPagination?.recruitingScheduleChecked, app.matchPagination?.recruitingScheduleLoading, app.remoteReady]);
-
-  useEffect(() => {
     if (!selectedRecruitingPostId || !app.remoteReady || !app.currentUser.id) return undefined;
     app.actions.loadRecruitingPost?.(selectedRecruitingPostId);
     const intervalId = window.setInterval(() => {
@@ -858,7 +858,7 @@ export default function Matches({ app }) {
       .filter((post) => post.status === "open")
       .filter((post) => isRecruitingRoomInUserSchedule(post, app.state, app.currentUser.id, myTeamIds))
       .filter((post) => {
-        if (isInstantScheduleRoom(post)) return true;
+        if (isInstantScheduleRoom(post)) return false;
         const postDate = getMatchDate(post);
         if (!postDate) return false;
         return postDate <= maxScheduleDate && shouldIncludeByHistoryRange(post, todayValue, historyRangeMonths, historyCutoffDate);
@@ -894,17 +894,11 @@ export default function Matches({ app }) {
       .filter((post) => modeFilter === "all" || post.mode === modeFilter);
   }, [app.currentUser.id, app.state, historyCutoffDate, historyRangeMonths, kindFilter, matchPageRecruitingPosts, maxScheduleDate, modeFilter, myTeamIds, todayValue]);
   const getViewIdForDate = (day) => {
-    if (visibleRecruitingCandidates.some((post) => getMatchDate(post) === day)) return "scheduled";
+    if (visibleRecruitingCandidates.some((post) => !isInstantScheduleRoom(post) && getMatchDate(post) === day)) return "scheduled";
     const dayMatches = baseFilteredMatches.filter((match) => getMatchDate(match) === day);
     const preferredView = VIEWS.find((view) => dayMatches.some((match) => shouldShowMatchForView(match, view, app.currentUser.id)));
-    return preferredView?.id ?? (day < todayValue ? "history" : "active");
+    return preferredView?.id ?? (day < todayValue ? "closed" : "active");
   };
-
-  const matchesByView = useMemo(() => {
-    return filteredMatches
-      .filter((match) => shouldShowMatchInList(match, selectedView, app.currentUser.id, Boolean(dateFilter || historyRangeMonths > 0)))
-      .sort(compareSchedule);
-  }, [app.currentUser.id, dateFilter, filteredMatches, historyRangeMonths, selectedView]);
 
   const dateScopedRecruitingCandidates = useMemo(() => visibleRecruitingCandidates.filter((post) => {
     if (isInstantScheduleRoom(post)) return !dateFilter;
@@ -912,38 +906,30 @@ export default function Matches({ app }) {
     return !dateFilter || postDate === dateFilter;
   }), [dateFilter, visibleRecruitingCandidates]);
 
-  const visibleRecruitingRooms = useMemo(() => {
-    if (!["active", "scheduled"].includes(viewId)) return [];
-    return dateScopedRecruitingCandidates
-      .filter((post) => viewId === "active" || !isInstantScheduleRoom(post))
-      .sort(compareSchedule);
-  }, [dateScopedRecruitingCandidates, viewId]);
-
-  const scheduledRecruitingRoomCount = dateScopedRecruitingCandidates.filter((post) => !isInstantScheduleRoom(post)).length;
-  const visibleMatches = matchesByView;
-  const visibleScheduleItems = useMemo(() => ([
-    ...visibleRecruitingRooms.map((post) => ({ type: "room", id: `room-${post.id}`, item: post })),
-    ...visibleMatches.map((match) => ({ type: "match", id: `match-${match.id}`, item: match })),
-  ].sort((a, b) => compareSchedule(a.item, b.item))), [visibleMatches, visibleRecruitingRooms]);
   const hasDateFilter = Boolean(dateFilter || historyRangeMonths > 0);
-  const activeMatchCount = getViewListCount(filteredMatches, VIEWS[0], app.currentUser.id, hasDateFilter);
-  const todoCount = getViewCount(filteredMatches, VIEWS[1], app.currentUser.id);
-  const scheduledCount = getViewCount(filteredMatches, VIEWS[2], app.currentUser.id) + scheduledRecruitingRoomCount;
-  const closedCount = getViewCount(filteredMatches, VIEWS[3], app.currentUser.id);
-  const activeCount = activeMatchCount + dateScopedRecruitingCandidates.length;
-  const viewButtonCounts = {
-    todo: todoCount,
-    scheduled: scheduledCount,
-    closed: closedCount,
-  };
-  viewButtonCounts.active = activeCount;
+  const scheduleItemsByView = useMemo(() => Object.fromEntries(
+    VIEWS.map((view) => [
+      view.id,
+      getScheduleItemsForView(filteredMatches, dateScopedRecruitingCandidates, view, app.currentUser.id, hasDateFilter),
+    ]),
+  ), [app.currentUser.id, dateScopedRecruitingCandidates, filteredMatches, hasDateFilter]);
+  const visibleScheduleItems = scheduleItemsByView[viewId] ?? [];
+  const viewButtonCounts = Object.fromEntries(
+    VIEWS.map((view) => [view.id, scheduleItemsByView[view.id]?.length ?? 0]),
+  );
+  const activeCount = viewButtonCounts.active ?? 0;
+  const todoCount = viewButtonCounts.todo ?? 0;
+  const scheduledCount = viewButtonCounts.scheduled ?? 0;
   const getViewButtonCount = (view) => viewButtonCounts[view.id] ?? 0;
-  const listRecruitingRoomCount = ["active", "scheduled"].includes(viewId) ? visibleRecruitingRooms.length : 0;
+  const selectHistoryRange = (month) => {
+    setHistoryRangeMonths(month);
+    if (month > 0 && !app.actions.profileRecordsLoaded) app.actions.loadProfileRecords?.();
+  };
   const scheduleLoading = app.remoteReady === false || (matchPagination.recruitingScheduleLoading && !visibleScheduleItems.length);
   const displayScheduleItems = scheduleLoading ? [] : visibleScheduleItems;
   const scheduleCountLabel = scheduleLoading
     ? "내 일정 확인 중"
-    : `내 일정 ${matchesByView.length + listRecruitingRoomCount}개 중 ${displayScheduleItems.length}개 표시`;
+    : `내 일정 ${visibleScheduleItems.length}개 중 ${displayScheduleItems.length}개 표시`;
   const displayActiveCount = scheduleLoading ? "..." : activeCount;
   const displayTodoCount = scheduleLoading ? "..." : todoCount;
   const displayScheduledCount = scheduleLoading ? "..." : scheduledCount;
@@ -1029,7 +1015,7 @@ export default function Matches({ app }) {
                 key={month}
                 type="button"
                 className={historyRangeMonths === month ? "active" : ""}
-                onClick={() => setHistoryRangeMonths(month)}
+                onClick={() => selectHistoryRange(month)}
               >
                 {month ? `${month}개월` : "안보기"}
               </button>

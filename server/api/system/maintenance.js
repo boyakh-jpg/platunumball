@@ -1,4 +1,4 @@
-import { getSupabaseAdminClient, sendJson } from "../_supabaseAdmin.js";
+import { getSupabaseAdminClient, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import { getMatchRatingCommit } from "../_authoritativeState.js";
 import { commitMatchRating } from "../matches/sync-match.js";
 import { loadNormalizedRemoteStateFromClient, runAutomaticStateMaintenance } from "../../../src/data/repository.js";
@@ -29,6 +29,11 @@ function normalizeLimit(value) {
 
 function getLimit(request) {
   return normalizeLimit(request.query?.limit ?? process.env.RANKBALL_MAINTENANCE_MATCH_LIMIT ?? DEFAULT_MATCH_LIMIT);
+}
+
+function isMissingCleanupRpc(error) {
+  const message = String(error?.message ?? "").toLowerCase();
+  return error?.code === "PGRST202" || error?.code === "42883" || message.includes("rankball_cleanup_room_feed");
 }
 
 function getApprovalRows(match = {}) {
@@ -132,6 +137,25 @@ async function processMatch(client, matchId, now) {
   };
 }
 
+async function cleanupRoomFeed(client, now) {
+  const { data, error } = await client.rpc("rankball_cleanup_room_feed", {
+    p_now: now.toISOString(),
+  });
+  if (error) {
+    if (isMissingCleanupRpc(error)) {
+      return { ok: false, skipped: true, error: "rankball_cleanup_room_feed_missing", checks: [] };
+    }
+    throw error;
+  }
+  const checks = Array.isArray(data) ? data : [];
+  return {
+    ok: true,
+    skipped: false,
+    affected: checks.reduce((sum, row) => sum + Number(row?.affected_count ?? 0), 0),
+    checks,
+  };
+}
+
 export async function runSystemMaintenance(client = getSupabaseAdminClient(), options = {}) {
   const limit = normalizeLimit(options.limit ?? process.env.RANKBALL_MAINTENANCE_MATCH_LIMIT ?? DEFAULT_MATCH_LIMIT);
   const now = options.now instanceof Date ? options.now : new Date();
@@ -146,13 +170,14 @@ export async function runSystemMaintenance(client = getSupabaseAdminClient(), op
     ok: results.every((result) => result.ok || result.skipped),
     candidateCount: candidateIds.length,
     confirmedCount: results.filter((result) => result.ok).length,
+    feedCleanup: await cleanupRoomFeed(client, now),
     results,
   };
 }
 
 export default async function handler(request, response) {
-  if (request.method !== "POST") {
-    response.setHeader("Allow", "POST");
+  if (!["GET", "POST"].includes(request.method)) {
+    response.setHeader("Allow", "GET, POST");
     sendJson(response, 405, { error: "method_not_allowed" });
     return;
   }
@@ -160,7 +185,8 @@ export default async function handler(request, response) {
   try {
     assertAccess(request);
     const client = getSupabaseAdminClient();
-    sendJson(response, 200, await runSystemMaintenance(client, { limit: getLimit(request) }));
+    const body = request.method === "POST" ? await readJsonBody(request) : {};
+    sendJson(response, 200, await runSystemMaintenance(client, { limit: normalizeLimit(body.limit ?? getLimit(request)) }));
   } catch (error) {
     console.error("System maintenance failed.", error);
     sendJson(response, error.statusCode || 500, { error: error.message || "maintenance_failed" });
