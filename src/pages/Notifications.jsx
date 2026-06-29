@@ -27,12 +27,16 @@ export default function Notifications({ app }) {
     invitation.targetUserId === app.currentUser.id &&
     invitation.status === "pending"
   ));
-  const acceptInvitation = (postId, invitationId) => {
-    app.actions.acceptRecruitingInvitation(postId, invitationId);
+  const acceptInvitation = async (postId, invitationId) => {
+    await app.actions.acceptRecruitingInvitation(postId, invitationId);
+    await app.actions.loadRecruitingPost?.(postId);
+    app.actions.loadMyRecruitingPosts?.();
+    app.actions.loadMatchRecruitingSchedule?.();
     navigate(`/app/recruiting?post=${postId}`);
   };
-  const acceptTeamInvite = (invitation) => {
-    app.actions.acceptTeamInvitation(invitation.id);
+  const acceptTeamInvite = async (invitation) => {
+    await app.actions.acceptTeamInvitation(invitation.id);
+    await app.actions.loadDirectory?.(true);
     navigate(`/app/teams/${invitation.teamId}`);
   };
 

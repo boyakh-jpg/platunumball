@@ -117,6 +117,18 @@ const SIDE_LABELS = {
   teamB: "B사이드",
 };
 
+function getSafeMatchSide(match = {}, sideName = "teamA") {
+  const side = match?.[sideName];
+  const fallbackName = sideName === "teamA" ? "A" : "B";
+  if (!side || typeof side !== "object") return { name: fallbackName, teamId: null, players: [] };
+  return {
+    ...side,
+    name: side.name || fallbackName,
+    teamId: side.teamId ?? null,
+    players: Array.isArray(side.players) ? side.players : [],
+  };
+}
+
 function toDateInputValue(date = new Date()) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -287,10 +299,12 @@ function getRoomTypeLabel(room = {}, lobby = null) {
 }
 
 function getWinner(match) {
-  const scoreA = Number(match.teamA.score ?? match.result?.scoreA ?? 0);
-  const scoreB = Number(match.teamB.score ?? match.result?.scoreB ?? 0);
+  const teamA = getSafeMatchSide(match, "teamA");
+  const teamB = getSafeMatchSide(match, "teamB");
+  const scoreA = Number(teamA.score ?? match.result?.scoreA ?? 0);
+  const scoreB = Number(teamB.score ?? match.result?.scoreB ?? 0);
   if (scoreA === scoreB) return "";
-  return scoreA > scoreB ? match.teamA.name : match.teamB.name;
+  return scoreA > scoreB ? teamA.name : teamB.name;
 }
 
 function getMatchActionLabel(match) {
@@ -315,8 +329,8 @@ function matchHasUser(match, userId) {
 }
 
 function getUserSideName(match, userId) {
-  if (match.teamA.players.includes(userId)) return "teamA";
-  if (match.teamB.players.includes(userId)) return "teamB";
+  if (getSafeMatchSide(match, "teamA").players.includes(userId)) return "teamA";
+  if (getSafeMatchSide(match, "teamB").players.includes(userId)) return "teamB";
   return null;
 }
 
@@ -574,7 +588,7 @@ function getMatchRoomPost(match, state) {
     applicants.push({
       kind: "team",
       joinMode: "team",
-      teamId: match.teamB.teamId,
+      teamId: match.teamB?.teamId,
       playerId: teamBPlayers[0] ?? null,
       playerIds: teamBPlayers,
       side: "teamB",
@@ -583,7 +597,7 @@ function getMatchRoomPost(match, state) {
       createdAt: match.createdAt,
       updatedAt: match.createdAt,
     });
-    partyReserves[`team:${match.teamB.teamId}`] = teamBReserves;
+    partyReserves[`team:${match.teamB?.teamId}`] = teamBReserves;
   } else if (!matchParties.length) {
     teamBPlayers.forEach((playerId) => {
       applicants.push({
@@ -1215,9 +1229,9 @@ export default function Matches({ app }) {
                     {tournamentMatches.map((match) => (
                       <form key={match.id} className={canManageSchedule ? "om-tournament-fixture-row" : "om-tournament-fixture-row locked"} onSubmit={(event) => saveTournamentSchedule(event, selectedTournament.id, match.id)}>
                         <Link to={`/app/matches?match=${match.id}`}>
-                          <TeamHoverCard team={teamById[match.teamA.teamId]} as="span">{match.teamA.name}</TeamHoverCard>
+                          <TeamHoverCard team={teamById[match.teamA?.teamId]} as="span">{match.teamA?.name ?? "A"}</TeamHoverCard>
                           {" vs "}
-                          <TeamHoverCard team={teamById[match.teamB.teamId]} as="span">{match.teamB.name}</TeamHoverCard>
+                          <TeamHoverCard team={teamById[match.teamB?.teamId]} as="span">{match.teamB?.name ?? "B"}</TeamHoverCard>
                         </Link>
                         <input type="date" name="scheduledDate" min={todayValue} max={maxScheduleDate} defaultValue={match.scheduledDate ?? ""} disabled={!canManageSchedule} aria-label="경기 날짜" />
                         <input type="time" name="scheduledTime" defaultValue={match.scheduledTime ?? ""} disabled={!canManageSchedule} aria-label="경기 시간" />
@@ -1310,8 +1324,8 @@ export default function Matches({ app }) {
           const match = item;
           const status = getMatchProcessMeta(match);
           const showScoreBox = shouldShowScoreBox(match);
-          const scoreA = match.teamA.score ?? match.result?.scoreA ?? 0;
-          const scoreB = match.teamB.score ?? match.result?.scoreB ?? 0;
+          const scoreA = getSafeMatchSide(match, "teamA").score ?? match.result?.scoreA ?? 0;
+          const scoreB = getSafeMatchSide(match, "teamB").score ?? match.result?.scoreB ?? 0;
           const winner = getWinner(match);
           const sourcePost = match.recruitingPostId ? app.state.recruitingPosts.find((post) => post.id === match.recruitingPostId) : null;
           const visibilityLabel = getRoomVisibilityLabel(match, sourcePost);
@@ -1333,18 +1347,18 @@ export default function Matches({ app }) {
               </div>
               {showScoreBox ? (
                 <div className="om-score-box">
-                  <TeamHoverCard team={teamById[match.teamA.teamId]} to={`/app/teams/${match.teamA.teamId}`}>{match.teamA.name}</TeamHoverCard>
+                  <TeamHoverCard team={teamById[match.teamA?.teamId]} to={match.teamA?.teamId ? `/app/teams/${match.teamA?.teamId}` : undefined}>{match.teamA?.name ?? "A"}</TeamHoverCard>
                   <strong>{scoreA} : {scoreB}</strong>
-                  <TeamHoverCard team={teamById[match.teamB.teamId]} to={`/app/teams/${match.teamB.teamId}`}>{match.teamB.name}</TeamHoverCard>
+                  <TeamHoverCard team={teamById[match.teamB?.teamId]} to={match.teamB?.teamId ? `/app/teams/${match.teamB?.teamId}` : undefined}>{match.teamB?.name ?? "B"}</TeamHoverCard>
                   {winner ? <span>{winner} 우세</span> : null}
                 </div>
               ) : (
                 <MatchListSummary
-                  left={match.teamA.name}
-                  right={match.teamB.name}
-                  leftTeam={teamById[match.teamA.teamId]}
-                  rightTeam={teamById[match.teamB.teamId]}
-                  meta={`참여 ${getMatchPlayerCount(match)}명 · A ${match.teamA.players?.length ?? 0} / B ${match.teamB.players?.length ?? 0}`}
+                  left={match.teamA?.name ?? "A"}
+                  right={match.teamB?.name ?? "B"}
+                  leftTeam={teamById[match.teamA?.teamId]}
+                  rightTeam={teamById[match.teamB?.teamId]}
+                  meta={`참여 ${getMatchPlayerCount(match)}명 · A ${match.teamA?.players?.length ?? 0} / B ${match.teamB?.players?.length ?? 0}`}
                   detail={formatMatchRules(match)}
                   variant="count-summary"
                 />

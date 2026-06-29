@@ -4444,6 +4444,11 @@ declare
   team_b_name text;
   team_a_players jsonb := '[]'::jsonb;
   team_b_players jsonb := '[]'::jsonb;
+  agreements_json jsonb := jsonb_build_object('teamA', '[]'::jsonb, 'teamB', '[]'::jsonb);
+  approvals_json jsonb := jsonb_build_object('teamA', '[]'::jsonb, 'teamB', '[]'::jsonb);
+  disputes_json jsonb := '[]'::jsonb;
+  player_stats_json jsonb := '{}'::jsonb;
+  result_json jsonb := null;
   player_row record;
 begin
   update public.user_room_feed
@@ -4498,6 +4503,58 @@ begin
   from public.match_players mp
   where mp.match_id = match_row.id;
 
+  select jsonb_build_object(
+    'teamA', coalesce(jsonb_agg(agreement.user_id order by agreement.user_id) filter (where agreement.side = 'teamA'), '[]'::jsonb),
+    'teamB', coalesce(jsonb_agg(agreement.user_id order by agreement.user_id) filter (where agreement.side = 'teamB'), '[]'::jsonb)
+  )
+  into agreements_json
+  from public.match_agreements agreement
+  where agreement.match_id = match_row.id;
+
+  select jsonb_build_object(
+    'teamA', coalesce(jsonb_agg(approval.user_id order by approval.user_id) filter (where approval.side = 'teamA'), '[]'::jsonb),
+    'teamB', coalesce(jsonb_agg(approval.user_id order by approval.user_id) filter (where approval.side = 'teamB'), '[]'::jsonb)
+  )
+  into approvals_json
+  from public.match_approvals approval
+  where approval.match_id = match_row.id;
+
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'id', dispute.id,
+    'by', dispute.user_id,
+    'reason', dispute.reason,
+    'createdAt', dispute.created_at
+  ) order by dispute.created_at desc nulls last), '[]'::jsonb)
+  into disputes_json
+  from public.match_disputes dispute
+  where dispute.match_id = match_row.id;
+
+  select coalesce(jsonb_object_agg(stat.user_id, jsonb_build_object(
+    'points', coalesce(stat.points, 0),
+    'rebounds', coalesce(stat.rebounds, 0),
+    'assists', coalesce(stat.assists, 0),
+    'steals', coalesce(stat.steals, 0),
+    'blocks', coalesce(stat.blocks, 0),
+    'fouls', coalesce(stat.fouls, 0)
+  )), '{}'::jsonb)
+  into player_stats_json
+  from public.player_match_stats stat
+  where stat.match_id = match_row.id;
+
+  select jsonb_build_object(
+    'scoreA', result.score_a,
+    'scoreB', result.score_b,
+    'playerStats', player_stats_json,
+    'statSubmissions', coalesce(result.stat_submissions, '{}'::jsonb),
+    'submittedBy', coalesce(result.submitted_by, ''),
+    'submittedAt', result.submitted_at
+  )
+  into result_json
+  from public.match_results result
+  where result.match_id = match_row.id
+  order by result.submitted_at desc nulls last
+  limit 1;
+
   card_json := jsonb_build_object(
     'id', match_row.id,
     'listCardOnly', true,
@@ -4536,15 +4593,15 @@ begin
       'players', team_b_players,
       'score', coalesce(match_row.score_b, 0)
     ),
-    'agreements', jsonb_build_object('teamA', '[]'::jsonb, 'teamB', '[]'::jsonb),
-    'approvals', jsonb_build_object('teamA', '[]'::jsonb, 'teamB', '[]'::jsonb),
-    'disputes', '[]'::jsonb,
+    'agreements', agreements_json,
+    'approvals', approvals_json,
+    'disputes', disputes_json,
     'playedPlayerIds', coalesce(match_row.played_player_ids, match_row.rules->'playedPlayerIds', '{}'::jsonb),
     'reservePlayers', coalesce(match_row.reserve_players, match_row.rules->'reservePlayers', '{}'::jsonb),
     'mmrExcludedPlayerIds', coalesce(match_row.mmr_excluded_player_ids, match_row.rules->'mmrExcludedPlayerIds', '[]'::jsonb),
     'anonymousPlayers', coalesce(match_row.anonymous_players, '{}'::jsonb),
     'parties', coalesce(match_row.rules->'parties', '[]'::jsonb),
-    'result', null,
+    'result', result_json,
     'rules', coalesce(match_row.rules, '{}'::jsonb) || jsonb_build_object(
       'playedPlayerIds', coalesce(match_row.played_player_ids, match_row.rules->'playedPlayerIds', '{}'::jsonb),
       'mmrExcludedPlayerIds', coalesce(match_row.mmr_excluded_player_ids, match_row.rules->'mmrExcludedPlayerIds', '[]'::jsonb),
@@ -4981,6 +5038,39 @@ begin
     execute 'create trigger rankball_match_players_feed_refresh after insert or update or delete on public.match_players for each row execute function public.rankball_refresh_match_player_feed_trigger()';
   end if;
 
+  if to_regclass('public.match_agreements') is not null and exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'match_agreements'
+      and column_name = 'match_id'
+  ) then
+    execute 'drop trigger if exists rankball_match_agreements_feed_refresh on public.match_agreements';
+    execute 'create trigger rankball_match_agreements_feed_refresh after insert or update or delete on public.match_agreements for each row execute function public.rankball_refresh_match_record_feed_dependency_trigger()';
+  end if;
+
+  if to_regclass('public.match_approvals') is not null and exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'match_approvals'
+      and column_name = 'match_id'
+  ) then
+    execute 'drop trigger if exists rankball_match_approvals_feed_refresh on public.match_approvals';
+    execute 'create trigger rankball_match_approvals_feed_refresh after insert or update or delete on public.match_approvals for each row execute function public.rankball_refresh_match_record_feed_dependency_trigger()';
+  end if;
+
+  if to_regclass('public.match_disputes') is not null and exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'match_disputes'
+      and column_name = 'match_id'
+  ) then
+    execute 'drop trigger if exists rankball_match_disputes_feed_refresh on public.match_disputes';
+    execute 'create trigger rankball_match_disputes_feed_refresh after insert or update or delete on public.match_disputes for each row execute function public.rankball_refresh_match_record_feed_dependency_trigger()';
+  end if;
+
   if to_regclass('public.team_members') is not null and exists (
     select 1
     from information_schema.columns
@@ -5070,6 +5160,9 @@ as $$
       'rankball_recruiting_applications_feed_refresh',
       'rankball_matches_feed_refresh',
       'rankball_match_players_feed_refresh',
+      'rankball_match_agreements_feed_refresh',
+      'rankball_match_approvals_feed_refresh',
+      'rankball_match_disputes_feed_refresh',
       'rankball_team_members_feed_dependency_refresh',
       'rankball_match_results_feed_refresh',
       'rankball_player_match_stats_feed_refresh',

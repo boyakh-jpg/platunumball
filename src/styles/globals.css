@@ -130,6 +130,10 @@ html.rankball-remote-loading .basketball-loader-inline {
   display: none;
 }
 
+html.rankball-remote-loading body > .basketball-loader-overlay ~ .basketball-loader-overlay {
+  display: none;
+}
+
 .basketball-loader {
   position: relative;
   z-index: 1;

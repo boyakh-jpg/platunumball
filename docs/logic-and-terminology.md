@@ -1,5 +1,18 @@
 # RankBall 로직/용어/디자인 기준
 
+## 2026-06-29 match feed 카드 계약
+
+- `user_room_feed.card_json`의 match 카드는 목록 판단용 최소 상태를 반드시 포함한다.
+- 포함 필드: `teamA/teamB`, `agreements`, `approvals`, `disputes`, `result.statSubmissions`, `result.playerStats`, `startedAt`, `endedAt`, `confirmedAt`, `cancelledAt`, `voidedAt`.
+- `match_agreements`, `match_approvals`, `match_disputes`, `match_results`, `player_match_stats` 변경은 match feed를 즉시 갱신해야 한다.
+- 경기/홈 첫 목록은 feed 카드만으로 `todo`, `scheduled`, `record` 분류가 가능해야 하며, 상세 통계/기록 원본은 방 상세나 기록 화면 진입 때만 넓게 불러온다.
+
+## 2026-06-29 초대 수락 최신화
+
+- 방 초대 수락/거절 액션은 서버 반영 Promise를 반환해야 한다.
+- 알림 화면에서 방 초대를 수락하면 해당 방 상세, 내 모집 feed, 경기 일정 feed를 즉시 재조회한 뒤 이동한다.
+- 팀 초대를 수락하면 팀/디렉터리 상태를 강제 재조회하고, 팀 상세는 진입/포커스 복귀 때 최신 팀 상태를 다시 확인한다.
+
 ## 2026-06-29 경기 메뉴 모집방 일정 판정
 
 - 경기 메뉴의 모집방 일정은 방장, 선수, 후보뿐 아니라 배정된 심판도 내 일정으로 본다.

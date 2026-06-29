@@ -10,6 +10,7 @@ import {
 } from "../../../src/data/repository.js";
 import { filterStateForProfile } from "../state/load.js";
 import { loadCurrentUserRecruitingFeedList } from "../recruiting/list.js";
+import { getMatchRoomPhase } from "../../../src/lib/matchUtils.js";
 
 const PROFILE_ME_COLUMNS = "id,name,handle,hashtag,position,region,region_sido,region_district,school,company,club,trust_score,streak,avatar_color,test_login_id,auth_user_id,birth_year,age_group,age_group_checked_season,onboarding_complete,profile_version,handle_locked_at,birth_year_locked_at,name_updated_at,discord_connection,discord_user_id,ratings,created_at,updated_at,app_settings";
 const PROFILE_CARD_COLUMNS = "id,name,handle,hashtag,position,region,trust_score,avatar_color,ratings,age_group,updated_at";
@@ -21,6 +22,7 @@ const COURT_COLUMNS = "id,name";
 let userRoomFeedAvailable = true;
 const MATCH_LIST_MAX_LIMIT = 200;
 const ACTIVE_MATCH_EXCLUDED_STATUSES = new Set(["confirmed", "cancelled", "void", "closed"]);
+const ACTIVE_MATCH_EXCLUDED_PHASES = new Set(["record", "cancelled", "void"]);
 
 function getMatchCursor(matches = []) {
   const oldest = [...matches]
@@ -106,6 +108,11 @@ function uniqueFeedCards(rows = [], ids = []) {
     if (card) cards.set(id, card);
   });
   return ids.map((id) => cards.get(id)).filter(Boolean);
+}
+
+function filterActiveMatchCards(matches = [], activeOnly = false) {
+  if (!activeOnly) return matches;
+  return (matches ?? []).filter((match) => !ACTIVE_MATCH_EXCLUDED_PHASES.has(getMatchRoomPhase(match).phase));
 }
 
 function flattenIdValues(value) {
@@ -744,7 +751,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   if (feedPage) {
     pageSource = feedPage.source ?? "feed";
     if (feedPage.cards?.length) {
-      matches = feedPage.cards;
+      matches = filterActiveMatchCards(feedPage.cards, activeOnly);
     } else {
       matchRows = await timeStep(debugTiming, "matchRowsMs", () => (
         fetchMatchRowsByIds(context.supabase, feedPage.ids)
@@ -859,6 +866,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   const courtById = firstBy(courtRows ?? [], "id");
   matches = readableRows
     .map((row) => toClientMatch(row, playersByMatch, teamById, courtById))
+    .filter((match) => !activeOnly || !ACTIVE_MATCH_EXCLUDED_PHASES.has(getMatchRoomPhase(match).phase))
     .sort((a, b) => String(b.updatedAt ?? b.createdAt ?? "").localeCompare(String(a.updatedAt ?? a.createdAt ?? "")));
   const state = normalizeState({
     currentUserId: currentUser.id,

@@ -55,6 +55,21 @@ export default function TeamDetail({ app }) {
     app.actions.loadDirectory?.();
   }, [app.actions, app.directoryStatus?.loaded, app.directoryStatus?.loading, canManage, team]);
 
+  useEffect(() => {
+    if (app.remoteReady === false || !teamId) return undefined;
+    const refreshTeam = () => app.actions.loadDirectory?.(true);
+    refreshTeam();
+    window.addEventListener("focus", refreshTeam);
+    const handleVisibilityChange = () => {
+      if (!document.hidden) refreshTeam();
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      window.removeEventListener("focus", refreshTeam);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [app.actions, app.remoteReady, teamId]);
+
   if (!team && !app.remoteReady) return null;
   if (!team) return <Navigate to="/app/teams" replace />;
 

@@ -1469,9 +1469,9 @@ export function useAppData(authUser = null) {
     }
   }, [authEmail, authUserId, setState]);
 
-  const loadDirectory = useCallback(async () => {
+  const loadDirectory = useCallback(async (force = false) => {
     if (!isSupabaseConfigured || !authUserId) return false;
-    if (directoryStatus.loaded) return true;
+    if (directoryStatus.loaded && !force) return true;
     if (directoryPromiseRef.current) return directoryPromiseRef.current;
 
     const pathname = typeof window !== "undefined" ? window.location.pathname.replace(/\/$/, "") : "";
@@ -1614,8 +1614,9 @@ export function useAppData(authUser = null) {
           syncedNotifications = syncedPost ? getNewRecruitingNotifications(prev, next, postId) : [];
           return !syncedPost && operation && isSupabaseConfigured ? prev : next;
         });
-        if (syncedPost) rollbackIfServerFailed(syncRecruitingPostServer(syncedPost, syncedNotifications, { ...meta, postId }), rollbackState, "방 변경", { action: meta.action, postId });
-        else if (operation) rollbackIfServerFailed(syncRecruitingPostServer(null, [], { ...meta, postId }), rollbackState, "방 변경", { action: meta.action, postId });
+        if (syncedPost) return rollbackIfServerFailed(syncRecruitingPostServer(syncedPost, syncedNotifications, { ...meta, postId }), rollbackState, "방 변경", { action: meta.action, postId });
+        if (operation) return rollbackIfServerFailed(syncRecruitingPostServer(null, [], { ...meta, postId }), rollbackState, "방 변경", { action: meta.action, postId });
+        return true;
       };
       const applyMatchMutation = async (matchId, reducer, meta = {}) => {
         const serverReady = await ensureServerActionAvailable("/api/matches/sync-match", "경기 변경");
@@ -1671,7 +1672,7 @@ export function useAppData(authUser = null) {
           return next;
         });
         const payload = payloadFactory?.(rollbackState, nextStateSnapshot) ?? {};
-        rollbackIfServerFailed(syncTeamInvitationServer(action, payload), rollbackState, label, { action, ...payload });
+        return rollbackIfServerFailed(syncTeamInvitationServer(action, payload), rollbackState, label, { action, ...payload });
       };
       const refreshRecruitingRelations = () => {
         refreshCurrentProfile();
