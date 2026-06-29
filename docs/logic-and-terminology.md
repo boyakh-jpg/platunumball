@@ -1551,3 +1551,9 @@ flowchart TD
 - 프로필 저장 성공 후에는 `/api/profile/me`를 다시 읽어 birthYear 잠금값, theme, team invitations 같은 서버 최신값으로 화면 상태를 덮는다.
 - 팀 초대 수락 성공 후에는 현재 프로필/팀 상태뿐 아니라 내 모집 feed와 경기 메뉴 모집 일정 feed도 즉시 재조회한다.
 - `rankball_room_state_participant_ids(jsonb)`는 profile update feed dependency trigger에서 쓰는 필수 helper다. 누락되면 프로필 저장이 500으로 실패한다.
+
+## 2026-06-29 홈/경기 모집 일정 카운트 기준
+
+- 홈 `진행 예정 경기`, 경기 메뉴 `MY/SOON`, 매칭 메뉴 `내가 만든 방/내 참여방/초대받음`은 current-user recruiting feed와 같은 참여 판정을 사용한다.
+- 경기 메뉴에서 모집방 일정을 고를 때는 `isRecruitingPostForUser`를 먼저 사용하고, 부족한 표시 정보만 lobby 계산으로 보강한다.
+- 팀 신청 row처럼 list card에 전체 팀원 명단이 없더라도 `playerId`, `playerIds`, applicant, reserve 기준으로 현재 사용자의 참여 관계가 있으면 경기 메뉴 일정에 포함한다.
