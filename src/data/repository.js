@@ -4400,7 +4400,7 @@ export function startMatch(state, matchId) {
 
 export function endMatch(state, matchId) {
   const match = state.matches.find((item) => item.id === matchId);
-  if (!match || match.status !== "agreed" || match.result || match.endedAt) return state;
+  if (!match || match.status !== "agreed" || match.endedAt) return state;
   if (!currentUserCanOperateStartedMatch(state, match)) return state;
   const now = new Date().toISOString();
   const nextMatch = {

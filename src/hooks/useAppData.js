@@ -197,7 +197,7 @@ function getServerOperation(meta = {}) {
   }
   if (!meta.action) return null;
   if (!SERVER_OPERATION_ACTIONS.has(String(meta.action))) return null;
-  const { operation: _operation, ...payload } = meta;
+  const { operation: _operation, onSuccess: _onSuccess, ...payload } = meta;
   return payload;
 }
 
@@ -1026,6 +1026,14 @@ export function useAppData(authUser = null) {
       : { post, notifications, ...meta };
     return runServerAction("/api/recruiting/sync-post", payload).then((result) => {
       if (result?.post || result?.createdMatch) setState((prev) => mergeServerRoomResult(prev, result));
+      if (result && result.ok !== false && typeof meta.onSuccess === "function") {
+        try {
+          const refreshResult = meta.onSuccess(result);
+          if (refreshResult?.catch) refreshResult.catch((error) => console.warn("Recruiting post refresh hook failed.", error.message));
+        } catch (error) {
+          console.warn("Recruiting post refresh hook failed.", error.message);
+        }
+      }
       return result;
     }).finally(() => {
       if (!pendingPostId) return;
@@ -1596,6 +1604,12 @@ export function useAppData(authUser = null) {
         const payload = payloadFactory?.(rollbackState, nextStateSnapshot) ?? {};
         rollbackIfServerFailed(syncTeamInvitationServer(action, payload), rollbackState, label, { action, ...payload });
       };
+      const refreshRecruitingRelations = () => {
+        refreshCurrentProfile();
+        loadMyRecruitingPosts();
+        setMatchPagination((prev) => ({ ...prev, error: "", recruitingScheduleChecked: false }));
+        loadMatchRecruitingSchedule();
+      };
 
       return ({
         loadMatchDetail,
@@ -2046,12 +2060,12 @@ export function useAppData(authUser = null) {
           return result?.post?.id ?? result?.postId ?? createdPost.id;
         });
       },
-      interestRecruitingPost: (postId, application) => applyRecruitingPostMutation(postId, (prev) => interestRecruitingPost({ ...prev, currentUserId }, postId, application), { action: "interestRecruitingPost", application, joinMode: application?.joinMode }),
+      interestRecruitingPost: (postId, application) => applyRecruitingPostMutation(postId, (prev) => interestRecruitingPost({ ...prev, currentUserId }, postId, application), { action: "interestRecruitingPost", application, joinMode: application?.joinMode, onSuccess: refreshRecruitingRelations }),
       inviteRecruitingReferee: (postId, refereeId) => applyRecruitingPostMutation(postId, (prev) => inviteRecruitingReferee({ ...prev, currentUserId }, postId, refereeId), { action: "inviteRecruitingReferee", refereeId }),
       inviteRecruitingPlayers: (postId, invite) => applyRecruitingPostMutation(postId, (prev) => inviteRecruitingPlayers({ ...prev, currentUserId }, postId, invite), { action: "inviteRecruitingPlayers", invite }),
-      acceptRecruitingInvitation: (postId, invitationId) => applyRecruitingPostMutation(postId, (prev) => acceptRecruitingInvitation({ ...prev, currentUserId }, postId, invitationId), { action: "acceptRecruitingInvitation", invitationId }),
-      declineRecruitingInvitation: (postId, invitationId) => applyRecruitingPostMutation(postId, (prev) => declineRecruitingInvitation({ ...prev, currentUserId }, postId, invitationId), { action: "declineRecruitingInvitation", invitationId }),
-      cancelRecruitingParticipation: (postId) => applyRecruitingPostMutation(postId, (prev) => cancelRecruitingParticipation({ ...prev, currentUserId }, postId), { action: "cancelRecruitingParticipation" }),
+      acceptRecruitingInvitation: (postId, invitationId) => applyRecruitingPostMutation(postId, (prev) => acceptRecruitingInvitation({ ...prev, currentUserId }, postId, invitationId), { action: "acceptRecruitingInvitation", invitationId, onSuccess: refreshRecruitingRelations }),
+      declineRecruitingInvitation: (postId, invitationId) => applyRecruitingPostMutation(postId, (prev) => declineRecruitingInvitation({ ...prev, currentUserId }, postId, invitationId), { action: "declineRecruitingInvitation", invitationId, onSuccess: refreshRecruitingRelations }),
+      cancelRecruitingParticipation: (postId) => applyRecruitingPostMutation(postId, (prev) => cancelRecruitingParticipation({ ...prev, currentUserId }, postId), { action: "cancelRecruitingParticipation", onSuccess: refreshRecruitingRelations }),
       setRecruitingReady: (postId, ready) => applyRecruitingPostMutation(postId, (prev) => setRecruitingReady({ ...prev, currentUserId }, postId, ready), { action: "setRecruitingReady", ready }),
       updateRecruitingRoomRules: (postId, patch) => applyRecruitingPostMutation(postId, (prev) => updateRecruitingRoomRules({ ...prev, currentUserId }, postId, patch), { action: "updateRecruitingRoomRules", patch }),
       updateMatchRoomRules: (matchId, patch) => applyMatchMutation(matchId, (prev) => updateMatchRoomRules({ ...prev, currentUserId }, matchId, patch), { action: "updateMatchRoomRules", patch }),

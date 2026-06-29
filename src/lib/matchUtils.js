@@ -442,8 +442,9 @@ export function getMatchRoomPhase(match = {}, now = new Date()) {
     return ROOM_PHASE_META.record;
   }
   if (match.status === "approval" || match.status === "disputed") return ROOM_PHASE_META.dispute;
-  if (match.endedAt || (match.status === "agreed" && match.result)) return ROOM_PHASE_META.postgame;
+  if (match.endedAt) return ROOM_PHASE_META.postgame;
   if (getMatchStartDate(match)) return ROOM_PHASE_META.live;
+  if (match.status === "agreed" && match.result) return ROOM_PHASE_META.postgame;
 
   if (match.status === "agreed" || match.status === "contract") {
     if (isInstantRoom(match)) return ROOM_PHASE_META.checkin;
