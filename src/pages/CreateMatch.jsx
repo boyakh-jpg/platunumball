@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Globe2, Lock, Star, Trophy } from "lucide-react";
+import { Globe2, Lock, Trophy } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
@@ -824,14 +824,6 @@ export default function CreateMatch({ app }) {
           <span>{court.region} / {court.type} / {getCourtSurfaceLabel(court)} / {getCourtLayoutLabel(court)}</span>
           <em>{getCourtHashtag(court)} · {favorite ? "즐겨찾기" : "구장"}</em>
         </button>
-        <button
-          type="button"
-          className={favorite ? "search-picker-result-action active" : "search-picker-result-action"}
-          aria-label={favorite ? "즐겨찾기 해제" : "즐겨찾기 추가"}
-          onClick={() => app.actions.toggleFavoriteCourt(court.id)}
-        >
-          <Star size={15} fill={favorite ? "currentColor" : "none"} />
-        </button>
       </div>
     );
   };
@@ -870,14 +862,6 @@ export default function CreateMatch({ app }) {
           <span>{team.region} · {team.mmr} MMR · {team.homeCourt}</span>
           <em>{getTeamHashtag(team)} · {favorite ? "즐겨찾기" : mmrBlocked ? "MMR 범위 밖" : "B사이드"}</em>
         </button>
-        <button
-          type="button"
-          className={favorite ? "search-picker-result-action active" : "search-picker-result-action"}
-          aria-label={favorite ? "즐겨찾기 해제" : "즐겨찾기 추가"}
-          onClick={() => app.actions.toggleFavoriteTeam(team.id)}
-        >
-          <Star size={15} fill={favorite ? "currentColor" : "none"} />
-        </button>
       </div>
     );
   };
@@ -901,14 +885,6 @@ export default function CreateMatch({ app }) {
           <strong>{user.name}</strong>
           <span>{getUserHashtag(user)} · {user.position} · {user.region}</span>
           <em>{favorite ? "즐겨찾기 · " : ""}신뢰도 {user.trustScore} · {user.refereeProfile?.grade ?? user.refereeGrade ?? "심판"}</em>
-        </button>
-        <button
-          type="button"
-          className={favorite ? "search-picker-result-action active" : "search-picker-result-action"}
-          aria-label={favorite ? "즐겨찾기 해제" : "즐겨찾기 추가"}
-          onClick={() => app.actions.toggleFavoriteReferee(user.id)}
-        >
-          <Star size={15} fill={favorite ? "currentColor" : "none"} />
         </button>
       </div>
     );

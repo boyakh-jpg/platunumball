@@ -10,7 +10,6 @@ import {
   PlusCircle,
   Send,
   ShieldCheck,
-  Star,
   Swords,
   UserRound,
   UsersRound,
@@ -1303,8 +1302,6 @@ export function InvitePanel({
   allowedTeamId = "",
   onTogglePlayer,
   onInvitePlayers,
-  onToggleFavoritePlayer,
-  onToggleFavoriteTeam,
   onClose,
 }) {
   const matchedTeam = query.trim() ? findTeamByHashtag(teams, query) : null;
@@ -1345,7 +1342,6 @@ export function InvitePanel({
   const renderInviteSearchItem = (item) => {
     if (item.type === "team") {
       const team = item.team;
-      const favorite = favoriteTeamIds.includes(team.id);
       return (
         <div
           key={`team-${team.id}`}
@@ -1357,20 +1353,11 @@ export function InvitePanel({
             <span>{getTeamHashtag(team)} · {team.mmr} MMR</span>
             <em>팀</em>
           </button>
-          <button
-            type="button"
-            className={favorite ? "search-picker-result-action active" : "search-picker-result-action"}
-            aria-label={favorite ? "즐겨찾기 해제" : "즐겨찾기 추가"}
-            onClick={() => onToggleFavoriteTeam(team.id)}
-          >
-            <Star size={15} fill={favorite ? "currentColor" : "none"} />
-          </button>
         </div>
       );
     }
     const player = item.player;
     const disabled = disabledSet.has(player.id) || !isAllowedPlayer(player.id, player);
-    const favorite = favoritePlayerIds.includes(player.id);
     const selected = selectedSet.has(player.id);
     return (
       <div
@@ -1394,17 +1381,6 @@ export function InvitePanel({
           <strong>{player.name}</strong>
           <span>{getUserHashtag(player)} · {player.position}</span>
           <em>{disabled ? "불가" : selected ? "선택됨" : "선택"}</em>
-        </button>
-        <button
-          type="button"
-          className={favorite ? "search-picker-result-action active" : "search-picker-result-action"}
-          aria-label={favorite ? "즐겨찾기 해제" : "즐겨찾기 추가"}
-          onClick={(event) => {
-            event.stopPropagation();
-            onToggleFavoritePlayer(player.id);
-          }}
-        >
-          <Star size={15} fill={favorite ? "currentColor" : "none"} />
         </button>
       </div>
     );
@@ -1459,9 +1435,6 @@ export function InvitePanel({
                 <em>{getTeamHashtag(matchedTeam)} · {matchedTeam.mmr} MMR</em>
               </span>
             </TeamHoverCard>
-            <button type="button" className={favoriteTeamIds.includes(matchedTeam.id) ? "active" : ""} onClick={() => onToggleFavoriteTeam(matchedTeam.id)}>
-              <Star size={15} fill={favoriteTeamIds.includes(matchedTeam.id) ? "currentColor" : "none"} />
-            </button>
           </div>
           <div className="arena-invite-member-grid">
             {teamMemberIds.map((playerId) => {
@@ -1502,7 +1475,6 @@ function RefereeInvitePanel({
   canInvite,
   canJoin,
   onInviteReferee,
-  onToggleFavoriteReferee,
   onJoin,
 }) {
   const normalizedQuery = query.trim().toLowerCase();
@@ -1519,7 +1491,6 @@ function RefereeInvitePanel({
     .filter(Boolean);
   const idleItems = canInvite ? (favoriteReferees.length ? favoriteReferees : candidates.slice(0, 8)) : [];
   const renderRefereeSearchItem = (user) => {
-    const favorite = favoriteRefereeIds.includes(user.id);
     return (
       <div
         key={user.id}
@@ -1532,14 +1503,6 @@ function RefereeInvitePanel({
           </RefereeHoverCard>
           <span>{getUserHashtag(user)} · 신뢰도 {user.trustScore}</span>
           <em>초대</em>
-        </button>
-        <button
-          type="button"
-          className={favorite ? "search-picker-result-action active" : "search-picker-result-action"}
-          aria-label={favorite ? "즐겨찾기 해제" : "즐겨찾기 추가"}
-          onClick={() => onToggleFavoriteReferee?.(user.id)}
-        >
-          <Star size={15} fill={favorite ? "currentColor" : "none"} />
         </button>
       </div>
     );
@@ -2331,8 +2294,6 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                 allowedTeamId={getInviteAllowedTeamId(activeSlotDraft.sideName)}
                 onTogglePlayer={toggleInvitePlayer}
                 onInvitePlayers={(playerIds, teamId, joinMode) => sendInvites(selectedPost, playerIds, teamId, joinMode)}
-                onToggleFavoritePlayer={(playerId) => app.actions.toggleFavoritePlayer(playerId)}
-                onToggleFavoriteTeam={(teamId) => app.actions.toggleFavoriteTeam(teamId)}
                 onClose={() => setInviteDraft(null)}
               />
             </SlotCommandPanel>
@@ -2616,8 +2577,6 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                   allowedTeamId={getInviteAllowedTeamId(activeInviteDraft.sideName)}
                   onTogglePlayer={toggleInvitePlayer}
                   onInvitePlayers={(playerIds, teamId, joinMode) => sendInvites(selectedPost, playerIds, teamId, joinMode)}
-                  onToggleFavoritePlayer={(playerId) => app.actions.toggleFavoritePlayer(playerId)}
-                  onToggleFavoriteTeam={(teamId) => app.actions.toggleFavoriteTeam(teamId)}
                   onClose={() => setInviteDraft(null)}
                 />
               ) : null}
@@ -2698,7 +2657,6 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                     canInvite={canInviteRefereeFromRoom}
                     canJoin={canJoinReferee && !mine && !matchRoom}
                     onInviteReferee={(refereeId) => app.actions.inviteRecruitingReferee(selectedPost.id, refereeId)}
-                    onToggleFavoriteReferee={(refereeId) => app.actions.toggleFavoriteReferee(refereeId)}
                     onJoin={() => app.actions.interestRecruitingPost(selectedPost.id, { joinMode: "referee" })}
                   />
                 ) : null}
