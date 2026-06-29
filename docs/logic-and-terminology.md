@@ -1,5 +1,9 @@
 # RankBall 로직/용어/디자인 기준
 
+## 2026-06-29 즐겨찾기 상태 원천
+
+- `favorites` 테이블이 `favoritePlayerIds`, `favoriteTeamIds`, `favoriteCourtIds`, `favoriteRefereeIds`의 원본이다. 얇은 profile/directory 응답의 기본 빈 settings 배열이 이 값들을 덮어쓰면 안 된다.
+
 ## 2026-06-28 목록 응답 속도 원칙
 
 - `/api/recruiting/list`는 feed count와 fallback count를 순차 대기하지 않는다. feed, page, mine, fallback count는 가능한 병렬로 계산한다.

@@ -383,9 +383,13 @@ function filterPendingMatches(remoteState = {}, pendingIds = new Set(), recentMu
 
 function getRemoteDirectorySettings(settings = null, { includeTheme = false } = {}) {
   if (!settings) return null;
-  if (includeTheme) return settings;
-  const { theme: _theme, ...settingsWithoutTheme } = settings;
-  return settingsWithoutTheme;
+  const settingsPatch = {};
+  if (includeTheme && (settings.theme === "light" || settings.theme === "dark")) settingsPatch.theme = settings.theme;
+  if (settings.privacy && typeof settings.privacy === "object" && !Array.isArray(settings.privacy)) settingsPatch.privacy = settings.privacy;
+  if (settings.notificationChannels && typeof settings.notificationChannels === "object" && !Array.isArray(settings.notificationChannels)) {
+    settingsPatch.notificationChannels = settings.notificationChannels;
+  }
+  return Object.keys(settingsPatch).length ? settingsPatch : null;
 }
 
 function mergeRemoteDirectory(state, remoteState = {}, options = {}) {
