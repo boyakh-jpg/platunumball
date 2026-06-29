@@ -1,6 +1,6 @@
 # RankBall HANDOFF
 
-Updated: 2026-06-27
+Updated: 2026-06-29
 
 ## 1. New Thread Start Order
 
@@ -20,9 +20,14 @@ Important rule:
 ## 2. Current Repo State
 
 Latest pushed commit:
-- `8ac175f6 Fix mobile invite search panel`
+- `501fc47b Reduce invite refresh duplication`
 
 Recent relevant commits:
+- `501fc47b Reduce invite refresh duplication`
+- `b556299f Stabilize feed refresh and match counts`
+- `df5e8ce8 Stabilize match feed and invite refresh`
+- `5b47662c Preserve explicit profile settings`
+- `6e6f867c Add DB migration for match stale guard`
 - `8ac175f6 Fix mobile invite search panel`
 - `7129c297 Fix invite popover and match list load`
 - `57c236b6 Split frontend chunks`
@@ -207,6 +212,69 @@ Important warning:
 - `profiles`, `teams`, `team_members`, `courts`, and settings-related tables can still be broad.
 - `user_room_feed` SQL must be applied in Supabase before production uses the feed path. Until then API falls back to older RPC/PostREST reads.
 - Next step is moving more action reducers into SQL and making list-card payloads thinner.
+
+## 5-1. Supabase CLI / DB Migration Apply
+
+Current production project ref:
+- `olzxextphxpniwiiwwda`
+
+Use Supabase CLI for production DB migration when available.
+
+Required command check:
+
+```powershell
+supabase --version
+```
+
+Non-interactive env needed:
+
+```powershell
+$env:SUPABASE_ACCESS_TOKEN="..."
+$env:SUPABASE_DB_PASSWORD="..."
+```
+
+Link and dry run:
+
+```powershell
+supabase link --project-ref olzxextphxpniwiiwwda --password $env:SUPABASE_DB_PASSWORD
+supabase db push --linked --dry-run
+```
+
+Apply:
+
+```powershell
+supabase db push --linked
+```
+
+Alternative if `DATABASE_URL` is provided:
+
+```powershell
+supabase db push --db-url "$env:DATABASE_URL" --dry-run
+supabase db push --db-url "$env:DATABASE_URL"
+```
+
+Never run on production unless explicitly approved:
+- `supabase db reset --linked`
+- `DROP TABLE`
+- `TRUNCATE`
+- broad `DELETE`
+
+Current feed-related migrations that production must have:
+- `supabase/migrations/20260629093000_match_stale_and_feed_health.sql`
+- `supabase/migrations/20260629102000_match_feed_card_contract.sql`
+- `supabase/migrations/20260629111500_feed_trigger_repair.sql`
+- `supabase/migrations/20260629113500_feed_courts_trigger_health.sql`
+
+After applying, verify:
+
+```powershell
+Invoke-RestMethod -Method Post -Uri "https://platunumball.vercel.app/api/system/schema-health" -Headers @{ Authorization = "Bearer $env:CRON_SECRET" }
+```
+
+Expected feed trigger state:
+- `rankball_feed_trigger_health` RPC exists.
+- `failedFeedTriggerCount` is `0`.
+- Required triggers include `rankball_courts_feed_dependency_refresh`.
 
 ## 6. Backend Simulation
 
@@ -535,6 +603,9 @@ Current priority:
 Keep reducing Supabase PostREST egress and continue backend migration, but do not break the feed-based recruiting/match list, recruiting local filter, and light-mode background.
 
 Known latest fixes:
+- 501fc47b reduced duplicate invite refresh calls.
+- b556299f stabilized feed refresh and match counts.
+- df5e8ce8 stabilized match feed and invite refresh.
 - user_room_feed feed-first recruiting/match list work is in current repo state. Check latest git log for exact commit after this handoff.
 - 8ac175f6 fixed mobile invite search panel.
 - 7129c297 fixed invite popover and match list load.

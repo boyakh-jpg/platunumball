@@ -22,6 +22,34 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
 
 Supabase에 영속 저장을 쓰려면 `supabase/schema.sql`을 SQL Editor에서 먼저 실행하세요. 테이블이 없거나 정책이 막혀 있으면 앱은 localStorage demo mode로 계속 동작합니다.
 
+### Supabase CLI migration
+
+Production DB migration은 가능하면 Supabase CLI로 적용합니다.
+
+```powershell
+supabase --version
+$env:SUPABASE_ACCESS_TOKEN="..."
+$env:SUPABASE_DB_PASSWORD="..."
+supabase link --project-ref olzxextphxpniwiiwwda --password $env:SUPABASE_DB_PASSWORD
+supabase db push --linked --dry-run
+supabase db push --linked
+```
+
+`DATABASE_URL`이 있으면 link 없이도 적용할 수 있습니다.
+
+```powershell
+supabase db push --db-url "$env:DATABASE_URL" --dry-run
+supabase db push --db-url "$env:DATABASE_URL"
+```
+
+Production 적용 뒤 schema health를 확인합니다.
+
+```powershell
+Invoke-RestMethod -Method Post -Uri "https://platunumball.vercel.app/api/system/schema-health" -Headers @{ Authorization = "Bearer $env:CRON_SECRET" }
+```
+
+원격 DB에는 `supabase db reset --linked`, `DROP TABLE`, `TRUNCATE`, 대량 `DELETE`를 쓰지 않습니다.
+
 ## 환경변수
 
 | 이름 | 위치 | 용도 |
@@ -38,6 +66,10 @@ Supabase에 영속 저장을 쓰려면 `supabase/schema.sql`을 SQL Editor에서
 | `DISCORD_BOT_TOKEN` / `DISCORD_GUILD_ID` / `DISCORD_GUILD_IDS` | 서버 전용 | Discord DM worker |
 | `DISCORD_PUBLIC_KEY` | 서버 전용 | Discord interaction signature 검증 |
 | `CRON_SECRET` | 서버/스크립트 전용 | worker, maintenance, schema-health |
+| `SUPABASE_ACCESS_TOKEN` | CLI 전용 | Supabase Management API 인증 |
+| `SUPABASE_DB_PASSWORD` | CLI 전용 | `supabase link`, `supabase db push --linked` 원격 DB 비밀번호 |
+| `SUPABASE_PROJECT_ID` | CLI/CI 전용 | Supabase project ref. 현재 production ref: `olzxextphxpniwiiwwda` |
+| `DATABASE_URL` | CLI/서버 전용 | `supabase db push --db-url` 또는 직접 Postgres 접속 |
 | `RANKBALL_SIM_BASE_URL` / `RANKBALL_SIM_SECRET` / `RANKBALL_SIM_TIMEOUT_MS` | 스크립트 | backend simulation |
 
 ## Vercel
