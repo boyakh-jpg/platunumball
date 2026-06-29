@@ -34,6 +34,7 @@
 1. Saved theme and current-user tier may use the last successful local profile cache for the first paint.
 2. Remote profile/state remains authoritative and must replace cached theme/tier after the server response.
 3. Theme application uses a layout effect so a saved light/dark choice does not visibly flip after paint.
+4. Background directory/list loads must not overwrite the active theme; only profile refresh and settings sync are authoritative for theme.
 
 # 2026-06-28 remote load basketball loader
 

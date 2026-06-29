@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { BookOpen, Database, MapPin, Moon, Send, ShieldCheck, Star, Sun, UserRound } from "lucide-react";
 import Button from "../components/common/Button.jsx";
@@ -168,6 +168,7 @@ export default function Settings({ app, auth }) {
   const theme = app.state.settings?.theme === "light" ? "light" : "dark";
   const [themeDraft, setThemeDraft] = useState(theme);
   const [themeSaveStatus, setThemeSaveStatus] = useState("");
+  const lastThemeRef = useRef(theme);
   const blockedUserIds = app.state.settings?.blockedUserIds ?? [];
   const [blockUserId, setBlockUserId] = useState(app.state.users.find((user) => user.id !== app.currentUserId)?.id ?? "");
   const [reportMatchId, setReportMatchId] = useState("");
@@ -311,7 +312,9 @@ export default function Settings({ app, auth }) {
   const [refereeExamNotice, setRefereeExamNotice] = useState("");
 
   useEffect(() => {
-    setThemeDraft(theme);
+    const previousTheme = lastThemeRef.current;
+    lastThemeRef.current = theme;
+    setThemeDraft((current) => (current === previousTheme ? theme : current));
     setThemeSaveStatus("");
   }, [theme]);
 
@@ -691,7 +694,7 @@ export default function Settings({ app, auth }) {
     setCourtLookupStatus("네이버 주소와 좌표를 저장했습니다. 필요하면 지도 핀으로 위치를 보정하세요.");
   };
   const saveTheme = async () => {
-    setThemeSaveStatus("");
+    setThemeSaveStatus("저장 중");
     try {
       const saved = await app.actions.saveTheme?.(themeDraft);
       setThemeSaveStatus(saved ? "저장됨" : "저장 실패");

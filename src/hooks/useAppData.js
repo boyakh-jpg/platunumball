@@ -381,7 +381,15 @@ function filterPendingMatches(remoteState = {}, pendingIds = new Set(), recentMu
   return filteredMatches.length === nextMatches.length ? remoteState : { ...remoteState, matches: filteredMatches };
 }
 
-function mergeRemoteDirectory(state, remoteState = {}) {
+function getRemoteDirectorySettings(settings = null, { includeTheme = false } = {}) {
+  if (!settings) return null;
+  if (includeTheme) return settings;
+  const { theme: _theme, ...settingsWithoutTheme } = settings;
+  return settingsWithoutTheme;
+}
+
+function mergeRemoteDirectory(state, remoteState = {}, options = {}) {
+  const settingsPatch = getRemoteDirectorySettings(remoteState.settings, options);
   return {
     ...state,
     users: mergeById(state.users, remoteState.users),
@@ -389,13 +397,13 @@ function mergeRemoteDirectory(state, remoteState = {}) {
     teamInvitations: mergeById(state.teamInvitations, remoteState.teamInvitations),
     affiliations: remoteState.affiliations?.length ? remoteState.affiliations : state.affiliations,
     seasons: remoteState.seasons?.length ? remoteState.seasons : state.seasons,
-    settings: remoteState.settings ? { ...state.settings, ...remoteState.settings } : state.settings,
+    settings: settingsPatch ? { ...state.settings, ...settingsPatch } : state.settings,
   };
 }
 
 function mergeRemoteProfileState(state, remoteState = {}) {
   const profileUserId = remoteState.currentUserId ?? state.currentUserId;
-  const nextState = mergeRemoteDirectory(state, remoteState);
+  const nextState = mergeRemoteDirectory(state, remoteState, { includeTheme: true });
   if (!Array.isArray(remoteState.teamInvitations) || !profileUserId) return nextState;
   const unrelatedInvitations = (state.teamInvitations ?? []).filter((invitation) => (
     invitation.fromUserId !== profileUserId &&
