@@ -1,4 +1,4 @@
-import { DISPUTE_WINDOW_MINUTES, MODE_SIZES, PLAYER_POSITIONS, REFEREE_TRUST_MIN, STAT_ENTRY_WINDOW_MINUTES } from "./constants.js";
+import { DISPUTE_WINDOW_MINUTES, MODE_SIZES, PLAYER_POSITIONS, REFEREE_TRUST_MIN, STAT_ENTRY_WINDOW_MINUTES, isMercenaryTeamRole } from "./constants.js";
 import { TIERS, getTier, getTierDivision } from "./tier.js";
 
 export const RECRUITING_TYPES = {
@@ -47,7 +47,6 @@ export const MMR_RANGE_POLICIES = {
   wide: { label: "넓게", detail: "대기 풀 우선", gap: 360, ratingScale: 0.7 },
 };
 
-const MERCENARY_ROLES = new Set(["mercenary", "guest"]);
 const RESERVE_ROLES = new Set();
 const VALID_SIDES = new Set(["teamA", "teamB"]);
 const VALID_APPLICATION_STATUS = new Set(["waiting", "ready", "confirmed"]);
@@ -660,14 +659,14 @@ export function getRecruitingBestSide(post = {}, state = {}) {
 }
 
 export function getMercenaryTeamWeight(memberMmr = 1200, teamMmr = 1200, role = "regular") {
-  if (!MERCENARY_ROLES.has(role)) return 1;
+  if (!isMercenaryTeamRole(role)) return 1;
   if (memberMmr <= teamMmr - 140) return 0.65;
   if (memberMmr >= teamMmr + 140) return 0.22;
   return 0.4;
 }
 
 export function getMercenaryPlayerFactor(memberMmr = 1200, teamMmr = 1200, role = "regular") {
-  if (!MERCENARY_ROLES.has(role)) return 1;
+  if (!isMercenaryTeamRole(role)) return 1;
   if (memberMmr >= teamMmr + 140) return 0.62;
   if (memberMmr <= teamMmr - 140) return 0.96;
   return 0.82;

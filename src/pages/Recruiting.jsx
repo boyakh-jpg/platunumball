@@ -866,7 +866,7 @@ export function SlotCommandPanel({ sideName, reserve = false, floating = false, 
         </Button>
         {partyJoinOptions.map((option) => (
           <Button key={getPartyOptionKey(option)} type="button" size="sm" variant="secondary" onClick={() => onJoinParty(option.team.id, option.entry?.id)}>
-            {getPartyOptionLabel(option)} 파티 합류
+            {partyJoinOptions.length === 1 ? "파티 새로고침" : `${getPartyOptionLabel(option)} 파티 새로고침`}
           </Button>
         ))}
       </div>

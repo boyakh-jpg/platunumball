@@ -9,14 +9,12 @@ import { getTeamHashtag, getUserHashtag } from "../../lib/handles.js";
 import { clearPinnedHoverPreview, getPinnedHoverPreviewKey, pinHoverPreview, subscribePinnedHoverPreview } from "../../lib/hoverPreviewPin.js";
 import { getAgeGroupForUser, getAgeGroupLabel } from "../../lib/profileSetup.js";
 import { getTierDivision } from "../../lib/tier.js";
+import { getTeamRoleLabel, isMercenaryTeamRole, normalizeTeamRole } from "../../lib/constants.js";
 
 const rolePriority = {
   captain: 0,
   regular: 1,
-  candidate: 1,
-  substitute: 1,
   mercenary: 2,
-  guest: 3,
 };
 
 function getUserTeams(userId, teams = []) {
@@ -26,14 +24,13 @@ function getUserTeams(userId, teams = []) {
       return member ? { ...team, myRole: member.role } : null;
     })
     .filter(Boolean)
-    .sort((a, b) => (rolePriority[a.myRole] ?? 9) - (rolePriority[b.myRole] ?? 9) || b.mmr - a.mmr);
+    .sort((a, b) => (rolePriority[normalizeTeamRole(a.myRole)] ?? 9) - (rolePriority[normalizeTeamRole(b.myRole)] ?? 9) || b.mmr - a.mmr);
 }
 
 function roleLabel(role) {
-  if (role === "captain") return "주장";
-  if (role === "regular" || role === "candidate" || role === "substitute") return "팀원";
-  if (role === "mercenary" || role === "guest") return "용병";
-  return "팀원";
+  if (role === "captain") return getTeamRoleLabel(role);
+  if (isMercenaryTeamRole(role)) return "용병";
+  return "정규멤버";
 }
 
 function isTouchPreviewEvent(event) {

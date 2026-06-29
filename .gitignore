@@ -1,6 +1,7 @@
 node_modules
 dist
 tmp
+supabase/.temp/
 .DS_Store
 .env.local
 .env.development.local

@@ -22,13 +22,31 @@ export const DISPUTE_WINDOW_MINUTES = 30;
 export const PLAYER_POSITIONS = ["상관없음", "PG", "SG", "SF", "PF", "C"];
 
 export const TEAM_ROLES = {
-  captain: "주장",
+  captain: "팀장",
   regular: "정규멤버",
-  candidate: "후보멤버",
-  substitute: "교체멤버",
   mercenary: "용병",
-  guest: "게스트",
 };
+
+export const TEAM_ROLE_ALIASES = {
+  candidate: "regular",
+  substitute: "regular",
+  guest: "mercenary",
+};
+
+export function normalizeTeamRole(role = "regular", { allowCaptain = true } = {}) {
+  const canonicalRole = TEAM_ROLE_ALIASES[role] ?? role;
+  if (canonicalRole === "captain" && allowCaptain) return "captain";
+  if (canonicalRole === "regular" || canonicalRole === "mercenary") return canonicalRole;
+  return "regular";
+}
+
+export function getTeamRoleLabel(role = "regular") {
+  return TEAM_ROLES[normalizeTeamRole(role)] ?? TEAM_ROLES.regular;
+}
+
+export function isMercenaryTeamRole(role = "regular") {
+  return normalizeTeamRole(role) === "mercenary";
+}
 
 export const AFFILIATION_TYPES = {
   region: "지역",

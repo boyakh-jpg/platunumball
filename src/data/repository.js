@@ -11,7 +11,8 @@ import {
   PLAYER_POSITIONS,
   REFEREE_TRUST_MIN,
   STAT_ENTRY_WINDOW_MINUTES,
-  TEAM_ROLES,
+  getTeamRoleLabel,
+  normalizeTeamRole,
 } from "../lib/constants.js";
 import { findCourtDuplicate, getCourtDuplicateMessage, getRegisteredCourts, normalizeCourtLayout, normalizeCourtSurfaceType } from "../lib/courts.js";
 import {
@@ -3433,7 +3434,7 @@ export function approveTournamentTeam(state, tournamentId, teamId, options = {})
         {
           id: makeId("n"),
           title: "대회 승인 불가",
-          body: "해당 팀 주장만 대회 참가를 승인할 수 있습니다.",
+          body: "해당 팀장만 대회 참가를 승인할 수 있습니다.",
           tone: "match",
         },
         ...state.notifications,
@@ -8912,7 +8913,7 @@ export function deleteTeam(state, teamId) {
         {
           id: makeId("n"),
           title: "팀 삭제 권한 없음",
-          body: "주장만 팀을 삭제할 수 있습니다.",
+          body: "팀장만 팀을 삭제할 수 있습니다.",
           tone: "team",
         },
         ...state.notifications,
@@ -8955,7 +8956,7 @@ export function addTeamMember(state, teamId, memberDraft) {
         {
           id: makeId("n"),
           title: "팀 관리 권한 없음",
-          body: "주장만 팀원을 관리할 수 있습니다.",
+          body: "팀장만 팀원을 관리할 수 있습니다.",
           tone: "team",
         },
         ...state.notifications,
@@ -9016,7 +9017,7 @@ function getTeamInvitation(state, invitationId) {
 }
 
 function normalizeTeamInviteRole(role = "regular") {
-  return ["regular", "candidate", "substitute", "mercenary", "guest"].includes(role) ? role : "regular";
+  return normalizeTeamRole(role, { allowCaptain: false });
 }
 
 export function inviteTeamMember(state, teamId, targetUserId, role = "regular") {
@@ -9027,7 +9028,7 @@ export function inviteTeamMember(state, teamId, targetUserId, role = "regular") 
     return {
       ...state,
       notifications: [
-        { id: makeId("n"), title: "팀 초대 권한 없음", body: "주장만 팀원을 초대할 수 있습니다.", tone: "team" },
+        { id: makeId("n"), title: "팀 초대 권한 없음", body: "팀장만 팀원을 초대할 수 있습니다.", tone: "team" },
         ...state.notifications,
       ],
     };
@@ -9177,7 +9178,7 @@ export function updateTeamMemberRole(state, teamId, userId, role) {
         {
           id: makeId("n"),
           title: "팀 관리 권한 없음",
-          body: "주장만 팀원을 관리할 수 있습니다.",
+          body: "팀장만 팀원을 관리할 수 있습니다.",
           tone: "team",
         },
         ...state.notifications,
@@ -9190,8 +9191,8 @@ export function updateTeamMemberRole(state, teamId, userId, role) {
       notifications: [
         {
           id: makeId("n"),
-          title: "주장 변경 제한",
-          body: "주장 이전은 별도 기능이 생길 때까지 지원하지 않습니다.",
+          title: "팀장 변경 제한",
+          body: "팀장 이전은 별도 기능이 생길 때까지 지원하지 않습니다.",
           tone: "team",
         },
         ...state.notifications,
@@ -9223,7 +9224,7 @@ export function removeTeamMember(state, teamId, userId) {
         {
           id: makeId("n"),
           title: "팀 관리 권한 없음",
-          body: "주장만 팀원을 관리할 수 있습니다.",
+          body: "팀장만 팀원을 관리할 수 있습니다.",
           tone: "team",
         },
         ...state.notifications,
@@ -9236,8 +9237,8 @@ export function removeTeamMember(state, teamId, userId) {
       notifications: [
         {
           id: makeId("n"),
-          title: "주장 제외 제한",
-          body: "주장은 팀 삭제 또는 별도 이전 기능으로만 변경할 수 있습니다.",
+          title: "팀장 제외 제한",
+          body: "팀장은 팀 삭제 또는 별도 이전 기능으로만 변경할 수 있습니다.",
           tone: "team",
         },
         ...state.notifications,
@@ -9257,5 +9258,5 @@ export function removeTeamMember(state, teamId, userId) {
 }
 
 export function getMemberRoleLabel(role) {
-  return TEAM_ROLES[role] ?? role;
+  return getTeamRoleLabel(role);
 }

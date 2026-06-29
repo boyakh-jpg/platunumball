@@ -1484,18 +1484,20 @@ flowchart TD
 
 ## 2026-06-28 팀 관리 안정화
 
-1. 팀 생성자는 항상 새 팀의 주장이다. 프론트에서 다른 사용자를 주장으로 선택해 팀을 만들 수 없다.
-2. 팀원 추가, 역할 변경, 제외는 현재 주장만 실행할 수 있다. UI 숨김에만 의존하지 않고 reducer도 권한을 확인한다.
-3. 주장 본인 강등/제외와 암묵적 주장 자동 이전은 금지한다. 별도 주장 이전 기능/RPC가 생기기 전까지 팀 삭제 또는 유지 중 하나만 가능하다.
+1. 팀 생성자는 항상 새 팀의 팀장이다. 프론트에서 다른 사용자를 팀장으로 선택해 팀을 만들 수 없다.
+2. 팀원 추가, 역할 변경, 제외는 현재 팀장만 실행할 수 있다. UI 숨김에만 의존하지 않고 reducer도 권한을 확인한다.
+3. 팀장 본인 강등/제외와 암묵적 팀장 자동 이전은 금지한다. 별도 팀장 이전 기능/RPC가 생기기 전까지 팀 삭제 또는 유지 중 하나만 가능하다.
 4. 팀 저장 payload는 클라이언트의 `mmr`, `wins`, `losses`를 원본으로 보내지 않는다. DB/RPC가 기존 팀 전적을 보존한다.
-5. 팀 멤버 role은 `captain`, `regular`, `candidate`, `substitute`, `mercenary`, `guest`를 쓴다. 표시 라벨은 주장, 정규멤버, 후보멤버, 교체멤버, 용병, 게스트로 구분한다. `captain`은 기존 주장에게만 유지하고, 초대/관리 드롭다운은 주장 제외 모든 관리 가능 역할을 열어둔다.
-5-1. 팀 초대는 role을 함께 저장하고, 대상자가 수락하면 `team_invitations.role`이 `team_members.role`로 보존된다. `regular/candidate/substitute`는 정식 로스터 계열이고 각각 주전급 정규, 후보, 교체/백업 운영 역할이다. `mercenary/guest`는 외부 참여/기록 계열이다.
-6. 한 팀의 등록 인원은 최대 10명이다. 5v5 주전 5명과 교체/후보 5명을 감당하는 운영 단위로 보며 프론트, 서버 action, DB RPC/trigger가 모두 차단한다.
-7. 팀 가입은 주장의 직접 추가가 아니라 pending 팀 초대 발송 후 대상자가 수락하는 흐름이다. 팀 정원 10명 도달 시 같은 서버 transaction에서 남은 pending 팀 가입 초대를 `expired`로 만료 처리한다. 정원 도달 뒤 새 팀 가입 초대 발송도 막는다.
+5. 팀 멤버 role은 `captain`, `regular`, `mercenary`만 쓴다. 표시 라벨은 팀장, 정규멤버, 용병이다. `captain`은 기존 팀장에게만 유지하고, 초대/관리 드롭다운은 `regular`, `mercenary`만 연다.
+5-1. legacy role은 읽거나 들어와도 canonical role로 정규화한다. `candidate`, `substitute`는 `regular`, `guest`는 `mercenary`로 저장/표시한다.
+5-2. 팀 초대는 role을 함께 저장하고, 대상자가 수락하면 정규화된 `team_invitations.role`이 `team_members.role`로 보존된다. 용병은 팀 MMR 기여 가중치가 낮고, 정규멤버보다 느슨한 임시 참여 성격이다.
+6. 한 팀의 등록 인원은 최대 10명이다. 정규멤버와 용병을 합친 운영 단위로 보며 프론트, 서버 action, DB RPC/trigger가 모두 차단한다.
+7. 팀 가입은 팀장의 직접 추가가 아니라 pending 팀 초대 발송 후 대상자가 수락하는 흐름이다. 팀 정원 10명 도달 시 같은 서버 transaction에서 남은 pending 팀 가입 초대를 `expired`로 만료 처리한다. 정원 도달 뒤 새 팀 가입 초대 발송도 막는다.
 8. 경기 만들기에서 팀전은 내 팀이 있는 사용자만 만들 수 있다. A사이드는 내 소속 팀만 선택하고, B사이드는 상대 팀 검색/초대로만 선택한다.
 9. 기존 팀에 새 멤버를 넣는 것은 `/api/teams/sync-team`의 일반 팀 저장 payload로 허용하지 않는다. 새 가입은 `rankball_invite_team_member`와 `rankball_respond_team_invitation` 수락 경로만 쓴다.
 10. `/api/profile/me` 초기 부트스트랩은 현재 사용자 소속 팀뿐 아니라 관련 pending 팀 초대와 초대 대상 팀 정보를 함께 싣는다. 전체 state 로드 전에도 팀 초대 수락/거절 UI가 빈 상태로 보이면 안 된다.
 11. `/app/teams/:teamId` 직접 진입한 주장 화면은 팀 관리 후보와 pending 팀 초대 상태를 위해 팀 디렉터리를 보강 로드하고, 디렉터리 응답의 `teamInvitations`를 기존 state에 병합해야 한다.
+12. 팀 초대 수락은 기존 모집방 party row를 자동 재작성하지 않는다. 이미 방에 개인으로 들어온 사용자는 내 슬롯 관리의 `파티 새로고침`으로 기존 `joinRecruitingSideParty` 액션을 다시 호출해 같은 사이드 팀 파티에 합류한다.
 
 ## 2026-06-29 초대 수락 서버 반영 원칙
 1. 팀 초대 `invite/accept/decline/cancel`은 RPC 성공 뒤 현재 사용자 `/api/profile/me` 범위 state를 같이 반환하고, 프론트는 그 state를 즉시 병합한다. 화면은 optimistic state가 아니라 서버 최신 팀/초대 상태로 정렬되어야 한다.

@@ -7,7 +7,7 @@ import SearchPicker from "../components/common/SearchPicker.jsx";
 import { getTierEmblemSrc } from "../components/rating/TierEmblem.jsx";
 import TeamCard from "../components/team/TeamCard.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
-import { MAX_TEAM_MEMBERSHIPS, MAX_TEAM_NAME_LENGTH, REGIONS, TEAM_ROLES } from "../lib/constants.js";
+import { MAX_TEAM_MEMBERSHIPS, MAX_TEAM_NAME_LENGTH, REGIONS, getTeamRoleLabel } from "../lib/constants.js";
 import { getCourtLayoutLabel, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
 import { getCourtHashtag, getTeamHashtag } from "../lib/handles.js";
 import { getTierDivision } from "../lib/tier.js";
@@ -176,7 +176,7 @@ export default function Teams({ app }) {
                   <span className="team-rank-chip">#{team.rank}</span>
                   <span className="team-mini-dot" style={{ "--team-color": team.accent }} />
                   <strong>{team.name}</strong>
-                  <em>{TEAM_ROLES[team.myRole] ?? team.myRole} · {team.mmr} MMR · {winRate}%</em>
+                  <em>{getTeamRoleLabel(team.myRole)} · {team.mmr} MMR · {winRate}%</em>
                   <span className="my-team-tier">
                     <img src={getTierEmblemSrc(team.mmr)} alt={`${getTierDivision(team.mmr)} emblem`} loading="lazy" />
                     <span>{getTierDivision(team.mmr)}</span>
@@ -297,10 +297,10 @@ export default function Teams({ app }) {
               <span className="form-chip">{draft.homeCourt}</span>
             </label>
             <label>
-              주장
+              팀장
               <input value={`${app.currentUser.name} · ${selectedCaptainTeamCount}/${MAX_TEAM_MEMBERSHIPS}팀`} readOnly disabled />
               <span className={captainLimitReached ? "form-warning" : "form-chip"}>
-                팀 생성자는 주장으로 고정됩니다.
+                팀 생성자는 팀장으로 고정됩니다.
               </span>
             </label>
             <label>

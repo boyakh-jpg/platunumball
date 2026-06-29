@@ -589,6 +589,24 @@ using (
 do $$
 begin
   if to_regclass('public.team_members') is not null then
+    execute '
+      update public.team_members
+      set role = case
+        when role in (''captain'', ''regular'', ''mercenary'') then role
+        when role = ''guest'' then ''mercenary''
+        else ''regular''
+      end
+      where role is null
+         or role not in (''captain'', ''regular'', ''mercenary'')
+    ';
+    execute 'alter table public.team_members drop constraint if exists team_members_role_check';
+    execute '
+      alter table public.team_members
+      add constraint team_members_role_check
+      check (role in (''captain'', ''regular'', ''mercenary''))
+      not valid
+    ';
+    execute 'alter table public.team_members validate constraint team_members_role_check';
     execute 'drop trigger if exists team_members_limit_3 on public.team_members';
     execute '
       create trigger team_members_limit_3
@@ -616,6 +634,26 @@ begin
       )
     ';
     execute 'alter table public.team_invitations add column if not exists role text not null default ''regular''';
+    execute '
+      update public.team_invitations
+      set role = case
+        when role = ''mercenary'' or role = ''guest'' then ''mercenary''
+        else ''regular''
+      end
+      where role is null
+         or role not in (''regular'', ''mercenary'')
+    ';
+    execute 'alter table public.team_invitations drop constraint if exists team_invitations_role_check';
+    execute '
+      alter table public.team_invitations
+      add constraint team_invitations_role_check
+      check (role in (''regular'', ''mercenary''))
+      not valid
+    ';
+  end if;
+
+  if to_regclass('public.team_invitations') is not null then
+    execute 'alter table public.team_invitations validate constraint team_invitations_role_check';
     execute 'create index if not exists team_invitations_team_status_idx on public.team_invitations (team_id, status)';
     execute 'create index if not exists team_invitations_target_status_idx on public.team_invitations (target_user_id, status)';
     execute 'create unique index if not exists team_invitations_one_pending_target on public.team_invitations (team_id, target_user_id) where status = ''pending''';
@@ -2114,7 +2152,8 @@ begin
     end if;
 
     safe_role := case
-      when member_value->>'role' in ('captain', 'regular', 'candidate', 'substitute', 'mercenary', 'guest') then member_value->>'role'
+      when member_value->>'role' in ('captain', 'regular', 'mercenary') then member_value->>'role'
+      when member_value->>'role' = 'guest' then 'mercenary'
       else 'regular'
     end;
     if safe_role = 'captain' then
@@ -2275,7 +2314,7 @@ declare
   target_team_count integer;
   team_name text;
   safe_role text := case
-    when p_role in ('regular', 'candidate', 'substitute', 'mercenary', 'guest') then p_role
+    when p_role = 'mercenary' or p_role = 'guest' then 'mercenary'
     else 'regular'
   end;
 begin
@@ -2511,7 +2550,7 @@ begin
   end if;
 
   safe_role := case
-    when invitation_row.role in ('regular', 'candidate', 'substitute', 'mercenary', 'guest') then invitation_row.role
+    when invitation_row.role = 'mercenary' or invitation_row.role = 'guest' then 'mercenary'
     else 'regular'
   end;
 

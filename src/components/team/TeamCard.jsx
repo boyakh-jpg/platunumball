@@ -2,6 +2,7 @@ import Badge from "../common/Badge.jsx";
 import Card from "../common/Card.jsx";
 import TierEmblem from "../rating/TierEmblem.jsx";
 import TeamHoverCard from "./TeamHoverCard.jsx";
+import { isMercenaryTeamRole } from "../../lib/constants.js";
 
 export default function TeamCard({ team, users, teams = [team], compact = false, linked = true, rank }) {
   const wins = Number(team.wins ?? 0);
@@ -9,7 +10,7 @@ export default function TeamCard({ team, users, teams = [team], compact = false,
   const played = wins + losses;
   const members = Array.isArray(team.members) ? team.members : [];
   const winRate = played ? Math.round((wins / played) * 100) : 0;
-  const regularCount = members.filter((member) => member.role === "regular" || member.role === "captain").length;
+  const regularCount = members.filter((member) => !isMercenaryTeamRole(member.role)).length;
 
   return (
     <Card className="team-card elite-team-card">

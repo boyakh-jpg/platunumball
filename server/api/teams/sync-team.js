@@ -3,7 +3,14 @@ import { loadCurrentProfileState, PROFILE_ME_COLUMNS } from "../profile/me.js";
 
 const MAX_TEAM_NAME_LENGTH = 14;
 const MAX_TEAM_MEMBERS = 10;
-const TEAM_INVITE_ROLES = new Set(["regular", "candidate", "substitute", "mercenary", "guest"]);
+const TEAM_INVITE_ROLES = new Set(["regular", "mercenary"]);
+
+function normalizeTeamRole(role = "regular", { allowCaptain = true } = {}) {
+  const safeRole = String(role || "regular").trim();
+  if (safeRole === "captain" && allowCaptain) return "captain";
+  if (safeRole === "mercenary" || safeRole === "guest") return "mercenary";
+  return "regular";
+}
 
 function toArray(value) {
   return Array.isArray(value) ? value.filter(Boolean) : [];
@@ -13,7 +20,7 @@ function uniqueMembers(members = []) {
   const seen = new Set();
   return toArray(members).map((member) => ({
     userId: String(member.userId || member.user_id || "").trim(),
-    role: String(member.role || "regular").trim() || "regular",
+    role: normalizeTeamRole(member.role),
   })).filter((member) => {
     if (!member.userId || seen.has(member.userId)) return false;
     seen.add(member.userId);
@@ -98,7 +105,7 @@ async function deleteTeam(context, teamId, notifications = []) {
 }
 
 async function inviteTeamMember(context, body = {}) {
-  const role = String(body.role || "regular").trim();
+  const role = normalizeTeamRole(body.role, { allowCaptain: false });
   const { data, error } = await context.supabase.rpc("rankball_invite_team_member", {
     p_actor_profile_id: context.profileId,
     p_team_id: String(body.teamId || "").trim(),

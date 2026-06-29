@@ -9,7 +9,7 @@ import MatchCard from "../components/match/MatchCard.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
-import { MAX_TEAM_MEMBERSHIPS } from "../lib/constants.js";
+import { MAX_TEAM_MEMBERSHIPS, getTeamRoleLabel } from "../lib/constants.js";
 import { getRegisteredCourts } from "../lib/courts.js";
 import { getCourtHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { canUserResolveMatchDispute, getAllowedStatFields, getMatchRecordWindow, getMatchReservePlayerIds, getMatchRoomPhase, getPlayerSideName, getPlayerStatSubmitted, getPublicRoomTimingStatus, isInstantRoom } from "../lib/matchUtils.js";
@@ -771,7 +771,7 @@ export default function Home({ app }) {
                 <TeamHoverCard key={team.id} team={team}>
                   <span className="team-mini-dot" style={{ "--team-color": team.accent }} />
                   <strong>{team.name}</strong>
-                  <em>{team.myRole === "captain" ? "주장" : ["candidate", "substitute", "regular"].includes(team.myRole) ? "팀원" : team.myRole === "mercenary" ? "용병" : "게스트"}</em>
+                  <em>{getTeamRoleLabel(team.myRole)}</em>
                   <b>{team.mmr}</b>
                 </TeamHoverCard>
               )) : <div><span>팀 없음</span><strong>팀 찾기 필요</strong></div>}

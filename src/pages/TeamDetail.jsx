@@ -10,7 +10,7 @@ import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import TierBadge from "../components/rating/TierBadge.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
-import { MAX_TEAM_MEMBERS, MAX_TEAM_MEMBERSHIPS, TEAM_ROLES } from "../lib/constants.js";
+import { MAX_TEAM_MEMBERS, MAX_TEAM_MEMBERSHIPS, getTeamRoleLabel, isMercenaryTeamRole, normalizeTeamRole } from "../lib/constants.js";
 
 function getTeamSide(match, teamId) {
   if (match.teamA?.teamId === teamId) return "teamA";
@@ -32,12 +32,11 @@ const historyStatusLabel = {
   void: "무효",
   cancelled: "취소",
 };
-const externalTeamRoles = new Set(["mercenary", "guest"]);
-const managedTeamRoleOptions = ["regular", "candidate", "substitute", "mercenary", "guest"].map((role) => [role, TEAM_ROLES[role] ?? role]);
+const managedTeamRoleOptions = ["regular", "mercenary"].map((role) => [role, getTeamRoleLabel(role)]);
 const inviteRoleOptions = managedTeamRoleOptions;
 
 function getManagedRoleOptions(member, captainId) {
-  if (member.userId === captainId) return [["captain", TEAM_ROLES.captain]];
+  if (member.userId === captainId) return [["captain", getTeamRoleLabel("captain")]];
   return managedTeamRoleOptions;
 }
 
@@ -67,8 +66,8 @@ export default function TeamDetail({ app }) {
   });
   const favoriteTeamIds = app.state.settings?.favoriteTeamIds ?? [];
   const isFavoriteTeam = favoriteTeamIds.includes(team.id);
-  const regularMembers = team.members.filter((member) => !externalTeamRoles.has(member.role));
-  const reserveMembers = team.members.filter((member) => externalTeamRoles.has(member.role));
+  const regularMembers = team.members.filter((member) => !isMercenaryTeamRole(member.role));
+  const reserveMembers = team.members.filter((member) => isMercenaryTeamRole(member.role));
   const pendingTeamInvitations = (app.state.teamInvitations ?? []).filter((invitation) => invitation.teamId === team.id && invitation.status === "pending");
   const pendingTargetIds = new Set(pendingTeamInvitations.map((invitation) => invitation.targetUserId));
   const availableUsers = app.state.users.filter((user) => (
@@ -182,7 +181,7 @@ export default function TeamDetail({ app }) {
           <div className="badge-row">
             <Badge tone="green">{team.mmr} 팀 MMR</Badge>
             <TierBadge mmr={team.mmr} />
-            <Badge tone="gold">주장 {userMap[captain?.userId]?.name ?? "미지정"}</Badge>
+            <Badge tone="gold">팀장 {userMap[captain?.userId]?.name ?? "미지정"}</Badge>
           </div>
           <Button
             type="button"
@@ -235,7 +234,7 @@ export default function TeamDetail({ app }) {
           </div>
           <div className="rank-stat-grid">
             <span><strong>{regularMembers.length}</strong>팀원</span>
-            <span><strong>{reserveMembers.length}</strong>용병/게스트</span>
+            <span><strong>{reserveMembers.length}</strong>용병</span>
             <span><strong>{myTeamCountLabel(canManage)}</strong>권한</span>
             <span><strong>{team.region}</strong>지역</span>
           </div>
@@ -260,7 +259,7 @@ export default function TeamDetail({ app }) {
                 const opponent = match[oppositeSide];
                 const reserveUsed = (side?.players ?? [])
                   .map((id) => team.members.find((member) => member.userId === id))
-                  .filter((member) => member && externalTeamRoles.has(member.role));
+                  .filter((member) => member && isMercenaryTeamRole(member.role));
                 return (
                   <article key={match.id} className="history-item">
                     <div>
@@ -279,7 +278,7 @@ export default function TeamDetail({ app }) {
                     </div>
                     <p>
                       상대 <TeamHoverCard team={teamById[opponent.teamId]} as="span">{opponent.name}</TeamHoverCard>
-                      {reserveUsed.length ? ` · 용병/게스트 ${reserveUsed.map((member) => `${userMap[member.userId]?.name ?? "플레이어"}(${TEAM_ROLES[member.role]})`).join(", ")}` : ""}
+                      {reserveUsed.length ? ` · 용병 ${reserveUsed.map((member) => `${userMap[member.userId]?.name ?? "플레이어"}(${getTeamRoleLabel(member.role)})`).join(", ")}` : ""}
                     </p>
                   </article>
                 );
@@ -292,7 +291,7 @@ export default function TeamDetail({ app }) {
           <Card className="section-card">
             <div className="contract-grid single">
               <div>
-                <span>주장</span>
+                <span>팀장</span>
                 <strong>{userMap[captain?.userId]?.name ?? "미지정"}</strong>
               </div>
               <div>
@@ -300,7 +299,7 @@ export default function TeamDetail({ app }) {
                 <strong>{regularMembers.length}명</strong>
               </div>
               <div>
-                <span>용병/게스트</span>
+                <span>용병</span>
                 <strong>{reserveMembers.length}명</strong>
               </div>
             </div>
@@ -356,7 +355,7 @@ export default function TeamDetail({ app }) {
                         <div key={invitation.id} className="member-control-row">
                           <span>
                             <strong>{user?.name ?? "초대 대상"}</strong>
-                            <small>초대 대기 · {TEAM_ROLES[invitation.role] ?? TEAM_ROLES.regular}</small>
+                            <small>초대 대기 · {getTeamRoleLabel(invitation.role)}</small>
                           </span>
                           <Badge tone="orange">pending</Badge>
                           <button type="button" onClick={() => app.actions.cancelTeamInvitation(invitation.id)}>취소</button>
@@ -377,7 +376,7 @@ export default function TeamDetail({ app }) {
                           <span className="avatar small" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
                           <strong>{user.name}</strong>
                         </PlayerHoverCard>
-                        <select value={member.role} disabled={isCaptainMember} onChange={(event) => app.actions.updateTeamMemberRole(team.id, member.userId, event.target.value)}>
+                        <select value={normalizeTeamRole(member.role)} disabled={isCaptainMember} onChange={(event) => app.actions.updateTeamMemberRole(team.id, member.userId, event.target.value)}>
                           {roleOptions.map(([role, label]) => <option key={role} value={role}>{label}</option>)}
                         </select>
                         <button type="button" disabled={isCaptainMember || team.members.length <= 1} onClick={() => app.actions.removeTeamMember(team.id, member.userId)}>제외</button>
@@ -403,7 +402,7 @@ export default function TeamDetail({ app }) {
           <div id="team-roster" className="page-stack">
             {renderMembers("팀원", regularMembers)}
           </div>
-          {renderMembers("용병/게스트 기록", reserveMembers)}
+          {renderMembers("용병 기록", reserveMembers)}
         </aside>
       </div>
     </div>
