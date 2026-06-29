@@ -451,7 +451,7 @@ async function fetchRecruitingFeedPage(client, {
   includeCards = false,
 } = {}) {
   if (!userRoomFeedAvailable) return null;
-  const cappedLimit = Math.max(1, Math.min(80, Number(limit) || REMOTE_CLIENT_RECRUITING_LIMIT));
+  const cappedLimit = Math.max(1, Math.min(200, Number(limit) || REMOTE_CLIENT_RECRUITING_LIMIT));
   const safeOffset = Math.max(0, Math.floor(Number(offset) || 0));
   let query = client
     .from("user_room_feed")
@@ -555,7 +555,7 @@ function mergeRecruitingCounts(feedCounts, fallbackCounts) {
 
 async function fetchCurrentUserRecruitingFallbackPostIds(client, profileId = "", limit = REMOTE_CLIENT_RECRUITING_LIMIT, roomScope = "") {
   if (!profileId) return [];
-  const cappedLimit = Math.max(1, Math.min(80, Number(limit) || REMOTE_CLIENT_RECRUITING_LIMIT));
+  const cappedLimit = Math.max(1, Math.min(200, Number(limit) || REMOTE_CLIENT_RECRUITING_LIMIT));
   const relations = getRecruitingMineRelations(roomScope);
   const [ownedPostIds, roomOwnerPostIds, hostedPlayerPostIds, refereedPostIds, invitedPostIds, applicantPostIds, applicantPartyPostIds, roomStateParticipantPostIds] = await Promise.all([
     fetchPostIds(client.from("recruiting_posts").select("id").eq("status", "open").eq("player_id", profileId).order("updated_at", { ascending: false }).limit(cappedLimit)),
@@ -585,18 +585,15 @@ function getRecruitingMineRelations(scope = "") {
 
 export async function fetchCurrentUserRecruitingPostIds(client, profileId = "", limit = REMOTE_CLIENT_RECRUITING_LIMIT, roomScope = "") {
   if (!profileId) return [];
-  const cappedLimit = Math.max(1, Math.min(80, Number(limit) || REMOTE_CLIENT_RECRUITING_LIMIT));
+  const cappedLimit = Math.max(1, Math.min(200, Number(limit) || REMOTE_CLIENT_RECRUITING_LIMIT));
   const relations = getRecruitingMineRelations(roomScope);
-  const [feedPostIds, fallbackPostIds] = await Promise.all([
-    fetchRecruitingFeedPostIds(client, {
-      profileId,
-      relations,
-      limit: cappedLimit,
-    }),
-    fetchCurrentUserRecruitingFallbackPostIds(client, profileId, cappedLimit, roomScope),
-  ]);
-  if (feedPostIds?.length || fallbackPostIds.length) {
-    return uniqueIds([...fallbackPostIds, ...(feedPostIds ?? [])]).slice(0, cappedLimit);
+  const feedPostIds = await fetchRecruitingFeedPostIds(client, {
+    profileId,
+    relations,
+    limit: cappedLimit,
+  });
+  if (feedPostIds) {
+    return uniqueIds(feedPostIds).slice(0, cappedLimit);
   }
   if (!roomScope && currentUserRecruitingRpcAvailable) {
     const { data: rpcRows, error: rpcError } = await client.rpc("rankball_current_recruiting_post_ids", {
@@ -612,11 +609,11 @@ export async function fetchCurrentUserRecruitingPostIds(client, profileId = "", 
       console.warn("Current user recruiting RPC skipped.", rpcError.message);
     }
   }
-  return fallbackPostIds;
+  return fetchCurrentUserRecruitingFallbackPostIds(client, profileId, cappedLimit, roomScope);
 }
 
 async function fetchRecruitingFallbackPage(client, limit = REMOTE_CLIENT_RECRUITING_LIMIT, offset = 0, regionKey = "") {
-  const cappedLimit = Math.max(1, Math.min(80, Number(limit) || REMOTE_CLIENT_RECRUITING_LIMIT));
+  const cappedLimit = Math.max(1, Math.min(200, Number(limit) || REMOTE_CLIENT_RECRUITING_LIMIT));
   const safeOffset = Math.max(0, Math.floor(Number(offset) || 0));
   let query = client
     .from("recruiting_posts")
@@ -644,20 +641,9 @@ async function fetchRecruitingPage(client, limit = REMOTE_CLIENT_RECRUITING_LIMI
     offset: safeOffset,
     includeCards,
   });
-  const fallbackPage = safeOffset === 0
-    ? await fetchRecruitingFallbackPage(client, cappedLimit, safeOffset, regionKey)
-    : null;
-  if (feedPage?.ids?.length || fallbackPage?.ids?.length) {
-    const ids = uniqueIds([...(fallbackPage?.ids ?? []), ...(feedPage?.ids ?? [])]).slice(0, cappedLimit);
-    return {
-      ids,
-      cards: fallbackPage?.ids?.length ? [] : (feedPage?.cards ?? []),
-      source: feedPage?.ids?.length && fallbackPage?.ids?.length ? "feed_fallback_public" : (feedPage?.source ?? fallbackPage?.source ?? "feed"),
-      exhausted: Boolean(feedPage?.exhausted && (fallbackPage?.exhausted ?? true)) || ids.length < cappedLimit,
-    };
-  }
-  if (feedPage && safeOffset > 0) return { ids: [], cards: [], source: feedPage.source ?? "feed", exhausted: true };
-  return fallbackPage ?? { ids: [], cards: [], source: "fallback_public", exhausted: true };
+  if (feedPage) return feedPage;
+  if (safeOffset > 0) return { ids: [], cards: [], source: "fallback_public", exhausted: true };
+  return fetchRecruitingFallbackPage(client, cappedLimit, safeOffset, regionKey);
 }
 
 async function fetchRecruitingRowsByIds(client, postIds = []) {
@@ -935,12 +921,15 @@ export async function loadCurrentUserRecruitingFeedList(context, {
   if (!context.profileId) {
     return loadCompactRecruitingList(context, { adminLevel, limit, mineOnly: true });
   }
-  const pageResult = await fetchRecruitingFeedPage(context.supabase, {
-    profileId: context.profileId,
-    relations: ["owner", "participant", "invited", "referee"],
-    limit,
-    includeCards: true,
-  });
+  const [pageResult, feedCounts] = await Promise.all([
+    fetchRecruitingFeedPage(context.supabase, {
+      profileId: context.profileId,
+      relations: ["owner", "participant", "invited", "referee"],
+      limit,
+      includeCards: true,
+    }),
+    fetchRecruitingFeedCounts(context.supabase, context.profileId),
+  ]);
   if (pageResult) {
     return loadCompactRecruitingList(context, {
       adminLevel,
@@ -948,6 +937,7 @@ export async function loadCurrentUserRecruitingFeedList(context, {
       pageCards: pageResult.cards ?? [],
       pageSource: pageResult.source ?? "feed",
       pageExhausted: pageResult.exhausted,
+      feedCounts,
       limit,
     });
   }

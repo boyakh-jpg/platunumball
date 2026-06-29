@@ -99,6 +99,10 @@ export default async function handler(request, response) {
         recruitingScheduleChecked: true,
         recruitingScheduleCount: recruitingPosts.length,
       },
+      recruitingPage: {
+        ...(localRecruitingResult.page ?? {}),
+        feedCounts: recruitingResult.page?.feedCounts ?? localRecruitingResult.page?.feedCounts ?? null,
+      },
       updatedAt: Math.max(profileResult.updatedAt ?? 0, matchResult.updatedAt ?? 0, recentMatchResult.updatedAt ?? 0, recruitingResult.updatedAt ?? 0, localRecruitingResult.updatedAt ?? 0),
       debugTiming: debugTiming ?? undefined,
     });

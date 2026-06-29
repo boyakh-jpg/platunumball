@@ -3153,11 +3153,7 @@ function RecruitingReady({ app }) {
       ? ((currentScope === "local" && !currentKey) || (currentScope === "region" && currentKey === regionKey))
       : (currentScope === "region" && currentKey === regionKey);
     const hasFeedCounts = app.recruitingPagination?.feedCounts != null;
-    if (
-      currentPageMatchesRegion &&
-      hasFeedCounts &&
-      (hasCurrentRegionRows || app.recruitingPagination?.exhausted)
-    ) return;
+    if (currentPageMatchesRegion && hasFeedCounts) return;
     const loadKey = `${app.currentUser.id}:${regionFilter}:${regionKey}`;
     if (regionLoadRef.current === loadKey) return;
     regionLoadRef.current = loadKey;

@@ -576,7 +576,7 @@ function getInitialStateLoadOptions() {
     return { endpoint: "recorderMatches", matchLimit: REMOTE_CLIENT_MATCH_LIMIT, recruitingLimit: 0, tournamentLimit: 0 };
   }
   if (pathname === "/app" || pathname === "/login") {
-    return { endpoint: "homeLoad", matchLimit: 200, recruitingLimit: 0, tournamentLimit: 0 };
+    return { endpoint: "homeLoad", matchLimit: 200, recruitingLimit: REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT, tournamentLimit: 0 };
   }
   return { matchLimit: REMOTE_CLIENT_INITIAL_MATCH_LIMIT, recruitingLimit: REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT };
 }
@@ -729,6 +729,7 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
       );
       if (result?.state) return attachRemoteMeta(normalizeServerState(result.state), {
         matchPage: result.page ?? null,
+        recruitingPage: result.recruitingPage ?? null,
         directoryLoaded: true,
       });
     }
@@ -852,11 +853,13 @@ export function useAppData(authUser = null) {
           const maintainedState = isSupabaseConfigured ? remoteState : runAutomaticStateMaintenance(remoteState);
           const initialMatchLimit = Number(initialLoadOptions.matchLimit ?? 0);
           const initialRecruitingLimit = Number(initialLoadOptions.recruitingLimit ?? 0);
+          const matchPageHasExhausted = typeof remoteMeta.matchPage?.exhausted === "boolean";
+          const recruitingPageHasExhausted = typeof remoteMeta.recruitingPage?.exhausted === "boolean";
           cacheCurrentProfileState(authUserId, maintainedState);
           setState((prev) => withServerAdminContext(preserveLocalDiscordState(prev, maintainedState), adminContextRef.current));
           setMatchPagination({
             loading: false,
-            exhausted: initialMatchLimit <= 0 || Boolean(remoteMeta.matchPage?.exhausted) || (maintainedState.matches?.length ?? 0) < initialMatchLimit,
+            exhausted: initialMatchLimit <= 0 || (matchPageHasExhausted ? remoteMeta.matchPage.exhausted : (maintainedState.matches?.length ?? 0) < initialMatchLimit),
             error: "",
             cursor: remoteMeta.matchPage?.cursor ?? getMatchPaginationCursor(maintainedState.matches),
             recruitingScheduleChecked: Boolean(remoteMeta.matchPage?.recruitingScheduleChecked),
@@ -864,7 +867,7 @@ export function useAppData(authUser = null) {
           });
           setRecruitingPagination({
             loading: false,
-            exhausted: initialRecruitingLimit <= 0 || Boolean(remoteMeta.recruitingPage?.exhausted) || (maintainedState.recruitingPosts?.length ?? 0) < initialRecruitingLimit,
+            exhausted: initialRecruitingLimit <= 0 || (recruitingPageHasExhausted ? remoteMeta.recruitingPage.exhausted : (maintainedState.recruitingPosts?.length ?? 0) < initialRecruitingLimit),
             error: "",
             cursor: remoteMeta.recruitingPage?.cursor ?? getRecruitingPaginationCursor(maintainedState.recruitingPosts),
             offset: getRecruitingPaginationOffset(remoteMeta.recruitingPage, maintainedState.recruitingPosts?.length ?? 0),
