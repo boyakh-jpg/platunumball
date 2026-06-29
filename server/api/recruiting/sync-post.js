@@ -563,6 +563,7 @@ const MEMBERSHIP_ADD_RECRUITING_ACTIONS = new Set([
 
 const AUTHORITATIVE_REPLAY_RECRUITING_ACTIONS = new Set([
   "cancelRecruitingParticipation",
+  "confirmRecruitingMatch",
   "interestRecruitingPost",
   "inviteRecruitingPlayers",
   "inviteRecruitingReferee",

@@ -1303,12 +1303,13 @@ flowchart TD
 
 1. Frontend server action payload may include both `operation` and the already reduced `post` or `match` snapshot.
 2. When a valid snapshot is present, recruiting/match server actions skip `loadAuthoritativeState()` and persist through `rankball_recruiting_action()` or `rankball_match_action()`.
-3. `confirmRecruitingMatch` may include `createdMatch` so the recruiting action can persist both the closed recruiting room and the created match without reloading full state.
+3. `confirmRecruitingMatch` uses server authoritative replay; client `createdMatch` is not a source of truth for persisting the closed recruiting room and created match.
 4. `approveMatch` remains on server replay because rating commit extraction needs before/after profile and team deltas.
 5. `createRecruitingPost` and `createMatch` do not use the fast path; server actions replay the reducer with authenticated `profileId` so Google login profile ids become the room owner and creator.
 6. Google/auth actor-sensitive recruiting actions such as public join, side party join, applicant placement, and slot position change replay the reducer on the server with `context.profileId` and target recruiting scope instead of trusting a client snapshot.
 7. `interestRecruitingPost` must replay the JS reducer until the SQL reducer calculates full-side auto-reserve placement. A full active side must save new participants as reserve/candidate, not overfill the active slot.
 8. Recruiting core lock compares canonical room shape. `side_capacity` cannot exceed mode size, and rooms without `team_id` are treated as player-hosted even if older DB rows still say `host_join_mode='team'`.
+9. Match sync success responses include the latest single match row when available, so client screens merge the server result instead of stale optimistic snapshots.
 
 ## 2026-06-27 recruiting mine scope
 

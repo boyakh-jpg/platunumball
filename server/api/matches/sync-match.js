@@ -835,6 +835,12 @@ function shouldUseSqlMatchAction(operation = {}) {
   return SQL_REDUCER_MATCH_ACTIONS.has(String(operation?.action ?? ""));
 }
 
+async function loadSyncedMatch(context, matchId = "") {
+  if (!matchId) return null;
+  const state = await loadAuthoritativeState(context, { operation: { matchId } });
+  return (state.matches ?? []).find((item) => item.id === matchId) ?? null;
+}
+
 async function applySqlMatchAction(context, operation = {}, match = {}) {
   if (operation.action === "agreeMatch" && match?.id) {
     const { data, error } = await context.supabase.rpc("rankball_match_agree_action", {
@@ -1080,10 +1086,11 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
     discordDeliveryError = deliveryError.message || "discord_match_delivery_failed";
     console.error("Match Discord delivery queue failed.", deliveryError);
   }
+  const syncedMatch = await loadSyncedMatch(context, match.id);
 
   return {
     ok: true,
-    match,
+    match: syncedMatch ?? match,
     matchId: match.id,
     playerCount: Number(persistResult?.playerCount ?? playerRows.length),
     statCount: Number(persistResult?.statCount ?? statRows.length),
@@ -1114,7 +1121,11 @@ export default async function handler(request, response) {
     if (operation && match && shouldUseSqlMatchAction(operation)) {
       const sqlResult = await applySqlMatchAction(context, operation, match);
       if (sqlResult) {
-        sendJson(response, 200, sqlResult);
+        const syncedMatch = await loadSyncedMatch(context, sqlResult.matchId ?? operation.matchId ?? match.id);
+        sendJson(response, 200, {
+          ...sqlResult,
+          ...(syncedMatch ? { match: syncedMatch } : {}),
+        });
         return;
       }
       match = null;
