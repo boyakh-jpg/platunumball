@@ -107,6 +107,7 @@ export async function loadCurrentProfileState(context) {
   const user = profile
     ? fromRemoteProfile(profile)
     : createProfileShell(context.authUserId, context.authUser?.email ?? "");
+  const remoteAppSettings = getRemoteAppSettings(profile);
   const teamInvitations = await loadCurrentUserTeamInvitations(context.supabase, profile?.id ?? "");
   const currentUserTeams = await loadCurrentUserTeams(
     context.supabase,
@@ -117,7 +118,7 @@ export async function loadCurrentProfileState(context) {
   userById.set(user.id, user);
   const settings = {
     ...DEFAULT_SETTINGS,
-    ...getRemoteAppSettings(profile),
+    ...remoteAppSettings,
   };
   const state = normalizeState({
     currentUserId: user.id,
@@ -125,6 +126,9 @@ export async function loadCurrentProfileState(context) {
     teams: currentUserTeams.teams,
     teamInvitations,
     settings,
+    settingsMeta: {
+      themeExplicit: Boolean(remoteAppSettings.theme),
+    },
   }, { includeDemo: false });
 
   return {

@@ -404,7 +404,8 @@ function mergeRemoteDirectory(state, remoteState = {}, options = {}) {
 
 function mergeRemoteProfileState(state, remoteState = {}) {
   const profileUserId = remoteState.currentUserId ?? state.currentUserId;
-  const nextState = mergeRemoteDirectory(state, remoteState, { includeTheme: true });
+  const includeTheme = remoteState.settingsMeta?.themeExplicit === true || remoteState.settings?.theme === "light";
+  const nextState = mergeRemoteDirectory(state, remoteState, { includeTheme });
   if (!Array.isArray(remoteState.teamInvitations) || !profileUserId) return nextState;
   const unrelatedInvitations = (state.teamInvitations ?? []).filter((invitation) => (
     invitation.fromUserId !== profileUserId &&

@@ -1002,7 +1002,7 @@ export function fromRemoteProfile(row) {
     onboardingComplete: Boolean(row.onboarding_complete || isTestProfile),
     profileVersion: row.profile_version ?? 0,
     handleLockedAt: row.handle_locked_at ?? (isTestProfile ? testSetupAt : null),
-    birthYearLockedAt: row.birth_year_locked_at ?? (isTestProfile ? testSetupAt : null),
+    birthYearLockedAt: row.birth_year_locked_at ?? null,
     nameUpdatedAt: row.name_updated_at ?? null,
     discordConnection: row.discord_connection ?? null,
     discordUserId: row.discord_user_id ?? row.discord_connection?.userId ?? null,
