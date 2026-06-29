@@ -4863,7 +4863,8 @@ create or replace function public.rankball_recruiting_action(
   p_action text,
   p_post_row jsonb,
   p_application_rows jsonb default '[]'::jsonb,
-  p_notification_rows jsonb default '[]'::jsonb
+  p_notification_rows jsonb default '[]'::jsonb,
+  p_expected_updated_at timestamptz default null
 )
 returns jsonb
 language plpgsql
@@ -4874,7 +4875,7 @@ declare
   safe_actor_id text := nullif(btrim(p_actor_profile_id), '');
   safe_action text := coalesce(nullif(btrim(p_action), ''), 'sync');
   safe_post_id text := nullif(btrim(p_post_row->>'id'), '');
-  expected_updated_at timestamptz := nullif(p_post_row->>'__expectedUpdatedAt', '')::timestamptz;
+  expected_updated_at timestamptz := coalesce(p_expected_updated_at, nullif(p_post_row->>'__expectedUpdatedAt', '')::timestamptz);
   current_updated_at timestamptz;
   persist_result jsonb;
 begin
@@ -4946,36 +4947,7 @@ begin
 end;
 $$;
 
-revoke all on function public.rankball_recruiting_action(text, text, jsonb, jsonb, jsonb) from public;
-grant execute on function public.rankball_recruiting_action(text, text, jsonb, jsonb, jsonb) to service_role;
-
-create or replace function public.rankball_recruiting_action(
-  p_actor_profile_id text,
-  p_action text,
-  p_post_row jsonb,
-  p_application_rows jsonb default '[]'::jsonb,
-  p_notification_rows jsonb default '[]'::jsonb,
-  p_expected_updated_at timestamptz default null
-)
-returns jsonb
-language plpgsql
-security definer
-set search_path = public
-as $$
-begin
-  return public.rankball_recruiting_action(
-    p_actor_profile_id,
-    p_action,
-    case
-      when p_expected_updated_at is null then p_post_row
-      else jsonb_set(p_post_row, '{__expectedUpdatedAt}', to_jsonb(p_expected_updated_at::text), true)
-    end,
-    p_application_rows,
-    p_notification_rows
-  );
-end;
-$$;
-
+drop function if exists public.rankball_recruiting_action(text, text, jsonb, jsonb, jsonb);
 revoke all on function public.rankball_recruiting_action(text, text, jsonb, jsonb, jsonb, timestamptz) from public;
 grant execute on function public.rankball_recruiting_action(text, text, jsonb, jsonb, jsonb, timestamptz) to service_role;
 select pg_notify('pgrst', 'reload schema');
