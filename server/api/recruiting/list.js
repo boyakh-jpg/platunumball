@@ -486,11 +486,14 @@ async function fetchRecruitingFeedPage(client, {
   const rows = data ?? [];
   const ids = uniqueIds(rows.map((row) => row?.entity_id)).slice(0, cappedLimit);
   const cards = includeCards ? uniqueFeedCards(rows, ids) : [];
+  const nextOffset = safeOffset + rows.length;
   return {
     ids,
     cards,
     source: includeCards && cards.length === ids.length ? "feed_card" : "feed",
-    exhausted: rows.length < cappedLimit || ids.length < cappedLimit,
+    nextOffset,
+    cursor: String(nextOffset),
+    exhausted: rows.length < cappedLimit,
   };
 }
 
@@ -820,6 +823,7 @@ export async function loadCompactRecruitingList(context, {
   pageCards = [],
   pageSource = "",
   pageExhausted = null,
+  pageNextOffset = null,
   feedCounts = null,
   limit = REMOTE_CLIENT_RECRUITING_LIMIT,
   offset = 0,
@@ -839,6 +843,9 @@ export async function loadCompactRecruitingList(context, {
     ...DEFAULT_SETTINGS,
     ...getRemoteAppSettings(context.profile),
   };
+  const nextOffset = Number.isFinite(Number(pageNextOffset))
+    ? Math.max(offset, Math.floor(Number(pageNextOffset)))
+    : offset + pagePostIds.length;
 
   if (canUsePageCards) {
     const state = normalizeState({
@@ -854,8 +861,8 @@ export async function loadCompactRecruitingList(context, {
         limit,
         count: mineOnly ? targetCards.length : pagePostIds.length,
         offset,
-        nextOffset: offset + pagePostIds.length,
-        cursor: String(offset + pagePostIds.length),
+        nextOffset,
+        cursor: String(nextOffset),
         exhausted: typeof pageExhausted === "boolean" ? pageExhausted : pagePostIds.length < limit,
         regionScope: regionKey ? "region" : regionScope,
         regionKey,
@@ -921,8 +928,8 @@ export async function loadCompactRecruitingList(context, {
       limit,
       count: mineOnly ? posts.length : pagePostIds.length,
       offset,
-      nextOffset: offset + pagePostIds.length,
-      cursor: String(offset + pagePostIds.length),
+      nextOffset,
+      cursor: String(nextOffset),
       exhausted: mineOnly || Boolean(explicitPostIds.length) || (typeof pageExhausted === "boolean" ? pageExhausted : pagePostIds.length < limit),
       regionScope: regionKey ? "region" : regionScope,
       regionKey,
@@ -961,6 +968,7 @@ export async function loadCurrentUserRecruitingFeedList(context, {
       pageCards: pageResult.cards ?? [],
       pageSource: pageResult.source ?? "feed",
       pageExhausted: pageResult.exhausted,
+      pageNextOffset: pageResult.nextOffset,
       feedCounts,
       limit,
     });
@@ -996,6 +1004,7 @@ export async function loadLocalRecruitingFeedList(context, {
     pageCards: pageResult.cards ?? [],
     pageSource: pageResult.source ?? "feed",
     pageExhausted: pageResult.exhausted,
+    pageNextOffset: pageResult.nextOffset,
     limit,
     regionScope: regionKey ? "region" : "local",
     regionKey,
@@ -1051,6 +1060,7 @@ export default async function handler(request, response) {
     const pageCards = mergeFeedCards(pageResult?.cards ?? [], mineResult?.cards ?? []);
     const pageSource = pageResult?.source ?? "";
     const pageExhausted = typeof pageResult?.exhausted === "boolean" ? pageResult.exhausted : null;
+    const pageNextOffset = pageResult?.nextOffset;
     const feedCounts = mergeRecruitingCounts(feedCountsResult, fallbackCountsResult);
     const targetPostIds = uniqueIds([...explicitPostIds, ...(mineOnly ? currentUserPostIds : pagePostIds)]);
     if (listOnly) {
@@ -1064,6 +1074,7 @@ export default async function handler(request, response) {
         pageCards,
         pageSource,
         pageExhausted,
+        pageNextOffset,
         feedCounts,
         limit,
         offset,
@@ -1130,8 +1141,8 @@ export default async function handler(request, response) {
         limit,
         count: pagePosts.length,
         offset,
-        nextOffset: offset + pagePostIds.length,
-        cursor: String(offset + pagePostIds.length),
+        nextOffset: Number.isFinite(Number(pageNextOffset)) ? Math.max(offset, Math.floor(Number(pageNextOffset))) : offset + pagePostIds.length,
+        cursor: String(Number.isFinite(Number(pageNextOffset)) ? Math.max(offset, Math.floor(Number(pageNextOffset))) : offset + pagePostIds.length),
         exhausted: mineOnly || Boolean(explicitPostIds.length) || (typeof pageExhausted === "boolean" ? pageExhausted : pagePostIds.length < limit),
         regionScope: regionKey ? "region" : regionScope,
         regionKey,

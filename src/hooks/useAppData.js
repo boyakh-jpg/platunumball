@@ -1211,12 +1211,13 @@ export function useAppData(authUser = null) {
       );
       const rawRemoteState = result?.state ?? {};
       const rawMatchCount = rawRemoteState.matches?.length ?? 0;
+      const pageHasExhausted = typeof result?.page?.exhausted === "boolean";
       const remoteState = normalizeServerState(filterPendingMatches(rawRemoteState, pendingMatchIdsRef.current, recentMatchMutationTimesRef.current));
       const nextMatches = remoteState.matches ?? [];
       setState((prev) => mergeRemoteMatchPage(prev, remoteState));
       setMatchPagination((prev) => ({
         loading: false,
-        exhausted: Boolean(result?.page?.exhausted) || rawMatchCount < pageLimit,
+        exhausted: pageHasExhausted ? result.page.exhausted : rawMatchCount < pageLimit,
         error: "",
         cursor: result?.page?.cursor ?? cursor,
         recruitingScheduleChecked: prev.recruitingScheduleChecked || Boolean(result?.page?.recruitingScheduleChecked),

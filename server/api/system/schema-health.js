@@ -226,6 +226,13 @@ const REQUIRED_FEED_TRIGGERS = [
   "rankball_courts_feed_dependency_refresh",
 ];
 
+function canEnsureSimulationTestActors() {
+  if (process.env.VERCEL_ENV === "production" || process.env.NODE_ENV === "production") {
+    return process.env.RANKBALL_ALLOW_PRODUCTION_TEST_SEED === "true";
+  }
+  return true;
+}
+
 function getBearerToken(request) {
   const header = request.headers.authorization || request.headers.Authorization || "";
   const match = String(header).match(/^Bearer\s+(.+)$/i);
@@ -375,7 +382,9 @@ export default async function handler(request, response) {
     const failed = checks.filter((check) => !check.ok);
     const failedRpcs = rpcChecks.filter((check) => !check.ok);
     const simulationSeed = body?.ensureTestActors === true
-      ? await ensureSimulationTestActors(client)
+      ? canEnsureSimulationTestActors()
+        ? await ensureSimulationTestActors(client)
+        : { ok: false, skipped: true, error: "production_test_seed_disabled" }
       : null;
     sendJson(response, 200, {
       ok: failed.length === 0 && failedRpcs.length === 0 && feedTriggerCheck.ok && (!simulationSeed || simulationSeed.ok),

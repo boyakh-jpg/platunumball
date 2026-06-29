@@ -367,6 +367,7 @@ const AGE_ELIGIBILITY_ACTIONS = new Set([
   "joinRecruitingSideParty",
   "acceptRecruitingInvitation",
   "inviteRecruitingPlayers",
+  "setRecruitingTeamPartyRoster",
 ]);
 
 function shouldValidateAgeEligibility(action, profileId, existingPost, body = {}) {
@@ -577,7 +578,6 @@ const AUTHORITATIVE_REPLAY_RECRUITING_ACTIONS = new Set([
 
 const SQL_REDUCER_RECRUITING_ACTIONS = new Set([
   "cancelRecruitingParticipation",
-  "interestRecruitingPost",
   "setRecruitingReady",
   "setRecruitingApplicantPlacement",
   "setRecruitingSlotPosition",

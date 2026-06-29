@@ -27,6 +27,7 @@ const schemaHealthSecret = secretArg ? secretArg.slice("--secret=".length) : pro
 const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const requestTimeoutMs = Number(process.env.RANKBALL_SIM_TIMEOUT_MS || 20000);
+const ensureRemoteTestActors = process.env.RANKBALL_SIM_ENSURE_TEST_ACTORS === "1" || process.env.RANKBALL_SIM_ENSURE_TEST_ACTORS === "true";
 
 if (!process.env.RANKBALL_ENABLE_TEST_LOGIN && !process.env.VITE_DEMO_LOGIN) {
   process.env.RANKBALL_ENABLE_TEST_LOGIN = "true";
@@ -176,7 +177,7 @@ async function assertRemoteSchemaHealth() {
       authorization: `Bearer ${schemaHealthSecret}`,
       "content-type": "application/json",
     },
-    body: JSON.stringify({ ensureTestActors: true }),
+    body: JSON.stringify(ensureRemoteTestActors ? { ensureTestActors: true } : {}),
   });
   const text = await readResponseTextWithTimeout(response, "schema_health");
   const payload = text ? JSON.parse(text) : null;

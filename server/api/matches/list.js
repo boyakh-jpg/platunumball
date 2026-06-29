@@ -166,12 +166,13 @@ async function fetchMatchFeedPage(client, profileId = "", limit = REMOTE_CLIENT_
     const rows = Array.isArray(rpcData?.rows) ? rpcData.rows : [];
     const ids = unique(rows.map((row) => row?.entity_id ?? row?.entityId).filter(Boolean));
     const cards = uniqueFeedCards(rows, ids);
+    const hasAllCards = cards.length === ids.length;
     return {
       ids,
-      cards: cards.length === rows.length ? cards : [],
+      cards: hasAllCards ? cards : [],
       cursor: String(rpcData?.cursor ?? ""),
       exhausted: rpcData?.exhausted !== false,
-      source: cards.length === rows.length ? "rpc_card" : "rpc",
+      source: hasAllCards ? "rpc_card" : "rpc",
     };
   }
   if (!isMissingUserRoomFeed(rpcError) && rpcError?.code !== "PGRST202") throw rpcError;
@@ -205,7 +206,7 @@ async function fetchMatchFeedPage(client, profileId = "", limit = REMOTE_CLIENT_
     ids,
     cards: cards.length === ids.length ? cards : [],
     cursor: ids.length ? `feed:${offset + (data ?? []).length}` : "",
-    exhausted: (data ?? []).length < rowLimit || ids.length < cappedLimit,
+    exhausted: (data ?? []).length < rowLimit,
     source: cards.length === ids.length ? "feed_card" : "feed",
   };
 }

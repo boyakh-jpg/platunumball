@@ -61,7 +61,12 @@ function getEnvList(name) {
     .filter(Boolean);
 }
 
+function isProductionRuntime() {
+  return process.env.VERCEL_ENV === "production" || process.env.NODE_ENV === "production";
+}
+
 function isTestLoginEnabled() {
+  if (isProductionRuntime()) return process.env.RANKBALL_ALLOW_PRODUCTION_TEST_LOGIN === "true";
   return process.env.RANKBALL_ENABLE_TEST_LOGIN === "true" || process.env.VITE_DEMO_LOGIN === "true";
 }
 
