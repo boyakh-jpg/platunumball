@@ -21,9 +21,9 @@
 
 - `/login` auth 직후와 `/app` 첫 remote load는 broad `/api/state/load`가 아니라 `/api/home/load`를 사용한다.
 - `/api/home/load`는 current-profile profile/team bootstrap과 `/api/matches/list` feed 기반 active match/recruiting schedule을 한 번에 합친다.
-- `/api/home/load`는 홈 승률/최근전적이 비지 않도록 active match feed와 별도로 current-user recent match feed를 소량 병합한다.
+- `/api/home/load`는 active match feed와 current-user recruiting schedule만 병합한다. confirmed 기록방과 result/stat child rows는 홈에서 미리 읽지 않고 기록 화면 진입 시 읽는다.
 - `/api/home/load`는 홈 지역 모집 teaser용으로 `user_room_feed`의 지역 공개 모집 카드만 소량 병합한다. feed가 없으면 홈 첫 로드에서 무거운 지역 fallback을 강제하지 않는다.
-- `/api/home/load` 실패 fallback은 profile-only로 제한한다. 홈 첫 로드 실패가 broad `/api/state/load`나 direct full state read로 번지면 안 된다.
+- 화면별 thin endpoint 실패 fallback은 profile-only로 제한한다. 홈/경기/모집/기록 첫 로드 실패가 broad `/api/state/load`나 direct full state read로 번지면 안 된다.
 - `/api/home/load`에서 current-user 모집 일정 확인과 profile bootstrap이 끝났으면 홈 진입 effect가 같은 데이터를 `profile/me`, `scope=mine`/schedule 호출로 즉시 다시 읽지 않는다.
 
 ## 2026-06-28 목록 응답 속도 원칙
@@ -1407,7 +1407,7 @@ flowchart TD
 29. `user_room_feed` match rows are the first-page source for owned/participant/referee matches. `rankball_refresh_match_feed_for_match()` must keep match list `card_json` fresh whenever match or match player rows change. If the feed table/RPC is unavailable, `/api/matches/list` must fall back to current-profile candidate ids from `match_players.user_id`, `matches.created_by`, `matches.referee_id`, and `matches.former_referee_id`; it must not page through broad latest `matches` rows.
 30. `/app/recorder` must load `recorderOnly` match state on direct entry or after thin-route navigation before showing the final empty state. Recorder state includes only active `agreed`/`approval`/`disputed` matches related to the current profile.
 31. `/api/matches/list` with `listOnly:false` must not force `matchListOnly:true`; recorder/detail-like reads need `match_results` and `player_match_stats`.
-31-1. `/api/matches/list` with `completedOnly:true` loads current-profile confirmed match ids from `user_room_feed` first, then loads full result/stat rows only for those ids. Home must not pre-load confirmed record rooms; `/app/profile/records` loads them on entry.
+31-1. `/api/matches/list` with `completedOnly:true` loads current-profile participant confirmed match ids from `user_room_feed` first, then loads full result/stat rows only for those ids. If the feed is unavailable, it falls back to `match_players` candidate ids before reading match rows. Home must not pre-load confirmed record rooms; `/app/profile/records` loads them once on entry.
 32. `/api/matches/list` may return `page.source` and optional `debugTiming` for diagnosis. `page.source='rpc_card'` or `feed_card` means list cards came directly from `user_room_feed.card_json`; `page.source='feed'` means feed ids are active but card_json was missing; `page.source='fallback_mine'` means production is still using current-profile fallback and the feed SQL/deployment needs verification.
 33. Match `status='closed'` is a cleanup soft-close state, not a normal record-confirmed match state. `/api/matches/list` and `rankball_match_list()` exclude it from default current-user feed pages.
 34. Match room phase `record` is a normal completed-record phase and belongs to the Matches closed/history view. Selecting a past range must make record-phase matches visible instead of leaving them outside every view.

@@ -735,7 +735,7 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
         },
         { allowWhenDisabled: true },
       );
-      if (result?.state) return attachRemoteMeta(normalizeServerState(result.state), { matchPage: result.page ?? null });
+      if (result?.state) return attachRemoteMeta(normalizeServerState(result.state), { matchPage: result.page ?? null, profileRecordsLoaded: true });
     }
     if (options.endpoint === "homeLoad") {
       const result = await postServerAction(
@@ -754,6 +754,14 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
         directoryLoaded: true,
       });
     }
+    if (options.endpoint) {
+      return attachRemoteMeta(await loadProfileState(authUserId, authEmail), {
+        matchPage: { exhausted: true, recruitingScheduleChecked: false },
+        recruitingPage: { exhausted: true, feedCounts: null },
+        directoryLoaded: ["teamsList", "teamDetail", "homeLoad"].includes(options.endpoint),
+        profileRecordsLoaded: false,
+      });
+    }
     const result = await postServerAction(
       "/api/state/load",
       { authUserId, authEmail, ...loadOptions },
@@ -763,10 +771,12 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
   } catch (error) {
     console.warn("Server state load failed. Falling back to direct Supabase read.", error.message);
   }
-  if (options.endpoint === "homeLoad") {
+  if (options.endpoint) {
     return attachRemoteMeta(await loadProfileState(authUserId, authEmail), {
       matchPage: { exhausted: true, recruitingScheduleChecked: false },
-      directoryLoaded: true,
+      recruitingPage: { exhausted: true, feedCounts: null },
+      directoryLoaded: ["teamsList", "teamDetail", "homeLoad"].includes(options.endpoint),
+      profileRecordsLoaded: false,
     });
   }
   return loadRemoteState(authUserId, authEmail, loadOptions);
@@ -784,6 +794,7 @@ export function useAppData(authUser = null) {
   const [matchPagination, setMatchPagination] = useState({ loading: false, exhausted: !isSupabaseConfigured, error: "", cursor: "", recruitingScheduleChecked: false, recruitingScheduleLoading: false });
   const [recruitingPagination, setRecruitingPagination] = useState({ loading: false, exhausted: !isSupabaseConfigured, error: "", cursor: "", offset: 0, regionScope: "local", regionKey: "", feedCounts: null });
   const [directoryStatus, setDirectoryStatus] = useState({ loading: false, loaded: !isSupabaseConfigured, error: "" });
+  const [profileRecordsLoaded, setProfileRecordsLoaded] = useState(false);
   const [remoteReady, setRemoteReady] = useState(!isSupabaseConfigured);
   const adminContextRef = useRef(EMPTY_ADMIN_CONTEXT);
   const remoteReadyRef = useRef(!isSupabaseConfigured);
@@ -849,6 +860,7 @@ export function useAppData(authUser = null) {
       setMatchPagination({ loading: false, exhausted: true, error: "", cursor: "", recruitingScheduleChecked: false, recruitingScheduleLoading: false });
       setRecruitingPagination({ loading: false, exhausted: true, error: "", cursor: "", offset: 0, regionScope: "local", regionKey: "", feedCounts: null });
       setDirectoryStatus({ loading: false, loaded: true, error: "" });
+      setProfileRecordsLoaded(false);
       return undefined;
     }
 
@@ -862,6 +874,7 @@ export function useAppData(authUser = null) {
     recentMatchMutationTimesRef.current = new Map();
     setState(getCachedBootstrapState(authUserId, authEmail));
     setDirectoryStatus({ loading: false, loaded: false, error: "" });
+    setProfileRecordsLoaded(false);
     const initialLoadOptions = getInitialStateLoadOptions();
     const initialLoad = initialLoadOptions.profileOnly
       ? loadProfileState(authUserId, authEmail)
@@ -898,6 +911,7 @@ export function useAppData(authUser = null) {
           if (remoteMeta.directoryLoaded) {
             setDirectoryStatus({ loading: false, loaded: true, error: "" });
           }
+          setProfileRecordsLoaded(remoteMeta.profileRecordsLoaded === true);
         }
         remoteReadyRef.current = true;
         setRemoteReady(true);
@@ -1174,6 +1188,7 @@ export function useAppData(authUser = null) {
           limit: pageLimit,
           ...(cursor ? { cursor } : {}),
           listOnly: true,
+          activeOnly: true,
           includeRecruitingSchedule: false,
           adminContext: false,
         },
@@ -1300,6 +1315,7 @@ export function useAppData(authUser = null) {
       const remoteState = normalizeServerState(result?.state ?? {});
       const nextMatches = remoteState.matches ?? [];
       setState((prev) => mergeRemoteMatchPage(prev, remoteState));
+      setProfileRecordsLoaded(true);
       return nextMatches.length;
     } catch (error) {
       console.warn("Profile records load failed.", error.message);
@@ -1674,6 +1690,7 @@ export function useAppData(authUser = null) {
         loadMyRecruitingPosts,
         loadRecorderMatches,
         loadProfileRecords,
+        profileRecordsLoaded,
         switchUser: (userId) => {
         if (profileLocked) return false;
         setProfileBindings((current) => {
@@ -1681,6 +1698,7 @@ export function useAppData(authUser = null) {
           writeProfileBindings(next);
           return next;
         });
+        setProfileRecordsLoaded(false);
         setState((prev) => ({ ...prev, currentUserId: userId }));
         return true;
       },
@@ -2235,7 +2253,7 @@ export function useAppData(authUser = null) {
       reset: () => setState(resetState({ includeDemo: !isSupabaseConfigured, authUserId, email: authEmail })),
       });
     },
-    [authEmail, authUserId, currentUserId, deleteTeamServer, ensureRemoteReady, ensureServerActionAvailable, loadAdminContext, loadDirectory, loadMatchDetail, loadMatchRecruitingSchedule, loadMoreMatches, loadMoreRecruiting, loadRecruitingRegion, loadRecruitingPost, loadMyRecruitingPosts, loadRecorderMatches, loadProfileRecords, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, refreshCurrentProfile, runServerAction, serverProfileBound, submitReportServer, syncFavoriteServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncSettingsServer, syncTeamInvitationServer, syncTeamServer, syncTournamentServer],
+    [authEmail, authUserId, currentUserId, deleteTeamServer, ensureRemoteReady, ensureServerActionAvailable, loadAdminContext, loadDirectory, loadMatchDetail, loadMatchRecruitingSchedule, loadMoreMatches, loadMoreRecruiting, loadRecruitingRegion, loadRecruitingPost, loadMyRecruitingPosts, loadRecorderMatches, loadProfileRecords, profileRecordsLoaded, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, refreshCurrentProfile, runServerAction, serverProfileBound, submitReportServer, syncFavoriteServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncSettingsServer, syncTeamInvitationServer, syncTeamServer, syncTournamentServer],
   );
 
   const safeCurrentUserId = currentUserId ?? currentUser?.id ?? "";

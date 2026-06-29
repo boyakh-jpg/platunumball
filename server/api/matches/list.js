@@ -285,10 +285,36 @@ async function fetchCurrentUserMatchPage(client, profileId = "", limit = REMOTE_
   };
 }
 
-async function fetchCurrentUserCompletedMatchIds(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT) {
-  if (!profileId || !userRoomFeedAvailable) return null;
+async function fetchCurrentUserCompletedFallbackMatchIds(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT) {
+  if (!profileId) return { ids: [], exhausted: true, source: "completed_fallback" };
   const cappedLimit = Math.max(1, Math.min(MATCH_LIST_MAX_LIMIT, Number(limit) || REMOTE_CLIENT_MATCH_LIMIT));
   const rowLimit = Math.min(600, cappedLimit * 3);
+  const { data: playerRows, error: playerError } = await client
+    .from("match_players")
+    .select("match_id")
+    .eq("user_id", profileId)
+    .limit(rowLimit);
+  if (playerError) throw playerError;
+  const candidateIds = unique((playerRows ?? []).map((row) => row?.match_id)).slice(0, rowLimit);
+  if (!candidateIds.length) return { ids: [], exhausted: true, source: "completed_fallback" };
+  const rows = await fetchMatchRowsByIds(client, candidateIds);
+  const ids = rows
+    .filter((row) => row.status === "confirmed")
+    .sort((a, b) => String(b.updated_at ?? b.created_at ?? "").localeCompare(String(a.updated_at ?? a.created_at ?? "")))
+    .map((row) => row.id)
+    .slice(0, cappedLimit);
+  return {
+    ids,
+    exhausted: candidateIds.length < rowLimit || ids.length < cappedLimit,
+    source: "completed_fallback",
+  };
+}
+
+async function fetchCurrentUserCompletedMatchIds(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT) {
+  if (!profileId) return { ids: [], exhausted: true, source: "completed_feed" };
+  const cappedLimit = Math.max(1, Math.min(MATCH_LIST_MAX_LIMIT, Number(limit) || REMOTE_CLIENT_MATCH_LIMIT));
+  const rowLimit = Math.min(600, cappedLimit * 3);
+  if (!userRoomFeedAvailable) return fetchCurrentUserCompletedFallbackMatchIds(client, profileId, cappedLimit);
   const { data, error } = await client
     .from("user_room_feed")
     .select("entity_id,sort_at,relation")
@@ -304,7 +330,7 @@ async function fetchCurrentUserCompletedMatchIds(client, profileId = "", limit =
     if (isMissingUserRoomFeed(error)) {
       userRoomFeedAvailable = false;
       console.warn("Completed match feed skipped.", error.message);
-      return null;
+      return fetchCurrentUserCompletedFallbackMatchIds(client, profileId, cappedLimit);
     }
     throw error;
   }
@@ -313,6 +339,7 @@ async function fetchCurrentUserCompletedMatchIds(client, profileId = "", limit =
   return {
     ids,
     exhausted: rows.length < rowLimit || ids.length < cappedLimit,
+    source: "completed_feed",
   };
 }
 
@@ -646,7 +673,7 @@ async function loadNormalizedMatchList(context, body = {}, adminLevel = 0, limit
         count: 0,
         cursor: "",
         exhausted: true,
-        source: "completed_feed",
+        source: completedPage.source,
         recruitingScheduleChecked: false,
         recruitingScheduleCount: 0,
       },
@@ -691,7 +718,7 @@ async function loadNormalizedMatchList(context, body = {}, adminLevel = 0, limit
       count: matches.length,
       cursor: getMatchCursor(matches),
       exhausted: completedPage ? completedPage.exhausted : matches.length < limit,
-      source: completedOnly && completedPage ? "completed_feed" : undefined,
+      source: completedOnly && completedPage ? completedPage.source : undefined,
       recruitingScheduleChecked: false,
       recruitingScheduleCount: 0,
     },

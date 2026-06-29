@@ -57,6 +57,7 @@ export default function ProfileRecords({ app }) {
   const loadKeyRef = useRef("");
   useEffect(() => {
     if (!app.remoteReady || !app.actions.loadProfileRecords) return;
+    if (app.actions.profileRecordsLoaded) return;
     if (loadKeyRef.current === user.id) return;
     loadKeyRef.current = user.id;
     app.actions.loadProfileRecords();
