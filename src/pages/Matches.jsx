@@ -860,6 +860,7 @@ export default function Matches({ app }) {
   const calendarMatches = useMemo(() => {
     const recruitingRooms = [...matchPageRecruitingPosts]
       .filter((post) => post.status === "open")
+      .filter((post) => ["active", "scheduled"].includes(selectedView.id))
       .filter((post) => isRecruitingRoomInUserSchedule(post, app.state, app.currentUser.id, myTeamIds))
       .filter((post) => {
         if (isInstantScheduleRoom(post)) return false;
@@ -870,10 +871,10 @@ export default function Matches({ app }) {
       .filter((post) => kindFilter === "all" || (kindFilter === "ranked" ? post.ranked !== false : post.ranked === false))
       .filter((post) => modeFilter === "all" || post.mode === modeFilter);
     const displayableMatches = baseFilteredMatches.filter((match) => (
-      getMatchDate(match) && VIEWS.some((view) => shouldShowMatchForView(match, view, app.currentUser.id))
+      getMatchDate(match) && shouldShowMatchInList(match, selectedView, app.currentUser.id, true)
     ));
     return [...displayableMatches, ...recruitingRooms];
-  }, [app.currentUser.id, app.state, baseFilteredMatches, historyCutoffDate, historyRangeMonths, kindFilter, matchPageRecruitingPosts, maxScheduleDate, modeFilter, myTeamIds, todayValue]);
+  }, [app.currentUser.id, app.state, baseFilteredMatches, historyCutoffDate, historyRangeMonths, kindFilter, matchPageRecruitingPosts, maxScheduleDate, modeFilter, myTeamIds, selectedView, todayValue]);
 
   const calendarCounts = useMemo(() => {
     return calendarMatches.reduce((map, match) => {

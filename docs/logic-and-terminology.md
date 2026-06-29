@@ -13,6 +13,7 @@
 - 목록 API의 `nextOffset`은 unique entity 수가 아니라 실제 읽은 feed row 수 기준이어야 한다.
 - 목록 API의 `exhausted`도 unique entity 수가 아니라 실제 읽은 feed row 수 기준이어야 한다.
 - card_json이 unique entity마다 모두 있으면 relation 중복 row가 있어도 row fallback을 타지 않는다.
+- 경기 메뉴 달력 날짜 숫자는 현재 선택된 상태 탭과 같은 기준으로 계산한다.
 
 ## 2026-06-30 모집 참여 검증 경로
 
