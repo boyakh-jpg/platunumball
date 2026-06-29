@@ -2080,7 +2080,10 @@ export function useAppData(authUser = null) {
           return next;
         });
         if (!serverProfileBound || !nextProfile) return Promise.resolve({ ok: true });
-        return persistProfileServer(nextProfile).catch((error) => {
+        return persistProfileServer(nextProfile).then(async (result) => {
+          if (result && result.ok !== false) await refreshCurrentProfile();
+          return result;
+        }).catch((error) => {
           rollbackServerMutation(rollbackState, "프로필 저장", {
             profileId: safeTargetUserId,
             error: getServerActionErrorText(error),
@@ -2273,7 +2276,10 @@ export function useAppData(authUser = null) {
         (prev) => acceptTeamInvitation({ ...prev, currentUserId }, invitationId),
         "accept",
         () => ({ invitationId }),
-      ),
+      ).then(async (result) => {
+        if (result && result.ok !== false) await refreshRecruitingRelations();
+        return result;
+      }),
       declineTeamInvitation: (invitationId) => applyTeamInvitationMutation(
         "팀 초대 거절",
         (prev) => declineTeamInvitation({ ...prev, currentUserId }, invitationId),

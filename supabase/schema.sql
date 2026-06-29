@@ -5106,7 +5106,7 @@ begin
 
   if to_regclass('public.profiles') is not null then
     execute 'drop trigger if exists rankball_profiles_feed_dependency_refresh on public.profiles';
-    execute 'create trigger rankball_profiles_feed_dependency_refresh after insert or update of id, name or delete on public.profiles for each row execute function public.rankball_refresh_profile_feed_dependency_trigger()';
+    execute 'create trigger rankball_profiles_feed_dependency_refresh after insert or update of id, name, handle, hashtag, position, region, region_sido, region_district, avatar_color or delete on public.profiles for each row execute function public.rankball_refresh_profile_feed_dependency_trigger()';
   end if;
 
   if to_regclass('public.teams') is not null then

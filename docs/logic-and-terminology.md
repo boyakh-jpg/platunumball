@@ -1545,3 +1545,9 @@ flowchart TD
 - 경기 메뉴의 `MY/ACTION/SOON/CLOSED` 숫자는 현재 화면 필터와 같은 후보 배열에서 계산한다. 상단 숫자, 상태 버튼 숫자, 실제 목록 숫자가 서로 다른 기준을 쓰면 안 된다.
 - 모집방 초대 수락은 수락자 상태만 바꾸지 않고 방장에게도 `targetUserId`가 있는 알림을 남긴다.
 - feed trigger health는 `approved_courts`와 legacy `courts` 변경 모두 검사한다.
+
+## 2026-06-29 프로필/팀 초대 저장 최신화
+
+- 프로필 저장 성공 후에는 `/api/profile/me`를 다시 읽어 birthYear 잠금값, theme, team invitations 같은 서버 최신값으로 화면 상태를 덮는다.
+- 팀 초대 수락 성공 후에는 현재 프로필/팀 상태뿐 아니라 내 모집 feed와 경기 메뉴 모집 일정 feed도 즉시 재조회한다.
+- `rankball_room_state_participant_ids(jsonb)`는 profile update feed dependency trigger에서 쓰는 필수 helper다. 누락되면 프로필 저장이 500으로 실패한다.
