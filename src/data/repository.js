@@ -430,6 +430,7 @@ function inferSidePartyTeamIdForUser(post = {}, state = {}, sideName = "", userI
 }
 
 function inferRecruitingInvitationTeamId(post = {}, state = {}, invitation = {}) {
+  if (invitation.joinMode === "player") return null;
   return invitation.teamId || inferSidePartyTeamIdForUser(post, state, invitation.side, invitation.targetUserId) || null;
 }
 
@@ -7220,12 +7221,14 @@ export function inviteRecruitingPlayers(state, postId, invite = {}) {
   }
 
   const now = new Date().toISOString();
+  const inviteJoinMode = invite.joinMode === "player" ? "player" : (invite.joinMode === "team" || invite.teamId ? "team" : "");
   const newInvitations = targetUserIds.map((targetUserId) => ({
     id: makeId("inv"),
     role: "player",
     targetUserId,
     fromUserId: state.currentUserId,
-    teamId: invite.teamId || inferSidePartyTeamIdForUser(post, state, side, targetUserId),
+    teamId: inviteJoinMode === "player" ? null : invite.teamId || inferSidePartyTeamIdForUser(post, state, side, targetUserId),
+    joinMode: inviteJoinMode,
     side,
     reserve,
     status: "pending",

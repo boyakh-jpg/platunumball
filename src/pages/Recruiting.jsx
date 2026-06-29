@@ -1319,6 +1319,9 @@ export function InvitePanel({
     .filter((team) => team && (!allowedTeamId || team.id === allowedTeamId));
   const teamMemberIds = matchedTeam && (!allowedTeamId || matchedTeam.id === allowedTeamId) ? getSelectableTeamPlayerIds(matchedTeam) : [];
   const selectedInvitableIds = selectedPlayerIds.filter((playerId) => !disabledSet.has(playerId) && isAllowedPlayer(playerId, userById[playerId]));
+  const canShowSelectedInviteAction = Boolean(selectedInvitableIds.length && !matchedTeam);
+  const selectedInviteTeamId = allowedTeamId || null;
+  const selectedInviteJoinMode = allowedTeamId ? "team" : "player";
   const inviteQuery = query.trim().toLowerCase();
   const inviteSearchPlayers = inviteQuery
     ? users
@@ -1350,9 +1353,7 @@ export function InvitePanel({
           onMouseDown={(event) => event.preventDefault()}
         >
           <button type="button" className="search-picker-result-main" onClick={() => onQueryChange(getTeamHashtag(team))}>
-            <TeamHoverCard as="span" team={team}>
-              <strong>{team.name}</strong>
-            </TeamHoverCard>
+            <strong>{team.name}</strong>
             <span>{getTeamHashtag(team)} · {team.mmr} MMR</span>
             <em>팀</em>
           </button>
@@ -1370,18 +1371,17 @@ export function InvitePanel({
     const player = item.player;
     const disabled = disabledSet.has(player.id) || !isAllowedPlayer(player.id, player);
     const favorite = favoritePlayerIds.includes(player.id);
+    const selected = selectedSet.has(player.id);
     return (
       <div
         key={`player-${player.id}`}
-        className="search-picker-result-row search-picker-result-row-actionable"
+        className={selected ? "search-picker-result-row search-picker-result-row-actionable selected" : "search-picker-result-row search-picker-result-row-actionable"}
         onMouseDown={(event) => event.preventDefault()}
       >
-        <button type="button" className="search-picker-result-main" disabled={disabled} onClick={() => onInvitePlayers([player.id], allowedTeamId || null)}>
-          <PlayerHoverCard as="span" user={player} teams={teams}>
-            <strong>{player.name}</strong>
-          </PlayerHoverCard>
+        <button type="button" className="search-picker-result-main" disabled={disabled} aria-pressed={selected} onClick={() => onTogglePlayer(player.id)}>
+          <strong>{player.name}</strong>
           <span>{getUserHashtag(player)} · {player.position}</span>
-          <em>{disabled ? "불가" : "초대"}</em>
+          <em>{disabled ? "불가" : selected ? "선택됨" : "선택"}</em>
         </button>
         <button
           type="button"
@@ -1424,6 +1424,14 @@ export function InvitePanel({
         renderItem={renderInviteSearchItem}
       />
 
+      {canShowSelectedInviteAction ? (
+        <div className="arena-invite-actions">
+          <Button type="button" size="sm" onClick={() => onInvitePlayers(selectedInvitableIds, selectedInviteTeamId, selectedInviteJoinMode)}>
+            선택 {selectedInvitableIds.length}명 초대
+          </Button>
+        </div>
+      ) : null}
+
       {allowedTeam ? <div className="arena-invite-empty">{allowedTeam.name} 팀원만 이 사이드에 초대할 수 있습니다.</div> : null}
 
       {matchedTeam && (!allowedTeamId || matchedTeam.id === allowedTeamId) ? (
@@ -1456,7 +1464,7 @@ export function InvitePanel({
               );
             })}
           </div>
-          <Button type="button" size="sm" disabled={!selectedInvitableIds.length} onClick={() => onInvitePlayers(selectedInvitableIds, matchedTeam.id)}>
+          <Button type="button" size="sm" disabled={!selectedInvitableIds.length} onClick={() => onInvitePlayers(selectedInvitableIds, matchedTeam.id, "team")}>
             선택 {selectedInvitableIds.length}명 초대
           </Button>
         </div>
@@ -2008,9 +2016,11 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
       };
     });
   };
-  const sendInvites = (roomPost, playerIds, teamId = null) => {
+  const sendInvites = (roomPost, playerIds, teamId = null, joinMode = "") => {
     if (!inviteDraft || !playerIds.length) return;
-    app.actions.inviteRecruitingPlayers(roomPost.id, { side: inviteDraft.sideName, reserve: Boolean(inviteDraft.reserve), playerIds, teamId });
+    const invite = { side: inviteDraft.sideName, reserve: Boolean(inviteDraft.reserve), playerIds, teamId };
+    if (joinMode) invite.joinMode = joinMode;
+    app.actions.inviteRecruitingPlayers(roomPost.id, invite);
     setInviteDraft(null);
   };
   const confirmQueueRoom = async (roomPost) => {
@@ -2305,7 +2315,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                 favoriteTeamIds={favoriteTeamIds}
                 allowedTeamId={getInviteAllowedTeamId(activeSlotDraft.sideName)}
                 onTogglePlayer={toggleInvitePlayer}
-                onInvitePlayers={(playerIds, teamId) => sendInvites(selectedPost, playerIds, teamId)}
+                onInvitePlayers={(playerIds, teamId, joinMode) => sendInvites(selectedPost, playerIds, teamId, joinMode)}
                 onToggleFavoritePlayer={(playerId) => app.actions.toggleFavoritePlayer(playerId)}
                 onToggleFavoriteTeam={(teamId) => app.actions.toggleFavoriteTeam(teamId)}
                 onClose={() => setInviteDraft(null)}
@@ -2590,7 +2600,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                   favoriteTeamIds={favoriteTeamIds}
                   allowedTeamId={getInviteAllowedTeamId(activeInviteDraft.sideName)}
                   onTogglePlayer={toggleInvitePlayer}
-                  onInvitePlayers={(playerIds, teamId) => sendInvites(selectedPost, playerIds, teamId)}
+                  onInvitePlayers={(playerIds, teamId, joinMode) => sendInvites(selectedPost, playerIds, teamId, joinMode)}
                   onToggleFavoritePlayer={(playerId) => app.actions.toggleFavoritePlayer(playerId)}
                   onToggleFavoriteTeam={(teamId) => app.actions.toggleFavoriteTeam(teamId)}
                   onClose={() => setInviteDraft(null)}

@@ -1,5 +1,11 @@
 # RankBall 로직/용어/디자인 기준
 
+## 2026-06-29 방 초대 검색 선택
+
+- 방 초대 검색의 프로필 row는 선택 후 개인 초대로 보낸다. 새 초대에는 `joinMode: "player"`를 명시해 기존 팀 파티 자동 추론과 구분한다.
+- 팀 row 또는 팀 멤버 picker에서 보낸 초대만 `joinMode: "team"`과 `teamId`를 포함한다.
+- 기존 초대 데이터처럼 `joinMode`가 없는 초대는 하위 호환을 위해 같은 사이드 팀 파티 추론을 유지한다.
+
 ## 2026-06-29 match feed 카드 계약
 
 - `user_room_feed.card_json`의 match 카드는 목록 판단용 최소 상태를 반드시 포함한다.

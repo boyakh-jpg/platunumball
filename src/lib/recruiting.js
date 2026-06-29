@@ -258,6 +258,7 @@ export function normalizeRecruitingRoomState(roomState = {}) {
           targetUserId: item.targetUserId ?? item.userId ?? "",
           fromUserId: item.fromUserId ?? item.by ?? "",
           teamId: item.teamId ?? null,
+          joinMode: item.joinMode === "player" ? "player" : (item.joinMode === "team" || item.teamId ? "team" : ""),
           side: VALID_SIDES.has(item.side) ? item.side : "teamB",
           reserve: Boolean(item.reserve),
           status: ["pending", "accepted", "declined", "expired"].includes(item.status) ? item.status : "pending",
