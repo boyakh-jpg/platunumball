@@ -741,6 +741,12 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
   } catch (error) {
     console.warn("Server state load failed. Falling back to direct Supabase read.", error.message);
   }
+  if (options.endpoint === "homeLoad") {
+    return attachRemoteMeta(await loadProfileState(authUserId, authEmail), {
+      matchPage: { exhausted: true, recruitingScheduleChecked: false },
+      directoryLoaded: true,
+    });
+  }
   return loadRemoteState(authUserId, authEmail, loadOptions);
 }
 
