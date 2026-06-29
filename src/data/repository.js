@@ -88,6 +88,7 @@ import { canChangeProfileName } from "../lib/profileSetup.js";
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const makeId = (prefix) => `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+const makeUuid = () => globalThis.crypto?.randomUUID?.() ?? makeId("id");
 const nullableText = (value) => {
   const text = String(value ?? "").trim();
   return text || null;
@@ -4095,7 +4096,7 @@ export function disputeMatch(state, matchId, reason = "") {
   }
 
   const dispute = {
-    id: makeId("d"),
+    id: makeUuid(),
     by: state.currentUserId,
     reason: reason.trim() || "스코어 또는 개인 기록 확인이 필요합니다.",
     createdAt: new Date().toISOString(),
