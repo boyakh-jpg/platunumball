@@ -628,7 +628,7 @@ async function loadNormalizedMatchList(context, body = {}, adminLevel = 0, limit
   };
 }
 
-async function loadCompactMatchList(context, body = {}, adminLevel = 0, limit = REMOTE_CLIENT_MATCH_LIMIT, debugTiming = null) {
+export async function loadCompactMatchList(context, body = {}, adminLevel = 0, limit = REMOTE_CLIENT_MATCH_LIMIT, debugTiming = null) {
   const cursor = String(body.cursor ?? body.matchUpdatedBefore ?? "").trim();
   const shouldLoadRecruitingSchedule = !cursor && body.includeRecruitingSchedule === true;
   const activeOnly = body.activeOnly === true;

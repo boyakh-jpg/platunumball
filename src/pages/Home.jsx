@@ -313,8 +313,9 @@ export default function Home({ app }) {
     if (homeRefreshKeyRef.current === user.id) return;
     homeRefreshKeyRef.current = user.id;
     const scheduleChecked = Boolean(app.matchPagination?.recruitingScheduleChecked);
+    const profileLoaded = Boolean(app.directoryStatus?.loaded);
     const requests = [
-      app.actions.refreshCurrentProfile?.(),
+      profileLoaded ? true : app.actions.refreshCurrentProfile?.(),
       scheduleChecked ? true : app.actions.loadMyRecruitingPosts?.(),
       scheduleChecked ? true : app.actions.loadMatchRecruitingSchedule?.(),
     ].filter(Boolean);
@@ -323,7 +324,7 @@ export default function Home({ app }) {
         homeRefreshKeyRef.current = "";
       }
     });
-  }, [app.actions, app.matchPagination?.recruitingScheduleChecked, app.remoteReady, user.id]);
+  }, [app.actions, app.directoryStatus?.loaded, app.matchPagination?.recruitingScheduleChecked, app.remoteReady, user.id]);
 
   const searchResults = useMemo(() => {
     if (!searchText) return [];
