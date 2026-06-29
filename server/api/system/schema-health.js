@@ -219,6 +219,7 @@ const REQUIRED_FEED_TRIGGERS = [
   "rankball_profiles_feed_dependency_refresh",
   "rankball_teams_feed_dependency_refresh",
   "rankball_approved_courts_feed_dependency_refresh",
+  "rankball_courts_feed_dependency_refresh",
 ];
 
 function getBearerToken(request) {

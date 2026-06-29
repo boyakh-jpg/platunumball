@@ -30,8 +30,6 @@ export default function Notifications({ app }) {
   const acceptInvitation = async (postId, invitationId) => {
     await app.actions.acceptRecruitingInvitation(postId, invitationId);
     await app.actions.loadRecruitingPost?.(postId);
-    app.actions.loadMyRecruitingPosts?.();
-    app.actions.loadMatchRecruitingSchedule?.();
     navigate(`/app/recruiting?post=${postId}`);
   };
   const acceptTeamInvite = async (invitation) => {
