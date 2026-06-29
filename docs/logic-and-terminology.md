@@ -4,6 +4,7 @@
 
 - 경기 메뉴의 모집방 일정은 방장, 선수, 후보뿐 아니라 배정된 심판도 내 일정으로 본다.
 - 매칭 메뉴 feed count와 경기 메뉴 모집방 목록은 심판 배정 관계를 같은 참여 관계로 처리해야 한다.
+- 모집방 feed/RLS/RPC는 `partyLeaders`, `partyReserves`, `pinnedReservePlayers`, `reserveReady`에만 남은 참가자도 현재 사용자 관계로 잡아야 한다.
 
 ## 2026-06-29 비공개 팀전 B사이드 초대
 

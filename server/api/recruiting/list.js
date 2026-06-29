@@ -678,7 +678,7 @@ function collectRecruitingScope(postRows = [], applicationRows = [], profileId =
       ...flattenIdValues(roomState.partyLeaders),
       ...flattenIdValues(roomState.partyReserves),
       ...flattenIdValues(roomState.pinnedReservePlayers),
-      ...flattenIdValues(roomState.reserveReady),
+      ...getRoomStateParticipantIds(roomState),
       ...(Array.isArray(roomState.invitations) ? roomState.invitations
         .flatMap((invitation) => [invitation.targetUserId, invitation.fromUserId, ...(invitation.playerIds ?? [])]) : []),
     );

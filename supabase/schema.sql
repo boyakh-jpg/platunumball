@@ -545,6 +545,61 @@ using (
   )
 );
 
+create or replace function public.rankball_room_state_participant_ids(p_room_state jsonb)
+returns table(profile_id text)
+language sql
+immutable
+set search_path = public
+as $$
+  with room_state as (
+    select coalesce(p_room_state, '{}'::jsonb) as value
+  ),
+  relation_values as (
+    select relation_value.value as raw_value
+    from room_state
+    cross join lateral jsonb_array_elements_text('["partyLeaders","partyReserves","pinnedReservePlayers"]'::jsonb) as field(name)
+    cross join lateral jsonb_each(
+      case
+        when jsonb_typeof(room_state.value->field.name) = 'object' then room_state.value->field.name
+        else '{}'::jsonb
+      end
+    ) as relation_value(key, value)
+  ),
+  raw_ids as (
+    select raw_value #>> '{}' as profile_id
+    from relation_values
+    where jsonb_typeof(raw_value) = 'string'
+
+    union all
+
+    select array_value.profile_id
+    from relation_values
+    cross join lateral jsonb_array_elements_text(
+      case
+        when jsonb_typeof(raw_value) = 'array' then raw_value
+        else '[]'::jsonb
+      end
+    ) as array_value(profile_id)
+
+    union all
+
+    select ready.key as profile_id
+    from room_state
+    cross join lateral jsonb_each(
+      case
+        when jsonb_typeof(room_state.value->'reserveReady') = 'object' then room_state.value->'reserveReady'
+        else '{}'::jsonb
+      end
+    ) as ready(key, value)
+    where ready.value = 'true'::jsonb
+  )
+  select distinct nullif(btrim(profile_id), '') as profile_id
+  from raw_ids
+  where nullif(btrim(profile_id), '') is not null;
+$$;
+
+grant execute on function public.rankball_room_state_participant_ids(jsonb) to authenticated, service_role;
+
 drop policy if exists "recruiting_posts_select_public" on public.recruiting_posts;
 drop policy if exists "recruiting_posts_select_related_private" on public.recruiting_posts;
 drop policy if exists "recruiting_posts_select_related" on public.recruiting_posts;
@@ -578,6 +633,11 @@ using (
   or player_ids ? public.current_profile_id()
   or room_state->>'ownerId' = public.current_profile_id()
   or referee_id = public.current_profile_id()
+  or exists (
+    select 1
+    from public.rankball_room_state_participant_ids(room_state) room_profile
+    where room_profile.profile_id = public.current_profile_id()
+  )
   or exists (
     select 1
     from jsonb_array_elements(coalesce(room_state->'invitations', '[]'::jsonb)) invitation
@@ -919,6 +979,11 @@ begin
                 or post.player_ids ? public.current_profile_id()
                 or post.room_state->>''ownerId'' = public.current_profile_id()
                 or post.referee_id = public.current_profile_id()
+                or exists (
+                  select 1
+                  from public.rankball_room_state_participant_ids(post.room_state) room_profile
+                  where room_profile.profile_id = public.current_profile_id()
+                )
                 or exists (
                   select 1
                   from jsonb_array_elements(coalesce(post.room_state->''invitations'', ''[]''::jsonb)) invitation
@@ -3940,6 +4005,11 @@ as $$
         or post.referee_id = params.profile_id
         or exists (
           select 1
+          from public.rankball_room_state_participant_ids(post.room_state) room_profile
+          where room_profile.profile_id = params.profile_id
+        )
+        or exists (
+          select 1
           from jsonb_array_elements(coalesce(post.room_state->'invitations', '[]'::jsonb)) invitation
           where invitation->>'targetUserId' = params.profile_id
             and coalesce(invitation->>'status', 'pending') = 'pending'
@@ -4305,6 +4375,15 @@ begin
     end if;
   end loop;
 
+  for player_value in
+    select profile_id
+    from public.rankball_room_state_participant_ids(post_row.room_state)
+  loop
+    if nullif(player_value, '') is not null and player_value is distinct from owner_id then
+      perform public.rankball_upsert_room_feed(player_value, 'recruiting', post_row.id, 'participant', region_key, post_row.status, coalesce(post_row.visibility, 'public'), row_sort_at, card_json);
+    end if;
+  end loop;
+
   if nullif(post_row.referee_id, '') is not null then
     perform public.rankball_upsert_room_feed(post_row.referee_id, 'recruiting', post_row.id, 'referee', region_key, post_row.status, coalesce(post_row.visibility, 'public'), row_sort_at, card_json);
   end if;
@@ -4332,7 +4411,7 @@ begin
     select value
     from jsonb_array_elements(coalesce(post_row.room_state->'invitations', '[]'::jsonb))
   loop
-    if invitation_row->>'status' = 'pending' and nullif(invitation_row->>'targetUserId', '') is not null then
+    if coalesce(invitation_row->>'status', 'pending') = 'pending' and nullif(invitation_row->>'targetUserId', '') is not null then
       perform public.rankball_upsert_room_feed(
         invitation_row->>'targetUserId',
         'recruiting',
@@ -4689,6 +4768,11 @@ begin
       from public.recruiting_posts
       where player_id = safe_profile_id
         or room_state->>'ownerId' = safe_profile_id
+        or exists (
+          select 1
+          from public.rankball_room_state_participant_ids(room_state) room_profile
+          where room_profile.profile_id = safe_profile_id
+        )
     loop
       perform public.rankball_refresh_recruiting_feed_for_post(row_id);
     end loop;
