@@ -317,20 +317,18 @@ export default function Home({ app }) {
     if (app.remoteReady === false || !user.id) return;
     if (homeRefreshKeyRef.current === user.id) return;
     homeRefreshKeyRef.current = user.id;
-    const scheduleChecked = Boolean(app.matchPagination?.recruitingScheduleChecked);
     const feedCountsLoaded = app.recruitingPagination?.feedCounts != null;
     const profileLoaded = Boolean(app.directoryStatus?.loaded);
     const requests = [
       profileLoaded ? true : app.actions.refreshCurrentProfile?.(),
       feedCountsLoaded ? true : app.actions.loadMyRecruitingPosts?.(),
-      scheduleChecked ? true : app.actions.loadMatchRecruitingSchedule?.(),
     ].filter(Boolean);
     Promise.allSettled(requests).then((results) => {
       if (results.some((result) => result.status === "rejected" || result.value === false)) {
         homeRefreshKeyRef.current = "";
       }
     });
-  }, [app.actions, app.directoryStatus?.loaded, app.matchPagination?.recruitingScheduleChecked, app.recruitingPagination?.feedCounts, app.remoteReady, user.id]);
+  }, [app.actions, app.directoryStatus?.loaded, app.recruitingPagination?.feedCounts, app.remoteReady, user.id]);
 
   const searchResults = useMemo(() => {
     if (!searchText) return [];

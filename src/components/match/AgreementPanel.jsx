@@ -11,15 +11,16 @@ export default function AgreementPanel({ match, teams, users, currentUserId, onA
 
   const renderSide = (sideName) => {
     const status = getAgreementStatus(match, teams, sideName);
+    const side = match[sideName] ?? { name: sideName === "teamA" ? "A" : "B", players: [] };
 
     return (
       <div>
         <div className="approval-side-header">
-          <strong>{match[sideName].name}</strong>
+          <strong>{side.name}</strong>
           <span>{status.approvals.length}/{status.majority} · {status.captainRequired ? "팀장 READY" : "과반 동의"}</span>
         </div>
         <div className="approval-voter-list">
-          {match[sideName].players.map((playerId) => {
+          {side.players.map((playerId) => {
             const user = userMap[playerId];
             const agreed = status.approvals.includes(playerId);
             const captain = status.captainId === playerId;

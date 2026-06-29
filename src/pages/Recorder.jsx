@@ -416,7 +416,7 @@ export default function Recorder({ app }) {
                     <Badge tone={statusMeta[match.status]?.tone ?? "blue"}>{statusMeta[match.status]?.label ?? match.status}</Badge>
                     <em>{getRoleText(match, user, sides)}</em>
                   </span>
-                  <strong>{match.teamA.name} vs {match.teamB.name}</strong>
+                  <strong>{match.teamA?.name ?? "A"} vs {match.teamB?.name ?? "B"}</strong>
                   <small>{formatSchedule(match)}</small>
                 </button>
               );
@@ -441,12 +441,12 @@ export default function Recorder({ app }) {
 
             <div className="recorder-scoreboard">
               <span>
-                <strong>{selectedMatch.teamA.name}</strong>
+                <strong>{selectedMatch.teamA?.name ?? "A"}</strong>
                 <em>{scoreA}</em>
               </span>
               <b>:</b>
               <span>
-                <strong>{selectedMatch.teamB.name}</strong>
+                <strong>{selectedMatch.teamB?.name ?? "B"}</strong>
                 <em>{scoreB}</em>
               </span>
             </div>

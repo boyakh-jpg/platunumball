@@ -63,14 +63,14 @@ function getTournamentMatches(tournament, matchesById, matches = []) {
 function getWinnerName(match) {
   const winnerTeamId = getMatchWinnerTeamId(match);
   if (!winnerTeamId) return "";
-  return winnerTeamId === match.teamA.teamId ? match.teamA.name : match.teamB.name;
+  return winnerTeamId === match.teamA?.teamId ? match.teamA?.name ?? "A" : match.teamB?.name ?? "B";
 }
 
 function getMatchWinnerTeamId(match) {
   const scoreA = Number(match.result?.scoreA ?? match.teamA?.score ?? 0);
   const scoreB = Number(match.result?.scoreB ?? match.teamB?.score ?? 0);
   if (!match.result || scoreA === scoreB) return "";
-  return scoreA > scoreB ? match.teamA.teamId : match.teamB.teamId;
+  return scoreA > scoreB ? match.teamA?.teamId ?? "" : match.teamB?.teamId ?? "";
 }
 
 function getBracketRoundName(roundIndex, totalRounds) {
@@ -328,8 +328,8 @@ export default function TournamentDetail({ app }) {
     matchId: match.id,
     round: match.tournamentRound,
     fixture: match.tournamentFixture,
-    teamAId: match.teamA.teamId,
-    teamBId: match.teamB.teamId,
+    teamAId: match.teamA?.teamId ?? "",
+    teamBId: match.teamB?.teamId ?? "",
   }));
 
   const saveSchedule = (event, matchId) => {
@@ -475,9 +475,9 @@ export default function TournamentDetail({ app }) {
             {tournamentMatches.map((match) => (
               <form key={match.id} className={canManageSchedule ? "" : "locked"} onSubmit={(event) => saveSchedule(event, match.id)}>
                 <Link to={`/app/matches?match=${match.id}`}>
-                  <TeamHoverCard team={teamById[match.teamA.teamId]} as="span">{match.teamA.name}</TeamHoverCard>
+                  <TeamHoverCard team={teamById[match.teamA?.teamId]} as="span">{match.teamA?.name ?? "A"}</TeamHoverCard>
                   {" vs "}
-                  <TeamHoverCard team={teamById[match.teamB.teamId]} as="span">{match.teamB.name}</TeamHoverCard>
+                  <TeamHoverCard team={teamById[match.teamB?.teamId]} as="span">{match.teamB?.name ?? "B"}</TeamHoverCard>
                 </Link>
                 <span>{match.status === "confirmed" ? "확정" : match.status === "agreed" ? "예정" : "대기"}</span>
                 <input type="date" name="scheduledDate" min={todayValue} max={maxScheduleDate} defaultValue={match.scheduledDate ?? ""} disabled={!canManageSchedule} aria-label="경기 날짜" />

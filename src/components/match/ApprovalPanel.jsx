@@ -11,14 +11,15 @@ export default function ApprovalPanel({ match, teams, users, currentUserId, onAp
   const approvalReady = !locked && statStatus.complete && pointAudit.matched;
   const renderSide = (sideName) => {
     const status = getApprovalStatus(match, teams, sideName);
+    const side = match[sideName] ?? { name: sideName === "teamA" ? "A" : "B", players: [] };
     return (
       <div>
         <div className="approval-side-header">
-          <strong>{match[sideName].name}</strong>
+          <strong>{side.name}</strong>
           <span>{status.approvals.length}/{status.majority} · 과반 승인</span>
         </div>
         <div className="approval-voter-list">
-          {match[sideName].players.map((playerId) => {
+          {side.players.map((playerId) => {
             const user = userMap[playerId];
             const approved = status.approvals.includes(playerId);
             const isCurrentUser = playerId === currentUserId;

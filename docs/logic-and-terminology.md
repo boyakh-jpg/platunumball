@@ -1466,6 +1466,7 @@ flowchart TD
 38-6. `/app/recruiting`에서 `내가 만든 방`, `내 참여방`, `초대받음` scope는 날짜 필터 때문에 숨겨지면 안 된다. 날짜 필터는 전체 공개 목록을 좁히는 용도이고, 내 방 scope에서는 relation 표시가 우선이다.
 39. 모집방 생성 서버 저장이 성공하면 클라이언트는 `created` feed count를 즉시 반영하고 경기 메뉴 모집 일정도 다시 읽는다.
 39-1. `/app/matches` 모집 일정 로드는 경기 목록 페이지네이션 `loading`과 별도 `recruitingScheduleLoading` 상태로 관리한다. 경기 목록 로딩 중이어도 모집 일정 확인이 불필요하게 막히면 안 된다.
+39-2. `/app` 홈 SPA 보강 로드는 `/api/matches/list includeRecruitingSchedule=true`를 호출하지 않는다. 홈 직접 진입은 `/api/home/load`가 현재 사용자 모집 일정을 포함하고, SPA 보강은 `loadMyRecruitingPosts()`로 current-user feed를 채운다. 모집 일정 재확인은 `/app/matches` 책임이다.
 40. 모집방 선수/심판 초대는 기존 방 참가자만 보낼 수 있다. 단, 초대 수락/거절은 아직 참가자가 아니어도 자기 pending invitation이 있으면 가능하다.
 41. `inviteRecruitingReferee`는 프론트와 서버 모두 기존 방 참가자 action이다. 초대 대상 심판은 active `referee_appointments`가 있어야 하며, pending invitation만 가진 사용자는 심판/선수 초대를 새로 보낼 수 없다.
 42. 선수/심판 초대 생성, 초대 수락, 초대 거절은 stale 클라이언트 snapshot을 그대로 저장하지 않고 서버 최신 모집방 row 기준으로 replay한다.

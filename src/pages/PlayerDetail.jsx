@@ -14,8 +14,8 @@ import { formatStatLine } from "../lib/matchUtils.js";
 import { getTierDivision, getTierQuote } from "../lib/tier.js";
 
 function getPlayerSide(match, playerId) {
-  if (match.teamA.players.includes(playerId)) return "teamA";
-  if (match.teamB.players.includes(playerId)) return "teamB";
+  if ((match.teamA?.players ?? []).includes(playerId)) return "teamA";
+  if ((match.teamB?.players ?? []).includes(playerId)) return "teamB";
   return null;
 }
 
@@ -64,8 +64,8 @@ export default function PlayerDetail({ app }) {
   for (const match of history) {
     const sideName = getPlayerSide(match, player.id);
     const oppositeSide = sideName === "teamA" ? "teamB" : "teamA";
-    match[sideName].players.filter((id) => id !== player.id).forEach((id) => addCount(teammateCounts, id));
-    match[oppositeSide].players.forEach((id) => addCount(opponentCounts, id));
+    (match[sideName]?.players ?? []).filter((id) => id !== player.id).forEach((id) => addCount(teammateCounts, id));
+    (match[oppositeSide]?.players ?? []).forEach((id) => addCount(opponentCounts, id));
     const stats = match.result?.playerStats?.[player.id];
     if (stats) PLAYER_STAT_FIELDS.forEach((field) => { totals[field.id] += Number(stats[field.id] ?? 0); });
   }
@@ -209,8 +209,8 @@ export default function PlayerDetail({ app }) {
               {history.map((match) => {
                 const sideName = getPlayerSide(match, player.id);
                 const oppositeSide = sideName === "teamA" ? "teamB" : "teamA";
-                const side = match[sideName];
-                const opponent = match[oppositeSide];
+                const side = match[sideName] ?? { name: sideName === "teamA" ? "A" : "B", teamId: "" };
+                const opponent = match[oppositeSide] ?? { name: oppositeSide === "teamA" ? "A" : "B", teamId: "" };
                 const stats = match.result?.playerStats?.[player.id];
                 const outcome = getPlayerOutcome(match, player.id);
                 return (
@@ -226,9 +226,9 @@ export default function PlayerDetail({ app }) {
                       <strong>{getSideScore(match, sideName)}:{getSideScore(match, oppositeSide)}</strong>
                     </div>
                     <div className="history-teams">
-                      <Link to={`/app/teams/${side.teamId}`}>{teamMap[side.teamId]?.name ?? side.name}</Link>
+                      {side.teamId ? <Link to={`/app/teams/${side.teamId}`}>{teamMap[side.teamId]?.name ?? side.name}</Link> : <span>{side.name}</span>}
                       <span>vs</span>
-                      <Link to={`/app/teams/${opponent.teamId}`}>{teamMap[opponent.teamId]?.name ?? opponent.name}</Link>
+                      {opponent.teamId ? <Link to={`/app/teams/${opponent.teamId}`}>{teamMap[opponent.teamId]?.name ?? opponent.name}</Link> : <span>{opponent.name}</span>}
                     </div>
                     <p>{formatStatLine(stats)}</p>
                   </article>
