@@ -4630,6 +4630,170 @@ begin
 end;
 $$;
 
+create or replace function public.rankball_refresh_profile_feed_dependency(p_profile_id text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  safe_profile_id text := nullif(btrim(p_profile_id), '');
+  row_id text;
+begin
+  if safe_profile_id is null then
+    return;
+  end if;
+
+  if to_regclass('public.recruiting_posts') is not null then
+    for row_id in
+      select id
+      from public.recruiting_posts
+      where player_id = safe_profile_id
+        or room_state->>'ownerId' = safe_profile_id
+    loop
+      perform public.rankball_refresh_recruiting_feed_for_post(row_id);
+    end loop;
+  end if;
+end;
+$$;
+
+create or replace function public.rankball_refresh_team_feed_dependency(p_team_id text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  safe_team_id text := nullif(btrim(p_team_id), '');
+  row_id text;
+begin
+  if safe_team_id is null then
+    return;
+  end if;
+
+  if to_regclass('public.recruiting_posts') is not null then
+    for row_id in
+      select id
+      from public.recruiting_posts
+      where team_id = safe_team_id
+        or target_team_id = safe_team_id
+    loop
+      perform public.rankball_refresh_recruiting_feed_for_post(row_id);
+    end loop;
+  end if;
+
+  if to_regclass('public.matches') is not null then
+    for row_id in
+      select id
+      from public.matches
+      where team_a_id = safe_team_id
+        or team_b_id = safe_team_id
+    loop
+      perform public.rankball_refresh_match_feed_for_match(row_id);
+    end loop;
+  end if;
+end;
+$$;
+
+create or replace function public.rankball_refresh_court_feed_dependency(p_court_id text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  safe_court_id text := nullif(btrim(p_court_id), '');
+  row_id text;
+begin
+  if safe_court_id is null then
+    return;
+  end if;
+
+  if to_regclass('public.recruiting_posts') is not null then
+    for row_id in
+      select id
+      from public.recruiting_posts
+      where court_id = safe_court_id
+    loop
+      perform public.rankball_refresh_recruiting_feed_for_post(row_id);
+    end loop;
+  end if;
+
+  if to_regclass('public.matches') is not null then
+    for row_id in
+      select id
+      from public.matches
+      where court_id = safe_court_id
+    loop
+      perform public.rankball_refresh_match_feed_for_match(row_id);
+    end loop;
+  end if;
+end;
+$$;
+
+create or replace function public.rankball_refresh_profile_feed_dependency_trigger()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if tg_op = 'DELETE' then
+    perform public.rankball_refresh_profile_feed_dependency(old.id);
+    return old;
+  end if;
+
+  if tg_op = 'UPDATE' and old.id is distinct from new.id then
+    perform public.rankball_refresh_profile_feed_dependency(old.id);
+  end if;
+
+  perform public.rankball_refresh_profile_feed_dependency(new.id);
+  return new;
+end;
+$$;
+
+create or replace function public.rankball_refresh_team_feed_dependency_trigger()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if tg_op = 'DELETE' then
+    perform public.rankball_refresh_team_feed_dependency(old.id);
+    return old;
+  end if;
+
+  if tg_op = 'UPDATE' and old.id is distinct from new.id then
+    perform public.rankball_refresh_team_feed_dependency(old.id);
+  end if;
+
+  perform public.rankball_refresh_team_feed_dependency(new.id);
+  return new;
+end;
+$$;
+
+create or replace function public.rankball_refresh_court_feed_dependency_trigger()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if tg_op = 'DELETE' then
+    perform public.rankball_refresh_court_feed_dependency(old.id);
+    return old;
+  end if;
+
+  if tg_op = 'UPDATE' and old.id is distinct from new.id then
+    perform public.rankball_refresh_court_feed_dependency(old.id);
+  end if;
+
+  perform public.rankball_refresh_court_feed_dependency(new.id);
+  return new;
+end;
+$$;
+
 do $$
 begin
   if to_regclass('public.recruiting_posts') is not null then
@@ -4650,6 +4814,26 @@ begin
   if to_regclass('public.match_players') is not null then
     execute 'drop trigger if exists rankball_match_players_feed_refresh on public.match_players';
     execute 'create trigger rankball_match_players_feed_refresh after insert or update or delete on public.match_players for each row execute function public.rankball_refresh_match_player_feed_trigger()';
+  end if;
+
+  if to_regclass('public.profiles') is not null then
+    execute 'drop trigger if exists rankball_profiles_feed_dependency_refresh on public.profiles';
+    execute 'create trigger rankball_profiles_feed_dependency_refresh after insert or update of id, name or delete on public.profiles for each row execute function public.rankball_refresh_profile_feed_dependency_trigger()';
+  end if;
+
+  if to_regclass('public.teams') is not null then
+    execute 'drop trigger if exists rankball_teams_feed_dependency_refresh on public.teams';
+    execute 'create trigger rankball_teams_feed_dependency_refresh after insert or update of id, name, deleted_at or delete on public.teams for each row execute function public.rankball_refresh_team_feed_dependency_trigger()';
+  end if;
+
+  if to_regclass('public.approved_courts') is not null then
+    execute 'drop trigger if exists rankball_approved_courts_feed_dependency_refresh on public.approved_courts';
+    execute 'create trigger rankball_approved_courts_feed_dependency_refresh after insert or update of id, name, status or delete on public.approved_courts for each row execute function public.rankball_refresh_court_feed_dependency_trigger()';
+  end if;
+
+  if to_regclass('public.courts') is not null then
+    execute 'drop trigger if exists rankball_courts_feed_dependency_refresh on public.courts';
+    execute 'create trigger rankball_courts_feed_dependency_refresh after insert or update or delete on public.courts for each row execute function public.rankball_refresh_court_feed_dependency_trigger()';
   end if;
 end;
 $$;

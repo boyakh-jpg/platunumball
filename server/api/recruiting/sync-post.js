@@ -857,10 +857,7 @@ export async function persistRecruitingPostSnapshot(context, { post, notificatio
   await validateRecruitingRosterEligibility(context.supabase, post);
   await validateAgeEligibility(context.supabase, context.profileId, existingPostSnapshot, post, actionBody);
 
-  const postRow = {
-    ...toRecruitingPostRow(post),
-    ...(expectedUpdatedAt ? { __expectedUpdatedAt: expectedUpdatedAt } : {}),
-  };
+  const postRow = toRecruitingPostRow(post);
   const applicationRows = toRecruitingApplicationRows(post);
   const notificationRows = toNotificationRows(notifications, context.profileId);
 
@@ -870,6 +867,7 @@ export async function persistRecruitingPostSnapshot(context, { post, notificatio
     p_post_row: postRow,
     p_application_rows: applicationRows,
     p_notification_rows: notificationRows,
+    p_expected_updated_at: expectedUpdatedAt,
   });
   if (persistError) {
     if (persistError.code === "40001" || String(persistError.message ?? "").includes("recruiting_stale_snapshot")) {

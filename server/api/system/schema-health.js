@@ -164,7 +164,7 @@ const REQUIRED_RPCS = [
   },
   {
     name: "rankball_recruiting_action",
-    args: { p_actor_profile_id: "", p_action: "", p_post_row: {}, p_application_rows: [], p_notification_rows: [] },
+    args: { p_actor_profile_id: "", p_action: "", p_post_row: {}, p_application_rows: [], p_notification_rows: [], p_expected_updated_at: null },
   },
   {
     name: "rankball_match_action",
