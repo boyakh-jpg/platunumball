@@ -6591,7 +6591,9 @@ function getLobbySideName(lobby, sideName) {
 }
 
 function getLobbyPrimaryTeamId(lobby, sideName) {
-  return getLobbyEntryTeamId(lobby.sides[sideName].entries.find((entry) => isRecruitingPartyEntry(entry))) ?? null;
+  return lobby.sides[sideName].entries
+    .map((entry) => (entry.kind === "team" ? entry.team?.id ?? entry.teamId ?? null : null))
+    .find(Boolean) ?? null;
 }
 
 function getLobbyEntryTeamId(entry = {}) {
@@ -7931,11 +7933,16 @@ export function joinRecruitingSideParty(state, postId, teamId, sideName = "", en
 
   const side = joinableSide || currentApplicant.side;
   const sideEntries = lobby.sides[side]?.entries ?? [];
-  const targetEntry = entryId ? sideEntries.find((entry) => entry.id === entryId) : null;
+  const targetEntry = entryId
+    ? sideEntries.find((entry) => entry.id === entryId)
+    : sideEntries.find((entry) => entry.fixed && entry.team?.id === teamId) ?? null;
   const targetEntryIsSameTeamPlayer = Boolean(
-    targetEntry?.kind === "player" &&
-    targetEntry.playerId &&
-    teamMemberIds.has(targetEntry.playerId),
+    (
+      targetEntry?.kind === "player" &&
+      targetEntry.playerId &&
+      teamMemberIds.has(targetEntry.playerId)
+    ) ||
+    (targetEntry?.fixed && targetEntry.team?.id === teamId),
   );
   const partyEntries = sideEntries.filter((entry) => (
     entry.team?.id === teamId &&
@@ -8102,7 +8109,7 @@ export function setRecruitingTeamPartyRoster(state, postId, entryId, roster = {}
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
   const lobby = getRecruitingLobby(post, state);
   const entry = (lobby.entries ?? []).find((item) => item.id === entryId);
-  if (entry.kind !== "team" || !entry?.team) return state;
+  if (entry?.kind !== "team" || !entry.team) return state;
 
   const partyLeaderId = roomState.partyLeaders?.[entryId] ?? (entry.fixed ? post.playerId : entry.playerId) ?? "";
   if (partyLeaderId !== state.currentUserId) return state;

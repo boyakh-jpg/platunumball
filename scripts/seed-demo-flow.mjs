@@ -24,6 +24,7 @@ import {
   setRecruitingPartyPlayerPlacement,
   setRecruitingReady,
   setRecruitingSlotPosition,
+  setRecruitingTeamPartyRoster,
   startMatch,
   submitMatchResult,
   submitMatchThumbs,
@@ -296,7 +297,7 @@ function addBulkDemoContent(state) {
       timingType,
       scheduledDate: timingType === "instant" ? "" : todayPlus((index % 20) + 1),
       scheduledTime: `${String(10 + (index % 10)).padStart(2, "0")}:00`,
-      ranked: index % 3 !== 0,
+      ranked: false,
       official: index % 5 === 0,
       preRegistered: true,
       playerIds: hostPlayers,
@@ -308,9 +309,36 @@ function addBulkDemoContent(state) {
       memo: "방 생성 플로우로 만든 확정 데모",
     });
     nextState = room.state;
+    let bulkPost = getPost(nextState, room.postId);
+    const bulkInvite = bulkPost.roomState.invitations.find((invitation) => invitation.targetUserId === opponentPlayers[0]);
+    assertFlow(Boolean(bulkInvite), `확정 데모 B사이드 파티장 초대 ${index + 1}`, {});
+    nextState = withUser(nextState, opponentPlayers[0], (scoped) => acceptRecruitingInvitation(scoped, room.postId, bulkInvite.id));
+    nextState = withUser(nextState, opponentPlayers[0], (scoped) => setRecruitingTeamPartyRoster(scoped, room.postId, `team:${opponentTeam.id}`, {
+      teamId: opponentTeam.id,
+      playerIds: opponentPlayers,
+      reservePlayerIds: opponentReserves,
+    }));
     nextState = withUser(nextState, opponentPlayers[0], (scoped) => setRecruitingReady(scoped, room.postId, true));
     nextState = withUser(nextState, hostPlayers[0], (scoped) => confirmRecruitingMatch(scoped, room.postId));
-    assertFlow(Boolean(findNewId(beforeIds, nextState.matches)), `확정 데모 생성 ${index + 1}`, {});
+    const createdMatchId = findNewId(beforeIds, nextState.matches);
+    const confirmPost = getPost(nextState, room.postId);
+    const confirmLobby = getRecruitingLobby(confirmPost, nextState);
+    assertFlow(Boolean(createdMatchId), `확정 데모 생성 ${index + 1}`, {
+      hostTeamId: hostTeam.id,
+      opponentTeamId: opponentTeam.id,
+      hostPlayers,
+      opponentPlayers,
+      applicants: confirmPost?.applicants,
+      partyLeaders: confirmPost?.roomState?.partyLeaders,
+      partyReserves: confirmPost?.roomState?.partyReserves,
+      lobby: {
+        canConfirm: confirmLobby.canConfirm,
+        ready: confirmLobby.ready,
+        teamA: confirmLobby.sides.teamA.confirmationProjectedPlayers,
+        teamB: confirmLobby.sides.teamB.confirmationProjectedPlayers,
+      },
+      notification: nextState.notifications?.[0],
+    });
   }
 
   for (let index = 0; index < 40; index += 1) {
@@ -700,8 +728,32 @@ assertFlow(lifecyclePost.refereeId === "u11", "비공개 심판 초대 수락", 
 });
 lifecycleInvite = lifecyclePost.roomState.invitations.find((invitation) => invitation.targetUserId === "u7");
 state = withUser(state, "u7", (scoped) => acceptRecruitingInvitation(scoped, lifecyclePostId, lifecycleInvite.id));
-let lifecycleLobby = getRecruitingLobby(getPost(state, lifecyclePostId), state);
-assertFlow(lifecycleLobby.canConfirm, "비공개 팀전 즉시: B 파티장 수락 후 확정 가능", {
+let lifecyclePostAfterLeaderAccept = getPost(state, lifecyclePostId);
+let lifecycleLobby = getRecruitingLobby(lifecyclePostAfterLeaderAccept, state);
+let lifecycleTeamBEntry = lifecycleLobby.entries.find((entry) => entry.id === "team:t2");
+assertFlow(lifecycleTeamBEntry?.players?.length === 1 && lifecycleTeamBEntry.players.includes("u7") && !lifecycleLobby.canConfirm, "비공개 팀전 즉시: B 파티장 수락 직후 단독 입장", {
+  teamA: lifecycleLobby.sides.teamA.confirmationProjectedFilled,
+  teamB: lifecycleLobby.sides.teamB.confirmationProjectedFilled,
+  canConfirm: lifecycleLobby.canConfirm,
+  entry: lifecycleTeamBEntry,
+});
+state = withUser(state, "u7", (scoped) => setRecruitingTeamPartyRoster(scoped, lifecyclePostId, lifecycleTeamBEntry.id, {
+  teamId: "t2",
+  playerIds: ["u7", "u6", "u8"],
+  reservePlayerIds: ["u9", "u10"],
+}));
+lifecyclePostAfterLeaderAccept = getPost(state, lifecyclePostId);
+lifecycleLobby = getRecruitingLobby(lifecyclePostAfterLeaderAccept, state);
+lifecycleTeamBEntry = lifecycleLobby.entries.find((entry) => entry.id === "team:t2");
+assertFlow(lifecycleTeamBEntry?.players?.length === 3 && lifecycleTeamBEntry?.reserves?.length === 2 && !lifecycleLobby.canConfirm, "비공개 팀전 즉시: B 파티장 roster 선택 후 ready 전 확정 불가", {
+  teamA: lifecycleLobby.sides.teamA.confirmationProjectedFilled,
+  teamB: lifecycleLobby.sides.teamB.confirmationProjectedFilled,
+  canConfirm: lifecycleLobby.canConfirm,
+  entry: lifecycleTeamBEntry,
+});
+state = withUser(state, "u7", (scoped) => setRecruitingReady(scoped, lifecyclePostId, true));
+lifecycleLobby = getRecruitingLobby(getPost(state, lifecyclePostId), state);
+assertFlow(lifecycleLobby.canConfirm, "비공개 팀전 즉시: B 파티장 roster 선택 및 ready 후 확정 가능", {
   teamA: lifecycleLobby.sides.teamA.confirmationProjectedFilled,
   teamB: lifecycleLobby.sides.teamB.confirmationProjectedFilled,
   ready: lifecycleLobby.ready,
@@ -836,6 +888,7 @@ room = createRoom(state, "u12", {
   ranked: false,
   official: false,
   preRegistered: true,
+  refereeWanted: true,
   court: "반포 선셋파크",
 });
 state = room.state;
