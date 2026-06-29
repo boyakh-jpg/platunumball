@@ -38,6 +38,17 @@ function getTargetPostIds(body = {}) {
   ].map((id) => String(id ?? "").trim()).filter(Boolean);
 }
 
+function getRecruitingStartFilter(body = {}) {
+  const startFilter = String(body.startFilter ?? "").trim();
+  if (startFilter === "instant") return { startFilter, timingType: "instant", scheduledDate: "" };
+  if (/^\d{4}-\d{2}-\d{2}$/.test(startFilter)) return { startFilter, timingType: "", scheduledDate: startFilter };
+  const timingType = String(body.timingType ?? "").trim() === "instant" ? "instant" : "";
+  const scheduledDate = String(body.scheduledDate ?? "").trim();
+  if (timingType === "instant") return { startFilter: "instant", timingType, scheduledDate: "" };
+  if (/^\d{4}-\d{2}-\d{2}$/.test(scheduledDate)) return { startFilter: scheduledDate, timingType: "", scheduledDate };
+  return { startFilter: "all", timingType: "", scheduledDate: "" };
+}
+
 function uniqueIds(ids = []) {
   return [...new Set(ids.map((id) => String(id ?? "").trim()).filter(Boolean))];
 }
@@ -458,6 +469,8 @@ async function fetchRecruitingFeedPage(client, {
   limit = REMOTE_CLIENT_RECRUITING_LIMIT,
   offset = 0,
   includeCards = false,
+  timingType = "",
+  scheduledDate = "",
 } = {}) {
   if (!userRoomFeedAvailable) return null;
   const cappedLimit = Math.max(1, Math.min(200, Number(limit) || REMOTE_CLIENT_RECRUITING_LIMIT));
@@ -474,6 +487,8 @@ async function fetchRecruitingFeedPage(client, {
     .range(safeOffset, safeOffset + cappedLimit - 1);
   if (relations.length) query = query.in("relation", relations);
   if (regionKey) query = query.eq("region_key", regionKey);
+  if (timingType === "instant") query = query.or("card_json->>timingType.eq.instant,card_json->>scheduledAt.eq.즉시");
+  if (scheduledDate) query = query.eq("card_json->>scheduledDate", scheduledDate);
   const { data, error } = await query;
   if (error) {
     if (isMissingUserRoomFeed(error)) {
@@ -639,7 +654,7 @@ async function fetchCurrentUserRecruitingPage(client, profileId = "", limit = RE
   return { ids, cards: [], source: "fallback_mine", exhausted: true };
 }
 
-async function fetchRecruitingFallbackPage(client, limit = REMOTE_CLIENT_RECRUITING_LIMIT, offset = 0, regionKey = "") {
+async function fetchRecruitingFallbackPage(client, limit = REMOTE_CLIENT_RECRUITING_LIMIT, offset = 0, regionKey = "", startFilter = {}) {
   const cappedLimit = Math.max(1, Math.min(200, Number(limit) || REMOTE_CLIENT_RECRUITING_LIMIT));
   const safeOffset = Math.max(0, Math.floor(Number(offset) || 0));
   let query = client
@@ -651,13 +666,15 @@ async function fetchRecruitingFallbackPage(client, limit = REMOTE_CLIENT_RECRUIT
     .order("id", { ascending: false })
     .range(safeOffset, safeOffset + cappedLimit - 1);
   if (regionKey) query = query.or(`region.eq.${regionKey},region.eq.${regionKey}구,region.ilike.%${regionKey}%`);
+  if (startFilter.timingType === "instant") query = query.or("room_state->>timingType.eq.instant,scheduled_at.eq.즉시");
+  if (startFilter.scheduledDate) query = query.eq("scheduled_date", startFilter.scheduledDate);
   const { data, error } = await query;
   if (error) throw error;
   const ids = (data ?? []).map((row) => row?.id).filter(Boolean);
   return { ids, cards: [], source: "fallback_public", exhausted: ids.length < cappedLimit };
 }
 
-async function fetchRecruitingPage(client, limit = REMOTE_CLIENT_RECRUITING_LIMIT, offset = 0, regionKey = "", includeCards = false) {
+async function fetchRecruitingPage(client, limit = REMOTE_CLIENT_RECRUITING_LIMIT, offset = 0, regionKey = "", includeCards = false, startFilter = {}) {
   const cappedLimit = Math.max(1, Math.min(80, Number(limit) || REMOTE_CLIENT_RECRUITING_LIMIT));
   const safeOffset = Math.max(0, Math.floor(Number(offset) || 0));
   const feedPage = await fetchRecruitingFeedPage(client, {
@@ -667,10 +684,12 @@ async function fetchRecruitingPage(client, limit = REMOTE_CLIENT_RECRUITING_LIMI
     limit: cappedLimit,
     offset: safeOffset,
     includeCards,
+    timingType: startFilter.timingType,
+    scheduledDate: startFilter.scheduledDate,
   });
   if (feedPage) return feedPage;
   if (safeOffset > 0) return { ids: [], cards: [], source: "fallback_public", exhausted: true };
-  return fetchRecruitingFallbackPage(client, cappedLimit, safeOffset, regionKey);
+  return fetchRecruitingFallbackPage(client, cappedLimit, safeOffset, regionKey, startFilter);
 }
 
 async function fetchRecruitingRowsByIds(client, postIds = []) {
@@ -829,6 +848,9 @@ export async function loadCompactRecruitingList(context, {
   offset = 0,
   regionScope = "local",
   regionKey = "",
+  startFilter = "all",
+  timingType = "",
+  scheduledDate = "",
 } = {}) {
   const targetPostIds = uniqueIds([...explicitPostIds, ...(mineOnly ? currentUserPostIds : pagePostIds), ...(includeMine ? currentUserPostIds : [])]);
   const targetCards = uniqueFeedCards(pageCards.map((card) => ({ entity_id: card?.id, card_json: card })), targetPostIds);
@@ -866,6 +888,9 @@ export async function loadCompactRecruitingList(context, {
         exhausted: typeof pageExhausted === "boolean" ? pageExhausted : pagePostIds.length < limit,
         regionScope: regionKey ? "region" : regionScope,
         regionKey,
+        startFilter,
+        timingType,
+        scheduledDate,
         source: pageSource || "feed_card",
         feedCounts,
       },
@@ -933,6 +958,9 @@ export async function loadCompactRecruitingList(context, {
       exhausted: mineOnly || Boolean(explicitPostIds.length) || (typeof pageExhausted === "boolean" ? pageExhausted : pagePostIds.length < limit),
       regionScope: regionKey ? "region" : regionScope,
       regionKey,
+      startFilter,
+      timingType,
+      scheduledDate,
       source: pageSource || "row",
       feedCounts,
     },
@@ -1037,6 +1065,7 @@ export default async function handler(request, response) {
     const listOnly = body.listOnly !== false && !explicitPostIds.length;
     const offset = getPageOffset(body);
     const shouldPageList = !mineOnly && !explicitPostIds.length;
+    const startFilter = getRecruitingStartFilter(body);
     const regionScope = body.regionScope === "all" ? "all" : "local";
     const regionKey = regionScope === "all"
       ? ""
@@ -1046,7 +1075,7 @@ export default async function handler(request, response) {
         ? timing.track("mine", () => fetchCurrentUserRecruitingPage(context.supabase, context.profileId, mineLimit, roomScope, listOnly))
         : Promise.resolve({ ids: [], cards: [], source: "", exhausted: true }),
       shouldPageList
-        ? timing.track("page", () => fetchRecruitingPage(context.supabase, limit, offset, regionKey, listOnly))
+        ? timing.track("page", () => fetchRecruitingPage(context.supabase, limit, offset, regionKey, listOnly, startFilter))
         : Promise.resolve({ ids: [], cards: [], source: "", exhausted: true }),
       context.profileId && includeFeedCounts
         ? timing.track("counts", () => fetchRecruitingFeedCounts(context.supabase, context.profileId))
@@ -1080,6 +1109,9 @@ export default async function handler(request, response) {
         offset,
         regionScope: regionKey ? "region" : regionScope,
         regionKey,
+        startFilter: startFilter.startFilter,
+        timingType: startFilter.timingType,
+        scheduledDate: startFilter.scheduledDate,
       }));
       sendTimedJson(response, 200, {
         ok: true,
@@ -1146,6 +1178,9 @@ export default async function handler(request, response) {
         exhausted: mineOnly || Boolean(explicitPostIds.length) || (typeof pageExhausted === "boolean" ? pageExhausted : pagePostIds.length < limit),
         regionScope: regionKey ? "region" : regionScope,
         regionKey,
+        startFilter: startFilter.startFilter,
+        timingType: startFilter.timingType,
+        scheduledDate: startFilter.scheduledDate,
         source: pageSource || "row",
         feedCounts,
       },

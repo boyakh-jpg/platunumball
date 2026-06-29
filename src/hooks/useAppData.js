@@ -326,6 +326,17 @@ function getRecruitingRegionRequest(page = {}) {
   return { regionScope, regionKey };
 }
 
+function getRecruitingStartFilterRequest(page = {}) {
+  const startFilter = String(page.startFilter ?? "").trim();
+  if (startFilter === "instant") return { startFilter, timingType: "instant", scheduledDate: "" };
+  if (/^\d{4}-\d{2}-\d{2}$/.test(startFilter)) return { startFilter, timingType: "", scheduledDate: startFilter };
+  const timingType = String(page.timingType ?? "").trim() === "instant" ? "instant" : "";
+  const scheduledDate = String(page.scheduledDate ?? "").trim();
+  if (timingType === "instant") return { startFilter: "instant", timingType, scheduledDate: "" };
+  if (/^\d{4}-\d{2}-\d{2}$/.test(scheduledDate)) return { startFilter: scheduledDate, timingType: "", scheduledDate };
+  return { startFilter: "all", timingType: "", scheduledDate: "" };
+}
+
 function mergeRemoteMatchPage(state, remoteState = {}) {
   const nextMatches = remoteState.matches ?? [];
   const nextPosts = remoteState.recruitingPosts ?? [];
@@ -568,7 +579,7 @@ function getInitialStateLoadOptions() {
   }
   if (pathname === "/app/recruiting") {
     if (searchParams?.get("post")) return { profileOnly: true, matchLimit: 0, recruitingLimit: 0, tournamentLimit: 0 };
-    return { endpoint: "recruitingList", matchLimit: 0, recruitingLimit: REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT, tournamentLimit: 0 };
+    return { endpoint: "recruitingList", matchLimit: 0, recruitingLimit: REMOTE_CLIENT_RECRUITING_LIMIT, tournamentLimit: 0, startFilter: "instant" };
   }
   if (pathname === "/app/recorder") {
     return { endpoint: "recorderMatches", matchLimit: REMOTE_CLIENT_MATCH_LIMIT, recruitingLimit: 0, tournamentLimit: 0 };
@@ -694,6 +705,7 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
           limit: loadOptions.recruitingLimit,
           includeMine: true,
           regionScope: "local",
+          ...(options.startFilter ? { startFilter: options.startFilter } : {}),
           listOnly: true,
           adminContext: false,
           includeFeedCounts: true,
@@ -788,7 +800,7 @@ export function useAppData(authUser = null) {
   const [profileBindings, setProfileBindings] = useState(() => readProfileBindings());
   const [adminContext, setAdminContext] = useState(EMPTY_ADMIN_CONTEXT);
   const [matchPagination, setMatchPagination] = useState({ loading: false, exhausted: !isSupabaseConfigured, error: "", cursor: "", recruitingScheduleChecked: false, recruitingScheduleLoading: false });
-  const [recruitingPagination, setRecruitingPagination] = useState({ loading: false, exhausted: !isSupabaseConfigured, error: "", cursor: "", offset: 0, regionScope: "local", regionKey: "", feedCounts: null });
+  const [recruitingPagination, setRecruitingPagination] = useState({ loading: false, exhausted: !isSupabaseConfigured, error: "", cursor: "", offset: 0, regionScope: "local", regionKey: "", startFilter: "all", timingType: "", scheduledDate: "", feedCounts: null });
   const [directoryStatus, setDirectoryStatus] = useState({ loading: false, loaded: !isSupabaseConfigured, error: "" });
   const [profileRecordsLoaded, setProfileRecordsLoaded] = useState(false);
   const [remoteReady, setRemoteReady] = useState(!isSupabaseConfigured);
@@ -860,7 +872,7 @@ export function useAppData(authUser = null) {
       myRecruitingPostsPromiseRef.current = new Map();
       setRemoteReady(!isSupabaseConfigured);
       setMatchPagination({ loading: false, exhausted: true, error: "", cursor: "", recruitingScheduleChecked: false, recruitingScheduleLoading: false });
-      setRecruitingPagination({ loading: false, exhausted: true, error: "", cursor: "", offset: 0, regionScope: "local", regionKey: "", feedCounts: null });
+      setRecruitingPagination({ loading: false, exhausted: true, error: "", cursor: "", offset: 0, regionScope: "local", regionKey: "", startFilter: "all", timingType: "", scheduledDate: "", feedCounts: null });
       setDirectoryStatus({ loading: false, loaded: true, error: "" });
       setProfileRecordsLoaded(false);
       return undefined;
@@ -911,6 +923,7 @@ export function useAppData(authUser = null) {
             cursor: remoteMeta.recruitingPage?.cursor ?? getRecruitingPaginationCursor(maintainedState.recruitingPosts),
             offset: getRecruitingPaginationOffset(remoteMeta.recruitingPage, maintainedState.recruitingPosts?.length ?? 0),
             ...getRecruitingRegionRequest(remoteMeta.recruitingPage),
+            ...getRecruitingStartFilterRequest(remoteMeta.recruitingPage),
             feedCounts: remoteMeta.recruitingPage?.feedCounts ?? null,
           });
           if (remoteMeta.directoryLoaded) {
@@ -925,7 +938,7 @@ export function useAppData(authUser = null) {
         console.warn("Supabase hydration failed. Remote state remains empty.", error.message);
         remoteReadyRef.current = true;
         setMatchPagination({ loading: false, exhausted: true, error: error.message ?? "state_load_failed", cursor: "", recruitingScheduleChecked: false, recruitingScheduleLoading: false });
-        setRecruitingPagination({ loading: false, exhausted: true, error: error.message ?? "state_load_failed", cursor: "", offset: 0, regionScope: "local", regionKey: "", feedCounts: null });
+        setRecruitingPagination({ loading: false, exhausted: true, error: error.message ?? "state_load_failed", cursor: "", offset: 0, regionScope: "local", regionKey: "", startFilter: "all", timingType: "", scheduledDate: "", feedCounts: null });
         if (mounted) setRemoteReady(true);
       });
 
@@ -1351,6 +1364,7 @@ export function useAppData(authUser = null) {
     if (!isSupabaseConfigured || !authUserId || recruitingPagination.loading || recruitingPagination.exhausted) return false;
     const offset = getRecruitingPaginationOffset(recruitingPagination, recruitingPagination.offset ?? 0);
     const regionRequest = getRecruitingRegionRequest(recruitingPagination);
+    const startFilterRequest = getRecruitingStartFilterRequest(recruitingPagination);
     setRecruitingPagination((prev) => ({ ...prev, loading: true, error: "" }));
     try {
       const result = await postServerAction(
@@ -1362,6 +1376,7 @@ export function useAppData(authUser = null) {
           offset,
           regionScope: "local",
           ...(regionRequest.regionKey ? { regionKey: regionRequest.regionKey } : {}),
+          ...startFilterRequest,
           listOnly: true,
           adminContext: false,
           includeFeedCounts: true,
@@ -1381,6 +1396,7 @@ export function useAppData(authUser = null) {
         cursor: result?.page?.cursor ?? String(offset + rawPostCount),
         offset: getRecruitingPaginationOffset(result?.page, offset + rawPostCount),
         ...regionRequest,
+        ...startFilterRequest,
         feedCounts: result?.page?.feedCounts ?? recruitingPagination.feedCounts ?? null,
       });
       return nextPosts.length;
@@ -1391,20 +1407,23 @@ export function useAppData(authUser = null) {
     }
   }, [authEmail, authUserId, recruitingPagination, setState, state.recruitingPosts]);
 
-  const loadRecruitingRegion = useCallback(async ({ regionKey = "", regionScope = "local" } = {}) => {
+  const loadRecruitingRegion = useCallback(async ({ regionKey = "", regionScope = "local", limit = REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT, startFilter = "" } = {}) => {
     if (!isSupabaseConfigured || !authUserId) return false;
+    const pageLimit = Math.max(1, Math.min(REMOTE_CLIENT_RECRUITING_LIMIT, Number(limit) || REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT));
     const regionRequest = getRecruitingRegionRequest({ regionScope: regionScope === "region" && regionKey ? "region" : "local", regionKey });
-    setRecruitingPagination((prev) => ({ ...prev, ...regionRequest, loading: true, exhausted: false, error: "", cursor: "", offset: 0 }));
+    const startFilterRequest = getRecruitingStartFilterRequest({ startFilter });
+    setRecruitingPagination((prev) => ({ ...prev, ...regionRequest, ...startFilterRequest, loading: true, exhausted: false, error: "", cursor: "", offset: 0 }));
     try {
       const result = await postServerAction(
         "/api/recruiting/list",
         {
           authUserId,
           authEmail,
-          limit: REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT,
+          limit: pageLimit,
           offset: 0,
           regionScope: "local",
           ...(regionRequest.regionKey ? { regionKey: regionRequest.regionKey } : {}),
+          ...startFilterRequest,
           includeMine: true,
           listOnly: true,
           adminContext: false,
@@ -1420,17 +1439,18 @@ export function useAppData(authUser = null) {
       const pageHasExhausted = typeof result?.page?.exhausted === "boolean";
       setRecruitingPagination({
         loading: false,
-        exhausted: pageHasExhausted ? result.page.exhausted : rawPostCount < REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT,
+        exhausted: pageHasExhausted ? result.page.exhausted : rawPostCount < pageLimit,
         error: "",
         cursor: result?.page?.cursor ?? String(rawPostCount),
         offset: getRecruitingPaginationOffset(result?.page, rawPostCount),
         ...regionRequest,
+        ...startFilterRequest,
         feedCounts: result?.page?.feedCounts ?? recruitingPagination.feedCounts ?? null,
       });
       return nextPosts.length;
     } catch (error) {
       console.warn("Recruiting region load failed.", error.message);
-      setRecruitingPagination((prev) => ({ ...prev, ...regionRequest, loading: false, exhausted: false, error: error.message ?? "recruiting_region_load_failed", cursor: "", offset: 0 }));
+      setRecruitingPagination((prev) => ({ ...prev, ...regionRequest, ...startFilterRequest, loading: false, exhausted: false, error: error.message ?? "recruiting_region_load_failed", cursor: "", offset: 0 }));
       return false;
     }
   }, [authEmail, authUserId, recruitingPagination.feedCounts, setState]);

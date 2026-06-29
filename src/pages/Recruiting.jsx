@@ -152,6 +152,8 @@ function getStartDateFilterOptions() {
   return [{ id: "instant", type: "instant", label: "즉시", subLabel: "바로" }, ...dateOptions];
 }
 
+const RECRUITING_FILTER_PAGE_LIMIT = 50;
+
 function getMaxInputValue() {
   return getPublicRoomMaxDateInput();
 }
@@ -3161,19 +3163,27 @@ function RecruitingReady({ app }) {
       ? ((currentScope === "local" && !currentKey) || (currentScope === "region" && currentKey === regionKey))
       : (currentScope === "region" && currentKey === regionKey);
     const hasFeedCounts = app.recruitingPagination?.feedCounts != null;
-    if (currentPageMatchesRegion && hasFeedCounts) return;
-    const loadKey = `${app.currentUser.id}:${regionFilter}:${regionKey}`;
+    const targetStartFilter = roomScope === "all" ? startFilter : "all";
+    const currentStartFilter = app.recruitingPagination?.startFilter ?? "all";
+    const needsFilteredPage = roomScope === "all"
+      && startFilter !== "all"
+      && (currentStartFilter !== startFilter || (!app.recruitingPagination?.exhausted && Number(app.recruitingPagination?.offset ?? 0) < RECRUITING_FILTER_PAGE_LIMIT));
+    const needsBasePage = targetStartFilter === "all" && currentStartFilter !== "all";
+    if (currentPageMatchesRegion && hasFeedCounts && !needsFilteredPage && !needsBasePage) return;
+    const loadKey = `${app.currentUser.id}:${regionFilter}:${regionKey}:${targetStartFilter}`;
     if (regionLoadRef.current === loadKey) return;
     regionLoadRef.current = loadKey;
     Promise.resolve(app.actions.loadRecruitingRegion?.({
       regionScope: regionFilter === "local" ? "local" : "region",
       regionKey: regionFilter === "local" ? "" : regionKey,
+      limit: needsFilteredPage ? RECRUITING_FILTER_PAGE_LIMIT : undefined,
+      startFilter: targetStartFilter,
     })).then((count) => {
       if (count !== false) regionLoadRef.current = "";
     }).catch(() => {
       // Keep the key on failure so the effect does not retry in a tight loop.
     });
-  }, [app.actions, app.currentUser, app.currentUser.id, app.remoteReady, app.recruitingPagination, app.state.recruitingPosts, regionFilter, selectedRegionKey]);
+  }, [app.actions, app.currentUser, app.currentUser.id, app.remoteReady, app.recruitingPagination, app.state.recruitingPosts, regionFilter, roomScope, selectedRegionKey, startFilter]);
 
   useEffect(() => {
     if (!hostNeedsTeam) return;
