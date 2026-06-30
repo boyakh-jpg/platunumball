@@ -5,6 +5,7 @@ import { loadNormalizedRemoteStateFromClient, runAutomaticStateMaintenance } fro
 import { DISPUTE_WINDOW_MINUTES } from "../../../src/lib/constants.js";
 
 const DEFAULT_MATCH_LIMIT = 10;
+const ACTIVE_RECRUITING_APPLICATION_STATUSES = new Set(["waiting", "ready", "confirmed"]);
 
 function getBearerToken(request) {
   const header = request.headers.authorization || request.headers.Authorization || "";
@@ -34,6 +35,23 @@ function getLimit(request) {
 function isMissingCleanupRpc(error) {
   const message = String(error?.message ?? "").toLowerCase();
   return error?.code === "PGRST202" || error?.code === "42883" || message.includes("rankball_cleanup_room_feed");
+}
+
+function toArray(value) {
+  return Array.isArray(value) ? value.filter(Boolean) : [];
+}
+
+function getApplicationPlayerCount(row = {}, capacity = 5) {
+  const playerIds = toArray(row.player_ids);
+  if (playerIds.length) return Math.min(capacity, playerIds.length);
+  return row.player_id ? 1 : 0;
+}
+
+function getHostPlayerCount(row = {}, capacity = 5) {
+  const hostJoinMode = row.host_join_mode === "team" && row.team_id ? "team" : "player";
+  const playerIds = hostJoinMode === "team" ? toArray(row.player_ids) : [];
+  if (playerIds.length) return Math.min(capacity, playerIds.length);
+  return row.player_id ? 1 : 0;
 }
 
 function getApprovalRows(match = {}) {
@@ -156,6 +174,92 @@ async function cleanupRoomFeed(client, now) {
   };
 }
 
+async function refreshRecruitingFeed(client, postId) {
+  const { error } = await client.rpc("rankball_refresh_recruiting_feed_for_post", { p_post_id: postId });
+  if (error) {
+    const message = String(error.message ?? "").toLowerCase();
+    if (error.code === "PGRST202" || error.code === "42883" || message.includes("rankball_refresh_recruiting_feed_for_post")) {
+      return false;
+    }
+    throw error;
+  }
+  return true;
+}
+
+async function normalizeRecruitingSideCapacity(client, limit, now) {
+  const { data: posts, error: postError } = await client
+    .from("recruiting_posts")
+    .select("id,mode,side_capacity,host_side,host_join_mode,team_id,player_id,player_ids,updated_at")
+    .eq("status", "open")
+    .order("updated_at", { ascending: false, nullsFirst: false })
+    .limit(limit);
+  if (postError) throw postError;
+
+  const postRows = posts ?? [];
+  if (!postRows.length) return { ok: true, checked: 0, reserved: 0, posts: [] };
+
+  const postIds = postRows.map((post) => post.id).filter(Boolean);
+  const { data: applications, error: applicationError } = await client
+    .from("recruiting_applications")
+    .select("post_id,kind,team_id,player_id,side,status,reserve,player_ids,created_at,updated_at")
+    .in("post_id", postIds)
+    .eq("reserve", false)
+    .in("status", [...ACTIVE_RECRUITING_APPLICATION_STATUSES]);
+  if (applicationError) throw applicationError;
+
+  const applicationsByPost = new Map();
+  (applications ?? []).forEach((row) => {
+    const rows = applicationsByPost.get(row.post_id) ?? [];
+    rows.push(row);
+    applicationsByPost.set(row.post_id, rows);
+  });
+
+  const reservedRows = [];
+  for (const post of postRows) {
+    const capacity = Math.max(1, Math.min(5, Number(post.side_capacity) || 5));
+    const hostSide = post.host_side === "teamB" ? "teamB" : "teamA";
+    const sideCounts = { teamA: 0, teamB: 0 };
+    sideCounts[hostSide] = getHostPlayerCount(post, capacity);
+    const rows = [...(applicationsByPost.get(post.id) ?? [])].sort((a, b) => (
+      String(a.created_at ?? "").localeCompare(String(b.created_at ?? "")) ||
+      String(a.updated_at ?? "").localeCompare(String(b.updated_at ?? "")) ||
+      String(a.player_id ?? "").localeCompare(String(b.player_id ?? ""))
+    ));
+
+    rows.forEach((row) => {
+      const side = row.side === "teamA" ? "teamA" : "teamB";
+      const count = getApplicationPlayerCount(row, capacity);
+      if (sideCounts[side] + count <= capacity) {
+        sideCounts[side] += count;
+        return;
+      }
+      reservedRows.push(row);
+    });
+  }
+
+  for (const row of reservedRows) {
+    const { error } = await client
+      .from("recruiting_applications")
+      .update({ reserve: true, updated_at: now.toISOString() })
+      .match({ post_id: row.post_id, player_id: row.player_id, kind: row.kind });
+    if (error) throw error;
+  }
+
+  const changedPostIds = [...new Set(reservedRows.map((row) => row.post_id).filter(Boolean))];
+  let refreshed = 0;
+  for (const postId of changedPostIds) {
+    if (await refreshRecruitingFeed(client, postId)) refreshed += 1;
+  }
+
+  return {
+    ok: true,
+    checked: postRows.length,
+    reserved: reservedRows.length,
+    refreshed,
+    posts: changedPostIds,
+  };
+}
+
 export async function runSystemMaintenance(client = getSupabaseAdminClient(), options = {}) {
   const limit = normalizeLimit(options.limit ?? process.env.RANKBALL_MAINTENANCE_MATCH_LIMIT ?? DEFAULT_MATCH_LIMIT);
   const now = options.now instanceof Date ? options.now : new Date();
@@ -171,6 +275,7 @@ export async function runSystemMaintenance(client = getSupabaseAdminClient(), op
     candidateCount: candidateIds.length,
     confirmedCount: results.filter((result) => result.ok).length,
     feedCleanup: await cleanupRoomFeed(client, now),
+    recruitingCapacityCleanup: await normalizeRecruitingSideCapacity(client, limit, now),
     results,
   };
 }
