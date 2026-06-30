@@ -3140,6 +3140,7 @@ function RecruitingReady({ app }) {
 
   useEffect(() => {
     if (!app.remoteReady || !app.currentUser.id) return;
+    if (targetPostId) return;
     const regionKey = selectedRegionKey;
     const currentScope = app.recruitingPagination?.regionScope ?? "local";
     const currentKey = app.recruitingPagination?.regionKey ?? "";
@@ -3168,7 +3169,7 @@ function RecruitingReady({ app }) {
     }).catch(() => {
       // Keep the key on failure so the effect does not retry in a tight loop.
     });
-  }, [app.actions, app.currentUser, app.currentUser.id, app.remoteReady, app.recruitingPagination, app.state.recruitingPosts, regionFilter, roomScope, selectedRegionKey, startFilter]);
+  }, [app.actions, app.currentUser, app.currentUser.id, app.remoteReady, app.recruitingPagination, app.state.recruitingPosts, regionFilter, roomScope, selectedRegionKey, startFilter, targetPostId]);
 
   useEffect(() => {
     if (!hostNeedsTeam) return;
