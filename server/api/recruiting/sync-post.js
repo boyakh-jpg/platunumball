@@ -908,7 +908,7 @@ async function validateRefereeAction(supabase, profileId, existingPost, nextPost
   }
 }
 
-export async function persistRecruitingPostSnapshot(context, { post, notifications = [], action = "sync", body = {}, expectedUpdatedAt = null, timing = null }) {
+export async function persistRecruitingPostSnapshot(context, { post, notifications = [], action = "sync", body = {}, expectedUpdatedAt = null, timing = null, afterResponseTasks = null }) {
   if (!post?.id) reject(400, "missing_recruiting_post");
   validateRecruitingPostShape(post);
 
@@ -969,11 +969,23 @@ export async function persistRecruitingPostSnapshot(context, { post, notificatio
   }
   let discordDeliveryCount = 0;
   let discordDeliveryError = null;
-  try {
-    discordDeliveryCount = await timeStep(timing, "discordQueue", () => queueInstantRoomOpenedDiscordDeliveries(context.supabase, post, action));
-  } catch (deliveryError) {
-    discordDeliveryError = deliveryError.message || "discord_room_opened_delivery_failed";
-    console.error("Recruiting Discord delivery queue failed.", deliveryError);
+  let discordDeliveryDeferred = false;
+  if (Array.isArray(afterResponseTasks) && action === "createRecruitingPost" && isInstantRecruitingPost(post)) {
+    discordDeliveryDeferred = true;
+    afterResponseTasks.push(async () => {
+      try {
+        await queueInstantRoomOpenedDiscordDeliveries(context.supabase, post, action);
+      } catch (deliveryError) {
+        console.error("Recruiting deferred Discord delivery queue failed.", deliveryError);
+      }
+    });
+  } else {
+    try {
+      discordDeliveryCount = await timeStep(timing, "discordQueue", () => queueInstantRoomOpenedDiscordDeliveries(context.supabase, post, action));
+    } catch (deliveryError) {
+      discordDeliveryError = deliveryError.message || "discord_room_opened_delivery_failed";
+      console.error("Recruiting Discord delivery queue failed.", deliveryError);
+    }
   }
 
   return {
@@ -984,11 +996,13 @@ export async function persistRecruitingPostSnapshot(context, { post, notificatio
     notificationCount: Number(persistResult?.notificationCount ?? notificationRows.length),
     discordDeliveryCount,
     discordDeliveryError,
+    discordDeliveryDeferred,
   };
 }
 
 export default async function handler(request, response) {
   const timing = createTimingProbe();
+  const afterResponseTasks = [];
   let debugTiming = hasDebugTimingParam(request);
   if (request.method !== "POST") {
     response.setHeader("Allow", "POST");
@@ -1042,6 +1056,7 @@ export default async function handler(request, response) {
       body: { ...body, ...(operation ?? {}) },
       expectedUpdatedAt: operation ? replayResult?.baseUpdatedAt ?? null : null,
       timing,
+      afterResponseTasks,
     }));
     if (result?.postId && action !== "createRecruitingPost") {
       const syncedPost = await timing.track("loadSyncedAfterPersist", () => loadSyncedRecruitingPost(context, result.postId));
@@ -1060,6 +1075,11 @@ export default async function handler(request, response) {
     }
 
     sendTimedJson(response, 200, result, timing, debugTiming);
+    afterResponseTasks.forEach((task) => {
+      Promise.resolve()
+        .then(task)
+        .catch((error) => console.error("Recruiting deferred task failed.", error));
+    });
   } catch (error) {
     console.error("Recruiting post sync failed.", error);
     sendTimedJson(response, error.statusCode || 500, {
