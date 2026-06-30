@@ -1363,7 +1363,7 @@ export function InvitePanel({
           aria-pressed={selected}
           onClick={(event) => {
             event.stopPropagation();
-            onTogglePlayer(player.id);
+            if (!disabled) onTogglePlayer(player.id);
           }}
         >
           <strong>{player.name}</strong>
@@ -1430,7 +1430,9 @@ export function InvitePanel({
               const selected = selectedSet.has(playerId);
               const disabled = disabledSet.has(playerId);
               return (
-                <button key={playerId} type="button" className={selected ? "selected" : ""} disabled={disabled} aria-pressed={selected} onClick={() => onTogglePlayer(playerId)}>
+                <button key={playerId} type="button" className={selected ? "selected" : ""} disabled={disabled} aria-pressed={selected} onClick={() => {
+                  if (!disabled) onTogglePlayer(playerId);
+                }}>
                   <span className="avatar small" style={{ "--avatar": player?.avatarColor }}>{player?.name?.slice(0, 1) ?? "?"}</span>
                   <span>
                     <strong>{player?.name ?? "선수"}</strong>
