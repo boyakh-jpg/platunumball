@@ -194,9 +194,13 @@ function normalizeFeedCard(row = {}) {
   const roomState = card.roomState && typeof card.roomState === "object" && !Array.isArray(card.roomState) ? card.roomState : {};
   const ownerId = card.ownerId ?? roomState.ownerId ?? card.createdBy ?? card.playerId ?? "";
   const playerId = card.playerId ?? ownerId;
+  const teamId = String(card.teamId ?? card.team_id ?? "").trim();
+  const hostJoinMode = card.hostJoinMode === "player" || !teamId ? "player" : "team";
   return {
     ...card,
     id,
+    teamId: teamId || null,
+    hostJoinMode,
     ...(ownerId ? { ownerId } : {}),
     ...(playerId ? { playerId } : {}),
     roomState: ownerId && !roomState.ownerId ? { ...roomState, ownerId } : roomState,

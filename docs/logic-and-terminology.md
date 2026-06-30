@@ -24,6 +24,7 @@
 - 방 상세 모달과 기록/과거 범위처럼 사용자가 명시적으로 연 화면만 별도 상세 호출을 허용한다.
 - `/app/recruiting?post=...` 직접 진입은 선택 방 상세만 보강 로드하고, 일반 지역 목록 자동 로드는 뒤에서 실행하지 않는다.
 - 얇은 feed 카드에 팀 로스터가 없고 팀 호스트 `playerIds`가 비어 있으면 목록/요약 계산은 `playerId`를 최소 host 출전자로 본다.
+- 모집 feed 카드도 `teamId`가 없으면 `hostJoinMode:"team"` legacy 값이 남아 있어도 player-hosted로 정규화한다.
 
 ## 2026-06-30 production 테스트 인증 차단
 
