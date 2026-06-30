@@ -124,9 +124,20 @@ function getAuthoritativeLoadScope(operation = {}) {
   if (action === "approveMatch") return { clientState: true };
   const scope = action.includes("Recruiting") ? "recruiting" : undefined;
   const invite = operation.invite && typeof operation.invite === "object" ? operation.invite : {};
+  const draft = operation.draft && typeof operation.draft === "object" ? operation.draft : {};
+  const application = operation.application && typeof operation.application === "object" ? operation.application : {};
+  const needsCurrentUserTeams = scope === "recruiting" && (
+    action === "loadRecruitingPost"
+      ? false
+      : action === "createRecruitingPost"
+        ? draft.hostJoinMode === "team" || Boolean(draft.teamId || draft.teamAId || draft.opponentTeamId || draft.targetTeamId)
+        : action === "interestRecruitingPost"
+          ? application.joinMode === "team" || Boolean(application.teamId)
+          : true
+  );
   return {
     scope,
-    includeCurrentUserTeams: scope === "recruiting",
+    includeCurrentUserTeams: needsCurrentUserTeams,
     matchIds: [
       operation.matchId,
       operation.preferredMatchId,

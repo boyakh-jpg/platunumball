@@ -1667,3 +1667,4 @@ flowchart TD
 - 2026-06-30: In Supabase mode, recruiting room creation is server-first. The frontend must not run the local create reducer before `/api/recruiting/sync-post`; it merges the returned server post instead. Local/demo mode keeps the reducer path.
 - 2026-06-30: Instant recruiting room Discord delivery queueing is post-response work for `/api/recruiting/sync-post`; room validation and DB persistence stay before the response, and Discord queue failure must not fail room creation.
 - 2026-06-30: `createRecruitingPost` sync checks only existing post `id` before persistence and rejects duplicate ids with `recruiting_post_already_exists`; it must not load existing application rows for a new room.
+- 2026-06-30: Recruiting authoritative loads include current-user team membership only for team-context actions. Single-post reloads and player-only room creation must avoid loading all current-user teams.
