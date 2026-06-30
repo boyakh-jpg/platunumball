@@ -796,13 +796,14 @@ export default function Matches({ app }) {
 
   useEffect(() => {
     if (!selectedRecruitingPostId || !app.remoteReady || !app.currentUser.id) return undefined;
+    if ((app.state.recruitingPosts ?? []).some((post) => post.id === selectedRecruitingPostId)) return undefined;
     app.actions.loadRecruitingPost?.(selectedRecruitingPostId);
     const intervalId = window.setInterval(() => {
       if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
       app.actions.loadRecruitingPost?.(selectedRecruitingPostId);
     }, RECRUITING_ROOM_REFRESH_INTERVAL_MS);
     return () => window.clearInterval(intervalId);
-  }, [app.actions, app.currentUser.id, app.remoteReady, selectedRecruitingPostId]);
+  }, [app.actions, app.currentUser.id, app.remoteReady, app.state.recruitingPosts, selectedRecruitingPostId]);
 
   const openSelectedMatch = (matchId) => {
     if (!matchId) return;

@@ -3319,18 +3319,23 @@ function RecruitingReady({ app }) {
     if (!app.remoteReady || !app.currentUser.id) return;
     const refreshKey = `${selectedPostId}:${app.currentUser.id}`;
     if (selectedPostRefreshRef.current === refreshKey) return;
+    if ((app.state.recruitingPosts ?? []).some((post) => post.id === selectedPostId)) {
+      selectedPostRefreshRef.current = refreshKey;
+      return;
+    }
     selectedPostRefreshRef.current = refreshKey;
     app.actions.loadRecruitingPost?.(selectedPostId);
-  }, [app.actions, app.currentUser.id, app.remoteReady, selectedPostId]);
+  }, [app.actions, app.currentUser.id, app.remoteReady, app.state.recruitingPosts, selectedPostId]);
 
   useEffect(() => {
     if (!selectedPostId || !app.remoteReady || !app.currentUser.id) return undefined;
+    if ((app.state.recruitingPosts ?? []).some((post) => post.id === selectedPostId)) return undefined;
     const intervalId = window.setInterval(() => {
       if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
       app.actions.loadRecruitingPost?.(selectedPostId);
     }, RECRUITING_ROOM_REFRESH_INTERVAL_MS);
     return () => window.clearInterval(intervalId);
-  }, [app.actions, app.currentUser.id, app.remoteReady, selectedPostId]);
+  }, [app.actions, app.currentUser.id, app.remoteReady, app.state.recruitingPosts, selectedPostId]);
 
   useEffect(() => {
     if (!targetPostId) return;
