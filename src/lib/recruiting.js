@@ -148,6 +148,20 @@ export function getActiveTeamPlayerIds(team = {}, capacity = Infinity, playerIds
     : getSelectableTeamPlayerIds(team).slice(0, capacity);
 }
 
+function getTeamEntryPlayerIds(team = null, capacity = Infinity, playerIds = [], fallbackPlayerId = "") {
+  const activePlayerIds = team
+    ? getActiveTeamPlayerIds(team, capacity, playerIds)
+    : unique(playerIds ?? []).slice(0, capacity);
+  if (activePlayerIds.length) return activePlayerIds;
+
+  const teamPlayerIds = getTeamPlayerIds(team);
+  const selectableIds = getSelectableTeamPlayerIds(team);
+  if (fallbackPlayerId && (!team || teamPlayerIds.includes(fallbackPlayerId) || (!teamPlayerIds.length && !selectableIds.length))) {
+    return [fallbackPlayerId].slice(0, capacity);
+  }
+  return selectableIds.slice(0, capacity);
+}
+
 export function getReserveTeamPlayerIds(team = {}) {
   return (team?.members ?? [])
     .filter((member) => RESERVE_ROLES.has(member.role))
@@ -469,14 +483,8 @@ export function getRecruitingHostEntry(post = {}, state = {}) {
   const team = post.teamId ? state.teams?.find((item) => item.id === post.teamId) ?? null : null;
   const capacity = getRecruitingSideCapacity(post);
   const joinMode = post.hostJoinMode === "team" && (team || post.teamId || post.playerIds?.length) ? "team" : "player";
-  const activeTeamPlayerIds = joinMode === "team"
-    ? (team ? getActiveTeamPlayerIds(team, capacity, post.playerIds) : unique(post.playerIds ?? []).slice(0, capacity))
-    : [];
-  const fallbackTeamPlayerId = post.playerId && getTeamPlayerIds(team).includes(post.playerId)
-    ? post.playerId
-    : getSelectableTeamPlayerIds(team)[0] ?? (!team && post.playerId ? post.playerId : "");
   const players = joinMode === "team"
-    ? (activeTeamPlayerIds.length ? activeTeamPlayerIds : [fallbackTeamPlayerId].filter(Boolean))
+    ? getTeamEntryPlayerIds(team, capacity, post.playerIds, post.playerId)
     : [post.playerId].filter(Boolean);
   const explicitReserves = joinMode === "team"
     ? (team ? getExplicitTeamPlayerIds(team, Infinity, roomState.partyReserves.host ?? []) : unique(roomState.partyReserves.host ?? []))
@@ -524,7 +532,7 @@ export function getRecruitingApplicantEntry(applicant = {}, state = {}, post = {
   const displayTeamId = normalizedEntry.kind === "team" ? normalizedEntry.teamId : normalizedEntry.sourceTeamId;
   const team = displayTeamId ? state.teams?.find((item) => item.id === displayTeamId) ?? null : null;
   const players = normalizedEntry.kind === "team"
-    ? (team ? getActiveTeamPlayerIds(team, capacity, normalizedEntry.playerIds) : unique(normalizedEntry.playerIds ?? []).slice(0, capacity))
+    ? getTeamEntryPlayerIds(team, capacity, normalizedEntry.playerIds, normalizedEntry.playerId)
     : [normalizedEntry.playerId].filter(Boolean);
   const explicitReserves = normalizedEntry.kind === "team"
     ? (team ? getExplicitTeamPlayerIds(team, Infinity, roomState.partyReserves[getRecruitingApplicantKey(normalizedEntry)] ?? []) : unique(roomState.partyReserves[getRecruitingApplicantKey(normalizedEntry)] ?? []))
