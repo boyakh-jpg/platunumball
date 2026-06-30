@@ -232,6 +232,7 @@ export function normalizeRecruitingApplicants(applicants = []) {
 }
 
 export function normalizeRecruitingRoomState(roomState = {}) {
+  roomState = roomState && typeof roomState === "object" ? roomState : {};
   const chatMessages = Array.isArray(roomState.chatMessages)
     ? roomState.chatMessages
         .map((message) => ({
@@ -383,6 +384,7 @@ export function isRecruitingRoomInUserSchedule(post, state, userId, teamIds = []
 }
 
 export function normalizeRecruitingPost(post = {}) {
+  post = post && typeof post === "object" ? post : {};
   const type = RECRUITING_TYPES[post.type] ? post.type : "need_player";
   const hostJoinMode = post.hostJoinMode === "player" || !post.teamId ? "player" : "team";
   const playerIds = unique(post.playerIds ?? post.players ?? []);
@@ -549,6 +551,24 @@ export function getRecruitingApplicantEntry(applicant = {}, state = {}, post = {
   };
 }
 
+function getEmptyLobbySide(post = {}) {
+  return {
+    entries: [],
+    reserveEntries: [],
+    reserveCandidates: [],
+    fillSlots: [],
+    confirmationFillSlots: [],
+    players: [],
+    projectedPlayers: [],
+    confirmationProjectedPlayers: [],
+    reserves: [],
+    filled: 0,
+    projectedFilled: 0,
+    confirmationProjectedFilled: 0,
+    capacity: getRecruitingSideCapacity(post),
+  };
+}
+
 export function getRecruitingLobby(post = {}, state = {}) {
   const normalizedPost = normalizeRecruitingPost(post);
   const host = getRecruitingHostEntry(normalizedPost, state);
@@ -648,21 +668,25 @@ export function getRecruitingLobby(post = {}, state = {}) {
     return acc;
   }, {});
 
+  const safeSides = {
+    teamA: sides.teamA ?? getEmptyLobbySide(normalizedPost),
+    teamB: sides.teamB ?? getEmptyLobbySide(normalizedPost),
+  };
   const playingEntries = entries.filter((entry) => !entry.reserve && (entry.players ?? []).length);
-  const full = sides.teamA.filled >= sides.teamA.capacity && sides.teamB.filled >= sides.teamB.capacity;
+  const full = safeSides.teamA.filled >= safeSides.teamA.capacity && safeSides.teamB.filled >= safeSides.teamB.capacity;
   const projectedFull =
-    sides.teamA.projectedFilled >= sides.teamA.capacity &&
-    sides.teamB.projectedFilled >= sides.teamB.capacity;
+    safeSides.teamA.projectedFilled >= safeSides.teamA.capacity &&
+    safeSides.teamB.projectedFilled >= safeSides.teamB.capacity;
   const confirmationProjectedFull =
-    sides.teamA.confirmationProjectedFilled >= sides.teamA.capacity &&
-    sides.teamB.confirmationProjectedFilled >= sides.teamB.capacity;
+    safeSides.teamA.confirmationProjectedFilled >= safeSides.teamA.capacity &&
+    safeSides.teamB.confirmationProjectedFilled >= safeSides.teamB.capacity;
   const ready = playingEntries.length > 0 && playingEntries.every((entry) => entry.status === "ready");
-  const fillReady = [...sides.teamA.fillSlots, ...sides.teamB.fillSlots].every((candidate) => candidate.status === "ready");
-  const confirmationFillReady = [...sides.teamA.confirmationFillSlots, ...sides.teamB.confirmationFillSlots].every((candidate) => candidate.status === "ready");
+  const fillReady = [...safeSides.teamA.fillSlots, ...safeSides.teamB.fillSlots].every((candidate) => candidate.status === "ready");
+  const confirmationFillReady = [...safeSides.teamA.confirmationFillSlots, ...safeSides.teamB.confirmationFillSlots].every((candidate) => candidate.status === "ready");
 
   return {
     entries,
-    sides,
+    sides: safeSides,
     full,
     projectedFull,
     confirmationProjectedFull,

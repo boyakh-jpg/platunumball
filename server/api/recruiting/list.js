@@ -247,9 +247,17 @@ function hasPendingInvitationForProfile(card = {}, profileId = "") {
   ));
 }
 
+function hasUsableRecruitingFeedCard(card = {}) {
+  if (!card?.playerId && !card?.ownerId && !card?.roomState?.ownerId) return false;
+  if (!Array.isArray(card.playerIds)) return false;
+  if (!Array.isArray(card.applicants)) return false;
+  if (card.hostJoinMode === "team" && (!card.teamId || !card.playerIds.length)) return false;
+  return true;
+}
+
 function canUseFeedCardsForProfile(cards = [], profileId = "") {
   return cards.every((card) => {
-    if (!card?.playerId && !card?.ownerId && !card?.roomState?.ownerId) return false;
+    if (!hasUsableRecruitingFeedCard(card)) return false;
     if (!profileId) return true;
     const relations = Array.isArray(card?.__feedRelations) ? card.__feedRelations : [];
     if (!relations.includes("invited")) return true;

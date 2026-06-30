@@ -3202,6 +3202,7 @@ function RecruitingReady({ app }) {
   useEffect(() => {
     if (!app.remoteReady || !app.currentUser.id) return;
     if (targetPostId) return;
+    if (roomScope !== "all") return;
     const regionKey = selectedRegionKey;
     const currentScope = app.recruitingPagination?.regionScope ?? "local";
     const currentKey = app.recruitingPagination?.regionKey ?? "";
@@ -3213,7 +3214,7 @@ function RecruitingReady({ app }) {
     const currentStartFilter = app.recruitingPagination?.startFilter ?? "all";
     const needsFilteredPage = roomScope === "all"
       && startFilter !== "all"
-      && (currentStartFilter !== startFilter || (!app.recruitingPagination?.exhausted && Number(app.recruitingPagination?.offset ?? 0) < RECRUITING_FILTER_PAGE_LIMIT));
+      && currentStartFilter !== startFilter;
     const needsBasePage = targetStartFilter === "all" && currentStartFilter !== "all";
     if (currentPageMatchesRegion && !needsFilteredPage && !needsBasePage) return;
     const loadKey = `${app.currentUser.id}:${regionFilter}:${regionKey}:${targetStartFilter}`;

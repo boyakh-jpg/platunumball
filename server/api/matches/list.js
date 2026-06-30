@@ -114,6 +114,8 @@ function normalizeFeedCard(row = {}) {
   const nextCard = id ? { ...card, id } : null;
   if (!nextCard?.teamA || typeof nextCard.teamA !== "object") return null;
   if (!nextCard?.teamB || typeof nextCard.teamB !== "object") return null;
+  if (!Array.isArray(nextCard.teamA.players)) return null;
+  if (!Array.isArray(nextCard.teamB.players)) return null;
   return nextCard;
 }
 

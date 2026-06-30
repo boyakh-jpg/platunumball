@@ -95,17 +95,30 @@ function getRecruitingSchedule(post) {
   return [post.scheduledDate, post.scheduledTime].filter(Boolean).join(" ") || post.scheduledAt || "일정 미정";
 }
 
+function getSafeMatchSide(match = {}, sideName = "teamA") {
+  const side = match?.[sideName];
+  const fallbackName = sideName === "teamA" ? "A" : "B";
+  if (!side || typeof side !== "object") return { name: fallbackName, teamId: "", players: [], score: 0 };
+  return {
+    ...side,
+    name: side.name || fallbackName,
+    teamId: side.teamId ?? "",
+    players: Array.isArray(side.players) ? side.players : [],
+    score: side.score ?? 0,
+  };
+}
+
 function getSideScore(match, sideName) {
   const resultKey = sideName === "teamA" ? "scoreA" : "scoreB";
-  return Number(match.result?.[resultKey] ?? match[sideName].score ?? 0);
+  return Number(match?.result?.[resultKey] ?? getSafeMatchSide(match, sideName).score ?? 0);
 }
 
 function getUserMatchLine(match, userId) {
   const sideName = getUserParticipantSide(match, userId) ?? "teamA";
   const otherSide = sideName === "teamA" ? "teamB" : "teamA";
   return {
-    side: match[sideName],
-    opponent: match[otherSide],
+    side: getSafeMatchSide(match, sideName),
+    opponent: getSafeMatchSide(match, otherSide),
     score: getSideScore(match, sideName),
     opponentScore: getSideScore(match, otherSide),
     result: getUserResult(match, userId),
