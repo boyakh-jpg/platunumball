@@ -190,7 +190,17 @@ function normalizeFeedCard(row = {}) {
   const card = row?.card_json ?? row?.cardJson ?? null;
   if (!card || typeof card !== "object" || Array.isArray(card) || !Object.keys(card).length) return null;
   const id = card.id ?? row.entity_id ?? row.entityId;
-  return id ? { ...card, id } : null;
+  if (!id) return null;
+  const roomState = card.roomState && typeof card.roomState === "object" && !Array.isArray(card.roomState) ? card.roomState : {};
+  const ownerId = card.ownerId ?? roomState.ownerId ?? card.createdBy ?? card.playerId ?? "";
+  const playerId = card.playerId ?? ownerId;
+  return {
+    ...card,
+    id,
+    ...(ownerId ? { ownerId } : {}),
+    ...(playerId ? { playerId } : {}),
+    roomState: ownerId && !roomState.ownerId ? { ...roomState, ownerId } : roomState,
+  };
 }
 
 function uniqueFeedCards(rows = [], ids = []) {
@@ -238,8 +248,9 @@ function hasPendingInvitationForProfile(card = {}, profileId = "") {
 }
 
 function canUseFeedCardsForProfile(cards = [], profileId = "") {
-  if (!profileId) return true;
   return cards.every((card) => {
+    if (!card?.playerId && !card?.ownerId && !card?.roomState?.ownerId) return false;
+    if (!profileId) return true;
     const relations = Array.isArray(card?.__feedRelations) ? card.__feedRelations : [];
     if (!relations.includes("invited")) return true;
     return hasPendingInvitationForProfile(card, profileId);
