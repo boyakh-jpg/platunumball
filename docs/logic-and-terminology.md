@@ -1668,3 +1668,4 @@ flowchart TD
 - 2026-06-30: Instant recruiting room Discord delivery queueing is post-response work for `/api/recruiting/sync-post`; room validation and DB persistence stay before the response, and Discord queue failure must not fail room creation.
 - 2026-06-30: `createRecruitingPost` sync checks only existing post `id` before persistence and rejects duplicate ids with `recruiting_post_already_exists`; it must not load existing application rows for a new room.
 - 2026-06-30: Recruiting authoritative loads include current-user team membership only for team-context actions. Single-post reloads and player-only room creation must avoid loading all current-user teams.
+- 2026-06-30: Recruiting roster validation may skip the extra `profiles` existence query only when the roster contains exactly the already-authenticated profile and no team roster checks are needed. Team, invite, reserve, and multi-player rosters must still run profile/team validation.

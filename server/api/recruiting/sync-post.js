@@ -418,9 +418,9 @@ function getRecruitingApplicantKey(application = {}) {
     : `player:${application.playerId}`;
 }
 
-async function validateRecruitingRosterEligibility(supabase, post = {}) {
+async function validateRecruitingRosterEligibility(supabase, post = {}, profileId = "") {
   const roomState = normalizeRoomState(post.roomState, post);
-  await assertProfilesExist(supabase, getPlayerEligibilityIds(post), "recruiting_player_not_found");
+  const playerEligibilityIds = getPlayerEligibilityIds(post);
 
   const rostersByTeam = new Map();
   if ((post.hostJoinMode ?? post.host_join_mode) !== "player" && post.teamId) {
@@ -447,6 +447,10 @@ async function validateRecruitingRosterEligibility(supabase, post = {}) {
     addTeamRoster(rostersByTeam, invitation.teamId, [invitation.targetUserId]);
   });
 
+  const onlyAuthenticatedProfile = playerEligibilityIds.length === 1 && playerEligibilityIds[0] === profileId;
+  if (!onlyAuthenticatedProfile || rostersByTeam.size) {
+    await assertProfilesExist(supabase, playerEligibilityIds, "recruiting_player_not_found");
+  }
   await assertTeamRosterMembers(supabase, rostersByTeam, "recruiting_team_roster_not_member");
 }
 
@@ -948,7 +952,7 @@ export async function persistRecruitingPostSnapshot(context, { post, notificatio
     validateLockedRecruitingCore(context.profileId, existingPostSnapshot, post, actionBody);
   });
   await timeStep(timing, "validateReferee", () => validateRefereeAction(context.supabase, context.profileId, existingPostSnapshot, post, actionBody));
-  await timeStep(timing, "validateRoster", () => validateRecruitingRosterEligibility(context.supabase, post));
+  await timeStep(timing, "validateRoster", () => validateRecruitingRosterEligibility(context.supabase, post, context.profileId));
   await timeStep(timing, "validateAge", () => validateAgeEligibility(context.supabase, context.profileId, existingPostSnapshot, post, actionBody));
 
   const postRow = toRecruitingPostRow(post);
