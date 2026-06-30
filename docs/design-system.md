@@ -76,6 +76,7 @@
 4. Date chips keep a fixed upper width and use visible gaps instead of stretching across wide desktop rows. Recruiting filter selects and filter buttons use the same 42px minimum height.
 5. Selected date chips use one shared active fill color. Saturday/Sunday colors are idle hints only, not separate selected backgrounds.
 6. Recruiting filter groups avoid an extra outer frame/padding around the buttons so the filter row stays compact.
+7. 시작일 버튼을 누르면 relation scope 칩의 active 상태를 풀고 전체 공개 목록 날짜 필터로 전환한다.
 
 # RankBall Design System
 

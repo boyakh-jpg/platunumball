@@ -3397,6 +3397,10 @@ function RecruitingReady({ app }) {
       myRecruitingLoadRef.current = "";
     });
   };
+  const selectStartFilter = (nextFilter) => {
+    setRoomScope("all");
+    setStartFilter((current) => (current === nextFilter ? "all" : nextFilter));
+  };
 
   return (
     <div className="page-stack arena-recruit-page">
@@ -3467,7 +3471,7 @@ function RecruitingReady({ app }) {
                       option.weekend === "sun" ? "sun" : "",
                     ].filter(Boolean).join(" ")}
                     aria-pressed={startFilter === option.id}
-                    onClick={() => setStartFilter((current) => (current === option.id ? "all" : option.id))}
+                    onClick={() => selectStartFilter(option.id)}
                   >
                     <strong>{option.label}</strong>
                     <span>{option.subLabel}</span>
