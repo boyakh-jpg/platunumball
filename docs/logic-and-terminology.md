@@ -1,5 +1,12 @@
 # RankBall 로직/용어/디자인 기준
 
+## 2026-06-30 egress 축소
+
+- 모집 `feedCounts`는 `rankball_recruiting_feed_counts(profileId)` RPC가 `created`, `joined`, `invited` 숫자만 반환한다. 초대 카드, 수락/거절, 방 상세 데이터는 `user_room_feed.card_json` 또는 상세 API가 계속 담당한다.
+- `/api/home/load`는 기본적으로 현재 사용자 경기/모집 feed와 프로필 bootstrap만 읽는다. 지역 모집 teaser는 `includeLocalRecruiting:true`일 때만 소량 읽고, 모집 count RPC는 `includeFeedCounts:true`일 때만 읽는다.
+- `/api/matches/list`의 모집 일정 병합은 카드 목록만 필요하므로 모집 `feedCounts`를 같이 읽지 않는다.
+- 원격 `scripts/simulate-backend-flow.mjs --base-url=...`는 기본 smoke 모드로 초대 수락과 기본 1v1만 실행한다. 전체 플로우 검증은 `--full` 또는 `RANKBALL_SIM_FULL=true`를 명시한다.
+
 ## 2026-06-30 첫 로드 스냅샷 안정화
 
 - 홈, 경기, 매칭 첫 화면은 최초 endpoint 응답 안의 feed snapshot으로 숫자와 목록을 같이 만든다.
@@ -84,13 +91,13 @@
 - `/login` auth 직후와 `/app` 첫 remote load는 broad `/api/state/load`가 아니라 `/api/home/load`를 사용한다.
 - `/api/home/load`는 current-profile profile/team bootstrap과 `/api/matches/list` feed 기반 active match/recruiting schedule을 한 번에 합친다.
 - `/api/home/load`는 active match feed와 current-user recruiting schedule만 병합한다. confirmed 기록방과 result/stat child rows는 홈에서 미리 읽지 않고 기록 화면 진입 시 읽는다.
-- `/api/home/load`는 홈 지역 모집 teaser용으로 `user_room_feed`의 지역 공개 모집 카드만 소량 병합한다. feed가 없으면 홈 첫 로드에서 무거운 지역 fallback을 강제하지 않는다.
+- `/api/home/load`는 `includeLocalRecruiting:true`일 때만 홈 지역 모집 teaser용 `user_room_feed` 지역 공개 모집 카드를 소량 병합한다. feed가 없으면 홈 첫 로드에서 무거운 지역 fallback을 강제하지 않는다.
 - 화면별 thin endpoint 실패 fallback은 profile-only로 제한한다. 홈/경기/모집/기록 첫 로드 실패가 broad `/api/state/load`나 direct full state read로 번지면 안 된다.
 - `/api/home/load`에서 current-user 모집 일정 확인과 profile bootstrap이 끝났으면 홈 진입 effect가 같은 데이터를 `profile/me`, `scope=mine`/schedule 호출로 즉시 다시 읽지 않는다.
 
 ## 2026-06-28 목록 응답 속도 원칙
 
-- `/api/recruiting/list`는 feed count query가 성공하면 fallback count를 읽지 않는다. fallback count는 feed count가 null일 때만 보정용으로 읽는다.
+- `/api/recruiting/list`는 `rankball_recruiting_feed_counts()`가 성공하면 fallback count를 읽지 않는다. fallback count는 feed count RPC/table이 없거나 실패한 경우에만 보정용으로 읽는다.
 - 모집/경기 목록 성능 정리는 데이터 삭제가 아니라 `CREATE INDEX IF NOT EXISTS` 기반으로만 한다.
 - 목록 응답은 `user_room_feed.card_json`을 우선 쓰고, fallback은 feed 누락/보정용으로 유지한다.
 - 경기 메뉴 `MY/내 일정` 카운트는 실제 목록에 쓰는 `shouldShowMatchInList` 기준과 일치해야 한다. 숨기는 확정/기록방을 숫자에만 포함하지 않는다.
@@ -1590,8 +1597,8 @@ flowchart TD
 
 ## 2026-06-29 홈/경기 feed 보강 호출
 
-- `/api/home/load`가 현재 프로필, 내 모집 feed count, 경기 메뉴 모집 일정을 이미 반환하면 홈 화면은 같은 데이터를 즉시 다시 호출하지 않는다.
-- 홈 보강 호출은 프로필/디렉터리, 모집 feed count, 경기 모집 일정 중 빠진 항목만 개별 호출한다.
+- `/api/home/load`가 현재 프로필, 내 모집 일정, 경기 메뉴 모집 일정을 이미 반환하면 홈 화면은 같은 데이터를 즉시 다시 호출하지 않는다. 홈 기본 응답은 모집 feed count를 포함하지 않는다.
+- 홈 보강 호출은 프로필/디렉터리, 모집 feed count, 경기 모집 일정 중 사용자가 실제 진입한 화면에 필요한 빠진 항목만 개별 호출한다.
 - 프로필 보강, 내 모집방 보강, 경기 메뉴 모집 일정 보강은 같은 요청이 진행 중이면 기존 promise를 재사용한다. 초대 수락 직후 보강 재조회는 완료될 때까지 기다려 알림/홈/경기 숫자가 늦게 다시 덮이지 않게 한다.
 - 경기 메뉴의 `MY/ACTION/SOON/CLOSED` 숫자는 현재 화면 필터와 같은 후보 배열에서 계산한다. 상단 숫자, 상태 버튼 숫자, 실제 목록 숫자가 서로 다른 기준을 쓰면 안 된다.
 - 모집방 초대 수락은 수락자 상태만 바꾸지 않고 방장에게도 `targetUserId`가 있는 알림을 남긴다.

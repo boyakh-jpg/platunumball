@@ -752,6 +752,7 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
           authUserId,
           authEmail,
           matchLimit: loadOptions.matchLimit,
+          recruitingLimit: loadOptions.recruitingLimit,
           adminContext: false,
         },
         { allowWhenDisabled: true },
@@ -1379,7 +1380,7 @@ export function useAppData(authUser = null) {
           ...startFilterRequest,
           listOnly: true,
           adminContext: false,
-          includeFeedCounts: true,
+          includeFeedCounts: false,
         },
         { allowWhenDisabled: true },
       );

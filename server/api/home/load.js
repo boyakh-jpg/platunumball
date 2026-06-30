@@ -2,7 +2,7 @@ import { getAdminLevel, getAuthenticatedContext, readJsonBody, sendJson } from "
 import { loadCompactMatchList } from "../matches/list.js";
 import { loadCurrentProfileState, PROFILE_ME_COLUMNS } from "../profile/me.js";
 import { loadCurrentUserRecruitingFeedList, loadLocalRecruitingFeedList } from "../recruiting/list.js";
-import { REMOTE_CLIENT_MATCH_LIMIT } from "../../../src/data/repository.js";
+import { REMOTE_CLIENT_MATCH_LIMIT, REMOTE_CLIENT_RECRUITING_LIMIT } from "../../../src/data/repository.js";
 
 const HOME_LOCAL_RECRUITING_LIMIT = 3;
 
@@ -37,6 +37,20 @@ function getCappedMatchLimit(value) {
   return Math.max(1, Math.min(200, Math.floor(number)));
 }
 
+function getCappedRecruitingLimit(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number <= 0) return REMOTE_CLIENT_RECRUITING_LIMIT;
+  return Math.max(1, Math.min(REMOTE_CLIENT_RECRUITING_LIMIT, Math.floor(number)));
+}
+
+function createSkippedRecruitingResult() {
+  return {
+    state: {},
+    page: { count: 0, exhausted: true, source: "skipped" },
+    updatedAt: 0,
+  };
+}
+
 export default async function handler(request, response) {
   if (request.method !== "POST") {
     response.setHeader("Allow", "POST");
@@ -52,6 +66,9 @@ export default async function handler(request, response) {
     const shouldLoadAdminContext = body.adminContext !== false && body.includeAdminContext !== false;
     const adminLevel = shouldLoadAdminContext && context.profileId ? await getAdminLevel(context) : 0;
     const matchLimit = getCappedMatchLimit(body.matchLimit ?? body.limit ?? REMOTE_CLIENT_MATCH_LIMIT);
+    const recruitingLimit = getCappedRecruitingLimit(body.recruitingLimit ?? REMOTE_CLIENT_RECRUITING_LIMIT);
+    const includeLocalRecruiting = body.includeLocalRecruiting === true;
+    const includeFeedCounts = body.includeFeedCounts === true;
 
     const [profileResult, matchResult, recruitingResult, localRecruitingResult] = await Promise.all([
       loadCurrentProfileState(context),
@@ -62,8 +79,10 @@ export default async function handler(request, response) {
         includeRecruitingSchedule: false,
         adminContext: false,
       }, adminLevel, matchLimit, debugTiming),
-      loadCurrentUserRecruitingFeedList(context, { adminLevel, limit: matchLimit }),
-      loadLocalRecruitingFeedList(context, { adminLevel, limit: HOME_LOCAL_RECRUITING_LIMIT }),
+      loadCurrentUserRecruitingFeedList(context, { adminLevel, limit: recruitingLimit, includeFeedCounts }),
+      includeLocalRecruiting
+        ? loadLocalRecruitingFeedList(context, { adminLevel, limit: HOME_LOCAL_RECRUITING_LIMIT })
+        : Promise.resolve(createSkippedRecruitingResult()),
     ]);
 
     if (debugTiming) debugTiming.totalMs = Date.now() - startedAt;

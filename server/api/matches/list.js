@@ -649,6 +649,7 @@ async function loadCurrentRecruitingSchedule(context, adminLevel = 0) {
     const result = await loadCurrentUserRecruitingFeedList(context, {
       adminLevel,
       limit: MATCH_LIST_MAX_LIMIT,
+      includeFeedCounts: false,
     });
     return result?.state?.recruitingPosts?.length ? result : null;
   } catch (error) {

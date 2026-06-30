@@ -30,6 +30,8 @@ const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || process
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const requestTimeoutMs = Number(process.env.RANKBALL_SIM_TIMEOUT_MS || 20000);
 const ensureRemoteTestActors = process.env.RANKBALL_SIM_ENSURE_TEST_ACTORS === "1" || process.env.RANKBALL_SIM_ENSURE_TEST_ACTORS === "true";
+const fullSimulation = process.argv.includes("--full") || process.env.RANKBALL_SIM_FULL === "1" || process.env.RANKBALL_SIM_FULL === "true";
+const remoteSmokeOnly = usesRemoteApi && !fullSimulation;
 
 if (!process.env.RANKBALL_ENABLE_TEST_LOGIN && !process.env.VITE_DEMO_LOGIN) {
   process.env.RANKBALL_ENABLE_TEST_LOGIN = "true";
@@ -1322,45 +1324,52 @@ async function main() {
     hostLogin: inviteHostLogin,
     inviteeLogin,
   }));
-  scenarios.push(await runRecruitingActorScenario({
-    label: "recruiting_actor_join_position",
-    hostLogin: actorHostLogin,
-    opponentLogin: actorOpponentLogin,
-  }));
-  scenarios.push(await runSoloRoomTeamBlockedScenario({
-    label: "solo_1v1_team_join_blocked",
-    hostLogin: teamBlockedHostLogin,
-    teamLogin: teamBlockedLogin,
-    teamId: teamBlockedTeamId,
-  }));
-  scenarios.push(await runIneligibleRefereeBlockedScenario({
-    label: "ineligible_referee_join_blocked",
-    hostLogin: refereeBlockedHostLogin,
-    refereeLogin: refereeBlockedLogin,
-  }));
+  if (!remoteSmokeOnly) {
+    scenarios.push(await runRecruitingActorScenario({
+      label: "recruiting_actor_join_position",
+      hostLogin: actorHostLogin,
+      opponentLogin: actorOpponentLogin,
+    }));
+    scenarios.push(await runSoloRoomTeamBlockedScenario({
+      label: "solo_1v1_team_join_blocked",
+      hostLogin: teamBlockedHostLogin,
+      teamLogin: teamBlockedLogin,
+      teamId: teamBlockedTeamId,
+    }));
+    scenarios.push(await runIneligibleRefereeBlockedScenario({
+      label: "ineligible_referee_join_blocked",
+      hostLogin: refereeBlockedHostLogin,
+      refereeLogin: refereeBlockedLogin,
+    }));
+  }
   scenarios.push(await runOneOnOneScenario({
     label: "basic_1v1_no_referee",
     hostLogin: basicHostLogin,
     opponentLogin: basicOpponentLogin,
   }));
-  scenarios.push(await runDisputeResumeThumbsScenario({
-    label: "dispute_resume_thumbs",
-    hostLogin: disputeHostLogin,
-    opponentLogin: disputeOpponentLogin,
-  }));
-  scenarios.push(await runOneOnOneScenario({
-    label: "referee_1v1",
-    hostLogin: refereeHostLogin,
-    opponentLogin: refereeOpponentLogin,
-    refereeLogin,
-    refereeWanted: true,
-  }));
+  if (!remoteSmokeOnly) {
+    scenarios.push(await runDisputeResumeThumbsScenario({
+      label: "dispute_resume_thumbs",
+      hostLogin: disputeHostLogin,
+      opponentLogin: disputeOpponentLogin,
+    }));
+    scenarios.push(await runOneOnOneScenario({
+      label: "referee_1v1",
+      hostLogin: refereeHostLogin,
+      opponentLogin: refereeOpponentLogin,
+      refereeLogin,
+      refereeWanted: true,
+    }));
+  }
 
   console.log(JSON.stringify({
     ok: true,
+    mode: remoteSmokeOnly ? "remote_smoke" : "full",
     scenarios,
     schemaHealth: schemaHealth?.skipped ? "skipped" : "ok",
-    maintenance: await runSystemMaintenanceProbe(),
+    maintenance: remoteSmokeOnly
+      ? { skipped: true, reason: "remote_smoke" }
+      : await runSystemMaintenanceProbe(),
     cleanup: await cleanup(),
   }, null, 2));
 }

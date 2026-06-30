@@ -97,6 +97,11 @@ function isMissingUserRoomFeed(error = {}) {
   return error?.code === "PGRST205" || error?.code === "42P01" || message.includes("user_room_feed");
 }
 
+function isMissingRecruitingFeedCountsRpc(error = {}) {
+  const message = String(error?.message ?? "");
+  return error?.code === "PGRST202" || error?.code === "42883" || message.includes("rankball_recruiting_feed_counts");
+}
+
 function createTimingProbe() {
   const startedAt = Date.now();
   const steps = [];
@@ -545,7 +550,7 @@ async function fetchRecruitingFeedPage(client, {
   };
 }
 
-async function fetchRecruitingFeedCounts(client, profileId = "") {
+async function fetchRecruitingFeedCountsFromRows(client, profileId = "") {
   if (!profileId || !userRoomFeedAvailable) return null;
   const { data, error } = await client
     .from("user_room_feed")
@@ -577,6 +582,30 @@ async function fetchRecruitingFeedCounts(client, profileId = "") {
     created: created.size,
     joined: joined.size,
     invited: invited.size,
+  };
+}
+
+async function fetchRecruitingFeedCounts(client, profileId = "") {
+  if (!profileId || !userRoomFeedAvailable) return null;
+  const { data, error } = await client.rpc("rankball_recruiting_feed_counts", {
+    p_profile_id: profileId,
+  });
+  if (error) {
+    if (isMissingUserRoomFeed(error)) {
+      userRoomFeedAvailable = false;
+      console.warn("User room feed counts skipped.", error.message);
+      return null;
+    }
+    if (isMissingRecruitingFeedCountsRpc(error)) {
+      return fetchRecruitingFeedCountsFromRows(client, profileId);
+    }
+    throw error;
+  }
+  const row = Array.isArray(data) ? data[0] : data;
+  return {
+    created: Number(row?.created ?? 0) || 0,
+    joined: Number(row?.joined ?? 0) || 0,
+    invited: Number(row?.invited ?? 0) || 0,
   };
 }
 
@@ -1040,6 +1069,7 @@ export async function loadCompactRecruitingList(context, {
 export async function loadCurrentUserRecruitingFeedList(context, {
   adminLevel = 0,
   limit = REMOTE_CLIENT_RECRUITING_LIMIT,
+  includeFeedCounts = true,
 } = {}) {
   if (!context.profileId) {
     return loadCompactRecruitingList(context, { adminLevel, limit, mineOnly: true });
@@ -1051,7 +1081,9 @@ export async function loadCurrentUserRecruitingFeedList(context, {
       limit,
       includeCards: true,
     }),
-    fetchRecruitingFeedCounts(context.supabase, context.profileId),
+    includeFeedCounts
+      ? fetchRecruitingFeedCounts(context.supabase, context.profileId)
+      : Promise.resolve(null),
   ]);
   if (pageResult) {
     return loadCompactRecruitingList(context, {
