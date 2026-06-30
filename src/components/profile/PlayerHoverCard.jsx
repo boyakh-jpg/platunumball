@@ -134,6 +134,10 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
       longPressOpenedRef.current = false;
       return;
     }
+    if (touchOpen) {
+      closeTouch();
+      return;
+    }
     openPinned();
   };
   const open = touchOpen || (!pinnedHoverKey && canUseHoverPreview() && hoverOpen);

@@ -698,3 +698,8 @@ UI 수정 전:
 
 1. 760px 이하에서도 `om-score-box`와 summary/info box는 카드 전체 폭을 사용한다.
 2. `om-room-link`는 첫 행 오른쪽에 고정하고 score/summary는 다음 행으로 내려 카드 내용과 겹치지 않는다.
+
+## 2026-06-30 invite selection hover
+
+1. Invite/team/player selection panels must not wrap selected result headers with hover cards.
+2. Touch-pinned hover cards close on a second tap of the trigger.

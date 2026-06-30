@@ -104,6 +104,10 @@ export default function TeamHoverCard({ team, children, className = "", as = "li
       longPressOpenedRef.current = false;
       return;
     }
+    if (touchOpen) {
+      closeTouch();
+      return;
+    }
     openPinned();
   };
   const open = touchOpen || (!pinnedHoverKey && canUseHoverPreview() && hoverOpen);

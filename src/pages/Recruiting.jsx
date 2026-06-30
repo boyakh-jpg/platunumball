@@ -1416,13 +1416,13 @@ export function InvitePanel({
       {matchedTeam && (!allowedTeamId || matchedTeam.id === allowedTeamId) ? (
         <div className="arena-invite-team-picker">
           <div className="arena-invite-team-head">
-            <TeamHoverCard as="span" team={matchedTeam}>
+            <>
               <span className="team-dot" style={{ "--team-color": matchedTeam.accent }} />
               <span>
                 <strong>{matchedTeam.name}</strong>
                 <em>{getTeamHashtag(matchedTeam)} · {matchedTeam.mmr} MMR</em>
               </span>
-            </TeamHoverCard>
+            </>
           </div>
           <div className="arena-invite-member-grid">
             {teamMemberIds.map((playerId) => {

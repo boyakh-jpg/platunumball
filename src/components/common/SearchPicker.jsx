@@ -165,7 +165,10 @@ export default function SearchPicker({
         />
       </div>
       {canShow ? (
-        <div className={`home-search-results unified search-picker-results${floating ? " is-floating" : ""}${resultsClassName ? ` ${resultsClassName}` : ""}`}>
+        <div
+          className={`home-search-results unified search-picker-results${floating ? " is-floating" : ""}${resultsClassName ? ` ${resultsClassName}` : ""}`}
+          onPointerDown={(event) => event.preventDefault()}
+        >
           {resultTitle ? <strong className="search-picker-title">{resultTitle}</strong> : null}
           {visibleItems.length ? visibleItems.map(renderItem) : <div className="empty-state">{remoteLoading ? "검색 중..." : emptyText}</div>}
           {hasMore ? (
