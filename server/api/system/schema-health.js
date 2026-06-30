@@ -82,6 +82,7 @@ const REQUIRED_COLUMNS = {
     "entity_type",
     "entity_id",
     "relation",
+    "feed_scope",
     "region_key",
     "status",
     "card_json",

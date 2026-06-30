@@ -369,7 +369,7 @@ Remaining:
 ## 2026-06-28 public data and court fallback
 
 - `public_profiles`는 공개 프로필 표시용 컬럼만 제공한다. `school`, `company`, `club`, `test_login_id`, `discord_connection`, `discord_user_id`, `auth_user_id`는 공개 view에 넣지 않는다.
-- `user_room_feed` 직접 RLS read는 현재 프로필 row만 허용한다. `profile_id='*'` 지역 공개 feed는 서버 API/service-role 경로에서만 읽는다.
+- `user_room_feed` 직접 RLS read는 `feed_scope='profile'`인 현재 프로필 row만 허용한다. `feed_scope='public'` 지역 공개 feed는 서버 API/service-role 경로에서만 읽는다. `profile_id='*'`는 legacy 저장키/fallback일 뿐 공개 feed 의미 기준이 아니다.
 - 구장 이름 fallback은 `court_name` -> `approved_courts` active row -> legacy `courts` 순서로 보정한다. 목록/상세 API는 `courts`와 `approved_courts`를 병합하되 hidden/disabled approved court는 공개 fallback에서 제외한다.
 - SPA fallback은 `/assets/*`에 적용하지 않는다. 오래된 hashed JS asset 요청은 `index.html`이 아니라 404가 되어야 한다.
 ## 2026-06-27 경기 유지보수 worker
@@ -396,7 +396,7 @@ Remaining:
 
 | table | 주요 columns | 현재 참조 | 처리 |
 | --- | --- | --- | --- |
-| `user_room_feed` | `profile_id`, `entity_type`, `entity_id`, `relation`, `status`, `sort_at`, `card_json`, `is_active` | `server/api/matches/list.js`, `server/api/recruiting/list.js`, `server/api/system/maintenance.js`, feed trigger/RPC | 유지 |
+| `user_room_feed` | `profile_id`, `feed_scope`, `entity_type`, `entity_id`, `relation`, `status`, `sort_at`, `card_json`, `is_active` | `server/api/matches/list.js`, `server/api/recruiting/list.js`, `server/api/system/maintenance.js`, feed trigger/RPC | 유지 |
 | `matches` | `id`, `status`, `visibility`, `created_by`, `scheduled_at`, `team_a_id`, `team_b_id`, `room_state`, `rating_result` | match list/detail/sync, report, maintenance | 유지 |
 | `match_players` | `match_id`, `user_id`, `side`, `slot_order`, `role` | match list/sync/detail, record flow | 유지 |
 | `match_results` | `match_id`, `score_a`, `score_b`, `stat_submissions`, `submitted_by` | match sync, maintenance, feed trigger | 유지 |

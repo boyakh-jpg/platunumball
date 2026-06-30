@@ -13,6 +13,7 @@ import { filterStateForProfile } from "../state/load.js";
 
 let currentUserRecruitingRpcAvailable = true;
 let userRoomFeedAvailable = true;
+let userRoomFeedScopeAvailable = true;
 
 const PROFILE_ME_COLUMNS = "id,name,handle,hashtag,position,region,region_sido,region_district,school,company,club,trust_score,streak,avatar_color,test_login_id,auth_user_id,birth_year,age_group,age_group_checked_season,onboarding_complete,profile_version,handle_locked_at,birth_year_locked_at,name_updated_at,discord_connection,discord_user_id,ratings,created_at,updated_at,app_settings";
 const PROFILE_PUBLIC_COLUMNS = "id,name,handle,hashtag,position,region,trust_score,avatar_color,ratings,age_group,updated_at";
@@ -25,7 +26,9 @@ const RECRUITING_PUBLIC_PAGE_MAX_LIMIT = 80;
 const RECRUITING_FEED_ROW_MAX_LIMIT = 320;
 const RECRUITING_FEED_RELATION_ROW_FACTOR = 4;
 const RECRUITING_FEED_PUBLIC_ROW_FACTOR = 2;
-const PUBLIC_RECRUITING_FEED_PROFILE_ID = "*";
+const LEGACY_PUBLIC_RECRUITING_FEED_PROFILE_ID = "*";
+const PUBLIC_RECRUITING_FEED_SCOPE = "public";
+const PROFILE_RECRUITING_FEED_SCOPE = "profile";
 const INSTANT_TIMING_TYPE = "instant";
 const LEGACY_INSTANT_LABEL = "즉시";
 const KOREAN_DISTRICT_SUFFIX = "구";
@@ -112,6 +115,11 @@ function getProfileRegionKey(profile = {}) {
 function isMissingUserRoomFeed(error = {}) {
   const message = String(error?.message ?? "");
   return error?.code === "PGRST205" || error?.code === "42P01" || message.includes("user_room_feed");
+}
+
+function isMissingUserRoomFeedScope(error = {}) {
+  const message = String(error?.message ?? "");
+  return error?.code === "42703" || error?.code === "PGRST204" || message.includes("feed_scope");
 }
 
 function isMissingRecruitingFeedCountsRpc(error = {}) {
@@ -531,7 +539,8 @@ async function fetchRoomStateParticipantPostIds(client, profileId = "", limit = 
 }
 
 async function fetchRecruitingFeedPostIds(client, {
-  profileId = PUBLIC_RECRUITING_FEED_PROFILE_ID,
+  profileId = "",
+  feedScope = "",
   relations = [],
   status = "open",
   regionKey = "",
@@ -540,6 +549,7 @@ async function fetchRecruitingFeedPostIds(client, {
 } = {}) {
   const page = await fetchRecruitingFeedPage(client, {
     profileId,
+    feedScope,
     relations,
     status,
     regionKey,
@@ -550,8 +560,44 @@ async function fetchRecruitingFeedPostIds(client, {
   return page?.ids ?? page;
 }
 
+async function queryRecruitingFeedPage(client, {
+  profileId = "",
+  feedScope = PROFILE_RECRUITING_FEED_SCOPE,
+  relations = [],
+  status = "open",
+  regionKey = "",
+  rowLimit = RECRUITING_FEED_ROW_MAX_LIMIT,
+  safeOffset = 0,
+  includeCards = false,
+  timingType = "",
+  scheduledDate = "",
+  useFeedScope = false,
+} = {}) {
+  let query = client
+    .from("user_room_feed")
+    .select(includeCards ? "entity_id,sort_at,relation,card_json" : "entity_id,sort_at,relation")
+    .eq("entity_type", "recruiting")
+    .eq("is_active", true)
+    .eq("status", status)
+    .order("sort_at", { ascending: false, nullsFirst: false })
+    .order("entity_id", { ascending: false })
+    .range(safeOffset, safeOffset + rowLimit - 1);
+  if (useFeedScope) {
+    query = query.eq("feed_scope", feedScope);
+    if (feedScope !== PUBLIC_RECRUITING_FEED_SCOPE) query = query.eq("profile_id", profileId);
+  } else {
+    query = query.eq("profile_id", profileId);
+  }
+  if (relations.length) query = query.in("relation", relations);
+  if (regionKey) query = query.eq("region_key", regionKey);
+  if (timingType === INSTANT_TIMING_TYPE) query = query.or(`card_json->>timingType.eq.${INSTANT_TIMING_TYPE},card_json->>scheduledAt.eq.${LEGACY_INSTANT_LABEL}`);
+  if (scheduledDate) query = query.eq("card_json->>scheduledDate", scheduledDate);
+  return query;
+}
+
 async function fetchRecruitingFeedPage(client, {
-  profileId = "*",
+  profileId = "",
+  feedScope = "",
   relations = [],
   status = "open",
   regionKey = "",
@@ -562,24 +608,36 @@ async function fetchRecruitingFeedPage(client, {
   scheduledDate = "",
 } = {}) {
   if (!userRoomFeedAvailable) return null;
+  const scope = feedScope || (relations.includes("region_public") ? PUBLIC_RECRUITING_FEED_SCOPE : PROFILE_RECRUITING_FEED_SCOPE);
+  const feedProfileId = scope === PUBLIC_RECRUITING_FEED_SCOPE ? LEGACY_PUBLIC_RECRUITING_FEED_PROFILE_ID : profileId;
+  if (scope !== PUBLIC_RECRUITING_FEED_SCOPE && !feedProfileId) return null;
   const cappedLimit = Math.max(1, Math.min(RECRUITING_FEED_MAX_LIMIT, Number(limit) || REMOTE_CLIENT_RECRUITING_LIMIT));
   const rowLimit = Math.min(RECRUITING_FEED_ROW_MAX_LIMIT, cappedLimit * (relations.length ? RECRUITING_FEED_RELATION_ROW_FACTOR : RECRUITING_FEED_PUBLIC_ROW_FACTOR));
   const safeOffset = Math.max(0, Math.floor(Number(offset) || 0));
-  let query = client
-    .from("user_room_feed")
-    .select(includeCards ? "entity_id,sort_at,relation,card_json" : "entity_id,sort_at,relation")
-    .eq("entity_type", "recruiting")
-    .eq("profile_id", profileId)
-    .eq("is_active", true)
-    .eq("status", status)
-    .order("sort_at", { ascending: false, nullsFirst: false })
-    .order("entity_id", { ascending: false })
-    .range(safeOffset, safeOffset + rowLimit - 1);
-  if (relations.length) query = query.in("relation", relations);
-  if (regionKey) query = query.eq("region_key", regionKey);
-  if (timingType === INSTANT_TIMING_TYPE) query = query.or(`card_json->>timingType.eq.${INSTANT_TIMING_TYPE},card_json->>scheduledAt.eq.${LEGACY_INSTANT_LABEL}`);
-  if (scheduledDate) query = query.eq("card_json->>scheduledDate", scheduledDate);
-  const { data, error } = await query;
+  const queryOptions = {
+    profileId: feedProfileId,
+    feedScope: scope,
+    relations,
+    status,
+    regionKey,
+    rowLimit,
+    safeOffset,
+    includeCards,
+    timingType,
+    scheduledDate,
+  };
+  let { data, error } = await queryRecruitingFeedPage(client, {
+    ...queryOptions,
+    useFeedScope: userRoomFeedScopeAvailable,
+  });
+  if (error && userRoomFeedScopeAvailable && isMissingUserRoomFeedScope(error)) {
+    userRoomFeedScopeAvailable = false;
+    console.warn("User room feed scope skipped.", error.message);
+    ({ data, error } = await queryRecruitingFeedPage(client, {
+      ...queryOptions,
+      useFeedScope: false,
+    }));
+  }
   if (error) {
     if (isMissingUserRoomFeed(error)) {
       userRoomFeedAvailable = false;
@@ -792,7 +850,8 @@ async function fetchRecruitingPage(client, limit = REMOTE_CLIENT_RECRUITING_LIMI
   const cappedLimit = Math.max(1, Math.min(RECRUITING_PUBLIC_PAGE_MAX_LIMIT, Number(limit) || REMOTE_CLIENT_RECRUITING_LIMIT));
   const safeOffset = Math.max(0, Math.floor(Number(offset) || 0));
   const feedPage = await fetchRecruitingFeedPage(client, {
-    profileId: PUBLIC_RECRUITING_FEED_PROFILE_ID,
+    profileId: LEGACY_PUBLIC_RECRUITING_FEED_PROFILE_ID,
+    feedScope: PUBLIC_RECRUITING_FEED_SCOPE,
     relations: ["region_public"],
     regionKey,
     limit: cappedLimit,
@@ -1217,7 +1276,8 @@ export async function loadLocalRecruitingFeedList(context, {
 } = {}) {
   const regionKey = getProfileRegionKey(context.profile);
   const pageResult = await fetchRecruitingFeedPage(context.supabase, {
-    profileId: PUBLIC_RECRUITING_FEED_PROFILE_ID,
+    profileId: LEGACY_PUBLIC_RECRUITING_FEED_PROFILE_ID,
+    feedScope: PUBLIC_RECRUITING_FEED_SCOPE,
     relations: ["region_public"],
     regionKey,
     limit,

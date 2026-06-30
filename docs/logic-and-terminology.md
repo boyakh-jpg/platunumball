@@ -1,5 +1,12 @@
 # RankBall 로직/용어/디자인 기준
 
+## 2026-07-01 user_room_feed scope 기준
+
+- `user_room_feed.feed_scope='profile'` row는 현재 프로필의 방/경기 feed다. 브라우저 RLS 직접 read는 이 row만 허용한다.
+- `user_room_feed.feed_scope='public'` row는 공개 지역 모집 목록용 feed다. 이 row는 서버 API/service-role 전용 source이며 브라우저 직접 read 대상이 아니다.
+- `profile_id='*'`는 기존 primary key와 운영 전환 fallback을 위한 legacy 저장키다. 신규 목록 API는 가능한 경우 `feed_scope='public'`을 우선 사용하고, `feed_scope` 컬럼이 없는 DB에서만 legacy `profile_id='*'` 조회로 물러난다.
+- `region_public` relation은 `feed_scope='public'`이어야 하고, `owner`/`participant`/`invited`/`referee` relation은 `feed_scope='profile'`이어야 한다.
+
 ## 2026-06-30 프로필/모집 legacy 기본값 기준
 
 - 프로필 저장 API는 요청값과 기존 DB값에 없는 지역을 `서울특별시 마포구`로 강제 보정하지 않는다.
@@ -1593,7 +1600,7 @@ flowchart TD
 ## 2026-06-28 public feed access
 
 1. `public_profiles`는 공개 표시용 프로필 컬럼만 제공한다. `school`, `company`, `club`, 테스트 로그인 ID와 Discord 연결 원본은 현재 사용자 private profile 또는 server action에서만 읽는다.
-2. `user_room_feed.profile_id='*'` 지역 공개 feed는 서버 API/service-role 전용 source다. 브라우저 RLS 직접 read는 현재 프로필 feed row만 허용한다.
+2. `user_room_feed.feed_scope='public'` 지역 공개 feed는 서버 API/service-role 전용 source다. `profile_id='*'`는 legacy 저장키/fallback일 뿐 공개 feed 의미 기준이 아니다. 브라우저 RLS 직접 read는 `feed_scope='profile'`인 현재 프로필 feed row만 허용한다.
 3. 구장 이름 fallback은 `court_name` -> `approved_courts` active row -> legacy `courts` 순서로 보정한다. hidden/disabled approved court는 공개 목록 fallback에 쓰지 않는다.
 
 ## 2026-06-27 remote mutation stale guard
