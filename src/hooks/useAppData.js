@@ -1248,10 +1248,11 @@ export function useAppData(authUser = null) {
     }
   }, [authEmail, authUserId, matchPagination.cursor, matchPagination.exhausted, matchPagination.loading, setState, state.matches]);
 
-  const loadMatchRecruitingSchedule = useCallback(async () => {
+  const loadMatchRecruitingSchedule = useCallback(async (options = {}) => {
     if (!isSupabaseConfigured || !authUserId) return false;
-    if (matchRecruitingSchedulePromiseRef.current) return matchRecruitingSchedulePromiseRef.current;
-    if (matchPagination.recruitingScheduleLoading) return false;
+    const force = options?.force === true;
+    if (matchRecruitingSchedulePromiseRef.current && !force) return matchRecruitingSchedulePromiseRef.current;
+    if (matchPagination.recruitingScheduleLoading && !force) return false;
     const promise = (async () => {
       setMatchPagination((prev) => ({ ...prev, recruitingScheduleLoading: true, error: "" }));
       try {
@@ -1285,7 +1286,7 @@ export function useAppData(authUser = null) {
         return false;
       }
     })().finally(() => {
-      matchRecruitingSchedulePromiseRef.current = null;
+      if (matchRecruitingSchedulePromiseRef.current === promise) matchRecruitingSchedulePromiseRef.current = null;
     });
     matchRecruitingSchedulePromiseRef.current = promise;
     return promise;
@@ -1472,6 +1473,7 @@ export function useAppData(authUser = null) {
           postId,
           limit: 1,
           adminContext: false,
+          includeFeedCounts: false,
         },
         { allowWhenDisabled: true },
       );
@@ -1489,12 +1491,14 @@ export function useAppData(authUser = null) {
     }
   }, [authEmail, authUserId, setState]);
 
-  const loadMyRecruitingPosts = useCallback(async (roomScope = "") => {
+  const loadMyRecruitingPosts = useCallback(async (roomScope = "", options = {}) => {
     if (!isSupabaseConfigured || !authUserId) return false;
     const requestedRoomScope = ["created", "joined", "invited"].includes(roomScope) ? roomScope : "";
-    const promiseKey = requestedRoomScope || "all";
+    const includeFeedCounts = options?.includeFeedCounts !== false;
+    const force = options?.force === true;
+    const promiseKey = `${requestedRoomScope || "all"}:${includeFeedCounts ? "counts" : "plain"}`;
     const currentPromise = myRecruitingPostsPromiseRef.current.get(promiseKey);
-    if (currentPromise) return currentPromise;
+    if (currentPromise && !force) return currentPromise;
     const promise = (async () => {
       try {
         const result = await postServerAction(
@@ -1506,6 +1510,7 @@ export function useAppData(authUser = null) {
             ...(requestedRoomScope ? { roomScope: requestedRoomScope } : {}),
             limit: REMOTE_CLIENT_RECRUITING_LIMIT,
             adminContext: false,
+            includeFeedCounts,
           },
           { allowWhenDisabled: true },
         );
@@ -1522,7 +1527,7 @@ export function useAppData(authUser = null) {
         return false;
       }
     })().finally(() => {
-      myRecruitingPostsPromiseRef.current.delete(promiseKey);
+      if (myRecruitingPostsPromiseRef.current.get(promiseKey) === promise) myRecruitingPostsPromiseRef.current.delete(promiseKey);
     });
     myRecruitingPostsPromiseRef.current.set(promiseKey, promise);
     return promise;
@@ -1734,11 +1739,16 @@ export function useAppData(authUser = null) {
         const payload = payloadFactory?.(rollbackState, nextStateSnapshot) ?? {};
         return rollbackIfServerFailed(syncTeamInvitationServer(action, payload), rollbackState, label, { action, ...payload });
       };
-      const refreshRecruitingRelations = () => {
+      const refreshRecruitingRelations = (result = {}, fallbackPostId = "") => {
+        const refreshPostId = result?.post?.id ?? result?.postId ?? fallbackPostId;
         return Promise.allSettled([
           refreshCurrentProfile(),
-          loadMyRecruitingPosts(),
-        ]).then((results) => !results.some((result) => result.status === "rejected" || result.value === false));
+          loadMyRecruitingPosts("", { force: true, includeFeedCounts: true }),
+          loadMatchRecruitingSchedule({ force: true }),
+        ]).then(async (results) => {
+          const detailResult = refreshPostId ? await loadRecruitingPost(refreshPostId) : true;
+          return detailResult !== false && !results.some((item) => item.status === "rejected" || item.value === false);
+        });
       };
 
       return ({
@@ -2194,12 +2204,12 @@ export function useAppData(authUser = null) {
           return result?.post?.id ?? result?.postId ?? createdPost.id;
         });
       },
-      interestRecruitingPost: (postId, application) => applyRecruitingPostMutation(postId, (prev) => interestRecruitingPost({ ...prev, currentUserId }, postId, application), { action: "interestRecruitingPost", application, joinMode: application?.joinMode, onSuccess: refreshRecruitingRelations }),
+      interestRecruitingPost: (postId, application) => applyRecruitingPostMutation(postId, (prev) => interestRecruitingPost({ ...prev, currentUserId }, postId, application), { action: "interestRecruitingPost", application, joinMode: application?.joinMode, onSuccess: (result) => refreshRecruitingRelations(result, postId) }),
       inviteRecruitingReferee: (postId, refereeId) => applyRecruitingPostMutation(postId, (prev) => inviteRecruitingReferee({ ...prev, currentUserId }, postId, refereeId), { action: "inviteRecruitingReferee", refereeId }),
-      inviteRecruitingPlayers: (postId, invite) => applyRecruitingPostMutation(postId, (prev) => inviteRecruitingPlayers({ ...prev, currentUserId }, postId, invite), { action: "inviteRecruitingPlayers", invite, onSuccess: refreshRecruitingRelations }),
-      acceptRecruitingInvitation: (postId, invitationId) => applyRecruitingPostMutation(postId, (prev) => acceptRecruitingInvitation({ ...prev, currentUserId }, postId, invitationId), { action: "acceptRecruitingInvitation", invitationId, onSuccess: refreshRecruitingRelations }),
-      declineRecruitingInvitation: (postId, invitationId) => applyRecruitingPostMutation(postId, (prev) => declineRecruitingInvitation({ ...prev, currentUserId }, postId, invitationId), { action: "declineRecruitingInvitation", invitationId, onSuccess: refreshRecruitingRelations }),
-      cancelRecruitingParticipation: (postId) => applyRecruitingPostMutation(postId, (prev) => cancelRecruitingParticipation({ ...prev, currentUserId }, postId), { action: "cancelRecruitingParticipation", onSuccess: refreshRecruitingRelations }),
+      inviteRecruitingPlayers: (postId, invite) => applyRecruitingPostMutation(postId, (prev) => inviteRecruitingPlayers({ ...prev, currentUserId }, postId, invite), { action: "inviteRecruitingPlayers", invite, onSuccess: (result) => refreshRecruitingRelations(result, postId) }),
+      acceptRecruitingInvitation: (postId, invitationId) => applyRecruitingPostMutation(postId, (prev) => acceptRecruitingInvitation({ ...prev, currentUserId }, postId, invitationId), { action: "acceptRecruitingInvitation", invitationId, onSuccess: (result) => refreshRecruitingRelations(result, postId) }),
+      declineRecruitingInvitation: (postId, invitationId) => applyRecruitingPostMutation(postId, (prev) => declineRecruitingInvitation({ ...prev, currentUserId }, postId, invitationId), { action: "declineRecruitingInvitation", invitationId, onSuccess: (result) => refreshRecruitingRelations(result, postId) }),
+      cancelRecruitingParticipation: (postId) => applyRecruitingPostMutation(postId, (prev) => cancelRecruitingParticipation({ ...prev, currentUserId }, postId), { action: "cancelRecruitingParticipation", onSuccess: (result) => refreshRecruitingRelations(result, postId) }),
       setRecruitingReady: (postId, ready) => applyRecruitingPostMutation(postId, (prev) => setRecruitingReady({ ...prev, currentUserId }, postId, ready), { action: "setRecruitingReady", ready }),
       updateRecruitingRoomRules: (postId, patch) => applyRecruitingPostMutation(postId, (prev) => updateRecruitingRoomRules({ ...prev, currentUserId }, postId, patch), { action: "updateRecruitingRoomRules", patch }),
       updateMatchRoomRules: (matchId, patch) => applyMatchMutation(matchId, (prev) => updateMatchRoomRules({ ...prev, currentUserId }, matchId, patch), { action: "updateMatchRoomRules", patch }),

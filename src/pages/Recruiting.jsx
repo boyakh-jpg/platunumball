@@ -3209,14 +3209,13 @@ function RecruitingReady({ app }) {
     const currentPageMatchesRegion = regionFilter === "local"
       ? ((currentScope === "local" && !currentKey) || (currentScope === "region" && currentKey === regionKey))
       : (currentScope === "region" && currentKey === regionKey);
-    const hasFeedCounts = app.recruitingPagination?.feedCounts != null;
     const targetStartFilter = roomScope === "all" ? startFilter : "all";
     const currentStartFilter = app.recruitingPagination?.startFilter ?? "all";
     const needsFilteredPage = roomScope === "all"
       && startFilter !== "all"
       && (currentStartFilter !== startFilter || (!app.recruitingPagination?.exhausted && Number(app.recruitingPagination?.offset ?? 0) < RECRUITING_FILTER_PAGE_LIMIT));
     const needsBasePage = targetStartFilter === "all" && currentStartFilter !== "all";
-    if (currentPageMatchesRegion && hasFeedCounts && !needsFilteredPage && !needsBasePage) return;
+    if (currentPageMatchesRegion && !needsFilteredPage && !needsBasePage) return;
     const loadKey = `${app.currentUser.id}:${regionFilter}:${regionKey}:${targetStartFilter}`;
     if (regionLoadRef.current === loadKey) return;
     regionLoadRef.current = loadKey;
