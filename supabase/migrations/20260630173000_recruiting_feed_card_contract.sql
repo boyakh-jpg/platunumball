@@ -1,4 +1,4 @@
-﻿-- Refresh recruiting feed cards with roster/application fields used by thin list endpoints.
+-- Refresh recruiting feed cards with roster/application fields used by thin list endpoints.
 -- Safe backfill only: no destructive data removal.
 
 create or replace function public.rankball_refresh_recruiting_feed_for_post(p_post_id text)
