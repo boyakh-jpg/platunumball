@@ -353,6 +353,21 @@ export function isRecruitingPostForUser(post = {}, userId, teamIds = []) {
   });
 }
 
+export function getRecruitingEntryForUser(lobby = {}, userId) {
+  if (!userId) return null;
+  return (lobby.entries ?? []).find((entry) => (
+    (entry.players ?? []).includes(userId) ||
+    (entry.reserves ?? []).includes(userId)
+  )) ?? null;
+}
+
+export function isRecruitingRoomInUserSchedule(post, state, userId, teamIds = []) {
+  if (!post || !userId) return false;
+  if (isRecruitingPostForUser(post, userId, teamIds)) return true;
+  const lobby = getRecruitingLobby(post, state);
+  return Boolean(getRecruitingEntryForUser(lobby, userId));
+}
+
 export function normalizeRecruitingPost(post = {}) {
   const type = RECRUITING_TYPES[post.type] ? post.type : "need_player";
   const hostJoinMode = post.hostJoinMode === "player" || !post.teamId ? "player" : "team";

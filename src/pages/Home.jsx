@@ -14,7 +14,7 @@ import { getRegisteredCourts } from "../lib/courts.js";
 import { getCourtHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { canUserResolveMatchDispute, getAllowedStatFields, getMatchRecordWindow, getMatchReservePlayerIds, getMatchRoomPhase, getPlayerSideName, getPlayerStatSubmitted, getPublicRoomTimingStatus, isInstantRoom } from "../lib/matchUtils.js";
 import { inferRegionSelection } from "../lib/profileSetup.js";
-import { RECRUITING_TYPES, getPendingRecruitingInvitations, getRecruitingLobby, getRecruitingRoomOwnerId, isNationalRecruitingPost, isRecruitingPostForUser } from "../lib/recruiting.js";
+import { RECRUITING_TYPES, getPendingRecruitingInvitations, getRecruitingLobby, getRecruitingRoomOwnerId, isNationalRecruitingPost, isRecruitingPostForUser, isRecruitingRoomInUserSchedule } from "../lib/recruiting.js";
 import { getCurrentSeason, getPlayerSeasonRows, getSeasonProgress } from "../lib/season.js";
 import { getTierDivision } from "../lib/tier.js";
 import { getDiscordAvatarClassName, getDiscordAvatarStyle } from "../lib/discord.js";
@@ -135,10 +135,10 @@ export default function Home({ app }) {
       .map((match) => ({ type: "match", id: `match-${match.id}`, item: match }));
     const roomItems = [...(app.state.recruitingPosts ?? [])]
       .filter((post) => post.status === "open")
-      .filter((post) => isRecruitingPostForUser(post, user.id, myTeamIds))
+      .filter((post) => isRecruitingRoomInUserSchedule(post, app.state, user.id, myTeamIds))
       .map((post) => ({ type: "room", id: `room-${post.id}`, item: post }));
     return [...matchItems, ...roomItems].sort((a, b) => compareSchedule(a.item, b.item));
-  }, [app.state.matches, app.state.recruitingPosts, myTeamIds, user.id]);
+  }, [app.state, app.state.matches, app.state.recruitingPosts, myTeamIds, user.id]);
   const pendingInvitations = useMemo(() => getPendingRecruitingInvitations(app.state, user.id), [app.state, user.id]);
   const pendingTeamInvitations = useMemo(() => (app.state.teamInvitations ?? []).filter((invitation) => (
     invitation.targetUserId === user.id &&

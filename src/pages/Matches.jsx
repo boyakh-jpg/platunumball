@@ -20,7 +20,7 @@ import {
   getMatchRoomPhase,
   isInstantRoom,
 } from "../lib/matchUtils.js";
-import { getRecruitingLobby, getRecruitingRoomOwnerId, getRecruitingSideCapacity, isRecruitingPostForUser, isRecruitingPartyEntry } from "../lib/recruiting.js";
+import { getRecruitingEntryForUser, getRecruitingLobby, getRecruitingRoomOwnerId, getRecruitingSideCapacity, isRecruitingPartyEntry, isRecruitingRoomInUserSchedule } from "../lib/recruiting.js";
 import { RecruitingRoomModal, getRecruitingRoomListStatus } from "./Recruiting.jsx";
 import "../styles/recruiting-arena.css";
 import "../styles/matches-arena.css";
@@ -376,20 +376,6 @@ function getScheduleItemsForView(matches = [], recruitingPosts = [], view, userI
       .filter((match) => shouldShowMatchInList(match, view, userId, hasDateFilter))
       .map((match) => ({ type: "match", id: `match-${match.id}`, item: match })),
   ].sort((a, b) => compareSchedule(a.item, b.item));
-}
-
-function getRecruitingEntryForUser(lobby, userId) {
-  return (lobby.entries ?? []).find((entry) => (
-    (entry.players ?? []).includes(userId) ||
-    (entry.reserves ?? []).includes(userId)
-  )) ?? null;
-}
-
-function isRecruitingRoomInUserSchedule(post, state, userId, teamIds = []) {
-  if (!post || !userId) return false;
-  if (isRecruitingPostForUser(post, userId, teamIds)) return true;
-  const lobby = getRecruitingLobby(post, state);
-  return Boolean(getRecruitingEntryForUser(lobby, userId));
 }
 
 function getTeamCaptainId(team) {
