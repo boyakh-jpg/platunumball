@@ -928,7 +928,7 @@ export default function CreateMatch({ app }) {
       approvalModeB: draft.approvalModeB,
       refereeWanted: draft.refereeWanted || Boolean(draft.refereeId),
       refereeId: draft.refereeId,
-      targetTeamId: "",
+      targetTeamId: !isPublicRoom && isTeamRoom ? draft.teamBId || "" : "",
       region: selectedCourt.region,
       court: draft.court,
       timingType: draft.timingType,

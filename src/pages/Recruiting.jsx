@@ -1838,7 +1838,7 @@ export function RecruitingRoomModal(props) {
   return <RecruitingRoomModalReady {...props} />;
 }
 
-function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sourceMatch = null }) {
+function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sourceMatch = null, onInvitationAccepted = null }) {
   const selectedPost = post;
   const myTeams = useMemo(
     () => app.state.teams.filter((team) => team.members.some((member) => member.userId === app.currentUser.id)),
@@ -1970,6 +1970,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
     try {
       const result = await app.actions.acceptRecruitingInvitation(roomPost.id, invitation.id);
       if (!result || result.ok === false) setPendingRosterOpen(null);
+      else onInvitationAccepted?.(roomPost.id, invitation);
     } catch {
       setPendingRosterOpen(null);
     }
@@ -2027,7 +2028,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
     const targetEntry = (lobby.entries ?? []).find((entry) => (
       entry.kind === "team" &&
       entry.side === pendingRosterOpen.sideName &&
-      entry.team?.id === pendingRosterOpen.teamId &&
+      (entry.team?.id === pendingRosterOpen.teamId || entry.teamId === pendingRosterOpen.teamId) &&
       (
         entry.playerId === app.currentUser.id ||
         entry.players?.includes(app.currentUser.id) ||
@@ -2153,6 +2154,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         };
         const canInviteSideFromRoom = (sideName) => {
           if (!canInviteFromRoom) return false;
+          if (selectedPost.visibility === "private" && selectedPost.hostJoinMode === "team") return false;
           if (!teamOnlyRoom) return true;
           const allowedTeamId = getInviteAllowedTeamId(sideName);
           if (!allowedTeamId) return false;
@@ -2249,7 +2251,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const canMoveMatchSides = Boolean(canManageMatchCheckin && selectedPost.hostJoinMode !== "team");
         const canEditSourceRoomRules = Boolean(
           !sourceRoomReadOnly &&
-          (!matchRoom || (
+          (!matchRoom ? mine : (
             sourceMatch &&
             ["locked", "checkin"].includes(sourceMatchPhase?.phase) &&
             !sourceMatch.endedAt &&
@@ -3595,6 +3597,9 @@ function RecruitingReady({ app }) {
           post={selectedPost}
           onClose={() => setSelectedPostId(null)}
           onOpenMatch={(matchId) => navigate(`/app/matches?match=${matchId}`)}
+          onInvitationAccepted={() => {
+            if (roomScope === "invited") setRoomScope("joined");
+          }}
         />
       ) : null}
 

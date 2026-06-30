@@ -6099,6 +6099,7 @@ export function createRecruitingPost(state, draft) {
     targetUserId,
     fromUserId: state.currentUserId,
     teamId: opponentTeam.id,
+    joinMode: "team",
     side: "teamB",
     reserve: false,
     status: "pending",
@@ -6153,7 +6154,7 @@ export function createRecruitingPost(state, draft) {
     ratingScale,
     spots: Math.max(0, sideCapacity * 2 - hostSize - opponentSize),
     teamId: hostJoinMode === "team" ? draft.teamId : null,
-    targetTeamId: draft.targetTeamId ?? null,
+    targetTeamId: privateTeamInviteOnly ? opponentTeam.id : draft.targetTeamId ?? null,
     refereeWanted,
     refereeId,
     refereeTrustMin: REFEREE_TRUST_MIN,
@@ -8148,7 +8149,9 @@ export function setRecruitingTeamPartyRoster(state, postId, entryId, roster = {}
                 ...applicant,
                 playerId: partyLeaderId,
                 reserve: false,
-                status: "waiting",
+                status: post.visibility === "private" && post.hostJoinMode === "team" && entry.side === "teamB"
+                  ? "ready"
+                  : "waiting",
                 playerIds: nextPlayerIds,
                 updatedAt,
               }
