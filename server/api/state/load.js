@@ -1,5 +1,6 @@
 import { getAdminLevel, getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import { loadNormalizedRemoteStateFromClient } from "../../../src/data/repository.js";
+import { loadCurrentProfileState, PROFILE_ME_COLUMNS } from "../profile/me.js";
 
 function toArray(value) {
   if (Array.isArray(value)) return value.flatMap(toArray);
@@ -152,7 +153,7 @@ function getStateLoadOptions(body = {}, meta = {}) {
   return {
     clientState: true,
     isAdmin: meta.isAdmin === true,
-    scope: body.scope ?? pagination.scope,
+    scope: body.scope ?? pagination.scope ?? "profile",
     directoryScope: body.directoryScope ?? pagination.directoryScope,
     matchListOnly: body.matchListOnly ?? pagination.matches?.listOnly,
     matchLimit: body.matchLimit ?? pagination.matches?.limit,
@@ -172,9 +173,15 @@ export default async function handler(request, response) {
 
   try {
     const body = await readJsonBody(request);
-    const context = await getAuthenticatedContext(request, { allowMissingProfile: true });
+    const context = await getAuthenticatedContext(request, { allowMissingProfile: true, profileSelect: PROFILE_ME_COLUMNS });
     const shouldLoadAdminContext = body.adminContext !== false && body.includeAdminContext !== false;
     const adminLevel = shouldLoadAdminContext && context.profileId ? await getAdminLevel(context) : 0;
+    const requestedScope = String(body.scope ?? body.pagination?.scope ?? "").trim();
+    if (!["full", "matches", "recruiting", "tournaments"].includes(requestedScope)) {
+      const result = await loadCurrentProfileState(context, { includeTeamMemberProfiles: false });
+      sendJson(response, 200, { ok: true, state: result.state, updatedAt: result.updatedAt ?? 0 });
+      return;
+    }
     const normalized = await loadNormalizedRemoteStateFromClient(
       context.supabase,
       context.authUserId,

@@ -1431,6 +1431,312 @@ function collectTournamentPageScope(tournaments = [], tournamentTeams = [], prof
   };
 }
 
+function makeCurrentUserFromProfiles(profiles = [], authUserIdText = "", authEmail = "") {
+  const testLoginId = getBackendTestLoginId(authUserIdText);
+  const currentProfile = authUserIdText
+    ? testLoginId
+      ? profiles.find((profile) => String(profile.test_login_id ?? "").toLowerCase() === testLoginId)
+      : profiles.find((profile) => String(profile.auth_user_id ?? "") === authUserIdText)
+    : null;
+  const shellUser = authUserIdText && !testLoginId && !currentProfile ? createProfileShell(authUserIdText, authEmail) : null;
+  const currentUserId = currentProfile?.id ?? shellUser?.id ?? profiles[0]?.id ?? "";
+  return { currentProfile, shellUser, currentUserId };
+}
+
+function getClientPrivateProfileFilter(authUserIdText = "") {
+  if (!authUserIdText) return null;
+  const testLoginId = getBackendTestLoginId(authUserIdText);
+  return testLoginId
+    ? (query) => query.eq("test_login_id", testLoginId)
+    : (query) => query.eq("auth_user_id", authUserIdText);
+}
+
+function mergePublicProfilesIntoProfiles(profiles = [], publicProfiles = [], privateProfileById = new Map()) {
+  publicProfiles.forEach((profile) => {
+    const mergedProfile = { ...profile, ...(privateProfileById.get(profile.id) ?? {}) };
+    const existingIndex = profiles.findIndex((item) => item.id === mergedProfile.id);
+    if (existingIndex >= 0) profiles[existingIndex] = { ...profiles[existingIndex], ...mergedProfile };
+    else profiles.push(mergedProfile);
+  });
+  return profiles;
+}
+
+function getMatchRowReaderIds(row = {}, players = [], results = [], stats = [], agreements = [], approvals = [], disputes = []) {
+  return uniqueScopeIds([
+    row.created_by,
+    row.referee_id,
+    row.former_referee_id,
+    row.result?.submitted_by,
+    ...players.map((player) => player.user_id),
+    ...results.map((result) => result.submitted_by),
+    ...stats.flatMap((stat) => [stat.user_id, stat.recorded_by]),
+    ...agreements.map((agreement) => agreement.user_id),
+    ...approvals.map((approval) => approval.user_id),
+    ...disputes.map((dispute) => dispute.user_id),
+    ...flattenIdValues(row.stat_recorders),
+    ...flattenIdValues(row.played_player_ids),
+    ...flattenIdValues(row.reserve_players),
+    ...flattenIdValues(row.promoted_reserve_ids),
+    ...flattenIdValues(row.attendance),
+    ...flattenIdValues(row.referee_absence_request),
+    ...flattenIdValues(row.dispute_draft_result),
+  ]);
+}
+
+export async function loadNormalizedMatchDetailFromClient(client = supabase, authUserId = "", authEmail = "", options = {}) {
+  const matchId = String(options.matchId ?? options.id ?? "").trim();
+  if (!matchId) {
+    const error = new Error("match_id_required");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const authUserIdText = String(authUserId || "");
+  const privateProfileFilter = getClientPrivateProfileFilter(authUserIdText);
+  const [privateProfiles, matches] = await Promise.all([
+    privateProfileFilter
+      ? fetchOptionalFilteredRows("profiles", PRIVATE_PROFILE_COLUMNS, "id", client, privateProfileFilter)
+      : fetchOptionalRows("profiles", PRIVATE_PROFILE_COLUMNS, "id", client),
+    fetchFilteredRows("matches", MATCH_COLUMNS, null, client, (query) => query.eq("id", matchId), 1),
+  ]);
+  const match = matches[0] ?? null;
+  const privateProfileById = new Map((privateProfiles ?? []).map((profile) => [profile.id, profile]));
+  const profiles = [...(privateProfiles ?? [])];
+  const { currentProfile, shellUser, currentUserId } = makeCurrentUserFromProfiles(profiles, authUserIdText, authEmail);
+
+  if (!match) {
+    const users = currentProfile ? [fromRemoteProfile(currentProfile)] : [];
+    return {
+      state: normalizeState({
+        currentUserId,
+        users: shellUser ? [...users, shellUser] : users,
+        teams: [],
+        matches: [],
+        settings: DEFAULT_SETTINGS,
+      }, { includeDemo: false }),
+      updatedAt: 0,
+    };
+  }
+
+  const matchFilter = (query) => query.eq("match_id", match.id);
+  const [
+    matchPlayers,
+    matchResults,
+    playerStats,
+    agreements,
+    approvals,
+    disputes,
+  ] = await Promise.all([
+    fetchFilteredRows("match_players", MATCH_PLAYER_COLUMNS, null, client, matchFilter),
+    fetchFilteredRows("match_results", MATCH_RESULT_COLUMNS, null, client, matchFilter),
+    fetchFilteredRows("player_match_stats", PLAYER_STAT_COLUMNS, null, client, matchFilter),
+    fetchFilteredRows("match_agreements", MATCH_AGREEMENT_COLUMNS, null, client, matchFilter),
+    fetchFilteredRows("match_approvals", MATCH_APPROVAL_COLUMNS, null, client, matchFilter),
+    fetchOptionalFilteredRows("match_disputes", MATCH_DISPUTE_COLUMNS, null, client, matchFilter),
+  ]);
+
+  const canReadMatch = options.isAdmin === true ||
+    (match.visibility ?? match.rules?.visibility ?? "public") !== "private" ||
+    getMatchRowReaderIds(match, matchPlayers, matchResults, playerStats, agreements, approvals, disputes).includes(currentUserId);
+  if (!canReadMatch) {
+    const users = currentProfile ? [fromRemoteProfile(currentProfile)] : [];
+    return {
+      state: normalizeState({
+        currentUserId,
+        users: shellUser ? [...users, shellUser] : users,
+        teams: [],
+        matches: [],
+        settings: DEFAULT_SETTINGS,
+      }, { includeDemo: false }),
+      updatedAt: 0,
+    };
+  }
+
+  const scoped = collectMatchPageScope([match], matchPlayers, matchResults, playerStats, agreements, approvals, disputes, privateProfiles.map((profile) => profile.id));
+  const [teams, teamMembers, courts, publicProfiles] = await Promise.all([
+    fetchRowsByIds("teams", TEAM_COLUMNS, "id", scoped.teamIds, "id", client, true),
+    fetchRowsByIds("team_members", TEAM_MEMBER_COLUMNS, "team_id", scoped.teamIds, null, client, true),
+    fetchCourtRows(client, scoped.courtIds),
+    fetchRowsByIds("public_profiles", PUBLIC_PROFILE_COLUMNS, "id", [...scoped.profileIds], "id", client, true),
+  ]);
+  mergePublicProfilesIntoProfiles(profiles, publicProfiles, privateProfileById);
+  const teamMembersByTeam = groupBy(teamMembers, "team_id");
+  const teamById = firstBy(teams, "id");
+  const courtById = firstBy(courts, "id");
+  const context = {
+    teamById,
+    courtById,
+    playersByMatch: groupBy(matchPlayers, "match_id"),
+    resultsByMatch: firstBy(matchResults, "match_id"),
+    statsByMatch: groupBy(playerStats, "match_id"),
+    agreementsByMatch: groupBy(agreements, "match_id"),
+    approvalsByMatch: groupBy(approvals, "match_id"),
+    disputesByMatch: groupBy(disputes, "match_id"),
+  };
+  const state = normalizeState({
+    currentUserId,
+    users: shellUser ? [...profiles.map(fromRemoteProfile), shellUser] : profiles.map(fromRemoteProfile),
+    teams: teams.filter((team) => !team.deleted_at).map((team) => fromRemoteTeam(team, teamMembersByTeam.get(team.id))),
+    matches: [fromRemoteMatch(match, context)],
+    settings: DEFAULT_SETTINGS,
+  }, { includeDemo: false });
+
+  return {
+    state: {
+      ...state,
+      recruitingPosts: [],
+      tournaments: [],
+      affiliations: [],
+      seasons: [],
+      reports: [],
+      notifications: [],
+      discordNotificationDeliveries: [],
+    },
+    updatedAt: Math.max(
+      getMaxUpdatedAt(profiles),
+      getMaxUpdatedAt(teams),
+      getMaxUpdatedAt([match]),
+      getMaxUpdatedAt(matchResults),
+      getMaxUpdatedAt(playerStats),
+    ),
+  };
+}
+
+export async function loadNormalizedDirectoryStateFromClient(client = supabase, authUserId = "", authEmail = "", options = {}) {
+  const authUserIdText = String(authUserId || "");
+  const privateProfileFilter = getClientPrivateProfileFilter(authUserIdText);
+  const privateProfileColumns = `${PRIVATE_PROFILE_COLUMNS},app_settings`;
+  const [
+    privateProfiles,
+    publicProfiles,
+    teams,
+    teamMembers,
+    affiliations,
+  ] = await Promise.all([
+    privateProfileFilter
+      ? fetchOptionalFilteredRows("profiles", privateProfileColumns, "id", client, privateProfileFilter)
+      : fetchOptionalRows("profiles", privateProfileColumns, "id", client),
+    fetchOptionalRows("public_profiles", PUBLIC_PROFILE_COLUMNS, "id", client),
+    fetchAllRows("teams", TEAM_COLUMNS, "id", client),
+    fetchAllRows("team_members", TEAM_MEMBER_COLUMNS, null, client),
+    fetchAllRows("affiliations", AFFILIATION_COLUMNS, "id", client),
+  ]);
+  const privateProfileById = new Map((privateProfiles ?? []).map((profile) => [profile.id, profile]));
+  const profiles = mergePublicProfilesIntoProfiles([...(privateProfiles ?? [])], publicProfiles, privateProfileById);
+  const { currentProfile, shellUser, currentUserId } = makeCurrentUserFromProfiles(profiles, authUserIdText, authEmail);
+  const isAdminStateLoad = options.isAdmin === true;
+  const currentUserFilter = (column = "user_id") => (query) => query.eq(column, currentUserId);
+  const [
+    favorites,
+    teamInvitations,
+    reports,
+    courtRequests,
+    approvedCourts,
+    courtReviews,
+    refereeRequests,
+    refereeExamAttempts,
+    adminAppointments,
+    refereeAppointments,
+    adminAuditLog,
+    adminDisciplinaryActions,
+  ] = await Promise.all([
+    currentUserId ? fetchFilteredRows("favorites", FAVORITE_COLUMNS, null, client, currentUserFilter("user_id")) : [],
+    currentUserId ? fetchOptionalFilteredRows("team_invitations", TEAM_INVITATION_COLUMNS, "created_at", client, (query) => query.or(`from_user_id.eq.${currentUserId},target_user_id.eq.${currentUserId}`)) : [],
+    currentUserId ? (isAdminStateLoad ? fetchOptionalRows("reports", REPORT_COLUMNS, "created_at", client) : fetchCurrentUserReports(currentUserId, client)) : [],
+    currentUserId
+      ? isAdminStateLoad
+        ? fetchOptionalRows("court_requests", COURT_REQUEST_COLUMNS, "created_at", client)
+        : fetchOptionalFilteredRows("court_requests", COURT_REQUEST_COLUMNS, "created_at", client, currentUserFilter("requested_by"))
+      : [],
+    fetchOptionalFilteredRows("approved_courts", APPROVED_COURT_COLUMNS, "created_at", client, (query) => query.or("status.is.null,status.eq.active")),
+    fetchOptionalFilteredRows("court_reviews", COURT_REVIEW_COLUMNS, "created_at", client, (query) => query.or("status.is.null,status.eq.active")),
+    currentUserId
+      ? isAdminStateLoad
+        ? fetchOptionalRows("referee_requests", REFEREE_REQUEST_COLUMNS, "created_at", client)
+        : fetchOptionalFilteredRows("referee_requests", REFEREE_REQUEST_COLUMNS, "created_at", client, currentUserFilter("requested_by"))
+      : [],
+    currentUserId
+      ? isAdminStateLoad
+        ? fetchOptionalRows("referee_exam_attempts", REFEREE_EXAM_ATTEMPT_COLUMNS, "created_at", client)
+        : fetchOptionalFilteredRows("referee_exam_attempts", REFEREE_EXAM_ATTEMPT_COLUMNS, "created_at", client, currentUserFilter("user_id"))
+      : [],
+    currentUserId
+      ? isAdminStateLoad
+        ? fetchOptionalRows("admin_appointments", APPOINTMENT_COLUMNS, "created_at", client)
+        : fetchOptionalFilteredRows("admin_appointments", APPOINTMENT_COLUMNS, "created_at", client, currentUserFilter("user_id"))
+      : [],
+    currentUserId
+      ? isAdminStateLoad
+        ? fetchOptionalRows("referee_appointments", APPOINTMENT_COLUMNS, "created_at", client)
+        : fetchOptionalFilteredRows("referee_appointments", APPOINTMENT_COLUMNS, "created_at", client, currentUserFilter("user_id"))
+      : [],
+    isAdminStateLoad ? fetchOptionalRows("admin_audit_log", ADMIN_AUDIT_COLUMNS, "created_at", client) : [],
+    currentUserId
+      ? isAdminStateLoad
+        ? fetchOptionalRows("admin_disciplinary_actions", ADMIN_DISCIPLINARY_COLUMNS, "created_at", client)
+        : fetchOptionalFilteredRows("admin_disciplinary_actions", ADMIN_DISCIPLINARY_COLUMNS, "created_at", client, currentUserFilter("user_id"))
+      : [],
+  ]);
+  const teamMembersByTeam = groupBy(teamMembers, "team_id");
+  const remoteUsers = profiles.map(fromRemoteProfile);
+  const favoriteRows = favorites.filter((favorite) => favorite.user_id === currentUserId);
+  const remoteAppSettings = getRemoteAppSettings(currentProfile);
+  const state = normalizeState({
+    currentUserId,
+    users: shellUser ? [...remoteUsers, shellUser] : remoteUsers,
+    teams: teams.filter((team) => !team.deleted_at).map((team) => fromRemoteTeam(team, teamMembersByTeam.get(team.id))),
+    teamInvitations: teamInvitations.map(fromRemoteTeamInvitation),
+    affiliations: affiliations
+      .filter((affiliation) => affiliation.type !== "club")
+      .map((affiliation) => ({
+        id: affiliation.id,
+        type: affiliation.type,
+        name: affiliation.name,
+        score: affiliation.score ?? 0,
+        wins: affiliation.wins ?? 0,
+        losses: affiliation.losses ?? 0,
+      })),
+    reports: reports.map(fromRemoteReport),
+    settings: {
+      ...DEFAULT_SETTINGS,
+      ...remoteAppSettings,
+      favoritePlayerIds: favoriteRows.filter((favorite) => favorite.target_type === "player").map((favorite) => favorite.target_id),
+      favoriteTeamIds: favoriteRows.filter((favorite) => favorite.target_type === "team").map((favorite) => favorite.target_id),
+      favoriteCourtIds: favoriteRows.filter((favorite) => favorite.target_type === "court").map((favorite) => favorite.target_id),
+      favoriteRefereeIds: favoriteRows.filter((favorite) => favorite.target_type === "referee").map((favorite) => favorite.target_id),
+      approvedCourts: approvedCourts.map(fromRemoteApprovedCourt),
+      courtRequests: courtRequests.map(fromRemoteCourtRequest),
+      courtReviews: courtReviews.map(fromRemoteCourtReview),
+      refereeRequests: refereeRequests.map(fromRemotePayloadRow),
+      refereeExamAttempts: refereeExamAttempts.map(fromRemotePayloadRow),
+      adminAppointments: adminAppointments.map(fromRemotePayloadRow),
+      refereeAppointments: refereeAppointments.map(fromRemotePayloadRow),
+      adminAuditLog: adminAuditLog.map(fromRemotePayloadRow),
+      adminDisciplinaryActions: adminDisciplinaryActions.map(fromRemotePayloadRow),
+    },
+  }, { includeDemo: false });
+
+  return {
+    state: {
+      ...state,
+      matches: [],
+      recruitingPosts: [],
+      tournaments: [],
+      notifications: [],
+      discordNotificationDeliveries: [],
+    },
+    updatedAt: Math.max(
+      getMaxUpdatedAt(profiles),
+      getMaxUpdatedAt(teams),
+      getMaxUpdatedAt(teamMembers),
+      getMaxUpdatedAt(approvedCourts),
+      getMaxUpdatedAt(courtRequests),
+      getMaxUpdatedAt(courtReviews),
+      getMaxUpdatedAt(reports),
+    ),
+  };
+}
+
 export async function loadNormalizedRemoteStateFromClient(client = supabase, authUserId = "", authEmail = "", options = {}) {
   const clientState = options.clientState === true;
   const scope = String(options.scope || "full");

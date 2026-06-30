@@ -1,5 +1,5 @@
 import { getAdminLevel, getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
-import { loadNormalizedRemoteStateFromClient } from "../../../src/data/repository.js";
+import { loadNormalizedDirectoryStateFromClient } from "../../../src/data/repository.js";
 import { filterStateForProfile } from "../state/load.js";
 
 export default async function handler(request, response) {
@@ -12,17 +12,12 @@ export default async function handler(request, response) {
     await readJsonBody(request);
     const context = await getAuthenticatedContext(request, { allowMissingProfile: true });
     const adminLevel = context.profileId ? await getAdminLevel(context) : 0;
-    const normalized = await loadNormalizedRemoteStateFromClient(
+    const normalized = await loadNormalizedDirectoryStateFromClient(
       context.supabase,
       context.authUserId,
       context.authUser?.email ?? "",
       {
-        clientState: true,
         isAdmin: adminLevel >= 30,
-        matchLimit: 0,
-        recruitingLimit: 0,
-        tournamentLimit: 0,
-        matchListOnly: true,
       },
     );
     const profileId = context.profileId ?? normalized?.state?.currentUserId ?? "";
