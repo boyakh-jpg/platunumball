@@ -105,6 +105,22 @@ const REQUIRED_COLUMNS = {
     "blocks",
     "fouls",
   ],
+  profile_match_summaries: [
+    "profile_id",
+    "match_count",
+    "win_count",
+    "loss_count",
+    "draw_count",
+    "points",
+    "rebounds",
+    "assists",
+    "steals",
+    "blocks",
+    "fouls",
+    "last_match_id",
+    "last_match_at",
+    "updated_at",
+  ],
   match_agreements: [
     "match_id",
     "user_id",
@@ -145,6 +161,10 @@ const REQUIRED_RPCS = [
   {
     name: "rankball_current_recruiting_post_ids",
     args: { p_profile_id: "", p_limit: 1 },
+  },
+  {
+    name: "rankball_recruiting_feed_counts",
+    args: { p_profile_id: "" },
   },
   {
     name: "rankball_recruiting_slot_position_action",
