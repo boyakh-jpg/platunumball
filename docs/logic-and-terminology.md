@@ -1,5 +1,13 @@
 # RankBall 로직/용어/디자인 기준
 
+## 2026-06-30 첫 로드 스냅샷 안정화
+
+- 홈, 경기, 매칭 첫 화면은 최초 endpoint 응답 안의 feed snapshot으로 숫자와 목록을 같이 만든다.
+- 첫 화면에서 숫자와 현재 목록 수가 다르다는 이유만으로 `scope=mine` 또는 profile 보강 호출을 자동 실행하지 않는다.
+- 매칭의 `feedCounts`는 버튼 badge 기준이며, 자동 재로딩 트리거가 아니다. 사용자가 `내가 만든 방`, `내 참여방`, `초대받음`을 누를 때만 해당 scope를 명시적으로 다시 읽는다.
+- `user_room_feed`는 같은 방이 여러 relation row를 가질 수 있으므로 list API는 raw feed row를 여유 있게 읽고 unique entity 기준으로 첫 페이지를 만든다.
+- 방 상세 모달과 기록/과거 범위처럼 사용자가 명시적으로 연 화면만 별도 상세 호출을 허용한다.
+
 ## 2026-06-30 production 테스트 인증 차단
 
 - production runtime에서는 `test-token-rankball-xxx` 인증을 기본 차단한다.
@@ -1471,12 +1479,12 @@ flowchart TD
 38-1. `/app/recruiting` SPA 진입 때 기존 목록 row가 이미 있어도 `feedCounts`가 없으면 지역 첫 페이지를 다시 읽어 count를 채운다.
 38-2. `/api/recruiting/list`는 `user_room_feed`가 정상 응답하면 feed id만 source of truth로 사용한다. direct DB fallback id와 fallback count는 feed 테이블/RPC가 없거나 실패한 경우에만 보정 경로로 쓴다. fallback joined 판정은 `player_ids`, `referee_id`, `recruiting_applications.player_id/player_ids`, `room_state.partyReserves`, `room_state.pinnedReservePlayers`, `room_state.reserveReady`를 포함한다.
 38-3. `/app/recruiting` 시작일 필터는 서버 feed 필터를 우선 사용한다. 기본값은 즉시방이며, 전체 공개 목록은 `/api/recruiting/list`가 `user_room_feed.card_json.timingType/scheduledDate` 기준으로 즉시방 또는 해당 `scheduledDate`만 내려준다. legacy 즉시방 row는 `scheduledAt/scheduled_at="즉시"`도 즉시방으로 인정한다. 즉시방과 오늘 예약방은 별도 개념으로 분리한다. 직접 링크로 열린 `post`는 날짜 필터 때문에 숨기지 않는다.
-38-4. `/app/recruiting`는 `feedCounts`가 현재 로드된 내방 수보다 크면 버튼 클릭을 기다리지 않고 `scope: "mine"` 보강 로드를 즉시 1회 실행한다. `/app/matches`는 모집 일정 재확인 전이라도 이미 클라이언트 state에 있는 관련 모집방을 숨기지 않는다.
-38-5. `/app/recruiting` 초기 목록 요청은 `includeMine=true`로 현재 사용자의 생성/참여/초대 방을 같은 응답에 포함한다. count 차이를 본 뒤 `scope: "mine"`을 다시 호출하는 로직은 누락 방 보강 fallback으로만 남긴다.
+38-4. `/app/recruiting`는 `feedCounts`와 현재 로드된 목록 수가 달라도 자동 `scope: "mine"` 보강 로드를 실행하지 않는다. 숫자와 목록은 최초 feed snapshot 기준을 우선한다.
+38-5. `/app/recruiting` 초기 목록 요청은 `includeMine=true`로 현재 사용자의 생성/참여/초대 방을 같은 응답에 포함한다. count 차이를 본 뒤 `scope: "mine"`을 다시 호출하는 로직은 제거한다.
 38-6. `/app/recruiting`에서 `내가 만든 방`, `내 참여방`, `초대받음` scope는 날짜 필터 때문에 숨겨지면 안 된다. 날짜 필터는 전체 공개 목록을 좁히는 용도이고, 내 방 scope에서는 relation 표시가 우선이다.
 39. 모집방 생성 서버 저장이 성공하면 클라이언트는 `created` feed count를 즉시 반영하고 경기 메뉴 모집 일정도 다시 읽는다.
 39-1. `/app/matches` 모집 일정 로드는 경기 목록 페이지네이션 `loading`과 별도 `recruitingScheduleLoading` 상태로 관리한다. 경기 목록 로딩 중이어도 모집 일정 확인이 불필요하게 막히면 안 된다.
-39-2. `/app` 홈 SPA 보강 로드는 `/api/matches/list includeRecruitingSchedule=true`를 호출하지 않는다. 홈 직접 진입은 `/api/home/load`가 현재 사용자 모집 일정을 포함하고, SPA 보강은 `loadMyRecruitingPosts()`로 current-user feed를 채운다. 모집 일정 재확인은 `/app/matches` 책임이다.
+39-2. `/app` 홈 첫 로드는 `/api/home/load`가 현재 사용자 모집 일정을 포함한다. 홈 화면은 진입 직후 `loadMyRecruitingPosts()`나 `/api/matches/list includeRecruitingSchedule=true`를 자동 호출하지 않는다.
 40. 모집방 선수/심판 초대는 기존 방 참가자만 보낼 수 있다. 단, 초대 수락/거절은 아직 참가자가 아니어도 자기 pending invitation이 있으면 가능하다.
 41. `inviteRecruitingReferee`는 프론트와 서버 모두 기존 방 참가자 action이다. 초대 대상 심판은 active `referee_appointments`가 있어야 하며, pending invitation만 가진 사용자는 심판/선수 초대를 새로 보낼 수 없다.
 42. 선수/심판 초대 생성, 초대 수락, 초대 거절은 stale 클라이언트 snapshot을 그대로 저장하지 않고 서버 최신 모집방 row 기준으로 replay한다.

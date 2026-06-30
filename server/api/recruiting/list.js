@@ -506,6 +506,7 @@ async function fetchRecruitingFeedPage(client, {
 } = {}) {
   if (!userRoomFeedAvailable) return null;
   const cappedLimit = Math.max(1, Math.min(200, Number(limit) || REMOTE_CLIENT_RECRUITING_LIMIT));
+  const rowLimit = Math.min(320, cappedLimit * (relations.length ? 4 : 2));
   const safeOffset = Math.max(0, Math.floor(Number(offset) || 0));
   let query = client
     .from("user_room_feed")
@@ -516,7 +517,7 @@ async function fetchRecruitingFeedPage(client, {
     .eq("status", status)
     .order("sort_at", { ascending: false, nullsFirst: false })
     .order("entity_id", { ascending: false })
-    .range(safeOffset, safeOffset + cappedLimit - 1);
+    .range(safeOffset, safeOffset + rowLimit - 1);
   if (relations.length) query = query.in("relation", relations);
   if (regionKey) query = query.eq("region_key", regionKey);
   if (timingType === "instant") query = query.or("card_json->>timingType.eq.instant,card_json->>scheduledAt.eq.즉시");
@@ -540,7 +541,7 @@ async function fetchRecruitingFeedPage(client, {
     source: includeCards && cards.length === ids.length ? "feed_card" : "feed",
     nextOffset,
     cursor: String(nextOffset),
-    exhausted: rows.length < cappedLimit,
+    exhausted: rows.length < rowLimit,
   };
 }
 
