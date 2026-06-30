@@ -798,7 +798,7 @@ async function loadNormalizedMatchList(context, body = {}, adminLevel = 0, limit
       ? { ...state, matches: (state.matches ?? []).filter((match) => match.status === "confirmed" && getMatchPlayerIds(match).includes(profileId)) }
       : state;
   const matches = scopedState.matches ?? [];
-  const responseState = body.listOnly === false && !body.recorderOnly
+  const responseState = body.listOnly === false && !body.recorderOnly && !completedOnly
     ? scopedState
     : compactMatchListState(scopedState, profileId);
   return {
