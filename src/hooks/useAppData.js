@@ -325,6 +325,10 @@ function getRecruitingPaginationOffset(page = null, fallbackOffset = 0) {
   return Number.isFinite(fallback) && fallback >= 0 ? Math.floor(fallback) : 0;
 }
 
+function getStateRecruitingPostIds(state = {}) {
+  return (state.recruitingPosts ?? []).map((post) => post?.id).filter(Boolean);
+}
+
 function getRecruitingRegionRequest(page = {}) {
   const regionScope = page.regionScope === "region" ? "region" : "local";
   const regionKey = regionScope === "region" ? String(page.regionKey ?? "").trim() : "";
@@ -816,7 +820,7 @@ export function useAppData(authUser = null) {
   }, []);
   const [profileBindings, setProfileBindings] = useState(() => readProfileBindings());
   const [adminContext, setAdminContext] = useState(EMPTY_ADMIN_CONTEXT);
-  const [matchPagination, setMatchPagination] = useState({ loading: false, exhausted: !isSupabaseConfigured, error: "", cursor: "", recruitingScheduleChecked: false, recruitingScheduleLoading: false });
+  const [matchPagination, setMatchPagination] = useState({ loading: false, exhausted: !isSupabaseConfigured, error: "", cursor: "", recruitingScheduleChecked: false, recruitingScheduleLoading: false, recruitingSchedulePostIds: [] });
   const [recruitingPagination, setRecruitingPagination] = useState({ loading: false, exhausted: !isSupabaseConfigured, error: "", cursor: "", offset: 0, regionScope: "local", regionKey: "", startFilter: "all", timingType: "", scheduledDate: "", feedCounts: null });
   const [directoryStatus, setDirectoryStatus] = useState({ loading: false, loaded: !isSupabaseConfigured, error: "" });
   const [profileRecordsLoaded, setProfileRecordsLoaded] = useState(false);
@@ -889,7 +893,7 @@ export function useAppData(authUser = null) {
       matchRecruitingSchedulePromiseRef.current = null;
       myRecruitingPostsPromiseRef.current = new Map();
       setRemoteReady(!isSupabaseConfigured);
-      setMatchPagination({ loading: false, exhausted: true, error: "", cursor: "", recruitingScheduleChecked: false, recruitingScheduleLoading: false });
+      setMatchPagination({ loading: false, exhausted: true, error: "", cursor: "", recruitingScheduleChecked: false, recruitingScheduleLoading: false, recruitingSchedulePostIds: [] });
       setRecruitingPagination({ loading: false, exhausted: true, error: "", cursor: "", offset: 0, regionScope: "local", regionKey: "", startFilter: "all", timingType: "", scheduledDate: "", feedCounts: null });
       setDirectoryStatus({ loading: false, loaded: true, error: "" });
       setProfileRecordsLoaded(false);
@@ -925,6 +929,7 @@ export function useAppData(authUser = null) {
           const initialRecruitingLimit = Number(initialLoadOptions.recruitingLimit ?? 0);
           const matchPageHasExhausted = typeof remoteMeta.matchPage?.exhausted === "boolean";
           const recruitingPageHasExhausted = typeof remoteMeta.recruitingPage?.exhausted === "boolean";
+          const recruitingScheduleChecked = Boolean(remoteMeta.matchPage?.recruitingScheduleChecked);
           cacheCurrentProfileState(authUserId, maintainedState);
           setState((prev) => withServerAdminContext(preserveLocalDiscordState(prev, maintainedState), adminContextRef.current));
           setMatchPagination({
@@ -932,8 +937,9 @@ export function useAppData(authUser = null) {
             exhausted: initialMatchLimit <= 0 || (matchPageHasExhausted ? remoteMeta.matchPage.exhausted : (maintainedState.matches?.length ?? 0) < initialMatchLimit),
             error: "",
             cursor: remoteMeta.matchPage?.cursor ?? getMatchPaginationCursor(maintainedState.matches),
-            recruitingScheduleChecked: Boolean(remoteMeta.matchPage?.recruitingScheduleChecked),
+            recruitingScheduleChecked,
             recruitingScheduleLoading: false,
+            recruitingSchedulePostIds: recruitingScheduleChecked ? getStateRecruitingPostIds(maintainedState) : [],
           });
           setRecruitingPagination({
             loading: false,
@@ -956,7 +962,7 @@ export function useAppData(authUser = null) {
       .catch((error) => {
         console.warn("Supabase hydration failed. Remote state remains empty.", error.message);
         remoteReadyRef.current = true;
-        setMatchPagination({ loading: false, exhausted: true, error: error.message ?? "state_load_failed", cursor: "", recruitingScheduleChecked: false, recruitingScheduleLoading: false });
+        setMatchPagination({ loading: false, exhausted: true, error: error.message ?? "state_load_failed", cursor: "", recruitingScheduleChecked: false, recruitingScheduleLoading: false, recruitingSchedulePostIds: [] });
         setRecruitingPagination({ loading: false, exhausted: true, error: error.message ?? "state_load_failed", cursor: "", offset: 0, regionScope: "local", regionKey: "", startFilter: "all", timingType: "", scheduledDate: "", feedCounts: null });
         if (mounted) setRemoteReady(true);
       });
@@ -1107,7 +1113,18 @@ export function useAppData(authUser = null) {
       ? { operation, ...(post?.id ? { post } : {}), notifications, createdMatch: meta.createdMatch ?? null }
       : { post, notifications, ...meta };
     return runServerAction("/api/recruiting/sync-post", payload).then(async (result) => {
-      if (result?.post || result?.createdMatch) setState((prev) => mergeServerRoomResult(prev, result));
+      if (result?.post || result?.createdMatch) {
+        setState((prev) => mergeServerRoomResult(prev, result));
+        const changedPostId = result?.post?.id;
+        if (changedPostId) {
+          setMatchPagination((prev) => {
+            const ids = Array.isArray(prev.recruitingSchedulePostIds) ? prev.recruitingSchedulePostIds : [];
+            return ids.includes(changedPostId)
+              ? prev
+              : { ...prev, recruitingSchedulePostIds: [...ids, changedPostId] };
+          });
+        }
+      }
       if (result && result.ok !== false && typeof meta.onSuccess === "function") {
         try {
           await meta.onSuccess(result);
@@ -1248,6 +1265,7 @@ export function useAppData(authUser = null) {
       const nextMatches = remoteState.matches ?? [];
       setState((prev) => mergeRemoteMatchPage(prev, remoteState));
       setMatchPagination((prev) => ({
+        ...prev,
         loading: false,
         exhausted: pageHasExhausted ? result.page.exhausted : rawMatchCount < pageLimit,
         error: "",
@@ -1292,6 +1310,7 @@ export function useAppData(authUser = null) {
           recruitingScheduleLoading: false,
           error: "",
           recruitingScheduleChecked: true,
+          recruitingSchedulePostIds: getStateRecruitingPostIds(remoteState),
           cursor: prev.cursor || result?.page?.cursor || getMatchPaginationCursor(remoteState.matches ?? []),
         }));
         return remoteState.recruitingPosts?.length ?? 0;

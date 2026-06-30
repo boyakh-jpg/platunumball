@@ -832,7 +832,7 @@ export default function Matches({ app }) {
     return baseFilteredMatches.filter((match) => !dateFilter || getMatchDate(match) === dateFilter);
   }, [baseFilteredMatches, dateFilter]);
 
-  const matchPagination = app.matchPagination ?? { loading: false, exhausted: true, error: "", recruitingScheduleChecked: false, recruitingScheduleLoading: false };
+  const matchPagination = app.matchPagination ?? { loading: false, exhausted: true, error: "", recruitingScheduleChecked: false, recruitingScheduleLoading: false, recruitingSchedulePostIds: [] };
   useEffect(() => {
     scheduleLoadRequestedRef.current = "";
   }, [app.currentUser.id]);
@@ -852,9 +852,12 @@ export default function Matches({ app }) {
       scheduleLoadRequestedRef.current = "";
     });
   }, [app.actions, app.currentUser.id, app.remoteReady, matchPagination.recruitingScheduleChecked, matchPagination.recruitingScheduleLoading]);
-  const matchPageRecruitingPosts = useMemo(() => (
-    app.state.recruitingPosts ?? []
-  ), [app.state.recruitingPosts]);
+  const matchPageRecruitingPosts = useMemo(() => {
+    if (!matchPagination.recruitingScheduleChecked) return [];
+    const scheduleIds = new Set(matchPagination.recruitingSchedulePostIds ?? []);
+    if (!scheduleIds.size) return [];
+    return (app.state.recruitingPosts ?? []).filter((post) => scheduleIds.has(post.id));
+  }, [app.state.recruitingPosts, matchPagination.recruitingScheduleChecked, matchPagination.recruitingSchedulePostIds]);
 
   const calendarMatches = useMemo(() => {
     const recruitingRooms = [...matchPageRecruitingPosts]
