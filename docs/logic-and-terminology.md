@@ -1664,3 +1664,4 @@ flowchart TD
 - 2026-06-30: `/api/recruiting/sync-post` exposes step timings only when `debugTiming:true`; timing diagnostics must not skip room, team, invite, referee, or age validation.
 - 2026-06-30: `/api/recruiting/sync-post` post-write reloads must use recruiting-post scope, not full app state scope; create/join/invite validation stays unchanged.
 - 2026-06-30: `createRecruitingPost` sync returns the server-replayed post after successful persistence and must not run a second post reload. Existing-room mutations still reload the single changed recruiting post so invite/roster state stays DB-authoritative.
+- 2026-06-30: In Supabase mode, recruiting room creation is server-first. The frontend must not run the local create reducer before `/api/recruiting/sync-post`; it merges the returned server post instead. Local/demo mode keeps the reducer path.

@@ -2179,6 +2179,13 @@ export function useAppData(authUser = null) {
         const serverReady = await ensureServerActionAvailable("/api/recruiting/sync-post", "방 생성");
         if (serverReady !== true) return serverReady;
         if (!ensureRemoteReady("방 생성")) return Promise.resolve(null);
+        if (isSupabaseConfigured) {
+          return syncRecruitingPostServer(null, [], { action: "createRecruitingPost", draft }).then((result) => {
+            if (!result || result?.ok === false) return result;
+            setRecruitingPagination((prev) => ({ ...prev, feedCounts: incrementFeedCount(prev.feedCounts, "created") }));
+            return result?.post?.id ?? result?.postId ?? null;
+          });
+        }
         let rollbackState = null;
         let createdPost = null;
         let syncedNotifications = [];
