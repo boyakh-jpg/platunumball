@@ -6,6 +6,7 @@
 - `user_room_feed.feed_scope='public'` row는 공개 지역 모집 목록용 feed다. 이 row는 서버 API/service-role 전용 source이며 브라우저 직접 read 대상이 아니다.
 - `profile_id='*'`는 기존 primary key와 운영 전환 fallback을 위한 legacy 저장키다. 신규 목록 API는 가능한 경우 `feed_scope='public'`을 우선 사용하고, `feed_scope` 컬럼이 없는 DB에서만 legacy `profile_id='*'` 조회로 물러난다.
 - `region_public` relation은 `feed_scope='public'`이어야 하고, `owner`/`participant`/`invited`/`referee` relation은 `feed_scope='profile'`이어야 한다.
+- `/api/matches/list`와 `/api/recruiting/list`는 목록/기록/심판/단건 보정에서도 broad `loadNormalizedRemoteStateFromClient()` fallback을 쓰지 않는다. feed card가 없거나 부족한 대상만 row 단위 compact load로 보정한다.
 
 ## 2026-06-30 프로필/모집 legacy 기본값 기준
 

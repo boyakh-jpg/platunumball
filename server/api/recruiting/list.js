@@ -4,12 +4,10 @@ import {
   createProfileShell,
   fromRemoteProfile,
   getRemoteAppSettings,
-  loadNormalizedRemoteStateFromClient,
   normalizeState,
   REMOTE_CLIENT_HOME_LOCAL_RECRUITING_LIMIT,
   REMOTE_CLIENT_RECRUITING_LIMIT,
 } from "../../../src/data/repository.js";
-import { filterStateForProfile } from "../state/load.js";
 
 let currentUserRecruitingRpcAvailable = true;
 let userRoomFeedAvailable = true;
@@ -187,28 +185,6 @@ function getCappedLimit(value) {
   const number = Number(value);
   if (!Number.isFinite(number) || number <= 0) return REMOTE_CLIENT_RECRUITING_LIMIT;
   return Math.max(1, Math.min(RECRUITING_PUBLIC_PAGE_MAX_LIMIT, Math.floor(number)));
-}
-
-function mergeById(current = [], incoming = []) {
-  const merged = new Map((current ?? []).filter((item) => item?.id).map((item) => [item.id, item]));
-  (incoming ?? []).forEach((item) => {
-    if (item?.id) merged.set(item.id, item);
-  });
-  return [...merged.values()];
-}
-
-function mergeStateById(current = {}, incoming = {}) {
-  return {
-    ...current,
-    ...incoming,
-    users: mergeById(current.users, incoming.users),
-    teams: mergeById(current.teams, incoming.teams),
-    recruitingPosts: mergeById(current.recruitingPosts, incoming.recruitingPosts),
-    settings: {
-      ...(current.settings ?? {}),
-      ...(incoming.settings ?? {}),
-    },
-  };
 }
 
 function normalizeFeedCard(row = {}) {
@@ -1409,72 +1385,30 @@ export default async function handler(request, response) {
       }, timing, debugTiming);
       return;
     }
-    const normalized = await timing.track("state", () => loadNormalizedRemoteStateFromClient(
-      context.supabase,
-      context.authUserId,
-      context.authUser?.email ?? "",
-      {
-        clientState: true,
-        isAdmin: adminLevel >= 30,
-        scope: "recruiting",
-        recruitingListOnly: listOnly,
-        recruitingPostIds: targetPostIds,
-        recruitingLimit: 0,
-        matchLimit: 0,
-        tournamentLimit: 0,
-      },
-    ));
-    const profileId = context.profileId ?? normalized?.state?.currentUserId ?? "";
-    const pageState = filterStateForProfile(normalized?.state ?? {}, profileId, adminLevel >= 30);
-    const pagePosts = pageState.recruitingPosts ?? [];
-    let state = pageState;
-    if (includeMine && !mineOnly) {
-      const loadedIds = new Set(pagePosts.map((post) => post.id));
-      const missingMineIds = currentUserPostIds.filter((postId) => !loadedIds.has(postId));
-      if (missingMineIds.length) {
-        const mineNormalized = await timing.track("missingMine", () => loadNormalizedRemoteStateFromClient(
-          context.supabase,
-          context.authUserId,
-          context.authUser?.email ?? "",
-          {
-            clientState: true,
-            isAdmin: adminLevel >= 30,
-            scope: "recruiting",
-            recruitingListOnly: listOnly,
-            recruitingPostIds: missingMineIds,
-            recruitingLimit: 0,
-            matchLimit: 0,
-            tournamentLimit: 0,
-          },
-        ));
-        const mineState = filterStateForProfile(mineNormalized?.state ?? {}, profileId, adminLevel >= 30);
-        state = mergeStateById(pageState, mineState);
-      }
-    }
-    const responseState = listOnly ? compactRecruitingListState(state, profileId) : state;
+    const compactResult = await timing.track("compact", () => loadCompactRecruitingList(context, {
+      adminLevel,
+      currentUserPostIds,
+      explicitPostIds,
+      includeMine,
+      mineOnly,
+      pagePostIds,
+      pageCards,
+      pageSource,
+      pageExhausted,
+      pageNextOffset,
+      feedCounts,
+      limit,
+      offset,
+      regionScope: regionKey ? "region" : regionScope,
+      regionKey,
+      startFilter: startFilter.startFilter,
+      timingType: startFilter.timingType,
+      scheduledDate: startFilter.scheduledDate,
+      debugPage: debugTiming,
+    }));
     sendTimedJson(response, 200, {
       ok: true,
-      state: {
-        ...responseState,
-        matches: [],
-        tournaments: [],
-      },
-      page: {
-        limit,
-        count: pagePosts.length,
-        offset,
-        nextOffset: Number.isFinite(Number(pageNextOffset)) ? Math.max(offset, Math.floor(Number(pageNextOffset))) : offset + pagePostIds.length,
-        cursor: String(Number.isFinite(Number(pageNextOffset)) ? Math.max(offset, Math.floor(Number(pageNextOffset))) : offset + pagePostIds.length),
-        exhausted: mineOnly || Boolean(explicitPostIds.length) || (typeof pageExhausted === "boolean" ? pageExhausted : pagePostIds.length < limit),
-        regionScope: regionKey ? "region" : regionScope,
-        regionKey,
-        startFilter: startFilter.startFilter,
-        timingType: startFilter.timingType,
-        scheduledDate: startFilter.scheduledDate,
-        source: pageSource || "row",
-        feedCounts,
-      },
-      updatedAt: normalized?.updatedAt ?? 0,
+      ...compactResult,
     }, timing, debugTiming);
   } catch (error) {
     sendTimedJson(response, error.statusCode || 500, { error: error.message || "recruiting_list_failed" }, timing, debugTiming);
