@@ -772,14 +772,14 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
       if (result?.state) return attachRemoteMeta(normalizeServerState(result.state), {
         matchPage: result.page ?? null,
         recruitingPage: result.recruitingPage ?? null,
-        directoryLoaded: true,
+        directoryLoaded: false,
       });
     }
     if (options.endpoint) {
       return attachRemoteMeta(await loadProfileState(authUserId, authEmail), {
         matchPage: { exhausted: true, recruitingScheduleChecked: false },
         recruitingPage: { exhausted: true, feedCounts: null },
-        directoryLoaded: ["teamsList", "teamDetail", "homeLoad"].includes(options.endpoint),
+        directoryLoaded: ["teamsList", "teamDetail"].includes(options.endpoint),
         profileRecordsLoaded: false,
       });
     }
@@ -796,7 +796,7 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
     return attachRemoteMeta(await loadProfileState(authUserId, authEmail), {
       matchPage: { exhausted: true, recruitingScheduleChecked: false },
       recruitingPage: { exhausted: true, feedCounts: null },
-      directoryLoaded: ["teamsList", "teamDetail", "homeLoad"].includes(options.endpoint),
+      directoryLoaded: ["teamsList", "teamDetail"].includes(options.endpoint),
       profileRecordsLoaded: false,
     });
   }

@@ -103,8 +103,9 @@ export async function loadCurrentUserTeamInvitations(supabase, profileId = "") {
   return (data ?? []).map(fromRemoteTeamInvitation);
 }
 
-export async function loadCurrentUserTeams(supabase, profileId = "", extraTeamIds = []) {
+export async function loadCurrentUserTeams(supabase, profileId = "", extraTeamIds = [], options = {}) {
   if (!profileId) return { teams: [], users: [] };
+  const includeTeamMemberProfiles = options.includeTeamMemberProfiles !== false;
   const { data: ownMemberships, error: ownMembershipsError } = await supabase
     .from("team_members")
     .select("team_id")
@@ -121,7 +122,9 @@ export async function loadCurrentUserTeams(supabase, profileId = "", extraTeamId
   if (teamError) throw teamError;
   if (memberError) throw memberError;
 
-  const memberProfileIds = unique((memberRows ?? []).map((row) => row.user_id)).filter((userId) => userId !== profileId);
+  const memberProfileIds = includeTeamMemberProfiles
+    ? unique((memberRows ?? []).map((row) => row.user_id)).filter((userId) => userId !== profileId)
+    : [];
   const { data: profileRows, error: profileError } = memberProfileIds.length
     ? await supabase.from("public_profiles").select(PROFILE_TEAM_MEMBER_COLUMNS).in("id", memberProfileIds)
     : { data: [], error: null };
@@ -140,7 +143,7 @@ export async function loadCurrentUserTeams(supabase, profileId = "", extraTeamId
   };
 }
 
-export async function loadCurrentProfileState(context) {
+export async function loadCurrentProfileState(context, options = {}) {
   const profile = context.profile ?? null;
   const profileId = profile?.id ?? "";
   const [matchSummary, teamInvitations] = await Promise.all([
@@ -155,6 +158,7 @@ export async function loadCurrentProfileState(context) {
     context.supabase,
     profileId,
     teamInvitations.filter((invitation) => invitation.status === "pending").map((invitation) => invitation.teamId),
+    { includeTeamMemberProfiles: options.includeTeamMemberProfiles !== false },
   );
   const userById = new Map(currentUserTeams.users.map((item) => [item.id, item]));
   userById.set(user.id, user);
