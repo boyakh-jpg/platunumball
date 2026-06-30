@@ -281,7 +281,7 @@ function mergeRecruitingPostsById(current = [], incoming = []) {
     if (!shouldUseIncomingRoomRow(item, existing)) return;
     const next = preserveExistingWhenEmpty(item, existing, ["applicants"]);
     if (existing?.roomState && item?.roomState) {
-      next.roomState = preserveExistingWhenEmpty(item.roomState, existing.roomState, ["chatMessages", "kickLog", "invitations"]);
+      next.roomState = preserveExistingWhenEmpty(item.roomState, existing.roomState, ["chatMessages", "kickLog"]);
     }
     merged.set(item.id, next);
   });

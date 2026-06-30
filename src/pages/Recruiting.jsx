@@ -1566,7 +1566,7 @@ function InvitationPanel({ invitations, userById, teams, currentUserId, alreadyA
             </PlayerHoverCard>
             {mine ? (
               <span className="arena-invite-actions">
-                <Button type="button" size="sm" onClick={() => onAccept(invitation.id)}>수락</Button>
+                <Button type="button" size="sm" onClick={() => onAccept(invitation)}>수락</Button>
                 <Button type="button" size="sm" variant="secondary" onClick={() => onDecline(invitation.id)}>거절</Button>
               </span>
             ) : (
@@ -1851,6 +1851,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
   const [slotActionDraft, setSlotActionDraft] = useState(null);
   const [roomEditDraftByPost, setRoomEditDraftByPost] = useState({});
   const [refereeInviteQueryByPost, setRefereeInviteQueryByPost] = useState({});
+  const [pendingRosterOpen, setPendingRosterOpen] = useState(null);
 
   const closeModal = () => {
     setInviteDraft(null);
@@ -1942,6 +1943,33 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
     setInviteDraft(null);
     setSlotActionDraft({ postId: roomPost.id, sideName, reserve, playerId, entryId, anchor: getCommandAnchor(event) });
   };
+  const shouldOpenRosterAfterAccept = (roomPost, invitation = {}) => {
+    const teamId = invitation.teamId || roomPost?.targetTeamId || "";
+    return Boolean(
+      teamId &&
+      invitation.role !== "referee" &&
+      roomPost?.visibility === "private" &&
+      roomPost?.hostJoinMode === "team" &&
+      (invitation.side || "teamB") === "teamB" &&
+      !invitation.reserve
+    );
+  };
+  const acceptRoomInvitation = async (roomPost, invitation = {}) => {
+    if (!invitation.id) return;
+    if (shouldOpenRosterAfterAccept(roomPost, invitation)) {
+      setPendingRosterOpen({
+        postId: roomPost.id,
+        teamId: invitation.teamId || roomPost.targetTeamId,
+        sideName: invitation.side || "teamB",
+      });
+    }
+    try {
+      const result = await app.actions.acceptRecruitingInvitation(roomPost.id, invitation.id);
+      if (!result || result.ok === false) setPendingRosterOpen(null);
+    } catch {
+      setPendingRosterOpen(null);
+    }
+  };
   const getRoomEditDraftByPost = (roomPost) => roomEditDraftByPost[roomPost.id] ?? null;
   const openRoomEdit = (roomPost) => {
     setRoomEditDraftByPost((current) => ({ ...current, [roomPost.id]: getRoomEditDraft(roomPost) }));
@@ -1988,6 +2016,38 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
     app.actions.inviteRecruitingPlayers(roomPost.id, invite);
     setInviteDraft(null);
   };
+  useEffect(() => {
+    if (!pendingRosterOpen || !selectedPost || selectedPost.id !== pendingRosterOpen.postId) return;
+    const roomState = selectedPost.roomState ?? {};
+    const lobby = getRecruitingLobby(selectedPost, app.state);
+    const targetEntry = (lobby.entries ?? []).find((entry) => (
+      entry.kind === "team" &&
+      entry.side === pendingRosterOpen.sideName &&
+      entry.team?.id === pendingRosterOpen.teamId &&
+      (
+        entry.playerId === app.currentUser.id ||
+        entry.players?.includes(app.currentUser.id) ||
+        entry.reserves?.includes(app.currentUser.id) ||
+        roomState.partyLeaders?.[entry.id] === app.currentUser.id
+      )
+    ));
+    if (!targetEntry) return;
+    const partyLeaderId = roomState.partyLeaders?.[targetEntry.id] ?? (targetEntry.fixed ? selectedPost.playerId : targetEntry.playerId) ?? "";
+    if (partyLeaderId !== app.currentUser.id) {
+      setPendingRosterOpen(null);
+      return;
+    }
+    setInviteDraft(null);
+    setSlotActionDraft({
+      postId: selectedPost.id,
+      sideName: targetEntry.side,
+      reserve: false,
+      playerId: app.currentUser.id,
+      entryId: targetEntry.id,
+      anchor: null,
+    });
+    setPendingRosterOpen(null);
+  }, [app.currentUser.id, app.state, pendingRosterOpen, selectedPost]);
   const confirmQueueRoom = async (roomPost) => {
     const matchId = await app.actions.confirmRecruitingMatch(roomPost.id);
     if (!matchId) return;
@@ -2575,7 +2635,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                   teams={app.state.teams}
                   currentUserId={app.currentUser.id}
                   alreadyApplied={alreadyApplied}
-                  onAccept={(invitationId) => app.actions.acceptRecruitingInvitation(selectedPost.id, invitationId)}
+                  onAccept={(invitation) => acceptRoomInvitation(selectedPost, invitation)}
                   onDecline={(invitationId) => app.actions.declineRecruitingInvitation(selectedPost.id, invitationId)}
                 />
               ) : null}
