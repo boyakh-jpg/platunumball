@@ -409,7 +409,7 @@ async function validateMatchRosterEligibility(supabase, match = {}) {
 }
 
 function validateResultShape(match = {}, action = "sync") {
-  if (action !== "submitMatchResult" || !match.result) return;
+  if (!RESULT_REPLACE_MATCH_ACTIONS.has(action) || !match.result) return;
 
   const scoreA = toFiniteNumber(match.result.scoreA, -1);
   const scoreB = toFiniteNumber(match.result.scoreB, -1);
@@ -720,6 +720,11 @@ const REFEREE_ELIGIBILITY_ACTIONS = new Set([
   "submitMatchResult",
 ]);
 
+const RESULT_REPLACE_MATCH_ACTIONS = new Set([
+  "submitMatchResult",
+  "resumeMatchApproval",
+]);
+
 const ROSTER_LOCKED_MATCH_ACTIONS = new Set([
   ...PARTICIPANT_MATCH_ACTIONS,
   "checkInMatchPlayer",
@@ -807,7 +812,7 @@ function validateParticipantResultUnchanged(action, existingResult, existingStat
 }
 
 function validateResultOnlyOnSubmission(action, existingResult, existingStats, nextMatch) {
-  if (action === "submitMatchResult" || !nextMatch.result) return;
+  if (RESULT_REPLACE_MATCH_ACTIONS.has(action) || !nextMatch.result) return;
   const existingSnapshot = normalizeResultSnapshot(existingResult, existingStats);
   const nextSnapshot = normalizeResultSnapshot(nextMatch.result);
   if (!existingSnapshot && !nextSnapshot) return;
@@ -817,7 +822,7 @@ function validateResultOnlyOnSubmission(action, existingResult, existingStats, n
 }
 
 function canCommitRatingResult(action, existingResult, nextMatch) {
-  return action === "approveMatch" && Boolean(existingResult) && nextMatch?.status === "confirmed";
+  return ["approveMatch", "resumeMatchApproval"].includes(action) && Boolean(existingResult) && nextMatch?.status === "confirmed";
 }
 
 const SQL_REDUCER_MATCH_ACTIONS = new Set([
@@ -1043,6 +1048,7 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
   if (expectedUpdatedAt) matchRow.__expectedUpdatedAt = expectedUpdatedAt;
   const playerRows = getSidePlayerRows(match);
   const shouldCommitRating = canCommitRatingResult(action, existingResult, match);
+  const shouldReplaceResult = RESULT_REPLACE_MATCH_ACTIONS.has(action);
   if (shouldCommitRating && !ratingCommit) reject(400, "missing_rating_commit");
   if (action !== "submitMatchResult" && existingMatch) {
     if (action !== "updateMatchRoomRules") {
@@ -1052,8 +1058,10 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
         visibility: matchRow.visibility,
       };
     }
-    matchRow.score_a = Number(existingMatch.score_a ?? 0);
-    matchRow.score_b = Number(existingMatch.score_b ?? 0);
+    if (!shouldReplaceResult) {
+      matchRow.score_a = Number(existingMatch.score_a ?? 0);
+      matchRow.score_b = Number(existingMatch.score_b ?? 0);
+    }
     if (shouldCommitRating) {
       matchRow.status = existingMatch.status ?? "approval";
       matchRow.rating_result = existingMatch.rating_result ?? null;
@@ -1064,8 +1072,8 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
       matchRow.team_rating_result = existingMatch.team_rating_result ?? null;
     }
   }
-  const resultRow = action === "submitMatchResult" ? toResultRow(match, context.profileId) : null;
-  const statRows = action === "submitMatchResult" ? toStatRows(match) : [];
+  const resultRow = shouldReplaceResult ? toResultRow(match, context.profileId) : null;
+  const statRows = shouldReplaceResult ? toStatRows(match) : [];
   const agreementRows = toAgreementRows(match);
   const approvalRows = toApprovalRows(match);
   const disputeRows = toDisputeRows(match);
@@ -1082,7 +1090,7 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
     p_approval_rows: approvalRows,
     p_dispute_rows: disputeRows,
     p_notification_rows: notificationRows,
-    p_replace_result: action === "submitMatchResult",
+    p_replace_result: shouldReplaceResult,
   });
   if (persistError) throw persistError;
   const ratingCommitResult = shouldCommitRating ? await commitMatchRating(context, ratingCommit) : null;

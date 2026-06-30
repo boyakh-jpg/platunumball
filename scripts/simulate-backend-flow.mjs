@@ -955,12 +955,28 @@ async function runDisputeResumeThumbsScenario({
   match = disputeResult?.match;
   assertFlow(match?.status === "disputed" && (match.disputes ?? []).some((item) => item.by === opponentId), "dispute not persisted", match);
 
+  const disputeDraft = makeResult(match);
+  disputeDraft.scoreA = 22;
+  disputeDraft.scoreB = 14;
+  const teamAPlayer = match.teamA?.players?.[0];
+  const teamBPlayer = match.teamB?.players?.[0];
+  disputeDraft.playerStats[teamAPlayer].points = 22;
+  disputeDraft.playerStats[teamBPlayer].points = 14;
+  const draftResult = await step(`${ids.label}:submitMatchResult:disputeDraft`, () => syncMatchAs(hostLogin, {
+    action: "submitMatchResult",
+    matchId: ids.matchId,
+    result: disputeDraft,
+  }));
+  match = draftResult?.match;
+  assertFlow(match?.status === "disputed" && match?.disputeDraftResult?.scoreA === 22 && match?.disputeDraftResult?.scoreB === 14, "dispute draft edit not persisted", match);
+
   const resumeResult = await step(`${ids.label}:resumeMatchApproval`, () => syncMatchAs(hostLogin, {
     action: "resumeMatchApproval",
     matchId: ids.matchId,
   }));
   match = resumeResult?.match;
   assertFlow(match?.status === "confirmed", "dispute resume did not confirm match", match);
+  assertFlow(match?.result?.scoreA === 22 && match?.result?.scoreB === 14, "dispute draft result not committed", match);
 
   const thumbsResult = await step(`${ids.label}:submitMatchThumbs`, () => syncMatchAs(hostLogin, {
     action: "submitMatchThumbs",
