@@ -148,7 +148,8 @@ export function getActiveTeamPlayerIds(team = {}, capacity = Infinity, playerIds
     : getSelectableTeamPlayerIds(team).slice(0, capacity);
 }
 
-function getTeamEntryPlayerIds(team = null, capacity = Infinity, playerIds = [], fallbackPlayerId = "") {
+function getTeamEntryPlayerIds(team = null, capacity = Infinity, playerIds, fallbackPlayerId = "") {
+  const hasExplicitPlayerIds = Array.isArray(playerIds);
   const activePlayerIds = team
     ? getActiveTeamPlayerIds(team, capacity, playerIds)
     : unique(playerIds ?? []).slice(0, capacity);
@@ -156,9 +157,10 @@ function getTeamEntryPlayerIds(team = null, capacity = Infinity, playerIds = [],
 
   const teamPlayerIds = getTeamPlayerIds(team);
   const selectableIds = getSelectableTeamPlayerIds(team);
-  if (fallbackPlayerId && (!team || teamPlayerIds.includes(fallbackPlayerId) || (!teamPlayerIds.length && !selectableIds.length))) {
+  if (fallbackPlayerId) {
     return [fallbackPlayerId].slice(0, capacity);
   }
+  if (hasExplicitPlayerIds) return [];
   return selectableIds.slice(0, capacity);
 }
 

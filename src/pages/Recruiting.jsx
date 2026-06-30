@@ -1855,6 +1855,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
   const [roomEditDraftByPost, setRoomEditDraftByPost] = useState({});
   const [refereeInviteQueryByPost, setRefereeInviteQueryByPost] = useState({});
   const [pendingRosterOpen, setPendingRosterOpen] = useState(null);
+  const [confirmingMatchId, setConfirmingMatchId] = useState("");
 
   const closeModal = () => {
     setInviteDraft(null);
@@ -2052,10 +2053,16 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
     setPendingRosterOpen(null);
   }, [app.currentUser.id, app.state, pendingRosterOpen, selectedPost]);
   const confirmQueueRoom = async (roomPost) => {
-    const matchId = await app.actions.confirmRecruitingMatch(roomPost.id);
-    if (!matchId) return;
-    closeModal();
-    onOpenMatch?.(matchId);
+    if (!roomPost?.id || confirmingMatchId === roomPost.id) return;
+    setConfirmingMatchId(roomPost.id);
+    try {
+      const matchId = await app.actions.confirmRecruitingMatch(roomPost.id);
+      if (!matchId) return;
+      closeModal();
+      onOpenMatch?.(matchId);
+    } finally {
+      setConfirmingMatchId((current) => (current === roomPost.id ? "" : current));
+    }
   };
   if (!selectedPost) return null;
 
@@ -3086,11 +3093,11 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                   <Button
                     type="button"
                     variant="primary"
-                    disabled={!lobby.canConfirm || !roomTimingStatus.canConfirm}
+                    disabled={!lobby.canConfirm || !roomTimingStatus.canConfirm || confirmingMatchId === selectedPost.id}
                     onClick={() => confirmQueueRoom(selectedPost)}
                   >
                     <Swords size={18} />
-                    경기 확정
+                    {confirmingMatchId === selectedPost.id ? "확정 중" : "경기 확정"}
                   </Button>
                 ) : null}
                 {!matchRoom && alreadyApplied ? (
