@@ -270,7 +270,10 @@ export default async function handler(request, response) {
     const limit = getBatchLimit(body.limit);
     const supabase = getSupabaseAdminClient();
     const now = new Date().toISOString();
-    const maintenance = await runSystemMaintenance(supabase, { limit: body.maintenanceLimit });
+    const maintenance = await runSystemMaintenance(supabase, {
+      limit: body.maintenanceLimit,
+      includeRecruitingCapacityCleanup: false,
+    });
 
     const { data: queuedRows, error: queueError } = await supabase
       .from("discord_notification_deliveries")

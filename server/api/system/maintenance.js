@@ -263,6 +263,7 @@ async function normalizeRecruitingSideCapacity(client, limit, now) {
 export async function runSystemMaintenance(client = getSupabaseAdminClient(), options = {}) {
   const limit = normalizeLimit(options.limit ?? process.env.RANKBALL_MAINTENANCE_MATCH_LIMIT ?? DEFAULT_MATCH_LIMIT);
   const now = options.now instanceof Date ? options.now : new Date();
+  const includeRecruitingCapacityCleanup = options.includeRecruitingCapacityCleanup === true;
   const candidateIds = await getCandidateMatchIds(client, limit, now.getTime());
   const results = [];
 
@@ -275,7 +276,9 @@ export async function runSystemMaintenance(client = getSupabaseAdminClient(), op
     candidateCount: candidateIds.length,
     confirmedCount: results.filter((result) => result.ok).length,
     feedCleanup: await cleanupRoomFeed(client, now),
-    recruitingCapacityCleanup: await normalizeRecruitingSideCapacity(client, limit, now),
+    recruitingCapacityCleanup: includeRecruitingCapacityCleanup
+      ? await normalizeRecruitingSideCapacity(client, limit, now)
+      : { ok: true, skipped: true, reason: "disabled" },
     results,
   };
 }
@@ -291,7 +294,10 @@ export default async function handler(request, response) {
     assertAccess(request);
     const client = getSupabaseAdminClient();
     const body = request.method === "POST" ? await readJsonBody(request) : {};
-    sendJson(response, 200, await runSystemMaintenance(client, { limit: normalizeLimit(body.limit ?? getLimit(request)) }));
+    sendJson(response, 200, await runSystemMaintenance(client, {
+      limit: normalizeLimit(body.limit ?? getLimit(request)),
+      includeRecruitingCapacityCleanup: body.includeRecruitingCapacityCleanup !== false,
+    }));
   } catch (error) {
     console.error("System maintenance failed.", error);
     sendJson(response, error.statusCode || 500, { error: error.message || "maintenance_failed" });
