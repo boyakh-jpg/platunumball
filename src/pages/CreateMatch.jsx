@@ -842,7 +842,7 @@ export default function CreateMatch({ app }) {
           else assignTeam(team.id, "A");
         }}
       >
-        <TeamHoverCard team={team} as="span"><strong>{team.name}</strong></TeamHoverCard>
+        <strong>{team.name}</strong>
         <span>{team.region} · {team.mmr} MMR · {team.homeCourt}</span>
         <em>{getTeamHashtag(team)} · {isFavoriteTeam(team) ? "즐겨찾기" : actionLabel}</em>
       </button>
@@ -858,7 +858,7 @@ export default function CreateMatch({ app }) {
         onMouseDown={(event) => event.preventDefault()}
       >
         <button type="button" className="search-picker-result-main" onClick={() => selectTeamB(team.id)}>
-          <TeamHoverCard team={team} as="span"><strong>{team.name}</strong></TeamHoverCard>
+          <strong>{team.name}</strong>
           <span>{team.region} · {team.mmr} MMR · {team.homeCourt}</span>
           <em>{getTeamHashtag(team)} · {favorite ? "즐겨찾기" : mmrBlocked ? "MMR 범위 밖" : "B사이드"}</em>
         </button>
@@ -1447,7 +1447,7 @@ export default function CreateMatch({ app }) {
                   />
                   {selectedTeamB ? (
                     <div className="team-search-selected">
-                      <TeamHoverCard team={selectedTeamB} as="span"><strong>{selectedTeamB.name}</strong></TeamHoverCard>
+                      <strong>{selectedTeamB.name}</strong>
                       <span>{selectedTeamB.region} · {selectedTeamB.mmr} MMR</span>
                     </div>
                   ) : null}
