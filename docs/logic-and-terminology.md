@@ -1,5 +1,13 @@
 # RankBall 로직/용어/디자인 기준
 
+## 2026-06-30 선수 통계 summary feed
+
+- 확정 경기의 선수 누적 통계는 `profile_match_summaries`에 저장한다.
+- `matches`, `match_results`, `match_players`, `player_match_stats`가 확정 경기 기준으로 바뀌면 DB trigger가 해당 선수 summary를 다시 만든다.
+- summary는 단순 +1 증분이 아니라 `status='confirmed'` 경기 기준 재집계다. 기록 수정, 이의 처리 뒤에도 누적값이 틀어지면 안 된다.
+- `/api/profile/me`는 현재 사용자 `matchSummary`만 얇게 읽는다. 검색, 경기 목록, 홈 목록에는 선수 누적 통계를 붙이지 않는다.
+- 팀/심판 summary는 아직 별도 과제다. 심판은 `trust_feedback`, 신고, 임명 상태까지 엮이므로 선수 summary와 같은 trigger로 단순 대체하지 않는다.
+
 ## 2026-06-30 egress 축소
 
 - 모집 `feedCounts`는 `rankball_recruiting_feed_counts(profileId)` RPC가 `created`, `joined`, `invited` 숫자만 반환한다. 초대 카드, 수락/거절, 방 상세 데이터는 `user_room_feed.card_json` 또는 상세 API가 계속 담당한다.

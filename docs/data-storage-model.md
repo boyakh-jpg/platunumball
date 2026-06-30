@@ -1,5 +1,17 @@
 # RankBall 데이터 저장 모델
 
+## 2026-06-30 profile match summary
+
+- `profile_match_summaries`는 확정 경기 기준 선수 누적 통계 캐시다.
+- key는 `profile_id` 1 row다. 저장 값은 경기 수, 승/패/무, 기본 박스스코어 합계, 마지막 경기 참조다.
+- 갱신 경로는 DB trigger다:
+  - `matches` status/confirmed/score 변경
+  - `match_results` 변경
+  - `match_players` 변경
+  - `player_match_stats` 변경
+- trigger는 확정 경기일 때만 summary를 재집계한다. page load, 검색, 목록 응답에서 전체 match scan을 하지 않는다.
+- `/api/profile/me`는 현재 사용자 summary만 읽는다. 다른 프로필, 팀, 심판 summary는 별도 설계 후 추가한다.
+
 ## 현재 전환 원칙
 
 - Supabase가 설정된 환경에서는 `mockData` / `localStorage`를 앱 데이터 원천으로 쓰지 않는다.

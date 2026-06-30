@@ -13,6 +13,7 @@ const PROFILE_TEAM_MEMBER_COLUMNS = "id,name,handle,hashtag,position,trust_score
 const TEAM_COLUMNS = "id,name,home_court,region,mmr,wins,losses,accent,deleted_at";
 const TEAM_MEMBER_COLUMNS = "team_id,user_id,role";
 const TEAM_INVITATION_COLUMNS = "id,team_id,from_user_id,target_user_id,role,status,created_at,updated_at";
+const PROFILE_MATCH_SUMMARY_COLUMNS = "profile_id,match_count,win_count,loss_count,draw_count,points,rebounds,assists,steals,blocks,fouls,last_match_id,last_match_at,updated_at";
 
 function unique(values = []) {
   return [...new Set(values.filter(Boolean))];
@@ -49,6 +50,43 @@ function fromTeamMemberProfile(row = {}) {
     onboardingComplete: profile.onboardingComplete,
     ratings: profile.ratings,
   };
+}
+
+function fromProfileMatchSummary(row = {}) {
+  const matchCount = Number(row.match_count ?? 0);
+  const fouls = Number(row.fouls ?? 0);
+  return {
+    matchCount,
+    wins: Number(row.win_count ?? 0),
+    losses: Number(row.loss_count ?? 0),
+    draws: Number(row.draw_count ?? 0),
+    averageFouls: matchCount ? fouls / matchCount : 0,
+    totals: {
+      points: Number(row.points ?? 0),
+      rebounds: Number(row.rebounds ?? 0),
+      assists: Number(row.assists ?? 0),
+      steals: Number(row.steals ?? 0),
+      blocks: Number(row.blocks ?? 0),
+      fouls,
+    },
+    lastMatchId: row.last_match_id ?? "",
+    lastMatchAt: row.last_match_at ?? null,
+    updatedAt: row.updated_at ?? null,
+  };
+}
+
+async function loadCurrentUserMatchSummary(supabase, profileId = "") {
+  if (!profileId) return null;
+  const { data, error } = await supabase
+    .from("profile_match_summaries")
+    .select(PROFILE_MATCH_SUMMARY_COLUMNS)
+    .eq("profile_id", profileId)
+    .maybeSingle();
+  if (error) {
+    if (["42P01", "PGRST116", "PGRST205"].includes(error.code)) return null;
+    throw error;
+  }
+  return data ? fromProfileMatchSummary(data) : null;
 }
 
 export async function loadCurrentUserTeamInvitations(supabase, profileId = "") {
@@ -104,8 +142,9 @@ export async function loadCurrentUserTeams(supabase, profileId = "", extraTeamId
 
 export async function loadCurrentProfileState(context) {
   const profile = context.profile ?? null;
+  const matchSummary = await loadCurrentUserMatchSummary(context.supabase, profile?.id ?? "");
   const user = profile
-    ? fromRemoteProfile(profile)
+    ? { ...fromRemoteProfile(profile), matchSummary }
     : createProfileShell(context.authUserId, context.authUser?.email ?? "");
   const remoteAppSettings = getRemoteAppSettings(profile);
   const teamInvitations = await loadCurrentUserTeamInvitations(context.supabase, profile?.id ?? "");

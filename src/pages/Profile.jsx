@@ -66,6 +66,12 @@ function getAverageFouls(matches = [], userId) {
   return total / confirmed.length;
 }
 
+function getProfileAverageFouls(user = {}, matches = []) {
+  const summaryAverage = Number(user.matchSummary?.averageFouls);
+  if (user.matchSummary && Number.isFinite(summaryAverage)) return summaryAverage;
+  return getAverageFouls(matches, user.id);
+}
+
 function formatDate(date) {
   if (!date) return "";
   return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, "0")}.${String(date.getDate()).padStart(2, "0")}`;
@@ -134,7 +140,7 @@ export default function Profile({ app }) {
     .filter((match) => match.status === "confirmed" && getUserSide(match, user.id))
     .sort(compareRecent)
     .slice(0, 6);
-  const averageFouls = getAverageFouls(app.state.matches, user.id);
+  const averageFouls = getProfileAverageFouls(user, app.state.matches);
   const discordLinked = isDiscordLinked(user);
   const discordChannel = getDiscordChannel(app.state.settings);
   const discordProfileUrl = getDiscordProfileUrl(user);
