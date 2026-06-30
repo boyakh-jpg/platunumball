@@ -459,7 +459,7 @@ export function getRecruitingHostEntry(post = {}, state = {}) {
     : [];
   const fallbackTeamPlayerId = post.playerId && getTeamPlayerIds(team).includes(post.playerId)
     ? post.playerId
-    : getSelectableTeamPlayerIds(team)[0];
+    : getSelectableTeamPlayerIds(team)[0] ?? (!team && post.playerId ? post.playerId : "");
   const players = joinMode === "team"
     ? (activeTeamPlayerIds.length ? activeTeamPlayerIds : [fallbackTeamPlayerId].filter(Boolean))
     : [post.playerId].filter(Boolean);
