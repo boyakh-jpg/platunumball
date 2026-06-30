@@ -6,6 +6,7 @@ import {
   getRemoteAppSettings,
   loadNormalizedRemoteStateFromClient,
   normalizeState,
+  REMOTE_CLIENT_HOME_LOCAL_RECRUITING_LIMIT,
   REMOTE_CLIENT_RECRUITING_LIMIT,
 } from "../../../src/data/repository.js";
 import { filterStateForProfile } from "../state/load.js";
@@ -24,6 +25,10 @@ const RECRUITING_PUBLIC_PAGE_MAX_LIMIT = 80;
 const RECRUITING_FEED_ROW_MAX_LIMIT = 320;
 const RECRUITING_FEED_RELATION_ROW_FACTOR = 4;
 const RECRUITING_FEED_PUBLIC_ROW_FACTOR = 2;
+const PUBLIC_RECRUITING_FEED_PROFILE_ID = "*";
+const INSTANT_TIMING_TYPE = "instant";
+const LEGACY_INSTANT_LABEL = "즉시";
+const KOREAN_DISTRICT_SUFFIX = "구";
 
 function getPageOffset(body = {}) {
   const rawOffset = body.offset ?? body.recruitingOffset ?? body.nextOffset;
@@ -45,11 +50,11 @@ function getTargetPostIds(body = {}) {
 
 function getRecruitingStartFilter(body = {}) {
   const startFilter = String(body.startFilter ?? "").trim();
-  if (startFilter === "instant") return { startFilter, timingType: "instant", scheduledDate: "" };
+  if (startFilter === INSTANT_TIMING_TYPE) return { startFilter, timingType: INSTANT_TIMING_TYPE, scheduledDate: "" };
   if (/^\d{4}-\d{2}-\d{2}$/.test(startFilter)) return { startFilter, timingType: "", scheduledDate: startFilter };
-  const timingType = String(body.timingType ?? "").trim() === "instant" ? "instant" : "";
+  const timingType = String(body.timingType ?? "").trim() === INSTANT_TIMING_TYPE ? INSTANT_TIMING_TYPE : "";
   const scheduledDate = String(body.scheduledDate ?? "").trim();
-  if (timingType === "instant") return { startFilter: "instant", timingType, scheduledDate: "" };
+  if (timingType === INSTANT_TIMING_TYPE) return { startFilter: INSTANT_TIMING_TYPE, timingType, scheduledDate: "" };
   if (/^\d{4}-\d{2}-\d{2}$/.test(scheduledDate)) return { startFilter: scheduledDate, timingType: "", scheduledDate };
   return { startFilter: "all", timingType: "", scheduledDate: "" };
 }
@@ -526,7 +531,7 @@ async function fetchRoomStateParticipantPostIds(client, profileId = "", limit = 
 }
 
 async function fetchRecruitingFeedPostIds(client, {
-  profileId = "*",
+  profileId = PUBLIC_RECRUITING_FEED_PROFILE_ID,
   relations = [],
   status = "open",
   regionKey = "",
@@ -572,7 +577,7 @@ async function fetchRecruitingFeedPage(client, {
     .range(safeOffset, safeOffset + rowLimit - 1);
   if (relations.length) query = query.in("relation", relations);
   if (regionKey) query = query.eq("region_key", regionKey);
-  if (timingType === "instant") query = query.or("card_json->>timingType.eq.instant,card_json->>scheduledAt.eq.즉시");
+  if (timingType === INSTANT_TIMING_TYPE) query = query.or(`card_json->>timingType.eq.${INSTANT_TIMING_TYPE},card_json->>scheduledAt.eq.${LEGACY_INSTANT_LABEL}`);
   if (scheduledDate) query = query.eq("card_json->>scheduledDate", scheduledDate);
   const { data, error } = await query;
   if (error) {
@@ -774,8 +779,8 @@ async function fetchRecruitingFallbackPage(client, limit = REMOTE_CLIENT_RECRUIT
     .order("updated_at", { ascending: false, nullsFirst: false })
     .order("id", { ascending: false })
     .range(safeOffset, safeOffset + cappedLimit - 1);
-  if (regionKey) query = query.or(`region.eq.${regionKey},region.eq.${regionKey}구,region.ilike.%${regionKey}%`);
-  if (startFilter.timingType === "instant") query = query.or("room_state->>timingType.eq.instant,scheduled_at.eq.즉시");
+  if (regionKey) query = query.or(`region.eq.${regionKey},region.eq.${regionKey}${KOREAN_DISTRICT_SUFFIX},region.ilike.%${regionKey}%`);
+  if (startFilter.timingType === INSTANT_TIMING_TYPE) query = query.or(`room_state->>timingType.eq.${INSTANT_TIMING_TYPE},scheduled_at.eq.${LEGACY_INSTANT_LABEL}`);
   if (startFilter.scheduledDate) query = query.eq("scheduled_date", startFilter.scheduledDate);
   const { data, error } = await query;
   if (error) throw error;
@@ -787,7 +792,7 @@ async function fetchRecruitingPage(client, limit = REMOTE_CLIENT_RECRUITING_LIMI
   const cappedLimit = Math.max(1, Math.min(RECRUITING_PUBLIC_PAGE_MAX_LIMIT, Number(limit) || REMOTE_CLIENT_RECRUITING_LIMIT));
   const safeOffset = Math.max(0, Math.floor(Number(offset) || 0));
   const feedPage = await fetchRecruitingFeedPage(client, {
-    profileId: "*",
+    profileId: PUBLIC_RECRUITING_FEED_PROFILE_ID,
     relations: ["region_public"],
     regionKey,
     limit: cappedLimit,
@@ -1208,11 +1213,11 @@ export async function loadCurrentUserRecruitingFeedList(context, {
 
 export async function loadLocalRecruitingFeedList(context, {
   adminLevel = 0,
-  limit = 3,
+  limit = REMOTE_CLIENT_HOME_LOCAL_RECRUITING_LIMIT,
 } = {}) {
   const regionKey = getProfileRegionKey(context.profile);
   const pageResult = await fetchRecruitingFeedPage(context.supabase, {
-    profileId: "*",
+    profileId: PUBLIC_RECRUITING_FEED_PROFILE_ID,
     relations: ["region_public"],
     regionKey,
     limit,

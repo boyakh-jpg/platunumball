@@ -1,5 +1,12 @@
 # RankBall 로직/용어/디자인 기준
 
+## 2026-06-30 프로필/모집 legacy 기본값 기준
+
+- 프로필 저장 API는 요청값과 기존 DB값에 없는 지역을 `서울특별시 마포구`로 강제 보정하지 않는다.
+- 원격 로그인 직후 임시 profile shell도 지역을 임의로 채우지 않는다.
+- 가입/설정 화면이 선택한 `region`, `regionSido`, `regionDistrict`만 저장하고, 누락값은 null로 둔다.
+- 모집 공개 feed의 전체 공개 profile id, legacy 즉시 라벨, 한국 행정구 suffix는 `/api/recruiting/list` 상수로만 관리한다.
+
 ## 2026-06-30 모집 relation 목록 더보기 기준
 
 - 모집의 내가 만든 방/내 참여방/초대받음 탭은 `user_room_feed` relation 목록을 한 번에 가져오는 개인 feed 목록이다.
@@ -7,6 +14,7 @@
 - 모집 공개 목록 더보기는 현재 지역/날짜 필터의 `regionScope`, `regionKey`, `startFilter`를 그대로 이어서 호출해야 한다.
 - 서버 목록 API는 `regionScope`의 `local`, `region`, `all` 값을 보존해야 하며, `region` 요청을 `local`로 낮추지 않는다.
 - feed를 사용할 수 없는 fallback 경로도 `offset`을 유지해야 하며, 더보기 요청을 빈 목록으로 강제 종료하지 않는다.
+- `/app/recruiting` 공개 첫 목록과 지역/날짜 필터 요청은 current-user mine 목록을 병합하지 않는다. mine 목록은 relation 버튼 클릭의 `scope:"mine"` 요청으로만 읽고, 첫 badge는 feed count RPC로 표시한다.
 
 ## 2026-06-30 모집 슬롯/파티 actor 기준
 
@@ -1529,7 +1537,7 @@ flowchart TD
 38-3. `/app/recruiting` 시작일 필터는 서버 feed 필터를 우선 사용한다. 기본값은 즉시방이며, 전체 공개 목록은 `/api/recruiting/list`가 `user_room_feed.card_json.timingType/scheduledDate` 기준으로 즉시방 또는 해당 `scheduledDate`만 내려준다. legacy 즉시방 row는 `scheduledAt/scheduled_at="즉시"`도 즉시방으로 인정한다. 즉시방과 오늘 예약방은 별도 개념으로 분리한다. 직접 링크로 열린 `post`는 날짜 필터 때문에 숨기지 않는다.
 38-3-1. `/app/recruiting`에서 시작일 버튼을 누르면 `내가 만든 방/내 참여방/초대받음` relation scope를 해제하고 전체 공개 목록의 해당 시작일을 본다.
 38-4. `/app/recruiting`는 `feedCounts`와 현재 로드된 목록 수가 달라도 자동 `scope: "mine"` 보강 로드를 실행하지 않는다. 숫자와 목록은 최초 feed snapshot 기준을 우선한다.
-38-5. `/app/recruiting` 초기 목록 요청은 `includeMine=true`로 현재 사용자의 생성/참여/초대 방을 같은 응답에 포함한다. count 차이를 본 뒤 `scope: "mine"`을 다시 호출하는 로직은 제거한다.
+38-5. `/app/recruiting` 초기 공개 목록 요청은 current-user mine 방을 같은 응답에 병합하지 않는다. 생성/참여/초대 숫자는 `feedCounts`로 즉시 표시하고, 각 relation 목록은 버튼 클릭 시 `scope: "mine"`으로 로드한다.
 38-6. `/app/recruiting`에서 `내가 만든 방`, `내 참여방`, `초대받음` scope는 날짜 필터 때문에 숨겨지면 안 된다. 날짜 필터는 전체 공개 목록을 좁히는 용도이고, 내 방 scope에서는 relation 표시가 우선이다.
 39. 모집방 생성 서버 저장이 성공하면 클라이언트는 `created` feed count를 즉시 반영하고 경기 메뉴 모집 일정도 다시 읽는다.
 39-1. `/app/matches` 모집 일정 로드는 경기 목록 페이지네이션 `loading`과 별도 `recruitingScheduleLoading` 상태로 관리한다. 경기 목록 로딩 중이어도 모집 일정 확인이 불필요하게 막히면 안 된다.

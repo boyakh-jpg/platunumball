@@ -63,6 +63,19 @@ function getLockedStreak(existing = {}) {
   return Number(existing?.streak ?? 0);
 }
 
+function normalizeOptionalText(value) {
+  const text = String(value ?? "").trim();
+  return text || null;
+}
+
+function getRequestedRegion(profile = {}, existing = {}) {
+  const regionSido = normalizeOptionalText(profile.regionSido) ?? normalizeOptionalText(existing?.region_sido);
+  const regionDistrict = normalizeOptionalText(profile.regionDistrict) ?? normalizeOptionalText(existing?.region_district);
+  const inferredRegion = normalizeOptionalText([regionSido, regionDistrict].filter(Boolean).join(" "));
+  const region = normalizeOptionalText(profile.region) ?? normalizeOptionalText(existing?.region) ?? inferredRegion;
+  return { regionSido, regionDistrict, region };
+}
+
 async function assertDiscordUserAvailable(context, discordUserId = "", profileId = "") {
   if (!discordUserId) return;
   const { data, error } = await context.supabase
@@ -90,6 +103,7 @@ function buildProfileRow({ existing, profile, authUser, authUserId, isTestAccoun
   const requestedName = String(profile.name ?? existing?.name ?? authUser.email?.split("@")[0] ?? "신규 선수").trim().slice(0, 20);
   const nextName = existing && requestedName !== existing.name && !canChangeName(existing) ? existing.name : requestedName;
   const discordConnection = getRequestedDiscordConnection(profile, existing);
+  const requestedRegion = getRequestedRegion(profile, existing);
 
   if (profile.onboardingComplete && !existingLockedHandle && !nextHashtag) {
     const error = new Error("hashtag_required");
@@ -106,14 +120,14 @@ function buildProfileRow({ existing, profile, authUser, authUserId, isTestAccoun
     birth_year: nextBirthYear,
     age_group: profile.ageGroup ?? existing?.age_group ?? "open",
     age_group_checked_season: profile.ageGroupCheckedSeason ?? existing?.age_group_checked_season ?? null,
-    region_sido: profile.regionSido ?? existing?.region_sido ?? "서울특별시",
-    region_district: profile.regionDistrict ?? existing?.region_district ?? "마포구",
+    region_sido: requestedRegion.regionSido,
+    region_district: requestedRegion.regionDistrict,
     onboarding_complete: Boolean(profile.onboardingComplete ?? existing?.onboarding_complete ?? false),
     profile_version: Number(profile.profileVersion ?? existing?.profile_version ?? 1),
     handle_locked_at: existingLockedHandle ?? (nextHashtag ? profile.handleLockedAt ?? now : null),
     birth_year_locked_at: hasLockedBirthYear ? existing.birth_year_locked_at : (nextBirthYear ? profile.birthYearLockedAt ?? now : null),
     name_updated_at: nextName !== existing?.name ? profile.nameUpdatedAt ?? now : existing?.name_updated_at ?? null,
-    region: profile.region ?? existing?.region ?? `${profile.regionSido ?? "서울특별시"} ${profile.regionDistrict ?? "마포구"}`,
+    region: requestedRegion.region,
     position: profile.position ?? existing?.position ?? "PG",
     avatar_color: profile.avatarColor ?? existing?.avatar_color ?? "#58d2c0",
     trust_score: getLockedTrustScore(existing),

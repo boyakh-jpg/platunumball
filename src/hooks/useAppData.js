@@ -102,6 +102,8 @@ import { readProfileBindings, readProfileCache, writeProfileBindings, writeProfi
 import { findDiscordConnectionOwner, getDiscordConnectionUserId } from "../lib/discord.js";
 import { getServerActionAvailability, postServerAction } from "../lib/serverActions.js";
 
+const LOCAL_MAINTENANCE_INTERVAL_MS = 60000;
+
 function sortByRating(items, selector) {
   return [...items].sort((a, b) => selector(b) - selector(a));
 }
@@ -716,7 +718,6 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
           authUserId,
           authEmail,
           limit: loadOptions.recruitingLimit,
-          includeMine: true,
           regionScope: "local",
           ...(options.startFilter ? { startFilter: options.startFilter } : {}),
           listOnly: true,
@@ -872,7 +873,7 @@ export function useAppData(authUser = null) {
     setState((prev) => runAutomaticStateMaintenance(prev));
     const interval = window.setInterval(() => {
       setState((prev) => runAutomaticStateMaintenance(prev));
-    }, 60000);
+    }, LOCAL_MAINTENANCE_INTERVAL_MS);
     return () => window.clearInterval(interval);
   }, []);
 
@@ -1449,7 +1450,6 @@ export function useAppData(authUser = null) {
             regionScope: regionRequest.regionScope,
             ...(regionRequest.regionKey ? { regionKey: regionRequest.regionKey } : {}),
             ...startFilterRequest,
-            includeMine: true,
             listOnly: true,
             adminContext: false,
             includeFeedCounts: true,
