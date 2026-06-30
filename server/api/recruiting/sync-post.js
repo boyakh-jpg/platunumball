@@ -502,11 +502,52 @@ function isSoloIndividualRoom(post = {}) {
   return getSideCapacity(post) === 1 && (getCanonicalHostJoinMode(post) === "player" || !teamId);
 }
 
+function getEntryActivePlayerIds(entry = {}, capacity = 5, fallbackPlayerId = "") {
+  const playerIds = toArray(entry.playerIds ?? entry.player_ids);
+  if (playerIds.length) return playerIds.slice(0, capacity);
+  return fallbackPlayerId ? [fallbackPlayerId] : [];
+}
+
+function getRecruitingSideCounts(post = {}) {
+  const capacity = getSideCapacity(post);
+  const hostSide = (post.hostSide ?? post.host_side) === "teamB" ? "teamB" : "teamA";
+  const counts = { teamA: 0, teamB: 0 };
+  const seen = new Set();
+  const addPlayers = (side, playerIds = []) => {
+    if (!counts[side]) counts[side] = 0;
+    toArray(playerIds).forEach((playerId) => {
+      if (!playerId || seen.has(playerId)) return;
+      seen.add(playerId);
+      counts[side] += 1;
+    });
+  };
+
+  const hostJoinMode = getCanonicalHostJoinMode(post);
+  const hostPlayers = hostJoinMode === "team"
+    ? getEntryActivePlayerIds(post, capacity, post.playerId ?? post.player_id ?? "")
+    : [post.playerId ?? post.player_id].filter(Boolean);
+  addPlayers(hostSide, hostPlayers);
+
+  toArray(post.applicants).forEach((application) => {
+    if (application.reserve) return;
+    const side = application.side === "teamA" ? "teamA" : "teamB";
+    const isTeamEntry = application.kind === "team" || application.teamId || application.team_id;
+    const players = isTeamEntry
+      ? getEntryActivePlayerIds(application, capacity, application.playerId ?? application.player_id ?? "")
+      : [application.playerId ?? application.player_id].filter(Boolean);
+    addPlayers(side, players);
+  });
+
+  return counts;
+}
+
 function validateRecruitingPostShape(post = {}) {
   const capacity = getSideCapacity(post);
   const applications = toArray(post.applicants);
   const oversizedApplication = applications.find((application) => toArray(application.playerIds).length > capacity);
   if (oversizedApplication) reject(400, "recruiting_party_exceeds_side_capacity");
+  const sideCounts = getRecruitingSideCounts(post);
+  if (sideCounts.teamA > capacity || sideCounts.teamB > capacity) reject(400, "recruiting_side_exceeds_capacity");
 
   if (!isSoloIndividualRoom(post)) return;
   const roomState = normalizeRoomState(post.roomState, post);

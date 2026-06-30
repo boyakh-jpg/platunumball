@@ -1650,3 +1650,4 @@ flowchart TD
 - 2026-06-30: Notifications page must trust the first route state for current-user notifications and recruiting invites. It must not auto-run profile refresh plus invited-room reload after the loader finishes.
 - 2026-06-30: Recruiting list `feed_card` responses may fall back to row reads only for invalid/missing cards. `page.source` must include `+row` when any row fallback was used so timing and egress diagnostics do not misread the path.
 - 2026-06-30: Recruiting team-host feed cards do not require `playerIds` to be non-empty when a host identity is present. List and modal lobby calculation both use the shared `playerId`/owner fallback for host occupancy.
+- 2026-06-30: Recruiting sync rejects any saved room snapshot whose active `teamA` or `teamB` player count exceeds side capacity. This guard runs after host/player fallback normalization and before DB persistence.
