@@ -903,6 +903,35 @@ export async function loadCompactRecruitingList(context, {
     ? Math.max(offset, Math.floor(Number(pageNextOffset)))
     : offset + pagePostIds.length;
 
+  if (!targetPostIds.length) {
+    const state = normalizeState({
+      currentUserId: currentUser.id,
+      users: [currentUser],
+      teams: [],
+      recruitingPosts: [],
+      settings,
+    }, { includeDemo: false });
+    return {
+      state: compactRecruitingListState(state, currentUser.id),
+      page: {
+        limit,
+        count: 0,
+        offset,
+        nextOffset,
+        cursor: String(nextOffset),
+        exhausted: true,
+        regionScope: regionKey ? "region" : regionScope,
+        regionKey,
+        startFilter,
+        timingType,
+        scheduledDate,
+        source: pageSource || "empty",
+        feedCounts,
+      },
+      updatedAt: Number(new Date(context.profile?.updated_at ?? 0).getTime()) || 0,
+    };
+  }
+
   if (canUsePageCards) {
     const state = normalizeState({
       currentUserId: currentUser.id,
@@ -945,6 +974,7 @@ export async function loadCompactRecruitingList(context, {
   if (applicationError) throw applicationError;
 
   const scope = collectRecruitingScope(postRows, applicationRows ?? [], context.profileId ?? "");
+  const profileIdsForLookup = scope.profileIds.filter((profileId) => profileId !== currentUser.id);
   const [
     { data: teamRows, error: teamError },
     { data: profileRows, error: profileError },
@@ -953,8 +983,8 @@ export async function loadCompactRecruitingList(context, {
     scope.teamIds.length
       ? context.supabase.from("teams").select(TEAM_COLUMNS).in("id", scope.teamIds).is("deleted_at", null)
       : Promise.resolve({ data: [], error: null }),
-    scope.profileIds.length
-      ? context.supabase.from("public_profiles").select(PROFILE_PUBLIC_COLUMNS).in("id", scope.profileIds)
+    profileIdsForLookup.length
+      ? context.supabase.from("public_profiles").select(PROFILE_PUBLIC_COLUMNS).in("id", profileIdsForLookup)
       : Promise.resolve({ data: [], error: null }),
     fetchCourtRowsByIds(context.supabase, scope.courtIds),
   ]);
@@ -1127,6 +1157,33 @@ export default async function handler(request, response) {
     const feedCounts = mergeRecruitingCounts(feedCountsResult, fallbackCountsResult);
     const targetPostIds = uniqueIds([...explicitPostIds, ...(mineOnly ? currentUserPostIds : pagePostIds)]);
     if (listOnly) {
+      const compactResult = await timing.track("compact", () => loadCompactRecruitingList(context, {
+        adminLevel,
+        currentUserPostIds,
+        explicitPostIds,
+        includeMine,
+        mineOnly,
+        pagePostIds,
+        pageCards,
+        pageSource,
+        pageExhausted,
+        pageNextOffset,
+        feedCounts,
+        limit,
+        offset,
+        regionScope: regionKey ? "region" : regionScope,
+        regionKey,
+        startFilter: startFilter.startFilter,
+        timingType: startFilter.timingType,
+        scheduledDate: startFilter.scheduledDate,
+      }));
+      sendTimedJson(response, 200, {
+        ok: true,
+        ...compactResult,
+      }, timing, debugTiming);
+      return;
+    }
+    if (!targetPostIds.length) {
       const compactResult = await timing.track("compact", () => loadCompactRecruitingList(context, {
         adminLevel,
         currentUserPostIds,

@@ -840,6 +840,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   const teamIds = unique(readableRows.flatMap((row) => [row.team_a_id, row.team_b_id]));
   const courtIds = unique(readableRows.map((row) => row.court_id));
   const profileIds = unique(readableRows.flatMap((row) => getMatchRowActorIds(row, playersByMatch.get(row.id) ?? [])));
+  const profileIdsForLookup = profileIds.filter((profileId) => profileId !== currentUser.id);
 
   const [
     { data: teamRows, error: teamError },
@@ -850,8 +851,8 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
       ? context.supabase.from("teams").select(TEAM_COLUMNS).in("id", teamIds).is("deleted_at", null)
       : Promise.resolve({ data: [], error: null }),
     fetchCourtRowsByIds(context.supabase, courtIds),
-    profileIds.length
-      ? context.supabase.from("public_profiles").select(PROFILE_CARD_COLUMNS).in("id", profileIds)
+    profileIdsForLookup.length
+      ? context.supabase.from("public_profiles").select(PROFILE_CARD_COLUMNS).in("id", profileIdsForLookup)
       : Promise.resolve({ data: [], error: null }),
   ]));
   if (teamError) throw teamError;

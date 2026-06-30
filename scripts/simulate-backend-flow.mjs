@@ -2,7 +2,9 @@ import { createClient } from "@supabase/supabase-js";
 import { existsSync, readFileSync } from "node:fs";
 import loadStateHandler from "../server/api/state/load.js";
 import syncRecruitingPostHandler from "../server/api/recruiting/sync-post.js";
+import recruitingListHandler from "../server/api/recruiting/list.js";
 import syncMatchHandler from "../server/api/matches/sync-match.js";
+import matchDetailHandler from "../server/api/matches/detail.js";
 import maintenanceHandler from "../server/api/system/maintenance.js";
 
 function loadEnvFile(path) {
@@ -254,12 +256,34 @@ async function loadStateAs(testLoginId) {
   return payload.state;
 }
 
+async function loadRecruitingPostAs(testLoginId, postId = ids.postId) {
+  const payload = await callHandler("/api/recruiting/list", recruitingListHandler, token(testLoginId), {
+    postId,
+    limit: 1,
+    adminContext: false,
+    includeFeedCounts: false,
+  });
+  const post = (payload?.state?.recruitingPosts ?? []).find((item) => item.id === postId);
+  assertFlow(payload?.ok && post, `recruiting post load failed for ${testLoginId}`, payload);
+  return post;
+}
+
 async function syncRecruitingAs(testLoginId, operation) {
   return callHandler("/api/recruiting/sync-post", syncRecruitingPostHandler, token(testLoginId), { operation });
 }
 
 async function syncMatchAs(testLoginId, operation, extra = {}) {
   return callHandler("/api/matches/sync-match", syncMatchHandler, token(testLoginId), { operation, ...extra });
+}
+
+async function loadMatchAs(testLoginId, matchId = ids.matchId) {
+  const payload = await callHandler("/api/matches/detail", matchDetailHandler, token(testLoginId), {
+    matchId,
+    adminContext: false,
+  });
+  const match = (payload?.state?.matches ?? []).find((item) => item.id === matchId);
+  assertFlow(payload?.ok && match, `match load failed for ${testLoginId}`, payload);
+  return match;
 }
 
 async function expectRejected(label, action, expectedErrors = []) {
@@ -275,28 +299,18 @@ async function expectRejected(label, action, expectedErrors = []) {
   }
 }
 
-function findPost(state) {
-  return (state.recruitingPosts ?? []).find((post) => post.id === ids.postId);
-}
-
-function findMatch(state) {
-  return (state.matches ?? []).find((match) => match.id === ids.matchId);
-}
-
 function uniqueIds(values = []) {
   return [...new Set(values.filter(Boolean))];
 }
 
 async function getRecruitingPostAfterResult(result, login, label) {
   if (result?.post) return result.post;
-  const state = await step(label, () => loadStateAs(login));
-  return findPost(state);
+  return step(label, () => loadRecruitingPostAs(login));
 }
 
 async function getMatchAfterResult(result, login, label) {
   if (result?.match) return result.match;
-  const state = await step(label, () => loadStateAs(login));
-  return findMatch(state);
+  return step(label, () => loadMatchAs(login));
 }
 
 function makeResult(match) {
@@ -1075,8 +1089,7 @@ async function runRecruitingActorScenario({
   }));
   post = await getRecruitingPostAfterResult(positionResult, opponentLogin, `${ids.label}:loadAfterSlotPosition`);
   assertFlow(post?.roomState?.slotPositions?.[opponentId] === "SF", "actor slot position not persisted", { opponentId, post });
-  const stateAfterPosition = await step(`${ids.label}:loadAfterPosition`, () => loadStateAs(opponentLogin));
-  const reloadedPostAfterPosition = findPost(stateAfterPosition);
+  const reloadedPostAfterPosition = await step(`${ids.label}:loadAfterPosition`, () => loadRecruitingPostAs(opponentLogin));
   const reloadedApplicantAfterPosition = reloadedPostAfterPosition?.applicants?.find((item) => item.playerId === opponentId);
   assertFlow(reloadedApplicantAfterPosition?.position === "SF", "actor application position column not persisted", {
     opponentId,
@@ -1187,10 +1200,9 @@ async function runSoloRoomTeamBlockedScenario({
     ["solo_room_team_party_not_allowed", "recruiting_operation_blocked", "recruiting_sync_permission_denied", "recruiting_operation_noop"],
   );
 
-  const stateAfterReject = await step(`${ids.label}:loadAfterReject`, () => loadStateAs(hostLogin));
-  const post = findPost(stateAfterReject);
+  const post = await step(`${ids.label}:loadAfterReject`, () => loadRecruitingPostAs(hostLogin));
   const applications = post?.applicants ?? [];
-  assertFlow(Boolean(post), "solo block post missing after rejection", stateAfterReject);
+  assertFlow(Boolean(post), "solo block post missing after rejection", post);
   assertFlow(!applications.some((application) => application.teamId || application.kind === "team"), "blocked team application persisted", {
     applications,
     post,
@@ -1267,9 +1279,8 @@ async function runIneligibleRefereeBlockedScenario({
     ["referee_not_eligible", "recruiting_operation_blocked", "recruiting_sync_permission_denied", "recruiting_operation_noop"],
   );
 
-  const stateAfterReject = await step(`${ids.label}:loadAfterReject`, () => loadStateAs(hostLogin));
-  const post = findPost(stateAfterReject);
-  assertFlow(Boolean(post), "referee block post missing after rejection", stateAfterReject);
+  const post = await step(`${ids.label}:loadAfterReject`, () => loadRecruitingPostAs(hostLogin));
+  assertFlow(Boolean(post), "referee block post missing after rejection", post);
   assertFlow(post.refereeId !== refereeCandidateId, "ineligible referee persisted", {
     refereeCandidateId,
     post,
