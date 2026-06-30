@@ -913,14 +913,16 @@ export async function persistRecruitingPostSnapshot(context, { post, notificatio
   validateRecruitingPostShape(post);
 
   const actionBody = { ...body, action };
+  const isCreateAction = action === "createRecruitingPost";
   const { data: existingPost, error: existingError } = await timeStep(timing, "persistExistingPost", () => context.supabase
       .from("recruiting_posts")
-      .select("id, visibility, player_id, team_id, target_team_id, mode, scheduled_date, scheduled_time, ranked, official, side_capacity, host_join_mode, host_side, player_ids, referee_id, referee_trust_min, room_state, age_restriction, allowed_age_groups, updated_at")
+      .select(isCreateAction ? "id" : "id, visibility, player_id, team_id, target_team_id, mode, scheduled_date, scheduled_time, ranked, official, side_capacity, host_join_mode, host_side, player_ids, referee_id, referee_trust_min, room_state, age_restriction, allowed_age_groups, updated_at")
       .eq("id", post.id)
       .maybeSingle());
 
   if (existingError) throw existingError;
-  const { data: existingApplications, error: existingApplicationsError } = await timeStep(timing, "persistExistingApplications", () => existingPost
+  if (isCreateAction && existingPost) reject(409, "recruiting_post_already_exists");
+  const { data: existingApplications, error: existingApplicationsError } = await timeStep(timing, "persistExistingApplications", () => existingPost && !isCreateAction
     ? context.supabase
       .from("recruiting_applications")
       .select("kind,team_id,player_id,side,status,reserve,position,player_ids,source_team_id,source_entry_id,created_at,updated_at")
