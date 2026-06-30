@@ -59,7 +59,7 @@
 - 경기/홈 첫 목록은 feed 카드만으로 `todo`, `scheduled`, `record` 분류가 가능해야 하며, 상세 통계/기록 원본은 방 상세나 기록 화면 진입 때만 넓게 불러온다.
 - `/api/system/maintenance` cron은 source room/match row를 삭제하지 않고 `user_room_feed.is_active=false`로만 만료 feed를 숨긴다. 모집방 feed는 orphan, `closed/cancelled`, 60분 지난 즉시방, 시작 시각이 지난 예약방을 숨긴다. 경기 feed는 orphan과 `closed`만 숨기며 `confirmed` 기록방은 기록 화면 진입 때 별도 로드한다.
 - Vercel Hobby 배포 cron은 하루 1회만 허용되므로 `/api/system/maintenance`는 매일 03:00 KST 실행을 기본으로 한다.
-- 경기 메뉴의 상태/날짜 버튼은 이미 받은 feed snapshot만 필터링한다. 추가 모집 일정 재호출은 하지 않으며, 과거 1/3/6개월 보기처럼 기록 범위가 필요한 경우에만 기록 API를 호출한다.
+- 경기 메뉴의 상태/날짜 버튼은 이미 받은 feed snapshot만 필터링한다. 추가 모집 일정 재호출은 하지 않으며, 과거 1/3/6개월 기록 API 호출을 경기 메뉴에서 하지 않는다. 기록 확정 후 24시간 이내 평가 가능한 `confirmed` 경기만 얇은 feed card로 함께 읽고, 그 이후 기록은 나/팀 기록 화면에서만 별도 호출한다.
 
 ## 2026-06-29 초대 수락 최신화
 
@@ -1065,8 +1065,9 @@ flowchart TD
 
 ## 2026-06-24 내 진행 일정 지난 경기 필터
 
-- `지난 경기: 안보기`는 오늘 이전 날짜의 경기와 모집방을 상태와 무관하게 숨긴다.
-- `1개월`, `3개월`, `6개월`은 오늘 이전 항목도 선택 기간 안이면 다시 보여준다.
+- 경기 메뉴는 오늘 이전 날짜의 경기와 모집방을 기본적으로 숨긴다.
+- 기록 확정 후 24시간 이내 평가 가능한 `confirmed` 경기만 closed view에서 feed card로 표시한다.
+- 1개월/3개월/6개월 같은 과거 기록 범위 조회는 경기 메뉴가 아니라 나/팀 기록 화면에서만 수행한다.
 - 오늘 날짜의 경기와 모집방은 시간과 무관하게 지난 경기로 보지 않는다.
 ## 구장 속성
 
@@ -1478,10 +1479,11 @@ flowchart TD
 30. `/app/recorder` must load `recorderOnly` match state on direct entry or after thin-route navigation before showing the final empty state. Recorder state includes only active `agreed`/`approval`/`disputed` matches related to the current profile.
 31. `/api/matches/list` with `listOnly:false` must not force `matchListOnly:true`; recorder/detail-like reads need `match_results` and `player_match_stats`.
 31-1. `/api/matches/list` with `completedOnly:true` loads current-profile participant confirmed match ids from `user_room_feed` first, then loads full result/stat rows only for those ids. If the feed is unavailable, it falls back to `match_players` candidate ids before reading match rows. Home must not pre-load confirmed record rooms; `/app/profile/records` loads them once on entry.
+31-2. `/app/profile/records` loads completed detail rows for the latest 6 months only and computes date counts from that result. Older all-time records need a separate text/aggregate feed, not broad match/result/stat loading.
 32. `/api/matches/list` may return `page.source` and optional `debugTiming` for diagnosis. `page.source='rpc_card'` or `feed_card` means list cards came directly from `user_room_feed.card_json`; `page.source='feed'` means feed ids are active but card_json was missing; `page.source='fallback_mine'` means production is still using current-profile fallback and the feed SQL/deployment needs verification.
 33. Match `status='closed'` is a cleanup soft-close state, not a normal record-confirmed match state. `/api/matches/list` and `rankball_match_list()` exclude it from default current-user feed pages.
-34. Match room phase `record` is a normal completed-record phase and belongs to the Matches closed/history view. Selecting a past range must make record-phase matches visible instead of leaving them outside every view.
-35. `/app/matches` default list is not a paged "더 보기" feed. It loads current-user active matches in one request with `activeOnly=true` up to the active-feed cap, excluding normal past record rows (`confirmed`) and terminal hidden rows (`cancelled`, `void`, `closed`). Past-history expansion must be a separate deliberate read, not the default match menu load.
+34. Match room phase `record` is a completed-record phase, but `/app/matches` shows it only while the confirmed record is still inside the 24-hour evaluation window.
+35. `/app/matches` default list is not a paged "더 보기" feed. It loads current-user active matches in one request with `activeOnly=true` plus a small 24-hour recent-completed feed card query, excluding older record rows (`confirmed`) and terminal hidden rows (`cancelled`, `void`, `closed`). Past-history expansion must be a separate deliberate read from profile/team records, not the match menu load.
 36. `/api/matches/list` defaults to match feed only. It includes recruiting schedule rooms only when `includeRecruitingSchedule=true`; previously loaded recruiting state from `/app/recruiting` must not change `/app/matches` list results.
 37. `/app/matches`는 SPA 이동으로 들어왔고 `recruitingScheduleChecked`가 false이면 현재 사용자 모집방 일정을 다시 로드한다. 경기 목록이 비어 있어도 match-page merge는 모집방 일정 row를 보존해야 한다.
 38. `/app/recruiting` 첫 목록 로드는 `feedCounts`를 같이 받아야 한다. `내가 만든 방/참여방/초대받음` 숫자는 클릭 전에도 current-user feed count 기준이어야 하며, 목록 일부 로드 fallback 숫자에 의존하지 않는다.

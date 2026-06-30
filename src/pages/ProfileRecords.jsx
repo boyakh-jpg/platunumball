@@ -9,6 +9,10 @@ function compareRecent(a, b) {
   return String(b.scheduledAt ?? b.createdAt ?? "").localeCompare(String(a.scheduledAt ?? a.createdAt ?? ""));
 }
 
+function getRecordDate(match) {
+  return String(match.scheduledDate ?? match.scheduledAt ?? match.confirmedAt ?? match.createdAt ?? "").match(/\d{4}-\d{2}-\d{2}/)?.[0] ?? "날짜 미정";
+}
+
 function getUserSide(match, userId) {
   if (match.teamA?.players?.includes(userId)) return "teamA";
   if (match.teamB?.players?.includes(userId)) return "teamB";
@@ -70,6 +74,11 @@ export default function ProfileRecords({ app }) {
   const losses = records.filter((match) => getUserResult(match, user.id) === "L").length;
   const draws = records.length - wins - losses;
   const averageFouls = records.length ? Number(totals.fouls ?? 0) / records.length : 0;
+  const dateRows = [...records.reduce((map, match) => {
+    const date = getRecordDate(match);
+    map.set(date, (map.get(date) ?? 0) + 1);
+    return map;
+  }, new Map()).entries()].sort((a, b) => String(b[0]).localeCompare(String(a[0])));
 
   return (
     <div className="page-stack profile-records-page">
@@ -87,7 +96,7 @@ export default function ProfileRecords({ app }) {
             <p className="eyebrow">Summary</p>
             <h2>{user.name}</h2>
           </div>
-          <Badge tone="green">{records.length}경기</Badge>
+          <Badge tone="green">최근 6개월 {records.length}경기</Badge>
         </div>
         <div className="rank-stat-grid">
           <span><strong>{wins}</strong>승</span>
@@ -106,8 +115,23 @@ export default function ProfileRecords({ app }) {
       <Card className="section-card">
         <div className="section-title-row">
           <div>
+            <p className="eyebrow">Calendar</p>
+            <h2>날짜별 기록 수</h2>
+          </div>
+          <Badge tone="blue">6개월</Badge>
+        </div>
+        <div className="rank-stat-grid">
+          {dateRows.length ? dateRows.slice(0, 24).map(([date, count]) => (
+            <span key={date}><strong>{count}</strong>{date}</span>
+          )) : <span><strong>0</strong>기록 없음</span>}
+        </div>
+      </Card>
+
+      <Card className="section-card">
+        <div className="section-title-row">
+          <div>
             <p className="eyebrow">History</p>
-            <h2>전체 경기 기록</h2>
+            <h2>최근 6개월 경기 기록</h2>
           </div>
         </div>
         {records.length ? (

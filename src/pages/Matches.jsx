@@ -166,18 +166,11 @@ function addDays(dateValue, amount) {
   return toDateInputValue(date);
 }
 
-function subtractMonths(dateValue, amount) {
-  const [year, month, day] = dateValue.split("-").map(Number);
-  const date = new Date(year, month - 1, day);
-  date.setMonth(date.getMonth() - amount);
-  return toDateInputValue(date);
-}
-
-function shouldIncludeByHistoryRange(item, todayValue, historyRangeMonths, historyCutoffDate) {
+function shouldIncludeScheduleWindow(item, todayValue, maxScheduleDate) {
   const itemDate = getMatchDate(item);
+  if (itemDate > maxScheduleDate) return false;
   if (!itemDate || itemDate >= todayValue) return true;
-  if (historyRangeMonths === 0) return false;
-  return itemDate >= historyCutoffDate;
+  return item?.recentCompleted === true;
 }
 
 function getCalendarDays(monthKey) {
@@ -736,7 +729,6 @@ export default function Matches({ app }) {
   const [kindFilter, setKindFilter] = useState("all");
   const [modeFilter, setModeFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("");
-  const [historyRangeMonths, setHistoryRangeMonths] = useState(0);
   const [calendarMonth, setCalendarMonth] = useState(getMonthKey());
   const [tournamentPanelOpen, setTournamentPanelOpen] = useState(true);
   const [selectedTournamentId, setSelectedTournamentId] = useState(null);
@@ -745,7 +737,6 @@ export default function Matches({ app }) {
   const queryMatchId = searchParams.get("match");
   const todayValue = toDateInputValue();
   const maxScheduleDate = addDays(todayValue, 365);
-  const historyCutoffDate = subtractMonths(todayValue, historyRangeMonths);
   const selectedView = VIEWS.find((view) => view.id === viewId) ?? VIEWS[0];
   const teamById = useMemo(() => Object.fromEntries(app.state.teams.map((team) => [team.id, team])), [app.state.teams]);
   const userById = useMemo(() => Object.fromEntries(app.state.users.map((user) => [user.id, user])), [app.state.users]);
@@ -842,11 +833,11 @@ export default function Matches({ app }) {
         const matchDate = getMatchDate(match);
         if (!matchDate) return true;
         if (matchDate > maxScheduleDate) return false;
-        return shouldIncludeByHistoryRange(match, todayValue, historyRangeMonths, historyCutoffDate);
+        return shouldIncludeScheduleWindow(match, todayValue, maxScheduleDate);
       })
       .filter((match) => kindFilter === "all" || (kindFilter === "ranked" ? match.ranked !== false : match.ranked === false))
       .filter((match) => modeFilter === "all" || match.mode === modeFilter);
-  }, [app.currentUser.id, app.state.matches, historyCutoffDate, historyRangeMonths, kindFilter, maxScheduleDate, modeFilter, todayValue]);
+  }, [app.currentUser.id, app.state.matches, kindFilter, maxScheduleDate, modeFilter, todayValue]);
 
   const filteredMatches = useMemo(() => {
     return baseFilteredMatches.filter((match) => !dateFilter || getMatchDate(match) === dateFilter);
@@ -866,7 +857,7 @@ export default function Matches({ app }) {
         if (isInstantScheduleRoom(post)) return false;
         const postDate = getMatchDate(post);
         if (!postDate) return false;
-        return postDate <= maxScheduleDate && shouldIncludeByHistoryRange(post, todayValue, historyRangeMonths, historyCutoffDate);
+        return postDate <= maxScheduleDate && shouldIncludeScheduleWindow(post, todayValue, maxScheduleDate);
       })
       .filter((post) => kindFilter === "all" || (kindFilter === "ranked" ? post.ranked !== false : post.ranked === false))
       .filter((post) => modeFilter === "all" || post.mode === modeFilter);
@@ -874,7 +865,7 @@ export default function Matches({ app }) {
       getMatchDate(match) && shouldShowMatchInList(match, selectedView, app.currentUser.id, true)
     ));
     return [...displayableMatches, ...recruitingRooms];
-  }, [app.currentUser.id, app.state, baseFilteredMatches, historyCutoffDate, historyRangeMonths, kindFilter, matchPageRecruitingPosts, maxScheduleDate, modeFilter, myTeamIds, selectedView, todayValue]);
+  }, [app.currentUser.id, app.state, baseFilteredMatches, kindFilter, matchPageRecruitingPosts, maxScheduleDate, modeFilter, myTeamIds, selectedView, todayValue]);
 
   const calendarCounts = useMemo(() => {
     return calendarMatches.reduce((map, match) => {
@@ -893,18 +884,18 @@ export default function Matches({ app }) {
       .filter((post) => {
         if (isInstantScheduleRoom(post)) return true;
         const postDate = getMatchDate(post);
-        return postDate && postDate <= maxScheduleDate && shouldIncludeByHistoryRange(post, todayValue, historyRangeMonths, historyCutoffDate);
+        return postDate && postDate <= maxScheduleDate && shouldIncludeScheduleWindow(post, todayValue, maxScheduleDate);
       })
       .filter((post) => kindFilter === "all" || (kindFilter === "ranked" ? post.ranked !== false : post.ranked === false))
       .filter((post) => modeFilter === "all" || post.mode === modeFilter);
-  }, [app.currentUser.id, app.state, historyCutoffDate, historyRangeMonths, kindFilter, matchPageRecruitingPosts, maxScheduleDate, modeFilter, myTeamIds, todayValue]);
+  }, [app.currentUser.id, app.state, kindFilter, matchPageRecruitingPosts, maxScheduleDate, modeFilter, myTeamIds, todayValue]);
   const dateScopedRecruitingCandidates = useMemo(() => visibleRecruitingCandidates.filter((post) => {
     if (isInstantScheduleRoom(post)) return !dateFilter;
     const postDate = getMatchDate(post);
     return !dateFilter || postDate === dateFilter;
   }), [dateFilter, visibleRecruitingCandidates]);
 
-  const hasDateFilter = Boolean(dateFilter || historyRangeMonths > 0);
+  const hasDateFilter = Boolean(dateFilter);
   const scheduleItemsByView = useMemo(() => Object.fromEntries(
     VIEWS.map((view) => [
       view.id,
@@ -919,10 +910,6 @@ export default function Matches({ app }) {
   const todoCount = viewButtonCounts.todo ?? 0;
   const scheduledCount = viewButtonCounts.scheduled ?? 0;
   const getViewButtonCount = (view) => viewButtonCounts[view.id] ?? 0;
-  const selectHistoryRange = (month) => {
-    setHistoryRangeMonths(month);
-    if (month > 0 && !app.actions.profileRecordsLoaded) app.actions.loadProfileRecords?.();
-  };
   const scheduleLoading = app.remoteReady === false || (matchPagination.recruitingScheduleLoading && !visibleScheduleItems.length);
   const displayScheduleItems = scheduleLoading ? [] : visibleScheduleItems;
   const scheduleCountLabel = scheduleLoading
@@ -1005,19 +992,6 @@ export default function Matches({ app }) {
             >
               오늘
             </button>
-          </div>
-          <div className="om-history-range" aria-label="지난 경기 표시 범위">
-            <span>지난 경기</span>
-            {[0, 1, 3, 6].map((month) => (
-              <button
-                key={month}
-                type="button"
-                className={historyRangeMonths === month ? "active" : ""}
-                onClick={() => selectHistoryRange(month)}
-              >
-                {month ? `${month}개월` : "안보기"}
-              </button>
-            ))}
           </div>
           <section className="om-filter-bar om-calendar-filter-bar" aria-label="경기 필터">
             <div className="segmented-control compact-segments">

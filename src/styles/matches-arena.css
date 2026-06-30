@@ -217,22 +217,7 @@
   gap: 8px;
 }
 
-.om-history-range {
-  grid-column: 1 / -1;
-  display: grid;
-  grid-template-columns: 1fr repeat(4, minmax(0, 54px));
-  gap: 6px;
-  align-items: center;
-}
-
-.om-history-range span {
-  color: var(--muted);
-  font-size: 0.75rem;
-  font-weight: 950;
-}
-
 .om-calendar-actions button,
-.om-history-range button,
 .om-calendar-toolbar button,
 .om-calendar-grid button {
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -249,15 +234,7 @@
   font-weight: 950;
 }
 
-.om-history-range button {
-  min-height: 30px;
-  border-radius: 8px;
-  font-size: 0.72rem;
-  font-weight: 950;
-}
-
 .om-calendar-actions button.active,
-.om-history-range button.active,
 .om-calendar-grid button.active {
   border-color: rgba(118, 169, 255, 0.62);
   background: rgba(118, 169, 255, 0.18);
@@ -2282,7 +2259,6 @@ html[data-theme="light"] .om-match-info-box {
 .om-filter-bar select,
 .om-filter-bar .segmented-control button,
 .om-calendar-actions button,
-.om-history-range button,
 .om-calendar-toolbar button,
 .om-calendar-grid button {
   border-color: rgba(163, 185, 208, 0.14);
@@ -2291,7 +2267,6 @@ html[data-theme="light"] .om-match-info-box {
 
 .om-filter-bar .segmented-control button.active,
 .om-calendar-actions button.active,
-.om-history-range button.active,
 .om-calendar-grid button.active {
   border-color: rgba(70, 224, 182, 0.42);
   background: rgba(70, 224, 182, 0.12);
@@ -2438,7 +2413,6 @@ html[data-theme="light"] .om-view-card {
 html[data-theme="light"] .om-filter-bar select,
 html[data-theme="light"] .om-filter-bar .segmented-control button,
 html[data-theme="light"] .om-calendar-actions button,
-html[data-theme="light"] .om-history-range button,
 html[data-theme="light"] .om-calendar-toolbar button,
 html[data-theme="light"] .om-calendar-grid button {
   border-color: rgba(41, 116, 99, 0.16);
@@ -2682,7 +2656,6 @@ html[data-theme="light"] .om-calendar-filter-bar {
 
 html[data-theme="light"] .om-filter-bar .segmented-control button.active,
 html[data-theme="light"] .om-calendar-actions button.active,
-html[data-theme="light"] .om-history-range button.active,
 html[data-theme="light"] .om-calendar-grid button.active {
   border-color: rgba(15, 159, 126, 0.34);
   background-color: rgba(213, 250, 241, 0.94);

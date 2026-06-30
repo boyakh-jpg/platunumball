@@ -23,6 +23,8 @@ let userRoomFeedAvailable = true;
 const MATCH_LIST_MAX_LIMIT = 200;
 const ACTIVE_MATCH_EXCLUDED_STATUSES = new Set(["confirmed", "cancelled", "void", "closed"]);
 const ACTIVE_MATCH_EXCLUDED_PHASES = new Set(["record", "cancelled", "void"]);
+const RECENT_COMPLETED_MATCH_HOURS = 24;
+const RECENT_COMPLETED_MATCH_LIMIT = 20;
 
 function getMatchCursor(matches = []) {
   const oldest = [...matches]
@@ -113,9 +115,12 @@ function uniqueFeedCards(rows = [], ids = []) {
   return ids.map((id) => cards.get(id)).filter(Boolean);
 }
 
-function filterActiveMatchCards(matches = [], activeOnly = false) {
+function filterActiveMatchCards(matches = [], activeOnly = false, allowRecentCompleted = false) {
   if (!activeOnly) return matches;
-  return (matches ?? []).filter((match) => !ACTIVE_MATCH_EXCLUDED_PHASES.has(getMatchRoomPhase(match).phase));
+  return (matches ?? []).filter((match) => (
+    !ACTIVE_MATCH_EXCLUDED_PHASES.has(getMatchRoomPhase(match).phase) ||
+    (allowRecentCompleted && match?.recentCompleted === true)
+  ));
 }
 
 function flattenIdValues(value) {
@@ -149,6 +154,21 @@ function getCappedLimit(value) {
   const number = Number(value);
   if (!Number.isFinite(number) || number <= 0) return REMOTE_CLIENT_MATCH_LIMIT;
   return Math.max(1, Math.min(MATCH_LIST_MAX_LIMIT, Math.floor(number)));
+}
+
+function getCompletedSince(body = {}) {
+  const explicit = String(body.completedSince ?? body.completedAfter ?? "").trim();
+  if (explicit) {
+    const date = new Date(explicit);
+    if (Number.isFinite(date.getTime())) return date.toISOString();
+  }
+  const months = Number(body.completedMonths);
+  if (Number.isFinite(months) && months > 0) {
+    const date = new Date();
+    date.setMonth(date.getMonth() - Math.min(120, Math.floor(months)));
+    return date.toISOString();
+  }
+  return "";
 }
 
 async function fetchMatchFeedPage(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT, cursor = "", activeOnly = false) {
@@ -208,6 +228,60 @@ async function fetchMatchFeedPage(client, profileId = "", limit = REMOTE_CLIENT_
     cursor: ids.length ? `feed:${offset + (data ?? []).length}` : "",
     exhausted: (data ?? []).length < rowLimit,
     source: cards.length === ids.length ? "feed_card" : "feed",
+  };
+}
+
+async function fetchRecentCompletedMatchFeedPage(client, profileId = "", hours = RECENT_COMPLETED_MATCH_HOURS, limit = RECENT_COMPLETED_MATCH_LIMIT) {
+  if (!profileId || !userRoomFeedAvailable) return null;
+  const cappedLimit = Math.max(1, Math.min(RECENT_COMPLETED_MATCH_LIMIT, Number(limit) || RECENT_COMPLETED_MATCH_LIMIT));
+  const since = new Date(Date.now() - Math.max(1, Number(hours) || RECENT_COMPLETED_MATCH_HOURS) * 60 * 60 * 1000).toISOString();
+  const rowLimit = Math.min(80, cappedLimit * 4);
+  const { data, error } = await client
+    .from("user_room_feed")
+    .select("entity_id,sort_at,relation,card_json")
+    .eq("entity_type", "match")
+    .eq("profile_id", profileId)
+    .eq("is_active", true)
+    .eq("status", "confirmed")
+    .gte("sort_at", since)
+    .in("relation", ["owner", "participant", "referee"])
+    .order("sort_at", { ascending: false, nullsFirst: false })
+    .order("entity_id", { ascending: false })
+    .range(0, rowLimit - 1);
+  if (error) {
+    if (isMissingUserRoomFeed(error)) {
+      userRoomFeedAvailable = false;
+      console.warn("Recent completed match feed skipped.", error.message);
+      return null;
+    }
+    throw error;
+  }
+  const ids = unique((data ?? []).map((row) => row?.entity_id)).slice(0, cappedLimit);
+  const rows = (data ?? []).filter((row) => ids.includes(row?.entity_id));
+  const cards = uniqueFeedCards(rows, ids).map((card) => ({ ...card, recentCompleted: true }));
+  return {
+    ids,
+    cards: cards.length === ids.length ? cards : [],
+    source: cards.length === ids.length ? "recent_completed_feed_card" : "recent_completed_feed",
+  };
+}
+
+function mergeMatchFeedPages(feedPage, extraPage) {
+  if (!extraPage?.ids?.length) return feedPage;
+  if (!feedPage) return { ...extraPage, cursor: "", exhausted: true };
+  const ids = unique([...(feedPage.ids ?? []), ...(extraPage.ids ?? [])]);
+  const cardMap = new Map();
+  [...(feedPage.cards ?? []), ...(extraPage.cards ?? [])].forEach((card) => {
+    if (card?.id && !cardMap.has(card.id)) cardMap.set(card.id, card);
+  });
+  const cards = ids.map((id) => cardMap.get(id)).filter(Boolean);
+  return {
+    ...feedPage,
+    ids,
+    cards: cards.length === ids.length ? cards : [],
+    source: feedPage.source === "rpc_card" && extraPage.source === "recent_completed_feed_card"
+      ? "rpc_card+recent_completed"
+      : feedPage.source,
   };
 }
 
@@ -296,7 +370,7 @@ async function fetchCurrentUserMatchPage(client, profileId = "", limit = REMOTE_
   };
 }
 
-async function fetchCurrentUserCompletedFallbackMatchIds(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT) {
+async function fetchCurrentUserCompletedFallbackMatchIds(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT, completedSince = "") {
   if (!profileId) return { ids: [], exhausted: true, source: "completed_fallback" };
   const cappedLimit = Math.max(1, Math.min(MATCH_LIST_MAX_LIMIT, Number(limit) || REMOTE_CLIENT_MATCH_LIMIT));
   const rowLimit = Math.min(600, cappedLimit * 3);
@@ -310,7 +384,12 @@ async function fetchCurrentUserCompletedFallbackMatchIds(client, profileId = "",
   if (!candidateIds.length) return { ids: [], exhausted: true, source: "completed_fallback" };
   const rows = await fetchMatchRowsByIds(client, candidateIds);
   const ids = rows
-    .filter((row) => row.status === "confirmed")
+    .filter((row) => {
+      if (row.status !== "confirmed") return false;
+      if (!completedSince) return true;
+      const rowTime = row.confirmed_at ?? row.updated_at ?? row.scheduled_at ?? row.created_at ?? "";
+      return String(rowTime) >= completedSince;
+    })
     .sort((a, b) => String(b.updated_at ?? b.created_at ?? "").localeCompare(String(a.updated_at ?? a.created_at ?? "")))
     .map((row) => row.id)
     .slice(0, cappedLimit);
@@ -321,19 +400,21 @@ async function fetchCurrentUserCompletedFallbackMatchIds(client, profileId = "",
   };
 }
 
-async function fetchCurrentUserCompletedMatchIds(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT) {
+async function fetchCurrentUserCompletedMatchIds(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT, completedSince = "") {
   if (!profileId) return { ids: [], exhausted: true, source: "completed_feed" };
   const cappedLimit = Math.max(1, Math.min(MATCH_LIST_MAX_LIMIT, Number(limit) || REMOTE_CLIENT_MATCH_LIMIT));
   const rowLimit = Math.min(600, cappedLimit * 3);
-  if (!userRoomFeedAvailable) return fetchCurrentUserCompletedFallbackMatchIds(client, profileId, cappedLimit);
-  const { data, error } = await client
+  if (!userRoomFeedAvailable) return fetchCurrentUserCompletedFallbackMatchIds(client, profileId, cappedLimit, completedSince);
+  let query = client
     .from("user_room_feed")
     .select("entity_id,sort_at,relation")
     .eq("entity_type", "match")
     .eq("profile_id", profileId)
     .eq("is_active", true)
     .eq("status", "confirmed")
-    .eq("relation", "participant")
+    .eq("relation", "participant");
+  if (completedSince) query = query.gte("sort_at", completedSince);
+  const { data, error } = await query
     .order("sort_at", { ascending: false, nullsFirst: false })
     .order("entity_id", { ascending: false })
     .range(0, rowLimit - 1);
@@ -341,7 +422,7 @@ async function fetchCurrentUserCompletedMatchIds(client, profileId = "", limit =
     if (isMissingUserRoomFeed(error)) {
       userRoomFeedAvailable = false;
       console.warn("Completed match feed skipped.", error.message);
-      return fetchCurrentUserCompletedFallbackMatchIds(client, profileId, cappedLimit);
+      return fetchCurrentUserCompletedFallbackMatchIds(client, profileId, cappedLimit, completedSince);
     }
     throw error;
   }
@@ -660,8 +741,9 @@ async function loadCurrentRecruitingSchedule(context, adminLevel = 0) {
 
 async function loadNormalizedMatchList(context, body = {}, adminLevel = 0, limit = REMOTE_CLIENT_MATCH_LIMIT) {
   const completedOnly = body.completedOnly === true;
+  const completedSince = completedOnly ? getCompletedSince(body) : "";
   const completedPage = completedOnly
-    ? await fetchCurrentUserCompletedMatchIds(context.supabase, context.profileId, limit)
+    ? await fetchCurrentUserCompletedMatchIds(context.supabase, context.profileId, limit, completedSince)
     : null;
   if (completedOnly && completedPage && !completedPage.ids.length) {
     const currentUser = context.profile
@@ -731,6 +813,7 @@ async function loadNormalizedMatchList(context, body = {}, adminLevel = 0, limit
       cursor: getMatchCursor(matches),
       exhausted: completedPage ? completedPage.exhausted : matches.length < limit,
       source: completedOnly && completedPage ? completedPage.source : undefined,
+      completedSince: completedSince || undefined,
       recruitingScheduleChecked: false,
       recruitingScheduleCount: 0,
     },
@@ -742,12 +825,17 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   const cursor = String(body.cursor ?? body.matchUpdatedBefore ?? "").trim();
   const shouldLoadRecruitingSchedule = !cursor && body.includeRecruitingSchedule === true;
   const activeOnly = body.activeOnly === true;
+  const shouldLoadRecentCompleted = activeOnly && !cursor && body.includeRecentCompleted === true;
   const recruitingSchedulePromise = shouldLoadRecruitingSchedule
     ? loadCurrentRecruitingSchedule(context, adminLevel)
     : Promise.resolve(null);
-  const feedPage = await timeStep(debugTiming, "feedMs", () => (
-    fetchMatchFeedPage(context.supabase, context.profileId, limit, cursor, activeOnly)
-  ));
+  const [baseFeedPage, recentCompletedPage] = await Promise.all([
+    timeStep(debugTiming, "feedMs", () => fetchMatchFeedPage(context.supabase, context.profileId, limit, cursor, activeOnly)),
+    shouldLoadRecentCompleted
+      ? timeStep(debugTiming, "recentCompletedMs", () => fetchRecentCompletedMatchFeedPage(context.supabase, context.profileId))
+      : Promise.resolve(null),
+  ]);
+  const feedPage = mergeMatchFeedPages(baseFeedPage, recentCompletedPage);
   let pageSource = "feed";
   let pageCursor = feedPage?.cursor ?? "";
   let pageExhausted = feedPage?.exhausted ?? true;
@@ -756,7 +844,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   if (feedPage) {
     pageSource = feedPage.source ?? "feed";
     if (feedPage.cards?.length) {
-      matches = filterActiveMatchCards(feedPage.cards, activeOnly);
+      matches = filterActiveMatchCards(feedPage.cards, activeOnly, shouldLoadRecentCompleted);
     } else {
       matchRows = await timeStep(debugTiming, "matchRowsMs", () => (
         fetchMatchRowsByIds(context.supabase, feedPage.ids)
