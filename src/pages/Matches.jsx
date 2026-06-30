@@ -21,7 +21,7 @@ import {
   isInstantRoom,
 } from "../lib/matchUtils.js";
 import { getRecruitingEntryForUser, getRecruitingLobby, getRecruitingRoomOwnerId, getRecruitingSideCapacity, isRecruitingPartyEntry, isRecruitingRoomInUserSchedule } from "../lib/recruiting.js";
-import { RecruitingRoomModal, getRecruitingRoomListStatus } from "./Recruiting.jsx";
+import { RECRUITING_ROOM_REFRESH_INTERVAL_MS, RecruitingRoomModal, getRecruitingRoomListStatus } from "./Recruiting.jsx";
 import "../styles/recruiting-arena.css";
 import "../styles/matches-arena.css";
 
@@ -798,8 +798,9 @@ export default function Matches({ app }) {
     if (!selectedRecruitingPostId || !app.remoteReady || !app.currentUser.id) return undefined;
     app.actions.loadRecruitingPost?.(selectedRecruitingPostId);
     const intervalId = window.setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
       app.actions.loadRecruitingPost?.(selectedRecruitingPostId);
-    }, 4000);
+    }, RECRUITING_ROOM_REFRESH_INTERVAL_MS);
     return () => window.clearInterval(intervalId);
   }, [app.actions, app.currentUser.id, app.remoteReady, selectedRecruitingPostId]);
 

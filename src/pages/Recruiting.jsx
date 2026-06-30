@@ -153,6 +153,7 @@ function getStartDateFilterOptions() {
 }
 
 const RECRUITING_FILTER_PAGE_LIMIT = 50;
+export const RECRUITING_ROOM_REFRESH_INTERVAL_MS = 15000;
 
 function getMaxInputValue() {
   return getPublicRoomMaxDateInput();
@@ -3323,8 +3324,9 @@ function RecruitingReady({ app }) {
   useEffect(() => {
     if (!selectedPostId || !app.remoteReady || !app.currentUser.id) return undefined;
     const intervalId = window.setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
       app.actions.loadRecruitingPost?.(selectedPostId);
-    }, 4000);
+    }, RECRUITING_ROOM_REFRESH_INTERVAL_MS);
     return () => window.clearInterval(intervalId);
   }, [app.actions, app.currentUser.id, app.remoteReady, selectedPostId]);
 
