@@ -1648,3 +1648,5 @@ flowchart TD
 - 2026-06-30: Matches calendar day counts must use the same `getScheduleItemsForView` selector as the visible list. A day chip must not show a count for items that the selected view/list would hide.
 - 2026-06-30: Recruiting mutation success must not fan out into profile + mine list + match schedule + detail reloads. The sync response is authoritative for the changed room, and feed badge counts are adjusted locally for join/accept/decline/cancel.
 - 2026-06-30: Notifications page must trust the first route state for current-user notifications and recruiting invites. It must not auto-run profile refresh plus invited-room reload after the loader finishes.
+- 2026-06-30: Recruiting list `feed_card` responses may fall back to row reads only for invalid/missing cards. `page.source` must include `+row` when any row fallback was used so timing and egress diagnostics do not misread the path.
+- 2026-06-30: Recruiting team-host feed cards do not require `playerIds` to be non-empty when a host identity is present. List and modal lobby calculation both use the shared `playerId`/owner fallback for host occupancy.

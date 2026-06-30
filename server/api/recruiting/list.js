@@ -255,18 +255,16 @@ function hasUsableRecruitingFeedCard(card = {}) {
   if (!card?.playerId && !card?.ownerId && !card?.roomState?.ownerId) return false;
   if (!Array.isArray(card.playerIds)) return false;
   if (!Array.isArray(card.applicants)) return false;
-  if (card.hostJoinMode === "team" && (!card.teamId || !card.playerIds.length)) return false;
+  if (card.hostJoinMode === "team" && !card.teamId) return false;
   return true;
 }
 
-function canUseFeedCardsForProfile(cards = [], profileId = "") {
-  return cards.every((card) => {
-    if (!hasUsableRecruitingFeedCard(card)) return false;
-    if (!profileId) return true;
-    const relations = Array.isArray(card?.__feedRelations) ? card.__feedRelations : [];
-    if (!relations.includes("invited")) return true;
-    return hasPendingInvitationForProfile(card, profileId);
-  });
+function canUseFeedCardForProfile(card = {}, profileId = "") {
+  if (!hasUsableRecruitingFeedCard(card)) return false;
+  if (!profileId) return true;
+  const relations = Array.isArray(card?.__feedRelations) ? card.__feedRelations : [];
+  if (!relations.includes("invited")) return true;
+  return hasPendingInvitationForProfile(card, profileId);
 }
 
 function compactUser(user = {}, profileId = "") {
@@ -942,8 +940,7 @@ export async function loadCompactRecruitingList(context, {
   const canUsePageCards = pageCards.length > 0
     && !explicitPostIds.length
     && targetCards.length > 0
-    && targetPostIds.length > 0
-    && canUseFeedCardsForProfile(targetCards, context.profileId);
+    && targetPostIds.length > 0;
   const currentUser = context.profile
     ? fromRemoteProfile(context.profile)
     : createProfileShell(context.authUserId, context.authUser?.email ?? "");
@@ -985,9 +982,13 @@ export async function loadCompactRecruitingList(context, {
   }
 
   if (canUsePageCards) {
-    const cardById = new Map(targetCards.map((card) => [card.id, card]));
-    const missingPostIds = targetPostIds.filter((postId) => !cardById.has(postId));
-    const postRows = missingPostIds.length ? await fetchRecruitingRowsByIds(context.supabase, missingPostIds) : [];
+    const cardById = new Map(
+      targetCards
+        .filter((card) => canUseFeedCardForProfile(card, context.profileId))
+        .map((card) => [card.id, card]),
+    );
+    const fallbackPostIds = targetPostIds.filter((postId) => !cardById.has(postId));
+    const postRows = fallbackPostIds.length ? await fetchRecruitingRowsByIds(context.supabase, fallbackPostIds) : [];
     const postIds = postRows.map((post) => post.id).filter(Boolean);
     const { data: applicationRows, error: applicationError } = postIds.length
       ? await context.supabase.from("recruiting_applications").select(RECRUITING_APPLICATION_COLUMNS).in("post_id", postIds)
@@ -1047,7 +1048,7 @@ export async function loadCompactRecruitingList(context, {
         startFilter,
         timingType,
         scheduledDate,
-        source: pageSource ? (missingPostIds.length ? `${pageSource}+row` : pageSource) : (missingPostIds.length ? "feed_card+row" : "feed_card"),
+        source: pageSource ? (fallbackPostIds.length ? `${pageSource}+row` : pageSource) : (fallbackPostIds.length ? "feed_card+row" : "feed_card"),
         feedCounts,
       },
       updatedAt: Math.max(
