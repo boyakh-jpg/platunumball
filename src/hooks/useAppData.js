@@ -689,7 +689,7 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
           limit: loadOptions.matchLimit,
           listOnly: true,
           activeOnly: true,
-          includeRecentCompleted: true,
+          includeRecentCompleted: false,
           includeRecruitingSchedule: true,
           adminContext: false,
         },

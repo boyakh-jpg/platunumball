@@ -1634,3 +1634,4 @@ flowchart TD
 - 2026-06-30: Matches calendar day clicks keep the current status view. Calendar day counts and the list after click must use the same selected status view; date selection must not force the active aggregate view.
 - 2026-06-30: Profile upsert treats birth year as locked only when both birth_year_locked_at and birth_year exist. A row with a lock timestamp but no birth_year may accept the setup birth year and lock it again.
 - 2026-06-30: Current-profile remote state may merge explicit theme values for both light and dark. Missing theme metadata must not cause a saved dark/light choice to bounce back.
+- 2026-06-30: Matches first-page load does not request recent completed matches. Active schedule counts must start from the same active match/recruiting feed that the visible list uses; completed records belong to explicit record/review flows.
