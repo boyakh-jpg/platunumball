@@ -696,7 +696,7 @@ async function timeStep(timing, name, callback) {
 
 async function loadSyncedRecruitingPost(context, postId = "") {
   if (!postId) return null;
-  const state = await loadAuthoritativeState(context, { operation: { postId } });
+  const state = await loadAuthoritativeState(context, { operation: { action: "loadRecruitingPost", postId } });
   return (state.recruitingPosts ?? []).find((post) => post.id === postId) ?? null;
 }
 
