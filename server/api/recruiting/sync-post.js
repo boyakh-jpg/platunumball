@@ -951,7 +951,7 @@ export default async function handler(request, response) {
       body: { ...body, ...(operation ?? {}) },
       expectedUpdatedAt: operation ? replayResult?.baseUpdatedAt ?? null : null,
     });
-    if (operation && shouldReplayRecruitingOperation(operation) && result?.postId) {
+    if (result?.postId) {
       const syncedPost = await loadSyncedRecruitingPost(context, result.postId);
       if (syncedPost) result.post = syncedPost;
     }

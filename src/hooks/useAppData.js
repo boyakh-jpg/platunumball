@@ -814,6 +814,7 @@ export function useAppData(authUser = null) {
   const profileRefreshPromiseRef = useRef(null);
   const matchRecruitingSchedulePromiseRef = useRef(null);
   const myRecruitingPostsPromiseRef = useRef(new Map());
+  const recruitingRegionPromiseRef = useRef(new Map());
   const pendingRecruitingPostIdsRef = useRef(new Set());
   const recentRecruitingMutationTimesRef = useRef(new Map());
   const pendingMatchIdsRef = useRef(new Set());
@@ -889,6 +890,7 @@ export function useAppData(authUser = null) {
     profileRefreshPromiseRef.current = null;
     matchRecruitingSchedulePromiseRef.current = null;
     myRecruitingPostsPromiseRef.current = new Map();
+    recruitingRegionPromiseRef.current = new Map();
     pendingRecruitingPostIdsRef.current = new Set();
     recentRecruitingMutationTimesRef.current = new Map();
     pendingMatchIdsRef.current = new Set();
@@ -1419,47 +1421,56 @@ export function useAppData(authUser = null) {
     const pageLimit = Math.max(1, Math.min(REMOTE_CLIENT_RECRUITING_LIMIT, Number(limit) || REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT));
     const regionRequest = getRecruitingRegionRequest({ regionScope: regionScope === "region" && regionKey ? "region" : "local", regionKey });
     const startFilterRequest = getRecruitingStartFilterRequest({ startFilter });
+    const promiseKey = `${regionRequest.regionScope}:${regionRequest.regionKey}:${startFilterRequest.startFilter}:${pageLimit}`;
+    const currentPromise = recruitingRegionPromiseRef.current.get(promiseKey);
+    if (currentPromise) return currentPromise;
     setRecruitingPagination((prev) => ({ ...prev, ...regionRequest, ...startFilterRequest, loading: true, exhausted: false, error: "", cursor: "", offset: 0 }));
-    try {
-      const result = await postServerAction(
-        "/api/recruiting/list",
-        {
-          authUserId,
-          authEmail,
-          limit: pageLimit,
-          offset: 0,
-          regionScope: "local",
-          ...(regionRequest.regionKey ? { regionKey: regionRequest.regionKey } : {}),
+    const promise = (async () => {
+      try {
+        const result = await postServerAction(
+          "/api/recruiting/list",
+          {
+            authUserId,
+            authEmail,
+            limit: pageLimit,
+            offset: 0,
+            regionScope: "local",
+            ...(regionRequest.regionKey ? { regionKey: regionRequest.regionKey } : {}),
+            ...startFilterRequest,
+            includeMine: true,
+            listOnly: true,
+            adminContext: false,
+            includeFeedCounts: true,
+          },
+          { allowWhenDisabled: true },
+        );
+        const rawRemoteState = result?.state ?? {};
+        const rawPostCount = rawRemoteState.recruitingPosts?.length ?? 0;
+        const remoteState = normalizeServerState(filterPendingRecruitingPosts(rawRemoteState, pendingRecruitingPostIdsRef.current, recentRecruitingMutationTimesRef.current));
+        const nextPosts = remoteState.recruitingPosts ?? [];
+        setState((prev) => mergeRemoteRecruitingPage(prev, remoteState));
+        const pageHasExhausted = typeof result?.page?.exhausted === "boolean";
+        setRecruitingPagination({
+          loading: false,
+          exhausted: pageHasExhausted ? result.page.exhausted : rawPostCount < pageLimit,
+          error: "",
+          cursor: result?.page?.cursor ?? String(rawPostCount),
+          offset: getRecruitingPaginationOffset(result?.page, rawPostCount),
+          ...regionRequest,
           ...startFilterRequest,
-          includeMine: true,
-          listOnly: true,
-          adminContext: false,
-          includeFeedCounts: true,
-        },
-        { allowWhenDisabled: true },
-      );
-      const rawRemoteState = result?.state ?? {};
-      const rawPostCount = rawRemoteState.recruitingPosts?.length ?? 0;
-      const remoteState = normalizeServerState(filterPendingRecruitingPosts(rawRemoteState, pendingRecruitingPostIdsRef.current, recentRecruitingMutationTimesRef.current));
-      const nextPosts = remoteState.recruitingPosts ?? [];
-      setState((prev) => mergeRemoteRecruitingPage(prev, remoteState));
-      const pageHasExhausted = typeof result?.page?.exhausted === "boolean";
-      setRecruitingPagination({
-        loading: false,
-        exhausted: pageHasExhausted ? result.page.exhausted : rawPostCount < pageLimit,
-        error: "",
-        cursor: result?.page?.cursor ?? String(rawPostCount),
-        offset: getRecruitingPaginationOffset(result?.page, rawPostCount),
-        ...regionRequest,
-        ...startFilterRequest,
-        feedCounts: result?.page?.feedCounts ?? recruitingPagination.feedCounts ?? null,
-      });
-      return nextPosts.length;
-    } catch (error) {
-      console.warn("Recruiting region load failed.", error.message);
-      setRecruitingPagination((prev) => ({ ...prev, ...regionRequest, ...startFilterRequest, loading: false, exhausted: false, error: error.message ?? "recruiting_region_load_failed", cursor: "", offset: 0 }));
-      return false;
-    }
+          feedCounts: result?.page?.feedCounts ?? recruitingPagination.feedCounts ?? null,
+        });
+        return nextPosts.length;
+      } catch (error) {
+        console.warn("Recruiting region load failed.", error.message);
+        setRecruitingPagination((prev) => ({ ...prev, ...regionRequest, ...startFilterRequest, loading: false, exhausted: false, error: error.message ?? "recruiting_region_load_failed", cursor: "", offset: 0 }));
+        return false;
+      }
+    })().finally(() => {
+      if (recruitingRegionPromiseRef.current.get(promiseKey) === promise) recruitingRegionPromiseRef.current.delete(promiseKey);
+    });
+    recruitingRegionPromiseRef.current.set(promiseKey, promise);
+    return promise;
   }, [authEmail, authUserId, recruitingPagination.feedCounts, setState]);
 
   const loadRecruitingPost = useCallback(async (postId) => {

@@ -230,7 +230,11 @@ function mergeFeedCards(...cardGroups) {
     if (!id) return;
     if (cards.has(id)) {
       const existing = cards.get(id);
-      existing.__feedRelations = [...new Set([...(existing.__feedRelations ?? []), ...(card.__feedRelations ?? [])])];
+      const feedRelations = [...new Set([...(existing.__feedRelations ?? []), ...(card.__feedRelations ?? [])])];
+      const existingTime = Number(new Date(existing.updatedAt ?? existing.updated_at ?? existing.createdAt ?? existing.created_at ?? 0).getTime()) || 0;
+      const cardTime = Number(new Date(card.updatedAt ?? card.updated_at ?? card.createdAt ?? card.created_at ?? 0).getTime()) || 0;
+      if (cardTime > existingTime) cards.set(id, { ...card, __feedRelations: feedRelations });
+      else existing.__feedRelations = feedRelations;
       return;
     }
     cards.set(id, card);
@@ -1243,7 +1247,7 @@ export default async function handler(request, response) {
       : null;
     const currentUserPostIds = mineResult?.ids ?? [];
     const pagePostIds = pageResult?.ids ?? [];
-    const pageCards = mergeFeedCards(pageResult?.cards ?? [], mineResult?.cards ?? []);
+    const pageCards = mergeFeedCards(mineResult?.cards ?? [], pageResult?.cards ?? []);
     const pageSource = pageResult?.source ?? "";
     const pageExhausted = typeof pageResult?.exhausted === "boolean" ? pageResult.exhausted : null;
     const pageNextOffset = pageResult?.nextOffset;
