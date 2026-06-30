@@ -119,7 +119,6 @@ function canAccessActiveMatch(match, user, state) {
     : null;
   const isHost = getMatchHostPlayerId(match, sourcePost) === user.id;
   const isReferee = isMatchReferee(match, user.id) && isEligibleReferee(user, match.refereeTrustMin, state.settings?.refereeAppointments);
-  if (match.status === "disputed") return isReferee || isHost;
   const isRecorder = !match.refereeId && getStatRecorderSides(match, user.id).length > 0;
   const isPlayer = getMatchPlayerIds(match).includes(user.id);
   const isReserve = ["teamA", "teamB"].some((sideName) => getMatchReservePlayerIds(match, sideName).includes(user.id));
@@ -148,6 +147,8 @@ export default function Recorder({ app }) {
   const [latePlayerDraft, setLatePlayerDraft] = useState({ sideName: "teamA", userId: "", playerQuery: "", name: "" });
   const [disputeReason, setDisputeReason] = useState("스코어 또는 개인 기록 재확인 필요");
   const [recorderLoading, setRecorderLoading] = useState(false);
+  const [saveFeedback, setSaveFeedback] = useState("");
+  const [refreshingMatchDetail, setRefreshingMatchDetail] = useState(false);
   const recorderLoadRef = useRef("");
 
   useEffect(() => {
@@ -173,6 +174,7 @@ export default function Recorder({ app }) {
       setDirtyStats({});
       setHandoffDraft({});
       setLatePlayerDraft((current) => ({ ...current, userId: "", playerQuery: "", name: "" }));
+      setSaveFeedback("");
     }
   }, [selectedMatch?.id, selectedMatch?.result?.updatedAt, selectedMatch?.result?.submittedAt, selectedMatch?.disputeDraftResult?.updatedAt, selectedMatchPlayerKey]);
 
@@ -256,12 +258,27 @@ export default function Recorder({ app }) {
 
   const saveStats = () => {
     if (!selectedMatch || !canSave) return;
-    app.actions.submitMatchResult(selectedMatch.id, {
+    setSaveFeedback(canEditDisputeDraft ? "수정 중" : "저장 중");
+    const result = app.actions.submitMatchResult(selectedMatch.id, {
       scoreA,
       scoreB,
       playerStats: canEditDisputeDraft ? stats : dirtyStats,
     });
     setDirtyStats({});
+    Promise.resolve(result).then((response) => {
+      setSaveFeedback(response?.ok === false ? "저장 실패" : canEditDisputeDraft ? "수정되었습니다." : "저장되었습니다.");
+    }).catch(() => setSaveFeedback("저장 실패"));
+  };
+
+  const refreshSelectedMatch = () => {
+    if (!selectedMatch || refreshingMatchDetail) return;
+    const loadMatchDetail = app.actions.loadMatchDetail;
+    if (!loadMatchDetail) return;
+    setRefreshingMatchDetail(true);
+    Promise.resolve(loadMatchDetail(selectedMatch.id)).then((count) => {
+      setSaveFeedback(count ? "새로고침되었습니다." : "최신 경기 정보를 불러오지 못했습니다.");
+    }).catch(() => setSaveFeedback("새로고침 실패"))
+      .finally(() => setRefreshingMatchDetail(false));
   };
 
   const addLatePlayer = (anonymous = false) => {
@@ -593,11 +610,18 @@ export default function Recorder({ app }) {
 
             <div className="recorder-save-row">
               <p>{canEditDisputeDraft ? "저장하면 기존 결과는 유지하고 이의 수정안만 임시 저장합니다." : recordWindow?.beforeEnd ? "경기 중 저장은 상태를 진행으로 유지합니다. 경기 종료 후 저장하면 결과 승인 단계로 넘어갑니다." : "저장하면 결과 승인 단계로 넘어갑니다."}</p>
-              <Button onClick={saveStats} disabled={!canSave}>
-                <Save size={17} />
-                {canEditDisputeDraft ? "수정안 저장" : "저장"}
-              </Button>
+              <div className="match-action-row">
+                <Button type="button" variant="secondary" onClick={refreshSelectedMatch} disabled={refreshingMatchDetail}>
+                  <RotateCcw size={16} />
+                  새로고침
+                </Button>
+                <Button onClick={saveStats} disabled={!canSave}>
+                  <Save size={17} />
+                  {canEditDisputeDraft ? "수정안 저장" : "저장"}
+                </Button>
+              </div>
             </div>
+            {saveFeedback ? <p className="recorder-save-feedback">{saveFeedback}</p> : null}
           </Card>
 
           {selectedMatch.status === "approval" ? (

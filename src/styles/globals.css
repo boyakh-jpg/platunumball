@@ -2928,6 +2928,19 @@ input[type="color"] {
   grid-column: 1 / -1;
 }
 
+.score-form .stat-entry-actions,
+.score-form .stat-save-feedback {
+  grid-column: 1 / -1;
+}
+
+.score-form .stat-save-feedback,
+.recorder-save-feedback {
+  color: var(--green);
+  font-size: 0.88rem;
+  font-weight: 900;
+  margin: 0;
+}
+
 .score-form .stat-trust-panel {
   grid-column: 1 / -1;
 }

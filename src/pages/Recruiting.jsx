@@ -1983,8 +1983,8 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
   };
   const sendInvites = (roomPost, playerIds, teamId = null, joinMode = "") => {
     if (!inviteDraft || !playerIds.length) return;
-    const invite = { side: inviteDraft.sideName, reserve: Boolean(inviteDraft.reserve), playerIds, teamId };
-    if (joinMode) invite.joinMode = joinMode;
+    const inviteJoinMode = joinMode || (teamId ? "team" : "player");
+    const invite = { side: inviteDraft.sideName, reserve: Boolean(inviteDraft.reserve), playerIds, teamId, joinMode: inviteJoinMode };
     app.actions.inviteRecruitingPlayers(roomPost.id, invite);
     setInviteDraft(null);
   };

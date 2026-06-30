@@ -740,6 +740,8 @@ const REFEREE_LOCKED_MATCH_ACTIONS = new Set([
 ]);
 
 function canSubmitResult(profileId, existingMatch, nextMatch) {
+  const disputeDraftSubmission = existingMatch?.status === "disputed" || nextMatch?.status === "disputed" || nextMatch?.disputeDraftResult;
+  if (disputeDraftSubmission && !isMatchOperator(profileId, existingMatch, nextMatch)) return false;
   const refereeId = nextMatch.refereeId || existingMatch?.referee_id;
   if (refereeId) return profileId === refereeId;
   const recorderIds = getStatRecorderIds(nextMatch);

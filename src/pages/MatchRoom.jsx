@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
-import { CalendarDays, Crown, MapPin, Minus, Plus, ShieldCheck, Star, ThumbsUp, Trophy, UsersRound, X } from "lucide-react";
+import { CalendarDays, Crown, MapPin, Minus, Plus, RotateCcw, ShieldCheck, Star, ThumbsUp, Trophy, UsersRound, X } from "lucide-react";
 import AgreementPanel from "../components/match/AgreementPanel.jsx";
 import ApprovalPanel from "../components/match/ApprovalPanel.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
@@ -185,6 +185,8 @@ export default function MatchRoom({ app }) {
   const [statEditorPlayerId, setStatEditorPlayerId] = useState(null);
   const [reviewControlsOpen, setReviewControlsOpen] = useState(false);
   const [thumbDraftPlayerIds, setThumbDraftPlayerIds] = useState([]);
+  const [resultSaveFeedback, setResultSaveFeedback] = useState("");
+  const [matchDetailRefreshing, setMatchDetailRefreshing] = useState(false);
   const existingCourtReview = useMemo(
     () => (match ? (app.state.settings?.courtReviews ?? []).find((review) => review.matchId === match.id && review.reviewerId === app.currentUser.id) ?? null : null),
     [app.currentUser.id, app.state.settings?.courtReviews, match?.id],
@@ -230,6 +232,7 @@ export default function MatchRoom({ app }) {
       scoreB: sourceResult?.scoreB ?? match.teamB?.score ?? 17,
       playerStats: makeInitialStats(match),
     });
+    setResultSaveFeedback("");
   }, [match?.id, match?.result?.updatedAt, match?.result?.submittedAt, match?.disputeDraftResult?.updatedAt, matchPlayerKey]);
 
   if (!match) {
@@ -424,7 +427,22 @@ export default function MatchRoom({ app }) {
   };
   const submitResult = (event) => {
     event.preventDefault();
-    if (canSubmitResult) app.actions.submitMatchResult(match.id, score);
+    if (!canSubmitResult) return;
+    setResultSaveFeedback(canEditDisputeDraft ? "수정 중" : "저장 중");
+    const result = app.actions.submitMatchResult(match.id, score);
+    Promise.resolve(result).then((response) => {
+      setResultSaveFeedback(response?.ok === false ? "저장 실패" : canEditDisputeDraft ? "수정되었습니다." : "저장되었습니다.");
+    }).catch(() => setResultSaveFeedback("저장 실패"));
+  };
+  const refreshMatchDetail = () => {
+    if (matchDetailRefreshing) return;
+    const loadMatchDetail = app.actions.loadMatchDetail;
+    if (!loadMatchDetail) return;
+    setMatchDetailRefreshing(true);
+    Promise.resolve(loadMatchDetail(match.id)).then((count) => {
+      setResultSaveFeedback(count ? "새로고침되었습니다." : "최신 경기 정보를 불러오지 못했습니다.");
+    }).catch(() => setResultSaveFeedback("새로고침 실패"))
+      .finally(() => setMatchDetailRefreshing(false));
   };
   const getSideLabel = (sideName) => (sideName === "teamA" ? "A사이드" : "B사이드");
   const getRecorderName = (sideName) => hasReferee ? "" : userMap[statRecorders[sideName]]?.name ?? "";
@@ -781,9 +799,16 @@ export default function MatchRoom({ app }) {
                 {teamBSide.name}
                 <input type="number" min="0" disabled={!canSubmitResult} value={score.scoreB} onChange={(event) => setScore((current) => ({ ...current, scoreB: event.target.value }))} />
               </label>
-              <Button type="submit" disabled={!canSubmitResult}>
-                {canEditDisputeDraft ? "이의 수정안 저장" : canSubmitLiveResult ? "실시간 기록 저장" : hasReferee ? "심판 기록 제출" : currentRecorderSides.length ? "후보 기록 제출" : currentUserSubmitted ? "스코어/내 득점 다시 제출" : "스코어/내 득점 제출"}
-              </Button>
+              <div className="match-action-row stat-entry-actions">
+                <Button type="button" variant="secondary" disabled={matchDetailRefreshing} onClick={refreshMatchDetail}>
+                  <RotateCcw size={16} />
+                  새로고침
+                </Button>
+                <Button type="submit" disabled={!canSubmitResult}>
+                  {canEditDisputeDraft ? "이의 수정안 저장" : canSubmitLiveResult ? "실시간 기록 저장" : hasReferee ? "심판 기록 제출" : currentRecorderSides.length ? "후보 기록 제출" : currentUserSubmitted ? "스코어/내 득점 다시 제출" : "스코어/내 득점 제출"}
+                </Button>
+              </div>
+              {resultSaveFeedback ? <div className="stat-save-feedback">{resultSaveFeedback}</div> : null}
               <div className="stat-integrity-note">
                 {hasReferee
                   ? "심판이 스코어와 전체 개인 활약을 한 번에 저장합니다. 1시간 안에 입력해야 합니다."

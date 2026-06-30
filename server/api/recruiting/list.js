@@ -193,9 +193,17 @@ function uniqueFeedCards(rows = [], ids = []) {
   const cards = new Map();
   (rows ?? []).forEach((row) => {
     const id = row?.entity_id ?? row?.entityId;
-    if (!id || !idSet.has(id) || cards.has(id)) return;
+    if (!id || !idSet.has(id)) return;
+    const relation = String(row?.relation ?? "").trim();
+    if (cards.has(id)) {
+      if (relation) {
+        const existing = cards.get(id);
+        existing.__feedRelations = [...new Set([...(existing.__feedRelations ?? []), relation])];
+      }
+      return;
+    }
     const card = normalizeFeedCard(row);
-    if (card) cards.set(id, card);
+    if (card) cards.set(id, relation ? { ...card, __feedRelations: [relation] } : card);
   });
   return ids.map((id) => cards.get(id)).filter(Boolean);
 }
@@ -204,9 +212,33 @@ function mergeFeedCards(...cardGroups) {
   const cards = new Map();
   cardGroups.flat().forEach((card) => {
     const id = card?.id;
-    if (id && !cards.has(id)) cards.set(id, card);
+    if (!id) return;
+    if (cards.has(id)) {
+      const existing = cards.get(id);
+      existing.__feedRelations = [...new Set([...(existing.__feedRelations ?? []), ...(card.__feedRelations ?? [])])];
+      return;
+    }
+    cards.set(id, card);
   });
   return [...cards.values()];
+}
+
+function hasPendingInvitationForProfile(card = {}, profileId = "") {
+  const invitations = card?.roomState?.invitations;
+  if (!profileId || !Array.isArray(invitations)) return false;
+  return invitations.some((invitation) => (
+    invitation?.targetUserId === profileId &&
+    String(invitation?.status ?? "pending") === "pending"
+  ));
+}
+
+function canUseFeedCardsForProfile(cards = [], profileId = "") {
+  if (!profileId) return true;
+  return cards.every((card) => {
+    const relations = Array.isArray(card?.__feedRelations) ? card.__feedRelations : [];
+    if (!relations.includes("invited")) return true;
+    return hasPendingInvitationForProfile(card, profileId);
+  });
 }
 
 function compactUser(user = {}, profileId = "") {
@@ -857,7 +889,8 @@ export async function loadCompactRecruitingList(context, {
   const canUsePageCards = pageCards.length > 0
     && targetCards.length === targetPostIds.length
     && !explicitPostIds.length
-    && targetPostIds.length > 0;
+    && targetPostIds.length > 0
+    && canUseFeedCardsForProfile(targetCards, context.profileId);
   const currentUser = context.profile
     ? fromRemoteProfile(context.profile)
     : createProfileShell(context.authUserId, context.authUser?.email ?? "");

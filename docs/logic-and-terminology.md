@@ -7,6 +7,14 @@
 - `/api/system/schema-health`의 `ensureTestActors`는 production DB를 기본 변경하지 않는다. production seed가 꼭 필요하면 `RANKBALL_ALLOW_PRODUCTION_TEST_SEED=true`를 별도로 명시한다.
 - 원격 `scripts/simulate-backend-flow.mjs`는 기본적으로 schema-health actor seed를 요청하지 않는다. 필요한 경우 `RANKBALL_SIM_ENSURE_TEST_ACTORS=true`로 opt-in 한다.
 
+## 2026-06-30 현장 이의 처리
+
+- 경기 종료 후 결과/개인기록이 저장되면 이의신청방은 현장에서 점수판을 같이 확인하는 짧은 검토 단계다.
+- 이의신청방은 경기 관계자가 열람할 수 있고, 점수판/개인기록 수정은 심판이 있으면 심판, 없으면 방장만 한다.
+- 이의 수정 저장은 `match.result`를 바로 덮지 않고 `disputeDraftResult`를 갱신한다. 다른 기기는 방 상세 새로고침으로 최신 수정안을 확인한다.
+- 서버도 `disputed` 결과 저장은 심판 또는 방장만 허용한다.
+- 이의 처리자가 수정안을 확정하면 양팀 재승인 없이 바로 기록 확정으로 넘어간다.
+
 ## 2026-06-30 feed pagination offset
 
 - `user_room_feed`는 한 entity가 여러 relation row를 가질 수 있다.
@@ -369,7 +377,7 @@ UI/CSS/반응형/라이트·다크 세부 기준은 `docs/design-system.md`를 �
 | 경기준비방 | `checkin` | 즉시방 또는 경기 임박/도달 | 출석, 미도착, 룰, 슬롯 | 출석체크, 강퇴, 인원/룰 수정, 시작 |
 | 경기시작 | `live` | `startedAt` 있음 | 기록판, 채팅 | 기록 입력, 기록자 인수인계, 경기 종료 |
 | 경기종료 | `postgame` | `endedAt` 있음 | 기록판, 따봉, 사후 인원 | 결과/개인활약 제출, 사후 추가 |
-| 이의신청 | `dispute` | `status=approval/disputed`이고 창 열림 | 기록, 이의 내역 | 열람만 |
+| 이의신청 | `dispute` | `status=approval/disputed`이고 창 열림 | 기록, 이의 내역 | 참가자 열람, 심판/방장 수정/확정 |
 | 기록방 | `record` | `status=confirmed` 또는 이의 시간 만료 | 읽기 전용 기록 | 열람만 |
 | 취소 | `cancelled` | `status=cancelled` | 취소 사유 | 보기만 |
 | 무효 | `void` | `status=void` | 무효 사유 | 보기만 |
@@ -571,7 +579,7 @@ flowchart TD
 4. 이의제기는 경기 참가자, 후보, 기록자, 방장, 심판이 할 수 있다.
 5. 심판이 있으면 심판이 처리한다.
 6. 심판이 없으면 방장이 처리한다.
-7. 이의신청부터 방 모달은 열람 전용이다. 채팅 입력, 슬롯 관리, 초대, 방 수정, 경기 운영 버튼은 닫는다.
+7. 이의신청부터 채팅 입력, 슬롯 관리, 초대, 방 수정, 경기 운영 버튼은 닫는다. 단, 점수판/개인기록은 심판 또는 방장만 현장 검토용으로 수정할 수 있다.
 8. 이의신청이 접수되면 기존 결과를 `disputeDraftResult`로 복제한다.
 9. 이의 수정 중에는 `match.result`를 직접 덮지 않고 `disputeDraftResult`만 임시 저장한다.
 10. 이의 처리자는 심판이 있으면 심판, 심판이 없으면 방장이다.
