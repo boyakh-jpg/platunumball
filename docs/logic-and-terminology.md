@@ -1645,3 +1645,4 @@ flowchart TD
 - 2026-06-30: Recruiting sync responses must include the latest DB post after any successful write when possible. Invite accept/decline and roster changes must not return the pre-write snapshot as authoritative UI state.
 - 2026-06-30: When public recruiting feed cards and current-user recruiting feed cards contain the same room, the newest card wins and the current-user card wins ties. A stale public region card must not override the user's invite/participant card.
 - 2026-06-30: Production DB must apply `20260630173000_recruiting_feed_card_contract.sql` so `rankball_refresh_recruiting_feed_for_post` writes roster/application fields into `user_room_feed.card_json` and backfills active open recruiting feed rows.
+- 2026-06-30: Matches calendar day counts must use the same `getScheduleItemsForView` selector as the visible list. A day chip must not show a count for items that the selected view/list would hide.

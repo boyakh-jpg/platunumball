@@ -848,10 +848,9 @@ export default function Matches({ app }) {
       })
       .filter((post) => kindFilter === "all" || (kindFilter === "ranked" ? post.ranked !== false : post.ranked === false))
       .filter((post) => modeFilter === "all" || post.mode === modeFilter);
-    const displayableMatches = baseFilteredMatches.filter((match) => (
-      getMatchDate(match) && shouldShowMatchInList(match, selectedView, app.currentUser.id, true)
-    ));
-    return [...displayableMatches, ...recruitingRooms];
+    return getScheduleItemsForView(baseFilteredMatches, recruitingRooms, selectedView, app.currentUser.id, true)
+      .map(({ item }) => item)
+      .filter((item) => getMatchDate(item));
   }, [app.currentUser.id, app.state, baseFilteredMatches, kindFilter, matchPageRecruitingPosts, maxScheduleDate, modeFilter, myTeamIds, selectedView, todayValue]);
 
   const calendarCounts = useMemo(() => {
