@@ -93,6 +93,20 @@ function mergeById(current = [], incoming = []) {
   return [...merged.values()];
 }
 
+function sortByFeedOrder(items = [], ids = []) {
+  const order = new Map((ids ?? []).filter(Boolean).map((id, index) => [id, index]));
+  return [...(items ?? [])].sort((a, b) => {
+    const orderA = order.has(a?.id) ? order.get(a.id) : Number.MAX_SAFE_INTEGER;
+    const orderB = order.has(b?.id) ? order.get(b.id) : Number.MAX_SAFE_INTEGER;
+    if (orderA !== orderB) return orderA - orderB;
+    return String(b?.updatedAt ?? b?.createdAt ?? "").localeCompare(String(a?.updatedAt ?? a?.createdAt ?? ""));
+  });
+}
+
+function appendRowFallbackSource(source = "feed") {
+  return String(source).includes("+row") ? source : `${source}+row`;
+}
+
 function normalizeFeedCard(row = {}) {
   const card = row?.card_json ?? row?.cardJson ?? row?.card ?? null;
   if (!card || typeof card !== "object" || Array.isArray(card)) return null;
@@ -189,10 +203,10 @@ async function fetchMatchFeedPage(client, profileId = "", limit = REMOTE_CLIENT_
     const hasAllCards = cards.length === ids.length;
     return {
       ids,
-      cards: hasAllCards ? cards : [],
+      cards,
       cursor: String(rpcData?.cursor ?? ""),
       exhausted: rpcData?.exhausted !== false,
-      source: hasAllCards ? "rpc_card" : "rpc",
+      source: hasAllCards ? "rpc_card" : (cards.length ? "rpc_card_partial" : "rpc"),
     };
   }
   if (!isMissingUserRoomFeed(rpcError) && rpcError?.code !== "PGRST202") throw rpcError;
@@ -224,10 +238,10 @@ async function fetchMatchFeedPage(client, profileId = "", limit = REMOTE_CLIENT_
   const cards = uniqueFeedCards(rows, ids);
   return {
     ids,
-    cards: cards.length === ids.length ? cards : [],
+    cards,
     cursor: ids.length ? `feed:${offset + (data ?? []).length}` : "",
     exhausted: (data ?? []).length < rowLimit,
-    source: cards.length === ids.length ? "feed_card" : "feed",
+    source: cards.length === ids.length ? "feed_card" : (cards.length ? "feed_card_partial" : "feed"),
   };
 }
 
@@ -261,8 +275,10 @@ async function fetchRecentCompletedMatchFeedPage(client, profileId = "", hours =
   const cards = uniqueFeedCards(rows, ids).map((card) => ({ ...card, recentCompleted: true }));
   return {
     ids,
-    cards: cards.length === ids.length ? cards : [],
-    source: cards.length === ids.length ? "recent_completed_feed_card" : "recent_completed_feed",
+    cards,
+    source: cards.length === ids.length
+      ? "recent_completed_feed_card"
+      : (cards.length ? "recent_completed_feed_card_partial" : "recent_completed_feed"),
   };
 }
 
@@ -275,11 +291,12 @@ function mergeMatchFeedPages(feedPage, extraPage) {
     if (card?.id && !cardMap.has(card.id)) cardMap.set(card.id, card);
   });
   const cards = ids.map((id) => cardMap.get(id)).filter(Boolean);
+  const hasAllCards = cards.length === ids.length;
   return {
     ...feedPage,
     ids,
-    cards: cards.length === ids.length ? cards : [],
-    source: feedPage.source === "rpc_card" && extraPage.source === "recent_completed_feed_card"
+    cards,
+    source: hasAllCards && feedPage.source === "rpc_card" && extraPage.source === "recent_completed_feed_card"
       ? "rpc_card+recent_completed"
       : feedPage.source,
   };
@@ -843,11 +860,19 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   let matches = [];
   if (feedPage) {
     pageSource = feedPage.source ?? "feed";
+    const feedCards = feedPage.cards ?? [];
+    const cardIds = new Set(feedCards.map((card) => card?.id).filter(Boolean));
     if (feedPage.cards?.length) {
-      matches = filterActiveMatchCards(feedPage.cards, activeOnly, shouldLoadRecentCompleted);
-    } else {
+      matches = sortByFeedOrder(
+        filterActiveMatchCards(feedCards, activeOnly, shouldLoadRecentCompleted),
+        feedPage.ids,
+      );
+    }
+    const missingMatchIds = (feedPage.ids ?? []).filter((id) => !cardIds.has(id));
+    if (missingMatchIds.length) {
+      pageSource = appendRowFallbackSource(pageSource);
       matchRows = await timeStep(debugTiming, "matchRowsMs", () => (
-        fetchMatchRowsByIds(context.supabase, feedPage.ids)
+        fetchMatchRowsByIds(context.supabase, missingMatchIds)
       ));
     }
   } else {
@@ -958,10 +983,12 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   const teams = (teamRows ?? []).map(toClientTeam);
   const teamById = Object.fromEntries(teams.map((team) => [team.id, team]));
   const courtById = firstBy(courtRows ?? [], "id");
-  matches = readableRows
+  const rowMatches = readableRows
     .map((row) => toClientMatch(row, playersByMatch, teamById, courtById))
     .filter((match) => !activeOnly || !ACTIVE_MATCH_EXCLUDED_PHASES.has(getMatchRoomPhase(match).phase))
-    .sort((a, b) => String(b.updatedAt ?? b.createdAt ?? "").localeCompare(String(a.updatedAt ?? a.createdAt ?? "")));
+  matches = feedPage?.ids?.length
+    ? sortByFeedOrder(mergeById(matches, rowMatches), feedPage.ids)
+    : rowMatches.sort((a, b) => String(b.updatedAt ?? b.createdAt ?? "").localeCompare(String(a.updatedAt ?? a.createdAt ?? "")));
   const state = normalizeState({
     currentUserId: currentUser.id,
     users,
@@ -999,8 +1026,8 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
       recruitingScheduleCount,
     },
     updatedAt: Math.max(
-      ...[...(matchRows ?? []), context.profile].filter(Boolean)
-        .map((row) => new Date(row.updated_at ?? row.created_at ?? 0).getTime())
+      ...[...(matchRows ?? []), ...matches, context.profile].filter(Boolean)
+        .map((row) => new Date(row.updatedAt ?? row.updated_at ?? row.createdAt ?? row.created_at ?? 0).getTime())
         .filter((value) => Number.isFinite(value)),
       0,
     ),
