@@ -917,8 +917,8 @@ export async function loadCompactRecruitingList(context, {
   const targetPostIds = uniqueIds([...explicitPostIds, ...(mineOnly ? currentUserPostIds : pagePostIds), ...(includeMine ? currentUserPostIds : [])]);
   const targetCards = uniqueFeedCards(pageCards.map((card) => ({ entity_id: card?.id, card_json: card })), targetPostIds);
   const canUsePageCards = pageCards.length > 0
-    && targetCards.length === targetPostIds.length
     && !explicitPostIds.length
+    && targetCards.length > 0
     && targetPostIds.length > 0
     && canUseFeedCardsForProfile(targetCards, context.profileId);
   const currentUser = context.profile
@@ -962,18 +962,59 @@ export async function loadCompactRecruitingList(context, {
   }
 
   if (canUsePageCards) {
+    const cardById = new Map(targetCards.map((card) => [card.id, card]));
+    const missingPostIds = targetPostIds.filter((postId) => !cardById.has(postId));
+    const postRows = missingPostIds.length ? await fetchRecruitingRowsByIds(context.supabase, missingPostIds) : [];
+    const postIds = postRows.map((post) => post.id).filter(Boolean);
+    const { data: applicationRows, error: applicationError } = postIds.length
+      ? await context.supabase.from("recruiting_applications").select(RECRUITING_APPLICATION_COLUMNS).in("post_id", postIds)
+      : { data: [], error: null };
+    if (applicationError) throw applicationError;
+
+    const scope = collectRecruitingScope(postRows, applicationRows ?? [], context.profileId ?? "");
+    const profileIdsForLookup = scope.profileIds.filter((profileId) => profileId !== currentUser.id);
+    const [
+      { data: teamRows, error: teamError },
+      { data: profileRows, error: profileError },
+      { data: courtRows, error: courtError },
+    ] = await Promise.all([
+      scope.teamIds.length
+        ? context.supabase.from("teams").select(TEAM_COLUMNS).in("id", scope.teamIds).is("deleted_at", null)
+        : Promise.resolve({ data: [], error: null }),
+      profileIdsForLookup.length
+        ? context.supabase.from("public_profiles").select(PROFILE_PUBLIC_COLUMNS).in("id", profileIdsForLookup)
+        : Promise.resolve({ data: [], error: null }),
+      fetchCourtRowsByIds(context.supabase, scope.courtIds),
+    ]);
+    if (teamError) throw teamError;
+    if (profileError) throw profileError;
+    if (courtError) throw courtError;
+
+    const userById = new Map((profileRows ?? []).map((row) => {
+      const user = fromRemoteProfile(row);
+      return [user.id, user];
+    }));
+    userById.set(currentUser.id, { ...(userById.get(currentUser.id) ?? {}), ...currentUser });
+
+    const teams = (teamRows ?? []).map(toClientTeam);
+    const courtById = firstBy(courtRows ?? [], "id");
+    const applicationsByPost = groupBy(applicationRows ?? [], "post_id");
+    const rowPostById = new Map(postRows.map((post) => [post.id, fromRemoteRecruitingPost(post, applicationsByPost, courtById)]));
+    const responsePosts = targetPostIds
+      .map((postId) => cardById.get(postId) ?? rowPostById.get(postId))
+      .filter(Boolean);
     const state = normalizeState({
       currentUserId: currentUser.id,
-      users: [currentUser],
-      teams: [],
-      recruitingPosts: targetCards,
+      users: [...userById.values()],
+      teams,
+      recruitingPosts: responsePosts,
       settings,
     }, { includeDemo: false });
     return {
       state: compactRecruitingListState(state, currentUser.id),
       page: {
         limit,
-        count: mineOnly ? targetCards.length : pagePostIds.length,
+        count: mineOnly ? responsePosts.length : pagePostIds.length,
         offset,
         nextOffset,
         cursor: String(nextOffset),
@@ -983,11 +1024,11 @@ export async function loadCompactRecruitingList(context, {
         startFilter,
         timingType,
         scheduledDate,
-        source: pageSource || "feed_card",
+        source: pageSource ? (missingPostIds.length ? `${pageSource}+row` : pageSource) : (missingPostIds.length ? "feed_card+row" : "feed_card"),
         feedCounts,
       },
       updatedAt: Math.max(
-        ...[...pageCards, context.profile].filter(Boolean)
+        ...[...pageCards, ...postRows, context.profile].filter(Boolean)
           .map((row) => new Date(row.updatedAt ?? row.updated_at ?? row.createdAt ?? row.created_at ?? 0).getTime())
           .filter((value) => Number.isFinite(value)),
         0,
