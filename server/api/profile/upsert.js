@@ -85,7 +85,8 @@ function buildProfileRow({ existing, profile, authUser, authUserId, isTestAccoun
   const requestedHashtag = normalizeHashtag(profile.hashtag ?? profile.handle);
   const nextHashtag = existingLockedHandle ? existing.hashtag ?? existing.handle ?? "" : requestedHashtag;
   const requestedBirthYear = normalizeBirthYear(profile.birthYear);
-  const nextBirthYear = existing?.birth_year_locked_at ? existing.birth_year : requestedBirthYear;
+  const hasLockedBirthYear = Boolean(existing?.birth_year_locked_at && existing?.birth_year);
+  const nextBirthYear = hasLockedBirthYear ? existing.birth_year : requestedBirthYear;
   const requestedName = String(profile.name ?? existing?.name ?? authUser.email?.split("@")[0] ?? "신규 선수").trim().slice(0, 20);
   const nextName = existing && requestedName !== existing.name && !canChangeName(existing) ? existing.name : requestedName;
   const discordConnection = getRequestedDiscordConnection(profile, existing);
@@ -110,7 +111,7 @@ function buildProfileRow({ existing, profile, authUser, authUserId, isTestAccoun
     onboarding_complete: Boolean(profile.onboardingComplete ?? existing?.onboarding_complete ?? false),
     profile_version: Number(profile.profileVersion ?? existing?.profile_version ?? 1),
     handle_locked_at: existingLockedHandle ?? (nextHashtag ? profile.handleLockedAt ?? now : null),
-    birth_year_locked_at: existing?.birth_year_locked_at ?? (nextBirthYear ? profile.birthYearLockedAt ?? now : null),
+    birth_year_locked_at: hasLockedBirthYear ? existing.birth_year_locked_at : (nextBirthYear ? profile.birthYearLockedAt ?? now : null),
     name_updated_at: nextName !== existing?.name ? profile.nameUpdatedAt ?? now : existing?.name_updated_at ?? null,
     region: profile.region ?? existing?.region ?? `${profile.regionSido ?? "서울특별시"} ${profile.regionDistrict ?? "마포구"}`,
     position: profile.position ?? existing?.position ?? "PG",

@@ -1632,3 +1632,5 @@ flowchart TD
 - 팀 신청 row처럼 list card에 전체 팀원 명단이 없더라도 `playerId`, `playerIds`, applicant, reserve 기준으로 현재 사용자의 참여 관계가 있으면 경기 메뉴 일정에 포함한다.
 - 2026-06-30: The frontend homeLoad request sends includeFeedCounts:true so home recruiting counts are part of the first authoritative response and do not need a delayed count-only correction.
 - 2026-06-30: Matches calendar day clicks keep the current status view. Calendar day counts and the list after click must use the same selected status view; date selection must not force the active aggregate view.
+- 2026-06-30: Profile upsert treats birth year as locked only when both birth_year_locked_at and birth_year exist. A row with a lock timestamp but no birth_year may accept the setup birth year and lock it again.
+- 2026-06-30: Current-profile remote state may merge explicit theme values for both light and dark. Missing theme metadata must not cause a saved dark/light choice to bounce back.
