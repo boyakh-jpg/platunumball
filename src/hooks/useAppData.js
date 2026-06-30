@@ -376,10 +376,19 @@ function filterPendingRecruitingPosts(remoteState = {}, pendingIds = new Set(), 
 }
 
 function incrementFeedCount(feedCounts, key) {
+  return adjustFeedCounts(feedCounts, { [key]: 1 });
+}
+
+function adjustFeedCounts(feedCounts, deltas = {}) {
   if (!feedCounts) return feedCounts;
-  const current = Number(feedCounts[key]);
-  if (!Number.isFinite(current)) return feedCounts;
-  return { ...feedCounts, [key]: current + 1 };
+  const nextCounts = { ...feedCounts };
+  Object.entries(deltas).forEach(([key, delta]) => {
+    const current = Number(nextCounts[key]);
+    const amount = Number(delta);
+    if (!Number.isFinite(current) || !Number.isFinite(amount)) return;
+    nextCounts[key] = Math.max(0, current + amount);
+  });
+  return nextCounts;
 }
 
 function filterPendingMatches(remoteState = {}, pendingIds = new Set(), recentMutationTimes = new Map()) {
@@ -1752,14 +1761,11 @@ export function useAppData(authUser = null) {
       };
       const refreshRecruitingRelations = (result = {}, fallbackPostId = "") => {
         const refreshPostId = result?.post?.id ?? result?.postId ?? fallbackPostId;
-        return Promise.allSettled([
-          refreshCurrentProfile(),
-          loadMyRecruitingPosts("", { force: true, includeFeedCounts: true }),
-          loadMatchRecruitingSchedule({ force: true }),
-        ]).then(async (results) => {
-          const detailResult = refreshPostId ? await loadRecruitingPost(refreshPostId) : true;
-          return detailResult !== false && !results.some((item) => item.status === "rejected" || item.value === false);
-        });
+        if (!refreshPostId) return Promise.resolve(true);
+        return loadRecruitingPost(refreshPostId);
+      };
+      const applyRecruitingFeedCountDelta = (deltas = {}) => {
+        setRecruitingPagination((prev) => ({ ...prev, feedCounts: adjustFeedCounts(prev.feedCounts, deltas) }));
       };
 
       return ({
@@ -2215,12 +2221,12 @@ export function useAppData(authUser = null) {
           return result?.post?.id ?? result?.postId ?? createdPost.id;
         });
       },
-      interestRecruitingPost: (postId, application) => applyRecruitingPostMutation(postId, (prev) => interestRecruitingPost({ ...prev, currentUserId }, postId, application), { action: "interestRecruitingPost", application, joinMode: application?.joinMode, onSuccess: (result) => refreshRecruitingRelations(result, postId) }),
+      interestRecruitingPost: (postId, application) => applyRecruitingPostMutation(postId, (prev) => interestRecruitingPost({ ...prev, currentUserId }, postId, application), { action: "interestRecruitingPost", application, joinMode: application?.joinMode, onSuccess: () => applyRecruitingFeedCountDelta({ joined: 1 }) }),
       inviteRecruitingReferee: (postId, refereeId) => applyRecruitingPostMutation(postId, (prev) => inviteRecruitingReferee({ ...prev, currentUserId }, postId, refereeId), { action: "inviteRecruitingReferee", refereeId }),
-      inviteRecruitingPlayers: (postId, invite) => applyRecruitingPostMutation(postId, (prev) => inviteRecruitingPlayers({ ...prev, currentUserId }, postId, invite), { action: "inviteRecruitingPlayers", invite, onSuccess: (result) => refreshRecruitingRelations(result, postId) }),
-      acceptRecruitingInvitation: (postId, invitationId) => applyRecruitingPostMutation(postId, (prev) => acceptRecruitingInvitation({ ...prev, currentUserId }, postId, invitationId), { action: "acceptRecruitingInvitation", invitationId, onSuccess: (result) => refreshRecruitingRelations(result, postId) }),
-      declineRecruitingInvitation: (postId, invitationId) => applyRecruitingPostMutation(postId, (prev) => declineRecruitingInvitation({ ...prev, currentUserId }, postId, invitationId), { action: "declineRecruitingInvitation", invitationId, onSuccess: (result) => refreshRecruitingRelations(result, postId) }),
-      cancelRecruitingParticipation: (postId) => applyRecruitingPostMutation(postId, (prev) => cancelRecruitingParticipation({ ...prev, currentUserId }, postId), { action: "cancelRecruitingParticipation", onSuccess: (result) => refreshRecruitingRelations(result, postId) }),
+      inviteRecruitingPlayers: (postId, invite) => applyRecruitingPostMutation(postId, (prev) => inviteRecruitingPlayers({ ...prev, currentUserId }, postId, invite), { action: "inviteRecruitingPlayers", invite }),
+      acceptRecruitingInvitation: (postId, invitationId) => applyRecruitingPostMutation(postId, (prev) => acceptRecruitingInvitation({ ...prev, currentUserId }, postId, invitationId), { action: "acceptRecruitingInvitation", invitationId, onSuccess: () => applyRecruitingFeedCountDelta({ invited: -1, joined: 1 }) }),
+      declineRecruitingInvitation: (postId, invitationId) => applyRecruitingPostMutation(postId, (prev) => declineRecruitingInvitation({ ...prev, currentUserId }, postId, invitationId), { action: "declineRecruitingInvitation", invitationId, onSuccess: () => applyRecruitingFeedCountDelta({ invited: -1 }) }),
+      cancelRecruitingParticipation: (postId) => applyRecruitingPostMutation(postId, (prev) => cancelRecruitingParticipation({ ...prev, currentUserId }, postId), { action: "cancelRecruitingParticipation", onSuccess: () => applyRecruitingFeedCountDelta({ joined: -1 }) }),
       setRecruitingReady: (postId, ready) => applyRecruitingPostMutation(postId, (prev) => setRecruitingReady({ ...prev, currentUserId }, postId, ready), { action: "setRecruitingReady", ready }),
       updateRecruitingRoomRules: (postId, patch) => applyRecruitingPostMutation(postId, (prev) => updateRecruitingRoomRules({ ...prev, currentUserId }, postId, patch), { action: "updateRecruitingRoomRules", patch }),
       updateMatchRoomRules: (matchId, patch) => applyMatchMutation(matchId, (prev) => updateMatchRoomRules({ ...prev, currentUserId }, matchId, patch), { action: "updateMatchRoomRules", patch }),
