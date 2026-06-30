@@ -462,7 +462,7 @@ function isOwner(profileId, post = {}) {
 function hasInvitationFor(profileId, post = {}) {
   const roomState = normalizeRoomState(post.roomState ?? post.room_state, post);
   return toArray(roomState.invitations).some((invitation) => (
-    invitation.targetUserId === profileId && invitation.status !== "expired" && invitation.status !== "declined"
+    invitation.targetUserId === profileId && isPendingInvitation(invitation)
   ));
 }
 
@@ -471,8 +471,7 @@ function hasRefereeInvitationFor(profileId, post = {}) {
   return toArray(roomState.invitations).some((invitation) => (
     invitation.role === "referee" &&
     invitation.targetUserId === profileId &&
-    invitation.status !== "expired" &&
-    invitation.status !== "declined"
+    isPendingInvitation(invitation)
   ));
 }
 
@@ -508,7 +507,7 @@ function isSoloIndividualRoom(post = {}) {
 
 function getEntryActivePlayerIds(entry = {}, capacity = 5, fallbackPlayerId = "") {
   const playerIds = toArray(entry.playerIds ?? entry.player_ids);
-  if (playerIds.length) return playerIds.slice(0, capacity);
+  if (playerIds.length) return playerIds;
   return fallbackPlayerId ? [fallbackPlayerId] : [];
 }
 
@@ -517,9 +516,15 @@ function getRecruitingSideCounts(post = {}) {
   const hostSide = (post.hostSide ?? post.host_side) === "teamB" ? "teamB" : "teamA";
   const counts = { teamA: 0, teamB: 0 };
   const seen = new Set();
+  const seenSides = new Map();
+  let crossSideDuplicate = false;
   const addPlayers = (side, playerIds = []) => {
     if (!counts[side]) counts[side] = 0;
     toArray(playerIds).forEach((playerId) => {
+      if (!playerId) return;
+      const seenSide = seenSides.get(playerId);
+      if (seenSide && seenSide !== side) crossSideDuplicate = true;
+      seenSides.set(playerId, side);
       if (!playerId || seen.has(playerId)) return;
       seen.add(playerId);
       counts[side] += 1;
@@ -542,15 +547,20 @@ function getRecruitingSideCounts(post = {}) {
     addPlayers(side, players);
   });
 
+  counts.crossSideDuplicate = crossSideDuplicate;
   return counts;
 }
 
 function validateRecruitingPostShape(post = {}) {
   const capacity = getSideCapacity(post);
   const applications = toArray(post.applicants);
-  const oversizedApplication = applications.find((application) => toArray(application.playerIds).length > capacity);
+  const hostJoinMode = getCanonicalHostJoinMode(post);
+  const oversizedHost = hostJoinMode === "team" && toArray(post.playerIds ?? post.player_ids).length > capacity;
+  if (oversizedHost) reject(400, "recruiting_party_exceeds_side_capacity");
+  const oversizedApplication = applications.find((application) => toArray(application.playerIds ?? application.player_ids).length > capacity);
   if (oversizedApplication) reject(400, "recruiting_party_exceeds_side_capacity");
   const sideCounts = getRecruitingSideCounts(post);
+  if (sideCounts.crossSideDuplicate) reject(400, "recruiting_player_on_both_sides");
   if (sideCounts.teamA > capacity || sideCounts.teamB > capacity) reject(400, "recruiting_side_exceeds_capacity");
 
   if (!isSoloIndividualRoom(post)) return;
