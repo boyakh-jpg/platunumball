@@ -728,6 +728,7 @@ export default function Matches({ app }) {
   const userById = useMemo(() => Object.fromEntries(app.state.users.map((user) => [user.id, user])), [app.state.users]);
   const matchesById = useMemo(() => Object.fromEntries(app.state.matches.map((match) => [match.id, match])), [app.state.matches]);
   const requestedMatchDetailsRef = useRef(new Set());
+  const scheduleLoadRequestedRef = useRef("");
   const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
   const courtByName = useMemo(() => Object.fromEntries(registeredCourts.map((court) => [court.name, court])), [registeredCourts]);
   const myTeamIds = useMemo(
@@ -832,6 +833,25 @@ export default function Matches({ app }) {
   }, [baseFilteredMatches, dateFilter]);
 
   const matchPagination = app.matchPagination ?? { loading: false, exhausted: true, error: "", recruitingScheduleChecked: false, recruitingScheduleLoading: false };
+  useEffect(() => {
+    scheduleLoadRequestedRef.current = "";
+  }, [app.currentUser.id]);
+  useEffect(() => {
+    if (!app.remoteReady || !app.currentUser.id) return;
+    if (matchPagination.recruitingScheduleChecked || matchPagination.recruitingScheduleLoading) return;
+    if (scheduleLoadRequestedRef.current === app.currentUser.id) return;
+    scheduleLoadRequestedRef.current = app.currentUser.id;
+    const request = app.actions.loadMatchRecruitingSchedule?.();
+    if (!request?.then) {
+      if (!request) scheduleLoadRequestedRef.current = "";
+      return;
+    }
+    request.then((count) => {
+      if (count === false) scheduleLoadRequestedRef.current = "";
+    }).catch(() => {
+      scheduleLoadRequestedRef.current = "";
+    });
+  }, [app.actions, app.currentUser.id, app.remoteReady, matchPagination.recruitingScheduleChecked, matchPagination.recruitingScheduleLoading]);
   const matchPageRecruitingPosts = useMemo(() => (
     app.state.recruitingPosts ?? []
   ), [app.state.recruitingPosts]);
