@@ -51,6 +51,15 @@ function createSkippedRecruitingResult() {
   };
 }
 
+async function timeStep(debugTiming, key, callback) {
+  const startedAt = Date.now();
+  try {
+    return await callback();
+  } finally {
+    if (debugTiming) debugTiming[key] = (debugTiming[key] ?? 0) + Date.now() - startedAt;
+  }
+}
+
 export default async function handler(request, response) {
   if (request.method !== "POST") {
     response.setHeader("Allow", "POST");
@@ -62,16 +71,16 @@ export default async function handler(request, response) {
     const startedAt = Date.now();
     const body = await readJsonBody(request);
     const debugTiming = body.debugTiming === true ? {} : null;
-    const context = await getAuthenticatedContext(request, { allowMissingProfile: true, profileSelect: PROFILE_ME_COLUMNS });
+    const context = await timeStep(debugTiming, "authMs", () => getAuthenticatedContext(request, { allowMissingProfile: true, profileSelect: PROFILE_ME_COLUMNS }));
     const shouldLoadAdminContext = body.adminContext !== false && body.includeAdminContext !== false;
-    const adminLevel = shouldLoadAdminContext && context.profileId ? await getAdminLevel(context) : 0;
+    const adminLevel = shouldLoadAdminContext && context.profileId ? await timeStep(debugTiming, "adminMs", () => getAdminLevel(context)) : 0;
     const matchLimit = getCappedMatchLimit(body.matchLimit ?? body.limit ?? REMOTE_CLIENT_MATCH_LIMIT);
     const recruitingLimit = getCappedRecruitingLimit(body.recruitingLimit ?? REMOTE_CLIENT_RECRUITING_LIMIT);
     const includeLocalRecruiting = body.includeLocalRecruiting === true;
     const includeFeedCounts = body.includeFeedCounts === true;
 
     const [profileResult, matchResult, recruitingResult, localRecruitingResult] = await Promise.all([
-      loadCurrentProfileState(context),
+      timeStep(debugTiming, "profileMs", () => loadCurrentProfileState(context)),
       loadCompactMatchList(context, {
         limit: matchLimit,
         listOnly: true,
@@ -80,9 +89,9 @@ export default async function handler(request, response) {
         includeRecruitingSchedule: false,
         adminContext: false,
       }, adminLevel, matchLimit, debugTiming),
-      loadCurrentUserRecruitingFeedList(context, { adminLevel, limit: recruitingLimit, includeFeedCounts }),
+      timeStep(debugTiming, "recruitingMs", () => loadCurrentUserRecruitingFeedList(context, { adminLevel, limit: recruitingLimit, includeFeedCounts })),
       includeLocalRecruiting
-        ? loadLocalRecruitingFeedList(context, { adminLevel, limit: HOME_LOCAL_RECRUITING_LIMIT })
+        ? timeStep(debugTiming, "localRecruitingMs", () => loadLocalRecruitingFeedList(context, { adminLevel, limit: HOME_LOCAL_RECRUITING_LIMIT }))
         : Promise.resolve(createSkippedRecruitingResult()),
     ]);
 

@@ -142,15 +142,18 @@ export async function loadCurrentUserTeams(supabase, profileId = "", extraTeamId
 
 export async function loadCurrentProfileState(context) {
   const profile = context.profile ?? null;
-  const matchSummary = await loadCurrentUserMatchSummary(context.supabase, profile?.id ?? "");
+  const profileId = profile?.id ?? "";
+  const [matchSummary, teamInvitations] = await Promise.all([
+    loadCurrentUserMatchSummary(context.supabase, profileId),
+    loadCurrentUserTeamInvitations(context.supabase, profileId),
+  ]);
   const user = profile
     ? { ...fromRemoteProfile(profile), matchSummary }
     : createProfileShell(context.authUserId, context.authUser?.email ?? "");
   const remoteAppSettings = getRemoteAppSettings(profile);
-  const teamInvitations = await loadCurrentUserTeamInvitations(context.supabase, profile?.id ?? "");
   const currentUserTeams = await loadCurrentUserTeams(
     context.supabase,
-    profile?.id ?? "",
+    profileId,
     teamInvitations.filter((invitation) => invitation.status === "pending").map((invitation) => invitation.teamId),
   );
   const userById = new Map(currentUserTeams.users.map((item) => [item.id, item]));
