@@ -1630,3 +1630,4 @@ flowchart TD
 - 홈 `진행 예정 경기`, 경기 메뉴 `MY/SOON`, 매칭 메뉴 `내가 만든 방/내 참여방/초대받음`은 current-user recruiting feed와 같은 참여 판정을 사용한다.
 - 경기 메뉴에서 모집방 일정을 고를 때는 `isRecruitingPostForUser`를 먼저 사용하고, 부족한 표시 정보만 lobby 계산으로 보강한다.
 - 팀 신청 row처럼 list card에 전체 팀원 명단이 없더라도 `playerId`, `playerIds`, applicant, reserve 기준으로 현재 사용자의 참여 관계가 있으면 경기 메뉴 일정에 포함한다.
+- 2026-06-30: The frontend homeLoad request sends includeFeedCounts:true so home recruiting counts are part of the first authoritative response and do not need a delayed count-only correction.
