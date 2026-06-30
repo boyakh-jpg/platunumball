@@ -974,7 +974,6 @@ export default function Matches({ app }) {
               onClick={() => {
                 setDateFilter(todayValue);
                 setCalendarMonth(getMonthKey(todayValue));
-                setViewId("active");
               }}
             >
               오늘
@@ -1023,7 +1022,6 @@ export default function Matches({ app }) {
                   className={`${selected ? "active" : ""} ${isToday ? "today" : ""}`}
                   onClick={() => {
                     setDateFilter(day);
-                    setViewId("active");
                   }}
                 >
                   <strong>{Number(day.slice(-2))}</strong>

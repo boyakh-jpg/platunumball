@@ -1631,3 +1631,4 @@ flowchart TD
 - 경기 메뉴에서 모집방 일정을 고를 때는 `isRecruitingPostForUser`를 먼저 사용하고, 부족한 표시 정보만 lobby 계산으로 보강한다.
 - 팀 신청 row처럼 list card에 전체 팀원 명단이 없더라도 `playerId`, `playerIds`, applicant, reserve 기준으로 현재 사용자의 참여 관계가 있으면 경기 메뉴 일정에 포함한다.
 - 2026-06-30: The frontend homeLoad request sends includeFeedCounts:true so home recruiting counts are part of the first authoritative response and do not need a delayed count-only correction.
+- 2026-06-30: Matches calendar day clicks keep the current status view. Calendar day counts and the list after click must use the same selected status view; date selection must not force the active aggregate view.
