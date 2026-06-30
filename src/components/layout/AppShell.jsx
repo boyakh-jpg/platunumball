@@ -17,8 +17,8 @@ export default function AppShell({ app, auth }) {
   return (
     <div className="app-shell">
       <Sidebar user={app.currentUser} teams={app.state.teams} auth={auth} />
-      <main className="app-main">
-        <Outlet />
+      <main className="app-main" aria-busy={remoteLoading}>
+        {remoteLoading ? null : <Outlet />}
       </main>
       <BottomNav />
       {remoteLoading ? <BasketballLoader overlay label="서버 데이터를 불러오는 중" /> : null}
