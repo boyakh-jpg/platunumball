@@ -649,6 +649,51 @@ function shouldUseSqlRecruitingAction(operation = {}) {
   return SQL_REDUCER_RECRUITING_ACTIONS.has(String(operation?.action ?? ""));
 }
 
+function createTimingProbe() {
+  const startedAt = Date.now();
+  const steps = [];
+  return {
+    async track(name, callback) {
+      const stepStartedAt = Date.now();
+      try {
+        return await callback();
+      } finally {
+        steps.push({ name, ms: Date.now() - stepStartedAt });
+      }
+    },
+    payload() {
+      return { totalMs: Date.now() - startedAt, steps };
+    },
+    header() {
+      const timing = this.payload();
+      return [
+        `total;dur=${Math.max(0, timing.totalMs)}`,
+        ...timing.steps.map((step) => `${step.name};dur=${Math.max(0, step.ms)}`),
+      ].join(", ");
+    },
+  };
+}
+
+function hasDebugTimingParam(request) {
+  try {
+    const url = new URL(request.url ?? "", "http://localhost");
+    return isTrue(url.searchParams.get("debugTiming"));
+  } catch {
+    return false;
+  }
+}
+
+function sendTimedJson(response, statusCode, payload, timing, includeTiming = false) {
+  if (timing) response.setHeader("Server-Timing", timing.header());
+  sendJson(response, statusCode, includeTiming && timing
+    ? { ...payload, debugTiming: timing.payload() }
+    : payload);
+}
+
+async function timeStep(timing, name, callback) {
+  return timing ? timing.track(name, callback) : callback();
+}
+
 async function loadSyncedRecruitingPost(context, postId = "") {
   if (!postId) return null;
   const state = await loadAuthoritativeState(context, { operation: { postId } });
@@ -863,24 +908,24 @@ async function validateRefereeAction(supabase, profileId, existingPost, nextPost
   }
 }
 
-export async function persistRecruitingPostSnapshot(context, { post, notifications = [], action = "sync", body = {}, expectedUpdatedAt = null }) {
+export async function persistRecruitingPostSnapshot(context, { post, notifications = [], action = "sync", body = {}, expectedUpdatedAt = null, timing = null }) {
   if (!post?.id) reject(400, "missing_recruiting_post");
   validateRecruitingPostShape(post);
 
   const actionBody = { ...body, action };
-  const { data: existingPost, error: existingError } = await context.supabase
+  const { data: existingPost, error: existingError } = await timeStep(timing, "persistExistingPost", () => context.supabase
       .from("recruiting_posts")
       .select("id, visibility, player_id, team_id, target_team_id, mode, scheduled_date, scheduled_time, ranked, official, side_capacity, host_join_mode, host_side, player_ids, referee_id, referee_trust_min, room_state, age_restriction, allowed_age_groups, updated_at")
       .eq("id", post.id)
-      .maybeSingle();
+      .maybeSingle());
 
   if (existingError) throw existingError;
-  const { data: existingApplications, error: existingApplicationsError } = existingPost
-    ? await context.supabase
+  const { data: existingApplications, error: existingApplicationsError } = await timeStep(timing, "persistExistingApplications", () => existingPost
+    ? context.supabase
       .from("recruiting_applications")
       .select("kind,team_id,player_id,side,status,reserve,position,player_ids,source_team_id,source_entry_id,created_at,updated_at")
       .eq("post_id", post.id)
-    : { data: [], error: null };
+    : { data: [], error: null });
   if (existingApplicationsError) throw existingApplicationsError;
   const existingPostSnapshot = existingPost
     ? {
@@ -893,27 +938,29 @@ export async function persistRecruitingPostSnapshot(context, { post, notificatio
         applicants: fromRecruitingApplicationRows(existingApplications),
       }
     : null;
-  if (!canSyncRecruitingAction(context.profileId, existingPostSnapshot, post, action, actionBody)) {
-    reject(403, "recruiting_sync_permission_denied");
-  }
-  validateNoUnexpectedRosterInsert(existingPostSnapshot, post, action);
-  validateLockedRecruitingCore(context.profileId, existingPostSnapshot, post, actionBody);
-  await validateRefereeAction(context.supabase, context.profileId, existingPostSnapshot, post, actionBody);
-  await validateRecruitingRosterEligibility(context.supabase, post);
-  await validateAgeEligibility(context.supabase, context.profileId, existingPostSnapshot, post, actionBody);
+  await timeStep(timing, "permissionValidation", () => {
+    if (!canSyncRecruitingAction(context.profileId, existingPostSnapshot, post, action, actionBody)) {
+      reject(403, "recruiting_sync_permission_denied");
+    }
+    validateNoUnexpectedRosterInsert(existingPostSnapshot, post, action);
+    validateLockedRecruitingCore(context.profileId, existingPostSnapshot, post, actionBody);
+  });
+  await timeStep(timing, "validateReferee", () => validateRefereeAction(context.supabase, context.profileId, existingPostSnapshot, post, actionBody));
+  await timeStep(timing, "validateRoster", () => validateRecruitingRosterEligibility(context.supabase, post));
+  await timeStep(timing, "validateAge", () => validateAgeEligibility(context.supabase, context.profileId, existingPostSnapshot, post, actionBody));
 
   const postRow = toRecruitingPostRow(post);
   const applicationRows = toRecruitingApplicationRows(post);
   const notificationRows = toNotificationRows(notifications, context.profileId);
 
-  const { data: persistResult, error: persistError } = await context.supabase.rpc("rankball_recruiting_action", {
+  const { data: persistResult, error: persistError } = await timeStep(timing, "persistRpc", () => context.supabase.rpc("rankball_recruiting_action", {
     p_actor_profile_id: context.profileId,
     p_action: action,
     p_post_row: postRow,
     p_application_rows: applicationRows,
     p_notification_rows: notificationRows,
     p_expected_updated_at: expectedUpdatedAt,
-  });
+  }));
   if (persistError) {
     if (persistError.code === "40001" || String(persistError.message ?? "").includes("recruiting_stale_snapshot")) {
       reject(409, "recruiting_stale_snapshot");
@@ -923,7 +970,7 @@ export async function persistRecruitingPostSnapshot(context, { post, notificatio
   let discordDeliveryCount = 0;
   let discordDeliveryError = null;
   try {
-    discordDeliveryCount = await queueInstantRoomOpenedDiscordDeliveries(context.supabase, post, action);
+    discordDeliveryCount = await timeStep(timing, "discordQueue", () => queueInstantRoomOpenedDiscordDeliveries(context.supabase, post, action));
   } catch (deliveryError) {
     discordDeliveryError = deliveryError.message || "discord_room_opened_delivery_failed";
     console.error("Recruiting Discord delivery queue failed.", deliveryError);
@@ -941,15 +988,18 @@ export async function persistRecruitingPostSnapshot(context, { post, notificatio
 }
 
 export default async function handler(request, response) {
+  const timing = createTimingProbe();
+  let debugTiming = hasDebugTimingParam(request);
   if (request.method !== "POST") {
     response.setHeader("Allow", "POST");
-    sendJson(response, 405, { error: "method_not_allowed" });
+    sendTimedJson(response, 405, { error: "method_not_allowed" }, timing, debugTiming);
     return;
   }
 
   try {
-    const body = await readJsonBody(request);
-    const context = await getAuthenticatedContext(request);
+    const body = await timing.track("body", () => readJsonBody(request));
+    debugTiming = debugTiming || isTrue(body.debugTiming);
+    const context = await timing.track("auth", () => getAuthenticatedContext(request));
     const operation = getOperation(body, body.action ? String(body.action) : "sync");
     let post = body.post && typeof body.post === "object" ? body.post : null;
     let notifications = body.notifications ?? [];
@@ -958,20 +1008,20 @@ export default async function handler(request, response) {
     let replayResult = null;
 
     if (operation && shouldUseSqlRecruitingAction(operation)) {
-      const sqlResult = await applySqlRecruitingAction(context, operation);
+      const sqlResult = await timing.track("sqlReducer", () => applySqlRecruitingAction(context, operation));
       if (sqlResult) {
-        const syncedPost = await loadSyncedRecruitingPost(context, sqlResult.postId ?? operation.postId);
-        sendJson(response, 200, {
+        const syncedPost = await timing.track("loadSyncedAfterSql", () => loadSyncedRecruitingPost(context, sqlResult.postId ?? operation.postId));
+        sendTimedJson(response, 200, {
           ...sqlResult,
           ...(syncedPost ? { post: syncedPost } : {}),
-        });
+        }, timing, debugTiming);
         return;
       }
     }
 
     if (operation && (!post || operation.action === "createRecruitingPost" || shouldReplayRecruitingOperation(operation))) {
-      const state = await loadAuthoritativeState(context, { operation });
-      const result = applyAuthoritativeRecruitingOperation(state, operation);
+      const state = await timing.track("authoritativeLoad", () => loadAuthoritativeState(context, { operation }));
+      const result = await timing.track("authoritativeReplay", () => applyAuthoritativeRecruitingOperation(state, operation));
       replayResult = result;
       post = result.post;
       createdMatch = result.createdMatch;
@@ -985,39 +1035,40 @@ export default async function handler(request, response) {
     const recruitingNotifications = createdMatch
       ? notifications.filter((notification) => !notification.matchId || notification.matchId !== createdMatch.id)
       : notifications;
-    const result = await persistRecruitingPostSnapshot(context, {
+    const result = await timing.track("persistSnapshot", () => persistRecruitingPostSnapshot(context, {
       post,
       notifications: recruitingNotifications,
       action,
       body: { ...body, ...(operation ?? {}) },
       expectedUpdatedAt: operation ? replayResult?.baseUpdatedAt ?? null : null,
-    });
+      timing,
+    }));
     if (result?.postId) {
-      const syncedPost = await loadSyncedRecruitingPost(context, result.postId);
+      const syncedPost = await timing.track("loadSyncedAfterPersist", () => loadSyncedRecruitingPost(context, result.postId));
       if (syncedPost) result.post = syncedPost;
     }
     if (createdMatch) {
       const matchNotifications = notifications.filter((notification) => notification.matchId === createdMatch.id);
-      const matchResult = await persistMatchSnapshot(context, {
+      const matchResult = await timing.track("persistCreatedMatch", () => persistMatchSnapshot(context, {
         match: createdMatch,
         notifications: matchNotifications,
         action: "confirmRecruitingMatch",
         body: { ...body, ...(operation ?? {}) },
-      });
+      }));
       result.createdMatch = matchResult.match;
       result.matchId = matchResult.matchId;
     }
 
-    sendJson(response, 200, result);
+    sendTimedJson(response, 200, result, timing, debugTiming);
   } catch (error) {
     console.error("Recruiting post sync failed.", error);
-    sendJson(response, error.statusCode || 500, {
+    sendTimedJson(response, error.statusCode || 500, {
       error: error.message || "recruiting_post_sync_failed",
       details: {
         ...(error.details && typeof error.details === "object" ? error.details : {}),
         reason: error.message || "recruiting_post_sync_failed",
         statusCode: error.statusCode || 500,
       },
-    });
+    }, timing, debugTiming);
   }
 }

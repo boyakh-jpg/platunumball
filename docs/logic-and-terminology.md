@@ -1661,3 +1661,4 @@ flowchart TD
 - 2026-06-30: `/api/system/maintenance` also normalizes open recruiting rooms whose active applications exceed side capacity. It never deletes application rows; overflow applications are moved to reserve with `reserve=true`, then the recruiting feed card is refreshed when the refresh RPC exists.
 - 2026-06-30: Recruiting capacity cleanup runs from `/api/system/maintenance` cron/direct calls by default, but `/api/discord/dm-worker` disables it so frequent Discord delivery polling does not scan open recruiting rooms on every worker run.
 - 2026-06-30: `/api/recruiting/list` exposes feed card row-fallback diagnostics only when `debugTiming:true`; normal responses keep fallback details omitted to avoid payload growth.
+- 2026-06-30: `/api/recruiting/sync-post` exposes step timings only when `debugTiming:true`; timing diagnostics must not skip room, team, invite, referee, or age validation.
