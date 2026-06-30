@@ -819,13 +819,13 @@ export default function Matches({ app }) {
       .filter((match) => matchHasUser(match, app.currentUser.id))
       .filter((match) => {
         const matchDate = getMatchDate(match);
-        if (!matchDate) return true;
+        if (!matchDate) return !dateFilter;
         if (matchDate > maxScheduleDate) return false;
         return shouldIncludeScheduleWindow(match, todayValue, maxScheduleDate);
       })
       .filter((match) => kindFilter === "all" || (kindFilter === "ranked" ? match.ranked !== false : match.ranked === false))
       .filter((match) => modeFilter === "all" || match.mode === modeFilter);
-  }, [app.currentUser.id, app.state.matches, kindFilter, maxScheduleDate, modeFilter, todayValue]);
+  }, [app.currentUser.id, app.state.matches, dateFilter, kindFilter, maxScheduleDate, modeFilter, todayValue]);
 
   const filteredMatches = useMemo(() => {
     return baseFilteredMatches.filter((match) => !dateFilter || getMatchDate(match) === dateFilter);

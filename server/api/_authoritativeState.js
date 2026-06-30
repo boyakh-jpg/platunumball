@@ -233,7 +233,7 @@ export function applyAuthoritativeRecruitingOperation(state, operation = {}) {
       next = setRecruitingApplicantReserve(state, operation.postId, operation.playerId, operation.reserve);
       break;
     case "setRecruitingApplicantPlacement":
-      next = setRecruitingApplicantPlacement({ ...state, currentUserId: operation.playerId || state.currentUserId }, operation.postId, operation.playerId, operation.placement);
+      next = setRecruitingApplicantPlacement(state, operation.postId, operation.playerId, operation.placement);
       break;
     case "joinRecruitingSideParty":
       next = joinRecruitingSideParty(state, operation.postId, operation.teamId, operation.sideName, operation.entryId);
@@ -251,7 +251,7 @@ export function applyAuthoritativeRecruitingOperation(state, operation = {}) {
       next = setRecruitingTeamPartyRoster(state, operation.postId, operation.entryId, operation.roster ?? {});
       break;
     case "detachRecruitingPartyPlayer":
-      next = detachRecruitingPartyPlayer({ ...state, currentUserId: operation.playerId || state.currentUserId }, operation.postId, operation.entryId, operation.playerId, operation.placement);
+      next = detachRecruitingPartyPlayer(state, operation.postId, operation.entryId, operation.playerId, operation.placement);
       break;
     case "removeRecruitingPartyPlayer":
       next = removeRecruitingPartyPlayer(state, operation.postId, operation.entryId, operation.playerId);

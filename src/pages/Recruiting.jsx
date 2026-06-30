@@ -1352,9 +1352,6 @@ export function InvitePanel({
         key={`player-${player.id}`}
         className={selected ? "search-picker-result-row search-picker-result-row-actionable selected" : "search-picker-result-row search-picker-result-row-actionable"}
         onMouseDown={(event) => event.preventDefault()}
-        onClick={() => {
-          if (!disabled) onTogglePlayer(player.id);
-        }}
       >
         <button
           type="button"
@@ -3582,7 +3579,7 @@ function RecruitingReady({ app }) {
         )}
       </section>
 
-      {!app.recruitingPagination?.exhausted ? (
+      {roomScope === "all" && !app.recruitingPagination?.exhausted ? (
         <div className="om-load-more">
           <button type="button" className="button button-secondary button-md" disabled={app.recruitingPagination?.loading} onClick={() => app.actions.loadMoreRecruiting?.()}>
             {app.recruitingPagination?.loading ? "불러오는 중" : "더 보기"}

@@ -257,6 +257,7 @@ function hasPendingInvitationForProfile(card = {}, profileId = "") {
 
 function hasUsableRecruitingFeedCard(card = {}) {
   if (!card?.playerId && !card?.ownerId && !card?.roomState?.ownerId) return false;
+  if (!card.updatedAt && !card.updated_at) return false;
   if (!Array.isArray(card.playerIds)) return false;
   if (!Array.isArray(card.applicants)) return false;
   if (card.hostJoinMode === "team" && !card.teamId) return false;
@@ -266,6 +267,7 @@ function hasUsableRecruitingFeedCard(card = {}) {
 function getRecruitingFeedCardRejectReason(card = {}, profileId = "") {
   if (!card) return "missing_card";
   if (!card?.playerId && !card?.ownerId && !card?.roomState?.ownerId) return "missing_host_identity";
+  if (!card.updatedAt && !card.updated_at) return "missing_updated_at";
   if (!Array.isArray(card.playerIds)) return "missing_player_ids";
   if (!Array.isArray(card.applicants)) return "missing_applicants";
   if (card.hostJoinMode === "team" && !card.teamId) return "missing_team_id";

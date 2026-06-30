@@ -1,5 +1,26 @@
 # RankBall 로직/용어/디자인 기준
 
+## 2026-06-30 모집 relation 목록 더보기 기준
+
+- 모집의 내가 만든 방/내 참여방/초대받음 탭은 `user_room_feed` relation 목록을 한 번에 가져오는 개인 feed 목록이다.
+- 이 탭들은 공개 지역 목록 페이지네이션과 섞지 않으며, 더보기 버튼도 표시하지 않는다.
+- 모집 공개 목록 더보기는 현재 지역/날짜 필터의 `regionScope`, `regionKey`, `startFilter`를 그대로 이어서 호출해야 한다.
+
+## 2026-06-30 모집 슬롯/파티 actor 기준
+
+- 모집 슬롯 배치와 파티 분리는 실제 요청자인 `currentUserId` 기준으로만 권한을 판단한다.
+- 대상 선수 `playerId`를 임시 actor처럼 넣어 reducer 권한을 우회하지 않는다.
+
+## 2026-06-30 경기 날짜 필터 기준
+
+- 경기 메뉴에서 날짜를 선택하면 날짜가 없는 match는 목록에 남기지 않는다.
+- 캘린더 배지 숫자와 날짜 선택 뒤 목록은 같은 날짜 기준을 써야 한다.
+
+## 2026-06-30 모집 feed card 안전 조건
+
+- 모집 목록은 `card_json.updatedAt`, host identity, `playerIds`, `applicants`가 모두 있는 feed card만 신뢰한다.
+- 누락된 card는 stale 가능성이 있으므로 해당 방만 row fallback으로 읽어 목록 A/B 숫자를 맞춘다.
+
 ## 2026-06-30 선수 통계 summary feed
 
 - 확정 경기의 선수 누적 통계는 `profile_match_summaries`에 저장한다.

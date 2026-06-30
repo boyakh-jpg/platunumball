@@ -1392,7 +1392,7 @@ export function useAppData(authUser = null) {
           authEmail,
           limit: REMOTE_CLIENT_RECRUITING_LIMIT,
           offset,
-          regionScope: "local",
+          regionScope: regionRequest.regionScope,
           ...(regionRequest.regionKey ? { regionKey: regionRequest.regionKey } : {}),
           ...startFilterRequest,
           listOnly: true,
@@ -1443,7 +1443,7 @@ export function useAppData(authUser = null) {
             authEmail,
             limit: pageLimit,
             offset: 0,
-            regionScope: "local",
+            regionScope: regionRequest.regionScope,
             ...(regionRequest.regionKey ? { regionKey: regionRequest.regionKey } : {}),
             ...startFilterRequest,
             includeMine: true,
@@ -2244,7 +2244,7 @@ export function useAppData(authUser = null) {
         applyRecruitingPostMutation(postId, (prev) => setRecruitingApplicantReserve({ ...prev, currentUserId }, postId, playerId, reserve), { action: "setRecruitingApplicantReserve", playerId, reserve });
       },
       setRecruitingApplicantPlacement: (postId, playerId, placement) => {
-        applyRecruitingPostMutation(postId, (prev) => setRecruitingApplicantPlacement({ ...prev, currentUserId: playerId || currentUserId }, postId, playerId, placement), { action: "setRecruitingApplicantPlacement", playerId, placement });
+        applyRecruitingPostMutation(postId, (prev) => setRecruitingApplicantPlacement({ ...prev, currentUserId }, postId, playerId, placement), { action: "setRecruitingApplicantPlacement", playerId, placement });
       },
       joinRecruitingSideParty: (postId, teamId, sideName, entryId) => {
         applyRecruitingPostMutation(postId, (prev) => joinRecruitingSideParty({ ...prev, currentUserId }, postId, teamId, sideName, entryId), { action: "joinRecruitingSideParty", teamId, sideName, entryId });
@@ -2262,7 +2262,7 @@ export function useAppData(authUser = null) {
         applyRecruitingPostMutation(postId, (prev) => setRecruitingTeamPartyRoster({ ...prev, currentUserId }, postId, entryId, roster), { action: "setRecruitingTeamPartyRoster", entryId, roster });
       },
       detachRecruitingPartyPlayer: (postId, entryId, playerId, placement) => {
-        applyRecruitingPostMutation(postId, (prev) => detachRecruitingPartyPlayer({ ...prev, currentUserId: playerId || currentUserId }, postId, entryId, playerId, placement), { action: "detachRecruitingPartyPlayer", entryId, playerId, placement });
+        applyRecruitingPostMutation(postId, (prev) => detachRecruitingPartyPlayer({ ...prev, currentUserId }, postId, entryId, playerId, placement), { action: "detachRecruitingPartyPlayer", entryId, playerId, placement });
       },
       removeRecruitingPartyPlayer: (postId, entryId, playerId) => {
         applyRecruitingPostMutation(postId, (prev) => removeRecruitingPartyPlayer({ ...prev, currentUserId }, postId, entryId, playerId), { action: "removeRecruitingPartyPlayer", entryId, playerId });
