@@ -1043,7 +1043,7 @@ export default async function handler(request, response) {
       expectedUpdatedAt: operation ? replayResult?.baseUpdatedAt ?? null : null,
       timing,
     }));
-    if (result?.postId) {
+    if (result?.postId && action !== "createRecruitingPost") {
       const syncedPost = await timing.track("loadSyncedAfterPersist", () => loadSyncedRecruitingPost(context, result.postId));
       if (syncedPost) result.post = syncedPost;
     }
