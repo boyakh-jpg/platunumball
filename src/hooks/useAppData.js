@@ -89,9 +89,12 @@ import {
   updateRecruitingRoomRules,
   unblockUser,
   voidMatch,
+  REMOTE_CLIENT_ACTIVE_MATCH_LIMIT,
   REMOTE_CLIENT_INITIAL_MATCH_LIMIT,
   REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT,
   REMOTE_CLIENT_MATCH_LIMIT,
+  REMOTE_CLIENT_RECORD_MATCH_LIMIT,
+  REMOTE_CLIENT_RECORD_MONTHS,
   REMOTE_CLIENT_RECRUITING_LIMIT,
 } from "../data/repository.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
@@ -584,7 +587,7 @@ function getInitialStateLoadOptions() {
   }
   if (pathname === "/app/matches") {
     if (searchParams?.get("match")) return { profileOnly: true, matchLimit: 0, recruitingLimit: 0, tournamentLimit: 0 };
-    return { endpoint: "matchesList", matchLimit: 200, recruitingLimit: 0, tournamentLimit: 0 };
+    return { endpoint: "matchesList", matchLimit: REMOTE_CLIENT_ACTIVE_MATCH_LIMIT, recruitingLimit: 0, tournamentLimit: 0 };
   }
   if (pathname === "/app/recruiting") {
     if (searchParams?.get("post")) return { profileOnly: true, matchLimit: 0, recruitingLimit: 0, tournamentLimit: 0 };
@@ -594,10 +597,10 @@ function getInitialStateLoadOptions() {
     return { endpoint: "recorderMatches", matchLimit: REMOTE_CLIENT_MATCH_LIMIT, recruitingLimit: 0, tournamentLimit: 0 };
   }
   if (pathname === "/app/profile/records") {
-    return { endpoint: "profileRecords", matchLimit: 200, recruitingLimit: 0, tournamentLimit: 0 };
+    return { endpoint: "profileRecords", matchLimit: REMOTE_CLIENT_RECORD_MATCH_LIMIT, recruitingLimit: 0, tournamentLimit: 0 };
   }
   if (pathname === "/app" || pathname === "/login") {
-    return { endpoint: "homeLoad", matchLimit: 200, recruitingLimit: REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT, tournamentLimit: 0 };
+    return { endpoint: "homeLoad", matchLimit: REMOTE_CLIENT_ACTIVE_MATCH_LIMIT, recruitingLimit: REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT, tournamentLimit: 0 };
   }
   return { matchLimit: REMOTE_CLIENT_INITIAL_MATCH_LIMIT, recruitingLimit: REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT };
 }
@@ -745,8 +748,8 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
         {
           authUserId,
           authEmail,
-          limit: options.matchLimit ?? 200,
-          completedMonths: 6,
+          limit: options.matchLimit ?? REMOTE_CLIENT_RECORD_MATCH_LIMIT,
+          completedMonths: REMOTE_CLIENT_RECORD_MONTHS,
           listOnly: false,
           completedOnly: true,
           includeRecruitingSchedule: false,
@@ -1358,8 +1361,8 @@ export function useAppData(authUser = null) {
         {
           authUserId,
           authEmail,
-          limit: 200,
-          completedMonths: 6,
+          limit: REMOTE_CLIENT_RECORD_MATCH_LIMIT,
+          completedMonths: REMOTE_CLIENT_RECORD_MONTHS,
           listOnly: false,
           completedOnly: true,
           includeRecruitingSchedule: false,

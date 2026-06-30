@@ -6,6 +6,7 @@ import {
   getRemoteAppSettings,
   loadNormalizedRemoteStateFromClient,
   normalizeState,
+  REMOTE_CLIENT_ACTIVE_MATCH_LIMIT,
   REMOTE_CLIENT_MATCH_LIMIT,
 } from "../../../src/data/repository.js";
 import { filterStateForProfile } from "../state/load.js";
@@ -20,11 +21,17 @@ const TEAM_COLUMNS = "id,name,home_court,region,mmr,wins,losses,accent,deleted_a
 const COURT_COLUMNS = "id,name";
 
 let userRoomFeedAvailable = true;
-const MATCH_LIST_MAX_LIMIT = 200;
+const MATCH_LIST_MAX_LIMIT = REMOTE_CLIENT_ACTIVE_MATCH_LIMIT;
 const ACTIVE_MATCH_EXCLUDED_STATUSES = new Set(["confirmed", "cancelled", "void", "closed"]);
 const ACTIVE_MATCH_EXCLUDED_PHASES = new Set(["record", "cancelled", "void"]);
 const RECENT_COMPLETED_MATCH_HOURS = 24;
 const RECENT_COMPLETED_MATCH_LIMIT = 20;
+const MATCH_FEED_ROW_MAX_LIMIT = 320;
+const MATCH_FEED_ROW_FACTOR = 4;
+const RECENT_COMPLETED_FEED_ROW_MAX_LIMIT = 80;
+const MATCH_CANDIDATE_MIN_LIMIT = 80;
+const MATCH_CANDIDATE_MAX_LIMIT = 500;
+const MATCH_CANDIDATE_LIMIT_FACTOR = 10;
 
 function getMatchCursor(matches = []) {
   const oldest = [...matches]
@@ -213,7 +220,7 @@ async function fetchMatchFeedPage(client, profileId = "", limit = REMOTE_CLIENT_
   }
   if (!isMissingUserRoomFeed(rpcError) && rpcError?.code !== "PGRST202") throw rpcError;
 
-  const rowLimit = Math.min(320, cappedLimit * 4);
+  const rowLimit = Math.min(MATCH_FEED_ROW_MAX_LIMIT, cappedLimit * MATCH_FEED_ROW_FACTOR);
   let query = client
     .from("user_room_feed")
     .select("entity_id,sort_at,relation,card_json")
@@ -251,7 +258,7 @@ async function fetchRecentCompletedMatchFeedPage(client, profileId = "", hours =
   if (!profileId || !userRoomFeedAvailable) return null;
   const cappedLimit = Math.max(1, Math.min(RECENT_COMPLETED_MATCH_LIMIT, Number(limit) || RECENT_COMPLETED_MATCH_LIMIT));
   const since = new Date(Date.now() - Math.max(1, Number(hours) || RECENT_COMPLETED_MATCH_HOURS) * 60 * 60 * 1000).toISOString();
-  const rowLimit = Math.min(80, cappedLimit * 4);
+  const rowLimit = Math.min(RECENT_COMPLETED_FEED_ROW_MAX_LIMIT, cappedLimit * MATCH_FEED_ROW_FACTOR);
   const { data, error } = await client
     .from("user_room_feed")
     .select("entity_id,sort_at,relation,card_json")
@@ -318,7 +325,10 @@ async function fetchMatchRowsByIds(client, matchIds = []) {
 
 async function fetchCurrentUserMatchCandidateIds(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT) {
   if (!profileId) return [];
-  const candidateLimit = Math.max(80, Math.min(500, Number(limit || REMOTE_CLIENT_MATCH_LIMIT) * 10));
+  const candidateLimit = Math.max(
+    MATCH_CANDIDATE_MIN_LIMIT,
+    Math.min(MATCH_CANDIDATE_MAX_LIMIT, Number(limit || REMOTE_CLIENT_MATCH_LIMIT) * MATCH_CANDIDATE_LIMIT_FACTOR),
+  );
   const [
     { data: playerRows, error: playerError },
     { data: createdRows, error: createdError },

@@ -19,6 +19,11 @@ const TEAM_COLUMNS = "id,name,home_court,region,mmr,wins,losses,accent,deleted_a
 const COURT_COLUMNS = "id,name";
 const RECRUITING_POST_COLUMNS = "id,type,title,visibility,region,court_id,court_name,mode,scheduled_at,scheduled_date,scheduled_time,ranked,official,pre_registered,rating_scale,age_restriction,allowed_age_groups,rules,stakes,court_reserved,court_fee,spots,team_id,target_team_id,referee_id,referee_trust_min,stat_entry_minutes,dispute_minutes,room_state,host_join_mode,host_side,host_ready,side_capacity,player_ids,position,player_id,memo,status,confirmed_at,created_at,updated_at";
 const RECRUITING_APPLICATION_COLUMNS = "post_id,kind,team_id,player_id,side,status,reserve,position,player_ids,source_team_id,source_entry_id,created_at,updated_at";
+const RECRUITING_FEED_MAX_LIMIT = 200;
+const RECRUITING_PUBLIC_PAGE_MAX_LIMIT = 80;
+const RECRUITING_FEED_ROW_MAX_LIMIT = 320;
+const RECRUITING_FEED_RELATION_ROW_FACTOR = 4;
+const RECRUITING_FEED_PUBLIC_ROW_FACTOR = 2;
 
 function getPageOffset(body = {}) {
   const rawOffset = body.offset ?? body.recruitingOffset ?? body.nextOffset;
@@ -47,6 +52,13 @@ function getRecruitingStartFilter(body = {}) {
   if (timingType === "instant") return { startFilter: "instant", timingType, scheduledDate: "" };
   if (/^\d{4}-\d{2}-\d{2}$/.test(scheduledDate)) return { startFilter: scheduledDate, timingType: "", scheduledDate };
   return { startFilter: "all", timingType: "", scheduledDate: "" };
+}
+
+function getRecruitingRegionScope(body = {}) {
+  const regionScope = String(body.regionScope ?? "").trim();
+  if (regionScope === "all") return "all";
+  if (regionScope === "region") return "region";
+  return "local";
 }
 
 function uniqueIds(ids = []) {
@@ -161,7 +173,7 @@ function toDateTime(date, time, fallback) {
 function getCappedLimit(value) {
   const number = Number(value);
   if (!Number.isFinite(number) || number <= 0) return REMOTE_CLIENT_RECRUITING_LIMIT;
-  return Math.max(1, Math.min(80, Math.floor(number)));
+  return Math.max(1, Math.min(RECRUITING_PUBLIC_PAGE_MAX_LIMIT, Math.floor(number)));
 }
 
 function mergeById(current = [], incoming = []) {
@@ -496,7 +508,7 @@ function getRoomStateParticipantIds(roomState = {}) {
 
 async function fetchRoomStateParticipantPostIds(client, profileId = "", limit = REMOTE_CLIENT_RECRUITING_LIMIT) {
   if (!profileId) return [];
-  const cappedLimit = Math.max(1, Math.min(200, Number(limit) || REMOTE_CLIENT_RECRUITING_LIMIT));
+  const cappedLimit = Math.max(1, Math.min(RECRUITING_FEED_MAX_LIMIT, Number(limit) || REMOTE_CLIENT_RECRUITING_LIMIT));
   const { data, error } = await client
     .from("recruiting_posts")
     .select("id,room_state")
@@ -545,8 +557,8 @@ async function fetchRecruitingFeedPage(client, {
   scheduledDate = "",
 } = {}) {
   if (!userRoomFeedAvailable) return null;
-  const cappedLimit = Math.max(1, Math.min(200, Number(limit) || REMOTE_CLIENT_RECRUITING_LIMIT));
-  const rowLimit = Math.min(320, cappedLimit * (relations.length ? 4 : 2));
+  const cappedLimit = Math.max(1, Math.min(RECRUITING_FEED_MAX_LIMIT, Number(limit) || REMOTE_CLIENT_RECRUITING_LIMIT));
+  const rowLimit = Math.min(RECRUITING_FEED_ROW_MAX_LIMIT, cappedLimit * (relations.length ? RECRUITING_FEED_RELATION_ROW_FACTOR : RECRUITING_FEED_PUBLIC_ROW_FACTOR));
   const safeOffset = Math.max(0, Math.floor(Number(offset) || 0));
   let query = client
     .from("user_room_feed")
@@ -646,7 +658,7 @@ async function fetchRecruitingFeedCounts(client, profileId = "") {
 
 async function fetchRecruitingFallbackCounts(client, profileId = "") {
   if (!profileId) return null;
-  const countLimit = 200;
+  const countLimit = RECRUITING_FEED_MAX_LIMIT;
   const [ownedPostIds, roomOwnerPostIds, hostedPlayerPostIds, refereedPostIds, invitedPostIds, applicantPostIds, applicantPartyPostIds, roomStateParticipantPostIds] = await Promise.all([
     fetchPostIds(client.from("recruiting_posts").select("id").eq("status", "open").eq("player_id", profileId).order("updated_at", { ascending: false }).limit(countLimit)),
     fetchPostIds(client.from("recruiting_posts").select("id").eq("status", "open").eq("room_state->>ownerId", profileId).order("updated_at", { ascending: false }).limit(countLimit)),
@@ -679,7 +691,7 @@ function mergeRecruitingCounts(feedCounts, fallbackCounts) {
 
 async function fetchCurrentUserRecruitingFallbackPostIds(client, profileId = "", limit = REMOTE_CLIENT_RECRUITING_LIMIT, roomScope = "") {
   if (!profileId) return [];
-  const cappedLimit = Math.max(1, Math.min(200, Number(limit) || REMOTE_CLIENT_RECRUITING_LIMIT));
+  const cappedLimit = Math.max(1, Math.min(RECRUITING_FEED_MAX_LIMIT, Number(limit) || REMOTE_CLIENT_RECRUITING_LIMIT));
   const relations = getRecruitingMineRelations(roomScope);
   const [ownedPostIds, roomOwnerPostIds, hostedPlayerPostIds, refereedPostIds, invitedPostIds, applicantPostIds, applicantPartyPostIds, roomStateParticipantPostIds] = await Promise.all([
     fetchPostIds(client.from("recruiting_posts").select("id").eq("status", "open").eq("player_id", profileId).order("updated_at", { ascending: false }).limit(cappedLimit)),
@@ -709,7 +721,7 @@ function getRecruitingMineRelations(scope = "") {
 
 export async function fetchCurrentUserRecruitingPostIds(client, profileId = "", limit = REMOTE_CLIENT_RECRUITING_LIMIT, roomScope = "") {
   if (!profileId) return [];
-  const cappedLimit = Math.max(1, Math.min(200, Number(limit) || REMOTE_CLIENT_RECRUITING_LIMIT));
+  const cappedLimit = Math.max(1, Math.min(RECRUITING_FEED_MAX_LIMIT, Number(limit) || REMOTE_CLIENT_RECRUITING_LIMIT));
   const relations = getRecruitingMineRelations(roomScope);
   const feedPostIds = await fetchRecruitingFeedPostIds(client, {
     profileId,
@@ -738,7 +750,7 @@ export async function fetchCurrentUserRecruitingPostIds(client, profileId = "", 
 
 async function fetchCurrentUserRecruitingPage(client, profileId = "", limit = REMOTE_CLIENT_RECRUITING_LIMIT, roomScope = "", includeCards = false) {
   if (!profileId) return { ids: [], cards: [], source: "", exhausted: true };
-  const cappedLimit = Math.max(1, Math.min(200, Number(limit) || REMOTE_CLIENT_RECRUITING_LIMIT));
+  const cappedLimit = Math.max(1, Math.min(RECRUITING_FEED_MAX_LIMIT, Number(limit) || REMOTE_CLIENT_RECRUITING_LIMIT));
   const relations = getRecruitingMineRelations(roomScope);
   const feedPage = await fetchRecruitingFeedPage(client, {
     profileId,
@@ -752,7 +764,7 @@ async function fetchCurrentUserRecruitingPage(client, profileId = "", limit = RE
 }
 
 async function fetchRecruitingFallbackPage(client, limit = REMOTE_CLIENT_RECRUITING_LIMIT, offset = 0, regionKey = "", startFilter = {}) {
-  const cappedLimit = Math.max(1, Math.min(200, Number(limit) || REMOTE_CLIENT_RECRUITING_LIMIT));
+  const cappedLimit = Math.max(1, Math.min(RECRUITING_FEED_MAX_LIMIT, Number(limit) || REMOTE_CLIENT_RECRUITING_LIMIT));
   const safeOffset = Math.max(0, Math.floor(Number(offset) || 0));
   let query = client
     .from("recruiting_posts")
@@ -772,7 +784,7 @@ async function fetchRecruitingFallbackPage(client, limit = REMOTE_CLIENT_RECRUIT
 }
 
 async function fetchRecruitingPage(client, limit = REMOTE_CLIENT_RECRUITING_LIMIT, offset = 0, regionKey = "", includeCards = false, startFilter = {}) {
-  const cappedLimit = Math.max(1, Math.min(80, Number(limit) || REMOTE_CLIENT_RECRUITING_LIMIT));
+  const cappedLimit = Math.max(1, Math.min(RECRUITING_PUBLIC_PAGE_MAX_LIMIT, Number(limit) || REMOTE_CLIENT_RECRUITING_LIMIT));
   const safeOffset = Math.max(0, Math.floor(Number(offset) || 0));
   const feedPage = await fetchRecruitingFeedPage(client, {
     profileId: "*",
@@ -785,7 +797,6 @@ async function fetchRecruitingPage(client, limit = REMOTE_CLIENT_RECRUITING_LIMI
     scheduledDate: startFilter.scheduledDate,
   });
   if (feedPage) return feedPage;
-  if (safeOffset > 0) return { ids: [], cards: [], source: "fallback_public", exhausted: true };
   return fetchRecruitingFallbackPage(client, cappedLimit, safeOffset, regionKey, startFilter);
 }
 
@@ -1251,7 +1262,7 @@ export default async function handler(request, response) {
     const offset = getPageOffset(body);
     const shouldPageList = !mineOnly && !explicitPostIds.length;
     const startFilter = getRecruitingStartFilter(body);
-    const regionScope = body.regionScope === "all" ? "all" : "local";
+    const regionScope = getRecruitingRegionScope(body);
     const regionKey = regionScope === "all"
       ? ""
       : normalizeRegionKey(body.regionKey || body.regionDistrict || getProfileRegionKey(context.profile));

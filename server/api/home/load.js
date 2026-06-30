@@ -2,9 +2,12 @@ import { getAdminLevel, getAuthenticatedContext, readJsonBody, sendJson } from "
 import { loadCompactMatchList } from "../matches/list.js";
 import { loadCurrentProfileState, PROFILE_ME_COLUMNS } from "../profile/me.js";
 import { loadCurrentUserRecruitingFeedList, loadLocalRecruitingFeedList } from "../recruiting/list.js";
-import { REMOTE_CLIENT_MATCH_LIMIT, REMOTE_CLIENT_RECRUITING_LIMIT } from "../../../src/data/repository.js";
-
-const HOME_LOCAL_RECRUITING_LIMIT = 3;
+import {
+  REMOTE_CLIENT_ACTIVE_MATCH_LIMIT,
+  REMOTE_CLIENT_HOME_LOCAL_RECRUITING_LIMIT,
+  REMOTE_CLIENT_MATCH_LIMIT,
+  REMOTE_CLIENT_RECRUITING_LIMIT,
+} from "../../../src/data/repository.js";
 
 function mergeById(current = [], incoming = []) {
   const merged = new Map((current ?? []).filter((item) => item?.id).map((item) => [item.id, item]));
@@ -34,7 +37,7 @@ function mergeHomeState(profileState = {}, feedState = {}) {
 function getCappedMatchLimit(value) {
   const number = Number(value);
   if (!Number.isFinite(number) || number <= 0) return REMOTE_CLIENT_MATCH_LIMIT;
-  return Math.max(1, Math.min(200, Math.floor(number)));
+  return Math.max(1, Math.min(REMOTE_CLIENT_ACTIVE_MATCH_LIMIT, Math.floor(number)));
 }
 
 function getCappedRecruitingLimit(value) {
@@ -91,7 +94,7 @@ export default async function handler(request, response) {
       }, adminLevel, matchLimit, debugTiming),
       timeStep(debugTiming, "recruitingMs", () => loadCurrentUserRecruitingFeedList(context, { adminLevel, limit: recruitingLimit, includeFeedCounts })),
       includeLocalRecruiting
-        ? timeStep(debugTiming, "localRecruitingMs", () => loadLocalRecruitingFeedList(context, { adminLevel, limit: HOME_LOCAL_RECRUITING_LIMIT }))
+        ? timeStep(debugTiming, "localRecruitingMs", () => loadLocalRecruitingFeedList(context, { adminLevel, limit: REMOTE_CLIENT_HOME_LOCAL_RECRUITING_LIMIT }))
         : Promise.resolve(createSkippedRecruitingResult()),
     ]);
 

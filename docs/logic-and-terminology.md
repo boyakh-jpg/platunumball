@@ -5,6 +5,8 @@
 - 모집의 내가 만든 방/내 참여방/초대받음 탭은 `user_room_feed` relation 목록을 한 번에 가져오는 개인 feed 목록이다.
 - 이 탭들은 공개 지역 목록 페이지네이션과 섞지 않으며, 더보기 버튼도 표시하지 않는다.
 - 모집 공개 목록 더보기는 현재 지역/날짜 필터의 `regionScope`, `regionKey`, `startFilter`를 그대로 이어서 호출해야 한다.
+- 서버 목록 API는 `regionScope`의 `local`, `region`, `all` 값을 보존해야 하며, `region` 요청을 `local`로 낮추지 않는다.
+- feed를 사용할 수 없는 fallback 경로도 `offset`을 유지해야 하며, 더보기 요청을 빈 목록으로 강제 종료하지 않는다.
 
 ## 2026-06-30 모집 슬롯/파티 actor 기준
 
