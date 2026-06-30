@@ -537,7 +537,6 @@ async function fetchRecruitingFeedPage(client, {
   includeCards = false,
   timingType = "",
   scheduledDate = "",
-  debugPage = false,
 } = {}) {
   if (!userRoomFeedAvailable) return null;
   const cappedLimit = Math.max(1, Math.min(200, Number(limit) || REMOTE_CLIENT_RECRUITING_LIMIT));
@@ -943,6 +942,7 @@ export async function loadCompactRecruitingList(context, {
   startFilter = "all",
   timingType = "",
   scheduledDate = "",
+  debugPage = false,
 } = {}) {
   const targetPostIds = uniqueIds([...explicitPostIds, ...(mineOnly ? currentUserPostIds : pagePostIds), ...(includeMine ? currentUserPostIds : [])]);
   const targetCards = uniqueFeedCards(pageCards.map((card) => ({ entity_id: card?.id, card_json: card })), targetPostIds);
