@@ -106,10 +106,12 @@ export async function loadCurrentUserTeamInvitations(supabase, profileId = "") {
 export async function loadCurrentUserTeams(supabase, profileId = "", extraTeamIds = [], options = {}) {
   if (!profileId) return { teams: [], users: [] };
   const includeTeamMemberProfiles = options.includeTeamMemberProfiles !== false;
-  const { data: ownMemberships, error: ownMembershipsError } = await supabase
-    .from("team_members")
-    .select("team_id")
-    .eq("user_id", profileId);
+  const { data: ownMemberships, error: ownMembershipsError } = Array.isArray(options.ownMemberships)
+    ? { data: options.ownMemberships, error: null }
+    : await supabase
+      .from("team_members")
+      .select("team_id")
+      .eq("user_id", profileId);
   if (ownMembershipsError) throw ownMembershipsError;
 
   const teamIds = unique([...(ownMemberships ?? []).map((row) => row.team_id), ...extraTeamIds]);
@@ -146,10 +148,15 @@ export async function loadCurrentUserTeams(supabase, profileId = "", extraTeamId
 export async function loadCurrentProfileState(context, options = {}) {
   const profile = context.profile ?? null;
   const profileId = profile?.id ?? "";
-  const [matchSummary, teamInvitations] = await Promise.all([
+  const ownMembershipsPromise = profileId
+    ? context.supabase.from("team_members").select("team_id").eq("user_id", profileId)
+    : Promise.resolve({ data: [], error: null });
+  const [matchSummary, teamInvitations, ownMembershipsResult] = await Promise.all([
     loadCurrentUserMatchSummary(context.supabase, profileId),
     loadCurrentUserTeamInvitations(context.supabase, profileId),
+    ownMembershipsPromise,
   ]);
+  if (ownMembershipsResult.error) throw ownMembershipsResult.error;
   const user = profile
     ? { ...fromRemoteProfile(profile), matchSummary }
     : createProfileShell(context.authUserId, context.authUser?.email ?? "");
@@ -158,7 +165,10 @@ export async function loadCurrentProfileState(context, options = {}) {
     context.supabase,
     profileId,
     teamInvitations.filter((invitation) => invitation.status === "pending").map((invitation) => invitation.teamId),
-    { includeTeamMemberProfiles: options.includeTeamMemberProfiles !== false },
+    {
+      includeTeamMemberProfiles: options.includeTeamMemberProfiles !== false,
+      ownMemberships: ownMembershipsResult.data ?? [],
+    },
   );
   const userById = new Map(currentUserTeams.users.map((item) => [item.id, item]));
   userById.set(user.id, user);
