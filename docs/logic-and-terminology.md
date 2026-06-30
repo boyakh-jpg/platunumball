@@ -1274,6 +1274,7 @@ flowchart TD
 2. `rankball_persist_match_snapshot()` commits `matches`, match players, agreements, approvals, disputes, submitted results/stats, and related notifications in one DB function.
 3. `rankball_persist_tournament_snapshot()` commits `tournaments`, `tournament_teams`, and related notifications in one DB function.
 4. Server actions still calculate the next room/match/tournament state by loading Supabase state and rerunning the central reducer. The DB RPCs make persistence atomic, not reducer calculation fully SQL-native.
+5. `rankball_match_action()` normalizes match dispute row ids before snapshot persistence so stale client/internal ids cannot break the whole match write.
 
 ## 2026-06-26 match rating commit transaction
 

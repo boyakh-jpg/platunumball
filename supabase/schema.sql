@@ -5474,6 +5474,48 @@ $$;
 revoke all on function public.rankball_persist_match_snapshot(jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, boolean) from public;
 grant execute on function public.rankball_persist_match_snapshot(jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, boolean) to service_role;
 
+create or replace function public.rankball_normalize_match_dispute_rows(
+  p_dispute_rows jsonb,
+  p_match_id text
+)
+returns jsonb
+language sql
+stable
+set search_path = public
+as $$
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'id',
+      case
+        when coalesce(dispute.item->>'id', '') ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+          then dispute.item->>'id'
+        else concat(
+          '00000000-0000-4000-8000-',
+          substr(md5(concat_ws('|',
+            coalesce(nullif(dispute.item->>'match_id', ''), nullif(p_match_id, '')),
+            dispute.item->>'user_id',
+            dispute.item->>'reason',
+            dispute.item->>'created_at',
+            dispute.item::text
+          )), 1, 12)
+        )
+      end,
+    'match_id', coalesce(nullif(dispute.item->>'match_id', ''), nullif(p_match_id, '')),
+    'user_id', nullif(dispute.item->>'user_id', ''),
+    'reason', coalesce(dispute.item->>'reason', ''),
+    'created_at', coalesce(nullif(dispute.item->>'created_at', ''), now()::text)
+  )), '[]'::jsonb)
+  from jsonb_array_elements(
+    case
+      when jsonb_typeof(coalesce(p_dispute_rows, '[]'::jsonb)) = 'array' then coalesce(p_dispute_rows, '[]'::jsonb)
+      else '[]'::jsonb
+    end
+  ) as dispute(item)
+  where nullif(dispute.item->>'user_id', '') is not null;
+$$;
+
+revoke all on function public.rankball_normalize_match_dispute_rows(jsonb, text) from public;
+grant execute on function public.rankball_normalize_match_dispute_rows(jsonb, text) to service_role;
+
 create or replace function public.rankball_match_agree_action(
   p_actor_profile_id text,
   p_match_id text,
@@ -6290,7 +6332,7 @@ begin
     p_stat_rows,
     p_agreement_rows,
     p_approval_rows,
-    p_dispute_rows,
+    public.rankball_normalize_match_dispute_rows(p_dispute_rows, safe_match_id),
     p_notification_rows,
     p_replace_result
   );
