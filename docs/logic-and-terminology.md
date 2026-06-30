@@ -1647,3 +1647,4 @@ flowchart TD
 - 2026-06-30: Production DB must apply `20260630173000_recruiting_feed_card_contract.sql` so `rankball_refresh_recruiting_feed_for_post` writes roster/application fields into `user_room_feed.card_json` and backfills active open recruiting feed rows.
 - 2026-06-30: Matches calendar day counts must use the same `getScheduleItemsForView` selector as the visible list. A day chip must not show a count for items that the selected view/list would hide.
 - 2026-06-30: Recruiting mutation success must not fan out into profile + mine list + match schedule + detail reloads. The sync response is authoritative for the changed room, and feed badge counts are adjusted locally for join/accept/decline/cancel.
+- 2026-06-30: Notifications page must trust the first route state for current-user notifications and recruiting invites. It must not auto-run profile refresh plus invited-room reload after the loader finishes.

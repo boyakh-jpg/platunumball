@@ -1,4 +1,3 @@
-import { useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Card from "../components/common/Card.jsx";
 import Badge from "../components/common/Badge.jsx";
@@ -19,7 +18,6 @@ function getRecruitingSchedule(post) {
 
 export default function Notifications({ app }) {
   const navigate = useNavigate();
-  const refreshKeyRef = useRef("");
   const visibleNotifications = app.state.notifications.filter((notification) => !notification.targetUserId || notification.targetUserId === app.currentUser.id);
   const unreadCount = visibleNotifications.filter((notification) => !notification.readAt).length;
   const pendingInvitations = getPendingRecruitingInvitations(app.state, app.currentUser.id);
@@ -36,20 +34,6 @@ export default function Notifications({ app }) {
     await app.actions.loadDirectory?.(true);
     navigate(`/app/teams/${invitation.teamId}`);
   };
-
-  useEffect(() => {
-    if (app.remoteReady === false || !app.currentUser.id) return;
-    if (refreshKeyRef.current === app.currentUser.id) return;
-    refreshKeyRef.current = app.currentUser.id;
-    Promise.all([
-      Promise.resolve(app.actions.refreshCurrentProfile?.()),
-      Promise.resolve(app.actions.loadMyRecruitingPosts?.("invited")),
-    ]).then((results) => {
-      if (results.some((result) => result === false)) refreshKeyRef.current = "";
-    }).catch(() => {
-      refreshKeyRef.current = "";
-    });
-  }, [app.actions, app.currentUser.id, app.remoteReady]);
 
   return (
     <div className="page-stack">
