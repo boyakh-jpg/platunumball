@@ -1093,7 +1093,6 @@ export function useAppData(authUser = null) {
       : { post, notifications, ...meta };
     return runServerAction("/api/recruiting/sync-post", payload).then(async (result) => {
       if (result?.post || result?.createdMatch) setState((prev) => mergeServerRoomResult(prev, result));
-      if (result && result.ok !== false) clearPendingRecruitingPost();
       if (result && result.ok !== false && typeof meta.onSuccess === "function") {
         try {
           await meta.onSuccess(result);
