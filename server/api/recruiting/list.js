@@ -1197,6 +1197,7 @@ export default async function handler(request, response) {
     const roomScope = ["created", "joined", "invited"].includes(body.roomScope) ? body.roomScope : "";
     const includeMine = mineOnly || body.includeMine === true;
     const includeFeedCounts = body.includeFeedCounts !== false;
+    const includeFallbackCounts = body.includeFallbackCounts === true;
     const mineLimit = mineOnly ? limit : REMOTE_CLIENT_RECRUITING_LIMIT;
     const explicitPostIds = getTargetPostIds(body);
     const listOnly = body.listOnly !== false && !explicitPostIds.length;
@@ -1218,7 +1219,7 @@ export default async function handler(request, response) {
         ? timing.track("counts", () => fetchRecruitingFeedCounts(context.supabase, context.profileId))
         : Promise.resolve(null),
     ]);
-    const fallbackCountsResult = context.profileId && includeFeedCounts && !feedCountsResult
+    const fallbackCountsResult = context.profileId && includeFeedCounts && includeFallbackCounts && !feedCountsResult
       ? await timing.track("fallbackCounts", () => fetchRecruitingFallbackCounts(context.supabase, context.profileId))
       : null;
     const currentUserPostIds = mineResult?.ids ?? [];

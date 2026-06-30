@@ -1636,3 +1636,4 @@ flowchart TD
 - 2026-06-30: Current-profile remote state may merge explicit theme values for both light and dark. Missing theme metadata must not cause a saved dark/light choice to bounce back.
 - 2026-06-30: Matches first-page load does not request recent completed matches. Active schedule counts must start from the same active match/recruiting feed that the visible list uses; completed records belong to explicit record/review flows.
 - 2026-06-30: Recruiting mutations keep the target post in the pending-refresh guard until relation refresh and single-post reload finish. Stale feed cards from list/schedule refresh must not overwrite the authoritative mutation result during that window.
+- 2026-06-30: Recruiting feed count fallback is opt-in only. First list loads use the feed-count RPC result or null, and must not run broad fallback count queries that can change badges after the first response.
