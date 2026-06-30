@@ -5,14 +5,7 @@ export default function RequireAuth({ auth }) {
   const location = useLocation();
 
   if (auth.loading) {
-    return (
-      <main className="auth-shell">
-        <section className="auth-card">
-          <p className="eyebrow">RankBall</p>
-          <BasketballLoader overlay label="로그인 확인 중" />
-        </section>
-      </main>
-    );
+    return <BasketballLoader overlay label="로그인 확인 중" />;
   }
 
   if (auth.configured && !auth.session) {

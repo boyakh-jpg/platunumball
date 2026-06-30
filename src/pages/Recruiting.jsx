@@ -3776,18 +3776,10 @@ function RecruitingReady({ app }) {
 
 export default function Recruiting({ app }) {
   if (!app?.currentUser?.id) {
-    return (
-      <div className="page-stack">
-        <div className="empty-state"><BasketballLoader overlay={app.remoteReady !== false} label="프로필 불러오는 중" /></div>
-      </div>
-    );
+    return <BasketballLoader overlay label="프로필 불러오는 중" />;
   }
   if (app.remoteReady === false) {
-    return (
-      <div className="page-stack">
-        <div className="empty-state"><BasketballLoader label="서버 데이터 불러오는 중" /></div>
-      </div>
-    );
+    return null;
   }
   return <RecruitingReady app={app} />;
 }

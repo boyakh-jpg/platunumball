@@ -1212,6 +1212,8 @@ export default function Matches({ app }) {
         />
       ) : null}
 
+      {scheduleLoading ? <BasketballLoader overlay label="서버 데이터 불러오는 중" /> : null}
+
       <section className="om-match-list" aria-label="경기 목록">
         <div className="om-list-head">
           <div>
@@ -1311,16 +1313,10 @@ export default function Matches({ app }) {
         })}
         {matchPagination.error ? <div className="om-load-more"><span>경기 목록 로드 실패</span></div> : null}
           </>
-        ) : (
+        ) : scheduleLoading ? null : (
           <div className="om-empty-state">
-            {scheduleLoading ? (
-              <BasketballLoader overlay label="서버 데이터 불러오는 중" />
-            ) : (
-              <>
-                <strong>해당 큐 없음</strong>
-                <p>다른 상태를 선택하거나 새 경기를 만든다.</p>
-              </>
-            )}
+            <strong>해당 일정 없음</strong>
+            <p>다른 상태를 선택하거나 새 경기를 만든다.</p>
           </div>
         )}
       </section>
