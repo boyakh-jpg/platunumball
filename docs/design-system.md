@@ -713,3 +713,10 @@ UI 수정 전:
 
 1. Invite/team/player selection panels must not wrap selected result headers with hover cards.
 2. Touch-pinned hover cards close on a second tap of the trigger.
+
+## 2026-07-01 visible sports identity pass
+
+1. 홈, 경기, 매칭 첫 화면은 radius만 바꾸지 않고 court-line background와 scoreboard surface를 같이 사용한다.
+2. Hero title은 기존 큰 크기를 유지하되 scoreboard 대비와 숫자 계층을 강화한다.
+3. Active filter/card 상태는 글자색만 바꾸지 않고 같은 green fill과 상단 얇은 라인으로 통일한다. 좌측 세로 accent stripe는 쓰지 않는다.
+4. Glow/gradient 증가는 금지하고, 실제 서비스처럼 진한 표면·명확한 border·팀 컬러 accent로 구분한다.

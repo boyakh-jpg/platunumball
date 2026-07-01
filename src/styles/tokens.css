@@ -17,6 +17,12 @@
   --violet: #c792ff;
   --danger: #ff5d6c;
   --shadow: 0 16px 42px rgba(0, 0, 0, 0.28);
+  --shadow-strong: 0 22px 56px rgba(0, 0, 0, 0.36);
+  --court-line: rgba(199, 223, 232, 0.055);
+  --scoreboard: #080b0f;
+  --scoreboard-2: #0c141d;
+  --team-home: #41d7b0;
+  --team-away: #f2b84b;
   --radius-sm: 10px;
   --radius-md: 14px;
   --radius-lg: 18px;
@@ -62,6 +68,12 @@ html[data-theme="light"] {
   --violet: #7f58cf;
   --danger: #c9394e;
   --shadow: 0 14px 32px rgba(35, 50, 59, 0.12);
+  --shadow-strong: 0 18px 44px rgba(35, 50, 59, 0.16);
+  --court-line: rgba(33, 78, 91, 0.07);
+  --scoreboard: #ffffff;
+  --scoreboard-2: #eef4f0;
+  --team-home: #0f9f7e;
+  --team-away: #b87613;
   --bg-court: none;
   --bg-action: none;
   --bg-profile: none;
