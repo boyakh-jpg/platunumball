@@ -755,3 +755,8 @@ UI 수정 전:
 
 1. Recruiting and Matches heroes use image-led board composition: larger min-height, full-cover background image, and text over the lower image area.
 2. Dark overlay must protect text readability without hiding the sports photo. Light mode uses warm cream/brown overlay, not white dashboard treatment.
+
+## 2026-07-01 Party slot avatar tuning
+
+1. Party connection line crosses the avatar/emblem center and keeps a visible warm glow.
+2. Player avatar images are cropped/feathered above nickname text so names, position, team, and READY stay readable.
