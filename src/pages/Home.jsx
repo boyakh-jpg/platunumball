@@ -349,7 +349,9 @@ export default function Home({ app }) {
       .sort((a, b) => b.score - a.score || a.label.localeCompare(b.label));
   }, [app.state.teams, app.state.users, blockedUserIds, registeredCourts, searchText, user.region]);
   const topRankers = seasonRows.slice(0, 5);
-  const latestMyMatches = myCompletedMatches.slice(0, 5);
+  const recentFiveMatches = myCompletedMatches.slice(0, 5);
+  const recentFiveWins = recentFiveMatches.filter((match) => getUserResult(match, user.id) === "W").length;
+  const latestMyMatches = recentFiveMatches;
   const renderHomeSearchItem = (item) => (
     item.team ? (
       <TeamHoverCard key={item.id} team={item.team}>
@@ -498,64 +500,6 @@ export default function Home({ app }) {
             </Link>
           </div>
         </div>
-        <div className="rank-tier-rail">
-          <Card className="section-card rank-profile-card">
-            <div className="rank-profile-head">
-              <div className={getDiscordAvatarClassName(user, "avatar hero-avatar")} style={getDiscordAvatarStyle(user)}>{user.name.slice(0, 1)}</div>
-              <div>
-                <p className="eyebrow">내 프로필</p>
-                <h2>{user.name}</h2>
-                <span>{user.region} · {user.position} · 신뢰도 {user.trustScore}</span>
-              </div>
-            </div>
-            <div className="rank-tier-block">
-              <TierEmblem mmr={user.ratings.integrated} size="md" />
-              <div>
-                <strong>{getTierDivision(user.ratings.integrated)}</strong>
-                <span>{Math.round(user.ratings.integrated)} MMR</span>
-              </div>
-            </div>
-            <div className="rank-tier-meta-line">
-              <Badge tone="gold">{Math.round(user.ratings.integrated)} MMR</Badge>
-              <Badge tone="green">시즌 점수</Badge>
-            </div>
-            <p className="rank-tier-copy">팀 기여도가 안정적인 플레이어입니다.</p>
-            <p className="rank-tier-note">{user.streak > 0 ? `${user.streak}연승 중. 다음 공식전이 티어를 흔듭니다.` : "꾸준히 경기에 참여하는 플레이어입니다."}</p>
-            <div className="rank-stat-grid">
-              <span><strong>{myCompletedMatches.length}</strong>경기</span>
-              <span><strong>{winRate}%</strong>승률</span>
-              <span><strong>{mySeasonIndex >= 0 ? `${mySeasonIndex + 1}위` : "-"}</strong>{user.region}</span>
-              <span><strong>{user.streak > 0 ? `${user.streak}연승` : user.streak < 0 ? `${Math.abs(user.streak)}연패` : "0"}</strong>흐름</span>
-            </div>
-            <div className="rank-profile-tabs">
-              <Link to={`/app/players/${user.id}`}>프로필</Link>
-              <Link to="/app/season">시즌</Link>
-              <Link to="/app/settings">설정</Link>
-            </div>
-          </Card>
-
-          <Card className="section-card rank-mode-card">
-            <div className="section-title-row">
-              <div>
-                <p className="eyebrow">Queue Rating</p>
-                <h2>모드별 티어</h2>
-              </div>
-              <Badge tone="gold">{Math.round(user.ratings.integrated)}</Badge>
-            </div>
-            <div className="mode-grid rank-mode-grid">
-              {Object.entries(user.ratings.modes).map(([mode, mmr]) => (
-                <div key={mode} className="rank-mode-pill">
-                  <TierEmblem mmr={mmr} size="sm" />
-                  <div>
-                    <span>{mode}</span>
-                    <strong>{getTierDivision(mmr)}</strong>
-                    <em>{Math.round(mmr)} MMR</em>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </div>
       </section>
 
       <div className="content-grid home-dashboard-grid rank-dashboard-grid">
@@ -591,6 +535,49 @@ export default function Home({ app }) {
               <div className="empty-state">예정 경기 없음</div>
             )}
           </Card>
+
+          <div className="home-main-card-grid">
+            <Card className="section-card recruiting-teaser-card">
+              <div className="section-title-row">
+                <div>
+                  <p className="eyebrow">Recruiting</p>
+                  <h2>친선전/정규전 큐</h2>
+                </div>
+                <Handshake size={20} />
+              </div>
+              <div className="compact-list recruiting-mini-list">
+                {localRecruitingPosts.map((post) => {
+                  const meta = RECRUITING_TYPES[post.type] ?? RECRUITING_TYPES.need_player;
+                  return (
+                    <Link key={post.id} to={`/app/recruiting?post=${post.id}`}>
+                      <span>{post.title}</span>
+                      <strong>{post.ranked === false ? "친선" : meta.actionLabel}</strong>
+                    </Link>
+                  );
+                })}
+              </div>
+              <Link to="/app/recruiting">
+                <Button variant="secondary" className="wide-button"><Handshake size={17} /> 큐 보기</Button>
+              </Link>
+            </Card>
+            <Card className="section-card approval-teaser-card">
+              <div className="section-title-row">
+                <div>
+                  <p className="eyebrow">Approval</p>
+                  <h2>승인 대기 경기</h2>
+                </div>
+                <Badge tone={approvalMatches.length ? "orange" : "neutral"}>{approvalMatches.length}개</Badge>
+              </div>
+              <div className="compact-list">
+                {approvalMatches.length ? approvalMatches.slice(0, 4).map((match) => (
+                  <Link key={match.id} to={`/app/matches?match=${match.id}`}>
+                    <span>{match.title}</span>
+                    <strong>{(match.approvals?.teamA?.length ?? 0) + (match.approvals?.teamB?.length ?? 0)}명 승인</strong>
+                  </Link>
+                )) : <div><span>승인 대기 없음</span><strong>OK</strong></div>}
+              </div>
+            </Card>
+          </div>
 
           <Card className="section-card home-recent-card">
             <div className="section-title-row">
@@ -632,6 +619,26 @@ export default function Home({ app }) {
           </Card>
         </div>
         <aside className="page-stack home-side-stack">
+          <div className="rank-tier-rail">
+            <Card className="section-card rank-profile-card rank-spotlight-card">
+              <div className="rank-spotlight-content">
+                <p className="eyebrow">My Rank</p>
+                <div className="rank-spotlight-main">
+                  <TierEmblem mmr={user.ratings.integrated} size="md" />
+                  <div>
+                    <strong>{getTierDivision(user.ratings.integrated)}</strong>
+                    <span>{Math.round(user.ratings.integrated)} MMR · 최근 5경기 {recentFiveWins}승</span>
+                  </div>
+                </div>
+                <div className="rank-profile-tabs rank-spotlight-links">
+                  <Link to={`/app/players/${user.id}`}>프로필</Link>
+                  <Link to="/app/season">시즌</Link>
+                  <Link to="/app/settings">설정</Link>
+                </div>
+              </div>
+            </Card>
+          </div>
+
           <Card className="section-card rank-leaderboard-card">
             <div className="section-title-row">
               <div>
@@ -692,46 +699,6 @@ export default function Home({ app }) {
                   <strong>{team.gap > 0 ? `+${team.gap}` : team.gap} MMR</strong>
                 </TeamHoverCard>
               )) : <div><span>지역 라이벌 없음</span><strong>대기</strong></div>}
-            </div>
-          </Card>
-          <Card className="section-card recruiting-teaser-card">
-            <div className="section-title-row">
-              <div>
-                <p className="eyebrow">Recruiting</p>
-                <h2>친선전/정규전 큐</h2>
-              </div>
-              <Handshake size={20} />
-            </div>
-            <div className="compact-list recruiting-mini-list">
-              {localRecruitingPosts.map((post) => {
-                const meta = RECRUITING_TYPES[post.type] ?? RECRUITING_TYPES.need_player;
-                return (
-                  <Link key={post.id} to={`/app/recruiting?post=${post.id}`}>
-                    <span>{post.title}</span>
-                    <strong>{post.ranked === false ? "친선" : meta.actionLabel}</strong>
-                  </Link>
-                );
-              })}
-            </div>
-            <Link to="/app/recruiting">
-              <Button variant="secondary" className="wide-button"><Handshake size={17} /> 큐 보기</Button>
-            </Link>
-          </Card>
-          <Card className="section-card approval-teaser-card">
-            <div className="section-title-row">
-              <div>
-                <p className="eyebrow">Approval</p>
-                <h2>승인 대기 경기</h2>
-              </div>
-              <Badge tone={approvalMatches.length ? "orange" : "neutral"}>{approvalMatches.length}개</Badge>
-            </div>
-            <div className="compact-list">
-              {approvalMatches.length ? approvalMatches.slice(0, 4).map((match) => (
-                <Link key={match.id} to={`/app/matches?match=${match.id}`}>
-                  <span>{match.title}</span>
-                  <strong>{(match.approvals?.teamA?.length ?? 0) + (match.approvals?.teamB?.length ?? 0)}명 승인</strong>
-                </Link>
-              )) : <div><span>승인 대기 없음</span><strong>OK</strong></div>}
             </div>
           </Card>
           <Card className="section-card home-my-teams-card">

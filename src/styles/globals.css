@@ -13526,3 +13526,203 @@ button:disabled,
     padding: 16px;
   }
 }
+
+/* 2026-07-02 home responsive rail balance. */
+.rank-home .rank-summary-grid {
+  grid-template-columns: 1fr;
+  gap: 16px;
+  align-items: stretch;
+  overflow: hidden;
+}
+
+.rank-home .home-rank-board-head,
+.rank-home .rank-tier-rail,
+.rank-home .home-dashboard-grid,
+.rank-home .home-primary-stack,
+.rank-home .home-side-stack {
+  min-width: 0;
+}
+
+.rank-home .rank-summary-grid .rank-hero-top {
+  min-height: clamp(260px, 29vw, 420px);
+  overflow: hidden;
+}
+
+.rank-home .rank-summary-grid .rank-hero-top > div {
+  min-width: 0;
+  max-width: min(680px, 100%);
+}
+
+.rank-home .rank-summary-grid .home-rank-board-head h1 {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.rank-home .rank-tier-rail {
+  grid-column: auto;
+  grid-row: auto;
+  grid-template-columns: 1fr;
+  align-content: start;
+  justify-self: stretch;
+  width: 100%;
+  max-width: none;
+}
+
+.rank-home .home-side-stack > .rank-tier-rail {
+  order: -1;
+  grid-column: 1 / -1;
+}
+
+.rank-home .rank-tier-rail > .rank-profile-card,
+.rank-home .rank-tier-rail > .rank-mode-card {
+  grid-column: auto;
+  grid-row: auto;
+}
+
+.rank-home .rank-mode-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.rank-home .home-main-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.rank-home .home-main-card-grid > .card {
+  min-width: 0;
+  height: 100%;
+}
+
+@media (min-width: 1080px) {
+  .rank-home .home-dashboard-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+  }
+}
+
+@media (max-width: 1240px) {
+  .rank-home .rank-summary-grid {
+    grid-template-columns: 1fr;
+    overflow: visible;
+  }
+
+  .rank-home .rank-tier-rail {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .rank-home .rank-tier-rail,
+  .rank-home .home-main-card-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 2026-07-02 home rank spotlight card. */
+.rank-home .rank-spotlight-card,
+html[data-theme="light"] .rank-home .rank-spotlight-card {
+  position: relative;
+  display: flex;
+  min-height: 210px;
+  align-items: flex-end;
+  overflow: hidden;
+  border: 1px solid var(--rb-line);
+  border-radius: var(--card-radius);
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.78)),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.76), rgba(0, 0, 0, 0.14) 64%),
+    var(--bg-ball) center 48% / cover no-repeat,
+    var(--rb-bg-2);
+  box-shadow: none;
+  color: #fff;
+  padding: 18px;
+}
+
+.rank-home .rank-spotlight-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 26% 72%, rgba(120, 170, 255, 0.2), transparent 42%),
+    linear-gradient(180deg, transparent 0 58%, rgba(24, 25, 26, 0.7));
+}
+
+.rank-home .rank-spotlight-content {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  gap: 12px;
+}
+
+.rank-home .rank-spotlight-content .eyebrow {
+  color: var(--rb-orange-2);
+  font-size: 0.72rem;
+  text-shadow: 0 8px 18px rgba(0, 0, 0, 0.5);
+}
+
+.rank-home .rank-spotlight-main {
+  display: grid;
+  grid-template-columns: clamp(58px, 16vw, 74px) minmax(0, 1fr);
+  align-items: end;
+  gap: 12px;
+}
+
+.rank-home .rank-spotlight-main .tier-emblem {
+  width: clamp(58px, 16vw, 74px);
+  height: clamp(58px, 16vw, 74px);
+  filter: drop-shadow(0 14px 24px rgba(0, 0, 0, 0.46));
+}
+
+.rank-home .rank-spotlight-main > div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.rank-home .rank-spotlight-main strong {
+  overflow: hidden;
+  color: #fff;
+  font-family: Impact, "Arial Narrow", "Roboto Condensed", sans-serif;
+  font-size: clamp(2.15rem, 6.5vw, 3rem);
+  font-weight: 950;
+  letter-spacing: 0.015em;
+  line-height: 0.88;
+  text-overflow: ellipsis;
+  text-shadow: 0 12px 24px rgba(0, 0, 0, 0.52);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.rank-home .rank-spotlight-main span {
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 0.8rem;
+  font-weight: 950;
+  line-height: 1.25;
+  text-shadow: 0 8px 18px rgba(0, 0, 0, 0.48);
+}
+
+.rank-home .rank-spotlight-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.rank-home .rank-spotlight-links a {
+  min-height: 28px;
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 0.72rem;
+}
+
+html[data-theme="light"] .rank-home .rank-spotlight-card {
+  border-color: rgba(30, 24, 18, 0.16);
+  background:
+    linear-gradient(180deg, rgba(30, 24, 18, 0.04), rgba(30, 24, 18, 0.62)),
+    linear-gradient(90deg, rgba(30, 24, 18, 0.54), rgba(30, 24, 18, 0.08) 64%),
+    var(--bg-ball) center 48% / cover no-repeat,
+    var(--rb-bg-2);
+}
