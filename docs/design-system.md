@@ -726,3 +726,12 @@ UI 수정 전:
 3. Active filter/card 상태는 글자색만 바꾸지 않고 같은 green fill과 상단 얇은 라인으로 통일한다. 좌측 세로 accent stripe는 쓰지 않는다.
 4. Glow/gradient 증가는 금지하고, 실제 서비스처럼 진한 표면·명확한 border·팀 컬러 accent로 구분한다.
 5. 전역 body 배경에는 노란/골드 wash를 쓰지 않고, 흰색 또는 중립 court-line 광원만 사용한다.
+
+## 2026-07-01 Imweb fitness internal screen pass
+
+1. Internal app screens use charcoal sports surfaces in dark mode and warm cream sports surfaces in light mode.
+2. Primary CTA color is orange. Green is kept for success/ready states only.
+3. Match list cards stay summary-only: title, status, time, court, count, score/result, CTA. Player slot grids must not be rendered directly in list cards.
+4. Room modal and lobby must preserve `SideRoster`, `ReserveLine`, `PlayerRoomSlot`, empty slots, reserve slots, avatar, READY/WAIT, party group, and party connection line.
+5. Party connection glow stays visible but subdued, using orange line/glow instead of neon green/blue.
+6. Light mode must not become a white SaaS dashboard. Use warm cream background, charcoal text, orange CTA, soft card surface, and court/gym wall tone.

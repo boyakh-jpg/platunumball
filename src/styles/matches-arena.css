@@ -3074,3 +3074,213 @@ html[data-theme="light"] .om-match-summary-box,
 html[data-theme="light"] .om-match-info-box {
   background: rgba(255, 255, 255, 0.78);
 }
+
+/* 2026-07-01 imweb fitness tone pass: match list only, no room-slot simplification. */
+.om-match-hero {
+  border-color: var(--rb-line);
+  background:
+    linear-gradient(90deg, rgba(16, 16, 16, 0.96), rgba(32, 32, 32, 0.78) 58%, rgba(18, 18, 18, 0.82)),
+    var(--bg-hoop) var(--hero-bg-position-hoop) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg-2);
+}
+
+.om-match-hero::after {
+  background:
+    linear-gradient(180deg, rgba(240, 90, 70, 0.22) 0 2px, transparent 2px),
+    linear-gradient(180deg, transparent 0 68%, rgba(0, 0, 0, 0.3) 68% 100%);
+}
+
+.om-match-panel,
+.om-view-card,
+.om-calendar-summary,
+.om-calendar-box,
+.om-filter-bar,
+.om-list-head {
+  border-color: var(--rb-line);
+  background-color: var(--rb-surface);
+}
+
+.om-view-card.active,
+.om-filter-bar .segmented-control button.active,
+.om-calendar-actions button.active,
+.om-calendar-grid button.active {
+  border-color: rgba(255, 118, 88, 0.42);
+  background: var(--rb-orange);
+  color: #fff;
+  box-shadow: none;
+}
+
+.om-match-card {
+  gap: 12px;
+  border: 1px solid var(--rb-line);
+  border-left: 0;
+  border-radius: var(--radius-md);
+  background: var(--rb-surface);
+  padding: 16px;
+}
+
+.om-match-card::before {
+  display: block;
+  background: var(--rb-orange);
+}
+
+.om-card-kicker {
+  gap: 6px;
+}
+
+.om-status-pill,
+.om-card-kicker span:not(.om-status-pill) {
+  min-height: 22px;
+  padding: 0 8px;
+  font-size: 10.5px;
+  font-weight: 950;
+}
+
+.om-status-pill.blue,
+.om-status-pill.green,
+.om-status-pill.orange {
+  background: rgba(240, 90, 70, 0.15);
+  color: var(--rb-orange-2);
+}
+
+.om-match-card h3 {
+  font-size: clamp(19px, 1.5vw, 22px);
+  line-height: 1.08;
+  letter-spacing: -0.04em;
+}
+
+.om-match-card p {
+  color: var(--rb-soft);
+  font-size: 12px;
+  font-weight: 780;
+}
+
+.om-score-box,
+.om-match-summary-box,
+.om-match-info-box {
+  border-color: var(--rb-line);
+  border-radius: var(--radius-xs);
+  background: rgba(0, 0, 0, 0.24);
+  box-shadow: none;
+}
+
+.om-score-box > strong,
+.om-match-summary-box.count-summary .om-summary-line > strong {
+  font-family: Impact, "Arial Narrow", "Roboto Condensed", sans-serif;
+  font-size: clamp(31px, 3vw, 40px);
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.om-room-link {
+  min-height: 38px;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: var(--rb-orange);
+  color: #fff;
+  box-shadow: none;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+@media (max-width: 560px) {
+  .om-match-card {
+    padding: 14px;
+  }
+
+  .om-room-link {
+    min-height: 44px;
+  }
+}
+
+html[data-theme="light"] .om-match-hero,
+html[data-theme="light"] .om-match-panel,
+html[data-theme="light"] .om-view-card,
+html[data-theme="light"] .om-calendar-summary,
+html[data-theme="light"] .om-calendar-box,
+html[data-theme="light"] .om-filter-bar,
+html[data-theme="light"] .om-list-head,
+html[data-theme="light"] .om-match-card {
+  border-color: var(--rb-line);
+  background-color: var(--rb-surface);
+}
+
+html[data-theme="light"] .om-score-box,
+html[data-theme="light"] .om-match-summary-box,
+html[data-theme="light"] .om-match-info-box {
+  background: rgba(255, 255, 255, 0.72);
+}
+
+/* 2026-07-01 warm cream sports light mode for match list. */
+html[data-theme="light"] .om-match-hero {
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0.42)),
+    var(--bg-hoop) var(--hero-bg-position-hoop) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg-3);
+}
+
+html[data-theme="light"] .om-match-copy h1 {
+  color: #fffaf1;
+  text-shadow: 0 3px 16px rgba(30, 24, 18, 0.48);
+}
+
+html[data-theme="light"] .om-match-copy p,
+html[data-theme="light"] .om-match-copy .eyebrow {
+  color: rgba(255, 250, 241, 0.82);
+}
+
+html[data-theme="light"] .om-match-panel,
+html[data-theme="light"] .om-view-card,
+html[data-theme="light"] .om-calendar-summary,
+html[data-theme="light"] .om-calendar-box,
+html[data-theme="light"] .om-filter-bar,
+html[data-theme="light"] .om-list-head,
+html[data-theme="light"] .om-match-card {
+  border-color: var(--rb-line);
+  background: var(--rb-surface);
+  box-shadow: var(--shadow);
+}
+
+html[data-theme="light"] .om-match-card::before {
+  background: var(--rb-orange);
+}
+
+html[data-theme="light"] .om-match-card h3,
+html[data-theme="light"] .om-score-box > strong,
+html[data-theme="light"] .om-match-summary-box.count-summary .om-summary-line > strong {
+  color: var(--rb-text);
+}
+
+html[data-theme="light"] .om-match-card p,
+html[data-theme="light"] .om-summary-meta,
+html[data-theme="light"] .om-summary-detail {
+  color: #6f685f;
+}
+
+html[data-theme="light"] .om-status-pill,
+html[data-theme="light"] .om-card-kicker span:not(.om-status-pill) {
+  border-color: rgba(229, 85, 63, 0.16);
+  background: rgba(229, 85, 63, 0.12);
+  color: #c94732;
+}
+
+html[data-theme="light"] .om-filter-bar select,
+html[data-theme="light"] .om-filter-bar .segmented-control button,
+html[data-theme="light"] .om-calendar-actions button,
+html[data-theme="light"] .om-calendar-toolbar button,
+html[data-theme="light"] .om-calendar-grid button {
+  border-color: rgba(30, 24, 18, 0.14);
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--rb-text);
+}
+
+html[data-theme="light"] .om-view-card.active,
+html[data-theme="light"] .om-filter-bar .segmented-control button.active,
+html[data-theme="light"] .om-calendar-actions button.active,
+html[data-theme="light"] .om-calendar-grid button.active,
+html[data-theme="light"] .om-room-link {
+  border-color: transparent;
+  background: var(--rb-orange);
+  color: #fff;
+}

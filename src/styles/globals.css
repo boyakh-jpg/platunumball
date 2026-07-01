@@ -11033,3 +11033,344 @@ html[data-theme="light"] .home-team-list em {
   background: transparent;
   color: #2f6fa8;
 }
+
+/* 2026-07-01 imweb fitness tone pass: charcoal surface, orange CTA, condensed heroes. */
+body {
+  background:
+    radial-gradient(circle at 8% 0%, rgba(240, 90, 70, 0.11), transparent 28rem),
+    linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px) 0 0 / 44px 44px,
+    linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px) 0 0 / 44px 44px,
+    linear-gradient(135deg, var(--rb-bg-3), var(--rb-bg) 44%, #121212);
+}
+
+.card,
+.section-card,
+.modal,
+.selector-panel,
+.team-card,
+.rating-card,
+.profile-records-summary,
+.home-search-panel,
+.home-action-card,
+.match-focus-card,
+.home-recent-card,
+.rank-leaderboard-card,
+.season-mini-card,
+.rivalry-card,
+.recruiting-teaser-card,
+.home-my-teams-card,
+.settings-page .section-card {
+  border-color: var(--rb-line);
+  border-radius: var(--radius-md);
+  background-color: var(--rb-surface);
+}
+
+.button {
+  min-height: 38px;
+  border-radius: var(--radius-xs);
+  padding: 0 14px;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.button-primary,
+.provider-test,
+.rank-home .home-rank-board-head .button,
+.button.om-match-create {
+  border: 0;
+  background: var(--rb-orange);
+  color: #fff;
+  box-shadow: none;
+}
+
+.button-secondary {
+  border: 1px solid var(--rb-line);
+  background: var(--rb-surface);
+  color: var(--rb-text);
+  box-shadow: none;
+}
+
+.button-icon,
+.arena-icon-button {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.07);
+  border-color: var(--rb-line);
+}
+
+.button:disabled,
+button:disabled,
+.search-picker-result-row:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.button:focus-visible,
+.provider-button:focus-visible,
+.bottom-nav a:focus-visible,
+.nav-item:focus-visible,
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid rgba(255, 118, 88, 0.72);
+  outline-offset: 2px;
+}
+
+.rank-home .rank-summary-grid .home-rank-board-head h1,
+.om-match-copy h1,
+.arena-hero-copy h1,
+.arena-lobby-title h2 {
+  font-family: Impact, "Arial Narrow", "Roboto Condensed", sans-serif;
+  font-size: clamp(46px, 5.5vw, 72px);
+  line-height: 0.92;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+}
+
+.auth-test-login {
+  border-color: rgba(101, 217, 159, 0.3);
+  background: rgba(101, 217, 159, 0.08);
+}
+
+.auth-test-login select,
+.auth-test-login .provider-button {
+  min-height: 44px;
+}
+
+.auth-test-login .provider-button {
+  width: 100%;
+  background: var(--rb-orange);
+  color: #fff;
+}
+
+@media (max-width: 1020px) {
+  .bottom-nav {
+    min-height: calc(74px + env(safe-area-inset-bottom, 0px));
+    border: 0;
+    border-top: 1px solid var(--rb-line);
+    border-radius: 18px 18px 0 0;
+    background: rgba(29, 30, 31, 0.94);
+    backdrop-filter: blur(18px);
+    padding: 8px 8px max(12px, env(safe-area-inset-bottom, 0px));
+  }
+
+  .bottom-nav a {
+    position: relative;
+    gap: 4px;
+    color: rgba(255, 255, 255, 0.54);
+    font-size: 10px;
+    font-weight: 850;
+  }
+
+  .bottom-nav a::before {
+    content: "";
+    display: block;
+    width: 22px;
+    height: 4px;
+    border-radius: 999px;
+    background: transparent;
+  }
+
+  .bottom-nav a.active {
+    background: transparent;
+    color: #fff;
+    box-shadow: none;
+  }
+
+  .bottom-nav a.active::before {
+    background: var(--rb-orange);
+  }
+
+  .rank-home .rank-summary-grid .home-rank-board-head h1,
+  .om-match-copy h1,
+  .arena-hero-copy h1 {
+    font-size: clamp(46px, 12vw, 50px);
+  }
+}
+
+@media (max-width: 390px) {
+  .bottom-nav a span {
+    font-size: 9.5px;
+  }
+
+  .bottom-nav a::before {
+    width: 20px;
+  }
+}
+
+html[data-theme="light"] body {
+  background:
+    linear-gradient(rgba(30, 24, 18, 0.024) 1px, transparent 1px) 0 0 / 44px 44px,
+    linear-gradient(90deg, rgba(30, 24, 18, 0.024) 1px, transparent 1px) 0 0 / 44px 44px,
+    var(--rb-bg);
+  color: var(--rb-text);
+}
+
+html[data-theme="light"] .card,
+html[data-theme="light"] .section-card,
+html[data-theme="light"] .home-search-panel,
+html[data-theme="light"] .home-action-card {
+  border-color: var(--rb-line);
+  background-color: var(--rb-surface);
+  box-shadow: var(--shadow);
+}
+
+/* 2026-07-01 warm cream light mode and shared app controls. */
+input,
+select,
+textarea,
+.search-picker-input,
+.search-input,
+.auth-card select {
+  border-color: var(--rb-line);
+  border-radius: var(--radius-md);
+}
+
+.button:hover,
+.provider-button:hover,
+.om-room-link:hover,
+.arena-card-action.button:hover {
+  filter: brightness(0.96);
+}
+
+html[data-theme="light"] .app-main {
+  background:
+    linear-gradient(rgba(30, 24, 18, 0.024) 1px, transparent 1px) 0 0 / 42px 42px,
+    linear-gradient(90deg, rgba(30, 24, 18, 0.024) 1px, transparent 1px) 0 0 / 42px 42px,
+    var(--rb-bg);
+  color: var(--rb-text);
+}
+
+html[data-theme="light"] .sidebar,
+html[data-theme="light"] .auth-card,
+html[data-theme="light"] .modal,
+html[data-theme="light"] .selector-panel,
+html[data-theme="light"] .team-card,
+html[data-theme="light"] .rating-card,
+html[data-theme="light"] .profile-records-summary,
+html[data-theme="light"] .match-focus-card,
+html[data-theme="light"] .home-recent-card,
+html[data-theme="light"] .rank-leaderboard-card,
+html[data-theme="light"] .season-mini-card,
+html[data-theme="light"] .rivalry-card,
+html[data-theme="light"] .recruiting-teaser-card,
+html[data-theme="light"] .home-my-teams-card,
+html[data-theme="light"] .settings-page .section-card {
+  border-color: var(--rb-line);
+  background-color: var(--rb-surface);
+  box-shadow: var(--shadow);
+}
+
+html[data-theme="light"] input,
+html[data-theme="light"] select,
+html[data-theme="light"] textarea,
+html[data-theme="light"] .search-picker-input,
+html[data-theme="light"] .search-input,
+html[data-theme="light"] .auth-card select {
+  border-color: rgba(30, 24, 18, 0.14);
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--rb-text);
+}
+
+html[data-theme="light"] input::placeholder,
+html[data-theme="light"] textarea::placeholder {
+  color: var(--rb-soft);
+}
+
+html[data-theme="light"] input:focus-visible,
+html[data-theme="light"] select:focus-visible,
+html[data-theme="light"] textarea:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 3px rgba(229, 85, 63, 0.16);
+}
+
+html[data-theme="light"] .button-primary,
+html[data-theme="light"] .provider-test,
+html[data-theme="light"] .rank-home .home-rank-board-head .button,
+html[data-theme="light"] .button.om-match-create,
+html[data-theme="light"] .auth-test-login .provider-button {
+  border: 0;
+  background: var(--rb-orange);
+  color: #fff;
+}
+
+html[data-theme="light"] .button-primary:hover,
+html[data-theme="light"] .provider-test:hover,
+html[data-theme="light"] .auth-test-login .provider-button:hover {
+  background: #d64c38;
+  filter: none;
+}
+
+html[data-theme="light"] .button-secondary,
+html[data-theme="light"] .provider-button,
+html[data-theme="light"] .button-icon,
+html[data-theme="light"] .arena-icon-button {
+  border-color: rgba(30, 24, 18, 0.14);
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--rb-text);
+}
+
+html[data-theme="light"] .eyebrow,
+html[data-theme="light"] .text-positive {
+  color: var(--rb-green);
+}
+
+html[data-theme="light"] .badge,
+html[data-theme="light"] .tier-badge,
+html[data-theme="light"] .status-badge,
+html[data-theme="light"] .chip,
+html[data-theme="light"] .tag {
+  border-color: var(--rb-line);
+}
+
+html[data-theme="light"] .badge.orange,
+html[data-theme="light"] .tag.orange,
+html[data-theme="light"] .status-badge.orange {
+  background: rgba(229, 85, 63, 0.12);
+  color: #c94732;
+}
+
+html[data-theme="light"] .badge.green,
+html[data-theme="light"] .tag.green,
+html[data-theme="light"] .status-badge.green {
+  background: rgba(33, 138, 95, 0.1);
+  color: #1e7653;
+}
+
+html[data-theme="light"] .badge.blue,
+html[data-theme="light"] .tag.blue,
+html[data-theme="light"] .status-badge.blue {
+  background: rgba(51, 111, 184, 0.1);
+  color: #285c9e;
+}
+
+html[data-theme="light"] .badge.gold,
+html[data-theme="light"] .tag.gold,
+html[data-theme="light"] .status-badge.gold {
+  background: rgba(168, 108, 20, 0.1);
+  color: #8a590f;
+}
+
+@media (max-width: 1020px) {
+  html[data-theme="light"] .bottom-nav {
+    border-top: 1px solid var(--rb-line);
+    background: rgba(255, 250, 241, 0.94);
+    backdrop-filter: blur(18px);
+  }
+
+  html[data-theme="light"] .bottom-nav a {
+    color: var(--rb-soft);
+  }
+
+  html[data-theme="light"] .bottom-nav a.active {
+    color: var(--rb-text);
+  }
+
+  html[data-theme="light"] .bottom-nav a.active::before {
+    background: var(--rb-orange);
+  }
+}
