@@ -4016,21 +4016,39 @@ input[type="color"] {
 }
 
 .settings-section-main .favorite-management-card,
-.settings-section-main .settings-privacy-card,
-.settings-section-main .discord-link-card,
 .settings-section-main .settings-court-card,
 .settings-page:not(.settings-section-referee) .settings-referee-card,
 .settings-page:not(.settings-section-main) .settings-nav-card,
 .settings-section-favorites .settings-main-column > .section-card:not(.favorite-management-card),
-.settings-section-profile .settings-main-column > .section-card:not(.settings-privacy-card),
-.settings-section-discord .settings-main-column > .section-card:not(.discord-link-card),
 .settings-section-courts .settings-main-column,
 .settings-section-referee .content-grid,
 .settings-section-favorites .settings-side-column,
-.settings-section-profile .settings-side-column,
-.settings-section-discord .settings-side-column,
 .settings-section-referee .settings-side-column {
   display: none;
+}
+
+.settings-section-main .theme-choice-card {
+  order: 10;
+}
+
+.settings-section-main .discord-link-card {
+  order: 11;
+}
+
+.settings-section-main .settings-privacy-card {
+  order: 12;
+}
+
+.settings-section-main .settings-unified-save-card {
+  order: 13;
+}
+
+.settings-section-main .admin-seed-card,
+.settings-section-main .settings-account-card,
+.settings-section-main .admin-menu-card,
+.settings-section-main .settings-reset-card,
+.settings-section-main .settings-block-card {
+  order: 30;
 }
 
 .settings-section-courts .settings-side-column > .section-card:not(.settings-court-card) {

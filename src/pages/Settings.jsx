@@ -72,6 +72,7 @@ const SETTINGS_SECTIONS = {
   courts: { eyebrow: "Court", title: "구장 신청" },
   referee: { eyebrow: "Referee", title: "심판 등록" },
 };
+const EMBEDDED_SETTINGS_SECTIONS = new Set(["profile", "discord"]);
 
 function getPrivacyDraft(privacy = {}) {
   return {
@@ -192,7 +193,8 @@ export default function Settings({ app, auth, section = "main" }) {
     app.actions.loadDirectory?.();
     app.actions.loadAdminContext?.();
   }, [app.actions]);
-  const settingsSection = Object.prototype.hasOwnProperty.call(SETTINGS_SECTIONS, section) ? section : "main";
+  const requestedSettingsSection = Object.prototype.hasOwnProperty.call(SETTINGS_SECTIONS, section) ? section : "main";
+  const settingsSection = EMBEDDED_SETTINGS_SECTIONS.has(requestedSettingsSection) ? "main" : requestedSettingsSection;
   const sectionMeta = SETTINGS_SECTIONS[settingsSection];
   const privacy = app.state.settings?.privacy ?? {};
   const privacySnapshot = JSON.stringify(getPrivacyDraft(privacy));
@@ -352,6 +354,12 @@ export default function Settings({ app, auth, section = "main" }) {
   const discordDirty = Boolean(discordDraft.unlink) ||
     discordDraft.enabled !== Boolean(discordLinked && discordChannel.enabled) ||
     DISCORD_NOTIFICATION_EVENTS.some((option) => Boolean(discordDraft.events?.[option.id]) !== Boolean(discordChannel.events?.[option.id]));
+  const generalSettingsDirty = themeDirty || privacyDirty || discordDirty;
+  const generalSettingsStatus = [
+    themeSaveStatus ? `테마 ${themeSaveStatus}` : null,
+    privacySaveStatus ? `노출 ${privacySaveStatus}` : null,
+    discordSaveStatus ? `디스코드 ${discordSaveStatus}` : null,
+  ].filter(Boolean).join(" · ") || (generalSettingsDirty ? "변경 있음" : "저장됨");
   const naverMapKeyReady = Boolean(getNaverMapClientId());
   const courtAddressSelected = Boolean(String(courtDraft.addressText ?? "").trim());
   const courtDisplayName = getCourtRequestDisplayName(courtDraft.name, courtDraft.addressDong);
@@ -829,6 +837,12 @@ export default function Settings({ app, auth, section = "main" }) {
       setDiscordSaveStatus("저장 실패");
     }
   };
+  const saveGeneralSettings = async () => {
+    if (!generalSettingsDirty) return;
+    if (themeDirty) await saveTheme();
+    if (privacyDirty) savePrivacy();
+    if (discordDirty) await saveDiscordSettings();
+  };
   const submitCourtRequest = async (event) => {
     event.preventDefault();
     if (courtDuplicate) {
@@ -969,8 +983,6 @@ export default function Settings({ app, auth, section = "main" }) {
             </div>
             <div className="settings-nav-grid">
               <Link to="/app/settings/favorites"><strong>즐겨찾기</strong><span>프로필/팀/구장/심판</span></Link>
-              <Link to="/app/settings/profile"><strong>프로필 노출</strong><span>랭킹/팀/스탯 공개</span></Link>
-              <Link to="/app/settings/discord"><strong>디스코드</strong><span>연동/DM 알림</span></Link>
               <Link to="/app/settings/courts"><strong>구장 신청</strong><span>주소 검색/등록 요청</span></Link>
               <Link to="/app/settings/referee"><strong>심판</strong><span>룰북/시험/등록 요청</span></Link>
             </div>
@@ -1002,7 +1014,6 @@ export default function Settings({ app, auth, section = "main" }) {
             </div>
             <div className="settings-save-row">
               <small>{themeSaveStatus || (themeDirty ? "변경 있음" : "저장됨")}</small>
-              <Button type="button" variant="secondary" onClick={saveTheme} disabled={!themeDirty}>저장</Button>
             </div>
           </Card>
 
@@ -1231,9 +1242,6 @@ export default function Settings({ app, auth, section = "main" }) {
                   Discord 연동
                 </Button>
               )}
-              <Button type="button" variant="secondary" size="sm" onClick={saveDiscordSettings} disabled={!discordDirty}>
-                저장
-              </Button>
               <Badge tone={discordLinked && !discordDraft.unlink && discordDraft.enabled ? "green" : "neutral"}>
                 {discordLinked && !discordDraft.unlink && discordDraft.enabled ? "DM ON" : "앱 알림"}
               </Badge>
@@ -1349,7 +1357,20 @@ export default function Settings({ app, auth, section = "main" }) {
             </div>
             <div className="settings-save-row">
               <small>{privacySaveStatus || (privacyDirty ? "변경 있음" : "저장됨")}</small>
-              <Button type="button" variant="secondary" onClick={savePrivacy} disabled={!privacyDirty}>저장</Button>
+            </div>
+          </Card>
+
+          <Card className="section-card settings-unified-save-card">
+            <div className="section-title-row">
+              <div>
+                <p className="eyebrow">Save</p>
+                <h2>설정 저장</h2>
+              </div>
+              <Badge tone={generalSettingsDirty ? "orange" : "neutral"}>{generalSettingsDirty ? "변경 있음" : "저장됨"}</Badge>
+            </div>
+            <div className="settings-save-row">
+              <small>{generalSettingsStatus}</small>
+              <Button type="button" variant="primary" onClick={saveGeneralSettings} disabled={!generalSettingsDirty}>저장</Button>
             </div>
           </Card>
 
