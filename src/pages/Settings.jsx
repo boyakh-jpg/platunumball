@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { BookOpen, Database, MapPin, Moon, Send, ShieldCheck, Star, Sun, UserRound } from "lucide-react";
+import { BookOpen, Database, MapPin, MessageCircle, Moon, Send, ShieldCheck, Star, Sun, Unlink2, UserRound } from "lucide-react";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import Badge from "../components/common/Badge.jsx";
@@ -16,6 +16,18 @@ import { COURT_LAYOUT_OPTIONS, COURT_SURFACE_OPTIONS, findCourtDuplicate, getCou
 import { findCourtByHashtag, findTeamByHashtag, findUserByHashtag, getCourtHashtag, getMatchHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { getNaverMapClientId, openNaverMapPinPicker, searchNaverAddresses } from "../lib/naverAddress.js";
 import { hasAdminAccess } from "../lib/admin.js";
+import {
+  DISCORD_NOTIFICATION_EVENTS,
+  consumeDiscordOAuthResult,
+  findDiscordConnectionOwner,
+  getDiscordAvatarClassName,
+  getDiscordAvatarStyle,
+  getDiscordChannel,
+  getDiscordDisplayName,
+  getDiscordOAuthStartUrl,
+  getDiscordProfileUrl,
+  isDiscordLinked,
+} from "../lib/discord.js";
 import {
   REFEREE_EXAM_BANK_SIZE,
   REFEREE_EXAM_PASS_SCORE,
@@ -52,6 +64,22 @@ const DEFAULT_REFEREE_REQUEST = {
   experience: "",
   memo: "",
 };
+const SETTINGS_SECTIONS = {
+  main: { eyebrow: "Settings", title: "설정" },
+  favorites: { eyebrow: "Favorites", title: "즐겨찾기 설정" },
+  profile: { eyebrow: "Profile", title: "프로필 노출 설정" },
+  discord: { eyebrow: "Discord", title: "디스코드 알림" },
+  courts: { eyebrow: "Court", title: "구장 신청" },
+  referee: { eyebrow: "Referee", title: "심판 등록" },
+};
+
+function getPrivacyDraft(privacy = {}) {
+  return {
+    regionRanking: privacy.regionRanking !== false,
+    teamHistory: privacy.teamHistory !== false,
+    statSummary: privacy.statSummary !== false,
+  };
+}
 
 function getMatchReportTime(match = {}) {
   const rawDate = match.endedAt ?? match.confirmedAt ?? match.scheduledDate ?? match.scheduledAt ?? match.createdAt;
@@ -159,12 +187,17 @@ function getReportTargetEmptyText(targetType) {
   return "신고 가능한 대상 없음";
 }
 
-export default function Settings({ app, auth }) {
+export default function Settings({ app, auth, section = "main" }) {
   useEffect(() => {
     app.actions.loadDirectory?.();
     app.actions.loadAdminContext?.();
   }, [app.actions]);
+  const settingsSection = Object.prototype.hasOwnProperty.call(SETTINGS_SECTIONS, section) ? section : "main";
+  const sectionMeta = SETTINGS_SECTIONS[settingsSection];
   const privacy = app.state.settings?.privacy ?? {};
+  const privacySnapshot = JSON.stringify(getPrivacyDraft(privacy));
+  const [privacyDraft, setPrivacyDraft] = useState(() => getPrivacyDraft(privacy));
+  const [privacySaveStatus, setPrivacySaveStatus] = useState("");
   const theme = app.state.settings?.theme === "light" ? "light" : "dark";
   const [themeDraft, setThemeDraft] = useState(theme);
   const [themeSaveStatus, setThemeSaveStatus] = useState("");
@@ -202,6 +235,25 @@ export default function Settings({ app, auth }) {
   const refereeRequests = app.state.settings?.refereeRequests ?? [];
   const refereeExamAttempts = app.state.settings?.refereeExamAttempts ?? [];
   const currentTrustScore = Number(app.currentUser?.trustScore ?? 0);
+  const discordLinked = isDiscordLinked(app.currentUser);
+  const discordChannel = getDiscordChannel(app.state.settings);
+  const discordProfileUrl = getDiscordProfileUrl(app.currentUser);
+  const discordDisplayName = getDiscordDisplayName(app.currentUser);
+  const queuedDiscordDeliveries = (app.state.discordNotificationDeliveries ?? [])
+    .filter((delivery) => delivery.targetUserId === app.currentUserId && delivery.status === "queued");
+  const [discordLinkError, setDiscordLinkError] = useState("");
+  const [discordSaveStatus, setDiscordSaveStatus] = useState("");
+  const [discordDraft, setDiscordDraft] = useState(() => ({
+    enabled: Boolean(discordLinked && discordChannel.enabled),
+    events: { ...discordChannel.events },
+    unlink: false,
+  }));
+  const discordSnapshot = JSON.stringify({
+    linked: discordLinked,
+    userId: app.currentUser?.discordConnection?.userId ?? "",
+    enabled: discordChannel.enabled,
+    events: discordChannel.events,
+  });
   const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
   const favoritePlayerIds = app.state.settings?.favoritePlayerIds ?? [];
   const favoriteTeamIds = app.state.settings?.favoriteTeamIds ?? [];
@@ -296,6 +348,10 @@ export default function Settings({ app, auth }) {
   const serverAdminLevel = Number(app.adminContext?.level ?? 0);
   const canOpenAdminMenu = serverAdminLevel >= 30 || hasAdminAccess(app.currentUser, app.state.settings);
   const themeDirty = themeDraft !== theme;
+  const privacyDirty = JSON.stringify(privacyDraft) !== privacySnapshot;
+  const discordDirty = Boolean(discordDraft.unlink) ||
+    discordDraft.enabled !== Boolean(discordLinked && discordChannel.enabled) ||
+    DISCORD_NOTIFICATION_EVENTS.some((option) => Boolean(discordDraft.events?.[option.id]) !== Boolean(discordChannel.events?.[option.id]));
   const naverMapKeyReady = Boolean(getNaverMapClientId());
   const courtAddressSelected = Boolean(String(courtDraft.addressText ?? "").trim());
   const courtDisplayName = getCourtRequestDisplayName(courtDraft.name, courtDraft.addressDong);
@@ -317,6 +373,47 @@ export default function Settings({ app, auth }) {
     setThemeDraft((current) => (current === previousTheme ? theme : current));
     setThemeSaveStatus("");
   }, [theme]);
+  useEffect(() => {
+    setPrivacyDraft(JSON.parse(privacySnapshot));
+    setPrivacySaveStatus("");
+  }, [privacySnapshot]);
+  useEffect(() => {
+    setDiscordDraft({
+      enabled: Boolean(discordLinked && discordChannel.enabled),
+      events: { ...discordChannel.events },
+      unlink: false,
+    });
+    setDiscordSaveStatus("");
+    setDiscordLinkError("");
+  }, [discordSnapshot]);
+  useEffect(() => {
+    const discordOAuthResult = consumeDiscordOAuthResult(app.currentUserId);
+    if (!discordOAuthResult) return;
+    if (discordOAuthResult.status !== "linked") {
+      console.warn("Discord link failed.", discordOAuthResult.error);
+      setDiscordLinkError("Discord 연동에 실패했습니다.");
+      return;
+    }
+    const targetUserId = discordOAuthResult.appUserId || app.currentUserId;
+    const linkedOwner = findDiscordConnectionOwner(app.state.users, discordOAuthResult.connection, targetUserId);
+    if (linkedOwner) {
+      setDiscordLinkError(`이미 ${linkedOwner.name} 프로필에 연결된 Discord입니다.`);
+      return;
+    }
+    setDiscordLinkError("");
+    app.actions.updateProfile({ discordConnection: discordOAuthResult.connection }, targetUserId);
+    if (targetUserId !== app.currentUserId) app.actions.switchUser(targetUserId);
+    app.actions.updateSettings({
+      notificationChannels: {
+        ...(app.state.settings?.notificationChannels ?? {}),
+        discord: {
+          ...discordChannel,
+          enabled: true,
+        },
+      },
+    });
+    setDiscordSaveStatus("연동됨");
+  }, [app.currentUserId]);
 
   const blockableUsers = useMemo(
     () => app.state.users.filter((user) => user.id !== app.currentUserId && !blockedUserIds.includes(user.id)),
@@ -702,6 +799,36 @@ export default function Settings({ app, auth }) {
       setThemeSaveStatus("저장 실패");
     }
   };
+  const savePrivacy = () => {
+    app.actions.updatePrivacySettings(privacyDraft);
+    setPrivacySaveStatus("저장됨");
+  };
+  const connectDiscord = () => {
+    window.location.assign(getDiscordOAuthStartUrl(app.currentUserId));
+  };
+  const saveDiscordSettings = async () => {
+    setDiscordSaveStatus("저장 중");
+    try {
+      if (discordDraft.unlink) {
+        await app.actions.updateProfile({ discordConnection: null });
+      }
+      app.actions.updateSettings({
+        notificationChannels: {
+          ...(app.state.settings?.notificationChannels ?? {}),
+          discord: {
+            enabled: Boolean(discordLinked && !discordDraft.unlink && discordDraft.enabled),
+            events: {
+              ...discordChannel.events,
+              ...(discordDraft.events ?? {}),
+            },
+          },
+        },
+      });
+      setDiscordSaveStatus("저장됨");
+    } catch {
+      setDiscordSaveStatus("저장 실패");
+    }
+  };
   const submitCourtRequest = async (event) => {
     event.preventDefault();
     if (courtDuplicate) {
@@ -800,16 +927,19 @@ export default function Settings({ app, auth }) {
   }, [reportParticipantIds]);
 
   return (
-    <div className="page-stack settings-page">
+    <div className={`page-stack settings-page settings-section-${settingsSection}`}>
       <header className="page-header">
         <div>
-          <p className="eyebrow">Settings</p>
-          <h1>설정</h1>
+          <p className="eyebrow">{sectionMeta.eyebrow}</p>
+          <h1>{sectionMeta.title}</h1>
         </div>
+        {settingsSection !== "main" ? (
+          <Link className="button button-secondary button-md" to="/app/settings">설정</Link>
+        ) : null}
       </header>
-      <div className="content-grid">
-        <div className="page-stack">
-          <Card className="section-card">
+      <div className={`content-grid ${settingsSection === "main" ? "" : "settings-section-grid"}`}>
+        <div className="page-stack settings-main-column">
+          <Card className="section-card settings-data-card">
             <div className="section-title-row">
               <div>
                 <p className="eyebrow">데이터 모드</p>
@@ -826,6 +956,23 @@ export default function Settings({ app, auth }) {
                 <span>세션</span>
                 <strong>{auth?.user ? auth.user.user_metadata?.providerName ?? "Test" : "Guest"}</strong>
               </div>
+            </div>
+          </Card>
+
+          <Card className="section-card settings-nav-card">
+            <div className="section-title-row">
+              <div>
+                <p className="eyebrow">Setting pages</p>
+                <h2>세부 설정</h2>
+              </div>
+              <ShieldCheck size={22} />
+            </div>
+            <div className="settings-nav-grid">
+              <Link to="/app/settings/favorites"><strong>즐겨찾기</strong><span>프로필/팀/구장/심판</span></Link>
+              <Link to="/app/settings/profile"><strong>프로필 노출</strong><span>랭킹/팀/스탯 공개</span></Link>
+              <Link to="/app/settings/discord"><strong>디스코드</strong><span>연동/DM 알림</span></Link>
+              <Link to="/app/settings/courts"><strong>구장 신청</strong><span>주소 검색/등록 요청</span></Link>
+              <Link to="/app/settings/referee"><strong>심판</strong><span>룰북/시험/등록 요청</span></Link>
             </div>
           </Card>
 
@@ -998,6 +1145,102 @@ export default function Settings({ app, auth }) {
             ) : null}
           </Card>
 
+          <Card className="section-card discord-link-card">
+            <div className="section-title-row">
+              <div>
+                <p className="eyebrow">Discord</p>
+                <h2>디스코드 알림</h2>
+              </div>
+              {discordLinked ? (
+                <a className="discord-link-badge" href={discordProfileUrl} target="_blank" rel="noreferrer">
+                  <MessageCircle size={14} /> 연동됨
+                </a>
+              ) : (
+                <MessageCircle size={20} />
+              )}
+            </div>
+            <div className="contract-grid single">
+              {discordLinked ? (
+                <div className="discord-profile-line">
+                  <span className={getDiscordAvatarClassName(app.currentUser, "avatar small")} style={getDiscordAvatarStyle(app.currentUser)}>
+                    {app.currentUser.name.slice(0, 1)}
+                  </span>
+                  <strong>@{discordDisplayName}</strong>
+                </div>
+              ) : null}
+              <div>
+                <span>연동 상태</span>
+                <strong>{discordDraft.unlink ? "해제 예정" : discordLinked ? "연동됨" : "미연동"}</strong>
+              </div>
+              <div>
+                <span>알림 경로</span>
+                <strong>{discordLinked && !discordDraft.unlink && discordDraft.enabled ? "앱 + Discord DM" : "앱 내부"}</strong>
+              </div>
+              {discordLinked ? (
+                <div>
+                  <span>DM 대기</span>
+                  <strong>{queuedDiscordDeliveries.length}개</strong>
+                </div>
+              ) : null}
+            </div>
+            {discordLinkError ? <p className="form-warning">{discordLinkError}</p> : null}
+            <div className="settings-toggle-grid">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={Boolean(discordLinked && !discordDraft.unlink && discordDraft.enabled)}
+                  disabled={!discordLinked || discordDraft.unlink}
+                  onChange={(event) => setDiscordDraft((current) => ({ ...current, enabled: event.target.checked }))}
+                />
+                Discord DM
+              </label>
+              {DISCORD_NOTIFICATION_EVENTS.map((option) => (
+                <label key={option.id}>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(discordDraft.events?.[option.id])}
+                    disabled={!discordLinked || discordDraft.unlink || !discordDraft.enabled}
+                    onChange={() => setDiscordDraft((current) => ({
+                      ...current,
+                      events: {
+                        ...current.events,
+                        [option.id]: !current.events?.[option.id],
+                      },
+                    }))}
+                  />
+                  {option.label}
+                </label>
+              ))}
+            </div>
+            <div className="settings-address-actions">
+              {discordLinked ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setDiscordDraft((current) => ({
+                    ...current,
+                    unlink: !current.unlink,
+                    enabled: current.unlink ? Boolean(discordChannel.enabled) : false,
+                  }))}
+                >
+                  <Unlink2 size={15} /> {discordDraft.unlink ? "해제 취소" : "연동 해제"}
+                </Button>
+              ) : (
+                <Button type="button" variant="secondary" size="sm" onClick={connectDiscord}>
+                  Discord 연동
+                </Button>
+              )}
+              <Button type="button" variant="secondary" size="sm" onClick={saveDiscordSettings} disabled={!discordDirty}>
+                저장
+              </Button>
+              <Badge tone={discordLinked && !discordDraft.unlink && discordDraft.enabled ? "green" : "neutral"}>
+                {discordLinked && !discordDraft.unlink && discordDraft.enabled ? "DM ON" : "앱 알림"}
+              </Badge>
+            </div>
+            {discordSaveStatus ? <small>{discordSaveStatus}</small> : null}
+          </Card>
+
           <Card className="section-card admin-seed-card">
             <div className="section-title-row">
               <div>
@@ -1026,7 +1269,7 @@ export default function Settings({ app, auth }) {
             </div>
           </Card>
 
-          <Card className="section-card">
+          <Card className="section-card settings-account-card">
             <div className="section-title-row">
               <div>
                 <p className="eyebrow">Admin Login</p>
@@ -1070,7 +1313,7 @@ export default function Settings({ app, auth }) {
             )}
           </Card>
 
-          <Card className="section-card">
+          <Card className="section-card settings-privacy-card">
             <div className="section-title-row">
               <div>
                 <p className="eyebrow">공개 범위</p>
@@ -1082,27 +1325,31 @@ export default function Settings({ app, auth }) {
               <label>
                 <input
                   type="checkbox"
-                  checked={privacy.regionRanking !== false}
-                  onChange={(event) => app.actions.updatePrivacySettings({ regionRanking: event.target.checked })}
+                  checked={privacyDraft.regionRanking !== false}
+                  onChange={(event) => setPrivacyDraft((current) => ({ ...current, regionRanking: event.target.checked }))}
                 />
                 지역 랭킹에 표시
               </label>
               <label>
                 <input
                   type="checkbox"
-                  checked={privacy.teamHistory !== false}
-                  onChange={(event) => app.actions.updatePrivacySettings({ teamHistory: event.target.checked })}
+                  checked={privacyDraft.teamHistory !== false}
+                  onChange={(event) => setPrivacyDraft((current) => ({ ...current, teamHistory: event.target.checked }))}
                 />
                 소속팀 히스토리 표시
               </label>
               <label>
                 <input
                   type="checkbox"
-                  checked={privacy.statSummary !== false}
-                  onChange={(event) => app.actions.updatePrivacySettings({ statSummary: event.target.checked })}
+                  checked={privacyDraft.statSummary !== false}
+                  onChange={(event) => setPrivacyDraft((current) => ({ ...current, statSummary: event.target.checked }))}
                 />
                 개인 스탯 요약 표시
               </label>
+            </div>
+            <div className="settings-save-row">
+              <small>{privacySaveStatus || (privacyDirty ? "변경 있음" : "저장됨")}</small>
+              <Button type="button" variant="secondary" onClick={savePrivacy} disabled={!privacyDirty}>저장</Button>
             </div>
           </Card>
 
@@ -1129,7 +1376,7 @@ export default function Settings({ app, auth }) {
             </Card>
           ) : null}
 
-          <Card className="section-card">
+          <Card className="section-card settings-reset-card">
             <div className="section-title-row">
               <div>
                 <p className="eyebrow">초기화</p>
@@ -1139,7 +1386,7 @@ export default function Settings({ app, auth }) {
             <Button variant="secondary" onClick={app.actions.reset}>데모 데이터 초기화</Button>
           </Card>
 
-          <Card className="section-card">
+          <Card className="section-card settings-block-card">
             <div className="section-title-row">
               <div>
                 <p className="eyebrow">차단</p>
@@ -1167,9 +1414,9 @@ export default function Settings({ app, auth }) {
           </Card>
         </div>
 
-        <aside className="page-stack">
+        <aside className="page-stack settings-side-column">
 
-          <Card className="section-card">
+          <Card className="section-card settings-court-card">
             <div className="section-title-row">
               <div>
                 <p className="eyebrow">Court</p>
@@ -1338,7 +1585,7 @@ export default function Settings({ app, auth }) {
             </div>
           </Card>
 
-          <Card className="section-card">
+          <Card className="section-card settings-report-card">
             <div className="section-title-row">
               <div>
                 <p className="eyebrow">신고</p>

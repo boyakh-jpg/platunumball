@@ -1749,3 +1749,9 @@ flowchart TD
 - Legacy list fallback may be enabled only for diagnostics or migration recovery with request `allowLegacyFallback:true` or `RANKBALL_ALLOW_LEGACY_LIST_FALLBACK=true`.
 - Row fallback for specific missing/invalid feed cards is still allowed because it repairs a bounded set of already selected ids.
 - Single recruiting post detail reloads are deduped by post id while in flight and ignore pending mutation rows until the authoritative write response or newer row timestamp arrives.
+
+## 2026-07-01 settings subpages and Discord save
+
+- Settings long forms are routed under `/app/settings/favorites`, `/app/settings/profile`, `/app/settings/discord`, `/app/settings/courts`, and `/app/settings/referee`; the root settings screen is the hub.
+- Profile exposure toggles are draft-only until the user presses save, then one settings patch writes `privacy`.
+- Discord OAuth callback returns to `/app/settings/discord`. Profile no longer owns Discord notification controls. Discord DM/event toggles are draft-only until save, then one settings patch writes `notificationChannels.discord`.

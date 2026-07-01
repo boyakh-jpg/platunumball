@@ -27,8 +27,8 @@ function getDiscordAvatarUrl(user) {
   return `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.${extension}?size=128`;
 }
 
-function redirectToProfile(request, response, params) {
-  const url = new URL("/app/profile", getAppUrl(request));
+function redirectToSettingsDiscord(request, response, params) {
+  const url = new URL("/app/settings/discord", getAppUrl(request));
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== "") url.searchParams.set(key, value);
   });
@@ -81,11 +81,11 @@ export default async function handler(request, response) {
   const state = typeof request.query.state === "string" ? request.query.state : "";
 
   if (!process.env.DISCORD_CLIENT_ID || !process.env.DISCORD_CLIENT_SECRET || !process.env.DISCORD_REDIRECT_URI) {
-    redirectToProfile(request, response, { discordError: "discord_oauth_not_configured", discordState: state });
+    redirectToSettingsDiscord(request, response, { discordError: "discord_oauth_not_configured", discordState: state });
     return;
   }
   if (!code || !state) {
-    redirectToProfile(request, response, { discordError: "missing_oauth_params", discordState: state });
+    redirectToSettingsDiscord(request, response, { discordError: "missing_oauth_params", discordState: state });
     return;
   }
 
@@ -103,13 +103,13 @@ export default async function handler(request, response) {
       source: "discord",
     };
 
-    redirectToProfile(request, response, {
+    redirectToSettingsDiscord(request, response, {
       discord: "linked",
       discordState: state,
       discordConnection: encodeBase64UrlJson(connection),
     });
   } catch (error) {
     console.error("Discord OAuth callback failed.", error);
-    redirectToProfile(request, response, { discordError: "discord_oauth_failed", discordState: state });
+    redirectToSettingsDiscord(request, response, { discordError: "discord_oauth_failed", discordState: state });
   }
 }

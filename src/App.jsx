@@ -121,6 +121,11 @@ export default function App() {
             <Route path="/app/notifications" element={<Notifications app={app} />} />
             <Route path="/app/admin" element={<Admin app={app} />} />
             <Route path="/app/settings" element={<Settings app={app} auth={auth} />} />
+            <Route path="/app/settings/favorites" element={<Settings app={app} auth={auth} section="favorites" />} />
+            <Route path="/app/settings/profile" element={<Settings app={app} auth={auth} section="profile" />} />
+            <Route path="/app/settings/discord" element={<Settings app={app} auth={auth} section="discord" />} />
+            <Route path="/app/settings/courts" element={<Settings app={app} auth={auth} section="courts" />} />
+            <Route path="/app/settings/referee" element={<Settings app={app} auth={auth} section="referee" />} />
             <Route path="/app/signup" element={<Signup app={app} auth={auth} />} />
           </Route>
         </Route>

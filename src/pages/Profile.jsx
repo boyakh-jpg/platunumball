@@ -1,24 +1,11 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { MessageCircle, Unlink2 } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import ProgressionChecklist from "../components/rating/ProgressionChecklist.jsx";
 import RatingCard from "../components/rating/RatingCard.jsx";
 import ShareCard from "../components/share/ShareCard.jsx";
-import {
-  DISCORD_NOTIFICATION_EVENTS,
-  consumeDiscordOAuthResult,
-  findDiscordConnectionOwner,
-  getDiscordAvatarClassName,
-  getDiscordAvatarStyle,
-  getDiscordChannel,
-  getDiscordDisplayName,
-  getDiscordOAuthStartUrl,
-  getDiscordProfileUrl,
-  isDiscordLinked,
-} from "../lib/discord.js";
 import { getUserHashtag } from "../lib/handles.js";
 import { canChangeProfileName, getNextNameChangeDate } from "../lib/profileSetup.js";
 
@@ -119,7 +106,6 @@ export default function Profile({ app }) {
     school: user.school,
     company: user.company,
   });
-  const [discordLinkError, setDiscordLinkError] = useState("");
   const [profileError, setProfileError] = useState("");
   const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
 
@@ -141,63 +127,6 @@ export default function Profile({ app }) {
     .sort(compareRecent)
     .slice(0, 6);
   const averageFouls = getProfileAverageFouls(user, app.state.matches);
-  const discordLinked = isDiscordLinked(user);
-  const discordChannel = getDiscordChannel(app.state.settings);
-  const discordProfileUrl = getDiscordProfileUrl(user);
-  const discordDisplayName = getDiscordDisplayName(user);
-  const queuedDiscordDeliveries = (app.state.discordNotificationDeliveries ?? [])
-    .filter((delivery) => delivery.targetUserId === user.id && delivery.status === "queued");
-  const updateDiscordChannel = (patch) => {
-    const notificationChannels = app.state.settings?.notificationChannels ?? {};
-    app.actions.updateSettings({
-      notificationChannels: {
-        ...notificationChannels,
-        discord: {
-          ...discordChannel,
-          ...patch,
-          events: {
-            ...discordChannel.events,
-            ...(patch.events ?? {}),
-          },
-        },
-      },
-    });
-  };
-  useEffect(() => {
-    const discordOAuthResult = consumeDiscordOAuthResult(user.id);
-    if (!discordOAuthResult) return;
-    if (discordOAuthResult.status !== "linked") {
-      console.warn("Discord link failed.", discordOAuthResult.error);
-      setDiscordLinkError("Discord 연동에 실패했습니다.");
-      return;
-    }
-    const targetUserId = discordOAuthResult.appUserId || user.id;
-    const linkedOwner = findDiscordConnectionOwner(app.state.users, discordOAuthResult.connection, targetUserId);
-    if (linkedOwner) {
-      setDiscordLinkError(`이미 ${linkedOwner.name} 프로필에 연결된 Discord입니다.`);
-      return;
-    }
-    setDiscordLinkError("");
-    app.actions.updateProfile({ discordConnection: discordOAuthResult.connection }, targetUserId);
-    if (targetUserId !== user.id) app.actions.switchUser(targetUserId);
-    updateDiscordChannel({ enabled: true });
-  }, [user.id]);
-
-  const connectDiscord = () => {
-    window.location.assign(getDiscordOAuthStartUrl(user.id));
-  };
-  const unlinkDiscord = () => {
-    app.actions.updateProfile({ discordConnection: null });
-    updateDiscordChannel({ enabled: false });
-  };
-  const toggleDiscordEvent = (eventId) => {
-    updateDiscordChannel({
-      events: {
-        [eventId]: !discordChannel.events[eventId],
-      },
-    });
-  };
-
   return (
     <div className="page-stack profile-page">
       <header className="page-header">
@@ -236,82 +165,6 @@ export default function Profile({ app }) {
           <RecentRecordCard records={myRecords} userId={user.id} />
         </div>
         <aside className="page-stack profile-side-grid">
-          <Card className="section-card discord-link-card">
-            <div className="section-title-row">
-              <div>
-                <p className="eyebrow">Discord</p>
-                <h2>디스코드 알림</h2>
-              </div>
-              {discordLinked ? (
-                <a className="discord-link-badge" href={discordProfileUrl} target="_blank" rel="noreferrer">
-                  <MessageCircle size={14} /> 연동됨
-                </a>
-              ) : (
-                <MessageCircle size={20} />
-              )}
-            </div>
-            <div className="contract-grid single">
-              {discordLinked ? (
-                <div className="discord-profile-line">
-                  <span className={getDiscordAvatarClassName(user, "avatar small")} style={getDiscordAvatarStyle(user)}>
-                    {user.name.slice(0, 1)}
-                  </span>
-                  <strong>@{discordDisplayName}</strong>
-                </div>
-              ) : null}
-              <div>
-                <span>연동 상태</span>
-                <strong>{discordLinked ? "연동됨" : "미연동"}</strong>
-              </div>
-              <div>
-                <span>알림 경로</span>
-                <strong>{discordLinked && discordChannel.enabled ? "앱 + Discord DM" : "앱 내부"}</strong>
-              </div>
-              {discordLinked ? (
-                <div>
-                  <span>DM 큐</span>
-                  <strong>{queuedDiscordDeliveries.length}개 대기</strong>
-                </div>
-              ) : null}
-            </div>
-            {discordLinkError ? <p className="form-warning">{discordLinkError}</p> : null}
-            <div className="settings-toggle-grid">
-              <label>
-                <input
-                  type="checkbox"
-                  checked={Boolean(discordLinked && discordChannel.enabled)}
-                  disabled={!discordLinked}
-                  onChange={(event) => updateDiscordChannel({ enabled: event.target.checked })}
-                />
-                Discord DM
-              </label>
-              {DISCORD_NOTIFICATION_EVENTS.map((option) => (
-                <label key={option.id}>
-                  <input
-                    type="checkbox"
-                    checked={Boolean(discordChannel.events[option.id])}
-                    disabled={!discordLinked || !discordChannel.enabled}
-                    onChange={() => toggleDiscordEvent(option.id)}
-                  />
-                  {option.label}
-                </label>
-              ))}
-            </div>
-            <div className="settings-address-actions">
-              {discordLinked ? (
-                <Button type="button" variant="secondary" size="sm" onClick={unlinkDiscord}>
-                  <Unlink2 size={15} /> 연동 해제
-                </Button>
-              ) : (
-                <Button type="button" variant="secondary" size="sm" onClick={connectDiscord}>
-                  Discord 연동
-                </Button>
-              )}
-              <Badge tone={discordLinked && discordChannel.enabled ? "green" : "neutral"}>
-                {discordLinked && discordChannel.enabled ? "DM ON" : "앱 알림"}
-              </Badge>
-            </div>
-          </Card>
           <ProgressionChecklist user={user} matches={app.state.matches} />
           <ShareCard user={user} match={app.state.matches[0]} />
           <Card className="section-card">

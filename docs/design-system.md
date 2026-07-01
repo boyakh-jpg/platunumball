@@ -833,3 +833,5 @@ UI 수정 전:
 10. `recruiting-arena.css` and `matches-arena.css` load after `globals.css`; each file must end by reconnecting page selectors to the same `--ui-*` primitive layer to prevent chunk-specific override drift.
 11. Room modal skin uses `--ui-room-modal-*` and `--ui-room-panel-*`. Slot, avatar, READY/WAIT, reserve, and party connection structure stays separate from visual primitive tokens.
 12. Long filter groups, such as recruiting date chips, keep scroll inside the group. Buttons must not bleed outside the group border or lose their own border because of older active-state overrides.
+13. Settings uses separate subpage routes for favorites, profile exposure, Discord, court request, and referee request. The hub links to those pages instead of stacking every long form in one settings screen.
+14. Rulebook illustrations must use `object-fit: contain` so exported PNG/WebP scenes are fully visible inside their cards.

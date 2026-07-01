@@ -566,7 +566,6 @@ body > .basketball-loader-overlay ~ .basketball-loader-overlay {
   }
 
   .profile-side-grid .favorite-management-card,
-  .profile-side-grid .discord-link-card,
   .profile-side-grid .progression-card {
     grid-column: 1 / -1;
   }
@@ -3987,6 +3986,57 @@ input[type="color"] {
   padding: 10px;
 }
 
+.settings-section-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.settings-nav-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.settings-nav-grid a {
+  display: grid;
+  gap: 4px;
+  min-height: 72px;
+  align-content: center;
+  border: 1px solid var(--ui-card-border);
+  border-radius: var(--ui-card-radius);
+  background: var(--ui-card-bg);
+  color: var(--rb-text);
+  padding: 12px;
+  text-decoration: none;
+}
+
+.settings-nav-grid a span {
+  color: var(--rb-muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.settings-section-main .favorite-management-card,
+.settings-section-main .settings-privacy-card,
+.settings-section-main .discord-link-card,
+.settings-section-main .settings-court-card,
+.settings-page:not(.settings-section-referee) .settings-referee-card,
+.settings-page:not(.settings-section-main) .settings-nav-card,
+.settings-section-favorites .settings-main-column > .section-card:not(.favorite-management-card),
+.settings-section-profile .settings-main-column > .section-card:not(.settings-privacy-card),
+.settings-section-discord .settings-main-column > .section-card:not(.discord-link-card),
+.settings-section-courts .settings-main-column,
+.settings-section-referee .content-grid,
+.settings-section-favorites .settings-side-column,
+.settings-section-profile .settings-side-column,
+.settings-section-discord .settings-side-column,
+.settings-section-referee .settings-side-column {
+  display: none;
+}
+
+.settings-section-courts .settings-side-column > .section-card:not(.settings-court-card) {
+  display: none;
+}
+
 .settings-address-search {
   display: grid;
   gap: 8px;
@@ -4205,7 +4255,7 @@ input[type="color"] {
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius);
   background: #08111f;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .rulebook-asset figcaption {
