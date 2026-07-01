@@ -725,3 +725,4 @@ UI 수정 전:
 2. Hero title은 기존 큰 크기를 유지하되 scoreboard 대비와 숫자 계층을 강화한다.
 3. Active filter/card 상태는 글자색만 바꾸지 않고 같은 green fill과 상단 얇은 라인으로 통일한다. 좌측 세로 accent stripe는 쓰지 않는다.
 4. Glow/gradient 증가는 금지하고, 실제 서비스처럼 진한 표면·명확한 border·팀 컬러 accent로 구분한다.
+5. 전역 body 배경에는 노란/골드 wash를 쓰지 않고, 흰색 또는 중립 court-line 광원만 사용한다.
