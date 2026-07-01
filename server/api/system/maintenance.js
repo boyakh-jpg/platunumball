@@ -175,6 +175,10 @@ async function refreshRecruitingFeed(client, postId) {
   return true;
 }
 
+function shouldManualRefreshRecruitingFeed() {
+  return process.env.RANKBALL_MAINTENANCE_MANUAL_FEED_REFRESH === "true";
+}
+
 async function normalizeRecruitingSideCapacity(client, limit, now) {
   const { data: posts, error: postError } = await client
     .from("recruiting_posts")
@@ -236,8 +240,10 @@ async function normalizeRecruitingSideCapacity(client, limit, now) {
 
   const changedPostIds = [...new Set(reservedRows.map((row) => row.post_id).filter(Boolean))];
   let refreshed = 0;
-  for (const postId of changedPostIds) {
-    if (await refreshRecruitingFeed(client, postId)) refreshed += 1;
+  if (shouldManualRefreshRecruitingFeed()) {
+    for (const postId of changedPostIds) {
+      if (await refreshRecruitingFeed(client, postId)) refreshed += 1;
+    }
   }
 
   return {

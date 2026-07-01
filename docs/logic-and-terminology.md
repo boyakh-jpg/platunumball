@@ -1,5 +1,13 @@
 # RankBall 로직/용어/디자인 기준
 
+## 2026-07-01 중복 호출/egress fallback 기준
+
+- 경기 상세, 경기/모집 page load, 기록판 경기, 프로필 기록, 모집방 상세는 같은 id 또는 같은 화면 scope 요청이 진행 중이면 기존 promise를 재사용한다.
+- 완료 경기와 내 모집방 id 조회는 feed/RPC가 없을 때 자동 legacy broad fallback으로 빠지지 않는다.
+- legacy fallback은 명시 `allowLegacyFallback:true` 또는 `RANKBALL_ALLOW_LEGACY_LIST_FALLBACK=true`일 때만 허용한다.
+- 모집 count는 feed count가 있으면 fallback count와 병합하지 않는다. fallback count는 feed count가 없고 명시 요청된 복구 상황에서만 쓴다.
+- maintenance의 모집 feed 수동 refresh는 기본 off다. DB trigger가 canonical이며, 트리거 없는 임시 환경은 `RANKBALL_MAINTENANCE_MANUAL_FEED_REFRESH=true`로만 켠다.
+
 ## 2026-07-01 홈/경기 feed snapshot 기준
 
 - `/api/home/load`는 현재 프로필의 모집 feed를 경기 메뉴 일정 snapshot으로도 인정한다.

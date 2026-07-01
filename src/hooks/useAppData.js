@@ -836,7 +836,12 @@ export function useAppData(authUser = null) {
   const remoteReadyRef = useRef(!isSupabaseConfigured);
   const directoryPromiseRef = useRef(null);
   const profileRefreshPromiseRef = useRef(null);
+  const matchDetailPromiseRef = useRef(new Map());
+  const matchPagePromiseRef = useRef(null);
   const matchRecruitingSchedulePromiseRef = useRef(null);
+  const recruitingPagePromiseRef = useRef(null);
+  const recorderMatchesPromiseRef = useRef(null);
+  const profileRecordsPromiseRef = useRef(null);
   const myRecruitingPostsPromiseRef = useRef(new Map());
   const recruitingRegionPromiseRef = useRef(new Map());
   const recruitingPostPromiseRef = useRef(new Map());
@@ -898,7 +903,12 @@ export function useAppData(authUser = null) {
     if (!isSupabaseConfigured || !authUserId) {
       remoteReadyRef.current = !isSupabaseConfigured;
       profileRefreshPromiseRef.current = null;
+      matchDetailPromiseRef.current = new Map();
+      matchPagePromiseRef.current = null;
       matchRecruitingSchedulePromiseRef.current = null;
+      recruitingPagePromiseRef.current = null;
+      recorderMatchesPromiseRef.current = null;
+      profileRecordsPromiseRef.current = null;
       myRecruitingPostsPromiseRef.current = new Map();
       recruitingPostPromiseRef.current = new Map();
       setRemoteReady(!isSupabaseConfigured);
@@ -914,7 +924,12 @@ export function useAppData(authUser = null) {
     setRemoteReady(false);
     directoryPromiseRef.current = null;
     profileRefreshPromiseRef.current = null;
+    matchDetailPromiseRef.current = new Map();
+    matchPagePromiseRef.current = null;
     matchRecruitingSchedulePromiseRef.current = null;
+    recruitingPagePromiseRef.current = null;
+    recorderMatchesPromiseRef.current = null;
+    profileRecordsPromiseRef.current = null;
     myRecruitingPostsPromiseRef.current = new Map();
     recruitingRegionPromiseRef.current = new Map();
     recruitingPostPromiseRef.current = new Map();
@@ -1245,6 +1260,7 @@ export function useAppData(authUser = null) {
 
   const loadMoreMatches = useCallback(async () => {
     if (!isSupabaseConfigured || !authUserId || matchPagination.loading || matchPagination.exhausted) return false;
+    if (matchPagePromiseRef.current) return matchPagePromiseRef.current;
     const cursor = matchPagination.cursor || getMatchPaginationCursor(state.matches);
     if (!cursor && (state.matches?.length ?? 0) > 0) {
       setMatchPagination((prev) => ({ ...prev, loading: false, exhausted: true, error: "", cursor: "" }));
@@ -1252,43 +1268,49 @@ export function useAppData(authUser = null) {
     }
     const pageLimit = cursor ? REMOTE_CLIENT_MATCH_LIMIT : REMOTE_CLIENT_INITIAL_MATCH_LIMIT;
     setMatchPagination((prev) => ({ ...prev, loading: true, error: "" }));
-    try {
-      const result = await postServerAction(
-        "/api/matches/list",
-        {
-          authUserId,
-          authEmail,
-          limit: pageLimit,
-          ...(cursor ? { cursor } : {}),
-          listOnly: true,
-          activeOnly: true,
-          includeRecentCompleted: false,
-          includeRecruitingSchedule: false,
-          adminContext: false,
-        },
-        { allowWhenDisabled: true },
-      );
-      const rawRemoteState = result?.state ?? {};
-      const rawMatchCount = rawRemoteState.matches?.length ?? 0;
-      const pageHasExhausted = typeof result?.page?.exhausted === "boolean";
-      const remoteState = normalizeServerState(filterPendingMatches(rawRemoteState, pendingMatchIdsRef.current, recentMatchMutationTimesRef.current));
-      const nextMatches = remoteState.matches ?? [];
-      setState((prev) => mergeRemoteMatchPage(prev, remoteState));
-      setMatchPagination((prev) => ({
-        ...prev,
-        loading: false,
-        exhausted: pageHasExhausted ? result.page.exhausted : rawMatchCount < pageLimit,
-        error: "",
-        cursor: result?.page?.cursor ?? cursor,
-        recruitingScheduleChecked: prev.recruitingScheduleChecked || Boolean(result?.page?.recruitingScheduleChecked),
-        recruitingScheduleLoading: prev.recruitingScheduleLoading,
-      }));
-      return nextMatches.length;
-    } catch (error) {
-      console.warn("More match load failed.", error.message);
-      setMatchPagination((prev) => ({ ...prev, loading: false, exhausted: false, error: error.message ?? "match_page_load_failed", cursor }));
-      return false;
-    }
+    const promise = (async () => {
+      try {
+        const result = await postServerAction(
+          "/api/matches/list",
+          {
+            authUserId,
+            authEmail,
+            limit: pageLimit,
+            ...(cursor ? { cursor } : {}),
+            listOnly: true,
+            activeOnly: true,
+            includeRecentCompleted: false,
+            includeRecruitingSchedule: false,
+            adminContext: false,
+          },
+          { allowWhenDisabled: true },
+        );
+        const rawRemoteState = result?.state ?? {};
+        const rawMatchCount = rawRemoteState.matches?.length ?? 0;
+        const pageHasExhausted = typeof result?.page?.exhausted === "boolean";
+        const remoteState = normalizeServerState(filterPendingMatches(rawRemoteState, pendingMatchIdsRef.current, recentMatchMutationTimesRef.current));
+        const nextMatches = remoteState.matches ?? [];
+        setState((prev) => mergeRemoteMatchPage(prev, remoteState));
+        setMatchPagination((prev) => ({
+          ...prev,
+          loading: false,
+          exhausted: pageHasExhausted ? result.page.exhausted : rawMatchCount < pageLimit,
+          error: "",
+          cursor: result?.page?.cursor ?? cursor,
+          recruitingScheduleChecked: prev.recruitingScheduleChecked || Boolean(result?.page?.recruitingScheduleChecked),
+          recruitingScheduleLoading: prev.recruitingScheduleLoading,
+        }));
+        return nextMatches.length;
+      } catch (error) {
+        console.warn("More match load failed.", error.message);
+        setMatchPagination((prev) => ({ ...prev, loading: false, exhausted: false, error: error.message ?? "match_page_load_failed", cursor }));
+        return false;
+      }
+    })().finally(() => {
+      if (matchPagePromiseRef.current === promise) matchPagePromiseRef.current = null;
+    });
+    matchPagePromiseRef.current = promise;
+    return promise;
   }, [authEmail, authUserId, matchPagination.cursor, matchPagination.exhausted, matchPagination.loading, setState, state.matches]);
 
   const loadMatchRecruitingSchedule = useCallback(async (options = {}) => {
@@ -1338,124 +1360,155 @@ export function useAppData(authUser = null) {
 
   const loadMatchDetail = useCallback(async (matchId) => {
     if (!isSupabaseConfigured || !authUserId || !matchId) return false;
-    try {
-      const result = await postServerAction(
-        "/api/matches/detail",
-        {
-          authUserId,
-          authEmail,
-          matchId,
-        },
-        { allowWhenDisabled: true },
-      );
-      const remoteState = normalizeServerState(result?.state ?? {});
-      const nextMatches = remoteState.matches ?? [];
-      setState((prev) => mergeRemoteMatchPage(prev, remoteState));
-      return nextMatches.length;
-    } catch (error) {
-      console.warn("Match detail load failed.", error.message);
-      return false;
-    }
+    const safeMatchId = String(matchId);
+    const currentPromise = matchDetailPromiseRef.current.get(safeMatchId);
+    if (currentPromise) return currentPromise;
+    const promise = (async () => {
+      try {
+        const result = await postServerAction(
+          "/api/matches/detail",
+          {
+            authUserId,
+            authEmail,
+            matchId: safeMatchId,
+          },
+          { allowWhenDisabled: true },
+        );
+        const remoteState = normalizeServerState(result?.state ?? {});
+        const nextMatches = remoteState.matches ?? [];
+        setState((prev) => mergeRemoteMatchPage(prev, remoteState));
+        return nextMatches.length;
+      } catch (error) {
+        console.warn("Match detail load failed.", error.message);
+        return false;
+      }
+    })().finally(() => {
+      if (matchDetailPromiseRef.current.get(safeMatchId) === promise) matchDetailPromiseRef.current.delete(safeMatchId);
+    });
+    matchDetailPromiseRef.current.set(safeMatchId, promise);
+    return promise;
   }, [authEmail, authUserId, setState]);
 
   const loadRecorderMatches = useCallback(async () => {
     if (!isSupabaseConfigured || !authUserId) return false;
-    try {
-      const result = await postServerAction(
-        "/api/matches/list",
-        {
-          authUserId,
-          authEmail,
-          limit: REMOTE_CLIENT_MATCH_LIMIT,
-          listOnly: false,
-          recorderOnly: true,
-          adminContext: false,
-        },
-        { allowWhenDisabled: true },
-      );
-      const remoteState = normalizeServerState(filterPendingMatches(result?.state ?? {}, pendingMatchIdsRef.current, recentMatchMutationTimesRef.current));
-      const nextMatches = remoteState.matches ?? [];
-      setState((prev) => mergeRemoteMatchPage(prev, remoteState));
-      return nextMatches.length;
-    } catch (error) {
-      console.warn("Recorder match load failed.", error.message);
-      return false;
-    }
+    if (recorderMatchesPromiseRef.current) return recorderMatchesPromiseRef.current;
+    const promise = (async () => {
+      try {
+        const result = await postServerAction(
+          "/api/matches/list",
+          {
+            authUserId,
+            authEmail,
+            limit: REMOTE_CLIENT_MATCH_LIMIT,
+            listOnly: false,
+            recorderOnly: true,
+            adminContext: false,
+          },
+          { allowWhenDisabled: true },
+        );
+        const remoteState = normalizeServerState(filterPendingMatches(result?.state ?? {}, pendingMatchIdsRef.current, recentMatchMutationTimesRef.current));
+        const nextMatches = remoteState.matches ?? [];
+        setState((prev) => mergeRemoteMatchPage(prev, remoteState));
+        return nextMatches.length;
+      } catch (error) {
+        console.warn("Recorder match load failed.", error.message);
+        return false;
+      }
+    })().finally(() => {
+      if (recorderMatchesPromiseRef.current === promise) recorderMatchesPromiseRef.current = null;
+    });
+    recorderMatchesPromiseRef.current = promise;
+    return promise;
   }, [authEmail, authUserId, setState]);
 
   const loadProfileRecords = useCallback(async () => {
     if (!isSupabaseConfigured || !authUserId) return false;
-    try {
-      const result = await postServerAction(
-        "/api/matches/list",
-        {
-          authUserId,
-          authEmail,
-          limit: REMOTE_CLIENT_RECORD_MATCH_LIMIT,
-          completedMonths: REMOTE_CLIENT_RECORD_MONTHS,
-          listOnly: false,
-          completedOnly: true,
-          includeRecruitingSchedule: false,
-          adminContext: false,
-        },
-        { allowWhenDisabled: true },
-      );
-      const remoteState = normalizeServerState(result?.state ?? {});
-      const nextMatches = remoteState.matches ?? [];
-      setState((prev) => mergeRemoteMatchPage(prev, remoteState));
-      setProfileRecordsLoaded(true);
-      return nextMatches.length;
-    } catch (error) {
-      console.warn("Profile records load failed.", error.message);
-      return false;
-    }
-  }, [authEmail, authUserId, setState]);
+    if (profileRecordsLoaded) return true;
+    if (profileRecordsPromiseRef.current) return profileRecordsPromiseRef.current;
+    const promise = (async () => {
+      try {
+        const result = await postServerAction(
+          "/api/matches/list",
+          {
+            authUserId,
+            authEmail,
+            limit: REMOTE_CLIENT_RECORD_MATCH_LIMIT,
+            completedMonths: REMOTE_CLIENT_RECORD_MONTHS,
+            listOnly: false,
+            completedOnly: true,
+            includeRecruitingSchedule: false,
+            adminContext: false,
+          },
+          { allowWhenDisabled: true },
+        );
+        const remoteState = normalizeServerState(result?.state ?? {});
+        const nextMatches = remoteState.matches ?? [];
+        setState((prev) => mergeRemoteMatchPage(prev, remoteState));
+        setProfileRecordsLoaded(true);
+        return nextMatches.length;
+      } catch (error) {
+        console.warn("Profile records load failed.", error.message);
+        return false;
+      }
+    })().finally(() => {
+      if (profileRecordsPromiseRef.current === promise) profileRecordsPromiseRef.current = null;
+    });
+    profileRecordsPromiseRef.current = promise;
+    return promise;
+  }, [authEmail, authUserId, profileRecordsLoaded, setState]);
 
   const loadMoreRecruiting = useCallback(async () => {
     if (!isSupabaseConfigured || !authUserId || recruitingPagination.loading || recruitingPagination.exhausted) return false;
+    if (recruitingPagePromiseRef.current) return recruitingPagePromiseRef.current;
     const offset = getRecruitingPaginationOffset(recruitingPagination, recruitingPagination.offset ?? 0);
     const regionRequest = getRecruitingRegionRequest(recruitingPagination);
     const startFilterRequest = getRecruitingStartFilterRequest(recruitingPagination);
     setRecruitingPagination((prev) => ({ ...prev, loading: true, error: "" }));
-    try {
-      const result = await postServerAction(
-        "/api/recruiting/list",
-        {
-          authUserId,
-          authEmail,
-          limit: REMOTE_CLIENT_RECRUITING_LIMIT,
-          offset,
-          regionScope: regionRequest.regionScope,
-          ...(regionRequest.regionKey ? { regionKey: regionRequest.regionKey } : {}),
+    const promise = (async () => {
+      try {
+        const result = await postServerAction(
+          "/api/recruiting/list",
+          {
+            authUserId,
+            authEmail,
+            limit: REMOTE_CLIENT_RECRUITING_LIMIT,
+            offset,
+            regionScope: regionRequest.regionScope,
+            ...(regionRequest.regionKey ? { regionKey: regionRequest.regionKey } : {}),
+            ...startFilterRequest,
+            listOnly: true,
+            adminContext: false,
+            includeFeedCounts: false,
+          },
+          { allowWhenDisabled: true },
+        );
+        const rawRemoteState = result?.state ?? {};
+        const rawPostCount = rawRemoteState.recruitingPosts?.length ?? 0;
+        const remoteState = normalizeServerState(filterPendingRecruitingPosts(rawRemoteState, pendingRecruitingPostIdsRef.current, recentRecruitingMutationTimesRef.current));
+        const nextPosts = remoteState.recruitingPosts ?? [];
+        setState((prev) => mergeRemoteRecruitingPage(prev, remoteState));
+        const pageHasExhausted = typeof result?.page?.exhausted === "boolean";
+        setRecruitingPagination({
+          loading: false,
+          exhausted: pageHasExhausted ? result.page.exhausted : rawPostCount < REMOTE_CLIENT_RECRUITING_LIMIT,
+          error: "",
+          cursor: result?.page?.cursor ?? String(offset + rawPostCount),
+          offset: getRecruitingPaginationOffset(result?.page, offset + rawPostCount),
+          ...regionRequest,
           ...startFilterRequest,
-          listOnly: true,
-          adminContext: false,
-          includeFeedCounts: false,
-        },
-        { allowWhenDisabled: true },
-      );
-      const rawRemoteState = result?.state ?? {};
-      const rawPostCount = rawRemoteState.recruitingPosts?.length ?? 0;
-      const remoteState = normalizeServerState(filterPendingRecruitingPosts(rawRemoteState, pendingRecruitingPostIdsRef.current, recentRecruitingMutationTimesRef.current));
-      const nextPosts = remoteState.recruitingPosts ?? [];
-      setState((prev) => mergeRemoteRecruitingPage(prev, remoteState));
-      const pageHasExhausted = typeof result?.page?.exhausted === "boolean";
-      setRecruitingPagination({
-        loading: false,
-        exhausted: pageHasExhausted ? result.page.exhausted : rawPostCount < REMOTE_CLIENT_RECRUITING_LIMIT,
-        error: "",
-        cursor: result?.page?.cursor ?? String(offset + rawPostCount),
-        offset: getRecruitingPaginationOffset(result?.page, offset + rawPostCount),
-        ...regionRequest,
-        ...startFilterRequest,
-        feedCounts: result?.page?.feedCounts ?? recruitingPagination.feedCounts ?? null,
-      });
-      return nextPosts.length;
-    } catch (error) {
-      console.warn("More recruiting load failed.", error.message);
-      setRecruitingPagination((prev) => ({ ...prev, loading: false, exhausted: false, error: error.message ?? "recruiting_page_load_failed" }));
-      return false;
-    }
+          feedCounts: result?.page?.feedCounts ?? recruitingPagination.feedCounts ?? null,
+        });
+        return nextPosts.length;
+      } catch (error) {
+        console.warn("More recruiting load failed.", error.message);
+        setRecruitingPagination((prev) => ({ ...prev, loading: false, exhausted: false, error: error.message ?? "recruiting_page_load_failed" }));
+        return false;
+      }
+    })().finally(() => {
+      if (recruitingPagePromiseRef.current === promise) recruitingPagePromiseRef.current = null;
+    });
+    recruitingPagePromiseRef.current = promise;
+    return promise;
   }, [authEmail, authUserId, recruitingPagination, setState, state.recruitingPosts]);
 
   const loadRecruitingRegion = useCallback(async ({ regionKey = "", regionScope = "local", limit = REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT, startFilter = "" } = {}) => {

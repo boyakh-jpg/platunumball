@@ -318,9 +318,7 @@ async function fetchCurrentUserMatchCandidateIds(client, profileId = "", limit =
   );
   const [
     { data: playerRows, error: playerError },
-    { data: createdRows, error: createdError },
-    { data: refereeRows, error: refereeError },
-    { data: formerRefereeRows, error: formerRefereeError },
+    { data: relatedRows, error: relatedError },
   ] = await Promise.all([
     client
       .from("match_players")
@@ -330,34 +328,16 @@ async function fetchCurrentUserMatchCandidateIds(client, profileId = "", limit =
     client
       .from("matches")
       .select("id")
-      .eq("created_by", profileId)
-      .order("updated_at", { ascending: false, nullsFirst: false })
-      .order("id", { ascending: false })
-      .limit(candidateLimit),
-    client
-      .from("matches")
-      .select("id")
-      .eq("referee_id", profileId)
-      .order("updated_at", { ascending: false, nullsFirst: false })
-      .order("id", { ascending: false })
-      .limit(candidateLimit),
-    client
-      .from("matches")
-      .select("id")
-      .eq("former_referee_id", profileId)
+      .or(`created_by.eq.${profileId},referee_id.eq.${profileId},former_referee_id.eq.${profileId}`)
       .order("updated_at", { ascending: false, nullsFirst: false })
       .order("id", { ascending: false })
       .limit(candidateLimit),
   ]);
   if (playerError) throw playerError;
-  if (createdError) throw createdError;
-  if (refereeError) throw refereeError;
-  if (formerRefereeError) throw formerRefereeError;
+  if (relatedError) throw relatedError;
   return unique([
     ...(playerRows ?? []).map((row) => row.match_id),
-    ...(createdRows ?? []).map((row) => row.id),
-    ...(refereeRows ?? []).map((row) => row.id),
-    ...(formerRefereeRows ?? []).map((row) => row.id),
+    ...(relatedRows ?? []).map((row) => row.id),
   ]);
 }
 
@@ -416,11 +396,14 @@ async function fetchCurrentUserCompletedFallbackMatchIds(client, profileId = "",
   };
 }
 
-async function fetchCurrentUserCompletedMatchIds(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT, completedSince = "") {
+async function fetchCurrentUserCompletedMatchIds(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT, completedSince = "", allowLegacyFallback = false) {
   if (!profileId) return { ids: [], cards: [], exhausted: true, source: "completed_feed" };
   const cappedLimit = Math.max(1, Math.min(MATCH_LIST_MAX_LIMIT, Number(limit) || REMOTE_CLIENT_MATCH_LIMIT));
   const rowLimit = Math.min(600, cappedLimit * 3);
-  if (!userRoomFeedAvailable) return fetchCurrentUserCompletedFallbackMatchIds(client, profileId, cappedLimit, completedSince);
+  if (!userRoomFeedAvailable) {
+    if (!allowLegacyFallback) return { ids: [], cards: [], exhausted: true, source: "completed_feed_unavailable" };
+    return fetchCurrentUserCompletedFallbackMatchIds(client, profileId, cappedLimit, completedSince);
+  }
   let query = client
     .from("user_room_feed")
     .select("entity_id,sort_at,relation,card_json")
@@ -438,6 +421,7 @@ async function fetchCurrentUserCompletedMatchIds(client, profileId = "", limit =
     if (isMissingUserRoomFeed(error)) {
       userRoomFeedAvailable = false;
       console.warn("Completed match feed skipped.", error.message);
+      if (!allowLegacyFallback) return { ids: [], cards: [], exhausted: true, source: "completed_feed_unavailable" };
       return fetchCurrentUserCompletedFallbackMatchIds(client, profileId, cappedLimit, completedSince);
     }
     throw error;
@@ -673,7 +657,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
     : Promise.resolve(null);
   const [baseFeedPage, recentCompletedPage] = await Promise.all([
     completedOnly
-      ? timeStep(debugTiming, "completedFeedMs", () => fetchCurrentUserCompletedMatchIds(context.supabase, context.profileId, limit, completedSince))
+      ? timeStep(debugTiming, "completedFeedMs", () => fetchCurrentUserCompletedMatchIds(context.supabase, context.profileId, limit, completedSince, allowLegacyFallback))
       : timeStep(debugTiming, "feedMs", () => fetchMatchFeedPage(context.supabase, context.profileId, limit, cursor, activeOnly)),
     shouldLoadRecentCompleted
       ? timeStep(debugTiming, "recentCompletedMs", () => fetchRecentCompletedMatchFeedPage(context.supabase, context.profileId))

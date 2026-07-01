@@ -718,14 +718,8 @@ async function fetchRecruitingFallbackCounts(client, profileId = "") {
   };
 }
 
-function mergeRecruitingCounts(feedCounts, fallbackCounts) {
-  if (!feedCounts) return fallbackCounts;
-  if (!fallbackCounts) return feedCounts;
-  return {
-    created: Math.max(Number(feedCounts.created) || 0, Number(fallbackCounts.created) || 0),
-    joined: Math.max(Number(feedCounts.joined) || 0, Number(fallbackCounts.joined) || 0),
-    invited: Math.max(Number(feedCounts.invited) || 0, Number(fallbackCounts.invited) || 0),
-  };
+function selectRecruitingCounts(feedCounts, fallbackCounts) {
+  return feedCounts ?? fallbackCounts ?? null;
 }
 
 async function fetchCurrentUserRecruitingFallbackPostIds(client, profileId = "", limit = REMOTE_CLIENT_RECRUITING_LIMIT, roomScope = "") {
@@ -758,7 +752,7 @@ function getRecruitingMineRelations(scope = "") {
   return ["owner", "participant", "invited", "referee"];
 }
 
-export async function fetchCurrentUserRecruitingPostIds(client, profileId = "", limit = REMOTE_CLIENT_RECRUITING_LIMIT, roomScope = "") {
+export async function fetchCurrentUserRecruitingPostIds(client, profileId = "", limit = REMOTE_CLIENT_RECRUITING_LIMIT, roomScope = "", allowLegacyFallback = false) {
   if (!profileId) return [];
   const cappedLimit = Math.max(1, Math.min(RECRUITING_FEED_MAX_LIMIT, Number(limit) || REMOTE_CLIENT_RECRUITING_LIMIT));
   const relations = getRecruitingMineRelations(roomScope);
@@ -784,6 +778,7 @@ export async function fetchCurrentUserRecruitingPostIds(client, profileId = "", 
       console.warn("Current user recruiting RPC skipped.", rpcError.message);
     }
   }
+  if (!allowLegacyFallback) return [];
   return fetchCurrentUserRecruitingFallbackPostIds(client, profileId, cappedLimit, roomScope);
 }
 
@@ -1346,7 +1341,7 @@ export default async function handler(request, response) {
     const pageSource = pageResult?.source ?? "";
     const pageExhausted = typeof pageResult?.exhausted === "boolean" ? pageResult.exhausted : null;
     const pageNextOffset = pageResult?.nextOffset;
-    const feedCounts = mergeRecruitingCounts(feedCountsResult, fallbackCountsResult);
+    const feedCounts = selectRecruitingCounts(feedCountsResult, fallbackCountsResult);
     const targetPostIds = uniqueIds([...explicitPostIds, ...(mineOnly ? currentUserPostIds : pagePostIds)]);
     if (listOnly) {
       const compactResult = await timing.track("compact", () => loadCompactRecruitingList(context, {
