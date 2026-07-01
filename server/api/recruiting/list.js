@@ -787,7 +787,11 @@ export async function fetchCurrentUserRecruitingPostIds(client, profileId = "", 
   return fetchCurrentUserRecruitingFallbackPostIds(client, profileId, cappedLimit, roomScope);
 }
 
-async function fetchCurrentUserRecruitingPage(client, profileId = "", limit = REMOTE_CLIENT_RECRUITING_LIMIT, roomScope = "", includeCards = false) {
+function isLegacyListFallbackAllowed(body = {}) {
+  return body.allowLegacyFallback === true || process.env.RANKBALL_ALLOW_LEGACY_LIST_FALLBACK === "true";
+}
+
+async function fetchCurrentUserRecruitingPage(client, profileId = "", limit = REMOTE_CLIENT_RECRUITING_LIMIT, roomScope = "", includeCards = false, allowLegacyFallback = false) {
   if (!profileId) return { ids: [], cards: [], source: "", exhausted: true };
   const cappedLimit = Math.max(1, Math.min(RECRUITING_FEED_MAX_LIMIT, Number(limit) || REMOTE_CLIENT_RECRUITING_LIMIT));
   const relations = getRecruitingMineRelations(roomScope);
@@ -798,6 +802,7 @@ async function fetchCurrentUserRecruitingPage(client, profileId = "", limit = RE
     includeCards,
   });
   if (feedPage) return feedPage;
+  if (!allowLegacyFallback) return { ids: [], cards: [], source: "feed_unavailable", exhausted: true };
   const ids = await fetchCurrentUserRecruitingFallbackPostIds(client, profileId, cappedLimit, roomScope);
   return { ids, cards: [], source: "fallback_mine", exhausted: true };
 }
@@ -822,7 +827,7 @@ async function fetchRecruitingFallbackPage(client, limit = REMOTE_CLIENT_RECRUIT
   return { ids, cards: [], source: "fallback_public", exhausted: ids.length < cappedLimit };
 }
 
-async function fetchRecruitingPage(client, limit = REMOTE_CLIENT_RECRUITING_LIMIT, offset = 0, regionKey = "", includeCards = false, startFilter = {}) {
+async function fetchRecruitingPage(client, limit = REMOTE_CLIENT_RECRUITING_LIMIT, offset = 0, regionKey = "", includeCards = false, startFilter = {}, allowLegacyFallback = false) {
   const cappedLimit = Math.max(1, Math.min(RECRUITING_PUBLIC_PAGE_MAX_LIMIT, Number(limit) || REMOTE_CLIENT_RECRUITING_LIMIT));
   const safeOffset = Math.max(0, Math.floor(Number(offset) || 0));
   const feedPage = await fetchRecruitingFeedPage(client, {
@@ -837,6 +842,7 @@ async function fetchRecruitingPage(client, limit = REMOTE_CLIENT_RECRUITING_LIMI
     scheduledDate: startFilter.scheduledDate,
   });
   if (feedPage) return feedPage;
+  if (!allowLegacyFallback) return { ids: [], cards: [], source: "public_feed_unavailable", exhausted: true, nextOffset: safeOffset };
   return fetchRecruitingFallbackPage(client, cappedLimit, safeOffset, regionKey, startFilter);
 }
 
@@ -1209,6 +1215,7 @@ export async function loadCurrentUserRecruitingFeedList(context, {
   adminLevel = 0,
   limit = REMOTE_CLIENT_RECRUITING_LIMIT,
   includeFeedCounts = true,
+  allowLegacyFallback = false,
 } = {}) {
   if (!context.profileId) {
     return loadCompactRecruitingList(context, { adminLevel, limit, mineOnly: true });
@@ -1232,6 +1239,17 @@ export async function loadCurrentUserRecruitingFeedList(context, {
       pageSource: pageResult.source ?? "feed",
       pageExhausted: pageResult.exhausted,
       pageNextOffset: pageResult.nextOffset,
+      feedCounts,
+      limit,
+    });
+  }
+  if (!allowLegacyFallback) {
+    return loadCompactRecruitingList(context, {
+      adminLevel,
+      pagePostIds: [],
+      pageCards: [],
+      pageSource: "feed_unavailable",
+      pageExhausted: true,
       feedCounts,
       limit,
     });
@@ -1297,6 +1315,7 @@ export default async function handler(request, response) {
     const includeMine = mineOnly || body.includeMine === true;
     const includeFeedCounts = body.includeFeedCounts !== false;
     const includeFallbackCounts = body.includeFallbackCounts === true;
+    const allowLegacyFallback = isLegacyListFallbackAllowed(body);
     const mineLimit = mineOnly ? limit : REMOTE_CLIENT_RECRUITING_LIMIT;
     const explicitPostIds = getTargetPostIds(body);
     const listOnly = body.listOnly !== false && !explicitPostIds.length;
@@ -1309,10 +1328,10 @@ export default async function handler(request, response) {
       : normalizeRegionKey(body.regionKey || body.regionDistrict || getProfileRegionKey(context.profile));
     const [mineResult, pageResult, feedCountsResult] = await Promise.all([
       includeMine
-        ? timing.track("mine", () => fetchCurrentUserRecruitingPage(context.supabase, context.profileId, mineLimit, roomScope, listOnly))
+        ? timing.track("mine", () => fetchCurrentUserRecruitingPage(context.supabase, context.profileId, mineLimit, roomScope, listOnly, allowLegacyFallback))
         : Promise.resolve({ ids: [], cards: [], source: "", exhausted: true }),
       shouldPageList
-        ? timing.track("page", () => fetchRecruitingPage(context.supabase, limit, offset, regionKey, listOnly, startFilter))
+        ? timing.track("page", () => fetchRecruitingPage(context.supabase, limit, offset, regionKey, listOnly, startFilter, allowLegacyFallback))
         : Promise.resolve({ ids: [], cards: [], source: "", exhausted: true }),
       context.profileId && includeFeedCounts
         ? timing.track("counts", () => fetchRecruitingFeedCounts(context.supabase, context.profileId))

@@ -105,6 +105,10 @@ function appendRowFallbackSource(source = "feed") {
   return String(source).includes("+row") ? source : `${source}+row`;
 }
 
+function isLegacyListFallbackAllowed(body = {}) {
+  return body.allowLegacyFallback === true || process.env.RANKBALL_ALLOW_LEGACY_LIST_FALLBACK === "true";
+}
+
 function normalizeFeedCard(row = {}) {
   const card = row?.card_json ?? row?.cardJson ?? row?.card ?? null;
   if (!card || typeof card !== "object" || Array.isArray(card)) return null;
@@ -665,6 +669,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   const completedSince = completedOnly ? getCompletedSince(body) : "";
   const activeOnly = body.activeOnly === true || recorderOnly;
   const shouldLoadRecentCompleted = !completedOnly && activeOnly && !cursor && body.includeRecentCompleted === true;
+  const allowLegacyFallback = isLegacyListFallbackAllowed(body);
   const filterMatchItems = (items = []) => {
     let filtered = filterActiveMatchCards(items, activeOnly, shouldLoadRecentCompleted);
     if (recorderOnly) filtered = filtered.filter((match) => isRecorderMatch(match, context.profileId, adminLevel >= 30));
@@ -706,13 +711,15 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
       ));
     }
   } else {
-    pageSource = "fallback_mine";
-    const minePage = await timeStep(debugTiming, "fallbackMineMs", () => (
-      fetchCurrentUserMatchPage(context.supabase, context.profileId, limit, cursor, activeOnly)
-    ));
-    matchRows = minePage?.rows ?? [];
-    pageCursor = minePage?.cursor ?? "";
-    pageExhausted = minePage?.exhausted ?? true;
+    pageSource = allowLegacyFallback ? "fallback_mine" : "feed_unavailable";
+    if (allowLegacyFallback) {
+      const minePage = await timeStep(debugTiming, "fallbackMineMs", () => (
+        fetchCurrentUserMatchPage(context.supabase, context.profileId, limit, cursor, activeOnly)
+      ));
+      matchRows = minePage?.rows ?? [];
+      pageCursor = minePage?.cursor ?? "";
+      pageExhausted = minePage?.exhausted ?? true;
+    }
   }
 
   const currentUser = context.profile

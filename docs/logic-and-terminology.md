@@ -1724,3 +1724,10 @@ flowchart TD
 - Production test login requires both `RANKBALL_ALLOW_PRODUCTION_TEST_LOGIN=true` and an explicit `RANKBALL_PRODUCTION_TEST_LOGIN_IDS` allowlist such as `rankball-001,rankball-002`.
 - Test login token formatting, test account count, team role normalization, team member limits, referee trust minimum, and court request trust minimum are shared from `src/lib/constants.js`.
 - Server endpoints must not keep separate copies of those rule values. If a limit changes, update `src/lib/constants.js` first.
+
+## 2026-07-01 feed-first list fallback
+
+- `/api/matches/list` and `/api/recruiting/list` use feed rows/cards as the default list source.
+- If the feed table/RPC is unavailable, broad legacy list fallback is disabled by default to prevent delayed count changes and PostREST egress spikes.
+- Legacy list fallback may be enabled only for diagnostics or migration recovery with request `allowLegacyFallback:true` or `RANKBALL_ALLOW_LEGACY_LIST_FALLBACK=true`.
+- Row fallback for specific missing/invalid feed cards is still allowed because it repairs a bounded set of already selected ids.
