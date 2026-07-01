@@ -6403,8 +6403,9 @@ html[data-theme="light"] .arena-room-player-slot.ready [title="READY"] {
 @media (max-width: 720px) {
   .arena-recruit-hero {
     width: calc(100% + (2 * var(--page-gutter)));
+    margin-top: -18px;
     margin-inline: calc(-1 * var(--page-gutter));
-    border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+    border-radius: 0;
   }
 }
 

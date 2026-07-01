@@ -12187,11 +12187,12 @@ html[data-theme="light"] .app-main {
     min-height: clamp(320px, 88vw, 380px);
     width: calc(100% + (2 * var(--page-gutter)));
     max-width: none;
+    margin-top: -18px;
     margin-inline: calc(-1 * var(--page-gutter));
     align-items: flex-end;
     overflow: hidden;
     border: 1px solid var(--rb-line);
-    border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+    border-radius: 0;
     background:
       linear-gradient(180deg, rgba(0, 0, 0, 0.06), rgba(0, 0, 0, 0.3) 48%, rgba(0, 0, 0, 0.82)),
       linear-gradient(90deg, rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0.16) 58%, rgba(0, 0, 0, 0.08)),
