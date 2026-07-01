@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { assetUrl } from "../../lib/assets.js";
 
 const ballSources = [
-  "https://pub-ace5b2a3eb5a41dfba7488c3de616118.r2.dev/assets/bounding_ball2.gif",
+  assetUrl("/assets/bounding_ball2.gif"),
 ];
 
 export default function BasketballLoader({ label = "불러오는 중", overlay = false, className = "" }) {

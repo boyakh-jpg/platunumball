@@ -1,16 +1,6 @@
 import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import { loadCurrentProfileState, PROFILE_ME_COLUMNS } from "../profile/me.js";
-
-const MAX_TEAM_NAME_LENGTH = 14;
-const MAX_TEAM_MEMBERS = 10;
-const TEAM_INVITE_ROLES = new Set(["regular", "mercenary"]);
-
-function normalizeTeamRole(role = "regular", { allowCaptain = true } = {}) {
-  const safeRole = String(role || "regular").trim();
-  if (safeRole === "captain" && allowCaptain) return "captain";
-  if (safeRole === "mercenary" || safeRole === "guest") return "mercenary";
-  return "regular";
-}
+import { isTeamInviteRole, MAX_TEAM_MEMBERS, MAX_TEAM_NAME_LENGTH, normalizeTeamRole } from "../../../src/lib/constants.js";
 
 function toArray(value) {
   return Array.isArray(value) ? value.filter(Boolean) : [];
@@ -111,7 +101,7 @@ async function inviteTeamMember(context, body = {}) {
     p_team_id: String(body.teamId || "").trim(),
     p_target_user_id: String(body.targetUserId || "").trim(),
     p_invitation_id: String(body.invitationId || "").trim() || null,
-    p_role: TEAM_INVITE_ROLES.has(role) ? role : "regular",
+    p_role: isTeamInviteRole(role) ? role : "regular",
   });
   if (error) throw error;
   return data ?? { ok: true };

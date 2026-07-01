@@ -1718,3 +1718,9 @@ flowchart TD
 - 2026-06-30: Recruiting authoritative loads include current-user team membership only for team-context actions. Single-post reloads and player-only room creation must avoid loading all current-user teams.
 - 2026-06-30: Recruiting roster validation may skip the extra `profiles` existence query only when the roster contains exactly the already-authenticated profile and no team roster checks are needed. Team, invite, reserve, and multi-player rosters must still run profile/team validation.
 - 2026-06-30: Recruiting invite authorization treats only `pending` invitations as active. Cancelled, declined, and expired invitations must not permit private-room join/accept/decline/referee actions. Recruiting snapshots also reject oversized host/applicant active rosters and the same active player appearing on both sides before DB persistence.
+
+## 2026-07-01 test login and shared rule constants
+
+- Production test login requires both `RANKBALL_ALLOW_PRODUCTION_TEST_LOGIN=true` and an explicit `RANKBALL_PRODUCTION_TEST_LOGIN_IDS` allowlist such as `rankball-001,rankball-002`.
+- Test login token formatting, test account count, team role normalization, team member limits, referee trust minimum, and court request trust minimum are shared from `src/lib/constants.js`.
+- Server endpoints must not keep separate copies of those rule values. If a limit changes, update `src/lib/constants.js` first.

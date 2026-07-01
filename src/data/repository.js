@@ -1049,7 +1049,6 @@ export function getRemoteAppSettings(profile = {}) {
 function fromRemoteNotification(row = {}) {
   const payload = getRemotePayload(row);
   return {
-    readAt: null,
     ...payload,
     id: row.id ?? payload.id,
     title: row.title ?? payload.title,

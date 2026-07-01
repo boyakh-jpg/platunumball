@@ -1,6 +1,6 @@
 import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { REFEREE_TRUST_MIN } from "../../../src/lib/constants.js";
 
-const REFEREE_TRUST_MIN = 90;
 const REFEREE_EXAM_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
 
 function toArray(value) {

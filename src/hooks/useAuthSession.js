@@ -1,26 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
+import { makeTestLoginToken, normalizeTestLoginId, TEST_ACCOUNT_COUNT } from "../lib/constants.js";
 import { isSupabaseConfigured, supabase } from "../lib/supabase.js";
 import { setClientActionSession } from "../lib/serverActions.js";
 
 const TEST_SESSION_KEY = "rankball.auth.testSession.v1";
 const PROVIDER_LABELS = { naver: "Naver", kakao: "Kakao", google: "Google" };
 const DEMO_LOGIN_ENV = import.meta.env.VITE_DEMO_LOGIN;
-const TEST_ACCOUNT_COUNT = 20;
-
-function padTestAccountNumber(value) {
-  return String(value).padStart(3, "0");
-}
-
-function normalizeTestLoginId(value = "") {
-  const text = String(value).trim().toLowerCase();
-  const numeric = text.match(/^\d{1,3}$/)?.[0];
-  if (numeric) return `rankball-${padTestAccountNumber(numeric)}`;
-  const match = text.match(/^rankball-(\d{1,3})$/);
-  return match ? `rankball-${padTestAccountNumber(match[1])}` : text;
-}
 
 const TEST_ACCOUNTS = Array.from({ length: TEST_ACCOUNT_COUNT }, (_item, index) => {
-  const loginId = `rankball-${padTestAccountNumber(index + 1)}`;
+  const loginId = normalizeTestLoginId(index + 1);
   return { id: loginId, label: loginId };
 });
 
@@ -72,7 +60,7 @@ function makeBackendTestSession(testLoginId) {
   };
 
   return {
-    access_token: `test-token-${normalizedLoginId}`,
+    access_token: makeTestLoginToken(normalizedLoginId),
     token_type: "bearer",
     expires_at: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30,
     user,

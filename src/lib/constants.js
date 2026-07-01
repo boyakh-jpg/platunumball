@@ -18,6 +18,9 @@ export const COURT_REQUEST_TRUST_MIN = 70;
 export const FALSE_COURT_REPORT_TRUST_PENALTY = 8;
 export const STAT_ENTRY_WINDOW_MINUTES = 60;
 export const DISPUTE_WINDOW_MINUTES = 30;
+export const TEST_ACCOUNT_COUNT = 20;
+export const TEST_LOGIN_TOKEN_PREFIX = "test-token-";
+export const TEAM_INVITE_ROLES = ["regular", "mercenary"];
 
 export const PLAYER_POSITIONS = ["상관없음", "PG", "SG", "SF", "PF", "C"];
 
@@ -34,10 +37,15 @@ export const TEAM_ROLE_ALIASES = {
 };
 
 export function normalizeTeamRole(role = "regular", { allowCaptain = true } = {}) {
-  const canonicalRole = TEAM_ROLE_ALIASES[role] ?? role;
+  const safeRole = String(role || "regular").trim();
+  const canonicalRole = TEAM_ROLE_ALIASES[safeRole] ?? safeRole;
   if (canonicalRole === "captain" && allowCaptain) return "captain";
   if (canonicalRole === "regular" || canonicalRole === "mercenary") return canonicalRole;
   return "regular";
+}
+
+export function isTeamInviteRole(role = "regular") {
+  return TEAM_INVITE_ROLES.includes(normalizeTeamRole(role, { allowCaptain: false }));
 }
 
 export function getTeamRoleLabel(role = "regular") {
@@ -46,6 +54,29 @@ export function getTeamRoleLabel(role = "regular") {
 
 export function isMercenaryTeamRole(role = "regular") {
   return normalizeTeamRole(role) === "mercenary";
+}
+
+export function padTestAccountNumber(value) {
+  return String(value).padStart(3, "0");
+}
+
+export function normalizeTestLoginId(value = "") {
+  const text = String(value).trim().toLowerCase();
+  const numeric = text.match(/^\d{1,3}$/)?.[0];
+  if (numeric) return `rankball-${padTestAccountNumber(numeric)}`;
+  const match = text.match(/^rankball-(\d{1,3})$/);
+  return match ? `rankball-${padTestAccountNumber(match[1])}` : text;
+}
+
+export function makeTestLoginToken(testLoginId = "") {
+  return `${TEST_LOGIN_TOKEN_PREFIX}${normalizeTestLoginId(testLoginId)}`;
+}
+
+export function getTestLoginIdFromAccessToken(token = "") {
+  const tokenText = String(token || "").trim().toLowerCase();
+  if (!tokenText.startsWith(TEST_LOGIN_TOKEN_PREFIX)) return "";
+  const loginId = normalizeTestLoginId(tokenText.slice(TEST_LOGIN_TOKEN_PREFIX.length));
+  return /^rankball-\d{3}$/.test(loginId) ? loginId : "";
 }
 
 export const AFFILIATION_TYPES = {

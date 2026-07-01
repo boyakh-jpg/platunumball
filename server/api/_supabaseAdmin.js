@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { getTestLoginIdFromAccessToken, normalizeTestLoginId } from "../../src/lib/constants.js";
 
 const ADMIN_GRADE_LEVELS = {
   owner: 100,
@@ -72,8 +73,11 @@ function isTestLoginEnabled() {
 
 function getTestLoginIdFromToken(token = "") {
   if (!isTestLoginEnabled()) return "";
-  const match = String(token || "").toLowerCase().match(/^test-token-(rankball-\d{3})$/);
-  return match?.[1] ?? "";
+  const testLoginId = getTestLoginIdFromAccessToken(token);
+  if (!testLoginId) return "";
+  if (!isProductionRuntime()) return testLoginId;
+  const allowList = getEnvList("RANKBALL_PRODUCTION_TEST_LOGIN_IDS").map(normalizeTestLoginId);
+  return allowList.includes(testLoginId) ? testLoginId : "";
 }
 
 function isActiveAppointment(appointment = {}, nowMs = Date.now()) {
