@@ -16,6 +16,8 @@ import {
   getNextNameChangeDate,
   inferRegionSelection,
   REGION_TREE,
+  shouldRecheckAgeGroup,
+  shouldSetupProfile,
 } from "../lib/profileSetup.js";
 
 const POSITION_OPTIONS = PLAYER_POSITIONS.filter((position) => ["PG", "SG", "SF", "PF", "C"].includes(position));
@@ -45,6 +47,7 @@ export default function Signup({ app, auth }) {
     district: user.regionDistrict ?? inferredRegion.district,
   }));
   const [formError, setFormError] = useState("");
+  const [redirectAfterSave, setRedirectAfterSave] = useState(false);
   const selectedRegion = REGION_TREE.find((item) => item.sido === draft.sido) ?? REGION_TREE[0];
   const ageGroup = getAgeGroupByBirthYear(draft.birthYear) ?? user.ageGroup ?? "open";
   const ageGroupLabel = getAgeGroupLabel(ageGroup);
@@ -67,6 +70,12 @@ export default function Signup({ app, auth }) {
     const nextHandle = makeSuggestedHashtagBody(draft.name || user.name, suggestionSuffix);
     setDraft((current) => (current.handle === nextHandle ? current : { ...current, handle: nextHandle }));
   }, [draft.name, handleLocked, handleTouched, suggestionSuffix, user.name]);
+
+  useEffect(() => {
+    if (!redirectAfterSave) return;
+    if (shouldSetupProfile(user) || shouldRecheckAgeGroup(user)) return;
+    navigate("/app/profile", { replace: true });
+  }, [navigate, redirectAfterSave, user]);
 
   const submit = async (event) => {
     event.preventDefault();
@@ -107,7 +116,7 @@ export default function Signup({ app, auth }) {
         profileVersion: 1,
         ...(name !== user.name ? { nameUpdatedAt: now } : {}),
       });
-      navigate("/app/profile");
+      setRedirectAfterSave(true);
     } catch (error) {
       setFormError(error.message || "프로필 저장에 실패했습니다.");
     }

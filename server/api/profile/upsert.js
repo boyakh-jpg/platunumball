@@ -1,4 +1,5 @@
 import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { loadCurrentProfileState, PROFILE_ME_COLUMNS } from "./me.js";
 
 const DEFAULT_RATINGS = { integrated: 1200, modes: { "1v1": 1200, "2v2": 1200, "3v3": 1200, "5v5": 1200 } };
 const EXISTING_PROFILE_COLUMNS = "id,auth_user_id,name,handle,hashtag,birth_year,age_group,age_group_checked_season,region_sido,region_district,onboarding_complete,profile_version,handle_locked_at,birth_year_locked_at,name_updated_at,region,position,avatar_color,trust_score,ratings,school,company,club,streak,discord_connection,test_login_id";
@@ -95,8 +96,9 @@ async function assertDiscordUserAvailable(context, discordUserId = "", profileId
 function buildProfileRow({ existing, profile, authUser, authUserId, isTestAccount }) {
   const now = new Date().toISOString();
   const existingLockedHandle = existing?.handle_locked_at || existing?.hashtag_locked_at;
+  const existingHashtag = normalizeHashtag(existing?.hashtag ?? existing?.handle);
   const requestedHashtag = normalizeHashtag(profile.hashtag ?? profile.handle);
-  const nextHashtag = existingLockedHandle ? existing.hashtag ?? existing.handle ?? "" : requestedHashtag;
+  const nextHashtag = existingLockedHandle ? existing.hashtag ?? existing.handle ?? "" : requestedHashtag || existingHashtag;
   const requestedBirthYear = normalizeBirthYear(profile.birthYear);
   const hasLockedBirthYear = Boolean(existing?.birth_year_locked_at && existing?.birth_year);
   const nextBirthYear = hasLockedBirthYear ? existing.birth_year : requestedBirthYear;
@@ -105,8 +107,13 @@ function buildProfileRow({ existing, profile, authUser, authUserId, isTestAccoun
   const discordConnection = getRequestedDiscordConnection(profile, existing);
   const requestedRegion = getRequestedRegion(profile, existing);
 
-  if (profile.onboardingComplete && !existingLockedHandle && !nextHashtag) {
+  if (profile.onboardingComplete && !nextHashtag) {
     const error = new Error("hashtag_required");
+    error.statusCode = 400;
+    throw error;
+  }
+  if (profile.onboardingComplete && (!nextBirthYear || !profile.ageGroupCheckedSeason)) {
+    const error = new Error("profile_setup_required");
     error.statusCode = 400;
     throw error;
   }
@@ -180,7 +187,20 @@ export default async function handler(request, response) {
 
     if (error) throw error;
 
-    sendJson(response, 200, { ok: true, profile: data });
+    const { data: updatedProfile, error: profileError } = await context.supabase
+      .from("profiles")
+      .select(PROFILE_ME_COLUMNS)
+      .eq("id", data.id)
+      .single();
+    if (profileError) throw profileError;
+
+    const profileState = await loadCurrentProfileState({
+      ...context,
+      profileId: updatedProfile.id,
+      profile: updatedProfile,
+    });
+
+    sendJson(response, 200, { ok: true, profile: data, ...profileState });
   } catch (error) {
     console.error("Profile upsert failed.", error);
     sendJson(response, error.statusCode || 500, { error: error.message || "profile_upsert_failed" });

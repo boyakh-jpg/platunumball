@@ -2158,7 +2158,16 @@ export function useAppData(authUser = null) {
         });
         if (!serverProfileBound || !nextProfile) return Promise.resolve({ ok: true });
         return persistProfileServer(nextProfile).then(async (result) => {
-          if (result && result.ok !== false) await refreshCurrentProfile();
+          if (result?.state) {
+            const remoteState = normalizeServerState(result.state);
+            setState((prev) => {
+              const nextState = mergeRemoteProfileState(prev, remoteState ?? {});
+              cacheCurrentProfileState(authUserId, nextState);
+              return nextState;
+            });
+          } else if (result && result.ok !== false) {
+            await refreshCurrentProfile();
+          }
           return result;
         }).catch((error) => {
           rollbackServerMutation(rollbackState, "프로필 저장", {
