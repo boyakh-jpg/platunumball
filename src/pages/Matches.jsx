@@ -10,7 +10,6 @@ import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { MATCH_MODES } from "../lib/constants.js";
 import { getRegisteredCourts } from "../lib/courts.js";
 import {
-  canUserResolveMatchDispute,
   cleanRoomTitle,
   getRoomCompetitionLabel,
   getRoomRefereeLabel,
@@ -18,7 +17,9 @@ import {
   getMatchHostPlayerId,
   getMatchReservePlayerIds,
   getMatchRoomPhase,
+  isMatchRelatedToUser,
   isInstantRoom,
+  userNeedsMatchAction,
 } from "../lib/matchUtils.js";
 import { getRecruitingEntryForUser, getRecruitingLobby, getRecruitingRoomOwnerId, getRecruitingSideCapacity, isRecruitingPartyEntry, isRecruitingRoomInUserSchedule } from "../lib/recruiting.js";
 import { RECRUITING_ROOM_REFRESH_INTERVAL_MS, RecruitingRoomModal, getRecruitingRoomListStatus } from "./Recruiting.jsx";
@@ -302,49 +303,6 @@ function getWinner(match) {
 
 function getMatchActionLabel(match) {
   return getMatchRoomPhase(match).actionLabel;
-}
-
-function matchHasUser(match, userId) {
-  return Boolean(
-    getUserParticipantSideName(match, userId) ||
-    match.createdBy === userId ||
-    match.refereeId === userId ||
-    match.formerRefereeId === userId
-  );
-}
-
-function getUserSideName(match, userId) {
-  if (getSafeMatchSide(match, "teamA").players.includes(userId)) return "teamA";
-  if (getSafeMatchSide(match, "teamB").players.includes(userId)) return "teamB";
-  return null;
-}
-
-function getUserParticipantSideName(match, userId) {
-  const sideName = getUserSideName(match, userId);
-  if (sideName) return sideName;
-  if (getMatchReservePlayerIds(match, "teamA").includes(userId)) return "teamA";
-  if (getMatchReservePlayerIds(match, "teamB").includes(userId)) return "teamB";
-  return null;
-}
-
-function userDecisionDone(match, userId) {
-  const sideName = getUserSideName(match, userId);
-  if (!sideName) return false;
-  if (match.status === "contract") return (match.agreements?.[sideName] ?? []).includes(userId);
-  if (match.status === "approval") return (match.approvals?.[sideName] ?? []).includes(userId);
-  return false;
-}
-
-function userNeedsAgreement(match, userId) {
-  const sideName = getUserSideName(match, userId);
-  return Boolean(sideName && match.status === "contract" && !(match.agreements?.[sideName] ?? []).includes(userId));
-}
-
-function userNeedsMatchAction(match, userId) {
-  const phase = getMatchRoomPhase(match).phase;
-  if (userNeedsAgreement(match, userId)) return true;
-  if (phase === "dispute" && match.status === "disputed") return canUserResolveMatchDispute(match, userId);
-  return ["postgame", "dispute"].includes(phase) && !userDecisionDone(match, userId);
 }
 
 function shouldShowMatchForView(match, view, userId) {
@@ -822,7 +780,7 @@ export default function Matches({ app }) {
 
   const baseFilteredMatches = useMemo(() => {
     return [...app.state.matches]
-      .filter((match) => matchHasUser(match, app.currentUser.id))
+      .filter((match) => isMatchRelatedToUser(match, app.currentUser.id))
       .filter((match) => {
         const matchDate = getMatchDate(match);
         if (!matchDate) return !dateFilter;

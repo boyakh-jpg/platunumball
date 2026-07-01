@@ -165,6 +165,52 @@ export function getMatchRosterSideName(match = {}, playerId) {
     ?? (getMatchReservePlayerIds(match, "teamB").includes(playerId) ? "teamB" : null);
 }
 
+export function getMatchUserSideName(match = {}, userId = "") {
+  return getPlayerSideName(match, userId);
+}
+
+export function getMatchUserParticipantSideName(match = {}, userId = "") {
+  return getMatchRosterSideName(match, userId);
+}
+
+export function isMatchRelatedToUser(match = {}, userId = "") {
+  return Boolean(
+    userId &&
+    (
+      getMatchUserParticipantSideName(match, userId) ||
+      match.createdBy === userId ||
+      match.refereeId === userId ||
+      match.formerRefereeId === userId
+    )
+  );
+}
+
+export function userNeedsMatchAgreement(match = {}, userId = "") {
+  const sideName = getMatchUserSideName(match, userId);
+  return Boolean(sideName && match.status === "contract" && !(match.agreements?.[sideName] ?? []).includes(userId));
+}
+
+export function userNeedsMatchApproval(match = {}, userId = "") {
+  const sideName = getMatchUserSideName(match, userId);
+  if (getMatchRoomPhase(match).phase === "record") return false;
+  return Boolean(sideName && match.status === "approval" && !(match.approvals?.[sideName] ?? []).includes(userId));
+}
+
+export function userMatchDecisionDone(match = {}, userId = "") {
+  const sideName = getMatchUserSideName(match, userId);
+  if (!sideName) return false;
+  if (match.status === "contract") return (match.agreements?.[sideName] ?? []).includes(userId);
+  if (match.status === "approval") return (match.approvals?.[sideName] ?? []).includes(userId);
+  return false;
+}
+
+export function userNeedsMatchAction(match = {}, userId = "") {
+  const phase = getMatchRoomPhase(match).phase;
+  if (userNeedsMatchAgreement(match, userId)) return true;
+  if (phase === "dispute" && match.status === "disputed") return canUserResolveMatchDispute(match, userId);
+  return ["postgame", "dispute"].includes(phase) && !userMatchDecisionDone(match, userId);
+}
+
 export function getMatchHostPlayerId(match = {}, sourcePost = null) {
   const sourceRoomState = sourcePost?.roomState ?? {};
   return sourcePost?.ownerId

@@ -6,6 +6,7 @@
 - 홈에서 경기 메뉴로 이동할 때 이미 받은 `user_room_feed` 기준 모집방을 다시 `/api/matches/list`로 자동 재호출하지 않는다.
 - 경기 메뉴의 명시 상세 열기, 더보기, 기록/과거 범위 로드는 별도 endpoint로만 수행한다.
 - 첫 화면 숫자는 최초 응답 snapshot 기준으로 고정하고, 사용자 액션 또는 명시 reload 없이 늦게 도착한 목록으로 다시 바꾸지 않는다.
+- 홈/경기 메뉴의 사용자 참여, 승인 필요, 동의 필요 판정은 `src/lib/matchUtils.js`의 중앙 helper를 사용한다.
 
 ## 2026-07-01 user_room_feed scope 기준
 

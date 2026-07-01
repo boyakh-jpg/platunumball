@@ -12,7 +12,7 @@ import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { MAX_TEAM_MEMBERSHIPS, getTeamRoleLabel } from "../lib/constants.js";
 import { getRegisteredCourts } from "../lib/courts.js";
 import { getCourtHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
-import { canUserResolveMatchDispute, getAllowedStatFields, getMatchRecordWindow, getMatchReservePlayerIds, getMatchRoomPhase, getPlayerSideName, getPlayerStatSubmitted, getPublicRoomTimingStatus, isInstantRoom } from "../lib/matchUtils.js";
+import { canUserResolveMatchDispute, getAllowedStatFields, getMatchRecordWindow, getMatchRoomPhase, getMatchUserParticipantSideName, getPlayerStatSubmitted, getPublicRoomTimingStatus, isInstantRoom, isMatchRelatedToUser, userNeedsMatchAgreement, userNeedsMatchApproval } from "../lib/matchUtils.js";
 import { inferRegionSelection } from "../lib/profileSetup.js";
 import { RECRUITING_TYPES, getPendingRecruitingInvitations, getRecruitingLobby, getRecruitingRoomOwnerId, isNationalRecruitingPost, isRecruitingPostForUser, isRecruitingRoomInUserSchedule } from "../lib/recruiting.js";
 import { getCurrentSeason, getPlayerSeasonRows, getSeasonProgress } from "../lib/season.js";
@@ -25,19 +25,6 @@ function compareSchedule(a, b) {
   return String(a.scheduledAt ?? "").localeCompare(String(b.scheduledAt ?? ""));
 }
 
-function matchHasUser(match, userId) {
-  return Boolean(
-    getUserParticipantSide(match, userId) ||
-    match.createdBy === userId ||
-    match.refereeId === userId ||
-    match.formerRefereeId === userId
-  );
-}
-
-function matchNeedsUserOperation(match, userId) {
-  return matchHasUser(match, userId);
-}
-
 function isSameRecruitingRegion(post = {}, user = {}) {
   if (!post.region) return false;
   const postRegion = inferRegionSelection(post.region ?? "");
@@ -46,7 +33,7 @@ function isSameRecruitingRegion(post = {}, user = {}) {
 }
 
 function getUserResult(match, userId) {
-  const sideName = getUserParticipantSide(match, userId) ?? "teamA";
+  const sideName = getMatchUserParticipantSideName(match, userId) ?? "teamA";
   const otherSide = sideName === "teamA" ? "teamB" : "teamA";
   const sideScore = Number((sideName === "teamA" ? match.result?.scoreA : match.result?.scoreB) ?? match?.[sideName]?.score ?? 0);
   const otherScore = Number((otherSide === "teamA" ? match.result?.scoreA : match.result?.scoreB) ?? match?.[otherSide]?.score ?? 0);
@@ -54,31 +41,8 @@ function getUserResult(match, userId) {
   return sideScore > otherScore ? "W" : "L";
 }
 
-function getUserSide(match, userId) {
-  return getPlayerSideName(match, userId);
-}
-
-function getUserParticipantSide(match, userId) {
-  const sideName = getPlayerSideName(match, userId);
-  if (sideName) return sideName;
-  if (getMatchReservePlayerIds(match, "teamA").includes(userId)) return "teamA";
-  if (getMatchReservePlayerIds(match, "teamB").includes(userId)) return "teamB";
-  return null;
-}
-
-function userNeedsAgreement(match, userId) {
-  const sideName = getUserSide(match, userId);
-  return Boolean(sideName && match.status === "contract" && !(match.agreements?.[sideName] ?? []).includes(userId));
-}
-
-function userNeedsApproval(match, userId) {
-  const sideName = getUserSide(match, userId);
-  if (getMatchRoomPhase(match).phase === "record") return false;
-  return Boolean(sideName && match.status === "approval" && !(match.approvals?.[sideName] ?? []).includes(userId));
-}
-
 function userNeedsResultInput(match, userId) {
-  if (!["agreed", "approval", "disputed"].includes(match.status) || !matchNeedsUserOperation(match, userId)) return false;
+  if (!["agreed", "approval", "disputed"].includes(match.status) || !isMatchRelatedToUser(match, userId)) return false;
   if (getPlayerStatSubmitted(match, userId)) return false;
   const recordWindow = getMatchRecordWindow(match);
   if (!recordWindow.statOpen) return false;
@@ -114,7 +78,7 @@ function getSideScore(match, sideName) {
 }
 
 function getUserMatchLine(match, userId) {
-  const sideName = getUserParticipantSide(match, userId) ?? "teamA";
+  const sideName = getMatchUserParticipantSideName(match, userId) ?? "teamA";
   const otherSide = sideName === "teamA" ? "teamB" : "teamA";
   return {
     side: getSafeMatchSide(match, sideName),
@@ -132,7 +96,7 @@ export default function Home({ app }) {
   const user = app.currentUser;
   const [query, setQuery] = useState("");
   const searchText = query.trim().toLowerCase();
-  const approvalMatches = [...app.state.matches].filter((match) => userNeedsApproval(match, user.id));
+  const approvalMatches = [...app.state.matches].filter((match) => userNeedsMatchApproval(match, user.id));
   const completedMatches = [...app.state.matches].filter((match) => match.status === "confirmed");
   const myTeam = app.state.teams.find((team) => team.members.some((member) => member.userId === user.id));
   const teamById = useMemo(() => Object.fromEntries(app.state.teams.map((team) => [team.id, team])), [app.state.teams]);
@@ -144,7 +108,7 @@ export default function Home({ app }) {
   const myTeamIds = useMemo(() => myTeams.map((team) => team.id), [myTeams]);
   const upcomingItems = useMemo(() => {
     const matchItems = [...app.state.matches]
-      .filter((match) => ["locked", "checkin"].includes(getMatchRoomPhase(match).phase) && matchNeedsUserOperation(match, user.id))
+      .filter((match) => ["locked", "checkin"].includes(getMatchRoomPhase(match).phase) && isMatchRelatedToUser(match, user.id))
       .map((match) => ({ type: "match", id: `match-${match.id}`, item: match }));
     const roomItems = [...(app.state.recruitingPosts ?? [])]
       .filter((post) => post.status === "open")
@@ -181,7 +145,7 @@ export default function Home({ app }) {
       .filter((post) => isSameRecruitingRegion(post, user) || isNationalRecruitingPost(post, app.state))
       .slice(0, 3);
   }, [app.state, app.state.recruitingPosts, user.region, user.regionDistrict]);
-  const myCompletedMatches = completedMatches.filter((match) => matchHasUser(match, user.id));
+  const myCompletedMatches = completedMatches.filter((match) => isMatchRelatedToUser(match, user.id));
   const myWins = myCompletedMatches.filter((match) => getUserResult(match, user.id) === "W").length;
   const winRate = myCompletedMatches.length ? Math.round((myWins / myCompletedMatches.length) * 100) : 0;
   const actionItems = useMemo(() => {
@@ -200,10 +164,10 @@ export default function Home({ app }) {
           icon: Trophy,
         })));
     const matchItems = app.state.matches
-      .filter((match) => matchNeedsUserOperation(match, user.id))
+      .filter((match) => isMatchRelatedToUser(match, user.id))
       .map((match) => {
         const phase = getMatchRoomPhase(match).phase;
-        if (userNeedsAgreement(match, user.id)) {
+        if (userNeedsMatchAgreement(match, user.id)) {
           return {
             id: `agreement-${match.id}`,
             priority: 1,
@@ -236,7 +200,7 @@ export default function Home({ app }) {
             icon: CalendarDays,
           };
         }
-        if (phase === "dispute" && (userNeedsApproval(match, user.id) || canUserResolveMatchDispute(match, user.id))) {
+        if (phase === "dispute" && (userNeedsMatchApproval(match, user.id) || canUserResolveMatchDispute(match, user.id))) {
           return {
             id: `approval-${match.id}`,
             priority: 4,
