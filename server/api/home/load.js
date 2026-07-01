@@ -112,7 +112,7 @@ export default async function handler(request, response) {
       ),
       page: {
         ...matchResult.page,
-        recruitingScheduleChecked: false,
+        recruitingScheduleChecked: true,
         recruitingScheduleCount: recruitingPosts.length,
       },
       recruitingPage: {

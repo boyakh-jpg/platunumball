@@ -606,7 +606,7 @@ function getInitialStateLoadOptions() {
     return { endpoint: "profileRecords", matchLimit: REMOTE_CLIENT_RECORD_MATCH_LIMIT, recruitingLimit: 0, tournamentLimit: 0 };
   }
   if (pathname === "/app" || pathname === "/login") {
-    return { endpoint: "homeLoad", matchLimit: REMOTE_CLIENT_ACTIVE_MATCH_LIMIT, recruitingLimit: REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT, tournamentLimit: 0 };
+    return { endpoint: "homeLoad", matchLimit: REMOTE_CLIENT_ACTIVE_MATCH_LIMIT, recruitingLimit: REMOTE_CLIENT_RECRUITING_LIMIT, tournamentLimit: 0 };
   }
   return { profileOnly: true, matchLimit: 0, recruitingLimit: 0, tournamentLimit: 0 };
 }

@@ -1,5 +1,12 @@
 # RankBall 로직/용어/디자인 기준
 
+## 2026-07-01 홈/경기 feed snapshot 기준
+
+- `/api/home/load`는 현재 프로필의 모집 feed를 경기 메뉴 일정 snapshot으로도 인정한다.
+- 홈에서 경기 메뉴로 이동할 때 이미 받은 `user_room_feed` 기준 모집방을 다시 `/api/matches/list`로 자동 재호출하지 않는다.
+- 경기 메뉴의 명시 상세 열기, 더보기, 기록/과거 범위 로드는 별도 endpoint로만 수행한다.
+- 첫 화면 숫자는 최초 응답 snapshot 기준으로 고정하고, 사용자 액션 또는 명시 reload 없이 늦게 도착한 목록으로 다시 바꾸지 않는다.
+
 ## 2026-07-01 user_room_feed scope 기준
 
 - `user_room_feed.feed_scope='profile'` row는 현재 프로필의 방/경기 feed다. 브라우저 RLS 직접 read는 이 row만 허용한다.
