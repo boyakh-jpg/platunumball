@@ -3718,6 +3718,9 @@ html[data-theme="light"] .om-match-panel {
 @media (max-width: 720px) {
   .om-match-hero {
     min-height: 335px;
+    width: calc(100% + (2 * var(--page-gutter)));
+    margin-inline: calc(-1 * var(--page-gutter));
+    border-radius: 0 0 var(--radius-xl) var(--radius-xl);
     padding: 18px;
     background-position:
       center,

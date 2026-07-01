@@ -776,3 +776,8 @@ UI 수정 전:
 1. Desktop home places the search panel as a compact top bar above the hero and right rail.
 2. Mobile home keeps the hero first and places search directly below the hero before action queue.
 3. Desktop search results open as a dropdown so the top bar does not push the hero down.
+
+## 2026-07-01 Mobile hero bleed
+
+1. On mobile, Home, Recruiting, and Matches hero images bleed to the viewport edges so the far-back page background is not visible at the top left/right.
+2. Mobile hero top corners are square; lower corners may keep the large app radius.

@@ -12116,3 +12116,94 @@ html[data-theme="light"] .app-main {
     order: 4;
   }
 }
+
+/* 2026-07-01 mobile hero board: full image first, details after search. */
+@media (max-width: 759px) {
+  .rank-home > .rank-summary-grid {
+    display: contents;
+  }
+
+  .rank-home .rank-summary-grid .home-rank-board-head {
+    order: 1;
+    position: relative;
+    display: flex;
+    grid-column: 1 / -1;
+    grid-row: auto;
+    justify-self: start;
+    min-height: clamp(320px, 88vw, 380px);
+    width: calc(100% + (2 * var(--page-gutter)));
+    max-width: none;
+    margin-inline: calc(-1 * var(--page-gutter));
+    align-items: flex-end;
+    overflow: hidden;
+    border: 1px solid var(--rb-line);
+    border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+    background:
+      linear-gradient(180deg, rgba(0, 0, 0, 0.06), rgba(0, 0, 0, 0.3) 48%, rgba(0, 0, 0, 0.82)),
+      linear-gradient(90deg, rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0.16) 58%, rgba(0, 0, 0, 0.08)),
+      var(--bg-court) center 46% / cover no-repeat,
+      var(--rb-bg-2);
+    padding: 18px;
+    box-shadow: none;
+  }
+
+  .rank-home .rank-summary-grid .home-rank-board-head .rank-hero-top {
+    min-height: 0;
+    width: min(100%, 320px);
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-end;
+    gap: 14px;
+  }
+
+  .rank-home .rank-summary-grid .home-rank-board-head h1 {
+    max-width: 8.6ch;
+    color: #fff;
+    font-size: clamp(46px, 15vw, 68px);
+    line-height: 0.84;
+    text-shadow: 0 14px 32px rgba(0, 0, 0, 0.52);
+  }
+
+  .rank-home .rank-summary-grid .home-rank-board-head p:not(.eyebrow) {
+    max-width: 30ch;
+    color: rgba(255, 255, 255, 0.88);
+    font-size: 13px;
+    font-weight: 850;
+    line-height: 1.35;
+    text-shadow: 0 8px 18px rgba(0, 0, 0, 0.5);
+  }
+
+  .rank-home .rank-summary-grid .home-rank-board-head .button {
+    min-height: 42px;
+    width: auto;
+    padding-inline: 14px;
+  }
+
+  .rank-home > .home-search-panel {
+    order: 2;
+  }
+
+  .rank-home .rank-profile-card {
+    order: 3;
+  }
+
+  .rank-home .rank-mode-card {
+    order: 4;
+  }
+
+  .rank-home > .home-action-card {
+    order: 5;
+  }
+
+  .rank-home > .home-dashboard-grid {
+    order: 6;
+  }
+
+  html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
+    background:
+      linear-gradient(180deg, rgba(30, 24, 18, 0.04), rgba(30, 24, 18, 0.2) 48%, rgba(30, 24, 18, 0.68)),
+      linear-gradient(90deg, rgba(30, 24, 18, 0.5), rgba(30, 24, 18, 0.12) 58%, rgba(30, 24, 18, 0.04)),
+      var(--bg-court) center 46% / cover no-repeat,
+      var(--rb-bg-3);
+  }
+}
