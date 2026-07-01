@@ -6777,3 +6777,179 @@ html[data-theme="light"] .arena-party-member-card {
     font-size: var(--hero-title-size-mobile);
   }
 }
+
+/* 2026-07-01 final recruiting UI module.
+   This chunk loads after globals.css, so local controls must point back to --ui-* tokens. */
+.arena-recruit-card,
+.arena-filter-bar,
+.arena-lobby-card.om-match-card,
+.arena-hero-panel,
+.arena-compose-drawer,
+.arena-lobby-team-panel,
+.arena-reserve-panel,
+.arena-room-edit-panel,
+.arena-referee-invite-panel,
+.arena-host-kick-panel,
+.arena-party-member-card,
+.arena-owner-panel,
+.arena-room-rule-panel,
+.arena-join-panel,
+.arena-invite-panel,
+.arena-room-chat {
+  border: 1px solid var(--ui-card-border);
+  border-radius: var(--ui-card-radius);
+  background: var(--ui-card-bg);
+  box-shadow: var(--ui-card-shadow);
+}
+
+.arena-lobby-modal {
+  border: 1px solid var(--ui-room-modal-border);
+  border-radius: var(--ui-room-modal-radius);
+  background: var(--ui-room-modal-bg);
+  box-shadow: var(--ui-room-modal-shadow);
+}
+
+html[data-theme="light"] .arena-lobby-modal {
+  background: var(--ui-room-modal-bg);
+}
+
+.arena-side-roster,
+.arena-lobby-versus-stage,
+.arena-lobby-team-panel,
+.arena-reserve-panel,
+.arena-owner-panel,
+.arena-room-rule-panel,
+.arena-join-panel,
+.arena-invite-panel,
+.arena-room-chat {
+  border-color: var(--ui-room-panel-border);
+  background: var(--ui-room-panel-bg);
+}
+
+.arena-filter-bar .segmented-control,
+.arena-filter-bar .arena-start-date-filter,
+.arena-compose-type-grid,
+.arena-team-choice-grid,
+.arena-party-picker-grid,
+.arena-party-role-buttons,
+.arena-invite-member-grid,
+.arena-invite-team-picker,
+.arena-slot-command-popover .arena-invite-actions {
+  gap: var(--ui-control-group-gap);
+  align-items: stretch;
+  border: 1px solid var(--ui-control-group-border);
+  border-radius: var(--ui-control-group-radius);
+  background: var(--ui-control-group-bg);
+  box-shadow: none;
+  padding: var(--ui-control-group-padding);
+  overflow: visible;
+}
+
+.arena-filter-bar button,
+.arena-filter-select select,
+.arena-filter-bar .segmented-control button,
+.arena-filter-bar .arena-start-date-filter button,
+.arena-collapse-button,
+.arena-card-action.button,
+.arena-hero-cta,
+.arena-icon-button,
+.arena-modal-close-button,
+.arena-close-button,
+.arena-compose-type-grid button,
+.arena-team-choice-grid button,
+.arena-party-picker-grid > button,
+.arena-party-role-buttons button,
+.arena-invite-result > button:not(.button),
+.arena-invite-team-head > button,
+.arena-invite-member-grid button,
+.arena-slot-command-popover .arena-invite-team-picker > .button {
+  min-height: var(--ui-button-height);
+  border: 1px solid var(--ui-button-border);
+  border-radius: var(--ui-button-radius);
+  background: var(--ui-button-bg);
+  color: var(--ui-button-color);
+  box-shadow: none;
+  font-size: var(--ui-button-font-size);
+  font-weight: var(--ui-button-font-weight);
+  letter-spacing: 0;
+}
+
+.arena-icon-button,
+.arena-modal-close-button,
+.arena-close-button {
+  width: var(--ui-icon-button-size);
+  min-width: var(--ui-icon-button-size);
+  height: var(--ui-icon-button-size);
+  min-height: var(--ui-icon-button-size);
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+}
+
+.arena-hero-cta,
+.arena-card-action.button:not(.button-secondary),
+.arena-filter-bar button.active,
+.arena-filter-bar .segmented-control button.active,
+.arena-filter-bar .arena-start-date-filter button.active,
+.arena-filter-bar .arena-start-date-filter button.sat.active,
+.arena-filter-bar .arena-start-date-filter button.sun.active,
+.arena-compose-type-grid button.active,
+.arena-team-choice-grid button.selected,
+.arena-party-picker-grid > button.selected,
+.arena-party-role-buttons button.active,
+.arena-invite-result > button.active,
+.arena-invite-team-head > button.active,
+.arena-invite-member-grid button.selected {
+  border-color: transparent;
+  background: var(--ui-button-bg-active);
+  color: var(--ui-button-color-active);
+  box-shadow: none;
+}
+
+.arena-hero-cta:hover,
+.arena-card-action.button:not(.button-secondary):hover,
+.arena-compose-type-grid button.active:hover,
+.arena-team-choice-grid button.selected:hover,
+.arena-party-picker-grid > button.selected:hover,
+.arena-party-role-buttons button.active:hover,
+.arena-invite-result > button.active:hover,
+.arena-invite-team-head > button.active:hover {
+  background: var(--ui-button-bg-hover);
+  color: var(--ui-button-color-active);
+  filter: none;
+}
+
+.arena-card-action.button-secondary {
+  border-color: var(--ui-button-border);
+  background: var(--ui-button-bg);
+  color: var(--ui-button-color);
+}
+
+.arena-filter-select select,
+.arena-compose-drawer input:not([type="checkbox"]):not([type="radio"]),
+.arena-compose-drawer select,
+.arena-compose-drawer textarea,
+.arena-slot-command-popover input:not([type="checkbox"]):not([type="radio"]),
+.arena-slot-command-popover select,
+.arena-slot-command-popover textarea {
+  min-height: var(--ui-button-height);
+  border: 1px solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
+  color: var(--rb-text);
+  box-shadow: none;
+}
+
+.arena-lobby-modal .badge-row .badge,
+.arena-lobby-modal .om-card-mode,
+.arena-lobby-modal .arena-type-tag {
+  border-color: var(--ui-button-border);
+  background: var(--ui-button-bg);
+  box-shadow: none;
+}
+
+@media (max-width: 720px) {
+  .arena-lobby-modal {
+    border-radius: var(--radius-xl) var(--radius-xl) 32px 32px;
+  }
+}

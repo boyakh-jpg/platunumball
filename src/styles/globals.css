@@ -13032,3 +13032,249 @@ button.danger-button {
     font-size: var(--hero-title-size-mobile);
   }
 }
+
+/* 2026-07-01 final UI primitive module.
+   Keep page controls on tokenized buttons/groups instead of local one-off skins. */
+.card,
+.section-card,
+.selector-panel,
+.ranking-filter-card,
+.profile-main-stack > .card,
+.profile-side-grid > .card,
+.home-side-stack > .card,
+.admin-action-panel,
+.recorder-late-player-panel,
+.recorder-handoff-panel,
+.recorder-review-panel,
+.gm-next-action-card,
+.gm-rule-summary-card,
+.stat-referee-panel,
+.stat-trust-panel,
+.match-card,
+.hover-portal-card,
+.player-hover-card,
+.team-hover-card,
+.court-hover-card,
+.referee-hover-card,
+.notification-invitation-card,
+.affiliation-card,
+.profile-record-card,
+.profile-records-summary,
+.discord-link-card,
+.trust-star-card,
+.court-review-card,
+.review-controls-card,
+.om-view-card,
+.om-match-card,
+.arena-recruit-card,
+.arena-filter-bar,
+.om-filter-bar,
+.om-calendar-filter-bar {
+  border: 1px solid var(--ui-card-border);
+  border-radius: var(--ui-card-radius);
+  background: var(--ui-card-bg);
+  box-shadow: var(--ui-card-shadow);
+}
+
+.segmented-control,
+.quick-picker,
+.public-party-picker-grid,
+.favorite-type-grid,
+.create-mode-grid,
+.theme-choice-card .segmented-control,
+.notification-actions,
+.auth-browser-actions,
+.om-calendar-actions,
+.om-calendar-toolbar,
+.arena-filter-bar .segmented-control,
+.arena-start-date-filter,
+.om-filter-bar .segmented-control,
+.reported-player-list,
+.referee-exam-choice-grid {
+  gap: var(--ui-control-group-gap);
+  align-items: stretch;
+  border: 1px solid var(--ui-control-group-border);
+  border-radius: var(--ui-control-group-radius);
+  background: var(--ui-control-group-bg);
+  box-shadow: none;
+  padding: var(--ui-control-group-padding);
+  overflow: visible;
+}
+
+.button,
+.provider-button,
+.auth-browser-actions button,
+.auth-browser-actions a,
+.auth-session-line button,
+.segmented-control button,
+.quick-picker button,
+.public-party-picker-grid button,
+.favorite-type-grid button,
+.create-mode-grid button,
+.notification-actions button,
+.team-picker,
+.court-search-popover button,
+.court-address-results button,
+.report-player-picker button,
+.reported-player-list button,
+.referee-exam-choice-grid button,
+.favorite-toggle-button,
+.hover-card-close,
+.hover-card-action,
+.search-picker-more,
+.home-search-more,
+.settings-page .section-card button:not(.button):not(.favorite-toggle-button),
+.tournament-back-link,
+.arena-filter-bar button,
+.arena-start-date-filter button,
+.arena-card-action.button,
+.om-filter-bar .segmented-control button,
+.om-calendar-actions button,
+.om-calendar-toolbar button,
+.om-room-link {
+  min-height: var(--ui-button-height);
+  border: 1px solid var(--ui-button-border);
+  border-radius: var(--ui-button-radius);
+  background: var(--ui-button-bg);
+  color: var(--ui-button-color);
+  box-shadow: none;
+  font-size: var(--ui-button-font-size);
+  font-weight: var(--ui-button-font-weight);
+  letter-spacing: 0;
+}
+
+.button-sm {
+  min-height: var(--ui-button-height-sm);
+}
+
+.button-icon,
+.hover-card-close,
+.arena-icon-button,
+.arena-modal-close-button,
+.arena-close-button {
+  width: var(--ui-icon-button-size);
+  min-width: var(--ui-icon-button-size);
+  height: var(--ui-icon-button-size);
+  min-height: var(--ui-icon-button-size);
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+}
+
+.button-primary,
+.rank-home .home-rank-board-head .button,
+.button.om-match-create,
+.provider-test,
+.arena-card-action.button:not(.button-secondary),
+.om-room-link,
+.create-submit-row .button:not(.button-secondary),
+.gm-next-action-card .button:not(.button-secondary),
+.segmented-control button.active,
+.quick-picker button.selected,
+.public-party-picker-grid button.selected,
+.favorite-type-grid button.active,
+.create-mode-grid button.active,
+.team-picker.selected,
+.court-search-popover button.selected,
+.report-player-picker button.selected,
+.reported-player-list button.selected,
+.referee-exam-choice-grid button.selected,
+.settings-page .section-card button.active:not(.favorite-toggle-button),
+.arena-filter-bar button.active,
+.arena-filter-bar .segmented-control button.active,
+.arena-filter-bar .arena-start-date-filter button.active,
+.arena-filter-bar .arena-start-date-filter button.sat.active,
+.arena-filter-bar .arena-start-date-filter button.sun.active,
+.om-filter-bar .segmented-control button.active,
+.om-calendar-actions button.active,
+.om-calendar-toolbar button.active {
+  border-color: transparent;
+  background: var(--ui-button-bg-active);
+  color: var(--ui-button-color-active);
+  box-shadow: none;
+}
+
+.button-primary:hover,
+.rank-home .home-rank-board-head .button:hover,
+.button.om-match-create:hover,
+.provider-test:hover,
+.arena-card-action.button:not(.button-secondary):hover,
+.om-room-link:hover,
+.create-submit-row .button:not(.button-secondary):hover,
+.gm-next-action-card .button:not(.button-secondary):hover {
+  background: var(--ui-button-bg-hover);
+  color: var(--ui-button-color-active);
+  filter: none;
+}
+
+.button-primary:active,
+.rank-home .home-rank-board-head .button:active,
+.button.om-match-create:active,
+.provider-test:active,
+.arena-card-action.button:not(.button-secondary):active,
+.om-room-link:active {
+  background: var(--ui-button-bg-pressed);
+}
+
+.button-secondary,
+.button-icon,
+.arena-card-action.button-secondary {
+  border-color: var(--ui-button-border);
+  background: var(--ui-button-bg);
+  color: var(--ui-button-color);
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+select,
+textarea,
+.search-picker-input,
+.search-input,
+.auth-card select,
+.home-search-box input,
+.arena-filter-select select,
+.om-filter-bar select,
+.om-calendar-filter-bar select {
+  min-height: var(--ui-button-height);
+  border: 1px solid var(--ui-control-border);
+  border-radius: var(--ui-control-radius);
+  background: var(--ui-control-bg);
+  color: var(--rb-text);
+  box-shadow: none;
+  font-size: max(0.9rem, 16px);
+}
+
+.button:focus-visible,
+.provider-button:focus-visible,
+.auth-browser-actions button:focus-visible,
+.auth-browser-actions a:focus-visible,
+.auth-session-line button:focus-visible,
+.segmented-control button:focus-visible,
+.quick-picker button:focus-visible,
+.public-party-picker-grid button:focus-visible,
+.favorite-type-grid button:focus-visible,
+.create-mode-grid button:focus-visible,
+.team-picker:focus-visible,
+.court-search-popover button:focus-visible,
+.court-address-results button:focus-visible,
+.report-player-picker button:focus-visible,
+.reported-player-list button:focus-visible,
+.referee-exam-choice-grid button:focus-visible,
+.arena-filter-bar button:focus-visible,
+.arena-start-date-filter button:focus-visible,
+.om-filter-bar .segmented-control button:focus-visible,
+.om-calendar-actions button:focus-visible,
+.om-calendar-toolbar button:focus-visible,
+input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--rb-orange-2) 72%, transparent);
+  outline-offset: 2px;
+  box-shadow: var(--focus-ring);
+}
+
+button:disabled,
+.button:disabled,
+.button[aria-disabled="true"] {
+  opacity: 0.58;
+  cursor: not-allowed;
+}

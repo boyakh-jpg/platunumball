@@ -829,3 +829,6 @@ UI 수정 전:
 6. Page-specific cards and panels should be added to the shared primitive selector layer first. Only layout-specific size/gap/placement belongs in page CSS.
 7. Condensed hero title fonts use non-negative tracking through `--hero-title-letter-spacing`. English-heavy words like `RANKBALL` must not use tight negative spacing.
 8. Segmented control groups use `--control-group-*` tokens. Group radius and padding must leave enough inner space so active buttons are never clipped by the group border or scroll container.
+9. New buttons, button groups, cards, inputs, and room modal surfaces use the `--ui-*` aliases in `tokens.css` as the stable module API.
+10. `recruiting-arena.css` and `matches-arena.css` load after `globals.css`; each file must end by reconnecting page selectors to the same `--ui-*` primitive layer to prevent chunk-specific override drift.
+11. Room modal skin uses `--ui-room-modal-*` and `--ui-room-panel-*`. Slot, avatar, READY/WAIT, reserve, and party connection structure stays separate from visual primitive tokens.

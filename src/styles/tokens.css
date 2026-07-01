@@ -74,6 +74,44 @@
   --input-bg: rgba(255, 255, 255, 0.06);
   --input-border: var(--rb-line);
   --focus-ring: 0 0 0 3px rgba(255, 118, 88, 0.2);
+  --ui-card-radius: var(--card-radius);
+  --ui-card-bg: var(--card-bg);
+  --ui-card-bg-strong: var(--card-bg-strong);
+  --ui-card-border: var(--card-border);
+  --ui-card-shadow: var(--card-shadow);
+  --ui-panel-radius: var(--panel-radius);
+  --ui-button-height: var(--control-height);
+  --ui-button-height-sm: var(--control-height-sm);
+  --ui-button-radius: var(--control-radius);
+  --ui-button-padding-x: var(--control-padding-x);
+  --ui-button-font-size: var(--control-font-size);
+  --ui-button-font-weight: 900;
+  --ui-button-bg: var(--button-secondary-bg);
+  --ui-button-bg-active: var(--button-primary-bg);
+  --ui-button-bg-hover: var(--button-primary-hover-bg);
+  --ui-button-bg-pressed: var(--button-primary-pressed-bg);
+  --ui-button-color: var(--rb-text);
+  --ui-button-color-active: #ffffff;
+  --ui-button-border: var(--control-border);
+  --ui-control-bg: var(--input-bg);
+  --ui-control-border: var(--input-border);
+  --ui-control-radius: var(--control-radius);
+  --ui-control-group-radius: var(--control-group-radius);
+  --ui-control-group-gap: var(--control-group-gap);
+  --ui-control-group-padding: var(--control-group-padding);
+  --ui-control-group-bg: color-mix(in srgb, var(--rb-surface) 76%, transparent);
+  --ui-control-group-border: var(--control-border);
+  --ui-icon-button-size: 34px;
+  --ui-room-modal-radius: var(--radius-lg);
+  --ui-room-modal-border: var(--card-border);
+  --ui-room-modal-shadow: none;
+  --ui-room-modal-bg:
+    linear-gradient(180deg, rgba(24, 25, 26, 0.9), rgba(24, 25, 26, 0.78)),
+    radial-gradient(ellipse at 72% 28%, rgba(240, 90, 70, 0.14), transparent 20rem),
+    var(--bg-ball) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg-2);
+  --ui-room-panel-bg: color-mix(in srgb, var(--rb-bg-2) 78%, transparent);
+  --ui-room-panel-border: var(--card-border);
   --hero-title-font: Impact, "Arial Narrow", "Roboto Condensed", sans-serif;
   --hero-title-size: clamp(2.9rem, 5.6vw, 4.8rem);
   --hero-title-size-mobile: clamp(2.8rem, 14vw, 4.35rem);
@@ -156,6 +194,13 @@ html[data-theme="light"] {
   --input-bg: rgba(255, 250, 241, 0.78);
   --input-border: rgba(30, 24, 18, 0.14);
   --focus-ring: 0 0 0 3px rgba(229, 85, 63, 0.16);
+  --ui-control-group-bg: color-mix(in srgb, var(--rb-surface) 82%, transparent);
+  --ui-room-modal-bg:
+    linear-gradient(180deg, rgba(255, 250, 241, 0.9), rgba(245, 241, 232, 0.82)),
+    radial-gradient(ellipse at 72% 28%, rgba(229, 85, 63, 0.1), transparent 20rem),
+    var(--bg-ball) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg-2);
+  --ui-room-panel-bg: rgba(255, 250, 241, 0.78);
   --hero-title-color: #fffaf1;
   --hero-title-shadow: 0 14px 34px rgba(30, 24, 18, 0.5);
   --hero-copy-color: rgba(255, 250, 241, 0.88);

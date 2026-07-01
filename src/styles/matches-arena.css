@@ -3927,3 +3927,105 @@ html[data-theme="light"] .om-score-box {
     font-size: var(--hero-title-size-mobile);
   }
 }
+
+/* 2026-07-01 final matches UI module.
+   Matches chunk loads after globals.css, so filters/buttons/cards use --ui-* tokens here too. */
+.om-view-card,
+.om-match-card,
+.om-filter-bar,
+.om-calendar-filter-bar,
+.om-match-panel,
+.om-calendar-panel,
+.om-tournament-panel,
+.om-tournament-card,
+.tournament-hero-badges,
+.tournament-team-list,
+.tournament-schedule-list,
+.om-match-summary-box,
+.om-match-info-box,
+.om-score-box {
+  border: 1px solid var(--ui-card-border);
+  border-radius: var(--ui-card-radius);
+  background: var(--ui-card-bg);
+  box-shadow: var(--ui-card-shadow);
+}
+
+.om-filter-bar .segmented-control,
+.om-calendar-actions,
+.om-calendar-toolbar,
+.om-tournament-head-actions,
+.om-tournament-actions,
+.om-tournament-teams {
+  gap: var(--ui-control-group-gap);
+  align-items: stretch;
+  border: 1px solid var(--ui-control-group-border);
+  border-radius: var(--ui-control-group-radius);
+  background: var(--ui-control-group-bg);
+  box-shadow: none;
+  padding: var(--ui-control-group-padding);
+  overflow: visible;
+}
+
+.om-filter-bar select,
+.om-calendar-filter-bar select,
+.om-filter-bar .segmented-control button,
+.om-calendar-actions button,
+.om-calendar-toolbar button,
+.om-calendar-grid button,
+.om-tournament-head-actions button,
+.om-tournament-actions button,
+.om-tournament-teams button,
+.om-tournament-fixture-row button,
+.tournament-team-list button,
+.tournament-schedule-list button,
+.tournament-back-link,
+.om-room-link {
+  min-height: var(--ui-button-height);
+  border: 1px solid var(--ui-button-border);
+  border-radius: var(--ui-button-radius);
+  background: var(--ui-button-bg);
+  color: var(--ui-button-color);
+  box-shadow: none;
+  font-size: var(--ui-button-font-size);
+  font-weight: var(--ui-button-font-weight);
+  letter-spacing: 0;
+}
+
+.om-filter-bar select,
+.om-calendar-filter-bar select {
+  border-color: var(--ui-control-border);
+  background: var(--ui-control-bg);
+}
+
+.om-room-link,
+.om-filter-bar .segmented-control button.active,
+.om-calendar-actions button.active,
+.om-calendar-toolbar button.active,
+.om-calendar-grid button.active,
+.om-tournament-head-actions button.active,
+.om-tournament-actions button.active,
+.om-tournament-teams button.active,
+.tournament-team-list button.active,
+.tournament-schedule-list button.active {
+  border-color: transparent;
+  background: var(--ui-button-bg-active);
+  color: var(--ui-button-color-active);
+  box-shadow: none;
+}
+
+.om-room-link:hover {
+  background: var(--ui-button-bg-hover);
+  color: var(--ui-button-color-active);
+  filter: none;
+}
+
+.om-view-card:hover,
+.om-view-card.active {
+  transform: none;
+  box-shadow: none;
+}
+
+.om-view-card.active {
+  border-color: color-mix(in srgb, var(--rb-orange) 46%, transparent);
+  background: color-mix(in srgb, var(--rb-orange) 14%, var(--ui-card-bg));
+}
