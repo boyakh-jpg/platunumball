@@ -750,3 +750,8 @@ UI 수정 전:
 4. Room modal keeps existing slot, avatar, reserve, READY/WAIT, captain/host badge, and party connection structure. Only visual skin, spacing, and responsive sheet treatment change.
 5. Active buttons and selected states use orange fill or orange-tinted surface. Green is reserved for ready/success states.
 6. Light mode remains warm cream sports UI, not pure white dashboard.
+
+## 2026-07-01 Fuller hero board
+
+1. Recruiting and Matches heroes use image-led board composition: larger min-height, full-cover background image, and text over the lower image area.
+2. Dark overlay must protect text readability without hiding the sports photo. Light mode uses warm cream/brown overlay, not white dashboard treatment.
