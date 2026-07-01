@@ -309,13 +309,21 @@
 
 .arena-start-date-filter {
   display: grid;
-  grid-template-columns: repeat(8, minmax(34px, 72px));
-  justify-content: space-between;
+  grid-auto-columns: minmax(58px, 72px);
+  grid-auto-flow: column;
+  grid-template-columns: none;
+  justify-content: start;
   gap: clamp(5px, 0.8vw, 10px);
-  flex: 0 1 760px;
-  max-width: 760px;
+  flex: 1 1 100%;
+  max-width: 100%;
   width: 100%;
   min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
 }
 
 .arena-start-date-filter button {
@@ -326,6 +334,7 @@
   min-height: 42px;
   max-width: 72px;
   padding: 3px 2px;
+  scroll-snap-align: start;
   text-align: center;
   line-height: 1.05;
 }
@@ -3965,8 +3974,7 @@ html[data-theme="light"] .arena-compose-drawer {
   }
 
   .arena-filter-segment::-webkit-scrollbar,
-  .arena-filter-bar .segmented-control::-webkit-scrollbar,
-  .arena-start-date-filter::-webkit-scrollbar {
+  .arena-filter-bar .segmented-control::-webkit-scrollbar {
     display: none;
   }
 
@@ -3983,7 +3991,12 @@ html[data-theme="light"] .arena-compose-drawer {
     max-width: 100%;
     overflow-x: auto;
     padding-bottom: 2px;
-    scrollbar-width: none;
+    scrollbar-width: thin;
+  }
+
+  .arena-start-date-filter::-webkit-scrollbar {
+    display: block;
+    height: 4px;
   }
 
   .arena-start-date-filter button,
