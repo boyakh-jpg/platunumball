@@ -444,9 +444,13 @@ html[data-theme="light"] .gm-player-slot em {
 /* 2026-07-01 mobile match-room page hero: full bleed outside room modal internals. */
 @media (max-width: 1079px) {
   .gm-room-hero {
-    width: calc(100% + (2 * var(--page-gutter)));
+    width: calc(100% + (2 * var(--app-main-pad-x, var(--page-gutter))));
     max-width: none;
-    margin-inline: calc(-1 * var(--page-gutter));
+    margin-inline: calc(-1 * var(--app-main-pad-x, var(--page-gutter)));
+    margin-block-start: calc(-1 * var(--app-main-pad-top, 18px));
+    border-top: 0;
+    border-right: 0;
+    border-left: 0;
     border-radius: 0;
   }
 }

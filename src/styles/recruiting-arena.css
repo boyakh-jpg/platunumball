@@ -6432,18 +6432,22 @@ html[data-theme="light"] .arena-room-player-slot.ready [title="READY"] {
   }
 }
 
-/* 2026-07-01 mobile hero full-bleed: no side gutters at the top image. */
-@media (max-width: 1020px) {
+/* 2026-07-01 mobile hero full-bleed: no top/side gutters at the top image. */
+@media (max-width: 1079px) {
   .arena-recruit-hero {
-    width: calc(100% + (2 * var(--page-gutter)));
-    margin-inline: calc(-1 * var(--page-gutter));
+    width: calc(100% + (2 * var(--app-main-pad-x, var(--page-gutter))));
+    margin-inline: calc(-1 * var(--app-main-pad-x, var(--page-gutter)));
+    margin-block-start: calc(-1 * var(--app-main-pad-top, 18px));
+    border-top: 0;
+    border-right: 0;
+    border-left: 0;
     border-radius: 0;
   }
 }
 
 @media (max-width: 720px) {
   .arena-recruit-hero {
-    margin-top: -18px;
+    margin-block-start: calc(-1 * var(--app-main-pad-top, 18px));
   }
 }
 

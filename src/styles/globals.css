@@ -13419,3 +13419,69 @@ button:disabled,
   opacity: 0.58;
   cursor: not-allowed;
 }
+
+/* 2026-07-01 final mobile hero bleed standard.
+   The app shell owns page padding, so first-screen heroes must cancel it on mobile. */
+.app-main {
+  --app-main-pad-top: 28px;
+  --app-main-pad-x: 28px;
+}
+
+@media (max-width: 1020px) {
+  .app-main {
+    --app-main-pad-top: 18px;
+    --app-main-pad-x: 16px;
+  }
+}
+
+@media (max-width: 430px) {
+  .app-main {
+    --app-main-pad-x: 12px;
+  }
+}
+
+@media (max-width: 1079px) {
+  .app-main > .page-stack > :is(
+    .page-header,
+    .landing-hero,
+    .match-hero,
+    .team-hub-hero,
+    .season-hero,
+    .profile-hero,
+    .team-detail-hero,
+    .referee-rulebook-hero
+  ):first-child,
+  .app-main > .rank-home > .rank-summary-grid:first-child {
+    width: calc(100% + (2 * var(--app-main-pad-x)));
+    max-width: none;
+    margin-inline: calc(-1 * var(--app-main-pad-x));
+    margin-block-start: calc(-1 * var(--app-main-pad-top));
+    border-top: 0;
+    border-right: 0;
+    border-left: 0;
+    border-radius: 0;
+  }
+
+  .app-main > .page-stack > .team-hub-hero:first-child {
+    grid-template-columns: 1fr;
+    align-items: end;
+    min-height: 174px;
+    padding: 18px;
+  }
+
+  .app-main > .page-stack > .team-hub-hero:first-child > div:first-child {
+    min-height: 0;
+  }
+
+  .app-main > .page-stack > .team-hub-hero:first-child .team-hub-board {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-main > .page-stack > .team-hub-hero:first-child,
+  .app-main > .page-stack > .page-header:first-child {
+    min-height: 158px;
+    padding: 16px;
+  }
+}
