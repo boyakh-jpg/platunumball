@@ -760,3 +760,8 @@ UI 수정 전:
 
 1. Party connection line crosses the avatar/emblem center and keeps a visible warm glow.
 2. Player avatar images are cropped/feathered above nickname text so names, position, team, and READY stay readable.
+
+## 2026-07-01 App floor background
+
+1. The far-back app background does not use a visible court/grid pattern. Keep it flat with only a very soft light wash.
+2. Court lines may appear inside hero boards or focused cards, not across the whole page floor.

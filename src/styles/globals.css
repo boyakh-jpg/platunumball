@@ -12009,3 +12009,21 @@ html[data-theme="light"] .home-invitation-row,
 html[data-theme="light"] .home-search-box {
   background: rgba(255, 255, 255, 0.64);
 }
+
+/* 2026-07-01 subdued app floor: remove the far-back grid. */
+body {
+  background:
+    radial-gradient(circle at 18% 12%, rgba(255, 255, 255, 0.018), transparent 18rem),
+    var(--bg);
+}
+
+.app-main {
+  background: transparent;
+}
+
+html[data-theme="light"] body,
+html[data-theme="light"] .app-main {
+  background:
+    radial-gradient(circle at 18% 12%, rgba(255, 250, 241, 0.26), transparent 18rem),
+    var(--rb-bg);
+}
