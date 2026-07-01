@@ -735,3 +735,9 @@ UI 수정 전:
 4. Room modal and lobby must preserve `SideRoster`, `ReserveLine`, `PlayerRoomSlot`, empty slots, reserve slots, avatar, READY/WAIT, party group, and party connection line.
 5. Party connection glow stays visible but subdued, using orange line/glow instead of neon green/blue.
 6. Light mode must not become a white SaaS dashboard. Use warm cream background, charcoal text, orange CTA, soft card surface, and court/gym wall tone.
+
+## 2026-07-01 Home composition pass
+
+1. Desktop home uses a court hero plus right rail composition: rank hero on the left, search/action queue on the right.
+2. Home lower dashboard uses match-focused primary column and compact support-card rail.
+3. Mobile home stays single-column for readability: search, action queue, rank hero, then dashboard.
