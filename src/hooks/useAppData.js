@@ -653,6 +653,7 @@ function cacheCurrentProfileState(authUserId, state = {}) {
 }
 
 async function loadProfileState(authUserId, authEmail) {
+  const backendTestLoginId = getBackendTestLoginId(authUserId);
   try {
     const result = await postServerAction(
       "/api/profile/me",
@@ -663,6 +664,7 @@ async function loadProfileState(authUserId, authEmail) {
   } catch (error) {
     console.warn("Server profile load failed. Falling back to direct Supabase read.", error.message);
   }
+  if (backendTestLoginId) return loadState({ includeDemo: false, authUserId, email: authEmail });
   return loadRemoteState(authUserId, authEmail, {
     scope: "profile",
     matchLimit: 0,
@@ -785,7 +787,7 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
     }
     if (options.endpoint) {
       return attachRemoteMeta(await loadProfileState(authUserId, authEmail), {
-        matchPage: { exhausted: true, recruitingScheduleChecked: false },
+        matchPage: { exhausted: true, recruitingScheduleChecked: true },
         recruitingPage: { exhausted: true, feedCounts: null },
         directoryLoaded: ["teamsList", "teamDetail"].includes(options.endpoint),
         profileRecordsLoaded: false,
@@ -802,7 +804,7 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
   }
   if (options.endpoint) {
     return attachRemoteMeta(await loadProfileState(authUserId, authEmail), {
-      matchPage: { exhausted: true, recruitingScheduleChecked: false },
+      matchPage: { exhausted: true, recruitingScheduleChecked: true },
       recruitingPage: { exhausted: true, feedCounts: null },
       directoryLoaded: ["teamsList", "teamDetail"].includes(options.endpoint),
       profileRecordsLoaded: false,
@@ -962,7 +964,7 @@ export function useAppData(authUser = null) {
       .catch((error) => {
         console.warn("Supabase hydration failed. Remote state remains empty.", error.message);
         remoteReadyRef.current = true;
-        setMatchPagination({ loading: false, exhausted: true, error: error.message ?? "state_load_failed", cursor: "", recruitingScheduleChecked: false, recruitingScheduleLoading: false, recruitingSchedulePostIds: [] });
+        setMatchPagination({ loading: false, exhausted: true, error: error.message ?? "state_load_failed", cursor: "", recruitingScheduleChecked: true, recruitingScheduleLoading: false, recruitingSchedulePostIds: [] });
         setRecruitingPagination({ loading: false, exhausted: true, error: error.message ?? "state_load_failed", cursor: "", offset: 0, regionScope: "local", regionKey: "", startFilter: "all", timingType: "", scheduledDate: "", feedCounts: null });
         if (mounted) setRemoteReady(true);
       });
@@ -1316,7 +1318,7 @@ export function useAppData(authUser = null) {
         return remoteState.recruitingPosts?.length ?? 0;
       } catch (error) {
         console.warn("Match recruiting schedule load failed.", error.message);
-        setMatchPagination((prev) => ({ ...prev, recruitingScheduleLoading: false, error: error.message ?? "match_recruiting_schedule_load_failed" }));
+        setMatchPagination((prev) => ({ ...prev, recruitingScheduleLoading: false, recruitingScheduleChecked: true, error: error.message ?? "match_recruiting_schedule_load_failed" }));
         return false;
       }
     })().finally(() => {
