@@ -18,6 +18,7 @@ function readTestSession() {
     const raw = window.localStorage.getItem(TEST_SESSION_KEY);
     return raw ? JSON.parse(raw) : null;
   } catch {
+    window.localStorage.removeItem(TEST_SESSION_KEY);
     return null;
   }
 }
@@ -242,7 +243,8 @@ export function useAuthSession() {
       const nextSession = makeBackendTestSession(testLoginId);
       if (isSupabaseConfigured) {
         setSession(null);
-        await supabase.auth.signOut();
+        const { error: signOutError } = await supabase.auth.signOut().catch((signOutError) => ({ error: signOutError }));
+        if (signOutError) console.warn("Supabase sign-out before test login failed.", signOutError.message);
       }
       writeTestSession(nextSession);
       setClientActionSession(nextSession);

@@ -1741,6 +1741,9 @@ flowchart TD
 - Production test login requires both `RANKBALL_ALLOW_PRODUCTION_TEST_LOGIN=true` and an explicit `RANKBALL_PRODUCTION_TEST_LOGIN_IDS` allowlist such as `rankball-001,rankball-002`.
 - Test login token formatting, test account count, team role normalization, team member limits, referee trust minimum, and court request trust minimum are shared from `src/lib/constants.js`.
 - Server endpoints must not keep separate copies of those rule values. If a limit changes, update `src/lib/constants.js` first.
+- Backend test login must not depend on Supabase OAuth sign-out success. A stale OAuth session cannot block replacing the active server action token with the selected test account token.
+- Server actions prefer a fresh backend test session token before any Supabase OAuth session, and refresh OAuth sessions before sending a near-expired bearer token.
+- Malformed backend test session cache is removed on read so it cannot keep blocking later test login or server action token selection.
 
 ## 2026-07-01 feed-first list fallback
 

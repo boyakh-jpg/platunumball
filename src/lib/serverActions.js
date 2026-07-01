@@ -3,6 +3,22 @@ import { isServerActionsEnabled, isSupabaseConfigured, supabase } from "./supaba
 const TEST_SESSION_KEY = "rankball.auth.testSession.v1";
 let cachedActionSession = { accessToken: "", expiresAtMs: 0 };
 
+function isFreshSession(session = null) {
+  if (!session?.access_token) return false;
+  const expiresAtMs = Number(session.expires_at ?? 0) * 1000;
+  return !expiresAtMs || expiresAtMs - Date.now() > 30000;
+}
+
+function readStoredTestSession() {
+  if (typeof window === "undefined") return null;
+  try {
+    return JSON.parse(window.localStorage.getItem(TEST_SESSION_KEY) || "null");
+  } catch {
+    window.localStorage.removeItem(TEST_SESSION_KEY);
+    return null;
+  }
+}
+
 export function setClientActionSession(session = null) {
   cachedActionSession = {
     accessToken: session?.access_token ?? "",
@@ -25,20 +41,28 @@ export async function getClientActionAccessToken() {
     return cachedActionSession.accessToken;
   }
 
-  const { data } = await supabase.auth.getSession();
-  const accessToken = data?.session?.access_token;
-  if (accessToken) {
-    setClientActionSession(data.session);
-    return accessToken;
+  const testSession = readStoredTestSession();
+  if (isFreshSession(testSession)) {
+    setClientActionSession(testSession);
+    return testSession.access_token;
   }
 
-  if (typeof window === "undefined") return "";
-  try {
-    const testSession = JSON.parse(window.localStorage.getItem(TEST_SESSION_KEY) || "null");
-    return typeof testSession?.access_token === "string" ? testSession.access_token : "";
-  } catch {
-    return "";
+  if (!isSupabaseConfigured || !supabase) return "";
+
+  const { data } = await supabase.auth.getSession();
+  if (isFreshSession(data?.session)) {
+    setClientActionSession(data.session);
+    return data.session.access_token;
   }
+
+  const refreshed = await supabase.auth.refreshSession().catch(() => null);
+  if (isFreshSession(refreshed?.data?.session)) {
+    setClientActionSession(refreshed.data.session);
+    return refreshed.data.session.access_token;
+  }
+
+  setClientActionSession(null);
+  return "";
 }
 
 export async function getServerActionAvailability(path = "") {
