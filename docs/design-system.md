@@ -765,3 +765,8 @@ UI 수정 전:
 
 1. The far-back app background does not use a visible court/grid pattern. Keep it flat with only a very soft light wash.
 2. Court lines may appear inside hero boards or focused cards, not across the whole page floor.
+
+## 2026-07-01 Room reserve and palette
+
+1. Room modal reserve lanes show A-side and B-side candidates in one horizontal row group to reduce vertical height.
+2. Dark and light UI use charcoal/cream surfaces with orange primary actions, gold wait/warning states, and green only for READY/success states.

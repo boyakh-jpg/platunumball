@@ -6327,3 +6327,74 @@ html[data-theme="light"] .arena-room-party-group::after {
     --party-link-y: 32px;
   }
 }
+
+/* 2026-07-01 reserve row and restrained palette pass. */
+.arena-reserve-panel,
+html[data-theme="light"] .arena-reserve-panel {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 10px;
+}
+
+.arena-reserve-line,
+html[data-theme="light"] .arena-reserve-line {
+  min-width: 0;
+  padding-inline: 0;
+}
+
+.arena-reserve-line > strong,
+html[data-theme="light"] .arena-reserve-line > strong {
+  color: var(--rb-gold);
+}
+
+.arena-reserve-line > .arena-room-reserve-row,
+html[data-theme="light"] .arena-reserve-line > .arena-room-reserve-row {
+  grid-auto-columns: minmax(74px, 74px);
+  grid-template-columns: none;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.arena-reserve-line > .arena-room-reserve-row::-webkit-scrollbar {
+  display: none;
+}
+
+.arena-lobby-score-core span,
+.arena-lobby-actions svg,
+html[data-theme="light"] .arena-lobby-score-core span,
+html[data-theme="light"] .arena-lobby-actions svg {
+  color: var(--rb-gold);
+}
+
+.arena-card-bottom > .arena-room-list-state.green,
+.arena-queue-board-head .arena-room-list-state.green,
+html[data-theme="light"] .arena-card-bottom > .arena-room-list-state.green,
+html[data-theme="light"] .arena-queue-board-head .arena-room-list-state.green {
+  border-color: color-mix(in srgb, var(--rb-gold) 36%, transparent);
+  background: color-mix(in srgb, var(--rb-gold) 12%, transparent);
+  color: var(--rb-gold);
+}
+
+.arena-room-player-slot.ready em,
+.arena-room-player-slot.ready .arena-room-slot-ready,
+.arena-room-player-slot.ready [title="READY"],
+html[data-theme="light"] .arena-room-player-slot.ready em,
+html[data-theme="light"] .arena-room-player-slot.ready .arena-room-slot-ready,
+html[data-theme="light"] .arena-room-player-slot.ready [title="READY"] {
+  color: var(--rb-green);
+}
+
+@media (max-width: 720px) {
+  .arena-reserve-panel,
+  html[data-theme="light"] .arena-reserve-panel {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .arena-reserve-line > strong,
+  html[data-theme="light"] .arena-reserve-line > strong {
+    font-size: 0.72rem;
+  }
+}
