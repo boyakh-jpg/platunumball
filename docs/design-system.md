@@ -835,4 +835,4 @@ UI 수정 전:
 12. Long filter groups, such as recruiting date chips, keep scroll inside the group. Buttons must not bleed outside the group border or lose their own border because of older active-state overrides.
 13. Settings keeps short profile exposure and Discord controls inside the main settings screen with one shared save action. Favorites, court request, and referee request stay as separate settings subpages.
 14. Rulebook illustrations must use `object-fit: contain` so exported PNG/WebP scenes are fully visible inside their cards.
-15. On mobile, the first page hero cancels `app-main` top and side padding. Settings, teams, matches, recruiting, match room, profile, season, and rulebook heroes must start at the viewport top edge with no side gutters.
+15. On mobile/tablet app layouts, the first page hero cancels `app-main` top and side padding. Home, settings, teams, matches, recruiting, match room, profile, season, and rulebook heroes must start at the app viewport top edge with no side gutters.

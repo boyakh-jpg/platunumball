@@ -13445,6 +13445,13 @@ button:disabled,
   --app-main-pad-x: 28px;
 }
 
+@media (max-width: 1079px) {
+  .app-main {
+    --app-main-pad-top: var(--page-gutter);
+    --app-main-pad-x: var(--page-gutter);
+  }
+}
+
 @media (max-width: 1020px) {
   .app-main {
     --app-main-pad-top: 18px;
@@ -13469,7 +13476,7 @@ button:disabled,
     .team-detail-hero,
     .referee-rulebook-hero
   ):first-child,
-  .app-main > .rank-home > .rank-summary-grid:first-child {
+  .app-main > .rank-home > .rank-summary-grid {
     width: calc(100% + (2 * var(--app-main-pad-x)));
     max-width: none;
     margin-inline: calc(-1 * var(--app-main-pad-x));
@@ -13478,6 +13485,22 @@ button:disabled,
     border-right: 0;
     border-left: 0;
     border-radius: 0;
+  }
+
+  .app-main > .rank-home > .rank-summary-grid {
+    order: 1;
+  }
+
+  .app-main > .rank-home > .home-search-panel {
+    order: 2;
+  }
+
+  .app-main > .rank-home > .home-action-card {
+    order: 3;
+  }
+
+  .app-main > .rank-home > .home-dashboard-grid {
+    order: 4;
   }
 
   .app-main > .page-stack > .team-hub-hero:first-child {
