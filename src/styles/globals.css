@@ -12591,3 +12591,251 @@ html[data-theme="light"] .rank-home .rank-tier-rail {
     margin-bottom: -213px;
   }
 }
+
+/* 2026-07-01 shared UI primitives. Keep page-specific layout rules above this layer. */
+.card,
+.selector-panel,
+.ranking-filter-card,
+.profile-main-stack > .card,
+.profile-side-grid > .card,
+.home-side-stack > .card,
+.om-view-card,
+.om-match-card,
+.arena-recruit-card,
+.arena-filter-bar,
+.om-filter-bar,
+.om-calendar-filter-bar {
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+}
+
+html[data-theme="light"] .card,
+html[data-theme="light"] .selector-panel,
+html[data-theme="light"] .ranking-filter-card,
+html[data-theme="light"] .profile-main-stack > .card,
+html[data-theme="light"] .profile-side-grid > .card,
+html[data-theme="light"] .home-side-stack > .card,
+html[data-theme="light"] .om-view-card,
+html[data-theme="light"] .om-match-card,
+html[data-theme="light"] .arena-recruit-card,
+html[data-theme="light"] .arena-filter-bar,
+html[data-theme="light"] .om-filter-bar,
+html[data-theme="light"] .om-calendar-filter-bar {
+  border-color: var(--card-border);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+}
+
+.card,
+.selector-panel,
+.ranking-filter-card,
+.profile-main-stack > .card,
+.profile-side-grid > .card,
+.home-side-stack > .card {
+  padding: var(--card-padding);
+}
+
+.button,
+.provider-button,
+.auth-browser-actions button,
+.auth-browser-actions a,
+.auth-session-line button,
+.segmented-control button,
+.quick-picker button,
+.public-party-picker-grid button,
+.team-picker,
+.court-search-popover button,
+.report-player-picker button,
+.referee-exam-choice-grid button,
+.arena-filter-bar button,
+.arena-start-date-filter button,
+.arena-card-action.button,
+.om-filter-bar .segmented-control button,
+.om-room-link {
+  min-height: var(--control-height);
+  border-radius: var(--control-radius);
+  box-shadow: none;
+  font-size: var(--control-font-size);
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.button-sm {
+  min-height: var(--control-height-sm);
+}
+
+.button-primary,
+.rank-home .home-rank-board-head .button,
+.button.om-match-create,
+.provider-test,
+.arena-card-action.button,
+.om-room-link {
+  border: 0;
+  background: var(--button-primary-bg);
+  color: #fff;
+}
+
+.button-primary:hover,
+.rank-home .home-rank-board-head .button:hover,
+.button.om-match-create:hover,
+.provider-test:hover,
+.arena-card-action.button:hover,
+.om-room-link:hover {
+  background: var(--button-primary-hover-bg);
+  color: #fff;
+  filter: none;
+}
+
+.button-primary:active,
+.rank-home .home-rank-board-head .button:active,
+.button.om-match-create:active,
+.provider-test:active,
+.arena-card-action.button:active,
+.om-room-link:active {
+  background: var(--button-primary-pressed-bg);
+}
+
+.button-secondary,
+.button-icon,
+.provider-button,
+.auth-browser-actions button,
+.auth-browser-actions a,
+.auth-session-line button,
+.segmented-control,
+.segmented-control button,
+.quick-picker button,
+.public-party-picker-grid button,
+.team-picker,
+.court-search-popover button,
+.report-player-picker button,
+.referee-exam-choice-grid button,
+.arena-filter-bar button,
+.arena-start-date-filter button,
+.om-filter-bar .segmented-control button {
+  border: 1px solid var(--control-border);
+  background: var(--button-secondary-bg);
+  color: var(--rb-text);
+}
+
+.segmented-control button.active,
+.quick-picker button.selected,
+.public-party-picker-grid button.selected,
+.team-picker.selected,
+.court-search-popover button.selected,
+.report-player-picker button.selected,
+.referee-exam-choice-grid button.selected,
+.arena-filter-bar button.active,
+.arena-filter-bar .segmented-control button.active,
+.arena-filter-bar .arena-start-date-filter button.active,
+.arena-filter-bar .arena-start-date-filter button.sat.active,
+.arena-filter-bar .arena-start-date-filter button.sun.active,
+.om-filter-bar .segmented-control button.active {
+  border-color: transparent;
+  background: var(--button-primary-bg);
+  color: #fff;
+  box-shadow: none;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+select,
+textarea,
+.search-picker-input,
+.search-input,
+.auth-card select,
+.home-search-box input,
+.arena-filter-select select,
+.om-filter-bar select,
+.om-calendar-filter-bar select {
+  min-height: var(--control-height);
+  border: 1px solid var(--input-border);
+  border-radius: var(--control-radius);
+  background: var(--input-bg);
+  color: var(--rb-text);
+  box-shadow: none;
+  font-size: max(0.9rem, 16px);
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="color"])::placeholder,
+textarea::placeholder,
+.search-picker-input::placeholder,
+.search-input::placeholder,
+.home-search-box input::placeholder {
+  color: var(--rb-soft);
+}
+
+.button:focus-visible,
+.provider-button:focus-visible,
+.auth-browser-actions button:focus-visible,
+.auth-browser-actions a:focus-visible,
+.auth-session-line button:focus-visible,
+.segmented-control button:focus-visible,
+.quick-picker button:focus-visible,
+.public-party-picker-grid button:focus-visible,
+.team-picker:focus-visible,
+.court-search-popover button:focus-visible,
+.report-player-picker button:focus-visible,
+.referee-exam-choice-grid button:focus-visible,
+.arena-filter-bar button:focus-visible,
+.arena-start-date-filter button:focus-visible,
+.om-filter-bar .segmented-control button:focus-visible,
+input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--rb-orange-2) 72%, transparent);
+  outline-offset: 2px;
+  box-shadow: var(--focus-ring);
+}
+
+.badge,
+.status-badge,
+.chip,
+.form-chip,
+.arena-tier-chip {
+  border: 1px solid var(--control-border);
+  border-radius: 999px;
+  background: var(--button-secondary-bg);
+  box-shadow: none;
+}
+
+.badge-green,
+.status-badge.green {
+  border-color: color-mix(in srgb, var(--rb-green) 36%, transparent);
+  background: color-mix(in srgb, var(--rb-green) 10%, transparent);
+  color: var(--rb-green);
+}
+
+.badge-gold,
+.status-badge.gold {
+  border-color: color-mix(in srgb, var(--rb-gold) 36%, transparent);
+  background: color-mix(in srgb, var(--rb-gold) 10%, transparent);
+  color: var(--rb-gold);
+}
+
+.badge-blue,
+.status-badge.blue {
+  border-color: color-mix(in srgb, var(--rb-blue) 34%, transparent);
+  background: color-mix(in srgb, var(--rb-blue) 10%, transparent);
+  color: var(--rb-blue);
+}
+
+.badge-orange,
+.badge.orange,
+.status-badge.orange {
+  border-color: color-mix(in srgb, var(--rb-orange) 36%, transparent);
+  background: color-mix(in srgb, var(--rb-orange) 12%, transparent);
+  color: var(--rb-orange);
+}
+
+.bottom-nav {
+  background: rgba(29, 30, 31, 0.94);
+  border-top: 1px solid var(--card-border);
+  box-shadow: none;
+}
+
+html[data-theme="light"] .bottom-nav {
+  background: rgba(255, 250, 241, 0.94);
+  border-top-color: var(--card-border);
+  box-shadow: none;
+}

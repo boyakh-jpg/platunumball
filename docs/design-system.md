@@ -817,3 +817,10 @@ UI 수정 전:
 
 1. On mobile, Home, Recruiting, and Matches hero images bleed to the viewport edges so the far-back page background is not visible at the top left/right.
 2. Mobile hero top corners are square; lower corners may keep the large app radius.
+
+## 2026-07-01 Shared UI primitives
+
+1. Buttons, icon buttons, segmented controls, selects, inputs, cards, panels, badges, and chips derive from shared primitive tokens in `tokens.css`.
+2. Page CSS may change layout, width, and contextual emphasis, but should not invent unrelated border radius, shadow, border, or primary color rules.
+3. Primary actions use orange. Secondary controls use surface plus border. Green is reserved for READY/success state.
+4. Raw page-specific button/card overrides should be migrated back to the shared primitive layer instead of adding new late overrides.

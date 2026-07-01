@@ -6570,3 +6570,85 @@ html[data-theme="light"] .arena-lobby-modal {
     var(--bg-ball) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat,
     var(--rb-bg-2);
 }
+
+/* 2026-07-01 shared primitive alignment for recruiting chunk. */
+.arena-recruit-card,
+.arena-filter-bar,
+.arena-lobby-card.om-match-card,
+.arena-owner-panel,
+.arena-room-rule-panel,
+.arena-join-panel,
+.arena-invite-panel,
+.arena-room-chat {
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+}
+
+html[data-theme="light"] .arena-recruit-card,
+html[data-theme="light"] .arena-filter-bar,
+html[data-theme="light"] .arena-lobby-card.om-match-card,
+html[data-theme="light"] .arena-owner-panel,
+html[data-theme="light"] .arena-room-rule-panel,
+html[data-theme="light"] .arena-join-panel,
+html[data-theme="light"] .arena-invite-panel,
+html[data-theme="light"] .arena-room-chat {
+  border-color: var(--card-border);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+}
+
+.arena-filter-bar button,
+.arena-filter-select select,
+.arena-filter-bar .segmented-control button,
+.arena-filter-bar .arena-start-date-filter button,
+.arena-collapse-button,
+.arena-card-action.button,
+.arena-slot-command-popover .arena-invite-team-picker > .button {
+  min-height: var(--control-height);
+  border: 1px solid var(--control-border);
+  border-radius: var(--control-radius);
+  background: var(--button-secondary-bg);
+  color: var(--rb-text);
+  box-shadow: none;
+  font-size: var(--control-font-size);
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.arena-filter-select select {
+  background: var(--input-bg);
+  color: var(--rb-text);
+}
+
+.arena-recruit-card.arena-my-room,
+.arena-recruit-card.arena-invited-room,
+.arena-recruit-card.arena-target-room {
+  border-color: var(--card-border);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+}
+
+.arena-filter-bar button.active,
+.arena-filter-bar .segmented-control button.active,
+.arena-filter-bar .arena-start-date-filter button.active,
+.arena-filter-bar .arena-start-date-filter button.sat.active,
+.arena-filter-bar .arena-start-date-filter button.sun.active,
+.arena-card-action.button:not(.button-secondary) {
+  border-color: transparent;
+  background: var(--button-primary-bg);
+  color: #fff;
+}
+
+.arena-card-action.button:not(.button-secondary):hover {
+  background: var(--button-primary-hover-bg);
+  color: #fff;
+  filter: none;
+}
+
+.arena-card-action.button-secondary {
+  border-color: var(--control-border);
+  background: var(--button-secondary-bg);
+  color: var(--rb-text);
+}

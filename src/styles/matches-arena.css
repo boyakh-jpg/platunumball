@@ -3756,3 +3756,59 @@ html[data-theme="light"] .om-match-hero {
 .om-match-hero::after {
   background: linear-gradient(90deg, rgba(118, 169, 255, 0.18), transparent 25%, transparent 78%, rgba(255, 211, 108, 0.12));
 }
+
+/* 2026-07-01 shared primitive alignment for matches chunk. */
+.om-view-card,
+.om-match-card,
+.om-filter-bar,
+.om-calendar-filter-bar,
+.om-match-panel {
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+}
+
+html[data-theme="light"] .om-view-card,
+html[data-theme="light"] .om-match-card,
+html[data-theme="light"] .om-filter-bar,
+html[data-theme="light"] .om-calendar-filter-bar,
+html[data-theme="light"] .om-match-panel {
+  border-color: var(--card-border);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+}
+
+.om-filter-bar select,
+.om-calendar-filter-bar select,
+.om-filter-bar .segmented-control button,
+.om-room-link {
+  min-height: var(--control-height);
+  border: 1px solid var(--control-border);
+  border-radius: var(--control-radius);
+  background: var(--button-secondary-bg);
+  color: var(--rb-text);
+  box-shadow: none;
+  font-size: var(--control-font-size);
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.om-filter-bar select,
+.om-calendar-filter-bar select {
+  background: var(--input-bg);
+  color: var(--rb-text);
+}
+
+.om-filter-bar .segmented-control button.active,
+.om-room-link {
+  border-color: transparent;
+  background: var(--button-primary-bg);
+  color: #fff;
+}
+
+.om-room-link:hover {
+  background: var(--button-primary-hover-bg);
+  color: #fff;
+  filter: none;
+}
