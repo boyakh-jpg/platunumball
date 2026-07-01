@@ -1884,22 +1884,24 @@ span.referee-hover-card {
 .segmented-control {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--control-group-gap, 6px);
   border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 5px;
+  border-radius: var(--control-group-radius, var(--radius-md));
+  padding: var(--control-group-padding, 6px);
   background: var(--surface-2);
+  overflow: visible;
 }
 
 .segmented-control button {
   min-height: 36px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--control-radius, 7px);
   background: transparent;
   color: var(--muted);
   cursor: pointer;
   font-weight: 800;
   padding: 0 12px;
+  background-clip: padding-box;
 }
 
 .segmented-control button.active {

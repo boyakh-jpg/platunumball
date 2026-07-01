@@ -320,9 +320,11 @@
   min-width: 0;
   overflow-x: auto;
   overscroll-behavior-inline: contain;
-  padding-bottom: 2px;
+  padding: var(--control-group-padding, 6px);
+  border-radius: var(--control-group-radius, var(--radius-md));
   scrollbar-width: thin;
   scroll-snap-type: x proximity;
+  scroll-padding-inline: var(--control-group-padding, 6px);
   -webkit-overflow-scrolling: touch;
 }
 
@@ -3397,16 +3399,20 @@ html[data-theme="light"] .arena-recruit-card.arena-target-room {
   width: auto;
   max-width: 100%;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--control-group-gap, 6px);
   border: 0;
-  padding: 0;
+  padding: var(--control-group-padding, 6px);
+  border-radius: var(--control-group-radius, var(--radius-md));
   background: transparent;
+  overflow: visible;
 }
 
 .arena-filter-bar .segmented-control {
   border: 0;
-  padding: 0;
+  padding: var(--control-group-padding, 6px);
+  border-radius: var(--control-group-radius, var(--radius-md));
   background: transparent;
+  overflow: visible;
 }
 
 .arena-filter-bar .segmented-control button {
