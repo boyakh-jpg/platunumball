@@ -33,10 +33,10 @@ const sideLabels = {
 };
 
 const statusMeta = {
-  agreed: { label: "진행", tone: "green" },
+  agreed: { label: "진행", tone: "blue" },
   approval: { label: "승인", tone: "orange" },
   disputed: { label: "이의", tone: "orange" },
-  confirmed: { label: "확정", tone: "green" },
+  confirmed: { label: "확정", tone: "gold" },
 };
 
 const activeStatuses = new Set(["agreed", "approval", "disputed"]);

@@ -283,12 +283,12 @@ RankBall 다크 모드는 이 팔레트를 기본 CSS 색상 표준으로 쓴다
 | 상태 | 색 |
 | --- | --- |
 | waiting | blue |
-| locked | green |
+| locked | blue |
 | checkin | orange |
-| live | green/blue |
+| live | blue/orange |
 | postgame | orange |
 | dispute | orange/danger |
-| record | green |
+| record | gold |
 | cancelled | neutral |
 | void | neutral |
 
