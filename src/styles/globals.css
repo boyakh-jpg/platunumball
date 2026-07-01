@@ -11301,7 +11301,7 @@ html[data-theme="light"] .auth-test-login .provider-button {
 html[data-theme="light"] .button-primary:hover,
 html[data-theme="light"] .provider-test:hover,
 html[data-theme="light"] .auth-test-login .provider-button:hover {
-  background: #d64c38;
+  background: var(--rb-orange-pressed);
   filter: none;
 }
 
@@ -11691,6 +11691,19 @@ button {
   border: 0;
   background: var(--rb-orange);
   color: #fff;
+}
+
+.button-primary:hover,
+.rank-home .home-rank-board-head .button:hover,
+.auth-test-login .provider-button:hover {
+  background: var(--rb-orange-2);
+  filter: none;
+}
+
+.button-primary:active,
+.rank-home .home-rank-board-head .button:active,
+.auth-test-login .provider-button:active {
+  background: var(--rb-orange-pressed);
 }
 
 .button-secondary,

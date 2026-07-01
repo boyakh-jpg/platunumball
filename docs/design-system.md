@@ -88,6 +88,31 @@
 
 # RankBall Design System
 
+## 2026-07-01 다크 색상 표준
+
+RankBall 다크 모드는 이 팔레트를 기본 CSS 색상 표준으로 쓴다. 새 UI는 `--rb-*` 토큰을 우선 사용하고, 기존 alias도 같은 값으로 맞춘다.
+
+| 용도 | 토큰 | 값 |
+| --- | --- | --- |
+| 앱 배경 | `--rb-bg` | `#303132` |
+| 깊은 배경 | `--rb-bg-2` | `#242526` |
+| 최하단/사이드바 | `--rb-bg-3` | `#18191A` |
+| 카드 배경 | `--rb-surface` | `rgba(255,255,255,.055)` |
+| 강조 카드 | `--rb-surface-strong` | `rgba(255,255,255,.085)` |
+| 선 | `--rb-line` | `rgba(255,255,255,.13)` |
+| 강한 선 | `--rb-line-strong` | `rgba(255,255,255,.22)` |
+| 메인 글자 | `--rb-text` | `#FFFFFF` |
+| 보조 글자 | `--rb-muted` | `rgba(255,255,255,.68)` |
+| 희미한 글자 | `--rb-soft` | `rgba(255,255,255,.44)` |
+| 주요 버튼 | `--rb-orange` | `#F05A46` |
+| 버튼 호버 | `--rb-orange-2` | `#FF7658` |
+| 버튼 누름 | `--rb-orange-pressed` | `#D94C37` |
+| 성공/READY | `--rb-green` | `#65D99F` |
+| 정보/링크 | `--rb-blue` | `#78AAFF` |
+| 경고/대기 | `--rb-gold` | `#FFD36C` |
+| 위험/신고 | `--rb-danger` | `#FF6B6B` |
+| 아바타 기본 | `--rb-cream` | `#F5F1E8` |
+
 2026-07-01: 공통 radius는 `--radius-sm/md/lg/xl` 계층을 쓴다. 일반 카드/입력/버튼은 10~18px 기준이고, 모바일 bottom sheet 상단은 24px까지 허용한다.
 2026-07-01: 농구 앱 정체성은 flat sports surface, scoreboard 숫자, court-line accent를 우선하고 반복 glow/gradient/glass 장식은 줄인다.
 2026-07-01: 모집 시작일 필터는 모바일에서 8개 버튼을 억지로 압축하지 않고 필터 내부 가로 스크롤을 허용한다. 페이지 전체 가로 스크롤은 계속 금지한다.
