@@ -71,6 +71,15 @@
   --input-bg: rgba(255, 255, 255, 0.06);
   --input-border: var(--rb-line);
   --focus-ring: 0 0 0 3px rgba(255, 118, 88, 0.2);
+  --hero-title-font: Impact, "Arial Narrow", "Roboto Condensed", sans-serif;
+  --hero-title-size: clamp(2.9rem, 5.6vw, 4.8rem);
+  --hero-title-size-mobile: clamp(2.8rem, 14vw, 4.35rem);
+  --hero-title-line-height: 0.9;
+  --hero-title-letter-spacing: -0.012em;
+  --hero-title-color: var(--rb-cream);
+  --hero-title-shadow: 0 14px 34px rgba(0, 0, 0, 0.52);
+  --hero-copy-color: rgba(255, 250, 241, 0.86);
+  --hero-copy-shadow: 0 8px 20px rgba(0, 0, 0, 0.42);
   --sidebar-width: 260px;
   --bottom-nav-height: 58px;
   --bg-court: none;
@@ -144,6 +153,10 @@ html[data-theme="light"] {
   --input-bg: rgba(255, 250, 241, 0.78);
   --input-border: rgba(30, 24, 18, 0.14);
   --focus-ring: 0 0 0 3px rgba(229, 85, 63, 0.16);
+  --hero-title-color: #fffaf1;
+  --hero-title-shadow: 0 14px 34px rgba(30, 24, 18, 0.5);
+  --hero-copy-color: rgba(255, 250, 241, 0.88);
+  --hero-copy-shadow: 0 8px 20px rgba(30, 24, 18, 0.38);
   --court-line: rgba(30, 24, 18, 0.05);
   --scoreboard: #fffaf1;
   --scoreboard-2: #ebe3d6;

@@ -174,14 +174,14 @@ export default function SearchPicker({
           className={`home-search-results unified search-picker-results${floating ? " is-floating" : ""}${resultsClassName ? ` ${resultsClassName}` : ""}`}
           onPointerDown={(event) => event.preventDefault()}
           onClickCapture={(event) => {
-            if (!closeOnResultClick || event.target?.closest?.(".home-search-more")) return;
+            if (!closeOnResultClick || event.target?.closest?.(".search-picker-more, .home-search-more")) return;
             window.setTimeout(closeResults, 0);
           }}
         >
           {resultTitle ? <strong className="search-picker-title">{resultTitle}</strong> : null}
           {visibleItems.length ? visibleItems.map(renderItem) : <div className="empty-state">{remoteLoading ? "검색 중..." : emptyText}</div>}
           {hasMore ? (
-            <button type="button" className="home-search-more" onMouseDown={(event) => event.preventDefault()} onClick={() => setExpanded(true)}>
+            <button type="button" className="home-search-more search-picker-more" onMouseDown={(event) => event.preventDefault()} onClick={() => setExpanded(true)}>
               더보기
             </button>
           ) : null}

@@ -637,8 +637,8 @@ body > .basketball-loader-overlay ~ .basketball-loader-overlay {
 }
 
 .button-primary {
-  background: linear-gradient(135deg, var(--green), #72f2cf);
-  color: #07110f;
+  background: var(--button-primary-bg);
+  color: #fff;
   box-shadow: none;
 }
 
@@ -817,8 +817,8 @@ span.referee-hover-card {
   justify-content: center;
   gap: 7px;
   border-radius: 9px;
-  background: linear-gradient(135deg, var(--green), var(--blue));
-  color: #061018;
+  background: var(--button-primary-bg);
+  color: #fff;
   font-size: 0.86rem;
   font-weight: 950;
   padding: 11px 12px;
@@ -1317,8 +1317,8 @@ span.referee-hover-card {
     align-items: center;
     justify-content: center;
     border-radius: 9px;
-    background: linear-gradient(135deg, var(--green), var(--blue));
-    color: #061018;
+    background: var(--button-primary-bg);
+    color: #fff;
     font-size: 0.86rem;
     font-weight: 950;
     padding: 11px 12px;
@@ -8085,8 +8085,8 @@ html[data-theme="light"] .segmented-control button {
 
 html[data-theme="light"] .segmented-control button.active,
 html[data-theme="light"] .button-primary {
-  background: linear-gradient(135deg, var(--green), #26c7a1);
-  color: #f7fffb;
+  background: var(--button-primary-bg);
+  color: #fff;
 }
 
 html[data-theme="light"] .team-search-popover button,
@@ -10857,7 +10857,7 @@ html[data-theme="light"] .app-main {
 
 .nav-item.active,
 .nav-item:hover {
-  background: rgba(65, 215, 176, 0.12);
+  background: color-mix(in srgb, var(--rb-orange) 12%, transparent);
   box-shadow: none;
 }
 
@@ -10865,15 +10865,15 @@ html[data-theme="light"] .app-main {
 .section-card,
 .home-search-panel,
 .home-action-card {
-  border-color: rgba(199, 223, 232, 0.18);
-  background-color: rgba(8, 12, 18, 0.94);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.24);
+  border-color: var(--card-border);
+  background-color: var(--card-bg);
+  box-shadow: var(--card-shadow);
 }
 
 .button-primary,
 .provider-test {
-  background: var(--team-home);
-  color: #06120f;
+  background: var(--button-primary-bg);
+  color: #fff;
   box-shadow: none;
 }
 
@@ -12838,4 +12838,195 @@ html[data-theme="light"] .bottom-nav {
   background: rgba(255, 250, 241, 0.94);
   border-top-color: var(--card-border);
   box-shadow: none;
+}
+
+/* 2026-07-01 standard UI cleanup: shared boxes, controls, and hero typography. */
+.section-card,
+.admin-action-panel,
+.recorder-late-player-panel,
+.recorder-handoff-panel,
+.recorder-review-panel,
+.gm-next-action-card,
+.gm-rule-summary-card,
+.stat-referee-panel,
+.stat-trust-panel,
+.match-card,
+.hover-portal-card,
+.player-hover-card,
+.team-hover-card,
+.court-hover-card,
+.referee-hover-card,
+.notification-invitation-card,
+.affiliation-card,
+.profile-record-card,
+.profile-records-summary,
+.discord-link-card,
+.trust-star-card,
+.court-review-card,
+.review-controls-card {
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+}
+
+html[data-theme="light"] .section-card,
+html[data-theme="light"] .admin-action-panel,
+html[data-theme="light"] .recorder-late-player-panel,
+html[data-theme="light"] .recorder-handoff-panel,
+html[data-theme="light"] .recorder-review-panel,
+html[data-theme="light"] .gm-next-action-card,
+html[data-theme="light"] .gm-rule-summary-card,
+html[data-theme="light"] .stat-referee-panel,
+html[data-theme="light"] .stat-trust-panel,
+html[data-theme="light"] .match-card,
+html[data-theme="light"] .hover-portal-card,
+html[data-theme="light"] .player-hover-card,
+html[data-theme="light"] .team-hover-card,
+html[data-theme="light"] .court-hover-card,
+html[data-theme="light"] .referee-hover-card,
+html[data-theme="light"] .notification-invitation-card,
+html[data-theme="light"] .affiliation-card,
+html[data-theme="light"] .profile-record-card,
+html[data-theme="light"] .profile-records-summary,
+html[data-theme="light"] .discord-link-card,
+html[data-theme="light"] .trust-star-card,
+html[data-theme="light"] .court-review-card,
+html[data-theme="light"] .review-controls-card {
+  border-color: var(--card-border);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+}
+
+.create-mode-grid button,
+.favorite-type-grid button,
+.notification-actions button,
+.compact-list button,
+.admin-action-panel button,
+.favorite-toggle-button,
+.hover-card-close,
+.hover-card-action,
+.provider-button,
+.search-picker-more,
+.home-search-more,
+.court-address-results button,
+.reported-player-list button,
+.referee-exam-choice-grid button,
+.settings-page .section-card button:not(.button):not(.favorite-toggle-button),
+.tournament-back-link {
+  min-height: var(--control-height);
+  border: 1px solid var(--control-border);
+  border-radius: var(--control-radius);
+  background: var(--button-secondary-bg);
+  color: var(--rb-text);
+  box-shadow: none;
+  font-size: var(--control-font-size);
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.create-mode-grid button.active,
+.favorite-type-grid button.active,
+.reported-player-list button.selected,
+.referee-exam-choice-grid button.selected,
+.provider-test,
+.settings-page .section-card button.active:not(.favorite-toggle-button) {
+  border-color: transparent;
+  background: var(--button-primary-bg);
+  color: #fff;
+  box-shadow: none;
+}
+
+.button-primary,
+.provider-test,
+.create-submit-row .button:not(.button-secondary),
+.gm-next-action-card .button:not(.button-secondary) {
+  border-color: transparent;
+  background: var(--button-primary-bg);
+  color: #fff;
+  box-shadow: none;
+}
+
+.button-primary:hover,
+.provider-test:hover,
+.create-submit-row .button:not(.button-secondary):hover,
+.gm-next-action-card .button:not(.button-secondary):hover {
+  background: var(--button-primary-hover-bg);
+  color: #fff;
+  filter: none;
+}
+
+.danger-button,
+.button.danger-button,
+button.danger-button {
+  border-color: color-mix(in srgb, var(--rb-danger) 34%, transparent);
+  background: color-mix(in srgb, var(--rb-danger) 12%, transparent);
+  color: var(--rb-danger);
+}
+
+.section-card > .eyebrow,
+.section-card .eyebrow,
+.card > .eyebrow,
+.card .eyebrow,
+.match-card .eyebrow,
+.gm-room-title > span,
+.gm-team-head span,
+.page-header .eyebrow,
+.profile-hero .eyebrow,
+.team-detail-hero .eyebrow,
+.team-hub-hero .eyebrow,
+.season-hero-copy .eyebrow,
+.referee-rulebook-hero .eyebrow {
+  color: var(--rb-orange);
+}
+
+.rank-hero-top h1,
+.rank-home .rank-summary-grid .home-rank-board-head h1,
+.home-rank-board-head h1,
+.landing-hero h1,
+.match-hero h1,
+.team-hub-hero h1,
+.season-hero-copy h1,
+.profile-hero h1,
+.team-detail-hero h1,
+.referee-rulebook-hero h2,
+.gm-room-title h1 {
+  color: var(--hero-title-color);
+  font-family: var(--hero-title-font);
+  font-size: var(--hero-title-size);
+  font-weight: 950;
+  line-height: var(--hero-title-line-height);
+  letter-spacing: var(--hero-title-letter-spacing);
+  text-shadow: var(--hero-title-shadow);
+  text-transform: uppercase;
+}
+
+.rank-hero-top p:not(.eyebrow),
+.rank-home .rank-summary-grid .home-rank-board-head p:not(.eyebrow),
+.home-rank-board-head p:not(.eyebrow),
+.landing-hero p,
+.match-hero p,
+.team-hub-hero p:not(.eyebrow),
+.season-hero-copy p,
+.profile-hero p:not(.eyebrow),
+.team-detail-hero p:not(.eyebrow),
+.referee-rulebook-hero p,
+.gm-room-title p {
+  color: var(--hero-copy-color);
+  text-shadow: var(--hero-copy-shadow);
+}
+
+@media (max-width: 720px) {
+  .rank-hero-top h1,
+  .home-rank-board-head h1,
+  .landing-hero h1,
+  .match-hero h1,
+  .team-hub-hero h1,
+  .season-hero-copy h1,
+  .profile-hero h1,
+  .team-detail-hero h1,
+  .referee-rulebook-hero h2,
+  .gm-room-title h1 {
+    font-size: var(--hero-title-size-mobile);
+  }
 }

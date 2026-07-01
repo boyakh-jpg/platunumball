@@ -2166,13 +2166,13 @@ html[data-theme="light"] .tournament-schedule-list input {
 .om-view-card:hover,
 .om-view-card.active {
   transform: none;
-  border-color: rgba(70, 224, 182, 0.42);
-  box-shadow: inset 3px 0 0 rgba(70, 224, 182, 0.72), 0 16px 44px rgba(0, 0, 0, 0.28);
+  border-color: color-mix(in srgb, var(--rb-orange) 46%, transparent);
+  box-shadow: none;
 }
 
 .om-view-icon {
-  background: rgba(70, 224, 182, 0.12);
-  color: var(--green);
+  background: color-mix(in srgb, var(--rb-orange) 16%, transparent);
+  color: var(--rb-orange);
 }
 
 .om-view-card small,
@@ -3007,8 +3007,8 @@ html[data-theme="light"] .om-match-card {
 .om-filter-bar .segmented-control button.active,
 .om-calendar-actions button.active,
 .om-calendar-grid button.active {
-  background: var(--team-home);
-  color: #06120f;
+  background: var(--button-primary-bg);
+  color: #fff;
 }
 
 .om-match-card {
@@ -3811,4 +3811,119 @@ html[data-theme="light"] .om-match-panel {
   background: var(--button-primary-hover-bg);
   color: #fff;
   filter: none;
+}
+
+/* 2026-07-01 standard UI cleanup: matches controls follow shared primitives. */
+.om-match-copy h1,
+.tournament-hero h1,
+.vertical-bracket-title strong {
+  color: var(--hero-title-color);
+  font-family: var(--hero-title-font);
+  font-size: var(--hero-title-size);
+  font-weight: 950;
+  line-height: var(--hero-title-line-height);
+  letter-spacing: var(--hero-title-letter-spacing);
+  text-shadow: var(--hero-title-shadow);
+  text-transform: uppercase;
+}
+
+.om-match-copy p,
+.tournament-hero p {
+  color: var(--hero-copy-color);
+  text-shadow: var(--hero-copy-shadow);
+}
+
+.om-match-copy .eyebrow,
+.om-section-kicker,
+.om-card-kicker,
+.tournament-hero .eyebrow,
+.tournament-card-kicker {
+  color: var(--rb-orange);
+}
+
+.om-calendar-panel,
+.om-tournament-panel,
+.om-tournament-card,
+.tournament-hero-badges,
+.tournament-team-list,
+.tournament-schedule-list,
+.om-match-summary-box,
+.om-match-info-box,
+.om-score-box {
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+}
+
+html[data-theme="light"] .om-calendar-panel,
+html[data-theme="light"] .om-tournament-panel,
+html[data-theme="light"] .om-tournament-card,
+html[data-theme="light"] .tournament-hero-badges,
+html[data-theme="light"] .tournament-team-list,
+html[data-theme="light"] .tournament-schedule-list,
+html[data-theme="light"] .om-match-summary-box,
+html[data-theme="light"] .om-match-info-box,
+html[data-theme="light"] .om-score-box {
+  border-color: var(--card-border);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+}
+
+.om-calendar-actions button,
+.om-calendar-toolbar button,
+.om-calendar-grid button,
+.om-tournament-head-actions button,
+.om-tournament-actions button,
+.om-tournament-teams button,
+.om-tournament-fixture-row button,
+.tournament-team-list button,
+.tournament-schedule-list button,
+.tournament-back-link {
+  min-height: var(--control-height);
+  border: 1px solid var(--control-border);
+  border-radius: var(--control-radius);
+  background: var(--button-secondary-bg);
+  color: var(--rb-text);
+  box-shadow: none;
+  font-size: var(--control-font-size);
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.om-calendar-actions button.active,
+.om-calendar-grid button.active,
+.om-tournament-head-actions button.active,
+.om-tournament-actions button.active,
+.om-tournament-teams button.active,
+.tournament-team-list button.active,
+.tournament-schedule-list button.active {
+  border-color: transparent;
+  background: var(--button-primary-bg);
+  color: #fff;
+  box-shadow: none;
+}
+
+.om-view-card:hover,
+.om-view-card.active {
+  transform: none;
+  box-shadow: none;
+}
+
+.om-view-card.active {
+  border-color: color-mix(in srgb, var(--rb-orange) 46%, transparent);
+  background: color-mix(in srgb, var(--rb-orange) 14%, var(--card-bg));
+  color: var(--rb-text);
+}
+
+.om-view-icon {
+  background: color-mix(in srgb, var(--rb-orange) 16%, transparent);
+  color: var(--rb-orange);
+}
+
+@media (max-width: 720px) {
+  .om-match-copy h1,
+  .tournament-hero h1 {
+    font-size: var(--hero-title-size-mobile);
+  }
 }

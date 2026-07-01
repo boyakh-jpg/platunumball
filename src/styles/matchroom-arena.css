@@ -311,7 +311,7 @@
 }
 
 .gm-room-actions svg {
-  color: var(--green);
+  color: var(--rb-orange);
   flex: 0 0 auto;
 }
 
@@ -327,8 +327,8 @@
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
-  border-color: rgba(70, 224, 182, 0.24);
-  background: linear-gradient(90deg, rgba(70, 224, 182, 0.1), rgba(118, 169, 255, 0.07));
+  border-color: var(--card-border);
+  background: var(--card-bg);
   padding: 12px 14px;
 }
 
@@ -538,6 +538,73 @@ html[data-theme="light"] .gm-player-slot em {
 /* 2026-07-01 remove court grid overlays. */
 .gm-room-hero::before {
   background:
-    radial-gradient(circle at 50% 48%, rgba(118, 169, 255, 0.22), transparent 20rem),
-    linear-gradient(90deg, rgba(70, 224, 182, 0.12), transparent 32%, transparent 68%, rgba(255, 111, 97, 0.12));
+    radial-gradient(circle at 50% 48%, rgba(240, 90, 70, 0.16), transparent 20rem),
+    linear-gradient(90deg, rgba(240, 90, 70, 0.1), transparent 32%, transparent 68%, rgba(255, 211, 108, 0.1));
+}
+
+/* 2026-07-01 standard UI cleanup: match room follows shared primitives. */
+.gm-room-title h1 {
+  color: var(--hero-title-color);
+  font-family: var(--hero-title-font);
+  font-size: var(--hero-title-size);
+  font-weight: 950;
+  line-height: var(--hero-title-line-height);
+  letter-spacing: var(--hero-title-letter-spacing);
+  text-shadow: var(--hero-title-shadow);
+  text-transform: uppercase;
+}
+
+.gm-room-title p {
+  color: var(--hero-copy-color);
+  text-shadow: var(--hero-copy-shadow);
+}
+
+.gm-room-topline > span,
+.gm-room-title > span,
+.gm-team-head span {
+  color: var(--rb-orange);
+}
+
+.gm-team-panel,
+.gm-score-core,
+.gm-reserve-panel,
+.gm-reserve-line,
+.gm-next-action-card,
+.gm-room-actions > div {
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+}
+
+html[data-theme="light"] .gm-team-panel,
+html[data-theme="light"] .gm-score-core,
+html[data-theme="light"] .gm-reserve-panel,
+html[data-theme="light"] .gm-reserve-line,
+html[data-theme="light"] .gm-next-action-card,
+html[data-theme="light"] .gm-room-actions > div {
+  border-color: var(--card-border);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+}
+
+.gm-next-action-card .button:not(.button-secondary),
+.gm-room-actions .button:not(.button-secondary) {
+  border-color: transparent;
+  background: var(--button-primary-bg);
+  color: #fff;
+  box-shadow: none;
+}
+
+.gm-next-action-card .button:not(.button-secondary):hover,
+.gm-room-actions .button:not(.button-secondary):hover {
+  background: var(--button-primary-hover-bg);
+  color: #fff;
+  filter: none;
+}
+
+@media (max-width: 720px) {
+  .gm-room-title h1 {
+    font-size: var(--hero-title-size-mobile);
+  }
 }

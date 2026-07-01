@@ -217,8 +217,8 @@
   height: 42px;
   place-items: center;
   border-radius: 8px;
-  background: linear-gradient(135deg, var(--green), var(--gold));
-  color: #07110f;
+  background: color-mix(in srgb, var(--rb-orange) 16%, transparent);
+  color: var(--rb-orange);
 }
 
 .arena-mode-copy {
@@ -4145,8 +4145,8 @@ html[data-theme="light"] .arena-compose-drawer {
 .arena-filter-bar .arena-start-date-filter button.active,
 .arena-filter-bar .arena-start-date-filter button.sat.active,
 .arena-filter-bar .arena-start-date-filter button.sun.active {
-  background: var(--team-home);
-  color: #06120f;
+  background: var(--button-primary-bg);
+  color: #fff;
 }
 
 .arena-lobby-card.om-match-card {
@@ -6651,4 +6651,123 @@ html[data-theme="light"] .arena-room-chat {
   border-color: var(--control-border);
   background: var(--button-secondary-bg);
   color: var(--rb-text);
+}
+
+/* 2026-07-01 standard UI cleanup: recruiting controls follow shared primitives. */
+.arena-hero-copy h1,
+.arena-lobby-title h1 {
+  color: var(--hero-title-color);
+  font-family: var(--hero-title-font);
+  font-size: var(--hero-title-size);
+  font-weight: 950;
+  line-height: var(--hero-title-line-height);
+  letter-spacing: var(--hero-title-letter-spacing);
+  text-shadow: var(--hero-title-shadow);
+  text-transform: uppercase;
+}
+
+.arena-hero-copy p,
+.arena-lobby-title p {
+  color: var(--hero-copy-color);
+  text-shadow: var(--hero-copy-shadow);
+}
+
+.arena-hero-copy .eyebrow,
+.arena-lobby-title .eyebrow,
+.arena-section-title .eyebrow,
+.arena-recruit-card .eyebrow,
+.arena-owner-panel .eyebrow,
+.arena-room-rule-panel .eyebrow,
+.arena-join-panel .eyebrow,
+.arena-invite-panel .eyebrow {
+  color: var(--rb-orange);
+}
+
+.arena-hero-panel,
+.arena-compose-drawer,
+.arena-slot-command-popover,
+.arena-lobby-team-panel,
+.arena-reserve-panel,
+.arena-room-edit-panel,
+.arena-referee-invite-panel,
+.arena-host-kick-panel,
+.arena-party-member-card {
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+}
+
+html[data-theme="light"] .arena-hero-panel,
+html[data-theme="light"] .arena-compose-drawer,
+html[data-theme="light"] .arena-slot-command-popover,
+html[data-theme="light"] .arena-lobby-team-panel,
+html[data-theme="light"] .arena-reserve-panel,
+html[data-theme="light"] .arena-room-edit-panel,
+html[data-theme="light"] .arena-referee-invite-panel,
+html[data-theme="light"] .arena-host-kick-panel,
+html[data-theme="light"] .arena-party-member-card {
+  border-color: var(--card-border);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+}
+
+.arena-hero-cta,
+.arena-icon-button,
+.arena-modal-close-button,
+.arena-close-button,
+.arena-compose-type-grid button,
+.arena-team-choice-grid button,
+.arena-party-picker-grid > button,
+.arena-party-role-buttons button,
+.arena-invite-result > button:not(.button),
+.arena-invite-team-head > button,
+.arena-invite-member-grid button {
+  min-height: var(--control-height);
+  border: 1px solid var(--control-border);
+  border-radius: var(--control-radius);
+  background: var(--button-secondary-bg);
+  color: var(--rb-text);
+  box-shadow: none;
+  font-size: var(--control-font-size);
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.arena-hero-cta,
+.arena-compose-type-grid button.active,
+.arena-team-choice-grid button.selected,
+.arena-party-picker-grid > button.selected,
+.arena-party-role-buttons button.active,
+.arena-invite-result > button.active,
+.arena-invite-team-head > button.active,
+.arena-invite-member-grid button.selected {
+  border-color: transparent;
+  background: var(--button-primary-bg);
+  color: #fff;
+  box-shadow: none;
+}
+
+.arena-hero-cta:hover,
+.arena-compose-type-grid button.active:hover,
+.arena-team-choice-grid button.selected:hover,
+.arena-party-picker-grid > button.selected:hover,
+.arena-party-role-buttons button.active:hover,
+.arena-invite-result > button.active:hover,
+.arena-invite-team-head > button.active:hover {
+  background: var(--button-primary-hover-bg);
+  color: #fff;
+  filter: none;
+}
+
+.arena-mode-icon {
+  background: color-mix(in srgb, var(--rb-orange) 16%, transparent);
+  color: var(--rb-orange);
+}
+
+@media (max-width: 720px) {
+  .arena-hero-copy h1,
+  .arena-lobby-title h1 {
+    font-size: var(--hero-title-size-mobile);
+  }
 }
