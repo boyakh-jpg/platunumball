@@ -75,7 +75,7 @@
   --hero-title-size: clamp(2.9rem, 5.6vw, 4.8rem);
   --hero-title-size-mobile: clamp(2.8rem, 14vw, 4.35rem);
   --hero-title-line-height: 0.9;
-  --hero-title-letter-spacing: -0.012em;
+  --hero-title-letter-spacing: 0.018em;
   --hero-title-color: var(--rb-cream);
   --hero-title-shadow: 0 14px 34px rgba(0, 0, 0, 0.52);
   --hero-copy-color: rgba(255, 250, 241, 0.86);
