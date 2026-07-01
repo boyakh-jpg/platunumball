@@ -1740,3 +1740,4 @@ flowchart TD
 - If the feed table/RPC is unavailable, broad legacy list fallback is disabled by default to prevent delayed count changes and PostREST egress spikes.
 - Legacy list fallback may be enabled only for diagnostics or migration recovery with request `allowLegacyFallback:true` or `RANKBALL_ALLOW_LEGACY_LIST_FALLBACK=true`.
 - Row fallback for specific missing/invalid feed cards is still allowed because it repairs a bounded set of already selected ids.
+- Single recruiting post detail reloads are deduped by post id while in flight and ignore pending mutation rows until the authoritative write response or newer row timestamp arrives.

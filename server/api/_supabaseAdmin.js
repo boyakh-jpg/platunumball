@@ -55,6 +55,18 @@ export function getBearerToken(request) {
   return match?.[1] ?? "";
 }
 
+export function mergeById(current = [], incoming = []) {
+  const merged = new Map((current ?? []).filter((item) => item?.id).map((item) => [item.id, item]));
+  (incoming ?? []).forEach((item) => {
+    if (item?.id) merged.set(item.id, item);
+  });
+  return [...merged.values()];
+}
+
+export function toArray(value) {
+  return Array.isArray(value) ? value.filter(Boolean) : [];
+}
+
 function getEnvList(name) {
   return String(process.env[name] || "")
     .split(",")

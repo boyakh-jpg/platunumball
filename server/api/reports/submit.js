@@ -1,12 +1,8 @@
 import { randomUUID } from "node:crypto";
-import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { getAuthenticatedContext, readJsonBody, sendJson, toArray } from "../_supabaseAdmin.js";
 
 const REPORT_MATCH_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 const ALLOWED_REPORT_TYPES = new Set(["match", "player", "court", "court_review"]);
-
-function toArray(value) {
-  return Array.isArray(value) ? value.filter(Boolean) : [];
-}
 
 function uniqueStrings(values) {
   return Array.from(new Set(toArray(values).map((value) => String(value).trim()).filter(Boolean)));

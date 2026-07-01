@@ -1,10 +1,4 @@
-import { getSupabaseAdminClient, sendJson } from "../_supabaseAdmin.js";
-
-function getBearerToken(request) {
-  const header = request.headers.authorization || request.headers.Authorization || "";
-  const match = String(header).match(/^Bearer\s+(.+)$/i);
-  return match?.[1] ?? "";
-}
+import { getBearerToken, getSupabaseAdminClient, sendJson } from "../_supabaseAdmin.js";
 
 function assertAccess(request) {
   const secret = process.env.CRON_SECRET || "";

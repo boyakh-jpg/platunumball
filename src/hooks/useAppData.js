@@ -208,7 +208,7 @@ function getServerOperation(meta = {}) {
   return payload;
 }
 
-function mergeById(current = [], incoming = []) {
+function mergeRemoteById(current = [], incoming = []) {
   const merged = new Map((current ?? []).filter((item) => item?.id).map((item) => [item.id, item]));
   (incoming ?? []).forEach((item) => {
     if (item?.id) merged.set(item.id, item);
@@ -352,10 +352,10 @@ function mergeRemoteMatchPage(state, remoteState = {}) {
   if (!nextMatches.length && !nextPosts.length) return state;
   return {
     ...state,
-    users: mergeById(state.users, remoteState.users),
+    users: mergeRemoteById(state.users, remoteState.users),
     teams: mergeTeamsById(state.teams, remoteState.teams),
     matches: nextMatches.length ? sortMatchesByRemoteCursor(mergeMatchesById(state.matches, nextMatches)) : state.matches,
-    tournaments: mergeById(state.tournaments, remoteState.tournaments),
+    tournaments: mergeRemoteById(state.tournaments, remoteState.tournaments),
     recruitingPosts: nextPosts.length ? mergeRecruitingPostsById(state.recruitingPosts, nextPosts) : state.recruitingPosts,
   };
 }
@@ -365,7 +365,7 @@ function mergeRemoteRecruitingPage(state, remoteState = {}) {
   if (!nextPosts.length) return state;
   return {
     ...state,
-    users: mergeById(state.users, remoteState.users),
+    users: mergeRemoteById(state.users, remoteState.users),
     teams: mergeTeamsById(state.teams, remoteState.teams),
     recruitingPosts: sortRecruitingByRemoteCursor(mergeRecruitingPostsById(state.recruitingPosts, nextPosts)),
   };
@@ -422,9 +422,9 @@ function mergeRemoteDirectory(state, remoteState = {}, options = {}) {
   const settingsPatch = getRemoteDirectorySettings(remoteState.settings, options);
   return {
     ...state,
-    users: mergeById(state.users, remoteState.users),
-    teams: mergeById(state.teams, remoteState.teams),
-    teamInvitations: mergeById(state.teamInvitations, remoteState.teamInvitations),
+    users: mergeRemoteById(state.users, remoteState.users),
+    teams: mergeRemoteById(state.teams, remoteState.teams),
+    teamInvitations: mergeRemoteById(state.teamInvitations, remoteState.teamInvitations),
     affiliations: remoteState.affiliations?.length ? remoteState.affiliations : state.affiliations,
     seasons: remoteState.seasons?.length ? remoteState.seasons : state.seasons,
     settings: settingsPatch ? { ...state.settings, ...settingsPatch } : state.settings,
@@ -839,6 +839,7 @@ export function useAppData(authUser = null) {
   const matchRecruitingSchedulePromiseRef = useRef(null);
   const myRecruitingPostsPromiseRef = useRef(new Map());
   const recruitingRegionPromiseRef = useRef(new Map());
+  const recruitingPostPromiseRef = useRef(new Map());
   const pendingRecruitingPostIdsRef = useRef(new Set());
   const recentRecruitingMutationTimesRef = useRef(new Map());
   const pendingMatchIdsRef = useRef(new Set());
@@ -899,6 +900,7 @@ export function useAppData(authUser = null) {
       profileRefreshPromiseRef.current = null;
       matchRecruitingSchedulePromiseRef.current = null;
       myRecruitingPostsPromiseRef.current = new Map();
+      recruitingPostPromiseRef.current = new Map();
       setRemoteReady(!isSupabaseConfigured);
       setMatchPagination({ loading: false, exhausted: true, error: "", cursor: "", recruitingScheduleChecked: false, recruitingScheduleLoading: false, recruitingSchedulePostIds: [] });
       setRecruitingPagination({ loading: false, exhausted: true, error: "", cursor: "", offset: 0, regionScope: "local", regionKey: "", startFilter: "all", timingType: "", scheduledDate: "", feedCounts: null });
@@ -915,6 +917,7 @@ export function useAppData(authUser = null) {
     matchRecruitingSchedulePromiseRef.current = null;
     myRecruitingPostsPromiseRef.current = new Map();
     recruitingRegionPromiseRef.current = new Map();
+    recruitingPostPromiseRef.current = new Map();
     pendingRecruitingPostIdsRef.current = new Set();
     recentRecruitingMutationTimesRef.current = new Map();
     pendingMatchIdsRef.current = new Set();
@@ -1513,31 +1516,40 @@ export function useAppData(authUser = null) {
 
   const loadRecruitingPost = useCallback(async (postId) => {
     if (!isSupabaseConfigured || !authUserId || !postId) return false;
-    try {
-      const result = await postServerAction(
-        "/api/recruiting/list",
-        {
-          authUserId,
-          authEmail,
-          postId,
-          limit: 1,
-          adminContext: false,
-          includeFeedCounts: false,
-        },
-        { allowWhenDisabled: true },
-      );
-      const remoteState = normalizeServerState(result?.state ?? {});
-      const nextPosts = remoteState.recruitingPosts ?? [];
-      setState((prev) => mergeRemoteRecruitingPage(prev, remoteState));
-      setRecruitingPagination((prev) => ({
-        ...prev,
-        feedCounts: result?.page?.feedCounts ?? prev.feedCounts ?? null,
-      }));
-      return nextPosts.length;
-    } catch (error) {
-      console.warn("Recruiting post load failed.", error.message);
-      return false;
-    }
+    const safePostId = String(postId);
+    const currentPromise = recruitingPostPromiseRef.current.get(safePostId);
+    if (currentPromise) return currentPromise;
+    const promise = (async () => {
+      try {
+        const result = await postServerAction(
+          "/api/recruiting/list",
+          {
+            authUserId,
+            authEmail,
+            postId: safePostId,
+            limit: 1,
+            adminContext: false,
+            includeFeedCounts: false,
+          },
+          { allowWhenDisabled: true },
+        );
+        const remoteState = normalizeServerState(filterPendingRecruitingPosts(result?.state ?? {}, pendingRecruitingPostIdsRef.current, recentRecruitingMutationTimesRef.current));
+        const nextPosts = remoteState.recruitingPosts ?? [];
+        setState((prev) => mergeRemoteRecruitingPage(prev, remoteState));
+        setRecruitingPagination((prev) => ({
+          ...prev,
+          feedCounts: result?.page?.feedCounts ?? prev.feedCounts ?? null,
+        }));
+        return nextPosts.length;
+      } catch (error) {
+        console.warn("Recruiting post load failed.", error.message);
+        return false;
+      }
+    })().finally(() => {
+      if (recruitingPostPromiseRef.current.get(safePostId) === promise) recruitingPostPromiseRef.current.delete(safePostId);
+    });
+    recruitingPostPromiseRef.current.set(safePostId, promise);
+    return promise;
   }, [authEmail, authUserId, setState]);
 
   const loadMyRecruitingPosts = useCallback(async (roomScope = "", options = {}) => {

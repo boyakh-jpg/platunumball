@@ -100,10 +100,10 @@ export default function Home({ app }) {
   const completedMatches = [...app.state.matches].filter((match) => match.status === "confirmed");
   const myTeam = app.state.teams.find((team) => team.members.some((member) => member.userId === user.id));
   const teamById = useMemo(() => Object.fromEntries(app.state.teams.map((team) => [team.id, team])), [app.state.teams]);
-  const myTeams = app.state.teams
+  const myTeams = useMemo(() => app.state.teams
     .filter((team) => team.members.some((member) => member.userId === user.id))
     .map((team) => ({ ...team, myRole: team.members.find((member) => member.userId === user.id)?.role ?? "regular" }))
-    .sort((a, b) => Number(b.myRole === "captain") - Number(a.myRole === "captain") || b.mmr - a.mmr);
+    .sort((a, b) => Number(b.myRole === "captain") - Number(a.myRole === "captain") || b.mmr - a.mmr), [app.state.teams, user.id]);
   const captainTeamIds = useMemo(() => myTeams.filter((team) => team.myRole === "captain").map((team) => team.id), [myTeams]);
   const myTeamIds = useMemo(() => myTeams.map((team) => team.id), [myTeams]);
   const upcomingItems = useMemo(() => {
@@ -121,7 +121,7 @@ export default function Home({ app }) {
     invitation.targetUserId === user.id &&
     invitation.status === "pending"
   )), [app.state.teamInvitations, user.id]);
-  const myTeamCount = app.state.teams.filter((team) => team.members.some((member) => member.userId === user.id)).length;
+  const myTeamCount = myTeams.length;
   const blockedUserIds = app.state.settings?.blockedUserIds ?? [];
   const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
   const season = getCurrentSeason(app.state);

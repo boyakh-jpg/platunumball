@@ -1,15 +1,9 @@
-import { getSupabaseAdminClient, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { getBearerToken, getSupabaseAdminClient, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import { runSystemMaintenance } from "../system/maintenance.js";
 
 const DISCORD_API_BASE = "https://discord.com/api/v10";
 const MAX_BATCH_SIZE = 25;
 const DISCORD_SNOWFLAKE_RE = /^\d{17,20}$/;
-
-function getBearerToken(request) {
-  const header = request.headers.authorization || request.headers.Authorization || "";
-  const match = String(header).match(/^Bearer\s+(.+)$/i);
-  return match?.[1] ?? "";
-}
 
 function getWorkerSecret() {
   return process.env.CRON_SECRET || "";

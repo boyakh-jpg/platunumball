@@ -1,4 +1,4 @@
-import { getSupabaseAdminClient, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { getBearerToken, getSupabaseAdminClient, readJsonBody, sendJson, toArray } from "../_supabaseAdmin.js";
 import { getMatchRatingCommit } from "../_authoritativeState.js";
 import { commitMatchRating } from "../matches/sync-match.js";
 import { loadNormalizedMatchDetailFromClient, runAutomaticStateMaintenance } from "../../../src/data/repository.js";
@@ -6,12 +6,6 @@ import { DISPUTE_WINDOW_MINUTES } from "../../../src/lib/constants.js";
 
 const DEFAULT_MATCH_LIMIT = 10;
 const ACTIVE_RECRUITING_APPLICATION_STATUSES = new Set(["waiting", "ready", "confirmed"]);
-
-function getBearerToken(request) {
-  const header = request.headers.authorization || request.headers.Authorization || "";
-  const match = String(header).match(/^Bearer\s+(.+)$/i);
-  return match?.[1] ?? "";
-}
 
 function assertAccess(request) {
   const secret = process.env.CRON_SECRET || "";
@@ -35,10 +29,6 @@ function getLimit(request) {
 function isMissingCleanupRpc(error) {
   const message = String(error?.message ?? "").toLowerCase();
   return error?.code === "PGRST202" || error?.code === "42883" || message.includes("rankball_cleanup_room_feed");
-}
-
-function toArray(value) {
-  return Array.isArray(value) ? value.filter(Boolean) : [];
 }
 
 function getApplicationPlayerCount(row = {}, capacity = 5) {

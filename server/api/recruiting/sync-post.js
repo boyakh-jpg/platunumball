@@ -1,4 +1,4 @@
-import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { getAuthenticatedContext, readJsonBody, sendJson, toArray } from "../_supabaseAdmin.js";
 import {
   applyAuthoritativeRecruitingOperation,
   getOperation,
@@ -6,10 +6,6 @@ import {
 } from "../_authoritativeState.js";
 import { addTeamRoster, assertProfilesExist, assertTeamRosterMembers } from "../_rosterEligibility.js";
 import { getDiscordProfiles, persistMatchSnapshot, upsertDiscordDeliveryRows } from "../matches/sync-match.js";
-
-function toArray(value) {
-  return Array.isArray(value) ? value.filter(Boolean) : [];
-}
 
 function toDbTime(value) {
   return value ? String(value).slice(0, 5) : null;

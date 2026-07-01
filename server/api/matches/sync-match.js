@@ -1,15 +1,11 @@
 import { randomUUID } from "node:crypto";
-import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { getAuthenticatedContext, readJsonBody, sendJson, toArray } from "../_supabaseAdmin.js";
 import {
   applyAuthoritativeMatchOperation,
   getOperation,
   loadAuthoritativeState,
 } from "../_authoritativeState.js";
 import { addTeamRoster, assertProfilesExist, assertTeamRosterMembers } from "../_rosterEligibility.js";
-
-function toArray(value) {
-  return Array.isArray(value) ? value.filter(Boolean) : [];
-}
 
 const PLAYER_STAT_FIELDS = ["points", "rebounds", "assists", "steals", "blocks", "fouls"];
 const configuredDiscordQueueTimeoutMs = Number(process.env.DISCORD_QUEUE_TIMEOUT_MS || 2500);

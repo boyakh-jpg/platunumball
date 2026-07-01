@@ -1,4 +1,4 @@
-import { getAdminLevel, getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { getAdminLevel, getAuthenticatedContext, mergeById, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import { loadCompactMatchList } from "../matches/list.js";
 import { loadCurrentProfileState, PROFILE_ME_COLUMNS } from "../profile/me.js";
 import { loadCurrentUserRecruitingFeedList, loadLocalRecruitingFeedList } from "../recruiting/list.js";
@@ -8,14 +8,6 @@ import {
   REMOTE_CLIENT_MATCH_LIMIT,
   REMOTE_CLIENT_RECRUITING_LIMIT,
 } from "../../../src/data/repository.js";
-
-function mergeById(current = [], incoming = []) {
-  const merged = new Map((current ?? []).filter((item) => item?.id).map((item) => [item.id, item]));
-  (incoming ?? []).forEach((item) => {
-    if (item?.id) merged.set(item.id, item);
-  });
-  return [...merged.values()];
-}
 
 function mergeHomeState(profileState = {}, feedState = {}) {
   return {

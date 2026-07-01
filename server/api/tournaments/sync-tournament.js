@@ -1,4 +1,4 @@
-import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { getAuthenticatedContext, readJsonBody, sendJson, toArray } from "../_supabaseAdmin.js";
 import {
   applyAuthoritativeTournamentOperation,
   getOperation,
@@ -12,10 +12,6 @@ const STATUSES = new Set(["draft", "scheduled", "active", "closed", "cancelled"]
 const MMR_LIMIT_MODES = new Set(["off", "warn", "block"]);
 const MMR_POLICIES = new Set(["gap_adjusted", "standard", "event_only"]);
 const TEAM_STATUSES = new Set(["invited", "accepted", "declined"]);
-
-function toArray(value) {
-  return Array.isArray(value) ? value.filter(Boolean) : [];
-}
 
 function pickAllowed(value, allowed, fallback) {
   const text = String(value || "").trim();

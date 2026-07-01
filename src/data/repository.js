@@ -433,7 +433,7 @@ function getExplicitInvitationTeamPlayerIds(team = {}, capacity = Infinity, play
   return uniquePlayerIds(sourceIds).filter((playerId) => teamPlayerSet.has(playerId)).slice(0, capacity);
 }
 
-function mergeById(current = [], fallback = []) {
+function mergeDemoDefaultsById(current = [], fallback = []) {
   const currentMap = new Map(current.map((item) => [item.id, item]));
   const mergedDefaults = fallback.map((item) => ({ ...item, ...(currentMap.get(item.id) ?? {}) }));
   const extraItems = current.filter((item) => !fallback.some((fallbackItem) => fallbackItem.id === item.id));
@@ -799,22 +799,22 @@ export function normalizeState(state, options = {}) {
   const notifications = state?.notifications?.length ? state.notifications : includeDemo ? demoState.notifications : [];
   const deletedTeamIds = new Set(state?.deletedTeamIds ?? []);
   const recruitingPosts = normalizeRecruitingSchedules(
-    includeDemo ? mergeById(state?.recruitingPosts, demoState.recruitingPosts ?? []) : state?.recruitingPosts ?? [],
+    includeDemo ? mergeDemoDefaultsById(state?.recruitingPosts, demoState.recruitingPosts ?? []) : state?.recruitingPosts ?? [],
   );
 
   return {
     ...baseState,
     ...state,
     deletedTeamIds: Array.from(deletedTeamIds),
-    users: (includeDemo ? mergeById(state?.users, demoState.users) : state?.users ?? []).map(normalizeUser),
-    teams: (includeDemo ? mergeById(state?.teams, demoState.teams) : state?.teams ?? [])
+    users: (includeDemo ? mergeDemoDefaultsById(state?.users, demoState.users) : state?.users ?? []).map(normalizeUser),
+    teams: (includeDemo ? mergeDemoDefaultsById(state?.teams, demoState.teams) : state?.teams ?? [])
       .filter((team) => team && typeof team === "object" && !deletedTeamIds.has(team.id))
       .map(normalizeTeam),
     teamInvitations: state?.teamInvitations ?? (includeDemo ? demoState.teamInvitations ?? [] : []),
-    affiliations: (includeDemo ? mergeById(state?.affiliations, demoState.affiliations) : state?.affiliations ?? []).filter((affiliation) => affiliation.type !== "club"),
-    seasons: includeDemo ? mergeById(state?.seasons, demoState.seasons ?? []) : state?.seasons ?? [],
-    matches: (includeDemo ? mergeById(state?.matches, demoState.matches) : state?.matches ?? []).map(normalizeMatch),
-    tournaments: (includeDemo ? mergeById(state?.tournaments, demoState.tournaments ?? []) : state?.tournaments ?? []).map(normalizeTournament),
+    affiliations: (includeDemo ? mergeDemoDefaultsById(state?.affiliations, demoState.affiliations) : state?.affiliations ?? []).filter((affiliation) => affiliation.type !== "club"),
+    seasons: includeDemo ? mergeDemoDefaultsById(state?.seasons, demoState.seasons ?? []) : state?.seasons ?? [],
+    matches: (includeDemo ? mergeDemoDefaultsById(state?.matches, demoState.matches) : state?.matches ?? []).map(normalizeMatch),
+    tournaments: (includeDemo ? mergeDemoDefaultsById(state?.tournaments, demoState.tournaments ?? []) : state?.tournaments ?? []).map(normalizeTournament),
     notifications: notifications.map((notification) => ({ readAt: null, ...notification })),
     discordNotificationDeliveries: state?.discordNotificationDeliveries ?? (includeDemo ? demoState.discordNotificationDeliveries ?? [] : []),
     discordNotificationSeenKeys: state?.discordNotificationSeenKeys ?? (includeDemo ? demoState.discordNotificationSeenKeys ?? [] : []),

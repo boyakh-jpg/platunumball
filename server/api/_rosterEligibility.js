@@ -1,6 +1,4 @@
-function toArray(value) {
-  return Array.isArray(value) ? value.filter(Boolean) : [];
-}
+import { toArray } from "./_supabaseAdmin.js";
 
 function reject(statusCode, message) {
   const error = new Error(message);
@@ -50,4 +48,3 @@ export async function assertTeamRosterMembers(supabase, rostersByTeam, message =
     }
   }
 }
-

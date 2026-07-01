@@ -1,4 +1,4 @@
-import { getSupabaseAdminClient, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { getBearerToken, getSupabaseAdminClient, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 
 const REQUIRED_COLUMNS = {
   profiles: [
@@ -252,12 +252,6 @@ function canEnsureSimulationTestActors() {
     return process.env.RANKBALL_ALLOW_PRODUCTION_TEST_SEED === "true";
   }
   return true;
-}
-
-function getBearerToken(request) {
-  const header = request.headers.authorization || request.headers.Authorization || "";
-  const match = String(header).match(/^Bearer\s+(.+)$/i);
-  return match?.[1] ?? "";
 }
 
 function assertAccess(request) {

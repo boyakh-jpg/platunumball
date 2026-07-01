@@ -1,4 +1,4 @@
-import { getAdminLevel, getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { getAdminLevel, getAuthenticatedContext, mergeById, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import {
   DEFAULT_SETTINGS,
   createProfileShell,
@@ -81,14 +81,6 @@ async function timeStep(debugTiming, key, callback) {
   } finally {
     if (debugTiming) debugTiming[key] = (debugTiming[key] ?? 0) + Date.now() - startedAt;
   }
-}
-
-function mergeById(current = [], incoming = []) {
-  const merged = new Map((current ?? []).filter((item) => item?.id).map((item) => [item.id, item]));
-  (incoming ?? []).forEach((item) => {
-    if (item?.id) merged.set(item.id, item);
-  });
-  return [...merged.values()];
 }
 
 function sortByFeedOrder(items = [], ids = []) {
