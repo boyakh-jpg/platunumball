@@ -10826,10 +10826,9 @@ body {
     var(--bg);
 }
 
-.app-main {
-  background:
-    linear-gradient(var(--court-line) 1px, transparent 1px) 0 0 / 46px 46px,
-    linear-gradient(90deg, var(--court-line) 1px, transparent 1px) 0 0 / 46px 46px;
+.app-main,
+html[data-theme="light"] .app-main {
+  background: transparent;
 }
 
 .sidebar {
