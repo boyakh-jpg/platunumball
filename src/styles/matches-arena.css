@@ -3562,27 +3562,21 @@ html[data-theme="light"] .om-room-link {
   }
 
   .om-view-grid {
-    display: flex;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  .om-view-grid::-webkit-scrollbar {
-    display: none;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow-x: visible;
   }
 
   .om-view-card {
-    min-width: 156px;
+    min-width: 0;
+    min-height: 86px;
   }
 
   .om-filter-bar .segmented-control {
-    overflow-x: auto;
-    flex-wrap: nowrap;
-    scrollbar-width: none;
-  }
-
-  .om-filter-bar .segmented-control::-webkit-scrollbar {
-    display: none;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    overflow-x: visible;
+    flex-wrap: initial;
   }
 
   .om-match-card,
