@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   CheckCircle2,
@@ -831,11 +832,17 @@ function CommandPopoverFrame({ floating = false, anchor = null, className = "", 
 
   if (!floating) return panel;
 
-  return (
-    <div className="arena-slot-popover-backdrop" role="presentation" onPointerDown={onClose}>
+  const popover = (
+    <div className="arena-slot-popover-backdrop" role="presentation" onPointerDown={(event) => {
+      event.stopPropagation();
+      onClose?.();
+    }}>
       {panel}
     </div>
   );
+
+  if (typeof document === "undefined") return popover;
+  return createPortal(popover, document.body);
 }
 
 export function SlotCommandPanel({ sideName, reserve = false, floating = false, anchor = null, canMoveHere = false, partyJoinOptions = [], onMoveHere, onJoinParty, onClose, children }) {

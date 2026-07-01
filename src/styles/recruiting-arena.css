@@ -1930,7 +1930,11 @@ button.arena-room-player-slot {
 }
 
 .arena-slot-command-popover .search-picker-results.is-floating {
+  position: static;
   z-index: 160;
+  max-height: min(260px, 38vh);
+  overflow: auto;
+  margin-top: 8px;
 }
 
 .arena-reserve-panel {
