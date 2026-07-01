@@ -630,6 +630,11 @@ function getMatchRoomPost(match, state) {
     ...(sourcePost?.roomState ?? {}),
     ruleRevision: sourcePost?.roomState?.ruleRevision ?? 1,
     partyReserves,
+    pinnedReservePlayers: {
+      ...(sourcePost?.roomState?.pinnedReservePlayers ?? {}),
+      teamA: teamAReserves,
+      teamB: teamBReserves,
+    },
     statRecorders: match.statRecorders ?? match.rules?.statRecorders ?? sourcePost?.roomState?.statRecorders ?? {},
   };
 
