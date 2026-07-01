@@ -316,7 +316,7 @@
 }
 
 .om-calendar-grid button.today {
-  box-shadow: inset 0 0 0 1px rgba(255, 211, 108, 0.62);
+  border-color: rgba(255, 211, 108, 0.62);
 }
 
 .om-calendar-grid button:hover {

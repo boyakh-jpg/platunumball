@@ -717,6 +717,7 @@ UI 수정 전:
 ## 2026-07-01 strap cleanup
 
 1. Active menu/card uses background and border contrast only. Do not use strap, accent stripe, or thin top-line decoration.
+2. Buttons use flat fill and border contrast only. Do not use 3D drop straps, glow shadows, or thick offset shadows.
 
 ## 2026-07-01 visible sports identity pass
 
