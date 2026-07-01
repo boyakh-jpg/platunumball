@@ -740,7 +740,7 @@ export default function Home({ app }) {
               <Button variant="secondary" className="wide-button"><Handshake size={17} /> 큐 보기</Button>
             </Link>
           </Card>
-          <Card className="section-card">
+          <Card className="section-card approval-teaser-card">
             <div className="section-title-row">
               <div>
                 <p className="eyebrow">Approval</p>

@@ -10967,3 +10967,63 @@ html[data-theme="light"] .home-search-box {
   border-color: rgba(33, 78, 91, 0.14);
   background: rgba(255, 255, 255, 0.76);
 }
+
+.home-side-stack > .card,
+.approval-teaser-card,
+.recruiting-teaser-card,
+.home-my-teams-card {
+  border-radius: var(--radius-lg);
+}
+
+.home-side-stack .compact-list a,
+.home-side-stack .compact-list > div,
+.home-side-stack .compact-list > .team-hover-trigger {
+  min-height: 44px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.035);
+  padding: 10px 12px;
+}
+
+.home-side-stack .wide-button {
+  min-height: 44px;
+  border-radius: var(--radius-md);
+  box-shadow: none;
+}
+
+.home-team-list a,
+.home-team-list > div {
+  min-height: 36px;
+  border-color: transparent;
+  background: transparent;
+  padding: 3px 0;
+}
+
+.home-team-list em {
+  border-radius: 0;
+  background: transparent;
+  color: var(--blue);
+  padding: 0;
+}
+
+.home-team-list b {
+  min-width: 42px;
+  text-align: right;
+}
+
+html[data-theme="light"] .home-side-stack .compact-list a,
+html[data-theme="light"] .home-side-stack .compact-list > div,
+html[data-theme="light"] .home-side-stack .compact-list > .team-hover-trigger {
+  border-color: rgba(32, 56, 68, 0.12);
+  background: rgba(238, 244, 240, 0.64);
+}
+
+html[data-theme="light"] .home-team-list a,
+html[data-theme="light"] .home-team-list > div {
+  border-color: transparent;
+  background: transparent;
+}
+
+html[data-theme="light"] .home-team-list em {
+  background: transparent;
+  color: #2f6fa8;
+}
