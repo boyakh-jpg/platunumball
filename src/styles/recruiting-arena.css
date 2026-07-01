@@ -4729,6 +4729,476 @@ html[data-theme="light"] .arena-room-party-group::after {
   box-shadow: 0 0 10px rgba(229, 85, 63, 0.25);
 }
 
+/* 2026-07-01 EOF room slot lock: no border, transparent avatar, bottom feather, party glow. */
+.arena-room-player-slot .avatar.arena-position-avatar,
+.arena-room-player-slot .arena-position-avatar,
+html[data-theme="light"] .arena-room-player-slot .avatar.arena-position-avatar,
+html[data-theme="light"] .arena-room-player-slot .arena-position-avatar {
+  width: 48px;
+  height: 48px;
+  overflow: visible;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: transparent;
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+.arena-room-player-slot .arena-position-avatar-tier {
+  inset: -5px;
+  width: calc(100% + 10px);
+  height: calc(100% + 10px);
+  object-fit: contain;
+  opacity: 0.95;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.34));
+}
+
+.arena-room-player-slot .arena-position-avatar-player {
+  left: 50%;
+  top: -2px;
+  width: 144%;
+  height: 162%;
+  object-fit: cover;
+  object-position: center top;
+  transform: translateX(-50%);
+  filter: drop-shadow(0 4px 7px rgba(0, 0, 0, 0.42));
+  -webkit-mask-image:
+    linear-gradient(180deg, #000 0 46%, rgba(0, 0, 0, 0.5) 58%, rgba(0, 0, 0, 0.12) 66%, rgba(0, 0, 0, 0) 74%),
+    radial-gradient(ellipse 78% 82% at 50% 28%, #000 0 50%, rgba(0, 0, 0, 0.72) 62%, rgba(0, 0, 0, 0.14) 76%, rgba(0, 0, 0, 0) 88%);
+  mask-image:
+    linear-gradient(180deg, #000 0 46%, rgba(0, 0, 0, 0.5) 58%, rgba(0, 0, 0, 0.12) 66%, rgba(0, 0, 0, 0) 74%),
+    radial-gradient(ellipse 78% 82% at 50% 28%, #000 0 50%, rgba(0, 0, 0, 0.72) 62%, rgba(0, 0, 0, 0.14) 76%, rgba(0, 0, 0, 0) 88%);
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+}
+
+.arena-room-player-slot .arena-position-avatar[data-position="C"] .arena-position-avatar-player {
+  top: -1px;
+  width: 104%;
+  height: 138%;
+}
+
+.arena-room-player-slot .arena-position-avatar[data-position="PG"] .arena-position-avatar-player,
+.arena-room-player-slot .arena-position-avatar[data-position="PF"] .arena-position-avatar-player {
+  width: 128%;
+  height: 150%;
+}
+
+.arena-side-roster .arena-room-player-slot,
+.arena-room-reserve-row .arena-room-player-slot,
+.arena-room-party-group > .arena-room-player-slot-wrap .arena-room-player-slot,
+.arena-room-player-slot,
+html[data-theme="light"] .arena-side-roster .arena-room-player-slot,
+html[data-theme="light"] .arena-room-reserve-row .arena-room-player-slot,
+html[data-theme="light"] .arena-room-party-group > .arena-room-player-slot-wrap .arena-room-player-slot,
+html[data-theme="light"] .arena-room-player-slot {
+  border-color: transparent;
+  background: rgba(255, 255, 255, 0.028);
+  box-shadow:
+    inset 0 0 18px rgba(255, 118, 88, 0.055),
+    0 0 18px rgba(255, 118, 88, 0.1) !important;
+}
+
+.arena-side-roster .arena-room-player-slot.ready,
+.arena-room-reserve-row .arena-room-player-slot.ready,
+.arena-room-party-group > .arena-room-player-slot-wrap .arena-room-player-slot.ready,
+.arena-room-player-slot.ready,
+html[data-theme="light"] .arena-side-roster .arena-room-player-slot.ready,
+html[data-theme="light"] .arena-room-reserve-row .arena-room-player-slot.ready,
+html[data-theme="light"] .arena-room-party-group > .arena-room-player-slot-wrap .arena-room-player-slot.ready,
+html[data-theme="light"] .arena-room-player-slot.ready {
+  border-color: transparent;
+  background: rgba(101, 217, 159, 0.048);
+  box-shadow:
+    inset 0 0 18px rgba(101, 217, 159, 0.08),
+    0 0 20px rgba(101, 217, 159, 0.14) !important;
+}
+
+.arena-side-roster .arena-room-player-slot:not(.ready):not(.empty),
+.arena-room-reserve-row .arena-room-player-slot:not(.ready):not(.empty),
+.arena-room-party-group > .arena-room-player-slot-wrap .arena-room-player-slot:not(.ready):not(.empty),
+.arena-room-player-slot:not(.ready):not(.empty),
+html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.ready):not(.empty),
+html[data-theme="light"] .arena-room-reserve-row .arena-room-player-slot:not(.ready):not(.empty),
+html[data-theme="light"] .arena-room-party-group > .arena-room-player-slot-wrap .arena-room-player-slot:not(.ready):not(.empty),
+html[data-theme="light"] .arena-room-player-slot:not(.ready):not(.empty) {
+  border-color: transparent;
+  background: rgba(255, 211, 108, 0.035);
+  box-shadow:
+    inset 0 0 18px rgba(255, 211, 108, 0.06),
+    0 0 18px rgba(255, 211, 108, 0.1) !important;
+}
+
+.arena-room-player-slot.empty,
+html[data-theme="light"] .arena-room-player-slot.empty {
+  border-color: rgba(255, 211, 108, 0.18);
+  background: rgba(255, 255, 255, 0.014);
+  box-shadow: none !important;
+}
+
+.arena-room-party-group,
+html[data-theme="light"] .arena-room-party-group {
+  --party-link-y: 30px;
+}
+
+.arena-room-party-group::before,
+html[data-theme="light"] .arena-room-party-group::before {
+  border: 0;
+  background:
+    radial-gradient(ellipse at 50% 42%, rgba(240, 90, 70, 0.16), transparent 66%),
+    rgba(240, 90, 70, 0.026);
+  box-shadow: 0 0 24px rgba(240, 90, 70, 0.16);
+}
+
+.arena-room-party-group::after,
+html[data-theme="light"] .arena-room-party-group::after {
+  top: var(--party-link-y);
+  bottom: auto;
+  left: calc(var(--room-slot-width) / 2);
+  right: calc(var(--room-slot-width) / 2);
+  z-index: 1;
+  background: linear-gradient(90deg, rgba(255, 118, 88, 0.08), rgba(255, 118, 88, 0.88), rgba(255, 118, 88, 0.08));
+  box-shadow: 0 0 14px rgba(255, 118, 88, 0.34);
+}
+
+@media (max-width: 720px) {
+  .arena-room-player-slot .avatar.arena-position-avatar,
+  .arena-room-player-slot .arena-position-avatar,
+  html[data-theme="light"] .arena-room-player-slot .avatar.arena-position-avatar,
+  html[data-theme="light"] .arena-room-player-slot .arena-position-avatar {
+    width: 40px;
+    height: 40px;
+  }
+
+  .arena-room-party-group,
+  html[data-theme="light"] .arena-room-party-group {
+    --party-link-y: 25px;
+  }
+}
+
+/* 2026-07-01 final room slot override: transparent avatar, no slot border, live party line. */
+.arena-room-player-slot .avatar.arena-position-avatar,
+.arena-room-player-slot .arena-position-avatar,
+html[data-theme="light"] .arena-room-player-slot .avatar.arena-position-avatar,
+html[data-theme="light"] .arena-room-player-slot .arena-position-avatar {
+  width: 48px;
+  height: 48px;
+  overflow: visible;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: transparent;
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+.arena-room-player-slot .arena-position-avatar-tier {
+  inset: -5px;
+  width: calc(100% + 10px);
+  height: calc(100% + 10px);
+  object-fit: contain;
+  opacity: 0.95;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.34));
+}
+
+.arena-room-player-slot .arena-position-avatar-player {
+  left: 50%;
+  top: -2px;
+  width: 144%;
+  height: 162%;
+  object-fit: cover;
+  object-position: center top;
+  transform: translateX(-50%);
+  filter: drop-shadow(0 4px 7px rgba(0, 0, 0, 0.42));
+  -webkit-mask-image:
+    linear-gradient(180deg, #000 0 46%, rgba(0, 0, 0, 0.5) 58%, rgba(0, 0, 0, 0.12) 66%, rgba(0, 0, 0, 0) 74%),
+    radial-gradient(ellipse 78% 82% at 50% 28%, #000 0 50%, rgba(0, 0, 0, 0.72) 62%, rgba(0, 0, 0, 0.14) 76%, rgba(0, 0, 0, 0) 88%);
+  mask-image:
+    linear-gradient(180deg, #000 0 46%, rgba(0, 0, 0, 0.5) 58%, rgba(0, 0, 0, 0.12) 66%, rgba(0, 0, 0, 0) 74%),
+    radial-gradient(ellipse 78% 82% at 50% 28%, #000 0 50%, rgba(0, 0, 0, 0.72) 62%, rgba(0, 0, 0, 0.14) 76%, rgba(0, 0, 0, 0) 88%);
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+}
+
+.arena-room-player-slot .arena-position-avatar[data-position="C"] .arena-position-avatar-player {
+  top: -1px;
+  width: 104%;
+  height: 138%;
+}
+
+.arena-room-player-slot .arena-position-avatar[data-position="PG"] .arena-position-avatar-player,
+.arena-room-player-slot .arena-position-avatar[data-position="PF"] .arena-position-avatar-player {
+  width: 128%;
+  height: 150%;
+}
+
+.arena-side-roster .arena-room-player-slot,
+.arena-room-reserve-row .arena-room-player-slot,
+.arena-room-party-group > .arena-room-player-slot-wrap .arena-room-player-slot,
+.arena-room-player-slot,
+html[data-theme="light"] .arena-side-roster .arena-room-player-slot,
+html[data-theme="light"] .arena-room-reserve-row .arena-room-player-slot,
+html[data-theme="light"] .arena-room-party-group > .arena-room-player-slot-wrap .arena-room-player-slot,
+html[data-theme="light"] .arena-room-player-slot {
+  border-color: transparent;
+  background: rgba(255, 255, 255, 0.028);
+  box-shadow:
+    inset 0 0 18px rgba(255, 118, 88, 0.055),
+    0 0 18px rgba(255, 118, 88, 0.1);
+}
+
+.arena-side-roster .arena-room-player-slot.ready,
+.arena-room-reserve-row .arena-room-player-slot.ready,
+.arena-room-party-group > .arena-room-player-slot-wrap .arena-room-player-slot.ready,
+.arena-room-player-slot.ready,
+html[data-theme="light"] .arena-side-roster .arena-room-player-slot.ready,
+html[data-theme="light"] .arena-room-reserve-row .arena-room-player-slot.ready,
+html[data-theme="light"] .arena-room-party-group > .arena-room-player-slot-wrap .arena-room-player-slot.ready,
+html[data-theme="light"] .arena-room-player-slot.ready {
+  border-color: transparent;
+  background: rgba(101, 217, 159, 0.048);
+  box-shadow:
+    inset 0 0 18px rgba(101, 217, 159, 0.08),
+    0 0 20px rgba(101, 217, 159, 0.14);
+}
+
+.arena-side-roster .arena-room-player-slot:not(.ready):not(.empty),
+.arena-room-reserve-row .arena-room-player-slot:not(.ready):not(.empty),
+.arena-room-party-group > .arena-room-player-slot-wrap .arena-room-player-slot:not(.ready):not(.empty),
+.arena-room-player-slot:not(.ready):not(.empty),
+html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.ready):not(.empty),
+html[data-theme="light"] .arena-room-reserve-row .arena-room-player-slot:not(.ready):not(.empty),
+html[data-theme="light"] .arena-room-party-group > .arena-room-player-slot-wrap .arena-room-player-slot:not(.ready):not(.empty),
+html[data-theme="light"] .arena-room-player-slot:not(.ready):not(.empty) {
+  border-color: transparent;
+  background: rgba(255, 211, 108, 0.035);
+  box-shadow:
+    inset 0 0 18px rgba(255, 211, 108, 0.06),
+    0 0 18px rgba(255, 211, 108, 0.1);
+}
+
+.arena-room-player-slot.empty,
+html[data-theme="light"] .arena-room-player-slot.empty {
+  border-color: rgba(255, 211, 108, 0.18);
+  background: rgba(255, 255, 255, 0.014);
+  box-shadow: none;
+}
+
+.arena-room-party-group,
+html[data-theme="light"] .arena-room-party-group {
+  --party-link-y: 30px;
+}
+
+.arena-room-party-group::before,
+html[data-theme="light"] .arena-room-party-group::before {
+  border: 0;
+  background:
+    radial-gradient(ellipse at 50% 42%, rgba(240, 90, 70, 0.16), transparent 66%),
+    rgba(240, 90, 70, 0.026);
+  box-shadow: 0 0 24px rgba(240, 90, 70, 0.16);
+}
+
+.arena-room-party-group::after,
+html[data-theme="light"] .arena-room-party-group::after {
+  top: var(--party-link-y);
+  bottom: auto;
+  left: calc(var(--room-slot-width) / 2);
+  right: calc(var(--room-slot-width) / 2);
+  z-index: 1;
+  background: linear-gradient(90deg, rgba(255, 118, 88, 0.08), rgba(255, 118, 88, 0.88), rgba(255, 118, 88, 0.08));
+  box-shadow: 0 0 14px rgba(255, 118, 88, 0.34);
+}
+
+@media (max-width: 720px) {
+  .arena-room-player-slot .avatar.arena-position-avatar,
+  .arena-room-player-slot .arena-position-avatar,
+  html[data-theme="light"] .arena-room-player-slot .avatar.arena-position-avatar,
+  html[data-theme="light"] .arena-room-player-slot .arena-position-avatar {
+    width: 40px;
+    height: 40px;
+  }
+
+  .arena-room-party-group,
+  html[data-theme="light"] .arena-room-party-group {
+    --party-link-y: 25px;
+  }
+}
+
+/* 2026-07-01 room slot restore: keep avatar cutout and party line from the slot layer. */
+.arena-room-player-slot .avatar.arena-position-avatar,
+.arena-room-player-slot .arena-position-avatar {
+  width: 48px;
+  height: 48px;
+  overflow: visible;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: transparent;
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+.arena-room-player-slot .arena-position-avatar-tier {
+  inset: -5px;
+  width: calc(100% + 10px);
+  height: calc(100% + 10px);
+  object-fit: contain;
+  opacity: 0.95;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.34));
+}
+
+.arena-room-player-slot .arena-position-avatar-player {
+  left: 50%;
+  top: -2px;
+  width: 144%;
+  height: 162%;
+  object-fit: cover;
+  object-position: center top;
+  transform: translateX(-50%);
+  filter: drop-shadow(0 4px 7px rgba(0, 0, 0, 0.42));
+  -webkit-mask-image: radial-gradient(ellipse 72% 92% at 50% 50%, #000 0 52%, rgba(0, 0, 0, 0.92) 68%, rgba(0, 0, 0, 0.42) 86%, rgba(0, 0, 0, 0) 100%);
+  mask-image: radial-gradient(ellipse 72% 92% at 50% 50%, #000 0 52%, rgba(0, 0, 0, 0.92) 68%, rgba(0, 0, 0, 0.42) 86%, rgba(0, 0, 0, 0) 100%);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+}
+
+.arena-room-player-slot .arena-position-avatar[data-position="C"] .arena-position-avatar-player {
+  top: -1px;
+  width: 104%;
+  height: 138%;
+  object-position: center top;
+}
+
+.arena-room-player-slot .arena-position-avatar[data-position="PG"] .arena-position-avatar-player,
+.arena-room-player-slot .arena-position-avatar[data-position="PF"] .arena-position-avatar-player {
+  width: 128%;
+  height: 150%;
+}
+
+.arena-room-party-group {
+  --party-link-y: 30px;
+}
+
+.arena-room-party-group::after {
+  top: var(--party-link-y);
+  bottom: auto;
+  left: calc(var(--room-slot-width) / 2);
+  right: calc(var(--room-slot-width) / 2);
+  z-index: 1;
+}
+
+.arena-side-roster .arena-room-player-slot,
+.arena-room-reserve-row .arena-room-player-slot,
+.arena-room-party-group > .arena-room-player-slot-wrap .arena-room-player-slot,
+.arena-room-player-slot {
+  border-color: transparent;
+  background: rgba(255, 255, 255, 0.028);
+  box-shadow:
+    inset 0 0 18px rgba(255, 118, 88, 0.055),
+    0 0 18px rgba(255, 118, 88, 0.1);
+}
+
+.arena-side-roster .arena-room-player-slot.ready,
+.arena-room-reserve-row .arena-room-player-slot.ready,
+.arena-room-party-group > .arena-room-player-slot-wrap .arena-room-player-slot.ready,
+.arena-room-player-slot.ready {
+  border-color: transparent;
+  background: rgba(101, 217, 159, 0.048);
+  box-shadow:
+    inset 0 0 18px rgba(101, 217, 159, 0.08),
+    0 0 20px rgba(101, 217, 159, 0.14);
+}
+
+.arena-side-roster .arena-room-player-slot:not(.ready):not(.empty),
+.arena-room-reserve-row .arena-room-player-slot:not(.ready):not(.empty),
+.arena-room-party-group > .arena-room-player-slot-wrap .arena-room-player-slot:not(.ready):not(.empty),
+.arena-room-player-slot:not(.ready):not(.empty) {
+  border-color: transparent;
+  background: rgba(255, 211, 108, 0.035);
+  box-shadow:
+    inset 0 0 18px rgba(255, 211, 108, 0.06),
+    0 0 18px rgba(255, 211, 108, 0.1);
+}
+
+.arena-room-player-slot.empty {
+  border-color: rgba(255, 211, 108, 0.18);
+  background: rgba(255, 255, 255, 0.014);
+  box-shadow: none;
+}
+
+.arena-room-party-group::before {
+  border: 0;
+  background:
+    radial-gradient(ellipse at 50% 42%, rgba(240, 90, 70, 0.16), transparent 66%),
+    rgba(240, 90, 70, 0.026);
+  box-shadow: 0 0 24px rgba(240, 90, 70, 0.16);
+}
+
+.arena-room-party-group::after {
+  background: linear-gradient(90deg, rgba(255, 118, 88, 0.08), rgba(255, 118, 88, 0.88), rgba(255, 118, 88, 0.08));
+  box-shadow: 0 0 14px rgba(255, 118, 88, 0.34);
+}
+
+html[data-theme="light"] .arena-room-player-slot .avatar.arena-position-avatar,
+html[data-theme="light"] .arena-room-player-slot .arena-position-avatar {
+  background: transparent;
+  color: transparent;
+  box-shadow: none;
+}
+
+html[data-theme="light"] .arena-side-roster .arena-room-player-slot,
+html[data-theme="light"] .arena-room-reserve-row .arena-room-player-slot,
+html[data-theme="light"] .arena-room-party-group > .arena-room-player-slot-wrap .arena-room-player-slot,
+html[data-theme="light"] .arena-room-player-slot {
+  border-color: transparent;
+  background: rgba(255, 255, 255, 0.36);
+  box-shadow:
+    inset 0 0 18px rgba(229, 85, 63, 0.045),
+    0 0 18px rgba(229, 85, 63, 0.08);
+}
+
+html[data-theme="light"] .arena-side-roster .arena-room-player-slot.ready,
+html[data-theme="light"] .arena-room-reserve-row .arena-room-player-slot.ready,
+html[data-theme="light"] .arena-room-party-group > .arena-room-player-slot-wrap .arena-room-player-slot.ready,
+html[data-theme="light"] .arena-room-player-slot.ready {
+  border-color: transparent;
+  background: rgba(33, 138, 95, 0.07);
+  box-shadow:
+    inset 0 0 18px rgba(33, 138, 95, 0.07),
+    0 0 18px rgba(33, 138, 95, 0.1);
+}
+
+html[data-theme="light"] .arena-room-party-group::before {
+  border: 0;
+  background:
+    radial-gradient(ellipse at 50% 42%, rgba(229, 85, 63, 0.12), transparent 66%),
+    rgba(229, 85, 63, 0.024);
+  box-shadow: 0 0 18px rgba(229, 85, 63, 0.1);
+}
+
+@media (max-width: 720px) {
+  .arena-room-player-slot .avatar.arena-position-avatar,
+  .arena-room-player-slot .arena-position-avatar {
+    width: 40px;
+    height: 40px;
+  }
+
+  .arena-room-party-group {
+    --party-link-y: 25px;
+  }
+}
+
 html[data-theme="light"] .arena-room-party-group > .arena-room-player-slot-wrap .arena-room-player-slot,
 html[data-theme="light"] .arena-room-reserve-row .arena-room-player-slot:not(.empty),
 html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) {
@@ -4804,5 +5274,908 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
 
   html[data-theme="light"] .arena-lobby-modal::before {
     background: rgba(30, 24, 18, 0.18);
+  }
+}
+
+/* 2026-07-01 full internal preview pass: recruiting screen and preserved room modal. */
+.arena-recruit-page {
+  width: min(100%, 1480px);
+  margin: 0 auto;
+  gap: 16px;
+}
+
+.arena-recruit-hero {
+  min-height: clamp(230px, 28vw, 360px);
+  align-items: end;
+  border: 1px solid var(--rb-line);
+  border-radius: var(--radius-lg);
+  background:
+    linear-gradient(90deg, rgba(16, 16, 16, 0.98), rgba(48, 49, 50, 0.7) 58%, rgba(24, 25, 26, 0.9)),
+    radial-gradient(ellipse at 72% 28%, rgba(240, 90, 70, 0.18), transparent 20rem),
+    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px) 0 0 / 100% 18px,
+    var(--bg-ball) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg-2);
+  box-shadow: none;
+  padding: clamp(18px, 3vw, 34px);
+}
+
+.arena-recruit-hero::after {
+  opacity: 1;
+  background: linear-gradient(180deg, transparent 0 62%, rgba(0, 0, 0, 0.36) 100%);
+}
+
+.arena-hero-copy h1 {
+  max-width: 10ch;
+  color: #fff;
+  font-family: Impact, "Arial Narrow", "Roboto Condensed", sans-serif;
+  font-size: clamp(52px, 6vw, 86px);
+  line-height: 0.9;
+  letter-spacing: -0.045em;
+  text-transform: uppercase;
+  text-shadow: 0 12px 30px rgba(0, 0, 0, 0.38);
+}
+
+.arena-hero-copy p {
+  max-width: 520px;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 14px;
+}
+
+.arena-hero-panel {
+  width: min(340px, 100%);
+  align-self: end;
+  border-radius: var(--radius-md);
+  background: rgba(24, 25, 26, 0.82);
+  backdrop-filter: none;
+}
+
+.arena-mode-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.arena-mode-card {
+  min-height: 104px;
+  border: 1px solid var(--rb-line);
+  border-radius: var(--radius-md);
+  background: var(--rb-surface);
+  box-shadow: none;
+}
+
+.arena-mode-card:hover,
+.arena-mode-card.active {
+  border-color: rgba(240, 90, 70, 0.38);
+  background: rgba(240, 90, 70, 0.14);
+  color: var(--rb-text);
+}
+
+.arena-mode-card.active::after {
+  background: var(--rb-orange);
+  box-shadow: none;
+}
+
+.arena-mode-icon {
+  border-radius: var(--radius-sm);
+  background: rgba(240, 90, 70, 0.14);
+  color: var(--rb-orange-2);
+}
+
+.arena-filter-bar,
+.arena-queue-controls {
+  border: 1px solid var(--rb-line);
+  border-radius: var(--radius-md);
+  background: var(--rb-surface);
+  box-shadow: none;
+  padding: 10px;
+}
+
+.arena-filter-bar button,
+.arena-filter-select select,
+.arena-collapse-button {
+  min-height: 38px;
+  border: 1px solid var(--rb-line);
+  border-radius: var(--radius-xs);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--rb-text);
+  box-shadow: none;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.arena-filter-bar button.active,
+.arena-filter-bar .segmented-control button.active,
+.arena-filter-bar .arena-start-date-filter button.active,
+.arena-filter-bar .arena-start-date-filter button.sat.active,
+.arena-filter-bar .arena-start-date-filter button.sun.active {
+  border-color: transparent;
+  background: var(--rb-orange);
+  color: #fff;
+}
+
+.arena-filter-bar .arena-start-date-filter {
+  gap: 8px;
+}
+
+.arena-filter-count {
+  color: var(--rb-gold);
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.arena-lobby-card.om-match-card {
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.72fr) 116px;
+  gap: 12px;
+  align-items: stretch;
+  border: 1px solid var(--rb-line);
+  border-radius: var(--radius-md);
+  background: var(--rb-surface);
+  box-shadow: none;
+  padding: 14px 14px 14px 18px;
+}
+
+.arena-lobby-card.om-match-card::before {
+  display: block;
+  width: 4px;
+  border-radius: 999px;
+  background: var(--rb-orange);
+}
+
+.arena-lobby-card.om-match-card h3 {
+  color: var(--rb-text);
+  font-family: Impact, "Arial Narrow", "Roboto Condensed", sans-serif;
+  font-size: clamp(22px, 1.9vw, 30px);
+  line-height: 0.98;
+  letter-spacing: -0.045em;
+  text-transform: uppercase;
+}
+
+.arena-lobby-card .om-match-summary-box {
+  min-height: 78px;
+  border: 1px solid var(--rb-line);
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.24);
+  box-shadow: none;
+}
+
+.arena-lobby-card .om-room-link,
+.arena-card-action.button,
+.arena-card-action.button-secondary {
+  min-height: 44px;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: var(--rb-orange);
+  color: #fff;
+  box-shadow: none;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.arena-compose-backdrop {
+  align-items: flex-end;
+  background: rgba(0, 0, 0, 0.42);
+  padding: 10px 10px max(10px, env(safe-area-inset-bottom, 0px));
+}
+
+.arena-compose-drawer {
+  border: 1px solid var(--rb-line);
+  border-radius: var(--radius-lg);
+  background: rgba(36, 37, 38, 0.97);
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.46);
+}
+
+.arena-lobby-modal {
+  max-height: calc(100dvh - 36px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--rb-line);
+  border-radius: var(--radius-lg);
+  background: rgba(36, 37, 38, 0.96);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.46);
+  padding: 20px;
+}
+
+.arena-lobby-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 320px);
+  gap: 14px;
+  align-items: start;
+}
+
+.arena-lobby-arena {
+  --room-slot-width: clamp(78px, 7vw, 96px);
+  --room-slot-gap: 8px;
+  border: 1px solid var(--rb-line);
+  border-radius: var(--radius-lg);
+  background:
+    linear-gradient(90deg, rgba(24, 25, 26, 0.98), rgba(48, 49, 50, 0.82) 52%, rgba(24, 25, 26, 0.74)),
+    var(--bg-hoop) var(--hero-bg-position-hoop) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg-2);
+  box-shadow: none;
+  padding: 16px;
+}
+
+.arena-lobby-arena::before {
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px) 0 0 / 100% 9px,
+    radial-gradient(ellipse at 50% 48%, rgba(240, 90, 70, 0.16), transparent 20rem);
+  opacity: 0.68;
+}
+
+.arena-lobby-arena::after {
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.34), transparent);
+}
+
+.arena-lobby-title h2 {
+  color: #fff;
+  font-family: Impact, "Arial Narrow", "Roboto Condensed", sans-serif;
+  font-size: clamp(46px, 5.5vw, 72px);
+  line-height: 0.9;
+  letter-spacing: -0.045em;
+  text-transform: uppercase;
+  text-shadow: 0 12px 30px rgba(0, 0, 0, 0.34);
+}
+
+.arena-lobby-title > span,
+.arena-lobby-team-head span {
+  color: var(--rb-orange-2);
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.arena-lobby-title p {
+  color: var(--rb-muted);
+  font-size: 13px;
+}
+
+.arena-lobby-versus-stage {
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: stretch;
+}
+
+.arena-lobby-team-panel,
+.arena-lobby-score-core,
+.arena-lobby-actions > div {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.16);
+  backdrop-filter: none;
+  box-shadow: none;
+}
+
+.arena-lobby-team-panel {
+  padding: 12px;
+}
+
+.arena-lobby-team-head strong {
+  color: var(--rb-text);
+  font-family: Impact, "Arial Narrow", "Roboto Condensed", sans-serif;
+  font-size: clamp(28px, 2.8vw, 38px);
+  line-height: 0.96;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+}
+
+.arena-lobby-team-head em {
+  color: var(--rb-muted);
+}
+
+.arena-lobby-score-core {
+  min-height: 92px;
+  background: rgba(0, 0, 0, 0.24);
+}
+
+.arena-lobby-score-core strong {
+  color: var(--rb-text);
+  font-family: Impact, "Arial Narrow", "Roboto Condensed", sans-serif;
+  font-size: clamp(42px, 5vw, 70px);
+  line-height: 1;
+  letter-spacing: -0.045em;
+}
+
+.arena-lobby-score-core i {
+  color: var(--rb-orange-2);
+}
+
+.arena-lobby-score-core span,
+.arena-lobby-actions svg {
+  color: var(--rb-green);
+}
+
+.arena-room-slot-row,
+.arena-room-reserve-row {
+  grid-template-columns: repeat(var(--slot-count, 5), minmax(var(--room-slot-width), 1fr));
+  gap: var(--room-slot-gap);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.arena-room-slot-row::-webkit-scrollbar,
+.arena-room-reserve-row::-webkit-scrollbar {
+  display: none;
+}
+
+.arena-room-player-slot {
+  grid-template-rows: 44px 16px 18px 18px 16px;
+  min-height: 136px;
+  border: 1px solid var(--rb-line);
+  border-radius: 14px;
+  background: var(--rb-surface);
+  box-shadow: none;
+  padding: 10px 6px;
+  gap: 6px;
+}
+
+.arena-side-roster .arena-room-player-slot.ready,
+.arena-room-reserve-row .arena-room-player-slot.ready,
+.arena-room-party-group > .arena-room-player-slot-wrap .arena-room-player-slot.ready,
+.arena-room-player-slot.ready {
+  border-color: rgba(101, 217, 159, 0.3);
+  background: rgba(101, 217, 159, 0.075);
+}
+
+.arena-side-roster .arena-room-player-slot:not(.ready):not(.empty),
+.arena-room-reserve-row .arena-room-player-slot:not(.ready):not(.empty),
+.arena-room-party-group > .arena-room-player-slot-wrap .arena-room-player-slot:not(.ready):not(.empty),
+.arena-room-player-slot:not(.ready):not(.empty) {
+  border-color: rgba(255, 211, 108, 0.24);
+  background: rgba(255, 211, 108, 0.06);
+}
+
+.arena-room-player-slot.empty {
+  border-style: dashed;
+  background: rgba(255, 255, 255, 0.025);
+  color: var(--rb-soft);
+}
+
+.arena-room-player-slot.empty.invite {
+  color: var(--rb-gold);
+}
+
+.arena-room-player-slot .avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--rb-cream);
+  color: #111;
+  box-shadow: 0 9px 18px rgba(0, 0, 0, 0.18);
+}
+
+.arena-room-player-slot .arena-position-avatar {
+  border-radius: 50%;
+  background: var(--rb-cream);
+  box-shadow: none;
+}
+
+.arena-room-slot-crown,
+.arena-room-slot-crown.host,
+.arena-room-slot-crown.captain {
+  top: 7px;
+  right: 7px;
+  width: 20px;
+  height: 20px;
+  border-color: transparent;
+  background: var(--rb-orange);
+  color: #fff;
+}
+
+.arena-room-player-slot strong {
+  color: var(--rb-text);
+  font-size: 12px;
+  line-height: 1.05;
+}
+
+.arena-room-player-slot small {
+  min-height: 18px;
+  border-radius: 999px;
+  background: rgba(116, 169, 255, 0.16);
+  color: var(--rb-blue);
+  font-size: 9.5px;
+  font-weight: 950;
+}
+
+.arena-room-player-slot b {
+  background: transparent;
+  color: var(--rb-soft);
+  font-size: 10px;
+}
+
+.arena-room-player-slot em {
+  color: var(--rb-gold);
+  font-size: 10px;
+  font-weight: 950;
+}
+
+.arena-room-party-group {
+  isolation: isolate;
+  gap: 8px;
+  border-radius: 18px;
+  padding: 7px;
+}
+
+.arena-room-party-group::before {
+  inset: 0;
+  border: 1px solid rgba(255, 118, 88, 0.42);
+  border-radius: 18px;
+  background:
+    radial-gradient(ellipse at 50% 42%, rgba(240, 90, 70, 0.18), transparent 66%),
+    rgba(240, 90, 70, 0.055);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 0 22px rgba(240, 90, 70, 0.12);
+}
+
+.arena-room-party-group::after {
+  top: auto;
+  left: calc(var(--room-slot-width) / 2);
+  right: calc(var(--room-slot-width) / 2);
+  bottom: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(255, 118, 88, 0.1), rgba(255, 118, 88, 0.9), rgba(255, 118, 88, 0.1));
+  box-shadow: 0 0 13px rgba(255, 118, 88, 0.38);
+}
+
+.arena-owner-panel,
+.arena-room-rule-panel,
+.arena-room-chat,
+.arena-reserve-panel,
+.arena-join-panel,
+.arena-invite-panel,
+.arena-slot-command-popover,
+.arena-party-picker {
+  border: 1px solid var(--rb-line);
+  border-radius: 16px;
+  background: rgba(36, 37, 38, 0.78);
+  backdrop-filter: none;
+  box-shadow: none;
+}
+
+.arena-reserve-panel {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.arena-room-rule-panel strong,
+.arena-owner-panel strong,
+.arena-invite-panel header strong,
+.arena-room-chat header span {
+  font-family: Impact, "Arial Narrow", "Roboto Condensed", sans-serif;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: -0.035em;
+  text-transform: uppercase;
+}
+
+.arena-room-rule-panel span,
+.arena-owner-panel span,
+.arena-invite-panel header span,
+.arena-room-chat p {
+  color: var(--rb-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+@media (max-width: 1020px) {
+  .arena-mode-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .arena-lobby-card.om-match-card {
+    grid-template-columns: minmax(0, 1fr) minmax(240px, 0.66fr);
+  }
+
+  .arena-lobby-card .om-room-link {
+    grid-column: 1 / -1;
+  }
+
+  .arena-lobby-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .arena-recruit-page {
+    gap: 12px;
+  }
+
+  .arena-recruit-hero {
+    min-height: 300px;
+    padding: 16px;
+  }
+
+  .arena-hero-copy h1 {
+    font-size: clamp(46px, 13vw, 56px);
+  }
+
+  .arena-mode-grid {
+    display: flex;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .arena-mode-grid::-webkit-scrollbar {
+    display: none;
+  }
+
+  .arena-mode-card {
+    min-width: 188px;
+  }
+
+  .arena-filter-segment,
+  .arena-filter-bar .segmented-control,
+  .arena-filter-bar .arena-start-date-filter {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    scrollbar-width: none;
+  }
+
+  .arena-filter-segment::-webkit-scrollbar,
+  .arena-filter-bar .segmented-control::-webkit-scrollbar,
+  .arena-filter-bar .arena-start-date-filter::-webkit-scrollbar {
+    display: none;
+  }
+
+  .arena-filter-bar .arena-start-date-filter button {
+    min-width: 58px;
+  }
+
+  .arena-lobby-card.om-match-card {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 14px;
+  }
+
+  .arena-compose-drawer,
+  .arena-lobby-modal {
+    width: 100%;
+    max-height: calc(100dvh - 20px);
+    border-radius: 24px 24px 32px 32px;
+    padding: 14px;
+  }
+
+  .arena-lobby-modal::before {
+    content: "";
+    display: block;
+    width: 44px;
+    height: 4px;
+    margin: 0 auto 2px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.22);
+  }
+
+  .arena-lobby-arena {
+    --room-slot-width: 74px;
+    --room-slot-gap: 8px;
+    padding: 10px;
+  }
+
+  .arena-lobby-title h2 {
+    font-size: clamp(34px, 10vw, 38px);
+  }
+
+  .arena-lobby-versus-stage {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .arena-lobby-score-core {
+    min-height: 70px;
+  }
+
+  .arena-room-slot-row,
+  .arena-room-reserve-row {
+    grid-auto-columns: minmax(74px, 74px);
+    grid-template-columns: none;
+  }
+
+  .arena-room-player-slot {
+    grid-template-rows: 36px 16px 18px 18px 16px;
+    min-height: 118px;
+    border-radius: 12px;
+    padding: 8px 4px;
+    gap: 4px;
+  }
+
+  .arena-room-player-slot .avatar {
+    width: 36px;
+    height: 36px;
+  }
+
+  .arena-room-player-slot strong {
+    font-size: 11px;
+  }
+
+  .arena-room-player-slot small,
+  .arena-room-player-slot b,
+  .arena-room-player-slot em {
+    font-size: 9.5px;
+  }
+
+  .arena-reserve-panel {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 10px;
+  }
+}
+
+html[data-theme="light"] .arena-recruit-hero {
+  background:
+    linear-gradient(90deg, rgba(20, 20, 20, 0.58), rgba(70, 58, 46, 0.32)),
+    var(--bg-ball) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg-3);
+}
+
+html[data-theme="light"] .arena-hero-panel,
+html[data-theme="light"] .arena-mode-card,
+html[data-theme="light"] .arena-filter-bar,
+html[data-theme="light"] .arena-queue-controls,
+html[data-theme="light"] .arena-lobby-card.om-match-card {
+  border-color: var(--rb-line);
+  background: var(--rb-surface);
+  box-shadow: var(--shadow);
+}
+
+html[data-theme="light"] .arena-mode-card:hover,
+html[data-theme="light"] .arena-mode-card.active {
+  border-color: rgba(229, 85, 63, 0.3);
+  background: rgba(229, 85, 63, 0.1);
+  color: var(--rb-text);
+}
+
+html[data-theme="light"] .arena-filter-bar button,
+html[data-theme="light"] .arena-filter-select select,
+html[data-theme="light"] .arena-collapse-button {
+  border-color: rgba(30, 24, 18, 0.14);
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--rb-text);
+}
+
+html[data-theme="light"] .arena-filter-bar button.active,
+html[data-theme="light"] .arena-filter-bar .segmented-control button.active,
+html[data-theme="light"] .arena-filter-bar .arena-start-date-filter button.active,
+html[data-theme="light"] .arena-filter-bar .arena-start-date-filter button.sat.active,
+html[data-theme="light"] .arena-filter-bar .arena-start-date-filter button.sun.active,
+html[data-theme="light"] .arena-lobby-card .om-room-link,
+html[data-theme="light"] .arena-card-action.button,
+html[data-theme="light"] .arena-card-action.button-secondary {
+  border-color: transparent;
+  background: var(--rb-orange);
+  color: #fff;
+}
+
+html[data-theme="light"] .arena-lobby-card .om-match-summary-box {
+  background: rgba(255, 255, 255, 0.7);
+}
+
+html[data-theme="light"] .arena-lobby-modal {
+  border-color: var(--rb-line);
+  background: rgba(255, 250, 241, 0.96);
+  box-shadow: 0 -18px 54px rgba(55, 44, 31, 0.14);
+}
+
+html[data-theme="light"] .arena-lobby-arena {
+  border-color: var(--rb-line);
+  background:
+    radial-gradient(ellipse at 50% 48%, rgba(229, 85, 63, 0.1), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(245, 241, 232, 0.94));
+}
+
+html[data-theme="light"] .arena-lobby-team-panel,
+html[data-theme="light"] .arena-lobby-score-core,
+html[data-theme="light"] .arena-lobby-actions > div,
+html[data-theme="light"] .arena-owner-panel,
+html[data-theme="light"] .arena-room-rule-panel,
+html[data-theme="light"] .arena-room-chat,
+html[data-theme="light"] .arena-reserve-panel,
+html[data-theme="light"] .arena-join-panel,
+html[data-theme="light"] .arena-invite-panel,
+html[data-theme="light"] .arena-slot-command-popover,
+html[data-theme="light"] .arena-party-picker {
+  border-color: var(--rb-line);
+  background: rgba(255, 255, 255, 0.62);
+  box-shadow: var(--shadow);
+}
+
+html[data-theme="light"] .arena-room-player-slot {
+  border-color: rgba(30, 24, 18, 0.13);
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--rb-text);
+}
+
+html[data-theme="light"] .arena-side-roster .arena-room-player-slot.ready,
+html[data-theme="light"] .arena-room-reserve-row .arena-room-player-slot.ready,
+html[data-theme="light"] .arena-room-party-group > .arena-room-player-slot-wrap .arena-room-player-slot.ready,
+html[data-theme="light"] .arena-room-player-slot.ready {
+  border-color: rgba(33, 138, 95, 0.25);
+  background: rgba(33, 138, 95, 0.08);
+}
+
+html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.ready):not(.empty),
+html[data-theme="light"] .arena-room-reserve-row .arena-room-player-slot:not(.ready):not(.empty),
+html[data-theme="light"] .arena-room-party-group > .arena-room-player-slot-wrap .arena-room-player-slot:not(.ready):not(.empty),
+html[data-theme="light"] .arena-room-player-slot:not(.ready):not(.empty) {
+  border-color: rgba(168, 108, 20, 0.24);
+  background: rgba(168, 108, 20, 0.08);
+}
+
+html[data-theme="light"] .arena-room-player-slot.empty {
+  background: rgba(30, 24, 18, 0.035);
+  color: var(--rb-soft);
+}
+
+html[data-theme="light"] .arena-room-player-slot .avatar,
+html[data-theme="light"] .arena-room-player-slot .arena-position-avatar {
+  background: #151515;
+  color: #fff;
+  box-shadow: 0 6px 14px rgba(55, 44, 31, 0.12);
+}
+
+html[data-theme="light"] .arena-room-party-group::before {
+  border: 1px solid rgba(229, 85, 63, 0.36);
+  background:
+    radial-gradient(ellipse at 50% 42%, rgba(229, 85, 63, 0.12), transparent 66%),
+    rgba(229, 85, 63, 0.045);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.62),
+    0 0 18px rgba(229, 85, 63, 0.1);
+}
+
+html[data-theme="light"] .arena-room-party-group::after {
+  background: linear-gradient(90deg, rgba(229, 85, 63, 0.08), rgba(229, 85, 63, 0.8), rgba(229, 85, 63, 0.08));
+  box-shadow: 0 0 10px rgba(229, 85, 63, 0.25);
+}
+
+/* 2026-07-01 absolute final room slot lock. */
+.arena-room-player-slot .avatar.arena-position-avatar,
+.arena-room-player-slot .arena-position-avatar,
+html[data-theme="light"] .arena-room-player-slot .avatar.arena-position-avatar,
+html[data-theme="light"] .arena-room-player-slot .arena-position-avatar {
+  width: 48px;
+  height: 48px;
+  overflow: visible;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: transparent;
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+.arena-room-player-slot .arena-position-avatar-tier {
+  inset: -5px;
+  width: calc(100% + 10px);
+  height: calc(100% + 10px);
+  object-fit: contain;
+  opacity: 0.95;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.34));
+}
+
+.arena-room-player-slot .arena-position-avatar-player {
+  left: 50%;
+  top: -2px;
+  width: 144%;
+  height: 162%;
+  object-fit: cover;
+  object-position: center top;
+  transform: translateX(-50%);
+  filter: drop-shadow(0 4px 7px rgba(0, 0, 0, 0.42));
+  -webkit-mask-image:
+    linear-gradient(180deg, #000 0 46%, rgba(0, 0, 0, 0.5) 58%, rgba(0, 0, 0, 0.12) 66%, rgba(0, 0, 0, 0) 74%),
+    radial-gradient(ellipse 78% 82% at 50% 28%, #000 0 50%, rgba(0, 0, 0, 0.72) 62%, rgba(0, 0, 0, 0.14) 76%, rgba(0, 0, 0, 0) 88%);
+  mask-image:
+    linear-gradient(180deg, #000 0 46%, rgba(0, 0, 0, 0.5) 58%, rgba(0, 0, 0, 0.12) 66%, rgba(0, 0, 0, 0) 74%),
+    radial-gradient(ellipse 78% 82% at 50% 28%, #000 0 50%, rgba(0, 0, 0, 0.72) 62%, rgba(0, 0, 0, 0.14) 76%, rgba(0, 0, 0, 0) 88%);
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+}
+
+.arena-room-player-slot .arena-position-avatar[data-position="C"] .arena-position-avatar-player {
+  top: -1px;
+  width: 104%;
+  height: 138%;
+}
+
+.arena-room-player-slot .arena-position-avatar[data-position="PG"] .arena-position-avatar-player,
+.arena-room-player-slot .arena-position-avatar[data-position="PF"] .arena-position-avatar-player {
+  width: 128%;
+  height: 150%;
+}
+
+.arena-side-roster .arena-room-player-slot,
+.arena-room-reserve-row .arena-room-player-slot,
+.arena-room-party-group > .arena-room-player-slot-wrap .arena-room-player-slot,
+.arena-room-player-slot,
+html[data-theme="light"] .arena-side-roster .arena-room-player-slot,
+html[data-theme="light"] .arena-room-reserve-row .arena-room-player-slot,
+html[data-theme="light"] .arena-room-party-group > .arena-room-player-slot-wrap .arena-room-player-slot,
+html[data-theme="light"] .arena-room-player-slot {
+  border-color: transparent;
+  background: rgba(255, 255, 255, 0.028);
+  box-shadow:
+    inset 0 0 18px rgba(255, 118, 88, 0.055),
+    0 0 18px rgba(255, 118, 88, 0.1);
+}
+
+.arena-side-roster .arena-room-player-slot.ready,
+.arena-room-reserve-row .arena-room-player-slot.ready,
+.arena-room-party-group > .arena-room-player-slot-wrap .arena-room-player-slot.ready,
+.arena-room-player-slot.ready,
+html[data-theme="light"] .arena-side-roster .arena-room-player-slot.ready,
+html[data-theme="light"] .arena-room-reserve-row .arena-room-player-slot.ready,
+html[data-theme="light"] .arena-room-party-group > .arena-room-player-slot-wrap .arena-room-player-slot.ready,
+html[data-theme="light"] .arena-room-player-slot.ready {
+  border-color: transparent;
+  background: rgba(101, 217, 159, 0.048);
+  box-shadow:
+    inset 0 0 18px rgba(101, 217, 159, 0.08),
+    0 0 20px rgba(101, 217, 159, 0.14);
+}
+
+.arena-side-roster .arena-room-player-slot:not(.ready):not(.empty),
+.arena-room-reserve-row .arena-room-player-slot:not(.ready):not(.empty),
+.arena-room-party-group > .arena-room-player-slot-wrap .arena-room-player-slot:not(.ready):not(.empty),
+.arena-room-player-slot:not(.ready):not(.empty),
+html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.ready):not(.empty),
+html[data-theme="light"] .arena-room-reserve-row .arena-room-player-slot:not(.ready):not(.empty),
+html[data-theme="light"] .arena-room-party-group > .arena-room-player-slot-wrap .arena-room-player-slot:not(.ready):not(.empty),
+html[data-theme="light"] .arena-room-player-slot:not(.ready):not(.empty) {
+  border-color: transparent;
+  background: rgba(255, 211, 108, 0.035);
+  box-shadow:
+    inset 0 0 18px rgba(255, 211, 108, 0.06),
+    0 0 18px rgba(255, 211, 108, 0.1);
+}
+
+.arena-room-player-slot.empty,
+html[data-theme="light"] .arena-room-player-slot.empty {
+  border-color: rgba(255, 211, 108, 0.18);
+  background: rgba(255, 255, 255, 0.014);
+  box-shadow: none;
+}
+
+.arena-room-party-group,
+html[data-theme="light"] .arena-room-party-group {
+  --party-link-y: 30px;
+}
+
+.arena-room-party-group::before,
+html[data-theme="light"] .arena-room-party-group::before {
+  border: 0;
+  background:
+    radial-gradient(ellipse at 50% 42%, rgba(240, 90, 70, 0.16), transparent 66%),
+    rgba(240, 90, 70, 0.026);
+  box-shadow: 0 0 24px rgba(240, 90, 70, 0.16);
+}
+
+.arena-room-party-group::after,
+html[data-theme="light"] .arena-room-party-group::after {
+  top: var(--party-link-y);
+  bottom: auto;
+  left: calc(var(--room-slot-width) / 2);
+  right: calc(var(--room-slot-width) / 2);
+  z-index: 1;
+  background: linear-gradient(90deg, rgba(255, 118, 88, 0.08), rgba(255, 118, 88, 0.88), rgba(255, 118, 88, 0.08));
+  box-shadow: 0 0 14px rgba(255, 118, 88, 0.34);
+}
+
+@media (max-width: 720px) {
+  .arena-room-player-slot .avatar.arena-position-avatar,
+  .arena-room-player-slot .arena-position-avatar,
+  html[data-theme="light"] .arena-room-player-slot .avatar.arena-position-avatar,
+  html[data-theme="light"] .arena-room-player-slot .arena-position-avatar {
+    width: 40px;
+    height: 40px;
+  }
+
+  .arena-room-party-group,
+  html[data-theme="light"] .arena-room-party-group {
+    --party-link-y: 25px;
   }
 }

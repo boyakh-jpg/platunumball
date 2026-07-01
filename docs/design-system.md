@@ -741,3 +741,12 @@ UI 수정 전:
 1. Desktop home uses a court hero plus right rail composition: rank hero on the left, search/action queue on the right.
 2. Home lower dashboard uses match-focused primary column and compact support-card rail.
 3. Mobile home stays single-column for readability: search, action queue, rank hero, then dashboard.
+
+## 2026-07-01 Full internal preview pass
+
+1. Internal app screens follow the supplied preview more strongly: charcoal sports background, large condensed hero title, compact cards, orange primary CTA, and flat scoreboard surfaces.
+2. Home composition changes from simple stacked cards to hero plus right rail from 760px upward. Mobile remains single column.
+3. Matches and Recruiting list cards stay summary-first: title, status chips, time/court, count or score, and one CTA.
+4. Room modal keeps existing slot, avatar, reserve, READY/WAIT, captain/host badge, and party connection structure. Only visual skin, spacing, and responsive sheet treatment change.
+5. Active buttons and selected states use orange fill or orange-tinted surface. Green is reserved for ready/success states.
+6. Light mode remains warm cream sports UI, not pure white dashboard.
