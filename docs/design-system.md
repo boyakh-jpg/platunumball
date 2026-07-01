@@ -816,7 +816,7 @@ UI 수정 전:
 
 ## 2026-07-01 Mobile hero bleed
 
-1. On mobile, Home, Recruiting, and Matches hero images bleed to the viewport edges so the far-back page background is not visible at the top left/right.
+1. On mobile, page hero images bleed to the viewport edges so the far-back page background is not visible at the top left/right. Room modal internals are excluded; Home and Team may keep layout-specific content placement only.
 2. Mobile hero top corners are square; lower corners may keep the large app radius.
 
 ## 2026-07-01 Shared UI primitives

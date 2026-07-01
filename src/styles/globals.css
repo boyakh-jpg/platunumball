@@ -12181,9 +12181,9 @@ html[data-theme="light"] .app-main {
 /* 2026-07-01 mobile hero board: full image first, details after search. */
 @media (max-width: 1079px) {
   .rank-home > .rank-summary-grid {
-    width: calc(100% + (2 * var(--page-gutter)) - 4px);
+    width: calc(100% + (2 * var(--page-gutter)));
     max-width: none;
-    margin-inline: calc((-1 * var(--page-gutter)) + 2px);
+    margin-inline: calc(-1 * var(--page-gutter));
     border-radius: 0;
   }
 }
@@ -13030,6 +13030,23 @@ button.danger-button {
   .referee-rulebook-hero h2,
   .gm-room-title h1 {
     font-size: var(--hero-title-size-mobile);
+  }
+}
+
+/* 2026-07-01 mobile page heroes: full bleed outside room modal internals. */
+@media (max-width: 1079px) {
+  .landing-hero,
+  .match-hero,
+  .team-hub-hero,
+  .season-hero,
+  .profile-hero,
+  .team-detail-hero,
+  .referee-rulebook-hero,
+  .rank-home > .rank-summary-grid {
+    width: calc(100% + (2 * var(--page-gutter)));
+    max-width: none;
+    margin-inline: calc(-1 * var(--page-gutter));
+    border-radius: 0;
   }
 }
 

@@ -3709,8 +3709,8 @@ html[data-theme="light"] .om-match-panel {
 
 @media (max-width: 1020px) {
   .om-match-hero {
-    width: calc(100% + (2 * var(--page-gutter)) - 4px);
-    margin-inline: calc((-1 * var(--page-gutter)) + 2px);
+    width: calc(100% + (2 * var(--page-gutter)));
+    margin-inline: calc(-1 * var(--page-gutter));
     border-radius: 0;
   }
 }
@@ -3733,6 +3733,17 @@ html[data-theme="light"] .om-match-panel {
 
   .om-match-copy p {
     font-size: 13px;
+  }
+}
+
+/* 2026-07-01 mobile matches/tournament heroes: same viewport bleed as global page heroes. */
+@media (max-width: 1079px) {
+  .om-match-hero,
+  .tournament-hero {
+    width: calc(100% + (2 * var(--page-gutter)));
+    max-width: none;
+    margin-inline: calc(-1 * var(--page-gutter));
+    border-radius: 0;
   }
 }
 
