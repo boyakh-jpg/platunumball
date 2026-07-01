@@ -473,16 +473,17 @@ export default function Home({ app }) {
         </div>
       </Card>
 
-      {actionItems.length ? (
-        <Card className="section-card home-action-card">
-          <div className="section-title-row">
-            <div>
-              <p className="eyebrow">Action Queue</p>
-              <h2>내가 처리할 방</h2>
-            </div>
-            <Badge tone="orange">{actionItems.length}개</Badge>
+      <Card className="section-card home-action-card">
+        <div className="section-title-row">
+          <div>
+            <p className="eyebrow">Action Queue</p>
+            <h2>내가 처리할 방</h2>
           </div>
-          <div className="home-action-list">
+          <Badge tone={actionItems.length ? "orange" : "neutral"}>{actionItems.length}개</Badge>
+        </div>
+        <div className="home-action-list">
+          {actionItems.length ? (
+            <>
             {priorityItems.map((item) => {
               const Icon = item.icon;
               return (
@@ -506,9 +507,19 @@ export default function Home({ app }) {
                 <b>더보기</b>
               </Link>
             ) : null}
-          </div>
-        </Card>
-      ) : null}
+            </>
+          ) : (
+            <div className="home-action-row priority-5">
+              <span className="home-action-icon"><ClipboardCheck size={18} /></span>
+              <span className="home-action-main">
+                <strong>처리할 알림 없음</strong>
+                <em>초대, 승인, 기록 확인이 여기 뜹니다.</em>
+              </span>
+              <b>OK</b>
+            </div>
+          )}
+        </div>
+      </Card>
 
       <section className="rank-summary-grid">
         <div className="home-rank-board-head">

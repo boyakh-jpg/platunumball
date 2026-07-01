@@ -12333,11 +12333,12 @@ html[data-theme="light"] .home-my-teams-card .home-team-list em {
 /* 2026-07-01 desktop home compaction: lift lower panels beside the hero. */
 @media (min-width: 1080px) {
   .rank-home {
-    grid-template-columns: minmax(0, 1.55fr) minmax(340px, 0.7fr);
+    grid-template-columns: minmax(0, 1.46fr) minmax(320px, 0.64fr);
     grid-template-areas:
-      "search search"
-      "hero action"
+      "search action"
+      "hero side"
       "primary side";
+    gap: 16px;
     align-items: start;
   }
 
@@ -12357,17 +12358,29 @@ html[data-theme="light"] .home-my-teams-card .home-team-list em {
   .rank-home .home-dashboard-grid .home-side-stack {
     grid-area: side;
     min-width: 0;
-    gap: 14px;
+    gap: 12px;
     align-self: start;
   }
 
   .rank-home .home-dashboard-grid .home-side-stack {
     display: grid;
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   }
 
   .rank-home .rank-summary-grid {
-    min-height: clamp(430px, 44vh, 560px);
+    grid-template-columns: minmax(0, 1fr) minmax(210px, 240px);
+    grid-template-rows: minmax(220px, 1fr) auto;
+    min-height: clamp(340px, 36vh, 430px);
+    gap: 12px;
+    padding: 18px;
+  }
+
+  .rank-home .rank-summary-grid .rank-hero-top {
+    gap: 14px;
+  }
+
+  .rank-home .rank-summary-grid .home-rank-board-head h1 {
+    font-size: clamp(42px, 4.1vw, 62px);
   }
 
   .rank-home .rank-mode-card,
@@ -12383,9 +12396,54 @@ html[data-theme="light"] .home-my-teams-card .home-team-list em {
     gap: 6px;
   }
 
-  .rank-home .rank-mode-pill {
-    min-height: 58px;
+  .rank-home .rank-profile-card {
+    align-self: start;
+    min-height: 0;
+    align-content: start;
+    gap: 7px;
+    padding: 12px;
+  }
+
+  .rank-home .rank-profile-card::before {
+    padding: 5px 9px;
+    font-size: 0.64rem;
+  }
+
+  .rank-home .rank-profile-card .rank-tier-block {
+    grid-template-columns: 58px minmax(0, 1fr);
+    gap: 8px;
     padding: 8px;
+  }
+
+  .rank-home .rank-profile-card .rank-tier-block .tier-emblem {
+    width: 58px;
+    height: 58px;
+  }
+
+  .rank-home .rank-profile-card .rank-tier-block strong {
+    font-size: clamp(1.38rem, 1.8vw, 1.75rem);
+    line-height: 0.95;
+  }
+
+  .rank-home .rank-tier-meta-line {
+    gap: 6px;
+  }
+
+  .rank-home .rank-tier-meta-line .badge {
+    min-height: 24px;
+    padding: 4px 8px;
+  }
+
+  .rank-home .rank-tier-copy,
+  .rank-home .rank-tier-note {
+    font-size: 11px;
+    line-height: 1.28;
+    margin: 0;
+  }
+
+  .rank-home .rank-mode-pill {
+    min-height: 50px;
+    padding: 7px;
   }
 
   .rank-home .rank-mode-pill .tier-emblem-sm {
@@ -12405,5 +12463,11 @@ html[data-theme="light"] .home-my-teams-card .home-team-list em {
 
   .rank-home .rank-mode-pill em {
     font-size: 0.68rem;
+  }
+
+  html[data-theme="light"] .rank-home .rank-profile-card,
+  html[data-theme="light"] .rank-home .rank-mode-card {
+    background: transparent;
+    box-shadow: none;
   }
 }
