@@ -12512,9 +12512,10 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head p:n
   display: grid;
   gap: 10px;
   min-width: 0;
-  border: 1px solid var(--rb-line);
-  border-radius: var(--radius-lg);
-  background: rgba(24, 25, 26, 0.58);
+  overflow: visible;
+  border: 1px solid var(--ui-card-border);
+  border-radius: var(--ui-card-radius);
+  background: var(--ui-card-bg);
   padding: 10px;
 }
 
@@ -12525,15 +12526,36 @@ html[data-theme="light"] .rank-home .rank-tier-rail > .rank-mode-card {
   grid-column: auto;
   grid-row: auto;
   align-self: stretch;
+  width: 100%;
   border: 0;
   background: transparent;
   box-shadow: none;
+  overflow: visible;
+  padding: 0;
 }
 
 html[data-theme="light"] .rank-home .rank-tier-rail {
-  border-color: rgba(30, 24, 18, 0.16);
-  background: rgba(255, 250, 241, 0.74);
-  box-shadow: 0 16px 34px rgba(55, 44, 31, 0.12);
+  border-color: var(--ui-card-border);
+  background: var(--ui-card-bg);
+  box-shadow: var(--ui-card-shadow);
+}
+
+.rank-home .rank-profile-card .rank-tier-block,
+.rank-home .rank-mode-pill,
+html[data-theme="light"] .rank-home .rank-profile-card .rank-tier-block,
+html[data-theme="light"] .rank-home .rank-mode-pill {
+  width: 100%;
+  box-sizing: border-box;
+  overflow: visible;
+  border: 1px solid var(--ui-card-border);
+  border-radius: var(--ui-card-radius);
+  background: var(--ui-card-bg);
+  box-shadow: var(--ui-card-shadow);
+}
+
+.rank-home .rank-mode-card,
+html[data-theme="light"] .rank-home .rank-mode-card {
+  overflow: visible;
 }
 
 @media (min-width: 1080px) {
@@ -12985,6 +13007,7 @@ button.danger-button {
 .rank-hero-top h1,
 .rank-home .rank-summary-grid .home-rank-board-head h1,
 .home-rank-board-head h1,
+.page-header h1,
 .landing-hero h1,
 .match-hero h1,
 .team-hub-hero h1,
@@ -13006,6 +13029,7 @@ button.danger-button {
 .rank-hero-top p:not(.eyebrow),
 .rank-home .rank-summary-grid .home-rank-board-head p:not(.eyebrow),
 .home-rank-board-head p:not(.eyebrow),
+.page-header p:not(.eyebrow),
 .landing-hero p,
 .match-hero p,
 .team-hub-hero p:not(.eyebrow),
@@ -13021,6 +13045,7 @@ button.danger-button {
 @media (max-width: 720px) {
   .rank-hero-top h1,
   .home-rank-board-head h1,
+  .page-header h1,
   .landing-hero h1,
   .match-hero h1,
   .team-hub-hero h1,
@@ -13035,6 +13060,7 @@ button.danger-button {
 
 /* 2026-07-01 mobile page heroes: full bleed outside room modal internals. */
 @media (max-width: 1079px) {
+  .page-header,
   .landing-hero,
   .match-hero,
   .team-hub-hero,
@@ -13048,6 +13074,54 @@ button.danger-button {
     margin-inline: calc(-1 * var(--page-gutter));
     border-radius: 0;
   }
+}
+
+/* 2026-07-01 final hero/tier bleed guard.
+   Keep generic page headers and home tier rail on the same primitive layer. */
+@media (max-width: 1079px) {
+  .page-stack > .page-header,
+  .page-stack > .landing-hero,
+  .page-stack > .match-hero,
+  .page-stack > .team-hub-hero,
+  .page-stack > .season-hero,
+  .page-stack > .profile-hero,
+  .page-stack > .team-detail-hero,
+  .page-stack > .referee-rulebook-hero,
+  .rank-home > .rank-summary-grid {
+    width: calc(100% + (2 * var(--page-gutter)));
+    max-width: none;
+    margin-inline: calc(-1 * var(--page-gutter));
+    border-right: 0;
+    border-left: 0;
+    border-radius: 0;
+  }
+}
+
+.rank-home .rank-tier-rail > .rank-profile-card,
+.rank-home .rank-tier-rail > .rank-mode-card,
+html[data-theme="light"] .rank-home .rank-tier-rail > .rank-profile-card,
+html[data-theme="light"] .rank-home .rank-tier-rail > .rank-mode-card {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
+  padding: 0;
+}
+
+.rank-home .rank-tier-rail .rank-tier-block,
+.rank-home .rank-tier-rail .rank-mode-pill,
+html[data-theme="light"] .rank-home .rank-tier-rail .rank-tier-block,
+html[data-theme="light"] .rank-home .rank-tier-rail .rank-mode-pill {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  border: 1px solid var(--ui-card-border);
+  border-radius: var(--ui-card-radius);
+  background: var(--ui-card-bg);
+  box-shadow: var(--ui-card-shadow);
+  overflow: visible;
 }
 
 /* 2026-07-01 final UI primitive module.

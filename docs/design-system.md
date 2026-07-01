@@ -116,7 +116,7 @@ RankBall 다크 모드는 이 팔레트를 기본 CSS 색상 표준으로 쓴다
 2026-07-01: 공통 radius는 `--radius-sm/md/lg/xl` 계층을 쓴다. 일반 카드/입력/버튼은 10~18px 기준이고, 모바일 bottom sheet 상단은 24px까지 허용한다.
 2026-07-01: 농구 앱 정체성은 flat sports surface, scoreboard 숫자, court-line accent를 우선하고 반복 glow/gradient/glass 장식은 줄인다.
 2026-07-01: 모집 시작일 필터는 모바일에서 8개 버튼을 억지로 압축하지 않고 필터 내부 가로 스크롤을 허용한다. 페이지 전체 가로 스크롤은 계속 금지한다.
-2026-07-01: 홈 티어 rail은 통합 티어 1개와 모드별 티어 4개를 같은 테두리 안에 묶고, light mode에서도 옅은 cream surface로 읽히게 둔다.
+2026-07-01: 홈 티어 rail은 통합 티어 1개와 모드별 티어 4개를 같은 테두리 안에 묶고, 통합 티어 박스는 rail 내부폭을 꽉 쓰며, rail/티어 박스/pill은 shared card border 토큰을 쓴다.
 2026-07-01: 데스크톱 홈 hero 안의 통합 티어/모드별 티어는 compact right rail로 유지하고, 티어 엠블럼이나 모드 카드가 hero 세로 높이를 늘리지 않게 2열 compact 보드를 쓴다.
 2026-07-01: 데스크톱 홈은 검색을 최상단, 알림/처리 카드를 오른쪽 최상단, 보조 카드들을 hero 옆/아래 2열 흐름으로 배치해 세로 낭비를 줄인다. section eyebrow는 READY 의미가 아니면 초록을 쓰지 않고 orange 계열 토큰을 쓴다.
 2026-07-01: 홈 desktop hero는 세로 높이를 줄이고, 오른쪽 보조 카드들이 hero 오른쪽 빈 영역부터 차도록 배치한다. 라이트 모드에서 hero 내부 tier group wrapper는 투명 배경을 유지한다.
@@ -816,7 +816,7 @@ UI 수정 전:
 
 ## 2026-07-01 Mobile hero bleed
 
-1. On mobile, page hero images bleed to the viewport edges so the far-back page background is not visible at the top left/right. Room modal internals are excluded; Home and Team may keep layout-specific content placement only.
+1. On mobile, page hero/header surfaces bleed to the viewport edges so the far-back page background is not visible at the top left/right. Room modal internals are excluded; Home and Team may keep layout-specific content placement only.
 2. Mobile hero top corners are square; lower corners may keep the large app radius.
 
 ## 2026-07-01 Shared UI primitives
