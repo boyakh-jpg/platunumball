@@ -4641,7 +4641,9 @@ html[data-theme="light"] .arena-lobby-arena {
   border-color: var(--rb-line);
   background:
     radial-gradient(ellipse at 50% 48%, rgba(229, 85, 63, 0.1), transparent 34%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(245, 241, 232, 0.94));
+    linear-gradient(180deg, rgba(255, 250, 241, 0.76), rgba(245, 241, 232, 0.9)),
+    var(--bg-hoop) var(--hero-bg-position-hoop) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg-2);
 }
 
 html[data-theme="light"] .arena-lobby-arena::before {
@@ -5964,7 +5966,9 @@ html[data-theme="light"] .arena-lobby-arena {
   border-color: var(--rb-line);
   background:
     radial-gradient(ellipse at 50% 48%, rgba(229, 85, 63, 0.1), transparent 34%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(245, 241, 232, 0.94));
+    linear-gradient(180deg, rgba(255, 250, 241, 0.76), rgba(245, 241, 232, 0.9)),
+    var(--bg-hoop) var(--hero-bg-position-hoop) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg-2);
 }
 
 html[data-theme="light"] .arena-lobby-team-panel,
