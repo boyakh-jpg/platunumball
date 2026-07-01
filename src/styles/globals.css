@@ -10852,7 +10852,7 @@ body {
 .nav-item.active,
 .nav-item:hover {
   background: rgba(65, 215, 176, 0.12);
-  box-shadow: inset 0 2px 0 var(--team-home);
+  box-shadow: none;
 }
 
 .card,
@@ -10887,9 +10887,7 @@ body {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background:
-    linear-gradient(180deg, rgba(65, 215, 176, 0.18) 0 2px, transparent 2px),
-    radial-gradient(circle at 85% 18%, rgba(242, 184, 75, 0.16), transparent 11rem);
+  background: radial-gradient(circle at 85% 18%, rgba(242, 184, 75, 0.16), transparent 11rem);
 }
 
 .rank-home .rank-summary-grid .home-rank-board-head h1 {
@@ -10919,7 +10917,7 @@ body {
 
 .home-action-row {
   border-left-color: rgba(199, 223, 232, 0.16);
-  box-shadow: inset 0 2px 0 rgba(65, 215, 176, 0.18);
+  box-shadow: none;
 }
 
 .bottom-nav {
@@ -10930,7 +10928,7 @@ body {
 .bottom-nav a.active {
   background: rgba(65, 215, 176, 0.16);
   color: var(--team-home);
-  box-shadow: inset 0 3px 0 var(--team-home);
+  box-shadow: none;
 }
 
 html[data-theme="light"] body {

@@ -714,6 +714,10 @@ UI 수정 전:
 1. Invite/team/player selection panels must not wrap selected result headers with hover cards.
 2. Touch-pinned hover cards close on a second tap of the trigger.
 
+## 2026-07-01 strap cleanup
+
+1. Active menu/card uses background and border contrast only. Do not use strap, accent stripe, or thin top-line decoration.
+
 ## 2026-07-01 visible sports identity pass
 
 1. 홈, 경기, 매칭 첫 화면은 radius만 바꾸지 않고 court-line background와 scoreboard surface를 같이 사용한다.
