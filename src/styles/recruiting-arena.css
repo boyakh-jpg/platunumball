@@ -6407,3 +6407,87 @@ html[data-theme="light"] .arena-room-player-slot.ready [title="READY"] {
     border-radius: 0 0 var(--radius-xl) var(--radius-xl);
   }
 }
+
+/* 2026-07-01 room slot fit: avoid cramped mode chips and reserve stack. */
+.arena-lobby-modal .badge-row .badge,
+.arena-lobby-modal .om-card-mode,
+.arena-lobby-modal .arena-type-tag {
+  font-family: inherit;
+  letter-spacing: 0.01em;
+}
+
+.arena-lobby-modal .arena-room-slot-row,
+.arena-lobby-modal .arena-room-reserve-row {
+  max-width: 100%;
+}
+
+.arena-lobby-modal .arena-room-slot-row {
+  grid-template-columns: repeat(var(--slot-count, 5), minmax(0, 1fr));
+  overflow-x: hidden;
+}
+
+.arena-lobby-modal .arena-room-party-group {
+  grid-template-columns: repeat(var(--party-slot-count, 2), minmax(0, 1fr));
+}
+
+.arena-lobby-modal .arena-room-party-group::after {
+  left: 50%;
+  right: 50%;
+  transform: translateX(-50%);
+  width: calc((var(--party-slot-count, 2) - 1) * (100% / var(--party-slot-count, 2)));
+}
+
+.arena-lobby-modal .arena-reserve-panel,
+html[data-theme="light"] .arena-lobby-modal .arena-reserve-panel {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.arena-lobby-modal .arena-reserve-panel {
+  gap: 8px;
+}
+
+.arena-lobby-modal .arena-reserve-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+}
+
+.arena-lobby-modal .arena-reserve-line > strong {
+  min-width: 0;
+  padding-top: 0;
+  white-space: nowrap;
+}
+
+.arena-lobby-modal .arena-reserve-line > .arena-room-reserve-row,
+html[data-theme="light"] .arena-lobby-modal .arena-reserve-line > .arena-room-reserve-row {
+  grid-auto-columns: minmax(72px, 72px);
+  grid-auto-flow: column;
+  grid-template-columns: none;
+  justify-content: start;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.arena-lobby-modal .arena-reserve-line > .arena-room-reserve-row::-webkit-scrollbar {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .arena-lobby-modal .arena-room-slot-row {
+    grid-template-columns: repeat(var(--slot-count, 5), minmax(0, 1fr));
+  }
+
+  .arena-lobby-modal .arena-room-player-slot {
+    min-width: 0;
+  }
+
+  .arena-lobby-modal .arena-reserve-line > .arena-room-reserve-row,
+  html[data-theme="light"] .arena-lobby-modal .arena-reserve-line > .arena-room-reserve-row {
+    grid-auto-columns: minmax(56px, 56px);
+  }
+
+  .arena-lobby-modal .arena-reserve-line {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
