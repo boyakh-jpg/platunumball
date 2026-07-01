@@ -11407,7 +11407,7 @@ html[data-theme="light"] .status-badge.gold {
   .rank-home .rank-summary-grid {
     grid-template-columns: minmax(0, 1fr) minmax(240px, 280px);
     grid-template-rows: minmax(260px, 1fr) auto;
-    min-height: clamp(500px, 54vh, 640px);
+    min-height: clamp(460px, 48vh, 600px);
     gap: 16px;
     align-items: stretch;
     padding: 24px;
@@ -11432,8 +11432,8 @@ html[data-theme="light"] .status-badge.gold {
   }
 
   .rank-home .rank-summary-grid .home-rank-board-head h1 {
-    max-width: 13ch;
-    font-size: clamp(50px, 5.2vw, 76px);
+    max-width: min(720px, 100%);
+    font-size: clamp(48px, 4.8vw, 72px);
     line-height: 0.9;
   }
 
@@ -11464,14 +11464,24 @@ html[data-theme="light"] .status-badge.gold {
   }
 
   .rank-home .rank-profile-card .rank-tier-block {
-    grid-template-columns: 92px minmax(0, 1fr);
-    gap: 10px;
+    grid-template-columns: 76px minmax(0, 1fr);
+    gap: 9px;
     padding: 10px;
   }
 
-  .rank-home .rank-profile-card .tier-emblem {
-    width: 92px;
+  .rank-home .rank-profile-card .rank-tier-block .tier-emblem {
+    width: 76px;
+    height: 76px;
     max-width: 100%;
+  }
+
+  .rank-home .rank-profile-card .rank-tier-block strong {
+    font-size: clamp(1.7rem, 2.25vw, 2.3rem);
+    line-height: 0.95;
+  }
+
+  .rank-home .rank-profile-card .rank-tier-block span {
+    font-size: 0.82rem;
   }
 
   .rank-home .rank-tier-copy,
@@ -11495,17 +11505,39 @@ html[data-theme="light"] .status-badge.gold {
   }
 
   .rank-home .rank-mode-grid {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
   }
 
   .rank-home .rank-mode-pill {
-    min-height: 58px;
-    padding: 9px 10px;
+    min-height: 76px;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: end;
+    padding: 10px 8px;
   }
 
   .rank-home .rank-mode-pill .tier-emblem-sm {
-    width: 42px;
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 30px;
+    opacity: 0.82;
+  }
+
+  .rank-home .rank-mode-pill > div {
+    min-width: 0;
+    padding-right: 20px;
+  }
+
+  .rank-home .rank-mode-pill strong {
+    font-size: clamp(0.92rem, 0.9vw, 1.08rem);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .rank-home .rank-mode-pill em {
+    font-size: 0.72rem;
   }
 
   .rank-home .home-search-panel,
@@ -11759,7 +11791,16 @@ button {
 
 .rank-home .rank-summary-grid .home-rank-board-head h1 {
   color: #fff;
+  max-width: min(720px, 100%);
+  word-break: keep-all;
+  overflow-wrap: normal;
   text-shadow: 0 12px 30px rgba(0, 0, 0, 0.38);
+}
+
+.rank-home .rank-summary-grid .rank-hero-top > div {
+  width: 100%;
+  max-width: min(720px, 100%);
+  justify-self: stretch;
 }
 
 .rank-home .rank-summary-grid .home-rank-board-head p:not(.eyebrow) {
@@ -11859,7 +11900,7 @@ button {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(230px, 0.42fr);
     grid-template-rows: minmax(300px, 1fr) auto;
-    min-height: clamp(520px, 62vh, 720px);
+    min-height: clamp(460px, 48vh, 600px);
     gap: 14px;
     padding: 18px;
   }
@@ -11882,8 +11923,8 @@ button {
   }
 
   .rank-home .rank-summary-grid .home-rank-board-head h1 {
-    max-width: 13ch;
-    font-size: clamp(48px, 5.5vw, 78px);
+    max-width: min(720px, 100%);
+    font-size: clamp(48px, 4.8vw, 72px);
     line-height: 0.9;
   }
 
@@ -11901,7 +11942,7 @@ button {
   }
 
   .rank-home .rank-mode-grid {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -12218,5 +12259,136 @@ html[data-theme="light"] .app-main {
       linear-gradient(90deg, rgba(30, 24, 18, 0.5), rgba(30, 24, 18, 0.12) 58%, rgba(30, 24, 18, 0.04)),
       var(--bg-court) center 46% / cover no-repeat,
       var(--rb-bg-3);
+  }
+}
+
+.eyebrow {
+  color: var(--rb-orange-2);
+}
+
+html[data-theme="light"] .eyebrow {
+  color: var(--rb-orange);
+}
+
+.home-my-teams-card .home-team-list a,
+.home-my-teams-card .home-team-list > div,
+.home-my-teams-card .home-team-list > .team-hover-trigger {
+  min-height: 36px;
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) auto auto;
+  gap: 7px;
+  align-items: center;
+  border: 1px solid var(--rb-line);
+  background: var(--rb-surface);
+  padding: 7px 9px;
+}
+
+.home-my-teams-card .team-mini-dot {
+  width: 10px;
+  height: 10px;
+  background: var(--team-color, var(--rb-orange));
+}
+
+.home-my-teams-card .home-team-list em {
+  border-radius: 999px;
+  background: rgba(120, 170, 255, 0.12);
+  color: var(--rb-blue);
+  font-size: 0.64rem;
+  font-weight: 950;
+  padding: 2px 5px;
+}
+
+.home-my-teams-card .home-team-list b {
+  color: var(--rb-muted);
+  font-size: 0.7rem;
+  font-weight: 900;
+}
+
+html[data-theme="light"] .home-my-teams-card .home-team-list a,
+html[data-theme="light"] .home-my-teams-card .home-team-list > div,
+html[data-theme="light"] .home-my-teams-card .home-team-list > .team-hover-trigger {
+  background: rgba(255, 255, 255, 0.62);
+}
+
+html[data-theme="light"] .home-my-teams-card .home-team-list em {
+  background: rgba(51, 111, 184, 0.1);
+  color: var(--rb-blue);
+}
+
+/* 2026-07-01 desktop home compaction: lift lower panels beside the hero. */
+@media (min-width: 1080px) {
+  .rank-home {
+    grid-template-columns: minmax(0, 1.55fr) minmax(340px, 0.7fr);
+    grid-template-areas:
+      "search search"
+      "hero action"
+      "primary side";
+    align-items: start;
+  }
+
+  .rank-home > .rank-summary-grid {
+    align-self: start;
+  }
+
+  .rank-home > .home-dashboard-grid {
+    display: contents;
+  }
+
+  .rank-home .home-dashboard-grid .home-primary-stack {
+    grid-area: primary;
+    min-width: 0;
+  }
+
+  .rank-home .home-dashboard-grid .home-side-stack {
+    grid-area: side;
+    min-width: 0;
+    gap: 14px;
+    align-self: start;
+  }
+
+  .rank-home .home-dashboard-grid .home-side-stack {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rank-home .rank-summary-grid {
+    min-height: clamp(430px, 44vh, 560px);
+  }
+
+  .rank-home .rank-mode-card,
+  html[data-theme="light"] .rank-home .rank-mode-card {
+    border-color: transparent;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .rank-home .rank-mode-grid {
+    height: auto;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .rank-home .rank-mode-pill {
+    min-height: 58px;
+    padding: 8px;
+  }
+
+  .rank-home .rank-mode-pill .tier-emblem-sm {
+    top: 6px;
+    right: 6px;
+    width: 24px;
+    opacity: 0.72;
+  }
+
+  .rank-home .rank-mode-pill > div {
+    padding-right: 16px;
+  }
+
+  .rank-home .rank-mode-pill strong {
+    font-size: 0.9rem;
+  }
+
+  .rank-home .rank-mode-pill em {
+    font-size: 0.68rem;
   }
 }
