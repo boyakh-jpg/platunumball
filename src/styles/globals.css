@@ -607,7 +607,7 @@ body > .basketball-loader-overlay ~ .basketball-loader-overlay {
 
 .section-card:has(.search-picker.is-floating:focus-within) {
   position: relative;
-  z-index: 160;
+  z-index: 18;
   overflow: visible;
 }
 
@@ -2537,7 +2537,7 @@ input[type="color"] {
 
 .selector-panel {
   position: relative;
-  z-index: 40;
+  z-index: 10;
   overflow: visible;
   border-color: rgba(70, 224, 182, 0.2);
 }
