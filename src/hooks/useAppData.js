@@ -662,7 +662,7 @@ async function loadProfileState(authUserId, authEmail) {
     );
     if (result?.state) return normalizeServerState(result.state);
   } catch (error) {
-    console.warn("Server profile load failed. Falling back to direct Supabase read.", error.message);
+    console.warn("Server profile load failed. Falling back to direct profile read.", error.message);
   }
   if (backendTestLoginId) return loadState({ includeDemo: false, authUserId, email: authEmail });
   return loadRemoteState(authUserId, authEmail, {
@@ -800,7 +800,7 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
     );
     if (result?.state) return attachRemoteMeta(normalizeServerState(result.state), { recruitingPage: result.page ?? null });
   } catch (error) {
-    console.warn("Server state load failed. Falling back to direct Supabase read.", error.message);
+    console.warn("Server state load failed. Falling back to profile-only state.", error.message);
   }
   if (options.endpoint) {
     return attachRemoteMeta(await loadProfileState(authUserId, authEmail), {
@@ -810,7 +810,12 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
       profileRecordsLoaded: false,
     });
   }
-  return loadRemoteState(authUserId, authEmail, loadOptions);
+  return attachRemoteMeta(await loadProfileState(authUserId, authEmail), {
+    matchPage: { exhausted: true, recruitingScheduleChecked: true },
+    recruitingPage: { exhausted: true, feedCounts: null },
+    directoryLoaded: false,
+    profileRecordsLoaded: false,
+  });
 }
 
 export function useAppData(authUser = null) {
