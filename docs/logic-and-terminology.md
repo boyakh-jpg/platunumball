@@ -258,7 +258,7 @@ UI/CSS/반응형/라이트·다크 세부 기준은 `docs/design-system.md`를 �
 
 ## 2026-06-24 가입정보 고정 원칙
 
-1. 최초 로그인 후 `onboardingComplete`, `handleLockedAt`, `birthYearLockedAt` 중 하나라도 없으면 `/app/signup`으로 보낸다.
+1. 최초 로그인 후 `onboardingComplete`, `handleLockedAt`이 없거나, `birthYearLockedAt`과 `birthYear` 중 하나라도 없으면 `/app/signup`으로 보낸다.
 2. 해시태그는 `#` 접두어를 쓰고 최초 등록 후 수정할 수 없다.
 3. 해시태그는 프로필 전체에서 중복될 수 없다.
 4. 출생연도는 최초 등록 후 수정할 수 없다.
@@ -267,6 +267,7 @@ UI/CSS/반응형/라이트·다크 세부 기준은 `docs/design-system.md`를 �
 7. `#` 기호는 고정 prefix이며 저장값에는 항상 포함한다.
 8. Supabase 로그인 직후 원격 프로필 hydration이 끝나기 전에는 shell profile만 보고 `/app/signup`으로 redirect하지 않는다.
 9. 로그아웃은 local/test session과 React session을 먼저 지우고 Supabase signOut을 후처리한다. 로그아웃 중 이전 세션이 남아 `/app/signup` 또는 가입정보 버튼을 다시 띄우면 안 된다.
+10. 가입정보 화면과 로컬 profile reducer는 `birthYearLockedAt`만 있고 `birthYear`가 없으면 출생연도를 잠금으로 보지 않는다.
 
 ## 데이터 축
 

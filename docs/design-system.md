@@ -88,6 +88,9 @@
 
 # RankBall Design System
 
+2026-07-01: 공통 radius는 `--radius-sm/md/lg/xl` 계층을 쓴다. 일반 카드/입력/버튼은 10~18px 기준이고, 모바일 bottom sheet 상단은 24px까지 허용한다.
+2026-07-01: 농구 앱 정체성은 flat sports surface, scoreboard 숫자, court-line accent를 우선하고 반복 glow/gradient/glass 장식은 줄인다.
+2026-07-01: 모집 시작일 필터는 모바일에서 8개 버튼을 억지로 압축하지 않고 필터 내부 가로 스크롤을 허용한다. 페이지 전체 가로 스크롤은 계속 금지한다.
 2026-06-28: 홈 모드별 티어 묶음 카드(`rank-mode-card`)는 4개 티어 박스를 감싸는 배경을 투명하게 유지한다.
 2026-06-28: 즐겨찾기 검색은 프로필, 팀, 구장, 심판을 각각 최대 10개까지 저장하고, 관련 SearchPicker의 idle 목록과 검색 결과 별 토글에 연결한다.
 2026-06-28: 설정 즐겨찾기 목록은 저장 직후 전체를 누적 노출하지 않고, 프로필/팀/구장/심판 4개 타입 버튼을 한 줄에 두어 선택한 타입 목록만 연다.
@@ -134,7 +137,7 @@
 | page shell | max-width 1220~1280px |
 | page gap | 16~20px |
 | hero/header | 모든 주요 메뉴 동일 구조 |
-| card radius | 8px 이하 |
+| card radius | 10~18px 계층형 |
 | card border | `var(--line)` |
 | card padding desktop | 18~24px |
 | card padding mobile | 14~18px |

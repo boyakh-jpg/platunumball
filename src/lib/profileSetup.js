@@ -57,7 +57,8 @@ export function shouldRecheckAgeGroup(user, now = new Date()) {
 }
 
 export function shouldSetupProfile(user = {}) {
-  return Boolean(!user?.onboardingComplete || !user?.handleLockedAt || !user?.birthYearLockedAt);
+  const hasLockedBirthYear = Boolean(user?.birthYearLockedAt && user?.birthYear);
+  return Boolean(!user?.onboardingComplete || !user?.handleLockedAt || !hasLockedBirthYear);
 }
 
 export function getNextNameChangeDate(user = {}) {

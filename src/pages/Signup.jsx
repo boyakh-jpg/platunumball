@@ -52,7 +52,7 @@ export default function Signup({ app, auth }) {
   const ageGroupSeasonLabel = getAgeGroupSeasonLabel();
   const email = auth?.user?.email ?? auth?.user?.user_metadata?.email ?? "Google OAuth 또는 데모 계정";
   const handleLocked = Boolean(user.handleLockedAt || user.hashtagLockedAt);
-  const birthYearLocked = Boolean(user.birthYearLockedAt);
+  const birthYearLocked = Boolean(user.birthYearLockedAt && user.birthYear);
   const nameChangeAllowed = canChangeProfileName(user);
   const nextNameChangeDate = getNextNameChangeDate(user);
   const handleBody = handleLocked ? stripHandle(getUserHashtag(user)) : stripHandle(draft.handle);

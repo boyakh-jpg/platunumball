@@ -102,9 +102,11 @@ export default function Login({ auth, app }) {
           </div>
 
           {auth.testLoginAllowed ? (
+            <>
+            <div className="auth-divider"><span>테스트 계정으로 둘러보기</span></div>
             <div className="auth-test-login">
               <label>
-                테스트 계정
+                둘러볼 계정
                 <select value={selectedTestLoginId} onChange={(event) => setSelectedTestLoginId(event.target.value)}>
                   {auth.testAccounts.map((account) => (
                     <option key={account.id} value={account.id}>{account.label}</option>
@@ -113,9 +115,10 @@ export default function Login({ auth, app }) {
               </label>
               <button type="button" className="provider-button provider-test" onClick={signInWithTestAccount}>
                 <span>T</span>
-                backend 테스트 로그인
+                테스트 계정으로 입장
               </button>
             </div>
+            </>
           ) : null}
 
           {auth.session ? (

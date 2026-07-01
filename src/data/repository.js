@@ -9245,7 +9245,8 @@ export function updateProfile(state, patch, targetUserId = state.currentUserId) 
     delete profilePatch.handle;
     delete profilePatch.hashtag;
   }
-  if (currentUser.birthYearLockedAt && profilePatch.birthYear && Number(profilePatch.birthYear) !== Number(currentUser.birthYear)) {
+  const currentBirthYearLocked = Boolean(currentUser.birthYearLockedAt && currentUser.birthYear);
+  if (currentBirthYearLocked && profilePatch.birthYear && Number(profilePatch.birthYear) !== Number(currentUser.birthYear)) {
     delete profilePatch.birthYear;
   }
   if (profilePatch.handle || profilePatch.hashtag) {
@@ -9254,7 +9255,7 @@ export function updateProfile(state, patch, targetUserId = state.currentUserId) 
     profilePatch.hashtag = hashtag;
     profilePatch.handleLockedAt = currentUser.handleLockedAt ?? profilePatch.handleLockedAt ?? new Date().toISOString();
   }
-  if (profilePatch.birthYear && !currentUser.birthYearLockedAt) {
+  if (profilePatch.birthYear && !currentBirthYearLocked) {
     profilePatch.birthYearLockedAt = profilePatch.birthYearLockedAt ?? new Date().toISOString();
   }
   if (profilePatch.name && profilePatch.name !== currentUser.name) {
