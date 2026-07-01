@@ -11596,21 +11596,27 @@ html[data-theme="light"] .status-badge.gold {
 @media (max-width: 1079px) {
   .rank-home {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: none;
   }
 
   .rank-home > .home-search-panel {
+    grid-area: auto;
     order: 1;
   }
 
   .rank-home > .home-action-card {
+    grid-area: auto;
     order: 2;
   }
 
   .rank-home > .rank-summary-grid {
+    grid-area: auto;
     order: 3;
   }
 
   .rank-home > .home-dashboard-grid {
+    grid-area: auto;
     order: 4;
   }
 }
@@ -11868,7 +11874,7 @@ button {
   white-space: nowrap;
 }
 
-@media (min-width: 760px) {
+@media (min-width: 1080px) {
   .rank-home {
     display: grid;
     grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.65fr);
@@ -12082,7 +12088,7 @@ html[data-theme="light"] .app-main {
 }
 
 /* 2026-07-01 home search placement: desktop top bar, mobile below hero. */
-@media (min-width: 760px) {
+@media (min-width: 1080px) {
   .rank-home {
     grid-template-areas:
       "search search"
@@ -12171,6 +12177,15 @@ html[data-theme="light"] .app-main {
 }
 
 /* 2026-07-01 mobile hero board: full image first, details after search. */
+@media (max-width: 1079px) {
+  .rank-home > .rank-summary-grid {
+    width: calc(100% + (2 * var(--page-gutter)) - 4px);
+    max-width: none;
+    margin-inline: calc((-1 * var(--page-gutter)) + 2px);
+    border-radius: 0;
+  }
+}
+
 @media (max-width: 759px) {
   .rank-home > .rank-summary-grid {
     display: contents;

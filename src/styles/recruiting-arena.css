@@ -6397,12 +6397,17 @@ html[data-theme="light"] .arena-room-player-slot.ready [title="READY"] {
 }
 
 /* 2026-07-01 mobile hero full-bleed: no side gutters at the top image. */
+@media (max-width: 1020px) {
+  .arena-recruit-hero {
+    width: calc(100% + (2 * var(--page-gutter)) - 4px);
+    margin-inline: calc((-1 * var(--page-gutter)) + 2px);
+    border-radius: 0;
+  }
+}
+
 @media (max-width: 720px) {
   .arena-recruit-hero {
-    width: calc(100% + (2 * var(--page-gutter)));
     margin-top: -18px;
-    margin-inline: calc(-1 * var(--page-gutter));
-    border-radius: 0;
   }
 }
 

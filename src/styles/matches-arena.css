@@ -3707,18 +3707,22 @@ html[data-theme="light"] .om-match-panel {
   background: rgba(255, 250, 241, 0.9);
 }
 
+@media (max-width: 1020px) {
+  .om-match-hero {
+    width: calc(100% + (2 * var(--page-gutter)) - 4px);
+    margin-inline: calc((-1 * var(--page-gutter)) + 2px);
+    border-radius: 0;
+  }
+}
+
 @media (max-width: 720px) {
   .om-match-hero {
     min-height: 335px;
-    width: calc(100% + (2 * var(--page-gutter)));
     margin-top: -18px;
-    margin-inline: calc(-1 * var(--page-gutter));
-    border-radius: 0;
     padding: 18px;
     background-position:
       center,
       center,
-      0 0,
       center 50%,
       center;
   }
