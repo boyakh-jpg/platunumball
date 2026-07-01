@@ -9,7 +9,8 @@
 - `/api/matches/list`와 `/api/recruiting/list`는 목록/기록/심판/단건 보정에서도 broad `loadNormalizedRemoteStateFromClient()` fallback을 쓰지 않는다. feed card가 없거나 부족한 대상만 row 단위 compact load로 보정한다.
 - `/api/matches/detail`는 방 1개 row와 그 child row만 읽는 단건 loader를 쓴다. 방 보기 클릭이 전체 state hydrate로 번지면 안 된다.
 - `/api/directory/load`는 디렉터리 전용 데이터만 읽는다. 경기/모집/토너먼트 row를 같이 싣지 않는다.
-- `/api/state/load`는 scope가 명시되지 않으면 profile-only로 응답한다. broad full hydrate는 `scope:"full"`처럼 명시 요청일 때만 허용한다.
+- `/api/state/load`는 profile-only fallback 전용이다. 경기/모집/토너먼트/디렉터리 scope 요청은 화면별 endpoint로 보내야 한다.
+- server action authoritative replay도 matchId가 있는 일반 경기 action은 `scope:"matches"`로 단건 범위를 잡는다. `createMatch`, `approveMatch`, tournament 생성처럼 전체 팀/레이팅 history가 필요한 경로만 더 넓게 읽을 수 있다.
 
 ## 2026-06-30 프로필/모집 legacy 기본값 기준
 
@@ -1377,7 +1378,7 @@ flowchart TD
 
 ## 2026-06-26 서버 상태 열람 규칙
 
-1. Supabase 설정 환경의 초기 상태 로드는 화면별 thin endpoint를 우선 사용한다. scope 없는 `/api/state/load`는 profile-only fallback이다.
+1. Supabase 설정 환경의 초기 상태 로드는 화면별 thin endpoint를 우선 사용한다. `/api/state/load`는 profile-only fallback이다.
 2. 실제 Google 계정은 Supabase Auth token으로, 테스트 계정은 `test-token-rankball-###`로 서버에서 현재 `profiles.id`를 확정한다.
 3. 서버 상태 로드는 공개 경기/모집방/토너먼트는 모든 로그인 사용자에게 내려주고, 비공개 항목은 현재 프로필이 참여자, 초대자, 심판, 관련 팀원, 또는 관리자일 때만 내려준다.
 4. 테스트 계정은 실제 Supabase Auth JWT가 없으므로 직접 anon RLS read 결과를 권한 판단의 기준으로 삼지 않는다.
@@ -1503,7 +1504,7 @@ flowchart TD
 5. `/api/matches/list` is list-only and skips match result/stat/agreement/approval/dispute child rows.
 6. Match room/detail open uses `/api/matches/detail` to load one full match before modal actions need record or approval data.
 7. Initial client hydrate must not use broad `/api/state/load` for match lists. Match detail rows are fetched lazily through `/api/matches/detail`.
-8. Scope-less `/api/state/load` returns profile-only state. Related match/recruiting/directory data must come from screen-specific endpoints.
+8. `/api/state/load` returns profile-only state. Related match/recruiting/directory data must come from screen-specific endpoints.
 9. Full user/team directory data is loaded on demand through `/api/directory/load` for Rankings, Teams, Create Match, and Settings.
 10. Initial client hydrate uses the current screen endpoint only. Unknown routes start profile-only; additional list pages use 50 rows.
 11. `/app/recruiting` first hydrate does not load match rows; direct `?post=` entry also skips recruiting list rows. Recruiting list screens add more rows only through `더 보기` or targeted detail loads.

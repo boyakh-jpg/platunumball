@@ -1,5 +1,4 @@
-import { getAdminLevel, getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
-import { loadNormalizedRemoteStateFromClient } from "../../../src/data/repository.js";
+import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import { loadCurrentProfileState, PROFILE_ME_COLUMNS } from "../profile/me.js";
 
 function toArray(value) {
@@ -148,23 +147,6 @@ export function filterStateForProfile(state = {}, profileId = "", isAdmin = fals
   };
 }
 
-function getStateLoadOptions(body = {}, meta = {}) {
-  const pagination = body.pagination && typeof body.pagination === "object" ? body.pagination : {};
-  return {
-    clientState: true,
-    isAdmin: meta.isAdmin === true,
-    scope: body.scope ?? pagination.scope ?? "profile",
-    directoryScope: body.directoryScope ?? pagination.directoryScope,
-    matchListOnly: body.matchListOnly ?? pagination.matches?.listOnly,
-    matchLimit: body.matchLimit ?? pagination.matches?.limit,
-    matchUpdatedBefore: body.matchUpdatedBefore ?? body.matchCursor ?? pagination.matches?.updatedBefore ?? pagination.matches?.cursor,
-    recruitingLimit: body.recruitingLimit ?? pagination.recruiting?.limit,
-    recruitingUpdatedBefore: body.recruitingUpdatedBefore ?? body.recruitingCursor ?? pagination.recruiting?.updatedBefore ?? pagination.recruiting?.cursor,
-    tournamentLimit: body.tournamentLimit ?? pagination.tournaments?.limit,
-    tournamentUpdatedBefore: body.tournamentUpdatedBefore ?? body.tournamentCursor ?? pagination.tournaments?.updatedBefore ?? pagination.tournaments?.cursor,
-  };
-}
-
 export default async function handler(request, response) {
   if (request.method !== "POST") {
     sendJson(response, 405, { error: "method_not_allowed" });
@@ -174,23 +156,16 @@ export default async function handler(request, response) {
   try {
     const body = await readJsonBody(request);
     const context = await getAuthenticatedContext(request, { allowMissingProfile: true, profileSelect: PROFILE_ME_COLUMNS });
-    const shouldLoadAdminContext = body.adminContext !== false && body.includeAdminContext !== false;
-    const adminLevel = shouldLoadAdminContext && context.profileId ? await getAdminLevel(context) : 0;
     const requestedScope = String(body.scope ?? body.pagination?.scope ?? "").trim();
-    if (!["full", "matches", "recruiting", "tournaments"].includes(requestedScope)) {
-      const result = await loadCurrentProfileState(context, { includeTeamMemberProfiles: false });
-      sendJson(response, 200, { ok: true, state: result.state, updatedAt: result.updatedAt ?? 0 });
+    if (requestedScope && requestedScope !== "profile") {
+      sendJson(response, 410, {
+        error: "state_scope_deprecated",
+        message: "Use screen-specific endpoints instead of broad /api/state/load scope.",
+      });
       return;
     }
-    const normalized = await loadNormalizedRemoteStateFromClient(
-      context.supabase,
-      context.authUserId,
-      context.authUser?.email ?? "",
-      getStateLoadOptions(body, { isAdmin: adminLevel >= 30 }),
-    );
-    const profileId = context.profileId ?? normalized?.state?.currentUserId ?? "";
-    const state = filterStateForProfile(normalized?.state ?? {}, profileId, adminLevel >= 30);
-    sendJson(response, 200, { ok: true, state, updatedAt: normalized?.updatedAt ?? 0 });
+    const result = await loadCurrentProfileState(context, { includeTeamMemberProfiles: false });
+    sendJson(response, 200, { ok: true, state: result.state, updatedAt: result.updatedAt ?? 0 });
   } catch (error) {
     sendJson(response, error.statusCode || 500, { error: error.message || "state_load_failed" });
   }

@@ -122,10 +122,19 @@ function getAuthoritativeLoadScope(operation = {}) {
   if (!operation || typeof operation !== "object") return {};
   const action = String(operation.action || "");
   if (action === "approveMatch") return { clientState: true };
-  const scope = action.includes("Recruiting") ? "recruiting" : undefined;
+  const isRecruitingAction = action.includes("Recruiting");
+  const isTournamentAction = action.includes("Tournament");
   const invite = operation.invite && typeof operation.invite === "object" ? operation.invite : {};
   const draft = operation.draft && typeof operation.draft === "object" ? operation.draft : {};
   const application = operation.application && typeof operation.application === "object" ? operation.application : {};
+  const matchIds = [
+    operation.matchId,
+    operation.preferredMatchId,
+    operation.draft?.id,
+  ].filter(Boolean);
+  const scope = isRecruitingAction
+    ? "recruiting"
+    : (!isTournamentAction && action !== "createMatch" && matchIds.length ? "matches" : undefined);
   const needsCurrentUserTeams = scope === "recruiting" && (
     action === "loadRecruitingPost"
       ? false
@@ -138,11 +147,7 @@ function getAuthoritativeLoadScope(operation = {}) {
   return {
     scope,
     includeCurrentUserTeams: needsCurrentUserTeams,
-    matchIds: [
-      operation.matchId,
-      operation.preferredMatchId,
-      operation.draft?.id,
-    ].filter(Boolean),
+    matchIds,
     teamIds: [
       operation.teamId,
       operation.draft?.teamId,

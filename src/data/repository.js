@@ -1494,9 +1494,9 @@ export async function loadNormalizedMatchDetailFromClient(client = supabase, aut
   const authUserIdText = String(authUserId || "");
   const privateProfileFilter = getClientPrivateProfileFilter(authUserIdText);
   const [privateProfiles, matches] = await Promise.all([
-    privateProfileFilter
+    authUserIdText && privateProfileFilter
       ? fetchOptionalFilteredRows("profiles", PRIVATE_PROFILE_COLUMNS, "id", client, privateProfileFilter)
-      : fetchOptionalRows("profiles", PRIVATE_PROFILE_COLUMNS, "id", client),
+      : [],
     fetchFilteredRows("matches", MATCH_COLUMNS, null, client, (query) => query.eq("id", matchId), 1),
   ]);
   const match = matches[0] ?? null;
@@ -1613,9 +1613,9 @@ export async function loadNormalizedDirectoryStateFromClient(client = supabase, 
     teamMembers,
     affiliations,
   ] = await Promise.all([
-    privateProfileFilter
+    authUserIdText && privateProfileFilter
       ? fetchOptionalFilteredRows("profiles", privateProfileColumns, "id", client, privateProfileFilter)
-      : fetchOptionalRows("profiles", privateProfileColumns, "id", client),
+      : [],
     fetchOptionalRows("public_profiles", PUBLIC_PROFILE_COLUMNS, "id", client),
     fetchAllRows("teams", TEAM_COLUMNS, "id", client),
     fetchAllRows("team_members", TEAM_MEMBER_COLUMNS, null, client),

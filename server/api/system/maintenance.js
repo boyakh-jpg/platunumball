@@ -1,7 +1,7 @@
 import { getSupabaseAdminClient, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import { getMatchRatingCommit } from "../_authoritativeState.js";
 import { commitMatchRating } from "../matches/sync-match.js";
-import { loadNormalizedRemoteStateFromClient, runAutomaticStateMaintenance } from "../../../src/data/repository.js";
+import { loadNormalizedMatchDetailFromClient, runAutomaticStateMaintenance } from "../../../src/data/repository.js";
 import { DISPUTE_WINDOW_MINUTES } from "../../../src/lib/constants.js";
 
 const DEFAULT_MATCH_LIMIT = 10;
@@ -114,10 +114,9 @@ async function upsertApprovals(client, match) {
 }
 
 async function processMatch(client, matchId, now) {
-  const normalized = await loadNormalizedRemoteStateFromClient(client, "", "", {
-    scope: "matches",
-    matchIds: [matchId],
-    clientState: false,
+  const normalized = await loadNormalizedMatchDetailFromClient(client, "", "", {
+    matchId,
+    isAdmin: true,
   });
   const beforeState = {
     ...(normalized?.state ?? {}),
