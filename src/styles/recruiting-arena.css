@@ -6279,7 +6279,7 @@ html[data-theme="light"] .arena-room-party-group::after {
 }
 
 .arena-room-player-slot .arena-position-avatar-player {
-  top: -1px;
+  top: -7px;
   width: 128%;
   height: 132%;
   -webkit-mask-image:
@@ -6291,7 +6291,7 @@ html[data-theme="light"] .arena-room-party-group::after {
 }
 
 .arena-room-player-slot .arena-position-avatar[data-position="C"] .arena-position-avatar-player {
-  top: 0;
+  top: -5px;
   width: 100%;
   height: 118%;
 }
