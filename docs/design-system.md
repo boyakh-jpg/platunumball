@@ -770,3 +770,9 @@ UI 수정 전:
 
 1. Room modal reserve lanes show A-side and B-side candidates in one horizontal row group to reduce vertical height.
 2. Dark and light UI use charcoal/cream surfaces with orange primary actions, gold wait/warning states, and green only for READY/success states.
+
+## 2026-07-01 Home search placement
+
+1. Desktop home places the search panel as a compact top bar above the hero and right rail.
+2. Mobile home keeps the hero first and places search directly below the hero before action queue.
+3. Desktop search results open as a dropdown so the top bar does not push the hero down.

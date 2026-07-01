@@ -12027,3 +12027,92 @@ html[data-theme="light"] .app-main {
     radial-gradient(circle at 18% 12%, rgba(255, 250, 241, 0.26), transparent 18rem),
     var(--rb-bg);
 }
+
+/* 2026-07-01 home search placement: desktop top bar, mobile below hero. */
+@media (min-width: 760px) {
+  .rank-home {
+    grid-template-areas:
+      "search search"
+      "hero action"
+      "dashboard dashboard";
+  }
+
+  .rank-home > .home-search-panel {
+    grid-area: search;
+  }
+
+  .rank-home > .rank-summary-grid {
+    grid-area: hero;
+  }
+
+  .rank-home > .home-action-card {
+    grid-area: action;
+  }
+
+  .rank-home > .home-dashboard-grid {
+    grid-area: dashboard;
+  }
+
+  .rank-home .home-search-panel.rank-search-card {
+    display: flex;
+    min-height: 0;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 16px;
+  }
+
+  .rank-home .home-search-panel.rank-search-card > .search-picker {
+    flex: 1 1 520px;
+    max-width: 560px;
+  }
+
+  .rank-home .home-search-panel.rank-search-card .home-search-box {
+    min-height: 44px;
+    padding-block: 0;
+  }
+
+  .rank-home .home-search-panel.rank-search-card .home-search-box input {
+    min-height: 42px;
+    font-size: 14px;
+  }
+
+  .rank-home .home-search-panel.rank-search-card .rank-quick-links {
+    margin-left: auto;
+    flex: 0 0 auto;
+    justify-content: flex-end;
+  }
+
+  .rank-home .home-search-panel.rank-search-card .home-search-results {
+    position: absolute;
+    z-index: 80;
+    top: calc(100% + 8px);
+    right: 0;
+    left: 0;
+    max-height: 360px;
+    overflow: auto;
+    grid-template-columns: minmax(0, 1fr);
+    border: 1px solid var(--rb-line);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    padding: 10px;
+  }
+}
+
+@media (max-width: 759px) {
+  .rank-home > .rank-summary-grid {
+    order: 1;
+  }
+
+  .rank-home > .home-search-panel {
+    order: 2;
+  }
+
+  .rank-home > .home-action-card {
+    order: 3;
+  }
+
+  .rank-home > .home-dashboard-grid {
+    order: 4;
+  }
+}
