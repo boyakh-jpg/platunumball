@@ -12471,3 +12471,123 @@ html[data-theme="light"] .home-my-teams-card .home-team-list em {
     box-shadow: none;
   }
 }
+
+/* 2026-07-01 home rail alignment and no-grid cleanup. */
+body,
+.app-main,
+html[data-theme="light"] body,
+html[data-theme="light"] .app-main {
+  background: var(--rb-bg);
+}
+
+.landing-hero::after,
+.team-hub-hero::after,
+.match-hero::before,
+.season-hero::after,
+.page-header::after,
+.team-hub-hero::before {
+  background: linear-gradient(90deg, rgba(240, 90, 70, 0.14), transparent 28%, transparent 76%, rgba(255, 211, 108, 0.08));
+}
+
+.rank-home .rank-summary-grid::before {
+  background: radial-gradient(ellipse at 38% 70%, rgba(240, 90, 70, 0.16), transparent 22rem);
+}
+
+.rank-home .rank-summary-grid .home-rank-board-head h1,
+html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head h1 {
+  color: var(--rb-cream);
+  letter-spacing: -0.025em;
+  text-shadow: 0 14px 34px rgba(0, 0, 0, 0.58);
+}
+
+.rank-home .rank-summary-grid .home-rank-board-head p:not(.eyebrow),
+html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head p:not(.eyebrow) {
+  color: rgba(255, 250, 241, 0.86);
+  text-shadow: 0 8px 20px rgba(0, 0, 0, 0.48);
+}
+
+.rank-home .rank-tier-rail {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  border: 1px solid var(--rb-line);
+  border-radius: var(--radius-lg);
+  background: rgba(24, 25, 26, 0.58);
+  padding: 10px;
+}
+
+.rank-home .rank-tier-rail > .rank-profile-card,
+.rank-home .rank-tier-rail > .rank-mode-card,
+html[data-theme="light"] .rank-home .rank-tier-rail > .rank-profile-card,
+html[data-theme="light"] .rank-home .rank-tier-rail > .rank-mode-card {
+  grid-column: auto;
+  grid-row: auto;
+  align-self: stretch;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-theme="light"] .rank-home .rank-tier-rail {
+  border-color: rgba(30, 24, 18, 0.16);
+  background: rgba(255, 250, 241, 0.74);
+  box-shadow: 0 16px 34px rgba(55, 44, 31, 0.12);
+}
+
+@media (min-width: 1080px) {
+  .rank-home {
+    grid-template-areas:
+      "search search"
+      "hero action"
+      "primary side";
+  }
+
+  .rank-home .rank-summary-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 250px);
+    grid-template-rows: minmax(220px, 1fr);
+    min-height: clamp(340px, 38vh, 440px);
+  }
+
+  .rank-home .rank-tier-rail {
+    grid-column: 2;
+    grid-row: 1 / 3;
+    align-self: stretch;
+  }
+
+  .rank-home .rank-profile-card,
+  .rank-home .rank-mode-card {
+    grid-column: auto;
+    grid-row: auto;
+  }
+}
+
+@media (max-width: 759px) {
+  .rank-home > .home-search-panel {
+    order: 2;
+  }
+
+  .rank-home .rank-summary-grid .home-rank-board-head {
+    order: 1;
+  }
+
+  .rank-home .rank-tier-rail {
+    order: 3;
+    margin-inline: 0;
+  }
+
+  .rank-home > .home-action-card {
+    order: 4;
+  }
+
+  .rank-home > .home-dashboard-grid {
+    order: 5;
+  }
+}
+
+@media (min-width: 1080px) {
+  .rank-home .home-dashboard-grid .home-side-stack {
+    gap: 10px;
+    transform: translateY(-213px);
+    margin-bottom: -213px;
+  }
+}

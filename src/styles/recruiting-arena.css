@@ -6528,3 +6528,45 @@ html[data-theme="light"] .arena-lobby-modal .arena-reserve-line > .arena-room-re
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* 2026-07-01 remove court grid overlays. */
+.arena-recruit-hero {
+  background:
+    linear-gradient(90deg, rgba(5, 8, 12, 0.98), rgba(5, 8, 12, 0.74) 56%, rgba(24, 16, 8, 0.78)),
+    radial-gradient(circle at 80% 20%, rgba(240, 90, 70, 0.18), transparent 12rem),
+    var(--bg-ball) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat,
+    var(--scoreboard);
+}
+
+html[data-theme="light"] .arena-recruit-hero {
+  background:
+    linear-gradient(90deg, rgba(255, 250, 241, 0.82), rgba(255, 250, 241, 0.58) 56%, rgba(245, 241, 232, 0.78)),
+    radial-gradient(circle at 80% 20%, rgba(229, 85, 63, 0.12), transparent 12rem),
+    var(--bg-ball) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg-2);
+}
+
+.arena-recruit-hero::after {
+  background: linear-gradient(90deg, rgba(70, 224, 182, 0.18), transparent 20%, transparent 80%, rgba(255, 211, 108, 0.12));
+}
+
+.arena-lobby-arena::before,
+html[data-theme="light"] .arena-lobby-arena::before {
+  background: radial-gradient(ellipse at 50% 48%, rgba(240, 90, 70, 0.14), transparent 20rem);
+}
+
+.arena-lobby-modal {
+  background:
+    linear-gradient(180deg, rgba(24, 25, 26, 0.9), rgba(24, 25, 26, 0.78)),
+    radial-gradient(ellipse at 72% 28%, rgba(240, 90, 70, 0.14), transparent 20rem),
+    var(--bg-ball) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg-2);
+}
+
+html[data-theme="light"] .arena-lobby-modal {
+  background:
+    linear-gradient(180deg, rgba(255, 250, 241, 0.9), rgba(245, 241, 232, 0.82)),
+    radial-gradient(ellipse at 72% 28%, rgba(229, 85, 63, 0.1), transparent 20rem),
+    var(--bg-ball) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg-2);
+}

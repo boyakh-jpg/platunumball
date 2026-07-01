@@ -534,62 +534,64 @@ export default function Home({ app }) {
             </Link>
           </div>
         </div>
-        <Card className="section-card rank-profile-card">
-          <div className="rank-profile-head">
-            <div className={getDiscordAvatarClassName(user, "avatar hero-avatar")} style={getDiscordAvatarStyle(user)}>{user.name.slice(0, 1)}</div>
-            <div>
-              <p className="eyebrow">내 프로필</p>
-              <h2>{user.name}</h2>
-              <span>{user.region} · {user.position} · 신뢰도 {user.trustScore}</span>
-            </div>
-          </div>
-          <div className="rank-tier-block">
-            <TierEmblem mmr={user.ratings.integrated} size="md" />
-            <div>
-              <strong>{getTierDivision(user.ratings.integrated)}</strong>
-              <span>{Math.round(user.ratings.integrated)} MMR</span>
-            </div>
-          </div>
-          <div className="rank-tier-meta-line">
-            <Badge tone="gold">{Math.round(user.ratings.integrated)} MMR</Badge>
-            <Badge tone="green">시즌 점수</Badge>
-          </div>
-          <p className="rank-tier-copy">팀 기여도가 안정적인 플레이어입니다.</p>
-          <p className="rank-tier-note">{user.streak > 0 ? `${user.streak}연승 중. 다음 공식전이 티어를 흔듭니다.` : "꾸준히 경기에 참여하는 플레이어입니다."}</p>
-          <div className="rank-stat-grid">
-            <span><strong>{myCompletedMatches.length}</strong>경기</span>
-            <span><strong>{winRate}%</strong>승률</span>
-            <span><strong>{mySeasonIndex >= 0 ? `${mySeasonIndex + 1}위` : "-"}</strong>{user.region}</span>
-            <span><strong>{user.streak > 0 ? `${user.streak}연승` : user.streak < 0 ? `${Math.abs(user.streak)}연패` : "0"}</strong>흐름</span>
-          </div>
-          <div className="rank-profile-tabs">
-            <Link to={`/app/players/${user.id}`}>프로필</Link>
-            <Link to="/app/season">시즌</Link>
-            <Link to="/app/settings">설정</Link>
-          </div>
-        </Card>
-
-        <Card className="section-card rank-mode-card">
-          <div className="section-title-row">
-            <div>
-              <p className="eyebrow">Queue Rating</p>
-              <h2>모드별 티어</h2>
-            </div>
-            <Badge tone="gold">{Math.round(user.ratings.integrated)}</Badge>
-          </div>
-          <div className="mode-grid rank-mode-grid">
-            {Object.entries(user.ratings.modes).map(([mode, mmr]) => (
-              <div key={mode} className="rank-mode-pill">
-                <TierEmblem mmr={mmr} size="sm" />
-                <div>
-                  <span>{mode}</span>
-                  <strong>{getTierDivision(mmr)}</strong>
-                  <em>{Math.round(mmr)} MMR</em>
-                </div>
+        <div className="rank-tier-rail">
+          <Card className="section-card rank-profile-card">
+            <div className="rank-profile-head">
+              <div className={getDiscordAvatarClassName(user, "avatar hero-avatar")} style={getDiscordAvatarStyle(user)}>{user.name.slice(0, 1)}</div>
+              <div>
+                <p className="eyebrow">내 프로필</p>
+                <h2>{user.name}</h2>
+                <span>{user.region} · {user.position} · 신뢰도 {user.trustScore}</span>
               </div>
-            ))}
-          </div>
-        </Card>
+            </div>
+            <div className="rank-tier-block">
+              <TierEmblem mmr={user.ratings.integrated} size="md" />
+              <div>
+                <strong>{getTierDivision(user.ratings.integrated)}</strong>
+                <span>{Math.round(user.ratings.integrated)} MMR</span>
+              </div>
+            </div>
+            <div className="rank-tier-meta-line">
+              <Badge tone="gold">{Math.round(user.ratings.integrated)} MMR</Badge>
+              <Badge tone="green">시즌 점수</Badge>
+            </div>
+            <p className="rank-tier-copy">팀 기여도가 안정적인 플레이어입니다.</p>
+            <p className="rank-tier-note">{user.streak > 0 ? `${user.streak}연승 중. 다음 공식전이 티어를 흔듭니다.` : "꾸준히 경기에 참여하는 플레이어입니다."}</p>
+            <div className="rank-stat-grid">
+              <span><strong>{myCompletedMatches.length}</strong>경기</span>
+              <span><strong>{winRate}%</strong>승률</span>
+              <span><strong>{mySeasonIndex >= 0 ? `${mySeasonIndex + 1}위` : "-"}</strong>{user.region}</span>
+              <span><strong>{user.streak > 0 ? `${user.streak}연승` : user.streak < 0 ? `${Math.abs(user.streak)}연패` : "0"}</strong>흐름</span>
+            </div>
+            <div className="rank-profile-tabs">
+              <Link to={`/app/players/${user.id}`}>프로필</Link>
+              <Link to="/app/season">시즌</Link>
+              <Link to="/app/settings">설정</Link>
+            </div>
+          </Card>
+
+          <Card className="section-card rank-mode-card">
+            <div className="section-title-row">
+              <div>
+                <p className="eyebrow">Queue Rating</p>
+                <h2>모드별 티어</h2>
+              </div>
+              <Badge tone="gold">{Math.round(user.ratings.integrated)}</Badge>
+            </div>
+            <div className="mode-grid rank-mode-grid">
+              {Object.entries(user.ratings.modes).map(([mode, mmr]) => (
+                <div key={mode} className="rank-mode-pill">
+                  <TierEmblem mmr={mmr} size="sm" />
+                  <div>
+                    <span>{mode}</span>
+                    <strong>{getTierDivision(mmr)}</strong>
+                    <em>{Math.round(mmr)} MMR</em>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
       </section>
 
       <div className="content-grid home-dashboard-grid rank-dashboard-grid">

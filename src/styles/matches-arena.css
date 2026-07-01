@@ -3735,3 +3735,24 @@ html[data-theme="light"] .om-match-panel {
     font-size: 13px;
   }
 }
+
+/* 2026-07-01 remove court grid overlays. */
+.om-match-hero {
+  background:
+    linear-gradient(90deg, rgba(5, 8, 12, 0.98), rgba(5, 8, 12, 0.74) 56%, rgba(22, 17, 10, 0.74)),
+    radial-gradient(circle at 78% 22%, rgba(240, 90, 70, 0.18), transparent 12rem),
+    var(--bg-hoop) var(--hero-bg-position-hoop) / var(--hero-bg-size) no-repeat,
+    var(--scoreboard);
+}
+
+html[data-theme="light"] .om-match-hero {
+  background:
+    linear-gradient(90deg, rgba(255, 250, 241, 0.82), rgba(255, 250, 241, 0.58) 56%, rgba(245, 241, 232, 0.78)),
+    radial-gradient(circle at 78% 22%, rgba(229, 85, 63, 0.12), transparent 12rem),
+    var(--bg-hoop) var(--hero-bg-position-hoop) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg-2);
+}
+
+.om-match-hero::after {
+  background: linear-gradient(90deg, rgba(118, 169, 255, 0.18), transparent 25%, transparent 78%, rgba(255, 211, 108, 0.12));
+}
