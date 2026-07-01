@@ -11771,7 +11771,6 @@ button {
   inset: 0;
   pointer-events: none;
   background:
-    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px) 0 0 / 100% 18px,
     radial-gradient(ellipse at 38% 70%, rgba(240, 90, 70, 0.16), transparent 22rem);
   opacity: 0.82;
 }

@@ -3662,7 +3662,6 @@ html[data-theme="light"] .arena-lobby-card .om-match-summary-box {
   background:
     linear-gradient(180deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.28) 46%, rgba(0, 0, 0, 0.78)),
     linear-gradient(90deg, rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0.2) 42%, rgba(0, 0, 0, 0.1)),
-    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px) 0 0 / 100% 18px,
     var(--bg-hoop) center 48% / cover no-repeat,
     var(--rb-bg-2);
   padding: clamp(20px, 3.4vw, 42px);
@@ -3700,7 +3699,6 @@ html[data-theme="light"] .om-match-hero {
   background:
     linear-gradient(180deg, rgba(30, 24, 18, 0.04), rgba(30, 24, 18, 0.18) 48%, rgba(30, 24, 18, 0.64)),
     linear-gradient(90deg, rgba(30, 24, 18, 0.52), rgba(30, 24, 18, 0.12) 44%, rgba(30, 24, 18, 0.05)),
-    linear-gradient(rgba(255, 250, 241, 0.18) 1px, transparent 1px) 0 0 / 100% 18px,
     var(--bg-hoop) center 48% / cover no-repeat,
     var(--rb-bg-2);
 }
