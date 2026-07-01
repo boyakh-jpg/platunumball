@@ -16,6 +16,7 @@
 - `/api/matches/list`와 `/api/recruiting/list`는 목록/기록/심판/단건 보정에서도 broad `loadNormalizedRemoteStateFromClient()` fallback을 쓰지 않는다. feed card가 없거나 부족한 대상만 row 단위 compact load로 보정한다.
 - `/api/matches/detail`는 방 1개 row와 그 child row만 읽는 단건 loader를 쓴다. 방 보기 클릭이 전체 state hydrate로 번지면 안 된다.
 - `/api/directory/load`는 디렉터리 전용 데이터만 읽는다. 경기/모집/토너먼트 row를 같이 싣지 않는다.
+- `/api/directory/load`의 팀 멤버는 현재 조회한 팀 id 범위 안에서만 읽고, `team_members` 전체를 broad scan하지 않는다.
 - `/api/state/load`는 profile-only fallback 전용이다. 경기/모집/토너먼트/디렉터리 scope 요청은 화면별 endpoint로 보내야 한다.
 - server action authoritative replay도 matchId가 있는 일반 경기 action은 `scope:"matches"`로 단건 범위를 잡는다. `createMatch`, `approveMatch`, tournament 생성처럼 전체 팀/레이팅 history가 필요한 경로만 더 넓게 읽을 수 있다.
 

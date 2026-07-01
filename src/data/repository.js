@@ -1609,7 +1609,6 @@ export async function loadNormalizedDirectoryStateFromClient(client = supabase, 
     privateProfiles,
     publicProfiles,
     teams,
-    teamMembers,
     affiliations,
   ] = await Promise.all([
     authUserIdText && privateProfileFilter
@@ -1617,9 +1616,10 @@ export async function loadNormalizedDirectoryStateFromClient(client = supabase, 
       : [],
     fetchOptionalRows("public_profiles", PUBLIC_PROFILE_COLUMNS, "id", client),
     fetchAllRows("teams", TEAM_COLUMNS, "id", client),
-    fetchAllRows("team_members", TEAM_MEMBER_COLUMNS, null, client),
     fetchAllRows("affiliations", AFFILIATION_COLUMNS, "id", client),
   ]);
+  const activeTeamIds = (teams ?? []).filter((team) => !team.deleted_at).map((team) => team.id);
+  const teamMembers = await fetchRowsByIds("team_members", TEAM_MEMBER_COLUMNS, "team_id", activeTeamIds, null, client);
   const privateProfileById = new Map((privateProfiles ?? []).map((profile) => [profile.id, profile]));
   const profiles = mergePublicProfilesIntoProfiles([...(privateProfiles ?? [])], publicProfiles, privateProfileById);
   const { currentProfile, shellUser, currentUserId } = makeCurrentUserFromProfiles(profiles, authUserIdText, authEmail);
