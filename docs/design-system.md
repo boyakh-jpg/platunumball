@@ -832,3 +832,4 @@ UI 수정 전:
 9. New buttons, button groups, cards, inputs, and room modal surfaces use the `--ui-*` aliases in `tokens.css` as the stable module API.
 10. `recruiting-arena.css` and `matches-arena.css` load after `globals.css`; each file must end by reconnecting page selectors to the same `--ui-*` primitive layer to prevent chunk-specific override drift.
 11. Room modal skin uses `--ui-room-modal-*` and `--ui-room-panel-*`. Slot, avatar, READY/WAIT, reserve, and party connection structure stays separate from visual primitive tokens.
+12. Long filter groups, such as recruiting date chips, keep scroll inside the group. Buttons must not bleed outside the group border or lose their own border because of older active-state overrides.

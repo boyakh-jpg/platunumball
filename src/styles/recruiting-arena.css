@@ -3399,31 +3399,32 @@ html[data-theme="light"] .arena-recruit-card.arena-target-room {
   width: auto;
   max-width: 100%;
   flex-wrap: wrap;
-  gap: var(--control-group-gap, 6px);
-  border: 0;
-  padding: var(--control-group-padding, 6px);
-  border-radius: var(--control-group-radius, var(--radius-md));
-  background: transparent;
+  gap: var(--ui-control-group-gap);
+  border: 1px solid var(--ui-control-group-border);
+  padding: var(--ui-control-group-padding);
+  border-radius: var(--ui-control-group-radius);
+  background: var(--ui-control-group-bg);
   overflow: visible;
 }
 
 .arena-filter-bar .segmented-control {
-  border: 0;
-  padding: var(--control-group-padding, 6px);
-  border-radius: var(--control-group-radius, var(--radius-md));
-  background: transparent;
+  border: 1px solid var(--ui-control-group-border);
+  padding: var(--ui-control-group-padding);
+  border-radius: var(--ui-control-group-radius);
+  background: var(--ui-control-group-bg);
   overflow: visible;
 }
 
 .arena-filter-bar .segmented-control button {
   flex: 1 0 auto;
-  border: 0;
-  background: transparent;
+  border: 1px solid var(--ui-button-border);
+  background: var(--ui-button-bg);
 }
 
 .arena-filter-bar .segmented-control button.active {
-  background: rgba(70, 224, 182, 0.12);
-  color: var(--green);
+  border-color: transparent;
+  background: var(--ui-button-bg-active);
+  color: var(--ui-button-color-active);
 }
 
 .arena-filter-bar .arena-start-date-filter button {
@@ -3509,13 +3510,14 @@ html[data-theme="light"] .arena-collapse-button {
 }
 
 html[data-theme="light"] .arena-filter-bar .segmented-control button {
-  border: 0;
-  background: transparent;
+  border: 1px solid var(--ui-button-border);
+  background: var(--ui-button-bg);
 }
 
 html[data-theme="light"] .arena-filter-bar .segmented-control button.active {
-  background: rgba(15, 159, 126, 0.12);
-  color: var(--green);
+  border-color: transparent;
+  background: var(--ui-button-bg-active);
+  color: var(--ui-button-color-active);
 }
 
 html[data-theme="light"] .arena-filter-bar button.active,
@@ -6951,5 +6953,52 @@ html[data-theme="light"] .arena-lobby-modal {
 @media (max-width: 720px) {
   .arena-lobby-modal {
     border-radius: var(--radius-xl) var(--radius-xl) 32px 32px;
+  }
+}
+
+/* 2026-07-01 clip-safe filter groups. */
+.arena-filter-bar .segmented-control,
+.arena-filter-bar .arena-start-date-filter {
+  box-sizing: border-box;
+  padding: 7px;
+  scroll-padding-inline: 7px;
+}
+
+.arena-filter-bar .segmented-control button,
+.arena-filter-bar .arena-start-date-filter button {
+  box-sizing: border-box;
+  border-width: 1px;
+  border-style: solid;
+  border-color: var(--ui-button-border);
+}
+
+.arena-filter-bar .segmented-control button.active,
+.arena-filter-bar .arena-start-date-filter button.active,
+.arena-filter-bar .arena-start-date-filter button.sat.active,
+.arena-filter-bar .arena-start-date-filter button.sun.active {
+  border-width: 1px;
+  border-style: solid;
+  border-color: transparent;
+}
+
+.arena-filter-bar .arena-start-date-filter {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.arena-filter-bar .arena-start-date-filter::-webkit-scrollbar {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .arena-filter-bar .segmented-control {
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+  }
+
+  .arena-filter-bar .segmented-control::-webkit-scrollbar {
+    display: none;
   }
 }
