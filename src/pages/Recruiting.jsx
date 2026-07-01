@@ -796,7 +796,7 @@ function CommandPopoverFrame({ floating = false, anchor = null, className = "", 
   const anchored = Boolean(floating && anchor);
   const viewportWidth = typeof window !== "undefined" ? window.innerWidth : 1024;
   const panelWidth = anchored
-    ? Math.min(Math.max(Number(anchor.width) || 0, 420), Math.max(240, viewportWidth - 24))
+    ? Math.min(Math.max(Number(anchor.width) || 0, 520), Math.max(240, viewportWidth - 24))
     : null;
   const panelX = anchored
     ? Math.min(
@@ -1398,6 +1398,7 @@ export function InvitePanel({
         floating
         fieldClassName="arena-invite-search"
         renderItem={renderInviteSearchItem}
+        closeOnResultClick
       />
 
       {canShowSelectedInviteAction ? (
@@ -1918,7 +1919,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
     const target = event?.currentTarget;
     if (!target?.getBoundingClientRect || typeof window === 'undefined') return null;
     const rect = target.getBoundingClientRect();
-    const width = Math.min(380, Math.max(280, window.innerWidth - 24));
+    const width = Math.min(560, Math.max(520, window.innerWidth - 24));
     const halfWidth = width / 2;
     const x = Math.min(
       Math.max(rect.left + rect.width / 2, 12 + halfWidth),
@@ -2052,6 +2053,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
   }, [app.currentUser.id, app.state, pendingRosterOpen, selectedPost]);
   const confirmQueueRoom = async (roomPost) => {
     if (!roomPost?.id || confirmingMatchId === roomPost.id) return;
+    if (roomPost.status === "closed" || roomPost.confirmedAt) return;
     setConfirmingMatchId(roomPost.id);
     try {
       const matchId = await app.actions.confirmRecruitingMatch(roomPost.id);
@@ -2080,6 +2082,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
           : app.currentUser.ratings.integrated;
         const fit = getRecruitingFit(selectedPost, candidateMmr || app.currentUser.ratings.integrated, app.state);
         const matchRoom = Boolean(sourceMatch);
+        const recruitingRoomConfirmed = Boolean(selectedPost.status === "closed" || selectedPost.confirmedAt);
         const storedRoomPost = app.state.recruitingPosts?.find((item) => item.id === selectedPost.id) ?? null;
         const slotPositions = selectedPost.roomState?.slotPositions ?? {};
         const roomOwnerId = getRecruitingRoomOwnerId(selectedPost);
@@ -2090,7 +2093,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         ));
         const alreadyApplied = Boolean(myEntry && !mine);
         const currentUserIsRoomReferee = selectedPost.refereeId === app.currentUser.id;
-        const canInviteFromRoom = !matchRoom && isCurrentUserRoomParticipant(selectedPost, lobby, app.currentUser.id);
+        const canInviteFromRoom = !matchRoom && !recruitingRoomConfirmed && isCurrentUserRoomParticipant(selectedPost, lobby, app.currentUser.id);
         const canChat = Boolean(storedRoomPost) && isCurrentUserRoomParticipant(selectedPost, lobby, app.currentUser.id);
         const selectedRoomState = selectedPost.roomState ?? {};
         const refereeWanted = Boolean(selectedPost.refereeWanted || selectedRoomState.refereeWanted || selectedPost.refereeId);
@@ -2104,7 +2107,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
           (!teamOnlyRoom || selectedJoinPlayerIds.length >= getRecruitingSideCapacity(selectedPost))
         ));
         const canJoinReferee = selectedPost.visibility === "public" && refereeWanted && !selectedPost.refereeId && isEligibleReferee(app.currentUser, selectedPost.refereeTrustMin, app.state.settings?.refereeAppointments);
-        const canJoin = selectedPost.visibility === "public" && !matchRoom && !mine && !alreadyApplied && (
+        const canJoin = selectedPost.visibility === "public" && !matchRoom && !recruitingRoomConfirmed && !mine && !alreadyApplied && (
           joinDraft.joinMode === "referee"
             ? canJoinReferee
             : fit.allowed && (joinDraft.joinMode === "player" || teamJoinValid)
@@ -3088,7 +3091,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                     수락
                   </Button>
                 ) : null}
-                {!matchRoom && mine ? (
+                {!matchRoom && !recruitingRoomConfirmed && mine ? (
                   <Button
                     type="button"
                     variant="primary"

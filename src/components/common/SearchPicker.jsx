@@ -88,6 +88,7 @@ export default function SearchPicker({
   className = "",
   fieldClassName = "",
   resultsClassName = "",
+  closeOnResultClick = false,
 }) {
   const [focused, setFocused] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -118,6 +119,10 @@ export default function SearchPicker({
   const visibleItems = activeItems.slice(0, expanded ? detailLimit : limit);
   const hasMore = activeItems.length > limit && !expanded;
   const resultTitle = query ? title : idleTitle;
+  const closeResults = () => {
+    setFocused(false);
+    setExpanded(false);
+  };
 
   useEffect(() => {
     if (!remoteSearchKey || !canSearch) {
@@ -168,6 +173,10 @@ export default function SearchPicker({
         <div
           className={`home-search-results unified search-picker-results${floating ? " is-floating" : ""}${resultsClassName ? ` ${resultsClassName}` : ""}`}
           onPointerDown={(event) => event.preventDefault()}
+          onClickCapture={(event) => {
+            if (!closeOnResultClick || event.target?.closest?.(".home-search-more")) return;
+            window.setTimeout(closeResults, 0);
+          }}
         >
           {resultTitle ? <strong className="search-picker-title">{resultTitle}</strong> : null}
           {visibleItems.length ? visibleItems.map(renderItem) : <div className="empty-state">{remoteLoading ? "검색 중..." : emptyText}</div>}
