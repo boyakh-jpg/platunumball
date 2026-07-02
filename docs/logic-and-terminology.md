@@ -1768,6 +1768,7 @@ flowchart TD
 - Server endpoints must not keep separate copies of those rule values. If a limit changes, update `src/lib/constants.js` first.
 - Backend test login must not depend on Supabase OAuth sign-out success. A stale OAuth session cannot block replacing the active server action token with the selected test account token.
 - Server actions prefer a fresh backend test session token before any Supabase OAuth session, and refresh OAuth sessions before sending a near-expired bearer token.
+- If production rejects a backend test bearer with `invalid_bearer_token`, the frontend clears the stored test session and retries the same server action once with the current Supabase OAuth token.
 - Malformed backend test session cache is removed on read so it cannot keep blocking later test login or server action token selection.
 
 ## 2026-07-01 feed-first list fallback
