@@ -7013,3 +7013,35 @@ html[data-theme="light"] .arena-lobby-modal {
   background: none;
   opacity: 0;
 }
+
+/* 2026-07-02 canonical recruiting hero image rule: no wash, grid, or pseudo overlay. */
+.arena-recruit-hero,
+html[data-theme="light"] .arena-recruit-hero {
+  background:
+    var(--bg-ball) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg-2);
+}
+
+.arena-recruit-hero::before,
+.arena-recruit-hero::after,
+html[data-theme="light"] .arena-recruit-hero::before,
+html[data-theme="light"] .arena-recruit-hero::after {
+  content: none;
+  background: none;
+  opacity: 0;
+}
+
+.arena-recruit-hero .eyebrow,
+.arena-recruit-hero h1,
+.arena-recruit-hero p,
+html[data-theme="light"] .arena-recruit-hero .eyebrow,
+html[data-theme="light"] .arena-recruit-hero h1,
+html[data-theme="light"] .arena-recruit-hero p {
+  color: var(--rb-orange);
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.26);
+}
+
+.arena-recruit-hero p,
+html[data-theme="light"] .arena-recruit-hero p {
+  color: var(--rb-orange-2);
+}

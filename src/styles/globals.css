@@ -13917,3 +13917,44 @@ html[data-theme="light"] .rank-home .home-top-rail .rank-tier-rail > .rank-profi
   background: none;
   opacity: 0;
 }
+
+/* 2026-07-02 canonical home hero image rule: no wash, grid, or pseudo overlay. */
+.rank-home .rank-summary-grid,
+html[data-theme="light"] .rank-home .rank-summary-grid {
+  background:
+    var(--bg-court) var(--hero-bg-position-court) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg-2);
+}
+
+.rank-home .rank-summary-grid::before,
+.rank-home .rank-summary-grid::after,
+html[data-theme="light"] .rank-home .rank-summary-grid::before,
+html[data-theme="light"] .rank-home .rank-summary-grid::after {
+  content: none;
+  background: none;
+  opacity: 0;
+}
+
+.rank-home .rank-summary-grid .home-rank-board-head h1,
+.rank-home .rank-summary-grid .home-rank-board-head p,
+.rank-home .rank-summary-grid .home-rank-board-head .eyebrow,
+html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head h1,
+html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head p,
+html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head .eyebrow {
+  color: var(--rb-orange);
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.26);
+}
+
+.rank-home .rank-summary-grid .home-rank-board-head p:not(.eyebrow),
+html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head p:not(.eyebrow) {
+  color: var(--rb-orange-2);
+}
+
+@media (max-width: 759px) {
+  .rank-home .rank-summary-grid .home-rank-board-head,
+  html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
+    background:
+      var(--bg-court) center 46% / cover no-repeat,
+      var(--rb-bg-2);
+  }
+}

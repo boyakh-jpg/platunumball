@@ -4051,3 +4051,35 @@ html[data-theme="light"] .om-score-box {
   background: none;
   opacity: 0;
 }
+
+/* 2026-07-02 canonical matches hero image rule: no wash, grid, or pseudo overlay. */
+.om-match-hero,
+html[data-theme="light"] .om-match-hero {
+  background:
+    var(--bg-hoop) var(--hero-bg-position-hoop) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg-2);
+}
+
+.om-match-hero::before,
+.om-match-hero::after,
+html[data-theme="light"] .om-match-hero::before,
+html[data-theme="light"] .om-match-hero::after {
+  content: none;
+  background: none;
+  opacity: 0;
+}
+
+.om-match-copy .eyebrow,
+.om-match-copy h1,
+.om-match-copy p,
+html[data-theme="light"] .om-match-copy .eyebrow,
+html[data-theme="light"] .om-match-copy h1,
+html[data-theme="light"] .om-match-copy p {
+  color: var(--rb-orange);
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.26);
+}
+
+.om-match-copy p,
+html[data-theme="light"] .om-match-copy p {
+  color: var(--rb-orange-2);
+}
