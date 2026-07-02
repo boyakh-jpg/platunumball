@@ -12261,6 +12261,8 @@ html[data-theme="light"] .app-main {
     display: contents;
   }
 
+  /* Home hero is display: contents here, so the visible hero must cancel app-main padding itself.
+     Do not switch this back to --page-gutter without rechecking 390/430/501px. */
   .rank-home .rank-summary-grid .home-rank-board-head {
     order: 1;
     position: relative;
@@ -12269,10 +12271,10 @@ html[data-theme="light"] .app-main {
     grid-row: auto;
     justify-self: start;
     min-height: clamp(320px, 88vw, 380px);
-    width: calc(100% + (2 * var(--page-gutter)));
+    width: calc(100% + (2 * var(--app-main-pad-x)));
     max-width: none;
     margin-top: -18px;
-    margin-inline: calc(-1 * var(--page-gutter));
+    margin-inline: calc(-1 * var(--app-main-pad-x));
     align-items: flex-end;
     overflow: hidden;
     border: 1px solid var(--rb-line);
