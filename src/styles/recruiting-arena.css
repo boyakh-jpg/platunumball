@@ -7114,3 +7114,38 @@ html[data-theme="light"] .arena-recruit-hero {
     var(--bg-recruiting) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat,
     var(--rb-bg-2);
 }
+
+/* 2026-07-02 room compose drawer uses a neutral panel, not the hero image. */
+.arena-compose-drawer,
+html[data-theme="light"] .arena-compose-drawer,
+.arena-lobby-modal,
+html[data-theme="light"] .arena-lobby-modal,
+.arena-lobby-arena,
+html[data-theme="light"] .arena-lobby-arena {
+  background: var(--ui-card-bg);
+}
+
+.arena-lobby-arena::before,
+.arena-lobby-arena::after {
+  content: none;
+  display: none;
+}
+
+.arena-room-chat,
+.arena-owner-panel {
+  min-height: 92px;
+  background: var(--ui-card-bg);
+}
+
+.arena-chat-form input {
+  height: 48px;
+  min-height: 48px;
+}
+
+.arena-modal-close-row {
+  margin-top: 14px;
+}
+
+.arena-modal-close-button {
+  min-height: 56px;
+}

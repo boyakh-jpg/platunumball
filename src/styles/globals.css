@@ -14232,7 +14232,19 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
   background: transparent;
 }
 
+.rank-home .home-search-panel.rank-search-card {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.rank-home .home-search-panel.rank-search-card > .search-picker {
+  min-width: 0;
+}
+
 .rank-home .home-search-panel.rank-search-card .home-search-box input {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -14258,8 +14270,11 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
 }
 
 .rank-home .home-top-rail > .home-action-card {
+  height: auto;
   min-height: 0;
   align-content: start;
+  align-self: start;
+  overflow: hidden;
 }
 
 .rank-home .home-top-rail > .home-action-card .home-action-list {
@@ -14270,10 +14285,20 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
   .rank-home .home-top-rail > .home-action-card .home-action-list {
     max-height: min(42vh, 420px);
     overflow: auto;
+    overscroll-behavior: contain;
   }
 }
 
 @media (max-width: 759px) {
+  .rank-home .home-search-panel.rank-search-card {
+    grid-template-columns: 1fr;
+  }
+
+  .rank-home .home-search-create,
+  .rank-home .home-search-create-button {
+    width: 100%;
+  }
+
   .rank-home .rank-summary-grid,
   html[data-theme="light"] .rank-home .rank-summary-grid {
     background: none;
