@@ -13857,6 +13857,20 @@ html[data-theme="light"] .rank-home .home-top-rail .rank-tier-rail > .rank-profi
     border-right: 0;
     border-left: 0;
     border-radius: 0;
+    padding-inline: clamp(22px, 4vw, 44px);
+  }
+
+  .rank-home .home-search-panel.rank-search-card {
+    padding-inline: clamp(20px, 3vw, 30px);
+  }
+
+  .rank-home .home-search-panel.rank-search-card .home-search-box {
+    gap: 14px;
+    padding-inline: clamp(16px, 2.4vw, 24px);
+  }
+
+  .rank-home .home-search-panel.rank-search-card .home-search-box input {
+    padding-inline-start: 4px;
   }
 }
 
