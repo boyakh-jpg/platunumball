@@ -450,11 +450,15 @@ function mergeServerRoomResult(state, result = {}) {
   if (!result || typeof result !== "object") return state;
   const nextPost = result.post ?? null;
   const nextMatch = result.createdMatch ?? result.match ?? null;
-  if (!nextPost && !nextMatch) return state;
+  const remoteState = result.state ? normalizeServerState(result.state) : null;
+  const baseState = remoteState
+    ? (nextPost ? mergeRemoteRecruitingPage(state, remoteState) : mergeRemoteMatchPage(state, remoteState))
+    : state;
+  if (!nextPost && !nextMatch) return baseState;
   return {
-    ...state,
-    recruitingPosts: nextPost ? mergeRecruitingPostsById(state.recruitingPosts ?? [], [nextPost]) : state.recruitingPosts,
-    matches: nextMatch ? mergeMatchesById(state.matches ?? [], [nextMatch]) : state.matches,
+    ...baseState,
+    recruitingPosts: nextPost ? mergeRecruitingPostsById(baseState.recruitingPosts ?? [], [nextPost]) : baseState.recruitingPosts,
+    matches: nextMatch ? mergeMatchesById(baseState.matches ?? [], [nextMatch]) : baseState.matches,
   };
 }
 
@@ -864,8 +868,8 @@ export function useAppData(authUser = null) {
   const recentMatchMutationTimesRef = useRef(new Map());
   const syncedDiscordDeliveryIdsRef = useRef(new Set());
   const profileKey = authUserId ?? "local-demo";
-  const profileLocked = isPersistentAuthUserId(authUserId);
   const backendTestLoginId = getBackendTestLoginId(authUserId);
+  const profileLocked = isPersistentAuthUserId(authUserId) || Boolean(backendTestLoginId);
   const serverProfileBound = profileLocked || Boolean(backendTestLoginId);
   const effectiveProfileBindings = isSupabaseConfigured ? {} : profileBindings;
   const currentUserId = getBoundAuthProfileId(state, authUserId, effectiveProfileBindings, profileKey);
@@ -2037,17 +2041,30 @@ export function useAppData(authUser = null) {
       addMatchLatePlayer: (matchId, draft) => applyMatchMutation(matchId, (prev) => addMatchLatePlayer({ ...prev, currentUserId }, matchId, draft), { action: "addMatchLatePlayer", draft }),
       removeMatchLatePlayer: (matchId, playerId) => applyMatchMutation(matchId, (prev) => removeMatchLatePlayer({ ...prev, currentUserId }, matchId, playerId), { action: "removeMatchLatePlayer", playerId }),
       updateSettings: (patch) => {
-        setState((prev) => updateSettings({ ...prev, currentUserId }, patch));
-        syncSettingsServer(patch);
+        if (!isSupabaseConfigured) {
+          setState((prev) => updateSettings({ ...prev, currentUserId }, patch));
+          return Promise.resolve(true);
+        }
+        let rollbackState = null;
+        setState((prev) => {
+          rollbackState = prev;
+          return updateSettings({ ...prev, currentUserId }, patch);
+        });
+        return rollbackIfServerFailed(syncSettingsServer(patch), rollbackState, "설정 저장", { patch });
       },
       updatePrivacySettings: (patch) => {
         let nextPrivacy = null;
+        let rollbackState = null;
         setState((prev) => {
+          rollbackState = prev;
           const next = updatePrivacySettings({ ...prev, currentUserId }, patch);
           nextPrivacy = next.settings?.privacy ?? null;
           return next;
         });
-        if (nextPrivacy) syncSettingsServer({ privacy: nextPrivacy });
+        if (!isSupabaseConfigured) return Promise.resolve(true);
+        return nextPrivacy
+          ? rollbackIfServerFailed(syncSettingsServer({ privacy: nextPrivacy }), rollbackState, "설정 저장", { privacy: nextPrivacy })
+          : Promise.resolve(true);
       },
       saveTheme: (theme) => {
         const nextTheme = theme === "light" ? "light" : "dark";

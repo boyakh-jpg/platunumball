@@ -170,7 +170,16 @@ export async function loadCurrentProfileState(context, options = {}) {
       ownMemberships: ownMembershipsResult.data ?? [],
     },
   );
-  const userById = new Map(currentUserTeams.users.map((item) => [item.id, item]));
+  const invitationProfileIds = unique(teamInvitations.flatMap((invitation) => [
+    invitation.fromUserId,
+    invitation.targetUserId,
+  ])).filter((userId) => userId !== profileId && !currentUserTeams.users.some((item) => item.id === userId));
+  const { data: invitationProfileRows, error: invitationProfileError } = invitationProfileIds.length
+    ? await context.supabase.from("public_profiles").select(PROFILE_TEAM_MEMBER_COLUMNS).in("id", invitationProfileIds)
+    : { data: [], error: null };
+  if (invitationProfileError) throw invitationProfileError;
+  const invitationUsers = (invitationProfileRows ?? []).map(fromTeamMemberProfile);
+  const userById = new Map([...currentUserTeams.users, ...invitationUsers].map((item) => [item.id, item]));
   userById.set(user.id, user);
   const settings = {
     ...DEFAULT_SETTINGS,

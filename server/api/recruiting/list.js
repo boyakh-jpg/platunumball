@@ -896,6 +896,48 @@ function collectRecruitingScope(postRows = [], applicationRows = [], profileId =
   };
 }
 
+function collectRecruitingCardScope(cards = [], profileId = "") {
+  const profileIds = [profileId];
+  const teamIds = [];
+  cards.forEach((post) => {
+    const roomState = post?.roomState && typeof post.roomState === "object" && !Array.isArray(post.roomState)
+      ? post.roomState
+      : {};
+    const invitations = Array.isArray(roomState.invitations) ? roomState.invitations : [];
+    const applicants = Array.isArray(post?.applicants) ? post.applicants : [];
+    profileIds.push(
+      post?.ownerId,
+      post?.playerId,
+      post?.refereeId,
+      roomState.ownerId,
+      ...flattenIdValues(post?.playerIds),
+      ...flattenIdValues(roomState.partyLeaders),
+      ...flattenIdValues(roomState.partyReserves),
+      ...flattenIdValues(roomState.pinnedReservePlayers),
+      ...getRoomStateParticipantIds(roomState),
+      ...invitations.flatMap((invitation) => [
+        invitation?.targetUserId,
+        invitation?.fromUserId,
+        ...(invitation?.playerIds ?? []),
+      ]),
+    );
+    teamIds.push(
+      post?.teamId,
+      post?.targetTeamId,
+      ...collectTeamIdsFromRoomKeys(roomState.partyLeaders),
+      ...collectTeamIdsFromRoomKeys(roomState.partyReserves),
+    );
+    applicants.forEach((application) => {
+      profileIds.push(application?.playerId, ...flattenIdValues(application?.playerIds));
+      teamIds.push(application?.teamId, application?.sourceTeamId);
+    });
+  });
+  return {
+    profileIds: uniqueIds(profileIds),
+    teamIds: uniqueIds(teamIds),
+  };
+}
+
 function toClientTeam(row = {}) {
   return {
     id: row.id,
@@ -1068,7 +1110,13 @@ export async function loadCompactRecruitingList(context, {
       : { data: [], error: null };
     if (applicationError) throw applicationError;
 
-    const scope = collectRecruitingScope(postRows, applicationRows ?? [], context.profileId ?? "");
+    const rowScope = collectRecruitingScope(postRows, applicationRows ?? [], context.profileId ?? "");
+    const cardScope = collectRecruitingCardScope(targetCards, context.profileId ?? "");
+    const scope = {
+      profileIds: uniqueIds([...rowScope.profileIds, ...cardScope.profileIds]),
+      teamIds: uniqueIds([...rowScope.teamIds, ...cardScope.teamIds]),
+      courtIds: rowScope.courtIds,
+    };
     const profileIdsForLookup = scope.profileIds.filter((profileId) => profileId !== currentUser.id);
     const [
       { data: teamRows, error: teamError },

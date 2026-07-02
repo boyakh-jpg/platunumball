@@ -704,10 +704,13 @@ async function timeStep(timing, name, callback) {
   return timing ? timing.track(name, callback) : callback();
 }
 
-async function loadSyncedRecruitingPost(context, postId = "") {
-  if (!postId) return null;
+async function loadSyncedRecruitingState(context, postId = "") {
+  if (!postId) return { state: null, post: null };
   const state = await loadAuthoritativeState(context, { operation: { action: "loadRecruitingPost", postId } });
-  return (state.recruitingPosts ?? []).find((post) => post.id === postId) ?? null;
+  return {
+    state,
+    post: (state.recruitingPosts ?? []).find((post) => post.id === postId) ?? null,
+  };
 }
 
 async function applySqlRecruitingAction(context, operation = {}) {
@@ -1036,10 +1039,11 @@ export default async function handler(request, response) {
     if (operation && shouldUseSqlRecruitingAction(operation)) {
       const sqlResult = await timing.track("sqlReducer", () => applySqlRecruitingAction(context, operation));
       if (sqlResult) {
-        const syncedPost = await timing.track("loadSyncedAfterSql", () => loadSyncedRecruitingPost(context, sqlResult.postId ?? operation.postId));
+        const synced = await timing.track("loadSyncedAfterSql", () => loadSyncedRecruitingState(context, sqlResult.postId ?? operation.postId));
         sendTimedJson(response, 200, {
           ...sqlResult,
-          ...(syncedPost ? { post: syncedPost } : {}),
+          ...(synced.post ? { post: synced.post } : {}),
+          ...(synced.state ? { state: synced.state } : {}),
         }, timing, debugTiming);
         return;
       }
@@ -1071,8 +1075,9 @@ export default async function handler(request, response) {
       afterResponseTasks,
     }));
     if (result?.postId && action !== "createRecruitingPost") {
-      const syncedPost = await timing.track("loadSyncedAfterPersist", () => loadSyncedRecruitingPost(context, result.postId));
-      if (syncedPost) result.post = syncedPost;
+      const synced = await timing.track("loadSyncedAfterPersist", () => loadSyncedRecruitingState(context, result.postId));
+      if (synced.post) result.post = synced.post;
+      if (synced.state) result.state = synced.state;
     }
     if (createdMatch) {
       const matchNotifications = notifications.filter((notification) => notification.matchId === createdMatch.id);

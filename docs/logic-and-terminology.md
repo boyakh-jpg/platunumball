@@ -1618,11 +1618,16 @@ flowchart TD
 16. Supabase remote state는 서버/DB가 source of truth다. 클라이언트 자동관리 함수는 원격 모집방/경기 상태를 로컬에서 임의로 취소/종료 처리하지 않는다. 만료, 자동취소, 자동확정 같은 lifecycle 변경은 server action/RPC로 저장된 뒤에만 화면 source of truth로 취급한다.
 
 17. `rankball_recruiting_slot_position_action()`은 선택 포지션을 `room_state.slotPositions`뿐 아니라 방장은 `recruiting_posts.position`, 개인 신청자는 `recruiting_applications.position`에도 저장한다.
+18. `/api/recruiting/list`가 `user_room_feed.card_json`으로 목록을 응답하더라도 카드에 들어 있는 방장, 참가자, 초대자, 초대 대상, 팀 프로필은 관련 공개 프로필/팀으로 같이 붙인다. 피드 카드는 id source이고, 표시용 user/team attachment를 생략하면 안 된다.
+19. Recruiting mutation 응답은 최신 post만 반환해도 클라이언트가 초대 대상/참가자 표시를 잃지 않도록 얇은 `state.users`/`state.teams`를 같이 병합한다.
+20. 팀 초대 목록과 현재 프로필 state는 팀원이 아닌 pending 초대의 `fromUserId`/`targetUserId` 공개 프로필도 같이 붙인다.
+21. Supabase 테스트 로그인(`test:rankball-###`)은 Google auth 계정처럼 서버 프로필에 고정된 세션이다. Settings에서 임의 계정 전환 대상으로 취급하지 않는다.
+22. Settings 저장 UI는 서버 저장 결과를 기다린 뒤 성공/실패를 표시한다. Privacy/Discord 설정은 실패했는데도 `저장됨`으로 표시하면 안 된다.
 
-18. `setRecruitingReady` may use `rankball_recruiting_ready_action()` for active host/direct player readiness. Team-party, reserve, and other complex readiness cases must fall back to authoritative replay.
-19. Recruiting server action replay must load the acting profile's current teams, explicit draft/application team ids, and their team members. Team-hosted room creation, private opponent team creation, and team-party participation cannot rely only on teams already related to the target recruiting post.
-20. Recruiting replay scope must also include explicit invite targets, referee invite targets, and team ids stored on pending room invitations. Expired, declined, or cancelled invitations are not active eligibility targets and must not block age/team roster validation.
-21. Recruiting snapshot persist must pass the replay base `updated_at` into `rankball_recruiting_action`. The DB function locks the row and rejects stale writes with `recruiting_stale_snapshot` instead of overwriting a newer room state.
+23. `setRecruitingReady` may use `rankball_recruiting_ready_action()` for active host/direct player readiness. Team-party, reserve, and other complex readiness cases must fall back to authoritative replay.
+24. Recruiting server action replay must load the acting profile's current teams, explicit draft/application team ids, and their team members. Team-hosted room creation, private opponent team creation, and team-party participation cannot rely only on teams already related to the target recruiting post.
+25. Recruiting replay scope must also include explicit invite targets, referee invite targets, and team ids stored on pending room invitations. Expired, declined, or cancelled invitations are not active eligibility targets and must not block age/team roster validation.
+26. Recruiting snapshot persist must pass the replay base `updated_at` into `rankball_recruiting_action`. The DB function locks the row and rejects stale writes with `recruiting_stale_snapshot` instead of overwriting a newer room state.
 
 ## 2026-06-28 public feed access
 

@@ -325,6 +325,16 @@ function hasPendingInvitationFor(post = {}, profileId = "") {
   ));
 }
 
+function assertStateIncludesUsers(payload = {}, profileIds = [], label = "state users missing") {
+  const users = Array.isArray(payload?.state?.users) ? payload.state.users : [];
+  const userIds = new Set(users.map((user) => user?.id).filter(Boolean));
+  const missing = profileIds.filter((profileId) => profileId && !userIds.has(profileId));
+  assertFlow(!missing.length, label, {
+    missing,
+    userIds: [...userIds],
+  });
+}
+
 async function getRecruitingPostAfterResult(result, login, label) {
   if (result?.post) return result.post;
   return step(label, () => loadRecruitingPostAs(login));
@@ -815,6 +825,7 @@ async function runRecruitingInviteAcceptScenario({
     },
   }));
   post = await getRecruitingPostAfterResult(inviteResult, hostLogin, `${ids.label}:loadAfterInvite`);
+  assertStateIncludesUsers(inviteResult, [hostId, inviteeId], "invite mutation response missing feed users");
   const invitation = post?.roomState?.invitations?.find((item) => (
     item.targetUserId === inviteeId &&
     item.status === "pending" &&
@@ -828,6 +839,7 @@ async function runRecruitingInviteAcceptScenario({
     postId: ids.postId,
     page: invitedBeforeAccept.payload?.page,
   });
+  assertStateIncludesUsers(invitedBeforeAccept.payload, [hostId, inviteeId], "invited room scope missing feed users before accept");
   assertFlow(hasPendingInvitationFor(invitedBeforeAccept.post, inviteeId), "invited room scope post missing pending invitation before accept", {
     inviteeId,
     post: invitedBeforeAccept.post,
@@ -839,6 +851,7 @@ async function runRecruitingInviteAcceptScenario({
     invitationId: invitation.id,
   }));
   post = await getRecruitingPostAfterResult(acceptResult, inviteeLogin, `${ids.label}:loadAfterAccept`);
+  assertStateIncludesUsers(acceptResult, [hostId, inviteeId], "accept mutation response missing feed users");
   const applicant = post?.applicants?.find((item) => item.playerId === inviteeId);
   const pendingInvite = post?.roomState?.invitations?.find((item) => item.id === invitation.id && item.status === "pending");
   assertFlow(applicant?.status === "ready" && applicant.side === "teamB", "accepted invitee not ready on teamB", {
@@ -858,6 +871,7 @@ async function runRecruitingInviteAcceptScenario({
 
   const joinedAfterAccept = await step(`${ids.label}:roomScope:joined:afterAccept`, () => loadRecruitingScopeAs(inviteeLogin, "joined"));
   const joinedApplicant = joinedAfterAccept.post?.applicants?.find((item) => item.playerId === inviteeId);
+  assertStateIncludesUsers(joinedAfterAccept.payload, [hostId, inviteeId], "joined room scope missing feed users after accept");
   assertFlow(joinedApplicant?.status === "ready" && joinedApplicant.side === "teamB", "joined room scope missing accepted invitee after accept", {
     inviteeId,
     post: joinedAfterAccept.post,

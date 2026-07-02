@@ -133,13 +133,17 @@ export default async function handler(request, response) {
       : { data: [], error: null };
     if (memberError) throw memberError;
 
-    const profileIds = unique([user.id, ...(memberRows ?? []).map((member) => member.user_id)]);
+    const teamInvitations = await loadTeamInvitations(context.supabase, user.id, teamId);
+    const invitationProfileIds = teamInvitations.flatMap((invitation) => [
+      invitation.fromUserId,
+      invitation.targetUserId,
+    ]);
+    const profileIds = unique([user.id, ...(memberRows ?? []).map((member) => member.user_id), ...invitationProfileIds]);
     const { data: profileRows, error: profileError } = profileIds.length
       ? await context.supabase.from("public_profiles").select(PROFILE_TEAM_MEMBER_COLUMNS).in("id", profileIds)
       : { data: [], error: null };
     if (profileError) throw profileError;
 
-    const teamInvitations = await loadTeamInvitations(context.supabase, user.id, teamId);
     const membersByTeam = groupBy(memberRows ?? [], "team_id");
     const userById = new Map((profileRows ?? []).map((row) => {
       const item = fromTeamMemberProfile(row);

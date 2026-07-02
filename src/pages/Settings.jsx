@@ -73,6 +73,12 @@ const SETTINGS_SECTIONS = {
   referee: { eyebrow: "Referee", title: "심판 등록" },
 };
 const EMBEDDED_SETTINGS_SECTIONS = new Set(["profile", "discord"]);
+const AUTH_PROVIDER_LABELS = {
+  google: "Google",
+  kakao: "Kakao",
+  naver: "Naver",
+  test: "Test",
+};
 
 function getPrivacyDraft(privacy = {}) {
   return {
@@ -80,6 +86,15 @@ function getPrivacyDraft(privacy = {}) {
     teamHistory: privacy.teamHistory !== false,
     statSummary: privacy.statSummary !== false,
   };
+}
+
+function getAuthSessionLabel(authUser = null) {
+  if (!authUser) return "Guest";
+  const providerName = authUser.user_metadata?.providerName;
+  if (providerName) return providerName;
+  const provider = String(authUser.app_metadata?.provider ?? "").trim().toLowerCase();
+  if (provider) return AUTH_PROVIDER_LABELS[provider] ?? provider;
+  return authUser.email ?? "Supabase";
 }
 
 function getMatchReportTime(match = {}) {
@@ -807,9 +822,14 @@ export default function Settings({ app, auth, section = "main" }) {
       setThemeSaveStatus("저장 실패");
     }
   };
-  const savePrivacy = () => {
-    app.actions.updatePrivacySettings(privacyDraft);
-    setPrivacySaveStatus("저장됨");
+  const savePrivacy = async () => {
+    setPrivacySaveStatus("저장 중");
+    try {
+      const saved = await app.actions.updatePrivacySettings(privacyDraft);
+      setPrivacySaveStatus(saved && saved.ok !== false ? "저장됨" : "저장 실패");
+    } catch {
+      setPrivacySaveStatus("저장 실패");
+    }
   };
   const connectDiscord = () => {
     window.location.assign(getDiscordOAuthStartUrl(app.currentUserId));
@@ -820,7 +840,7 @@ export default function Settings({ app, auth, section = "main" }) {
       if (discordDraft.unlink) {
         await app.actions.updateProfile({ discordConnection: null });
       }
-      app.actions.updateSettings({
+      const saved = await app.actions.updateSettings({
         notificationChannels: {
           ...(app.state.settings?.notificationChannels ?? {}),
           discord: {
@@ -832,7 +852,7 @@ export default function Settings({ app, auth, section = "main" }) {
           },
         },
       });
-      setDiscordSaveStatus("저장됨");
+      setDiscordSaveStatus(saved && saved.ok !== false ? "저장됨" : "저장 실패");
     } catch {
       setDiscordSaveStatus("저장 실패");
     }
@@ -840,7 +860,7 @@ export default function Settings({ app, auth, section = "main" }) {
   const saveGeneralSettings = async () => {
     if (!generalSettingsDirty) return;
     if (themeDirty) await saveTheme();
-    if (privacyDirty) savePrivacy();
+    if (privacyDirty) await savePrivacy();
     if (discordDirty) await saveDiscordSettings();
   };
   const submitCourtRequest = async (event) => {
@@ -968,7 +988,7 @@ export default function Settings({ app, auth, section = "main" }) {
               </div>
               <div>
                 <span>세션</span>
-                <strong>{auth?.user ? auth.user.user_metadata?.providerName ?? "Test" : "Guest"}</strong>
+                <strong>{getAuthSessionLabel(auth?.user)}</strong>
               </div>
             </div>
           </Card>
