@@ -353,7 +353,7 @@ function compactRecruitingApplication(applicant = {}) {
   };
 }
 
-function compactRecruitingRoomState(roomState = {}, profileId = "") {
+function compactRecruitingRoomState(roomState = {}, profileId = "", options = {}) {
   const invitations = Array.isArray(roomState.invitations)
     ? roomState.invitations
       .filter((invitation) => invitation.targetUserId === profileId || invitation.fromUserId === profileId)
@@ -370,7 +370,7 @@ function compactRecruitingRoomState(roomState = {}, profileId = "") {
         updatedAt: invitation.updatedAt,
       }))
     : [];
-  return {
+  const compactRoomState = {
     ownerId: roomState.ownerId,
     teamOnly: roomState.teamOnly,
     timingType: roomState.timingType,
@@ -389,9 +389,22 @@ function compactRecruitingRoomState(roomState = {}, profileId = "") {
     approvalModeA: roomState.approvalModeA,
     approvalModeB: roomState.approvalModeB,
   };
+  if (options.includeRoomChat === true) {
+    compactRoomState.chatMessages = Array.isArray(roomState.chatMessages)
+      ? roomState.chatMessages
+        .map((message) => ({
+          id: message.id,
+          userId: message.userId,
+          body: String(message.body ?? "").slice(0, 500),
+          createdAt: message.createdAt,
+        }))
+        .filter((message) => message.userId && message.body.trim())
+      : [];
+  }
+  return compactRoomState;
 }
 
-function compactRecruitingPost(post = {}, profileId = "") {
+function compactRecruitingPost(post = {}, profileId = "", options = {}) {
   const rules = post.rules ?? {};
   return {
     id: post.id,
@@ -432,7 +445,7 @@ function compactRecruitingPost(post = {}, profileId = "") {
     refereeTrustMin: post.refereeTrustMin,
     statEntryMinutes: post.statEntryMinutes,
     disputeMinutes: post.disputeMinutes,
-    roomState: compactRecruitingRoomState(post.roomState ?? {}, profileId),
+    roomState: compactRecruitingRoomState(post.roomState ?? {}, profileId, options),
     mmrLimitMode: post.mmrLimitMode,
     teamOnly: post.teamOnly,
     hostJoinMode: post.hostJoinMode,
@@ -451,12 +464,12 @@ function compactRecruitingPost(post = {}, profileId = "") {
   };
 }
 
-function compactRecruitingListState(state = {}, profileId = "") {
+function compactRecruitingListState(state = {}, profileId = "", options = {}) {
   return {
     ...state,
     users: (state.users ?? []).map((user) => compactUser(user, profileId)),
     teams: (state.teams ?? []).map(compactTeam),
-    recruitingPosts: (state.recruitingPosts ?? []).map((post) => compactRecruitingPost(post, profileId)),
+    recruitingPosts: (state.recruitingPosts ?? []).map((post) => compactRecruitingPost(post, profileId, options)),
     matches: [],
     tournaments: [],
     affiliations: [],
@@ -1053,6 +1066,7 @@ export async function loadCompactRecruitingList(context, {
 } = {}) {
   const targetPostIds = uniqueIds([...explicitPostIds, ...(mineOnly ? currentUserPostIds : pagePostIds), ...(includeMine ? currentUserPostIds : [])]);
   const targetCards = uniqueFeedCards(pageCards.map((card) => ({ entity_id: card?.id, card_json: card })), targetPostIds);
+  const includeRoomChat = explicitPostIds.length > 0;
   const canUsePageCards = pageCards.length > 0
     && !explicitPostIds.length
     && targetCards.length > 0
@@ -1077,7 +1091,7 @@ export async function loadCompactRecruitingList(context, {
       settings,
     }, { includeDemo: false });
     return {
-      state: compactRecruitingListState(state, currentUser.id),
+      state: compactRecruitingListState(state, currentUser.id, { includeRoomChat }),
       page: {
         limit,
         count: 0,
@@ -1169,7 +1183,7 @@ export async function loadCompactRecruitingList(context, {
       settings,
     }, { includeDemo: false });
     return {
-      state: compactRecruitingListState(state, currentUser.id),
+      state: compactRecruitingListState(state, currentUser.id, { includeRoomChat }),
       page: {
         limit,
         count: mineOnly ? responsePosts.length : pagePostIds.length,
@@ -1245,7 +1259,7 @@ export async function loadCompactRecruitingList(context, {
     recruitingPosts: posts,
     settings,
   }, { includeDemo: false });
-  const responseState = compactRecruitingListState(state, currentUser.id);
+  const responseState = compactRecruitingListState(state, currentUser.id, { includeRoomChat });
 
   return {
     state: responseState,

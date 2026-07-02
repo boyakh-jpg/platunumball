@@ -1772,6 +1772,7 @@ flowchart TD
 
 - `sendRecruitingChat` uses server authoritative replay and appends to the latest `recruiting_posts.room_state.chatMessages`.
 - Room chat must not remain local-only. Other participants and fresh reloads must see the same messages.
+- Recruiting list/feed responses stay thin. `roomState.chatMessages` is included only for explicit post detail loads.
 
 ## 2026-07-01 test login and shared rule constants
 
