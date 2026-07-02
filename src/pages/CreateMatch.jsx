@@ -203,6 +203,19 @@ function getDefaultTeamReserveIds(team, activeIds = [], capacity = MAX_PARTY_RES
     .slice(0, capacity);
 }
 
+function getDefaultCreateMode(team) {
+  const availableCount = team ? getSelectableTeamPlayerIds(team).length : 0;
+  if (availableCount >= 5) return "5v5";
+  if (availableCount >= 3) return "3v3";
+  if (availableCount >= 2) return "2v2";
+  return "1v1";
+}
+
+function getDefaultMmrLimitMode(teamA, teamB, ranked = true, rangeMode = "narrow") {
+  if (!teamA || !teamB) return "block";
+  return isMmrInRecruitingRange(teamB.mmr, teamA.mmr, ranked, rangeMode) ? "block" : "warn";
+}
+
 function SideRosterPicker({
   team,
   users,
@@ -358,13 +371,17 @@ export default function CreateMatch({ app }) {
   const canCreateTeamRoom = myTeams.length > 0;
   const defaultTeamA = myTeams[0];
   const defaultTournamentTeamA = defaultTeamA ?? app.state.teams[0];
-  const defaultCapacity = getRecruitingSideCapacity({ mode: "5v5" });
-  const defaultTeamAPlayerIds = getDefaultTeamPlayerIds(defaultTeamA, defaultCapacity, [], app.currentUser.id);
-  const defaultTeamB = defaultTeamA
+  const defaultMode = getDefaultCreateMode(defaultTeamA);
+  const defaultHostJoinMode = canCreateTeamRoom && defaultMode !== "1v1" ? "team" : "player";
+  const defaultCapacity = getRecruitingSideCapacity({ mode: defaultMode });
+  const defaultTournamentCapacity = getRecruitingSideCapacity({ mode: "5v5" });
+  const defaultTeamAPlayerIds = defaultHostJoinMode === "team" ? getDefaultTeamPlayerIds(defaultTeamA, defaultCapacity, [], app.currentUser.id) : [];
+  const defaultTeamB = defaultHostJoinMode === "team" && defaultTeamA
     ? getOpponentTeam(app.state.teams, defaultTeamA.id, app.currentUser.region, defaultTeamAPlayerIds, 1)
     : undefined;
-  const defaultTournamentTeamB = getOpponentTeam(app.state.teams, defaultTournamentTeamA?.id, app.currentUser.region, [], defaultCapacity);
-  const defaultTeamBPlayerIds = getDefaultTeamPlayerIds(defaultTeamB, 1, defaultTeamAPlayerIds);
+  const defaultTournamentTeamB = getOpponentTeam(app.state.teams, defaultTournamentTeamA?.id, app.currentUser.region, [], defaultTournamentCapacity);
+  const defaultTeamBPlayerIds = defaultHostJoinMode === "team" ? getDefaultTeamPlayerIds(defaultTeamB, 1, defaultTeamAPlayerIds) : [];
+  const defaultMmrLimitMode = getDefaultMmrLimitMode(defaultTeamA, defaultTeamB);
   const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
   const defaultCourt = registeredCourts[0] ?? { name: "미정", region: app.currentUser.region };
   const [teamQuery, setTeamQuery] = useState("");
@@ -382,18 +399,18 @@ export default function CreateMatch({ app }) {
   const [draft, setDraft] = useState({
     visibility: "private",
     timingType: "scheduled",
-    hostJoinMode: canCreateTeamRoom ? "team" : "player",
+    hostJoinMode: defaultHostJoinMode,
     teamOnly: false,
-    mmrLimitMode: "block",
+    mmrLimitMode: defaultMmrLimitMode,
     mmrRangeMode: "narrow",
     ageRestriction: defaultAgeRestriction,
-    title: getDefaultCreateTitle("5v5"),
-    mode: "5v5",
+    title: getDefaultCreateTitle(defaultMode),
+    mode: defaultMode,
     court: defaultCourt.name,
     scheduledDate: today,
     scheduledTime: "20:30",
     teamAId: defaultTeamA?.id,
-    teamBId: defaultTeamB?.id,
+    teamBId: defaultHostJoinMode === "team" ? defaultTeamB?.id : undefined,
     playerIds: defaultTeamAPlayerIds,
     reservePlayerIds: [],
     opponentPlayerIds: [],
@@ -695,11 +712,15 @@ export default function CreateMatch({ app }) {
       const currentTeamBUsable = teamBExists &&
         current.teamBId !== nextTeamAId &&
         getDefaultTeamPlayerIds(currentTeamB, capacity, nextTeamAPlayerIds).length >= capacity;
-      const nextTeamBId = currentTeamBUsable
-        ? current.teamBId
-        : getOpponentTeam(app.state.teams, nextTeamAId, app.currentUser.region, nextTeamAPlayerIds, capacity)?.id;
-      if (current.teamAId === nextTeamAId && current.teamBId === nextTeamBId && tournamentTeamIds.length === (current.tournamentTeamIds ?? []).length) return current;
-      return { ...current, teamAId: nextTeamAId, teamBId: nextTeamBId, tournamentTeamIds };
+      const nextTeamB = currentTeamBUsable
+        ? currentTeamB
+        : getOpponentTeam(app.state.teams, nextTeamAId, app.currentUser.region, nextTeamAPlayerIds, capacity);
+      const nextTeamBId = nextTeamB?.id;
+      const nextMmrLimitMode = isDefaultCreateTitle(current.title)
+        ? getDefaultMmrLimitMode(nextTeamA, nextTeamB, current.ranked, current.mmrRangeMode)
+        : current.mmrLimitMode;
+      if (current.teamAId === nextTeamAId && current.teamBId === nextTeamBId && current.mmrLimitMode === nextMmrLimitMode && tournamentTeamIds.length === (current.tournamentTeamIds ?? []).length) return current;
+      return { ...current, teamAId: nextTeamAId, teamBId: nextTeamBId, mmrLimitMode: nextMmrLimitMode, tournamentTeamIds };
     });
   }, [app.currentUser.id, app.currentUser.region, app.state.teams, myTeams]);
 
@@ -946,6 +967,7 @@ export default function CreateMatch({ app }) {
       official: draft.official,
       preRegistered: draft.preRegistered,
       mmrRangeMode: draft.mmrRangeMode,
+      mmrLimitMode: draft.mmrLimitMode,
       ageRestriction: draft.ageRestriction,
       allowedAgeGroups: ageRestrictionOption.allowedGroups,
       rules: {

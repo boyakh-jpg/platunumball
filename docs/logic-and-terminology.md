@@ -1,5 +1,10 @@
 # RankBall 로직/용어/디자인 기준
 
+## 2026-07-02 초대 수락 MMR/roster 기준
+
+- 모집방 `mmrLimitMode`는 `roomState.mmrLimitMode`에 저장한다. `block`만 초대 수락을 MMR 범위 밖에서 차단하고, `warn`/`off`는 생성/수락을 막지 않는다.
+- `/api/recruiting/list`가 방 상세 또는 feed card 보정으로 modal 상태를 만들 때는 scoped `team_members`를 같이 읽어야 한다. 팀 멤버가 빠진 thin team으로 normalize하면 팀 파티가 개인 참가처럼 축소되면 안 된다.
+
 ## 2026-07-01 중복 호출/egress fallback 기준
 
 - 경기 상세, 경기/모집 page load, 기록판 경기, 프로필 기록, 모집방 상세는 같은 id 또는 같은 화면 scope 요청이 진행 중이면 기존 promise를 재사용한다.

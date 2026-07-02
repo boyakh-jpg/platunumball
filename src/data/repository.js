@@ -2121,6 +2121,7 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
         statEntryMinutes: post.stat_entry_minutes ?? STAT_ENTRY_WINDOW_MINUTES,
         disputeMinutes: post.dispute_minutes ?? DISPUTE_WINDOW_MINUTES,
         roomState,
+        mmrLimitMode: normalizeRecruitingMmrLimitMode(roomState.mmrLimitMode),
         teamOnly: roomState.teamOnly === true,
         hostJoinMode: post.host_join_mode,
         hostSide: post.host_side,
@@ -3830,6 +3831,10 @@ function getSelfDecisionId(state, match, sideName, decisionKey, playerId) {
 
 function uniquePlayerIds(playerIds = []) {
   return [...new Set(playerIds.filter(Boolean))];
+}
+
+function normalizeRecruitingMmrLimitMode(mode = "block") {
+  return ["off", "warn", "block"].includes(mode) ? mode : "block";
 }
 
 function isMatchSideTeamParty(match = {}, sideName = "") {
@@ -6384,6 +6389,7 @@ export function createRecruitingPost(state, draft) {
     return { ...state, notifications: [getInvalidPublicScheduleNotification(timingStatus.detail), ...state.notifications] };
   }
   const mmrRangeMode = normalizeRecruitingMmrRangeMode(draft.mmrRangeMode);
+  const mmrLimitMode = normalizeRecruitingMmrLimitMode(draft.mmrLimitMode);
   const ratingScale = draft.ranked === false ? 1 : getRecruitingRatingScale({ ranked: draft.ranked !== false, mmrRangeMode });
   const createdAt = new Date().toISOString();
   const partyReserves = {};
@@ -6448,6 +6454,7 @@ export function createRecruitingPost(state, draft) {
     timingType,
     ranked: draft.ranked !== false,
     mmrRangeMode,
+    mmrLimitMode,
     ageRestriction: draft.ageRestriction ?? draft.rules?.ageRestriction ?? "any",
     allowedAgeGroups: draft.allowedAgeGroups ?? draft.rules?.allowedAgeGroups ?? [],
     ratingScale,
@@ -6468,6 +6475,7 @@ export function createRecruitingPost(state, draft) {
     roomState: {
       ownerId: state.currentUserId,
       mmrRangeMode,
+      mmrLimitMode,
       timingType,
       ruleRevision: 1,
       teamOnly,
@@ -6737,7 +6745,8 @@ export function interestRecruitingPost(state, postId, application = {}) {
     ? getAveragePlayerMmr(state, selectedPlayerIds, team?.mmr ?? user?.ratings?.integrated ?? 1200)
     : user?.ratings?.integrated ?? 1200;
   const fit = getRecruitingFit(post, candidateMmr, state);
-  if (!fit.allowed) {
+  const mmrLimitMode = normalizeRecruitingMmrLimitMode(post.mmrLimitMode ?? roomState.mmrLimitMode);
+  if (mmrLimitMode === "block" && !fit.allowed) {
     return {
       ...state,
       notifications: [
@@ -7768,6 +7777,7 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
     ? invitedTeam.mmr ?? user?.ratings?.integrated ?? 1200
     : user?.ratings?.integrated ?? 1200;
   const fit = getRecruitingFit(post, candidateMmr, state);
+  const mmrLimitMode = normalizeRecruitingMmrLimitMode(post.mmrLimitMode ?? roomState.mmrLimitMode);
   const expireInvitation = (body) => ({
     ...state,
     recruitingPosts: (state.recruitingPosts ?? []).map((item) => (
@@ -7794,7 +7804,7 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
     ],
   });
 
-  if (!fit.allowed) {
+  if (mmrLimitMode === "block" && !fit.allowed) {
     return expireInvitation(`${post.title} 정규전은 ${fit.range.label} 구간만 대기할 수 있습니다.`);
   }
 

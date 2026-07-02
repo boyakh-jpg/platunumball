@@ -16,6 +16,7 @@ let userRoomFeedScopeAvailable = true;
 const PROFILE_ME_COLUMNS = "id,name,handle,hashtag,position,region,region_sido,region_district,school,company,club,trust_score,streak,avatar_color,test_login_id,auth_user_id,birth_year,age_group,age_group_checked_season,onboarding_complete,profile_version,handle_locked_at,birth_year_locked_at,name_updated_at,discord_connection,discord_user_id,ratings,created_at,updated_at,app_settings";
 const PROFILE_PUBLIC_COLUMNS = "id,name,handle,hashtag,position,region,trust_score,avatar_color,ratings,age_group,updated_at";
 const TEAM_COLUMNS = "id,name,home_court,region,mmr,wins,losses,accent,deleted_at";
+const TEAM_MEMBER_COLUMNS = "team_id,user_id,role";
 const COURT_COLUMNS = "id,name";
 const RECRUITING_POST_COLUMNS = "id,type,title,visibility,region,court_id,court_name,mode,scheduled_at,scheduled_date,scheduled_time,ranked,official,pre_registered,rating_scale,age_restriction,allowed_age_groups,rules,stakes,court_reserved,court_fee,spots,team_id,target_team_id,referee_id,referee_trust_min,stat_entry_minutes,dispute_minutes,room_state,host_join_mode,host_side,host_ready,side_capacity,player_ids,position,player_id,memo,status,confirmed_at,created_at,updated_at";
 const RECRUITING_APPLICATION_COLUMNS = "post_id,kind,team_id,player_id,side,status,reserve,position,player_ids,source_team_id,source_entry_id,created_at,updated_at";
@@ -377,6 +378,7 @@ function compactRecruitingRoomState(roomState = {}, profileId = "") {
     refereeWanted: roomState.refereeWanted,
     invitations,
     mmrRangeMode: roomState.mmrRangeMode,
+    mmrLimitMode: roomState.mmrLimitMode,
     partyLeaders: roomState.partyLeaders ?? {},
     partyReserves: roomState.partyReserves ?? {},
     reserveReady: roomState.reserveReady ?? {},
@@ -431,6 +433,7 @@ function compactRecruitingPost(post = {}, profileId = "") {
     statEntryMinutes: post.statEntryMinutes,
     disputeMinutes: post.disputeMinutes,
     roomState: compactRecruitingRoomState(post.roomState ?? {}, profileId),
+    mmrLimitMode: post.mmrLimitMode,
     teamOnly: post.teamOnly,
     hostJoinMode: post.hostJoinMode,
     hostSide: post.hostSide,
@@ -938,7 +941,10 @@ function collectRecruitingCardScope(cards = [], profileId = "") {
   };
 }
 
-function toClientTeam(row = {}) {
+function toClientTeam(row = {}, memberRows = []) {
+  const members = [...(memberRows ?? [])]
+    .sort((a, b) => String(a.role).localeCompare(String(b.role)) || String(a.user_id).localeCompare(String(b.user_id)))
+    .map((member) => ({ userId: member.user_id, role: member.role ?? "regular" }));
   return {
     id: row.id,
     name: row.name,
@@ -948,8 +954,8 @@ function toClientTeam(row = {}) {
     wins: row.wins ?? 0,
     losses: row.losses ?? 0,
     accent: row.accent,
-    membersPartial: true,
-    members: [],
+    membersPartial: members.length === 0,
+    members,
   };
 }
 
@@ -1006,6 +1012,7 @@ function fromRemoteRecruitingPost(row = {}, applicationsByPost = new Map(), cour
     statEntryMinutes: row.stat_entry_minutes ?? 60,
     disputeMinutes: row.dispute_minutes ?? 30,
     roomState,
+    mmrLimitMode: ["off", "warn", "block"].includes(roomState.mmrLimitMode) ? roomState.mmrLimitMode : "block",
     teamOnly: roomState.teamOnly === true,
     hostJoinMode: row.host_join_mode,
     hostSide: row.host_side,
@@ -1120,11 +1127,15 @@ export async function loadCompactRecruitingList(context, {
     const profileIdsForLookup = scope.profileIds.filter((profileId) => profileId !== currentUser.id);
     const [
       { data: teamRows, error: teamError },
+      { data: teamMemberRows, error: teamMemberError },
       { data: profileRows, error: profileError },
       { data: courtRows, error: courtError },
     ] = await Promise.all([
       scope.teamIds.length
         ? context.supabase.from("teams").select(TEAM_COLUMNS).in("id", scope.teamIds).is("deleted_at", null)
+        : Promise.resolve({ data: [], error: null }),
+      scope.teamIds.length
+        ? context.supabase.from("team_members").select(TEAM_MEMBER_COLUMNS).in("team_id", scope.teamIds)
         : Promise.resolve({ data: [], error: null }),
       profileIdsForLookup.length
         ? context.supabase.from("public_profiles").select(PROFILE_PUBLIC_COLUMNS).in("id", profileIdsForLookup)
@@ -1132,6 +1143,7 @@ export async function loadCompactRecruitingList(context, {
       fetchCourtRowsByIds(context.supabase, scope.courtIds),
     ]);
     if (teamError) throw teamError;
+    if (teamMemberError) throw teamMemberError;
     if (profileError) throw profileError;
     if (courtError) throw courtError;
 
@@ -1141,7 +1153,8 @@ export async function loadCompactRecruitingList(context, {
     }));
     userById.set(currentUser.id, { ...(userById.get(currentUser.id) ?? {}), ...currentUser });
 
-    const teams = (teamRows ?? []).map(toClientTeam);
+    const teamMembersByTeam = groupBy(teamMemberRows ?? [], "team_id");
+    const teams = (teamRows ?? []).map((team) => toClientTeam(team, teamMembersByTeam.get(team.id)));
     const courtById = firstBy(courtRows ?? [], "id");
     const applicationsByPost = groupBy(applicationRows ?? [], "post_id");
     const rowPostById = new Map(postRows.map((post) => [post.id, fromRemoteRecruitingPost(post, applicationsByPost, courtById)]));
@@ -1194,11 +1207,15 @@ export async function loadCompactRecruitingList(context, {
   const profileIdsForLookup = scope.profileIds.filter((profileId) => profileId !== currentUser.id);
   const [
     { data: teamRows, error: teamError },
+    { data: teamMemberRows, error: teamMemberError },
     { data: profileRows, error: profileError },
     { data: courtRows, error: courtError },
   ] = await Promise.all([
     scope.teamIds.length
       ? context.supabase.from("teams").select(TEAM_COLUMNS).in("id", scope.teamIds).is("deleted_at", null)
+      : Promise.resolve({ data: [], error: null }),
+    scope.teamIds.length
+      ? context.supabase.from("team_members").select(TEAM_MEMBER_COLUMNS).in("team_id", scope.teamIds)
       : Promise.resolve({ data: [], error: null }),
     profileIdsForLookup.length
       ? context.supabase.from("public_profiles").select(PROFILE_PUBLIC_COLUMNS).in("id", profileIdsForLookup)
@@ -1206,6 +1223,7 @@ export async function loadCompactRecruitingList(context, {
     fetchCourtRowsByIds(context.supabase, scope.courtIds),
   ]);
   if (teamError) throw teamError;
+  if (teamMemberError) throw teamMemberError;
   if (profileError) throw profileError;
   if (courtError) throw courtError;
 
@@ -1215,7 +1233,8 @@ export async function loadCompactRecruitingList(context, {
   }));
   userById.set(currentUser.id, { ...(userById.get(currentUser.id) ?? {}), ...currentUser });
 
-  const teams = (teamRows ?? []).map(toClientTeam);
+  const teamMembersByTeam = groupBy(teamMemberRows ?? [], "team_id");
+  const teams = (teamRows ?? []).map((team) => toClientTeam(team, teamMembersByTeam.get(team.id)));
   const courtById = firstBy(courtRows ?? [], "id");
   const applicationsByPost = groupBy(applicationRows ?? [], "post_id");
   const posts = postRows.map((post) => fromRemoteRecruitingPost(post, applicationsByPost, courtById));

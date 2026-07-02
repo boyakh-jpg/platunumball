@@ -30,11 +30,17 @@ function getTimestamp(item = {}) {
   return item.updatedAt ?? item.createdAt ?? item.queuedAt ?? item.startedAt ?? item.approvedAt ?? new Date().toISOString();
 }
 
+function normalizeMmrLimitMode(mode = "block") {
+  return ["off", "warn", "block"].includes(mode) ? mode : "block";
+}
+
 function normalizeRoomState(roomState = {}, post = {}) {
+  const source = roomState && typeof roomState === "object" ? roomState : {};
   return {
-    ...(roomState && typeof roomState === "object" ? roomState : {}),
-    ownerId: post.ownerId ?? roomState?.ownerId ?? post.playerId ?? "",
-    timingType: post.timingType ?? roomState?.timingType ?? "scheduled",
+    ...source,
+    ownerId: post.ownerId ?? source.ownerId ?? post.playerId ?? "",
+    timingType: post.timingType ?? source.timingType ?? "scheduled",
+    mmrLimitMode: normalizeMmrLimitMode(post.mmrLimitMode ?? source.mmrLimitMode),
   };
 }
 
