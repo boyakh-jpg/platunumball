@@ -14015,3 +14015,37 @@ html[data-theme="light"] .rank-home .home-top-rail .rank-tier-rail > .rank-profi
   outline: 0;
   box-shadow: none;
 }
+
+/* 2026-07-02 canonical page-level hero scope guard. */
+.landing-hero::before,
+.landing-hero::after,
+.match-hero::before,
+.match-hero::after,
+.team-hub-hero::before,
+.team-hub-hero::after,
+.season-hero::before,
+.season-hero::after,
+.page-header::before,
+.page-header::after,
+.profile-hero::before,
+.profile-hero::after,
+.team-detail-hero::before,
+.team-detail-hero::after,
+.referee-rulebook-hero::before,
+.referee-rulebook-hero::after {
+  content: none;
+  background: none;
+  opacity: 0;
+}
+
+html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head h1,
+html[data-theme="light"] .page-header h1,
+html[data-theme="light"] .landing-hero h1,
+html[data-theme="light"] .match-hero h1,
+html[data-theme="light"] .team-hub-hero h1,
+html[data-theme="light"] .season-hero-copy h1,
+html[data-theme="light"] .profile-hero h1,
+html[data-theme="light"] .team-detail-hero h1,
+html[data-theme="light"] .referee-rulebook-hero h2 {
+  color: var(--rb-cream);
+}

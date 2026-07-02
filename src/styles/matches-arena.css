@@ -4087,3 +4087,15 @@ html[data-theme="light"] .om-match-copy p {
 html[data-theme="light"] .om-match-copy h1 {
   color: var(--rb-cream);
 }
+
+/* 2026-07-02 include tournament in page-level hero rules. */
+.tournament-hero::before,
+.tournament-hero::after {
+  content: none;
+  background: none;
+  opacity: 0;
+}
+
+html[data-theme="light"] .tournament-hero h1 {
+  color: var(--rb-cream);
+}

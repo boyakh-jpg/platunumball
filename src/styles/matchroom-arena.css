@@ -622,3 +622,17 @@ html[data-theme="light"] .gm-room-actions > div {
     font-size: var(--hero-title-size-mobile);
   }
 }
+
+/* 2026-07-02 include match room in page-level hero rules. */
+.gm-room-hero::before,
+.gm-room-hero::after,
+html[data-theme="light"] .gm-room-hero::before,
+html[data-theme="light"] .gm-room-hero::after {
+  content: none;
+  background: none;
+  opacity: 0;
+}
+
+html[data-theme="light"] .gm-room-title h1 {
+  color: var(--rb-cream);
+}
