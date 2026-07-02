@@ -131,6 +131,7 @@ RankBall 다크 모드는 이 팔레트를 기본 CSS 색상 표준으로 쓴다
 2026-07-01: 홈 desktop hero는 세로 높이를 줄이고, 오른쪽 보조 카드들이 hero 오른쪽 빈 영역부터 차도록 배치한다. 라이트 모드에서 hero 내부 tier group wrapper는 투명 배경을 유지한다.
 2026-07-02: 홈 tier rail은 hero 내부가 아니라 오른쪽 최상단 rail에 두고 알림 카드보다 먼저 보여준다. tier rail은 통합 티어 배너와 최근 5경기 승수만 보여주고, 큰 티어명은 hero title font가 적용되게 영문 티어명으로 쓴다. 모드별/팀전 티어 카드는 홈에서 제외한다. 친선전/정규전 큐와 승인 대기 경기는 오른쪽 보조 rail이 아니라 왼쪽 메인 라인에 각각 한 줄 카드로 둔다.
 2026-07-02: 홈 760~1079px 구간은 desktop right rail 배치를 쓰지 않고 hero → search → top rail → dashboard 순서를 유지한다. top rail은 1080px 이상에서만 hero 오른쪽 rail로 올라간다.
+2026-07-02: 홈 1080px 이상 desktop right rail은 알림 카드와 그 아래 보조 카드 간격이 벌어지지 않게 하단 rail을 hero row 쪽으로 당긴다. 카드 높이를 늘려 빈 박스를 만들지 않는다.
 2026-07-02: 홈 760~1079px hero는 viewport edge까지 full-bleed하되, hero 내부 텍스트/CTA와 바로 아래 검색 입력은 20px 이상 inset을 유지해 테두리에 붙지 않게 한다.
 2026-07-02: 홈 759px 이하에서는 `rank-summary-grid`가 `display: contents`라 실제 hero인 `.home-rank-board-head`가 직접 `--app-main-pad-x`를 상쇄해야 한다. 이 규칙 변경 전에는 390/430/501/760/900/1024px에서 hero left, order, overflow를 다시 확인한다.
 2026-07-02: 경기(`/app/matches`)와 매칭(`/app/recruiting`) page container는 데스크톱에서 공통 앱 폭 1440px을 따른다. 원인/결과: 각 arena CSS 뒤쪽의 1480px override가 공통 `.app-main > *` 폭보다 커져 메뉴별 폭이 달라졌으므로, 최종 page width guard로 통일한다.
