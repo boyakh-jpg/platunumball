@@ -4153,3 +4153,10 @@ html[data-theme="light"] .tournament-hero h1 {
     font-size: var(--hero-title-size-mobile);
   }
 }
+
+/* 2026-07-02 page width guard: matches follows the shared app container. */
+.om-match-page {
+  width: min(100%, 1440px);
+  max-width: 1440px;
+  margin-inline: auto;
+}

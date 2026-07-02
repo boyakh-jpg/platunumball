@@ -7086,3 +7086,10 @@ html[data-theme="light"] .arena-hero-copy h1 {
     font-size: var(--hero-title-size-mobile);
   }
 }
+
+/* 2026-07-02 page width guard: recruiting follows the shared app container. */
+.arena-recruit-page {
+  width: min(100%, 1440px);
+  max-width: 1440px;
+  margin-inline: auto;
+}

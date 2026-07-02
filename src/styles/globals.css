@@ -14207,3 +14207,24 @@ html[data-theme="light"] .referee-rulebook-hero::after {
     font-size: 0.85rem;
   }
 }
+
+/* 2026-07-02 home hero single image layer.
+   Desktop uses the grid background; mobile uses the visible child because the grid is display: contents. */
+.rank-home .rank-summary-grid .home-rank-board-head,
+html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
+  background: transparent;
+}
+
+@media (max-width: 759px) {
+  .rank-home .rank-summary-grid,
+  html[data-theme="light"] .rank-home .rank-summary-grid {
+    background: none;
+  }
+
+  .rank-home .rank-summary-grid .home-rank-board-head,
+  html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
+    background:
+      var(--bg-court) center 46% / cover no-repeat,
+      var(--rb-bg-2);
+  }
+}
