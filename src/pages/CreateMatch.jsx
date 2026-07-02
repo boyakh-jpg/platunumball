@@ -7,7 +7,7 @@ import Card from "../components/common/Card.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
 import RuleSelector from "../components/match/RuleSelector.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
-import { MATCH_MODES, PLAYER_STAT_FIELDS, REFEREE_TRUST_MIN, REGIONS, getHostTrustRequirement } from "../lib/constants.js";
+import { MATCH_MODES, PLAYER_STAT_FIELDS, REFEREE_TRUST_MIN, REGIONS, getCanonicalRegion, getHostTrustRequirement, isSameRegion } from "../lib/constants.js";
 import { getCourtLayoutLabel, getCourtPlayWarning, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
 import { getCourtHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { getPublicRoomMaxDateInput, isEligibleReferee } from "../lib/matchUtils.js";
@@ -167,7 +167,7 @@ function getOpponentTeam(teams, teamId, region, excludedIds = [], capacity = 1) 
     team.id !== teamId &&
     getAvailableTeamPlayerIds(team, excludedIds).length >= capacity
   );
-  return teams.find((team) => canUseTeam(team) && team.region === region) ?? teams.find(canUseTeam) ?? teams.find((team) => team.id !== teamId);
+  return teams.find((team) => canUseTeam(team) && isSameRegion(team.region, region)) ?? teams.find(canUseTeam) ?? teams.find((team) => team.id !== teamId);
 }
 
 function getMmrSpread(teams) {
@@ -378,21 +378,22 @@ export default function CreateMatch({ app }) {
   const defaultHostJoinMode = canCreateTeamRoom && defaultMode !== "1v1" ? "team" : "player";
   const defaultCapacity = getRecruitingSideCapacity({ mode: defaultMode });
   const defaultTournamentCapacity = getRecruitingSideCapacity({ mode: "5v5" });
+  const currentRegion = getCanonicalRegion(app.currentUser.regionDistrict || app.currentUser.region);
   const defaultTeamAPlayerIds = defaultHostJoinMode === "team" ? getDefaultTeamPlayerIds(defaultTeamA, defaultCapacity, [], app.currentUser.id) : [];
   const defaultTeamB = defaultHostJoinMode === "team" && defaultTeamA
-    ? getOpponentTeam(app.state.teams, defaultTeamA.id, app.currentUser.region, defaultTeamAPlayerIds, 1)
+    ? getOpponentTeam(app.state.teams, defaultTeamA.id, currentRegion, defaultTeamAPlayerIds, 1)
     : undefined;
-  const defaultTournamentTeamB = getOpponentTeam(app.state.teams, defaultTournamentTeamA?.id, app.currentUser.region, [], defaultTournamentCapacity);
+  const defaultTournamentTeamB = getOpponentTeam(app.state.teams, defaultTournamentTeamA?.id, currentRegion, [], defaultTournamentCapacity);
   const defaultTeamBPlayerIds = defaultHostJoinMode === "team" ? getDefaultTeamPlayerIds(defaultTeamB, 1, defaultTeamAPlayerIds) : [];
   const defaultMmrLimitMode = getDefaultMmrLimitMode(defaultTeamA, defaultTeamB);
   const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
-  const defaultCourt = registeredCourts[0] ?? { name: "미정", region: app.currentUser.region };
+  const defaultCourt = registeredCourts.find((court) => isSameRegion(court.region, currentRegion)) ?? registeredCourts[0] ?? { name: "미정", region: currentRegion || app.currentUser.region };
   const [teamQuery, setTeamQuery] = useState("");
   const [opponentTeamQuery, setOpponentTeamQuery] = useState("");
   const [courtQuery, setCourtQuery] = useState("");
   const [refereeQuery, setRefereeQuery] = useState("");
-  const [teamRegion, setTeamRegion] = useState(app.currentUser.region ?? "전체");
-  const [courtRegion, setCourtRegion] = useState(app.currentUser.region ?? "전체");
+  const [teamRegion, setTeamRegion] = useState(currentRegion || "전체");
+  const [courtRegion, setCourtRegion] = useState(currentRegion || "전체");
   const defaultAgeRestriction = getAgeGroupForUser(app.currentUser);
   const favoriteTeamIds = app.state.settings?.favoriteTeamIds ?? [];
   const favoriteCourtIds = app.state.settings?.favoriteCourtIds ?? [];
@@ -457,32 +458,32 @@ export default function CreateMatch({ app }) {
   const sortedTeams = useMemo(() => {
     const hashtagSearch = isHashtagQuery(teamQuery);
     return [...app.state.teams]
-      .filter((team) => hashtagSearch || teamRegion === "전체" || team.region === teamRegion)
+      .filter((team) => hashtagSearch || teamRegion === "전체" || isSameRegion(team.region, teamRegion))
       .filter((team) => includesQuery(`${team.name} ${getTeamHashtag(team)} ${team.region} ${team.homeCourt}`, teamQuery))
-      .sort((a, b) => Number(isFavoriteTeam(b)) - Number(isFavoriteTeam(a)) || Number(b.region === app.currentUser.region) - Number(a.region === app.currentUser.region) || b.mmr - a.mmr);
-  }, [app.currentUser.region, app.state.teams, favoriteTeamIds, teamQuery, teamRegion]);
+      .sort((a, b) => Number(isFavoriteTeam(b)) - Number(isFavoriteTeam(a)) || Number(isSameRegion(b.region, currentRegion)) - Number(isSameRegion(a.region, currentRegion)) || b.mmr - a.mmr);
+  }, [app.state.teams, currentRegion, favoriteTeamIds, teamQuery, teamRegion]);
 
   const sortedCourts = useMemo(() => {
     const hashtagSearch = isHashtagQuery(courtQuery);
     return registeredCourts
-      .filter((court) => hashtagSearch || courtRegion === "전체" || court.region === courtRegion)
+      .filter((court) => hashtagSearch || courtRegion === "전체" || isSameRegion(court.region, courtRegion))
       .filter((court) => includesQuery(`${court.name} ${getCourtHashtag(court)} ${court.region} ${court.type} ${court.addressText ?? ""}`, courtQuery))
-      .sort((a, b) => Number(isFavoriteCourt(b)) - Number(isFavoriteCourt(a)) || Number(b.region === app.currentUser.region) - Number(a.region === app.currentUser.region) || a.name.localeCompare(b.name));
-  }, [app.currentUser.region, courtQuery, courtRegion, favoriteCourtIds, registeredCourts]);
+      .sort((a, b) => Number(isFavoriteCourt(b)) - Number(isFavoriteCourt(a)) || Number(isSameRegion(b.region, currentRegion)) - Number(isSameRegion(a.region, currentRegion)) || a.name.localeCompare(b.name));
+  }, [courtQuery, courtRegion, currentRegion, favoriteCourtIds, registeredCourts]);
 
   const favoriteTeams = useMemo(() => {
     return [...app.state.teams]
       .filter(isFavoriteTeam)
-      .sort((a, b) => Number(b.region === app.currentUser.region) - Number(a.region === app.currentUser.region) || b.mmr - a.mmr)
+      .sort((a, b) => Number(isSameRegion(b.region, currentRegion)) - Number(isSameRegion(a.region, currentRegion)) || b.mmr - a.mmr)
       .slice(0, 10);
-  }, [app.currentUser.region, app.state.teams, favoriteTeamIds]);
+  }, [app.state.teams, currentRegion, favoriteTeamIds]);
 
   const favoriteCourts = useMemo(() => {
     return [...registeredCourts]
       .filter(isFavoriteCourt)
-      .sort((a, b) => Number(b.region === app.currentUser.region) - Number(a.region === app.currentUser.region) || a.name.localeCompare(b.name))
+      .sort((a, b) => Number(isSameRegion(b.region, currentRegion)) - Number(isSameRegion(a.region, currentRegion)) || a.name.localeCompare(b.name))
       .slice(0, 10);
-  }, [app.currentUser.region, favoriteCourtIds, registeredCourts]);
+  }, [currentRegion, favoriteCourtIds, registeredCourts]);
 
   const selectedTeamA = app.state.teams.find((team) => team.id === draft.teamAId);
   const selectedTeamB = app.state.teams.find((team) => team.id === draft.teamBId);
@@ -533,11 +534,11 @@ export default function CreateMatch({ app }) {
       .filter((team) => !query || includesQuery(`${team.name} ${getTeamHashtag(team)} ${team.region} ${team.homeCourt}`, query))
       .sort((a, b) => (
         Number(favoriteTeamIds.includes(b.id)) - Number(favoriteTeamIds.includes(a.id)) ||
-        Number(b.region === app.currentUser.region) - Number(a.region === app.currentUser.region) ||
+        Number(isSameRegion(b.region, currentRegion)) - Number(isSameRegion(a.region, currentRegion)) ||
         b.mmr - a.mmr
       ))
       .slice(0, query ? 8 : 5);
-  }, [app.currentUser.region, app.state.teams, favoriteTeamIds, isPublicRoom, isTeamRoom, opponentTeamQuery, ownerSidePlayerIds, selectedTeamA]);
+  }, [app.state.teams, currentRegion, favoriteTeamIds, isPublicRoom, isTeamRoom, opponentTeamQuery, ownerSidePlayerIds, selectedTeamA]);
   const favoriteOpponentTeams = useMemo(() => {
     if (!isTeamRoom || isPublicRoom || !selectedTeamA) return [];
     return app.state.teams
@@ -545,11 +546,11 @@ export default function CreateMatch({ app }) {
       .filter((team) => team.id !== selectedTeamA.id)
       .filter((team) => getAvailableTeamPlayerIds(team, ownerSidePlayerIds).length >= 1)
       .sort((a, b) => (
-        Number(b.region === app.currentUser.region) - Number(a.region === app.currentUser.region) ||
+        Number(isSameRegion(b.region, currentRegion)) - Number(isSameRegion(a.region, currentRegion)) ||
         b.mmr - a.mmr
       ))
       .slice(0, 10);
-  }, [app.currentUser.region, app.state.teams, favoriteTeamIds, isPublicRoom, isTeamRoom, ownerSidePlayerIds, selectedTeamA]);
+  }, [app.state.teams, currentRegion, favoriteTeamIds, isPublicRoom, isTeamRoom, ownerSidePlayerIds, selectedTeamA]);
   const refereeCandidates = useMemo(
     () => app.state.users
       .filter((user) => isEligibleReferee(user, REFEREE_TRUST_MIN, app.state.settings?.refereeAppointments))
@@ -752,7 +753,7 @@ export default function CreateMatch({ app }) {
         getDefaultTeamPlayerIds(currentTeamB, capacity, nextTeamAPlayerIds).length >= capacity;
       const nextTeamB = currentTeamBUsable
         ? currentTeamB
-        : getOpponentTeam(app.state.teams, nextTeamAId, app.currentUser.region, nextTeamAPlayerIds, capacity);
+        : getOpponentTeam(app.state.teams, nextTeamAId, currentRegion, nextTeamAPlayerIds, capacity);
       const nextTeamBId = nextTeamB?.id;
       const nextMmrLimitMode = isDefaultCreateTitle(current.title)
         ? getDefaultMmrLimitMode(nextTeamA, nextTeamB, current.ranked, current.mmrRangeMode)
@@ -760,7 +761,7 @@ export default function CreateMatch({ app }) {
       if (current.teamAId === nextTeamAId && current.teamBId === nextTeamBId && current.mmrLimitMode === nextMmrLimitMode && tournamentTeamIds.length === (current.tournamentTeamIds ?? []).length) return current;
       return { ...current, teamAId: nextTeamAId, teamBId: nextTeamBId, mmrLimitMode: nextMmrLimitMode, tournamentTeamIds };
     });
-  }, [app.currentUser.id, app.currentUser.region, app.state.teams, myTeams]);
+  }, [app.currentUser.id, app.state.teams, currentRegion, myTeams]);
 
   useEffect(() => {
     if (canCreateTeamRoom) return;
@@ -826,7 +827,7 @@ export default function CreateMatch({ app }) {
       getAvailableTeamPlayerIds(currentTeamB, playerIds).length >= 1;
     const nextTeamB = currentTeamBUsable
       ? currentTeamB
-      : getOpponentTeam(sortedTeams, teamAId, app.currentUser.region, playerIds, 1) ?? getOpponentTeam(app.state.teams, teamAId, app.currentUser.region, playerIds, 1);
+      : getOpponentTeam(sortedTeams, teamAId, currentRegion, playerIds, 1) ?? getOpponentTeam(app.state.teams, teamAId, currentRegion, playerIds, 1);
     const opponentLeaderId = getDefaultTeamPlayerIds(nextTeamB, 1, playerIds)[0] ?? "";
     setOpponentTeamQuery("");
     update({
@@ -844,7 +845,7 @@ export default function CreateMatch({ app }) {
   const selectTeamB = (teamBId) => {
     const currentTeamA = app.state.teams.find((item) => item.id === draft.teamAId);
     const nextTeamA = currentTeamA?.id === teamBId
-      ? getOpponentTeam(sortedTeams, teamBId, app.currentUser.region, [], sideCapacity) ?? getOpponentTeam(app.state.teams, teamBId, app.currentUser.region, [], sideCapacity)
+      ? getOpponentTeam(sortedTeams, teamBId, currentRegion, [], sideCapacity) ?? getOpponentTeam(app.state.teams, teamBId, currentRegion, [], sideCapacity)
       : currentTeamA;
     const playerIds = getPartyPlayerIds(nextTeamA, draft.playerIds, sideCapacity);
     const team = app.state.teams.find((item) => item.id === teamBId);

@@ -290,6 +290,21 @@ export const COURTS = [
 
 export const REGIONS = ["마포", "성수", "잠실", "강남", "서초", "동작", "성동", "서대문", "영등포"];
 
+function normalizeRegionText(value = "") {
+  return String(value ?? "").replace(/\s+/g, "").toLowerCase();
+}
+
+export function getCanonicalRegion(value = "") {
+  const normalized = normalizeRegionText(value);
+  return REGIONS.find((region) => normalized.includes(normalizeRegionText(region))) ?? String(value ?? "").trim();
+}
+
+export function isSameRegion(left = "", right = "") {
+  const leftKey = normalizeRegionText(getCanonicalRegion(left));
+  const rightKey = normalizeRegionText(getCanonicalRegion(right));
+  return Boolean(leftKey && rightKey && (leftKey === rightKey || leftKey.includes(rightKey) || rightKey.includes(leftKey)));
+}
+
 export const TIER_QUOTES = {
   Rookie: "입문 구간. 경기 기록을 쌓는 단계입니다.",
   Bronze: "기본기를 확인하는 구간입니다.",

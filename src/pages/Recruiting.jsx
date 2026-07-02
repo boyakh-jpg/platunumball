@@ -28,7 +28,7 @@ import TierBadge from "../components/rating/TierBadge.jsx";
 import { getTierEmblemSrc } from "../components/rating/TierEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
-import { MATCH_MODES, PLAYER_POSITIONS, PLAYER_STAT_FIELDS, REGIONS } from "../lib/constants.js";
+import { MATCH_MODES, PLAYER_POSITIONS, PLAYER_STAT_FIELDS, REGIONS, getCanonicalRegion, isSameRegion } from "../lib/constants.js";
 import { getCourtLayoutLabel, getCourtPlayWarning, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
 import {
   MMR_RANGE_POLICIES,
@@ -166,7 +166,7 @@ function getRecruitingSchedule(post) {
 }
 
 function getDefaultApplyTeamId(post, teams) {
-  return teams.find((team) => team.region === post.region)?.id ?? teams[0]?.id ?? "";
+  return teams.find((team) => isSameRegion(team.region, post.region))?.id ?? teams[0]?.id ?? "";
 }
 
 function isTeamOnlyRoom(post = {}) {
@@ -3157,6 +3157,7 @@ function RecruitingReady({ app }) {
   const myTeamIds = useMemo(() => myTeams.map((team) => team.id), [myTeams]);
   const userById = useMemo(() => Object.fromEntries(app.state.users.map((user) => [user.id, user])), [app.state.users]);
   const teamById = useMemo(() => Object.fromEntries(app.state.teams.map((team) => [team.id, team])), [app.state.teams]);
+  const currentRegion = getCanonicalRegion(app.currentUser.regionDistrict || app.currentUser.region);
   const [queue, setQueue] = useState("all");
   const [roomScope, setRoomScope] = useState(() => (targetFilter === "invited" ? "invited" : "all"));
   const [regionFilter, setRegionFilter] = useState("local");
@@ -3172,8 +3173,8 @@ function RecruitingReady({ app }) {
   const [draft, setDraft] = useState(() => ({
     hostJoinMode: myTeams[0]?.id ? "team" : "player",
     title: "",
-    region: app.currentUser.region,
-    court: registeredCourts.find((court) => court.region === app.currentUser.region)?.name ?? registeredCourts[0]?.name ?? "미정",
+    region: currentRegion,
+    court: registeredCourts.find((court) => isSameRegion(court.region, currentRegion))?.name ?? registeredCourts[0]?.name ?? "미정",
     timingType: "scheduled",
     scheduledDate: getTodayInputValue(),
     scheduledTime: "20:00",
@@ -3717,7 +3718,7 @@ function RecruitingReady({ app }) {
                     value={draft.region}
                     onChange={(event) => {
                       const region = event.target.value;
-                      update({ region, court: registeredCourts.find((court) => court.region === region)?.name ?? draft.court });
+                      update({ region, court: registeredCourts.find((court) => isSameRegion(court.region, region))?.name ?? draft.court });
                     }}
                   >
                     {REGIONS.map((region) => <option key={region}>{region}</option>)}
@@ -3732,7 +3733,7 @@ function RecruitingReady({ app }) {
                 <label>
                   장소
                   <select value={draft.court} onChange={(event) => update({ court: event.target.value })}>
-                    {registeredCourts.filter((court) => court.region === draft.region || draft.region === "전체").map((court) => (
+                    {registeredCourts.filter((court) => isSameRegion(court.region, draft.region) || draft.region === "전체").map((court) => (
                       <option key={court.id} value={court.name}>{court.region} · {court.name}</option>
                     ))}
                   </select>

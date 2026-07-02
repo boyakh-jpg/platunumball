@@ -1598,6 +1598,7 @@ flowchart TD
 39-2. `/app` 홈 첫 로드는 `/api/home/load`가 홈 카드용 현재 사용자 모집 feed를 소량 포함하지만, 경기 메뉴 전체 일정 확인 완료로 표시하지 않는다. 홈 화면은 진입 직후 `loadMyRecruitingPosts()`나 `/api/matches/list includeRecruitingSchedule=true`를 자동 호출하지 않고, `/app/matches` 진입 시 `recruitingScheduleChecked=false`이면 경기 메뉴가 전체 일정 feed를 1회 읽는다.
 39-3. 모집방 모달은 열릴 때 단건 상세를 즉시 한 번 읽고, 열린 상태에서는 visible 탭에서만 15초 간격으로 단건 refresh한다. 초대/수락/거절/참여 같은 현재 사용자 action은 서버 응답 merge와 관계 refresh hook으로 즉시 반영하고, 4초 polling에 의존하지 않는다.
 39-4. 모집방 초대/수락/거절/참여/취소 성공 후에는 현재 프로필, 내 모집 feed, 경기 메뉴 모집 일정 feed, 해당 `postId` 단건 상세를 같은 refresh hook에서 갱신한다. 열린 모달과 홈/경기/매칭 숫자가 서로 다른 늦은 호출로 덮이면 안 된다.
+39-5. 방 생성/모집 작성 화면은 프로필 지역이 `서울특별시 마포구`처럼 저장되어도 앱 지역 키 `마포`로 정규화해 기본 구장, 지역 필터, 같은 지역 팀 추천을 고른다.
 40. 모집방 선수/심판 초대는 기존 방 참가자만 보낼 수 있다. 단, 초대 수락/거절은 아직 참가자가 아니어도 자기 pending invitation이 있으면 가능하다.
 41. `inviteRecruitingReferee`는 프론트와 서버 모두 기존 방 참가자 action이다. 초대 대상 심판은 active `referee_appointments`가 있어야 하며, pending invitation만 가진 사용자는 심판/선수 초대를 새로 보낼 수 없다.
 42. 선수/심판 초대 생성, 초대 수락, 초대 거절은 stale 클라이언트 snapshot을 그대로 저장하지 않고 서버 최신 모집방 row 기준으로 replay한다.
