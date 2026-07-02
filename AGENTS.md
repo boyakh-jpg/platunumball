@@ -36,6 +36,7 @@ After every task, report:
 4. result
 5. commands run
 6. important warnings
+7. 네가 해야할 것
 
 ## Development rules
 - Inspect current files before editing.
@@ -44,6 +45,8 @@ After every task, report:
 - If a build/test fails, include the exact failure summary.
 - Supabase SQL Editor migration SQL must avoid data loss by default: do not use `DROP TABLE`, `TRUNCATE`, or `DELETE` unless explicitly requested after risk confirmation.
 - Supabase migration SQL should use `ALTER TABLE`, `CREATE POLICY`, `DROP POLICY IF EXISTS`, and `IF EXISTS` / `IF NOT EXISTS` for objects that may already exist.
+- Required non-destructive remote DB SQL may be executed directly when credentials/tools are available; do not ask "실행해도 됨?" first.
+- If remote DB SQL cannot be executed, report the exact required user action under `네가 해야할 것`.
 
 # Request Handling
 

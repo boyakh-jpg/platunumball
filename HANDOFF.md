@@ -45,7 +45,10 @@ Do not stage `pnpm-lock.yaml` or `pnpm-workspace.yaml` unless the user explicitl
 - `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_ASSET_BASE_URL` are frontend-public.
 - If changing room/match/recruiting/referee/record/team/tournament/auth logic, read `docs/logic-and-terminology.md` first and update it if logic changes.
 - If changing UI/CSS/theme/layout/cards/buttons/heroes/modals/slots/avatars, read `docs/design-system.md` first and update it if design behavior changes.
-- After editing, report changed files, exact changes, cause, result, commands run, build/test result, warnings.
+- After editing, report changed files, exact changes, cause, result, commands run, build/test result, warnings, and `네가 해야할 것`.
+- Execute required non-destructive remote DB SQL directly when credentials/tools are available; do not ask "실행해도 됨?" first.
+- If remote DB SQL cannot be executed, put the required user action under `네가 해야할 것`.
+- Keep destructive SQL guarded: use it only after explicit user request/risk confirmation.
 - Commit and push completed work unless the user says not to.
 
 ### Agent operating policy
