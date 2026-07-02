@@ -3318,6 +3318,11 @@ function RecruitingReady({ app }) {
   useBodyScrollLock(Boolean(selectedPost) || composeOpen);
 
   useEffect(() => {
+    if (!selectedPost?.id || !app.remoteReady || !app.currentUser.id) return undefined;
+    return app.actions.subscribeRecruitingChat?.(selectedPost.id);
+  }, [app.actions.subscribeRecruitingChat, app.currentUser.id, app.remoteReady, selectedPost?.id]);
+
+  useEffect(() => {
     if (!targetPostId || !app.remoteReady) return;
     const targetPost = app.state.recruitingPosts.find((post) => post.id === targetPostId);
     if (targetPost) {

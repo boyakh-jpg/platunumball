@@ -20,6 +20,7 @@ const TEAM_MEMBER_COLUMNS = "team_id,user_id,role";
 const COURT_COLUMNS = "id,name";
 const RECRUITING_POST_COLUMNS = "id,type,title,visibility,region,court_id,court_name,mode,scheduled_at,scheduled_date,scheduled_time,ranked,official,pre_registered,rating_scale,age_restriction,allowed_age_groups,rules,stakes,court_reserved,court_fee,spots,team_id,target_team_id,referee_id,referee_trust_min,stat_entry_minutes,dispute_minutes,room_state,host_join_mode,host_side,host_ready,side_capacity,player_ids,position,player_id,memo,status,confirmed_at,created_at,updated_at";
 const RECRUITING_APPLICATION_COLUMNS = "post_id,kind,team_id,player_id,side,status,reserve,position,player_ids,source_team_id,source_entry_id,created_at,updated_at";
+const ROOM_CHAT_MESSAGE_COLUMNS = "id,room_type,room_id,user_id,body,created_at";
 const RECRUITING_FEED_MAX_LIMIT = 200;
 const RECRUITING_PUBLIC_PAGE_MAX_LIMIT = 80;
 const RECRUITING_FEED_ROW_MAX_LIMIT = 320;
@@ -75,6 +76,66 @@ function uniqueIds(ids = []) {
 function isMissingTable(error = {}, table = "") {
   const message = String(error?.message ?? "");
   return error?.code === "PGRST205" || error?.code === "42P01" || (table && message.includes(table));
+}
+
+function fromRoomChatMessageRow(row = {}) {
+  return {
+    id: String(row.id ?? ""),
+    userId: row.user_id ?? "",
+    body: String(row.body ?? "").slice(0, 500),
+    createdAt: row.created_at ?? "",
+  };
+}
+
+function mergeRoomChatMessages(legacyMessages = [], remoteMessages = []) {
+  const merged = [];
+  [...(legacyMessages ?? []), ...(remoteMessages ?? [])].forEach((message) => {
+    const next = {
+      id: String(message?.id ?? ""),
+      userId: message?.userId ?? message?.user_id ?? "",
+      body: String(message?.body ?? "").slice(0, 500),
+      createdAt: message?.createdAt ?? message?.created_at ?? "",
+    };
+    if (!next.userId || !next.body.trim()) return;
+    const nextTime = Date.parse(next.createdAt || 0);
+    const duplicate = merged.some((item) => {
+      if (next.id && item.id === next.id) return true;
+      if (item.userId !== next.userId || item.body !== next.body) return false;
+      const itemTime = Date.parse(item.createdAt || 0);
+      return Number.isFinite(nextTime) && Number.isFinite(itemTime) && Math.abs(nextTime - itemTime) <= 30000;
+    });
+    if (!duplicate) merged.push(next);
+  });
+  return merged
+    .sort((a, b) => String(a.createdAt ?? "").localeCompare(String(b.createdAt ?? "")))
+    .slice(-50);
+}
+
+async function fetchRoomChatMessagesByPostIds(client, postIds = [], limitPerRoom = 50) {
+  const ids = uniqueIds(postIds);
+  if (!ids.length) return new Map();
+  const cappedLimit = Math.max(1, Math.min(50, Number(limitPerRoom) || 50));
+  const { data, error } = await client
+    .from("room_chat_messages")
+    .select(ROOM_CHAT_MESSAGE_COLUMNS)
+    .eq("room_type", "recruiting")
+    .in("room_id", ids)
+    .order("created_at", { ascending: false })
+    .limit(ids.length * cappedLimit);
+  if (error) {
+    if (isMissingTable(error, "room_chat_messages")) return new Map();
+    throw error;
+  }
+  const grouped = groupBy(data ?? [], "room_id");
+  const messagesByPost = new Map();
+  ids.forEach((postId) => {
+    const messages = (grouped.get(postId) ?? [])
+      .slice(0, cappedLimit)
+      .map(fromRoomChatMessageRow)
+      .sort((a, b) => String(a.createdAt ?? "").localeCompare(String(b.createdAt ?? "")));
+    if (messages.length) messagesByPost.set(postId, messages);
+  });
+  return messagesByPost;
 }
 
 async function fetchCourtRowsByIds(supabase, courtIds = []) {
@@ -990,9 +1051,12 @@ function fromRemoteRecruitingApplication(row = {}) {
   };
 }
 
-function fromRemoteRecruitingPost(row = {}, applicationsByPost = new Map(), courtById = {}) {
+function fromRemoteRecruitingPost(row = {}, applicationsByPost = new Map(), courtById = {}, chatMessagesByPost = new Map()) {
   const rawScheduledAt = toDateTime(row.scheduled_date, row.scheduled_time, row.scheduled_at);
   const roomState = row.room_state && typeof row.room_state === "object" ? row.room_state : {};
+  const chatMessages = chatMessagesByPost.has(row.id)
+    ? mergeRoomChatMessages(roomState.chatMessages ?? [], chatMessagesByPost.get(row.id) ?? [])
+    : roomState.chatMessages;
   const timingType = roomState.timingType === "instant" || rawScheduledAt === "\uC989\uC2DC" ? "instant" : "scheduled";
   return {
     id: row.id,
@@ -1024,7 +1088,7 @@ function fromRemoteRecruitingPost(row = {}, applicationsByPost = new Map(), cour
     refereeTrustMin: row.referee_trust_min ?? 90,
     statEntryMinutes: row.stat_entry_minutes ?? 60,
     disputeMinutes: row.dispute_minutes ?? 30,
-    roomState,
+    roomState: chatMessages ? { ...roomState, chatMessages } : roomState,
     mmrLimitMode: ["off", "warn", "block"].includes(roomState.mmrLimitMode) ? roomState.mmrLimitMode : "block",
     teamOnly: roomState.teamOnly === true,
     hostJoinMode: row.host_join_mode,
@@ -1217,7 +1281,15 @@ export async function loadCompactRecruitingList(context, {
     : { data: [], error: null };
   if (applicationError) throw applicationError;
 
+  const chatMessagesByPost = includeRoomChat
+    ? await fetchRoomChatMessagesByPostIds(context.supabase, postIds)
+    : new Map();
+  const chatProfileIds = [...chatMessagesByPost.values()]
+    .flat()
+    .map((message) => message.userId)
+    .filter(Boolean);
   const scope = collectRecruitingScope(postRows, applicationRows ?? [], context.profileId ?? "");
+  scope.profileIds = uniqueIds([...scope.profileIds, ...chatProfileIds]);
   const profileIdsForLookup = scope.profileIds.filter((profileId) => profileId !== currentUser.id);
   const [
     { data: teamRows, error: teamError },
@@ -1251,7 +1323,7 @@ export async function loadCompactRecruitingList(context, {
   const teams = (teamRows ?? []).map((team) => toClientTeam(team, teamMembersByTeam.get(team.id)));
   const courtById = firstBy(courtRows ?? [], "id");
   const applicationsByPost = groupBy(applicationRows ?? [], "post_id");
-  const posts = postRows.map((post) => fromRemoteRecruitingPost(post, applicationsByPost, courtById));
+  const posts = postRows.map((post) => fromRemoteRecruitingPost(post, applicationsByPost, courtById, chatMessagesByPost));
   const state = normalizeState({
     currentUserId: currentUser.id,
     users: [...userById.values()],

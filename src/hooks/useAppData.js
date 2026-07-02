@@ -97,7 +97,7 @@ import {
   REMOTE_CLIENT_RECORD_MONTHS,
   REMOTE_CLIENT_RECRUITING_LIMIT,
 } from "../data/repository.js";
-import { isSupabaseConfigured } from "../lib/supabase.js";
+import { isSupabaseConfigured, supabase } from "../lib/supabase.js";
 import { readProfileBindings, readProfileCache, writeProfileBindings, writeProfileCache } from "../lib/storage.js";
 import { findDiscordConnectionOwner, getDiscordConnectionUserId } from "../lib/discord.js";
 import { getServerActionAvailability, postServerAction } from "../lib/serverActions.js";
@@ -199,7 +199,7 @@ function getServerOperation(meta = {}) {
   }
   if (!meta.action) return null;
   if (!SERVER_OPERATION_ACTIONS.has(String(meta.action))) return null;
-  const { operation: _operation, onSuccess: _onSuccess, ...payload } = meta;
+  const { operation: _operation, onSuccess: _onSuccess, optimisticBeforeServerCheck: _optimisticBeforeServerCheck, ...payload } = meta;
   return payload;
 }
 
@@ -286,6 +286,59 @@ function mergeRecruitingPostsById(current = [], incoming = []) {
     merged.set(item.id, next);
   });
   return [...merged.values()];
+}
+
+function normalizeRecruitingChatMessage(message = {}) {
+  return {
+    id: String(message.id ?? ""),
+    userId: message.userId ?? message.user_id ?? "",
+    body: String(message.body ?? "").slice(0, 500),
+    createdAt: message.createdAt ?? message.created_at ?? new Date().toISOString(),
+  };
+}
+
+function isLikelyOptimisticChatMessage(message = {}) {
+  return !message.id || String(message.id).startsWith("chat_");
+}
+
+function mergeRecruitingChatMessages(currentMessages = [], incomingMessage = {}) {
+  const message = normalizeRecruitingChatMessage(incomingMessage);
+  if (!message.userId || !message.body.trim()) return currentMessages ?? [];
+  const next = (currentMessages ?? []).map(normalizeRecruitingChatMessage);
+  const exactIndex = next.findIndex((item) => message.id && item.id === message.id);
+  if (exactIndex >= 0) {
+    next[exactIndex] = message;
+    return next.sort((a, b) => String(a.createdAt ?? "").localeCompare(String(b.createdAt ?? ""))).slice(-50);
+  }
+  const messageTime = Date.parse(message.createdAt || 0);
+  for (let index = next.length - 1; index >= 0; index -= 1) {
+    const item = next[index];
+    if (!isLikelyOptimisticChatMessage(item)) continue;
+    if (item.userId !== message.userId || item.body !== message.body) continue;
+    const itemTime = Date.parse(item.createdAt || 0);
+    if (Number.isFinite(messageTime) && Number.isFinite(itemTime) && Math.abs(messageTime - itemTime) <= 30000) {
+      next[index] = message;
+      return next.sort((a, b) => String(a.createdAt ?? "").localeCompare(String(b.createdAt ?? ""))).slice(-50);
+    }
+  }
+  return [...next, message]
+    .sort((a, b) => String(a.createdAt ?? "").localeCompare(String(b.createdAt ?? "")))
+    .slice(-50);
+}
+
+function mergeRecruitingChatMessage(state, postId = "", incomingMessage = {}) {
+  const roomId = String(postId ?? "").trim();
+  if (!roomId) return state;
+  let changed = false;
+  const recruitingPosts = (state.recruitingPosts ?? []).map((post) => {
+    if (post.id !== roomId) return post;
+    const roomState = post.roomState ?? {};
+    const nextMessages = mergeRecruitingChatMessages(roomState.chatMessages ?? [], incomingMessage);
+    if (nextMessages === roomState.chatMessages) return post;
+    changed = true;
+    return { ...post, roomState: { ...roomState, chatMessages: nextMessages } };
+  });
+  return changed ? { ...state, recruitingPosts } : state;
 }
 
 function sortMatchesByRemoteCursor(matches = []) {
@@ -1077,7 +1130,7 @@ export function useAppData(authUser = null) {
     pushLocalWarning("서버 데이터 로드 중", `${label}은 서버 데이터 로드가 끝난 뒤 다시 시도하세요. 새로고침 후 사라지는 로컬 임시 데이터를 만들지 않기 위해 차단했습니다.`);
     return false;
   }, [pushLocalWarning]);
-  const ensureServerActionAvailable = useCallback(async (path, label = "저장") => {
+  const ensureServerActionAvailable = useCallback(async (path, label = "저장", options = {}) => {
     if (!isSupabaseConfigured) return true;
     const availability = await getServerActionAvailability(path);
     if (availability.ok) return true;
@@ -1086,9 +1139,11 @@ export function useAppData(authUser = null) {
       reason: errorCode,
       path,
     });
-    pushLocalWarning("서버 저장 실패", `${label}이 서버에 저장되지 않았습니다. 이유: ${errorCode}`, {
-      payload: { path, error: errorCode },
-    });
+    if (options.quiet !== true) {
+      pushLocalWarning("서버 저장 실패", `${label}이 서버에 저장되지 않았습니다. 이유: ${errorCode}`, {
+        payload: { path, error: errorCode },
+      });
+    }
     return { ok: false, error: errorCode, path };
   }, [pushLocalWarning]);
   const runServerAction = useCallback((path, payload) => {
@@ -1138,6 +1193,9 @@ export function useAppData(authUser = null) {
       ? { operation, ...(post?.id ? { post } : {}), notifications, createdMatch: meta.createdMatch ?? null }
       : { post, notifications, ...meta };
     return runServerAction("/api/recruiting/sync-post", payload).then(async (result) => {
+      if (result?.message && (result?.postId || pendingPostId)) {
+        setState((prev) => mergeRecruitingChatMessage(prev, result.postId ?? pendingPostId, result.message));
+      }
       if (result?.post || result?.createdMatch) {
         setState((prev) => mergeServerRoomResult(prev, result));
         const changedPostId = result?.post?.id;
@@ -1777,14 +1835,12 @@ export function useAppData(authUser = null) {
         });
       };
       const applyRecruitingPostMutation = async (postId, reducer, meta = {}) => {
-        const serverReady = await ensureServerActionAvailable("/api/recruiting/sync-post", "방 변경");
-        if (serverReady !== true) return serverReady;
-        if (!ensureRemoteReady("방 변경")) return;
         const operation = getServerOperation({ ...meta, postId });
+        const optimisticBeforeServerCheck = meta.optimisticBeforeServerCheck === true;
         let rollbackState = null;
         let syncedPost = null;
         let syncedNotifications = [];
-        setState((prev) => {
+        const applyLocalMutation = () => setState((prev) => {
           rollbackState = prev;
           const beforePost = (prev.recruitingPosts ?? []).find((post) => post.id === postId) ?? null;
           const next = reducer(prev);
@@ -1793,6 +1849,17 @@ export function useAppData(authUser = null) {
           syncedNotifications = syncedPost ? getNewRecruitingNotifications(prev, next, postId) : [];
           return !syncedPost && operation && isSupabaseConfigured ? prev : next;
         });
+        if (optimisticBeforeServerCheck) applyLocalMutation();
+        const serverReady = await ensureServerActionAvailable("/api/recruiting/sync-post", "방 변경", { quiet: optimisticBeforeServerCheck });
+        if (serverReady !== true) {
+          if (optimisticBeforeServerCheck) rollbackServerMutation(rollbackState, "방 변경", { action: meta.action, postId, error: serverReady?.error });
+          return serverReady;
+        }
+        if (!ensureRemoteReady("방 변경")) {
+          if (optimisticBeforeServerCheck) rollbackServerMutation(rollbackState, "방 변경", { action: meta.action, postId, error: "remote_not_ready" });
+          return;
+        }
+        if (!optimisticBeforeServerCheck) applyLocalMutation();
         if (syncedPost) return rollbackIfServerFailed(syncRecruitingPostServer(syncedPost, syncedNotifications, { ...meta, postId }), rollbackState, "방 변경", { action: meta.action, postId });
         if (operation) return rollbackIfServerFailed(syncRecruitingPostServer(null, [], { ...meta, postId }), rollbackState, "방 변경", { action: meta.action, postId });
         return true;
@@ -2356,7 +2423,31 @@ export function useAppData(authUser = null) {
       updateMatchRoomRules: (matchId, patch) => applyMatchMutation(matchId, (prev) => updateMatchRoomRules({ ...prev, currentUserId }, matchId, patch), { action: "updateMatchRoomRules", patch }),
       setMatchRoomPlayerPlacement: (matchId, playerId, placement) => applyMatchMutation(matchId, (prev) => setMatchRoomPlayerPlacement({ ...prev, currentUserId }, matchId, playerId, placement), { action: "setMatchRoomPlayerPlacement", playerId, placement }),
       removeMatchRoomPlayer: (matchId, playerId) => applyMatchMutation(matchId, (prev) => removeMatchRoomPlayer({ ...prev, currentUserId }, matchId, playerId), { action: "removeMatchRoomPlayer", playerId }),
-      sendRecruitingChat: (postId, body) => applyRecruitingPostMutation(postId, (prev) => sendRecruitingChat({ ...prev, currentUserId }, postId, body), { action: "sendRecruitingChat", body }),
+      sendRecruitingChat: (postId, body) => applyRecruitingPostMutation(postId, (prev) => sendRecruitingChat({ ...prev, currentUserId }, postId, body), { action: "sendRecruitingChat", body, optimisticBeforeServerCheck: true }),
+      subscribeRecruitingChat: (postId) => {
+        const roomId = String(postId ?? "").trim();
+        if (!isSupabaseConfigured || !supabase || !roomId) return () => {};
+        const channel = supabase.channel(`room-chat:recruiting:${roomId}:${Date.now().toString(36)}`);
+        channel
+          .on("postgres_changes", {
+            event: "INSERT",
+            schema: "public",
+            table: "room_chat_messages",
+            filter: `room_id=eq.${roomId}`,
+          }, (payload) => {
+            const row = payload?.new ?? {};
+            if (row.room_type && row.room_type !== "recruiting") return;
+            setState((prev) => mergeRecruitingChatMessage(prev, roomId, row));
+          })
+          .subscribe((status) => {
+            if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+              console.warn("Recruiting chat realtime subscription failed.", { roomId, status });
+            }
+          });
+        return () => {
+          void supabase.removeChannel(channel);
+        };
+      },
       setRecruitingApplicantReserve: (postId, playerId, reserve) => {
         applyRecruitingPostMutation(postId, (prev) => setRecruitingApplicantReserve({ ...prev, currentUserId }, postId, playerId, reserve), { action: "setRecruitingApplicantReserve", playerId, reserve });
       },

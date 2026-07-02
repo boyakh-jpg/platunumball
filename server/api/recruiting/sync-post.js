@@ -16,6 +16,8 @@ function nullableText(value) {
   return text || null;
 }
 
+const ROOM_CHAT_MESSAGE_COLUMNS = "id,room_type,room_id,user_id,body,created_at";
+
 function isTrue(value) {
   return value === true || value === "true";
 }
@@ -707,6 +709,27 @@ function sendTimedJson(response, statusCode, payload, timing, includeTiming = fa
     : payload);
 }
 
+function sanitizeChatBody(value = "") {
+  return String(value ?? "")
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
+    .trim()
+    .slice(0, 500);
+}
+
+function isMissingRoomChatMessages(error = {}) {
+  const message = String(error?.message ?? "");
+  return error?.code === "PGRST205" || error?.code === "42P01" || message.includes("room_chat_messages");
+}
+
+function fromRoomChatMessageRow(row = {}) {
+  return {
+    id: String(row.id ?? ""),
+    userId: row.user_id ?? "",
+    body: String(row.body ?? "").slice(0, 500),
+    createdAt: row.created_at ?? new Date().toISOString(),
+  };
+}
+
 async function timeStep(timing, name, callback) {
   return timing ? timing.track(name, callback) : callback();
 }
@@ -818,6 +841,62 @@ async function applySqlRecruitingAction(context, operation = {}) {
     ok: true,
     ...(data && typeof data === "object" ? data : {}),
     postId: operation.postId,
+  };
+}
+
+async function loadRecruitingChatPermissionSnapshot(context, postId = "") {
+  const safePostId = String(postId ?? "").trim();
+  if (!safePostId) reject(400, "missing_recruiting_post");
+  const { data: existingPost, error: existingError } = await context.supabase
+    .from("recruiting_posts")
+    .select("id, visibility, player_id, player_ids, referee_id, room_state")
+    .eq("id", safePostId)
+    .maybeSingle();
+  if (existingError) throw existingError;
+  if (!existingPost) reject(404, "recruiting_post_not_found");
+  const { data: existingApplications, error: applicationsError } = await context.supabase
+    .from("recruiting_applications")
+    .select("kind,team_id,player_id,side,status,reserve,position,player_ids,source_team_id,source_entry_id,created_at,updated_at")
+    .eq("post_id", safePostId);
+  if (applicationsError) throw applicationsError;
+  return {
+    ...existingPost,
+    ownerId: existingPost.room_state?.ownerId,
+    playerId: existingPost.player_id,
+    playerIds: existingPost.player_ids,
+    refereeId: existingPost.referee_id,
+    roomState: existingPost.room_state,
+    applicants: fromRecruitingApplicationRows(existingApplications),
+  };
+}
+
+async function persistRecruitingRoomChatMessage(context, operation = {}) {
+  const postId = String(operation.postId ?? "").trim();
+  const text = sanitizeChatBody(operation.body);
+  if (!postId) reject(400, "missing_recruiting_post");
+  if (!text) reject(400, "empty_chat_message");
+  const existingPostSnapshot = await loadRecruitingChatPermissionSnapshot(context, postId);
+  if (!canSyncRecruitingAction(context.profileId, existingPostSnapshot, existingPostSnapshot, "sendRecruitingChat", { action: "sendRecruitingChat", body: text, postId })) {
+    reject(403, "recruiting_sync_permission_denied");
+  }
+  const { data, error } = await context.supabase
+    .from("room_chat_messages")
+    .insert({
+      room_type: "recruiting",
+      room_id: postId,
+      user_id: context.profileId,
+      body: text,
+    })
+    .select(ROOM_CHAT_MESSAGE_COLUMNS)
+    .single();
+  if (error) {
+    if (isMissingRoomChatMessages(error)) return null;
+    throw error;
+  }
+  return {
+    ok: true,
+    postId,
+    message: fromRoomChatMessageRow(data),
   };
 }
 
@@ -1042,6 +1121,14 @@ export default async function handler(request, response) {
     let action = body.action ? String(body.action) : "sync";
     let createdMatch = null;
     let replayResult = null;
+
+    if (operation?.action === "sendRecruitingChat") {
+      const chatResult = await timing.track("persistRoomChatMessage", () => persistRecruitingRoomChatMessage(context, operation));
+      if (chatResult) {
+        sendTimedJson(response, 200, chatResult, timing, debugTiming);
+        return;
+      }
+    }
 
     if (operation && shouldUseSqlRecruitingAction(operation)) {
       const sqlResult = await timing.track("sqlReducer", () => applySqlRecruitingAction(context, operation));
