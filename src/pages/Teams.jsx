@@ -71,6 +71,8 @@ export default function Teams({ app }) {
       .map((team) => ({ ...team, myRole: team.members.find((member) => member.userId === app.currentUser.id)?.role ?? "regular" }))
       .sort((a, b) => Number(b.myRole === "captain") - Number(a.myRole === "captain") || a.rank - b.rank);
   }, [app.currentUser.id, rankingTeams]);
+  const teamDirectoryError = app.directoryStatus?.error ?? "";
+  const teamDirectoryPending = app.remoteReady === false || app.directoryStatus?.loading || (app.directoryStatus?.loaded === false && !teamDirectoryError);
   const favoriteTeams = useMemo(() => {
     return rankingTeams
       .filter(isFavoriteTeam)
@@ -165,7 +167,7 @@ export default function Teams({ app }) {
               <p className="eyebrow">My Teams</p>
               <h2>내 팀 관리</h2>
             </div>
-            <Badge tone={myTeams.length > MAX_TEAM_MEMBERSHIPS ? "orange" : myTeams.length ? "green" : "neutral"}>{myTeams.length}/{MAX_TEAM_MEMBERSHIPS}</Badge>
+            <Badge tone={teamDirectoryPending ? "neutral" : myTeams.length > MAX_TEAM_MEMBERSHIPS ? "orange" : myTeams.length ? "green" : "neutral"}>{teamDirectoryPending ? "..." : `${myTeams.length}/${MAX_TEAM_MEMBERSHIPS}`}</Badge>
           </div>
           <div className="my-team-list">
             {myTeams.length ? myTeams.map((team) => {
@@ -184,7 +186,11 @@ export default function Teams({ app }) {
                   <b>{isCaptain ? "관리" : "상세"}</b>
                 </TeamHoverCard>
               );
-            }) : (
+            }) : teamDirectoryPending ? (
+              <div className="empty-state">팀 정보 확인 중</div>
+            ) : teamDirectoryError ? (
+              <div className="empty-state">팀 정보를 불러오지 못했습니다.</div>
+            ) : (
               <div className="empty-state">소속 팀이 없습니다. 오른쪽에서 팀을 만들거나 모집에 지원하세요.</div>
             )}
           </div>

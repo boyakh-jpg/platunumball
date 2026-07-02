@@ -882,7 +882,7 @@ export function useAppData(authUser = null) {
   const [profileBindings, setProfileBindings] = useState(() => readProfileBindings());
   const [adminContext, setAdminContext] = useState(EMPTY_ADMIN_CONTEXT);
   const [matchPagination, setMatchPagination] = useState({ loading: false, exhausted: !isSupabaseConfigured, error: "", cursor: "", recruitingScheduleChecked: false, recruitingScheduleLoading: false, recruitingSchedulePostIds: [] });
-  const [recruitingPagination, setRecruitingPagination] = useState({ loading: false, exhausted: !isSupabaseConfigured, error: "", cursor: "", offset: 0, regionScope: "local", regionKey: "", startFilter: "all", timingType: "", scheduledDate: "", feedCounts: null });
+  const [recruitingPagination, setRecruitingPagination] = useState({ loading: false, exhausted: !isSupabaseConfigured, error: "", loadMoreError: "", cursor: "", offset: 0, regionScope: "local", regionKey: "", startFilter: "all", timingType: "", scheduledDate: "", feedCounts: null });
   const [directoryStatus, setDirectoryStatus] = useState({ loading: false, loaded: !isSupabaseConfigured, error: "" });
   const [profileRecordsLoaded, setProfileRecordsLoaded] = useState(false);
   const [remoteReady, setRemoteReady] = useState(!isSupabaseConfigured);
@@ -898,6 +898,8 @@ export function useAppData(authUser = null) {
   const profileRecordsPromiseRef = useRef(null);
   const myRecruitingPostsPromiseRef = useRef(new Map());
   const recruitingRegionPromiseRef = useRef(new Map());
+  const latestRecruitingRegionRequestRef = useRef("");
+  const latestRecruitingLoadMoreRequestRef = useRef("");
   const recruitingPostPromiseRef = useRef(new Map());
   const pendingRecruitingPostIdsRef = useRef(new Set());
   const recentRecruitingMutationTimesRef = useRef(new Map());
@@ -963,10 +965,13 @@ export function useAppData(authUser = null) {
       recorderMatchesPromiseRef.current = null;
       profileRecordsPromiseRef.current = null;
       myRecruitingPostsPromiseRef.current = new Map();
+      recruitingRegionPromiseRef.current = new Map();
+      latestRecruitingRegionRequestRef.current = "";
+      latestRecruitingLoadMoreRequestRef.current = "";
       recruitingPostPromiseRef.current = new Map();
       setRemoteReady(!isSupabaseConfigured);
       setMatchPagination({ loading: false, exhausted: true, error: "", cursor: "", recruitingScheduleChecked: false, recruitingScheduleLoading: false, recruitingSchedulePostIds: [] });
-      setRecruitingPagination({ loading: false, exhausted: true, error: "", cursor: "", offset: 0, regionScope: "local", regionKey: "", startFilter: "all", timingType: "", scheduledDate: "", feedCounts: null });
+      setRecruitingPagination({ loading: false, exhausted: true, error: "", loadMoreError: "", cursor: "", offset: 0, regionScope: "local", regionKey: "", startFilter: "all", timingType: "", scheduledDate: "", feedCounts: null });
       setDirectoryStatus({ loading: false, loaded: true, error: "" });
       setProfileRecordsLoaded(false);
       return undefined;
@@ -985,6 +990,8 @@ export function useAppData(authUser = null) {
     profileRecordsPromiseRef.current = null;
     myRecruitingPostsPromiseRef.current = new Map();
     recruitingRegionPromiseRef.current = new Map();
+    latestRecruitingRegionRequestRef.current = "";
+    latestRecruitingLoadMoreRequestRef.current = "";
     recruitingPostPromiseRef.current = new Map();
     pendingRecruitingPostIdsRef.current = new Set();
     recentRecruitingMutationTimesRef.current = new Map();
@@ -1023,6 +1030,7 @@ export function useAppData(authUser = null) {
             loading: false,
             exhausted: initialRecruitingLimit <= 0 || (recruitingPageHasExhausted ? remoteMeta.recruitingPage.exhausted : (maintainedState.recruitingPosts?.length ?? 0) < initialRecruitingLimit),
             error: remoteMeta.recruitingPage?.error ?? "",
+            loadMoreError: "",
             cursor: remoteMeta.recruitingPage?.cursor ?? getRecruitingPaginationCursor(maintainedState.recruitingPosts),
             offset: getRecruitingPaginationOffset(remoteMeta.recruitingPage, maintainedState.recruitingPosts?.length ?? 0),
             ...getRecruitingRegionRequest(remoteMeta.recruitingPage),
@@ -1041,7 +1049,7 @@ export function useAppData(authUser = null) {
         console.warn("Supabase hydration failed. Remote state remains empty.", error.message);
         remoteReadyRef.current = true;
         setMatchPagination({ loading: false, exhausted: true, error: error.message ?? "state_load_failed", cursor: "", recruitingScheduleChecked: true, recruitingScheduleLoading: false, recruitingSchedulePostIds: [] });
-        setRecruitingPagination({ loading: false, exhausted: true, error: error.message ?? "state_load_failed", cursor: "", offset: 0, regionScope: "local", regionKey: "", startFilter: "all", timingType: "", scheduledDate: "", feedCounts: null });
+        setRecruitingPagination({ loading: false, exhausted: true, error: error.message ?? "state_load_failed", loadMoreError: "", cursor: "", offset: 0, regionScope: "local", regionKey: "", startFilter: "all", timingType: "", scheduledDate: "", feedCounts: null });
         if (mounted) setRemoteReady(true);
       });
 
@@ -1521,7 +1529,9 @@ export function useAppData(authUser = null) {
     const offset = getRecruitingPaginationOffset(recruitingPagination, recruitingPagination.offset ?? 0);
     const regionRequest = getRecruitingRegionRequest(recruitingPagination);
     const startFilterRequest = getRecruitingStartFilterRequest(recruitingPagination);
-    setRecruitingPagination((prev) => ({ ...prev, loading: true, error: "" }));
+    const requestKey = `${regionRequest.regionScope}:${regionRequest.regionKey}:${startFilterRequest.startFilter}:${offset}`;
+    latestRecruitingLoadMoreRequestRef.current = requestKey;
+    setRecruitingPagination((prev) => ({ ...prev, loading: true, error: "", loadMoreError: "" }));
     const promise = (async () => {
       try {
         const result = await postServerAction(
@@ -1544,12 +1554,14 @@ export function useAppData(authUser = null) {
         const rawPostCount = rawRemoteState.recruitingPosts?.length ?? 0;
         const remoteState = normalizeServerState(filterPendingRecruitingPosts(rawRemoteState, pendingRecruitingPostIdsRef.current, recentRecruitingMutationTimesRef.current));
         const nextPosts = remoteState.recruitingPosts ?? [];
+        if (latestRecruitingLoadMoreRequestRef.current !== requestKey) return false;
         setState((prev) => mergeRemoteRecruitingPage(prev, remoteState));
         const pageHasExhausted = typeof result?.page?.exhausted === "boolean";
         setRecruitingPagination({
           loading: false,
           exhausted: pageHasExhausted ? result.page.exhausted : rawPostCount < REMOTE_CLIENT_RECRUITING_LIMIT,
           error: "",
+          loadMoreError: "",
           cursor: result?.page?.cursor ?? String(offset + rawPostCount),
           offset: getRecruitingPaginationOffset(result?.page, offset + rawPostCount),
           ...regionRequest,
@@ -1559,7 +1571,8 @@ export function useAppData(authUser = null) {
         return nextPosts.length;
       } catch (error) {
         console.warn("More recruiting load failed.", error.message);
-        setRecruitingPagination((prev) => ({ ...prev, loading: false, exhausted: false, error: error.message ?? "recruiting_page_load_failed" }));
+        if (latestRecruitingLoadMoreRequestRef.current !== requestKey) return false;
+        setRecruitingPagination((prev) => ({ ...prev, loading: false, exhausted: false, error: "", loadMoreError: error.message ?? "recruiting_page_load_failed" }));
         return false;
       }
     })().finally(() => {
@@ -1576,9 +1589,14 @@ export function useAppData(authUser = null) {
     const startFilterRequest = getRecruitingStartFilterRequest({ startFilter });
     const shouldIncludeFeedCounts = includeFeedCounts !== false;
     const promiseKey = `${regionRequest.regionScope}:${regionRequest.regionKey}:${startFilterRequest.startFilter}:${pageLimit}:${shouldIncludeFeedCounts ? "counts" : "plain"}`;
+    latestRecruitingRegionRequestRef.current = promiseKey;
+    latestRecruitingLoadMoreRequestRef.current = "";
     const currentPromise = recruitingRegionPromiseRef.current.get(promiseKey);
-    if (currentPromise) return currentPromise;
-    setRecruitingPagination((prev) => ({ ...prev, ...regionRequest, ...startFilterRequest, loading: true, exhausted: false, error: "", cursor: "", offset: 0 }));
+    if (currentPromise) {
+      setRecruitingPagination((prev) => ({ ...prev, ...regionRequest, ...startFilterRequest, loading: true, exhausted: false, error: "", loadMoreError: "", cursor: "", offset: 0 }));
+      return currentPromise;
+    }
+    setRecruitingPagination((prev) => ({ ...prev, ...regionRequest, ...startFilterRequest, loading: true, exhausted: false, error: "", loadMoreError: "", cursor: "", offset: 0 }));
     const promise = (async () => {
       try {
         const result = await postServerAction(
@@ -1601,12 +1619,14 @@ export function useAppData(authUser = null) {
         const rawPostCount = rawRemoteState.recruitingPosts?.length ?? 0;
         const remoteState = normalizeServerState(filterPendingRecruitingPosts(rawRemoteState, pendingRecruitingPostIdsRef.current, recentRecruitingMutationTimesRef.current));
         const nextPosts = remoteState.recruitingPosts ?? [];
+        if (latestRecruitingRegionRequestRef.current !== promiseKey) return false;
         setState((prev) => mergeRemoteRecruitingPage(prev, remoteState));
         const pageHasExhausted = typeof result?.page?.exhausted === "boolean";
         setRecruitingPagination({
           loading: false,
           exhausted: pageHasExhausted ? result.page.exhausted : rawPostCount < pageLimit,
           error: "",
+          loadMoreError: "",
           cursor: result?.page?.cursor ?? String(rawPostCount),
           offset: getRecruitingPaginationOffset(result?.page, rawPostCount),
           ...regionRequest,
@@ -1616,7 +1636,8 @@ export function useAppData(authUser = null) {
         return nextPosts.length;
       } catch (error) {
         console.warn("Recruiting region load failed.", error.message);
-        setRecruitingPagination((prev) => ({ ...prev, ...regionRequest, ...startFilterRequest, loading: false, exhausted: false, error: error.message ?? "recruiting_region_load_failed", cursor: "", offset: 0 }));
+        if (latestRecruitingRegionRequestRef.current !== promiseKey) return false;
+        setRecruitingPagination((prev) => ({ ...prev, ...regionRequest, ...startFilterRequest, loading: false, exhausted: false, error: error.message ?? "recruiting_region_load_failed", loadMoreError: "", cursor: "", offset: 0 }));
         return false;
       }
     })().finally(() => {

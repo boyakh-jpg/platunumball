@@ -873,3 +873,8 @@ UI 수정 전:
 16. On mobile/tablet app layouts, the first page hero cancels `app-main` top and side padding. Home, settings, teams, matches, recruiting, match room, profile, season, and rulebook heroes must start at the app viewport top edge with no side gutters.
 17. Image-led cards and hero cards must not contain extra framed mini-cards for secondary navigation. Keep secondary links as text actions unless a primary CTA or form control is required; ask before reintroducing boxed inner controls.
 18. Room compose and lobby modals use neutral panel surfaces behind slots, chat, authority, and close controls. Hero/court imagery stays out of the far-back modal background.
+
+## 2026-07-03 profile form controls
+
+1. Profile info uses explicit form controls for each field. Region is edited with `REGION_TREE` select controls, not a free-text input.
+2. Team management cards may show a loading empty-state while directory data is pending. They must not flash the real empty-team message before the directory load resolves.

@@ -1813,3 +1813,9 @@ flowchart TD
 ## 2026-07-02 recruiting region filter count 기준
 
 - `/app/recruiting` 지역/시작일 변경은 공개 `region_public` 목록만 다시 읽는다. `created`/`joined`/`invited` badge count는 첫 응답에 없을 때만 같이 요청하고, 이미 받은 count를 지역 변경마다 다시 읽지 않는다.
+
+## 2026-07-03 frontend list/profile guards
+
+- Recruiting region/start-filter and load-more responses are latest-request-only on the frontend. A slower previous request must not merge rows or pagination into the currently selected list.
+- Recruiting load-more errors are separate from first-page/region errors. The load-more row may show a failure only after an explicit load-more request fails.
+- Profile region edits use the canonical `REGION_TREE` selects and save `region`, `regionSido`, and `regionDistrict` together. Region must not be edited as free text.
