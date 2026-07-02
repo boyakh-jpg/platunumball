@@ -4083,3 +4083,7 @@ html[data-theme="light"] .om-match-copy p {
 html[data-theme="light"] .om-match-copy p {
   color: var(--rb-orange-2);
 }
+
+html[data-theme="light"] .om-match-copy h1 {
+  color: var(--rb-cream);
+}

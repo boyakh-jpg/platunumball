@@ -7045,3 +7045,7 @@ html[data-theme="light"] .arena-recruit-hero p {
 html[data-theme="light"] .arena-recruit-hero p {
   color: var(--rb-orange-2);
 }
+
+html[data-theme="light"] .arena-recruit-hero h1 {
+  color: var(--rb-cream);
+}

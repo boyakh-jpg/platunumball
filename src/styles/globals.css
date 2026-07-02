@@ -13950,6 +13950,10 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head p:n
   color: var(--rb-orange-2);
 }
 
+html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head h1 {
+  color: var(--rb-cream);
+}
+
 @media (max-width: 759px) {
   .rank-home .rank-summary-grid .home-rank-board-head,
   html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
