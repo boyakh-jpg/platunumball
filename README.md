@@ -58,7 +58,10 @@ Invoke-RestMethod -Method Post -Uri "https://platunumball.vercel.app/api/system/
 | `VITE_SUPABASE_PUBLISHABLE_KEY` / `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` / `VITE_SUPABASE_ANON_KEY` | 브라우저 | Supabase anon/publishable key |
 | `SUPABASE_SERVICE_ROLE_KEY` | 서버/스크립트 전용 | server action, seed, simulation |
 | `VITE_ENABLE_SERVER_ACTIONS` | 브라우저 | server action 활성화 |
-| `RANKBALL_ENABLE_TEST_LOGIN` / `VITE_DEMO_LOGIN` | 서버/브라우저 | 테스트 로그인 허용 |
+| `VITE_DEMO_LOGIN` | 브라우저 | 테스트 로그인 UI 허용 |
+| `RANKBALL_SEED_REAL_TEST_AUTH` / `RANKBALL_SEED_AUTH_ONLY` | 스크립트 | 테스트 계정을 Supabase Auth user로 만들고 기존 profile에 연결 |
+| `RANKBALL_TEST_PASSWORD` / `VITE_TEST_AUTH_PASSWORD` | 스크립트/브라우저 | 테스트 계정 password Auth용 비밀번호 |
+| `RANKBALL_TEST_AUTH_EMAIL_DOMAIN` / `VITE_TEST_AUTH_EMAIL_DOMAIN` | 스크립트/브라우저 | 테스트 계정 email domain. 기본값 `rankball.test` |
 | `VITE_ASSET_BASE_URL` / `VITE_PUBLIC_ASSET_BASE_URL` | 브라우저 | 원격 asset base URL |
 | `VITE_NAVER_MAP_CLIENT_ID` / `VITE_NAVER_MAP_NCP_KEY_ID` | 브라우저/서버 fallback | Naver map/geocode client id |
 | `NAVER_MAP_CLIENT_SECRET` / `NAVER_MAP_NCP_KEY` / `NAVER_MAP_NCP_CLIENT_SECRET` | 서버 전용 | Naver geocode fallback secret |

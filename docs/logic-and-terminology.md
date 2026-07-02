@@ -109,8 +109,8 @@
 
 ## 2026-06-30 production 테스트 인증 차단
 
-- production runtime에서는 `test-token-rankball-xxx` 인증을 기본 차단한다.
-- production에서 테스트 토큰을 임시로 열어야 할 때만 `RANKBALL_ALLOW_PRODUCTION_TEST_LOGIN=true`를 명시한다.
+- RANKBALL_AUTH_CLEANUP: legacy `test-token-rankball-xxx` 인증은 제거됐다.
+- RANKBALL_AUTH_CLEANUP: `RANKBALL_ALLOW_PRODUCTION_TEST_LOGIN`와 생산 테스트 토큰 allowlist 문서는 제거 대상이다.
 - `/api/system/schema-health`의 `ensureTestActors`는 production DB를 기본 변경하지 않는다. production seed가 꼭 필요하면 `RANKBALL_ALLOW_PRODUCTION_TEST_SEED=true`를 별도로 명시한다.
 - 원격 `scripts/simulate-backend-flow.mjs`는 기본적으로 schema-health actor seed를 요청하지 않는다. 필요한 경우 `RANKBALL_SIM_ENSURE_TEST_ACTORS=true`로 opt-in 한다.
 
@@ -1273,14 +1273,15 @@ flowchart TD
 ## 2026-06-25 테스트 계정 시뮬레이션 원칙
 
 1. 운영용 Google/Supabase 계정은 계속 `profiles.auth_user_id` 1:1 원칙을 따른다.
-2. 테스트 계정은 `auth_user_id`에 가짜 값을 넣지 않는다.
-3. 테스트 세션 ID는 `test:rankball-001` 형식으로 만들고, 현재 프로필은 `profiles.test_login_id`로 찾는다.
-4. 테스트 계정은 backend seed 데이터 시뮬레이션용이며 실제 사용자 소유권 검증과 분리한다.
+2. 테스트 계정은 실제 Supabase Auth user로 만들고 `profiles.auth_user_id = auth.users.id`를 연결한다.
+3. `profiles.test_login_id`는 seed/login handle이다. 소유권 증명으로 쓰지 않는다.
+4. 로컬 demo session은 server action 인증에 쓰지 않는다.
 5. Vercel 배포 도메인에서는 테스트 계정 로그인을 기본 허용하지 않는다. 필요하면 `VITE_DEMO_LOGIN=true`를 명시한다.
-6. 테스트 계정 server action은 `test-token-rankball-001` 형식 bearer token을 `profiles.test_login_id`로 매핑한다.
-7. 테스트 토큰은 `VITE_DEMO_LOGIN=true` 또는 `RANKBALL_ENABLE_TEST_LOGIN=true`일 때만 서버에서 허용한다.
-8. 테스트 계정 프로필 저장은 기존 `auth_user_id`를 만들거나 바꾸지 않고 `test_login_id` row만 갱신한다.
-9. 실제 Google 프로필 저장은 `test_login_id` 컬럼에 의존하지 않는다.
+6. 테스트 계정 server action은 실제 Supabase Auth session이 있으면 Google과 같은 `profiles.auth_user_id` 경로를 탄다.
+7. 서버 action은 테스트 계정도 Supabase Auth JWT만 허용한다.
+8. RANKBALL_AUTH_CLEANUP: legacy `test-token` fallback, `RANKBALL_ENABLE_TEST_LOGIN` 문구는 제거 대상이다.
+9. 테스트 계정 프로필 저장은 실제 Auth 경로에서 `auth_user_id`를 유지한다.
+10. 실제 Google 프로필 저장은 `test_login_id` 컬럼에 의존하지 않는다.
 ## 2026-06-25 심판 있음 방 초대 슬롯
 
 1. 심판 있음 방은 `refereeWanted`를 가진다.
@@ -1309,7 +1310,7 @@ flowchart TD
 
 1. RankBall 앱 유저 ID는 `profiles.id`다. Google/provider ID를 화면, 방, 경기, 팀, 신고의 공개 유저 ID로 쓰지 않는다.
 2. 실제 로그인 소유권은 `profiles.auth_user_id = auth.users.id` unique 매핑으로만 판단한다.
-3. 테스트 계정은 `profiles.test_login_id`와 `test-token-rankball-###`로만 매핑하고 `auth_user_id`를 만들지 않는다.
+3. 테스트 계정도 실제 Auth seed 계정으로 만들고 `profiles.auth_user_id = auth.users.id`로 매핑한다.
 4. 최고관리자 권한은 frontend seed ID가 아니라 server env 또는 DB `admin_appointments`에서 나온다.
 5. `src/lib/admin.js`의 `u1` owner fallback은 제거한다. 프론트는 `POST /api/admin/context`가 확인한 현재 사용자 권한만 임시 `server_context` row로 보여준다.
 6. `server_context` row는 UI/로컬 reducer용이며 Supabase `admin_appointments` 저장 대상이 아니다.
@@ -1402,12 +1403,13 @@ flowchart TD
 
 1. `npm run seed:supabase` gives demo profiles `testLoginId` and stores them in `profiles.test_login_id`.
 2. Default mapping is `u1 -> rankball-001`, `u2 -> rankball-002`, `u10 -> rankball-010`.
-3. Test account bearer tokens use `test-token-rankball-001`.
-4. Test account seed does not create or change `profiles.auth_user_id`.
-5. Real Google accounts still use `profiles.auth_user_id = auth.users.id` for ownership.
-6. Seed cleanup actually deletes rows only when `RANKBALL_CONFIRM_CLEANUP=rankball` is set.
-7. This is backend simulation data setup, not completed authoritative room/match RPC migration.
-8. Seeded test accounts are treated as onboarding-complete profiles, but birth year is locked in the UI only when DB `birth_year_locked_at` exists. Missing test birth fields must be fixed by seed/backfill, not by client-side lock fallback.
+3. Test account seed can create Supabase Auth users when `RANKBALL_SEED_REAL_TEST_AUTH=true`.
+4. `RANKBALL_SEED_AUTH_ONLY=true` links existing seeded test profiles to Auth users without reseeding rooms/matches/teams.
+5. Backend simulations sign in as test Auth users and pass the Supabase Auth access token.
+6. Real Google accounts and test accounts use `profiles.auth_user_id = auth.users.id` for ownership.
+7. Seed cleanup actually deletes rows only when `RANKBALL_CONFIRM_CLEANUP=rankball` is set.
+8. This is backend simulation data setup, not completed authoritative room/match RPC migration.
+9. Seeded test accounts are treated as onboarding-complete profiles, but birth year is locked in the UI only when DB `birth_year_locked_at` exists. Missing test birth fields must be fixed by seed/backfill, not by client-side lock fallback.
 
 ## 2026-06-26 hashtag canonical identity
 
@@ -1420,9 +1422,9 @@ flowchart TD
 ## 2026-06-26 서버 상태 열람 규칙
 
 1. Supabase 설정 환경의 초기 상태 로드는 화면별 thin endpoint를 우선 사용한다. `/api/state/load`는 profile-only fallback이다.
-2. 실제 Google 계정은 Supabase Auth token으로, 테스트 계정은 `test-token-rankball-###`로 서버에서 현재 `profiles.id`를 확정한다.
+2. 실제 Google 계정과 테스트 계정은 Supabase Auth token으로 서버에서 현재 `profiles.id`를 확정한다.
 3. 서버 상태 로드는 공개 경기/모집방/토너먼트는 모든 로그인 사용자에게 내려주고, 비공개 항목은 현재 프로필이 참여자, 초대자, 심판, 관련 팀원, 또는 관리자일 때만 내려준다.
-4. 테스트 계정은 실제 Supabase Auth JWT가 없으므로 직접 anon RLS read 결과를 권한 판단의 기준으로 삼지 않는다.
+4. 테스트 계정은 Google과 같은 JWT/RLS 경로를 따른다. 로컬 demo session은 권한 판단 기준이 아니다.
 5. service-role로 읽은 전체 state를 그대로 클라이언트에 내려주지 않는다. 관리자 전용 row, 비공개 신고/징계/요청 row, 다른 사용자의 민감 프로필 값은 현재 프로필 기준으로 필터한다.
 6. 방/경기 mutation server action은 operation payload에 반드시 `postId` 또는 `matchId`를 포함한다. 화면에서 찾은 객체 스냅샷은 rollback/fallback용이고 서버 reducer replay의 기본 키가 아니다.
 7. 경기 목록의 "내 경기" 판정은 출전/후보뿐 아니라 `createdBy`, `refereeId`, `formerRefereeId`도 포함한다.
@@ -1501,13 +1503,14 @@ flowchart TD
 1. Supabase 모드 방/경기/팀 write는 optimistic update 전에 server action 가능 여부를 확인한다.
 2. Google OAuth session access token이 없으면 로컬 화면만 먼저 바꾸지 않는다.
 3. 테스트 로그인은 localhost 기본 허용과 `VITE_DEMO_LOGIN=true` 명시 허용만 사용한다. `.vercel.app` 도메인이라는 이유만으로 허용하지 않는다.
+4. 테스트 로그인 UI는 Supabase password Auth만 사용한다. 실패하면 로그인 실패로 처리한다.
 
 ## 2026-06-27 Google profile binding
 
 1. Persistent Supabase auth의 currentUser 바인딩은 `authUserId`가 일치하는 프로필을 우선한다.
 2. 소유권이 확인되지 않으면 관련 없는 public/demo user로 fallback하지 않는다.
 3. 방/경기/대회 생성 local reducer 차단 응답은 `currentUserId`, `trustScore`, `authBound` actor debug를 포함해 stale binding과 DB 검증 실패를 구분한다.
-4. 테스트 로그인 currentUser 바인딩은 `profiles.test_login_id`와 `test:rankball-###` 세션 매핑을 우선한다.
+4. 테스트 로그인 currentUser 바인딩은 `profiles.auth_user_id`를 우선한다. `profiles.test_login_id`는 표시/seed handle이다.
 5. Supabase 방/경기 생성, 참여, 포지션 변경은 local reducer가 stale state로 no-op 또는 block이어도 operation payload로 server action replay를 호출한다.
 6. 서버 action 성공 결과가 `post`, `match`, `createdMatch`를 반환하면 클라이언트 state는 그 서버 결과를 source of truth로 merge한다.
 
@@ -1641,7 +1644,7 @@ flowchart TD
 18. `/api/recruiting/list`가 `user_room_feed.card_json`으로 목록을 응답하더라도 카드에 들어 있는 방장, 참가자, 초대자, 초대 대상, 팀 프로필은 관련 공개 프로필/팀으로 같이 붙인다. 피드 카드는 id source이고, 표시용 user/team attachment를 생략하면 안 된다.
 19. Recruiting mutation 응답은 최신 post만 반환해도 클라이언트가 초대 대상/참가자 표시를 잃지 않도록 얇은 `state.users`/`state.teams`를 같이 병합한다.
 20. 팀 초대 목록과 현재 프로필 state는 팀원이 아닌 pending 초대의 `fromUserId`/`targetUserId` 공개 프로필도 같이 붙인다.
-21. Supabase 테스트 로그인(`test:rankball-###`)은 Google auth 계정처럼 서버 프로필에 고정된 세션이다. Settings에서 임의 계정 전환 대상으로 취급하지 않는다.
+21. Supabase 테스트 로그인은 Google auth 계정처럼 서버 프로필에 고정된 세션이다. Settings에서 임의 계정 전환 대상으로 취급하지 않는다.
 22. Settings 저장 UI는 서버 저장 결과를 기다린 뒤 성공/실패를 표시한다. Privacy/Discord 설정은 실패했는데도 `저장됨`으로 표시하면 안 된다.
 
 23. `setRecruitingReady` may use `rankball_recruiting_ready_action()` for active host/direct player readiness. Team-party, reserve, and other complex readiness cases must fall back to authoritative replay.
@@ -1764,12 +1767,12 @@ flowchart TD
 
 ## 2026-07-01 test login and shared rule constants
 
-- Production test login requires both `RANKBALL_ALLOW_PRODUCTION_TEST_LOGIN=true` and an explicit `RANKBALL_PRODUCTION_TEST_LOGIN_IDS` allowlist such as `rankball-001,rankball-002`.
+- RANKBALL_AUTH_CLEANUP: production test-token allowlist flow is dead. Remove old env docs after deployment env cleanup.
 - Test login token formatting, test account count, team role normalization, team member limits, referee trust minimum, and court request trust minimum are shared from `src/lib/constants.js`.
 - Server endpoints must not keep separate copies of those rule values. If a limit changes, update `src/lib/constants.js` first.
 - Backend test login must not depend on Supabase OAuth sign-out success. A stale OAuth session cannot block replacing the active server action token with the selected test account token.
 - Server actions prefer a fresh backend test session token before any Supabase OAuth session, and refresh OAuth sessions before sending a near-expired bearer token.
-- If production rejects a backend test bearer with `invalid_bearer_token`, the frontend clears the stored test session and retries the same server action once with the current Supabase OAuth token.
+- If a test login gets `invalid_bearer_token`, the test Auth user is missing or not linked to `profiles.auth_user_id`.
 - Malformed backend test session cache is removed on read so it cannot keep blocking later test login or server action token selection.
 
 ## 2026-07-01 feed-first list fallback

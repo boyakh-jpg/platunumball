@@ -1,5 +1,4 @@
 import { createClient } from "@supabase/supabase-js";
-import { getTestLoginIdFromAccessToken, normalizeTestLoginId } from "../../src/lib/constants.js";
 
 const ADMIN_GRADE_LEVELS = {
   owner: 100,
@@ -74,24 +73,6 @@ function getEnvList(name) {
     .filter(Boolean);
 }
 
-function isProductionRuntime() {
-  return process.env.VERCEL_ENV === "production" || process.env.NODE_ENV === "production";
-}
-
-function isTestLoginEnabled() {
-  if (isProductionRuntime()) return process.env.RANKBALL_ALLOW_PRODUCTION_TEST_LOGIN === "true";
-  return process.env.RANKBALL_ENABLE_TEST_LOGIN === "true" || process.env.VITE_DEMO_LOGIN === "true";
-}
-
-function getTestLoginIdFromToken(token = "") {
-  if (!isTestLoginEnabled()) return "";
-  const testLoginId = getTestLoginIdFromAccessToken(token);
-  if (!testLoginId) return "";
-  if (!isProductionRuntime()) return testLoginId;
-  const allowList = getEnvList("RANKBALL_PRODUCTION_TEST_LOGIN_IDS").map(normalizeTestLoginId);
-  return allowList.includes(testLoginId) ? testLoginId : "";
-}
-
 function isActiveAppointment(appointment = {}, nowMs = Date.now()) {
   if (appointment.status && !["active", "approved"].includes(appointment.status)) return false;
   const startsAt = appointment.starts_at ? new Date(appointment.starts_at).getTime() : 0;
@@ -110,36 +91,7 @@ export async function getAuthenticatedContext(request, options = {}) {
     throw error;
   }
 
-  const testLoginId = getTestLoginIdFromToken(token);
-  if (testLoginId) {
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select(profileSelect)
-      .eq("test_login_id", testLoginId)
-      .maybeSingle();
-
-    if (profileError) throw profileError;
-    if (!profile?.id) {
-      const error = new Error("test_profile_not_found");
-      error.statusCode = 403;
-      throw error;
-    }
-
-    return {
-      supabase,
-      authUser: {
-        id: `test:${testLoginId}`,
-        email: `${testLoginId}@rankball.test`,
-        user_metadata: { providerName: `${testLoginId} test`, testLoginId },
-      },
-      authUserId: `test:${testLoginId}`,
-      profileId: profile.id,
-      profile,
-      testLoginId,
-      isTestAccount: true,
-    };
-  }
-
+  // RANKBALL_AUTH_CLEANUP: legacy test-token auth removed. Test accounts must be Supabase Auth users.
   const { data: userData, error: userError } = await supabase.auth.getUser(token);
   if (userError || !userData?.user?.id) {
     const error = new Error("invalid_bearer_token");

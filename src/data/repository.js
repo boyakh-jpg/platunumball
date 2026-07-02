@@ -224,11 +224,6 @@ const TEST_PROFILE_AGE_GROUP_SEASON = "2026-h1";
 function isRecruitingRoomOwner(post = {}, userId = "") {
   return Boolean(userId && getRecruitingRoomOwnerId(post) === userId);
 }
-function getBackendTestLoginId(authUserId = "") {
-  const match = String(authUserId || "").toLowerCase().match(/^test:(rankball-\d{3})$/);
-  return match?.[1] ?? "";
-}
-
 function makeDefaultRatings() {
   return { integrated: 1200, modes: { "1v1": 1200, "2v2": 1200, "3v3": 1200, "5v5": 1200 } };
 }
@@ -1421,23 +1416,17 @@ function collectTournamentPageScope(tournaments = [], tournamentTeams = [], prof
 }
 
 function makeCurrentUserFromProfiles(profiles = [], authUserIdText = "", authEmail = "") {
-  const testLoginId = getBackendTestLoginId(authUserIdText);
   const currentProfile = authUserIdText
-    ? testLoginId
-      ? profiles.find((profile) => String(profile.test_login_id ?? "").toLowerCase() === testLoginId)
-      : profiles.find((profile) => String(profile.auth_user_id ?? "") === authUserIdText)
+    ? profiles.find((profile) => String(profile.auth_user_id ?? "") === authUserIdText)
     : null;
-  const shellUser = authUserIdText && !testLoginId && !currentProfile ? createProfileShell(authUserIdText, authEmail) : null;
+  const shellUser = authUserIdText && !currentProfile ? createProfileShell(authUserIdText, authEmail) : null;
   const currentUserId = currentProfile?.id ?? shellUser?.id ?? profiles[0]?.id ?? "";
   return { currentProfile, shellUser, currentUserId };
 }
 
 function getClientPrivateProfileFilter(authUserIdText = "") {
   if (!authUserIdText) return null;
-  const testLoginId = getBackendTestLoginId(authUserIdText);
-  return testLoginId
-    ? (query) => query.eq("test_login_id", testLoginId)
-    : (query) => query.eq("auth_user_id", authUserIdText);
+  return (query) => query.eq("auth_user_id", authUserIdText);
 }
 
 function mergePublicProfilesIntoProfiles(profiles = [], publicProfiles = [], privateProfileById = new Map()) {
@@ -1742,7 +1731,6 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
   const recruitingListOnly = options.recruitingListOnly === true;
   const relatedDirectoryScope = scope === "full" && options.directoryScope === "related";
   const authUserIdText = String(authUserId || "");
-  const testLoginId = getBackendTestLoginId(authUserIdText);
   const matchScopeIds = uniqueScopeIds(options.matchIds ?? options.matchId);
   const recruitingScopeIds = uniqueScopeIds(options.recruitingPostIds ?? options.recruitingPostId ?? options.postId);
   const tournamentScopeIds = uniqueScopeIds(options.tournamentIds ?? options.tournamentId);
@@ -1760,9 +1748,7 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
     !tournamentScopeIds.length ? (query) => applyUpdatedBefore(query, "updated_at", options.tournamentUpdatedBefore ?? options.tournamentCursor) : null,
   );
   const privateProfileFilter = clientState && authUserIdText
-    ? testLoginId
-      ? (query) => query.eq("test_login_id", testLoginId)
-      : (query) => query.eq("auth_user_id", authUserIdText)
+    ? (query) => query.eq("auth_user_id", authUserIdText)
     : null;
   const matchLimit = matchScopeIds.length ? null : clientState ? getClientLimit(options.matchLimit, REMOTE_CLIENT_MATCH_LIMIT) : null;
   const recruitingLimit = recruitingScopeIds.length ? null : clientState ? getClientLimit(options.recruitingLimit, REMOTE_CLIENT_RECRUITING_LIMIT) : null;
@@ -1805,11 +1791,9 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
   }
 
   const currentProfile = authUserIdText
-    ? testLoginId
-      ? profiles.find((profile) => String(profile.test_login_id ?? "").toLowerCase() === testLoginId)
-      : profiles.find((profile) => String(profile.auth_user_id ?? "") === authUserIdText)
+    ? profiles.find((profile) => String(profile.auth_user_id ?? "") === authUserIdText)
     : null;
-  const shellUser = authUserIdText && !testLoginId && !currentProfile ? createProfileShell(authUserIdText, authEmail) : null;
+  const shellUser = authUserIdText && !currentProfile ? createProfileShell(authUserIdText, authEmail) : null;
   const currentUserId = currentProfile?.id ?? shellUser?.id ?? profiles[0]?.id ?? "";
   const isAdminStateLoad = options.isAdmin === true;
   const [favorites, notifications, discordNotificationDeliveries, profileSettingsRows, teamInvitations] = await Promise.all([

@@ -29,7 +29,6 @@ export const FALSE_COURT_REPORT_TRUST_PENALTY = 8;
 export const STAT_ENTRY_WINDOW_MINUTES = 60;
 export const DISPUTE_WINDOW_MINUTES = 30;
 export const TEST_ACCOUNT_COUNT = 20;
-export const TEST_LOGIN_TOKEN_PREFIX = "test-token-";
 export const TEAM_INVITE_ROLES = ["regular", "mercenary"];
 
 export const PLAYER_POSITIONS = ["상관없음", "PG", "SG", "SF", "PF", "C"];
@@ -76,17 +75,6 @@ export function normalizeTestLoginId(value = "") {
   if (numeric) return `rankball-${padTestAccountNumber(numeric)}`;
   const match = text.match(/^rankball-(\d{1,3})$/);
   return match ? `rankball-${padTestAccountNumber(match[1])}` : text;
-}
-
-export function makeTestLoginToken(testLoginId = "") {
-  return `${TEST_LOGIN_TOKEN_PREFIX}${normalizeTestLoginId(testLoginId)}`;
-}
-
-export function getTestLoginIdFromAccessToken(token = "") {
-  const tokenText = String(token || "").trim().toLowerCase();
-  if (!tokenText.startsWith(TEST_LOGIN_TOKEN_PREFIX)) return "";
-  const loginId = normalizeTestLoginId(tokenText.slice(TEST_LOGIN_TOKEN_PREFIX.length));
-  return /^rankball-\d{3}$/.test(loginId) ? loginId : "";
 }
 
 export const AFFILIATION_TYPES = {

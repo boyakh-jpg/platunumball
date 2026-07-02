@@ -57,8 +57,6 @@ export function shouldRecheckAgeGroup(user, now = new Date()) {
 }
 
 export function shouldSetupProfile(user = {}) {
-  const isBackendTestShell = /^test:rankball-\d{3}$/i.test(String(user?.authUserId ?? "")) && String(user?.id ?? "").startsWith("p_testrankball");
-  if (isBackendTestShell) return false;
   const hasLockedBirthYear = Boolean(user?.birthYearLockedAt && user?.birthYear);
   return Boolean(!user?.onboardingComplete || !user?.handleLockedAt || !hasLockedBirthYear);
 }

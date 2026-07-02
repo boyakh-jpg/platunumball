@@ -27,20 +27,20 @@ const usesRemoteApi = Boolean(remoteBaseUrl);
 const secretArg = process.argv.find((arg) => arg.startsWith("--secret="));
 const schemaHealthSecret = secretArg ? secretArg.slice("--secret=".length) : process.env.RANKBALL_SIM_SECRET || process.env.CRON_SECRET || "";
 const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+const publishableKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const testAuthPassword = process.env.RANKBALL_TEST_PASSWORD || process.env.VITE_TEST_AUTH_PASSWORD || "test-0000";
+const testAuthEmailDomain = process.env.RANKBALL_TEST_AUTH_EMAIL_DOMAIN || process.env.VITE_TEST_AUTH_EMAIL_DOMAIN || "rankball.test";
 const requestTimeoutMs = Number(process.env.RANKBALL_SIM_TIMEOUT_MS || 20000);
 const ensureRemoteTestActors = process.env.RANKBALL_SIM_ENSURE_TEST_ACTORS === "1" || process.env.RANKBALL_SIM_ENSURE_TEST_ACTORS === "true";
 const fullSimulation = process.argv.includes("--full") || process.env.RANKBALL_SIM_FULL === "1" || process.env.RANKBALL_SIM_FULL === "true";
 const remoteSmokeOnly = usesRemoteApi && !fullSimulation;
 
-if (!process.env.RANKBALL_ENABLE_TEST_LOGIN && !process.env.VITE_DEMO_LOGIN) {
-  process.env.RANKBALL_ENABLE_TEST_LOGIN = "true";
-}
-
-if (!usesRemoteApi && (!url || !serviceRoleKey)) {
+if (!url || !publishableKey || (!usesRemoteApi && !serviceRoleKey)) {
   const missing = [
     url ? "" : "SUPABASE_URL/VITE_SUPABASE_URL/NEXT_PUBLIC_SUPABASE_URL",
-    serviceRoleKey ? "" : "SUPABASE_SERVICE_ROLE_KEY",
+    publishableKey ? "" : "VITE_SUPABASE_PUBLISHABLE_KEY/NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY/VITE_SUPABASE_ANON_KEY",
+    usesRemoteApi || serviceRoleKey ? "" : "SUPABASE_SERVICE_ROLE_KEY",
   ].filter(Boolean);
   console.error(`Missing required env: ${missing.join(", ")}`);
   process.exit(1);
@@ -54,6 +54,13 @@ const supabase = url && serviceRoleKey
       },
     })
   : null;
+
+const authClient = createClient(url, publishableKey, {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+  },
+});
 
 const keepRows = process.argv.includes("--keep") || process.env.RANKBALL_SIM_KEEP === "1";
 const suffix = `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
@@ -85,8 +92,25 @@ async function step(label, action) {
   return action();
 }
 
-function token(testLoginId) {
-  return `test-token-${testLoginId}`;
+const authTokensByLogin = new Map();
+
+// RANKBALL_AUTH_CLEANUP: remove old test-token env docs after all simulations use Auth users.
+function getTestAuthEmail(testLoginId = "") {
+  return `${String(testLoginId).trim().toLowerCase()}@${testAuthEmailDomain}`;
+}
+
+async function getAuthToken(testLoginId) {
+  const normalizedLoginId = String(testLoginId).trim().toLowerCase();
+  if (authTokensByLogin.has(normalizedLoginId)) return authTokensByLogin.get(normalizedLoginId);
+  const { data, error } = await authClient.auth.signInWithPassword({
+    email: getTestAuthEmail(normalizedLoginId),
+    password: testAuthPassword,
+  });
+  if (error || !data?.session?.access_token) {
+    throw new Error(`test_auth_login_failed:${normalizedLoginId}:${error?.message ?? "missing_session"}`);
+  }
+  authTokensByLogin.set(normalizedLoginId, data.session.access_token);
+  return data.session.access_token;
 }
 
 function makeRequest(bearerToken, body = {}) {
@@ -253,13 +277,13 @@ async function getProfileIdForLogin(testLoginId) {
 }
 
 async function loadStateAs(testLoginId) {
-  const payload = await callHandler("/api/state/load", loadStateHandler, token(testLoginId));
+  const payload = await callHandler("/api/state/load", loadStateHandler, await getAuthToken(testLoginId));
   assertFlow(payload?.ok && payload?.state, `state load failed for ${testLoginId}`, payload);
   return payload.state;
 }
 
 async function loadRecruitingPostAs(testLoginId, postId = ids.postId) {
-  const payload = await callHandler("/api/recruiting/list", recruitingListHandler, token(testLoginId), {
+  const payload = await callHandler("/api/recruiting/list", recruitingListHandler, await getAuthToken(testLoginId), {
     postId,
     limit: 1,
     adminContext: false,
@@ -271,7 +295,7 @@ async function loadRecruitingPostAs(testLoginId, postId = ids.postId) {
 }
 
 async function loadRecruitingScopeAs(testLoginId, roomScope, postId = ids.postId) {
-  const payload = await callHandler("/api/recruiting/list", recruitingListHandler, token(testLoginId), {
+  const payload = await callHandler("/api/recruiting/list", recruitingListHandler, await getAuthToken(testLoginId), {
     scope: "mine",
     roomScope,
     limit: 20,
@@ -283,7 +307,7 @@ async function loadRecruitingScopeAs(testLoginId, roomScope, postId = ids.postId
 }
 
 async function loadRecruitingRegionAs(testLoginId, { regionKey = "마포", startFilter = "instant", postId = ids.postId } = {}) {
-  const payload = await callHandler("/api/recruiting/list", recruitingListHandler, token(testLoginId), {
+  const payload = await callHandler("/api/recruiting/list", recruitingListHandler, await getAuthToken(testLoginId), {
     regionScope: "region",
     regionKey,
     startFilter,
@@ -297,15 +321,15 @@ async function loadRecruitingRegionAs(testLoginId, { regionKey = "마포", start
 }
 
 async function syncRecruitingAs(testLoginId, operation) {
-  return callHandler("/api/recruiting/sync-post", syncRecruitingPostHandler, token(testLoginId), { operation });
+  return callHandler("/api/recruiting/sync-post", syncRecruitingPostHandler, await getAuthToken(testLoginId), { operation });
 }
 
 async function syncMatchAs(testLoginId, operation, extra = {}) {
-  return callHandler("/api/matches/sync-match", syncMatchHandler, token(testLoginId), { operation, ...extra });
+  return callHandler("/api/matches/sync-match", syncMatchHandler, await getAuthToken(testLoginId), { operation, ...extra });
 }
 
 async function loadMatchAs(testLoginId, matchId = ids.matchId) {
-  const payload = await callHandler("/api/matches/detail", matchDetailHandler, token(testLoginId), {
+  const payload = await callHandler("/api/matches/detail", matchDetailHandler, await getAuthToken(testLoginId), {
     matchId,
     adminContext: false,
   });

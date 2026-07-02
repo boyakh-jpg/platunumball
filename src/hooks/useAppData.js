@@ -109,12 +109,7 @@ function sortByRating(items, selector) {
 }
 
 function isPersistentAuthUserId(authUserId) {
-  return Boolean(authUserId && !String(authUserId).startsWith("test-") && !getBackendTestLoginId(authUserId));
-}
-
-function getBackendTestLoginId(authUserId = "") {
-  const match = String(authUserId || "").toLowerCase().match(/^test:(rankball-\d{3})$/);
-  return match?.[1] ?? "";
+  return Boolean(authUserId && !String(authUserId).startsWith("test-"));
 }
 
 function makeClientNotificationId(prefix = "n") {
@@ -478,15 +473,6 @@ function getRemoteMeta(state = null) {
 
 function getBoundAuthProfileId(state, authUserId, profileBindings, profileKey) {
   const users = state.users ?? [];
-  const backendTestLoginId = getBackendTestLoginId(authUserId);
-  if (backendTestLoginId) {
-    const currentUser = users.find((user) => user.id === state.currentUserId);
-    if (String(currentUser?.testLoginId ?? "").toLowerCase() === backendTestLoginId) return currentUser.id;
-    const testUser = users.find((user) => String(user.testLoginId ?? "").toLowerCase() === backendTestLoginId);
-    if (testUser) return testUser.id;
-    return state.currentUserId ?? "";
-  }
-
   if (isPersistentAuthUserId(authUserId)) {
     const currentUser = users.find((user) => user.id === state.currentUserId);
     if (currentUser?.authUserId === authUserId) return currentUser.id;
@@ -657,7 +643,6 @@ function cacheCurrentProfileState(authUserId, state = {}) {
 }
 
 async function loadProfileState(authUserId, authEmail) {
-  const backendTestLoginId = getBackendTestLoginId(authUserId);
   try {
     const result = await postServerAction(
       "/api/profile/me",
@@ -668,7 +653,6 @@ async function loadProfileState(authUserId, authEmail) {
   } catch (error) {
     console.warn("Server profile load failed. Falling back to direct profile read.", error.message);
   }
-  if (backendTestLoginId) return loadState({ includeDemo: false, authUserId, email: authEmail });
   return loadRemoteState(authUserId, authEmail, {
     scope: "profile",
     matchLimit: 0,
@@ -868,9 +852,8 @@ export function useAppData(authUser = null) {
   const recentMatchMutationTimesRef = useRef(new Map());
   const syncedDiscordDeliveryIdsRef = useRef(new Set());
   const profileKey = authUserId ?? "local-demo";
-  const backendTestLoginId = getBackendTestLoginId(authUserId);
-  const profileLocked = isPersistentAuthUserId(authUserId) || Boolean(backendTestLoginId);
-  const serverProfileBound = profileLocked || Boolean(backendTestLoginId);
+  const profileLocked = isPersistentAuthUserId(authUserId);
+  const serverProfileBound = profileLocked;
   const effectiveProfileBindings = isSupabaseConfigured ? {} : profileBindings;
   const currentUserId = getBoundAuthProfileId(state, authUserId, effectiveProfileBindings, profileKey);
 

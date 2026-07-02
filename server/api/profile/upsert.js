@@ -93,7 +93,7 @@ async function assertDiscordUserAvailable(context, discordUserId = "", profileId
   }
 }
 
-function buildProfileRow({ existing, profile, authUser, authUserId, isTestAccount }) {
+function buildProfileRow({ existing, profile, authUser, authUserId }) {
   const now = new Date().toISOString();
   const existingLockedHandle = existing?.handle_locked_at || existing?.hashtag_locked_at;
   const existingHashtag = normalizeHashtag(existing?.hashtag ?? existing?.handle);
@@ -120,7 +120,7 @@ function buildProfileRow({ existing, profile, authUser, authUserId, isTestAccoun
 
   const row = {
     id: existing?.id ?? makeProfileId(authUserId),
-    auth_user_id: isTestAccount ? existing?.auth_user_id ?? null : authUserId,
+    auth_user_id: authUserId,
     name: nextName,
     handle: nextHashtag || existing?.handle || "",
     hashtag: nextHashtag || existing?.hashtag || null,
@@ -148,8 +148,6 @@ function buildProfileRow({ existing, profile, authUser, authUserId, isTestAccoun
     updated_at: now,
   };
 
-  if (isTestAccount) row.test_login_id = existing?.test_login_id ?? profile.testLoginId ?? null;
-
   return row;
 }
 
@@ -176,7 +174,6 @@ export default async function handler(request, response) {
       profile,
       authUser: context.authUser,
       authUserId: context.authUserId,
-      isTestAccount: context.isTestAccount,
     });
     await assertDiscordUserAvailable(context, row.discord_user_id, row.id);
 

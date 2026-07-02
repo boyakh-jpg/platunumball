@@ -125,8 +125,8 @@
 - `profileBindings` localStorage는 Supabase 모드의 프로필 선택 기준으로 쓰지 않는다. 실제 기준은 `profiles.auth_user_id`다.
 - 테스트 시나리오 데이터는 프론트가 직접 읽지 않고 `npm run seed:supabase`로 normalized Supabase tables에 넣는다.
 - `seed:supabase`는 `SUPABASE_SERVICE_ROLE_KEY`와 `SUPABASE_URL` 또는 `VITE_SUPABASE_URL`이 필요하다.
-- 테스트 계정 쓰기는 `test-token-rankball-###` bearer token을 서버가 `profiles.test_login_id`로 매핑할 때만 허용한다.
-- 테스트 계정 저장은 `profiles.auth_user_id`를 건드리지 않는다.
+- 테스트 계정 쓰기는 Supabase Auth bearer token을 서버가 `profiles.auth_user_id`로 매핑할 때만 허용한다.
+- `profiles.test_login_id`는 seed/login handle이며 소유권 검증에 쓰지 않는다.
 - 프로필 저장은 가입 필수 경로라 `VITE_ENABLE_SERVER_ACTIONS`가 꺼져도 `/api/profile/upsert`를 시도하고, 실패하면 화면에 오류를 보여준다.
 
 ## 2026-06-25 Vercel Hobby API consolidation
@@ -306,16 +306,16 @@ Backend gaps:
 - Supabase 설정 환경에서 remote hydration이 끝나기 전에는 방/경기/팀/토너먼트 생성과 방/경기/팀 변경을 막는다.
 - 이 차단은 임시 shell profile로 생성한 로컬 방이 서버 권한 검사에서 거부된 뒤 새로고침 때 사라지는 문제를 막기 위한 것이다.
 - server action이 실패하거나 비활성 상태면 `서버 저장 실패` 알림을 띄운다.
-- 테스트계정은 `test-token-rankball-###` bearer token과 `profiles.test_login_id`가 매핑될 때만 백엔드 계정으로 본다.
+- 테스트계정은 Supabase Auth bearer token과 `profiles.auth_user_id`가 매핑될 때만 백엔드 계정으로 본다.
 
 ## 2026-06-26 server state hydration
 
 - Screen-specific endpoints are the preferred Supabase hydration path.
 - `POST /api/state/load` is profile-only fallback. Match, recruiting, tournament, and directory hydration must use their own endpoints.
-- The endpoint maps real Supabase users and backend test tokens on the server.
+- The endpoint maps Supabase Auth users on the server.
 - It returns public rows plus private rows related to the current profile.
 - Direct `loadRemoteState()` Supabase reads are fallback only.
-- Test accounts must not depend on anon RLS reads because they do not have a real Supabase Auth JWT.
+- Test accounts use real Supabase Auth JWTs and follow the same RLS/auth path as Google users.
 
 ## 2026-06-26 backend migration TODO status
 
@@ -330,7 +330,7 @@ Done:
 - Room, match, and tournament frontend callers now send `{ operation }` only when operation replay is available; full snapshot sync is legacy fallback.
 - Recruiting, match, and tournament snapshot persistence now uses DB RPC transaction functions instead of multi-step client-side table upserts.
 - Remote hydration guard blocks local room/match/team/tournament actions before backend state is ready.
-- Test account server mapping uses `profiles.test_login_id` with `test-token-rankball-###`.
+- Test account server mapping uses `profiles.auth_user_id` with Supabase Auth JWTs.
 - Client `u1` owner fallback is removed. Admin menu authority now comes from server context or DB `admin_appointments`.
 
 Partial:
@@ -352,14 +352,14 @@ Remaining:
 - Remove production reliance on localStorage state and mock fallback completely.
 - Add broader server-side eligibility checks for tournament brackets and match roster edits.
 - Add hard delete/restore tools for court moderation only if operational policy later requires it.
-- Add Supabase Auth/test seed and cleanup scripts for realistic multi-user simulations.
+- Keep Supabase Auth/test seed and cleanup scripts for realistic multi-user simulations.
 
 ## 2026-06-26 Supabase test seed scripts
 
 - `npm run seed:supabase` now maps seeded demo profiles to backend test login ids.
 - Mapping rule: `u1 -> rankball-001`, `u2 -> rankball-002`, and so on.
-- Test login bearer tokens remain `test-token-rankball-001`, `test-token-rankball-002`, and so on.
-- Test seed profiles keep `profiles.auth_user_id = null`; real Google accounts still use `profiles.auth_user_id`.
+- Test login uses Supabase password Auth for `rankball-001@rankball.test`, `rankball-002@rankball.test`, and so on.
+- Test seed profiles link `profiles.auth_user_id` to `auth.users.id`; Google accounts use the same ownership path.
 - Test seed profiles are saved as onboarding-complete rows. If older `profiles.test_login_id` rows lack onboarding lock fields, the client maps them as completed test profiles until the seed is rerun.
 - `npm run seed:supabase:cleanup` is dry-run by default.
 - Actual cleanup requires `RANKBALL_CONFIRM_CLEANUP=rankball npm run seed:supabase:cleanup`.

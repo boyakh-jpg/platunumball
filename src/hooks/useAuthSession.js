@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { makeTestLoginToken, normalizeTestLoginId, TEST_ACCOUNT_COUNT } from "../lib/constants.js";
+import { normalizeTestLoginId, TEST_ACCOUNT_COUNT } from "../lib/constants.js";
 import { isSupabaseConfigured, supabase } from "../lib/supabase.js";
 import { setClientActionSession } from "../lib/serverActions.js";
 
 const TEST_SESSION_KEY = "rankball.auth.testSession.v1";
 const PROVIDER_LABELS = { naver: "Naver", kakao: "Kakao", google: "Google" };
 const DEMO_LOGIN_ENV = import.meta.env.VITE_DEMO_LOGIN;
+const TEST_AUTH_EMAIL_DOMAIN = import.meta.env.VITE_TEST_AUTH_EMAIL_DOMAIN || "rankball.test";
+const TEST_AUTH_PASSWORD = import.meta.env.VITE_TEST_AUTH_PASSWORD || "test-0000";
 
 const TEST_ACCOUNTS = Array.from({ length: TEST_ACCOUNT_COUNT }, (_item, index) => {
   const loginId = normalizeTestLoginId(index + 1);
@@ -29,6 +31,7 @@ function writeTestSession(session) {
   else window.localStorage.removeItem(TEST_SESSION_KEY);
 }
 
+// RANKBALL_AUTH_CLEANUP: local demo session only. Server auth must use Supabase Auth JWT.
 function makeTestSession(provider) {
   const providerName = PROVIDER_LABELS[provider] ?? provider;
   const user = {
@@ -41,18 +44,18 @@ function makeTestSession(provider) {
   };
 
   return {
-    access_token: `test-token-${provider}`,
+    access_token: `local-demo-${provider}`,
     token_type: "bearer",
     expires_at: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30,
     user,
   };
 }
 
-function makeBackendTestSession(testLoginId) {
+function makeLocalTestSession(testLoginId) {
   const normalizedLoginId = normalizeTestLoginId(testLoginId);
   const providerName = `${normalizedLoginId} test`;
   const user = {
-    id: `test:${normalizedLoginId}`,
+    id: `test-${normalizedLoginId}`,
     email: `${normalizedLoginId}@rankball.test`,
     app_metadata: { provider: "test" },
     user_metadata: { providerName, testLoginId: normalizedLoginId },
@@ -61,11 +64,15 @@ function makeBackendTestSession(testLoginId) {
   };
 
   return {
-    access_token: makeTestLoginToken(normalizedLoginId),
+    access_token: `local-demo-test-${normalizedLoginId}`,
     token_type: "bearer",
     expires_at: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30,
     user,
   };
+}
+
+function getTestAuthEmail(testLoginId) {
+  return `${normalizeTestLoginId(testLoginId)}@${TEST_AUTH_EMAIL_DOMAIN}`;
 }
 
 function isDemoLoginAllowed() {
@@ -123,9 +130,8 @@ function cleanOAuthCallbackUrl() {
 }
 
 export function useAuthSession() {
-  const hasInitialOAuthCallback = hasOAuthCallbackParams();
-  const [session, setSession] = useState(() => (isSupabaseConfigured && hasInitialOAuthCallback ? null : readTestSession()));
-  const [loading, setLoading] = useState(() => isSupabaseConfigured && (hasInitialOAuthCallback || !readTestSession()));
+  const [session, setSession] = useState(() => (isSupabaseConfigured ? null : readTestSession()));
+  const [loading, setLoading] = useState(() => isSupabaseConfigured);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -148,14 +154,6 @@ export function useAuthSession() {
       cleanOAuthCallbackUrl();
       setError(formatAuthError(callbackError));
       setSession(null);
-      setLoading(false);
-      return undefined;
-    }
-
-    const previewSession = readTestSession();
-    if (!hasCallback && previewSession && isDemoLoginAllowed()) {
-      setClientActionSession(previewSession);
-      setSession(previewSession);
       setLoading(false);
       return undefined;
     }
@@ -240,12 +238,26 @@ export function useAuthSession() {
         setError("테스트 계정 로그인은 VITE_DEMO_LOGIN=true 또는 로컬/프리뷰에서만 허용됩니다.");
         return null;
       }
-      const nextSession = makeBackendTestSession(testLoginId);
+      const normalizedLoginId = normalizeTestLoginId(testLoginId);
       if (isSupabaseConfigured) {
         setSession(null);
+        writeTestSession(null);
+        setClientActionSession(null);
+        const { data: testAuthData, error: testAuthError } = await supabase.auth.signInWithPassword({
+          email: getTestAuthEmail(normalizedLoginId),
+          password: TEST_AUTH_PASSWORD,
+        }).catch((testAuthError) => ({ data: null, error: testAuthError }));
+        if (testAuthData?.session && !testAuthError) {
+          setClientActionSession(testAuthData.session);
+          setSession(testAuthData.session);
+          return testAuthData.session;
+        }
         const { error: signOutError } = await supabase.auth.signOut().catch((signOutError) => ({ error: signOutError }));
         if (signOutError) console.warn("Supabase sign-out before test login failed.", signOutError.message);
+        setError(formatAuthError(testAuthError?.message) || "테스트 Auth 계정이 없습니다. seed auth-only 실행이 필요합니다.");
+        return null;
       }
+      const nextSession = makeLocalTestSession(normalizedLoginId);
       writeTestSession(nextSession);
       setClientActionSession(nextSession);
       setSession(nextSession);
