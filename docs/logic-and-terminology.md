@@ -1790,3 +1790,7 @@ flowchart TD
 - Recruiting invite accept must remove the pending invited relation and add the accepted player to the joined/participant relation in the same authoritative DB write/reload flow.
 - `roomScope="invited"` verifies pending invites directly from the invited relation. `roomScope="joined"` verifies accepted participants from the participant relation.
 - `HOST_TRUST_MIN` and `getHostTrustRequirement()` in `src/lib/constants.js` are the shared source for ranked/private/public/official host trust gates. CreateMatch blocks impossible low-trust room creation before `/api/recruiting/sync-post`, matching server validation.
+
+## 2026-07-02 recruiting region filter count 기준
+
+- `/app/recruiting` 지역/시작일 변경은 공개 `region_public` 목록만 다시 읽는다. `created`/`joined`/`invited` badge count는 첫 응답에 없을 때만 같이 요청하고, 이미 받은 count를 지역 변경마다 다시 읽지 않는다.

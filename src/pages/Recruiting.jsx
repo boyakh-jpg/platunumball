@@ -3236,8 +3236,9 @@ function RecruitingReady({ app }) {
       && startFilter !== "all"
       && currentStartFilter !== startFilter;
     const needsBasePage = targetStartFilter === "all" && currentStartFilter !== "all";
-    if (currentPageMatchesRegion && !needsFilteredPage && !needsBasePage) return;
-    const loadKey = `${app.currentUser.id}:${regionFilter}:${regionKey}:${targetStartFilter}`;
+    const includeFeedCounts = !app.recruitingPagination?.feedCounts;
+    if (currentPageMatchesRegion && !needsFilteredPage && !needsBasePage && !includeFeedCounts) return;
+    const loadKey = `${app.currentUser.id}:${regionFilter}:${regionKey}:${targetStartFilter}:${includeFeedCounts ? "counts" : "plain"}`;
     if (regionLoadRef.current === loadKey) return;
     regionLoadRef.current = loadKey;
     Promise.resolve(app.actions.loadRecruitingRegion?.({
@@ -3245,6 +3246,7 @@ function RecruitingReady({ app }) {
       regionKey: regionFilter === "local" ? "" : regionKey,
       limit: needsFilteredPage ? RECRUITING_FILTER_PAGE_LIMIT : undefined,
       startFilter: targetStartFilter,
+      includeFeedCounts,
     })).then((count) => {
       if (count !== false) regionLoadRef.current = "";
     }).catch(() => {

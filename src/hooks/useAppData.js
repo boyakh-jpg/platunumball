@@ -1528,12 +1528,13 @@ export function useAppData(authUser = null) {
     return promise;
   }, [authEmail, authUserId, recruitingPagination, setState, state.recruitingPosts]);
 
-  const loadRecruitingRegion = useCallback(async ({ regionKey = "", regionScope = "local", limit = REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT, startFilter = "" } = {}) => {
+  const loadRecruitingRegion = useCallback(async ({ regionKey = "", regionScope = "local", limit = REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT, startFilter = "", includeFeedCounts = true } = {}) => {
     if (!isSupabaseConfigured || !authUserId) return false;
     const pageLimit = Math.max(1, Math.min(REMOTE_CLIENT_RECRUITING_LIMIT, Number(limit) || REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT));
     const regionRequest = getRecruitingRegionRequest({ regionScope: regionScope === "region" && regionKey ? "region" : "local", regionKey });
     const startFilterRequest = getRecruitingStartFilterRequest({ startFilter });
-    const promiseKey = `${regionRequest.regionScope}:${regionRequest.regionKey}:${startFilterRequest.startFilter}:${pageLimit}`;
+    const shouldIncludeFeedCounts = includeFeedCounts !== false;
+    const promiseKey = `${regionRequest.regionScope}:${regionRequest.regionKey}:${startFilterRequest.startFilter}:${pageLimit}:${shouldIncludeFeedCounts ? "counts" : "plain"}`;
     const currentPromise = recruitingRegionPromiseRef.current.get(promiseKey);
     if (currentPromise) return currentPromise;
     setRecruitingPagination((prev) => ({ ...prev, ...regionRequest, ...startFilterRequest, loading: true, exhausted: false, error: "", cursor: "", offset: 0 }));
@@ -1551,7 +1552,7 @@ export function useAppData(authUser = null) {
             ...startFilterRequest,
             listOnly: true,
             adminContext: false,
-            includeFeedCounts: true,
+            includeFeedCounts: shouldIncludeFeedCounts,
           },
           { allowWhenDisabled: true },
         );
@@ -1569,7 +1570,7 @@ export function useAppData(authUser = null) {
           offset: getRecruitingPaginationOffset(result?.page, rawPostCount),
           ...regionRequest,
           ...startFilterRequest,
-          feedCounts: result?.page?.feedCounts ?? recruitingPagination.feedCounts ?? null,
+          feedCounts: shouldIncludeFeedCounts ? (result?.page?.feedCounts ?? recruitingPagination.feedCounts ?? null) : (recruitingPagination.feedCounts ?? null),
         });
         return nextPosts.length;
       } catch (error) {

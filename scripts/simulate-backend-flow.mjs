@@ -282,6 +282,20 @@ async function loadRecruitingScopeAs(testLoginId, roomScope, postId = ids.postId
   return { payload, post };
 }
 
+async function loadRecruitingRegionAs(testLoginId, { regionKey = "마포", startFilter = "instant", postId = ids.postId } = {}) {
+  const payload = await callHandler("/api/recruiting/list", recruitingListHandler, token(testLoginId), {
+    regionScope: "region",
+    regionKey,
+    startFilter,
+    limit: 20,
+    listOnly: true,
+    adminContext: false,
+    includeFeedCounts: false,
+  });
+  const post = (payload?.state?.recruitingPosts ?? []).find((item) => item.id === postId) ?? null;
+  return { payload, post };
+}
+
 async function syncRecruitingAs(testLoginId, operation) {
   return callHandler("/api/recruiting/sync-post", syncRecruitingPostHandler, token(testLoginId), { operation });
 }
@@ -901,6 +915,79 @@ async function runRecruitingInviteAcceptScenario({
   };
 }
 
+async function runPublicTeamRegionFeedScenario({
+  label,
+  hostLogin,
+  teammateLogin,
+  teamId,
+}) {
+  ids = makeScenarioIds(label);
+  const hostId = await step(`${ids.label}:resolveProfile:host`, () => getProfileIdForLogin(hostLogin));
+  const teammateId = await step(`${ids.label}:resolveProfile:teammate`, () => getProfileIdForLogin(teammateLogin));
+  assertFlow(hostId !== teammateId, "public team host and teammate must be different profiles", { hostId, teammateId });
+
+  const createResult = await step(`${ids.label}:createRecruitingPost`, () => syncRecruitingAs(hostLogin, {
+    action: "createRecruitingPost",
+    preferredPostId: ids.postId,
+    draft: {
+      id: ids.postId,
+      title: `Backend simulation ${ids.label}`,
+      visibility: "public",
+      hostJoinMode: "team",
+      mode: "2v2",
+      sideCapacity: 2,
+      timingType: "instant",
+      ranked: false,
+      official: false,
+      preRegistered: true,
+      teamOnly: true,
+      refereeWanted: false,
+      region: "마포",
+      court: "Backend Simulation Court",
+      teamId,
+      playerIds: [hostId, teammateId],
+      position: "PG",
+      memo: "Backend simulation row. Safe to delete.",
+      rules: {
+        targetScore: 21,
+        timeLimit: 12,
+        winByTwo: true,
+        ball: "7",
+      },
+    },
+  }));
+  const createdPost = createResult?.post;
+  assertFlow(createdPost?.id === ids.postId, "created public team post not returned", createResult);
+  assertFlow(createdPost.visibility === "public" && createdPost.hostJoinMode === "team" && createdPost.teamId === teamId, "public team post shape mismatch", createdPost);
+
+  const regionResult = await step(`${ids.label}:regionFeed:mapo`, () => loadRecruitingRegionAs(hostLogin, {
+    regionKey: "마포",
+    startFilter: "instant",
+  }));
+  assertFlow(Boolean(regionResult.post), "public team post missing from Mapo region feed", {
+    postId: ids.postId,
+    page: regionResult.payload?.page,
+  });
+  assertFlow(regionResult.payload?.page?.feedCounts == null, "region feed unexpectedly loaded profile feed counts", {
+    page: regionResult.payload?.page,
+  });
+  assertFlow((regionResult.payload?.state?.teams ?? []).some((team) => team.id === teamId), "public team region feed missing host team attachment", {
+    teamId,
+    teams: regionResult.payload?.state?.teams ?? [],
+  });
+
+  return {
+    label: ids.label,
+    hostLogin,
+    teammateLogin,
+    teamId,
+    hostId,
+    teammateId,
+    postId: ids.postId,
+    publicRegionFeed: true,
+  };
+}
+
 async function runDisputeResumeThumbsScenario({
   label,
   hostLogin,
@@ -1440,6 +1527,9 @@ async function main() {
   const refereeBlockedLogin = process.env.RANKBALL_SIM_REF_BLOCK_CANDIDATE || "rankball-015";
   const inviteHostLogin = process.env.RANKBALL_SIM_INVITE_HOST || "rankball-016";
   const inviteeLogin = process.env.RANKBALL_SIM_INVITEE || "rankball-015";
+  const publicTeamHostLogin = process.env.RANKBALL_SIM_PUBLIC_TEAM_HOST || "rankball-001";
+  const publicTeamTeammateLogin = process.env.RANKBALL_SIM_PUBLIC_TEAM_TEAMMATE || "rankball-002";
+  const publicTeamId = process.env.RANKBALL_SIM_PUBLIC_TEAM_ID || "t1";
   const disputeHostLogin = process.env.RANKBALL_SIM_DISPUTE_HOST || "rankball-010";
   const disputeOpponentLogin = process.env.RANKBALL_SIM_DISPUTE_OPPONENT || "rankball-011";
   const soloRecordLogin = process.env.RANKBALL_SIM_SOLO_RECORD_HOST || "rankball-010";
@@ -1458,6 +1548,12 @@ async function main() {
     label: "private_player_invite_accept_reverse",
     hostLogin: inviteeLogin,
     inviteeLogin: inviteHostLogin,
+  }));
+  scenarios.push(await runPublicTeamRegionFeedScenario({
+    label: "public_team_region_feed",
+    hostLogin: publicTeamHostLogin,
+    teammateLogin: publicTeamTeammateLogin,
+    teamId: publicTeamId,
   }));
   if (!remoteSmokeOnly) {
     scenarios.push(await runRecruitingActorScenario({
