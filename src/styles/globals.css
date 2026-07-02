@@ -13823,8 +13823,31 @@ html[data-theme="light"] .rank-home .home-top-rail .rank-tier-rail > .rank-profi
 }
 
 @media (min-width: 760px) and (max-width: 1079px) {
+  .app-main > .rank-home {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: none;
+  }
+
   .app-main > .rank-home > .rank-summary-grid {
+    grid-area: auto;
+    order: 1;
     padding: 0;
+  }
+
+  .app-main > .rank-home > .home-search-panel {
+    grid-area: auto;
+    order: 2;
+  }
+
+  .app-main > .rank-home > .home-top-rail {
+    grid-area: auto;
+    order: 3;
+  }
+
+  .app-main > .rank-home > .home-dashboard-grid {
+    grid-area: auto;
+    order: 4;
   }
 
   .rank-home .rank-summary-grid .home-rank-board-head {

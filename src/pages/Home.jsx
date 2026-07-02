@@ -442,6 +442,21 @@ export default function Home({ app }) {
         </div>
       </Card>
 
+      <section className="rank-summary-grid">
+        <div className="home-rank-board-head">
+          <div className="rank-hero-top">
+            <div>
+              <p className="eyebrow">내 랭크 보드</p>
+              <h1>{user.name}님의 오늘 코트 현황</h1>
+              <p>{user.region} · {user.position} · 통합 {getTierDivision(user.ratings.integrated)} · {Math.round(user.ratings.integrated)} MMR</p>
+            </div>
+            <Link to="/app/create">
+              <Button><PlusCircle size={18} /> 경기 만들기</Button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
       <aside className="page-stack home-top-rail">
         <div className="rank-tier-rail">
           <Card className="section-card rank-profile-card rank-spotlight-card">
@@ -511,21 +526,6 @@ export default function Home({ app }) {
           </div>
         </Card>
       </aside>
-
-      <section className="rank-summary-grid">
-        <div className="home-rank-board-head">
-          <div className="rank-hero-top">
-            <div>
-              <p className="eyebrow">내 랭크 보드</p>
-              <h1>{user.name}님의 오늘 코트 현황</h1>
-              <p>{user.region} · {user.position} · 통합 {getTierDivision(user.ratings.integrated)} · {Math.round(user.ratings.integrated)} MMR</p>
-            </div>
-            <Link to="/app/create">
-              <Button><PlusCircle size={18} /> 경기 만들기</Button>
-            </Link>
-          </div>
-        </div>
-      </section>
 
       <div className="content-grid home-dashboard-grid rank-dashboard-grid">
         <div className="page-stack home-primary-stack">
