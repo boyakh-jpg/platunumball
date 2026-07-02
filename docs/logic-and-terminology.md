@@ -1759,3 +1759,10 @@ flowchart TD
 - Settings long forms are routed under `/app/settings/favorites`, `/app/settings/profile`, `/app/settings/discord`, `/app/settings/courts`, and `/app/settings/referee`; the root settings screen is the hub.
 - Profile exposure toggles are draft-only until the user presses save, then one settings patch writes `privacy`.
 - Discord OAuth callback returns to `/app/settings/discord`. Profile no longer owns Discord notification controls. Discord DM/event toggles are draft-only until save, then one settings patch writes `notificationChannels.discord`.
+
+## 2026-07-02 recruiting invite and host trust
+
+- Migration-only DB must include `rankball_recruiting_action`, `rankball_persist_recruiting_snapshot`, and recruiting feed refresh triggers. Invite/create/accept must not depend on functions that exist only in `schema.sql`.
+- Recruiting invite accept must remove the pending invited relation and add the accepted player to the joined/participant relation in the same authoritative DB write/reload flow.
+- `roomScope="invited"` verifies pending invites directly from the invited relation. `roomScope="joined"` verifies accepted participants from the participant relation.
+- `HOST_TRUST_MIN` and `getHostTrustRequirement()` in `src/lib/constants.js` are the shared source for ranked/private/public/official host trust gates. CreateMatch blocks impossible low-trust room creation before `/api/recruiting/sync-post`, matching server validation.

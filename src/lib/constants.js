@@ -14,6 +14,16 @@ export const MAX_TEAM_MEMBERSHIPS = 3;
 export const MAX_TEAM_MEMBERS = 10;
 export const MAX_TEAM_NAME_LENGTH = 14;
 export const REFEREE_TRUST_MIN = 90;
+export const HOST_TRUST_MIN = {
+  rankedPrivate: 70,
+  rankedPublic: 75,
+  official: 80,
+};
+export function getHostTrustRequirement({ ranked = true, visibility = "private", official = false } = {}) {
+  if (!ranked) return 0;
+  if (official) return HOST_TRUST_MIN.official;
+  return visibility === "public" ? HOST_TRUST_MIN.rankedPublic : HOST_TRUST_MIN.rankedPrivate;
+}
 export const COURT_REQUEST_TRUST_MIN = 70;
 export const FALSE_COURT_REPORT_TRUST_PENALTY = 8;
 export const STAT_ENTRY_WINDOW_MINUTES = 60;

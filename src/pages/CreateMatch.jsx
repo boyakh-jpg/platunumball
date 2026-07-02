@@ -7,7 +7,7 @@ import Card from "../components/common/Card.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
 import RuleSelector from "../components/match/RuleSelector.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
-import { MATCH_MODES, REFEREE_TRUST_MIN, REGIONS } from "../lib/constants.js";
+import { MATCH_MODES, REFEREE_TRUST_MIN, REGIONS, getHostTrustRequirement } from "../lib/constants.js";
 import { getCourtLayoutLabel, getCourtPlayWarning, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
 import { getCourtHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { getPublicRoomMaxDateInput, isEligibleReferee } from "../lib/matchUtils.js";
@@ -552,6 +552,11 @@ export default function CreateMatch({ app }) {
   const ageRestrictionOption = getAgeRestrictionOption(draft.ageRestriction);
   const currentUserAgeGroup = getAgeGroupForUser(app.currentUser);
   const ageRestrictionBlocked = !isTournamentRoom && !ageRestrictionOption.allowedGroups.includes(currentUserAgeGroup);
+  const hostTrustRequired = !isTournamentRoom
+    ? getHostTrustRequirement({ ranked: draft.ranked, visibility: isPublicRoom ? "public" : "private", official: draft.official })
+    : 0;
+  const hostTrustScore = Number(app.currentUser.trustScore ?? 0);
+  const hostTrustBlocked = hostTrustRequired > 0 && hostTrustScore < hostTrustRequired;
   const teamTierBlocked = Boolean(
     isTeamRoom &&
       !isPublicRoom &&
@@ -626,7 +631,7 @@ export default function CreateMatch({ app }) {
       : tournamentMmrBlocked
         ? "대회 팀 MMR 차이가 허용값을 넘었습니다. MMR 제한을 경고만 또는 제한 없음으로 바꾸면 생성할 수 있습니다."
         : "";
-  const submitDisabled = !scheduleAllowed || !tournamentEndAllowed || ageRestrictionBlocked || (isTournamentRoom
+  const submitDisabled = !scheduleAllowed || !tournamentEndAllowed || ageRestrictionBlocked || hostTrustBlocked || (isTournamentRoom
     ? tournamentInvalid
     : isPublicRoom
       ? publicTeamInvalid
@@ -639,13 +644,15 @@ export default function CreateMatch({ app }) {
         ? "상대팀 MMR이 현재 허용구간 밖입니다. MMR 제한을 경고만 또는 제한 없음으로 바꾸면 생성할 수 있습니다."
         : ageRestrictionBlocked
           ? "생성자가 선택한 연령 제한 밖입니다. 연령 제한을 바꾸면 생성할 수 있습니다."
-          : privateTeamInvalid
-          ? privateTeamInvalidReason || "팀전은 A사이드 출전 슬롯과 B사이드 초대 대상이 필요합니다."
-          : isTournamentRoom && tournamentInvalidReason
-            ? tournamentInvalidReason
-            : isPublicRoom && publicTeamInvalidReason
-              ? publicTeamInvalidReason
-          : "";
+          : hostTrustBlocked
+            ? `방장 신뢰도 ${hostTrustRequired}점 이상 필요합니다. 현재 ${hostTrustScore}점입니다.`
+            : privateTeamInvalid
+              ? privateTeamInvalidReason || "팀전은 A사이드 출전 슬롯과 B사이드 초대 대상이 필요합니다."
+              : isTournamentRoom && tournamentInvalidReason
+                ? tournamentInvalidReason
+                : isPublicRoom && publicTeamInvalidReason
+                  ? publicTeamInvalidReason
+                  : "";
   const selectedCourt = useMemo(
     () => registeredCourts.find((court) => court.name === draft.court) ?? defaultCourt,
     [defaultCourt, draft.court, registeredCourts],

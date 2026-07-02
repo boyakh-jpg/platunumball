@@ -270,6 +270,18 @@ async function loadRecruitingPostAs(testLoginId, postId = ids.postId) {
   return post;
 }
 
+async function loadRecruitingScopeAs(testLoginId, roomScope, postId = ids.postId) {
+  const payload = await callHandler("/api/recruiting/list", recruitingListHandler, token(testLoginId), {
+    scope: "mine",
+    roomScope,
+    limit: 20,
+    adminContext: false,
+    includeFeedCounts: true,
+  });
+  const post = (payload?.state?.recruitingPosts ?? []).find((item) => item.id === postId) ?? null;
+  return { payload, post };
+}
+
 async function syncRecruitingAs(testLoginId, operation) {
   return callHandler("/api/recruiting/sync-post", syncRecruitingPostHandler, token(testLoginId), { operation });
 }
@@ -303,6 +315,14 @@ async function expectRejected(label, action, expectedErrors = []) {
 
 function uniqueIds(values = []) {
   return [...new Set(values.filter(Boolean))];
+}
+
+function hasPendingInvitationFor(post = {}, profileId = "") {
+  return (post.roomState?.invitations ?? []).some((invitation) => (
+    invitation?.targetUserId === profileId &&
+    invitation?.role !== "referee" &&
+    String(invitation?.status ?? "pending") === "pending"
+  ));
 }
 
 async function getRecruitingPostAfterResult(result, login, label) {
@@ -802,6 +822,17 @@ async function runRecruitingInviteAcceptScenario({
   ));
   assertFlow(Boolean(invitation), "player invitation not persisted", { inviteeId, post });
 
+  const invitedBeforeAccept = await step(`${ids.label}:roomScope:invited:beforeAccept`, () => loadRecruitingScopeAs(inviteeLogin, "invited"));
+  assertFlow(Boolean(invitedBeforeAccept.post), "invited room scope missing invited post before accept", {
+    inviteeId,
+    postId: ids.postId,
+    page: invitedBeforeAccept.payload?.page,
+  });
+  assertFlow(hasPendingInvitationFor(invitedBeforeAccept.post, inviteeId), "invited room scope post missing pending invitation before accept", {
+    inviteeId,
+    post: invitedBeforeAccept.post,
+  });
+
   const acceptResult = await step(`${ids.label}:acceptRecruitingInvitation`, () => syncRecruitingAs(inviteeLogin, {
     action: "acceptRecruitingInvitation",
     postId: ids.postId,
@@ -816,6 +847,22 @@ async function runRecruitingInviteAcceptScenario({
     post,
   });
   assertFlow(!pendingInvite, "accepted invitation still pending", { invitationId: invitation.id, post });
+
+  const invitedAfterAccept = await step(`${ids.label}:roomScope:invited:afterAccept`, () => loadRecruitingScopeAs(inviteeLogin, "invited"));
+  const invitedPostAfterAccept = invitedAfterAccept.post;
+  assertFlow(!invitedPostAfterAccept || !hasPendingInvitationFor(invitedPostAfterAccept, inviteeId), "accepted invite still appears as pending in invited scope", {
+    inviteeId,
+    post: invitedPostAfterAccept,
+    page: invitedAfterAccept.payload?.page,
+  });
+
+  const joinedAfterAccept = await step(`${ids.label}:roomScope:joined:afterAccept`, () => loadRecruitingScopeAs(inviteeLogin, "joined"));
+  const joinedApplicant = joinedAfterAccept.post?.applicants?.find((item) => item.playerId === inviteeId);
+  assertFlow(joinedApplicant?.status === "ready" && joinedApplicant.side === "teamB", "joined room scope missing accepted invitee after accept", {
+    inviteeId,
+    post: joinedAfterAccept.post,
+    page: joinedAfterAccept.payload?.page,
+  });
 
   const confirmResult = await step(`${ids.label}:confirmRecruitingMatch`, () => syncRecruitingAs(hostLogin, {
     action: "confirmRecruitingMatch",
@@ -1323,6 +1370,11 @@ async function main() {
     label: "private_player_invite_accept",
     hostLogin: inviteHostLogin,
     inviteeLogin,
+  }));
+  scenarios.push(await runRecruitingInviteAcceptScenario({
+    label: "private_player_invite_accept_reverse",
+    hostLogin: inviteeLogin,
+    inviteeLogin: inviteHostLogin,
   }));
   if (!remoteSmokeOnly) {
     scenarios.push(await runRecruitingActorScenario({

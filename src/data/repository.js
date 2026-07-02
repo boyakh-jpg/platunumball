@@ -11,6 +11,7 @@ import {
   PLAYER_POSITIONS,
   REFEREE_TRUST_MIN,
   STAT_ENTRY_WINDOW_MINUTES,
+  getHostTrustRequirement,
   getTeamRoleLabel,
   normalizeTeamRole,
 } from "../lib/constants.js";
@@ -215,11 +216,6 @@ const REPORT_MATCH_WINDOW_MS = 7 * DAY_MS;
 const LIFECYCLE_TITLE_PATTERN = /^(동의 대기|진행 예정|결과 승인|이의 확인|이의제기|확정|결과 입력)\s*·\s*/;
 const POST_MATCH_TITLE_PATTERN = /^(결과 승인|이의 확인|이의제기|확정|결과 입력)\s*·\s*/;
 const SIDE_LABEL_TEXT = { teamA: "A사이드", teamB: "B사이드" };
-const HOST_TRUST_MIN = {
-  rankedPrivate: 70,
-  rankedPublic: 75,
-  official: 80,
-};
 const TEST_PROFILE_SETUP_AT = "2026-06-17T09:00:00.000Z";
 const TEST_PROFILE_BIRTH_YEAR = 2000;
 const TEST_PROFILE_AGE_GROUP = "open";
@@ -318,12 +314,6 @@ function adjustUserTrust(users = [], userId, delta) {
       ? { ...user, trustScore: clampTrustScore((user.trustScore ?? 80) + delta) }
       : user
   ));
-}
-
-function getHostTrustRequirement({ ranked = true, visibility = "private", official = false } = {}) {
-  if (!ranked) return 0;
-  if (official) return HOST_TRUST_MIN.official;
-  return visibility === "public" ? HOST_TRUST_MIN.rankedPublic : HOST_TRUST_MIN.rankedPrivate;
 }
 
 function getHostTrustBlockNotification(state, draft = {}) {
