@@ -121,6 +121,7 @@
 - 이의 수정 저장은 `match.result`를 바로 덮지 않고 `disputeDraftResult`를 갱신한다. 다른 기기는 방 상세 새로고침으로 최신 수정안을 확인한다.
 - 서버도 `disputed` 결과 저장은 심판 또는 방장만 허용한다.
 - 이의 처리자가 수정안을 확정하면 양팀 재승인 없이 바로 기록 확정으로 넘어간다.
+- 선수의 이의신청은 점수판을 읽기 전용으로 확인하고 본인 개인 득점만 수정 요청으로 남긴다. 사이드 점수나 다른 선수 기록은 심판/방장 수정안 단계에서만 바꾼다.
 
 ## 2026-06-30 feed pagination offset
 
@@ -1275,6 +1276,8 @@ flowchart TD
 1. 운영용 Google/Supabase 계정은 계속 `profiles.auth_user_id` 1:1 원칙을 따른다.
 2. 테스트 계정은 실제 Supabase Auth user로 만들고 `profiles.auth_user_id = auth.users.id`를 연결한다.
 3. `profiles.test_login_id`는 seed/login handle이다. 소유권 증명으로 쓰지 않는다.
+3-1. 시뮬레이션은 `rankball-010 -> u10` 같은 legacy id 추정을 우선하지 않고, 로그인 세션으로 로드한 실제 `profiles.id`를 사용한다.
+3-2. 시뮬레이션 팀전은 `t1` 같은 legacy team id를 우선하지 않고 `/api/teams/list`가 반환한 실제 팀 멤버십의 team id를 사용한다.
 4. 로컬 demo session은 server action 인증에 쓰지 않는다.
 5. Vercel 배포 도메인에서는 테스트 계정 로그인을 기본 허용하지 않는다. 필요하면 `VITE_DEMO_LOGIN=true`를 명시한다.
 6. 테스트 계정 server action은 실제 Supabase Auth session이 있으면 Google과 같은 `profiles.auth_user_id` 경로를 탄다.

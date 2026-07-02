@@ -11,9 +11,13 @@ import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import { PLAYER_STAT_FIELDS } from "../lib/constants.js";
 import { getUserHashtag } from "../lib/handles.js";
 import {
+  MATCH_DISPUTE_REASON_OPTIONS,
+  OTHER_MATCH_DISPUTE_REASON,
+  buildMatchDisputeReason,
   canOperatorSubmitMissingPostgameResult,
   getAllowedStatFields,
   getMatchHostPlayerId,
+  getMatchPlayerDisputePoints,
   getMatchReservePlayerIds,
   getMatchPlayerIds,
   getMatchRecordPlayerIds,
@@ -145,7 +149,9 @@ export default function Recorder({ app }) {
   const [dirtyStats, setDirtyStats] = useState({});
   const [handoffDraft, setHandoffDraft] = useState({});
   const [latePlayerDraft, setLatePlayerDraft] = useState({ sideName: "teamA", userId: "", playerQuery: "", name: "" });
-  const [disputeReason, setDisputeReason] = useState("스코어 또는 개인 기록 재확인 필요");
+  const [disputeReason, setDisputeReason] = useState(MATCH_DISPUTE_REASON_OPTIONS[0]);
+  const [disputeCustomReason, setDisputeCustomReason] = useState("");
+  const [disputeRequestedPoints, setDisputeRequestedPoints] = useState("");
   const [recorderLoading, setRecorderLoading] = useState(false);
   const [saveFeedback, setSaveFeedback] = useState("");
   const [refreshingMatchDetail, setRefreshingMatchDetail] = useState(false);
@@ -174,9 +180,12 @@ export default function Recorder({ app }) {
       setDirtyStats({});
       setHandoffDraft({});
       setLatePlayerDraft((current) => ({ ...current, userId: "", playerQuery: "", name: "" }));
+      setDisputeReason(MATCH_DISPUTE_REASON_OPTIONS[0]);
+      setDisputeCustomReason("");
+      setDisputeRequestedPoints(String(getMatchPlayerDisputePoints(selectedMatch, user.id)));
       setSaveFeedback("");
     }
-  }, [selectedMatch?.id, selectedMatch?.result?.updatedAt, selectedMatch?.result?.submittedAt, selectedMatch?.disputeDraftResult?.updatedAt, selectedMatchPlayerKey]);
+  }, [selectedMatch?.id, selectedMatch?.result?.updatedAt, selectedMatch?.result?.submittedAt, selectedMatch?.disputeDraftResult?.updatedAt, selectedMatchPlayerKey, user.id]);
 
   const recordWindow = selectedMatch ? getMatchRecordWindow(selectedMatch) : null;
   const roomPhase = selectedMatch ? getMatchRoomPhase(selectedMatch).phase : "";
@@ -231,6 +240,8 @@ export default function Recorder({ app }) {
         ? "기록 권한 없음"
         : "저장 가능";
   const canDispute = Boolean(selectedMatch?.result) && selectedMatch?.status === "approval" && recordWindow?.disputeOpen && currentUserCanFileDispute;
+  const canRequestOwnPointDispute = Boolean(canDispute && getMatchRecordPlayerIds(selectedMatch, true).includes(user.id));
+  const currentUserDisputePoints = selectedMatch ? getMatchPlayerDisputePoints(selectedMatch, user.id) : 0;
   const canResumeApproval = selectedMatch?.status === "disputed" && currentUserCanOperatePostStart;
   const canVoid = selectedMatch?.status === "disputed" && currentUserCanOperatePostStart;
 
@@ -268,6 +279,18 @@ export default function Recorder({ app }) {
     Promise.resolve(result).then((response) => {
       setSaveFeedback(response?.ok === false ? "저장 실패" : canEditDisputeDraft ? "수정되었습니다." : "저장되었습니다.");
     }).catch(() => setSaveFeedback("저장 실패"));
+  };
+
+  const submitDispute = () => {
+    if (!selectedMatch || !canRequestOwnPointDispute) return;
+    app.actions.disputeMatch(selectedMatch.id, buildMatchDisputeReason({
+      match: selectedMatch,
+      playerId: user.id,
+      playerName: user.name,
+      requestedPoints: disputeRequestedPoints,
+      reason: disputeReason,
+      customReason: disputeCustomReason,
+    }));
   };
 
   const refreshSelectedMatch = () => {
@@ -646,12 +669,37 @@ export default function Recorder({ app }) {
                 </Badge>
               </div>
               {selectedMatch.disputes?.[0] ? <p className="muted">최근 이의제기: {selectedMatch.disputes[0].reason}</p> : null}
+              <div className="dispute-score-request">
+                <div>
+                  <span>점수판</span>
+                  <strong>{scoreA} : {scoreB}</strong>
+                </div>
+                <label>
+                  내 득점
+                  <input
+                    type="number"
+                    min="0"
+                    disabled={!canRequestOwnPointDispute}
+                    value={disputeRequestedPoints}
+                    onChange={(event) => setDisputeRequestedPoints(event.target.value)}
+                  />
+                  <em>현재 {currentUserDisputePoints}점</em>
+                </label>
+              </div>
               <label className="memo-label">
                 이의제기 사유
-                <textarea disabled={!canDispute} value={disputeReason} onChange={(event) => setDisputeReason(event.target.value)} />
+                <select disabled={!canRequestOwnPointDispute} value={disputeReason} onChange={(event) => setDisputeReason(event.target.value)}>
+                  {MATCH_DISPUTE_REASON_OPTIONS.map((reason) => <option key={reason} value={reason}>{reason}</option>)}
+                </select>
               </label>
+              {disputeReason === OTHER_MATCH_DISPUTE_REASON ? (
+                <label className="memo-label">
+                  기타 사유
+                  <textarea disabled={!canRequestOwnPointDispute} value={disputeCustomReason} onChange={(event) => setDisputeCustomReason(event.target.value)} />
+                </label>
+              ) : null}
               <div className="match-action-row">
-                <Button type="button" variant="secondary" disabled={!canDispute} onClick={() => app.actions.disputeMatch(selectedMatch.id, disputeReason)}>
+                <Button type="button" variant="secondary" disabled={!canRequestOwnPointDispute} onClick={submitDispute}>
                   <AlertTriangle size={16} />
                   이의제기
                 </Button>

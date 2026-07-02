@@ -5,6 +5,7 @@ import syncRecruitingPostHandler from "../server/api/recruiting/sync-post.js";
 import recruitingListHandler from "../server/api/recruiting/list.js";
 import syncMatchHandler from "../server/api/matches/sync-match.js";
 import matchDetailHandler from "../server/api/matches/detail.js";
+import teamsListHandler from "../server/api/teams/list.js";
 import maintenanceHandler from "../server/api/system/maintenance.js";
 
 function loadEnvFile(path) {
@@ -271,15 +272,40 @@ function getSeededProfileId(testLoginId = "") {
 
 async function getProfileIdForLogin(testLoginId) {
   const seededProfileId = getSeededProfileId(testLoginId);
-  if (seededProfileId) return seededProfileId;
   const state = await loadStateAs(testLoginId);
-  return getProfileId(state, testLoginId);
+  return getProfileId(state, testLoginId) || seededProfileId;
 }
 
 async function loadStateAs(testLoginId) {
   const payload = await callHandler("/api/state/load", loadStateHandler, await getAuthToken(testLoginId));
   assertFlow(payload?.ok && payload?.state, `state load failed for ${testLoginId}`, payload);
   return payload.state;
+}
+
+async function loadTeamsAs(testLoginId) {
+  const payload = await callHandler("/api/teams/list", teamsListHandler, await getAuthToken(testLoginId));
+  assertFlow(payload?.ok && payload?.state, `teams list failed for ${testLoginId}`, payload);
+  return payload.state;
+}
+
+function teamHasMembers(team = {}, memberIds = []) {
+  const teamMemberIds = new Set((team.members ?? []).map((member) => member.userId).filter(Boolean));
+  return memberIds.every((memberId) => teamMemberIds.has(memberId));
+}
+
+async function resolveTeamIdForMembers(testLoginId, memberIds = [], preferredTeamId = "") {
+  const state = await loadTeamsAs(testLoginId);
+  const teams = state.teams ?? [];
+  const preferredTeam = preferredTeamId ? teams.find((team) => team.id === preferredTeamId && teamHasMembers(team, memberIds)) : null;
+  if (preferredTeam) return preferredTeam.id;
+  const sharedTeam = teams.find((team) => teamHasMembers(team, memberIds));
+  assertFlow(Boolean(sharedTeam?.id), "shared team missing for simulation", {
+    testLoginId,
+    memberIds,
+    preferredTeamId,
+    teamIds: teams.map((team) => team.id),
+  });
+  return sharedTeam.id;
 }
 
 async function loadRecruitingPostAs(testLoginId, postId = ids.postId) {
@@ -949,6 +975,7 @@ async function runPublicTeamRegionFeedScenario({
   const hostId = await step(`${ids.label}:resolveProfile:host`, () => getProfileIdForLogin(hostLogin));
   const teammateId = await step(`${ids.label}:resolveProfile:teammate`, () => getProfileIdForLogin(teammateLogin));
   assertFlow(hostId !== teammateId, "public team host and teammate must be different profiles", { hostId, teammateId });
+  const resolvedTeamId = await step(`${ids.label}:resolveTeam`, () => resolveTeamIdForMembers(hostLogin, [hostId, teammateId], teamId));
 
   const createResult = await step(`${ids.label}:createRecruitingPost`, () => syncRecruitingAs(hostLogin, {
     action: "createRecruitingPost",
@@ -968,7 +995,7 @@ async function runPublicTeamRegionFeedScenario({
       refereeWanted: false,
       region: "마포",
       court: "Backend Simulation Court",
-      teamId,
+      teamId: resolvedTeamId,
       playerIds: [hostId, teammateId],
       position: "PG",
       memo: "Backend simulation row. Safe to delete.",
@@ -982,7 +1009,7 @@ async function runPublicTeamRegionFeedScenario({
   }));
   const createdPost = createResult?.post;
   assertFlow(createdPost?.id === ids.postId, "created public team post not returned", createResult);
-  assertFlow(createdPost.visibility === "public" && createdPost.hostJoinMode === "team" && createdPost.teamId === teamId, "public team post shape mismatch", createdPost);
+  assertFlow(createdPost.visibility === "public" && createdPost.hostJoinMode === "team" && createdPost.teamId === resolvedTeamId, "public team post shape mismatch", createdPost);
 
   const regionResult = await step(`${ids.label}:regionFeed:mapo`, () => loadRecruitingRegionAs(hostLogin, {
     regionKey: "마포",
@@ -995,8 +1022,8 @@ async function runPublicTeamRegionFeedScenario({
   assertFlow(regionResult.payload?.page?.feedCounts == null, "region feed unexpectedly loaded profile feed counts", {
     page: regionResult.payload?.page,
   });
-  assertFlow((regionResult.payload?.state?.teams ?? []).some((team) => team.id === teamId), "public team region feed missing host team attachment", {
-    teamId,
+  assertFlow((regionResult.payload?.state?.teams ?? []).some((team) => team.id === resolvedTeamId), "public team region feed missing host team attachment", {
+    teamId: resolvedTeamId,
     teams: regionResult.payload?.state?.teams ?? [],
   });
 
@@ -1004,7 +1031,7 @@ async function runPublicTeamRegionFeedScenario({
     label: ids.label,
     hostLogin,
     teammateLogin,
-    teamId,
+    teamId: resolvedTeamId,
     hostId,
     teammateId,
     postId: ids.postId,
@@ -1325,6 +1352,7 @@ async function runSoloRoomTeamBlockedScenario({
   const hostId = await step(`${ids.label}:resolveProfile:host`, () => getProfileIdForLogin(hostLogin));
   const teamActorId = await step(`${ids.label}:resolveProfile:teamActor`, () => getProfileIdForLogin(teamLogin));
   assertFlow(hostId !== teamActorId, "host and team actor must be different profiles", { hostId, teamActorId });
+  const resolvedTeamId = await step(`${ids.label}:resolveTeam`, () => resolveTeamIdForMembers(teamLogin, [teamActorId], teamId));
 
   const createResult = await step(`${ids.label}:createRecruitingPost`, () => syncRecruitingAs(hostLogin, {
     action: "createRecruitingPost",
@@ -1364,7 +1392,7 @@ async function runSoloRoomTeamBlockedScenario({
       postId: ids.postId,
       application: {
         joinMode: "team",
-        teamId,
+        teamId: resolvedTeamId,
         side: "teamB",
         playerIds: [teamActorId],
         position: "PG",
@@ -1390,7 +1418,7 @@ async function runSoloRoomTeamBlockedScenario({
     label: ids.label,
     hostLogin,
     teamLogin,
-    teamId,
+    teamId: resolvedTeamId,
     hostId,
     teamActorId,
     postId: ids.postId,

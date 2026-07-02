@@ -12,6 +12,39 @@ export const PUBLIC_ROOM_SCHEDULE_MAX_DAYS = 5;
 export const PUBLIC_ROOM_CONFIRM_OPEN_HOURS = 24;
 export const PUBLIC_ROOM_CONFIRM_CLOSE_HOURS = 4;
 export const INSTANT_ROOM_EXPIRE_MINUTES = 60;
+export const MATCH_DISPUTE_REASON_OPTIONS = [
+  "최종 점수 오기록",
+  "내 득점 누락",
+  "파울/개인 기록 오기록",
+  "교체/후보 출전 누락",
+  "기타",
+];
+export const OTHER_MATCH_DISPUTE_REASON = "기타";
+
+export function getMatchDisputeScore(match = {}, sideName = "") {
+  const resultKey = sideName === "teamA" ? "scoreA" : "scoreB";
+  if (!resultKey) return 0;
+  return Number(match.result?.[resultKey] ?? match[sideName]?.score ?? 0);
+}
+
+export function getMatchPlayerDisputePoints(match = {}, playerId = "") {
+  if (!playerId) return 0;
+  return Number(match.result?.playerStats?.[playerId]?.points ?? 0);
+}
+
+export function buildMatchDisputeReason({ match = {}, playerId = "", playerName = "", requestedPoints = "", reason = "", customReason = "" } = {}) {
+  const scoreA = getMatchDisputeScore(match, "teamA");
+  const scoreB = getMatchDisputeScore(match, "teamB");
+  const currentPoints = getMatchPlayerDisputePoints(match, playerId);
+  const nextPoints = Number(requestedPoints);
+  const pointText = playerId && Number.isFinite(nextPoints)
+    ? `${playerName || "본인"} 득점 ${currentPoints}->${Math.max(0, nextPoints)}`
+    : "본인 득점 확인 요청";
+  const reasonText = reason === OTHER_MATCH_DISPUTE_REASON
+    ? String(customReason || OTHER_MATCH_DISPUTE_REASON).trim()
+    : String(reason || MATCH_DISPUTE_REASON_OPTIONS[0]).trim();
+  return `점수판 ${scoreA}:${scoreB} / ${pointText} / 사유: ${reasonText}`;
+}
 
 function addDateDays(dateValue, days) {
   const date = new Date(`${dateValue}T00:00:00`);
