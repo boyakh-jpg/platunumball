@@ -13804,3 +13804,35 @@ html[data-theme="light"] .rank-home .home-top-rail .rank-tier-rail > .rank-profi
     order: initial;
   }
 }
+
+/* 2026-07-02 home hero bleed regression fix. */
+.rank-home .rank-spotlight-main strong {
+  font-family: var(--hero-title-font);
+  letter-spacing: var(--hero-title-letter-spacing);
+  line-height: var(--hero-title-line-height);
+}
+
+@media (max-width: 1079px) {
+  .rank-home > .home-top-rail {
+    order: 3;
+  }
+
+  .rank-home > .home-dashboard-grid {
+    order: 4;
+  }
+}
+
+@media (min-width: 760px) and (max-width: 1079px) {
+  .app-main > .rank-home > .rank-summary-grid {
+    padding: 0;
+  }
+
+  .rank-home .rank-summary-grid .home-rank-board-head {
+    width: 100%;
+    margin: 0;
+    border-top: 0;
+    border-right: 0;
+    border-left: 0;
+    border-radius: 0;
+  }
+}

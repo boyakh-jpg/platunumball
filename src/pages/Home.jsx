@@ -16,7 +16,7 @@ import { canUserResolveMatchDispute, getAllowedStatFields, getMatchRecordWindow,
 import { inferRegionSelection } from "../lib/profileSetup.js";
 import { RECRUITING_TYPES, getPendingRecruitingInvitations, getRecruitingLobby, getRecruitingRoomOwnerId, isNationalRecruitingPost, isRecruitingPostForUser, isRecruitingRoomInUserSchedule } from "../lib/recruiting.js";
 import { getCurrentSeason, getPlayerSeasonRows, getSeasonProgress } from "../lib/season.js";
-import { getTierDivision } from "../lib/tier.js";
+import { getTier, getTierDivision, getTierDivisionNumber } from "../lib/tier.js";
 import { getDiscordAvatarClassName, getDiscordAvatarStyle } from "../lib/discord.js";
 
 function compareSchedule(a, b) {
@@ -352,6 +352,9 @@ export default function Home({ app }) {
   const recentFiveMatches = myCompletedMatches.slice(0, 5);
   const recentFiveWins = recentFiveMatches.filter((match) => getUserResult(match, user.id) === "W").length;
   const latestMyMatches = recentFiveMatches;
+  const rankSpotlightTier = getTier(user.ratings.integrated);
+  const rankSpotlightDivision = getTierDivisionNumber(user.ratings.integrated);
+  const rankSpotlightLabel = rankSpotlightDivision ? `${rankSpotlightTier.name} ${rankSpotlightDivision}` : rankSpotlightTier.name;
   const renderHomeSearchItem = (item) => (
     item.team ? (
       <TeamHoverCard key={item.id} team={item.team}>
@@ -447,7 +450,7 @@ export default function Home({ app }) {
               <div className="rank-spotlight-main">
                 <TierEmblem mmr={user.ratings.integrated} size="md" />
                 <div>
-                  <strong>{getTierDivision(user.ratings.integrated)}</strong>
+                  <strong>{rankSpotlightLabel}</strong>
                   <span>{Math.round(user.ratings.integrated)} MMR · 최근 5경기 {recentFiveWins}승</span>
                 </div>
               </div>
