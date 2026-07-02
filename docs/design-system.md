@@ -134,6 +134,7 @@ RankBall 다크 모드는 이 팔레트를 기본 CSS 색상 표준으로 쓴다
 2026-07-01: 앱 바닥과 주요 hero/방 모달 overlay의 1px 격자무늬는 제거한다. 코트 정체성은 실제 배경 이미지와 scoreboard/card hierarchy로만 표현한다.
 2026-07-02: "hero들"이라고 하면 홈/경기/모집만이 아니라 `page-header`, landing, team hub, season, profile, team detail, rulebook, tournament, match room 같은 모든 page-level hero를 포함한다.
 2026-07-02: 모든 page-level hero는 이미지 위에 dark/white wash, scanline/grid, 별도 `::before`/`::after` overlay를 얹지 않는다. hero 텍스트는 dark에서 `--rb-orange`/`--rb-orange-2`, light 큰 제목은 `--rb-cream`로 시인성을 확보한다.
+2026-07-02: hero 제목 폰트는 모두 `--hero-title-font`를 쓴다. 원인/결과: 개별 파일의 `linear-gradient` background와 `::before`/`::after` overlay가 뒤쪽 CSS에서 다시 살아나 이미지 위 막이 반복됐으므로, page-level hero는 최종 guard에서 image + fallback color만 남기고 `backdrop-filter`/blur/filter를 쓰지 않는다.
 2026-07-02: 홈 image hero와 rank spotlight card는 조각난 frame처럼 보이는 border, underline, inner pseudo frame을 쓰지 않는다. 이미지 경계는 배경/간격으로 처리한다.
 2026-07-01: 일반 페이지의 floating search/card layer는 모바일 bottom nav보다 낮아야 한다. 모달/전역 로더만 bottom nav보다 위에 올 수 있다.
 2026-06-28: 즐겨찾기 검색은 프로필, 팀, 구장, 심판을 각각 최대 10개까지 저장하고, 관련 SearchPicker의 idle 목록과 검색 결과 별 토글에 연결한다.

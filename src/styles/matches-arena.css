@@ -4099,3 +4099,57 @@ html[data-theme="light"] .om-match-copy h1 {
 html[data-theme="light"] .tournament-hero h1 {
   color: var(--rb-cream);
 }
+
+/* 2026-07-02 final matches hero guard: no wash/blur and shared title font. */
+.om-match-hero,
+html[data-theme="light"] .om-match-hero {
+  background:
+    var(--bg-hoop) var(--hero-bg-position-hoop) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg-2);
+  backdrop-filter: none;
+  filter: none;
+}
+
+.tournament-hero,
+html[data-theme="light"] .tournament-hero {
+  background:
+    var(--bg-ball) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg-2);
+  backdrop-filter: none;
+  filter: none;
+}
+
+.om-match-hero::before,
+.om-match-hero::after,
+.tournament-hero::before,
+.tournament-hero::after,
+html[data-theme="light"] .om-match-hero::before,
+html[data-theme="light"] .om-match-hero::after,
+html[data-theme="light"] .tournament-hero::before,
+html[data-theme="light"] .tournament-hero::after {
+  content: none;
+  display: none;
+  background: none;
+  opacity: 0;
+}
+
+.om-match-copy h1,
+.tournament-hero h1,
+html[data-theme="light"] .om-match-copy h1,
+html[data-theme="light"] .tournament-hero h1 {
+  font-family: var(--hero-title-font);
+  font-size: var(--hero-title-size);
+  font-weight: 950;
+  line-height: var(--hero-title-line-height);
+  letter-spacing: var(--hero-title-letter-spacing);
+  text-transform: uppercase;
+}
+
+@media (max-width: 720px) {
+  .om-match-copy h1,
+  .tournament-hero h1,
+  html[data-theme="light"] .om-match-copy h1,
+  html[data-theme="light"] .tournament-hero h1 {
+    font-size: var(--hero-title-size-mobile);
+  }
+}

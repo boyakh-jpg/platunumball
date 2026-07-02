@@ -636,3 +636,40 @@ html[data-theme="light"] .gm-room-hero::after {
 html[data-theme="light"] .gm-room-title h1 {
   color: var(--rb-cream);
 }
+
+/* 2026-07-02 final match room hero guard: no wash/blur and shared title font. */
+.gm-room-hero,
+html[data-theme="light"] .gm-room-hero {
+  background:
+    var(--bg-hoop) var(--hero-bg-position-hoop) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg-2);
+  backdrop-filter: none;
+  filter: none;
+}
+
+.gm-room-hero::before,
+.gm-room-hero::after,
+html[data-theme="light"] .gm-room-hero::before,
+html[data-theme="light"] .gm-room-hero::after {
+  content: none;
+  display: none;
+  background: none;
+  opacity: 0;
+}
+
+.gm-room-title h1,
+html[data-theme="light"] .gm-room-title h1 {
+  font-family: var(--hero-title-font);
+  font-size: var(--hero-title-size);
+  font-weight: 950;
+  line-height: var(--hero-title-line-height);
+  letter-spacing: var(--hero-title-letter-spacing);
+  text-transform: uppercase;
+}
+
+@media (max-width: 720px) {
+  .gm-room-title h1,
+  html[data-theme="light"] .gm-room-title h1 {
+    font-size: var(--hero-title-size-mobile);
+  }
+}

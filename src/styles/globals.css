@@ -14049,3 +14049,136 @@ html[data-theme="light"] .team-detail-hero h1,
 html[data-theme="light"] .referee-rulebook-hero h2 {
   color: var(--rb-cream);
 }
+
+/* 2026-07-02 final hero guard: no image wash/blur and one title font. */
+.rank-home .rank-summary-grid,
+.rank-home .rank-summary-grid .home-rank-board-head,
+html[data-theme="light"] .rank-home .rank-summary-grid,
+html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
+  background:
+    var(--bg-court) var(--hero-bg-position-court) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg-2);
+  backdrop-filter: none;
+  filter: none;
+}
+
+.landing-hero,
+html[data-theme="light"] .landing-hero {
+  background:
+    var(--bg-action) var(--hero-bg-position-action) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg-2);
+  backdrop-filter: none;
+  filter: none;
+}
+
+.match-hero,
+html[data-theme="light"] .match-hero {
+  background:
+    var(--bg-hoop) var(--hero-bg-position-hoop) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg-2);
+  backdrop-filter: none;
+  filter: none;
+}
+
+.team-hub-hero,
+.season-hero,
+html[data-theme="light"] .team-hub-hero,
+html[data-theme="light"] .season-hero {
+  background:
+    var(--bg-ball) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg-2);
+  backdrop-filter: none;
+  filter: none;
+}
+
+.page-header,
+.profile-hero,
+.team-detail-hero,
+html[data-theme="light"] .page-header,
+html[data-theme="light"] .profile-hero,
+html[data-theme="light"] .team-detail-hero {
+  background:
+    var(--page-hero-bg, var(--bg-court)) var(--page-hero-bg-position, var(--hero-bg-position-court)) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg-2);
+  backdrop-filter: none;
+  filter: none;
+}
+
+.referee-rulebook-hero,
+html[data-theme="light"] .referee-rulebook-hero {
+  backdrop-filter: none;
+  filter: none;
+}
+
+.rank-home .rank-summary-grid::before,
+.rank-home .rank-summary-grid::after,
+.landing-hero::before,
+.landing-hero::after,
+.match-hero::before,
+.match-hero::after,
+.team-hub-hero::before,
+.team-hub-hero::after,
+.season-hero::before,
+.season-hero::after,
+.page-header::before,
+.page-header::after,
+.profile-hero::before,
+.profile-hero::after,
+.team-detail-hero::before,
+.team-detail-hero::after,
+.referee-rulebook-hero::before,
+.referee-rulebook-hero::after,
+html[data-theme="light"] .rank-home .rank-summary-grid::before,
+html[data-theme="light"] .rank-home .rank-summary-grid::after,
+html[data-theme="light"] .landing-hero::before,
+html[data-theme="light"] .landing-hero::after,
+html[data-theme="light"] .match-hero::before,
+html[data-theme="light"] .match-hero::after,
+html[data-theme="light"] .team-hub-hero::before,
+html[data-theme="light"] .team-hub-hero::after,
+html[data-theme="light"] .season-hero::before,
+html[data-theme="light"] .season-hero::after,
+html[data-theme="light"] .page-header::before,
+html[data-theme="light"] .page-header::after,
+html[data-theme="light"] .profile-hero::before,
+html[data-theme="light"] .profile-hero::after,
+html[data-theme="light"] .team-detail-hero::before,
+html[data-theme="light"] .team-detail-hero::after,
+html[data-theme="light"] .referee-rulebook-hero::before,
+html[data-theme="light"] .referee-rulebook-hero::after {
+  content: none;
+  display: none;
+  background: none;
+  opacity: 0;
+}
+
+.rank-home .rank-summary-grid .home-rank-board-head h1,
+.page-header h1,
+.landing-hero h1,
+.match-hero h1,
+.team-hub-hero h1,
+.season-hero-copy h1,
+.profile-hero h1,
+.team-detail-hero h1,
+.referee-rulebook-hero h2 {
+  font-family: var(--hero-title-font);
+  font-size: var(--hero-title-size);
+  font-weight: 950;
+  line-height: var(--hero-title-line-height);
+  letter-spacing: var(--hero-title-letter-spacing);
+  text-transform: uppercase;
+}
+
+@media (max-width: 720px) {
+  .rank-home .rank-summary-grid .home-rank-board-head h1,
+  .page-header h1,
+  .landing-hero h1,
+  .match-hero h1,
+  .team-hub-hero h1,
+  .season-hero-copy h1,
+  .profile-hero h1,
+  .team-detail-hero h1,
+  .referee-rulebook-hero h2 {
+    font-size: var(--hero-title-size-mobile);
+  }
+}
