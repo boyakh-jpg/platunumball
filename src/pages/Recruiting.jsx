@@ -2114,10 +2114,12 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
           (!teamOnlyRoom || selectedJoinPlayerIds.length >= getRecruitingSideCapacity(selectedPost))
         ));
         const canJoinReferee = selectedPost.visibility === "public" && refereeWanted && !selectedPost.refereeId && isEligibleReferee(app.currentUser, selectedPost.refereeTrustMin, app.state.settings?.refereeAppointments);
+        const joinMmrLimitMode = selectedPost.mmrLimitMode ?? selectedPost.roomState?.mmrLimitMode ?? "block";
+        const joinTierAllowed = joinMmrLimitMode !== "block" || fit.allowed;
         const canJoin = selectedPost.visibility === "public" && !matchRoom && !recruitingRoomConfirmed && !mine && !alreadyApplied && (
           joinDraft.joinMode === "referee"
             ? canJoinReferee
-            : fit.allowed && (joinDraft.joinMode === "player" || teamJoinValid)
+            : joinTierAllowed && (joinDraft.joinMode === "player" || teamJoinValid)
         );
         const joinModeEntries = [
           ...Object.entries(RECRUITING_JOIN_MODES).filter(([mode]) => {

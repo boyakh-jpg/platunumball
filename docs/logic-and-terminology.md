@@ -1,5 +1,11 @@
 # RankBall 로직/용어/디자인 기준
 
+## 2026-07-02 공개 참여 MMR 경고 기준
+
+- 공개 모집방 참여 버튼은 `mmrLimitMode="block"`일 때만 MMR 범위 밖 참여를 막는다.
+- `mmrLimitMode="warn"` 또는 `"off"`는 티어 경고만 보여주고 개인/팀 참여 저장을 막지 않는다.
+- 서버 reducer와 프론트 참여 버튼의 차단 조건은 같아야 한다.
+
 ## 2026-07-02 초대 수락 MMR/roster 기준
 
 - 모집방 `mmrLimitMode`는 `roomState.mmrLimitMode`에 저장한다. `block`만 초대 수락을 MMR 범위 밖에서 차단하고, `warn`/`off`는 생성/수락을 막지 않는다.
