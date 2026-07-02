@@ -13836,3 +13836,15 @@ html[data-theme="light"] .rank-home .home-top-rail .rank-tier-rail > .rank-profi
     border-radius: 0;
   }
 }
+
+/* 2026-07-02 remove extra non-home hero overlay layers. */
+.landing-hero::after,
+.match-hero::before,
+.team-hub-hero::before,
+.team-hub-hero::after,
+.season-hero::after,
+.page-header::after {
+  content: none;
+  background: none;
+  opacity: 0;
+}

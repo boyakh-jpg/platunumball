@@ -4044,3 +4044,10 @@ html[data-theme="light"] .om-score-box {
   border-color: color-mix(in srgb, var(--rb-orange) 46%, transparent);
   background: color-mix(in srgb, var(--rb-orange) 14%, var(--ui-card-bg));
 }
+
+/* 2026-07-02 remove extra match hero overlay layer. */
+.om-match-hero::after {
+  content: none;
+  background: none;
+  opacity: 0;
+}

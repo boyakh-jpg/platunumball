@@ -7006,3 +7006,10 @@ html[data-theme="light"] .arena-lobby-modal {
     display: none;
   }
 }
+
+/* 2026-07-02 remove extra recruiting hero overlay layer. */
+.arena-recruit-hero::after {
+  content: none;
+  background: none;
+  opacity: 0;
+}
