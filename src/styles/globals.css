@@ -13720,6 +13720,36 @@ html[data-theme="light"] .rank-home .rank-spotlight-card {
   font-size: 0.72rem;
 }
 
+/* Image cards should not contain small framed cards inside them.
+   Keep secondary links as text actions unless the user explicitly asks for boxed controls. */
+.rank-home .rank-spotlight-card .rank-spotlight-links {
+  gap: 12px;
+}
+
+.rank-home .rank-spotlight-card .rank-spotlight-links a,
+.rank-home .rank-spotlight-card .rank-spotlight-links a:first-child,
+html[data-theme="light"] .rank-home .rank-spotlight-card .rank-spotlight-links a,
+html[data-theme="light"] .rank-home .rank-spotlight-card .rank-spotlight-links a:first-child {
+  min-height: auto;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 0.72rem;
+  font-weight: 950;
+  line-height: 1;
+  padding: 0;
+  text-decoration: none;
+}
+
+.rank-home .rank-spotlight-card .rank-spotlight-links a:hover,
+.rank-home .rank-spotlight-card .rank-spotlight-links a:focus-visible {
+  color: #fff;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 html[data-theme="light"] .rank-home .rank-spotlight-card {
   border-color: rgba(30, 24, 18, 0.16);
   background:
