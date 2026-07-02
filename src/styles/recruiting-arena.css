@@ -6892,6 +6892,19 @@ html[data-theme="light"] .arena-lobby-modal {
   padding: 0;
 }
 
+.arena-modal-close-button {
+  display: inline-flex;
+  width: 100%;
+  min-width: 132px;
+  height: auto;
+  min-height: 52px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding-inline: 16px;
+  white-space: nowrap;
+}
+
 .arena-hero-cta,
 .arena-card-action.button:not(.button-secondary),
 .arena-filter-bar button.active,
