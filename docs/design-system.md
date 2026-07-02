@@ -827,6 +827,7 @@ UI 수정 전:
 1. Desktop home places the search panel as a compact top bar above the hero and right rail.
 2. Mobile home keeps the hero first and places search directly below the hero before action queue.
 3. Desktop search results open as a dropdown so the top bar does not push the hero down.
+4. Home search uses the outer search field border only; the text input itself does not draw a second inner border.
 
 ## 2026-07-01 Mobile hero bleed
 

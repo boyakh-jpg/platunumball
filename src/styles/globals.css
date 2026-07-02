@@ -14215,6 +14215,19 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
   background: transparent;
 }
 
+.rank-home .home-search-panel.rank-search-card .home-search-box input {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  outline: 0;
+}
+
+.rank-home .home-search-panel.rank-search-card .home-search-box:focus-within {
+  border-color: color-mix(in srgb, var(--rb-orange-2) 58%, var(--rb-line));
+  box-shadow: var(--focus-ring);
+}
+
 @media (max-width: 759px) {
   .rank-home .rank-summary-grid,
   html[data-theme="light"] .rank-home .rank-summary-grid {
