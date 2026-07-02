@@ -13978,9 +13978,36 @@ html[data-theme="light"] .rank-home .rank-spotlight-card .rank-spotlight-links a
 html[data-theme="light"] .rank-home .rank-spotlight-card .rank-spotlight-links a:first-child {
   min-height: auto;
   border: 0;
+  border-bottom: 0;
   border-radius: 0;
   background: transparent;
   box-shadow: none;
   color: rgba(255, 255, 255, 0.92);
   padding: 0;
+  text-decoration: none;
+}
+
+.rank-home .rank-spotlight-card .rank-spotlight-links a:hover,
+.rank-home .rank-spotlight-card .rank-spotlight-links a:focus-visible,
+html[data-theme="light"] .rank-home .rank-spotlight-card .rank-spotlight-links a:hover,
+html[data-theme="light"] .rank-home .rank-spotlight-card .rank-spotlight-links a:focus-visible {
+  border: 0;
+  border-bottom: 0;
+  outline: 0;
+  box-shadow: none;
+  text-decoration: none;
+}
+
+/* 2026-07-02 image-led home cards should not show partial frame lines. */
+.rank-home .rank-summary-grid,
+.rank-home .rank-summary-grid .home-rank-board-head,
+.rank-home .rank-spotlight-card,
+.rank-home .home-top-rail .rank-tier-rail > .rank-profile-card.rank-spotlight-card,
+html[data-theme="light"] .rank-home .rank-summary-grid,
+html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head,
+html[data-theme="light"] .rank-home .rank-spotlight-card,
+html[data-theme="light"] .rank-home .home-top-rail .rank-tier-rail > .rank-profile-card.rank-spotlight-card {
+  border: 0;
+  outline: 0;
+  box-shadow: none;
 }
