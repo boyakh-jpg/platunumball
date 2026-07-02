@@ -792,6 +792,7 @@ UI 수정 전:
 1. Desktop home uses a court hero plus right rail composition: rank hero on the left, search/action queue on the right.
 2. Home lower dashboard uses match-focused primary column and compact support-card rail.
 3. Mobile home stays single-column for readability: search, action queue, rank hero, then dashboard.
+4. Home action queue does not keep a fixed empty height; on wider viewports only the action list scrolls when items exceed the rail height.
 
 ## 2026-07-01 Full internal preview pass
 

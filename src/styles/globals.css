@@ -14228,6 +14228,22 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
   box-shadow: var(--focus-ring);
 }
 
+.rank-home .home-top-rail > .home-action-card {
+  min-height: 0;
+  align-content: start;
+}
+
+.rank-home .home-top-rail > .home-action-card .home-action-list {
+  min-height: 0;
+}
+
+@media (min-width: 760px) {
+  .rank-home .home-top-rail > .home-action-card .home-action-list {
+    max-height: min(42vh, 420px);
+    overflow: auto;
+  }
+}
+
 @media (max-width: 759px) {
   .rank-home .rank-summary-grid,
   html[data-theme="light"] .rank-home .rank-summary-grid {
