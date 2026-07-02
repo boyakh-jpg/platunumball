@@ -13726,3 +13726,81 @@ html[data-theme="light"] .rank-home .rank-spotlight-card {
     var(--bg-ball) center 48% / cover no-repeat,
     var(--rb-bg-2);
 }
+
+/* 2026-07-02 home top rail rank fix. */
+.rank-home > .home-top-rail {
+  gap: 14px;
+  min-width: 0;
+  align-self: start;
+}
+
+.rank-home .home-top-rail .rank-tier-rail {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  order: 0;
+  padding: 0;
+}
+
+.rank-home .home-top-rail > .home-action-card {
+  order: 1;
+}
+
+.rank-home .home-top-rail .rank-tier-rail > .rank-profile-card.rank-spotlight-card,
+html[data-theme="light"] .rank-home .home-top-rail .rank-tier-rail > .rank-profile-card.rank-spotlight-card {
+  display: flex;
+  min-height: 210px;
+  align-items: flex-end;
+  overflow: hidden;
+  border: 1px solid var(--rb-line);
+  border-radius: var(--card-radius);
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.78)),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.78), rgba(0, 0, 0, 0.14) 66%),
+    var(--bg-ball) center 48% / cover no-repeat,
+    var(--rb-bg-2);
+  box-shadow: none;
+  color: #fff;
+  padding: 18px;
+}
+
+html[data-theme="light"] .rank-home .home-top-rail .rank-tier-rail > .rank-profile-card.rank-spotlight-card {
+  border-color: rgba(30, 24, 18, 0.14);
+  background:
+    linear-gradient(180deg, rgba(30, 24, 18, 0.04), rgba(30, 24, 18, 0.64)),
+    linear-gradient(90deg, rgba(30, 24, 18, 0.58), rgba(30, 24, 18, 0.08) 66%),
+    var(--bg-ball) center 48% / cover no-repeat,
+    var(--rb-bg-2);
+}
+
+.rank-home .home-top-rail .rank-spotlight-card::before {
+  background:
+    radial-gradient(ellipse at 26% 72%, rgba(120, 170, 255, 0.18), transparent 42%),
+    linear-gradient(180deg, transparent 0 58%, rgba(24, 25, 26, 0.68));
+}
+
+.rank-home .home-main-card-grid {
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 1080px) {
+  .rank-home > .home-top-rail {
+    grid-area: action;
+  }
+
+  .rank-home .home-dashboard-grid .home-side-stack {
+    transform: none;
+    margin-bottom: 0;
+  }
+}
+
+@media (max-width: 759px) {
+  .rank-home > .home-top-rail {
+    order: 3;
+  }
+
+  .rank-home > .home-action-card {
+    order: initial;
+  }
+}

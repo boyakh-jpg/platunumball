@@ -439,53 +439,75 @@ export default function Home({ app }) {
         </div>
       </Card>
 
-      <Card className="section-card home-action-card">
-        <div className="section-title-row">
-          <div>
-            <p className="eyebrow">Action Queue</p>
-            <h2>내가 처리할 방</h2>
-          </div>
-          <Badge tone={actionItems.length ? "orange" : "neutral"}>{actionItems.length}개</Badge>
+      <aside className="page-stack home-top-rail">
+        <div className="rank-tier-rail">
+          <Card className="section-card rank-profile-card rank-spotlight-card">
+            <div className="rank-spotlight-content">
+              <p className="eyebrow">My Rank</p>
+              <div className="rank-spotlight-main">
+                <TierEmblem mmr={user.ratings.integrated} size="md" />
+                <div>
+                  <strong>{getTierDivision(user.ratings.integrated)}</strong>
+                  <span>{Math.round(user.ratings.integrated)} MMR · 최근 5경기 {recentFiveWins}승</span>
+                </div>
+              </div>
+              <div className="rank-profile-tabs rank-spotlight-links">
+                <Link to={`/app/players/${user.id}`}>프로필</Link>
+                <Link to="/app/season">시즌</Link>
+                <Link to="/app/settings">설정</Link>
+              </div>
+            </div>
+          </Card>
         </div>
-        <div className="home-action-list">
-          {actionItems.length ? (
-            <>
-            {priorityItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <Link key={item.id} to={item.href} className={`home-action-row priority-${item.priority}`}>
-                  <span className="home-action-icon"><Icon size={18} /></span>
+
+        <Card className="section-card home-action-card">
+          <div className="section-title-row">
+            <div>
+              <p className="eyebrow">Action Queue</p>
+              <h2>내가 처리할 방</h2>
+            </div>
+            <Badge tone={actionItems.length ? "orange" : "neutral"}>{actionItems.length}개</Badge>
+          </div>
+          <div className="home-action-list">
+            {actionItems.length ? (
+              <>
+              {priorityItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Link key={item.id} to={item.href} className={`home-action-row priority-${item.priority}`}>
+                    <span className="home-action-icon"><Icon size={18} /></span>
+                    <span className="home-action-main">
+                      <strong>{item.title}</strong>
+                      <em>{item.meta}</em>
+                    </span>
+                    <b>{item.label}</b>
+                  </Link>
+                );
+              })}
+              {actionItems.length > priorityItems.length ? (
+                <Link to={actionItems[priorityItems.length]?.href ?? "/app/matches"} className="home-action-row priority-5">
+                  <span className="home-action-icon"><ClipboardCheck size={18} /></span>
                   <span className="home-action-main">
-                    <strong>{item.title}</strong>
-                    <em>{item.meta}</em>
+                    <strong>더 처리할 항목 있음</strong>
+                    <em>{actionItems.length - priorityItems.length}개 더 있음</em>
                   </span>
-                  <b>{item.label}</b>
+                  <b>더보기</b>
                 </Link>
-              );
-            })}
-            {actionItems.length > priorityItems.length ? (
-              <Link to={actionItems[priorityItems.length]?.href ?? "/app/matches"} className="home-action-row priority-5">
+              ) : null}
+              </>
+            ) : (
+              <div className="home-action-row priority-5">
                 <span className="home-action-icon"><ClipboardCheck size={18} /></span>
                 <span className="home-action-main">
-                  <strong>더 처리할 항목 있음</strong>
-                  <em>{actionItems.length - priorityItems.length}개 더 있음</em>
+                  <strong>처리할 알림 없음</strong>
+                  <em>초대, 승인, 기록 확인이 여기 뜹니다.</em>
                 </span>
-                <b>더보기</b>
-              </Link>
-            ) : null}
-            </>
-          ) : (
-            <div className="home-action-row priority-5">
-              <span className="home-action-icon"><ClipboardCheck size={18} /></span>
-              <span className="home-action-main">
-                <strong>처리할 알림 없음</strong>
-                <em>초대, 승인, 기록 확인이 여기 뜹니다.</em>
-              </span>
-              <b>OK</b>
-            </div>
-          )}
-        </div>
-      </Card>
+                <b>OK</b>
+              </div>
+            )}
+          </div>
+        </Card>
+      </aside>
 
       <section className="rank-summary-grid">
         <div className="home-rank-board-head">
@@ -619,26 +641,6 @@ export default function Home({ app }) {
           </Card>
         </div>
         <aside className="page-stack home-side-stack">
-          <div className="rank-tier-rail">
-            <Card className="section-card rank-profile-card rank-spotlight-card">
-              <div className="rank-spotlight-content">
-                <p className="eyebrow">My Rank</p>
-                <div className="rank-spotlight-main">
-                  <TierEmblem mmr={user.ratings.integrated} size="md" />
-                  <div>
-                    <strong>{getTierDivision(user.ratings.integrated)}</strong>
-                    <span>{Math.round(user.ratings.integrated)} MMR · 최근 5경기 {recentFiveWins}승</span>
-                  </div>
-                </div>
-                <div className="rank-profile-tabs rank-spotlight-links">
-                  <Link to={`/app/players/${user.id}`}>프로필</Link>
-                  <Link to="/app/season">시즌</Link>
-                  <Link to="/app/settings">설정</Link>
-                </div>
-              </div>
-            </Card>
-          </div>
-
           <Card className="section-card rank-leaderboard-card">
             <div className="section-title-row">
               <div>
