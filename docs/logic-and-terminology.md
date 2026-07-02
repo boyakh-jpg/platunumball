@@ -1770,6 +1770,7 @@ flowchart TD
 - RANKBALL_AUTH_CLEANUP: production test-token allowlist flow is dead. Remove old env docs after deployment env cleanup.
 - Test login token formatting, test account count, team role normalization, team member limits, referee trust minimum, and court request trust minimum are shared from `src/lib/constants.js`.
 - Server endpoints must not keep separate copies of those rule values. If a limit changes, update `src/lib/constants.js` first.
+- 2026-07-02: Supabase Auth test accounts are seeded as `rankball-001` through `rankball-050`; all use `profiles.auth_user_id = auth.users.id`, completed adult profile fields, and no active `test-token` server path.
 - Backend test login must not depend on Supabase OAuth sign-out success. A stale OAuth session cannot block replacing the active server action token with the selected test account token.
 - Server actions prefer a fresh backend test session token before any Supabase OAuth session, and refresh OAuth sessions before sending a near-expired bearer token.
 - If a test login gets `invalid_bearer_token`, the test Auth user is missing or not linked to `profiles.auth_user_id`.

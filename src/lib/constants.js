@@ -28,7 +28,7 @@ export const COURT_REQUEST_TRUST_MIN = 70;
 export const FALSE_COURT_REPORT_TRUST_PENALTY = 8;
 export const STAT_ENTRY_WINDOW_MINUTES = 60;
 export const DISPUTE_WINDOW_MINUTES = 30;
-export const TEST_ACCOUNT_COUNT = 20;
+export const TEST_ACCOUNT_COUNT = 50;
 export const TEAM_INVITE_ROLES = ["regular", "mercenary"];
 
 export const PLAYER_POSITIONS = ["상관없음", "PG", "SG", "SF", "PF", "C"];
