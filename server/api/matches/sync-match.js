@@ -130,14 +130,14 @@ function getSidePlayerRows(match = {}) {
   return [
     ...(match.teamA?.players ?? []).map((userId, index) => ({
       match_id: match.id,
-      team_id: match.teamA.teamId ?? null,
+      team_id: nullableText(match.teamA.teamId),
       user_id: userId,
       side: "teamA",
       slot_order: index,
     })),
     ...(match.teamB?.players ?? []).map((userId, index) => ({
       match_id: match.id,
-      team_id: match.teamB.teamId ?? null,
+      team_id: nullableText(match.teamB.teamId),
       user_id: userId,
       side: "teamB",
       slot_order: index,
@@ -405,7 +405,7 @@ async function validateMatchRosterEligibility(supabase, match = {}) {
 }
 
 function validateResultShape(match = {}, action = "sync") {
-  if (!RESULT_REPLACE_MATCH_ACTIONS.has(action) || !match.result) return;
+  if (!shouldReplaceMatchResult(action, match) || !match.result) return;
 
   const scoreA = toFiniteNumber(match.result.scoreA, -1);
   const scoreB = toFiniteNumber(match.result.scoreB, -1);
@@ -721,6 +721,14 @@ const RESULT_REPLACE_MATCH_ACTIONS = new Set([
   "resumeMatchApproval",
 ]);
 
+function isSoloRecordMatch(match = {}) {
+  return match?.rules?.recordType === "solo";
+}
+
+function shouldReplaceMatchResult(action, match = {}) {
+  return RESULT_REPLACE_MATCH_ACTIONS.has(action) || (action === "createMatch" && isSoloRecordMatch(match) && Boolean(match.result));
+}
+
 const ROSTER_LOCKED_MATCH_ACTIONS = new Set([
   ...PARTICIPANT_MATCH_ACTIONS,
   "checkInMatchPlayer",
@@ -808,7 +816,7 @@ function validateParticipantResultUnchanged(action, existingResult, existingStat
 }
 
 function validateResultOnlyOnSubmission(action, existingResult, existingStats, nextMatch) {
-  if (RESULT_REPLACE_MATCH_ACTIONS.has(action) || !nextMatch.result) return;
+  if (shouldReplaceMatchResult(action, nextMatch) || !nextMatch.result) return;
   const existingSnapshot = normalizeResultSnapshot(existingResult, existingStats);
   const nextSnapshot = normalizeResultSnapshot(nextMatch.result);
   if (!existingSnapshot && !nextSnapshot) return;
@@ -1044,7 +1052,7 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
   if (expectedUpdatedAt) matchRow.__expectedUpdatedAt = expectedUpdatedAt;
   const playerRows = getSidePlayerRows(match);
   const shouldCommitRating = canCommitRatingResult(action, existingResult, match);
-  const shouldReplaceResult = RESULT_REPLACE_MATCH_ACTIONS.has(action);
+  const shouldReplaceResult = shouldReplaceMatchResult(action, match);
   if (shouldCommitRating && !ratingCommit) reject(400, "missing_rating_commit");
   if (action !== "submitMatchResult" && existingMatch) {
     if (action !== "updateMatchRoomRules") {

@@ -1360,6 +1360,70 @@ async function runIneligibleRefereeBlockedScenario({
   };
 }
 
+async function runSoloRecordScenario({
+  label,
+  hostLogin,
+}) {
+  ids = makeScenarioIds(label);
+  const hostId = await step(`${ids.label}:resolveProfile:host`, () => getProfileIdForLogin(hostLogin));
+  const today = new Date().toISOString().slice(0, 10);
+
+  const createResult = await step(`${ids.label}:createSoloRecord`, () => syncMatchAs(hostLogin, {
+    action: "createMatch",
+    preferredMatchId: ids.matchId,
+    draft: {
+      id: ids.matchId,
+      recordType: "solo",
+      title: `Backend simulation ${ids.label}`,
+      court: "Backend Simulation Court",
+      scheduledDate: today,
+      scheduledTime: "20:30",
+      soloOpponentName: "Solo Opponent",
+      soloScoreFor: 17,
+      soloScoreAgainst: 11,
+      soloStats: {
+        rebounds: 5,
+        assists: 3,
+        steals: 2,
+        blocks: 1,
+        fouls: 1,
+      },
+    },
+  }));
+  const match = await getMatchAfterResult(createResult, hostLogin, `${ids.label}:loadAfterCreateSoloRecord`);
+  const anonymousIds = Object.keys(match?.anonymousPlayers ?? {});
+  const opponentId = anonymousIds[0] ?? "";
+  const excludedIds = new Set([...(match?.mmrExcludedPlayerIds ?? []), ...(match?.rules?.mmrExcludedPlayerIds ?? [])]);
+  const stats = match?.result?.playerStats?.[hostId] ?? {};
+
+  assertFlow(match?.id === ids.matchId, "solo record id mismatch", match);
+  assertFlow(match?.status === "confirmed", "solo record not confirmed", match);
+  assertFlow(match?.rules?.recordType === "solo", "solo record type missing", match);
+  assertFlow(match?.ranked === false && Number(match?.ratingScale ?? 0) === 0, "solo record rating not disabled", match);
+  assertFlow((match?.ratingResult ?? []).length === 0, "solo record rating result should be empty", match);
+  assertFlow((match?.teamA?.players ?? []).includes(hostId), "solo record host missing", { hostId, match });
+  assertFlow(!(match?.teamB?.players ?? []).length, "solo record should not store real opponent", match);
+  assertFlow(Boolean(opponentId) && (match?.playedPlayerIds?.teamB ?? []).includes(opponentId), "solo record anonymous opponent missing", match);
+  assertFlow(excludedIds.has(hostId) && excludedIds.has(opponentId), "solo record MMR exclusions missing", {
+    hostId,
+    opponentId,
+    mmrExcludedPlayerIds: match?.mmrExcludedPlayerIds,
+    rules: match?.rules,
+  });
+  assertFlow(match?.result?.scoreA === 17 && match?.result?.scoreB === 11, "solo record score not persisted", match?.result);
+  assertFlow(stats.points === 17 && stats.rebounds === 5 && stats.assists === 3 && stats.steals === 2 && stats.blocks === 1 && stats.fouls === 1, "solo record stats not persisted", stats);
+
+  return {
+    label: ids.label,
+    hostLogin,
+    hostId,
+    matchId: ids.matchId,
+    opponentId,
+    score: `${match.result.scoreA}:${match.result.scoreB}`,
+    mmrExcluded: true,
+  };
+}
+
 async function main() {
   const schemaHealth = await assertRemoteSchemaHealth();
   const basicHostLogin = process.env.RANKBALL_SIM_HOST || "rankball-010";
@@ -1378,8 +1442,13 @@ async function main() {
   const inviteeLogin = process.env.RANKBALL_SIM_INVITEE || "rankball-015";
   const disputeHostLogin = process.env.RANKBALL_SIM_DISPUTE_HOST || "rankball-010";
   const disputeOpponentLogin = process.env.RANKBALL_SIM_DISPUTE_OPPONENT || "rankball-011";
+  const soloRecordLogin = process.env.RANKBALL_SIM_SOLO_RECORD_HOST || "rankball-010";
 
   const scenarios = [];
+  scenarios.push(await runSoloRecordScenario({
+    label: "solo_record",
+    hostLogin: soloRecordLogin,
+  }));
   scenarios.push(await runRecruitingInviteAcceptScenario({
     label: "private_player_invite_accept",
     hostLogin: inviteHostLogin,

@@ -3515,7 +3515,150 @@ export function runAutomaticStateMaintenance(state, now = new Date()) {
   return repairRecruitingSameTeamPersonalParties(applyAutomaticRecruitingConfirmations(applyExpiredRecruitingRooms(applyAutomaticMatchDecisions(state, now), now)));
 }
 
+function toSoloRecordNumber(value, fallback = 0) {
+  const number = Number(value ?? fallback);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.max(0, Math.min(999, Math.floor(number)));
+}
+
+function makeSoloRecordStats(score, stats = {}) {
+  return Object.fromEntries(
+    PLAYER_STAT_FIELDS.map((field) => [
+      field.id,
+      field.id === "points" ? toSoloRecordNumber(score) : toSoloRecordNumber(stats[field.id]),
+    ]),
+  );
+}
+
+function getSoloRecordDateRange(now = new Date()) {
+  return {
+    max: now.toISOString().slice(0, 10),
+    min: new Date(now.getTime() - 1000 * 60 * 60 * 24 * 7).toISOString().slice(0, 10),
+  };
+}
+
+function createSoloRecordMatch(state, draft = {}) {
+  const disciplineBlock = getDisciplineBlockedState(state, "개인 기록 저장");
+  if (disciplineBlock) return disciplineBlock;
+  const playerId = state.currentUserId;
+  const player = state.users.find((user) => user.id === playerId);
+  if (!playerId || !player) return state;
+
+  const now = new Date();
+  const nowIso = now.toISOString();
+  const recordDate = /^\d{4}-\d{2}-\d{2}$/.test(String(draft.scheduledDate ?? ""))
+    ? String(draft.scheduledDate)
+    : nowIso.slice(0, 10);
+  const soloRecordDateRange = getSoloRecordDateRange(now);
+  if (recordDate < soloRecordDateRange.min || recordDate > soloRecordDateRange.max) {
+    return {
+      ...state,
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "개인 기록 날짜 확인",
+          body: "개인 기록은 오늘부터 과거 7일까지만 저장할 수 있습니다.",
+          tone: "match",
+        },
+        ...state.notifications,
+      ],
+    };
+  }
+  const recordTime = /^\d{2}:\d{2}$/.test(String(draft.scheduledTime ?? ""))
+    ? String(draft.scheduledTime)
+    : nowIso.slice(11, 16);
+  const scoreA = toSoloRecordNumber(draft.soloScoreFor);
+  const scoreB = toSoloRecordNumber(draft.soloScoreAgainst);
+  const opponentId = makeId("anon");
+  const opponentName = String(draft.soloOpponentName ?? "").trim() || "상대";
+  const playedPlayerIds = { teamA: [], teamB: [opponentId] };
+  const mmrExcludedPlayerIds = uniquePlayerIds([playerId, opponentId]);
+  const statSubmissions = {
+    [playerId]: { by: playerId, source: "host_postgame", submittedAt: nowIso },
+  };
+  const result = {
+    scoreA,
+    scoreB,
+    playerStats: {
+      [playerId]: makeSoloRecordStats(scoreA, draft.soloStats),
+    },
+    statSubmissions,
+    submittedBy: playerId,
+    submittedAt: nowIso,
+    updatedAt: nowIso,
+  };
+  const rules = {
+    recordType: "solo",
+    targetScore: Math.max(scoreA, scoreB),
+    timeLimit: 0,
+    winByTwo: false,
+    ball: draft.ball || "7호 공",
+    mmrExcludedPlayerIds,
+    playedPlayerIds,
+    statRecorders: {},
+    visibility: "private",
+    ratingScale: 0,
+  };
+  const match = {
+    id: draft.id || makeId("m"),
+    title: String(draft.title ?? "").trim() || "개인 기록",
+    mode: "1v1",
+    court: draft.court || "미정",
+    scheduledDate: recordDate,
+    scheduledTime: recordTime,
+    scheduledAt: `${recordDate} ${recordTime}`,
+    timingType: "scheduled",
+    visibility: "private",
+    status: "confirmed",
+    ranked: false,
+    official: false,
+    preRegistered: false,
+    refereeId: "",
+    refereeTrustMin: REFEREE_TRUST_MIN,
+    statEntryMinutes: STAT_ENTRY_WINDOW_MINUTES,
+    disputeMinutes: DISPUTE_WINDOW_MINUTES,
+    rules,
+    memo: draft.memo || "혼자 저장한 개인 기록입니다.",
+    stakes: draft.stakes || "MMR 미반영",
+    mmrLimitMode: "off",
+    mmrRangeMode: "wide",
+    ratingScale: 0,
+    objectionWindow: "없음",
+    evidence: [],
+    teamA: { name: player.name || "나", teamId: "", players: [playerId], score: scoreA },
+    teamB: { name: opponentName, teamId: "", players: [], score: scoreB },
+    agreements: { teamA: [playerId], teamB: [] },
+    approvals: { teamA: [playerId], teamB: [] },
+    disputes: [],
+    playedPlayerIds,
+    reservePlayers: { teamA: [], teamB: [] },
+    anonymousPlayers: { [opponentId]: makeAnonymousMatchPlayer(opponentId, opponentName) },
+    mmrExcludedPlayerIds,
+    statRecorders: {},
+    result,
+    ratingResult: [],
+    teamRatingResult: { teamA: 0, teamB: 0, teams: {} },
+    createdBy: playerId,
+    agreedAt: nowIso,
+    startedAt: nowIso,
+    endedAt: nowIso,
+    confirmedAt: nowIso,
+    createdAt: nowIso,
+    updatedAt: nowIso,
+  };
+
+  return {
+    ...state,
+    matches: [match, ...state.matches],
+    notifications: [
+      { id: makeId("n"), title: "개인 기록 저장", body: `${match.title} 기록이 저장됐습니다. MMR은 반영하지 않습니다.`, tone: "match", matchId: match.id },
+      ...state.notifications,
+    ],
+  };
+}
+
 export function createMatch(state, draft) {
+  if (draft?.recordType === "solo") return createSoloRecordMatch(state, draft);
   const disciplineBlock = getDisciplineBlockedState(state, "경기방 생성");
   if (disciplineBlock) return disciplineBlock;
   const hostTrustBlock = getHostTrustBlockNotification(state, { ...draft, visibility: "private" });

@@ -1,5 +1,13 @@
 # RankBall 로직/용어/디자인 기준
 
+## 2026-07-02 개인 기록 기준
+
+- `방만들기`의 개인 기록은 기존 `matches`, `match_results`, `player_match_stats`를 재사용한다.
+- 저장 row는 `visibility="private"`, `rules.recordType="solo"`, `status="confirmed"`로 저장한다.
+- 현재 사용자만 `match_players` 참가자로 저장하고, 무기명 상대는 `playedPlayerIds.teamB`와 `anonymousPlayers`에 저장한다.
+- 개인 기록은 `ranked=false`, `ratingScale=0`, `mmrExcludedPlayerIds`에 현재 사용자와 무기명 상대를 모두 넣어 MMR/팀 MMR에 반영하지 않는다.
+- 개인 기록 날짜는 오늘부터 과거 7일까지만 허용한다.
+
 ## 2026-07-02 공개 참여 MMR 경고 기준
 
 - 공개 모집방 참여 버튼은 `mmrLimitMode="block"`일 때만 MMR 범위 밖 참여를 막는다.
