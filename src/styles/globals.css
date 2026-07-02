@@ -14110,6 +14110,23 @@ html[data-theme="light"] .referee-rulebook-hero {
   filter: none;
 }
 
+.create-match-page > .page-header,
+html[data-theme="light"] .create-match-page > .page-header {
+  background: var(--ui-card-bg);
+}
+
+.create-match-page > .page-header h1,
+html[data-theme="light"] .create-match-page > .page-header h1 {
+  color: var(--rb-text);
+  text-shadow: none;
+}
+
+.create-match-page > .page-header p:not(.eyebrow),
+html[data-theme="light"] .create-match-page > .page-header p:not(.eyebrow) {
+  color: var(--rb-muted);
+  text-shadow: none;
+}
+
 .rank-home .rank-summary-grid::before,
 .rank-home .rank-summary-grid::after,
 .landing-hero::before,

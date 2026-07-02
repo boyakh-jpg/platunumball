@@ -969,7 +969,7 @@ export default function CreateMatch({ app }) {
   };
 
   return (
-    <form className="page-stack" onSubmit={submit}>
+    <form className="page-stack create-match-page" onSubmit={submit}>
       <header className="page-header">
         <div>
           <p className="eyebrow">CreateMatch</p>
