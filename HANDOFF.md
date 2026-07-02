@@ -1,6 +1,279 @@
 # RankBall HANDOFF
 
-Updated: 2026-06-29
+Updated: 2026-07-02
+
+## 0. 2026-07-02 Thread Transfer Summary
+
+This section is the latest handoff. Older sections below are retained for context but may be stale. Trust actual files and this section first.
+
+### Current pushed state
+
+Latest pushed commit:
+- `c6fa46f0 Add dedicated recruiting and recorder hero assets`
+
+Recent commits:
+- `c6fa46f0 Add dedicated recruiting and recorder hero assets`
+- `be518880 Align arena widths and home hero layer`
+- `1c3e6eb9 Show team rank board on mobile hero`
+- `5e01251b Unify hero typography and remove washes`
+- `b02ae360 Apply hero scope to all page headers`
+- `086b16cc Use cream light hero titles`
+- `ee46a50c Remove home image card frame lines`
+- `e07330d7 Document cause and result reporting`
+- `cb6f9012 Remove rank spotlight frame artifacts`
+- `d81f7e42 Remove hero image overlay washes`
+- `5a2a9d02 Remove boxed links inside rank image card`
+- `a3f18dbe Fix mobile home hero bleed guard`
+
+Known current `git status --short`:
+- `?? pnpm-lock.yaml`
+- `?? pnpm-workspace.yaml`
+
+Do not stage `pnpm-lock.yaml` or `pnpm-workspace.yaml` unless the user explicitly asks.
+
+### User rules that must carry over
+
+- Korean only.
+- Caveman mode: short, direct, no filler.
+- Minimal safe changes.
+- Do not rewrite whole files unless necessary.
+- Do not delete assets unless explicitly asked.
+- Do not invent filenames.
+- Do not stage `pnpm-lock.yaml` or `pnpm-workspace.yaml` unless explicitly asked.
+- Do not create many files under `api/`. Use `api/index.js` and `server/api/**`.
+- Do not expose `service_role_key`, `DATABASE_URL`, DB passwords, or other secrets to frontend.
+- `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_ASSET_BASE_URL` are frontend-public.
+- If changing room/match/recruiting/referee/record/team/tournament/auth logic, read `docs/logic-and-terminology.md` first and update it if logic changes.
+- If changing UI/CSS/theme/layout/cards/buttons/heroes/modals/slots/avatars, read `docs/design-system.md` first and update it if design behavior changes.
+- After editing, report changed files, exact changes, cause, result, commands run, build/test result, warnings.
+- Commit and push completed work unless the user says not to.
+
+### Agent operating policy
+
+- Main manager owns priority, conflict resolution, and final scope.
+- Use subagents if available; otherwise emulate with bounded parallel analysis roles.
+- Subagents should be analysis-first unless the user explicitly asks to fix.
+- Do not let subagents scan open-ended. Give each one a bounded target.
+- Report what each subagent/role found when the user asks.
+- Reasoning effort:
+  - Manager: high.
+  - Runtime/simple import/build checks: low to medium.
+  - Supabase/RLS/auth/security/data-flow: high.
+  - Fix agent: medium.
+  - Very high only when production is blocked, DB/RLS/auth/security conflict exists, or subagent reports disagree.
+- Stop broad exploration after one critical production blocker is found.
+- Fix one issue per pass unless the user explicitly says to continue through all pending issues.
+- Prefer targeted `rg` and file reads over broad repo scans.
+- Use `multi_tool_use.parallel` for parallel read/search commands.
+- For UI checks, use browser verification when available and inspect computed styles/screenshots instead of guessing.
+
+Suggested role split:
+- Runtime Error Agent: undefined variables, missing imports/exports, hook crashes, null crashes.
+- Supabase Integration Agent: schema/frontend mismatch, table/column/select/RLS/env mismatch.
+- Build/Test Agent: build and smoke checks only.
+- Security/RLS Agent: service role exposure, database URL exposure, RLS looseness/blockers.
+- Flow Mapper Agent: room/match/feed lifecycle and duplicate calls.
+- CSS/UI Agent: design tokens, hero/card/button/layout consistency.
+- Fix Agent: minimal patch after manager selects scope.
+
+### Current product invariants
+
+- First-load numbers and lists must not change 5-10 seconds later due to late fallback calls.
+- Home, Matches, Recruiting should rely on feed snapshots for current-user related data.
+- Public browsing and user-related feed must stay separated:
+  - `/app/recruiting`: public/local matching queue.
+  - `/app/matches`: my schedule/action/soon.
+  - `/app`: profile bootstrap + action queue + thin feed summaries.
+- List screens must be thin. Detail data loads only when the user opens detail/modal/history.
+- `user_room_feed.card_json` is the list source where possible.
+- Broad `/api/state/load` or broad `loadNormalizedRemoteStateFromClient()` fallback must not reappear for list pages.
+- `profile_feed` full redesign was discussed but not implemented; current safe path uses `user_room_feed` and thin endpoints.
+- Confirmed old record rooms should not be loaded in Home/Matches by default. Records load from profile/team/record screens when opened.
+- Basketball loader must be page-level/body-level when blocking remote data; avoid duplicate card-local loaders.
+
+### Logic policies changed during this thread
+
+- `user_room_feed.feed_scope='profile'` is current profile feed. `feed_scope='public'` is server-side public regional feed.
+- `region_public` relation is public feed; `owner`, `participant`, `invited`, `referee` are profile feed.
+- Feed counts are badge counts, not a trigger to auto-load relation lists.
+- Recruiting relation tabs (`내가 만든 방`, `내 참여방`, `초대받음`) should load full relation feed without `더 보기`.
+- Public recruiting list uses local/region/date filter and `더 보기` only when server says more public rows exist.
+- Private team match creation B-side should invite one representative, not preselect the whole opponent roster.
+- Private team B-side representative becomes party/side leader and selects team lineup after accepting.
+- Team party only exists when actual party participants/reserves are at least 2. `teamId` alone does not make a party.
+- Invite search:
+  - profile invite rows select/send individual invite.
+  - team invite rows use `joinMode:"team"` and `teamId`.
+  - old invites without `joinMode` keep legacy inference.
+- Search results should not show hover profile/team cards or favorite stars. Favorites are managed in Settings only.
+- Hashtags use `#`, not `@`.
+- Search threshold policy: Korean/# 2 chars, English/number 4 chars, debounce, max 10 results.
+- Team roles were simplified conceptually to team captain, regular member, mercenary; avoid over-splitting unless logic doc is updated.
+- Dispute flow is field-side verification:
+  - after match end, score/stat review happens immediately.
+  - only referee or host edits dispute draft.
+  - save updates draft; confirm commits record.
+
+### Design policies changed during this thread
+
+- All page-level heroes means home, matches, recruiting, recorder, teams, profile, settings, rulebook, tournament, match room, and page-header heroes.
+- Hero title font token is `--hero-title-font`.
+- Do not put dark/white wash, scanline/grid, blur, or pseudo overlay on hero images.
+- Hero backgrounds must not double-layer parent and child.
+- Home hero:
+  - desktop uses `.rank-summary-grid` background.
+  - 759px 이하 uses `.home-rank-board-head` background because parent is `display: contents`.
+- `/app/matches` and `/app/recruiting` page containers follow shared 1440px desktop width.
+- Desktop/non-mobile hero side/top bleed rules are documented in `docs/design-system.md`.
+- Mobile must avoid body horizontal scroll. Slot rows can scroll only inside the slot row when necessary.
+- Room modal slots preserve structure: A/B side, avatars, READY/WAIT, empty slots, reserve slots, party connection lines.
+- Recruiting hero now uses:
+  - light: `/assets/court-ball-day.webp`
+  - dark: `/assets/court-ball-night.webp`
+  - token: `--bg-recruiting`
+- Recorder/progress hero now uses:
+  - light: `/assets/NY-court-day.webp`
+  - dark: `/assets/NY-court-night.webp`
+  - token: `--bg-recorder`
+- Generic `--bg-ball`/`--bg-hoop` should not be reused for Recruiting/Recorder heroes.
+- Dark palette standard:
+  - `#303132`, `#242526`, `#18191A`, `#F05A46`, `#FFD36C`, `#65D99F`, white text.
+- Light palette standard:
+  - warm cream sports app, not white SaaS dashboard.
+  - `#F5F1E8`, `#FFFAF1`, `#151515`, `#E5553F`, `#A86C14`, `#218A5F`.
+- Cause/result should be documented in design/logic docs when fixing repeated UI/logic bugs.
+
+### Important completed work in this thread
+
+- Reduced and documented broad list fallback rules.
+- Stabilized feed-based first-load counts/lists in Home/Matches/Recruiting.
+- Added/used feed counts RPC pattern for recruiting badges.
+- Scoped local/public recruiting and relation list behavior.
+- Moved many page loads toward feed/detail separation.
+- Added profile match summary feed concept for player stats.
+- Improved invite acceptance refresh and stale protection.
+- Fixed private team B-side invite flow direction in docs/logic and UI pieces.
+- Fixed invite popover clipping and search result behavior.
+- Fixed slot/party UI visual issues repeatedly and documented invariants.
+- Standardized hero typography and removed hero overlay washes.
+- Extended hero scope to all page-level headers.
+- Fixed home hero mobile bleed guards and desktop/single background layer.
+- Moved team rank board into mobile team hub hero.
+- Added dedicated Recruiting/Recorder hero assets.
+- Build currently passes with direct Vite command.
+
+### Still risky / unfinished
+
+- `useAppData.js` still contains optimistic/frontend reducer logic. Production is not fully DB-authoritative.
+- Some server actions still replay normalized state instead of SQL/RPC transactions.
+- `profile_match_summaries` exists for player summary direction, but team/referee summaries remain future work.
+- Full `profile_feed` redesign was not implemented.
+- Supabase production migrations must be verified before relying on feed/RPC paths.
+- `profiles`, `teams`, `team_members`, `courts`, settings, and directory reads may still have egress reduction opportunities.
+- `/api/state/load` still exists and should remain fallback/profile-only, not list-page source.
+- Team management UX and role enforcement still need product-level tightening.
+- Full simulation coverage is incomplete:
+  - team party, private team invite, reserve promotion, referee no-show, recorder handoff, dispute draft/commit, tournament.
+- `pnpm-lock.yaml` and `pnpm-workspace.yaml` remain untracked.
+
+### Current useful verification commands
+
+```powershell
+git status --short
+git log -8 --oneline
+C:\Users\user\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe .\node_modules\vite\bin\vite.js build
+```
+
+`npm` may not be available in this environment. `pnpm run build` may fail on `ERR_PNPM_IGNORED_BUILDS esbuild@0.21.5`; direct Vite build is the known working check.
+
+### Next-thread prompt
+
+Paste this into the next thread:
+
+```text
+Continue from repository:
+C:\Users\user\Documents\rankball
+
+Rules:
+- Korean only.
+- Caveman mode: short, direct, no filler.
+- Minimal safe changes.
+- Do not rewrite whole files unless necessary.
+- Do not delete assets.
+- Do not invent filenames.
+- Do not stage pnpm-lock.yaml or pnpm-workspace.yaml unless explicitly asked.
+- Do not create many api/ files. Use api/index.js + server/api routes.
+- Do not expose service_role_key, DATABASE_URL, DB password, or any secret to frontend.
+- If changing room/match/recruiting/referee/record/team/tournament/auth logic, read docs/logic-and-terminology.md first and update it if logic changes.
+- If changing UI/CSS/theme/layout/cards/buttons/slots/avatars/modals/heroes, read docs/design-system.md first and update it if design behavior changes.
+- After editing, report changed files, exact changes, cause/result, commands run, test/build result, warnings.
+- Commit and push completed work unless I say not to.
+
+First read:
+- AGENTS.md
+- HANDOFF.md
+- docs/logic-and-terminology.md
+- docs/design-system.md
+- relevant source files before editing
+
+Start commands:
+- git status --short
+- git log -8 --oneline
+- rg -n "loadNormalizedRemoteStateFromClient|/api/state/load|select\\(\"\\*\"\\)|user_room_feed|rankball_recruiting_feed_counts" src server api supabase
+
+Current pushed state:
+- Latest known commit: c6fa46f0 Add dedicated recruiting and recorder hero assets
+- Recent UI commits include hero scope, hero typography, home hero single background, matches/recruiting 1440 width, team mobile rank board, recruiting/recorder dedicated hero assets.
+
+Current priority:
+1. Do not let Home/Matches/Recruiting first-load numbers/lists change after delayed fallback calls.
+2. Keep list screens feed-first and thin. Detail/history loads only on explicit open.
+3. Continue Supabase egress reduction without breaking feed counts, invite acceptance, match/recruiting schedules.
+4. Move remaining action logic toward server/RPC authoritative paths one small issue at a time.
+5. Expand simulations after each flow fix.
+
+Agent operation:
+- Use subagents if available.
+- Main Manager: high reasoning, picks scope and resolves conflicts.
+- Runtime Error Agent: medium, undefined/import/hook/null crash.
+- Supabase Integration Agent: high, schema/RLS/frontend mismatch.
+- Build/Test Agent: low, build/smoke only.
+- Security/RLS Agent: high, secret/RLS/security only.
+- Flow Mapper Agent: medium/high, duplicate calls and feed lifecycle.
+- CSS/UI Agent: medium, tokens/layout/hero/card consistency.
+- Fix Agent: medium, minimal patch only after manager selects target.
+- Keep subagents bounded. Do not scan whole repo unless required.
+- Report subagent findings when asked.
+
+Known untracked:
+- pnpm-lock.yaml
+- pnpm-workspace.yaml
+Do not stage unless explicitly asked.
+
+Known design invariants:
+- All page-level heroes include home/matches/recruiting/recorder/teams/profile/settings/rulebook/tournament/match room/page-header.
+- No hero overlay wash/blur/grid/pseudo layer.
+- Home hero background is one layer only: desktop parent, mobile visible child.
+- Recruiting hero uses --bg-recruiting court-ball day/night.
+- Recorder hero uses --bg-recorder NY-court day/night.
+- Matches and Recruiting desktop page width is shared 1440px.
+- Room modal slot structure must remain; visual changes only unless explicitly changing logic.
+
+Known logic invariants:
+- user_room_feed profile/public scopes are canonical for list screens.
+- Feed counts are badge counts, not auto-load triggers.
+- Recruiting relation tabs load only on click and do not show 더 보기.
+- Team party requires 2+ actual participants/reserves.
+- Private team B-side invite selects one representative; lineup chosen after accept.
+- Broad /api/state/load must not reappear as list-page fallback.
+
+Before any fix:
+- State the broken invariant.
+- Read the relevant docs/source.
+- Patch minimal files.
+- Run direct Vite build:
+  C:\Users\user\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe .\node_modules\vite\bin\vite.js build
+```
 
 ## 1. New Thread Start Order
 
@@ -587,53 +860,4 @@ rg -n 'select\("\*"\)|select\(''\*''\)|profiles\(\*\)|courts\(\*\)|match_players
 
 ## 14. Suggested Next Thread Prompt
 
-Paste this into the next thread:
-
-```text
-Continue from this repository: C:\Users\user\Documents\rankball
-
-First read:
-- AGENTS.md
-- HANDOFF.md
-- docs/logic-and-terminology.md
-- docs/design-system.md
-- relevant source files before editing
-
-Current priority:
-Keep reducing Supabase PostREST egress and continue backend migration, but do not break the feed-based recruiting/match list, recruiting local filter, and light-mode background.
-
-Known latest fixes:
-- 501fc47b reduced duplicate invite refresh calls.
-- b556299f stabilized feed refresh and match counts.
-- df5e8ce8 stabilized match feed and invite refresh.
-- user_room_feed feed-first recruiting/match list work is in current repo state. Check latest git log for exact commit after this handoff.
-- 8ac175f6 fixed mobile invite search panel.
-- 7129c297 fixed invite popover and match list load.
-- 57c236b6 split frontend chunks.
-- fe8ec51 fixed light background selector and local recruiting queue region matching.
-- 7f4610f fixed scoped state ordering.
-- b0554df scoped remote state reads.
-
-Rules:
-- Korean only.
-- Minimal safe changes.
-- Do not rewrite whole files unless necessary.
-- Do not delete assets.
-- Do not stage pnpm-lock.yaml or pnpm-workspace.yaml unless I explicitly ask.
-- Do not create many files under api/. Vercel Hobby limit means use api/index.js and server/api routes.
-- If changing room/match/referee/record/team/tournament/auth logic, check docs/logic-and-terminology.md first and update it if logic changes.
-- If changing UI/CSS/theme/layout, check docs/design-system.md first and update it if design behavior changes.
-- After editing, report changed files, exact changes, cause, result, commands run, test/build result, warnings.
-
-Start by running:
-- git status --short
-- git log -8 --oneline
-- production state count check from HANDOFF.md
-
-Then continue the highest priority backend work:
-1. apply/verify user_room_feed SQL in Supabase if not already applied
-2. recruiting/match SQL reducer migration for action stability and lower read calls
-3. make list-card payloads thinner, especially related users/teams
-4. frontend useAppData thin caller cleanup
-5. expand backend simulation scenarios
-```
+Use `## 0. 2026-07-02 Thread Transfer Summary` above. The prompt in that section is the current next-thread prompt.
