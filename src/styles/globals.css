@@ -13958,3 +13958,29 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head p:n
       var(--rb-bg-2);
   }
 }
+
+/* 2026-07-02 rank spotlight cleanup: no inherited accent stripe or framed links. */
+.rank-home .rank-spotlight-card::before,
+.rank-home .home-top-rail .rank-spotlight-card::before,
+html[data-theme="light"] .rank-home .rank-spotlight-card::before,
+html[data-theme="light"] .rank-home .home-top-rail .rank-spotlight-card::before {
+  content: none;
+  display: none;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  opacity: 0;
+}
+
+.rank-home .rank-spotlight-card .rank-spotlight-links a,
+.rank-home .rank-spotlight-card .rank-spotlight-links a:first-child,
+html[data-theme="light"] .rank-home .rank-spotlight-card .rank-spotlight-links a,
+html[data-theme="light"] .rank-home .rank-spotlight-card .rank-spotlight-links a:first-child {
+  min-height: auto;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: rgba(255, 255, 255, 0.92);
+  padding: 0;
+}
