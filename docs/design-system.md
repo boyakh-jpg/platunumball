@@ -221,6 +221,8 @@ RankBall 다크 모드는 이 팔레트를 기본 CSS 색상 표준으로 쓴다
 | 나 메뉴 | `--bg-profile` |
 | 골대 | `--bg-hoop` |
 | 공/도시 | `--bg-ball` |
+| 매칭 hero 전용 | `--bg-recruiting` |
+| 진행 hero 전용 | `--bg-recorder` |
 | 크기 | `--hero-bg-size` |
 | 위치 | `--hero-bg-position-*` |
 
@@ -229,6 +231,7 @@ RankBall 다크 모드는 이 팔레트를 기본 CSS 색상 표준으로 쓴다
 - `--bg-*` URL만 바꾼다.
 - `--hero-bg-position-*`은 바꾸지 않는다.
 - 같은 위치에서 낮/밤 차이만 보여야 한다.
+- 매칭과 진행 hero는 generic `--bg-ball`/`--bg-hoop`을 재사용하지 않고 전용 토큰을 쓴다. 원인/결과: 같은 배경이 여러 메뉴에 반복되어 화면 구분이 약해졌으므로 메뉴별 hero 이미지를 분리한다.
 
 ## 카드 원칙
 

@@ -128,6 +128,8 @@
   --bg-profile: none;
   --bg-hoop: none;
   --bg-ball: none;
+  --bg-recruiting: none;
+  --bg-recorder: none;
   --hero-bg-size: cover;
   --hero-crop-court: center center;
   --hero-crop-action: center 32%;
@@ -215,6 +217,8 @@ html[data-theme="light"] {
   --bg-profile: none;
   --bg-hoop: none;
   --bg-ball: none;
+  --bg-recruiting: none;
+  --bg-recorder: none;
   --hero-bg-position-court: var(--hero-crop-court);
   --hero-bg-position-action: var(--hero-crop-action);
   --hero-bg-position-profile: var(--hero-crop-profile);

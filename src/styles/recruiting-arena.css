@@ -7093,3 +7093,11 @@ html[data-theme="light"] .arena-hero-copy h1 {
   max-width: 1440px;
   margin-inline: auto;
 }
+
+/* 2026-07-02 recruiting owns its hero image instead of sharing the generic ball hero. */
+.arena-recruit-hero,
+html[data-theme="light"] .arena-recruit-hero {
+  background:
+    var(--bg-recruiting) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat,
+    var(--rb-bg-2);
+}

@@ -34,6 +34,8 @@ export function installRemoteAssetVariables() {
   --bg-profile: ${cssUrl("/assets/rankball-profile-night.webp")};
   --bg-hoop: ${cssUrl("/assets/rankball-hoop-night.webp")};
   --bg-ball: ${cssUrl("/assets/rankball-ball-night.webp")};
+  --bg-recruiting: ${cssUrl("/assets/court-ball-night.webp")};
+  --bg-recorder: ${cssUrl("/assets/NY-court-night.webp")};
 }
 
 html[data-theme="light"] {
@@ -42,6 +44,8 @@ html[data-theme="light"] {
   --bg-profile: ${cssUrl("/assets/rankball-action-day.webp")};
   --bg-hoop: ${cssUrl("/assets/rankball-hoop-day.webp")};
   --bg-ball: ${cssUrl("/assets/rankball-ball-day.webp")};
+  --bg-recruiting: ${cssUrl("/assets/court-ball-day.webp")};
+  --bg-recorder: ${cssUrl("/assets/NY-court-day.webp")};
 }
 `;
   document.head.appendChild(style);
