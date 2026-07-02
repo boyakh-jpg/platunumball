@@ -14182,3 +14182,28 @@ html[data-theme="light"] .referee-rulebook-hero::after {
     font-size: var(--hero-title-size-mobile);
   }
 }
+
+/* 2026-07-02 team hub mobile keeps the first-place board inside the hero. */
+@media (max-width: 759px) {
+  .app-main > .page-stack.teams-page > .team-hub-hero:first-child {
+    min-height: auto;
+    align-content: start;
+    gap: 12px;
+  }
+
+  .app-main > .page-stack.teams-page > .team-hub-hero:first-child .team-hub-board {
+    display: grid;
+    width: 100%;
+    max-width: none;
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .app-main > .page-stack.teams-page > .team-hub-hero:first-child .team-hub-board strong {
+    font-size: clamp(1.6rem, 8vw, 2.2rem);
+  }
+
+  .app-main > .page-stack.teams-page > .team-hub-hero:first-child .team-hub-board em {
+    font-size: 0.85rem;
+  }
+}
