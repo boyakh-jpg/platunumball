@@ -14357,3 +14357,30 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
       var(--rb-bg-2);
   }
 }
+
+/* 2026-07-03 profile/signup form alignment. */
+.profile-form-grid {
+  align-items: start;
+}
+
+.profile-form-grid > label {
+  min-height: 90px;
+  align-content: start;
+}
+
+.profile-form-grid > label > input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+.profile-form-grid > label > select,
+.profile-form-grid > label > .prefixed-input {
+  height: var(--ui-button-height);
+  min-height: var(--ui-button-height);
+}
+
+.profile-form-grid > label > .prefixed-input > input {
+  height: 100%;
+  min-height: 0;
+}
+
+.profile-form-grid > .button {
+  align-self: end;
+  min-height: var(--ui-button-height);
+}

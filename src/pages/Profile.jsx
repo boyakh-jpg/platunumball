@@ -102,12 +102,12 @@ function RecentRecordCard({ records, userId }) {
 
 export default function Profile({ app }) {
   const user = app.currentUser;
-  const inferredRegion = inferRegionSelection(user.region);
+  const inferredRegion = inferRegionSelection([user.regionSido, user.regionDistrict, user.region].filter(Boolean).join(" "));
   const [draft, setDraft] = useState({
     name: user.name ?? "",
     position: POSITION_OPTIONS.includes(user.position) ? user.position : "PG",
-    regionSido: user.regionSido ?? inferredRegion.sido,
-    regionDistrict: user.regionDistrict ?? inferredRegion.district,
+    regionSido: inferredRegion.sido,
+    regionDistrict: inferredRegion.district,
     school: user.school ?? "",
     company: user.company ?? "",
   });
@@ -161,7 +161,7 @@ export default function Profile({ app }) {
                 <h2>{getUserHashtag(user)}</h2>
               </div>
             </div>
-            <form className="form-grid" onSubmit={submit}>
+            <form className="form-grid profile-form-grid" onSubmit={submit}>
               <label>
                 닉네임
                 <input value={draft.name} onChange={(event) => update({ name: event.target.value })} />

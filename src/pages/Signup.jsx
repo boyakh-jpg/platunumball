@@ -35,7 +35,7 @@ function getInitialHandleBody(user = {}, suffix = "") {
 export default function Signup({ app, auth }) {
   const navigate = useNavigate();
   const user = app.currentUser;
-  const inferredRegion = inferRegionSelection(user.region);
+  const inferredRegion = inferRegionSelection([user.regionSido, user.regionDistrict, user.region].filter(Boolean).join(" "));
   const [suggestionSuffix] = useState(makeRandomDigitSuffix);
   const [handleTouched, setHandleTouched] = useState(() => Boolean(stripHandle(user.hashtag ?? user.handle ?? "")));
   const [draft, setDraft] = useState(() => ({
@@ -142,7 +142,7 @@ export default function Signup({ app, auth }) {
             <Badge tone="green">{ageGroupLabel}</Badge>
           </div>
 
-          <form className="form-grid" onSubmit={submit}>
+          <form className="form-grid profile-form-grid" onSubmit={submit}>
             <label>
               닉네임
               <input required value={draft.name} maxLength={20} onChange={(event) => update({ name: event.target.value })} />
