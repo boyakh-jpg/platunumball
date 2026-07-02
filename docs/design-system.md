@@ -502,7 +502,7 @@ RankBall 다크 모드는 이 팔레트를 기본 CSS 색상 표준으로 쓴다
 - 단순 대기중 방은 홈 액션에 넣지 않음.
 - 카드 그라데이션 혼자 튀지 않게 통일.
 - 랭킹/모드별 티어는 2x2 기준으로 정렬.
-- 홈 상단 사용자 요약과 `경기 만들기` CTA는 랭크/티어 히어로 안에 둔다. 별도 상단 카드로 분리하지 않는다.
+- 홈 `경기 만들기` CTA는 검색 패널 오른쪽에 둔다. 랭킹/경기/팀/매칭 중복 빠른 링크는 검색 패널 옆에 두지 않는다.
 - 검색 입력은 공용 `SearchPicker`를 쓴다. 입력 즉시 아래에 결과를 띄우고, 화면 목적에 맞는 대상만 검색한다.
 - 방만들기 심판 초대는 native select가 아니라 공용 `SearchPicker`를 쓰고, 심판 자격이 있는 후보만 검색한다.
 - 설정의 요청 폼은 신뢰도/권한 조건을 제출 버튼 근처에 먼저 보여주고, 조건 미달이면 버튼을 비활성화한다.
@@ -829,6 +829,7 @@ UI 수정 전:
 2. Mobile home keeps the hero first and places search directly below the hero before action queue.
 3. Desktop search results open as a dropdown so the top bar does not push the hero down.
 4. Home search uses the outer search field border only; the text input itself does not draw a second inner border.
+5. Home search panel uses one primary `경기 만들기` CTA on the right side; duplicate quick links like ranking, matches, teams, and recruiting are not shown beside search.
 
 ## 2026-07-01 Mobile hero bleed
 

@@ -12191,8 +12191,9 @@ html[data-theme="light"] .app-main {
   }
 
   .rank-home .home-search-panel.rank-search-card > .search-picker {
-    flex: 1 1 520px;
-    max-width: 560px;
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: none;
   }
 
   .rank-home .home-search-panel.rank-search-card .home-search-box {
@@ -12205,10 +12206,9 @@ html[data-theme="light"] .app-main {
     font-size: 14px;
   }
 
-  .rank-home .home-search-panel.rank-search-card .rank-quick-links {
+  .rank-home .home-search-panel.rank-search-card .home-search-create {
     margin-left: auto;
     flex: 0 0 auto;
-    justify-content: flex-end;
   }
 
   .rank-home .home-search-panel.rank-search-card .home-search-results {
@@ -14226,6 +14226,18 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
 .rank-home .home-search-panel.rank-search-card .home-search-box:focus-within {
   border-color: color-mix(in srgb, var(--rb-orange-2) 58%, var(--rb-line));
   box-shadow: var(--focus-ring);
+}
+
+.rank-home .home-search-create {
+  display: inline-flex;
+  width: max-content;
+  max-width: 100%;
+  text-decoration: none;
+}
+
+.rank-home .home-search-create-button {
+  min-height: 44px;
+  white-space: nowrap;
 }
 
 .rank-home .home-top-rail > .home-action-card {

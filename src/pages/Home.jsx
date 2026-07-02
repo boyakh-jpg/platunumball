@@ -434,12 +434,9 @@ export default function Home({ app }) {
           detailLimit={SEARCH_DETAIL_LIMIT}
           fieldClassName="home-search-box"
         />
-        <div className="rank-quick-links">
-          <Link to="/app/rankings">랭킹</Link>
-          <Link to="/app/matches">경기</Link>
-          <Link to="/app/teams">팀</Link>
-          <Link to="/app/recruiting">매칭</Link>
-        </div>
+        <Link to="/app/create" className="home-search-create">
+          <Button className="home-search-create-button"><PlusCircle size={18} /> 경기 만들기</Button>
+        </Link>
       </Card>
 
       <section className="rank-summary-grid">
@@ -450,9 +447,6 @@ export default function Home({ app }) {
               <h1>{user.name}님의 오늘 코트 현황</h1>
               <p>{user.region} · {user.position} · 통합 {getTierDivision(user.ratings.integrated)} · {Math.round(user.ratings.integrated)} MMR</p>
             </div>
-            <Link to="/app/create">
-              <Button><PlusCircle size={18} /> 경기 만들기</Button>
-            </Link>
           </div>
         </div>
       </section>
