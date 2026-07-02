@@ -673,6 +673,27 @@ async function loadProfileState(authUserId, authEmail) {
   });
 }
 
+function getEndpointFallbackMeta(options = {}, errorMessage = "") {
+  const error = String(errorMessage ?? "").trim();
+  return {
+    matchPage: {
+      exhausted: true,
+      recruitingScheduleChecked: true,
+      ...(error ? { error } : {}),
+    },
+    recruitingPage: {
+      exhausted: true,
+      feedCounts: null,
+      regionScope: "local",
+      regionKey: "",
+      ...getRecruitingStartFilterRequest({ startFilter: options.startFilter ?? "all" }),
+      ...(error ? { error } : {}),
+    },
+    directoryLoaded: ["teamsList", "teamDetail"].includes(options.endpoint),
+    profileRecordsLoaded: false,
+  };
+}
+
 async function loadBackendState(authUserId, authEmail, options = getInitialStateLoadOptions()) {
   const loadOptions = {
     scope: options.scope,
@@ -683,6 +704,7 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
     directoryScope: "related",
     adminContext: false,
   };
+  let fallbackErrorMessage = "";
   try {
     if (options.endpoint === "teamsList") {
       const result = await postServerAction(
@@ -786,12 +808,7 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
       });
     }
     if (options.endpoint) {
-      return attachRemoteMeta(await loadProfileState(authUserId, authEmail), {
-        matchPage: { exhausted: true, recruitingScheduleChecked: true },
-        recruitingPage: { exhausted: true, feedCounts: null },
-        directoryLoaded: ["teamsList", "teamDetail"].includes(options.endpoint),
-        profileRecordsLoaded: false,
-      });
+      return attachRemoteMeta(await loadProfileState(authUserId, authEmail), getEndpointFallbackMeta(options));
     }
     const result = await postServerAction(
       "/api/state/load",
@@ -801,14 +818,10 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
     if (result?.state) return attachRemoteMeta(normalizeServerState(result.state), { recruitingPage: result.page ?? null });
   } catch (error) {
     console.warn("Server state load failed. Falling back to profile-only state.", error.message);
+    fallbackErrorMessage = error.message ?? "state_load_failed";
   }
   if (options.endpoint) {
-    return attachRemoteMeta(await loadProfileState(authUserId, authEmail), {
-      matchPage: { exhausted: true, recruitingScheduleChecked: true },
-      recruitingPage: { exhausted: true, feedCounts: null },
-      directoryLoaded: ["teamsList", "teamDetail"].includes(options.endpoint),
-      profileRecordsLoaded: false,
-    });
+    return attachRemoteMeta(await loadProfileState(authUserId, authEmail), getEndpointFallbackMeta(options, fallbackErrorMessage));
   }
   return attachRemoteMeta(await loadProfileState(authUserId, authEmail), {
     matchPage: { exhausted: true, recruitingScheduleChecked: true },
@@ -960,7 +973,7 @@ export function useAppData(authUser = null) {
           setMatchPagination({
             loading: false,
             exhausted: initialMatchLimit <= 0 || (matchPageHasExhausted ? remoteMeta.matchPage.exhausted : (maintainedState.matches?.length ?? 0) < initialMatchLimit),
-            error: "",
+            error: remoteMeta.matchPage?.error ?? "",
             cursor: remoteMeta.matchPage?.cursor ?? getMatchPaginationCursor(maintainedState.matches),
             recruitingScheduleChecked,
             recruitingScheduleLoading: false,
@@ -969,7 +982,7 @@ export function useAppData(authUser = null) {
           setRecruitingPagination({
             loading: false,
             exhausted: initialRecruitingLimit <= 0 || (recruitingPageHasExhausted ? remoteMeta.recruitingPage.exhausted : (maintainedState.recruitingPosts?.length ?? 0) < initialRecruitingLimit),
-            error: "",
+            error: remoteMeta.recruitingPage?.error ?? "",
             cursor: remoteMeta.recruitingPage?.cursor ?? getRecruitingPaginationCursor(maintainedState.recruitingPosts),
             offset: getRecruitingPaginationOffset(remoteMeta.recruitingPage, maintainedState.recruitingPosts?.length ?? 0),
             ...getRecruitingRegionRequest(remoteMeta.recruitingPage),
