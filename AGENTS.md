@@ -32,8 +32,10 @@ Caveman mode.
 After every task, report:
 1. changed files
 2. exact changes
-3. commands run
-4. important warnings
+3. cause
+4. result
+5. commands run
+6. important warnings
 
 ## Development rules
 - Inspect current files before editing.

@@ -623,7 +623,7 @@ Rules:
 - Do not create many files under api/. Vercel Hobby limit means use api/index.js and server/api routes.
 - If changing room/match/referee/record/team/tournament/auth logic, check docs/logic-and-terminology.md first and update it if logic changes.
 - If changing UI/CSS/theme/layout, check docs/design-system.md first and update it if design behavior changes.
-- After editing, report changed files, exact changes, commands run, test/build result, warnings.
+- After editing, report changed files, exact changes, cause, result, commands run, test/build result, warnings.
 
 Start by running:
 - git status --short
