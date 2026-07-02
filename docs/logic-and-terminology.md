@@ -1768,6 +1768,11 @@ flowchart TD
 - 2026-06-30: Recruiting roster validation may skip the extra `profiles` existence query only when the roster contains exactly the already-authenticated profile and no team roster checks are needed. Team, invite, reserve, and multi-player rosters must still run profile/team validation.
 - 2026-06-30: Recruiting invite authorization treats only `pending` invitations as active. Cancelled, declined, and expired invitations must not permit private-room join/accept/decline/referee actions. Recruiting snapshots also reject oversized host/applicant active rosters and the same active player appearing on both sides before DB persistence.
 
+## 2026-07-02 room chat persistence
+
+- `sendRecruitingChat` uses server authoritative replay and appends to the latest `recruiting_posts.room_state.chatMessages`.
+- Room chat must not remain local-only. Other participants and fresh reloads must see the same messages.
+
 ## 2026-07-01 test login and shared rule constants
 
 - RANKBALL_AUTH_CLEANUP: production test-token allowlist flow is dead. Remove old env docs after deployment env cleanup.

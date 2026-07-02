@@ -627,6 +627,7 @@ const AUTHORITATIVE_REPLAY_RECRUITING_ACTIONS = new Set([
   "inviteRecruitingReferee",
   "acceptRecruitingInvitation",
   "declineRecruitingInvitation",
+  "sendRecruitingChat",
   "joinRecruitingSideParty",
   "setRecruitingApplicantPlacement",
   "setRecruitingSlotPosition",
