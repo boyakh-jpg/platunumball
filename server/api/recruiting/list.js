@@ -12,6 +12,7 @@ import {
 let currentUserRecruitingRpcAvailable = true;
 let userRoomFeedAvailable = true;
 let userRoomFeedScopeAvailable = true;
+let userRoomFeedTimingColumnsAvailable = true;
 
 const PROFILE_ME_COLUMNS = "id,name,handle,hashtag,position,region,region_sido,region_district,school,company,club,trust_score,streak,avatar_color,test_login_id,auth_user_id,birth_year,age_group,age_group_checked_season,onboarding_complete,profile_version,handle_locked_at,birth_year_locked_at,name_updated_at,discord_connection,discord_user_id,ratings,created_at,updated_at,app_settings";
 const PROFILE_PUBLIC_COLUMNS = "id,name,handle,hashtag,position,region,trust_score,avatar_color,ratings,age_group,updated_at";
@@ -176,9 +177,19 @@ function isMissingUserRoomFeed(error = {}) {
   return error?.code === "PGRST205" || error?.code === "42P01" || message.includes("user_room_feed");
 }
 
+function isMissingRoomFeedCards(error = {}) {
+  const message = String(error?.message ?? "");
+  return error?.code === "PGRST205" || error?.code === "42P01" || message.includes("room_feed_cards");
+}
+
 function isMissingUserRoomFeedScope(error = {}) {
   const message = String(error?.message ?? "");
-  return error?.code === "42703" || error?.code === "PGRST204" || message.includes("feed_scope");
+  return message.includes("feed_scope");
+}
+
+function isMissingUserRoomFeedTimingColumns(error = {}) {
+  const message = String(error?.message ?? "");
+  return message.includes("timing_type") || message.includes("scheduled_date");
 }
 
 function isMissingRecruitingFeedCountsRpc(error = {}) {
@@ -292,6 +303,25 @@ function uniqueFeedCards(rows = [], ids = []) {
     if (card) cards.set(id, relation ? { ...card, __feedRelations: [relation] } : card);
   });
   return ids.map((id) => cards.get(id)).filter(Boolean);
+}
+
+async function attachRoomFeedCards(client, rows = [], entityType = "recruiting") {
+  const ids = uniqueIds(rows.map((row) => row?.entity_id));
+  if (!ids.length) return rows;
+  const { data, error } = await client
+    .from("room_feed_cards")
+    .select("entity_id,card_json")
+    .eq("entity_type", entityType)
+    .in("entity_id", ids);
+  if (error) {
+    if (isMissingRoomFeedCards(error)) return rows;
+    throw error;
+  }
+  const cardById = new Map((data ?? []).map((row) => [row.entity_id, row.card_json]));
+  return rows.map((row) => ({
+    ...row,
+    card_json: cardById.get(row?.entity_id) ?? row?.card_json ?? {},
+  }));
 }
 
 function mergeFeedCards(...cardGroups) {
@@ -629,10 +659,14 @@ async function queryRecruitingFeedPage(client, {
   timingType = "",
   scheduledDate = "",
   useFeedScope = false,
+  useTimingColumns = true,
 } = {}) {
+  const selectColumns = includeCards
+    ? (useTimingColumns ? "entity_id,sort_at,relation,timing_type,scheduled_date,card_json" : "entity_id,sort_at,relation,card_json")
+    : (useTimingColumns ? "entity_id,sort_at,relation,timing_type,scheduled_date" : "entity_id,sort_at,relation");
   let query = client
     .from("user_room_feed")
-    .select(includeCards ? "entity_id,sort_at,relation,card_json" : "entity_id,sort_at,relation")
+    .select(selectColumns)
     .eq("entity_type", "recruiting")
     .eq("is_active", true)
     .eq("status", status)
@@ -647,8 +681,13 @@ async function queryRecruitingFeedPage(client, {
   }
   if (relations.length) query = query.in("relation", relations);
   if (regionKey) query = query.eq("region_key", regionKey);
-  if (timingType === INSTANT_TIMING_TYPE) query = query.or(`card_json->>timingType.eq.${INSTANT_TIMING_TYPE},card_json->>scheduledAt.eq.${LEGACY_INSTANT_LABEL}`);
-  if (scheduledDate) query = query.eq("card_json->>scheduledDate", scheduledDate);
+  if (useTimingColumns) {
+    if (timingType === INSTANT_TIMING_TYPE) query = query.eq("timing_type", INSTANT_TIMING_TYPE);
+    if (scheduledDate) query = query.eq("scheduled_date", scheduledDate);
+  } else {
+    if (timingType === INSTANT_TIMING_TYPE) query = query.or(`card_json->>timingType.eq.${INSTANT_TIMING_TYPE},card_json->>scheduledAt.eq.${LEGACY_INSTANT_LABEL}`);
+    if (scheduledDate) query = query.eq("card_json->>scheduledDate", scheduledDate);
+  }
   return query;
 }
 
@@ -686,6 +725,7 @@ async function fetchRecruitingFeedPage(client, {
   let { data, error } = await queryRecruitingFeedPage(client, {
     ...queryOptions,
     useFeedScope: userRoomFeedScopeAvailable,
+    useTimingColumns: userRoomFeedTimingColumnsAvailable,
   });
   if (error && userRoomFeedScopeAvailable && isMissingUserRoomFeedScope(error)) {
     userRoomFeedScopeAvailable = false;
@@ -693,6 +733,25 @@ async function fetchRecruitingFeedPage(client, {
     ({ data, error } = await queryRecruitingFeedPage(client, {
       ...queryOptions,
       useFeedScope: false,
+      useTimingColumns: userRoomFeedTimingColumnsAvailable,
+    }));
+  }
+  if (error && userRoomFeedTimingColumnsAvailable && isMissingUserRoomFeedTimingColumns(error)) {
+    userRoomFeedTimingColumnsAvailable = false;
+    console.warn("User room feed timing columns skipped.", error.message);
+    ({ data, error } = await queryRecruitingFeedPage(client, {
+      ...queryOptions,
+      useFeedScope: userRoomFeedScopeAvailable,
+      useTimingColumns: false,
+    }));
+  }
+  if (error && userRoomFeedScopeAvailable && isMissingUserRoomFeedScope(error)) {
+    userRoomFeedScopeAvailable = false;
+    console.warn("User room feed scope skipped.", error.message);
+    ({ data, error } = await queryRecruitingFeedPage(client, {
+      ...queryOptions,
+      useFeedScope: false,
+      useTimingColumns: userRoomFeedTimingColumnsAvailable,
     }));
   }
   if (error) {
@@ -703,7 +762,7 @@ async function fetchRecruitingFeedPage(client, {
     }
     throw error;
   }
-  const rows = data ?? [];
+  const rows = includeCards ? await attachRoomFeedCards(client, data ?? [], "recruiting") : (data ?? []);
   const ids = uniqueIds(rows.map((row) => row?.entity_id)).slice(0, cappedLimit);
   const cards = includeCards ? uniqueFeedCards(rows, ids) : [];
   const nextOffset = safeOffset + rows.length;

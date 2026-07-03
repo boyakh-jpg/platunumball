@@ -60,6 +60,11 @@ function isMissingUserRoomFeed(error = {}) {
   return error?.code === "PGRST205" || error?.code === "42P01" || message.includes("user_room_feed");
 }
 
+function isMissingRoomFeedCards(error = {}) {
+  const message = String(error?.message ?? "");
+  return error?.code === "PGRST205" || error?.code === "42P01" || message.includes("room_feed_cards");
+}
+
 function getFeedOffsetCursor(value = "") {
   const text = String(value ?? "");
   if (!text.startsWith("feed:")) return 0;
@@ -142,6 +147,25 @@ function uniqueFeedCards(rows = [], ids = []) {
     if (card) cards.set(id, card);
   });
   return ids.map((id) => cards.get(id)).filter(Boolean);
+}
+
+async function attachRoomFeedCards(client, rows = [], entityType = "match") {
+  const ids = unique(rows.map((row) => row?.entity_id));
+  if (!ids.length) return rows;
+  const { data, error } = await client
+    .from("room_feed_cards")
+    .select("entity_id,card_json")
+    .eq("entity_type", entityType)
+    .in("entity_id", ids);
+  if (error) {
+    if (isMissingRoomFeedCards(error)) return rows;
+    throw error;
+  }
+  const cardById = new Map((data ?? []).map((row) => [row.entity_id, row.card_json]));
+  return rows.map((row) => ({
+    ...row,
+    card_json: cardById.get(row?.entity_id) ?? row?.card_json ?? {},
+  }));
 }
 
 function collectMatchCardScope(cards = []) {
@@ -275,7 +299,8 @@ async function fetchMatchFeedPage(client, profileId = "", limit = REMOTE_CLIENT_
     throw error;
   }
   const ids = unique((data ?? []).map((row) => row?.entity_id)).slice(0, cappedLimit);
-  const rows = (data ?? []).filter((row) => ids.includes(row?.entity_id));
+  const feedRows = await attachRoomFeedCards(client, data ?? [], "match");
+  const rows = feedRows.filter((row) => ids.includes(row?.entity_id));
   const cards = uniqueFeedCards(rows, ids);
   return {
     ids,
@@ -312,7 +337,8 @@ async function fetchRecentCompletedMatchFeedPage(client, profileId = "", hours =
     throw error;
   }
   const ids = unique((data ?? []).map((row) => row?.entity_id)).slice(0, cappedLimit);
-  const rows = (data ?? []).filter((row) => ids.includes(row?.entity_id));
+  const feedRows = await attachRoomFeedCards(client, data ?? [], "match");
+  const rows = feedRows.filter((row) => ids.includes(row?.entity_id));
   const cards = uniqueFeedCards(rows, ids).map((card) => ({ ...card, recentCompleted: true }));
   return {
     ids,
@@ -471,7 +497,7 @@ async function fetchCurrentUserCompletedMatchIds(client, profileId = "", limit =
     }
     throw error;
   }
-  const rows = data ?? [];
+  const rows = await attachRoomFeedCards(client, data ?? [], "match");
   const ids = unique(rows.map((row) => row?.entity_id)).slice(0, cappedLimit);
   const cards = uniqueFeedCards(rows, ids);
   return {

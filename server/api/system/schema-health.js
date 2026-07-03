@@ -85,9 +85,17 @@ const REQUIRED_COLUMNS = {
     "feed_scope",
     "region_key",
     "status",
+    "timing_type",
+    "scheduled_date",
     "card_json",
     "sort_at",
     "is_active",
+  ],
+  room_feed_cards: [
+    "entity_type",
+    "entity_id",
+    "card_json",
+    "updated_at",
   ],
   match_results: [
     "match_id",

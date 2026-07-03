@@ -160,9 +160,13 @@ body > .basketball-loader-overlay ~ .basketball-loader-overlay {
 }
 
 .basketball-loader-text {
+  min-width: 12rem;
   color: var(--gold);
   font-size: 0.78rem;
   font-weight: 950;
+  line-height: 1.25;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .sidebar {

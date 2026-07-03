@@ -4182,6 +4182,8 @@ create table if not exists public.user_room_feed (
   region_key text,
   status text,
   visibility text,
+  timing_type text,
+  scheduled_date date,
   sort_at timestamptz not null default now(),
   is_active boolean not null default true,
   card_json jsonb not null default '{}'::jsonb,
@@ -4194,6 +4196,15 @@ create table if not exists public.user_room_feed (
     (relation = 'region_public' and feed_scope = 'public')
     or (relation <> 'region_public' and feed_scope = 'profile')
   )
+);
+
+create table if not exists public.room_feed_cards (
+  entity_type text not null,
+  entity_id text not null,
+  card_json jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now(),
+  primary key (entity_type, entity_id),
+  constraint room_feed_cards_entity_type_check check (entity_type in ('recruiting', 'match'))
 );
 
 drop index if exists public.user_room_feed_profile_idx;
@@ -4229,6 +4240,7 @@ create index if not exists matches_former_referee_updated_idx
   on public.matches (former_referee_id, updated_at desc, id desc);
 
 alter table public.user_room_feed enable row level security;
+alter table public.room_feed_cards enable row level security;
 
 drop policy if exists user_room_feed_select_related on public.user_room_feed;
 create policy user_room_feed_select_related
@@ -4241,6 +4253,7 @@ using (
 );
 
 grant select on public.user_room_feed to authenticated;
+grant select, insert, update on public.room_feed_cards to service_role;
 
 create or replace function public.rankball_room_feed_region_key(p_value text)
 returns text
@@ -4319,6 +4332,34 @@ begin
 end;
 $$;
 
+create or replace function public.rankball_upsert_room_feed_card(
+  p_entity_type text,
+  p_entity_id text,
+  p_card_json jsonb
+)
+returns void
+language sql
+security definer
+set search_path = public
+as $$
+  insert into public.room_feed_cards (
+    entity_type,
+    entity_id,
+    card_json,
+    updated_at
+  )
+  values (
+    p_entity_type,
+    p_entity_id,
+    coalesce(p_card_json, '{}'::jsonb),
+    now()
+  )
+  on conflict (entity_type, entity_id)
+  do update set
+    card_json = excluded.card_json,
+    updated_at = now();
+$$;
+
 create or replace function public.rankball_upsert_room_feed(
   p_profile_id text,
   p_entity_type text,
@@ -4331,10 +4372,22 @@ create or replace function public.rankball_upsert_room_feed(
   p_card_json jsonb default '{}'::jsonb
 )
 returns void
-language sql
+language plpgsql
 security definer
 set search_path = public
 as $$
+declare
+  feed_card jsonb := coalesce(p_card_json, '{}'::jsonb);
+  feed_timing_type text := nullif(feed_card->>'timingType', '');
+  feed_scheduled_date date := case
+    when coalesce(feed_card->>'scheduledDate', '') ~ '^\d{4}-\d{2}-\d{2}$' then (feed_card->>'scheduledDate')::date
+    else null
+  end;
+begin
+  if jsonb_typeof(feed_card) = 'object' and feed_card <> '{}'::jsonb then
+    perform public.rankball_upsert_room_feed_card(p_entity_type, p_entity_id, feed_card);
+  end if;
+
   insert into public.user_room_feed (
     profile_id,
     entity_type,
@@ -4344,6 +4397,8 @@ as $$
     region_key,
     status,
     visibility,
+    timing_type,
+    scheduled_date,
     sort_at,
     is_active,
     card_json,
@@ -4358,9 +4413,11 @@ as $$
     p_region_key,
     p_status,
     p_visibility,
+    feed_timing_type,
+    feed_scheduled_date,
     coalesce(p_sort_at, now()),
     true,
-    coalesce(p_card_json, '{}'::jsonb),
+    '{}'::jsonb,
     now()
   )
   on conflict (profile_id, entity_type, entity_id, relation)
@@ -4369,10 +4426,13 @@ as $$
     region_key = excluded.region_key,
     status = excluded.status,
     visibility = excluded.visibility,
+    timing_type = excluded.timing_type,
+    scheduled_date = excluded.scheduled_date,
     sort_at = excluded.sort_at,
     is_active = true,
-    card_json = excluded.card_json,
+    card_json = '{}'::jsonb,
     updated_at = now();
+end;
 $$;
 
 create or replace function public.rankball_refresh_recruiting_feed_for_post(p_post_id text)
@@ -4757,6 +4817,13 @@ as $$
       max(feed.sort_at) as sort_at,
       max(feed.status) as status,
       coalesce(
+        (
+          select card.card_json
+          from public.room_feed_cards card
+          where card.entity_type = 'match'
+            and card.entity_id = feed.entity_id
+          limit 1
+        ),
         (array_agg(feed.card_json order by feed.sort_at desc, feed.relation))[1],
         '{}'::jsonb
       ) as card_json,

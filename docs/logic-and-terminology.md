@@ -157,7 +157,7 @@
 
 ## 2026-06-30 egress 축소
 
-- 모집 `feedCounts`는 `rankball_recruiting_feed_counts(profileId)` RPC가 `created`, `joined`, `invited` 숫자만 반환한다. 초대 카드, 수락/거절, 방 상세 데이터는 `user_room_feed.card_json` 또는 상세 API가 계속 담당한다.
+- 모집 `feedCounts`는 `rankball_recruiting_feed_counts(profileId)` RPC가 `created`, `joined`, `invited` 숫자만 반환한다. 초대 카드, 수락/거절, 방 상세 데이터는 `room_feed_cards.card_json` 또는 상세 API가 계속 담당한다.
 - `/api/home/load`는 기본적으로 현재 사용자 경기/모집 feed와 프로필 bootstrap만 읽는다. 지역 모집 teaser는 `includeLocalRecruiting:true`일 때만 소량 읽고, 모집 count RPC는 `includeFeedCounts:true`일 때만 읽는다.
 - `/api/matches/list`의 모집 일정 병합은 카드 목록만 필요하므로 모집 `feedCounts`를 같이 읽지 않는다.
 - 원격 `scripts/simulate-backend-flow.mjs --base-url=...`는 기본 smoke 모드로 초대 수락과 기본 1v1만 실행한다. 전체 플로우 검증은 `--full` 또는 `RANKBALL_SIM_FULL=true`를 명시한다.
@@ -212,7 +212,7 @@
 
 ## 2026-06-29 match feed 카드 계약
 
-- `user_room_feed.card_json`의 match 카드는 목록 판단용 최소 상태를 반드시 포함한다.
+- `room_feed_cards.card_json`의 match 카드는 목록 판단용 최소 상태를 반드시 포함한다.
 - 포함 필드: `teamA/teamB`, `agreements`, `approvals`, `disputes`, `result.statSubmissions`, `result.playerStats`, `startedAt`, `endedAt`, `confirmedAt`, `cancelledAt`, `voidedAt`.
 - `match_agreements`, `match_approvals`, `match_disputes`, `match_results`, `player_match_stats` 변경은 match feed를 즉시 갱신해야 한다.
 - 경기/홈 첫 목록은 feed 카드만으로 `todo`, `scheduled`, `record` 분류가 가능해야 하며, 상세 통계/기록 원본은 방 상세나 기록 화면 진입 때만 넓게 불러온다.
@@ -259,7 +259,7 @@
 
 - `/api/recruiting/list`는 `rankball_recruiting_feed_counts()`가 성공하면 fallback count를 읽지 않는다. fallback count는 feed count RPC/table이 없거나 실패한 경우에만 보정용으로 읽는다.
 - 모집/경기 목록 성능 정리는 데이터 삭제가 아니라 `CREATE INDEX IF NOT EXISTS` 기반으로만 한다.
-- 목록 응답은 `user_room_feed.card_json`을 우선 쓰고, fallback은 feed 누락/보정용으로 유지한다.
+- 목록 응답은 `user_room_feed` id와 `room_feed_cards.card_json`을 우선 쓰고, fallback은 feed 누락/보정용으로 유지한다.
 - 경기 메뉴 `MY/내 일정` 카운트는 실제 목록에 쓰는 `shouldShowMatchInList` 기준과 일치해야 한다. 숨기는 확정/기록방을 숫자에만 포함하지 않는다.
 - 홈 Action Queue는 모집 초대, 대회 초대뿐 아니라 pending 팀 초대도 표시해야 한다.
 - 홈 팀 요약의 소속 팀 한도 표기는 `MAX_TEAM_MEMBERSHIPS`와 일치해야 한다.
@@ -1604,15 +1604,16 @@ flowchart TD
 11. `/api/recruiting/list` default reads are direct compact list-card queries when no explicit `postId` is requested. They load only recruiting_posts, recruiting_applications, current/host/referee compact profiles, compact teams/courts, and current profile settings. Chat, old notifications, reports, matches, tournaments, and broad app metadata stay out of the list response; full room state still comes from single post detail load or `listOnly=false`.
 12. `user_room_feed` is the DB-maintained index for recruiting owner/participant/invited/referee and local public rows. SQL triggers/reducers update it; the frontend must not create or trust this feed.
 12-0. If `user_room_feed` responds successfully, it is the source of truth for current-user room and invitation lists. An empty feed result is valid and must not be filled with stale fallback rows; fallback is only for missing or failed feed table/RPC paths.
-12-1. `user_room_feed.card_json` is refreshed by DB triggers on `recruiting_posts`, `recruiting_applications`, `matches`, `match_players`, `team_members`, `match_results`, `player_match_stats`, and display-name dependencies from `profiles`, `teams`, `approved_courts`, and legacy `courts`.
-12-2. `user_room_feed.card_json` is not an authoritative detail record. It stores only thin list fields and id arrays needed to choose/list rows. Names, court labels, full rules, result stats, approval/dispute details, and chat belong to source tables or explicit detail endpoints.
+12-1. `user_room_feed` is the relation/sort/filter index. Entity list cards are stored once per room/match in `room_feed_cards(entity_type, entity_id)`.
+12-2. `room_feed_cards.card_json` is refreshed by DB triggers on `recruiting_posts`, `recruiting_applications`, `matches`, `match_players`, `team_members`, `match_results`, `player_match_stats`, and display-name dependencies from `profiles`, `teams`, `approved_courts`, and legacy `courts`.
+12-3. `room_feed_cards.card_json` is not an authoritative detail record. It stores only thin list fields and id arrays needed to choose/list rows. Names, court labels, full rules, result stats, approval/dispute details, and chat belong to source tables or explicit detail endpoints.
 13. Recruiting room-scope counts come from `user_room_feed`, not from how many cards are currently loaded in `state.recruitingPosts`.
 14. If `user_room_feed` is unavailable, `scope='mine'` and room-scope counts must still include pending `room_state.invitations.targetUserId` so invited rooms do not disappear before the feed SQL is applied.
 15. Recruiting queue region selection uses `user_room_feed` `region_public` pages with a concrete `regionKey`. The default is the current user's local district; selecting another district reloads the first page for that region and `더 보기` continues the same region cursor. The frontend must not default to broad all-region loading.
 15-1. Public recruiting room region is based on the selected court region. Server fallback must match the same canonical region key exactly; it must not widen one key into district/full-address string variants.
 16. Recruiting room-scope loads may pass `roomScope: "created" | "joined" | "invited"`. `초대받음` must read the `invited` feed relation directly, not depend on the combined 50-row mine feed.
-17. `/api/recruiting/list` default region pages use `user_room_feed.card_json` first. When every page row has a card, the endpoint must not read `recruiting_posts`, `recruiting_applications`, `public_profiles`, teams, or courts for that page.
-17-1. If only some recruiting feed rows are missing usable `card_json`, `/api/recruiting/list` may row-read only those missing ids. It must not discard usable feed cards and reload the whole page.
+17. `/api/recruiting/list` default region pages use `user_room_feed` ids plus `room_feed_cards.card_json` first. When every page row has a card, the endpoint must not read `recruiting_posts`, `recruiting_applications`, `public_profiles`, teams, or courts for that page.
+17-1. If only some recruiting feed rows are missing usable `room_feed_cards.card_json`, `/api/recruiting/list` may row-read only those missing ids. It must not discard usable feed cards and reload the whole page.
 17-2. If a concrete public region plus instant/scheduled-date feed page is empty but matching public `recruiting_posts` rows exist, `/api/recruiting/list` may refresh `user_room_feed` for those bounded ids and return those ids as a one-request repair fallback when the refresh RPC is unavailable.
 18. Recruiting list-card posts may omit full team rows. Central lobby helpers must still calculate team host/applicant slots from stored `playerIds`, and fall back to the entry `playerId` when `playerIds` is empty and the team object is not loaded.
 
@@ -1641,7 +1642,7 @@ flowchart TD
 21. `checkInMatchPlayer` may use `rankball_match_checkin_action()` as a SQL reducer only for no-referee host-operated active-player check-in. Referee, reserve, party, self-check-in, future scheduled, and unsupported states must fall back to the existing authoritative match action path.
 22. `startMatch` may use `rankball_match_start_action()` as a SQL reducer only for no-referee host-operated matches with active-player attendance complete. Referee, reserve, party, future scheduled, and unsupported states must fall back to the existing authoritative match action path.
 23. `addMatchLatePlayer`/`removeMatchLatePlayer` may use `rankball_match_late_player_action()` as a SQL reducer only for no-referee host-operated postgame matches inside the stat entry window. The SQL path only accepts a single anonymous late-player add or a single excluded late-player remove; registered late-player add and unsupported states fall back to the existing authoritative match action path.
-24. `/api/matches/list` default reads use `rankball_match_list()` / `user_room_feed.card_json` current-profile match cards first. It must not load `matches`, `match_players`, `public_profiles`, teams, or courts for the default card list when `card_json` is present. Full authoritative match state still belongs to `/api/matches/detail` or `listOnly=false`.
+24. `/api/matches/list` default reads use `rankball_match_list()` / `room_feed_cards.card_json` current-profile match cards first. It must not load `matches`, `match_players`, `public_profiles`, teams, or courts for the default card list when `card_json` is present. Full authoritative match state still belongs to `/api/matches/detail` or `listOnly=false`.
 25. Screen-specific server state such as `/api/profile/me`, `/api/matches/list`, `/api/recruiting/list`, and `/api/state/load` is normalized on the client before render so direct route entry receives the same base arrays/settings shape as other app routes.
 25-1. 클라이언트 정규화는 목록/방 컴포넌트 렌더 전에 `teams.members`를 배열로, `matches.teamA/teamB.players`를 기본 사이드 객체의 배열로 유지해야 한다.
 26. Match `parties` must be an array in client state. DB/API rows that carry `rules.parties` or `parties` as an object are normalized to an array before room/list helpers read them.
@@ -1651,14 +1652,14 @@ flowchart TD
 28-2. Matches recruiting schedule rows are current-user relation rows, not a preview list. The API and UI must not cap them to 12; they load up to the active match-list cap and render all loaded related rooms without a "more" click.
 28-3. Home upcoming matches must include current-user open recruiting schedule rooms, matching the Matches menu schedule source instead of reading `matches` only.
 28-3-1. Home and Matches use the same recruiting schedule relation helper: owner/player/referee/applicant/reserve/lobby entry all count as the current user's recruiting schedule relation.
-28-4. Matches recruiting schedule uses the same current-user `user_room_feed.card_json` loader as recruiting mine lists. When every schedule row has a feed card, it must not detail-read `recruiting_posts`, `recruiting_applications`, profiles, teams, or courts.
+28-4. Matches recruiting schedule uses the same current-user `user_room_feed` + `room_feed_cards.card_json` loader as recruiting mine lists. When every schedule row has a feed card, it must not detail-read `recruiting_posts`, `recruiting_applications`, profiles, teams, or courts.
 29. `user_room_feed` match rows are the first-page source for owned/participant/referee matches. `rankball_refresh_match_feed_for_match()` must keep match list `card_json` fresh whenever match or match player rows change. If the feed table/RPC is unavailable, `/api/matches/list` must fall back to current-profile candidate ids from `match_players.user_id`, `matches.created_by`, `matches.referee_id`, and `matches.former_referee_id`; it must not page through broad latest `matches` rows.
 30. `/app/recorder` must load `recorderOnly` match state on direct entry or after thin-route navigation before showing the final empty state. Recorder state includes only active `agreed`/`approval`/`disputed` matches related to the current profile.
 31. `/api/matches/list` with `listOnly:false` must not force `matchListOnly:true`; recorder/detail-like reads need `match_results` and `player_match_stats`.
 31-1. `/api/matches/list` with `completedOnly:true` loads current-profile participant confirmed match ids from `user_room_feed` first, then loads result/stat rows only for those ids and returns compact state. If the feed is unavailable, it falls back to `match_players` candidate ids before reading match rows. Home must not pre-load confirmed record rooms; `/app/profile/records` loads them once on entry.
 31-2. `/app/profile/records` loads completed detail rows for the latest 6 months only and computes date counts from that result. Older all-time records need a separate text/aggregate feed, not broad match/result/stat loading.
-32. `/api/matches/list` may return `page.source` and optional `debugTiming` for diagnosis. `page.source='rpc_card'` or `feed_card` means list cards came directly from `user_room_feed.card_json`; `page.source='feed'` means feed ids are active but card_json was missing; `page.source='fallback_mine'` means production is still using current-profile fallback and the feed SQL/deployment needs verification.
-32-1. `/api/matches/list` must keep usable partial `user_room_feed.card_json` cards. If only some feed cards are missing or invalid, it may row-read only those missing match ids and merge them back in feed order; it must not discard all valid cards and re-read the whole page.
+32. `/api/matches/list` may return `page.source` and optional `debugTiming` for diagnosis. `page.source='rpc_card'` or `feed_card` means list cards came from `room_feed_cards.card_json`; `page.source='feed'` means feed ids are active but card_json was missing; `page.source='fallback_mine'` means production is still using current-profile fallback and the feed SQL/deployment needs verification.
+32-1. `/api/matches/list` must keep usable partial `room_feed_cards.card_json` cards. If only some feed cards are missing or invalid, it may row-read only those missing match ids and merge them back in feed order; it must not discard all valid cards and re-read the whole page.
 33. Match `status='closed'` is a cleanup soft-close state, not a normal record-confirmed match state. `/api/matches/list` and `rankball_match_list()` exclude it from default current-user feed pages.
 34. Match room phase `record` is a completed-record phase, but `/app/matches` shows it only while the confirmed record is still inside the 24-hour evaluation window.
 35. `/app/matches` default list is not a paged "더 보기" feed. It loads current-user active matches in one request with `activeOnly=true` plus a small 24-hour recent-completed feed card query, excluding older record rows (`confirmed`) and terminal hidden rows (`cancelled`, `void`, `closed`). Past-history expansion must be a separate deliberate read from profile/team records, not the match menu load.
@@ -1668,7 +1669,7 @@ flowchart TD
 38. `/app/recruiting` 첫 목록 로드는 `feedCounts`를 같이 받아야 한다. `내가 만든 방/참여방/초대받음` 숫자는 클릭 전에도 current-user feed count 기준이어야 하며, 목록 일부 로드 fallback 숫자에 의존하지 않는다.
 38-1. `/app/recruiting` SPA 진입 때 기존 목록 row가 이미 있어도 `feedCounts`가 없으면 지역 첫 페이지를 다시 읽어 count를 채운다.
 38-2. `/api/recruiting/list`는 `user_room_feed`가 정상 응답하면 feed id만 source of truth로 사용한다. direct DB fallback id와 fallback count는 feed 테이블/RPC가 없거나 실패한 경우에만 보정 경로로 쓴다. fallback joined 판정은 `player_ids`, `referee_id`, `recruiting_applications.player_id/player_ids`, `room_state.partyReserves`, `room_state.pinnedReservePlayers`, `room_state.reserveReady`를 포함한다.
-38-3. `/app/recruiting` 시작일 필터는 서버 feed 필터를 우선 사용한다. 기본값은 즉시방이며, 전체 공개 목록은 `/api/recruiting/list`가 `user_room_feed.card_json.timingType/scheduledDate` 기준으로 즉시방 또는 해당 `scheduledDate`만 내려준다. legacy 즉시방 row는 `scheduledAt/scheduled_at="즉시"`도 즉시방으로 인정한다. 즉시방과 오늘 예약방은 별도 개념으로 분리한다. 직접 링크로 열린 `post`는 날짜 필터 때문에 숨기지 않는다.
+38-3. `/app/recruiting` 시작일 필터는 서버 feed 필터를 우선 사용한다. 기본값은 즉시방이며, 전체 공개 목록은 `/api/recruiting/list`가 `user_room_feed.timing_type/scheduled_date` 기준으로 즉시방 또는 해당 `scheduledDate`만 내려준다. legacy 즉시방 row는 `scheduledAt/scheduled_at="즉시"`도 즉시방으로 인정한다. 즉시방과 오늘 예약방은 별도 개념으로 분리한다. 직접 링크로 열린 `post`는 날짜 필터 때문에 숨기지 않는다.
 38-3-1. `/app/recruiting`에서 시작일 버튼을 누르면 `내가 만든 방/내 참여방/초대받음` relation scope를 해제하고 전체 공개 목록의 해당 시작일을 본다.
 38-4. `/app/recruiting`는 `feedCounts`와 현재 로드된 목록 수가 달라도 자동 `scope: "mine"` 보강 로드를 실행하지 않는다. 숫자와 목록은 최초 feed snapshot 기준을 우선한다.
 38-5. `/app/recruiting` 초기 공개 목록 요청은 current-user mine 방을 같은 응답에 병합하지 않는다. 생성/참여/초대 숫자는 `feedCounts`로 즉시 표시하고, 각 relation 목록은 버튼 클릭 시 `scope: "mine"`으로 로드한다.
@@ -1718,7 +1719,7 @@ flowchart TD
 16. Supabase remote state는 서버/DB가 source of truth다. 클라이언트 자동관리 함수는 원격 모집방/경기 상태를 로컬에서 임의로 취소/종료 처리하지 않는다. 만료, 자동취소, 자동확정 같은 lifecycle 변경은 server action/RPC로 저장된 뒤에만 화면 source of truth로 취급한다.
 
 17. `rankball_recruiting_slot_position_action()`은 선택 포지션을 `room_state.slotPositions`뿐 아니라 방장은 `recruiting_posts.position`, 개인 신청자는 `recruiting_applications.position`에도 저장한다.
-18. `/api/recruiting/list`가 `user_room_feed.card_json`으로 목록을 응답하더라도 카드에 들어 있는 방장, 참가자, 초대자, 초대 대상, 팀 프로필은 관련 공개 프로필/팀으로 같이 붙인다. 피드 카드는 id source이고, 표시용 user/team attachment를 생략하면 안 된다.
+18. `/api/recruiting/list`가 `room_feed_cards.card_json`으로 목록을 응답하더라도 카드에 들어 있는 방장, 참가자, 초대자, 초대 대상, 팀 프로필은 관련 공개 프로필/팀으로 같이 붙인다. 피드 카드는 id source이고, 표시용 user/team attachment를 생략하면 안 된다.
 19. Recruiting mutation 응답은 최신 post만 반환해도 클라이언트가 초대 대상/참가자 표시를 잃지 않도록 얇은 `state.users`/`state.teams`를 같이 병합한다.
 20. 팀 초대 목록과 현재 프로필 state는 팀원이 아닌 pending 초대의 `fromUserId`/`targetUserId` 공개 프로필도 같이 붙인다.
 21. Supabase 테스트 로그인은 Google auth 계정처럼 서버 프로필에 고정된 세션이다. Settings에서 임의 계정 전환 대상으로 취급하지 않는다.
@@ -1818,7 +1819,7 @@ flowchart TD
 - 2026-06-30: Recruiting region/date list loads reuse an in-flight request with the same region/start filter/page size. A render loop must not issue the same `/api/recruiting/list` request twice and then replace counts a few seconds later.
 - 2026-06-30: Recruiting sync responses must include the latest DB post after any successful write when possible. Invite accept/decline and roster changes must not return the pre-write snapshot as authoritative UI state.
 - 2026-06-30: When public recruiting feed cards and current-user recruiting feed cards contain the same room, the newest card wins and the current-user card wins ties. A stale public region card must not override the user's invite/participant card.
-- 2026-06-30: Production DB must apply `20260630173000_recruiting_feed_card_contract.sql` so `rankball_refresh_recruiting_feed_for_post` writes roster/application fields into `user_room_feed.card_json` and backfills active open recruiting feed rows.
+- 2026-07-03: Production DB must apply `20260703174500_room_feed_card_cache.sql` so `rankball_refresh_recruiting_feed_for_post` and `rankball_refresh_match_feed_for_match` write list cards once into `room_feed_cards.card_json`, while `user_room_feed` stays a relation/filter index.
 - 2026-06-30: Matches calendar day counts must use the same `getScheduleItemsForView` selector as the visible list. A day chip must not show a count for items that the selected view/list would hide.
 - 2026-06-30: Recruiting mutation success must not fan out into profile + mine list + match schedule + detail reloads. The sync response is authoritative for the changed room, and feed badge counts are adjusted locally for join/accept/decline/cancel.
 - 2026-06-30: Notifications page must trust the first route state for current-user notifications and recruiting invites. It must not auto-run profile refresh plus invited-room reload after the loader finishes.
