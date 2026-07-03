@@ -30,6 +30,13 @@
 - DB guard는 `matches.scheduled_at` 직접 쓰기를 date/time/timingType 기준으로 되돌린다.
 - legacy row만 `scheduled_at="즉시"`를 instant fallback으로 인정한다.
 
+## 2026-07-03 경기 공개범위 원본
+
+- 경기 공개범위 원본은 `matches.visibility`다.
+- `rules.visibility`와 `user_room_feed.visibility`는 목록/호환 스냅샷이다.
+- DB guard는 `rules.visibility` 직접 쓰기를 `matches.visibility` 기준으로 되돌린다.
+- legacy insert에서 `matches.visibility`가 비어 있고 `rules.visibility`만 있으면 최초 1회 column으로 승격한다.
+
 ## 2026-07-03 개인기록 재조회 이름 보존
 
 - 개인기록의 프리텍스트 팀명/상대명은 `rules.recordSummary.teamAName/teamBName`을 목록/상세 재조회 fallback 이름으로 사용한다.
