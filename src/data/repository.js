@@ -9,6 +9,7 @@ import {
   MODE_SIZES,
   PLAYER_STAT_FIELDS,
   PLAYER_POSITIONS,
+  REFEREE_ABSENCE_TRUST_PENALTY,
   REFEREE_TRUST_MIN,
   STAT_ENTRY_WINDOW_MINUTES,
   getHostTrustRequirement,
@@ -4878,6 +4879,7 @@ export function requestMatchRefereeAbsence(state, matchId) {
 
   return {
     ...state,
+    users: adjustUserTrust(state.users, match.refereeId, -REFEREE_ABSENCE_TRUST_PENALTY),
     matches: state.matches.map((item) => (item.id === matchId ? nextMatch : item)),
     notifications: [
       {
@@ -5284,7 +5286,7 @@ export function submitMatchThumbs(state, matchId, targetUserIds = []) {
     if (!gained && !lost) return user;
     return {
       ...user,
-      trustScore: Math.max(0, Math.min(100, Number(user.trustScore ?? 70) + (gained ? 1 : -1))),
+      trustScore: clampTrustScore((user.trustScore ?? 80) + (gained ? 1 : -1)),
     };
   });
 
@@ -5845,6 +5847,10 @@ function getReportableMatchTimeMs(match = {}) {
 
 function getReportableMatchUserIds(match = {}) {
   return uniquePlayerIds([
+    match.createdBy,
+    match.refereeId,
+    match.formerRefereeId,
+    ...Object.values(normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders)),
     ...getMatchPlayerIds(match),
     ...getMatchReservePlayerIds(match, "teamA"),
     ...getMatchReservePlayerIds(match, "teamB"),

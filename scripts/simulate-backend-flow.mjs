@@ -282,6 +282,16 @@ async function loadStateAs(testLoginId) {
   return payload.state;
 }
 
+async function getCurrentProfileTrustScore(testLoginId, expectedProfileId = "") {
+  const state = await loadStateAs(testLoginId);
+  const user = (state.users ?? []).find((item) => item.id === (expectedProfileId || state.currentUserId));
+  assertFlow(Boolean(user), `profile trust score missing for ${testLoginId}`, {
+    expectedProfileId,
+    currentUserId: state.currentUserId,
+  });
+  return Number(user.trustScore ?? 80);
+}
+
 async function loadTeamsAs(testLoginId) {
   const payload = await callHandler("/api/teams/list", teamsListHandler, await getAuthToken(testLoginId));
   assertFlow(payload?.ok && payload?.state, `teams list failed for ${testLoginId}`, payload);
@@ -904,9 +914,12 @@ async function runRecruitingInviteAcceptScenario({
     page: invitedBeforeAccept.payload?.page,
   });
   assertStateIncludesUsers(invitedBeforeAccept.payload, [hostId, inviteeId], "invited room scope missing feed users before accept");
-  assertFlow(hasPendingInvitationFor(invitedBeforeAccept.post, inviteeId), "invited room scope post missing pending invitation before accept", {
+  const invitedPostBeforeAccept = invitedBeforeAccept.post?.__invitationsPartial
+    ? await step(`${ids.label}:loadInvitedDetail:beforeAccept`, () => loadRecruitingPostAs(inviteeLogin, ids.postId))
+    : invitedBeforeAccept.post;
+  assertFlow(hasPendingInvitationFor(invitedPostBeforeAccept, inviteeId), "invited room scope post missing pending invitation before accept", {
     inviteeId,
-    post: invitedBeforeAccept.post,
+    post: invitedPostBeforeAccept,
   });
 
   const acceptResult = await step(`${ids.label}:acceptRecruitingInvitation`, () => syncRecruitingAs(inviteeLogin, {
@@ -934,11 +947,14 @@ async function runRecruitingInviteAcceptScenario({
   });
 
   const joinedAfterAccept = await step(`${ids.label}:roomScope:joined:afterAccept`, () => loadRecruitingScopeAs(inviteeLogin, "joined"));
-  const joinedApplicant = joinedAfterAccept.post?.applicants?.find((item) => item.playerId === inviteeId);
+  const joinedPostAfterAccept = joinedAfterAccept.post?.listCardOnly
+    ? await step(`${ids.label}:loadJoinedDetail:afterAccept`, () => loadRecruitingPostAs(inviteeLogin, ids.postId))
+    : joinedAfterAccept.post;
+  const joinedApplicant = joinedPostAfterAccept?.applicants?.find((item) => item.playerId === inviteeId);
   assertStateIncludesUsers(joinedAfterAccept.payload, [hostId, inviteeId], "joined room scope missing feed users after accept");
   assertFlow(joinedApplicant?.status === "ready" && joinedApplicant.side === "teamB", "joined room scope missing accepted invitee after accept", {
     inviteeId,
-    post: joinedAfterAccept.post,
+    post: joinedPostAfterAccept,
     page: joinedAfterAccept.payload?.page,
   });
 
@@ -1193,6 +1209,7 @@ async function runDisputeResumeThumbsScenario({
   assertFlow(match?.status === "confirmed", "dispute resume did not confirm match", match);
   assertFlow(match?.result?.scoreA === 22 && match?.result?.scoreB === 14, "dispute draft result not committed", match);
 
+  const opponentTrustBeforeThumbs = await step(`${ids.label}:loadTrustBeforeThumbs`, () => getCurrentProfileTrustScore(opponentLogin, opponentId));
   const thumbsResult = await step(`${ids.label}:submitMatchThumbs`, () => syncMatchAs(hostLogin, {
     action: "submitMatchThumbs",
     matchId: ids.matchId,
@@ -1204,6 +1221,37 @@ async function runDisputeResumeThumbsScenario({
     opponentId,
     match,
   });
+  assertFlow(
+    opponentTrustBeforeThumbs >= 100 || thumbsResult?.trustCommitted === true,
+    "match thumbs trust delta not committed",
+    thumbsResult,
+  );
+  const opponentTrustAfterThumbs = await step(`${ids.label}:loadTrustAfterThumbs`, () => getCurrentProfileTrustScore(opponentLogin, opponentId));
+  assertFlow(opponentTrustAfterThumbs === Math.min(100, opponentTrustBeforeThumbs + 1), "match thumbs trust score not persisted", {
+    opponentTrustBeforeThumbs,
+    opponentTrustAfterThumbs,
+  });
+
+  let clearThumbsResult = null;
+  let opponentTrustAfterClear = opponentTrustAfterThumbs;
+  if (opponentTrustBeforeThumbs < 100) {
+    clearThumbsResult = await step(`${ids.label}:submitMatchThumbs:clear`, () => syncMatchAs(hostLogin, {
+      action: "submitMatchThumbs",
+      matchId: ids.matchId,
+      targetUserIds: [],
+    }));
+    match = clearThumbsResult?.match;
+    assertFlow((match?.trustFeedback?.stars?.[hostId] ?? []).length === 0, "match thumbs clear not persisted", {
+      hostId,
+      match,
+    });
+    assertFlow(clearThumbsResult?.trustCommitted === true, "match thumbs clear trust delta not committed", clearThumbsResult);
+    opponentTrustAfterClear = await step(`${ids.label}:loadTrustAfterThumbsClear`, () => getCurrentProfileTrustScore(opponentLogin, opponentId));
+    assertFlow(opponentTrustAfterClear === opponentTrustBeforeThumbs, "match thumbs clear trust score not restored", {
+      opponentTrustBeforeThumbs,
+      opponentTrustAfterClear,
+    });
+  }
 
   return {
     label: ids.label,
@@ -1216,6 +1264,12 @@ async function runDisputeResumeThumbsScenario({
     finalStatus: match.status,
     disputed: true,
     thumbsSubmitted: true,
+    thumbsCleared: Boolean(clearThumbsResult),
+    trustScoreRoundTrip: {
+      before: opponentTrustBeforeThumbs,
+      afterThumbs: opponentTrustAfterThumbs,
+      afterClear: opponentTrustAfterClear,
+    },
     sqlReducers: {
       setRecruitingReady: Boolean(readyResult?.sqlReducer),
       checkInMatchPlayer: Boolean(checkInBResult?.sqlReducer),

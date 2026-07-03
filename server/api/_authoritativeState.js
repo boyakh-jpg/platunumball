@@ -110,6 +110,30 @@ export function getMatchRatingCommit(beforeState = {}, afterState = {}, match = 
   };
 }
 
+const MATCH_TRUST_COMMIT_ACTIONS = new Set([
+  "toggleMatchStar",
+  "submitMatchThumbs",
+  "confirmMatchRefereeAbsence",
+]);
+
+export function getMatchTrustCommit(beforeState = {}, afterState = {}, match = null, action = "") {
+  if (!MATCH_TRUST_COMMIT_ACTIONS.has(action) || !match?.id) return null;
+  const beforeUsersById = new Map((beforeState.users ?? []).map((user) => [user.id, user]));
+  const profileUpdates = (afterState.users ?? [])
+    .map((user) => {
+      const before = beforeUsersById.get(user.id);
+      if (!before) return null;
+      const trustDelta = Number(user.trustScore ?? 80) - Number(before.trustScore ?? 80);
+      return trustDelta ? { id: user.id, trustDelta } : null;
+    })
+    .filter(Boolean);
+  if (!profileUpdates.length) return null;
+  return {
+    matchId: match.id,
+    profileUpdates,
+  };
+}
+
 export function getOperation(body = {}, fallbackAction = "sync") {
   const operation = body.operation && typeof body.operation === "object" && !Array.isArray(body.operation)
     ? body.operation
@@ -162,6 +186,7 @@ function getAuthoritativeLoadScope(operation = {}) {
       operation.refereeId,
       operation.playerId,
       operation.targetUserId,
+      ...(Array.isArray(operation.targetUserIds) ? operation.targetUserIds : []),
       operation.invitation?.targetUserId,
       invite.playerId,
       ...(Array.isArray(invite.playerIds) ? invite.playerIds : []),
@@ -387,7 +412,13 @@ export function applyAuthoritativeMatchOperation(state, operation = {}) {
   if (!match || next === state) reject(409, "match_operation_noop");
 
   const notifications = getNewItems(state.notifications ?? [], next.notifications ?? [], (notification) => notification.matchId === match.id);
-  return { nextState: next, match, notifications, ratingCommit: getMatchRatingCommit(state, next, match, action) };
+  return {
+    nextState: next,
+    match,
+    notifications,
+    ratingCommit: getMatchRatingCommit(state, next, match, action),
+    trustCommit: getMatchTrustCommit(state, next, match, action),
+  };
 }
 
 export function applyAuthoritativeTournamentOperation(state, operation = {}) {

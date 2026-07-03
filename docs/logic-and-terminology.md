@@ -793,6 +793,9 @@ flowchart TD
 5. 심판/기록자/방장도 따봉 대상이 될 수 있다.
 6. 강퇴 남발, 잠수, 미출석, 확인 미응답은 신뢰도 하락.
 7. 후보 기록자 수행, 좋은 평가, 안정적 방 운영은 신뢰도 상승.
+8. 기록 확정 보상/파울/연승은 `rankball_commit_match_rating()`에서 커밋한다.
+9. 따봉과 심판 미출석처럼 경기 확정 전후에 따로 생기는 신뢰도 변경은 `rankball_apply_profile_trust_deltas()`로 `profiles.trust_score`만 0~100 범위에서 커밋한다.
+10. 심판 미출석이 양측 확인으로 확정되면 `formerRefereeId` 대상 심판 신뢰도는 `REFEREE_ABSENCE_TRUST_PENALTY`만큼 감소한다.
 
 ## 신고 원칙
 
@@ -1479,9 +1482,10 @@ flowchart TD
 
 1. `approveMatch`가 양쪽 승인 완료로 `confirmed`가 되면 서버 reducer가 변경된 `profiles`와 `teams` 경쟁 수치만 추출한다.
 2. MMR, streak, trust reward, team wins/losses는 `rankball_commit_match_rating()` RPC에서만 최종 커밋한다.
-3. RPC는 `matches` row를 `for update`로 잠그고 `rating_result is not null`이면 재커밋하지 않는다.
-4. `ratingResult/teamRatingResult/confirmedAt`이 포함된 경기 확정 상태는 RPC가 match row에 저장한다.
-5. 경기 생성/기록 제출/출석/이의/룰 수정은 아직 별도 row upsert 경로이며, full DB RPC migration은 남아 있다.
+3. 따봉/심판 미출석처럼 경기 확정 커밋과 분리된 신뢰도 변경은 `rankball_apply_profile_trust_deltas()`에서만 커밋한다.
+4. RPC는 `matches` row를 `for update`로 잠그고 `rating_result is not null`이면 재커밋하지 않는다.
+5. `ratingResult/teamRatingResult/confirmedAt`이 포함된 경기 확정 상태는 RPC가 match row에 저장한다.
+6. 경기 생성/기록 제출/출석/이의/룰 수정은 아직 별도 row upsert 경로이며, full DB RPC migration은 남아 있다.
 
 ## 2026-06-26 Supabase test seed
 

@@ -59,7 +59,7 @@ function toNotificationRows(notifications = [], profileId = "", report = {}) {
 async function assertCanSubmitMatchReport(context, targetId, reportedUserIds) {
   const { data: match, error: matchError } = await context.supabase
     .from("matches")
-    .select("id, created_by, referee_id, former_referee_id, scheduled_at, scheduled_date, scheduled_time, confirmed_at, ended_at, created_at, reserve_players, played_player_ids, attendance")
+    .select("id, created_by, referee_id, former_referee_id, stat_recorders, scheduled_at, scheduled_date, scheduled_time, confirmed_at, ended_at, created_at, reserve_players, played_player_ids, attendance")
     .eq("id", targetId)
     .maybeSingle();
   if (matchError) throw matchError;
@@ -79,6 +79,7 @@ async function assertCanSubmitMatchReport(context, targetId, reportedUserIds) {
     match.created_by,
     match.referee_id,
     match.former_referee_id,
+    ...flattenProfileValues(match.stat_recorders),
     ...(players ?? []).map((player) => player.user_id),
   ].filter(Boolean));
   const actorInJson = includesProfile(match.reserve_players, context.profileId)
@@ -96,7 +97,7 @@ async function assertCanSubmitMatchReport(context, targetId, reportedUserIds) {
   }
 
   const allowedReportedIds = new Set([...participantIds]);
-  for (const value of [match.reserve_players, match.played_player_ids, match.attendance]) {
+  for (const value of [match.stat_recorders, match.reserve_players, match.played_player_ids, match.attendance]) {
     uniqueStrings(flattenProfileValues(value)).forEach((profileId) => allowedReportedIds.add(profileId));
   }
   return reportedUserIds.filter((profileId) => allowedReportedIds.has(profileId));

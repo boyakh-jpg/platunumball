@@ -198,6 +198,7 @@
 - `approveMatch`가 양쪽 승인으로 `confirmed`가 되면 서버 reducer가 변경된 profile/team 경쟁 수치만 `ratingCommit` payload로 만든다.
 - `POST /api/matches/sync-match`는 `rankball_commit_match_rating()` RPC를 호출해 match row를 `for update`로 잠근 뒤 `profiles.ratings/trust_score/streak`, `teams.mmr/wins/losses`, `matches.rating_result/team_rating_result/confirmed_at`을 한 transaction으로 커밋한다.
 - 이미 `matches.rating_result`가 있으면 RPC는 `alreadyCommitted=true`로 반환하고 MMR을 다시 적용하지 않는다.
+- 따봉/심판 미출석처럼 MMR 확정과 분리된 신뢰도 변경은 `rankball_apply_profile_trust_deltas()`가 `profiles.trust_score`만 0~100으로 커밋한다.
 - 경기 생성/기록 제출/출석/이의/룰 수정은 아직 기존 server action 저장 경로를 쓴다.
 
 ## 2026-06-25 report submit server action

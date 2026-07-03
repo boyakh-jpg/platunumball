@@ -742,6 +742,13 @@ const RESULT_REPLACE_MATCH_ACTIONS = new Set([
   "resumeMatchApproval",
 ]);
 
+const AUTHORITATIVE_REPLAY_MATCH_ACTIONS = new Set([
+  "approveMatch",
+  "toggleMatchStar",
+  "submitMatchThumbs",
+  "confirmMatchRefereeAbsence",
+]);
+
 function isSoloRecordMatch(match = {}) {
   return match?.rules?.recordType === "solo";
 }
@@ -1037,7 +1044,19 @@ export async function commitMatchRating(context, ratingCommit = {}) {
   return data ?? { ok: true };
 }
 
-export async function persistMatchSnapshot(context, { match, notifications = [], action = "sync", body = {}, ratingCommit = null }) {
+export async function commitProfileTrustDeltas(context, trustCommit = {}) {
+  const profileUpdates = (trustCommit.profileUpdates ?? []).filter((item) => item?.id && Number(item.trustDelta));
+  if (!trustCommit.matchId || !profileUpdates.length) return { ok: true, skipped: true, profileCount: 0 };
+  const { data, error } = await context.supabase.rpc("rankball_apply_profile_trust_deltas", {
+    p_actor_profile_id: context.profileId,
+    p_match_id: trustCommit.matchId,
+    p_deltas: profileUpdates,
+  });
+  if (error) throw error;
+  return data ?? { ok: true, profileCount: profileUpdates.length };
+}
+
+export async function persistMatchSnapshot(context, { match, notifications = [], action = "sync", body = {}, ratingCommit = null, trustCommit = null }) {
   if (!match?.id) reject(400, "missing_match");
   validateMatchShape(match);
   validateResultShape(match, action);
@@ -1128,6 +1147,7 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
   });
   if (persistError) throw persistError;
   const ratingCommitResult = shouldCommitRating ? await commitMatchRating(context, ratingCommit) : null;
+  const trustCommitResult = trustCommit ? await commitProfileTrustDeltas(context, trustCommit) : null;
   let discordDeliveryCount = 0;
   let discordDeliveryError = null;
   try {
@@ -1153,6 +1173,8 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
     discordDeliveryError,
     ratingCommitted: Boolean(ratingCommitResult?.ok),
     ratingAlreadyCommitted: Boolean(ratingCommitResult?.alreadyCommitted),
+    trustCommitted: Boolean(trustCommitResult?.ok && !trustCommitResult?.skipped),
+    trustProfileCount: Number(trustCommitResult?.profileCount ?? 0),
   };
 }
 
@@ -1171,6 +1193,7 @@ export default async function handler(request, response) {
     let notifications = body.notifications ?? [];
     let action = body.action ? String(body.action) : "sync";
     let ratingCommit = null;
+    let trustCommit = null;
 
     if (operation && match && shouldUseSqlMatchAction(operation)) {
       const sqlResult = await applySqlMatchAction(context, operation, match);
@@ -1185,18 +1208,19 @@ export default async function handler(request, response) {
       match = null;
     }
 
-    if (operation && (!match || operation.action === "createMatch" || operation.action === "approveMatch")) {
+    if (operation && (!match || operation.action === "createMatch" || AUTHORITATIVE_REPLAY_MATCH_ACTIONS.has(operation.action))) {
       const state = await loadAuthoritativeState(context, { operation });
       const result = applyAuthoritativeMatchOperation(state, operation);
       match = result.match;
       notifications = result.notifications;
       action = operation.action;
       ratingCommit = result.ratingCommit;
+      trustCommit = result.trustCommit;
     } else if (operation && match) {
       action = operation.action;
     }
 
-    const result = await persistMatchSnapshot(context, { match, notifications, action, body, ratingCommit });
+    const result = await persistMatchSnapshot(context, { match, notifications, action, body, ratingCommit, trustCommit });
     sendJson(response, 200, result);
   } catch (error) {
     console.error("Match sync failed.", error);

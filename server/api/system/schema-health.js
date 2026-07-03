@@ -212,6 +212,10 @@ const REQUIRED_RPCS = [
     },
   },
   {
+    name: "rankball_apply_profile_trust_deltas",
+    args: { p_actor_profile_id: "", p_match_id: "", p_deltas: [] },
+  },
+  {
     name: "rankball_match_list",
     args: { p_profile_id: "", p_limit: 1, p_cursor: "", p_active_only: true },
   },
