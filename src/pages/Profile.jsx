@@ -22,6 +22,15 @@ function getUserSide(match, userId) {
   return null;
 }
 
+function isRecordInDetailWindow(match) {
+  const source = String(match.scheduledDate ?? match.scheduledAt ?? match.confirmedAt ?? match.createdAt ?? "");
+  const recordDate = new Date(source.match(/\d{4}-\d{2}-\d{2}/)?.[0] ?? source);
+  if (!Number.isFinite(recordDate.getTime())) return true;
+  const cutoff = new Date();
+  cutoff.setMonth(cutoff.getMonth() - 6);
+  return recordDate >= cutoff;
+}
+
 function getSideScore(match, sideName) {
   const resultKey = sideName === "teamA" ? "scoreA" : "scoreB";
   return Number(match.result?.[resultKey] ?? match[sideName]?.score ?? 0);
@@ -139,7 +148,7 @@ export default function Profile({ app }) {
     }
   };
   const myRecords = [...app.state.matches]
-    .filter((match) => match.status === "confirmed" && getUserSide(match, user.id))
+    .filter((match) => match.status === "confirmed" && getUserSide(match, user.id) && isRecordInDetailWindow(match))
     .sort(compareRecent)
     .slice(0, 6);
   const averageFouls = getProfileAverageFouls(user, app.state.matches);

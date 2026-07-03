@@ -1094,7 +1094,7 @@ export default function MatchRoom({ app }) {
                 </div>
               </div>
               <div className="compact-list">
-                {getMatchPlayerIds(match).map((playerId) => {
+                {getMatchRecordPlayerIds(match).map((playerId) => {
                   const user = userMap[playerId];
                   return (
                     <div key={playerId}>

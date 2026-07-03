@@ -5685,6 +5685,14 @@ html[data-theme="light"] .search-picker-result-row.selected {
   grid-template-columns: 34px minmax(0, 1fr) minmax(54px, auto);
 }
 
+.record-archive-row {
+  cursor: default;
+}
+
+.record-archive-row small {
+  color: var(--muted);
+}
+
 .compact-segments {
   width: max-content;
   max-width: 100%;

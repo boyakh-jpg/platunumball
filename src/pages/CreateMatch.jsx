@@ -40,6 +40,8 @@ const tournamentScheduleOptions = [
   { id: "daily", label: "매일 배정" },
   { id: "manual", label: "직접 조율" },
 ];
+const SOLO_RECORD_MODES = ["1v1", "2v2", "3v3", "4v4", "5v5"].map((id) => ({ id, label: id }));
+const MATCH_MODE_IDS = new Set(MATCH_MODES.map((mode) => mode.id));
 
 const makeEmptySoloStats = () => Object.fromEntries(PLAYER_STAT_FIELDS.map((field) => [field.id, 0]));
 
@@ -100,7 +102,11 @@ function getDefaultCreateTitle(mode = "5v5") {
 }
 
 function isDefaultCreateTitle(title = "") {
-  return /^오늘의\s+(1v1|2v2|3v3|5v5)\s+공식전$/i.test(String(title).trim());
+  return /^오늘의\s+(1v1|2v2|3v3|4v4|5v5)\s+공식전$/i.test(String(title).trim());
+}
+
+function getMatchModeOrDefault(mode = "", fallback = "5v5") {
+  return MATCH_MODE_IDS.has(String(mode)) ? String(mode) : fallback;
 }
 
 function formatCreateSaveError(result, fallback) {
@@ -441,6 +447,10 @@ export default function CreateMatch({ app }) {
     memo: "룰 확정 후 결과 승인.",
     stakes: "다음 경기 우선권.",
     soloOpponentName: "상대",
+    soloTeamAName: "우리팀",
+    soloTeamBName: "상대팀",
+    soloTeamAPlayersText: "",
+    soloTeamBPlayersText: "",
     soloScoreFor: 0,
     soloScoreAgainst: 0,
     soloStats: makeEmptySoloStats(),
@@ -672,7 +682,6 @@ export default function CreateMatch({ app }) {
     !draft.scheduledDate ||
     draft.scheduledDate < minSoloRecordDate ||
     draft.scheduledDate > today ||
-    !String(draft.soloOpponentName ?? "").trim() ||
     !Number.isFinite(soloScoreForNumber) ||
     !Number.isFinite(soloScoreAgainstNumber) ||
     soloScoreForNumber < 0 ||
@@ -687,7 +696,7 @@ export default function CreateMatch({ app }) {
       ? publicTeamInvalid
       : teamTierBlocked || privateTeamInvalid);
   const submitDisabledReason = isSoloRecord && soloRecordInvalid
-    ? "제목, 날짜, 상대, 점수를 확인해야 합니다. 개인 기록 날짜는 오늘부터 과거 7일까지만 가능합니다."
+    ? "제목, 날짜, 점수를 확인해야 합니다. 개인 기록 날짜는 오늘부터 과거 7일까지만 가능합니다."
     : !scheduleAllowed
     ? "일정 조건이 맞지 않습니다. 즉시는 바로 생성 가능하고, 예약 일정은 허용 기간 안에서만 가능합니다."
     : !tournamentEndAllowed
@@ -973,7 +982,7 @@ export default function CreateMatch({ app }) {
         ranked: false,
         official: false,
         preRegistered: false,
-        mode: "1v1",
+        mode: draft.mode,
         mmrLimitMode: "off",
         court: draft.court,
         scheduledDate: draft.scheduledDate,
@@ -1080,7 +1089,7 @@ export default function CreateMatch({ app }) {
             <button
               type="button"
               className={draft.visibility === "private" && !isSoloRecord ? "active" : ""}
-              onClick={() => update({ recordType: "match", visibility: "private", ranked: true, official: true, preRegistered: true })}
+              onClick={() => update({ recordType: "match", visibility: "private", mode: getMatchModeOrDefault(draft.mode, defaultMode), ranked: true, official: true, preRegistered: true })}
             >
               <Lock size={19} />
               <span>
@@ -1093,11 +1102,14 @@ export default function CreateMatch({ app }) {
               className={draft.visibility === "public" ? "active" : ""}
               onClick={() => {
                 const team = defaultTeamA ?? selectedTeamA;
-                const hostJoinMode = draft.mode === "1v1" || !canCreateTeamRoom ? "player" : draft.hostJoinMode;
-                const playerIds = hostJoinMode === "team" ? getDefaultTeamPlayerIds(team, publicPartyCapacity, [], app.currentUser.id) : [];
+                const nextMode = getMatchModeOrDefault(draft.mode, defaultMode);
+                const hostJoinMode = nextMode === "1v1" || !canCreateTeamRoom ? "player" : draft.hostJoinMode;
+                const nextCapacity = getRecruitingSideCapacity({ mode: nextMode });
+                const playerIds = hostJoinMode === "team" ? getDefaultTeamPlayerIds(team, nextCapacity, [], app.currentUser.id) : [];
                 update({
                   recordType: "match",
                   visibility: "public",
+                  mode: nextMode,
                   ranked: draft.recordType === "solo" ? true : draft.ranked,
                   official: draft.recordType === "solo" ? true : draft.official,
                   preRegistered: draft.recordType === "solo" ? true : draft.preRegistered,
@@ -1119,7 +1131,7 @@ export default function CreateMatch({ app }) {
             </button>
             <button type="button" className={isTournamentRoom ? "active" : ""} onClick={() => {
               setTeamRegion("전체");
-              update({ recordType: "match", visibility: "tournament", timingType: "scheduled", tournamentTeamIds: draft.tournamentTeamIds?.length ? draft.tournamentTeamIds : [defaultTournamentTeamA?.id, defaultTournamentTeamB?.id].filter(Boolean) });
+              update({ recordType: "match", visibility: "tournament", mode: getMatchModeOrDefault(draft.mode, defaultMode), timingType: "scheduled", tournamentTeamIds: draft.tournamentTeamIds?.length ? draft.tournamentTeamIds : [defaultTournamentTeamA?.id, defaultTournamentTeamB?.id].filter(Boolean) });
             }}>
               <Trophy size={19} />
               <span>
@@ -1153,7 +1165,7 @@ export default function CreateMatch({ app }) {
               <ClipboardList size={19} />
               <span>
                 <strong>개인 기록</strong>
-                <em>혼자 상대와 점수, 내 스탯만 저장합니다. MMR은 반영하지 않습니다.</em>
+                <em>1v1~5v5 경기에서 내 기록만 저장합니다. MMR은 반영하지 않습니다.</em>
               </span>
             </button>
           </div>
@@ -1233,11 +1245,15 @@ export default function CreateMatch({ app }) {
                 <small>{isInstantRoom ? "날짜/시간 없이 바로 경기준비방으로 만든다." : isPublicRoom ? "공개 예약방은 5일 이내, 경기 4시간 이후만 가능하다." : "비공개 예약방은 1개월 이내로 만들 수 있다."}</small>
               </div>
             ) : null}
-            {!isSoloRecord ? (
+            {!isTournamentRoom ? (
             <label>
               방식
               <select value={draft.mode} onChange={(event) => {
                 const mode = event.target.value;
+                if (isSoloRecord) {
+                  update({ mode });
+                  return;
+                }
                 const nextCapacity = getRecruitingSideCapacity({ mode });
                 const hostJoinMode = mode === "1v1" || !canCreateTeamRoom ? "player" : draft.hostJoinMode;
                 const nextIsTeamRoom = !isTournamentRoom && hostJoinMode === "team";
@@ -1263,7 +1279,7 @@ export default function CreateMatch({ app }) {
                   }),
                 });
               }}>
-                {MATCH_MODES.map((mode) => <option key={mode.id} value={mode.id}>{mode.label}</option>)}
+                {(isSoloRecord ? SOLO_RECORD_MODES : MATCH_MODES).map((mode) => <option key={mode.id} value={mode.id}>{mode.label}</option>)}
               </select>
             </label>
             ) : null}
@@ -1282,8 +1298,12 @@ export default function CreateMatch({ app }) {
             {isSoloRecord ? (
               <>
                 <label>
-                  상대 이름
-                  <input value={draft.soloOpponentName} onChange={(event) => update({ soloOpponentName: event.target.value })} />
+                  우리 팀명
+                  <input value={draft.soloTeamAName} placeholder="우리팀" onChange={(event) => update({ soloTeamAName: event.target.value })} />
+                </label>
+                <label>
+                  상대 팀명
+                  <input value={draft.soloTeamBName} placeholder="상대팀" onChange={(event) => update({ soloTeamBName: event.target.value, soloOpponentName: event.target.value })} />
                 </label>
                 <label>
                   내 점수
@@ -1292,6 +1312,14 @@ export default function CreateMatch({ app }) {
                 <label>
                   상대 점수
                   <input type="number" min="0" max="999" value={draft.soloScoreAgainst} onChange={(event) => update({ soloScoreAgainst: event.target.value })} />
+                </label>
+                <label className="memo-label solo-record-roster-field">
+                  우리팀 선수
+                  <textarea value={draft.soloTeamAPlayersText} placeholder="한 줄에 한 명. 예: 김민준 PG" onChange={(event) => update({ soloTeamAPlayersText: event.target.value })} />
+                </label>
+                <label className="memo-label solo-record-roster-field">
+                  상대 선수
+                  <textarea value={draft.soloTeamBPlayersText} placeholder="한 줄에 한 명. 예: 이서연 C" onChange={(event) => update({ soloTeamBPlayersText: event.target.value })} />
                 </label>
               </>
             ) : null}
@@ -1688,19 +1716,14 @@ export default function CreateMatch({ app }) {
           ) : null}
         </Card>
 
-        <Card className="section-card">
-          <div className="section-title-row">
-            <div>
-              <p className="eyebrow">규칙</p>
-              <h2>룰 설정</h2>
+        {!isSoloRecord ? (
+          <Card className="section-card">
+            <div className="section-title-row">
+              <div>
+                <p className="eyebrow">규칙</p>
+                <h2>룰 설정</h2>
+              </div>
             </div>
-          </div>
-          {isSoloRecord ? (
-            <div className="create-public-note">
-              <ClipboardList size={17} />
-              <span>개인 기록은 정규전, 공식경기, MMR 반영을 모두 끕니다.</span>
-            </div>
-          ) : (
             <>
               <RuleSelector draft={draft} onChange={update} />
               <div className="toggle-pair">
@@ -1733,20 +1756,22 @@ export default function CreateMatch({ app }) {
                 ) : null}
               </div>
             </>
-          )}
-        </Card>
+          </Card>
+        ) : null}
 
         <Card className="section-card">
           <div className="section-title-row">
             <div>
-              <p className="eyebrow">계약 조건</p>
-              <h2>약속과 메모</h2>
+              <p className="eyebrow">{isSoloRecord ? "Record Note" : "계약 조건"}</p>
+              <h2>{isSoloRecord ? "기록 메모" : "약속과 메모"}</h2>
             </div>
           </div>
-          <label className="memo-label">
-            약속/벌칙 메모
-            <textarea value={draft.stakes} onChange={(event) => update({ stakes: event.target.value })} />
-          </label>
+          {!isSoloRecord ? (
+            <label className="memo-label">
+              약속/벌칙 메모
+              <textarea value={draft.stakes} onChange={(event) => update({ stakes: event.target.value })} />
+            </label>
+          ) : null}
           <label className="memo-label">
             경기 메모
             <textarea value={draft.memo} onChange={(event) => update({ memo: event.target.value })} />

@@ -3514,6 +3514,47 @@ function makeSoloRecordStats(score, stats = {}) {
   );
 }
 
+const SOLO_RECORD_MODE_IDS = new Set(["1v1", "2v2", "3v3", "4v4", "5v5"]);
+
+function normalizeSoloRecordMode(mode = "1v1") {
+  const text = String(mode || "1v1").trim();
+  return SOLO_RECORD_MODE_IDS.has(text) ? text : "1v1";
+}
+
+function getSoloRecordSideSize(mode = "1v1") {
+  const match = String(mode).match(/^(\d+)/);
+  const value = match ? Number(match[1]) : 1;
+  return Math.max(1, Math.min(5, Number.isFinite(value) ? value : 1));
+}
+
+function parseSoloRecordRosterText(value = "") {
+  return String(value ?? "")
+    .split(/[\n,]+/)
+    .map((line) => line.replace(/\s+/g, " ").trim())
+    .filter(Boolean)
+    .map((line) => {
+      const parts = line.split(" ");
+      const maybePosition = parts.length > 1 ? parts[parts.length - 1].toUpperCase() : "";
+      const hasPosition = PLAYER_POSITIONS.includes(maybePosition) && maybePosition !== "상관없음";
+      return {
+        name: hasPosition ? parts.slice(0, -1).join(" ").trim() : line,
+        position: hasPosition ? maybePosition : "-",
+      };
+    })
+    .filter((entry) => entry.name);
+}
+
+function makeSoloRecordAnonymousSide({ count, entries = [], fallbackPrefix = "무기명 선수" } = {}) {
+  return Array.from({ length: count }, (_, index) => {
+    const entry = entries[index] ?? {};
+    return {
+      id: makeId("anon"),
+      name: entry.name || `${fallbackPrefix} ${index + 1}`,
+      position: entry.position || "-",
+    };
+  });
+}
+
 function getSoloRecordDateRange(now = new Date()) {
   return {
     max: now.toISOString().slice(0, 10),
@@ -3553,10 +3594,36 @@ function createSoloRecordMatch(state, draft = {}) {
     : nowIso.slice(11, 16);
   const scoreA = toSoloRecordNumber(draft.soloScoreFor);
   const scoreB = toSoloRecordNumber(draft.soloScoreAgainst);
-  const opponentId = makeId("anon");
-  const opponentName = String(draft.soloOpponentName ?? "").trim() || "상대";
-  const playedPlayerIds = { teamA: [], teamB: [opponentId] };
-  const mmrExcludedPlayerIds = uniquePlayerIds([playerId, opponentId]);
+  const mode = normalizeSoloRecordMode(draft.mode);
+  const sideSize = getSoloRecordSideSize(mode);
+  const teamAName = String(draft.soloTeamAName ?? "").trim() || "우리팀";
+  const teamBName = String(draft.soloTeamBName ?? draft.soloOpponentName ?? "").trim() || "상대팀";
+  const teamAEntries = parseSoloRecordRosterText(draft.soloTeamAPlayersText);
+  const teamBEntries = parseSoloRecordRosterText(draft.soloTeamBPlayersText);
+  if (!teamBEntries.length && String(draft.soloOpponentName ?? "").trim()) {
+    teamBEntries.push({ name: String(draft.soloOpponentName).trim(), position: "-" });
+  }
+  const teamAAnonymous = makeSoloRecordAnonymousSide({
+    count: Math.max(0, sideSize - 1),
+    entries: teamAEntries,
+    fallbackPrefix: "무기명 팀원",
+  });
+  const teamBAnonymous = makeSoloRecordAnonymousSide({
+    count: sideSize,
+    entries: teamBEntries,
+    fallbackPrefix: "무기명 상대",
+  });
+  const anonymousPlayers = Object.fromEntries(
+    [...teamAAnonymous, ...teamBAnonymous].map((entry) => [
+      entry.id,
+      makeAnonymousMatchPlayer(entry.id, entry.name, entry.position),
+    ]),
+  );
+  const playedPlayerIds = {
+    teamA: uniquePlayerIds([playerId, ...teamAAnonymous.map((entry) => entry.id)]),
+    teamB: teamBAnonymous.map((entry) => entry.id),
+  };
+  const mmrExcludedPlayerIds = uniquePlayerIds([...playedPlayerIds.teamA, ...playedPlayerIds.teamB]);
   const statSubmissions = {
     [playerId]: { by: playerId, source: "host_postgame", submittedAt: nowIso },
   };
@@ -3573,20 +3640,23 @@ function createSoloRecordMatch(state, draft = {}) {
   };
   const rules = {
     recordType: "solo",
-    targetScore: Math.max(scoreA, scoreB),
-    timeLimit: 0,
-    winByTwo: false,
-    ball: draft.ball || "7호 공",
     mmrExcludedPlayerIds,
     playedPlayerIds,
     statRecorders: {},
     visibility: "private",
     ratingScale: 0,
+    recordSummary: {
+      mode,
+      teamAName,
+      teamBName,
+      teamAPlayers: [player.name || "나", ...teamAAnonymous.map((entry) => entry.name)],
+      teamBPlayers: teamBAnonymous.map((entry) => entry.name),
+    },
   };
   const match = {
     id: draft.id || makeId("m"),
     title: String(draft.title ?? "").trim() || "개인 기록",
-    mode: "1v1",
+    mode,
     court: draft.court || "미정",
     scheduledDate: recordDate,
     scheduledTime: recordTime,
@@ -3609,14 +3679,14 @@ function createSoloRecordMatch(state, draft = {}) {
     ratingScale: 0,
     objectionWindow: "없음",
     evidence: [],
-    teamA: { name: player.name || "나", teamId: "", players: [playerId], score: scoreA },
-    teamB: { name: opponentName, teamId: "", players: [], score: scoreB },
+    teamA: { name: teamAName, teamId: "", players: [playerId], score: scoreA },
+    teamB: { name: teamBName, teamId: "", players: [], score: scoreB },
     agreements: { teamA: [playerId], teamB: [] },
     approvals: { teamA: [playerId], teamB: [] },
     disputes: [],
     playedPlayerIds,
     reservePlayers: { teamA: [], teamB: [] },
-    anonymousPlayers: { [opponentId]: makeAnonymousMatchPlayer(opponentId, opponentName) },
+    anonymousPlayers,
     mmrExcludedPlayerIds,
     statRecorders: {},
     result,
@@ -4851,11 +4921,11 @@ function canEditPostgameRoster(state, match) {
   return canOperatePostStart;
 }
 
-function makeAnonymousMatchPlayer(playerId, name) {
+function makeAnonymousMatchPlayer(playerId, name, position = "-") {
   return {
     id: playerId,
     name: String(name || "").trim() || "무기명 선수",
-    position: "-",
+    position: String(position || "-").trim() || "-",
     avatarColor: "#64748b",
     trustScore: "-",
     ratings: { integrated: 0, modes: {} },

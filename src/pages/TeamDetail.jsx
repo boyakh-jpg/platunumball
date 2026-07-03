@@ -23,6 +23,19 @@ function getSideScore(match, sideName) {
   return Number(match.result?.[resultKey] ?? match[sideName]?.score ?? 0);
 }
 
+function getHistoryDate(match) {
+  return String(match.scheduledDate ?? match.scheduledAt ?? match.confirmedAt ?? match.createdAt ?? "").match(/\d{4}-\d{2}-\d{2}/)?.[0] ?? "날짜 미정";
+}
+
+function isHistoryInDetailWindow(match) {
+  if (match.status !== "confirmed") return true;
+  const recordDate = new Date(getHistoryDate(match));
+  if (!Number.isFinite(recordDate.getTime())) return true;
+  const cutoff = new Date();
+  cutoff.setMonth(cutoff.getMonth() - 6);
+  return recordDate >= cutoff;
+}
+
 const historyStatusLabel = {
   contract: "동의 대기",
   agreed: "예정",
@@ -101,6 +114,8 @@ export default function TeamDetail({ app }) {
   const teamFull = team.members.length >= MAX_TEAM_MEMBERS;
   const canAddMember = canManage && Boolean(addUserId) && selectedCount < MAX_TEAM_MEMBERSHIPS && !teamFull;
   const history = app.state.matches.filter((match) => getTeamSide(match, team.id));
+  const detailHistory = history.filter(isHistoryInDetailWindow);
+  const archivedHistory = history.filter((match) => !isHistoryInDetailWindow(match));
   const loadedWins = history.filter((match) => {
     const sideName = getTeamSide(match, team.id);
     const oppositeSide = sideName === "teamA" ? "teamB" : "teamA";
@@ -267,7 +282,7 @@ export default function TeamDetail({ app }) {
               <Badge tone="green">{history.length}경기 · {wins}승</Badge>
             </div>
             <div className="history-list">
-              {history.map((match) => {
+              {detailHistory.map((match) => {
                 const sideName = getTeamSide(match, team.id);
                 const oppositeSide = sideName === "teamA" ? "teamB" : "teamA";
                 const side = match[sideName];
@@ -295,6 +310,25 @@ export default function TeamDetail({ app }) {
                       상대 <TeamHoverCard team={teamById[opponent.teamId]} as="span">{opponent.name}</TeamHoverCard>
                       {reserveUsed.length ? ` · 용병 ${reserveUsed.map((member) => `${userMap[member.userId]?.name ?? "플레이어"}(${getTeamRoleLabel(member.role)})`).join(", ")}` : ""}
                     </p>
+                  </article>
+                );
+              })}
+              {archivedHistory.map((match) => {
+                const sideName = getTeamSide(match, team.id);
+                const oppositeSide = sideName === "teamA" ? "teamB" : "teamA";
+                const side = match[sideName];
+                const opponent = match[oppositeSide];
+                return (
+                  <article key={match.id} className="history-item record-archive-row">
+                    <div>
+                      <strong>{match.title}</strong>
+                      <span>{getHistoryDate(match)} · {match.mode} · {match.court}</span>
+                    </div>
+                    <div className="history-score">
+                      <Badge tone="neutral">텍스트</Badge>
+                      <strong>{getSideScore(match, sideName)}:{getSideScore(match, oppositeSide)}</strong>
+                    </div>
+                    <p>{side.name} vs {opponent.name} · 6개월 초과 기록</p>
                   </article>
                 );
               })}

@@ -13,6 +13,14 @@ function getRecordDate(match) {
   return String(match.scheduledDate ?? match.scheduledAt ?? match.confirmedAt ?? match.createdAt ?? "").match(/\d{4}-\d{2}-\d{2}/)?.[0] ?? "날짜 미정";
 }
 
+function isRecordInDetailWindow(match) {
+  const recordDate = new Date(getRecordDate(match));
+  if (!Number.isFinite(recordDate.getTime())) return true;
+  const cutoff = new Date();
+  cutoff.setMonth(cutoff.getMonth() - 6);
+  return recordDate >= cutoff;
+}
+
 function getUserSide(match, userId) {
   if (match.teamA?.players?.includes(userId)) return "teamA";
   if (match.teamB?.players?.includes(userId)) return "teamB";
@@ -69,12 +77,14 @@ export default function ProfileRecords({ app }) {
   const records = [...app.state.matches]
     .filter((match) => match.status === "confirmed" && getUserSide(match, user.id))
     .sort(compareRecent);
-  const totals = getTotals(records, user.id);
-  const wins = records.filter((match) => getUserResult(match, user.id) === "W").length;
-  const losses = records.filter((match) => getUserResult(match, user.id) === "L").length;
-  const draws = records.length - wins - losses;
-  const averageFouls = records.length ? Number(totals.fouls ?? 0) / records.length : 0;
-  const dateRows = [...records.reduce((map, match) => {
+  const recentRecords = records.filter(isRecordInDetailWindow);
+  const archivedRecords = records.filter((match) => !isRecordInDetailWindow(match));
+  const totals = getTotals(recentRecords, user.id);
+  const wins = recentRecords.filter((match) => getUserResult(match, user.id) === "W").length;
+  const losses = recentRecords.filter((match) => getUserResult(match, user.id) === "L").length;
+  const draws = recentRecords.length - wins - losses;
+  const averageFouls = recentRecords.length ? Number(totals.fouls ?? 0) / recentRecords.length : 0;
+  const dateRows = [...recentRecords.reduce((map, match) => {
     const date = getRecordDate(match);
     map.set(date, (map.get(date) ?? 0) + 1);
     return map;
@@ -96,7 +106,7 @@ export default function ProfileRecords({ app }) {
             <p className="eyebrow">Summary</p>
             <h2>{user.name}</h2>
           </div>
-          <Badge tone="green">최근 6개월 {records.length}경기</Badge>
+          <Badge tone="green">최근 6개월 {recentRecords.length}경기</Badge>
         </div>
         <div className="rank-stat-grid">
           <span><strong>{wins}</strong>승</span>
@@ -134,9 +144,9 @@ export default function ProfileRecords({ app }) {
             <h2>최근 6개월 경기 기록</h2>
           </div>
         </div>
-        {records.length ? (
+        {recentRecords.length ? (
           <div className="recent-match-list profile-records-list">
-            {records.map((match) => {
+            {recentRecords.map((match) => {
               const line = getRecordLine(match, user.id);
               const stats = match.result?.playerStats?.[user.id] ?? {};
               return (
@@ -156,6 +166,33 @@ export default function ProfileRecords({ app }) {
           <div className="empty-state">확정된 경기 기록이 없습니다.</div>
         )}
       </Card>
+      {archivedRecords.length ? (
+        <Card className="section-card">
+          <div className="section-title-row">
+            <div>
+              <p className="eyebrow">Archive</p>
+              <h2>6개월 초과 기록</h2>
+            </div>
+            <Badge tone="neutral">텍스트 {archivedRecords.length}경기</Badge>
+          </div>
+          <div className="recent-match-list profile-records-list">
+            {archivedRecords.map((match) => {
+              const line = getRecordLine(match, user.id);
+              return (
+                <div key={match.id} className={`recent-match-row profile-record-row record-archive-row result-${line.result.toLowerCase()}`}>
+                  <b>{line.result}</b>
+                  <span>
+                    <strong>{line.side.name} vs {line.opponent.name}</strong>
+                    <em>{getRecordDate(match)} · {match.mode} · {match.court}</em>
+                    <small>상세 데이터는 보관 목록에서 텍스트로만 표시</small>
+                  </span>
+                  <i>{line.score}:{line.opponentScore}</i>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      ) : null}
     </div>
   );
 }
