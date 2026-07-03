@@ -879,3 +879,4 @@ UI 수정 전:
 1. Profile info uses explicit form controls for each field. Region is edited with `REGION_TREE` select controls, not a free-text input.
 2. Team management cards may show a loading empty-state while directory data is pending. They must not flash the real empty-team message before the directory load resolves.
 3. Profile and signup form rows use fixed one-line control height from `--ui-button-height` and reserve enough label row height so inputs/selects align across the two-column grid.
+4. Recruiting room join submit locks the button with `참여 중` while the server action is pending. Success or direct `?post=` entry must leave the room detail selected, or show the room loading panel until detail arrives.

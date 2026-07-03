@@ -1843,7 +1843,7 @@ export function RecruitingRoomModal(props) {
   return <RecruitingRoomModalReady {...props} />;
 }
 
-function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sourceMatch = null, onInvitationAccepted = null }) {
+function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sourceMatch = null, onInvitationAccepted = null, onJoined = null }) {
   const selectedPost = post;
   const myTeams = useMemo(
     () => app.state.teams.filter((team) => team.members.some((member) => member.userId === app.currentUser.id)),
@@ -1861,6 +1861,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
   const [refereeInviteQueryByPost, setRefereeInviteQueryByPost] = useState({});
   const [pendingRosterOpen, setPendingRosterOpen] = useState(null);
   const [confirmingMatchId, setConfirmingMatchId] = useState("");
+  const [joiningPostId, setJoiningPostId] = useState("");
 
   const closeModal = () => {
     setInviteDraft(null);
@@ -1901,7 +1902,8 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
       [roomPost.id]: { ...getJoinDraft(roomPost), ...patch },
     }));
   };
-  const submitJoin = (roomPost) => {
+  const submitJoin = async (roomPost) => {
+    if (!roomPost?.id || joiningPostId === roomPost.id) return false;
     const joinDraft = getJoinDraft(roomPost);
     const lobby = getRecruitingLobby(roomPost, app.state);
     const shouldReserve = joinDraft.joinMode !== "referee" &&
@@ -1909,7 +1911,15 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
       !joinDraft.reserve &&
       getJoinActiveCapacity(roomPost, lobby, joinDraft.side, false) <= 0 &&
       getJoinReserveCapacity(lobby, joinDraft.side) > 0;
-    app.actions.interestRecruitingPost(roomPost.id, shouldReserve ? { ...joinDraft, reserve: true } : joinDraft);
+    const application = shouldReserve ? { ...joinDraft, reserve: true } : joinDraft;
+    setJoiningPostId(roomPost.id);
+    try {
+      const result = await app.actions.interestRecruitingPost(roomPost.id, application);
+      if (result && result.ok !== false) onJoined?.(roomPost.id, result);
+      return result;
+    } finally {
+      setJoiningPostId((current) => (current === roomPost.id ? "" : current));
+    }
   };
   const getChatDraft = (roomPost) => chatDraftByPost[roomPost.id] ?? '';
   const updateChatDraft = (roomPost, value) => {
@@ -2121,6 +2131,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
             ? canJoinReferee
             : joinTierAllowed && (joinDraft.joinMode === "player" || teamJoinValid)
         );
+        const joiningThisRoom = joiningPostId === selectedPost.id;
         const joinModeEntries = [
           ...Object.entries(RECRUITING_JOIN_MODES).filter(([mode]) => {
             if (mode === "team" && soloIndividualRoom) return false;
@@ -2935,7 +2946,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                     <span>초대 수락으로만 참여할 수 있습니다.</span>
                   </div>
                 ) : (
-                  <form className="arena-join-form" onSubmit={(event) => { event.preventDefault(); submitJoin(selectedPost); }}>
+                  <form className="arena-join-form" onSubmit={(event) => { event.preventDefault(); void submitJoin(selectedPost); }}>
                     {sidePartyJoinOptions.length ? (
                       <div className="arena-self-placement-actions">
                         {sidePartyJoinOptions.map((option) => (
@@ -3083,9 +3094,9 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                       </div>
                       {joinDraft.joinMode === "referee" ? <ShieldCheck size={18} /> : <TierBadge mmr={candidateMmr || app.currentUser.ratings.integrated} compact />}
                     </div>
-                    <Button type="submit" disabled={!canJoin}>
+                    <Button type="submit" disabled={!canJoin || joiningThisRoom}>
                       {joinDraft.joinMode === "team" ? <UsersRound size={18} /> : joinDraft.joinMode === "referee" ? <ShieldCheck size={18} /> : <UserRound size={18} />}
-                      참여하기
+                      {joiningThisRoom ? "참여 중" : "참여하기"}
                     </Button>
                   </form>
                 )}
@@ -3315,7 +3326,8 @@ function RecruitingReady({ app }) {
   const selectedPost = selectedPostId
     ? app.state.recruitingPosts.find((post) => post.id === selectedPostId)
     : null;
-  useBodyScrollLock(Boolean(selectedPost) || composeOpen);
+  const selectedPostPending = Boolean(selectedPostId && !selectedPost);
+  useBodyScrollLock(Boolean(selectedPost) || selectedPostPending || composeOpen);
 
   useEffect(() => {
     if (!selectedPost?.id || !app.remoteReady || !app.currentUser.id) return undefined;
@@ -3336,6 +3348,11 @@ function RecruitingReady({ app }) {
     targetPostLoadRef.current = targetPostId;
     app.actions.loadRecruitingPost?.(targetPostId);
   }, [app.actions, app.currentUser.id, app.remoteReady, app.state.recruitingPosts, targetPostId]);
+
+  useEffect(() => {
+    if (!targetPostId) return;
+    setSelectedPostId(targetPostId);
+  }, [targetPostId]);
 
   useEffect(() => {
     if (!selectedPostId) {
@@ -3617,7 +3634,24 @@ function RecruitingReady({ app }) {
           onInvitationAccepted={() => {
             if (roomScope === "invited") setRoomScope("joined");
           }}
+          onJoined={(postId) => {
+            setSelectedPostId(postId);
+            selectedPostRefreshRef.current = "";
+            app.actions.loadRecruitingPost?.(postId);
+            if (targetPostId !== postId) {
+              navigate(`/app/recruiting?post=${encodeURIComponent(postId)}`, { replace: true });
+            }
+          }}
         />
+      ) : selectedPostPending ? (
+        <div className="arena-compose-backdrop" role="presentation" onPointerDown={() => setSelectedPostId(null)}>
+          <aside className="arena-lobby-modal" role="dialog" aria-modal="true" aria-label="매치방 불러오는 중" onPointerDown={(event) => event.stopPropagation()}>
+            <div className="arena-empty-state">
+              <strong>방 불러오는 중</strong>
+              <span>잠시 후 다시 표시됩니다.</span>
+            </div>
+          </aside>
+        </div>
       ) : null}
 
       {composeOpen ? (

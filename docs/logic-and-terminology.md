@@ -1820,3 +1820,4 @@ flowchart TD
 - Recruiting load-more errors are separate from first-page/region errors. The load-more row may show a failure only after an explicit load-more request fails.
 - Profile region edits use the canonical `REGION_TREE` selects and save `region`, `regionSido`, and `regionDistrict` together. Region must not be edited as free text.
 - `REGION_TREE` uses `전남광주통합특별시` as the canonical Gwangju/Jeonnam sido. Existing `광주광역시`, `전라남도`, `전남광주특별시`, `광주특별시`, and `광주전남특별통합시` values infer to that canonical sido before saving.
+- Recruiting public join waits for the server action result. On success the frontend keeps the joined room selected, refreshes that room detail explicitly, and pins the URL to `?post=`. Direct `?post=` entry selects the pending room id while detail loads. Badge/feed counts still must not trigger unrelated list reloads.
