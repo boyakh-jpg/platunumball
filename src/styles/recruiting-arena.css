@@ -6972,6 +6972,18 @@ html[data-theme="light"] .arena-lobby-modal {
   box-shadow: none;
 }
 
+.arena-slot-command-popover {
+  border-color: var(--rb-line-strong);
+  background: linear-gradient(180deg, rgba(36, 37, 38, 0.98), rgba(24, 25, 26, 0.96));
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.38);
+}
+
+html[data-theme="light"] .arena-slot-command-popover {
+  border-color: var(--rb-line-strong);
+  background: linear-gradient(180deg, rgba(255, 250, 241, 0.98), rgba(245, 241, 232, 0.96));
+  box-shadow: 0 18px 44px rgba(55, 44, 31, 0.16);
+}
+
 .arena-lobby-modal .badge-row .badge,
 .arena-lobby-modal .om-card-mode,
 .arena-lobby-modal .arena-type-tag {
