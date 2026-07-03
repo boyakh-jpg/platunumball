@@ -343,6 +343,7 @@ export function getPendingRecruitingInvitations(state = {}, userId) {
 
 export function hasPendingRecruitingInvitation(post = {}, userId) {
   if (!userId || post.status !== "open") return false;
+  if (Array.isArray(post.__feedRelations) && post.__feedRelations.includes("invited")) return true;
   return normalizeRecruitingRoomState(post.roomState ?? {}).invitations.some((invitation) => (
     invitation.targetUserId === userId && invitation.status === "pending"
   ));
@@ -356,6 +357,7 @@ export function getRecruitingRoomOwnerId(post = {}) {
 
 export function isRecruitingPostForUser(post = {}, userId, teamIds = []) {
   if (!userId) return false;
+  if (Array.isArray(post.__feedRelations) && post.__feedRelations.some((relation) => ["owner", "participant", "referee"].includes(relation))) return true;
   if (getRecruitingRoomOwnerId(post) === userId) return true;
   if (post.playerId === userId) return true;
   if (post.refereeId === userId) return true;
@@ -571,8 +573,51 @@ function getEmptyLobbySide(post = {}) {
   };
 }
 
+function getCountOnlyLobbySide(post = {}, sideName = "teamA") {
+  const raw = post.listCounts?.[sideName] && typeof post.listCounts[sideName] === "object" ? post.listCounts[sideName] : {};
+  const capacity = Math.max(1, Number(raw.capacity ?? getRecruitingSideCapacity(post)) || getRecruitingSideCapacity(post));
+  const filled = Math.max(0, Number(raw.filled ?? raw.count ?? 0) || 0);
+  const projectedFilled = Math.max(filled, Number(raw.projectedFilled ?? filled) || 0);
+  const confirmationProjectedFilled = Math.max(projectedFilled, Number(raw.confirmationProjectedFilled ?? projectedFilled) || 0);
+  return {
+    ...getEmptyLobbySide(post),
+    filled: Math.min(filled, capacity),
+    projectedFilled: Math.min(projectedFilled, capacity),
+    confirmationProjectedFilled: Math.min(confirmationProjectedFilled, capacity),
+    capacity,
+  };
+}
+
 export function getRecruitingLobby(post = {}, state = {}) {
   const normalizedPost = normalizeRecruitingPost(post);
+  const countOnlyCard = normalizedPost.listCardOnly === true &&
+    normalizedPost.listCounts &&
+    !normalizedPost.playerIds?.length &&
+    !normalizedPost.applicants?.length;
+  if (countOnlyCard) {
+    const safeSides = {
+      teamA: getCountOnlyLobbySide(normalizedPost, "teamA"),
+      teamB: getCountOnlyLobbySide(normalizedPost, "teamB"),
+    };
+    const full = safeSides.teamA.filled >= safeSides.teamA.capacity && safeSides.teamB.filled >= safeSides.teamB.capacity;
+    const projectedFull =
+      safeSides.teamA.projectedFilled >= safeSides.teamA.capacity &&
+      safeSides.teamB.projectedFilled >= safeSides.teamB.capacity;
+    const confirmationProjectedFull =
+      safeSides.teamA.confirmationProjectedFilled >= safeSides.teamA.capacity &&
+      safeSides.teamB.confirmationProjectedFilled >= safeSides.teamB.capacity;
+    return {
+      entries: [],
+      sides: safeSides,
+      full,
+      projectedFull,
+      confirmationProjectedFull,
+      ready: false,
+      fillReady: true,
+      confirmationFillReady: true,
+      canConfirm: false,
+    };
+  }
   const host = getRecruitingHostEntry(normalizedPost, state);
   const applicants = normalizeRecruitingApplicants(normalizedPost.applicants ?? [])
     .map((applicant) => getRecruitingApplicantEntry(applicant, state, normalizedPost))

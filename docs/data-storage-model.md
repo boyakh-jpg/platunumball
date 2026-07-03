@@ -396,7 +396,8 @@ Remaining:
 
 | table | 주요 columns | 현재 참조 | 처리 |
 | --- | --- | --- | --- |
-| `user_room_feed` | `profile_id`, `feed_scope`, `entity_type`, `entity_id`, `relation`, `status`, `sort_at`, `card_json`, `is_active` | `server/api/matches/list.js`, `server/api/recruiting/list.js`, `server/api/system/maintenance.js`, feed trigger/RPC | 유지 |
+| `user_room_feed` | `profile_id`, `feed_scope`, `entity_type`, `entity_id`, `relation`, `status`, `sort_at`, `is_active`; `card_json`은 빈 호환 필드 | `server/api/matches/list.js`, `server/api/recruiting/list.js`, `server/api/system/maintenance.js`, feed trigger/RPC | 유지 |
+| `room_feed_cards` | `entity_type`, `entity_id`, `card_json` jsonb thin list projection, `updated_at` | `server/api/matches/list.js`, `server/api/recruiting/list.js`, feed trigger/RPC | 유지 |
 | `matches` | `id`, `status`, `visibility`, `created_by`, `scheduled_at`, `team_a_id`, `team_b_id`, `room_state`, `rating_result` | match list/detail/sync, report, maintenance | 유지 |
 | `match_players` | `match_id`, `user_id`, `side`, `slot_order`, `role` | match list/sync/detail, record flow | 유지 |
 | `match_results` | `match_id`, `score_a`, `score_b`, `stat_submissions`, `submitted_by` | match sync, maintenance, feed trigger | 유지 |

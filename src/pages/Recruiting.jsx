@@ -733,6 +733,9 @@ function getRecruitingRuleSummary(post = {}) {
 }
 
 function getRecruitingRoomTypeLabel(room = {}, lobby = null) {
+  const listPartyCount = Number(room.listCounts?.partyCount);
+  if (Number.isFinite(listPartyCount) && listPartyCount >= 2) return "팀전";
+  if (Number.isFinite(listPartyCount) && listPartyCount > 0) return "팀 파티 포함";
   const lobbyTeamCount = lobby?.entries?.filter((entry) => isPartyEntry(entry)).length ?? 0;
   if (lobbyTeamCount >= 2) return "팀전";
   if (lobbyTeamCount > 0) return "팀 파티 포함";

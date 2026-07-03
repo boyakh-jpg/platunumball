@@ -129,12 +129,30 @@ function normalizeFeedCard(row = {}) {
   const card = row?.card_json ?? row?.cardJson ?? row?.card ?? null;
   if (!card || typeof card !== "object" || Array.isArray(card)) return null;
   const id = card.id ?? row.entity_id ?? row.entityId;
+  const relations = Array.isArray(row?.relations)
+    ? row.relations
+    : [row?.relation].filter(Boolean);
   const nextCard = id ? { ...card, id } : null;
   if (!nextCard?.teamA || typeof nextCard.teamA !== "object") return null;
   if (!nextCard?.teamB || typeof nextCard.teamB !== "object") return null;
-  if (!Array.isArray(nextCard.teamA.players)) return null;
-  if (!Array.isArray(nextCard.teamB.players)) return null;
-  return nextCard;
+  const hasTeamACount = Number.isFinite(Number(nextCard.teamA.count));
+  const hasTeamBCount = Number.isFinite(Number(nextCard.teamB.count));
+  if (!Array.isArray(nextCard.teamA.players) && !hasTeamACount) return null;
+  if (!Array.isArray(nextCard.teamB.players) && !hasTeamBCount) return null;
+  return {
+    ...nextCard,
+    __feedRelations: relations,
+    teamA: {
+      ...nextCard.teamA,
+      players: Array.isArray(nextCard.teamA.players) ? nextCard.teamA.players : [],
+      count: hasTeamACount ? Number(nextCard.teamA.count) : nextCard.teamA.players.length,
+    },
+    teamB: {
+      ...nextCard.teamB,
+      players: Array.isArray(nextCard.teamB.players) ? nextCard.teamB.players : [],
+      count: hasTeamBCount ? Number(nextCard.teamB.count) : nextCard.teamB.players.length,
+    },
+  };
 }
 
 function uniqueFeedCards(rows = [], ids = []) {
@@ -726,7 +744,10 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   const filterMatchItems = (items = []) => {
     let filtered = filterActiveMatchCards(items, activeOnly, shouldLoadRecentCompleted);
     if (recorderOnly) filtered = filtered.filter((match) => isRecorderMatch(match, context.profileId, adminLevel >= 30));
-    if (completedOnly) filtered = filtered.filter((match) => match.status === "confirmed" && getMatchPlayerIds(match).includes(context.profileId));
+    if (completedOnly) filtered = filtered.filter((match) => (
+      match.status === "confirmed" &&
+      (getMatchPlayerIds(match).includes(context.profileId) || match.__feedRelations?.includes("participant"))
+    ));
     return filtered;
   };
   const recruitingSchedulePromise = shouldLoadRecruitingSchedule

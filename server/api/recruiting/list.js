@@ -287,6 +287,17 @@ function normalizeFeedCard(row = {}) {
   };
 }
 
+function hasThinRecruitingListCounts(card = {}) {
+  return Boolean(
+    card?.listCardOnly === true &&
+    card?.listCounts &&
+    typeof card.listCounts === "object" &&
+    !Array.isArray(card.listCounts) &&
+    card.listCounts.teamA &&
+    card.listCounts.teamB,
+  );
+}
+
 function uniqueFeedCards(rows = [], ids = []) {
   const idSet = new Set(ids);
   const cards = new Map();
@@ -357,8 +368,9 @@ function hasPendingInvitationForProfile(card = {}, profileId = "") {
 function hasUsableRecruitingFeedCard(card = {}) {
   if (!card?.playerId && !card?.ownerId && !card?.roomState?.ownerId) return false;
   if (!card.updatedAt && !card.updated_at) return false;
-  if (!Array.isArray(card.playerIds)) return false;
-  if (!Array.isArray(card.applicants)) return false;
+  const hasListCounts = hasThinRecruitingListCounts(card);
+  if (!hasListCounts && !Array.isArray(card.playerIds)) return false;
+  if (!hasListCounts && !Array.isArray(card.applicants)) return false;
   if (card.hostJoinMode === "team" && !card.teamId) return false;
   return true;
 }
@@ -367,12 +379,13 @@ function getRecruitingFeedCardRejectReason(card = {}, profileId = "") {
   if (!card) return "missing_card";
   if (!card?.playerId && !card?.ownerId && !card?.roomState?.ownerId) return "missing_host_identity";
   if (!card.updatedAt && !card.updated_at) return "missing_updated_at";
-  if (!Array.isArray(card.playerIds)) return "missing_player_ids";
-  if (!Array.isArray(card.applicants)) return "missing_applicants";
+  const hasListCounts = hasThinRecruitingListCounts(card);
+  if (!hasListCounts && !Array.isArray(card.playerIds)) return "missing_player_ids";
+  if (!hasListCounts && !Array.isArray(card.applicants)) return "missing_applicants";
   if (card.hostJoinMode === "team" && !card.teamId) return "missing_team_id";
   if (!profileId) return "";
   const relations = Array.isArray(card?.__feedRelations) ? card.__feedRelations : [];
-  if (relations.includes("invited") && !hasPendingInvitationForProfile(card, profileId)) return "missing_pending_invitation";
+  if (relations.includes("invited") && !hasListCounts && !hasPendingInvitationForProfile(card, profileId)) return "missing_pending_invitation";
   return "";
 }
 
@@ -510,7 +523,9 @@ function compactRecruitingPost(post = {}, profileId = "", options = {}) {
     title: post.title,
     visibility: post.visibility,
     region: post.region,
+    courtId: post.courtId,
     court: post.court,
+    ownerId: post.ownerId,
     hostName: post.hostName,
     hostTeamName: post.hostTeamName,
     targetTeamName: post.targetTeamName,
@@ -549,6 +564,8 @@ function compactRecruitingPost(post = {}, profileId = "", options = {}) {
     hostSide: post.hostSide,
     hostReady: post.hostReady,
     sideCapacity: post.sideCapacity,
+    listCounts: post.listCounts,
+    __feedRelations: post.__feedRelations,
     playerIds: post.playerIds ?? [],
     position: post.position,
     playerId: post.playerId,
@@ -1314,6 +1331,9 @@ export async function loadCompactRecruitingList(context, {
       courtIds: uniqueIds([...rowScope.courtIds, ...cardScope.courtIds]),
     };
     const profileIdsForLookup = scope.profileIds.filter((profileId) => profileId !== currentUser.id);
+    const shouldLoadTeamMembers = fallbackPostIds.length > 0 || targetCards.some((card) => (
+      Array.isArray(card?.playerIds) && card.playerIds.length > 0
+    ));
     const [
       { data: teamRows, error: teamError },
       { data: teamMemberRows, error: teamMemberError },
@@ -1323,7 +1343,7 @@ export async function loadCompactRecruitingList(context, {
       scope.teamIds.length
         ? context.supabase.from("teams").select(TEAM_COLUMNS).in("id", scope.teamIds).is("deleted_at", null)
         : Promise.resolve({ data: [], error: null }),
-      scope.teamIds.length
+      shouldLoadTeamMembers && scope.teamIds.length
         ? context.supabase.from("team_members").select(TEAM_MEMBER_COLUMNS).in("team_id", scope.teamIds)
         : Promise.resolve({ data: [], error: null }),
       profileIdsForLookup.length

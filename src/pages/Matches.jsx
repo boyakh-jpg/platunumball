@@ -232,8 +232,17 @@ function shouldShowScoreBox(match) {
   return ["postgame", "dispute", "record", "void"].includes(phase.phase);
 }
 
+function getMatchSideCount(match, sideName) {
+  const players = match?.[sideName]?.players;
+  if (Array.isArray(players) && players.length) return players.length;
+  const count = Number(match?.[sideName]?.count);
+  return Number.isFinite(count) ? Math.max(0, count) : 0;
+}
+
 function getMatchPlayerCount(match) {
-  return new Set([...(match.teamA?.players ?? []), ...(match.teamB?.players ?? [])]).size;
+  const players = [...(match.teamA?.players ?? []), ...(match.teamB?.players ?? [])];
+  if (players.length) return new Set(players).size;
+  return getMatchSideCount(match, "teamA") + getMatchSideCount(match, "teamB");
 }
 
 function formatMatchRules(match = {}) {
@@ -1292,7 +1301,7 @@ export default function Matches({ app }) {
                   right={match.teamB?.name ?? "B"}
                   leftTeam={teamById[match.teamA?.teamId]}
                   rightTeam={teamById[match.teamB?.teamId]}
-                  meta={`참여 ${getMatchPlayerCount(match)}명 · A ${match.teamA?.players?.length ?? 0} / B ${match.teamB?.players?.length ?? 0}`}
+                  meta={`참여 ${getMatchPlayerCount(match)}명 · A ${getMatchSideCount(match, "teamA")} / B ${getMatchSideCount(match, "teamB")}`}
                   detail={formatMatchRules(match)}
                   variant="count-summary"
                 />
