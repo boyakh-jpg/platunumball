@@ -1,5 +1,18 @@
 # RankBall 로직/용어/디자인 기준
 
+## 2026-07-03 경기 액션 후 재조회 실패 처리
+
+- `startMatch`, `endMatch`, `submitMatchResult`처럼 DB write가 성공한 경기 액션은 후속 단일 상세 재조회가 늦거나 실패해도 전체 액션 실패로 롤백하지 않는다.
+- 후속 재조회 실패 시 서버는 이미 계산된 최신 `match` snapshot을 응답하고, 클라이언트는 그 snapshot을 기준으로 진행 상태를 유지한다.
+- 재조회 실패는 경고 로그로만 남긴다. DB write 자체가 실패한 경우에만 클라이언트 롤백 대상이다.
+
+## 2026-07-03 이의신청 점수 요청
+
+- 이의신청은 `playerId`, `requestedPoints`, `reason`을 구조화해 `disputeMatch`로 보낸다.
+- `disputeMatch`는 `playerId === currentUserId`이고 해당 선수가 경기 기록 대상일 때만 요청 득점을 `disputeDraftResult`에 반영한다.
+- 다른 선수 점수 요청은 무시한다. 사이드 점수는 반영된 개인 득점 합계로 다시 계산한다.
+- 이의 사유 문자열에는 당시 점수판, 본인 득점 변경 요청, 선택 사유를 남긴다.
+
 ## 2026-07-03 개인기록 재조회 이름 보존
 
 - 개인기록의 프리텍스트 팀명/상대명은 `rules.recordSummary.teamAName/teamBName`을 목록/상세 재조회 fallback 이름으로 사용한다.

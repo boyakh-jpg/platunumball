@@ -860,6 +860,15 @@ async function loadSyncedMatch(context, matchId = "") {
   return (state.matches ?? []).find((item) => item.id === matchId) ?? null;
 }
 
+async function loadSyncedMatchAfterWrite(context, matchId = "", fallbackMatch = null) {
+  try {
+    return await loadSyncedMatch(context, matchId);
+  } catch (error) {
+    console.warn("Match post-write reload failed.", error.message);
+    return fallbackMatch;
+  }
+}
+
 async function applySqlMatchAction(context, operation = {}, match = {}) {
   if (operation.action === "agreeMatch" && match?.id) {
     const { data, error } = await context.supabase.rpc("rankball_match_agree_action", {
@@ -1110,7 +1119,7 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
     discordDeliveryError = deliveryError.message || "discord_match_delivery_failed";
     console.error("Match Discord delivery queue failed.", deliveryError);
   }
-  const syncedMatch = await loadSyncedMatch(context, match.id);
+  const syncedMatch = await loadSyncedMatchAfterWrite(context, match.id, match);
 
   return {
     ok: true,
@@ -1145,7 +1154,7 @@ export default async function handler(request, response) {
     if (operation && match && shouldUseSqlMatchAction(operation)) {
       const sqlResult = await applySqlMatchAction(context, operation, match);
       if (sqlResult) {
-        const syncedMatch = await loadSyncedMatch(context, sqlResult.matchId ?? operation.matchId ?? match.id);
+        const syncedMatch = await loadSyncedMatchAfterWrite(context, sqlResult.matchId ?? operation.matchId ?? match.id, match);
         sendJson(response, 200, {
           ...sqlResult,
           ...(syncedMatch ? { match: syncedMatch } : {}),

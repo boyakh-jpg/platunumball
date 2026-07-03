@@ -20,7 +20,7 @@ import {
   formatStatLine,
   MATCH_DISPUTE_REASON_OPTIONS,
   OTHER_MATCH_DISPUTE_REASON,
-  buildMatchDisputeReason,
+  buildMatchDisputeRequest,
   canOperatorSubmitMissingPostgameResult,
   getAllowedResultStatFields,
   getAgreementStatus,
@@ -470,7 +470,7 @@ export default function MatchRoom({ app }) {
   };
   const submitDispute = () => {
     if (!canRequestOwnPointDispute) return;
-    app.actions.disputeMatch(match.id, buildMatchDisputeReason({
+    app.actions.disputeMatch(match.id, buildMatchDisputeRequest({
       match,
       playerId: app.currentUser.id,
       playerName: app.currentUser.name,

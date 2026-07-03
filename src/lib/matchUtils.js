@@ -33,7 +33,7 @@ export function getMatchPlayerDisputePoints(match = {}, playerId = "") {
   return Number(match.result?.playerStats?.[playerId]?.points ?? 0);
 }
 
-export function buildMatchDisputeReason({ match = {}, playerId = "", playerName = "", requestedPoints = "", reason = "", customReason = "" } = {}) {
+export function buildMatchDisputeRequest({ match = {}, playerId = "", playerName = "", requestedPoints = "", reason = "", customReason = "" } = {}) {
   const scoreA = getMatchDisputeScore(match, "teamA");
   const scoreB = getMatchDisputeScore(match, "teamB");
   const currentPoints = getMatchPlayerDisputePoints(match, playerId);
@@ -44,7 +44,15 @@ export function buildMatchDisputeReason({ match = {}, playerId = "", playerName 
   const reasonText = reason === OTHER_MATCH_DISPUTE_REASON
     ? String(customReason || OTHER_MATCH_DISPUTE_REASON).trim()
     : String(reason || MATCH_DISPUTE_REASON_OPTIONS[0]).trim();
-  return `점수판 ${scoreA}:${scoreB} / ${pointText} / 사유: ${reasonText}`;
+  return {
+    reason: `점수판 ${scoreA}:${scoreB} / ${pointText} / 사유: ${reasonText}`,
+    playerId,
+    requestedPoints: playerId && Number.isFinite(nextPoints) ? Math.max(0, nextPoints) : null,
+  };
+}
+
+export function buildMatchDisputeReason(args = {}) {
+  return buildMatchDisputeRequest(args).reason;
 }
 
 function addDateDays(dateValue, days) {

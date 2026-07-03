@@ -13,7 +13,7 @@ import { getUserHashtag } from "../lib/handles.js";
 import {
   MATCH_DISPUTE_REASON_OPTIONS,
   OTHER_MATCH_DISPUTE_REASON,
-  buildMatchDisputeReason,
+  buildMatchDisputeRequest,
   canOperatorSubmitMissingPostgameResult,
   getAllowedStatFields,
   getMatchHostPlayerId,
@@ -283,7 +283,7 @@ export default function Recorder({ app }) {
 
   const submitDispute = () => {
     if (!selectedMatch || !canRequestOwnPointDispute) return;
-    app.actions.disputeMatch(selectedMatch.id, buildMatchDisputeReason({
+    app.actions.disputeMatch(selectedMatch.id, buildMatchDisputeRequest({
       match: selectedMatch,
       playerId: user.id,
       playerName: user.name,

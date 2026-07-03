@@ -4549,11 +4549,43 @@ export function approveMatch(state, matchId, sideName, playerId) {
   return stateWithApproval;
 }
 
-export function disputeMatch(state, matchId, reason = "") {
+function normalizeDisputeRequest(disputeInput = "") {
+  if (disputeInput && typeof disputeInput === "object") {
+    return {
+      ...disputeInput,
+      reason: String(disputeInput.reason ?? "").trim(),
+    };
+  }
+  return { reason: String(disputeInput ?? "").trim() };
+}
+
+function buildDisputeDraftResult(match = {}, disputeRequest = {}, currentUserId = "", now = new Date().toISOString()) {
+  const baseResult = clone(match.result);
+  const requestedPlayerId = String(disputeRequest.playerId ?? "");
+  const requestedPoints = Number(disputeRequest.requestedPoints);
+  if (!baseResult || !requestedPlayerId || requestedPlayerId !== currentUserId || !Number.isFinite(requestedPoints)) return baseResult;
+  const recordPlayerIds = getMatchRecordPlayerIds(match, true);
+  if (!recordPlayerIds.includes(requestedPlayerId)) return baseResult;
+  const playerStats = normalizePlayerStats(baseResult.playerStats ?? {}, recordPlayerIds);
+  playerStats[requestedPlayerId] = {
+    ...(playerStats[requestedPlayerId] ?? {}),
+    points: Math.max(0, Math.round(requestedPoints)),
+  };
+  return {
+    ...baseResult,
+    scoreA: getMergedResultScore(match, playerStats, "teamA", baseResult.scoreA),
+    scoreB: getMergedResultScore(match, playerStats, "teamB", baseResult.scoreB),
+    playerStats,
+    updatedAt: now,
+  };
+}
+
+export function disputeMatch(state, matchId, disputeInput = "") {
   const disciplineBlock = getDisciplineBlockedState(state, "이의제기");
   if (disciplineBlock) return disciplineBlock;
   const match = state.matches.find((item) => item.id === matchId);
   if (!match?.result || match.status !== "approval") return state;
+  const disputeRequest = normalizeDisputeRequest(disputeInput);
   if (!currentUserCanFileMatchDispute(state, match)) {
     return {
       ...state,
@@ -4586,12 +4618,14 @@ export function disputeMatch(state, matchId, reason = "") {
     };
   }
 
+  const now = new Date().toISOString();
   const dispute = {
     id: makeUuid(),
     by: state.currentUserId,
-    reason: reason.trim() || "스코어 또는 개인 기록 확인이 필요합니다.",
-    createdAt: new Date().toISOString(),
+    reason: disputeRequest.reason || "스코어 또는 개인 기록 확인이 필요합니다.",
+    createdAt: now,
   };
+  const disputeDraftResult = buildDisputeDraftResult(match, disputeRequest, state.currentUserId, now);
 
   return {
     ...state,
@@ -4601,8 +4635,8 @@ export function disputeMatch(state, matchId, reason = "") {
             ...item,
             status: "disputed",
             disputes: [dispute, ...(item.disputes ?? [])],
-            disputeDraftResult: clone(item.result),
-            disputeDraftUpdatedAt: new Date().toISOString(),
+            disputeDraftResult,
+            disputeDraftUpdatedAt: now,
           }
         : item,
     ),
