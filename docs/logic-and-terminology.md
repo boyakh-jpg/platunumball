@@ -53,6 +53,8 @@
 - `matches.rules.region`, `recruiting_posts.region`, `user_room_feed.region_key`는 목록/피드용 스냅샷이다.
 - `court_id`가 없거나 legacy 구장 id라 active approved court를 찾지 못하면 기존 `court_name`/지역 텍스트를 유지한다. 이 경우 하드 FK를 강제하지 않는다.
 - 구장 이름 fallback은 `court_id` 기준 legacy `courts` -> active `approved_courts` -> 기존 `court_name` 순서다. hidden/disabled approved court는 원본 보정에 쓰지 않는다.
+- `court_id`가 비었고 `court_name`이 active `approved_courts` 또는 legacy `courts`에서 유일하게 매칭되면 DB guard가 `court_id`를 자동 보정한다. 같은 이름이 여러 구장에 걸리면 자동 보정하지 않는다.
+- `court_id` hard FK는 `court_id` 없는 legacy row와 `approved_courts`/`courts` 이중 원본이 정리된 뒤에만 추가한다.
 
 ## 2026-07-03 개인기록 재조회 이름 보존
 

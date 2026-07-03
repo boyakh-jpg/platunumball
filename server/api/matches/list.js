@@ -50,8 +50,8 @@ async function fetchCourtRowsByIds(supabase, courtIds = []) {
   if (legacyResult.error && !isMissingTable(legacyResult.error, "courts")) return legacyResult;
   if (approvedResult.error) return approvedResult;
   const rowsById = new Map();
-  (legacyResult.data ?? []).forEach((row) => rowsById.set(row.id, row));
   (approvedResult.data ?? []).forEach((row) => rowsById.set(row.id, row));
+  (legacyResult.data ?? []).forEach((row) => rowsById.set(row.id, row));
   return { data: [...rowsById.values()], error: null };
 }
 
