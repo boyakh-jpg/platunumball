@@ -889,7 +889,7 @@ UI 수정 전:
 16. On mobile/tablet app layouts, the first page hero cancels `app-main` top and side padding. Home, settings, teams, matches, recruiting, match room, profile, season, and rulebook heroes must start at the app viewport top edge with no side gutters.
 17. Image-led cards and hero cards must not contain extra framed mini-cards for secondary navigation. Keep secondary links as text actions unless a primary CTA or form control is required; ask before reintroducing boxed inner controls.
 18. Room compose and lobby modals use neutral panel surfaces behind slots, chat, authority, and close controls. Hero/court imagery stays out of the far-back modal background.
-19. Room slot command/self-slot popovers use near-opaque room surfaces so underlying court/player content does not reduce readability.
+19. Room slot command/self-slot popovers use near-opaque room surfaces so underlying court/player content does not reduce readability, and anchored popovers stay clamped inside the viewport.
 
 ## 2026-07-03 profile form controls
 

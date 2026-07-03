@@ -1858,10 +1858,12 @@ button.arena-room-player-slot {
 }
 
 .arena-slot-command-popover.floating.anchored.below {
+  top: min(var(--popover-y), calc(100vh - min(70vh, 560px) - 12px));
   transform: translate(-50%, 0);
 }
 
 .arena-slot-command-popover.floating.anchored.above {
+  top: max(var(--popover-y), calc(min(70vh, 560px) + 12px));
   transform: translate(-50%, -100%);
 }
 
@@ -6974,13 +6976,17 @@ html[data-theme="light"] .arena-lobby-modal {
 
 .arena-slot-command-popover {
   border-color: var(--rb-line-strong);
-  background: linear-gradient(180deg, rgba(36, 37, 38, 0.98), rgba(24, 25, 26, 0.96));
+  background:
+    linear-gradient(180deg, rgba(36, 37, 38, 0.98), rgba(24, 25, 26, 0.96)),
+    var(--rb-bg-2);
   box-shadow: 0 18px 44px rgba(0, 0, 0, 0.38);
 }
 
 html[data-theme="light"] .arena-slot-command-popover {
   border-color: var(--rb-line-strong);
-  background: linear-gradient(180deg, rgba(255, 250, 241, 0.98), rgba(245, 241, 232, 0.96));
+  background:
+    linear-gradient(180deg, rgba(255, 250, 241, 0.98), rgba(245, 241, 232, 0.96)),
+    var(--rb-cream);
   box-shadow: 0 18px 44px rgba(55, 44, 31, 0.16);
 }
 
