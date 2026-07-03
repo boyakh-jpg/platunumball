@@ -277,7 +277,7 @@ export const COURTS = [
   },
 ];
 
-export const REGIONS = ["마포", "성수", "잠실", "강남", "서초", "동작", "성동", "서대문", "영등포"];
+export const REGIONS = ["마포", "성수", "광진", "잠실", "강남", "서초", "동작", "성동", "서대문", "영등포"];
 
 function normalizeRegionText(value = "") {
   return String(value ?? "").replace(/\s+/g, "").toLowerCase();

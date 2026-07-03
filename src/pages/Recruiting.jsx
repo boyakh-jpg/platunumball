@@ -3337,7 +3337,8 @@ function RecruitingReady({ app }) {
       .filter((post) => {
         const invited = hasPendingRecruitingInvitation(post, app.currentUser.id);
         const relationScoped = roomScope !== "all";
-        return invited || relationScoped || post.id === targetPostId || isRegionRecruitingPost(post, selectedRegionKey, app.currentUser) || isNationalRecruitingPost(post, app.state);
+        const myRoom = isRecruitingPostForUser(post, app.currentUser.id, myTeamIds);
+        return invited || relationScoped || myRoom || post.id === targetPostId || isRegionRecruitingPost(post, selectedRegionKey, app.currentUser) || isNationalRecruitingPost(post, app.state);
       })
       .filter((post) => queue === "all" || (queue === "ranked" ? post.ranked !== false : post.ranked === false))
       .filter((post) => modeFilter === "all" || post.mode === modeFilter)
