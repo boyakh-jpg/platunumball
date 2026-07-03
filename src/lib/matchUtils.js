@@ -1,5 +1,6 @@
 import {
   DISPUTE_WINDOW_MINUTES,
+  INSTANT_ROOM_EXPIRE_MINUTES,
   PLAYER_STAT_FIELDS,
   REFEREE_TRUST_MIN,
   STAT_ENTRY_WINDOW_MINUTES,
@@ -11,7 +12,7 @@ const uniquePlayerIds = (playerIds = []) => [...new Set(playerIds.filter(Boolean
 export const PUBLIC_ROOM_SCHEDULE_MAX_DAYS = 5;
 export const PUBLIC_ROOM_CONFIRM_OPEN_HOURS = 24;
 export const PUBLIC_ROOM_CONFIRM_CLOSE_HOURS = 4;
-export const INSTANT_ROOM_EXPIRE_MINUTES = 60;
+export { INSTANT_ROOM_EXPIRE_MINUTES };
 export const MATCH_DISPUTE_REASON_OPTIONS = [
   "최종 점수 오기록",
   "내 득점 누락",
@@ -410,13 +411,33 @@ export function getMatchScheduledDate(match = {}) {
   return Number.isFinite(parsed.getTime()) ? parsed : null;
 }
 
+export function getInstantRoomExpiresAt(room = {}) {
+  if (!isInstantRoom(room)) return null;
+  const createdAt = new Date(room.createdAt ?? room.created_at ?? "");
+  if (!Number.isFinite(createdAt.getTime())) return null;
+  return new Date(createdAt.getTime() + INSTANT_ROOM_EXPIRE_MINUTES * 60000);
+}
+
+function formatLocalClock(date) {
+  if (!(date instanceof Date) || !Number.isFinite(date.getTime())) return "";
+  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+}
+
+export function getRoomScheduleLabel(room = {}) {
+  if (isInstantRoom(room)) {
+    const expiresLabel = formatLocalClock(getInstantRoomExpiresAt(room));
+    return expiresLabel ? `즉시 · ${expiresLabel} 종료` : "즉시";
+  }
+  return [room.scheduledDate, room.scheduledTime].filter(Boolean).join(" ") || room.scheduledAt || "일정 미정";
+}
+
 export function getPublicRoomTimingStatus(room = {}, now = new Date()) {
   const nowDate = now instanceof Date ? now : new Date(now);
   const nowMs = nowDate.getTime();
   const timingType = getRoomTimingType(room);
   if (timingType === "instant") {
     const createdAt = new Date(room.createdAt ?? nowDate);
-    const expiresAt = new Date(createdAt.getTime() + INSTANT_ROOM_EXPIRE_MINUTES * 60000);
+    const expiresAt = getInstantRoomExpiresAt(room) ?? new Date(createdAt.getTime() + INSTANT_ROOM_EXPIRE_MINUTES * 60000);
     return {
       timingType,
       label: "즉시",

@@ -12,7 +12,7 @@ import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { MAX_TEAM_MEMBERSHIPS, getTeamRoleLabel } from "../lib/constants.js";
 import { getRegisteredCourts } from "../lib/courts.js";
 import { getCourtHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
-import { canUserResolveMatchDispute, getAllowedStatFields, getMatchRecordWindow, getMatchRoomPhase, getMatchUserParticipantSideName, getPlayerStatSubmitted, getPublicRoomTimingStatus, isInstantRoom, isMatchRelatedToUser, userNeedsMatchAgreement, userNeedsMatchApproval } from "../lib/matchUtils.js";
+import { canUserResolveMatchDispute, getAllowedStatFields, getMatchRecordWindow, getMatchRoomPhase, getMatchUserParticipantSideName, getPlayerStatSubmitted, getPublicRoomTimingStatus, getRoomScheduleLabel, isInstantRoom, isMatchRelatedToUser, userNeedsMatchAgreement, userNeedsMatchApproval } from "../lib/matchUtils.js";
 import { inferRegionSelection } from "../lib/profileSetup.js";
 import { RECRUITING_TYPES, getPendingRecruitingInvitations, getRecruitingLobby, getRecruitingRoomOwnerId, isNationalRecruitingPost, isRecruitingPostForUser, isRecruitingRoomInUserSchedule } from "../lib/recruiting.js";
 import { getCurrentSeason, getPlayerSeasonRows, getSeasonProgress } from "../lib/season.js";
@@ -55,8 +55,7 @@ function userOperatesCheckin(match, userId) {
 }
 
 function getRecruitingSchedule(post) {
-  if (isInstantRoom(post)) return "즉시";
-  return [post.scheduledDate, post.scheduledTime].filter(Boolean).join(" ") || post.scheduledAt || "일정 미정";
+  return getRoomScheduleLabel(post);
 }
 
 function getSafeMatchSide(match = {}, sideName = "teamA") {

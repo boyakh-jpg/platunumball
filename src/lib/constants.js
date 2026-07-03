@@ -26,6 +26,7 @@ export function getHostTrustRequirement({ ranked = true, visibility = "private",
 }
 export const COURT_REQUEST_TRUST_MIN = 70;
 export const FALSE_COURT_REPORT_TRUST_PENALTY = 8;
+export const INSTANT_ROOM_EXPIRE_MINUTES = 120;
 export const STAT_ENTRY_WINDOW_MINUTES = 60;
 export const DISPUTE_WINDOW_MINUTES = 30;
 export const TEST_ACCOUNT_COUNT = 50;

@@ -14,6 +14,7 @@ import {
   getRoomCompetitionLabel,
   getRoomRefereeLabel,
   getRoomVisibilityLabel,
+  getRoomScheduleLabel,
   getMatchHostPlayerId,
   getMatchReservePlayerIds,
   getMatchRoomPhase,
@@ -212,6 +213,7 @@ function compareSchedule(a, b) {
 }
 
 function formatMatchTime(match) {
+  if (isInstantScheduleRoom(match)) return getRoomScheduleLabel(match);
   return match.scheduledAt ?? match.createdAt?.slice(0, 16)?.replace("T", " ") ?? "시간 미정";
 }
 

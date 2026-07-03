@@ -65,6 +65,7 @@ import {
   canOperatorSubmitMissingPostgameResult,
   getPublicRoomMaxDateInput,
   getPublicRoomTimingStatus,
+  getRoomScheduleLabel,
   isEligibleReferee,
   isInstantRoom,
   isMatchReferee,
@@ -161,8 +162,7 @@ function getMaxInputValue() {
 }
 
 function getRecruitingSchedule(post) {
-  if (isInstantRoom(post)) return "즉시";
-  return [post.scheduledDate, post.scheduledTime].filter(Boolean).join(" ") || post.scheduledAt || "일정 미정";
+  return getRoomScheduleLabel(post);
 }
 
 function getDefaultApplyTeamId(post, teams) {
