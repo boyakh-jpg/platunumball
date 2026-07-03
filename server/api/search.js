@@ -48,7 +48,7 @@ function getRequestedTypes(value = "all") {
 function clampLimit(value) {
   const limit = Number(value);
   if (!Number.isFinite(limit)) return 10;
-  return Math.min(Math.max(Math.floor(limit), 1), 10);
+  return Math.min(Math.max(Math.floor(limit), 1), 25);
 }
 
 function searchFilter(fields = [], query = "") {
@@ -235,7 +235,9 @@ export default async function handler(request, response) {
     const body = await readJsonBody(request);
     const query = normalizeSearchQuery(body.query ?? body.q ?? "");
     const minLength = getQueryMinLength(query);
-    if (query.replace(/\s+/g, "").length < minLength) {
+    const forceSearch = body.force === true;
+    const queryLength = query.replace(/\s+/g, "").length;
+    if ((!forceSearch && queryLength < minLength) || (forceSearch && queryLength < 1)) {
       sendJson(response, 200, { ok: true, items: [] });
       return;
     }

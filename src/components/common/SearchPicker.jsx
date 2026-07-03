@@ -78,6 +78,8 @@ export default function SearchPicker({
   emptyText = "검색 결과 없음",
   limit = 10,
   detailLimit = 24,
+  loadMoreStep = 0,
+  remoteLimit = null,
   minSearchLength = 2,
   getSearchText = getDefaultSearchText,
   remoteSearchType = "",
@@ -92,13 +94,19 @@ export default function SearchPicker({
 }) {
   const [focused, setFocused] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [submittedQuery, setSubmittedQuery] = useState("");
+  const [visibleLimit, setVisibleLimit] = useState(Math.max(1, Number(limit) || 10));
   const [remoteItems, setRemoteItems] = useState([]);
   const [remoteLoading, setRemoteLoading] = useState(false);
   const remoteRequestIdRef = useRef(0);
   const query = value.trim();
+  const baseLimit = Math.max(1, Number(limit) || 10);
+  const maxDetailLimit = Math.max(baseLimit, Number(detailLimit) || baseLimit);
+  const detailStep = Math.max(0, Number(loadMoreStep) || 0);
   const remoteSearchKey = Array.isArray(remoteSearchType) ? remoteSearchType.join(",") : String(remoteSearchType || "");
   const dynamicMinSearchLength = getQueryMinSearchLength(query, minSearchLength);
-  const canSearch = getSearchLengthText(query).length >= dynamicMinSearchLength;
+  const forceSearch = Boolean(query && submittedQuery === query);
+  const canSearch = forceSearch || getSearchLengthText(query).length >= dynamicMinSearchLength;
   const mappedRemoteItems = useMemo(() => remoteItems.map(mapRemoteItem).filter(Boolean), [mapRemoteItem, remoteItems]);
   const activeItems = useMemo(() => {
     if (!canSearch) return idleItems;
@@ -116,12 +124,14 @@ export default function SearchPicker({
   const canShow = floating
     ? focused && (canSearch || showIdleOnFocus)
     : canSearch || (showIdleOnFocus && focused);
-  const visibleItems = activeItems.slice(0, expanded ? detailLimit : limit);
-  const hasMore = activeItems.length > limit && !expanded;
+  const currentVisibleLimit = detailStep ? Math.min(visibleLimit, maxDetailLimit) : (expanded ? maxDetailLimit : baseLimit);
+  const visibleItems = activeItems.slice(0, currentVisibleLimit);
+  const hasMore = activeItems.length > currentVisibleLimit && currentVisibleLimit < maxDetailLimit;
   const resultTitle = query ? title : idleTitle;
   const closeResults = () => {
     setFocused(false);
     setExpanded(false);
+    setVisibleLimit(baseLimit);
   };
 
   useEffect(() => {
@@ -139,8 +149,9 @@ export default function SearchPicker({
         const result = await postServerAction("/api/search", {
           query,
           type: remoteSearchType,
-          limit,
+          limit: Math.max(baseLimit, Number(remoteLimit) || baseLimit),
           context: remoteSearchContext,
+          force: forceSearch,
         });
         if (remoteRequestIdRef.current !== requestId) return;
         setRemoteItems(Array.isArray(result?.items) ? result.items : []);
@@ -152,7 +163,12 @@ export default function SearchPicker({
     }, 300);
 
     return () => window.clearTimeout(timer);
-  }, [canSearch, limit, query, remoteSearchContext, remoteSearchKey]);
+  }, [baseLimit, canSearch, forceSearch, query, remoteLimit, remoteSearchContext, remoteSearchKey]);
+
+  useEffect(() => {
+    setExpanded(false);
+    setVisibleLimit(baseLimit);
+  }, [baseLimit, query]);
 
   return (
     <div className={`search-picker${floating ? " is-floating" : ""}${className ? ` ${className}` : ""}`}>
@@ -163,8 +179,18 @@ export default function SearchPicker({
           placeholder={placeholder}
           onFocus={() => setFocused(true)}
           onBlur={() => window.setTimeout(() => setFocused(false), 120)}
+          onKeyDown={(event) => {
+            if (event.key !== "Enter") return;
+            event.preventDefault();
+            setSubmittedQuery(value.trim());
+            setFocused(true);
+            setExpanded(false);
+            setVisibleLimit(baseLimit);
+          }}
           onChange={(event) => {
             setExpanded(false);
+            setSubmittedQuery("");
+            setVisibleLimit(baseLimit);
             onChange(event.target.value);
           }}
         />
@@ -181,7 +207,18 @@ export default function SearchPicker({
           {resultTitle ? <strong className="search-picker-title">{resultTitle}</strong> : null}
           {visibleItems.length ? visibleItems.map(renderItem) : <div className="empty-state">{remoteLoading ? "검색 중..." : emptyText}</div>}
           {hasMore ? (
-            <button type="button" className="home-search-more search-picker-more" onMouseDown={(event) => event.preventDefault()} onClick={() => setExpanded(true)}>
+            <button
+              type="button"
+              className="home-search-more search-picker-more"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => {
+                if (detailStep) {
+                  setVisibleLimit((current) => Math.min(Math.max(current, baseLimit) + detailStep, maxDetailLimit, activeItems.length));
+                  return;
+                }
+                setExpanded(true);
+              }}
+            >
               더보기
             </button>
           ) : null}

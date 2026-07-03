@@ -1319,13 +1319,11 @@ export function InvitePanel({
     ? users
       .filter((player) => isAllowedPlayer(player.id, player))
       .filter((player) => `${player.name} ${getUserHashtag(player)} ${player.region} ${player.position}`.toLowerCase().includes(inviteQuery))
-      .slice(0, 8)
       .map((player) => ({ type: "player", player }))
     : [];
   const inviteSearchTeams = inviteQuery && !allowedTeamId
     ? teams
       .filter((team) => `${team.name} ${getTeamHashtag(team)} ${team.region} ${team.homeCourt}`.toLowerCase().includes(inviteQuery))
-      .slice(0, 6)
       .map((team) => ({ type: "team", team }))
     : [];
   const inviteSearchItems = [...inviteSearchPlayers, ...inviteSearchTeams];
@@ -1333,6 +1331,14 @@ export function InvitePanel({
     ...favoritePlayers.filter((player) => isAllowedPlayer(player.id, player)).map((player) => ({ type: "player", player })),
     ...favoriteTeams.map((team) => ({ type: "team", team })),
   ];
+  const getInviteItemSearchText = (item = {}) => {
+    if (item.type === "team") {
+      const team = item.team ?? item;
+      return [team.name, getTeamHashtag(team), team.region, team.homeCourt].filter(Boolean).join(" ");
+    }
+    const player = item.player ?? item;
+    return [player.name, getUserHashtag(player), player.handle, player.region, player.position].filter(Boolean).join(" ");
+  };
 
   const renderInviteSearchItem = (item) => {
     if (item.type === "team") {
@@ -1392,6 +1398,7 @@ export function InvitePanel({
         onChange={onQueryChange}
         placeholder={allowedTeam ? `${allowedTeam.name} 팀원 검색` : "선수 또는 팀 검색"}
         items={inviteSearchItems}
+        getSearchText={getInviteItemSearchText}
         remoteSearchType={allowedTeamId ? "profile" : ["profile", "team"]}
         remoteSearchContext={allowedTeamId ? { teamId: allowedTeamId } : null}
         mapRemoteItem={(item) => {
@@ -1402,10 +1409,13 @@ export function InvitePanel({
         idleItems={idleInviteItems}
         idleTitle="즐겨찾기"
         showIdleOnFocus
+        limit={5}
+        detailLimit={50}
+        loadMoreStep={5}
+        remoteLimit={25}
         floating
         fieldClassName="arena-invite-search"
         renderItem={renderInviteSearchItem}
-        closeOnResultClick
       />
 
       {canShowSelectedInviteAction ? (
@@ -1985,7 +1995,10 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
     try {
       const result = await app.actions.acceptRecruitingInvitation(roomPost.id, invitation.id);
       if (!result || result.ok === false) setPendingRosterOpen(null);
-      else onInvitationAccepted?.(roomPost.id, invitation);
+      else {
+        app.actions.loadRecruitingPost?.(roomPost.id);
+        onInvitationAccepted?.(roomPost.id, invitation);
+      }
     } catch {
       setPendingRosterOpen(null);
     }
@@ -2029,12 +2042,16 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
       };
     });
   };
-  const sendInvites = (roomPost, playerIds, teamId = null, joinMode = "") => {
-    if (!inviteDraft || !playerIds.length) return;
+  const sendInvites = async (roomPost, playerIds, teamId = null, joinMode = "") => {
+    if (!inviteDraft || !playerIds.length) return false;
     const inviteJoinMode = joinMode || (teamId ? "team" : "player");
     const invite = { side: inviteDraft.sideName, reserve: Boolean(inviteDraft.reserve), playerIds, teamId, joinMode: inviteJoinMode };
-    app.actions.inviteRecruitingPlayers(roomPost.id, invite);
-    setInviteDraft(null);
+    const result = await app.actions.inviteRecruitingPlayers(roomPost.id, invite);
+    if (result && result.ok !== false) {
+      app.actions.loadRecruitingPost?.(roomPost.id);
+      setInviteDraft(null);
+    }
+    return result;
   };
   useEffect(() => {
     if (!pendingRosterOpen || !selectedPost || selectedPost.id !== pendingRosterOpen.postId) return;
@@ -2362,7 +2379,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                 sideName={activeSlotDraft.sideName}
                 reserve={Boolean(activeSlotDraft.reserve)}
                 query={activeSlotDraft.query}
-                onQueryChange={(query) => updateInviteDraft({ query, selectedPlayerIds: [] })}
+                onQueryChange={(query) => updateInviteDraft({ query })}
                 users={app.state.users}
                 teams={app.state.teams}
                 userById={userById}
@@ -2372,7 +2389,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                 favoriteTeamIds={favoriteTeamIds}
                 allowedTeamId={getInviteAllowedTeamId(activeSlotDraft.sideName)}
                 onTogglePlayer={toggleInvitePlayer}
-                onInvitePlayers={(playerIds, teamId, joinMode) => sendInvites(selectedPost, playerIds, teamId, joinMode)}
+                onInvitePlayers={(playerIds, teamId, joinMode) => { void sendInvites(selectedPost, playerIds, teamId, joinMode); }}
                 onClose={() => setInviteDraft(null)}
               />
             </SlotCommandPanel>
@@ -2645,7 +2662,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                   sideName={activeInviteDraft.sideName}
                   reserve={Boolean(activeInviteDraft.reserve)}
                   query={activeInviteDraft.query}
-                  onQueryChange={(query) => updateInviteDraft({ query, selectedPlayerIds: [] })}
+                  onQueryChange={(query) => updateInviteDraft({ query })}
                   users={app.state.users}
                   teams={app.state.teams}
                   userById={userById}
@@ -2655,7 +2672,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                   favoriteTeamIds={favoriteTeamIds}
                   allowedTeamId={getInviteAllowedTeamId(activeInviteDraft.sideName)}
                   onTogglePlayer={toggleInvitePlayer}
-                  onInvitePlayers={(playerIds, teamId, joinMode) => sendInvites(selectedPost, playerIds, teamId, joinMode)}
+                  onInvitePlayers={(playerIds, teamId, joinMode) => { void sendInvites(selectedPost, playerIds, teamId, joinMode); }}
                   onClose={() => setInviteDraft(null)}
                 />
               ) : null}
@@ -2668,7 +2685,10 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                   currentUserId={app.currentUser.id}
                   alreadyApplied={alreadyApplied}
                   onAccept={(invitation) => acceptRoomInvitation(selectedPost, invitation)}
-                  onDecline={(invitationId) => app.actions.declineRecruitingInvitation(selectedPost.id, invitationId)}
+                  onDecline={async (invitationId) => {
+                    const result = await app.actions.declineRecruitingInvitation(selectedPost.id, invitationId);
+                    if (result && result.ok !== false) app.actions.loadRecruitingPost?.(selectedPost.id);
+                  }}
                 />
               ) : null}
 
@@ -2735,7 +2755,10 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                     minTrust={selectedPost.refereeTrustMin}
                     canInvite={canInviteRefereeFromRoom}
                     canJoin={canJoinReferee && !mine && !matchRoom}
-                    onInviteReferee={(refereeId) => app.actions.inviteRecruitingReferee(selectedPost.id, refereeId)}
+                    onInviteReferee={async (refereeId) => {
+                      const result = await app.actions.inviteRecruitingReferee(selectedPost.id, refereeId);
+                      if (result && result.ok !== false) app.actions.loadRecruitingPost?.(selectedPost.id);
+                    }}
                     onJoin={() => app.actions.interestRecruitingPost(selectedPost.id, { joinMode: "referee" })}
                   />
                 ) : null}
@@ -3335,6 +3358,11 @@ function RecruitingReady({ app }) {
   }, [app.actions.subscribeRecruitingChat, app.currentUser.id, app.remoteReady, selectedPost?.id]);
 
   useEffect(() => {
+    if (!selectedPost?.id || !app.remoteReady || !app.currentUser.id) return undefined;
+    return app.actions.subscribeRecruitingRoom?.(selectedPost.id);
+  }, [app.actions.subscribeRecruitingRoom, app.currentUser.id, app.remoteReady, selectedPost?.id]);
+
+  useEffect(() => {
     if (!targetPostId || !app.remoteReady) return;
     const targetPost = app.state.recruitingPosts.find((post) => post.id === targetPostId);
     if (targetPost) {
@@ -3362,13 +3390,9 @@ function RecruitingReady({ app }) {
     if (!app.remoteReady || !app.currentUser.id) return;
     const refreshKey = `${selectedPostId}:${app.currentUser.id}`;
     if (selectedPostRefreshRef.current === refreshKey) return;
-    if ((app.state.recruitingPosts ?? []).some((post) => post.id === selectedPostId)) {
-      selectedPostRefreshRef.current = refreshKey;
-      return;
-    }
     selectedPostRefreshRef.current = refreshKey;
     app.actions.loadRecruitingPost?.(selectedPostId);
-  }, [app.actions, app.currentUser.id, app.remoteReady, app.state.recruitingPosts, selectedPostId]);
+  }, [app.actions, app.currentUser.id, app.remoteReady, selectedPostId]);
 
   useEffect(() => {
     if (!selectedPostId || !app.remoteReady || !app.currentUser.id) return undefined;

@@ -2469,6 +2469,41 @@ export function useAppData(authUser = null) {
           void supabase.removeChannel(channel);
         };
       },
+      subscribeRecruitingRoom: (postId) => {
+        const roomId = String(postId ?? "").trim();
+        if (!isSupabaseConfigured || !supabase || !roomId) return () => {};
+        let reloadTimer = null;
+        const scheduleRoomReload = () => {
+          if (reloadTimer) return;
+          reloadTimer = window.setTimeout(() => {
+            reloadTimer = null;
+            void loadRecruitingPost(roomId);
+          }, 350);
+        };
+        const channel = supabase.channel(`room-state:recruiting:${roomId}:${Date.now().toString(36)}`);
+        channel
+          .on("postgres_changes", {
+            event: "*",
+            schema: "public",
+            table: "recruiting_posts",
+            filter: `id=eq.${roomId}`,
+          }, scheduleRoomReload)
+          .on("postgres_changes", {
+            event: "*",
+            schema: "public",
+            table: "recruiting_applications",
+            filter: `post_id=eq.${roomId}`,
+          }, scheduleRoomReload)
+          .subscribe((status) => {
+            if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+              console.warn("Recruiting room realtime subscription failed.", { roomId, status });
+            }
+          });
+        return () => {
+          if (reloadTimer) window.clearTimeout(reloadTimer);
+          void supabase.removeChannel(channel);
+        };
+      },
       setRecruitingApplicantReserve: (postId, playerId, reserve) => {
         applyRecruitingPostMutation(postId, (prev) => setRecruitingApplicantReserve({ ...prev, currentUserId }, postId, playerId, reserve), { action: "setRecruitingApplicantReserve", playerId, reserve });
       },
