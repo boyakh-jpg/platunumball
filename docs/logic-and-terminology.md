@@ -1648,7 +1648,7 @@ flowchart TD
 26. Match `parties` must be an array in client state. DB/API rows that carry `rules.parties` or `parties` as an object are normalized to an array before room/list helpers read them.
 27. Matches 화면은 idle `scope: "mine"` 모집 context load를 실행하지 않는다. 경기 메뉴 첫 화면은 current-profile match feed와 current-user open recruiting schedule만 명시적으로 로드한다.
 28. `/api/matches/list` can include current-user open recruiting schedule rows when explicitly requested, and `/app/matches` first load sends `includeRecruitingSchedule=true` so owned/joined/invited matching rooms appear in the match menu schedule.
-28-1. Instant recruiting rooms have no calendar date, but they still appear in the Matches `active` list when they are related to the current profile. They do not create calendar day counts or appear under the scheduled/date-filtered view.
+28-1. Instant recruiting rooms have no calendar date, but they still appear in the Matches `active` list when they are related to the current profile and the 2-hour instant window has not expired. They do not create calendar day counts or appear under the scheduled/date-filtered view.
 28-2. Matches recruiting schedule rows are current-user relation rows, not a preview list. The API and UI must not cap them to 12; they load up to the active match-list cap and render all loaded related rooms without a "more" click.
 28-3. Home upcoming matches must include current-user open recruiting schedule rooms, matching the Matches menu schedule source instead of reading `matches` only.
 28-3-1. Home and Matches use the same recruiting schedule relation helper: owner/player/referee/applicant/reserve/lobby entry all count as the current user's recruiting schedule relation.
@@ -1895,7 +1895,8 @@ flowchart TD
 - Recruiting region/start-filter and load-more responses are latest-request-only on the frontend. A slower previous request must not merge rows or pagination into the currently selected list.
 - Recruiting load-more errors are separate from first-page/region errors. The load-more row may show a failure only after an explicit load-more request fails.
 - Recruiting region select must include active court/room regions such as `광진`; otherwise date-filtered public rooms can be hidden even when their feed row exists.
-- Recruiting public list filtering may show already-loaded current-user rooms outside the selected region, but must not auto-load mine scopes just to fill the public list.
+- Recruiting public list filtering applies the selected region/start-date to already-loaded current-user rooms too. Direct target rooms and pending invites may still appear so explicit navigation and acceptance flows are not hidden. Mine scopes must not auto-load just to fill the public list.
+- Recruiting list screens hide expired instant rooms even if a stale open row remains locally or in feed cache.
 - Profile region edits use the canonical `REGION_TREE` selects and save `region`, `regionSido`, and `regionDistrict` together. Region must not be edited as free text.
 - `REGION_TREE` uses `전남광주통합특별시` as the canonical Gwangju/Jeonnam sido. Existing `광주광역시`, `전라남도`, `전남광주특별시`, `광주특별시`, and `광주전남특별통합시` values infer to that canonical sido before saving.
 - Recruiting public join waits for the server action result. On success the frontend keeps the joined room selected, refreshes that room detail explicitly, and pins the URL to `?post=`. Direct `?post=` entry selects the pending room id while detail loads. Badge/feed counts still must not trigger unrelated list reloads.

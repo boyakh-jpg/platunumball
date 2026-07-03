@@ -7149,3 +7149,21 @@ html[data-theme="light"] .arena-lobby-arena {
 .arena-modal-close-button {
   min-height: 56px;
 }
+
+.arena-filter-bar .segmented-control button {
+  min-width: max-content;
+  gap: 6px;
+}
+
+.arena-filter-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.arena-filter-badge {
+  flex: 0 0 auto;
+  min-width: 1.5ch;
+  text-align: right;
+}

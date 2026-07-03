@@ -15,6 +15,7 @@ import {
   getRoomRefereeLabel,
   getRoomVisibilityLabel,
   getRoomScheduleLabel,
+  getPublicRoomTimingStatus,
   getMatchHostPlayerId,
   getMatchReservePlayerIds,
   getMatchRoomPhase,
@@ -150,6 +151,10 @@ function getMatchDate(match) {
 function isInstantScheduleRoom(room) {
   const scheduledAt = String(room?.scheduledAt ?? "").trim().toLowerCase();
   return isInstantRoom(room) || scheduledAt === "instant" || scheduledAt === "\uC989\uC2DC";
+}
+
+function isExpiredInstantScheduleRoom(room) {
+  return isInstantScheduleRoom(room) && getPublicRoomTimingStatus(room).expired;
 }
 
 function getMonthKey(value = toDateInputValue()) {
@@ -855,6 +860,7 @@ export default function Matches({ app }) {
   const visibleRecruitingCandidates = useMemo(() => {
     return [...matchPageRecruitingPosts]
       .filter((post) => post.status === "open")
+      .filter((post) => !isExpiredInstantScheduleRoom(post))
       .filter((post) => isRecruitingRoomInUserSchedule(post, app.state, app.currentUser.id, myTeamIds))
       .filter((post) => {
         if (isInstantScheduleRoom(post)) return true;

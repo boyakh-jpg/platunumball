@@ -1740,6 +1740,10 @@ function isRegionRecruitingPost(post = {}, regionKey = "", user = {}) {
   ));
 }
 
+function isExpiredInstantRecruitingPost(post = {}) {
+  return isInstantRoom(post) && getPublicRoomTimingStatus(post).expired;
+}
+
 function getDefaultRecruitingRegionKey(user = {}) {
   return stripRegionSuffix(user.regionDistrict || String(user.region ?? "").split(/\s+/).filter(Boolean).at(-1) || "");
 }
@@ -3379,6 +3383,7 @@ function RecruitingReady({ app }) {
   const scopedPosts = useMemo(() => {
     return [...(app.state.recruitingPosts ?? [])]
       .filter((post) => post.status === "open")
+      .filter((post) => !isExpiredInstantRecruitingPost(post))
       .filter((post) => canShowRecruitingQueuePost(post, {
         roomScope,
         currentUserId: app.currentUser.id,
@@ -3388,8 +3393,7 @@ function RecruitingReady({ app }) {
       .filter((post) => {
         const invited = hasPendingRecruitingInvitation(post, app.currentUser.id);
         const relationScoped = roomScope !== "all";
-        const myRoom = isRecruitingPostForUser(post, app.currentUser.id, myTeamIds);
-        return invited || relationScoped || myRoom || post.id === targetPostId || isRegionRecruitingPost(post, selectedRegionKey, app.currentUser) || isNationalRecruitingPost(post, app.state);
+        return invited || relationScoped || post.id === targetPostId || isRegionRecruitingPost(post, selectedRegionKey, app.currentUser) || isNationalRecruitingPost(post, app.state);
       })
       .filter((post) => queue === "all" || (queue === "ranked" ? post.ranked !== false : post.ranked === false))
       .filter((post) => modeFilter === "all" || post.mode === modeFilter)
@@ -3586,9 +3590,9 @@ function RecruitingReady({ app }) {
                 </select>
               </label>
               <div className="segmented-control compact-segments arena-filter-segment">
-                <button type="button" className={roomScope === "created" ? "active" : ""} onClick={() => selectRoomScope("created")}>내가 만든 방 {formatRoomCount(createdRoomCount)}</button>
-                <button type="button" className={roomScope === "joined" ? "active" : ""} onClick={() => selectRoomScope("joined")}>내 참여방 {formatRoomCount(joinedRoomCount)}</button>
-                <button type="button" className={roomScope === "invited" ? "active" : ""} onClick={() => selectRoomScope("invited")}>초대받음 {formatRoomCount(invitedRoomCount)}</button>
+                <button type="button" className={roomScope === "created" ? "active" : ""} onClick={() => selectRoomScope("created")}><span className="arena-filter-label">내가 만든 방</span><span className="arena-filter-badge">{formatRoomCount(createdRoomCount)}</span></button>
+                <button type="button" className={roomScope === "joined" ? "active" : ""} onClick={() => selectRoomScope("joined")}><span className="arena-filter-label">내 참여방</span><span className="arena-filter-badge">{formatRoomCount(joinedRoomCount)}</span></button>
+                <button type="button" className={roomScope === "invited" ? "active" : ""} onClick={() => selectRoomScope("invited")}><span className="arena-filter-label">초대받음</span><span className="arena-filter-badge">{formatRoomCount(invitedRoomCount)}</span></button>
               </div>
               <div className="segmented-control compact-segments arena-filter-segment">
                 <button type="button" className={queue === "all" ? "active" : ""} onClick={() => setQueue("all")}>전체</button>
