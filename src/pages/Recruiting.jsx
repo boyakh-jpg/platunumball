@@ -53,10 +53,16 @@ import { assetUrl } from "../lib/assets.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import {
   cleanRoomTitle,
+  MATCH_DISPUTE_REASON_OPTIONS,
+  OTHER_MATCH_DISPUTE_REASON,
+  buildMatchDisputeRequest,
   formatStatLine,
   getRoomCompetitionLabel,
   getRoomRefereeLabel,
   getRoomVisibilityLabel,
+  getMatchPlayerDisputePoints,
+  getMatchRecordPlayerIds,
+  getMatchRecordWindow,
   getMatchRoomPhase,
   getMatchReservePlayerIds,
   getMatchSideLeaderId,
@@ -1702,19 +1708,21 @@ function getSourceMatchStatus(match, lobby, userId = "") {
 function getSourceMatchAction(match, userId, teams = [], userById = {}) {
   const sideName = getSourceMatchDecisionSideName(match, userId, teams);
   if (!match || !sideName) return { label: "경기 정보", detail: "명단과 룰을 확인합니다." };
-  if (match.status === "contract") {
+  const agreedResultOpen = match.status === "agreed" && match.endedAt && match.result && !getMatchRecordWindow(match).disputeExpired;
+  const effectiveStatus = agreedResultOpen ? "approval" : match.status;
+  if (effectiveStatus === "contract") {
     const agreed = (match.agreements?.[sideName] ?? []).includes(userId);
     return agreed
       ? { label: "확정방", detail: "다른 참가자 READY를 기다립니다." }
       : { label: "확정방", detail: "현재 명단과 룰에 READY하면 경기준비로 넘어갑니다.", action: "agree", button: "READY" };
   }
-  if (match.status === "approval") {
+  if (effectiveStatus === "approval") {
     const approved = (match.approvals?.[sideName] ?? []).includes(userId);
     return approved
       ? { label: "결과 승인", detail: "다른 참가자 승인만 남았습니다." }
       : { label: "결과 승인", detail: "기록과 득점 합계가 맞으면 승인합니다.", action: "approve", button: "승인" };
   }
-  if (match.status === "disputed") {
+  if (effectiveStatus === "disputed") {
     return {
       label: "이의신청방",
       detail: "30분 안에 이의 사유를 확인하고 수정안 확정 또는 무효 처리하세요.",
@@ -1972,6 +1980,13 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
   const [chatAreaVisible, setChatAreaVisible] = useState(false);
   const [inviteDraft, setInviteDraft] = useState(null);
   const [slotActionDraft, setSlotActionDraft] = useState(null);
+  const [sourceDisputeDraft, setSourceDisputeDraft] = useState({
+    matchId: "",
+    resultKey: "",
+    reason: MATCH_DISPUTE_REASON_OPTIONS[0],
+    customReason: "",
+    requestedPoints: "",
+  });
   const [roomEditDraftByPost, setRoomEditDraftByPost] = useState({});
   const [refereeInviteQueryByPost, setRefereeInviteQueryByPost] = useState({});
   const [pendingRosterOpen, setPendingRosterOpen] = useState(null);
@@ -2000,6 +2015,22 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
   }, [app.actions, app.currentUser.id, app.remoteReady, roomPostId]);
 
   useEffect(() => {
+    if (!sourceMatch?.id) return;
+    const resultKey = sourceMatch.result?.updatedAt ?? sourceMatch.result?.submittedAt ?? "";
+    setSourceDisputeDraft((current) => (
+      current.matchId === sourceMatch.id && current.resultKey === resultKey
+        ? current
+        : {
+          matchId: sourceMatch.id,
+          resultKey,
+          reason: MATCH_DISPUTE_REASON_OPTIONS[0],
+          customReason: "",
+          requestedPoints: String(getMatchPlayerDisputePoints(sourceMatch, app.currentUser.id)),
+        }
+    ));
+  }, [app.currentUser.id, sourceMatch?.id, sourceMatch?.result?.updatedAt]);
+
+  useEffect(() => {
     if (!roomPostId || !app.remoteReady || !app.currentUser.id || !chatAreaVisible || roomChatLocked) return undefined;
     return app.actions.pollRecruitingChat?.(roomPostId);
   }, [app.actions.pollRecruitingChat, app.currentUser.id, app.remoteReady, chatAreaVisible, roomChatLocked, roomPostId]);
@@ -2013,6 +2044,18 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
     setInviteDraft(null);
     setSlotActionDraft(null);
     onClose?.();
+  };
+  const submitSourceDispute = (event) => {
+    event.preventDefault();
+    if (!sourceMatch?.id) return;
+    app.actions.disputeMatch(sourceMatch.id, buildMatchDisputeRequest({
+      match: sourceMatch,
+      playerId: app.currentUser.id,
+      playerName: app.currentUser.name,
+      requestedPoints: sourceDisputeDraft.requestedPoints,
+      reason: sourceDisputeDraft.reason,
+      customReason: sourceDisputeDraft.customReason,
+    }));
   };
   const getRefereeInviteQuery = (roomPost) => refereeInviteQueryByPost[roomPost.id] ?? "";
   const updateRefereeInviteQuery = (roomPost, query) => {
@@ -2471,11 +2514,23 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const canStartSourceMatch = Boolean(matchRoom && currentUserCanStartSourceMatch && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.result && !sourceMatch?.endedAt);
         const canRequestRefereeAbsence = Boolean(matchRoom && mine && sourceMatch?.refereeId && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.refereeAbsenceRequest?.confirmedAt && !sourceMatch?.startedAt && !sourceMatch?.endedAt && !sourceMatch?.result);
         const canConfirmRefereeAbsence = Boolean(matchRoom && sourceMatchOpponentLeaderId === app.currentUser.id && sourceMatch?.refereeId && sourceMatch?.refereeAbsenceRequest && !sourceMatch.refereeAbsenceRequest.confirmedAt && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.startedAt && !sourceMatch?.endedAt && !sourceMatch?.result && sourceMatchSideName);
-        const canEndSourceMatch = Boolean(matchRoom && currentUserCanOperateStartedSourceMatch && sourceMatchPhase?.phase === "live" && !sourceMatch?.result && !sourceMatch?.endedAt && sourceMatchStarted);
+        const canEndSourceMatch = Boolean(matchRoom && currentUserCanOperateStartedSourceMatch && sourceMatchPhase?.phase === "live" && !sourceMatch?.endedAt && sourceMatchStarted);
         const canReviewSourceMatch = Boolean(matchRoom && currentUserCanOperateStartedSourceMatch && sourceMatchPhase?.phase === "dispute");
-        const canSubmitSourceMatchLiveResult = Boolean(matchRoom && sourceMatch?.status === "agreed" && sourceMatchPhase?.phase === "live" && currentUserCanOperateStartedSourceMatch && sourceMatchStarted && !sourceMatch?.endedAt && !sourceMatch?.result);
+        const canSubmitSourceMatchLiveResult = Boolean(matchRoom && sourceMatch?.status === "agreed" && sourceMatchPhase?.phase === "live" && currentUserCanOperateStartedSourceMatch && sourceMatchStarted && !sourceMatch?.endedAt);
         const canSubmitSourceMatchPostgameResult = Boolean(matchRoom && canOperatorSubmitMissingPostgameResult(sourceMatch, currentUserCanOperateStartedSourceMatch));
         const canCancelSourceMatch = Boolean(matchRoom && sourceMatch && ["contract", "agreed"].includes(sourceMatch.status) && (sourceMatchStarted || sourceMatch.endedAt || sourceMatch.result ? currentUserCanOperateStartedSourceMatch : mine));
+        const sourceMatchRecordWindow = sourceMatch ? getMatchRecordWindow(sourceMatch) : null;
+        const sourceMatchApprovalOpen = Boolean(
+          sourceMatch?.result &&
+          sourceMatchRecordWindow?.disputeOpen &&
+          (sourceMatch.status === "approval" || (sourceMatch.status === "agreed" && sourceMatch.endedAt)),
+        );
+        const canRequestSourceMatchPointDispute = Boolean(
+          matchRoom &&
+          sourceMatchApprovalOpen &&
+          getMatchRecordPlayerIds(sourceMatch, true).includes(app.currentUser.id),
+        );
+        const sourceCurrentDisputePoints = sourceMatch ? getMatchPlayerDisputePoints(sourceMatch, app.currentUser.id) : 0;
         const showSourceMatchRecordSummary = Boolean(
           matchRoom &&
           sourceMatch?.result &&
@@ -3096,6 +3151,49 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                     ) : null}
                     {showSourceMatchRecordSummary ? (
                       <SourceMatchRecordSummary match={sourceMatch} userById={userById} />
+                    ) : null}
+                    {!sourceMatchAction.disputed && sourceMatchApprovalOpen ? (
+                      <form className="arena-dispute-editor" onSubmit={submitSourceDispute}>
+                        <div className="arena-dispute-score-row">
+                          <label>
+                            점수판
+                            <input type="text" disabled value={`${sourceMatch?.result?.scoreA ?? sourceMatch?.teamA?.score ?? 0} : ${sourceMatch?.result?.scoreB ?? sourceMatch?.teamB?.score ?? 0}`} readOnly />
+                          </label>
+                          <label>
+                            내 득점
+                            <input
+                              type="number"
+                              min="0"
+                              disabled={!canRequestSourceMatchPointDispute}
+                              value={sourceDisputeDraft.matchId === sourceMatch.id ? sourceDisputeDraft.requestedPoints : String(sourceCurrentDisputePoints)}
+                              onChange={(event) => setSourceDisputeDraft((current) => ({ ...current, matchId: sourceMatch.id, resultKey: sourceMatch.result?.updatedAt ?? sourceMatch.result?.submittedAt ?? "", requestedPoints: event.target.value }))}
+                            />
+                          </label>
+                        </div>
+                        <label className="memo-label">
+                          이의제기 사유
+                          <select
+                            disabled={!canRequestSourceMatchPointDispute}
+                            value={sourceDisputeDraft.matchId === sourceMatch.id ? sourceDisputeDraft.reason : MATCH_DISPUTE_REASON_OPTIONS[0]}
+                            onChange={(event) => setSourceDisputeDraft((current) => ({ ...current, matchId: sourceMatch.id, resultKey: sourceMatch.result?.updatedAt ?? sourceMatch.result?.submittedAt ?? "", reason: event.target.value }))}
+                          >
+                            {MATCH_DISPUTE_REASON_OPTIONS.map((reason) => <option key={reason} value={reason}>{reason}</option>)}
+                          </select>
+                        </label>
+                        {sourceDisputeDraft.reason === OTHER_MATCH_DISPUTE_REASON ? (
+                          <label className="memo-label">
+                            기타 사유
+                            <textarea
+                              disabled={!canRequestSourceMatchPointDispute}
+                              value={sourceDisputeDraft.matchId === sourceMatch.id ? sourceDisputeDraft.customReason : ""}
+                              onChange={(event) => setSourceDisputeDraft((current) => ({ ...current, matchId: sourceMatch.id, resultKey: sourceMatch.result?.updatedAt ?? sourceMatch.result?.submittedAt ?? "", customReason: event.target.value }))}
+                            />
+                          </label>
+                        ) : null}
+                        <div className="match-action-row">
+                          <Button type="submit" variant="secondary" disabled={!canRequestSourceMatchPointDispute}>이의제기</Button>
+                        </div>
+                      </form>
                     ) : null}
                     {sourceMatchAction.disputed ? (
                       <SourceMatchDisputeEditor

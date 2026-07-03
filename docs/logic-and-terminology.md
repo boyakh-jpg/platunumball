@@ -1,5 +1,11 @@
 # RankBall 로직/용어/디자인 기준
 
+## 2026-07-04 경기 중 실시간 기록
+
+- 경기 중 `submitMatchResult`로 저장된 `match.result`는 임시 진행 기록이다. `endedAt` 전에는 경기 종료 버튼과 실시간 기록 입력을 닫지 않는다.
+- 종료 시 임시 기록이 이미 있으면 `status=approval`로 전환하고 양측 승인을 새로 받는다.
+- 기존 꼬인 `status=agreed`, `endedAt` 있음, `match.result` 있음 상태는 승인 대기와 같은 단계로 취급해 승인/이의 흐름을 막지 않는다.
+
 ## 2026-07-03 경기 액션 후 재조회 실패 처리
 
 - `startMatch`, `endMatch`, `submitMatchResult`처럼 DB write가 성공한 경기 액션은 후속 단일 상세 재조회가 늦거나 실패해도 전체 액션 실패로 롤백하지 않는다.

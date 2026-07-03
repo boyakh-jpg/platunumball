@@ -4627,7 +4627,8 @@ export function disputeMatch(state, matchId, disputeInput = "") {
   const disciplineBlock = getDisciplineBlockedState(state, "이의제기");
   if (disciplineBlock) return disciplineBlock;
   const match = state.matches.find((item) => item.id === matchId);
-  if (!match?.result || match.status !== "approval") return state;
+  const canOpenDispute = match?.status === "approval" || Boolean(match?.status === "agreed" && match?.endedAt && match?.result);
+  if (!match?.result || !canOpenDispute) return state;
   const disputeRequest = normalizeDisputeRequest(disputeInput);
   if (!currentUserCanFileMatchDispute(state, match)) {
     return {
@@ -4973,8 +4974,11 @@ export function endMatch(state, matchId) {
   if (!match || match.status !== "agreed" || match.endedAt) return state;
   if (!currentUserCanOperateStartedMatch(state, match)) return state;
   const now = new Date().toISOString();
+  const hasLiveResult = Boolean(match.result);
   const nextMatch = {
     ...match,
+    status: hasLiveResult ? "approval" : match.status,
+    approvals: hasLiveResult ? { teamA: [], teamB: [] } : match.approvals,
     startedAt: match.startedAt ?? match.rules?.startedAt ?? now,
     endedAt: now,
     rules: {

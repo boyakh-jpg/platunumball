@@ -214,7 +214,7 @@ export default function Recorder({ app }) {
   const hasDirtyStats = Object.keys(dirtyStats).length > 0;
   const canEditStats = Boolean(selectedMatch && !["confirmed"].includes(selectedMatch.status) && (canEditDisputeDraft || selectedMatch.status !== "disputed") && editablePlayerIds.length && saveWindowOpen);
   const canSave = Boolean(selectedMatch && !["confirmed"].includes(selectedMatch.status) && (canEditDisputeDraft || selectedMatch.status !== "disputed") && editablePlayerIds.length && saveWindowOpen && hasDirtyStats);
-  const canEndLiveMatch = Boolean(selectedMatch && currentUserCanOperatePostStart && roomPhase === "live" && !selectedMatch.endedAt && !selectedMatch.result);
+  const canEndLiveMatch = Boolean(selectedMatch && currentUserCanOperatePostStart && roomPhase === "live" && !selectedMatch.endedAt);
   const canEditPostgameRoster = Boolean(selectedMatch && currentUserCanOperatePostStart && roomPhase === "postgame" && (recordWindow?.statOpen || currentUserCanSubmitMissingPostgameResult) && !selectedMatch.result);
   const scoreA = selectedMatch ? getSideScore(selectedMatch, stats, "teamA", editablePlayerIds, includeReserveStats) : 0;
   const scoreB = selectedMatch ? getSideScore(selectedMatch, stats, "teamB", editablePlayerIds, includeReserveStats) : 0;

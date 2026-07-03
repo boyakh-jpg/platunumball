@@ -324,7 +324,8 @@ export default function MatchRoom({ app }) {
   const canSubmitLiveResult = currentUserCanSubmit && match.status === "agreed" && recordWindow.beforeEnd && !recordWindow.beforeStart;
   const canSubmitResult = canEditDisputeDraft || canSubmitLiveResult || (currentUserCanSubmit && ((["agreed", "approval"].includes(match.status) && recordWindow.statOpen) || currentUserCanSubmitMissingPostgameResult));
   const canCancel = ["contract", "agreed"].includes(match.status) && (startedAuthorityPhase ? currentUserCanOperateStartedMatch : isMatchHost);
-  const canDispute = Boolean(match.result) && match.status === "approval" && recordWindow.disputeOpen && currentUserCanFileDispute;
+  const matchApprovalOpen = Boolean(match.result && (match.status === "approval" || (match.status === "agreed" && match.endedAt && !recordWindow.disputeExpired)));
+  const canDispute = matchApprovalOpen && recordWindow.disputeOpen && currentUserCanFileDispute;
   const canRequestOwnPointDispute = canDispute && getMatchRecordPlayerIds(match, true).includes(app.currentUser.id);
   const canVoid = match.status === "disputed" && currentUserCanOperateStartedMatch;
   const canResumeApproval = match.status === "disputed" && currentUserCanOperateStartedMatch;
@@ -332,7 +333,7 @@ export default function MatchRoom({ app }) {
   const isContractStage = match.status === "contract";
   const shouldShowResultEntry =
     match.status === "approval" || Boolean(match.result) || (match.status === "agreed" && !recordWindow.beforeStart);
-  const shouldShowApprovalPanel = match.status === "confirmed" || (match.status === "approval" && approvalAccessReady);
+  const shouldShowApprovalPanel = match.status === "confirmed" || (matchApprovalOpen && approvalAccessReady);
   const shouldShowWaitingPanel = false;
   const scoreA = getDisplayScore(match, "teamA");
   const scoreB = getDisplayScore(match, "teamB");
