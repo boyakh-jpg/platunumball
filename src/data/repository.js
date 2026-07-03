@@ -187,7 +187,7 @@ const MATCH_DISPUTE_COLUMNS = "id,match_id,user_id,reason,created_at";
 const FAVORITE_COLUMNS = "id,user_id,target_type,target_id,created_at";
 const RECRUITING_POST_COLUMNS = "id,type,title,visibility,region,court_id,court_name,mode,scheduled_at,scheduled_date,scheduled_time,ranked,official,pre_registered,rating_scale,age_restriction,allowed_age_groups,rules,stakes,court_reserved,court_fee,spots,team_id,target_team_id,referee_id,referee_trust_min,stat_entry_minutes,dispute_minutes,room_state,host_join_mode,host_side,host_ready,side_capacity,player_ids,position,player_id,memo,status,confirmed_at,created_at,updated_at";
 const RECRUITING_APPLICATION_COLUMNS = "post_id,kind,team_id,player_id,side,status,reserve,position,player_ids,source_team_id,source_entry_id,created_at,updated_at";
-const TOURNAMENT_COLUMNS = "id,title,format,visibility,status,region,court_name,mode,ranked,official,start_date,end_date,schedule_policy,schedule_note,mmr_limit_mode,max_mmr_gap,mmr_policy,rules,memo,created_by,started_at,match_ids,bracket,team_statuses,team_approvals,created_at,updated_at";
+const TOURNAMENT_COLUMNS = "id,title,format,visibility,status,region,court_id,court_name,mode,ranked,official,start_date,end_date,schedule_policy,schedule_note,mmr_limit_mode,max_mmr_gap,mmr_policy,rules,memo,created_by,started_at,match_ids,bracket,team_statuses,team_approvals,created_at,updated_at";
 const TOURNAMENT_TEAM_COLUMNS = "tournament_id,team_id,status,seed_order,approved_by,approved_at";
 const SEASON_COLUMNS = "id,name,subtitle,starts_at,ends_at,active,regions,promotion_line,rules";
 const AFFILIATION_COLUMNS = "id,type,name,score,wins,losses";
@@ -1404,8 +1404,10 @@ function collectRecruitingPageScope(posts = [], applications = [], profileIds = 
 
 function collectTournamentPageScope(tournaments = [], tournamentTeams = [], profileIds = []) {
   const teamIds = [];
+  const courtIds = [];
   const scopedProfileIds = [...profileIds];
   tournaments.forEach((tournament) => {
+    courtIds.push(tournament.court_id);
     scopedProfileIds.push(
       tournament.created_by,
       ...flattenIdValues(tournament.team_approvals),
@@ -1418,7 +1420,7 @@ function collectTournamentPageScope(tournaments = [], tournamentTeams = [], prof
   });
   return {
     teamIds: uniqueScopeIds(teamIds),
-    courtIds: [],
+    courtIds: uniqueScopeIds(courtIds),
     profileIds: uniqueScopeIds(scopedProfileIds),
   };
 }
@@ -2162,7 +2164,8 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
         visibility: tournament.visibility,
         status: tournament.status,
         region: tournament.region,
-        court: tournament.court_name,
+        courtId: tournament.court_id ?? null,
+        court: tournament.court_name ?? context.courtById[tournament.court_id]?.name ?? "미정",
         mode: tournament.mode,
         ranked: tournament.ranked,
         official: tournament.official,
@@ -2658,6 +2661,7 @@ export async function saveNormalizedRemoteState(state, options = {}) {
     visibility: tournament.visibility ?? "private",
     status: tournament.status ?? "draft",
     region: tournament.region,
+    court_id: nullableText(getCourtId(tournament)),
     court_name: tournament.court,
     mode: tournament.mode,
     ranked: tournament.ranked !== false,
@@ -3021,6 +3025,7 @@ function makeTournamentMatch(tournament, teamA, teamB, pairing, now, matchId = "
     id: matchId || makeId("m"),
     title: `${tournament.title} ${roundLabel} · ${teamA.name} vs ${teamB.name}`,
     mode,
+    courtId: tournament.courtId ?? getCourtId(tournament),
     court: tournament.court || "미정",
     scheduledDate: "",
     scheduledTime: "",
@@ -3887,13 +3892,15 @@ export function createTournament(state, draft) {
       .filter((teamId) => teamStatuses[teamId] === "accepted")
       .map((teamId) => [teamId, { by: state.currentUserId, approvedAt: createdAt }]),
   );
+  const selectedCourt = getRegisteredCourts(state).find((court) => court.name === draft.court || court.id === getCourtId(draft)) ?? null;
   const tournament = {
     id: draft.id || makeId("trn"),
     title: draft.title?.trim() || `${draft.mode || "5v5"} 비공개 대회`,
     format: draft.tournamentFormat ?? "league",
     visibility: "private",
     status: "draft",
-    region: draft.region || state.users.find((user) => user.id === state.currentUserId)?.region || "전체",
+    region: selectedCourt?.region ?? draft.region ?? state.users.find((user) => user.id === state.currentUserId)?.region ?? "전체",
+    courtId: selectedCourt?.id ?? getCourtId(draft),
     court: draft.court || "미정",
     mode: draft.mode || "5v5",
     ranked,

@@ -373,6 +373,7 @@ create table if not exists public.tournaments (
   visibility text not null default 'private',
   status text not null default 'draft',
   region text,
+  court_id text,
   court_name text,
   mode text,
   ranked boolean not null default true,
@@ -414,6 +415,7 @@ create table if not exists public.tournament_teams (
 );
 
 create index if not exists tournaments_created_at_idx on public.tournaments (created_at desc);
+create index if not exists tournaments_court_id_idx on public.tournaments (court_id) where court_id is not null;
 create index if not exists tournament_teams_team_id_idx on public.tournament_teams (team_id);
 
 create table if not exists public.recruiting_posts (
@@ -5034,6 +5036,29 @@ begin
 end;
 $$;
 
+create or replace function public.rankball_tournament_court_snapshot_guard()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  snapshot jsonb;
+  snapshot_court_id text;
+  snapshot_region text;
+begin
+  snapshot := public.rankball_court_snapshot(new.court_id, new.court_name, new.region);
+  snapshot_court_id := nullif(btrim(snapshot->>'courtId'), '');
+  snapshot_region := nullif(btrim(snapshot->>'region'), '');
+
+  new.court_id := coalesce(snapshot_court_id, nullif(btrim(new.court_id), ''));
+  new.court_name := coalesce(nullif(btrim(snapshot->>'courtName'), ''), '미정');
+  new.region := coalesce(snapshot_region, nullif(btrim(new.region), ''));
+
+  return new;
+end;
+$$;
+
 create or replace function public.rankball_refresh_recruiting_application_feed_trigger()
 returns trigger
 language plpgsql
@@ -5505,6 +5530,11 @@ begin
     and to_regclass('public.match_results') is not null then
     execute 'drop trigger if exists rankball_matches_score_snapshot_guard on public.matches';
     execute 'create trigger rankball_matches_score_snapshot_guard before insert or update of score_a, score_b on public.matches for each row execute function public.rankball_match_score_snapshot_guard()';
+  end if;
+
+  if to_regclass('public.tournaments') is not null then
+    execute 'drop trigger if exists rankball_tournaments_court_snapshot_guard on public.tournaments';
+    execute 'create trigger rankball_tournaments_court_snapshot_guard before insert or update of court_id, court_name, region on public.tournaments for each row execute function public.rankball_tournament_court_snapshot_guard()';
   end if;
 
   if to_regclass('public.match_players') is not null then

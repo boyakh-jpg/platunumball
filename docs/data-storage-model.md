@@ -370,8 +370,8 @@ Remaining:
 
 - `public_profiles`는 공개 프로필 표시용 컬럼만 제공한다. `school`, `company`, `club`, `test_login_id`, `discord_connection`, `discord_user_id`, `auth_user_id`는 공개 view에 넣지 않는다.
 - `user_room_feed` 직접 RLS read는 `feed_scope='profile'`인 현재 프로필 row만 허용한다. `feed_scope='public'` 지역 공개 feed는 서버 API/service-role 경로에서만 읽는다. `profile_id='*'`는 legacy 저장키/fallback일 뿐 공개 feed 의미 기준이 아니다.
-- 구장 이름 fallback은 `court_name` -> `approved_courts` active row -> legacy `courts` 순서로 보정한다. 목록/상세 API는 `courts`와 `approved_courts`를 병합하되 hidden/disabled approved court는 공개 fallback에서 제외한다.
-- `matches.court_id`와 `recruiting_posts.court_id`가 비어 있고 `court_name`이 단일 구장으로만 매칭되면 DB guard가 `court_id`를 채운다. 중복 이름은 수동 정리 전까지 문자열 fallback으로 둔다.
+- 구장 표시 fallback은 `court_id` 기준 legacy `courts` -> active `approved_courts` -> 기존 `court_name` 순서다. 목록/상세 API는 `courts`와 `approved_courts`를 병합하되 hidden/disabled approved court는 공개 fallback에서 제외한다.
+- `matches.court_id`, `recruiting_posts.court_id`, `tournaments.court_id`가 비어 있고 `court_name`이 단일 구장으로만 매칭되면 DB guard가 `court_id`를 채운다. 중복 이름은 수동 정리 전까지 문자열 fallback으로 둔다.
 - SPA fallback은 `/assets/*`에 적용하지 않는다. 오래된 hashed JS asset 요청은 `index.html`이 아니라 404가 되어야 한다.
 ## 2026-06-27 경기 유지보수 worker
 

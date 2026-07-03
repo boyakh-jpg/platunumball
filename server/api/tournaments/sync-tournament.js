@@ -48,6 +48,7 @@ function getTournamentCoreSnapshot(tournament = {}, teamRows = []) {
     visibility: tournament.visibility,
     status: tournament.status,
     region: tournament.region ?? null,
+    courtId: tournament.courtId ?? tournament.court_id ?? null,
     court: tournament.court ?? tournament.courtName ?? tournament.court_name ?? null,
     mode: tournament.mode,
     ranked: tournament.ranked !== false,
@@ -96,6 +97,7 @@ function normalizeTournament(tournament = {}, actorProfileId = "") {
     visibility: pickAllowed(tournament.visibility, VISIBILITIES, "private"),
     status: pickAllowed(tournament.status, STATUSES, "draft"),
     region: tournament.region || null,
+    courtId: tournament.courtId || tournament.court_id || tournament.approvedCourtId || tournament.registeredCourtId || null,
     court: tournament.court || tournament.courtName || tournament.court_name || null,
     mode: tournament.mode || "5v5",
     ranked: tournament.ranked !== false,
@@ -128,6 +130,7 @@ function toTournamentRow(tournament = {}) {
     visibility: tournament.visibility,
     status: tournament.status,
     region: tournament.region,
+    court_id: tournament.courtId ?? null,
     court_name: tournament.court,
     mode: tournament.mode,
     ranked: tournament.ranked,
@@ -204,6 +207,16 @@ async function assertTeamsExist(supabase, teamIds = []) {
     missingError.statusCode = 404;
     throw missingError;
   }
+}
+
+async function persistTournamentCourtId(supabase, tournament = {}) {
+  const courtId = String(tournament.courtId ?? tournament.court_id ?? "").trim();
+  if (!courtId) return;
+  const { error } = await supabase
+    .from("tournaments")
+    .update({ court_id: courtId })
+    .eq("id", tournament.id);
+  if (error) throw error;
 }
 
 async function isTeamCaptain(supabase, teamId, profileId) {
@@ -303,7 +316,7 @@ export default async function handler(request, response) {
 
     const { data: existingTournament, error: existingError } = await context.supabase
       .from("tournaments")
-      .select("id, title, format, visibility, status, region, court_name, mode, ranked, official, start_date, end_date, schedule_policy, schedule_note, mmr_limit_mode, max_mmr_gap, mmr_policy, rules, memo, created_by, started_at, match_ids, bracket")
+      .select("id, title, format, visibility, status, region, court_id, court_name, mode, ranked, official, start_date, end_date, schedule_policy, schedule_note, mmr_limit_mode, max_mmr_gap, mmr_policy, rules, memo, created_by, started_at, match_ids, bracket")
       .eq("id", tournament.id)
       .maybeSingle();
     if (existingError) throw existingError;
@@ -326,6 +339,7 @@ export default async function handler(request, response) {
       p_notification_rows: notificationRows,
     });
     if (persistError) throw persistError;
+    await persistTournamentCourtId(context.supabase, tournament);
 
     for (const match of createdMatches) {
       await persistMatchSnapshot(context, { match, notifications: [], action: "createTournamentMatch", body: {} });

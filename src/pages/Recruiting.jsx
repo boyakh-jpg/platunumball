@@ -3386,11 +3386,13 @@ function RecruitingReady({ app }) {
   const selectedPostRefreshRef = useRef("");
   const myRecruitingLoadRef = useRef("");
   const regionLoadRef = useRef("");
+  const defaultDraftCourt = registeredCourts.find((court) => isSameRegion(court.region, currentRegion)) ?? registeredCourts[0] ?? null;
   const [draft, setDraft] = useState(() => ({
     hostJoinMode: myTeams[0]?.id ? "team" : "player",
     title: "",
     region: currentRegion,
-    court: registeredCourts.find((court) => isSameRegion(court.region, currentRegion))?.name ?? registeredCourts[0]?.name ?? "미정",
+    courtId: defaultDraftCourt?.id ?? "",
+    court: defaultDraftCourt?.name ?? "미정",
     timingType: "scheduled",
     scheduledDate: getTodayInputValue(),
     scheduledTime: "20:00",
@@ -3627,6 +3629,7 @@ function RecruitingReady({ app }) {
     const selectedDraftCourt = courtByName[draft.court] ?? null;
     const nextDraft = {
       ...draft,
+      courtId: selectedDraftCourt?.id ?? draft.courtId ?? "",
       region: selectedDraftCourt?.region ?? draft.region,
       title: draft.title.trim() || getDefaultTitle(draft),
       scheduledDate: draftInstant ? "" : draft.scheduledDate,
@@ -3966,7 +3969,8 @@ function RecruitingReady({ app }) {
                     value={draft.region}
                     onChange={(event) => {
                       const region = event.target.value;
-                      update({ region, court: registeredCourts.find((court) => isSameRegion(court.region, region))?.name ?? draft.court });
+                      const court = registeredCourts.find((item) => isSameRegion(item.region, region)) ?? null;
+                      update({ region, courtId: court?.id ?? draft.courtId ?? "", court: court?.name ?? draft.court });
                     }}
                   >
                     {REGIONS.map((region) => <option key={region}>{region}</option>)}
@@ -3984,7 +3988,7 @@ function RecruitingReady({ app }) {
                     value={draft.court}
                     onChange={(event) => {
                       const court = courtByName[event.target.value] ?? null;
-                      update({ court: event.target.value, ...(court?.region ? { region: court.region } : {}) });
+                      update({ courtId: court?.id ?? "", court: event.target.value, ...(court?.region ? { region: court.region } : {}) });
                     }}
                   >
                     {registeredCourts.filter((court) => isSameRegion(court.region, draft.region) || draft.region === "전체").map((court) => (

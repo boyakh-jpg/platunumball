@@ -417,6 +417,7 @@ export default function CreateMatch({ app }) {
     ageRestriction: defaultAgeRestriction,
     title: getDefaultCreateTitle(defaultMode),
     mode: defaultMode,
+    courtId: defaultCourt.id ?? "",
     court: defaultCourt.name,
     scheduledDate: today,
     scheduledTime: "20:30",
@@ -715,12 +716,12 @@ export default function CreateMatch({ app }) {
                   ? publicTeamInvalidReason
                   : "";
   const selectedCourt = useMemo(
-    () => registeredCourts.find((court) => court.name === draft.court) ?? defaultCourt,
-    [defaultCourt, draft.court, registeredCourts],
+    () => registeredCourts.find((court) => court.id === draft.courtId || court.name === draft.court) ?? defaultCourt,
+    [defaultCourt, draft.court, draft.courtId, registeredCourts],
   );
   const courtPlayWarning = getCourtPlayWarning(selectedCourt, draft.mode);
   const selectCourt = (court) => {
-    update({ court: court.name });
+    update({ courtId: court.id ?? "", court: court.name });
     setCourtQuery(court.name);
     setCourtRegion(court.region);
   };
@@ -984,6 +985,7 @@ export default function CreateMatch({ app }) {
         preRegistered: false,
         mode: draft.mode,
         mmrLimitMode: "off",
+        courtId: draft.courtId,
         court: draft.court,
         scheduledDate: draft.scheduledDate,
         scheduledTime: draft.scheduledTime,
@@ -1000,6 +1002,7 @@ export default function CreateMatch({ app }) {
       const tournamentResult = await app.actions.createTournament({
         ...draft,
         teamIds: draft.tournamentTeamIds,
+        courtId: draft.courtId,
         region: selectedCourt.region,
       });
       if (typeof tournamentResult === "string" && tournamentResult) navigate("/app/matches");
@@ -1028,6 +1031,7 @@ export default function CreateMatch({ app }) {
       refereeId: draft.refereeId,
       targetTeamId: !isPublicRoom && isTeamRoom ? draft.teamBId || "" : "",
       region: selectedCourt.region,
+      courtId: draft.courtId,
       court: draft.court,
       timingType: draft.timingType,
       scheduledDate: isInstantRoom ? "" : draft.scheduledDate,
