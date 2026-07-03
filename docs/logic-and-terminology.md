@@ -127,6 +127,7 @@
 - 경기 메뉴 모집 일정 feed 로드가 실패해도 `recruitingScheduleChecked=true`로 마감해서 빈 목록에서 로더가 영원히 남지 않게 한다.
 - 첫 화면에서 숫자와 현재 목록 수가 다르다는 이유만으로 `scope=mine` 또는 profile 보강 호출을 자동 실행하지 않는다.
 - 매칭의 `feedCounts`는 버튼 badge 기준이며, 자동 재로딩 트리거가 아니다. 사용자가 `내가 만든 방`, `내 참여방`, `초대받음`을 누를 때만 해당 scope를 명시적으로 다시 읽는다.
+- 매칭 지역/날짜 필터 변경과 relation 탭 목록 조회는 기존 badge count를 다시 읽지 않는다. `includeFeedCounts:false`로 목록만 갱신한다.
 - `user_room_feed`는 같은 방이 여러 relation row를 가질 수 있으므로 list API는 raw feed row를 여유 있게 읽고 unique entity 기준으로 첫 페이지를 만든다.
 - 방 상세 모달과 기록/과거 범위처럼 사용자가 명시적으로 연 화면만 별도 상세 호출을 허용한다.
 - `/app/recruiting?post=...` 직접 진입은 선택 방 상세만 보강 로드하고, 일반 지역 목록 자동 로드는 뒤에서 실행하지 않는다.
@@ -1563,9 +1564,11 @@ flowchart TD
 13. Recruiting room-scope counts come from `user_room_feed`, not from how many cards are currently loaded in `state.recruitingPosts`.
 14. If `user_room_feed` is unavailable, `scope='mine'` and room-scope counts must still include pending `room_state.invitations.targetUserId` so invited rooms do not disappear before the feed SQL is applied.
 15. Recruiting queue region selection uses `user_room_feed` `region_public` pages with a concrete `regionKey`. The default is the current user's local district; selecting another district reloads the first page for that region and `더 보기` continues the same region cursor. The frontend must not default to broad all-region loading.
+15-1. Public recruiting room region is based on the selected court region. Server fallback must match the same canonical region key exactly; it must not widen one key into district/full-address string variants.
 16. Recruiting room-scope loads may pass `roomScope: "created" | "joined" | "invited"`. `초대받음` must read the `invited` feed relation directly, not depend on the combined 50-row mine feed.
 17. `/api/recruiting/list` default region pages use `user_room_feed.card_json` first. When every page row has a card, the endpoint must not read `recruiting_posts`, `recruiting_applications`, `public_profiles`, teams, or courts for that page.
 17-1. If only some recruiting feed rows are missing usable `card_json`, `/api/recruiting/list` may row-read only those missing ids. It must not discard usable feed cards and reload the whole page.
+17-2. If a concrete public region plus instant/scheduled-date feed page is empty but matching public `recruiting_posts` rows exist, `/api/recruiting/list` may refresh `user_room_feed` for those bounded ids and return those ids as a one-request repair fallback when the refresh RPC is unavailable.
 18. Recruiting list-card posts may omit full team rows. Central lobby helpers must still calculate team host/applicant slots from stored `playerIds`, and fall back to the entry `playerId` when `playerIds` is empty and the team object is not loaded.
 
 ## 2026-06-27 match list pagination

@@ -31,7 +31,6 @@ const PUBLIC_RECRUITING_FEED_SCOPE = "public";
 const PROFILE_RECRUITING_FEED_SCOPE = "profile";
 const INSTANT_TIMING_TYPE = "instant";
 const LEGACY_INSTANT_LABEL = "즉시";
-const KOREAN_DISTRICT_SUFFIX = "구";
 
 function getPageOffset(body = {}) {
   const rawOffset = body.offset ?? body.recruitingOffset ?? body.nextOffset;
@@ -185,6 +184,11 @@ function isMissingUserRoomFeedScope(error = {}) {
 function isMissingRecruitingFeedCountsRpc(error = {}) {
   const message = String(error?.message ?? "");
   return error?.code === "PGRST202" || error?.code === "42883" || message.includes("rankball_recruiting_feed_counts");
+}
+
+function isMissingRecruitingFeedRefreshRpc(error = {}) {
+  const message = String(error?.message ?? "");
+  return error?.code === "PGRST202" || error?.code === "42883" || message.includes("rankball_refresh_recruiting_feed_for_post");
 }
 
 function createTimingProbe() {
@@ -890,13 +894,28 @@ async function fetchRecruitingFallbackPage(client, limit = REMOTE_CLIENT_RECRUIT
     .order("updated_at", { ascending: false, nullsFirst: false })
     .order("id", { ascending: false })
     .range(safeOffset, safeOffset + cappedLimit - 1);
-  if (regionKey) query = query.or(`region.eq.${regionKey},region.eq.${regionKey}${KOREAN_DISTRICT_SUFFIX},region.ilike.%${regionKey}%`);
+  if (regionKey) query = query.eq("region", regionKey);
   if (startFilter.timingType === INSTANT_TIMING_TYPE) query = query.or(`room_state->>timingType.eq.${INSTANT_TIMING_TYPE},scheduled_at.eq.${LEGACY_INSTANT_LABEL}`);
   if (startFilter.scheduledDate) query = query.eq("scheduled_date", startFilter.scheduledDate);
   const { data, error } = await query;
   if (error) throw error;
   const ids = (data ?? []).map((row) => row?.id).filter(Boolean);
   return { ids, cards: [], source: "fallback_public", exhausted: ids.length < cappedLimit };
+}
+
+function shouldRepairEmptyPublicRecruitingFeed(regionKey = "", startFilter = {}) {
+  return Boolean(regionKey && (startFilter.timingType === INSTANT_TIMING_TYPE || startFilter.scheduledDate));
+}
+
+async function refreshRecruitingFeedForPosts(client, postIds = []) {
+  const ids = uniqueIds(postIds);
+  if (!ids.length) return false;
+  const results = await Promise.all(ids.map((postId) => client.rpc("rankball_refresh_recruiting_feed_for_post", { p_post_id: postId })));
+  const failed = results.find((result) => result.error);
+  if (!failed?.error) return true;
+  if (isMissingRecruitingFeedRefreshRpc(failed.error)) return false;
+  console.warn("Recruiting feed repair skipped.", failed.error.message);
+  return false;
 }
 
 async function fetchRecruitingPage(client, limit = REMOTE_CLIENT_RECRUITING_LIMIT, offset = 0, regionKey = "", includeCards = false, startFilter = {}, allowLegacyFallback = false) {
@@ -913,6 +932,27 @@ async function fetchRecruitingPage(client, limit = REMOTE_CLIENT_RECRUITING_LIMI
     timingType: startFilter.timingType,
     scheduledDate: startFilter.scheduledDate,
   });
+  if (feedPage?.ids?.length) return feedPage;
+  if (feedPage && shouldRepairEmptyPublicRecruitingFeed(regionKey, startFilter)) {
+    const repairPage = await fetchRecruitingFallbackPage(client, cappedLimit, safeOffset, regionKey, startFilter);
+    if (!repairPage.ids.length) return feedPage;
+    const repaired = await refreshRecruitingFeedForPosts(client, repairPage.ids);
+    if (repaired) {
+      const repairedFeedPage = await fetchRecruitingFeedPage(client, {
+        profileId: LEGACY_PUBLIC_RECRUITING_FEED_PROFILE_ID,
+        feedScope: PUBLIC_RECRUITING_FEED_SCOPE,
+        relations: ["region_public"],
+        regionKey,
+        limit: cappedLimit,
+        offset: safeOffset,
+        includeCards,
+        timingType: startFilter.timingType,
+        scheduledDate: startFilter.scheduledDate,
+      });
+      if (repairedFeedPage?.ids?.length) return { ...repairedFeedPage, source: repairedFeedPage.source === "feed_card" ? "feed_card" : "feed_repaired" };
+    }
+    return { ...repairPage, source: "feed_repair_fallback" };
+  }
   if (feedPage) return feedPage;
   if (!allowLegacyFallback) return { ids: [], cards: [], source: "public_feed_unavailable", exhausted: true, nextOffset: safeOffset };
   return fetchRecruitingFallbackPage(client, cappedLimit, safeOffset, regionKey, startFilter);

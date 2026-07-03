@@ -156,9 +156,21 @@ function getStartDateFilterOptions() {
 
 const RECRUITING_FILTER_PAGE_LIMIT = 50;
 export const RECRUITING_ROOM_REFRESH_INTERVAL_MS = 15000;
+const RECRUITING_FILTER_DEBOUNCE_MS = 250;
 
 function getMaxInputValue() {
   return getPublicRoomMaxDateInput();
+}
+
+function useDebouncedValue(value, delayMs) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const timerId = window.setTimeout(() => setDebouncedValue(value), delayMs);
+    return () => window.clearTimeout(timerId);
+  }, [delayMs, value]);
+
+  return debouncedValue;
 }
 
 function getRecruitingSchedule(post) {
@@ -3299,6 +3311,9 @@ function RecruitingReady({ app }) {
   const startDateKey = getTodayInputValue();
   const startDateOptions = useMemo(() => getStartDateFilterOptions(), [startDateKey]);
   const startFilterLabel = startDateOptions.find((option) => option.id === startFilter)?.label ?? "전체 시작일";
+  const filterRequestKey = `${regionFilter}:${selectedRegionKey}:${startFilter}:${roomScope}`;
+  const debouncedFilterRequestKey = useDebouncedValue(filterRequestKey, RECRUITING_FILTER_DEBOUNCE_MS);
+  const filterRequestSettled = filterRequestKey === debouncedFilterRequestKey;
 
   useEffect(() => {
     if (targetFilter === "invited") {
@@ -3315,10 +3330,10 @@ function RecruitingReady({ app }) {
     if (!app.remoteReady || !app.currentUser.id) return;
     if (targetPostId) return;
     if (roomScope !== "all") return;
+    if (!filterRequestSettled) return;
     const regionKey = selectedRegionKey;
     const currentScope = app.recruitingPagination?.regionScope ?? "local";
     const currentKey = app.recruitingPagination?.regionKey ?? "";
-    const hasCurrentRegionRows = (app.state.recruitingPosts ?? []).some((post) => isRegionRecruitingPost(post, regionKey, app.currentUser));
     const currentPageMatchesRegion = regionFilter === "local"
       ? ((currentScope === "local" && !currentKey) || (currentScope === "region" && currentKey === regionKey))
       : (currentScope === "region" && currentKey === regionKey);
@@ -3328,9 +3343,8 @@ function RecruitingReady({ app }) {
       && startFilter !== "all"
       && currentStartFilter !== startFilter;
     const needsBasePage = targetStartFilter === "all" && currentStartFilter !== "all";
-    const includeFeedCounts = !app.recruitingPagination?.feedCounts;
-    if (currentPageMatchesRegion && !needsFilteredPage && !needsBasePage && !includeFeedCounts) return;
-    const loadKey = `${app.currentUser.id}:${regionFilter}:${regionKey}:${targetStartFilter}:${includeFeedCounts ? "counts" : "plain"}`;
+    if (currentPageMatchesRegion && !needsFilteredPage && !needsBasePage) return;
+    const loadKey = `${app.currentUser.id}:${regionFilter}:${regionKey}:${targetStartFilter}:plain`;
     if (regionLoadRef.current === loadKey) return;
     regionLoadRef.current = loadKey;
     Promise.resolve(app.actions.loadRecruitingRegion?.({
@@ -3338,13 +3352,13 @@ function RecruitingReady({ app }) {
       regionKey: regionFilter === "local" ? "" : regionKey,
       limit: needsFilteredPage ? RECRUITING_FILTER_PAGE_LIMIT : undefined,
       startFilter: targetStartFilter,
-      includeFeedCounts,
+      includeFeedCounts: false,
     })).then((count) => {
       if (count !== false) regionLoadRef.current = "";
     }).catch(() => {
       // Keep the key on failure so the effect does not retry in a tight loop.
     });
-  }, [app.actions, app.currentUser, app.currentUser.id, app.remoteReady, app.recruitingPagination, app.state.recruitingPosts, regionFilter, roomScope, selectedRegionKey, startFilter, targetPostId]);
+  }, [app.actions, app.currentUser.id, app.remoteReady, app.recruitingPagination, filterRequestSettled, regionFilter, roomScope, selectedRegionKey, startFilter, targetPostId]);
 
   useEffect(() => {
     if (!hostNeedsTeam) return;
@@ -3403,6 +3417,7 @@ function RecruitingReady({ app }) {
       return bMine - aMine || bInstant - aInstant || bLocal - aLocal || bNational - aNational || new Date(b.createdAt) - new Date(a.createdAt);
     });
   }, [app.currentUser, app.currentUser.id, app.state, myTeamIds, scopedPosts]);
+  const queueListLoading = roomScope === "all" && !posts.length && (!filterRequestSettled || app.recruitingPagination?.loading);
 
   const selectedPost = selectedPostId
     ? app.state.recruitingPosts.find((post) => post.id === selectedPostId)
@@ -3496,8 +3511,10 @@ function RecruitingReady({ app }) {
   const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
   const submit = (event) => {
     event.preventDefault();
+    const selectedDraftCourt = courtByName[draft.court] ?? null;
     const nextDraft = {
       ...draft,
+      region: selectedDraftCourt?.region ?? draft.region,
       title: draft.title.trim() || getDefaultTitle(draft),
       scheduledDate: draftInstant ? "" : draft.scheduledDate,
       scheduledTime: draftInstant ? "" : draft.scheduledTime,
@@ -3515,7 +3532,7 @@ function RecruitingReady({ app }) {
     const pendingKey = `${userId}:${target}:pending`;
     if (myRecruitingLoadRef.current === pendingKey) return;
     myRecruitingLoadRef.current = pendingKey;
-    Promise.resolve(app.actions.loadMyRecruitingPosts?.(target)).then(() => {
+    Promise.resolve(app.actions.loadMyRecruitingPosts?.(target, { includeFeedCounts: false })).then(() => {
       myRecruitingLoadRef.current = "";
     }).catch(() => {
       myRecruitingLoadRef.current = "";
@@ -3678,7 +3695,14 @@ function RecruitingReady({ app }) {
               </button>
             </article>
           );
-        }) : (
+        }) : queueListLoading ? (
+          <div className="arena-empty-state">
+            <div>
+              <strong>매치방 불러오는 중</strong>
+              <p>선택한 지역과 날짜의 공개방을 확인 중이다.</p>
+            </div>
+          </div>
+        ) : (
           <div className="arena-empty-state">
             <div>
               <strong>조건에 맞는 매치방 없음</strong>
@@ -3843,7 +3867,13 @@ function RecruitingReady({ app }) {
                 </label>
                 <label>
                   장소
-                  <select value={draft.court} onChange={(event) => update({ court: event.target.value })}>
+                  <select
+                    value={draft.court}
+                    onChange={(event) => {
+                      const court = courtByName[event.target.value] ?? null;
+                      update({ court: event.target.value, ...(court?.region ? { region: court.region } : {}) });
+                    }}
+                  >
                     {registeredCourts.filter((court) => isSameRegion(court.region, draft.region) || draft.region === "전체").map((court) => (
                       <option key={court.id} value={court.name}>{court.region} · {court.name}</option>
                     ))}

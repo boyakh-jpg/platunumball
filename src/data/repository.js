@@ -6575,6 +6575,8 @@ export function createRecruitingPost(state, draft) {
     ? getSelectedReservePlayerIds(opponentTeam, orderedOpponentPlayerIds, draft.opponentReservePlayerIds).filter((playerId) => !hostSidePlayerIds.has(playerId))
     : [];
   const hostPlayerId = state.currentUserId;
+  const selectedCourt = getRegisteredCourts(state).find((court) => court.name === draft.court || court.id === getCourtId(draft)) ?? null;
+  const roomRegion = selectedCourt?.region || draft.region || state.users.find((user) => user.id === state.currentUserId)?.region || "전체";
   if (hostJoinMode === "team" && (!hostPlayerIds.length || (teamOnly && hostPlayerIds.length < sideCapacity))) {
     return {
       ...state,
@@ -6678,7 +6680,7 @@ export function createRecruitingPost(state, draft) {
     id: draft.id || makeId("q"),
     type: postType,
     title: draft.title?.trim() || `${draft.ranked === false ? "친선전" : "정규전"} ${draft.mode || "5v5"} 매치 큐`,
-    region: draft.region || state.users.find((user) => user.id === state.currentUserId)?.region || "전체",
+    region: roomRegion,
     court: draft.court || "미정",
     mode: draft.mode || "5v5",
     scheduledDate,
