@@ -122,6 +122,13 @@ function normalizeTournament(tournament = {}, actorProfileId = "") {
   };
 }
 
+function validateTournamentCreateCourt(tournament = {}) {
+  if (String(tournament.courtId ?? tournament.court_id ?? "").trim()) return;
+  const error = new Error("missing_tournament_court");
+  error.statusCode = 400;
+  throw error;
+}
+
 function toTournamentRow(tournament = {}) {
   return {
     id: tournament.id,
@@ -313,6 +320,7 @@ export default async function handler(request, response) {
     } else {
       tournament = normalizeTournament(body.tournament, context.profileId);
     }
+    if (action === "createTournament") validateTournamentCreateCourt(tournament);
 
     const { data: existingTournament, error: existingError } = await context.supabase
       .from("tournaments")

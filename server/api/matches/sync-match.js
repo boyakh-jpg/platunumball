@@ -397,6 +397,11 @@ function validateMatchShape(match = {}) {
   if (match.refereeId && allPlayerIds.includes(match.refereeId)) reject(400, "referee_cannot_be_player");
 }
 
+function validateMatchCreateCourt(match = {}) {
+  const courtId = nullableText(match.courtId ?? match.court_id ?? match.approvedCourtId ?? match.registeredCourtId);
+  if (!courtId) reject(400, "missing_match_court");
+}
+
 function getSideScopedIds(match = {}, sideName) {
   return [
     ...(toArray(match[sideName]?.players)),
@@ -1091,6 +1096,7 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
   if (!canSyncMatchAction(context.profileId, existingMatch, existingPlayers, match, action)) {
     reject(403, "match_sync_permission_denied");
   }
+  if (!existingMatch && CREATE_MATCH_ACTIONS.has(action)) validateMatchCreateCourt(match);
   validateLockedMatchCore(existingMatch, existingPlayers, match, action);
   validateParticipantResultUnchanged(action, existingResult, existingStats, match);
   validateResultOnlyOnSubmission(action, existingResult, existingStats, match);

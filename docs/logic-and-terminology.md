@@ -55,6 +55,7 @@
 
 - 경기/모집/토너먼트 구장 원본 키는 `court_id`다.
 - 경기/모집/토너먼트/개인기록 생성과 방룰 수정 경로는 선택된 등록 구장이 있으면 `court_name`만 쓰지 않고 `court_id`를 먼저 채운다.
+- 방만들기 생성 경로는 등록 구장 `court_id`가 없으면 생성하지 않는다. `미정` 구장으로 새 방/기록을 만들 수 없다.
 - `court_id`가 `courts.id`를 가리키면 `court_name`은 `courts.name`, 지역은 `courts.region`에서 DB guard가 스냅샷으로 보정한다.
 - `court_id`가 legacy `courts`에 없고 active `approved_courts.id`를 가리키면 `approved_courts.name`과 `approved_courts.payload.region`을 fallback 원본으로 쓴다.
 - `matches.rules.region`, `recruiting_posts.region`, `user_room_feed.region_key`는 목록/피드용 스냅샷이다.

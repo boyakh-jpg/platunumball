@@ -617,6 +617,11 @@ function validateRecruitingPostShape(post = {}) {
   if (teamApplication) reject(400, "solo_room_team_party_not_allowed");
 }
 
+function validateRecruitingCreateCourt(post = {}) {
+  const courtId = nullableText(post.courtId ?? post.court_id ?? post.approvedCourtId ?? post.registeredCourtId);
+  if (!courtId) reject(400, "missing_recruiting_court");
+}
+
 const OWNER_RECRUITING_ACTIONS = new Set([
   "updateRecruitingRoomRules",
   "setRecruitingStatRecorder",
@@ -1058,6 +1063,7 @@ export async function persistRecruitingPostSnapshot(context, { post, notificatio
 
   if (existingError) throw existingError;
   if (isCreateAction && existingPost) reject(409, "recruiting_post_already_exists");
+  if (isCreateAction) validateRecruitingCreateCourt(post);
   const { data: existingApplications, error: existingApplicationsError } = await timeStep(timing, "persistExistingApplications", () => existingPost && !isCreateAction
     ? context.supabase
       .from("recruiting_applications")

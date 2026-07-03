@@ -539,6 +539,7 @@ RankBall 다크 모드는 이 팔레트를 기본 CSS 색상 표준으로 쓴다
 - 홈 Action Queue의 방 초대 row는 `수락`/`거절`/`보기`를 같은 row 안에 둔다. 모바일에서는 버튼을 줄바꿈해 row 밖으로 넘기지 않는다.
 - 검색 입력은 공용 `SearchPicker`를 쓴다. 입력 즉시 아래에 결과를 띄우고, 화면 목적에 맞는 대상만 검색한다.
 - 방만들기 심판 초대는 native select가 아니라 공용 `SearchPicker`를 쓰고, 심판 자격이 있는 후보만 검색한다.
+- 방만들기 구장 선택은 등록 구장 선택이 필수다. 선택이 없으면 CTA 근처에 차단 사유를 보여주고 생성하지 않는다.
 - 설정의 요청 폼은 신뢰도/권한 조건을 제출 버튼 근처에 먼저 보여주고, 조건 미달이면 버튼을 비활성화한다.
 
 ## 경기/매칭 디자인 원칙
@@ -891,6 +892,7 @@ UI 수정 전:
 17. Image-led cards and hero cards must not contain extra framed mini-cards for secondary navigation. Keep secondary links as text actions unless a primary CTA or form control is required; ask before reintroducing boxed inner controls.
 18. Room compose and lobby modals use neutral panel surfaces behind slots, chat, authority, and close controls. Hero/court imagery stays out of the far-back modal background.
 19. Room slot command/self-slot popovers use near-opaque room surfaces so underlying court/player content does not reduce readability, and anchored popovers stay clamped inside the viewport.
+20. Self slot focus/hover must not use yellow warning borders. Slot state colors stay neutral/green; yellow is reserved for empty/invite or warning states.
 
 ## 2026-07-03 profile form controls
 

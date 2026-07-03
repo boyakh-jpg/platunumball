@@ -621,6 +621,11 @@ export default function CreateMatch({ app }) {
     ? Boolean(draft.scheduledDate && draft.scheduledDate >= minSoloRecordDate && draft.scheduledDate <= today)
     : isInstantRoom || (draft.scheduledDate >= today && draft.scheduledDate <= scheduleMaxDate && publicScheduledLeadAllowed);
   const tournamentEndAllowed = !isTournamentRoom || (draft.tournamentEndDate >= today && draft.tournamentEndDate <= maxScheduleDate);
+  const selectedCourt = useMemo(
+    () => registeredCourts.find((court) => court.id === draft.courtId || court.name === draft.court) ?? null,
+    [draft.court, draft.courtId, registeredCourts],
+  );
+  const courtRequiredBlocked = !selectedCourt?.id;
   const ownsSelectedTeamA = myTeams.some((team) => team.id === draft.teamAId);
   const privateTeamDuplicate = !isPublicRoom && isTeamRoom && opponentPartyPlayerIds.some((playerId) => ownerSidePlayerIds.includes(playerId));
   const privateTeamInvalid = !isPublicRoom && isTeamRoom && (
@@ -691,12 +696,14 @@ export default function CreateMatch({ app }) {
     soloScoreAgainstNumber > 999 ||
     soloStatsInvalid
   );
-  const submitDisabled = isSoloRecord ? soloRecordInvalid : !scheduleAllowed || !tournamentEndAllowed || ageRestrictionBlocked || hostTrustBlocked || (isTournamentRoom
+  const submitDisabled = courtRequiredBlocked || (isSoloRecord ? soloRecordInvalid : !scheduleAllowed || !tournamentEndAllowed || ageRestrictionBlocked || hostTrustBlocked || (isTournamentRoom
     ? tournamentInvalid
     : isPublicRoom
       ? publicTeamInvalid
-      : teamTierBlocked || privateTeamInvalid);
-  const submitDisabledReason = isSoloRecord && soloRecordInvalid
+      : teamTierBlocked || privateTeamInvalid));
+  const submitDisabledReason = courtRequiredBlocked
+    ? "등록된 구장을 선택해야 생성할 수 있습니다."
+    : isSoloRecord && soloRecordInvalid
     ? "제목, 날짜, 점수를 확인해야 합니다. 개인 기록 날짜는 오늘부터 과거 7일까지만 가능합니다."
     : !scheduleAllowed
     ? "일정 조건이 맞지 않습니다. 즉시는 바로 생성 가능하고, 예약 일정은 허용 기간 안에서만 가능합니다."
@@ -715,11 +722,8 @@ export default function CreateMatch({ app }) {
                 : isPublicRoom && publicTeamInvalidReason
                   ? publicTeamInvalidReason
                   : "";
-  const selectedCourt = useMemo(
-    () => registeredCourts.find((court) => court.id === draft.courtId || court.name === draft.court) ?? defaultCourt,
-    [defaultCourt, draft.court, draft.courtId, registeredCourts],
-  );
-  const courtPlayWarning = getCourtPlayWarning(selectedCourt, draft.mode);
+  const courtSummary = selectedCourt ?? defaultCourt;
+  const courtPlayWarning = selectedCourt ? getCourtPlayWarning(selectedCourt, draft.mode) : "";
   const selectCourt = (court) => {
     update({ courtId: court.id ?? "", court: court.name });
     setCourtQuery(court.name);
@@ -985,8 +989,8 @@ export default function CreateMatch({ app }) {
         preRegistered: false,
         mode: draft.mode,
         mmrLimitMode: "off",
-        courtId: draft.courtId,
-        court: draft.court,
+        courtId: selectedCourt.id,
+        court: selectedCourt.name,
         scheduledDate: draft.scheduledDate,
         scheduledTime: draft.scheduledTime,
       });
@@ -1002,7 +1006,8 @@ export default function CreateMatch({ app }) {
       const tournamentResult = await app.actions.createTournament({
         ...draft,
         teamIds: draft.tournamentTeamIds,
-        courtId: draft.courtId,
+        courtId: selectedCourt.id,
+        court: selectedCourt.name,
         region: selectedCourt.region,
       });
       if (typeof tournamentResult === "string" && tournamentResult) navigate("/app/matches");
@@ -1031,8 +1036,8 @@ export default function CreateMatch({ app }) {
       refereeId: draft.refereeId,
       targetTeamId: !isPublicRoom && isTeamRoom ? draft.teamBId || "" : "",
       region: selectedCourt.region,
-      courtId: draft.courtId,
-      court: draft.court,
+      courtId: selectedCourt.id,
+      court: selectedCourt.name,
       timingType: draft.timingType,
       scheduledDate: isInstantRoom ? "" : draft.scheduledDate,
       scheduledTime: isInstantRoom ? "" : draft.scheduledTime,
@@ -1397,7 +1402,7 @@ export default function CreateMatch({ app }) {
               <p className="eyebrow">Court Finder</p>
               <h2>코트 검색</h2>
             </div>
-            <Badge tone="green">{draft.court}</Badge>
+            <Badge tone={selectedCourt ? "green" : "orange"}>{selectedCourt?.name ?? "구장 선택 필요"}</Badge>
           </div>
           <div className="search-controls">
             <label>
@@ -1431,13 +1436,13 @@ export default function CreateMatch({ app }) {
               <input value={draft.courtFee} placeholder="예약 금액/메모" onChange={(event) => update({ courtFee: event.target.value })} />
             ) : null}
           </div>
-          <div className={courtPlayWarning ? "tier-range-note tier-range-note-warning" : "tier-range-note"}>
+          <div className={!selectedCourt || courtPlayWarning ? "tier-range-note tier-range-note-warning" : "tier-range-note"}>
             <div>
               <span>구장 속성</span>
-              <strong>{getCourtSurfaceLabel(selectedCourt)} / {getCourtLayoutLabel(selectedCourt)}</strong>
-              <em>{courtPlayWarning || "선택한 방식과 구장 형태가 충돌하지 않습니다."}</em>
+              <strong>{selectedCourt ? `${getCourtSurfaceLabel(courtSummary)} / ${getCourtLayoutLabel(courtSummary)}` : "구장 선택 필요"}</strong>
+              <em>{selectedCourt ? (courtPlayWarning || "선택한 방식과 구장 형태가 충돌하지 않습니다.") : "등록된 구장을 검색 결과에서 선택하세요."}</em>
             </div>
-            <Badge tone={courtPlayWarning ? "orange" : "green"}>{courtPlayWarning ? "경고" : "가능"}</Badge>
+            <Badge tone={!selectedCourt || courtPlayWarning ? "orange" : "green"}>{!selectedCourt ? "필수" : courtPlayWarning ? "경고" : "가능"}</Badge>
           </div>
         </Card>
 

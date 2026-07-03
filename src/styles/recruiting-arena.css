@@ -5022,6 +5022,14 @@ html[data-theme="light"] .arena-room-player-slot.empty {
   box-shadow: none;
 }
 
+.arena-room-player-slot.self-action:hover,
+.arena-room-player-slot.self-action:focus-visible,
+html[data-theme="light"] .arena-room-player-slot.self-action:hover,
+html[data-theme="light"] .arena-room-player-slot.self-action:focus-visible {
+  border-color: transparent;
+  outline: 0;
+}
+
 .arena-room-party-group,
 html[data-theme="light"] .arena-room-party-group {
   --party-link-y: 30px;
