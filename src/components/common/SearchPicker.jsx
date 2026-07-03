@@ -104,6 +104,14 @@ export default function SearchPicker({
   const maxDetailLimit = Math.max(baseLimit, Number(detailLimit) || baseLimit);
   const detailStep = Math.max(0, Number(loadMoreStep) || 0);
   const remoteSearchKey = Array.isArray(remoteSearchType) ? remoteSearchType.join(",") : String(remoteSearchType || "");
+  const remoteSearchContextKey = useMemo(() => {
+    if (!remoteSearchContext) return "";
+    try {
+      return JSON.stringify(remoteSearchContext);
+    } catch {
+      return "";
+    }
+  }, [remoteSearchContext]);
   const dynamicMinSearchLength = getQueryMinSearchLength(query, minSearchLength);
   const forceSearch = Boolean(query && submittedQuery === query);
   const canSearch = forceSearch || getSearchLengthText(query).length >= dynamicMinSearchLength;
@@ -163,7 +171,7 @@ export default function SearchPicker({
     }, 300);
 
     return () => window.clearTimeout(timer);
-  }, [baseLimit, canSearch, forceSearch, query, remoteLimit, remoteSearchContext, remoteSearchKey]);
+  }, [baseLimit, canSearch, forceSearch, query, remoteLimit, remoteSearchContextKey, remoteSearchKey]);
 
   useEffect(() => {
     setExpanded(false);

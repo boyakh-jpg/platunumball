@@ -566,6 +566,7 @@ function compactRecruitingPost(post = {}, profileId = "", options = {}) {
     sideCapacity: post.sideCapacity,
     listCounts: post.listCounts,
     __feedRelations: post.__feedRelations,
+    __invitationsPartial: true,
     playerIds: post.playerIds ?? [],
     position: post.position,
     playerId: post.playerId,

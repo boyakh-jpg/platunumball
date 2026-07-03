@@ -1688,6 +1688,7 @@ flowchart TD
 40. 모집방 선수/심판 초대는 기존 방 참가자만 보낼 수 있다. 단, 초대 수락/거절은 아직 참가자가 아니어도 자기 pending invitation이 있으면 가능하다.
 41. `inviteRecruitingReferee`는 프론트와 서버 모두 기존 방 참가자 action이다. 초대 대상 심판은 active `referee_appointments`가 있어야 하며, pending invitation만 가진 사용자는 심판/선수 초대를 새로 보낼 수 없다.
 42. 선수/심판 초대 생성, 초대 수락, 초대 거절은 stale 클라이언트 snapshot을 그대로 저장하지 않고 서버 최신 모집방 row 기준으로 replay한다.
+42-1. 모집 목록/피드 응답의 `roomState.invitations`는 현재 사용자 관련 초대만 담는 부분 데이터다. 프론트는 `__invitationsPartial` 응답으로 열린 방 상세의 전체 초대 목록을 덮어쓰지 않는다.
 43. 심판 직접참여는 DB row 기준 `refereeWanted=true`이고 아직 `referee_id`가 없을 때만 허용한다. 심판 초대 수락은 해당 pending invitation의 대상자 본인만 `refereeId`로 배정될 수 있고, 방의 `refereeTrustMin`을 통과해야 한다.
 44. 초대 수락 성공 후 같은 대상자의 다른 pending 선수 초대는 정리하고, 심판 배정 후 다른 pending 심판 초대도 정리한다. 팀 파티장이 나가면 남은 파티원에게 리더를 넘기고, 나간 사람이 보낸 pending 초대는 제거한다.
 

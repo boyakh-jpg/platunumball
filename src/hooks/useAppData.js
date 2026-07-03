@@ -249,6 +249,10 @@ function preserveExistingWhenEmpty(incoming, existing, keys = []) {
   return next;
 }
 
+function mergeRoomInvitations(existing = [], incoming = []) {
+  return mergeRemoteById(existing, incoming);
+}
+
 function shouldUseIncomingRoomRow(incoming, existing) {
   if (!existing) return true;
   const incomingTime = new Date(incoming?.updatedAt ?? incoming?.createdAt ?? 0).getTime();
@@ -284,8 +288,12 @@ function mergeRecruitingPostsById(current = [], incoming = []) {
     const existing = merged.get(item.id);
     if (!shouldUseIncomingRoomRow(item, existing)) return;
     const next = preserveExistingWhenEmpty(item, existing, ["applicants"]);
+    if (item.__invitationsPartial !== true) delete next.__invitationsPartial;
     if (existing?.roomState && item?.roomState) {
       next.roomState = preserveExistingWhenEmpty(item.roomState, existing.roomState, ["chatMessages", "kickLog"]);
+      if (item.__invitationsPartial === true) {
+        next.roomState.invitations = mergeRoomInvitations(existing.roomState.invitations, item.roomState.invitations);
+      }
     }
     merged.set(item.id, next);
   });
