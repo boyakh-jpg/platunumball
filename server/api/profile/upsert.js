@@ -10,8 +10,13 @@ function makeProfileId(authUserId = "") {
 }
 
 function normalizeHashtag(value = "", fallback = "") {
-  const raw = String(value || fallback || "").trim().replace(/^[@#]+/, "");
-  return raw ? `#${raw.toLowerCase().replace(/[^a-z0-9가-힣_-]/gi, "").slice(0, 20)}` : "";
+  const raw = String(value || fallback || "")
+    .trim()
+    .replace(/^[@#]+/, "")
+    .normalize("NFKC")
+    .toLowerCase();
+  const slug = raw.replace(/[^\p{L}\p{N}_-]+/gu, "").slice(0, 20);
+  return slug ? `#${slug}` : "";
 }
 
 function normalizeBirthYear(value) {
@@ -69,11 +74,15 @@ function normalizeOptionalText(value) {
   return text || null;
 }
 
+function getRegionSnapshot(regionSido, regionDistrict, fallbackRegion) {
+  const structuredRegion = normalizeOptionalText([regionSido, regionDistrict].filter(Boolean).join(" "));
+  return structuredRegion ?? normalizeOptionalText(fallbackRegion);
+}
+
 function getRequestedRegion(profile = {}, existing = {}) {
   const regionSido = normalizeOptionalText(profile.regionSido) ?? normalizeOptionalText(existing?.region_sido);
   const regionDistrict = normalizeOptionalText(profile.regionDistrict) ?? normalizeOptionalText(existing?.region_district);
-  const inferredRegion = normalizeOptionalText([regionSido, regionDistrict].filter(Boolean).join(" "));
-  const region = normalizeOptionalText(profile.region) ?? normalizeOptionalText(existing?.region) ?? inferredRegion;
+  const region = getRegionSnapshot(regionSido, regionDistrict, profile.region ?? existing?.region);
   return { regionSido, regionDistrict, region };
 }
 
@@ -98,7 +107,7 @@ function buildProfileRow({ existing, profile, authUser, authUserId }) {
   const existingLockedHandle = existing?.handle_locked_at || existing?.hashtag_locked_at;
   const existingHashtag = normalizeHashtag(existing?.hashtag ?? existing?.handle);
   const requestedHashtag = normalizeHashtag(profile.hashtag ?? profile.handle);
-  const nextHashtag = existingLockedHandle ? existing.hashtag ?? existing.handle ?? "" : requestedHashtag || existingHashtag;
+  const nextHashtag = existingLockedHandle ? existingHashtag : requestedHashtag || existingHashtag;
   const requestedBirthYear = normalizeBirthYear(profile.birthYear);
   const hasLockedBirthYear = Boolean(existing?.birth_year_locked_at && existing?.birth_year);
   const nextBirthYear = hasLockedBirthYear ? existing.birth_year : requestedBirthYear;
@@ -122,8 +131,8 @@ function buildProfileRow({ existing, profile, authUser, authUserId }) {
     id: existing?.id ?? makeProfileId(authUserId),
     auth_user_id: authUserId,
     name: nextName,
-    handle: nextHashtag || existing?.handle || "",
-    hashtag: nextHashtag || existing?.hashtag || null,
+    handle: nextHashtag,
+    hashtag: nextHashtag || null,
     birth_year: nextBirthYear,
     age_group: profile.ageGroup ?? existing?.age_group ?? "open",
     age_group_checked_season: profile.ageGroupCheckedSeason ?? existing?.age_group_checked_season ?? null,

@@ -1489,6 +1489,9 @@ flowchart TD
 3. UI 표시, 검색 haystack, Discord demo username 생성은 raw `.handle`을 직접 사용하지 않는다.
 4. `@...` 형식은 신규 seed/runtime state에서 정규화되어 `#...`로 바뀌어야 한다.
 5. DB에서 `handle` 컬럼을 삭제하는 것은 모든 서버 action, seed, migration, `handle_locked_at` 의존 정리가 끝난 뒤 별도 hard migration으로만 한다.
+6. 2026-07-03부터 DB profile guard는 `profiles.hashtag`를 원본으로 정규화하고 `profiles.handle`을 같은 값으로 되돌린다.
+7. `profiles.region_sido/region_district`가 있으면 `profiles.region`은 그 조합에서 만든 표시/검색 스냅샷이다. 프리텍스트 `region`이 구조화 지역보다 우선하면 안 된다.
+8. `profiles.discord_connection`이 linked 상태면 `profiles.discord_user_id`는 그 숫자 ID 스냅샷이다. Discord 중복 검사는 `discord_user_id` unique 기준을 따른다.
 
 ## 2026-06-26 서버 상태 열람 규칙
 

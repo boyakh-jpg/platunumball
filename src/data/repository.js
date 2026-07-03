@@ -94,6 +94,8 @@ const nullableText = (value) => {
   const text = String(value ?? "").trim();
   return text || null;
 };
+const getProfileRegionSnapshot = (regionSido, regionDistrict, fallbackRegion) =>
+  nullableText([regionSido, regionDistrict].filter(Boolean).join(" ")) ?? nullableText(fallbackRegion);
 const getUserIdentityHashtag = (user = {}) => getUserHashtag(user);
 export const DEFAULT_SETTINGS = {
   theme: "dark",
@@ -2413,6 +2415,7 @@ export async function saveNormalizedRemoteState(state, options = {}) {
     const hashtag = getUserHashtag(user);
     const isTestProfile = Boolean(user.testLoginId);
     const setupAt = user.updatedAt ?? user.createdAt ?? TEST_PROFILE_SETUP_AT;
+    const region = getProfileRegionSnapshot(user.regionSido, user.regionDistrict, user.region);
     return {
       id: user.id,
       name: user.name,
@@ -2428,7 +2431,7 @@ export async function saveNormalizedRemoteState(state, options = {}) {
       handle_locked_at: user.handleLockedAt ?? (isTestProfile ? setupAt : null),
       birth_year_locked_at: user.birthYearLockedAt ?? (isTestProfile ? setupAt : null),
       name_updated_at: user.nameUpdatedAt ?? null,
-      region: user.region,
+      region,
       position: user.position,
       avatar_color: user.avatarColor,
       trust_score: user.trustScore ?? 80,
@@ -9532,6 +9535,17 @@ export function updateProfile(state, patch, targetUserId = state.currentUserId) 
     profilePatch.handle = hashtag;
     profilePatch.hashtag = hashtag;
     profilePatch.handleLockedAt = currentUser.handleLockedAt ?? profilePatch.handleLockedAt ?? new Date().toISOString();
+  }
+  if (
+    Object.prototype.hasOwnProperty.call(profilePatch, "regionSido") ||
+    Object.prototype.hasOwnProperty.call(profilePatch, "regionDistrict") ||
+    Object.prototype.hasOwnProperty.call(profilePatch, "region")
+  ) {
+    profilePatch.region = getProfileRegionSnapshot(
+      profilePatch.regionSido ?? currentUser.regionSido,
+      profilePatch.regionDistrict ?? currentUser.regionDistrict,
+      profilePatch.region ?? currentUser.region,
+    );
   }
   if (profilePatch.birthYear && !currentBirthYearLocked) {
     profilePatch.birthYearLockedAt = profilePatch.birthYearLockedAt ?? new Date().toISOString();
