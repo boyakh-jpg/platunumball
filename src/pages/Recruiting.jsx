@@ -1892,6 +1892,30 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
   const [pendingRosterOpen, setPendingRosterOpen] = useState(null);
   const [confirmingMatchId, setConfirmingMatchId] = useState("");
   const [joiningPostId, setJoiningPostId] = useState("");
+  const roomPostId = selectedPost?.id ?? "";
+  const modalPostDetailLoadRef = useRef("");
+
+  useEffect(() => {
+    if (!roomPostId) {
+      modalPostDetailLoadRef.current = "";
+      return;
+    }
+    if (!app.remoteReady || !app.currentUser.id) return;
+    const refreshKey = `${roomPostId}:${app.currentUser.id}`;
+    if (modalPostDetailLoadRef.current === refreshKey) return;
+    modalPostDetailLoadRef.current = refreshKey;
+    app.actions.loadRecruitingPost?.(roomPostId);
+  }, [app.actions, app.currentUser.id, app.remoteReady, roomPostId]);
+
+  useEffect(() => {
+    if (!roomPostId || !app.remoteReady || !app.currentUser.id) return undefined;
+    return app.actions.subscribeRecruitingChat?.(roomPostId);
+  }, [app.actions.subscribeRecruitingChat, app.currentUser.id, app.remoteReady, roomPostId]);
+
+  useEffect(() => {
+    if (!roomPostId || !app.remoteReady || !app.currentUser.id) return undefined;
+    return app.actions.subscribeRecruitingRoom?.(roomPostId);
+  }, [app.actions.subscribeRecruitingRoom, app.currentUser.id, app.remoteReady, roomPostId]);
 
   const closeModal = () => {
     setInviteDraft(null);
@@ -3372,16 +3396,6 @@ function RecruitingReady({ app }) {
     : null;
   const selectedPostPending = Boolean(selectedPostId && !selectedPost);
   useBodyScrollLock(Boolean(selectedPost) || selectedPostPending || composeOpen);
-
-  useEffect(() => {
-    if (!selectedPost?.id || !app.remoteReady || !app.currentUser.id) return undefined;
-    return app.actions.subscribeRecruitingChat?.(selectedPost.id);
-  }, [app.actions.subscribeRecruitingChat, app.currentUser.id, app.remoteReady, selectedPost?.id]);
-
-  useEffect(() => {
-    if (!selectedPost?.id || !app.remoteReady || !app.currentUser.id) return undefined;
-    return app.actions.subscribeRecruitingRoom?.(selectedPost.id);
-  }, [app.actions.subscribeRecruitingRoom, app.currentUser.id, app.remoteReady, selectedPost?.id]);
 
   useEffect(() => {
     if (!targetPostId || !app.remoteReady) return;
