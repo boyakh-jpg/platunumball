@@ -404,6 +404,16 @@ begin
     execute 'alter table public.recruiting_posts add column if not exists scheduled_date date';
     execute 'alter table public.recruiting_posts add column if not exists scheduled_time time';
     execute 'alter table public.recruiting_posts add column if not exists scheduled_at text';
+    if exists (
+      select 1
+      from information_schema.columns
+      where table_schema = 'public'
+        and table_name = 'recruiting_posts'
+        and column_name = 'scheduled_at'
+        and data_type <> 'text'
+    ) then
+      execute 'alter table public.recruiting_posts alter column scheduled_at type text using scheduled_at::text';
+    end if;
     execute 'alter table public.recruiting_posts add column if not exists confirmed_at timestamptz';
     execute 'alter table public.recruiting_posts add column if not exists player_ids jsonb not null default ''[]''::jsonb';
     execute 'alter table public.recruiting_posts add column if not exists room_state jsonb not null default ''{}''::jsonb';
@@ -4821,6 +4831,49 @@ begin
 end;
 $$;
 
+create or replace function public.rankball_recruiting_schedule_snapshot_guard()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  safe_room_state jsonb := coalesce(new.room_state, '{}'::jsonb);
+  previous_timing text := null;
+  requested_timing text;
+  safe_timing text;
+begin
+  if tg_op = 'UPDATE' then
+    previous_timing := old.room_state->>'timingType';
+  end if;
+
+  requested_timing := coalesce(safe_room_state->>'timingType', previous_timing);
+
+  safe_timing := case
+    when requested_timing = 'instant' then 'instant'
+    when safe_room_state ? 'timingType' then 'scheduled'
+    when lower(btrim(coalesce(new.scheduled_at::text, ''))) in ('instant', '즉시') then 'instant'
+    else 'scheduled'
+  end;
+
+  new.room_state := safe_room_state || jsonb_build_object('timingType', safe_timing);
+
+  if safe_timing = 'instant' then
+    new.scheduled_date := null;
+    new.scheduled_time := null;
+    new.scheduled_at := null;
+  elsif new.scheduled_date is not null and new.scheduled_time is not null then
+    new.scheduled_at := new.scheduled_date::text || ' ' || left(new.scheduled_time::text, 5);
+  elsif new.scheduled_date is not null then
+    new.scheduled_at := new.scheduled_date::text;
+  else
+    new.scheduled_at := null;
+  end if;
+
+  return new;
+end;
+$$;
+
 create or replace function public.rankball_refresh_recruiting_application_feed_trigger()
 returns trigger
 language plpgsql
@@ -5221,6 +5274,8 @@ $$;
 do $$
 begin
   if to_regclass('public.recruiting_posts') is not null then
+    execute 'drop trigger if exists rankball_recruiting_schedule_snapshot_guard on public.recruiting_posts';
+    execute 'create trigger rankball_recruiting_schedule_snapshot_guard before insert or update of scheduled_at, scheduled_date, scheduled_time, room_state on public.recruiting_posts for each row execute function public.rankball_recruiting_schedule_snapshot_guard()';
     execute 'drop trigger if exists rankball_recruiting_posts_feed_refresh on public.recruiting_posts';
     execute 'create trigger rankball_recruiting_posts_feed_refresh after insert or update or delete on public.recruiting_posts for each row execute function public.rankball_refresh_recruiting_feed_trigger()';
   end if;

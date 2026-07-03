@@ -2077,7 +2077,8 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
     recruitingPosts: recruitingPosts.map((post) => {
       const rawScheduledAt = toDateTime(post.scheduled_date, post.scheduled_time, post.scheduled_at);
       const roomState = normalizeRecruitingRoomState(post.room_state ?? {});
-      const timingType = roomState.timingType === "instant" || rawScheduledAt === "즉시" ? "instant" : "scheduled";
+      const legacyInstant = !roomState.timingType && rawScheduledAt === "즉시";
+      const timingType = roomState.timingType === "instant" || legacyInstant ? "instant" : "scheduled";
       const scheduledAt = timingType === "instant" ? "즉시" : rawScheduledAt;
       return {
         id: post.id,
@@ -2296,7 +2297,7 @@ function toDbTime(value) {
 }
 
 function getDbScheduleParts(item = {}) {
-  const timingType = (item.timingType ?? item.rules?.timingType) === "instant" ? "instant" : "scheduled";
+  const timingType = (item.timingType ?? item.roomState?.timingType ?? item.rules?.timingType) === "instant" ? "instant" : "scheduled";
   const scheduledDate = timingType === "instant" ? null : item.scheduledDate || getDatePart(item.scheduledAt) || null;
   const scheduledTime = timingType === "instant" ? null : toDbTime(item.scheduledTime || getTimePart(item.scheduledAt));
   return {
@@ -2576,54 +2577,57 @@ export async function saveNormalizedRemoteState(state, options = {}) {
     ...(state.settings?.favoriteCourtIds ?? []).map((targetId) => ({ user_id: currentUserId, target_type: "court", target_id: targetId })),
     ...(state.settings?.favoriteRefereeIds ?? []).map((targetId) => ({ user_id: currentUserId, target_type: "referee", target_id: targetId })),
   ];
-  const recruitingRows = (state.recruitingPosts ?? []).map((post) => ({
-    id: post.id,
-    type: post.type,
-    title: post.title,
-    visibility: post.visibility ?? "public",
-    player_id: post.playerId,
-    team_id: nullableText(post.teamId),
-    region: post.region,
-    court_id: nullableText(getCourtId(post)),
-    court_name: post.court,
-    mode: post.mode,
-    scheduled_date: post.scheduledDate || null,
-    scheduled_time: toDbTime(post.scheduledTime),
-    scheduled_at: post.scheduledAt && !["일정 미정", "즉시"].includes(post.scheduledAt) ? post.scheduledAt : null,
-    ranked: post.ranked !== false,
-    official: Boolean(post.official),
-    pre_registered: post.preRegistered !== false,
-    rating_scale: Number(post.ratingScale ?? 1),
-    age_restriction: post.ageRestriction ?? null,
-    allowed_age_groups: post.allowedAgeGroups ?? [],
-    rules: post.rules ?? {},
-    stakes: post.stakes ?? "",
-    court_reserved: Boolean(post.courtReserved),
-    court_fee: nullableText(post.courtFee),
-    spots: post.spots ?? 1,
-    target_team_id: nullableText(post.targetTeamId),
-    referee_id: post.refereeId || null,
-    referee_trust_min: Number(post.refereeTrustMin ?? REFEREE_TRUST_MIN),
-    stat_entry_minutes: Number(post.statEntryMinutes ?? STAT_ENTRY_WINDOW_MINUTES),
-    dispute_minutes: Number(post.disputeMinutes ?? DISPUTE_WINDOW_MINUTES),
-    room_state: {
-      ...normalizeRecruitingRoomState(post.roomState ?? {}),
-      ownerId: getRecruitingRoomOwnerId(post),
-      timingType: post.timingType ?? post.roomState?.timingType ?? "scheduled",
-      refereeWanted: Boolean(post.refereeWanted ?? post.roomState?.refereeWanted ?? post.refereeId),
-    },
-    host_join_mode: post.hostJoinMode ?? (post.teamId ? "team" : "player"),
-    host_side: post.hostSide ?? "teamA",
-    host_ready: Boolean(post.hostReady),
-    side_capacity: getRecruitingSideCapacity(post),
-    player_ids: post.playerIds ?? [],
-    position: post.position,
-    memo: post.memo,
-    status: post.status ?? "open",
-    confirmed_at: post.confirmedAt ?? null,
-    created_at: post.createdAt,
-    updated_at: new Date().toISOString(),
-  }));
+  const recruitingRows = (state.recruitingPosts ?? []).map((post) => {
+    const schedule = getDbScheduleParts(post);
+    return {
+      id: post.id,
+      type: post.type,
+      title: post.title,
+      visibility: post.visibility ?? "public",
+      player_id: post.playerId,
+      team_id: nullableText(post.teamId),
+      region: post.region,
+      court_id: nullableText(getCourtId(post)),
+      court_name: post.court,
+      mode: post.mode,
+      scheduled_date: schedule.scheduledDate,
+      scheduled_time: schedule.scheduledTime,
+      scheduled_at: schedule.scheduledAt,
+      ranked: post.ranked !== false,
+      official: Boolean(post.official),
+      pre_registered: post.preRegistered !== false,
+      rating_scale: Number(post.ratingScale ?? 1),
+      age_restriction: post.ageRestriction ?? null,
+      allowed_age_groups: post.allowedAgeGroups ?? [],
+      rules: post.rules ?? {},
+      stakes: post.stakes ?? "",
+      court_reserved: Boolean(post.courtReserved),
+      court_fee: nullableText(post.courtFee),
+      spots: post.spots ?? 1,
+      target_team_id: nullableText(post.targetTeamId),
+      referee_id: post.refereeId || null,
+      referee_trust_min: Number(post.refereeTrustMin ?? REFEREE_TRUST_MIN),
+      stat_entry_minutes: Number(post.statEntryMinutes ?? STAT_ENTRY_WINDOW_MINUTES),
+      dispute_minutes: Number(post.disputeMinutes ?? DISPUTE_WINDOW_MINUTES),
+      room_state: {
+        ...normalizeRecruitingRoomState(post.roomState ?? {}),
+        ownerId: getRecruitingRoomOwnerId(post),
+        timingType: schedule.timingType,
+        refereeWanted: Boolean(post.refereeWanted ?? post.roomState?.refereeWanted ?? post.refereeId),
+      },
+      host_join_mode: post.hostJoinMode ?? (post.teamId ? "team" : "player"),
+      host_side: post.hostSide ?? "teamA",
+      host_ready: Boolean(post.hostReady),
+      side_capacity: getRecruitingSideCapacity(post),
+      player_ids: post.playerIds ?? [],
+      position: post.position,
+      memo: post.memo,
+      status: post.status ?? "open",
+      confirmed_at: post.confirmedAt ?? null,
+      created_at: post.createdAt,
+      updated_at: new Date().toISOString(),
+    };
+  });
   const applicationRows = (state.recruitingPosts ?? []).flatMap((post) =>
     (post.applicants ?? []).map((application) => ({
       post_id: post.id,

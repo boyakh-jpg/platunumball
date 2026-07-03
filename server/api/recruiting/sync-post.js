@@ -11,6 +11,26 @@ function toDbTime(value) {
   return value ? String(value).slice(0, 5) : null;
 }
 
+function getDatePart(value) {
+  return String(value ?? "").match(/\d{4}-\d{2}-\d{2}/)?.[0] ?? "";
+}
+
+function getTimePart(value) {
+  return String(value ?? "").match(/\d{2}:\d{2}/)?.[0] ?? "";
+}
+
+function getDbScheduleParts(post = {}) {
+  const timingType = (post.timingType ?? post.roomState?.timingType ?? post.room_state?.timingType) === "instant" ? "instant" : "scheduled";
+  const scheduledDate = timingType === "instant" ? null : post.scheduledDate || post.scheduled_date || getDatePart(post.scheduledAt ?? post.scheduled_at) || null;
+  const scheduledTime = timingType === "instant" ? null : toDbTime(post.scheduledTime ?? post.scheduled_time ?? getTimePart(post.scheduledAt ?? post.scheduled_at));
+  return {
+    timingType,
+    scheduledDate,
+    scheduledTime,
+    scheduledAt: timingType === "instant" ? null : [scheduledDate, scheduledTime].filter(Boolean).join(" ") || null,
+  };
+}
+
 function nullableText(value) {
   const text = String(value ?? "").trim();
   return text || null;
@@ -75,6 +95,7 @@ function getRecruitingCoreSnapshot(post = {}) {
 function toRecruitingPostRow(post = {}) {
   const roomState = normalizeRoomState(post.roomState, post);
   const courtId = post.courtId ?? post.court_id ?? post.approvedCourtId ?? post.registeredCourtId ?? null;
+  const schedule = getDbScheduleParts({ ...post, roomState });
   return {
     id: post.id,
     type: post.type ?? "need_player",
@@ -86,9 +107,9 @@ function toRecruitingPostRow(post = {}) {
     court_id: nullableText(courtId),
     court_name: post.court ?? post.courtName ?? "미정",
     mode: post.mode ?? "5v5",
-    scheduled_date: post.scheduledDate || null,
-    scheduled_time: toDbTime(post.scheduledTime),
-    scheduled_at: post.scheduledAt && !["일정 미정", "즉시"].includes(post.scheduledAt) ? post.scheduledAt : null,
+    scheduled_date: schedule.scheduledDate,
+    scheduled_time: schedule.scheduledTime,
+    scheduled_at: schedule.scheduledAt,
     ranked: post.ranked !== false,
     official: Boolean(post.official),
     pre_registered: post.preRegistered !== false,
@@ -105,7 +126,7 @@ function toRecruitingPostRow(post = {}) {
     referee_trust_min: Number(post.refereeTrustMin ?? 90),
     stat_entry_minutes: Number(post.statEntryMinutes ?? 60),
     dispute_minutes: Number(post.disputeMinutes ?? 120),
-    room_state: roomState,
+    room_state: { ...roomState, timingType: schedule.timingType },
     host_join_mode: post.hostJoinMode === "player" ? "player" : "team",
     host_side: post.hostSide === "teamB" ? "teamB" : "teamA",
     host_ready: Boolean(post.hostReady),
