@@ -138,7 +138,8 @@ export default async function handler(request, response) {
       invitation.fromUserId,
       invitation.targetUserId,
     ]);
-    const profileIds = unique([user.id, ...(memberRows ?? []).map((member) => member.user_id), ...invitationProfileIds]);
+    const memberProfileIds = isDetailRequest ? (memberRows ?? []).map((member) => member.user_id) : [];
+    const profileIds = unique([user.id, ...memberProfileIds, ...invitationProfileIds]);
     const { data: profileRows, error: profileError } = profileIds.length
       ? await context.supabase.from("public_profiles").select(PROFILE_TEAM_MEMBER_COLUMNS).in("id", profileIds)
       : { data: [], error: null };

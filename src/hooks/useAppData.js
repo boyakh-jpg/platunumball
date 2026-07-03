@@ -872,7 +872,7 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
           matchLimit: loadOptions.matchLimit,
           recruitingLimit: loadOptions.recruitingLimit,
           adminContext: false,
-          includeFeedCounts: true,
+          includeFeedCounts: false,
         },
         { allowWhenDisabled: true },
       );
