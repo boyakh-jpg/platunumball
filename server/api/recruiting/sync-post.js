@@ -542,7 +542,9 @@ function getRecruitingSideCounts(post = {}) {
   const counts = { teamA: 0, teamB: 0 };
   const seen = new Set();
   const seenSides = new Map();
+  const teamPartySides = new Map();
   let crossSideDuplicate = false;
+  let crossSideTeamParty = false;
   const addPlayers = (side, playerIds = []) => {
     if (!counts[side]) counts[side] = 0;
     toArray(playerIds).forEach((playerId) => {
@@ -555,17 +557,27 @@ function getRecruitingSideCounts(post = {}) {
       counts[side] += 1;
     });
   };
+  const addTeamParty = (side, teamId) => {
+    const normalizedTeamId = nullableText(teamId);
+    if (!normalizedTeamId) return;
+    const seenSide = teamPartySides.get(normalizedTeamId);
+    if (seenSide && seenSide !== side) crossSideTeamParty = true;
+    teamPartySides.set(normalizedTeamId, side);
+  };
 
   const hostJoinMode = getCanonicalHostJoinMode(post);
+  if (hostJoinMode === "team") addTeamParty(hostSide, post.teamId ?? post.team_id);
   const hostPlayers = hostJoinMode === "team"
     ? getEntryActivePlayerIds(post, capacity, post.playerId ?? post.player_id ?? "")
     : [post.playerId ?? post.player_id].filter(Boolean);
   addPlayers(hostSide, hostPlayers);
 
   toArray(post.applicants).forEach((application) => {
-    if (application.reserve) return;
     const side = application.side === "teamA" ? "teamA" : "teamB";
-    const isTeamEntry = application.kind === "team" || application.teamId || application.team_id;
+    const applicationTeamId = application.teamId ?? application.team_id;
+    const isTeamEntry = application.kind === "team" || applicationTeamId;
+    if (isTeamEntry) addTeamParty(side, applicationTeamId);
+    if (application.reserve) return;
     const players = isTeamEntry
       ? getEntryActivePlayerIds(application, capacity, application.playerId ?? application.player_id ?? "")
       : [application.playerId ?? application.player_id].filter(Boolean);
@@ -573,6 +585,7 @@ function getRecruitingSideCounts(post = {}) {
   });
 
   counts.crossSideDuplicate = crossSideDuplicate;
+  counts.crossSideTeamParty = crossSideTeamParty;
   return counts;
 }
 
@@ -586,6 +599,7 @@ function validateRecruitingPostShape(post = {}) {
   if (oversizedApplication) reject(400, "recruiting_party_exceeds_side_capacity");
   const sideCounts = getRecruitingSideCounts(post);
   if (sideCounts.crossSideDuplicate) reject(400, "recruiting_player_on_both_sides");
+  if (sideCounts.crossSideTeamParty) reject(400, "recruiting_team_party_on_both_sides");
   if (sideCounts.teamA > capacity || sideCounts.teamB > capacity) reject(400, "recruiting_side_exceeds_capacity");
 
   if (!isSoloIndividualRoom(post)) return;

@@ -8144,6 +8144,10 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
     const teamKey = invitedTeamKey;
     const isHostParty = post.teamId === invitedTeam.id && post.hostJoinMode !== "player";
     const existingApplicant = existingInvitedTeamApplicant;
+    const allowedEntryId = existingApplicant?.side === side ? teamKey : "";
+    if (hasRecruitingTeamMemberOnOtherSide(post, state, invitedTeam.id, side, allowedEntryId)) {
+      return withRecruitingPartySideConflictNotification(state, postId, side);
+    }
     const currentPlayerIds = isHostParty
       ? getExplicitInvitationTeamPlayerIds(invitedTeam, capacity, post.playerIds, post.playerId)
       : existingApplicant
@@ -8309,8 +8313,9 @@ function buildRecruitingTeamAbsorbPost(post, state, applicants, roomState, playe
   if (isSoloIndividualRecruitingRoom(post)) return null;
   const side = ["teamA", "teamB"].includes(placement.side) ? placement.side : null;
   if (!side) return null;
+  if (hasRecruitingTeamMemberOnOtherSide(post, state, sourceTeamId, side, sourceEntryId ?? "")) return null;
   const reserve = Boolean(placement.reserve);
-  const team = state.teams.find((item) => item.id === sourceTeamId && item.members.some((member) => member.userId === playerId));
+  const team = (state.teams ?? []).find((item) => item.id === sourceTeamId && item.members.some((member) => member.userId === playerId));
   if (!team) return null;
 
   const capacity = getRecruitingSideCapacity(post);
@@ -8375,6 +8380,44 @@ function buildRecruitingTeamAbsorbPost(post, state, applicants, roomState, playe
 
 function isRecruitingTeamPartyEntry(entry) {
   return isRecruitingPartyEntry(entry);
+}
+
+function getRecruitingPartySideConflictNotification(postId, sideName = "") {
+  return {
+    id: makeId("n"),
+    title: "팀 파티 합류 불가",
+    body: `같은 팀 파티는 한 사이드에서만 묶을 수 있습니다. ${SIDE_LABEL_TEXT[sideName] ?? "다른 사이드"}로 가려면 먼저 파티에서 나가야 합니다.`,
+    tone: "orange",
+    recruitingPostId: postId,
+  };
+}
+
+function withRecruitingPartySideConflictNotification(state, postId, sideName = "") {
+  return {
+    ...state,
+    notifications: [
+      getRecruitingPartySideConflictNotification(postId, sideName),
+      ...(state.notifications ?? []),
+    ],
+  };
+}
+
+function hasRecruitingTeamMemberOnOtherSide(post, state, teamId, targetSide, allowedEntryId = "") {
+  if (!teamId || !["teamA", "teamB"].includes(targetSide)) return false;
+  const team = (state.teams ?? []).find((item) => item.id === teamId);
+  const teamMemberIds = new Set((team?.members ?? []).map((member) => member.userId).filter(Boolean));
+  if (!teamMemberIds.size) return false;
+
+  const lobby = getRecruitingLobby(post, state);
+  return (lobby.entries ?? []).some((entry) => {
+    if (!entry || entry.id === allowedEntryId || entry.side === targetSide) return false;
+    if (entry.team?.id === teamId) return true;
+    return [
+      entry.playerId,
+      ...(entry.players ?? []),
+      ...(entry.reserves ?? []),
+    ].some((playerId) => teamMemberIds.has(playerId));
+  });
 }
 
 function isMutableRecruitingRoom(post) {
@@ -8518,6 +8561,9 @@ export function joinRecruitingSideParty(state, postId, teamId, sideName = "", en
   if (!currentApplicant && !joinableSide) return state;
 
   const side = joinableSide || currentApplicant.side;
+  if (hasRecruitingTeamMemberOnOtherSide(post, state, teamId, side, entryId)) {
+    return withRecruitingPartySideConflictNotification(state, postId, side);
+  }
   const sideEntries = lobby.sides[side]?.entries ?? [];
   const targetEntry = entryId
     ? sideEntries.find((entry) => entry.id === entryId)
@@ -8699,6 +8745,9 @@ export function setRecruitingTeamPartyRoster(state, postId, entryId, roster = {}
 
   const partyLeaderId = roomState.partyLeaders?.[entryId] ?? (entry.fixed ? post.playerId : entry.playerId) ?? "";
   if (partyLeaderId !== state.currentUserId) return state;
+  if (hasRecruitingTeamMemberOnOtherSide(post, state, entry.team.id, entry.side, entry.id)) {
+    return withRecruitingPartySideConflictNotification(state, postId, entry.side);
+  }
 
   const capacity = getRecruitingSideCapacity(post);
   const teamPlayerIds = new Set(getSelectableTeamPlayerIds(entry.team));
