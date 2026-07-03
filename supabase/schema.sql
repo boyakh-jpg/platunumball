@@ -4603,13 +4603,13 @@ begin
       'teamId', coalesce(match_row.team_a_id, ''),
       'name', coalesce(team_a_name, 'Team A'),
       'players', team_a_players,
-      'score', coalesce(match_row.score_a, 0)
+      'score', coalesce((result_json->>'scoreA')::integer, match_row.score_a, 0)
     ),
     'teamB', jsonb_build_object(
       'teamId', coalesce(match_row.team_b_id, ''),
       'name', coalesce(team_b_name, 'Team B'),
       'players', team_b_players,
-      'score', coalesce(match_row.score_b, 0)
+      'score', coalesce((result_json->>'scoreB')::integer, match_row.score_b, 0)
     ),
     'agreements', agreements_json,
     'approvals', approvals_json,
@@ -5081,6 +5081,62 @@ begin
 end;
 $$;
 
+create or replace function public.rankball_sync_match_score_snapshot()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if tg_op = 'DELETE' then
+    update public.matches
+    set score_a = 0,
+        score_b = 0
+    where id = old.match_id
+      and (score_a is distinct from 0 or score_b is distinct from 0);
+    return old;
+  end if;
+
+  update public.matches
+  set score_a = coalesce(new.score_a, 0),
+      score_b = coalesce(new.score_b, 0)
+  where id = new.match_id
+    and (
+      score_a is distinct from coalesce(new.score_a, 0)
+      or score_b is distinct from coalesce(new.score_b, 0)
+    );
+
+  return new;
+end;
+$$;
+
+create or replace function public.rankball_match_score_snapshot_guard()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  result_score record;
+begin
+  select score_a, score_b
+  into result_score
+  from public.match_results
+  where match_id = new.id
+  limit 1;
+
+  if found then
+    new.score_a := coalesce(result_score.score_a, 0);
+    new.score_b := coalesce(result_score.score_b, 0);
+  else
+    new.score_a := 0;
+    new.score_b := 0;
+  end if;
+
+  return new;
+end;
+$$;
+
 do $$
 begin
   if to_regclass('public.recruiting_posts') is not null then
@@ -5096,6 +5152,12 @@ begin
   if to_regclass('public.matches') is not null then
     execute 'drop trigger if exists rankball_matches_feed_refresh on public.matches';
     execute 'create trigger rankball_matches_feed_refresh after insert or update or delete on public.matches for each row execute function public.rankball_refresh_match_feed_trigger()';
+  end if;
+
+  if to_regclass('public.matches') is not null
+    and to_regclass('public.match_results') is not null then
+    execute 'drop trigger if exists rankball_matches_score_snapshot_guard on public.matches';
+    execute 'create trigger rankball_matches_score_snapshot_guard before insert or update of score_a, score_b on public.matches for each row execute function public.rankball_match_score_snapshot_guard()';
   end if;
 
   if to_regclass('public.match_players') is not null then
@@ -5156,6 +5218,8 @@ begin
   ) then
     execute 'drop trigger if exists rankball_match_results_feed_refresh on public.match_results';
     execute 'create trigger rankball_match_results_feed_refresh after insert or update or delete on public.match_results for each row execute function public.rankball_refresh_match_record_feed_dependency_trigger()';
+    execute 'drop trigger if exists rankball_match_results_score_snapshot on public.match_results';
+    execute 'create trigger rankball_match_results_score_snapshot after insert or update of score_a, score_b or delete on public.match_results for each row execute function public.rankball_sync_match_score_snapshot()';
   end if;
 
   if to_regclass('public.player_match_stats') is not null and exists (

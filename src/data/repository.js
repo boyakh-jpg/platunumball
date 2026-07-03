@@ -1219,6 +1219,8 @@ function fromRemoteMatch(row, context) {
   const statRecorders = normalizeStatRecorders(row.stat_recorders ?? row.rules?.statRecorders);
   const recordTeamAName = String(row.rules?.recordSummary?.teamAName ?? "").trim() || "Team A";
   const recordTeamBName = String(row.rules?.recordSummary?.teamBName ?? "").trim() || "Team B";
+  const scoreA = resultRow?.score_a ?? row.score_a ?? 0;
+  const scoreB = resultRow?.score_b ?? row.score_b ?? 0;
 
   return {
     id: row.id,
@@ -1254,8 +1256,8 @@ function fromRemoteMatch(row, context) {
     tournamentMmrPolicy: row.tournament_mmr_policy,
     objectionWindow: row.objection_window,
     evidence: row.evidence ?? [],
-    teamA: { name: teamA?.name ?? recordTeamAName, teamId: row.team_a_id, players: teamAPlayers, score: row.score_a ?? 0 },
-    teamB: { name: teamB?.name ?? recordTeamBName, teamId: row.team_b_id, players: teamBPlayers, score: row.score_b ?? 0 },
+    teamA: { name: teamA?.name ?? recordTeamAName, teamId: row.team_a_id, players: teamAPlayers, score: scoreA },
+    teamB: { name: teamB?.name ?? recordTeamBName, teamId: row.team_b_id, players: teamBPlayers, score: scoreB },
     agreements,
     approvals,
     disputes,
@@ -2483,8 +2485,8 @@ export async function saveNormalizedRemoteState(state, options = {}) {
     scheduled_time: toDbTime(match.scheduledTime),
     team_a_id: match.teamA?.teamId || null,
     team_b_id: match.teamB?.teamId || null,
-    score_a: Number(match.result?.scoreA ?? match.teamA?.score ?? 0),
-    score_b: Number(match.result?.scoreB ?? match.teamB?.score ?? 0),
+    score_a: Number(match.result?.scoreA ?? 0),
+    score_b: Number(match.result?.scoreB ?? 0),
     rules: { ...(match.rules ?? {}), timingType: match.timingType ?? match.rules?.timingType ?? "scheduled", visibility: match.visibility ?? match.rules?.visibility ?? "private", statRecorders: normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders) },
     memo: match.memo,
     stakes: match.stakes,
@@ -2523,8 +2525,8 @@ export async function saveNormalizedRemoteState(state, options = {}) {
     .map((match) => ({
       match_id: match.id,
       submitted_by: match.result.submittedBy ?? match.refereeId ?? match.teamA?.players?.[0] ?? currentUserId,
-      score_a: Number(match.result.scoreA ?? match.teamA?.score ?? 0),
-      score_b: Number(match.result.scoreB ?? match.teamB?.score ?? 0),
+      score_a: Number(match.result.scoreA ?? 0),
+      score_b: Number(match.result.scoreB ?? 0),
       stat_submissions: match.result.statSubmissions ?? {},
       submitted_at: match.result.submittedAt,
     }));

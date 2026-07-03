@@ -472,8 +472,8 @@ function toMatchRow(match = {}, actorProfileId = "") {
     scheduled_time: toDbTime(match.scheduledTime),
     team_a_id: nullableText(match.teamA?.teamId),
     team_b_id: nullableText(match.teamB?.teamId),
-    score_a: Number(match.result?.scoreA ?? match.teamA?.score ?? 0),
-    score_b: Number(match.result?.scoreB ?? match.teamB?.score ?? 0),
+    score_a: Number(match.result?.scoreA ?? 0),
+    score_b: Number(match.result?.scoreB ?? 0),
     rules: {
       ...(match.rules ?? {}),
       timingType: match.timingType ?? match.rules?.timingType ?? "scheduled",
@@ -505,8 +505,8 @@ function toResultRow(match = {}, actorProfileId = "") {
   return {
     match_id: match.id,
     submitted_by: match.result.submittedBy ?? match.refereeId ?? match.teamA?.players?.[0] ?? actorProfileId,
-    score_a: Number(match.result.scoreA ?? match.teamA?.score ?? 0),
-    score_b: Number(match.result.scoreB ?? match.teamB?.score ?? 0),
+    score_a: Number(match.result.scoreA ?? 0),
+    score_b: Number(match.result.scoreB ?? 0),
     stat_submissions: match.result.statSubmissions ?? {},
     submitted_at: match.result.submittedAt ?? new Date().toISOString(),
   };
@@ -1072,8 +1072,8 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
       };
     }
     if (!shouldReplaceResult) {
-      matchRow.score_a = Number(existingMatch.score_a ?? 0);
-      matchRow.score_b = Number(existingMatch.score_b ?? 0);
+      matchRow.score_a = Number(existingResult?.score_a ?? existingMatch.score_a ?? 0);
+      matchRow.score_b = Number(existingResult?.score_b ?? existingMatch.score_b ?? 0);
     }
     if (shouldCommitRating) {
       matchRow.status = existingMatch.status ?? "approval";

@@ -13,6 +13,15 @@
 - 다른 선수 점수 요청은 무시한다. 사이드 점수는 반영된 개인 득점 합계로 다시 계산한다.
 - 이의 사유 문자열에는 당시 점수판, 본인 득점 변경 요청, 선택 사유를 남긴다.
 
+## 2026-07-03 경기 점수 원본
+
+- 경기 최종 점수 원본은 `match_results.score_a/score_b`다.
+- `matches.score_a/score_b`는 목록/feed/legacy 조회용 스냅샷이다.
+- `match_results`가 insert/update/delete되면 DB trigger가 `matches.score_a/score_b`를 자동 동기화한다.
+- `matches.score_a/score_b` 직접 쓰기는 DB guard가 `match_results` 값으로 되돌리며, 결과 row가 없으면 0으로 고정한다.
+- 결과를 교체하지 않는 경기 액션은 기존 `match_results` 점수를 보존한다.
+- 기존 `matches.score_a/score_b`만 있고 `match_results`가 없는 경기 기록은 migration에서 `match_results`로 백필한다.
+
 ## 2026-07-03 개인기록 재조회 이름 보존
 
 - 개인기록의 프리텍스트 팀명/상대명은 `rules.recordSummary.teamAName/teamBName`을 목록/상세 재조회 fallback 이름으로 사용한다.
