@@ -1217,6 +1217,8 @@ function fromRemoteMatch(row, context) {
   const playedPlayerIds = row.played_player_ids ?? row.rules?.playedPlayerIds ?? {};
   const mmrExcludedPlayerIds = row.mmr_excluded_player_ids ?? row.rules?.mmrExcludedPlayerIds ?? [];
   const statRecorders = normalizeStatRecorders(row.stat_recorders ?? row.rules?.statRecorders);
+  const recordTeamAName = String(row.rules?.recordSummary?.teamAName ?? "").trim() || "Team A";
+  const recordTeamBName = String(row.rules?.recordSummary?.teamBName ?? "").trim() || "Team B";
 
   return {
     id: row.id,
@@ -1252,8 +1254,8 @@ function fromRemoteMatch(row, context) {
     tournamentMmrPolicy: row.tournament_mmr_policy,
     objectionWindow: row.objection_window,
     evidence: row.evidence ?? [],
-    teamA: { name: teamA?.name ?? "Team A", teamId: row.team_a_id, players: teamAPlayers, score: row.score_a ?? 0 },
-    teamB: { name: teamB?.name ?? "Team B", teamId: row.team_b_id, players: teamBPlayers, score: row.score_b ?? 0 },
+    teamA: { name: teamA?.name ?? recordTeamAName, teamId: row.team_a_id, players: teamAPlayers, score: row.score_a ?? 0 },
+    teamB: { name: teamB?.name ?? recordTeamBName, teamId: row.team_b_id, players: teamBPlayers, score: row.score_b ?? 0 },
     agreements,
     approvals,
     disputes,

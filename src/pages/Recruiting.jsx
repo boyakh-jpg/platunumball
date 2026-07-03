@@ -1722,21 +1722,30 @@ function getDefaultRecruitingRegionKey(user = {}) {
 function SourceMatchRecordSummary({ match, userById }) {
   if (!match?.result) return null;
   const result = match.disputeDraftResult ?? match.result;
+  const getRecordSummaryNames = (sideName) => {
+    const names = sideName === "teamA"
+      ? match.rules?.recordSummary?.teamAPlayers
+      : match.rules?.recordSummary?.teamBPlayers;
+    return Array.isArray(names) ? names.map((name) => String(name ?? "").trim()) : [];
+  };
+  const getPlayerName = (sideName, playerId, index) => (
+    userById[playerId]?.name
+    || match.anonymousPlayers?.[playerId]?.name
+    || getRecordSummaryNames(sideName)[index]
+    || "플레이어"
+  );
   const renderSide = (sideName) => {
     const sidePlayerIds = getMatchSideRecordPlayerIds(match, sideName, false);
     const playerStats = normalizePlayerStats(result.playerStats, sidePlayerIds);
     return (
     <div className="arena-source-record-side" key={sideName}>
       <strong>{match[sideName]?.name ?? SIDE_LABELS[sideName]}</strong>
-      {sidePlayerIds.map((playerId) => {
-        const user = userById[playerId];
-        return (
+      {sidePlayerIds.map((playerId, index) => (
           <div key={playerId}>
-            <span>{user?.name ?? "플레이어"}</span>
+            <span>{getPlayerName(sideName, playerId, index)}</span>
             <em>{formatStatLine(playerStats[playerId])}</em>
           </div>
-        );
-      })}
+      ))}
     </div>
     );
   };
@@ -1792,6 +1801,18 @@ function SourceMatchDisputeEditor({ match, userById, canReview, onSave, onResolv
       },
     }));
   };
+  const getRecordSummaryNames = (sideName) => {
+    const names = sideName === "teamA"
+      ? match.rules?.recordSummary?.teamAPlayers
+      : match.rules?.recordSummary?.teamBPlayers;
+    return Array.isArray(names) ? names.map((name) => String(name ?? "").trim()) : [];
+  };
+  const getPlayerName = (sideName, playerId, index) => (
+    userById[playerId]?.name
+    || match.anonymousPlayers?.[playerId]?.name
+    || getRecordSummaryNames(sideName)[index]
+    || "선수"
+  );
 
   return (
     <form className="arena-dispute-editor" onSubmit={(event) => { event.preventDefault(); onSave(draft); }}>
@@ -1810,12 +1831,11 @@ function SourceMatchDisputeEditor({ match, userById, canReview, onSave, onResolv
         {["teamA", "teamB"].map((sideName) => (
           <div className="arena-dispute-side" key={sideName}>
             <strong>{match[sideName]?.name ?? SIDE_LABELS[sideName]}</strong>
-            {getMatchSideRecordPlayerIds(match, sideName, includeReserves).map((playerId) => {
-              const player = userById[playerId];
+            {getMatchSideRecordPlayerIds(match, sideName, includeReserves).map((playerId, index) => {
               const playerStats = draft.playerStats[playerId] ?? {};
               return (
                 <div className="arena-dispute-player" key={playerId}>
-                  <span>{player?.name ?? "선수"}</span>
+                  <span>{getPlayerName(sideName, playerId, index)}</span>
                   <div>
                     {PLAYER_STAT_FIELDS.map((field) => (
                       <label key={field.id}>

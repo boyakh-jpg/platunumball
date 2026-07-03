@@ -1,5 +1,16 @@
 # RankBall 로직/용어/디자인 기준
 
+## 2026-07-03 개인기록 재조회 이름 보존
+
+- 개인기록의 프리텍스트 팀명/상대명은 `rules.recordSummary.teamAName/teamBName`을 목록/상세 재조회 fallback 이름으로 사용한다.
+- 실제 `team_a_id/team_b_id`가 있는 팀 경기는 DB 팀명이 우선이고, 없는 개인기록만 `Team A/Team B` 대신 recordSummary 이름을 쓴다.
+- `/app/profile/records`처럼 사용자가 명시적으로 연 기록 화면은 feed card가 있어도 match row를 함께 읽어 `recordSummary`와 상세 기록 필드를 보정한다.
+- 이때 feed card의 `result`/스탯은 row 보정으로 지우지 않고 유지한다.
+- 방모달은 `anonymousPlayers`가 비었거나 늦게 도착해도 `rules.recordSummary.teamAPlayers/teamBPlayers` 순서로 개인기록 선수명을 표시한다.
+- 경기 방모달은 명시적 상세 열람이므로 list card가 이미 있어도 해당 `matchId` 상세 API를 한 번 로드해 세부 필드를 보정한다.
+- 열린 경기 방모달의 단일 상세 응답은 feed card보다 `updatedAt`이 과거여도 해당 `matchId`에 한해 병합한다. 목록 feed stale guard는 유지한다.
+- 방모달 상세 요청은 실제 promise가 생긴 뒤에만 요청 완료로 기록한다. 인증 준비 전 false 반환이나 실패는 요청 잠금을 풀어 이후 재시도 가능해야 한다.
+
 ## 2026-07-02 개인 기록 기준
 
 - `방만들기`의 개인 기록은 기존 `matches`, `match_results`, `player_match_stats`를 재사용한다.

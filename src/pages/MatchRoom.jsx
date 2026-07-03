@@ -95,6 +95,26 @@ function getSafeMatchSide(match, sideName) {
   };
 }
 
+function getRecordSummaryNames(match = {}, sideName = "teamA") {
+  const names = sideName === "teamA"
+    ? match.rules?.recordSummary?.teamAPlayers
+    : match.rules?.recordSummary?.teamBPlayers;
+  return Array.isArray(names) ? names.map((name) => String(name ?? "").trim()) : [];
+}
+
+function getRecordPlayerDisplayName(match = {}, sideName = "teamA", playerId = "", index = 0, user = null) {
+  return user?.name
+    || match.anonymousPlayers?.[playerId]?.name
+    || getRecordSummaryNames(match, sideName)[index]
+    || "플레이어";
+}
+
+function getRecordPlayerEntries(match = {}, includeReserves = false) {
+  return ["teamA", "teamB"].flatMap((sideName) => (
+    getMatchSideRecordPlayerIds(match, sideName, includeReserves).map((playerId, index) => ({ sideName, playerId, index }))
+  ));
+}
+
 function getPointAudit(match, score, sideName) {
   const scoreKey = sideName === "teamA" ? "scoreA" : "scoreB";
   const teamScore = Number(score[scoreKey] ?? 0);
@@ -201,23 +221,22 @@ export default function MatchRoom({ app }) {
   useBodyScrollLock(Boolean(statEditorPlayerId));
 
   useEffect(() => {
-    if (match) {
-      setMatchDetailMissing(false);
-      return;
-    }
     if (!matchId || app.remoteReady === false || requestedMatchIdRef.current === matchId) return;
-    requestedMatchIdRef.current = matchId;
     setMatchDetailMissing(false);
     const request = app.actions.loadMatchDetail?.(matchId);
     if (!request?.then) {
-      if (!request) setMatchDetailMissing(true);
+      if (!match && !request) setMatchDetailMissing(true);
       return;
     }
+    requestedMatchIdRef.current = matchId;
     request.then((count) => {
-      if (!count) setMatchDetailMissing(true);
+      if (!count) {
+        requestedMatchIdRef.current = "";
+        if (!match) setMatchDetailMissing(true);
+      }
     }).catch(() => {
       requestedMatchIdRef.current = "";
-      setMatchDetailMissing(true);
+      if (!match) setMatchDetailMissing(true);
     });
   }, [app.actions, app.remoteReady, match, matchId]);
 
@@ -863,17 +882,19 @@ export default function MatchRoom({ app }) {
                 {["teamA", "teamB"].map((sideName) => (
                   <div key={sideName} className="stat-entry-side">
                     <h3>{(sideName === "teamA" ? teamASide : teamBSide).name} 개인 기록</h3>
-                    {getMatchSideRecordPlayerIds(match, sideName, matchPhase === "live").map((playerId) => {
+                    {getMatchSideRecordPlayerIds(match, sideName, matchPhase === "live").map((playerId, index) => {
                       const user = userMap[playerId];
+                      const displayName = getRecordPlayerDisplayName(match, sideName, playerId, index, user);
+                      const displayUser = user ?? { id: playerId, name: displayName, position: "-" };
                       const canEdit = canEditPlayerStat(playerId);
                       const submitted = getPlayerStatSubmitted(match, playerId);
                       return (
                         <button key={playerId} type="button" className={`${canEdit ? "stat-player-button editable" : "stat-player-button locked"} ${submitted ? "submitted" : ""}`} disabled={!canEdit} onClick={() => setStatEditorPlayerId(playerId)}>
-                          <PlayerHoverCard as="span" user={user} teams={app.state.teams}>
-                            <span className="avatar small" style={{ "--avatar": user?.avatarColor }}>{user?.name?.slice(0, 1) ?? "P"}</span>
+                          <PlayerHoverCard as="span" user={displayUser} teams={app.state.teams}>
+                            <span className="avatar small" style={{ "--avatar": user?.avatarColor }}>{displayName.slice(0, 1) || "P"}</span>
                             <span>
-                              <strong>{user?.name ?? "플레이어"}</strong>
-                              <em>{canEdit ? formatStatLine(score.playerStats[playerId]) : `${user?.position ?? "-"} · ${getPlayerStatState(playerId, submitted)}`}</em>
+                              <strong>{displayName}</strong>
+                              <em>{canEdit ? formatStatLine(score.playerStats[playerId]) : `${displayUser.position ?? "-"} · ${getPlayerStatState(playerId, submitted)}`}</em>
                             </span>
                           </PlayerHoverCard>
                           <strong>{getPlayerStatState(playerId, submitted)}</strong>
@@ -1094,11 +1115,12 @@ export default function MatchRoom({ app }) {
                 </div>
               </div>
               <div className="compact-list">
-                {getMatchRecordPlayerIds(match).map((playerId) => {
+                {getRecordPlayerEntries(match).map(({ sideName, playerId, index }) => {
                   const user = userMap[playerId];
+                  const displayName = getRecordPlayerDisplayName(match, sideName, playerId, index, user);
                   return (
-                    <div key={playerId}>
-                      <span>{user?.name ?? "플레이어"}</span>
+                    <div key={`${sideName}-${playerId}`}>
+                      <span>{displayName}</span>
                       <strong>{formatStatLine(score.playerStats[playerId])}</strong>
                     </div>
                   );

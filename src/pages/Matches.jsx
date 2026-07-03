@@ -737,7 +737,7 @@ export default function Matches({ app }) {
     setSearchParams(next, { replace: true });
   };
   const requestMatchDetail = (matchId) => {
-    if (!matchId || requestedMatchDetailsRef.current.has(matchId)) return;
+    if (!matchId || app.remoteReady === false || !app.currentUser.id || requestedMatchDetailsRef.current.has(matchId)) return;
     requestedMatchDetailsRef.current.add(matchId);
     const request = app.actions.loadMatchDetail?.(matchId);
     if (!request?.then) {
@@ -758,7 +758,7 @@ export default function Matches({ app }) {
     if (!queryMatchId) return;
     setSelectedMatchId(queryMatchId);
     requestMatchDetail(queryMatchId);
-  }, [app.currentUser.id, queryMatchId]);
+  }, [app.actions, app.currentUser.id, app.remoteReady, queryMatchId]);
 
   useEffect(() => {
     if (!selectedRecruitingPostId || !app.remoteReady || !app.currentUser.id) return undefined;

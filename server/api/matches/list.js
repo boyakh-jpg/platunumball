@@ -97,6 +97,25 @@ function appendRowFallbackSource(source = "feed") {
   return String(source).includes("+row") ? source : `${source}+row`;
 }
 
+function mergeMatchCardsWithRows(cards = [], rows = []) {
+  const merged = new Map((cards ?? []).filter((match) => match?.id).map((match) => [match.id, match]));
+  (rows ?? []).forEach((rowMatch) => {
+    if (!rowMatch?.id) return;
+    const cardMatch = merged.get(rowMatch.id);
+    merged.set(rowMatch.id, cardMatch
+      ? {
+          ...cardMatch,
+          ...rowMatch,
+          agreements: rowMatch.agreements?.teamA?.length || rowMatch.agreements?.teamB?.length ? rowMatch.agreements : cardMatch.agreements,
+          approvals: rowMatch.approvals?.teamA?.length || rowMatch.approvals?.teamB?.length ? rowMatch.approvals : cardMatch.approvals,
+          disputes: rowMatch.disputes?.length ? rowMatch.disputes : cardMatch.disputes,
+          result: rowMatch.result ?? cardMatch.result ?? null,
+        }
+      : rowMatch);
+  });
+  return [...merged.values()];
+}
+
 function isLegacyListFallbackAllowed(body = {}) {
   return body.allowLegacyFallback === true || process.env.RANKBALL_ALLOW_LEGACY_LIST_FALLBACK === "true";
 }
@@ -549,9 +568,12 @@ function toClientTeam(row = {}) {
 function toClientMatchSide(row = {}, sideName = "teamA", playersByMatch = new Map(), teamById = {}) {
   const teamId = sideName === "teamA" ? row.team_a_id : row.team_b_id;
   const score = sideName === "teamA" ? row.score_a : row.score_b;
+  const recordName = String(
+    (sideName === "teamA" ? row.rules?.recordSummary?.teamAName : row.rules?.recordSummary?.teamBName) ?? "",
+  ).trim();
   return {
     teamId,
-    name: teamById[teamId]?.name ?? (sideName === "teamA" ? "Team A" : "Team B"),
+    name: teamById[teamId]?.name ?? (recordName || (sideName === "teamA" ? "Team A" : "Team B")),
     players: [...(playersByMatch.get(row.id) ?? [])]
       .filter((player) => player.side === sideName)
       .sort((a, b) => (a.slot_order ?? 0) - (b.slot_order ?? 0))
@@ -600,6 +622,7 @@ function toClientMatch(row = {}, playersByMatch = new Map(), teamById = {}, cour
     parties: row.rules?.parties ?? {},
     result: null,
     rules: {
+      ...(row.rules ?? {}),
       targetScore: row.rules?.targetScore,
       timeLimit: row.rules?.timeLimit,
       winByTwo: row.rules?.winByTwo,
@@ -679,11 +702,13 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
         feedPage.ids,
       );
     }
-    const missingMatchIds = (feedPage.ids ?? []).filter((id) => !cardIds.has(id));
-    if (missingMatchIds.length) {
+    const rowFallbackIds = completedOnly
+      ? feedPage.ids ?? []
+      : (feedPage.ids ?? []).filter((id) => !cardIds.has(id));
+    if (rowFallbackIds.length) {
       pageSource = appendRowFallbackSource(pageSource);
       matchRows = await timeStep(debugTiming, "matchRowsMs", () => (
-        fetchMatchRowsByIds(context.supabase, missingMatchIds)
+        fetchMatchRowsByIds(context.supabase, rowFallbackIds)
       ));
     }
   } else {
@@ -706,7 +731,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
     ...getRemoteAppSettings(context.profile),
   };
 
-  if (matches.length) {
+  if (matches.length && !matchRows.length) {
     const state = normalizeState({
       currentUserId: currentUser.id,
       users: [compactUser(currentUser, currentUser.id)],
@@ -801,7 +826,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
     .map((row) => toClientMatch(row, playersByMatch, teamById, courtById))
     .filter((match) => filterMatchItems([match]).length > 0);
   matches = feedPage?.ids?.length
-    ? sortByFeedOrder(mergeById(matches, rowMatches), feedPage.ids)
+    ? sortByFeedOrder(mergeMatchCardsWithRows(matches, rowMatches), feedPage.ids)
     : rowMatches.sort((a, b) => String(b.updatedAt ?? b.createdAt ?? "").localeCompare(String(a.updatedAt ?? a.createdAt ?? "")));
   const state = normalizeState({
     currentUserId: currentUser.id,

@@ -253,12 +253,12 @@ function shouldUseIncomingRoomRow(incoming, existing) {
   return incomingTime >= existingTime;
 }
 
-function mergeMatchesById(current = [], incoming = []) {
+function mergeMatchesById(current = [], incoming = [], forceIds = new Set()) {
   const merged = new Map((current ?? []).filter((item) => item?.id).map((item) => [item.id, item]));
   (incoming ?? []).forEach((item) => {
     if (!item?.id) return;
     const existing = merged.get(item.id);
-    if (!shouldUseIncomingRoomRow(item, existing)) return;
+    if (!forceIds.has(item.id) && !shouldUseIncomingRoomRow(item, existing)) return;
     merged.set(item.id, preserveExistingWhenEmpty(item, existing, [
       "agreements",
       "approvals",
@@ -394,15 +394,16 @@ function getRecruitingStartFilterRequest(page = {}) {
   return { startFilter: "all", timingType: "", scheduledDate: "" };
 }
 
-function mergeRemoteMatchPage(state, remoteState = {}) {
+function mergeRemoteMatchPage(state, remoteState = {}, options = {}) {
   const nextMatches = remoteState.matches ?? [];
   const nextPosts = remoteState.recruitingPosts ?? [];
   if (!nextMatches.length && !nextPosts.length) return state;
+  const forceMatchIds = options.forceMatchIds instanceof Set ? options.forceMatchIds : new Set();
   return {
     ...state,
     users: mergeRemoteById(state.users, remoteState.users),
     teams: mergeTeamsById(state.teams, remoteState.teams),
-    matches: nextMatches.length ? sortMatchesByRemoteCursor(mergeMatchesById(state.matches, nextMatches)) : state.matches,
+    matches: nextMatches.length ? sortMatchesByRemoteCursor(mergeMatchesById(state.matches, nextMatches, forceMatchIds)) : state.matches,
     tournaments: mergeRemoteById(state.tournaments, remoteState.tournaments),
     recruitingPosts: nextPosts.length ? mergeRecruitingPostsById(state.recruitingPosts, nextPosts) : state.recruitingPosts,
   };
@@ -1442,7 +1443,7 @@ export function useAppData(authUser = null) {
         );
         const remoteState = normalizeServerState(result?.state ?? {});
         const nextMatches = remoteState.matches ?? [];
-        setState((prev) => mergeRemoteMatchPage(prev, remoteState));
+        setState((prev) => mergeRemoteMatchPage(prev, remoteState, { forceMatchIds: new Set([safeMatchId]) }));
         return nextMatches.length;
       } catch (error) {
         console.warn("Match detail load failed.", error.message);
