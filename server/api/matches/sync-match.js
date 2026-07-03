@@ -42,6 +42,26 @@ function toDbTime(value) {
   return value ? String(value).slice(0, 5) : null;
 }
 
+function getDatePart(value) {
+  return String(value ?? "").match(/\d{4}-\d{2}-\d{2}/)?.[0] ?? "";
+}
+
+function getTimePart(value) {
+  return String(value ?? "").match(/\d{2}:\d{2}/)?.[0] ?? "";
+}
+
+function getDbScheduleParts(match = {}) {
+  const timingType = (match.timingType ?? match.rules?.timingType) === "instant" ? "instant" : "scheduled";
+  const scheduledDate = timingType === "instant" ? null : match.scheduledDate || getDatePart(match.scheduledAt) || null;
+  const scheduledTime = timingType === "instant" ? null : toDbTime(match.scheduledTime || getTimePart(match.scheduledAt));
+  return {
+    timingType,
+    scheduledDate,
+    scheduledTime,
+    scheduledAt: timingType === "instant" ? null : [scheduledDate, scheduledTime].filter(Boolean).join(" ") || null,
+  };
+}
+
 function nullableText(value) {
   const text = String(value ?? "").trim();
   return text || null;
@@ -433,6 +453,7 @@ function toMatchRow(match = {}, actorProfileId = "") {
   const playedPlayerIds = match.playedPlayerIds ?? match.rules?.playedPlayerIds ?? {};
   const mmrExcludedPlayerIds = match.mmrExcludedPlayerIds ?? match.rules?.mmrExcludedPlayerIds ?? [];
   const courtId = match.courtId ?? match.court_id ?? match.approvedCourtId ?? match.registeredCourtId ?? null;
+  const schedule = getDbScheduleParts(match);
   return {
     id: match.id,
     title: match.title ?? "경기",
@@ -467,16 +488,16 @@ function toMatchRow(match = {}, actorProfileId = "") {
     tournament_mmr_policy: match.tournamentMmrPolicy ?? null,
     official: Boolean(match.official),
     pre_registered: Boolean(match.preRegistered),
-    scheduled_at: match.scheduledAt && !["일정 미정", "즉시"].includes(match.scheduledAt) ? match.scheduledAt : null,
-    scheduled_date: match.scheduledDate || null,
-    scheduled_time: toDbTime(match.scheduledTime),
+    scheduled_at: schedule.scheduledAt,
+    scheduled_date: schedule.scheduledDate,
+    scheduled_time: schedule.scheduledTime,
     team_a_id: nullableText(match.teamA?.teamId),
     team_b_id: nullableText(match.teamB?.teamId),
     score_a: Number(match.result?.scoreA ?? 0),
     score_b: Number(match.result?.scoreB ?? 0),
     rules: {
       ...(match.rules ?? {}),
-      timingType: match.timingType ?? match.rules?.timingType ?? "scheduled",
+      timingType: schedule.timingType,
       visibility: match.visibility ?? match.rules?.visibility ?? "private",
       statRecorders,
       playedPlayerIds,

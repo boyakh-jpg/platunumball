@@ -1212,7 +1212,8 @@ function fromRemoteMatch(row, context) {
   const teamA = context.teamById[row.team_a_id];
   const teamB = context.teamById[row.team_b_id];
   const rawScheduledAt = toDateTime(row.scheduled_date, row.scheduled_time, row.scheduled_at);
-  const timingType = row.rules?.timingType === "instant" || rawScheduledAt === "즉시" ? "instant" : "scheduled";
+  const legacyInstant = !row.rules?.timingType && rawScheduledAt === "즉시";
+  const timingType = row.rules?.timingType === "instant" || legacyInstant ? "instant" : "scheduled";
   const scheduledAt = timingType === "instant" ? "즉시" : rawScheduledAt;
   const playedPlayerIds = row.played_player_ids ?? row.rules?.playedPlayerIds ?? {};
   const mmrExcludedPlayerIds = row.mmr_excluded_player_ids ?? row.rules?.mmrExcludedPlayerIds ?? [];
@@ -2294,6 +2295,18 @@ function toDbTime(value) {
   return value ? String(value).slice(0, 5) : null;
 }
 
+function getDbScheduleParts(item = {}) {
+  const timingType = (item.timingType ?? item.rules?.timingType) === "instant" ? "instant" : "scheduled";
+  const scheduledDate = timingType === "instant" ? null : item.scheduledDate || getDatePart(item.scheduledAt) || null;
+  const scheduledTime = timingType === "instant" ? null : toDbTime(item.scheduledTime || getTimePart(item.scheduledAt));
+  return {
+    timingType,
+    scheduledDate,
+    scheduledTime,
+    scheduledAt: timingType === "instant" ? null : [scheduledDate, scheduledTime].filter(Boolean).join(" ") || null,
+  };
+}
+
 function getItemTimestamp(item = {}) {
   return item.updatedAt ?? item.createdAt ?? item.queuedAt ?? item.startedAt ?? item.approvedAt ?? item.resolvedAt ?? new Date().toISOString();
 }
@@ -2446,64 +2459,68 @@ export async function saveNormalizedRemoteState(state, options = {}) {
       role: member.role ?? "regular",
     })),
   );
-  const matchRows = state.matches.map((match) => ({
-    id: match.id,
-    title: match.title,
-    mode: match.mode,
-    court_id: getCourtId(match),
-    court_name: match.court,
-    visibility: match.visibility ?? match.rules?.visibility ?? "private",
-    status: match.status ?? "contract",
-    ranked: match.ranked !== false,
-    mmr_limit_mode: match.mmrLimitMode ?? "block",
-    trust_feedback: match.trustFeedback ?? {},
-    referee_id: match.refereeId || null,
-    former_referee_id: match.formerRefereeId || null,
-    referee_trust_min: Number(match.refereeTrustMin ?? REFEREE_TRUST_MIN),
-    stat_entry_minutes: Number(match.statEntryMinutes ?? STAT_ENTRY_WINDOW_MINUTES),
-    dispute_minutes: Number(match.disputeMinutes ?? DISPUTE_WINDOW_MINUTES),
-    stat_recorders: normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders),
-    played_player_ids: match.playedPlayerIds ?? match.rules?.playedPlayerIds ?? {},
-    reserve_players: match.reservePlayers ?? match.rules?.reservePlayers ?? {},
-    promoted_reserve_ids: match.promotedReserveIds ?? {},
-    attendance: match.attendance ?? { teamA: [], teamB: [] },
-    referee_absence_request: match.refereeAbsenceRequest ?? null,
-    dispute_draft_result: match.disputeDraftResult ?? null,
-    dispute_draft_updated_at: match.disputeDraftUpdatedAt ?? null,
-    dispute_resolved_at: match.disputeResolvedAt ?? null,
-    mmr_excluded_player_ids: match.mmrExcludedPlayerIds ?? match.rules?.mmrExcludedPlayerIds ?? [],
-    anonymous_players: match.anonymousPlayers ?? {},
-    tournament_id: match.tournamentId ?? null,
-    tournament_format: match.tournamentFormat ?? null,
-    tournament_round: match.tournamentRound ?? null,
-    tournament_fixture: match.tournamentFixture ?? null,
-    tournament_mmr_policy: match.tournamentMmrPolicy ?? null,
-    official: Boolean(match.official),
-    pre_registered: Boolean(match.preRegistered),
-    scheduled_at: match.scheduledAt && !["일정 미정", "즉시"].includes(match.scheduledAt) ? match.scheduledAt : null,
-    scheduled_date: match.scheduledDate || null,
-    scheduled_time: toDbTime(match.scheduledTime),
-    team_a_id: match.teamA?.teamId || null,
-    team_b_id: match.teamB?.teamId || null,
-    score_a: Number(match.result?.scoreA ?? 0),
-    score_b: Number(match.result?.scoreB ?? 0),
-    rules: { ...(match.rules ?? {}), timingType: match.timingType ?? match.rules?.timingType ?? "scheduled", visibility: match.visibility ?? match.rules?.visibility ?? "private", statRecorders: normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders) },
-    memo: match.memo,
-    stakes: match.stakes,
-    objection_window: match.objectionWindow,
-    evidence: match.evidence ?? [],
-    created_by: match.teamA?.players?.[0] ?? currentUserId,
-    created_at: match.createdAt,
-    agreed_at: match.agreedAt,
-    started_at: match.startedAt ?? null,
-    ended_at: match.endedAt ?? null,
-    confirmed_at: match.confirmedAt,
-    cancelled_at: match.cancelledAt,
-    voided_at: match.voidedAt,
-    rating_result: match.ratingResult ?? null,
-    team_rating_result: match.teamRatingResult ?? null,
-    updated_at: new Date().toISOString(),
-  }));
+  const matchRows = state.matches.map((match) => {
+    const schedule = getDbScheduleParts(match);
+    const statRecorders = normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders);
+    return {
+      id: match.id,
+      title: match.title,
+      mode: match.mode,
+      court_id: getCourtId(match),
+      court_name: match.court,
+      visibility: match.visibility ?? match.rules?.visibility ?? "private",
+      status: match.status ?? "contract",
+      ranked: match.ranked !== false,
+      mmr_limit_mode: match.mmrLimitMode ?? "block",
+      trust_feedback: match.trustFeedback ?? {},
+      referee_id: match.refereeId || null,
+      former_referee_id: match.formerRefereeId || null,
+      referee_trust_min: Number(match.refereeTrustMin ?? REFEREE_TRUST_MIN),
+      stat_entry_minutes: Number(match.statEntryMinutes ?? STAT_ENTRY_WINDOW_MINUTES),
+      dispute_minutes: Number(match.disputeMinutes ?? DISPUTE_WINDOW_MINUTES),
+      stat_recorders: statRecorders,
+      played_player_ids: match.playedPlayerIds ?? match.rules?.playedPlayerIds ?? {},
+      reserve_players: match.reservePlayers ?? match.rules?.reservePlayers ?? {},
+      promoted_reserve_ids: match.promotedReserveIds ?? {},
+      attendance: match.attendance ?? { teamA: [], teamB: [] },
+      referee_absence_request: match.refereeAbsenceRequest ?? null,
+      dispute_draft_result: match.disputeDraftResult ?? null,
+      dispute_draft_updated_at: match.disputeDraftUpdatedAt ?? null,
+      dispute_resolved_at: match.disputeResolvedAt ?? null,
+      mmr_excluded_player_ids: match.mmrExcludedPlayerIds ?? match.rules?.mmrExcludedPlayerIds ?? [],
+      anonymous_players: match.anonymousPlayers ?? {},
+      tournament_id: match.tournamentId ?? null,
+      tournament_format: match.tournamentFormat ?? null,
+      tournament_round: match.tournamentRound ?? null,
+      tournament_fixture: match.tournamentFixture ?? null,
+      tournament_mmr_policy: match.tournamentMmrPolicy ?? null,
+      official: Boolean(match.official),
+      pre_registered: Boolean(match.preRegistered),
+      scheduled_at: schedule.scheduledAt,
+      scheduled_date: schedule.scheduledDate,
+      scheduled_time: schedule.scheduledTime,
+      team_a_id: match.teamA?.teamId || null,
+      team_b_id: match.teamB?.teamId || null,
+      score_a: Number(match.result?.scoreA ?? 0),
+      score_b: Number(match.result?.scoreB ?? 0),
+      rules: { ...(match.rules ?? {}), timingType: schedule.timingType, visibility: match.visibility ?? match.rules?.visibility ?? "private", statRecorders },
+      memo: match.memo,
+      stakes: match.stakes,
+      objection_window: match.objectionWindow,
+      evidence: match.evidence ?? [],
+      created_by: match.teamA?.players?.[0] ?? currentUserId,
+      created_at: match.createdAt,
+      agreed_at: match.agreedAt,
+      started_at: match.startedAt ?? null,
+      ended_at: match.endedAt ?? null,
+      confirmed_at: match.confirmedAt,
+      cancelled_at: match.cancelledAt,
+      voided_at: match.voidedAt,
+      rating_result: match.ratingResult ?? null,
+      team_rating_result: match.teamRatingResult ?? null,
+      updated_at: new Date().toISOString(),
+    };
+  });
   const matchPlayerRows = state.matches.flatMap((match) => [
     ...(match.teamA?.players ?? []).map((userId, index) => ({
       match_id: match.id,

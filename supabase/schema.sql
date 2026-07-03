@@ -795,6 +795,16 @@ begin
     execute 'alter table public.matches add column if not exists scheduled_at text';
     execute 'alter table public.matches add column if not exists scheduled_date date';
     execute 'alter table public.matches add column if not exists scheduled_time time';
+    if exists (
+      select 1
+      from information_schema.columns
+      where table_schema = 'public'
+        and table_name = 'matches'
+        and column_name = 'scheduled_at'
+        and data_type <> 'text'
+    ) then
+      execute 'alter table public.matches alter column scheduled_at type text using scheduled_at::text';
+    end if;
     execute 'alter table public.matches add column if not exists team_a_id text';
     execute 'alter table public.matches add column if not exists team_b_id text';
     execute 'alter table public.matches add column if not exists score_a integer not null default 0';
@@ -5081,6 +5091,49 @@ begin
 end;
 $$;
 
+create or replace function public.rankball_match_schedule_snapshot_guard()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  safe_rules jsonb := coalesce(new.rules, '{}'::jsonb);
+  previous_timing text := null;
+  requested_timing text;
+  safe_timing text;
+begin
+  if tg_op = 'UPDATE' then
+    previous_timing := old.rules->>'timingType';
+  end if;
+
+  requested_timing := coalesce(safe_rules->>'timingType', previous_timing);
+
+  safe_timing := case
+    when requested_timing = 'instant' then 'instant'
+    when safe_rules ? 'timingType' then 'scheduled'
+    when lower(btrim(coalesce(new.scheduled_at::text, ''))) in ('instant', '즉시') then 'instant'
+    else 'scheduled'
+  end;
+
+  new.rules := safe_rules || jsonb_build_object('timingType', safe_timing);
+
+  if safe_timing = 'instant' then
+    new.scheduled_date := null;
+    new.scheduled_time := null;
+    new.scheduled_at := null;
+  elsif new.scheduled_date is not null and new.scheduled_time is not null then
+    new.scheduled_at := new.scheduled_date::text || ' ' || left(new.scheduled_time::text, 5);
+  elsif new.scheduled_date is not null then
+    new.scheduled_at := new.scheduled_date::text;
+  else
+    new.scheduled_at := null;
+  end if;
+
+  return new;
+end;
+$$;
+
 create or replace function public.rankball_sync_match_score_snapshot()
 returns trigger
 language plpgsql
@@ -5150,6 +5203,8 @@ begin
   end if;
 
   if to_regclass('public.matches') is not null then
+    execute 'drop trigger if exists rankball_matches_schedule_snapshot_guard on public.matches';
+    execute 'create trigger rankball_matches_schedule_snapshot_guard before insert or update of scheduled_at, scheduled_date, scheduled_time, rules on public.matches for each row execute function public.rankball_match_schedule_snapshot_guard()';
     execute 'drop trigger if exists rankball_matches_feed_refresh on public.matches';
     execute 'create trigger rankball_matches_feed_refresh after insert or update or delete on public.matches for each row execute function public.rankball_refresh_match_feed_trigger()';
   end if;

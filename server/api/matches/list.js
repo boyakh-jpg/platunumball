@@ -584,7 +584,8 @@ function toClientMatchSide(row = {}, sideName = "teamA", playersByMatch = new Ma
 
 function toClientMatch(row = {}, playersByMatch = new Map(), teamById = {}, courtById = {}) {
   const rawScheduledAt = toDateTime(row.scheduled_date, row.scheduled_time, row.scheduled_at);
-  const timingType = row.rules?.timingType === "instant" || rawScheduledAt === "\uC989\uC2DC" ? "instant" : "scheduled";
+  const legacyInstant = !row.rules?.timingType && rawScheduledAt === "\uC989\uC2DC";
+  const timingType = row.rules?.timingType === "instant" || legacyInstant ? "instant" : "scheduled";
   const playedPlayerIds = row.played_player_ids ?? row.rules?.playedPlayerIds ?? {};
   const reservePlayers = row.reserve_players ?? row.rules?.reservePlayers ?? {};
   const mmrExcludedPlayerIds = row.mmr_excluded_player_ids ?? row.rules?.mmrExcludedPlayerIds ?? [];

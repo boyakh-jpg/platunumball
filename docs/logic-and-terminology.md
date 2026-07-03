@@ -22,6 +22,14 @@
 - 결과를 교체하지 않는 경기 액션은 기존 `match_results` 점수를 보존한다.
 - 기존 `matches.score_a/score_b`만 있고 `match_results`가 없는 경기 기록은 migration에서 `match_results`로 백필한다.
 
+## 2026-07-03 경기 일정 원본
+
+- 경기 일정 원본은 `matches.scheduled_date/scheduled_time`과 `rules.timingType`이다.
+- `matches.scheduled_at`은 legacy 표시/호환용 스냅샷이다.
+- 서버 저장 경로는 `scheduled_at`을 직접 신뢰하지 않고 date/time/timingType에서 다시 만든다.
+- DB guard는 `matches.scheduled_at` 직접 쓰기를 date/time/timingType 기준으로 되돌린다.
+- legacy row만 `scheduled_at="즉시"`를 instant fallback으로 인정한다.
+
 ## 2026-07-03 개인기록 재조회 이름 보존
 
 - 개인기록의 프리텍스트 팀명/상대명은 `rules.recordSummary.teamAName/teamBName`을 목록/상세 재조회 fallback 이름으로 사용한다.
