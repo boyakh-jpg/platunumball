@@ -1240,13 +1240,26 @@ function RoomKickPanel({
 }
 
 export function RoomChat({ messages, userById, teams, value, canChat, readOnly = false, onChange, onSubmit }) {
+  const listRef = useRef(null);
+  const latestMessage = messages.at(-1);
+  const latestMessageKey = latestMessage ? `${latestMessage.id || ""}:${latestMessage.createdAt || ""}:${latestMessage.body || ""}` : "";
+
+  useEffect(() => {
+    const node = listRef.current;
+    if (!node) return undefined;
+    const frameId = window.requestAnimationFrame(() => {
+      node.scrollTop = node.scrollHeight;
+    });
+    return () => window.cancelAnimationFrame(frameId);
+  }, [messages.length, latestMessageKey]);
+
   return (
     <div className="arena-room-chat">
       <header>
         <span><MessageSquare size={16} /> 방 채팅</span>
         <strong>{messages.length}</strong>
       </header>
-      <div className="arena-chat-list">
+      <div className="arena-chat-list" ref={listRef}>
         {messages.length ? messages.map((message) => {
           const user = userById[message.userId];
           return (
