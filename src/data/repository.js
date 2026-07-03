@@ -3689,7 +3689,7 @@ function createSoloRecordMatch(state, draft = {}) {
     id: draft.id || makeId("m"),
     title: String(draft.title ?? "").trim() || "개인 기록",
     mode,
-    courtId: getCourtId(draft),
+    courtId: selectedCourt?.id ?? getCourtId(draft),
     court: draft.court || "미정",
     scheduledDate: recordDate,
     scheduledTime: recordTime,
@@ -3772,7 +3772,7 @@ export function createMatch(state, draft) {
     id: draft.id || makeId("m"),
     title: draft.title || `${draft.court} ${mode} 판`,
     mode,
-    courtId: getCourtId(draft),
+    courtId: selectedCourt?.id ?? getCourtId(draft),
     court: draft.court,
     scheduledDate: timingType === "instant" ? "" : draft.scheduledDate,
     scheduledTime: timingType === "instant" ? "" : draft.scheduledTime,
@@ -6715,7 +6715,7 @@ export function createRecruitingPost(state, draft) {
     type: postType,
     title: draft.title?.trim() || `${draft.ranked === false ? "친선전" : "정규전"} ${draft.mode || "5v5"} 매치 큐`,
     region: roomRegion,
-    courtId: getCourtId(draft),
+    courtId: selectedCourt?.id ?? getCourtId(draft),
     court: draft.court || "미정",
     mode: draft.mode || "5v5",
     scheduledDate,
@@ -7264,7 +7264,7 @@ export function updateRecruitingRoomRules(state, postId, patch = {}) {
   const updatedAt = new Date().toISOString();
   const nextCourtName = patch.court === undefined ? post.court : String(patch.court || post.court || "미정").slice(0, 80);
   const nextCourt = getRegisteredCourts(state).find((court) => court.name === nextCourtName || court.id === patch.courtId) ?? null;
-  const nextCourtId = patch.court === undefined ? getCourtId(post) : courtIdByName(nextCourtName);
+  const nextCourtId = patch.court === undefined ? getCourtId(post) : (nextCourt?.id ?? courtIdByName(nextCourtName));
   const nextPost = cleanRecruitingRoomStatRecorders({
     ...post,
     mode: `${sideCapacity}v${sideCapacity}`,
@@ -7346,7 +7346,7 @@ export function updateMatchRoomRules(state, matchId, patch = {}) {
   delete nextRules.startedAt;
   const nextCourtName = patch.court === undefined ? match.court : String(patch.court || match.court || "미정").slice(0, 80);
   const nextCourt = getRegisteredCourts(state).find((court) => court.name === nextCourtName || court.id === patch.courtId) ?? null;
-  const nextCourtId = patch.court === undefined ? getCourtId(match) : courtIdByName(nextCourtName);
+  const nextCourtId = patch.court === undefined ? getCourtId(match) : (nextCourt?.id ?? courtIdByName(nextCourtName));
   if (nextCourt?.region) nextRules.region = nextCourt.region;
   const nextMatch = {
     ...match,
