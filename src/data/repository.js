@@ -8363,7 +8363,7 @@ function buildRecruitingTeamAbsorbPost(post, state, applicants, roomState, playe
         ? {
             ...applicant,
             reserve: reserve ? applicant.reserve : false,
-            status: "waiting",
+            status: getRecruitingSlotEditStatus(post),
             playerIds: reserve ? currentPlayerIds : nextPlayerIds,
             updatedAt,
           }
@@ -8375,7 +8375,7 @@ function buildRecruitingTeamAbsorbPost(post, state, applicants, roomState, playe
         ...post,
         teamId: sourceTeamId,
         hostJoinMode: "team",
-        hostReady: false,
+        hostReady: getRecruitingHostEditReady(post),
         playerIds: reserve ? currentPlayerIds : nextPlayerIds,
         roomState: nextRoomState,
         applicants: nextApplicants,
@@ -8429,6 +8429,14 @@ function isMutableRecruitingRoom(post) {
   return Boolean(post && post.status !== "closed");
 }
 
+function getRecruitingSlotEditStatus(post) {
+  return post?.visibility === "public" ? "ready" : "waiting";
+}
+
+function getRecruitingHostEditReady(post) {
+  return post?.visibility === "public";
+}
+
 function isRecruitingTeamSideLocked(post = {}) {
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
   return Boolean(
@@ -8473,7 +8481,7 @@ export function setRecruitingApplicantPlacement(state, postId, playerId, placeme
     ? applicants
     : applicants.map((applicant) => (
       getRecruitingApplicantKey(applicant) === getRecruitingApplicantKey(targetApplicant)
-        ? { ...applicant, side, reserve, status: "waiting", updatedAt }
+        ? { ...applicant, side, reserve, status: getRecruitingSlotEditStatus(post), updatedAt }
         : applicant
     ));
   const nextRoomState = updatePinnedReservePlayers(roomState, side, playerId, reserve);
@@ -8481,7 +8489,7 @@ export function setRecruitingApplicantPlacement(state, postId, playerId, placeme
     ? {
       ...post,
       hostSide: side,
-      hostReady: false,
+      hostReady: getRecruitingHostEditReady(post),
       roomState: { ...nextRoomState, hostReserve: reserve },
       applicants: nextApplicants,
     }
@@ -8790,7 +8798,7 @@ export function setRecruitingTeamPartyRoster(state, postId, entryId, roster = {}
   if (!entry.fixed && !targetApplicant) return state;
 
   const nextPost = entry.fixed
-    ? { ...post, hostReady: false, playerIds: nextPlayerIds, roomState: nextRoomState }
+    ? { ...post, hostReady: getRecruitingHostEditReady(post), playerIds: nextPlayerIds, roomState: nextRoomState }
     : {
         ...post,
         roomState: nextRoomState,
@@ -8802,7 +8810,7 @@ export function setRecruitingTeamPartyRoster(state, postId, entryId, roster = {}
                 reserve: false,
                 status: post.visibility === "private" && post.hostJoinMode === "team" && entry.side === "teamB"
                   ? "ready"
-                  : "waiting",
+                  : getRecruitingSlotEditStatus(post),
                 playerIds: nextPlayerIds,
                 updatedAt,
               }
@@ -8881,7 +8889,7 @@ export function setRecruitingPartyPlayerReserve(state, postId, entryId, playerId
     reserve,
   );
   const nextPost = entry.fixed
-    ? { ...post, hostReady: false, playerIds: nextPlayerIds, roomState: nextRoomState }
+    ? { ...post, hostReady: getRecruitingHostEditReady(post), playerIds: nextPlayerIds, roomState: nextRoomState }
     : {
       ...post,
       roomState: nextRoomState,
@@ -8891,7 +8899,7 @@ export function setRecruitingPartyPlayerReserve(state, postId, entryId, playerId
               ...applicant,
               reserve: partyBecomesReserve ? true : false,
               playerIds: partyBecomesReserve ? currentPlayerIds : nextPlayerIds,
-              status: "waiting",
+              status: getRecruitingSlotEditStatus(post),
               updatedAt,
             }
           : applicant
@@ -8997,7 +9005,7 @@ export function detachRecruitingPartyPlayer(state, postId, entryId, playerId, pl
     sourceTeamId: entry.team?.id ?? entry.teamId ?? null,
     sourceEntryId: entry.id,
     side: targetSide,
-    status: "waiting",
+    status: getRecruitingSlotEditStatus(post),
     reserve: targetReserve,
     position: movedUser?.position ?? null,
     createdAt: updatedAt,
@@ -9014,7 +9022,7 @@ export function detachRecruitingPartyPlayer(state, postId, entryId, playerId, pl
         ...applicant,
         playerId: remainingPlayerIds.includes(applicant.playerId) ? applicant.playerId : remainingPlayerIds[0],
         playerIds: remainingPlayerIds,
-        status: "waiting",
+        status: getRecruitingSlotEditStatus(post),
         updatedAt,
       };
     })
@@ -9024,7 +9032,7 @@ export function detachRecruitingPartyPlayer(state, postId, entryId, playerId, pl
       .map((applicant) => {
         if (getRecruitingApplicantKey(applicant) !== entry.id) return applicant;
         return nextPlayerIds.length
-          ? { ...applicant, playerId: nextPlayerIds[0] ?? applicant.playerId, playerIds: nextPlayerIds, status: "waiting", updatedAt }
+          ? { ...applicant, playerId: nextPlayerIds[0] ?? applicant.playerId, playerIds: nextPlayerIds, status: getRecruitingSlotEditStatus(post), updatedAt }
           : null;
       })
       .filter(Boolean);
@@ -9032,7 +9040,7 @@ export function detachRecruitingPartyPlayer(state, postId, entryId, playerId, pl
   nextApplicants = [...nextApplicants, movedApplicant];
 
   const nextPost = entry.fixed
-    ? { ...post, hostReady: false, playerIds: nextPlayerIds, roomState: nextRoomState, applicants: nextApplicants }
+    ? { ...post, hostReady: getRecruitingHostEditReady(post), playerIds: nextPlayerIds, roomState: nextRoomState, applicants: nextApplicants }
     : { ...post, roomState: nextRoomState, applicants: nextApplicants };
 
   if (targetReserve && isRecruitingReserveLimitExceeded(nextPost, state, targetSide)) {
@@ -9104,7 +9112,7 @@ export function removeRecruitingPartyPlayer(state, postId, entryId, playerId) {
       .map((applicant) => {
         if (getRecruitingApplicantKey(applicant) !== entry.id) return applicant;
         return nextPlayerIds.length
-          ? { ...applicant, playerId: nextPlayerIds[0] ?? applicant.playerId, playerIds: nextPlayerIds, status: "waiting", updatedAt }
+          ? { ...applicant, playerId: nextPlayerIds[0] ?? applicant.playerId, playerIds: nextPlayerIds, status: getRecruitingSlotEditStatus(post), updatedAt }
           : null;
       })
       .filter(Boolean);
@@ -9119,7 +9127,7 @@ export function removeRecruitingPartyPlayer(state, postId, entryId, playerId) {
   const nextPost = entry.fixed
     ? {
         ...post,
-        hostReady: false,
+        hostReady: getRecruitingHostEditReady(post),
         playerIds: nextPlayerIds,
         roomState: { ...nextRoomState, kickLog },
         applicants: nextApplicants,
