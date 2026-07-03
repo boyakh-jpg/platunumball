@@ -1179,6 +1179,19 @@ function fromRemoteRecruitingApplication(row = {}) {
   };
 }
 
+async function appendMissingTeamMemberProfiles(client, profileRows = [], teamMemberRows = [], currentUserId = "") {
+  const existingIds = new Set((profileRows ?? []).map((row) => row.id).filter(Boolean));
+  if (currentUserId) existingIds.add(currentUserId);
+  const missingIds = uniqueIds((teamMemberRows ?? []).map((row) => row.user_id)).filter((id) => !existingIds.has(id));
+  if (!missingIds.length) return profileRows ?? [];
+  const { data, error } = await client
+    .from("public_profiles")
+    .select(PROFILE_PUBLIC_COLUMNS)
+    .in("id", missingIds);
+  if (error) throw error;
+  return [...(profileRows ?? []), ...(data ?? [])];
+}
+
 function fromRemoteRecruitingPost(row = {}, applicationsByPost = new Map(), courtById = {}, chatMessagesByPost = new Map()) {
   const rawScheduledAt = toDateTime(row.scheduled_date, row.scheduled_time, row.scheduled_at);
   const roomState = row.room_state && typeof row.room_state === "object" ? row.room_state : {};
@@ -1448,7 +1461,8 @@ export async function loadCompactRecruitingList(context, {
   if (profileError) throw profileError;
   if (courtError) throw courtError;
 
-  const userById = new Map((profileRows ?? []).map((row) => {
+  const profileRowsWithTeamMembers = await appendMissingTeamMemberProfiles(context.supabase, profileRows ?? [], teamMemberRows ?? [], currentUser.id);
+  const userById = new Map((profileRowsWithTeamMembers ?? []).map((row) => {
     const user = fromRemoteProfile(row);
     return [user.id, user];
   }));

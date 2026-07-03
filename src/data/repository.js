@@ -381,6 +381,7 @@ function getRoomClosePenalty(post = {}, nowMs = Date.now()) {
 function isRecruitingRoomMember(post = {}, userId, state = {}) {
   if (!userId) return false;
   if (isRecruitingRoomOwner(post, userId)) return true;
+  if (post.refereeId === userId) return true;
   const lobby = getRecruitingLobby(post, state);
   return (lobby.entries ?? []).some((entry) => (
     (entry.players ?? []).includes(userId) ||
@@ -391,6 +392,7 @@ function isRecruitingRoomMember(post = {}, userId, state = {}) {
 function isRecruitingRoomParticipant(post = {}, userId, state = null) {
   if (!userId) return false;
   if (state) return isRecruitingRoomMember(post, userId, state);
+  if (post.refereeId === userId) return true;
   if (post.playerId === userId || post.playerIds?.includes(userId)) return true;
   return normalizeRecruitingApplicants(post.applicants ?? []).some((applicant) => (
     applicant.playerId === userId || applicant.playerIds?.includes(userId)
@@ -7777,24 +7779,27 @@ export function inviteRecruitingPlayers(state, postId, invite = {}) {
     };
   }
 
-  const outOfRangeUser = targetUserIds
-    .map((playerId) => state.users.find((user) => user.id === playerId))
-    .find((targetUser) => targetUser && !getRecruitingFit(post, targetUser.ratings?.integrated ?? 1200, state).allowed);
-  if (outOfRangeUser) {
-    const fit = getRecruitingFit(post, outOfRangeUser.ratings?.integrated ?? 1200, state);
-    return {
-      ...state,
-      notifications: [
-        {
-          id: makeId("n"),
-          title: "티어 구간 제한",
-          body: `${outOfRangeUser.name} 선수는 ${fit.range.label} 구간 밖이라 초대할 수 없습니다.`,
-          tone: "orange",
-          recruitingPostId: postId,
-        },
-        ...state.notifications,
-      ],
-    };
+  const mmrLimitMode = normalizeRecruitingMmrLimitMode(post.mmrLimitMode ?? roomState.mmrLimitMode);
+  if (mmrLimitMode === "block") {
+    const outOfRangeUser = targetUserIds
+      .map((playerId) => state.users.find((user) => user.id === playerId))
+      .find((targetUser) => targetUser && !getRecruitingFit(post, targetUser.ratings?.integrated ?? 1200, state).allowed);
+    if (outOfRangeUser) {
+      const fit = getRecruitingFit(post, outOfRangeUser.ratings?.integrated ?? 1200, state);
+      return {
+        ...state,
+        notifications: [
+          {
+            id: makeId("n"),
+            title: "티어 구간 제한",
+            body: `${outOfRangeUser.name} 선수는 ${fit.range.label} 구간 밖이라 초대할 수 없습니다.`,
+            tone: "orange",
+            recruitingPostId: postId,
+          },
+          ...state.notifications,
+        ],
+      };
+    }
   }
 
   if (reserve) {

@@ -1893,6 +1893,8 @@ flowchart TD
 - Recruiting invite accept must remove the pending invited relation and add the accepted player to the joined/participant relation in the same authoritative DB write/reload flow.
 - `roomScope="invited"` verifies pending invites directly from the invited relation. `roomScope="joined"` verifies accepted participants from the participant relation.
 - `HOST_TRUST_MIN` and `getHostTrustRequirement()` in `src/lib/constants.js` are the shared source for ranked/private/public/official host trust gates. CreateMatch blocks impossible low-trust room creation before `/api/recruiting/sync-post`, matching server validation.
+- Recruiting invite send follows the same MMR gate as direct join and invite accept. Only `mmrLimitMode="block"` blocks out-of-range targets; `warn` and `off` do not block the invite.
+- Assigned recruiting referees count as room members for chat permission, but not as slot participants.
 
 ## 2026-07-02 recruiting region filter count 기준
 
@@ -1910,3 +1912,4 @@ flowchart TD
 - Recruiting public join waits for the server action result. On success the frontend keeps the joined room selected, refreshes that room detail explicitly, and pins the URL to `?post=`. Direct `?post=` entry selects the pending room id while detail loads. Badge/feed counts still must not trigger unrelated list reloads.
 - Recruiting room modal open is an explicit detail view and may reload that single `postId` even when a list card already exists. Open modals subscribe to recruiting post/application row changes and reload only that room detail; they must not refresh the whole recruiting list.
 - Recruiting invite search keeps selected players across query/result clicks, sends selected players in one invite action, and refreshes the same room detail after invite success.
+- Recruiting explicit room detail loads attach public profiles for team members already returned by `team_members` so roster management does not show `알 수 없음`.

@@ -1920,6 +1920,7 @@ export function useAppData(authUser = null) {
           return;
         }
         if (!optimisticBeforeServerCheck) applyLocalMutation();
+        if (operation?.action === "sendRecruitingChat") return rollbackIfServerFailed(syncRecruitingPostServer(null, [], { ...meta, postId }), rollbackState, "방 변경", { action: meta.action, postId });
         if (syncedPost) return rollbackIfServerFailed(syncRecruitingPostServer(syncedPost, syncedNotifications, { ...meta, postId }), rollbackState, "방 변경", { action: meta.action, postId });
         if (operation) return rollbackIfServerFailed(syncRecruitingPostServer(null, [], { ...meta, postId }), rollbackState, "방 변경", { action: meta.action, postId });
         return true;

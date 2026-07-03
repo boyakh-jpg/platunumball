@@ -580,6 +580,7 @@ export function PlayerRoomSlot({
 function isCurrentUserRoomParticipant(post, lobby, currentUserId) {
   if (!currentUserId) return false;
   if (getRecruitingRoomOwnerId(post) === currentUserId) return true;
+  if (post.refereeId === currentUserId) return true;
   if (post.playerId === currentUserId || post.playerIds?.includes(currentUserId)) return true;
   return (lobby.entries ?? []).some((entry) => (
     entry.players?.includes(currentUserId) ||
