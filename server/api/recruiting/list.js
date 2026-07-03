@@ -385,7 +385,7 @@ function getRecruitingFeedCardRejectReason(card = {}, profileId = "") {
   if (card.hostJoinMode === "team" && !card.teamId) return "missing_team_id";
   if (!profileId) return "";
   const relations = Array.isArray(card?.__feedRelations) ? card.__feedRelations : [];
-  if (relations.includes("invited") && !hasListCounts && !hasPendingInvitationForProfile(card, profileId)) return "missing_pending_invitation";
+  if (relations.includes("invited") && !hasPendingInvitationForProfile(card, profileId)) return "missing_pending_invitation";
   return "";
 }
 

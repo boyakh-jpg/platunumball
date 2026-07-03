@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { existsSync, readFileSync } from "node:fs";
+import homeLoadHandler from "../server/api/home/load.js";
 import loadStateHandler from "../server/api/state/load.js";
 import syncRecruitingPostHandler from "../server/api/recruiting/sync-post.js";
 import recruitingListHandler from "../server/api/recruiting/list.js";
@@ -282,6 +283,16 @@ async function loadStateAs(testLoginId) {
   return payload.state;
 }
 
+async function loadHomeAs(testLoginId) {
+  const payload = await callHandler("/api/home/load", homeLoadHandler, await getAuthToken(testLoginId), {
+    includeFeedCounts: false,
+    includeLocalRecruiting: false,
+    recruitingLimit: 20,
+  });
+  assertFlow(payload?.ok && payload?.state, `home load failed for ${testLoginId}`, payload);
+  return payload.state;
+}
+
 async function getCurrentProfileTrustScore(testLoginId, expectedProfileId = "") {
   const state = await loadStateAs(testLoginId);
   const user = (state.users ?? []).find((item) => item.id === (expectedProfileId || state.currentUserId));
@@ -397,6 +408,49 @@ function hasPendingInvitationFor(post = {}, profileId = "") {
     invitation?.role !== "referee" &&
     String(invitation?.status ?? "pending") === "pending"
   ));
+}
+
+function findPendingHomeInvitation(state = {}, profileId = "", postId = "") {
+  const post = (state.recruitingPosts ?? []).find((item) => item.id === postId);
+  const invitation = (post?.roomState?.invitations ?? []).find((item) => (
+    item?.targetUserId === profileId &&
+    item?.role !== "referee" &&
+    String(item?.status ?? "pending") === "pending"
+  ));
+  return { post, invitation };
+}
+
+function getApplicantPlayerIds(applicant = {}) {
+  if (Array.isArray(applicant.playerIds) && applicant.playerIds.length) return applicant.playerIds;
+  return applicant.playerId ? [applicant.playerId] : [];
+}
+
+function getRecruitingPlacement(post = {}, profileId = "") {
+  const applicant = (post.applicants ?? []).find((item) => getApplicantPlayerIds(item).includes(profileId));
+  if (applicant) {
+    return {
+      side: applicant.side,
+      reserve: Boolean(applicant.reserve),
+      kind: applicant.kind,
+      teamId: applicant.teamId ?? null,
+    };
+  }
+  const partyReserves = post.roomState?.partyReserves ?? {};
+  const reserveKey = Object.entries(partyReserves).find(([, playerIds]) => Array.isArray(playerIds) && playerIds.includes(profileId))?.[0] ?? "";
+  if (!reserveKey) return null;
+  const reserveApplicant = reserveKey === "host"
+    ? { side: post.hostSide ?? "teamA", kind: post.hostJoinMode ?? "player", teamId: post.teamId ?? null }
+    : (post.applicants ?? []).find((item) => (
+      (item.kind === "team" || item.teamId) && `team:${item.teamId}` === reserveKey
+    ));
+  return reserveApplicant
+    ? {
+        side: reserveApplicant.side ?? "teamB",
+        reserve: true,
+        kind: reserveApplicant.kind ?? "team",
+        teamId: reserveApplicant.teamId ?? null,
+      }
+    : null;
 }
 
 function assertStateIncludesUsers(payload = {}, profileIds = [], label = "state users missing") {
@@ -1553,6 +1607,210 @@ async function runIneligibleRefereeBlockedScenario({
   };
 }
 
+async function runBulkHomeInviteAcceptScenario({
+  label,
+  hostLogin,
+  teamId,
+}) {
+  ids = makeScenarioIds(label);
+  const teamInviteLogins = ["rankball-001", "rankball-002"];
+  const teamAActiveLogins = ["rankball-021", "rankball-022", "rankball-023", "rankball-024"];
+  const teamBActiveLogins = ["rankball-025", "rankball-026", "rankball-027"];
+  const teamAReserveLogins = ["rankball-028", "rankball-029"];
+  const teamBReserveLogins = ["rankball-030", "rankball-031"];
+  const allInviteeLogins = [
+    ...teamInviteLogins,
+    ...teamAActiveLogins,
+    ...teamBActiveLogins,
+    ...teamAReserveLogins,
+    ...teamBReserveLogins,
+  ];
+  assertFlow(allInviteeLogins.length === 13, "bulk invite scenario must target 13 invitees", allInviteeLogins);
+
+  const hostId = await step(`${ids.label}:resolveProfile:host`, () => getProfileIdForLogin(hostLogin));
+  const inviteeIdsByLogin = {};
+  for (const login of allInviteeLogins) {
+    inviteeIdsByLogin[login] = await step(`${ids.label}:resolveProfile:${login}`, () => getProfileIdForLogin(login));
+  }
+  const allInviteeIds = Object.values(inviteeIdsByLogin);
+  assertFlow(new Set([hostId, ...allInviteeIds]).size === allInviteeIds.length + 1, "bulk invite profiles must be unique", {
+    hostId,
+    inviteeIdsByLogin,
+  });
+
+  const teamInviteIds = teamInviteLogins.map((login) => inviteeIdsByLogin[login]);
+  const resolvedTeamId = await step(`${ids.label}:resolveInviteTeam`, () => resolveTeamIdForMembers(teamInviteLogins[0], teamInviteIds, teamId));
+
+  const createResult = await step(`${ids.label}:createRecruitingPost`, () => syncRecruitingAs(hostLogin, {
+    action: "createRecruitingPost",
+    preferredPostId: ids.postId,
+    draft: {
+      id: ids.postId,
+      title: `Backend simulation ${ids.label}`,
+      visibility: "private",
+      hostJoinMode: "player",
+      mode: "5v5",
+      sideCapacity: 5,
+      timingType: "instant",
+      ranked: false,
+      official: false,
+      preRegistered: true,
+      teamOnly: false,
+      refereeWanted: false,
+      region: "Backend Simulation",
+      court: "Backend Simulation Court",
+      position: "C",
+      memo: "Backend simulation row. Safe to delete.",
+      rules: {
+        targetScore: 21,
+        timeLimit: 12,
+        winByTwo: true,
+        ball: "7",
+      },
+    },
+  }));
+  let post = createResult?.post;
+  assertFlow(post?.id === ids.postId && (post.ownerId === hostId || post.playerId === hostId), "bulk invite post create mismatch", {
+    hostId,
+    post,
+  });
+
+  const inviteBTeamResult = await step(`${ids.label}:inviteTeamB:teamParty`, () => syncRecruitingAs(hostLogin, {
+    action: "inviteRecruitingPlayers",
+    postId: ids.postId,
+    invite: {
+      side: "teamB",
+      reserve: false,
+      joinMode: "team",
+      teamId: resolvedTeamId,
+      playerIds: teamInviteIds,
+    },
+  }));
+  assertStateIncludesUsers(inviteBTeamResult, [hostId, ...teamInviteIds], "bulk team invite response missing users");
+
+  const inviteAActiveIds = teamAActiveLogins.map((login) => inviteeIdsByLogin[login]);
+  await step(`${ids.label}:inviteTeamA:activePlayers`, () => syncRecruitingAs(hostLogin, {
+    action: "inviteRecruitingPlayers",
+    postId: ids.postId,
+    invite: {
+      side: "teamA",
+      reserve: false,
+      joinMode: "player",
+      playerIds: inviteAActiveIds,
+    },
+  }));
+
+  const inviteBActiveIds = teamBActiveLogins.map((login) => inviteeIdsByLogin[login]);
+  await step(`${ids.label}:inviteTeamB:activePlayers`, () => syncRecruitingAs(hostLogin, {
+    action: "inviteRecruitingPlayers",
+    postId: ids.postId,
+    invite: {
+      side: "teamB",
+      reserve: false,
+      joinMode: "player",
+      playerIds: inviteBActiveIds,
+    },
+  }));
+
+  const inviteAReserveIds = teamAReserveLogins.map((login) => inviteeIdsByLogin[login]);
+  await step(`${ids.label}:inviteTeamA:reservePlayers`, () => syncRecruitingAs(hostLogin, {
+    action: "inviteRecruitingPlayers",
+    postId: ids.postId,
+    invite: {
+      side: "teamA",
+      reserve: true,
+      joinMode: "player",
+      playerIds: inviteAReserveIds,
+    },
+  }));
+
+  const inviteBReserveIds = teamBReserveLogins.map((login) => inviteeIdsByLogin[login]);
+  await step(`${ids.label}:inviteTeamB:reservePlayers`, () => syncRecruitingAs(hostLogin, {
+    action: "inviteRecruitingPlayers",
+    postId: ids.postId,
+    invite: {
+      side: "teamB",
+      reserve: true,
+      joinMode: "player",
+      playerIds: inviteBReserveIds,
+    },
+  }));
+
+  post = await step(`${ids.label}:loadAfterBulkInvites`, () => loadRecruitingPostAs(hostLogin));
+  const pendingTargetIds = new Set((post.roomState?.invitations ?? [])
+    .filter((invitation) => String(invitation.status ?? "pending") === "pending")
+    .map((invitation) => invitation.targetUserId));
+  assertFlow(allInviteeIds.every((profileId) => pendingTargetIds.has(profileId)), "bulk pending invitations missing", {
+    expected: allInviteeIds,
+    actual: [...pendingTargetIds],
+  });
+
+  for (const login of allInviteeLogins) {
+    const profileId = inviteeIdsByLogin[login];
+    const homeState = await step(`${ids.label}:homeLoadBeforeAccept:${login}`, () => loadHomeAs(login));
+    const { post: homePost, invitation } = findPendingHomeInvitation(homeState, profileId, ids.postId);
+    assertFlow(Boolean(homePost && invitation?.id), "home action queue missing pending invite", {
+      login,
+      profileId,
+      postId: ids.postId,
+      homePostIds: (homeState.recruitingPosts ?? []).map((item) => item.id),
+    });
+    const acceptResult = await step(`${ids.label}:homeAcceptInvite:${login}`, () => syncRecruitingAs(login, {
+      action: "acceptRecruitingInvitation",
+      postId: ids.postId,
+      invitationId: invitation.id,
+    }));
+    assertStateIncludesUsers(acceptResult, [hostId, profileId], "bulk home accept response missing users");
+    const afterHomeState = await step(`${ids.label}:homeLoadAfterAccept:${login}`, () => loadHomeAs(login));
+    const afterInvitation = findPendingHomeInvitation(afterHomeState, profileId, ids.postId).invitation;
+    assertFlow(!afterInvitation, "accepted invite still appears in home action queue", {
+      login,
+      profileId,
+      invitationId: invitation.id,
+    });
+  }
+
+  post = await step(`${ids.label}:loadAfterAllHomeAccepts`, () => loadRecruitingPostAs(hostLogin));
+  const expectedPlacements = [
+    ...teamInviteIds.map((profileId) => ({ profileId, side: "teamB", reserve: false, kind: "team" })),
+    ...inviteAActiveIds.map((profileId) => ({ profileId, side: "teamA", reserve: false, kind: "player" })),
+    ...inviteBActiveIds.map((profileId) => ({ profileId, side: "teamB", reserve: false, kind: "player" })),
+    ...inviteAReserveIds.map((profileId) => ({ profileId, side: "teamA", reserve: true, kind: "player" })),
+    ...inviteBReserveIds.map((profileId) => ({ profileId, side: "teamB", reserve: true, kind: "player" })),
+  ];
+  for (const expected of expectedPlacements) {
+    const placement = getRecruitingPlacement(post, expected.profileId);
+    assertFlow(
+      placement?.side === expected.side &&
+        placement?.reserve === expected.reserve &&
+        (expected.kind !== "team" || placement?.teamId === resolvedTeamId),
+      "bulk invite accepted placement mismatch",
+      { expected, placement, postId: ids.postId },
+    );
+  }
+
+  const activeAIds = uniqueIds([hostId, ...expectedPlacements.filter((item) => item.side === "teamA" && !item.reserve).map((item) => item.profileId)]);
+  const activeBIds = uniqueIds(expectedPlacements.filter((item) => item.side === "teamB" && !item.reserve).map((item) => item.profileId));
+  const reserveIds = uniqueIds(expectedPlacements.filter((item) => item.reserve).map((item) => item.profileId));
+  assertFlow(activeAIds.length === 5 && activeBIds.length === 5 && reserveIds.length === 4, "bulk 5v5 active/reserve count mismatch", {
+    activeAIds,
+    activeBIds,
+    reserveIds,
+  });
+
+  return {
+    label: ids.label,
+    hostLogin,
+    hostId,
+    postId: ids.postId,
+    invited: allInviteeIds.length,
+    activeA: activeAIds.length,
+    activeB: activeBIds.length,
+    reserves: reserveIds.length,
+    teamInviteId: resolvedTeamId,
+  };
+}
+
 async function runSoloRecordScenario({
   label,
   hostLogin,
@@ -1636,6 +1894,8 @@ async function main() {
   const publicTeamHostLogin = process.env.RANKBALL_SIM_PUBLIC_TEAM_HOST || "rankball-001";
   const publicTeamTeammateLogin = process.env.RANKBALL_SIM_PUBLIC_TEAM_TEAMMATE || "rankball-002";
   const publicTeamId = process.env.RANKBALL_SIM_PUBLIC_TEAM_ID || "t1";
+  const bulkInviteHostLogin = process.env.RANKBALL_SIM_BULK_INVITE_HOST || "rankball-020";
+  const bulkInviteTeamId = process.env.RANKBALL_SIM_BULK_INVITE_TEAM_ID || "t1";
   const disputeHostLogin = process.env.RANKBALL_SIM_DISPUTE_HOST || "rankball-010";
   const disputeOpponentLogin = process.env.RANKBALL_SIM_DISPUTE_OPPONENT || "rankball-011";
   const soloRecordLogin = process.env.RANKBALL_SIM_SOLO_RECORD_HOST || "rankball-010";
@@ -1660,6 +1920,11 @@ async function main() {
     hostLogin: publicTeamHostLogin,
     teammateLogin: publicTeamTeammateLogin,
     teamId: publicTeamId,
+  }));
+  scenarios.push(await runBulkHomeInviteAcceptScenario({
+    label: "bulk_home_invite_accept_5v5",
+    hostLogin: bulkInviteHostLogin,
+    teamId: bulkInviteTeamId,
   }));
   if (!remoteSmokeOnly) {
     scenarios.push(await runRecruitingActorScenario({

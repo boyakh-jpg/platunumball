@@ -234,6 +234,7 @@
 
 - 방 초대 수락/거절 액션은 서버 반영 Promise를 반환해야 한다.
 - 알림 화면에서 방 초대를 수락하면 해당 방 상세, 내 모집 feed, 경기 일정 feed를 즉시 재조회한 뒤 이동한다.
+- 홈 Action Queue에서 방 초대를 수락해도 알림 화면과 같은 `acceptRecruitingInvitation` server action을 타고, 성공 뒤 해당 방으로 이동한다.
 - 팀 초대를 수락하면 팀/디렉터리 상태를 강제 재조회하고, 팀 상세는 진입/포커스 복귀 때 최신 팀 상태를 다시 확인한다.
 - 모집방 상세/목록 병합에서 `roomState.invitations: []`는 초대 삭제 신호다. 빈 배열이어도 기존 pending 초대를 보존하지 않는다.
 
@@ -1701,6 +1702,7 @@ flowchart TD
 41. `inviteRecruitingReferee`는 프론트와 서버 모두 기존 방 참가자 action이다. 초대 대상 심판은 active `referee_appointments`가 있어야 하며, pending invitation만 가진 사용자는 심판/선수 초대를 새로 보낼 수 없다.
 42. 선수/심판 초대 생성, 초대 수락, 초대 거절은 stale 클라이언트 snapshot을 그대로 저장하지 않고 서버 최신 모집방 row 기준으로 replay한다.
 42-1. 모집 목록/피드 응답의 `roomState.invitations`는 현재 사용자 관련 초대만 담는 부분 데이터다. 프론트는 `__invitationsPartial` 응답으로 열린 방 상세의 전체 초대 목록을 덮어쓰지 않는다.
+42-2. `user_room_feed` 카드가 `invited` relation인데 현재 사용자의 pending invitation id를 담지 않으면 서버 목록 로더는 해당 방만 원본 row로 보강해야 한다. 홈 Action Queue는 초대 id 없이 수락 버튼을 만들지 않는다.
 43. 심판 직접참여는 DB row 기준 `refereeWanted=true`이고 아직 `referee_id`가 없을 때만 허용한다. 심판 초대 수락은 해당 pending invitation의 대상자 본인만 `refereeId`로 배정될 수 있고, 방의 `refereeTrustMin`을 통과해야 한다.
 44. 초대 수락 성공 후 같은 대상자의 다른 pending 선수 초대는 정리하고, 심판 배정 후 다른 pending 심판 초대도 정리한다. 팀 파티장이 나가면 남은 파티원에게 리더를 넘기고, 나간 사람이 보낸 pending 초대는 제거한다.
 

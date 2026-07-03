@@ -5106,6 +5106,14 @@ html[data-theme="light"] .search-picker-result-row.selected {
   white-space: nowrap;
 }
 
+.home-action-buttons {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  white-space: nowrap;
+}
+
 .home-action-row.priority-1,
 .home-action-row.priority-2,
 .home-action-row.priority-3,
@@ -5479,11 +5487,13 @@ html[data-theme="light"] .search-picker-result-row.selected {
 
   .rank-search-results small,
   .home-action-row b,
+  .home-action-buttons,
   .home-invitation-actions {
     grid-column: 2;
     justify-self: start;
   }
 
+  .home-action-buttons,
   .home-invitation-actions {
     flex-wrap: wrap;
     justify-content: flex-start;
@@ -12114,7 +12124,8 @@ button {
     grid-template-columns: 36px minmax(0, 1fr);
   }
 
-  .home-action-row b {
+  .home-action-row b,
+  .home-action-buttons {
     justify-self: start;
     grid-column: 2;
   }

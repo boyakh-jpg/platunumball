@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { CalendarDays, ClipboardCheck, Handshake, PlusCircle, ShieldAlert, Swords, Trophy, UserPlus } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
@@ -93,7 +93,9 @@ const SEARCH_DETAIL_LIMIT = 20;
 
 export default function Home({ app }) {
   const user = app.currentUser;
+  const navigate = useNavigate();
   const [query, setQuery] = useState("");
+  const [processingInviteId, setProcessingInviteId] = useState("");
   const searchText = query.trim().toLowerCase();
   const approvalMatches = [...app.state.matches].filter((match) => userNeedsMatchApproval(match, user.id));
   const completedMatches = [...app.state.matches].filter((match) => match.status === "confirmed");
@@ -144,6 +146,25 @@ export default function Home({ app }) {
       .filter((post) => isSameRecruitingRegion(post, user) || isNationalRecruitingPost(post, app.state))
       .slice(0, 3);
   }, [app.state, app.state.recruitingPosts, user.region, user.regionDistrict]);
+  const acceptHomeRecruitingInvitation = async (postId, invitationId) => {
+    const key = `${postId}:${invitationId}`;
+    setProcessingInviteId(key);
+    try {
+      await app.actions.acceptRecruitingInvitation(postId, invitationId);
+      navigate(`/app/recruiting?post=${postId}`);
+    } finally {
+      setProcessingInviteId("");
+    }
+  };
+  const declineHomeRecruitingInvitation = async (postId, invitationId) => {
+    const key = `${postId}:${invitationId}`;
+    setProcessingInviteId(key);
+    try {
+      await app.actions.declineRecruitingInvitation(postId, invitationId);
+    } finally {
+      setProcessingInviteId("");
+    }
+  };
   const myCompletedMatches = completedMatches.filter((match) => isMatchRelatedToUser(match, user.id));
   const myWins = myCompletedMatches.filter((match) => getUserResult(match, user.id) === "W").length;
   const winRate = myCompletedMatches.length ? Math.round((myWins / myCompletedMatches.length) * 100) : 0;
@@ -250,6 +271,9 @@ export default function Home({ app }) {
     const invitationItems = pendingInvitations.map(({ post, invitation }) => ({
       id: `invite-${post.id}-${invitation.id}`,
       priority: 0,
+      actionType: "recruiting-invite",
+      postId: post.id,
+      invitationId: invitation.id,
       label: invitation.role === "referee" ? "심판 초대" : "방 초대",
       title: post.title,
       meta: `${getRecruitingSchedule(post)} · ${post.court}`,
@@ -484,6 +508,23 @@ export default function Home({ app }) {
               <>
               {priorityItems.map((item) => {
                 const Icon = item.icon;
+                if (item.actionType === "recruiting-invite") {
+                  const isProcessing = processingInviteId === `${item.postId}:${item.invitationId}`;
+                  return (
+                    <div key={item.id} className={`home-action-row priority-${item.priority}`}>
+                      <span className="home-action-icon"><Icon size={18} /></span>
+                      <span className="home-action-main">
+                        <strong>{item.title}</strong>
+                        <em>{item.meta}</em>
+                      </span>
+                      <span className="home-action-buttons">
+                        <Button size="sm" type="button" disabled={isProcessing} onClick={() => acceptHomeRecruitingInvitation(item.postId, item.invitationId)}>수락</Button>
+                        <Button size="sm" type="button" variant="secondary" disabled={isProcessing} onClick={() => declineHomeRecruitingInvitation(item.postId, item.invitationId)}>거절</Button>
+                        <Link className="button button-secondary button-sm" to={item.href}>보기</Link>
+                      </span>
+                    </div>
+                  );
+                }
                 return (
                   <Link key={item.id} to={item.href} className={`home-action-row priority-${item.priority}`}>
                     <span className="home-action-icon"><Icon size={18} /></span>
