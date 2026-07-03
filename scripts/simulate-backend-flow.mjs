@@ -1611,13 +1611,18 @@ async function runBulkHomeInviteAcceptScenario({
   label,
   hostLogin,
   teamId,
+  overflow = false,
 }) {
   ids = makeScenarioIds(label);
   const teamInviteLogins = ["rankball-001", "rankball-002"];
-  const teamAActiveLogins = ["rankball-021", "rankball-022", "rankball-023", "rankball-024"];
-  const teamBActiveLogins = ["rankball-025", "rankball-026", "rankball-027"];
-  const teamAReserveLogins = ["rankball-028", "rankball-029"];
-  const teamBReserveLogins = ["rankball-030", "rankball-031"];
+  const teamAActiveLogins = overflow
+    ? ["rankball-021", "rankball-022", "rankball-023", "rankball-024", "rankball-025", "rankball-026", "rankball-027", "rankball-028", "rankball-029", "rankball-030"]
+    : ["rankball-021", "rankball-022", "rankball-023", "rankball-024"];
+  const teamBActiveLogins = overflow
+    ? ["rankball-039", "rankball-040", "rankball-041", "rankball-042", "rankball-043", "rankball-044", "rankball-045", "rankball-046"]
+    : ["rankball-025", "rankball-026", "rankball-027"];
+  const teamAReserveLogins = overflow ? [] : ["rankball-028", "rankball-029"];
+  const teamBReserveLogins = overflow ? [] : ["rankball-030", "rankball-031"];
   const allInviteeLogins = [
     ...teamInviteLogins,
     ...teamAActiveLogins,
@@ -1625,7 +1630,7 @@ async function runBulkHomeInviteAcceptScenario({
     ...teamAReserveLogins,
     ...teamBReserveLogins,
   ];
-  assertFlow(allInviteeLogins.length === 13, "bulk invite scenario must target 13 invitees", allInviteeLogins);
+  assertFlow(allInviteeLogins.length === (overflow ? 20 : 13), "bulk invite scenario target count mismatch", allInviteeLogins);
 
   const hostId = await step(`${ids.label}:resolveProfile:host`, () => getProfileIdForLogin(hostLogin));
   const inviteeIdsByLogin = {};
@@ -1713,28 +1718,32 @@ async function runBulkHomeInviteAcceptScenario({
   }));
 
   const inviteAReserveIds = teamAReserveLogins.map((login) => inviteeIdsByLogin[login]);
-  await step(`${ids.label}:inviteTeamA:reservePlayers`, () => syncRecruitingAs(hostLogin, {
-    action: "inviteRecruitingPlayers",
-    postId: ids.postId,
-    invite: {
-      side: "teamA",
-      reserve: true,
-      joinMode: "player",
-      playerIds: inviteAReserveIds,
-    },
-  }));
+  if (inviteAReserveIds.length) {
+    await step(`${ids.label}:inviteTeamA:reservePlayers`, () => syncRecruitingAs(hostLogin, {
+      action: "inviteRecruitingPlayers",
+      postId: ids.postId,
+      invite: {
+        side: "teamA",
+        reserve: true,
+        joinMode: "player",
+        playerIds: inviteAReserveIds,
+      },
+    }));
+  }
 
   const inviteBReserveIds = teamBReserveLogins.map((login) => inviteeIdsByLogin[login]);
-  await step(`${ids.label}:inviteTeamB:reservePlayers`, () => syncRecruitingAs(hostLogin, {
-    action: "inviteRecruitingPlayers",
-    postId: ids.postId,
-    invite: {
-      side: "teamB",
-      reserve: true,
-      joinMode: "player",
-      playerIds: inviteBReserveIds,
-    },
-  }));
+  if (inviteBReserveIds.length) {
+    await step(`${ids.label}:inviteTeamB:reservePlayers`, () => syncRecruitingAs(hostLogin, {
+      action: "inviteRecruitingPlayers",
+      postId: ids.postId,
+      invite: {
+        side: "teamB",
+        reserve: true,
+        joinMode: "player",
+        playerIds: inviteBReserveIds,
+      },
+    }));
+  }
 
   post = await step(`${ids.label}:loadAfterBulkInvites`, () => loadRecruitingPostAs(hostLogin));
   const pendingTargetIds = new Set((post.roomState?.invitations ?? [])
@@ -1771,13 +1780,22 @@ async function runBulkHomeInviteAcceptScenario({
   }
 
   post = await step(`${ids.label}:loadAfterAllHomeAccepts`, () => loadRecruitingPostAs(hostLogin));
-  const expectedPlacements = [
-    ...teamInviteIds.map((profileId) => ({ profileId, side: "teamB", reserve: false, kind: "team" })),
-    ...inviteAActiveIds.map((profileId) => ({ profileId, side: "teamA", reserve: false, kind: "player" })),
-    ...inviteBActiveIds.map((profileId) => ({ profileId, side: "teamB", reserve: false, kind: "player" })),
-    ...inviteAReserveIds.map((profileId) => ({ profileId, side: "teamA", reserve: true, kind: "player" })),
-    ...inviteBReserveIds.map((profileId) => ({ profileId, side: "teamB", reserve: true, kind: "player" })),
-  ];
+  const expectedPlacements = overflow
+    ? [
+        ...teamInviteIds.map((profileId) => ({ profileId, side: "teamB", reserve: false, kind: "team" })),
+        ...inviteAActiveIds.slice(0, 4).map((profileId) => ({ profileId, side: "teamA", reserve: false, kind: "player" })),
+        ...inviteAActiveIds.slice(4, 6).map((profileId) => ({ profileId, side: "teamA", reserve: true, kind: "player" })),
+        ...inviteBActiveIds.slice(0, 3).map((profileId) => ({ profileId, side: "teamB", reserve: false, kind: "player" })),
+        ...inviteBActiveIds.slice(3, 5).map((profileId) => ({ profileId, side: "teamB", reserve: true, kind: "player" })),
+      ]
+    : [
+        ...teamInviteIds.map((profileId) => ({ profileId, side: "teamB", reserve: false, kind: "team" })),
+        ...inviteAActiveIds.map((profileId) => ({ profileId, side: "teamA", reserve: false, kind: "player" })),
+        ...inviteBActiveIds.map((profileId) => ({ profileId, side: "teamB", reserve: false, kind: "player" })),
+        ...inviteAReserveIds.map((profileId) => ({ profileId, side: "teamA", reserve: true, kind: "player" })),
+        ...inviteBReserveIds.map((profileId) => ({ profileId, side: "teamB", reserve: true, kind: "player" })),
+      ];
+  const expiredIds = overflow ? [...inviteAActiveIds.slice(6), ...inviteBActiveIds.slice(5)] : [];
   for (const expected of expectedPlacements) {
     const placement = getRecruitingPlacement(post, expected.profileId);
     assertFlow(
@@ -1787,6 +1805,18 @@ async function runBulkHomeInviteAcceptScenario({
       "bulk invite accepted placement mismatch",
       { expected, placement, postId: ids.postId },
     );
+  }
+  for (const expiredId of expiredIds) {
+    const placement = getRecruitingPlacement(post, expiredId);
+    const expiredInvitation = (post.roomState?.invitations ?? []).find((invitation) => (
+      invitation.targetUserId === expiredId &&
+      invitation.status === "expired"
+    ));
+    assertFlow(!placement && expiredInvitation, "bulk overflow invite entered room or did not expire", {
+      expiredId,
+      placement,
+      invitations: post.roomState?.invitations ?? [],
+    });
   }
 
   const activeAIds = uniqueIds([hostId, ...expectedPlacements.filter((item) => item.side === "teamA" && !item.reserve).map((item) => item.profileId)]);
@@ -1807,6 +1837,7 @@ async function runBulkHomeInviteAcceptScenario({
     activeA: activeAIds.length,
     activeB: activeBIds.length,
     reserves: reserveIds.length,
+    expired: expiredIds.length,
     teamInviteId: resolvedTeamId,
   };
 }
@@ -1927,6 +1958,12 @@ async function main() {
     teamId: bulkInviteTeamId,
   }));
   if (!remoteSmokeOnly) {
+    scenarios.push(await runBulkHomeInviteAcceptScenario({
+      label: "bulk_home_invite_overflow_5v5",
+      hostLogin: bulkInviteHostLogin,
+      teamId: bulkInviteTeamId,
+      overflow: true,
+    }));
     scenarios.push(await runRecruitingActorScenario({
       label: "recruiting_actor_join_position",
       hostLogin: actorHostLogin,
