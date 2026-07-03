@@ -464,9 +464,14 @@ function compactRecruitingApplication(applicant = {}) {
 }
 
 function compactRecruitingRoomState(roomState = {}, profileId = "", options = {}) {
+  const includeRoomInvitations = options.includeRoomInvitations === true;
   const invitations = Array.isArray(roomState.invitations)
     ? roomState.invitations
-      .filter((invitation) => invitation.targetUserId === profileId || invitation.fromUserId === profileId)
+      .filter((invitation) => (
+        includeRoomInvitations ||
+        invitation.targetUserId === profileId ||
+        invitation.fromUserId === profileId
+      ))
       .map((invitation) => ({
         id: invitation.id,
         role: invitation.role,
@@ -1273,6 +1278,7 @@ export async function loadCompactRecruitingList(context, {
   const targetPostIds = uniqueIds([...explicitPostIds, ...(mineOnly ? currentUserPostIds : pagePostIds), ...(includeMine ? currentUserPostIds : [])]);
   const targetCards = uniqueFeedCards(pageCards.map((card) => ({ entity_id: card?.id, card_json: card })), targetPostIds);
   const includeRoomChat = explicitPostIds.length > 0;
+  const includeRoomInvitations = explicitPostIds.length > 0;
   const canUsePageCards = pageCards.length > 0
     && !explicitPostIds.length
     && targetCards.length > 0
@@ -1297,7 +1303,7 @@ export async function loadCompactRecruitingList(context, {
       settings,
     }, { includeDemo: false });
     return {
-      state: compactRecruitingListState(state, currentUser.id, { includeRoomChat }),
+      state: compactRecruitingListState(state, currentUser.id, { includeRoomChat, includeRoomInvitations }),
       page: {
         limit,
         count: 0,
@@ -1395,7 +1401,7 @@ export async function loadCompactRecruitingList(context, {
       settings,
     }, { includeDemo: false });
     return {
-      state: compactRecruitingListState(state, currentUser.id, { includeRoomChat }),
+      state: compactRecruitingListState(state, currentUser.id, { includeRoomChat, includeRoomInvitations }),
       page: {
         limit,
         count: mineOnly ? responsePosts.length : pagePostIds.length,
@@ -1480,7 +1486,7 @@ export async function loadCompactRecruitingList(context, {
     recruitingPosts: posts,
     settings,
   }, { includeDemo: false });
-  const responseState = compactRecruitingListState(state, currentUser.id, { includeRoomChat });
+  const responseState = compactRecruitingListState(state, currentUser.id, { includeRoomChat, includeRoomInvitations });
 
   return {
     state: responseState,

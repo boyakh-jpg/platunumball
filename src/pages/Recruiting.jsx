@@ -50,6 +50,7 @@ import {
 } from "../lib/recruiting.js";
 import { findTeamByHashtag, findUserByHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { assetUrl } from "../lib/assets.js";
+import { isSupabaseConfigured } from "../lib/supabase.js";
 import {
   cleanRoomTitle,
   formatStatLine,
@@ -1364,6 +1365,7 @@ export function InvitePanel({
   favoritePlayerIds,
   favoriteTeamIds,
   allowedTeamId = "",
+  canInvitePlayer = () => true,
   onTogglePlayer,
   onInvitePlayers,
   onClose,
@@ -1373,7 +1375,10 @@ export function InvitePanel({
   const disabledSet = new Set(disabledPlayerIds);
   const allowedTeam = allowedTeamId ? teams.find((team) => team.id === allowedTeamId) : null;
   const allowedTeamMemberIds = new Set(allowedTeam ? getSelectableTeamPlayerIds(allowedTeam) : []);
-  const isAllowedPlayer = (playerId, player = null) => !allowedTeamId || allowedTeamMemberIds.has(playerId) || (player?.teamIds ?? []).includes(allowedTeamId);
+  const isAllowedPlayer = (playerId, player = null) => (
+    (!allowedTeamId || allowedTeamMemberIds.has(playerId) || (player?.teamIds ?? []).includes(allowedTeamId)) &&
+    canInvitePlayer(playerId, player)
+  );
   const favoritePlayers = favoritePlayerIds.map((playerId) => userById[playerId]).filter(Boolean);
   const favoriteTeams = favoriteTeamIds
     .map((teamId) => teams.find((team) => team.id === teamId))
@@ -1548,10 +1553,12 @@ function RefereeInvitePanel({
   minTrust,
   canInvite,
   canJoin,
+  disabledRefereeIds = [],
   onInviteReferee,
   onJoin,
 }) {
   const normalizedQuery = query.trim().toLowerCase();
+  const disabledRefereeSet = new Set(disabledRefereeIds);
   const searchItems = canInvite
     ? candidates
       .filter((user) => (
@@ -1603,6 +1610,7 @@ function RefereeInvitePanel({
           placeholder="심판 이름, #해시태그, 지역 검색"
           items={searchItems}
           remoteSearchType="referee"
+          mapRemoteItem={(item) => (disabledRefereeSet.has(item.id) ? null : item)}
           idleItems={idleItems}
           idleTitle={favoriteReferees.length ? "즐겨찾기 심판" : "초대 가능한 심판"}
           showIdleOnFocus
@@ -2399,15 +2407,25 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
           ...lobby.entries.flatMap((entry) => [entry.playerId, ...(entry.players ?? []), ...(entry.reserves ?? [])]),
           ...pendingInvitations.map((invitation) => invitation.targetUserId),
         ].filter(Boolean);
+        const canInvitePlayerByRoom = (playerId, player = null) => {
+          if (!playerId) return false;
+          const mmrLimitMode = selectedPost.mmrLimitMode ?? roomState.mmrLimitMode ?? "block";
+          if (mmrLimitMode !== "block") return true;
+          const targetPlayer = player ?? userById[playerId];
+          if (!targetPlayer) return true;
+          return getRecruitingFit(selectedPost, targetPlayer.ratings?.integrated ?? 1200, app.state).allowed;
+        };
         const disabledRefereeIds = new Set([
           ...disabledInvitePlayerIds,
           selectedPost.refereeId,
           ...pendingRefereeInvitations.map((invitation) => invitation.targetUserId),
         ].filter(Boolean));
-        const refereeInviteCandidates = app.state.users
-          .filter((user) => !disabledRefereeIds.has(user.id))
-          .filter((user) => isEligibleReferee(user, selectedPost.refereeTrustMin, app.state.settings?.refereeAppointments))
-          .sort((a, b) => Number(b.trustScore ?? 0) - Number(a.trustScore ?? 0));
+        const refereeInviteCandidates = isSupabaseConfigured
+          ? []
+          : app.state.users
+            .filter((user) => !disabledRefereeIds.has(user.id))
+            .filter((user) => isEligibleReferee(user, selectedPost.refereeTrustMin, app.state.settings?.refereeAppointments))
+            .sort((a, b) => Number(b.trustScore ?? 0) - Number(a.trustScore ?? 0));
         const showRefereeInviteSlot = refereeWanted && !selectedPost.refereeId;
         const canInviteRefereeFromRoom = showRefereeInviteSlot && canInviteFromRoom;
         const activeInviteDraftRaw = inviteDraft?.postId === selectedPost.id ? inviteDraft : null;
@@ -2566,6 +2584,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                 favoritePlayerIds={favoritePlayerIds}
                 favoriteTeamIds={favoriteTeamIds}
                 allowedTeamId={getInviteAllowedTeamId(activeSlotDraft.sideName)}
+                canInvitePlayer={canInvitePlayerByRoom}
                 onTogglePlayer={toggleInvitePlayer}
                 onInvitePlayers={(playerIds, teamId, joinMode) => { void sendInvites(selectedPost, playerIds, teamId, joinMode); }}
                 onClose={() => setInviteDraft(null)}
@@ -2849,6 +2868,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                   favoritePlayerIds={favoritePlayerIds}
                   favoriteTeamIds={favoriteTeamIds}
                   allowedTeamId={getInviteAllowedTeamId(activeInviteDraft.sideName)}
+                  canInvitePlayer={canInvitePlayerByRoom}
                   onTogglePlayer={toggleInvitePlayer}
                   onInvitePlayers={(playerIds, teamId, joinMode) => { void sendInvites(selectedPost, playerIds, teamId, joinMode); }}
                   onClose={() => setInviteDraft(null)}
@@ -2933,6 +2953,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                     minTrust={selectedPost.refereeTrustMin}
                     canInvite={canInviteRefereeFromRoom}
                     canJoin={canJoinReferee && !mine && !matchRoom}
+                    disabledRefereeIds={[...disabledRefereeIds]}
                     onInviteReferee={async (refereeId) => {
                       const result = await app.actions.inviteRecruitingReferee(selectedPost.id, refereeId);
                       if (result && result.ok !== false) app.actions.loadRecruitingPost?.(selectedPost.id);

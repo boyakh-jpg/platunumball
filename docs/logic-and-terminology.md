@@ -1912,4 +1912,8 @@ flowchart TD
 - Recruiting public join waits for the server action result. On success the frontend keeps the joined room selected, refreshes that room detail explicitly, and pins the URL to `?post=`. Direct `?post=` entry selects the pending room id while detail loads. Badge/feed counts still must not trigger unrelated list reloads.
 - Recruiting room modal open is an explicit detail view and may reload that single `postId` even when a list card already exists. Open modals subscribe to recruiting post/application row changes and reload only that room detail; they must not refresh the whole recruiting list.
 - Recruiting invite search keeps selected players across query/result clicks, sends selected players in one invite action, and refreshes the same room detail after invite success.
+- Recruiting invite search must apply the same `mmrLimitMode="block"` gate as the server before selection, including remote search results.
+- In Supabase mode, recruiting referee invite search must use `/api/search` referee results backed by active `referee_appointments`; local profile/settings caches are not authoritative for inviting other referees.
+- Recruiting explicit room detail loads return every room invitation row needed for slot blocking, invite list display, and accept/decline state. List/feed card responses keep invitations scoped to the current profile only.
+- Recruiting room invite UI must not hide a pending invitation that server-side invite validation already treats as occupying an invite target.
 - Recruiting explicit room detail loads attach public profiles for team members already returned by `team_members` so roster management does not show `알 수 없음`.

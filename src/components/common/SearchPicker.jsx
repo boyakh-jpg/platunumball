@@ -52,7 +52,15 @@ function getSearchScore(text = "", query = "") {
 }
 
 function getItemKey(item = {}) {
-  return [item.kind, item.type, item.id, item.label, item.name].filter(Boolean).join(":");
+  const entity = item.player ?? item.team ?? item.court ?? item.referee ?? item;
+  const category = item.type ?? item.kind ?? entity.type ?? entity.kind;
+  const identity = item.id ?? entity.id ?? item.hashtag ?? entity.hashtag ?? item.handle ?? entity.handle;
+  return [
+    category,
+    identity,
+    item.label ?? entity.label,
+    item.name ?? entity.name,
+  ].filter(Boolean).join(":");
 }
 
 function mergeSearchItems(localItems = [], remoteItems = []) {
