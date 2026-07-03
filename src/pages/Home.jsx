@@ -150,8 +150,9 @@ export default function Home({ app }) {
     const key = `${postId}:${invitationId}`;
     setProcessingInviteId(key);
     try {
-      await app.actions.acceptRecruitingInvitation(postId, invitationId);
+      const acceptPromise = app.actions.acceptRecruitingInvitation(postId, invitationId);
       navigate(`/app/recruiting?post=${postId}`);
+      await acceptPromise;
     } finally {
       setProcessingInviteId("");
     }
@@ -518,8 +519,8 @@ export default function Home({ app }) {
                         <em>{item.meta}</em>
                       </span>
                       <span className="home-action-buttons">
-                        <Button size="sm" type="button" disabled={isProcessing} onClick={() => acceptHomeRecruitingInvitation(item.postId, item.invitationId)}>수락</Button>
-                        <Button size="sm" type="button" variant="secondary" disabled={isProcessing} onClick={() => declineHomeRecruitingInvitation(item.postId, item.invitationId)}>거절</Button>
+                        <Button size="sm" type="button" disabled={isProcessing} onClick={() => acceptHomeRecruitingInvitation(item.postId, item.invitationId)}>{isProcessing ? "수락 중" : "수락"}</Button>
+                        <Button size="sm" type="button" variant="secondary" disabled={isProcessing} onClick={() => declineHomeRecruitingInvitation(item.postId, item.invitationId)}>{isProcessing ? "처리 중" : "거절"}</Button>
                         <Link className="button button-secondary button-sm" to={item.href}>보기</Link>
                       </span>
                     </div>
