@@ -438,12 +438,21 @@ function getMatchRoomPost(match, state) {
   const sourcePost = sourceMatch.recruitingPostId
     ? sourceState.recruitingPosts?.find((post) => post.id === sourceMatch.recruitingPostId)
     : null;
+  const sourcePostLobby = sourcePost ? getRecruitingLobby(sourcePost, sourceState) : null;
   const hostPlayerId = getMatchHostPlayerId(sourceMatch, sourcePost);
   const sideCapacity = getRoomCapacity(sourceMatch);
-  const teamAPlayers = uniquePlayerIds(sourceMatch.teamA?.players ?? []);
-  const teamBPlayers = uniquePlayerIds(sourceMatch.teamB?.players ?? []);
-  const teamAReserves = uniquePlayerIds(getMatchReservePlayerIds(sourceMatch, "teamA"));
-  const teamBReserves = uniquePlayerIds(getMatchReservePlayerIds(sourceMatch, "teamB"));
+  const sourceTeamAPlayers = uniquePlayerIds(sourceMatch.teamA?.players ?? []);
+  const sourceTeamBPlayers = uniquePlayerIds(sourceMatch.teamB?.players ?? []);
+  const fallbackTeamAPlayers = uniquePlayerIds(sourcePostLobby?.sides?.teamA?.projectedPlayers ?? []);
+  const fallbackTeamBPlayers = uniquePlayerIds(sourcePostLobby?.sides?.teamB?.projectedPlayers ?? []);
+  const teamAPlayers = sourceTeamAPlayers.length ? sourceTeamAPlayers : fallbackTeamAPlayers;
+  const teamBPlayers = sourceTeamBPlayers.length ? sourceTeamBPlayers : fallbackTeamBPlayers;
+  const sourceTeamAReserves = uniquePlayerIds(getMatchReservePlayerIds(sourceMatch, "teamA"));
+  const sourceTeamBReserves = uniquePlayerIds(getMatchReservePlayerIds(sourceMatch, "teamB"));
+  const fallbackTeamAReserves = uniquePlayerIds((sourcePostLobby?.sides?.teamA?.reserveCandidates ?? []).map((candidate) => candidate.playerId));
+  const fallbackTeamBReserves = uniquePlayerIds((sourcePostLobby?.sides?.teamB?.reserveCandidates ?? []).map((candidate) => candidate.playerId));
+  const teamAReserves = sourceTeamAReserves.length ? sourceTeamAReserves : fallbackTeamAReserves;
+  const teamBReserves = sourceTeamBReserves.length ? sourceTeamBReserves : fallbackTeamBReserves;
   const applicants = [];
   const partyReserves = {};
   const matchParties = (match.parties ?? [])

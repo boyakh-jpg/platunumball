@@ -1919,3 +1919,7 @@ flowchart TD
 - Recruiting explicit room detail loads return every room invitation row needed for slot blocking, invite list display, and accept/decline state. List/feed card responses keep invitations scoped to the current profile only.
 - Recruiting room invite UI must not hide a pending invitation that server-side invite validation already treats as occupying an invite target.
 - Recruiting explicit room detail loads attach public profiles for team members already returned by `team_members` so roster management does not show `알 수 없음`.
+
+## 2026-07-03 match room roster fallback
+
+- Matches room modal uses `match.teamA/teamB.players` first. If a confirmed match row is temporarily missing one side roster but still has `recruitingPostId`, the modal may use the original recruiting lobby projected players as a display-only fallback until `/api/matches/detail` returns `match_players`.
