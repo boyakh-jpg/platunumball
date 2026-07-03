@@ -595,6 +595,7 @@ function toClientMatch(row = {}, playersByMatch = new Map(), teamById = {}, cour
     id: row.id,
     title: row.title,
     mode: row.mode,
+    courtId: row.court_id ?? null,
     court: row.court_name ?? courtById[row.court_id]?.name ?? "\uBBF8\uC815",
     visibility: row.visibility ?? row.rules?.visibility ?? "public",
     scheduledDate: row.scheduled_date,

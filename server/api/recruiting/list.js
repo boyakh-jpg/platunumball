@@ -1104,6 +1104,7 @@ function fromRemoteRecruitingPost(row = {}, applicationsByPost = new Map(), cour
     title: row.title,
     visibility: row.visibility ?? "public",
     region: row.region,
+    courtId: row.court_id ?? null,
     court: row.court_name ?? courtById[row.court_id]?.name ?? "\uBBF8\uC815",
     mode: row.mode,
     scheduledDate: row.scheduled_date,

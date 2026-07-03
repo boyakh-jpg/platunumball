@@ -45,6 +45,15 @@
 - DB guard는 `scheduled_at` 직접 쓰기를 date/time/timingType 기준으로 되돌린다.
 - legacy row만 `scheduled_at="즉시"`를 instant fallback으로 인정한다.
 
+## 2026-07-03 구장 원본
+
+- 경기/모집 구장 원본 키는 `court_id`다.
+- `court_id`가 `courts.id`를 가리키면 `court_name`은 `courts.name`, 지역은 `courts.region`에서 DB guard가 스냅샷으로 보정한다.
+- `court_id`가 legacy `courts`에 없고 active `approved_courts.id`를 가리키면 `approved_courts.name`과 `approved_courts.payload.region`을 fallback 원본으로 쓴다.
+- `matches.rules.region`, `recruiting_posts.region`, `user_room_feed.region_key`는 목록/피드용 스냅샷이다.
+- `court_id`가 없거나 legacy 구장 id라 active approved court를 찾지 못하면 기존 `court_name`/지역 텍스트를 유지한다. 이 경우 하드 FK를 강제하지 않는다.
+- 구장 이름 fallback은 `court_id` 기준 legacy `courts` -> active `approved_courts` -> 기존 `court_name` 순서다. hidden/disabled approved court는 원본 보정에 쓰지 않는다.
+
 ## 2026-07-03 개인기록 재조회 이름 보존
 
 - 개인기록의 프리텍스트 팀명/상대명은 `rules.recordSummary.teamAName/teamBName`을 목록/상세 재조회 fallback 이름으로 사용한다.
@@ -1720,7 +1729,7 @@ flowchart TD
 
 1. `public_profiles`는 공개 표시용 프로필 컬럼만 제공한다. `school`, `company`, `club`, 테스트 로그인 ID와 Discord 연결 원본은 현재 사용자 private profile 또는 server action에서만 읽는다.
 2. `user_room_feed.feed_scope='public'` 지역 공개 feed는 서버 API/service-role 전용 source다. `profile_id='*'`는 legacy 저장키/fallback일 뿐 공개 feed 의미 기준이 아니다. 브라우저 RLS 직접 read는 `feed_scope='profile'`인 현재 프로필 feed row만 허용한다.
-3. 구장 이름 fallback은 `court_name` -> `approved_courts` active row -> legacy `courts` 순서로 보정한다. hidden/disabled approved court는 공개 목록 fallback에 쓰지 않는다.
+3. 구장 이름/지역은 `court_id`가 있으면 legacy `courts`를 먼저 보고, 없거나 찾지 못하면 active `approved_courts`와 기존 `court_name`/지역 텍스트를 fallback으로 쓴다. hidden/disabled approved court는 공개 목록 fallback에 쓰지 않는다.
 
 ## 2026-06-27 remote mutation stale guard
 

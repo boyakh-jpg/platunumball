@@ -4153,6 +4153,67 @@ as $$
   from district;
 $$;
 
+create or replace function public.rankball_court_snapshot(
+  p_court_id text,
+  p_fallback_name text default null,
+  p_fallback_region text default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  safe_court_id text := nullif(btrim(p_court_id), '');
+  safe_name text := nullif(btrim(p_fallback_name), '');
+  safe_region text := nullif(btrim(p_fallback_region), '');
+  legacy_name text;
+  legacy_region text;
+  approved_name text;
+  approved_region text;
+begin
+  if safe_court_id is not null then
+    if to_regclass('public.courts') is not null then
+      if exists (
+        select 1
+        from information_schema.columns
+        where table_schema = 'public'
+          and table_name = 'courts'
+          and column_name = 'region'
+      ) then
+        execute 'select name, region from public.courts where id = $1 limit 1'
+        into legacy_name, legacy_region
+        using safe_court_id;
+      else
+        execute 'select name from public.courts where id = $1 limit 1'
+        into legacy_name
+        using safe_court_id;
+      end if;
+
+      safe_name := coalesce(nullif(btrim(legacy_name), ''), safe_name);
+      safe_region := coalesce(nullif(btrim(legacy_region), ''), safe_region);
+    end if;
+
+    if safe_name is null or safe_region is null then
+      select nullif(btrim(name), ''), nullif(btrim(payload->>'region'), '')
+      into approved_name, approved_region
+      from public.approved_courts
+      where id = safe_court_id
+        and coalesce(status, 'active') = 'active'
+      limit 1;
+
+      safe_name := coalesce(safe_name, approved_name);
+      safe_region := coalesce(safe_region, approved_region);
+    end if;
+  end if;
+
+  return jsonb_build_object(
+    'courtName', coalesce(safe_name, '미정'),
+    'region', safe_region
+  );
+end;
+$$;
+
 create or replace function public.rankball_upsert_room_feed(
   p_profile_id text,
   p_entity_type text,
@@ -4222,7 +4283,9 @@ declare
   row_sort_at timestamptz;
   card_json jsonb;
   application_cards jsonb := '[]'::jsonb;
+  court_snapshot jsonb;
   court_display_name text;
+  court_region text;
   host_name text;
   host_team_name text;
   target_team_name text;
@@ -4245,24 +4308,12 @@ begin
     return;
   end if;
 
-  region_key := public.rankball_room_feed_region_key(post_row.region);
   row_sort_at := coalesce(post_row.updated_at, post_row.created_at, now());
   owner_id := coalesce(nullif(post_row.room_state->>'ownerId', ''), nullif(post_row.player_id, ''));
-  court_display_name := nullif(btrim(post_row.court_name), '');
-
-  if court_display_name is null and post_row.court_id is not null then
-    select nullif(btrim(name), '') into court_display_name
-    from public.approved_courts
-    where id = post_row.court_id
-      and coalesce(status, 'active') = 'active';
-  end if;
-
-  if court_display_name is null and post_row.court_id is not null and to_regclass('public.courts') is not null then
-    execute 'select name from public.courts where id = $1 limit 1'
-    into court_display_name
-    using post_row.court_id;
-    court_display_name := nullif(btrim(court_display_name), '');
-  end if;
+  court_snapshot := public.rankball_court_snapshot(post_row.court_id, post_row.court_name, post_row.region);
+  court_display_name := nullif(btrim(court_snapshot->>'courtName'), '');
+  court_region := nullif(btrim(court_snapshot->>'region'), '');
+  region_key := public.rankball_room_feed_region_key(coalesce(court_region, post_row.region));
 
   if owner_id is not null then
     select name into host_name
@@ -4313,7 +4364,8 @@ begin
     'type', post_row.type,
     'title', post_row.title,
     'visibility', coalesce(post_row.visibility, 'public'),
-    'region', post_row.region,
+    'region', coalesce(court_region, post_row.region),
+    'courtId', post_row.court_id,
     'court', coalesce(court_display_name, '미정'),
     'hostName', host_name,
     'hostTeamName', host_team_name,
@@ -4477,7 +4529,9 @@ declare
   region_key text;
   row_sort_at timestamptz;
   card_json jsonb;
+  court_snapshot jsonb;
   court_display_name text;
+  court_region text;
   team_a_name text;
   team_b_name text;
   team_a_players jsonb := '[]'::jsonb;
@@ -4504,23 +4558,11 @@ begin
     return;
   end if;
 
-  region_key := public.rankball_room_feed_region_key(match_row.rules->>'region');
   row_sort_at := coalesce(match_row.updated_at, match_row.ended_at, match_row.started_at, match_row.agreed_at, match_row.created_at, now());
-  court_display_name := nullif(btrim(match_row.court_name), '');
-
-  if court_display_name is null and match_row.court_id is not null then
-    select nullif(btrim(name), '') into court_display_name
-    from public.approved_courts
-    where id = match_row.court_id
-      and coalesce(status, 'active') = 'active';
-  end if;
-
-  if court_display_name is null and match_row.court_id is not null and to_regclass('public.courts') is not null then
-    execute 'select name from public.courts where id = $1 limit 1'
-    into court_display_name
-    using match_row.court_id;
-    court_display_name := nullif(btrim(court_display_name), '');
-  end if;
+  court_snapshot := public.rankball_court_snapshot(match_row.court_id, match_row.court_name, match_row.rules->>'region');
+  court_display_name := nullif(btrim(court_snapshot->>'courtName'), '');
+  court_region := nullif(btrim(court_snapshot->>'region'), '');
+  region_key := public.rankball_room_feed_region_key(coalesce(court_region, match_row.rules->>'region'));
 
   if match_row.team_a_id is not null then
     select name into team_a_name
@@ -4598,6 +4640,7 @@ begin
     'listCardOnly', true,
     'title', match_row.title,
     'mode', match_row.mode,
+    'courtId', match_row.court_id,
     'court', coalesce(court_display_name, '미정'),
     'visibility', coalesce(match_row.visibility, match_row.rules->>'visibility', 'public'),
     'scheduledDate', match_row.scheduled_date,
@@ -4641,6 +4684,7 @@ begin
     'parties', coalesce(match_row.rules->'parties', '[]'::jsonb),
     'result', result_json,
     'rules', coalesce(match_row.rules, '{}'::jsonb) || jsonb_build_object(
+      'region', coalesce(court_region, match_row.rules->>'region'),
       'playedPlayerIds', coalesce(match_row.played_player_ids, match_row.rules->'playedPlayerIds', '{}'::jsonb),
       'mmrExcludedPlayerIds', coalesce(match_row.mmr_excluded_player_ids, match_row.rules->'mmrExcludedPlayerIds', '[]'::jsonb),
       'statRecorders', coalesce(match_row.stat_recorders, match_row.rules->'statRecorders', '{}'::jsonb)
@@ -4874,6 +4918,51 @@ begin
 end;
 $$;
 
+create or replace function public.rankball_match_court_snapshot_guard()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  safe_rules jsonb := coalesce(new.rules, '{}'::jsonb);
+  snapshot jsonb;
+  snapshot_region text;
+begin
+  snapshot := public.rankball_court_snapshot(new.court_id, new.court_name, safe_rules->>'region');
+  snapshot_region := nullif(btrim(snapshot->>'region'), '');
+
+  new.court_name := coalesce(nullif(btrim(snapshot->>'courtName'), ''), '미정');
+  new.rules := safe_rules;
+
+  if snapshot_region is not null then
+    new.rules := new.rules || jsonb_build_object('region', snapshot_region);
+  end if;
+
+  return new;
+end;
+$$;
+
+create or replace function public.rankball_recruiting_court_snapshot_guard()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  snapshot jsonb;
+  snapshot_region text;
+begin
+  snapshot := public.rankball_court_snapshot(new.court_id, new.court_name, new.region);
+  snapshot_region := nullif(btrim(snapshot->>'region'), '');
+
+  new.court_name := coalesce(nullif(btrim(snapshot->>'courtName'), ''), '미정');
+  new.region := coalesce(snapshot_region, nullif(btrim(new.region), ''));
+
+  return new;
+end;
+$$;
+
 create or replace function public.rankball_refresh_recruiting_application_feed_trigger()
 returns trigger
 language plpgsql
@@ -5018,6 +5107,26 @@ begin
   end if;
 
   if to_regclass('public.recruiting_posts') is not null then
+    with snapshots as (
+      select
+        post.id,
+        snapshot.data->>'courtName' as court_name,
+        nullif(btrim(snapshot.data->>'region'), '') as region
+      from public.recruiting_posts post
+      cross join lateral public.rankball_court_snapshot(post.court_id, post.court_name, post.region) as snapshot(data)
+      where post.court_id = safe_court_id
+    )
+    update public.recruiting_posts post
+    set
+      court_name = snapshots.court_name,
+      region = coalesce(snapshots.region, post.region)
+    from snapshots
+    where post.id = snapshots.id
+      and (
+        post.court_name is distinct from snapshots.court_name
+        or (snapshots.region is not null and post.region is distinct from snapshots.region)
+      );
+
     for row_id in
       select id
       from public.recruiting_posts
@@ -5028,6 +5137,29 @@ begin
   end if;
 
   if to_regclass('public.matches') is not null then
+    with snapshots as (
+      select
+        match_row.id,
+        snapshot.data->>'courtName' as court_name,
+        nullif(btrim(snapshot.data->>'region'), '') as region
+      from public.matches match_row
+      cross join lateral public.rankball_court_snapshot(match_row.court_id, match_row.court_name, match_row.rules->>'region') as snapshot(data)
+      where match_row.court_id = safe_court_id
+    )
+    update public.matches match_row
+    set
+      court_name = snapshots.court_name,
+      rules = case
+        when snapshots.region is null then coalesce(match_row.rules, '{}'::jsonb)
+        else coalesce(match_row.rules, '{}'::jsonb) || jsonb_build_object('region', snapshots.region)
+      end
+    from snapshots
+    where match_row.id = snapshots.id
+      and (
+        match_row.court_name is distinct from snapshots.court_name
+        or (snapshots.region is not null and match_row.rules->>'region' is distinct from snapshots.region)
+      );
+
     for row_id in
       select id
       from public.matches
@@ -5274,6 +5406,8 @@ $$;
 do $$
 begin
   if to_regclass('public.recruiting_posts') is not null then
+    execute 'drop trigger if exists rankball_recruiting_court_snapshot_guard on public.recruiting_posts';
+    execute 'create trigger rankball_recruiting_court_snapshot_guard before insert or update of court_id, court_name, region on public.recruiting_posts for each row execute function public.rankball_recruiting_court_snapshot_guard()';
     execute 'drop trigger if exists rankball_recruiting_schedule_snapshot_guard on public.recruiting_posts';
     execute 'create trigger rankball_recruiting_schedule_snapshot_guard before insert or update of scheduled_at, scheduled_date, scheduled_time, room_state on public.recruiting_posts for each row execute function public.rankball_recruiting_schedule_snapshot_guard()';
     execute 'drop trigger if exists rankball_recruiting_posts_feed_refresh on public.recruiting_posts';
@@ -5286,6 +5420,8 @@ begin
   end if;
 
   if to_regclass('public.matches') is not null then
+    execute 'drop trigger if exists rankball_matches_court_snapshot_guard on public.matches';
+    execute 'create trigger rankball_matches_court_snapshot_guard before insert or update of court_id, court_name, rules on public.matches for each row execute function public.rankball_match_court_snapshot_guard()';
     execute 'drop trigger if exists rankball_matches_schedule_snapshot_guard on public.matches';
     execute 'create trigger rankball_matches_schedule_snapshot_guard before insert or update of scheduled_at, scheduled_date, scheduled_time, rules on public.matches for each row execute function public.rankball_match_schedule_snapshot_guard()';
     execute 'drop trigger if exists rankball_matches_visibility_snapshot_guard on public.matches';
@@ -5385,7 +5521,7 @@ begin
 
   if to_regclass('public.approved_courts') is not null then
     execute 'drop trigger if exists rankball_approved_courts_feed_dependency_refresh on public.approved_courts';
-    execute 'create trigger rankball_approved_courts_feed_dependency_refresh after insert or update of id, name, status or delete on public.approved_courts for each row execute function public.rankball_refresh_court_feed_dependency_trigger()';
+    execute 'create trigger rankball_approved_courts_feed_dependency_refresh after insert or update of id, name, status, payload or delete on public.approved_courts for each row execute function public.rankball_refresh_court_feed_dependency_trigger()';
   end if;
 
   if to_regclass('public.courts') is not null then

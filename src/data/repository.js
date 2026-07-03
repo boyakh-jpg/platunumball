@@ -1227,6 +1227,7 @@ function fromRemoteMatch(row, context) {
     id: row.id,
     title: row.title,
     mode: row.mode,
+    courtId: row.court_id ?? null,
     court: row.court_name ?? context.courtById[row.court_id]?.name ?? "미정",
     visibility: row.visibility ?? row.rules?.visibility ?? "public",
     scheduledDate: row.scheduled_date,
@@ -2086,6 +2087,7 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
         title: post.title,
         visibility: post.visibility ?? "public",
         region: post.region,
+        courtId: post.court_id ?? null,
         court: post.court_name ?? courtById[post.court_id]?.name ?? "미정",
         mode: post.mode,
         scheduledDate: post.scheduled_date,
@@ -3663,12 +3665,14 @@ function createSoloRecordMatch(state, draft = {}) {
     submittedAt: nowIso,
     updatedAt: nowIso,
   };
+  const selectedCourt = getRegisteredCourts(state).find((court) => court.name === draft.court || court.id === getCourtId(draft)) ?? null;
   const rules = {
     recordType: "solo",
     mmrExcludedPlayerIds,
     playedPlayerIds,
     statRecorders: {},
     visibility: "private",
+    region: selectedCourt?.region ?? draft.region,
     ratingScale: 0,
     recordSummary: {
       mode,
@@ -3682,6 +3686,7 @@ function createSoloRecordMatch(state, draft = {}) {
     id: draft.id || makeId("m"),
     title: String(draft.title ?? "").trim() || "개인 기록",
     mode,
+    courtId: getCourtId(draft),
     court: draft.court || "미정",
     scheduledDate: recordDate,
     scheduledTime: recordTime,
@@ -3759,10 +3764,12 @@ export function createMatch(state, draft) {
   const mmrRangeMode = normalizeRecruitingMmrRangeMode(draft.mmrRangeMode);
   const ranked = draft.ranked !== false;
   const ratingScale = ranked ? getRecruitingRatingScale({ ranked, mmrRangeMode }) : 1;
+  const selectedCourt = getRegisteredCourts(state).find((court) => court.name === draft.court || court.id === getCourtId(draft)) ?? null;
   const match = {
     id: draft.id || makeId("m"),
     title: draft.title || `${draft.court} ${mode} 판`,
     mode,
+    courtId: getCourtId(draft),
     court: draft.court,
     scheduledDate: timingType === "instant" ? "" : draft.scheduledDate,
     scheduledTime: timingType === "instant" ? "" : draft.scheduledTime,
@@ -3787,6 +3794,7 @@ export function createMatch(state, draft) {
       mmrRangeMode,
       ratingScale,
       visibility: "private",
+      region: selectedCourt?.region ?? draft.region,
     },
     memo: draft.memo || "결과 승인 대기.",
     stakes: draft.stakes || "다음 경기 우선권.",
@@ -6704,6 +6712,7 @@ export function createRecruitingPost(state, draft) {
     type: postType,
     title: draft.title?.trim() || `${draft.ranked === false ? "친선전" : "정규전"} ${draft.mode || "5v5"} 매치 큐`,
     region: roomRegion,
+    courtId: getCourtId(draft),
     court: draft.court || "미정",
     mode: draft.mode || "5v5",
     scheduledDate,
@@ -7250,11 +7259,16 @@ export function updateRecruitingRoomRules(state, postId, patch = {}) {
     foulRule: String(patch.foulRule ?? post.rules?.foulRule ?? "파울 콜 즉시 중단, 공격권 유지").slice(0, 120),
   };
   const updatedAt = new Date().toISOString();
+  const nextCourtName = patch.court === undefined ? post.court : String(patch.court || post.court || "미정").slice(0, 80);
+  const nextCourt = getRegisteredCourts(state).find((court) => court.name === nextCourtName || court.id === patch.courtId) ?? null;
+  const nextCourtId = patch.court === undefined ? getCourtId(post) : courtIdByName(nextCourtName);
   const nextPost = cleanRecruitingRoomStatRecorders({
     ...post,
     mode: `${sideCapacity}v${sideCapacity}`,
     sideCapacity,
-    court: patch.court === undefined ? post.court : String(patch.court || post.court || "미정").slice(0, 80),
+    region: nextCourt?.region ?? post.region,
+    courtId: nextCourtId,
+    court: nextCourtName,
     mmrRangeMode: nextMmrRangeMode,
     ratingScale: post.ranked === false ? 1 : getRecruitingRatingScale({ ...post, mmrRangeMode: nextMmrRangeMode }),
     rules: {
@@ -7327,13 +7341,18 @@ export function updateMatchRoomRules(state, matchId, patch = {}) {
     foulRule: String(patch.foulRule ?? match.rules?.foulRule ?? "파울 콜 즉시 중단, 공격권 유지").slice(0, 120),
   };
   delete nextRules.startedAt;
+  const nextCourtName = patch.court === undefined ? match.court : String(patch.court || match.court || "미정").slice(0, 80);
+  const nextCourt = getRegisteredCourts(state).find((court) => court.name === nextCourtName || court.id === patch.courtId) ?? null;
+  const nextCourtId = patch.court === undefined ? getCourtId(match) : courtIdByName(nextCourtName);
+  if (nextCourt?.region) nextRules.region = nextCourt.region;
   const nextMatch = {
     ...match,
     mode: `${sideCapacity}v${sideCapacity}`,
     status: "agreed",
     rules: nextRules,
     sideCapacity,
-    court: patch.court === undefined ? match.court : String(patch.court || match.court || "미정").slice(0, 80),
+    courtId: nextCourtId,
+    court: nextCourtName,
     memo: patch.memo === undefined ? match.memo : String(patch.memo ?? "").slice(0, 500),
     stakes: patch.stakes === undefined ? match.stakes : String(patch.stakes ?? "").slice(0, 500),
     teamA: {
@@ -9327,6 +9346,7 @@ export function confirmRecruitingMatch(state, postId, options = {}) {
     id: options.matchId || makeId("m"),
     title: promotedPost.title,
     mode: promotedPost.mode,
+    courtId: promotedPost.courtId ?? getCourtId(promotedPost),
     court: promotedPost.court,
     scheduledDate: timingType === "instant" ? "" : (promotedPost.scheduledDate ?? ""),
     scheduledTime: timingType === "instant" ? "" : (promotedPost.scheduledTime ?? ""),
@@ -9346,6 +9366,7 @@ export function confirmRecruitingMatch(state, postId, options = {}) {
       ...(promotedPost.rules ?? {}),
       timingType,
       visibility: promotedPost.visibility ?? "public",
+      region: promotedPost.region,
       mmrRangeMode,
       ratingScale,
     },
