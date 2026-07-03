@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
@@ -77,6 +77,11 @@ const SIDE_LABELS = {
   teamA: "A사이드",
   teamB: "B사이드",
 };
+const CHAT_MESSAGE_MAX_LENGTH = 60;
+const CHAT_SEND_COOLDOWN_MS = 3000;
+const CHAT_REPEAT_BLOCK_MS = 30000;
+const CHAT_RATE_WINDOW_MS = 60000;
+const CHAT_RATE_LIMIT = 6;
 const AUTO_RECRUITING_TITLE_PATTERN = /^(모집방|모집 중\s*\d*|정규전|친선전|대기방|매치 큐)$/;
 const RECORDABLE_RESERVE_SOURCES = new Set(["reserve-entry", "team-reserve"]);
 const MAX_RESERVE_PLAYERS_PER_SIDE = 2;
@@ -1251,10 +1256,26 @@ function RoomKickPanel({
   );
 }
 
-export function RoomChat({ messages, userById, teams, value, canChat, readOnly = false, onChange, onSubmit }) {
+export function RoomChat({
+  messages,
+  userById,
+  teams,
+  value,
+  canChat,
+  readOnly = false,
+  locked = false,
+  sending = false,
+  cooldown = false,
+  error = "",
+  onChange,
+  onSubmit,
+  onVisibleChange = null,
+}) {
+  const rootRef = useRef(null);
   const listRef = useRef(null);
   const latestMessage = messages.at(-1);
   const latestMessageKey = latestMessage ? `${latestMessage.id || ""}:${latestMessage.createdAt || ""}:${latestMessage.body || ""}` : "";
+  const inputDisabled = !canChat || sending || cooldown || locked;
 
   useEffect(() => {
     const node = listRef.current;
@@ -1265,11 +1286,28 @@ export function RoomChat({ messages, userById, teams, value, canChat, readOnly =
     return () => window.cancelAnimationFrame(frameId);
   }, [messages.length, latestMessageKey]);
 
+  useEffect(() => {
+    const node = rootRef.current;
+    if (!node || typeof onVisibleChange !== "function") return undefined;
+    if (typeof IntersectionObserver === "undefined") {
+      onVisibleChange(true);
+      return () => onVisibleChange(false);
+    }
+    const observer = new IntersectionObserver(([entry]) => {
+      onVisibleChange(Boolean(entry?.isIntersecting));
+    }, { threshold: 0.1 });
+    observer.observe(node);
+    return () => {
+      observer.disconnect();
+      onVisibleChange(false);
+    };
+  }, [onVisibleChange]);
+
   return (
-    <div className="arena-room-chat">
+    <div className="arena-room-chat" ref={rootRef}>
       <header>
         <span><MessageSquare size={16} /> 방 채팅</span>
-        <strong>{messages.length}</strong>
+        <strong>{locked ? "경기 종료됨" : messages.length}</strong>
       </header>
       <div className="arena-chat-list" ref={listRef}>
         {messages.length ? messages.map((message) => {
@@ -1293,14 +1331,16 @@ export function RoomChat({ messages, userById, teams, value, canChat, readOnly =
         <form className="arena-chat-form" onSubmit={onSubmit}>
           <input
             value={value}
-            disabled={!canChat}
-            maxLength={500}
+            disabled={inputDisabled}
             onChange={(event) => onChange(event.target.value)}
-            placeholder={canChat ? "방 전체에 보낼 메시지" : "참여 후 채팅 가능"}
+            placeholder={locked ? "경기 종료됨" : canChat ? "방 전체에 보낼 메시지" : "참여 후 채팅 가능"}
           />
-          <Button type="submit" disabled={!canChat || !value.trim()}>
+          <Button type="submit" disabled={inputDisabled || !value.trim()}>
             <Send size={16} /> 전송
           </Button>
+          <small className={error ? "arena-chat-helper error" : "arena-chat-helper"}>
+            {error || `${value.length}/${CHAT_MESSAGE_MAX_LENGTH}`}
+          </small>
         </form>
       ) : null}
     </div>
@@ -1914,6 +1954,10 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
   const courtByName = useMemo(() => Object.fromEntries(registeredCourts.map((court) => [court.name, court])), [registeredCourts]);
   const [joinDraftByPost, setJoinDraftByPost] = useState({});
   const [chatDraftByPost, setChatDraftByPost] = useState({});
+  const [chatErrorByPost, setChatErrorByPost] = useState({});
+  const [chatCooldownUntilByPost, setChatCooldownUntilByPost] = useState({});
+  const [chatSendingPostId, setChatSendingPostId] = useState("");
+  const [chatAreaVisible, setChatAreaVisible] = useState(false);
   const [inviteDraft, setInviteDraft] = useState(null);
   const [slotActionDraft, setSlotActionDraft] = useState(null);
   const [roomEditDraftByPost, setRoomEditDraftByPost] = useState({});
@@ -1922,7 +1966,14 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
   const [confirmingMatchId, setConfirmingMatchId] = useState("");
   const [joiningPostId, setJoiningPostId] = useState("");
   const roomPostId = selectedPost?.id ?? "";
+  const sourceMatchPhaseForChat = sourceMatch ? getMatchRoomPhase(sourceMatch) : null;
+  const roomChatLocked = Boolean(
+    selectedPost?.status === "closed" ||
+    selectedPost?.confirmedAt ||
+    (sourceMatch && ["record", "cancelled", "void"].includes(sourceMatchPhaseForChat?.phase)),
+  );
   const modalPostDetailLoadRef = useRef("");
+  const chatSendLogRef = useRef({});
 
   useEffect(() => {
     if (!roomPostId) {
@@ -1937,9 +1988,9 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
   }, [app.actions, app.currentUser.id, app.remoteReady, roomPostId]);
 
   useEffect(() => {
-    if (!roomPostId || !app.remoteReady || !app.currentUser.id) return undefined;
-    return app.actions.subscribeRecruitingChat?.(roomPostId);
-  }, [app.actions.subscribeRecruitingChat, app.currentUser.id, app.remoteReady, roomPostId]);
+    if (!roomPostId || !app.remoteReady || !app.currentUser.id || !chatAreaVisible || roomChatLocked) return undefined;
+    return app.actions.pollRecruitingChat?.(roomPostId);
+  }, [app.actions.pollRecruitingChat, app.currentUser.id, app.remoteReady, chatAreaVisible, roomChatLocked, roomPostId]);
 
   useEffect(() => {
     if (!roomPostId || !app.remoteReady || !app.currentUser.id) return undefined;
@@ -2007,13 +2058,63 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
   const getChatDraft = (roomPost) => chatDraftByPost[roomPost.id] ?? '';
   const updateChatDraft = (roomPost, value) => {
     setChatDraftByPost((current) => ({ ...current, [roomPost.id]: value }));
+    setChatErrorByPost((current) => current[roomPost.id] ? { ...current, [roomPost.id]: "" } : current);
   };
-  const submitChat = (event, roomPost) => {
+  const setChatError = (postId, message) => {
+    setChatErrorByPost((current) => ({ ...current, [postId]: message }));
+  };
+  const clearChatCooldown = (postId, until) => {
+    window.setTimeout(() => {
+      setChatCooldownUntilByPost((current) => (
+        current[postId] === until ? { ...current, [postId]: 0 } : current
+      ));
+    }, Math.max(0, until - Date.now()));
+  };
+  const handleChatVisibleChange = useCallback((visible) => {
+    setChatAreaVisible(visible);
+  }, []);
+  const submitChat = async (event, roomPost) => {
     event.preventDefault();
+    if (!roomPost?.id || roomChatLocked) return;
+    const postId = roomPost.id;
     const body = getChatDraft(roomPost).trim();
     if (!body) return;
-    app.actions.sendRecruitingChat(roomPost.id, body);
-    updateChatDraft(roomPost, '');
+    if (body.includes("\n") || body.includes("\r")) {
+      setChatError(postId, "한 줄로 입력해주세요.");
+      return;
+    }
+    if (body.length > CHAT_MESSAGE_MAX_LENGTH) {
+      setChatError(postId, "60자 이내로 입력해주세요.");
+      return;
+    }
+    const now = Date.now();
+    if (chatSendingPostId === postId || Number(chatCooldownUntilByPost[postId] ?? 0) > now) {
+      setChatError(postId, "잠시 후 다시 입력해주세요.");
+      return;
+    }
+    const recentLog = (chatSendLogRef.current[postId] ?? []).filter((item) => now - item.at < CHAT_RATE_WINDOW_MS);
+    if (recentLog.some((item) => item.body === body && now - item.at < CHAT_REPEAT_BLOCK_MS)) {
+      setChatError(postId, "잠시 후 다시 입력해주세요.");
+      return;
+    }
+    if (recentLog.length >= CHAT_RATE_LIMIT) {
+      setChatError(postId, "잠시 후 다시 입력해주세요.");
+      return;
+    }
+    setChatSendingPostId(postId);
+    updateChatDraft(roomPost, "");
+    try {
+      const result = await app.actions.sendRecruitingChat(roomPost.id, body);
+      if (result?.ok === false) throw new Error(result.error || "chat_send_failed");
+      chatSendLogRef.current[postId] = [...recentLog, { body, at: now }];
+      const cooldownUntil = Date.now() + CHAT_SEND_COOLDOWN_MS;
+      setChatCooldownUntilByPost((current) => ({ ...current, [postId]: cooldownUntil }));
+      clearChatCooldown(postId, cooldownUntil);
+    } catch (error) {
+      setChatError(postId, "잠시 후 다시 입력해주세요.");
+    } finally {
+      setChatSendingPostId((current) => (current === postId ? "" : current));
+    }
   };
   const getCommandAnchor = (event) => {
     const target = event?.currentTarget;
@@ -2324,7 +2425,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const sourceRoomReadOnly = Boolean(matchRoom && (sourceMatch?.status === "disputed" || ["record", "cancelled", "void"].includes(sourceMatchPhase?.phase)));
         const activeInviteDraft = sourceRoomReadOnly ? null : activeInviteDraftRaw;
         const activeSelfSlotDraft = sourceRoomReadOnly ? null : activeSelfSlotDraftRaw;
-        const canUseChat = canChat && !sourceRoomReadOnly;
+        const canUseChat = canChat && !sourceRoomReadOnly && !roomChatLocked;
         const sourceMatchStarted = Boolean(sourceMatch?.startedAt);
         const currentUserIsSourceReferee = Boolean(sourceMatch && isMatchReferee(sourceMatch, app.currentUser.id) && isEligibleReferee(app.currentUser, sourceMatch.refereeTrustMin, app.state.settings?.refereeAppointments));
         const currentUserCanOperateStartedSourceMatch = Boolean(sourceMatch && (sourceMatch.refereeId ? currentUserIsSourceReferee : mine));
@@ -2951,8 +3052,13 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                 value={getChatDraft(selectedPost)}
                 canChat={canUseChat}
                 readOnly={sourceRoomReadOnly}
+                locked={roomChatLocked}
+                sending={chatSendingPostId === selectedPost.id}
+                cooldown={Number(chatCooldownUntilByPost[selectedPost.id] ?? 0) > Date.now()}
+                error={chatErrorByPost[selectedPost.id] ?? ""}
                 onChange={(value) => updateChatDraft(selectedPost, value)}
                 onSubmit={(event) => submitChat(event, selectedPost)}
+                onVisibleChange={handleChatVisibleChange}
               />
 
               <div className="arena-join-panel">

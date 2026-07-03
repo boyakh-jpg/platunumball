@@ -103,6 +103,10 @@ import { findDiscordConnectionOwner, getDiscordConnectionUserId } from "../lib/d
 import { getServerActionAvailability, postServerAction } from "../lib/serverActions.js";
 
 const LOCAL_MAINTENANCE_INTERVAL_MS = 60000;
+const ROOM_CHAT_MESSAGE_SELECT = "id,room_type,room_id,user_id,body,created_at,message_seq";
+const ROOM_CHAT_INITIAL_LIMIT = 30;
+const ROOM_CHAT_POLL_LIMIT = 20;
+const ROOM_CHAT_POLL_INTERVAL_MS = 3000;
 
 function sortByRating(items, selector) {
   return [...items].sort((a, b) => selector(b) - selector(a));
@@ -291,8 +295,9 @@ function mergeRecruitingPostsById(current = [], incoming = []) {
 function normalizeRecruitingChatMessage(message = {}) {
   return {
     id: String(message.id ?? ""),
+    messageSeq: Number(message.messageSeq ?? message.message_seq ?? 0),
     userId: message.userId ?? message.user_id ?? "",
-    body: String(message.body ?? "").slice(0, 500),
+    body: String(message.body ?? "").slice(0, 60),
     createdAt: message.createdAt ?? message.created_at ?? new Date().toISOString(),
   };
 }
@@ -308,7 +313,7 @@ function mergeRecruitingChatMessages(currentMessages = [], incomingMessage = {})
   const exactIndex = next.findIndex((item) => message.id && item.id === message.id);
   if (exactIndex >= 0) {
     next[exactIndex] = message;
-    return next.sort((a, b) => String(a.createdAt ?? "").localeCompare(String(b.createdAt ?? ""))).slice(-50);
+    return sortRecruitingChatMessages(next).slice(-50);
   }
   const messageTime = Date.parse(message.createdAt || 0);
   for (let index = next.length - 1; index >= 0; index -= 1) {
@@ -318,12 +323,19 @@ function mergeRecruitingChatMessages(currentMessages = [], incomingMessage = {})
     const itemTime = Date.parse(item.createdAt || 0);
     if (Number.isFinite(messageTime) && Number.isFinite(itemTime) && Math.abs(messageTime - itemTime) <= 30000) {
       next[index] = message;
-      return next.sort((a, b) => String(a.createdAt ?? "").localeCompare(String(b.createdAt ?? ""))).slice(-50);
+      return sortRecruitingChatMessages(next).slice(-50);
     }
   }
-  return [...next, message]
-    .sort((a, b) => String(a.createdAt ?? "").localeCompare(String(b.createdAt ?? "")))
-    .slice(-50);
+  return sortRecruitingChatMessages([...next, message]).slice(-50);
+}
+
+function sortRecruitingChatMessages(messages = []) {
+  return [...messages].sort((a, b) => {
+    const seqA = Number(a.messageSeq ?? 0);
+    const seqB = Number(b.messageSeq ?? 0);
+    if (seqA || seqB) return seqA - seqB;
+    return String(a.createdAt ?? "").localeCompare(String(b.createdAt ?? ""));
+  });
 }
 
 function mergeRecruitingChatMessage(state, postId = "", incomingMessage = {}) {
@@ -339,6 +351,19 @@ function mergeRecruitingChatMessage(state, postId = "", incomingMessage = {}) {
     return { ...post, roomState: { ...roomState, chatMessages: nextMessages } };
   });
   return changed ? { ...state, recruitingPosts } : state;
+}
+
+function mergeRecruitingChatMessageBatch(state, postId = "", messages = []) {
+  return (messages ?? []).reduce((nextState, message) => (
+    mergeRecruitingChatMessage(nextState, postId, message)
+  ), state);
+}
+
+function getRecruitingChatLastSeq(state = {}, postId = "") {
+  const roomId = String(postId ?? "").trim();
+  const post = (state.recruitingPosts ?? []).find((item) => item.id === roomId);
+  const messages = post?.roomState?.chatMessages ?? [];
+  return Math.max(0, ...messages.map((message) => Number(message.messageSeq ?? 0)).filter(Number.isFinite));
 }
 
 function sortMatchesByRemoteCursor(matches = []) {
@@ -887,6 +912,7 @@ export function useAppData(authUser = null) {
   const [directoryStatus, setDirectoryStatus] = useState({ loading: false, loaded: !isSupabaseConfigured, error: "" });
   const [profileRecordsLoaded, setProfileRecordsLoaded] = useState(false);
   const [remoteReady, setRemoteReady] = useState(!isSupabaseConfigured);
+  const stateRef = useRef(state);
   const adminContextRef = useRef(EMPTY_ADMIN_CONTEXT);
   const remoteReadyRef = useRef(!isSupabaseConfigured);
   const directoryPromiseRef = useRef(null);
@@ -909,6 +935,10 @@ export function useAppData(authUser = null) {
   const syncedDiscordDeliveryIdsRef = useRef(new Set());
   const profileKey = authUserId ?? "local-demo";
   const profileLocked = isPersistentAuthUserId(authUserId);
+
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
   const serverProfileBound = profileLocked;
   const effectiveProfileBindings = isSupabaseConfigured ? {} : profileBindings;
   const currentUserId = getBoundAuthProfileId(state, authUserId, effectiveProfileBindings, profileKey);
@@ -2446,28 +2476,61 @@ export function useAppData(authUser = null) {
       setMatchRoomPlayerPlacement: (matchId, playerId, placement) => applyMatchMutation(matchId, (prev) => setMatchRoomPlayerPlacement({ ...prev, currentUserId }, matchId, playerId, placement), { action: "setMatchRoomPlayerPlacement", playerId, placement }),
       removeMatchRoomPlayer: (matchId, playerId) => applyMatchMutation(matchId, (prev) => removeMatchRoomPlayer({ ...prev, currentUserId }, matchId, playerId), { action: "removeMatchRoomPlayer", playerId }),
       sendRecruitingChat: (postId, body) => applyRecruitingPostMutation(postId, (prev) => sendRecruitingChat({ ...prev, currentUserId }, postId, body), { action: "sendRecruitingChat", body, optimisticBeforeServerCheck: true }),
-      subscribeRecruitingChat: (postId) => {
+      pollRecruitingChat: (postId) => {
         const roomId = String(postId ?? "").trim();
-        if (!isSupabaseConfigured || !supabase || !roomId) return () => {};
-        const channel = supabase.channel(`room-chat:recruiting:${roomId}:${Date.now().toString(36)}`);
-        channel
-          .on("postgres_changes", {
-            event: "INSERT",
-            schema: "public",
-            table: "room_chat_messages",
-            filter: `room_id=eq.${roomId}`,
-          }, (payload) => {
-            const row = payload?.new ?? {};
-            if (row.room_type && row.room_type !== "recruiting") return;
-            setState((prev) => mergeRecruitingChatMessage(prev, roomId, row));
-          })
-          .subscribe((status) => {
-            if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-              console.warn("Recruiting chat realtime subscription failed.", { roomId, status });
+        if (!isSupabaseConfigured || !supabase || !roomId || typeof window === "undefined" || typeof document === "undefined") return () => {};
+        let stopped = false;
+        let intervalId = null;
+        let fetching = false;
+        const fetchMessages = async () => {
+          if (stopped || fetching || document.hidden) return;
+          fetching = true;
+          try {
+            const lastSeq = getRecruitingChatLastSeq(stateRef.current, roomId);
+            let query = supabase
+              .from("room_chat_messages")
+              .select(ROOM_CHAT_MESSAGE_SELECT)
+              .eq("room_type", "recruiting")
+              .eq("room_id", roomId);
+            if (lastSeq > 0) {
+              query = query.gt("message_seq", lastSeq).order("message_seq", { ascending: true }).limit(ROOM_CHAT_POLL_LIMIT);
+            } else {
+              query = query.order("message_seq", { ascending: false }).limit(ROOM_CHAT_INITIAL_LIMIT);
             }
-          });
+            const { data, error } = await query;
+            if (error) throw error;
+            const rows = lastSeq > 0 ? (data ?? []) : [...(data ?? [])].reverse();
+            if (!rows.length) return;
+            setState((prev) => mergeRecruitingChatMessageBatch(prev, roomId, rows));
+          } catch (error) {
+            console.warn("Recruiting chat polling skipped.", error.message);
+          } finally {
+            fetching = false;
+          }
+        };
+        const start = () => {
+          if (stopped || intervalId || document.hidden) return;
+          void fetchMessages();
+          intervalId = window.setInterval(fetchMessages, ROOM_CHAT_POLL_INTERVAL_MS);
+        };
+        const stop = () => {
+          if (!intervalId) return;
+          window.clearInterval(intervalId);
+          intervalId = null;
+        };
+        const handleVisibilityChange = () => {
+          if (document.hidden) {
+            stop();
+            return;
+          }
+          start();
+        };
+        document.addEventListener("visibilitychange", handleVisibilityChange);
+        start();
         return () => {
-          void supabase.removeChannel(channel);
+          stopped = true;
+          stop();
+          document.removeEventListener("visibilitychange", handleVisibilityChange);
         };
       },
       subscribeRecruitingRoom: (postId) => {

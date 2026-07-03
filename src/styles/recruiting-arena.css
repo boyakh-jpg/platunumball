@@ -2628,6 +2628,19 @@ button.arena-room-player-slot {
   gap: 8px;
 }
 
+.arena-chat-helper {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 850;
+  min-height: 1em;
+  text-align: right;
+}
+
+.arena-chat-helper.error {
+  color: var(--danger);
+}
+
 .arena-join-panel {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;

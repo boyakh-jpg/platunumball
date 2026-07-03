@@ -36,7 +36,7 @@ function nullableText(value) {
   return text || null;
 }
 
-const ROOM_CHAT_MESSAGE_COLUMNS = "id,room_type,room_id,user_id,body,created_at";
+const ROOM_CHAT_MESSAGE_COLUMNS = "id,room_type,room_id,user_id,body,created_at,message_seq";
 
 function isTrue(value) {
   return value === true || value === "true";
@@ -733,8 +733,7 @@ function sendTimedJson(response, statusCode, payload, timing, includeTiming = fa
 function sanitizeChatBody(value = "") {
   return String(value ?? "")
     .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
-    .trim()
-    .slice(0, 500);
+    .trim();
 }
 
 function isMissingRoomChatMessages(error = {}) {
@@ -745,8 +744,9 @@ function isMissingRoomChatMessages(error = {}) {
 function fromRoomChatMessageRow(row = {}) {
   return {
     id: String(row.id ?? ""),
+    messageSeq: Number(row.message_seq ?? 0),
     userId: row.user_id ?? "",
-    body: String(row.body ?? "").slice(0, 500),
+    body: String(row.body ?? "").slice(0, 60),
     createdAt: row.created_at ?? new Date().toISOString(),
   };
 }
@@ -896,6 +896,8 @@ async function persistRecruitingRoomChatMessage(context, operation = {}) {
   const text = sanitizeChatBody(operation.body);
   if (!postId) reject(400, "missing_recruiting_post");
   if (!text) reject(400, "empty_chat_message");
+  if (text.includes("\n") || text.includes("\r")) reject(400, "single_line_chat_required");
+  if (text.length > 60) reject(400, "chat_message_too_long");
   const existingPostSnapshot = await loadRecruitingChatPermissionSnapshot(context, postId);
   if (!canSyncRecruitingAction(context.profileId, existingPostSnapshot, existingPostSnapshot, "sendRecruitingChat", { action: "sendRecruitingChat", body: text, postId })) {
     reject(403, "recruiting_sync_permission_denied");

@@ -7658,7 +7658,8 @@ export function sendRecruitingChat(state, postId, body = "") {
   const disciplineBlock = getDisciplineBlockedState(state, "방 채팅");
   if (disciplineBlock) return disciplineBlock;
   const post = state.recruitingPosts?.find((item) => item.id === postId);
-  const text = String(body).trim().slice(0, 500);
+  const text = String(body).trim();
+  if (text.includes("\n") || text.includes("\r") || text.length > 60) return state;
   if (!post || !text || !isRecruitingRoomMember(post, state.currentUserId, state)) return state;
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
   const message = {

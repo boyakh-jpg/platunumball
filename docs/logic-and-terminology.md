@@ -1847,12 +1847,14 @@ flowchart TD
 
 - `sendRecruitingChat` stores new recruiting room chat in `room_chat_messages`, not `recruiting_posts.room_state.chatMessages`.
 - Room chat is plain text only. React renders message bodies as text; no HTML/Markdown/link behavior is allowed.
-- Open room modals may subscribe to Supabase Realtime `INSERT` events for `room_chat_messages`. Closed/list screens must not subscribe.
-- `RecruitingRoomModal` owns open-room chat/detail subscriptions so the same room behaves identically from Matches and Recruiting.
+- Open room modals do not subscribe to Supabase Realtime for chat. Chat uses local polling only while the room modal chat area is visible.
+- `RecruitingRoomModal` owns open-room chat polling and detail refresh so the same room behaves identically from Matches and Recruiting.
 - Recruiting list/feed responses stay thin. Room chat is included only for explicit post detail loads.
 - Legacy `roomState.chatMessages` is read/merged only as fallback for older rooms or unapplied migration states.
 - `sendRecruitingChat` may render optimistically before server-action availability checks, but server failure must roll back the local message.
 - Chat writes must not refresh room feed rows or mutate `recruiting_posts.updated_at`.
+- Chat detail load reads only the latest 30 messages. Polling reads only messages newer than the local `messageSeq` cursor, up to 20 rows per poll, and stops when the tab is hidden or the game/room is closed.
+- Chat body is one-line plain text, 60 characters or fewer. Client-side cooldown/rate checks are UX only; DB trigger/RLS blocks direct insert abuse and closed-room inserts.
 
 ## 2026-07-01 test login and shared rule constants
 

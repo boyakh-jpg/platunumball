@@ -21,7 +21,7 @@ const TEAM_MEMBER_COLUMNS = "team_id,user_id,role";
 const COURT_COLUMNS = "id,name";
 const RECRUITING_POST_COLUMNS = "id,type,title,visibility,region,court_id,court_name,mode,scheduled_at,scheduled_date,scheduled_time,ranked,official,pre_registered,rating_scale,age_restriction,allowed_age_groups,rules,stakes,court_reserved,court_fee,spots,team_id,target_team_id,referee_id,referee_trust_min,stat_entry_minutes,dispute_minutes,room_state,host_join_mode,host_side,host_ready,side_capacity,player_ids,position,player_id,memo,status,confirmed_at,created_at,updated_at";
 const RECRUITING_APPLICATION_COLUMNS = "post_id,kind,team_id,player_id,side,status,reserve,position,player_ids,source_team_id,source_entry_id,created_at,updated_at";
-const ROOM_CHAT_MESSAGE_COLUMNS = "id,room_type,room_id,user_id,body,created_at";
+const ROOM_CHAT_MESSAGE_COLUMNS = "id,room_type,room_id,user_id,body,created_at,message_seq";
 const RECRUITING_FEED_MAX_LIMIT = 200;
 const RECRUITING_PUBLIC_PAGE_MAX_LIMIT = 80;
 const RECRUITING_FEED_ROW_MAX_LIMIT = 320;
@@ -81,8 +81,9 @@ function isMissingTable(error = {}, table = "") {
 function fromRoomChatMessageRow(row = {}) {
   return {
     id: String(row.id ?? ""),
+    messageSeq: Number(row.message_seq ?? 0),
     userId: row.user_id ?? "",
-    body: String(row.body ?? "").slice(0, 500),
+    body: String(row.body ?? "").slice(0, 60),
     createdAt: row.created_at ?? "",
   };
 }
@@ -92,8 +93,9 @@ function mergeRoomChatMessages(legacyMessages = [], remoteMessages = []) {
   [...(legacyMessages ?? []), ...(remoteMessages ?? [])].forEach((message) => {
     const next = {
       id: String(message?.id ?? ""),
+      messageSeq: Number(message?.messageSeq ?? message?.message_seq ?? 0),
       userId: message?.userId ?? message?.user_id ?? "",
-      body: String(message?.body ?? "").slice(0, 500),
+      body: String(message?.body ?? "").slice(0, 60),
       createdAt: message?.createdAt ?? message?.created_at ?? "",
     };
     if (!next.userId || !next.body.trim()) return;
@@ -107,20 +109,20 @@ function mergeRoomChatMessages(legacyMessages = [], remoteMessages = []) {
     if (!duplicate) merged.push(next);
   });
   return merged
-    .sort((a, b) => String(a.createdAt ?? "").localeCompare(String(b.createdAt ?? "")))
+    .sort((a, b) => (Number(a.messageSeq ?? 0) - Number(b.messageSeq ?? 0)) || String(a.createdAt ?? "").localeCompare(String(b.createdAt ?? "")))
     .slice(-50);
 }
 
-async function fetchRoomChatMessagesByPostIds(client, postIds = [], limitPerRoom = 50) {
+async function fetchRoomChatMessagesByPostIds(client, postIds = [], limitPerRoom = 30) {
   const ids = uniqueIds(postIds);
   if (!ids.length) return new Map();
-  const cappedLimit = Math.max(1, Math.min(50, Number(limitPerRoom) || 50));
+  const cappedLimit = Math.max(1, Math.min(30, Number(limitPerRoom) || 30));
   const { data, error } = await client
     .from("room_chat_messages")
     .select(ROOM_CHAT_MESSAGE_COLUMNS)
     .eq("room_type", "recruiting")
     .in("room_id", ids)
-    .order("created_at", { ascending: false })
+    .order("message_seq", { ascending: false })
     .limit(ids.length * cappedLimit);
   if (error) {
     if (isMissingTable(error, "room_chat_messages")) return new Map();
