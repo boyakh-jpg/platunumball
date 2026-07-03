@@ -1016,6 +1016,7 @@ function collectRecruitingScope(postRows = [], applicationRows = [], profileId =
 function collectRecruitingCardScope(cards = [], profileId = "") {
   const profileIds = [profileId];
   const teamIds = [];
+  const courtIds = [];
   cards.forEach((post) => {
     const roomState = post?.roomState && typeof post.roomState === "object" && !Array.isArray(post.roomState)
       ? post.roomState
@@ -1044,6 +1045,7 @@ function collectRecruitingCardScope(cards = [], profileId = "") {
       ...collectTeamIdsFromRoomKeys(roomState.partyLeaders),
       ...collectTeamIdsFromRoomKeys(roomState.partyReserves),
     );
+    courtIds.push(post?.courtId);
     applicants.forEach((application) => {
       profileIds.push(application?.playerId, ...flattenIdValues(application?.playerIds));
       teamIds.push(application?.teamId, application?.sourceTeamId);
@@ -1052,7 +1054,14 @@ function collectRecruitingCardScope(cards = [], profileId = "") {
   return {
     profileIds: uniqueIds(profileIds),
     teamIds: uniqueIds(teamIds),
+    courtIds: uniqueIds(courtIds),
   };
+}
+
+function attachRecruitingCardReferences(card = {}, courtById = {}) {
+  if (!card?.id) return card;
+  const courtName = card.court ?? courtById[card.courtId]?.name;
+  return courtName ? { ...card, court: courtName } : card;
 }
 
 function toClientTeam(row = {}, memberRows = []) {
@@ -1241,7 +1250,7 @@ export async function loadCompactRecruitingList(context, {
     const scope = {
       profileIds: uniqueIds([...rowScope.profileIds, ...cardScope.profileIds]),
       teamIds: uniqueIds([...rowScope.teamIds, ...cardScope.teamIds]),
-      courtIds: rowScope.courtIds,
+      courtIds: uniqueIds([...rowScope.courtIds, ...cardScope.courtIds]),
     };
     const profileIdsForLookup = scope.profileIds.filter((profileId) => profileId !== currentUser.id);
     const [
@@ -1278,7 +1287,10 @@ export async function loadCompactRecruitingList(context, {
     const applicationsByPost = groupBy(applicationRows ?? [], "post_id");
     const rowPostById = new Map(postRows.map((post) => [post.id, fromRemoteRecruitingPost(post, applicationsByPost, courtById)]));
     const responsePosts = targetPostIds
-      .map((postId) => cardById.get(postId) ?? rowPostById.get(postId))
+      .map((postId) => {
+        const card = cardById.get(postId);
+        return card ? attachRecruitingCardReferences(card, courtById) : rowPostById.get(postId);
+      })
       .filter(Boolean);
     const state = normalizeState({
       currentUserId: currentUser.id,

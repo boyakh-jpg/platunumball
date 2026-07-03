@@ -144,6 +144,32 @@ function uniqueFeedCards(rows = [], ids = []) {
   return ids.map((id) => cards.get(id)).filter(Boolean);
 }
 
+function collectMatchCardScope(cards = []) {
+  return {
+    teamIds: unique((cards ?? []).flatMap((match) => [match?.teamA?.teamId, match?.teamB?.teamId])),
+    courtIds: unique((cards ?? []).map((match) => match?.courtId)),
+  };
+}
+
+function attachMatchCardReferences(match = {}, teamById = {}, courtById = {}) {
+  if (!match?.id) return match;
+  const courtName = match.court ?? courtById[match.courtId]?.name;
+  const teamAId = match.teamA?.teamId;
+  const teamBId = match.teamB?.teamId;
+  return {
+    ...match,
+    ...(courtName ? { court: courtName } : {}),
+    teamA: {
+      ...(match.teamA ?? {}),
+      name: match.teamA?.name ?? teamById[teamAId]?.name ?? "Team A",
+    },
+    teamB: {
+      ...(match.teamB ?? {}),
+      name: match.teamB?.name ?? teamById[teamBId]?.name ?? "Team B",
+    },
+  };
+}
+
 function filterActiveMatchCards(matches = [], activeOnly = false, allowRecentCompleted = false) {
   if (!activeOnly) return matches;
   return (matches ?? []).filter((match) => (
@@ -734,11 +760,27 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   };
 
   if (matches.length && !matchRows.length) {
+    const cardScope = collectMatchCardScope(matches);
+    const [
+      { data: teamRows, error: teamError },
+      { data: courtRows, error: courtError },
+    ] = await timeStep(debugTiming, "cardRelatedRowsMs", () => Promise.all([
+      cardScope.teamIds.length
+        ? context.supabase.from("teams").select(TEAM_COLUMNS).in("id", cardScope.teamIds).is("deleted_at", null)
+        : Promise.resolve({ data: [], error: null }),
+      fetchCourtRowsByIds(context.supabase, cardScope.courtIds),
+    ]));
+    if (teamError) throw teamError;
+    if (courtError) throw courtError;
+    const teams = (teamRows ?? []).map(toClientTeam);
+    const teamById = Object.fromEntries(teams.map((team) => [team.id, team]));
+    const courtById = firstBy(courtRows ?? [], "id");
+    const referencedMatches = matches.map((match) => attachMatchCardReferences(match, teamById, courtById));
     const state = normalizeState({
       currentUserId: currentUser.id,
       users: [compactUser(currentUser, currentUser.id)],
-      teams: [],
-      matches,
+      teams,
+      matches: referencedMatches,
       settings,
     }, { includeDemo: false });
     const recruitingSchedule = await timeStep(debugTiming, "recruitingScheduleMs", () => recruitingSchedulePromise);
@@ -772,7 +814,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
         recruitingScheduleCount,
       },
       updatedAt: Math.max(
-        ...[...matches, context.profile].filter(Boolean)
+        ...[...referencedMatches, context.profile].filter(Boolean)
           .map((row) => new Date(row.updatedAt ?? row.updated_at ?? row.createdAt ?? row.created_at ?? 0).getTime())
           .filter((value) => Number.isFinite(value)),
         0,
