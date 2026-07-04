@@ -98,6 +98,19 @@ function RoomModalErrorView({ error, onClose }) {
   );
 }
 
+function RoomModalLoadingView({ onClose }) {
+  return (
+    <div className="arena-modal-backdrop" role="presentation" onMouseDown={onClose}>
+      <aside className="arena-room-modal" role="dialog" aria-modal="true" aria-label="방 불러오는 중" onMouseDown={(event) => event.stopPropagation()}>
+        <div className="arena-empty-state">
+          <strong>방 불러오는 중</strong>
+          <span>잠시 후 다시 표시됩니다.</span>
+        </div>
+      </aside>
+    </div>
+  );
+}
+
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 const tournamentFormatLabels = {
   league: "리그",
@@ -708,7 +721,9 @@ export default function Matches({ app }) {
   const [selectedTournamentId, setSelectedTournamentId] = useState(null);
   const [selectedMatchId, setSelectedMatchId] = useState(null);
   const [selectedRecruitingPostId, setSelectedRecruitingPostId] = useState(null);
+  const [selectedMatchDetailLoadingId, setSelectedMatchDetailLoadingId] = useState(null);
   const queryMatchId = searchParams.get("match");
+  const activeSelectedMatchId = selectedMatchId ?? queryMatchId;
   const todayValue = toDateInputValue();
   const maxScheduleDate = addDays(todayValue, 365);
   const selectedView = VIEWS.find((view) => view.id === viewId) ?? VIEWS[0];
@@ -751,7 +766,8 @@ export default function Matches({ app }) {
   }, [app.state, selectedMatch]);
   const selectedMatchRoomPost = selectedMatchRoom.post;
   const selectedMatchRoomError = selectedMatchRoom.error;
-  useBodyScrollLock(Boolean(selectedTournament || selectedMatch || selectedRecruitingPost));
+  const selectedMatchDetailLoading = Boolean(activeSelectedMatchId && selectedMatchDetailLoadingId === activeSelectedMatchId);
+  useBodyScrollLock(Boolean(selectedTournament || selectedMatch || selectedRecruitingPost || selectedMatchDetailLoading));
   const closeSelectedMatch = () => {
     setSelectedMatchId(null);
     if (!queryMatchId) return;
@@ -762,15 +778,19 @@ export default function Matches({ app }) {
   const requestMatchDetail = (matchId) => {
     if (!matchId || app.remoteReady === false || !app.currentUser.id || requestedMatchDetailsRef.current.has(matchId)) return;
     requestedMatchDetailsRef.current.add(matchId);
+    setSelectedMatchDetailLoadingId(matchId);
     const request = app.actions.loadMatchDetail?.(matchId);
     if (!request?.then) {
       if (!request) requestedMatchDetailsRef.current.delete(matchId);
+      setSelectedMatchDetailLoadingId((currentId) => currentId === matchId ? null : currentId);
       return;
     }
     request.then((count) => {
       if (!count) requestedMatchDetailsRef.current.delete(matchId);
     }).catch(() => {
       requestedMatchDetailsRef.current.delete(matchId);
+    }).finally(() => {
+      setSelectedMatchDetailLoadingId((currentId) => currentId === matchId ? null : currentId);
     });
   };
   const openSelectedRecruitingPost = (postId) => {
@@ -1198,16 +1218,19 @@ export default function Matches({ app }) {
         );
       })() : null}
 
-      {selectedMatch && selectedMatchRoomError ? (
+      {!selectedMatchDetailLoading && selectedMatch && selectedMatchRoomError ? (
         <RoomModalErrorView error={selectedMatchRoomError} onClose={closeSelectedMatch} />
       ) : null}
 
-      {selectedMatch && selectedMatchRoomPost ? (
+      {selectedMatchDetailLoading ? (
+        <RoomModalLoadingView onClose={closeSelectedMatch} />
+      ) : selectedMatch && selectedMatchRoomPost ? (
         <RoomModalErrorBoundary key={selectedMatch.id} onClose={closeSelectedMatch}>
           <RecruitingRoomModal
             app={app}
             post={selectedMatchRoomPost}
             sourceMatch={selectedMatch}
+            skipInitialDetailLoad
             onClose={closeSelectedMatch}
           />
         </RoomModalErrorBoundary>

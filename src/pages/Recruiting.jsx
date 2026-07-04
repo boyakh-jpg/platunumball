@@ -1959,7 +1959,7 @@ export function RecruitingRoomModal(props) {
   return <RecruitingRoomModalReady {...props} />;
 }
 
-function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sourceMatch = null, onInvitationAccepted = null, onJoined = null }) {
+function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sourceMatch = null, onInvitationAccepted = null, onJoined = null, skipInitialDetailLoad = false }) {
   const selectedPost = post;
   const myTeams = useMemo(
     () => app.state.teams.filter((team) => team.members.some((member) => member.userId === app.currentUser.id)),
@@ -2006,10 +2006,14 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
     }
     if (!app.remoteReady || !app.currentUser.id) return;
     const refreshKey = `${roomPostId}:${app.currentUser.id}`;
+    if (sourceMatch || skipInitialDetailLoad) {
+      modalPostDetailLoadRef.current = refreshKey;
+      return;
+    }
     if (modalPostDetailLoadRef.current === refreshKey) return;
     modalPostDetailLoadRef.current = refreshKey;
     app.actions.loadRecruitingPost?.(roomPostId);
-  }, [app.actions, app.currentUser.id, app.remoteReady, roomPostId]);
+  }, [app.actions, app.currentUser.id, app.remoteReady, roomPostId, skipInitialDetailLoad, sourceMatch]);
 
   useEffect(() => {
     if (!sourceMatch?.id) return;
@@ -3508,6 +3512,7 @@ function RecruitingReady({ app }) {
   const [queueControlsOpen, setQueueControlsOpen] = useState(true);
   const [composeOpen, setComposeOpen] = useState(false);
   const [selectedPostId, setSelectedPostId] = useState(null);
+  const [selectedPostDetailLoadingId, setSelectedPostDetailLoadingId] = useState(null);
   const targetPostLoadRef = useRef("");
   const selectedPostRefreshRef = useRef("");
   const myRecruitingLoadRef = useRef("");
@@ -3672,7 +3677,13 @@ function RecruitingReady({ app }) {
     ? app.state.recruitingPosts.find((post) => post.id === selectedPostId)
     : null;
   const selectedPostPending = Boolean(selectedPostId && !selectedPost);
-  useBodyScrollLock(Boolean(selectedPost) || selectedPostPending || composeOpen);
+  const selectedPostDetailLoading = Boolean(selectedPostId && selectedPostDetailLoadingId === selectedPostId);
+  const openSelectedPost = (postId) => {
+    if (!postId) return;
+    setSelectedPostDetailLoadingId(postId);
+    setSelectedPostId(postId);
+  };
+  useBodyScrollLock(Boolean(selectedPost) || selectedPostPending || selectedPostDetailLoading || composeOpen);
 
   useEffect(() => {
     if (!targetPostId || !app.remoteReady) return;
@@ -3686,24 +3697,32 @@ function RecruitingReady({ app }) {
     }
     if (targetPostLoadRef.current === targetPostId) return;
     targetPostLoadRef.current = targetPostId;
-    app.actions.loadRecruitingPost?.(targetPostId);
+    setSelectedPostDetailLoadingId(targetPostId);
+    Promise.resolve(app.actions.loadRecruitingPost?.(targetPostId)).finally(() => {
+      setSelectedPostDetailLoadingId((currentId) => currentId === targetPostId ? null : currentId);
+    });
   }, [app.actions, app.currentUser.id, app.remoteReady, app.state.recruitingPosts, targetPostId]);
 
   useEffect(() => {
     if (!targetPostId) return;
+    setSelectedPostDetailLoadingId(targetPostId);
     setSelectedPostId(targetPostId);
   }, [targetPostId]);
 
   useEffect(() => {
     if (!selectedPostId) {
       selectedPostRefreshRef.current = "";
+      setSelectedPostDetailLoadingId(null);
       return;
     }
     if (!app.remoteReady || !app.currentUser.id) return;
     const refreshKey = `${selectedPostId}:${app.currentUser.id}`;
     if (selectedPostRefreshRef.current === refreshKey) return;
     selectedPostRefreshRef.current = refreshKey;
-    app.actions.loadRecruitingPost?.(selectedPostId);
+    setSelectedPostDetailLoadingId(selectedPostId);
+    Promise.resolve(app.actions.loadRecruitingPost?.(selectedPostId)).finally(() => {
+      setSelectedPostDetailLoadingId((currentId) => currentId === selectedPostId ? null : currentId);
+    });
   }, [app.actions, app.currentUser.id, app.remoteReady, selectedPostId]);
 
   useEffect(() => {
@@ -3912,7 +3931,7 @@ function RecruitingReady({ app }) {
               id={`recruiting-room-${post.id}`}
               key={post.id}
               className={`om-match-card om-status-contract arena-lobby-card ${lobby.canConfirm ? "arena-state-ready" : ""} ${myRoom ? "arena-my-room" : ""} ${invited ? "arena-invited-room" : ""} ${targetPostId === post.id ? "arena-target-room" : ""}`}
-              onClick={() => setSelectedPostId(post.id)}
+              onClick={() => openSelectedPost(post.id)}
             >
               <div className="om-card-main">
                 <div className="om-card-kicker">
@@ -3943,7 +3962,7 @@ function RecruitingReady({ app }) {
 
               <button type="button" className="button button-secondary button-md om-room-link" onClick={(event) => {
                 event.stopPropagation();
-                setSelectedPostId(post.id);
+                openSelectedPost(post.id);
               }}>
                 {roomStatus.actionLabel}
               </button>
@@ -3975,25 +3994,29 @@ function RecruitingReady({ app }) {
         </div>
       ) : null}
 
-      {selectedPost ? (
+      {selectedPost && !selectedPostDetailLoading ? (
         <RecruitingRoomModal
           app={app}
           post={selectedPost}
+          skipInitialDetailLoad
           onClose={() => setSelectedPostId(null)}
           onOpenMatch={(matchId) => navigate(`/app/matches?match=${matchId}`)}
           onInvitationAccepted={() => {
             if (roomScope === "invited") setRoomScope("joined");
           }}
           onJoined={(postId) => {
+            setSelectedPostDetailLoadingId(postId);
             setSelectedPostId(postId);
             selectedPostRefreshRef.current = "";
-            app.actions.loadRecruitingPost?.(postId);
+            Promise.resolve(app.actions.loadRecruitingPost?.(postId)).finally(() => {
+              setSelectedPostDetailLoadingId((currentId) => currentId === postId ? null : currentId);
+            });
             if (targetPostId !== postId) {
               navigate(`/app/recruiting?post=${encodeURIComponent(postId)}`, { replace: true });
             }
           }}
         />
-      ) : selectedPostPending ? (
+      ) : selectedPostPending || selectedPostDetailLoading ? (
         <div className="arena-compose-backdrop" role="presentation" onPointerDown={() => setSelectedPostId(null)}>
           <aside className="arena-lobby-modal" role="dialog" aria-modal="true" aria-label="매치방 불러오는 중" onPointerDown={(event) => event.stopPropagation()}>
             <div className="arena-empty-state">
