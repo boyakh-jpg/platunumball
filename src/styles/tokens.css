@@ -1,9 +1,15 @@
-@import url("https://fonts.googleapis.com/css2?family=Black+Han+Sans&display=swap");
+@font-face {
+  font-family: "KBO Dia Gothic";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/assets/fonts/KBO-Dia-Gothic_bold.woff") format("woff");
+}
 
 :root {
   color-scheme: dark;
-  --sports-display-font: "Black Han Sans", Impact, "Arial Narrow", "Roboto Condensed", sans-serif;
-  --sports-display-condense: scaleX(0.9);
+  --sports-display-font: "KBO Dia Gothic", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --sports-display-condense: scaleX(0.92);
   --bg: #303132;
   --surface: #242526;
   --surface-2: rgba(255, 255, 255, 0.055);

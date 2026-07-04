@@ -1,5 +1,10 @@
 # 2026-06-27 모집/경기 원격 로딩 상태
 
+## 2026-07-04 KBO Dia Gothic 스포츠 표시체
+1. 스포츠 표시 텍스트 토큰 `--sports-display-font`는 `KBO Dia Gothic` Bold 웹폰트를 우선 사용한다.
+2. 경기 카드, 모집 카드, 방 모달 팀명/VS/점수, 히어로 제목처럼 경기·점수 강조 영역만 이 토큰을 쓴다.
+3. 음수 `letter-spacing`은 쓰지 않는다. 좁은 스포츠 느낌은 `--sports-display-condense`의 `scaleX(0.92)`로 처리한다.
+
 ## 2026-07-04 전역 로더 표시
 1. `BasketballLoader` 전역 오버레이는 초기 원격 hydrate, auth 확인, lazy page load, 명시적 blocking 호출에서만 보인다.
 2. 설정 저장, 피드 보강, 검색, 채팅 polling 같은 배경성 서버 호출은 전역 오버레이를 띄우지 않는다.
@@ -895,7 +900,7 @@ UI 수정 전:
 5. Hero title typography uses the shared `--hero-title-*` tokens. Home, Matches, Recruiting, room, profile, team, season, rulebook, and tournament heroes keep page layout differences but share title color, shadow, condensed font stack, line-height, and letter spacing.
 6. Page-specific cards and panels should be added to the shared primitive selector layer first. Only layout-specific size/gap/placement belongs in page CSS.
 7. Condensed hero title fonts use non-negative tracking through `--hero-title-letter-spacing`. English-heavy words like `RANKBALL` must not use tight negative spacing.
-7-1. Sports display emphasis uses `Black Han Sans` through `--sports-display-font` only for hero titles, tier spotlight text, team/versus labels, and scoreboard/record numbers. Do not apply it to body copy, buttons, inputs, or dense helper text. Width tuning uses `scaleX(0.9)` via `--sports-display-condense`; do not simulate it with negative letter spacing.
+7-1. Sports display emphasis uses `KBO Dia Gothic` Bold through `--sports-display-font` only for hero titles, tier spotlight text, team/versus labels, and scoreboard/record numbers. Do not apply it to body copy, buttons, inputs, or dense helper text. Width tuning uses `scaleX(0.92)` via `--sports-display-condense`; do not simulate it with negative letter spacing.
 8. Segmented control groups use `--control-group-*` tokens. Group radius and padding must leave enough inner space so active buttons are never clipped by the group border or scroll container.
 9. New buttons, button groups, cards, inputs, and room modal surfaces use the `--ui-*` aliases in `tokens.css` as the stable module API.
 10. `recruiting-arena.css` and `matches-arena.css` load after `globals.css`; each file must end by reconnecting page selectors to the same `--ui-*` primitive layer to prevent chunk-specific override drift.

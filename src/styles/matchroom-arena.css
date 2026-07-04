@@ -674,7 +674,7 @@ html[data-theme="light"] .gm-room-title h1 {
   }
 }
 
-/* 2026-07-04 Black Han Sans display trial, scoped to room title, team names, and score core. */
+/* 2026-07-04 KBO Dia Gothic display, scoped to room title, team names, and score core. */
 :where(.gm-room-title h1, .gm-team-head a, .gm-score-core strong, .gm-score-core i) {
   font-family: var(--sports-display-font);
   letter-spacing: 0;

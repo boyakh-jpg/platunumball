@@ -1,4 +1,4 @@
-/* arena-style recruiting surface. Imported after globals.css. */
+﻿/* arena-style recruiting surface. Imported after globals.css. */
 .arena-recruit-page {
   max-width: 1220px;
   margin: 0 auto;
@@ -54,7 +54,7 @@
   margin-top: 8px;
   font-size: clamp(3.1rem, 7vw, 6rem);
   line-height: 0.88;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
@@ -4242,10 +4242,10 @@ html[data-theme="light"] .arena-lobby-card .om-match-summary-box {
 }
 
 .arena-hero-copy h1 {
-  font-family: Impact, "Arial Narrow", "Roboto Condensed", sans-serif;
+  font-family: var(--sports-display-font);
   font-size: clamp(46px, 5.5vw, 72px);
   line-height: 0.92;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
   text-transform: uppercase;
   text-shadow: 0 3px 16px rgba(0, 0, 0, 0.42);
 }
@@ -4379,10 +4379,10 @@ html[data-theme="light"] .arena-lobby-card .om-match-summary-box {
 }
 
 .arena-lobby-title h2 {
-  font-family: Impact, "Arial Narrow", "Roboto Condensed", sans-serif;
+  font-family: var(--sports-display-font);
   font-size: clamp(46px, 5.5vw, 72px);
   line-height: 0.92;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
@@ -4423,8 +4423,8 @@ html[data-theme="light"] .arena-lobby-card .om-match-summary-box {
 }
 
 .arena-lobby-score-core strong {
-  font-family: Impact, "Arial Narrow", "Roboto Condensed", sans-serif;
-  letter-spacing: -0.04em;
+  font-family: var(--sports-display-font);
+  letter-spacing: 0;
 }
 
 .arena-lobby-score-core i {
@@ -4579,7 +4579,7 @@ html[data-theme="light"] .arena-lobby-card .om-match-summary-box {
 .arena-owner-panel strong,
 .arena-invite-panel header strong,
 .arena-room-chat header span {
-  font-family: Impact, "Arial Narrow", "Roboto Condensed", sans-serif;
+  font-family: var(--sports-display-font);
   font-size: 24px;
   line-height: 1;
   text-transform: uppercase;
@@ -5344,10 +5344,10 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
 .arena-hero-copy h1 {
   max-width: 10ch;
   color: #fff;
-  font-family: Impact, "Arial Narrow", "Roboto Condensed", sans-serif;
+  font-family: var(--sports-display-font);
   font-size: clamp(52px, 6vw, 86px);
   line-height: 0.9;
-  letter-spacing: -0.045em;
+  letter-spacing: 0;
   text-transform: uppercase;
   text-shadow: 0 12px 30px rgba(0, 0, 0, 0.38);
 }
@@ -5460,10 +5460,10 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
 
 .arena-lobby-card.om-match-card h3 {
   color: var(--rb-text);
-  font-family: Impact, "Arial Narrow", "Roboto Condensed", sans-serif;
+  font-family: var(--sports-display-font);
   font-size: clamp(22px, 1.9vw, 30px);
   line-height: 0.98;
-  letter-spacing: -0.045em;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
@@ -5547,10 +5547,10 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
 
 .arena-lobby-title h2 {
   color: #fff;
-  font-family: Impact, "Arial Narrow", "Roboto Condensed", sans-serif;
+  font-family: var(--sports-display-font);
   font-size: clamp(46px, 5.5vw, 72px);
   line-height: 0.9;
-  letter-spacing: -0.045em;
+  letter-spacing: 0;
   text-transform: uppercase;
   text-shadow: 0 12px 30px rgba(0, 0, 0, 0.34);
 }
@@ -5590,10 +5590,10 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
 
 .arena-lobby-team-head strong {
   color: var(--rb-text);
-  font-family: Impact, "Arial Narrow", "Roboto Condensed", sans-serif;
+  font-family: var(--sports-display-font);
   font-size: clamp(28px, 2.8vw, 38px);
   line-height: 0.96;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
@@ -5608,10 +5608,10 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
 
 .arena-lobby-score-core strong {
   color: var(--rb-text);
-  font-family: Impact, "Arial Narrow", "Roboto Condensed", sans-serif;
+  font-family: var(--sports-display-font);
   font-size: clamp(42px, 5vw, 70px);
   line-height: 1;
-  letter-spacing: -0.045em;
+  letter-spacing: 0;
 }
 
 .arena-lobby-score-core i {
@@ -5782,10 +5782,10 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
 .arena-owner-panel strong,
 .arena-invite-panel header strong,
 .arena-room-chat header span {
-  font-family: Impact, "Arial Narrow", "Roboto Condensed", sans-serif;
+  font-family: var(--sports-display-font);
   font-size: 24px;
   line-height: 1;
-  letter-spacing: -0.035em;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
@@ -7268,7 +7268,7 @@ html[data-theme="light"] .arena-lobby-arena {
   }
 }
 
-/* 2026-07-04 Black Han Sans display trial, scoped to sports emphasis only. */
+/* 2026-07-04 KBO Dia Gothic display, scoped to sports emphasis only. */
 :where(
   .arena-hero-copy h1,
   .arena-lobby-title h2,

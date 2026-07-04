@@ -1,4 +1,4 @@
-.om-match-page {
+﻿.om-match-page {
   max-width: 1220px;
   margin: 0 auto;
   gap: 16px;
@@ -3146,7 +3146,7 @@ html[data-theme="light"] .om-match-info-box {
 .om-match-card h3 {
   font-size: clamp(19px, 1.5vw, 22px);
   line-height: 1.08;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
 }
 
 .om-match-card p {
@@ -3166,10 +3166,10 @@ html[data-theme="light"] .om-match-info-box {
 
 .om-score-box > strong,
 .om-match-summary-box.count-summary .om-summary-line > strong {
-  font-family: Impact, "Arial Narrow", "Roboto Condensed", sans-serif;
+  font-family: var(--sports-display-font);
   font-size: clamp(31px, 3vw, 40px);
   line-height: 1;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
 }
 
 .om-room-link {
@@ -3319,10 +3319,10 @@ html[data-theme="light"] .om-room-link {
 .om-match-copy h1 {
   max-width: 10ch;
   color: #fff;
-  font-family: Impact, "Arial Narrow", "Roboto Condensed", sans-serif;
+  font-family: var(--sports-display-font);
   font-size: clamp(52px, 6vw, 86px);
   line-height: 0.9;
-  letter-spacing: -0.045em;
+  letter-spacing: 0;
   text-transform: uppercase;
   text-shadow: 0 12px 30px rgba(0, 0, 0, 0.38);
 }
@@ -3382,8 +3382,8 @@ html[data-theme="light"] .om-room-link {
 
 .om-view-card b,
 .om-match-stats strong {
-  font-family: Impact, "Arial Narrow", "Roboto Condensed", sans-serif;
-  letter-spacing: -0.04em;
+  font-family: var(--sports-display-font);
+  letter-spacing: 0;
 }
 
 .om-calendar-panel {
@@ -3451,10 +3451,10 @@ html[data-theme="light"] .om-room-link {
 .arena-lobby-card.om-match-card h3 {
   max-width: 100%;
   color: var(--rb-text);
-  font-family: Impact, "Arial Narrow", "Roboto Condensed", sans-serif;
+  font-family: var(--sports-display-font);
   font-size: clamp(22px, 1.9vw, 30px);
   line-height: 0.98;
-  letter-spacing: -0.045em;
+  letter-spacing: 0;
   text-transform: uppercase;
   white-space: nowrap;
   overflow: hidden;
@@ -3503,10 +3503,10 @@ html[data-theme="light"] .om-room-link {
 .om-match-summary-box.count-summary .om-summary-line > strong,
 .arena-lobby-card .om-match-summary-box.count-summary .om-summary-line > strong {
   color: var(--rb-text);
-  font-family: Impact, "Arial Narrow", "Roboto Condensed", sans-serif;
+  font-family: var(--sports-display-font);
   font-size: clamp(32px, 3.4vw, 46px);
   line-height: 1;
-  letter-spacing: -0.045em;
+  letter-spacing: 0;
 }
 
 .om-room-link,
@@ -4161,7 +4161,7 @@ html[data-theme="light"] .tournament-hero h1 {
   margin-inline: auto;
 }
 
-/* 2026-07-04 Black Han Sans display trial, scoped to sports emphasis only. */
+/* 2026-07-04 KBO Dia Gothic display, scoped to sports emphasis only. */
 :where(
   .om-match-copy h1,
   .tournament-hero h1,
