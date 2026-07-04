@@ -154,6 +154,7 @@ const REQUIRED_COLUMNS = {
     "id",
     "name",
     "status",
+    "region_key",
     "updated_at",
   ],
   notifications: [

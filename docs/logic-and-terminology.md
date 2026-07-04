@@ -1939,3 +1939,13 @@ flowchart TD
 ## 2026-07-03 match room roster fallback
 
 - Matches room modal uses `match.teamA/teamB.players` first. If a confirmed match row is temporarily missing one side roster but still has `recruitingPostId`, the modal may use the original recruiting lobby projected players as a display-only fallback until `/api/matches/detail` returns `match_players`.
+
+## 2026-07-04 court region key authority
+
+- 구장 지역 필터 원본은 승인 구장 `approved_courts.region_key`다.
+- legacy `courts`가 남아 있는 DB에서는 `courts.region_key`도 같은 규칙으로 자동 계산한다.
+- legacy 구장 지역이 동네명인 경우 `성수→성동`, `잠실→송파`처럼 필터 구 단위 key로 보정한다.
+- `region_key`는 구장 주소/좌표 payload에서 구/군/시 단위로 자동 계산한다.
+- 방/경기/모집 feed의 `user_room_feed.region_key`는 `rankball_court_snapshot()`의 `regionKey` 또는 정규화된 구장 지역을 기준으로 만든다.
+- `court_name`, `recruiting_posts.region`, `matches.rules.region`은 표시/호환 캐시다. 구장 원본 변경 시 trigger가 feed와 표시 캐시를 다시 만든다.
+- 기존 legacy `courts`와 텍스트 `court_name` fallback은 삭제하지 않는다. `court_id`가 없고 이름+지역이 단일 구장으로 매칭될 때만 자동 보정한다.
