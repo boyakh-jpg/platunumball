@@ -445,121 +445,212 @@ export default function Home({ app }) {
 
   return (
     <div className="page-stack rank-home">
-      <Card className="home-search-panel rank-search-card">
-        <SearchPicker
-          value={query}
-          onChange={setQuery}
-          placeholder="이름, 팀명, 코트명, 해시태그를 바로 검색"
-          items={searchResults}
-          remoteSearchType="all"
-          mapRemoteItem={mapRemoteHomeSearchItem}
-          renderItem={renderHomeSearchItem}
-          limit={SEARCH_PREVIEW_LIMIT}
-          detailLimit={SEARCH_DETAIL_LIMIT}
-          fieldClassName="home-search-box"
-        />
-        <Link to="/app/create" className="home-search-create">
-          <Button className="home-search-create-button"><PlusCircle size={18} /> 경기 만들기</Button>
-        </Link>
-      </Card>
+      <div className="page-stack home-left-rail">
+        <Card className="home-search-panel rank-search-card">
+          <SearchPicker
+            value={query}
+            onChange={setQuery}
+            placeholder="이름, 팀명, 코트명, 해시태그를 바로 검색"
+            items={searchResults}
+            remoteSearchType="all"
+            mapRemoteItem={mapRemoteHomeSearchItem}
+            renderItem={renderHomeSearchItem}
+            limit={SEARCH_PREVIEW_LIMIT}
+            detailLimit={SEARCH_DETAIL_LIMIT}
+            fieldClassName="home-search-box"
+          />
+          <Link to="/app/create" className="home-search-create">
+            <Button className="home-search-create-button"><PlusCircle size={18} /> 경기 만들기</Button>
+          </Link>
+        </Card>
 
-      <section className="rank-summary-grid">
-        <div className="home-rank-board-head">
-          <div className="rank-hero-top">
-            <div>
-              <p className="eyebrow">내 랭크 보드</p>
-              <h1>{user.name}님의 오늘 코트 현황</h1>
-              <p>{user.region} · {user.position} · 통합 {getTierDivision(user.ratings.integrated)} · {Math.round(user.ratings.integrated)} MMR</p>
+        <section className="rank-summary-grid">
+          <div className="home-rank-board-head">
+            <div className="rank-hero-top">
+              <div>
+                <p className="eyebrow">내 랭크 보드</p>
+                <h1>{user.name}님의 오늘 코트 현황</h1>
+                <p>{user.region} · {user.position} · 통합 {getTierDivision(user.ratings.integrated)} · {Math.round(user.ratings.integrated)} MMR</p>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </div>
 
-      <aside className="page-stack home-top-rail">
-        <div className="rank-tier-rail">
-          <Card className="section-card rank-profile-card rank-spotlight-card">
-            <div className="rank-spotlight-content">
-              <p className="eyebrow">My Rank</p>
-              <div className="rank-spotlight-main">
-                <TierEmblem mmr={user.ratings.integrated} size="md" />
-                <div>
-                  <strong>{rankSpotlightLabel}</strong>
-                  <span>{Math.round(user.ratings.integrated)} MMR · 최근 5경기 {recentFiveWins}승</span>
+      <aside className="page-stack home-right-rail">
+        <aside className="page-stack home-top-rail">
+          <div className="rank-tier-rail">
+            <Card className="section-card rank-profile-card rank-spotlight-card">
+              <div className="rank-spotlight-content">
+                <p className="eyebrow">My Rank</p>
+                <div className="rank-spotlight-main">
+                  <TierEmblem mmr={user.ratings.integrated} size="md" />
+                  <div>
+                    <strong>{rankSpotlightLabel}</strong>
+                    <span>{Math.round(user.ratings.integrated)} MMR · 최근 5경기 {recentFiveWins}승</span>
+                  </div>
+                </div>
+                <div className="rank-profile-tabs rank-spotlight-links">
+                  <Link to={`/app/players/${user.id}`}>프로필</Link>
+                  <Link to="/app/season">시즌</Link>
+                  <Link to="/app/settings">설정</Link>
                 </div>
               </div>
-              <div className="rank-profile-tabs rank-spotlight-links">
-                <Link to={`/app/players/${user.id}`}>프로필</Link>
-                <Link to="/app/season">시즌</Link>
-                <Link to="/app/settings">설정</Link>
-              </div>
-            </div>
-          </Card>
-        </div>
-
-        <Card className="section-card home-action-card">
-          <div className="section-title-row">
-            <div>
-              <p className="eyebrow">Action Queue</p>
-              <h2>내가 처리할 방</h2>
-            </div>
-            <Badge tone={actionItems.length ? "orange" : "neutral"}>{actionItems.length}개</Badge>
+            </Card>
           </div>
-          <div className="home-action-list">
-            {actionItems.length ? (
-              <>
-              {priorityItems.map((item) => {
-                const Icon = item.icon;
-                if (item.actionType === "recruiting-invite") {
-                  const isProcessing = processingInviteId === `${item.postId}:${item.invitationId}`;
+
+          <Card className="section-card home-action-card">
+            <div className="section-title-row">
+              <div>
+                <p className="eyebrow">Action Queue</p>
+                <h2>내가 처리할 방</h2>
+              </div>
+              <Badge tone={actionItems.length ? "orange" : "neutral"}>{actionItems.length}개</Badge>
+            </div>
+            <div className="home-action-list">
+              {actionItems.length ? (
+                <>
+                {priorityItems.map((item) => {
+                  const Icon = item.icon;
+                  if (item.actionType === "recruiting-invite") {
+                    const isProcessing = processingInviteId === `${item.postId}:${item.invitationId}`;
+                    return (
+                      <div key={item.id} className={`home-action-row priority-${item.priority}`}>
+                        <span className="home-action-icon"><Icon size={18} /></span>
+                        <span className="home-action-main">
+                          <strong>{item.title}</strong>
+                          <em>{item.meta}</em>
+                        </span>
+                        <span className="home-action-buttons">
+                          <Button size="sm" type="button" disabled={isProcessing} onClick={() => acceptHomeRecruitingInvitation(item.postId, item.invitationId)}>{isProcessing ? "수락 중" : "수락"}</Button>
+                          <Button size="sm" type="button" variant="secondary" disabled={isProcessing} onClick={() => declineHomeRecruitingInvitation(item.postId, item.invitationId)}>{isProcessing ? "처리 중" : "거절"}</Button>
+                          <Link className="button button-secondary button-sm" to={item.href}>보기</Link>
+                        </span>
+                      </div>
+                    );
+                  }
                   return (
-                    <div key={item.id} className={`home-action-row priority-${item.priority}`}>
+                    <Link key={item.id} to={item.href} className={`home-action-row priority-${item.priority}`}>
                       <span className="home-action-icon"><Icon size={18} /></span>
                       <span className="home-action-main">
                         <strong>{item.title}</strong>
                         <em>{item.meta}</em>
                       </span>
-                      <span className="home-action-buttons">
-                        <Button size="sm" type="button" disabled={isProcessing} onClick={() => acceptHomeRecruitingInvitation(item.postId, item.invitationId)}>{isProcessing ? "수락 중" : "수락"}</Button>
-                        <Button size="sm" type="button" variant="secondary" disabled={isProcessing} onClick={() => declineHomeRecruitingInvitation(item.postId, item.invitationId)}>{isProcessing ? "처리 중" : "거절"}</Button>
-                        <Link className="button button-secondary button-sm" to={item.href}>보기</Link>
-                      </span>
-                    </div>
+                      <b>{item.label}</b>
+                    </Link>
                   );
-                }
-                return (
-                  <Link key={item.id} to={item.href} className={`home-action-row priority-${item.priority}`}>
-                    <span className="home-action-icon"><Icon size={18} /></span>
+                })}
+                {actionItems.length > priorityItems.length ? (
+                  <Link to={actionItems[priorityItems.length]?.href ?? "/app/matches"} className="home-action-row priority-5">
+                    <span className="home-action-icon"><ClipboardCheck size={18} /></span>
                     <span className="home-action-main">
-                      <strong>{item.title}</strong>
-                      <em>{item.meta}</em>
+                      <strong>더 처리할 항목 있음</strong>
+                      <em>{actionItems.length - priorityItems.length}개 더 있음</em>
                     </span>
-                    <b>{item.label}</b>
+                    <b>더보기</b>
                   </Link>
-                );
-              })}
-              {actionItems.length > priorityItems.length ? (
-                <Link to={actionItems[priorityItems.length]?.href ?? "/app/matches"} className="home-action-row priority-5">
+                ) : null}
+                </>
+              ) : (
+                <div className="home-action-row priority-5">
                   <span className="home-action-icon"><ClipboardCheck size={18} /></span>
                   <span className="home-action-main">
-                    <strong>더 처리할 항목 있음</strong>
-                    <em>{actionItems.length - priorityItems.length}개 더 있음</em>
+                    <strong>처리할 알림 없음</strong>
+                    <em>초대, 승인, 기록 확인이 여기 뜹니다.</em>
                   </span>
-                  <b>더보기</b>
-                </Link>
-              ) : null}
-              </>
-            ) : (
-              <div className="home-action-row priority-5">
-                <span className="home-action-icon"><ClipboardCheck size={18} /></span>
-                <span className="home-action-main">
-                  <strong>처리할 알림 없음</strong>
-                  <em>초대, 승인, 기록 확인이 여기 뜹니다.</em>
-                </span>
-                <b>OK</b>
+                  <b>OK</b>
+                </div>
+              )}
+            </div>
+          </Card>
+        </aside>
+
+        <aside className="page-stack home-side-stack">
+          <Card className="section-card rank-leaderboard-card">
+            <div className="section-title-row">
+              <div>
+                <p className="eyebrow">Local Ranking</p>
+                <h2>{user.region} 랭킹</h2>
               </div>
-            )}
-          </div>
-        </Card>
+              <Trophy size={20} />
+            </div>
+            <div className="rank-list">
+              {topRankers.map((row, index) => (
+                <PlayerHoverCard className="rank-row" key={row.id} user={row} teams={app.state.teams}>
+                  <b>{index + 1}</b>
+                  <span className={getDiscordAvatarClassName(row, "avatar small")} style={getDiscordAvatarStyle(row)}>{row.name.slice(0, 1)}</span>
+                  <strong>{row.name}</strong>
+                  <em>{Math.round(row.seasonScore)}점</em>
+                </PlayerHoverCard>
+              ))}
+            </div>
+          </Card>
+
+          <Card className="section-card season-mini-card">
+            <div className="section-title-row">
+              <div>
+                <p className="eyebrow">Season Race</p>
+                <h2>{user.region} 시즌 레이스</h2>
+              </div>
+              <Trophy size={20} />
+            </div>
+            <div className="season-progress">
+              <span style={{ width: `${seasonProgress}%` }} />
+            </div>
+            <div className="contract-grid single">
+              <div>
+                <span>내 지역 순위</span>
+                <strong>{mySeasonIndex >= 0 ? `${mySeasonIndex + 1}위` : "대기"}</strong>
+              </div>
+              <div>
+                <span>시즌 전적</span>
+                <strong>{mySeasonRow ? `${mySeasonRow.seasonWins}승 ${mySeasonRow.seasonLosses}패` : "0승 0패"}</strong>
+              </div>
+            </div>
+            <Link to="/app/season">
+              <Button variant="secondary" className="wide-button"><Trophy size={17} /> 시즌 허브</Button>
+            </Link>
+          </Card>
+          <Card className="section-card rivalry-card">
+            <div className="section-title-row">
+              <div>
+                <p className="eyebrow">Local Rivalry</p>
+                <h2>{user.region} 라이벌</h2>
+              </div>
+              <Swords size={20} />
+            </div>
+            <div className="compact-list rivalry-list">
+              {localRivals.length ? localRivals.map((team) => (
+                <TeamHoverCard key={team.id} team={team}>
+                  <span>{team.name}</span>
+                  <strong>{team.gap > 0 ? `+${team.gap}` : team.gap} MMR</strong>
+                </TeamHoverCard>
+              )) : <div><span>지역 라이벌 없음</span><strong>대기</strong></div>}
+            </div>
+          </Card>
+          <Card className="section-card home-my-teams-card">
+            <div className="section-title-row">
+              <div>
+                <p className="eyebrow">My Teams</p>
+                <h2>내 소속 팀</h2>
+              </div>
+              <Badge tone={myTeamCount > MAX_TEAM_MEMBERSHIPS ? "orange" : myTeamCount ? "green" : "neutral"}>{myTeamCount}/{MAX_TEAM_MEMBERSHIPS}</Badge>
+            </div>
+            <div className="home-team-list">
+              {myTeams.length ? myTeams.slice(0, 5).map((team) => (
+                <TeamHoverCard key={team.id} team={team}>
+                  <span className="team-mini-dot" style={{ "--team-color": team.accent }} />
+                  <strong>{team.name}</strong>
+                  <em>{getTeamRoleLabel(team.myRole)}</em>
+                  <b>{team.mmr}</b>
+                </TeamHoverCard>
+              )) : <div><span>팀 없음</span><strong>팀 찾기 필요</strong></div>}
+            </div>
+            <Link to="/app/teams">
+              <Button variant="secondary" className="wide-button">팀 전체 보기</Button>
+            </Link>
+          </Card>
+        </aside>
       </aside>
 
       <div className="content-grid home-dashboard-grid rank-dashboard-grid">
@@ -678,92 +769,6 @@ export default function Home({ app }) {
             </div>
           </Card>
         </div>
-        <aside className="page-stack home-side-stack">
-          <Card className="section-card rank-leaderboard-card">
-            <div className="section-title-row">
-              <div>
-                <p className="eyebrow">Local Ranking</p>
-                <h2>{user.region} 랭킹</h2>
-              </div>
-              <Trophy size={20} />
-            </div>
-            <div className="rank-list">
-              {topRankers.map((row, index) => (
-                <PlayerHoverCard className="rank-row" key={row.id} user={row} teams={app.state.teams}>
-                  <b>{index + 1}</b>
-                  <span className={getDiscordAvatarClassName(row, "avatar small")} style={getDiscordAvatarStyle(row)}>{row.name.slice(0, 1)}</span>
-                  <strong>{row.name}</strong>
-                  <em>{Math.round(row.seasonScore)}점</em>
-                </PlayerHoverCard>
-              ))}
-            </div>
-          </Card>
-
-          <Card className="section-card season-mini-card">
-            <div className="section-title-row">
-              <div>
-                <p className="eyebrow">Season Race</p>
-                <h2>{user.region} 시즌 레이스</h2>
-              </div>
-              <Trophy size={20} />
-            </div>
-            <div className="season-progress">
-              <span style={{ width: `${seasonProgress}%` }} />
-            </div>
-            <div className="contract-grid single">
-              <div>
-                <span>내 지역 순위</span>
-                <strong>{mySeasonIndex >= 0 ? `${mySeasonIndex + 1}위` : "대기"}</strong>
-              </div>
-              <div>
-                <span>시즌 전적</span>
-                <strong>{mySeasonRow ? `${mySeasonRow.seasonWins}승 ${mySeasonRow.seasonLosses}패` : "0승 0패"}</strong>
-              </div>
-            </div>
-            <Link to="/app/season">
-              <Button variant="secondary" className="wide-button"><Trophy size={17} /> 시즌 허브</Button>
-            </Link>
-          </Card>
-          <Card className="section-card rivalry-card">
-            <div className="section-title-row">
-              <div>
-                <p className="eyebrow">Local Rivalry</p>
-                <h2>{user.region} 라이벌</h2>
-              </div>
-              <Swords size={20} />
-            </div>
-            <div className="compact-list rivalry-list">
-              {localRivals.length ? localRivals.map((team) => (
-                <TeamHoverCard key={team.id} team={team}>
-                  <span>{team.name}</span>
-                  <strong>{team.gap > 0 ? `+${team.gap}` : team.gap} MMR</strong>
-                </TeamHoverCard>
-              )) : <div><span>지역 라이벌 없음</span><strong>대기</strong></div>}
-            </div>
-          </Card>
-          <Card className="section-card home-my-teams-card">
-            <div className="section-title-row">
-              <div>
-                <p className="eyebrow">My Teams</p>
-                <h2>내 소속 팀</h2>
-              </div>
-              <Badge tone={myTeamCount > MAX_TEAM_MEMBERSHIPS ? "orange" : myTeamCount ? "green" : "neutral"}>{myTeamCount}/{MAX_TEAM_MEMBERSHIPS}</Badge>
-            </div>
-            <div className="home-team-list">
-              {myTeams.length ? myTeams.slice(0, 5).map((team) => (
-                <TeamHoverCard key={team.id} team={team}>
-                  <span className="team-mini-dot" style={{ "--team-color": team.accent }} />
-                  <strong>{team.name}</strong>
-                  <em>{getTeamRoleLabel(team.myRole)}</em>
-                  <b>{team.mmr}</b>
-                </TeamHoverCard>
-              )) : <div><span>팀 없음</span><strong>팀 찾기 필요</strong></div>}
-            </div>
-            <Link to="/app/teams">
-              <Button variant="secondary" className="wide-button">팀 전체 보기</Button>
-            </Link>
-          </Card>
-        </aside>
       </div>
     </div>
   );

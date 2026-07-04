@@ -857,6 +857,7 @@ UI 수정 전:
 4. Home action queue does not keep a fixed empty height; on wider viewports only the action list scrolls when items exceed the rail height.
 5. Home upcoming recruiting rows do not use the action-queue warning border, and My Teams rows keep the same rounded row radius as other compact home rows.
 6. Desktop home support rail must stay in normal dashboard flow below the action rail; do not use negative vertical offsets that can overlap longer action queues.
+7. Desktop home separates the left content rail and right support rail; each rail owns its own vertical stack gap so one rail height does not change the other rail's card spacing.
 
 ## 2026-07-01 Full internal preview pass
 

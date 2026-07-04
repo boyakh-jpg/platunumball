@@ -14364,9 +14364,72 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
   }
 }
 
+/* 2026-07-04 desktop home split rails. */
+.rank-home .home-left-rail,
+.rank-home .home-right-rail,
+.rank-home .home-right-rail > .home-top-rail,
+.rank-home .home-right-rail > .home-side-stack {
+  min-width: 0;
+  gap: 16px;
+}
+
 @media (min-width: 1080px) {
-  .rank-home .home-dashboard-grid .home-side-stack {
-    margin-top: 0;
+  .rank-home {
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 360px);
+    grid-template-areas:
+      "left right"
+      "dashboard right";
+    align-items: start;
+    column-gap: 20px;
+    row-gap: 16px;
+  }
+
+  .rank-home > .home-left-rail {
+    grid-area: left;
+  }
+
+  .rank-home > .home-right-rail {
+    grid-area: right;
+    align-self: start;
+  }
+
+  .rank-home > .home-dashboard-grid {
+    grid-area: dashboard;
+    display: block;
+  }
+
+  .rank-home .home-right-rail > .home-side-stack {
+    display: grid;
+    grid-template-columns: 1fr;
+    margin: 0;
+    transform: none;
+  }
+}
+
+@media (max-width: 1079px) {
+  .rank-home > .home-left-rail,
+  .rank-home > .home-right-rail {
+    display: contents;
+  }
+
+  .rank-home .rank-summary-grid {
+    order: 1;
+  }
+
+  .rank-home .home-search-panel {
+    order: 2;
+  }
+
+  .rank-home .home-top-rail {
+    order: 3;
+  }
+
+  .rank-home > .home-dashboard-grid {
+    order: 4;
+  }
+
+  .rank-home .home-side-stack {
+    order: 5;
   }
 }
 
