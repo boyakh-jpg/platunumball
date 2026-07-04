@@ -71,6 +71,8 @@ import {
   getMatchSideLeaderId,
   getMatchSidePlayerIds,
   getMatchSideRecordPlayerIds,
+  getAllowedResultStatFields,
+  getStatRecorderSides,
   normalizePlayerStats,
   canOperatorSubmitMissingPostgameResult,
   getPublicRoomMaxDateInput,
@@ -1940,7 +1942,17 @@ function makeSourceMatchDraft(match) {
   };
 }
 
-function SourceMatchDisputeEditor({ match, userById, canReview, onSave, onResolve = null, onVoid = null }) {
+function SourceMatchDisputeEditor({
+  match,
+  userById,
+  canReview,
+  onSave,
+  onResolve = null,
+  onVoid = null,
+  canEditSideScore = null,
+  getEditableStatFields = null,
+  submitLabel = "",
+}) {
   const [draft, setDraft] = useState(() => makeSourceMatchDraft(match));
   const includeReserves = getMatchRoomPhase(match).phase === "live";
 
@@ -1950,6 +1962,24 @@ function SourceMatchDisputeEditor({ match, userById, canReview, onSave, onResolv
 
   if (!match) return null;
   const hasResult = Boolean(match.result);
+  const sideNames = ["teamA", "teamB"];
+  const getEditableFieldsForPlayer = (playerId) => (
+    canReview
+      ? PLAYER_STAT_FIELDS
+      : typeof getEditableStatFields === "function"
+        ? getEditableStatFields(playerId) ?? []
+        : []
+  );
+  const canEditScore = (sideName) => (
+    canReview || (typeof canEditSideScore === "function" && canEditSideScore(sideName))
+  );
+  const canSaveDraft = (
+    canReview ||
+    sideNames.some((sideName) => canEditScore(sideName)) ||
+    sideNames
+      .flatMap((sideName) => getMatchSideRecordPlayerIds(match, sideName, includeReserves))
+      .some((playerId) => getEditableFieldsForPlayer(playerId).length > 0)
+  );
 
   const updatePlayerStat = (playerId, fieldId, value) => {
     setDraft((current) => ({
@@ -1981,12 +2011,12 @@ function SourceMatchDisputeEditor({ match, userById, canReview, onSave, onResolv
       <div className="arena-dispute-score-row">
         <label>
           {match.teamA?.name ?? "A"}
-          <input type="number" min="0" disabled={!canReview} value={draft.scoreA} onChange={(event) => setDraft((current) => ({ ...current, scoreA: Number(event.target.value) }))} />
+          <input type="number" min="0" disabled={!canEditScore("teamA")} value={draft.scoreA} onChange={(event) => setDraft((current) => ({ ...current, scoreA: Number(event.target.value) }))} />
         </label>
         <strong>:</strong>
         <label>
           {match.teamB?.name ?? "B"}
-          <input type="number" min="0" disabled={!canReview} value={draft.scoreB} onChange={(event) => setDraft((current) => ({ ...current, scoreB: Number(event.target.value) }))} />
+          <input type="number" min="0" disabled={!canEditScore("teamB")} value={draft.scoreB} onChange={(event) => setDraft((current) => ({ ...current, scoreB: Number(event.target.value) }))} />
         </label>
       </div>
       <div className="arena-dispute-stat-grid">
@@ -1995,6 +2025,7 @@ function SourceMatchDisputeEditor({ match, userById, canReview, onSave, onResolv
             <strong>{match[sideName]?.name ?? SIDE_LABELS[sideName]}</strong>
             {getMatchSideRecordPlayerIds(match, sideName, includeReserves).map((playerId, index) => {
               const playerStats = draft.playerStats[playerId] ?? {};
+              const editableFieldIds = new Set(getEditableFieldsForPlayer(playerId).map((field) => field.id));
               return (
                 <div className="arena-dispute-player" key={playerId}>
                   <span>{getPlayerName(sideName, playerId, index)}</span>
@@ -2005,7 +2036,7 @@ function SourceMatchDisputeEditor({ match, userById, canReview, onSave, onResolv
                         <input
                           type="number"
                           min="0"
-                          disabled={!canReview}
+                          disabled={!editableFieldIds.has(field.id)}
                           value={Number(playerStats[field.id] ?? 0)}
                           onChange={(event) => updatePlayerStat(playerId, field.id, event.target.value)}
                         />
@@ -2019,7 +2050,7 @@ function SourceMatchDisputeEditor({ match, userById, canReview, onSave, onResolv
         ))}
       </div>
       <div className="match-action-row">
-        <Button type="submit" disabled={!canReview}>{hasResult ? "수정안 저장" : "결과 저장"}</Button>
+        <Button type="submit" disabled={!canSaveDraft}>{submitLabel || (hasResult ? "수정안 저장" : "결과 저장")}</Button>
         {hasResult && onResolve ? <Button type="button" disabled={!canReview} onClick={() => onResolve(draft)}>수정안 확정</Button> : null}
         {hasResult && onVoid ? <Button type="button" variant="secondary" className="danger-button" disabled={!canReview} onClick={onVoid}>무효 처리</Button> : null}
       </div>
@@ -2714,6 +2745,16 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const canReviewSourceMatch = Boolean(matchRoom && currentUserCanOperateStartedSourceMatch && sourceMatchPhase?.phase === "dispute");
         const canSubmitSourceMatchLiveResult = Boolean(matchRoom && sourceMatch?.status === "agreed" && sourceMatchPhase?.phase === "live" && currentUserCanOperateStartedSourceMatch && sourceMatchStarted && !sourceMatch?.endedAt);
         const canSubmitSourceMatchPostgameResult = Boolean(matchRoom && canOperatorSubmitMissingPostgameResult(sourceMatch, currentUserCanOperateStartedSourceMatch));
+        const sourceMatchRecorderSides = sourceMatch ? getStatRecorderSides(sourceMatch, app.currentUser.id) : [];
+        const canSubmitSourceMatchRecorderResult = Boolean(matchRoom && sourceMatch?.status === "agreed" && sourceMatchPhase?.phase === "live" && sourceMatchStarted && !sourceMatch?.endedAt && sourceMatchRecorderSides.length);
+        const canEditSourceMatchSideScore = (sideName) => (
+          canSubmitSourceMatchLiveResult ||
+          canSubmitSourceMatchPostgameResult ||
+          (canSubmitSourceMatchRecorderResult && sourceMatchRecorderSides.includes(sideName))
+        );
+        const getEditableSourceMatchStatFields = (playerId) => (
+          sourceMatch ? getAllowedResultStatFields(sourceMatch, app.currentUser.id, playerId, false) : []
+        );
         const canCancelSourceMatch = Boolean(matchRoom && sourceMatch && ["contract", "agreed"].includes(sourceMatch.status) && (sourceMatchStarted || sourceMatch.endedAt || sourceMatch.result ? currentUserCanOperateStartedSourceMatch : mine));
         const sourceMatchRecordWindow = sourceMatch ? getMatchRecordWindow(sourceMatch) : null;
         const sourceMatchApprovalOpen = Boolean(
@@ -3434,11 +3475,14 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                         onVoid={() => app.actions.voidMatch(sourceMatch.id)}
                       />
                     ) : null}
-                    {!sourceMatchAction.disputed && (canSubmitSourceMatchLiveResult || canSubmitSourceMatchPostgameResult) ? (
+                    {!sourceMatchAction.disputed && (canSubmitSourceMatchLiveResult || canSubmitSourceMatchPostgameResult || canSubmitSourceMatchRecorderResult) ? (
                       <SourceMatchDisputeEditor
                         match={sourceMatch}
                         userById={userById}
-                        canReview
+                        canReview={canSubmitSourceMatchLiveResult || canSubmitSourceMatchPostgameResult}
+                        canEditSideScore={canEditSourceMatchSideScore}
+                        getEditableStatFields={getEditableSourceMatchStatFields}
+                        submitLabel={canSubmitSourceMatchRecorderResult ? "후보 기록 제출" : ""}
                         onSave={(draft) => app.actions.submitMatchResult(sourceMatch.id, draft)}
                       />
                     ) : null}
