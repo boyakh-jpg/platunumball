@@ -720,6 +720,9 @@ function getInitialStateLoadOptions() {
   if (pathname === "/app/teams") {
     return { endpoint: "teamsList", matchLimit: 0, recruitingLimit: 0, tournamentLimit: 0 };
   }
+  if (pathname === "/app/admin") {
+    return { endpoint: "adminState", matchLimit: 0, recruitingLimit: 0, tournamentLimit: 0 };
+  }
   if (pathname === "/app/matches") {
     if (searchParams?.get("match")) return { profileOnly: true, matchLimit: 0, recruitingLimit: 0, tournamentLimit: 0 };
     return { endpoint: "matchesList", matchLimit: REMOTE_CLIENT_ACTIVE_MATCH_LIMIT, recruitingLimit: 0, tournamentLimit: 0 };
@@ -933,6 +936,14 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
         recruitingPage: result.recruitingPage ?? null,
         directoryLoaded: false,
       });
+    }
+    if (options.endpoint === "adminState") {
+      const result = await postServerAction(
+        "/api/state/load",
+        { authUserId, authEmail, scope: "admin" },
+        { allowWhenDisabled: true },
+      );
+      if (result?.state) return attachRemoteMeta(normalizeServerState(result.state), { directoryLoaded: true });
     }
     if (options.endpoint) {
       return attachRemoteMeta(await loadProfileState(authUserId, authEmail), getEndpointFallbackMeta(options));

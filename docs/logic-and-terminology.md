@@ -1551,6 +1551,7 @@ flowchart TD
 1. Supabase 모드에서 화면 테마는 `profiles.app_settings.theme`에 저장한다.
 2. 밝기 UI는 선택과 저장을 분리하고, 저장 실패 시 로컬 변경을 롤백한다.
 3. 관리자 메뉴 노출은 `POST /api/admin/context`의 `adminLevel >= 30` 또는 활성 admin appointment 기준이다. `u1` frontend seed fallback은 쓰지 않는다.
+3-1. `/app/admin` 초기 로드는 `/api/state/load`의 `scope:"admin"`만 예외적으로 사용한다. 서버가 `adminLevel >= 30`을 확인한 뒤 신고, 구장 요청, 임명, 징계 큐를 내려준다.
 4. 구장 등록요청 제출은 server action 성공 후에만 폼을 초기화한다.
 5. 프로필/팀/구장 즐겨찾기는 타입별 최대 10개만 저장한다. 클라이언트 reducer와 `/api/favorites/sync`가 같은 제한을 적용한다.
 6. 저장 버튼이 없는 설정 토글은 로컬 state 변경 뒤 `/api/settings/sync`로 즉시 저장한다.

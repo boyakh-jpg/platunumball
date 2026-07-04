@@ -1,5 +1,6 @@
-import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { getAdminLevel, getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import { loadCurrentProfileState, PROFILE_ME_COLUMNS } from "../profile/me.js";
+import { loadNormalizedDirectoryStateFromClient } from "../../../src/data/repository.js";
 
 function toArray(value) {
   if (Array.isArray(value)) return value.flatMap(toArray);
@@ -157,11 +158,26 @@ export default async function handler(request, response) {
     const body = await readJsonBody(request);
     const context = await getAuthenticatedContext(request, { allowMissingProfile: true, profileSelect: PROFILE_ME_COLUMNS });
     const requestedScope = String(body.scope ?? body.pagination?.scope ?? "").trim();
-    if (requestedScope && requestedScope !== "profile") {
+    if (requestedScope && !["profile", "admin"].includes(requestedScope)) {
       sendJson(response, 410, {
         error: "state_scope_deprecated",
         message: "Use screen-specific endpoints instead of broad /api/state/load scope.",
       });
+      return;
+    }
+    if (requestedScope === "admin") {
+      const adminLevel = context.profileId ? await getAdminLevel(context) : 0;
+      if (adminLevel < 30) {
+        sendJson(response, 403, { error: "admin_required" });
+        return;
+      }
+      const result = await loadNormalizedDirectoryStateFromClient(
+        context.supabase,
+        context.authUserId,
+        context.authUser?.email ?? "",
+        { isAdmin: true },
+      );
+      sendJson(response, 200, { ok: true, state: result.state, updatedAt: result.updatedAt ?? 0 });
       return;
     }
     const result = await loadCurrentProfileState(context, { includeTeamMemberProfiles: false });
