@@ -690,7 +690,7 @@
   z-index: 60;
   display: grid;
   place-items: end center;
-  background: rgba(0, 0, 0, 0.62);
+  background: rgba(0, 0, 0, var(--sheet-backdrop-opacity, 0.62));
   overscroll-behavior: contain;
   padding: 18px;
 }
@@ -1294,11 +1294,17 @@
   max-height: min(880px, calc(100vh - 36px));
   overflow-y: auto;
   overscroll-behavior: contain;
+  transform: translateY(var(--sheet-drag-y, 0px));
+  will-change: transform;
   border: 1px solid rgba(255, 211, 108, 0.22);
   border-radius: var(--radius);
   background: rgba(4, 8, 15, 0.96);
   box-shadow: 0 30px 120px rgba(0, 0, 0, 0.58);
   padding: 18px;
+}
+
+.arena-lobby-modal.is-sheet-settling {
+  transition: transform 0.15s ease;
 }
 
 .arena-lobby-drag-handle {
@@ -4489,7 +4495,7 @@ html[data-theme="light"] .arena-lobby-card .om-match-summary-box {
 }
 
 .arena-compose-backdrop {
-  background: rgba(0, 0, 0, 0.42);
+  background: rgba(0, 0, 0, var(--sheet-backdrop-opacity, 0.42));
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
@@ -5661,7 +5667,7 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
 
 .arena-compose-backdrop {
   align-items: flex-end;
-  background: rgba(0, 0, 0, 0.42);
+  background: rgba(0, 0, 0, var(--sheet-backdrop-opacity, 0.42));
   padding: 10px 10px max(10px, env(safe-area-inset-bottom, 0px));
 }
 

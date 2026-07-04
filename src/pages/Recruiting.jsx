@@ -2066,6 +2066,8 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
   const [confirmingMatchId, setConfirmingMatchId] = useState("");
   const [joiningPostId, setJoiningPostId] = useState("");
   const [roomShareStatus, setRoomShareStatus] = useState("");
+  const [sheetDragOffset, setSheetDragOffset] = useState(0);
+  const [sheetDragSettling, setSheetDragSettling] = useState(false);
   const roomPostId = selectedPost?.id ?? "";
   const roomShareUrl = useMemo(() => getRoomShareUrl(roomPostId), [roomPostId]);
   const sourceMatchPhaseForChat = sourceMatch ? getMatchRoomPhase(sourceMatch) : null;
@@ -2079,6 +2081,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
   const roomShareStatusTimerRef = useRef(0);
   const lobbyModalRef = useRef(null);
   const sheetDragRef = useRef(null);
+  const sheetDragTimerRef = useRef(0);
 
   useEffect(() => {
     if (!roomPostId) {
@@ -2122,7 +2125,10 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
     return app.actions.subscribeRecruitingRoom?.(roomPostId);
   }, [app.actions.subscribeRecruitingRoom, app.currentUser.id, app.remoteReady, roomPostId]);
 
-  useEffect(() => () => window.clearTimeout(roomShareStatusTimerRef.current), []);
+  useEffect(() => () => {
+    window.clearTimeout(roomShareStatusTimerRef.current);
+    window.clearTimeout(sheetDragTimerRef.current);
+  }, []);
 
   const showRoomShareStatus = useCallback((message) => {
     setRoomShareStatus(message);
@@ -2159,6 +2165,16 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
     setSlotActionDraft(null);
     onClose?.();
   };
+  const resetSheetDrag = () => {
+    window.clearTimeout(sheetDragTimerRef.current);
+    setSheetDragSettling(true);
+    setSheetDragOffset(0);
+    sheetDragTimerRef.current = window.setTimeout(() => setSheetDragSettling(false), 160);
+  };
+  const getSheetDismissDistance = () => {
+    const viewportHeight = Math.max(1, window.innerHeight || 1);
+    return Math.min(260, Math.max(160, viewportHeight * 0.4));
+  };
   const canDismissBySheetDrag = () => {
     const activeElement = typeof document !== "undefined" ? document.activeElement : null;
     const editing = Boolean(activeElement?.matches?.("input, textarea, select, [contenteditable='true']"));
@@ -2171,6 +2187,9 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
   };
   const startSheetDrag = (event) => {
     if (event.pointerType !== "touch" || !canDismissBySheetDrag()) return;
+    window.clearTimeout(sheetDragTimerRef.current);
+    setSheetDragSettling(false);
+    setSheetDragOffset(0);
     sheetDragRef.current = {
       pointerId: event.pointerId,
       startY: event.clientY,
@@ -2180,8 +2199,14 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
   const moveSheetDrag = (event) => {
     const drag = sheetDragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
-    if (event.clientY - drag.startY > 8) event.preventDefault();
-    if (event.clientY - drag.startY < -12) sheetDragRef.current = null;
+    const deltaY = event.clientY - drag.startY;
+    if (deltaY > 8) event.preventDefault();
+    if (deltaY < -12) {
+      sheetDragRef.current = null;
+      resetSheetDrag();
+      return;
+    }
+    setSheetDragOffset(Math.max(0, Math.min(deltaY, window.innerHeight || deltaY)));
   };
   const finishSheetDrag = (event) => {
     const drag = sheetDragRef.current;
@@ -2189,13 +2214,20 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
     sheetDragRef.current = null;
     event.currentTarget.releasePointerCapture?.(event.pointerId);
     const deltaY = event.clientY - drag.startY;
-    const viewportHeight = Math.max(1, window.innerHeight || 1);
-    const dismissDistance = Math.min(260, Math.max(160, viewportHeight * 0.4));
-    if (canDismissBySheetDrag() && deltaY >= dismissDistance) closeModal();
+    if (canDismissBySheetDrag() && deltaY >= getSheetDismissDistance()) {
+      setSheetDragSettling(true);
+      setSheetDragOffset(window.innerHeight || 720);
+      sheetDragTimerRef.current = window.setTimeout(closeModal, 150);
+      return;
+    }
+    resetSheetDrag();
   };
   const cancelSheetDrag = () => {
     sheetDragRef.current = null;
+    resetSheetDrag();
   };
+  const sheetDragProgress = sheetDragOffset ? Math.min(1, sheetDragOffset / getSheetDismissDistance()) : 0;
+  const sheetBackdropOpacity = 0.62 - (sheetDragProgress * 0.24);
   const submitSourceDispute = (event) => {
     event.preventDefault();
     if (!sourceMatch?.id) return;
@@ -2911,8 +2943,21 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         };
 
         return (
-          <div className="arena-compose-backdrop" role="presentation" onPointerDown={() => { setInviteDraft(null); setSlotActionDraft(null); closeModal(); }}>
-            <aside ref={lobbyModalRef} className="arena-lobby-modal" role="dialog" aria-modal="true" aria-label="매치방" onPointerDown={(event) => event.stopPropagation()}>
+          <div
+            className="arena-compose-backdrop"
+            role="presentation"
+            style={{ "--sheet-backdrop-opacity": sheetBackdropOpacity }}
+            onPointerDown={() => { setInviteDraft(null); setSlotActionDraft(null); closeModal(); }}
+          >
+            <aside
+              ref={lobbyModalRef}
+              className={`arena-lobby-modal${sheetDragSettling ? " is-sheet-settling" : ""}${sheetDragOffset > 0 ? " is-sheet-dragging" : ""}`}
+              role="dialog"
+              aria-modal="true"
+              aria-label="매치방"
+              style={{ "--sheet-drag-y": `${sheetDragOffset}px` }}
+              onPointerDown={(event) => event.stopPropagation()}
+            >
               <button
                 type="button"
                 className="arena-lobby-drag-handle"
