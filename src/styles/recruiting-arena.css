@@ -7425,6 +7425,14 @@ html[data-theme="light"] .arena-lobby-arena {
   padding-inline: 14px;
 }
 
+.arena-filter-bar .arena-relation-filter button.loading {
+  cursor: wait;
+}
+
+.arena-filter-bar .arena-relation-filter button.loading .arena-filter-badge {
+  min-width: 3ch;
+}
+
 @media (max-width: 720px) {
   .arena-filter-bar .arena-region-sido-filter,
   .arena-filter-bar .arena-region-district-filter,

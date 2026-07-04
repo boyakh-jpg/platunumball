@@ -174,6 +174,7 @@ function getStartDateFilterOptions() {
 const RECRUITING_FILTER_PAGE_LIMIT = 50;
 export const RECRUITING_ROOM_REFRESH_INTERVAL_MS = 15000;
 const RECRUITING_FILTER_DEBOUNCE_MS = 250;
+const RECRUITING_RELATION_SCOPES = new Set(["created", "joined", "invited"]);
 
 function getMaxInputValue() {
   return getPublicRoomMaxDateInput();
@@ -3778,6 +3779,7 @@ function RecruitingReady({ app }) {
   );
   const [queue, setQueue] = useState("all");
   const [roomScope, setRoomScope] = useState(() => (targetFilter === "invited" ? "invited" : "all"));
+  const [loadingRoomScope, setLoadingRoomScope] = useState("");
   const [regionFilterSido, setRegionFilterSido] = useState(defaultRegionSelection.sido);
   const [regionFilterDistrict, setRegionFilterDistrict] = useState(defaultRegionSelection.district);
   const [modeFilter, setModeFilter] = useState("all");
@@ -4032,28 +4034,23 @@ function RecruitingReady({ app }) {
   const rankedCount = scopedPosts.filter((post) => post.ranked !== false).length;
   const friendlyCount = scopedPosts.length - rankedCount;
   const feedCounts = app.recruitingPagination?.feedCounts ?? null;
-  const roomCountsLoading = app.remoteReady === false || (feedCounts == null && app.recruitingPagination?.loading);
-  const getFeedCount = (key, fallback) => {
+  const getFeedCount = (key) => {
     const count = Number(feedCounts?.[key]);
-    return Number.isFinite(count) ? count : fallback;
+    return Number.isFinite(count) ? count : 0;
   };
-  const fallbackCreatedRoomCount = (app.state.recruitingPosts ?? [])
-    .filter((post) => post.status === "open")
-    .filter((post) => getRecruitingRoomOwnerId(post) === app.currentUser.id)
-    .length;
-  const fallbackJoinedRoomCount = (app.state.recruitingPosts ?? [])
-    .filter((post) => post.status === "open")
-    .filter((post) => getRecruitingRoomOwnerId(post) !== app.currentUser.id)
-    .filter((post) => isRecruitingPostForUser(post, app.currentUser.id, myTeamIds))
-    .length;
-  const fallbackInvitedRoomCount = (app.state.recruitingPosts ?? [])
-    .filter((post) => post.status === "open")
-    .filter((post) => hasPendingRecruitingInvitation(post, app.currentUser.id))
-    .length;
-  const createdRoomCount = getFeedCount("created", fallbackCreatedRoomCount);
-  const joinedRoomCount = getFeedCount("joined", fallbackJoinedRoomCount);
-  const invitedRoomCount = getFeedCount("invited", fallbackInvitedRoomCount);
-  const formatRoomCount = (count) => (roomCountsLoading ? "..." : count);
+  const createdRoomCount = getFeedCount("created");
+  const joinedRoomCount = getFeedCount("joined");
+  const invitedRoomCount = getFeedCount("invited");
+  const isRoomCountLoading = (scope) => (
+    app.remoteReady === false
+    || feedCounts == null
+    || loadingRoomScope === scope
+  );
+  const formatRoomCount = (count, scope) => (isRoomCountLoading(scope) ? "..." : count);
+  const getRelationButtonClass = (scope) => [
+    roomScope === scope ? "active" : "",
+    loadingRoomScope === scope ? "loading" : "",
+  ].filter(Boolean).join(" ");
 
   const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
   const submit = (event) => {
@@ -4075,15 +4072,23 @@ function RecruitingReady({ app }) {
   const selectRoomScope = (nextScope) => {
     const target = roomScope === nextScope ? "all" : nextScope;
     setRoomScope(target);
+    if (RECRUITING_RELATION_SCOPES.has(target)) {
+      setQueue("all");
+      setModeFilter("all");
+      setStartFilter("all");
+    } else {
+      setLoadingRoomScope("");
+    }
     if (target === "all" || !app.remoteReady || !app.currentUser.id) return;
     const userId = app.currentUser.id;
-    const pendingKey = `${userId}:${target}:pending`;
+    const includeFeedCounts = feedCounts == null;
+    const pendingKey = `${userId}:${target}:${includeFeedCounts ? "counts" : "plain"}:pending`;
     if (myRecruitingLoadRef.current === pendingKey) return;
     myRecruitingLoadRef.current = pendingKey;
-    Promise.resolve(app.actions.loadMyRecruitingPosts?.(target, { includeFeedCounts: false })).then(() => {
+    setLoadingRoomScope(target);
+    Promise.resolve(app.actions.loadMyRecruitingPosts?.(target, { includeFeedCounts })).finally(() => {
       myRecruitingLoadRef.current = "";
-    }).catch(() => {
-      myRecruitingLoadRef.current = "";
+      setLoadingRoomScope((current) => (current === target ? "" : current));
     });
   };
   const selectStartFilter = (nextFilter) => {
@@ -4138,9 +4143,9 @@ function RecruitingReady({ app }) {
                 </select>
               </label>
               <div className="segmented-control compact-segments arena-filter-segment arena-relation-filter">
-                <button type="button" className={roomScope === "created" ? "active" : ""} onClick={() => selectRoomScope("created")}><span className="arena-filter-label">내가 만든 방</span><span className="arena-filter-badge">{formatRoomCount(createdRoomCount)}</span></button>
-                <button type="button" className={roomScope === "joined" ? "active" : ""} onClick={() => selectRoomScope("joined")}><span className="arena-filter-label">내 참여방</span><span className="arena-filter-badge">{formatRoomCount(joinedRoomCount)}</span></button>
-                <button type="button" className={roomScope === "invited" ? "active" : ""} onClick={() => selectRoomScope("invited")}><span className="arena-filter-label">초대받음</span><span className="arena-filter-badge">{formatRoomCount(invitedRoomCount)}</span></button>
+                <button type="button" className={getRelationButtonClass("created")} aria-busy={loadingRoomScope === "created"} onClick={() => selectRoomScope("created")}><span className="arena-filter-label">내가 만든 방</span><span className="arena-filter-badge">{formatRoomCount(createdRoomCount, "created")}</span></button>
+                <button type="button" className={getRelationButtonClass("joined")} aria-busy={loadingRoomScope === "joined"} onClick={() => selectRoomScope("joined")}><span className="arena-filter-label">내 참여방</span><span className="arena-filter-badge">{formatRoomCount(joinedRoomCount, "joined")}</span></button>
+                <button type="button" className={getRelationButtonClass("invited")} aria-busy={loadingRoomScope === "invited"} onClick={() => selectRoomScope("invited")}><span className="arena-filter-label">초대받음</span><span className="arena-filter-badge">{formatRoomCount(invitedRoomCount, "invited")}</span></button>
               </div>
               <div className="segmented-control compact-segments arena-filter-segment">
                 <button type="button" className={queue === "all" ? "active" : ""} onClick={() => setQueue("all")}>전체</button>
@@ -4180,7 +4185,7 @@ function RecruitingReady({ app }) {
             <span>{queue === "ranked" ? "정규전" : queue === "friendly" ? "친선전" : "전체"}</span>
             <span>{modeFilter === "all" ? "전체 방식" : MATCH_MODES.find((mode) => mode.id === modeFilter)?.label ?? modeFilter}</span>
             <span>{startFilterLabel}</span>
-            <span>{roomScope === "created" ? `내가 만든 방 ${formatRoomCount(createdRoomCount)}` : roomScope === "joined" ? `내 참여방 ${formatRoomCount(joinedRoomCount)}` : roomScope === "invited" ? `초대받음 ${formatRoomCount(invitedRoomCount)}` : "전체 방"}</span>
+            <span>{roomScope === "created" ? `내가 만든 방 ${formatRoomCount(createdRoomCount, "created")}` : roomScope === "joined" ? `내 참여방 ${formatRoomCount(joinedRoomCount, "joined")}` : roomScope === "invited" ? `초대받음 ${formatRoomCount(invitedRoomCount, "invited")}` : "전체 방"}</span>
           </div>
         )}
       </section>
