@@ -426,7 +426,7 @@ async function ensureCourtAdminAppointments(client) {
       grade: "owner",
       status: "active",
       appointed_by: owner.id,
-      starts_at: now,
+      starts_at: null,
       ends_at: null,
       payload: {
         source: "schema_health_court_admin_bootstrap",
@@ -442,7 +442,7 @@ async function ensureCourtAdminAppointments(client) {
       grade: "regionManager",
       status: "active",
       appointed_by: owner.id,
-      starts_at: now,
+      starts_at: null,
       ends_at: null,
       payload: {
         source: "schema_health_court_admin_bootstrap",
@@ -457,13 +457,17 @@ async function ensureCourtAdminAppointments(client) {
   const { error } = await client
     .from("admin_appointments")
     .upsert(rows, { onConflict: "id" });
+  const { data: savedRows, error: readError } = await client
+    .from("admin_appointments")
+    .select("id,user_id,role,grade,status,starts_at,ends_at")
+    .in("id", rows.map((row) => row.id));
 
   return {
-    ok: !error,
-    error: error?.message ?? null,
+    ok: !error && !readError,
+    error: error?.message ?? readError?.message ?? null,
     ownerProfileId: owner.id,
     regionManagerProfileId: regionManager.id,
-    rows: rows.map((row) => ({ id: row.id, userId: row.user_id, grade: row.grade })),
+    rows: (savedRows ?? rows).map((row) => ({ id: row.id, userId: row.user_id ?? row.userId, grade: row.grade, status: row.status, startsAt: row.starts_at ?? null, endsAt: row.ends_at ?? null })),
   };
 }
 
