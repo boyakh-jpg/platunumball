@@ -391,6 +391,82 @@ async function ensureSimulationTestActors(client) {
   };
 }
 
+async function ensureCourtAdminAppointments(client) {
+  const { data: rankballProfiles, error: rankballProfileError } = await client
+    .from("profiles")
+    .select("id, test_login_id")
+    .eq("test_login_id", "rankball-001")
+    .limit(1);
+  if (rankballProfileError) throw rankballProfileError;
+
+  const { data: ownerProfiles, error: ownerProfileError } = await client
+    .from("profiles")
+    .select("id, name, handle, hashtag")
+    .or("id.eq.boyakh,name.eq.boyakh,handle.eq.boyakh,handle.eq.#boyakh,hashtag.eq.boyakh,hashtag.eq.#boyakh")
+    .limit(1);
+  if (ownerProfileError) throw ownerProfileError;
+
+  const regionManager = rankballProfiles?.[0];
+  const owner = ownerProfiles?.[0];
+  if (!regionManager?.id || !owner?.id) {
+    return {
+      ok: false,
+      error: !owner?.id ? "boyakh_profile_missing" : "rankball_001_profile_missing",
+      ownerFound: Boolean(owner?.id),
+      regionManagerFound: Boolean(regionManager?.id),
+    };
+  }
+
+  const now = new Date().toISOString();
+  const rows = [
+    {
+      id: "ap_owner_boyakh",
+      user_id: owner.id,
+      role: "admin",
+      grade: "owner",
+      status: "active",
+      appointed_by: owner.id,
+      starts_at: now,
+      ends_at: null,
+      payload: {
+        source: "schema_health_court_admin_bootstrap",
+        profile: "boyakh",
+      },
+      created_at: now,
+      updated_at: now,
+    },
+    {
+      id: "ap_region_rankball_001",
+      user_id: regionManager.id,
+      role: "admin",
+      grade: "regionManager",
+      status: "active",
+      appointed_by: owner.id,
+      starts_at: now,
+      ends_at: null,
+      payload: {
+        source: "schema_health_court_admin_bootstrap",
+        profile: "rankball-001",
+        region: "서울특별시",
+      },
+      created_at: now,
+      updated_at: now,
+    },
+  ];
+
+  const { error } = await client
+    .from("admin_appointments")
+    .upsert(rows, { onConflict: "id" });
+
+  return {
+    ok: !error,
+    error: error?.message ?? null,
+    ownerProfileId: owner.id,
+    regionManagerProfileId: regionManager.id,
+    rows: rows.map((row) => ({ id: row.id, userId: row.user_id, grade: row.grade })),
+  };
+}
+
 export default async function handler(request, response) {
   if (!["GET", "POST"].includes(request.method)) {
     response.setHeader("Allow", "GET, POST");
@@ -414,8 +490,11 @@ export default async function handler(request, response) {
         ? await ensureSimulationTestActors(client)
         : { ok: false, skipped: true, error: "production_test_seed_disabled" }
       : null;
+    const courtAdminSeed = body?.ensureCourtAdmins === true
+      ? await ensureCourtAdminAppointments(client)
+      : null;
     sendJson(response, 200, {
-      ok: failed.length === 0 && failedRpcs.length === 0 && feedTriggerCheck.ok && (!simulationSeed || simulationSeed.ok),
+      ok: failed.length === 0 && failedRpcs.length === 0 && feedTriggerCheck.ok && (!simulationSeed || simulationSeed.ok) && (!courtAdminSeed || courtAdminSeed.ok),
       failedCount: failed.length,
       failedRpcCount: failedRpcs.length,
       failedFeedTriggerCount: feedTriggerCheck.missing.length,
@@ -423,6 +502,7 @@ export default async function handler(request, response) {
       rpcChecks,
       feedTriggerCheck,
       simulationSeed,
+      courtAdminSeed,
     });
   } catch (error) {
     sendJson(response, error.statusCode || 500, { error: error.message || "schema_health_failed" });

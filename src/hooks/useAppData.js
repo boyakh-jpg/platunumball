@@ -528,6 +528,58 @@ function mergeRemoteProfileState(state, remoteState = {}) {
   };
 }
 
+function mergeCourtApprovalResult(state, requestId, result = {}, currentUserId = "") {
+  const safeRequestId = String(result?.requestId ?? requestId ?? "").trim();
+  const approvedCourtId = String(result?.approvedCourtId ?? "").trim();
+  if (!safeRequestId || !approvedCourtId) return state;
+
+  const request = (state.settings?.courtRequests ?? []).find((item) => item.id === safeRequestId);
+  if (!request) return state;
+
+  const now = new Date().toISOString();
+  const approvedCourt = {
+    ...request,
+    id: approvedCourtId,
+    sourceRequestId: safeRequestId,
+    approvedBy: currentUserId,
+    approvedAt: now,
+    status: "active",
+    hoopCount: ["half", "single_hoop"].includes(request.courtLayout) ? 1 : 2,
+    lighting: request.lighting ?? false,
+    favorite: false,
+  };
+  const nextApprovedCourts = [
+    approvedCourt,
+    ...(state.settings?.approvedCourts ?? []).filter((court) => (
+      court.id !== approvedCourtId &&
+      court.sourceRequestId !== safeRequestId
+    )),
+  ];
+
+  return {
+    ...state,
+    settings: {
+      ...(state.settings ?? {}),
+      approvedCourts: nextApprovedCourts,
+      courtRequests: (state.settings?.courtRequests ?? []).map((item) => (
+        item.id === safeRequestId
+          ? { ...item, status: "approved", approvedAt: now, approvedBy: currentUserId, approvedCourtId }
+          : item
+      )),
+    },
+    notifications: [
+      {
+        id: makeClientNotificationId("n"),
+        title: "구장 승인 완료",
+        body: `${request.name} 등록 구장이 승인되었습니다.`,
+        tone: "team",
+        createdAt: now,
+      },
+      ...(state.notifications ?? []),
+    ],
+  };
+}
+
 function mergeServerRoomResult(state, result = {}) {
   if (!result || typeof result !== "object") return state;
   const nextPost = result.post ?? null;
@@ -2258,9 +2310,18 @@ export function useAppData(authUser = null) {
         setState((prev) => commitAdminAppointmentAction({ ...prev, currentUserId }, draft));
         runServerAction("/api/admin/appointment-action", draft);
       },
-      approveCourtRequest: (requestId) => {
-        setState((prev) => approveCourtRequest({ ...prev, currentUserId }, requestId));
-        runServerAction("/api/court-requests/approve", { requestId });
+      approveCourtRequest: async (requestId) => {
+        if (!isSupabaseConfigured) {
+          setState((prev) => approveCourtRequest({ ...prev, currentUserId }, requestId));
+          return true;
+        }
+        if (!ensureRemoteReady("구장 승인")) return false;
+        const serverReady = await ensureServerActionAvailable("/api/court-requests/approve", "구장 승인");
+        if (serverReady !== true) return serverReady;
+        const result = await runServerAction("/api/court-requests/approve", { requestId });
+        if (!result || result.ok === false) return result;
+        setState((prev) => mergeCourtApprovalResult(prev, requestId, result, currentUserId));
+        return result;
       },
       markNotificationRead: (notificationId) => {
         setState((prev) => markNotificationRead(prev, notificationId));
