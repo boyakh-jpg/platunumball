@@ -14,6 +14,8 @@ const TEAM_COLUMNS = "id,name,home_court,region,mmr,wins,losses,accent,deleted_a
 const TEAM_MEMBER_COLUMNS = "team_id,user_id,role";
 const TEAM_INVITATION_COLUMNS = "id,team_id,from_user_id,target_user_id,role,status,created_at,updated_at";
 const PROFILE_MATCH_SUMMARY_COLUMNS = "profile_id,match_count,win_count,loss_count,draw_count,points,rebounds,assists,steals,blocks,fouls,last_match_id,last_match_at,updated_at";
+const FAVORITE_COLUMNS = "id,user_id,target_type,target_id,created_at";
+const APPROVED_COURT_COLUMNS = "id,source_request_id,approved_by,name,hashtag,address_text,road_address,jibun_address,zonecode,lat,lng,status,hidden_at,hidden_by,hidden_reason,approved_at,created_at,updated_at,payload";
 
 function unique(values = []) {
   return [...new Set(values.filter(Boolean))];
@@ -75,6 +77,48 @@ function fromProfileMatchSummary(row = {}) {
     lastMatchAt: row.last_match_at ?? null,
     updatedAt: row.updated_at ?? null,
   };
+}
+
+function getPayload(row = {}) {
+  return row.payload && typeof row.payload === "object" && !Array.isArray(row.payload) ? row.payload : {};
+}
+
+function fromApprovedCourt(row = {}) {
+  const payload = getPayload(row);
+  return {
+    ...payload,
+    id: row.id ?? payload.id,
+    sourceRequestId: row.source_request_id ?? payload.sourceRequestId,
+    approvedBy: row.approved_by ?? payload.approvedBy,
+    name: row.name ?? payload.name,
+    hashtag: row.hashtag ?? payload.hashtag,
+    addressText: row.address_text ?? payload.addressText,
+    roadAddress: row.road_address ?? payload.roadAddress,
+    jibunAddress: row.jibun_address ?? payload.jibunAddress,
+    zonecode: row.zonecode ?? payload.zonecode,
+    lat: row.lat ?? payload.lat,
+    lng: row.lng ?? payload.lng,
+    status: row.status ?? payload.status ?? "active",
+    hiddenAt: row.hidden_at ?? payload.hiddenAt,
+    hiddenBy: row.hidden_by ?? payload.hiddenBy,
+    hiddenReason: row.hidden_reason ?? payload.hiddenReason,
+    approvedAt: row.approved_at ?? payload.approvedAt,
+    createdAt: row.created_at ?? payload.createdAt,
+    updatedAt: row.updated_at ?? payload.updatedAt,
+  };
+}
+
+async function loadCurrentUserFavorites(supabase, profileId = "") {
+  if (!profileId) return [];
+  const { data, error } = await supabase
+    .from("favorites")
+    .select(FAVORITE_COLUMNS)
+    .eq("user_id", profileId);
+  if (error) {
+    if (["42P01", "PGRST205"].includes(error.code)) return [];
+    throw error;
+  }
+  return data ?? [];
 }
 
 async function loadCurrentUserMatchSummary(supabase, profileId = "") {
@@ -153,12 +197,17 @@ export async function loadCurrentProfileState(context, options = {}) {
   const ownMembershipsPromise = profileId
     ? context.supabase.from("team_members").select("team_id").eq("user_id", profileId)
     : Promise.resolve({ data: [], error: null });
-  const [matchSummary, teamInvitations, ownMembershipsResult] = await Promise.all([
+  const [matchSummary, teamInvitations, ownMembershipsResult, favoriteRows] = await Promise.all([
     loadCurrentUserMatchSummary(context.supabase, profileId),
     loadCurrentUserTeamInvitations(context.supabase, profileId),
     ownMembershipsPromise,
+    loadCurrentUserFavorites(context.supabase, profileId),
   ]);
   if (ownMembershipsResult.error) throw ownMembershipsResult.error;
+  const favoritePlayerIds = favoriteRows.filter((favorite) => favorite.target_type === "player").map((favorite) => favorite.target_id);
+  const favoriteTeamIds = favoriteRows.filter((favorite) => favorite.target_type === "team").map((favorite) => favorite.target_id);
+  const favoriteCourtIds = favoriteRows.filter((favorite) => favorite.target_type === "court").map((favorite) => favorite.target_id);
+  const favoriteRefereeIds = favoriteRows.filter((favorite) => favorite.target_type === "referee").map((favorite) => favorite.target_id);
   const user = profile
     ? { ...fromRemoteProfile(profile), matchSummary }
     : createProfileShell(context.authUserId, context.authUser?.email ?? "");
@@ -166,26 +215,44 @@ export async function loadCurrentProfileState(context, options = {}) {
   const currentUserTeams = await loadCurrentUserTeams(
     context.supabase,
     profileId,
-    teamInvitations.filter((invitation) => invitation.status === "pending").map((invitation) => invitation.teamId),
+    [
+      ...teamInvitations.filter((invitation) => invitation.status === "pending").map((invitation) => invitation.teamId),
+      ...favoriteTeamIds,
+    ],
     {
       includeTeamMemberProfiles: options.includeTeamMemberProfiles !== false,
       ownMemberships: ownMembershipsResult.data ?? [],
     },
   );
+  const favoriteProfileIds = unique([...favoritePlayerIds, ...favoriteRefereeIds]);
   const invitationProfileIds = unique(teamInvitations.flatMap((invitation) => [
     invitation.fromUserId,
     invitation.targetUserId,
-  ])).filter((userId) => userId !== profileId && !currentUserTeams.users.some((item) => item.id === userId));
-  const { data: invitationProfileRows, error: invitationProfileError } = invitationProfileIds.length
-    ? await context.supabase.from("public_profiles").select(PROFILE_TEAM_MEMBER_COLUMNS).in("id", invitationProfileIds)
+  ]));
+  const extraProfileIds = unique([...invitationProfileIds, ...favoriteProfileIds])
+    .filter((userId) => userId !== profileId && !currentUserTeams.users.some((item) => item.id === userId));
+  const { data: extraProfileRows, error: extraProfileError } = extraProfileIds.length
+    ? await context.supabase.from("public_profiles").select(PROFILE_TEAM_MEMBER_COLUMNS).in("id", extraProfileIds)
     : { data: [], error: null };
-  if (invitationProfileError) throw invitationProfileError;
-  const invitationUsers = (invitationProfileRows ?? []).map(fromTeamMemberProfile);
-  const userById = new Map([...currentUserTeams.users, ...invitationUsers].map((item) => [item.id, item]));
+  if (extraProfileError) throw extraProfileError;
+  const extraUsers = (extraProfileRows ?? []).map(fromTeamMemberProfile);
+  const userById = new Map([...currentUserTeams.users, ...extraUsers].map((item) => [item.id, item]));
   userById.set(user.id, user);
+  const { data: favoriteCourtRows, error: favoriteCourtError } = favoriteCourtIds.length
+    ? await context.supabase.from("approved_courts").select(APPROVED_COURT_COLUMNS).in("id", favoriteCourtIds)
+    : { data: [], error: null };
+  if (favoriteCourtError) throw favoriteCourtError;
   const settings = {
     ...DEFAULT_SETTINGS,
     ...remoteAppSettings,
+    favoritePlayerIds,
+    favoriteTeamIds,
+    favoriteCourtIds,
+    favoriteRefereeIds,
+    approvedCourts: unique([
+      ...(remoteAppSettings.approvedCourts ?? []),
+      ...(favoriteCourtRows ?? []).map(fromApprovedCourt),
+    ]),
   };
   const state = normalizeState({
     currentUserId: user.id,
