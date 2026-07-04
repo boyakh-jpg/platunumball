@@ -433,6 +433,18 @@ function getEntryPartyLeaderId(entry, hostPlayerId = "", roomState = {}) {
   return roomState.partyLeaders?.[entry.id] ?? (entry.fixed ? hostPlayerId : entry.playerId) ?? "";
 }
 
+function getRecruitingSideLeaderId(lobby = {}, sideName = "", hostPlayerId = "", roomState = {}) {
+  const side = lobby.sides?.[sideName];
+  const entry = side?.entries?.find((item) => isPartyEntry(item)) ?? side?.entries?.[0] ?? null;
+  const reserveEntryId = side?.reserveCandidates?.[0]?.entryId ?? "";
+  const fallbackEntry = reserveEntryId ? lobby.entries?.find((item) => item.id === reserveEntryId) ?? null : null;
+  const targetEntry = entry ?? fallbackEntry;
+  if (!targetEntry) return "";
+  const rosterIds = uniqueIds([...(targetEntry.players ?? []), ...(targetEntry.reserves ?? [])]);
+  const leaderId = getEntryPartyLeaderId(targetEntry, hostPlayerId, roomState);
+  return rosterIds.includes(leaderId) ? leaderId : rosterIds[0] ?? "";
+}
+
 function getRoomSlotBadge(playerId, entry, hostPlayerId, showCaptainBadge = false, roomState = {}, options = {}) {
   const showPartyBadge = options.showPartyBadge !== false;
   const sideLeaderId = options.sideLeaderId ?? "";
@@ -2570,12 +2582,14 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const currentUserCanStartSourceMatch = Boolean(sourceMatch && (sourceMatch.refereeId ? currentUserIsSourceReferee : mine));
         const sourceMatchHostSideName = sourceMatch && getMatchSidePlayerIds(sourceMatch, "teamB").includes(sourceMatch.createdBy) ? "teamB" : "teamA";
         const sourceMatchOpponentSideName = sourceMatchHostSideName === "teamA" ? "teamB" : "teamA";
-        const sourceMatchSideLeaderIds = sourceMatch
-          ? {
-              teamA: getMatchSideLeaderId(sourceMatch, app.state.teams, "teamA"),
-              teamB: getMatchSideLeaderId(sourceMatch, app.state.teams, "teamB"),
-            }
-          : { teamA: "", teamB: "" };
+        const sourceMatchSideLeaderIds = {
+          teamA: sourceMatch
+            ? getMatchSideLeaderId(sourceMatch, app.state.teams, "teamA")
+            : getRecruitingSideLeaderId(lobby, "teamA", roomOwnerId, roomState),
+          teamB: sourceMatch
+            ? getMatchSideLeaderId(sourceMatch, app.state.teams, "teamB")
+            : getRecruitingSideLeaderId(lobby, "teamB", roomOwnerId, roomState),
+        };
         const sourceMatchOpponentLeaderId = sourceMatch
           ? sourceMatchSideLeaderIds[sourceMatchOpponentSideName] ?? ""
           : "";
