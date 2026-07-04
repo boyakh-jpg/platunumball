@@ -92,6 +92,15 @@ async function loadTeamInvitations(supabase, profileId = "", teamId = "") {
   return (data ?? []).map(fromRemoteTeamInvitation);
 }
 
+async function timeStep(debugTiming, key, callback) {
+  const startedAt = Date.now();
+  try {
+    return await callback();
+  } finally {
+    if (debugTiming) debugTiming[key] = (debugTiming[key] ?? 0) + Date.now() - startedAt;
+  }
+}
+
 export default async function handler(request, response) {
   if (request.method !== "POST") {
     response.setHeader("Allow", "POST");
@@ -100,7 +109,9 @@ export default async function handler(request, response) {
   }
 
   try {
+    const startedAt = Date.now();
     const body = await readJsonBody(request);
+    const debugTiming = body.debugTiming === true ? {} : null;
     const teamId = String(body.teamId ?? body.id ?? "").trim();
     const requestUrl = new URL(request.url || "/", "https://rankball.local");
     const queryPath = Array.isArray(request.query?.path) ? request.query.path[0] : request.query?.path;
@@ -110,7 +121,7 @@ export default async function handler(request, response) {
       sendJson(response, 400, { error: "team_id_required" });
       return;
     }
-    const context = await getAuthenticatedContext(request, { allowMissingProfile: true, profileSelect: PROFILE_ME_COLUMNS });
+    const context = await timeStep(debugTiming, "authMs", () => getAuthenticatedContext(request, { allowMissingProfile: true, profileSelect: PROFILE_ME_COLUMNS }));
     const profile = context.profile ?? null;
     const user = profile
       ? fromRemoteProfile(profile)
@@ -122,7 +133,7 @@ export default async function handler(request, response) {
       .is("deleted_at", null)
       .order("mmr", { ascending: false });
     if (teamId) teamQuery = teamQuery.eq("id", teamId);
-    const { data: teamRows, error: teamError } = await teamQuery;
+    const { data: teamRows, error: teamError } = await timeStep(debugTiming, "teamsMs", () => teamQuery);
     if (teamError) throw teamError;
     if (teamId && !(teamRows ?? []).length) {
       sendJson(response, 404, { error: "team_not_found", teamId });
@@ -131,11 +142,11 @@ export default async function handler(request, response) {
 
     const teamIds = unique((teamRows ?? []).map((team) => team.id));
     const { data: memberRows, error: memberError } = teamIds.length
-      ? await context.supabase.from("team_members").select(TEAM_MEMBER_COLUMNS).in("team_id", teamIds)
+      ? await timeStep(debugTiming, "membersMs", () => context.supabase.from("team_members").select(TEAM_MEMBER_COLUMNS).in("team_id", teamIds))
       : { data: [], error: null };
     if (memberError) throw memberError;
 
-    const teamInvitations = await loadTeamInvitations(context.supabase, user.id, teamId);
+    const teamInvitations = await timeStep(debugTiming, "invitationsMs", () => loadTeamInvitations(context.supabase, user.id, teamId));
     const invitationProfileIds = teamInvitations.flatMap((invitation) => [
       invitation.fromUserId,
       invitation.targetUserId,
@@ -143,7 +154,7 @@ export default async function handler(request, response) {
     const memberProfileIds = isDetailRequest ? (memberRows ?? []).map((member) => member.user_id) : [];
     const profileIds = unique([user.id, ...memberProfileIds, ...invitationProfileIds]);
     const { data: profileRows, error: profileError } = profileIds.length
-      ? await context.supabase.from("public_profiles").select(PROFILE_TEAM_MEMBER_COLUMNS).in("id", profileIds)
+      ? await timeStep(debugTiming, "profilesMs", () => context.supabase.from("public_profiles").select(PROFILE_TEAM_MEMBER_COLUMNS).in("id", profileIds))
       : { data: [], error: null };
     if (profileError) throw profileError;
 
@@ -174,6 +185,7 @@ export default async function handler(request, response) {
         tournaments: [],
       },
       updatedAt: Math.max(getMaxUpdatedAt(teamRows ?? []), getMaxUpdatedAt(memberRows ?? []), getMaxUpdatedAt(profileRows ?? [])),
+      debugTiming: debugTiming ? { ...debugTiming, totalMs: Date.now() - startedAt } : undefined,
     });
   } catch (error) {
     console.warn("Teams list load failed.", error.message);
