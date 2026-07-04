@@ -829,6 +829,7 @@ UI 수정 전:
 2. Home lower dashboard uses match-focused primary column and compact support-card rail.
 3. Mobile home stays single-column for readability: search, action queue, rank hero, then dashboard.
 4. Home action queue does not keep a fixed empty height; on wider viewports only the action list scrolls when items exceed the rail height.
+5. Home upcoming recruiting rows do not use the action-queue warning border, and My Teams rows keep the same rounded row radius as other compact home rows.
 
 ## 2026-07-01 Full internal preview pass
 
