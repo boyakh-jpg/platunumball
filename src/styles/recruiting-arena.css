@@ -7238,12 +7238,16 @@ html[data-theme="light"] .arena-lobby-arena {
 }
 
 .arena-filter-bar .arena-relation-filter {
-  flex: 1 1 360px;
-  min-width: min(360px, 100%);
-  max-width: none;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .arena-filter-bar .arena-relation-filter button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 110px;
   overflow: visible;
   padding-inline: 14px;
 }
@@ -7258,7 +7262,8 @@ html[data-theme="light"] .arena-lobby-arena {
   }
 
   .arena-filter-bar .arena-relation-filter {
-    width: 100%;
+    width: auto;
     min-width: 0;
+    max-width: 100%;
   }
 }

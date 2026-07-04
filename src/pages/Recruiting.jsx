@@ -1805,10 +1805,6 @@ function isExpiredInstantRecruitingPost(post = {}) {
   return isInstantRoom(post) && getPublicRoomTimingStatus(post).expired;
 }
 
-function getDefaultRecruitingRegionKey(user = {}) {
-  return stripRegionSuffix(user.regionDistrict || String(user.region ?? "").split(/\s+/).filter(Boolean).at(-1) || "");
-}
-
 function SourceMatchRecordSummary({ match, userById }) {
   if (!match?.result) return null;
   const result = match.disputeDraftResult ?? match.result;
@@ -3505,7 +3501,7 @@ function RecruitingReady({ app }) {
   );
   const [queue, setQueue] = useState("all");
   const [roomScope, setRoomScope] = useState(() => (targetFilter === "invited" ? "invited" : "all"));
-  const [regionFilterSido, setRegionFilterSido] = useState("local");
+  const [regionFilterSido, setRegionFilterSido] = useState(defaultRegionSelection.sido);
   const [regionFilterDistrict, setRegionFilterDistrict] = useState(defaultRegionSelection.district);
   const [modeFilter, setModeFilter] = useState("all");
   const [startFilter, setStartFilter] = useState("instant");
@@ -3551,14 +3547,11 @@ function RecruitingReady({ app }) {
   const draftTimingStatus = getPublicRoomTimingStatus(draft);
   const scheduleAllowed = draftInstant || (draft.scheduledDate >= minScheduleDate && draft.scheduledDate <= maxScheduleDate && draftTimingStatus.canCreate);
   const canPostRecruiting = hasSchedule && scheduleAllowed && (!hostNeedsTeam || (Boolean(selectedTeam) && selectedHostPlayerIds.length > 0));
-  const localRegionKey = getDefaultRecruitingRegionKey(app.currentUser);
   const selectedRegionGroup = REGION_TREE.find((region) => region.sido === regionFilterSido) ?? REGION_TREE[0] ?? { districts: [] };
   const regionDistrictOptions = selectedRegionGroup.districts ?? [];
-  const selectedRegionDistrict = regionFilterSido === "local"
-    ? defaultRegionSelection.district
-    : (regionDistrictOptions.includes(regionFilterDistrict) ? regionFilterDistrict : regionDistrictOptions[0] ?? "");
-  const regionFilter = regionFilterSido === "local" ? "local" : selectedRegionDistrict;
-  const selectedRegionKey = regionFilter === "local" ? localRegionKey : stripRegionSuffix(selectedRegionDistrict);
+  const selectedRegionDistrict = regionDistrictOptions.includes(regionFilterDistrict) ? regionFilterDistrict : regionDistrictOptions[0] ?? defaultRegionSelection.district;
+  const regionFilter = selectedRegionDistrict;
+  const selectedRegionKey = stripRegionSuffix(selectedRegionDistrict);
   const startDateKey = getTodayInputValue();
   const startDateOptions = useMemo(() => getStartDateFilterOptions(), [startDateKey]);
   const startFilterLabel = startDateOptions.find((option) => option.id === startFilter)?.label ?? "전체 시작일";
@@ -3568,13 +3561,8 @@ function RecruitingReady({ app }) {
 
   const selectRegionSido = (event) => {
     const nextSido = event.target.value;
-    if (nextSido === "local") {
-      setRegionFilterSido("local");
-      setRegionFilterDistrict(defaultRegionSelection.district);
-      return;
-    }
     const nextGroup = REGION_TREE.find((region) => region.sido === nextSido) ?? REGION_TREE[0];
-    setRegionFilterSido(nextGroup?.sido ?? "local");
+    setRegionFilterSido(nextGroup?.sido ?? defaultRegionSelection.sido);
     setRegionFilterDistrict(nextGroup?.districts?.[0] ?? defaultRegionSelection.district);
   };
 
@@ -3597,9 +3585,7 @@ function RecruitingReady({ app }) {
     const regionKey = selectedRegionKey;
     const currentScope = app.recruitingPagination?.regionScope ?? "local";
     const currentKey = app.recruitingPagination?.regionKey ?? "";
-    const currentPageMatchesRegion = regionFilter === "local"
-      ? ((currentScope === "local" && !currentKey) || (currentScope === "region" && currentKey === regionKey))
-      : (currentScope === "region" && currentKey === regionKey);
+    const currentPageMatchesRegion = currentScope === "region" && currentKey === regionKey;
     const targetStartFilter = roomScope === "all" ? startFilter : "all";
     const currentStartFilter = app.recruitingPagination?.startFilter ?? "all";
     const needsFilteredPage = roomScope === "all"
@@ -3611,8 +3597,8 @@ function RecruitingReady({ app }) {
     if (regionLoadRef.current === loadKey) return;
     regionLoadRef.current = loadKey;
     Promise.resolve(app.actions.loadRecruitingRegion?.({
-      regionScope: regionFilter === "local" ? "local" : "region",
-      regionKey: regionFilter === "local" ? "" : regionKey,
+      regionScope: "region",
+      regionKey,
       limit: needsFilteredPage ? RECRUITING_FILTER_PAGE_LIMIT : undefined,
       startFilter: targetStartFilter,
       includeFeedCounts: false,
@@ -3845,17 +3831,14 @@ function RecruitingReady({ app }) {
             <section className="arena-filter-bar" aria-label="필터">
               <label className="arena-filter-select arena-region-sido-filter">
                 <select aria-label="시도" value={regionFilterSido} onChange={selectRegionSido}>
-                  <option value="local">내 지역{localRegionKey ? ` · ${localRegionKey}` : ""}</option>
                   {REGION_TREE.map((region) => <option key={region.sido} value={region.sido}>{region.sido}</option>)}
                 </select>
               </label>
-              {regionFilterSido !== "local" ? (
-                <label className="arena-filter-select arena-region-district-filter">
-                  <select aria-label="시군구" value={selectedRegionDistrict} onChange={(event) => setRegionFilterDistrict(event.target.value)}>
-                    {regionDistrictOptions.map((district) => <option key={district} value={district}>{district}</option>)}
-                  </select>
-                </label>
-              ) : null}
+              <label className="arena-filter-select arena-region-district-filter">
+                <select aria-label="시군구" value={selectedRegionDistrict} onChange={(event) => setRegionFilterDistrict(event.target.value)}>
+                  {regionDistrictOptions.map((district) => <option key={district} value={district}>{district}</option>)}
+                </select>
+              </label>
               <div className="segmented-control compact-segments arena-filter-segment arena-relation-filter">
                 <button type="button" className={roomScope === "created" ? "active" : ""} onClick={() => selectRoomScope("created")}><span className="arena-filter-label">내가 만든 방</span><span className="arena-filter-badge">{formatRoomCount(createdRoomCount)}</span></button>
                 <button type="button" className={roomScope === "joined" ? "active" : ""} onClick={() => selectRoomScope("joined")}><span className="arena-filter-label">내 참여방</span><span className="arena-filter-badge">{formatRoomCount(joinedRoomCount)}</span></button>
@@ -3895,7 +3878,7 @@ function RecruitingReady({ app }) {
           </>
         ) : (
           <div className="arena-queue-summary">
-            <span>{regionFilter === "local" ? `내 지역${localRegionKey ? ` · ${localRegionKey}` : ""}` : `${regionFilterSido} ${selectedRegionDistrict}`}</span>
+            <span>{`${regionFilterSido} ${selectedRegionDistrict}`}</span>
             <span>{queue === "ranked" ? "정규전" : queue === "friendly" ? "친선전" : "전체"}</span>
             <span>{modeFilter === "all" ? "전체 방식" : MATCH_MODES.find((mode) => mode.id === modeFilter)?.label ?? modeFilter}</span>
             <span>{startFilterLabel}</span>
