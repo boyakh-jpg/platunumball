@@ -139,7 +139,8 @@ export async function getAdminLevel(context) {
     actor_profile_id: context.profileId,
     override_level: 0,
   });
-  if (!rpcError && Number.isFinite(Number(rpcLevel))) return Number(rpcLevel);
+  const rpcAdminLevel = !rpcError && Number.isFinite(Number(rpcLevel)) ? Number(rpcLevel) : 0;
+  if (rpcAdminLevel >= 30) return rpcAdminLevel;
 
   const { data, error } = await context.supabase
     .from("admin_appointments")
@@ -151,5 +152,5 @@ export async function getAdminLevel(context) {
 
   return (data ?? [])
     .filter(isActiveAppointment)
-    .reduce((level, appointment) => Math.max(level, ADMIN_GRADE_LEVELS[appointment.grade] ?? 0), 0);
+    .reduce((level, appointment) => Math.max(level, ADMIN_GRADE_LEVELS[appointment.grade] ?? 0), rpcAdminLevel);
 }
