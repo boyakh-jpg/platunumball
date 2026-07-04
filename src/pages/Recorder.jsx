@@ -115,6 +115,21 @@ function getRecorderAllowedFields(match, state, userId, playerId, allowPostgameS
   return Object.values(fieldById);
 }
 
+function isAnonymousDisplayUser(user = null) {
+  return Boolean(user?.anonymous || user?.participationLabel === "개인참여");
+}
+
+function getAvatarInitial(user = null, fallback = "P") {
+  return isAnonymousDisplayUser(user) ? "?" : (user?.name?.slice(0, 1) ?? fallback);
+}
+
+function getPlayerMetaLabel(user = null, rosterLabel = "") {
+  const position = user?.position ?? "-";
+  const participation = user?.participationLabel ? ` · ${user.participationLabel}` : "";
+  const roster = rosterLabel ? ` · ${rosterLabel}` : "";
+  return `${position}${participation}${roster} · 신뢰 ${user?.trustScore ?? "-"}`;
+}
+
 function canAccessActiveMatch(match, user, state) {
   if (!activeStatuses.has(match.status)) return false;
   if (getMatchRoomPhase(match).phase === "record") return false;
@@ -359,10 +374,10 @@ export default function Recorder({ app }) {
             return (
               <article className="recorder-player-row" key={playerId}>
                 <PlayerHoverCard as="span" user={player} teams={app.state.teams} className="recorder-player-main">
-                  <span className="avatar small" style={{ "--avatar": player?.avatarColor }}>{player?.name?.slice(0, 1) ?? "P"}</span>
+                  <span className={["avatar", "small", isAnonymousDisplayUser(player) ? "anonymous" : ""].filter(Boolean).join(" ")} style={{ "--avatar": player?.avatarColor }}>{getAvatarInitial(player)}</span>
                   <span>
                     <strong>{player?.name ?? "선수"}</strong>
-                    <em>{player?.position ?? "-"} · {rosterLabel} · 신뢰 {player?.trustScore ?? "-"}</em>
+                    <em>{getPlayerMetaLabel(player, rosterLabel)}</em>
                   </span>
                 </PlayerHoverCard>
                 <div className="recorder-stat-grid">

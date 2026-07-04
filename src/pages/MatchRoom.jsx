@@ -109,6 +109,23 @@ function getRecordPlayerDisplayName(match = {}, sideName = "teamA", playerId = "
     || "플레이어";
 }
 
+function isAnonymousDisplayUser(user = null) {
+  return Boolean(user?.anonymous || user?.participationLabel === "개인참여");
+}
+
+function getAvatarClassName(user = null, size = "") {
+  return ["avatar", size, isAnonymousDisplayUser(user) ? "anonymous" : ""].filter(Boolean).join(" ");
+}
+
+function getAvatarInitial(user = null, fallback = "P") {
+  return isAnonymousDisplayUser(user) ? "?" : (user?.name?.slice(0, 1) ?? fallback);
+}
+
+function getPlayerMetaLabel(user = null) {
+  const position = user?.position ?? "-";
+  return user?.participationLabel ? `${position} · ${user.participationLabel}` : position;
+}
+
 function getRecordPlayerEntries(match = {}, includeReserves = false) {
   return ["teamA", "teamB"].flatMap((sideName) => (
     getMatchSideRecordPlayerIds(match, sideName, includeReserves).map((playerId, index) => ({ sideName, playerId, index }))
@@ -345,7 +362,8 @@ export default function MatchRoom({ app }) {
   const teamBMmr = teamB?.mmr ?? getTeamMmr(app.state.teams, teamBSide.teamId);
   const winnerName = Number(scoreA) === Number(scoreB) ? "" : Number(scoreA) > Number(scoreB) ? teamASide.name : teamBSide.name;
   const currentUserDisputePoints = getMatchPlayerDisputePoints(match, app.currentUser.id);
-  const matchKind = match.ranked === false ? "친선전" : "정규전";
+  const isSoloRecord = match.rules?.recordType === "solo";
+  const matchKind = isSoloRecord ? "개인 기록" : match.ranked === false ? "친선전" : "정규전";
   const recordLockReason = recordWindow.beforeStart
     ? "경기 시작 전"
     : recordWindow.beforeEnd
@@ -390,9 +408,9 @@ export default function MatchRoom({ app }) {
                   <Crown size={12} strokeWidth={3} />
                 </span>
               ) : null}
-              <span className="avatar" style={{ "--avatar": user?.avatarColor }}>{user?.name?.slice(0, 1) ?? "P"}</span>
+              <span className={getAvatarClassName(user)} style={{ "--avatar": user?.avatarColor }}>{getAvatarInitial(user)}</span>
               <strong>{user?.name ?? "플레이어"}</strong>
-              <small>{user?.position ?? "-"}</small>
+              <small>{getPlayerMetaLabel(user)}</small>
               <em>{slotLabel}</em>
             </PlayerHoverCard>
           );
@@ -424,9 +442,9 @@ export default function MatchRoom({ app }) {
                     <Crown size={12} strokeWidth={3} />
                   </span>
                 ) : null}
-                <span className="avatar" style={{ "--avatar": user?.avatarColor }}>{user?.name?.slice(0, 1) ?? "P"}</span>
+                <span className={getAvatarClassName(user)} style={{ "--avatar": user?.avatarColor }}>{getAvatarInitial(user)}</span>
                 <strong>{user?.name ?? "플레이어"}</strong>
-                <small>{user?.position ?? "-"}</small>
+                <small>{getPlayerMetaLabel(user)}</small>
                 <em>{recorder ? "REC" : "SUB"}</em>
               </PlayerHoverCard>
             );
@@ -662,7 +680,7 @@ export default function MatchRoom({ app }) {
     ["파울 룰", match.rules?.foulRule ?? "현장 합의"],
     ["기록 권한", recorderSummary],
     ["이의제기", `${Math.min(Number(match.disputeMinutes ?? DISPUTE_WINDOW_MINUTES), DISPUTE_WINDOW_MINUTES)}분`],
-    ["티어 반영", match.ranked === false ? "친선 · 티어 자유" : `정규 · MMR ${Math.round((match.ratingScale ?? match.rules?.ratingScale ?? 1) * 100)}%`],
+    ["티어 반영", isSoloRecord ? "개인 기록 · MMR 미반영" : match.ranked === false ? "친선 · 티어 자유" : `정규 · MMR ${Math.round((match.ratingScale ?? match.rules?.ratingScale ?? 1) * 100)}%`],
   ];
 
   return (
@@ -670,7 +688,7 @@ export default function MatchRoom({ app }) {
       <section className={match.ranked === false ? "gm-room-hero gm-friendly" : "gm-room-hero gm-ranked"}>
         <div className="gm-room-topline">
           <div className="badge-row">
-            <Badge tone={match.ranked === false ? "neutral" : "gold"}>{matchKind}</Badge>
+            <Badge tone={isSoloRecord ? "green" : match.ranked === false ? "neutral" : "gold"}>{matchKind}</Badge>
             <Badge tone={status.tone}>{status.label}</Badge>
             {match.preRegistered ? <Badge tone="green">사전등록</Badge> : null}
           </div>
@@ -746,7 +764,7 @@ export default function MatchRoom({ app }) {
               <p className="eyebrow">Match rules</p>
               <h2>경기 룰</h2>
             </div>
-            <Badge tone={match.ranked === false ? "neutral" : "gold"}>{match.ranked === false ? "친선전" : "정규전"}</Badge>
+            <Badge tone={isSoloRecord ? "green" : match.ranked === false ? "neutral" : "gold"}>{matchKind}</Badge>
           </div>
           <div className="contract-grid">
             {ruleItems.map(([label, value]) => (
@@ -892,10 +910,10 @@ export default function MatchRoom({ app }) {
                       return (
                         <button key={playerId} type="button" className={`${canEdit ? "stat-player-button editable" : "stat-player-button locked"} ${submitted ? "submitted" : ""}`} disabled={!canEdit} onClick={() => setStatEditorPlayerId(playerId)}>
                           <PlayerHoverCard as="span" user={displayUser} teams={app.state.teams}>
-                            <span className="avatar small" style={{ "--avatar": user?.avatarColor }}>{displayName.slice(0, 1) || "P"}</span>
+                            <span className={getAvatarClassName(displayUser, "small")} style={{ "--avatar": displayUser?.avatarColor }}>{getAvatarInitial(displayUser)}</span>
                             <span>
                               <strong>{displayName}</strong>
-                              <em>{canEdit ? formatStatLine(score.playerStats[playerId]) : `${displayUser.position ?? "-"} · ${getPlayerStatState(playerId, submitted)}`}</em>
+                              <em>{canEdit ? formatStatLine(score.playerStats[playerId]) : `${getPlayerMetaLabel(displayUser)} · ${getPlayerStatState(playerId, submitted)}`}</em>
                             </span>
                           </PlayerHoverCard>
                           <strong>{getPlayerStatState(playerId, submitted)}</strong>
@@ -964,7 +982,7 @@ export default function MatchRoom({ app }) {
                       onClick={() => toggleThumbDraft(playerId)}
                     >
                       <PlayerHoverCard as="span" user={user} teams={app.state.teams}>
-                        <span className="avatar small" style={{ "--avatar": user?.avatarColor }}>{user?.name?.slice(0, 1) ?? "P"}</span>
+                        <span className={getAvatarClassName(user, "small")} style={{ "--avatar": user?.avatarColor }}>{getAvatarInitial(user)}</span>
                         <span>
                           <strong>{user?.name ?? "플레이어"}</strong>
                           <em>{getTrustFeedbackRole(match, playerId)} · {thumbCountByPlayer[playerId] ?? 0}개 받음</em>

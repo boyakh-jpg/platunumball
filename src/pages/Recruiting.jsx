@@ -369,6 +369,14 @@ function getPlayerPosition(user) {
   return user?.position || "포지션 자유";
 }
 
+function isAnonymousDisplayUser(user = null) {
+  return Boolean(user?.anonymous || user?.participationLabel === "개인참여");
+}
+
+function getAvatarInitial(user = null, fallback = "?") {
+  return isAnonymousDisplayUser(user) ? "?" : (user?.name?.slice(0, 1) ?? fallback);
+}
+
 function getRoomSlotPositionAvatarSrc(position) {
   const normalizedPosition = String(position ?? "").trim().toUpperCase();
   return ROOM_SLOT_POSITION_AVATARS[normalizedPosition] ?? null;
@@ -392,7 +400,11 @@ function RoomSlotAvatar({ user, mmr = 1200, position = null }) {
   const [failed, setFailed] = useState(false);
   const normalizedPosition = String(position ?? user?.position ?? "").trim().toUpperCase();
   const avatarSrc = getRoomSlotPositionAvatarSrc(normalizedPosition);
-  const initial = user?.name?.slice(0, 1) ?? "?";
+  const initial = getAvatarInitial(user);
+
+  if (isAnonymousDisplayUser(user)) {
+    return <span className="avatar anonymous" style={{ "--avatar": user?.avatarColor }}>{initial}</span>;
+  }
 
   if (!avatarSrc || failed) {
     return <span className="avatar" style={{ "--avatar": user?.avatarColor }}>{initial}</span>;

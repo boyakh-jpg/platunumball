@@ -714,6 +714,7 @@ const OPERATOR_MATCH_ACTIONS = new Set([
   "requestMatchRefereeAbsence",
   "confirmMatchRefereeAbsence",
   "cancelMatch",
+  "deleteSoloRecord",
   "voidMatch",
   "resumeMatchApproval",
   "startMatch",
@@ -791,11 +792,22 @@ function canSubmitResult(profileId, existingMatch, nextMatch) {
   return isMatchOperator(profileId, existingMatch, nextMatch) || getParticipantIds(nextMatch).has(profileId);
 }
 
+function canDeleteSoloRecord(profileId, existingMatch, nextMatch) {
+  return Boolean(
+    profileId &&
+    existingMatch?.created_by === profileId &&
+    existingMatch?.rules?.recordType === "solo" &&
+    nextMatch?.rules?.recordType === "solo" &&
+    nextMatch?.status === "cancelled"
+  );
+}
+
 function canSyncMatchAction(profileId, existingMatch, existingPlayers, nextMatch, action) {
   if (!profileId || !nextMatch?.id) return false;
   const nextParticipants = getParticipantIds(nextMatch);
   if (!existingMatch) return CREATE_MATCH_ACTIONS.has(action) && nextParticipants.has(profileId);
   const existingParticipants = existingParticipantIds(existingMatch, existingPlayers);
+  if (action === "deleteSoloRecord") return canDeleteSoloRecord(profileId, existingMatch, nextMatch);
   if (action === "handoffMatchRecorder") return isMatchOperator(profileId, existingMatch, nextMatch) || getStatRecorderIds(existingMatch).includes(profileId);
   if (OPERATOR_MATCH_ACTIONS.has(action)) return isMatchOperator(profileId, existingMatch, nextMatch);
   if (action === "submitMatchResult") return canSubmitResult(profileId, existingMatch, nextMatch);
@@ -1070,7 +1082,7 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
 
   const { data: existingMatch, error: existingError } = await context.supabase
       .from("matches")
-      .select("id, visibility, status, created_by, referee_id, former_referee_id, referee_trust_min, stat_recorders, score_a, score_b, rating_result, team_rating_result, confirmed_at")
+      .select("id, visibility, status, created_by, referee_id, former_referee_id, referee_trust_min, stat_recorders, score_a, score_b, rating_result, team_rating_result, confirmed_at, rules")
       .eq("id", match.id)
       .maybeSingle();
   if (existingError) throw existingError;

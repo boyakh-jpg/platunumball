@@ -3572,6 +3572,9 @@ function getSoloRecordSideSize(mode = "1v1") {
   return Math.max(1, Math.min(5, Number.isFinite(value) ? value : 1));
 }
 
+const SOLO_RECORD_ANONYMOUS_POSITION = "free";
+const SOLO_RECORD_ANONYMOUS_SOURCE = "개인참여";
+
 function parseSoloRecordRosterText(value = "") {
   return String(value ?? "")
     .split(/[\n,]+/)
@@ -3583,19 +3586,22 @@ function parseSoloRecordRosterText(value = "") {
       const hasPosition = PLAYER_POSITIONS.includes(maybePosition) && maybePosition !== "상관없음";
       return {
         name: hasPosition ? parts.slice(0, -1).join(" ").trim() : line,
-        position: hasPosition ? maybePosition : "-",
+        position: hasPosition ? maybePosition : SOLO_RECORD_ANONYMOUS_POSITION,
       };
     })
     .filter((entry) => entry.name);
 }
 
-function makeSoloRecordAnonymousSide({ count, entries = [], fallbackPrefix = "무기명 선수" } = {}) {
+function makeSoloRecordAnonymousSide({ count, entries = [] } = {}) {
+  let anonymousIndex = 0;
   return Array.from({ length: count }, (_, index) => {
     const entry = entries[index] ?? {};
+    const name = entry.name || `무기명 ${++anonymousIndex}`;
     return {
       id: makeId("anon"),
-      name: entry.name || `${fallbackPrefix} ${index + 1}`,
-      position: entry.position || "-",
+      name,
+      position: entry.position || SOLO_RECORD_ANONYMOUS_POSITION,
+      participationLabel: SOLO_RECORD_ANONYMOUS_SOURCE,
     };
   });
 }
@@ -3646,17 +3652,15 @@ function createSoloRecordMatch(state, draft = {}) {
   const teamAEntries = parseSoloRecordRosterText(draft.soloTeamAPlayersText);
   const teamBEntries = parseSoloRecordRosterText(draft.soloTeamBPlayersText);
   if (!teamBEntries.length && String(draft.soloOpponentName ?? "").trim()) {
-    teamBEntries.push({ name: String(draft.soloOpponentName).trim(), position: "-" });
+    teamBEntries.push({ name: String(draft.soloOpponentName).trim(), position: SOLO_RECORD_ANONYMOUS_POSITION });
   }
   const teamAAnonymous = makeSoloRecordAnonymousSide({
     count: Math.max(0, sideSize - 1),
     entries: teamAEntries,
-    fallbackPrefix: "무기명 팀원",
   });
   const teamBAnonymous = makeSoloRecordAnonymousSide({
     count: sideSize,
     entries: teamBEntries,
-    fallbackPrefix: "무기명 상대",
   });
   const anonymousPlayers = Object.fromEntries(
     [...teamAAnonymous, ...teamBAnonymous].map((entry) => [
@@ -5013,14 +5017,36 @@ function canEditPostgameRoster(state, match) {
   return canOperatePostStart;
 }
 
-function makeAnonymousMatchPlayer(playerId, name, position = "-") {
+function makeAnonymousMatchPlayer(playerId, name, position = SOLO_RECORD_ANONYMOUS_POSITION) {
   return {
     id: playerId,
-    name: String(name || "").trim() || "무기명 선수",
-    position: String(position || "-").trim() || "-",
+    name: String(name || "").trim() || "무기명",
+    position: String(position || SOLO_RECORD_ANONYMOUS_POSITION).trim() || SOLO_RECORD_ANONYMOUS_POSITION,
+    anonymous: true,
+    participationLabel: SOLO_RECORD_ANONYMOUS_SOURCE,
+    club: SOLO_RECORD_ANONYMOUS_SOURCE,
     avatarColor: "#64748b",
     trustScore: "-",
     ratings: { integrated: 0, modes: {} },
+  };
+}
+
+export function deleteSoloRecord(state, matchId) {
+  const match = state.matches.find((item) => item.id === matchId);
+  if (!match || match.rules?.recordType !== "solo" || match.createdBy !== state.currentUserId || match.status === "cancelled") return state;
+  const nowIso = new Date().toISOString();
+
+  return {
+    ...state,
+    matches: state.matches.map((item) =>
+      item.id === matchId
+        ? { ...item, status: "cancelled", cancelledAt: nowIso, updatedAt: nowIso }
+        : item,
+    ),
+    notifications: [
+      { id: makeId("n"), title: "개인 기록 삭제", body: `${match.title} 기록을 삭제했습니다.`, tone: "match", matchId },
+      ...state.notifications,
+    ],
   };
 }
 

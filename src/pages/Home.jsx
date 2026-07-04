@@ -99,7 +99,8 @@ function getRecruitingSchedule(post) {
 }
 
 function getHomeMatchMeta(match = {}) {
-  return `${match.scheduledAt || getRoomScheduleLabel(match)} · ${match.court || "구장 미정"}`;
+  const prefix = match.rules?.recordType === "solo" ? "개인 기록 · " : "";
+  return `${prefix}${match.scheduledAt || getRoomScheduleLabel(match)} · ${match.court || "구장 미정"}`;
 }
 
 function getSafeMatchSide(match = {}, sideName = "teamA") {

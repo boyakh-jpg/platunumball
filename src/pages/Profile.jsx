@@ -76,6 +76,10 @@ function formatDate(date) {
   return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, "0")}.${String(date.getDate()).padStart(2, "0")}`;
 }
 
+function getRecordMetaPrefix(match) {
+  return match.rules?.recordType === "solo" ? "개인 기록 · " : "";
+}
+
 function RecentRecordCard({ records, userId }) {
   return (
     <Card className="section-card profile-record-card">
@@ -95,7 +99,7 @@ function RecentRecordCard({ records, userId }) {
                 <b>{line.result}</b>
                 <span>
                   <strong>{line.side.name} vs {line.opponent.name}</strong>
-                  <em>{match.scheduledAt} · {match.mode}</em>
+                  <em>{getRecordMetaPrefix(match)}{match.scheduledAt} · {match.mode}</em>
                 </span>
                 <i>{line.score}:{line.opponentScore}</i>
               </Link>

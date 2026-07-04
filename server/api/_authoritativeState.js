@@ -12,6 +12,7 @@ import {
   createMatch,
   createRecruitingPost,
   createTournament,
+  deleteSoloRecord,
   declineRecruitingInvitation,
   detachRecruitingPartyPlayer,
   disputeMatch,
@@ -374,6 +375,9 @@ export function applyAuthoritativeMatchOperation(state, operation = {}) {
       break;
     case "cancelMatch":
       next = cancelMatch(state, operation.matchId);
+      break;
+    case "deleteSoloRecord":
+      next = deleteSoloRecord(state, operation.matchId);
       break;
     case "voidMatch":
       next = voidMatch(state, operation.matchId);
