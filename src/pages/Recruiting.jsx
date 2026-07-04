@@ -645,23 +645,15 @@ export function getRecruitingRoomStatus(lobby, { post = null, myEntry = null, mi
   return { label: "대기방", tone: "orange", detail: "참여 확인 중" };
 }
 
-export function getRecruitingRoomListStatus(lobby, { post = null, myEntry = null, mine = false } = {}) {
+export function getRecruitingRoomListStatus(lobby, { post = null } = {}) {
   const timingStatus = post ? getPublicRoomTimingStatus(post) : null;
-  if (lobby.canConfirm) {
-    if (timingStatus && !timingStatus.canConfirm) {
-      return { label: "대기방", tone: timingStatus.expired ? "neutral" : "blue", detail: timingStatus.detail, actionLabel: "방 보기" };
-    }
-    return mine
-      ? { label: "대기방", tone: "green", detail: "정원 충족 · 경기 확정 가능", actionLabel: "방 보기" }
-      : { label: "대기방", tone: "green", detail: "방장 경기 확정 대기", actionLabel: "방 보기" };
+  if (timingStatus?.expired) {
+    return { label: "종료됨", tone: "neutral", detail: timingStatus.detail, actionLabel: "방 보기" };
   }
   if (!lobby.projectedFull) {
-    return { label: "대기방", tone: "blue", detail: timingStatus?.timingType === "instant" ? "즉시 모집 중" : "빈 슬롯 모집 중", actionLabel: "방 보기" };
+    return { label: "대기방", tone: "orange", detail: timingStatus?.timingType === "instant" ? "즉시 모집 중" : "빈 슬롯 모집 중", actionLabel: "방 보기" };
   }
-  if (!mine && myEntry?.status && myEntry.status !== "ready") {
-    return { label: "대기방", tone: "orange", detail: "내 참여 확인 필요", actionLabel: "확인하기" };
-  }
-  return { label: "대기방", tone: "orange", detail: "참가자 확인 대기", actionLabel: "방 보기" };
+  return { label: "정원참", tone: "neutral", detail: "빈 슬롯 없음", actionLabel: "방 보기" };
 }
 
 function TeamMemberPicker({
@@ -4015,30 +4007,27 @@ function RecruitingReady({ app }) {
           const mine = roomOwnerId === app.currentUser.id;
           const myRoom = isRecruitingPostForUser(post, app.currentUser.id, myTeamIds);
           const invited = hasPendingRecruitingInvitation(post, app.currentUser.id);
-          const roomTag = invited ? "초대받음" : mine ? "내가 만든 방" : myRoom ? "내 참여방" : "";
-          const myEntry = lobby.entries.find((entry) => (
-            entry.players?.includes(app.currentUser.id) ||
-            entry.reserves?.includes(app.currentUser.id)
-          ));
-          const roomStatus = getRecruitingRoomListStatus(lobby, { post, myEntry, mine });
+          const roomTag = invited ? "초대받음" : mine ? "내가 만든 방" : "";
+          const refereeLabel = getRoomRefereeLabel(post);
+          const roomStatus = getRecruitingRoomListStatus(lobby, { post });
           const roomTitle = getRecruitingCardTitle(post);
 
           return (
             <article
               id={`recruiting-room-${post.id}`}
               key={post.id}
-              className={`om-match-card om-status-contract arena-lobby-card ${lobby.canConfirm ? "arena-state-ready" : ""} ${myRoom ? "arena-my-room" : ""} ${invited ? "arena-invited-room" : ""} ${targetPostId === post.id ? "arena-target-room" : ""}`}
+              className={`om-match-card om-status-contract arena-lobby-card ${myRoom ? "arena-my-room" : ""} ${invited ? "arena-invited-room" : ""} ${targetPostId === post.id ? "arena-target-room" : ""}`}
               onClick={() => openSelectedPost(post.id)}
             >
               <div className="om-card-main">
                 <div className="om-card-kicker">
                   <span className={`om-status-pill ${roomStatus.tone}`}>{roomStatus.label}</span>
-                  {roomTag ? <span className="om-card-official">{roomTag}</span> : null}
+                  {roomTag ? <span className="om-card-official om-card-relation">{roomTag}</span> : null}
                   <span className="om-card-mode">{post.mode}</span>
                   <span className="om-card-official">{getRoomVisibilityLabel(post)}</span>
                   <span className="om-card-official">{getRecruitingRoomTypeLabel(post, lobby)}</span>
                   <span className="om-card-official">{getRoomCompetitionLabel(post)}</span>
-                  <span className="om-card-official">{getRoomRefereeLabel(post)}</span>
+                  {refereeLabel !== "심판 없음" ? <span className="om-card-official om-card-referee">{refereeLabel}</span> : null}
                   {targetTeam ? <span className="om-card-official">희망 상대 <TeamHoverCard team={targetTeam} as="span">{targetTeam.name}</TeamHoverCard></span> : post.targetTeamName ? <span className="om-card-official">희망 상대 {post.targetTeamName}</span> : null}
                   {isNationalRecruitingPost(post, app.state) ? <span className="om-card-official">전국 노출</span> : null}
                 </div>

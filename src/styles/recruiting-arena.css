@@ -3752,6 +3752,69 @@ html[data-theme="light"] .arena-card-action.button-secondary {
   grid-column: 1;
 }
 
+.arena-lobby-card .om-card-kicker {
+  gap: 5px;
+  overflow: visible;
+  flex-wrap: wrap;
+}
+
+.arena-lobby-card .om-status-pill,
+.arena-lobby-card .om-card-kicker span:not(.om-status-pill) {
+  min-height: 18px;
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 999px;
+  padding: 0 6px;
+  box-shadow: none;
+  font-size: 9px;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.arena-lobby-card .om-status-pill,
+.arena-lobby-card .om-card-relation,
+.arena-lobby-card .om-card-referee {
+  border-color: color-mix(in srgb, var(--rb-orange) 28%, transparent);
+  background: color-mix(in srgb, var(--rb-orange) 14%, transparent);
+  color: var(--rb-orange-2);
+}
+
+.arena-lobby-card .om-status-pill.neutral {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--rb-soft);
+}
+
+.arena-lobby-card .om-card-mode {
+  border-color: rgba(255, 255, 255, 0.26);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.arena-lobby-card .om-card-official:not(.om-card-relation):not(.om-card-referee) {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--rb-soft);
+}
+
+html[data-theme="light"] .arena-lobby-card .om-card-mode {
+  border-color: rgba(30, 24, 18, 0.14);
+  background: #fff;
+  color: var(--rb-text);
+}
+
+html[data-theme="light"] .arena-lobby-card .om-card-official:not(.om-card-relation):not(.om-card-referee) {
+  border-color: rgba(30, 24, 18, 0.1);
+  background: rgba(30, 24, 18, 0.06);
+  color: var(--rb-muted);
+}
+
+html[data-theme="light"] .arena-lobby-card .om-status-pill.neutral {
+  border-color: rgba(30, 24, 18, 0.1);
+  background: rgba(30, 24, 18, 0.06);
+  color: var(--rb-muted);
+}
+
 .arena-lobby-card .om-match-summary-box {
   grid-column: 2;
   grid-row: 1 / span 3;

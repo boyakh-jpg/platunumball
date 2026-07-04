@@ -856,8 +856,9 @@ UI 수정 전:
 2. Home composition changes from simple stacked cards to hero plus right rail from 760px upward. Mobile remains single column.
 3. Matches and Recruiting list cards stay summary-first: title, status chips, time/court, count or score, and one CTA.
 4. Room modal keeps existing slot, avatar, reserve, READY/WAIT, captain/host badge, and party connection structure. Only visual skin, spacing, and responsive sheet treatment change.
-5. Active buttons and selected states use orange fill or orange-tinted surface. Green is reserved for ready/success states.
-6. Light mode remains warm cream sports UI, not pure white dashboard.
+5. Recruiting list-card status chips stay compact and use only orange, white, and gray tones. Hide `심판 없음` and `내 참여방`; show referee only when present or recruiting. List status uses count/timing only, while ready/confirm details stay inside the room modal.
+6. Active buttons and selected states use orange fill or orange-tinted surface. Green is reserved for ready/success states.
+7. Light mode remains warm cream sports UI, not pure white dashboard.
 
 ## 2026-07-01 Fuller hero board
 
