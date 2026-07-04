@@ -135,6 +135,12 @@ export async function getAdminLevel(context) {
   if (getEnvList("RANKBALL_OWNER_AUTH_USER_IDS").includes(context.authUserId)) return 100;
   if (getEnvList("RANKBALL_OWNER_PROFILE_IDS").includes(context.profileId)) return 100;
 
+  const { data: rpcLevel, error: rpcError } = await context.supabase.rpc("rankball_admin_level_for_profile", {
+    actor_profile_id: context.profileId,
+    override_level: 0,
+  });
+  if (!rpcError && Number.isFinite(Number(rpcLevel))) return Number(rpcLevel);
+
   const { data, error } = await context.supabase
     .from("admin_appointments")
     .select("grade, status, starts_at, ends_at")

@@ -1291,15 +1291,16 @@ flowchart TD
 3. 서버는 Supabase access token을 확인하고 `profiles.auth_user_id`로 현재 앱 프로필을 찾는다.
 4. 일반 유저는 전용 server action이 허용한 자기 row만 쓸 수 있고, 관리자 row는 관리자 권한이 있어야 쓸 수 있다.
 5. 최고관리자 bootstrap은 서버 env 또는 DB appointment로 한다.
-6. Supabase 설정 환경에서는 구장 등록요청 제출, 구장 신고, 구장 승인이 전용 server action을 같이 호출한다. 끄려면 `VITE_ENABLE_SERVER_ACTIONS=false`를 명시한다.
-7. 구장 승인은 `rankball_approve_court_request()`에서 승인 구장 생성, 요청 상태 변경, audit log, 알림을 한 transaction으로 처리한다.
-8. 프론트는 구장 승인 성공 전 로컬 승인 구장을 만들지 않고, 서버가 반환한 `approvedCourtId`만 승인 구장 ID로 쓴다.
-9. `POST /api/system/schema-health`의 `ensureCourtAdmins`는 `CRON_SECRET` 인증이 있을 때만 `boyakh` owner와 `rankball-001` regionManager appointment를 idempotent upsert한다.
-10. 허위 구장 신고는 `rankball_report_court_request()`에서 신고 생성, 요청자 신뢰도 차감, 요청 상태 변경, 알림을 한 transaction으로 처리한다.
-11. 구장 등록요청 제출은 `rankball_submit_court_request()`에서 신뢰도와 승인/대기 중복을 서버에서 다시 검사한다.
-12. 일반 관리자 신고 처리, 임명/징계 처리, Discord DM 발송, Discord 초대 버튼 interaction은 별도 server action으로 분리한다.
-13. Discord DM 발송 큐는 `POST /api/discord/sync-deliveries`가 현재 프로필의 `discord_user_id` 기준으로만 저장한다.
-14. `/api/supabase/bridge`, `VITE_ENABLE_SERVER_BRIDGE_WRITE`, `VITE_ENABLE_BULK_REMOTE_WRITE`는 제거한다.
+6. 서버 관리자 권한 계산은 DB 함수 `rankball_admin_level_for_profile()`를 우선 쓰고, RPC가 없을 때만 appointment row 직접 조회로 fallback한다.
+7. Supabase 설정 환경에서는 구장 등록요청 제출, 구장 신고, 구장 승인이 전용 server action을 같이 호출한다. 끄려면 `VITE_ENABLE_SERVER_ACTIONS=false`를 명시한다.
+8. 구장 승인은 `rankball_approve_court_request()`에서 승인 구장 생성, 요청 상태 변경, audit log, 알림을 한 transaction으로 처리한다.
+9. 프론트는 구장 승인 성공 전 로컬 승인 구장을 만들지 않고, 서버가 반환한 `approvedCourtId`만 승인 구장 ID로 쓴다.
+10. `POST /api/system/schema-health`의 `ensureCourtAdmins`는 `CRON_SECRET` 인증이 있을 때만 `boyakh` owner와 `rankball-001` regionManager appointment를 idempotent upsert한다.
+11. 허위 구장 신고는 `rankball_report_court_request()`에서 신고 생성, 요청자 신뢰도 차감, 요청 상태 변경, 알림을 한 transaction으로 처리한다.
+12. 구장 등록요청 제출은 `rankball_submit_court_request()`에서 신뢰도와 승인/대기 중복을 서버에서 다시 검사한다.
+13. 일반 관리자 신고 처리, 임명/징계 처리, Discord DM 발송, Discord 초대 버튼 interaction은 별도 server action으로 분리한다.
+14. Discord DM 발송 큐는 `POST /api/discord/sync-deliveries`가 현재 프로필의 `discord_user_id` 기준으로만 저장한다.
+15. `/api/supabase/bridge`, `VITE_ENABLE_SERVER_BRIDGE_WRITE`, `VITE_ENABLE_BULK_REMOTE_WRITE`는 제거한다.
 
 ## 2026-06-24 admin server actions
 
