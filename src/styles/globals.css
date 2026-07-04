@@ -14518,7 +14518,6 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
   min-width: 0;
   color: var(--rb-orange-2);
   line-height: 0.92;
-  text-shadow: 0 10px 22px rgba(0, 0, 0, 0.34);
 }
 
 .rank-home .match-focus-card .match-card .score-line span,
@@ -14529,7 +14528,7 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
 }
 
 .rank-home .match-focus-card .match-card .score-line strong {
-  color: var(--rb-orange);
+  color: var(--muted);
   font-size: clamp(2rem, 5.2vw, 3.4rem);
 }
 
