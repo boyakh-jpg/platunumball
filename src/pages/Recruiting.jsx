@@ -4017,14 +4017,7 @@ function RecruitingReady({ app }) {
           }}
         />
       ) : selectedPostPending || selectedPostDetailLoading ? (
-        <div className="arena-compose-backdrop" role="presentation" onPointerDown={() => setSelectedPostId(null)}>
-          <aside className="arena-lobby-modal" role="dialog" aria-modal="true" aria-label="매치방 불러오는 중" onPointerDown={(event) => event.stopPropagation()}>
-            <div className="arena-empty-state">
-              <strong>방 불러오는 중</strong>
-              <span>잠시 후 다시 표시됩니다.</span>
-            </div>
-          </aside>
-        </div>
+        <BasketballLoader overlay label="방 불러오는 중" />
       ) : null}
 
       {composeOpen ? (

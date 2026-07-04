@@ -923,5 +923,5 @@ UI 수정 전:
 1-1. Recruiting queue 지역 필터도 `REGION_TREE` 시도/시군구 select를 항상 노출한다. 관계 필터 버튼(`내가 만든 방`, `내 참여방`, `초대받음`)은 그룹 테두리를 늘리지 않고 버튼 자체 최소폭을 확보해 말줄임으로 count를 숨기지 않는다.
 2. Team management cards may show a loading empty-state while directory data is pending. They must not flash the real empty-team message before the directory load resolves.
 3. Profile and signup form rows use fixed one-line control height from `--ui-button-height` and reserve enough label row height so inputs/selects align across the two-column grid.
-4. Recruiting room join submit locks the button with `참여 중` while the server action is pending. Success or direct `?post=` entry must leave the room detail selected, or show the room loading panel until detail arrives.
+4. Recruiting room join submit locks the button with `참여 중` while the server action is pending. Success or direct `?post=` entry must leave the room detail selected, or show only the shared basketball loader until detail arrives.
 5. 즉시 모집방 일정 문구는 Home, Matches, Recruiting 목록, 방 모달에서 `즉시 · HH:mm 종료` 형식으로 종료 시각을 같이 보여준다.

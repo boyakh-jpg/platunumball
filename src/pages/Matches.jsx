@@ -98,17 +98,8 @@ function RoomModalErrorView({ error, onClose }) {
   );
 }
 
-function RoomModalLoadingView({ onClose }) {
-  return (
-    <div className="arena-modal-backdrop" role="presentation" onMouseDown={onClose}>
-      <aside className="arena-room-modal" role="dialog" aria-modal="true" aria-label="방 불러오는 중" onMouseDown={(event) => event.stopPropagation()}>
-        <div className="arena-empty-state">
-          <strong>방 불러오는 중</strong>
-          <span>잠시 후 다시 표시됩니다.</span>
-        </div>
-      </aside>
-    </div>
-  );
+function RoomModalLoadingView() {
+  return <BasketballLoader overlay label="방 불러오는 중" />;
 }
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
