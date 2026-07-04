@@ -1360,7 +1360,7 @@
   font-weight: 950;
 }
 
-.arena-lobby-topline > .arena-room-share-actions {
+.arena-lobby-topline > .arena-room-share-actions:last-child {
   --ui-button-height-sm: 30px;
   --ui-button-padding-x: 8px;
   --ui-button-font-size: 0.74rem;
