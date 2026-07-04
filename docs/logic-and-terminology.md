@@ -821,6 +821,7 @@ flowchart TD
 8. 기록 확정 보상/파울/연승은 `rankball_commit_match_rating()`에서 커밋한다.
 9. 따봉과 심판 미출석처럼 경기 확정 전후에 따로 생기는 신뢰도 변경은 `rankball_apply_profile_trust_deltas()`로 `profiles.trust_score`만 0~100 범위에서 커밋한다.
 10. 심판 미출석이 양측 확인으로 확정되면 `formerRefereeId` 대상 심판 신뢰도는 `REFEREE_ABSENCE_TRUST_PENALTY`만큼 감소한다.
+11. 방장/심판 강퇴는 실행 전 확인 팝업에서 신뢰도 하락 가능성을 경고해야 한다.
 
 ## 신고 원칙
 

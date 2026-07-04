@@ -1223,6 +1223,7 @@ function RoomKickPanel({
   requireMissingAttendance = false,
   currentUserId = "",
 }) {
+  const [pendingKick, setPendingKick] = useState(null);
   const rows = [];
   (lobby.entries ?? []).forEach((entry) => {
     const partyEntry = isPartyEntry(entry);
@@ -1240,6 +1241,14 @@ function RoomKickPanel({
   });
 
   if (!rows.length) return null;
+
+  const closeKickConfirm = () => setPendingKick(null);
+  const confirmKick = () => {
+    if (!pendingKick) return;
+    if (pendingKick.partyEntry) onRemovePartyPlayer(pendingKick.entryId, pendingKick.playerId);
+    else onKickApplicant(pendingKick.playerId);
+    closeKickConfirm();
+  };
 
   return (
     <div className="arena-host-kick-panel">
@@ -1279,7 +1288,12 @@ function RoomKickPanel({
                 variant="secondary"
                 className="danger-button"
                 disabled={kickDisabled}
-                onClick={() => (partyEntry ? onRemovePartyPlayer(entry.id, playerId) : onKickApplicant(entry.playerId))}
+                onClick={() => setPendingKick({
+                  entryId: entry.id,
+                  partyEntry,
+                  playerId: partyEntry ? playerId : entry.playerId,
+                  playerName: user.name,
+                })}
               >
                 강퇴
               </Button>
@@ -1302,6 +1316,19 @@ function RoomKickPanel({
           );
         })}
       </div>
+      {pendingKick && typeof document !== "undefined" ? createPortal(
+        <div className="arena-kick-confirm-backdrop" role="presentation" onMouseDown={closeKickConfirm}>
+          <div className="arena-kick-confirm-dialog" role="dialog" aria-modal="true" aria-label="강퇴 확인" onMouseDown={(event) => event.stopPropagation()}>
+            <strong>{pendingKick.playerName} 강퇴</strong>
+            <p>강퇴하면 즉시 방에서 제외됩니다. 반복 강퇴는 방장 신뢰도를 줄일 수 있습니다.</p>
+            <div>
+              <Button type="button" variant="secondary" onClick={closeKickConfirm}>취소하기</Button>
+              <Button type="button" variant="primary" className="danger-button" onClick={confirmKick}>강퇴하기</Button>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      ) : null}
     </div>
   );
 }

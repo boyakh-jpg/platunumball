@@ -2289,6 +2289,48 @@ button.arena-room-player-slot {
   font-weight: 950;
 }
 
+.arena-kick-confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2500;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(0, 0, 0, 0.46);
+}
+
+.arena-kick-confirm-dialog {
+  display: grid;
+  width: min(360px, 100%);
+  gap: 12px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+  padding: 18px;
+  color: var(--rb-text);
+}
+
+.arena-kick-confirm-dialog strong {
+  color: var(--rb-text);
+  font-size: 1rem;
+  font-weight: 950;
+}
+
+.arena-kick-confirm-dialog p {
+  margin: 0;
+  color: var(--rb-muted);
+  font-size: 0.82rem;
+  font-weight: 850;
+  line-height: 1.45;
+}
+
+.arena-kick-confirm-dialog > div {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .arena-invite-panel,
 .arena-invitation-list {
   display: grid;
