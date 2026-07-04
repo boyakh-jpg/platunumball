@@ -2077,6 +2077,8 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
   const modalPostDetailLoadRef = useRef("");
   const chatSendLogRef = useRef({});
   const roomShareStatusTimerRef = useRef(0);
+  const lobbyModalRef = useRef(null);
+  const sheetDragRef = useRef(null);
 
   useEffect(() => {
     if (!roomPostId) {
@@ -2156,6 +2158,44 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
     setInviteDraft(null);
     setSlotActionDraft(null);
     onClose?.();
+  };
+  const canDismissBySheetDrag = () => {
+    const activeElement = typeof document !== "undefined" ? document.activeElement : null;
+    const editing = Boolean(activeElement?.matches?.("input, textarea, select, [contenteditable='true']"));
+    return !editing
+      && !inviteDraft
+      && !slotActionDraft
+      && !pendingRosterOpen
+      && !getRoomEditDraftByPost(selectedPost)
+      && Number(lobbyModalRef.current?.scrollTop ?? 0) <= 2;
+  };
+  const startSheetDrag = (event) => {
+    if (event.pointerType !== "touch" || !canDismissBySheetDrag()) return;
+    sheetDragRef.current = {
+      pointerId: event.pointerId,
+      startY: event.clientY,
+      startedAt: window.performance?.now?.() ?? Date.now(),
+    };
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  };
+  const moveSheetDrag = (event) => {
+    const drag = sheetDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    if (event.clientY - drag.startY > 8) event.preventDefault();
+    if (event.clientY - drag.startY < -12) sheetDragRef.current = null;
+  };
+  const finishSheetDrag = (event) => {
+    const drag = sheetDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    sheetDragRef.current = null;
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+    const deltaY = event.clientY - drag.startY;
+    const elapsed = Math.max(1, (window.performance?.now?.() ?? Date.now()) - drag.startedAt);
+    const velocity = deltaY / elapsed;
+    if (canDismissBySheetDrag() && deltaY >= 90 && velocity >= 0.45) closeModal();
+  };
+  const cancelSheetDrag = () => {
+    sheetDragRef.current = null;
   };
   const submitSourceDispute = (event) => {
     event.preventDefault();
@@ -2873,7 +2913,16 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
 
         return (
           <div className="arena-compose-backdrop" role="presentation" onPointerDown={() => { setInviteDraft(null); setSlotActionDraft(null); closeModal(); }}>
-            <aside className="arena-lobby-modal" role="dialog" aria-modal="true" aria-label="매치방" onPointerDown={(event) => event.stopPropagation()}>
+            <aside ref={lobbyModalRef} className="arena-lobby-modal" role="dialog" aria-modal="true" aria-label="매치방" onPointerDown={(event) => event.stopPropagation()}>
+              <button
+                type="button"
+                className="arena-lobby-drag-handle"
+                aria-label="아래로 당겨 방 닫기"
+                onPointerDown={startSheetDrag}
+                onPointerMove={moveSheetDrag}
+                onPointerUp={finishSheetDrag}
+                onPointerCancel={cancelSheetDrag}
+              />
               <div className="arena-lobby-arena">
                 <div className="arena-lobby-topline">
                   <div className="badge-row">

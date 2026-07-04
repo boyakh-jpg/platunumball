@@ -1301,6 +1301,10 @@
   padding: 18px;
 }
 
+.arena-lobby-drag-handle {
+  display: none;
+}
+
 .arena-lobby-arena {
   --room-slot-gap: 8px;
   --room-slot-width: clamp(64px, 6.5vw, 78px);
@@ -5396,13 +5400,35 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
   }
 
   .arena-lobby-modal::before {
+    content: none;
+    display: none;
+  }
+
+  .arena-lobby-drag-handle {
+    appearance: none;
+    display: block;
+    width: 74px;
+    height: 22px;
+    margin: -2px auto 4px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    padding: 0;
+    touch-action: none;
+  }
+
+  .arena-lobby-drag-handle::before {
     content: "";
     display: block;
-    width: 44px;
+    width: 46px;
     height: 4px;
-    margin: 0 auto 2px;
+    margin: 9px auto;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.22);
+    background: rgba(255, 255, 255, 0.28);
+  }
+
+  html[data-theme="light"] .arena-lobby-drag-handle::before {
+    background: rgba(30, 24, 18, 0.22);
   }
 
   .arena-lobby-arena {
