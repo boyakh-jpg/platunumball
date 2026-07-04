@@ -1473,6 +1473,9 @@ export async function loadCompactRecruitingList(context, {
         .filter((card) => canUseFeedCardForProfile(card, context.profileId))
         .map((card) => [card.id, card]),
     );
+    const inviteRepairCandidateCount = debugPage
+      ? targetCards.filter((card) => getRecruitingFeedCardRejectReason(card, context.profileId) === "missing_pending_invitation").length
+      : 0;
     const repairedCards = await attachPendingInvitationsToFeedCards(context.supabase, targetCards, context.profileId);
     repairedCards.forEach((card) => cardById.set(card.id, card));
     const fallbackPostIds = targetPostIds.filter((postId) => !cardById.has(postId));
@@ -1567,6 +1570,8 @@ export async function loadCompactRecruitingList(context, {
         scheduledDate,
         source: pageSource ? (fallbackPostIds.length ? `${pageSource}+row` : pageSource) : (fallbackPostIds.length ? "feed_card+row" : "feed_card"),
         feedCounts,
+        inviteRepairCandidateCount: debugPage ? inviteRepairCandidateCount : undefined,
+        inviteRepairCount: debugPage ? repairedCards.length : undefined,
         fallbackCount: debugPage ? fallbackPostIds.length : undefined,
         fallbackCardReasons,
       },
