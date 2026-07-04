@@ -92,6 +92,7 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
 
   if (!user) return children ?? null;
 
+  const anonymousUser = Boolean(user.anonymous || user.participationLabel === "개인참여");
   const userTeams = getUserTeams(user.id, teams);
   const activeTeam = getRepresentativeTeam(user.id, userTeams, user.representativeTeamId) ?? userTeams[0];
   const discordProfileUrl = getDiscordProfileUrl(user);
@@ -183,7 +184,7 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
           closeTouch();
         }}>닫기</button>
         <span className="player-hover-head">
-          <span className={getDiscordAvatarClassName(user)} style={getDiscordAvatarStyle(user)}>{user.name.slice(0, 1)}</span>
+          <span className={anonymousUser ? "avatar anonymous" : getDiscordAvatarClassName(user)} style={anonymousUser ? { "--avatar": user.avatarColor } : getDiscordAvatarStyle(user)}>{anonymousUser ? "?" : user.name.slice(0, 1)}</span>
           <span>
             <strong>{user.name}</strong>
             <span className="hover-hashtag">{getUserHashtag(user)}</span>
@@ -193,7 +194,7 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
               </a>
             ) : null}
             <span className="hover-age-group">{getAgeGroupLabel(getAgeGroupForUser(user))}</span>
-            <em>{user.region} · {user.position} · 신뢰도 {user.trustScore ?? "-"}</em>
+            <em>{anonymousUser ? `${user.participationLabel ?? "개인참여"} · ${user.position ?? "free"}` : `${user.region} · ${user.position}`} · 신뢰도 {user.trustScore ?? "-"}</em>
           </span>
         </span>
         <span className="player-hover-tier-grid">

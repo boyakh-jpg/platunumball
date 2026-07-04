@@ -445,8 +445,10 @@ function getMatchRoomPost(match, state) {
   const sourcePostLobby = sourcePost ? getRecruitingLobby(sourcePost, sourceState) : null;
   const hostPlayerId = getMatchHostPlayerId(sourceMatch, sourcePost);
   const sideCapacity = getRoomCapacity(sourceMatch);
-  const sourceTeamAPlayers = uniquePlayerIds(sourceMatch.teamA?.players ?? []);
-  const sourceTeamBPlayers = uniquePlayerIds(sourceMatch.teamB?.players ?? []);
+  const soloRecord = sourceMatch.rules?.recordType === "solo";
+  const soloPlayedPlayerIds = sourceMatch.playedPlayerIds ?? sourceMatch.rules?.playedPlayerIds ?? {};
+  const sourceTeamAPlayers = uniquePlayerIds(soloRecord ? soloPlayedPlayerIds.teamA ?? [] : sourceMatch.teamA?.players ?? []);
+  const sourceTeamBPlayers = uniquePlayerIds(soloRecord ? soloPlayedPlayerIds.teamB ?? [] : sourceMatch.teamB?.players ?? []);
   const fallbackTeamAPlayers = uniquePlayerIds(sourcePostLobby?.sides?.teamA?.projectedPlayers ?? []);
   const fallbackTeamBPlayers = uniquePlayerIds(sourcePostLobby?.sides?.teamB?.projectedPlayers ?? []);
   const teamAPlayers = sourceTeamAPlayers.length ? sourceTeamAPlayers : fallbackTeamAPlayers;

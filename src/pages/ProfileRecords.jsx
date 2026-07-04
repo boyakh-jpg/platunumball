@@ -1,7 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
-import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import { PLAYER_STAT_FIELDS } from "../lib/constants.js";
 import { formatStatLine } from "../lib/matchUtils.js";
@@ -65,10 +64,6 @@ function getTotals(records, userId) {
   }, {});
 }
 
-function canDeleteSoloRecord(match, userId) {
-  return match.rules?.recordType === "solo" && match.createdBy === userId;
-}
-
 function getRecordMetaPrefix(match) {
   return match.rules?.recordType === "solo" ? "개인 기록 · " : "";
 }
@@ -98,11 +93,6 @@ export default function ProfileRecords({ app }) {
     map.set(date, (map.get(date) ?? 0) + 1);
     return map;
   }, new Map()).entries()].sort((a, b) => String(b[0]).localeCompare(String(a[0])));
-  const deleteRecord = (match) => {
-    if (!canDeleteSoloRecord(match, user.id)) return;
-    if (!window.confirm("개인 기록을 삭제할까요? 삭제하면 내 기록 목록에서 사라집니다.")) return;
-    app.actions.deleteSoloRecord?.(match.id);
-  };
 
   return (
     <div className="page-stack profile-records-page">
@@ -164,20 +154,15 @@ export default function ProfileRecords({ app }) {
               const line = getRecordLine(match, user.id);
               const stats = match.result?.playerStats?.[user.id] ?? {};
               return (
-                <div key={match.id} className="profile-record-row-shell">
-                  <Link to={`/app/matches?match=${match.id}`} className={`recent-match-row profile-record-row result-${line.result.toLowerCase()}`}>
-                    <b>{line.result}</b>
-                    <span>
-                      <strong>{line.side.name} vs {line.opponent.name}</strong>
-                      <em>{getRecordMetaPrefix(match)}{match.scheduledAt} · {match.mode} · {match.court}</em>
-                      <small>{formatStatLine(stats)}</small>
-                    </span>
-                    <i>{line.score}:{line.opponentScore}</i>
-                  </Link>
-                  {canDeleteSoloRecord(match, user.id) ? (
-                    <Button type="button" variant="secondary" size="sm" className="danger-button profile-record-delete-button" onClick={() => deleteRecord(match)}>삭제</Button>
-                  ) : null}
-                </div>
+                <Link key={match.id} to={`/app/matches?match=${match.id}`} className={`recent-match-row profile-record-row result-${line.result.toLowerCase()}`}>
+                  <b>{line.result}</b>
+                  <span>
+                    <strong>{line.side.name} vs {line.opponent.name}</strong>
+                    <em>{getRecordMetaPrefix(match)}{match.scheduledAt} · {match.mode} · {match.court}</em>
+                    <small>{formatStatLine(stats)}</small>
+                  </span>
+                  <i>{line.score}:{line.opponentScore}</i>
+                </Link>
               );
             })}
           </div>
@@ -198,19 +183,14 @@ export default function ProfileRecords({ app }) {
             {archivedRecords.map((match) => {
               const line = getRecordLine(match, user.id);
               return (
-                <div key={match.id} className="profile-record-row-shell">
-                  <div className={`recent-match-row profile-record-row record-archive-row result-${line.result.toLowerCase()}`}>
-                    <b>{line.result}</b>
-                    <span>
-                      <strong>{line.side.name} vs {line.opponent.name}</strong>
-                      <em>{getRecordMetaPrefix(match)}{getRecordDate(match)} · {match.mode} · {match.court}</em>
-                      <small>상세 데이터는 보관 목록에서 텍스트로만 표시</small>
-                    </span>
-                    <i>{line.score}:{line.opponentScore}</i>
-                  </div>
-                  {canDeleteSoloRecord(match, user.id) ? (
-                    <Button type="button" variant="secondary" size="sm" className="danger-button profile-record-delete-button" onClick={() => deleteRecord(match)}>삭제</Button>
-                  ) : null}
+                <div key={match.id} className={`recent-match-row profile-record-row record-archive-row result-${line.result.toLowerCase()}`}>
+                  <b>{line.result}</b>
+                  <span>
+                    <strong>{line.side.name} vs {line.opponent.name}</strong>
+                    <em>{getRecordMetaPrefix(match)}{getRecordDate(match)} · {match.mode} · {match.court}</em>
+                    <small>상세 데이터는 보관 목록에서 텍스트로만 표시</small>
+                  </span>
+                  <i>{line.score}:{line.opponentScore}</i>
                 </div>
               );
             })}

@@ -5783,28 +5783,6 @@ html[data-theme="light"] .search-picker-result-row.selected {
   grid-template-columns: 34px minmax(0, 1fr) minmax(54px, auto);
 }
 
-.profile-record-row-shell {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 8px;
-  align-items: stretch;
-}
-
-.profile-record-row-shell .profile-record-row {
-  min-width: 0;
-}
-
-.profile-record-delete-button {
-  min-width: 62px;
-  align-self: stretch;
-}
-
-@media (max-width: 520px) {
-  .profile-record-row-shell {
-    grid-template-columns: 1fr;
-  }
-}
-
 .record-archive-row {
   cursor: default;
 }

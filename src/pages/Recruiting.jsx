@@ -2086,7 +2086,10 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
     () => app.state.teams.filter((team) => team.members.some((member) => member.userId === app.currentUser.id)),
     [app.currentUser.id, app.state.teams],
   );
-  const userById = useMemo(() => Object.fromEntries(app.state.users.map((user) => [user.id, user])), [app.state.users]);
+  const userById = useMemo(
+    () => Object.fromEntries([...app.state.users, ...Object.values(sourceMatch?.anonymousPlayers ?? {})].map((user) => [user.id, user])),
+    [app.state.users, sourceMatch?.anonymousPlayers],
+  );
   const teamById = useMemo(() => Object.fromEntries(app.state.teams.map((team) => [team.id, team])), [app.state.teams]);
   const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
   const courtByName = useMemo(() => Object.fromEntries(registeredCourts.map((court) => [court.name, court])), [registeredCourts]);
@@ -2209,6 +2212,13 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
     setInviteDraft(null);
     setSlotActionDraft(null);
     onClose?.();
+  };
+  const deleteSourceSoloRecord = (match) => {
+    if (!match?.id || match.rules?.recordType !== "solo" || match.createdBy !== app.currentUser.id) return;
+    if (!window.confirm("개인 기록을 삭제할까요? 삭제하면 내 기록 목록에서 사라집니다.")) return;
+    const request = app.actions.deleteSoloRecord?.(match.id);
+    if (request?.then) request.finally(closeModal);
+    else closeModal();
   };
   const resetSheetDrag = () => {
     window.clearTimeout(sheetDragTimerRef.current);
@@ -2770,6 +2780,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
           sourceMatch ? getAllowedResultStatFields(sourceMatch, app.currentUser.id, playerId, false) : []
         );
         const canCancelSourceMatch = Boolean(matchRoom && sourceMatch && ["contract", "agreed"].includes(sourceMatch.status) && (sourceMatchStarted || sourceMatch.endedAt || sourceMatch.result ? currentUserCanOperateStartedSourceMatch : mine));
+        const canDeleteSourceSoloRecord = Boolean(matchRoom && sourceMatch?.rules?.recordType === "solo" && sourceMatch.createdBy === app.currentUser.id && sourceMatch.status !== "cancelled");
         const sourceMatchRecordWindow = sourceMatch ? getMatchRecordWindow(sourceMatch) : null;
         const sourceMatchApprovalOpen = Boolean(
           sourceMatch?.result &&
@@ -3534,6 +3545,11 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                     {!sourceRoomReadOnly && canCancelSourceMatch ? (
                       <Button type="button" variant="secondary" className="danger-button" onClick={() => app.actions.cancelMatch(sourceMatch.id)}>
                         경기 취소
+                      </Button>
+                    ) : null}
+                    {canDeleteSourceSoloRecord ? (
+                      <Button type="button" variant="secondary" className="danger-button" onClick={() => deleteSourceSoloRecord(sourceMatch)}>
+                        개인 기록 삭제
                       </Button>
                     ) : null}
                   </div>

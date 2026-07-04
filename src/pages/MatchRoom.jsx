@@ -341,10 +341,12 @@ export default function MatchRoom({ app }) {
   const canSubmitLiveResult = currentUserCanSubmit && match.status === "agreed" && recordWindow.beforeEnd && !recordWindow.beforeStart;
   const canSubmitResult = canEditDisputeDraft || canSubmitLiveResult || (currentUserCanSubmit && ((["agreed", "approval"].includes(match.status) && recordWindow.statOpen) || currentUserCanSubmitMissingPostgameResult));
   const canCancel = ["contract", "agreed"].includes(match.status) && (startedAuthorityPhase ? currentUserCanOperateStartedMatch : isMatchHost);
+  const isSoloRecord = match.rules?.recordType === "solo";
   const matchApprovalOpen = Boolean(match.result && (match.status === "approval" || (match.status === "agreed" && match.endedAt && !recordWindow.disputeExpired)));
   const canDispute = matchApprovalOpen && recordWindow.disputeOpen && currentUserCanFileDispute;
   const canRequestOwnPointDispute = canDispute && getMatchRecordPlayerIds(match, true).includes(app.currentUser.id);
   const canVoid = match.status === "disputed" && currentUserCanOperateStartedMatch;
+  const canDeleteSoloRecord = isSoloRecord && match.createdBy === app.currentUser.id && match.status !== "cancelled";
   const canResumeApproval = match.status === "disputed" && currentUserCanOperateStartedMatch;
   const canReport = !["cancelled", "void"].includes(match.status) && (Boolean(match.endedAt) || Boolean(match.result) || ["approval", "disputed", "confirmed"].includes(match.status));
   const isContractStage = match.status === "contract";
@@ -362,7 +364,6 @@ export default function MatchRoom({ app }) {
   const teamBMmr = teamB?.mmr ?? getTeamMmr(app.state.teams, teamBSide.teamId);
   const winnerName = Number(scoreA) === Number(scoreB) ? "" : Number(scoreA) > Number(scoreB) ? teamASide.name : teamBSide.name;
   const currentUserDisputePoints = getMatchPlayerDisputePoints(match, app.currentUser.id);
-  const isSoloRecord = match.rules?.recordType === "solo";
   const matchKind = isSoloRecord ? "개인 기록" : match.ranked === false ? "친선전" : "정규전";
   const recordLockReason = recordWindow.beforeStart
     ? "경기 시작 전"
@@ -671,6 +672,11 @@ export default function MatchRoom({ app }) {
     if (!canSubmitCourtReview || !courtReviewRatingReady) return;
     app.actions.submitCourtReview(match.id, courtReviewDraft);
   };
+  const deleteSoloRecord = () => {
+    if (!canDeleteSoloRecord) return;
+    if (!window.confirm("개인 기록을 삭제할까요? 삭제하면 내 기록 목록에서 사라집니다.")) return;
+    app.actions.deleteSoloRecord?.(match.id);
+  };
   const ruleItems = [
     ["목표 점수", `${match.rules?.targetScore ?? 21}점`],
     ["제한 시간", `${match.rules?.timeLimit ?? 12}분`],
@@ -783,10 +789,13 @@ export default function MatchRoom({ app }) {
               <p className="eyebrow">{hasReferee && startedAuthorityPhase ? "Referee controls" : "Host controls"}</p>
               <h2>{hasReferee && startedAuthorityPhase ? "심판 권한" : "방장 권한"}</h2>
             </div>
-            <Badge tone={canCancel ? "orange" : "neutral"}>{canCancel ? "취소 가능" : "잠김"}</Badge>
+            <Badge tone={canCancel || canDeleteSoloRecord ? "orange" : "neutral"}>{canDeleteSoloRecord ? "삭제 가능" : canCancel ? "취소 가능" : "잠김"}</Badge>
           </div>
-          <p className="muted">{canCancel ? "현재 운영 권한으로 경기 취소가 가능합니다." : "현재 단계에서는 경기 취소가 잠겼습니다."}</p>
+          <p className="muted">{canDeleteSoloRecord ? "이 개인 기록은 내 기록에서 삭제할 수 있습니다." : canCancel ? "현재 운영 권한으로 경기 취소가 가능합니다." : "현재 단계에서는 경기 취소가 잠겼습니다."}</p>
           <Button type="button" variant="secondary" disabled={!canCancel} onClick={() => app.actions.cancelMatch(match.id)}>경기 취소</Button>
+          {canDeleteSoloRecord ? (
+            <Button type="button" variant="secondary" className="danger-button" onClick={deleteSoloRecord}>개인 기록 삭제</Button>
+          ) : null}
         </Card>
       ) : null}
 

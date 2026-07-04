@@ -453,6 +453,20 @@ function validateResultShape(match = {}, action = "sync") {
   if (invalidStat) reject(400, "invalid_player_stat");
 }
 
+function validateSoloRecordSnapshot(match = {}, actorProfileId = "") {
+  if (!isSoloRecordMatch(match)) return;
+  const teamAPlayers = toArray(match.teamA?.players);
+  const teamBPlayers = toArray(match.teamB?.players);
+  if (match.createdBy && match.createdBy !== actorProfileId) reject(403, "solo_record_owner_mismatch");
+  if (match.visibility !== "private") reject(400, "solo_record_visibility_invalid");
+  if (match.status !== "confirmed" && match.status !== "cancelled") reject(400, "solo_record_status_invalid");
+  if (match.ranked !== false) reject(400, "solo_record_ranked_invalid");
+  if (teamAPlayers.length !== 1 || teamAPlayers[0] !== actorProfileId || teamBPlayers.length) {
+    reject(400, "solo_record_roster_invalid");
+  }
+  if (match.refereeId) reject(400, "solo_record_referee_invalid");
+}
+
 function toMatchRow(match = {}, actorProfileId = "") {
   const statRecorders = match.statRecorders ?? match.rules?.statRecorders ?? {};
   const playedPlayerIds = match.playedPlayerIds ?? match.rules?.playedPlayerIds ?? {};
@@ -761,6 +775,14 @@ function isSoloRecordMatch(match = {}) {
 
 function shouldReplaceMatchResult(action, match = {}) {
   return RESULT_REPLACE_MATCH_ACTIONS.has(action) || (action === "createMatch" && isSoloRecordMatch(match) && Boolean(match.result));
+}
+
+function shouldReplayMatchOperation(operation = null, match = null) {
+  if (!operation) return false;
+  if (!match) return true;
+  if (AUTHORITATIVE_REPLAY_MATCH_ACTIONS.has(operation.action)) return true;
+  if (operation.action === "createMatch") return !isSoloRecordMatch(match);
+  return false;
 }
 
 const ROSTER_LOCKED_MATCH_ACTIONS = new Set([
@@ -1109,6 +1131,7 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
   if (!canSyncMatchAction(context.profileId, existingMatch, existingPlayers, match, action)) {
     reject(403, "match_sync_permission_denied");
   }
+  validateSoloRecordSnapshot(match, context.profileId);
   if (!existingMatch && CREATE_MATCH_ACTIONS.has(action)) validateMatchCreateCourt(match);
   validateLockedMatchCore(existingMatch, existingPlayers, match, action);
   validateParticipantResultUnchanged(action, existingResult, existingStats, match);
@@ -1169,17 +1192,19 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
   const trustCommitResult = trustCommit ? await commitProfileTrustDeltas(context, trustCommit) : null;
   let discordDeliveryCount = 0;
   let discordDeliveryError = null;
-  try {
-    discordDeliveryCount = await withTimeout(
-      queueMatchDiscordDeliveries(context.supabase, match, action),
-      DISCORD_QUEUE_TIMEOUT_MS,
-      "discord_match_delivery_timeout",
-    );
-  } catch (deliveryError) {
-    discordDeliveryError = deliveryError.message || "discord_match_delivery_failed";
-    console.error("Match Discord delivery queue failed.", deliveryError);
+  if (!isSoloRecordMatch(match)) {
+    try {
+      discordDeliveryCount = await withTimeout(
+        queueMatchDiscordDeliveries(context.supabase, match, action),
+        DISCORD_QUEUE_TIMEOUT_MS,
+        "discord_match_delivery_timeout",
+      );
+    } catch (deliveryError) {
+      discordDeliveryError = deliveryError.message || "discord_match_delivery_failed";
+      console.error("Match Discord delivery queue failed.", deliveryError);
+    }
   }
-  const syncedMatch = await loadSyncedMatchAfterWrite(context, match.id, match);
+  const syncedMatch = isSoloRecordMatch(match) ? match : await loadSyncedMatchAfterWrite(context, match.id, match);
 
   return {
     ok: true,
@@ -1227,7 +1252,7 @@ export default async function handler(request, response) {
       match = null;
     }
 
-    if (operation && (!match || operation.action === "createMatch" || AUTHORITATIVE_REPLAY_MATCH_ACTIONS.has(operation.action))) {
+    if (shouldReplayMatchOperation(operation, match)) {
       const state = await loadAuthoritativeState(context, { operation });
       const result = applyAuthoritativeMatchOperation(state, operation);
       match = result.match;
