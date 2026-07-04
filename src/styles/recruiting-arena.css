@@ -7267,3 +7267,35 @@ html[data-theme="light"] .arena-lobby-arena {
     max-width: 100%;
   }
 }
+
+/* 2026-07-04 Black Han Sans display trial, scoped to sports emphasis only. */
+:where(
+  .arena-hero-copy h1,
+  .arena-lobby-title h2,
+  .arena-lobby-team-head strong,
+  .arena-lobby-score-core strong,
+  .arena-lobby-score-core i,
+  .om-match-card h3,
+  .arena-lobby-card.om-match-card h3,
+  .om-score-box > strong,
+  .om-match-summary-box.count-summary .om-summary-line > strong,
+  .arena-lobby-card .om-match-summary-box.count-summary .om-summary-line > strong
+) {
+  font-family: var(--sports-display-font);
+  letter-spacing: 0;
+  transform: var(--sports-display-condense);
+}
+
+:where(.arena-hero-copy h1, .arena-lobby-title h2, .arena-lobby-team-head strong, .om-match-card h3, .arena-lobby-card.om-match-card h3) {
+  transform-origin: left center;
+}
+
+:where(
+  .arena-lobby-score-core strong,
+  .arena-lobby-score-core i,
+  .om-score-box > strong,
+  .om-match-summary-box.count-summary .om-summary-line > strong,
+  .arena-lobby-card .om-match-summary-box.count-summary .om-summary-line > strong
+) {
+  transform-origin: center;
+}

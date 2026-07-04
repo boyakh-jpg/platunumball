@@ -14419,3 +14419,90 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
   align-self: end;
   min-height: var(--ui-button-height);
 }
+
+/* 2026-07-04 sports display font trial: scoped to scoreboards, team names, versus lines, and hero titles. */
+:where(
+  .rank-hero-top h1,
+  .rank-home .rank-summary-grid .home-rank-board-head h1,
+  .home-rank-board-head h1,
+  .page-header h1,
+  .landing-hero h1,
+  .match-hero h1,
+  .team-hub-hero h1,
+  .season-hero-copy h1,
+  .profile-hero h1,
+  .team-detail-hero h1,
+  .referee-rulebook-hero h2,
+  .gm-room-title h1,
+  .rank-home .rank-spotlight-main strong,
+  .rank-tier-block strong,
+  .rank-record-main strong,
+  .score-line span,
+  .score-line a,
+  .score-line strong,
+  .broadcast-score span,
+  .broadcast-score strong,
+  .broadcast-score i,
+  .recent-match-row strong,
+  .recent-match-row i,
+  .history-teams a,
+  .history-score strong,
+  .recorder-scoreboard strong,
+  .recorder-scoreboard em,
+  .recorder-scoreboard b
+) {
+  font-family: var(--sports-display-font);
+  letter-spacing: 0;
+  transform: var(--sports-display-condense);
+}
+
+:where(
+  .rank-hero-top h1,
+  .rank-home .rank-summary-grid .home-rank-board-head h1,
+  .home-rank-board-head h1,
+  .page-header h1,
+  .landing-hero h1,
+  .match-hero h1,
+  .team-hub-hero h1,
+  .season-hero-copy h1,
+  .profile-hero h1,
+  .team-detail-hero h1,
+  .referee-rulebook-hero h2,
+  .gm-room-title h1,
+  .rank-home .rank-spotlight-main strong
+) {
+  transform-origin: left center;
+}
+
+:where(
+  .rank-tier-block strong,
+  .rank-record-main strong,
+  .rank-home .rank-spotlight-main strong,
+  .score-line span,
+  .score-line a,
+  .score-line strong,
+  .broadcast-score span,
+  .broadcast-score strong,
+  .broadcast-score i,
+  .recent-match-row strong,
+  .recent-match-row i,
+  .history-teams a,
+  .history-score strong,
+  .recorder-scoreboard strong,
+  .recorder-scoreboard em,
+  .recorder-scoreboard b
+) {
+  transform-origin: center;
+}
+
+:where(
+  .rank-home .rank-spotlight-main strong,
+  .recent-match-row strong,
+  .history-teams a,
+  .recorder-scoreboard strong,
+  .recorder-scoreboard em,
+  .recorder-scoreboard b
+) {
+  display: inline-block;
+  max-width: 100%;
+}

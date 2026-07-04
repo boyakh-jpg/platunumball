@@ -4160,3 +4160,32 @@ html[data-theme="light"] .tournament-hero h1 {
   max-width: 1440px;
   margin-inline: auto;
 }
+
+/* 2026-07-04 Black Han Sans display trial, scoped to sports emphasis only. */
+:where(
+  .om-match-copy h1,
+  .tournament-hero h1,
+  .om-match-card h3,
+  .arena-lobby-card.om-match-card h3,
+  .om-score-box > strong,
+  .om-match-summary-box.count-summary .om-summary-line > strong,
+  .arena-lobby-card .om-match-summary-box.count-summary .om-summary-line > strong,
+  .bracket-midline
+) {
+  font-family: var(--sports-display-font);
+  letter-spacing: 0;
+  transform: var(--sports-display-condense);
+}
+
+:where(.om-match-copy h1, .tournament-hero h1, .om-match-card h3, .arena-lobby-card.om-match-card h3) {
+  transform-origin: left center;
+}
+
+:where(
+  .om-score-box > strong,
+  .om-match-summary-box.count-summary .om-summary-line > strong,
+  .arena-lobby-card .om-match-summary-box.count-summary .om-summary-line > strong,
+  .bracket-midline
+) {
+  transform-origin: center;
+}

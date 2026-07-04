@@ -1,5 +1,9 @@
+@import url("https://fonts.googleapis.com/css2?family=Black+Han+Sans&display=swap");
+
 :root {
   color-scheme: dark;
+  --sports-display-font: "Black Han Sans", Impact, "Arial Narrow", "Roboto Condensed", sans-serif;
+  --sports-display-condense: scaleX(0.9);
   --bg: #303132;
   --surface: #242526;
   --surface-2: rgba(255, 255, 255, 0.055);
@@ -112,7 +116,7 @@
     var(--rb-bg-2);
   --ui-room-panel-bg: color-mix(in srgb, var(--rb-bg-2) 78%, transparent);
   --ui-room-panel-border: var(--card-border);
-  --hero-title-font: Impact, "Arial Narrow", "Roboto Condensed", sans-serif;
+  --hero-title-font: var(--sports-display-font);
   --hero-title-size: clamp(2.9rem, 5.6vw, 4.8rem);
   --hero-title-size-mobile: clamp(2.8rem, 14vw, 4.35rem);
   --hero-title-line-height: 0.9;
