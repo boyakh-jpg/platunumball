@@ -103,6 +103,7 @@
 - 저장 row는 `visibility="private"`, `rules.recordType="solo"`, `status="confirmed"`로 저장한다.
 - 현재 사용자만 `match_players` 참가자로 저장하고, 프리텍스트 선수는 `playedPlayerIds`와 `anonymousPlayers`에 무기명 선수로 저장한다.
 - 개인 기록은 `1v1`, `2v2`, `3v3`, `4v4`, `5v5`를 허용한다. 팀명, 상대팀명, 우리팀/상대팀 선수명은 자유 입력이며 부족한 슬롯은 `무기명 1`, `무기명 2`처럼 채운다.
+- 개인 기록 선수명 입력은 실제 유저를 해시태그로 검색해 `이름 #해시태그 포지션` 텍스트를 붙일 수 있지만, 저장은 프로필 ID 연결 없이 무기명 선수로만 한다.
 - 개인 기록의 무기명 선수는 `position="free"`, `participationLabel="개인참여"`, `anonymous=true`로 저장한다.
 - 개인 기록은 `ranked=false`, `ratingScale=0`, `mmrExcludedPlayerIds`에 현재 사용자와 무기명 선수를 모두 넣어 MMR/팀 MMR에 반영하지 않는다.
 - 개인 기록 날짜는 오늘부터 과거 7일까지만 허용한다.

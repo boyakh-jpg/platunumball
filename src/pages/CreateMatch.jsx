@@ -7,7 +7,7 @@ import Card from "../components/common/Card.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
 import RuleSelector from "../components/match/RuleSelector.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
-import { MATCH_MODES, PLAYER_STAT_FIELDS, REFEREE_TRUST_MIN, REGIONS, getCanonicalRegion, getHostTrustRequirement, isSameRegion } from "../lib/constants.js";
+import { MATCH_MODES, PLAYER_POSITIONS, PLAYER_STAT_FIELDS, REFEREE_TRUST_MIN, REGIONS, getCanonicalRegion, getHostTrustRequirement, isSameRegion } from "../lib/constants.js";
 import { getCourtLayoutLabel, getCourtPlayWarning, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
 import { getCourtHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { getPublicRoomMaxDateInput, isEligibleReferee } from "../lib/matchUtils.js";
@@ -44,6 +44,15 @@ const SOLO_RECORD_MODES = ["1v1", "2v2", "3v3", "4v4", "5v5"].map((id) => ({ id,
 const MATCH_MODE_IDS = new Set(MATCH_MODES.map((mode) => mode.id));
 
 const makeEmptySoloStats = () => Object.fromEntries(PLAYER_STAT_FIELDS.map((field) => [field.id, 0]));
+
+function getSoloRecordUserLine(user = {}) {
+  const position = PLAYER_POSITIONS.includes(user.position) && user.position !== "상관없음" ? user.position : "";
+  return [user.name, getUserHashtag(user), position].filter(Boolean).join(" ");
+}
+
+function getSoloRecordUserSearchText(user = {}) {
+  return [user.name, getUserHashtag(user), user.position, user.region, `신뢰도 ${user.trustScore ?? ""}`].filter(Boolean).join(" ");
+}
 
 const ageRestrictionOptions = [
   { id: "any", label: "연령 무관", desc: "모든 연령 참여", allowedGroups: AGE_GROUPS.map((group) => group.id) },
@@ -398,6 +407,8 @@ export default function CreateMatch({ app }) {
   const [opponentTeamQuery, setOpponentTeamQuery] = useState("");
   const [courtQuery, setCourtQuery] = useState("");
   const [refereeQuery, setRefereeQuery] = useState("");
+  const [soloTeamAUserQuery, setSoloTeamAUserQuery] = useState("");
+  const [soloTeamBUserQuery, setSoloTeamBUserQuery] = useState("");
   const [teamRegion, setTeamRegion] = useState(currentRegion || "전체");
   const [courtRegion, setCourtRegion] = useState(currentRegion || "전체");
   const defaultAgeRestriction = getAgeGroupForUser(app.currentUser);
@@ -452,8 +463,8 @@ export default function CreateMatch({ app }) {
     soloTeamBName: "상대팀",
     soloTeamAPlayersText: "",
     soloTeamBPlayersText: "",
-    soloScoreFor: 0,
-    soloScoreAgainst: 0,
+    soloScoreFor: "",
+    soloScoreAgainst: "",
     soloStats: makeEmptySoloStats(),
     tournamentFormat: "league",
     tournamentTeamIds: [defaultTournamentTeamA?.id, defaultTournamentTeamB?.id].filter(Boolean),
@@ -583,6 +594,16 @@ export default function CreateMatch({ app }) {
       includesQuery(`${user.name} ${getUserHashtag(user)} ${user.position} ${user.region} 신뢰도 ${user.trustScore}`, query)
     ));
   }, [refereeCandidates, refereeQuery]);
+  const soloRecordUserCandidates = useMemo(
+    () => app.state.users
+      .filter((user) => user.id !== app.currentUser.id && !user.anonymous)
+      .sort((a, b) => (
+        Number(isSameRegion(b.region, currentRegion)) - Number(isSameRegion(a.region, currentRegion)) ||
+        Number(b.trustScore ?? 0) - Number(a.trustScore ?? 0) ||
+        String(a.name ?? "").localeCompare(String(b.name ?? ""))
+      )),
+    [app.currentUser.id, app.state.users, currentRegion],
+  );
   const teamTierRange = getRecruitingTierRange(selectedTeamA?.mmr ?? 1200, draft.ranked, draft.mmrRangeMode);
   const personalTierRange = getRecruitingTierRange(app.currentUser.ratings?.integrated ?? 1200, draft.ranked, draft.mmrRangeMode);
   const roomTierRange = isTeamRoom ? teamTierRange : personalTierRange;
@@ -741,6 +762,22 @@ export default function CreateMatch({ app }) {
   const updateSoloStat = (fieldId, value) => {
     const nextValue = Math.max(0, Math.min(999, Number(value) || 0));
     update({ soloStats: { ...(draft.soloStats ?? {}), [fieldId]: nextValue } });
+  };
+  const clearZeroSoloScore = (fieldId) => {
+    setDraft((current) => (String(current[fieldId]) === "0" ? { ...current, [fieldId]: "" } : current));
+  };
+  const appendSoloRecordUser = (sideName, user) => {
+    const fieldId = sideName === "teamA" ? "soloTeamAPlayersText" : "soloTeamBPlayersText";
+    const line = getSoloRecordUserLine(user);
+    if (!line) return;
+    setSubmitFeedback("");
+    setDraft((current) => {
+      const lines = String(current[fieldId] ?? "").split("\n").map((item) => item.trim()).filter(Boolean);
+      if (lines.includes(line)) return current;
+      return { ...current, [fieldId]: [...lines, line].join("\n") };
+    });
+    if (sideName === "teamA") setSoloTeamAUserQuery("");
+    else setSoloTeamBUserQuery("");
   };
   useEffect(() => {
     if (!draft.refereeId) return;
@@ -970,6 +1007,19 @@ export default function CreateMatch({ app }) {
       </div>
     );
   };
+  const renderSoloRecordUserSearchItem = (sideName) => (user) => (
+    <div
+      key={user.id}
+      className="search-picker-result-row search-picker-result-row-actionable"
+      onMouseDown={(event) => event.preventDefault()}
+    >
+      <button type="button" className="search-picker-result-main" onClick={() => appendSoloRecordUser(sideName, user)}>
+        <strong>{user.name}</strong>
+        <span>{getUserHashtag(user)} · {user.position} · {user.region}</span>
+        <em>텍스트만 추가 · 유저 연결 없음</em>
+      </button>
+    </div>
+  );
   const submit = async (event) => {
     event.preventDefault();
     if (submitting) return;
@@ -1316,19 +1366,59 @@ export default function CreateMatch({ app }) {
                 </label>
                 <label>
                   내 점수
-                  <input type="number" min="0" max="999" value={draft.soloScoreFor} onChange={(event) => update({ soloScoreFor: event.target.value })} />
+                  <input type="number" min="0" max="999" value={draft.soloScoreFor} onFocus={() => clearZeroSoloScore("soloScoreFor")} onChange={(event) => update({ soloScoreFor: event.target.value })} />
                 </label>
                 <label>
                   상대 점수
-                  <input type="number" min="0" max="999" value={draft.soloScoreAgainst} onChange={(event) => update({ soloScoreAgainst: event.target.value })} />
+                  <input type="number" min="0" max="999" value={draft.soloScoreAgainst} onFocus={() => clearZeroSoloScore("soloScoreAgainst")} onChange={(event) => update({ soloScoreAgainst: event.target.value })} />
+                </label>
+                <label>
+                  우리팀 유저 찾기
+                  <SearchPicker
+                    value={soloTeamAUserQuery}
+                    onChange={setSoloTeamAUserQuery}
+                    placeholder="이름, #해시태그 검색"
+                    items={soloRecordUserCandidates}
+                    getSearchText={getSoloRecordUserSearchText}
+                    remoteSearchType="player"
+                    remoteLimit={10}
+                    idleItems={soloRecordUserCandidates.slice(0, 5)}
+                    idleTitle="최근/지역 선수"
+                    title="선수 검색 결과"
+                    emptyText="선수 없음"
+                    showIdleOnFocus
+                    floating
+                    closeOnResultClick
+                    renderItem={renderSoloRecordUserSearchItem("teamA")}
+                  />
+                </label>
+                <label>
+                  상대팀 유저 찾기
+                  <SearchPicker
+                    value={soloTeamBUserQuery}
+                    onChange={setSoloTeamBUserQuery}
+                    placeholder="이름, #해시태그 검색"
+                    items={soloRecordUserCandidates}
+                    getSearchText={getSoloRecordUserSearchText}
+                    remoteSearchType="player"
+                    remoteLimit={10}
+                    idleItems={soloRecordUserCandidates.slice(0, 5)}
+                    idleTitle="최근/지역 선수"
+                    title="선수 검색 결과"
+                    emptyText="선수 없음"
+                    showIdleOnFocus
+                    floating
+                    closeOnResultClick
+                    renderItem={renderSoloRecordUserSearchItem("teamB")}
+                  />
                 </label>
                 <label className="memo-label solo-record-roster-field">
                   우리팀 선수
-                  <textarea value={draft.soloTeamAPlayersText} placeholder="한 줄에 한 명. 예: 김민준 PG" onChange={(event) => update({ soloTeamAPlayersText: event.target.value })} />
+                  <textarea value={draft.soloTeamAPlayersText} placeholder="한 줄에 한 명. 예: 김민준 #rb001pg PG" onChange={(event) => update({ soloTeamAPlayersText: event.target.value })} />
                 </label>
                 <label className="memo-label solo-record-roster-field">
                   상대 선수
-                  <textarea value={draft.soloTeamBPlayersText} placeholder="한 줄에 한 명. 예: 이서연 C" onChange={(event) => update({ soloTeamBPlayersText: event.target.value })} />
+                  <textarea value={draft.soloTeamBPlayersText} placeholder="한 줄에 한 명. 예: 이서연 #rb002c C" onChange={(event) => update({ soloTeamBPlayersText: event.target.value })} />
                 </label>
               </>
             ) : null}
