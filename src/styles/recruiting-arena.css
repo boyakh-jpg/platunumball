@@ -7204,13 +7204,15 @@ html[data-theme="light"] .arena-lobby-arena {
 
 .arena-filter-bar .segmented-control button {
   min-width: max-content;
+  max-width: none;
+  flex: 0 0 auto;
   gap: 6px;
 }
 
 .arena-filter-label {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  flex: 0 0 auto;
+  overflow: visible;
+  text-overflow: clip;
   white-space: nowrap;
 }
 
