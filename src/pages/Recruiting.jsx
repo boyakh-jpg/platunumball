@@ -3874,8 +3874,8 @@ function RecruitingReady({ app }) {
       && startFilter !== "all"
       && currentStartFilter !== startFilter;
     const needsBasePage = targetStartFilter === "all" && currentStartFilter !== "all";
-    if (currentPageMatchesRegion && !needsFilteredPage && !needsBasePage) return;
     const shouldIncludeFeedCounts = app.recruitingPagination?.feedCounts == null;
+    if (currentPageMatchesRegion && !needsFilteredPage && !needsBasePage && !shouldIncludeFeedCounts) return;
     const loadKey = `${app.currentUser.id}:${regionFilter}:${regionKey}:${targetStartFilter}:${shouldIncludeFeedCounts ? "counts" : "plain"}`;
     if (regionLoadRef.current === loadKey) return;
     regionLoadRef.current = loadKey;
