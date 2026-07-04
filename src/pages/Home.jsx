@@ -445,25 +445,25 @@ export default function Home({ app }) {
 
   return (
     <div className="page-stack rank-home">
-      <div className="page-stack home-left-rail">
-        <Card className="home-search-panel rank-search-card">
-          <SearchPicker
-            value={query}
-            onChange={setQuery}
-            placeholder="이름, 팀명, 코트명, 해시태그를 바로 검색"
-            items={searchResults}
-            remoteSearchType="all"
-            mapRemoteItem={mapRemoteHomeSearchItem}
-            renderItem={renderHomeSearchItem}
-            limit={SEARCH_PREVIEW_LIMIT}
-            detailLimit={SEARCH_DETAIL_LIMIT}
-            fieldClassName="home-search-box"
-          />
-          <Link to="/app/create" className="home-search-create">
-            <Button className="home-search-create-button"><PlusCircle size={18} /> 경기 만들기</Button>
-          </Link>
-        </Card>
+      <Card className="home-search-panel rank-search-card">
+        <SearchPicker
+          value={query}
+          onChange={setQuery}
+          placeholder="이름, 팀명, 코트명, 해시태그를 바로 검색"
+          items={searchResults}
+          remoteSearchType="all"
+          mapRemoteItem={mapRemoteHomeSearchItem}
+          renderItem={renderHomeSearchItem}
+          limit={SEARCH_PREVIEW_LIMIT}
+          detailLimit={SEARCH_DETAIL_LIMIT}
+          fieldClassName="home-search-box"
+        />
+        <Link to="/app/create" className="home-search-create">
+          <Button className="home-search-create-button"><PlusCircle size={18} /> 경기 만들기</Button>
+        </Link>
+      </Card>
 
+      <div className="page-stack home-left-rail">
         <section className="rank-summary-grid">
           <div className="home-rank-board-head">
             <div className="rank-hero-top">

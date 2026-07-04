@@ -858,6 +858,7 @@ UI 수정 전:
 5. Home upcoming recruiting rows do not use the action-queue warning border, and My Teams rows keep the same rounded row radius as other compact home rows.
 6. Desktop home support rail must stay in normal dashboard flow below the action rail; do not use negative vertical offsets that can overlap longer action queues.
 7. Desktop home separates the left content rail and right support rail; each rail owns its own vertical stack gap so one rail height does not change the other rail's card spacing.
+8. Desktop home search remains the full-width top bar; only the content below the search bar splits into left and right rails.
 
 ## 2026-07-01 Full internal preview pass
 

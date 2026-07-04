@@ -14377,11 +14377,16 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
   .rank-home {
     grid-template-columns: minmax(0, 1fr) minmax(320px, 360px);
     grid-template-areas:
+      "search search"
       "left right"
       "dashboard right";
     align-items: start;
     column-gap: 20px;
     row-gap: 16px;
+  }
+
+  .rank-home > .home-search-panel {
+    grid-area: search;
   }
 
   .rank-home > .home-left-rail {
