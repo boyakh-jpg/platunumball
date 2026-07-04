@@ -14,6 +14,7 @@
 - 가입정보가 필요하면 `/app/signup?redirect=...`로 이동하고, 저장 완료 후 원래 방 URL로 돌아간다.
 - redirect 값은 내부 `/app` 경로만 허용한다. 외부 URL, `/login`, `/app/signup` 자체는 목적지로 쓰지 않는다.
 - 비공개방은 공유 URL로 열 수 있어도 초대/권한 없이는 참여할 수 없다. 공유 링크는 권한을 부여하지 않는다.
+- `/api/recruiting/list` 단건 `postId` 상세 조회는 비공개방에서 방장, 참가자, 후보/예비, pending/accepted 초대 대상, 심판, 관리자만 상세를 응답한다.
 
 ## 2026-07-04 theme persistence
 

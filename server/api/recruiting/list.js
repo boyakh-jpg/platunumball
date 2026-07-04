@@ -680,6 +680,37 @@ function getRoomStateParticipantIds(roomState = {}) {
   ]);
 }
 
+function hasReadableRecruitingInvitation(roomState = {}, profileId = "") {
+  if (!profileId || !Array.isArray(roomState.invitations)) return false;
+  return roomState.invitations.some((invitation) => (
+    invitation?.targetUserId === profileId &&
+    ["pending", "accepted", "ready"].includes(String(invitation?.status ?? "pending"))
+  ));
+}
+
+function canReadRecruitingPostDetail(row = {}, applications = [], profileId = "", adminLevel = 0) {
+  if ((row.visibility ?? "public") !== "private") return true;
+  if (adminLevel > 0) return true;
+  if (!profileId) return false;
+  const roomState = row.room_state && typeof row.room_state === "object" ? row.room_state : {};
+  const readableIds = uniqueIds([
+    row.player_id,
+    row.referee_id,
+    ...flattenIdValues(row.player_ids),
+    roomState.ownerId,
+    ...flattenIdValues(roomState.partyLeaders),
+    ...flattenIdValues(roomState.partyReserves),
+    ...flattenIdValues(roomState.pinnedReservePlayers),
+    ...flattenIdValues(roomState.statRecorders),
+    ...getRoomStateParticipantIds(roomState),
+    ...applications.flatMap((application) => [
+      application?.player_id,
+      ...flattenIdValues(application?.player_ids),
+    ]),
+  ]);
+  return readableIds.includes(profileId) || hasReadableRecruitingInvitation(roomState, profileId);
+}
+
 async function fetchRoomStateParticipantPostIds(client, profileId = "", limit = REMOTE_CLIENT_RECRUITING_LIMIT) {
   if (!profileId) return [];
   const cappedLimit = Math.max(1, Math.min(RECRUITING_FEED_MAX_LIMIT, Number(limit) || REMOTE_CLIENT_RECRUITING_LIMIT));
@@ -1413,12 +1444,17 @@ export async function loadCompactRecruitingList(context, {
         return { postId, reason: getRecruitingFeedCardRejectReason(card, context.profileId) };
       })
       : undefined;
-    const postRows = fallbackPostIds.length ? await fetchRecruitingRowsByIds(context.supabase, fallbackPostIds) : [];
-    const postIds = postRows.map((post) => post.id).filter(Boolean);
-    const { data: applicationRows, error: applicationError } = postIds.length
-      ? await context.supabase.from("recruiting_applications").select(RECRUITING_APPLICATION_COLUMNS).in("post_id", postIds)
+    const postRowsRaw = fallbackPostIds.length ? await fetchRecruitingRowsByIds(context.supabase, fallbackPostIds) : [];
+    const rawPostIds = postRowsRaw.map((post) => post.id).filter(Boolean);
+    const { data: applicationRowsRaw, error: applicationError } = rawPostIds.length
+      ? await context.supabase.from("recruiting_applications").select(RECRUITING_APPLICATION_COLUMNS).in("post_id", rawPostIds)
       : { data: [], error: null };
     if (applicationError) throw applicationError;
+    const applicationsByRawPost = groupBy(applicationRowsRaw ?? [], "post_id");
+    const postRows = postRowsRaw.filter((post) => canReadRecruitingPostDetail(post, applicationsByRawPost.get(post.id) ?? [], context.profileId ?? "", adminLevel));
+    const postIds = postRows.map((post) => post.id).filter(Boolean);
+    const readablePostIds = new Set(postIds);
+    const applicationRows = (applicationRowsRaw ?? []).filter((application) => readablePostIds.has(application.post_id));
 
     const rowScope = collectRecruitingScope(postRows, applicationRows ?? [], context.profileId ?? "");
     const cardScope = collectRecruitingCardScope(targetCards, context.profileId ?? "");
@@ -1505,12 +1541,17 @@ export async function loadCompactRecruitingList(context, {
     };
   }
 
-  const postRows = await fetchRecruitingRowsByIds(context.supabase, targetPostIds);
-  const postIds = postRows.map((post) => post.id).filter(Boolean);
-  const { data: applicationRows, error: applicationError } = postIds.length
-    ? await context.supabase.from("recruiting_applications").select(RECRUITING_APPLICATION_COLUMNS).in("post_id", postIds)
+  const postRowsRaw = await fetchRecruitingRowsByIds(context.supabase, targetPostIds);
+  const rawPostIds = postRowsRaw.map((post) => post.id).filter(Boolean);
+  const { data: applicationRowsRaw, error: applicationError } = rawPostIds.length
+    ? await context.supabase.from("recruiting_applications").select(RECRUITING_APPLICATION_COLUMNS).in("post_id", rawPostIds)
     : { data: [], error: null };
   if (applicationError) throw applicationError;
+  const applicationsByRawPost = groupBy(applicationRowsRaw ?? [], "post_id");
+  const postRows = postRowsRaw.filter((post) => canReadRecruitingPostDetail(post, applicationsByRawPost.get(post.id) ?? [], context.profileId ?? "", adminLevel));
+  const postIds = postRows.map((post) => post.id).filter(Boolean);
+  const readablePostIds = new Set(postIds);
+  const applicationRows = (applicationRowsRaw ?? []).filter((application) => readablePostIds.has(application.post_id));
 
   const chatMessagesByPost = includeRoomChat
     ? await fetchRoomChatMessagesByPostIds(context.supabase, postIds)
