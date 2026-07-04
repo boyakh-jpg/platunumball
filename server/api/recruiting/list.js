@@ -360,6 +360,7 @@ function hasPendingInvitationForProfile(card = {}, profileId = "") {
   const invitations = card?.roomState?.invitations;
   if (!profileId || !Array.isArray(invitations)) return false;
   return invitations.some((invitation) => (
+    invitation?.id &&
     invitation?.targetUserId === profileId &&
     String(invitation?.status ?? "pending") === "pending"
   ));
@@ -1519,14 +1520,16 @@ export async function loadCurrentUserRecruitingFeedList(context, {
   limit = REMOTE_CLIENT_RECRUITING_LIMIT,
   includeFeedCounts = true,
   allowLegacyFallback = false,
+  roomScope = "",
 } = {}) {
   if (!context.profileId) {
     return loadCompactRecruitingList(context, { adminLevel, limit, mineOnly: true });
   }
+  const relations = getRecruitingMineRelations(roomScope);
   const [pageResult, feedCounts] = await Promise.all([
     fetchRecruitingFeedPage(context.supabase, {
       profileId: context.profileId,
-      relations: ["owner", "participant", "invited", "referee"],
+      relations,
       limit,
       includeCards: true,
     }),

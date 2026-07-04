@@ -74,7 +74,7 @@ export default async function handler(request, response) {
     const includeLocalRecruiting = body.includeLocalRecruiting === true;
     const includeFeedCounts = body.includeFeedCounts === true;
 
-    const [profileResult, matchResult, recruitingResult, localRecruitingResult] = await Promise.all([
+    const [profileResult, matchResult, recruitingResult, invitedRecruitingResult, localRecruitingResult] = await Promise.all([
       timeStep(debugTiming, "profileMs", () => loadCurrentProfileState(context, { includeTeamMemberProfiles: false })),
       loadCompactMatchList(context, {
         limit: matchLimit,
@@ -85,22 +85,22 @@ export default async function handler(request, response) {
         adminContext: false,
       }, adminLevel, matchLimit, debugTiming),
       timeStep(debugTiming, "recruitingMs", () => loadCurrentUserRecruitingFeedList(context, { adminLevel, limit: recruitingLimit, includeFeedCounts })),
+      timeStep(debugTiming, "recruitingInvitedMs", () => loadCurrentUserRecruitingFeedList(context, { adminLevel, limit: recruitingLimit, includeFeedCounts: false, roomScope: "invited" })),
       includeLocalRecruiting
         ? timeStep(debugTiming, "localRecruitingMs", () => loadLocalRecruitingFeedList(context, { adminLevel, limit: REMOTE_CLIENT_HOME_LOCAL_RECRUITING_LIMIT }))
         : Promise.resolve(createSkippedRecruitingResult()),
     ]);
 
     if (debugTiming) debugTiming.totalMs = Date.now() - startedAt;
-    const recruitingPosts = recruitingResult.state?.recruitingPosts ?? [];
+    const currentUserRecruitingState = mergeHomeState(recruitingResult.state, invitedRecruitingResult.state);
+    const recruitingState = mergeHomeState(localRecruitingResult.state, currentUserRecruitingState);
+    const recruitingPosts = currentUserRecruitingState.recruitingPosts ?? [];
 
     sendJson(response, 200, {
       ok: true,
       state: mergeHomeState(
-        mergeHomeState(
-          mergeHomeState(profileResult.state, matchResult.state),
-          recruitingResult.state,
-        ),
-        localRecruitingResult.state,
+        mergeHomeState(profileResult.state, matchResult.state),
+        recruitingState,
       ),
       page: {
         ...matchResult.page,
@@ -111,7 +111,13 @@ export default async function handler(request, response) {
         ...(localRecruitingResult.page ?? {}),
         feedCounts: recruitingResult.page?.feedCounts ?? localRecruitingResult.page?.feedCounts ?? null,
       },
-      updatedAt: Math.max(profileResult.updatedAt ?? 0, matchResult.updatedAt ?? 0, recruitingResult.updatedAt ?? 0, localRecruitingResult.updatedAt ?? 0),
+      updatedAt: Math.max(
+        profileResult.updatedAt ?? 0,
+        matchResult.updatedAt ?? 0,
+        recruitingResult.updatedAt ?? 0,
+        invitedRecruitingResult.updatedAt ?? 0,
+        localRecruitingResult.updatedAt ?? 0,
+      ),
       debugTiming: debugTiming ?? undefined,
     });
   } catch (error) {
