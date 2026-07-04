@@ -1856,7 +1856,7 @@ flowchart TD
 
 ## 2026-06-29 홈/경기 모집 일정 카운트 기준
 
-- 홈 `진행 예정 경기`, 경기 메뉴 `MY/SOON`, 매칭 메뉴 `내가 만든 방/내 참여방/초대받음`은 current-user recruiting feed와 같은 참여 판정을 사용한다.
+- 홈 `진행 예정 경기`는 확정된 실제 경기(`matches`)만 표시한다. 모집방(`recruitingPosts`) 일정은 홈 친선전/정규전 큐, 경기 메뉴 `MY/SOON`, 매칭 메뉴 `내가 만든 방/내 참여방/초대받음`에서 current-user recruiting feed 참여 판정으로 표시한다.
 - 경기 메뉴에서 모집방 일정을 고를 때는 `isRecruitingPostForUser`를 먼저 사용하고, 부족한 표시 정보만 lobby 계산으로 보강한다.
 - 팀 신청 row처럼 list card에 전체 팀원 명단이 없더라도 `playerId`, `playerIds`, applicant, reserve 기준으로 현재 사용자의 참여 관계가 있으면 경기 메뉴 일정에 포함한다.
 - 2026-07-04: The frontend homeLoad request sends includeFeedCounts:false because home does not render recruiting relation badges. Recruiting badge counts belong to `/app/recruiting` first response or explicit relation views.

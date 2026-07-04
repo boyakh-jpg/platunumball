@@ -6529,6 +6529,11 @@ html[data-theme="light"] .search-picker-result-row.selected {
   gap: 12px;
 }
 
+.home-upcoming-more {
+  width: 100%;
+  text-decoration: none;
+}
+
 .form-pill-row {
   display: flex;
   flex-wrap: wrap;

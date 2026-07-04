@@ -12,17 +12,50 @@ import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { MAX_TEAM_MEMBERSHIPS, getTeamRoleLabel } from "../lib/constants.js";
 import { getRegisteredCourts } from "../lib/courts.js";
 import { getCourtHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
-import { canUserResolveMatchDispute, getAllowedStatFields, getMatchRecordWindow, getMatchRoomPhase, getMatchUserParticipantSideName, getPlayerStatSubmitted, getPublicRoomTimingStatus, getRoomScheduleLabel, isInstantRoom, isMatchRelatedToUser, userNeedsMatchAgreement, userNeedsMatchApproval } from "../lib/matchUtils.js";
+import { canUserResolveMatchDispute, getAllowedStatFields, getMatchRecordWindow, getMatchRoomPhase, getMatchUserParticipantSideName, getPlayerStatSubmitted, getPublicRoomTimingStatus, getRoomScheduleLabel, isInstantRoom, isMatchRelatedToUser, userNeedsMatchAction, userNeedsMatchAgreement, userNeedsMatchApproval } from "../lib/matchUtils.js";
 import { inferRegionSelection } from "../lib/profileSetup.js";
-import { RECRUITING_TYPES, getPendingRecruitingInvitations, getRecruitingLobby, getRecruitingRoomOwnerId, isNationalRecruitingPost, isRecruitingPostForUser, isRecruitingRoomInUserSchedule } from "../lib/recruiting.js";
+import { RECRUITING_TYPES, getPendingRecruitingInvitations, getRecruitingLobby, getRecruitingRoomOwnerId, isNationalRecruitingPost, isRecruitingPostForUser } from "../lib/recruiting.js";
 import { getCurrentSeason, getPlayerSeasonRows, getSeasonProgress } from "../lib/season.js";
 import { getTier, getTierDivision, getTierDivisionNumber } from "../lib/tier.js";
 import { getDiscordAvatarClassName, getDiscordAvatarStyle } from "../lib/discord.js";
 
+function toDateInputValue(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function addDays(dateValue, amount) {
+  const date = new Date(`${dateValue}T00:00:00`);
+  date.setDate(date.getDate() + amount);
+  return toDateInputValue(date);
+}
+
+function getScheduleDate(item = {}) {
+  if (item.scheduledDate) return String(item.scheduledDate).slice(0, 10);
+  const scheduledText = String(item.scheduledAt ?? "");
+  const scheduledDate = scheduledText.match(/\d{4}-\d{2}-\d{2}/)?.[0];
+  if (scheduledDate) return scheduledDate;
+  const createdText = String(item.createdAt ?? "");
+  return createdText.match(/\d{4}-\d{2}-\d{2}/)?.[0] ?? "";
+}
+
+function isInstantScheduleItem(item = {}) {
+  const scheduledAt = String(item?.scheduledAt ?? "").trim().toLowerCase();
+  return isInstantRoom(item) || scheduledAt === "instant" || scheduledAt === "\uC989\uC2DC";
+}
+
+function isHomeUpcomingScheduleItem(item = {}, todayValue, maxScheduleDate) {
+  if (isInstantScheduleItem(item)) return false;
+  const itemDate = getScheduleDate(item);
+  return Boolean(itemDate && itemDate >= todayValue && itemDate <= maxScheduleDate);
+}
+
 function compareSchedule(a, b) {
-  const instantDiff = Number(isInstantRoom(b)) - Number(isInstantRoom(a));
-  if (instantDiff) return instantDiff;
-  return String(a.scheduledAt ?? "").localeCompare(String(b.scheduledAt ?? ""));
+  const aKey = `${getScheduleDate(a) || "9999-12-31"} ${a.scheduledTime ?? ""} ${a.scheduledAt ?? ""}`;
+  const bKey = `${getScheduleDate(b) || "9999-12-31"} ${b.scheduledTime ?? ""} ${b.scheduledAt ?? ""}`;
+  return aKey.localeCompare(bKey);
 }
 
 function isSameRecruitingRegion(post = {}, user = {}) {
@@ -52,6 +85,13 @@ function userNeedsResultInput(match, userId) {
 
 function userOperatesCheckin(match, userId) {
   return match.refereeId ? match.refereeId === userId : match.createdBy === userId;
+}
+
+function isHomeApprovalPendingMatch(match = {}, userId = "") {
+  if (!isMatchRelatedToUser(match, userId)) return false;
+  if (["confirmed", "cancelled", "void"].includes(match.status)) return false;
+  const phase = getMatchRoomPhase(match).phase;
+  return ["postgame", "dispute"].includes(phase) || Boolean(match.endedAt);
 }
 
 function getRecruitingSchedule(post) {
@@ -97,7 +137,7 @@ export default function Home({ app }) {
   const [query, setQuery] = useState("");
   const [processingInviteId, setProcessingInviteId] = useState("");
   const searchText = query.trim().toLowerCase();
-  const approvalMatches = [...app.state.matches].filter((match) => userNeedsMatchApproval(match, user.id));
+  const approvalMatches = [...app.state.matches].filter((match) => isHomeApprovalPendingMatch(match, user.id));
   const completedMatches = [...app.state.matches].filter((match) => match.status === "confirmed");
   const myTeam = app.state.teams.find((team) => team.members.some((member) => member.userId === user.id));
   const teamById = useMemo(() => Object.fromEntries(app.state.teams.map((team) => [team.id, team])), [app.state.teams]);
@@ -107,16 +147,16 @@ export default function Home({ app }) {
     .sort((a, b) => Number(b.myRole === "captain") - Number(a.myRole === "captain") || b.mmr - a.mmr), [app.state.teams, user.id]);
   const captainTeamIds = useMemo(() => myTeams.filter((team) => team.myRole === "captain").map((team) => team.id), [myTeams]);
   const myTeamIds = useMemo(() => myTeams.map((team) => team.id), [myTeams]);
+  const todayValue = toDateInputValue();
+  const maxScheduleDate = addDays(todayValue, 365);
   const upcomingItems = useMemo(() => {
     const matchItems = [...app.state.matches]
-      .filter((match) => ["locked", "checkin"].includes(getMatchRoomPhase(match).phase) && isMatchRelatedToUser(match, user.id))
+      .filter((match) => ["locked", "checkin"].includes(getMatchRoomPhase(match).phase))
+      .filter((match) => isMatchRelatedToUser(match, user.id) && !userNeedsMatchAction(match, user.id))
+      .filter((match) => isHomeUpcomingScheduleItem(match, todayValue, maxScheduleDate))
       .map((match) => ({ type: "match", id: `match-${match.id}`, item: match }));
-    const roomItems = [...(app.state.recruitingPosts ?? [])]
-      .filter((post) => post.status === "open")
-      .filter((post) => isRecruitingRoomInUserSchedule(post, app.state, user.id, myTeamIds))
-      .map((post) => ({ type: "room", id: `room-${post.id}`, item: post }));
-    return [...matchItems, ...roomItems].sort((a, b) => compareSchedule(a.item, b.item));
-  }, [app.state, app.state.matches, app.state.recruitingPosts, myTeamIds, user.id]);
+    return matchItems.sort((a, b) => compareSchedule(a.item, b.item));
+  }, [app.state.matches, maxScheduleDate, todayValue, user.id]);
   const pendingInvitations = useMemo(() => getPendingRecruitingInvitations(app.state, user.id), [app.state, user.id]);
   const pendingTeamInvitations = useMemo(() => (app.state.teamInvitations ?? []).filter((invitation) => (
     invitation.targetUserId === user.id &&
@@ -666,21 +706,13 @@ export default function Home({ app }) {
             {upcomingItems.length ? (
               <div className="match-stack">
                 {upcomingItems.slice(0, 3).map((entry) => {
-                  if (entry.type === "match") {
-                    return <MatchCard key={entry.id} match={entry.item} teams={app.state.teams} courts={registeredCourts} />;
-                  }
-                  const post = entry.item;
-                  return (
-                    <Link key={entry.id} to={`/app/recruiting?post=${post.id}`} className="home-action-row priority-1">
-                      <span className="home-action-icon"><CalendarDays size={18} /></span>
-                      <span className="home-action-main">
-                        <strong>{post.title}</strong>
-                        <em>{getRecruitingSchedule(post)} · {post.court}</em>
-                      </span>
-                      <b>모집방</b>
-                    </Link>
-                  );
+                  return <MatchCard key={entry.id} match={entry.item} teams={app.state.teams} courts={registeredCourts} />;
                 })}
+                {upcomingItems.length > 3 ? (
+                  <Link to="/app/matches" className="button button-secondary button-sm home-upcoming-more">
+                    전체 보기
+                  </Link>
+                ) : null}
               </div>
             ) : (
               <div className="empty-state">예정 경기 없음</div>
