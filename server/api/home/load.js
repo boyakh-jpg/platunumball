@@ -14,7 +14,7 @@ function mergeHomeState(profileState = {}, feedState = {}) {
     ...profileState,
     ...feedState,
     users: mergeById(profileState.users, feedState.users),
-    teams: mergeById(profileState.teams, feedState.teams),
+    teams: mergeTeamsById(profileState.teams, feedState.teams),
     teamInvitations: profileState.teamInvitations ?? [],
     matches: mergeById(profileState.matches, feedState.matches),
     recruitingPosts: mergeById(profileState.recruitingPosts, feedState.recruitingPosts),
@@ -24,6 +24,34 @@ function mergeHomeState(profileState = {}, feedState = {}) {
       ...(feedState.settings ?? {}),
     },
   };
+}
+
+function mergeTeamMembers(current = [], incoming = []) {
+  const merged = new Map();
+  [...(current ?? []), ...(incoming ?? [])].forEach((member) => {
+    if (!member?.userId) return;
+    merged.set(member.userId, { ...(merged.get(member.userId) ?? {}), ...member });
+  });
+  return [...merged.values()];
+}
+
+function mergeTeamsById(current = [], incoming = []) {
+  const merged = new Map((current ?? []).filter((item) => item?.id).map((item) => [item.id, item]));
+  (incoming ?? []).forEach((item) => {
+    if (!item?.id) return;
+    const existing = merged.get(item.id);
+    if (!existing) {
+      merged.set(item.id, item);
+      return;
+    }
+    const members = mergeTeamMembers(existing.members, item.members);
+    merged.set(item.id, {
+      ...existing,
+      ...item,
+      members: members.length ? members : (item.members ?? existing.members ?? []),
+    });
+  });
+  return [...merged.values()];
 }
 
 function getCappedMatchLimit(value) {

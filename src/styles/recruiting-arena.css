@@ -6855,6 +6855,19 @@ html[data-theme="light"] .arena-lobby-modal {
   background: var(--ui-room-panel-bg);
 }
 
+.arena-lobby-modal .arena-lobby-team-panel {
+  overflow: hidden;
+}
+
+.arena-lobby-modal .arena-lobby-team-panel .arena-side-roster,
+html[data-theme="light"] .arena-lobby-modal .arena-lobby-team-panel .arena-side-roster {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+
 .arena-filter-bar .segmented-control,
 .arena-filter-bar .arena-start-date-filter,
 .arena-compose-type-grid,
