@@ -29,6 +29,7 @@ import { getTierEmblemSrc } from "../components/rating/TierEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { MATCH_MODES, PLAYER_POSITIONS, PLAYER_STAT_FIELDS, REGIONS, getCanonicalRegion, isSameRegion } from "../lib/constants.js";
+import { inferRegionSelection, REGION_TREE } from "../lib/profileSetup.js";
 import { getCourtLayoutLabel, getCourtPlayWarning, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
 import {
   MMR_RANGE_POLICIES,
@@ -3494,9 +3495,18 @@ function RecruitingReady({ app }) {
   const userById = useMemo(() => Object.fromEntries(app.state.users.map((user) => [user.id, user])), [app.state.users]);
   const teamById = useMemo(() => Object.fromEntries(app.state.teams.map((team) => [team.id, team])), [app.state.teams]);
   const currentRegion = getCanonicalRegion(app.currentUser.regionDistrict || app.currentUser.region);
+  const defaultRegionSelection = useMemo(
+    () => inferRegionSelection([
+      app.currentUser.regionSido,
+      app.currentUser.regionDistrict,
+      app.currentUser.region,
+    ].filter(Boolean).join(" ")),
+    [app.currentUser.region, app.currentUser.regionDistrict, app.currentUser.regionSido],
+  );
   const [queue, setQueue] = useState("all");
   const [roomScope, setRoomScope] = useState(() => (targetFilter === "invited" ? "invited" : "all"));
-  const [regionFilter, setRegionFilter] = useState("local");
+  const [regionFilterSido, setRegionFilterSido] = useState("local");
+  const [regionFilterDistrict, setRegionFilterDistrict] = useState(defaultRegionSelection.district);
   const [modeFilter, setModeFilter] = useState("all");
   const [startFilter, setStartFilter] = useState("instant");
   const [queueControlsOpen, setQueueControlsOpen] = useState(true);
@@ -3542,13 +3552,31 @@ function RecruitingReady({ app }) {
   const scheduleAllowed = draftInstant || (draft.scheduledDate >= minScheduleDate && draft.scheduledDate <= maxScheduleDate && draftTimingStatus.canCreate);
   const canPostRecruiting = hasSchedule && scheduleAllowed && (!hostNeedsTeam || (Boolean(selectedTeam) && selectedHostPlayerIds.length > 0));
   const localRegionKey = getDefaultRecruitingRegionKey(app.currentUser);
-  const selectedRegionKey = regionFilter === "local" ? localRegionKey : regionFilter;
+  const selectedRegionGroup = REGION_TREE.find((region) => region.sido === regionFilterSido) ?? REGION_TREE[0] ?? { districts: [] };
+  const regionDistrictOptions = selectedRegionGroup.districts ?? [];
+  const selectedRegionDistrict = regionFilterSido === "local"
+    ? defaultRegionSelection.district
+    : (regionDistrictOptions.includes(regionFilterDistrict) ? regionFilterDistrict : regionDistrictOptions[0] ?? "");
+  const regionFilter = regionFilterSido === "local" ? "local" : selectedRegionDistrict;
+  const selectedRegionKey = regionFilter === "local" ? localRegionKey : stripRegionSuffix(selectedRegionDistrict);
   const startDateKey = getTodayInputValue();
   const startDateOptions = useMemo(() => getStartDateFilterOptions(), [startDateKey]);
   const startFilterLabel = startDateOptions.find((option) => option.id === startFilter)?.label ?? "전체 시작일";
-  const filterRequestKey = `${regionFilter}:${selectedRegionKey}:${startFilter}:${roomScope}`;
+  const filterRequestKey = `${regionFilterSido}:${selectedRegionKey}:${startFilter}:${roomScope}`;
   const debouncedFilterRequestKey = useDebouncedValue(filterRequestKey, RECRUITING_FILTER_DEBOUNCE_MS);
   const filterRequestSettled = filterRequestKey === debouncedFilterRequestKey;
+
+  const selectRegionSido = (event) => {
+    const nextSido = event.target.value;
+    if (nextSido === "local") {
+      setRegionFilterSido("local");
+      setRegionFilterDistrict(defaultRegionSelection.district);
+      return;
+    }
+    const nextGroup = REGION_TREE.find((region) => region.sido === nextSido) ?? REGION_TREE[0];
+    setRegionFilterSido(nextGroup?.sido ?? "local");
+    setRegionFilterDistrict(nextGroup?.districts?.[0] ?? defaultRegionSelection.district);
+  };
 
   useEffect(() => {
     if (targetFilter === "invited") {
@@ -3815,13 +3843,20 @@ function RecruitingReady({ app }) {
         {queueControlsOpen ? (
           <>
             <section className="arena-filter-bar" aria-label="필터">
-              <label className="arena-filter-select">
-                <select aria-label="지역" value={regionFilter} onChange={(event) => setRegionFilter(event.target.value)}>
+              <label className="arena-filter-select arena-region-sido-filter">
+                <select aria-label="시도" value={regionFilterSido} onChange={selectRegionSido}>
                   <option value="local">내 지역{localRegionKey ? ` · ${localRegionKey}` : ""}</option>
-                  {REGIONS.map((region) => <option key={region} value={region}>{region}</option>)}
+                  {REGION_TREE.map((region) => <option key={region.sido} value={region.sido}>{region.sido}</option>)}
                 </select>
               </label>
-              <div className="segmented-control compact-segments arena-filter-segment">
+              {regionFilterSido !== "local" ? (
+                <label className="arena-filter-select arena-region-district-filter">
+                  <select aria-label="시군구" value={selectedRegionDistrict} onChange={(event) => setRegionFilterDistrict(event.target.value)}>
+                    {regionDistrictOptions.map((district) => <option key={district} value={district}>{district}</option>)}
+                  </select>
+                </label>
+              ) : null}
+              <div className="segmented-control compact-segments arena-filter-segment arena-relation-filter">
                 <button type="button" className={roomScope === "created" ? "active" : ""} onClick={() => selectRoomScope("created")}><span className="arena-filter-label">내가 만든 방</span><span className="arena-filter-badge">{formatRoomCount(createdRoomCount)}</span></button>
                 <button type="button" className={roomScope === "joined" ? "active" : ""} onClick={() => selectRoomScope("joined")}><span className="arena-filter-label">내 참여방</span><span className="arena-filter-badge">{formatRoomCount(joinedRoomCount)}</span></button>
                 <button type="button" className={roomScope === "invited" ? "active" : ""} onClick={() => selectRoomScope("invited")}><span className="arena-filter-label">초대받음</span><span className="arena-filter-badge">{formatRoomCount(invitedRoomCount)}</span></button>
@@ -3831,7 +3866,7 @@ function RecruitingReady({ app }) {
                 <button type="button" className={queue === "ranked" ? "active" : ""} onClick={() => setQueue("ranked")}>정규전</button>
                 <button type="button" className={queue === "friendly" ? "active" : ""} onClick={() => setQueue("friendly")}>친선전</button>
               </div>
-              <label className="arena-filter-select">
+              <label className="arena-filter-select arena-mode-filter">
                 <select aria-label="경기 방식" value={modeFilter} onChange={(event) => setModeFilter(event.target.value)}>
                   <option value="all">전체 방식</option>
                   {MATCH_MODES.map((mode) => <option key={mode.id} value={mode.id}>{mode.label}</option>)}
@@ -3860,7 +3895,7 @@ function RecruitingReady({ app }) {
           </>
         ) : (
           <div className="arena-queue-summary">
-            <span>{regionFilter === "local" ? `내 지역${localRegionKey ? ` · ${localRegionKey}` : ""}` : regionFilter}</span>
+            <span>{regionFilter === "local" ? `내 지역${localRegionKey ? ` · ${localRegionKey}` : ""}` : `${regionFilterSido} ${selectedRegionDistrict}`}</span>
             <span>{queue === "ranked" ? "정규전" : queue === "friendly" ? "친선전" : "전체"}</span>
             <span>{modeFilter === "all" ? "전체 방식" : MATCH_MODES.find((mode) => mode.id === modeFilter)?.label ?? modeFilter}</span>
             <span>{startFilterLabel}</span>
