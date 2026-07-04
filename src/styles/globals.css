@@ -14495,6 +14495,71 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
   transform-origin: center;
 }
 
+/* 2026-07-04 home sports card emphasis. */
+.rank-home .rank-spotlight-main strong {
+  overflow: visible;
+  max-width: 100%;
+  color: #fff;
+  font-size: clamp(1.95rem, 5.4vw, 2.55rem);
+  letter-spacing: 0;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+
+.rank-home .match-focus-card .match-card .score-line {
+  gap: clamp(10px, 2vw, 22px);
+  padding: 6px 0 4px;
+}
+
+.rank-home .match-focus-card .match-card .score-line span,
+.rank-home .match-focus-card .match-card .score-line a,
+.rank-home .match-focus-card .match-card .score-line strong {
+  display: block;
+  min-width: 0;
+  color: var(--rb-orange-2);
+  line-height: 0.92;
+  text-shadow: 0 10px 22px rgba(0, 0, 0, 0.34);
+}
+
+.rank-home .match-focus-card .match-card .score-line span,
+.rank-home .match-focus-card .match-card .score-line a {
+  font-size: clamp(1.55rem, 4.8vw, 3rem);
+  font-weight: 950;
+  overflow-wrap: anywhere;
+}
+
+.rank-home .match-focus-card .match-card .score-line strong {
+  color: var(--rb-orange);
+  font-size: clamp(2rem, 5.2vw, 3.4rem);
+}
+
+.rank-home .match-focus-card .match-card > .button-secondary {
+  border-color: transparent;
+  background: var(--rb-orange);
+  color: #fff;
+}
+
+.rank-home .match-focus-card .match-card > .button-secondary:hover {
+  background: var(--rb-orange-2);
+  color: #fff;
+}
+
+.rank-home .match-focus-card .match-card > .button-secondary:active {
+  background: var(--rb-orange-pressed);
+}
+
+@media (max-width: 640px) {
+  .rank-home .match-focus-card .match-card .score-line {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rank-home .match-focus-card .match-card .score-line span,
+  .rank-home .match-focus-card .match-card .score-line a,
+  .rank-home .match-focus-card .match-card .score-line strong {
+    justify-self: center;
+  }
+}
+
 :where(
   .rank-home .rank-spotlight-main strong,
   .recent-match-row strong,

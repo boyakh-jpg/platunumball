@@ -4168,6 +4168,9 @@ html[data-theme="light"] .tournament-hero h1 {
   .om-match-card h3,
   .arena-lobby-card.om-match-card h3,
   .om-score-box > strong,
+  .om-match-summary-box .om-summary-side,
+  .om-match-summary-box .om-summary-side .team-hover-trigger,
+  .om-match-summary-box .om-summary-line > strong,
   .om-match-summary-box.count-summary .om-summary-line > strong,
   .arena-lobby-card .om-match-summary-box.count-summary .om-summary-line > strong,
   .bracket-midline
@@ -4183,9 +4186,17 @@ html[data-theme="light"] .tournament-hero h1 {
 
 :where(
   .om-score-box > strong,
+  .om-match-summary-box .om-summary-side,
+  .om-match-summary-box .om-summary-side .team-hover-trigger,
+  .om-match-summary-box .om-summary-line > strong,
   .om-match-summary-box.count-summary .om-summary-line > strong,
   .arena-lobby-card .om-match-summary-box.count-summary .om-summary-line > strong,
   .bracket-midline
 ) {
   transform-origin: center;
+}
+
+.om-match-summary-box .om-summary-line {
+  grid-template-columns: minmax(0, 1fr) minmax(58px, auto) minmax(0, 1fr);
+  gap: clamp(12px, 1.6vw, 20px);
 }
