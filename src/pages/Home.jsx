@@ -98,6 +98,10 @@ function getRecruitingSchedule(post) {
   return getRoomScheduleLabel(post);
 }
 
+function getHomeMatchMeta(match = {}) {
+  return `${match.scheduledAt || getRoomScheduleLabel(match)} · ${match.court || "구장 미정"}`;
+}
+
 function getSafeMatchSide(match = {}, sideName = "teamA") {
   const side = match?.[sideName];
   const fallbackName = sideName === "teamA" ? "A" : "B";
@@ -234,7 +238,7 @@ export default function Home({ app }) {
             priority: 1,
             label: "동의",
             title: match.title,
-            meta: `${match.scheduledAt} · ${match.court}`,
+            meta: getHomeMatchMeta(match),
             href: `/app/matches?match=${match.id}`,
             icon: Handshake,
           };
@@ -245,7 +249,7 @@ export default function Home({ app }) {
             priority: 2,
             label: "경기 시작",
             title: match.title,
-            meta: `${match.scheduledAt} · ${match.court}`,
+            meta: getHomeMatchMeta(match),
             href: `/app/matches?match=${match.id}`,
             icon: Swords,
           };
@@ -256,7 +260,7 @@ export default function Home({ app }) {
             priority: 3,
             label: "결과 입력",
             title: match.title,
-            meta: `${match.scheduledAt} · ${match.court}`,
+            meta: getHomeMatchMeta(match),
             href: `/app/matches?match=${match.id}`,
             icon: CalendarDays,
           };
@@ -267,7 +271,7 @@ export default function Home({ app }) {
             priority: 4,
             label: match.status === "disputed" ? "이의 확인" : "결과 승인",
             title: match.title,
-            meta: `${match.scheduledAt} · ${match.court}`,
+            meta: getHomeMatchMeta(match),
             href: `/app/matches?match=${match.id}`,
             icon: ShieldAlert,
           };
