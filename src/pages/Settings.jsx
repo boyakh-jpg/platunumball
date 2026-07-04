@@ -1091,13 +1091,13 @@ export default function Settings({ app, auth, section = "main" }) {
             <div className="favorite-result-stack">
               {searchedFavoriteUser ? (
                 <div className="favorite-result-row">
-                  <PlayerHoverCard as="span" user={searchedFavoriteUser} teams={app.state.teams}>
+                  <span className="favorite-result-identity">
                     <span className="avatar small" style={{ "--avatar": searchedFavoriteUser.avatarColor }}>{searchedFavoriteUser.name.slice(0, 1)}</span>
                     <span>
                       <strong>{searchedFavoriteUser.name}</strong>
                       <em>{getUserHashtag(searchedFavoriteUser)}</em>
                     </span>
-                  </PlayerHoverCard>
+                  </span>
                   <Button type="button" size="sm" variant={favoritePlayerIds.includes(searchedFavoriteUser.id) ? "primary" : "secondary"} onClick={() => app.actions.toggleFavoritePlayer(searchedFavoriteUser.id)}>
                     {favoritePlayerIds.includes(searchedFavoriteUser.id) ? "해제" : "저장"}
                   </Button>
@@ -1105,13 +1105,13 @@ export default function Settings({ app, auth, section = "main" }) {
               ) : null}
               {searchedFavoriteReferee ? (
                 <div className="favorite-result-row">
-                  <RefereeHoverCard as="span" user={searchedFavoriteReferee} matches={app.state.matches} minTrust={REFEREE_TRUST_MIN}>
+                  <span className="favorite-result-identity">
                     <span className="avatar small" style={{ "--avatar": searchedFavoriteReferee.avatarColor }}>{searchedFavoriteReferee.name.slice(0, 1)}</span>
                     <span>
                       <strong>{searchedFavoriteReferee.name}</strong>
                       <em>{getUserHashtag(searchedFavoriteReferee)} · 신뢰도 {searchedFavoriteReferee.trustScore}</em>
                     </span>
-                  </RefereeHoverCard>
+                  </span>
                   <Button type="button" size="sm" variant={favoriteRefereeIds.includes(searchedFavoriteReferee.id) ? "primary" : "secondary"} onClick={() => app.actions.toggleFavoriteReferee(searchedFavoriteReferee.id)}>
                     {favoriteRefereeIds.includes(searchedFavoriteReferee.id) ? "해제" : "저장"}
                   </Button>
@@ -1119,13 +1119,13 @@ export default function Settings({ app, auth, section = "main" }) {
               ) : null}
               {searchedFavoriteTeam ? (
                 <div className="favorite-result-row">
-                  <TeamHoverCard as="span" team={searchedFavoriteTeam}>
+                  <span className="favorite-result-identity">
                     <span className="team-emblem small" style={{ "--team-color": searchedFavoriteTeam.accent }}>{searchedFavoriteTeam.name.slice(0, 1)}</span>
                     <span>
                       <strong>{searchedFavoriteTeam.name}</strong>
                       <em>{getTeamHashtag(searchedFavoriteTeam)}</em>
                     </span>
-                  </TeamHoverCard>
+                  </span>
                   <Button type="button" size="sm" variant={favoriteTeamIds.includes(searchedFavoriteTeam.id) ? "primary" : "secondary"} onClick={() => app.actions.toggleFavoriteTeam(searchedFavoriteTeam.id)}>
                     {favoriteTeamIds.includes(searchedFavoriteTeam.id) ? "해제" : "저장"}
                   </Button>
@@ -1133,13 +1133,13 @@ export default function Settings({ app, auth, section = "main" }) {
               ) : null}
               {searchedFavoriteCourt ? (
                 <div className="favorite-result-row">
-                  <CourtHoverCard court={searchedFavoriteCourt}>
+                  <span className="favorite-result-identity">
                     <span className="team-dot" />
                     <span>
                       <strong>{searchedFavoriteCourt.name}</strong>
                       <em>{getCourtHashtag(searchedFavoriteCourt)}</em>
                     </span>
-                  </CourtHoverCard>
+                  </span>
                   <Button type="button" size="sm" variant={favoriteCourtIds.includes(searchedFavoriteCourt.id) ? "primary" : "secondary"} onClick={() => app.actions.toggleFavoriteCourt(searchedFavoriteCourt.id)}>
                     {favoriteCourtIds.includes(searchedFavoriteCourt.id) ? "해제" : "저장"}
                   </Button>
