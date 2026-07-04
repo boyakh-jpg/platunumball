@@ -121,6 +121,14 @@ function mergeMatchCardsWithRows(cards = [], rows = []) {
   return [...merged.values()];
 }
 
+function mergeMatchRowsById(rows = [], extraRows = []) {
+  const merged = new Map((rows ?? []).filter((row) => row?.id).map((row) => [row.id, row]));
+  (extraRows ?? []).forEach((row) => {
+    if (row?.id) merged.set(row.id, row);
+  });
+  return [...merged.values()];
+}
+
 function isLegacyListFallbackAllowed(body = {}) {
   return body.allowLegacyFallback === true || process.env.RANKBALL_ALLOW_LEGACY_LIST_FALLBACK === "true";
 }
@@ -399,7 +407,34 @@ async function fetchMatchRowsByIds(client, matchIds = []) {
   return [...(data ?? [])].sort((a, b) => (order.get(a.id) ?? 9999) - (order.get(b.id) ?? 9999));
 }
 
-async function fetchCurrentUserMatchCandidateIds(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT) {
+async function fetchJsonActorMatchIds(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT) {
+  if (!profileId) return [];
+  const candidateLimit = Math.max(
+    MATCH_CANDIDATE_MIN_LIMIT,
+    Math.min(MATCH_CANDIDATE_MAX_LIMIT, Number(limit || REMOTE_CLIENT_MATCH_LIMIT) * MATCH_CANDIDATE_LIMIT_FACTOR),
+  );
+  const filters = [
+    ["stat_recorders", { teamA: profileId }],
+    ["stat_recorders", { teamB: profileId }],
+    ["played_player_ids", { teamA: [profileId] }],
+    ["played_player_ids", { teamB: [profileId] }],
+    ["reserve_players", { teamA: [profileId] }],
+    ["reserve_players", { teamB: [profileId] }],
+  ];
+  const results = await Promise.all(filters.map(([column, value]) => (
+    client
+      .from("matches")
+      .select("id")
+      .not("status", "in", "(confirmed,cancelled,void,closed)")
+      .contains(column, value)
+      .limit(candidateLimit)
+  )));
+  const error = results.find((result) => result.error)?.error;
+  if (error) throw error;
+  return unique(results.flatMap((result) => (result.data ?? []).map((row) => row.id)));
+}
+
+async function fetchCurrentUserMatchCandidateIds(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT, includeJsonActors = false) {
   if (!profileId) return [];
   const candidateLimit = Math.max(
     MATCH_CANDIDATE_MIN_LIMIT,
@@ -424,17 +459,21 @@ async function fetchCurrentUserMatchCandidateIds(client, profileId = "", limit =
   ]);
   if (playerError) throw playerError;
   if (relatedError) throw relatedError;
+  const jsonActorIds = includeJsonActors
+    ? await fetchJsonActorMatchIds(client, profileId, limit)
+    : [];
   return unique([
     ...(playerRows ?? []).map((row) => row.match_id),
     ...(relatedRows ?? []).map((row) => row.id),
+    ...jsonActorIds,
   ]);
 }
 
-async function fetchCurrentUserMatchPage(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT, cursor = "", activeOnly = false) {
+async function fetchCurrentUserMatchPage(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT, cursor = "", activeOnly = false, includeJsonActors = false) {
   if (!profileId) return null;
   const cappedLimit = Math.max(1, Math.min(MATCH_LIST_MAX_LIMIT, Number(limit) || REMOTE_CLIENT_MATCH_LIMIT));
   const offset = getMineOffsetCursor(cursor);
-  const candidateIds = await fetchCurrentUserMatchCandidateIds(client, profileId, cappedLimit);
+  const candidateIds = await fetchCurrentUserMatchCandidateIds(client, profileId, cappedLimit, includeJsonActors);
   if (!candidateIds.length) {
     return { rows: [], cursor: "", exhausted: true };
   }
@@ -795,6 +834,18 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
       matchRows = minePage?.rows ?? [];
       pageCursor = minePage?.cursor ?? "";
       pageExhausted = minePage?.exhausted ?? true;
+    }
+  }
+
+  if (recorderOnly) {
+    const recorderPage = await timeStep(debugTiming, "recorderFallbackMs", () => (
+      fetchCurrentUserMatchPage(context.supabase, context.profileId, limit, "", true, true)
+    ));
+    const recorderRows = recorderPage?.rows ?? [];
+    if (recorderRows.length) {
+      matchRows = mergeMatchRowsById(matchRows, recorderRows);
+      pageSource = appendRowFallbackSource(`${pageSource}+recorder`);
+      pageExhausted = pageExhausted && recorderPage?.exhausted !== false;
     }
   }
 
