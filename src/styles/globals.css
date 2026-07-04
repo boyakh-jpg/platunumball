@@ -5584,6 +5584,15 @@ html[data-theme="light"] .search-picker-result-row.selected {
   font-weight: 800;
 }
 
+.recruiting-mini-list a > span,
+.approval-teaser-card .compact-list a > span {
+  color: var(--rb-orange);
+  font-family: var(--sports-display-font);
+  letter-spacing: 0;
+  transform: var(--sports-display-condense);
+  transform-origin: left center;
+}
+
 .home-my-teams-card {
   border-color: rgba(116, 169, 255, 0.2);
 }

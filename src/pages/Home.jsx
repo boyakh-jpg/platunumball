@@ -768,7 +768,7 @@ export default function Home({ app }) {
             <div className="section-title-row">
               <div>
                 <p className="eyebrow">Upcoming</p>
-                <h2>진행 예정 경기</h2>
+                <h2>내 확정 경기</h2>
               </div>
               <Badge tone={upcomingItems.length ? "orange" : "neutral"}>{upcomingItems.length}개</Badge>
             </div>
@@ -784,7 +784,7 @@ export default function Home({ app }) {
                 ) : null}
               </div>
             ) : (
-              <div className="empty-state">예정 경기 없음</div>
+              <div className="empty-state">확정 경기 없음</div>
             )}
           </Card>
 
@@ -793,7 +793,7 @@ export default function Home({ app }) {
               <div className="section-title-row">
                 <div>
                   <p className="eyebrow">Recruiting</p>
-                  <h2>친선전/정규전 큐</h2>
+                  <h2>모집 중인 방</h2>
                 </div>
                 <Handshake size={20} />
               </div>
@@ -809,14 +809,14 @@ export default function Home({ app }) {
                 })}
               </div>
               <Link to="/app/recruiting">
-                <Button variant="secondary" className="wide-button"><Handshake size={17} /> 큐 보기</Button>
+                <Button variant="secondary" className="wide-button"><Handshake size={17} /> 모집방 보기</Button>
               </Link>
             </Card>
             <Card className="section-card approval-teaser-card">
               <div className="section-title-row">
                 <div>
                   <p className="eyebrow">Approval</p>
-                  <h2>승인 대기 경기</h2>
+                  <h2>결과 승인 대기</h2>
                 </div>
                 <Badge tone={approvalMatches.length ? "orange" : "neutral"}>{approvalMatches.length}개</Badge>
               </div>
@@ -826,7 +826,7 @@ export default function Home({ app }) {
                     <span>{match.title}</span>
                     <strong>{(match.approvals?.teamA?.length ?? 0) + (match.approvals?.teamB?.length ?? 0)}명 승인</strong>
                   </Link>
-                )) : <div><span>승인 대기 없음</span><strong>OK</strong></div>}
+                )) : <div><span>결과 승인 대기 없음</span><strong>OK</strong></div>}
               </div>
             </Card>
           </div>
