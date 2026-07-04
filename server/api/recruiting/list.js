@@ -32,6 +32,38 @@ const PUBLIC_RECRUITING_FEED_SCOPE = "public";
 const PROFILE_RECRUITING_FEED_SCOPE = "profile";
 const INSTANT_TIMING_TYPE = "instant";
 const LEGACY_INSTANT_LABEL = "즉시";
+const REGION_SIDO_PREFIXES = [
+  "서울특별시",
+  "부산광역시",
+  "대구광역시",
+  "인천광역시",
+  "대전광역시",
+  "울산광역시",
+  "세종특별자치시",
+  "경기도",
+  "강원특별자치도",
+  "충청북도",
+  "충청남도",
+  "전북특별자치도",
+  "전남광주통합특별시",
+  "광주광역시",
+  "전라남도",
+  "전남광주특별시",
+  "광주전남통합특별시",
+  "광주전남특별통합시",
+  "광주특별시",
+  "전라북도",
+  "경상북도",
+  "경상남도",
+  "제주특별자치도",
+];
+const REGION_KEY_ALIASES = new Map([
+  ["성수", "성동"],
+  ["잠실", "송파"],
+  ["seoul:mapo", "마포"],
+  ["seoulmapo", "마포"],
+  ["mapo", "마포"],
+]);
 
 function getPageOffset(body = {}) {
   const rawOffset = body.offset ?? body.recruitingOffset ?? body.nextOffset;
@@ -162,12 +194,26 @@ function flattenIdValues(value) {
 }
 
 function normalizeRegionKey(value = "") {
-  const parts = String(value ?? "").trim().split(/\s+/).filter(Boolean);
-  const district = parts.at(-1) || String(value ?? "");
-  return district
+  const compact = String(value ?? "").trim().replace(/\s+/g, "").toLowerCase();
+  if (!compact) return "";
+  if (REGION_KEY_ALIASES.has(compact)) return REGION_KEY_ALIASES.get(compact);
+  const parts = String(value ?? "").trim().toLowerCase().split(/[\s:/_-]+/).filter(Boolean);
+  let district = parts.at(-1) || compact;
+  for (const prefix of REGION_SIDO_PREFIXES) {
+    const normalizedPrefix = prefix.toLowerCase();
+    if (district.startsWith(normalizedPrefix)) {
+      district = district.slice(normalizedPrefix.length);
+      break;
+    }
+  }
+  const key = district
     .replace(/\s+/g, "")
-    .toLowerCase()
     .replace(/(특별시|광역시|특별자치시|특별자치도|자치구|시|군|구)$/u, "");
+  return REGION_KEY_ALIASES.get(key) ?? key;
+}
+
+function isSameRegionKey(value = "", regionKey = "") {
+  return Boolean(regionKey && normalizeRegionKey(value) === regionKey);
 }
 
 function getProfileRegionKey(profile = {}) {
@@ -279,6 +325,7 @@ function normalizeFeedCard(row = {}) {
   return {
     ...card,
     id,
+    regionKey: normalizeRegionKey(card.regionKey ?? card.region ?? ""),
     teamId: teamId || null,
     hostJoinMode,
     ...(ownerId ? { ownerId } : {}),
@@ -529,6 +576,7 @@ function compactRecruitingPost(post = {}, profileId = "", options = {}) {
     title: post.title,
     visibility: post.visibility,
     region: post.region,
+    regionKey: post.regionKey,
     courtId: post.courtId,
     court: post.court,
     ownerId: post.ownerId,
@@ -971,6 +1019,39 @@ async function fetchCurrentUserRecruitingPage(client, profileId = "", limit = RE
 async function fetchRecruitingFallbackPage(client, limit = REMOTE_CLIENT_RECRUITING_LIMIT, offset = 0, regionKey = "", startFilter = {}) {
   const cappedLimit = Math.max(1, Math.min(RECRUITING_FEED_MAX_LIMIT, Number(limit) || REMOTE_CLIENT_RECRUITING_LIMIT));
   const safeOffset = Math.max(0, Math.floor(Number(offset) || 0));
+  const rowLimit = regionKey
+    ? Math.min(RECRUITING_FEED_ROW_MAX_LIMIT, Math.max(safeOffset + cappedLimit * 3, cappedLimit))
+    : cappedLimit;
+  let query = client
+    .from("recruiting_posts")
+    .select("id,region")
+    .eq("status", "open")
+    .eq("visibility", "public")
+    .order("updated_at", { ascending: false, nullsFirst: false })
+    .order("id", { ascending: false })
+    .range(regionKey ? 0 : safeOffset, (regionKey ? 0 : safeOffset) + rowLimit - 1);
+  if (startFilter.timingType === INSTANT_TIMING_TYPE) query = query.or(`room_state->>timingType.eq.${INSTANT_TIMING_TYPE},scheduled_at.eq.${LEGACY_INSTANT_LABEL}`);
+  if (startFilter.scheduledDate) query = query.eq("scheduled_date", startFilter.scheduledDate);
+  const { data, error } = await query;
+  if (error) throw error;
+  const rows = data ?? [];
+  const matchingRows = regionKey ? rows.filter((row) => isSameRegionKey(row?.region, regionKey)) : rows;
+  const pagedRows = regionKey ? matchingRows.slice(safeOffset, safeOffset + cappedLimit) : matchingRows;
+  const ids = pagedRows.map((row) => row?.id).filter(Boolean);
+  return {
+    ids,
+    cards: [],
+    source: "fallback_public",
+    exhausted: regionKey ? rows.length < rowLimit && matchingRows.length <= safeOffset + cappedLimit : ids.length < cappedLimit,
+  };
+}
+
+function shouldRepairEmptyPublicRecruitingFeed(regionKey = "", startFilter = {}) {
+  return Boolean(regionKey && (startFilter.timingType === INSTANT_TIMING_TYPE || startFilter.scheduledDate));
+}
+
+async function fetchRecruitingRepairCandidatePostIds(client, limit = REMOTE_CLIENT_RECRUITING_LIMIT, startFilter = {}) {
+  const cappedLimit = Math.max(1, Math.min(RECRUITING_FEED_ROW_MAX_LIMIT, Number(limit) || RECRUITING_PUBLIC_PAGE_MAX_LIMIT));
   let query = client
     .from("recruiting_posts")
     .select("id")
@@ -978,18 +1059,12 @@ async function fetchRecruitingFallbackPage(client, limit = REMOTE_CLIENT_RECRUIT
     .eq("visibility", "public")
     .order("updated_at", { ascending: false, nullsFirst: false })
     .order("id", { ascending: false })
-    .range(safeOffset, safeOffset + cappedLimit - 1);
-  if (regionKey) query = query.eq("region", regionKey);
+    .limit(cappedLimit);
   if (startFilter.timingType === INSTANT_TIMING_TYPE) query = query.or(`room_state->>timingType.eq.${INSTANT_TIMING_TYPE},scheduled_at.eq.${LEGACY_INSTANT_LABEL}`);
   if (startFilter.scheduledDate) query = query.eq("scheduled_date", startFilter.scheduledDate);
   const { data, error } = await query;
   if (error) throw error;
-  const ids = (data ?? []).map((row) => row?.id).filter(Boolean);
-  return { ids, cards: [], source: "fallback_public", exhausted: ids.length < cappedLimit };
-}
-
-function shouldRepairEmptyPublicRecruitingFeed(regionKey = "", startFilter = {}) {
-  return Boolean(regionKey && (startFilter.timingType === INSTANT_TIMING_TYPE || startFilter.scheduledDate));
+  return uniqueIds((data ?? []).map((row) => row?.id));
 }
 
 async function refreshRecruitingFeedForPosts(client, postIds = []) {
@@ -1019,9 +1094,9 @@ async function fetchRecruitingPage(client, limit = REMOTE_CLIENT_RECRUITING_LIMI
   });
   if (feedPage?.ids?.length) return feedPage;
   if (feedPage && shouldRepairEmptyPublicRecruitingFeed(regionKey, startFilter)) {
-    const repairPage = await fetchRecruitingFallbackPage(client, cappedLimit, safeOffset, regionKey, startFilter);
-    if (!repairPage.ids.length) return feedPage;
-    const repaired = await refreshRecruitingFeedForPosts(client, repairPage.ids);
+    const repairIds = await fetchRecruitingRepairCandidatePostIds(client, Math.max(RECRUITING_PUBLIC_PAGE_MAX_LIMIT, cappedLimit * 3), startFilter);
+    if (!repairIds.length) return feedPage;
+    const repaired = await refreshRecruitingFeedForPosts(client, repairIds);
     if (repaired) {
       const repairedFeedPage = await fetchRecruitingFeedPage(client, {
         profileId: LEGACY_PUBLIC_RECRUITING_FEED_PROFILE_ID,
@@ -1036,7 +1111,7 @@ async function fetchRecruitingPage(client, limit = REMOTE_CLIENT_RECRUITING_LIMI
       });
       if (repairedFeedPage?.ids?.length) return { ...repairedFeedPage, source: repairedFeedPage.source === "feed_card" ? "feed_card" : "feed_repaired" };
     }
-    return { ...repairPage, source: "feed_repair_fallback" };
+    return feedPage;
   }
   if (feedPage) return feedPage;
   if (!allowLegacyFallback) return { ids: [], cards: [], source: "public_feed_unavailable", exhausted: true, nextOffset: safeOffset };
@@ -1211,6 +1286,7 @@ function fromRemoteRecruitingPost(row = {}, applicationsByPost = new Map(), cour
     title: row.title,
     visibility: row.visibility ?? "public",
     region: row.region,
+    regionKey: normalizeRegionKey(row.region),
     courtId: row.court_id ?? null,
     court: row.court_name ?? courtById[row.court_id]?.name ?? "\uBBF8\uC815",
     mode: row.mode,

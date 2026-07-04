@@ -1818,16 +1818,27 @@ function getRegionAliases(user = {}) {
 }
 
 function isLocalRecruitingPost(post = {}, user = {}) {
+  const postRegionKey = stripRegionSuffix(post.regionKey ?? "");
   const postRegion = normalizeRegionText(post.region);
-  if (!postRegion) return false;
+  if (!postRegion && !postRegionKey) return false;
   const aliases = getRegionAliases(user);
-  return aliases.some((alias) => postRegion === alias || postRegion.includes(alias) || alias.includes(postRegion));
+  return aliases.some((alias) => {
+    const aliasKey = stripRegionSuffix(alias);
+    return (postRegionKey && aliasKey && postRegionKey === aliasKey)
+      || (postRegion && (
+        postRegion === alias
+        || postRegion.includes(alias)
+        || alias.includes(postRegion)
+      ));
+  });
 }
 
 function isRegionRecruitingPost(post = {}, regionKey = "", user = {}) {
   if (!regionKey || regionKey === "local") return isLocalRecruitingPost(post, user);
-  const postRegion = normalizeRegionText(post.region);
+  const postRegionKey = stripRegionSuffix(post.regionKey ?? "");
   const selectedRegion = stripRegionSuffix(regionKey);
+  if (postRegionKey && selectedRegion) return postRegionKey === selectedRegion;
+  const postRegion = normalizeRegionText(post.region);
   return Boolean(postRegion && selectedRegion && (
     postRegion === selectedRegion ||
     postRegion.includes(selectedRegion) ||
