@@ -14366,7 +14366,7 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
 
 @media (min-width: 1080px) {
   .rank-home .home-dashboard-grid .home-side-stack {
-    margin-top: clamp(-124px, calc(103px - 25vh), -77px);
+    margin-top: 0;
   }
 }
 
