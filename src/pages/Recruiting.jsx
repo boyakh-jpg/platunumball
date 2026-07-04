@@ -203,15 +203,21 @@ function getRoomShareUrl(roomId = "") {
 async function copyTextToClipboard(text) {
   if (!text) return false;
   if (navigator.clipboard?.writeText) {
-    await navigator.clipboard.writeText(text);
-    return true;
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // Fall back to the selection copy path below.
+    }
   }
   const textarea = document.createElement("textarea");
   textarea.value = text;
   textarea.setAttribute("readonly", "");
   textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
   textarea.style.opacity = "0";
   document.body.appendChild(textarea);
+  textarea.focus();
   textarea.select();
   const copied = document.execCommand("copy");
   document.body.removeChild(textarea);
@@ -2840,6 +2846,9 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                     </Button>
                     <Button type="button" size="sm" variant="secondary" onClick={shareRoom}>
                       <Share2 size={15} /> 공유하기
+                    </Button>
+                    <Button type="button" size="sm" variant="secondary" onClick={() => { setInviteDraft(null); setSlotActionDraft(null); closeModal(); }}>
+                      <X size={15} /> 방 닫기
                     </Button>
                     {roomShareStatus ? <span className="arena-room-share-message">{roomShareStatus}</span> : null}
                   </div>

@@ -917,7 +917,7 @@ UI 수정 전:
 18. Room compose and lobby modals use neutral panel surfaces behind slots, chat, authority, and close controls. Hero/court imagery stays out of the far-back modal background.
 19. Room slot command/self-slot popovers use near-opaque room surfaces so underlying court/player content does not reduce readability, and anchored popovers stay clamped inside the viewport.
 20. Self slot focus/hover must not use yellow warning borders. Slot state colors stay neutral/green; yellow is reserved for empty/invite or warning states.
-21. Room modal share actions live in the top badge row as compact secondary buttons. They copy or share the canonical `?post=` URL and must not alter room state.
+21. Room modal share and close actions live in the top badge row as compact secondary buttons. Share actions copy or share the canonical `?post=` URL and must not alter room state.
 
 ## 2026-07-03 profile form controls
 

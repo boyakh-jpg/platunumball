@@ -1361,17 +1361,26 @@
 }
 
 .arena-room-share-actions {
+  --ui-button-height-sm: 30px;
+  --ui-button-padding-x: 8px;
+  --ui-button-font-size: 0.74rem;
   display: inline-flex;
   align-items: center;
   justify-content: flex-end;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
 }
 
 .arena-room-share-actions .button {
-  min-height: 34px;
-  padding-inline: 10px;
+  min-height: var(--ui-button-height-sm);
+  padding-inline: var(--ui-button-padding-x);
+  font-size: var(--ui-button-font-size);
+}
+
+.arena-room-share-actions .button svg {
+  width: 14px;
+  height: 14px;
 }
 
 .arena-room-share-message {
@@ -3164,7 +3173,7 @@ html[data-theme="light"] .arena-compose-drawer {
   }
 
   .arena-room-share-actions .button {
-    flex: 1 1 120px;
+    flex: 1 1 96px;
   }
 
   .arena-lobby-actions {
