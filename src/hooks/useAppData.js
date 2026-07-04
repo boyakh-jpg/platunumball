@@ -920,6 +920,7 @@ export function useAppData(authUser = null) {
   const [directoryStatus, setDirectoryStatus] = useState({ loading: false, loaded: !isSupabaseConfigured, error: "" });
   const [profileRecordsLoaded, setProfileRecordsLoaded] = useState(false);
   const [remoteReady, setRemoteReady] = useState(!isSupabaseConfigured);
+  const [serverActionPendingCount, setServerActionPendingCount] = useState(0);
   const stateRef = useRef(state);
   const adminContextRef = useRef(EMPTY_ADMIN_CONTEXT);
   const remoteReadyRef = useRef(!isSupabaseConfigured);
@@ -1109,6 +1110,13 @@ export function useAppData(authUser = null) {
     setState((prev) => withServerAdminContext(prev, EMPTY_ADMIN_CONTEXT));
   }, [authUserId, setState]);
 
+  const trackedPostServerAction = useCallback((path, payload = {}, options = {}) => {
+    setServerActionPendingCount((count) => count + 1);
+    return postServerAction(path, payload, options).finally(() => {
+      setServerActionPendingCount((count) => Math.max(0, count - 1));
+    });
+  }, []);
+
   const loadAdminContext = useCallback(async () => {
     if (!isSupabaseConfigured || !authUserId) {
       adminContextRef.current = EMPTY_ADMIN_CONTEXT;
@@ -1117,7 +1125,7 @@ export function useAppData(authUser = null) {
       return EMPTY_ADMIN_CONTEXT;
     }
     try {
-      const result = await postServerAction("/api/admin/context", {}, { allowWhenDisabled: true });
+      const result = await trackedPostServerAction("/api/admin/context", {}, { allowWhenDisabled: true });
       const context = normalizeAdminContext(result);
       adminContextRef.current = context;
       setAdminContext(context);
@@ -1130,7 +1138,7 @@ export function useAppData(authUser = null) {
       setState((prev) => withServerAdminContext(prev, EMPTY_ADMIN_CONTEXT));
       return EMPTY_ADMIN_CONTEXT;
     }
-  }, [authUserId, setState]);
+  }, [authUserId, setState, trackedPostServerAction]);
 
   useEffect(() => {
     if (!profileLocked || !authUserId || !currentUserId || isSupabaseConfigured) return;
@@ -1194,7 +1202,7 @@ export function useAppData(authUser = null) {
     return { ok: false, error: errorCode, path };
   }, [pushLocalWarning]);
   const runServerAction = useCallback((path, payload) => {
-    return postServerAction(path, payload).then((result) => {
+    return trackedPostServerAction(path, payload).then((result) => {
       if (!result) throw new Error("server_action_unavailable");
       return result;
     }).catch((error) => {
@@ -1209,9 +1217,9 @@ export function useAppData(authUser = null) {
       });
       return { ok: false, error: errorCode, statusCode: error.statusCode ?? null, path, details: error.details ?? null };
     });
-  }, [pushLocalWarning]);
+  }, [pushLocalWarning, trackedPostServerAction]);
   const persistProfileServer = useCallback((profile) => {
-    const promise = postServerAction("/api/profile/upsert", { profile }, { allowWhenDisabled: true }).then((result) => {
+    const promise = trackedPostServerAction("/api/profile/upsert", { profile }, { allowWhenDisabled: true }).then((result) => {
       if (!result) throw new Error("profile_server_action_unavailable");
       return result;
     });
@@ -1219,7 +1227,7 @@ export function useAppData(authUser = null) {
       console.warn("Profile server action failed.", error.message);
     });
     return promise;
-  }, []);
+  }, [trackedPostServerAction]);
   const syncRecruitingPostServer = useCallback((post, notifications = [], meta = {}) => {
     const operation = getServerOperation(meta);
     if (!post?.id && !operation) return Promise.resolve(false);
@@ -1375,7 +1383,7 @@ export function useAppData(authUser = null) {
     setMatchPagination((prev) => ({ ...prev, loading: true, error: "" }));
     const promise = (async () => {
       try {
-        const result = await postServerAction(
+        const result = await trackedPostServerAction(
           "/api/matches/list",
           {
             authUserId,
@@ -1416,7 +1424,7 @@ export function useAppData(authUser = null) {
     });
     matchPagePromiseRef.current = promise;
     return promise;
-  }, [authEmail, authUserId, matchPagination.cursor, matchPagination.exhausted, matchPagination.loading, setState, state.matches]);
+  }, [authEmail, authUserId, matchPagination.cursor, matchPagination.exhausted, matchPagination.loading, setState, state.matches, trackedPostServerAction]);
 
   const loadMatchRecruitingSchedule = useCallback(async (options = {}) => {
     if (!isSupabaseConfigured || !authUserId) return false;
@@ -1426,7 +1434,7 @@ export function useAppData(authUser = null) {
     const promise = (async () => {
       setMatchPagination((prev) => ({ ...prev, recruitingScheduleLoading: true, error: "" }));
       try {
-        const result = await postServerAction(
+        const result = await trackedPostServerAction(
           "/api/matches/list",
           {
             authUserId,
@@ -1461,7 +1469,7 @@ export function useAppData(authUser = null) {
     });
     matchRecruitingSchedulePromiseRef.current = promise;
     return promise;
-  }, [authEmail, authUserId, matchPagination.recruitingScheduleLoading, setState]);
+  }, [authEmail, authUserId, matchPagination.recruitingScheduleLoading, setState, trackedPostServerAction]);
 
   const loadMatchDetail = useCallback(async (matchId) => {
     if (!isSupabaseConfigured || !authUserId || !matchId) return false;
@@ -1470,7 +1478,7 @@ export function useAppData(authUser = null) {
     if (currentPromise) return currentPromise;
     const promise = (async () => {
       try {
-        const result = await postServerAction(
+        const result = await trackedPostServerAction(
           "/api/matches/detail",
           {
             authUserId,
@@ -1492,14 +1500,14 @@ export function useAppData(authUser = null) {
     });
     matchDetailPromiseRef.current.set(safeMatchId, promise);
     return promise;
-  }, [authEmail, authUserId, setState]);
+  }, [authEmail, authUserId, setState, trackedPostServerAction]);
 
   const loadRecorderMatches = useCallback(async () => {
     if (!isSupabaseConfigured || !authUserId) return false;
     if (recorderMatchesPromiseRef.current) return recorderMatchesPromiseRef.current;
     const promise = (async () => {
       try {
-        const result = await postServerAction(
+        const result = await trackedPostServerAction(
           "/api/matches/list",
           {
             authUserId,
@@ -1524,7 +1532,7 @@ export function useAppData(authUser = null) {
     });
     recorderMatchesPromiseRef.current = promise;
     return promise;
-  }, [authEmail, authUserId, setState]);
+  }, [authEmail, authUserId, setState, trackedPostServerAction]);
 
   const loadProfileRecords = useCallback(async () => {
     if (!isSupabaseConfigured || !authUserId) return false;
@@ -1532,7 +1540,7 @@ export function useAppData(authUser = null) {
     if (profileRecordsPromiseRef.current) return profileRecordsPromiseRef.current;
     const promise = (async () => {
       try {
-        const result = await postServerAction(
+        const result = await trackedPostServerAction(
           "/api/matches/list",
           {
             authUserId,
@@ -1560,7 +1568,7 @@ export function useAppData(authUser = null) {
     });
     profileRecordsPromiseRef.current = promise;
     return promise;
-  }, [authEmail, authUserId, profileRecordsLoaded, setState]);
+  }, [authEmail, authUserId, profileRecordsLoaded, setState, trackedPostServerAction]);
 
   const loadMoreRecruiting = useCallback(async () => {
     if (!isSupabaseConfigured || !authUserId || recruitingPagination.loading || recruitingPagination.exhausted) return false;
@@ -1573,7 +1581,7 @@ export function useAppData(authUser = null) {
     setRecruitingPagination((prev) => ({ ...prev, loading: true, error: "", loadMoreError: "" }));
     const promise = (async () => {
       try {
-        const result = await postServerAction(
+        const result = await trackedPostServerAction(
           "/api/recruiting/list",
           {
             authUserId,
@@ -1619,7 +1627,7 @@ export function useAppData(authUser = null) {
     });
     recruitingPagePromiseRef.current = promise;
     return promise;
-  }, [authEmail, authUserId, recruitingPagination, setState, state.recruitingPosts]);
+  }, [authEmail, authUserId, recruitingPagination, setState, state.recruitingPosts, trackedPostServerAction]);
 
   const loadRecruitingRegion = useCallback(async ({ regionKey = "", regionScope = "local", limit = REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT, startFilter = "", includeFeedCounts = true } = {}) => {
     if (!isSupabaseConfigured || !authUserId) return false;
@@ -1638,7 +1646,7 @@ export function useAppData(authUser = null) {
     setRecruitingPagination((prev) => ({ ...prev, ...regionRequest, ...startFilterRequest, loading: true, exhausted: false, error: "", loadMoreError: "", cursor: "", offset: 0 }));
     const promise = (async () => {
       try {
-        const result = await postServerAction(
+        const result = await trackedPostServerAction(
           "/api/recruiting/list",
           {
             authUserId,
@@ -1684,7 +1692,7 @@ export function useAppData(authUser = null) {
     });
     recruitingRegionPromiseRef.current.set(promiseKey, promise);
     return promise;
-  }, [authEmail, authUserId, recruitingPagination.feedCounts, setState]);
+  }, [authEmail, authUserId, recruitingPagination.feedCounts, setState, trackedPostServerAction]);
 
   const loadRecruitingPost = useCallback(async (postId) => {
     if (!isSupabaseConfigured || !authUserId || !postId) return false;
@@ -1693,7 +1701,7 @@ export function useAppData(authUser = null) {
     if (currentPromise) return currentPromise;
     const promise = (async () => {
       try {
-        const result = await postServerAction(
+        const result = await trackedPostServerAction(
           "/api/recruiting/list",
           {
             authUserId,
@@ -1722,7 +1730,7 @@ export function useAppData(authUser = null) {
     });
     recruitingPostPromiseRef.current.set(safePostId, promise);
     return promise;
-  }, [authEmail, authUserId, setState]);
+  }, [authEmail, authUserId, setState, trackedPostServerAction]);
 
   const loadMyRecruitingPosts = useCallback(async (roomScope = "", options = {}) => {
     if (!isSupabaseConfigured || !authUserId) return false;
@@ -1734,7 +1742,7 @@ export function useAppData(authUser = null) {
     if (currentPromise && !force) return currentPromise;
     const promise = (async () => {
       try {
-        const result = await postServerAction(
+        const result = await trackedPostServerAction(
           "/api/recruiting/list",
           {
             authUserId,
@@ -1764,7 +1772,7 @@ export function useAppData(authUser = null) {
     });
     myRecruitingPostsPromiseRef.current.set(promiseKey, promise);
     return promise;
-  }, [authEmail, authUserId, setState]);
+  }, [authEmail, authUserId, setState, trackedPostServerAction]);
 
   const loadDirectory = useCallback(async (force = false) => {
     if (!isSupabaseConfigured || !authUserId) return false;
@@ -1775,7 +1783,7 @@ export function useAppData(authUser = null) {
     const useTeamDirectory = pathname === "/app/teams" || pathname.startsWith("/app/teams/");
     const endpoint = useTeamDirectory ? "/api/teams/list" : "/api/directory/load";
     setDirectoryStatus((prev) => ({ ...prev, loading: true, error: "" }));
-    const promise = postServerAction(
+    const promise = trackedPostServerAction(
       endpoint,
       { authUserId, authEmail },
       { allowWhenDisabled: true },
@@ -1793,7 +1801,7 @@ export function useAppData(authUser = null) {
     });
     directoryPromiseRef.current = promise;
     return promise;
-  }, [authEmail, authUserId, directoryStatus.loaded, setState]);
+  }, [authEmail, authUserId, directoryStatus.loaded, setState, trackedPostServerAction]);
 
   useEffect(() => {
     if (!isSupabaseConfigured || !remoteReadyRef.current || !currentUserId) return;
@@ -2697,5 +2705,19 @@ export function useAppData(authUser = null) {
 
   const safeCurrentUserId = currentUserId ?? currentUser?.id ?? "";
   const safeCurrentUser = currentUser ?? createProfileShell(authUserId ?? safeCurrentUserId, authEmail);
-  return { state: { ...state, currentUserId: safeCurrentUserId || safeCurrentUser.id }, currentUser: safeCurrentUser, currentUserId: safeCurrentUserId || safeCurrentUser.id, profileBound: true, profileLocked, remoteReady, adminContext, matchPagination, recruitingPagination, directoryStatus, rankings, actions };
+  return {
+    state: { ...state, currentUserId: safeCurrentUserId || safeCurrentUser.id },
+    currentUser: safeCurrentUser,
+    currentUserId: safeCurrentUserId || safeCurrentUser.id,
+    profileBound: true,
+    profileLocked,
+    remoteReady,
+    serverBusy: serverActionPendingCount > 0,
+    adminContext,
+    matchPagination,
+    recruitingPagination,
+    directoryStatus,
+    rankings,
+    actions,
+  };
 }
