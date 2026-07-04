@@ -1360,7 +1360,7 @@
   font-weight: 950;
 }
 
-.arena-room-share-actions {
+.arena-lobby-topline > .arena-room-share-actions {
   --ui-button-height-sm: 30px;
   --ui-button-padding-x: 8px;
   --ui-button-font-size: 0.74rem;
@@ -1372,13 +1372,13 @@
   min-width: 0;
 }
 
-.arena-room-share-actions .button {
+.arena-lobby-topline > .arena-room-share-actions .button {
   min-height: var(--ui-button-height-sm);
   padding-inline: var(--ui-button-padding-x);
   font-size: var(--ui-button-font-size);
 }
 
-.arena-room-share-actions .button svg {
+.arena-lobby-topline > .arena-room-share-actions .button svg {
   width: 14px;
   height: 14px;
 }
