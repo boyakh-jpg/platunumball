@@ -310,7 +310,7 @@ export default function Settings({ app, auth, section = "main" }) {
               <em>{getTeamHashtag(item)}</em>
             </span>
           </span>
-          <Button type="button" size="sm" variant={favoriteTeamIds.includes(item.id) ? "primary" : "secondary"} onClick={() => app.actions.toggleFavoriteTeam(item.id)}>
+          <Button type="button" size="sm" variant={favoriteTeamIds.includes(item.id) ? "primary" : "secondary"} onClick={() => { app.actions.toggleFavoriteTeam(item.id); setFavoriteQuery(""); }}>
             {favoriteTeamIds.includes(item.id) ? "해제" : "저장"}
           </Button>
         </div>
@@ -326,7 +326,7 @@ export default function Settings({ app, auth, section = "main" }) {
               <em>{getCourtHashtag(item)}</em>
             </span>
           </span>
-          <Button type="button" size="sm" variant={favoriteCourtIds.includes(item.id) ? "primary" : "secondary"} onClick={() => app.actions.toggleFavoriteCourt(item.id)}>
+          <Button type="button" size="sm" variant={favoriteCourtIds.includes(item.id) ? "primary" : "secondary"} onClick={() => { app.actions.toggleFavoriteCourt(item.id); setFavoriteQuery(""); }}>
             {favoriteCourtIds.includes(item.id) ? "해제" : "저장"}
           </Button>
         </div>
@@ -342,7 +342,7 @@ export default function Settings({ app, auth, section = "main" }) {
               <em>{getUserHashtag(item)} · 신뢰도 {item.trustScore}</em>
             </span>
           </span>
-          <Button type="button" size="sm" variant={favoriteRefereeIds.includes(item.id) ? "primary" : "secondary"} onClick={() => app.actions.toggleFavoriteReferee(item.id)}>
+          <Button type="button" size="sm" variant={favoriteRefereeIds.includes(item.id) ? "primary" : "secondary"} onClick={() => { app.actions.toggleFavoriteReferee(item.id); setFavoriteQuery(""); }}>
             {favoriteRefereeIds.includes(item.id) ? "해제" : "저장"}
           </Button>
         </div>
@@ -357,7 +357,7 @@ export default function Settings({ app, auth, section = "main" }) {
             <em>{getUserHashtag(item)}</em>
           </span>
         </span>
-        <Button type="button" size="sm" variant={favoritePlayerIds.includes(item.id) ? "primary" : "secondary"} onClick={() => app.actions.toggleFavoritePlayer(item.id)}>
+        <Button type="button" size="sm" variant={favoritePlayerIds.includes(item.id) ? "primary" : "secondary"} onClick={() => { app.actions.toggleFavoritePlayer(item.id); setFavoriteQuery(""); }}>
           {favoritePlayerIds.includes(item.id) ? "해제" : "저장"}
         </Button>
       </div>
@@ -1098,7 +1098,7 @@ export default function Settings({ app, auth, section = "main" }) {
                       <em>{getUserHashtag(searchedFavoriteUser)}</em>
                     </span>
                   </span>
-                  <Button type="button" size="sm" variant={favoritePlayerIds.includes(searchedFavoriteUser.id) ? "primary" : "secondary"} onClick={() => app.actions.toggleFavoritePlayer(searchedFavoriteUser.id)}>
+                  <Button type="button" size="sm" variant={favoritePlayerIds.includes(searchedFavoriteUser.id) ? "primary" : "secondary"} onClick={() => { app.actions.toggleFavoritePlayer(searchedFavoriteUser.id); setFavoriteQuery(""); }}>
                     {favoritePlayerIds.includes(searchedFavoriteUser.id) ? "해제" : "저장"}
                   </Button>
                 </div>
@@ -1112,7 +1112,7 @@ export default function Settings({ app, auth, section = "main" }) {
                       <em>{getUserHashtag(searchedFavoriteReferee)} · 신뢰도 {searchedFavoriteReferee.trustScore}</em>
                     </span>
                   </span>
-                  <Button type="button" size="sm" variant={favoriteRefereeIds.includes(searchedFavoriteReferee.id) ? "primary" : "secondary"} onClick={() => app.actions.toggleFavoriteReferee(searchedFavoriteReferee.id)}>
+                  <Button type="button" size="sm" variant={favoriteRefereeIds.includes(searchedFavoriteReferee.id) ? "primary" : "secondary"} onClick={() => { app.actions.toggleFavoriteReferee(searchedFavoriteReferee.id); setFavoriteQuery(""); }}>
                     {favoriteRefereeIds.includes(searchedFavoriteReferee.id) ? "해제" : "저장"}
                   </Button>
                 </div>
@@ -1126,7 +1126,7 @@ export default function Settings({ app, auth, section = "main" }) {
                       <em>{getTeamHashtag(searchedFavoriteTeam)}</em>
                     </span>
                   </span>
-                  <Button type="button" size="sm" variant={favoriteTeamIds.includes(searchedFavoriteTeam.id) ? "primary" : "secondary"} onClick={() => app.actions.toggleFavoriteTeam(searchedFavoriteTeam.id)}>
+                  <Button type="button" size="sm" variant={favoriteTeamIds.includes(searchedFavoriteTeam.id) ? "primary" : "secondary"} onClick={() => { app.actions.toggleFavoriteTeam(searchedFavoriteTeam.id); setFavoriteQuery(""); }}>
                     {favoriteTeamIds.includes(searchedFavoriteTeam.id) ? "해제" : "저장"}
                   </Button>
                 </div>
@@ -1140,7 +1140,7 @@ export default function Settings({ app, auth, section = "main" }) {
                       <em>{getCourtHashtag(searchedFavoriteCourt)}</em>
                     </span>
                   </span>
-                  <Button type="button" size="sm" variant={favoriteCourtIds.includes(searchedFavoriteCourt.id) ? "primary" : "secondary"} onClick={() => app.actions.toggleFavoriteCourt(searchedFavoriteCourt.id)}>
+                  <Button type="button" size="sm" variant={favoriteCourtIds.includes(searchedFavoriteCourt.id) ? "primary" : "secondary"} onClick={() => { app.actions.toggleFavoriteCourt(searchedFavoriteCourt.id); setFavoriteQuery(""); }}>
                     {favoriteCourtIds.includes(searchedFavoriteCourt.id) ? "해제" : "저장"}
                   </Button>
                 </div>
