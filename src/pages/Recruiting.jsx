@@ -5,11 +5,13 @@ import {
   CheckCircle2,
   CalendarDays,
   Clock3,
+  Copy,
   Crown,
   MapPin,
   MessageSquare,
   PlusCircle,
   Send,
+  Share2,
   ShieldCheck,
   Swords,
   UserRound,
@@ -188,6 +190,32 @@ function useDebouncedValue(value, delayMs) {
 
 function getRecruitingSchedule(post) {
   return getRoomScheduleLabel(post);
+}
+
+function getRoomShareUrl(roomId = "") {
+  const path = roomId ? `/app/recruiting?post=${encodeURIComponent(roomId)}` : "/app/recruiting";
+  const configuredBase = import.meta.env.VITE_PUBLIC_APP_URL;
+  const fallbackBase = typeof window !== "undefined" ? window.location.origin : "";
+  const base = String(configuredBase || fallbackBase).replace(/\/$/, "");
+  return base ? `${base}${path}` : path;
+}
+
+async function copyTextToClipboard(text) {
+  if (!text) return false;
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return true;
+  }
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  document.body.appendChild(textarea);
+  textarea.select();
+  const copied = document.execCommand("copy");
+  document.body.removeChild(textarea);
+  return copied;
 }
 
 function getDefaultApplyTeamId(post, teams) {
@@ -1989,7 +2017,9 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
   const [pendingRosterOpen, setPendingRosterOpen] = useState(null);
   const [confirmingMatchId, setConfirmingMatchId] = useState("");
   const [joiningPostId, setJoiningPostId] = useState("");
+  const [roomShareStatus, setRoomShareStatus] = useState("");
   const roomPostId = selectedPost?.id ?? "";
+  const roomShareUrl = useMemo(() => getRoomShareUrl(roomPostId), [roomPostId]);
   const sourceMatchPhaseForChat = sourceMatch ? getMatchRoomPhase(sourceMatch) : null;
   const roomChatLocked = Boolean(
     selectedPost?.status === "closed" ||
@@ -1998,6 +2028,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
   );
   const modalPostDetailLoadRef = useRef("");
   const chatSendLogRef = useRef({});
+  const roomShareStatusTimerRef = useRef(0);
 
   useEffect(() => {
     if (!roomPostId) {
@@ -2040,6 +2071,38 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
     if (!roomPostId || !app.remoteReady || !app.currentUser.id) return undefined;
     return app.actions.subscribeRecruitingRoom?.(roomPostId);
   }, [app.actions.subscribeRecruitingRoom, app.currentUser.id, app.remoteReady, roomPostId]);
+
+  useEffect(() => () => window.clearTimeout(roomShareStatusTimerRef.current), []);
+
+  const showRoomShareStatus = useCallback((message) => {
+    setRoomShareStatus(message);
+    window.clearTimeout(roomShareStatusTimerRef.current);
+    roomShareStatusTimerRef.current = window.setTimeout(() => setRoomShareStatus(""), 1600);
+  }, []);
+
+  const copyRoomShareUrl = useCallback(async () => {
+    try {
+      const copied = await copyTextToClipboard(roomShareUrl);
+      showRoomShareStatus(copied ? "URL 복사됨" : "복사 실패");
+    } catch {
+      showRoomShareStatus("복사 실패");
+    }
+  }, [roomShareUrl, showRoomShareStatus]);
+
+  const shareRoom = useCallback(async () => {
+    const title = getRecruitingDisplayTitle(selectedPost, "RankBall 매치방");
+    const text = [title, selectedPost?.court, selectedPost ? getRecruitingSchedule(selectedPost) : ""].filter(Boolean).join(" · ");
+    if (navigator.share) {
+      try {
+        await navigator.share({ title, text, url: roomShareUrl });
+        showRoomShareStatus("공유창 열림");
+        return;
+      } catch (error) {
+        if (error?.name === "AbortError") return;
+      }
+    }
+    await copyRoomShareUrl();
+  }, [copyRoomShareUrl, roomShareUrl, selectedPost, showRoomShareStatus]);
 
   const closeModal = () => {
     setInviteDraft(null);
@@ -2770,6 +2833,15 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                     <Badge tone="neutral">{roomMatchTypeLabel}</Badge>
                     <Badge tone={selectedPost.ranked === false ? "neutral" : "gold"}>{roomCompetitionLabel}</Badge>
                     <Badge tone={referee ? "blue" : "neutral"}>{getRoomRefereeLabel(selectedPost)}</Badge>
+                  </div>
+                  <div className="arena-room-share-actions" aria-label="방 공유">
+                    <Button type="button" size="sm" variant="secondary" onClick={copyRoomShareUrl}>
+                      <Copy size={15} /> URL 복사
+                    </Button>
+                    <Button type="button" size="sm" variant="secondary" onClick={shareRoom}>
+                      <Share2 size={15} /> 공유하기
+                    </Button>
+                    {roomShareStatus ? <span className="arena-room-share-message">{roomShareStatus}</span> : null}
                   </div>
                 </div>
 
