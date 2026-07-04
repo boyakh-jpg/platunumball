@@ -1111,9 +1111,12 @@ export function useAppData(authUser = null) {
   }, [authUserId, setState]);
 
   const trackedPostServerAction = useCallback((path, payload = {}, options = {}) => {
-    setServerActionPendingCount((count) => count + 1);
-    return postServerAction(path, payload, options).finally(() => {
-      setServerActionPendingCount((count) => Math.max(0, count - 1));
+    const showBlockingLoader = options.blocking === true;
+    const actionOptions = { ...options };
+    delete actionOptions.blocking;
+    if (showBlockingLoader) setServerActionPendingCount((count) => count + 1);
+    return postServerAction(path, payload, actionOptions).finally(() => {
+      if (showBlockingLoader) setServerActionPendingCount((count) => Math.max(0, count - 1));
     });
   }, []);
 

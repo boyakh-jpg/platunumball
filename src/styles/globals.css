@@ -169,6 +169,11 @@ body > .basketball-loader-overlay ~ .basketball-loader-overlay {
   white-space: nowrap;
 }
 
+.basketball-loader-overlay .basketball-loader-text {
+  color: color-mix(in srgb, var(--rb-orange-pressed) 58%, #241108);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
 .sidebar {
   position: fixed;
   inset: 0 auto 0 0;

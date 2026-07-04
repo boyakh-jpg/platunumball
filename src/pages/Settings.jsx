@@ -219,6 +219,7 @@ export default function Settings({ app, auth, section = "main" }) {
   const [themeDraft, setThemeDraft] = useState(theme);
   const [themeSaveStatus, setThemeSaveStatus] = useState("");
   const lastThemeRef = useRef(theme);
+  const themeSaveRequestRef = useRef(0);
   const blockedUserIds = app.state.settings?.blockedUserIds ?? [];
   const [blockUserId, setBlockUserId] = useState(app.state.users.find((user) => user.id !== app.currentUserId)?.id ?? "");
   const [reportMatchId, setReportMatchId] = useState("");
@@ -369,7 +370,7 @@ export default function Settings({ app, auth, section = "main" }) {
   const discordDirty = Boolean(discordDraft.unlink) ||
     discordDraft.enabled !== Boolean(discordLinked && discordChannel.enabled) ||
     DISCORD_NOTIFICATION_EVENTS.some((option) => Boolean(discordDraft.events?.[option.id]) !== Boolean(discordChannel.events?.[option.id]));
-  const generalSettingsDirty = themeDirty || privacyDirty || discordDirty;
+  const generalSettingsDirty = privacyDirty || discordDirty;
   const generalSettingsStatus = [
     themeSaveStatus ? `테마 ${themeSaveStatus}` : null,
     privacySaveStatus ? `노출 ${privacySaveStatus}` : null,
@@ -394,7 +395,7 @@ export default function Settings({ app, auth, section = "main" }) {
     const previousTheme = lastThemeRef.current;
     lastThemeRef.current = theme;
     setThemeDraft((current) => (current === previousTheme ? theme : current));
-    setThemeSaveStatus("");
+    setThemeSaveStatus((current) => (current === "저장 중" ? current : ""));
   }, [theme]);
   useEffect(() => {
     setPrivacyDraft(JSON.parse(privacySnapshot));
@@ -813,14 +814,27 @@ export default function Settings({ app, auth, section = "main" }) {
     setNaverAddressResults([]);
     setCourtLookupStatus("네이버 주소와 좌표를 저장했습니다. 필요하면 지도 핀으로 위치를 보정하세요.");
   };
-  const saveTheme = async () => {
+  const saveTheme = async (nextTheme = themeDraft) => {
+    const requestId = themeSaveRequestRef.current + 1;
+    themeSaveRequestRef.current = requestId;
     setThemeSaveStatus("저장 중");
     try {
-      const saved = await app.actions.saveTheme?.(themeDraft);
-      setThemeSaveStatus(saved ? "저장됨" : "저장 실패");
+      const saved = await app.actions.saveTheme?.(nextTheme);
+      if (themeSaveRequestRef.current === requestId) setThemeSaveStatus(saved ? "저장됨" : "저장 실패");
+      return saved;
     } catch {
-      setThemeSaveStatus("저장 실패");
+      if (themeSaveRequestRef.current === requestId) setThemeSaveStatus("저장 실패");
+      return false;
     }
+  };
+  const selectTheme = (nextTheme) => {
+    if (nextTheme !== "light" && nextTheme !== "dark") return;
+    setThemeDraft(nextTheme);
+    if (nextTheme === theme && !themeDirty) {
+      setThemeSaveStatus("");
+      return;
+    }
+    void saveTheme(nextTheme);
   };
   const savePrivacy = async () => {
     setPrivacySaveStatus("저장 중");
@@ -859,7 +873,6 @@ export default function Settings({ app, auth, section = "main" }) {
   };
   const saveGeneralSettings = async () => {
     if (!generalSettingsDirty) return;
-    if (themeDirty) await saveTheme();
     if (privacyDirty) await savePrivacy();
     if (discordDirty) await saveDiscordSettings();
   };
@@ -1020,14 +1033,14 @@ export default function Settings({ app, auth, section = "main" }) {
               <button
                 type="button"
                 className={themeDraft === "light" ? "active" : ""}
-                onClick={() => setThemeDraft("light")}
+                onClick={() => selectTheme("light")}
               >
                 라이트
               </button>
               <button
                 type="button"
                 className={themeDraft === "dark" ? "active" : ""}
-                onClick={() => setThemeDraft("dark")}
+                onClick={() => selectTheme("dark")}
               >
                 다크
               </button>

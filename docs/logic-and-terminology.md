@@ -1,5 +1,11 @@
 # RankBall 로직/용어/디자인 기준
 
+## 2026-07-04 theme persistence
+
+1. 다크/라이트 테마는 저장 버튼 없이 선택 즉시 local state에 반영하고 `/api/settings/sync`로 저장한다.
+2. 통합 설정 저장은 privacy/discord 같은 나머지 설정만 처리한다.
+3. 테마 저장 서버 호출은 화면 전체 차단 로더를 띄우지 않는다.
+
 ## 2026-07-04 경기 중 실시간 기록
 
 - 경기 중 `submitMatchResult`로 저장된 `match.result`는 임시 진행 기록이다. `endedAt` 전에는 경기 종료 버튼과 실시간 기록 입력을 닫지 않는다.
