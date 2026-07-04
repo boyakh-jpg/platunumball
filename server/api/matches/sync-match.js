@@ -661,7 +661,7 @@ function normalizeResultSnapshot(result = null, statRows = []) {
 }
 
 function getStatRecorderIds(match = {}) {
-  const recorders = match.statRecorders ?? match.rules?.statRecorders ?? {};
+  const recorders = match.statRecorders ?? match.stat_recorders ?? match.rules?.statRecorders ?? {};
   return Object.values(recorders).flatMap((value) => Array.isArray(value) ? value : [value]).filter(Boolean);
 }
 
@@ -796,6 +796,7 @@ function canSyncMatchAction(profileId, existingMatch, existingPlayers, nextMatch
   const nextParticipants = getParticipantIds(nextMatch);
   if (!existingMatch) return CREATE_MATCH_ACTIONS.has(action) && nextParticipants.has(profileId);
   const existingParticipants = existingParticipantIds(existingMatch, existingPlayers);
+  if (action === "handoffMatchRecorder") return isMatchOperator(profileId, existingMatch, nextMatch) || getStatRecorderIds(existingMatch).includes(profileId);
   if (OPERATOR_MATCH_ACTIONS.has(action)) return isMatchOperator(profileId, existingMatch, nextMatch);
   if (action === "submitMatchResult") return canSubmitResult(profileId, existingMatch, nextMatch);
   if (PARTICIPANT_MATCH_ACTIONS.has(action)) return existingParticipants.has(profileId) || nextParticipants.has(profileId);
