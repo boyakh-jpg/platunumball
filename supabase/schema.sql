@@ -1883,6 +1883,43 @@ begin
     approved_at = excluded.approved_at,
     updated_at = excluded.updated_at;
 
+  if to_regclass('public.courts') is not null then
+    execute $sql$
+      insert into public.courts (
+        id,
+        name,
+        region,
+        type,
+        region_key,
+        created_at
+      )
+      values (
+        $1,
+        $2,
+        coalesce(nullif($3, ''), nullif($4, ''), 'unknown'),
+        coalesce(nullif($5, ''), 'outdoor'),
+        coalesce(nullif($4, ''), public.rankball_court_region_key($3, $6, $7, $8, $9)),
+        $10
+      )
+      on conflict (id) do update set
+        name = excluded.name,
+        region = excluded.region,
+        type = excluded.type,
+        region_key = excluded.region_key
+    $sql$
+    using
+      approved_id,
+      request_row.name,
+      request_row.payload->>'region',
+      public.rankball_court_region_key(request_row.payload->>'region', request_row.address_text, request_row.road_address, request_row.jibun_address, request_row.payload),
+      request_row.payload->>'type',
+      request_row.address_text,
+      request_row.road_address,
+      request_row.jibun_address,
+      request_row.payload,
+      now_ts;
+  end if;
+
   update public.court_requests
   set
     status = 'approved',

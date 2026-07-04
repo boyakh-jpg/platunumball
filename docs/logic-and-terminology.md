@@ -1,5 +1,12 @@
 # RankBall 로직/용어/디자인 기준
 
+## 2026-07-04 승인 구장 FK 호환
+
+- 승인 구장 원본은 `approved_courts`다.
+- `recruiting_posts.court_id` 같은 기존 FK 경로와 호환하려고 승인 시 같은 id/name/region/type/region_key를 `courts`에도 미러링한다.
+- 목록/검색/즐겨찾기/팀 홈구장은 `approved_courts`를 기준으로 읽고, `courts`는 방/경기 저장 FK 호환용으로만 유지한다.
+- 기존 승인 구장은 migration backfill로 `courts`에 같은 id를 넣는다. 삭제나 재번호 부여는 하지 않는다.
+
 ## 2026-07-04 theme persistence
 
 1. 다크/라이트 테마는 저장 버튼 없이 선택 즉시 local state에 반영하고 `/api/settings/sync`로 저장한다.
