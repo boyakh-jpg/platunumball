@@ -2174,7 +2174,6 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
     sheetDragRef.current = {
       pointerId: event.pointerId,
       startY: event.clientY,
-      startedAt: window.performance?.now?.() ?? Date.now(),
     };
     event.currentTarget.setPointerCapture?.(event.pointerId);
   };
@@ -2190,9 +2189,9 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
     sheetDragRef.current = null;
     event.currentTarget.releasePointerCapture?.(event.pointerId);
     const deltaY = event.clientY - drag.startY;
-    const elapsed = Math.max(1, (window.performance?.now?.() ?? Date.now()) - drag.startedAt);
-    const velocity = deltaY / elapsed;
-    if (canDismissBySheetDrag() && deltaY >= 90 && velocity >= 0.45) closeModal();
+    const viewportHeight = Math.max(1, window.innerHeight || 1);
+    const dismissDistance = Math.min(260, Math.max(160, viewportHeight * 0.4));
+    if (canDismissBySheetDrag() && deltaY >= dismissDistance) closeModal();
   };
   const cancelSheetDrag = () => {
     sheetDragRef.current = null;
