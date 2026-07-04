@@ -1698,6 +1698,7 @@ flowchart TD
 38-2. `/api/recruiting/list`는 `user_room_feed`가 정상 응답하면 feed id만 source of truth로 사용한다. direct DB fallback id와 fallback count는 feed 테이블/RPC가 없거나 실패한 경우에만 보정 경로로 쓴다. fallback joined 판정은 `player_ids`, `referee_id`, `recruiting_applications.player_id/player_ids`, `room_state.partyReserves`, `room_state.pinnedReservePlayers`, `room_state.reserveReady`를 포함한다.
 38-3. `/app/recruiting` 시작일 필터는 서버 feed 필터를 우선 사용한다. 기본값은 즉시방이며, 전체 공개 목록은 `/api/recruiting/list`가 `user_room_feed.timing_type/scheduled_date` 기준으로 즉시방 또는 해당 `scheduledDate`만 내려준다. legacy 즉시방 row는 `scheduledAt/scheduled_at="즉시"`도 즉시방으로 인정한다. 즉시방과 오늘 예약방은 별도 개념으로 분리한다. 직접 링크로 열린 `post`는 날짜 필터 때문에 숨기지 않는다.
 38-3-1. `/app/recruiting`에서 시작일 버튼을 누르면 `내가 만든 방/내 참여방/초대받음` relation scope를 해제하고 전체 공개 목록의 해당 시작일을 본다.
+38-3-2. `/app/recruiting`에서 지역 `시도`/`시군구` 선택을 바꾸면 `내가 만든 방/내 참여방/초대받음` relation scope를 해제하고 전체 공개 목록의 해당 지역을 본다.
 38-4. `/app/recruiting`는 `feedCounts`와 현재 로드된 목록 수가 달라도 자동 `scope: "mine"` 보강 로드를 실행하지 않는다. 숫자와 목록은 최초 feed snapshot 기준을 우선한다.
 38-5. `/app/recruiting` 초기 공개 목록 요청은 current-user mine 방을 같은 응답에 병합하지 않는다. 생성/참여/초대 숫자는 `feedCounts`로 즉시 표시하고, 각 relation 목록은 버튼 클릭 시 `scope: "mine"`으로 로드한다.
 38-6. `/app/recruiting`에서 `내가 만든 방`, `내 참여방`, `초대받음` scope는 날짜 필터 때문에 숨겨지면 안 된다. 날짜 필터는 전체 공개 목록을 좁히는 용도이고, 내 방 scope에서는 relation 표시가 우선이다.

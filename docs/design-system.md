@@ -135,6 +135,7 @@
 5. Selected date chips use one shared active fill color. Saturday/Sunday colors are idle hints only, not separate selected backgrounds.
 6. Recruiting filter groups avoid an extra outer frame/padding around the buttons so the filter row stays compact.
 7. 시작일 버튼을 누르면 relation scope 칩의 active 상태를 풀고 전체 공개 목록 날짜 필터로 전환한다.
+8. 매칭 지역 `시도`/`시군구` 선택을 바꾸면 relation scope 칩의 active 상태를 풀고 전체 공개 지역 목록으로 전환한다.
 
 # RankBall Design System
 

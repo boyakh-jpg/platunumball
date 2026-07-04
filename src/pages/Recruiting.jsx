@@ -3567,8 +3567,13 @@ function RecruitingReady({ app }) {
   const selectRegionSido = (event) => {
     const nextSido = event.target.value;
     const nextGroup = REGION_TREE.find((region) => region.sido === nextSido) ?? REGION_TREE[0];
+    setRoomScope("all");
     setRegionFilterSido(nextGroup?.sido ?? defaultRegionSelection.sido);
     setRegionFilterDistrict(nextGroup?.districts?.[0] ?? defaultRegionSelection.district);
+  };
+  const selectRegionDistrict = (event) => {
+    setRoomScope("all");
+    setRegionFilterDistrict(event.target.value);
   };
 
   useEffect(() => {
@@ -3854,7 +3859,7 @@ function RecruitingReady({ app }) {
                 </select>
               </label>
               <label className="arena-filter-select arena-region-district-filter">
-                <select aria-label="시군구" value={selectedRegionDistrict} onChange={(event) => setRegionFilterDistrict(event.target.value)}>
+                <select aria-label="시군구" value={selectedRegionDistrict} onChange={selectRegionDistrict}>
                   {regionDistrictOptions.map((district) => <option key={district} value={district}>{district}</option>)}
                 </select>
               </label>
