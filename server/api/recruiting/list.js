@@ -441,6 +441,40 @@ function canUseFeedCardForProfile(card = {}, profileId = "") {
   return !getRecruitingFeedCardRejectReason(card, profileId);
 }
 
+async function attachPendingInvitationsToFeedCards(client, cards = [], profileId = "") {
+  if (!profileId) return [];
+  const candidates = cards.filter((card) => getRecruitingFeedCardRejectReason(card, profileId) === "missing_pending_invitation");
+  const ids = uniqueIds(candidates.map((card) => card?.id));
+  if (!ids.length) return [];
+  const { data, error } = await client
+    .from("recruiting_posts")
+    .select("id,room_state,updated_at")
+    .in("id", ids);
+  if (error) throw error;
+  const rowById = new Map((data ?? []).map((row) => [row.id, row]));
+  return candidates
+    .map((card) => {
+      const row = rowById.get(card.id);
+      const invitations = Array.isArray(row?.room_state?.invitations) ? row.room_state.invitations : [];
+      const invitation = invitations.find((item) => (
+        item?.id &&
+        item.targetUserId === profileId &&
+        String(item.status ?? "pending") === "pending"
+      ));
+      if (!invitation) return null;
+      const roomState = card.roomState && typeof card.roomState === "object" && !Array.isArray(card.roomState) ? card.roomState : {};
+      return {
+        ...card,
+        updatedAt: card.updatedAt ?? row?.updated_at,
+        roomState: {
+          ...roomState,
+          invitations: [invitation],
+        },
+      };
+    })
+    .filter(Boolean);
+}
+
 function compactUser(user = {}, profileId = "") {
   const compact = {
     id: user.id,
@@ -1439,6 +1473,8 @@ export async function loadCompactRecruitingList(context, {
         .filter((card) => canUseFeedCardForProfile(card, context.profileId))
         .map((card) => [card.id, card]),
     );
+    const repairedCards = await attachPendingInvitationsToFeedCards(context.supabase, targetCards, context.profileId);
+    repairedCards.forEach((card) => cardById.set(card.id, card));
     const fallbackPostIds = targetPostIds.filter((postId) => !cardById.has(postId));
     const fallbackCardReasons = debugPage && fallbackPostIds.length
       ? fallbackPostIds.map((postId) => {
