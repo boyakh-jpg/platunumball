@@ -3876,7 +3876,7 @@ input[type="color"] {
 
 .my-team-row {
   display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr) auto auto auto;
+  grid-template-columns: auto auto minmax(0, 1fr) auto auto auto auto;
   align-items: center;
   gap: 10px;
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -3912,6 +3912,11 @@ input[type="color"] {
 .my-team-row b {
   background: rgba(70, 224, 182, 0.12);
   color: var(--green);
+}
+
+.my-team-representative-button {
+  min-width: 82px;
+  justify-self: end;
 }
 
 .my-team-tier {

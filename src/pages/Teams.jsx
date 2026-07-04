@@ -10,6 +10,7 @@ import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { MAX_TEAM_MEMBERSHIPS, MAX_TEAM_NAME_LENGTH, REGIONS, getTeamRoleLabel } from "../lib/constants.js";
 import { getCourtLayoutLabel, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
 import { getCourtHashtag, getTeamHashtag } from "../lib/handles.js";
+import { getRepresentativeTeam } from "../lib/profileSetup.js";
 import { getTierDivision } from "../lib/tier.js";
 
 const allRegions = ["전체", ...REGIONS];
@@ -43,6 +44,7 @@ export default function Teams({ app }) {
   const [courtQuery, setCourtQuery] = useState(defaultHomeCourt);
   const [courtRegion, setCourtRegion] = useState(app.currentUser.region ?? "전체");
   const favoriteTeamIds = app.state.settings?.favoriteTeamIds ?? [];
+  const representativeTeamId = app.state.settings?.representativeTeamId ?? "";
   const favoriteCourtIds = app.state.settings?.favoriteCourtIds ?? [];
   const teamName = draft.name.trim().replace(/\s+/g, " ");
   const teamNameInvalid = !teamName || teamName.length > MAX_TEAM_NAME_LENGTH;
@@ -71,6 +73,10 @@ export default function Teams({ app }) {
       .map((team) => ({ ...team, myRole: team.members.find((member) => member.userId === app.currentUser.id)?.role ?? "regular" }))
       .sort((a, b) => Number(b.myRole === "captain") - Number(a.myRole === "captain") || a.rank - b.rank);
   }, [app.currentUser.id, rankingTeams]);
+  const representativeTeam = useMemo(
+    () => getRepresentativeTeam(app.currentUser.id, myTeams, representativeTeamId),
+    [app.currentUser.id, myTeams, representativeTeamId],
+  );
   const teamDirectoryError = app.directoryStatus?.error ?? "";
   const teamDirectoryPending = app.remoteReady === false || app.directoryStatus?.loading || (app.directoryStatus?.loaded === false && !teamDirectoryError);
   const favoriteTeams = useMemo(() => {
@@ -173,6 +179,8 @@ export default function Teams({ app }) {
             {myTeams.length ? myTeams.map((team) => {
               const winRate = team.played ? Math.round((team.wins / team.played) * 100) : 0;
               const isCaptain = team.myRole === "captain";
+              const isRepresentative = representativeTeam?.id === team.id;
+              const isExplicitRepresentative = representativeTeamId === team.id;
               return (
                 <TeamHoverCard key={team.id} team={team} className="my-team-row" to={`/app/teams/${team.id}${isCaptain ? "#team-control" : ""}`}>
                   <span className="team-rank-chip">#{team.rank}</span>
@@ -183,6 +191,19 @@ export default function Teams({ app }) {
                     <img src={getTierEmblemSrc(team.mmr)} alt={`${getTierDivision(team.mmr)} emblem`} loading="lazy" />
                     <span>{getTierDivision(team.mmr)}</span>
                   </span>
+                  <Button
+                    className="my-team-representative-button"
+                    disabled={isExplicitRepresentative}
+                    size="sm"
+                    variant={isRepresentative ? "primary" : "secondary"}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      if (!isExplicitRepresentative) app.actions.updateSettings({ representativeTeamId: team.id });
+                    }}
+                  >
+                    {isRepresentative ? "대표팀" : "대표 설정"}
+                  </Button>
                   <b>{isCaptain ? "관리" : "상세"}</b>
                 </TeamHoverCard>
               );

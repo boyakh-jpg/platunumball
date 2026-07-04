@@ -2798,7 +2798,9 @@ export function useAppData(authUser = null) {
   );
 
   const safeCurrentUserId = currentUserId ?? currentUser?.id ?? "";
-  const safeCurrentUser = currentUser ?? createProfileShell(authUserId ?? safeCurrentUserId, authEmail);
+  const safeCurrentUser = currentUser
+    ? { ...currentUser, representativeTeamId: state.settings?.representativeTeamId ?? currentUser.representativeTeamId ?? "" }
+    : createProfileShell(authUserId ?? safeCurrentUserId, authEmail);
   return {
     state: { ...state, currentUserId: safeCurrentUserId || safeCurrentUser.id },
     currentUser: safeCurrentUser,

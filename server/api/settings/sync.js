@@ -33,6 +33,9 @@ function sanitizeSettingsPatch(value) {
   const patch = {};
 
   if (source.theme === "light" || source.theme === "dark") patch.theme = source.theme;
+  if (typeof source.representativeTeamId === "string") {
+    patch.representativeTeamId = source.representativeTeamId.trim().slice(0, 128);
+  }
 
   const privacy = sanitizeBooleanPatch(source.privacy, ["regionRanking", "teamHistory", "statSummary"]);
   if (privacy) patch.privacy = privacy;
@@ -80,6 +83,20 @@ export default async function handler(request, response) {
     }
 
     const context = await getAuthenticatedContext(request);
+    if (settingsPatch.representativeTeamId) {
+      const { data: membership, error: membershipError } = await context.supabase
+        .from("team_members")
+        .select("team_id")
+        .eq("user_id", context.profileId)
+        .eq("team_id", settingsPatch.representativeTeamId)
+        .maybeSingle();
+      if (membershipError) throw membershipError;
+      if (!membership) {
+        sendJson(response, 400, { error: "representative_team_must_be_owned" });
+        return;
+      }
+    }
+
     const { data: profile, error: readError } = await context.supabase
       .from("profiles")
       .select("app_settings")

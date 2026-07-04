@@ -1,7 +1,7 @@
 import { getAuthenticatedContext, readJsonBody, sendJson } from "./_supabaseAdmin.js";
 
 const PROFILE_COLUMNS = "id,name,handle,hashtag,position,region,trust_score,avatar_color,ratings,age_group,updated_at";
-const TEAM_COLUMNS = "id,name,home_court,region,mmr,wins,losses,accent,deleted_at,updated_at";
+const TEAM_COLUMNS = "id,name,home_court,region,mmr,wins,losses,accent,deleted_at,created_at,updated_at";
 const TEAM_MEMBER_COLUMNS = "team_id,user_id,role";
 const COURT_COLUMNS = "id,name,hashtag,address_text,road_address,jibun_address,zonecode,lat,lng,status,payload,approved_at,created_at,updated_at";
 const REFEREE_APPOINTMENT_COLUMNS = "user_id,role,grade,status,starts_at,ends_at";
@@ -105,6 +105,8 @@ function toTeam(row = {}, memberRows = []) {
     wins: row.wins ?? 0,
     losses: row.losses ?? 0,
     accent: row.accent,
+    createdAt: row.created_at ?? null,
+    updatedAt: row.updated_at ?? row.created_at ?? null,
     members: memberRows.map((member) => ({ userId: member.user_id, role: member.role ?? "regular" })),
     searchText: [row.name, row.region, row.home_court, row.id].filter(Boolean).join(" "),
   };

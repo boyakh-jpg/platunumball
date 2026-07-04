@@ -10,7 +10,7 @@ import {
 
 const PROFILE_ME_COLUMNS = "id,name,handle,hashtag,position,region,region_sido,region_district,school,company,club,trust_score,streak,avatar_color,test_login_id,auth_user_id,birth_year,age_group,age_group_checked_season,onboarding_complete,profile_version,handle_locked_at,birth_year_locked_at,name_updated_at,discord_connection,discord_user_id,ratings,created_at,updated_at,app_settings";
 const PROFILE_TEAM_MEMBER_COLUMNS = "id,name,handle,hashtag,position,region,trust_score,avatar_color,ratings,age_group,age_group_checked_season,onboarding_complete,updated_at";
-const TEAM_COLUMNS = "id,name,home_court,region,mmr,wins,losses,accent,deleted_at,updated_at";
+const TEAM_COLUMNS = "id,name,home_court,region,mmr,wins,losses,accent,deleted_at,created_at,updated_at";
 const TEAM_MEMBER_COLUMNS = "team_id,user_id,role";
 const TEAM_INVITATION_COLUMNS = "id,team_id,from_user_id,target_user_id,role,status,created_at,updated_at";
 
@@ -50,6 +50,8 @@ function toClientTeam(team = {}, memberRows = []) {
     wins: team.wins ?? 0,
     losses: team.losses ?? 0,
     accent: team.accent,
+    createdAt: team.created_at ?? null,
+    updatedAt: team.updated_at ?? team.created_at ?? null,
     members: [...memberRows]
       .sort((a, b) => String(a.role).localeCompare(String(b.role)) || String(a.user_id).localeCompare(String(b.user_id)))
       .map((member) => ({ userId: member.user_id, role: member.role ?? "regular" })),

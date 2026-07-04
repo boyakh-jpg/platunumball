@@ -1982,3 +1982,11 @@ flowchart TD
 - 방/경기/모집 feed의 `user_room_feed.region_key`는 `rankball_court_snapshot()`의 `regionKey` 또는 정규화된 구장 지역을 기준으로 만든다.
 - `court_name`, `recruiting_posts.region`, `matches.rules.region`은 표시/호환 캐시다. 구장 원본 변경 시 trigger가 feed와 표시 캐시를 다시 만든다.
 - 기존 legacy `courts`와 텍스트 `court_name` fallback은 삭제하지 않는다. `court_id`가 없고 이름+지역이 단일 구장으로 매칭될 때만 자동 보정한다.
+
+## 2026-07-04 대표팀 설정
+
+- 한 사용자는 소속 팀 중 1개를 대표팀으로 설정할 수 있다.
+- 대표팀 id는 `profiles.app_settings.representativeTeamId`에 저장한다.
+- 설정된 대표팀 id가 현재 소속 팀에 없거나 비어 있으면 현재 로드된 소속 팀 중 가장 먼저 입단한 팀을 대표팀으로 본다. 입단 시각 원본이 없으면 팀 생성 시각 기준으로 fallback한다.
+- 프로필 카드의 팀 표시는 대표팀을 우선한다. 전체 `app_settings`를 공개 프로필로 노출하지 않는다.
+- 대표팀 변경은 팀 메뉴의 내 팀 관리에서만 자유롭게 바꾼다.

@@ -17,7 +17,7 @@ const MATCH_LIST_COLUMNS = "id,title,mode,court_id,court_name,visibility,status,
 const MATCH_PLAYER_COLUMNS = "match_id,team_id,user_id,side,slot_order";
 const MATCH_RESULT_COLUMNS = "match_id,score_a,score_b,stat_submissions,submitted_by,submitted_at,updated_at";
 const PLAYER_STAT_COLUMNS = "match_id,user_id,points,rebounds,assists,steals,blocks,fouls,recorded_by,record_source,updated_at";
-const TEAM_COLUMNS = "id,name,home_court,region,mmr,wins,losses,accent,deleted_at";
+const TEAM_COLUMNS = "id,name,home_court,region,mmr,wins,losses,accent,deleted_at,created_at,updated_at";
 const COURT_COLUMNS = "id,name";
 
 let userRoomFeedAvailable = true;
@@ -671,6 +671,8 @@ function toClientTeam(row = {}) {
     wins: row.wins ?? 0,
     losses: row.losses ?? 0,
     accent: row.accent,
+    createdAt: row.created_at ?? null,
+    updatedAt: row.updated_at ?? row.created_at ?? null,
     membersPartial: true,
     members: [],
   };

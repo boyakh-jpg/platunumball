@@ -7,7 +7,7 @@ import useBodyScrollLock from "../../hooks/useBodyScrollLock.js";
 import { getDiscordAvatarClassName, getDiscordAvatarStyle, getDiscordDisplayName, getDiscordProfileUrl } from "../../lib/discord.js";
 import { getTeamHashtag, getUserHashtag } from "../../lib/handles.js";
 import { clearPinnedHoverPreview, getPinnedHoverPreviewKey, pinHoverPreview, subscribePinnedHoverPreview } from "../../lib/hoverPreviewPin.js";
-import { getAgeGroupForUser, getAgeGroupLabel } from "../../lib/profileSetup.js";
+import { getAgeGroupForUser, getAgeGroupLabel, getRepresentativeTeam, getUserProfileTeams } from "../../lib/profileSetup.js";
 import { getTierDivision } from "../../lib/tier.js";
 import { getTeamRoleLabel, isMercenaryTeamRole, normalizeTeamRole } from "../../lib/constants.js";
 
@@ -18,12 +18,7 @@ const rolePriority = {
 };
 
 function getUserTeams(userId, teams = []) {
-  return teams
-    .map((team) => {
-      const member = team.members?.find((item) => item.userId === userId);
-      return member ? { ...team, myRole: member.role } : null;
-    })
-    .filter(Boolean)
+  return getUserProfileTeams(userId, teams)
     .sort((a, b) => (rolePriority[normalizeTeamRole(a.myRole)] ?? 9) - (rolePriority[normalizeTeamRole(b.myRole)] ?? 9) || b.mmr - a.mmr);
 }
 
@@ -98,7 +93,7 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
   if (!user) return children ?? null;
 
   const userTeams = getUserTeams(user.id, teams);
-  const activeTeam = userTeams[0];
+  const activeTeam = getRepresentativeTeam(user.id, userTeams, user.representativeTeamId) ?? userTeams[0];
   const discordProfileUrl = getDiscordProfileUrl(user);
   const discordDisplayName = getDiscordDisplayName(user);
   const modes = [
@@ -213,7 +208,7 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
           ))}
         </span>
         <span className="player-hover-team">
-          <b>활성 팀</b>
+          <b>대표팀</b>
           {activeTeam ? (
             <span>
               <i style={{ "--team-color": activeTeam.accent }} />

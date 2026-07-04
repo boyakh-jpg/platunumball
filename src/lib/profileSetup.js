@@ -122,6 +122,43 @@ export function getAgeGroupForUser(user, now = new Date()) {
   return getAgeGroupByBirthYear(user?.birthYear, now) ?? user?.ageGroup ?? "open";
 }
 
+const teamRolePriority = {
+  captain: 0,
+  regular: 1,
+  mercenary: 2,
+};
+
+function getTeamMemberForUser(team = {}, userId = "") {
+  if (!userId || !Array.isArray(team.members)) return null;
+  return team.members.find((member) => member?.userId === userId) ?? null;
+}
+
+function getTeamJoinSortTime(team = {}, member = {}) {
+  const value = member?.joinedAt ?? member?.createdAt ?? team?.joinedAt ?? team?.createdAt ?? team?.updatedAt;
+  const time = value ? new Date(value).getTime() : NaN;
+  return Number.isFinite(time) ? time : Number.MAX_SAFE_INTEGER;
+}
+
+export function getUserProfileTeams(userId = "", teams = []) {
+  return teams
+    .map((team) => {
+      const member = getTeamMemberForUser(team, userId);
+      return member ? { ...team, myRole: member.role ?? "regular", joinedAt: member.joinedAt ?? member.createdAt ?? team.createdAt ?? "" } : null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => (
+      getTeamJoinSortTime(a, getTeamMemberForUser(a, userId)) - getTeamJoinSortTime(b, getTeamMemberForUser(b, userId)) ||
+      (teamRolePriority[a.myRole] ?? 9) - (teamRolePriority[b.myRole] ?? 9) ||
+      String(a.name ?? "").localeCompare(String(b.name ?? ""))
+    ));
+}
+
+export function getRepresentativeTeam(userId = "", teams = [], representativeTeamId = "") {
+  const userTeams = getUserProfileTeams(userId, teams);
+  if (!userTeams.length) return null;
+  return userTeams.find((team) => team.id === representativeTeamId) ?? userTeams[0];
+}
+
 function normalizeRegionText(value = "") {
   return String(value ?? "").replace(/\s/g, "");
 }
