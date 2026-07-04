@@ -3875,7 +3875,8 @@ function RecruitingReady({ app }) {
       && currentStartFilter !== startFilter;
     const needsBasePage = targetStartFilter === "all" && currentStartFilter !== "all";
     if (currentPageMatchesRegion && !needsFilteredPage && !needsBasePage) return;
-    const loadKey = `${app.currentUser.id}:${regionFilter}:${regionKey}:${targetStartFilter}:plain`;
+    const shouldIncludeFeedCounts = app.recruitingPagination?.feedCounts == null;
+    const loadKey = `${app.currentUser.id}:${regionFilter}:${regionKey}:${targetStartFilter}:${shouldIncludeFeedCounts ? "counts" : "plain"}`;
     if (regionLoadRef.current === loadKey) return;
     regionLoadRef.current = loadKey;
     Promise.resolve(app.actions.loadRecruitingRegion?.({
@@ -3883,7 +3884,7 @@ function RecruitingReady({ app }) {
       regionKey,
       limit: needsFilteredPage ? RECRUITING_FILTER_PAGE_LIMIT : undefined,
       startFilter: targetStartFilter,
-      includeFeedCounts: false,
+      includeFeedCounts: shouldIncludeFeedCounts,
     })).then((count) => {
       if (count !== false) regionLoadRef.current = "";
     }).catch(() => {
@@ -4030,7 +4031,7 @@ function RecruitingReady({ app }) {
   const rankedCount = scopedPosts.filter((post) => post.ranked !== false).length;
   const friendlyCount = scopedPosts.length - rankedCount;
   const feedCounts = app.recruitingPagination?.feedCounts ?? null;
-  const roomCountsLoading = app.remoteReady === false || (feedCounts == null && !app.recruitingPagination?.error);
+  const roomCountsLoading = app.remoteReady === false || (feedCounts == null && app.recruitingPagination?.loading);
   const getFeedCount = (key, fallback) => {
     const count = Number(feedCounts?.[key]);
     return Number.isFinite(count) ? count : fallback;
