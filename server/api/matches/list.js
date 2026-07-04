@@ -15,6 +15,8 @@ const PROFILE_ME_COLUMNS = "id,name,handle,hashtag,position,region,region_sido,r
 const PROFILE_CARD_COLUMNS = "id,name,handle,hashtag,position,region,trust_score,avatar_color,ratings,age_group,updated_at";
 const MATCH_LIST_COLUMNS = "id,title,mode,court_id,court_name,visibility,status,ranked,referee_id,former_referee_id,stat_entry_minutes,dispute_minutes,stat_recorders,played_player_ids,reserve_players,mmr_excluded_player_ids,anonymous_players,official,pre_registered,scheduled_at,scheduled_date,scheduled_time,team_a_id,team_b_id,score_a,score_b,rules,created_by,agreed_at,started_at,ended_at,confirmed_at,cancelled_at,voided_at,tournament_id,updated_at,created_at";
 const MATCH_PLAYER_COLUMNS = "match_id,team_id,user_id,side,slot_order";
+const MATCH_RESULT_COLUMNS = "match_id,score_a,score_b,stat_submissions,submitted_by,submitted_at,updated_at";
+const PLAYER_STAT_COLUMNS = "match_id,user_id,points,rebounds,assists,steals,blocks,fouls,recorded_by,record_source,updated_at";
 const TEAM_COLUMNS = "id,name,home_court,region,mmr,wins,losses,accent,deleted_at";
 const COURT_COLUMNS = "id,name";
 
@@ -691,7 +693,30 @@ function toClientMatchSide(row = {}, sideName = "teamA", playersByMatch = new Ma
   };
 }
 
-function toClientMatch(row = {}, playersByMatch = new Map(), teamById = {}, courtById = {}) {
+function toClientMatchResult(resultRow = null, statRows = []) {
+  if (!resultRow && !(statRows ?? []).length) return null;
+  return {
+    scoreA: Number(resultRow?.score_a ?? 0),
+    scoreB: Number(resultRow?.score_b ?? 0),
+    playerStats: Object.fromEntries((statRows ?? []).filter((row) => row?.user_id).map((row) => [
+      row.user_id,
+      {
+        points: Number(row.points ?? 0),
+        rebounds: Number(row.rebounds ?? 0),
+        assists: Number(row.assists ?? 0),
+        steals: Number(row.steals ?? 0),
+        blocks: Number(row.blocks ?? 0),
+        fouls: Number(row.fouls ?? 0),
+      },
+    ])),
+    statSubmissions: resultRow?.stat_submissions ?? {},
+    submittedBy: resultRow?.submitted_by ?? "",
+    submittedAt: resultRow?.submitted_at ?? "",
+    updatedAt: resultRow?.updated_at ?? "",
+  };
+}
+
+function toClientMatch(row = {}, playersByMatch = new Map(), teamById = {}, courtById = {}, resultsByMatch = {}, statsByMatch = new Map()) {
   const rawScheduledAt = toDateTime(row.scheduled_date, row.scheduled_time, row.scheduled_at);
   const legacyInstant = !row.rules?.timingType && rawScheduledAt === "\uC989\uC2DC";
   const timingType = row.rules?.timingType === "instant" || legacyInstant ? "instant" : "scheduled";
@@ -700,6 +725,7 @@ function toClientMatch(row = {}, playersByMatch = new Map(), teamById = {}, cour
   const mmrExcludedPlayerIds = row.mmr_excluded_player_ids ?? row.rules?.mmrExcludedPlayerIds ?? [];
   const anonymousPlayers = row.anonymous_players ?? {};
   const statRecorders = row.stat_recorders ?? row.rules?.statRecorders ?? {};
+  const result = toClientMatchResult(resultsByMatch[row.id], statsByMatch.get(row.id) ?? []);
   return {
     id: row.id,
     title: row.title,
@@ -721,8 +747,14 @@ function toClientMatch(row = {}, playersByMatch = new Map(), teamById = {}, cour
     createdBy: row.created_by ?? "",
     recruitingPostId: row.rules?.recruitingPostId ?? "",
     tournamentId: row.tournament_id ?? "",
-    teamA: toClientMatchSide(row, "teamA", playersByMatch, teamById),
-    teamB: toClientMatchSide(row, "teamB", playersByMatch, teamById),
+    teamA: {
+      ...toClientMatchSide(row, "teamA", playersByMatch, teamById),
+      ...(result ? { score: result.scoreA } : {}),
+    },
+    teamB: {
+      ...toClientMatchSide(row, "teamB", playersByMatch, teamById),
+      ...(result ? { score: result.scoreB } : {}),
+    },
     agreements: { teamA: [], teamB: [] },
     approvals: { teamA: [], teamB: [] },
     disputes: [],
@@ -731,7 +763,7 @@ function toClientMatch(row = {}, playersByMatch = new Map(), teamById = {}, cour
     mmrExcludedPlayerIds,
     anonymousPlayers,
     parties: row.rules?.parties ?? {},
-    result: null,
+    result,
     rules: {
       ...(row.rules ?? {}),
       targetScore: row.rules?.targetScore,
@@ -921,14 +953,28 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   }
 
   const matchIds = (matchRows ?? []).map((row) => row.id).filter(Boolean);
-  const { data: playerRows, error: playerError } = matchIds.length
-    ? await timeStep(debugTiming, "matchPlayersMs", () => (
-      context.supabase.from("match_players").select(MATCH_PLAYER_COLUMNS).in("match_id", matchIds)
-    ))
-    : { data: [], error: null };
+  const [
+    { data: playerRows, error: playerError },
+    { data: resultRows, error: resultError },
+    { data: statRows, error: statError },
+  ] = matchIds.length
+    ? await timeStep(debugTiming, "matchChildrenMs", () => Promise.all([
+      context.supabase.from("match_players").select(MATCH_PLAYER_COLUMNS).in("match_id", matchIds),
+      context.supabase.from("match_results").select(MATCH_RESULT_COLUMNS).in("match_id", matchIds),
+      context.supabase.from("player_match_stats").select(PLAYER_STAT_COLUMNS).in("match_id", matchIds),
+    ]))
+    : [
+      { data: [], error: null },
+      { data: [], error: null },
+      { data: [], error: null },
+    ];
   if (playerError) throw playerError;
+  if (resultError) throw resultError;
+  if (statError) throw statError;
 
   const playersByMatch = groupBy(playerRows ?? [], "match_id");
+  const resultsByMatch = firstBy(resultRows ?? [], "match_id");
+  const statsByMatch = groupBy(statRows ?? [], "match_id");
   const readableRows = (matchRows ?? []).filter((row) => (
     canReadMatchRow(row, playersByMatch.get(row.id) ?? [], context.profileId ?? "", adminLevel >= 30)
   ));
@@ -965,7 +1011,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   const teamById = Object.fromEntries(teams.map((team) => [team.id, team]));
   const courtById = firstBy(courtRows ?? [], "id");
   const rowMatches = readableRows
-    .map((row) => toClientMatch(row, playersByMatch, teamById, courtById))
+    .map((row) => toClientMatch(row, playersByMatch, teamById, courtById, resultsByMatch, statsByMatch))
     .filter((match) => filterMatchItems([match]).length > 0);
   matches = feedPage?.ids?.length
     ? sortByFeedOrder(mergeMatchCardsWithRows(matches, rowMatches), feedPage.ids)
