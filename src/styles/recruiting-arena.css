@@ -5415,8 +5415,8 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
     appearance: none;
     display: block;
     width: min(100%, 320px);
-    height: 40px;
-    margin: -10px auto -6px;
+    height: 80px;
+    margin: -30px auto -26px;
     border: 0;
     border-radius: 999px;
     background: transparent;
@@ -5430,7 +5430,7 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
     display: block;
     width: 46px;
     height: 4px;
-    margin: 18px auto;
+    margin: 38px auto;
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.28);
   }
