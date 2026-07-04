@@ -489,7 +489,19 @@ function filterPendingMatches(remoteState = {}, pendingIds = new Set(), recentMu
   return filteredMatches.length === nextMatches.length ? remoteState : { ...remoteState, matches: filteredMatches };
 }
 
-function getRemoteDirectorySettings(settings = null, { includeTheme = false } = {}) {
+const DIRECTORY_SETTING_ARRAY_KEYS = [
+  "approvedCourts",
+  "courtRequests",
+  "courtReviews",
+  "refereeRequests",
+  "refereeExamAttempts",
+  "adminAppointments",
+  "refereeAppointments",
+  "adminAuditLog",
+  "adminDisciplinaryActions",
+];
+
+function getRemoteDirectorySettings(settings = null, { includeTheme = false, includeDirectorySettings = false } = {}) {
   if (!settings) return null;
   const settingsPatch = {};
   if (includeTheme && (settings.theme === "light" || settings.theme === "dark")) settingsPatch.theme = settings.theme;
@@ -497,11 +509,17 @@ function getRemoteDirectorySettings(settings = null, { includeTheme = false } = 
   if (settings.notificationChannels && typeof settings.notificationChannels === "object" && !Array.isArray(settings.notificationChannels)) {
     settingsPatch.notificationChannels = settings.notificationChannels;
   }
+  if (includeDirectorySettings) {
+    DIRECTORY_SETTING_ARRAY_KEYS.forEach((key) => {
+      if (Array.isArray(settings[key])) settingsPatch[key] = settings[key];
+    });
+  }
   return Object.keys(settingsPatch).length ? settingsPatch : null;
 }
 
 function mergeRemoteDirectory(state, remoteState = {}, options = {}) {
   const settingsPatch = getRemoteDirectorySettings(remoteState.settings, options);
+  const includeDirectorySettings = options.includeDirectorySettings === true;
   return {
     ...state,
     users: mergeRemoteById(state.users, remoteState.users),
@@ -509,6 +527,7 @@ function mergeRemoteDirectory(state, remoteState = {}, options = {}) {
     teamInvitations: mergeRemoteById(state.teamInvitations, remoteState.teamInvitations),
     affiliations: remoteState.affiliations?.length ? remoteState.affiliations : state.affiliations,
     seasons: remoteState.seasons?.length ? remoteState.seasons : state.seasons,
+    reports: includeDirectorySettings && Array.isArray(remoteState.reports) ? mergeRemoteById(state.reports, remoteState.reports) : state.reports,
     settings: settingsPatch ? { ...state.settings, ...settingsPatch } : state.settings,
   };
 }
@@ -1855,7 +1874,7 @@ export function useAppData(authUser = null) {
       { allowWhenDisabled: true },
     ).then((result) => {
       const remoteState = result?.state ?? {};
-      setState((prev) => mergeRemoteDirectory(prev, remoteState));
+      setState((prev) => mergeRemoteDirectory(prev, remoteState, { includeDirectorySettings: true }));
       setDirectoryStatus({ loading: false, loaded: true, error: "" });
       return true;
     }).catch((error) => {
