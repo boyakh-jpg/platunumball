@@ -7218,7 +7218,7 @@ html[data-theme="light"] .arena-lobby-arena {
 
 .arena-filter-badge {
   flex: 0 0 auto;
-  min-width: 1.5ch;
+  min-width: 2.4ch;
   text-align: right;
 }
 
@@ -7247,7 +7247,7 @@ html[data-theme="light"] .arena-lobby-arena {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 110px;
+  min-width: 128px;
   overflow: visible;
   padding-inline: 14px;
 }
