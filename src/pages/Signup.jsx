@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, CheckCircle2 } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
@@ -13,6 +13,7 @@ import {
   getAgeGroupLabel,
   getAgeGroupSeasonForDate,
   getAgeGroupSeasonLabel,
+  getAppRedirectFromLocation,
   getNextNameChangeDate,
   inferRegionSelection,
   REGION_TREE,
@@ -34,7 +35,9 @@ function getInitialHandleBody(user = {}, suffix = "") {
 
 export default function Signup({ app, auth }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const user = app.currentUser;
+  const redirectTo = getAppRedirectFromLocation(location, "/app/profile");
   const inferredRegion = inferRegionSelection([user.regionSido, user.regionDistrict, user.region].filter(Boolean).join(" "));
   const [suggestionSuffix] = useState(makeRandomDigitSuffix);
   const [handleTouched, setHandleTouched] = useState(() => Boolean(stripHandle(user.hashtag ?? user.handle ?? "")));
@@ -74,8 +77,8 @@ export default function Signup({ app, auth }) {
   useEffect(() => {
     if (!redirectAfterSave) return;
     if (shouldSetupProfile(user) || shouldRecheckAgeGroup(user)) return;
-    navigate("/app/profile", { replace: true });
-  }, [navigate, redirectAfterSave, user]);
+    navigate(redirectTo, { replace: true });
+  }, [navigate, redirectAfterSave, redirectTo, user]);
 
   const submit = async (event) => {
     event.preventDefault();
@@ -129,7 +132,7 @@ export default function Signup({ app, auth }) {
           <p className="eyebrow">Signup</p>
           <h1>가입 정보 설정</h1>
         </div>
-        <Link className="button button-secondary" to="/app/profile"><ArrowLeft size={17} /> 프로필로</Link>
+        <Link className="button button-secondary" to={redirectTo}><ArrowLeft size={17} /> 프로필로</Link>
       </header>
 
       <div className="content-grid signup-setup-grid">

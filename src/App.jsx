@@ -5,7 +5,7 @@ import BasketballLoader from "./components/common/BasketballLoader.jsx";
 import AppShell from "./components/layout/AppShell.jsx";
 import { useAuthSession } from "./hooks/useAuthSession.js";
 import { useAppData } from "./hooks/useAppData.js";
-import { shouldRecheckAgeGroup, shouldSetupProfile } from "./lib/profileSetup.js";
+import { getSafeAppRedirect, shouldRecheckAgeGroup, shouldSetupProfile } from "./lib/profileSetup.js";
 
 const Admin = lazy(() => import("./pages/Admin.jsx"));
 const Affiliations = lazy(() => import("./pages/Affiliations.jsx"));
@@ -92,7 +92,10 @@ export default function App() {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
 
-  if (profileSetupRequired || ageRecheckRequired) return <Navigate to="/app/signup" replace />;
+  if (profileSetupRequired || ageRecheckRequired) {
+    const redirectTo = getSafeAppRedirect(`${location.pathname}${location.search}${location.hash}`);
+    return <Navigate to={`/app/signup?redirect=${encodeURIComponent(redirectTo)}`} replace />;
+  }
 
   return (
     <AppErrorBoundary resetKey={location.pathname}>

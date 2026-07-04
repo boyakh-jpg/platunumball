@@ -7,6 +7,14 @@
 - 목록/검색/즐겨찾기/팀 홈구장은 `approved_courts`를 기준으로 읽고, `courts`는 방/경기 저장 FK 호환용으로만 유지한다.
 - 기존 승인 구장은 migration backfill로 `courts`에 같은 id를 넣는다. 삭제나 재번호 부여는 하지 않는다.
 
+## 2026-07-04 공유 방 URL 인증 redirect
+
+- 공유 방 URL은 `/app/recruiting?post=...`를 canonical deep link로 사용한다.
+- 비로그인 사용자는 `/login`으로 이동해도 원래 `/app/...` 경로와 query/hash를 잃지 않는다.
+- 가입정보가 필요하면 `/app/signup?redirect=...`로 이동하고, 저장 완료 후 원래 방 URL로 돌아간다.
+- redirect 값은 내부 `/app` 경로만 허용한다. 외부 URL, `/login`, `/app/signup` 자체는 목적지로 쓰지 않는다.
+- 비공개방은 공유 URL로 열 수 있어도 초대/권한 없이는 참여할 수 없다. 공유 링크는 권한을 부여하지 않는다.
+
 ## 2026-07-04 theme persistence
 
 1. 다크/라이트 테마는 저장 버튼 없이 선택 즉시 local state에 반영하고 `/api/settings/sync`로 저장한다.

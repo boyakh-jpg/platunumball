@@ -82,6 +82,36 @@ export function canChangeProfileName(user = {}, now = new Date()) {
   return !user?.onboardingComplete || !nextDate || nextDate <= now;
 }
 
+export function getSafeAppRedirect(value, fallback = "/app") {
+  const safeFallback = fallback && String(fallback).startsWith("/app") ? fallback : "/app";
+  const rawValue = String(value ?? "").trim();
+  if (!rawValue || rawValue.startsWith("//")) return safeFallback;
+
+  try {
+    const url = new URL(rawValue, "https://rankball.local");
+    if (url.origin !== "https://rankball.local") return safeFallback;
+    const redirectPath = `${url.pathname}${url.search}${url.hash}`;
+    if (!redirectPath.startsWith("/app")) return safeFallback;
+    if (redirectPath === "/app/signup" || redirectPath.startsWith("/app/signup?") || redirectPath.startsWith("/app/signup#")) {
+      return safeFallback;
+    }
+    return redirectPath;
+  } catch {
+    return safeFallback;
+  }
+}
+
+export function getAppRedirectFromLocation(location, fallback = "/app") {
+  const params = new URLSearchParams(location?.search ?? "");
+  const queryRedirect = params.get("redirect") ?? params.get("returnTo");
+  if (queryRedirect) return getSafeAppRedirect(queryRedirect, fallback);
+
+  const from = location?.state?.from;
+  if (typeof from === "string") return getSafeAppRedirect(from, fallback);
+  if (from?.pathname) return getSafeAppRedirect(`${from.pathname}${from.search ?? ""}${from.hash ?? ""}`, fallback);
+  return getSafeAppRedirect(fallback, "/app");
+}
+
 export function getAgeGroupLabel(ageGroupId) {
   const group = AGE_GROUPS.find((item) => item.id === ageGroupId) ?? AGE_GROUPS[2];
   if (String(group.label).toLowerCase() === String(group.rangeLabel).toLowerCase()) return group.label;

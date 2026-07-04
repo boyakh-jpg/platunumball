@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { normalizeTestLoginId, TEST_ACCOUNT_COUNT } from "../lib/constants.js";
+import { getSafeAppRedirect } from "../lib/profileSetup.js";
 import { isSupabaseConfigured, supabase } from "../lib/supabase.js";
 import { setClientActionSession } from "../lib/serverActions.js";
 
@@ -195,11 +196,11 @@ export function useAuthSession() {
   }, []);
 
   const actions = useMemo(() => ({
-    signInWithProvider: async (provider) => {
+    signInWithProvider: async (provider, redirectPath = "/app") => {
       setError("");
       setMessage("");
       if (isSupabaseConfigured) {
-        const redirectTo = `${window.location.origin}/app`;
+        const redirectTo = `${window.location.origin}${getSafeAppRedirect(redirectPath)}`;
         const { error: authError } = await supabase.auth.signInWithOAuth({
           provider,
           options: {

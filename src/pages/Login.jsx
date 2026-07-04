@@ -3,6 +3,7 @@ import { ArrowRight, Copy, ExternalLink, LogOut, ShieldCheck } from "lucide-reac
 import { useState } from "react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
+import { getAppRedirectFromLocation } from "../lib/profileSetup.js";
 
 const providers = [
   { id: "naver", label: "Naver", mark: "N" },
@@ -21,10 +22,10 @@ export default function Login({ auth, app }) {
   const location = useLocation();
   const [copyMessage, setCopyMessage] = useState("");
   const [selectedTestLoginId, setSelectedTestLoginId] = useState(auth.testAccounts?.[0]?.id ?? "rankball-001");
-  const from = location.state?.from?.pathname && location.state.from.pathname !== "/login" ? location.state.from.pathname : "/app";
+  const from = getAppRedirectFromLocation(location);
   const activeProviders = auth.configured ? providers.filter((provider) => provider.id === "google") : providers;
   const embeddedOAuthBrowser = auth.configured && isEmbeddedOAuthBrowser();
-  const browserOpenUrl = typeof window === "undefined" ? "" : `${window.location.origin}/app`;
+  const browserOpenUrl = typeof window === "undefined" ? "" : `${window.location.origin}${from}`;
 
   const enterApp = () => navigate(from, { replace: true });
   const signIn = async (providerId) => {
@@ -32,7 +33,7 @@ export default function Login({ auth, app }) {
       setCopyMessage("카톡 안에서는 Google 로그인이 막힙니다. 링크를 복사해서 Chrome/Safari에서 열어주세요.");
       return;
     }
-    const nextSession = await auth.signInWithProvider(providerId);
+    const nextSession = await auth.signInWithProvider(providerId, from);
     if (nextSession) enterApp();
   };
   const signInWithTestAccount = async () => {
@@ -126,7 +127,7 @@ export default function Login({ auth, app }) {
               <Button type="button" onClick={enterApp}>
               앱으로 들어가기 <ArrowRight size={18} />
               </Button>
-              <Button type="button" variant="secondary" onClick={() => navigate("/app/signup")}>
+              <Button type="button" variant="secondary" onClick={() => navigate(`/app/signup?redirect=${encodeURIComponent(from)}`)}>
                 가입 정보 설정
               </Button>
             </>
