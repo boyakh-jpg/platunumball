@@ -902,6 +902,7 @@ UI 수정 전:
 7. Condensed hero title fonts use non-negative tracking through `--hero-title-letter-spacing`. English-heavy words like `RANKBALL` must not use tight negative spacing.
 7-1. Sports display emphasis uses `KBO Dia Gothic` Bold through `--sports-display-font` only for hero titles, tier spotlight text, team/versus labels, and scoreboard/record numbers. Do not apply it to body copy, buttons, inputs, or dense helper text. Width tuning uses `scaleX(0.92)` via `--sports-display-condense`; do not simulate it with negative letter spacing.
 7-2. Home upcoming match cards may enlarge team labels with the sports display font and orange emphasis. Scores stay neutral gray, no text shadow. The room-open CTA is orange, and tier spotlight text must fit without ellipsis.
+7-3. Match/recruiting summary center labels such as `VS` and fill counts stay about half the side label size.
 8. Segmented control groups use `--control-group-*` tokens. Group radius and padding must leave enough inner space so active buttons are never clipped by the group border or scroll container.
 9. New buttons, button groups, cards, inputs, and room modal surfaces use the `--ui-*` aliases in `tokens.css` as the stable module API.
 10. `recruiting-arena.css` and `matches-arena.css` load after `globals.css`; each file must end by reconnecting page selectors to the same `--ui-*` primitive layer to prevent chunk-specific override drift.
