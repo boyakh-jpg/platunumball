@@ -1294,8 +1294,9 @@
   max-height: min(880px, calc(100vh - 36px));
   overflow-y: auto;
   overscroll-behavior: contain;
+  opacity: var(--sheet-modal-opacity, 1);
   transform: translateY(var(--sheet-drag-y, 0px));
-  will-change: transform;
+  will-change: opacity, transform;
   border: 1px solid rgba(255, 211, 108, 0.22);
   border-radius: var(--radius);
   background: rgba(4, 8, 15, 0.96);
@@ -1304,7 +1305,7 @@
 }
 
 .arena-lobby-modal.is-sheet-settling {
-  transition: transform 0.15s ease;
+  transition: opacity 0.15s ease, transform 0.15s ease;
 }
 
 .arena-lobby-drag-handle {
@@ -5413,13 +5414,14 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
   .arena-lobby-drag-handle {
     appearance: none;
     display: block;
-    width: 74px;
-    height: 22px;
-    margin: -2px auto 4px;
+    width: min(100%, 320px);
+    height: 40px;
+    margin: -10px auto -6px;
     border: 0;
     border-radius: 999px;
     background: transparent;
     padding: 0;
+    cursor: grab;
     touch-action: none;
   }
 
@@ -5428,7 +5430,7 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
     display: block;
     width: 46px;
     height: 4px;
-    margin: 9px auto;
+    margin: 18px auto;
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.28);
   }

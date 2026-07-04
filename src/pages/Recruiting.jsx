@@ -2175,6 +2175,9 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
     const viewportHeight = Math.max(1, window.innerHeight || 1);
     return Math.min(260, Math.max(160, viewportHeight * 0.4));
   };
+  const isSheetDragInteractiveTarget = (target) => Boolean(target?.closest?.(
+    "button:not(.arena-lobby-drag-handle), a, input, textarea, select, [contenteditable='true'], .arena-slot-command-popover",
+  ));
   const canDismissBySheetDrag = () => {
     const activeElement = typeof document !== "undefined" ? document.activeElement : null;
     const editing = Boolean(activeElement?.matches?.("input, textarea, select, [contenteditable='true']"));
@@ -2187,31 +2190,37 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
   };
   const startSheetDrag = (event) => {
     if (event.pointerType !== "touch" || !canDismissBySheetDrag()) return;
+    if (isSheetDragInteractiveTarget(event.target)) return;
     window.clearTimeout(sheetDragTimerRef.current);
     setSheetDragSettling(false);
     setSheetDragOffset(0);
     sheetDragRef.current = {
       pointerId: event.pointerId,
       startY: event.clientY,
+      active: false,
     };
-    event.currentTarget.setPointerCapture?.(event.pointerId);
   };
   const moveSheetDrag = (event) => {
     const drag = sheetDragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
     const deltaY = event.clientY - drag.startY;
-    if (deltaY > 8) event.preventDefault();
     if (deltaY < -12) {
       sheetDragRef.current = null;
-      resetSheetDrag();
       return;
     }
+    if (!drag.active) {
+      if (deltaY <= 8) return;
+      drag.active = true;
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+    }
+    event.preventDefault();
     setSheetDragOffset(Math.max(0, Math.min(deltaY, window.innerHeight || deltaY)));
   };
   const finishSheetDrag = (event) => {
     const drag = sheetDragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
     sheetDragRef.current = null;
+    if (!drag.active) return;
     event.currentTarget.releasePointerCapture?.(event.pointerId);
     const deltaY = event.clientY - drag.startY;
     if (canDismissBySheetDrag() && deltaY >= getSheetDismissDistance()) {
@@ -2223,11 +2232,13 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
     resetSheetDrag();
   };
   const cancelSheetDrag = () => {
+    const wasActive = Boolean(sheetDragRef.current?.active);
     sheetDragRef.current = null;
-    resetSheetDrag();
+    if (wasActive) resetSheetDrag();
   };
   const sheetDragProgress = sheetDragOffset ? Math.min(1, sheetDragOffset / getSheetDismissDistance()) : 0;
   const sheetBackdropOpacity = 0.62 - (sheetDragProgress * 0.24);
+  const sheetModalOpacity = 1 - (sheetDragProgress * 0.34);
   const submitSourceDispute = (event) => {
     event.preventDefault();
     if (!sourceMatch?.id) return;
@@ -2955,17 +2966,16 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
               role="dialog"
               aria-modal="true"
               aria-label="매치방"
-              style={{ "--sheet-drag-y": `${sheetDragOffset}px` }}
-              onPointerDown={(event) => event.stopPropagation()}
+              style={{ "--sheet-drag-y": `${sheetDragOffset}px`, "--sheet-modal-opacity": sheetModalOpacity }}
+              onPointerDown={(event) => { event.stopPropagation(); startSheetDrag(event); }}
+              onPointerMove={moveSheetDrag}
+              onPointerUp={finishSheetDrag}
+              onPointerCancel={cancelSheetDrag}
             >
               <button
                 type="button"
                 className="arena-lobby-drag-handle"
                 aria-label="아래로 당겨 방 닫기"
-                onPointerDown={startSheetDrag}
-                onPointerMove={moveSheetDrag}
-                onPointerUp={finishSheetDrag}
-                onPointerCancel={cancelSheetDrag}
               />
               <div className="arena-lobby-arena">
                 <div className="arena-lobby-topline">
