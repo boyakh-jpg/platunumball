@@ -1363,6 +1363,7 @@ export default function CreateMatch({ app }) {
                     emptyText="초대 가능한 심판 없음"
                     showIdleOnFocus
                     floating
+                    closeOnResultClick
                     renderItem={renderRefereeSearchItem}
                   />
                 </label>
@@ -1423,6 +1424,7 @@ export default function CreateMatch({ app }) {
                 idleTitle={favoriteCourts.length ? "자주 찾는 코트" : "추천 코트"}
                 showIdleOnFocus
                 floating
+                closeOnResultClick
                 renderItem={renderCourtSearchItem}
               />
             </label>
@@ -1649,6 +1651,7 @@ export default function CreateMatch({ app }) {
                     detailLimit={10}
                     showIdleOnFocus
                     floating
+                    closeOnResultClick
                     renderItem={renderOpponentTeamSearchItem}
                   />
                   {selectedTeamB ? (

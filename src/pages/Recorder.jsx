@@ -536,6 +536,7 @@ export default function Recorder({ app }) {
                       title="선수 검색 결과"
                       showIdleOnFocus
                       floating
+                      closeOnResultClick
                       renderItem={(item) => (
                         <button
                           type="button"

@@ -1229,6 +1229,7 @@ span.referee-hover-card {
 
 .favorite-result-row .player-hover-trigger,
 .favorite-result-row .team-hover-trigger,
+.favorite-result-identity,
 .favorite-mini-chip {
   display: inline-grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -1240,7 +1241,8 @@ span.referee-hover-card {
 }
 
 .favorite-result-row .player-hover-trigger > span:last-child,
-.favorite-result-row .team-hover-trigger > span:last-child {
+.favorite-result-row .team-hover-trigger > span:last-child,
+.favorite-result-identity > span:last-child {
   display: grid;
   min-width: 0;
   gap: 2px;
@@ -4767,6 +4769,47 @@ input[type="color"] {
   padding-inline: 4px;
 }
 
+.search-picker-idle-toggle,
+.search-picker-idle-panel {
+  grid-column: 1 / -1;
+}
+
+.search-picker-idle-toggle {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 211, 108, 0.08);
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 950;
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.search-picker-idle-toggle b {
+  border-radius: 999px;
+  background: rgba(255, 211, 108, 0.16);
+  color: var(--gold);
+  font-size: 0.72rem;
+  padding: 3px 7px;
+}
+
+.search-picker-idle-panel {
+  display: grid;
+  gap: 8px;
+  max-height: min(260px, 44vh);
+  overflow: auto;
+  border: 1px solid rgba(255, 211, 108, 0.18);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.16);
+  padding: 8px;
+}
+
 .home-search-results.unified {
   grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
 }
@@ -4865,6 +4908,16 @@ html[data-theme="light"] .search-picker-results.is-floating {
   border-color: rgba(41, 116, 99, 0.16);
   background: rgba(255, 255, 255, 0.96);
   box-shadow: 0 18px 42px rgba(35, 87, 75, 0.14);
+}
+
+html[data-theme="light"] .search-picker-idle-toggle {
+  border-color: rgba(168, 108, 20, 0.22);
+  background: rgba(168, 108, 20, 0.08);
+}
+
+html[data-theme="light"] .search-picker-idle-panel {
+  border-color: rgba(168, 108, 20, 0.16);
+  background: rgba(255, 250, 241, 0.88);
 }
 
 html[data-theme="light"] .search-picker-result-row {

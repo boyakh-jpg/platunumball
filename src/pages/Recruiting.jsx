@@ -1653,9 +1653,9 @@ function RefereeInvitePanel({
         onMouseDown={(event) => event.preventDefault()}
       >
         <button type="button" className="search-picker-result-main" onClick={() => onInviteReferee(user.id)}>
-          <RefereeHoverCard as="span" user={user} matches={matches} minTrust={minTrust}>
+          <span>
             <strong>{user.name}</strong>
-          </RefereeHoverCard>
+          </span>
           <span>{getUserHashtag(user)} · 신뢰도 {user.trustScore}</span>
           <em>초대</em>
         </button>
@@ -1690,6 +1690,7 @@ function RefereeInvitePanel({
           showIdleOnFocus
           floating
           fieldClassName="arena-invite-search"
+          closeOnResultClick
           renderItem={renderRefereeSearchItem}
         />
       ) : (

@@ -169,6 +169,10 @@ export default function Home({ app }) {
   const myTeamCount = myTeams.length;
   const blockedUserIds = app.state.settings?.blockedUserIds ?? [];
   const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
+  const favoritePlayerIds = app.state.settings?.favoritePlayerIds ?? [];
+  const favoriteTeamIds = app.state.settings?.favoriteTeamIds ?? [];
+  const favoriteCourtIds = app.state.settings?.favoriteCourtIds ?? [];
+  const favoriteRefereeIds = app.state.settings?.favoriteRefereeIds ?? [];
   const season = getCurrentSeason(app.state);
   const seasonProgress = getSeasonProgress(season);
   const seasonRows = getPlayerSeasonRows(app.state.users, app.state.matches, season, user.region);
@@ -370,7 +374,7 @@ export default function Home({ app }) {
           kind: "PLAYER",
           meta: `${item.region} · ${item.position} · ${item.ratings.integrated}`,
           href: `/app/players/${item.id}`,
-          score: Number(hashtag.toLowerCase() === searchText) * 100000 + Number(item.region === user.region) * 10000 + item.ratings.integrated,
+          score: Number(hashtag.toLowerCase() === searchText) * 100000 + Number(favoritePlayerIds.includes(item.id) || favoriteRefereeIds.includes(item.id)) * 20000 + Number(item.region === user.region) * 10000 + item.ratings.integrated,
           haystack: `${item.name} ${hashtag} ${item.region} ${item.position} ${item.club}`,
           avatar: item.avatarColor,
           user: item,
@@ -385,8 +389,7 @@ export default function Home({ app }) {
         kind: "TEAM",
         meta: `${team.region} · ${team.homeCourt} · ${team.mmr}`,
         href: `/app/teams/${team.id}`,
-        team,
-        score: Number(hashtag.toLowerCase() === searchText) * 100000 + Number(team.region === user.region) * 10000 + team.mmr,
+        score: Number(hashtag.toLowerCase() === searchText) * 100000 + Number(favoriteTeamIds.includes(team.id)) * 20000 + Number(team.region === user.region) * 10000 + team.mmr,
         haystack: `${team.name} ${hashtag} ${team.region} ${team.homeCourt}`,
         teamColor: team.accent,
         hashtag,
@@ -400,7 +403,7 @@ export default function Home({ app }) {
         kind: "COURT",
         meta: `${court.region} · ${court.type}`,
         href: "/app/create",
-        score: Number(hashtag.toLowerCase() === searchText) * 100000 + Number(court.region === user.region) * 10000 + Number(court.favorite) * 1000,
+        score: Number(hashtag.toLowerCase() === searchText) * 100000 + Number(favoriteCourtIds.includes(court.id)) * 20000 + Number(court.region === user.region) * 10000,
         haystack: `${court.name} ${hashtag} ${court.region} ${court.type}`,
         court: true,
         hashtag,
@@ -415,7 +418,76 @@ export default function Home({ app }) {
         return item.haystack.toLowerCase().includes(searchText);
       })
       .sort((a, b) => b.score - a.score || a.label.localeCompare(b.label));
-  }, [app.state.teams, app.state.users, blockedUserIds, registeredCourts, searchText, user.region]);
+  }, [app.state.teams, app.state.users, blockedUserIds, favoriteCourtIds, favoritePlayerIds, favoriteRefereeIds, favoriteTeamIds, registeredCourts, searchText, user.region]);
+  const homeFavoriteSearchItems = useMemo(() => {
+    const favoritePlayers = favoritePlayerIds
+      .map((playerId) => app.state.users.find((item) => item.id === playerId))
+      .filter(Boolean)
+      .map((item) => {
+        const hashtag = getUserHashtag(item);
+        return {
+          id: `favorite-player-${item.id}`,
+          label: item.name,
+          kind: "PLAYER",
+          meta: `${item.region} · ${item.position} · ${item.ratings.integrated}`,
+          href: `/app/players/${item.id}`,
+          haystack: `${item.name} ${hashtag} ${item.region} ${item.position} ${item.club}`,
+          avatar: item.avatarColor,
+          user: item,
+          hashtag,
+        };
+      });
+    const favoriteTeams = favoriteTeamIds
+      .map((teamId) => app.state.teams.find((team) => team.id === teamId))
+      .filter(Boolean)
+      .map((team) => {
+        const hashtag = getTeamHashtag(team);
+        return {
+          id: `favorite-team-${team.id}`,
+          label: team.name,
+          kind: "TEAM",
+          meta: `${team.region} · ${team.homeCourt} · ${team.mmr}`,
+          href: `/app/teams/${team.id}`,
+          haystack: `${team.name} ${hashtag} ${team.region} ${team.homeCourt}`,
+          teamColor: team.accent,
+          hashtag,
+        };
+      });
+    const favoriteCourts = favoriteCourtIds
+      .map((courtId) => registeredCourts.find((court) => court.id === courtId))
+      .filter(Boolean)
+      .map((court) => {
+        const hashtag = getCourtHashtag(court);
+        return {
+          id: `favorite-court-${court.id}`,
+          label: court.name,
+          kind: "COURT",
+          meta: `${court.region} · ${court.type}`,
+          href: "/app/create",
+          haystack: `${court.name} ${hashtag} ${court.region} ${court.type}`,
+          court: true,
+          hashtag,
+        };
+      });
+    const favoriteReferees = favoriteRefereeIds
+      .map((refereeId) => app.state.users.find((item) => item.id === refereeId))
+      .filter(Boolean)
+      .map((item) => {
+        const hashtag = getUserHashtag(item);
+        return {
+          id: `favorite-referee-${item.id}`,
+          label: item.name,
+          kind: "REFEREE",
+          meta: `${item.region} · ${item.position} · ${item.trustScore}`,
+          href: `/app/players/${item.id}`,
+          haystack: `${item.name} ${hashtag} ${item.region} ${item.position}`,
+          avatar: item.avatarColor,
+          user: item,
+          hashtag,
+        };
+      });
+    return [...favoritePlayers, ...favoriteTeams, ...favoriteCourts, ...favoriteReferees].slice(0, SEARCH_DETAIL_LIMIT);
+  }, [app.state.teams, app.state.users, favoriteCourtIds, favoritePlayerIds, favoriteRefereeIds, favoriteTeamIds, registeredCourts]);
   const topRankers = seasonRows.slice(0, 5);
   const recentFiveMatches = myCompletedMatches.slice(0, 5);
   const recentFiveWins = recentFiveMatches.filter((match) => getUserResult(match, user.id) === "W").length;
@@ -424,26 +496,16 @@ export default function Home({ app }) {
   const rankSpotlightDivision = getTierDivisionNumber(user.ratings.integrated);
   const rankSpotlightLabel = rankSpotlightDivision ? `${rankSpotlightTier.name} ${rankSpotlightDivision}` : rankSpotlightTier.name;
   const renderHomeSearchItem = (item) => (
-    item.team ? (
-      <TeamHoverCard key={item.id} team={item.team}>
-        {item.teamColor ? <span className="team-mini-dot" style={{ "--team-color": item.teamColor }} /> : null}
-        <span className="rank-result-main">
-          <strong>{item.label}</strong>
-          <em>{item.meta}</em>
-        </span>
-        <small>{item.kind} · {item.hashtag}</small>
-      </TeamHoverCard>
-    ) : (
-      <Link key={item.id} to={item.href}>
-        {item.avatar ? <span className={getDiscordAvatarClassName(item.user, "avatar small")} style={getDiscordAvatarStyle(item.user)}>{item.label.slice(0, 1)}</span> : null}
-        {item.court ? <span className="court-mini-dot" /> : null}
-        <span className="rank-result-main">
-          <strong>{item.label}</strong>
-          <em>{item.meta}</em>
-        </span>
-        <small>{item.kind} · {item.hashtag}</small>
-      </Link>
-    )
+    <Link key={item.id} to={item.href}>
+      {item.avatar ? <span className={getDiscordAvatarClassName(item.user, "avatar small")} style={getDiscordAvatarStyle(item.user)}>{item.label.slice(0, 1)}</span> : null}
+      {item.teamColor ? <span className="team-mini-dot" style={{ "--team-color": item.teamColor }} /> : null}
+      {item.court ? <span className="court-mini-dot" /> : null}
+      <span className="rank-result-main">
+        <strong>{item.label}</strong>
+        <em>{item.meta}</em>
+      </span>
+      <small>{item.kind} · {item.hashtag}</small>
+    </Link>
   );
   const mapRemoteHomeSearchItem = (item) => {
     if (item.kind === "team") {
@@ -454,7 +516,6 @@ export default function Home({ app }) {
         kind: "TEAM",
         meta: `${item.region ?? "지역 미정"} · ${item.homeCourt ?? "홈코트 미정"} · ${item.mmr ?? 1200}`,
         href: `/app/teams/${item.id}`,
-        team: item,
         teamColor: item.accent,
         hashtag,
         searchText: item.searchText,
@@ -497,6 +558,10 @@ export default function Home({ app }) {
           items={searchResults}
           remoteSearchType="all"
           mapRemoteItem={mapRemoteHomeSearchItem}
+          idleItems={homeFavoriteSearchItems}
+          idleTitle="즐겨찾기"
+          showIdleOnFocus
+          closeOnResultClick
           renderItem={renderHomeSearchItem}
           limit={SEARCH_PREVIEW_LIMIT}
           detailLimit={SEARCH_DETAIL_LIMIT}

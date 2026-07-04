@@ -931,6 +931,7 @@ UI 수정 전:
 19. Room slot command/self-slot popovers use near-opaque room surfaces so underlying court/player content does not reduce readability, and anchored popovers stay clamped inside the viewport.
 20. Self slot focus/hover must not use yellow warning borders. Slot state colors stay neutral/green; yellow is reserved for empty/invite or warning states.
 21. Room modal share and close actions live in the top badge row as compact secondary buttons. Share actions copy or share the canonical `?post=` URL and must not alter room state.
+22. SearchPicker results are selection surfaces, not profile preview surfaces. Search result rows must not open hover cards. When saved favorites are available, search results may show a compact favorites toggle above results; opening it must keep the list selectable inside the search popover without clipping, and single-select/search-complete flows should close the popover after the action.
 
 ## 2026-07-03 profile form controls
 

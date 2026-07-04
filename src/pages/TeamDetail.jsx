@@ -185,9 +185,9 @@ export default function TeamDetail({ app }) {
           setSelectedInviteProfile(user);
         }}
       >
-        <PlayerHoverCard user={user} teams={app.state.teams} as="span">
+        <span>
           <strong>{user.name}</strong>
-        </PlayerHoverCard>
+        </span>
         <span>{user.region} · {user.position} · {count}/{MAX_TEAM_MEMBERSHIPS}팀</span>
         <em>{blocked ? "초대 불가" : "초대 대상"}</em>
       </button>
@@ -382,6 +382,7 @@ export default function TeamDetail({ app }) {
                       emptyText="초대 가능한 선수 없음"
                       showIdleOnFocus
                       floating
+                      closeOnResultClick
                       renderItem={renderInviteSearchItem}
                     />
                   </label>

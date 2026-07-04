@@ -102,6 +102,7 @@ export default function SearchPicker({
 }) {
   const [focused, setFocused] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [showIdlePanel, setShowIdlePanel] = useState(false);
   const [submittedQuery, setSubmittedQuery] = useState("");
   const [visibleLimit, setVisibleLimit] = useState(Math.max(1, Number(limit) || 10));
   const [remoteItems, setRemoteItems] = useState([]);
@@ -144,9 +145,11 @@ export default function SearchPicker({
   const visibleItems = activeItems.slice(0, currentVisibleLimit);
   const hasMore = activeItems.length > currentVisibleLimit && currentVisibleLimit < maxDetailLimit;
   const resultTitle = query ? title : idleTitle;
+  const showIdleToggle = Boolean(query && canSearch && idleItems.length);
   const closeResults = () => {
     setFocused(false);
     setExpanded(false);
+    setShowIdlePanel(false);
     setVisibleLimit(baseLimit);
   };
 
@@ -183,6 +186,7 @@ export default function SearchPicker({
 
   useEffect(() => {
     setExpanded(false);
+    setShowIdlePanel(false);
     setVisibleLimit(baseLimit);
   }, [baseLimit, query]);
 
@@ -196,15 +200,22 @@ export default function SearchPicker({
           onFocus={() => setFocused(true)}
           onBlur={() => window.setTimeout(() => setFocused(false), 120)}
           onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              event.preventDefault();
+              closeResults();
+              return;
+            }
             if (event.key !== "Enter") return;
             event.preventDefault();
             setSubmittedQuery(value.trim());
             setFocused(true);
             setExpanded(false);
+            setShowIdlePanel(false);
             setVisibleLimit(baseLimit);
           }}
           onChange={(event) => {
             setExpanded(false);
+            setShowIdlePanel(false);
             setSubmittedQuery("");
             setVisibleLimit(baseLimit);
             onChange(event.target.value);
@@ -216,11 +227,30 @@ export default function SearchPicker({
           className={`home-search-results unified search-picker-results${floating ? " is-floating" : ""}${resultsClassName ? ` ${resultsClassName}` : ""}`}
           onPointerDown={(event) => event.preventDefault()}
           onClickCapture={(event) => {
-            if (!closeOnResultClick || event.target?.closest?.(".search-picker-more, .home-search-more")) return;
+            if (!closeOnResultClick || event.target?.closest?.(".search-picker-more, .home-search-more, .search-picker-idle-toggle")) return;
             window.setTimeout(closeResults, 0);
           }}
         >
           {resultTitle ? <strong className="search-picker-title">{resultTitle}</strong> : null}
+          {showIdleToggle ? (
+            <>
+              <button
+                type="button"
+                className="search-picker-idle-toggle"
+                aria-expanded={showIdlePanel}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => setShowIdlePanel((current) => !current)}
+              >
+                <span>{idleTitle}</span>
+                <b>{idleItems.length}</b>
+              </button>
+              {showIdlePanel ? (
+                <div className="search-picker-idle-panel">
+                  {idleItems.map(renderItem)}
+                </div>
+              ) : null}
+            </>
+          ) : null}
           {visibleItems.length ? visibleItems.map(renderItem) : <div className="empty-state">{remoteLoading ? "검색 중..." : emptyText}</div>}
           {hasMore ? (
             <button

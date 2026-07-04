@@ -260,6 +260,7 @@ export default function Teams({ app }) {
               idleTitle="즐겨찾기 팀"
               showIdleOnFocus
               floating
+              closeOnResultClick
               renderItem={renderTeamSearchItem}
             />
           </div>
@@ -319,6 +320,7 @@ export default function Teams({ app }) {
                 idleTitle={favoriteCourts.length ? "즐겨찾기 구장" : "추천 구장"}
                 showIdleOnFocus
                 floating
+                closeOnResultClick
                 renderItem={renderCourtSearchItem}
               />
               <span className="form-chip">{draft.homeCourt}</span>
