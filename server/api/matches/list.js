@@ -15,7 +15,7 @@ const PROFILE_ME_COLUMNS = "id,name,handle,hashtag,position,region,region_sido,r
 const PROFILE_CARD_COLUMNS = "id,name,handle,hashtag,position,region,trust_score,avatar_color,ratings,age_group,updated_at";
 const MATCH_LIST_COLUMNS = "id,title,mode,court_id,court_name,visibility,status,ranked,referee_id,former_referee_id,stat_entry_minutes,dispute_minutes,stat_recorders,played_player_ids,reserve_players,mmr_excluded_player_ids,anonymous_players,official,pre_registered,scheduled_at,scheduled_date,scheduled_time,team_a_id,team_b_id,score_a,score_b,rules,created_by,agreed_at,started_at,ended_at,confirmed_at,cancelled_at,voided_at,tournament_id,updated_at,created_at";
 const MATCH_PLAYER_COLUMNS = "match_id,team_id,user_id,side,slot_order";
-const MATCH_RESULT_COLUMNS = "match_id,score_a,score_b,stat_submissions,submitted_by,submitted_at,updated_at";
+const MATCH_RESULT_COLUMNS = "match_id,score_a,score_b,stat_submissions,submitted_by,submitted_at";
 const PLAYER_STAT_COLUMNS = "match_id,user_id,points,rebounds,assists,steals,blocks,fouls,recorded_by,record_source,updated_at";
 const TEAM_COLUMNS = "id,name,home_court,region,mmr,wins,losses,accent,deleted_at,created_at,updated_at";
 const COURT_COLUMNS = "id,name";
@@ -714,7 +714,7 @@ function toClientMatchResult(resultRow = null, statRows = []) {
     statSubmissions: resultRow?.stat_submissions ?? {},
     submittedBy: resultRow?.submitted_by ?? "",
     submittedAt: resultRow?.submitted_at ?? "",
-    updatedAt: resultRow?.updated_at ?? "",
+    updatedAt: resultRow?.submitted_at ?? "",
   };
 }
 
