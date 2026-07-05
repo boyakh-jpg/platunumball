@@ -135,6 +135,7 @@
 10. During remote DB hydration, the app shell does not render route page content behind the overlay; cached counts/lists must not be visible before the authoritative first response.
 11. Remote DB hydration may show one short random basketball scene label. It must avoid server/DB wording, keep one fixed-height line, and not shift the loader layout.
 12. User-triggered server actions and explicit detail/list loads may reuse the same blocking overlay after initial hydration. The current page may stay rendered behind the veil, but background-only sync such as Discord delivery sync or chat polling must not trigger the global blocking loader.
+13. Matches schedule hydration may use the same blocking overlay while the final match+recruiting schedule snapshot is not checked yet, so partial schedule cards do not flash before the final list.
 
 # 2026-06-28 referee rulebook images
 

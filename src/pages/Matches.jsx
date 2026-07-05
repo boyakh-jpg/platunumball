@@ -986,7 +986,7 @@ export default function Matches({ app }) {
   const todoCount = viewButtonCounts.todo ?? 0;
   const scheduledCount = viewButtonCounts.scheduled ?? 0;
   const getViewButtonCount = (view) => viewButtonCounts[view.id] ?? 0;
-  const scheduleLoading = app.remoteReady === false || (!matchPagination.recruitingScheduleChecked && !visibleScheduleItems.length) || (matchPagination.recruitingScheduleLoading && !visibleScheduleItems.length);
+  const scheduleLoading = app.remoteReady === false || !matchPagination.recruitingScheduleChecked || matchPagination.recruitingScheduleLoading;
   const displayScheduleItems = scheduleLoading ? [] : visibleScheduleItems;
   const scheduleCountLabel = scheduleLoading
     ? "내 일정 확인 중"
