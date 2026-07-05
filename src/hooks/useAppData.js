@@ -549,6 +549,17 @@ function mergeRemoteProfileState(state, remoteState = {}) {
   };
 }
 
+function mergeRemoteAdminState(state, remoteState = {}) {
+  const nextState = mergeRemoteDirectory(state, remoteState, { includeTheme: true, includeDirectorySettings: true });
+  return {
+    ...nextState,
+    matches: Array.isArray(remoteState.matches) ? mergeRemoteById(state.matches, remoteState.matches) : state.matches,
+    recruitingPosts: Array.isArray(remoteState.recruitingPosts) ? mergeRemoteById(state.recruitingPosts, remoteState.recruitingPosts) : state.recruitingPosts,
+    tournaments: Array.isArray(remoteState.tournaments) ? mergeRemoteById(state.tournaments, remoteState.tournaments) : state.tournaments,
+    reports: Array.isArray(remoteState.reports) ? mergeRemoteById(state.reports, remoteState.reports) : nextState.reports,
+  };
+}
+
 function mergeCourtApprovalResult(state, requestId, result = {}, currentUserId = "") {
   const safeRequestId = String(result?.requestId ?? requestId ?? "").trim();
   const approvedCourtId = String(result?.approvedCourtId ?? "").trim();
@@ -1226,6 +1237,24 @@ export function useAppData(authUser = null) {
       return EMPTY_ADMIN_CONTEXT;
     }
   }, [authUserId, setState, trackedPostServerAction]);
+
+  const refreshAdminState = useCallback(async () => {
+    if (!isSupabaseConfigured || !authUserId) return false;
+    try {
+      const result = await trackedPostServerAction(
+        "/api/state/load",
+        { authUserId, authEmail, scope: "admin" },
+        { allowWhenDisabled: true },
+      );
+      if (!result?.state) return false;
+      const remoteState = normalizeServerState(result.state);
+      setState((prev) => withServerAdminContext(mergeRemoteAdminState(prev, remoteState ?? {}), adminContextRef.current));
+      return true;
+    } catch (error) {
+      console.warn("Admin state refresh failed.", error.message);
+      return false;
+    }
+  }, [authEmail, authUserId, setState, trackedPostServerAction]);
 
   useEffect(() => {
     if (!profileLocked || !authUserId || !currentUserId || isSupabaseConfigured) return;
@@ -2338,11 +2367,11 @@ export function useAppData(authUser = null) {
       },
       commitAdminReviewAction: (draft) => {
         setState((prev) => commitAdminReviewAction({ ...prev, currentUserId }, draft));
-        runServerAction("/api/admin/review-action", draft);
+        runServerAction("/api/admin/review-action", draft).then(() => refreshAdminState());
       },
       commitAdminAppointmentAction: (draft) => {
         setState((prev) => commitAdminAppointmentAction({ ...prev, currentUserId }, draft));
-        runServerAction("/api/admin/appointment-action", draft);
+        runServerAction("/api/admin/appointment-action", draft).then(() => refreshAdminState());
       },
       approveCourtRequest: async (requestId) => {
         if (!isSupabaseConfigured) {
@@ -2798,7 +2827,7 @@ export function useAppData(authUser = null) {
       reset: () => setState(resetState({ includeDemo: !isSupabaseConfigured, authUserId, email: authEmail })),
       });
     },
-    [authEmail, authUserId, currentUserId, deleteTeamServer, ensureRemoteReady, ensureServerActionAvailable, loadAdminContext, loadDirectory, loadMatchDetail, loadMatchRecruitingSchedule, loadMoreMatches, loadMoreRecruiting, loadRecruitingRegion, loadRecruitingPost, loadMyRecruitingPosts, loadRecorderMatches, loadProfileRecords, profileRecordsLoaded, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, refreshCurrentProfile, runServerAction, serverProfileBound, submitReportServer, syncFavoriteServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncSettingsServer, syncTeamInvitationServer, syncTeamServer, syncTournamentServer],
+    [authEmail, authUserId, currentUserId, deleteTeamServer, ensureRemoteReady, ensureServerActionAvailable, loadAdminContext, loadDirectory, loadMatchDetail, loadMatchRecruitingSchedule, loadMoreMatches, loadMoreRecruiting, loadRecruitingRegion, loadRecruitingPost, loadMyRecruitingPosts, loadRecorderMatches, loadProfileRecords, profileRecordsLoaded, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, refreshAdminState, refreshCurrentProfile, runServerAction, serverProfileBound, submitReportServer, syncFavoriteServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncSettingsServer, syncTeamInvitationServer, syncTeamServer, syncTournamentServer],
   );
 
   const safeCurrentUserId = currentUserId ?? currentUser?.id ?? "";

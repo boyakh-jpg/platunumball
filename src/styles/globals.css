@@ -6461,6 +6461,21 @@ html[data-theme="light"] .search-picker-result-row.selected {
   gap: 10px;
 }
 
+.admin-review-context {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.045);
+  padding: 10px;
+}
+
+.admin-review-context span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
 .admin-action-panel textarea {
   min-height: 72px;
 }

@@ -1338,7 +1338,10 @@ flowchart TD
 6. 임명 row, 징계 row, audit row는 client insert/update/delete 대상이 아니며 service-role server action으로만 변경한다.
 7. 징계 기간은 `3, 7, 14, 28, 42, 56, 168, 280`일 중 하나로 제한한다.
 8. 관리자끼리 중복 처리하지 않도록 server action은 대상 report/appointment row를 `for update`로 잠근다.
-9. Discord DM 발송은 `discord_notification_deliveries` 큐를 서버 worker가 처리한다. Discord 초대 버튼 interaction은 `/api/discord/interactions`가 처리한다.
+9. 임명 연장은 `rankball_extend_admin_appointment_action()`에서 appointment row를 lock한 뒤 만료일, audit log, 알림을 한 transaction으로 처리한다.
+10. 플레이어 신고 최종판단은 선택한 report row 하나를 기준으로 처리한다. 플레이어 큐는 해당 플레이어의 신고, 경기, 제재 이력을 같이 보여준다.
+11. 구장 심사와 경기 심사는 같은 관리자 화면 안에서 보되, 처리 대상 report type과 액션 후보를 분리한다.
+12. Discord DM 발송은 `discord_notification_deliveries` 큐를 서버 worker가 처리한다. Discord 초대 버튼 interaction은 `/api/discord/interactions`가 처리한다.
 
 ## 2026-06-25 report submit server action
 

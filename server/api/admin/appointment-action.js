@@ -13,17 +13,32 @@ export default async function handler(request, response) {
     const targetUserId = String(body.userId ?? body.targetUserId ?? "").trim();
     const appointmentId = String(body.appointmentId ?? "").trim();
 
-    if (actionType === "revokeAppointment" && !appointmentId) {
+    if (["revokeAppointment", "extendAppointment"].includes(actionType) && !appointmentId) {
       sendJson(response, 400, { error: "missing_appointment_id" });
       return;
     }
-    if (actionType !== "revokeAppointment" && !targetUserId) {
+    if (!["revokeAppointment", "extendAppointment"].includes(actionType) && !targetUserId) {
       sendJson(response, 400, { error: "missing_target_user_id" });
       return;
     }
 
     const context = await getAuthenticatedContext(request);
     const adminLevel = await getAdminLevel(context);
+    if (actionType === "extendAppointment") {
+      const { data, error } = await context.supabase.rpc("rankball_extend_admin_appointment_action", {
+        p_actor_profile_id: context.profileId,
+        p_actor_admin_level: adminLevel,
+        p_appointment_id: appointmentId,
+        p_term_days: Number(body.termDays ?? 30),
+        p_reason: String(body.reason ?? ""),
+      });
+
+      if (error) throw error;
+
+      sendJson(response, 200, data ?? { ok: true });
+      return;
+    }
+
     const { data, error } = await context.supabase.rpc("rankball_commit_admin_appointment_action", {
       p_actor_profile_id: context.profileId,
       p_actor_admin_level: adminLevel,

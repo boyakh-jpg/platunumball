@@ -17,16 +17,34 @@ import { getMatchHashtag } from "../lib/handles.js";
 import "../styles/recruiting-arena.css";
 
 const VIEW_OPTIONS = [
-  { id: "courts", label: "구장별", icon: MapPin },
-  { id: "players", label: "플레이어별", icon: UserRound },
-  { id: "matches", label: "경기별", icon: ClipboardList },
+  { id: "courts", label: "구장 심사", icon: MapPin },
+  { id: "players", label: "플레이어 신고", icon: UserRound },
+  { id: "matches", label: "경기 심사", icon: ClipboardList },
 ];
 const ACTION_OPTIONS = Object.entries(ADMIN_REVIEW_ACTIONS).map(([id, meta]) => ({ id, ...meta }));
 const APPOINTMENT_ACTION_OPTIONS = [
   { id: "appointReferee", label: "심판 임명" },
   { id: "appointAdmin", label: "관리자 임명" },
+  { id: "extendAppointment", label: "임명 연장" },
   { id: "revokeAppointment", label: "임명 회수" },
 ];
+const REVIEW_WORKFLOW_COPY = {
+  courts: {
+    title: "구장 심사",
+    actionTitle: "구장 최종판단",
+    description: "구장 등록요청, 승인 구장, 구장 리뷰 신고를 분리해서 처리합니다.",
+  },
+  players: {
+    title: "플레이어 신고",
+    actionTitle: "플레이어 최종판단",
+    description: "선수를 누르면 해당 플레이어에게 쌓인 신고와 제재 이력을 보고 최종판단합니다.",
+  },
+  matches: {
+    title: "경기 심사",
+    actionTitle: "경기 최종판단",
+    description: "경기 신고, 기록 오류, 이의 상태를 경기 단위로 확인합니다.",
+  },
+};
 
 function statusLabel(status) {
   if (status === "resolved") return "처리됨";
@@ -71,6 +89,7 @@ export default function Admin({ app }) {
   }, [app.actions]);
   const [view, setView] = useState("courts");
   const [selectedIdByView, setSelectedIdByView] = useState({});
+  const [selectedReportIdByScope, setSelectedReportIdByScope] = useState({});
   const [actionDraft, setActionDraft] = useState({
     actionType: "validReport",
     durationDays: 3,
@@ -101,9 +120,13 @@ export default function Admin({ app }) {
   const activeRows = model[view] ?? [];
   const selectedId = selectedIdByView[view];
   const selectedRow = activeRows.find((row) => row.id === selectedId) ?? activeRows[0] ?? null;
+  const reportOptions = selectedRow?.reports ?? [];
+  const selectedReportScope = `${view}:${selectedRow?.id ?? ""}`;
+  const selectedReportId = selectedReportIdByScope[selectedReportScope] ?? "";
   const userMap = useMemo(() => Object.fromEntries(app.state.users.map((user) => [user.id, user])), [app.state.users]);
   const matchMap = useMemo(() => Object.fromEntries(app.state.matches.map((match) => [match.id, match])), [app.state.matches]);
-  const selectedReport = selectedRow?.reports.find((report) => report.status === "open") ?? selectedRow?.reports[0] ?? null;
+  const selectedReport = reportOptions.find((report) => report.id === selectedReportId) ?? reportOptions.find((report) => report.status === "open") ?? reportOptions[0] ?? null;
+  const workflow = REVIEW_WORKFLOW_COPY[view] ?? REVIEW_WORKFLOW_COPY.players;
   const visibleActionOptions = useMemo(() => {
     const ids = ["validReport", "dismissReport", "maliciousReporter"];
     if (selectedReport?.type === "court") ids.push("hideCourt");
@@ -145,10 +168,13 @@ export default function Admin({ app }) {
     });
   };
   const commitAppointmentAction = () => {
+    const appointmentId = ["revokeAppointment", "extendAppointment"].includes(appointmentDraft.actionType)
+      ? appointmentDraft.appointmentId || activeAppointmentOptions[0]?.id || ""
+      : "";
     app.actions.commitAdminAppointmentAction({
       ...appointmentDraft,
       userId: appointmentDraft.userId || appointmentUsers[0]?.id || "",
-      appointmentId: appointmentDraft.appointmentId || activeAppointmentOptions[0]?.id || "",
+      appointmentId,
     });
   };
 
@@ -267,7 +293,7 @@ export default function Admin({ app }) {
         </div>
         <div className="admin-action-panel admin-appointment-action-panel">
           <div>
-            <strong>임명/회수 액션</strong>
+            <strong>임명/연장/회수 액션</strong>
             <small>처리는 server action/RPC로 커밋됩니다. 화면 state는 커밋 후 서버 재조회 기준으로 맞춰야 합니다.</small>
           </div>
           <div className="arena-field-grid">
@@ -277,10 +303,10 @@ export default function Admin({ app }) {
                 {APPOINTMENT_ACTION_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
               </select>
             </label>
-            {appointmentDraft.actionType === "revokeAppointment" ? (
+            {["revokeAppointment", "extendAppointment"].includes(appointmentDraft.actionType) ? (
               <label>
-                회수 대상
-                <select value={appointmentDraft.appointmentId} onChange={(event) => updateAppointmentDraft({ appointmentId: event.target.value })}>
+                {appointmentDraft.actionType === "extendAppointment" ? "연장 대상" : "회수 대상"}
+                <select value={appointmentDraft.appointmentId || activeAppointmentOptions[0]?.id || ""} onChange={(event) => updateAppointmentDraft({ appointmentId: event.target.value })}>
                   {!activeAppointmentOptions.length ? <option value="">활성 임명 없음</option> : null}
                   {activeAppointmentOptions.map((row) => <option key={row.id} value={row.id}>{row.userName} · {row.roleLabel} · {row.gradeLabel}</option>)}
                 </select>
@@ -296,18 +322,20 @@ export default function Admin({ app }) {
           </div>
           {appointmentDraft.actionType !== "revokeAppointment" ? (
             <div className="arena-field-grid">
-              <label>
-                등급
-                {appointmentDraft.actionType === "appointAdmin" ? (
-                  <select value={appointmentDraft.adminGrade} onChange={(event) => updateAppointmentDraft({ adminGrade: event.target.value })}>
-                    {appointments.grades.filter((grade) => grade.id !== "owner").map((grade) => <option key={grade.id} value={grade.id}>{grade.label}</option>)}
-                  </select>
-                ) : (
-                  <select value={appointmentDraft.refereeGrade} onChange={(event) => updateAppointmentDraft({ refereeGrade: event.target.value })}>
-                    {Object.entries(REFEREE_GRADE_META).map(([id, grade]) => <option key={id} value={id}>{grade.label}</option>)}
-                  </select>
-                )}
-              </label>
+              {appointmentDraft.actionType !== "extendAppointment" ? (
+                <label>
+                  등급
+                  {appointmentDraft.actionType === "appointAdmin" ? (
+                    <select value={appointmentDraft.adminGrade} onChange={(event) => updateAppointmentDraft({ adminGrade: event.target.value })}>
+                      {appointments.grades.filter((grade) => grade.id !== "owner").map((grade) => <option key={grade.id} value={grade.id}>{grade.label}</option>)}
+                    </select>
+                  ) : (
+                    <select value={appointmentDraft.refereeGrade} onChange={(event) => updateAppointmentDraft({ refereeGrade: event.target.value })}>
+                      {Object.entries(REFEREE_GRADE_META).map(([id, grade]) => <option key={id} value={id}>{grade.label}</option>)}
+                    </select>
+                  )}
+                </label>
+              ) : null}
               <label>
                 기간
                 <select value={appointmentDraft.termDays} onChange={(event) => updateAppointmentDraft({ termDays: Number(event.target.value) })}>
@@ -323,10 +351,10 @@ export default function Admin({ app }) {
           <Button
             type="button"
             variant="secondary"
-            disabled={appointmentDraft.actionType === "revokeAppointment" && !activeAppointmentOptions.length}
+            disabled={["revokeAppointment", "extendAppointment"].includes(appointmentDraft.actionType) && !activeAppointmentOptions.length}
             onClick={commitAppointmentAction}
           >
-            임명/회수 커밋
+            임명/연장/회수 커밋
           </Button>
         </div>
       </Card>
@@ -387,6 +415,11 @@ export default function Admin({ app }) {
                 <Badge tone={selectedRow.openCount ? "orange" : "green"}>{selectedRow.openCount ? "처리 필요" : "정리됨"}</Badge>
               </div>
 
+              <div className="admin-review-context">
+                <strong>{workflow.title}</strong>
+                <span>{workflow.description}</span>
+              </div>
+
               <div className="contract-grid">
                 <div>
                   <span>신고</span>
@@ -408,10 +441,25 @@ export default function Admin({ app }) {
 
               <div className="admin-action-panel">
                 <div>
-                  <strong>처리 액션</strong>
+                  <strong>{workflow.actionTitle}</strong>
                   <small>선택된 신고 기준으로 신고자 피드백과 제재 로그를 커밋합니다.</small>
                 </div>
                 <div className="arena-field-grid">
+                  <label>
+                    처리할 신고
+                    <select
+                      value={selectedReport?.id ?? ""}
+                      disabled={!reportOptions.length}
+                      onChange={(event) => setSelectedReportIdByScope((current) => ({ ...current, [selectedReportScope]: event.target.value }))}
+                    >
+                      {!reportOptions.length ? <option value="">신고 없음</option> : null}
+                      {reportOptions.map((report) => (
+                        <option key={report.id} value={report.id}>
+                          {statusLabel(report.status)} · {report.reason} · {report.type}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                   <label>
                     액션
                     <select value={actionDraft.actionType} onChange={(event) => updateActionDraft({ actionType: event.target.value })}>
@@ -451,9 +499,24 @@ export default function Admin({ app }) {
                   <div key={report.id} className="admin-detail-row">
                     <span>
                       <strong>{report.reason}</strong>
-                      <em>{report.type === "match" && matchMap[report.targetId] ? `${getMatchHashtag(matchMap[report.targetId])} · ` : ""}{report.type} · {formatDate(report.createdAt)}</em>
+                      <em>
+                        {report.type === "match" && matchMap[report.targetId] ? `${getMatchHashtag(matchMap[report.targetId])} · ` : ""}
+                        신고자 {userMap[report.by]?.name ?? report.by ?? "-"} · {report.type} · {formatDate(report.createdAt)}
+                      </em>
                     </span>
                     <Badge tone={report.status === "open" ? "orange" : "neutral"}>{statusLabel(report.status)}</Badge>
+                  </div>
+                )) : null}
+              </DetailList>
+
+              <DetailList title="최근 제재" empty="제재 없음">
+                {selectedRow.disciplinaryActions?.length ? selectedRow.disciplinaryActions.slice(0, 8).map((action) => (
+                  <div key={action.id} className="admin-detail-row">
+                    <span>
+                      <strong>{statusLabel(action.status)} · {action.actionType ?? action.type}</strong>
+                      <em>{action.reason || "사유 없음"} · {formatDate(action.startsAt)} ~ {formatDate(action.endsAt)}</em>
+                    </span>
+                    <Badge tone={action.status === "active" ? "orange" : "neutral"}>{action.durationDays ?? "-"}일</Badge>
                   </div>
                 )) : null}
               </DetailList>

@@ -6393,13 +6393,13 @@ export function commitAdminAppointmentAction(state, draft = {}) {
     };
   }
 
-  const actionType = ["appointAdmin", "appointReferee", "revokeAppointment"].includes(draft.actionType)
+  const actionType = ["appointAdmin", "appointReferee", "extendAppointment", "revokeAppointment"].includes(draft.actionType)
     ? draft.actionType
     : "appointReferee";
   const authorityLevel = getAdminAuthorityLevel(state);
   const now = new Date().toISOString();
 
-  if (actionType === "revokeAppointment") {
+  if (actionType === "revokeAppointment" || actionType === "extendAppointment") {
     const appointmentId = String(draft.appointmentId ?? "");
     const adminAppointment = (state.settings?.adminAppointments ?? []).find((appointment) => appointment.id === appointmentId);
     const refereeAppointment = (state.settings?.refereeAppointments ?? []).find((appointment) => appointment.id === appointmentId);
@@ -6423,6 +6423,12 @@ export function commitAdminAppointmentAction(state, draft = {}) {
         notifications: [getAdminActionNotification("이미 비활성화된 임명입니다."), ...state.notifications],
       };
     }
+    const termDays = getAppointmentTermDays(role, appointment.grade, draft.termDays);
+    const currentEndMs = getTime(appointment.endsAt);
+    const nextEndsAt = actionType === "extendAppointment"
+      ? new Date(Math.max(currentEndMs, Date.now()) + termDays * DAY_MS).toISOString()
+      : appointment.endsAt;
+    const reason = String(draft.reason ?? "").trim() || (actionType === "extendAppointment" ? "임명 연장" : "임명 회수");
     const auditLog = {
       id: makeId("aa"),
       type: "appointment_action",
@@ -6432,13 +6438,16 @@ export function commitAdminAppointmentAction(state, draft = {}) {
       targetUserId: appointment.userId,
       role,
       grade: appointment.grade,
-      reason: String(draft.reason ?? "").trim() || "임명 회수",
+      termDays,
+      reason,
       createdAt: now,
       createdBy: state.currentUserId,
     };
     const patchAppointment = (item) => (
       item.id === appointmentId
-        ? { ...item, status: "revoked", revokedAt: now, revokedBy: state.currentUserId, revokeReason: auditLog.reason }
+        ? actionType === "extendAppointment"
+          ? { ...item, endsAt: nextEndsAt, extendedAt: now, extendedBy: state.currentUserId, extendReason: reason, status: "active" }
+          : { ...item, status: "revoked", revokedAt: now, revokedBy: state.currentUserId, revokeReason: reason }
         : item
     );
     return {
@@ -6450,13 +6459,13 @@ export function commitAdminAppointmentAction(state, draft = {}) {
         adminAuditLog: [auditLog, ...(state.settings?.adminAuditLog ?? [])],
       }),
       notifications: [
-        getAdminActionNotification("임명 회수가 커밋되었습니다.", "team"),
+        getAdminActionNotification(actionType === "extendAppointment" ? "임명 연장이 커밋되었습니다." : "임명 회수가 커밋되었습니다.", "team"),
         {
           id: makeId("n"),
           targetUserId: appointment.userId,
-          title: "임명 회수",
-          body: auditLog.reason,
-          tone: "orange",
+          title: actionType === "extendAppointment" ? "임명 연장" : "임명 회수",
+          body: actionType === "extendAppointment" ? `${reason} · ${termDays}일` : reason,
+          tone: actionType === "extendAppointment" ? "team" : "orange",
         },
         ...state.notifications,
       ],
