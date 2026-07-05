@@ -1179,7 +1179,7 @@ async function refreshRecruitingFeedForPosts(client, postIds = []) {
   return false;
 }
 
-async function fetchRecruitingPage(client, limit = REMOTE_CLIENT_RECRUITING_LIMIT, offset = 0, regionKey = "", includeCards = false, startFilter = {}, allowLegacyFallback = false) {
+async function fetchRecruitingPage(client, limit = REMOTE_CLIENT_RECRUITING_LIMIT, offset = 0, regionKey = "", includeCards = false, startFilter = {}, allowLegacyFallback = false, allowFeedRepair = false) {
   const cappedLimit = Math.max(1, Math.min(RECRUITING_PUBLIC_PAGE_MAX_LIMIT, Number(limit) || REMOTE_CLIENT_RECRUITING_LIMIT));
   const safeOffset = Math.max(0, Math.floor(Number(offset) || 0));
   const feedPage = await fetchRecruitingFeedPage(client, {
@@ -1194,7 +1194,7 @@ async function fetchRecruitingPage(client, limit = REMOTE_CLIENT_RECRUITING_LIMI
     scheduledDate: startFilter.scheduledDate,
   });
   if (feedPage?.ids?.length) return feedPage;
-  if (feedPage && shouldRepairEmptyPublicRecruitingFeed(regionKey, startFilter)) {
+  if (allowFeedRepair && feedPage && shouldRepairEmptyPublicRecruitingFeed(regionKey, startFilter)) {
     const repairIds = await fetchRecruitingRepairCandidatePostIds(client, Math.max(RECRUITING_PUBLIC_PAGE_MAX_LIMIT, cappedLimit * 3), startFilter);
     if (!repairIds.length) return feedPage;
     const repaired = await refreshRecruitingFeedForPosts(client, repairIds);
@@ -1859,6 +1859,7 @@ export default async function handler(request, response) {
     const includeFeedCounts = body.includeFeedCounts !== false;
     const includeFallbackCounts = body.includeFallbackCounts === true;
     const allowLegacyFallback = isLegacyListFallbackAllowed(body);
+    const allowFeedRepair = body.allowFeedRepair === true || process.env.RANKBALL_ALLOW_READ_FEED_REPAIR === "true";
     const mineLimit = mineOnly ? limit : REMOTE_CLIENT_RECRUITING_LIMIT;
     const explicitPostIds = getTargetPostIds(body);
     const listOnly = body.listOnly !== false && !explicitPostIds.length;
@@ -1874,7 +1875,7 @@ export default async function handler(request, response) {
         ? timing.track("mine", () => fetchCurrentUserRecruitingPage(context.supabase, context.profileId, mineLimit, roomScope, listOnly, allowLegacyFallback))
         : Promise.resolve({ ids: [], cards: [], source: "", exhausted: true }),
       shouldPageList
-        ? timing.track("page", () => fetchRecruitingPage(context.supabase, limit, offset, regionKey, listOnly, startFilter, allowLegacyFallback))
+        ? timing.track("page", () => fetchRecruitingPage(context.supabase, limit, offset, regionKey, listOnly, startFilter, allowLegacyFallback, allowFeedRepair))
         : Promise.resolve({ ids: [], cards: [], source: "", exhausted: true }),
       context.profileId && includeFeedCounts
         ? timing.track("counts", () => fetchRecruitingFeedCounts(context.supabase, context.profileId))

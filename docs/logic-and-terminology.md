@@ -9,6 +9,7 @@
 - 홈/경기/매칭/진행/팀/설정의 feed, list, count payload는 이 캐시에 넣지 않는다.
 - 다른 메뉴를 먼저 로드했다는 사실이 현재 메뉴의 숫자, 목록, badge 기준을 바꾸면 안 된다.
 - 홈 Action Queue용 모집 feed는 유효한 `room_feed_cards.card_json`이 있으면 표시 참조용 프로필/팀/구장 row 보강을 생략할 수 있다. 방 상세와 매칭 목록은 기존처럼 명시 로드한다.
+- 공개 모집 날짜/지역 목록 조회는 기본적으로 read-path feed repair RPC를 실행하지 않는다. feed 보수는 DB trigger, maintenance, 또는 명시 `allowFeedRepair:true`/`RANKBALL_ALLOW_READ_FEED_REPAIR=true`에서만 한다.
 
 ## 2026-07-04 승인 구장 FK 호환
 
