@@ -134,6 +134,10 @@ function mergeMatchRowsById(rows = [], extraRows = []) {
   return [...merged.values()];
 }
 
+function isSafePostgrestLiteral(value = "") {
+  return /^[A-Za-z0-9_:-]+$/.test(String(value ?? ""));
+}
+
 function isLegacyListFallbackAllowed(body = {}) {
   return body.allowLegacyFallback === true || process.env.RANKBALL_ALLOW_LEGACY_LIST_FALLBACK === "true";
 }
@@ -528,6 +532,61 @@ async function fetchCurrentUserMatchPage(client, profileId = "", limit = REMOTE_
   if (!profileId) return null;
   const cappedLimit = Math.max(1, Math.min(MATCH_LIST_MAX_LIMIT, Number(limit) || REMOTE_CLIENT_MATCH_LIMIT));
   const offset = getMineOffsetCursor(cursor);
+  if (includeJsonActors && activeOnly && isSafePostgrestLiteral(profileId)) {
+    const candidateLimit = Math.max(
+      MATCH_CANDIDATE_MIN_LIMIT,
+      Math.min(MATCH_CANDIDATE_MAX_LIMIT, cappedLimit * MATCH_CANDIDATE_LIMIT_FACTOR),
+    );
+    const containsJson = (value) => JSON.stringify(value);
+    const actorFilter = [
+      `created_by.eq.${profileId}`,
+      `referee_id.eq.${profileId}`,
+      `former_referee_id.eq.${profileId}`,
+      `stat_recorders.cs.${containsJson({ teamA: profileId })}`,
+      `stat_recorders.cs.${containsJson({ teamB: profileId })}`,
+      `played_player_ids.cs.${containsJson({ teamA: [profileId] })}`,
+      `played_player_ids.cs.${containsJson({ teamB: [profileId] })}`,
+      `reserve_players.cs.${containsJson({ teamA: [profileId] })}`,
+      `reserve_players.cs.${containsJson({ teamB: [profileId] })}`,
+    ].join(",");
+    const [
+      { data: playerRows, error: playerError },
+      { data: actorRows, error: actorError },
+    ] = await Promise.all([
+      client
+        .from("match_players")
+        .select("match_id")
+        .eq("user_id", profileId)
+        .limit(candidateLimit),
+      client
+        .from("matches")
+        .select(MATCH_LIST_COLUMNS)
+        .in("status", ["agreed", "approval", "disputed"])
+        .or(actorFilter)
+        .order("updated_at", { ascending: false, nullsFirst: false })
+        .order("id", { ascending: false })
+        .limit(candidateLimit),
+    ]);
+    if (playerError) throw playerError;
+    if (actorError) throw actorError;
+    const actorMatchRows = actorRows ?? [];
+    const actorIds = new Set(actorMatchRows.map((row) => row.id));
+    const playerMatchIds = unique((playerRows ?? []).map((row) => row.match_id)).filter((id) => !actorIds.has(id));
+    const playerMatchRows = playerMatchIds.length ? await fetchMatchRowsByIds(client, playerMatchIds) : [];
+    const filteredRows = mergeMatchRowsById(actorMatchRows, playerMatchRows)
+      .filter((row) => ["agreed", "approval", "disputed"].includes(String(row.status ?? "")));
+    const sortedRows = [...filteredRows].sort((a, b) => (
+      String(b.updated_at ?? b.created_at ?? "").localeCompare(String(a.updated_at ?? a.created_at ?? ""))
+        || String(b.id ?? "").localeCompare(String(a.id ?? ""))
+    ));
+    const pageRows = sortedRows.slice(offset, offset + cappedLimit);
+    const nextOffset = offset + pageRows.length;
+    return {
+      rows: pageRows,
+      cursor: nextOffset < sortedRows.length ? `mine:${nextOffset}` : "",
+      exhausted: nextOffset >= sortedRows.length,
+    };
+  }
   const candidateIds = await fetchCurrentUserMatchCandidateIds(client, profileId, cappedLimit, includeJsonActors);
   if (!candidateIds.length) {
     return { rows: [], cursor: "", exhausted: true };
