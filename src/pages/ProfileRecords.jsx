@@ -1,9 +1,10 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import Card from "../components/common/Card.jsx";
 import { PLAYER_STAT_FIELDS } from "../lib/constants.js";
 import { formatStatLine } from "../lib/matchUtils.js";
+import { MatchRoomModal } from "./Matches.jsx";
 
 function compareRecent(a, b) {
   return String(b.scheduledAt ?? b.createdAt ?? "").localeCompare(String(a.scheduledAt ?? a.createdAt ?? ""));
@@ -71,18 +72,28 @@ function getRecordMetaPrefix(match) {
 export default function ProfileRecords({ app }) {
   const user = app.currentUser;
   const loadKeyRef = useRef("");
-  useEffect(() => {
-    if (!app.remoteReady || !app.actions.loadProfileRecords) return;
-    if (app.actions.profileRecordsLoaded) return;
-    if (loadKeyRef.current === user.id) return;
-    loadKeyRef.current = user.id;
-    app.actions.loadProfileRecords();
-  }, [app.actions, app.remoteReady, user.id]);
+  const [selectedRecordMatchId, setSelectedRecordMatchId] = useState("");
   const records = [...app.state.matches]
     .filter((match) => match.status === "confirmed" && getUserSide(match, user.id))
     .sort(compareRecent);
   const recentRecords = records.filter(isRecordInDetailWindow);
   const archivedRecords = records.filter((match) => !isRecordInDetailWindow(match));
+  useEffect(() => {
+    const shouldLoadRecords = !app.actions.profileRecordsLoaded || records.length === 0;
+    if (!app.remoteReady || !app.actions.loadProfileRecords || !shouldLoadRecords) return;
+    if (loadKeyRef.current === user.id) return;
+    loadKeyRef.current = user.id;
+    const request = app.actions.loadProfileRecords({ force: app.actions.profileRecordsLoaded && records.length === 0 });
+    if (!request?.then) {
+      if (!request) loadKeyRef.current = "";
+      return;
+    }
+    request.then((count) => {
+      if (count === false) loadKeyRef.current = "";
+    }).catch(() => {
+      loadKeyRef.current = "";
+    });
+  }, [app.actions, app.remoteReady, records.length, user.id]);
   const totals = getTotals(recentRecords, user.id);
   const wins = recentRecords.filter((match) => getUserResult(match, user.id) === "W").length;
   const losses = recentRecords.filter((match) => getUserResult(match, user.id) === "L").length;
@@ -154,7 +165,15 @@ export default function ProfileRecords({ app }) {
               const line = getRecordLine(match, user.id);
               const stats = match.result?.playerStats?.[user.id] ?? {};
               return (
-                <Link key={match.id} to={`/app/matches?match=${match.id}`} className={`recent-match-row profile-record-row result-${line.result.toLowerCase()}`}>
+                <Link
+                  key={match.id}
+                  to={`/app/matches?match=${match.id}`}
+                  className={`recent-match-row profile-record-row result-${line.result.toLowerCase()}`}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    setSelectedRecordMatchId(match.id);
+                  }}
+                >
                   <b>{line.result}</b>
                   <span>
                     <strong>{line.side.name} vs {line.opponent.name}</strong>
@@ -197,6 +216,7 @@ export default function ProfileRecords({ app }) {
           </div>
         </Card>
       ) : null}
+      <MatchRoomModal app={app} matchId={selectedRecordMatchId} onClose={() => setSelectedRecordMatchId("")} />
     </div>
   );
 }

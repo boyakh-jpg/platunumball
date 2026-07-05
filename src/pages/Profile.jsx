@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
@@ -9,6 +9,7 @@ import ShareCard from "../components/share/ShareCard.jsx";
 import { PLAYER_POSITIONS } from "../lib/constants.js";
 import { getUserHashtag } from "../lib/handles.js";
 import { canChangeProfileName, getNextNameChangeDate, inferRegionSelection, REGION_TREE } from "../lib/profileSetup.js";
+import { MatchRoomModal } from "./Matches.jsx";
 
 const POSITION_OPTIONS = PLAYER_POSITIONS.filter((position) => ["PG", "SG", "SF", "PF", "C"].includes(position));
 
@@ -80,7 +81,7 @@ function getRecordMetaPrefix(match) {
   return match.rules?.recordType === "solo" ? "개인 기록 · " : "";
 }
 
-function RecentRecordCard({ records, userId }) {
+function RecentRecordCard({ records, userId, onOpenRecord }) {
   return (
     <Card className="section-card profile-record-card">
       <div className="section-title-row">
@@ -95,7 +96,15 @@ function RecentRecordCard({ records, userId }) {
           {records.map((match) => {
             const line = getUserRecordLine(match, userId);
             return (
-              <Link key={match.id} to={`/app/matches?match=${match.id}`} className={`recent-match-row result-${line.result.toLowerCase()}`}>
+              <Link
+                key={match.id}
+                to={`/app/matches?match=${match.id}`}
+                className={`recent-match-row result-${line.result.toLowerCase()}`}
+                onClick={(event) => {
+                  event.preventDefault();
+                  onOpenRecord(match.id);
+                }}
+              >
                 <b>{line.result}</b>
                 <span>
                   <strong>{line.side.name} vs {line.opponent.name}</strong>
@@ -125,6 +134,8 @@ export default function Profile({ app }) {
     company: user.company ?? "",
   });
   const [profileError, setProfileError] = useState("");
+  const [selectedRecordMatchId, setSelectedRecordMatchId] = useState("");
+  const recordsLoadKeyRef = useRef("");
   const selectedRegion = REGION_TREE.find((item) => item.sido === draft.regionSido) ?? REGION_TREE[0];
   const districtOptions = useMemo(() => selectedRegion.districts, [selectedRegion]);
   const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
@@ -155,6 +166,23 @@ export default function Profile({ app }) {
     .filter((match) => match.status === "confirmed" && getUserSide(match, user.id) && isRecordInDetailWindow(match))
     .sort(compareRecent)
     .slice(0, 6);
+  useEffect(() => {
+    const shouldLoadRecords = !app.actions.profileRecordsLoaded || myRecords.length === 0;
+    if (!app.remoteReady || !app.actions.loadProfileRecords || !shouldLoadRecords) return;
+    const loadKey = user.id;
+    if (recordsLoadKeyRef.current === loadKey) return;
+    recordsLoadKeyRef.current = loadKey;
+    const request = app.actions.loadProfileRecords({ force: app.actions.profileRecordsLoaded && myRecords.length === 0 });
+    if (!request?.then) {
+      if (!request) recordsLoadKeyRef.current = "";
+      return;
+    }
+    request.then((count) => {
+      if (count === false) recordsLoadKeyRef.current = "";
+    }).catch(() => {
+      recordsLoadKeyRef.current = "";
+    });
+  }, [app.actions, app.remoteReady, myRecords.length, user.id]);
   const averageFouls = getProfileAverageFouls(user, app.state.matches);
   return (
     <div className="page-stack profile-page">
@@ -215,7 +243,7 @@ export default function Profile({ app }) {
               <RatingCard className="profile-rating-mode" key={mode} title={mode} mmr={mmr} subtitle="모드 티어" />
             ))}
           </section>
-          <RecentRecordCard records={myRecords} userId={user.id} />
+          <RecentRecordCard records={myRecords} userId={user.id} onOpenRecord={setSelectedRecordMatchId} />
         </div>
         <aside className="page-stack profile-side-grid">
           <ProgressionChecklist user={user} matches={app.state.matches} />
@@ -246,6 +274,7 @@ export default function Profile({ app }) {
           </Card>
         </aside>
       </div>
+      <MatchRoomModal app={app} matchId={selectedRecordMatchId} onClose={() => setSelectedRecordMatchId("")} />
     </div>
   );
 }

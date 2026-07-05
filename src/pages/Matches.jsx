@@ -435,7 +435,7 @@ function getSideAgreementReady(match = {}, sideName) {
   return players.length > 0 && players.every((playerId) => agreements.has(playerId));
 }
 
-function getMatchRoomPost(match, state) {
+export function getMatchRoomPost(match, state) {
   if (!match) return null;
   const sourceMatch = match;
   const sourceState = state ?? {};
@@ -701,6 +701,66 @@ function getMatchRoomPost(match, state) {
     },
     createdAt: match.createdAt,
   };
+}
+
+export function MatchRoomModal({ app, matchId, onClose }) {
+  const [selectedMatchDetailLoadingId, setSelectedMatchDetailLoadingId] = useState(null);
+  const [openedMatchId, setOpenedMatchId] = useState("");
+  const requestedMatchDetailsRef = useRef(new Set());
+  const matchesById = useMemo(() => Object.fromEntries(app.state.matches.map((match) => [match.id, match])), [app.state.matches]);
+  const selectedMatch = matchId ? matchesById[matchId] ?? null : null;
+  const selectedMatchRoom = useMemo(() => {
+    if (!selectedMatch) return { post: null, error: null };
+    try {
+      return { post: getMatchRoomPost(selectedMatch, app.state), error: null };
+    } catch (error) {
+      return { post: null, error };
+    }
+  }, [app.state, selectedMatch]);
+  const selectedMatchDetailLoading = Boolean(matchId && (app.remoteReady === false || selectedMatchDetailLoadingId === matchId || openedMatchId !== matchId));
+  useBodyScrollLock(Boolean(matchId));
+
+  useEffect(() => {
+    if (!matchId || app.remoteReady === false || !app.currentUser.id) return;
+    if (requestedMatchDetailsRef.current.has(matchId)) {
+      setOpenedMatchId(matchId);
+      return;
+    }
+    setOpenedMatchId(matchId);
+    requestedMatchDetailsRef.current.add(matchId);
+    setSelectedMatchDetailLoadingId(matchId);
+    const request = app.actions.loadMatchDetail?.(matchId);
+    if (!request?.then) {
+      if (!request) requestedMatchDetailsRef.current.delete(matchId);
+      setSelectedMatchDetailLoadingId((currentId) => currentId === matchId ? null : currentId);
+      return;
+    }
+    request.then((count) => {
+      if (!count) requestedMatchDetailsRef.current.delete(matchId);
+    }).catch(() => {
+      requestedMatchDetailsRef.current.delete(matchId);
+    }).finally(() => {
+      setSelectedMatchDetailLoadingId((currentId) => currentId === matchId ? null : currentId);
+    });
+  }, [app.actions, app.currentUser.id, app.remoteReady, matchId]);
+
+  if (!matchId) return null;
+  if (selectedMatchDetailLoading) return <RoomModalLoadingView onClose={onClose} />;
+  if (selectedMatchRoom.error) return <RoomModalErrorView error={selectedMatchRoom.error} onClose={onClose} />;
+  if (!selectedMatch || !selectedMatchRoom.post) {
+    return <RoomModalErrorView error={new Error("경기 기록을 불러오지 못했습니다.")} onClose={onClose} />;
+  }
+  return (
+    <RoomModalErrorBoundary key={selectedMatch.id} onClose={onClose}>
+      <RecruitingRoomModal
+        app={app}
+        post={selectedMatchRoom.post}
+        sourceMatch={selectedMatch}
+        skipInitialDetailLoad
+        onClose={onClose}
+      />
+    </RoomModalErrorBoundary>
+  );
 }
 
 export default function Matches({ app }) {

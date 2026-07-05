@@ -1621,9 +1621,10 @@ export function useAppData(authUser = null) {
     return promise;
   }, [authEmail, authUserId, setState, trackedPostServerAction]);
 
-  const loadProfileRecords = useCallback(async () => {
+  const loadProfileRecords = useCallback(async (options = {}) => {
     if (!isSupabaseConfigured || !authUserId) return false;
-    if (profileRecordsLoaded) return true;
+    const force = options?.force === true;
+    if (profileRecordsLoaded && !force) return true;
     if (profileRecordsPromiseRef.current) return profileRecordsPromiseRef.current;
     const promise = (async () => {
       try {
