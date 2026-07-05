@@ -152,11 +152,11 @@ export default function TeamHoverCard({ team, children, className = "", as = "li
         open={open}
         portalRef={cardRef}
       >
-        <button type="button" className="hover-card-close" onClick={(event) => {
+        <button type="button" className="hover-card-close" aria-label="닫기" onClick={(event) => {
           event.preventDefault();
           event.stopPropagation();
           closeTouch();
-        }}>닫기</button>
+        }}>X</button>
         <span className="team-hover-head">
           <span className="team-emblem" style={{ "--team-color": team.accent }}>{team.name.slice(0, 1)}</span>
           <span>

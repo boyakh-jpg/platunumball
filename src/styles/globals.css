@@ -13543,12 +13543,8 @@ html[data-theme="light"] .rank-home .rank-tier-rail .rank-mode-pill {
   top: 8px;
   right: 8px;
   z-index: 2;
-  width: auto;
-  min-width: var(--ui-icon-button-size);
   background: var(--ui-button-bg);
   color: var(--ui-button-color);
-  padding: 0 10px;
-  white-space: nowrap;
 }
 
 .hover-portal-card.touch-open .player-hover-head,

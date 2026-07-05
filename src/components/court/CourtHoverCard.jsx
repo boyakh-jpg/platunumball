@@ -120,11 +120,11 @@ export default function CourtHoverCard({ court, courtName = "", children, classN
         open={open}
         portalRef={cardRef}
       >
-        <button type="button" className="hover-card-close" onClick={(event) => {
+        <button type="button" className="hover-card-close" aria-label="닫기" onClick={(event) => {
           event.preventDefault();
           event.stopPropagation();
           closePinned();
-        }}>닫기</button>
+        }}>X</button>
         <span className="court-hover-head">
           <span className="court-hover-icon"><MapPin size={22} /></span>
           <span>

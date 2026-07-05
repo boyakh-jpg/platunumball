@@ -156,11 +156,11 @@ export default function RefereeHoverCard({ user, matches = [], minTrust = REFERE
         open={open}
         portalRef={cardRef}
       >
-        <button type="button" className="hover-card-close" onClick={(event) => {
+        <button type="button" className="hover-card-close" aria-label="닫기" onClick={(event) => {
           event.preventDefault();
           event.stopPropagation();
           closePinned();
-        }}>닫기</button>
+        }}>X</button>
         <span className="referee-hover-head">
           <span className={`referee-hover-grade ${tier.tone}`}>{tier.grade}</span>
           <span>

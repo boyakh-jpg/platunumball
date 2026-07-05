@@ -178,11 +178,11 @@ export default function PlayerHoverCard({ user, teams = [], children, className 
         open={open}
         portalRef={cardRef}
       >
-        <button type="button" className="hover-card-close" onClick={(event) => {
+        <button type="button" className="hover-card-close" aria-label="닫기" onClick={(event) => {
           event.preventDefault();
           event.stopPropagation();
           closeTouch();
-        }}>닫기</button>
+        }}>X</button>
         <span className="player-hover-head">
           <span className={anonymousUser ? "avatar anonymous" : getDiscordAvatarClassName(user)} style={anonymousUser ? { "--avatar": user.avatarColor } : getDiscordAvatarStyle(user)}>{anonymousUser ? "?" : user.name.slice(0, 1)}</span>
           <span>
