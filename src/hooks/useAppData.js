@@ -899,7 +899,7 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
         },
         { allowWhenDisabled: true },
       );
-      if (result?.state) return attachRemoteMeta(normalizeServerState(result.state), { matchPage: result.page ?? null });
+      if (result?.state) return attachRemoteMeta(normalizeServerState(result.state), { matchPage: result.page ?? null, recorderMatchesLoaded: true });
     }
     if (options.endpoint === "recruitingList") {
       const result = await postServerAction(
@@ -1014,6 +1014,7 @@ export function useAppData(authUser = null) {
   const [recruitingPagination, setRecruitingPagination] = useState({ loading: false, exhausted: !isSupabaseConfigured, error: "", loadMoreError: "", cursor: "", offset: 0, regionScope: "local", regionKey: "", startFilter: "all", timingType: "", scheduledDate: "", feedCounts: null });
   const [directoryStatus, setDirectoryStatus] = useState({ loading: false, loaded: !isSupabaseConfigured, error: "" });
   const [profileRecordsLoaded, setProfileRecordsLoaded] = useState(false);
+  const [recorderMatchesLoaded, setRecorderMatchesLoaded] = useState(false);
   const [remoteReady, setRemoteReady] = useState(!isSupabaseConfigured);
   const [serverActionPendingCount, setServerActionPendingCount] = useState(0);
   const stateRef = useRef(state);
@@ -1109,6 +1110,7 @@ export function useAppData(authUser = null) {
       setRecruitingPagination({ loading: false, exhausted: true, error: "", loadMoreError: "", cursor: "", offset: 0, regionScope: "local", regionKey: "", startFilter: "all", timingType: "", scheduledDate: "", feedCounts: null });
       setDirectoryStatus({ loading: false, loaded: true, error: "" });
       setProfileRecordsLoaded(false);
+      setRecorderMatchesLoaded(false);
       return undefined;
     }
 
@@ -1135,6 +1137,7 @@ export function useAppData(authUser = null) {
     setState(getCachedBootstrapState(authUserId, authEmail));
     setDirectoryStatus({ loading: false, loaded: false, error: "" });
     setProfileRecordsLoaded(false);
+    setRecorderMatchesLoaded(false);
     const initialLoadOptions = getInitialStateLoadOptions();
     const initialLoad = initialLoadOptions.profileOnly
       ? loadProfileState(authUserId, authEmail)
@@ -1176,6 +1179,7 @@ export function useAppData(authUser = null) {
             setDirectoryStatus({ loading: false, loaded: true, error: "" });
           }
           setProfileRecordsLoaded(remoteMeta.profileRecordsLoaded === true);
+          setRecorderMatchesLoaded(remoteMeta.recorderMatchesLoaded === true);
         }
         remoteReadyRef.current = true;
         setRemoteReady(true);
@@ -1638,9 +1642,11 @@ export function useAppData(authUser = null) {
         const remoteState = normalizeServerState(filterPendingMatches(result?.state ?? {}, pendingMatchIdsRef.current, recentMatchMutationTimesRef.current));
         const nextMatches = remoteState.matches ?? [];
         setState((prev) => mergeRemoteMatchPage(prev, remoteState));
+        setRecorderMatchesLoaded(true);
         return nextMatches.length;
       } catch (error) {
         console.warn("Recorder match load failed.", error.message);
+        setRecorderMatchesLoaded(true);
         return false;
       }
     })().finally(() => {
@@ -2842,6 +2848,7 @@ export function useAppData(authUser = null) {
     profileLocked,
     remoteReady,
     serverBusy: serverActionPendingCount > 0,
+    recorderMatchesLoaded,
     adminContext,
     matchPagination,
     recruitingPagination,

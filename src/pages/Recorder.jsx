@@ -173,7 +173,7 @@ export default function Recorder({ app }) {
   const recorderLoadRef = useRef("");
 
   useEffect(() => {
-    if (!app.remoteReady || !user.id || matches.length) return;
+    if (!app.remoteReady || !user.id || matches.length || app.recorderMatchesLoaded) return;
     const loadRecorderMatches = app.actions.loadRecorderMatches;
     if (!loadRecorderMatches) return;
     if (recorderLoadRef.current === user.id) return;
@@ -182,7 +182,7 @@ export default function Recorder({ app }) {
     Promise.resolve(loadRecorderMatches()).finally(() => {
       setRecorderLoading(false);
     });
-  }, [app.actions.loadRecorderMatches, app.remoteReady, matches.length, user.id]);
+  }, [app.actions.loadRecorderMatches, app.recorderMatchesLoaded, app.remoteReady, matches.length, user.id]);
 
   useEffect(() => {
     if (!selectedMatch || selectedMatchId === selectedMatch.id) return;
@@ -407,6 +407,8 @@ export default function Recorder({ app }) {
     );
   };
 
+  const recorderPending = !matches.length && !app.recorderMatchesLoaded;
+
   if (!matches.length) {
     return (
       <div className="page-stack recorder-page">
@@ -418,7 +420,7 @@ export default function Recorder({ app }) {
           </div>
         </header>
         <Card className="recorder-empty">
-          {recorderLoading ? (
+          {recorderPending || recorderLoading ? (
             <BasketballLoader overlay label="진행 경기 확인 중" />
           ) : (
             <>

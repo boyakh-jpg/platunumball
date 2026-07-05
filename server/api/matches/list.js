@@ -867,7 +867,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   const activeOnly = body.activeOnly === true || recorderOnly;
   const shouldLoadRecentCompleted = !completedOnly && activeOnly && !cursor && body.includeRecentCompleted === true;
   const recentCompletedHours = shouldLoadRecentCompleted ? getRecentCompletedHours(body) : RECENT_COMPLETED_MATCH_HOURS;
-  const shouldLoadClosedNotices = !completedOnly && activeOnly && !cursor;
+  const shouldLoadClosedNotices = !recorderOnly && !completedOnly && activeOnly && !cursor;
   const allowLegacyFallback = isLegacyListFallbackAllowed(body);
   const filterMatchItems = (items = []) => {
     let filtered = filterActiveMatchCards(items, activeOnly, { includeRecentCompleted: shouldLoadRecentCompleted });
@@ -882,7 +882,9 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
     ? loadCurrentRecruitingSchedule(context, adminLevel)
     : Promise.resolve(null);
   const [baseFeedPage, recentCompletedPage, closedNoticePage] = await Promise.all([
-    completedOnly
+    recorderOnly
+      ? Promise.resolve(null)
+      : completedOnly
       ? timeStep(debugTiming, "completedFeedMs", () => fetchCurrentUserCompletedMatchIds(context.supabase, context.profileId, limit, completedSince, allowLegacyFallback))
       : timeStep(debugTiming, "feedMs", () => fetchMatchFeedPage(context.supabase, context.profileId, limit, cursor, activeOnly)),
     shouldLoadRecentCompleted
@@ -934,11 +936,10 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
       fetchCurrentUserMatchPage(context.supabase, context.profileId, limit, "", true, true)
     ));
     const recorderRows = recorderPage?.rows ?? [];
-    if (recorderRows.length) {
-      matchRows = mergeMatchRowsById(matchRows, recorderRows);
-      pageSource = appendRowFallbackSource(`${pageSource}+recorder`);
-      pageExhausted = pageExhausted && recorderPage?.exhausted !== false;
-    }
+    matchRows = mergeMatchRowsById(matchRows, recorderRows);
+    pageSource = "recorder";
+    pageCursor = recorderPage?.cursor ?? "";
+    pageExhausted = recorderPage?.exhausted ?? true;
   }
 
   const currentUser = context.profile
