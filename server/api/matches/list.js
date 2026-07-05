@@ -558,7 +558,7 @@ async function fetchCurrentUserMatchPage(client, profileId = "", limit = REMOTE_
     ] = await Promise.all([
       client
         .from("match_players")
-        .select(MATCH_PLAYER_COLUMNS)
+        .select("match_id")
         .eq("user_id", profileId)
         .limit(candidateLimit),
       client
@@ -586,7 +586,6 @@ async function fetchCurrentUserMatchPage(client, profileId = "", limit = REMOTE_
     const nextOffset = offset + pageRows.length;
     return {
       rows: pageRows,
-      playerRows,
       cursor: nextOffset < sortedRows.length ? `mine:${nextOffset}` : "",
       exhausted: nextOffset >= sortedRows.length,
     };
@@ -964,7 +963,6 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   let pageExhausted = feedPage?.exhausted ?? true;
   let matchRows = [];
   let matches = [];
-  let prefetchedPlayerRows = null;
   if (feedPage) {
     pageSource = feedPage.source ?? "feed";
     const feedCards = feedPage.cards ?? [];
@@ -1001,7 +999,6 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
       fetchCurrentUserMatchPage(context.supabase, context.profileId, limit, "", true, true)
     ));
     const recorderRows = recorderPage?.rows ?? [];
-    prefetchedPlayerRows = Array.isArray(recorderPage?.playerRows) ? recorderPage.playerRows : null;
     matchRows = mergeMatchRowsById(matchRows, recorderRows);
     pageSource = "recorder";
     pageCursor = recorderPage?.cursor ?? "";
@@ -1080,14 +1077,8 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   }
 
   const matchIds = (matchRows ?? []).map((row) => row.id).filter(Boolean);
-  const matchIdSet = new Set(matchIds);
-  const scopedPrefetchedPlayerRows = Array.isArray(prefetchedPlayerRows)
-    ? prefetchedPlayerRows.filter((row) => matchIdSet.has(row.match_id))
-    : null;
   const playerRowsPromise = matchIds.length
-    ? scopedPrefetchedPlayerRows
-      ? Promise.resolve({ data: scopedPrefetchedPlayerRows, error: null })
-      : timeStep(debugTiming, "matchPlayersMs", () => context.supabase.from("match_players").select(MATCH_PLAYER_COLUMNS).in("match_id", matchIds))
+    ? timeStep(debugTiming, "matchPlayersMs", () => context.supabase.from("match_players").select(MATCH_PLAYER_COLUMNS).in("match_id", matchIds))
     : Promise.resolve({ data: [], error: null });
   const resultRowsPromise = matchIds.length
     ? timeStep(debugTiming, "matchResultsMs", () => context.supabase.from("match_results").select(MATCH_RESULT_COLUMNS).in("match_id", matchIds))
