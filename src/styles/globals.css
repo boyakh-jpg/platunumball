@@ -246,8 +246,21 @@ body > .basketball-loader-overlay ~ .basketball-loader-overlay {
   background: var(--surface);
 }
 
-.sidebar-profile > div:nth-child(2) {
+.sidebar-profile > div:nth-child(2),
+.sidebar-profile-copy {
   min-width: 0;
+}
+
+.sidebar-profile-copy {
+  display: grid;
+  gap: 2px;
+}
+
+.sidebar-profile-copy strong,
+.sidebar-profile-copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .sidebar-profile .tier-badge {

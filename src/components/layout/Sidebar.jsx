@@ -3,6 +3,7 @@ import { NavLink } from "react-router-dom";
 import PlayerHoverCard from "../profile/PlayerHoverCard.jsx";
 import TierBadge from "../rating/TierBadge.jsx";
 import { getDiscordAvatarClassName, getDiscordAvatarStyle } from "../../lib/discord.js";
+import { getUserHashtag } from "../../lib/handles.js";
 
 const navItems = [
   { to: "/app", label: "홈", icon: House },
@@ -17,6 +18,7 @@ const navItems = [
 export default function Sidebar({ user, teams = [], auth }) {
   const safeUser = user ?? {};
   const displayName = safeUser.name || auth?.user?.user_metadata?.providerName || auth?.user?.email || "RankBall";
+  const displayHashtag = getUserHashtag(safeUser);
   const integratedRating = safeUser.ratings?.integrated ?? 1200;
   return (
     <aside className="sidebar">
@@ -42,9 +44,9 @@ export default function Sidebar({ user, teams = [], auth }) {
         <div className={getDiscordAvatarClassName(safeUser)} style={getDiscordAvatarStyle(safeUser)}>
           {displayName.slice(0, 1)}
         </div>
-        <div>
+        <div className="sidebar-profile-copy">
           <strong>{displayName}</strong>
-          {auth?.user ? <small>{auth.user.user_metadata?.providerName ?? auth.user.email}</small> : null}
+          <small>{displayHashtag}</small>
           <TierBadge mmr={integratedRating} compact />
         </div>
         {auth?.session ? (
