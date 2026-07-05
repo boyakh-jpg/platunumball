@@ -88,6 +88,10 @@ function getRecruitingSchedule(post) {
   return getRoomScheduleLabel(post);
 }
 
+function getHomeRecruitingMeta(post = {}) {
+  return `${getRecruitingSchedule(post)} · ${post.court || "구장 미정"}`;
+}
+
 function getHomeMatchMeta(match = {}) {
   const prefix = match.rules?.recordType === "solo" ? "개인 기록 · " : "";
   return `${prefix}${match.scheduledAt || getRoomScheduleLabel(match)} · ${match.court || "구장 미정"}`;
@@ -281,7 +285,7 @@ export default function Home({ app }) {
         priority: 1,
         label: "수락",
         title: post.title,
-        meta: `${getRecruitingSchedule(post)} · ${post.court}`,
+        meta: getHomeRecruitingMeta(post),
         href: `/app/recruiting?post=${post.id}`,
         icon: ClipboardCheck,
       }));
@@ -294,7 +298,7 @@ export default function Home({ app }) {
         priority: 1,
         label: "경기 확정",
         title: post.title,
-        meta: `${getRecruitingSchedule(post)} · ${post.court}`,
+        meta: getHomeRecruitingMeta(post),
         href: `/app/recruiting?post=${post.id}`,
         icon: Swords,
       }));
@@ -307,7 +311,7 @@ export default function Home({ app }) {
       invitationId: invitation.id,
       label: invitation.role === "referee" ? "심판 초대" : "방 초대",
       title: post.title,
-      meta: `${getRecruitingSchedule(post)} · ${post.court}`,
+      meta: getHomeRecruitingMeta(post),
       href: `/app/recruiting?filter=invited&post=${post.id}`,
       icon: UserPlus,
     }));
@@ -333,7 +337,7 @@ export default function Home({ app }) {
         priority: 5,
         label: "방 취소",
         title: post.title,
-        meta: `${getRecruitingSchedule(post)} · ${post.court}`,
+        meta: getHomeRecruitingMeta(post),
         href: `/app/recruiting?post=${post.id}`,
         icon: ShieldAlert,
       }));
