@@ -106,7 +106,12 @@ export default async function handler(request, response) {
         includeRecruitingSchedule: false,
         adminContext: false,
       }, adminLevel, matchLimit, debugTiming),
-      timeStep(debugTiming, "recruitingMs", () => loadCurrentUserRecruitingFeedList(context, { adminLevel, limit: recruitingLimit, includeFeedCounts })),
+      timeStep(debugTiming, "recruitingMs", () => loadCurrentUserRecruitingFeedList(context, {
+        adminLevel,
+        limit: recruitingLimit,
+        includeFeedCounts,
+        skipCardReferenceRows: true,
+      })),
     ]);
 
     if (debugTiming) debugTiming.totalMs = Date.now() - startedAt;

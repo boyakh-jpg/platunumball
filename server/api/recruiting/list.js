@@ -1454,6 +1454,7 @@ export async function loadCompactRecruitingList(context, {
   timingType = "",
   scheduledDate = "",
   debugPage = false,
+  skipCardReferenceRows = false,
 } = {}) {
   const targetPostIds = uniqueIds([...explicitPostIds, ...(mineOnly ? currentUserPostIds : pagePostIds), ...(includeMine ? currentUserPostIds : [])]);
   const targetCards = uniqueFeedCards(pageCards.map((card) => ({ entity_id: card?.id, card_json: card })), targetPostIds);
@@ -1532,6 +1533,44 @@ export async function loadCompactRecruitingList(context, {
     const postIds = postRows.map((post) => post.id).filter(Boolean);
     const readablePostIds = new Set(postIds);
     const applicationRows = (applicationRowsRaw ?? []).filter((application) => readablePostIds.has(application.post_id));
+    if (skipCardReferenceRows && !fallbackPostIds.length) {
+      const responsePosts = targetPostIds.map((postId) => cardById.get(postId)).filter(Boolean);
+      const state = normalizeState({
+        currentUserId: currentUser.id,
+        users: [currentUser],
+        teams: [],
+        recruitingPosts: responsePosts,
+        settings,
+      }, { includeDemo: false });
+      return {
+        state: compactRecruitingListState(state, currentUser.id, { includeRoomChat, includeRoomInvitations }),
+        page: {
+          limit,
+          count: mineOnly ? responsePosts.length : pagePostIds.length,
+          offset,
+          nextOffset,
+          cursor: String(nextOffset),
+          exhausted: typeof pageExhausted === "boolean" ? pageExhausted : pagePostIds.length < limit,
+          regionScope: regionKey ? "region" : regionScope,
+          regionKey,
+          startFilter,
+          timingType,
+          scheduledDate,
+          source: pageSource || "feed_card",
+          feedCounts,
+          inviteRepairCandidateCount: debugPage ? inviteRepairCandidateCount : undefined,
+          inviteRepairCount: debugPage ? repairedCards.length : undefined,
+          fallbackCount: debugPage ? 0 : undefined,
+          fallbackCardReasons,
+        },
+        updatedAt: Math.max(
+          ...[...responsePosts, context.profile].filter(Boolean)
+            .map((row) => new Date(row.updatedAt ?? row.updated_at ?? row.createdAt ?? row.created_at ?? 0).getTime())
+            .filter((value) => Number.isFinite(value)),
+          0,
+        ),
+      };
+    }
 
     const rowScope = collectRecruitingScope(postRows, applicationRows ?? [], context.profileId ?? "");
     const cardScope = collectRecruitingCardScope(targetCards, context.profileId ?? "");
@@ -1717,6 +1756,7 @@ export async function loadCurrentUserRecruitingFeedList(context, {
   includeFeedCounts = true,
   allowLegacyFallback = false,
   roomScope = "",
+  skipCardReferenceRows = false,
 } = {}) {
   if (!context.profileId) {
     return loadCompactRecruitingList(context, { adminLevel, limit, mineOnly: true });
@@ -1743,6 +1783,7 @@ export async function loadCurrentUserRecruitingFeedList(context, {
       pageNextOffset: pageResult.nextOffset,
       feedCounts,
       limit,
+      skipCardReferenceRows,
     });
   }
   if (!allowLegacyFallback) {
