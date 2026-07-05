@@ -910,7 +910,7 @@ async function loadCurrentRecruitingSchedule(context, adminLevel = 0) {
   try {
     const result = await loadCurrentUserRecruitingFeedList(context, {
       adminLevel,
-      limit: MATCH_LIST_MAX_LIMIT,
+      limit: REMOTE_CLIENT_MATCH_LIMIT,
       includeFeedCounts: false,
       skipCardReferenceRows: true,
     });

@@ -90,7 +90,6 @@ import {
   updateRecruitingRoomRules,
   unblockUser,
   voidMatch,
-  REMOTE_CLIENT_ACTIVE_MATCH_LIMIT,
   REMOTE_CLIENT_INITIAL_MATCH_LIMIT,
   REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT,
   REMOTE_CLIENT_MATCH_LIMIT,
@@ -757,7 +756,7 @@ function getInitialStateLoadOptions() {
   }
   if (pathname === "/app/matches") {
     if (searchParams?.get("match")) return { profileOnly: true, matchLimit: 0, recruitingLimit: 0, tournamentLimit: 0 };
-    return { endpoint: "matchesList", matchLimit: REMOTE_CLIENT_ACTIVE_MATCH_LIMIT, recruitingLimit: 0, tournamentLimit: 0 };
+    return { endpoint: "matchesList", matchLimit: REMOTE_CLIENT_MATCH_LIMIT, recruitingLimit: 0, tournamentLimit: 0 };
   }
   if (pathname === "/app/recruiting") {
     if (searchParams?.get("post")) return { profileOnly: true, matchLimit: 0, recruitingLimit: 0, tournamentLimit: 0 };
@@ -773,7 +772,7 @@ function getInitialStateLoadOptions() {
     return { endpoint: "profileRecords", matchLimit: REMOTE_CLIENT_RECORD_MATCH_LIMIT, recruitingLimit: 0, tournamentLimit: 0 };
   }
   if (pathname === "/app" || pathname === "/login") {
-    return { endpoint: "homeLoad", matchLimit: REMOTE_CLIENT_ACTIVE_MATCH_LIMIT, recruitingLimit: REMOTE_CLIENT_RECRUITING_LIMIT, tournamentLimit: 0 };
+    return { endpoint: "homeLoad", matchLimit: REMOTE_CLIENT_MATCH_LIMIT, recruitingLimit: REMOTE_CLIENT_RECRUITING_LIMIT, tournamentLimit: 0 };
   }
   return { profileOnly: true, matchLimit: 0, recruitingLimit: 0, tournamentLimit: 0 };
 }
@@ -819,11 +818,26 @@ function cacheCurrentProfileState(authUserId, state = {}) {
   });
 }
 
-async function loadProfileState(authUserId, authEmail) {
+function getThinProfilePayload(authUserId, authEmail) {
+  return {
+    authUserId,
+    authEmail,
+    includeFavorites: false,
+    includeTeamInvitations: false,
+    includeTeams: false,
+    includeExtraProfiles: false,
+    includeMatchSummary: true,
+  };
+}
+
+async function loadProfileState(authUserId, authEmail, options = {}) {
   try {
+    const payload = options.thin === true
+      ? getThinProfilePayload(authUserId, authEmail)
+      : { authUserId, authEmail };
     const result = await postServerAction(
       "/api/profile/me",
-      { authUserId, authEmail },
+      payload,
       { allowWhenDisabled: true },
     );
     if (result?.state) return normalizeServerState(result.state);
@@ -997,7 +1011,7 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
       if (result?.state) return attachRemoteMeta(normalizeServerState(result.state), { directoryLoaded: true });
     }
     if (options.endpoint) {
-      return attachRemoteMeta(await loadProfileState(authUserId, authEmail), getEndpointFallbackMeta(options));
+      return attachRemoteMeta(await loadProfileState(authUserId, authEmail, { thin: true }), getEndpointFallbackMeta(options));
     }
     const result = await postServerAction(
       "/api/state/load",
@@ -1010,9 +1024,9 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
     fallbackErrorMessage = error.message ?? "state_load_failed";
   }
   if (options.endpoint) {
-    return attachRemoteMeta(await loadProfileState(authUserId, authEmail), getEndpointFallbackMeta(options, fallbackErrorMessage));
+    return attachRemoteMeta(await loadProfileState(authUserId, authEmail, { thin: true }), getEndpointFallbackMeta(options, fallbackErrorMessage));
   }
-  return attachRemoteMeta(await loadProfileState(authUserId, authEmail), {
+  return attachRemoteMeta(await loadProfileState(authUserId, authEmail, { thin: true }), {
     matchPage: { exhausted: true, recruitingScheduleChecked: true },
     recruitingPage: { exhausted: true, feedCounts: null },
     directoryLoaded: false,
@@ -1159,7 +1173,7 @@ export function useAppData(authUser = null) {
     setRecorderMatchesLoaded(false);
     const initialLoadOptions = getInitialStateLoadOptions();
     const initialLoad = initialLoadOptions.profileOnly
-      ? loadProfileState(authUserId, authEmail)
+      ? loadProfileState(authUserId, authEmail, { thin: true })
       : loadBackendState(authUserId, authEmail, initialLoadOptions);
     initialLoad
       .then((remoteState) => {
