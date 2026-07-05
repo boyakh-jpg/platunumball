@@ -5909,11 +5909,11 @@ html[data-theme="light"] .arena-side-roster .arena-room-player-slot:not(.empty) 
   isolation: isolate;
   gap: 8px;
   border-radius: 18px;
-  padding: 7px;
+  padding: 0;
 }
 
 .arena-room-party-group::before {
-  inset: 0;
+  inset: -7px;
   border: 1px solid rgba(255, 118, 88, 0.42);
   border-radius: 18px;
   background:
