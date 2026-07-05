@@ -192,16 +192,25 @@ export async function loadCurrentUserTeams(supabase, profileId = "", extraTeamId
 }
 
 export async function loadCurrentProfileState(context, options = {}) {
+  const debugTiming = options.debugTiming ?? null;
+  const time = async (key, callback) => {
+    const startedAt = Date.now();
+    try {
+      return await callback();
+    } finally {
+      if (debugTiming) debugTiming[key] = (debugTiming[key] ?? 0) + Date.now() - startedAt;
+    }
+  };
   const profile = context.profile ?? null;
   const profileId = profile?.id ?? "";
   const ownMembershipsPromise = profileId
     ? context.supabase.from("team_members").select("team_id").eq("user_id", profileId)
     : Promise.resolve({ data: [], error: null });
   const [matchSummary, teamInvitations, ownMembershipsResult, favoriteRows] = await Promise.all([
-    loadCurrentUserMatchSummary(context.supabase, profileId),
-    loadCurrentUserTeamInvitations(context.supabase, profileId),
-    ownMembershipsPromise,
-    loadCurrentUserFavorites(context.supabase, profileId),
+    time("matchSummaryMs", () => loadCurrentUserMatchSummary(context.supabase, profileId)),
+    time("teamInvitationsMs", () => loadCurrentUserTeamInvitations(context.supabase, profileId)),
+    time("ownMembershipsMs", () => ownMembershipsPromise),
+    time("favoritesMs", () => loadCurrentUserFavorites(context.supabase, profileId)),
   ]);
   if (ownMembershipsResult.error) throw ownMembershipsResult.error;
   const favoritePlayerIds = favoriteRows.filter((favorite) => favorite.target_type === "player").map((favorite) => favorite.target_id);
@@ -212,7 +221,7 @@ export async function loadCurrentProfileState(context, options = {}) {
     ? { ...fromRemoteProfile(profile), matchSummary }
     : createProfileShell(context.authUserId, context.authUser?.email ?? "");
   const remoteAppSettings = getRemoteAppSettings(profile);
-  const currentUserTeams = await loadCurrentUserTeams(
+  const currentUserTeamsPromise = time("teamsMs", () => loadCurrentUserTeams(
     context.supabase,
     profileId,
     [
@@ -223,24 +232,31 @@ export async function loadCurrentProfileState(context, options = {}) {
       includeTeamMemberProfiles: options.includeTeamMemberProfiles !== false,
       ownMemberships: ownMembershipsResult.data ?? [],
     },
-  );
+  ));
   const favoriteProfileIds = unique([...favoritePlayerIds, ...favoriteRefereeIds]);
   const invitationProfileIds = unique(teamInvitations.flatMap((invitation) => [
     invitation.fromUserId,
     invitation.targetUserId,
   ]));
-  const extraProfileIds = unique([...invitationProfileIds, ...favoriteProfileIds])
-    .filter((userId) => userId !== profileId && !currentUserTeams.users.some((item) => item.id === userId));
-  const { data: extraProfileRows, error: extraProfileError } = extraProfileIds.length
-    ? await context.supabase.from("public_profiles").select(PROFILE_TEAM_MEMBER_COLUMNS).in("id", extraProfileIds)
-    : { data: [], error: null };
+  const extraProfileIds = unique([...invitationProfileIds, ...favoriteProfileIds]).filter((userId) => userId !== profileId);
+  const extraProfileRowsPromise = extraProfileIds.length
+    ? time("extraProfilesMs", () => context.supabase.from("public_profiles").select(PROFILE_TEAM_MEMBER_COLUMNS).in("id", extraProfileIds))
+    : Promise.resolve({ data: [], error: null });
+  const favoriteCourtRowsPromise = favoriteCourtIds.length
+    ? time("favoriteCourtsMs", () => context.supabase.from("approved_courts").select(APPROVED_COURT_COLUMNS).in("id", favoriteCourtIds))
+    : Promise.resolve({ data: [], error: null });
+  const [currentUserTeams, { data: extraProfileRows, error: extraProfileError }, { data: favoriteCourtRows, error: favoriteCourtError }] = await Promise.all([
+    currentUserTeamsPromise,
+    extraProfileRowsPromise,
+    favoriteCourtRowsPromise,
+  ]);
   if (extraProfileError) throw extraProfileError;
-  const extraUsers = (extraProfileRows ?? []).map(fromTeamMemberProfile);
+  const currentTeamUserIds = new Set(currentUserTeams.users.map((item) => item.id));
+  const extraUsers = (extraProfileRows ?? [])
+    .filter((row) => !currentTeamUserIds.has(row.id))
+    .map(fromTeamMemberProfile);
   const userById = new Map([...currentUserTeams.users, ...extraUsers].map((item) => [item.id, item]));
   userById.set(user.id, user);
-  const { data: favoriteCourtRows, error: favoriteCourtError } = favoriteCourtIds.length
-    ? await context.supabase.from("approved_courts").select(APPROVED_COURT_COLUMNS).in("id", favoriteCourtIds)
-    : { data: [], error: null };
   if (favoriteCourtError) throw favoriteCourtError;
   const settings = {
     ...DEFAULT_SETTINGS,
@@ -284,13 +300,19 @@ export default async function handler(request, response) {
   }
 
   try {
+    const startedAt = Date.now();
     const body = await readJsonBody(request);
+    const debugTiming = body.debugTiming === true ? {} : null;
+    const contextStartedAt = Date.now();
     const context = await getAuthenticatedContext(request, { allowMissingProfile: true, profileSelect: PROFILE_ME_COLUMNS });
-    const result = await loadCurrentProfileState(context);
+    if (debugTiming) debugTiming.authMs = Date.now() - contextStartedAt;
+    const result = await loadCurrentProfileState(context, { debugTiming });
+    if (debugTiming) debugTiming.totalMs = Date.now() - startedAt;
 
     sendJson(response, 200, {
       ok: true,
       ...result,
+      debugTiming: debugTiming ?? undefined,
       debug: body.debug === true ? { profileId: context.profile?.id ?? result.state.currentUserId } : undefined,
     });
   } catch (error) {

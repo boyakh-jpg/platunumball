@@ -1,5 +1,13 @@
 # RankBall 로직/용어/디자인 기준
 
+## 2026-07-05 인증 컨텍스트 캐시
+
+- 서버 API는 같은 bearer token, `profileSelect`, `allowMissingProfile` 조합의 Supabase auth/profile 확인 결과를 최대 30초만 메모리 캐시할 수 있다.
+- 캐시 만료는 JWT `exp`를 넘지 않는다.
+- 이 캐시는 반복 메뉴 이동의 공통 인증 왕복만 줄인다.
+- 홈/경기/매칭/진행/팀/설정의 feed, list, count payload는 이 캐시에 넣지 않는다.
+- 다른 메뉴를 먼저 로드했다는 사실이 현재 메뉴의 숫자, 목록, badge 기준을 바꾸면 안 된다.
+
 ## 2026-07-04 승인 구장 FK 호환
 
 - 승인 구장 원본은 `approved_courts`다.

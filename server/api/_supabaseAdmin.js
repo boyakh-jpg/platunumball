@@ -9,6 +9,8 @@ const ADMIN_GRADE_LEVELS = {
 };
 
 let adminClient = null;
+const authContextCache = new Map();
+const AUTH_CONTEXT_CACHE_TTL_MS = 30 * 1000;
 
 export function sendJson(response, statusCode, payload) {
   response.status(statusCode).json(payload);
@@ -54,6 +56,46 @@ export function getBearerToken(request) {
   return match?.[1] ?? "";
 }
 
+function getJwtExpiresAt(token = "") {
+  const parts = String(token).split(".");
+  if (parts.length < 2) return 0;
+  try {
+    const payload = JSON.parse(Buffer.from(parts[1].replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8"));
+    const exp = Number(payload?.exp ?? 0);
+    return Number.isFinite(exp) ? exp * 1000 : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function getAuthContextCacheKey(token = "", profileSelect = "", allowMissingProfile = false) {
+  return `${allowMissingProfile ? "allow-missing" : "require-profile"}\n${profileSelect}\n${token}`;
+}
+
+function readAuthContextCache(token = "", profileSelect = "", allowMissingProfile = false) {
+  const key = getAuthContextCacheKey(token, profileSelect, allowMissingProfile);
+  const cached = authContextCache.get(key);
+  if (!cached || cached.expiresAt <= Date.now()) {
+    authContextCache.delete(key);
+    return null;
+  }
+  return cached.context;
+}
+
+function writeAuthContextCache(token = "", profileSelect = "", allowMissingProfile = false, context = {}) {
+  const jwtExpiresAt = getJwtExpiresAt(token);
+  const expiresAt = Math.min(Date.now() + AUTH_CONTEXT_CACHE_TTL_MS, jwtExpiresAt || Date.now() + AUTH_CONTEXT_CACHE_TTL_MS);
+  if (expiresAt <= Date.now()) return;
+  const key = getAuthContextCacheKey(token, profileSelect, allowMissingProfile);
+  authContextCache.set(key, { expiresAt, context });
+  if (authContextCache.size > 100) {
+    const now = Date.now();
+    for (const [cacheKey, value] of authContextCache) {
+      if (value.expiresAt <= now || authContextCache.size > 100) authContextCache.delete(cacheKey);
+    }
+  }
+}
+
 export function mergeById(current = [], incoming = []) {
   const merged = new Map((current ?? []).filter((item) => item?.id).map((item) => [item.id, item]));
   (incoming ?? []).forEach((item) => {
@@ -91,6 +133,9 @@ export async function getAuthenticatedContext(request, options = {}) {
     throw error;
   }
 
+  const cachedContext = readAuthContextCache(token, profileSelect, allowMissingProfile);
+  if (cachedContext) return { ...cachedContext, supabase };
+
   // RANKBALL_AUTH_CLEANUP: legacy test-token auth removed. Test accounts must be Supabase Auth users.
   const { data: userData, error: userError } = await supabase.auth.getUser(token);
   if (userError || !userData?.user?.id) {
@@ -109,26 +154,30 @@ export async function getAuthenticatedContext(request, options = {}) {
   if (profileError) throw profileError;
   if (!profile?.id) {
     if (allowMissingProfile) {
-      return {
+      const context = {
         supabase,
         authUser: userData.user,
         authUserId,
         profileId: null,
         isProfileMissing: true,
       };
+      writeAuthContextCache(token, profileSelect, allowMissingProfile, context);
+      return context;
     }
     const error = new Error("profile_not_found");
     error.statusCode = 403;
     throw error;
   }
 
-  return {
+  const context = {
     supabase,
     authUser: userData.user,
     authUserId,
     profileId: profile.id,
     profile,
   };
+  writeAuthContextCache(token, profileSelect, allowMissingProfile, context);
+  return context;
 }
 
 export async function getAdminLevel(context) {
