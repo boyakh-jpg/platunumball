@@ -12,6 +12,7 @@ const uniquePlayerIds = (playerIds = []) => [...new Set(playerIds.filter(Boolean
 export const PUBLIC_ROOM_SCHEDULE_MAX_DAYS = 5;
 export const PUBLIC_ROOM_CONFIRM_OPEN_HOURS = 24;
 export const PUBLIC_ROOM_CONFIRM_CLOSE_HOURS = 4;
+const MATCH_CLOSED_NOTICE_GRACE_MINUTES = INSTANT_ROOM_EXPIRE_MINUTES;
 export { INSTANT_ROOM_EXPIRE_MINUTES };
 export const MATCH_DISPUTE_REASON_OPTIONS = [
   "최종 점수 오기록",
@@ -417,6 +418,20 @@ export function getMatchScheduledDate(match = {}) {
     : String(match.scheduledAt ?? "").replace(" ", "T");
   const parsed = new Date(source);
   return Number.isFinite(parsed.getTime()) ? parsed : null;
+}
+
+export function isMatchClosedNotice(match = {}, now = new Date()) {
+  if (match.rules?.recordType === "solo") return false;
+  const status = String(match.status ?? "");
+  if (status === "cancelled" || status === "void") return true;
+  if (status === "confirmed" || status === "closed") return false;
+  if (match.endedAt || match.result || getMatchStartDate(match)) return false;
+  if (!["agreed", "contract"].includes(status)) return false;
+  const scheduledAt = getMatchScheduledDate(match);
+  if (!scheduledAt) return false;
+  const nowMs = now instanceof Date ? now.getTime() : new Date(now).getTime();
+  if (!Number.isFinite(nowMs)) return false;
+  return nowMs >= scheduledAt.getTime() + MATCH_CLOSED_NOTICE_GRACE_MINUTES * 60000;
 }
 
 export function getInstantRoomExpiresAt(room = {}) {

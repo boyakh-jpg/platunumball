@@ -19,6 +19,7 @@ import {
   getMatchHostPlayerId,
   getMatchReservePlayerIds,
   getMatchRoomPhase,
+  isMatchClosedNotice,
   isMatchRelatedToUser,
   isInstantRoom,
   userNeedsMatchAction,
@@ -326,11 +327,14 @@ function getMatchActionLabel(match) {
 }
 
 function shouldShowMatchForView(match, view, userId) {
+  if (match?.rules?.recordType === "solo") return false;
+  const closedNotice = isMatchClosedNotice(match);
   const phase = getMatchRoomPhase(match).phase;
   if (view.id === "active") {
     return CHILD_VIEW_IDS.some((viewId) => shouldShowMatchForView(match, { id: viewId }, userId));
   }
-  if (view.id === "closed") return ["record", "cancelled", "void"].includes(phase);
+  if (view.id === "closed") return closedNotice;
+  if (closedNotice) return false;
   if (view.id === "scheduled") return ["locked", "checkin"].includes(phase) && !userNeedsMatchAction(match, userId);
   if (view.id === "todo") return userNeedsMatchAction(match, userId);
   return false;

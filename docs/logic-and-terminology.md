@@ -110,6 +110,7 @@
 - 개인 기록은 `ranked=false`, `ratingScale=0`, `mmrExcludedPlayerIds`에 현재 사용자와 무기명 선수를 모두 넣어 MMR/팀 MMR에 반영하지 않는다.
 - 개인 기록 날짜는 오늘부터 과거 7일까지만 허용한다.
 - 개인 기록 삭제는 소유자만 가능하며, 안전 삭제로 `status="cancelled"`를 저장해 기록 목록에서 제외한다.
+- 개인 기록은 `/app/matches` 경기메뉴의 닫힘/일정 목록에 표시하지 않고 `/app/profile` 또는 `/app/profile/records`에서만 표시한다.
 - 개인/팀 기록 상세는 최근 6개월 안쪽만 링크형 방모달로 열고, 6개월 초과 기록은 목록에서 텍스트 요약으로만 표시한다.
 
 ## 2026-07-02 공개 참여 MMR 경고 기준
@@ -1279,7 +1280,8 @@ flowchart TD
 ## 2026-06-24 내 진행 일정 지난 경기 필터
 
 - 경기 메뉴는 오늘 이전 날짜의 경기와 모집방을 기본적으로 숨긴다.
-- 기록 확정 후 24시간 이내 평가 가능한 `confirmed` 경기만 closed view에서 feed card로 표시한다.
+- 닫힘 view는 비개인기록 경기 중 `cancelled`, `void`, 또는 예정 시각 2시간 뒤까지 시작/종료/기록 흐름으로 넘어가지 않은 `contract`/`agreed` 경기만 표시한다.
+- `confirmed` 기록방과 개인 기록은 경기 메뉴 닫힘 view에 표시하지 않고 나/팀 기록 화면에서만 표시한다.
 - 1개월/3개월/6개월 같은 과거 기록 범위 조회는 경기 메뉴가 아니라 나/팀 기록 화면에서만 수행한다.
 - 오늘 날짜의 경기와 모집방은 시간과 무관하게 지난 경기로 보지 않는다.
 ## 구장 속성
@@ -1721,8 +1723,8 @@ flowchart TD
 32. `/api/matches/list` may return `page.source` and optional `debugTiming` for diagnosis. `page.source='rpc_card'` or `feed_card` means list cards came from `room_feed_cards.card_json`; `page.source='feed'` means feed ids are active but card_json was missing; `page.source='fallback_mine'` means production is still using current-profile fallback and the feed SQL/deployment needs verification.
 32-1. `/api/matches/list` must keep usable partial `room_feed_cards.card_json` cards. If only some feed cards are missing or invalid, it may row-read only those missing match ids and merge them back in feed order; it must not discard all valid cards and re-read the whole page.
 33. Match `status='closed'` is a cleanup soft-close state, not a normal record-confirmed match state. `/api/matches/list` and `rankball_match_list()` exclude it from default current-user feed pages.
-34. Match room phase `record` is a completed-record phase, but `/app/matches` shows it only while the confirmed record is still inside the 24-hour evaluation window.
-35. `/app/matches` default list is not a paged "더 보기" feed. It loads current-user active matches in one request with `activeOnly=true` plus a small 24-hour recent-completed feed card query, excluding older record rows (`confirmed`) and terminal hidden rows (`cancelled`, `void`, `closed`). Past-history expansion must be a separate deliberate read from profile/team records, not the match menu load.
+34. Match room phase `record` is a completed-record phase and `/app/matches` does not show it in the closed view. Closed view is only for non-solo cancelled, void, or lapsed scheduled matches.
+35. `/app/matches` default list is not a paged "더 보기" feed. It loads current-user active matches in one request with `activeOnly=true` plus a small cancelled/void closed-notice feed card query, excluding record rows (`confirmed`) and cleanup rows (`closed`). Past-history expansion must be a separate deliberate read from profile/team records, not the match menu load.
 36. `/api/matches/list` defaults to match feed only. It includes recruiting schedule rooms only when `includeRecruitingSchedule=true`; previously loaded recruiting state from `/app/recruiting` must not change `/app/matches` list results.
 37. `/app/matches`는 SPA 이동으로 들어왔고 `recruitingScheduleChecked`가 false이면 현재 사용자 모집방 일정을 다시 로드한다. 경기 목록이 비어 있어도 match-page merge는 모집방 일정 row를 보존해야 한다.
 37-1. `/app/matches` 화면은 전역 `recruitingPosts` 전체가 아니라 match schedule 응답 또는 현재 사용자 recruiting mutation이 기록한 `recruitingSchedulePostIds`만 일정 후보로 사용한다. 공개 매칭 목록 로드가 경기 메뉴 숫자에 섞이면 안 된다.

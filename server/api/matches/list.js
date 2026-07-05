@@ -9,7 +9,7 @@ import {
   REMOTE_CLIENT_MATCH_LIMIT,
 } from "../../../src/data/repository.js";
 import { loadCurrentUserRecruitingFeedList } from "../recruiting/list.js";
-import { getMatchRoomPhase } from "../../../src/lib/matchUtils.js";
+import { getMatchRoomPhase, isMatchClosedNotice } from "../../../src/lib/matchUtils.js";
 
 const PROFILE_ME_COLUMNS = "id,name,handle,hashtag,position,region,region_sido,region_district,school,company,club,trust_score,streak,avatar_color,test_login_id,auth_user_id,birth_year,age_group,age_group_checked_season,onboarding_complete,profile_version,handle_locked_at,birth_year_locked_at,name_updated_at,discord_connection,discord_user_id,ratings,created_at,updated_at,app_settings";
 const PROFILE_CARD_COLUMNS = "id,name,handle,hashtag,position,region,trust_score,avatar_color,ratings,age_group,updated_at";
@@ -22,10 +22,11 @@ const COURT_COLUMNS = "id,name";
 
 let userRoomFeedAvailable = true;
 const MATCH_LIST_MAX_LIMIT = REMOTE_CLIENT_ACTIVE_MATCH_LIMIT;
-const ACTIVE_MATCH_EXCLUDED_STATUSES = new Set(["confirmed", "cancelled", "void", "closed"]);
-const ACTIVE_MATCH_EXCLUDED_PHASES = new Set(["record", "cancelled", "void"]);
+const ACTIVE_MATCH_EXCLUDED_STATUSES = new Set(["confirmed", "closed"]);
+const ACTIVE_MATCH_EXCLUDED_PHASES = new Set(["record"]);
 const RECENT_COMPLETED_MATCH_HOURS = 24;
 const RECENT_COMPLETED_MATCH_LIMIT = 20;
+const CLOSED_NOTICE_MATCH_LIMIT = 20;
 const MATCH_FEED_ROW_MAX_LIMIT = 320;
 const MATCH_FEED_ROW_FACTOR = 4;
 const RECENT_COMPLETED_FEED_ROW_MAX_LIMIT = 80;
@@ -222,11 +223,17 @@ function attachMatchCardReferences(match = {}, teamById = {}, courtById = {}) {
   };
 }
 
-function filterActiveMatchCards(matches = [], activeOnly = false, allowRecentCompleted = false) {
+function isSoloRecordMatch(match = {}) {
+  return match?.rules?.recordType === "solo";
+}
+
+function filterActiveMatchCards(matches = [], activeOnly = false) {
   if (!activeOnly) return matches;
   return (matches ?? []).filter((match) => (
-    !ACTIVE_MATCH_EXCLUDED_PHASES.has(getMatchRoomPhase(match).phase) ||
-    (allowRecentCompleted && match?.recentCompleted === true)
+    !isSoloRecordMatch(match) && (
+      isMatchClosedNotice(match) ||
+      (!ACTIVE_MATCH_EXCLUDED_PHASES.has(getMatchRoomPhase(match).phase) && !match?.recentCompleted)
+    )
   ));
 }
 
@@ -313,7 +320,7 @@ async function fetchMatchFeedPage(client, profileId = "", limit = REMOTE_CLIENT_
     .eq("is_active", true)
     .neq("status", "closed")
     .in("relation", ["owner", "participant", "referee"]);
-  if (activeOnly) query = query.not("status", "in", "(confirmed,cancelled,void,closed)");
+  if (activeOnly) query = query.not("status", "in", "(confirmed,closed)");
   const { data, error } = await query
     .order("sort_at", { ascending: false, nullsFirst: false })
     .order("entity_id", { ascending: false })
@@ -377,6 +384,42 @@ async function fetchRecentCompletedMatchFeedPage(client, profileId = "", hours =
   };
 }
 
+async function fetchClosedNoticeMatchFeedPage(client, profileId = "", limit = CLOSED_NOTICE_MATCH_LIMIT) {
+  if (!profileId || !userRoomFeedAvailable) return null;
+  const cappedLimit = Math.max(1, Math.min(CLOSED_NOTICE_MATCH_LIMIT, Number(limit) || CLOSED_NOTICE_MATCH_LIMIT));
+  const rowLimit = Math.min(RECENT_COMPLETED_FEED_ROW_MAX_LIMIT, cappedLimit * MATCH_FEED_ROW_FACTOR);
+  const { data, error } = await client
+    .from("user_room_feed")
+    .select("entity_id,sort_at,relation")
+    .eq("entity_type", "match")
+    .eq("profile_id", profileId)
+    .eq("is_active", true)
+    .in("status", ["cancelled", "void"])
+    .in("relation", ["owner", "participant", "referee"])
+    .order("sort_at", { ascending: false, nullsFirst: false })
+    .order("entity_id", { ascending: false })
+    .range(0, rowLimit - 1);
+  if (error) {
+    if (isMissingUserRoomFeed(error)) {
+      userRoomFeedAvailable = false;
+      console.warn("Closed notice match feed skipped.", error.message);
+      return null;
+    }
+    throw error;
+  }
+  const ids = unique((data ?? []).map((row) => row?.entity_id)).slice(0, cappedLimit);
+  const feedRows = await attachRoomFeedCards(client, data ?? [], "match");
+  const rows = feedRows.filter((row) => ids.includes(row?.entity_id));
+  const cards = uniqueFeedCards(rows, ids).map((card) => ({ ...card, closedNotice: true }));
+  return {
+    ids,
+    cards,
+    source: cards.length === ids.length
+      ? "closed_notice_feed_card"
+      : (cards.length ? "closed_notice_feed_card_partial" : "closed_notice_feed"),
+  };
+}
+
 function mergeMatchFeedPages(feedPage, extraPage) {
   if (!extraPage?.ids?.length) return feedPage;
   if (!feedPage) return { ...extraPage, cursor: "", exhausted: true };
@@ -427,7 +470,7 @@ async function fetchJsonActorMatchIds(client, profileId = "", limit = REMOTE_CLI
     client
       .from("matches")
       .select("id")
-      .not("status", "in", "(confirmed,cancelled,void,closed)")
+      .not("status", "in", "(confirmed,closed)")
       .contains(column, value)
       .limit(candidateLimit)
   )));
@@ -813,9 +856,10 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   const completedSince = completedOnly ? getCompletedSince(body) : "";
   const activeOnly = body.activeOnly === true || recorderOnly;
   const shouldLoadRecentCompleted = !completedOnly && activeOnly && !cursor && body.includeRecentCompleted === true;
+  const shouldLoadClosedNotices = !completedOnly && activeOnly && !cursor;
   const allowLegacyFallback = isLegacyListFallbackAllowed(body);
   const filterMatchItems = (items = []) => {
-    let filtered = filterActiveMatchCards(items, activeOnly, shouldLoadRecentCompleted);
+    let filtered = filterActiveMatchCards(items, activeOnly);
     if (recorderOnly) filtered = filtered.filter((match) => isRecorderMatch(match, context.profileId, adminLevel >= 30));
     if (completedOnly) filtered = filtered.filter((match) => (
       match.status === "confirmed" &&
@@ -826,15 +870,18 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   const recruitingSchedulePromise = shouldLoadRecruitingSchedule
     ? loadCurrentRecruitingSchedule(context, adminLevel)
     : Promise.resolve(null);
-  const [baseFeedPage, recentCompletedPage] = await Promise.all([
+  const [baseFeedPage, recentCompletedPage, closedNoticePage] = await Promise.all([
     completedOnly
       ? timeStep(debugTiming, "completedFeedMs", () => fetchCurrentUserCompletedMatchIds(context.supabase, context.profileId, limit, completedSince, allowLegacyFallback))
       : timeStep(debugTiming, "feedMs", () => fetchMatchFeedPage(context.supabase, context.profileId, limit, cursor, activeOnly)),
     shouldLoadRecentCompleted
       ? timeStep(debugTiming, "recentCompletedMs", () => fetchRecentCompletedMatchFeedPage(context.supabase, context.profileId))
       : Promise.resolve(null),
+    shouldLoadClosedNotices
+      ? timeStep(debugTiming, "closedNoticeMs", () => fetchClosedNoticeMatchFeedPage(context.supabase, context.profileId))
+      : Promise.resolve(null),
   ]);
-  const feedPage = mergeMatchFeedPages(baseFeedPage, recentCompletedPage);
+  const feedPage = mergeMatchFeedPages(mergeMatchFeedPages(baseFeedPage, recentCompletedPage), closedNoticePage);
   let pageSource = "feed";
   let pageCursor = feedPage?.cursor ?? "";
   let pageExhausted = feedPage?.exhausted ?? true;
