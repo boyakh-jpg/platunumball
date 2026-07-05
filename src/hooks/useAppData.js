@@ -766,6 +766,9 @@ function getInitialStateLoadOptions() {
   if (pathname === "/app/recorder") {
     return { endpoint: "recorderMatches", matchLimit: REMOTE_CLIENT_MATCH_LIMIT, recruitingLimit: 0, tournamentLimit: 0 };
   }
+  if (pathname === "/app/profile") {
+    return { endpoint: "profileMe", matchLimit: 0, recruitingLimit: 0, tournamentLimit: 0 };
+  }
   if (pathname === "/app/profile/records") {
     return { endpoint: "profileRecords", matchLimit: REMOTE_CLIENT_RECORD_MATCH_LIMIT, recruitingLimit: 0, tournamentLimit: 0 };
   }
@@ -949,6 +952,22 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
         { allowWhenDisabled: true },
       );
       if (result?.state) return attachRemoteMeta(normalizeServerState(result.state), { matchPage: result.page ?? null, profileRecordsLoaded: true });
+    }
+    if (options.endpoint === "profileMe") {
+      const result = await postServerAction(
+        "/api/profile/me",
+        {
+          authUserId,
+          authEmail,
+          includeFavorites: false,
+          includeTeamInvitations: false,
+          includeTeams: false,
+          includeExtraProfiles: false,
+          includeMatchSummary: true,
+        },
+        { allowWhenDisabled: true },
+      );
+      if (result?.state) return attachRemoteMeta(normalizeServerState(result.state), { profileRecordsLoaded: false });
     }
     if (options.endpoint === "homeLoad") {
       const result = await postServerAction(

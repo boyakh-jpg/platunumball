@@ -214,12 +214,17 @@ export async function loadCurrentProfileState(context, options = {}) {
   const remoteAppSettings = getRemoteAppSettings(profile);
   const includeMatchSummary = options.includeMatchSummary !== false;
   const includeFavorites = options.includeFavorites !== false;
+  const includeTeams = options.includeTeams !== false;
+  const includeTeamInvitations = options.includeTeamInvitations !== false;
+  const includeExtraProfiles = options.includeExtraProfiles !== false;
   const ownMembershipsPromise = profileId
-    ? context.supabase.from("team_members").select("team_id,user_id,role").eq("user_id", profileId)
+    ? includeTeams
+      ? context.supabase.from("team_members").select("team_id,user_id,role").eq("user_id", profileId)
+      : Promise.resolve({ data: [], error: null })
     : Promise.resolve({ data: [], error: null });
   const [matchSummary, teamInvitations, ownMembershipsResult, favoriteRows] = await Promise.all([
     includeMatchSummary ? time("matchSummaryMs", () => loadCurrentUserMatchSummary(context.supabase, profileId)) : Promise.resolve(null),
-    time("teamInvitationsMs", () => loadCurrentUserTeamInvitations(context.supabase, profileId)),
+    includeTeamInvitations ? time("teamInvitationsMs", () => loadCurrentUserTeamInvitations(context.supabase, profileId)) : Promise.resolve([]),
     time("ownMembershipsMs", () => ownMembershipsPromise),
     includeFavorites ? time("favoritesMs", () => loadCurrentUserFavorites(context.supabase, profileId)) : Promise.resolve([]),
   ]);
@@ -231,25 +236,29 @@ export async function loadCurrentProfileState(context, options = {}) {
   const user = profile
     ? { ...fromRemoteProfile(profile), matchSummary }
     : createProfileShell(context.authUserId, context.authUser?.email ?? "");
-  const currentUserTeamsPromise = time("teamsMs", () => loadCurrentUserTeams(
-    context.supabase,
-    profileId,
-    [
-      ...teamInvitations.filter((invitation) => invitation.status === "pending").map((invitation) => invitation.teamId),
-      ...favoriteTeamIds,
-    ],
-    {
-      includeTeamMemberProfiles: options.includeTeamMemberProfiles !== false,
-      ownMembersOnly: options.ownMembersOnly === true,
-      ownMemberships: ownMembershipsResult.data ?? [],
-    },
-  ));
+  const currentUserTeamsPromise = includeTeams
+    ? time("teamsMs", () => loadCurrentUserTeams(
+      context.supabase,
+      profileId,
+      [
+        ...teamInvitations.filter((invitation) => invitation.status === "pending").map((invitation) => invitation.teamId),
+        ...favoriteTeamIds,
+      ],
+      {
+        includeTeamMemberProfiles: options.includeTeamMemberProfiles !== false,
+        ownMembersOnly: options.ownMembersOnly === true,
+        ownMemberships: ownMembershipsResult.data ?? [],
+      },
+    ))
+    : Promise.resolve({ teams: [], users: [] });
   const favoriteProfileIds = unique([...favoritePlayerIds, ...favoriteRefereeIds]);
   const invitationProfileIds = unique(teamInvitations.flatMap((invitation) => [
     invitation.fromUserId,
     invitation.targetUserId,
   ]));
-  const extraProfileIds = unique([...invitationProfileIds, ...favoriteProfileIds]).filter((userId) => userId !== profileId);
+  const extraProfileIds = includeExtraProfiles
+    ? unique([...invitationProfileIds, ...favoriteProfileIds]).filter((userId) => userId !== profileId)
+    : [];
   const extraProfileRowsPromise = extraProfileIds.length
     ? time("extraProfilesMs", () => context.supabase.from("profiles").select(PROFILE_TEAM_MEMBER_COLUMNS).in("id", extraProfileIds))
     : Promise.resolve({ data: [], error: null });
@@ -317,7 +326,15 @@ export default async function handler(request, response) {
     const contextStartedAt = Date.now();
     const context = await getAuthenticatedContext(request, { allowMissingProfile: true, profileSelect: PROFILE_ME_COLUMNS });
     if (debugTiming) debugTiming.authMs = Date.now() - contextStartedAt;
-    const result = await loadCurrentProfileState(context, { debugTiming });
+    const result = await loadCurrentProfileState(context, {
+      debugTiming,
+      includeFavorites: body.includeFavorites !== false,
+      includeMatchSummary: body.includeMatchSummary !== false,
+      includeTeamInvitations: body.includeTeamInvitations !== false,
+      includeTeams: body.includeTeams !== false,
+      includeExtraProfiles: body.includeExtraProfiles !== false,
+      includeTeamMemberProfiles: body.includeTeamMemberProfiles !== false,
+    });
     if (debugTiming) debugTiming.totalMs = Date.now() - startedAt;
 
     sendJson(response, 200, {
