@@ -2114,6 +2114,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
   const [confirmingMatchId, setConfirmingMatchId] = useState("");
   const [joiningPostId, setJoiningPostId] = useState("");
   const [roomShareStatus, setRoomShareStatus] = useState("");
+  const [soloRecordDeleteTarget, setSoloRecordDeleteTarget] = useState(null);
   const [sheetDragOffset, setSheetDragOffset] = useState(0);
   const [sheetDragSettling, setSheetDragSettling] = useState(false);
   const roomPostId = selectedPost?.id ?? "";
@@ -2211,12 +2212,18 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
   const closeModal = () => {
     setInviteDraft(null);
     setSlotActionDraft(null);
+    setSoloRecordDeleteTarget(null);
     onClose?.();
   };
   const deleteSourceSoloRecord = (match) => {
     if (!match?.id || match.rules?.recordType !== "solo" || match.createdBy !== app.currentUser.id) return;
-    if (!window.confirm("개인 기록을 삭제할까요? 삭제하면 내 기록 목록에서 사라집니다.")) return;
-    const request = app.actions.deleteSoloRecord?.(match.id);
+    setSoloRecordDeleteTarget(match);
+  };
+  const confirmDeleteSourceSoloRecord = () => {
+    const matchId = soloRecordDeleteTarget?.id;
+    if (!matchId) return;
+    setSoloRecordDeleteTarget(null);
+    const request = app.actions.deleteSoloRecord?.(matchId);
     if (request?.then) request.finally(closeModal);
     else closeModal();
   };
@@ -3766,6 +3773,18 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                   </Button>
                 ) : null}
               </div>
+              {soloRecordDeleteTarget ? (
+                <div className="app-confirm-backdrop" role="presentation" onMouseDown={() => setSoloRecordDeleteTarget(null)}>
+                  <div className="app-confirm-dialog" role="dialog" aria-modal="true" aria-label="개인 기록 삭제 확인" onMouseDown={(event) => event.stopPropagation()}>
+                    <strong>개인 기록 삭제</strong>
+                    <p>삭제하면 내 기록 목록에서 사라집니다. MMR은 변하지 않습니다.</p>
+                    <div className="app-confirm-actions">
+                      <Button type="button" variant="secondary" onClick={() => setSoloRecordDeleteTarget(null)}>취소</Button>
+                      <Button type="button" variant="primary" className="danger-button" onClick={confirmDeleteSourceSoloRecord}>삭제하기</Button>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
               <div className="arena-modal-close-row">
                 <Button
                   type="button"

@@ -6751,6 +6751,48 @@ html[data-theme="light"] .search-picker-result-row.selected {
   color: var(--danger);
 }
 
+.app-confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2500;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(0, 0, 0, 0.46);
+}
+
+.app-confirm-dialog {
+  display: grid;
+  width: min(360px, 100%);
+  gap: 12px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+  padding: 18px;
+  color: var(--text);
+}
+
+.app-confirm-dialog strong {
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 950;
+}
+
+.app-confirm-dialog p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 850;
+  line-height: 1.45;
+}
+
+.app-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .arena-dispute-editor {
   display: grid;
   gap: 12px;

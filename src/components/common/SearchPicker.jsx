@@ -214,6 +214,7 @@ export default function SearchPicker({
             setVisibleLimit(baseLimit);
           }}
           onChange={(event) => {
+            setFocused(true);
             setExpanded(false);
             setShowIdlePanel(false);
             setSubmittedQuery("");

@@ -3592,6 +3592,37 @@ function parseSoloRecordRosterText(value = "") {
     .filter((entry) => entry.name);
 }
 
+function getSoloRecordEntryIdentity(entry = {}) {
+  const text = String(entry.name ?? "").replace(/\s+/g, " ").trim();
+  const hashtag = text.match(/#[^\s#]+/);
+  if (hashtag?.[0]) return hashtag[0].toLowerCase();
+  return text.toLowerCase();
+}
+
+function getSoloRecordRosterError(teamAEntries = [], teamBEntries = [], sideSize = 1) {
+  const teamALimit = Math.max(0, sideSize - 1);
+  if (teamAEntries.length > teamALimit) return `우리 사이드는 본인 제외 ${teamALimit}명까지만 추가할 수 있습니다.`;
+  if (teamBEntries.length > sideSize) return `상대 사이드는 ${sideSize}명까지만 추가할 수 있습니다.`;
+  const seen = new Set();
+  for (const entry of [...teamAEntries, ...teamBEntries]) {
+    const identity = getSoloRecordEntryIdentity(entry);
+    if (!identity) continue;
+    if (seen.has(identity)) return "같은 선수를 우리/상대 또는 같은 사이드에 중복으로 넣을 수 없습니다.";
+    seen.add(identity);
+  }
+  return "";
+}
+
+function withSoloRecordNotification(state, title, body) {
+  return {
+    ...state,
+    notifications: [
+      { id: makeId("n"), title, body, tone: "match" },
+      ...(state.notifications ?? []),
+    ],
+  };
+}
+
 function makeSoloRecordAnonymousSide({ count, entries = [] } = {}) {
   let anonymousIndex = 0;
   return Array.from({ length: count }, (_, index) => {
@@ -3654,6 +3685,8 @@ function createSoloRecordMatch(state, draft = {}) {
   if (!teamBEntries.length && String(draft.soloOpponentName ?? "").trim()) {
     teamBEntries.push({ name: String(draft.soloOpponentName).trim(), position: SOLO_RECORD_ANONYMOUS_POSITION });
   }
+  const rosterError = getSoloRecordRosterError(teamAEntries, teamBEntries, sideSize);
+  if (rosterError) return withSoloRecordNotification(state, "개인 기록 선수 확인", rosterError);
   const teamAAnonymous = makeSoloRecordAnonymousSide({
     count: Math.max(0, sideSize - 1),
     entries: teamAEntries,

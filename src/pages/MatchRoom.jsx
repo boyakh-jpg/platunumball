@@ -230,12 +230,13 @@ export default function MatchRoom({ app }) {
   const [thumbDraftPlayerIds, setThumbDraftPlayerIds] = useState([]);
   const [resultSaveFeedback, setResultSaveFeedback] = useState("");
   const [matchDetailRefreshing, setMatchDetailRefreshing] = useState(false);
+  const [soloRecordDeleteOpen, setSoloRecordDeleteOpen] = useState(false);
   const existingCourtReview = useMemo(
     () => (match ? (app.state.settings?.courtReviews ?? []).find((review) => review.matchId === match.id && review.reviewerId === app.currentUser.id) ?? null : null),
     [app.currentUser.id, app.state.settings?.courtReviews, match?.id],
   );
   const [courtReviewDraft, setCourtReviewDraft] = useState(() => getCourtReviewDraft(existingCourtReview));
-  useBodyScrollLock(Boolean(statEditorPlayerId));
+  useBodyScrollLock(Boolean(statEditorPlayerId || soloRecordDeleteOpen));
 
   useEffect(() => {
     if (!matchId || app.remoteReady === false || requestedMatchIdRef.current === matchId) return;
@@ -674,7 +675,11 @@ export default function MatchRoom({ app }) {
   };
   const deleteSoloRecord = () => {
     if (!canDeleteSoloRecord) return;
-    if (!window.confirm("개인 기록을 삭제할까요? 삭제하면 내 기록 목록에서 사라집니다.")) return;
+    setSoloRecordDeleteOpen(true);
+  };
+  const confirmDeleteSoloRecord = () => {
+    if (!canDeleteSoloRecord) return;
+    setSoloRecordDeleteOpen(false);
     app.actions.deleteSoloRecord?.(match.id);
   };
   const ruleItems = [
@@ -746,6 +751,19 @@ export default function MatchRoom({ app }) {
           <div><Trophy size={17} /><span>{match.rules?.targetScore ?? 21}점 · {match.rules?.timeLimit ?? 12}분</span></div>
         </div>
       </section>
+
+      {soloRecordDeleteOpen ? (
+        <div className="app-confirm-backdrop" role="presentation" onMouseDown={() => setSoloRecordDeleteOpen(false)}>
+          <div className="app-confirm-dialog" role="dialog" aria-modal="true" aria-label="개인 기록 삭제 확인" onMouseDown={(event) => event.stopPropagation()}>
+            <strong>개인 기록 삭제</strong>
+            <p>삭제하면 내 기록 목록에서 사라집니다. MMR은 변하지 않습니다.</p>
+            <div className="app-confirm-actions">
+              <Button type="button" variant="secondary" onClick={() => setSoloRecordDeleteOpen(false)}>취소</Button>
+              <Button type="button" variant="primary" className="danger-button" onClick={confirmDeleteSoloRecord}>삭제하기</Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <Card className="gm-next-action-card">
         <div>

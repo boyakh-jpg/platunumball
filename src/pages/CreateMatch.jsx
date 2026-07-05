@@ -54,6 +54,56 @@ function getSoloRecordUserSearchText(user = {}) {
   return [user.name, getUserHashtag(user), user.position, user.region, `신뢰도 ${user.trustScore ?? ""}`].filter(Boolean).join(" ");
 }
 
+function getSoloRecordModeSize(mode = "1v1") {
+  const match = String(mode).match(/^(\d)/);
+  const value = match ? Number(match[1]) : 1;
+  return Math.max(1, Math.min(5, Number.isFinite(value) ? value : 1));
+}
+
+function getSoloRecordRosterLines(value = "") {
+  return String(value ?? "")
+    .split(/[\n,]+/)
+    .map((line) => line.replace(/\s+/g, " ").trim())
+    .filter(Boolean);
+}
+
+function getSoloRecordRosterIdentity(line = "") {
+  const text = String(line ?? "").replace(/\s+/g, " ").trim();
+  const hashtag = text.match(/#[^\s#]+/);
+  if (hashtag?.[0]) return hashtag[0].toLowerCase();
+  const parts = text.split(" ");
+  const maybePosition = parts.at(-1)?.toUpperCase() ?? "";
+  const nameText = PLAYER_POSITIONS.includes(maybePosition) ? parts.slice(0, -1).join(" ") : text;
+  return nameText.trim().toLowerCase();
+}
+
+function getSoloRecordUserIdentity(user = {}) {
+  return getUserHashtag(user).toLowerCase();
+}
+
+function getSoloRecordSelectedIdentitySet(teamAText = "", teamBText = "") {
+  return new Set([...getSoloRecordRosterLines(teamAText), ...getSoloRecordRosterLines(teamBText)]
+    .map(getSoloRecordRosterIdentity)
+    .filter(Boolean));
+}
+
+function getSoloRecordRosterError(mode = "1v1", teamAText = "", teamBText = "") {
+  const sideSize = getSoloRecordModeSize(mode);
+  const teamALines = getSoloRecordRosterLines(teamAText);
+  const teamBLines = getSoloRecordRosterLines(teamBText);
+  const teamALimit = Math.max(0, sideSize - 1);
+  if (teamALines.length > teamALimit) return `우리 사이드는 본인 제외 ${teamALimit}명까지만 추가할 수 있습니다.`;
+  if (teamBLines.length > sideSize) return `상대 사이드는 ${sideSize}명까지만 추가할 수 있습니다.`;
+  const seen = new Map();
+  for (const line of [...teamALines, ...teamBLines]) {
+    const identity = getSoloRecordRosterIdentity(line);
+    if (!identity) continue;
+    if (seen.has(identity)) return "같은 선수를 우리/상대 또는 같은 사이드에 중복으로 넣을 수 없습니다.";
+    seen.set(identity, line);
+  }
+  return "";
+}
+
 const ageRestrictionOptions = [
   { id: "any", label: "연령 무관", desc: "모든 연령 참여", allowedGroups: AGE_GROUPS.map((group) => group.id) },
   { id: "junior", label: "Junior", desc: "Junior 전용", allowedGroups: ["junior"] },
@@ -510,6 +560,14 @@ export default function CreateMatch({ app }) {
   const selectedTeamA = app.state.teams.find((team) => team.id === draft.teamAId);
   const selectedTeamB = app.state.teams.find((team) => team.id === draft.teamBId);
   const isSoloRecord = draft.recordType === "solo";
+  const soloRosterError = useMemo(
+    () => getSoloRecordRosterError(draft.mode, draft.soloTeamAPlayersText, draft.soloTeamBPlayersText),
+    [draft.mode, draft.soloTeamAPlayersText, draft.soloTeamBPlayersText],
+  );
+  const soloRecordSelectedIdentitySet = useMemo(
+    () => getSoloRecordSelectedIdentitySet(draft.soloTeamAPlayersText, draft.soloTeamBPlayersText),
+    [draft.soloTeamAPlayersText, draft.soloTeamBPlayersText],
+  );
   const isPublicRoom = !isSoloRecord && draft.visibility === "public";
   const isTournamentRoom = !isSoloRecord && draft.visibility === "tournament";
   const isTeamRoom = !isSoloRecord && !isTournamentRoom && draft.hostJoinMode === "team";
@@ -597,12 +655,13 @@ export default function CreateMatch({ app }) {
   const soloRecordUserCandidates = useMemo(
     () => app.state.users
       .filter((user) => user.id !== app.currentUser.id && !user.anonymous)
+      .filter((user) => !soloRecordSelectedIdentitySet.has(getSoloRecordUserIdentity(user)))
       .sort((a, b) => (
         Number(isSameRegion(b.region, currentRegion)) - Number(isSameRegion(a.region, currentRegion)) ||
         Number(b.trustScore ?? 0) - Number(a.trustScore ?? 0) ||
         String(a.name ?? "").localeCompare(String(b.name ?? ""))
       )),
-    [app.currentUser.id, app.state.users, currentRegion],
+    [app.currentUser.id, app.state.users, currentRegion, soloRecordSelectedIdentitySet],
   );
   const teamTierRange = getRecruitingTierRange(selectedTeamA?.mmr ?? 1200, draft.ranked, draft.mmrRangeMode);
   const personalTierRange = getRecruitingTierRange(app.currentUser.ratings?.integrated ?? 1200, draft.ranked, draft.mmrRangeMode);
@@ -715,6 +774,7 @@ export default function CreateMatch({ app }) {
     soloScoreAgainstNumber < 0 ||
     soloScoreForNumber > 999 ||
     soloScoreAgainstNumber > 999 ||
+    Boolean(soloRosterError) ||
     soloStatsInvalid
   );
   const submitDisabled = courtRequiredBlocked || (isSoloRecord ? soloRecordInvalid : !scheduleAllowed || !tournamentEndAllowed || ageRestrictionBlocked || hostTrustBlocked || (isTournamentRoom
@@ -725,7 +785,7 @@ export default function CreateMatch({ app }) {
   const submitDisabledReason = courtRequiredBlocked
     ? "등록된 구장을 선택해야 생성할 수 있습니다."
     : isSoloRecord && soloRecordInvalid
-    ? "제목, 날짜, 점수를 확인해야 합니다. 개인 기록 날짜는 오늘부터 과거 7일까지만 가능합니다."
+    ? soloRosterError || "제목, 날짜, 점수를 확인해야 합니다. 개인 기록 날짜는 오늘부터 과거 7일까지만 가능합니다."
     : !scheduleAllowed
     ? "일정 조건이 맞지 않습니다. 즉시는 바로 생성 가능하고, 예약 일정은 허용 기간 안에서만 가능합니다."
     : !tournamentEndAllowed
@@ -770,6 +830,18 @@ export default function CreateMatch({ app }) {
     const fieldId = sideName === "teamA" ? "soloTeamAPlayersText" : "soloTeamBPlayersText";
     const line = getSoloRecordUserLine(user);
     if (!line) return;
+    const sideSize = getSoloRecordModeSize(draft.mode);
+    const targetLimit = sideName === "teamA" ? Math.max(0, sideSize - 1) : sideSize;
+    const targetLines = getSoloRecordRosterLines(draft[fieldId]);
+    const identity = getSoloRecordRosterIdentity(line);
+    if (targetLines.length >= targetLimit) {
+      setSubmitFeedback(sideName === "teamA" ? `우리 사이드는 본인 제외 ${targetLimit}명까지만 추가할 수 있습니다.` : `상대 사이드는 ${targetLimit}명까지만 추가할 수 있습니다.`);
+      return;
+    }
+    if (identity && soloRecordSelectedIdentitySet.has(identity)) {
+      setSubmitFeedback("같은 선수를 우리/상대 또는 같은 사이드에 중복으로 넣을 수 없습니다.");
+      return;
+    }
     setSubmitFeedback("");
     setDraft((current) => {
       const lines = String(current[fieldId] ?? "").split("\n").map((item) => item.trim()).filter(Boolean);
