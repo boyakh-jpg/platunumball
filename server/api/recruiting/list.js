@@ -212,6 +212,41 @@ function normalizeRegionKey(value = "") {
   return REGION_KEY_ALIASES.get(key) ?? key;
 }
 
+function normalizeRecruitingListCountSide(value = {}, fallbackCapacity = 5) {
+  if (Array.isArray(value)) {
+    const [filled, projectedFilled, confirmationProjectedFilled, capacity] = value;
+    return {
+      filled: Number(filled ?? 0) || 0,
+      projectedFilled: Number(projectedFilled ?? filled ?? 0) || 0,
+      confirmationProjectedFilled: Number(confirmationProjectedFilled ?? projectedFilled ?? filled ?? 0) || 0,
+      capacity: Number(capacity ?? fallbackCapacity) || fallbackCapacity,
+    };
+  }
+  const filled = Number(value?.filled ?? value?.f ?? value?.count ?? 0) || 0;
+  const projectedFilled = Number(value?.projectedFilled ?? value?.p ?? filled) || filled;
+  const confirmationProjectedFilled = Number(value?.confirmationProjectedFilled ?? value?.cf ?? projectedFilled) || projectedFilled;
+  return {
+    filled,
+    projectedFilled,
+    confirmationProjectedFilled,
+    capacity: Number(value?.capacity ?? value?.c ?? fallbackCapacity) || fallbackCapacity,
+  };
+}
+
+function normalizeRecruitingListCounts(value = {}, sideCapacity = 5) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const teamA = normalizeRecruitingListCountSide(value.teamA ?? value.a, sideCapacity);
+  const teamB = normalizeRecruitingListCountSide(value.teamB ?? value.b, sideCapacity);
+  return {
+    teamA,
+    teamB,
+    filled: Number(value.filled ?? value.f ?? teamA.filled + teamB.filled) || 0,
+    projectedFilled: Number(value.projectedFilled ?? value.p ?? teamA.projectedFilled + teamB.projectedFilled) || 0,
+    capacity: Number(value.capacity ?? value.c ?? teamA.capacity + teamB.capacity) || 0,
+    partyCount: Number(value.partyCount ?? value.pc ?? 0) || 0,
+  };
+}
+
 function isSameRegionKey(value = "", regionKey = "") {
   return Boolean(regionKey && normalizeRegionKey(value) === regionKey);
 }
@@ -326,6 +361,7 @@ function normalizeFeedCard(row = {}) {
     ...card,
     id,
     regionKey: normalizeRegionKey(card.regionKey ?? card.region ?? ""),
+    ...(card.listCounts ? { listCounts: normalizeRecruitingListCounts(card.listCounts, Number(card.sideCapacity ?? 5) || 5) } : {}),
     teamId: teamId || null,
     hostJoinMode,
     ...(ownerId ? { ownerId } : {}),
@@ -801,7 +837,7 @@ async function queryRecruitingFeedPage(client, {
   useTimingColumns = true,
 } = {}) {
   const selectColumns = includeCards
-    ? (useTimingColumns ? "entity_id,sort_at,relation,timing_type,scheduled_date,card_json" : "entity_id,sort_at,relation,card_json")
+    ? (useTimingColumns ? "entity_id,sort_at,relation,timing_type,scheduled_date" : "entity_id,sort_at,relation,card_json")
     : (useTimingColumns ? "entity_id,sort_at,relation,timing_type,scheduled_date" : "entity_id,sort_at,relation");
   let query = client
     .from("user_room_feed")

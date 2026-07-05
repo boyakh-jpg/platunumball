@@ -307,7 +307,7 @@ async function fetchMatchFeedPage(client, profileId = "", limit = REMOTE_CLIENT_
   const rowLimit = Math.min(MATCH_FEED_ROW_MAX_LIMIT, cappedLimit * MATCH_FEED_ROW_FACTOR);
   let query = client
     .from("user_room_feed")
-    .select("entity_id,sort_at,relation,card_json")
+    .select("entity_id,sort_at,relation")
     .eq("entity_type", "match")
     .eq("profile_id", profileId)
     .eq("is_active", true)
@@ -346,7 +346,7 @@ async function fetchRecentCompletedMatchFeedPage(client, profileId = "", hours =
   const rowLimit = Math.min(RECENT_COMPLETED_FEED_ROW_MAX_LIMIT, cappedLimit * MATCH_FEED_ROW_FACTOR);
   const { data, error } = await client
     .from("user_room_feed")
-    .select("entity_id,sort_at,relation,card_json")
+    .select("entity_id,sort_at,relation")
     .eq("entity_type", "match")
     .eq("profile_id", profileId)
     .eq("is_active", true)
@@ -536,7 +536,7 @@ async function fetchCurrentUserCompletedMatchIds(client, profileId = "", limit =
   }
   let query = client
     .from("user_room_feed")
-    .select("entity_id,sort_at,relation,card_json")
+    .select("entity_id,sort_at,relation")
     .eq("entity_type", "match")
     .eq("profile_id", profileId)
     .eq("is_active", true)

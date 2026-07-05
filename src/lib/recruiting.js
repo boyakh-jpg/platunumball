@@ -574,17 +574,25 @@ function getEmptyLobbySide(post = {}) {
 }
 
 function getCountOnlyLobbySide(post = {}, sideName = "teamA") {
-  const raw = post.listCounts?.[sideName] && typeof post.listCounts[sideName] === "object" ? post.listCounts[sideName] : {};
+  const compactSideName = sideName === "teamA" ? "a" : "b";
+  const rawValue = post.listCounts?.[sideName] ?? post.listCounts?.[compactSideName];
+  const raw = rawValue && typeof rawValue === "object" ? rawValue : {};
+  const compactValues = Array.isArray(rawValue) ? rawValue : null;
+  const compactCapacity = compactValues ? compactValues[3] : undefined;
+  const compactFilled = compactValues ? compactValues[0] : undefined;
+  const compactProjectedFilled = compactValues ? compactValues[1] : undefined;
+  const compactConfirmationProjectedFilled = compactValues ? compactValues[2] : undefined;
   const capacity = Math.max(1, Number(raw.capacity ?? getRecruitingSideCapacity(post)) || getRecruitingSideCapacity(post));
-  const filled = Math.max(0, Number(raw.filled ?? raw.count ?? 0) || 0);
-  const projectedFilled = Math.max(filled, Number(raw.projectedFilled ?? filled) || 0);
-  const confirmationProjectedFilled = Math.max(projectedFilled, Number(raw.confirmationProjectedFilled ?? projectedFilled) || 0);
+  const normalizedCapacity = Math.max(1, Number(raw.capacity ?? raw.c ?? compactCapacity ?? capacity) || capacity);
+  const filled = Math.max(0, Number(raw.filled ?? raw.f ?? raw.count ?? compactFilled ?? 0) || 0);
+  const projectedFilled = Math.max(filled, Number(raw.projectedFilled ?? raw.p ?? compactProjectedFilled ?? filled) || 0);
+  const confirmationProjectedFilled = Math.max(projectedFilled, Number(raw.confirmationProjectedFilled ?? raw.cf ?? compactConfirmationProjectedFilled ?? projectedFilled) || 0);
   return {
     ...getEmptyLobbySide(post),
-    filled: Math.min(filled, capacity),
-    projectedFilled: Math.min(projectedFilled, capacity),
-    confirmationProjectedFilled: Math.min(confirmationProjectedFilled, capacity),
-    capacity,
+    filled: Math.min(filled, normalizedCapacity),
+    projectedFilled: Math.min(projectedFilled, normalizedCapacity),
+    confirmationProjectedFilled: Math.min(confirmationProjectedFilled, normalizedCapacity),
+    capacity: normalizedCapacity,
   };
 }
 
