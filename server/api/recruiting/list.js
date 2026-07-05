@@ -1369,7 +1369,7 @@ async function appendMissingTeamMemberProfiles(client, profileRows = [], teamMem
   const missingIds = uniqueIds((teamMemberRows ?? []).map((row) => row.user_id)).filter((id) => !existingIds.has(id));
   if (!missingIds.length) return profileRows ?? [];
   const { data, error } = await client
-    .from("public_profiles")
+    .from("profiles")
     .select(PROFILE_PUBLIC_COLUMNS)
     .in("id", missingIds);
   if (error) throw error;
@@ -1596,7 +1596,7 @@ export async function loadCompactRecruitingList(context, {
         ? context.supabase.from("team_members").select(TEAM_MEMBER_COLUMNS).in("team_id", scope.teamIds)
         : Promise.resolve({ data: [], error: null }),
       profileIdsForLookup.length
-        ? context.supabase.from("public_profiles").select(PROFILE_PUBLIC_COLUMNS).in("id", profileIdsForLookup)
+        ? context.supabase.from("profiles").select(PROFILE_PUBLIC_COLUMNS).in("id", profileIdsForLookup)
         : Promise.resolve({ data: [], error: null }),
       fetchCourtRowsByIds(context.supabase, scope.courtIds),
     ]);
@@ -1694,7 +1694,7 @@ export async function loadCompactRecruitingList(context, {
       ? context.supabase.from("team_members").select(TEAM_MEMBER_COLUMNS).in("team_id", scope.teamIds)
       : Promise.resolve({ data: [], error: null }),
     profileIdsForLookup.length
-      ? context.supabase.from("public_profiles").select(PROFILE_PUBLIC_COLUMNS).in("id", profileIdsForLookup)
+      ? context.supabase.from("profiles").select(PROFILE_PUBLIC_COLUMNS).in("id", profileIdsForLookup)
       : Promise.resolve({ data: [], error: null }),
     fetchCourtRowsByIds(context.supabase, scope.courtIds),
   ]);

@@ -108,6 +108,7 @@ export default async function handler(request, response) {
         listOnly: true,
         activeOnly: true,
         includeRecentCompleted: true,
+        includeClosedNotices: false,
         recentCompletedHours: HOME_RECENT_COMPLETED_HOURS,
         includeRecruitingSchedule: false,
         adminContext: false,

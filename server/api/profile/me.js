@@ -182,7 +182,7 @@ export async function loadCurrentUserTeams(supabase, profileId = "", extraTeamId
     ? unique((memberRows ?? []).map((row) => row.user_id)).filter((userId) => userId !== profileId)
     : [];
   const { data: profileRows, error: profileError } = memberProfileIds.length
-    ? await supabase.from("public_profiles").select(PROFILE_TEAM_MEMBER_COLUMNS).in("id", memberProfileIds)
+    ? await supabase.from("profiles").select(PROFILE_TEAM_MEMBER_COLUMNS).in("id", memberProfileIds)
     : { data: [], error: null };
   if (profileError) throw profileError;
 
@@ -251,7 +251,7 @@ export async function loadCurrentProfileState(context, options = {}) {
   ]));
   const extraProfileIds = unique([...invitationProfileIds, ...favoriteProfileIds]).filter((userId) => userId !== profileId);
   const extraProfileRowsPromise = extraProfileIds.length
-    ? time("extraProfilesMs", () => context.supabase.from("public_profiles").select(PROFILE_TEAM_MEMBER_COLUMNS).in("id", extraProfileIds))
+    ? time("extraProfilesMs", () => context.supabase.from("profiles").select(PROFILE_TEAM_MEMBER_COLUMNS).in("id", extraProfileIds))
     : Promise.resolve({ data: [], error: null });
   const favoriteCourtRowsPromise = favoriteCourtIds.length
     ? time("favoriteCourtsMs", () => context.supabase.from("approved_courts").select(APPROVED_COURT_COLUMNS).in("id", favoriteCourtIds))

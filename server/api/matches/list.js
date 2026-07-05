@@ -930,7 +930,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   const activeOnly = body.activeOnly === true || recorderOnly;
   const shouldLoadRecentCompleted = !completedOnly && activeOnly && !cursor && body.includeRecentCompleted === true;
   const recentCompletedHours = shouldLoadRecentCompleted ? getRecentCompletedHours(body) : RECENT_COMPLETED_MATCH_HOURS;
-  const shouldLoadClosedNotices = !recorderOnly && !completedOnly && activeOnly && !cursor;
+  const shouldLoadClosedNotices = body.includeClosedNotices !== false && !recorderOnly && !completedOnly && activeOnly && !cursor;
   const allowLegacyFallback = isLegacyListFallbackAllowed(body);
   const filterMatchItems = (items = []) => {
     let filtered = filterActiveMatchCards(items, activeOnly, { includeRecentCompleted: shouldLoadRecentCompleted });

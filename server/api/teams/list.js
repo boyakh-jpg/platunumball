@@ -134,6 +134,9 @@ export default async function handler(request, response) {
       .order("mmr", { ascending: false });
     if (teamId) teamQuery = teamQuery.eq("id", teamId);
     const teamInvitationsPromise = timeStep(debugTiming, "invitationsMs", () => loadTeamInvitations(context.supabase, user.id, teamId));
+    const memberRowsPromise = !teamId && !isDetailRequest
+      ? timeStep(debugTiming, "membersMs", () => context.supabase.from("team_members").select(TEAM_MEMBER_COLUMNS))
+      : Promise.resolve(null);
     const { data: teamRows, error: teamError } = await timeStep(debugTiming, "teamsMs", () => teamQuery);
     if (teamError) throw teamError;
     if (teamId && !(teamRows ?? []).length) {
@@ -142,10 +145,13 @@ export default async function handler(request, response) {
     }
 
     const teamIds = unique((teamRows ?? []).map((team) => team.id));
-    const { data: memberRows, error: memberError } = teamIds.length
+    const memberRowsResult = await memberRowsPromise;
+    const { data: memberRowsRaw, error: memberError } = memberRowsResult ?? (teamIds.length
       ? await timeStep(debugTiming, "membersMs", () => context.supabase.from("team_members").select(TEAM_MEMBER_COLUMNS).in("team_id", teamIds))
-      : { data: [], error: null };
+      : { data: [], error: null });
     if (memberError) throw memberError;
+    const teamIdSet = new Set(teamIds);
+    const memberRows = (memberRowsRaw ?? []).filter((member) => teamIdSet.has(member.team_id));
 
     const teamInvitations = await teamInvitationsPromise;
     const invitationProfileIds = teamInvitations.flatMap((invitation) => [
@@ -155,7 +161,7 @@ export default async function handler(request, response) {
     const memberProfileIds = isDetailRequest ? (memberRows ?? []).map((member) => member.user_id) : [];
     const profileIds = unique([...memberProfileIds, ...invitationProfileIds]).filter((profileId) => profileId !== user.id);
     const { data: profileRows, error: profileError } = profileIds.length
-      ? await timeStep(debugTiming, "profilesMs", () => context.supabase.from("public_profiles").select(PROFILE_TEAM_MEMBER_COLUMNS).in("id", profileIds))
+      ? await timeStep(debugTiming, "profilesMs", () => context.supabase.from("profiles").select(PROFILE_TEAM_MEMBER_COLUMNS).in("id", profileIds))
       : { data: [], error: null };
     if (profileError) throw profileError;
 
