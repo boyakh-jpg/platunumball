@@ -13538,6 +13538,27 @@ html[data-theme="light"] .rank-home .rank-tier-rail .rank-mode-pill {
   padding: 0;
 }
 
+.hover-portal-card.touch-open .hover-card-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  background: var(--ui-button-bg);
+  color: var(--ui-button-color);
+}
+
+.hover-portal-card.touch-open .player-hover-head,
+.hover-portal-card.touch-open .team-hover-head,
+.hover-portal-card.touch-open .court-hover-head,
+.hover-portal-card.touch-open .referee-hover-head {
+  padding-right: calc(var(--ui-icon-button-size) + 8px);
+}
+
+.hover-portal-card.touch-open .hover-card-action {
+  background: var(--button-primary-bg);
+  color: #fff;
+}
+
 .button-primary,
 .rank-home .home-rank-board-head .button,
 .button.om-match-create,
