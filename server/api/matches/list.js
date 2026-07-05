@@ -1113,7 +1113,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
       : Promise.resolve({ data: [], error: null }),
     fetchCourtRowsByIds(context.supabase, courtIds),
     profileIdsForLookup.length
-      ? context.supabase.from("public_profiles").select(PROFILE_CARD_COLUMNS).in("id", profileIdsForLookup)
+      ? context.supabase.from("profiles").select(PROFILE_CARD_COLUMNS).in("id", profileIdsForLookup)
       : Promise.resolve({ data: [], error: null }),
   ]));
   if (teamError) throw teamError;
