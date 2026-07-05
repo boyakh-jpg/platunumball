@@ -6,8 +6,11 @@ import {
   REMOTE_CLIENT_ACTIVE_MATCH_LIMIT,
   REMOTE_CLIENT_HOME_LOCAL_RECRUITING_LIMIT,
   REMOTE_CLIENT_MATCH_LIMIT,
+  REMOTE_CLIENT_RECORD_MONTHS,
   REMOTE_CLIENT_RECRUITING_LIMIT,
 } from "../../../src/data/repository.js";
+
+const HOME_RECENT_COMPLETED_HOURS = 24 * 31 * REMOTE_CLIENT_RECORD_MONTHS;
 
 function mergeHomeState(profileState = {}, feedState = {}) {
   return {
@@ -109,6 +112,7 @@ export default async function handler(request, response) {
         listOnly: true,
         activeOnly: true,
         includeRecentCompleted: true,
+        recentCompletedHours: HOME_RECENT_COMPLETED_HOURS,
         includeRecruitingSchedule: false,
         adminContext: false,
       }, adminLevel, matchLimit, debugTiming),

@@ -7,6 +7,7 @@ import {
   normalizeState,
   REMOTE_CLIENT_ACTIVE_MATCH_LIMIT,
   REMOTE_CLIENT_MATCH_LIMIT,
+  REMOTE_CLIENT_RECORD_MONTHS,
 } from "../../../src/data/repository.js";
 import { loadCurrentUserRecruitingFeedList } from "../recruiting/list.js";
 import { getMatchRoomPhase, isMatchClosedNotice } from "../../../src/lib/matchUtils.js";
@@ -25,6 +26,7 @@ const MATCH_LIST_MAX_LIMIT = REMOTE_CLIENT_ACTIVE_MATCH_LIMIT;
 const ACTIVE_MATCH_EXCLUDED_STATUSES = new Set(["confirmed", "closed"]);
 const ACTIVE_MATCH_EXCLUDED_PHASES = new Set(["record"]);
 const RECENT_COMPLETED_MATCH_HOURS = 24;
+const RECENT_COMPLETED_MATCH_MAX_HOURS = 24 * 31 * REMOTE_CLIENT_RECORD_MONTHS;
 const RECENT_COMPLETED_MATCH_LIMIT = 20;
 const CLOSED_NOTICE_MATCH_LIMIT = 20;
 const MATCH_FEED_ROW_MAX_LIMIT = 320;
@@ -285,6 +287,12 @@ function getCompletedSince(body = {}) {
     return date.toISOString();
   }
   return "";
+}
+
+function getRecentCompletedHours(body = {}) {
+  const requested = Number(body.recentCompletedHours ?? body.completedHours);
+  if (!Number.isFinite(requested) || requested <= 0) return RECENT_COMPLETED_MATCH_HOURS;
+  return Math.max(1, Math.min(RECENT_COMPLETED_MATCH_MAX_HOURS, Math.floor(requested)));
 }
 
 async function fetchMatchFeedPage(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT, cursor = "", activeOnly = false) {
@@ -858,6 +866,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   const completedSince = completedOnly ? getCompletedSince(body) : "";
   const activeOnly = body.activeOnly === true || recorderOnly;
   const shouldLoadRecentCompleted = !completedOnly && activeOnly && !cursor && body.includeRecentCompleted === true;
+  const recentCompletedHours = shouldLoadRecentCompleted ? getRecentCompletedHours(body) : RECENT_COMPLETED_MATCH_HOURS;
   const shouldLoadClosedNotices = !completedOnly && activeOnly && !cursor;
   const allowLegacyFallback = isLegacyListFallbackAllowed(body);
   const filterMatchItems = (items = []) => {
@@ -877,7 +886,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
       ? timeStep(debugTiming, "completedFeedMs", () => fetchCurrentUserCompletedMatchIds(context.supabase, context.profileId, limit, completedSince, allowLegacyFallback))
       : timeStep(debugTiming, "feedMs", () => fetchMatchFeedPage(context.supabase, context.profileId, limit, cursor, activeOnly)),
     shouldLoadRecentCompleted
-      ? timeStep(debugTiming, "recentCompletedMs", () => fetchRecentCompletedMatchFeedPage(context.supabase, context.profileId))
+      ? timeStep(debugTiming, "recentCompletedMs", () => fetchRecentCompletedMatchFeedPage(context.supabase, context.profileId, recentCompletedHours))
       : Promise.resolve(null),
     shouldLoadClosedNotices
       ? timeStep(debugTiming, "closedNoticeMs", () => fetchClosedNoticeMatchFeedPage(context.supabase, context.profileId))
