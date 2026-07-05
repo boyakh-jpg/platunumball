@@ -14490,6 +14490,27 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
   }
 }
 
+@media (min-width: 1080px) {
+  .rank-home .home-right-rail .home-action-row:has(.home-action-buttons) {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .rank-home .home-right-rail .home-action-row:has(.home-action-buttons) .home-action-buttons {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    white-space: normal;
+  }
+
+  .rank-home .home-right-rail .home-action-row:has(.home-action-buttons) .home-action-buttons .button {
+    width: 100%;
+    min-width: 0;
+    justify-content: center;
+  }
+}
+
 /* 2026-07-04 desktop home split rails. */
 .rank-home .home-left-rail,
 .rank-home .home-right-rail,
