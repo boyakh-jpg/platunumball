@@ -227,13 +227,15 @@ function isSoloRecordMatch(match = {}) {
   return match?.rules?.recordType === "solo";
 }
 
-function filterActiveMatchCards(matches = [], activeOnly = false) {
+function filterActiveMatchCards(matches = [], activeOnly = false, options = {}) {
   if (!activeOnly) return matches;
+  const includeRecentCompleted = options.includeRecentCompleted === true;
   return (matches ?? []).filter((match) => (
-    !isSoloRecordMatch(match) && (
+    (includeRecentCompleted && match?.recentCompleted) ||
+    (!isSoloRecordMatch(match) && (
       isMatchClosedNotice(match) ||
       (!ACTIVE_MATCH_EXCLUDED_PHASES.has(getMatchRoomPhase(match).phase) && !match?.recentCompleted)
-    )
+    ))
   ));
 }
 
@@ -859,7 +861,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   const shouldLoadClosedNotices = !completedOnly && activeOnly && !cursor;
   const allowLegacyFallback = isLegacyListFallbackAllowed(body);
   const filterMatchItems = (items = []) => {
-    let filtered = filterActiveMatchCards(items, activeOnly);
+    let filtered = filterActiveMatchCards(items, activeOnly, { includeRecentCompleted: shouldLoadRecentCompleted });
     if (recorderOnly) filtered = filtered.filter((match) => isRecorderMatch(match, context.profileId, adminLevel >= 30));
     if (completedOnly) filtered = filtered.filter((match) => (
       match.status === "confirmed" &&

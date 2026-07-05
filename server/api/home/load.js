@@ -108,7 +108,7 @@ export default async function handler(request, response) {
         limit: matchLimit,
         listOnly: true,
         activeOnly: true,
-        includeRecentCompleted: false,
+        includeRecentCompleted: true,
         includeRecruitingSchedule: false,
         adminContext: false,
       }, adminLevel, matchLimit, debugTiming),

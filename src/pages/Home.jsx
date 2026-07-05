@@ -52,6 +52,11 @@ function isHomeUpcomingScheduleItem(item = {}, todayValue, maxScheduleDate) {
   return Boolean(itemDate && itemDate >= todayValue && itemDate <= maxScheduleDate);
 }
 
+function isHomeUserMatch(match = {}, userId = "") {
+  const feedRelations = Array.isArray(match.__feedRelations) ? match.__feedRelations : [];
+  return isMatchRelatedToUser(match, userId) || feedRelations.some((relation) => ["owner", "participant", "referee"].includes(relation));
+}
+
 function compareSchedule(a, b) {
   const aKey = `${getScheduleDate(a) || "9999-12-31"} ${a.scheduledTime ?? ""} ${a.scheduledAt ?? ""}`;
   const bKey = `${getScheduleDate(b) || "9999-12-31"} ${b.scheduledTime ?? ""} ${b.scheduledAt ?? ""}`;
@@ -88,7 +93,7 @@ function userOperatesCheckin(match, userId) {
 }
 
 function isHomeApprovalPendingMatch(match = {}, userId = "") {
-  if (!isMatchRelatedToUser(match, userId)) return false;
+  if (!isHomeUserMatch(match, userId)) return false;
   if (["confirmed", "cancelled", "void"].includes(match.status)) return false;
   const phase = getMatchRoomPhase(match).phase;
   return ["postgame", "dispute"].includes(phase) || Boolean(match.endedAt);
@@ -157,7 +162,7 @@ export default function Home({ app }) {
   const upcomingItems = useMemo(() => {
     const matchItems = [...app.state.matches]
       .filter((match) => ["locked", "checkin"].includes(getMatchRoomPhase(match).phase))
-      .filter((match) => isMatchRelatedToUser(match, user.id) && !userNeedsMatchAction(match, user.id))
+      .filter((match) => isHomeUserMatch(match, user.id) && !userNeedsMatchAction(match, user.id))
       .filter((match) => isHomeUpcomingScheduleItem(match, todayValue, maxScheduleDate))
       .map((match) => ({ type: "match", id: `match-${match.id}`, item: match }));
     return matchItems.sort((a, b) => compareSchedule(a.item, b.item));
@@ -215,7 +220,7 @@ export default function Home({ app }) {
       setProcessingInviteId("");
     }
   };
-  const myCompletedMatches = completedMatches.filter((match) => isMatchRelatedToUser(match, user.id));
+  const myCompletedMatches = completedMatches.filter((match) => isHomeUserMatch(match, user.id));
   const myWins = myCompletedMatches.filter((match) => getUserResult(match, user.id) === "W").length;
   const winRate = myCompletedMatches.length ? Math.round((myWins / myCompletedMatches.length) * 100) : 0;
   const actionItems = useMemo(() => {
@@ -234,7 +239,7 @@ export default function Home({ app }) {
           icon: Trophy,
         })));
     const matchItems = app.state.matches
-      .filter((match) => isMatchRelatedToUser(match, user.id))
+      .filter((match) => isHomeUserMatch(match, user.id))
       .map((match) => {
         const phase = getMatchRoomPhase(match).phase;
         if (userNeedsMatchAgreement(match, user.id)) {
