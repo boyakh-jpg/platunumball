@@ -96,7 +96,13 @@ export default async function handler(request, response) {
     const includeFeedCounts = body.includeFeedCounts === true;
 
     const [profileResult, matchResult, recruitingResult] = await Promise.all([
-      timeStep(debugTiming, "profileMs", () => loadCurrentProfileState(context, { includeTeamMemberProfiles: false })),
+      timeStep(debugTiming, "profileMs", () => loadCurrentProfileState(context, {
+        debugTiming,
+        includeFavorites: false,
+        includeMatchSummary: false,
+        includeTeamMemberProfiles: false,
+        ownMembersOnly: true,
+      })),
       loadCompactMatchList(context, {
         limit: matchLimit,
         listOnly: true,

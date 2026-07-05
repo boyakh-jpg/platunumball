@@ -133,6 +133,7 @@ export default async function handler(request, response) {
       .is("deleted_at", null)
       .order("mmr", { ascending: false });
     if (teamId) teamQuery = teamQuery.eq("id", teamId);
+    const teamInvitationsPromise = timeStep(debugTiming, "invitationsMs", () => loadTeamInvitations(context.supabase, user.id, teamId));
     const { data: teamRows, error: teamError } = await timeStep(debugTiming, "teamsMs", () => teamQuery);
     if (teamError) throw teamError;
     if (teamId && !(teamRows ?? []).length) {
@@ -146,13 +147,13 @@ export default async function handler(request, response) {
       : { data: [], error: null };
     if (memberError) throw memberError;
 
-    const teamInvitations = await timeStep(debugTiming, "invitationsMs", () => loadTeamInvitations(context.supabase, user.id, teamId));
+    const teamInvitations = await teamInvitationsPromise;
     const invitationProfileIds = teamInvitations.flatMap((invitation) => [
       invitation.fromUserId,
       invitation.targetUserId,
     ]);
     const memberProfileIds = isDetailRequest ? (memberRows ?? []).map((member) => member.user_id) : [];
-    const profileIds = unique([user.id, ...memberProfileIds, ...invitationProfileIds]);
+    const profileIds = unique([...memberProfileIds, ...invitationProfileIds]).filter((profileId) => profileId !== user.id);
     const { data: profileRows, error: profileError } = profileIds.length
       ? await timeStep(debugTiming, "profilesMs", () => context.supabase.from("public_profiles").select(PROFILE_TEAM_MEMBER_COLUMNS).in("id", profileIds))
       : { data: [], error: null };

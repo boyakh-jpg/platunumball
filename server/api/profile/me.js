@@ -152,11 +152,12 @@ export async function loadCurrentUserTeamInvitations(supabase, profileId = "") {
 export async function loadCurrentUserTeams(supabase, profileId = "", extraTeamIds = [], options = {}) {
   if (!profileId) return { teams: [], users: [] };
   const includeTeamMemberProfiles = options.includeTeamMemberProfiles !== false;
+  const ownMembersOnly = options.ownMembersOnly === true;
   const { data: ownMemberships, error: ownMembershipsError } = Array.isArray(options.ownMemberships)
     ? { data: options.ownMemberships, error: null }
     : await supabase
       .from("team_members")
-      .select("team_id")
+      .select("team_id,user_id,role")
       .eq("user_id", profileId);
   if (ownMembershipsError) throw ownMembershipsError;
 
@@ -165,7 +166,14 @@ export async function loadCurrentUserTeams(supabase, profileId = "", extraTeamId
 
   const [{ data: teamRows, error: teamError }, { data: memberRows, error: memberError }] = await Promise.all([
     supabase.from("teams").select(TEAM_COLUMNS).in("id", teamIds).is("deleted_at", null),
-    supabase.from("team_members").select(TEAM_MEMBER_COLUMNS).in("team_id", teamIds),
+    ownMembersOnly
+      ? Promise.resolve({
+          data: (ownMemberships ?? [])
+            .filter((row) => teamIds.includes(row.team_id))
+            .map((row) => ({ team_id: row.team_id, user_id: row.user_id ?? profileId, role: row.role ?? "regular" })),
+          error: null,
+        })
+      : supabase.from("team_members").select(TEAM_MEMBER_COLUMNS).in("team_id", teamIds),
   ]);
   if (teamError) throw teamError;
   if (memberError) throw memberError;
@@ -203,24 +211,26 @@ export async function loadCurrentProfileState(context, options = {}) {
   };
   const profile = context.profile ?? null;
   const profileId = profile?.id ?? "";
+  const remoteAppSettings = getRemoteAppSettings(profile);
+  const includeMatchSummary = options.includeMatchSummary !== false;
+  const includeFavorites = options.includeFavorites !== false;
   const ownMembershipsPromise = profileId
-    ? context.supabase.from("team_members").select("team_id").eq("user_id", profileId)
+    ? context.supabase.from("team_members").select("team_id,user_id,role").eq("user_id", profileId)
     : Promise.resolve({ data: [], error: null });
   const [matchSummary, teamInvitations, ownMembershipsResult, favoriteRows] = await Promise.all([
-    time("matchSummaryMs", () => loadCurrentUserMatchSummary(context.supabase, profileId)),
+    includeMatchSummary ? time("matchSummaryMs", () => loadCurrentUserMatchSummary(context.supabase, profileId)) : Promise.resolve(null),
     time("teamInvitationsMs", () => loadCurrentUserTeamInvitations(context.supabase, profileId)),
     time("ownMembershipsMs", () => ownMembershipsPromise),
-    time("favoritesMs", () => loadCurrentUserFavorites(context.supabase, profileId)),
+    includeFavorites ? time("favoritesMs", () => loadCurrentUserFavorites(context.supabase, profileId)) : Promise.resolve([]),
   ]);
   if (ownMembershipsResult.error) throw ownMembershipsResult.error;
-  const favoritePlayerIds = favoriteRows.filter((favorite) => favorite.target_type === "player").map((favorite) => favorite.target_id);
-  const favoriteTeamIds = favoriteRows.filter((favorite) => favorite.target_type === "team").map((favorite) => favorite.target_id);
-  const favoriteCourtIds = favoriteRows.filter((favorite) => favorite.target_type === "court").map((favorite) => favorite.target_id);
-  const favoriteRefereeIds = favoriteRows.filter((favorite) => favorite.target_type === "referee").map((favorite) => favorite.target_id);
+  const favoritePlayerIds = includeFavorites ? favoriteRows.filter((favorite) => favorite.target_type === "player").map((favorite) => favorite.target_id) : (remoteAppSettings.favoritePlayerIds ?? []);
+  const favoriteTeamIds = includeFavorites ? favoriteRows.filter((favorite) => favorite.target_type === "team").map((favorite) => favorite.target_id) : (remoteAppSettings.favoriteTeamIds ?? []);
+  const favoriteCourtIds = includeFavorites ? favoriteRows.filter((favorite) => favorite.target_type === "court").map((favorite) => favorite.target_id) : (remoteAppSettings.favoriteCourtIds ?? []);
+  const favoriteRefereeIds = includeFavorites ? favoriteRows.filter((favorite) => favorite.target_type === "referee").map((favorite) => favorite.target_id) : (remoteAppSettings.favoriteRefereeIds ?? []);
   const user = profile
     ? { ...fromRemoteProfile(profile), matchSummary }
     : createProfileShell(context.authUserId, context.authUser?.email ?? "");
-  const remoteAppSettings = getRemoteAppSettings(profile);
   const currentUserTeamsPromise = time("teamsMs", () => loadCurrentUserTeams(
     context.supabase,
     profileId,
@@ -230,6 +240,7 @@ export async function loadCurrentProfileState(context, options = {}) {
     ],
     {
       includeTeamMemberProfiles: options.includeTeamMemberProfiles !== false,
+      ownMembersOnly: options.ownMembersOnly === true,
       ownMemberships: ownMembershipsResult.data ?? [],
     },
   ));
