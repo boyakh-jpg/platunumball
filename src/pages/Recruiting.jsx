@@ -475,6 +475,15 @@ function uniqueIds(ids = []) {
   return Array.from(new Set(ids.filter(Boolean)));
 }
 
+function getMissingStartAttendanceIds(match = {}, operatorId = "") {
+  const attendance = match.attendance ?? {};
+  return ["teamA", "teamB"].flatMap((sideName) => (
+    uniqueIds([...getMatchSidePlayerIds(match, sideName), ...getMatchReservePlayerIds(match, sideName)])
+      .filter((playerId) => playerId !== operatorId)
+      .filter((playerId) => !(attendance[sideName] ?? []).includes(playerId))
+  ));
+}
+
 function isMatchSideTeamParty(match = {}, sideName = "") {
   const sourceMatch = match ?? {};
   return Boolean(sourceMatch[sideName]?.teamId) && uniqueIds([...(sourceMatch[sideName]?.players ?? []), ...getMatchReservePlayerIds(sourceMatch, sideName)]).length >= 2;
@@ -2769,7 +2778,9 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
           teamB: sourceMatch?.attendance?.teamB ?? [],
         };
         const canManageMatchCheckin = Boolean(matchRoom && currentUserCanStartSourceMatch && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.startedAt && !sourceMatch?.endedAt && !sourceMatch?.result);
-        const canStartSourceMatch = Boolean(matchRoom && currentUserCanStartSourceMatch && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.result && !sourceMatch?.endedAt);
+        const canShowStartSourceMatch = Boolean(matchRoom && currentUserCanStartSourceMatch && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.result && !sourceMatch?.endedAt);
+        const sourceMatchMissingStartAttendanceIds = canShowStartSourceMatch ? getMissingStartAttendanceIds(sourceMatch, app.currentUser.id) : [];
+        const canStartSourceMatch = canShowStartSourceMatch && sourceMatchMissingStartAttendanceIds.length === 0;
         const canRequestRefereeAbsence = Boolean(matchRoom && mine && sourceMatch?.refereeId && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.refereeAbsenceRequest?.confirmedAt && !sourceMatch?.startedAt && !sourceMatch?.endedAt && !sourceMatch?.result);
         const canConfirmRefereeAbsence = Boolean(matchRoom && sourceMatchOpponentLeaderId === app.currentUser.id && sourceMatch?.refereeId && sourceMatch?.refereeAbsenceRequest && !sourceMatch.refereeAbsenceRequest.confirmedAt && sourceMatchPhase?.phase === "checkin" && !sourceMatch?.startedAt && !sourceMatch?.endedAt && !sourceMatch?.result && sourceMatchSideName);
         const canEndSourceMatch = Boolean(matchRoom && currentUserCanOperateStartedSourceMatch && sourceMatchPhase?.phase === "live" && !sourceMatch?.endedAt && sourceMatchStarted);
@@ -3539,9 +3550,9 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                         심판 미출석 인정
                       </Button>
                     ) : null}
-                    {!sourceRoomReadOnly && canStartSourceMatch ? (
-                      <Button type="button" onClick={() => app.actions.startMatch(sourceMatch.id)}>
-                        경기 시작
+                    {!sourceRoomReadOnly && canShowStartSourceMatch ? (
+                      <Button type="button" disabled={!canStartSourceMatch} title={canStartSourceMatch ? "" : "출석체크 후 경기 시작 가능"} onClick={() => app.actions.startMatch(sourceMatch.id)}>
+                        {canStartSourceMatch ? "경기 시작" : "출석체크 필요"}
                       </Button>
                     ) : null}
                     {!sourceRoomReadOnly && canEndSourceMatch ? (
