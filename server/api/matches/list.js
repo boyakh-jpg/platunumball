@@ -1073,28 +1073,19 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   }
 
   const matchIds = (matchRows ?? []).map((row) => row.id).filter(Boolean);
-  const [
-    { data: playerRows, error: playerError },
-    { data: resultRows, error: resultError },
-    { data: statRows, error: statError },
-  ] = matchIds.length
-    ? await timeStep(debugTiming, "matchChildrenMs", () => Promise.all([
-      context.supabase.from("match_players").select(MATCH_PLAYER_COLUMNS).in("match_id", matchIds),
-      context.supabase.from("match_results").select(MATCH_RESULT_COLUMNS).in("match_id", matchIds),
-      context.supabase.from("player_match_stats").select(PLAYER_STAT_COLUMNS).in("match_id", matchIds),
-    ]))
-    : [
-      { data: [], error: null },
-      { data: [], error: null },
-      { data: [], error: null },
-    ];
+  const playerRowsPromise = matchIds.length
+    ? timeStep(debugTiming, "matchPlayersMs", () => context.supabase.from("match_players").select(MATCH_PLAYER_COLUMNS).in("match_id", matchIds))
+    : Promise.resolve({ data: [], error: null });
+  const resultRowsPromise = matchIds.length
+    ? timeStep(debugTiming, "matchResultsMs", () => context.supabase.from("match_results").select(MATCH_RESULT_COLUMNS).in("match_id", matchIds))
+    : Promise.resolve({ data: [], error: null });
+  const statRowsPromise = matchIds.length
+    ? timeStep(debugTiming, "matchStatsMs", () => context.supabase.from("player_match_stats").select(PLAYER_STAT_COLUMNS).in("match_id", matchIds))
+    : Promise.resolve({ data: [], error: null });
+  const { data: playerRows, error: playerError } = await playerRowsPromise;
   if (playerError) throw playerError;
-  if (resultError) throw resultError;
-  if (statError) throw statError;
 
   const playersByMatch = groupBy(playerRows ?? [], "match_id");
-  const resultsByMatch = firstBy(resultRows ?? [], "match_id");
-  const statsByMatch = groupBy(statRows ?? [], "match_id");
   const readableRows = (matchRows ?? []).filter((row) => (
     canReadMatchRow(row, playersByMatch.get(row.id) ?? [], context.profileId ?? "", adminLevel >= 30)
   ));
@@ -1104,22 +1095,30 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   const profileIdsForLookup = profileIds.filter((profileId) => profileId !== currentUser.id);
 
   const [
+    { data: resultRows, error: resultError },
+    { data: statRows, error: statError },
     { data: teamRows, error: teamError },
     { data: courtRows, error: courtError },
     { data: profileRows, error: profileError },
-  ] = await timeStep(debugTiming, "relatedRowsMs", () => Promise.all([
+  ] = await Promise.all([
+    resultRowsPromise,
+    statRowsPromise,
     teamIds.length
-      ? context.supabase.from("teams").select(TEAM_COLUMNS).in("id", teamIds).is("deleted_at", null)
+      ? timeStep(debugTiming, "matchTeamsMs", () => context.supabase.from("teams").select(TEAM_COLUMNS).in("id", teamIds).is("deleted_at", null))
       : Promise.resolve({ data: [], error: null }),
-    fetchCourtRowsByIds(context.supabase, courtIds),
+    timeStep(debugTiming, "matchCourtsMs", () => fetchCourtRowsByIds(context.supabase, courtIds)),
     profileIdsForLookup.length
-      ? context.supabase.from("profiles").select(PROFILE_CARD_COLUMNS).in("id", profileIdsForLookup)
+      ? timeStep(debugTiming, "matchProfilesMs", () => context.supabase.from("profiles").select(PROFILE_CARD_COLUMNS).in("id", profileIdsForLookup))
       : Promise.resolve({ data: [], error: null }),
-  ]));
+  ]);
+  if (resultError) throw resultError;
+  if (statError) throw statError;
   if (teamError) throw teamError;
   if (courtError) throw courtError;
   if (profileError) throw profileError;
 
+  const resultsByMatch = firstBy(resultRows ?? [], "match_id");
+  const statsByMatch = groupBy(statRows ?? [], "match_id");
   const userById = new Map((profileRows ?? []).map((row) => {
     const user = fromRemoteProfile(row);
     return [user.id, user];
