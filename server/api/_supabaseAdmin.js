@@ -10,6 +10,7 @@ const ADMIN_GRADE_LEVELS = {
 
 let adminClient = null;
 const authContextCache = new Map();
+const adminLevelCache = new Map();
 const AUTH_CONTEXT_CACHE_TTL_MS = 30 * 1000;
 
 export function sendJson(response, statusCode, payload) {
@@ -92,6 +93,32 @@ function writeAuthContextCache(token = "", profileSelect = "", allowMissingProfi
     const now = Date.now();
     for (const [cacheKey, value] of authContextCache) {
       if (value.expiresAt <= now || authContextCache.size > 100) authContextCache.delete(cacheKey);
+    }
+  }
+}
+
+function getAdminLevelCacheKey(context = {}) {
+  return `${context.authUserId || ""}\n${context.profileId || ""}`;
+}
+
+function readAdminLevelCache(context = {}) {
+  const key = getAdminLevelCacheKey(context);
+  const cached = adminLevelCache.get(key);
+  if (!cached || cached.expiresAt <= Date.now()) {
+    adminLevelCache.delete(key);
+    return null;
+  }
+  return cached.level;
+}
+
+function writeAdminLevelCache(context = {}, level = 0) {
+  const key = getAdminLevelCacheKey(context);
+  if (!key.trim()) return;
+  adminLevelCache.set(key, { expiresAt: Date.now() + AUTH_CONTEXT_CACHE_TTL_MS, level });
+  if (adminLevelCache.size > 100) {
+    const now = Date.now();
+    for (const [cacheKey, value] of adminLevelCache) {
+      if (value.expiresAt <= now || adminLevelCache.size > 100) adminLevelCache.delete(cacheKey);
     }
   }
 }
@@ -181,15 +208,26 @@ export async function getAuthenticatedContext(request, options = {}) {
 }
 
 export async function getAdminLevel(context) {
-  if (getEnvList("RANKBALL_OWNER_AUTH_USER_IDS").includes(context.authUserId)) return 100;
-  if (getEnvList("RANKBALL_OWNER_PROFILE_IDS").includes(context.profileId)) return 100;
+  const cachedLevel = readAdminLevelCache(context);
+  if (cachedLevel !== null) return cachedLevel;
+  if (getEnvList("RANKBALL_OWNER_AUTH_USER_IDS").includes(context.authUserId)) {
+    writeAdminLevelCache(context, 100);
+    return 100;
+  }
+  if (getEnvList("RANKBALL_OWNER_PROFILE_IDS").includes(context.profileId)) {
+    writeAdminLevelCache(context, 100);
+    return 100;
+  }
 
   const { data: rpcLevel, error: rpcError } = await context.supabase.rpc("rankball_admin_level_for_profile", {
     actor_profile_id: context.profileId,
     override_level: 0,
   });
   const rpcAdminLevel = !rpcError && Number.isFinite(Number(rpcLevel)) ? Number(rpcLevel) : 0;
-  if (rpcAdminLevel >= 30) return rpcAdminLevel;
+  if (rpcAdminLevel >= 30) {
+    writeAdminLevelCache(context, rpcAdminLevel);
+    return rpcAdminLevel;
+  }
 
   const { data, error } = await context.supabase
     .from("admin_appointments")
@@ -199,7 +237,9 @@ export async function getAdminLevel(context) {
 
   if (error) throw error;
 
-  return (data ?? [])
+  const level = (data ?? [])
     .filter(isActiveAppointment)
     .reduce((level, appointment) => Math.max(level, ADMIN_GRADE_LEVELS[appointment.grade] ?? 0), rpcAdminLevel);
+  writeAdminLevelCache(context, level);
+  return level;
 }
