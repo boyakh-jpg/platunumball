@@ -1,10 +1,9 @@
 import { getAdminLevel, getAuthenticatedContext, mergeById, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import { loadCompactMatchList } from "../matches/list.js";
 import { loadCurrentProfileState, PROFILE_ME_COLUMNS } from "../profile/me.js";
-import { loadCurrentUserRecruitingFeedList, loadLocalRecruitingFeedList } from "../recruiting/list.js";
+import { loadCurrentUserRecruitingFeedList } from "../recruiting/list.js";
 import {
   REMOTE_CLIENT_ACTIVE_MATCH_LIMIT,
-  REMOTE_CLIENT_HOME_LOCAL_RECRUITING_LIMIT,
   REMOTE_CLIENT_MATCH_LIMIT,
   REMOTE_CLIENT_RECORD_MONTHS,
   REMOTE_CLIENT_RECRUITING_LIMIT,
@@ -69,14 +68,6 @@ function getCappedRecruitingLimit(value) {
   return Math.max(1, Math.min(REMOTE_CLIENT_RECRUITING_LIMIT, Math.floor(number)));
 }
 
-function createSkippedRecruitingResult() {
-  return {
-    state: {},
-    page: { count: 0, exhausted: true, source: "skipped" },
-    updatedAt: 0,
-  };
-}
-
 async function timeStep(debugTiming, key, callback) {
   const startedAt = Date.now();
   try {
@@ -102,10 +93,9 @@ export default async function handler(request, response) {
     const adminLevel = shouldLoadAdminContext && context.profileId ? await timeStep(debugTiming, "adminMs", () => getAdminLevel(context)) : 0;
     const matchLimit = getCappedMatchLimit(body.matchLimit ?? body.limit ?? REMOTE_CLIENT_MATCH_LIMIT);
     const recruitingLimit = getCappedRecruitingLimit(body.recruitingLimit ?? REMOTE_CLIENT_RECRUITING_LIMIT);
-    const includeLocalRecruiting = body.includeLocalRecruiting === true;
     const includeFeedCounts = body.includeFeedCounts === true;
 
-    const [profileResult, matchResult, recruitingResult, localRecruitingResult] = await Promise.all([
+    const [profileResult, matchResult, recruitingResult] = await Promise.all([
       timeStep(debugTiming, "profileMs", () => loadCurrentProfileState(context, { includeTeamMemberProfiles: false })),
       loadCompactMatchList(context, {
         limit: matchLimit,
@@ -117,21 +107,17 @@ export default async function handler(request, response) {
         adminContext: false,
       }, adminLevel, matchLimit, debugTiming),
       timeStep(debugTiming, "recruitingMs", () => loadCurrentUserRecruitingFeedList(context, { adminLevel, limit: recruitingLimit, includeFeedCounts })),
-      includeLocalRecruiting
-        ? timeStep(debugTiming, "localRecruitingMs", () => loadLocalRecruitingFeedList(context, { adminLevel, limit: REMOTE_CLIENT_HOME_LOCAL_RECRUITING_LIMIT }))
-        : Promise.resolve(createSkippedRecruitingResult()),
     ]);
 
     if (debugTiming) debugTiming.totalMs = Date.now() - startedAt;
     const currentUserRecruitingState = recruitingResult.state ?? {};
-    const recruitingState = mergeHomeState(localRecruitingResult.state, currentUserRecruitingState);
     const recruitingPosts = currentUserRecruitingState.recruitingPosts ?? [];
 
     sendJson(response, 200, {
       ok: true,
       state: mergeHomeState(
         mergeHomeState(profileResult.state, matchResult.state),
-        recruitingState,
+        currentUserRecruitingState,
       ),
       page: {
         ...matchResult.page,
@@ -139,14 +125,14 @@ export default async function handler(request, response) {
         recruitingScheduleCount: recruitingPosts.length,
       },
       recruitingPage: {
-        ...(localRecruitingResult.page ?? {}),
-        feedCounts: recruitingResult.page?.feedCounts ?? localRecruitingResult.page?.feedCounts ?? null,
+        count: recruitingPosts.length,
+        exhausted: true,
+        feedCounts: recruitingResult.page?.feedCounts ?? null,
       },
       updatedAt: Math.max(
         profileResult.updatedAt ?? 0,
         matchResult.updatedAt ?? 0,
         recruitingResult.updatedAt ?? 0,
-        localRecruitingResult.updatedAt ?? 0,
       ),
       debugTiming: debugTiming ?? undefined,
     });

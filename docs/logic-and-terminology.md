@@ -198,7 +198,7 @@
 ## 2026-06-30 egress 축소
 
 - 모집 `feedCounts`는 `rankball_recruiting_feed_counts(profileId)` RPC가 `created`, `joined`, `invited` 숫자만 반환한다. 초대 카드, 수락/거절, 방 상세 데이터는 `room_feed_cards.card_json` 또는 상세 API가 계속 담당한다.
-- `/api/home/load`는 기본적으로 현재 사용자 경기/모집 feed와 프로필 bootstrap만 읽는다. 지역 모집 teaser는 `includeLocalRecruiting:true`일 때만 소량 읽고, 모집 count RPC는 `includeFeedCounts:true`일 때만 읽는다.
+- `/api/home/load`는 기본적으로 현재 사용자 경기/모집 feed와 프로필 bootstrap만 읽는다. 홈은 지역 모집 teaser를 읽지 않는다. 모집 count RPC는 `includeFeedCounts:true`일 때만 읽는다.
 - `/api/home/load`의 홈 Action Queue 초대는 일반 current-user 모집 feed와 별도로 `roomScope="invited"` feed를 병합한다. 초대 relation은 owner/participant/referee page limit과 경쟁하면 안 된다.
 - `/api/matches/list`의 모집 일정 병합은 카드 목록만 필요하므로 모집 `feedCounts`를 같이 읽지 않는다.
 - 원격 `scripts/simulate-backend-flow.mjs --base-url=...`는 기본 smoke 모드로 초대 수락과 기본 1v1만 실행한다. 전체 플로우 검증은 `--full` 또는 `RANKBALL_SIM_FULL=true`를 명시한다.
@@ -293,7 +293,7 @@
 - `/login` auth 직후와 `/app` 첫 remote load는 broad `/api/state/load`가 아니라 `/api/home/load`를 사용한다.
 - `/api/home/load`는 current-profile profile/team bootstrap과 `/api/matches/list` feed 기반 active match/recruiting schedule을 한 번에 합친다.
 - `/api/home/load`는 active match feed와 current-user recruiting schedule만 병합한다. confirmed 기록방과 result/stat child rows는 홈에서 미리 읽지 않고 기록 화면 진입 시 읽는다.
-- `/api/home/load`는 `includeLocalRecruiting:true`일 때만 홈 지역 모집 teaser용 `user_room_feed` 지역 공개 모집 카드를 소량 병합한다. feed가 없으면 홈 첫 로드에서 무거운 지역 fallback을 강제하지 않는다.
+- `/api/home/load`는 홈 지역 모집 teaser용 공개 모집 카드를 병합하지 않는다. 지역/공개 모집 목록은 `/app/recruiting`이 읽고, 홈 첫 로드는 current-user feed만 유지한다.
 - 화면별 thin endpoint 실패 fallback은 profile-only로 제한한다. 홈/경기/모집/기록 첫 로드 실패가 broad `/api/state/load`나 direct full state read로 번지면 안 된다.
 - `/api/home/load`에서 current-user 모집 일정 확인과 profile bootstrap이 끝났으면 홈 진입 effect가 같은 데이터를 `profile/me`, `scope=mine`/schedule 호출로 즉시 다시 읽지 않는다.
 
@@ -305,7 +305,7 @@
 - 경기 메뉴 `MY/내 일정` 카운트는 실제 목록에 쓰는 `shouldShowMatchInList` 기준과 일치해야 한다. 숨기는 확정/기록방을 숫자에만 포함하지 않는다.
 - 홈 Action Queue는 모집 초대, 대회 초대뿐 아니라 pending 팀 초대도 표시해야 한다.
 - 홈 팀 요약의 소속 팀 한도 표기는 `MAX_TEAM_MEMBERSHIPS`와 일치해야 한다.
-- 홈 지역 모집 요약은 `서울특별시 마포구`, `마포구`, `마포`처럼 같은 지역을 같은 로컬 큐로 본다.
+- 홈 지역 모집 요약은 제거됐다. 지역 모집 목록은 매칭 메뉴에서만 표시하며 canonical region key는 매칭 필터가 사용한다.
 - 홈 첫 진입 보강 로드는 전체 디렉터리가 아니라 current-user 모집방(`scope: mine`)과 경기 메뉴 모집 일정만 1회 읽는다.
 - 홈/알림의 팀 초대 표시는 `/api/profile/me` current-user 보강 로드로 갱신하고, 전체 디렉터리 로드에 의존하지 않는다.
 
@@ -1713,7 +1713,7 @@ flowchart TD
 28. `/api/matches/list` can include current-user open recruiting schedule rows when explicitly requested, and `/app/matches` first load sends `includeRecruitingSchedule=true` so owned/joined/invited matching rooms appear in the match menu schedule.
 28-1. Instant recruiting rooms have no calendar date, but they still appear in the Matches `active` list when they are related to the current profile and the 2-hour instant window has not expired. They do not create calendar day counts or appear under the scheduled/date-filtered view.
 28-2. Matches recruiting schedule rows are current-user relation rows, not a preview list. The API and UI must not cap them to 12; they load up to the active match-list cap and render all loaded related rooms without a "more" click.
-28-3. Home `내 확정 경기` shows confirmed real match schedule rows from `matches` only. Current-user open recruiting schedule rooms stay in `모집 중인 방` on Home and in the Matches menu schedule source.
+28-3. Home `내 확정 경기` shows confirmed real match schedule rows from `matches` only. Current-user open recruiting schedule rooms stay in the Matches menu schedule source and Recruiting relation filters. Home does not render a recruiting teaser list.
 28-3-1. Matches uses the recruiting schedule relation helper: owner/player/referee/applicant/reserve/lobby entry all count as the current user's recruiting schedule relation.
 28-4. Matches recruiting schedule uses the same current-user `user_room_feed` + `room_feed_cards.card_json` loader as recruiting mine lists. When every schedule row has a feed card, it must not detail-read `recruiting_posts`, `recruiting_applications`, profiles, teams, or courts.
 29. `user_room_feed` match rows are the first-page source for owned/participant/referee matches. `rankball_refresh_match_feed_for_match()` must keep match list `card_json` fresh whenever match or match player rows change. If the feed table/RPC is unavailable, `/api/matches/list` must fall back to current-profile candidate ids from `match_players.user_id`, `matches.created_by`, `matches.referee_id`, and `matches.former_referee_id`; it must not page through broad latest `matches` rows.
@@ -1742,7 +1742,7 @@ flowchart TD
 38-6. `/app/recruiting`에서 `내가 만든 방`, `내 참여방`, `초대받음` scope는 날짜 필터 때문에 숨겨지면 안 된다. 날짜 필터는 전체 공개 목록을 좁히는 용도이고, 내 방 scope에서는 relation 표시가 우선이다.
 39. 모집방 생성 서버 저장이 성공하면 클라이언트는 `created` feed count를 즉시 반영하고 경기 메뉴 모집 일정도 다시 읽는다.
 39-1. `/app/matches` 모집 일정 로드는 경기 목록 페이지네이션 `loading`과 별도 `recruitingScheduleLoading` 상태로 관리한다. 경기 목록 로딩 중이어도 모집 일정 확인이 불필요하게 막히면 안 된다.
-39-2. `/app` 홈 첫 로드는 `/api/home/load`가 홈 카드용 현재 사용자 모집 feed를 소량 포함하지만, 경기 메뉴 전체 일정 확인 완료로 표시하지 않는다. 홈 화면은 진입 직후 `loadMyRecruitingPosts()`나 `/api/matches/list includeRecruitingSchedule=true`를 자동 호출하지 않고, `/app/matches` 진입 시 `recruitingScheduleChecked=false`이면 경기 메뉴가 전체 일정 feed를 1회 읽는다.
+39-2. `/app` 홈 첫 로드는 `/api/home/load`가 홈 Action Queue용 현재 사용자 모집 feed를 소량 포함하지만, 경기 메뉴 전체 일정 확인 완료로 표시하지 않는다. 홈 화면은 진입 직후 `loadMyRecruitingPosts()`나 `/api/matches/list includeRecruitingSchedule=true`를 자동 호출하지 않고, `/app/matches` 진입 시 `recruitingScheduleChecked=false`이면 경기 메뉴가 전체 일정 feed를 1회 읽는다.
 39-3. 모집방 모달은 열릴 때 단건 상세를 즉시 한 번 읽고, 열린 상태에서는 visible 탭에서만 15초 간격으로 단건 refresh한다. 초대/수락/거절/참여 같은 현재 사용자 action은 서버 응답 merge와 관계 refresh hook으로 즉시 반영하고, 4초 polling에 의존하지 않는다.
 39-4. 모집방 초대/수락/거절/참여/취소 성공 후에는 현재 프로필, 내 모집 feed, 경기 메뉴 모집 일정 feed, 해당 `postId` 단건 상세를 같은 refresh hook에서 갱신한다. 열린 모달과 홈/경기/매칭 숫자가 서로 다른 늦은 호출로 덮이면 안 된다.
 39-4-1. 홈 Action Queue의 초대 수락은 pending 초대가 있으면 optimistic mutation 후 즉시 해당 방으로 이동한다. 서버 `/api/recruiting/sync-post` replay가 최종 권위이며 실패 시 기존 rollback 경고/복구 경로를 쓴다.
@@ -1871,7 +1871,7 @@ flowchart TD
 
 ## 2026-06-29 홈/경기 모집 일정 카운트 기준
 
-- 홈 `내 확정 경기`는 확정된 실제 경기(`matches`)만 표시한다. 모집방(`recruitingPosts`) 일정은 홈 `모집 중인 방`, 경기 메뉴 `MY/SOON`, 매칭 메뉴 `내가 만든 방/내 참여방/초대받음`에서 current-user recruiting feed 참여 판정으로 표시한다.
+- 홈 `내 확정 경기`는 확정된 실제 경기(`matches`)만 표시한다. 모집방(`recruitingPosts`) 일정은 경기 메뉴 `MY/SOON`, 매칭 메뉴 `내가 만든 방/내 참여방/초대받음`에서 current-user recruiting feed 참여 판정으로 표시한다. 홈은 처리 가능한 모집 초대/준비/확정/취소만 Action Queue에 표시한다.
 - 경기 메뉴에서 모집방 일정을 고를 때는 `isRecruitingPostForUser`를 먼저 사용하고, 부족한 표시 정보만 lobby 계산으로 보강한다.
 - 팀 신청 row처럼 list card에 전체 팀원 명단이 없더라도 `playerId`, `playerIds`, applicant, reserve 기준으로 현재 사용자의 참여 관계가 있으면 경기 메뉴 일정에 포함한다.
 - 2026-07-04: The frontend homeLoad request sends includeFeedCounts:false because home does not render recruiting relation badges. Recruiting badge counts belong to `/app/recruiting` first response or explicit relation views.

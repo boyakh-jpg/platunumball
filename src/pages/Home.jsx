@@ -13,8 +13,7 @@ import { MAX_TEAM_MEMBERSHIPS, getTeamRoleLabel } from "../lib/constants.js";
 import { getRegisteredCourts } from "../lib/courts.js";
 import { getCourtHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { canUserResolveMatchDispute, getAllowedStatFields, getMatchRecordWindow, getMatchRoomPhase, getMatchUserParticipantSideName, getPlayerStatSubmitted, getPublicRoomTimingStatus, getRoomScheduleLabel, isInstantRoom, isMatchRelatedToUser, userNeedsMatchAction, userNeedsMatchAgreement, userNeedsMatchApproval } from "../lib/matchUtils.js";
-import { inferRegionSelection } from "../lib/profileSetup.js";
-import { RECRUITING_TYPES, getPendingRecruitingInvitations, getRecruitingLobby, getRecruitingRoomOwnerId, isNationalRecruitingPost, isRecruitingPostForUser } from "../lib/recruiting.js";
+import { getPendingRecruitingInvitations, getRecruitingLobby, getRecruitingRoomOwnerId, isRecruitingPostForUser } from "../lib/recruiting.js";
 import { getCurrentSeason, getPlayerSeasonRows, getSeasonProgress } from "../lib/season.js";
 import { getTier, getTierDivision, getTierDivisionNumber } from "../lib/tier.js";
 import { getDiscordAvatarClassName, getDiscordAvatarStyle } from "../lib/discord.js";
@@ -63,13 +62,6 @@ function compareSchedule(a, b) {
   return aKey.localeCompare(bKey);
 }
 
-function isSameRecruitingRegion(post = {}, user = {}) {
-  if (!post.region) return false;
-  const postRegion = inferRegionSelection(post.region ?? "");
-  const userRegion = inferRegionSelection(user.regionDistrict ?? user.region ?? "");
-  return postRegion.sido === userRegion.sido && postRegion.district === userRegion.district;
-}
-
 function getUserResult(match, userId) {
   const sideName = getMatchUserParticipantSideName(match, userId) ?? "teamA";
   const otherSide = sideName === "teamA" ? "teamB" : "teamA";
@@ -90,13 +82,6 @@ function userNeedsResultInput(match, userId) {
 
 function userOperatesCheckin(match, userId) {
   return match.refereeId ? match.refereeId === userId : match.createdBy === userId;
-}
-
-function isHomeApprovalPendingMatch(match = {}, userId = "") {
-  if (!isHomeUserMatch(match, userId)) return false;
-  if (["confirmed", "cancelled", "void"].includes(match.status)) return false;
-  const phase = getMatchRoomPhase(match).phase;
-  return ["postgame", "dispute"].includes(phase) || Boolean(match.endedAt);
 }
 
 function getRecruitingSchedule(post) {
@@ -147,7 +132,6 @@ export default function Home({ app }) {
   const [query, setQuery] = useState("");
   const [processingInviteId, setProcessingInviteId] = useState("");
   const searchText = query.trim().toLowerCase();
-  const approvalMatches = [...app.state.matches].filter((match) => isHomeApprovalPendingMatch(match, user.id));
   const completedMatches = [...app.state.matches].filter((match) => match.status === "confirmed");
   const myTeam = app.state.teams.find((team) => team.members.some((member) => member.userId === user.id));
   const teamById = useMemo(() => Object.fromEntries(app.state.teams.map((team) => [team.id, team])), [app.state.teams]);
@@ -194,12 +178,6 @@ export default function Home({ app }) {
       .slice(0, 4)
       .map((team) => ({ ...team, gap: team.mmr - referenceMmr }));
   }, [app.state.teams, myTeam?.id, myTeam?.mmr, user.ratings.integrated, user.region]);
-  const localRecruitingPosts = useMemo(() => {
-    return [...(app.state.recruitingPosts ?? [])]
-      .filter((post) => post.status === "open")
-      .filter((post) => isSameRecruitingRegion(post, user) || isNationalRecruitingPost(post, app.state))
-      .slice(0, 3);
-  }, [app.state, app.state.recruitingPosts, user.region, user.regionDistrict]);
   const acceptHomeRecruitingInvitation = async (postId, invitationId) => {
     const key = `${postId}:${invitationId}`;
     setProcessingInviteId(key);
@@ -221,8 +199,6 @@ export default function Home({ app }) {
     }
   };
   const myCompletedMatches = completedMatches.filter((match) => isHomeUserMatch(match, user.id));
-  const myWins = myCompletedMatches.filter((match) => getUserResult(match, user.id) === "W").length;
-  const winRate = myCompletedMatches.length ? Math.round((myWins / myCompletedMatches.length) * 100) : 0;
   const actionItems = useMemo(() => {
     const tournamentInviteItems = (app.state.tournaments ?? [])
       .filter((tournament) => tournament.status === "draft")
@@ -793,49 +769,6 @@ export default function Home({ app }) {
               <div className="empty-state">확정 경기 없음</div>
             )}
           </Card>
-
-          <div className="home-main-card-grid">
-            <Card className="section-card recruiting-teaser-card">
-              <div className="section-title-row">
-                <div>
-                  <p className="eyebrow">Recruiting</p>
-                  <h2>모집 중인 방</h2>
-                </div>
-                <Handshake size={20} />
-              </div>
-              <div className="compact-list recruiting-mini-list">
-                {localRecruitingPosts.map((post) => {
-                  const meta = RECRUITING_TYPES[post.type] ?? RECRUITING_TYPES.need_player;
-                  return (
-                    <Link key={post.id} to={`/app/recruiting?post=${post.id}`}>
-                      <span>{post.title}</span>
-                      <strong>{post.ranked === false ? "친선" : meta.actionLabel}</strong>
-                    </Link>
-                  );
-                })}
-              </div>
-              <Link to="/app/recruiting">
-                <Button variant="secondary" className="wide-button"><Handshake size={17} /> 모집방 보기</Button>
-              </Link>
-            </Card>
-            <Card className="section-card approval-teaser-card">
-              <div className="section-title-row">
-                <div>
-                  <p className="eyebrow">Approval</p>
-                  <h2>결과 승인 대기</h2>
-                </div>
-                <Badge tone={approvalMatches.length ? "orange" : "neutral"}>{approvalMatches.length}개</Badge>
-              </div>
-              <div className="compact-list">
-                {approvalMatches.length ? approvalMatches.slice(0, 4).map((match) => (
-                  <Link key={match.id} to={`/app/matches?match=${match.id}`}>
-                    <span>{match.title}</span>
-                    <strong>{(match.approvals?.teamA?.length ?? 0) + (match.approvals?.teamB?.length ?? 0)}명 승인</strong>
-                  </Link>
-                )) : <div><span>결과 승인 대기 없음</span><strong>OK</strong></div>}
-              </div>
-            </Card>
-          </div>
 
           <Card className="section-card home-recent-card">
             <div className="section-title-row">
