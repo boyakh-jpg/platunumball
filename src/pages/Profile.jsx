@@ -81,7 +81,7 @@ function getRecordMetaPrefix(match) {
   return match.rules?.recordType === "solo" ? "개인 기록 · " : "";
 }
 
-function RecentRecordCard({ records, userId, onOpenRecord }) {
+function RecentRecordCard({ records, userId, onOpenRecord, loading = false }) {
   return (
     <Card className="section-card profile-record-card">
       <div className="section-title-row">
@@ -91,7 +91,9 @@ function RecentRecordCard({ records, userId, onOpenRecord }) {
         </div>
         <Link className="button button-secondary button-sm" to="/app/profile/records">기록 더보기</Link>
       </div>
-      {records.length ? (
+      {loading ? (
+        <div className="empty-state">기록 정리 중</div>
+      ) : records.length ? (
         <div className="recent-match-list">
           {records.map((match) => {
             const line = getUserRecordLine(match, userId);
@@ -135,6 +137,7 @@ export default function Profile({ app }) {
   });
   const [profileError, setProfileError] = useState("");
   const [selectedRecordMatchId, setSelectedRecordMatchId] = useState("");
+  const [recordsLoading, setRecordsLoading] = useState(false);
   const recordsLoadKeyRef = useRef("");
   const selectedRegion = REGION_TREE.find((item) => item.sido === draft.regionSido) ?? REGION_TREE[0];
   const districtOptions = useMemo(() => selectedRegion.districts, [selectedRegion]);
@@ -172,18 +175,23 @@ export default function Profile({ app }) {
     const loadKey = user.id;
     if (recordsLoadKeyRef.current === loadKey) return;
     recordsLoadKeyRef.current = loadKey;
+    setRecordsLoading(true);
     const request = app.actions.loadProfileRecords({ force: app.actions.profileRecordsLoaded && myRecords.length === 0 });
     if (!request?.then) {
       if (!request) recordsLoadKeyRef.current = "";
+      setRecordsLoading(false);
       return;
     }
     request.then((count) => {
       if (count === false) recordsLoadKeyRef.current = "";
     }).catch(() => {
       recordsLoadKeyRef.current = "";
+    }).finally(() => {
+      setRecordsLoading(false);
     });
   }, [app.actions, app.remoteReady, myRecords.length, user.id]);
   const averageFouls = getProfileAverageFouls(user, app.state.matches);
+  const recordsPending = recordsLoading && !myRecords.length;
   return (
     <div className="page-stack profile-page">
       <header className="page-header">
@@ -243,7 +251,7 @@ export default function Profile({ app }) {
               <RatingCard className="profile-rating-mode" key={mode} title={mode} mmr={mmr} subtitle="모드 티어" />
             ))}
           </section>
-          <RecentRecordCard records={myRecords} userId={user.id} onOpenRecord={setSelectedRecordMatchId} />
+          <RecentRecordCard records={myRecords} userId={user.id} onOpenRecord={setSelectedRecordMatchId} loading={recordsPending} />
         </div>
         <aside className="page-stack profile-side-grid">
           <ProgressionChecklist user={user} matches={app.state.matches} />

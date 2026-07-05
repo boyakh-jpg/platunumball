@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Crown, PlusCircle, Search, Shield, Swords } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
+import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
@@ -152,6 +153,7 @@ export default function Teams({ app }) {
 
   return (
     <div className="page-stack teams-page">
+      {teamDirectoryPending ? <BasketballLoader overlay label="팀 맞추는 중" /> : null}
       <section className="team-hub-hero">
         <div>
           <p className="eyebrow">Squad House</p>
