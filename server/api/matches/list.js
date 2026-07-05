@@ -203,10 +203,13 @@ async function attachRoomFeedCards(client, rows = [], entityType = "match") {
   }));
 }
 
-function collectMatchCardScope(cards = []) {
+function collectMissingMatchCardReferences(cards = []) {
   return {
-    teamIds: unique((cards ?? []).flatMap((match) => [match?.teamA?.teamId, match?.teamB?.teamId])),
-    courtIds: unique((cards ?? []).map((match) => match?.courtId)),
+    teamIds: unique((cards ?? []).flatMap((match) => [
+      match?.teamA?.teamId && !match?.teamA?.name ? match.teamA.teamId : "",
+      match?.teamB?.teamId && !match?.teamB?.name ? match.teamB.teamId : "",
+    ])),
+    courtIds: unique((cards ?? []).map((match) => (match?.courtId && !match?.court ? match.courtId : ""))),
   };
 }
 
@@ -1011,7 +1014,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   };
 
   if (matches.length && !matchRows.length) {
-    const cardScope = collectMatchCardScope(matches);
+    const cardScope = collectMissingMatchCardReferences(matches);
     const [
       { data: teamRows, error: teamError },
       { data: courtRows, error: courtError },
@@ -1091,7 +1094,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
     canReadMatchRow(row, playersByMatch.get(row.id) ?? [], context.profileId ?? "", adminLevel >= 30)
   ));
   const teamIds = unique(readableRows.flatMap((row) => [row.team_a_id, row.team_b_id]));
-  const courtIds = unique(readableRows.map((row) => row.court_id));
+  const courtIds = unique(readableRows.map((row) => (row.court_name ? "" : row.court_id)));
   const profileIds = unique(readableRows.flatMap((row) => getMatchRowActorIds(row, playersByMatch.get(row.id) ?? [])));
   const profileIdsForLookup = profileIds.filter((profileId) => profileId !== currentUser.id);
 
