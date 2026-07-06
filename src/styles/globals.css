@@ -2884,6 +2884,53 @@ input[type="color"] {
   background: rgba(70, 224, 182, 0.06);
 }
 
+.create-opponent-team-control {
+  position: relative;
+  min-width: 0;
+}
+
+.create-opponent-team-control .search-picker {
+  gap: 0;
+}
+
+.create-opponent-team-control .search-picker-field input {
+  padding-right: min(42vw, 330px);
+}
+
+.create-opponent-team-selected {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  right: 7px;
+  width: min(315px, 43%);
+  min-height: 30px;
+  padding: 5px 8px;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.create-opponent-team-selected strong {
+  font-size: 0.78rem;
+}
+
+.create-opponent-team-selected span {
+  font-size: 0.68rem;
+}
+
+@media (max-width: 620px) {
+  .create-opponent-team-control .search-picker-field input {
+    padding-right: 12px;
+  }
+
+  .create-opponent-team-selected {
+    position: static;
+    width: 100%;
+    margin-top: 6px;
+    pointer-events: auto;
+    transform: none;
+  }
+}
+
 .quick-picker button.favorite-pick {
   border-color: rgba(255, 211, 108, 0.34);
   background:

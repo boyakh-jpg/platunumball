@@ -1799,29 +1799,31 @@ export default function CreateMatch({ app }) {
                 </label>
               ) : null}
               {!isPublicRoom ? (
-                <div className={`team-search-field ${opponentTeamQuery.trim() ? "has-query" : ""}`}>
+                <div className={`team-search-field create-opponent-team-field ${opponentTeamQuery.trim() ? "has-query" : ""}`}>
                   <span className="field-label">B사이드</span>
-                  <SearchPicker
-                    value={opponentTeamQuery}
-                    onChange={setOpponentTeamQuery}
-                    placeholder="상대 팀명 검색"
-                    items={opponentTeamResults}
-                    remoteSearchType="team"
-                    idleItems={favoriteOpponentTeams.length ? favoriteOpponentTeams : opponentTeamResults}
-                    idleTitle={favoriteOpponentTeams.length ? "즐겨찾기 팀" : "추천 B사이드"}
-                    limit={10}
-                    detailLimit={10}
-                    showIdleOnFocus
-                    floating
-                    closeOnResultClick
-                    renderItem={renderOpponentTeamSearchItem}
-                  />
-                  {selectedTeamB ? (
-                    <div className="team-search-selected">
-                      <strong>{selectedTeamB.name}</strong>
-                      <span>{selectedTeamB.region} · {selectedTeamB.mmr} MMR</span>
-                    </div>
-                  ) : null}
+                  <div className="create-opponent-team-control">
+                    <SearchPicker
+                      value={opponentTeamQuery}
+                      onChange={setOpponentTeamQuery}
+                      placeholder="상대 팀명 검색"
+                      items={opponentTeamResults}
+                      remoteSearchType="team"
+                      idleItems={favoriteOpponentTeams.length ? favoriteOpponentTeams : opponentTeamResults}
+                      idleTitle={favoriteOpponentTeams.length ? "즐겨찾기 팀" : "추천 B사이드"}
+                      limit={10}
+                      detailLimit={10}
+                      showIdleOnFocus
+                      floating
+                      closeOnResultClick
+                      renderItem={renderOpponentTeamSearchItem}
+                    />
+                    {selectedTeamB ? (
+                      <div className="team-search-selected create-opponent-team-selected">
+                        <strong>{selectedTeamB.name}</strong>
+                        <span>{selectedTeamB.region} · {selectedTeamB.mmr} MMR</span>
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
               ) : null}
             </div>
