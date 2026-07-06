@@ -29,7 +29,7 @@ import TierBadge from "../components/rating/TierBadge.jsx";
 import { getTierEmblemSrc } from "../components/rating/TierEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
-import { MATCH_MODES, PLAYER_POSITIONS, PLAYER_STAT_FIELDS, REGIONS, getCanonicalRegion, isSameRegion } from "../lib/constants.js";
+import { MATCH_MODES, PLAYER_POSITIONS, PLAYER_STAT_FIELDS, REGIONS, ROOM_RELATION_TERMS, getCanonicalRegion, isSameRegion } from "../lib/constants.js";
 import { inferRegionSelection, REGION_TREE } from "../lib/profileSetup.js";
 import { getCourtLayoutLabel, getCourtPlayWarning, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
 import {
@@ -1543,8 +1543,9 @@ export function InvitePanel({
   error = "",
 }) {
   const teamSummonMode = Boolean(allowedTeamId);
-  const actionLabel = teamSummonMode ? "소집" : "초대";
-  const actionNoun = teamSummonMode ? "팀원 소집" : "초대";
+  const relationTerms = teamSummonMode ? ROOM_RELATION_TERMS.teamRoster : ROOM_RELATION_TERMS.pregame;
+  const actionNoun = relationTerms.request;
+  const actionLabel = teamSummonMode ? "소집" : actionNoun;
   const matchedTeam = query.trim() ? findTeamByHashtag(teams, query) : null;
   const selectedSet = new Set(selectedPlayerIds);
   const disabledSet = new Set(disabledPlayerIds);
