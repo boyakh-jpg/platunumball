@@ -665,12 +665,14 @@ const AUTHORITATIVE_REPLAY_RECRUITING_ACTIONS = new Set([
   "cancelRecruitingParticipation",
   "confirmRecruitingMatch",
   "interestRecruitingPost",
+  "updateRecruitingRoomRules",
   "inviteRecruitingPlayers",
   "inviteRecruitingReferee",
   "acceptRecruitingInvitation",
   "declineRecruitingInvitation",
   "sendRecruitingChat",
   "joinRecruitingSideParty",
+  "setRecruitingReady",
   "setRecruitingApplicantPlacement",
   "setRecruitingApplicantReserve",
   "setRecruitingSlotPosition",
@@ -679,6 +681,9 @@ const AUTHORITATIVE_REPLAY_RECRUITING_ACTIONS = new Set([
   "setRecruitingTeamPartyRoster",
   "detachRecruitingPartyPlayer",
   "removeRecruitingPartyPlayer",
+  "setRecruitingStatRecorder",
+  "kickRecruitingApplicant",
+  "closeRecruitingPost",
 ]);
 
 const SQL_REDUCER_RECRUITING_ACTIONS = new Set([
