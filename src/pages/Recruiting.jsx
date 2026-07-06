@@ -2794,7 +2794,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const getEntryPartyLeaderId = (entry) => roomState.partyLeaders?.[entry?.id]
           ?? (entry?.fixed ? selectedPost.playerId : entry?.playerId)
           ?? "";
-        const canManageEntry = (entry) => Boolean(isPartyEntry(entry) && getEntryPartyLeaderId(entry) === app.currentUser.id);
+        const canManageEntry = (entry) => Boolean(entry?.kind === "team" && getEntryPartyLeaderId(entry) === app.currentUser.id);
         const getInviteAllowedTeamId = (sideName) => {
           if (!teamOnlyRoom) return "";
           return getLobbyPrimaryTeamId(lobby, sideName) ?? "";

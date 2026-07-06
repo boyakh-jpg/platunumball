@@ -6741,9 +6741,8 @@ export function createRecruitingPost(state, draft) {
 
   const sideCapacity = Math.max(1, Number(draft.sideCapacity ?? MODE_SIZES[draft.mode] ?? 5));
   const hostTeam = hostJoinMode === "team" ? state.teams.find((team) => team.id === draft.teamId) : null;
-  const rawHostPlayerIds = hostJoinMode === "team" ? getSelectedTeamPlayerIds(hostTeam, sideCapacity, draft.playerIds) : [];
-  const hostPlayerIds = hostJoinMode === "team" ? ensureTeamPartyLeader(hostTeam, rawHostPlayerIds, state.currentUserId, sideCapacity) : [];
-  const hostReservePlayerIds = hostJoinMode === "team" ? getSelectedReservePlayerIds(hostTeam, hostPlayerIds, draft.reservePlayerIds) : [];
+  const hostPlayerIds = hostJoinMode === "team" ? [state.currentUserId].filter((playerId) => getTeamMemberIds(hostTeam).includes(playerId)) : [];
+  const hostReservePlayerIds = [];
   const privateTeamInviteOnly = visibility === "private" && hostJoinMode === "team";
   const opponentTeam = visibility === "private" && hostJoinMode === "team"
     ? state.teams.find((team) => team.id === (draft.opponentTeamId ?? draft.targetTeamId))
@@ -6766,14 +6765,14 @@ export function createRecruitingPost(state, draft) {
   const hostPlayerId = state.currentUserId;
   const selectedCourt = getRegisteredCourts(state).find((court) => court.name === draft.court || court.id === getCourtId(draft)) ?? null;
   const roomRegion = selectedCourt?.region || draft.region || state.users.find((user) => user.id === state.currentUserId)?.region || "전체";
-  if (hostJoinMode === "team" && (!hostPlayerIds.length || (teamOnly && hostPlayerIds.length < sideCapacity))) {
+  if (hostJoinMode === "team" && !hostPlayerIds.length) {
     return {
       ...state,
       notifications: [
         {
           id: makeId("n"),
           title: "참여 팀원 필요",
-          body: teamOnly ? "팀으로만 참여 공개방은 방장 사이드 출전 슬롯을 모두 채워야 합니다." : "팀으로 방을 열려면 실제 참여할 팀원을 1명 이상 선택해야 합니다.",
+          body: "팀으로 방을 열려면 방장이 해당 팀 소속이어야 합니다.",
           tone: "team",
         },
         ...state.notifications,
@@ -6787,7 +6786,7 @@ export function createRecruitingPost(state, draft) {
         {
           id: makeId("n"),
           title: "상대 사이드 필요",
-          body: "비공개 팀전은 A사이드 출전 슬롯과 B사이드 초대 대상 1명이 필요합니다.",
+          body: "비공개 팀전은 A사이드 팀과 B사이드 확인 대표 1명이 필요합니다.",
           tone: "team",
         },
         ...state.notifications,
@@ -6929,7 +6928,7 @@ export function createRecruitingPost(state, draft) {
     stakes: draft.stakes ?? "",
     courtReserved: Boolean(draft.courtReserved),
     courtFee: draft.courtFee ?? "",
-    memo: draft.memo?.trim() || "개인이나 팀 파티로 빈자리에 들어올 수 있습니다.",
+    memo: draft.memo?.trim() || (teamOnly ? "팀 대표가 방 안에서 출전/후보 명단을 확정합니다." : "개인이나 팀 파티로 빈자리에 들어올 수 있습니다."),
     status: "open",
     applicants,
     createdAt,
