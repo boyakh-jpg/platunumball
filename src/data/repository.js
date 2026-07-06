@@ -6764,17 +6764,22 @@ export function createRecruitingPost(state, draft) {
   const partyReserves = {};
   if (hostReservePlayerIds.length) partyReserves.host = hostReservePlayerIds;
   if (opponentTeam && opponentReservePlayerIds.length) partyReserves[`team:${opponentTeam.id}`] = opponentReservePlayerIds;
-  const invitationTargets = visibility === "private" && hostJoinMode === "team" && opponentTeam && opponentLeaderId
-    ? [opponentLeaderId]
+  const privatePlayerInviteTargets = visibility === "private" && hostJoinMode === "player"
+    ? Array.from(new Set(Array.isArray(draft.invitePlayerIds) ? draft.invitePlayerIds : []))
+        .filter((targetUserId) => targetUserId && targetUserId !== state.currentUserId)
+        .filter((targetUserId) => state.users.some((user) => user.id === targetUserId && !user.anonymous))
     : [];
-  const initialInvitations = invitationTargets.map((targetUserId) => ({
+  const invitationTargets = visibility === "private" && hostJoinMode === "team" && opponentTeam && opponentLeaderId
+    ? [{ targetUserId: opponentLeaderId, teamId: opponentTeam.id, joinMode: "team", side: "teamB" }]
+    : privatePlayerInviteTargets.map((targetUserId) => ({ targetUserId, teamId: null, joinMode: "player", side: "teamB" }));
+  const initialInvitations = invitationTargets.map((target) => ({
     id: makeId("inv"),
     role: "player",
-    targetUserId,
+    targetUserId: target.targetUserId,
     fromUserId: state.currentUserId,
-    teamId: opponentTeam.id,
-    joinMode: "team",
-    side: "teamB",
+    teamId: target.teamId,
+    joinMode: target.joinMode,
+    side: target.side,
     reserve: false,
     status: "pending",
     createdAt,
@@ -6882,7 +6887,9 @@ export function createRecruitingPost(state, draft) {
       ...initialInvitations.map((invitation) => ({
         id: makeId("n"),
         title: "매치방 초대",
-        body: `${post.title} B사이드 파티장 초대장이 도착했습니다. 수락하면 B사이드 참가가 확정됩니다.`,
+        body: invitation.joinMode === "team"
+          ? `${post.title} B사이드 파티장 초대장이 도착했습니다. 수락하면 B사이드 참가가 확정됩니다.`
+          : `${post.title} 초대장이 도착했습니다. 수락하면 B사이드 참가가 확정됩니다.`,
         tone: "match",
         targetUserId: invitation.targetUserId,
         recruitingPostId: post.id,

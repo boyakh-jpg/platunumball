@@ -2068,6 +2068,7 @@ flowchart TD
 - 초대 수락/거절 권한은 현재 사용자의 pending 초대 전체가 아니라 요청한 `invitationId`의 pending 초대 기준으로 판정한다.
 - 비공개방은 초대 없이 신규 참여할 수 없지만, 이미 참가 확정된 사용자의 같은 방 파티 합류/정리는 허용한다.
 - 팀 초대는 legacy 추론에 기대지 않고 `joinMode:"team"`을 명시한다.
+- 비공개 개인전 생성 화면에서 선택한 `invitePlayerIds`는 생성 시 `joinMode:"player"`, `teamId:null`, `side:"teamB"` pending 초대로 저장한다. 수락은 기존 초대 수락 서버 검사를 다시 통과해야 한다.
 - 팀 호스트 A사이드 팀원이 초대를 수락해 `playerIds`가 늘어나는 것은 수락된 초대 범위 안에서만 허용한다. 그 외 핵심 룰 변경은 계속 `recruiting_core_locked`로 막는다.
 - 공개/비공개 모집방의 모든 다중 초대는 대상별 pending 초대이며, 각 수락은 서버에서 슬롯/사이드/파티/나이/MMR/권한 검사를 다시 통과해야 한다.
 
