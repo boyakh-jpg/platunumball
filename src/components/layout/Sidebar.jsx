@@ -2,6 +2,7 @@ import { CalendarDays, ClipboardList, Handshake, House, LogOut, Settings, UserRo
 import { NavLink } from "react-router-dom";
 import PlayerHoverCard from "../profile/PlayerHoverCard.jsx";
 import TierBadge from "../rating/TierBadge.jsx";
+import { BOXTIER_LETTER_DARK_URL, BOXTIER_LETTER_LIGHT_URL, BOXTIER_LOGO_URL } from "../../lib/assets.js";
 import { getDiscordAvatarClassName, getDiscordAvatarStyle } from "../../lib/discord.js";
 import { getUserHashtag } from "../../lib/handles.js";
 
@@ -22,11 +23,13 @@ export default function Sidebar({ user, teams = [], auth }) {
   const integratedRating = safeUser.ratings?.integrated ?? 1200;
   return (
     <aside className="sidebar">
-      <NavLink to="/" className="brand">
-        <span className="brand-mark">R</span>
-        <span>
-          <strong>RankBall</strong>
-          <small>street court ladder</small>
+      <NavLink to="/" className="brand" aria-label="boxtier">
+        <span className="brand-logo-frame" aria-hidden="true">
+          <img className="brand-logo-img" src={BOXTIER_LOGO_URL} alt="" />
+        </span>
+        <span className="brand-letter-wrap" aria-hidden="true">
+          <img className="brand-letter-img brand-letter-dark" src={BOXTIER_LETTER_DARK_URL} alt="" />
+          <img className="brand-letter-img brand-letter-light" src={BOXTIER_LETTER_LIGHT_URL} alt="" />
         </span>
       </NavLink>
       <nav className="sidebar-nav" aria-label="주요 메뉴">

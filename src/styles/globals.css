@@ -14894,3 +14894,92 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
   display: inline-block;
   max-width: 100%;
 }
+
+/* 2026-07-06 boxtier brand lockup. */
+.brand-logo-frame {
+  display: grid;
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+.brand-logo-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.brand-letter-wrap {
+  display: block;
+  min-width: 0;
+  line-height: 0;
+}
+
+.brand-letter-img {
+  display: block;
+  width: 112px;
+  max-width: min(42vw, 128px);
+  height: auto;
+  object-fit: contain;
+}
+
+.brand-letter-light {
+  display: none;
+}
+
+html[data-theme="light"] .brand-letter-dark {
+  display: none;
+}
+
+html[data-theme="light"] .brand-letter-light {
+  display: block;
+}
+
+.auth-brand .brand-letter-img {
+  width: 132px;
+  max-width: min(48vw, 148px);
+}
+
+.landing-brand-lockup {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  width: min(90vw, 520px);
+  margin: 0;
+  font-size: 0;
+  line-height: 1;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.landing-brand-lockup .brand-logo-frame {
+  width: 86px;
+  height: 86px;
+  border-radius: 22px;
+}
+
+.landing-brand-lockup .brand-letter-img {
+  width: min(360px, 68vw);
+  max-width: 100%;
+}
+
+@media (max-width: 720px) {
+  .landing-brand-lockup {
+    gap: 12px;
+    width: min(90vw, 360px);
+  }
+
+  .landing-brand-lockup .brand-logo-frame {
+    width: 64px;
+    height: 64px;
+    border-radius: 18px;
+  }
+
+  .landing-brand-lockup .brand-letter-img {
+    width: min(260px, 68vw);
+  }
+}

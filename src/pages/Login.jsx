@@ -3,6 +3,7 @@ import { ArrowRight, Copy, ExternalLink, LogOut, ShieldCheck } from "lucide-reac
 import { useState } from "react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
+import { BOXTIER_LETTER_DARK_URL, BOXTIER_LETTER_LIGHT_URL, BOXTIER_LOGO_URL } from "../lib/assets.js";
 import { getAppRedirectFromLocation } from "../lib/profileSetup.js";
 
 const providers = [
@@ -53,11 +54,13 @@ export default function Login({ auth, app }) {
     <main className="auth-shell">
       <section className="auth-card">
         <div className="auth-card-head">
-          <Link to="/" className="brand auth-brand">
-            <span className="brand-mark">R</span>
-            <span>
-              <strong>RankBall</strong>
-              <small>street court ladder</small>
+          <Link to="/" className="brand auth-brand" aria-label="boxtier">
+            <span className="brand-logo-frame" aria-hidden="true">
+              <img className="brand-logo-img" src={BOXTIER_LOGO_URL} alt="" />
+            </span>
+            <span className="brand-letter-wrap" aria-hidden="true">
+              <img className="brand-letter-img brand-letter-dark" src={BOXTIER_LETTER_DARK_URL} alt="" />
+              <img className="brand-letter-img brand-letter-light" src={BOXTIER_LETTER_LIGHT_URL} alt="" />
             </span>
           </Link>
           <Badge tone={auth.session ? "green" : "blue"}>{auth.session ? "로그인됨" : auth.configured ? "Supabase Auth" : "Demo login"}</Badge>

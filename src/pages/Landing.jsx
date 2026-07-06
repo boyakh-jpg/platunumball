@@ -2,6 +2,7 @@ import { ArrowRight, BarChart3, ClipboardCheck, House, LogIn, ShieldCheck, Troph
 import { Link } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
+import { BOXTIER_LETTER_DARK_URL, BOXTIER_LETTER_LIGHT_URL, BOXTIER_LOGO_URL } from "../lib/assets.js";
 
 export default function Landing({ state }) {
   const users = state?.users ?? [];
@@ -27,8 +28,16 @@ export default function Landing({ state }) {
       <section className="landing-hero">
         <div className="landing-backdrop" aria-hidden="true" />
         <div className="landing-copy">
-          <Badge tone="green">RankBall Season Zero</Badge>
-          <h1>RankBall</h1>
+          <h1 className="landing-brand-lockup" aria-label="boxtier">
+            <span className="brand-logo-frame" aria-hidden="true">
+              <img className="brand-logo-img" src={BOXTIER_LOGO_URL} alt="" />
+            </span>
+            <span className="brand-letter-wrap" aria-hidden="true">
+              <img className="brand-letter-img brand-letter-dark" src={BOXTIER_LETTER_DARK_URL} alt="" />
+              <img className="brand-letter-img brand-letter-light" src={BOXTIER_LETTER_LIGHT_URL} alt="" />
+            </span>
+          </h1>
+          <Badge tone="green">Season Zero</Badge>
           <div className="landing-actions">
             <Link to="/app/create">
               <Button>
@@ -51,7 +60,7 @@ export default function Landing({ state }) {
             <span><strong>{topUser?.ratings?.integrated ?? "-"}</strong> top MMR</span>
           </div>
         </div>
-        <div className="broadcast-panel" aria-label="RankBall live board">
+        <div className="broadcast-panel" aria-label="boxtier live board">
           <Link to={featuredMatch ? `/app/matches?match=${featuredMatch.id}` : "/app"} className="broadcast-glass">
             <div className="live-dot">TODAY</div>
             <h2>{featuredMatch?.mode ?? "5v5"} Match</h2>
@@ -63,7 +72,7 @@ export default function Landing({ state }) {
               <span>{featuredMatch?.teamB.name ?? "Team B"}</span>
             </div>
             <div className="broadcast-list">
-              <span><Trophy size={17} /> {topUser?.name ?? "RankBall"} <b>{topUser?.ratings?.integrated ?? "-"}</b></span>
+              <span><Trophy size={17} /> {topUser?.name ?? "boxtier"} <b>{topUser?.ratings?.integrated ?? "-"}</b></span>
               <span><ClipboardCheck size={17} /> 승인 대기 <b>{approvalCount}</b></span>
               <span><ShieldCheck size={17} /> 대기 매칭 <b>{recruitingCount}</b></span>
               <span><BarChart3 size={17} /> 상태 <b>{statusLabel}</b></span>

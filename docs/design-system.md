@@ -223,6 +223,12 @@ RankBall 다크 모드는 이 팔레트를 기본 CSS 색상 표준으로 쓴다
 
 2026-06-27: Score result cards keep side/team names secondary and the numeric score as the visual center.
 
+## 2026-07-06 boxtier brand lockup
+
+1. App shell sidebar, login, and landing brand use R2 `boxtier_logo.png`, `boxtier_letter_dark.png`, and `boxtier_letter_light.png`.
+2. Visible brand areas do not use the old text `R` mark or `RankBall` text lockup.
+3. Light/dark brand switching swaps only the letter image. Button, card, slot, and hero layout rules stay unchanged.
+
 이 문서는 UI/CSS/반응형/라이트/다크 수정 기준이다.
 디자인 변경 시 이 문서를 같이 갱신한다.
 

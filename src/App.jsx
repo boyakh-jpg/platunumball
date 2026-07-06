@@ -60,7 +60,7 @@ class AppErrorBoundary extends Component {
   }
 
   componentDidCatch(error, info) {
-    console.error("RankBall render failed.", error, info);
+    console.error("boxtier render failed.", error, info);
   }
 
   render() {
@@ -68,7 +68,7 @@ class AppErrorBoundary extends Component {
     return (
       <main className="auth-shell">
         <section className="auth-card">
-          <p className="eyebrow">RankBall</p>
+          <p className="eyebrow">boxtier</p>
           <h1>화면을 불러오지 못했습니다</h1>
           <p>{String(this.state.error?.message ?? "render_failed")}</p>
           <button type="button" className="button button-primary button-md" onClick={() => window.location.reload()}>
