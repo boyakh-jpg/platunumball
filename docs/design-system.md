@@ -950,6 +950,7 @@ UI 수정 전:
 23. Pinned hover cards keep the same content layout as hover preview cards. The close button is a compact absolute `X` control in the top-right corner, and the bottom detail action uses the shared primary action color, not green.
 24. Recruiting room slot glow may bleed outside the slot box. Room modal team/reserve panels must keep slot rows and inner roster wrappers overflow-visible or provide bleed padding so ready/party/player glow is not clipped by parent panel edges. Parent side/stage surfaces may stay transparent; slot cards provide the visible player surface.
 25. Recruiting room reserve panels use two explicit columns in the modal: A reserve in column 1, B reserve in column 2. Older three-column lobby rules must not push B reserve into an implicit third column.
+26. Create match age restriction segments render the three real age groups as three equal columns. Do not leave an empty fourth segment column.
 
 ## 2026-07-03 profile form controls
 
