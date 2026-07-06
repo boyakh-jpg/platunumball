@@ -232,6 +232,35 @@ function attachMatchCardReferences(match = {}, teamById = {}, courtById = {}) {
   };
 }
 
+async function attachMatchPlayerCountsToCards(client, matches = [], debugTiming = null) {
+  const ids = unique((matches ?? []).map((match) => match?.id));
+  if (!ids.length) return matches;
+  const { data, error } = await timeStep(debugTiming, "cardPlayerCountsMs", () => (
+    client.from("match_players").select("match_id,side,user_id").in("match_id", ids)
+  ));
+  if (error) throw error;
+  const countsByMatch = new Map();
+  (data ?? []).forEach((row) => {
+    const matchId = row?.match_id;
+    const side = row?.side;
+    const userId = row?.user_id;
+    if (!matchId || !["teamA", "teamB"].includes(side) || !userId) return;
+    if (!countsByMatch.has(matchId)) {
+      countsByMatch.set(matchId, { teamA: new Set(), teamB: new Set() });
+    }
+    countsByMatch.get(matchId)[side].add(userId);
+  });
+  return matches.map((match) => {
+    const counts = countsByMatch.get(match?.id);
+    if (!counts) return match;
+    return {
+      ...match,
+      teamA: { ...(match.teamA ?? {}), count: counts.teamA.size },
+      teamB: { ...(match.teamB ?? {}), count: counts.teamB.size },
+    };
+  });
+}
+
 function isSoloRecordMatch(match = {}) {
   return isPersonalRecordMatch(match);
 }
@@ -1020,7 +1049,8 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   };
 
   if (matches.length && !matchRows.length) {
-    const cardScope = collectMissingMatchCardReferences(matches);
+    const countedMatches = await attachMatchPlayerCountsToCards(context.supabase, matches, debugTiming);
+    const cardScope = collectMissingMatchCardReferences(countedMatches);
     const [
       { data: teamRows, error: teamError },
       { data: courtRows, error: courtError },
@@ -1035,7 +1065,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
     const teams = (teamRows ?? []).map(toClientTeam);
     const teamById = Object.fromEntries(teams.map((team) => [team.id, team]));
     const courtById = firstBy(courtRows ?? [], "id");
-    const referencedMatches = matches.map((match) => attachMatchCardReferences(match, teamById, courtById));
+    const referencedMatches = countedMatches.map((match) => attachMatchCardReferences(match, teamById, courtById));
     const state = normalizeState({
       currentUserId: currentUser.id,
       users: [compactUser(currentUser, currentUser.id)],
@@ -1142,8 +1172,11 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   const rowMatches = readableRows
     .map((row) => toClientMatch(row, playersByMatch, teamById, courtById, resultsByMatch, statsByMatch))
     .filter((match) => filterMatchItems([match]).length > 0);
+  const countedMatches = matches.length
+    ? await attachMatchPlayerCountsToCards(context.supabase, matches, debugTiming)
+    : matches;
   matches = feedPage?.ids?.length
-    ? sortByFeedOrder(mergeMatchCardsWithRows(matches, rowMatches), feedPage.ids)
+    ? sortByFeedOrder(mergeMatchCardsWithRows(countedMatches, rowMatches), feedPage.ids)
     : rowMatches.sort((a, b) => String(b.updatedAt ?? b.createdAt ?? "").localeCompare(String(a.updatedAt ?? a.createdAt ?? "")));
   const state = normalizeState({
     currentUserId: currentUser.id,

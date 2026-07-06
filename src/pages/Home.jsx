@@ -53,8 +53,7 @@ function isHomeUpcomingScheduleItem(item = {}, todayValue, maxScheduleDate) {
 
 function isHomeUserMatch(match = {}, userId = "") {
   if (isSeedSampleMatch(match)) return false;
-  const feedRelations = Array.isArray(match.__feedRelations) ? match.__feedRelations : [];
-  return isMatchRelatedToUser(match, userId) || feedRelations.some((relation) => ["owner", "participant", "referee"].includes(relation));
+  return isMatchRelatedToUser(match, userId);
 }
 
 function compareSchedule(a, b) {

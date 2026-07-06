@@ -253,15 +253,13 @@ function shouldShowScoreBox(match) {
 }
 
 function getMatchSideCount(match, sideName) {
-  const players = match?.[sideName]?.players;
-  if (Array.isArray(players) && players.length) return players.length;
   const count = Number(match?.[sideName]?.count);
-  return Number.isFinite(count) ? Math.max(0, count) : 0;
+  if (Number.isFinite(count)) return Math.max(0, count);
+  const players = match?.[sideName]?.players;
+  return Array.isArray(players) ? players.length : 0;
 }
 
 function getMatchPlayerCount(match) {
-  const players = [...(match.teamA?.players ?? []), ...(match.teamB?.players ?? [])];
-  if (players.length) return new Set(players).size;
   return getMatchSideCount(match, "teamA") + getMatchSideCount(match, "teamB");
 }
 
