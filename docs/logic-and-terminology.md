@@ -1926,7 +1926,7 @@ flowchart TD
 24. Recruiting server action replay must load the acting profile's current teams, explicit draft/application team ids, and their team members. Team-hosted room creation, private opponent team creation, and team-party participation cannot rely only on teams already related to the target recruiting post.
 25. Recruiting replay scope must also include explicit invite targets, referee invite targets, and team ids stored on pending room invitations. Expired, declined, or cancelled invitations are not active eligibility targets and must not block age/team roster validation.
 26. Recruiting snapshot persist must pass the replay base `updated_at` into `rankball_recruiting_action`. The DB function locks the row and rejects stale writes with `recruiting_stale_snapshot` instead of overwriting a newer room state.
-27. `setRecruitingApplicantPlacement`에서 방장이 자기 개인 슬롯을 옮기는 경우에만 `hostSide` 변경을 허용한다. 다른 참가자 배치 변경은 방 core field를 바꾸면 안 된다.
+27. `setRecruitingApplicantPlacement`는 방장 자기 슬롯 이동으로도 `hostSide`를 변경하지 않는다. 방장은 생성 사이드를 유지하고, 다른 참가자 배치 변경도 방 core field를 바꾸면 안 된다.
 
 ## 2026-06-28 public feed access
 

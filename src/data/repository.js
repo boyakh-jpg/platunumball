@@ -8812,9 +8812,10 @@ export function setRecruitingApplicantPlacement(state, postId, playerId, placeme
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
   const applicants = normalizeRecruitingApplicants(post.applicants ?? []);
   const targetApplicant = applicants.find((applicant) => getRecruitingApplicantKey(applicant) === `player:${playerId}`);
-  const hostTarget = playerId === post.playerId && !targetApplicant;
+  const hostTarget = playerId === post.playerId;
+  const hostSide = post.hostSide ?? "teamA";
   const target = targetApplicant ?? (hostTarget
-    ? { side: post.hostSide ?? "teamA", reserve: roomState.hostReserve }
+    ? { side: hostSide, reserve: roomState.hostReserve }
     : null);
   if (!target) return state;
   const requesterControlsTarget = hostTarget
@@ -8822,11 +8823,12 @@ export function setRecruitingApplicantPlacement(state, postId, playerId, placeme
     : target.playerId === state.currentUserId || (target.playerIds ?? []).includes(state.currentUserId);
   if (!requesterControlsTarget) return state;
 
-  const requestedSide = ["teamA", "teamB"].includes(placement.side) ? placement.side : target.side;
-  if (hostTarget && requestedSide !== target.side) return state;
-  const side = hostTarget ? target.side : requestedSide;
+  const explicitRequestedSide = ["teamA", "teamB"].includes(placement.side) ? placement.side : null;
+  if (hostTarget && explicitRequestedSide && explicitRequestedSide !== hostSide) return state;
+  const requestedSide = explicitRequestedSide ?? target.side;
+  const side = hostTarget ? hostSide : requestedSide;
   const reserve = Boolean(placement.reserve);
-  if (isRecruitingTeamSideLocked(post) && side !== target.side) return state;
+  if (!hostTarget && isRecruitingTeamSideLocked(post) && side !== target.side) return state;
   const updatedAt = new Date().toISOString();
   const nextApplicants = hostTarget
     ? applicants
