@@ -201,6 +201,7 @@ body > .basketball-loader-overlay ~ .basketball-loader-overlay {
 }
 
 .brand {
+  gap: 6px;
   min-width: 0;
 }
 
@@ -14909,7 +14910,7 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
   padding: 4px;
   overflow: hidden;
   border-radius: 8px;
-  background: var(--rb-cream);
+  background: #d3c7b6;
 }
 
 .brand-logo-img {
@@ -14921,9 +14922,9 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
 
 .brand-letter-wrap {
   display: block;
-  flex: 1 1 auto;
-  width: 168px;
-  max-width: 168px;
+  flex: 0 1 252px;
+  width: 252px;
+  max-width: 252px;
   min-width: 0;
   line-height: 0;
 }
@@ -14931,7 +14932,7 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
 .brand-letter-img {
   display: block;
   width: 100%;
-  max-width: 168px;
+  max-width: 252px;
   height: auto;
   object-fit: contain;
 }
@@ -14953,19 +14954,19 @@ html[data-theme="light"] .brand-letter-light {
 }
 
 .auth-brand .brand-letter-wrap {
-  width: 198px;
-  max-width: 198px;
+  width: 297px;
+  max-width: 297px;
 }
 
 .auth-brand .brand-letter-img {
-  width: 198px;
-  max-width: min(52vw, 198px);
+  width: 297px;
+  max-width: min(58vw, 297px);
 }
 
 .landing-brand-lockup {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 12px;
   width: min(90vw, 520px);
   margin: 0;
   font-size: 0;
@@ -14977,7 +14978,7 @@ html[data-theme="light"] .brand-letter-light {
 .landing-brand-lockup .brand-logo-frame {
   width: 86px;
   height: 86px;
-  border-radius: 22px;
+  border-radius: 13px;
 }
 
 .landing-brand-lockup .brand-letter-wrap {
@@ -14987,7 +14988,7 @@ html[data-theme="light"] .brand-letter-light {
 }
 
 .landing-brand-lockup .brand-letter-img {
-  width: min(360px, 68vw);
+  width: min(540px, 72vw);
   max-width: 100%;
 }
 
@@ -15000,10 +15001,10 @@ html[data-theme="light"] .brand-letter-light {
   .landing-brand-lockup .brand-logo-frame {
     width: 64px;
     height: 64px;
-    border-radius: 18px;
+    border-radius: 10px;
   }
 
   .landing-brand-lockup .brand-letter-img {
-    width: min(260px, 68vw);
+    width: min(390px, 72vw);
   }
 }

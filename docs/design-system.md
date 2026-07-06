@@ -228,7 +228,8 @@ RankBall 다크 모드는 이 팔레트를 기본 CSS 색상 표준으로 쓴다
 1. App shell sidebar, login, and landing brand use R2 `boxtier_logo.png`, `boxtier_letter_dark.png`, and `boxtier_letter_light.png`.
 2. Visible brand areas do not use the old text `R` mark or `RankBall` text lockup.
 3. Light/dark brand switching swaps only the letter image. Button, card, slot, and hero layout rules stay unchanged.
-4. Dark mode brand logo frame uses the warm cream app background so the emblem stays readable. Light mode keeps the frame background transparent. Sidebar/auth letter art is allowed to be larger, but must shrink inside the available brand row instead of overflowing.
+4. Dark mode brand logo frame uses the dark letter art's warm neutral color so the emblem stays visually paired with the wordmark. Light mode keeps the frame background transparent.
+5. Brand logo and letter spacing stays tight. Sidebar/auth/landing letter art may be enlarged, but must shrink inside the available brand row instead of overflowing. Logo frame radius follows the logo art closely so the emblem is not clipped.
 
 이 문서는 UI/CSS/반응형/라이트/다크 수정 기준이다.
 디자인 변경 시 이 문서를 같이 갱신한다.
