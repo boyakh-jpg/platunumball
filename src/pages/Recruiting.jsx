@@ -4008,9 +4008,9 @@ function RecruitingReady({ app }) {
         targetPostId,
       }))
       .filter((post) => {
-        const invited = hasPendingRecruitingInvitation(post, app.currentUser.id);
-        const relationScoped = roomScope !== "all";
-        return invited || relationScoped || post.id === targetPostId || isRegionRecruitingPost(post, selectedRegionKey, app.currentUser) || isNationalRecruitingPost(post, app.state);
+        if (post.id === targetPostId) return true;
+        if (post.visibility === "private") return false;
+        return isRegionRecruitingPost(post, selectedRegionKey, app.currentUser) || isNationalRecruitingPost(post, app.state);
       })
       .filter((post) => queue === "all" || (queue === "ranked" ? post.ranked !== false : post.ranked === false))
       .filter((post) => modeFilter === "all" || post.mode === modeFilter)
@@ -4029,15 +4029,13 @@ function RecruitingReady({ app }) {
     return scopedPosts.sort((a, b) => {
       const aLocal = Number(isLocalRecruitingPost(a, app.currentUser));
       const bLocal = Number(isLocalRecruitingPost(b, app.currentUser));
-      const aMine = Number(isRecruitingPostForUser(a, app.currentUser.id, myTeamIds));
-      const bMine = Number(isRecruitingPostForUser(b, app.currentUser.id, myTeamIds));
       const aNational = Number(isNationalRecruitingPost(a, app.state));
       const bNational = Number(isNationalRecruitingPost(b, app.state));
       const aInstant = Number(isInstantRoom(a));
       const bInstant = Number(isInstantRoom(b));
-      return bMine - aMine || bInstant - aInstant || bLocal - aLocal || bNational - aNational || new Date(b.createdAt) - new Date(a.createdAt);
+      return bInstant - aInstant || bLocal - aLocal || bNational - aNational || new Date(b.createdAt) - new Date(a.createdAt);
     });
-  }, [app.currentUser, app.currentUser.id, app.state, myTeamIds, scopedPosts]);
+  }, [app.currentUser, app.state, scopedPosts]);
   const queueListLoading = roomScope === "all" && !posts.length && (!filterRequestSettled || app.recruitingPagination?.loading);
 
   const selectedPost = selectedPostId

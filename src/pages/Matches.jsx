@@ -59,6 +59,14 @@ const VIEWS = [
   },
 ];
 const CHILD_VIEW_IDS = ["todo", "scheduled", "closed"];
+const SCHEDULE_BRANCH_FILTERS = [
+  { id: "all", label: "전체" },
+  { id: "public", label: "공개 모집" },
+  { id: "private", label: "비공개 초대" },
+  { id: "player", label: "개인전" },
+  { id: "team", label: "팀전" },
+  { id: "record", label: "기록방" },
+];
 const AUTO_ROOM_TITLE_PREFIX_PATTERN = /^(동의 대기|진행 예정|결과 승인|이의 확인|이의제기|확정|결과 입력|확정방|경기준비|경기시작|경기종료|결과승인|이의신청|기록 확정)\s*·\s*/;
 const GENERIC_ROOM_TITLE_PATTERN = /^(경기|경기방|매치 큐|정규전|친선전|동의 대기|진행 예정|결과 승인|이의 확인|이의제기|확정|결과 입력|확정방|확정 준비\s*\d*|모집 중\s*\d*|경기준비|경기시작|경기종료|결과승인|이의신청|기록 확정)$/;
 
@@ -330,12 +338,12 @@ function getMatchActionLabel(match) {
   return getMatchRoomPhase(match).actionLabel;
 }
 
-function shouldShowMatchForView(match, view, userId) {
-  if (match?.rules?.recordType === "solo") return false;
+function shouldShowMatchForView(match, view, userId, options = {}) {
+  if (match?.rules?.recordType === "solo") return Boolean(options.includeRecordRooms && view.id === "active");
   const closedNotice = isMatchClosedNotice(match);
   const phase = getMatchRoomPhase(match).phase;
   if (view.id === "active") {
-    return CHILD_VIEW_IDS.some((viewId) => shouldShowMatchForView(match, { id: viewId }, userId));
+    return CHILD_VIEW_IDS.some((viewId) => shouldShowMatchForView(match, { id: viewId }, userId, options));
   }
   if (view.id === "closed") return closedNotice;
   if (closedNotice) return false;
@@ -344,8 +352,8 @@ function shouldShowMatchForView(match, view, userId) {
   return false;
 }
 
-function shouldShowMatchInList(match, view, userId, hasDateFilter) {
-  if (!shouldShowMatchForView(match, view, userId)) return false;
+function shouldShowMatchInList(match, view, userId, hasDateFilter, options = {}) {
+  if (!shouldShowMatchForView(match, view, userId, options)) return false;
   if (view.id === "active" && match.status === "confirmed" && !hasDateFilter) return false;
   return true;
 }
@@ -373,16 +381,47 @@ function matchesScheduleRelation(relation = "", relationFilter = "all") {
   return relation === relationFilter;
 }
 
+function isScheduleRecordRoom(item = {}) {
+  return item?.rules?.recordType === "solo" || item?.recordType === "solo";
+}
+
+function isScheduleTeamRoom(item = {}, type = "match") {
+  if (type === "room") {
+    return item.hostJoinMode === "team" || item.teamOnly === true || item.roomState?.teamOnly === true || Boolean(item.teamId || item.targetTeamId);
+  }
+  return Boolean(item.teamA?.teamId || item.teamB?.teamId)
+    || isMatchSideTeamParty(item, "teamA")
+    || isMatchSideTeamParty(item, "teamB")
+    || (item.parties ?? []).some((party) => isMatchPartyTeamParty(party));
+}
+
+function getScheduleVisibility(item = {}) {
+  return item.visibility ?? item.rules?.visibility ?? "";
+}
+
+function matchesScheduleBranch(item = {}, type = "match", branchFilter = "all") {
+  if (branchFilter === "all") return true;
+  const isRecord = isScheduleRecordRoom(item);
+  const isTeam = isScheduleTeamRoom(item, type);
+  const visibility = getScheduleVisibility(item);
+  if (branchFilter === "record") return isRecord;
+  if (branchFilter === "team") return !isRecord && isTeam;
+  if (branchFilter === "player") return !isRecord && !isTeam;
+  if (branchFilter === "public") return !isRecord && visibility === "public";
+  if (branchFilter === "private") return !isRecord && visibility !== "public";
+  return true;
+}
+
 function getRecruitingRoomsForView(posts = [], view) {
   if (!["active", "scheduled"].includes(view.id)) return [];
   return posts.filter((post) => view.id === "active" || !isInstantScheduleRoom(post));
 }
 
-function getScheduleItemsForView(matches = [], recruitingPosts = [], view, userId, hasDateFilter) {
+function getScheduleItemsForView(matches = [], recruitingPosts = [], view, userId, hasDateFilter, options = {}) {
   return [
     ...getRecruitingRoomsForView(recruitingPosts, view).map((post) => ({ type: "room", id: `room-${post.id}`, item: post })),
     ...matches
-      .filter((match) => shouldShowMatchInList(match, view, userId, hasDateFilter))
+      .filter((match) => shouldShowMatchInList(match, view, userId, hasDateFilter, options))
       .map((match) => ({ type: "match", id: `match-${match.id}`, item: match })),
   ].sort((a, b) => compareSchedule(a.item, b.item));
 }
@@ -797,7 +836,7 @@ export function MatchRoomModal({ app, matchId, onClose }) {
 export default function Matches({ app }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [viewId, setViewId] = useState("active");
-  const [kindFilter, setKindFilter] = useState("all");
+  const [branchFilter, setBranchFilter] = useState("all");
   const [relationFilter, setRelationFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("");
   const [calendarMonth, setCalendarMonth] = useState(getMonthKey());
@@ -818,6 +857,9 @@ export default function Matches({ app }) {
   const matchesById = useMemo(() => Object.fromEntries(app.state.matches.map((match) => [match.id, match])), [app.state.matches]);
   const requestedMatchDetailsRef = useRef(new Set());
   const scheduleLoadRequestedRef = useRef("");
+  useEffect(() => {
+    if (branchFilter === "record" && viewId !== "active") setViewId("active");
+  }, [branchFilter, viewId]);
   const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
   const courtByName = useMemo(() => Object.fromEntries(registeredCourts.map((court) => [court.name, court])), [registeredCourts]);
   const myTeamIds = useMemo(
@@ -938,9 +980,9 @@ export default function Matches({ app }) {
         if (matchDate > maxScheduleDate) return false;
         return shouldIncludeScheduleWindow(match, todayValue, maxScheduleDate);
       })
-      .filter((match) => kindFilter === "all" || (kindFilter === "ranked" ? match.ranked !== false : match.ranked === false))
+      .filter((match) => matchesScheduleBranch(match, "match", branchFilter))
       .filter((match) => matchesScheduleRelation(getMatchScheduleRelation(match, app.currentUser.id), relationFilter));
-  }, [app.currentUser.id, app.state.matches, dateFilter, kindFilter, maxScheduleDate, relationFilter, todayValue]);
+  }, [app.currentUser.id, app.state.matches, branchFilter, dateFilter, maxScheduleDate, relationFilter, todayValue]);
 
   const filteredMatches = useMemo(() => {
     return baseFilteredMatches.filter((match) => !dateFilter || getMatchDate(match) === dateFilter);
@@ -984,12 +1026,12 @@ export default function Matches({ app }) {
         if (!postDate) return false;
         return postDate <= maxScheduleDate && shouldIncludeScheduleWindow(post, todayValue, maxScheduleDate);
       })
-      .filter((post) => kindFilter === "all" || (kindFilter === "ranked" ? post.ranked !== false : post.ranked === false))
+      .filter((post) => matchesScheduleBranch(post, "room", branchFilter))
       .filter((post) => matchesScheduleRelation(getRecruitingScheduleRelation(post, app.state, app.currentUser.id, myTeamIds), relationFilter));
     return getScheduleItemsForView(baseFilteredMatches, recruitingRooms, selectedView, app.currentUser.id, true)
       .map(({ item }) => item)
       .filter((item) => getMatchDate(item));
-  }, [app.currentUser.id, app.state, baseFilteredMatches, kindFilter, matchPageRecruitingPosts, maxScheduleDate, myTeamIds, relationFilter, selectedView, todayValue]);
+  }, [app.currentUser.id, app.state, baseFilteredMatches, branchFilter, matchPageRecruitingPosts, maxScheduleDate, myTeamIds, relationFilter, selectedView, todayValue]);
 
   const calendarCounts = useMemo(() => {
     return calendarMatches.reduce((map, match) => {
@@ -1011,9 +1053,9 @@ export default function Matches({ app }) {
         const postDate = getMatchDate(post);
         return postDate && postDate <= maxScheduleDate && shouldIncludeScheduleWindow(post, todayValue, maxScheduleDate);
       })
-      .filter((post) => kindFilter === "all" || (kindFilter === "ranked" ? post.ranked !== false : post.ranked === false))
+      .filter((post) => matchesScheduleBranch(post, "room", branchFilter))
       .filter((post) => matchesScheduleRelation(getRecruitingScheduleRelation(post, app.state, app.currentUser.id, myTeamIds), relationFilter));
-  }, [app.currentUser.id, app.state, kindFilter, matchPageRecruitingPosts, maxScheduleDate, myTeamIds, relationFilter, todayValue]);
+  }, [app.currentUser.id, app.state, branchFilter, matchPageRecruitingPosts, maxScheduleDate, myTeamIds, relationFilter, todayValue]);
   const dateScopedRecruitingCandidates = useMemo(() => visibleRecruitingCandidates.filter((post) => {
     if (isInstantScheduleRoom(post)) return !dateFilter;
     const postDate = getMatchDate(post);
@@ -1024,9 +1066,9 @@ export default function Matches({ app }) {
   const scheduleItemsByView = useMemo(() => Object.fromEntries(
     VIEWS.map((view) => [
       view.id,
-      getScheduleItemsForView(filteredMatches, dateScopedRecruitingCandidates, view, app.currentUser.id, hasDateFilter),
+      getScheduleItemsForView(filteredMatches, dateScopedRecruitingCandidates, view, app.currentUser.id, hasDateFilter, { includeRecordRooms: branchFilter === "record" }),
     ]),
-  ), [app.currentUser.id, dateScopedRecruitingCandidates, filteredMatches, hasDateFilter]);
+  ), [app.currentUser.id, branchFilter, dateScopedRecruitingCandidates, filteredMatches, hasDateFilter]);
   const visibleScheduleItems = scheduleItemsByView[viewId] ?? [];
   const viewButtonCounts = Object.fromEntries(
     VIEWS.map((view) => [view.id, scheduleItemsByView[view.id]?.length ?? 0]),
@@ -1119,15 +1161,22 @@ export default function Matches({ app }) {
           </div>
           <section className="om-filter-bar om-calendar-filter-bar" aria-label="경기 필터">
             <div className="segmented-control compact-segments">
-              <button type="button" className={kindFilter === "all" ? "active" : ""} onClick={() => setKindFilter("all")}>전체</button>
-              <button type="button" className={kindFilter === "ranked" ? "active" : ""} onClick={() => setKindFilter("ranked")}>정규전</button>
-              <button type="button" className={kindFilter === "friendly" ? "active" : ""} onClick={() => setKindFilter("friendly")}>친선전</button>
-            </div>
-            <div className="segmented-control compact-segments">
               <button type="button" className={relationFilter === "all" ? "active" : ""} onClick={() => setRelationFilter("all")}>전체</button>
               <button type="button" className={relationFilter === "created" ? "active" : ""} onClick={() => setRelationFilter("created")}>내가 만든 방</button>
               <button type="button" className={relationFilter === "joined" ? "active" : ""} onClick={() => setRelationFilter("joined")}>내 참여방</button>
               <button type="button" className={relationFilter === "invited" ? "active" : ""} onClick={() => setRelationFilter("invited")}>초대받은 방</button>
+            </div>
+            <div className="segmented-control compact-segments">
+              {SCHEDULE_BRANCH_FILTERS.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  className={branchFilter === option.id ? "active" : ""}
+                  onClick={() => setBranchFilter(option.id)}
+                >
+                  {option.label}
+                </button>
+              ))}
             </div>
           </section>
         </div>

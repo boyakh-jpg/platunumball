@@ -984,6 +984,7 @@ UI 수정 전:
 1. Matches page filters focus on ownership/relation: 전체, 내가 만든 방, 내 참여방, 초대받은 방.
 2. Matches page does not show match-mode/person-count filters because the page already scopes to the current user's schedule.
 3. The relation filter uses the same compact segmented-control style as other dense schedule filters.
+4. Matches branch filters may sit next to relation filters: 전체, 공개 모집, 비공개 초대, 개인전, 팀전, 기록방. They are label-only compact buttons, not badge counters.
 
 ## 2026-07-06 matches relation badge removal
 
