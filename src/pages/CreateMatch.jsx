@@ -7,7 +7,7 @@ import Card from "../components/common/Card.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
 import RuleSelector from "../components/match/RuleSelector.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
-import { MATCH_MODES, PLAYER_POSITIONS, PLAYER_STAT_FIELDS, REFEREE_TRUST_MIN, REGIONS, getCanonicalRegion, getHostTrustRequirement, isSameRegion } from "../lib/constants.js";
+import { MATCH_MODES, PLAYER_POSITIONS, PLAYER_STAT_FIELDS, REFEREE_TRUST_MIN, REGIONS, getCanonicalRegion, getHostTrustRequirement, getRoomKindFromDraft, getRoomKindLabel, isSameRegion } from "../lib/constants.js";
 import { getCourtLayoutLabel, getCourtPlayWarning, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
 import { getCourtHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { getPublicRoomMaxDateInput, isEligibleReferee } from "../lib/matchUtils.js";
@@ -574,6 +574,7 @@ export default function CreateMatch({ app }) {
   const isPublicRoom = !isSoloRecord && draft.visibility === "public";
   const isTournamentRoom = !isSoloRecord && draft.visibility === "tournament";
   const isTeamRoom = !isSoloRecord && !isTournamentRoom && draft.hostJoinMode === "team";
+  const currentRoomKind = getRoomKindFromDraft(draft);
   const sideCapacity = getRecruitingSideCapacity(draft);
   const publicPartyCapacity = sideCapacity;
   const publicPartyPlayerIds = getPartyPlayerIds(selectedTeamA, draft.playerIds, sideCapacity);
@@ -1267,7 +1268,7 @@ export default function CreateMatch({ app }) {
               <p className="eyebrow">Room visibility</p>
               <h2>공개 범위</h2>
             </div>
-            <Badge tone={isTournamentRoom ? "gold" : isPublicRoom ? "green" : "neutral"}>{isTournamentRoom ? "비공개 대회" : isPublicRoom ? "공개방" : "비공개방"}</Badge>
+            <Badge tone={isTournamentRoom ? "gold" : isPublicRoom ? "green" : "neutral"}>{getRoomKindLabel(currentRoomKind)}</Badge>
           </div>
           <div className="create-mode-grid">
             <button

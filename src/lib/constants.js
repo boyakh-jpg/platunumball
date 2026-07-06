@@ -10,6 +10,52 @@ export const MODE_SIZES = MATCH_MODES.reduce((map, mode) => {
   return map;
 }, {});
 
+export const ROOM_KINDS = Object.freeze({
+  publicRecruiting: "public_recruiting",
+  privateInvite: "private_invite",
+  matchRecord: "match_record",
+  personalRecord: "personal_record",
+  tournament: "tournament",
+});
+
+export const ROOM_KIND_LABELS = Object.freeze({
+  [ROOM_KINDS.publicRecruiting]: "공개 모집방",
+  [ROOM_KINDS.privateInvite]: "비공개 초대방",
+  [ROOM_KINDS.matchRecord]: "경기 기록방",
+  [ROOM_KINDS.personalRecord]: "내 기록",
+  [ROOM_KINDS.tournament]: "대회방",
+});
+
+export const ROOM_RELATION_TERMS = Object.freeze({
+  pregame: Object.freeze({
+    request: "초대",
+    accept: "참가 확정",
+    subject: "참가자",
+  }),
+  record: Object.freeze({
+    request: "확인 요청",
+    accept: "기록 확인",
+    subject: "기록 대상",
+  }),
+  teamRoster: Object.freeze({
+    request: "팀원 소집",
+    accept: "로스터 등록",
+    subject: "출전 선수",
+  }),
+});
+
+export function getRoomKindLabel(roomKind = "") {
+  return ROOM_KIND_LABELS[roomKind] ?? ROOM_KIND_LABELS[ROOM_KINDS.privateInvite];
+}
+
+export function getRoomKindFromDraft(draft = {}) {
+  if (draft.recordType === "solo") return ROOM_KINDS.personalRecord;
+  if (draft.recordType === "match_record") return ROOM_KINDS.matchRecord;
+  if (draft.visibility === "tournament") return ROOM_KINDS.tournament;
+  if (draft.visibility === "public") return ROOM_KINDS.publicRecruiting;
+  return ROOM_KINDS.privateInvite;
+}
+
 export const MAX_TEAM_MEMBERSHIPS = 3;
 export const MAX_TEAM_MEMBERS = 10;
 export const MAX_TEAM_NAME_LENGTH = 14;
