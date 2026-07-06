@@ -5,6 +5,7 @@ import { loadNormalizedMatchDetailFromClient, runAutomaticStateMaintenance } fro
 import { DISPUTE_WINDOW_MINUTES } from "../../../src/lib/constants.js";
 
 const DEFAULT_MATCH_LIMIT = 10;
+const FEED_REPAIR_ROW_FACTOR = 8;
 const ACTIVE_RECRUITING_APPLICATION_STATUSES = new Set(["waiting", "ready", "confirmed"]);
 
 function assertAccess(request) {
@@ -175,6 +176,118 @@ async function refreshRecruitingFeed(client, postId) {
   return true;
 }
 
+async function refreshMatchFeed(client, matchId) {
+  const { error } = await client.rpc("rankball_refresh_match_feed_for_match", { p_match_id: matchId });
+  if (error) {
+    const message = String(error.message ?? "").toLowerCase();
+    if (error.code === "PGRST202" || error.code === "42883" || message.includes("rankball_refresh_match_feed_for_match")) {
+      return false;
+    }
+    throw error;
+  }
+  return true;
+}
+
+function parseMaintenanceBoolean(value) {
+  return value === true || value === "true" || value === "1";
+}
+
+function getFeedCardTime(cardRow = {}) {
+  const value = cardRow.updated_at ?? cardRow.card_json?.updatedAt ?? cardRow.card_json?.updated_at ?? "";
+  const time = Date.parse(value);
+  return Number.isFinite(time) ? time : 0;
+}
+
+function getSourceTime(sourceRow = {}) {
+  const time = Date.parse(sourceRow.updated_at ?? "");
+  return Number.isFinite(time) ? time : 0;
+}
+
+async function fetchFeedRepairCandidates(client, limit) {
+  const { data: feedRows, error: feedError } = await client
+    .from("user_room_feed")
+    .select("entity_type,entity_id,status")
+    .eq("is_active", true)
+    .in("entity_type", ["recruiting", "match"])
+    .order("sort_at", { ascending: false, nullsFirst: false })
+    .limit(limit * FEED_REPAIR_ROW_FACTOR);
+  if (feedError) throw feedError;
+
+  const entities = [...new Map((feedRows ?? [])
+    .filter((row) => row?.entity_type && row?.entity_id)
+    .map((row) => [`${row.entity_type}:${row.entity_id}`, row])).values()].slice(0, limit);
+  const recruitingIds = entities.filter((row) => row.entity_type === "recruiting").map((row) => row.entity_id);
+  const matchIds = entities.filter((row) => row.entity_type === "match").map((row) => row.entity_id);
+  const cardMap = new Map();
+  const sourceMap = new Map();
+
+  for (const entityType of ["recruiting", "match"]) {
+    const ids = entityType === "recruiting" ? recruitingIds : matchIds;
+    if (!ids.length) continue;
+    const { data, error } = await client
+      .from("room_feed_cards")
+      .select("entity_type,entity_id,updated_at,card_json")
+      .eq("entity_type", entityType)
+      .in("entity_id", ids);
+    if (error) throw error;
+    (data ?? []).forEach((row) => cardMap.set(`${row.entity_type}:${row.entity_id}`, row));
+  }
+
+  if (recruitingIds.length) {
+    const { data, error } = await client
+      .from("recruiting_posts")
+      .select("id,status,updated_at")
+      .in("id", recruitingIds);
+    if (error) throw error;
+    (data ?? []).forEach((row) => sourceMap.set(`recruiting:${row.id}`, row));
+  }
+
+  if (matchIds.length) {
+    const { data, error } = await client
+      .from("matches")
+      .select("id,status,updated_at")
+      .in("id", matchIds);
+    if (error) throw error;
+    (data ?? []).forEach((row) => sourceMap.set(`match:${row.id}`, row));
+  }
+
+  const candidates = entities
+    .map((row) => {
+      const key = `${row.entity_type}:${row.entity_id}`;
+      const cardRow = cardMap.get(key);
+      const sourceRow = sourceMap.get(key);
+      if (!sourceRow) return null;
+      const sourceTime = getSourceTime(sourceRow);
+      const cardTime = getFeedCardTime(cardRow);
+      const cardJson = cardRow?.card_json && typeof cardRow.card_json === "object" ? cardRow.card_json : null;
+      const cardStatus = String(cardJson?.status ?? "").trim();
+      const stale = sourceTime && (!cardTime || cardTime + 1000 < sourceTime);
+      const invalid = !cardJson || (cardStatus && cardStatus !== sourceRow.status);
+      return stale || invalid ? { entityType: row.entity_type, entityId: row.entity_id } : null;
+    })
+    .filter(Boolean);
+  return { checked: entities.length, candidates };
+}
+
+async function repairStaleRoomFeed(client, limit) {
+  const audit = await fetchFeedRepairCandidates(client, limit);
+  const candidates = audit.candidates;
+  const results = [];
+  for (const candidate of candidates) {
+    const ok = candidate.entityType === "match"
+      ? await refreshMatchFeed(client, candidate.entityId)
+      : await refreshRecruitingFeed(client, candidate.entityId);
+    results.push({ ...candidate, ok });
+  }
+  return {
+    ok: results.every((result) => result.ok),
+    checked: audit.checked,
+    candidates: candidates.length,
+    repaired: results.filter((result) => result.ok).length,
+    results,
+  };
+}
+
 function shouldManualRefreshRecruitingFeed() {
   return process.env.RANKBALL_MAINTENANCE_MANUAL_FEED_REFRESH === "true";
 }
@@ -259,6 +372,7 @@ export async function runSystemMaintenance(client = getSupabaseAdminClient(), op
   const limit = normalizeLimit(options.limit ?? process.env.RANKBALL_MAINTENANCE_MATCH_LIMIT ?? DEFAULT_MATCH_LIMIT);
   const now = options.now instanceof Date ? options.now : new Date();
   const includeRecruitingCapacityCleanup = options.includeRecruitingCapacityCleanup === true;
+  const includeFeedRepair = options.includeFeedRepair === true || process.env.RANKBALL_MAINTENANCE_FEED_REPAIR === "true";
   const candidateIds = await getCandidateMatchIds(client, limit, now.getTime());
   const results = [];
 
@@ -271,6 +385,9 @@ export async function runSystemMaintenance(client = getSupabaseAdminClient(), op
     candidateCount: candidateIds.length,
     confirmedCount: results.filter((result) => result.ok).length,
     feedCleanup: await cleanupRoomFeed(client, now),
+    feedRepair: includeFeedRepair
+      ? await repairStaleRoomFeed(client, limit)
+      : { ok: true, skipped: true, reason: "disabled" },
     recruitingCapacityCleanup: includeRecruitingCapacityCleanup
       ? await normalizeRecruitingSideCapacity(client, limit, now)
       : { ok: true, skipped: true, reason: "disabled" },
@@ -292,6 +409,7 @@ export default async function handler(request, response) {
     sendJson(response, 200, await runSystemMaintenance(client, {
       limit: normalizeLimit(body.limit ?? getLimit(request)),
       includeRecruitingCapacityCleanup: body.includeRecruitingCapacityCleanup !== false,
+      includeFeedRepair: parseMaintenanceBoolean(body.includeFeedRepair ?? request.query?.includeFeedRepair),
     }));
   } catch (error) {
     console.error("System maintenance failed.", error);

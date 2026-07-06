@@ -2096,3 +2096,10 @@ flowchart TD
 - `applicants` 키가 없는 partial payload 또는 `listCardOnly` 카드만 기존 `applicants`를 보존할 수 있다.
 - 목록 카드 인원은 상세 row가 들어오면 기존 `listCounts`가 아니라 원본 row 기준으로 다시 계산한다.
 - 경기/매칭 목록의 모집방 요청은 feed를 ID/filter index로 쓰되, `preferFreshRows:true`로 최신 row를 읽어 인원/참가 상태를 계산한다.
+
+## 2026-07-06 bounded feed repair
+
+- `/api/system/feed-audit`는 계속 read-only다. `repair`/`cleanup` 요청을 받으면 거부한다.
+- 실제 feed repair는 `/api/system/maintenance`의 `includeFeedRepair:true` 또는 `RANKBALL_MAINTENANCE_FEED_REPAIR=true`에서만 실행한다.
+- repair는 active `user_room_feed` 샘플에서 누락/invalid/stale `room_feed_cards` 후보만 찾아 `rankball_refresh_recruiting_feed_for_post` 또는 `rankball_refresh_match_feed_for_match` RPC를 호출한다.
+- repair는 source room/match row를 삭제하거나 직접 수정하지 않는다.
