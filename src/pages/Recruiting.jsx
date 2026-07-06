@@ -2868,7 +2868,13 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const roomQueueStatus = getRecruitingRoomStatus(lobby, { post: selectedPost, myEntry, mine });
         const roomReadyLabel = sourceMatch ? sourceMatchStatus.label : roomQueueStatus.label;
         const sourceMatchPhase = sourceMatch ? getMatchRoomPhase(sourceMatch) : null;
-        const sourceRoomReadOnly = Boolean(matchRoom && (sourceMatch?.status === "disputed" || ["record", "cancelled", "void"].includes(sourceMatchPhase?.phase)));
+        const sourceMatchIsRecordRoom = Boolean(sourceMatch && isMatchRecordMatch(sourceMatch));
+        const sourceMatchRecordEditable = Boolean(sourceMatchIsRecordRoom && !sourceMatch?.result && !sourceMatch?.confirmedAt);
+        const sourceRoomReadOnly = Boolean(matchRoom && (
+          sourceMatch?.status === "disputed" ||
+          ["cancelled", "void"].includes(sourceMatchPhase?.phase) ||
+          (sourceMatchPhase?.phase === "record" && !sourceMatchRecordEditable)
+        ));
         const activeInviteDraft = sourceRoomReadOnly ? null : activeInviteDraftRaw;
         const activeSelfSlotDraft = sourceRoomReadOnly ? null : activeSelfSlotDraftRaw;
         const canUseChat = canChat && !sourceRoomReadOnly && !roomChatLocked;
@@ -2893,7 +2899,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const canEditMatchRecordRoster = Boolean(
           matchRoom &&
           sourceMatch &&
-          isMatchRecordMatch(sourceMatch) &&
+          sourceMatchIsRecordRoom &&
           !sourceMatch.result &&
           !sourceMatch.confirmedAt &&
           !sourceMatch.cancelledAt &&
