@@ -1862,6 +1862,7 @@ export default async function handler(request, response) {
     const includeMine = mineOnly || body.includeMine === true;
     const includeFeedCounts = body.includeFeedCounts === true;
     const includeFallbackCounts = body.includeFallbackCounts === true;
+    const preferFreshRows = body.preferFreshRows === true;
     const allowLegacyFallback = isLegacyListFallbackAllowed(body);
     const allowFeedRepair = body.allowFeedRepair === true || process.env.RANKBALL_ALLOW_READ_FEED_REPAIR === "true";
     const mineLimit = mineOnly ? limit : REMOTE_CLIENT_RECRUITING_LIMIT;
@@ -1917,6 +1918,7 @@ export default async function handler(request, response) {
         timingType: startFilter.timingType,
         scheduledDate: startFilter.scheduledDate,
         debugPage: debugTiming,
+        preferFreshRows,
       }));
       sendTimedJson(response, 200, {
         ok: true,
@@ -1945,6 +1947,7 @@ export default async function handler(request, response) {
         timingType: startFilter.timingType,
         scheduledDate: startFilter.scheduledDate,
         debugPage: debugTiming,
+        preferFreshRows,
       }));
       sendTimedJson(response, 200, {
         ok: true,
@@ -1972,6 +1975,7 @@ export default async function handler(request, response) {
       timingType: startFilter.timingType,
       scheduledDate: startFilter.scheduledDate,
       debugPage: debugTiming,
+      preferFreshRows,
     }));
     sendTimedJson(response, 200, {
       ok: true,

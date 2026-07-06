@@ -310,7 +310,8 @@ function mergeRecruitingPostsById(current = [], incoming = []) {
     if (!item?.id) return;
     const existing = merged.get(item.id);
     if (!shouldUseIncomingRecruitingPostRow(item, existing)) return;
-    const next = preserveExistingWhenEmpty(item, existing, ["applicants"]);
+    const preserveKeys = Object.prototype.hasOwnProperty.call(item, "applicants") && item.listCardOnly !== true ? [] : ["applicants"];
+    const next = preserveExistingWhenEmpty(item, existing, preserveKeys);
     if (item.listCardOnly !== true) {
       delete next.listCardOnly;
       delete next.listCounts;
@@ -964,6 +965,7 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
           includeRecentCompleted: false,
           includeRecruitingSchedule: true,
           adminContext: false,
+          preferFreshRows: true,
         },
         { allowWhenDisabled: true },
       );
@@ -981,6 +983,7 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
           listOnly: true,
           adminContext: false,
           includeFeedCounts: false,
+          preferFreshRows: true,
         },
         { allowWhenDisabled: true },
       );
@@ -1877,6 +1880,7 @@ export function useAppData(authUser = null, appLocation = null) {
             listOnly: true,
             adminContext: false,
             includeFeedCounts: false,
+            preferFreshRows: true,
           },
           { allowWhenDisabled: true },
         );
@@ -1942,6 +1946,7 @@ export function useAppData(authUser = null, appLocation = null) {
             listOnly: true,
             adminContext: false,
             includeFeedCounts: shouldIncludeFeedCounts,
+            preferFreshRows: true,
           },
           { allowWhenDisabled: true },
         );
@@ -2035,6 +2040,7 @@ export function useAppData(authUser = null, appLocation = null) {
             limit: REMOTE_CLIENT_RECRUITING_LIMIT,
             adminContext: false,
             includeFeedCounts,
+            preferFreshRows: true,
           },
           { allowWhenDisabled: true },
         );

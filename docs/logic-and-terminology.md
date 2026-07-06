@@ -2088,3 +2088,11 @@ flowchart TD
 ## 2026-07-06 seed match display guard
 
 - `m_seed_upcoming_*`/`Upcoming match sample *` seed 경기는 production DB에 남아 있어도 홈 `내 확정 경기`와 경기 일정 목록의 실제 사용자 일정으로 표시하지 않는다.
+
+## 2026-07-06 recruiting applicants merge authority
+
+- 모집방 상세 row가 `applicants` 키를 포함하면 빈 배열도 서버 원본으로 본다.
+- 이 경우 기존 목록/상세 캐시의 `applicants`를 보존하지 않는다.
+- `applicants` 키가 없는 partial payload 또는 `listCardOnly` 카드만 기존 `applicants`를 보존할 수 있다.
+- 목록 카드 인원은 상세 row가 들어오면 기존 `listCounts`가 아니라 원본 row 기준으로 다시 계산한다.
+- 경기/매칭 목록의 모집방 요청은 feed를 ID/filter index로 쓰되, `preferFreshRows:true`로 최신 row를 읽어 인원/참가 상태를 계산한다.
