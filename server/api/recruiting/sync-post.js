@@ -672,8 +672,13 @@ const AUTHORITATIVE_REPLAY_RECRUITING_ACTIONS = new Set([
   "sendRecruitingChat",
   "joinRecruitingSideParty",
   "setRecruitingApplicantPlacement",
+  "setRecruitingApplicantReserve",
   "setRecruitingSlotPosition",
+  "setRecruitingPartyPlayerPlacement",
+  "setRecruitingPartyPlayerReserve",
   "setRecruitingTeamPartyRoster",
+  "detachRecruitingPartyPlayer",
+  "removeRecruitingPartyPlayer",
 ]);
 
 const SQL_REDUCER_RECRUITING_ACTIONS = new Set([
