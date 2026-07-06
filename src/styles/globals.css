@@ -200,6 +200,10 @@ body > .basketball-loader-overlay ~ .basketball-loader-overlay {
   gap: 12px;
 }
 
+.brand {
+  min-width: 0;
+}
+
 .brand-mark {
   display: grid;
   width: 42px;
@@ -14899,11 +14903,13 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
 .brand-logo-frame {
   display: grid;
   flex: 0 0 auto;
-  width: 42px;
-  height: 42px;
+  width: 54px;
+  height: 54px;
   place-items: center;
+  padding: 4px;
   overflow: hidden;
-  border-radius: 12px;
+  border-radius: 8px;
+  background: var(--rb-cream);
 }
 
 .brand-logo-img {
@@ -14915,16 +14921,23 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
 
 .brand-letter-wrap {
   display: block;
+  flex: 1 1 auto;
+  width: 168px;
+  max-width: 168px;
   min-width: 0;
   line-height: 0;
 }
 
 .brand-letter-img {
   display: block;
-  width: 112px;
-  max-width: min(42vw, 128px);
+  width: 100%;
+  max-width: 168px;
   height: auto;
   object-fit: contain;
+}
+
+html[data-theme="light"] .brand-logo-frame {
+  background: transparent;
 }
 
 .brand-letter-light {
@@ -14939,9 +14952,14 @@ html[data-theme="light"] .brand-letter-light {
   display: block;
 }
 
+.auth-brand .brand-letter-wrap {
+  width: 198px;
+  max-width: 198px;
+}
+
 .auth-brand .brand-letter-img {
-  width: 132px;
-  max-width: min(48vw, 148px);
+  width: 198px;
+  max-width: min(52vw, 198px);
 }
 
 .landing-brand-lockup {
@@ -14960,6 +14978,12 @@ html[data-theme="light"] .brand-letter-light {
   width: 86px;
   height: 86px;
   border-radius: 22px;
+}
+
+.landing-brand-lockup .brand-letter-wrap {
+  flex: 0 1 auto;
+  width: auto;
+  max-width: none;
 }
 
 .landing-brand-lockup .brand-letter-img {
