@@ -2805,8 +2805,11 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
           if (!teamOnlyRoom) return true;
           const allowedTeamId = getInviteAllowedTeamId(sideName);
           if (!allowedTeamId) return false;
-          const team = teamById[allowedTeamId];
-          return Boolean(team?.members?.some((member) => member.userId === app.currentUser.id));
+          const sideEntry = (lobby.sides?.[sideName]?.entries ?? []).find((entry) => (
+            entry.kind === "team" &&
+            (entry.team?.id ?? entry.teamId) === allowedTeamId
+          ));
+          return Boolean(sideEntry && getEntryPartyLeaderId(sideEntry) === app.currentUser.id);
         };
         const moveCandidate = (candidate, placement) => {
           const candidateEntry = lobby.entries.find((entry) => entry.id === candidate.entryId);

@@ -7297,6 +7297,156 @@ function getLobbyPrimaryTeamId(lobby, sideName) {
     .find(Boolean) ?? null;
 }
 
+function getLobbyTeamEntry(lobby, sideName, teamId) {
+  if (!teamId || !["teamA", "teamB"].includes(sideName)) return null;
+  return lobby.sides?.[sideName]?.entries?.find((entry) => (
+    entry.kind === "team" &&
+    (entry.team?.id ?? entry.teamId) === teamId
+  )) ?? null;
+}
+
+function getRecruitingEntryLeaderId(post = {}, roomState = {}, entry = null) {
+  if (!entry) return "";
+  return roomState.partyLeaders?.[entry.id] ?? (entry.fixed ? post.playerId : entry.playerId) ?? "";
+}
+
+function applyTeamOnlyRosterSummon(state, post, roomState, lobby, side, reserve, playerIds, teamId) {
+  const team = (state.teams ?? []).find((item) => item.id === teamId);
+  const entry = getLobbyTeamEntry(lobby, side, teamId);
+  const leaderId = getRecruitingEntryLeaderId(post, roomState, entry);
+  if (!team || !entry || leaderId !== state.currentUserId) {
+    return {
+      state,
+      handled: true,
+      ok: false,
+      notification: {
+        id: makeId("n"),
+        title: "팀원 소집 권한 없음",
+        body: "팀전 출전/후보 명단은 해당 사이드장이 정합니다.",
+        tone: "orange",
+        recruitingPostId: post.id,
+      },
+    };
+  }
+
+  const teamMemberIds = new Set((team.members ?? []).map((member) => member.userId));
+  const occupiedIds = new Set(
+    (lobby.entries ?? [])
+      .flatMap((item) => [item.playerId, ...(item.players ?? []), ...(item.reserves ?? [])])
+      .filter(Boolean),
+  );
+  const targetIds = uniquePlayerIds(playerIds)
+    .filter((playerId) => teamMemberIds.has(playerId))
+    .filter((playerId) => !occupiedIds.has(playerId));
+  if (!targetIds.length) {
+    return {
+      state,
+      handled: true,
+      ok: false,
+      notification: {
+        id: makeId("n"),
+        title: "소집 대상 없음",
+        body: "이미 방에 있거나 같은 팀원이 아닙니다.",
+        tone: "team",
+        recruitingPostId: post.id,
+      },
+    };
+  }
+
+  const capacity = getRecruitingSideCapacity(post);
+  const applicants = normalizeRecruitingApplicants(post.applicants ?? []);
+  const targetApplicant = entry.fixed
+    ? null
+    : applicants.find((applicant) => getRecruitingApplicantKey(applicant) === entry.id);
+  if (!entry.fixed && !targetApplicant) return { state, handled: true, ok: false };
+
+  const currentActiveIds = getRecruitingEntryPlayerIds(entry, targetApplicant, post, capacity);
+  const currentReserveIds = uniquePlayerIds(roomState.partyReserves?.[entry.id] ?? []);
+  const openActiveCount = Math.max(0, capacity - currentActiveIds.length);
+  const nextActiveAddIds = reserve ? [] : targetIds.slice(0, openActiveCount);
+  const nextReserveAddIds = [
+    ...(reserve ? targetIds : targetIds.slice(openActiveCount)),
+  ].slice(0, Math.max(0, MAX_RECRUITING_RESERVES_PER_SIDE - currentReserveIds.length));
+  const nextActiveIds = uniquePlayerIds([...currentActiveIds, ...nextActiveAddIds]).slice(0, capacity);
+  const nextReserveIds = uniquePlayerIds([...currentReserveIds, ...nextReserveAddIds]).filter((playerId) => !nextActiveIds.includes(playerId));
+  if (nextActiveIds.length === currentActiveIds.length && nextReserveIds.length === currentReserveIds.length) {
+    return {
+      state,
+      handled: true,
+      ok: false,
+      notification: {
+        id: makeId("n"),
+        title: "소집 자리 없음",
+        body: "출전/후보 슬롯이 모두 찼습니다.",
+        tone: "orange",
+        recruitingPostId: post.id,
+      },
+    };
+  }
+
+  const nextPartyReserves = { ...roomState.partyReserves, [entry.id]: nextReserveIds };
+  if (!nextReserveIds.length) delete nextPartyReserves[entry.id];
+  const nextRoomState = updateManyPinnedReservePlayers(
+    updateManyPinnedReservePlayers({ ...roomState, partyReserves: nextPartyReserves }, side, nextActiveAddIds, false),
+    side,
+    nextReserveAddIds,
+    true,
+  );
+  const updatedAt = new Date().toISOString();
+  const nextPost = entry.fixed
+    ? { ...post, hostReady: getRecruitingHostEditReady(post), playerIds: nextActiveIds, roomState: nextRoomState }
+    : {
+        ...post,
+        roomState: nextRoomState,
+        applicants: applicants.map((applicant) => (
+          getRecruitingApplicantKey(applicant) === entry.id
+            ? { ...applicant, playerId: leaderId, reserve: false, status: getRecruitingSlotEditStatus(post), playerIds: nextActiveIds, updatedAt }
+            : applicant
+        )),
+      };
+  if (isRecruitingReserveLimitExceeded(nextPost, state, side)) {
+    return {
+      state,
+      handled: true,
+      ok: false,
+      notification: getRecruitingReserveLimitNotification(post.id, side),
+    };
+  }
+
+  const addedCount = nextActiveAddIds.length + nextReserveAddIds.length;
+  const summonedIds = [...nextActiveAddIds, ...nextReserveAddIds].filter((playerId) => playerId !== state.currentUserId);
+  return {
+    state: {
+      ...state,
+      recruitingPosts: (state.recruitingPosts ?? []).map((item) => (
+        item.id === post.id ? cleanRecruitingRoomStatRecorders(nextPost, state) : item
+      )),
+      notifications: [
+        ...summonedIds.map((playerId) => ({
+          id: makeId("n"),
+          title: "팀원 소집",
+          body: `${post.title} ${SIDE_LABEL_TEXT[side]} ${nextActiveAddIds.includes(playerId) ? "출전" : "후보"} 명단에 등록됐습니다.`,
+          tone: "match",
+          targetUserId: playerId,
+          recruitingPostId: post.id,
+          createdAt: updatedAt,
+          updatedAt,
+        })),
+        {
+          id: makeId("n"),
+          title: "팀원 소집 완료",
+          body: `${addedCount}명을 ${SIDE_LABEL_TEXT[side]} 명단에 등록했습니다.`,
+          tone: "match",
+          recruitingPostId: post.id,
+        },
+        ...state.notifications,
+      ],
+    },
+    handled: true,
+    ok: true,
+  };
+}
+
 function getLobbyEntryTeamId(entry = {}) {
   if (!isRecruitingPartyEntry(entry)) return null;
   return entry.team?.id ?? entry.teamId ?? null;
@@ -7909,6 +8059,7 @@ export function inviteRecruitingPlayers(state, postId, invite = {}) {
   const lobby = getRecruitingLobby(post, state);
   const teamOnly = post.teamOnly === true || roomState.teamOnly === true;
   const sideTeamId = getLobbyPrimaryTeamId(lobby, side);
+  const requestedTargetIds = Array.from(new Set(invite.playerIds ?? [invite.playerId])).filter(Boolean);
   if (teamOnly) {
     if (!sideTeamId) {
       return {
@@ -7927,9 +8078,8 @@ export function inviteRecruitingPlayers(state, postId, invite = {}) {
     }
     const sideTeam = state.teams.find((team) => team.id === sideTeamId);
     const sideTeamMemberIds = new Set((sideTeam?.members ?? []).map((member) => member.userId));
-    const targetIds = Array.from(new Set(invite.playerIds ?? [invite.playerId])).filter(Boolean);
     const inviterInSideTeam = sideTeamMemberIds.has(state.currentUserId);
-    const targetsInSideTeam = targetIds.every((playerId) => sideTeamMemberIds.has(playerId));
+    const targetsInSideTeam = requestedTargetIds.every((playerId) => sideTeamMemberIds.has(playerId));
     const inviteTeamMatches = !invite.teamId || invite.teamId === sideTeamId;
     if (!inviterInSideTeam || !targetsInSideTeam || !inviteTeamMatches) {
       return {
@@ -7946,6 +8096,12 @@ export function inviteRecruitingPlayers(state, postId, invite = {}) {
         ],
       };
     }
+    const rosterResult = applyTeamOnlyRosterSummon(state, post, roomState, lobby, side, reserve, requestedTargetIds, sideTeamId);
+    if (rosterResult.handled) {
+      return rosterResult.notification
+        ? { ...rosterResult.state, notifications: [rosterResult.notification, ...(rosterResult.state.notifications ?? [])] }
+        : rosterResult.state;
+    }
   }
   const existingPlayerIds = new Set([
     post.playerId,
@@ -7954,7 +8110,7 @@ export function inviteRecruitingPlayers(state, postId, invite = {}) {
       .filter((invitation) => invitation.status === "pending")
       .map((invitation) => invitation.targetUserId),
   ].filter(Boolean));
-  const targetUserIds = Array.from(new Set(invite.playerIds ?? [invite.playerId]))
+  const targetUserIds = requestedTargetIds
     .filter((playerId) => state.users.some((user) => user.id === playerId))
     .filter((playerId) => !existingPlayerIds.has(playerId));
 
