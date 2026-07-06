@@ -900,7 +900,8 @@ export default function Matches({ app }) {
 
   useEffect(() => {
     if (!selectedRecruitingPostId || !app.remoteReady || !app.currentUser.id) return undefined;
-    if ((app.state.recruitingPosts ?? []).some((post) => post.id === selectedRecruitingPostId && post.listCardOnly !== true)) {
+    const explicitDetailReload = selectedRecruitingPostDetailLoadingId === selectedRecruitingPostId;
+    if (!explicitDetailReload && (app.state.recruitingPosts ?? []).some((post) => post.id === selectedRecruitingPostId && post.listCardOnly !== true)) {
       setSelectedRecruitingPostDetailLoadingId((currentId) => currentId === selectedRecruitingPostId ? null : currentId);
       setSelectedRecruitingPostDetailFailedId((currentId) => currentId === selectedRecruitingPostId ? null : currentId);
       return undefined;
@@ -917,7 +918,7 @@ export default function Matches({ app }) {
       app.actions.loadRecruitingPost?.(selectedRecruitingPostId);
     }, RECRUITING_ROOM_REFRESH_INTERVAL_MS);
     return () => window.clearInterval(intervalId);
-  }, [app.actions, app.currentUser.id, app.remoteReady, app.state.recruitingPosts, selectedRecruitingPostId]);
+  }, [app.actions, app.currentUser.id, app.remoteReady, app.state.recruitingPosts, selectedRecruitingPostDetailLoadingId, selectedRecruitingPostId]);
 
   const openSelectedMatch = (matchId) => {
     if (!matchId) return;
@@ -1365,6 +1366,7 @@ export default function Matches({ app }) {
         <RecruitingRoomModal
           app={app}
           post={selectedRecruitingPost}
+          skipInitialDetailLoad
           onClose={() => {
             setSelectedRecruitingPostId(null);
             setSelectedRecruitingPostDetailLoadingId(null);

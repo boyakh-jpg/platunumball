@@ -1916,7 +1916,7 @@ flowchart TD
 - 2026-07-05: `/app` and `/app/matches` first bootstrap request 50 current-user match feed rows, not the 200-row active-match ceiling. Additional rows stay behind explicit pagination or menu-specific reloads.
 - 2026-07-05: profile-only direct entry and thin endpoint fallback use `/api/profile/me` with profile-only options. A failed list endpoint must not refill teams/favorites/invitations through a full profile fallback that changes another menu later.
 - 2026-07-06: SPA navigation from a profile-only or room-detail route into `/app` runs one thin `/api/home/load` merge so Home confirmed matches and action items do not depend on visiting Matches first. The merge preserves existing route state instead of replacing it.
-- 2026-06-30: Recruiting room modals opened from `/app/recruiting` or `/app/matches` trust an already loaded recruiting feed/list card and do not run an immediate or polling detail reload for that same room. Detail reload is reserved for direct deep links or missing post ids so first-visible counts do not drift after the loader finishes.
+- 2026-06-30: Recruiting room modals opened from `/app/recruiting` or `/app/matches` must not show stale cached detail rows as final. A user-opened room waits for one fresh single-post detail response before rendering the modal body, then list/card rows must not downgrade that detail row.
 - 2026-06-30: `/api/profile/me` and `/api/home/load` may start the current user's `team_members` membership query in parallel with match summary and team invitation queries, then reuse that membership result when expanding current-user teams. This changes timing only; team membership semantics stay the same.
 - 2026-07-04: `/api/teams/list` keeps team list cards thin. It returns current user and invitation-related public profiles, but does not expand every team member public profile on the list route. It reads `team_members` only for returned team ids and does not broad-scan the whole table. `/api/teams/detail` still expands member profiles for the selected team.
 - 2026-06-30: `/api/system/schema-health` treats `profile_match_summaries` and `rankball_recruiting_feed_counts(text)` as required production feed/summary dependencies. It does not call feed refresh functions because those can write backfill rows.
@@ -2030,6 +2030,7 @@ flowchart TD
 - 같은 모집방의 상세 row가 로드되면 상세 row가 항상 우선한다.
 - 이미 상세 row가 있는 상태에서 더 최신 목록 카드가 들어와도 상세 row를 `listCardOnly`로 되돌리지 않는다.
 - 목록 카드의 `updatedAt`은 피드/카드 갱신 시각일 수 있으므로 방 상세 신뢰도 판단에 쓰지 않는다.
+- 경기/매칭 목록에서 사용자가 방을 명시적으로 열면 기존 상세 캐시가 있어도 단건 상세를 새로 받은 뒤 모달을 보여준다. 빈 슬롯/초대 클릭이 늦은 상세 동기화 트리거처럼 보이면 안 된다.
 
 ## 2026-07-06 모집방 READY 제거
 

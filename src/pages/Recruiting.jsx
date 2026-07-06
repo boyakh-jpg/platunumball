@@ -4103,16 +4103,17 @@ function RecruitingReady({ app }) {
       return;
     }
     if (!app.remoteReady || !app.currentUser.id) return;
-    if (selectedPost && selectedPost.listCardOnly !== true) {
+    const explicitDetailReload = selectedPostDetailLoadingId === selectedPostId;
+    if (!explicitDetailReload && selectedPost && selectedPost.listCardOnly !== true) {
       setSelectedPostDetailFailedId((currentId) => currentId === selectedPostId ? null : currentId);
       setSelectedPostDetailLoadingId((currentId) => currentId === selectedPostId ? null : currentId);
       return;
     }
     const refreshKey = `${selectedPostId}:${app.currentUser.id}`;
-    if (selectedPostRefreshRef.current === refreshKey && selectedPost?.listCardOnly !== true) return;
+    if (!explicitDetailReload && selectedPostRefreshRef.current === refreshKey && selectedPost?.listCardOnly !== true) return;
     selectedPostRefreshRef.current = refreshKey;
     requestSelectedPostDetail(selectedPostId);
-  }, [app.actions, app.currentUser.id, app.remoteReady, selectedPost?.listCardOnly, selectedPostId]);
+  }, [app.actions, app.currentUser.id, app.remoteReady, selectedPost?.listCardOnly, selectedPostDetailLoadingId, selectedPostId]);
 
   useEffect(() => {
     if (!selectedPostId || !app.remoteReady || !app.currentUser.id) return undefined;
