@@ -7028,6 +7028,15 @@ html[data-theme="light"] .arena-lobby-modal {
   background: var(--ui-room-panel-bg);
 }
 
+.arena-lobby-modal .arena-lobby-versus-stage,
+html[data-theme="light"] .arena-lobby-modal .arena-lobby-versus-stage,
+.arena-lobby-modal .arena-lobby-team-panel,
+html[data-theme="light"] .arena-lobby-modal .arena-lobby-team-panel {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
 .arena-lobby-modal .arena-lobby-team-panel {
   overflow: visible;
 }
