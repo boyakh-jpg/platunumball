@@ -978,10 +978,11 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
           includeTeams: false,
           includeExtraProfiles: false,
           includeMatchSummary: true,
+          includeRecentRecords: true,
         },
         { allowWhenDisabled: true },
       );
-      if (result?.state) return attachRemoteMeta(normalizeServerState(result.state), { profileRecordsLoaded: false });
+      if (result?.state) return attachRemoteMeta(normalizeServerState(result.state), { profileRecordsLoaded: result.profileRecordsLoaded === true });
     }
     if (options.endpoint === "homeLoad") {
       const result = await postServerAction(

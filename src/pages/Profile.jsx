@@ -170,7 +170,7 @@ export default function Profile({ app }) {
     .sort(compareRecent)
     .slice(0, 6);
   useEffect(() => {
-    const shouldLoadRecords = !app.actions.profileRecordsLoaded || myRecords.length === 0;
+    const shouldLoadRecords = !app.actions.profileRecordsLoaded;
     if (!app.remoteReady || !app.actions.loadProfileRecords || !shouldLoadRecords) return;
     const loadKey = user.id;
     if (recordsLoadKeyRef.current === loadKey) return;
@@ -191,7 +191,7 @@ export default function Profile({ app }) {
     });
   }, [app.actions, app.remoteReady, myRecords.length, user.id]);
   const averageFouls = getProfileAverageFouls(user, app.state.matches);
-  const recordsPending = recordsLoading && !myRecords.length;
+  const recordsPending = (!app.actions.profileRecordsLoaded || recordsLoading) && !myRecords.length;
   return (
     <div className="page-stack profile-page">
       <header className="page-header">

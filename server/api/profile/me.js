@@ -1,4 +1,5 @@
-import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { getAuthenticatedContext, mergeById, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { loadCompactMatchList } from "../matches/list.js";
 import {
   DEFAULT_SETTINGS,
   createProfileShell,
@@ -6,6 +7,7 @@ import {
   fromRemoteProfile,
   getRemoteAppSettings,
   normalizeState,
+  REMOTE_CLIENT_RECORD_MONTHS,
 } from "../../../src/data/repository.js";
 
 export const PROFILE_ME_COLUMNS = "id,name,handle,hashtag,position,region,region_sido,region_district,school,company,club,trust_score,streak,avatar_color,test_login_id,auth_user_id,birth_year,age_group,age_group_checked_season,onboarding_complete,profile_version,handle_locked_at,birth_year_locked_at,name_updated_at,discord_connection,discord_user_id,ratings,created_at,updated_at,app_settings";
@@ -16,6 +18,7 @@ const TEAM_INVITATION_COLUMNS = "id,team_id,from_user_id,target_user_id,role,sta
 const PROFILE_MATCH_SUMMARY_COLUMNS = "profile_id,match_count,win_count,loss_count,draw_count,points,rebounds,assists,steals,blocks,fouls,last_match_id,last_match_at,updated_at";
 const FAVORITE_COLUMNS = "id,user_id,target_type,target_id,created_at";
 const APPROVED_COURT_COLUMNS = "id,source_request_id,approved_by,name,hashtag,address_text,road_address,jibun_address,zonecode,lat,lng,status,hidden_at,hidden_by,hidden_reason,approved_at,created_at,updated_at,payload";
+const PROFILE_RECENT_RECORD_LIMIT = 6;
 
 function unique(values = []) {
   return [...new Set(values.filter(Boolean))];
@@ -105,6 +108,32 @@ function fromApprovedCourt(row = {}) {
     approvedAt: row.approved_at ?? payload.approvedAt,
     createdAt: row.created_at ?? payload.createdAt,
     updatedAt: row.updated_at ?? payload.updatedAt,
+  };
+}
+
+async function loadRecentProfileRecords(context, debugTiming = null) {
+  if (!context.profileId) return null;
+  const startedAt = Date.now();
+  try {
+    return await loadCompactMatchList(context, {
+      limit: PROFILE_RECENT_RECORD_LIMIT,
+      completedMonths: REMOTE_CLIENT_RECORD_MONTHS,
+      completedOnly: true,
+      includeRecruitingSchedule: false,
+      adminContext: false,
+    }, 0, PROFILE_RECENT_RECORD_LIMIT, debugTiming);
+  } finally {
+    if (debugTiming) debugTiming.recentRecordsMs = (debugTiming.recentRecordsMs ?? 0) + Date.now() - startedAt;
+  }
+}
+
+function mergeRecentProfileRecords(profileState = {}, recordsState = {}) {
+  if (!recordsState?.matches?.length) return profileState;
+  return {
+    ...profileState,
+    users: mergeById(profileState.users, recordsState.users),
+    teams: mergeById(profileState.teams, recordsState.teams),
+    matches: recordsState.matches,
   };
 }
 
@@ -335,11 +364,23 @@ export default async function handler(request, response) {
       includeExtraProfiles: body.includeExtraProfiles !== false,
       includeTeamMemberProfiles: body.includeTeamMemberProfiles !== false,
     });
+    let profileRecordsLoaded = false;
+    if (body.includeRecentRecords === true) {
+      try {
+        const recordsResult = await loadRecentProfileRecords(context, debugTiming);
+        result.state = mergeRecentProfileRecords(result.state, recordsResult?.state);
+        result.updatedAt = Math.max(result.updatedAt ?? 0, recordsResult?.updatedAt ?? 0);
+        profileRecordsLoaded = true;
+      } catch (error) {
+        console.warn("Profile recent records skipped.", error.message);
+      }
+    }
     if (debugTiming) debugTiming.totalMs = Date.now() - startedAt;
 
     sendJson(response, 200, {
       ok: true,
       ...result,
+      profileRecordsLoaded,
       debugTiming: debugTiming ?? undefined,
       debug: body.debug === true ? { profileId: context.profile?.id ?? result.state.currentUserId } : undefined,
     });
