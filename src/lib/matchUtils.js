@@ -228,6 +228,12 @@ export function isMatchRelatedToUser(match = {}, userId = "") {
   );
 }
 
+export function isSeedSampleMatch(match = {}) {
+  const id = String(match?.id ?? "");
+  const title = String(match?.title ?? "");
+  return id.startsWith("m_seed_upcoming_") || title.startsWith("Upcoming match sample ");
+}
+
 export function userNeedsMatchAgreement(match = {}, userId = "") {
   const sideName = getMatchUserSideName(match, userId);
   return Boolean(sideName && match.status === "contract" && !(match.agreements?.[sideName] ?? []).includes(userId));

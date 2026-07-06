@@ -2079,3 +2079,7 @@ flowchart TD
 - 같은 경기의 출석 저장이 여러 개 겹쳐도 먼저 끝난 서버 응답이 나중에 누른 optimistic 출석을 지우면 안 된다.
 - `checkInMatchPlayer` 응답 병합은 서버 attendance와 현재 화면 attendance를 side별 union으로 합친다.
 - 같은 경기 pending write는 Set 하나가 아니라 pending count로 추적해, 첫 요청 완료가 아직 남은 요청의 pending guard를 지우지 않게 한다.
+
+## 2026-07-06 seed match display guard
+
+- `m_seed_upcoming_*`/`Upcoming match sample *` seed 경기는 production DB에 남아 있어도 홈 `내 확정 경기`와 경기 일정 목록의 실제 사용자 일정으로 표시하지 않는다.

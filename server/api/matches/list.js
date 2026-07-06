@@ -10,7 +10,7 @@ import {
   REMOTE_CLIENT_RECORD_MONTHS,
 } from "../../../src/data/repository.js";
 import { loadCurrentUserRecruitingFeedList } from "../recruiting/list.js";
-import { getMatchRoomPhase, isMatchClosedNotice } from "../../../src/lib/matchUtils.js";
+import { getMatchRoomPhase, isMatchClosedNotice, isSeedSampleMatch } from "../../../src/lib/matchUtils.js";
 
 const PROFILE_ME_COLUMNS = "id,name,handle,hashtag,position,region,region_sido,region_district,school,company,club,trust_score,streak,avatar_color,test_login_id,auth_user_id,birth_year,age_group,age_group_checked_season,onboarding_complete,profile_version,handle_locked_at,birth_year_locked_at,name_updated_at,discord_connection,discord_user_id,ratings,created_at,updated_at,app_settings";
 const PROFILE_CARD_COLUMNS = "id,name,handle,hashtag,position,region,trust_score,avatar_color,ratings,age_group,updated_at";
@@ -237,9 +237,10 @@ function isSoloRecordMatch(match = {}) {
 }
 
 function filterActiveMatchCards(matches = [], activeOnly = false, options = {}) {
-  if (!activeOnly) return matches;
+  const visibleMatches = (matches ?? []).filter((match) => !isSeedSampleMatch(match));
+  if (!activeOnly) return visibleMatches;
   const includeRecentCompleted = options.includeRecentCompleted === true;
-  return (matches ?? []).filter((match) => (
+  return visibleMatches.filter((match) => (
     (includeRecentCompleted && match?.recentCompleted) ||
     (!isSoloRecordMatch(match) && (
       isMatchClosedNotice(match) ||
