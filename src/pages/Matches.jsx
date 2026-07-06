@@ -80,7 +80,7 @@ class RoomModalErrorBoundary extends Component {
   }
 }
 
-function RoomModalErrorView({ error, onClose }) {
+function RoomModalErrorView({ error, onClose, onRetry = null }) {
   return (
     <div className="arena-modal-backdrop" role="presentation" onMouseDown={onClose}>
       <aside className="arena-room-modal" role="dialog" aria-modal="true" aria-label="경기방 오류" onMouseDown={(event) => event.stopPropagation()}>
@@ -90,6 +90,11 @@ function RoomModalErrorView({ error, onClose }) {
         <h2 className="arena-room-title">경기방을 열 수 없습니다</h2>
         <p className="arena-room-subtitle">{String(error?.message ?? "방 데이터를 확인해야 합니다.")}</p>
         <div className="arena-modal-close-row">
+          {onRetry ? (
+            <Button type="button" size="lg" onClick={onRetry}>
+              다시 시도
+            </Button>
+          ) : null}
           <Button type="button" variant="secondary" size="lg" onClick={onClose}>
             방 닫기
           </Button>
@@ -780,6 +785,7 @@ export default function Matches({ app }) {
   const [selectedRecruitingPostId, setSelectedRecruitingPostId] = useState(null);
   const [selectedMatchDetailLoadingId, setSelectedMatchDetailLoadingId] = useState(null);
   const [selectedRecruitingPostDetailLoadingId, setSelectedRecruitingPostDetailLoadingId] = useState(null);
+  const [selectedRecruitingPostDetailFailedId, setSelectedRecruitingPostDetailFailedId] = useState(null);
   const queryMatchId = searchParams.get("match");
   const activeSelectedMatchId = selectedMatchId ?? queryMatchId;
   const todayValue = toDateInputValue();
@@ -814,8 +820,11 @@ export default function Matches({ app }) {
   );
   const selectedRecruitingLobby = selectedRecruitingPost ? getRecruitingLobby(selectedRecruitingPost, app.state) : null;
   const selectedRecruitingPostNeedsDetail = Boolean(selectedRecruitingPost?.listCardOnly);
+  const selectedRecruitingPostDetailFailed = Boolean(
+    selectedRecruitingPostId && selectedRecruitingPostDetailFailedId === selectedRecruitingPostId && (!selectedRecruitingPost || selectedRecruitingPostNeedsDetail),
+  );
   const selectedRecruitingPostDetailLoading = Boolean(
-    selectedRecruitingPostId && (selectedRecruitingPostDetailLoadingId === selectedRecruitingPostId || selectedRecruitingPostNeedsDetail),
+    selectedRecruitingPostId && !selectedRecruitingPostDetailFailed && (selectedRecruitingPostDetailLoadingId === selectedRecruitingPostId || selectedRecruitingPostNeedsDetail),
   );
   const selectedMatch = (selectedMatchId ? matchesById[selectedMatchId] : null) ?? (queryMatchId ? matchesById[queryMatchId] : null) ?? null;
   const selectedMatchRoom = useMemo(() => {
@@ -857,6 +866,7 @@ export default function Matches({ app }) {
   };
   const openSelectedRecruitingPost = (postId) => {
     if (!postId) return;
+    setSelectedRecruitingPostDetailFailedId(null);
     setSelectedRecruitingPostDetailLoadingId(postId);
     setSelectedRecruitingPostId(postId);
   };
@@ -870,10 +880,14 @@ export default function Matches({ app }) {
     if (!selectedRecruitingPostId || !app.remoteReady || !app.currentUser.id) return undefined;
     if ((app.state.recruitingPosts ?? []).some((post) => post.id === selectedRecruitingPostId && post.listCardOnly !== true)) {
       setSelectedRecruitingPostDetailLoadingId((currentId) => currentId === selectedRecruitingPostId ? null : currentId);
+      setSelectedRecruitingPostDetailFailedId((currentId) => currentId === selectedRecruitingPostId ? null : currentId);
       return undefined;
     }
+    if (selectedRecruitingPostDetailFailed) return undefined;
     setSelectedRecruitingPostDetailLoadingId(selectedRecruitingPostId);
-    Promise.resolve(app.actions.loadRecruitingPost?.(selectedRecruitingPostId)).finally(() => {
+    Promise.resolve(app.actions.loadRecruitingPost?.(selectedRecruitingPostId)).then((count) => {
+      if (!count) setSelectedRecruitingPostDetailFailedId(selectedRecruitingPostId);
+    }).finally(() => {
       setSelectedRecruitingPostDetailLoadingId((currentId) => currentId === selectedRecruitingPostId ? null : currentId);
     });
     const intervalId = window.setInterval(() => {
@@ -1305,7 +1319,25 @@ export default function Matches({ app }) {
         </RoomModalErrorBoundary>
       ) : null}
 
-      {selectedRecruitingPostDetailLoading ? (
+      {selectedRecruitingPostDetailFailed ? (
+        <RoomModalErrorView
+          error={new Error("방이 닫혔거나 권한이 없거나 잠시 응답이 비었습니다.")}
+          onClose={() => {
+            setSelectedRecruitingPostId(null);
+            setSelectedRecruitingPostDetailLoadingId(null);
+            setSelectedRecruitingPostDetailFailedId(null);
+          }}
+          onRetry={() => {
+            setSelectedRecruitingPostDetailFailedId(null);
+            setSelectedRecruitingPostDetailLoadingId(selectedRecruitingPostId);
+            Promise.resolve(app.actions.loadRecruitingPost?.(selectedRecruitingPostId)).then((count) => {
+              if (!count) setSelectedRecruitingPostDetailFailedId(selectedRecruitingPostId);
+            }).finally(() => {
+              setSelectedRecruitingPostDetailLoadingId((currentId) => currentId === selectedRecruitingPostId ? null : currentId);
+            });
+          }}
+        />
+      ) : selectedRecruitingPostDetailLoading ? (
         <RoomModalLoadingView />
       ) : selectedRecruitingPost && selectedRecruitingLobby ? (
         <RecruitingRoomModal
@@ -1314,6 +1346,7 @@ export default function Matches({ app }) {
           onClose={() => {
             setSelectedRecruitingPostId(null);
             setSelectedRecruitingPostDetailLoadingId(null);
+            setSelectedRecruitingPostDetailFailedId(null);
           }}
           onOpenMatch={openSelectedMatch}
         />
