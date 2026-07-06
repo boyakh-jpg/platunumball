@@ -8,7 +8,7 @@ import {
   REMOTE_CLIENT_HOME_LOCAL_RECRUITING_LIMIT,
   REMOTE_CLIENT_RECRUITING_LIMIT,
 } from "../../../src/data/repository.js";
-import { getRecruitingLobby } from "../../../src/lib/recruiting.js";
+import { getRecruitingLobby, isPublicTeamRecruitingRoom } from "../../../src/lib/recruiting.js";
 
 let currentUserRecruitingRpcAvailable = true;
 let userRoomFeedAvailable = true;
@@ -21,7 +21,7 @@ const TEAM_COLUMNS = "id,name,home_court,region,mmr,wins,losses,accent,deleted_a
 const TEAM_MEMBER_COLUMNS = "team_id,user_id,role";
 const COURT_COLUMNS = "id,name";
 const RECRUITING_POST_COLUMNS = "id,type,title,visibility,region,court_id,court_name,mode,scheduled_at,scheduled_date,scheduled_time,ranked,official,pre_registered,rating_scale,age_restriction,allowed_age_groups,rules,stakes,court_reserved,court_fee,spots,team_id,target_team_id,referee_id,referee_trust_min,stat_entry_minutes,dispute_minutes,room_state,host_join_mode,host_side,host_ready,side_capacity,player_ids,position,player_id,memo,status,confirmed_at,created_at,updated_at";
-const RECRUITING_COUNT_POST_COLUMNS = "id,type,mode,room_state,host_join_mode,host_side,side_capacity,player_ids,player_id,team_id,status";
+const RECRUITING_COUNT_POST_COLUMNS = "id,type,visibility,mode,room_state,host_join_mode,host_side,side_capacity,player_ids,player_id,team_id,status";
 const RECRUITING_APPLICATION_COLUMNS = "post_id,kind,team_id,player_id,side,status,reserve,position,player_ids,source_team_id,source_entry_id,created_at,updated_at";
 const ROOM_CHAT_MESSAGE_COLUMNS = "id,room_type,room_id,user_id,body,created_at,message_seq";
 const RECRUITING_FEED_MAX_LIMIT = 200;
@@ -414,13 +414,16 @@ function getRecruitingListCountsFromPost(post = {}) {
 }
 
 function toRecruitingCountPost(row = {}, applicationsByPost = new Map()) {
+  const roomState = row.room_state && typeof row.room_state === "object" ? row.room_state : {};
   return {
     id: row.id,
     type: row.type,
+    visibility: row.visibility,
     mode: row.mode,
-    roomState: row.room_state && typeof row.room_state === "object" ? row.room_state : {},
+    roomState,
     hostJoinMode: row.host_join_mode,
     hostSide: row.host_side,
+    teamOnly: roomState.teamOnly === true || isPublicTeamRecruitingRoom({ visibility: row.visibility, hostJoinMode: row.host_join_mode }),
     sideCapacity: row.side_capacity,
     playerIds: row.player_ids ?? [],
     playerId: row.player_id,
@@ -761,7 +764,7 @@ function compactRecruitingPost(post = {}, profileId = "", options = {}) {
     disputeMinutes: post.disputeMinutes,
     roomState: compactRecruitingRoomState(post.roomState ?? {}, profileId, options),
     mmrLimitMode: post.mmrLimitMode,
-    teamOnly: post.teamOnly,
+    teamOnly: post.teamOnly === true || isPublicTeamRecruitingRoom(post),
     hostJoinMode: post.hostJoinMode,
     hostSide: post.hostSide,
     hostReady: post.hostReady,
@@ -1495,7 +1498,7 @@ function fromRemoteRecruitingPost(row = {}, applicationsByPost = new Map(), cour
     disputeMinutes: row.dispute_minutes ?? 30,
     roomState: chatMessages ? { ...roomState, chatMessages } : roomState,
     mmrLimitMode: ["off", "warn", "block"].includes(roomState.mmrLimitMode) ? roomState.mmrLimitMode : "block",
-    teamOnly: roomState.teamOnly === true,
+    teamOnly: roomState.teamOnly === true || isPublicTeamRecruitingRoom({ visibility: row.visibility, hostJoinMode: row.host_join_mode }),
     hostJoinMode: row.host_join_mode,
     hostSide: row.host_side,
     hostReady: row.host_ready,
