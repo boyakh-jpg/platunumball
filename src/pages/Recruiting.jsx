@@ -1913,12 +1913,9 @@ function getSourceMatchAction(match, userId, teams = [], userById = {}) {
   return { label: "경기 정보", detail: "현재 상태를 확인합니다." };
 }
 
-function canShowRecruitingQueuePost(post, { roomScope, currentUserId, myTeamIds, targetPostId }) {
+function canShowRecruitingQueuePost(post, { targetPostId }) {
   if (post.visibility !== "private") return true;
   if (post.id === targetPostId) return true;
-  if (roomScope === "created") return getRecruitingRoomOwnerId(post) === currentUserId;
-  if (roomScope === "joined") return getRecruitingRoomOwnerId(post) !== currentUserId && isRecruitingPostForUser(post, currentUserId, myTeamIds);
-  if (roomScope === "invited") return hasPendingRecruitingInvitation(post, currentUserId);
   return false;
 }
 
@@ -3985,7 +3982,6 @@ function RecruitingReady({ app }) {
     [app.currentUser.region, app.currentUser.regionDistrict, app.currentUser.regionSido],
   );
   const [queue, setQueue] = useState("all");
-  const [roomScope, setRoomScope] = useState("all");
   const [regionFilterSido, setRegionFilterSido] = useState(defaultRegionSelection.sido);
   const [regionFilterDistrict, setRegionFilterDistrict] = useState(defaultRegionSelection.district);
   const [modeFilter, setModeFilter] = useState("all");
@@ -4041,19 +4037,17 @@ function RecruitingReady({ app }) {
   const startDateKey = getTodayInputValue();
   const startDateOptions = useMemo(() => getStartDateFilterOptions(), [startDateKey]);
   const startFilterLabel = startDateOptions.find((option) => option.id === startFilter)?.label ?? "전체 시작일";
-  const filterRequestKey = `${regionFilterSido}:${selectedRegionKey}:${startFilter}:${roomScope}`;
+  const filterRequestKey = `${regionFilterSido}:${selectedRegionKey}:${startFilter}`;
   const debouncedFilterRequestKey = useDebouncedValue(filterRequestKey, RECRUITING_FILTER_DEBOUNCE_MS);
   const filterRequestSettled = filterRequestKey === debouncedFilterRequestKey;
 
   const selectRegionSido = (event) => {
     const nextSido = event.target.value;
     const nextGroup = REGION_TREE.find((region) => region.sido === nextSido) ?? REGION_TREE[0];
-    setRoomScope("all");
     setRegionFilterSido(nextGroup?.sido ?? defaultRegionSelection.sido);
     setRegionFilterDistrict(nextGroup?.districts?.[0] ?? defaultRegionSelection.district);
   };
   const selectRegionDistrict = (event) => {
-    setRoomScope("all");
     setRegionFilterDistrict(event.target.value);
   };
 
@@ -4061,22 +4055,19 @@ function RecruitingReady({ app }) {
     if (!targetPostId) return;
     setQueue("all");
     setModeFilter("all");
-    setRoomScope("all");
   }, [targetPostId]);
 
   useEffect(() => {
     if (!app.remoteReady || !app.currentUser.id) return;
     if (targetPostId) return;
-    if (roomScope !== "all") return;
     if (!filterRequestSettled) return;
     const regionKey = selectedRegionKey;
     const currentScope = app.recruitingPagination?.regionScope ?? "local";
     const currentKey = app.recruitingPagination?.regionKey ?? "";
     const currentPageMatchesRegion = currentScope === "region" && currentKey === regionKey;
-    const targetStartFilter = roomScope === "all" ? startFilter : "all";
+    const targetStartFilter = startFilter;
     const currentStartFilter = app.recruitingPagination?.startFilter ?? "all";
-    const needsFilteredPage = roomScope === "all"
-      && startFilter !== "all"
+    const needsFilteredPage = startFilter !== "all"
       && currentStartFilter !== startFilter;
     const needsBasePage = targetStartFilter === "all" && currentStartFilter !== "all";
     const shouldIncludeFeedCounts = false;
@@ -4095,7 +4086,7 @@ function RecruitingReady({ app }) {
     }).catch(() => {
       // Keep the key on failure so the effect does not retry in a tight loop.
     });
-  }, [app.actions, app.currentUser.id, app.remoteReady, app.recruitingPagination, filterRequestSettled, regionFilter, roomScope, selectedRegionKey, startFilter, targetPostId]);
+  }, [app.actions, app.currentUser.id, app.remoteReady, app.recruitingPagination, filterRequestSettled, regionFilter, selectedRegionKey, startFilter, targetPostId]);
 
   useEffect(() => {
     if (!hostNeedsTeam) return;
@@ -4118,9 +4109,6 @@ function RecruitingReady({ app }) {
       .filter((post) => post.status === "open")
       .filter((post) => !isExpiredInstantRecruitingPost(post))
       .filter((post) => canShowRecruitingQueuePost(post, {
-        roomScope,
-        currentUserId: app.currentUser.id,
-        myTeamIds,
         targetPostId,
       }))
       .filter((post) => {
@@ -4132,14 +4120,10 @@ function RecruitingReady({ app }) {
       .filter((post) => modeFilter === "all" || post.mode === modeFilter)
       .filter((post) => {
         if (startFilter === "all" || post.id === targetPostId) return true;
-        if (roomScope !== "all") return true;
         if (startFilter === "instant") return isInstantRoom(post);
         return !isInstantRoom(post) && post.scheduledDate === startFilter;
-      })
-      .filter((post) => roomScope !== "created" || getRecruitingRoomOwnerId(post) === app.currentUser.id)
-      .filter((post) => roomScope !== "joined" || (getRecruitingRoomOwnerId(post) !== app.currentUser.id && isRecruitingPostForUser(post, app.currentUser.id, myTeamIds)))
-      .filter((post) => roomScope !== "invited" || hasPendingRecruitingInvitation(post, app.currentUser.id));
-  }, [app.currentUser, app.currentUser.id, app.state, modeFilter, myTeamIds, queue, roomScope, selectedRegionKey, startFilter, targetPostId]);
+      });
+  }, [app.currentUser, app.state, modeFilter, queue, selectedRegionKey, startFilter, targetPostId]);
 
   const posts = useMemo(() => {
     return scopedPosts.sort((a, b) => {
@@ -4152,7 +4136,7 @@ function RecruitingReady({ app }) {
       return bInstant - aInstant || bLocal - aLocal || bNational - aNational || new Date(b.createdAt) - new Date(a.createdAt);
     });
   }, [app.currentUser, app.state, scopedPosts]);
-  const queueListLoading = roomScope === "all" && !posts.length && (!filterRequestSettled || app.recruitingPagination?.loading);
+  const queueListLoading = !posts.length && (!filterRequestSettled || app.recruitingPagination?.loading);
 
   const selectedPost = selectedPostId
     ? app.state.recruitingPosts.find((post) => post.id === selectedPostId)
@@ -4274,7 +4258,6 @@ function RecruitingReady({ app }) {
   };
 
   const selectStartFilter = (nextFilter) => {
-    setRoomScope("all");
     setStartFilter((current) => (current === nextFilter ? "all" : nextFilter));
   };
 
@@ -4442,7 +4425,7 @@ function RecruitingReady({ app }) {
         )}
       </section>
 
-      {roomScope === "all" && !app.recruitingPagination?.exhausted ? (
+      {!app.recruitingPagination?.exhausted ? (
         <div className="om-load-more">
           <button type="button" className="button button-secondary button-md" disabled={app.recruitingPagination?.loading} onClick={() => app.actions.loadMoreRecruiting?.()}>
             {app.recruitingPagination?.loading ? "불러오는 중" : "더 보기"}
@@ -4466,9 +4449,6 @@ function RecruitingReady({ app }) {
           skipInitialDetailLoad
           onClose={closeSelectedPost}
           onOpenMatch={(matchId) => navigate(`/app/matches?match=${matchId}`)}
-          onInvitationAccepted={() => {
-            if (roomScope === "invited") setRoomScope("joined");
-          }}
           onJoined={(postId) => {
             setSelectedPostDetailLoadingId(postId);
             setSelectedPostId(postId);
