@@ -255,7 +255,7 @@ export default function Profile({ app }) {
         </div>
         <aside className="page-stack profile-side-grid">
           <ProgressionChecklist user={user} matches={app.state.matches} />
-          <ShareCard user={user} match={app.state.matches[0]} />
+          <ShareCard user={user} />
           <Card className="section-card">
             <div className="contract-grid single">
               <div>
