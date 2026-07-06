@@ -23,7 +23,7 @@ import {
   isInstantRoom,
   userNeedsMatchAction,
 } from "../lib/matchUtils.js";
-import { getRecruitingEntryForUser, getRecruitingLobby, getRecruitingRoomOwnerId, getRecruitingSideCapacity, hasPendingRecruitingInvitation, isRecruitingPartyEntry, isRecruitingRoomInUserSchedule } from "../lib/recruiting.js";
+import { getRecruitingEntryForUser, getRecruitingListCardLobby, getRecruitingLobby, getRecruitingRoomOwnerId, getRecruitingSideCapacity, hasPendingRecruitingInvitation, isRecruitingPartyEntry, isRecruitingRoomInUserSchedule } from "../lib/recruiting.js";
 import { RECRUITING_ROOM_REFRESH_INTERVAL_MS, RecruitingRoomModal, getRecruitingRoomListStatus } from "./Recruiting.jsx";
 import "../styles/recruiting-arena.css";
 import "../styles/matches-arena.css";
@@ -1441,7 +1441,7 @@ export default function Matches({ app }) {
         {displayScheduleItems.map(({ type, item }) => {
           if (type === "room") {
             const post = item;
-            const lobby = getRecruitingLobby(post, app.state);
+            const lobby = getRecruitingListCardLobby(post, app.state);
             const myEntry = getRecruitingEntryForUser(lobby, app.currentUser.id);
             const mine = getRecruitingRoomOwnerId(post) === app.currentUser.id;
             const needConfirm = !mine && post.visibility !== "public" && myEntry && myEntry.status !== "ready";

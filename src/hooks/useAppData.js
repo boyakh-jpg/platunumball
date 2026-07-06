@@ -311,7 +311,10 @@ function mergeRecruitingPostsById(current = [], incoming = []) {
     const existing = merged.get(item.id);
     if (!shouldUseIncomingRecruitingPostRow(item, existing)) return;
     const next = preserveExistingWhenEmpty(item, existing, ["applicants"]);
-    if (item.listCardOnly !== true) delete next.listCardOnly;
+    if (item.listCardOnly !== true) {
+      delete next.listCardOnly;
+      delete next.listCounts;
+    }
     if (item.__invitationsPartial !== true) delete next.__invitationsPartial;
     if (existing?.roomState && item?.roomState) {
       next.roomState = preserveExistingWhenEmpty(item.roomState, existing.roomState, ["chatMessages", "kickLog"]);

@@ -754,6 +754,16 @@ export function getRecruitingLobby(post = {}, state = {}) {
   };
 }
 
+export function getRecruitingListCardLobby(post = {}, state = {}) {
+  if (post?.listCardOnly !== true || !post?.listCounts) return getRecruitingLobby(post, state);
+  return getRecruitingLobby({
+    ...post,
+    listCardOnly: true,
+    playerIds: [],
+    applicants: [],
+  }, state);
+}
+
 export function getRecruitingBestSide(post = {}, state = {}) {
   const lobby = getRecruitingLobby(post, state);
   return lobby.sides.teamA.projectedFilled <= lobby.sides.teamB.projectedFilled ? "teamA" : "teamB";

@@ -37,6 +37,7 @@ import {
   RECRUITING_JOIN_MODES,
   getRecruitingBestSide,
   getRecruitingFit,
+  getRecruitingListCardLobby,
   getRecruitingLobby,
   getRecruitingRatingScale,
   getRecruitingRoomOwnerId,
@@ -4252,7 +4253,7 @@ function RecruitingReady({ app }) {
 
       <section className="arena-recruit-list" aria-label="매치 큐 목록">
         {posts.length ? posts.map((post) => {
-          const lobby = getRecruitingLobby(post, app.state);
+          const lobby = getRecruitingListCardLobby(post, app.state);
           const roomOwnerId = getRecruitingRoomOwnerId(post);
           const host = userById[roomOwnerId] ?? userById[post.playerId];
           const hostTeam = post.teamId ? teamById[post.teamId] : null;
