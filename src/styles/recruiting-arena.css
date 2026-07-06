@@ -7037,15 +7037,15 @@ html[data-theme="light"] .arena-lobby-modal {
 }
 
 .arena-lobby-modal .arena-lobby-versus-stage,
-html[data-theme="light"] .arena-lobby-modal .arena-lobby-versus-stage,
-.arena-lobby-modal .arena-lobby-team-panel,
-html[data-theme="light"] .arena-lobby-modal .arena-lobby-team-panel {
+html[data-theme="light"] .arena-lobby-modal .arena-lobby-versus-stage {
   border-color: transparent;
   background: transparent;
   box-shadow: none;
 }
 
 .arena-lobby-modal .arena-lobby-team-panel {
+  border-color: var(--ui-room-panel-border);
+  background: var(--ui-room-panel-bg);
   overflow: visible;
 }
 
