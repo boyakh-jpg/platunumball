@@ -1278,7 +1278,7 @@ export default function CreateMatch({ app }) {
               <Lock size={19} />
               <span>
                 <strong>비공개 경기방</strong>
-                <em>선택한 A사이드/B사이드로 바로 경기 계약서를 만든다.</em>
+                <em>개인전은 선수 초대, 팀전은 B팀 대표 초대로 닫힌 방을 만든다.</em>
               </span>
             </button>
             <button
@@ -1369,7 +1369,7 @@ export default function CreateMatch({ app }) {
             </label>
             {!isTournamentRoom && !isSoloRecord ? (
               <label>
-                방 유형
+                세부 분기
                 <select
                   value={draft.hostJoinMode}
                   onChange={(event) => {
@@ -1387,7 +1387,7 @@ export default function CreateMatch({ app }) {
                     });
                   }}
                 >
-                  <option value="team" disabled={!canCreateTeamRoom}>팀전 / 팀 파티 포함</option>
+                  <option value="team" disabled={!canCreateTeamRoom}>팀전</option>
                   <option value="player">개인전</option>
                 </select>
                 {!canCreateTeamRoom ? <span className="form-warning">팀이 있어야 팀전을 만들 수 있습니다.</span> : null}

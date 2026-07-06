@@ -2065,6 +2065,13 @@ flowchart TD
 
 ## 2026-07-06 모집 초대/파티 서버 판정
 
+- 방만들기 분기는 생성 payload 기준으로 고정한다.
+- `공개 매칭방 + 개인전`: `visibility:"public"`, `hostJoinMode:"player"`로 만들고 매칭 메뉴 공개 큐에 노출한다.
+- `공개 매칭방 + 팀전`: `visibility:"public"`, `hostJoinMode:"team"`으로 만들고 A사이드 팀 파티를 선택한다. `teamOnly:true`이면 개인 참여를 막는다.
+- `비공개 경기방 + 개인전`: `visibility:"private"`, `hostJoinMode:"player"`로 만들고 선택한 `invitePlayerIds`만 개인 초대로 보낸다.
+- `비공개 경기방 + 팀전`: `visibility:"private"`, `hostJoinMode:"team"`으로 만들고 A사이드 출전은 생성자가 채우며 B사이드는 대표 1명만 초대한다. B사이드 라인업은 대표 수락 후 방에서 고른다.
+- `개인 기록`: `recordType:"solo"`이고 모집/초대/MMR 반영 없이 기록만 저장한다.
+- `비공개 대회방`: `visibility:"tournament"`이고 팀 초대/대진 생성 흐름으로 처리한다.
 - 초대 수락/거절 권한은 현재 사용자의 pending 초대 전체가 아니라 요청한 `invitationId`의 pending 초대 기준으로 판정한다.
 - 비공개방은 초대 없이 신규 참여할 수 없지만, 이미 참가 확정된 사용자의 같은 방 파티 합류/정리는 허용한다.
 - 팀 초대는 legacy 추론에 기대지 않고 `joinMode:"team"`을 명시한다.
