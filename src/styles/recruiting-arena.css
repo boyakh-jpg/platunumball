@@ -7074,6 +7074,23 @@ html[data-theme="light"] .arena-lobby-modal .arena-reserve-line > .arena-room-re
   overflow-y: hidden;
 }
 
+@media (max-width: 720px) {
+  .arena-lobby-modal .arena-room-slot-row,
+  html[data-theme="light"] .arena-lobby-modal .arena-room-slot-row {
+    grid-auto-columns: minmax(74px, 74px);
+    grid-auto-flow: column;
+    grid-template-columns: none;
+    justify-content: start;
+    overflow-x: auto;
+    overflow-y: visible;
+    scrollbar-width: none;
+  }
+
+  .arena-lobby-modal .arena-room-slot-row::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 .arena-lobby-modal .arena-lobby-team-panel .arena-side-roster,
 html[data-theme="light"] .arena-lobby-modal .arena-lobby-team-panel .arena-side-roster {
   border: 0;
