@@ -81,6 +81,7 @@ import {
   isEligibleReferee,
   isInstantRoom,
   isMatchReferee,
+  isMatchRecordMatch,
   isPersonalRecordMatch,
 } from "../lib/matchUtils.js";
 import "../styles/recruiting-arena.css";
@@ -1352,6 +1353,77 @@ function RoomKickPanel({
         </div>,
         document.body,
       ) : null}
+    </div>
+  );
+}
+
+function MatchRecordRosterPanel({
+  match,
+  sideName,
+  team,
+  userById,
+  teams,
+  currentUserId,
+  sideLeaderId,
+  capacity,
+  onChange,
+}) {
+  if (!match || !team || !sideLeaderId || sideLeaderId !== currentUserId) return null;
+  const activeIds = getMatchSidePlayerIds(match, sideName);
+  const reserveIds = getMatchReservePlayerIds(match, sideName);
+  const rosterIds = new Set([...activeIds, ...reserveIds]);
+  const memberIds = (team.members ?? []).map((member) => member.userId).filter((playerId) => userById[playerId]);
+  if (!memberIds.length) return null;
+
+  const commitRoster = (nextActiveIds, nextReserveIds) => {
+    onChange(sideName, {
+      playerIds: nextActiveIds.slice(0, capacity),
+      reservePlayerIds: nextReserveIds.filter((playerId) => !nextActiveIds.includes(playerId)).slice(0, MAX_RESERVE_PLAYERS_PER_SIDE),
+    });
+  };
+  const setPlayerState = (playerId, state) => {
+    const nextActiveIds = activeIds.filter((id) => id !== playerId);
+    const nextReserveIds = reserveIds.filter((id) => id !== playerId);
+    if (state === "active" && nextActiveIds.length < capacity) nextActiveIds.push(playerId);
+    if (state === "reserve" && nextReserveIds.length < MAX_RESERVE_PLAYERS_PER_SIDE) nextReserveIds.push(playerId);
+    commitRoster(nextActiveIds, nextReserveIds);
+  };
+
+  return (
+    <div className="arena-record-roster-panel">
+      <header>
+        <strong>{SIDE_LABELS[sideName]} 출전자 확인</strong>
+        <span>{team.name} · 출전 {activeIds.length}/{capacity} · 후보 {reserveIds.length}/{MAX_RESERVE_PLAYERS_PER_SIDE}</span>
+      </header>
+      <div className="arena-record-roster-list">
+        {memberIds.map((playerId) => {
+          const user = userById[playerId];
+          const isActive = activeIds.includes(playerId);
+          const isReserve = reserveIds.includes(playerId);
+          const isLeader = playerId === sideLeaderId;
+          const stateLabel = isActive ? "출전" : isReserve ? "후보" : "미선택";
+          return (
+            <div key={playerId} className={rosterIds.has(playerId) ? "arena-record-roster-row selected" : "arena-record-roster-row"}>
+              <PlayerHoverCard user={user} teams={teams} as="span">
+                <span className="avatar small" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
+                <span>
+                  <strong>{user.name}</strong>
+                  <em>{user.position ?? "포지션 자유"} · {stateLabel}{isLeader ? " · 사이드장" : ""}</em>
+                </span>
+              </PlayerHoverCard>
+              <Button type="button" size="sm" variant={isActive ? "primary" : "secondary"} disabled={!isActive && activeIds.length >= capacity} onClick={() => setPlayerState(playerId, "active")}>
+                출전
+              </Button>
+              <Button type="button" size="sm" variant={isReserve ? "primary" : "secondary"} disabled={!isReserve && reserveIds.length >= MAX_RESERVE_PLAYERS_PER_SIDE} onClick={() => setPlayerState(playerId, "reserve")}>
+                후보
+              </Button>
+              <Button type="button" size="sm" variant="secondary" disabled={isLeader || (!isActive && !isReserve)} onClick={() => setPlayerState(playerId, "none")}>
+                해제
+              </Button>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -2814,6 +2886,23 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
             ? getMatchSideLeaderId(sourceMatch, app.state.teams, "teamB")
             : getRecruitingSideLeaderId(lobby, "teamB", roomOwnerId, roomState),
         };
+        const sourceMatchRecordTeams = {
+          teamA: sourceMatch ? app.state.teams.find((team) => team.id === sourceMatch.teamA?.teamId) : null,
+          teamB: sourceMatch ? app.state.teams.find((team) => team.id === sourceMatch.teamB?.teamId) : null,
+        };
+        const canEditMatchRecordRoster = Boolean(
+          matchRoom &&
+          sourceMatch &&
+          isMatchRecordMatch(sourceMatch) &&
+          !sourceMatch.result &&
+          !sourceMatch.confirmedAt &&
+          !sourceMatch.cancelledAt &&
+          !sourceMatch.voidedAt,
+        );
+        const showMatchRecordRosterPanel = Boolean(
+          canEditMatchRecordRoster &&
+          ["teamA", "teamB"].some((sideName) => sourceMatchSideLeaderIds[sideName] === app.currentUser.id),
+        );
         const sourceMatchOpponentLeaderId = sourceMatch
           ? sourceMatchSideLeaderIds[sourceMatchOpponentSideName] ?? ""
           : "";
@@ -3302,6 +3391,25 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                     if (result && result.ok !== false) app.actions.loadRecruitingPost?.(selectedPost.id);
                   }}
                 />
+              ) : null}
+
+              {!sourceRoomReadOnly && showMatchRecordRosterPanel ? (
+                <div className="arena-record-roster-panels">
+                  {["teamA", "teamB"].map((sideName) => (
+                    <MatchRecordRosterPanel
+                      key={sideName}
+                      match={sourceMatch}
+                      sideName={sideName}
+                      team={sourceMatchRecordTeams[sideName]}
+                      userById={userById}
+                      teams={app.state.teams}
+                      currentUserId={app.currentUser.id}
+                      sideLeaderId={sourceMatchSideLeaderIds[sideName]}
+                      capacity={getRecruitingSideCapacity(sourceMatch)}
+                      onChange={(targetSideName, roster) => app.actions.setMatchRecordTeamRoster(sourceMatch.id, targetSideName, roster)}
+                    />
+                  ))}
+                </div>
               ) : null}
 
               {!sourceRoomReadOnly && ((!matchRoom && mine) || (matchRoom && canManageMatchCheckin)) ? (

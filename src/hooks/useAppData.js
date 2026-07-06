@@ -58,6 +58,7 @@ import {
   setDemoInitialState,
   setRecruitingSlotPosition,
   setMatchRoomPlayerPlacement,
+  setMatchRecordTeamRoster,
   setRecruitingPartyPlayerPlacement,
   setRecruitingPartyPlayerReserve,
   setRecruitingTeamPartyRoster,
@@ -2789,6 +2790,7 @@ export function useAppData(authUser = null, appLocation = null) {
       updateRecruitingRoomRules: (postId, patch) => applyRecruitingPostMutation(postId, (prev) => updateRecruitingRoomRules({ ...prev, currentUserId }, postId, patch), { action: "updateRecruitingRoomRules", patch }),
       updateMatchRoomRules: (matchId, patch) => applyMatchMutation(matchId, (prev) => updateMatchRoomRules({ ...prev, currentUserId }, matchId, patch), { action: "updateMatchRoomRules", patch }),
       setMatchRoomPlayerPlacement: (matchId, playerId, placement) => applyMatchMutation(matchId, (prev) => setMatchRoomPlayerPlacement({ ...prev, currentUserId }, matchId, playerId, placement), { action: "setMatchRoomPlayerPlacement", playerId, placement }),
+      setMatchRecordTeamRoster: (matchId, sideName, roster) => applyMatchMutation(matchId, (prev) => setMatchRecordTeamRoster({ ...prev, currentUserId }, matchId, sideName, roster), { action: "setMatchRoomPlayerPlacement", placement: { sideName } }),
       removeMatchRoomPlayer: (matchId, playerId) => applyMatchMutation(matchId, (prev) => removeMatchRoomPlayer({ ...prev, currentUserId }, matchId, playerId), { action: "removeMatchRoomPlayer", playerId }),
       sendRecruitingChat: (postId, body) => applyRecruitingPostMutation(postId, (prev) => sendRecruitingChat({ ...prev, currentUserId }, postId, body), { action: "sendRecruitingChat", body, optimisticBeforeServerCheck: true }),
       pollRecruitingChat: (postId) => {

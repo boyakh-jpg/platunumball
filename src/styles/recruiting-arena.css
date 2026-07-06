@@ -7439,6 +7439,97 @@ html[data-theme="light"] .arena-lobby-arena {
   background: var(--ui-card-bg);
 }
 
+.arena-record-roster-panels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 10px;
+}
+
+.arena-record-roster-panel {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--ui-room-panel-border);
+  border-radius: var(--ui-card-radius);
+  background: var(--ui-room-panel-bg);
+  padding: 12px;
+}
+
+.arena-record-roster-panel header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.arena-record-roster-panel header strong {
+  color: var(--text);
+}
+
+.arena-record-roster-panel header span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+.arena-record-roster-list {
+  display: grid;
+  gap: 8px;
+}
+
+.arena-record-roster-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--ui-card-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--ui-card-bg) 86%, transparent);
+  padding: 8px;
+}
+
+.arena-record-roster-row.selected {
+  border-color: color-mix(in srgb, var(--rb-orange) 44%, var(--ui-card-border));
+  background: color-mix(in srgb, var(--rb-orange) 10%, var(--ui-card-bg));
+}
+
+.arena-record-roster-row > span:first-child {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  gap: 8px;
+}
+
+.arena-record-roster-row > span:first-child > span:last-child {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.arena-record-roster-row strong,
+.arena-record-roster-row em {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.arena-record-roster-row em {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-style: normal;
+  font-weight: 850;
+}
+
+@media (max-width: 720px) {
+  .arena-record-roster-row {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .arena-record-roster-row .button {
+    width: 100%;
+  }
+}
+
 .arena-chat-form input {
   height: 48px;
   min-height: 48px;

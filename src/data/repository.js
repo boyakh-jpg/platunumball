@@ -7611,6 +7611,73 @@ function clearMatchPlayerDecision(nextMatch, playerId) {
   };
 }
 
+function currentUserCanEditMatchRecordSideRoster(state, match, sideName) {
+  if (!isMatchRecordMatch(match) || !["teamA", "teamB"].includes(sideName)) return false;
+  if (match.result || match.confirmedAt || match.cancelledAt || match.voidedAt) return false;
+  const leaderId = getMatchSideLeaderId(match, state.teams, sideName);
+  return Boolean(leaderId && leaderId === state.currentUserId);
+}
+
+export function setMatchRecordTeamRoster(state, matchId, sideName, roster = {}) {
+  const match = state.matches.find((item) => item.id === matchId);
+  if (!currentUserCanEditMatchRecordSideRoster(state, match, sideName)) return state;
+  const side = match[sideName] ?? {};
+  const team = state.teams.find((item) => item.id === side.teamId);
+  if (!team) return state;
+
+  const sideCapacity = getRecruitingSideCapacity(match);
+  const allowedIds = new Set(getTeamMemberIds(team));
+  const otherSideName = sideName === "teamA" ? "teamB" : "teamA";
+  const otherRosterIds = new Set([
+    ...(match[otherSideName]?.players ?? []),
+    ...getMatchReservePlayerIds(match, otherSideName),
+  ]);
+  const normalizeRosterIds = (ids = []) => uniquePlayerIds(ids)
+    .filter((playerId) => allowedIds.has(playerId) && !otherRosterIds.has(playerId));
+  const nextActiveIds = normalizeRosterIds(roster.playerIds).slice(0, sideCapacity);
+  const nextReserveIds = normalizeRosterIds(roster.reservePlayerIds)
+    .filter((playerId) => !nextActiveIds.includes(playerId))
+    .slice(0, MAX_RECRUITING_RESERVES_PER_SIDE);
+  const leaderId = getMatchSideLeaderId(match, state.teams, sideName);
+  if (leaderId && ![...nextActiveIds, ...nextReserveIds].includes(leaderId)) return state;
+
+  const previousRosterIds = uniquePlayerIds([
+    ...(match[sideName]?.players ?? []),
+    ...getMatchReservePlayerIds(match, sideName),
+  ]);
+  const nextRosterIds = new Set([...nextActiveIds, ...nextReserveIds]);
+  const nextPlayerTeams = Object.fromEntries(
+    Object.entries(side.playerTeams ?? {}).filter(([playerId]) => nextRosterIds.has(playerId)),
+  );
+  nextRosterIds.forEach((playerId) => {
+    nextPlayerTeams[playerId] = team.id;
+  });
+  const nextReservePlayers = {
+    ...(match.reservePlayers ?? {}),
+    [sideName]: nextReserveIds,
+  };
+  let nextMatch = {
+    ...match,
+    [sideName]: {
+      ...side,
+      players: nextActiveIds,
+      playerTeams: nextPlayerTeams,
+    },
+    reservePlayers: nextReservePlayers,
+  };
+  previousRosterIds
+    .filter((playerId) => !nextRosterIds.has(playerId))
+    .forEach((playerId) => {
+      nextMatch = clearMatchPlayerDecision(nextMatch, playerId);
+    });
+  nextMatch = withEffectiveMatchStatRecorders(nextMatch);
+
+  return {
+    ...state,
+    matches: state.matches.map((item) => (item.id === matchId ? nextMatch : item)),
+  };
+}
+
 function autoPromoteMatchReservesForCheckin(match = {}, excludedPlayerIds = []) {
   if (getMatchRoomPhase(match).phase !== "checkin" || match.startedAt || match.endedAt || match.result) return match;
   const excludedIds = new Set(excludedPlayerIds);
