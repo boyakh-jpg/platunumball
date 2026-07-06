@@ -343,10 +343,13 @@ export function getPendingRecruitingInvitations(state = {}, userId) {
 
 export function hasPendingRecruitingInvitation(post = {}, userId) {
   if (!userId || post.status !== "open") return false;
-  if (Array.isArray(post.__feedRelations) && post.__feedRelations.includes("invited")) return true;
-  return normalizeRecruitingRoomState(post.roomState ?? {}).invitations.some((invitation) => (
+  const hasInvitationSnapshot = post.__invitationsPartial === true || Object.prototype.hasOwnProperty.call(post.roomState ?? {}, "invitations");
+  const hasPendingInvitation = normalizeRecruitingRoomState(post.roomState ?? {}).invitations.some((invitation) => (
     invitation.targetUserId === userId && invitation.status === "pending"
   ));
+  if (hasInvitationSnapshot) return hasPendingInvitation;
+  if (Array.isArray(post.__feedRelations) && post.__feedRelations.includes("invited")) return true;
+  return hasPendingInvitation;
 }
 
 export function getRecruitingRoomOwnerId(post = {}) {

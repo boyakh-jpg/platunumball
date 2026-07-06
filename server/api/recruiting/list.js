@@ -1755,7 +1755,7 @@ export async function loadCompactRecruitingList(context, {
 export async function loadCurrentUserRecruitingFeedList(context, {
   adminLevel = 0,
   limit = REMOTE_CLIENT_RECRUITING_LIMIT,
-  includeFeedCounts = true,
+  includeFeedCounts = false,
   allowLegacyFallback = false,
   roomScope = "",
   skipCardReferenceRows = false,
@@ -1860,7 +1860,7 @@ export default async function handler(request, response) {
     const mineOnly = body.scope === "mine" || body.mine === true;
     const roomScope = ["created", "joined", "invited"].includes(body.roomScope) ? body.roomScope : "";
     const includeMine = mineOnly || body.includeMine === true;
-    const includeFeedCounts = body.includeFeedCounts !== false;
+    const includeFeedCounts = body.includeFeedCounts === true;
     const includeFallbackCounts = body.includeFallbackCounts === true;
     const allowLegacyFallback = isLegacyListFallbackAllowed(body);
     const allowFeedRepair = body.allowFeedRepair === true || process.env.RANKBALL_ALLOW_READ_FEED_REPAIR === "true";

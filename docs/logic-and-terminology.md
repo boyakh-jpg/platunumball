@@ -2046,3 +2046,12 @@ flowchart TD
 - 경기 메뉴는 이미 내 관련 일정만 보므로 인원수/경기 방식 필터를 두지 않는다.
 - 초대받은 모집방은 아직 참가 확정 전이어도 경기 메뉴의 초대받은 방 필터에서 볼 수 있다.
 - 경기 메뉴의 모집 일정은 `user_room_feed`로 ID를 고르되, 인원/참여 상태 표시는 최신 `recruiting_posts`/`recruiting_applications` row를 읽어 계산한다. `room_feed_cards.card_json` 숫자만 믿으면 다른 계정에서 stale 인원수가 보일 수 있다.
+
+## 2026-07-06 경기 메뉴 관계/초대 판정
+
+- 경기 메뉴 `전체` 관계 필터는 실제 일정인 `created`/`joined`만 보여준다.
+- `invited`는 일정 확정 전 처리 항목이므로 `초대받은 방` 필터에서만 보여준다.
+- 같은 방에서 `joined`와 `invited` 힌트가 같이 있으면 `joined`가 우선이다.
+- 모집 리스트 row에 현재 사용자 초대 snapshot이 있으면 `__feedRelations=["invited"]`보다 실제 pending invitation row를 우선한다.
+- 관계 필터 버튼에는 created/joined/invited 숫자 badge를 표시하지 않는다.
+- 모집/경기 관계 목록 기본 호출은 `includeFeedCounts:false`이며, count가 필요한 유지보수 호출만 명시적으로 `true`를 넘긴다.

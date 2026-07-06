@@ -7456,12 +7456,6 @@ html[data-theme="light"] .arena-lobby-arena {
   white-space: nowrap;
 }
 
-.arena-filter-badge {
-  flex: 0 0 auto;
-  min-width: 2.4ch;
-  text-align: right;
-}
-
 .arena-filter-bar .arena-region-sido-filter {
   flex: 0 1 190px;
   max-width: 220px;
@@ -7477,29 +7471,6 @@ html[data-theme="light"] .arena-lobby-arena {
   max-width: 150px;
 }
 
-.arena-filter-bar .arena-relation-filter {
-  flex: 0 1 auto;
-  min-width: 0;
-  max-width: 100%;
-}
-
-.arena-filter-bar .arena-relation-filter button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 128px;
-  overflow: visible;
-  padding-inline: 14px;
-}
-
-.arena-filter-bar .arena-relation-filter button.loading {
-  cursor: wait;
-}
-
-.arena-filter-bar .arena-relation-filter button.loading .arena-filter-badge {
-  min-width: 3ch;
-}
-
 @media (max-width: 720px) {
   .arena-filter-bar .arena-region-sido-filter,
   .arena-filter-bar .arena-region-district-filter,
@@ -7509,11 +7480,6 @@ html[data-theme="light"] .arena-lobby-arena {
     flex: 1 1 100%;
   }
 
-  .arena-filter-bar .arena-relation-filter {
-    width: auto;
-    min-width: 0;
-    max-width: 100%;
-  }
 }
 
 /* 2026-07-04 KBO Dia Gothic display, scoped to sports emphasis only. */

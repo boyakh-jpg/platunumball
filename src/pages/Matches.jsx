@@ -359,8 +359,9 @@ function getMatchScheduleRelation(match = {}, userId = "") {
 function getRecruitingScheduleRelation(post = {}, state = {}, userId = "", myTeamIds = []) {
   if (!userId) return "";
   if (getRecruitingRoomOwnerId(post) === userId) return "created";
+  if (isRecruitingRoomInUserSchedule(post, state, userId, myTeamIds)) return "joined";
   if (hasPendingRecruitingInvitation(post, userId)) return "invited";
-  return isRecruitingRoomInUserSchedule(post, state, userId, myTeamIds) ? "joined" : "";
+  return "";
 }
 
 function isRecruitingScheduleRelatedToUser(post = {}, state = {}, userId = "", myTeamIds = []) {
@@ -368,7 +369,8 @@ function isRecruitingScheduleRelatedToUser(post = {}, state = {}, userId = "", m
 }
 
 function matchesScheduleRelation(relation = "", relationFilter = "all") {
-  return relationFilter === "all" || relation === relationFilter;
+  if (relationFilter === "all") return relation === "created" || relation === "joined";
+  return relation === relationFilter;
 }
 
 function getRecruitingRoomsForView(posts = [], view) {

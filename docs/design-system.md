@@ -979,3 +979,9 @@ UI 수정 전:
 1. Matches page filters focus on ownership/relation: 전체, 내가 만든 방, 내 참여방, 초대받은 방.
 2. Matches page does not show match-mode/person-count filters because the page already scopes to the current user's schedule.
 3. The relation filter uses the same compact segmented-control style as other dense schedule filters.
+
+## 2026-07-06 matches relation badge removal
+
+1. Matches relation filter buttons are label-only.
+2. Do not show created/joined/invited numeric badges next to `내가 만든 방`, `내 참여방`, or `초대받은 방`.
+3. Remove stale relation badge CSS instead of reserving empty badge space.

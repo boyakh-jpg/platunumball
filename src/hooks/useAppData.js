@@ -956,7 +956,7 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
           ...(options.startFilter ? { startFilter: options.startFilter } : {}),
           listOnly: true,
           adminContext: false,
-          includeFeedCounts: true,
+          includeFeedCounts: false,
         },
         { allowWhenDisabled: true },
       );
@@ -1870,12 +1870,12 @@ export function useAppData(authUser = null, appLocation = null) {
     return promise;
   }, [authEmail, authUserId, recruitingPagination, setState, state.recruitingPosts, trackedPostServerAction]);
 
-  const loadRecruitingRegion = useCallback(async ({ regionKey = "", regionScope = "local", limit = REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT, startFilter = "", includeFeedCounts = true } = {}) => {
+  const loadRecruitingRegion = useCallback(async ({ regionKey = "", regionScope = "local", limit = REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT, startFilter = "", includeFeedCounts = false } = {}) => {
     if (!isSupabaseConfigured || !authUserId) return false;
     const pageLimit = Math.max(1, Math.min(REMOTE_CLIENT_RECRUITING_LIMIT, Number(limit) || REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT));
     const regionRequest = getRecruitingRegionRequest({ regionScope: regionScope === "region" && regionKey ? "region" : "local", regionKey });
     const startFilterRequest = getRecruitingStartFilterRequest({ startFilter });
-    const shouldIncludeFeedCounts = includeFeedCounts !== false;
+    const shouldIncludeFeedCounts = includeFeedCounts === true;
     const promiseKey = `${regionRequest.regionScope}:${regionRequest.regionKey}:${startFilterRequest.startFilter}:${pageLimit}:${shouldIncludeFeedCounts ? "counts" : "plain"}`;
     latestRecruitingRegionRequestRef.current = promiseKey;
     latestRecruitingLoadMoreRequestRef.current = "";
@@ -1976,7 +1976,7 @@ export function useAppData(authUser = null, appLocation = null) {
   const loadMyRecruitingPosts = useCallback(async (roomScope = "", options = {}) => {
     if (!isSupabaseConfigured || !authUserId) return false;
     const requestedRoomScope = ["created", "joined", "invited"].includes(roomScope) ? roomScope : "";
-    const includeFeedCounts = options?.includeFeedCounts !== false;
+    const includeFeedCounts = options?.includeFeedCounts === true;
     const force = options?.force === true;
     const promiseKey = `${requestedRoomScope || "all"}:${includeFeedCounts ? "counts" : "plain"}`;
     const currentPromise = myRecruitingPostsPromiseRef.current.get(promiseKey);
