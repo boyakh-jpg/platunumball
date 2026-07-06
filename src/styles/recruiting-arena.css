@@ -7029,7 +7029,28 @@ html[data-theme="light"] .arena-lobby-modal {
 }
 
 .arena-lobby-modal .arena-lobby-team-panel {
-  overflow: hidden;
+  overflow: visible;
+}
+
+.arena-lobby-modal .arena-room-slot-row {
+  overflow: visible;
+}
+
+.arena-lobby-modal .arena-reserve-panel,
+.arena-lobby-modal .arena-reserve-line,
+.arena-lobby-modal .arena-lobby-team-panel .arena-side-roster,
+html[data-theme="light"] .arena-lobby-modal .arena-reserve-panel,
+html[data-theme="light"] .arena-lobby-modal .arena-reserve-line,
+html[data-theme="light"] .arena-lobby-modal .arena-lobby-team-panel .arena-side-roster {
+  overflow: visible;
+}
+
+.arena-lobby-modal .arena-reserve-line > .arena-room-reserve-row,
+html[data-theme="light"] .arena-lobby-modal .arena-reserve-line > .arena-room-reserve-row {
+  padding: 18px;
+  margin: -18px;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .arena-lobby-modal .arena-lobby-team-panel .arena-side-roster,
