@@ -379,7 +379,7 @@ function isRecruitingScheduleRelatedToUser(post = {}, state = {}, userId = "", m
 }
 
 function matchesScheduleRelation(relation = "", relationFilter = "all") {
-  if (relationFilter === "all") return relation === "created" || relation === "joined";
+  if (relationFilter === "all") return relation === "created" || relation === "joined" || relation === "invited";
   return relation === relationFilter;
 }
 
@@ -1446,7 +1446,7 @@ export default function Matches({ app }) {
             const mine = getRecruitingRoomOwnerId(post) === app.currentUser.id;
             const needConfirm = !mine && post.visibility !== "public" && myEntry && myEntry.status !== "ready";
             const roomStatus = getRecruitingRoomListStatus(lobby, { post, myEntry, mine });
-            const filled = lobby.sides.teamA.projectedFilled + lobby.sides.teamB.projectedFilled;
+            const filled = lobby.sides.teamA.filled + lobby.sides.teamB.filled;
             const capacity = getRecruitingSideCapacity(post) * 2;
             const roomTitle = getRoomCardTitle(post);
             return (
@@ -1464,9 +1464,9 @@ export default function Matches({ app }) {
                   <p><CalendarDays size={15} />{formatMatchTime(post)} · <CourtHoverCard court={courtByName[post.court]} courtName={post.court}>{post.court}</CourtHoverCard></p>
                 </div>
                 <MatchListSummary
-                  left={`A ${lobby.sides.teamA.projectedFilled}/${lobby.sides.teamA.capacity}`}
+                  left={`A ${lobby.sides.teamA.filled}/${lobby.sides.teamA.capacity}`}
                   center={`${filled}/${capacity}`}
-                  right={`B ${lobby.sides.teamB.projectedFilled}/${lobby.sides.teamB.capacity}`}
+                  right={`B ${lobby.sides.teamB.filled}/${lobby.sides.teamB.capacity}`}
                   detail={formatMatchRules(post)}
                   variant="count-summary"
                 />
