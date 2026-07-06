@@ -123,6 +123,13 @@ export function isSoloIndividualRecruitingRoom(post = {}) {
   return getRecruitingSideCapacity(post) <= 1 && (post.hostJoinMode === "player" || !post.teamId);
 }
 
+export function isTeamRecruitingRoom(post = {}) {
+  return post.hostJoinMode === "team" ||
+    post.teamOnly === true ||
+    post.roomState?.teamOnly === true ||
+    Boolean(post.teamId || post.targetTeamId);
+}
+
 export function getRoomKindFromRecruitingPost(post = {}) {
   return post.visibility === "public" ? ROOM_KINDS.publicRecruiting : ROOM_KINDS.privateInvite;
 }

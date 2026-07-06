@@ -48,6 +48,7 @@ import {
   hasPendingRecruitingInvitation,
   isRecruitingPartyEntry,
   isRecruitingTeamEntry,
+  isTeamRecruitingRoom,
   isSoloIndividualRecruitingRoom,
   isRecruitingPostForUser,
   isNationalRecruitingPost,
@@ -836,8 +837,7 @@ function getRecruitingRuleSummary(post = {}) {
 }
 
 function getRecruitingRoomTypeLabel(room = {}, lobby = null) {
-  const roomTeamOnly = room.hostJoinMode === "team" || room.teamOnly === true || room.roomState?.teamOnly === true || Boolean(room.teamId || room.targetTeamId);
-  if (roomTeamOnly) return "팀전";
+  if (isTeamRecruitingRoom(room)) return "팀전";
   const lobbyTeamCount = lobby?.entries?.filter((entry) => isRecruitingTeamEntry(entry)).length ?? 0;
   if (lobbyTeamCount >= 2) return "팀전";
   if (lobbyTeamCount > 0) return "팀 파티 포함";

@@ -27,7 +27,7 @@ import {
   userNeedsMatchAction,
 } from "../lib/matchUtils.js";
 import { ROOM_KINDS } from "../lib/constants.js";
-import { getRecruitingEntryForUser, getRecruitingListCardLobby, getRecruitingLobby, getRecruitingRoomOwnerId, getRecruitingSideCapacity, getRoomKindFromRecruitingPost, hasPendingRecruitingInvitation, isRecruitingTeamEntry, isRecruitingRoomInUserSchedule } from "../lib/recruiting.js";
+import { getRecruitingEntryForUser, getRecruitingListCardLobby, getRecruitingLobby, getRecruitingRoomOwnerId, getRecruitingSideCapacity, getRoomKindFromRecruitingPost, hasPendingRecruitingInvitation, isRecruitingTeamEntry, isRecruitingRoomInUserSchedule, isTeamRecruitingRoom } from "../lib/recruiting.js";
 import { RECRUITING_ROOM_REFRESH_INTERVAL_MS, RecruitingRoomModal, getRecruitingRoomListStatus } from "./Recruiting.jsx";
 import "../styles/recruiting-arena.css";
 import "../styles/matches-arena.css";
@@ -393,7 +393,7 @@ function isScheduleRecordRoom(item = {}, type = "match") {
 
 function isScheduleTeamRoom(item = {}, type = "match") {
   if (type === "room") {
-    return item.hostJoinMode === "team" || item.teamOnly === true || item.roomState?.teamOnly === true || Boolean(item.teamId || item.targetTeamId);
+    return isTeamRecruitingRoom(item);
   }
   return Boolean(item.teamA?.teamId || item.teamB?.teamId)
     || isMatchSideTeamParty(item, "teamA")
