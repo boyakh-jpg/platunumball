@@ -558,6 +558,11 @@ function mergeRemoteProfileState(state, remoteState = {}) {
   };
 }
 
+function mergeRemoteHomeState(state, remoteState = {}) {
+  const nextState = mergeRemoteProfileState(state, remoteState);
+  return mergeRemoteMatchPage(nextState, remoteState);
+}
+
 function mergeRemoteAdminState(state, remoteState = {}) {
   const nextState = mergeRemoteDirectory(state, remoteState, { includeTheme: true, includeDirectorySettings: true });
   return {
@@ -751,9 +756,19 @@ function withServerAdminContext(state, context = EMPTY_ADMIN_CONTEXT) {
   };
 }
 
-function getInitialStateLoadOptions() {
-  const pathname = typeof window !== "undefined" ? window.location.pathname.replace(/\/$/, "") : "";
-  const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+function getRoutePathname(location = null) {
+  const rawPathname = location?.pathname ?? (typeof window !== "undefined" ? window.location.pathname : "");
+  return String(rawPathname || "").replace(/\/$/, "");
+}
+
+function getRouteSearchParams(location = null) {
+  const rawSearch = location?.search ?? (typeof window !== "undefined" ? window.location.search : "");
+  return new URLSearchParams(rawSearch || "");
+}
+
+function getInitialStateLoadOptions(location = null) {
+  const pathname = getRoutePathname(location);
+  const searchParams = getRouteSearchParams(location);
   const teamDetailMatch = pathname.match(/^\/app\/teams\/([^/]+)$/);
   if (teamDetailMatch) {
     return { endpoint: "teamDetail", teamId: decodeURIComponent(teamDetailMatch[1]), matchLimit: 0, recruitingLimit: 0, tournamentLimit: 0 };
@@ -785,6 +800,10 @@ function getInitialStateLoadOptions() {
     return { endpoint: "homeLoad", matchLimit: REMOTE_CLIENT_MATCH_LIMIT, recruitingLimit: REMOTE_CLIENT_RECRUITING_LIMIT, tournamentLimit: 0 };
   }
   return { profileOnly: true, matchLimit: 0, recruitingLimit: 0, tournamentLimit: 0 };
+}
+
+function getHomeRouteLoadKey(location = null) {
+  return getRoutePathname(location) === "/app" ? "homeLoad" : "";
 }
 
 function normalizeServerState(state) {
@@ -1045,7 +1064,7 @@ async function loadBackendState(authUserId, authEmail, options = getInitialState
   });
 }
 
-export function useAppData(authUser = null) {
+export function useAppData(authUser = null, appLocation = null) {
   const authUserId = typeof authUser === "string" ? authUser : authUser?.id ?? null;
   const authEmail = typeof authUser === "object" ? authUser?.email ?? authUser?.user_metadata?.email ?? "" : "";
   const [state, setRawState] = useState(() => syncNotificationDeliveries(getCachedBootstrapState(authUserId, authEmail)));
@@ -1061,6 +1080,7 @@ export function useAppData(authUser = null) {
   const [recorderMatchesLoaded, setRecorderMatchesLoaded] = useState(false);
   const [remoteReady, setRemoteReady] = useState(!isSupabaseConfigured);
   const [serverActionPendingCount, setServerActionPendingCount] = useState(0);
+  const homeRouteLoadKey = useMemo(() => getHomeRouteLoadKey(appLocation), [appLocation?.pathname]);
   const stateRef = useRef(state);
   const adminContextRef = useRef(EMPTY_ADMIN_CONTEXT);
   const remoteReadyRef = useRef(!isSupabaseConfigured);
@@ -1076,6 +1096,7 @@ export function useAppData(authUser = null) {
   const recruitingRegionPromiseRef = useRef(new Map());
   const latestRecruitingRegionRequestRef = useRef("");
   const latestRecruitingLoadMoreRequestRef = useRef("");
+  const homeRouteLoadKeyRef = useRef("");
   const recruitingPostPromiseRef = useRef(new Map());
   const pendingRecruitingPostIdsRef = useRef(new Set());
   const recentRecruitingMutationTimesRef = useRef(new Map());
@@ -1148,6 +1169,7 @@ export function useAppData(authUser = null) {
       recruitingRegionPromiseRef.current = new Map();
       latestRecruitingRegionRequestRef.current = "";
       latestRecruitingLoadMoreRequestRef.current = "";
+      homeRouteLoadKeyRef.current = "";
       recruitingPostPromiseRef.current = new Map();
       setRemoteReady(!isSupabaseConfigured);
       setMatchPagination({ loading: false, exhausted: true, error: "", cursor: "", recruitingScheduleChecked: false, recruitingScheduleLoading: false, recruitingSchedulePostIds: [] });
@@ -1173,6 +1195,7 @@ export function useAppData(authUser = null) {
     recruitingRegionPromiseRef.current = new Map();
     latestRecruitingRegionRequestRef.current = "";
     latestRecruitingLoadMoreRequestRef.current = "";
+    homeRouteLoadKeyRef.current = "";
     recruitingPostPromiseRef.current = new Map();
     pendingRecruitingPostIdsRef.current = new Set();
     recentRecruitingMutationTimesRef.current = new Map();
@@ -1182,7 +1205,8 @@ export function useAppData(authUser = null) {
     setDirectoryStatus({ loading: false, loaded: false, error: "" });
     setProfileRecordsLoaded(false);
     setRecorderMatchesLoaded(false);
-    const initialLoadOptions = getInitialStateLoadOptions();
+    const initialLoadOptions = getInitialStateLoadOptions(appLocation);
+    homeRouteLoadKeyRef.current = initialLoadOptions.endpoint === "homeLoad" ? "homeLoad" : getHomeRouteLoadKey(appLocation);
     const initialLoad = initialLoadOptions.profileOnly
       ? loadProfileState(authUserId, authEmail, { thin: true })
       : loadBackendState(authUserId, authEmail, initialLoadOptions);
@@ -1246,6 +1270,58 @@ export function useAppData(authUser = null) {
       unsubscribe();
     };
   }, [authEmail, authUserId]);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured || !authUserId || !remoteReady || homeRouteLoadKey !== "homeLoad") return undefined;
+    if (homeRouteLoadKeyRef.current === homeRouteLoadKey) return undefined;
+    let mounted = true;
+    homeRouteLoadKeyRef.current = homeRouteLoadKey;
+    setMatchPagination((prev) => ({ ...prev, loading: true, error: "" }));
+    const homeLoadOptions = {
+      endpoint: "homeLoad",
+      matchLimit: REMOTE_CLIENT_MATCH_LIMIT,
+      recruitingLimit: REMOTE_CLIENT_RECRUITING_LIMIT,
+      tournamentLimit: 0,
+    };
+    loadBackendState(authUserId, authEmail, homeLoadOptions)
+      .then((remoteState) => {
+        if (!mounted) return;
+        const remoteMeta = getRemoteMeta(remoteState);
+        const maintainedState = isSupabaseConfigured ? remoteState : runAutomaticStateMaintenance(remoteState);
+        if (maintainedState) {
+          cacheCurrentProfileState(authUserId, maintainedState);
+          setState((prev) => withServerAdminContext(mergeRemoteHomeState(prev, preserveLocalDiscordState(prev, maintainedState)), adminContextRef.current));
+        }
+        setMatchPagination((prev) => ({
+          ...prev,
+          loading: false,
+          exhausted: remoteMeta.matchPage?.exhausted ?? prev.exhausted,
+          error: remoteMeta.matchPage?.error ?? "",
+          cursor: remoteMeta.matchPage?.cursor ?? prev.cursor,
+          recruitingScheduleChecked: prev.recruitingScheduleChecked || Boolean(remoteMeta.matchPage?.recruitingScheduleChecked),
+          recruitingScheduleLoading: false,
+          recruitingSchedulePostIds: remoteMeta.matchPage?.recruitingScheduleChecked ? getStateRecruitingPostIds(maintainedState) : prev.recruitingSchedulePostIds,
+        }));
+        setRecruitingPagination((prev) => ({
+          ...prev,
+          exhausted: remoteMeta.recruitingPage?.exhausted ?? prev.exhausted,
+          error: remoteMeta.recruitingPage?.error ?? "",
+          cursor: remoteMeta.recruitingPage?.cursor ?? prev.cursor,
+          offset: getRecruitingPaginationOffset(remoteMeta.recruitingPage, prev.offset),
+          feedCounts: remoteMeta.recruitingPage?.feedCounts ?? prev.feedCounts,
+        }));
+      })
+      .catch((error) => {
+        console.warn("Home route load failed.", error.message);
+        homeRouteLoadKeyRef.current = "";
+        if (mounted) {
+          setMatchPagination((prev) => ({ ...prev, loading: false, error: error.message ?? "home_route_load_failed" }));
+        }
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [authEmail, authUserId, homeRouteLoadKey, remoteReady, setState]);
 
   useEffect(() => {
     adminContextRef.current = EMPTY_ADMIN_CONTEXT;

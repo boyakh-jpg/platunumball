@@ -7029,11 +7029,12 @@ html[data-theme="light"] .arena-lobby-modal {
 }
 
 .arena-lobby-modal .arena-lobby-team-panel {
-  padding-bottom: 24px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .arena-lobby-modal .arena-room-slot-row {
+  padding: 18px;
+  margin: -18px;
   overflow: visible;
 }
 
@@ -7058,6 +7059,7 @@ html[data-theme="light"] .arena-lobby-modal .arena-lobby-team-panel .arena-side-
   border-radius: 0;
   background: transparent;
   box-shadow: none;
+  overflow: visible;
   padding: 0;
 }
 

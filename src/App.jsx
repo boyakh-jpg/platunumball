@@ -82,8 +82,8 @@ class AppErrorBoundary extends Component {
 
 export default function App() {
   const auth = useAuthSession();
-  const app = useAppData(auth.user ?? null);
   const location = useLocation();
+  const app = useAppData(auth.user ?? null, location);
   const theme = app.state.settings?.theme === "light" ? "light" : "dark";
   const profileGateReady = Boolean(!auth.user || app.remoteReady);
   const ageRecheckRequired = Boolean(
