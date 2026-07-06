@@ -6691,6 +6691,14 @@ html[data-theme="light"] .arena-lobby-modal .arena-reserve-panel {
   gap: 8px;
 }
 
+.arena-lobby-modal .arena-reserve-panel > .arena-reserve-line:first-child {
+  grid-column: 1;
+}
+
+.arena-lobby-modal .arena-reserve-panel > .arena-reserve-line:nth-child(2) {
+  grid-column: 2;
+}
+
 .arena-lobby-modal .arena-reserve-line {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
