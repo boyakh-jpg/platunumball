@@ -2384,6 +2384,10 @@ button.arena-room-player-slot {
   font-weight: 850;
 }
 
+.arena-invite-empty.error {
+  color: var(--danger);
+}
+
 .arena-invite-search {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);

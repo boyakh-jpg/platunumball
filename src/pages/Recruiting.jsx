@@ -1465,6 +1465,7 @@ export function InvitePanel({
   onTogglePlayer,
   onInvitePlayers,
   onClose,
+  error = "",
 }) {
   const matchedTeam = query.trim() ? findTeamByHashtag(teams, query) : null;
   const selectedSet = new Set(selectedPlayerIds);
@@ -1595,6 +1596,8 @@ export function InvitePanel({
           </Button>
         </div>
       ) : null}
+
+      {error ? <div className="arena-invite-empty error">{error}</div> : null}
 
       {allowedTeam ? <div className="arena-invite-empty">{allowedTeam.name} 팀원만 이 사이드에 초대할 수 있습니다.</div> : null}
 
@@ -2128,6 +2131,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
   const [chatSendingPostId, setChatSendingPostId] = useState("");
   const [chatAreaVisible, setChatAreaVisible] = useState(false);
   const [inviteDraft, setInviteDraft] = useState(null);
+  const [inviteError, setInviteError] = useState("");
   const [slotActionDraft, setSlotActionDraft] = useState(null);
   const [sourceDisputeDraft, setSourceDisputeDraft] = useState({
     matchId: "",
@@ -2489,9 +2493,11 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
   const openInviteSlot = (roomPost, sideName, reserve = false, slotKey = '', event = null) => {
     setSlotActionDraft(null);
     app.actions.loadDirectory?.();
+    setInviteError("");
     setInviteDraft({ postId: roomPost.id, sideName, reserve, slotKey, query: '', selectedPlayerIds: [], anchor: getCommandAnchor(event) });
   };
   const openSelfSlotAction = (roomPost, sideName, reserve = false, playerId = '', entryId = '', event = null) => {
+    setInviteError("");
     setInviteDraft(null);
     setSlotActionDraft({ postId: roomPost.id, sideName, reserve, playerId, entryId, anchor: getCommandAnchor(event) });
   };
@@ -2551,9 +2557,11 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
     closeRoomEdit(roomPost);
   };
   const updateInviteDraft = (patch) => {
+    setInviteError("");
     setInviteDraft((current) => (current ? { ...current, ...patch } : current));
   };
   const toggleInvitePlayer = (playerId) => {
+    setInviteError("");
     setInviteDraft((current) => {
       if (!current) return current;
       const selected = current.selectedPlayerIds ?? [];
@@ -2569,12 +2577,23 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
     if (!inviteDraft || !playerIds.length) return false;
     const inviteJoinMode = joinMode || (teamId ? "team" : "player");
     const invite = { side: inviteDraft.sideName, reserve: Boolean(inviteDraft.reserve), playerIds, teamId, joinMode: inviteJoinMode };
-    const result = await app.actions.inviteRecruitingPlayers(roomPost.id, invite);
-    if (result && result.ok !== false) {
-      app.actions.loadRecruitingPost?.(roomPost.id);
-      setInviteDraft(null);
+    setInviteError("");
+    try {
+      const result = await app.actions.inviteRecruitingPlayers(roomPost.id, invite);
+      if (result && result.ok !== false) {
+        app.actions.loadRecruitingPost?.(roomPost.id);
+        setInviteDraft(null);
+        return result;
+      }
+      const message = result?.statusCode === 401 || result?.error === "missing_bearer_token"
+        ? "로그인이 만료됐습니다. 다시 로그인 후 초대하세요."
+        : result?.message || result?.error || "초대를 저장하지 못했습니다.";
+      setInviteError(message);
+      return result;
+    } catch {
+      setInviteError("초대를 저장하지 못했습니다.");
+      return false;
     }
-    return result;
   };
   useEffect(() => {
     if (!pendingRosterOpen || !selectedPost || selectedPost.id !== pendingRosterOpen.postId) return;
@@ -2949,6 +2968,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                 favoriteTeamIds={favoriteTeamIds}
                 allowedTeamId={getInviteAllowedTeamId(activeSlotDraft.sideName)}
                 canInvitePlayer={canInvitePlayerByRoom}
+                error={inviteError}
                 onTogglePlayer={toggleInvitePlayer}
                 onInvitePlayers={(playerIds, teamId, joinMode) => { void sendInvites(selectedPost, playerIds, teamId, joinMode); }}
                 onClose={() => setInviteDraft(null)}
@@ -3266,6 +3286,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                   favoriteTeamIds={favoriteTeamIds}
                   allowedTeamId={getInviteAllowedTeamId(activeInviteDraft.sideName)}
                   canInvitePlayer={canInvitePlayerByRoom}
+                  error={inviteError}
                   onTogglePlayer={toggleInvitePlayer}
                   onInvitePlayers={(playerIds, teamId, joinMode) => { void sendInvites(selectedPost, playerIds, teamId, joinMode); }}
                   onClose={() => setInviteDraft(null)}
