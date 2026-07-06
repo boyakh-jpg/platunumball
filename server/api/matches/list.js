@@ -10,7 +10,7 @@ import {
   REMOTE_CLIENT_RECORD_MONTHS,
 } from "../../../src/data/repository.js";
 import { loadCurrentUserRecruitingFeedList } from "../recruiting/list.js";
-import { getMatchRoomPhase, isMatchClosedNotice, isPersonalRecordMatch, isSeedSampleMatch } from "../../../src/lib/matchUtils.js";
+import { getMatchRoomPhase, isMatchClosedNotice, isMatchRecordMatch, isPersonalRecordMatch, isSeedSampleMatch } from "../../../src/lib/matchUtils.js";
 
 const PROFILE_ME_COLUMNS = "id,name,handle,hashtag,position,region,region_sido,region_district,school,company,club,trust_score,streak,avatar_color,test_login_id,auth_user_id,birth_year,age_group,age_group_checked_season,onboarding_complete,profile_version,handle_locked_at,birth_year_locked_at,name_updated_at,discord_connection,discord_user_id,ratings,created_at,updated_at,app_settings";
 const PROFILE_CARD_COLUMNS = "id,name,handle,hashtag,position,region,trust_score,avatar_color,ratings,age_group,updated_at";
@@ -240,9 +240,10 @@ function filterActiveMatchCards(matches = [], activeOnly = false, options = {}) 
   const visibleMatches = (matches ?? []).filter((match) => !isSeedSampleMatch(match));
   if (!activeOnly) return visibleMatches;
   const includeRecentCompleted = options.includeRecentCompleted === true;
+  const includeRecordRooms = options.includeRecordRooms === true;
   return visibleMatches.filter((match) => (
     (includeRecentCompleted && match?.recentCompleted) ||
-    (!isSoloRecordMatch(match) && (
+    ((includeRecordRooms || (!isSoloRecordMatch(match) && !isMatchRecordMatch(match))) && (
       isMatchClosedNotice(match) ||
       (!ACTIVE_MATCH_EXCLUDED_PHASES.has(getMatchRoomPhase(match).phase) && !match?.recentCompleted)
     ))
@@ -935,7 +936,10 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   const shouldLoadClosedNotices = body.includeClosedNotices !== false && !recorderOnly && !completedOnly && activeOnly && !cursor;
   const allowLegacyFallback = isLegacyListFallbackAllowed(body);
   const filterMatchItems = (items = []) => {
-    let filtered = filterActiveMatchCards(items, activeOnly, { includeRecentCompleted: shouldLoadRecentCompleted });
+    let filtered = filterActiveMatchCards(items, activeOnly, {
+      includeRecentCompleted: shouldLoadRecentCompleted,
+      includeRecordRooms: recorderOnly,
+    });
     if (recorderOnly) filtered = filtered.filter((match) => isRecorderMatch(match, context.profileId, adminLevel >= 30));
     if (completedOnly) filtered = filtered.filter((match) => (
       match.status === "confirmed" &&

@@ -2100,6 +2100,7 @@ flowchart TD
 - `공개 모집`/`비공개 초대`는 `visibility` 기준이고, `개인전`/`팀전`은 실제 팀 파티/팀 id/`hostJoinMode` 기준이다.
 - `rules.recordType='solo'`인 내 기록은 경기 메뉴에 붙이지 않는다.
 - `rules.recordType='match_record'`인 경기기록방은 진행 메뉴의 기록 확인 흐름에 붙인다.
+- `/api/matches/list` 일반 일정 조회는 `match_record`를 제외하고, `recorderOnly` 조회에서만 경기기록방을 읽는다.
 
 ## 2026-07-06 경기 메뉴 관계/초대 판정
 
