@@ -67,6 +67,11 @@ export function isRecruitingTeamEntry(entry = {}) {
   return entry?.kind === "team" || entry?.joinMode === "team" || Boolean(entry?.teamId);
 }
 
+export function getRecruitingEntryLeaderId(entry = null, roomState = {}, hostPlayerId = "") {
+  if (!entry) return "";
+  return roomState?.partyLeaders?.[entry.id] ?? (entry.fixed ? hostPlayerId : entry.playerId) ?? "";
+}
+
 function compareCandidates(a, b) {
   const readyDiff = Number(b.status === "ready") - Number(a.status === "ready");
   if (readyDiff) return readyDiff;

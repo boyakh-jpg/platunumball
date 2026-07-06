@@ -61,6 +61,7 @@ import {
   getRecruitingApplicantKey,
   getRecruitingApplicantKind,
   getRecruitingBestSide,
+  getRecruitingEntryLeaderId,
   getRecruitingFit,
   getRecruitingLobby,
   getRecruitingRatingScale,
@@ -7305,15 +7306,10 @@ function getLobbyTeamEntry(lobby, sideName, teamId) {
   )) ?? null;
 }
 
-function getRecruitingEntryLeaderId(post = {}, roomState = {}, entry = null) {
-  if (!entry) return "";
-  return roomState.partyLeaders?.[entry.id] ?? (entry.fixed ? post.playerId : entry.playerId) ?? "";
-}
-
 function applyTeamOnlyRosterSummon(state, post, roomState, lobby, side, reserve, playerIds, teamId) {
   const team = (state.teams ?? []).find((item) => item.id === teamId);
   const entry = getLobbyTeamEntry(lobby, side, teamId);
-  const leaderId = getRecruitingEntryLeaderId(post, roomState, entry);
+  const leaderId = getRecruitingEntryLeaderId(entry, roomState, post.playerId);
   if (!team || !entry || leaderId !== state.currentUserId) {
     return {
       state,

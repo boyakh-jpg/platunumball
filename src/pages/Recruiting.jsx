@@ -36,6 +36,7 @@ import {
   MMR_RANGE_POLICIES,
   RECRUITING_JOIN_MODES,
   getRecruitingBestSide,
+  getRecruitingEntryLeaderId,
   getRecruitingFit,
   getRecruitingListCardLobby,
   getRecruitingLobby,
@@ -452,8 +453,7 @@ const ROOM_SLOT_BADGES = {
 };
 
 function getEntryPartyLeaderId(entry, hostPlayerId = "", roomState = {}) {
-  if (!entry) return "";
-  return roomState.partyLeaders?.[entry.id] ?? (entry.fixed ? hostPlayerId : entry.playerId) ?? "";
+  return getRecruitingEntryLeaderId(entry, roomState, hostPlayerId);
 }
 
 function getRecruitingSideLeaderId(lobby = {}, sideName = "", hostPlayerId = "", roomState = {}) {
