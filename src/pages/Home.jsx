@@ -12,7 +12,7 @@ import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { MAX_TEAM_MEMBERSHIPS, getTeamRoleLabel } from "../lib/constants.js";
 import { getRegisteredCourts } from "../lib/courts.js";
 import { getCourtHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
-import { canUserResolveMatchDispute, getAllowedStatFields, getMatchRecordWindow, getMatchRoomPhase, getMatchUserParticipantSideName, getPlayerStatSubmitted, getPublicRoomTimingStatus, getRoomScheduleLabel, isInstantRoom, isMatchRelatedToUser, isSeedSampleMatch, userNeedsMatchAction, userNeedsMatchAgreement, userNeedsMatchApproval } from "../lib/matchUtils.js";
+import { canUserResolveMatchDispute, getAllowedStatFields, getMatchRecordWindow, getMatchRoomPhase, getMatchUserParticipantSideName, getPlayerStatSubmitted, getPublicRoomTimingStatus, getRoomScheduleLabel, isInstantRoom, isMatchRelatedToUser, isPersonalRecordMatch, isSeedSampleMatch, userNeedsMatchAction, userNeedsMatchAgreement, userNeedsMatchApproval } from "../lib/matchUtils.js";
 import { getPendingRecruitingInvitations, getRecruitingLobby, getRecruitingRoomOwnerId, isRecruitingPostForUser } from "../lib/recruiting.js";
 import { getCurrentSeason, getPlayerSeasonRows, getSeasonProgress } from "../lib/season.js";
 import { getTier, getTierDivision, getTierDivisionNumber } from "../lib/tier.js";
@@ -94,7 +94,7 @@ function getHomeRecruitingMeta(post = {}) {
 }
 
 function getHomeMatchMeta(match = {}) {
-  const prefix = match.rules?.recordType === "solo" ? "개인 기록 · " : "";
+  const prefix = isPersonalRecordMatch(match) ? "개인 기록 · " : "";
   return `${prefix}${match.scheduledAt || getRoomScheduleLabel(match)} · ${match.court || "구장 미정"}`;
 }
 

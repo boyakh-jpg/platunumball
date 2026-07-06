@@ -7,7 +7,7 @@ import Card from "../components/common/Card.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
 import RuleSelector from "../components/match/RuleSelector.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
-import { MATCH_MODES, PLAYER_POSITIONS, PLAYER_STAT_FIELDS, REFEREE_TRUST_MIN, REGIONS, getCanonicalRegion, getHostTrustRequirement, getRoomKindFromDraft, getRoomKindLabel, isSameRegion } from "../lib/constants.js";
+import { MATCH_MODES, PLAYER_POSITIONS, PLAYER_STAT_FIELDS, RECORD_TYPES, REFEREE_TRUST_MIN, REGIONS, getCanonicalRegion, getHostTrustRequirement, getRoomKindFromDraft, getRoomKindLabel, isSameRegion } from "../lib/constants.js";
 import { getCourtLayoutLabel, getCourtPlayWarning, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
 import { getCourtHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { getPublicRoomMaxDateInput, isEligibleReferee } from "../lib/matchUtils.js";
@@ -470,7 +470,7 @@ export default function CreateMatch({ app }) {
   const isFavoriteTeam = (team) => favoriteTeamIds.includes(team.id);
   const isFavoriteCourt = (court) => favoriteCourtIds.includes(court.id);
   const [draft, setDraft] = useState({
-    recordType: "match",
+    recordType: RECORD_TYPES.match,
     visibility: "private",
     timingType: "scheduled",
     hostJoinMode: defaultHostJoinMode,
@@ -562,7 +562,7 @@ export default function CreateMatch({ app }) {
 
   const selectedTeamA = app.state.teams.find((team) => team.id === draft.teamAId);
   const selectedTeamB = app.state.teams.find((team) => team.id === draft.teamBId);
-  const isSoloRecord = draft.recordType === "solo";
+  const isSoloRecord = draft.recordType === RECORD_TYPES.personalRecord;
   const soloRosterError = useMemo(
     () => getSoloRecordRosterError(draft.mode, draft.soloTeamAPlayersText, draft.soloTeamBPlayersText),
     [draft.mode, draft.soloTeamAPlayersText, draft.soloTeamBPlayersText],
@@ -1157,7 +1157,7 @@ export default function CreateMatch({ app }) {
       setSubmitting(true);
       const matchId = await app.actions.createMatch({
         ...draft,
-        recordType: "solo",
+        recordType: RECORD_TYPES.personalRecord,
         visibility: "private",
         ranked: false,
         official: false,
@@ -1274,7 +1274,7 @@ export default function CreateMatch({ app }) {
             <button
               type="button"
               className={draft.visibility === "private" && !isSoloRecord ? "active" : ""}
-              onClick={() => update({ recordType: "match", visibility: "private", mode: getMatchModeOrDefault(draft.mode, defaultMode), ranked: true, official: true, preRegistered: true })}
+              onClick={() => update({ recordType: RECORD_TYPES.match, visibility: "private", mode: getMatchModeOrDefault(draft.mode, defaultMode), ranked: true, official: true, preRegistered: true })}
             >
               <Lock size={19} />
               <span>
@@ -1292,12 +1292,12 @@ export default function CreateMatch({ app }) {
                 const nextCapacity = getRecruitingSideCapacity({ mode: nextMode });
                 const playerIds = hostJoinMode === "team" ? getDefaultTeamPlayerIds(team, nextCapacity, [], app.currentUser.id) : [];
                 update({
-                  recordType: "match",
+                  recordType: RECORD_TYPES.match,
                   visibility: "public",
                   mode: nextMode,
-                  ranked: draft.recordType === "solo" ? true : draft.ranked,
-                  official: draft.recordType === "solo" ? true : draft.official,
-                  preRegistered: draft.recordType === "solo" ? true : draft.preRegistered,
+                  ranked: draft.recordType === RECORD_TYPES.personalRecord ? true : draft.ranked,
+                  official: draft.recordType === RECORD_TYPES.personalRecord ? true : draft.official,
+                  preRegistered: draft.recordType === RECORD_TYPES.personalRecord ? true : draft.preRegistered,
                   hostJoinMode,
                   teamOnly: hostJoinMode === "team" ? draft.teamOnly : false,
                   teamAId: team?.id ?? draft.teamAId,
@@ -1316,7 +1316,7 @@ export default function CreateMatch({ app }) {
             </button>
             <button type="button" className={isTournamentRoom ? "active" : ""} onClick={() => {
               setTeamRegion("전체");
-              update({ recordType: "match", visibility: "tournament", mode: getMatchModeOrDefault(draft.mode, defaultMode), timingType: "scheduled", tournamentTeamIds: draft.tournamentTeamIds?.length ? draft.tournamentTeamIds : [defaultTournamentTeamA?.id, defaultTournamentTeamB?.id].filter(Boolean) });
+              update({ recordType: RECORD_TYPES.match, visibility: "tournament", mode: getMatchModeOrDefault(draft.mode, defaultMode), timingType: "scheduled", tournamentTeamIds: draft.tournamentTeamIds?.length ? draft.tournamentTeamIds : [defaultTournamentTeamA?.id, defaultTournamentTeamB?.id].filter(Boolean) });
             }}>
               <Trophy size={19} />
               <span>
@@ -1328,7 +1328,7 @@ export default function CreateMatch({ app }) {
               type="button"
               className={isSoloRecord ? "active" : ""}
               onClick={() => update({
-                recordType: "solo",
+                recordType: RECORD_TYPES.personalRecord,
                 visibility: "private",
                 timingType: "scheduled",
                 hostJoinMode: "player",
@@ -1338,7 +1338,7 @@ export default function CreateMatch({ app }) {
                 official: false,
                 preRegistered: false,
                 mmrLimitMode: "off",
-                title: draft.recordType === "solo" ? draft.title : "개인 기록",
+                title: draft.recordType === RECORD_TYPES.personalRecord ? draft.title : "개인 기록",
                 scheduledDate: today,
                 playerIds: [],
                 reservePlayerIds: [],

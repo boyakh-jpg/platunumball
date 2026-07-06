@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import Card from "../components/common/Card.jsx";
 import { PLAYER_STAT_FIELDS } from "../lib/constants.js";
-import { formatStatLine } from "../lib/matchUtils.js";
+import { formatStatLine, isPersonalRecordMatch } from "../lib/matchUtils.js";
 import { MatchRoomModal } from "./Matches.jsx";
 
 function compareRecent(a, b) {
@@ -66,7 +66,7 @@ function getTotals(records, userId) {
 }
 
 function getRecordMetaPrefix(match) {
-  return match.rules?.recordType === "solo" ? "개인 기록 · " : "";
+  return isPersonalRecordMatch(match) ? "개인 기록 · " : "";
 }
 
 export default function ProfileRecords({ app }) {

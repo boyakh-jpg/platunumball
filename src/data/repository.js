@@ -9,6 +9,7 @@ import {
   MODE_SIZES,
   PLAYER_STAT_FIELDS,
   PLAYER_POSITIONS,
+  RECORD_TYPES,
   REFEREE_ABSENCE_TRUST_PENALTY,
   REFEREE_TRUST_MIN,
   STAT_ENTRY_WINDOW_MINUTES,
@@ -48,6 +49,7 @@ import {
   isEligibleReferee,
   isMatchReferee,
   isMatchStatRecorder,
+  isPersonalRecordMatch,
   normalizeStatRecorders,
   normalizePlayerStats,
 } from "../lib/matchUtils.js";
@@ -3723,7 +3725,7 @@ function createSoloRecordMatch(state, draft = {}) {
   };
   const selectedCourt = getRegisteredCourts(state).find((court) => court.name === draft.court || court.id === getCourtId(draft)) ?? null;
   const rules = {
-    recordType: "solo",
+    recordType: RECORD_TYPES.personalRecord,
     mmrExcludedPlayerIds,
     playedPlayerIds,
     statRecorders: {},
@@ -3798,7 +3800,7 @@ function createSoloRecordMatch(state, draft = {}) {
 }
 
 export function createMatch(state, draft) {
-  if (draft?.recordType === "solo") return createSoloRecordMatch(state, draft);
+  if (draft?.recordType === RECORD_TYPES.personalRecord) return createSoloRecordMatch(state, draft);
   const disciplineBlock = getDisciplineBlockedState(state, "경기방 생성");
   if (disciplineBlock) return disciplineBlock;
   const hostTrustBlock = getHostTrustBlockNotification(state, { ...draft, visibility: "private" });
@@ -5072,7 +5074,7 @@ function makeAnonymousMatchPlayer(playerId, name, position = SOLO_RECORD_ANONYMO
 
 export function deleteSoloRecord(state, matchId) {
   const match = state.matches.find((item) => item.id === matchId);
-  if (!match || match.rules?.recordType !== "solo" || match.createdBy !== state.currentUserId || match.status === "cancelled") return state;
+  if (!match || !isPersonalRecordMatch(match) || match.createdBy !== state.currentUserId || match.status === "cancelled") return state;
   const nowIso = new Date().toISOString();
 
   return {

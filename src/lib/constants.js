@@ -10,6 +10,12 @@ export const MODE_SIZES = MATCH_MODES.reduce((map, mode) => {
   return map;
 }, {});
 
+export const RECORD_TYPES = Object.freeze({
+  match: "match",
+  matchRecord: "match_record",
+  personalRecord: "solo",
+});
+
 export const ROOM_KINDS = Object.freeze({
   publicRecruiting: "public_recruiting",
   privateInvite: "private_invite",
@@ -49,8 +55,8 @@ export function getRoomKindLabel(roomKind = "") {
 }
 
 export function getRoomKindFromDraft(draft = {}) {
-  if (draft.recordType === "solo") return ROOM_KINDS.personalRecord;
-  if (draft.recordType === "match_record") return ROOM_KINDS.matchRecord;
+  if (draft.recordType === RECORD_TYPES.personalRecord) return ROOM_KINDS.personalRecord;
+  if (draft.recordType === RECORD_TYPES.matchRecord) return ROOM_KINDS.matchRecord;
   if (draft.visibility === "tournament") return ROOM_KINDS.tournament;
   if (draft.visibility === "public") return ROOM_KINDS.publicRecruiting;
   return ROOM_KINDS.privateInvite;

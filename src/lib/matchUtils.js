@@ -2,7 +2,9 @@ import {
   DISPUTE_WINDOW_MINUTES,
   INSTANT_ROOM_EXPIRE_MINUTES,
   PLAYER_STAT_FIELDS,
+  RECORD_TYPES,
   REFEREE_TRUST_MIN,
+  ROOM_KINDS,
   STAT_ENTRY_WINDOW_MINUTES,
 } from "./constants.js";
 
@@ -27,6 +29,66 @@ export function getMatchDisputeScore(match = {}, sideName = "") {
   const resultKey = sideName === "teamA" ? "scoreA" : "scoreB";
   if (!resultKey) return 0;
   return Number(match.result?.[resultKey] ?? match[sideName]?.score ?? 0);
+}
+
+export function getMatchRecordType(match = {}) {
+  return match?.rules?.recordType ?? match?.recordType ?? RECORD_TYPES.match;
+}
+
+export function isPersonalRecordMatch(match = {}) {
+  return getMatchRecordType(match) === RECORD_TYPES.personalRecord;
+}
+
+export function isMatchRecordMatch(match = {}) {
+  return getMatchRecordType(match) === RECORD_TYPES.matchRecord;
+}
+
+export function isRecordKindMatch(match = {}) {
+  return isPersonalRecordMatch(match) || isMatchRecordMatch(match);
+}
+
+export function getRoomKindFromMatch(match = {}) {
+  if (isPersonalRecordMatch(match)) return ROOM_KINDS.personalRecord;
+  if (isMatchRecordMatch(match)) return ROOM_KINDS.matchRecord;
+  if (match.tournamentId) return ROOM_KINDS.tournament;
+  return (match.visibility ?? match.rules?.visibility) === "public" ? ROOM_KINDS.publicRecruiting : ROOM_KINDS.privateInvite;
+}
+
+export function evaluateRecordVerification(match = {}) {
+  const recordType = getMatchRecordType(match);
+  const ranked = match.ranked !== false;
+  const result = match.disputeDraftResult ?? match.result;
+  const hasResult = Boolean(result);
+  const disputed = match.status === "disputed" || Boolean(match.disputeDraftResult);
+  const teamAId = match.teamA?.teamId ?? "";
+  const teamBId = match.teamB?.teamId ?? "";
+  const isTeamRecord = Boolean(teamAId && teamBId);
+  const anonymousIds = new Set(Object.keys(match.anonymousPlayers ?? {}));
+  const excludedIds = new Set([...(match.mmrExcludedPlayerIds ?? []), ...(match.rules?.mmrExcludedPlayerIds ?? [])]);
+  const playerIds = getMatchRecordPlayerIds(match);
+  const mmrEligiblePlayerIds = playerIds.filter((playerId) => !anonymousIds.has(playerId) && !excludedIds.has(playerId));
+  const hasMmrBlockedPlayer = playerIds.some((playerId) => anonymousIds.has(playerId) || excludedIds.has(playerId));
+  const blockingReasons = [];
+
+  if (isPersonalRecordMatch(match)) blockingReasons.push("내 기록은 검증/MMR 대상이 아님");
+  if (!hasResult) blockingReasons.push("결과 없음");
+  if (disputed) blockingReasons.push("이의 처리 필요");
+  if (isTeamRecord && hasMmrBlockedPlayer) blockingReasons.push("팀 MMR 제외 선수가 있음");
+  if (!isTeamRecord && getMatchRecordType(match) === RECORD_TYPES.matchRecord) blockingReasons.push("팀 MMR 대상 아님");
+
+  const canVerify = !isPersonalRecordMatch(match) && hasResult && !disputed;
+  return {
+    recordType,
+    roomKind: getRoomKindFromMatch(match),
+    canSave: true,
+    canConfirm: isMatchRecordMatch(match) && hasResult,
+    canVerify,
+    canApplyPersonalMmr: canVerify && ranked && mmrEligiblePlayerIds.length > 0,
+    canApplyTeamMmr: canVerify && ranked && isTeamRecord && !hasMmrBlockedPlayer,
+    isTeamRecord,
+    mmrEligiblePlayerIds,
+    blockingReasons,
+  };
 }
 
 export function getMatchPlayerDisputePoints(match = {}, playerId = "") {
@@ -446,7 +508,7 @@ export function getMatchScheduledDate(match = {}) {
 }
 
 export function isMatchClosedNotice(match = {}, now = new Date()) {
-  if (match.rules?.recordType === "solo") return false;
+  if (isRecordKindMatch(match)) return false;
   const status = String(match.status ?? "");
   if (status === "cancelled" || status === "void") return true;
   if (status === "confirmed" || status === "closed") return false;

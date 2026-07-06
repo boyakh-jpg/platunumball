@@ -49,6 +49,7 @@ import {
   isMatchReferee,
   isMatchStatRecorder,
   isMatchTrustFeedbackOpen,
+  isPersonalRecordMatch,
 } from "../lib/matchUtils.js";
 import "../styles/matchroom-arena.css";
 
@@ -343,7 +344,7 @@ export default function MatchRoom({ app }) {
   const canSubmitLiveResult = currentUserCanSubmit && match.status === "agreed" && recordWindow.beforeEnd && !recordWindow.beforeStart;
   const canSubmitResult = canEditDisputeDraft || canSubmitLiveResult || (currentUserCanSubmit && ((["agreed", "approval"].includes(match.status) && recordWindow.statOpen) || currentUserCanSubmitMissingPostgameResult));
   const canCancel = ["contract", "agreed"].includes(match.status) && (startedAuthorityPhase ? currentUserCanOperateStartedMatch : isMatchHost);
-  const isSoloRecord = match.rules?.recordType === "solo";
+  const isSoloRecord = isPersonalRecordMatch(match);
   const matchApprovalOpen = Boolean(match.result && (match.status === "approval" || (match.status === "agreed" && match.endedAt && !recordWindow.disputeExpired)));
   const canDispute = matchApprovalOpen && recordWindow.disputeOpen && currentUserCanFileDispute;
   const canRequestOwnPointDispute = canDispute && getMatchRecordPlayerIds(match).includes(app.currentUser.id);

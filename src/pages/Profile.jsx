@@ -8,6 +8,7 @@ import RatingCard from "../components/rating/RatingCard.jsx";
 import ShareCard from "../components/share/ShareCard.jsx";
 import { PLAYER_POSITIONS } from "../lib/constants.js";
 import { getUserHashtag } from "../lib/handles.js";
+import { isPersonalRecordMatch } from "../lib/matchUtils.js";
 import { canChangeProfileName, getNextNameChangeDate, inferRegionSelection, REGION_TREE } from "../lib/profileSetup.js";
 import { MatchRoomModal } from "./Matches.jsx";
 
@@ -78,7 +79,7 @@ function formatDate(date) {
 }
 
 function getRecordMetaPrefix(match) {
-  return match.rules?.recordType === "solo" ? "개인 기록 · " : "";
+  return isPersonalRecordMatch(match) ? "개인 기록 · " : "";
 }
 
 function RecentRecordCard({ records, userId, onOpenRecord, loading = false }) {

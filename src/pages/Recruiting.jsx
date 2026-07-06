@@ -81,6 +81,7 @@ import {
   isEligibleReferee,
   isInstantRoom,
   isMatchReferee,
+  isPersonalRecordMatch,
 } from "../lib/matchUtils.js";
 import "../styles/recruiting-arena.css";
 import "../styles/matches-arena.css";
@@ -2254,7 +2255,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
     onClose?.();
   };
   const deleteSourceSoloRecord = (match) => {
-    if (!match?.id || match.rules?.recordType !== "solo" || match.createdBy !== app.currentUser.id) return;
+    if (!match?.id || !isPersonalRecordMatch(match) || match.createdBy !== app.currentUser.id) return;
     setSoloRecordDeleteTarget(match);
   };
   const confirmDeleteSourceSoloRecord = () => {
@@ -2841,7 +2842,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
           sourceMatch ? getAllowedResultStatFields(sourceMatch, app.currentUser.id, playerId, false) : []
         );
         const canCancelSourceMatch = Boolean(matchRoom && sourceMatch && ["contract", "agreed"].includes(sourceMatch.status) && (sourceMatchStarted || sourceMatch.endedAt || sourceMatch.result ? currentUserCanOperateStartedSourceMatch : mine));
-        const canDeleteSourceSoloRecord = Boolean(matchRoom && sourceMatch?.rules?.recordType === "solo" && sourceMatch.createdBy === app.currentUser.id && sourceMatch.status !== "cancelled");
+        const canDeleteSourceSoloRecord = Boolean(matchRoom && isPersonalRecordMatch(sourceMatch) && sourceMatch.createdBy === app.currentUser.id && sourceMatch.status !== "cancelled");
         const sourceMatchRecordWindow = sourceMatch ? getMatchRecordWindow(sourceMatch) : null;
         const sourceMatchApprovalOpen = Boolean(
           sourceMatch?.result &&

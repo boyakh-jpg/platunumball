@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { getAuthenticatedContext, readJsonBody, sendJson, toArray } from "../_supabaseAdmin.js";
+import { RECORD_TYPES } from "../../../src/lib/constants.js";
 import {
   applyAuthoritativeMatchOperation,
   getOperation,
@@ -777,7 +778,7 @@ const AUTHORITATIVE_REPLAY_MATCH_ACTIONS = new Set([
 ]);
 
 function isSoloRecordMatch(match = {}) {
-  return match?.rules?.recordType === "solo";
+  return match?.rules?.recordType === RECORD_TYPES.personalRecord;
 }
 
 function shouldReplaceMatchResult(action, match = {}) {
@@ -825,8 +826,8 @@ function canDeleteSoloRecord(profileId, existingMatch, nextMatch) {
   return Boolean(
     profileId &&
     existingMatch?.created_by === profileId &&
-    existingMatch?.rules?.recordType === "solo" &&
-    nextMatch?.rules?.recordType === "solo" &&
+    existingMatch?.rules?.recordType === RECORD_TYPES.personalRecord &&
+    nextMatch?.rules?.recordType === RECORD_TYPES.personalRecord &&
     nextMatch?.status === "cancelled"
   );
 }

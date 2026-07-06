@@ -18,8 +18,10 @@ import {
   getMatchHostPlayerId,
   getMatchReservePlayerIds,
   getMatchRoomPhase,
+  isMatchRecordMatch,
   isMatchClosedNotice,
   isMatchRelatedToUser,
+  isPersonalRecordMatch,
   isInstantRoom,
   userNeedsMatchAction,
 } from "../lib/matchUtils.js";
@@ -65,7 +67,6 @@ const SCHEDULE_BRANCH_FILTERS = [
   { id: "private", label: "비공개 초대" },
   { id: "player", label: "개인전" },
   { id: "team", label: "팀전" },
-  { id: "record", label: "기록방" },
 ];
 const AUTO_ROOM_TITLE_PREFIX_PATTERN = /^(동의 대기|진행 예정|결과 승인|이의 확인|이의제기|확정|결과 입력|확정방|경기준비|경기시작|경기종료|결과승인|이의신청|기록 확정)\s*·\s*/;
 const GENERIC_ROOM_TITLE_PATTERN = /^(경기|경기방|매치 큐|정규전|친선전|동의 대기|진행 예정|결과 승인|이의 확인|이의제기|확정|결과 입력|확정방|확정 준비\s*\d*|모집 중\s*\d*|경기준비|경기시작|경기종료|결과승인|이의신청|기록 확정)$/;
@@ -339,7 +340,7 @@ function getMatchActionLabel(match) {
 }
 
 function shouldShowMatchForView(match, view, userId, options = {}) {
-  if (match?.rules?.recordType === "solo") return Boolean(options.includeRecordRooms && view.id === "active");
+  if (isPersonalRecordMatch(match) || isMatchRecordMatch(match)) return false;
   const closedNotice = isMatchClosedNotice(match);
   const phase = getMatchRoomPhase(match).phase;
   if (view.id === "active") {
@@ -382,7 +383,7 @@ function matchesScheduleRelation(relation = "", relationFilter = "all") {
 }
 
 function isScheduleRecordRoom(item = {}) {
-  return item?.rules?.recordType === "solo" || item?.recordType === "solo";
+  return isPersonalRecordMatch(item) || isMatchRecordMatch(item);
 }
 
 function isScheduleTeamRoom(item = {}, type = "match") {
@@ -404,7 +405,6 @@ function matchesScheduleBranch(item = {}, type = "match", branchFilter = "all") 
   const isRecord = isScheduleRecordRoom(item);
   const isTeam = isScheduleTeamRoom(item, type);
   const visibility = getScheduleVisibility(item);
-  if (branchFilter === "record") return isRecord;
   if (branchFilter === "team") return !isRecord && isTeam;
   if (branchFilter === "player") return !isRecord && !isTeam;
   if (branchFilter === "public") return !isRecord && visibility === "public";
@@ -515,7 +515,7 @@ export function getMatchRoomPost(match, state) {
   const sourcePostLobby = sourcePost ? getRecruitingLobby(sourcePost, sourceState) : null;
   const hostPlayerId = getMatchHostPlayerId(sourceMatch, sourcePost);
   const sideCapacity = getRoomCapacity(sourceMatch);
-  const soloRecord = sourceMatch.rules?.recordType === "solo";
+  const soloRecord = isPersonalRecordMatch(sourceMatch);
   const soloPlayedPlayerIds = sourceMatch.playedPlayerIds ?? sourceMatch.rules?.playedPlayerIds ?? {};
   const sourceTeamAPlayers = uniquePlayerIds(soloRecord ? soloPlayedPlayerIds.teamA ?? [] : sourceMatch.teamA?.players ?? []);
   const sourceTeamBPlayers = uniquePlayerIds(soloRecord ? soloPlayedPlayerIds.teamB ?? [] : sourceMatch.teamB?.players ?? []);
@@ -857,9 +857,6 @@ export default function Matches({ app }) {
   const matchesById = useMemo(() => Object.fromEntries(app.state.matches.map((match) => [match.id, match])), [app.state.matches]);
   const requestedMatchDetailsRef = useRef(new Set());
   const scheduleLoadRequestedRef = useRef("");
-  useEffect(() => {
-    if (branchFilter === "record" && viewId !== "active") setViewId("active");
-  }, [branchFilter, viewId]);
   const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
   const courtByName = useMemo(() => Object.fromEntries(registeredCourts.map((court) => [court.name, court])), [registeredCourts]);
   const myTeamIds = useMemo(
@@ -1066,7 +1063,7 @@ export default function Matches({ app }) {
   const scheduleItemsByView = useMemo(() => Object.fromEntries(
     VIEWS.map((view) => [
       view.id,
-      getScheduleItemsForView(filteredMatches, dateScopedRecruitingCandidates, view, app.currentUser.id, hasDateFilter, { includeRecordRooms: branchFilter === "record" }),
+      getScheduleItemsForView(filteredMatches, dateScopedRecruitingCandidates, view, app.currentUser.id, hasDateFilter),
     ]),
   ), [app.currentUser.id, branchFilter, dateScopedRecruitingCandidates, filteredMatches, hasDateFilter]);
   const visibleScheduleItems = scheduleItemsByView[viewId] ?? [];
