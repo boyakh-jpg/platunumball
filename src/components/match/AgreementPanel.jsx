@@ -17,7 +17,7 @@ export default function AgreementPanel({ match, teams, users, currentUserId, onA
       <div>
         <div className="approval-side-header">
           <strong>{side.name}</strong>
-          <span>{status.approvals.length}/{status.majority} · {status.captainRequired ? "팀장 READY" : "과반 동의"}</span>
+          <span>{status.approvals.length}/{status.majority} · {status.captainRequired ? "팀장 동의" : "과반 동의"}</span>
         </div>
         <div className="approval-voter-list">
           {side.players.map((playerId) => {
@@ -41,7 +41,7 @@ export default function AgreementPanel({ match, teams, users, currentUserId, onA
               >
                 <span className="avatar small" style={{ "--avatar": user?.avatarColor }}>{user?.name?.slice(0, 1) ?? "P"}</span>
                 <strong>{user?.name ?? "플레이어"}</strong>
-                <em>{agreed ? "READY" : canCurrentUserAgree ? (captain ? "팀장 READY" : "내 동의") : status.captainRequired ? "팀장 대기" : "대리 불가"}</em>
+                <em>{agreed ? "동의" : canCurrentUserAgree ? (captain ? "팀장 동의" : "내 동의") : status.captainRequired ? "팀장 대기" : "대리 불가"}</em>
               </button>
             );
           })}
@@ -63,7 +63,7 @@ export default function AgreementPanel({ match, teams, users, currentUserId, onA
       <div className="approval-status-strip">
         <span>A {teamAStatus.approvals.length}/{teamAStatus.majority}</span>
         <span>B {teamBStatus.approvals.length}/{teamBStatus.majority}</span>
-        <span>{teamAStatus.captainRequired || teamBStatus.captainRequired ? "팀장 READY" : "과반"}</span>
+        <span>{teamAStatus.captainRequired || teamBStatus.captainRequired ? "팀장 동의" : "과반"}</span>
       </div>
       <div className="approval-grid">
         {renderSide("teamA")}

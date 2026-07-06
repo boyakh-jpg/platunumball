@@ -6611,10 +6611,10 @@ html[data-theme="light"] .arena-queue-board-head .arena-room-list-state.green {
 
 .arena-room-player-slot.ready em,
 .arena-room-player-slot.ready .arena-room-slot-ready,
-.arena-room-player-slot.ready [title="READY"],
+.arena-room-player-slot.ready [title="참가"],
 html[data-theme="light"] .arena-room-player-slot.ready em,
 html[data-theme="light"] .arena-room-player-slot.ready .arena-room-slot-ready,
-html[data-theme="light"] .arena-room-player-slot.ready [title="READY"] {
+html[data-theme="light"] .arena-room-player-slot.ready [title="참가"] {
   color: var(--rb-green);
 }
 

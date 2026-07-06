@@ -37,7 +37,6 @@ import {
   setRecruitingPartyPlayerPlacement,
   setRecruitingPartyPlayerReserve,
   setRecruitingTeamPartyRoster,
-  setRecruitingReady,
   setRecruitingSlotPosition,
   setRecruitingStatRecorder,
   startMatch,
@@ -250,9 +249,6 @@ export function applyAuthoritativeRecruitingOperation(state, operation = {}) {
       break;
     case "cancelRecruitingParticipation":
       next = cancelRecruitingParticipation(state, operation.postId);
-      break;
-    case "setRecruitingReady":
-      next = setRecruitingReady(state, operation.postId, operation.ready);
       break;
     case "updateRecruitingRoomRules":
       next = updateRecruitingRoomRules(state, operation.postId, operation.patch ?? {});

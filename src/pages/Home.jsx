@@ -269,26 +269,6 @@ export default function Home({ app }) {
         return null;
       })
       .filter(Boolean);
-    const readyRoomItems = (app.state.recruitingPosts ?? [])
-      .filter((post) => post.status === "open" && getRecruitingRoomOwnerId(post) !== user.id)
-      .map((post) => ({ post, lobby: getRecruitingLobby(post, app.state) }))
-      .map(({ post, lobby }) => ({
-        post,
-        entry: (lobby.entries ?? []).find((entry) => (
-          (entry.players ?? []).includes(user.id) ||
-          (entry.reserves ?? []).includes(user.id)
-        )),
-      }))
-      .filter(({ entry }) => entry && entry.status !== "ready")
-      .map(({ post }) => ({
-        id: `ready-room-${post.id}`,
-        priority: 1,
-        label: "수락",
-        title: post.title,
-        meta: getHomeRecruitingMeta(post),
-        href: `/app/recruiting?post=${post.id}`,
-        icon: ClipboardCheck,
-      }));
     const confirmableRoomItems = (app.state.recruitingPosts ?? [])
       .filter((post) => post.status === "open" && getRecruitingRoomOwnerId(post) === user.id)
       .map((post) => ({ post, lobby: getRecruitingLobby(post, app.state), timing: getPublicRoomTimingStatus(post) }))
@@ -342,7 +322,7 @@ export default function Home({ app }) {
         icon: ShieldAlert,
       }));
 
-    return [...invitationItems, ...teamInvitationItems, ...tournamentInviteItems, ...readyRoomItems, ...confirmableRoomItems, ...matchItems, ...cancelledRoomItems]
+    return [...invitationItems, ...teamInvitationItems, ...tournamentInviteItems, ...confirmableRoomItems, ...matchItems, ...cancelledRoomItems]
       .sort((a, b) => a.priority - b.priority || String(a.meta).localeCompare(String(b.meta)));
   }, [app.state, app.state.matches, app.state.recruitingPosts, app.state.tournaments, captainTeamIds, myTeamIds, pendingInvitations, pendingTeamInvitations, teamById, user.id]);
   const priorityItems = actionItems.slice(0, 5);

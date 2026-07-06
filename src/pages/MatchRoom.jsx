@@ -52,7 +52,7 @@ import {
 import "../styles/matchroom-arena.css";
 
 const statusMeta = {
-  contract: { label: "WAIT", tone: "blue" },
+  contract: { label: "대기", tone: "blue" },
   agreed: { label: "진행 예정", tone: "green" },
   approval: { label: "결과 승인 대기", tone: "orange" },
   disputed: { label: "이의제기 보류", tone: "orange" },
@@ -400,8 +400,8 @@ export default function MatchRoom({ app }) {
               ? { tone: "captain", label: "사이드장" }
               : null;
           const slotLabel = match.status === "contract"
-            ? ready ? "READY" : "WAIT"
-            : sideLeader ? "LEAD" : "READY";
+            ? ready ? "동의" : "대기"
+            : sideLeader ? "리더" : "참가";
 
           return (
             <PlayerHoverCard key={playerId} user={user} teams={app.state.teams} className={ready ? "gm-player-slot ready" : "gm-player-slot"}>
@@ -551,7 +551,7 @@ export default function MatchRoom({ app }) {
         };
       }
       return {
-        label: "WAIT",
+        label: "대기",
         detail: "남은 참가자가 동의하면 예정 경기로 넘어간다.",
       };
     }

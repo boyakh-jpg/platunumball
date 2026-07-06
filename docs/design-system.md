@@ -965,3 +965,10 @@ UI 수정 전:
 4. Recruiting room join submit locks the button with `참여 중` while the server action is pending. Success or direct `?post=` entry must leave the room detail selected, or show only the shared basketball loader until detail arrives.
 5. 즉시 모집방 일정 문구는 Home, Matches, Recruiting 목록, 방 모달에서 `즉시 · HH:mm 종료` 형식으로 종료 시각을 같이 보여준다.
 6. 팀 메뉴의 내 팀 관리 행은 대표팀 상태/설정 버튼을 같은 행 오른쪽에 둔다. 현재 대표팀은 orange primary 버튼으로 표시하고, 다른 팀은 secondary `대표 설정` 버튼을 쓴다.
+
+## 2026-07-06 recruiting ready removal UI
+
+1. Recruiting room slots do not show literal `READY`/`WAIT` labels. Use short participation labels such as `참가`/`대기` while preserving existing slot color states.
+2. `/app/recruiting` filter controls show public queue filters only. Created, joined, and invited relation controls are not shown in the public matching queue.
+3. Public queue cards do not need relationship chips like `내가 만든 방` or `초대받음`; those belong to direct action surfaces.
+4. Match agreement UI uses `동의`/`대기` labels instead of literal `READY`/`WAIT`; this is a label cleanup, not a match phase change.

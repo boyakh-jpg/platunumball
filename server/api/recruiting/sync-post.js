@@ -632,7 +632,6 @@ const OWNER_RECRUITING_ACTIONS = new Set([
 
 const PARTICIPANT_RECRUITING_ACTIONS = new Set([
   "sendRecruitingChat",
-  "setRecruitingReady",
   "cancelRecruitingParticipation",
   "acceptRecruitingInvitation",
   "declineRecruitingInvitation",
@@ -672,7 +671,6 @@ const AUTHORITATIVE_REPLAY_RECRUITING_ACTIONS = new Set([
   "declineRecruitingInvitation",
   "sendRecruitingChat",
   "joinRecruitingSideParty",
-  "setRecruitingReady",
   "setRecruitingApplicantPlacement",
   "setRecruitingApplicantReserve",
   "setRecruitingSlotPosition",
@@ -688,7 +686,6 @@ const AUTHORITATIVE_REPLAY_RECRUITING_ACTIONS = new Set([
 
 const SQL_REDUCER_RECRUITING_ACTIONS = new Set([
   "cancelRecruitingParticipation",
-  "setRecruitingReady",
   "setRecruitingSlotPosition",
 ]);
 
@@ -708,7 +705,6 @@ function isMissingSqlReducer(error = {}) {
     message.includes("rankball_recruiting_slot_position_action") ||
     message.includes("rankball_recruiting_cancel_participation_action") ||
     message.includes("rankball_recruiting_applicant_placement_action") ||
-    message.includes("rankball_recruiting_ready_action") ||
     message.includes("rankball_recruiting_interest_player_action")
   );
 }
@@ -793,24 +789,6 @@ async function loadSyncedRecruitingState(context, postId = "") {
 }
 
 async function applySqlRecruitingAction(context, operation = {}) {
-  if (operation.action === "setRecruitingReady") {
-    const { data, error } = await context.supabase.rpc("rankball_recruiting_ready_action", {
-      p_actor_profile_id: context.profileId,
-      p_post_id: operation.postId,
-      p_ready: operation.ready !== false,
-    });
-    if (error) {
-      if (isMissingSqlReducer(error)) return null;
-      throw error;
-    }
-    if (data?.fallback) return null;
-    return {
-      ok: true,
-      ...(data && typeof data === "object" ? data : {}),
-      postId: operation.postId,
-    };
-  }
-
   if (operation.action === "setRecruitingApplicantPlacement") {
     const placement = operation.placement && typeof operation.placement === "object"
       ? operation.placement
@@ -1008,14 +986,6 @@ function validateLockedRecruitingCore(profileId, existingPost, nextPost, body = 
   const existingCore = getRecruitingCoreSnapshot(existingPost);
   const nextCore = getRecruitingCoreSnapshot(nextPost);
   if (actionCanAssignReferee(profileId, existingPost, body)) existingCore.refereeId = nextCore.refereeId;
-  if (
-    action === "setRecruitingApplicantPlacement" &&
-    existingCore.playerId === profileId &&
-    String(body.playerId ?? "") === profileId
-  ) {
-    existingCore.hostSide = nextCore.hostSide;
-  }
-
   if (!sameJson(existingCore, nextCore)) reject(403, "recruiting_core_locked");
 }
 

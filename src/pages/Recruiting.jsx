@@ -2,7 +2,6 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { createPortal } from "react-dom";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
-  CheckCircle2,
   CalendarDays,
   Clock3,
   Copy,
@@ -174,7 +173,6 @@ function getStartDateFilterOptions() {
 const RECRUITING_FILTER_PAGE_LIMIT = 50;
 export const RECRUITING_ROOM_REFRESH_INTERVAL_MS = 15000;
 const RECRUITING_FILTER_DEBOUNCE_MS = 250;
-const RECRUITING_RELATION_SCOPES = new Set(["created", "joined", "invited"]);
 
 function getMaxInputValue() {
   return getPublicRoomMaxDateInput();
@@ -677,7 +675,6 @@ export function getRecruitingRoomStatus(lobby, { post = null, myEntry = null, mi
       : { label: "대기방", tone: "green", detail: "방장 경기 확정 대기" };
   }
   if (!lobby.projectedFull) return { label: "대기방", tone: "blue", detail: timingStatus?.timingType === "instant" ? "즉시 모집 중" : "모집 중" };
-  if (!mine && myEntry?.status && myEntry.status !== "ready") return { label: "대기방", tone: "orange", detail: "내 확인 필요" };
   return { label: "대기방", tone: "orange", detail: "참여 확인 중" };
 }
 
@@ -830,9 +827,9 @@ function QueueRoomBoard({ post, lobby }) {
   );
 }
 
-function FillSlot({ candidate, lobby, userById, teams, hostPlayerId = "", currentUserId = "", showCaptainBadge = false, roomState = {}, sideLeaderId = "", readyText = "READY", slotPositions = {}, canManageEntry = null, onSelfAction }) {
+function FillSlot({ candidate, lobby, userById, teams, hostPlayerId = "", currentUserId = "", showCaptainBadge = false, roomState = {}, sideLeaderId = "", readyText = "참가", slotPositions = {}, canManageEntry = null, onSelfAction }) {
   const user = candidate ? userById[candidate.playerId] : null;
-  const readyLabel = candidate?.status === "ready" ? "READY" : "WAIT";
+  const readyLabel = candidate?.status === "ready" ? "참가" : "대기";
   const entry = candidate ? (lobby.entries ?? []).find((item) => item.id === candidate.entryId) : null;
   const badge = getRoomSlotBadge(candidate?.playerId, entry, hostPlayerId, showCaptainBadge, roomState, { showPartyBadge: !candidate?.reserve, sideLeaderId });
   const isSelfSlot = candidate?.playerId === currentUserId;
@@ -1068,7 +1065,7 @@ export function SideRoster({
         user={user}
         teams={teams}
         status={entry.status}
-        title={entry.status === "ready" ? "READY" : "WAIT"}
+        title={entry.status === "ready" ? "참가" : "대기"}
         detail={partyLabel}
         mmr={user?.ratings?.integrated ?? getEntryMmr(entry)}
         position={displayPosition}
@@ -1807,8 +1804,8 @@ function getSourceMatchAction(match, userId, teams = [], userById = {}) {
   if (effectiveStatus === "contract") {
     const agreed = (match.agreements?.[sideName] ?? []).includes(userId);
     return agreed
-      ? { label: "확정방", detail: "다른 참가자 READY를 기다립니다." }
-      : { label: "확정방", detail: "현재 명단과 룰에 READY하면 경기준비로 넘어갑니다.", action: "agree", button: "READY" };
+      ? { label: "확정방", detail: "다른 참가자 동의를 기다립니다." }
+      : { label: "확정방", detail: "현재 명단과 룰에 동의하면 경기준비로 넘어갑니다.", action: "agree", button: "동의" };
   }
   if (effectiveStatus === "approval") {
     const approved = (match.approvals?.[sideName] ?? []).includes(userId);
@@ -2797,7 +2794,6 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const sourceMatchSideName = getSourceMatchDecisionSideName(sourceMatch, app.currentUser.id, app.state.teams);
         const roomTimingStatus = getPublicRoomTimingStatus(selectedPost);
         const roomQueueStatus = getRecruitingRoomStatus(lobby, { post: selectedPost, myEntry, mine });
-        const needsPrivateConfirm = !matchRoom && !mine && selectedPost.visibility !== "public" && Boolean(myEntry && myEntry.status !== "ready");
         const roomReadyLabel = sourceMatch ? sourceMatchStatus.label : roomQueueStatus.label;
         const sourceMatchPhase = sourceMatch ? getMatchRoomPhase(sourceMatch) : null;
         const sourceRoomReadOnly = Boolean(matchRoom && (sourceMatch?.status === "disputed" || ["record", "cancelled", "void"].includes(sourceMatchPhase?.phase)));
@@ -3797,16 +3793,6 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                   </form>
                 )}
 
-                {needsPrivateConfirm ? (
-                  <Button
-                    type="button"
-                    variant="primary"
-                    onClick={() => app.actions.setRecruitingReady(selectedPost.id, true)}
-                  >
-                    <CheckCircle2 size={18} />
-                    수락
-                  </Button>
-                ) : null}
                 {!matchRoom && !recruitingRoomConfirmed && mine ? (
                   <Button
                     type="button"
@@ -3866,7 +3852,6 @@ function RecruitingReady({ app }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const targetPostId = searchParams.get("post") ?? "";
-  const targetFilter = searchParams.get("filter") ?? "";
   const myTeams = useMemo(
     () => app.state.teams.filter((team) => team.members.some((member) => member.userId === app.currentUser.id)),
     [app.currentUser.id, app.state.teams],
@@ -3886,8 +3871,7 @@ function RecruitingReady({ app }) {
     [app.currentUser.region, app.currentUser.regionDistrict, app.currentUser.regionSido],
   );
   const [queue, setQueue] = useState("all");
-  const [roomScope, setRoomScope] = useState(() => (targetFilter === "invited" ? "invited" : "all"));
-  const [loadingRoomScope, setLoadingRoomScope] = useState("");
+  const [roomScope, setRoomScope] = useState("all");
   const [regionFilterSido, setRegionFilterSido] = useState(defaultRegionSelection.sido);
   const [regionFilterDistrict, setRegionFilterDistrict] = useState(defaultRegionSelection.district);
   const [modeFilter, setModeFilter] = useState("all");
@@ -3899,7 +3883,6 @@ function RecruitingReady({ app }) {
   const [selectedPostDetailFailedId, setSelectedPostDetailFailedId] = useState(null);
   const targetPostLoadRef = useRef("");
   const selectedPostRefreshRef = useRef("");
-  const myRecruitingLoadRef = useRef("");
   const regionLoadRef = useRef("");
   const defaultDraftCourt = registeredCourts.find((court) => isSameRegion(court.region, currentRegion)) ?? registeredCourts[0] ?? null;
   const [draft, setDraft] = useState(() => ({
@@ -3961,15 +3944,11 @@ function RecruitingReady({ app }) {
   };
 
   useEffect(() => {
-    if (targetFilter === "invited") {
-      setRoomScope("invited");
-      return;
-    }
     if (!targetPostId) return;
     setQueue("all");
     setModeFilter("all");
     setRoomScope("all");
-  }, [targetFilter, targetPostId]);
+  }, [targetPostId]);
 
   useEffect(() => {
     if (!app.remoteReady || !app.currentUser.id) return;
@@ -3986,7 +3965,7 @@ function RecruitingReady({ app }) {
       && startFilter !== "all"
       && currentStartFilter !== startFilter;
     const needsBasePage = targetStartFilter === "all" && currentStartFilter !== "all";
-    const shouldIncludeFeedCounts = app.recruitingPagination?.feedCounts == null;
+    const shouldIncludeFeedCounts = false;
     if (currentPageMatchesRegion && !needsFilteredPage && !needsBasePage && !shouldIncludeFeedCounts) return;
     const loadKey = `${app.currentUser.id}:${regionFilter}:${regionKey}:${targetStartFilter}:${shouldIncludeFeedCounts ? "counts" : "plain"}`;
     if (regionLoadRef.current === loadKey) return;
@@ -4163,24 +4142,6 @@ function RecruitingReady({ app }) {
 
   const rankedCount = scopedPosts.filter((post) => post.ranked !== false).length;
   const friendlyCount = scopedPosts.length - rankedCount;
-  const feedCounts = app.recruitingPagination?.feedCounts ?? null;
-  const getFeedCount = (key) => {
-    const count = Number(feedCounts?.[key]);
-    return Number.isFinite(count) ? count : 0;
-  };
-  const createdRoomCount = getFeedCount("created");
-  const joinedRoomCount = getFeedCount("joined");
-  const invitedRoomCount = getFeedCount("invited");
-  const isRoomCountLoading = (scope) => (
-    app.remoteReady === false
-    || feedCounts == null
-    || loadingRoomScope === scope
-  );
-  const formatRoomCount = (count, scope) => (isRoomCountLoading(scope) ? "..." : count);
-  const getRelationButtonClass = (scope) => [
-    roomScope === scope ? "active" : "",
-    loadingRoomScope === scope ? "loading" : "",
-  ].filter(Boolean).join(" ");
 
   const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
   const submit = (event) => {
@@ -4199,28 +4160,6 @@ function RecruitingReady({ app }) {
     setComposeOpen(false);
   };
 
-  const selectRoomScope = (nextScope) => {
-    const target = roomScope === nextScope ? "all" : nextScope;
-    setRoomScope(target);
-    if (RECRUITING_RELATION_SCOPES.has(target)) {
-      setQueue("all");
-      setModeFilter("all");
-      setStartFilter("all");
-    } else {
-      setLoadingRoomScope("");
-    }
-    if (target === "all" || !app.remoteReady || !app.currentUser.id) return;
-    const userId = app.currentUser.id;
-    const includeFeedCounts = feedCounts == null;
-    const pendingKey = `${userId}:${target}:${includeFeedCounts ? "counts" : "plain"}:pending`;
-    if (myRecruitingLoadRef.current === pendingKey) return;
-    myRecruitingLoadRef.current = pendingKey;
-    setLoadingRoomScope(target);
-    Promise.resolve(app.actions.loadMyRecruitingPosts?.(target, { includeFeedCounts })).finally(() => {
-      myRecruitingLoadRef.current = "";
-      setLoadingRoomScope((current) => (current === target ? "" : current));
-    });
-  };
   const selectStartFilter = (nextFilter) => {
     setRoomScope("all");
     setStartFilter((current) => (current === nextFilter ? "all" : nextFilter));
@@ -4272,11 +4211,6 @@ function RecruitingReady({ app }) {
                   {regionDistrictOptions.map((district) => <option key={district} value={district}>{district}</option>)}
                 </select>
               </label>
-              <div className="segmented-control compact-segments arena-filter-segment arena-relation-filter">
-                <button type="button" className={getRelationButtonClass("created")} aria-busy={loadingRoomScope === "created"} onClick={() => selectRoomScope("created")}><span className="arena-filter-label">내가 만든 방</span><span className="arena-filter-badge">{formatRoomCount(createdRoomCount, "created")}</span></button>
-                <button type="button" className={getRelationButtonClass("joined")} aria-busy={loadingRoomScope === "joined"} onClick={() => selectRoomScope("joined")}><span className="arena-filter-label">내 참여방</span><span className="arena-filter-badge">{formatRoomCount(joinedRoomCount, "joined")}</span></button>
-                <button type="button" className={getRelationButtonClass("invited")} aria-busy={loadingRoomScope === "invited"} onClick={() => selectRoomScope("invited")}><span className="arena-filter-label">초대받음</span><span className="arena-filter-badge">{formatRoomCount(invitedRoomCount, "invited")}</span></button>
-              </div>
               <div className="segmented-control compact-segments arena-filter-segment">
                 <button type="button" className={queue === "all" ? "active" : ""} onClick={() => setQueue("all")}>전체</button>
                 <button type="button" className={queue === "ranked" ? "active" : ""} onClick={() => setQueue("ranked")}>정규전</button>
@@ -4315,7 +4249,6 @@ function RecruitingReady({ app }) {
             <span>{queue === "ranked" ? "정규전" : queue === "friendly" ? "친선전" : "전체"}</span>
             <span>{modeFilter === "all" ? "전체 방식" : MATCH_MODES.find((mode) => mode.id === modeFilter)?.label ?? modeFilter}</span>
             <span>{startFilterLabel}</span>
-            <span>{roomScope === "created" ? `내가 만든 방 ${formatRoomCount(createdRoomCount, "created")}` : roomScope === "joined" ? `내 참여방 ${formatRoomCount(joinedRoomCount, "joined")}` : roomScope === "invited" ? `초대받음 ${formatRoomCount(invitedRoomCount, "invited")}` : "전체 방"}</span>
           </div>
         )}
       </section>
@@ -4332,7 +4265,7 @@ function RecruitingReady({ app }) {
           const mine = roomOwnerId === app.currentUser.id;
           const myRoom = isRecruitingPostForUser(post, app.currentUser.id, myTeamIds);
           const invited = hasPendingRecruitingInvitation(post, app.currentUser.id);
-          const roomTag = invited ? "초대받음" : mine ? "내가 만든 방" : "";
+          const roomTag = "";
           const refereeLabel = getRoomRefereeLabel(post);
           const roomStatus = getRecruitingRoomListStatus(lobby, { post });
           const roomTitle = getRecruitingCardTitle(post);

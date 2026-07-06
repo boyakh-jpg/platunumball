@@ -6876,7 +6876,7 @@ export function createRecruitingPost(state, draft) {
       ...initialInvitations.map((invitation) => ({
         id: makeId("n"),
         title: "매치방 초대",
-        body: `${post.title} B사이드 파티장 초대장이 도착했습니다. 수락하면 B사이드가 READY가 됩니다.`,
+        body: `${post.title} B사이드 파티장 초대장이 도착했습니다. 수락하면 B사이드 참가가 확정됩니다.`,
         tone: "match",
         targetUserId: invitation.targetUserId,
         recruitingPostId: post.id,
@@ -7274,7 +7274,7 @@ function getLobbySidePlayerTeamIds(lobby, sideName) {
 }
 
 export function setRecruitingReady(state, postId, ready = true) {
-  const disciplineBlock = getDisciplineBlockedState(state, "READY 변경");
+  const disciplineBlock = getDisciplineBlockedState(state, "참가 확인 변경");
   if (disciplineBlock) return disciplineBlock;
   const post = state.recruitingPosts?.find((item) => item.id === postId);
   if (!post || post.status !== "open") return state;
@@ -7378,7 +7378,7 @@ export function updateRecruitingRoomRules(state, postId, patch = {}) {
     hostReady: true,
     applicants: normalizeRecruitingApplicants(post.applicants ?? []).map((applicant) => ({
       ...applicant,
-      status: "waiting",
+      status: "ready",
       updatedAt,
     })),
     roomState: {
@@ -8515,11 +8515,11 @@ function isMutableRecruitingRoom(post) {
 }
 
 function getRecruitingSlotEditStatus(post) {
-  return post?.visibility === "public" ? "ready" : "waiting";
+  return "ready";
 }
 
 function getRecruitingHostEditReady(post) {
-  return post?.visibility === "public";
+  return true;
 }
 
 function isRecruitingTeamSideLocked(post = {}) {
@@ -8558,7 +8558,9 @@ export function setRecruitingApplicantPlacement(state, postId, playerId, placeme
     : target.playerId === state.currentUserId || (target.playerIds ?? []).includes(state.currentUserId);
   if (!requesterControlsTarget) return state;
 
-  const side = ["teamA", "teamB"].includes(placement.side) ? placement.side : target.side;
+  const requestedSide = ["teamA", "teamB"].includes(placement.side) ? placement.side : target.side;
+  if (hostTarget && requestedSide !== target.side) return state;
+  const side = hostTarget ? target.side : requestedSide;
   const reserve = Boolean(placement.reserve);
   if (isRecruitingTeamSideLocked(post) && side !== target.side) return state;
   const updatedAt = new Date().toISOString();
@@ -8797,7 +8799,7 @@ export function joinRecruitingSideParty(state, postId, teamId, sideName = "", en
     teamId,
     playerId: activePlayerIds[0],
     side,
-    status: sameTeamApplicants.every((applicant) => applicant.status === "ready") ? "ready" : "waiting",
+    status: "ready",
     reserve: false,
     position: null,
     playerIds: activePlayerIds,

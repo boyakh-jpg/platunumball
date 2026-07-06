@@ -6,7 +6,7 @@ import CourtHoverCard from "../court/CourtHoverCard.jsx";
 import TeamHoverCard from "../team/TeamHoverCard.jsx";
 
 const statusLabel = {
-  contract: "WAIT",
+  contract: "대기",
   agreed: "진행 예정",
   approval: "승인 대기",
   disputed: "이의제기",

@@ -399,6 +399,7 @@ export function normalizeRecruitingPost(post = {}) {
   const timingType = post.timingType === "instant" || roomState.timingType === "instant" || post.scheduledAt === "즉시" ? "instant" : "scheduled";
   const ruleRevision = Number(roomState.ruleRevision ?? 0);
   const applicants = normalizeRecruitingApplicants(post.applicants ?? []);
+  const acceptedApplicants = applicants.map((applicant) => ({ ...applicant, status: "ready" }));
   const refereeWanted = Boolean(post.refereeWanted ?? roomState.refereeWanted ?? post.refereeId);
   return {
     ...post,
@@ -407,7 +408,7 @@ export function normalizeRecruitingPost(post = {}) {
     ratingScale: post.ratingScale ?? getRecruitingRatingScale({ ...post, mmrRangeMode, roomState }),
     hostJoinMode,
     hostSide: VALID_SIDES.has(post.hostSide) ? post.hostSide : "teamA",
-    hostReady: ruleRevision && post.visibility !== "public" ? Boolean(post.hostReady) : true,
+    hostReady: true,
     sideCapacity: getRecruitingSideCapacity(post),
     ownerId,
     refereeWanted,
@@ -419,7 +420,7 @@ export function normalizeRecruitingPost(post = {}) {
     roomState: { ...roomState, ownerId, mmrRangeMode, timingType, refereeWanted },
     playerId: hostPlayerId,
     playerIds,
-    applicants: ruleRevision && post.visibility !== "public" ? applicants : applicants.map((applicant) => ({ ...applicant, status: "ready" })),
+    applicants: acceptedApplicants,
   };
 }
 
@@ -678,9 +679,7 @@ export function getRecruitingLobby(post = {}, state = {}) {
           source: "team-reserve",
           sourceLabel: "후보",
           entryId: entry.id,
-          status: normalizedPost.roomState?.ruleRevision
-            ? normalizedPost.roomState.reserveReady?.[playerId] ? "ready" : "waiting"
-            : entry.status,
+          status: "ready",
           side,
           pinned: pinnedReserveIds.has(playerId),
           createdAt: entry.createdAt,
