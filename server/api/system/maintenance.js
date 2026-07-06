@@ -192,6 +192,12 @@ function parseMaintenanceBoolean(value) {
   return value === true || value === "true" || value === "1";
 }
 
+function getMaintenanceFeedRepairOption(request, body = {}) {
+  const value = body.includeFeedRepair ?? request.query?.includeFeedRepair;
+  if (value === undefined || value === null || value === "") return true;
+  return parseMaintenanceBoolean(value);
+}
+
 function getFeedCardTime(cardRow = {}) {
   const value = cardRow.updated_at ?? cardRow.card_json?.updatedAt ?? cardRow.card_json?.updated_at ?? "";
   const time = Date.parse(value);
@@ -409,7 +415,7 @@ export default async function handler(request, response) {
     sendJson(response, 200, await runSystemMaintenance(client, {
       limit: normalizeLimit(body.limit ?? getLimit(request)),
       includeRecruitingCapacityCleanup: body.includeRecruitingCapacityCleanup !== false,
-      includeFeedRepair: parseMaintenanceBoolean(body.includeFeedRepair ?? request.query?.includeFeedRepair),
+      includeFeedRepair: getMaintenanceFeedRepairOption(request, body),
     }));
   } catch (error) {
     console.error("System maintenance failed.", error);

@@ -2211,6 +2211,6 @@ flowchart TD
 ## 2026-07-06 bounded feed repair
 
 - `/api/system/feed-audit`는 계속 read-only다. `repair`/`cleanup` 요청을 받으면 거부한다.
-- 실제 feed repair는 `/api/system/maintenance`의 `includeFeedRepair:true` 또는 `RANKBALL_MAINTENANCE_FEED_REPAIR=true`에서만 실행한다.
+- 실제 feed repair는 `/api/system/maintenance` 직접/cron 호출에서 기본 실행한다. 필요하면 `includeFeedRepair:false`로 끈다.
 - repair는 active `user_room_feed` 샘플에서 누락/invalid/stale `room_feed_cards` 후보만 찾아 `rankball_refresh_recruiting_feed_for_post` 또는 `rankball_refresh_match_feed_for_match` RPC를 호출한다.
 - repair는 source room/match row를 삭제하거나 직접 수정하지 않는다.
