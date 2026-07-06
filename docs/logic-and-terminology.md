@@ -779,7 +779,9 @@ flowchart TD
 3. 심판이 있으면 심판이 우선한다.
 4. 경기 중 기록은 실시간 저장되어야 한다.
 5. 다른 사람이 저장한 값도 같은 기록판에 반영되어야 한다.
-6. 경기 중 기록판은 후보까지 함께 열어 교체 때마다 기록 입력 대상이 열리고 닫히지 않게 한다.
+6. 경기 중 기록판의 점수 입력 대상은 출전 슬롯과 `playedPlayerIds`에 들어간 실제 출전 선수만이다.
+   - 후보 슬롯에만 남은 선수는 기록자 권한을 가질 수 있지만, 자기 점수 row는 만들지 않는다.
+   - 후보가 교체/추가 출전 처리되면 `playedPlayerIds`에 들어간 뒤 점수판에 표시된다.
 6-1. 경기 중 기록 저장은 경기 종료를 의미하지 않는다. `startedAt`이 있고 `endedAt`이 없으면 결과 draft가 있어도 방 단계는 `live`이며, 방장/심판은 이후 `endMatch`로 종료할 수 있어야 한다.
 7. 경기 종료 후에는 개인활약 수정 범위를 줄인다.
 8. 점수와 파울은 중요하므로 종료 후에도 제한된 시간 안에 수정 가능해야 한다.
@@ -1503,7 +1505,7 @@ flowchart TD
 2. Participant actions, check-in, start/end, and result submission must not change `refereeId`; referee absence confirmation is the explicit exception.
 3. Roster edits must go through explicit roster actions such as late-player add/remove or room player placement actions.
 4. Participant actions must not mutate score or player stats. Approval/dispute/thumb actions only carry their own action state.
-5. Result submission stats may only target match players, reserves, or `playedPlayerIds`; scores and stat values must stay within server bounds.
+5. Result submission stats may only target active match players or `playedPlayerIds`; reserve-only players can record but cannot create their own stat row.
 6. Match score and player stats may only be written through `submitMatchResult` or dispute finalization by `resumeMatchApproval`; other match actions preserve existing DB score/stat fields.
 7. `ratingResult` and `teamRatingResult` may be written only when `approveMatch` confirms an existing submitted result.
 

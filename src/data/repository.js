@@ -4409,10 +4409,10 @@ export function submitMatchResult(state, matchId, result) {
   const now = new Date().toISOString();
   const draftEntry = currentUserCanDisputeDraft;
   const liveEntry = !draftEntry && recordWindow.beforeEnd && liveRecordAllowed;
-  const recordPlayerIds = getMatchRecordPlayerIds(match, liveEntry);
+  const recordPlayerIds = getMatchRecordPlayerIds(match);
   const existingStats = normalizePlayerStats((draftEntry ? match.disputeDraftResult : match.result)?.playerStats ?? match.result?.playerStats ?? {}, recordPlayerIds);
   const endedAt = liveEntry ? match.endedAt : match.endedAt ?? recordWindow.endAt?.toISOString() ?? now;
-  const recorderPlayerIds = recorderSides.flatMap((sideName) => getMatchSideRecordPlayerIds(match, sideName, liveEntry));
+  const recorderPlayerIds = recorderSides.flatMap((sideName) => getMatchSideRecordPlayerIds(match, sideName));
   const selfPlayerIds = currentSideName ? [currentUserId] : [];
   const hostPostgamePlayerIds = currentUserCanPostgameScore ? playerIds : [];
   const targetPlayerIds = (currentUserIsEligibleReferee || draftEntry)
@@ -4450,23 +4450,7 @@ export function submitMatchResult(state, matchId, result) {
       ),
     };
   });
-  const reservePlayedPlayerIds = liveEntry
-    ? touchedPlayerIds.reduce((nextPlayedPlayerIds, playerId) => {
-        const sideName = getMatchRosterSideName(match, playerId);
-        if (!sideName || getMatchSidePlayerIds(match, sideName).includes(playerId)) return nextPlayedPlayerIds;
-        return {
-          ...nextPlayedPlayerIds,
-          [sideName]: uniquePlayerIds([...(nextPlayedPlayerIds[sideName] ?? []), playerId]),
-        };
-      }, match.playedPlayerIds ?? match.rules?.playedPlayerIds ?? {})
-    : (match.playedPlayerIds ?? match.rules?.playedPlayerIds ?? {});
-  const scoringMatch = liveEntry
-    ? {
-        ...match,
-        playedPlayerIds: reservePlayedPlayerIds,
-        rules: { ...(match.rules ?? {}), playedPlayerIds: reservePlayedPlayerIds },
-      }
-    : match;
+  const scoringMatch = match;
   const nextSubmissions = {
     ...(match.result?.statSubmissions ?? {}),
     ...Object.fromEntries(touchedPlayerIds.map((playerId) => {
@@ -4510,16 +4494,14 @@ export function submitMatchResult(state, matchId, result) {
           : {
             ...item,
             statRecorders: syncedStatRecorders,
-            playedPlayerIds: liveEntry ? reservePlayedPlayerIds : item.playedPlayerIds,
+            playedPlayerIds: item.playedPlayerIds,
             status: liveEntry ? item.status : "approval",
             teamA: { ...item.teamA, score: nextResult.scoreA },
             teamB: { ...item.teamB, score: nextResult.scoreB },
             approvals: liveEntry ? item.approvals : { teamA: [], teamB: [] },
             result: nextResult,
             endedAt,
-            rules: liveEntry
-              ? { ...(item.rules ?? {}), playedPlayerIds: reservePlayedPlayerIds, statRecorders: syncedStatRecorders }
-              : { ...(item.rules ?? {}), statRecorders: syncedStatRecorders },
+            rules: { ...(item.rules ?? {}), statRecorders: syncedStatRecorders },
           }
         : item,
     ),
@@ -4676,7 +4658,7 @@ function buildDisputeDraftResult(match = {}, disputeRequest = {}, currentUserId 
   const requestedPlayerId = String(disputeRequest.playerId ?? "");
   const requestedPoints = Number(disputeRequest.requestedPoints);
   if (!baseResult || !requestedPlayerId || requestedPlayerId !== currentUserId || !Number.isFinite(requestedPoints)) return baseResult;
-  const recordPlayerIds = getMatchRecordPlayerIds(match, true);
+  const recordPlayerIds = getMatchRecordPlayerIds(match);
   if (!recordPlayerIds.includes(requestedPlayerId)) return baseResult;
   const playerStats = normalizePlayerStats(baseResult.playerStats ?? {}, recordPlayerIds);
   playerStats[requestedPlayerId] = {

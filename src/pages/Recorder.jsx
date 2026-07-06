@@ -62,7 +62,7 @@ function includesPlayerQuery(user = {}, query = "") {
 function makeInitialStats(match) {
   const sourceResult = match.disputeDraftResult ?? match.result;
   return Object.fromEntries(
-    getMatchRecordPlayerIds(match, true).map((playerId) => [
+    getMatchRecordPlayerIds(match).map((playerId) => [
       playerId,
       Object.fromEntries(
         PLAYER_STAT_FIELDS.map((field) => [field.id, Number(sourceResult?.playerStats?.[playerId]?.[field.id] ?? 0)]),
@@ -159,7 +159,7 @@ export default function Recorder({ app }) {
   );
   const [selectedMatchId, setSelectedMatchId] = useState("");
   const selectedMatch = matches.find((match) => match.id === selectedMatchId) ?? matches[0] ?? null;
-  const selectedMatchPlayerKey = selectedMatch ? getMatchRecordPlayerIds(selectedMatch, true).join("|") : "";
+  const selectedMatchPlayerKey = selectedMatch ? getMatchRecordPlayerIds(selectedMatch).join("|") : "";
   const [stats, setStats] = useState({});
   const [dirtyStats, setDirtyStats] = useState({});
   const [handoffDraft, setHandoffDraft] = useState({});
@@ -218,9 +218,8 @@ export default function Recorder({ app }) {
   const postStartOperatorLabel = selectedMatchHasReferee ? "심판" : "방장";
   const recorderSides = selectedMatch ? getStatRecorderSides(selectedMatch, user.id) : [];
   const canEditDisputeDraft = Boolean(selectedMatch?.status === "disputed" && currentUserCanOperatePostStart && recordWindow?.disputeOpen);
-  const includeReserveStats = Boolean(recordWindow?.beforeEnd);
   const editablePlayerIds = selectedMatch
-    ? getMatchRecordPlayerIds(selectedMatch, includeReserveStats).filter((playerId) => (
+    ? getMatchRecordPlayerIds(selectedMatch).filter((playerId) => (
         canEditDisputeDraft || getRecorderAllowedFields(selectedMatch, app.state, user.id, playerId, currentUserCanPostgameScore).length > 0
       ))
     : [];
@@ -231,8 +230,8 @@ export default function Recorder({ app }) {
   const canSave = Boolean(selectedMatch && !["confirmed"].includes(selectedMatch.status) && (canEditDisputeDraft || selectedMatch.status !== "disputed") && editablePlayerIds.length && saveWindowOpen && hasDirtyStats);
   const canEndLiveMatch = Boolean(selectedMatch && currentUserCanOperatePostStart && roomPhase === "live" && !selectedMatch.endedAt);
   const canEditPostgameRoster = Boolean(selectedMatch && currentUserCanOperatePostStart && roomPhase === "postgame" && (recordWindow?.statOpen || currentUserCanSubmitMissingPostgameResult) && !selectedMatch.result);
-  const scoreA = selectedMatch ? getSideScore(selectedMatch, stats, "teamA", editablePlayerIds, includeReserveStats) : 0;
-  const scoreB = selectedMatch ? getSideScore(selectedMatch, stats, "teamB", editablePlayerIds, includeReserveStats) : 0;
+  const scoreA = selectedMatch ? getSideScore(selectedMatch, stats, "teamA", editablePlayerIds) : 0;
+  const scoreB = selectedMatch ? getSideScore(selectedMatch, stats, "teamB", editablePlayerIds) : 0;
   const latePlayerOptions = useMemo(() => {
     if (!selectedMatch) return [];
     const activeIds = new Set(getMatchPlayerIds(selectedMatch));
@@ -255,7 +254,7 @@ export default function Recorder({ app }) {
         ? "기록 권한 없음"
         : "저장 가능";
   const canDispute = Boolean(selectedMatch?.result) && selectedMatch?.status === "approval" && recordWindow?.disputeOpen && currentUserCanFileDispute;
-  const canRequestOwnPointDispute = Boolean(canDispute && getMatchRecordPlayerIds(selectedMatch, true).includes(user.id));
+  const canRequestOwnPointDispute = Boolean(canDispute && getMatchRecordPlayerIds(selectedMatch).includes(user.id));
   const currentUserDisputePoints = selectedMatch ? getMatchPlayerDisputePoints(selectedMatch, user.id) : 0;
   const canResumeApproval = selectedMatch?.status === "disputed" && currentUserCanOperatePostStart;
   const canVoid = selectedMatch?.status === "disputed" && currentUserCanOperatePostStart;
@@ -349,14 +348,14 @@ export default function Recorder({ app }) {
     const side = selectedMatch[sideName];
     const activePlayerIds = side.players ?? [];
     const reservePlayerIds = getMatchReservePlayerIds(selectedMatch, sideName);
-    const statPlayerIds = getMatchSideRecordPlayerIds(selectedMatch, sideName, includeReserveStats);
+    const statPlayerIds = getMatchSideRecordPlayerIds(selectedMatch, sideName);
 
     return (
       <section className="recorder-side" key={sideName}>
         <header>
           <span>{sideLabels[sideName]}</span>
           <strong>{side.name}</strong>
-          <em>{sumSidePoints(selectedMatch, stats, sideName, includeReserveStats)} 득점</em>
+          <em>{sumSidePoints(selectedMatch, stats, sideName)} 득점</em>
         </header>
         <div className="recorder-player-list">
           {statPlayerIds.map((playerId) => {

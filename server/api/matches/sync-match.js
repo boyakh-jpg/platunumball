@@ -382,6 +382,14 @@ function getMatchPlayedIds(match = {}) {
   return Object.values(match.playedPlayerIds ?? match.rules?.playedPlayerIds ?? {}).flatMap(toArray);
 }
 
+function getMatchPlayedIdMap(match = {}) {
+  const playedPlayerIds = match.playedPlayerIds ?? match.played_player_ids ?? match.rules?.playedPlayerIds ?? {};
+  return {
+    teamA: toArray(playedPlayerIds.teamA).filter(Boolean),
+    teamB: toArray(playedPlayerIds.teamB).filter(Boolean),
+  };
+}
+
 function getAnonymousPlayerIds(match = {}) {
   return new Set(Object.keys(match.anonymousPlayers ?? {}).filter(Boolean));
 }
@@ -438,7 +446,6 @@ function validateResultShape(match = {}, action = "sync") {
 
   const recordableIds = new Set([
     ...getMatchPlayerIds(match),
-    ...getMatchReserveIds(match),
     ...getMatchPlayedIds(match),
   ].filter(Boolean));
   const invalidPlayerId = Object.keys(match.result.playerStats ?? {}).find((userId) => !recordableIds.has(userId));
@@ -866,6 +873,14 @@ function validateLockedMatchCore(existingMatch, existingPlayers, nextMatch, acti
     }
   }
 
+  if (action === "submitMatchResult") {
+    const existingPlayed = getMatchPlayedIdMap(existingMatch);
+    const nextPlayed = getMatchPlayedIdMap(nextMatch);
+    if (!sameOrderedIds(existingPlayed.teamA, nextPlayed.teamA) || !sameOrderedIds(existingPlayed.teamB, nextPlayed.teamB)) {
+      reject(403, "match_played_roster_locked");
+    }
+  }
+
   if (REFEREE_LOCKED_MATCH_ACTIONS.has(action)) {
     const existingRefereeId = existingMatch.referee_id || "";
     const nextRefereeId = nextMatch.refereeId || "";
@@ -1104,7 +1119,7 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
 
   const { data: existingMatch, error: existingError } = await context.supabase
       .from("matches")
-      .select("id, visibility, status, created_by, referee_id, former_referee_id, referee_trust_min, stat_recorders, score_a, score_b, rating_result, team_rating_result, confirmed_at, rules")
+      .select("id, visibility, status, created_by, referee_id, former_referee_id, referee_trust_min, stat_recorders, played_player_ids, reserve_players, score_a, score_b, rating_result, team_rating_result, confirmed_at, rules")
       .eq("id", match.id)
       .maybeSingle();
   if (existingError) throw existingError;
