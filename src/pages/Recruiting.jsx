@@ -1036,6 +1036,7 @@ export function SideRoster({
   sideLeaderId = "",
   slotPositions = {},
   canInvite = false,
+  inviteLabel = "초대",
   canManageEntry = null,
   onInviteSlot,
   onSelfSlotAction,
@@ -1127,7 +1128,7 @@ export function SideRoster({
                 >
                   <UserRound size={17} />
                   <span>빈 슬롯</span>
-                  {canInvite ? <em>초대</em> : null}
+                  {canInvite ? <em>{inviteLabel}</em> : null}
                 </button>
               </div>
             </Fragment>
@@ -1152,6 +1153,7 @@ export function ReserveLine({
   sideLeaderId = "",
   slotPositions = {},
   canInvite = false,
+  inviteLabel = "초대",
   canManageEntry = null,
   recorderId = "",
   onInviteSlot,
@@ -1222,7 +1224,7 @@ export function ReserveLine({
                 >
                   <UserRound size={17} />
                   <span>후보 슬롯</span>
-                  {canInvite ? <em>초대</em> : null}
+                  {canInvite ? <em>{inviteLabel}</em> : null}
                 </button>
               </div>
             </Fragment>
@@ -1540,6 +1542,9 @@ export function InvitePanel({
   onClose,
   error = "",
 }) {
+  const teamSummonMode = Boolean(allowedTeamId);
+  const actionLabel = teamSummonMode ? "소집" : "초대";
+  const actionNoun = teamSummonMode ? "팀원 소집" : "초대";
   const matchedTeam = query.trim() ? findTeamByHashtag(teams, query) : null;
   const selectedSet = new Set(selectedPlayerIds);
   const disabledSet = new Set(disabledPlayerIds);
@@ -1632,10 +1637,10 @@ export function InvitePanel({
     <div className="arena-invite-panel">
       <header>
         <div>
-          <strong>{SIDE_LABELS[sideName]} {reserve ? "후보" : "빈 슬롯"} 초대</strong>
-          <span>{reserve ? "수락하면 해당 사이드의 후보 선수로 들어온다." : "선착순 수락이다. 방이 차면 수락 실패."}</span>
+          <strong>{SIDE_LABELS[sideName]} {reserve ? "후보" : "빈 슬롯"} {actionLabel}</strong>
+          <span>{teamSummonMode ? "사이드장이 자기 팀원을 출전/후보 명단에 바로 등록한다." : (reserve ? "수락하면 해당 사이드의 후보 선수로 들어온다." : "선착순 수락이다. 방이 차면 수락 실패.")}</span>
         </div>
-        <button type="button" className="arena-icon-button" aria-label="초대 닫기" onClick={onClose}><X size={18} /></button>
+        <button type="button" className="arena-icon-button" aria-label={`${actionNoun} 닫기`} onClick={onClose}><X size={18} /></button>
       </header>
       <SearchPicker
         value={query}
@@ -1665,14 +1670,14 @@ export function InvitePanel({
       {canShowSelectedInviteAction ? (
         <div className="arena-invite-actions">
           <Button type="button" size="sm" onClick={() => onInvitePlayers(selectedInvitableIds, selectedInviteTeamId, selectedInviteJoinMode)}>
-            선택 {selectedInvitableIds.length}명 초대
+            선택 {selectedInvitableIds.length}명 {actionLabel}
           </Button>
         </div>
       ) : null}
 
       {error ? <div className="arena-invite-empty error">{error}</div> : null}
 
-      {allowedTeam ? <div className="arena-invite-empty">{allowedTeam.name} 팀원만 이 사이드에 초대할 수 있습니다.</div> : null}
+      {allowedTeam ? <div className="arena-invite-empty">{allowedTeam.name} 팀원만 이 사이드에 {actionLabel}할 수 있습니다.</div> : null}
 
       {matchedTeam && (!allowedTeamId || matchedTeam.id === allowedTeamId) ? (
         <div className="arena-invite-team-picker">
@@ -1697,14 +1702,14 @@ export function InvitePanel({
                   <span className="avatar small" style={{ "--avatar": player?.avatarColor }}>{player?.name?.slice(0, 1) ?? "?"}</span>
                   <span>
                     <strong>{player?.name ?? "선수"}</strong>
-                    <em>{disabled ? "이미 대기/초대" : getUserHashtag(player)}</em>
+                    <em>{disabled ? `이미 대기/${actionLabel}` : getUserHashtag(player)}</em>
                   </span>
                 </button>
               );
             })}
           </div>
           <Button type="button" size="sm" disabled={!selectedInvitableIds.length} onClick={() => onInvitePlayers(selectedInvitableIds, matchedTeam.id, "team")}>
-            선택 {selectedInvitableIds.length}명 초대
+            선택 {selectedInvitableIds.length}명 {actionLabel}
           </Button>
         </div>
       ) : null}
@@ -3253,6 +3258,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                       sideLeaderId={sourceMatchSideLeaderIds.teamA}
                       slotPositions={slotPositions}
                       canInvite={!sourceRoomReadOnly && canInviteSideFromRoom("teamA")}
+                      inviteLabel={teamOnlyRoom ? "소집" : "초대"}
                       canManageEntry={sourceRoomReadOnly ? null : canManageEntry}
                       canManage={mine}
                       onInviteSlot={sourceRoomReadOnly ? null : ((sideName, reserve, slotKey, event) => openInviteSlot(selectedPost, sideName, reserve, slotKey, event))}
@@ -3293,6 +3299,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                       sideLeaderId={sourceMatchSideLeaderIds.teamB}
                       slotPositions={slotPositions}
                       canInvite={!sourceRoomReadOnly && canInviteSideFromRoom("teamB")}
+                      inviteLabel={teamOnlyRoom ? "소집" : "초대"}
                       canManageEntry={sourceRoomReadOnly ? null : canManageEntry}
                       canManage={mine}
                       onInviteSlot={sourceRoomReadOnly ? null : ((sideName, reserve, slotKey, event) => openInviteSlot(selectedPost, sideName, reserve, slotKey, event))}
@@ -3322,6 +3329,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                     sideLeaderId={sourceMatchSideLeaderIds.teamA}
                     slotPositions={slotPositions}
                     canInvite={!sourceRoomReadOnly && canInviteSideFromRoom("teamA")}
+                    inviteLabel={teamOnlyRoom ? "소집" : "초대"}
                     canManageEntry={sourceRoomReadOnly ? null : canManageEntry}
                     canManage={mine}
                     recorderId={recorderIds.teamA}
@@ -3344,6 +3352,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                     sideLeaderId={sourceMatchSideLeaderIds.teamB}
                     slotPositions={slotPositions}
                     canInvite={!sourceRoomReadOnly && canInviteSideFromRoom("teamB")}
+                    inviteLabel={teamOnlyRoom ? "소집" : "초대"}
                     canManageEntry={sourceRoomReadOnly ? null : canManageEntry}
                     canManage={mine}
                     recorderId={recorderIds.teamB}
