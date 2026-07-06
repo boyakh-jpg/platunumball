@@ -1237,6 +1237,7 @@ function RoomKickPanel({
   lobby,
   userById,
   teams,
+  hostPlayerId = "",
   onKickApplicant,
   onRemovePartyPlayer,
   onCheckInPlayer,
@@ -1284,6 +1285,7 @@ function RoomKickPanel({
         {rows.map(({ entry, partyEntry, playerId, reserve, user }) => {
           const checkedIn = Boolean(attendanceBySide?.[entry.side]?.includes(playerId));
           const selfRow = playerId === currentUserId;
+          const hostRow = playerId === hostPlayerId;
           const kickDisabled = selfRow || (requireMissingAttendance && checkedIn);
           return (
             <div key={`${entry.id}-${playerId}`} className="arena-host-kick-row">
@@ -1326,7 +1328,7 @@ function RoomKickPanel({
                   {reserve ? "출전" : "후보"}
                 </Button>
               ) : null}
-              {allowSideMove && onSetPlacement ? (
+              {allowSideMove && onSetPlacement && !hostRow ? (
                 <Button
                   type="button"
                   size="sm"
@@ -2988,6 +2990,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const currentUserInParty = Boolean(currentUserInEntry && isPartyEntry(myEntry));
         const canMoveActiveUserToSlot = (sideName, reserve) => {
           if (!myEntry || !currentUserInEntry) return false;
+          if (mine && sideName !== myEntry.side) return false;
           const samePlacement = myEntry.side === sideName && currentUserReserve === reserve;
           if (samePlacement) return false;
           if (teamMatchSideLocked && sideName !== myEntry.side) return false;
@@ -3430,6 +3433,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                   onSetReserve={matchRoom ? ((entry, playerId, reserve) => app.actions.setMatchRoomPlayerPlacement(sourceMatch.id, playerId, { side: entry.side, reserve })) : null}
                   onSetPlacement={matchRoom ? ((playerId, placement) => app.actions.setMatchRoomPlayerPlacement(sourceMatch.id, playerId, placement)) : null}
                   allowSideMove={canMoveMatchSides}
+                  hostPlayerId={roomOwnerId}
                   attendanceBySide={matchRoom ? sourceMatchAttendance : null}
                   requireMissingAttendance={canManageMatchCheckin}
                   currentUserId={app.currentUser.id}

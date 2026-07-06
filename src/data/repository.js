@@ -7727,6 +7727,8 @@ export function setMatchRoomPlayerPlacement(state, matchId, playerId, placement 
   if (!currentPlacement) return state;
   const targetSide = ["teamA", "teamB"].includes(placement.side) ? placement.side : currentPlacement.side;
   const targetReserve = Boolean(placement.reserve);
+  const hostPlayerId = getMatchHostPlayerId(state, match);
+  if (hostPlayerId && playerId === hostPlayerId && targetSide !== currentPlacement.side) return state;
   const sideCapacity = getRecruitingSideCapacity(match);
   const teamMatchLocked = Boolean(
     isMatchSideTeamParty(match, "teamA") ||
