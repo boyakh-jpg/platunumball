@@ -39,6 +39,7 @@ import {
   getMatchRecordWindow,
   getPlayerSideName,
   getStatRecorderSides,
+  getEffectiveStatRecorders,
   getResultPointAudit,
   getStatSubmissionStatus,
   getTeamCaptainId,
@@ -4166,6 +4167,21 @@ function getMatchPlayerTeamId(match = {}, sideName, playerId) {
   return party?.teamId ?? side.teamId ?? null;
 }
 
+function withEffectiveMatchStatRecorders(match = {}) {
+  if (!match || match.refereeId) return match;
+  const currentRecorders = normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders);
+  const nextRecorders = getEffectiveStatRecorders(match);
+  if (currentRecorders.teamA === nextRecorders.teamA && currentRecorders.teamB === nextRecorders.teamB) return match;
+  return {
+    ...match,
+    statRecorders: nextRecorders,
+    rules: {
+      ...(match.rules ?? {}),
+      statRecorders: nextRecorders,
+    },
+  };
+}
+
 function getRecorderHandoffPatch(match, sideName, currentRecorderId, nextRecorderId) {
   const side = match[sideName] ?? {};
   const sidePlayers = side.players ?? [];
@@ -4270,8 +4286,10 @@ export function agreeMatch(state, matchId, sideName, playerId) {
 export function submitMatchResult(state, matchId, result) {
   const disciplineBlock = getDisciplineBlockedState(state, "기록 저장");
   if (disciplineBlock) return disciplineBlock;
-  const match = state.matches.find((item) => item.id === matchId);
-  if (!match) return state;
+  const storedMatch = state.matches.find((item) => item.id === matchId);
+  if (!storedMatch) return state;
+  const match = withEffectiveMatchStatRecorders(storedMatch);
+  const syncedStatRecorders = normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders);
   const currentUserId = state.currentUserId;
   const playerIds = getMatchPlayerIds(match);
   const currentSideName = getPlayerSideName(match, currentUserId);
@@ -4484,11 +4502,14 @@ export function submitMatchResult(state, matchId, result) {
         ? draftEntry
           ? {
               ...item,
+              statRecorders: syncedStatRecorders,
+              rules: { ...(item.rules ?? {}), statRecorders: syncedStatRecorders },
               disputeDraftResult: nextResult,
               disputeDraftUpdatedAt: now,
             }
           : {
             ...item,
+            statRecorders: syncedStatRecorders,
             playedPlayerIds: liveEntry ? reservePlayedPlayerIds : item.playedPlayerIds,
             status: liveEntry ? item.status : "approval",
             teamA: { ...item.teamA, score: nextResult.scoreA },
@@ -4496,7 +4517,9 @@ export function submitMatchResult(state, matchId, result) {
             approvals: liveEntry ? item.approvals : { teamA: [], teamB: [] },
             result: nextResult,
             endedAt,
-            rules: liveEntry ? { ...(item.rules ?? {}), playedPlayerIds: reservePlayedPlayerIds } : item.rules,
+            rules: liveEntry
+              ? { ...(item.rules ?? {}), playedPlayerIds: reservePlayedPlayerIds, statRecorders: syncedStatRecorders }
+              : { ...(item.rules ?? {}), statRecorders: syncedStatRecorders },
           }
         : item,
     ),
@@ -4520,7 +4543,8 @@ export function submitMatchResult(state, matchId, result) {
 }
 
 export function handoffMatchRecorder(state, matchId, sideName, nextRecorderId) {
-  const match = state.matches.find((item) => item.id === matchId);
+  const storedMatch = state.matches.find((item) => item.id === matchId);
+  const match = withEffectiveMatchStatRecorders(storedMatch);
   if (!match || match.refereeId || !["agreed", "approval"].includes(match.status)) return state;
   if (!["teamA", "teamB"].includes(sideName)) return state;
 
@@ -7582,7 +7606,7 @@ function autoPromoteMatchReservesForCheckin(match = {}, excludedPlayerIds = []) 
     }
   }
 
-  return nextMatch;
+  return withEffectiveMatchStatRecorders(nextMatch);
 }
 
 export function setMatchRoomPlayerPlacement(state, matchId, playerId, placement = {}) {
@@ -7625,7 +7649,7 @@ export function setMatchRoomPlayerPlacement(state, matchId, playerId, placement 
     };
   }
 
-  const nextMatch = autoPromoteMatchReservesForCheckin(clearMatchPlayerDecision({
+  const nextMatch = withEffectiveMatchStatRecorders(autoPromoteMatchReservesForCheckin(clearMatchPlayerDecision({
     ...match,
     status: "agreed",
     teamA: { ...(match.teamA ?? {}), players: nextTeamAPlayers },
@@ -7633,7 +7657,7 @@ export function setMatchRoomPlayerPlacement(state, matchId, playerId, placement 
     reservePlayers: nextReservePlayers,
     parties: updateMatchPartiesForPlayer(match, playerId, targetSide, targetReserve),
     agreedAt: null,
-  }, playerId), targetReserve ? [playerId] : []);
+  }, playerId), targetReserve ? [playerId] : []));
 
   return {
     ...state,
@@ -7651,7 +7675,7 @@ export function removeMatchRoomPlayer(state, matchId, playerId) {
     teamA: getMatchReservePlayerIds(match, "teamA").filter((id) => id !== playerId),
     teamB: getMatchReservePlayerIds(match, "teamB").filter((id) => id !== playerId),
   };
-  const nextMatch = autoPromoteMatchReservesForCheckin(clearMatchPlayerDecision({
+  const nextMatch = withEffectiveMatchStatRecorders(autoPromoteMatchReservesForCheckin(clearMatchPlayerDecision({
     ...match,
     status: "agreed",
     teamA: { ...(match.teamA ?? {}), players: uniquePlayerIds(match.teamA?.players ?? []).filter((id) => id !== playerId) },
@@ -7659,7 +7683,7 @@ export function removeMatchRoomPlayer(state, matchId, playerId) {
     reservePlayers: nextReservePlayers,
     parties: updateMatchPartiesForPlayer(match, playerId, placement.side, placement.reserve, true),
     agreedAt: null,
-  }, playerId));
+  }, playerId)));
 
   return {
     ...state,

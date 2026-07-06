@@ -277,7 +277,7 @@ export function canUserResolveMatchDispute(match = {}, userId = "", sourcePost =
 }
 
 export function getMatchTrustFeedbackParticipantIds(match = {}) {
-  const statRecorders = normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders);
+  const statRecorders = getEffectiveStatRecorders(match);
   return uniquePlayerIds([
     ...getMatchPlayerIds(match),
     ...getMatchReservePlayerIds(match, "teamA"),
@@ -308,7 +308,7 @@ export function getMatchTrustFeedbackLimit(match = {}) {
   const operationIds = new Set([
     getMatchHostPlayerId(match),
     match.refereeId,
-    ...Object.values(normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders)),
+    ...Object.values(getEffectiveStatRecorders(match)),
   ].filter(Boolean));
   return Math.max(1, Math.floor(activeCount / 2)) + (operationIds.size ? 1 : 0);
 }
@@ -380,9 +380,28 @@ export function normalizeStatRecorders(recorders = {}) {
   };
 }
 
+export function getEffectiveStatRecorders(match = {}) {
+  if (match.refereeId) return { teamA: "", teamB: "" };
+  const recorders = normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders);
+  const getRecorder = (sideName) => {
+    const currentRecorderId = recorders[sideName];
+    const reserveIds = getMatchReservePlayerIds(match, sideName);
+    if (currentRecorderId && reserveIds.includes(currentRecorderId)) return currentRecorderId;
+    if (reserveIds[0]) return reserveIds[0];
+    const sideRosterIds = getMatchSideRecordPlayerIds(match, sideName, true);
+    if (currentRecorderId && sideRosterIds.includes(currentRecorderId)) return currentRecorderId;
+    return "";
+  };
+
+  return {
+    teamA: getRecorder("teamA"),
+    teamB: getRecorder("teamB"),
+  };
+}
+
 export function getStatRecorderSides(match = {}, userId) {
   if (!userId) return [];
-  const recorders = normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders);
+  const recorders = getEffectiveStatRecorders(match);
   return ["teamA", "teamB"].filter((sideName) => recorders[sideName] === userId);
 }
 
@@ -639,7 +658,7 @@ export function canOperatorSubmitMissingPostgameResult(match = {}, canOperatePos
 export function getAllowedStatFields(match = {}, userId, playerId = userId) {
   if (isMatchReferee(match, userId)) return PLAYER_STAT_FIELDS;
   const playerSideName = getMatchRosterSideName(match, playerId);
-  const recorders = normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders);
+  const recorders = getEffectiveStatRecorders(match);
   if (playerSideName && recorders[playerSideName]) {
     return recorders[playerSideName] === userId ? PLAYER_STAT_FIELDS : [];
   }

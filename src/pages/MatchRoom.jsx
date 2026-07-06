@@ -39,6 +39,7 @@ import {
   getMatchTrustFeedbackClosesAt,
   getMatchTrustFeedbackLimit,
   getMatchTrustFeedbackParticipantIds,
+  getEffectiveStatRecorders,
   getPlayerSideName,
   getPlayerStatSubmitted,
   getResultPointAudit,
@@ -157,7 +158,7 @@ function getTrustFeedbackRole(match, playerId) {
   const roles = [];
   if (match.createdBy === playerId || match.hostPlayerId === playerId || match.createdPlayerId === playerId || match.teamA?.players?.[0] === playerId) roles.push("방장");
   if (match.refereeId === playerId) roles.push("심판");
-  const recorders = match.statRecorders ?? match.rules?.statRecorders ?? {};
+  const recorders = getEffectiveStatRecorders(match);
   if (Object.values(recorders).includes(playerId)) roles.push("기록자");
   if (getMatchPlayerIds(match).includes(playerId)) roles.push("선수");
   if (["teamA", "teamB"].some((sideName) => getMatchReservePlayerIds(match, sideName).includes(playerId))) roles.push("후보");
@@ -304,7 +305,7 @@ export default function MatchRoom({ app }) {
   const hasReferee = Boolean(match.refereeId);
   const currentUserIsReferee = isMatchReferee(match, app.currentUser.id);
   const currentUserIsEligibleReferee = currentUserIsReferee && isEligibleReferee(app.currentUser, match.refereeTrustMin, app.state.settings?.refereeAppointments);
-  const statRecorders = hasReferee ? {} : match.statRecorders ?? match.rules?.statRecorders ?? {};
+  const statRecorders = hasReferee ? {} : getEffectiveStatRecorders(match);
   const recorderSummary = referee
     ? `심판 ${referee.name}`
     : ["teamA", "teamB"]
