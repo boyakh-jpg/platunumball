@@ -779,6 +779,7 @@ export default function Matches({ app }) {
   const [selectedMatchId, setSelectedMatchId] = useState(null);
   const [selectedRecruitingPostId, setSelectedRecruitingPostId] = useState(null);
   const [selectedMatchDetailLoadingId, setSelectedMatchDetailLoadingId] = useState(null);
+  const [selectedRecruitingPostDetailLoadingId, setSelectedRecruitingPostDetailLoadingId] = useState(null);
   const queryMatchId = searchParams.get("match");
   const activeSelectedMatchId = selectedMatchId ?? queryMatchId;
   const todayValue = toDateInputValue();
@@ -812,6 +813,10 @@ export default function Matches({ app }) {
     [app.state.recruitingPosts, selectedRecruitingPostId],
   );
   const selectedRecruitingLobby = selectedRecruitingPost ? getRecruitingLobby(selectedRecruitingPost, app.state) : null;
+  const selectedRecruitingPostNeedsDetail = Boolean(selectedRecruitingPost?.listCardOnly);
+  const selectedRecruitingPostDetailLoading = Boolean(
+    selectedRecruitingPostId && (selectedRecruitingPostDetailLoadingId === selectedRecruitingPostId || selectedRecruitingPostNeedsDetail),
+  );
   const selectedMatch = (selectedMatchId ? matchesById[selectedMatchId] : null) ?? (queryMatchId ? matchesById[queryMatchId] : null) ?? null;
   const selectedMatchRoom = useMemo(() => {
     if (!selectedMatch) return { post: null, error: null };
@@ -824,7 +829,7 @@ export default function Matches({ app }) {
   const selectedMatchRoomPost = selectedMatchRoom.post;
   const selectedMatchRoomError = selectedMatchRoom.error;
   const selectedMatchDetailLoading = Boolean(activeSelectedMatchId && selectedMatchDetailLoadingId === activeSelectedMatchId);
-  useBodyScrollLock(Boolean(selectedTournament || selectedMatch || selectedRecruitingPost || selectedMatchDetailLoading));
+  useBodyScrollLock(Boolean(selectedTournament || selectedMatch || selectedRecruitingPost || selectedMatchDetailLoading || selectedRecruitingPostDetailLoading));
   const closeSelectedMatch = () => {
     setSelectedMatchId(null);
     if (!queryMatchId) return;
@@ -852,6 +857,7 @@ export default function Matches({ app }) {
   };
   const openSelectedRecruitingPost = (postId) => {
     if (!postId) return;
+    setSelectedRecruitingPostDetailLoadingId(postId);
     setSelectedRecruitingPostId(postId);
   };
   useEffect(() => {
@@ -862,8 +868,14 @@ export default function Matches({ app }) {
 
   useEffect(() => {
     if (!selectedRecruitingPostId || !app.remoteReady || !app.currentUser.id) return undefined;
-    if ((app.state.recruitingPosts ?? []).some((post) => post.id === selectedRecruitingPostId)) return undefined;
-    app.actions.loadRecruitingPost?.(selectedRecruitingPostId);
+    if ((app.state.recruitingPosts ?? []).some((post) => post.id === selectedRecruitingPostId && post.listCardOnly !== true)) {
+      setSelectedRecruitingPostDetailLoadingId((currentId) => currentId === selectedRecruitingPostId ? null : currentId);
+      return undefined;
+    }
+    setSelectedRecruitingPostDetailLoadingId(selectedRecruitingPostId);
+    Promise.resolve(app.actions.loadRecruitingPost?.(selectedRecruitingPostId)).finally(() => {
+      setSelectedRecruitingPostDetailLoadingId((currentId) => currentId === selectedRecruitingPostId ? null : currentId);
+    });
     const intervalId = window.setInterval(() => {
       if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
       app.actions.loadRecruitingPost?.(selectedRecruitingPostId);
@@ -1293,11 +1305,16 @@ export default function Matches({ app }) {
         </RoomModalErrorBoundary>
       ) : null}
 
-      {selectedRecruitingPost && selectedRecruitingLobby ? (
+      {selectedRecruitingPostDetailLoading ? (
+        <RoomModalLoadingView />
+      ) : selectedRecruitingPost && selectedRecruitingLobby ? (
         <RecruitingRoomModal
           app={app}
           post={selectedRecruitingPost}
-          onClose={() => setSelectedRecruitingPostId(null)}
+          onClose={() => {
+            setSelectedRecruitingPostId(null);
+            setSelectedRecruitingPostDetailLoadingId(null);
+          }}
           onOpenMatch={openSelectedMatch}
         />
       ) : null}

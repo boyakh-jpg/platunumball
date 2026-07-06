@@ -2127,6 +2127,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
   const [sheetDragOffset, setSheetDragOffset] = useState(0);
   const [sheetDragSettling, setSheetDragSettling] = useState(false);
   const roomPostId = selectedPost?.id ?? "";
+  const modalPostNeedsDetail = Boolean(selectedPost?.listCardOnly && !sourceMatch);
   const roomShareUrl = useMemo(() => getRoomShareUrl(roomPostId), [roomPostId]);
   const sourceMatchPhaseForChat = sourceMatch ? getMatchRoomPhase(sourceMatch) : null;
   const roomChatLocked = Boolean(
@@ -2148,14 +2149,23 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
     }
     if (!app.remoteReady || !app.currentUser.id) return;
     const refreshKey = `${roomPostId}:${app.currentUser.id}`;
-    if (sourceMatch || skipInitialDetailLoad) {
+    if (sourceMatch || (skipInitialDetailLoad && !modalPostNeedsDetail)) {
       modalPostDetailLoadRef.current = refreshKey;
       return;
     }
     if (modalPostDetailLoadRef.current === refreshKey) return;
     modalPostDetailLoadRef.current = refreshKey;
     app.actions.loadRecruitingPost?.(roomPostId);
-  }, [app.actions, app.currentUser.id, app.remoteReady, roomPostId, skipInitialDetailLoad, sourceMatch]);
+  }, [app.actions, app.currentUser.id, app.remoteReady, modalPostNeedsDetail, roomPostId, skipInitialDetailLoad, sourceMatch]);
+
+  useEffect(() => {
+    if (!modalPostNeedsDetail || !roomPostId || !app.remoteReady || !app.currentUser.id) return undefined;
+    const intervalId = window.setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+      app.actions.loadRecruitingPost?.(roomPostId);
+    }, RECRUITING_ROOM_REFRESH_INTERVAL_MS);
+    return () => window.clearInterval(intervalId);
+  }, [app.actions, app.currentUser.id, app.remoteReady, modalPostNeedsDetail, roomPostId]);
 
   useEffect(() => {
     if (!sourceMatch?.id) return;
@@ -4016,7 +4026,8 @@ function RecruitingReady({ app }) {
     ? app.state.recruitingPosts.find((post) => post.id === selectedPostId)
     : null;
   const selectedPostPending = Boolean(selectedPostId && !selectedPost);
-  const selectedPostDetailLoading = Boolean(selectedPostId && selectedPostDetailLoadingId === selectedPostId);
+  const selectedPostNeedsDetail = Boolean(selectedPost?.listCardOnly);
+  const selectedPostDetailLoading = Boolean(selectedPostId && (selectedPostDetailLoadingId === selectedPostId || selectedPostNeedsDetail));
   const openSelectedPost = (postId) => {
     if (!postId) return;
     setSelectedPostDetailLoadingId(postId);
@@ -4066,7 +4077,7 @@ function RecruitingReady({ app }) {
 
   useEffect(() => {
     if (!selectedPostId || !app.remoteReady || !app.currentUser.id) return undefined;
-    if ((app.state.recruitingPosts ?? []).some((post) => post.id === selectedPostId)) return undefined;
+    if ((app.state.recruitingPosts ?? []).some((post) => post.id === selectedPostId && post.listCardOnly !== true)) return undefined;
     const intervalId = window.setInterval(() => {
       if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
       app.actions.loadRecruitingPost?.(selectedPostId);
