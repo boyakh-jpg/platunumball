@@ -4105,6 +4105,7 @@ function RecruitingReady({ app }) {
     if (!app.remoteReady || !app.currentUser.id) return;
     if (selectedPost && selectedPost.listCardOnly !== true) {
       setSelectedPostDetailFailedId((currentId) => currentId === selectedPostId ? null : currentId);
+      setSelectedPostDetailLoadingId((currentId) => currentId === selectedPostId ? null : currentId);
       return;
     }
     const refreshKey = `${selectedPostId}:${app.currentUser.id}`;
