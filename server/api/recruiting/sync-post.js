@@ -484,6 +484,16 @@ function isOwner(profileId, post = {}) {
   return Boolean(profileId && (profileId === post.ownerId || profileId === roomState.ownerId || profileId === post.playerId || profileId === post.player_id));
 }
 
+function isInvitationDecisionAction(action = "") {
+  return action === "acceptRecruitingInvitation" || action === "declineRecruitingInvitation";
+}
+
+function getRequiredInvitationId(body = {}) {
+  const invitationId = String(body.invitationId ?? "").trim();
+  if (!invitationId) reject(400, "missing_recruiting_invitation_id");
+  return invitationId;
+}
+
 function hasInvitationFor(profileId, post = {}, invitationId = "") {
   const roomState = normalizeRoomState(post.roomState ?? post.room_state, post);
   return toArray(roomState.invitations).some((invitation) => (
@@ -1093,6 +1103,7 @@ export async function persistRecruitingPostSnapshot(context, { post, notificatio
       }
     : null;
   await timeStep(timing, "permissionValidation", () => {
+    if (isInvitationDecisionAction(action)) getRequiredInvitationId(actionBody);
     if (!canSyncRecruitingAction(context.profileId, existingPostSnapshot, post, action, actionBody)) {
       reject(403, "recruiting_sync_permission_denied");
     }

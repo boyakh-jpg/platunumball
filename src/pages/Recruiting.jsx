@@ -1838,7 +1838,9 @@ function InvitationPanel({ invitations, userById, teams, currentUserId, alreadyA
                 <em>{inviteLabel} · {getUserHashtag(target)}</em>
               </span>
             </PlayerHoverCard>
-            {mine ? (
+            {mine && alreadyApplied ? (
+              <Badge tone="green">참가 완료</Badge>
+            ) : mine ? (
               <span className="arena-invite-actions">
                 <Button type="button" size="sm" onClick={() => onAccept(invitation)}>수락</Button>
                 <Button type="button" size="sm" variant="secondary" onClick={() => onDecline(invitation.id)}>거절</Button>

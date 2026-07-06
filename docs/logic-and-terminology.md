@@ -2176,6 +2176,7 @@ flowchart TD
 - `개인 기록`: `recordType:"solo"`이고 모집/초대/MMR 반영 없이 기록만 저장한다.
 - `비공개 대회방`: `visibility:"tournament"`이고 팀 초대/대진 생성 흐름으로 처리한다.
 - 초대 수락/거절 권한은 현재 사용자의 pending 초대 전체가 아니라 요청한 `invitationId`의 pending 초대 기준으로 판정한다.
+- 초대 수락/거절 요청에 `invitationId`가 없으면 서버가 거부한다.
 - 비공개방은 초대 없이 신규 참여할 수 없지만, 이미 참가 확정된 사용자의 같은 방 파티 합류/정리는 허용한다.
 - 팀 초대는 legacy 추론에 기대지 않고 `joinMode:"team"`을 명시한다.
 - 비공개 개인전 생성 화면에서 선택한 `invitePlayerIds`는 생성 시 `joinMode:"player"`, `teamId:null`, `side:"teamB"` pending 초대로 저장한다. 수락은 기존 초대 수락 서버 검사를 다시 통과해야 한다.
