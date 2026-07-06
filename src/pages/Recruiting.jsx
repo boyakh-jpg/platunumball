@@ -4061,9 +4061,16 @@ function RecruitingReady({ app }) {
   };
   const openSelectedPost = (postId) => {
     if (!postId) return;
+    selectedPostRefreshRef.current = "";
     setSelectedPostDetailFailedId(null);
     setSelectedPostDetailLoadingId(postId);
     setSelectedPostId(postId);
+  };
+  const closeSelectedPost = () => {
+    selectedPostRefreshRef.current = "";
+    setSelectedPostId(null);
+    setSelectedPostDetailLoadingId(null);
+    setSelectedPostDetailFailedId(null);
   };
   useBodyScrollLock(Boolean(selectedPost) || selectedPostPending || selectedPostDetailLoading || composeOpen);
 
@@ -4101,7 +4108,7 @@ function RecruitingReady({ app }) {
       return;
     }
     const refreshKey = `${selectedPostId}:${app.currentUser.id}`;
-    if (selectedPostRefreshRef.current === refreshKey) return;
+    if (selectedPostRefreshRef.current === refreshKey && selectedPost?.listCardOnly !== true) return;
     selectedPostRefreshRef.current = refreshKey;
     requestSelectedPostDetail(selectedPostId);
   }, [app.actions, app.currentUser.id, app.remoteReady, selectedPost?.listCardOnly, selectedPostId]);
@@ -4378,7 +4385,7 @@ function RecruitingReady({ app }) {
 
       {selectedPostDetailFailed ? (
         <RecruitingRoomLoadFailedView
-          onClose={() => setSelectedPostId(null)}
+          onClose={closeSelectedPost}
           onRetry={() => {
             selectedPostRefreshRef.current = "";
             requestSelectedPostDetail(selectedPostId);
@@ -4389,7 +4396,7 @@ function RecruitingReady({ app }) {
           app={app}
           post={selectedPost}
           skipInitialDetailLoad
-          onClose={() => setSelectedPostId(null)}
+          onClose={closeSelectedPost}
           onOpenMatch={(matchId) => navigate(`/app/matches?match=${matchId}`)}
           onInvitationAccepted={() => {
             if (roomScope === "invited") setRoomScope("joined");
