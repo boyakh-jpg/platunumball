@@ -1953,8 +1953,7 @@ function SourceMatchRecordSummary({ match, userById }) {
 
 function makeSourceMatchDraft(match) {
   const result = match?.disputeDraftResult ?? match?.result ?? {};
-  const includeReserves = getMatchRoomPhase(match).phase === "live";
-  const playerIds = ["teamA", "teamB"].flatMap((sideName) => getMatchSideRecordPlayerIds(match, sideName, includeReserves));
+  const playerIds = ["teamA", "teamB"].flatMap((sideName) => getMatchSideRecordPlayerIds(match, sideName));
   return {
     scoreA: Number(result.scoreA ?? match?.teamA?.score ?? 0),
     scoreB: Number(result.scoreB ?? match?.teamB?.score ?? 0),
@@ -1977,7 +1976,6 @@ function SourceMatchDisputeEditor({
   submitLabel = "",
 }) {
   const [draft, setDraft] = useState(() => makeSourceMatchDraft(match));
-  const includeReserves = getMatchRoomPhase(match).phase === "live";
 
   useEffect(() => {
     setDraft(makeSourceMatchDraft(match));
@@ -2000,7 +1998,7 @@ function SourceMatchDisputeEditor({
     canReview ||
     sideNames.some((sideName) => canEditScore(sideName)) ||
     sideNames
-      .flatMap((sideName) => getMatchSideRecordPlayerIds(match, sideName, includeReserves))
+      .flatMap((sideName) => getMatchSideRecordPlayerIds(match, sideName))
       .some((playerId) => getEditableFieldsForPlayer(playerId).length > 0)
   );
 
@@ -2046,7 +2044,7 @@ function SourceMatchDisputeEditor({
         {["teamA", "teamB"].map((sideName) => (
           <div className="arena-dispute-side" key={sideName}>
             <strong>{match[sideName]?.name ?? SIDE_LABELS[sideName]}</strong>
-            {getMatchSideRecordPlayerIds(match, sideName, includeReserves).map((playerId, index) => {
+            {getMatchSideRecordPlayerIds(match, sideName).map((playerId, index) => {
               const playerStats = draft.playerStats[playerId] ?? {};
               const editableFieldIds = new Set(getEditableFieldsForPlayer(playerId).map((field) => field.id));
               return (
@@ -2852,7 +2850,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const canRequestSourceMatchPointDispute = Boolean(
           matchRoom &&
           sourceMatchApprovalOpen &&
-          getMatchRecordPlayerIds(sourceMatch, true).includes(app.currentUser.id),
+          getMatchRecordPlayerIds(sourceMatch).includes(app.currentUser.id),
         );
         const sourceCurrentDisputePoints = sourceMatch ? getMatchPlayerDisputePoints(sourceMatch, app.currentUser.id) : 0;
         const showSourceMatchRecordSummary = Boolean(

@@ -65,7 +65,7 @@ const statusMeta = {
 function makeInitialStats(match) {
   if (!match) return {};
   const sourceResult = match?.disputeDraftResult ?? match?.result;
-  const playerIds = getMatchRecordPlayerIds(match, true);
+  const playerIds = getMatchRecordPlayerIds(match);
   return Object.fromEntries(
     playerIds.map((playerId) => [
       playerId,
@@ -136,7 +136,7 @@ function getRecordPlayerEntries(match = {}, includeReserves = false) {
 function getPointAudit(match, score, sideName) {
   const scoreKey = sideName === "teamA" ? "scoreA" : "scoreB";
   const teamScore = Number(score[scoreKey] ?? 0);
-  const statPoints = getMatchSideRecordPlayerIds(match, sideName, true).reduce((sum, playerId) => sum + Number(score.playerStats[playerId]?.points ?? 0), 0);
+  const statPoints = getMatchSideRecordPlayerIds(match, sideName).reduce((sum, playerId) => sum + Number(score.playerStats[playerId]?.points ?? 0), 0);
   return {
     teamScore,
     statPoints,
@@ -346,7 +346,7 @@ export default function MatchRoom({ app }) {
   const isSoloRecord = match.rules?.recordType === "solo";
   const matchApprovalOpen = Boolean(match.result && (match.status === "approval" || (match.status === "agreed" && match.endedAt && !recordWindow.disputeExpired)));
   const canDispute = matchApprovalOpen && recordWindow.disputeOpen && currentUserCanFileDispute;
-  const canRequestOwnPointDispute = canDispute && getMatchRecordPlayerIds(match, true).includes(app.currentUser.id);
+  const canRequestOwnPointDispute = canDispute && getMatchRecordPlayerIds(match).includes(app.currentUser.id);
   const canVoid = match.status === "disputed" && currentUserCanOperateStartedMatch;
   const canDeleteSoloRecord = isSoloRecord && match.createdBy === app.currentUser.id && match.status !== "cancelled";
   const canResumeApproval = match.status === "disputed" && currentUserCanOperateStartedMatch;
@@ -929,7 +929,7 @@ export default function MatchRoom({ app }) {
                 {["teamA", "teamB"].map((sideName) => (
                   <div key={sideName} className="stat-entry-side">
                     <h3>{(sideName === "teamA" ? teamASide : teamBSide).name} 개인 기록</h3>
-                    {getMatchSideRecordPlayerIds(match, sideName, matchPhase === "live").map((playerId, index) => {
+                    {getMatchSideRecordPlayerIds(match, sideName).map((playerId, index) => {
                       const user = userMap[playerId];
                       const displayName = getRecordPlayerDisplayName(match, sideName, playerId, index, user);
                       const displayUser = user ?? { id: playerId, name: displayName, position: "-" };
