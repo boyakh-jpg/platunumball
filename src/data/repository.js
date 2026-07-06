@@ -3831,6 +3831,7 @@ function createSoloRecordMatch(state, draft = {}) {
 
 export function createMatch(state, draft) {
   if (draft?.recordType === RECORD_TYPES.personalRecord) return createSoloRecordMatch(state, draft);
+  const isMatchRecord = draft?.recordType === RECORD_TYPES.matchRecord;
   const disciplineBlock = getDisciplineBlockedState(state, "경기방 생성");
   if (disciplineBlock) return disciplineBlock;
   const hostTrustBlock = getHostTrustBlockNotification(state, { ...draft, visibility: "private" });
@@ -3839,9 +3840,10 @@ export function createMatch(state, draft) {
   const size = MODE_SIZES[mode] ?? 5;
   const timingType = draft.timingType === "instant" ? "instant" : "scheduled";
   const scheduledAt = timingType === "instant" ? "즉시" : `${draft.scheduledDate ?? ""} ${draft.scheduledTime ?? ""}`.trim();
-  if (timingType !== "instant" && !isScheduleDateInAllowedWindow(draft.scheduledDate, new Date(), ROOM_SCHEDULE_MAX_DAYS)) {
+  if (!isMatchRecord && timingType !== "instant" && !isScheduleDateInAllowedWindow(draft.scheduledDate, new Date(), ROOM_SCHEDULE_MAX_DAYS)) {
     return { ...state, notifications: [getInvalidScheduleNotification(ROOM_SCHEDULE_MAX_DAYS), ...state.notifications] };
   }
+  const nowIso = new Date().toISOString();
   const teams = state.teams;
   const teamA = teams.find((team) => team.id === draft.teamAId) ?? teams[0];
   const teamB = teams.find((team) => team.id === draft.teamBId && team.id !== teamA.id) ?? teams.find((team) => team.id !== teamA.id) ?? teams[1];
@@ -3867,7 +3869,7 @@ export function createMatch(state, draft) {
     status: "agreed",
     ranked,
     official: ranked && Boolean(draft.official),
-    preRegistered: Boolean(draft.preRegistered),
+    preRegistered: isMatchRecord ? false : Boolean(draft.preRegistered),
     refereeId,
     refereeTrustMin: REFEREE_TRUST_MIN,
     statEntryMinutes: STAT_ENTRY_WINDOW_MINUTES,
@@ -3881,10 +3883,11 @@ export function createMatch(state, draft) {
       foulRule: draft.foulRule || "파울은 콜한 쪽 기준으로 즉시 중단",
       mmrRangeMode,
       ratingScale,
+      recordType: isMatchRecord ? RECORD_TYPES.matchRecord : RECORD_TYPES.match,
       visibility: "private",
       region: selectedCourt?.region ?? draft.region,
     },
-    memo: draft.memo || "결과 승인 대기.",
+    memo: draft.memo || (isMatchRecord ? "경기 종료 후 기록 입력 대기." : "결과 승인 대기."),
     stakes: draft.stakes || "다음 경기 우선권.",
     mmrLimitMode: draft.mmrLimitMode ?? "block",
     mmrRangeMode,
@@ -3899,15 +3902,17 @@ export function createMatch(state, draft) {
     result: null,
     ratingResult: null,
     createdBy: state.currentUserId,
-    agreedAt: new Date().toISOString(),
-    createdAt: new Date().toISOString(),
+    agreedAt: nowIso,
+    startedAt: isMatchRecord ? nowIso : undefined,
+    endedAt: isMatchRecord ? nowIso : undefined,
+    createdAt: nowIso,
   };
 
   return {
     ...state,
     matches: [match, ...state.matches],
     notifications: [
-      { id: makeId("n"), title: "새 경기방", body: `${match.title} 확정방이 만들어졌습니다.`, tone: "match", matchId: match.id },
+      { id: makeId("n"), title: isMatchRecord ? "경기 기록방" : "새 경기방", body: isMatchRecord ? `${match.title} 기록 입력방이 만들어졌습니다.` : `${match.title} 확정방이 만들어졌습니다.`, tone: "match", matchId: match.id },
       ...state.notifications,
     ],
   };
