@@ -2893,8 +2893,21 @@ input[type="color"] {
   gap: 0;
 }
 
+.create-match-page .form-grid.two > label > select,
+.create-match-page .form-grid.two > label > input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+.create-opponent-team-control .search-picker-field input {
+  height: var(--ui-button-height);
+  min-height: var(--ui-button-height);
+}
+
 .create-opponent-team-control .search-picker-field input {
   padding-right: min(42vw, 330px);
+}
+
+.create-match-page .form-grid.two > .stat-integrity-note {
+  align-self: end;
+  min-height: var(--ui-button-height);
+  padding: 10px 12px;
 }
 
 .create-opponent-team-selected {
