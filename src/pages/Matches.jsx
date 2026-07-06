@@ -14,6 +14,7 @@ import {
   getRoomRefereeLabel,
   getRoomVisibilityLabel,
   getRoomScheduleLabel,
+  getRoomKindFromMatch,
   getPublicRoomTimingStatus,
   getMatchHostPlayerId,
   getMatchReservePlayerIds,
@@ -25,7 +26,8 @@ import {
   isInstantRoom,
   userNeedsMatchAction,
 } from "../lib/matchUtils.js";
-import { getRecruitingEntryForUser, getRecruitingListCardLobby, getRecruitingLobby, getRecruitingRoomOwnerId, getRecruitingSideCapacity, hasPendingRecruitingInvitation, isRecruitingPartyEntry, isRecruitingRoomInUserSchedule } from "../lib/recruiting.js";
+import { ROOM_KINDS } from "../lib/constants.js";
+import { getRecruitingEntryForUser, getRecruitingListCardLobby, getRecruitingLobby, getRecruitingRoomOwnerId, getRecruitingSideCapacity, getRoomKindFromRecruitingPost, hasPendingRecruitingInvitation, isRecruitingPartyEntry, isRecruitingRoomInUserSchedule } from "../lib/recruiting.js";
 import { RECRUITING_ROOM_REFRESH_INTERVAL_MS, RecruitingRoomModal, getRecruitingRoomListStatus } from "./Recruiting.jsx";
 import "../styles/recruiting-arena.css";
 import "../styles/matches-arena.css";
@@ -382,8 +384,13 @@ function matchesScheduleRelation(relation = "", relationFilter = "all") {
   return relation === relationFilter;
 }
 
-function isScheduleRecordRoom(item = {}) {
-  return isPersonalRecordMatch(item) || isMatchRecordMatch(item);
+function getScheduleRoomKind(item = {}, type = "match") {
+  return type === "room" ? getRoomKindFromRecruitingPost(item) : getRoomKindFromMatch(item);
+}
+
+function isScheduleRecordRoom(item = {}, type = "match") {
+  const roomKind = getScheduleRoomKind(item, type);
+  return roomKind === ROOM_KINDS.personalRecord || roomKind === ROOM_KINDS.matchRecord;
 }
 
 function isScheduleTeamRoom(item = {}, type = "match") {
@@ -396,19 +403,15 @@ function isScheduleTeamRoom(item = {}, type = "match") {
     || (item.parties ?? []).some((party) => isMatchPartyTeamParty(party));
 }
 
-function getScheduleVisibility(item = {}) {
-  return item.visibility ?? item.rules?.visibility ?? "";
-}
-
 function matchesScheduleBranch(item = {}, type = "match", branchFilter = "all") {
   if (branchFilter === "all") return true;
-  const isRecord = isScheduleRecordRoom(item);
+  const roomKind = getScheduleRoomKind(item, type);
+  const isRecord = isScheduleRecordRoom(item, type);
   const isTeam = isScheduleTeamRoom(item, type);
-  const visibility = getScheduleVisibility(item);
   if (branchFilter === "team") return !isRecord && isTeam;
   if (branchFilter === "player") return !isRecord && !isTeam;
-  if (branchFilter === "public") return !isRecord && visibility === "public";
-  if (branchFilter === "private") return !isRecord && visibility !== "public";
+  if (branchFilter === "public") return !isRecord && roomKind === ROOM_KINDS.publicRecruiting;
+  if (branchFilter === "private") return !isRecord && roomKind === ROOM_KINDS.privateInvite;
   return true;
 }
 

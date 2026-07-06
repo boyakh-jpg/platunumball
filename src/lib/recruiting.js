@@ -1,4 +1,4 @@
-import { DISPUTE_WINDOW_MINUTES, MODE_SIZES, PLAYER_POSITIONS, REFEREE_TRUST_MIN, STAT_ENTRY_WINDOW_MINUTES, isMercenaryTeamRole } from "./constants.js";
+import { DISPUTE_WINDOW_MINUTES, MODE_SIZES, PLAYER_POSITIONS, REFEREE_TRUST_MIN, ROOM_KINDS, STAT_ENTRY_WINDOW_MINUTES, isMercenaryTeamRole } from "./constants.js";
 import { TIERS, getTier, getTierDivision } from "./tier.js";
 
 export const RECRUITING_TYPES = {
@@ -117,6 +117,10 @@ export function getRecruitingJoinMode(entry = {}) {
 
 export function isSoloIndividualRecruitingRoom(post = {}) {
   return getRecruitingSideCapacity(post) <= 1 && (post.hostJoinMode === "player" || !post.teamId);
+}
+
+export function getRoomKindFromRecruitingPost(post = {}) {
+  return post.visibility === "public" ? ROOM_KINDS.publicRecruiting : ROOM_KINDS.privateInvite;
 }
 
 export function getSelectableTeamPlayerIds(team = {}) {

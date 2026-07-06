@@ -2100,6 +2100,7 @@ flowchart TD
 - 경기 메뉴의 모집 일정은 `user_room_feed`로 ID를 고르되, 인원/참여 상태 표시는 최신 `recruiting_posts`/`recruiting_applications` row를 읽어 계산한다. `room_feed_cards.card_json` 숫자만 믿으면 다른 계정에서 stale 인원수가 보일 수 있다.
 - 경기 메뉴 방 분기 필터는 방만들기 생성 흐름 기준으로 `공개 모집`, `비공개 초대`, `개인전`, `팀전`을 나눈다.
 - `공개 모집`/`비공개 초대`는 `visibility` 기준이고, `개인전`/`팀전`은 실제 팀 파티/팀 id/`hostJoinMode` 기준이다.
+- 경기 메뉴 분기 필터는 `getRoomKindFromMatch`/`getRoomKindFromRecruitingPost`가 반환한 방 종류를 기준으로 공개/비공개/기록방을 판정한다.
 - `rules.recordType='solo'`인 내 기록은 경기 메뉴에 붙이지 않는다.
 - `rules.recordType='match_record'`인 경기기록방은 진행 메뉴의 기록 확인 흐름에 붙인다.
 - `/api/matches/list` 일반 일정 조회는 `match_record`를 제외하고, `recorderOnly` 조회에서만 경기기록방을 읽는다.
