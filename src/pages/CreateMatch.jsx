@@ -575,6 +575,7 @@ export default function CreateMatch({ app }) {
   const isPublicRoom = !isSoloRecord && !isMatchRecordRoom && draft.visibility === "public";
   const isTournamentRoom = !isSoloRecord && !isMatchRecordRoom && draft.visibility === "tournament";
   const isTeamRoom = !isSoloRecord && !isTournamentRoom && draft.hostJoinMode === "team";
+  const effectiveTeamOnly = Boolean(isPublicRoom && isTeamRoom);
   const currentRoomKind = getRoomKindFromDraft(draft);
   const sideCapacity = getRecruitingSideCapacity(draft);
   const publicPartyCapacity = sideCapacity;
@@ -756,7 +757,7 @@ export default function CreateMatch({ app }) {
   const publicTeamInvalid = isPublicRoom && isTeamRoom && (
     !myTeams.some((team) => team.id === draft.teamAId) ||
     !publicPartyPlayerIds.length ||
-    (draft.teamOnly && publicPartyPlayerIds.length < sideCapacity)
+    (effectiveTeamOnly && publicPartyPlayerIds.length < sideCapacity)
   );
   const tournamentMmrBlocked = Boolean(
     isTournamentRoom &&
@@ -769,7 +770,7 @@ export default function CreateMatch({ app }) {
     ? "내 팀을 먼저 선택해야 팀방을 만들 수 있습니다."
     : !publicPartyPlayerIds.length
       ? "A사이드 출전 선수를 1명 이상 선택해야 생성할 수 있습니다."
-      : draft.teamOnly && publicPartyPlayerIds.length < sideCapacity
+      : effectiveTeamOnly && publicPartyPlayerIds.length < sideCapacity
         ? `팀 전용 공개방은 A사이드 출전 슬롯 ${sideCapacity}명을 모두 채워야 생성할 수 있습니다.`
         : "";
   const privateTeamInvalidReason = !ownsSelectedTeamA
@@ -1255,7 +1256,7 @@ export default function CreateMatch({ app }) {
       visibility: draft.visibility,
       title: draft.title,
       hostJoinMode: draft.hostJoinMode,
-      teamOnly: isPublicRoom && isTeamRoom && Boolean(draft.teamOnly),
+      teamOnly: effectiveTeamOnly,
       teamId: isTeamRoom ? draft.teamAId : "",
       playerIds: isTeamRoom ? publicPartyPlayerIds : [],
       reservePlayerIds: isTeamRoom ? ownerReservePlayerIds : [],
@@ -1357,7 +1358,7 @@ export default function CreateMatch({ app }) {
                   official: draft.recordType === RECORD_TYPES.personalRecord ? true : draft.official,
                   preRegistered: draft.recordType === RECORD_TYPES.personalRecord ? true : draft.preRegistered,
                   hostJoinMode,
-                  teamOnly: hostJoinMode === "team" ? draft.teamOnly : false,
+                  teamOnly: hostJoinMode === "team",
                   teamAId: team?.id ?? draft.teamAId,
                   playerIds,
                   reservePlayerIds: hostJoinMode === "team" ? getDefaultTeamReserveIds(team, playerIds) : [],
@@ -1473,7 +1474,7 @@ export default function CreateMatch({ app }) {
                     const opponentLeaderId = hostJoinMode === "team" && !isPublicRoom ? getDefaultTeamPlayerIds(selectedTeamB, 1, playerIds)[0] ?? "" : "";
                     update({
                       hostJoinMode,
-                      teamOnly: hostJoinMode === "team" ? draft.teamOnly : false,
+                      teamOnly: isPublicRoom && hostJoinMode === "team",
                       playerIds,
                       reservePlayerIds: hostJoinMode === "team" ? getDefaultTeamReserveIds(selectedTeamA, playerIds) : [],
                       opponentPlayerIds: [],
@@ -1556,6 +1557,7 @@ export default function CreateMatch({ app }) {
                 update({
                   mode,
                   hostJoinMode,
+                  teamOnly: isPublicRoom && nextIsTeamRoom,
                   title: isDefaultCreateTitle(draft.title) ? getDefaultCreateTitle(mode) : draft.title,
                   ...(nextIsTeamRoom ? {
                     playerIds,
@@ -1564,7 +1566,6 @@ export default function CreateMatch({ app }) {
                     opponentReservePlayerIds: [],
                     opponentLeaderId,
                   } : {
-                    teamOnly: false,
                     playerIds: [],
                     reservePlayerIds: [],
                     opponentPlayerIds: [],
@@ -1953,13 +1954,10 @@ export default function CreateMatch({ app }) {
                 </select>
               </label>
               {isPublicRoom ? (
-                <label className="switch-line create-team-only-toggle">
-                  <input type="checkbox" checked={Boolean(draft.teamOnly)} onChange={(event) => update({ teamOnly: event.target.checked })} />
-                  <span>
-                    팀으로만 참여
-                    <small>개인 참여를 막고 A/B 출전 슬롯을 팀 파티로만 채웁니다.</small>
-                  </span>
-                </label>
+                <div className="create-public-note">
+                  <Globe2 size={17} />
+                  <span>공개 팀전은 팀 파티로만 참여합니다. 개인 참여와 부분팀 혼합은 만들지 않습니다.</span>
+                </div>
               ) : null}
               {!isPublicRoom ? (
                 <div className={`team-search-field create-opponent-team-field ${opponentTeamQuery.trim() ? "has-query" : ""}`}>
@@ -2043,7 +2041,7 @@ export default function CreateMatch({ app }) {
               reserveIds={ownerReservePlayerIds}
               capacity={publicPartyCapacity}
               title={isPublicRoom ? "방장 파티 출전/후보" : "A사이드 출전/후보"}
-              requiredActive={!isPublicRoom || Boolean(draft.teamOnly)}
+              requiredActive={!isPublicRoom || effectiveTeamOnly}
               onChange={(playerIds) => update({ playerIds })}
               onReserveChange={(reservePlayerIds) => update({ reservePlayerIds })}
               onRosterChange={({ selectedIds: playerIds, reserveIds: reservePlayerIds }) => update({ playerIds, reservePlayerIds })}
