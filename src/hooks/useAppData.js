@@ -262,6 +262,15 @@ function shouldUseIncomingRoomRow(incoming, existing) {
   return incomingTime >= existingTime;
 }
 
+function shouldUseIncomingRecruitingPostRow(incoming, existing) {
+  if (!existing) return true;
+  const incomingListOnly = incoming?.listCardOnly === true;
+  const existingListOnly = existing?.listCardOnly === true;
+  if (existingListOnly && !incomingListOnly) return true;
+  if (incomingListOnly && !existingListOnly) return false;
+  return shouldUseIncomingRoomRow(incoming, existing);
+}
+
 function mergeMatchesById(current = [], incoming = [], forceIds = new Set()) {
   const merged = new Map((current ?? []).filter((item) => item?.id).map((item) => [item.id, item]));
   (incoming ?? []).forEach((item) => {
@@ -287,7 +296,7 @@ function mergeRecruitingPostsById(current = [], incoming = []) {
   (incoming ?? []).forEach((item) => {
     if (!item?.id) return;
     const existing = merged.get(item.id);
-    if (!shouldUseIncomingRoomRow(item, existing)) return;
+    if (!shouldUseIncomingRecruitingPostRow(item, existing)) return;
     const next = preserveExistingWhenEmpty(item, existing, ["applicants"]);
     if (item.__invitationsPartial !== true) delete next.__invitationsPartial;
     if (existing?.roomState && item?.roomState) {
