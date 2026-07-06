@@ -176,6 +176,7 @@ export default function Recorder({ app }) {
   const [saveFeedback, setSaveFeedback] = useState("");
   const [refreshingMatchDetail, setRefreshingMatchDetail] = useState(false);
   const recorderLoadRef = useRef("");
+  const selectedDetailLoadRef = useRef("");
 
   useEffect(() => {
     if (!app.remoteReady || !user.id || matches.length || app.recorderMatchesLoaded) return;
@@ -193,6 +194,24 @@ export default function Recorder({ app }) {
     if (!selectedMatch || selectedMatchId === selectedMatch.id) return;
     setSelectedMatchId(selectedMatch.id);
   }, [selectedMatch, selectedMatchId]);
+
+  useEffect(() => {
+    if (!app.remoteReady || !selectedMatch?.id) return;
+    const loadMatchDetail = app.actions.loadMatchDetail;
+    if (!loadMatchDetail) return;
+    const detailKey = `${user.id}:${selectedMatch.id}`;
+    if (selectedDetailLoadRef.current === detailKey) return;
+    selectedDetailLoadRef.current = detailKey;
+    setRefreshingMatchDetail(true);
+    Promise.resolve(loadMatchDetail(selectedMatch.id))
+      .catch(() => {
+        if (selectedDetailLoadRef.current === detailKey) setSaveFeedback("최신 경기 정보를 불러오지 못했습니다.");
+      })
+      .finally(() => {
+        if (selectedDetailLoadRef.current === detailKey) setRefreshingMatchDetail(false);
+      });
+  }, [app.actions.loadMatchDetail, app.remoteReady, selectedMatch?.id, user.id]);
+
   const selectMatch = (matchId) => {
     setSelectedMatchId(matchId);
     setSearchParams((current) => {
@@ -239,8 +258,8 @@ export default function Recorder({ app }) {
   const beforeStart = Boolean(recordWindow?.beforeStart);
   const saveWindowOpen = selectedMatch && !beforeStart && (recordWindow?.beforeEnd || recordWindow?.statOpen || canEditDisputeDraft || currentUserCanSubmitMissingPostgameResult);
   const hasDirtyStats = Object.keys(dirtyStats).length > 0;
-  const canEditStats = Boolean(selectedMatch && !["confirmed"].includes(selectedMatch.status) && (canEditDisputeDraft || selectedMatch.status !== "disputed") && editablePlayerIds.length && saveWindowOpen);
-  const canSave = Boolean(selectedMatch && !["confirmed"].includes(selectedMatch.status) && (canEditDisputeDraft || selectedMatch.status !== "disputed") && editablePlayerIds.length && saveWindowOpen && hasDirtyStats);
+  const canEditStats = Boolean(selectedMatch && !refreshingMatchDetail && !["confirmed"].includes(selectedMatch.status) && (canEditDisputeDraft || selectedMatch.status !== "disputed") && editablePlayerIds.length && saveWindowOpen);
+  const canSave = Boolean(selectedMatch && !refreshingMatchDetail && !["confirmed"].includes(selectedMatch.status) && (canEditDisputeDraft || selectedMatch.status !== "disputed") && editablePlayerIds.length && saveWindowOpen && hasDirtyStats);
   const canEndLiveMatch = Boolean(selectedMatch && currentUserCanOperatePostStart && roomPhase === "live" && !selectedMatch.endedAt);
   const canEditPostgameRoster = Boolean(selectedMatch && currentUserCanOperatePostStart && roomPhase === "postgame" && (recordWindow?.statOpen || currentUserCanSubmitMissingPostgameResult) && !selectedMatch.result);
   const scoreA = selectedMatch ? getSideScore(selectedMatch, stats, "teamA", editablePlayerIds) : 0;
@@ -494,6 +513,7 @@ export default function Recorder({ app }) {
         </Card>
 
         <div className="recorder-workspace">
+          {refreshingMatchDetail ? <BasketballLoader overlay label="경기 기록 확인 중" /> : null}
           <Card className="recorder-board">
             <div className="recorder-board-head">
               <div>
