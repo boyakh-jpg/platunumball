@@ -912,7 +912,8 @@ async function loadCurrentRecruitingSchedule(context, adminLevel = 0) {
       adminLevel,
       limit: REMOTE_CLIENT_MATCH_LIMIT,
       includeFeedCounts: false,
-      skipCardReferenceRows: true,
+      skipCardReferenceRows: false,
+      preferFreshRows: true,
     });
     return result?.state?.recruitingPosts?.length ? result : null;
   } catch (error) {

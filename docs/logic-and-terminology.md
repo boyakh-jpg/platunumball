@@ -2045,3 +2045,4 @@ flowchart TD
 - 경기 메뉴는 내가 만든 방, 내 참여방, 초대받은 방을 관계 필터로 나눌 수 있다.
 - 경기 메뉴는 이미 내 관련 일정만 보므로 인원수/경기 방식 필터를 두지 않는다.
 - 초대받은 모집방은 아직 참가 확정 전이어도 경기 메뉴의 초대받은 방 필터에서 볼 수 있다.
+- 경기 메뉴의 모집 일정은 `user_room_feed`로 ID를 고르되, 인원/참여 상태 표시는 최신 `recruiting_posts`/`recruiting_applications` row를 읽어 계산한다. `room_feed_cards.card_json` 숫자만 믿으면 다른 계정에서 stale 인원수가 보일 수 있다.

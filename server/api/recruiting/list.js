@@ -1455,12 +1455,14 @@ export async function loadCompactRecruitingList(context, {
   scheduledDate = "",
   debugPage = false,
   skipCardReferenceRows = false,
+  preferFreshRows = false,
 } = {}) {
   const targetPostIds = uniqueIds([...explicitPostIds, ...(mineOnly ? currentUserPostIds : pagePostIds), ...(includeMine ? currentUserPostIds : [])]);
-  const targetCards = uniqueFeedCards(pageCards.map((card) => ({ entity_id: card?.id, card_json: card })), targetPostIds);
+  const targetCards = preferFreshRows ? [] : uniqueFeedCards(pageCards.map((card) => ({ entity_id: card?.id, card_json: card })), targetPostIds);
   const includeRoomChat = explicitPostIds.length > 0;
   const includeRoomInvitations = explicitPostIds.length > 0;
   const canUsePageCards = pageCards.length > 0
+    && !preferFreshRows
     && !explicitPostIds.length
     && targetCards.length > 0
     && targetPostIds.length > 0;
@@ -1757,6 +1759,7 @@ export async function loadCurrentUserRecruitingFeedList(context, {
   allowLegacyFallback = false,
   roomScope = "",
   skipCardReferenceRows = false,
+  preferFreshRows = false,
 } = {}) {
   if (!context.profileId) {
     return loadCompactRecruitingList(context, { adminLevel, limit, mineOnly: true });
@@ -1784,6 +1787,7 @@ export async function loadCurrentUserRecruitingFeedList(context, {
       feedCounts,
       limit,
       skipCardReferenceRows,
+      preferFreshRows,
     });
   }
   if (!allowLegacyFallback) {
