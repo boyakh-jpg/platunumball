@@ -798,21 +798,19 @@ export default function CreateMatch({ app }) {
   useEffect(() => {
     if (!isTeamRoom || !selectedTeamA) return;
     const selectableIds = getSelectableTeamPlayerIds(selectedTeamA);
-    const selectedIds = getPartyPlayerIds(selectedTeamA, draft.playerIds, sideCapacity);
-    const reserveIds = getPartyReserveIds(selectedTeamA, draft.reservePlayerIds, selectedIds);
+    const selectedIds = selectableIds.includes(app.currentUser.id) ? [app.currentUser.id] : [];
     const playerIdsNeedSync = !Array.isArray(draft.playerIds)
-      || draft.playerIds.length > sideCapacity
-      || draft.playerIds.some((playerId) => !selectableIds.includes(playerId));
+      || draft.playerIds.length !== selectedIds.length
+      || draft.playerIds.some((playerId, index) => playerId !== selectedIds[index]);
     const reserveIdsNeedSync = !Array.isArray(draft.reservePlayerIds)
-      || draft.reservePlayerIds.length > MAX_PARTY_RESERVES
-      || draft.reservePlayerIds.some((playerId) => !selectableIds.includes(playerId) || selectedIds.includes(playerId));
+      || draft.reservePlayerIds.length > 0;
     if (!playerIdsNeedSync && !reserveIdsNeedSync) return;
     setDraft((current) => ({
       ...current,
-      playerIds: !selectedIds.length ? [app.currentUser.id] : selectedIds,
+      playerIds: selectedIds,
       reservePlayerIds: [],
     }));
-  }, [app.currentUser.id, draft.hostJoinMode, draft.playerIds, draft.reservePlayerIds, isPublicRoom, isTeamRoom, sideCapacity, selectedTeamA]);
+  }, [app.currentUser.id, draft.hostJoinMode, draft.playerIds, draft.reservePlayerIds, isPublicRoom, isTeamRoom, selectedTeamA]);
 
   useEffect(() => {
     if (!isTeamRoom || isPublicRoom || !selectedTeamB) return;
@@ -1096,8 +1094,8 @@ export default function CreateMatch({ app }) {
       hostJoinMode: draft.hostJoinMode,
       teamOnly: effectiveTeamOnly,
       teamId: isTeamRoom ? draft.teamAId : "",
-      playerIds: isTeamRoom ? publicPartyPlayerIds : [],
-      reservePlayerIds: isTeamRoom ? ownerReservePlayerIds : [],
+      playerIds: isTeamRoom ? [app.currentUser.id].filter(Boolean) : [],
+      reservePlayerIds: [],
       opponentTeamId: !isPublicRoom && isTeamRoom ? draft.teamBId : "",
       opponentPlayerIds: [],
       opponentReservePlayerIds: [],
