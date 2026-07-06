@@ -29,6 +29,7 @@ import settingsSync from "../server/api/settings/sync.js";
 import search from "../server/api/search.js";
 import stateLoad from "../server/api/state/load.js";
 import systemCleanupSim from "../server/api/system/cleanup-sim.js";
+import systemFeedAudit from "../server/api/system/feed-audit.js";
 import systemMaintenance from "../server/api/system/maintenance.js";
 import systemSchemaHealth from "../server/api/system/schema-health.js";
 import teamList from "../server/api/teams/list.js";
@@ -67,6 +68,7 @@ const ROUTES = new Map([
   ["/search", search],
   ["/state/load", stateLoad],
   ["/system/cleanup-sim", systemCleanupSim],
+  ["/system/feed-audit", systemFeedAudit],
   ["/system/maintenance", systemMaintenance],
   ["/system/schema-health", systemSchemaHealth],
   ["/teams/detail", teamList],

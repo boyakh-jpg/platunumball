@@ -484,11 +484,23 @@ function isOwner(profileId, post = {}) {
   return Boolean(profileId && (profileId === post.ownerId || profileId === roomState.ownerId || profileId === post.playerId || profileId === post.player_id));
 }
 
-function hasInvitationFor(profileId, post = {}) {
+function hasInvitationFor(profileId, post = {}, invitationId = "") {
   const roomState = normalizeRoomState(post.roomState ?? post.room_state, post);
   return toArray(roomState.invitations).some((invitation) => (
-    invitation.targetUserId === profileId && isPendingInvitation(invitation)
+    invitation.targetUserId === profileId &&
+    (!invitationId || invitation.id === invitationId) &&
+    isPendingInvitation(invitation)
   ));
+}
+
+function getPendingPlayerInvitation(profileId, post = {}, invitationId = "") {
+  const roomState = normalizeRoomState(post.roomState ?? post.room_state, post);
+  return toArray(roomState.invitations).find((invitation) => (
+    invitation.role !== "referee" &&
+    invitation.targetUserId === profileId &&
+    isPendingInvitation(invitation) &&
+    (!invitationId || invitation.id === invitationId)
+  )) ?? null;
 }
 
 function hasRefereeInvitationFor(profileId, post = {}) {
@@ -949,12 +961,12 @@ function canSyncRecruitingAction(profileId, existingPost, nextPost, action, body
     if (action === "interestRecruitingPost" && body.joinMode === "referee") {
       return existingPost.visibility !== "private" && nextPost.refereeId === profileId;
     }
-    if (existingPost.visibility === "private" && !hasInvitationFor(profileId, existingPost)) return false;
+    if (existingPost.visibility === "private" && !existingParticipants.has(profileId) && !hasInvitationFor(profileId, existingPost, body.invitationId)) return false;
     return nextParticipants.has(profileId);
   }
   if (PARTICIPANT_RECRUITING_ACTIONS.has(action)) {
     if (action === "acceptRecruitingInvitation" || action === "declineRecruitingInvitation") {
-      return existingParticipants.has(profileId) || hasInvitationFor(profileId, existingPost);
+      return existingParticipants.has(profileId) || hasInvitationFor(profileId, existingPost, body.invitationId);
     }
     return existingParticipants.has(profileId);
   }
@@ -986,6 +998,18 @@ function validateLockedRecruitingCore(profileId, existingPost, nextPost, body = 
   const existingCore = getRecruitingCoreSnapshot(existingPost);
   const nextCore = getRecruitingCoreSnapshot(nextPost);
   if (actionCanAssignReferee(profileId, existingPost, body)) existingCore.refereeId = nextCore.refereeId;
+  const playerInvitation = action === "acceptRecruitingInvitation"
+    ? getPendingPlayerInvitation(profileId, existingPost, body.invitationId)
+    : null;
+  if (
+    playerInvitation &&
+    existingCore.hostJoinMode === "team" &&
+    existingCore.teamId &&
+    playerInvitation.teamId === existingCore.teamId &&
+    playerInvitation.side === existingCore.hostSide
+  ) {
+    existingCore.playerIds = nextCore.playerIds;
+  }
   if (!sameJson(existingCore, nextCore)) reject(403, "recruiting_core_locked");
 }
 

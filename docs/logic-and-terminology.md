@@ -2055,3 +2055,18 @@ flowchart TD
 - 모집 리스트 row에 현재 사용자 초대 snapshot이 있으면 `__feedRelations=["invited"]`보다 실제 pending invitation row를 우선한다.
 - 관계 필터 버튼에는 created/joined/invited 숫자 badge를 표시하지 않는다.
 - 모집/경기 관계 목록 기본 호출은 `includeFeedCounts:false`이며, count가 필요한 유지보수 호출만 명시적으로 `true`를 넘긴다.
+
+## 2026-07-06 모집 초대/파티 서버 판정
+
+- 초대 수락/거절 권한은 현재 사용자의 pending 초대 전체가 아니라 요청한 `invitationId`의 pending 초대 기준으로 판정한다.
+- 비공개방은 초대 없이 신규 참여할 수 없지만, 이미 참가 확정된 사용자의 같은 방 파티 합류/정리는 허용한다.
+- 팀 초대는 legacy 추론에 기대지 않고 `joinMode:"team"`을 명시한다.
+- 팀 호스트 A사이드 팀원이 초대를 수락해 `playerIds`가 늘어나는 것은 수락된 초대 범위 안에서만 허용한다. 그 외 핵심 룰 변경은 계속 `recruiting_core_locked`로 막는다.
+- 공개/비공개 모집방의 모든 다중 초대는 대상별 pending 초대이며, 각 수락은 서버에서 슬롯/사이드/파티/나이/MMR/권한 검사를 다시 통과해야 한다.
+
+## 2026-07-06 feed stale 감사
+
+- `user_room_feed`는 관계/filter index이고 `room_feed_cards.card_json`은 목록용 얇은 카드 cache다.
+- stale 감사는 읽기 전용으로 먼저 수행한다. active feed row, missing card, stale card, source status mismatch, orphan source, trigger health를 확인한다.
+- `feed-audit`는 refresh/cleanup을 직접 실행하지 않는다. repair는 감사 결과의 제한된 id를 대상으로 별도 maintenance/refresh 경로에서만 수행한다.
+- 목록 read path는 기본적으로 repair RPC를 호출하지 않는다. 명시 repair flag나 maintenance가 아닌 일반 목록 조회에서 feed를 고치지 않는다.

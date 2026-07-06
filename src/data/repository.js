@@ -7200,6 +7200,7 @@ export function interestRecruitingPost(state, postId, application = {}) {
     targetUserId: target.playerId,
     fromUserId: state.currentUserId,
     teamId: team.id,
+    joinMode: "team",
     side,
     reserve: target.reserve,
     status: "pending",
