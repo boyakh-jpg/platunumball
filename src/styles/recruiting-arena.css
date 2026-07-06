@@ -7481,6 +7481,14 @@ html[data-theme="light"] .arena-lobby-arena {
   max-width: 150px;
 }
 
+@media (min-width: 1080px) {
+  .arena-filter-bar .arena-start-date-filter {
+    flex: 1 1 520px;
+    width: auto;
+    max-width: none;
+  }
+}
+
 @media (max-width: 720px) {
   .arena-filter-bar .arena-region-sido-filter,
   .arena-filter-bar .arena-region-district-filter,

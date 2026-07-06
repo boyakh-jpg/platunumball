@@ -964,6 +964,7 @@ UI 수정 전:
 
 1. Profile info uses explicit form controls for each field. Region is edited with `REGION_TREE` select controls, not a free-text input.
 1-1. Recruiting queue 지역 필터도 `REGION_TREE` 시도/시군구 select를 항상 노출한다. 관계 필터 버튼(`내가 만든 방`, `내 참여방`, `초대받음`)은 그룹 테두리를 늘리지 않고 버튼 자체 최소폭을 확보해 말줄임으로 count를 숨기지 않는다.
+1-2. 데스크톱 매칭 필터는 가로 공간이 남으면 시작일 버튼 묶음을 같은 줄에 올리고, 좁은 화면에서만 다음 줄/가로 스크롤로 내린다.
 2. Team management cards may show a loading empty-state while directory data is pending. They must not flash the real empty-team message before the directory load resolves.
 3. If the current user's team rows are already present, `/app/teams` shows the actual `n/3` team count even while the broader team directory load is pending. Only missing team rows use the pending `...` badge.
 3. Profile and signup form rows use fixed one-line control height from `--ui-button-height` and reserve enough label row height so inputs/selects align across the two-column grid.
