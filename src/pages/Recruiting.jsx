@@ -695,7 +695,7 @@ export function getRecruitingRoomListStatus(lobby, { post = null } = {}) {
 function TeamMemberPicker({
   team,
   userById,
-  selectedIds,
+  selectedIds = [],
   reserveIds = [],
   capacity,
   reserveCapacity = MAX_RESERVE_PLAYERS_PER_SIDE,
@@ -704,7 +704,15 @@ function TeamMemberPicker({
   onRosterChange,
   requiredPlayerId = "",
   requiredActive = false,
+  deferCommit = false,
+  submitLabel = "선수 확정",
 }) {
+  const [draftRoster, setDraftRoster] = useState({ selectedIds, reserveIds });
+
+  useEffect(() => {
+    setDraftRoster({ selectedIds, reserveIds });
+  }, [selectedIds.join("|"), reserveIds.join("|")]);
+
   if (!team) {
     return (
       <div className="arena-party-picker empty">
@@ -713,18 +721,31 @@ function TeamMemberPicker({
     );
   }
 
+  const effectiveSelectedIds = deferCommit ? draftRoster.selectedIds : selectedIds;
+  const effectiveReserveIds = deferCommit ? draftRoster.reserveIds : reserveIds;
   const memberIds = getSelectableTeamPlayerIds(team);
-  const selectedSet = new Set(selectedIds);
-  const reserveSet = new Set(reserveIds);
+  const selectedSet = new Set(effectiveSelectedIds);
+  const reserveSet = new Set(effectiveReserveIds);
   const canSelectReserves = Boolean(onRosterChange || onReserveChange);
-  const emitRoster = (nextSelectedIds, nextReserveIds) => {
+  const commitRoster = (nextSelectedIds, nextReserveIds) => {
     onRosterChange?.({ selectedIds: nextSelectedIds, reserveIds: nextReserveIds });
     onChange?.(nextSelectedIds);
     onReserveChange?.(nextReserveIds);
   };
+  const emitRoster = (nextSelectedIds, nextReserveIds) => {
+    if (deferCommit) {
+      setDraftRoster({ selectedIds: nextSelectedIds, reserveIds: nextReserveIds });
+      return;
+    }
+    commitRoster(nextSelectedIds, nextReserveIds);
+  };
+  const rosterChanged = deferCommit && (
+    selectedIds.join("|") !== effectiveSelectedIds.join("|") ||
+    reserveIds.join("|") !== effectiveReserveIds.join("|")
+  );
   const setMemberRole = (playerId, role) => {
-    const nextSelectedIds = selectedIds.filter((id) => id !== playerId);
-    const nextReserveIds = reserveIds.filter((id) => id !== playerId);
+    const nextSelectedIds = effectiveSelectedIds.filter((id) => id !== playerId);
+    const nextReserveIds = effectiveReserveIds.filter((id) => id !== playerId);
     if (role === "active") {
       if (nextSelectedIds.length >= capacity) return;
       emitRoster([...nextSelectedIds, playerId], nextReserveIds);
@@ -745,8 +766,8 @@ function TeamMemberPicker({
       <div className="arena-party-picker-head">
         <span>참여 팀원</span>
         <strong>
-          출전 {selectedIds.length}/{capacity}
-          {canSelectReserves ? ` · 후보 ${reserveIds.length}/${reserveCapacity}` : ""}
+          출전 {effectiveSelectedIds.length}/{capacity}
+          {canSelectReserves ? ` · 후보 ${effectiveReserveIds.length}/${reserveCapacity}` : ""}
         </strong>
       </div>
       <div className="arena-party-picker-grid">
@@ -755,10 +776,10 @@ function TeamMemberPicker({
           const selected = selectedSet.has(playerId);
           const reserve = reserveSet.has(playerId);
           const required = playerId === requiredPlayerId;
-          const activeLocked = !selected && selectedIds.length >= capacity;
+          const activeLocked = !selected && effectiveSelectedIds.length >= capacity;
           const reserveLocked = requiredActive && required
             ? true
-            : !reserve && reserveIds.length >= reserveCapacity;
+            : !reserve && effectiveReserveIds.length >= reserveCapacity;
           return (
             <div
               key={playerId}
@@ -786,7 +807,12 @@ function TeamMemberPicker({
           );
         })}
       </div>
-      {!selectedIds.length ? <em>최소 1명 선택 필요</em> : null}
+      {!effectiveSelectedIds.length ? <em>최소 1명 선택 필요</em> : null}
+      {deferCommit ? (
+        <Button type="button" size="sm" disabled={!rosterChanged || !effectiveSelectedIds.length} onClick={() => commitRoster(effectiveSelectedIds, effectiveReserveIds)}>
+          {submitLabel}
+        </Button>
+      ) : null}
     </div>
   );
 }
@@ -1372,17 +1398,25 @@ function MatchRecordRosterPanel({
   capacity,
   onChange,
 }) {
+  const sourceActiveIds = getMatchSidePlayerIds(match, sideName);
+  const sourceReserveIds = getMatchReservePlayerIds(match, sideName);
+  const [draftRoster, setDraftRoster] = useState({ activeIds: sourceActiveIds, reserveIds: sourceReserveIds });
+
+  useEffect(() => {
+    setDraftRoster({ activeIds: sourceActiveIds, reserveIds: sourceReserveIds });
+  }, [match?.id, sideName, sourceActiveIds.join("|"), sourceReserveIds.join("|")]);
+
   if (!match || !team || !sideLeaderId || sideLeaderId !== currentUserId) return null;
-  const activeIds = getMatchSidePlayerIds(match, sideName);
-  const reserveIds = getMatchReservePlayerIds(match, sideName);
+  const activeIds = draftRoster.activeIds;
+  const reserveIds = draftRoster.reserveIds;
   const rosterIds = new Set([...activeIds, ...reserveIds]);
   const memberIds = (team.members ?? []).map((member) => member.userId).filter((playerId) => userById[playerId]);
   if (!memberIds.length) return null;
 
-  const commitRoster = (nextActiveIds, nextReserveIds) => {
+  const commitRoster = () => {
     onChange(sideName, {
-      playerIds: nextActiveIds.slice(0, capacity),
-      reservePlayerIds: nextReserveIds.filter((playerId) => !nextActiveIds.includes(playerId)).slice(0, MAX_RESERVE_PLAYERS_PER_SIDE),
+      playerIds: activeIds.slice(0, capacity),
+      reservePlayerIds: reserveIds.filter((playerId) => !activeIds.includes(playerId)).slice(0, MAX_RESERVE_PLAYERS_PER_SIDE),
     });
   };
   const setPlayerState = (playerId, state) => {
@@ -1390,8 +1424,9 @@ function MatchRecordRosterPanel({
     const nextReserveIds = reserveIds.filter((id) => id !== playerId);
     if (state === "active" && nextActiveIds.length < capacity) nextActiveIds.push(playerId);
     if (state === "reserve" && nextReserveIds.length < MAX_RESERVE_PLAYERS_PER_SIDE) nextReserveIds.push(playerId);
-    commitRoster(nextActiveIds, nextReserveIds);
+    setDraftRoster({ activeIds: nextActiveIds, reserveIds: nextReserveIds });
   };
+  const rosterChanged = sourceActiveIds.join("|") !== activeIds.join("|") || sourceReserveIds.join("|") !== reserveIds.join("|");
 
   return (
     <div className="arena-record-roster-panel">
@@ -1428,6 +1463,9 @@ function MatchRecordRosterPanel({
           );
         })}
       </div>
+      <Button type="button" size="sm" disabled={!rosterChanged || !activeIds.length} onClick={commitRoster}>
+        선수 확정
+      </Button>
     </div>
   );
 }
@@ -3177,6 +3215,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                   reserveCapacity={MAX_RESERVE_PLAYERS_PER_SIDE}
                   requiredPlayerId={app.currentUser.id}
                   requiredActive
+                  deferCommit
                   onRosterChange={({ selectedIds, reserveIds }) => app.actions.setRecruitingTeamPartyRoster(selectedPost.id, targetEntry.id, {
                     teamId: targetEntry.team.id,
                     playerIds: selectedIds,
