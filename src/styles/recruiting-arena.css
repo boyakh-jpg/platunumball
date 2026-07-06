@@ -7029,7 +7029,8 @@ html[data-theme="light"] .arena-lobby-modal {
 }
 
 .arena-lobby-modal .arena-lobby-team-panel {
-  overflow: visible;
+  padding-bottom: 24px;
+  overflow: hidden;
 }
 
 .arena-lobby-modal .arena-room-slot-row {
@@ -7038,10 +7039,8 @@ html[data-theme="light"] .arena-lobby-modal {
 
 .arena-lobby-modal .arena-reserve-panel,
 .arena-lobby-modal .arena-reserve-line,
-.arena-lobby-modal .arena-lobby-team-panel .arena-side-roster,
 html[data-theme="light"] .arena-lobby-modal .arena-reserve-panel,
-html[data-theme="light"] .arena-lobby-modal .arena-reserve-line,
-html[data-theme="light"] .arena-lobby-modal .arena-lobby-team-panel .arena-side-roster {
+html[data-theme="light"] .arena-lobby-modal .arena-reserve-line {
   overflow: visible;
 }
 
