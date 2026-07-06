@@ -6561,6 +6561,13 @@ html[data-theme="light"] .arena-room-slot-crown.captain {
   height: 9px;
 }
 
+.arena-room-slot-crown.captain,
+html[data-theme="light"] .arena-room-slot-crown.captain {
+  border-color: rgba(118, 169, 255, 0.55);
+  background: rgba(118, 169, 255, 0.26);
+  color: var(--rb-blue);
+}
+
 /* 2026-07-01 reserve row and restrained palette pass. */
 .arena-reserve-panel,
 html[data-theme="light"] .arena-reserve-panel {

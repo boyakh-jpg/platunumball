@@ -952,6 +952,7 @@ UI 수정 전:
 24. Recruiting room slot glow may bleed outside the slot box. Room modal team/reserve panels must keep slot rows and inner roster wrappers overflow-visible or provide bleed padding so ready/party/player glow is not clipped by parent panel edges. The versus stage wrapper may stay transparent, but team panels keep their visible border and panel surface.
 25. Recruiting room reserve panels use two explicit columns in the modal: A reserve in column 1, B reserve in column 2. Older three-column lobby rules must not push B reserve into an implicit third column.
 25-1. Mobile recruiting room active slot rows keep a readable fixed slot width and horizontal scroll. Do not compress five active slots into a narrow team panel.
+25-2. Recruiting room side leader/captain crown uses blue styling on both sides. Host-only crown may stay orange.
 26. Create match age restriction segments render the three real age groups as three equal columns. Do not leave an empty fourth segment column.
 27. Create match A/B team controls keep the same one-row control height on desktop. B-side selected team summary is a compact inline chip inside the search row, not a separate full-height row.
 
