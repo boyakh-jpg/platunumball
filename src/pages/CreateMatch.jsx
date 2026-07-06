@@ -247,6 +247,10 @@ function getDefaultTeamPlayerIds(team, capacity, excludedIds = [], preferredPlay
   return [preferredPlayerId, ...availableIds.filter((playerId) => playerId !== preferredPlayerId)].slice(0, capacity);
 }
 
+function getRepresentativePlayerIds(userId = "") {
+  return userId ? [userId] : [];
+}
+
 function getPartyPlayerIds(team, playerIds, capacity, excludedIds = []) {
   if (!team) return [];
   if (!Array.isArray(playerIds)) return getDefaultTeamPlayerIds(team, capacity, excludedIds);
@@ -292,7 +296,7 @@ export default function CreateMatch({ app }) {
   const defaultCapacity = getRecruitingSideCapacity({ mode: defaultMode });
   const defaultTournamentCapacity = getRecruitingSideCapacity({ mode: "5v5" });
   const currentRegion = getCanonicalRegion(app.currentUser.regionDistrict || app.currentUser.region);
-  const defaultTeamAPlayerIds = defaultHostJoinMode === "team" ? [app.currentUser.id] : [];
+  const defaultTeamAPlayerIds = defaultHostJoinMode === "team" ? getRepresentativePlayerIds(app.currentUser.id) : [];
   const defaultTeamB = defaultHostJoinMode === "team" && defaultTeamA
     ? getOpponentTeam(app.state.teams, defaultTeamA.id, currentRegion, defaultTeamAPlayerIds, 1)
     : undefined;
@@ -762,7 +766,7 @@ export default function CreateMatch({ app }) {
       const currentTeamAIsMine = teamAExists && myTeams.some((team) => team.id === current.teamAId);
       const nextTeamAId = currentTeamAIsMine ? current.teamAId : nextUserTeamId;
       const nextTeamA = app.state.teams.find((team) => team.id === nextTeamAId);
-      const nextTeamAPlayerIds = nextTeamA ? [app.currentUser.id] : [];
+      const nextTeamAPlayerIds = nextTeamA ? getRepresentativePlayerIds(app.currentUser.id) : [];
       const currentTeamB = app.state.teams.find((team) => team.id === current.teamBId);
       const currentTeamBUsable = teamBExists &&
         current.teamBId !== nextTeamAId &&
@@ -798,7 +802,7 @@ export default function CreateMatch({ app }) {
   useEffect(() => {
     if (!isTeamRoom || !selectedTeamA) return;
     const selectableIds = getSelectableTeamPlayerIds(selectedTeamA);
-    const selectedIds = selectableIds.includes(app.currentUser.id) ? [app.currentUser.id] : [];
+    const selectedIds = selectableIds.includes(app.currentUser.id) ? getRepresentativePlayerIds(app.currentUser.id) : [];
     const playerIdsNeedSync = !Array.isArray(draft.playerIds)
       || draft.playerIds.length !== selectedIds.length
       || draft.playerIds.some((playerId, index) => playerId !== selectedIds[index]);
@@ -834,7 +838,7 @@ export default function CreateMatch({ app }) {
   const selectTeamA = (teamAId) => {
     if (!myTeams.some((team) => team.id === teamAId)) return;
     const team = app.state.teams.find((item) => item.id === teamAId);
-    const playerIds = [app.currentUser.id];
+    const playerIds = getRepresentativePlayerIds(app.currentUser.id);
     const currentTeamB = app.state.teams.find((item) => item.id === draft.teamBId);
     const currentTeamBUsable = currentTeamB &&
       currentTeamB.id !== teamAId &&
@@ -861,7 +865,7 @@ export default function CreateMatch({ app }) {
     const nextTeamA = currentTeamA?.id === teamBId
       ? getOpponentTeam(sortedTeams, teamBId, currentRegion, [], sideCapacity) ?? getOpponentTeam(app.state.teams, teamBId, currentRegion, [], sideCapacity)
       : currentTeamA;
-    const playerIds = draft.playerIds?.length ? draft.playerIds : [app.currentUser.id];
+    const playerIds = draft.playerIds?.length ? draft.playerIds : getRepresentativePlayerIds(app.currentUser.id);
     const team = app.state.teams.find((item) => item.id === teamBId);
     const opponentLeaderId = getDefaultTeamPlayerIds(team, 1, playerIds)[0] ?? "";
     setOpponentTeamQuery("");
@@ -1054,7 +1058,7 @@ export default function CreateMatch({ app }) {
         ranked: draft.ranked,
         official: draft.official,
         preRegistered: false,
-        playerIds: [app.currentUser.id].filter(Boolean),
+        playerIds: getRepresentativePlayerIds(app.currentUser.id),
         reservePlayerIds: [],
         opponentPlayerIds: [opponentLeaderId].filter(Boolean),
         opponentReservePlayerIds: [],
@@ -1094,7 +1098,7 @@ export default function CreateMatch({ app }) {
       hostJoinMode: draft.hostJoinMode,
       teamOnly: effectiveTeamOnly,
       teamId: isTeamRoom ? draft.teamAId : "",
-      playerIds: isTeamRoom ? [app.currentUser.id].filter(Boolean) : [],
+      playerIds: isTeamRoom ? getRepresentativePlayerIds(app.currentUser.id) : [],
       reservePlayerIds: [],
       opponentTeamId: !isPublicRoom && isTeamRoom ? draft.teamBId : "",
       opponentPlayerIds: [],
@@ -1184,7 +1188,7 @@ export default function CreateMatch({ app }) {
                 const team = defaultTeamA ?? selectedTeamA;
                 const nextMode = getMatchModeOrDefault(draft.mode, defaultMode);
                 const hostJoinMode = nextMode === "1v1" || !canCreateTeamRoom ? "player" : draft.hostJoinMode;
-                const playerIds = hostJoinMode === "team" ? [app.currentUser.id] : [];
+                const playerIds = hostJoinMode === "team" ? getRepresentativePlayerIds(app.currentUser.id) : [];
                 update({
                   recordType: RECORD_TYPES.match,
                   visibility: "public",
@@ -1215,7 +1219,7 @@ export default function CreateMatch({ app }) {
                 const team = defaultTeamA ?? selectedTeamA;
                 const opponentTeam = defaultTeamB ?? selectedTeamB;
                 const nextMode = draft.mode === "1v1" ? "2v2" : getMatchModeOrDefault(draft.mode, defaultMode === "1v1" ? "2v2" : defaultMode);
-                const playerIds = [app.currentUser.id].filter(Boolean);
+                const playerIds = getRepresentativePlayerIds(app.currentUser.id);
                 update({
                   recordType: RECORD_TYPES.matchRecord,
                   visibility: "private",
@@ -1305,7 +1309,7 @@ export default function CreateMatch({ app }) {
                   value={draft.hostJoinMode}
                   onChange={(event) => {
                     const hostJoinMode = event.target.value === "team" && !canCreateTeamRoom ? "player" : event.target.value;
-                    const playerIds = hostJoinMode === "team" ? [app.currentUser.id] : [];
+                    const playerIds = hostJoinMode === "team" ? getRepresentativePlayerIds(app.currentUser.id) : [];
                     const opponentLeaderId = hostJoinMode === "team" && !isPublicRoom ? getDefaultTeamPlayerIds(selectedTeamB, 1, playerIds)[0] ?? "" : "";
                     update({
                       hostJoinMode,
@@ -1352,7 +1356,7 @@ export default function CreateMatch({ app }) {
                   return;
                 }
                 if (isMatchRecordRoom) {
-                  const playerIds = [app.currentUser.id].filter(Boolean);
+                  const playerIds = getRepresentativePlayerIds(app.currentUser.id);
                   update({
                     mode,
                     hostJoinMode: "team",
@@ -1368,7 +1372,7 @@ export default function CreateMatch({ app }) {
                 }
                 const hostJoinMode = mode === "1v1" || !canCreateTeamRoom ? "player" : draft.hostJoinMode;
                 const nextIsTeamRoom = !isTournamentRoom && hostJoinMode === "team";
-                const playerIds = nextIsTeamRoom ? [app.currentUser.id] : [];
+                const playerIds = nextIsTeamRoom ? getRepresentativePlayerIds(app.currentUser.id) : [];
                 const opponentLeaderId = !isPublicRoom && nextIsTeamRoom ? getDefaultTeamPlayerIds(selectedTeamB, 1, playerIds)[0] ?? "" : "";
                 update({
                   mode,
