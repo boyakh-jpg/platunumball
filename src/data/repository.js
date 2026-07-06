@@ -3206,11 +3206,11 @@ function updateAffiliationScores(state) {
   });
 }
 
-function getFinalizationRatingContext(match) {
+function getFinalizationRatingContext(match, teams = []) {
   if (!isMatchRecordMatch(match) && !isPersonalRecordMatch(match)) {
     return { matchForRating: match, canApplyPersonalMmr: true, canApplyTeamMmr: true };
   }
-  const verification = evaluateRecordVerification(match);
+  const verification = evaluateRecordVerification(match, { teams });
   const eligibleIds = new Set(verification.mmrEligiblePlayerIds);
   const existingExcludedIds = new Set([...(match.mmrExcludedPlayerIds ?? []), ...(match.rules?.mmrExcludedPlayerIds ?? [])]);
   getMatchRecordPlayerIds(match).forEach((playerId) => {
@@ -3229,7 +3229,7 @@ function getFinalizationRatingContext(match) {
 }
 
 function finalizeMatch(state, targetMatch) {
-  const ratingContext = getFinalizationRatingContext(targetMatch);
+  const ratingContext = getFinalizationRatingContext(targetMatch, state.teams);
   const ratingMatch = ratingContext.matchForRating;
   const ratings = Object.fromEntries(state.users.map((user) => [user.id, clone(user.ratings)]));
   const ratingResult = ratingContext.canApplyPersonalMmr

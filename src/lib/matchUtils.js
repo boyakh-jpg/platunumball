@@ -1,6 +1,7 @@
 import {
   DISPUTE_WINDOW_MINUTES,
   INSTANT_ROOM_EXPIRE_MINUTES,
+  MODE_SIZES,
   PLAYER_STAT_FIELDS,
   RECORD_TYPES,
   REFEREE_TRUST_MIN,
@@ -54,8 +55,23 @@ export function getRoomKindFromMatch(match = {}) {
   return (match.visibility ?? match.rules?.visibility) === "public" ? ROOM_KINDS.publicRecruiting : ROOM_KINDS.privateInvite;
 }
 
-export function evaluateRecordVerification(match = {}) {
+function getRecordSideRosterStatus(match = {}, sideName = "") {
+  const side = match?.[sideName] ?? {};
+  const teamId = side.teamId ?? "";
+  const playerIds = getMatchSideRecordPlayerIds(match, sideName);
+  const sideCapacity = Math.max(1, Math.min(5, MODE_SIZES[match.mode] ?? playerIds.length));
+  const playerTeams = side.playerTeams ?? {};
+  const rosterConfirmed = Boolean(
+    teamId &&
+    playerIds.length === sideCapacity &&
+    playerIds.every((playerId) => playerTeams[playerId] === teamId),
+  );
+  return { playerIds, teamId, sideCapacity, rosterConfirmed };
+}
+
+export function evaluateRecordVerification(match = {}, options = {}) {
   const recordType = getMatchRecordType(match);
+  const teams = Array.isArray(options.teams) ? options.teams : [];
   const ranked = match.ranked !== false;
   const result = match.disputeDraftResult ?? match.result;
   const hasResult = Boolean(result);
@@ -63,6 +79,10 @@ export function evaluateRecordVerification(match = {}) {
   const teamAId = match.teamA?.teamId ?? "";
   const teamBId = match.teamB?.teamId ?? "";
   const isTeamRecord = Boolean(teamAId && teamBId);
+  const teamARoster = getRecordSideRosterStatus(match, "teamA");
+  const teamBRoster = getRecordSideRosterStatus(match, "teamB");
+  const teamRosterConfirmed = isTeamRecord && teamARoster.rosterConfirmed && teamBRoster.rosterConfirmed;
+  const sideApprovalsComplete = getApprovalStatus(match, teams, "teamA").approved && getApprovalStatus(match, teams, "teamB").approved;
   const anonymousIds = new Set(Object.keys(match.anonymousPlayers ?? {}));
   const excludedIds = new Set([...(match.mmrExcludedPlayerIds ?? []), ...(match.rules?.mmrExcludedPlayerIds ?? [])]);
   const playerIds = getMatchRecordPlayerIds(match);
@@ -73,19 +93,24 @@ export function evaluateRecordVerification(match = {}) {
   if (isPersonalRecordMatch(match)) blockingReasons.push("내 기록은 검증/MMR 대상이 아님");
   if (!hasResult) blockingReasons.push("결과 없음");
   if (disputed) blockingReasons.push("이의 처리 필요");
+  if (isMatchRecordMatch(match) && !sideApprovalsComplete) blockingReasons.push("양측 기록 확인 필요");
+  if (isTeamRecord && !teamRosterConfirmed) blockingReasons.push("팀 출전 명단 확정 필요");
   if (isTeamRecord && hasMmrBlockedPlayer) blockingReasons.push("팀 MMR 제외 선수가 있음");
   if (!isTeamRecord && getMatchRecordType(match) === RECORD_TYPES.matchRecord) blockingReasons.push("팀 MMR 대상 아님");
 
-  const canVerify = !isPersonalRecordMatch(match) && hasResult && !disputed;
+  const recordRoomConfirmed = !isMatchRecordMatch(match) || sideApprovalsComplete;
+  const recordRosterConfirmed = !isMatchRecordMatch(match) || !isTeamRecord || teamRosterConfirmed;
+  const canVerify = !isPersonalRecordMatch(match) && hasResult && !disputed && recordRoomConfirmed;
   return {
     recordType,
     roomKind: getRoomKindFromMatch(match),
     canSave: true,
     canConfirm: isMatchRecordMatch(match) && hasResult,
     canVerify,
-    canApplyPersonalMmr: canVerify && ranked && mmrEligiblePlayerIds.length > 0,
-    canApplyTeamMmr: canVerify && ranked && isTeamRecord && !hasMmrBlockedPlayer,
+    canApplyPersonalMmr: canVerify && ranked && recordRosterConfirmed && mmrEligiblePlayerIds.length > 0,
+    canApplyTeamMmr: canVerify && ranked && recordRosterConfirmed && isTeamRecord && !hasMmrBlockedPlayer,
     isTeamRecord,
+    teamRosterConfirmed,
     mmrEligiblePlayerIds,
     blockingReasons,
   };

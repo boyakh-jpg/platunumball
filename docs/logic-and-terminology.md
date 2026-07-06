@@ -73,6 +73,7 @@
 - 팀 MMR은 팀전에서만 가능하다. 개인전과 내 기록은 팀 MMR이 없다.
 - 팀명 자유 입력은 표시용 기록이며 팀 MMR 근거가 아니다.
 - `approveMatch` 최종 확정은 기록방일 때 `evaluateRecordVerification(match)` 결과로 개인 MMR과 팀 MMR 적용을 각각 제한한다.
+- 경기기록방 MMR 검증은 양측 기록 확인과 팀전 출전 명단 확정(`side.playerTeams[playerId] === side.teamId`)을 중앙 helper에서 함께 확인한다.
 - 검증에서 제외된 선수는 기록에는 남아도 rating 계산 대상에서 제외한다.
 
 ## 2026-07-05 인증 컨텍스트 캐시
