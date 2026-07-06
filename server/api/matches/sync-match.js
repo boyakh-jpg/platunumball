@@ -649,6 +649,59 @@ function sameOrderedIds(left = [], right = []) {
   return left.every((id, index) => id === right[index]);
 }
 
+function uniqueIds(ids = []) {
+  return Array.from(new Set(ids.filter(Boolean)));
+}
+
+function getExistingSideReserveIds(existingMatch = {}, sideName = "") {
+  return toArray(existingMatch?.reserve_players?.[sideName] ?? existingMatch?.rules?.reservePlayers?.[sideName]);
+}
+
+function getExistingSideRosterIds(existingMatch = {}, existingPlayers = [], sideName = "") {
+  return uniqueIds([
+    ...getExistingSidePlayerIds(existingPlayers, sideName),
+    ...getExistingSideReserveIds(existingMatch, sideName),
+  ]);
+}
+
+function getNextSideRosterIds(match = {}, sideName = "") {
+  return uniqueIds([
+    ...toArray(match?.[sideName]?.players),
+    ...toArray(match?.reservePlayers?.[sideName] ?? match?.rules?.reservePlayers?.[sideName]),
+  ]);
+}
+
+function sameRosterIds(left = [], right = []) {
+  const leftSet = new Set(left);
+  const rightSet = new Set(right);
+  return leftSet.size === rightSet.size && [...leftSet].every((id) => rightSet.has(id));
+}
+
+function canSyncMatchRecordTeamRoster(profileId, existingMatch, existingPlayers, nextMatch) {
+  if (
+    !profileId ||
+    existingMatch?.rules?.recordType !== RECORD_TYPES.matchRecord ||
+    nextMatch?.rules?.recordType !== RECORD_TYPES.matchRecord ||
+    existingMatch?.status === "cancelled" ||
+    existingMatch?.status === "void" ||
+    existingMatch?.confirmed_at ||
+    nextMatch?.result
+  ) {
+    return false;
+  }
+
+  const changedSides = ["teamA", "teamB"].filter((sideName) => !sameRosterIds(
+    getExistingSideRosterIds(existingMatch, existingPlayers, sideName),
+    getNextSideRosterIds(nextMatch, sideName),
+  ));
+  if (changedSides.length !== 1) return false;
+
+  const sideName = changedSides[0];
+  const existingLeaderId = getExistingSidePlayerIds(existingPlayers, sideName)[0] ?? "";
+  const nextLeaderId = toArray(nextMatch?.[sideName]?.players)[0] ?? "";
+  return profileId === existingLeaderId && profileId === nextLeaderId;
+}
+
 function sortPlainObject(value) {
   if (Array.isArray(value)) return value.map(sortPlainObject);
   if (!value || typeof value !== "object") return value;
@@ -748,6 +801,8 @@ const OPERATOR_MATCH_ACTIONS = new Set([
   "removeMatchRoomPlayer",
 ]);
 
+const MATCH_RECORD_ROSTER_ACTION = "setMatchRecordTeamRoster";
+
 const PARTICIPANT_MATCH_ACTIONS = new Set([
   "agreeMatch",
   "approveMatch",
@@ -839,6 +894,7 @@ function canSyncMatchAction(profileId, existingMatch, existingPlayers, nextMatch
   const existingParticipants = existingParticipantIds(existingMatch, existingPlayers);
   if (action === "deleteSoloRecord") return canDeleteSoloRecord(profileId, existingMatch, nextMatch);
   if (action === "handoffMatchRecorder") return isMatchOperator(profileId, existingMatch, nextMatch) || getStatRecorderIds(existingMatch).includes(profileId);
+  if (action === MATCH_RECORD_ROSTER_ACTION) return canSyncMatchRecordTeamRoster(profileId, existingMatch, existingPlayers, nextMatch);
   if (OPERATOR_MATCH_ACTIONS.has(action)) return isMatchOperator(profileId, existingMatch, nextMatch);
   if (action === "submitMatchResult") return canSubmitResult(profileId, existingMatch, nextMatch);
   if (PARTICIPANT_MATCH_ACTIONS.has(action)) return existingParticipants.has(profileId) || nextParticipants.has(profileId);

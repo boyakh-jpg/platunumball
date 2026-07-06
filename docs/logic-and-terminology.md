@@ -1,5 +1,13 @@
 # RankBall 로직/용어/디자인 기준
 
+## 2026-07-07 기록방 사이드장 로스터 저장 권한
+
+- `match_record` 로스터 수정은 방장/심판 전용 액션이 아니다.
+- 각 사이드장은 자기 사이드 로스터만 저장할 수 있다.
+- 서버 action은 `setMatchRecordTeamRoster`로 분리한다.
+- 기존 `setMatchRoomPlayerPlacement` 권한을 빌려 쓰지 않는다.
+- 저장은 기존 match snapshot/RPC 경로를 사용하고 별도 DB 테이블을 추가하지 않는다.
+
 ## 2026-07-07 방 종류 표준값
 
 - 방 종류 로직값은 화면 문구가 아니라 enum형 표준 문자열로 판단한다.
