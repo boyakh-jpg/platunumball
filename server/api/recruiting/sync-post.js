@@ -983,8 +983,16 @@ function canSyncRecruitingAction(profileId, existingPost, nextPost, action, body
   return existingParticipants.has(profileId) || nextParticipants.has(profileId);
 }
 
-function validateNoUnexpectedRosterInsert(existingPost, nextPost, action) {
-  if (!existingPost || MEMBERSHIP_ADD_RECRUITING_ACTIONS.has(action)) return;
+function isTeamOnlyRosterSummon(existingPost = {}, body = {}) {
+  if ((body.action ?? "sync") !== "inviteRecruitingPlayers") return false;
+  const invite = body.invite && typeof body.invite === "object" ? body.invite : {};
+  const roomState = normalizeRoomState(existingPost.roomState ?? existingPost.room_state, existingPost);
+  const teamOnly = isTrue(existingPost.teamOnly ?? existingPost.team_only ?? roomState.teamOnly);
+  return teamOnly && (invite.joinMode === "team" || Boolean(invite.teamId));
+}
+
+function validateNoUnexpectedRosterInsert(existingPost, nextPost, action, body = {}) {
+  if (!existingPost || MEMBERSHIP_ADD_RECRUITING_ACTIONS.has(action) || isTeamOnlyRosterSummon(existingPost, body)) return;
   const existingRoster = rosterIdsFromPost(existingPost);
   const nextRoster = rosterIdsFromPost(nextPost);
   const insertedIds = [...nextRoster].filter((profileId) => !existingRoster.has(profileId));
@@ -1107,7 +1115,7 @@ export async function persistRecruitingPostSnapshot(context, { post, notificatio
     if (!canSyncRecruitingAction(context.profileId, existingPostSnapshot, post, action, actionBody)) {
       reject(403, "recruiting_sync_permission_denied");
     }
-    validateNoUnexpectedRosterInsert(existingPostSnapshot, post, action);
+    validateNoUnexpectedRosterInsert(existingPostSnapshot, post, action, actionBody);
     validateLockedRecruitingCore(context.profileId, existingPostSnapshot, post, actionBody);
   });
   await timeStep(timing, "validateReferee", () => validateRefereeAction(context.supabase, context.profileId, existingPostSnapshot, post, actionBody));

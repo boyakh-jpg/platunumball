@@ -689,6 +689,7 @@ UI/CSS/반응형/라이트·다크 세부 기준은 `docs/design-system.md`를 �
 10. 팀 전용 공개방에서는 다른 팀 초대/참여를 아무나 할 수 없다.
    - 각 사이드를 점유한 팀 entry의 사이드장만 자기 팀원을 `팀원 소집`으로 출전/후보 명단에 넣을 수 있다.
    - 팀원 소집은 pending 초대 row를 만들지 않고 기존 팀 파티 로스터를 직접 갱신한다.
+   - 서버 roster insert guard도 `teamOnly + inviteRecruitingPlayers + joinMode:"team"` 팀원 소집만 예외로 허용한다. 일반 초대는 pending invite만 허용한다.
    - 파티 판정은 여전히 실제 참가/후보 2명 이상부터다.
 
 ### 즉시 방
