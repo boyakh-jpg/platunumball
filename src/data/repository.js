@@ -38,6 +38,7 @@ import {
   getMatchTrustFeedbackParticipantIds,
   getPublicRoomTimingStatus,
   getMatchRecordWindow,
+  evaluateRecordVerification,
   getPlayerSideName,
   getStatRecorderSides,
   getEffectiveStatRecorders,
@@ -49,6 +50,7 @@ import {
   isEligibleReferee,
   isMatchReferee,
   isMatchStatRecorder,
+  isMatchRecordMatch,
   isPersonalRecordMatch,
   normalizeStatRecorders,
   normalizePlayerStats,
@@ -3187,15 +3189,41 @@ function updateAffiliationScores(state) {
   });
 }
 
+function getFinalizationRatingContext(match) {
+  if (!isMatchRecordMatch(match) && !isPersonalRecordMatch(match)) {
+    return { matchForRating: match, canApplyPersonalMmr: true, canApplyTeamMmr: true };
+  }
+  const verification = evaluateRecordVerification(match);
+  const eligibleIds = new Set(verification.mmrEligiblePlayerIds);
+  const existingExcludedIds = new Set([...(match.mmrExcludedPlayerIds ?? []), ...(match.rules?.mmrExcludedPlayerIds ?? [])]);
+  getMatchRecordPlayerIds(match).forEach((playerId) => {
+    if (!eligibleIds.has(playerId)) existingExcludedIds.add(playerId);
+  });
+  const mmrExcludedPlayerIds = Array.from(existingExcludedIds);
+  return {
+    matchForRating: {
+      ...match,
+      mmrExcludedPlayerIds,
+      rules: { ...(match.rules ?? {}), mmrExcludedPlayerIds },
+    },
+    canApplyPersonalMmr: verification.canApplyPersonalMmr,
+    canApplyTeamMmr: verification.canApplyTeamMmr,
+  };
+}
+
 function finalizeMatch(state, targetMatch) {
+  const ratingContext = getFinalizationRatingContext(targetMatch);
+  const ratingMatch = ratingContext.matchForRating;
   const ratings = Object.fromEntries(state.users.map((user) => [user.id, clone(user.ratings)]));
-  const ratingResult = applyMatchRating(targetMatch, state.users, ratings, state.matches, state.teams);
+  const ratingResult = ratingContext.canApplyPersonalMmr
+    ? applyMatchRating(ratingMatch, state.users, ratings, state.matches, state.teams)
+    : { ratings: {}, changes: [] };
   const scoreA = Number(targetMatch.result.scoreA);
   const scoreB = Number(targetMatch.result.scoreB);
   const actualA = scoreA === scoreB ? 0.5 : scoreA > scoreB ? 1 : 0;
   const actualB = 1 - actualA;
-  const teamAGroups = getMatchSideTeamGroups(state, targetMatch, "teamA");
-  const teamBGroups = getMatchSideTeamGroups(state, targetMatch, "teamB");
+  const teamAGroups = ratingContext.canApplyTeamMmr ? getMatchSideTeamGroups(state, ratingMatch, "teamA") : [];
+  const teamBGroups = ratingContext.canApplyTeamMmr ? getMatchSideTeamGroups(state, ratingMatch, "teamB") : [];
   const teamAMmr = averageTeamMmr(teamAGroups);
   const teamBMmr = averageTeamMmr(teamBGroups);
   const teamDeltaEntries = [
@@ -3207,7 +3235,7 @@ function finalizeMatch(state, targetMatch) {
         teamMmr: group.team.mmr,
         opponentTeamMmr: teamBMmr,
         actual: actualA,
-        match: targetMatch,
+        match: ratingMatch,
         regularRatio: teamRegularRatio(group.team, group.playerIds, state.users),
       }),
     })),
@@ -3219,7 +3247,7 @@ function finalizeMatch(state, targetMatch) {
         teamMmr: group.team.mmr,
         opponentTeamMmr: teamAMmr,
         actual: actualB,
-        match: targetMatch,
+        match: ratingMatch,
         regularRatio: teamRegularRatio(group.team, group.playerIds, state.users),
       }),
     })),
@@ -3297,8 +3325,10 @@ function finalizeMatch(state, targetMatch) {
       {
         id: makeId("n"),
         title: "경기 확정",
-        body: `${targetMatch.title} 결과가 티어와 랭킹에 반영됐습니다.`,
-        tone: "tier",
+        body: ratingResult.changes.length || teamDeltaEntries.length
+          ? `${targetMatch.title} 결과가 티어와 랭킹에 반영됐습니다.`
+          : `${targetMatch.title} 결과가 공식 기록으로 확정됐습니다.`,
+        tone: ratingResult.changes.length || teamDeltaEntries.length ? "tier" : "match",
         matchId: targetMatch.id,
       },
       ...state.notifications,
