@@ -1,4 +1,4 @@
-import { Component, Suspense, lazy, useLayoutEffect } from "react";
+import { Component, Suspense, lazy, useEffect, useLayoutEffect } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import RequireAuth from "./components/auth/RequireAuth.jsx";
 import BasketballLoader from "./components/common/BasketballLoader.jsx";
@@ -29,6 +29,19 @@ const Signup = lazy(() => import("./pages/Signup.jsx"));
 const TeamDetail = lazy(() => import("./pages/TeamDetail.jsx"));
 const Teams = lazy(() => import("./pages/Teams.jsx"));
 const TournamentDetail = lazy(() => import("./pages/TournamentDetail.jsx"));
+
+function preloadCoreAppRoutes() {
+  return Promise.allSettled([
+    import("./pages/Home.jsx"),
+    import("./pages/Matches.jsx"),
+    import("./pages/Recruiting.jsx"),
+    import("./pages/Recorder.jsx"),
+    import("./pages/Teams.jsx"),
+    import("./pages/Profile.jsx"),
+    import("./pages/Settings.jsx"),
+    import("./pages/CreateMatch.jsx"),
+  ]);
+}
 
 class AppErrorBoundary extends Component {
   constructor(props) {
@@ -91,6 +104,16 @@ export default function App() {
   useLayoutEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
+
+  useEffect(() => {
+    if (!auth.user || !app.remoteReady || !location.pathname.startsWith("/app")) return undefined;
+    const schedule = window.requestIdleCallback ?? ((callback) => window.setTimeout(callback, 800));
+    const cancel = window.cancelIdleCallback ?? window.clearTimeout;
+    const id = schedule(() => {
+      preloadCoreAppRoutes();
+    });
+    return () => cancel(id);
+  }, [app.remoteReady, auth.user, location.pathname]);
 
   if (profileSetupRequired || ageRecheckRequired) {
     const redirectTo = getSafeAppRedirect(`${location.pathname}${location.search}${location.hash}`);
