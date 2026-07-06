@@ -2070,3 +2070,10 @@ flowchart TD
 - stale 감사는 읽기 전용으로 먼저 수행한다. active feed row, missing card, stale card, source status mismatch, orphan source, trigger health를 확인한다.
 - `feed-audit`는 refresh/cleanup을 직접 실행하지 않는다. repair는 감사 결과의 제한된 id를 대상으로 별도 maintenance/refresh 경로에서만 수행한다.
 - 목록 read path는 기본적으로 repair RPC를 호출하지 않는다. 명시 repair flag나 maintenance가 아닌 일반 목록 조회에서 feed를 고치지 않는다.
+
+## 2026-07-06 경기 출석 저장 병합
+
+- 경기준비방 출석체크는 여러 선수를 빠르게 누를 수 있다.
+- 같은 경기의 출석 저장이 여러 개 겹쳐도 먼저 끝난 서버 응답이 나중에 누른 optimistic 출석을 지우면 안 된다.
+- `checkInMatchPlayer` 응답 병합은 서버 attendance와 현재 화면 attendance를 side별 union으로 합친다.
+- 같은 경기 pending write는 Set 하나가 아니라 pending count로 추적해, 첫 요청 완료가 아직 남은 요청의 pending guard를 지우지 않게 한다.

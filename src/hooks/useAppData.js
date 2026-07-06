@@ -289,6 +289,21 @@ function mergeMatchesById(current = [], incoming = [], forceIds = new Set()) {
   return [...merged.values()];
 }
 
+function mergeAttendanceBySide(incoming = {}, existing = {}) {
+  return {
+    teamA: Array.from(new Set([...(incoming.teamA ?? []), ...(existing.teamA ?? [])].filter(Boolean))),
+    teamB: Array.from(new Set([...(incoming.teamB ?? []), ...(existing.teamB ?? [])].filter(Boolean))),
+  };
+}
+
+function preserveOptimisticMatchAttendance(incoming = {}, existing = null) {
+  if (!existing) return incoming;
+  return {
+    ...incoming,
+    attendance: mergeAttendanceBySide(incoming.attendance ?? {}, existing.attendance ?? {}),
+  };
+}
+
 function mergeRecruitingPostsById(current = [], incoming = []) {
   const merged = new Map((current ?? []).filter((item) => item?.id).map((item) => [item.id, item]));
   (incoming ?? []).forEach((item) => {
@@ -624,14 +639,20 @@ function mergeCourtApprovalResult(state, requestId, result = {}, currentUserId =
   };
 }
 
-function mergeServerRoomResult(state, result = {}) {
+function mergeServerRoomResult(state, result = {}, options = {}) {
   if (!result || typeof result !== "object") return state;
   const nextPost = result.post ?? null;
-  const nextMatch = result.createdMatch ?? result.match ?? null;
+  const rawNextMatch = result.createdMatch ?? result.match ?? null;
   const remoteState = result.state ? normalizeServerState(result.state) : null;
   const baseState = remoteState
     ? (nextPost ? mergeRemoteRecruitingPage(state, remoteState) : mergeRemoteMatchPage(state, remoteState))
     : state;
+  const existingMatch = rawNextMatch
+    ? (baseState.matches ?? []).find((match) => match.id === rawNextMatch.id) ?? null
+    : null;
+  const nextMatch = rawNextMatch && options.preserveMatchAttendance === true
+    ? preserveOptimisticMatchAttendance(rawNextMatch, existingMatch)
+    : rawNextMatch;
   if (!nextPost && !nextMatch) return baseState;
   return {
     ...baseState,
@@ -1099,6 +1120,7 @@ export function useAppData(authUser = null, appLocation = null) {
   const pendingRecruitingPostIdsRef = useRef(new Set());
   const recentRecruitingMutationTimesRef = useRef(new Map());
   const pendingMatchIdsRef = useRef(new Set());
+  const pendingMatchMutationCountsRef = useRef(new Map());
   const recentMatchMutationTimesRef = useRef(new Map());
   const syncedDiscordDeliveryIdsRef = useRef(new Set());
   const profileKey = authUserId ?? "local-demo";
@@ -1519,19 +1541,36 @@ export function useAppData(authUser = null, appLocation = null) {
     const pendingMatchId = match?.id ?? operation?.matchId ?? meta.matchId ?? "";
     const mutationStartedAt = Date.now();
     if (pendingMatchId) {
+      pendingMatchMutationCountsRef.current.set(
+        pendingMatchId,
+        (pendingMatchMutationCountsRef.current.get(pendingMatchId) ?? 0) + 1,
+      );
       pendingMatchIdsRef.current.add(pendingMatchId);
       recentMatchMutationTimesRef.current.set(pendingMatchId, mutationStartedAt);
     }
-    const payload = operation ? { operation, ...(match?.id ? { match } : {}), notifications } : { match, notifications, ...meta };
-    return runServerAction("/api/matches/sync-match", payload).then((result) => {
-      if (result?.match) setState((prev) => mergeServerRoomResult(prev, result));
-      return result;
-    }).finally(() => {
+    const clearPendingMatch = () => {
       if (!pendingMatchId) return;
-      pendingMatchIdsRef.current.delete(pendingMatchId);
+      const pendingCount = pendingMatchMutationCountsRef.current.get(pendingMatchId) ?? 0;
+      if (pendingCount > 1) {
+        pendingMatchMutationCountsRef.current.set(pendingMatchId, pendingCount - 1);
+      } else {
+        pendingMatchMutationCountsRef.current.delete(pendingMatchId);
+        pendingMatchIdsRef.current.delete(pendingMatchId);
+      }
       if (recentMatchMutationTimesRef.current.get(pendingMatchId) === mutationStartedAt) {
         recentMatchMutationTimesRef.current.delete(pendingMatchId);
       }
+    };
+    const payload = operation ? { operation, ...(match?.id ? { match } : {}), notifications } : { match, notifications, ...meta };
+    return runServerAction("/api/matches/sync-match", payload).then((result) => {
+      if (result?.match) {
+        setState((prev) => mergeServerRoomResult(prev, result, {
+          preserveMatchAttendance: operation?.action === "checkInMatchPlayer",
+        }));
+      }
+      return result;
+    }).finally(() => {
+      clearPendingMatch();
     });
   }, [runServerAction, setState]);
   const submitReportServer = useCallback((report, notifications = []) => {
