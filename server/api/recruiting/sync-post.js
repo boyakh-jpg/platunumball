@@ -689,7 +689,6 @@ const AUTHORITATIVE_REPLAY_RECRUITING_ACTIONS = new Set([
 const SQL_REDUCER_RECRUITING_ACTIONS = new Set([
   "cancelRecruitingParticipation",
   "setRecruitingReady",
-  "setRecruitingApplicantPlacement",
   "setRecruitingSlotPosition",
 ]);
 
@@ -1009,6 +1008,13 @@ function validateLockedRecruitingCore(profileId, existingPost, nextPost, body = 
   const existingCore = getRecruitingCoreSnapshot(existingPost);
   const nextCore = getRecruitingCoreSnapshot(nextPost);
   if (actionCanAssignReferee(profileId, existingPost, body)) existingCore.refereeId = nextCore.refereeId;
+  if (
+    action === "setRecruitingApplicantPlacement" &&
+    existingCore.playerId === profileId &&
+    String(body.playerId ?? "") === profileId
+  ) {
+    existingCore.hostSide = nextCore.hostSide;
+  }
 
   if (!sameJson(existingCore, nextCore)) reject(403, "recruiting_core_locked");
 }
