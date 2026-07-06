@@ -8,6 +8,7 @@ import {
   REMOTE_CLIENT_HOME_LOCAL_RECRUITING_LIMIT,
   REMOTE_CLIENT_RECRUITING_LIMIT,
 } from "../../../src/data/repository.js";
+import { getRecruitingLobby } from "../../../src/lib/recruiting.js";
 
 let currentUserRecruitingRpcAvailable = true;
 let userRoomFeedAvailable = true;
@@ -20,6 +21,7 @@ const TEAM_COLUMNS = "id,name,home_court,region,mmr,wins,losses,accent,deleted_a
 const TEAM_MEMBER_COLUMNS = "team_id,user_id,role";
 const COURT_COLUMNS = "id,name";
 const RECRUITING_POST_COLUMNS = "id,type,title,visibility,region,court_id,court_name,mode,scheduled_at,scheduled_date,scheduled_time,ranked,official,pre_registered,rating_scale,age_restriction,allowed_age_groups,rules,stakes,court_reserved,court_fee,spots,team_id,target_team_id,referee_id,referee_trust_min,stat_entry_minutes,dispute_minutes,room_state,host_join_mode,host_side,host_ready,side_capacity,player_ids,position,player_id,memo,status,confirmed_at,created_at,updated_at";
+const RECRUITING_COUNT_POST_COLUMNS = "id,type,mode,room_state,host_join_mode,host_side,side_capacity,player_ids,player_id,team_id,status";
 const RECRUITING_APPLICATION_COLUMNS = "post_id,kind,team_id,player_id,side,status,reserve,position,player_ids,source_team_id,source_entry_id,created_at,updated_at";
 const ROOM_CHAT_MESSAGE_COLUMNS = "id,room_type,room_id,user_id,body,created_at,message_seq";
 const RECRUITING_FEED_MAX_LIMIT = 200;
@@ -379,6 +381,82 @@ function hasThinRecruitingListCounts(card = {}) {
     card.listCounts.teamA &&
     card.listCounts.teamB,
   );
+}
+
+function getLobbySideListCounts(side = {}) {
+  const capacity = Math.max(1, Number(side.capacity ?? 0) || 1);
+  const filled = Math.max(0, Number(side.filled ?? 0) || 0);
+  const projectedFilled = Math.max(filled, Number(side.projectedFilled ?? filled) || filled);
+  const confirmationProjectedFilled = Math.max(projectedFilled, Number(side.confirmationProjectedFilled ?? projectedFilled) || projectedFilled);
+  return {
+    filled: Math.min(filled, capacity),
+    projectedFilled: Math.min(projectedFilled, capacity),
+    confirmationProjectedFilled: Math.min(confirmationProjectedFilled, capacity),
+    capacity,
+  };
+}
+
+function getRecruitingListCountsFromPost(post = {}) {
+  const lobby = getRecruitingLobby(post, { users: [], teams: [] });
+  const teamA = getLobbySideListCounts(lobby.sides?.teamA);
+  const teamB = getLobbySideListCounts(lobby.sides?.teamB);
+  return {
+    teamA,
+    teamB,
+    filled: teamA.filled + teamB.filled,
+    projectedFilled: teamA.projectedFilled + teamB.projectedFilled,
+    capacity: teamA.capacity + teamB.capacity,
+    partyCount: (lobby.entries ?? []).filter((entry) => (
+      entry.kind === "team" &&
+      new Set([...(entry.players ?? []), ...(entry.reserves ?? [])].filter(Boolean)).size >= 2
+    )).length,
+  };
+}
+
+function toRecruitingCountPost(row = {}, applicationsByPost = new Map()) {
+  return {
+    id: row.id,
+    type: row.type,
+    mode: row.mode,
+    roomState: row.room_state && typeof row.room_state === "object" ? row.room_state : {},
+    hostJoinMode: row.host_join_mode,
+    hostSide: row.host_side,
+    sideCapacity: row.side_capacity,
+    playerIds: row.player_ids ?? [],
+    playerId: row.player_id,
+    teamId: row.team_id,
+    status: row.status,
+    applicants: (applicationsByPost.get(row.id) ?? []).map(fromRemoteRecruitingApplication),
+  };
+}
+
+async function fetchRecruitingListCountsByPostId(client, postIds = []) {
+  const ids = uniqueIds(postIds);
+  if (!ids.length) return new Map();
+  const { data: postRows, error: postError } = await client
+    .from("recruiting_posts")
+    .select(RECRUITING_COUNT_POST_COLUMNS)
+    .in("id", ids);
+  if (postError) throw postError;
+  const { data: applicationRows, error: applicationError } = await client
+    .from("recruiting_applications")
+    .select(RECRUITING_APPLICATION_COLUMNS)
+    .in("post_id", ids);
+  if (applicationError) throw applicationError;
+  const applicationsByPost = groupBy(applicationRows ?? [], "post_id");
+  return new Map((postRows ?? []).map((row) => {
+    const post = toRecruitingCountPost(row, applicationsByPost);
+    return [row.id, getRecruitingListCountsFromPost(post)];
+  }));
+}
+
+function attachFreshRecruitingListCounts(cards = [], countsByPost = new Map()) {
+  if (!countsByPost.size) return cards;
+  return (cards ?? []).map((card) => (
+    card?.id && countsByPost.has(card.id)
+      ? { ...card, listCounts: countsByPost.get(card.id) }
+      : card
+  ));
 }
 
 function uniqueFeedCards(rows = [], ids = []) {
@@ -1507,20 +1585,25 @@ export async function loadCompactRecruitingList(context, {
   }
 
   if (canUsePageCards) {
+    const shouldRefreshListCounts = targetCards.some(hasThinRecruitingListCounts);
+    const freshListCountsByPost = shouldRefreshListCounts
+      ? await fetchRecruitingListCountsByPostId(context.supabase, targetPostIds)
+      : new Map();
+    const countedTargetCards = attachFreshRecruitingListCounts(targetCards, freshListCountsByPost);
     const cardById = new Map(
-      targetCards
+      countedTargetCards
         .filter((card) => canUseFeedCardForProfile(card, context.profileId))
         .map((card) => [card.id, card]),
     );
     const inviteRepairCandidateCount = debugPage
-      ? targetCards.filter((card) => getRecruitingFeedCardRejectReason(card, context.profileId) === "missing_pending_invitation").length
+      ? countedTargetCards.filter((card) => getRecruitingFeedCardRejectReason(card, context.profileId) === "missing_pending_invitation").length
       : 0;
-    const repairedCards = await attachPendingInvitationsToFeedCards(context.supabase, targetCards, context.profileId);
+    const repairedCards = await attachPendingInvitationsToFeedCards(context.supabase, countedTargetCards, context.profileId);
     repairedCards.forEach((card) => cardById.set(card.id, card));
     const fallbackPostIds = targetPostIds.filter((postId) => !cardById.has(postId));
     const fallbackCardReasons = debugPage && fallbackPostIds.length
       ? fallbackPostIds.map((postId) => {
-        const card = targetCards.find((item) => item.id === postId);
+        const card = countedTargetCards.find((item) => item.id === postId);
         return { postId, reason: getRecruitingFeedCardRejectReason(card, context.profileId) };
       })
       : undefined;
@@ -1575,14 +1658,14 @@ export async function loadCompactRecruitingList(context, {
     }
 
     const rowScope = collectRecruitingScope(postRows, applicationRows ?? [], context.profileId ?? "");
-    const cardScope = collectRecruitingCardScope(targetCards, context.profileId ?? "");
+    const cardScope = collectRecruitingCardScope(countedTargetCards, context.profileId ?? "");
     const scope = {
       profileIds: uniqueIds([...rowScope.profileIds, ...cardScope.profileIds]),
       teamIds: uniqueIds([...rowScope.teamIds, ...cardScope.teamIds]),
       courtIds: uniqueIds([...rowScope.courtIds, ...cardScope.courtIds]),
     };
     const profileIdsForLookup = scope.profileIds.filter((profileId) => profileId !== currentUser.id);
-    const shouldLoadTeamMembers = fallbackPostIds.length > 0 || targetCards.some((card) => (
+    const shouldLoadTeamMembers = fallbackPostIds.length > 0 || countedTargetCards.some((card) => (
       Array.isArray(card?.playerIds) && card.playerIds.length > 0
     ));
     const [
