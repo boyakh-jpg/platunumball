@@ -7164,14 +7164,8 @@ export function interestRecruitingPost(state, postId, application = {}) {
     ? getSelectedReservePlayerIds(team, selectedPlayerIds, application.reservePlayerIds, reserveSelectionCapacity)
     : [];
   const publicTeamJoin = post.visibility === "public" && applicantKind === "team";
-  const acceptedTeamPlayerIds = publicTeamJoin
-    ? selectedPlayerIds.filter((playerId) => playerId === state.currentUserId)
-    : selectedPlayerIds;
-  const pendingTeamPlayerIds = publicTeamJoin
-    ? selectedPlayerIds.filter((playerId) => playerId !== state.currentUserId)
-    : [];
-  const pendingTeamReservePlayerIds = publicTeamJoin
-    ? selectedReservePlayerIds.filter((playerId) => playerId !== state.currentUserId)
+  const teamSummonPlayerIds = publicTeamJoin
+    ? [...selectedPlayerIds, ...selectedReservePlayerIds].filter((playerId) => playerId && playerId !== state.currentUserId)
     : [];
   const candidateMmr = applicantKind === "team"
     ? getAveragePlayerMmr(state, selectedPlayerIds, team?.mmr ?? user?.ratings?.integrated ?? 1200)
@@ -7207,7 +7201,7 @@ export function interestRecruitingPost(state, postId, application = {}) {
       ],
     };
   }
-  const partySize = applicantKind === "team" ? acceptedTeamPlayerIds.length : 1;
+  const partySize = applicantKind === "team" ? selectedPlayerIds.length : 1;
   const reserve = Boolean(application.reserve) || lobby.sides[side].filled + partySize > lobby.sides[side].capacity;
   const now = new Date().toISOString();
   const nextApplicant = applicantKind === "team"
@@ -7220,7 +7214,7 @@ export function interestRecruitingPost(state, postId, application = {}) {
         status: "ready",
         reserve,
         position: application.position ?? null,
-        playerIds: acceptedTeamPlayerIds,
+        playerIds: selectedPlayerIds,
         createdAt: now,
         updatedAt: now,
       }
@@ -7241,49 +7235,28 @@ export function interestRecruitingPost(state, postId, application = {}) {
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
   const applicantKey = getRecruitingApplicantKey(nextApplicant);
   const nextPartyReserves = { ...roomState.partyReserves };
-  if (applicantKind === "team" && !publicTeamJoin && selectedReservePlayerIds.length) {
+  if (applicantKind === "team" && selectedReservePlayerIds.length) {
     nextPartyReserves[applicantKey] = selectedReservePlayerIds;
   } else {
     delete nextPartyReserves[applicantKey];
   }
   const nextPartyLeaders = { ...(roomState.partyLeaders ?? {}) };
   if (applicantKind === "team") nextPartyLeaders[applicantKey] = state.currentUserId;
-  const reservePinnedIds = applicantKind === "team" ? acceptedTeamPlayerIds : [state.currentUserId];
+  const reservePinnedIds = applicantKind === "team" ? selectedPlayerIds : [state.currentUserId];
   const existingPlayerIds = new Set([
     post.playerId,
     ...lobby.entries.flatMap((entry) => [entry.playerId, ...(entry.players ?? []), ...(entry.reserves ?? [])]),
-    ...roomState.invitations
-      .filter((invitation) => invitation.status === "pending")
-      .map((invitation) => invitation.targetUserId),
   ].filter(Boolean));
-  const teamInviteTargets = publicTeamJoin
-    ? [
-        ...pendingTeamPlayerIds.map((playerId) => ({ playerId, reserve: reserveRequested })),
-        ...pendingTeamReservePlayerIds.map((playerId) => ({ playerId, reserve: true })),
-      ].filter((target) => !existingPlayerIds.has(target.playerId))
-    : [];
-  const teamInvitations = teamInviteTargets.map((target) => ({
-    id: makeId("inv"),
-    role: "player",
-    targetUserId: target.playerId,
-    fromUserId: state.currentUserId,
-    teamId: team.id,
-    joinMode: "team",
-    side,
-    reserve: target.reserve,
-    status: "pending",
-    createdAt: now,
-    updatedAt: now,
-  }));
+  const teamSummonTargets = teamSummonPlayerIds.filter((playerId) => !existingPlayerIds.has(playerId));
   const nextRoomState = updateManyPinnedReservePlayers(
     updateManyPinnedReservePlayers(
-      { ...roomState, partyReserves: nextPartyReserves, partyLeaders: nextPartyLeaders, invitations: [...roomState.invitations, ...teamInvitations] },
+      { ...roomState, partyReserves: nextPartyReserves, partyLeaders: nextPartyLeaders },
       side,
       reservePinnedIds,
       reserve,
     ),
     side,
-    publicTeamJoin ? [] : selectedReservePlayerIds,
+    selectedReservePlayerIds,
     true,
   );
   const nextPost = { ...post, applicants, roomState: nextRoomState };
@@ -7298,14 +7271,13 @@ export function interestRecruitingPost(state, postId, application = {}) {
     ...state,
     recruitingPosts: (state.recruitingPosts ?? []).map((item) => (item.id === postId ? nextPost : item)),
     notifications: [
-      ...teamInvitations.map((invitation) => ({
+      ...teamSummonTargets.map((playerId) => ({
         id: makeId("n"),
-        title: "팀 파티 초대",
-        body: `${post.title} ${SIDE_LABEL_TEXT[side]} ${invitation.reserve ? "후보" : "출전"} 초대가 도착했습니다.`,
+        title: "팀원 소집",
+        body: `${post.title} ${SIDE_LABEL_TEXT[side]} 팀원으로 등록됐습니다. 방에서 출전/후보를 확인하세요.`,
         tone: "match",
-        targetUserId: invitation.targetUserId,
+        targetUserId: playerId,
         recruitingPostId: postId,
-        invitationId: invitation.id,
       })),
       ...state.notifications,
     ],
