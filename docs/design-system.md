@@ -972,3 +972,9 @@ UI 수정 전:
 2. `/app/recruiting` filter controls show public queue filters only. Created, joined, and invited relation controls are not shown in the public matching queue.
 3. Public queue cards do not need relationship chips like `내가 만든 방` or `초대받음`; those belong to direct action surfaces.
 4. Match agreement UI uses `동의`/`대기` labels instead of literal `READY`/`WAIT`; this is a label cleanup, not a match phase change.
+
+## 2026-07-06 matches relation filters
+
+1. Matches page filters focus on ownership/relation: 전체, 내가 만든 방, 내 참여방, 초대받은 방.
+2. Matches page does not show match-mode/person-count filters because the page already scopes to the current user's schedule.
+3. The relation filter uses the same compact segmented-control style as other dense schedule filters.
