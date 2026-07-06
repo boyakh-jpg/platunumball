@@ -14723,7 +14723,7 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
 }
 
 .profile-form-grid > label {
-  min-height: 90px;
+  min-height: 0;
   align-content: start;
 }
 
