@@ -743,6 +743,16 @@ export default function CreateMatch({ app }) {
     publicPartyPlayerIds.length < sideCapacity ||
     !opponentLeaderId
   );
+  const matchRecordTeamInvalid = isMatchRecordRoom && (
+    !isTeamRoom ||
+    !ownsSelectedTeamA ||
+    !selectedTeamA ||
+    !selectedTeamB ||
+    selectedTeamA.id === selectedTeamB.id ||
+    draft.mode === "1v1" ||
+    !opponentLeaderId ||
+    opponentLeaderId === app.currentUser.id
+  );
   const publicTeamInvalid = isPublicRoom && isTeamRoom && (
     !myTeams.some((team) => team.id === draft.teamAId) ||
     !publicPartyPlayerIds.length ||
@@ -775,6 +785,19 @@ export default function CreateMatch({ app }) {
             : !opponentLeaderId
               ? "B사이드 초대 대상 1명을 선택해야 합니다."
               : "";
+  const matchRecordInvalidReason = !isTeamRoom
+    ? "경기 기록방 1차 구현은 팀전만 만들 수 있습니다."
+    : !ownsSelectedTeamA
+      ? "기록할 내 팀을 A사이드로 선택해야 합니다."
+      : !selectedTeamB
+        ? "기록 확인을 받을 B사이드 팀을 선택해야 합니다."
+        : selectedTeamA?.id === selectedTeamB.id
+          ? "A/B사이드는 서로 다른 팀이어야 합니다."
+          : draft.mode === "1v1"
+            ? "팀 기록방은 2v2 이상부터 만들 수 있습니다."
+          : !opponentLeaderId || opponentLeaderId === app.currentUser.id
+            ? "B사이드 기록 확인 대표 1명을 선택해야 합니다."
+            : "";
   const tournamentInvalidReason = !draft.title.trim()
     ? "대회 이름을 입력해야 생성할 수 있습니다."
     : tournamentTeams.length < 2
@@ -803,7 +826,7 @@ export default function CreateMatch({ app }) {
     Boolean(soloRosterError) ||
     soloStatsInvalid
   );
-  const matchRecordInvalid = isMatchRecordRoom && (!isTeamRoom || privateTeamInvalid);
+  const matchRecordInvalid = isMatchRecordRoom && matchRecordTeamInvalid;
   const submitDisabled = courtRequiredBlocked || (isSoloRecord ? soloRecordInvalid : !scheduleAllowed || !tournamentEndAllowed || ageRestrictionBlocked || hostTrustBlocked || (isMatchRecordRoom
     ? matchRecordInvalid
     : isTournamentRoom
@@ -816,7 +839,7 @@ export default function CreateMatch({ app }) {
     : isSoloRecord && soloRecordInvalid
     ? soloRosterError || "제목, 날짜, 점수를 확인해야 합니다. 개인 기록 날짜는 오늘부터 과거 7일까지만 가능합니다."
     : isMatchRecordRoom && matchRecordInvalid
-      ? (!isTeamRoom ? "경기 기록방 1차 구현은 팀전만 만들 수 있습니다." : privateTeamInvalidReason || "경기 기록방은 A/B팀과 기록 확인 대표가 필요합니다.")
+      ? (matchRecordInvalidReason || "경기 기록방은 A/B팀과 기록 확인 대표가 필요합니다.")
     : !scheduleAllowed
     ? isMatchRecordRoom ? "경기 기록 날짜는 오늘부터 과거 7일까지만 가능합니다." : "일정 조건이 맞지 않습니다. 즉시는 바로 생성 가능하고, 예약 일정은 허용 기간 안에서만 가능합니다."
     : !tournamentEndAllowed
@@ -1194,6 +1217,11 @@ export default function CreateMatch({ app }) {
         ranked: draft.ranked,
         official: draft.official,
         preRegistered: false,
+        playerIds: [app.currentUser.id].filter(Boolean),
+        reservePlayerIds: [],
+        opponentPlayerIds: [opponentLeaderId].filter(Boolean),
+        opponentReservePlayerIds: [],
+        opponentLeaderId,
         courtId: selectedCourt.id,
         court: selectedCourt.name,
         scheduledDate: draft.scheduledDate,
@@ -1350,9 +1378,8 @@ export default function CreateMatch({ app }) {
               onClick={() => {
                 const team = defaultTeamA ?? selectedTeamA;
                 const opponentTeam = defaultTeamB ?? selectedTeamB;
-                const nextMode = getMatchModeOrDefault(draft.mode, defaultMode);
-                const nextCapacity = getRecruitingSideCapacity({ mode: nextMode });
-                const playerIds = getDefaultTeamPlayerIds(team, nextCapacity, [], app.currentUser.id);
+                const nextMode = draft.mode === "1v1" ? "2v2" : getMatchModeOrDefault(draft.mode, defaultMode === "1v1" ? "2v2" : defaultMode);
+                const playerIds = [app.currentUser.id].filter(Boolean);
                 update({
                   recordType: RECORD_TYPES.matchRecord,
                   visibility: "private",
@@ -1368,7 +1395,7 @@ export default function CreateMatch({ app }) {
                   teamAId: team?.id ?? draft.teamAId,
                   teamBId: opponentTeam?.id ?? draft.teamBId,
                   playerIds,
-                  reservePlayerIds: getDefaultTeamReserveIds(team, playerIds),
+                  reservePlayerIds: [],
                   opponentPlayerIds: [],
                   opponentReservePlayerIds: [],
                   opponentLeaderId: getDefaultTeamPlayerIds(opponentTeam, 1, playerIds)[0] ?? "",
@@ -1435,7 +1462,7 @@ export default function CreateMatch({ app }) {
               제목
               <input value={draft.title} onChange={(event) => update({ title: event.target.value })} />
             </label>
-            {!isTournamentRoom && !isSoloRecord ? (
+            {!isTournamentRoom && !isSoloRecord && !isMatchRecordRoom ? (
               <label>
                 세부 분기
                 <select
@@ -1487,7 +1514,7 @@ export default function CreateMatch({ app }) {
                 </select>
               </label>
             ) : null}
-            {!isTournamentRoom && !isSoloRecord ? (
+            {!isTournamentRoom && !isSoloRecord && !isMatchRecordRoom ? (
               <div className="field-block">
                 <span className="field-label">시간 옵션</span>
                 <div className="segmented-control compact-segments">
@@ -1504,6 +1531,21 @@ export default function CreateMatch({ app }) {
                 const mode = event.target.value;
                 if (isSoloRecord) {
                   update({ mode });
+                  return;
+                }
+                if (isMatchRecordRoom) {
+                  const playerIds = [app.currentUser.id].filter(Boolean);
+                  update({
+                    mode,
+                    hostJoinMode: "team",
+                    teamOnly: true,
+                    title: isDefaultCreateTitle(draft.title) ? getDefaultCreateTitle(mode) : draft.title,
+                    playerIds,
+                    reservePlayerIds: [],
+                    opponentPlayerIds: [],
+                    opponentReservePlayerIds: [],
+                    opponentLeaderId: getDefaultTeamPlayerIds(selectedTeamB, 1, playerIds)[0] ?? draft.opponentLeaderId,
+                  });
                   return;
                 }
                 const nextCapacity = getRecruitingSideCapacity({ mode });
@@ -1531,7 +1573,7 @@ export default function CreateMatch({ app }) {
                   }),
                 });
               }}>
-                {(isSoloRecord ? SOLO_RECORD_MODES : MATCH_MODES).map((mode) => <option key={mode.id} value={mode.id}>{mode.label}</option>)}
+                {(isSoloRecord ? SOLO_RECORD_MODES : MATCH_MODES.filter((mode) => !isMatchRecordRoom || mode.id !== "1v1")).map((mode) => <option key={mode.id} value={mode.id}>{mode.label}</option>)}
               </select>
             </label>
             ) : null}
@@ -1615,7 +1657,7 @@ export default function CreateMatch({ app }) {
                 </label>
               </>
             ) : null}
-            {!isTournamentRoom && !isSoloRecord ? (
+            {!isTournamentRoom && !isSoloRecord && !isMatchRecordRoom ? (
               <>
                 <label className="settings-checkbox">
                   <input
@@ -1993,7 +2035,7 @@ export default function CreateMatch({ app }) {
               ) : null}
             </>
           ) : null}
-          {isTeamRoom ? (
+          {isTeamRoom && !isMatchRecordRoom ? (
             <SideRosterPicker
               team={selectedTeamA}
               users={app.state.users}
@@ -2029,7 +2071,7 @@ export default function CreateMatch({ app }) {
               </div>
             </div>
           ) : null}
-          {!isPublicRoom && isTeamRoom ? (
+          {!isPublicRoom && isTeamRoom && !isMatchRecordRoom ? (
             <div className="form-grid two">
               <label>
                 A사이드 수락 방식

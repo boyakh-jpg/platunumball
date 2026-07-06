@@ -2825,6 +2825,23 @@ function getTeamPlayers(team, size) {
   return team.members.slice(0, size).map((member) => member.userId);
 }
 
+function getTeamMemberIds(team = {}) {
+  return (team.members ?? []).map((member) => member.userId).filter(Boolean);
+}
+
+function getMatchRecordSideLeaders(state, draft = {}, teamA = {}, teamB = {}) {
+  const teamAMembers = new Set(getTeamMemberIds(teamA));
+  const teamBMembers = new Set(getTeamMemberIds(teamB));
+  const teamALeader = uniquePlayerIds([state.currentUserId, ...(draft.playerIds ?? [])])
+    .find((playerId) => teamAMembers.has(playerId)) ?? state.currentUserId;
+  const teamBLeader = uniquePlayerIds([draft.opponentLeaderId, ...(draft.opponentPlayerIds ?? [])])
+    .find((playerId) => teamBMembers.has(playerId)) ?? getTeamPlayers(teamB, 1)[0] ?? "";
+  return {
+    teamAPlayers: [teamALeader].filter(Boolean),
+    teamBPlayers: [teamBLeader].filter(Boolean),
+  };
+}
+
 function getTrustedRefereeId(state, refereeId, playerIds = []) {
   if (!refereeId || playerIds.includes(refereeId)) return "";
   const user = state.users.find((item) => item.id === refereeId);
@@ -3848,8 +3865,9 @@ export function createMatch(state, draft) {
   const teamA = teams.find((team) => team.id === draft.teamAId) ?? teams[0];
   const teamB = teams.find((team) => team.id === draft.teamBId && team.id !== teamA.id) ?? teams.find((team) => team.id !== teamA.id) ?? teams[1];
   const evidence = (draft.evidence ?? []).map((item) => ({ id: item.id, label: item.label }));
-  const teamAPlayers = getTeamPlayers(teamA, size);
-  const teamBPlayers = getTeamPlayers(teamB, size);
+  const matchRecordLeaders = isMatchRecord ? getMatchRecordSideLeaders(state, draft, teamA, teamB) : null;
+  const teamAPlayers = matchRecordLeaders?.teamAPlayers ?? getTeamPlayers(teamA, size);
+  const teamBPlayers = matchRecordLeaders?.teamBPlayers ?? getTeamPlayers(teamB, size);
   const refereeId = getTrustedRefereeId(state, draft.refereeId, [...teamAPlayers, ...teamBPlayers]);
   const mmrRangeMode = normalizeRecruitingMmrRangeMode(draft.mmrRangeMode);
   const ranked = draft.ranked !== false;
