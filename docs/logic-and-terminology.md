@@ -2183,7 +2183,7 @@ flowchart TD
 
 - 방만들기 분기는 생성 payload 기준으로 고정한다.
 - `공개 매칭방 + 개인전`: `visibility:"public"`, `hostJoinMode:"player"`로 만들고 매칭 메뉴 공개 큐에 노출한다.
-- `공개 매칭방 + 팀전`: `visibility:"public"`, `hostJoinMode:"team"`으로 만들고 A사이드 팀 파티를 선택한다. `teamOnly:true`이면 개인 참여를 막는다.
+- `공개 매칭방 + 팀전`: `visibility:"public"`, `hostJoinMode:"team"`으로 만들고 A사이드 팀 파티를 선택한다. `teamOnly:true`로 고정하며 개인 참여를 막는다. `teamOnly:false` 공개 팀전 생성 요청은 서버에서 거부한다.
 - `비공개 경기방 + 개인전`: `visibility:"private"`, `hostJoinMode:"player"`로 만들고 선택한 `invitePlayerIds`만 개인 초대로 보낸다.
 - `비공개 경기방 + 팀전`: `visibility:"private"`, `hostJoinMode:"team"`으로 만들고 A사이드 팀과 B사이드 대표 1명만 정한다. A/B 라인업은 각 사이드장이 방에서 고른다.
 - `경기 기록방 + 팀전`: `recordType:"match_record"`, `visibility:"private"`, `hostJoinMode:"team"`으로 만들고 2v2 이상만 허용한다. 생성 시에는 A/B 팀과 각 사이드 대표 1명만 저장한다. 출전/후보 명단은 진행 메뉴의 기록방에서 각 사이드장이 자기 팀 명단만 확정한다.

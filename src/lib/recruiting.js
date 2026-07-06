@@ -128,10 +128,17 @@ export function isSoloIndividualRecruitingRoom(post = {}) {
   return getRecruitingSideCapacity(post) <= 1 && (post.hostJoinMode === "player" || !post.teamId);
 }
 
+export function isPublicTeamRecruitingRoom(post = {}) {
+  return post.visibility === "public" && post.hostJoinMode === "team";
+}
+
+export function isTeamOnlyRecruitingRoom(post = {}) {
+  return post.teamOnly === true || post.roomState?.teamOnly === true || isPublicTeamRecruitingRoom(post);
+}
+
 export function isTeamRecruitingRoom(post = {}) {
   return post.hostJoinMode === "team" ||
-    post.teamOnly === true ||
-    post.roomState?.teamOnly === true ||
+    isTeamOnlyRecruitingRoom(post) ||
     Boolean(post.teamId || post.targetTeamId);
 }
 

@@ -49,6 +49,7 @@ import {
   hasPendingRecruitingInvitation,
   isRecruitingPartyEntry,
   isRecruitingTeamEntry,
+  isTeamOnlyRecruitingRoom as isTeamOnlyRoom,
   isTeamRecruitingRoom,
   isSoloIndividualRecruitingRoom,
   isRecruitingPostForUser,
@@ -233,10 +234,6 @@ async function copyTextToClipboard(text) {
 
 function getDefaultApplyTeamId(post, teams) {
   return teams.find((team) => isSameRegion(team.region, post.region))?.id ?? teams[0]?.id ?? "";
-}
-
-function isTeamOnlyRoom(post = {}) {
-  return post.teamOnly === true || post.roomState?.teamOnly === true;
 }
 
 function getDefaultTeamPlayerIds(team, capacity, requiredPlayerId = "") {
@@ -4331,6 +4328,7 @@ function RecruitingReady({ app }) {
       ...draft,
       courtId: selectedDraftCourt?.id ?? draft.courtId ?? "",
       region: selectedDraftCourt?.region ?? draft.region,
+      teamOnly: draft.hostJoinMode === "team",
       title: draft.title.trim() || getDefaultTitle(draft),
       scheduledDate: draftInstant ? "" : draft.scheduledDate,
       scheduledTime: draftInstant ? "" : draft.scheduledTime,

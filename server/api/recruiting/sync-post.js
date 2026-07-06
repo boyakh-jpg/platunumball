@@ -615,6 +615,10 @@ function validateRecruitingPostShape(post = {}) {
   const capacity = getSideCapacity(post);
   const applications = toArray(post.applicants);
   const hostJoinMode = getCanonicalHostJoinMode(post);
+  const roomState = normalizeRoomState(post.roomState, post);
+  const visibility = post.visibility === "private" ? "private" : "public";
+  const teamOnly = isTrue(post.teamOnly ?? post.team_only ?? roomState.teamOnly);
+  if (visibility === "public" && hostJoinMode === "team" && !teamOnly) reject(400, "public_team_room_requires_team_only");
   const oversizedHost = hostJoinMode === "team" && toArray(post.playerIds ?? post.player_ids).length > capacity;
   if (oversizedHost) reject(400, "recruiting_party_exceeds_side_capacity");
   const oversizedApplication = applications.find((application) => toArray(application.playerIds ?? application.player_ids).length > capacity);
@@ -625,7 +629,6 @@ function validateRecruitingPostShape(post = {}) {
   if (sideCounts.teamA > capacity || sideCounts.teamB > capacity) reject(400, "recruiting_side_exceeds_capacity");
 
   if (!isSoloIndividualRoom(post)) return;
-  const roomState = normalizeRoomState(post.roomState, post);
   if (post.teamId || post.targetTeamId || toArray(post.playerIds).length > 1) reject(400, "solo_room_team_party_not_allowed");
   if (Object.values(roomState.partyReserves ?? {}).flatMap(toArray).length) reject(400, "solo_room_team_party_not_allowed");
 

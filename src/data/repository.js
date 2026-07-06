@@ -70,7 +70,9 @@ import {
   getSelectableTeamPlayerIds,
   getSelectedTeamPlayerIds,
   hasRecruitingApplicant,
+  isPublicTeamRecruitingRoom,
   isRecruitingPartyEntry,
+  isTeamOnlyRecruitingRoom,
   isSoloIndividualRecruitingRoom,
   normalizeRecruitingMmrRangeMode,
   normalizeRecruitingApplicants,
@@ -2134,7 +2136,7 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
         disputeMinutes: post.dispute_minutes ?? DISPUTE_WINDOW_MINUTES,
         roomState,
         mmrLimitMode: normalizeRecruitingMmrLimitMode(roomState.mmrLimitMode),
-        teamOnly: roomState.teamOnly === true,
+        teamOnly: roomState.teamOnly === true || isPublicTeamRecruitingRoom({ visibility: post.visibility, hostJoinMode: post.host_join_mode }),
         hostJoinMode: post.host_join_mode,
         hostSide: post.host_side,
         hostReady: post.host_ready,
@@ -6715,7 +6717,7 @@ export function createRecruitingPost(state, draft) {
   if (disciplineBlock) return disciplineBlock;
   const hostJoinMode = draft.hostJoinMode === "player" ? "player" : "team";
   const visibility = draft.visibility === "private" ? "private" : "public";
-  const teamOnly = visibility === "public" && hostJoinMode === "team" && draft.teamOnly === true;
+  const teamOnly = visibility === "public" && hostJoinMode === "team";
   const postType = teamOnly ? "need_team" : hostJoinMode === "team" ? "need_player" : "find_team";
   const hostTrustBlock = getHostTrustBlockNotification(state, { ...draft, visibility });
   if (hostTrustBlock) return { ...state, notifications: [hostTrustBlock, ...state.notifications] };
@@ -6977,7 +6979,7 @@ export function interestRecruitingPost(state, postId, application = {}) {
   if (!post || post.status !== "open") return state;
   if (isRecruitingRoomOwner(post, state.currentUserId) || post.playerId === state.currentUserId) return state;
   const user = state.users.find((item) => item.id === state.currentUserId);
-  const teamOnly = post.teamOnly === true || post.roomState?.teamOnly === true;
+  const teamOnly = isTeamOnlyRecruitingRoom(post);
   const refereeWanted = Boolean(post.refereeWanted || post.roomState?.refereeWanted || post.refereeId);
   if (application.joinMode === "referee") {
     if (post.visibility === "private") {
@@ -8053,7 +8055,7 @@ export function inviteRecruitingPlayers(state, postId, invite = {}) {
   const reserve = Boolean(invite.reserve);
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
   const lobby = getRecruitingLobby(post, state);
-  const teamOnly = post.teamOnly === true || roomState.teamOnly === true;
+  const teamOnly = isTeamOnlyRecruitingRoom({ ...post, roomState });
   const sideTeamId = getLobbyPrimaryTeamId(lobby, side);
   const requestedTargetIds = Array.from(new Set(invite.playerIds ?? [invite.playerId])).filter(Boolean);
   if (teamOnly) {
@@ -8785,9 +8787,10 @@ function getRecruitingHostEditReady(post) {
 
 function isRecruitingTeamSideLocked(post = {}) {
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
+  const teamOnly = isTeamOnlyRecruitingRoom({ ...post, roomState });
   return Boolean(
     (post.hostJoinMode === "team" || post.teamId) &&
-    (post.visibility === "private" || post.teamOnly === true || roomState.teamOnly === true)
+    (post.visibility === "private" || teamOnly)
   );
 }
 
