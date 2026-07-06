@@ -2230,3 +2230,10 @@ flowchart TD
 - 실제 feed repair는 `/api/system/maintenance` 직접/cron 호출에서 기본 실행한다. 필요하면 `includeFeedRepair:false`로 끈다.
 - repair는 active `user_room_feed` 샘플에서 누락/invalid/stale `room_feed_cards` 후보만 찾아 `rankball_refresh_recruiting_feed_for_post` 또는 `rankball_refresh_match_feed_for_match` RPC를 호출한다.
 - repair는 source room/match row를 삭제하거나 직접 수정하지 않는다.
+
+## 2026-07-07 경기기록방 사이드장 로스터 기준
+
+- 경기기록방 팀전의 사이드장은 해당 사이드 로스터 저장 권한의 기준점이다.
+- 현 DB/서버 저장 경로는 사이드장을 첫 출전자로 보고 검증한다.
+- 사이드장을 비출전 대표로 분리하려면 별도 `sideLeaderId` 원본을 먼저 설계해야 한다.
+- 그 전까지 UI는 사이드장을 후보/해제 상태로 내리지 않는다.

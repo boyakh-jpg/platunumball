@@ -1405,11 +1405,25 @@ function MatchRecordRosterPanel({
 }) {
   const sourceActiveIds = getMatchSidePlayerIds(match, sideName);
   const sourceReserveIds = getMatchReservePlayerIds(match, sideName);
-  const [draftRoster, setDraftRoster] = useState({ activeIds: sourceActiveIds, reserveIds: sourceReserveIds });
+  const teamMemberIdSet = new Set((team?.members ?? []).map((member) => member.userId).filter(Boolean));
+  const normalizeLeaderRoster = (activeIds = [], reserveIds = []) => {
+    const activeSetIds = [...new Set(activeIds.filter(Boolean))];
+    let nextActiveIds = activeSetIds.slice(0, capacity);
+    let nextReserveIds = [...new Set(reserveIds.filter(Boolean))]
+      .filter((playerId) => !nextActiveIds.includes(playerId))
+      .slice(0, MAX_RESERVE_PLAYERS_PER_SIDE);
+    if (sideLeaderId && teamMemberIdSet.has(sideLeaderId)) {
+      nextActiveIds = [sideLeaderId, ...nextActiveIds.filter((playerId) => playerId !== sideLeaderId)].slice(0, capacity);
+      nextReserveIds = nextReserveIds.filter((playerId) => playerId !== sideLeaderId);
+    }
+    return { activeIds: nextActiveIds, reserveIds: nextReserveIds };
+  };
+  const sourceRoster = normalizeLeaderRoster(sourceActiveIds, sourceReserveIds);
+  const [draftRoster, setDraftRoster] = useState(sourceRoster);
 
   useEffect(() => {
-    setDraftRoster({ activeIds: sourceActiveIds, reserveIds: sourceReserveIds });
-  }, [match?.id, sideName, sourceActiveIds.join("|"), sourceReserveIds.join("|")]);
+    setDraftRoster(normalizeLeaderRoster(sourceActiveIds, sourceReserveIds));
+  }, [match?.id, sideName, sideLeaderId, team?.id, capacity, sourceActiveIds.join("|"), sourceReserveIds.join("|")]);
 
   if (!match || !team || !sideLeaderId || sideLeaderId !== currentUserId) return null;
   const activeIds = draftRoster.activeIds;
@@ -1419,15 +1433,20 @@ function MatchRecordRosterPanel({
   if (!memberIds.length) return null;
 
   const commitRoster = () => {
+    const nextRoster = normalizeLeaderRoster(activeIds, reserveIds);
     onChange(sideName, {
-      playerIds: activeIds.slice(0, capacity),
-      reservePlayerIds: reserveIds.filter((playerId) => !activeIds.includes(playerId)).slice(0, MAX_RESERVE_PLAYERS_PER_SIDE),
+      playerIds: nextRoster.activeIds,
+      reservePlayerIds: nextRoster.reserveIds,
     });
   };
   const setPlayerState = (playerId, state) => {
+    if (playerId === sideLeaderId && state !== "active") return;
     const nextActiveIds = activeIds.filter((id) => id !== playerId);
     const nextReserveIds = reserveIds.filter((id) => id !== playerId);
-    if (state === "active" && nextActiveIds.length < capacity) nextActiveIds.push(playerId);
+    if (state === "active" && nextActiveIds.length < capacity) {
+      if (playerId === sideLeaderId) nextActiveIds.unshift(playerId);
+      else nextActiveIds.push(playerId);
+    }
     if (state === "reserve" && nextReserveIds.length < MAX_RESERVE_PLAYERS_PER_SIDE) nextReserveIds.push(playerId);
     setDraftRoster({ activeIds: nextActiveIds, reserveIds: nextReserveIds });
   };
@@ -1458,7 +1477,7 @@ function MatchRecordRosterPanel({
               <Button type="button" size="sm" variant={isActive ? "primary" : "secondary"} disabled={!isActive && activeIds.length >= capacity} onClick={() => setPlayerState(playerId, "active")}>
                 출전
               </Button>
-              <Button type="button" size="sm" variant={isReserve ? "primary" : "secondary"} disabled={!isReserve && reserveIds.length >= MAX_RESERVE_PLAYERS_PER_SIDE} onClick={() => setPlayerState(playerId, "reserve")}>
+              <Button type="button" size="sm" variant={isReserve ? "primary" : "secondary"} disabled={isLeader || (!isReserve && reserveIds.length >= MAX_RESERVE_PLAYERS_PER_SIDE)} onClick={() => setPlayerState(playerId, "reserve")}>
                 후보
               </Button>
               <Button type="button" size="sm" variant="secondary" disabled={isLeader || (!isActive && !isReserve)} onClick={() => setPlayerState(playerId, "none")}>

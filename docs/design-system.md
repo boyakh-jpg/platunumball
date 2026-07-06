@@ -1026,3 +1026,9 @@ UI 수정 전:
 1. Matches relation filter buttons are label-only.
 2. Do not show created/joined/invited numeric badges next to `내가 만든 방`, `내 참여방`, or `초대받은 방`.
 3. Remove stale relation badge CSS instead of reserving empty badge space.
+
+## 2026-07-07 match record roster controls
+
+1. 경기기록방 팀전 로스터 패널은 사이드장을 출전 필수 선수로 표시한다.
+2. 사이드장 row의 `후보`/`해제` 액션은 비활성화한다.
+3. 선수 확정 저장 전에도 사이드장은 출전 명단 첫 번째로 유지한다.
