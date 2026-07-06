@@ -1112,6 +1112,9 @@ export default function CreateMatch({ app }) {
     });
     setInvitePlayerQuery("");
   };
+  const removePrivatePlayerInvite = (playerId) => {
+    update({ invitePlayerIds: privatePlayerInviteIds.filter((id) => id !== playerId) });
+  };
   const renderPrivatePlayerInviteSearchItem = (user) => {
     const favorite = favoritePlayerIds.includes(user.id);
     return (
@@ -1902,13 +1905,21 @@ export default function CreateMatch({ app }) {
                       emptyText="초대할 선수 없음"
                       showIdleOnFocus
                       floating
+                      closeOnResultClick
                       renderItem={renderPrivatePlayerInviteSearchItem}
                     />
                   </label>
                   <div className="stat-integrity-note">
-                    {selectedInvitePlayers.length
-                      ? `선택 ${selectedInvitePlayers.length}명 · ${selectedInvitePlayers.map((user) => user.name).join(", ")}`
-                      : "선택하지 않으면 방 생성 후 빈 슬롯에서 초대합니다."}
+                    {selectedInvitePlayers.length ? (
+                      <>
+                        <span>선택 {selectedInvitePlayers.length}명</span>
+                        {selectedInvitePlayers.map((user) => (
+                          <button key={user.id} type="button" className="form-chip" onClick={() => removePrivatePlayerInvite(user.id)}>
+                            {user.name} 해제
+                          </button>
+                        ))}
+                      </>
+                    ) : "선택하지 않으면 방 생성 후 빈 슬롯에서 초대합니다."}
                   </div>
                 </div>
               ) : null}
