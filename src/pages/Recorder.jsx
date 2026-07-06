@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { AlertTriangle, ClipboardList, Minus, Plus, RotateCcw, Save, ShieldCheck, Square } from "lucide-react";
 import ApprovalPanel from "../components/match/ApprovalPanel.jsx";
 import Badge from "../components/common/Badge.jsx";
@@ -146,6 +146,8 @@ function canAccessActiveMatch(match, user, state) {
 
 export default function Recorder({ app }) {
   const user = app.currentUser;
+  const [searchParams, setSearchParams] = useSearchParams();
+  const queryMatchId = searchParams.get("match") ?? "";
   const userMap = useMemo(() => {
     const anonymousUsers = app.state.matches.flatMap((match) => Object.values(match.anonymousPlayers ?? {}));
     return Object.fromEntries([...app.state.users, ...anonymousUsers].map((item) => [item.id, item]));
@@ -157,8 +159,11 @@ export default function Recorder({ app }) {
         .sort((a, b) => String(a.scheduledAt ?? a.createdAt ?? "").localeCompare(String(b.scheduledAt ?? b.createdAt ?? ""))),
     [app.state.matches, app.state.settings?.refereeAppointments, user],
   );
-  const [selectedMatchId, setSelectedMatchId] = useState("");
-  const selectedMatch = matches.find((match) => match.id === selectedMatchId) ?? matches[0] ?? null;
+  const [selectedMatchId, setSelectedMatchId] = useState(queryMatchId);
+  const selectedMatch = matches.find((match) => match.id === queryMatchId)
+    ?? matches.find((match) => match.id === selectedMatchId)
+    ?? matches[0]
+    ?? null;
   const selectedMatchPlayerKey = selectedMatch ? getMatchRecordPlayerIds(selectedMatch).join("|") : "";
   const [stats, setStats] = useState({});
   const [dirtyStats, setDirtyStats] = useState({});
@@ -188,6 +193,14 @@ export default function Recorder({ app }) {
     if (!selectedMatch || selectedMatchId === selectedMatch.id) return;
     setSelectedMatchId(selectedMatch.id);
   }, [selectedMatch, selectedMatchId]);
+  const selectMatch = (matchId) => {
+    setSelectedMatchId(matchId);
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.set("match", matchId);
+      return next;
+    }, { replace: true });
+  };
 
   useEffect(() => {
     if (selectedMatch) {
@@ -466,7 +479,7 @@ export default function Recorder({ app }) {
                   type="button"
                   className={active ? "recorder-match-option active" : "recorder-match-option"}
                   key={match.id}
-                  onClick={() => setSelectedMatchId(match.id)}
+                  onClick={() => selectMatch(match.id)}
                 >
                   <span>
                     <Badge tone={statusMeta[match.status]?.tone ?? "blue"}>{statusMeta[match.status]?.label ?? match.status}</Badge>

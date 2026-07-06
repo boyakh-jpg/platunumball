@@ -1199,7 +1199,7 @@ export default function CreateMatch({ app }) {
         scheduledDate: draft.scheduledDate,
         scheduledTime: draft.scheduledTime,
       });
-      if (typeof matchId === "string" && matchId) navigate("/app/recorder");
+      if (typeof matchId === "string" && matchId) navigate(`/app/recorder?match=${encodeURIComponent(matchId)}`);
       else {
         setSubmitFeedback(formatCreateSaveError(matchId, "경기 기록방 생성에 실패했습니다."));
         setSubmitting(false);
