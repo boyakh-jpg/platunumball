@@ -47,6 +47,7 @@ import {
   getSelectableTeamPlayerIds,
   hasPendingRecruitingInvitation,
   isRecruitingPartyEntry,
+  isRecruitingTeamEntry,
   isSoloIndividualRecruitingRoom,
   isRecruitingPostForUser,
   isNationalRecruitingPost,
@@ -243,6 +244,11 @@ function getDefaultTeamPlayerIds(team, capacity, requiredPlayerId = "") {
     ? [requiredPlayerId, ...selectableIds.filter((playerId) => playerId !== requiredPlayerId)]
     : selectableIds;
   return orderedIds.slice(0, capacity);
+}
+
+function getTeamRepresentativePlayerIds(team, userId = "") {
+  if (!team || !userId) return [];
+  return getSelectableTeamPlayerIds(team).includes(userId) ? [userId] : [];
 }
 
 function getPartyPlayerIds(team, playerIds, capacity, requiredPlayerId = "") {
@@ -830,10 +836,9 @@ function getRecruitingRuleSummary(post = {}) {
 }
 
 function getRecruitingRoomTypeLabel(room = {}, lobby = null) {
-  const listPartyCount = Number(room.listCounts?.partyCount);
-  if (Number.isFinite(listPartyCount) && listPartyCount >= 2) return "팀전";
-  if (Number.isFinite(listPartyCount) && listPartyCount > 0) return "팀 파티 포함";
-  const lobbyTeamCount = lobby?.entries?.filter((entry) => isPartyEntry(entry)).length ?? 0;
+  const roomTeamOnly = room.hostJoinMode === "team" || room.teamOnly === true || room.roomState?.teamOnly === true || Boolean(room.teamId || room.targetTeamId);
+  if (roomTeamOnly) return "팀전";
+  const lobbyTeamCount = lobby?.entries?.filter((entry) => isRecruitingTeamEntry(entry)).length ?? 0;
   if (lobbyTeamCount >= 2) return "팀전";
   if (lobbyTeamCount > 0) return "팀 파티 포함";
   return "개인 매칭";
@@ -4066,14 +4071,14 @@ function RecruitingReady({ app }) {
     ranked: true,
     mmrRangeMode: "narrow",
     teamId: myTeams[0]?.id ?? "",
-    playerIds: getDefaultTeamPlayerIds(myTeams[0], getRecruitingSideCapacity({ mode: "5v5" })),
+    playerIds: getTeamRepresentativePlayerIds(myTeams[0], app.currentUser.id),
     position: app.currentUser.position,
     memo: "빈자리는 개인 또는 팀 파티로 들어올 수 있습니다.",
   }));
 
   const selectedTeam = myTeams.find((team) => team.id === draft.teamId) ?? myTeams[0] ?? null;
   const draftCapacity = getRecruitingSideCapacity(draft);
-  const selectedHostPlayerIds = getPartyPlayerIds(selectedTeam, draft.playerIds, draftCapacity);
+  const selectedHostPlayerIds = draft.hostJoinMode === "team" ? getTeamRepresentativePlayerIds(selectedTeam, app.currentUser.id) : [];
   const draftTargetMmr = draft.hostJoinMode === "team"
     ? selectedTeam?.mmr ?? app.currentUser.ratings.integrated
     : app.currentUser.ratings.integrated;
@@ -4150,17 +4155,17 @@ function RecruitingReady({ app }) {
     if (!hostNeedsTeam) return;
     const nextTeam = selectedTeam ?? myTeams[0] ?? null;
     if (!nextTeam) return;
-    const nextPlayerIds = getPartyPlayerIds(nextTeam, draft.playerIds, draftCapacity);
+    const nextPlayerIds = getTeamRepresentativePlayerIds(nextTeam, app.currentUser.id);
     const playerIdsNeedSync = !Array.isArray(draft.playerIds)
-      || draft.playerIds.length > draftCapacity
-      || draft.playerIds.some((playerId) => !getSelectableTeamPlayerIds(nextTeam).includes(playerId));
+      || draft.playerIds.length !== nextPlayerIds.length
+      || draft.playerIds.some((playerId, index) => playerId !== nextPlayerIds[index]);
     if (draft.teamId === nextTeam.id && !playerIdsNeedSync) return;
     setDraft((current) => ({
       ...current,
       teamId: nextTeam.id,
-      playerIds: nextPlayerIds.length ? nextPlayerIds : getDefaultTeamPlayerIds(nextTeam, draftCapacity),
+      playerIds: nextPlayerIds,
     }));
-  }, [draft.teamId, draft.playerIds, draftCapacity, hostNeedsTeam, myTeams, selectedTeam]);
+  }, [app.currentUser.id, draft.teamId, draft.playerIds, hostNeedsTeam, myTeams, selectedTeam]);
 
   const scopedPosts = useMemo(() => {
     return [...(app.state.recruitingPosts ?? [])]
@@ -4302,6 +4307,7 @@ function RecruitingReady({ app }) {
   const submit = (event) => {
     event.preventDefault();
     const selectedDraftCourt = courtByName[draft.court] ?? null;
+    const hostPlayerIds = draft.hostJoinMode === "team" ? getTeamRepresentativePlayerIds(selectedTeam, app.currentUser.id) : [];
     const nextDraft = {
       ...draft,
       courtId: selectedDraftCourt?.id ?? draft.courtId ?? "",
@@ -4309,6 +4315,7 @@ function RecruitingReady({ app }) {
       title: draft.title.trim() || getDefaultTitle(draft),
       scheduledDate: draftInstant ? "" : draft.scheduledDate,
       scheduledTime: draftInstant ? "" : draft.scheduledTime,
+      playerIds: hostPlayerIds,
     };
     app.actions.createRecruitingPost(nextDraft);
     setDraft((current) => ({ ...current, title: "", memo: "빈자리는 개인 또는 팀 파티로 들어올 수 있습니다." }));
@@ -4544,7 +4551,7 @@ function RecruitingReady({ app }) {
                     update({
                       hostJoinMode: "team",
                       teamId: team?.id ?? "",
-                      playerIds: getDefaultTeamPlayerIds(team, draftCapacity),
+                      playerIds: getTeamRepresentativePlayerIds(team, app.currentUser.id),
                     });
                   }}
                 >
@@ -4667,7 +4674,7 @@ function RecruitingReady({ app }) {
                           const team = myTeams.find((item) => item.id === teamId) ?? null;
                           update({
                             teamId,
-                            playerIds: getDefaultTeamPlayerIds(team, draftCapacity),
+                            playerIds: getTeamRepresentativePlayerIds(team, app.currentUser.id),
                           });
                         }}
                       >
@@ -4676,13 +4683,6 @@ function RecruitingReady({ app }) {
                         )) : <option value="">내 팀 없음</option>}
                       </select>
                     </label>
-                    <TeamMemberPicker
-                      team={selectedTeam}
-                      userById={userById}
-                      selectedIds={selectedHostPlayerIds}
-                      capacity={draftCapacity}
-                      onChange={(playerIds) => update({ playerIds })}
-                    />
                   </div>
                 ) : (
                   <label>
@@ -4696,7 +4696,7 @@ function RecruitingReady({ app }) {
                   <div>
                     <span>슬롯</span>
                     <strong>{draftCapacity} vs {draftCapacity}</strong>
-                    <em>{draft.hostJoinMode === "team" ? `${selectedHostPlayerIds.length}명 선택 배치` : "개인 1명이 A사이드에 배치"}</em>
+                    <em>{draft.hostJoinMode === "team" ? `대표 ${selectedHostPlayerIds.length}명만 배치` : "개인 1명이 A사이드에 배치"}</em>
                   </div>
                   <ShieldCheck size={22} />
                 </div>

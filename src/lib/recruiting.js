@@ -63,6 +63,10 @@ export function isRecruitingPartyEntry(entry = {}) {
   return entry?.kind === "team" && getRecruitingEntryParticipantIds(entry).length >= 2;
 }
 
+export function isRecruitingTeamEntry(entry = {}) {
+  return entry?.kind === "team" || entry?.joinMode === "team" || Boolean(entry?.teamId);
+}
+
 function compareCandidates(a, b) {
   const readyDiff = Number(b.status === "ready") - Number(a.status === "ready");
   if (readyDiff) return readyDiff;

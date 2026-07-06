@@ -27,7 +27,7 @@ import {
   userNeedsMatchAction,
 } from "../lib/matchUtils.js";
 import { ROOM_KINDS } from "../lib/constants.js";
-import { getRecruitingEntryForUser, getRecruitingListCardLobby, getRecruitingLobby, getRecruitingRoomOwnerId, getRecruitingSideCapacity, getRoomKindFromRecruitingPost, hasPendingRecruitingInvitation, isRecruitingPartyEntry, isRecruitingRoomInUserSchedule } from "../lib/recruiting.js";
+import { getRecruitingEntryForUser, getRecruitingListCardLobby, getRecruitingLobby, getRecruitingRoomOwnerId, getRecruitingSideCapacity, getRoomKindFromRecruitingPost, hasPendingRecruitingInvitation, isRecruitingTeamEntry, isRecruitingRoomInUserSchedule } from "../lib/recruiting.js";
 import { RECRUITING_ROOM_REFRESH_INTERVAL_MS, RecruitingRoomModal, getRecruitingRoomListStatus } from "./Recruiting.jsx";
 import "../styles/recruiting-arena.css";
 import "../styles/matches-arena.css";
@@ -318,9 +318,9 @@ function MatchListSummary({ left, center = "vs", right, meta, detail, leftTeam =
 }
 
 function getRoomTypeLabel(room = {}, lobby = null) {
-  const matchTeamCount = ["teamA", "teamB"].filter((sideName) => isMatchSideTeamParty(room, sideName)).length;
+  const matchTeamCount = ["teamA", "teamB"].filter((sideName) => Boolean(room?.[sideName]?.teamId) || isMatchSideTeamParty(room, sideName)).length;
   const matchPartyCount = (room.parties ?? []).filter((party) => isMatchPartyTeamParty(party)).length;
-  const lobbyTeamCount = lobby?.entries?.filter((entry) => isRecruitingPartyEntry(entry)).length ?? 0;
+  const lobbyTeamCount = lobby?.entries?.filter((entry) => isRecruitingTeamEntry(entry)).length ?? 0;
   if (matchTeamCount >= 2 || lobbyTeamCount >= 2) return "팀전";
   if (matchTeamCount > 0 || matchPartyCount > 0 || lobbyTeamCount > 0) return "팀 파티 포함";
   return "개인 매칭";
