@@ -44,7 +44,6 @@ import {
   getHostTrustRequirement,
   getTeamRoleLabel,
   normalizeMmrLimitMode as normalizeRecruitingMmrLimitMode,
-  normalizeTeamRole,
 } from "../lib/constants.js";
 import { courtIdByName, findCourtDuplicate, getCourtDuplicateMessage, getCourtId, getRegisteredCourts, normalizeCourtLayout, normalizeCourtSurfaceType } from "../lib/courts.js";
 import {
@@ -133,7 +132,7 @@ import {
   resetFuturePostMatchState,
 } from "./matchLifecycleUtils.js";
 import { DEFAULT_SETTINGS, EMPTY_STATE } from "./repositoryDefaults.js";
-import { fromRemoteTeam, fromRemoteTeamInvitation } from "./teamMappers.js";
+import { fromRemoteTeam, fromRemoteTeamInvitation, normalizeTeamInviteRole } from "./teamMappers.js";
 import { fromRemoteTournament, normalizeTournament } from "./tournamentMappers.js";
 import {
   fromRemoteApprovedCourt,
@@ -9029,10 +9028,6 @@ function expirePendingTeamInvitations(teamInvitations = [], teamId, updatedAt) {
 
 function getTeamInvitation(state, invitationId) {
   return (state.teamInvitations ?? []).find((invitation) => invitation.id === invitationId) ?? null;
-}
-
-function normalizeTeamInviteRole(role = "regular") {
-  return normalizeTeamRole(role, { allowCaptain: false });
 }
 
 export function inviteTeamMember(state, teamId, targetUserId, role = "regular") {

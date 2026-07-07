@@ -1,3 +1,5 @@
+import { normalizeTeamRole } from "../lib/constants.js";
+
 export function fromRemoteTeam(row, memberRows) {
   return {
     id: row.id,
@@ -27,4 +29,8 @@ export function fromRemoteTeamInvitation(row = {}) {
     createdAt: row.created_at,
     updatedAt: row.updated_at ?? row.created_at,
   };
+}
+
+export function normalizeTeamInviteRole(role = "regular") {
+  return normalizeTeamRole(role, { allowCaptain: false });
 }
