@@ -943,7 +943,7 @@ async function fetchCurrentUserReports(currentUserId = "", client = supabase) {
   const [byReporter, byTarget, byReportedUser] = await Promise.all([
     fetchOptionalFilteredRows("reports", REPORT_COLUMNS, "created_at", client, (query) => query.eq("user_id", currentUserId)),
     fetchOptionalFilteredRows("reports", REPORT_COLUMNS, "created_at", client, (query) => query.eq("target_id", currentUserId)),
-    fetchOptionalFilteredRows("reports", REPORT_COLUMNS, "created_at", client, (query) => query.contains("reported_user_ids", [currentUserId])),
+    fetchOptionalFilteredRows("reports", REPORT_COLUMNS, "created_at", client, (query) => query.filter("reported_user_ids", "cs", JSON.stringify([currentUserId]))),
   ]);
   return uniqueRowsById([...byReporter, ...byTarget, ...byReportedUser])
     .sort((a, b) => String(a.created_at ?? "").localeCompare(String(b.created_at ?? "")));
