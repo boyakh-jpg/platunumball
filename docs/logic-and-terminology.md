@@ -288,16 +288,16 @@
 - 가입/설정 화면이 선택한 `region`, `regionSido`, `regionDistrict`만 저장하고, 누락값은 null로 둔다.
 - 모집 공개 feed의 전체 공개 profile id, legacy 즉시 라벨, 한국 행정구 suffix는 `/api/recruiting/list` 상수로만 관리한다.
 
-## 2026-06-30 모집 relation 목록 더보기 기준
+## 2026-06-30 모집 relation feed 기준
 
-- 모집의 내가 만든 방/내 참여방/초대받음 탭은 `user_room_feed` relation 목록을 한 번에 가져오는 개인 feed 목록이다.
-- 이 탭들은 공개 지역 목록 페이지네이션과 섞지 않으며, 더보기 버튼도 표시하지 않는다.
-- 이 탭들은 날짜, 정규전/친선전, 경기 방식 같은 공개 목록 필터와 분리한다. 탭 클릭 시 공개 목록 필터를 전체 기준으로 초기화한다.
-- 관계 badge 숫자는 `rankball_recruiting_feed_counts`/`user_room_feed` feed count 기준만 사용한다. 부분 로컬 state로 계산한 fallback count를 섞지 않는다.
+- 모집 relation feed는 `user_room_feed`의 owner/participant/invited/referee row가 원본이다.
+- 이 relation feed는 경기 메뉴 관계 필터, 홈 Action Queue, 직접 링크 보강에서 사용한다.
+- `/app/recruiting` 공개 큐에는 내가 만든 방/내 참여방/초대받음 탭을 표시하지 않는다.
+- 관계 숫자 badge는 표시하지 않는다. count가 필요한 운영/진단 호출만 `rankball_recruiting_feed_counts`/`user_room_feed` 기준을 쓴다.
 - 모집 공개 목록 더보기는 현재 지역/날짜 필터의 `regionScope`, `regionKey`, `startFilter`를 그대로 이어서 호출해야 한다.
 - 서버 목록 API는 `regionScope`의 `local`, `region`, `all` 값을 보존해야 하며, `region` 요청을 `local`로 낮추지 않는다.
 - feed를 사용할 수 없는 fallback 경로도 `offset`을 유지해야 하며, 더보기 요청을 빈 목록으로 강제 종료하지 않는다.
-- `/app/recruiting` 공개 첫 목록과 지역/날짜 필터 요청은 current-user mine 목록을 병합하지 않는다. mine 목록은 relation 버튼 클릭의 `scope:"mine"` 요청으로만 읽고, 첫 badge는 feed count RPC로 표시한다.
+- `/app/recruiting` 공개 첫 목록과 지역/날짜 필터 요청은 current-user mine 목록을 병합하지 않는다. current-user relation 목록은 경기 메뉴 관계 필터 또는 명시 action refresh에서만 읽는다.
 
 ## 2026-06-30 모집 슬롯/파티 actor 기준
 
@@ -324,7 +324,7 @@
 
 ## 2026-06-30 egress 축소
 
-- 모집 `feedCounts`는 `rankball_recruiting_feed_counts(profileId)` RPC가 `created`, `joined`, `invited` 숫자만 반환한다. 초대 카드, 수락/거절, 방 상세 데이터는 `room_feed_cards.card_json` 또는 상세 API가 계속 담당한다.
+- 모집 `feedCounts`는 운영/진단용으로 `rankball_recruiting_feed_counts(profileId)` RPC가 `created`, `joined`, `invited` 숫자만 반환한다. 공개 큐 UI는 이 숫자를 표시하지 않는다. 초대 카드, 수락/거절, 방 상세 데이터는 `room_feed_cards.card_json` 또는 상세 API가 계속 담당한다.
 - `/api/home/load`는 기본적으로 현재 사용자 경기/모집 feed와 프로필 bootstrap만 읽는다. 홈은 지역 모집 teaser를 읽지 않는다. 모집 count RPC는 `includeFeedCounts:true`일 때만 읽는다.
 - `/api/home/load`의 홈 Action Queue 초대는 일반 current-user 모집 feed와 별도로 `roomScope="invited"` feed를 병합한다. 초대 relation은 owner/participant/referee page limit과 경쟁하면 안 된다.
 - `/api/matches/list`의 모집 일정 병합은 카드 목록만 필요하므로 모집 `feedCounts`를 같이 읽지 않는다.
@@ -335,8 +335,8 @@
 - 홈, 경기, 매칭 첫 화면은 최초 endpoint 응답 안의 feed snapshot으로 숫자와 목록을 같이 만든다.
 - 경기 메뉴 모집 일정 feed 로드가 실패해도 `recruitingScheduleChecked=true`로 마감해서 빈 목록에서 로더가 영원히 남지 않게 한다.
 - 첫 화면에서 숫자와 현재 목록 수가 다르다는 이유만으로 `scope=mine` 또는 profile 보강 호출을 자동 실행하지 않는다.
-- 매칭의 `feedCounts`는 버튼 badge 기준이며, 자동 재로딩 트리거가 아니다. 사용자가 `내가 만든 방`, `내 참여방`, `초대받음`을 누를 때만 해당 scope를 명시적으로 다시 읽는다.
-- 매칭 지역/날짜 필터 변경과 relation 탭 목록 조회는 기존 badge count를 다시 읽지 않는다. `includeFeedCounts:false`로 목록만 갱신한다.
+- 매칭 메뉴는 공개 모집 탐색만 담당하므로 `내가 만든 방`, `내 참여방`, `초대받음` relation scope를 자동 로드하지 않는다.
+- 매칭 지역/날짜 필터 변경은 feed count를 다시 읽지 않는다. `includeFeedCounts:false`로 목록만 갱신한다.
 - `user_room_feed`는 같은 방이 여러 relation row를 가질 수 있으므로 list API는 raw feed row를 여유 있게 읽고 unique entity 기준으로 첫 페이지를 만든다.
 - 방 상세 모달과 기록/과거 범위처럼 사용자가 명시적으로 연 화면만 별도 상세 호출을 허용한다.
 - `/app/recruiting?post=...` 직접 진입은 선택 방 상세만 보강 로드하고, 일반 지역 목록 자동 로드는 뒤에서 실행하지 않는다.
@@ -1789,7 +1789,7 @@ flowchart TD
 5. Recruiting scope state loads must fetch only related profiles, teams, team members, and courts for loaded recruiting rows.
 6. Recruiting first list load uses `user_room_feed` region_public rows for the current user's local region only. It does not merge current-user owned/joined rooms into the base card list.
 7. `/app/recruiting` base list and direct `?post=` entry must not run background `scope='mine'`. Direct post links load only that post detail; room-scope buttons load current-user related rooms on demand.
-7-1. `/app/recruiting` relation count buttons must wait for server `feedCounts`; stale local recruiting rows must not be used as confirmed created/joined/invited counts.
+7-1. `/app/recruiting` does not render created/joined/invited relation count buttons. If a backend call requests those counts for diagnostics, stale local recruiting rows must not be used as confirmed counts.
 8. Recruiting pagination uses server `offset`/`nextOffset` from the first public page, not older current-user rooms merged into the response. Timestamp-only cursors must not be used because equal `updated_at` rows can be skipped.
 9. Recruiting public page reads must select only `status='open'` and `visibility='public'`; current-user owned/joined/private rooms are merged only through explicit `scope='mine'` user actions.
 10. `/api/recruiting/list` list-only reads keep room participants and team member ids, but do not fetch profiles for every member of related teams. Single `postId` detail loads still fetch full related profiles.
@@ -1806,7 +1806,7 @@ flowchart TD
 15. Recruiting queue region selection uses `user_room_feed` `region_public` pages with a concrete `regionKey`. The default is the current user's local district; selecting another district reloads the first page for that region and `더 보기` continues the same region cursor. The frontend must not default to broad all-region loading.
 15-1. `/app/recruiting` 지역 필터 UI는 `REGION_TREE`의 시도/시군구 2단 선택을 항상 노출한다. 필터 요청은 시군구 선택값에서 만든 `regionKey` 1개로만 보낸다.
 15-2. Public recruiting room region is based on the selected court region. Server fallback must match the same canonical region key exactly; it must not widen one key into district/full-address string variants.
-16. Recruiting room-scope loads may pass `roomScope: "created" | "joined" | "invited"`. `초대받음` must read the `invited` feed relation directly, not depend on the combined 50-row mine feed.
+16. Recruiting room-scope loads may pass `roomScope: "created" | "joined" | "invited"` for 경기 메뉴 관계 필터, 홈 Action Queue, or explicit repair flows. `초대받음` must read the `invited` feed relation directly, not depend on the combined 50-row mine feed.
 17. `/api/recruiting/list` default region pages use `user_room_feed` ids plus `room_feed_cards.card_json` first. When every page row has a usable thin card, the endpoint must not detail-read `recruiting_posts` or `recruiting_applications` for that page. It may read count-only row slices to refresh `listCounts`, and may attach only list-visible references such as host profile, team names, and court name by `courtId`.
 17-1. If only some recruiting feed rows are missing usable `room_feed_cards.card_json`, `/api/recruiting/list` may row-read only those missing ids. It must not discard usable feed cards and reload the whole page.
 17-2. If a concrete public region plus instant/scheduled-date feed page is empty, `/api/recruiting/list` may refresh bounded public `recruiting_posts` candidate ids and re-query `user_room_feed`. It must not return stale source rows for the selected region when the feed path itself responded successfully.
@@ -1865,15 +1865,15 @@ flowchart TD
 36. `/api/matches/list` defaults to match feed only. It includes recruiting schedule rooms only when `includeRecruitingSchedule=true`; previously loaded recruiting state from `/app/recruiting` must not change `/app/matches` list results.
 37. `/app/matches`는 SPA 이동으로 들어왔고 `recruitingScheduleChecked`가 false이면 현재 사용자 모집방 일정을 다시 로드한다. 경기 목록이 비어 있어도 match-page merge는 모집방 일정 row를 보존해야 한다.
 37-1. `/app/matches` 화면은 전역 `recruitingPosts` 전체가 아니라 match schedule 응답 또는 현재 사용자 recruiting mutation이 기록한 `recruitingSchedulePostIds`만 일정 후보로 사용한다. 공개 매칭 목록 로드가 경기 메뉴 숫자에 섞이면 안 된다.
-38. `/app/recruiting` 첫 목록 로드는 `feedCounts`를 같이 받아야 한다. `내가 만든 방/참여방/초대받음` 숫자는 클릭 전에도 current-user feed count 기준이어야 하며, 목록 일부 로드 fallback 숫자에 의존하지 않는다.
-38-1. `/app/recruiting` SPA 진입 때 기존 목록 row가 이미 있어도 `feedCounts`가 없으면 지역 첫 페이지를 다시 읽어 count를 채운다.
+38. `/app/recruiting` 첫 목록 로드는 공개 큐 카드만 표시한다. `내가 만든 방/참여방/초대받음` 숫자는 표시하지 않는다.
+38-1. `/app/recruiting` SPA 진입 때 기존 공개 목록 row가 이미 있으면 불필요한 relation count 보강을 위해 지역 첫 페이지를 다시 읽지 않는다.
 38-2. `/api/recruiting/list`는 `user_room_feed`가 정상 응답하면 feed id만 source of truth로 사용한다. direct DB fallback id와 fallback count는 feed 테이블/RPC가 없거나 실패한 경우에만 보정 경로로 쓴다. fallback joined 판정은 `player_ids`, `referee_id`, `recruiting_applications.player_id/player_ids`, `room_state.partyReserves`, `room_state.pinnedReservePlayers`, `room_state.reserveReady`를 포함한다.
 38-3. `/app/recruiting` 시작일 필터는 서버 feed 필터를 우선 사용한다. 기본값은 즉시방이며, 전체 공개 목록은 `/api/recruiting/list`가 `user_room_feed.timing_type/scheduled_date` 기준으로 즉시방 또는 해당 `scheduledDate`만 내려준다. legacy 즉시방 row는 `scheduledAt/scheduled_at="즉시"`도 즉시방으로 인정한다. 즉시방과 오늘 예약방은 별도 개념으로 분리한다. 직접 링크로 열린 `post`는 날짜 필터 때문에 숨기지 않는다.
-38-3-1. `/app/recruiting`에서 시작일 버튼을 누르면 `내가 만든 방/내 참여방/초대받음` relation scope를 해제하고 전체 공개 목록의 해당 시작일을 본다.
-38-3-2. `/app/recruiting`에서 지역 `시도`/`시군구` 선택을 바꾸면 `내가 만든 방/내 참여방/초대받음` relation scope를 해제하고 전체 공개 목록의 해당 지역을 본다.
-38-4. `/app/recruiting`는 `feedCounts`와 현재 로드된 목록 수가 달라도 자동 `scope: "mine"` 보강 로드를 실행하지 않는다. 숫자와 목록은 최초 feed snapshot 기준을 우선한다.
-38-5. `/app/recruiting` 초기 공개 목록 요청은 current-user mine 방을 같은 응답에 병합하지 않는다. 생성/참여/초대 숫자는 `feedCounts`로 즉시 표시하고, 각 relation 목록은 버튼 클릭 시 `scope: "mine"`으로 로드한다.
-38-6. `/app/recruiting`에서 `내가 만든 방`, `내 참여방`, `초대받음` scope는 날짜 필터 때문에 숨겨지면 안 된다. 날짜 필터는 전체 공개 목록을 좁히는 용도이고, 내 방 scope에서는 relation 표시가 우선이다.
+38-3-1. `/app/recruiting`에서 시작일 버튼을 누르면 전체 공개 목록의 해당 시작일을 본다.
+38-3-2. `/app/recruiting`에서 지역 `시도`/`시군구` 선택을 바꾸면 전체 공개 목록의 해당 지역을 본다.
+38-4. `/app/recruiting`는 공개 목록 수와 relation feed count가 달라도 자동 `scope: "mine"` 보강 로드를 실행하지 않는다. 공개 큐 목록은 최초 feed snapshot 기준을 우선한다.
+38-5. `/app/recruiting` 초기 공개 목록 요청은 current-user mine 방을 같은 응답에 병합하지 않는다. relation 목록은 경기 메뉴 관계 필터, 홈 Action Queue, 직접 링크 흐름에서만 읽는다.
+38-6. 경기 메뉴의 `내가 만든 방`, `내 참여방`, `초대받은 방` scope는 날짜 필터 때문에 숨겨지면 안 된다. 날짜 필터는 공개 큐가 아니라 경기 일정 표시를 좁히는 용도이고, 관계 필터에서는 relation 표시가 우선이다.
 39. 모집방 생성 서버 저장이 성공하면 클라이언트는 `created` feed count를 즉시 반영하고 경기 메뉴 모집 일정도 다시 읽는다.
 39-1. `/app/matches` 모집 일정 로드는 경기 목록 페이지네이션 `loading`과 별도 `recruitingScheduleLoading` 상태로 관리한다. 경기 목록 로딩 중이어도 모집 일정 확인이 불필요하게 막히면 안 된다.
 39-2. `/app` 홈 첫 로드는 `/api/home/load`가 홈 Action Queue용 현재 사용자 모집 feed를 소량 포함하지만, 경기 메뉴 전체 일정 확인 완료로 표시하지 않는다. 홈 화면은 진입 직후 `loadMyRecruitingPosts()`나 `/api/matches/list includeRecruitingSchedule=true`를 자동 호출하지 않고, `/app/matches` 진입 시 `recruitingScheduleChecked=false`이면 경기 메뉴가 전체 일정 feed를 1회 읽는다.
@@ -2006,16 +2006,16 @@ flowchart TD
 
 ## 2026-06-29 홈/경기 모집 일정 카운트 기준
 
-- 홈 `내 확정 경기`는 확정된 실제 경기(`matches`)만 표시한다. 모집방(`recruitingPosts`) 일정은 경기 메뉴 `MY/SOON`, 매칭 메뉴 `내가 만든 방/내 참여방/초대받음`에서 current-user recruiting feed 참여 판정으로 표시한다. 홈은 처리 가능한 모집 초대/준비/확정/취소만 Action Queue에 표시한다.
+- 홈 `내 확정 경기`는 확정된 실제 경기(`matches`)만 표시한다. 모집방(`recruitingPosts`) 일정은 경기 메뉴 `MY/SOON` 관계 필터에서 current-user recruiting feed 참여 판정으로 표시한다. 홈은 처리 가능한 모집 초대/준비/확정/취소만 Action Queue에 표시한다.
 - 경기 메뉴에서 모집방 일정을 고를 때는 `isRecruitingPostForUser`를 먼저 사용하고, 부족한 표시 정보만 lobby 계산으로 보강한다.
 - 팀 신청 row처럼 list card에 전체 팀원 명단이 없더라도 `playerId`, `playerIds`, applicant, reserve 기준으로 현재 사용자의 참여 관계가 있으면 경기 메뉴 일정에 포함한다.
-- 2026-07-04: The frontend homeLoad request sends includeFeedCounts:false because home does not render recruiting relation badges. Recruiting badge counts belong to `/app/recruiting` first response or explicit relation views.
+- 2026-07-04: The frontend homeLoad request sends includeFeedCounts:false because home does not render recruiting relation badges. Recruiting relation counts are not displayed in `/app/recruiting`; count reads are diagnostics or explicit relation maintenance only.
 - 2026-06-30: Matches calendar day clicks keep the current status view. Calendar day counts and the list after click must use the same selected status view; date selection must not force the active aggregate view.
 - 2026-06-30: Profile upsert treats birth year as locked only when both birth_year_locked_at and birth_year exist. A row with a lock timestamp but no birth_year may accept the setup birth year and lock it again.
 - 2026-06-30: Current-profile remote state may merge explicit theme values for both light and dark. Missing theme metadata must not cause a saved dark/light choice to bounce back.
 - 2026-06-30: Matches first-page load does not request recent completed matches. Active schedule counts must start from the same active match/recruiting feed that the visible list uses; completed records belong to explicit record/review flows.
 - 2026-06-30: Recruiting mutations keep the target post in the pending-refresh guard until relation refresh and single-post reload finish. Stale feed cards from list/schedule refresh must not overwrite the authoritative mutation result during that window.
-- 2026-06-30: Recruiting feed count fallback is opt-in only. First list loads use the feed-count RPC result or null, and must not run broad fallback count queries that can change badges after the first response.
+- 2026-06-30: Recruiting feed count fallback is opt-in only. Public first list loads do not need relation counts and must not run broad fallback count queries that can change list state after the first response.
 - 2026-06-30: Recruiting feed cards are safe for list counts only when they include a host identity (`playerId`, `ownerId`, or `roomState.ownerId`). Cards missing host identity must fall back to the row path so list A/B counts match the room modal.
 - 2026-06-30: Recruiting lobby helpers must always return `sides.teamA` and `sides.teamB` with empty arrays/counts when the source post or feed card is malformed. UI must not crash on a null lobby side.
 - 2026-06-30: Recruiting and match feed cards may drive first-list counts only when the card includes the roster arrays needed by the shared lobby/list selectors. Cards missing `applicants`, `playerIds`, or `teamA/teamB.players` fall back to row reads instead of showing stale counts.
@@ -2025,7 +2025,7 @@ flowchart TD
 - 2026-06-30: When public recruiting feed cards and current-user recruiting feed cards contain the same room, the newest card wins and the current-user card wins ties. A stale public region card must not override the user's invite/participant card.
 - 2026-07-03: Production DB must apply `20260703174500_room_feed_card_cache.sql` so `rankball_refresh_recruiting_feed_for_post` and `rankball_refresh_match_feed_for_match` write list cards once into `room_feed_cards.card_json`, while `user_room_feed` stays a relation/filter index.
 - 2026-06-30: Matches calendar day counts must use the same `getScheduleItemsForView` selector as the visible list. A day chip must not show a count for items that the selected view/list would hide.
-- 2026-06-30: Recruiting mutation success must not fan out into profile + mine list + match schedule + detail reloads. The sync response is authoritative for the changed room, and feed badge counts are adjusted locally for join/accept/decline/cancel.
+- 2026-06-30: Recruiting mutation success must not fan out into profile + mine list + match schedule + detail reloads. The sync response is authoritative for the changed room; any retained relation count state is diagnostic and must not drive visible list reloads.
 - 2026-06-30: Notifications page must trust the first route state for current-user notifications and recruiting invites. It must not auto-run profile refresh plus invited-room reload after the loader finishes.
 - 2026-06-30: Recruiting list `feed_card` responses may fall back to row reads only for invalid/missing cards. `page.source` must include `+row` when any row fallback was used so timing and egress diagnostics do not misread the path.
 - 2026-06-30: Recruiting team-host feed cards do not require `playerIds` to be non-empty when a host identity is present. List and modal lobby calculation both use the shared `playerId`/owner fallback for host occupancy.
@@ -2102,7 +2102,7 @@ flowchart TD
 
 ## 2026-07-02 recruiting region filter count 기준
 
-- `/app/recruiting` 지역/시작일 변경은 공개 `region_public` 목록만 다시 읽는다. `created`/`joined`/`invited` badge count는 첫 응답에 없을 때만 같이 요청하고, 이미 받은 count를 지역 변경마다 다시 읽지 않는다.
+- `/app/recruiting` 지역/시작일 변경은 공개 `region_public` 목록만 다시 읽는다. `created`/`joined`/`invited` count는 공개 큐 UI에 표시하지 않으며, 지역 변경마다 다시 읽지 않는다.
 
 ## 2026-07-03 frontend list/profile guards
 

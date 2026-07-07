@@ -49,8 +49,8 @@
 
 ## 2026-07-04 모집 관계 필터
 1. 내가 만든 방, 내 참여방, 초대받음 필터 버튼은 말줄임표를 쓰지 않는다.
-2. 좁은 화면에서는 버튼을 줄이지 말고 기존 필터 그룹 가로 스크롤로 전체 문구와 숫자 badge를 보존한다.
-3. 관계 필터 요청 중인 버튼은 badge 자리에 `...` 로딩 표시를 보여주고, 관계 badge 숫자는 feed count 기준과 일치해야 한다.
+2. 이 관계 버튼은 매칭 공개 큐가 아니라 경기 메뉴 관계 필터에서만 노출한다.
+3. 경기 메뉴 관계 버튼은 숫자 badge 없이 라벨만 표시한다.
 
 ## 2026-07-03 방 채팅 스크롤
 
@@ -62,7 +62,7 @@
 
 1. 매칭 지역/날짜 필터가 서버 응답을 기다리는 동안 빈 목록 문구를 확정 상태처럼 표시하지 않는다.
 2. 필터 변경 서버 요청은 짧게 debounce해서 마지막 선택값만 보낸다.
-3. 매칭 relation 필터 버튼은 라벨이 줄어도 숫자 badge는 말줄임하지 않는다.
+3. 매칭 메뉴는 공개 모집 탐색만 다루며 관계 필터 버튼을 표시하지 않는다.
 
 ## 2026-07-02 방만들기 개인 기록 UI
 
@@ -997,7 +997,7 @@ UI 수정 전:
 ## 2026-07-03 profile form controls
 
 1. Profile info uses explicit form controls for each field. Region is edited with `REGION_TREE` select controls, not a free-text input.
-1-1. Recruiting queue 지역 필터도 `REGION_TREE` 시도/시군구 select를 항상 노출한다. 관계 필터 버튼(`내가 만든 방`, `내 참여방`, `초대받음`)은 그룹 테두리를 늘리지 않고 버튼 자체 최소폭을 확보해 말줄임으로 count를 숨기지 않는다.
+1-1. Recruiting queue 지역 필터도 `REGION_TREE` 시도/시군구 select를 항상 노출한다. 공개 큐 필터 버튼은 그룹 테두리를 늘리지 않고 버튼 자체 최소폭을 확보해 라벨 말줄임을 피한다.
 1-2. 데스크톱 매칭 필터는 가로 공간이 남으면 시작일 버튼 묶음을 같은 줄에 올리고, 좁은 화면에서만 다음 줄/가로 스크롤로 내린다.
 2. Team management cards may show a loading empty-state while directory data is pending. They must not flash the real empty-team message before the directory load resolves.
 3. If the current user's team rows are already present, `/app/teams` shows the actual `n/3` team count even while the broader team directory load is pending. Only missing team rows use the pending `...` badge.
