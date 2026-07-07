@@ -218,12 +218,17 @@ import {
   uniqueScopeIds,
 } from "./remoteQuery.js";
 import {
-  chunkRows,
   firstBy,
   getMaxUpdatedAt,
   groupBy,
   toDateTime,
 } from "./rowUtils.js";
+import {
+  replaceRemoteRecruitingApplications,
+  softDeleteRemoteTeams,
+  upsertOptionalRemoteRows,
+  upsertRemoteRows,
+} from "./remoteWriteUtils.js";
 import {
   createEmptyState,
   mergeDemoDefaultsById,
@@ -1400,49 +1405,6 @@ export async function loadRemoteState(authUserId = "", authEmail = "", options =
     console.warn("Supabase normalized state load failed. Remote state remains empty.", error.message);
     return null;
   }
-}
-
-async function upsertRemoteRows(table, rows, onConflict, client = supabase) {
-  if (!rows.length) return;
-  for (const chunk of chunkRows(rows)) {
-    const { error } = await client.from(table).upsert(chunk, onConflict ? { onConflict } : undefined);
-    if (error) throw error;
-  }
-}
-
-async function upsertOptionalRemoteRows(table, rows, onConflict, client = supabase) {
-  try {
-    await upsertRemoteRows(table, rows, onConflict, client);
-  } catch (error) {
-    console.warn(`Supabase optional table write skipped: ${table}`, error.message);
-  }
-}
-
-async function softDeleteRemoteTeams(teamIds = [], client = supabase) {
-  if (!teamIds.length) return;
-  for (const chunk of chunkRows(teamIds)) {
-    const deletedAt = new Date().toISOString();
-    let response = await client.from("team_members").delete().in("team_id", chunk);
-    if (response.error) throw response.error;
-
-    response = await client.from("favorites").delete().eq("target_type", "team").in("target_id", chunk);
-    if (response.error) throw response.error;
-
-    response = await client.from("recruiting_posts").update({ status: "closed", updated_at: deletedAt }).in("team_id", chunk);
-    if (response.error) throw response.error;
-
-    response = await client.from("teams").update({ deleted_at: deletedAt, updated_at: deletedAt }).in("id", chunk);
-    if (response.error) throw response.error;
-  }
-}
-
-async function replaceRemoteRecruitingApplications(postIds = [], applicationRows = [], client = supabase) {
-  for (const chunk of chunkRows(postIds)) {
-    const { error } = await client.from("recruiting_applications").delete().in("post_id", chunk);
-    if (error) throw error;
-  }
-
-  await upsertRemoteRows("recruiting_applications", applicationRows, "post_id,player_id,kind", client);
 }
 
 function courtIdByName(courtName) {
