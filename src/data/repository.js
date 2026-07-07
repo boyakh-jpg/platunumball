@@ -5,7 +5,6 @@ import {
   DISPUTE_WINDOW_MINUTES,
   FALSE_COURT_REPORT_TRUST_PENALTY,
   FAVORITE_LIMIT,
-  LIFECYCLE_TITLE_PATTERN,
   MATCH_SIDE_FALLBACK_NAMES,
   MAX_RECRUITING_RESERVES_PER_SIDE,
   MAX_TEAM_MEMBERS,
@@ -15,7 +14,6 @@ import {
   PLAYER_STAT_FIELDS,
   PLAYER_POSITIONS,
   POST_MATCH_STATUSES,
-  POST_MATCH_TITLE_PATTERN,
   PUBLIC_ROOM_MIN_LEAD_HOURS,
   PUBLIC_ROOM_SCHEDULE_MAX_DAYS,
   QUEUE_SCHEDULE_START_DATE,
@@ -128,6 +126,15 @@ import { isSupabaseConfigured, supabase } from "../lib/supabase.js";
 import { findDiscordConnectionOwner, getDiscordConnectionUserId, syncDiscordNotificationDeliveries } from "../lib/discord.js";
 import { getUserHashtag, sameHashtag, toHashtag } from "../lib/handles.js";
 import { canChangeProfileName } from "../lib/profileSetup.js";
+import {
+  clearFuturePregameStartState,
+  getScheduledStartMs,
+  isFutureScheduledMatch,
+  normalizeDisputeMinutes,
+  repairFuturePregameTitle,
+  repairLifecycleTitle,
+  resetFuturePostMatchState,
+} from "./matchLifecycleUtils.js";
 import { DEFAULT_SETTINGS, EMPTY_STATE } from "./repositoryDefaults.js";
 import { fromRemoteTeam, fromRemoteTeamInvitation } from "./teamMappers.js";
 import { fromRemoteTournament, normalizeTournament } from "./tournamentMappers.js";
@@ -462,83 +469,6 @@ function getNextQueueSchedule(posts = []) {
     if (!used.has(slot.scheduledAt) && isQueueSlotAllowed(slot)) return slot;
   }
   return getQueueSlot(posts.length, startDate);
-}
-
-function getScheduledStartMs(match = {}) {
-  if (isInstantRoom(match)) return null;
-  const dateText = match.scheduledDate
-    ? `${match.scheduledDate}T${match.scheduledTime || "00:00"}`
-    : String(match.scheduledAt ?? "").replace(" ", "T");
-  const date = new Date(dateText);
-  return Number.isFinite(date.getTime()) ? date.getTime() : null;
-}
-
-function isFutureScheduledMatch(match = {}) {
-  const scheduledMs = getScheduledStartMs(match);
-  return Number.isFinite(scheduledMs) && scheduledMs > Date.now();
-}
-
-function getPregameMatchTitle(match = {}) {
-  const label = match.status === "contract" ? "동의 대기" : "진행 예정";
-  const versus = [match.teamA?.name, match.teamB?.name].filter(Boolean).join(" vs ");
-  return `${label} · ${versus || String(match.title ?? "").replace(POST_MATCH_TITLE_PATTERN, "") || "경기"}`;
-}
-
-function getLifecycleTitleLabel(status) {
-  if (status === "contract") return "동의 대기";
-  if (status === "agreed") return "진행 예정";
-  if (status === "approval") return "결과 승인";
-  if (status === "disputed") return "이의 확인";
-  if (status === "confirmed") return "확정";
-  return "";
-}
-
-function repairLifecycleTitle(match) {
-  const label = getLifecycleTitleLabel(match.status);
-  if (!label || !LIFECYCLE_TITLE_PATTERN.test(match.title ?? "")) return match;
-  const versus = [match.teamA?.name, match.teamB?.name].filter(Boolean).join(" vs ");
-  return { ...match, title: `${label} · ${versus || String(match.title ?? "").replace(LIFECYCLE_TITLE_PATTERN, "") || "경기"}` };
-}
-
-function resetFuturePostMatchState(match) {
-  const repaired = { ...match, status: "agreed" };
-  const nextRules = { ...(match.rules ?? {}) };
-  delete nextRules.startedAt;
-  return {
-    ...repaired,
-    status: "agreed",
-    title: getPregameMatchTitle(repaired),
-    approvals: { teamA: [], teamB: [] },
-    disputes: [],
-    result: null,
-    ratingResult: null,
-    teamRatingResult: null,
-    startedAt: null,
-    endedAt: null,
-    confirmedAt: null,
-    rules: nextRules,
-    teamA: { ...(match.teamA ?? {}), score: 0 },
-    teamB: { ...(match.teamB ?? {}), score: 0 },
-  };
-}
-
-function clearFuturePregameStartState(match) {
-  if (!["contract", "agreed"].includes(match.status) || !isFutureScheduledMatch(match)) return match;
-  if (!match.startedAt && !match.rules?.startedAt) return match;
-  const nextRules = { ...(match.rules ?? {}) };
-  delete nextRules.startedAt;
-  return { ...match, startedAt: null, rules: nextRules };
-}
-
-function repairFuturePregameTitle(match) {
-  if (!["contract", "agreed"].includes(match.status) || !POST_MATCH_TITLE_PATTERN.test(match.title ?? "")) return match;
-  return { ...match, title: getPregameMatchTitle(match) };
-}
-
-function normalizeDisputeMinutes(match) {
-  const minutes = Number(match.disputeMinutes ?? DISPUTE_WINDOW_MINUTES);
-  if (!Number.isFinite(minutes) || minutes <= 0) return DISPUTE_WINDOW_MINUTES;
-  return Math.min(minutes, DISPUTE_WINDOW_MINUTES);
 }
 
 function normalizeMatchParties(parties) {
