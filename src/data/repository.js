@@ -131,6 +131,7 @@ import { getUserHashtag, sameHashtag, toHashtag } from "../lib/handles.js";
 import { canChangeProfileName } from "../lib/profileSetup.js";
 import { DEFAULT_SETTINGS, EMPTY_STATE } from "./repositoryDefaults.js";
 import { fromRemoteTeam, fromRemoteTeamInvitation } from "./teamMappers.js";
+import { fromRemoteTournament, normalizeTournament } from "./tournamentMappers.js";
 import {
   fromRemoteApprovedCourt,
   fromRemoteCourtRequest,
@@ -718,24 +719,6 @@ function normalizeSettings(settings = {}, options = {}) {
     adminAuditLog: settings.adminAuditLog ?? fallbackSettings.adminAuditLog ?? [],
     adminDisciplinaryActions: settings.adminDisciplinaryActions ?? fallbackSettings.adminDisciplinaryActions ?? [],
     refereeExamAttempts: settings.refereeExamAttempts ?? fallbackSettings.refereeExamAttempts ?? [],
-  };
-}
-
-function normalizeTournament(tournament = {}) {
-  const teamIds = tournament.teamIds ?? [];
-  const teamStatuses = {
-    ...Object.fromEntries(teamIds.map((teamId) => [teamId, "invited"])),
-    ...(tournament.teamStatuses ?? {}),
-  };
-
-  return {
-    ...tournament,
-    status: tournament.status ?? "draft",
-    teamIds,
-    teamStatuses,
-    teamApprovals: tournament.teamApprovals ?? {},
-    matchIds: tournament.matchIds ?? [],
-    bracket: tournament.bracket ?? null,
   };
 }
 
@@ -1681,46 +1664,10 @@ export async function loadNormalizedRemoteStateFromClient(client = supabase, aut
         })),
       };
     }),
-    tournaments: tournaments.map((tournament) => {
-      const teamRows = [...(tournamentTeamsByTournament.get(tournament.id) ?? [])]
-        .sort((a, b) => (a.seed_order ?? 0) - (b.seed_order ?? 0));
-      const rowTeamStatuses = Object.fromEntries(teamRows.map((team) => [team.team_id, team.status ?? "invited"]));
-      const rowTeamApprovals = Object.fromEntries(
-        teamRows
-          .filter((team) => team.approved_by || team.approved_at)
-          .map((team) => [team.team_id, { by: team.approved_by, approvedAt: team.approved_at }]),
-      );
-      return {
-        id: tournament.id,
-        title: tournament.title,
-        format: tournament.format,
-        visibility: tournament.visibility,
-        status: tournament.status,
-        region: tournament.region,
-        courtId: tournament.court_id ?? null,
-        court: tournament.court_name ?? context.courtById[tournament.court_id]?.name ?? "미정",
-        mode: tournament.mode,
-        ranked: tournament.ranked,
-        official: tournament.official,
-        startDate: tournament.start_date,
-        endDate: tournament.end_date,
-        schedulePolicy: tournament.schedule_policy,
-        scheduleNote: tournament.schedule_note,
-        mmrLimitMode: tournament.mmr_limit_mode,
-        maxMmrGap: tournament.max_mmr_gap,
-        mmrPolicy: tournament.mmr_policy,
-        rules: tournament.rules ?? {},
-        memo: tournament.memo,
-        createdBy: tournament.created_by,
-        createdAt: tournament.created_at,
-        startedAt: tournament.started_at,
-        matchIds: tournament.match_ids ?? [],
-        teamStatuses: { ...rowTeamStatuses, ...(tournament.team_statuses ?? {}) },
-        teamApprovals: { ...rowTeamApprovals, ...(tournament.team_approvals ?? {}) },
-        bracket: tournament.bracket ?? null,
-        teamIds: teamRows.map((team) => team.team_id),
-      };
-    }),
+    tournaments: tournaments.map((tournament) => fromRemoteTournament(tournament, {
+      tournamentTeamsByTournament,
+      courtById: context.courtById,
+    })),
     settings: {
       ...DEFAULT_SETTINGS,
       ...remoteAppSettings,
