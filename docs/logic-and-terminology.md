@@ -325,6 +325,7 @@
 ## 2026-06-30 egress 축소
 
 - 모집 `feedCounts`는 운영/진단용으로 `rankball_recruiting_feed_counts(profileId)` RPC가 `created`, `joined`, `invited` 숫자만 반환한다. 공개 큐 UI는 이 숫자를 표시하지 않는다. 초대 카드, 수락/거절, 방 상세 데이터는 `room_feed_cards.card_json` 또는 상세 API가 계속 담당한다.
+- 클라이언트는 모집 생성/신청/초대 수락/거절/참여 취소 성공 후 `feedCounts`를 로컬 증분으로 덧칠하지 않는다. 변경된 방은 sync 응답과 명시 상세/관계 재조회가 권위다.
 - `/api/home/load`는 기본적으로 현재 사용자 경기/모집 feed와 프로필 bootstrap만 읽는다. 홈은 지역 모집 teaser를 읽지 않는다. 모집 count RPC는 `includeFeedCounts:true`일 때만 읽는다.
 - `/api/home/load`의 홈 Action Queue 초대는 일반 current-user 모집 feed와 별도로 `roomScope="invited"` feed를 병합한다. 초대 relation은 owner/participant/referee page limit과 경쟁하면 안 된다.
 - `/api/matches/list`의 모집 일정 병합은 카드 목록만 필요하므로 모집 `feedCounts`를 같이 읽지 않는다.
