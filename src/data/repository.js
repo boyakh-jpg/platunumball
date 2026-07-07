@@ -35,7 +35,6 @@ import {
   REMOTE_CLIENT_RECORD_MONTHS,
   REMOTE_CLIENT_RECRUITING_LIMIT,
   REMOTE_CLIENT_TOURNAMENT_LIMIT,
-  REMOTE_WRITE_CHUNK_SIZE,
   ROOM_SCHEDULE_MAX_DAYS,
   SCHEDULE_MAX_DAYS,
   SIDE_LABEL_TEXT,
@@ -195,6 +194,14 @@ import {
   uniqueRowsById,
   uniqueScopeIds,
 } from "./remoteQuery.js";
+import {
+  chunkRows,
+  firstBy,
+  flattenIdValues,
+  getMaxUpdatedAt,
+  groupBy,
+  toDateTime,
+} from "./rowUtils.js";
 export { DEFAULT_SETTINGS } from "./repositoryDefaults.js";
 export { createProfileShell, fromRemoteProfile, getRemoteAppSettings } from "./profileMappers.js";
 export { fromRemoteTeamInvitation } from "./teamMappers.js";
@@ -794,40 +801,6 @@ async function fetchCurrentUserReports(currentUserId = "", client = supabase) {
   ]);
   return uniqueRowsById([...byReporter, ...byTarget, ...byReportedUser])
     .sort((a, b) => String(a.created_at ?? "").localeCompare(String(b.created_at ?? "")));
-}
-
-function groupBy(rows, key) {
-  return rows.reduce((map, row) => {
-    const value = row[key];
-    if (!map.has(value)) map.set(value, []);
-    map.get(value).push(row);
-    return map;
-  }, new Map());
-}
-
-function firstBy(rows, key) {
-  return Object.fromEntries(rows.map((row) => [row[key], row]));
-}
-
-function toDateTime(date, time, fallback) {
-  if (date && time) return `${date} ${String(time).slice(0, 5)}`;
-  if (date) return date;
-  return fallback ?? "일정 미정";
-}
-
-function getMaxUpdatedAt(rows) {
-  const timestamps = rows
-    .map((row) => row.updated_at ?? row.created_at)
-    .filter(Boolean)
-    .map((value) => new Date(value).getTime())
-    .filter((value) => !Number.isNaN(value));
-  return timestamps.length ? Math.max(...timestamps) : 0;
-}
-
-function flattenIdValues(value) {
-  if (Array.isArray(value)) return value.flatMap(flattenIdValues);
-  if (value && typeof value === "object") return Object.values(value).flatMap(flattenIdValues);
-  return value ? [String(value)] : [];
 }
 
 function collectMatchPageScope(matches = [], matchPlayers = [], matchResults = [], playerStats = [], agreements = [], approvals = [], disputes = [], profileIds = []) {
@@ -1718,14 +1691,6 @@ export async function loadRemoteState(authUserId = "", authEmail = "", options =
     console.warn("Supabase normalized state load failed. Remote state remains empty.", error.message);
     return null;
   }
-}
-
-function chunkRows(rows, size = REMOTE_WRITE_CHUNK_SIZE) {
-  const chunks = [];
-  for (let index = 0; index < rows.length; index += size) {
-    chunks.push(rows.slice(index, index + size));
-  }
-  return chunks;
 }
 
 async function upsertRemoteRows(table, rows, onConflict, client = supabase) {
