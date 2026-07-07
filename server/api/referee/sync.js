@@ -1,4 +1,4 @@
-import { getAuthenticatedContext, readJsonBody, sendJson, toArray } from "../_supabaseAdmin.js";
+import { getAuthenticatedContext, readJsonBody, sendJson, toArray, toNotificationRows } from "../_supabaseAdmin.js";
 import { REFEREE_TRUST_MIN } from "../../../src/lib/constants.js";
 
 const REFEREE_EXAM_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
@@ -11,30 +11,6 @@ function toPayloadRow(item = {}) {
     created_at: item.createdAt || item.startedAt || new Date().toISOString(),
     updated_at: item.updatedAt || item.finishedAt || item.createdAt || item.startedAt || new Date().toISOString(),
   };
-}
-
-function toNotificationRows(notifications = [], profileId = "") {
-  return toArray(notifications).map((notification) => {
-    const targetUserId = notification.targetUserId || profileId;
-    if (targetUserId !== profileId) return null;
-    return {
-      id: notification.id,
-      user_id: profileId,
-      target_user_id: targetUserId,
-      title: notification.title || "심판 요청",
-      body: notification.body || "",
-      tone: notification.tone || "team",
-      type: notification.type || "referee",
-      match_id: notification.matchId || null,
-      recruiting_post_id: notification.recruitingPostId || null,
-      invitation_id: notification.invitationId || null,
-      discord_event: notification.discordEvent || notification.eventType || null,
-      read_at: notification.readAt || null,
-      payload: notification,
-      created_at: notification.createdAt || new Date().toISOString(),
-      updated_at: notification.updatedAt || notification.createdAt || new Date().toISOString(),
-    };
-  }).filter((row) => row?.id);
 }
 
 async function getActorTrustScore(context) {
@@ -190,7 +166,12 @@ async function syncRefereeRequest(context, request = {}, notifications = []) {
     .upsert(row, { onConflict: "id" });
   if (requestError) throw requestError;
 
-  const notificationRows = toNotificationRows(notifications, context.profileId);
+  const notificationRows = toNotificationRows(notifications, context.profileId, {
+    defaultTitle: "심판 요청",
+    defaultTone: "team",
+    defaultType: "referee",
+    filterToProfile: true,
+  });
   if (notificationRows.length) {
     const { error: notificationError } = await context.supabase
       .from("notifications")

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { getAuthenticatedContext, readJsonBody, sendJson, toArray, uniqueValues as uniqueIds } from "../_supabaseAdmin.js";
+import { getAuthenticatedContext, readJsonBody, sendJson, toArray, toNotificationRows, uniqueValues as uniqueIds } from "../_supabaseAdmin.js";
 import { RECORD_TYPES } from "../../../src/lib/constants.js";
 import {
   applyAuthoritativeMatchOperation,
@@ -605,26 +605,6 @@ function toDisputeRows(match = {}) {
     reason: dispute.reason ?? "",
     created_at: dispute.createdAt ?? new Date().toISOString(),
   })).filter((row) => row.id && row.user_id);
-}
-
-function toNotificationRows(notifications = [], fallbackProfileId = "") {
-  return toArray(notifications).map((notification) => ({
-    id: notification.id,
-    user_id: notification.targetUserId ?? fallbackProfileId,
-    target_user_id: notification.targetUserId ?? null,
-    title: notification.title ?? "알림",
-    body: notification.body ?? "",
-    tone: notification.tone ?? "match",
-    type: notification.type ?? null,
-    match_id: notification.matchId ?? null,
-    recruiting_post_id: notification.recruitingPostId ?? null,
-    invitation_id: notification.invitationId ?? null,
-    discord_event: notification.discordEvent ?? notification.eventType ?? null,
-    read_at: notification.readAt ?? null,
-    payload: notification,
-    created_at: notification.createdAt ?? new Date().toISOString(),
-    updated_at: getTimestamp(notification),
-  })).filter((row) => row.id);
 }
 
 function existingParticipantIds(existingMatch, existingPlayers = []) {
@@ -1240,7 +1220,7 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
   const agreementRows = toAgreementRows(match);
   const approvalRows = toApprovalRows(match);
   const disputeRows = toDisputeRows(match);
-  const notificationRows = toNotificationRows(notifications, context.profileId);
+  const notificationRows = toNotificationRows(notifications, context.profileId, { coalesce: "nullish", getUpdatedAt: getTimestamp });
 
   const { data: persistResult, error: persistError } = await context.supabase.rpc("rankball_match_action", {
     p_actor_profile_id: context.profileId,

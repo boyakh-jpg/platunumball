@@ -217,6 +217,50 @@ export function toArray(value) {
   return Array.isArray(value) ? value.filter(Boolean) : [];
 }
 
+function pickNotificationValue(value, fallback, coalesce = "falsy") {
+  return coalesce === "nullish" ? (value ?? fallback) : (value || fallback);
+}
+
+export function toNotificationRows(notifications = [], profileId = "", options = {}) {
+  const coalesce = options.coalesce === "nullish" ? "nullish" : "falsy";
+  const filterToProfile = options.filterToProfile === true;
+  const getUpdatedAt = typeof options.getUpdatedAt === "function"
+    ? options.getUpdatedAt
+    : (notification) => (
+        pickNotificationValue(
+          pickNotificationValue(notification.updatedAt, notification.createdAt, coalesce),
+          new Date().toISOString(),
+          coalesce,
+        )
+      );
+  return toArray(notifications).map((notification) => {
+    const explicitTargetUserId = pickNotificationValue(notification.targetUserId, null, coalesce);
+    const targetUserId = pickNotificationValue(notification.targetUserId, profileId, coalesce);
+    if (filterToProfile && targetUserId !== profileId) return null;
+    return {
+      id: notification.id,
+      user_id: filterToProfile ? profileId : targetUserId,
+      target_user_id: filterToProfile ? targetUserId : explicitTargetUserId,
+      title: pickNotificationValue(notification.title, options.defaultTitle ?? "알림", coalesce),
+      body: pickNotificationValue(notification.body, "", coalesce),
+      tone: pickNotificationValue(notification.tone, options.defaultTone ?? "match", coalesce),
+      type: pickNotificationValue(notification.type, options.defaultType ?? null, coalesce),
+      match_id: pickNotificationValue(notification.matchId, null, coalesce),
+      recruiting_post_id: pickNotificationValue(notification.recruitingPostId, null, coalesce),
+      invitation_id: pickNotificationValue(notification.invitationId, null, coalesce),
+      discord_event: pickNotificationValue(
+        pickNotificationValue(notification.discordEvent, notification.eventType, coalesce),
+        null,
+        coalesce,
+      ),
+      read_at: pickNotificationValue(notification.readAt, null, coalesce),
+      payload: notification,
+      created_at: pickNotificationValue(notification.createdAt, new Date().toISOString(), coalesce),
+      updated_at: getUpdatedAt(notification),
+    };
+  }).filter((row) => row?.id);
+}
+
 function getEnvList(name) {
   return String(process.env[name] || "")
     .split(",")

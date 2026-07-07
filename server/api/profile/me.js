@@ -3,7 +3,7 @@ import { loadCompactMatchList } from "../matches/list.js";
 import {
   normalizeState,
 } from "../../../src/data/repository.js";
-import { createProfileShell, fromRemoteProfile, getRemoteAppSettings } from "../../../src/data/profileMappers.js";
+import { createProfileShell, fromRemoteProfile, fromTeamMemberProfile, getRemoteAppSettings } from "../../../src/data/profileMappers.js";
 import { fromRemoteTeamInvitation } from "../../../src/data/teamMappers.js";
 import { DEFAULT_SETTINGS } from "../../../src/data/repositoryDefaults.js";
 import {
@@ -20,23 +20,6 @@ export { PROFILE_ME_COLUMNS };
 const PROFILE_TEAM_MEMBER_COLUMNS = "id,name,handle,hashtag,position,trust_score,avatar_color,ratings,age_group,age_group_checked_season,onboarding_complete,updated_at";
 const PROFILE_MATCH_SUMMARY_COLUMNS = "profile_id,match_count,win_count,loss_count,draw_count,points,rebounds,assists,steals,blocks,fouls,last_match_id,last_match_at,updated_at";
 const PROFILE_RECENT_RECORD_LIMIT = 6;
-
-function fromTeamMemberProfile(row = {}) {
-  const profile = fromRemoteProfile(row);
-  return {
-    id: profile.id,
-    name: profile.name,
-    handle: profile.handle,
-    position: profile.position,
-    trustScore: profile.trustScore,
-    avatarColor: profile.avatarColor,
-    hashtag: profile.hashtag,
-    ageGroup: profile.ageGroup,
-    ageGroupCheckedSeason: profile.ageGroupCheckedSeason,
-    onboardingComplete: profile.onboardingComplete,
-    ratings: profile.ratings,
-  };
-}
 
 function fromProfileMatchSummary(row = {}) {
   const matchCount = Number(row.match_count ?? 0);

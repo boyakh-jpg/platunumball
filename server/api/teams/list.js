@@ -12,7 +12,7 @@ import {
 import {
   normalizeState,
 } from "../../../src/data/repository.js";
-import { createProfileShell, fromRemoteProfile, getRemoteAppSettings } from "../../../src/data/profileMappers.js";
+import { createProfileShell, fromRemoteProfile, fromTeamMemberProfile, getRemoteAppSettings } from "../../../src/data/profileMappers.js";
 import { fromRemoteTeamInvitation } from "../../../src/data/teamMappers.js";
 import { DEFAULT_SETTINGS } from "../../../src/data/repositoryDefaults.js";
 import {
@@ -23,24 +23,6 @@ import {
 } from "../../../src/data/repositoryColumns.js";
 
 const PROFILE_TEAM_MEMBER_COLUMNS = "id,name,handle,hashtag,position,region,trust_score,avatar_color,ratings,age_group,age_group_checked_season,onboarding_complete,updated_at";
-
-function fromTeamMemberProfile(row = {}) {
-  const profile = fromRemoteProfile(row);
-  return {
-    id: profile.id,
-    name: profile.name,
-    handle: profile.handle,
-    position: profile.position,
-    region: profile.region,
-    trustScore: profile.trustScore,
-    avatarColor: profile.avatarColor,
-    hashtag: profile.hashtag,
-    ageGroup: profile.ageGroup,
-    ageGroupCheckedSeason: profile.ageGroupCheckedSeason,
-    onboardingComplete: profile.onboardingComplete,
-    ratings: profile.ratings,
-  };
-}
 
 async function loadTeamInvitations(supabase, profileId = "", teamId = "") {
   if (!profileId) return [];
@@ -120,7 +102,7 @@ export default async function handler(request, response) {
 
     const membersByTeam = groupBy(memberRows ?? [], "team_id");
     const userById = new Map((profileRows ?? []).map((row) => {
-      const item = fromTeamMemberProfile(row);
+      const item = fromTeamMemberProfile(row, { includeRegion: true });
       return [item.id, item];
     }));
     userById.set(user.id, { ...userById.get(user.id), ...user });

@@ -1,4 +1,4 @@
-import { getAuthenticatedContext, readJsonBody, sendJson, toArray } from "../_supabaseAdmin.js";
+import { getAuthenticatedContext, readJsonBody, sendJson, toArray, toNotificationRows } from "../_supabaseAdmin.js";
 import {
   applyAuthoritativeTournamentOperation,
   getOperation,
@@ -176,30 +176,6 @@ function toTournamentTeamRows(tournament = {}) {
   });
 }
 
-function toNotificationRows(notifications = [], profileId = "") {
-  return toArray(notifications).map((notification) => {
-    const targetUserId = notification.targetUserId || profileId;
-    if (targetUserId !== profileId) return null;
-    return {
-      id: notification.id,
-      user_id: profileId,
-      target_user_id: targetUserId,
-      title: notification.title || "대회 변경",
-      body: notification.body || "",
-      tone: notification.tone || "match",
-      type: notification.type || "tournament",
-      match_id: notification.matchId || null,
-      recruiting_post_id: notification.recruitingPostId || null,
-      invitation_id: notification.invitationId || null,
-      discord_event: notification.discordEvent || notification.eventType || null,
-      read_at: notification.readAt || null,
-      payload: notification,
-      created_at: notification.createdAt || new Date().toISOString(),
-      updated_at: notification.updatedAt || notification.createdAt || new Date().toISOString(),
-    };
-  }).filter((row) => row?.id);
-}
-
 async function assertTeamsExist(supabase, teamIds = []) {
   const { data, error } = await supabase
     .from("teams")
@@ -340,7 +316,12 @@ export default async function handler(request, response) {
     await assertTeamsExist(context.supabase, tournament.teamIds);
 
     const teamRows = toTournamentTeamRows(tournament);
-    const notificationRows = toNotificationRows(notifications, context.profileId);
+    const notificationRows = toNotificationRows(notifications, context.profileId, {
+      defaultTitle: "대회 변경",
+      defaultTone: "match",
+      defaultType: "tournament",
+      filterToProfile: true,
+    });
     const { data: persistResult, error: persistError } = await context.supabase.rpc("rankball_persist_tournament_snapshot", {
       p_tournament_row: toTournamentRow(tournament),
       p_team_rows: teamRows,

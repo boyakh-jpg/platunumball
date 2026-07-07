@@ -93,6 +93,24 @@ export function fromRemoteProfile(row) {
   };
 }
 
+export function fromTeamMemberProfile(row = {}, options = {}) {
+  const profile = fromRemoteProfile(row);
+  return {
+    id: profile.id,
+    name: profile.name,
+    handle: profile.handle,
+    position: profile.position,
+    ...(options.includeRegion ? { region: profile.region } : {}),
+    trustScore: profile.trustScore,
+    avatarColor: profile.avatarColor,
+    hashtag: profile.hashtag,
+    ageGroup: profile.ageGroup,
+    ageGroupCheckedSeason: profile.ageGroupCheckedSeason,
+    onboardingComplete: profile.onboardingComplete,
+    ratings: profile.ratings,
+  };
+}
+
 export function getRemoteAppSettings(profile = {}) {
   const settings = profile?.app_settings && typeof profile.app_settings === "object" && !Array.isArray(profile.app_settings)
     ? profile.app_settings
