@@ -45,7 +45,7 @@ import {
   getTeamRoleLabel,
   normalizeMmrLimitMode as normalizeRecruitingMmrLimitMode,
 } from "../lib/constants.js";
-import { courtIdByName, findCourtDuplicate, getCourtDuplicateMessage, getCourtId, getRegisteredCourts, normalizeCourtLayout, normalizeCourtSurfaceType } from "../lib/courts.js";
+import { courtIdByName, findCourtDuplicate, getCourtDuplicateMessage, getCourtId, getRegisteredCourts, normalizeCourtLayout, normalizeCourtReviewRating, normalizeCourtSurfaceType } from "../lib/courts.js";
 import {
   canOperatorSubmitMissingPostgameResult,
   getAgreementStatus,
@@ -4358,13 +4358,6 @@ export function submitMatchThumbs(state, matchId, targetUserIds = []) {
       ...state.notifications,
     ],
   };
-}
-
-function normalizeCourtReviewRating(value, fallback = null) {
-  if (value === null || value === undefined || value === "") return fallback;
-  const number = Number(value);
-  if (!Number.isFinite(number)) return fallback;
-  return Math.max(1, Math.min(5, Math.round(number)));
 }
 
 export function submitCourtReview(state, matchId, draft = {}) {

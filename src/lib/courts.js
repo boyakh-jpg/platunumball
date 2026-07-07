@@ -32,6 +32,13 @@ export function normalizeCourtLayout(value = "") {
   return COURT_LAYOUT_OPTIONS.some((option) => option.id === value) ? value : "unknown";
 }
 
+export function normalizeCourtReviewRating(value, fallback = null) {
+  if (value === null || value === undefined || value === "") return fallback;
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.max(1, Math.min(5, Math.round(number)));
+}
+
 function getFallbackSurfaceType(court = {}) {
   if (court.surfaceType) return court.surfaceType;
   if (String(court.type ?? "").includes("실내")) return "indoor_synthetic";
