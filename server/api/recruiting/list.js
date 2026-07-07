@@ -16,14 +16,16 @@ import {
 import {
   normalizeState,
 } from "../../../src/data/repository.js";
+import {
+  fromRemoteRecruitingApplication,
+  fromRemoteRecruitingPost,
+  toClientRecruitingTeam,
+} from "../../../src/data/recruitingMappers.js";
 import { createProfileShell, fromRemoteProfile, getRemoteAppSettings } from "../../../src/data/profileMappers.js";
 import { DEFAULT_SETTINGS } from "../../../src/data/repositoryDefaults.js";
 import {
-  DISPUTE_WINDOW_MINUTES,
   REMOTE_CLIENT_HOME_LOCAL_RECRUITING_LIMIT,
   REMOTE_CLIENT_RECRUITING_LIMIT,
-  REFEREE_TRUST_MIN,
-  STAT_ENTRY_WINDOW_MINUTES,
 } from "../../../src/lib/constants.js";
 import {
   COURT_COLUMNS,
@@ -130,31 +132,6 @@ function fromRoomChatMessageRow(row = {}) {
     body: String(row.body ?? "").slice(0, 60),
     createdAt: row.created_at ?? "",
   };
-}
-
-function mergeRoomChatMessages(legacyMessages = [], remoteMessages = []) {
-  const merged = [];
-  [...(legacyMessages ?? []), ...(remoteMessages ?? [])].forEach((message) => {
-    const next = {
-      id: String(message?.id ?? ""),
-      messageSeq: Number(message?.messageSeq ?? message?.message_seq ?? 0),
-      userId: message?.userId ?? message?.user_id ?? "",
-      body: String(message?.body ?? "").slice(0, 60),
-      createdAt: message?.createdAt ?? message?.created_at ?? "",
-    };
-    if (!next.userId || !next.body.trim()) return;
-    const nextTime = Date.parse(next.createdAt || 0);
-    const duplicate = merged.some((item) => {
-      if (next.id && item.id === next.id) return true;
-      if (item.userId !== next.userId || item.body !== next.body) return false;
-      const itemTime = Date.parse(item.createdAt || 0);
-      return Number.isFinite(nextTime) && Number.isFinite(itemTime) && Math.abs(nextTime - itemTime) <= 30000;
-    });
-    if (!duplicate) merged.push(next);
-  });
-  return merged
-    .sort((a, b) => (Number(a.messageSeq ?? 0) - Number(b.messageSeq ?? 0)) || String(a.createdAt ?? "").localeCompare(String(b.createdAt ?? "")))
-    .slice(-50);
 }
 
 async function fetchRoomChatMessagesByPostIds(client, postIds = [], limitPerRoom = 30) {
@@ -1364,44 +1341,6 @@ function attachRecruitingCardReferences(card = {}, courtById = {}) {
   return courtName ? { ...card, court: courtName } : card;
 }
 
-function toClientTeam(row = {}, memberRows = []) {
-  const members = [...(memberRows ?? [])]
-    .sort((a, b) => String(a.role).localeCompare(String(b.role)) || String(a.user_id).localeCompare(String(b.user_id)))
-    .map((member) => ({ userId: member.user_id, role: member.role ?? "regular" }));
-  return {
-    id: row.id,
-    name: row.name,
-    homeCourt: row.home_court,
-    region: row.region,
-    mmr: row.mmr ?? 1200,
-    wins: row.wins ?? 0,
-    losses: row.losses ?? 0,
-    accent: row.accent,
-    createdAt: row.created_at ?? null,
-    updatedAt: row.updated_at ?? row.created_at ?? null,
-    membersPartial: members.length === 0,
-    members,
-  };
-}
-
-function fromRemoteRecruitingApplication(row = {}) {
-  return {
-    kind: row.kind,
-    joinMode: row.kind,
-    teamId: row.team_id,
-    playerId: row.player_id,
-    side: row.side,
-    status: row.status,
-    reserve: row.reserve,
-    position: row.position,
-    playerIds: row.player_ids ?? [],
-    sourceTeamId: row.source_team_id ?? null,
-    sourceEntryId: row.source_entry_id ?? null,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
-}
-
 async function appendMissingTeamMemberProfiles(client, profileRows = [], teamMemberRows = [], currentUserId = "") {
   const existingIds = new Set((profileRows ?? []).map((row) => row.id).filter(Boolean));
   if (currentUserId) existingIds.add(currentUserId);
@@ -1413,64 +1352,6 @@ async function appendMissingTeamMemberProfiles(client, profileRows = [], teamMem
     .in("id", missingIds);
   if (error) throw error;
   return [...(profileRows ?? []), ...(data ?? [])];
-}
-
-function fromRemoteRecruitingPost(row = {}, applicationsByPost = new Map(), courtById = {}, chatMessagesByPost = new Map()) {
-  const rawScheduledAt = toDateTime(row.scheduled_date, row.scheduled_time, row.scheduled_at);
-  const roomState = row.room_state && typeof row.room_state === "object" ? row.room_state : {};
-  const chatMessages = chatMessagesByPost.has(row.id)
-    ? mergeRoomChatMessages(roomState.chatMessages ?? [], chatMessagesByPost.get(row.id) ?? [])
-    : roomState.chatMessages;
-  const timingType = roomState.timingType === "instant" || rawScheduledAt === "\uC989\uC2DC" ? "instant" : "scheduled";
-  return {
-    id: row.id,
-    type: row.type,
-    title: row.title,
-    visibility: row.visibility ?? "public",
-    region: row.region,
-    regionKey: normalizeRegionKey(row.region),
-    courtId: row.court_id ?? null,
-    court: row.court_name ?? courtById[row.court_id]?.name ?? "\uBBF8\uC815",
-    mode: row.mode,
-    scheduledDate: row.scheduled_date,
-    scheduledTime: row.scheduled_time ? String(row.scheduled_time).slice(0, 5) : "",
-    scheduledAt: timingType === "instant" ? "\uC989\uC2DC" : rawScheduledAt,
-    timingType,
-    ranked: row.ranked,
-    official: Boolean(row.official),
-    preRegistered: row.pre_registered !== false,
-    ratingScale: Number(row.rating_scale ?? 1),
-    ageRestriction: row.age_restriction ?? "any",
-    allowedAgeGroups: row.allowed_age_groups ?? [],
-    rules: row.rules ?? {},
-    stakes: row.stakes ?? "",
-    courtReserved: Boolean(row.court_reserved),
-    courtFee: row.court_fee ?? "",
-    spots: row.spots,
-    teamId: row.team_id,
-    targetTeamId: row.target_team_id,
-    refereeWanted: Boolean(roomState.refereeWanted || row.referee_id),
-    refereeId: row.referee_id ?? "",
-    refereeTrustMin: row.referee_trust_min ?? REFEREE_TRUST_MIN,
-    statEntryMinutes: row.stat_entry_minutes ?? STAT_ENTRY_WINDOW_MINUTES,
-    disputeMinutes: row.dispute_minutes ?? DISPUTE_WINDOW_MINUTES,
-    roomState: chatMessages ? { ...roomState, chatMessages } : roomState,
-    mmrLimitMode: ["off", "warn", "block"].includes(roomState.mmrLimitMode) ? roomState.mmrLimitMode : "block",
-    teamOnly: roomState.teamOnly === true || isPublicTeamRecruitingRoom({ visibility: row.visibility, hostJoinMode: row.host_join_mode }),
-    hostJoinMode: row.host_join_mode,
-    hostSide: row.host_side,
-    hostReady: row.host_ready,
-    sideCapacity: row.side_capacity,
-    playerIds: row.player_ids ?? [],
-    position: row.position,
-    playerId: row.player_id,
-    memo: row.memo,
-    status: row.status,
-    confirmedAt: row.confirmed_at,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-    applicants: (applicationsByPost.get(row.id) ?? []).map(fromRemoteRecruitingApplication),
-  };
 }
 
 export async function loadCompactRecruitingList(context, {
@@ -1658,10 +1539,15 @@ export async function loadCompactRecruitingList(context, {
     userById.set(currentUser.id, { ...(userById.get(currentUser.id) ?? {}), ...currentUser });
 
     const teamMembersByTeam = groupBy(teamMemberRows ?? [], "team_id");
-    const teams = (teamRows ?? []).map((team) => toClientTeam(team, teamMembersByTeam.get(team.id)));
+    const teams = (teamRows ?? []).map((team) => toClientRecruitingTeam(team, teamMembersByTeam.get(team.id)));
     const courtById = firstBy(courtRows ?? [], "id");
     const applicationsByPost = groupBy(applicationRows ?? [], "post_id");
-    const rowPostById = new Map(postRows.map((post) => [post.id, fromRemoteRecruitingPost(post, applicationsByPost, courtById)]));
+    const rowPostById = new Map(postRows.map((post) => [post.id, fromRemoteRecruitingPost(post, {
+      applicationsByPost,
+      courtById,
+      normalizeRegionKey,
+      toDateTime,
+    })]));
     const responsePosts = targetPostIds
       .map((postId) => {
         const card = cardById.get(postId);
@@ -1757,10 +1643,16 @@ export async function loadCompactRecruitingList(context, {
   userById.set(currentUser.id, { ...(userById.get(currentUser.id) ?? {}), ...currentUser });
 
   const teamMembersByTeam = groupBy(teamMemberRows ?? [], "team_id");
-  const teams = (teamRows ?? []).map((team) => toClientTeam(team, teamMembersByTeam.get(team.id)));
+  const teams = (teamRows ?? []).map((team) => toClientRecruitingTeam(team, teamMembersByTeam.get(team.id)));
   const courtById = firstBy(courtRows ?? [], "id");
   const applicationsByPost = groupBy(applicationRows ?? [], "post_id");
-  const posts = postRows.map((post) => fromRemoteRecruitingPost(post, applicationsByPost, courtById, chatMessagesByPost));
+  const posts = postRows.map((post) => fromRemoteRecruitingPost(post, {
+    applicationsByPost,
+    courtById,
+    chatMessagesByPost,
+    normalizeRegionKey,
+    toDateTime,
+  }));
   const state = normalizeState({
     currentUserId: currentUser.id,
     users: [...userById.values()],
