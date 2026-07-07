@@ -1313,7 +1313,7 @@ export default function CreateMatch({ app }) {
                     const opponentLeaderId = hostJoinMode === "team" && !isPublicRoom ? getDefaultTeamPlayerIds(selectedTeamB, 1, playerIds)[0] ?? "" : "";
                     update({
                       hostJoinMode,
-                      teamOnly: isPublicRoom && hostJoinMode === "team",
+                      teamOnly: hostJoinMode === "team",
                       playerIds,
                       reservePlayerIds: [],
                       opponentPlayerIds: [],
@@ -1377,7 +1377,7 @@ export default function CreateMatch({ app }) {
                 update({
                   mode,
                   hostJoinMode,
-                  teamOnly: isPublicRoom && nextIsTeamRoom,
+                  teamOnly: nextIsTeamRoom,
                   title: isDefaultCreateTitle(draft.title) ? getDefaultCreateTitle(mode) : draft.title,
                   ...(nextIsTeamRoom ? {
                     playerIds,

@@ -4349,7 +4349,7 @@ function RecruitingReady({ app }) {
         <div className="arena-hero-copy">
           <span className="arena-kicker">MATCH QUEUE</span>
           <h1>대기 매칭</h1>
-          <p>개인/팀 모집을 나누지 않는다. 공개방을 열면 참가자가 개인이나 팀 파티로 들어온다.</p>
+          <p>공개 모집방만 탐색하고, 개인전과 팀전은 방 생성 단계에서 나눈다.</p>
         </div>
         <div className="arena-hero-panel">
           <div className="arena-hero-stats">
