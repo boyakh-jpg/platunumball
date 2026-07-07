@@ -207,6 +207,11 @@ export function getTimePart(value) {
   return String(value ?? "").match(/\d{2}:\d{2}/)?.[0] ?? "";
 }
 
+export function nullableText(value) {
+  const text = String(value ?? "").trim();
+  return text || null;
+}
+
 export function toClientTeamWithMembers(team = {}, memberRows = []) {
   return {
     id: team.id,

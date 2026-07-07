@@ -1,4 +1,4 @@
-import { getAuthenticatedContext, getDatePart, getTimePart, readJsonBody, sendJson, toArray, toDbTime, toNotificationRows } from "../_supabaseAdmin.js";
+import { getAuthenticatedContext, getDatePart, getTimePart, nullableText, readJsonBody, sendJson, toArray, toDbTime, toNotificationRows } from "../_supabaseAdmin.js";
 import { normalizeMmrLimitMode } from "../../../src/lib/constants.js";
 import {
   applyAuthoritativeRecruitingOperation,
@@ -18,11 +18,6 @@ function getDbScheduleParts(post = {}) {
     scheduledTime,
     scheduledAt: timingType === "instant" ? null : [scheduledDate, scheduledTime].filter(Boolean).join(" ") || null,
   };
-}
-
-function nullableText(value) {
-  const text = String(value ?? "").trim();
-  return text || null;
 }
 
 const ROOM_CHAT_MESSAGE_COLUMNS = "id,room_type,room_id,user_id,body,created_at,message_seq";

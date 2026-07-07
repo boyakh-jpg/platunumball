@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { getAuthenticatedContext, getDatePart, getTimePart, readJsonBody, sendJson, toArray, toDbTime, toNotificationRows, uniqueValues as uniqueIds } from "../_supabaseAdmin.js";
+import { getAuthenticatedContext, getDatePart, getTimePart, nullableText, readJsonBody, sendJson, toArray, toDbTime, toNotificationRows, uniqueValues as uniqueIds } from "../_supabaseAdmin.js";
 import { RECORD_TYPES } from "../../../src/lib/constants.js";
 import {
   applyAuthoritativeMatchOperation,
@@ -49,11 +49,6 @@ function getDbScheduleParts(match = {}) {
     scheduledTime,
     scheduledAt: timingType === "instant" ? null : [scheduledDate, scheduledTime].filter(Boolean).join(" ") || null,
   };
-}
-
-function nullableText(value) {
-  const text = String(value ?? "").trim();
-  return text || null;
 }
 
 function reject(statusCode, message) {
