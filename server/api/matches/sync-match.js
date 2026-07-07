@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { getAuthenticatedContext, readJsonBody, sendJson, toArray, toNotificationRows, uniqueValues as uniqueIds } from "../_supabaseAdmin.js";
+import { getAuthenticatedContext, getDatePart, getTimePart, readJsonBody, sendJson, toArray, toDbTime, toNotificationRows, uniqueValues as uniqueIds } from "../_supabaseAdmin.js";
 import { RECORD_TYPES } from "../../../src/lib/constants.js";
 import {
   applyAuthoritativeMatchOperation,
@@ -37,18 +37,6 @@ const MATCH_REMINDER_OFFSETS = [
 function toFiniteNumber(value, fallback = 0) {
   const number = Number(value ?? fallback);
   return Number.isFinite(number) ? number : fallback;
-}
-
-function toDbTime(value) {
-  return value ? String(value).slice(0, 5) : null;
-}
-
-function getDatePart(value) {
-  return String(value ?? "").match(/\d{4}-\d{2}-\d{2}/)?.[0] ?? "";
-}
-
-function getTimePart(value) {
-  return String(value ?? "").match(/\d{2}:\d{2}/)?.[0] ?? "";
 }
 
 function getDbScheduleParts(match = {}) {

@@ -195,6 +195,18 @@ export function toDateTime(date, time, fallback) {
   return fallback ?? "\uBBF8\uC815";
 }
 
+export function toDbTime(value) {
+  return value ? String(value).slice(0, 5) : null;
+}
+
+export function getDatePart(value) {
+  return String(value ?? "").match(/\d{4}-\d{2}-\d{2}/)?.[0] ?? "";
+}
+
+export function getTimePart(value) {
+  return String(value ?? "").match(/\d{2}:\d{2}/)?.[0] ?? "";
+}
+
 export function toClientTeamWithMembers(team = {}, memberRows = []) {
   return {
     id: team.id,

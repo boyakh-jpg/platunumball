@@ -1,4 +1,4 @@
-import { getAuthenticatedContext, readJsonBody, sendJson, toArray, toNotificationRows } from "../_supabaseAdmin.js";
+import { getAuthenticatedContext, getDatePart, getTimePart, readJsonBody, sendJson, toArray, toDbTime, toNotificationRows } from "../_supabaseAdmin.js";
 import { normalizeMmrLimitMode } from "../../../src/lib/constants.js";
 import {
   applyAuthoritativeRecruitingOperation,
@@ -7,18 +7,6 @@ import {
 } from "../_authoritativeState.js";
 import { addTeamRoster, assertProfilesExist, assertTeamRosterMembers } from "../_rosterEligibility.js";
 import { getDiscordProfiles, persistMatchSnapshot, upsertDiscordDeliveryRows } from "../matches/sync-match.js";
-
-function toDbTime(value) {
-  return value ? String(value).slice(0, 5) : null;
-}
-
-function getDatePart(value) {
-  return String(value ?? "").match(/\d{4}-\d{2}-\d{2}/)?.[0] ?? "";
-}
-
-function getTimePart(value) {
-  return String(value ?? "").match(/\d{2}:\d{2}/)?.[0] ?? "";
-}
 
 function getDbScheduleParts(post = {}) {
   const timingType = (post.timingType ?? post.roomState?.timingType ?? post.room_state?.timingType) === "instant" ? "instant" : "scheduled";
