@@ -1,4 +1,15 @@
-import { getAdminLevel, getAuthenticatedContext, isMissingRoomFeedCards, isMissingTable, isMissingUserRoomFeed, readJsonBody, sendJson, uniqueStringIds as uniqueIds } from "../_supabaseAdmin.js";
+import {
+  firstRowBy as firstBy,
+  getAdminLevel,
+  getAuthenticatedContext,
+  groupRowsBy as groupBy,
+  isMissingRoomFeedCards,
+  isMissingTable,
+  isMissingUserRoomFeed,
+  readJsonBody,
+  sendJson,
+  uniqueStringIds as uniqueIds,
+} from "../_supabaseAdmin.js";
 import {
   createProfileShell,
   fromRemoteProfile,
@@ -305,21 +316,6 @@ function sendTimedJson(response, statusCode, payload, timing, includeTiming = fa
     ? { ...payload, debugTiming: timing.payload() }
     : payload;
   sendJson(response, statusCode, nextPayload);
-}
-
-function groupBy(rows = [], key = "id") {
-  return rows.reduce((map, row) => {
-    const value = row?.[key];
-    if (!value) return map;
-    const current = map.get(value) ?? [];
-    current.push(row);
-    map.set(value, current);
-    return map;
-  }, new Map());
-}
-
-function firstBy(rows = [], key = "id") {
-  return Object.fromEntries((rows ?? []).filter((row) => row?.[key]).map((row) => [row[key], row]));
 }
 
 function toDateTime(date, time, fallback) {

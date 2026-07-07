@@ -152,6 +152,37 @@ export function uniqueStringIds(ids = []) {
   return [...new Set(ids.map((id) => String(id ?? "").trim()).filter(Boolean))];
 }
 
+export function groupRowsBy(rows = [], key = "id") {
+  return rows.reduce((map, row) => {
+    const value = row?.[key];
+    if (!value) return map;
+    const list = map.get(value) ?? [];
+    list.push(row);
+    map.set(value, list);
+    return map;
+  }, new Map());
+}
+
+export function firstRowBy(rows = [], key = "id") {
+  return Object.fromEntries((rows ?? []).filter((row) => row?.[key]).map((row) => [row[key], row]));
+}
+
+export function getRowsMaxUpdatedAt(rows = []) {
+  return rows.reduce((max, row) => {
+    const time = row?.updated_at ? new Date(row.updated_at).getTime() : 0;
+    return Number.isFinite(time) ? Math.max(max, time) : max;
+  }, 0);
+}
+
+export async function timeStep(timing, key, callback) {
+  const startedAt = Date.now();
+  try {
+    return await callback();
+  } finally {
+    if (timing) timing[key] = (timing[key] ?? 0) + Date.now() - startedAt;
+  }
+}
+
 export function toArray(value) {
   return Array.isArray(value) ? value.filter(Boolean) : [];
 }

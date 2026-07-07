@@ -1,4 +1,4 @@
-import { getAdminLevel, getAuthenticatedContext, mergeById, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { getAdminLevel, getAuthenticatedContext, mergeById, readJsonBody, sendJson, timeStep } from "../_supabaseAdmin.js";
 import { loadCompactMatchList } from "../matches/list.js";
 import { loadCurrentProfileState, PROFILE_ME_COLUMNS } from "../profile/me.js";
 import { loadCurrentUserRecruitingFeedList } from "../recruiting/list.js";
@@ -66,15 +66,6 @@ function getCappedRecruitingLimit(value) {
   const number = Number(value);
   if (!Number.isFinite(number) || number <= 0) return REMOTE_CLIENT_RECRUITING_LIMIT;
   return Math.max(1, Math.min(REMOTE_CLIENT_RECRUITING_LIMIT, Math.floor(number)));
-}
-
-async function timeStep(debugTiming, key, callback) {
-  const startedAt = Date.now();
-  try {
-    return await callback();
-  } finally {
-    if (debugTiming) debugTiming[key] = (debugTiming[key] ?? 0) + Date.now() - startedAt;
-  }
 }
 
 export default async function handler(request, response) {

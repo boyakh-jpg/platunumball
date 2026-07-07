@@ -1,4 +1,17 @@
-import { getAdminLevel, getAuthenticatedContext, isMissingRoomFeedCards, isMissingTable, isMissingUserRoomFeed, mergeById, readJsonBody, sendJson, uniqueValues as unique } from "../_supabaseAdmin.js";
+import {
+  firstRowBy as firstBy,
+  getAdminLevel,
+  getAuthenticatedContext,
+  groupRowsBy as groupBy,
+  isMissingRoomFeedCards,
+  isMissingTable,
+  isMissingUserRoomFeed,
+  mergeById,
+  readJsonBody,
+  sendJson,
+  timeStep,
+  uniqueValues as unique,
+} from "../_supabaseAdmin.js";
 import {
   createProfileShell,
   fromRemoteProfile,
@@ -67,15 +80,6 @@ function getMineOffsetCursor(value = "") {
   if (!text.startsWith("mine:")) return 0;
   const offset = Number(text.slice(5));
   return Number.isFinite(offset) && offset > 0 ? Math.floor(offset) : 0;
-}
-
-async function timeStep(debugTiming, key, callback) {
-  const startedAt = Date.now();
-  try {
-    return await callback();
-  } finally {
-    if (debugTiming) debugTiming[key] = (debugTiming[key] ?? 0) + Date.now() - startedAt;
-  }
 }
 
 function sortByFeedOrder(items = [], ids = []) {
@@ -267,21 +271,6 @@ function flattenIdValues(value) {
   if (Array.isArray(value)) return value.flatMap(flattenIdValues);
   if (value && typeof value === "object") return Object.values(value).flatMap(flattenIdValues);
   return value ? [String(value)] : [];
-}
-
-function groupBy(rows = [], key = "id") {
-  return rows.reduce((map, row) => {
-    const value = row?.[key];
-    if (!value) return map;
-    const current = map.get(value) ?? [];
-    current.push(row);
-    map.set(value, current);
-    return map;
-  }, new Map());
-}
-
-function firstBy(rows = [], key = "id") {
-  return Object.fromEntries((rows ?? []).filter((row) => row?.[key]).map((row) => [row[key], row]));
 }
 
 function toDateTime(date, time, fallback) {

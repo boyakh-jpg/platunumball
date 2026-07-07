@@ -1,4 +1,13 @@
-import { getAuthenticatedContext, isMissingTable, readJsonBody, sendJson, uniqueValues as unique } from "../_supabaseAdmin.js";
+import {
+  getAuthenticatedContext,
+  getRowsMaxUpdatedAt as getMaxUpdatedAt,
+  groupRowsBy as groupBy,
+  isMissingTable,
+  readJsonBody,
+  sendJson,
+  timeStep,
+  uniqueValues as unique,
+} from "../_supabaseAdmin.js";
 import {
   createProfileShell,
   fromRemoteProfile,
@@ -15,24 +24,6 @@ import {
 } from "../../../src/data/repositoryColumns.js";
 
 const PROFILE_TEAM_MEMBER_COLUMNS = "id,name,handle,hashtag,position,region,trust_score,avatar_color,ratings,age_group,age_group_checked_season,onboarding_complete,updated_at";
-
-function getMaxUpdatedAt(rows = []) {
-  return rows.reduce((max, row) => {
-    const time = row?.updated_at ? new Date(row.updated_at).getTime() : 0;
-    return Number.isFinite(time) ? Math.max(max, time) : max;
-  }, 0);
-}
-
-function groupBy(rows = [], key = "id") {
-  return rows.reduce((map, row) => {
-    const value = row?.[key];
-    if (!value) return map;
-    const list = map.get(value) ?? [];
-    list.push(row);
-    map.set(value, list);
-    return map;
-  }, new Map());
-}
 
 function toClientTeam(team = {}, memberRows = []) {
   return {
@@ -84,15 +75,6 @@ async function loadTeamInvitations(supabase, profileId = "", teamId = "") {
     throw error;
   }
   return (data ?? []).map(fromRemoteTeamInvitation);
-}
-
-async function timeStep(debugTiming, key, callback) {
-  const startedAt = Date.now();
-  try {
-    return await callback();
-  } finally {
-    if (debugTiming) debugTiming[key] = (debugTiming[key] ?? 0) + Date.now() - startedAt;
-  }
 }
 
 export default async function handler(request, response) {
