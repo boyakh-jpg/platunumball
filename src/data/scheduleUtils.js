@@ -36,3 +36,19 @@ export function getDatePart(value) {
 export function getTimePart(value) {
   return String(value ?? "").match(/\d{2}:\d{2}/)?.[0] ?? "";
 }
+
+function toDbTime(value) {
+  return value ? String(value).slice(0, 5) : null;
+}
+
+export function getDbScheduleParts(item = {}) {
+  const timingType = (item.timingType ?? item.roomState?.timingType ?? item.rules?.timingType) === "instant" ? "instant" : "scheduled";
+  const scheduledDate = timingType === "instant" ? null : item.scheduledDate || getDatePart(item.scheduledAt) || null;
+  const scheduledTime = timingType === "instant" ? null : toDbTime(item.scheduledTime || getTimePart(item.scheduledAt));
+  return {
+    timingType,
+    scheduledDate,
+    scheduledTime,
+    scheduledAt: timingType === "instant" ? null : [scheduledDate, scheduledTime].filter(Boolean).join(" ") || null,
+  };
+}

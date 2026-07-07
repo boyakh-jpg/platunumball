@@ -235,7 +235,7 @@ import {
   normalizeTeam,
   normalizeUser,
 } from "./stateMappers.js";
-import { addDateDays, getDatePart, getLocalDateValue, getTimePart, isScheduleDateInAllowedWindow } from "./scheduleUtils.js";
+import { addDateDays, getDatePart, getDbScheduleParts, getLocalDateValue, getTimePart, isScheduleDateInAllowedWindow } from "./scheduleUtils.js";
 import { adjustUserTrust, clampTrustScore, getFoulTrustPenalty } from "./trustUtils.js";
 export { DEFAULT_SETTINGS } from "./repositoryDefaults.js";
 export { createProfileShell, fromRemoteProfile, getRemoteAppSettings } from "./profileMappers.js";
@@ -1405,22 +1405,6 @@ export async function loadRemoteState(authUserId = "", authEmail = "", options =
     console.warn("Supabase normalized state load failed. Remote state remains empty.", error.message);
     return null;
   }
-}
-
-function toDbTime(value) {
-  return value ? String(value).slice(0, 5) : null;
-}
-
-function getDbScheduleParts(item = {}) {
-  const timingType = (item.timingType ?? item.roomState?.timingType ?? item.rules?.timingType) === "instant" ? "instant" : "scheduled";
-  const scheduledDate = timingType === "instant" ? null : item.scheduledDate || getDatePart(item.scheduledAt) || null;
-  const scheduledTime = timingType === "instant" ? null : toDbTime(item.scheduledTime || getTimePart(item.scheduledAt));
-  return {
-    timingType,
-    scheduledDate,
-    scheduledTime,
-    scheduledAt: timingType === "instant" ? null : [scheduledDate, scheduledTime].filter(Boolean).join(" ") || null,
-  };
 }
 
 export async function saveNormalizedRemoteState(state, options = {}) {
