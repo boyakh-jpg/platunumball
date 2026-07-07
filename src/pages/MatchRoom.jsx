@@ -33,6 +33,7 @@ import {
   getMatchRoomPhase,
   getMatchPlayerIds,
   getMatchReservePlayerIds,
+  getSafeMatchSide,
   getMatchSideLeaderId,
   getMatchSidePlayerIds,
   getMatchSideRecordPlayerIds,
@@ -84,17 +85,6 @@ function getDisplayScore(match, sideName) {
   const sourceResult = match.disputeDraftResult ?? match.result;
   const resultKey = sideName === "teamA" ? "scoreA" : "scoreB";
   return sourceResult?.[resultKey] ?? match[sideName]?.score ?? 0;
-}
-
-function getSafeMatchSide(match, sideName) {
-  const fallbackName = sideName === "teamA" ? "A" : "B";
-  const side = match?.[sideName] ?? {};
-  return {
-    ...side,
-    name: side.name || fallbackName,
-    teamId: side.teamId || "",
-    players: Array.isArray(side.players) ? side.players : [],
-  };
 }
 
 function getRecordSummaryNames(match = {}, sideName = "teamA") {

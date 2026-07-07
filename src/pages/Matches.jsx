@@ -19,6 +19,7 @@ import {
   getMatchHostPlayerId,
   getMatchReservePlayerIds,
   getMatchRoomPhase,
+  getSafeMatchSide as getSafeMatchSideBase,
   isMatchRecordMatch,
   isMatchClosedNotice,
   isMatchRelatedToUser,
@@ -121,17 +122,7 @@ const tournamentStatusLabels = {
   closed: "종료",
   cancelled: "취소",
 };
-function getSafeMatchSide(match = {}, sideName = "teamA") {
-  const side = match?.[sideName];
-  const fallbackName = sideName === "teamA" ? "A" : "B";
-  if (!side || typeof side !== "object") return { name: fallbackName, teamId: null, players: [] };
-  return {
-    ...side,
-    name: side.name || fallbackName,
-    teamId: side.teamId ?? null,
-    players: Array.isArray(side.players) ? side.players : [],
-  };
-}
+const getSafeMatchSide = (match = {}, sideName = "teamA") => getSafeMatchSideBase(match, sideName, { teamIdFallback: null });
 
 function toDateInputValue(date = new Date()) {
   const year = date.getFullYear();

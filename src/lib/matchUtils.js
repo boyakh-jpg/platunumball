@@ -32,6 +32,28 @@ export function getMatchSideScore(match = {}, sideName = "") {
   return Number(match.result?.[resultKey] ?? match[sideName]?.score ?? 0);
 }
 
+export function getSafeMatchSide(match = {}, sideName = "teamA", options = {}) {
+  const side = match?.[sideName];
+  const fallbackName = sideName === "teamA" ? "A" : "B";
+  const teamIdFallback = options.teamIdFallback ?? "";
+  const includeScore = options.includeScore === true;
+  if (!side || typeof side !== "object") {
+    return {
+      name: fallbackName,
+      teamId: teamIdFallback,
+      players: [],
+      ...(includeScore ? { score: 0 } : {}),
+    };
+  }
+  return {
+    ...side,
+    name: side.name || fallbackName,
+    teamId: side.teamId ?? teamIdFallback,
+    players: Array.isArray(side.players) ? side.players : [],
+    ...(includeScore ? { score: side.score ?? 0 } : {}),
+  };
+}
+
 export function getMatchDisputeScore(match = {}, sideName = "") {
   return getMatchSideScore(match, sideName);
 }
