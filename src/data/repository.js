@@ -130,7 +130,7 @@ import { findDiscordConnectionOwner, getDiscordConnectionUserId, syncDiscordNoti
 import { getUserHashtag, sameHashtag, toHashtag } from "../lib/handles.js";
 import { canChangeProfileName } from "../lib/profileSetup.js";
 import { DEFAULT_SETTINGS, EMPTY_STATE } from "./repositoryDefaults.js";
-import { fromRemoteTeamInvitation } from "./teamMappers.js";
+import { fromRemoteTeam, fromRemoteTeamInvitation } from "./teamMappers.js";
 import {
   fromRemoteApprovedCourt,
   fromRemoteCourtRequest,
@@ -829,24 +829,6 @@ function toDateTime(date, time, fallback) {
   if (date && time) return `${date} ${String(time).slice(0, 5)}`;
   if (date) return date;
   return fallback ?? "일정 미정";
-}
-
-function fromRemoteTeam(row, memberRows) {
-  return {
-    id: row.id,
-    name: row.name,
-    homeCourt: row.home_court,
-    region: row.region,
-    mmr: row.mmr ?? 1200,
-    wins: row.wins ?? 0,
-    losses: row.losses ?? 0,
-    accent: row.accent,
-    createdAt: row.created_at ?? null,
-    updatedAt: row.updated_at ?? row.created_at ?? null,
-    members: [...(memberRows ?? [])]
-      .sort((a, b) => String(a.role).localeCompare(String(b.role)) || String(a.user_id).localeCompare(String(b.user_id)))
-      .map((member) => ({ userId: member.user_id, role: member.role ?? "regular" })),
-  };
 }
 
 function fromRemoteMatch(row, context) {
