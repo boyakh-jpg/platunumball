@@ -1,12 +1,10 @@
 import { getAuthenticatedContext, mergeById, readJsonBody, sendJson, uniqueValues as unique } from "../_supabaseAdmin.js";
 import { loadCompactMatchList } from "../matches/list.js";
 import {
-  createProfileShell,
   fromRemoteTeamInvitation,
-  fromRemoteProfile,
-  getRemoteAppSettings,
   normalizeState,
 } from "../../../src/data/repository.js";
+import { createProfileShell, fromRemoteProfile, getRemoteAppSettings } from "../../../src/data/profileMappers.js";
 import { DEFAULT_SETTINGS } from "../../../src/data/repositoryDefaults.js";
 import {
   APPROVED_COURT_COLUMNS,

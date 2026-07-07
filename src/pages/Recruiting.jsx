@@ -30,7 +30,7 @@ import TierBadge from "../components/rating/TierBadge.jsx";
 import { getTierEmblemSrc } from "../components/rating/TierEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
-import { MATCH_MODES, PLAYER_POSITIONS, PLAYER_STAT_FIELDS, REGIONS, ROOM_RELATION_TERMS, getCanonicalRegion, isSameRegion } from "../lib/constants.js";
+import { MATCH_MODES, PLAYER_POSITIONS, PLAYER_STAT_FIELDS, REGIONS, ROOM_RELATION_TERMS, SIDE_LABEL_TEXT as SIDE_LABELS, getCanonicalRegion, isSameRegion } from "../lib/constants.js";
 import { inferRegionSelection, REGION_TREE } from "../lib/profileSetup.js";
 import { getCourtLayoutLabel, getCourtPlayWarning, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
 import {
@@ -92,10 +92,6 @@ import {
 import "../styles/recruiting-arena.css";
 import "../styles/matches-arena.css";
 
-const SIDE_LABELS = {
-  teamA: "A사이드",
-  teamB: "B사이드",
-};
 const CHAT_MESSAGE_MAX_LENGTH = 60;
 const CHAT_SEND_COOLDOWN_MS = 3000;
 const CHAT_REPEAT_BLOCK_MS = 30000;

@@ -1,0 +1,112 @@
+import {
+  TEST_PROFILE_AGE_GROUP,
+  TEST_PROFILE_AGE_GROUP_SEASON,
+  TEST_PROFILE_BIRTH_YEAR,
+  TEST_PROFILE_SETUP_AT,
+} from "../lib/constants.js";
+import { toHashtag } from "../lib/handles.js";
+
+export function makeDefaultRatings() {
+  return { integrated: 1200, modes: { "1v1": 1200, "2v2": 1200, "3v3": 1200, "5v5": 1200 } };
+}
+
+export function normalizeRatings(ratings = {}) {
+  const defaults = makeDefaultRatings();
+  const integrated = Number(ratings?.integrated);
+  return {
+    integrated: Number.isFinite(integrated) ? integrated : defaults.integrated,
+    modes: { ...defaults.modes, ...(ratings?.modes && typeof ratings.modes === "object" ? ratings.modes : {}) },
+  };
+}
+
+function getProfileShellId(authUserId = "") {
+  const safeId = String(authUserId || "pending").replace(/[^a-zA-Z0-9]/g, "").slice(0, 18) || "pending";
+  return `p_${safeId}`;
+}
+
+export function createProfileShell(authUserId = "", email = "") {
+  const fallbackName = String(email || "").split("@")[0] || "?좉퇋 ?좎닔";
+  return {
+    id: getProfileShellId(authUserId),
+    name: fallbackName,
+    handle: "",
+    hashtag: "",
+    position: "PG",
+    region: null,
+    regionSido: null,
+    regionDistrict: null,
+    school: "",
+    company: "",
+    club: "",
+    trustScore: 80,
+    streak: 0,
+    avatarColor: "#58d2c0",
+    authUserId: authUserId || null,
+    birthYear: null,
+    ageGroup: "open",
+    ageGroupCheckedSeason: null,
+    onboardingComplete: false,
+    profileVersion: 0,
+    handleLockedAt: null,
+    birthYearLockedAt: null,
+    nameUpdatedAt: null,
+    discordConnection: null,
+    discordUserId: null,
+    ratings: makeDefaultRatings(),
+  };
+}
+
+export function fromRemoteProfile(row) {
+  const hashtag = toHashtag(row.hashtag ?? row.handle ?? row.id, row.id);
+  const isTestProfile = Boolean(row.test_login_id);
+  const testSetupAt = row.updated_at ?? row.created_at ?? TEST_PROFILE_SETUP_AT;
+  return {
+    id: row.id,
+    name: row.name,
+    handle: hashtag,
+    position: row.position,
+    region: row.region,
+    school: row.school,
+    company: row.company,
+    club: row.club,
+    trustScore: row.trust_score ?? 80,
+    streak: row.streak ?? 0,
+    avatarColor: row.avatar_color,
+    testLoginId: row.test_login_id,
+    testPassword: "test-0000",
+    authUserId: row.auth_user_id ?? null,
+    hashtag,
+    birthYear: row.birth_year ?? (isTestProfile ? TEST_PROFILE_BIRTH_YEAR : null),
+    ageGroup: row.age_group ?? (isTestProfile ? TEST_PROFILE_AGE_GROUP : null),
+    ageGroupCheckedSeason: row.age_group_checked_season ?? (isTestProfile ? TEST_PROFILE_AGE_GROUP_SEASON : null),
+    regionSido: row.region_sido ?? null,
+    regionDistrict: row.region_district ?? null,
+    onboardingComplete: Boolean(row.onboarding_complete || isTestProfile),
+    profileVersion: row.profile_version ?? 0,
+    handleLockedAt: row.handle_locked_at ?? (isTestProfile ? testSetupAt : null),
+    birthYearLockedAt: row.birth_year_locked_at ?? null,
+    nameUpdatedAt: row.name_updated_at ?? null,
+    discordConnection: row.discord_connection ?? null,
+    discordUserId: row.discord_user_id ?? row.discord_connection?.userId ?? null,
+    representativeTeamId: row.app_settings?.representativeTeamId ?? "",
+    ratings: normalizeRatings(row.ratings),
+  };
+}
+
+export function getRemoteAppSettings(profile = {}) {
+  const settings = profile?.app_settings && typeof profile.app_settings === "object" && !Array.isArray(profile.app_settings)
+    ? profile.app_settings
+    : {};
+  const theme = settings.theme === "light" ? "light" : settings.theme === "dark" ? "dark" : null;
+  const privacy = settings.privacy && typeof settings.privacy === "object" && !Array.isArray(settings.privacy) ? settings.privacy : null;
+  const representativeTeamId = typeof settings.representativeTeamId === "string" ? settings.representativeTeamId.trim() : "";
+  const notificationChannels = settings.notificationChannels && typeof settings.notificationChannels === "object" && !Array.isArray(settings.notificationChannels)
+    ? settings.notificationChannels
+    : null;
+  return {
+    ...(theme ? { theme } : {}),
+    ...(privacy ? { privacy } : {}),
+    ...(representativeTeamId ? { representativeTeamId } : {}),
+    ...(notificationChannels ? { notificationChannels } : {}),
+  };
+}

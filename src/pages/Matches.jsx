@@ -121,11 +121,6 @@ const tournamentStatusLabels = {
   closed: "종료",
   cancelled: "취소",
 };
-const SIDE_LABELS = {
-  teamA: "A사이드",
-  teamB: "B사이드",
-};
-
 function getSafeMatchSide(match = {}, sideName = "teamA") {
   const side = match?.[sideName];
   const fallbackName = sideName === "teamA" ? "A" : "B";

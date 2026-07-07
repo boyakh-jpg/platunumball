@@ -13,11 +13,9 @@ import {
   uniqueValues as unique,
 } from "../_supabaseAdmin.js";
 import {
-  createProfileShell,
-  fromRemoteProfile,
-  getRemoteAppSettings,
   normalizeState,
 } from "../../../src/data/repository.js";
+import { createProfileShell, fromRemoteProfile, getRemoteAppSettings } from "../../../src/data/profileMappers.js";
 import { DEFAULT_SETTINGS } from "../../../src/data/repositoryDefaults.js";
 import {
   COURT_COLUMNS,

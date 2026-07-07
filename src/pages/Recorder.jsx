@@ -9,7 +9,7 @@ import Card from "../components/common/Card.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
-import { PLAYER_STAT_FIELDS } from "../lib/constants.js";
+import { PLAYER_STAT_FIELDS, SIDE_LABEL_TEXT as sideLabels } from "../lib/constants.js";
 import { getUserHashtag } from "../lib/handles.js";
 import {
   MATCH_DISPUTE_REASON_OPTIONS,
@@ -33,11 +33,6 @@ import {
 } from "../lib/matchUtils.js";
 import { getMatchRoomPost } from "./Matches.jsx";
 import { RecruitingRoomModal } from "./Recruiting.jsx";
-
-const sideLabels = {
-  teamA: "A사이드",
-  teamB: "B사이드",
-};
 
 const statusMeta = {
   agreed: { label: "진행", tone: "blue" },
