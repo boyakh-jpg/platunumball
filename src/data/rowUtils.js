@@ -34,6 +34,12 @@ export function flattenIdValues(value) {
   return value ? [String(value)] : [];
 }
 
+export function toggleId(list = [], id, limit = Infinity) {
+  if (list.includes(id)) return list.filter((item) => item !== id);
+  if (list.length >= limit) return list;
+  return [id, ...list];
+}
+
 export function chunkRows(rows, size = REMOTE_WRITE_CHUNK_SIZE) {
   const chunks = [];
   for (let index = 0; index < rows.length; index += size) {

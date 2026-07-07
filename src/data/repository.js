@@ -218,6 +218,7 @@ import {
   getMaxUpdatedAt,
   groupBy,
   toDateTime,
+  toggleId,
 } from "./rowUtils.js";
 import {
   replaceRemoteRecruitingApplications,
@@ -4503,12 +4504,6 @@ export function unblockUser(state, userId) {
       blockedUserIds: (state.settings?.blockedUserIds ?? []).filter((id) => id !== userId),
     }),
   };
-}
-
-function toggleId(list = [], id, limit = Infinity) {
-  if (list.includes(id)) return list.filter((item) => item !== id);
-  if (list.length >= limit) return list;
-  return [id, ...list];
 }
 
 export function toggleFavoritePlayer(state, userId) {
