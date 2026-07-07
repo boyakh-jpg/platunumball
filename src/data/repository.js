@@ -215,6 +215,7 @@ import {
   normalizeTeam,
   normalizeUser,
 } from "./stateMappers.js";
+import { addDateDays, getDatePart, getLocalDateValue, getTimePart, isScheduleDateInAllowedWindow } from "./scheduleUtils.js";
 import { adjustUserTrust, clampTrustScore, getFoulTrustPenalty } from "./trustUtils.js";
 export { DEFAULT_SETTINGS } from "./repositoryDefaults.js";
 export { createProfileShell, fromRemoteProfile, getRemoteAppSettings } from "./profileMappers.js";
@@ -358,35 +359,6 @@ function getExplicitInvitationTeamPlayerIds(team = {}, capacity = Infinity, play
   return uniquePlayerIds(sourceIds).filter((playerId) => teamPlayerSet.has(playerId)).slice(0, capacity);
 }
 
-function addDateDays(dateValue, days) {
-  const date = new Date(`${dateValue}T00:00:00`);
-  date.setDate(date.getDate() + days);
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function getLocalDateValue(date = new Date()) {
-  return [
-    date.getFullYear(),
-    String(date.getMonth() + 1).padStart(2, "0"),
-    String(date.getDate()).padStart(2, "0"),
-  ].join("-");
-}
-
-function getMaxScheduleDateValue(now = new Date(), maxDays = SCHEDULE_MAX_DAYS) {
-  return addDateDays(getLocalDateValue(now), maxDays);
-}
-
-function isScheduleDateInAllowedWindow(dateValue, now = new Date(), maxDays = SCHEDULE_MAX_DAYS) {
-  const value = getDatePart(dateValue);
-  if (!value) return false;
-  const today = getLocalDateValue(now);
-  const maxDate = getMaxScheduleDateValue(now, maxDays);
-  return value >= today && value <= maxDate;
-}
-
 function getInvalidScheduleNotification(maxDays = SCHEDULE_MAX_DAYS) {
   return {
     id: makeId("n"),
@@ -424,14 +396,6 @@ function getQueueSlot(slotIndex, startDate = getQueueScheduleStartDate()) {
 function isQueueSlotAllowed(slot, now = new Date()) {
   const date = new Date(`${slot.scheduledDate}T${slot.scheduledTime}`);
   return Number.isFinite(date.getTime()) && date.getTime() > now.getTime() + PUBLIC_ROOM_MIN_LEAD_HOURS * 3600000;
-}
-
-function getDatePart(value) {
-  return String(value ?? "").match(/\d{4}-\d{2}-\d{2}/)?.[0] ?? "";
-}
-
-function getTimePart(value) {
-  return String(value ?? "").match(/\d{2}:\d{2}/)?.[0] ?? "";
 }
 
 function needsQueueSchedule(post = {}, startDate = getQueueScheduleStartDate()) {
