@@ -2845,6 +2845,31 @@ function getMatchRecordSideLeaders(state, draft = {}, teamA = {}, teamB = {}) {
   };
 }
 
+function makeMatchRecordRepresentativeNotifications(match = {}, state = {}, now = "") {
+  if (match?.rules?.recordType !== RECORD_TYPES.matchRecord) return [];
+  const seen = new Set([state.currentUserId].filter(Boolean));
+  return [
+    { sideName: "teamA", userId: match.teamA?.players?.[0], teamName: match.teamA?.name },
+    { sideName: "teamB", userId: match.teamB?.players?.[0], teamName: match.teamB?.name },
+  ].flatMap(({ sideName, userId, teamName }) => {
+    if (!userId || seen.has(userId)) return [];
+    seen.add(userId);
+    const sideLabel = SIDE_LABEL_TEXT[sideName] ?? "해당 사이드";
+    const teamLabel = teamName || sideLabel;
+    return [{
+      id: makeId("n"),
+      title: "경기 기록 확인 요청",
+      body: `${match.title} ${teamLabel} ${sideLabel} 대표 확인이 필요합니다. 출전 명단은 방에서 확정하세요.`,
+      tone: "match",
+      targetUserId: userId,
+      matchId: match.id,
+      discordEvent: "match",
+      createdAt: now,
+      updatedAt: now,
+    }];
+  });
+}
+
 function getTrustedRefereeId(state, refereeId, playerIds = []) {
   if (!refereeId || playerIds.includes(refereeId)) return "";
   const user = state.users.find((item) => item.id === refereeId);
@@ -3928,11 +3953,13 @@ export function createMatch(state, draft) {
     endedAt: isMatchRecord ? nowIso : undefined,
     createdAt: nowIso,
   };
+  const confirmationNotifications = isMatchRecord ? makeMatchRecordRepresentativeNotifications(match, state, nowIso) : [];
 
   return {
     ...state,
     matches: [match, ...state.matches],
     notifications: [
+      ...confirmationNotifications,
       { id: makeId("n"), title: isMatchRecord ? "경기 기록방" : "새 경기방", body: isMatchRecord ? `${match.title} 기록 입력방이 만들어졌습니다.` : `${match.title} 확정방이 만들어졌습니다.`, tone: "match", matchId: match.id },
       ...state.notifications,
     ],
