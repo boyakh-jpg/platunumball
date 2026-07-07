@@ -8335,6 +8335,23 @@ function removeAcceptedRecruitingInvitations(invitations = [], acceptedInvitatio
   });
 }
 
+function makeRecruitingTeamNoticeNotifications({ post, team, side, acceptedBy, acceptedByName, now } = {}) {
+  if (!post?.id || !team?.id) return [];
+  const leaderName = acceptedByName || acceptedBy || "팀 대표";
+  const memberIds = getTeamMemberIds(team).filter((userId) => userId && userId !== acceptedBy);
+  return memberIds.map((targetUserId) => ({
+    id: makeId("n"),
+    title: "팀전 참여 알림",
+    body: `${team.name} 팀이 ${post.title} ${SIDE_LABEL_TEXT[side]} 초대를 수락했습니다. 대표: ${leaderName}. 출전 명단은 방에서 확정됩니다.`,
+    tone: "match",
+    targetUserId,
+    recruitingPostId: post.id,
+    discordEvent: "match",
+    createdAt: now,
+    updatedAt: now,
+  }));
+}
+
 export function acceptRecruitingInvitation(state, postId, invitationId) {
   const disciplineBlock = getDisciplineBlockedState(state, "초대 수락");
   if (disciplineBlock) return disciplineBlock;
@@ -8591,6 +8608,14 @@ export function acceptRecruitingInvitation(state, postId, invitationId) {
         item.id === postId ? cleanRecruitingRoomStatRecorders(nextPost, state) : item
       )),
       notifications: [
+        ...makeRecruitingTeamNoticeNotifications({
+          post,
+          team: invitedTeam,
+          side,
+          acceptedBy: state.currentUserId,
+          acceptedByName: user?.name,
+          now,
+        }),
         ...makeOwnerAcceptNotifications(`${post.title} ${SIDE_LABEL_TEXT[side]} ${reserve ? "후보" : "출전"} 초대가 수락되었습니다.`),
         {
           id: makeId("n"),
