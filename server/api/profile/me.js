@@ -1,4 +1,4 @@
-import { getAuthenticatedContext, mergeById, readJsonBody, sendJson, uniqueValues as unique } from "../_supabaseAdmin.js";
+import { getAuthenticatedContext, mergeById, readJsonBody, sendJson, toClientTeamWithMembers as toClientTeam, uniqueValues as unique } from "../_supabaseAdmin.js";
 import { loadCompactMatchList } from "../matches/list.js";
 import {
   fromRemoteTeamInvitation,
@@ -20,24 +20,6 @@ export { PROFILE_ME_COLUMNS };
 const PROFILE_TEAM_MEMBER_COLUMNS = "id,name,handle,hashtag,position,trust_score,avatar_color,ratings,age_group,age_group_checked_season,onboarding_complete,updated_at";
 const PROFILE_MATCH_SUMMARY_COLUMNS = "profile_id,match_count,win_count,loss_count,draw_count,points,rebounds,assists,steals,blocks,fouls,last_match_id,last_match_at,updated_at";
 const PROFILE_RECENT_RECORD_LIMIT = 6;
-
-function toClientTeam(team = {}, memberRows = []) {
-  return {
-    id: team.id,
-    name: team.name,
-    homeCourt: team.home_court,
-    region: team.region,
-    mmr: team.mmr ?? 1200,
-    wins: team.wins ?? 0,
-    losses: team.losses ?? 0,
-    accent: team.accent,
-    createdAt: team.created_at ?? null,
-    updatedAt: team.updated_at ?? team.created_at ?? null,
-    members: [...memberRows]
-      .sort((a, b) => String(a.role).localeCompare(String(b.role)) || String(a.user_id).localeCompare(String(b.user_id)))
-      .map((member) => ({ userId: member.user_id, role: member.role ?? "regular" })),
-  };
-}
 
 function fromTeamMemberProfile(row = {}) {
   const profile = fromRemoteProfile(row);

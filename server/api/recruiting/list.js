@@ -1,4 +1,5 @@
 import {
+  flattenIdValues,
   firstRowBy as firstBy,
   getAdminLevel,
   getAuthenticatedContext,
@@ -8,6 +9,7 @@ import {
   isMissingUserRoomFeed,
   readJsonBody,
   sendJson,
+  toDateTime,
   uniqueStringIds as uniqueIds,
 } from "../_supabaseAdmin.js";
 import {
@@ -193,12 +195,6 @@ async function fetchCourtRowsByIds(supabase, courtIds = []) {
   return { data: [...rowsById.values()], error: null };
 }
 
-function flattenIdValues(value) {
-  if (Array.isArray(value)) return value.flatMap(flattenIdValues);
-  if (value && typeof value === "object") return Object.values(value).flatMap(flattenIdValues);
-  return value ? [String(value)] : [];
-}
-
 function normalizeRegionKey(value = "") {
   const compact = String(value ?? "").trim().replace(/\s+/g, "").toLowerCase();
   if (!compact) return "";
@@ -314,12 +310,6 @@ function sendTimedJson(response, statusCode, payload, timing, includeTiming = fa
     ? { ...payload, debugTiming: timing.payload() }
     : payload;
   sendJson(response, statusCode, nextPayload);
-}
-
-function toDateTime(date, time, fallback) {
-  if (date && time) return `${date} ${String(time).slice(0, 5)}`;
-  if (date) return date;
-  return fallback ?? "\uBBF8\uC815";
 }
 
 function getCappedLimit(value) {

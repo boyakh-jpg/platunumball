@@ -152,6 +152,12 @@ export function uniqueStringIds(ids = []) {
   return [...new Set(ids.map((id) => String(id ?? "").trim()).filter(Boolean))];
 }
 
+export function flattenIdValues(value) {
+  if (Array.isArray(value)) return value.flatMap(flattenIdValues);
+  if (value && typeof value === "object") return Object.values(value).flatMap(flattenIdValues);
+  return value ? [String(value)] : [];
+}
+
 export function groupRowsBy(rows = [], key = "id") {
   return rows.reduce((map, row) => {
     const value = row?.[key];
@@ -181,6 +187,30 @@ export async function timeStep(timing, key, callback) {
   } finally {
     if (timing) timing[key] = (timing[key] ?? 0) + Date.now() - startedAt;
   }
+}
+
+export function toDateTime(date, time, fallback) {
+  if (date && time) return `${date} ${String(time).slice(0, 5)}`;
+  if (date) return date;
+  return fallback ?? "\uBBF8\uC815";
+}
+
+export function toClientTeamWithMembers(team = {}, memberRows = []) {
+  return {
+    id: team.id,
+    name: team.name,
+    homeCourt: team.home_court,
+    region: team.region,
+    mmr: team.mmr ?? 1200,
+    wins: team.wins ?? 0,
+    losses: team.losses ?? 0,
+    accent: team.accent,
+    createdAt: team.created_at ?? null,
+    updatedAt: team.updated_at ?? team.created_at ?? null,
+    members: [...memberRows]
+      .sort((a, b) => String(a.role).localeCompare(String(b.role)) || String(a.user_id).localeCompare(String(b.user_id)))
+      .map((member) => ({ userId: member.user_id, role: member.role ?? "regular" })),
+  };
 }
 
 export function toArray(value) {

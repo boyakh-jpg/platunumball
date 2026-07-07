@@ -1,12 +1,6 @@
-import { getAdminLevel, getAuthenticatedContext, readJsonBody, sendJson, uniqueValues as unique } from "../_supabaseAdmin.js";
+import { flattenIdValues as toArray, getAdminLevel, getAuthenticatedContext, readJsonBody, sendJson, uniqueValues as unique } from "../_supabaseAdmin.js";
 import { loadCurrentProfileState, PROFILE_ME_COLUMNS } from "../profile/me.js";
 import { loadNormalizedDirectoryStateFromClient } from "../../../src/data/repository.js";
-
-function toArray(value) {
-  if (Array.isArray(value)) return value.flatMap(toArray);
-  if (value && typeof value === "object") return Object.values(value).flatMap(toArray);
-  return value ? [String(value)] : [];
-}
 
 function getMatchActorIds(match = {}) {
   return unique([

@@ -1,4 +1,5 @@
 import {
+  flattenIdValues,
   firstRowBy as firstBy,
   getAdminLevel,
   getAuthenticatedContext,
@@ -9,6 +10,7 @@ import {
   mergeById,
   readJsonBody,
   sendJson,
+  toDateTime,
   timeStep,
   uniqueValues as unique,
 } from "../_supabaseAdmin.js";
@@ -263,18 +265,6 @@ function filterActiveMatchCards(matches = [], activeOnly = false, options = {}) 
       (!ACTIVE_MATCH_EXCLUDED_PHASES.has(getMatchRoomPhase(match).phase) && !match?.recentCompleted)
     ))
   ));
-}
-
-function flattenIdValues(value) {
-  if (Array.isArray(value)) return value.flatMap(flattenIdValues);
-  if (value && typeof value === "object") return Object.values(value).flatMap(flattenIdValues);
-  return value ? [String(value)] : [];
-}
-
-function toDateTime(date, time, fallback) {
-  if (date && time) return `${date} ${String(time).slice(0, 5)}`;
-  if (date) return date;
-  return fallback ?? "\uBBF8\uC815";
 }
 
 function getCappedLimit(value) {
