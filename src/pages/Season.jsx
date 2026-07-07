@@ -67,9 +67,14 @@ export default function Season({ app }) {
           <span><Trophy size={16} /> 개인 1위 {topPlayer?.name ?? "-"}</span>
           <span><ShieldCheck size={16} /> 팀 1위 {topTeam?.name ?? "-"}</span>
           <span><ClipboardCheck size={16} /> 처리 대기 {operations.contract + operations.approval + operations.disputed}</span>
-          <Link to="/app/create">
-            <Button><Swords size={18} /> 정규전 만들기</Button>
-          </Link>
+          <div className="season-rule-actions">
+            <Link to="/app/create">
+              <Button><Swords size={18} /> 매칭 만들기</Button>
+            </Link>
+            <Link to="/app/create?intent=record">
+              <Button><ClipboardCheck size={18} /> 경기 기록하기</Button>
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -224,9 +229,14 @@ export default function Season({ app }) {
                 <strong>{pair.teamB.mmr}</strong>
               </div>
               <p>{pair.headToHead.length}전 · MMR 차이 {pair.mmrGap}</p>
-              <Link to="/app/create" className="rivalry-challenge-link">
-                도전 경기 만들기 <ArrowRight size={16} />
-              </Link>
+              <div className="rivalry-challenge-actions">
+                <Link to="/app/create" className="rivalry-challenge-link">
+                  매칭 만들기 <ArrowRight size={16} />
+                </Link>
+                <Link to="/app/create?intent=record" className="rivalry-challenge-link">
+                  경기 기록하기 <ClipboardCheck size={16} />
+                </Link>
+              </div>
             </article>
           )) : (
             <article className="rivalry-matchup rivalry-empty">

@@ -615,7 +615,8 @@ UI/CSS/반응형/라이트·다크 세부 기준은 `docs/design-system.md`를 �
 | 화면 | 경로 | 데이터 | 원칙 |
 | --- | --- | --- | --- |
 | 홈 | `/app` | 초대, 해야 할 일, 내 일정, 최근 기록 | 지금 처리할 일만 노출 |
-| 경기 만들기 | `/app/create` | draft -> 방/대회 생성 | 개인전/팀전/공개/비공개 분기 명확 |
+| 매칭 만들기 | `/app/create` | draft -> 사전 매칭방/대회 생성 | 개인전/팀전/공개/비공개 분기 명확 |
+| 경기 기록하기 | `/app/create?intent=record` | draft -> 사후 기록방/개인기록 생성 | 경기 메뉴가 아니라 진행/기록 흐름 |
 | 경기 | `/app/matches` | 내 일정, 캘린더, 확정 이후 경기 | 매칭 메뉴와 같은 방 모달 사용 |
 | 매칭 | `/app/recruiting` | 대기방 목록 | 공개/비공개 모두 같은 모달 |
 | 진행 | `/app/recorder` | live/postgame/dispute 중 처리 가능한 경기 | 기록 확정 후 24시간 이후 숨김 |
@@ -1255,7 +1256,7 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-  Create["경기 만들기"] --> Post["recruitingPosts 대기방"]
+  Create["매칭 만들기"] --> Post["recruitingPosts 대기방"]
   Post --> Lobby["getRecruitingLobby"]
   Lobby --> QueueCard["매칭 카드"]
   Lobby --> RoomModal["공통 방 모달"]
@@ -1905,7 +1906,7 @@ flowchart TD
 
 ## 2026-06-27 recruiting personal create and mine load
 
-1. 경기 만들기에서 내 팀이 없는 사용자는 기본 `hostJoinMode`를 `player`로 시작한다.
+1. 매칭 만들기에서 내 팀이 없는 사용자는 기본 `hostJoinMode`를 `player`로 시작한다.
 2. 경기 방식이 `1v1`로 바뀌면 개인전으로 보고 `hostJoinMode = "player"`를 우선 적용한다.
 3. 공개방 전환은 사용자가 이미 고른 개인전/팀방 방식을 임의로 `team`으로 덮어쓰지 않는다.
 4. `/api/recruiting/list`는 `postId`/`recruitingPostIds` 단일 로드와 `scope: "mine"` 로드를 지원한다.
@@ -1979,7 +1980,7 @@ flowchart TD
 5-2. 팀 초대는 role을 함께 저장하고, 대상자가 수락하면 정규화된 `team_invitations.role`이 `team_members.role`로 보존된다. 용병은 팀 MMR 기여 가중치가 낮고, 정규멤버보다 느슨한 임시 참여 성격이다.
 6. 한 팀의 등록 인원은 최대 10명이다. 정규멤버와 용병을 합친 운영 단위로 보며 프론트, 서버 action, DB RPC/trigger가 모두 차단한다.
 7. 팀 가입은 팀장의 직접 추가가 아니라 pending 팀 초대 발송 후 대상자가 수락하는 흐름이다. 팀 정원 10명 도달 시 같은 서버 transaction에서 남은 pending 팀 가입 초대를 `expired`로 만료 처리한다. 정원 도달 뒤 새 팀 가입 초대 발송도 막는다.
-8. 경기 만들기에서 팀전은 내 팀이 있는 사용자만 만들 수 있다. A사이드는 내 소속 팀만 선택하고, B사이드는 상대 팀 검색/초대로만 선택한다.
+8. 매칭 만들기에서 팀전은 내 팀이 있는 사용자만 만들 수 있다. A사이드는 내 소속 팀만 선택하고, B사이드는 상대 팀 검색/초대로만 선택한다.
 9. 기존 팀에 새 멤버를 넣는 것은 `/api/teams/sync-team`의 일반 팀 저장 payload로 허용하지 않는다. 새 가입은 `rankball_invite_team_member`와 `rankball_respond_team_invitation` 수락 경로만 쓴다.
 10. `/api/profile/me` 초기 부트스트랩은 현재 사용자 소속 팀뿐 아니라 관련 pending 팀 초대와 초대 대상 팀 정보를 함께 싣는다. 전체 state 로드 전에도 팀 초대 수락/거절 UI가 빈 상태로 보이면 안 된다.
 11. `/app/teams/:teamId` 직접 진입한 주장 화면은 팀 관리 후보와 pending 팀 초대 상태를 위해 팀 디렉터리를 보강 로드하고, 디렉터리 응답의 `teamInvitations`를 기존 state에 병합해야 한다.
@@ -2246,3 +2247,10 @@ flowchart TD
 - 현 DB/서버 저장 경로는 사이드장을 첫 출전자로 보고 검증한다.
 - 사이드장을 비출전 대표로 분리하려면 별도 `sideLeaderId` 원본을 먼저 설계해야 한다.
 - 그 전까지 UI는 사이드장을 후보/해제 상태로 내리지 않는다.
+## 2026-07-07 경기/진행 메뉴 범위
+
+- `방만들기` 진입은 사전 매칭방을 만든다. 화면 문구는 `매칭 만들기`로 쓴다.
+- `기록하기` 진입은 이미 끝난 경기를 기록하는 흐름이다. 화면 문구는 `경기 기록하기`로 쓴다.
+- 경기 메뉴는 경기 시작 이후부터 이의신청 종료 전까지의 내 경기만 보여준다.
+- 경기 메뉴는 `locked`, `checkin` 같은 경기 시작 전 방과 공개 모집/비공개 초대 모집방을 직접 목록에 붙이지 않는다.
+- 진행 메뉴는 기록/점수 처리 화면이다. 같은 방 모달을 열 수 있고, `match_record`는 여기서 기록 확인 흐름으로 다룬다.

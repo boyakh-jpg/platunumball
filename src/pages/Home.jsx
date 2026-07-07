@@ -533,9 +533,14 @@ export default function Home({ app }) {
           detailLimit={SEARCH_DETAIL_LIMIT}
           fieldClassName="home-search-box"
         />
-        <Link to="/app/create" className="home-search-create">
-          <Button className="home-search-create-button"><PlusCircle size={18} /> 경기 만들기</Button>
-        </Link>
+        <div className="home-search-actions">
+          <Link to="/app/create" className="home-search-create">
+            <Button className="home-search-create-button"><PlusCircle size={18} /> 매칭 만들기</Button>
+          </Link>
+          <Link to="/app/create?intent=record" className="home-search-create">
+            <Button className="home-search-create-button"><ClipboardCheck size={18} /> 경기 기록하기</Button>
+          </Link>
+        </div>
       </Card>
 
       <div className="page-stack home-left-rail">

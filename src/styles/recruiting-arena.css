@@ -109,6 +109,16 @@
   min-height: 48px;
 }
 
+.arena-hero-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.arena-hero-actions a {
+  width: 100%;
+}
+
 .arena-queue-controls {
   display: grid;
   gap: 12px;
@@ -2771,6 +2781,15 @@ button.arena-room-player-slot {
   color: var(--muted);
   font-size: 0.82rem;
   font-weight: 850;
+}
+
+.arena-match-source-record-board {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--ui-room-panel-border, var(--line));
+  border-radius: var(--radius);
+  background: var(--ui-room-panel-bg, rgba(255, 255, 255, 0.05));
+  padding: 14px;
 }
 
 .arena-source-record-summary {

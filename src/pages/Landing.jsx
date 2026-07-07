@@ -39,9 +39,14 @@ export default function Landing({ state }) {
           </h1>
           <Badge tone="green">Season Zero</Badge>
           <div className="landing-actions">
-            <Link to="/app/create">
+            <Link to="/app/create" className="landing-create-action">
               <Button>
-                경기 만들기 <ArrowRight size={18} />
+                매칭 만들기 <ArrowRight size={18} />
+              </Button>
+            </Link>
+            <Link to="/app/create?intent=record" className="landing-create-action">
+              <Button>
+                경기 기록하기 <ClipboardCheck size={18} />
               </Button>
             </Link>
             <Link to="/app">

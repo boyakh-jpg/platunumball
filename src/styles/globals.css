@@ -3238,6 +3238,16 @@ input[type="color"] {
   gap: 12px;
 }
 
+.landing-actions .landing-create-action {
+  display: inline-flex;
+  width: 168px;
+  max-width: 100%;
+}
+
+.landing-actions .landing-create-action .button {
+  width: 100%;
+}
+
 .match-room {
   gap: 22px;
 }
@@ -6086,6 +6096,12 @@ html[data-theme="light"] .search-picker-result-row.selected {
   font-size: 1.25rem;
 }
 
+.season-rule-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
 .season-rule-board .button,
 .season-rule-board a {
   width: 100%;
@@ -6244,11 +6260,19 @@ html[data-theme="light"] .search-picker-result-row.selected {
   margin-top: 4px;
 }
 
+.rivalry-challenge-actions {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
 .rivalry-challenge-link {
   display: inline-flex;
-  width: max-content;
+  width: 100%;
   max-width: 100%;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   color: var(--green);
   font-size: 0.82rem;
@@ -14574,13 +14598,20 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
 
 .rank-home .home-search-create {
   display: inline-flex;
-  width: max-content;
+  width: 100%;
   max-width: 100%;
   text-decoration: none;
 }
 
+.rank-home .home-search-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
 .rank-home .home-search-create-button {
   min-height: 44px;
+  width: 100%;
   white-space: nowrap;
 }
 
@@ -14705,8 +14736,15 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
   }
 
   .rank-home .home-search-create,
+  .rank-home .home-search-actions,
   .rank-home .home-search-create-button {
     width: 100%;
+  }
+
+  .rank-home .home-search-actions,
+  .season-rule-actions,
+  .rivalry-challenge-actions {
+    grid-template-columns: 1fr;
   }
 
   .rank-home .rank-summary-grid,

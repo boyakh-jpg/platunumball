@@ -1,6 +1,6 @@
 import { Component, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, PlusCircle, ShieldAlert, Swords, X } from "lucide-react";
+import { CalendarDays, ClipboardCheck, ChevronLeft, ChevronRight, PlusCircle, ShieldAlert, X } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Button from "../components/common/Button.jsx";
@@ -37,7 +37,7 @@ const VIEWS = [
     id: "active",
     code: "MY",
     title: "내 일정",
-    desc: "전체 상태",
+    desc: "시작 후 경기",
     icon: CalendarDays,
   },
   {
@@ -47,22 +47,8 @@ const VIEWS = [
     desc: "내 일정 중 액션",
     icon: ShieldAlert,
   },
-  {
-    id: "scheduled",
-    code: "SOON",
-    title: "예정",
-    desc: "내 일정 중 예정",
-    icon: Swords,
-  },
-  {
-    id: "closed",
-    code: "CLOSED",
-    title: "닫힘",
-    desc: "내 일정 중 닫힘",
-    icon: CheckCircle2,
-  },
 ];
-const CHILD_VIEW_IDS = ["todo", "scheduled", "closed"];
+const MATCH_MENU_PHASES = new Set(["live", "postgame", "dispute"]);
 const SCHEDULE_BRANCH_FILTERS = [
   { id: "all", label: "전체" },
   { id: "public", label: "공개 모집" },
@@ -343,13 +329,9 @@ function shouldShowMatchForView(match, view, userId, options = {}) {
   if (isPersonalRecordMatch(match) || isMatchRecordMatch(match)) return false;
   const closedNotice = isMatchClosedNotice(match);
   const phase = getMatchRoomPhase(match).phase;
-  if (view.id === "active") {
-    return CHILD_VIEW_IDS.some((viewId) => shouldShowMatchForView(match, { id: viewId }, userId, options));
-  }
-  if (view.id === "closed") return closedNotice;
+  if (view.id === "active") return MATCH_MENU_PHASES.has(phase) && !closedNotice;
   if (closedNotice) return false;
-  if (view.id === "scheduled") return ["locked", "checkin"].includes(phase) && !userNeedsMatchAction(match, userId);
-  if (view.id === "todo") return userNeedsMatchAction(match, userId);
+  if (view.id === "todo") return MATCH_MENU_PHASES.has(phase) && userNeedsMatchAction(match, userId);
   return false;
 }
 
@@ -421,9 +403,8 @@ function matchesScheduleBranch(item = {}, type = "match", branchFilter = "all") 
   return true;
 }
 
-function getRecruitingRoomsForView(posts = [], view) {
-  if (!["active", "scheduled"].includes(view.id)) return [];
-  return posts.filter((post) => view.id === "active" || !isInstantScheduleRoom(post));
+function getRecruitingRoomsForView() {
+  return [];
 }
 
 function getScheduleItemsForView(matches = [], recruitingPosts = [], view, userId, hasDateFilter, options = {}) {
@@ -865,7 +846,6 @@ export default function Matches({ app }) {
   const userById = useMemo(() => Object.fromEntries(app.state.users.map((user) => [user.id, user])), [app.state.users]);
   const matchesById = useMemo(() => Object.fromEntries(app.state.matches.map((match) => [match.id, match])), [app.state.matches]);
   const requestedMatchDetailsRef = useRef(new Set());
-  const scheduleLoadRequestedRef = useRef("");
   const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
   const courtByName = useMemo(() => Object.fromEntries(registeredCourts.map((court) => [court.name, court])), [registeredCourts]);
   const myTeamIds = useMemo(
@@ -994,32 +974,10 @@ export default function Matches({ app }) {
     return baseFilteredMatches.filter((match) => !dateFilter || getMatchDate(match) === dateFilter);
   }, [baseFilteredMatches, dateFilter]);
 
-  const matchPagination = app.matchPagination ?? { loading: false, exhausted: true, error: "", recruitingScheduleChecked: false, recruitingScheduleLoading: false, recruitingSchedulePostIds: [] };
-  useEffect(() => {
-    scheduleLoadRequestedRef.current = "";
-  }, [app.currentUser.id]);
-  useEffect(() => {
-    if (!app.remoteReady || !app.currentUser.id) return;
-    if (matchPagination.recruitingScheduleChecked || matchPagination.recruitingScheduleLoading) return;
-    if (scheduleLoadRequestedRef.current === app.currentUser.id) return;
-    scheduleLoadRequestedRef.current = app.currentUser.id;
-    const request = app.actions.loadMatchRecruitingSchedule?.();
-    if (!request?.then) {
-      if (!request) scheduleLoadRequestedRef.current = "";
-      return;
-    }
-    request.then((count) => {
-      if (count === false) scheduleLoadRequestedRef.current = "";
-    }).catch(() => {
-      scheduleLoadRequestedRef.current = "";
-    });
-  }, [app.actions, app.currentUser.id, app.remoteReady, matchPagination.recruitingScheduleChecked, matchPagination.recruitingScheduleLoading]);
+  const matchPagination = app.matchPagination ?? { loading: false, exhausted: true, error: "" };
   const matchPageRecruitingPosts = useMemo(() => {
-    if (!matchPagination.recruitingScheduleChecked) return [];
-    const scheduleIds = new Set(matchPagination.recruitingSchedulePostIds ?? []);
-    if (!scheduleIds.size) return [];
-    return (app.state.recruitingPosts ?? []).filter((post) => scheduleIds.has(post.id));
-  }, [app.state.recruitingPosts, matchPagination.recruitingScheduleChecked, matchPagination.recruitingSchedulePostIds]);
+    return [];
+  }, []);
 
   const calendarMatches = useMemo(() => {
     const recruitingRooms = [...matchPageRecruitingPosts]
@@ -1081,16 +1039,14 @@ export default function Matches({ app }) {
   );
   const activeCount = viewButtonCounts.active ?? 0;
   const todoCount = viewButtonCounts.todo ?? 0;
-  const scheduledCount = viewButtonCounts.scheduled ?? 0;
   const getViewButtonCount = (view) => viewButtonCounts[view.id] ?? 0;
-  const scheduleLoading = app.remoteReady === false || !matchPagination.recruitingScheduleChecked || matchPagination.recruitingScheduleLoading;
+  const scheduleLoading = app.remoteReady === false || matchPagination.loading;
   const displayScheduleItems = scheduleLoading ? [] : visibleScheduleItems;
   const scheduleCountLabel = scheduleLoading
     ? "내 일정 확인 중"
     : `내 일정 ${visibleScheduleItems.length}개 중 ${displayScheduleItems.length}개 표시`;
   const displayActiveCount = scheduleLoading ? "..." : activeCount;
   const displayTodoCount = scheduleLoading ? "..." : todoCount;
-  const displayScheduledCount = scheduleLoading ? "..." : scheduledCount;
   const getDisplayViewButtonCount = (view) => (scheduleLoading ? "..." : getViewButtonCount(view));
   const saveTournamentSchedule = (event, tournamentId, matchId) => {
     event.preventDefault();
@@ -1113,11 +1069,15 @@ export default function Matches({ app }) {
           <div className="om-match-stats">
             <span><strong>{displayActiveCount}</strong>MY</span>
             <span><strong>{displayTodoCount}</strong>ACTION</span>
-            <span><strong>{displayScheduledCount}</strong>SOON</span>
           </div>
-          <Link to="/app/create">
-            <Button className="om-match-create"><PlusCircle size={18} /> 경기 만들기</Button>
-          </Link>
+          <div className="om-match-actions">
+            <Link to="/app/create">
+              <Button className="om-match-create"><PlusCircle size={18} /> 매칭 만들기</Button>
+            </Link>
+            <Link to="/app/create?intent=record">
+              <Button className="om-match-create"><ClipboardCheck size={18} /> 경기 기록하기</Button>
+            </Link>
+          </div>
         </div>
       </section>
 

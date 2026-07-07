@@ -614,7 +614,7 @@ RankBall 다크 모드는 이 팔레트를 기본 CSS 색상 표준으로 쓴다
 - 모집방 목록과 결과 승인 대기 목록은 홈에서 표시하지 않음.
 - 카드 그라데이션 혼자 튀지 않게 통일.
 - 랭킹/모드별 티어는 2x2 기준으로 정렬.
-- 홈 `경기 만들기` CTA는 검색 패널 오른쪽에 둔다. 랭킹/경기/팀/매칭 중복 빠른 링크는 검색 패널 옆에 두지 않는다.
+- 홈 `매칭 만들기`/`경기 기록하기` CTA는 검색 패널 오른쪽에 같은 크기로 둔다. 랭킹/경기/팀/매칭 중복 빠른 링크는 검색 패널 옆에 두지 않는다.
 - 홈 Action Queue의 방 초대 row는 `수락`/`거절`/`보기`를 같은 row 안에 둔다. 모바일에서는 버튼을 줄바꿈해 row 밖으로 넘기지 않는다.
 - 검색 입력은 공용 `SearchPicker`를 쓴다. 입력 즉시 아래에 결과를 띄우고, 화면 목적에 맞는 대상만 검색한다.
 - 방만들기 심판 초대는 native select가 아니라 공용 `SearchPicker`를 쓰고, 심판 자격이 있는 후보만 검색한다.
@@ -952,7 +952,7 @@ UI 수정 전:
 2. Mobile home keeps the hero first and places search directly below the hero before action queue.
 3. Desktop search results open as a dropdown so the top bar does not push the hero down.
 4. Home search uses the outer search field border only; the text input itself does not draw a second inner border.
-5. Home search panel uses one primary `경기 만들기` CTA on the right side; duplicate quick links like ranking, matches, teams, and recruiting are not shown beside search.
+5. Home search panel uses same-size `매칭 만들기` and `경기 기록하기` CTAs on the right side; duplicate quick links like ranking, matches, teams, and recruiting are not shown beside search.
 
 ## 2026-07-01 Mobile hero bleed
 
@@ -1032,3 +1032,9 @@ UI 수정 전:
 1. 경기기록방 팀전 로스터 패널은 사이드장을 출전 필수 선수로 표시한다.
 2. 사이드장 row의 `후보`/`해제` 액션은 비활성화한다.
 3. 선수 확정 저장 전에도 사이드장은 출전 명단 첫 번째로 유지한다.
+## 2026-07-07 매칭/기록 CTA와 기록방 모달
+
+1. `방만들기` CTA가 보이는 곳에는 `경기 기록하기` CTA를 같은 크기로 나란히 둔다.
+2. 두 CTA는 별도 그룹 테두리 없이 같은 버튼 계층으로 배치한다.
+3. 기존 `경기 만들기` 문구는 `매칭 만들기`로 정리한다.
+4. 기록방 모달은 기록판을 슬롯보다 위에 둔다. 슬롯 구조는 그대로 유지한다.

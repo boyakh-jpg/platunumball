@@ -8,6 +8,7 @@ import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
+import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { PLAYER_STAT_FIELDS } from "../lib/constants.js";
 import { getUserHashtag } from "../lib/handles.js";
 import {
@@ -30,6 +31,8 @@ import {
   isEligibleReferee,
   isMatchReferee,
 } from "../lib/matchUtils.js";
+import { getMatchRoomPost } from "./Matches.jsx";
+import { RecruitingRoomModal } from "./Recruiting.jsx";
 
 const sideLabels = {
   teamA: "A사이드",
@@ -44,6 +47,7 @@ const statusMeta = {
 };
 
 const activeStatuses = new Set(["agreed", "approval", "disputed"]);
+const activeProgressPhases = new Set(["live", "postgame", "dispute"]);
 
 function getPlayerSearchHashtag(user = {}) {
   return getUserHashtag(user);
@@ -132,7 +136,7 @@ function getPlayerMetaLabel(user = null, rosterLabel = "") {
 
 function canAccessActiveMatch(match, user, state) {
   if (!activeStatuses.has(match.status)) return false;
-  if (getMatchRoomPhase(match).phase === "record") return false;
+  if (!activeProgressPhases.has(getMatchRoomPhase(match).phase)) return false;
   const sourcePost = match?.recruitingPostId
     ? state.recruitingPosts?.find((post) => post.id === match.recruitingPostId)
     : null;
@@ -175,6 +179,7 @@ export default function Recorder({ app }) {
   const [recorderLoading, setRecorderLoading] = useState(false);
   const [saveFeedback, setSaveFeedback] = useState("");
   const [refreshingMatchDetail, setRefreshingMatchDetail] = useState(false);
+  const [selectedRoomMatchId, setSelectedRoomMatchId] = useState("");
   const recorderLoadRef = useRef("");
   const selectedDetailLoadRef = useRef("");
 
@@ -239,6 +244,14 @@ export default function Recorder({ app }) {
   const selectedMatchSourcePost = selectedMatch?.recruitingPostId
     ? app.state.recruitingPosts?.find((post) => post.id === selectedMatch.recruitingPostId)
     : null;
+  const selectedRoomMatch = selectedRoomMatchId
+    ? matches.find((match) => match.id === selectedRoomMatchId) ?? null
+    : null;
+  const selectedRoomPost = useMemo(
+    () => (selectedRoomMatch ? getMatchRoomPost(selectedRoomMatch, app.state) : null),
+    [app.state, selectedRoomMatch],
+  );
+  useBodyScrollLock(Boolean(selectedRoomPost));
   const hostPlayerId = selectedMatch ? getMatchHostPlayerId(selectedMatch, selectedMatchSourcePost) : "";
   const currentUserIsHost = Boolean(hostPlayerId && hostPlayerId === user.id);
   const selectedMatchHasReferee = Boolean(selectedMatch?.refereeId);
@@ -469,6 +482,7 @@ export default function Recorder({ app }) {
   const status = statusMeta[selectedMatch.status] ?? { label: selectedMatch.status, tone: "blue" };
 
   return (
+    <>
     <div className="page-stack recorder-page">
       <header className="page-header recorder-header">
         <div>
@@ -476,7 +490,7 @@ export default function Recorder({ app }) {
           <h1>진행 경기</h1>
           <p>활성 경기만 모아 기록 입력, 이의제기, 결과 승인을 한 화면에서 처리합니다.</p>
         </div>
-        <Link to={`/app/matches?match=${selectedMatch.id}`} className="button button-secondary button-md">방 보기</Link>
+        <Button type="button" variant="secondary" onClick={() => setSelectedRoomMatchId(selectedMatch.id)}>방 보기</Button>
       </header>
 
       <div className="recorder-layout">
@@ -763,5 +777,15 @@ export default function Recorder({ app }) {
         </div>
       </div>
     </div>
+    {selectedRoomMatch && selectedRoomPost ? (
+      <RecruitingRoomModal
+        app={app}
+        post={selectedRoomPost}
+        sourceMatch={selectedRoomMatch}
+        skipInitialDetailLoad
+        onClose={() => setSelectedRoomMatchId("")}
+      />
+    ) : null}
+    </>
   );
 }

@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   CalendarDays,
+  ClipboardCheck,
   Clock3,
   Copy,
   Crown,
@@ -3024,6 +3025,32 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
           sourceMatch?.result &&
           ["postgame", "dispute", "record"].includes(sourceMatchPhase?.phase),
         );
+        const renderSourceMatchRecordBoard = () => {
+          if (!matchRoom || !sourceMatchIsRecordRoom) return null;
+          const canShowRecordEditor = sourceMatchAction.disputed || canSubmitSourceMatchLiveResult || canSubmitSourceMatchPostgameResult || canSubmitSourceMatchRecorderResult;
+          return (
+            <div className="arena-match-source-actions arena-match-source-record-board">
+              <strong>경기 기록판</strong>
+              <span>기록방은 점수와 선수 기록을 먼저 확인합니다.</span>
+              {showSourceMatchRecordSummary ? (
+                <SourceMatchRecordSummary match={sourceMatch} userById={userById} />
+              ) : null}
+              {canShowRecordEditor ? (
+                <SourceMatchDisputeEditor
+                  match={sourceMatch}
+                  userById={userById}
+                  canReview={sourceMatchAction.disputed ? canReviewSourceMatch : (canSubmitSourceMatchLiveResult || canSubmitSourceMatchPostgameResult)}
+                  canEditSideScore={canEditSourceMatchSideScore}
+                  getEditableStatFields={getEditableSourceMatchStatFields}
+                  submitLabel={canSubmitSourceMatchRecorderResult ? "후보 기록 제출" : ""}
+                  onSave={(draft) => app.actions.submitMatchResult(sourceMatch.id, draft)}
+                  onResolve={sourceMatchAction.disputed ? (draft) => app.actions.resumeMatchApproval(sourceMatch.id, draft) : undefined}
+                  onVoid={sourceMatchAction.disputed ? () => app.actions.voidMatch(sourceMatch.id) : undefined}
+                />
+              ) : null}
+            </div>
+          );
+        };
         const canMoveMatchSides = Boolean(canManageMatchCheckin && selectedPost.hostJoinMode !== "team");
         const canEditSourceRoomRules = Boolean(
           !sourceRoomReadOnly &&
@@ -3300,6 +3327,8 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                   <h2>{roomDisplayTitle}</h2>
                   <p><MapPin size={16} /><CourtHoverCard court={courtByName[selectedPost.court]} courtName={selectedPost.court}>{selectedPost.court}</CourtHoverCard> · {getRecruitingSchedule(selectedPost)}</p>
                 </div>
+
+                {renderSourceMatchRecordBoard()}
 
                 <div className="arena-lobby-versus-stage">
                   <div className="arena-lobby-team-panel team-a">
@@ -3698,7 +3727,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                     {sourceMatchAction.disputed && sourceMatch?.disputes?.[0]?.reason ? (
                       <span>최근 이의: {sourceMatch.disputes[0].reason}</span>
                     ) : null}
-                    {showSourceMatchRecordSummary ? (
+                    {!sourceMatchIsRecordRoom && showSourceMatchRecordSummary ? (
                       <SourceMatchRecordSummary match={sourceMatch} userById={userById} />
                     ) : null}
                     {!sourceMatchAction.disputed && sourceMatchApprovalOpen ? (
@@ -3744,7 +3773,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                         </div>
                       </form>
                     ) : null}
-                    {sourceMatchAction.disputed ? (
+                    {!sourceMatchIsRecordRoom && sourceMatchAction.disputed ? (
                       <SourceMatchDisputeEditor
                         match={sourceMatch}
                         userById={userById}
@@ -3754,7 +3783,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                         onVoid={() => app.actions.voidMatch(sourceMatch.id)}
                       />
                     ) : null}
-                    {!sourceMatchAction.disputed && (canSubmitSourceMatchLiveResult || canSubmitSourceMatchPostgameResult || canSubmitSourceMatchRecorderResult) ? (
+                    {!sourceMatchIsRecordRoom && !sourceMatchAction.disputed && (canSubmitSourceMatchLiveResult || canSubmitSourceMatchPostgameResult || canSubmitSourceMatchRecorderResult) ? (
                       <SourceMatchDisputeEditor
                         match={sourceMatch}
                         userById={userById}
@@ -4357,11 +4386,18 @@ function RecruitingReady({ app }) {
             <span><strong>{rankedCount}</strong>RANKED</span>
             <span><strong>{friendlyCount}</strong>FRIENDLY</span>
           </div>
-          <Link to="/app/create">
-            <Button type="button" className="arena-hero-cta">
-              <PlusCircle size={18} /> 경기방 만들기
-            </Button>
-          </Link>
+          <div className="arena-hero-actions">
+            <Link to="/app/create">
+              <Button type="button" className="arena-hero-cta">
+                <PlusCircle size={18} /> 매칭 만들기
+              </Button>
+            </Link>
+            <Link to="/app/create?intent=record">
+              <Button type="button" className="arena-hero-cta">
+                <ClipboardCheck size={18} /> 경기 기록하기
+              </Button>
+            </Link>
+          </div>
         </div>
       </section>
 
