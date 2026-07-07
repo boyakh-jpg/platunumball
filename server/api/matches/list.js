@@ -1,4 +1,5 @@
 import {
+  fetchCourtRowsByIds,
   flattenIdValues,
   firstRowBy as firstBy,
   getAdminLevel,
@@ -52,21 +53,6 @@ const RECENT_COMPLETED_FEED_ROW_MAX_LIMIT = 80;
 const MATCH_CANDIDATE_MIN_LIMIT = 80;
 const MATCH_CANDIDATE_MAX_LIMIT = 500;
 const MATCH_CANDIDATE_LIMIT_FACTOR = 10;
-
-async function fetchCourtRowsByIds(supabase, courtIds = []) {
-  const ids = unique(courtIds);
-  if (!ids.length) return { data: [], error: null };
-  const [legacyResult, approvedResult] = await Promise.all([
-    supabase.from("courts").select(COURT_COLUMNS).in("id", ids),
-    supabase.from("approved_courts").select(COURT_COLUMNS).in("id", ids).or("status.is.null,status.eq.active"),
-  ]);
-  if (legacyResult.error && !isMissingTable(legacyResult.error, "courts")) return legacyResult;
-  if (approvedResult.error) return approvedResult;
-  const rowsById = new Map();
-  (approvedResult.data ?? []).forEach((row) => rowsById.set(row.id, row));
-  (legacyResult.data ?? []).forEach((row) => rowsById.set(row.id, row));
-  return { data: [...rowsById.values()], error: null };
-}
 
 function getFeedOffsetCursor(value = "") {
   const text = String(value ?? "");
@@ -1014,7 +1000,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
       cardScope.teamIds.length
         ? context.supabase.from("teams").select(TEAM_COLUMNS).in("id", cardScope.teamIds).is("deleted_at", null)
         : Promise.resolve({ data: [], error: null }),
-      fetchCourtRowsByIds(context.supabase, cardScope.courtIds),
+      fetchCourtRowsByIds(context.supabase, cardScope.courtIds, COURT_COLUMNS),
     ]));
     if (teamError) throw teamError;
     if (courtError) throw courtError;
@@ -1102,7 +1088,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
     teamIds.length
       ? timeStep(debugTiming, "matchTeamsMs", () => context.supabase.from("teams").select(TEAM_COLUMNS).in("id", teamIds).is("deleted_at", null))
       : Promise.resolve({ data: [], error: null }),
-    timeStep(debugTiming, "matchCourtsMs", () => fetchCourtRowsByIds(context.supabase, courtIds)),
+    timeStep(debugTiming, "matchCourtsMs", () => fetchCourtRowsByIds(context.supabase, courtIds, COURT_COLUMNS)),
     profileIdsForLookup.length
       ? timeStep(debugTiming, "matchProfilesMs", () => context.supabase.from("profiles").select(PROFILE_CARD_COLUMNS).in("id", profileIdsForLookup))
       : Promise.resolve({ data: [], error: null }),

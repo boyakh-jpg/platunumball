@@ -261,6 +261,21 @@ export function toNotificationRows(notifications = [], profileId = "", options =
   }).filter((row) => row?.id);
 }
 
+export async function fetchCourtRowsByIds(supabase, courtIds = [], columns = "*") {
+  const ids = uniqueStringIds(courtIds);
+  if (!ids.length) return { data: [], error: null };
+  const [legacyResult, approvedResult] = await Promise.all([
+    supabase.from("courts").select(columns).in("id", ids),
+    supabase.from("approved_courts").select(columns).in("id", ids).or("status.is.null,status.eq.active"),
+  ]);
+  if (legacyResult.error && !isMissingTable(legacyResult.error, "courts")) return legacyResult;
+  if (approvedResult.error) return approvedResult;
+  const rowsById = new Map();
+  (approvedResult.data ?? []).forEach((row) => rowsById.set(row.id, row));
+  (legacyResult.data ?? []).forEach((row) => rowsById.set(row.id, row));
+  return { data: [...rowsById.values()], error: null };
+}
+
 function getEnvList(name) {
   return String(process.env[name] || "")
     .split(",")

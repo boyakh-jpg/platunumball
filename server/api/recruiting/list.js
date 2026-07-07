@@ -1,4 +1,5 @@
 import {
+  fetchCourtRowsByIds,
   flattenIdValues,
   firstRowBy as firstBy,
   getAdminLevel,
@@ -178,21 +179,6 @@ async function fetchRoomChatMessagesByPostIds(client, postIds = [], limitPerRoom
     if (messages.length) messagesByPost.set(postId, messages);
   });
   return messagesByPost;
-}
-
-async function fetchCourtRowsByIds(supabase, courtIds = []) {
-  const ids = uniqueIds(courtIds);
-  if (!ids.length) return { data: [], error: null };
-  const [legacyResult, approvedResult] = await Promise.all([
-    supabase.from("courts").select(COURT_COLUMNS).in("id", ids),
-    supabase.from("approved_courts").select(COURT_COLUMNS).in("id", ids).or("status.is.null,status.eq.active"),
-  ]);
-  if (legacyResult.error && !isMissingTable(legacyResult.error, "courts")) return legacyResult;
-  if (approvedResult.error) return approvedResult;
-  const rowsById = new Map();
-  (approvedResult.data ?? []).forEach((row) => rowsById.set(row.id, row));
-  (legacyResult.data ?? []).forEach((row) => rowsById.set(row.id, row));
-  return { data: [...rowsById.values()], error: null };
 }
 
 function normalizeRegionKey(value = "") {
@@ -1655,7 +1641,7 @@ export async function loadCompactRecruitingList(context, {
       profileIdsForLookup.length
         ? context.supabase.from("profiles").select(PROFILE_PUBLIC_COLUMNS).in("id", profileIdsForLookup)
         : Promise.resolve({ data: [], error: null }),
-      fetchCourtRowsByIds(context.supabase, scope.courtIds),
+      fetchCourtRowsByIds(context.supabase, scope.courtIds, COURT_COLUMNS),
     ]);
     if (teamError) throw teamError;
     if (teamMemberError) throw teamMemberError;
@@ -1753,7 +1739,7 @@ export async function loadCompactRecruitingList(context, {
     profileIdsForLookup.length
       ? context.supabase.from("profiles").select(PROFILE_PUBLIC_COLUMNS).in("id", profileIdsForLookup)
       : Promise.resolve({ data: [], error: null }),
-    fetchCourtRowsByIds(context.supabase, scope.courtIds),
+    fetchCourtRowsByIds(context.supabase, scope.courtIds, COURT_COLUMNS),
   ]);
   if (teamError) throw teamError;
   if (teamMemberError) throw teamMemberError;
