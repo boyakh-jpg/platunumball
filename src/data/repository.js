@@ -3893,6 +3893,15 @@ function createSoloRecordMatch(state, draft = {}) {
 export function createMatch(state, draft) {
   if (draft?.recordType === RECORD_TYPES.personalRecord) return createSoloRecordMatch(state, draft);
   const isMatchRecord = draft?.recordType === RECORD_TYPES.matchRecord;
+  if (!isMatchRecord) {
+    return {
+      ...state,
+      notifications: [
+        { id: makeId("n"), title: "경기 생성 불가", body: "일반 방은 모집/초대방 생성 경로로만 만듭니다.", tone: "orange" },
+        ...state.notifications,
+      ],
+    };
+  }
   const disciplineBlock = getDisciplineBlockedState(state, "경기방 생성");
   if (disciplineBlock) return disciplineBlock;
   const hostTrustBlock = getHostTrustBlockNotification(state, { ...draft, visibility: "private" });
@@ -6770,7 +6779,7 @@ export function createRecruitingPost(state, draft) {
   if (disciplineBlock) return disciplineBlock;
   const hostJoinMode = draft.hostJoinMode === "player" ? "player" : "team";
   const visibility = draft.visibility === "private" ? "private" : "public";
-  const teamOnly = visibility === "public" && hostJoinMode === "team";
+  const teamOnly = hostJoinMode === "team";
   const postType = teamOnly ? "need_team" : hostJoinMode === "team" ? "need_player" : "find_team";
   const hostTrustBlock = getHostTrustBlockNotification(state, { ...draft, visibility });
   if (hostTrustBlock) return { ...state, notifications: [hostTrustBlock, ...state.notifications] };

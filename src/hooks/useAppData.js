@@ -306,12 +306,12 @@ function preserveOptimisticMatchAttendance(incoming = {}, existing = null) {
   };
 }
 
-function mergeRecruitingPostsById(current = [], incoming = []) {
+function mergeRecruitingPostsById(current = [], incoming = [], forceIds = new Set()) {
   const merged = new Map((current ?? []).filter((item) => item?.id).map((item) => [item.id, item]));
   (incoming ?? []).forEach((item) => {
     if (!item?.id) return;
     const existing = merged.get(item.id);
-    if (!shouldUseIncomingRecruitingPostRow(item, existing)) return;
+    if (!forceIds.has(item.id) && !shouldUseIncomingRecruitingPostRow(item, existing)) return;
     const preserveKeys = Object.prototype.hasOwnProperty.call(item, "applicants") && item.listCardOnly !== true ? [] : ["applicants"];
     const next = preserveExistingWhenEmpty(item, existing, preserveKeys);
     if (item.listCardOnly !== true) {
@@ -462,24 +462,26 @@ function mergeRemoteMatchPage(state, remoteState = {}, options = {}) {
   const nextPosts = remoteState.recruitingPosts ?? [];
   if (!nextMatches.length && !nextPosts.length) return state;
   const forceMatchIds = options.forceMatchIds instanceof Set ? options.forceMatchIds : new Set();
+  const forceRecruitingPostIds = options.forceRecruitingPostIds instanceof Set ? options.forceRecruitingPostIds : new Set();
   return {
     ...state,
     users: mergeRemoteById(state.users, remoteState.users),
     teams: mergeTeamsById(state.teams, remoteState.teams),
     matches: nextMatches.length ? sortMatchesByRemoteCursor(mergeMatchesById(state.matches, nextMatches, forceMatchIds)) : state.matches,
     tournaments: mergeRemoteById(state.tournaments, remoteState.tournaments),
-    recruitingPosts: nextPosts.length ? mergeRecruitingPostsById(state.recruitingPosts, nextPosts) : state.recruitingPosts,
+    recruitingPosts: nextPosts.length ? mergeRecruitingPostsById(state.recruitingPosts, nextPosts, forceRecruitingPostIds) : state.recruitingPosts,
   };
 }
 
-function mergeRemoteRecruitingPage(state, remoteState = {}) {
+function mergeRemoteRecruitingPage(state, remoteState = {}, options = {}) {
   const nextPosts = remoteState.recruitingPosts ?? [];
   if (!nextPosts.length) return state;
+  const forceRecruitingPostIds = options.forceRecruitingPostIds instanceof Set ? options.forceRecruitingPostIds : new Set();
   return {
     ...state,
     users: mergeRemoteById(state.users, remoteState.users),
     teams: mergeTeamsById(state.teams, remoteState.teams),
-    recruitingPosts: sortRecruitingByRemoteCursor(mergeRecruitingPostsById(state.recruitingPosts, nextPosts)),
+    recruitingPosts: sortRecruitingByRemoteCursor(mergeRecruitingPostsById(state.recruitingPosts, nextPosts, forceRecruitingPostIds)),
   };
 }
 
@@ -650,8 +652,12 @@ function mergeServerRoomResult(state, result = {}, options = {}) {
   const nextPost = result.post ?? null;
   const rawNextMatch = result.createdMatch ?? result.match ?? null;
   const remoteState = result.state ? normalizeServerState(result.state) : null;
+  const forcePostIds = new Set([nextPost?.id, ...(remoteState?.recruitingPosts ?? []).map((post) => post?.id)].filter(Boolean));
+  const forceMatchIds = new Set([rawNextMatch?.id, ...(remoteState?.matches ?? []).map((match) => match?.id)].filter(Boolean));
   const baseState = remoteState
-    ? (nextPost ? mergeRemoteRecruitingPage(state, remoteState) : mergeRemoteMatchPage(state, remoteState))
+    ? (nextPost
+      ? mergeRemoteRecruitingPage(state, remoteState, { forceRecruitingPostIds: forcePostIds })
+      : mergeRemoteMatchPage(state, remoteState, { forceMatchIds, forceRecruitingPostIds: forcePostIds }))
     : state;
   const existingMatch = rawNextMatch
     ? (baseState.matches ?? []).find((match) => match.id === rawNextMatch.id) ?? null
@@ -662,8 +668,8 @@ function mergeServerRoomResult(state, result = {}, options = {}) {
   if (!nextPost && !nextMatch) return baseState;
   return {
     ...baseState,
-    recruitingPosts: nextPost ? mergeRecruitingPostsById(baseState.recruitingPosts ?? [], [nextPost]) : baseState.recruitingPosts,
-    matches: nextMatch ? mergeMatchesById(baseState.matches ?? [], [nextMatch]) : baseState.matches,
+    recruitingPosts: nextPost ? mergeRecruitingPostsById(baseState.recruitingPosts ?? [], [nextPost], forcePostIds) : baseState.recruitingPosts,
+    matches: nextMatch ? mergeMatchesById(baseState.matches ?? [], [nextMatch], forceMatchIds) : baseState.matches,
   };
 }
 
@@ -1734,7 +1740,7 @@ export function useAppData(authUser = null, appLocation = null) {
           { allowWhenDisabled: true },
         );
         const remoteState = normalizeServerState(filterPendingRecruitingPosts(result?.state ?? {}, pendingRecruitingPostIdsRef.current, recentRecruitingMutationTimesRef.current));
-        setState((prev) => mergeRemoteMatchPage(prev, remoteState));
+        setState((prev) => mergeRemoteMatchPage(prev, remoteState, { forceRecruitingPostIds: new Set(getStateRecruitingPostIds(remoteState)) }));
         setMatchPagination((prev) => ({
           ...prev,
           recruitingScheduleLoading: false,
@@ -1891,7 +1897,7 @@ export function useAppData(authUser = null, appLocation = null) {
         const remoteState = normalizeServerState(filterPendingRecruitingPosts(rawRemoteState, pendingRecruitingPostIdsRef.current, recentRecruitingMutationTimesRef.current));
         const nextPosts = remoteState.recruitingPosts ?? [];
         if (latestRecruitingLoadMoreRequestRef.current !== requestKey) return false;
-        setState((prev) => mergeRemoteRecruitingPage(prev, remoteState));
+        setState((prev) => mergeRemoteRecruitingPage(prev, remoteState, { forceRecruitingPostIds: new Set(getStateRecruitingPostIds(remoteState)) }));
         const pageHasExhausted = typeof result?.page?.exhausted === "boolean";
         setRecruitingPagination({
           loading: false,
@@ -1957,7 +1963,7 @@ export function useAppData(authUser = null, appLocation = null) {
         const remoteState = normalizeServerState(filterPendingRecruitingPosts(rawRemoteState, pendingRecruitingPostIdsRef.current, recentRecruitingMutationTimesRef.current));
         const nextPosts = remoteState.recruitingPosts ?? [];
         if (latestRecruitingRegionRequestRef.current !== promiseKey) return false;
-        setState((prev) => mergeRemoteRecruitingPage(prev, remoteState));
+        setState((prev) => mergeRemoteRecruitingPage(prev, remoteState, { forceRecruitingPostIds: new Set(getStateRecruitingPostIds(remoteState)) }));
         const pageHasExhausted = typeof result?.page?.exhausted === "boolean";
         setRecruitingPagination({
           loading: false,
@@ -2005,7 +2011,7 @@ export function useAppData(authUser = null, appLocation = null) {
         );
         const remoteState = normalizeServerState(filterPendingRecruitingPosts(result?.state ?? {}, pendingRecruitingPostIdsRef.current, recentRecruitingMutationTimesRef.current));
         const nextPosts = remoteState.recruitingPosts ?? [];
-        setState((prev) => mergeRemoteRecruitingPage(prev, remoteState));
+        setState((prev) => mergeRemoteRecruitingPage(prev, remoteState, { forceRecruitingPostIds: new Set([safePostId]) }));
         setRecruitingPagination((prev) => ({
           ...prev,
           feedCounts: result?.page?.feedCounts ?? prev.feedCounts ?? null,
@@ -2048,7 +2054,7 @@ export function useAppData(authUser = null, appLocation = null) {
         );
         const remoteState = normalizeServerState(filterPendingRecruitingPosts(result?.state ?? {}, pendingRecruitingPostIdsRef.current, recentRecruitingMutationTimesRef.current));
         const nextPosts = remoteState.recruitingPosts ?? [];
-        setState((prev) => mergeRemoteRecruitingPage(prev, remoteState));
+        setState((prev) => mergeRemoteRecruitingPage(prev, remoteState, { forceRecruitingPostIds: new Set(getStateRecruitingPostIds(remoteState)) }));
         setRecruitingPagination((prev) => ({
           ...prev,
           feedCounts: result?.page?.feedCounts ?? prev.feedCounts ?? null,

@@ -239,7 +239,7 @@ async function attachMatchPlayerCountsToCards(client, matches = [], debugTiming 
     client.from("match_players").select("match_id,side,user_id").in("match_id", ids)
   ));
   if (error) throw error;
-  const countsByMatch = new Map();
+  const countsByMatch = new Map(ids.map((id) => [id, { teamA: new Set(), teamB: new Set() }]));
   (data ?? []).forEach((row) => {
     const matchId = row?.match_id;
     const side = row?.side;
@@ -252,7 +252,6 @@ async function attachMatchPlayerCountsToCards(client, matches = [], debugTiming 
   });
   return matches.map((match) => {
     const counts = countsByMatch.get(match?.id);
-    if (!counts) return match;
     return {
       ...match,
       teamA: { ...(match.teamA ?? {}), count: counts.teamA.size },
@@ -420,15 +419,10 @@ async function fetchRecentCompletedMatchFeedPage(client, profileId = "", hours =
     throw error;
   }
   const ids = unique((data ?? []).map((row) => row?.entity_id)).slice(0, cappedLimit);
-  const feedRows = await attachRoomFeedCards(client, data ?? [], "match");
-  const rows = feedRows.filter((row) => ids.includes(row?.entity_id));
-  const cards = uniqueFeedCards(rows, ids).map((card) => ({ ...card, recentCompleted: true }));
   return {
     ids,
-    cards,
-    source: cards.length === ids.length
-      ? "recent_completed_feed_card"
-      : (cards.length ? "recent_completed_feed_card_partial" : "recent_completed_feed"),
+    cards: [],
+    source: "recent_completed_feed",
   };
 }
 

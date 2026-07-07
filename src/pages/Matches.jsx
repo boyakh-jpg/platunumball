@@ -362,7 +362,10 @@ function shouldShowMatchInList(match, view, userId, hasDateFilter, options = {})
 function getMatchScheduleRelation(match = {}, userId = "") {
   if (!userId) return "";
   const ownerId = match.createdBy || getMatchHostPlayerId(match) || "";
-  return ownerId === userId ? "created" : "joined";
+  const feedRelations = Array.isArray(match.__feedRelations) ? match.__feedRelations : [];
+  if (ownerId === userId || feedRelations.includes("owner")) return "created";
+  if (isMatchRelatedToUser(match, userId) || feedRelations.some((relation) => ["participant", "referee"].includes(relation))) return "joined";
+  return "";
 }
 
 function getRecruitingScheduleRelation(post = {}, state = {}, userId = "", myTeamIds = []) {
@@ -395,7 +398,11 @@ function isScheduleTeamRoom(item = {}, type = "match") {
   if (type === "room") {
     return isTeamRecruitingRoom(item);
   }
-  return Boolean(item.teamA?.teamId || item.teamB?.teamId)
+  return item.hostJoinMode === "team"
+    || item.teamOnly === true
+    || item.rules?.hostJoinMode === "team"
+    || item.rules?.teamOnly === true
+    || Boolean(item.teamId || item.targetTeamId || item.teamA?.teamId || item.teamB?.teamId)
     || isMatchSideTeamParty(item, "teamA")
     || isMatchSideTeamParty(item, "teamB")
     || (item.parties ?? []).some((party) => isMatchPartyTeamParty(party));

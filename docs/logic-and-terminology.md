@@ -4,6 +4,9 @@
 
 - 팀전 방 생성 화면은 A/B 출전 명단을 고르지 않는다.
 - 팀전 방 생성 시 저장하는 host `playerIds`는 방장 대표 1명만 둔다.
+- 팀전 방은 공개/비공개 모두 `teamOnly=true`로 저장한다. 개인방과 팀방을 섞지 않는다.
+- `createMatch`는 `solo`와 `match_record` 기록 생성만 담당한다. 일반 사전방은 `createRecruitingPost`로만 만든다.
+- 모집방 create 서버 저장은 방장 A사이드, 팀전 대표 1명, 비공개 팀전 B대표 초대 1명, 생성 시 B로스터 미저장을 다시 검사한다.
 - 팀전/팀 파티 표시 라벨은 참가자 2명 이상 여부가 아니라 `hostJoinMode`, `teamOnly`, `teamId`, `targetTeamId`, entry `kind/joinMode/teamId` 기준으로 판단한다.
 - `isRecruitingPartyEntry`는 실제 파티 성립 조건이라 2명 이상 실제 참가/후보가 있을 때만 true로 둔다.
 - 출전/후보 명단 확정은 방모달의 사이드장/팀 소집 경로에서 처리한다.
@@ -50,6 +53,7 @@
 - `room_feed_cards.card_json`은 목록 캐시이며 실제 인원 원본이 아니다.
 - 경기 목록 카드의 A/B 인원 숫자는 가능하면 `match_players` 기준으로 다시 계산한다.
 - 모집 목록 카드의 A/B 인원 숫자는 가능하면 `recruiting_posts`/`recruiting_applications` 얇은 row 기준 `listCounts`로 다시 계산한다.
+- 모집 상세, 경기 메뉴 모집 일정, 내 모집 관계 목록, 서버 action 결과는 pending mutation 보호를 통과하면 같은 id의 기존 클라이언트 모집 row를 교체한다.
 - 목록 보정은 숫자만 갱신하고 상세 로스터/프로필은 방 상세 로드에서 가져온다.
 
 ## 2026-07-07 진행 메뉴 선택 경기 상세 기준

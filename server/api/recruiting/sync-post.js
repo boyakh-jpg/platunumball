@@ -642,6 +642,59 @@ function validateRecruitingPostShape(post = {}) {
   if (teamApplication) reject(400, "solo_room_team_party_not_allowed");
 }
 
+function getCreatePlayerInvitations(post = {}) {
+  const roomState = normalizeRoomState(post.roomState ?? post.room_state, post);
+  return toArray(roomState.invitations).filter((invitation) => (
+    invitation.role !== "referee" &&
+    (invitation.status ?? "pending") === "pending"
+  ));
+}
+
+function validateRecruitingCreateBranchShape(post = {}) {
+  const roomState = normalizeRoomState(post.roomState ?? post.room_state, post);
+  const visibility = post.visibility === "private" ? "private" : "public";
+  const hostJoinMode = getCanonicalHostJoinMode(post);
+  const hostSide = (post.hostSide ?? post.host_side ?? roomState.hostSide) === "teamB" ? "teamB" : "teamA";
+  const teamOnly = isTrue(post.teamOnly ?? post.team_only ?? roomState.teamOnly);
+  const hostTeamId = nullableText(post.teamId ?? post.team_id);
+  const targetTeamId = nullableText(post.targetTeamId ?? post.target_team_id);
+  const playerInvitations = getCreatePlayerInvitations(post);
+  const applications = toArray(post.applicants);
+  const hostPlayerIds = toArray(post.playerIds ?? post.player_ids);
+
+  if (hostSide !== "teamA") reject(400, "recruiting_host_side_must_be_team_a");
+
+  if (hostJoinMode === "team") {
+    if (!hostTeamId) reject(400, "team_room_requires_host_team");
+    if (!teamOnly) reject(400, "team_room_requires_team_only");
+    if (hostPlayerIds.length !== 1) reject(400, "team_room_requires_single_host_representative");
+    if (applications.length) reject(400, "team_room_create_cannot_preload_opponent_roster");
+    if (visibility === "private") {
+      const representativeInvites = playerInvitations.filter((invitation) => (
+        nullableText(invitation.teamId ?? invitation.team_id) === targetTeamId &&
+        (invitation.joinMode ?? invitation.join_mode) === "team" &&
+        (invitation.side ?? "teamB") === "teamB"
+      ));
+      if (!targetTeamId || targetTeamId === hostTeamId || representativeInvites.length !== 1 || playerInvitations.length !== 1) {
+        reject(400, "private_team_room_requires_one_team_representative_invite");
+      }
+    } else if (playerInvitations.length) {
+      reject(400, "public_team_room_cannot_have_player_invites");
+    }
+    return;
+  }
+
+  if (teamOnly || hostTeamId || targetTeamId || hostPlayerIds.length > 1) reject(400, "player_room_team_shape_not_allowed");
+  if (applications.some((application) => (
+    application.kind === "team" ||
+    application.joinMode === "team" ||
+    application.teamId ||
+    application.team_id ||
+    toArray(application.playerIds ?? application.player_ids).length > 1
+  ))) reject(400, "player_room_team_shape_not_allowed");
+  if (visibility === "public" && playerInvitations.length) reject(400, "public_player_room_cannot_have_player_invites");
+}
+
 function validateRecruitingCreateCourt(post = {}) {
   const courtId = nullableText(post.courtId ?? post.court_id ?? post.approvedCourtId ?? post.registeredCourtId);
   if (!courtId) reject(400, "missing_recruiting_court");
@@ -1076,7 +1129,10 @@ export async function persistRecruitingPostSnapshot(context, { post, notificatio
 
   if (existingError) throw existingError;
   if (isCreateAction && existingPost) reject(409, "recruiting_post_already_exists");
-  if (isCreateAction) validateRecruitingCreateCourt(post);
+  if (isCreateAction) {
+    validateRecruitingCreateCourt(post);
+    validateRecruitingCreateBranchShape(post);
+  }
   const { data: existingApplications, error: existingApplicationsError } = await timeStep(timing, "persistExistingApplications", () => existingPost && !isCreateAction
     ? context.supabase
       .from("recruiting_applications")
