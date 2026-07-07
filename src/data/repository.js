@@ -215,6 +215,7 @@ import {
   normalizeTeam,
   normalizeUser,
 } from "./stateMappers.js";
+import { adjustUserTrust, clampTrustScore, getFoulTrustPenalty } from "./trustUtils.js";
 export { DEFAULT_SETTINGS } from "./repositoryDefaults.js";
 export { createProfileShell, fromRemoteProfile, getRemoteAppSettings } from "./profileMappers.js";
 export { fromRemoteTeamInvitation } from "./teamMappers.js";
@@ -254,19 +255,6 @@ function getDemoInitialState() {
 function isRecruitingRoomOwner(post = {}, userId = "") {
   return Boolean(userId && getRecruitingRoomOwnerId(post) === userId);
 }
-function clampTrustScore(value) {
-  return Math.max(0, Math.min(100, Math.round(Number(value ?? 80))));
-}
-
-function adjustUserTrust(users = [], userId, delta) {
-  if (!userId || !delta) return users;
-  return users.map((user) => (
-    user.id === userId
-      ? { ...user, trustScore: clampTrustScore((user.trustScore ?? 80) + delta) }
-      : user
-  ));
-}
-
 function getHostTrustBlockNotification(state, draft = {}) {
   const ranked = draft.ranked !== false;
   const visibility = draft.visibility === "public" ? "public" : "private";
@@ -298,12 +286,6 @@ function getDisciplineBlockedState(state, actionLabel = "이 작업") {
       ...state.notifications,
     ],
   };
-}
-
-function getFoulTrustPenalty(stats = {}) {
-  const fouls = Math.max(0, Number(stats.fouls ?? 0));
-  if (fouls <= 2) return 0;
-  return -Math.min(4, fouls - 2);
 }
 
 function getRoomScheduleDate(post = {}) {
