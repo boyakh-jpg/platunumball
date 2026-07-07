@@ -1,3 +1,5 @@
+import { getMatchSideScore as getSideScore } from "./matchUtils.js";
+
 const fallbackSeason = {
   id: "season-zero",
   name: "Season Zero",
@@ -39,11 +41,6 @@ function getTeamSide(match, teamId) {
 
 function getOppositeSide(sideName) {
   return sideName === "teamA" ? "teamB" : "teamA";
-}
-
-function getSideScore(match, sideName) {
-  const resultScore = sideName === "teamA" ? match.result?.scoreA : match.result?.scoreB;
-  return Number(resultScore ?? match[sideName]?.score ?? 0);
 }
 
 function getSideResult(match, sideName) {

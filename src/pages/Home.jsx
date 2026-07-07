@@ -12,7 +12,7 @@ import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { MAX_TEAM_MEMBERSHIPS, getTeamRoleLabel } from "../lib/constants.js";
 import { getRegisteredCourts } from "../lib/courts.js";
 import { getCourtHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
-import { canUserResolveMatchDispute, getAllowedStatFields, getMatchRecordWindow, getMatchRoomPhase, getMatchUserParticipantSideName, getPlayerStatSubmitted, getPublicRoomTimingStatus, getRoomScheduleLabel, isInstantRoom, isMatchRelatedToUser, isPersonalRecordMatch, isSeedSampleMatch, userNeedsMatchAction, userNeedsMatchAgreement, userNeedsMatchApproval } from "../lib/matchUtils.js";
+import { canUserResolveMatchDispute, getAllowedStatFields, getMatchRecordWindow, getMatchRoomPhase, getMatchSideScore as getSideScore, getMatchUserParticipantSideName, getPlayerStatSubmitted, getPublicRoomTimingStatus, getRoomScheduleLabel, isInstantRoom, isMatchRelatedToUser, isPersonalRecordMatch, isSeedSampleMatch, userNeedsMatchAction, userNeedsMatchAgreement, userNeedsMatchApproval } from "../lib/matchUtils.js";
 import { getPendingRecruitingInvitations, getRecruitingLobby, getRecruitingRoomOwnerId, isRecruitingPostForUser } from "../lib/recruiting.js";
 import { getCurrentSeason, getPlayerSeasonRows, getSeasonProgress } from "../lib/season.js";
 import { getTier, getTierDivision, getTierDivisionNumber } from "../lib/tier.js";
@@ -65,8 +65,8 @@ function compareSchedule(a, b) {
 function getUserResult(match, userId) {
   const sideName = getMatchUserParticipantSideName(match, userId) ?? "teamA";
   const otherSide = sideName === "teamA" ? "teamB" : "teamA";
-  const sideScore = Number((sideName === "teamA" ? match.result?.scoreA : match.result?.scoreB) ?? match?.[sideName]?.score ?? 0);
-  const otherScore = Number((otherSide === "teamA" ? match.result?.scoreA : match.result?.scoreB) ?? match?.[otherSide]?.score ?? 0);
+  const sideScore = getSideScore(match, sideName);
+  const otherScore = getSideScore(match, otherSide);
   if (sideScore === otherScore) return "D";
   return sideScore > otherScore ? "W" : "L";
 }
@@ -108,11 +108,6 @@ function getSafeMatchSide(match = {}, sideName = "teamA") {
     players: Array.isArray(side.players) ? side.players : [],
     score: side.score ?? 0,
   };
-}
-
-function getSideScore(match, sideName) {
-  const resultKey = sideName === "teamA" ? "scoreA" : "scoreB";
-  return Number(match?.result?.[resultKey] ?? getSafeMatchSide(match, sideName).score ?? 0);
 }
 
 function getUserMatchLine(match, userId) {

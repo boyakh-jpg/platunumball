@@ -11,16 +11,12 @@ import TierBadge from "../components/rating/TierBadge.jsx";
 import TierEmblem from "../components/rating/TierEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { MAX_TEAM_MEMBERS, MAX_TEAM_MEMBERSHIPS, getTeamRoleLabel, isMercenaryTeamRole, normalizeTeamRole } from "../lib/constants.js";
+import { getMatchSideScore as getSideScore } from "../lib/matchUtils.js";
 
 function getTeamSide(match, teamId) {
   if (match.teamA?.teamId === teamId) return "teamA";
   if (match.teamB?.teamId === teamId) return "teamB";
   return null;
-}
-
-function getSideScore(match, sideName) {
-  const resultKey = sideName === "teamA" ? "scoreA" : "scoreB";
-  return Number(match.result?.[resultKey] ?? match[sideName]?.score ?? 0);
 }
 
 function getHistoryDate(match) {

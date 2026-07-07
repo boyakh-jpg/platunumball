@@ -10,18 +10,13 @@ import TierBadge from "../components/rating/TierBadge.jsx";
 import { getDiscordAvatarClassName, getDiscordAvatarStyle, getDiscordDisplayName, getDiscordProfileUrl } from "../lib/discord.js";
 import { getUserHashtag } from "../lib/handles.js";
 import { PLAYER_STAT_FIELDS } from "../lib/constants.js";
-import { formatStatLine } from "../lib/matchUtils.js";
+import { formatStatLine, getMatchSideScore as getSideScore } from "../lib/matchUtils.js";
 import { getTierDivision, getTierQuote } from "../lib/tier.js";
 
 function getPlayerSide(match, playerId) {
   if ((match.teamA?.players ?? []).includes(playerId)) return "teamA";
   if ((match.teamB?.players ?? []).includes(playerId)) return "teamB";
   return null;
-}
-
-function getSideScore(match, sideName) {
-  const resultKey = sideName === "teamA" ? "scoreA" : "scoreB";
-  return Number(match.result?.[resultKey] ?? match[sideName]?.score ?? 0);
 }
 
 function getPlayerOutcome(match, playerId) {

@@ -26,10 +26,14 @@ export const MATCH_DISPUTE_REASON_OPTIONS = [
 ];
 export const OTHER_MATCH_DISPUTE_REASON = "기타";
 
-export function getMatchDisputeScore(match = {}, sideName = "") {
+export function getMatchSideScore(match = {}, sideName = "") {
   const resultKey = sideName === "teamA" ? "scoreA" : "scoreB";
   if (!resultKey) return 0;
   return Number(match.result?.[resultKey] ?? match[sideName]?.score ?? 0);
+}
+
+export function getMatchDisputeScore(match = {}, sideName = "") {
+  return getMatchSideScore(match, sideName);
 }
 
 export function getMatchRecordType(match = {}) {

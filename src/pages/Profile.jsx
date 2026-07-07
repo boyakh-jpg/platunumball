@@ -8,7 +8,7 @@ import RatingCard from "../components/rating/RatingCard.jsx";
 import ShareCard from "../components/share/ShareCard.jsx";
 import { PLAYER_POSITIONS } from "../lib/constants.js";
 import { getUserHashtag } from "../lib/handles.js";
-import { isPersonalRecordMatch } from "../lib/matchUtils.js";
+import { getMatchSideScore as getSideScore, isPersonalRecordMatch } from "../lib/matchUtils.js";
 import { canChangeProfileName, getNextNameChangeDate, inferRegionSelection, REGION_TREE } from "../lib/profileSetup.js";
 import { MatchRoomModal } from "./Matches.jsx";
 
@@ -31,11 +31,6 @@ function isRecordInDetailWindow(match) {
   const cutoff = new Date();
   cutoff.setMonth(cutoff.getMonth() - 6);
   return recordDate >= cutoff;
-}
-
-function getSideScore(match, sideName) {
-  const resultKey = sideName === "teamA" ? "scoreA" : "scoreB";
-  return Number(match.result?.[resultKey] ?? match[sideName]?.score ?? 0);
 }
 
 function getUserResult(match, userId) {

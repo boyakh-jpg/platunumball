@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import Card from "../components/common/Card.jsx";
 import { PLAYER_STAT_FIELDS } from "../lib/constants.js";
-import { formatStatLine, isPersonalRecordMatch } from "../lib/matchUtils.js";
+import { formatStatLine, getMatchSideScore as getSideScore, isPersonalRecordMatch } from "../lib/matchUtils.js";
 import { MatchRoomModal } from "./Matches.jsx";
 
 function compareRecent(a, b) {
@@ -26,11 +26,6 @@ function getUserSide(match, userId) {
   if (match.teamA?.players?.includes(userId)) return "teamA";
   if (match.teamB?.players?.includes(userId)) return "teamB";
   return null;
-}
-
-function getSideScore(match, sideName) {
-  const resultKey = sideName === "teamA" ? "scoreA" : "scoreB";
-  return Number(match.result?.[resultKey] ?? match[sideName]?.score ?? 0);
 }
 
 function getUserResult(match, userId) {
