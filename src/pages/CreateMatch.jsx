@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { ClipboardList, Globe2, Lock, Trophy } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
@@ -281,6 +281,8 @@ function getDefaultMmrLimitMode(teamA, teamB, ranked = true, rangeMode = "narrow
 
 export default function CreateMatch({ app }) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isRecordCreateIntent = useMemo(() => new URLSearchParams(location.search).get("intent") === "record", [location.search]);
   useEffect(() => {
     app.actions.loadDirectory?.();
   }, [app.actions]);
@@ -427,7 +429,7 @@ export default function CreateMatch({ app }) {
   const isPublicRoom = !isSoloRecord && !isMatchRecordRoom && draft.visibility === "public";
   const isTournamentRoom = !isSoloRecord && !isMatchRecordRoom && draft.visibility === "tournament";
   const isTeamRoom = !isSoloRecord && !isTournamentRoom && draft.hostJoinMode === "team";
-  const effectiveTeamOnly = Boolean(isPublicRoom && isTeamRoom);
+  const effectiveTeamOnly = Boolean(isTeamRoom);
   const currentRoomKind = getRoomKindFromDraft(draft);
   const sideCapacity = getRecruitingSideCapacity(draft);
   const publicPartyPlayerIds = getPartyPlayerIds(selectedTeamA, draft.playerIds, sideCapacity);
@@ -465,6 +467,68 @@ export default function CreateMatch({ app }) {
       opponentLeaderId,
     ]);
   }, [app.currentUser.id, isPublicRoom, isTeamRoom, opponentLeaderId, opponentPartyPlayerIds, opponentReservePlayerIds, ownerReservePlayerIds, publicPartyPlayerIds]);
+
+  useEffect(() => {
+    if (isRecordCreateIntent) {
+      if (isSoloRecord || isMatchRecordRoom) return;
+      const playerIds = getRepresentativePlayerIds(app.currentUser.id);
+      const opponentLeaderId = getDefaultTeamPlayerIds(defaultTeamB, 1, playerIds)[0] ?? "";
+      setDraft((current) => {
+        const mode = current.mode === "1v1" ? "2v2" : getMatchModeOrDefault(current.mode, defaultMode === "1v1" ? "2v2" : defaultMode);
+        return {
+          ...current,
+          recordType: RECORD_TYPES.matchRecord,
+          visibility: "private",
+          timingType: "scheduled",
+          hostJoinMode: "team",
+          teamOnly: true,
+          mode,
+          ranked: true,
+          official: true,
+          preRegistered: false,
+          title: isDefaultCreateTitle(current.title) ? "경기 기록" : current.title,
+          scheduledDate: today,
+          teamAId: defaultTeamA?.id ?? current.teamAId,
+          teamBId: defaultTeamB?.id ?? current.teamBId,
+          playerIds,
+          reservePlayerIds: [],
+          opponentPlayerIds: [],
+          opponentReservePlayerIds: [],
+          opponentLeaderId,
+          invitePlayerIds: [],
+        };
+      });
+      return;
+    }
+    if (!isSoloRecord && !isMatchRecordRoom) return;
+    setDraft((current) => {
+      const mode = getMatchModeOrDefault(current.mode, defaultMode);
+      const playerIds = defaultHostJoinMode === "team" ? getRepresentativePlayerIds(app.currentUser.id) : [];
+      const title = current.title === "개인 기록" || current.title === "경기 기록" || isDefaultCreateTitle(current.title)
+        ? getDefaultCreateTitle(mode)
+        : current.title;
+      return {
+        ...current,
+        recordType: RECORD_TYPES.match,
+        visibility: "private",
+        timingType: "scheduled",
+        hostJoinMode: defaultHostJoinMode,
+        teamOnly: defaultHostJoinMode === "team",
+        mode,
+        ranked: true,
+        official: true,
+        preRegistered: true,
+        title,
+        playerIds,
+        reservePlayerIds: [],
+        opponentPlayerIds: [],
+        opponentReservePlayerIds: [],
+        opponentLeaderId: "",
+        invitePlayerIds: [],
+      };
+    });
+  }, [app.currentUser.id, defaultHostJoinMode, defaultMode, defaultTeamA?.id, defaultTeamB?.id, isMatchRecordRoom, isRecordCreateIntent, isSoloRecord]);
+
   const opponentTeamResults = useMemo(() => {
     if (!isTeamRoom || isPublicRoom || !selectedTeamA) return [];
     const query = opponentTeamQuery.trim();
@@ -1155,8 +1219,8 @@ export default function CreateMatch({ app }) {
     <form className="page-stack create-match-page" onSubmit={submit}>
       <header className="page-header">
         <div>
-          <p className="eyebrow">CreateMatch</p>
-          <h1>경기/대회 만들기</h1>
+          <p className="eyebrow">{isRecordCreateIntent ? "RecordMatch" : "CreateMatch"}</p>
+          <h1>{isRecordCreateIntent ? "기록하기" : "경기/대회 만들기"}</h1>
         </div>
       </header>
 
@@ -1165,128 +1229,135 @@ export default function CreateMatch({ app }) {
           <div className="section-title-row">
             <div>
               <p className="eyebrow">Room visibility</p>
-              <h2>공개 범위</h2>
+              <h2>{isRecordCreateIntent ? "기록 방식" : "공개 범위"}</h2>
             </div>
             <Badge tone={isTournamentRoom ? "gold" : isPublicRoom ? "green" : "neutral"}>{getRoomKindLabel(currentRoomKind)}</Badge>
           </div>
           <div className="create-mode-grid">
-            <button
-              type="button"
-              className={draft.recordType === RECORD_TYPES.match && draft.visibility === "private" ? "active" : ""}
-              onClick={() => update({ recordType: RECORD_TYPES.match, visibility: "private", mode: getMatchModeOrDefault(draft.mode, defaultMode), ranked: true, official: true, preRegistered: true })}
-            >
-              <Lock size={19} />
-              <span>
-                <strong>비공개 경기방</strong>
-                <em>개인전은 선수 초대, 팀전은 B팀 대표 초대로 닫힌 방을 만든다.</em>
-              </span>
-            </button>
-            <button
-              type="button"
-              className={draft.recordType === RECORD_TYPES.match && draft.visibility === "public" ? "active" : ""}
-              onClick={() => {
-                const team = defaultTeamA ?? selectedTeamA;
-                const nextMode = getMatchModeOrDefault(draft.mode, defaultMode);
-                const hostJoinMode = nextMode === "1v1" || !canCreateTeamRoom ? "player" : draft.hostJoinMode;
-                const playerIds = hostJoinMode === "team" ? getRepresentativePlayerIds(app.currentUser.id) : [];
-                update({
-                  recordType: RECORD_TYPES.match,
-                  visibility: "public",
-                  mode: nextMode,
-                  ranked: draft.recordType === RECORD_TYPES.personalRecord ? true : draft.ranked,
-                  official: draft.recordType === RECORD_TYPES.personalRecord ? true : draft.official,
-                  preRegistered: draft.recordType === RECORD_TYPES.personalRecord ? true : draft.preRegistered,
-                  hostJoinMode,
-                  teamOnly: hostJoinMode === "team",
-                  teamAId: team?.id ?? draft.teamAId,
-                  playerIds,
-                  reservePlayerIds: [],
-                  opponentPlayerIds: [],
-                  opponentReservePlayerIds: [],
-                });
-              }}
-            >
-              <Globe2 size={19} />
-              <span>
-                <strong>공개 매칭방</strong>
-                <em>매칭 목록에 노출하고, 개인전은 개인 참여·팀전은 팀 대표 참여로 채운다.</em>
-              </span>
-            </button>
-            <button
-              type="button"
-              className={isMatchRecordRoom ? "active" : ""}
-              onClick={() => {
-                const team = defaultTeamA ?? selectedTeamA;
-                const opponentTeam = defaultTeamB ?? selectedTeamB;
-                const nextMode = draft.mode === "1v1" ? "2v2" : getMatchModeOrDefault(draft.mode, defaultMode === "1v1" ? "2v2" : defaultMode);
-                const playerIds = getRepresentativePlayerIds(app.currentUser.id);
-                update({
-                  recordType: RECORD_TYPES.matchRecord,
-                  visibility: "private",
-                  timingType: "scheduled",
-                  hostJoinMode: "team",
-                  teamOnly: true,
-                  mode: nextMode,
-                  ranked: true,
-                  official: true,
-                  preRegistered: false,
-                  title: isMatchRecordRoom ? draft.title : "경기 기록",
-                  scheduledDate: today,
-                  teamAId: team?.id ?? draft.teamAId,
-                  teamBId: opponentTeam?.id ?? draft.teamBId,
-                  playerIds,
-                  reservePlayerIds: [],
-                  opponentPlayerIds: [],
-                  opponentReservePlayerIds: [],
-                  opponentLeaderId: getDefaultTeamPlayerIds(opponentTeam, 1, playerIds)[0] ?? "",
-                });
-              }}
-            >
-              <ClipboardList size={19} />
-              <span>
-                <strong>경기 기록</strong>
-                <em>이미 끝난 팀전을 기록 입력방으로 만든다. 매칭 목록에는 보이지 않는다.</em>
-              </span>
-            </button>
-            <button type="button" className={isTournamentRoom ? "active" : ""} onClick={() => {
-              setTeamRegion("전체");
-              update({ recordType: RECORD_TYPES.match, visibility: "tournament", mode: getMatchModeOrDefault(draft.mode, defaultMode), timingType: "scheduled", tournamentTeamIds: draft.tournamentTeamIds?.length ? draft.tournamentTeamIds : [defaultTournamentTeamA?.id, defaultTournamentTeamB?.id].filter(Boolean) });
-            }}>
-              <Trophy size={19} />
-              <span>
-                <strong>비공개 대회방</strong>
-                <em>초대팀, 리그/토너먼트, 일정, MMR 룰을 한 번에 정한다.</em>
-              </span>
-            </button>
-            <button
-              type="button"
-              className={isSoloRecord ? "active" : ""}
-              onClick={() => update({
-                recordType: RECORD_TYPES.personalRecord,
-                visibility: "private",
-                timingType: "scheduled",
-                hostJoinMode: "player",
-                teamOnly: false,
-                mode: "1v1",
-                ranked: false,
-                official: false,
-                preRegistered: false,
-                mmrLimitMode: "off",
-                title: draft.recordType === RECORD_TYPES.personalRecord ? draft.title : "개인 기록",
-                scheduledDate: today,
-                playerIds: [],
-                reservePlayerIds: [],
-                opponentPlayerIds: [],
-                opponentReservePlayerIds: [],
-                opponentLeaderId: "",
-              })}
-            >
-              <ClipboardList size={19} />
-              <span>
-                <strong>개인 기록</strong>
-                <em>1v1~5v5 경기에서 내 기록만 저장합니다. MMR은 반영하지 않습니다.</em>
-              </span>
-            </button>
+            {!isRecordCreateIntent ? (
+              <>
+                <button
+                  type="button"
+                  className={draft.recordType === RECORD_TYPES.match && draft.visibility === "private" ? "active" : ""}
+                  onClick={() => update({ recordType: RECORD_TYPES.match, visibility: "private", mode: getMatchModeOrDefault(draft.mode, defaultMode), ranked: true, official: true, preRegistered: true })}
+                >
+                  <Lock size={19} />
+                  <span>
+                    <strong>비공개 경기방</strong>
+                    <em>개인전은 선수 초대, 팀전은 B팀 대표 초대로 닫힌 방을 만든다.</em>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className={draft.recordType === RECORD_TYPES.match && draft.visibility === "public" ? "active" : ""}
+                  onClick={() => {
+                    const team = defaultTeamA ?? selectedTeamA;
+                    const nextMode = getMatchModeOrDefault(draft.mode, defaultMode);
+                    const hostJoinMode = nextMode === "1v1" || !canCreateTeamRoom ? "player" : draft.hostJoinMode;
+                    const playerIds = hostJoinMode === "team" ? getRepresentativePlayerIds(app.currentUser.id) : [];
+                    update({
+                      recordType: RECORD_TYPES.match,
+                      visibility: "public",
+                      mode: nextMode,
+                      ranked: draft.recordType === RECORD_TYPES.personalRecord ? true : draft.ranked,
+                      official: draft.recordType === RECORD_TYPES.personalRecord ? true : draft.official,
+                      preRegistered: draft.recordType === RECORD_TYPES.personalRecord ? true : draft.preRegistered,
+                      hostJoinMode,
+                      teamOnly: hostJoinMode === "team",
+                      teamAId: team?.id ?? draft.teamAId,
+                      playerIds,
+                      reservePlayerIds: [],
+                      opponentPlayerIds: [],
+                      opponentReservePlayerIds: [],
+                    });
+                  }}
+                >
+                  <Globe2 size={19} />
+                  <span>
+                    <strong>공개 매칭방</strong>
+                    <em>매칭 목록에 노출하고, 개인전은 개인 참여·팀전은 팀 대표 참여로 채운다.</em>
+                  </span>
+                </button>
+                <button type="button" className={isTournamentRoom ? "active" : ""} onClick={() => {
+                  setTeamRegion("전체");
+                  update({ recordType: RECORD_TYPES.match, visibility: "tournament", mode: getMatchModeOrDefault(draft.mode, defaultMode), timingType: "scheduled", tournamentTeamIds: draft.tournamentTeamIds?.length ? draft.tournamentTeamIds : [defaultTournamentTeamA?.id, defaultTournamentTeamB?.id].filter(Boolean) });
+                }}>
+                  <Trophy size={19} />
+                  <span>
+                    <strong>비공개 대회방</strong>
+                    <em>초대팀, 리그/토너먼트, 일정, MMR 룰을 한 번에 정한다.</em>
+                  </span>
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className={isMatchRecordRoom ? "active" : ""}
+                  onClick={() => {
+                    const team = defaultTeamA ?? selectedTeamA;
+                    const opponentTeam = defaultTeamB ?? selectedTeamB;
+                    const nextMode = draft.mode === "1v1" ? "2v2" : getMatchModeOrDefault(draft.mode, defaultMode === "1v1" ? "2v2" : defaultMode);
+                    const playerIds = getRepresentativePlayerIds(app.currentUser.id);
+                    update({
+                      recordType: RECORD_TYPES.matchRecord,
+                      visibility: "private",
+                      timingType: "scheduled",
+                      hostJoinMode: "team",
+                      teamOnly: true,
+                      mode: nextMode,
+                      ranked: true,
+                      official: true,
+                      preRegistered: false,
+                      title: isMatchRecordRoom ? draft.title : "경기 기록",
+                      scheduledDate: today,
+                      teamAId: team?.id ?? draft.teamAId,
+                      teamBId: opponentTeam?.id ?? draft.teamBId,
+                      playerIds,
+                      reservePlayerIds: [],
+                      opponentPlayerIds: [],
+                      opponentReservePlayerIds: [],
+                      opponentLeaderId: getDefaultTeamPlayerIds(opponentTeam, 1, playerIds)[0] ?? "",
+                    });
+                  }}
+                >
+                  <ClipboardList size={19} />
+                  <span>
+                    <strong>경기 기록</strong>
+                    <em>이미 끝난 팀전을 기록 입력방으로 만든다. 매칭 목록에는 보이지 않는다.</em>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className={isSoloRecord ? "active" : ""}
+                  onClick={() => update({
+                    recordType: RECORD_TYPES.personalRecord,
+                    visibility: "private",
+                    timingType: "scheduled",
+                    hostJoinMode: "player",
+                    teamOnly: false,
+                    mode: "1v1",
+                    ranked: false,
+                    official: false,
+                    preRegistered: false,
+                    mmrLimitMode: "off",
+                    title: draft.recordType === RECORD_TYPES.personalRecord ? draft.title : "개인 기록",
+                    scheduledDate: today,
+                    playerIds: [],
+                    reservePlayerIds: [],
+                    opponentPlayerIds: [],
+                    opponentReservePlayerIds: [],
+                    opponentLeaderId: "",
+                  })}
+                >
+                  <ClipboardList size={19} />
+                  <span>
+                    <strong>내 기록</strong>
+                    <em>1v1~5v5 경기에서 내 기록만 저장한다. MMR은 반영하지 않는다.</em>
+                  </span>
+                </button>
+              </>
+            )}
           </div>
         </Card>
 
