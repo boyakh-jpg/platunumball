@@ -129,6 +129,7 @@ import { findDiscordConnectionOwner, getDiscordConnectionUserId, syncDiscordNoti
 import { getUserHashtag, sameHashtag, toHashtag } from "../lib/handles.js";
 import { canChangeProfileName } from "../lib/profileSetup.js";
 import { DEFAULT_SETTINGS, EMPTY_STATE } from "./repositoryDefaults.js";
+import { fromRemoteTeamInvitation } from "./teamMappers.js";
 import {
   createProfileShell,
   fromRemoteProfile,
@@ -185,6 +186,7 @@ import {
 } from "./remoteQuery.js";
 export { DEFAULT_SETTINGS } from "./repositoryDefaults.js";
 export { createProfileShell, fromRemoteProfile, getRemoteAppSettings } from "./profileMappers.js";
+export { fromRemoteTeamInvitation } from "./teamMappers.js";
 export {
   FAVORITE_LIMIT,
   REMOTE_CLIENT_ACTIVE_MATCH_LIMIT,
@@ -863,19 +865,6 @@ function fromRemoteNotification(row = {}) {
     readAt: row.read_at ?? payload.readAt ?? null,
     createdAt: row.created_at ?? payload.createdAt,
     updatedAt: row.updated_at ?? payload.updatedAt,
-  };
-}
-
-export function fromRemoteTeamInvitation(row = {}) {
-  return {
-    id: row.id,
-    teamId: row.team_id,
-    fromUserId: row.from_user_id,
-    targetUserId: row.target_user_id,
-    role: row.role ?? "regular",
-    status: row.status ?? "pending",
-    createdAt: row.created_at,
-    updatedAt: row.updated_at ?? row.created_at,
   };
 }
 
