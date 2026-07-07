@@ -1,5 +1,13 @@
 import { COURTS } from "./constants.js";
 
+export function courtIdByName(courtName) {
+  return COURTS.find((court) => court.name === courtName)?.id ?? null;
+}
+
+export function getCourtId(court = {}) {
+  return court.courtId ?? court.court_id ?? court.approvedCourtId ?? court.registeredCourtId ?? courtIdByName(court.court ?? court.courtName);
+}
+
 export const COURT_SURFACE_OPTIONS = [
   { id: "asphalt", label: "아스팔트" },
   { id: "urethane", label: "우레탄" },

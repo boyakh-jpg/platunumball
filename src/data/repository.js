@@ -49,7 +49,7 @@ import {
   normalizeMmrLimitMode as normalizeRecruitingMmrLimitMode,
   normalizeTeamRole,
 } from "../lib/constants.js";
-import { findCourtDuplicate, getCourtDuplicateMessage, getRegisteredCourts, normalizeCourtLayout, normalizeCourtSurfaceType } from "../lib/courts.js";
+import { courtIdByName, findCourtDuplicate, getCourtDuplicateMessage, getCourtId, getRegisteredCourts, normalizeCourtLayout, normalizeCourtSurfaceType } from "../lib/courts.js";
 import {
   canOperatorSubmitMissingPostgameResult,
   getAgreementStatus,
@@ -1405,14 +1405,6 @@ export async function loadRemoteState(authUserId = "", authEmail = "", options =
     console.warn("Supabase normalized state load failed. Remote state remains empty.", error.message);
     return null;
   }
-}
-
-function courtIdByName(courtName) {
-  return COURTS.find((court) => court.name === courtName)?.id ?? null;
-}
-
-function getCourtId(court = {}) {
-  return court.courtId ?? court.court_id ?? court.approvedCourtId ?? court.registeredCourtId ?? courtIdByName(court.court ?? court.courtName);
 }
 
 function toDbTime(value) {
