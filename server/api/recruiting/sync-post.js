@@ -1025,7 +1025,7 @@ function isTeamOnlyRosterSummon(existingPost = {}, body = {}) {
   const invite = body.invite && typeof body.invite === "object" ? body.invite : {};
   const roomState = normalizeRoomState(existingPost.roomState ?? existingPost.room_state, existingPost);
   const teamOnly = isTrue(existingPost.teamOnly ?? existingPost.team_only ?? roomState.teamOnly) ||
-    (existingPost.visibility === "public" && getCanonicalHostJoinMode(existingPost) === "team");
+    getCanonicalHostJoinMode(existingPost) === "team";
   return teamOnly && (invite.joinMode === "team" || Boolean(invite.teamId));
 }
 
