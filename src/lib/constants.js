@@ -10,6 +10,11 @@ export const MODE_SIZES = MATCH_MODES.reduce((map, mode) => {
   return map;
 }, {});
 
+export const MATCH_SIDE_FALLBACK_NAMES = Object.freeze({
+  teamA: "Team A",
+  teamB: "Team B",
+});
+
 export const RECORD_TYPES = Object.freeze({
   match: "match",
   matchRecord: "match_record",
@@ -84,6 +89,41 @@ export const STAT_ENTRY_WINDOW_MINUTES = 60;
 export const DISPUTE_WINDOW_MINUTES = 30;
 export const TEST_ACCOUNT_COUNT = 50;
 export const TEAM_INVITE_ROLES = ["regular", "mercenary"];
+export const QUEUE_SCHEDULE_START_DATE = "2026-06-15";
+export const QUEUE_SCHEDULE_TIMES = ["10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00", "21:00"];
+export const POST_MATCH_STATUSES = new Set(["approval", "disputed"]);
+export const RECORDABLE_RESERVE_SOURCES = new Set(["reserve-entry", "team-reserve"]);
+export const MAX_RECRUITING_RESERVES_PER_SIDE = 2;
+export const DAY_MS = 24 * 60 * 60 * 1000;
+export const SCHEDULE_MAX_DAYS = 365;
+export const ROOM_SCHEDULE_MAX_DAYS = 30;
+export const PUBLIC_ROOM_SCHEDULE_MAX_DAYS = 5;
+export const PUBLIC_ROOM_MIN_LEAD_HOURS = 4;
+export const REFEREE_EXAM_COOLDOWN_MS = 7 * DAY_MS;
+export const REPORT_MATCH_WINDOW_MS = 7 * DAY_MS;
+export const LIFECYCLE_TITLE_PATTERN = /^(동의 대기|진행 예정|결과 승인|이의 확인|이의제기|확정|결과 입력)\s*·\s*/;
+export const POST_MATCH_TITLE_PATTERN = /^(결과 승인|이의 확인|이의제기|확정|결과 입력)\s*·\s*/;
+export const SIDE_LABEL_TEXT = { teamA: "A사이드", teamB: "B사이드" };
+export const TEST_PROFILE_SETUP_AT = "2026-06-17T09:00:00.000Z";
+export const TEST_PROFILE_BIRTH_YEAR = 2000;
+export const TEST_PROFILE_AGE_GROUP = "open";
+export const TEST_PROFILE_AGE_GROUP_SEASON = "2026-h1";
+export const REMOTE_PAGE_SIZE = 1000;
+export const REMOTE_WRITE_CHUNK_SIZE = 500;
+export const REMOTE_CLIENT_MATCH_LIMIT = 50;
+export const REMOTE_CLIENT_RECRUITING_LIMIT = 50;
+export const REMOTE_CLIENT_INITIAL_MATCH_LIMIT = 5;
+export const REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT = 5;
+export const REMOTE_CLIENT_ACTIVE_MATCH_LIMIT = 200;
+export const REMOTE_CLIENT_RECORD_MATCH_LIMIT = 200;
+export const REMOTE_CLIENT_RECORD_MONTHS = 6;
+export const REMOTE_CLIENT_HOME_LOCAL_RECRUITING_LIMIT = 3;
+export const REMOTE_CLIENT_TOURNAMENT_LIMIT = 80;
+export const REMOTE_CLIENT_MAX_LIMIT = 500;
+export const FAVORITE_LIMIT = 10;
+export const SOLO_RECORD_MODE_IDS = new Set(["1v1", "2v2", "3v3", "4v4", "5v5"]);
+export const SOLO_RECORD_ANONYMOUS_POSITION = "free";
+export const SOLO_RECORD_ANONYMOUS_SOURCE = "개인참여";
 
 export const PLAYER_POSITIONS = ["상관없음", "PG", "SG", "SF", "PF", "C"];
 

@@ -1,6 +1,5 @@
 import Badge from "../common/Badge.jsx";
-import { getMemberRoleLabel } from "../../data/repository.js";
-import { normalizeTeamRole } from "../../lib/constants.js";
+import { getTeamRoleLabel, normalizeTeamRole } from "../../lib/constants.js";
 
 const roleTone = {
   captain: "gold",
@@ -10,5 +9,5 @@ const roleTone = {
 
 export default function MemberTypeBadge({ role }) {
   const canonicalRole = normalizeTeamRole(role);
-  return <Badge tone={roleTone[canonicalRole] ?? "neutral"}>{getMemberRoleLabel(canonicalRole)}</Badge>;
+  return <Badge tone={roleTone[canonicalRole] ?? "neutral"}>{getTeamRoleLabel(canonicalRole)}</Badge>;
 }

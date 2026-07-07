@@ -1,25 +1,29 @@
-import { getAdminLevel, getAuthenticatedContext, mergeById, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { getAdminLevel, getAuthenticatedContext, isMissingRoomFeedCards, isMissingTable, isMissingUserRoomFeed, mergeById, readJsonBody, sendJson, uniqueValues as unique } from "../_supabaseAdmin.js";
 import {
-  DEFAULT_SETTINGS,
   createProfileShell,
   fromRemoteProfile,
   getRemoteAppSettings,
   normalizeState,
+} from "../../../src/data/repository.js";
+import { DEFAULT_SETTINGS } from "../../../src/data/repositoryDefaults.js";
+import {
+  COURT_COLUMNS,
+  MATCH_LIST_COLUMNS,
+  MATCH_PLAYER_COLUMNS,
+  MATCH_RESULT_COLUMNS,
+  PLAYER_STAT_COLUMNS,
+  PROFILE_CARD_COLUMNS,
+  PROFILE_ME_COLUMNS,
+  TEAM_COLUMNS,
+} from "../../../src/data/repositoryColumns.js";
+import {
+  MATCH_SIDE_FALLBACK_NAMES,
   REMOTE_CLIENT_ACTIVE_MATCH_LIMIT,
   REMOTE_CLIENT_MATCH_LIMIT,
   REMOTE_CLIENT_RECORD_MONTHS,
-} from "../../../src/data/repository.js";
+} from "../../../src/lib/constants.js";
 import { loadCurrentUserRecruitingFeedList } from "../recruiting/list.js";
 import { getMatchRoomPhase, isMatchClosedNotice, isMatchRecordMatch, isPersonalRecordMatch, isSeedSampleMatch } from "../../../src/lib/matchUtils.js";
-
-const PROFILE_ME_COLUMNS = "id,name,handle,hashtag,position,region,region_sido,region_district,school,company,club,trust_score,streak,avatar_color,test_login_id,auth_user_id,birth_year,age_group,age_group_checked_season,onboarding_complete,profile_version,handle_locked_at,birth_year_locked_at,name_updated_at,discord_connection,discord_user_id,ratings,created_at,updated_at,app_settings";
-const PROFILE_CARD_COLUMNS = "id,name,handle,hashtag,position,region,trust_score,avatar_color,ratings,age_group,updated_at";
-const MATCH_LIST_COLUMNS = "id,title,mode,court_id,court_name,visibility,status,ranked,referee_id,former_referee_id,stat_entry_minutes,dispute_minutes,stat_recorders,played_player_ids,reserve_players,mmr_excluded_player_ids,anonymous_players,official,pre_registered,scheduled_at,scheduled_date,scheduled_time,team_a_id,team_b_id,score_a,score_b,rules,created_by,agreed_at,started_at,ended_at,confirmed_at,cancelled_at,voided_at,tournament_id,updated_at,created_at";
-const MATCH_PLAYER_COLUMNS = "match_id,team_id,user_id,side,slot_order";
-const MATCH_RESULT_COLUMNS = "match_id,score_a,score_b,stat_submissions,submitted_by,submitted_at";
-const PLAYER_STAT_COLUMNS = "match_id,user_id,points,rebounds,assists,steals,blocks,fouls,recorded_by,record_source,updated_at";
-const TEAM_COLUMNS = "id,name,home_court,region,mmr,wins,losses,accent,deleted_at,created_at,updated_at";
-const COURT_COLUMNS = "id,name";
 
 let userRoomFeedAvailable = true;
 const MATCH_LIST_MAX_LIMIT = REMOTE_CLIENT_ACTIVE_MATCH_LIMIT;
@@ -36,15 +40,6 @@ const MATCH_CANDIDATE_MIN_LIMIT = 80;
 const MATCH_CANDIDATE_MAX_LIMIT = 500;
 const MATCH_CANDIDATE_LIMIT_FACTOR = 10;
 
-function unique(values = []) {
-  return [...new Set(values.filter(Boolean))];
-}
-
-function isMissingTable(error = {}, table = "") {
-  const message = String(error?.message ?? "");
-  return error?.code === "PGRST205" || error?.code === "42P01" || (table && message.includes(table));
-}
-
 async function fetchCourtRowsByIds(supabase, courtIds = []) {
   const ids = unique(courtIds);
   if (!ids.length) return { data: [], error: null };
@@ -58,16 +53,6 @@ async function fetchCourtRowsByIds(supabase, courtIds = []) {
   (approvedResult.data ?? []).forEach((row) => rowsById.set(row.id, row));
   (legacyResult.data ?? []).forEach((row) => rowsById.set(row.id, row));
   return { data: [...rowsById.values()], error: null };
-}
-
-function isMissingUserRoomFeed(error = {}) {
-  const message = String(error?.message ?? "");
-  return error?.code === "PGRST205" || error?.code === "42P01" || message.includes("user_room_feed");
-}
-
-function isMissingRoomFeedCards(error = {}) {
-  const message = String(error?.message ?? "");
-  return error?.code === "PGRST205" || error?.code === "42P01" || message.includes("room_feed_cards");
 }
 
 function getFeedOffsetCursor(value = "") {
@@ -223,11 +208,11 @@ function attachMatchCardReferences(match = {}, teamById = {}, courtById = {}) {
     ...(courtName ? { court: courtName } : {}),
     teamA: {
       ...(match.teamA ?? {}),
-      name: match.teamA?.name ?? teamById[teamAId]?.name ?? "Team A",
+      name: match.teamA?.name ?? teamById[teamAId]?.name ?? MATCH_SIDE_FALLBACK_NAMES.teamA,
     },
     teamB: {
       ...(match.teamB ?? {}),
-      name: match.teamB?.name ?? teamById[teamBId]?.name ?? "Team B",
+      name: match.teamB?.name ?? teamById[teamBId]?.name ?? MATCH_SIDE_FALLBACK_NAMES.teamB,
     },
   };
 }
@@ -826,7 +811,7 @@ function toClientMatchSide(row = {}, sideName = "teamA", playersByMatch = new Ma
   ).trim();
   return {
     teamId,
-    name: teamById[teamId]?.name ?? (recordName || (sideName === "teamA" ? "Team A" : "Team B")),
+    name: teamById[teamId]?.name ?? (recordName || MATCH_SIDE_FALLBACK_NAMES[sideName] || MATCH_SIDE_FALLBACK_NAMES.teamA),
     players: [...(playersByMatch.get(row.id) ?? [])]
       .filter((player) => player.side === sideName)
       .sort((a, b) => (a.slot_order ?? 0) - (b.slot_order ?? 0))

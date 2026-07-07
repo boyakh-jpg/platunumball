@@ -1,4 +1,4 @@
-import { getBearerToken, getSupabaseAdminClient, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { getBearerToken, getSupabaseAdminClient, isMissingTable, readJsonBody, sendJson, uniqueStringIds as uniqueIds } from "../_supabaseAdmin.js";
 
 const FEED_COLUMNS = "profile_id,entity_type,entity_id,relation,feed_scope,region_key,status,timing_type,scheduled_date,card_json,sort_at,is_active";
 const CARD_COLUMNS = "entity_type,entity_id,card_json,updated_at";
@@ -22,10 +22,6 @@ function toArray(value) {
   return Array.isArray(value) ? value.filter(Boolean) : [];
 }
 
-function uniqueIds(ids = []) {
-  return [...new Set(ids.map((id) => String(id ?? "").trim()).filter(Boolean))];
-}
-
 function getCappedLimit(value) {
   const number = Number(value);
   if (!Number.isFinite(number) || number <= 0) return 200;
@@ -46,11 +42,6 @@ function getRequestValue(request, body, key, fallback = "") {
 function asTime(value) {
   const time = Date.parse(value ?? "");
   return Number.isFinite(time) ? time : 0;
-}
-
-function isMissingTable(error = {}, table = "") {
-  const message = String(error?.message ?? "");
-  return error?.code === "PGRST205" || error?.code === "42P01" || (table && message.includes(table));
 }
 
 async function fetchFeedRows(client, options = {}) {

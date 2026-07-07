@@ -1,26 +1,20 @@
-import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { getAuthenticatedContext, isMissingTable, readJsonBody, sendJson, uniqueValues as unique } from "../_supabaseAdmin.js";
 import {
-  DEFAULT_SETTINGS,
   createProfileShell,
   fromRemoteProfile,
   fromRemoteTeamInvitation,
   getRemoteAppSettings,
   normalizeState,
 } from "../../../src/data/repository.js";
+import { DEFAULT_SETTINGS } from "../../../src/data/repositoryDefaults.js";
+import {
+  PROFILE_ME_COLUMNS,
+  TEAM_COLUMNS,
+  TEAM_INVITATION_COLUMNS,
+  TEAM_MEMBER_COLUMNS,
+} from "../../../src/data/repositoryColumns.js";
 
-const PROFILE_ME_COLUMNS = "id,name,handle,hashtag,position,region,region_sido,region_district,school,company,club,trust_score,streak,avatar_color,test_login_id,auth_user_id,birth_year,age_group,age_group_checked_season,onboarding_complete,profile_version,handle_locked_at,birth_year_locked_at,name_updated_at,discord_connection,discord_user_id,ratings,created_at,updated_at,app_settings";
 const PROFILE_TEAM_MEMBER_COLUMNS = "id,name,handle,hashtag,position,region,trust_score,avatar_color,ratings,age_group,age_group_checked_season,onboarding_complete,updated_at";
-const TEAM_COLUMNS = "id,name,home_court,region,mmr,wins,losses,accent,deleted_at,created_at,updated_at";
-const TEAM_MEMBER_COLUMNS = "team_id,user_id,role";
-const TEAM_INVITATION_COLUMNS = "id,team_id,from_user_id,target_user_id,role,status,created_at,updated_at";
-
-function unique(values = []) {
-  return [...new Set(values.filter(Boolean))];
-}
-
-function isMissingTable(error = {}) {
-  return ["42P01", "PGRST205"].includes(error?.code);
-}
 
 function getMaxUpdatedAt(rows = []) {
   return rows.reduce((max, row) => {

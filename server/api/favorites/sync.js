@@ -1,6 +1,5 @@
 import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
-import { FAVORITE_LIMIT } from "../../../src/data/repository.js";
-import { REFEREE_TRUST_MIN } from "../../../src/lib/constants.js";
+import { FAVORITE_LIMIT, REFEREE_TRUST_MIN } from "../../../src/lib/constants.js";
 
 const TARGET_TYPES = new Set(["player", "team", "court", "referee"]);
 const REFEREE_GRADES = new Set(["official", "platinum", "gold", "silver", "candidate"]);

@@ -131,6 +131,27 @@ export function mergeById(current = [], incoming = []) {
   return [...merged.values()];
 }
 
+export function isMissingTable(error = {}, table = "") {
+  const message = String(error?.message ?? "");
+  return error?.code === "PGRST205" || error?.code === "42P01" || (table && message.includes(table));
+}
+
+export function isMissingUserRoomFeed(error = {}) {
+  return isMissingTable(error, "user_room_feed");
+}
+
+export function isMissingRoomFeedCards(error = {}) {
+  return isMissingTable(error, "room_feed_cards");
+}
+
+export function uniqueValues(values = []) {
+  return [...new Set(values.filter(Boolean))];
+}
+
+export function uniqueStringIds(ids = []) {
+  return [...new Set(ids.map((id) => String(id ?? "").trim()).filter(Boolean))];
+}
+
 export function toArray(value) {
   return Array.isArray(value) ? value.filter(Boolean) : [];
 }

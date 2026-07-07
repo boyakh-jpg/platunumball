@@ -1,18 +1,52 @@
 import {
   COURTS,
   COURT_REQUEST_TRUST_MIN,
+  DAY_MS,
   DISPUTE_WINDOW_MINUTES,
   FALSE_COURT_REPORT_TRUST_PENALTY,
+  FAVORITE_LIMIT,
+  LIFECYCLE_TITLE_PATTERN,
+  MATCH_SIDE_FALLBACK_NAMES,
+  MAX_RECRUITING_RESERVES_PER_SIDE,
   MAX_TEAM_MEMBERS,
   MAX_TEAM_MEMBERSHIPS,
   MAX_TEAM_NAME_LENGTH,
   MODE_SIZES,
   PLAYER_STAT_FIELDS,
   PLAYER_POSITIONS,
+  POST_MATCH_STATUSES,
+  POST_MATCH_TITLE_PATTERN,
+  PUBLIC_ROOM_MIN_LEAD_HOURS,
+  PUBLIC_ROOM_SCHEDULE_MAX_DAYS,
+  QUEUE_SCHEDULE_START_DATE,
+  QUEUE_SCHEDULE_TIMES,
   RECORD_TYPES,
+  RECORDABLE_RESERVE_SOURCES,
   REFEREE_ABSENCE_TRUST_PENALTY,
+  REFEREE_EXAM_COOLDOWN_MS,
   REFEREE_TRUST_MIN,
+  REPORT_MATCH_WINDOW_MS,
+  REMOTE_CLIENT_ACTIVE_MATCH_LIMIT,
+  REMOTE_CLIENT_HOME_LOCAL_RECRUITING_LIMIT,
+  REMOTE_CLIENT_INITIAL_MATCH_LIMIT,
+  REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT,
+  REMOTE_CLIENT_MATCH_LIMIT,
+  REMOTE_CLIENT_RECORD_MATCH_LIMIT,
+  REMOTE_CLIENT_RECORD_MONTHS,
+  REMOTE_CLIENT_RECRUITING_LIMIT,
+  REMOTE_CLIENT_TOURNAMENT_LIMIT,
+  REMOTE_WRITE_CHUNK_SIZE,
+  ROOM_SCHEDULE_MAX_DAYS,
+  SCHEDULE_MAX_DAYS,
+  SIDE_LABEL_TEXT,
+  SOLO_RECORD_ANONYMOUS_POSITION,
+  SOLO_RECORD_ANONYMOUS_SOURCE,
+  SOLO_RECORD_MODE_IDS,
   STAT_ENTRY_WINDOW_MINUTES,
+  TEST_PROFILE_AGE_GROUP,
+  TEST_PROFILE_AGE_GROUP_SEASON,
+  TEST_PROFILE_BIRTH_YEAR,
+  TEST_PROFILE_SETUP_AT,
   getHostTrustRequirement,
   getTeamRoleLabel,
   normalizeTeamRole,
@@ -23,7 +57,6 @@ import {
   getAgreementStatus,
   getApprovalStatus,
   getAllowedResultStatFields,
-  getAllowedStatFields,
   getMatchPlayerIds,
   getMatchRecordPlayerIds,
   getMatchHostPlayerId as getMatchHostPlayerIdFromMatch,
@@ -95,6 +128,66 @@ import { isSupabaseConfigured, supabase } from "../lib/supabase.js";
 import { findDiscordConnectionOwner, getDiscordConnectionUserId, syncDiscordNotificationDeliveries } from "../lib/discord.js";
 import { getUserHashtag, sameHashtag, toHashtag } from "../lib/handles.js";
 import { canChangeProfileName } from "../lib/profileSetup.js";
+import { DEFAULT_SETTINGS, EMPTY_STATE } from "./repositoryDefaults.js";
+import {
+  ADMIN_AUDIT_COLUMNS,
+  ADMIN_DISCIPLINARY_COLUMNS,
+  AFFILIATION_COLUMNS,
+  APPOINTMENT_COLUMNS,
+  APPROVED_COURT_COLUMNS,
+  COURT_COLUMNS,
+  COURT_REQUEST_COLUMNS,
+  COURT_REVIEW_COLUMNS,
+  DISCORD_DELIVERY_COLUMNS,
+  FAVORITE_COLUMNS,
+  MATCH_AGREEMENT_COLUMNS,
+  MATCH_APPROVAL_COLUMNS,
+  MATCH_COLUMNS,
+  MATCH_DISPUTE_COLUMNS,
+  MATCH_PLAYER_COLUMNS,
+  MATCH_RESULT_COLUMNS,
+  NOTIFICATION_COLUMNS,
+  PLAYER_STAT_COLUMNS,
+  PRIVATE_PROFILE_COLUMNS,
+  PROFILE_SETTINGS_COLUMNS,
+  PUBLIC_PROFILE_COLUMNS,
+  RECRUITING_APPLICATION_COLUMNS,
+  RECRUITING_POST_COLUMNS,
+  REFEREE_EXAM_ATTEMPT_COLUMNS,
+  REFEREE_REQUEST_COLUMNS,
+  REPORT_COLUMNS,
+  SEASON_COLUMNS,
+  TEAM_COLUMNS,
+  TEAM_INVITATION_COLUMNS,
+  TEAM_MEMBER_COLUMNS,
+  TOURNAMENT_COLUMNS,
+  TOURNAMENT_TEAM_COLUMNS,
+} from "./repositoryColumns.js";
+import {
+  applyIdScope,
+  applyUpdatedBefore,
+  composeFilters,
+  fetchAllRows,
+  fetchFilteredRows,
+  fetchOptionalFilteredRows,
+  fetchOptionalRows,
+  fetchRowsByIds,
+  getClientLimit,
+  uniqueRowsById,
+  uniqueScopeIds,
+} from "./remoteQuery.js";
+export { DEFAULT_SETTINGS } from "./repositoryDefaults.js";
+export {
+  FAVORITE_LIMIT,
+  REMOTE_CLIENT_ACTIVE_MATCH_LIMIT,
+  REMOTE_CLIENT_HOME_LOCAL_RECRUITING_LIMIT,
+  REMOTE_CLIENT_INITIAL_MATCH_LIMIT,
+  REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT,
+  REMOTE_CLIENT_MATCH_LIMIT,
+  REMOTE_CLIENT_RECORD_MATCH_LIMIT,
+  REMOTE_CLIENT_RECORD_MONTHS,
+  REMOTE_CLIENT_RECRUITING_LIMIT,
+} from "../lib/constants.js";
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const makeId = (prefix) => `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
@@ -106,57 +199,6 @@ const nullableText = (value) => {
 const getProfileRegionSnapshot = (regionSido, regionDistrict, fallbackRegion) =>
   nullableText([regionSido, regionDistrict].filter(Boolean).join(" ")) ?? nullableText(fallbackRegion);
 const getUserIdentityHashtag = (user = {}) => getUserHashtag(user);
-export const DEFAULT_SETTINGS = {
-  theme: "dark",
-  privacy: {
-    regionRanking: true,
-    teamHistory: true,
-    statSummary: true,
-  },
-  notificationChannels: {
-    discord: {
-      enabled: false,
-      events: {
-        match: true,
-        approval: true,
-        report: true,
-      },
-    },
-  },
-  blockedUserIds: [],
-  favoritePlayerIds: [],
-  favoriteTeamIds: [],
-  representativeTeamId: "",
-  favoriteCourtIds: [],
-  favoriteRefereeIds: [],
-  approvedCourts: [],
-  courtRequests: [],
-  courtReviews: [],
-  refereeRequests: [],
-  adminAppointments: [],
-  refereeAppointments: [],
-  adminAuditLog: [],
-  adminDisciplinaryActions: [],
-  refereeExamAttempts: [],
-};
-const EMPTY_STATE = {
-  currentUserId: "",
-  deletedTeamIds: [],
-  users: [],
-  teams: [],
-  teamInvitations: [],
-  affiliations: [],
-  seasons: [],
-  matches: [],
-  tournaments: [],
-  notifications: [],
-  reports: [],
-  recruitingPosts: [],
-  discordNotificationDeliveries: [],
-  discordNotificationSeenKeys: [],
-  discordNotificationSeenUsers: [],
-  settings: DEFAULT_SETTINGS,
-};
 let demoInitialState = null;
 export function setDemoInitialState(state = null) {
   demoInitialState = state && typeof state === "object" ? state : null;
@@ -167,71 +209,6 @@ export function hasDemoInitialState() {
 function getDemoInitialState() {
   return demoInitialState ?? EMPTY_STATE;
 }
-const REMOTE_PAGE_SIZE = 1000;
-const REMOTE_WRITE_CHUNK_SIZE = 500;
-export const REMOTE_CLIENT_MATCH_LIMIT = 50;
-export const REMOTE_CLIENT_RECRUITING_LIMIT = 50;
-export const REMOTE_CLIENT_INITIAL_MATCH_LIMIT = 5;
-export const REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT = 5;
-export const REMOTE_CLIENT_ACTIVE_MATCH_LIMIT = 200;
-export const REMOTE_CLIENT_RECORD_MATCH_LIMIT = 200;
-export const REMOTE_CLIENT_RECORD_MONTHS = 6;
-export const REMOTE_CLIENT_HOME_LOCAL_RECRUITING_LIMIT = 3;
-export const FAVORITE_LIMIT = 10;
-const REMOTE_CLIENT_TOURNAMENT_LIMIT = 80;
-const REMOTE_CLIENT_MAX_LIMIT = 500;
-const PUBLIC_PROFILE_COLUMNS = "id,name,handle,hashtag,position,region,region_sido,region_district,trust_score,streak,avatar_color,ratings,age_group,age_group_checked_season,onboarding_complete,updated_at";
-const PRIVATE_PROFILE_COLUMNS = "id,name,handle,region,school,company,club,trust_score,streak,avatar_color,test_login_id,auth_user_id,hashtag,birth_year,age_group,age_group_checked_season,region_sido,region_district,onboarding_complete,profile_version,handle_locked_at,birth_year_locked_at,name_updated_at,discord_connection,discord_user_id,ratings,created_at,updated_at,position";
-const PROFILE_SETTINGS_COLUMNS = "id,app_settings";
-const TEAM_COLUMNS = "id,name,home_court,region,mmr,wins,losses,accent,deleted_at,updated_at,created_at";
-const TEAM_MEMBER_COLUMNS = "team_id,user_id,role";
-const TEAM_INVITATION_COLUMNS = "id,team_id,from_user_id,target_user_id,role,status,created_at,updated_at";
-const COURT_COLUMNS = "id,name";
-const MATCH_COLUMNS = "id,title,mode,court_id,court_name,visibility,status,ranked,mmr_limit_mode,trust_feedback,referee_id,former_referee_id,referee_trust_min,stat_entry_minutes,dispute_minutes,stat_recorders,played_player_ids,reserve_players,promoted_reserve_ids,attendance,referee_absence_request,dispute_draft_result,dispute_draft_updated_at,dispute_resolved_at,mmr_excluded_player_ids,anonymous_players,tournament_id,tournament_format,tournament_round,tournament_fixture,tournament_mmr_policy,official,pre_registered,scheduled_at,scheduled_date,scheduled_time,team_a_id,team_b_id,score_a,score_b,rules,memo,stakes,objection_window,evidence,created_by,created_at,agreed_at,started_at,ended_at,confirmed_at,cancelled_at,voided_at,rating_result,team_rating_result,updated_at";
-const MATCH_PLAYER_COLUMNS = "match_id,team_id,user_id,side,slot_order";
-const MATCH_RESULT_COLUMNS = "match_id,submitted_by,score_a,score_b,stat_submissions,submitted_at";
-const PLAYER_STAT_COLUMNS = "match_id,user_id,recorded_by,record_source,points,rebounds,assists,steals,blocks,fouls,updated_at";
-const MATCH_AGREEMENT_COLUMNS = "match_id,user_id,side";
-const MATCH_APPROVAL_COLUMNS = "match_id,user_id,side";
-const MATCH_DISPUTE_COLUMNS = "id,match_id,user_id,reason,created_at";
-const FAVORITE_COLUMNS = "id,user_id,target_type,target_id,created_at";
-const RECRUITING_POST_COLUMNS = "id,type,title,visibility,region,court_id,court_name,mode,scheduled_at,scheduled_date,scheduled_time,ranked,official,pre_registered,rating_scale,age_restriction,allowed_age_groups,rules,stakes,court_reserved,court_fee,spots,team_id,target_team_id,referee_id,referee_trust_min,stat_entry_minutes,dispute_minutes,room_state,host_join_mode,host_side,host_ready,side_capacity,player_ids,position,player_id,memo,status,confirmed_at,created_at,updated_at";
-const RECRUITING_APPLICATION_COLUMNS = "post_id,kind,team_id,player_id,side,status,reserve,position,player_ids,source_team_id,source_entry_id,created_at,updated_at";
-const TOURNAMENT_COLUMNS = "id,title,format,visibility,status,region,court_id,court_name,mode,ranked,official,start_date,end_date,schedule_policy,schedule_note,mmr_limit_mode,max_mmr_gap,mmr_policy,rules,memo,created_by,started_at,match_ids,bracket,team_statuses,team_approvals,created_at,updated_at";
-const TOURNAMENT_TEAM_COLUMNS = "tournament_id,team_id,status,seed_order,approved_by,approved_at";
-const SEASON_COLUMNS = "id,name,subtitle,starts_at,ends_at,active,regions,promotion_line,rules";
-const AFFILIATION_COLUMNS = "id,type,name,score,wins,losses";
-const NOTIFICATION_COLUMNS = "id,user_id,target_user_id,title,body,tone,type,match_id,recruiting_post_id,invitation_id,discord_event,read_at,payload,created_at,updated_at";
-const REPORT_COLUMNS = "id,type,target_id,user_id,reported_user_ids,reason,status,resolved_at,resolved_by,resolution,payload,created_at,updated_at";
-const COURT_REQUEST_COLUMNS = "id,requested_by,status,name,hashtag,address_text,road_address,jibun_address,zonecode,lat,lng,payload,created_at,updated_at";
-const APPROVED_COURT_COLUMNS = "id,source_request_id,approved_by,name,hashtag,address_text,road_address,jibun_address,zonecode,lat,lng,status,hidden_at,hidden_by,hidden_reason,payload,approved_at,created_at,updated_at";
-const COURT_REVIEW_COLUMNS = "id,court_id,court_name,match_id,reviewer_id,rating,surface_rating,rim_rating,lighting_rating,crowd_rating,location_accuracy,fit_modes,tags,memo,status,hidden_at,hidden_by,hidden_reason,payload,created_at,updated_at";
-const PAYLOAD_ROW_COLUMNS = "id,status,payload,created_at,updated_at";
-const REFEREE_REQUEST_COLUMNS = "id,requested_by,status,qualification,trust_score,payload,created_at,updated_at";
-const REFEREE_EXAM_ATTEMPT_COLUMNS = "id,user_id,status,exam_version,payload,started_at,finished_at,available_after,created_at,updated_at";
-const APPOINTMENT_COLUMNS = "id,user_id,role,grade,status,appointed_by,starts_at,ends_at,payload,created_at,updated_at";
-const ADMIN_AUDIT_COLUMNS = "id,type,status,report_id,request_id,appointment_id,target_user_id,created_by,payload,created_at";
-const ADMIN_DISCIPLINARY_COLUMNS = "id,user_id,type,action_type,status,source_report_id,created_by,starts_at,ends_at,payload,created_at,updated_at";
-const DISCORD_DELIVERY_COLUMNS = "id,status,payload,target_user_id,created_at,updated_at,queued_at";
-const QUEUE_SCHEDULE_START_DATE = "2026-06-15";
-const QUEUE_SCHEDULE_TIMES = ["10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00", "21:00"];
-const POST_MATCH_STATUSES = new Set(["approval", "disputed"]);
-const RECORDABLE_RESERVE_SOURCES = new Set(["reserve-entry", "team-reserve"]);
-const MAX_RECRUITING_RESERVES_PER_SIDE = 2;
-const DAY_MS = 24 * 60 * 60 * 1000;
-const SCHEDULE_MAX_DAYS = 365;
-const ROOM_SCHEDULE_MAX_DAYS = 30;
-const PUBLIC_ROOM_SCHEDULE_MAX_DAYS = 5;
-const PUBLIC_ROOM_MIN_LEAD_HOURS = 4;
-const REFEREE_EXAM_COOLDOWN_MS = 7 * DAY_MS;
-const REPORT_MATCH_WINDOW_MS = 7 * DAY_MS;
-const LIFECYCLE_TITLE_PATTERN = /^(동의 대기|진행 예정|결과 승인|이의 확인|이의제기|확정|결과 입력)\s*·\s*/;
-const POST_MATCH_TITLE_PATTERN = /^(결과 승인|이의 확인|이의제기|확정|결과 입력)\s*·\s*/;
-const SIDE_LABEL_TEXT = { teamA: "A사이드", teamB: "B사이드" };
-const TEST_PROFILE_SETUP_AT = "2026-06-17T09:00:00.000Z";
-const TEST_PROFILE_BIRTH_YEAR = 2000;
-const TEST_PROFILE_AGE_GROUP = "open";
-const TEST_PROFILE_AGE_GROUP_SEASON = "2026-h1";
 
 function isRecruitingRoomOwner(post = {}, userId = "") {
   return Boolean(userId && getRecruitingRoomOwnerId(post) === userId);
@@ -683,8 +660,8 @@ function normalizeMatch(match = {}) {
   const source = match && typeof match === "object" ? match : {};
   const startedStatuses = ["agreed", "approval", "confirmed", "disputed", "void", "cancelled"];
   const started = startedStatuses.includes(source.status);
-  const teamA = normalizeMatchSide(source.teamA, "Team A");
-  const teamB = normalizeMatchSide(source.teamB, "Team B");
+  const teamA = normalizeMatchSide(source.teamA, MATCH_SIDE_FALLBACK_NAMES.teamA);
+  const teamB = normalizeMatchSide(source.teamB, MATCH_SIDE_FALLBACK_NAMES.teamB);
   const teamAPlayers = teamA.players;
   const teamBPlayers = teamB.players;
   const playedPlayerIds = source.playedPlayerIds ?? source.rules?.playedPlayerIds ?? {};
@@ -838,89 +815,6 @@ export function saveState(state) {
 
 export function syncNotificationDeliveries(state) {
   return syncDiscordNotificationDeliveries(state);
-}
-
-function uniqueScopeIds(values = []) {
-  return [...new Set([values].flat().filter(Boolean).map((value) => String(value)))];
-}
-
-function applyIdScope(query, column, ids = []) {
-  if (!ids.length) return query;
-  return ids.length === 1 ? query.eq(column, ids[0]) : query.in(column, ids);
-}
-
-function applyUpdatedBefore(query, column, value) {
-  const cursor = String(value ?? "").trim();
-  return cursor ? query.lt(column, cursor) : query;
-}
-
-function composeFilters(...filters) {
-  const activeFilters = filters.filter(Boolean);
-  if (!activeFilters.length) return null;
-  return (query) => activeFilters.reduce((currentQuery, filter) => filter(currentQuery), query);
-}
-
-function getClientLimit(value, fallback) {
-  if (value === undefined || value === null || value === "") return fallback;
-  const number = Number(value);
-  if (!Number.isFinite(number) || number < 0) return fallback;
-  return Math.min(REMOTE_CLIENT_MAX_LIMIT, Math.floor(number));
-}
-
-async function fetchFilteredRows(table, select = "*", order = "id", client = supabase, applyFilter = null, limit = null, ascending = true) {
-  const rows = [];
-  const hasLimit = limit !== undefined && limit !== null && limit !== "";
-  const numericLimit = Number(limit);
-  if (hasLimit && Number.isFinite(numericLimit) && numericLimit <= 0) return rows;
-  const maxRows = hasLimit && Number.isFinite(numericLimit) ? numericLimit : null;
-  for (let from = 0; ; from += REMOTE_PAGE_SIZE) {
-    if (maxRows && rows.length >= maxRows) break;
-    const to = maxRows ? Math.min(from + REMOTE_PAGE_SIZE - 1, maxRows - 1) : from + REMOTE_PAGE_SIZE - 1;
-    const baseQuery = client.from(table).select(select).range(from, to);
-    const query = applyFilter ? applyFilter(baseQuery) : baseQuery;
-    const { data, error } = order ? await query.order(order, { ascending, nullsFirst: false }) : await query;
-    if (error) throw error;
-    rows.push(...(data ?? []));
-    if (!data || data.length < REMOTE_PAGE_SIZE) break;
-  }
-  return rows;
-}
-
-async function fetchAllRows(table, select = "*", order = "id", client = supabase) {
-  return fetchFilteredRows(table, select, order, client);
-}
-
-async function fetchOptionalRows(table, select = "*", order = "id", client = supabase) {
-  try {
-    return await fetchAllRows(table, select, order, client);
-  } catch (error) {
-    console.warn(`Supabase optional table skipped: ${table}`, error.message);
-    return [];
-  }
-}
-
-async function fetchOptionalFilteredRows(table, select = "*", order = "id", client = supabase, applyFilter = null) {
-  try {
-    return await fetchFilteredRows(table, select, order, client, applyFilter);
-  } catch (error) {
-    console.warn(`Supabase optional table skipped: ${table}`, error.message);
-    return [];
-  }
-}
-
-async function fetchRowsByIds(table, select = "*", column = "id", ids = [], order = "id", client = supabase, optional = false) {
-  const scopedIds = uniqueScopeIds(ids);
-  if (!scopedIds.length) return [];
-  const fetcher = optional ? fetchOptionalFilteredRows : fetchFilteredRows;
-  return fetcher(table, select, order, client, (query) => applyIdScope(query, column, scopedIds));
-}
-
-function uniqueRowsById(rows = []) {
-  const byId = new Map();
-  rows.forEach((row) => {
-    if (row?.id) byId.set(row.id, row);
-  });
-  return [...byId.values()];
 }
 
 async function fetchCourtRows(client = supabase, ids = []) {
@@ -1238,8 +1132,8 @@ function fromRemoteMatch(row, context) {
   const playedPlayerIds = row.played_player_ids ?? row.rules?.playedPlayerIds ?? {};
   const mmrExcludedPlayerIds = row.mmr_excluded_player_ids ?? row.rules?.mmrExcludedPlayerIds ?? [];
   const statRecorders = normalizeStatRecorders(row.stat_recorders ?? row.rules?.statRecorders);
-  const recordTeamAName = String(row.rules?.recordSummary?.teamAName ?? "").trim() || "Team A";
-  const recordTeamBName = String(row.rules?.recordSummary?.teamBName ?? "").trim() || "Team B";
+  const recordTeamAName = String(row.rules?.recordSummary?.teamAName ?? "").trim() || MATCH_SIDE_FALLBACK_NAMES.teamA;
+  const recordTeamBName = String(row.rules?.recordSummary?.teamBName ?? "").trim() || MATCH_SIDE_FALLBACK_NAMES.teamB;
   const scoreA = resultRow?.score_a ?? row.score_a ?? 0;
   const scoreB = resultRow?.score_b ?? row.score_b ?? 0;
 
@@ -3653,8 +3547,6 @@ function makeSoloRecordStats(score, stats = {}) {
   );
 }
 
-const SOLO_RECORD_MODE_IDS = new Set(["1v1", "2v2", "3v3", "4v4", "5v5"]);
-
 function normalizeSoloRecordMode(mode = "1v1") {
   const text = String(mode || "1v1").trim();
   return SOLO_RECORD_MODE_IDS.has(text) ? text : "1v1";
@@ -3665,9 +3557,6 @@ function getSoloRecordSideSize(mode = "1v1") {
   const value = match ? Number(match[1]) : 1;
   return Math.max(1, Math.min(5, Number.isFinite(value) ? value : 1));
 }
-
-const SOLO_RECORD_ANONYMOUS_POSITION = "free";
-const SOLO_RECORD_ANONYMOUS_SOURCE = "개인참여";
 
 function parseSoloRecordRosterText(value = "") {
   return String(value ?? "")
@@ -10168,66 +10057,6 @@ export function deleteTeam(state, teamId) {
   };
 }
 
-export function addTeamMember(state, teamId, memberDraft) {
-  const userId = memberDraft.userId;
-  const team = state.teams.find((item) => item.id === teamId);
-  if (!team || team.members.some((member) => member.userId === userId)) return state;
-  const captain = team.members.find((member) => member.role === "captain");
-  if (captain?.userId !== state.currentUserId) {
-    return {
-      ...state,
-      notifications: [
-        {
-          id: makeId("n"),
-          title: "팀 관리 권한 없음",
-          body: "팀장만 팀원을 관리할 수 있습니다.",
-          tone: "team",
-        },
-        ...state.notifications,
-      ],
-    };
-  }
-  if (team.members.length >= MAX_TEAM_MEMBERS) {
-    return {
-      ...state,
-      notifications: [
-        {
-          id: makeId("n"),
-          title: "팀원 추가 제한",
-          body: `팀원은 최대 ${MAX_TEAM_MEMBERS}명까지 등록할 수 있습니다.`,
-          tone: "team",
-        },
-        ...state.notifications,
-      ],
-    };
-  }
-
-  const membershipCount = state.teams.filter((item) => item.members.some((member) => member.userId === userId)).length;
-  if (membershipCount >= MAX_TEAM_MEMBERSHIPS) {
-    return {
-      ...state,
-      notifications: [
-        {
-          id: makeId("n"),
-          title: "팀원 추가 제한",
-          body: `팀 한도 ${MAX_TEAM_MEMBERSHIPS}/${MAX_TEAM_MEMBERSHIPS}`,
-          tone: "team",
-        },
-        ...state.notifications,
-      ],
-    };
-  }
-
-  return {
-    ...state,
-    teams: state.teams.map((item) =>
-      item.id === teamId
-        ? { ...item, members: [...item.members, { userId, role: "regular" }] }
-        : item,
-    ),
-  };
-}
-
 function expirePendingTeamInvitations(teamInvitations = [], teamId, updatedAt) {
   return (teamInvitations ?? []).map((invitation) => (
     invitation.teamId === teamId && invitation.status === "pending"
@@ -10479,8 +10308,4 @@ export function removeTeamMember(state, teamId, userId) {
       };
     }),
   };
-}
-
-export function getMemberRoleLabel(role) {
-  return getTeamRoleLabel(role);
 }

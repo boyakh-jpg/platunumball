@@ -1,28 +1,27 @@
-import { getAuthenticatedContext, mergeById, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { getAuthenticatedContext, mergeById, readJsonBody, sendJson, uniqueValues as unique } from "../_supabaseAdmin.js";
 import { loadCompactMatchList } from "../matches/list.js";
 import {
-  DEFAULT_SETTINGS,
   createProfileShell,
   fromRemoteTeamInvitation,
   fromRemoteProfile,
   getRemoteAppSettings,
   normalizeState,
-  REMOTE_CLIENT_RECORD_MONTHS,
 } from "../../../src/data/repository.js";
+import { DEFAULT_SETTINGS } from "../../../src/data/repositoryDefaults.js";
+import {
+  APPROVED_COURT_COLUMNS,
+  FAVORITE_COLUMNS,
+  PROFILE_ME_COLUMNS,
+  TEAM_COLUMNS,
+  TEAM_INVITATION_COLUMNS,
+  TEAM_MEMBER_COLUMNS,
+} from "../../../src/data/repositoryColumns.js";
+import { REMOTE_CLIENT_RECORD_MONTHS } from "../../../src/lib/constants.js";
 
-export const PROFILE_ME_COLUMNS = "id,name,handle,hashtag,position,region,region_sido,region_district,school,company,club,trust_score,streak,avatar_color,test_login_id,auth_user_id,birth_year,age_group,age_group_checked_season,onboarding_complete,profile_version,handle_locked_at,birth_year_locked_at,name_updated_at,discord_connection,discord_user_id,ratings,created_at,updated_at,app_settings";
+export { PROFILE_ME_COLUMNS };
 const PROFILE_TEAM_MEMBER_COLUMNS = "id,name,handle,hashtag,position,trust_score,avatar_color,ratings,age_group,age_group_checked_season,onboarding_complete,updated_at";
-const TEAM_COLUMNS = "id,name,home_court,region,mmr,wins,losses,accent,deleted_at,created_at,updated_at";
-const TEAM_MEMBER_COLUMNS = "team_id,user_id,role";
-const TEAM_INVITATION_COLUMNS = "id,team_id,from_user_id,target_user_id,role,status,created_at,updated_at";
 const PROFILE_MATCH_SUMMARY_COLUMNS = "profile_id,match_count,win_count,loss_count,draw_count,points,rebounds,assists,steals,blocks,fouls,last_match_id,last_match_at,updated_at";
-const FAVORITE_COLUMNS = "id,user_id,target_type,target_id,created_at";
-const APPROVED_COURT_COLUMNS = "id,source_request_id,approved_by,name,hashtag,address_text,road_address,jibun_address,zonecode,lat,lng,status,hidden_at,hidden_by,hidden_reason,approved_at,created_at,updated_at,payload";
 const PROFILE_RECENT_RECORD_LIMIT = 6;
-
-function unique(values = []) {
-  return [...new Set(values.filter(Boolean))];
-}
 
 function toClientTeam(team = {}, memberRows = []) {
   return {

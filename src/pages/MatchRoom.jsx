@@ -14,7 +14,7 @@ import RefereeHoverCard from "../components/referee/RefereeHoverCard.jsx";
 import ShareCard from "../components/share/ShareCard.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
-import { DISPUTE_WINDOW_MINUTES, EVIDENCE_OPTIONS, PLAYER_STAT_FIELDS } from "../lib/constants.js";
+import { DISPUTE_WINDOW_MINUTES, EVIDENCE_OPTIONS, MATCH_SIDE_FALLBACK_NAMES, PLAYER_STAT_FIELDS } from "../lib/constants.js";
 import { DEFAULT_REPORT_REASON, REPORT_REASONS } from "../lib/reportReasons.js";
 import {
   formatStatLine,
@@ -1067,19 +1067,19 @@ export default function MatchRoom({ app }) {
           <Card className="section-card">
             <div className="contract-grid single">
               <div>
-                <span>Team A 동의</span>
+                <span>{MATCH_SIDE_FALLBACK_NAMES.teamA} 동의</span>
                 <strong>{teamAAgreement.approvals.length}/{teamAAgreement.majority}</strong>
               </div>
               <div>
-                <span>Team B 동의</span>
+                <span>{MATCH_SIDE_FALLBACK_NAMES.teamB} 동의</span>
                 <strong>{teamBAgreement.approvals.length}/{teamBAgreement.majority}</strong>
               </div>
               <div>
-                <span>Team A 결과 승인</span>
+                <span>{MATCH_SIDE_FALLBACK_NAMES.teamA} 결과 승인</span>
                 <strong>{teamAApproval.approvals.length}/{teamAApproval.majority}</strong>
               </div>
               <div>
-                <span>Team B 결과 승인</span>
+                <span>{MATCH_SIDE_FALLBACK_NAMES.teamB} 결과 승인</span>
                 <strong>{teamBApproval.approvals.length}/{teamBApproval.majority}</strong>
               </div>
               <div>

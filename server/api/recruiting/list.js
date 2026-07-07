@@ -1,13 +1,24 @@
-import { getAdminLevel, getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { getAdminLevel, getAuthenticatedContext, isMissingRoomFeedCards, isMissingTable, isMissingUserRoomFeed, readJsonBody, sendJson, uniqueStringIds as uniqueIds } from "../_supabaseAdmin.js";
 import {
-  DEFAULT_SETTINGS,
   createProfileShell,
   fromRemoteProfile,
   getRemoteAppSettings,
   normalizeState,
+} from "../../../src/data/repository.js";
+import { DEFAULT_SETTINGS } from "../../../src/data/repositoryDefaults.js";
+import {
   REMOTE_CLIENT_HOME_LOCAL_RECRUITING_LIMIT,
   REMOTE_CLIENT_RECRUITING_LIMIT,
-} from "../../../src/data/repository.js";
+} from "../../../src/lib/constants.js";
+import {
+  COURT_COLUMNS,
+  PROFILE_CARD_COLUMNS as PROFILE_PUBLIC_COLUMNS,
+  PROFILE_ME_COLUMNS,
+  RECRUITING_APPLICATION_COLUMNS,
+  RECRUITING_POST_COLUMNS,
+  TEAM_COLUMNS,
+  TEAM_MEMBER_COLUMNS,
+} from "../../../src/data/repositoryColumns.js";
 import { getRecruitingLobby, isPublicTeamRecruitingRoom } from "../../../src/lib/recruiting.js";
 
 let currentUserRecruitingRpcAvailable = true;
@@ -15,14 +26,7 @@ let userRoomFeedAvailable = true;
 let userRoomFeedScopeAvailable = true;
 let userRoomFeedTimingColumnsAvailable = true;
 
-const PROFILE_ME_COLUMNS = "id,name,handle,hashtag,position,region,region_sido,region_district,school,company,club,trust_score,streak,avatar_color,test_login_id,auth_user_id,birth_year,age_group,age_group_checked_season,onboarding_complete,profile_version,handle_locked_at,birth_year_locked_at,name_updated_at,discord_connection,discord_user_id,ratings,created_at,updated_at,app_settings";
-const PROFILE_PUBLIC_COLUMNS = "id,name,handle,hashtag,position,region,trust_score,avatar_color,ratings,age_group,updated_at";
-const TEAM_COLUMNS = "id,name,home_court,region,mmr,wins,losses,accent,deleted_at,created_at,updated_at";
-const TEAM_MEMBER_COLUMNS = "team_id,user_id,role";
-const COURT_COLUMNS = "id,name";
-const RECRUITING_POST_COLUMNS = "id,type,title,visibility,region,court_id,court_name,mode,scheduled_at,scheduled_date,scheduled_time,ranked,official,pre_registered,rating_scale,age_restriction,allowed_age_groups,rules,stakes,court_reserved,court_fee,spots,team_id,target_team_id,referee_id,referee_trust_min,stat_entry_minutes,dispute_minutes,room_state,host_join_mode,host_side,host_ready,side_capacity,player_ids,position,player_id,memo,status,confirmed_at,created_at,updated_at";
 const RECRUITING_COUNT_POST_COLUMNS = "id,type,visibility,mode,room_state,host_join_mode,host_side,side_capacity,player_ids,player_id,team_id,status";
-const RECRUITING_APPLICATION_COLUMNS = "post_id,kind,team_id,player_id,side,status,reserve,position,player_ids,source_team_id,source_entry_id,created_at,updated_at";
 const ROOM_CHAT_MESSAGE_COLUMNS = "id,room_type,room_id,user_id,body,created_at,message_seq";
 const RECRUITING_FEED_MAX_LIMIT = 200;
 const RECRUITING_PUBLIC_PAGE_MAX_LIMIT = 80;
@@ -101,15 +105,6 @@ function getRecruitingRegionScope(body = {}) {
   if (regionScope === "all") return "all";
   if (regionScope === "region") return "region";
   return "local";
-}
-
-function uniqueIds(ids = []) {
-  return [...new Set(ids.map((id) => String(id ?? "").trim()).filter(Boolean))];
-}
-
-function isMissingTable(error = {}, table = "") {
-  const message = String(error?.message ?? "");
-  return error?.code === "PGRST205" || error?.code === "42P01" || (table && message.includes(table));
 }
 
 function fromRoomChatMessageRow(row = {}) {
@@ -255,16 +250,6 @@ function isSameRegionKey(value = "", regionKey = "") {
 
 function getProfileRegionKey(profile = {}) {
   return normalizeRegionKey(profile?.region_district || profile?.region || "");
-}
-
-function isMissingUserRoomFeed(error = {}) {
-  const message = String(error?.message ?? "");
-  return error?.code === "PGRST205" || error?.code === "42P01" || message.includes("user_room_feed");
-}
-
-function isMissingRoomFeedCards(error = {}) {
-  const message = String(error?.message ?? "");
-  return error?.code === "PGRST205" || error?.code === "42P01" || message.includes("room_feed_cards");
 }
 
 function isMissingUserRoomFeedScope(error = {}) {

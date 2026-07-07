@@ -1,0 +1,52 @@
+export const DEFAULT_SETTINGS = {
+  theme: "dark",
+  privacy: {
+    regionRanking: true,
+    teamHistory: true,
+    statSummary: true,
+  },
+  notificationChannels: {
+    discord: {
+      enabled: false,
+      events: {
+        match: true,
+        approval: true,
+        report: true,
+      },
+    },
+  },
+  blockedUserIds: [],
+  favoritePlayerIds: [],
+  favoriteTeamIds: [],
+  representativeTeamId: "",
+  favoriteCourtIds: [],
+  favoriteRefereeIds: [],
+  approvedCourts: [],
+  courtRequests: [],
+  courtReviews: [],
+  refereeRequests: [],
+  adminAppointments: [],
+  refereeAppointments: [],
+  adminAuditLog: [],
+  adminDisciplinaryActions: [],
+  refereeExamAttempts: [],
+};
+
+export const EMPTY_STATE = {
+  currentUserId: "",
+  deletedTeamIds: [],
+  users: [],
+  teams: [],
+  teamInvitations: [],
+  affiliations: [],
+  seasons: [],
+  matches: [],
+  tournaments: [],
+  notifications: [],
+  reports: [],
+  recruitingPosts: [],
+  discordNotificationDeliveries: [],
+  discordNotificationSeenKeys: [],
+  discordNotificationSeenUsers: [],
+  settings: DEFAULT_SETTINGS,
+};

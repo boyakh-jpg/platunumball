@@ -1,9 +1,11 @@
 import { getAuthenticatedContext, readJsonBody, sendJson } from "./_supabaseAdmin.js";
+import {
+  PROFILE_CARD_COLUMNS as PROFILE_COLUMNS,
+  SEARCH_COURT_COLUMNS as COURT_COLUMNS,
+  TEAM_COLUMNS,
+  TEAM_MEMBER_COLUMNS,
+} from "../../src/data/repositoryColumns.js";
 
-const PROFILE_COLUMNS = "id,name,handle,hashtag,position,region,trust_score,avatar_color,ratings,age_group,updated_at";
-const TEAM_COLUMNS = "id,name,home_court,region,mmr,wins,losses,accent,deleted_at,created_at,updated_at";
-const TEAM_MEMBER_COLUMNS = "team_id,user_id,role";
-const COURT_COLUMNS = "id,name,hashtag,address_text,road_address,jibun_address,zonecode,lat,lng,status,payload,approved_at,created_at,updated_at";
 const REFEREE_APPOINTMENT_COLUMNS = "user_id,role,grade,status,starts_at,ends_at";
 const TYPE_ALIASES = {
   all: ["profile", "team", "court", "referee"],

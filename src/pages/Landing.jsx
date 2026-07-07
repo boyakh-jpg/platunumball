@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import { BOXTIER_LETTER_DARK_URL, BOXTIER_LETTER_LIGHT_URL, BOXTIER_LOGO_URL } from "../lib/assets.js";
+import { MATCH_SIDE_FALLBACK_NAMES } from "../lib/constants.js";
 
 export default function Landing({ state }) {
   const users = state?.users ?? [];
@@ -70,11 +71,11 @@ export default function Landing({ state }) {
             <div className="live-dot">TODAY</div>
             <h2>{featuredMatch?.mode ?? "5v5"} Match</h2>
             <div className="broadcast-score">
-              <span>{featuredMatch?.teamA.name ?? "Team A"}</span>
+              <span>{featuredMatch?.teamA.name ?? MATCH_SIDE_FALLBACK_NAMES.teamA}</span>
               <strong>{featuredMatch?.teamA.score ?? 0}</strong>
               <i>VS</i>
               <strong>{featuredMatch?.teamB.score ?? 0}</strong>
-              <span>{featuredMatch?.teamB.name ?? "Team B"}</span>
+              <span>{featuredMatch?.teamB.name ?? MATCH_SIDE_FALLBACK_NAMES.teamB}</span>
             </div>
             <div className="broadcast-list">
               <span><Trophy size={17} /> {topUser?.name ?? "boxtier"} <b>{topUser?.ratings?.integrated ?? "-"}</b></span>

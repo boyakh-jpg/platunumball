@@ -90,13 +90,15 @@ import {
   updateRecruitingRoomRules,
   unblockUser,
   voidMatch,
+} from "../data/repository.js";
+import {
   REMOTE_CLIENT_INITIAL_MATCH_LIMIT,
   REMOTE_CLIENT_INITIAL_RECRUITING_LIMIT,
   REMOTE_CLIENT_MATCH_LIMIT,
   REMOTE_CLIENT_RECORD_MATCH_LIMIT,
   REMOTE_CLIENT_RECORD_MONTHS,
   REMOTE_CLIENT_RECRUITING_LIMIT,
-} from "../data/repository.js";
+} from "../lib/constants.js";
 import { isSupabaseConfigured, supabase } from "../lib/supabase.js";
 import { readProfileBindings, readProfileCache, writeProfileBindings, writeProfileCache } from "../lib/storage.js";
 import { findDiscordConnectionOwner, getDiscordConnectionUserId } from "../lib/discord.js";

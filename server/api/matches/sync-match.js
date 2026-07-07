@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { getAuthenticatedContext, readJsonBody, sendJson, toArray } from "../_supabaseAdmin.js";
+import { getAuthenticatedContext, readJsonBody, sendJson, toArray, uniqueValues as uniqueIds } from "../_supabaseAdmin.js";
 import { RECORD_TYPES } from "../../../src/lib/constants.js";
 import {
   applyAuthoritativeMatchOperation,
@@ -647,10 +647,6 @@ function getExistingSidePlayerIds(existingPlayers = [], side) {
 function sameOrderedIds(left = [], right = []) {
   if (left.length !== right.length) return false;
   return left.every((id, index) => id === right[index]);
-}
-
-function uniqueIds(ids = []) {
-  return Array.from(new Set(ids.filter(Boolean)));
 }
 
 function getExistingSideReserveIds(existingMatch = {}, sideName = "") {

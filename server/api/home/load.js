@@ -7,7 +7,7 @@ import {
   REMOTE_CLIENT_MATCH_LIMIT,
   REMOTE_CLIENT_RECORD_MONTHS,
   REMOTE_CLIENT_RECRUITING_LIMIT,
-} from "../../../src/data/repository.js";
+} from "../../../src/lib/constants.js";
 
 const HOME_RECENT_COMPLETED_HOURS = 24 * 31 * REMOTE_CLIENT_RECORD_MONTHS;
 
