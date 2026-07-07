@@ -19,8 +19,11 @@ import {
 import { createProfileShell, fromRemoteProfile, getRemoteAppSettings } from "../../../src/data/profileMappers.js";
 import { DEFAULT_SETTINGS } from "../../../src/data/repositoryDefaults.js";
 import {
+  DISPUTE_WINDOW_MINUTES,
   REMOTE_CLIENT_HOME_LOCAL_RECRUITING_LIMIT,
   REMOTE_CLIENT_RECRUITING_LIMIT,
+  REFEREE_TRUST_MIN,
+  STAT_ENTRY_WINDOW_MINUTES,
 } from "../../../src/lib/constants.js";
 import {
   COURT_COLUMNS,
@@ -1448,9 +1451,9 @@ function fromRemoteRecruitingPost(row = {}, applicationsByPost = new Map(), cour
     targetTeamId: row.target_team_id,
     refereeWanted: Boolean(roomState.refereeWanted || row.referee_id),
     refereeId: row.referee_id ?? "",
-    refereeTrustMin: row.referee_trust_min ?? 90,
-    statEntryMinutes: row.stat_entry_minutes ?? 60,
-    disputeMinutes: row.dispute_minutes ?? 30,
+    refereeTrustMin: row.referee_trust_min ?? REFEREE_TRUST_MIN,
+    statEntryMinutes: row.stat_entry_minutes ?? STAT_ENTRY_WINDOW_MINUTES,
+    disputeMinutes: row.dispute_minutes ?? DISPUTE_WINDOW_MINUTES,
     roomState: chatMessages ? { ...roomState, chatMessages } : roomState,
     mmrLimitMode: ["off", "warn", "block"].includes(roomState.mmrLimitMode) ? roomState.mmrLimitMode : "block",
     teamOnly: roomState.teamOnly === true || isPublicTeamRecruitingRoom({ visibility: row.visibility, hostJoinMode: row.host_join_mode }),
