@@ -49,6 +49,7 @@ import {
   TEST_PROFILE_SETUP_AT,
   getHostTrustRequirement,
   getTeamRoleLabel,
+  normalizeMmrLimitMode as normalizeRecruitingMmrLimitMode,
   normalizeTeamRole,
 } from "../lib/constants.js";
 import { findCourtDuplicate, getCourtDuplicateMessage, getRegisteredCourts, normalizeCourtLayout, normalizeCourtSurfaceType } from "../lib/courts.js";
@@ -4020,10 +4021,6 @@ function getSelfDecisionId(state, match, sideName, decisionKey, playerId) {
 
 function uniquePlayerIds(playerIds = []) {
   return [...new Set(playerIds.filter(Boolean))];
-}
-
-function normalizeRecruitingMmrLimitMode(mode = "block") {
-  return ["off", "warn", "block"].includes(mode) ? mode : "block";
 }
 
 function isMatchSideTeamParty(match = {}, sideName = "") {

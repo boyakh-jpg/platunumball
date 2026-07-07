@@ -1,4 +1,5 @@
 import { getAuthenticatedContext, readJsonBody, sendJson, toArray, toNotificationRows } from "../_supabaseAdmin.js";
+import { normalizeMmrLimitMode } from "../../../src/lib/constants.js";
 import {
   applyAuthoritativeRecruitingOperation,
   getOperation,
@@ -50,10 +51,6 @@ function reject(statusCode, message) {
 
 function getTimestamp(item = {}) {
   return item.updatedAt ?? item.createdAt ?? item.queuedAt ?? item.startedAt ?? item.approvedAt ?? new Date().toISOString();
-}
-
-function normalizeMmrLimitMode(mode = "block") {
-  return ["off", "warn", "block"].includes(mode) ? mode : "block";
 }
 
 function normalizeRoomState(roomState = {}, post = {}) {

@@ -89,6 +89,9 @@ export const STAT_ENTRY_WINDOW_MINUTES = 60;
 export const DISPUTE_WINDOW_MINUTES = 30;
 export const TEST_ACCOUNT_COUNT = 50;
 export const TEAM_INVITE_ROLES = ["regular", "mercenary"];
+export function normalizeMmrLimitMode(mode = "block") {
+  return ["off", "warn", "block"].includes(mode) ? mode : "block";
+}
 export const QUEUE_SCHEDULE_START_DATE = "2026-06-15";
 export const QUEUE_SCHEDULE_TIMES = ["10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00", "21:00"];
 export const POST_MATCH_STATUSES = new Set(["approval", "disputed"]);
