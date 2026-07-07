@@ -209,6 +209,12 @@ import {
   groupBy,
   toDateTime,
 } from "./rowUtils.js";
+import {
+  createEmptyState,
+  mergeDemoDefaultsById,
+  normalizeTeam,
+  normalizeUser,
+} from "./stateMappers.js";
 export { DEFAULT_SETTINGS } from "./repositoryDefaults.js";
 export { createProfileShell, fromRemoteProfile, getRemoteAppSettings } from "./profileMappers.js";
 export { fromRemoteTeamInvitation } from "./teamMappers.js";
@@ -248,30 +254,6 @@ function getDemoInitialState() {
 function isRecruitingRoomOwner(post = {}, userId = "") {
   return Boolean(userId && getRecruitingRoomOwnerId(post) === userId);
 }
-function normalizeUser(user = {}) {
-  return { ...user, ratings: normalizeRatings(user.ratings) };
-}
-
-function normalizeTeam(team = {}) {
-  const source = team && typeof team === "object" ? team : {};
-  const members = Array.isArray(source.members) ? source.members : [];
-  return {
-    ...source,
-    members: members
-      .filter((member) => member && typeof member === "object" && member.userId)
-      .map((member) => ({ ...member, role: member.role ?? "regular" })),
-  };
-}
-
-function createEmptyState({ authUserId = "", email = "" } = {}) {
-  const shellUser = authUserId ? createProfileShell(authUserId, email) : null;
-  return {
-    ...clone(EMPTY_STATE),
-    currentUserId: shellUser?.id ?? "",
-    users: shellUser ? [shellUser] : [],
-  };
-}
-
 function clampTrustScore(value) {
   return Math.max(0, Math.min(100, Math.round(Number(value ?? 80))));
 }
@@ -392,13 +374,6 @@ function getExplicitInvitationTeamPlayerIds(team = {}, capacity = Infinity, play
   const sourceIds = Array.isArray(playerIds) ? playerIds : [fallbackPlayerId];
   const teamPlayerSet = new Set((team?.members ?? []).map((member) => member.userId));
   return uniquePlayerIds(sourceIds).filter((playerId) => teamPlayerSet.has(playerId)).slice(0, capacity);
-}
-
-function mergeDemoDefaultsById(current = [], fallback = []) {
-  const currentMap = new Map(current.map((item) => [item.id, item]));
-  const mergedDefaults = fallback.map((item) => ({ ...item, ...(currentMap.get(item.id) ?? {}) }));
-  const extraItems = current.filter((item) => !fallback.some((fallbackItem) => fallbackItem.id === item.id));
-  return [...mergedDefaults, ...extraItems];
 }
 
 function addDateDays(dateValue, days) {
