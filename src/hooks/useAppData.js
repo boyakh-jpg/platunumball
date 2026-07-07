@@ -1109,7 +1109,6 @@ export function useAppData(authUser = null, appLocation = null) {
   const recruitingPagePromiseRef = useRef(null);
   const recorderMatchesPromiseRef = useRef(null);
   const profileRecordsPromiseRef = useRef(null);
-  const myRecruitingPostsPromiseRef = useRef(new Map());
   const recruitingRegionPromiseRef = useRef(new Map());
   const latestRecruitingRegionRequestRef = useRef("");
   const latestRecruitingLoadMoreRequestRef = useRef("");
@@ -1183,7 +1182,6 @@ export function useAppData(authUser = null, appLocation = null) {
       recruitingPagePromiseRef.current = null;
       recorderMatchesPromiseRef.current = null;
       profileRecordsPromiseRef.current = null;
-      myRecruitingPostsPromiseRef.current = new Map();
       recruitingRegionPromiseRef.current = new Map();
       latestRecruitingRegionRequestRef.current = "";
       latestRecruitingLoadMoreRequestRef.current = "";
@@ -1209,7 +1207,6 @@ export function useAppData(authUser = null, appLocation = null) {
     recruitingPagePromiseRef.current = null;
     recorderMatchesPromiseRef.current = null;
     profileRecordsPromiseRef.current = null;
-    myRecruitingPostsPromiseRef.current = new Map();
     recruitingRegionPromiseRef.current = new Map();
     latestRecruitingRegionRequestRef.current = "";
     latestRecruitingLoadMoreRequestRef.current = "";
@@ -2012,49 +2009,6 @@ export function useAppData(authUser = null, appLocation = null) {
     return promise;
   }, [authEmail, authUserId, setState, trackedPostServerAction]);
 
-  const loadMyRecruitingPosts = useCallback(async (roomScope = "", options = {}) => {
-    if (!isSupabaseConfigured || !authUserId) return false;
-    const requestedRoomScope = ["created", "joined", "invited"].includes(roomScope) ? roomScope : "";
-    const includeFeedCounts = options?.includeFeedCounts === true;
-    const force = options?.force === true;
-    const promiseKey = `${requestedRoomScope || "all"}:${includeFeedCounts ? "counts" : "plain"}`;
-    const currentPromise = myRecruitingPostsPromiseRef.current.get(promiseKey);
-    if (currentPromise && !force) return currentPromise;
-    const promise = (async () => {
-      try {
-        const result = await trackedPostServerAction(
-          "/api/recruiting/list",
-          {
-            authUserId,
-            authEmail,
-            scope: "mine",
-            ...(requestedRoomScope ? { roomScope: requestedRoomScope } : {}),
-            limit: REMOTE_CLIENT_RECRUITING_LIMIT,
-            adminContext: false,
-            includeFeedCounts,
-            preferFreshRows: true,
-          },
-          { allowWhenDisabled: true },
-        );
-        const remoteState = normalizeServerState(filterPendingRecruitingPosts(result?.state ?? {}, pendingRecruitingPostIdsRef.current, recentRecruitingMutationTimesRef.current));
-        const nextPosts = remoteState.recruitingPosts ?? [];
-        setState((prev) => mergeRemoteRecruitingPage(prev, remoteState, { forceRecruitingPostIds: new Set(getStateRecruitingPostIds(remoteState)) }));
-        setRecruitingPagination((prev) => ({
-          ...prev,
-          feedCounts: result?.page?.feedCounts ?? prev.feedCounts ?? null,
-        }));
-        return nextPosts.length;
-      } catch (error) {
-        console.warn("My recruiting load failed.", error.message);
-        return false;
-      }
-    })().finally(() => {
-      if (myRecruitingPostsPromiseRef.current.get(promiseKey) === promise) myRecruitingPostsPromiseRef.current.delete(promiseKey);
-    });
-    myRecruitingPostsPromiseRef.current.set(promiseKey, promise);
-    return promise;
-  }, [authEmail, authUserId, setState, trackedPostServerAction]);
-
   const loadDirectory = useCallback(async (force = false) => {
     if (!isSupabaseConfigured || !authUserId) return false;
     if (directoryStatus.loaded && !force) return true;
@@ -2287,7 +2241,6 @@ export function useAppData(authUser = null, appLocation = null) {
         loadMoreRecruiting,
         loadRecruitingRegion,
         loadRecruitingPost,
-        loadMyRecruitingPosts,
         loadRecorderMatches,
         loadProfileRecords,
         profileRecordsLoaded,
@@ -2986,7 +2939,7 @@ export function useAppData(authUser = null, appLocation = null) {
       reset: () => setState(resetState({ includeDemo: !isSupabaseConfigured, authUserId, email: authEmail })),
       });
     },
-    [authEmail, authUserId, currentUserId, deleteTeamServer, ensureRemoteReady, ensureServerActionAvailable, loadAdminContext, loadDirectory, loadMatchDetail, loadMatchRecruitingSchedule, loadMoreMatches, loadMoreRecruiting, loadRecruitingRegion, loadRecruitingPost, loadMyRecruitingPosts, loadRecorderMatches, loadProfileRecords, profileRecordsLoaded, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, refreshAdminState, refreshCurrentProfile, runServerAction, serverProfileBound, submitReportServer, syncFavoriteServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncSettingsServer, syncTeamInvitationServer, syncTeamServer, syncTournamentServer],
+    [authEmail, authUserId, currentUserId, deleteTeamServer, ensureRemoteReady, ensureServerActionAvailable, loadAdminContext, loadDirectory, loadMatchDetail, loadMatchRecruitingSchedule, loadMoreMatches, loadMoreRecruiting, loadRecruitingRegion, loadRecruitingPost, loadRecorderMatches, loadProfileRecords, profileRecordsLoaded, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, refreshAdminState, refreshCurrentProfile, runServerAction, serverProfileBound, submitReportServer, syncFavoriteServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncSettingsServer, syncTeamInvitationServer, syncTeamServer, syncTournamentServer],
   );
 
   const safeCurrentUserId = currentUserId ?? currentUser?.id ?? "";

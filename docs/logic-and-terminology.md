@@ -1877,7 +1877,7 @@ flowchart TD
 38-6. 경기 메뉴의 `내가 만든 방`, `내 참여방`, `초대받은 방` scope는 날짜 필터 때문에 숨겨지면 안 된다. 날짜 필터는 공개 큐가 아니라 경기 일정 표시를 좁히는 용도이고, 관계 필터에서는 relation 표시가 우선이다.
 39. 모집방 생성 서버 저장이 성공하면 클라이언트는 `created` feed count를 즉시 반영하고 경기 메뉴 모집 일정도 다시 읽는다.
 39-1. `/app/matches` 모집 일정 로드는 경기 목록 페이지네이션 `loading`과 별도 `recruitingScheduleLoading` 상태로 관리한다. 경기 목록 로딩 중이어도 모집 일정 확인이 불필요하게 막히면 안 된다.
-39-2. `/app` 홈 첫 로드는 `/api/home/load`가 홈 Action Queue용 현재 사용자 모집 feed를 소량 포함하지만, 경기 메뉴 전체 일정 확인 완료로 표시하지 않는다. 홈 화면은 진입 직후 `loadMyRecruitingPosts()`나 `/api/matches/list includeRecruitingSchedule=true`를 자동 호출하지 않고, `/app/matches` 진입 시 `recruitingScheduleChecked=false`이면 경기 메뉴가 전체 일정 feed를 1회 읽는다.
+39-2. `/app` 홈 첫 로드는 `/api/home/load`가 홈 Action Queue용 현재 사용자 모집 feed를 소량 포함하지만, 경기 메뉴 전체 일정 확인 완료로 표시하지 않는다. 홈 화면은 진입 직후 `/api/matches/list includeRecruitingSchedule=true`를 자동 호출하지 않고, `/app/matches` 진입 시 `recruitingScheduleChecked=false`이면 경기 메뉴가 전체 일정 feed를 1회 읽는다. 프론트 공용 action으로 `scope:"mine"` 모집 목록을 직접 여는 경로는 두지 않는다.
 39-3. 모집방 모달은 열릴 때 단건 상세를 즉시 한 번 읽고, 열린 상태에서는 visible 탭에서만 15초 간격으로 단건 refresh한다. 초대/수락/거절/참여 같은 현재 사용자 action은 서버 응답 merge와 관계 refresh hook으로 즉시 반영하고, 4초 polling에 의존하지 않는다.
 39-4. 모집방 초대/수락/거절/참여/취소 성공 후에는 현재 프로필, 내 모집 feed, 경기 메뉴 모집 일정 feed, 해당 `postId` 단건 상세를 같은 refresh hook에서 갱신한다. 열린 모달과 홈/경기/매칭 숫자가 서로 다른 늦은 호출로 덮이면 안 된다.
 39-4-1. 홈 Action Queue의 초대 수락은 pending 초대가 있으면 optimistic mutation 후 즉시 해당 방으로 이동한다. 서버 `/api/recruiting/sync-post` replay가 최종 권위이며 실패 시 기존 rollback 경고/복구 경로를 쓴다.
