@@ -2870,6 +2870,22 @@ function makeMatchRecordRepresentativeNotifications(match = {}, state = {}, now 
   });
 }
 
+function getMatchRecordDraftInvalidReason(state, draft = {}, mode = "", teamA = null, teamB = null) {
+  if (draft.visibility && draft.visibility !== "private") return "경기 기록방은 비공개 팀전으로만 만들 수 있습니다.";
+  if (draft.hostJoinMode !== "team" || draft.teamOnly !== true) return "경기 기록방은 팀전 전용입니다.";
+  if (mode === "1v1" || (MODE_SIZES[mode] ?? 0) < 2) return "경기 기록방 팀전은 2v2 이상만 만들 수 있습니다.";
+  if (!teamA?.id || !teamB?.id || teamA.id === teamB.id) return "A/B팀은 서로 다른 팀이어야 합니다.";
+
+  const teamAMembers = new Set(getTeamMemberIds(teamA));
+  const teamBMembers = new Set(getTeamMemberIds(teamB));
+  if (!teamAMembers.has(state.currentUserId)) return "방장은 A사이드 팀원이어야 합니다.";
+
+  const opponentLeaderId = uniquePlayerIds([draft.opponentLeaderId, ...(draft.opponentPlayerIds ?? [])])
+    .find((playerId) => teamBMembers.has(playerId));
+  if (!opponentLeaderId || opponentLeaderId === state.currentUserId) return "B사이드 기록 확인 대표 1명을 선택해야 합니다.";
+  return "";
+}
+
 function getTrustedRefereeId(state, refereeId, playerIds = []) {
   if (!refereeId || playerIds.includes(refereeId)) return "";
   const user = state.users.find((item) => item.id === refereeId);
@@ -3889,9 +3905,19 @@ export function createMatch(state, draft) {
     return { ...state, notifications: [getInvalidScheduleNotification(ROOM_SCHEDULE_MAX_DAYS), ...state.notifications] };
   }
   const nowIso = new Date().toISOString();
-  const teams = state.teams;
+  const teams = state.teams ?? [];
   const teamA = teams.find((team) => team.id === draft.teamAId) ?? teams[0];
-  const teamB = teams.find((team) => team.id === draft.teamBId && team.id !== teamA.id) ?? teams.find((team) => team.id !== teamA.id) ?? teams[1];
+  const teamB = teams.find((team) => team.id === draft.teamBId && team.id !== teamA?.id) ?? teams.find((team) => team.id !== teamA?.id) ?? teams[1];
+  const matchRecordInvalidReason = isMatchRecord ? getMatchRecordDraftInvalidReason(state, draft, mode, teamA, teamB) : "";
+  if (matchRecordInvalidReason) {
+    return {
+      ...state,
+      notifications: [
+        { id: makeId("n"), title: "경기 기록방 생성 불가", body: matchRecordInvalidReason, tone: "orange" },
+        ...state.notifications,
+      ],
+    };
+  }
   const evidence = (draft.evidence ?? []).map((item) => ({ id: item.id, label: item.label }));
   const matchRecordLeaders = isMatchRecord ? getMatchRecordSideLeaders(state, draft, teamA, teamB) : null;
   const teamAPlayers = matchRecordLeaders?.teamAPlayers ?? getTeamPlayers(teamA, size);

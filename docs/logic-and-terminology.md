@@ -2189,6 +2189,7 @@ flowchart TD
 - `비공개 경기방 + 개인전`: `visibility:"private"`, `hostJoinMode:"player"`로 만들고 선택한 `invitePlayerIds`만 개인 초대로 보낸다.
 - `비공개 경기방 + 팀전`: `visibility:"private"`, `hostJoinMode:"team"`으로 만들고 A사이드 팀과 B사이드 대표 1명만 정한다. A/B 라인업은 각 사이드장이 방에서 고른다.
 - `경기 기록방 + 팀전`: `recordType:"match_record"`, `visibility:"private"`, `hostJoinMode:"team"`으로 만들고 2v2 이상만 허용한다. 생성 시에는 A/B 팀과 각 사이드 대표 1명만 저장한다. 출전/후보 명단은 진행 메뉴의 기록방에서 각 사이드장이 자기 팀 명단만 확정한다.
+- `match_record` 생성 reducer/server replay도 private/team/teamOnly/2v2 이상/A팀 소속 방장/B팀 대표 조건을 다시 검사한다.
 - `경기 기록방`은 생성 직후 `endedAt`이 있어도 결과 확정 전에는 방모달을 읽기전용으로 잠그지 않는다. 명단 확정과 기록 입력이 끝난 뒤 확정 기록으로 넘어간다.
 - `개인 기록`: `recordType:"solo"`이고 모집/초대/MMR 반영 없이 기록만 저장한다.
 - `비공개 대회방`: `visibility:"tournament"`이고 팀 초대/대진 생성 흐름으로 처리한다.
