@@ -150,7 +150,15 @@ import {
   getScheduledStartMs,
 } from "./matchLifecycleUtils.js";
 import { DEFAULT_SETTINGS, EMPTY_STATE } from "./repositoryDefaults.js";
-import { fromRemoteTeam, fromRemoteTeamInvitation, getTeamMemberIds, getTeamPlayers, normalizeTeamInviteRole } from "./teamMappers.js";
+import {
+  ensureTeamPartyLeader,
+  fromRemoteTeam,
+  fromRemoteTeamInvitation,
+  getSelectedReservePlayerIds,
+  getTeamMemberIds,
+  getTeamPlayers,
+  normalizeTeamInviteRole,
+} from "./teamMappers.js";
 import {
   buildLeaguePairings,
   buildTournamentPairings,
@@ -2818,28 +2826,12 @@ function getSelfDecisionId(state, match, sideName, decisionKey, playerId) {
   return currentUserId;
 }
 
-function ensureTeamPartyLeader(team = {}, playerIds = [], leaderId = "", capacity = Infinity) {
-  const selectableIds = new Set(getSelectableTeamPlayerIds(team));
-  const safePlayerIds = uniquePlayerIds(playerIds).filter((playerId) => selectableIds.has(playerId));
-  if (!leaderId || !selectableIds.has(leaderId)) return safePlayerIds.slice(0, capacity);
-  return [leaderId, ...safePlayerIds.filter((playerId) => playerId !== leaderId)].slice(0, capacity);
-}
-
 function getAveragePlayerMmr(state = {}, playerIds = [], fallback = 1200) {
   const values = uniquePlayerIds(playerIds)
     .map((playerId) => Number(state.users?.find((user) => user.id === playerId)?.ratings?.integrated))
     .filter((value) => Number.isFinite(value));
   if (!values.length) return fallback;
   return Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
-}
-
-function getSelectedReservePlayerIds(team = {}, activeIds = [], reserveIds = [], capacity = MAX_RECRUITING_RESERVES_PER_SIDE) {
-  if (!team || !Array.isArray(reserveIds) || !reserveIds.length) return [];
-  const activeSet = new Set(activeIds);
-  const teamPlayerIds = new Set((team.members ?? []).map((member) => member.userId));
-  return uniquePlayerIds(reserveIds)
-    .filter((playerId) => teamPlayerIds.has(playerId) && !activeSet.has(playerId))
-    .slice(0, capacity);
 }
 
 function withEffectiveMatchStatRecorders(match = {}) {

@@ -1,4 +1,6 @@
-import { normalizeTeamRole } from "../lib/constants.js";
+import { MAX_RECRUITING_RESERVES_PER_SIDE, normalizeTeamRole } from "../lib/constants.js";
+import { getSelectableTeamPlayerIds } from "../lib/recruiting.js";
+import { uniquePlayerIds } from "./rowUtils.js";
 
 export function fromRemoteTeam(row, memberRows) {
   return {
@@ -37,6 +39,22 @@ export function getTeamPlayers(team, size) {
 
 export function getTeamMemberIds(team = {}) {
   return (team.members ?? []).map((member) => member.userId).filter(Boolean);
+}
+
+export function ensureTeamPartyLeader(team = {}, playerIds = [], leaderId = "", capacity = Infinity) {
+  const selectableIds = new Set(getSelectableTeamPlayerIds(team));
+  const safePlayerIds = uniquePlayerIds(playerIds).filter((playerId) => selectableIds.has(playerId));
+  if (!leaderId || !selectableIds.has(leaderId)) return safePlayerIds.slice(0, capacity);
+  return [leaderId, ...safePlayerIds.filter((playerId) => playerId !== leaderId)].slice(0, capacity);
+}
+
+export function getSelectedReservePlayerIds(team = {}, activeIds = [], reserveIds = [], capacity = MAX_RECRUITING_RESERVES_PER_SIDE) {
+  if (!team || !Array.isArray(reserveIds) || !reserveIds.length) return [];
+  const activeSet = new Set(activeIds);
+  const teamPlayerIds = new Set((team.members ?? []).map((member) => member.userId));
+  return uniquePlayerIds(reserveIds)
+    .filter((playerId) => teamPlayerIds.has(playerId) && !activeSet.has(playerId))
+    .slice(0, capacity);
 }
 
 export function normalizeTeamInviteRole(role = "regular") {
