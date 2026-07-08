@@ -349,7 +349,7 @@ function getEntryMmr(entry) {
     : entry.user?.ratings?.integrated ?? 1200;
 }
 
-export function getLobbySideMeta(lobby, sideName, userById, { useSideName = false } = {}) {
+function getLobbySideMeta(lobby, sideName, userById, { useSideName = false } = {}) {
   const side = lobby.sides[sideName];
   const teamEntry = side.entries.find((entry) => isPartyEntry(entry) && entry.team);
   const leadEntry = teamEntry ?? side.entries[0] ?? null;
@@ -549,7 +549,7 @@ function getJoinableSidePartyOptions(lobby, myTeams = [], currentUserId = "", ta
   });
 }
 
-export function isPartyEntry(entry) {
+function isPartyEntry(entry) {
   return isRecruitingPartyEntry(entry);
 }
 
@@ -588,7 +588,7 @@ function groupPartySlots(slots = []) {
   ));
 }
 
-export function PlayerRoomSlot({
+function PlayerRoomSlot({
   user,
   teams,
   status = "waiting",
@@ -662,7 +662,7 @@ function isCurrentUserRoomParticipant(post, lobby, currentUserId) {
   ));
 }
 
-export function getRecruitingRoomStatus(lobby, { post = null, myEntry = null, mine = false } = {}) {
+function getRecruitingRoomStatus(lobby, { post = null, myEntry = null, mine = false } = {}) {
   const timingStatus = post ? getPublicRoomTimingStatus(post) : null;
   if (lobby.canConfirm) {
     if (timingStatus && !timingStatus.canConfirm) {
@@ -955,7 +955,7 @@ function CommandPopoverFrame({ floating = false, anchor = null, className = "", 
   return createPortal(popover, document.body);
 }
 
-export function SlotCommandPanel({ sideName, reserve = false, floating = false, anchor = null, canMoveHere = false, partyJoinOptions = [], onMoveHere, onJoinParty, onClose, children }) {
+function SlotCommandPanel({ sideName, reserve = false, floating = false, anchor = null, canMoveHere = false, partyJoinOptions = [], onMoveHere, onJoinParty, onClose, children }) {
   return (
     <CommandPopoverFrame floating={floating} anchor={anchor} className="arena-slot-command-popover" onClose={onClose}>
       <header>
@@ -980,7 +980,7 @@ export function SlotCommandPanel({ sideName, reserve = false, floating = false, 
   );
 }
 
-export function SelfSlotCommandPanel({
+function SelfSlotCommandPanel({
   entry,
   sideName,
   reserve = false,
@@ -1042,7 +1042,7 @@ export function SelfSlotCommandPanel({
   );
 }
 
-export function SideRoster({
+function SideRoster({
   sideName,
   side,
   lobby,
@@ -1158,7 +1158,7 @@ export function SideRoster({
   );
 }
 
-export function ReserveLine({
+function ReserveLine({
   sideName,
   candidates,
   playingIds,
@@ -1482,7 +1482,7 @@ function MatchRecordRosterPanel({
   );
 }
 
-export function RoomChat({
+function RoomChat({
   messages,
   userById,
   teams,
@@ -1573,7 +1573,7 @@ export function RoomChat({
   );
 }
 
-export function InvitePanel({
+function InvitePanel({
   sideName,
   reserve = false,
   query,
@@ -2218,7 +2218,7 @@ export function RecruitingRoomModal(props) {
   return <RecruitingRoomModalReady {...props} />;
 }
 
-export function RecruitingRoomLoadFailedView({ onClose, onRetry }) {
+function RecruitingRoomLoadFailedView({ onClose, onRetry }) {
   return (
     <div className="arena-modal-backdrop" role="presentation" onMouseDown={onClose}>
       <aside className="arena-room-modal" role="dialog" aria-modal="true" aria-label="방 로드 실패" onMouseDown={(event) => event.stopPropagation()}>
