@@ -35,7 +35,6 @@ import {
   getMatchReservePlayerIds,
   getSafeMatchSide,
   getMatchSideLeaderId,
-  getMatchSidePlayerIds,
   getMatchSideRecordPlayerIds,
   getMatchTrustFeedbackClosesAt,
   getMatchTrustFeedbackLimit,

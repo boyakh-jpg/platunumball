@@ -56,7 +56,7 @@ import {
   isRecruitingPostForUser,
   isNationalRecruitingPost,
 } from "../lib/recruiting.js";
-import { findTeamByHashtag, findUserByHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
+import { findTeamByHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { assetUrl } from "../lib/assets.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import {
