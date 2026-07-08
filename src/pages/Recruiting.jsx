@@ -2288,7 +2288,7 @@ function RecruitingRoomLoadFailedView({ onClose, onRetry }) {
   );
 }
 
-function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sourceMatch = null, onInvitationAccepted = null, onJoined = null, skipInitialDetailLoad = false }) {
+function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sourceMatch = null, entryPoint = "", onInvitationAccepted = null, onJoined = null, skipInitialDetailLoad = false }) {
   const selectedPost = post;
   const myTeams = useMemo(
     () => app.state.teams.filter((team) => team.members.some((member) => member.userId === app.currentUser.id)),
@@ -2433,6 +2433,10 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
     setSlotActionDraft(null);
     setSoloRecordDeleteTarget(null);
     onClose?.();
+  };
+  const closeFromBackdrop = (event) => {
+    if (event.target !== event.currentTarget) return;
+    closeModal();
   };
   const deleteSourceSoloRecord = (match) => {
     if (!match?.id || !isPersonalRecordMatch(match) || match.createdBy !== app.currentUser.id) return;
@@ -3074,9 +3078,16 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
           sourceMatch?.result &&
           ["postgame", "dispute", "record"].includes(sourceMatchPhase?.phase),
         );
+        const canShowSourceMatchRecordEditor = sourceMatchAction.disputed || canSubmitSourceMatchLiveResult || canSubmitSourceMatchPostgameResult || canSubmitSourceMatchRecorderResult;
+        const sourceMatchRecordBoardFirst = Boolean(
+          matchRoom &&
+          (
+            sourceMatchIsRecordRoom ||
+            (entryPoint === "recorder" && (showSourceMatchRecordSummary || canShowSourceMatchRecordEditor))
+          ),
+        );
         const renderSourceMatchRecordBoard = () => {
-          if (!matchRoom || !sourceMatchIsRecordRoom) return null;
-          const canShowRecordEditor = sourceMatchAction.disputed || canSubmitSourceMatchLiveResult || canSubmitSourceMatchPostgameResult || canSubmitSourceMatchRecorderResult;
+          if (!sourceMatchRecordBoardFirst) return null;
           return (
             <div className="arena-match-source-actions arena-match-source-record-board">
               <strong>경기 기록판</strong>
@@ -3084,7 +3095,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
               {showSourceMatchRecordSummary ? (
                 <SourceMatchRecordSummary match={sourceMatch} userById={userById} />
               ) : null}
-              {canShowRecordEditor ? (
+              {canShowSourceMatchRecordEditor ? (
                 <SourceMatchDisputeEditor
                   match={sourceMatch}
                   userById={userById}
@@ -3100,6 +3111,17 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
             </div>
           );
         };
+        const renderMatchSubstitutionPanel = () => (
+          !sourceRoomReadOnly && matchRoom ? (
+            <MatchSubstitutionPanel
+              match={sourceMatch}
+              userById={userById}
+              teams={app.state.teams}
+              canSubstituteSide={canSubstituteSourceMatchSide}
+              onSubstitute={(sideName, activePlayerId, reservePlayerId) => app.actions.substituteMatchPlayer?.(sourceMatch.id, sideName, activePlayerId, reservePlayerId)}
+            />
+          ) : null
+        );
         const canMoveMatchSides = Boolean(canManageMatchCheckin && selectedPost.hostJoinMode !== "team");
         const canEditSourceRoomRules = Boolean(
           !sourceRoomReadOnly &&
@@ -3329,7 +3351,8 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
             className="arena-compose-backdrop"
             role="presentation"
             style={{ "--sheet-backdrop-opacity": sheetBackdropOpacity }}
-            onPointerDown={() => { setInviteDraft(null); setSlotActionDraft(null); closeModal(); }}
+            onPointerDown={closeFromBackdrop}
+            onMouseDown={closeFromBackdrop}
           >
             <aside
               ref={lobbyModalRef}
@@ -3339,6 +3362,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
               aria-label="매치방"
               style={{ "--sheet-drag-y": `${sheetDragOffset}px`, "--sheet-modal-opacity": sheetModalOpacity }}
               onPointerDown={(event) => { event.stopPropagation(); startSheetDrag(event); }}
+              onMouseDown={(event) => event.stopPropagation()}
               onPointerMove={moveSheetDrag}
               onPointerUp={finishSheetDrag}
               onPointerCancel={cancelSheetDrag}
@@ -3378,6 +3402,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                 </div>
 
                 {renderSourceMatchRecordBoard()}
+                {entryPoint === "recorder" ? renderMatchSubstitutionPanel() : null}
 
                 <div className="arena-lobby-versus-stage">
                   <div className="arena-lobby-team-panel team-a">
@@ -3593,15 +3618,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                 />
               ) : null}
 
-              {!sourceRoomReadOnly && matchRoom ? (
-                <MatchSubstitutionPanel
-                  match={sourceMatch}
-                  userById={userById}
-                  teams={app.state.teams}
-                  canSubstituteSide={canSubstituteSourceMatchSide}
-                  onSubstitute={(sideName, activePlayerId, reservePlayerId) => app.actions.substituteMatchPlayer?.(sourceMatch.id, sideName, activePlayerId, reservePlayerId)}
-                />
-              ) : null}
+              {entryPoint === "recorder" ? null : renderMatchSubstitutionPanel()}
 
               <div className="arena-room-rule-panel">
                 <div className="arena-room-rule-head">
@@ -3786,7 +3803,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                     {sourceMatchAction.disputed && sourceMatch?.disputes?.[0]?.reason ? (
                       <span>최근 이의: {sourceMatch.disputes[0].reason}</span>
                     ) : null}
-                    {!sourceMatchIsRecordRoom && showSourceMatchRecordSummary ? (
+                    {!sourceMatchRecordBoardFirst && !sourceMatchIsRecordRoom && showSourceMatchRecordSummary ? (
                       <SourceMatchRecordSummary match={sourceMatch} userById={userById} />
                     ) : null}
                     {!sourceMatchAction.disputed && sourceMatchApprovalOpen ? (
@@ -3832,7 +3849,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                         </div>
                       </form>
                     ) : null}
-                    {!sourceMatchIsRecordRoom && sourceMatchAction.disputed ? (
+                    {!sourceMatchRecordBoardFirst && !sourceMatchIsRecordRoom && sourceMatchAction.disputed ? (
                       <SourceMatchDisputeEditor
                         match={sourceMatch}
                         userById={userById}
@@ -3842,7 +3859,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                         onVoid={() => app.actions.voidMatch(sourceMatch.id)}
                       />
                     ) : null}
-                    {!sourceMatchIsRecordRoom && !sourceMatchAction.disputed && (canSubmitSourceMatchLiveResult || canSubmitSourceMatchPostgameResult || canSubmitSourceMatchRecorderResult) ? (
+                    {!sourceMatchRecordBoardFirst && !sourceMatchIsRecordRoom && !sourceMatchAction.disputed && (canSubmitSourceMatchLiveResult || canSubmitSourceMatchPostgameResult || canSubmitSourceMatchRecorderResult) ? (
                       <SourceMatchDisputeEditor
                         match={sourceMatch}
                         userById={userById}

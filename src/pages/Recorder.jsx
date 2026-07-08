@@ -274,7 +274,7 @@ export default function Recorder({ app }) {
         )}
       </div>
 
-      <MatchRoomModal app={app} matchId={selectedMatchId} onClose={closeMatch} />
+      <MatchRoomModal app={app} matchId={selectedMatchId} entryPoint="recorder" onClose={closeMatch} />
     </>
   );
 }
