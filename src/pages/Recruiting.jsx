@@ -485,7 +485,7 @@ function getMissingStartAttendanceIds(match = {}, operatorId = "") {
   ));
 }
 
-export function getLobbyRecorderIds(lobby) {
+function getLobbyRecorderIds(lobby) {
   const playingIds = new Set([...lobby.sides.teamA.projectedPlayers, ...lobby.sides.teamB.projectedPlayers]);
   return ["teamA", "teamB"].reduce((acc, sideName) => {
     const candidate = (lobby.sides[sideName].reserveCandidates ?? []).find((item) => (
@@ -498,20 +498,20 @@ export function getLobbyRecorderIds(lobby) {
   }, { teamA: "", teamB: "" });
 }
 
-export function canMovePlayerTo(lobby, playerId, sideName, reserve = false) {
+function canMovePlayerTo(lobby, playerId, sideName, reserve = false) {
   const side = lobby.sides[sideName];
   if (!side) return false;
   if (reserve) return side.reserves.includes(playerId) || side.reserveCandidates.length < MAX_RESERVE_PLAYERS_PER_SIDE;
   return side.projectedPlayers.includes(playerId) || side.projectedFilled < side.capacity;
 }
 
-export function getEntryPlayerReserveState(entry, playerId) {
+function getEntryPlayerReserveState(entry, playerId) {
   if (!entry || !playerId) return false;
   if (entry.reserve) return true;
   return (entry.reserves ?? []).includes(playerId) && !(entry.players ?? []).includes(playerId);
 }
 
-export function getSameSidePartyOptions(lobby, myEntry, myTeams = [], targetSide = myEntry?.side) {
+function getSameSidePartyOptions(lobby, myEntry, myTeams = [], targetSide = myEntry?.side) {
   if (!myEntry || myEntry.kind === "team") return [];
   const sideEntries = lobby.sides[targetSide]?.entries ?? [];
   return myTeams.flatMap((team) => {
