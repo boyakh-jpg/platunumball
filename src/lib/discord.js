@@ -23,7 +23,7 @@ export function getDiscordChannel(settings = {}) {
   };
 }
 
-export function getDiscordConnection(user = {}) {
+function getDiscordConnection(user = {}) {
   return user?.discordConnection ?? null;
 }
 
@@ -53,7 +53,7 @@ export function getDiscordDisplayName(user = {}) {
   return connection?.username || connection?.globalName || connection?.userId || "";
 }
 
-export function getDiscordAvatarUrl(user = {}) {
+function getDiscordAvatarUrl(user = {}) {
   const connection = getDiscordConnection(user);
   return isDiscordLinked(user) ? connection?.avatarUrl || "" : "";
 }
@@ -98,7 +98,7 @@ function getRandomToken() {
   return Math.random().toString(36).slice(2);
 }
 
-export function createDiscordOAuthState(userId = "") {
+function createDiscordOAuthState(userId = "") {
   const state = `${userId}.${Date.now().toString(36)}.${getRandomToken()}`;
   if (typeof window !== "undefined") {
     window.sessionStorage.setItem(
@@ -165,7 +165,7 @@ export function consumeDiscordOAuthResult(userId = "") {
   }
 }
 
-export function getNotificationDiscordEvent(notification = {}) {
+function getNotificationDiscordEvent(notification = {}) {
   const explicitEvent = notification.discordEvent || notification.eventType || notification.type;
   if (DISCORD_EVENT_IDS.has(explicitEvent)) return explicitEvent;
   if (notification.reportId || notification.tone === "report" || notification.type === "report_action") return "report";
@@ -173,21 +173,21 @@ export function getNotificationDiscordEvent(notification = {}) {
   return "match";
 }
 
-export function getAppBaseUrl() {
+function getAppBaseUrl() {
   const configuredUrl = String(import.meta.env?.VITE_PUBLIC_APP_URL ?? "").trim().replace(/\/$/, "");
   if (configuredUrl) return configuredUrl;
   if (typeof window !== "undefined" && window.location?.origin) return window.location.origin;
   return "";
 }
 
-export function getNotificationWebPath(notification = {}) {
+function getNotificationWebPath(notification = {}) {
   if (notification.webPath) return notification.webPath;
   if (notification.matchId) return `/app/matches?match=${encodeURIComponent(notification.matchId)}`;
   if (notification.recruitingPostId) return `/app/recruiting?post=${encodeURIComponent(notification.recruitingPostId)}`;
   return "/app/notifications";
 }
 
-export function getNotificationWebUrl(notification = {}) {
+function getNotificationWebUrl(notification = {}) {
   const webPath = getNotificationWebPath(notification);
   const appBaseUrl = getAppBaseUrl();
   return appBaseUrl ? `${appBaseUrl}${webPath}` : webPath;
@@ -202,7 +202,7 @@ function getDiscordActionId(action, recruitingPostId, invitationId) {
   ].join(":");
 }
 
-export function getDiscordNotificationActions(notification = {}) {
+function getDiscordNotificationActions(notification = {}) {
   if (Array.isArray(notification.discordActions)) return notification.discordActions;
   if (!notification.recruitingPostId || !notification.invitationId) return [];
   return [
