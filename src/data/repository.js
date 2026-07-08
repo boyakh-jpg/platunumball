@@ -1786,10 +1786,6 @@ function generateTournamentMatches(state, tournament, options = {}) {
   };
 }
 
-function isTournamentManager(state, tournament) {
-  return tournament.createdBy === state.currentUserId;
-}
-
 function updateAffiliationScores(state) {
   const users = state.users;
   return state.affiliations.filter((affiliation) => affiliation.type !== "club").map((affiliation) => {
@@ -2605,7 +2601,7 @@ export function updateTournamentMatchSchedule(state, tournamentId, matchId, sche
   const match = state.matches.find((item) => item.id === matchId && item.tournamentId === tournamentId);
   if (!tournament || !match) return state;
 
-  if (!isTournamentManager(state, tournament)) {
+  if (tournament.createdBy !== state.currentUserId) {
     return {
       ...state,
       notifications: [
