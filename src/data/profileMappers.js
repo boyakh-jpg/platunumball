@@ -4,7 +4,7 @@ import {
   TEST_PROFILE_BIRTH_YEAR,
   TEST_PROFILE_SETUP_AT,
 } from "../lib/constants.js";
-import { toHashtag } from "../lib/handles.js";
+import { getUserHashtag, toHashtag } from "../lib/handles.js";
 import { nullableText } from "./rowUtils.js";
 
 export function makeDefaultRatings() {
@@ -22,6 +22,8 @@ export function normalizeRatings(ratings = {}) {
 
 export const getProfileRegionSnapshot = (regionSido, regionDistrict, fallbackRegion) =>
   nullableText([regionSido, regionDistrict].filter(Boolean).join(" ")) ?? nullableText(fallbackRegion);
+
+export const getUserIdentityHashtag = (user = {}) => getUserHashtag(user);
 
 function getProfileShellId(authUserId = "") {
   const safeId = String(authUserId || "pending").replace(/[^a-zA-Z0-9]/g, "").slice(0, 18) || "pending";

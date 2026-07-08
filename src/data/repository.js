@@ -128,7 +128,7 @@ import {
   getScheduledStartMs,
 } from "./matchLifecycleUtils.js";
 import { DEFAULT_SETTINGS, EMPTY_STATE } from "./repositoryDefaults.js";
-import { fromRemoteTeam, fromRemoteTeamInvitation, normalizeTeamInviteRole } from "./teamMappers.js";
+import { fromRemoteTeam, fromRemoteTeamInvitation, getTeamMemberIds, getTeamPlayers, normalizeTeamInviteRole } from "./teamMappers.js";
 import {
   buildLeaguePairings,
   buildTournamentPairings,
@@ -166,6 +166,7 @@ import {
   fromRemoteProfile,
   getProfileRegionSnapshot,
   getRemoteAppSettings,
+  getUserIdentityHashtag,
   makeDefaultRatings,
   normalizeRatings,
 } from "./profileMappers.js";
@@ -264,7 +265,6 @@ export {
   REMOTE_CLIENT_RECRUITING_LIMIT,
 } from "../lib/constants.js";
 
-const getUserIdentityHashtag = (user = {}) => getUserHashtag(user);
 let demoInitialState = null;
 export function setDemoInitialState(state = null) {
   demoInitialState = state && typeof state === "object" ? state : null;
@@ -1560,14 +1560,6 @@ export function subscribeRemoteState() {
 export function resetState(options = {}) {
   clearState();
   return options.includeDemo === false ? createEmptyState(options) : clone(getDemoInitialState());
-}
-
-function getTeamPlayers(team, size) {
-  return team.members.slice(0, size).map((member) => member.userId);
-}
-
-function getTeamMemberIds(team = {}) {
-  return (team.members ?? []).map((member) => member.userId).filter(Boolean);
 }
 
 function getMatchRecordSideLeaders(state, draft = {}, teamA = {}, teamB = {}) {

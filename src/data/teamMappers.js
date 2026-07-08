@@ -31,6 +31,14 @@ export function fromRemoteTeamInvitation(row = {}) {
   };
 }
 
+export function getTeamPlayers(team, size) {
+  return team.members.slice(0, size).map((member) => member.userId);
+}
+
+export function getTeamMemberIds(team = {}) {
+  return (team.members ?? []).map((member) => member.userId).filter(Boolean);
+}
+
 export function normalizeTeamInviteRole(role = "regular") {
   return normalizeTeamRole(role, { allowCaptain: false });
 }
