@@ -8,7 +8,7 @@ import {
 import { isInstantRoom } from "../lib/matchUtils.js";
 import { normalizeRecruitingPost } from "../lib/recruiting.js";
 
-export function addDateDays(dateValue, days) {
+function addDateDays(dateValue, days) {
   const date = new Date(`${dateValue}T00:00:00`);
   date.setDate(date.getDate() + days);
   const year = date.getFullYear();
@@ -17,7 +17,7 @@ export function addDateDays(dateValue, days) {
   return `${year}-${month}-${day}`;
 }
 
-export function getLocalDateValue(date = new Date()) {
+function getLocalDateValue(date = new Date()) {
   return [
     date.getFullYear(),
     String(date.getMonth() + 1).padStart(2, "0"),
