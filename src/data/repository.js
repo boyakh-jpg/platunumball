@@ -119,9 +119,11 @@ import {
   getRecruitingFit,
   getRecruitingLobby,
   getRecruitingRatingScale,
+  getRecruitingHostEditReady,
   getRoomClosePenalty,
   getRecruitingRoomOwnerId,
   getRecruitingSideCapacity,
+  getRecruitingSlotEditStatus,
   getSelectableTeamPlayerIds,
   getSelectedTeamPlayerIds,
   hasRecruitingApplicant,
@@ -130,8 +132,10 @@ import {
   isRecruitingRoomMember,
   isRecruitingRoomOwner,
   isRecruitingRoomParticipant,
+  isRecruitingTeamSideLocked,
   isTeamOnlyRecruitingRoom,
   isSoloIndividualRecruitingRoom,
+  isMutableRecruitingRoom,
   normalizeRecruitingMmrRangeMode,
   normalizeRecruitingApplicants,
   normalizeRecruitingPost,
@@ -7088,27 +7092,6 @@ function hasRecruitingTeamMemberOnOtherSide(post, state, teamId, targetSide, all
       ...(entry.reserves ?? []),
     ].some((playerId) => teamMemberIds.has(playerId));
   });
-}
-
-function isMutableRecruitingRoom(post) {
-  return Boolean(post && post.status !== "closed");
-}
-
-function getRecruitingSlotEditStatus(post) {
-  return "ready";
-}
-
-function getRecruitingHostEditReady(post) {
-  return true;
-}
-
-function isRecruitingTeamSideLocked(post = {}) {
-  const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
-  const teamOnly = isTeamOnlyRecruitingRoom({ ...post, roomState });
-  return Boolean(
-    (post.hostJoinMode === "team" || post.teamId) &&
-    (post.visibility === "private" || teamOnly)
-  );
 }
 
 function isRecruitingEntryMember(entry, playerId) {

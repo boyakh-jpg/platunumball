@@ -82,6 +82,27 @@ export function removeAcceptedRecruitingInvitations(invitations = [], acceptedIn
   });
 }
 
+export function isMutableRecruitingRoom(post) {
+  return Boolean(post && post.status !== "closed");
+}
+
+export function getRecruitingSlotEditStatus(post) {
+  return "ready";
+}
+
+export function getRecruitingHostEditReady(post) {
+  return true;
+}
+
+export function isRecruitingTeamSideLocked(post = {}) {
+  const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
+  const teamOnly = isTeamOnlyRecruitingRoom({ ...post, roomState });
+  return Boolean(
+    (post.hostJoinMode === "team" || post.teamId) &&
+    (post.visibility === "private" || teamOnly)
+  );
+}
+
 export function getRecruitingEntryLeaderId(entry = null, roomState = {}, hostPlayerId = "") {
   if (!entry) return "";
   return roomState?.partyLeaders?.[entry.id] ?? (entry.fixed ? hostPlayerId : entry.playerId) ?? "";
