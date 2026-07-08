@@ -10,7 +10,6 @@ import {
   MAX_TEAM_MEMBERSHIPS,
   MAX_TEAM_NAME_LENGTH,
   MODE_SIZES,
-  PLAYER_STAT_FIELDS,
   PLAYER_POSITIONS,
   PUBLIC_ROOM_SCHEDULE_MAX_DAYS,
   RECORD_TYPES,
@@ -77,6 +76,7 @@ import {
   getMatchStartDate,
   getMatchTrustFeedbackLimit,
   getMatchTrustFeedbackParticipantIds,
+  getMergedResultScore,
   getReportableMatchTimeMs,
   getReportableMatchUserIds,
   getPublicRoomTimingStatus,
@@ -89,6 +89,7 @@ import {
   getEffectiveStatRecorders,
   getResultPointAudit,
   getStatSubmissionStatus,
+  getSubmittedStatPatch,
   getTeamCaptainId,
   isMatchTrustFeedbackOpen,
   isInstantRoom,
@@ -99,6 +100,7 @@ import {
   isMatchStatRecorder,
   isMatchRecordMatch,
   isPersonalRecordMatch,
+  normalizeDisputeRequest,
   normalizeStatRecorders,
   normalizePlayerStats,
 } from "../lib/matchUtils.js";
@@ -3312,16 +3314,6 @@ export function approveMatch(state, matchId, sideName, playerId) {
   return stateWithApproval;
 }
 
-function normalizeDisputeRequest(disputeInput = "") {
-  if (disputeInput && typeof disputeInput === "object") {
-    return {
-      ...disputeInput,
-      reason: String(disputeInput.reason ?? "").trim(),
-    };
-  }
-  return { reason: String(disputeInput ?? "").trim() };
-}
-
 function buildDisputeDraftResult(match = {}, disputeRequest = {}, currentUserId = "", now = new Date().toISOString()) {
   const baseResult = clone(match.result);
   const requestedPlayerId = String(disputeRequest.playerId ?? "");
@@ -3474,30 +3466,6 @@ function currentUserCanFileMatchDispute(state, match) {
 
 function getAllowedResultFieldIds(match, currentUserId, playerId, hostPostgameScore = false) {
   return getAllowedResultStatFields(match, currentUserId, playerId, hostPostgameScore);
-}
-
-function getSubmittedStatPatch(playerStats = {}, targetPlayerIds = []) {
-  const targetSet = new Set(targetPlayerIds);
-  const validFieldIds = new Set(PLAYER_STAT_FIELDS.map((field) => field.id));
-  return Object.fromEntries(
-    Object.entries(playerStats ?? {})
-      .filter(([playerId]) => targetSet.has(playerId))
-      .map(([playerId, stats]) => [
-        playerId,
-        Object.fromEntries(
-          Object.entries(stats ?? {})
-            .filter(([fieldId]) => validFieldIds.has(fieldId))
-            .map(([fieldId, value]) => [fieldId, Math.max(0, Number(value ?? 0))]),
-        ),
-      ])
-      .filter(([, stats]) => Object.keys(stats).length),
-  );
-}
-
-function getMergedResultScore(match, playerStats, sideName, fallbackScore = 0) {
-  const sidePlayerIds = getMatchSidePlayerIds(match, sideName);
-  if (!sidePlayerIds.some((playerId) => playerStats[playerId])) return Number(fallbackScore ?? match[sideName]?.score ?? 0);
-  return sidePlayerIds.reduce((sum, playerId) => sum + Number(playerStats[playerId]?.points ?? 0), 0);
 }
 
 export function checkInMatchPlayer(state, matchId, sideName, playerId) {

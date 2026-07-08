@@ -169,6 +169,40 @@ export function buildMatchDisputeReason(args = {}) {
   return buildMatchDisputeRequest(args).reason;
 }
 
+export function normalizeDisputeRequest(disputeInput = "") {
+  if (disputeInput && typeof disputeInput === "object") {
+    return {
+      ...disputeInput,
+      reason: String(disputeInput.reason ?? "").trim(),
+    };
+  }
+  return { reason: String(disputeInput ?? "").trim() };
+}
+
+export function getSubmittedStatPatch(playerStats = {}, targetPlayerIds = []) {
+  const targetSet = new Set(targetPlayerIds);
+  const validFieldIds = new Set(PLAYER_STAT_FIELDS.map((field) => field.id));
+  return Object.fromEntries(
+    Object.entries(playerStats ?? {})
+      .filter(([playerId]) => targetSet.has(playerId))
+      .map(([playerId, stats]) => [
+        playerId,
+        Object.fromEntries(
+          Object.entries(stats ?? {})
+            .filter(([fieldId]) => validFieldIds.has(fieldId))
+            .map(([fieldId, value]) => [fieldId, Math.max(0, Number(value ?? 0))]),
+        ),
+      ])
+      .filter(([, stats]) => Object.keys(stats).length),
+  );
+}
+
+export function getMergedResultScore(match, playerStats, sideName, fallbackScore = 0) {
+  const sidePlayerIds = getMatchSidePlayerIds(match, sideName);
+  if (!sidePlayerIds.some((playerId) => playerStats[playerId])) return Number(fallbackScore ?? match[sideName]?.score ?? 0);
+  return sidePlayerIds.reduce((sum, playerId) => sum + Number(playerStats[playerId]?.points ?? 0), 0);
+}
+
 function addDateDays(dateValue, days) {
   const date = new Date(`${dateValue}T00:00:00`);
   if (!Number.isFinite(date.getTime())) return "";
