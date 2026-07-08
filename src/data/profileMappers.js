@@ -7,7 +7,7 @@ import {
 import { getUserHashtag, toHashtag } from "../lib/handles.js";
 import { nullableText } from "./rowUtils.js";
 
-export function makeDefaultRatings() {
+function makeDefaultRatings() {
   return { integrated: 1200, modes: { "1v1": 1200, "2v2": 1200, "3v3": 1200, "5v5": 1200 } };
 }
 

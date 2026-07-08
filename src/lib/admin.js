@@ -44,7 +44,7 @@ export const ADMIN_REVIEW_ACTIONS = {
   hideCourtReview: { label: "구장 리뷰 숨김", feedback: "신고된 구장 리뷰가 숨김 처리되었습니다." },
 };
 
-export const APPOINTMENT_ROLE_META = {
+const APPOINTMENT_ROLE_META = {
   admin: { label: "관리자", defaultTermDays: 90 },
   referee: { label: "심판", defaultTermDays: 90 },
 };
@@ -60,11 +60,11 @@ function normalizeAdminGrade(grade = "") {
   return ADMIN_GRADE_ALIASES[grade] ?? grade;
 }
 
-export function getAdminGrade() {
+function getAdminGrade() {
   return "";
 }
 
-export function getAdminGradeMeta(grade) {
+function getAdminGradeMeta(grade) {
   return ADMIN_GRADE_META[normalizeAdminGrade(grade)] ?? null;
 }
 
@@ -204,7 +204,7 @@ function matchIncludesReferee(report = {}, matches = [], userId = "") {
   return Boolean(match?.refereeId && match.refereeId === userId);
 }
 
-export function calculateRefereeGrade(user = {}, state = {}) {
+function calculateRefereeGrade(user = {}, state = {}) {
   const userId = user.id ?? "";
   const matches = state.matches ?? [];
   const reports = state.reports ?? [];
