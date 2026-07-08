@@ -143,6 +143,24 @@ export function getLobbySidePlayerTeamIds(lobby, sideName) {
   );
 }
 
+export function hasRecruitingTeamMemberOnOtherSide(post, state, teamId, targetSide, allowedEntryId = "") {
+  if (!teamId || !VALID_SIDES.has(targetSide)) return false;
+  const team = (state.teams ?? []).find((item) => item.id === teamId);
+  const teamMemberIds = new Set((team?.members ?? []).map((member) => member.userId).filter(Boolean));
+  if (!teamMemberIds.size) return false;
+
+  const lobby = getRecruitingLobby(post, state);
+  return (lobby.entries ?? []).some((entry) => {
+    if (!entry || entry.id === allowedEntryId || entry.side === targetSide) return false;
+    if (entry.team?.id === teamId) return true;
+    return [
+      entry.playerId,
+      ...(entry.players ?? []),
+      ...(entry.reserves ?? []),
+    ].some((playerId) => teamMemberIds.has(playerId));
+  });
+}
+
 export function getRecruitingEntryLeaderId(entry = null, roomState = {}, hostPlayerId = "") {
   if (!entry) return "";
   return roomState?.partyLeaders?.[entry.id] ?? (entry.fixed ? hostPlayerId : entry.playerId) ?? "";
