@@ -16,8 +16,8 @@ const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const round = (value) => Math.round(value * 10) / 10;
 const uniquePlayerIds = (playerIds = []) => [...new Set(playerIds.filter(Boolean))];
 export const PUBLIC_ROOM_SCHEDULE_MAX_DAYS = 5;
-export const PUBLIC_ROOM_CONFIRM_OPEN_HOURS = 24;
-export const PUBLIC_ROOM_CONFIRM_CLOSE_HOURS = 4;
+const PUBLIC_ROOM_CONFIRM_OPEN_HOURS = 24;
+const PUBLIC_ROOM_CONFIRM_CLOSE_HOURS = 4;
 const MATCH_CLOSED_NOTICE_GRACE_MINUTES = INSTANT_ROOM_EXPIRE_MINUTES;
 export { INSTANT_ROOM_EXPIRE_MINUTES };
 export const MATCH_DISPUTE_REASON_OPTIONS = [
@@ -57,11 +57,11 @@ export function getSafeMatchSide(match = {}, sideName = "teamA", options = {}) {
   };
 }
 
-export function getMatchDisputeScore(match = {}, sideName = "") {
+function getMatchDisputeScore(match = {}, sideName = "") {
   return getMatchSideScore(match, sideName);
 }
 
-export function getMatchRecordType(match = {}) {
+function getMatchRecordType(match = {}) {
   return match?.rules?.recordType ?? match?.recordType ?? RECORD_TYPES.match;
 }
 
@@ -73,7 +73,7 @@ export function isMatchRecordMatch(match = {}) {
   return getMatchRecordType(match) === RECORD_TYPES.matchRecord;
 }
 
-export function isRecordKindMatch(match = {}) {
+function isRecordKindMatch(match = {}) {
   return isPersonalRecordMatch(match) || isMatchRecordMatch(match);
 }
 
@@ -244,7 +244,7 @@ function addDateDays(dateValue, days) {
   ].join("-");
 }
 
-export function getRoomTimingType(room = {}) {
+function getRoomTimingType(room = {}) {
   const value = room.timingType ?? room.rules?.timingType ?? room.roomState?.timingType;
   return value === "instant" || room.scheduledAt === "즉시" ? "instant" : "scheduled";
 }
@@ -253,7 +253,7 @@ export function isInstantRoom(room = {}) {
   return getRoomTimingType(room) === "instant";
 }
 
-export function getLocalDateInputValue(now = new Date()) {
+function getLocalDateInputValue(now = new Date()) {
   return [
     now.getFullYear(),
     String(now.getMonth() + 1).padStart(2, "0"),
@@ -265,12 +265,12 @@ export function getPublicRoomMaxDateInput(now = new Date()) {
   return addDateDays(getLocalDateInputValue(now), PUBLIC_ROOM_SCHEDULE_MAX_DAYS);
 }
 
-export function getSideMajority(side = {}) {
+function getSideMajority(side = {}) {
   const total = side.players?.length ?? 0;
   return Math.floor(total / 2) + 1;
 }
 
-export function isCaptainApprovalRequired() {
+function isCaptainApprovalRequired() {
   return false;
 }
 
@@ -279,7 +279,7 @@ export function getTeamCaptainId(teams = [], teamId) {
   return team?.members?.find((member) => member.role === "captain")?.userId ?? null;
 }
 
-export function getSideCaptainId(match = {}, teams = [], sideName) {
+function getSideCaptainId(match = {}, teams = [], sideName) {
   return getTeamCaptainId(teams, match[sideName]?.teamId);
 }
 
@@ -531,7 +531,7 @@ export function applyOperatorAttendance(match = {}, operatorId = "") {
   };
 }
 
-export function getMatchAttendanceTargetIds(match = {}, sideName) {
+function getMatchAttendanceTargetIds(match = {}, sideName) {
   return uniquePlayerIds([
     ...(match[sideName]?.players ?? []),
     ...getMatchReservePlayerIds(match, sideName),
@@ -592,7 +592,7 @@ export function getMatchRosterSideName(match = {}, playerId) {
     ?? (getMatchReservePlayerIds(match, "teamB").includes(playerId) ? "teamB" : null);
 }
 
-export function getMatchUserSideName(match = {}, userId = "") {
+function getMatchUserSideName(match = {}, userId = "") {
   return getPlayerSideName(match, userId);
 }
 
@@ -629,7 +629,7 @@ export function userNeedsMatchApproval(match = {}, userId = "") {
   return Boolean(sideName && match.status === "approval" && !(match.approvals?.[sideName] ?? []).includes(userId));
 }
 
-export function userMatchDecisionDone(match = {}, userId = "") {
+function userMatchDecisionDone(match = {}, userId = "") {
   const sideName = getMatchUserSideName(match, userId);
   if (!sideName) return false;
   if (match.status === "contract") return (match.agreements?.[sideName] ?? []).includes(userId);
@@ -723,7 +723,7 @@ function isActiveRefereeTerm(record = {}, nowMs = Date.now()) {
   return normalizedStart <= nowMs && nowMs <= normalizedEnd;
 }
 
-export function hasRefereeQualification(user = {}, refereeAppointments = [], nowMs = Date.now()) {
+function hasRefereeQualification(user = {}, refereeAppointments = [], nowMs = Date.now()) {
   if (!user?.id) return false;
   if (TEST_REFEREE_LOGIN_IDS.has(String(user.testLoginId ?? "").toLowerCase())) return true;
   const profile = user.refereeProfile ?? {};
@@ -809,7 +809,7 @@ export function getMatchStartDate(match = {}) {
   return null;
 }
 
-export function getMatchEndDate(match = {}) {
+function getMatchEndDate(match = {}) {
   if (match.endedAt) {
     const ended = new Date(match.endedAt);
     if (Number.isFinite(ended.getTime())) return ended;
@@ -820,7 +820,7 @@ export function getMatchEndDate(match = {}) {
   return Number.isFinite(parsed.getTime()) ? parsed : null;
 }
 
-export function getMatchScheduledDate(match = {}) {
+function getMatchScheduledDate(match = {}) {
   if (isInstantRoom(match)) return null;
   const source = match.scheduledDate
     ? `${match.scheduledDate}T${match.scheduledTime || "00:00"}`
@@ -843,7 +843,7 @@ export function isMatchClosedNotice(match = {}, now = new Date()) {
   return nowMs >= scheduledAt.getTime() + MATCH_CLOSED_NOTICE_GRACE_MINUTES * 60000;
 }
 
-export function getInstantRoomExpiresAt(room = {}) {
+function getInstantRoomExpiresAt(room = {}) {
   if (!isInstantRoom(room)) return null;
   const createdAt = new Date(room.createdAt ?? room.created_at ?? "");
   if (!Number.isFinite(createdAt.getTime())) return null;
@@ -933,7 +933,7 @@ export function getPublicRoomTimingStatus(room = {}, now = new Date()) {
   };
 }
 
-export const ROOM_PHASE_META = {
+const ROOM_PHASE_META = {
   waiting: { phase: "waiting", label: "대기방", listLabel: "모집 중", tone: "blue", actionLabel: "방 보기" },
   locked: { phase: "locked", label: "확정방", listLabel: "확정방", tone: "green", actionLabel: "방 보기" },
   checkin: { phase: "checkin", label: "경기준비방", listLabel: "경기준비", tone: "orange", actionLabel: "준비" },
