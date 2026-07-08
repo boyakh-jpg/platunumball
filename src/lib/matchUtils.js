@@ -7,6 +7,8 @@ import {
   RECORD_TYPES,
   REFEREE_TRUST_MIN,
   ROOM_KINDS,
+  SOLO_RECORD_ANONYMOUS_POSITION,
+  SOLO_RECORD_ANONYMOUS_SOURCE,
   STAT_ENTRY_WINDOW_MINUTES,
 } from "./constants.js";
 
@@ -73,6 +75,20 @@ export function isMatchRecordMatch(match = {}) {
 
 export function isRecordKindMatch(match = {}) {
   return isPersonalRecordMatch(match) || isMatchRecordMatch(match);
+}
+
+export function makeAnonymousMatchPlayer(playerId, name, position = SOLO_RECORD_ANONYMOUS_POSITION) {
+  return {
+    id: playerId,
+    name: String(name || "").trim() || "무기명",
+    position: String(position || SOLO_RECORD_ANONYMOUS_POSITION).trim() || SOLO_RECORD_ANONYMOUS_POSITION,
+    anonymous: true,
+    participationLabel: SOLO_RECORD_ANONYMOUS_SOURCE,
+    club: SOLO_RECORD_ANONYMOUS_SOURCE,
+    avatarColor: "#64748b",
+    trustScore: "-",
+    ratings: { integrated: 0, modes: {} },
+  };
 }
 
 export function getRoomKindFromMatch(match = {}) {

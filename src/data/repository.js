@@ -30,7 +30,6 @@ import {
   SCHEDULE_MAX_DAYS,
   SIDE_LABEL_TEXT,
   SOLO_RECORD_ANONYMOUS_POSITION,
-  SOLO_RECORD_ANONYMOUS_SOURCE,
   STAT_ENTRY_WINDOW_MINUTES,
   TEST_PROFILE_AGE_GROUP,
   TEST_PROFILE_AGE_GROUP_SEASON,
@@ -102,6 +101,7 @@ import {
   isMatchRecordMatch,
   isAutoDecisionDue,
   isPersonalRecordMatch,
+  makeAnonymousMatchPlayer,
   normalizeDisputeRequest,
   normalizeStatRecorders,
   normalizePlayerStats,
@@ -3490,20 +3490,6 @@ function canEditPostgameRoster(state, match) {
   const canOperatePostStart = currentUserCanOperateStartedMatch(state, match);
   if (getMatchRecordWindow(match).statExpired && !canOperatorSubmitMissingPostgameResult(match, canOperatePostStart)) return false;
   return canOperatePostStart;
-}
-
-function makeAnonymousMatchPlayer(playerId, name, position = SOLO_RECORD_ANONYMOUS_POSITION) {
-  return {
-    id: playerId,
-    name: String(name || "").trim() || "무기명",
-    position: String(position || SOLO_RECORD_ANONYMOUS_POSITION).trim() || SOLO_RECORD_ANONYMOUS_POSITION,
-    anonymous: true,
-    participationLabel: SOLO_RECORD_ANONYMOUS_SOURCE,
-    club: SOLO_RECORD_ANONYMOUS_SOURCE,
-    avatarColor: "#64748b",
-    trustScore: "-",
-    ratings: { integrated: 0, modes: {} },
-  };
 }
 
 export function deleteSoloRecord(state, matchId) {
