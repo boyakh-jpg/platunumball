@@ -1,4 +1,4 @@
-import { DISPUTE_WINDOW_MINUTES, MODE_SIZES, PLAYER_POSITIONS, REFEREE_TRUST_MIN, ROOM_KINDS, STAT_ENTRY_WINDOW_MINUTES, isMercenaryTeamRole } from "./constants.js";
+import { DISPUTE_WINDOW_MINUTES, MAX_RECRUITING_RESERVES_PER_SIDE, MODE_SIZES, PLAYER_POSITIONS, REFEREE_TRUST_MIN, ROOM_KINDS, STAT_ENTRY_WINDOW_MINUTES, isMercenaryTeamRole } from "./constants.js";
 import { isInstantRoom } from "./matchUtils.js";
 import { TIERS, getTier, getTierDivision } from "./tier.js";
 
@@ -159,6 +159,42 @@ export function hasRecruitingTeamMemberOnOtherSide(post, state, teamId, targetSi
       ...(entry.reserves ?? []),
     ].some((playerId) => teamMemberIds.has(playerId));
   });
+}
+
+export function getPendingReserveInvitationCount(roomState, sideName) {
+  return (roomState.invitations ?? []).filter((invitation) => (
+    invitation.status === "pending" &&
+    invitation.reserve &&
+    invitation.side === sideName
+  )).length;
+}
+
+export function updatePinnedReservePlayers(roomState = {}, sideName, playerId, reserve = true) {
+  if (!VALID_SIDES.has(sideName) || !playerId) return roomState;
+  const currentPinned = roomState.pinnedReservePlayers && typeof roomState.pinnedReservePlayers === "object"
+    ? roomState.pinnedReservePlayers
+    : {};
+  const nextPinned = {};
+  Array.from(VALID_SIDES).forEach((currentSideName) => {
+    const ids = new Set(Array.isArray(currentPinned[currentSideName]) ? currentPinned[currentSideName] : []);
+    ids.delete(playerId);
+    if (reserve && currentSideName === sideName) ids.add(playerId);
+    if (ids.size) nextPinned[currentSideName] = Array.from(ids);
+  });
+  return { ...roomState, pinnedReservePlayers: nextPinned };
+}
+
+export function updateManyPinnedReservePlayers(roomState = {}, sideName, playerIds = [], reserve = true) {
+  return playerIds.reduce(
+    (nextRoomState, playerId) => updatePinnedReservePlayers(nextRoomState, sideName, playerId, reserve),
+    roomState,
+  );
+}
+
+export function isRecruitingReserveLimitExceeded(post, state, sideName) {
+  if (!VALID_SIDES.has(sideName)) return true;
+  const lobby = getRecruitingLobby(post, state);
+  return (lobby.sides[sideName]?.reserveCandidates?.length ?? 0) > MAX_RECRUITING_RESERVES_PER_SIDE;
 }
 
 export function getRecruitingEntryLeaderId(entry = null, roomState = {}, hostPlayerId = "") {

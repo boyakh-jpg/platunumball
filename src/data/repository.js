@@ -118,6 +118,7 @@ import {
   getRecruitingEntryLeaderId,
   getRecruitingEntryPlayerIds,
   getRecruitingFit,
+  getPendingReserveInvitationCount,
   getLobbyEntryTeamId,
   getLobbyPrimaryTeamId,
   getLobbySidePlayerTeamIds,
@@ -133,6 +134,7 @@ import {
   getSelectedTeamPlayerIds,
   hasRecruitingApplicant,
   hasRecruitingTeamMemberOnOtherSide,
+  isRecruitingReserveLimitExceeded,
   isPublicTeamRecruitingRoom,
   isRecruitingPartyEntry,
   isRecruitingRoomMember,
@@ -148,6 +150,8 @@ import {
   normalizeRecruitingPost,
   normalizeRecruitingRoomState,
   removeAcceptedRecruitingInvitations,
+  updateManyPinnedReservePlayers,
+  updatePinnedReservePlayers,
 } from "../lib/recruiting.js";
 import {
   ADMIN_GRADE_META,
@@ -1731,42 +1735,6 @@ function getRecruitingRoomStatRecorders(post, state) {
     teamA: getRecorder("teamA"),
     teamB: getRecorder("teamB"),
   };
-}
-
-function getPendingReserveInvitationCount(roomState, sideName) {
-  return (roomState.invitations ?? []).filter((invitation) => (
-    invitation.status === "pending" &&
-    invitation.reserve &&
-    invitation.side === sideName
-  )).length;
-}
-
-function updatePinnedReservePlayers(roomState = {}, sideName, playerId, reserve = true) {
-  if (!["teamA", "teamB"].includes(sideName) || !playerId) return roomState;
-  const currentPinned = roomState.pinnedReservePlayers && typeof roomState.pinnedReservePlayers === "object"
-    ? roomState.pinnedReservePlayers
-    : {};
-  const nextPinned = {};
-  ["teamA", "teamB"].forEach((currentSideName) => {
-    const ids = new Set(Array.isArray(currentPinned[currentSideName]) ? currentPinned[currentSideName] : []);
-    ids.delete(playerId);
-    if (reserve && currentSideName === sideName) ids.add(playerId);
-    if (ids.size) nextPinned[currentSideName] = Array.from(ids);
-  });
-  return { ...roomState, pinnedReservePlayers: nextPinned };
-}
-
-function updateManyPinnedReservePlayers(roomState = {}, sideName, playerIds = [], reserve = true) {
-  return playerIds.reduce(
-    (nextRoomState, playerId) => updatePinnedReservePlayers(nextRoomState, sideName, playerId, reserve),
-    roomState,
-  );
-}
-
-function isRecruitingReserveLimitExceeded(post, state, sideName) {
-  if (!["teamA", "teamB"].includes(sideName)) return true;
-  const lobby = getRecruitingLobby(post, state);
-  return (lobby.sides[sideName]?.reserveCandidates?.length ?? 0) > MAX_RECRUITING_RESERVES_PER_SIDE;
 }
 
 function getRecruitingReserveLimitNotification(postId, sideName) {
