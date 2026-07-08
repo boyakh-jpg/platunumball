@@ -22,7 +22,9 @@ import {
   getSafeMatchSide as getSafeMatchSideBase,
   isMatchRecordMatch,
   isMatchClosedNotice,
+  isMatchPartyTeamParty,
   isMatchRelatedToUser,
+  isMatchSideTeamParty,
   isPersonalRecordMatch,
   isInstantRoom,
   userNeedsMatchAction,
@@ -458,19 +460,6 @@ function getRoomCapacity(match = {}) {
 
 function uniquePlayerIds(ids = []) {
   return Array.from(new Set(ids.filter(Boolean)));
-}
-
-function getMatchSideRosterIds(match = {}, sideName = "") {
-  return uniquePlayerIds([...(match[sideName]?.players ?? []), ...getMatchReservePlayerIds(match, sideName)]);
-}
-
-function isMatchSideTeamParty(match = {}, sideName = "") {
-  const sourceMatch = match ?? {};
-  return Boolean(sourceMatch[sideName]?.teamId) && getMatchSideRosterIds(sourceMatch, sideName).length >= 2;
-}
-
-function isMatchPartyTeamParty(party = {}) {
-  return Boolean(party.teamId) && uniquePlayerIds([...(party.players ?? []), ...(party.reserves ?? [])]).length >= 2;
 }
 
 function getSideAgreementReady(match = {}, sideName) {

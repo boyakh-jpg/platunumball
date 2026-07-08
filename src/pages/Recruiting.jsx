@@ -87,6 +87,7 @@ import {
   isInstantRoom,
   isMatchReferee,
   isMatchRecordMatch,
+  isMatchSideTeamParty,
   isPersonalRecordMatch,
 } from "../lib/matchUtils.js";
 import "../styles/recruiting-arena.css";
@@ -482,11 +483,6 @@ function getMissingStartAttendanceIds(match = {}, operatorId = "") {
       .filter((playerId) => playerId !== operatorId)
       .filter((playerId) => !(attendance[sideName] ?? []).includes(playerId))
   ));
-}
-
-function isMatchSideTeamParty(match = {}, sideName = "") {
-  const sourceMatch = match ?? {};
-  return Boolean(sourceMatch[sideName]?.teamId) && uniqueIds([...(sourceMatch[sideName]?.players ?? []), ...getMatchReservePlayerIds(sourceMatch, sideName)]).length >= 2;
 }
 
 export function getLobbyRecorderIds(lobby) {
