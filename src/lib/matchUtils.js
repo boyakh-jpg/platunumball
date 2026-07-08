@@ -255,6 +255,17 @@ export function getMatchPlayerIds(match = {}) {
   return uniquePlayerIds([...getMatchSidePlayerIds(match, "teamA"), ...getMatchSidePlayerIds(match, "teamB")]);
 }
 
+export function getReportableMatchTimeMs(match = {}) {
+  const rawDate = match.endedAt ?? match.confirmedAt ?? match.scheduledDate ?? match.scheduledAt ?? match.createdAt;
+  if (!rawDate) return 0;
+  if (match.scheduledDate && rawDate === match.scheduledDate) {
+    const value = new Date(`${match.scheduledDate}T${match.scheduledTime || "00:00"}`).getTime();
+    return Number.isFinite(value) ? value : 0;
+  }
+  const value = new Date(rawDate).getTime();
+  return Number.isFinite(value) ? value : 0;
+}
+
 export function getMatchSidePlayerIds(match = {}, sideName) {
   const sourceMatch = match ?? {};
   const side = sourceMatch[sideName] ?? {};
@@ -282,6 +293,18 @@ export function getMatchPlayerPlacement(match = {}, playerId = "") {
     if (getMatchReservePlayerIds(match, sideName).includes(playerId)) return { side: sideName, reserve: true };
   }
   return null;
+}
+
+export function getReportableMatchUserIds(match = {}) {
+  return uniquePlayerIds([
+    match.createdBy,
+    match.refereeId,
+    match.formerRefereeId,
+    ...Object.values(normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders)),
+    ...getMatchPlayerIds(match),
+    ...getMatchReservePlayerIds(match, "teamA"),
+    ...getMatchReservePlayerIds(match, "teamB"),
+  ]);
 }
 
 export function isMatchSideTeamParty(match = {}, sideName = "") {

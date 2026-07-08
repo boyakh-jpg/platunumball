@@ -77,6 +77,8 @@ import {
   getMatchStartDate,
   getMatchTrustFeedbackLimit,
   getMatchTrustFeedbackParticipantIds,
+  getReportableMatchTimeMs,
+  getReportableMatchUserIds,
   getPublicRoomTimingStatus,
   getMatchRecordWindow,
   getMissingMatchAttendance,
@@ -4487,29 +4489,6 @@ export function submitRefereeRequest(state, draft = {}) {
       ...state.notifications,
     ],
   };
-}
-
-function getReportableMatchTimeMs(match = {}) {
-  const rawDate = match.endedAt ?? match.confirmedAt ?? match.scheduledDate ?? match.scheduledAt ?? match.createdAt;
-  if (!rawDate) return 0;
-  if (match.scheduledDate && rawDate === match.scheduledDate) {
-    const value = new Date(`${match.scheduledDate}T${match.scheduledTime || "00:00"}`).getTime();
-    return Number.isFinite(value) ? value : 0;
-  }
-  const value = new Date(rawDate).getTime();
-  return Number.isFinite(value) ? value : 0;
-}
-
-function getReportableMatchUserIds(match = {}) {
-  return uniquePlayerIds([
-    match.createdBy,
-    match.refereeId,
-    match.formerRefereeId,
-    ...Object.values(normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders)),
-    ...getMatchPlayerIds(match),
-    ...getMatchReservePlayerIds(match, "teamA"),
-    ...getMatchReservePlayerIds(match, "teamB"),
-  ]);
 }
 
 export function reportMatch(state, matchId, reason = "", reportedUserIds = []) {
