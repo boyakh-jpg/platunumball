@@ -4,7 +4,7 @@ const RAW_ASSET_BASE_URL = (
   ""
 ).trim();
 
-export function getAssetBaseUrl() {
+function getAssetBaseUrl() {
   return RAW_ASSET_BASE_URL.replace(/\/+$/, "");
 }
 

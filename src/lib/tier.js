@@ -11,7 +11,7 @@ export const TIERS = [
   { name: "Legend", min: 2000, max: 9999, color: "#ff6f61" },
 ];
 
-export const TIER_LABELS = {
+const TIER_LABELS = {
   Rookie: "루키",
   Bronze: "브론즈",
   Silver: "실버",

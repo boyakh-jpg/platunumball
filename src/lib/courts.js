@@ -96,7 +96,7 @@ export function getCourtLayoutLabel(court = {}) {
   return COURT_LAYOUT_OPTIONS.find((option) => option.id === courtLayout)?.label ?? "확인 필요";
 }
 
-export function isSmallCourt(court = {}) {
+function isSmallCourt(court = {}) {
   const layout = normalizeCourtLayout(getFallbackLayout(court));
   return layout === "half" || layout === "single_hoop";
 }
@@ -184,7 +184,7 @@ function isActiveModerationItem(item = {}) {
   return !item.status || item.status === "active";
 }
 
-export function getCourtReviewSummary(court = {}, reviews = []) {
+function getCourtReviewSummary(court = {}, reviews = []) {
   const courtId = String(court.id ?? "");
   const courtName = String(court.name ?? "");
   const relatedReviews = reviews
