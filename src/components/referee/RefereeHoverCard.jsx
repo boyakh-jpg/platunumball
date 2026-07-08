@@ -29,7 +29,7 @@ function formatRecentMatch(value) {
   return `${Math.floor(days / 30)}개월 전`;
 }
 
-export function getRefereeStats(user = {}, matches = []) {
+function getRefereeStats(user = {}, matches = []) {
   const refereeMatches = matches.filter((match) => match.refereeId === user.id);
   const completedMatches = refereeMatches.filter((match) => COMPLETED_STATUSES.has(match.status) || match.result || match.endedAt);
   const disputedMatches = refereeMatches.filter((match) => match.status === "disputed" || (match.disputes ?? []).length > 0);

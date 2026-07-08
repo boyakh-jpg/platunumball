@@ -1,7 +1,7 @@
 import { getTier, getTierDivision } from "../../lib/tier.js";
 import { assetUrl } from "../../lib/assets.js";
 
-export const emblemByTier = {
+const emblemByTier = {
   Rookie: "/assets/tier-emblems/tier-rookie-v5.webp",
   Bronze: "/assets/tier-emblems/tier-bronze-v5.webp",
   Silver: "/assets/tier-emblems/tier-silver-v5.webp",
