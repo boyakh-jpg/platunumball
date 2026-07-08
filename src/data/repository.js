@@ -365,7 +365,7 @@ function inferSidePartyTeamIdForUser(post = {}, state = {}, sideName = "", userI
   const lobby = getRecruitingLobby(post, state);
   const matchingTeamIds = new Set(
     (lobby.sides?.[sideName]?.entries ?? [])
-      .filter((entry) => isRecruitingTeamPartyEntry(entry) && entry.team?.members?.some((member) => member.userId === userId))
+      .filter((entry) => isRecruitingPartyEntry(entry) && entry.team?.members?.some((member) => member.userId === userId))
       .map((entry) => entry.team?.id ?? entry.teamId)
       .filter(Boolean),
   );
@@ -2236,7 +2236,7 @@ function repairRecruitingSameTeamPersonalParties(state) {
     const capacity = getRecruitingSideCapacity(normalizedPost);
     const partyTargetsBySide = ["teamA", "teamB"].reduce((acc, sideName) => {
       acc[sideName] = (lobby.sides?.[sideName]?.entries ?? [])
-        .filter((entry) => isRecruitingTeamPartyEntry(entry) && entry.team?.id)
+        .filter((entry) => isRecruitingPartyEntry(entry) && entry.team?.id)
         .map((entry) => ({
           entryId: entry.id,
           teamId: entry.team.id,
@@ -7052,10 +7052,6 @@ function buildRecruitingTeamAbsorbPost(post, state, applicants, roomState, playe
     : { ...post, roomState: nextRoomState, applicants: nextApplicants };
 }
 
-function isRecruitingTeamPartyEntry(entry) {
-  return isRecruitingPartyEntry(entry);
-}
-
 function getRecruitingPartySideConflictNotification(postId, sideName = "") {
   return {
     id: makeId("n"),
@@ -7265,7 +7261,7 @@ export function joinRecruitingSideParty(state, postId, teamId, sideName = "", en
   );
   const partyEntries = sideEntries.filter((entry) => (
     entry.team?.id === teamId &&
-    isRecruitingTeamPartyEntry(entry)
+    isRecruitingPartyEntry(entry)
   ));
   const partyEntry = partyEntries.find((entry) => entry.id === entryId) ?? partyEntries[0] ?? null;
   const updatedAt = new Date().toISOString();
@@ -7518,7 +7514,7 @@ export function setRecruitingPartyPlayerReserve(state, postId, entryId, playerId
 
   const lobby = getRecruitingLobby(post, state);
   const entry = (lobby.entries ?? []).find((item) => item.id === entryId);
-  if (!isRecruitingTeamPartyEntry(entry) || !entry?.team || !isRecruitingEntryMember(entry, playerId)) return state;
+  if (!isRecruitingPartyEntry(entry) || !entry?.team || !isRecruitingEntryMember(entry, playerId)) return state;
   const partyLeaderId = roomState.partyLeaders?.[entryId] ?? (entry.fixed ? post.playerId : entry.playerId) ?? "";
   if (partyLeaderId !== state.currentUserId && playerId !== state.currentUserId) return state;
 
@@ -7610,7 +7606,7 @@ export function setRecruitingPartyPlayerPlacement(state, postId, entryId, player
 
   const lobby = getRecruitingLobby(post, state);
   const entry = (lobby.entries ?? []).find((item) => item.id === entryId);
-  if (!isRecruitingTeamPartyEntry(entry) || !entry?.team || !isRecruitingEntryMember(entry, playerId)) return state;
+  if (!isRecruitingPartyEntry(entry) || !entry?.team || !isRecruitingEntryMember(entry, playerId)) return state;
   const partyLeaderId = roomState.partyLeaders?.[entryId] ?? (entry.fixed ? post.playerId : entry.playerId) ?? "";
   if (partyLeaderId !== state.currentUserId && playerId !== state.currentUserId) return state;
 
@@ -7635,7 +7631,7 @@ export function detachRecruitingPartyPlayer(state, postId, entryId, playerId, pl
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
   const lobby = getRecruitingLobby(post, state);
   const entry = (lobby.entries ?? []).find((item) => item.id === entryId);
-  if (!isRecruitingTeamPartyEntry(entry) || !entry?.team) return state;
+  if (!isRecruitingPartyEntry(entry) || !entry?.team) return state;
   if (!isRecruitingEntryMember(entry, playerId)) return state;
   const partyLeaderId = roomState.partyLeaders?.[entryId] ?? (entry.fixed ? post.playerId : entry.playerId) ?? "";
   const canDetach = post.playerId === state.currentUserId || playerId === state.currentUserId || partyLeaderId === state.currentUserId;
@@ -7755,7 +7751,7 @@ export function removeRecruitingPartyPlayer(state, postId, entryId, playerId) {
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
   const lobby = getRecruitingLobby(post, state);
   const entry = (lobby.entries ?? []).find((item) => item.id === entryId);
-  if (!isRecruitingTeamPartyEntry(entry) || !entry?.team || !isRecruitingEntryMember(entry, playerId)) return state;
+  if (!isRecruitingPartyEntry(entry) || !entry?.team || !isRecruitingEntryMember(entry, playerId)) return state;
   if (entry.fixed && playerId === post.playerId) return state;
 
   const capacity = getRecruitingSideCapacity(post);
