@@ -276,6 +276,51 @@ export function getMatchReservePlayerIds(match = {}, sideName) {
     .filter((playerId) => playerId && !activeIds.has(playerId));
 }
 
+export function getMatchPlayerPlacement(match = {}, playerId = "") {
+  for (const sideName of ["teamA", "teamB"]) {
+    if ((match[sideName]?.players ?? []).includes(playerId)) return { side: sideName, reserve: false };
+    if (getMatchReservePlayerIds(match, sideName).includes(playerId)) return { side: sideName, reserve: true };
+  }
+  return null;
+}
+
+export function getMatchAttendance(match = {}) {
+  return {
+    teamA: uniquePlayerIds(match.attendance?.teamA ?? []),
+    teamB: uniquePlayerIds(match.attendance?.teamB ?? []),
+  };
+}
+
+export function applyOperatorAttendance(match = {}, operatorId = "") {
+  const placement = getMatchPlayerPlacement(match, operatorId);
+  if (!placement) return match;
+  const attendance = getMatchAttendance(match);
+  if (attendance[placement.side].includes(operatorId)) return match;
+  return {
+    ...match,
+    attendance: {
+      ...attendance,
+      [placement.side]: uniquePlayerIds([...attendance[placement.side], operatorId]),
+    },
+  };
+}
+
+export function getMatchAttendanceTargetIds(match = {}, sideName) {
+  return uniquePlayerIds([
+    ...(match[sideName]?.players ?? []),
+    ...getMatchReservePlayerIds(match, sideName),
+  ]);
+}
+
+export function getMissingMatchAttendance(match = {}) {
+  const attendance = getMatchAttendance(match);
+  return ["teamA", "teamB"].flatMap((sideName) => (
+    getMatchAttendanceTargetIds(match, sideName)
+      .filter((playerId) => !attendance[sideName].includes(playerId))
+      .map((playerId) => ({ sideName, playerId }))
+  ));
+}
+
 export function getMatchSideLeaderId(match = {}, teams = [], sideName) {
   const sourceMatch = match ?? {};
   const sidePlayerIds = getMatchSidePlayerIds(match, sideName);

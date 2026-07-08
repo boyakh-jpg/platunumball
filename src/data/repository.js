@@ -64,8 +64,11 @@ import {
   getMatchPlayerIds,
   getMatchRecordPlayerIds,
   getMatchHostPlayerId as getMatchHostPlayerIdFromMatch,
+  getMatchAttendance,
+  getMatchAttendanceTargetIds,
   getMatchRosterSideName,
   getMatchRoomPhase,
+  getMatchPlayerPlacement,
   getMatchReservePlayerIds,
   getMatchSideLeaderId,
   getMatchSidePlayerIds,
@@ -75,7 +78,9 @@ import {
   getMatchTrustFeedbackParticipantIds,
   getPublicRoomTimingStatus,
   getMatchRecordWindow,
+  getMissingMatchAttendance,
   evaluateRecordVerification,
+  applyOperatorAttendance,
   getPlayerSideName,
   getStatRecorderSides,
   getEffectiveStatRecorders,
@@ -3516,43 +3521,6 @@ function getMergedResultScore(match, playerStats, sideName, fallbackScore = 0) {
   return sidePlayerIds.reduce((sum, playerId) => sum + Number(playerStats[playerId]?.points ?? 0), 0);
 }
 
-function getMatchAttendance(match = {}) {
-  return {
-    teamA: uniquePlayerIds(match.attendance?.teamA ?? []),
-    teamB: uniquePlayerIds(match.attendance?.teamB ?? []),
-  };
-}
-
-function applyOperatorAttendance(match = {}, operatorId = "") {
-  const placement = getMatchPlayerPlacement(match, operatorId);
-  if (!placement) return match;
-  const attendance = getMatchAttendance(match);
-  if (attendance[placement.side].includes(operatorId)) return match;
-  return {
-    ...match,
-    attendance: {
-      ...attendance,
-      [placement.side]: uniquePlayerIds([...attendance[placement.side], operatorId]),
-    },
-  };
-}
-
-function getMatchAttendanceTargetIds(match = {}, sideName) {
-  return uniquePlayerIds([
-    ...(match[sideName]?.players ?? []),
-    ...getMatchReservePlayerIds(match, sideName),
-  ]);
-}
-
-function getMissingMatchAttendance(match = {}) {
-  const attendance = getMatchAttendance(match);
-  return ["teamA", "teamB"].flatMap((sideName) => (
-    getMatchAttendanceTargetIds(match, sideName)
-      .filter((playerId) => !attendance[sideName].includes(playerId))
-      .map((playerId) => ({ sideName, playerId }))
-  ));
-}
-
 export function checkInMatchPlayer(state, matchId, sideName, playerId) {
   const disciplineBlock = getDisciplineBlockedState(state, "출석 처리");
   if (disciplineBlock) return disciplineBlock;
@@ -6229,14 +6197,6 @@ export function updateMatchRoomRules(state, matchId, patch = {}) {
 function canEditMatchPreparation(state, match) {
   if (!match || !["contract", "agreed"].includes(match.status) || match.result || match.endedAt || match.startedAt) return false;
   return currentUserCanOperateMatchPreparation(state, match);
-}
-
-function getMatchPlayerPlacement(match = {}, playerId = "") {
-  for (const sideName of ["teamA", "teamB"]) {
-    if ((match[sideName]?.players ?? []).includes(playerId)) return { side: sideName, reserve: false };
-    if (getMatchReservePlayerIds(match, sideName).includes(playerId)) return { side: sideName, reserve: true };
-  }
-  return null;
 }
 
 function updateMatchPartiesForPlayer(match = {}, playerId = "", sideName = "", reserve = false, remove = false) {
