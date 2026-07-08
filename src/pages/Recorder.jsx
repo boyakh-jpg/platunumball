@@ -27,6 +27,7 @@ import {
 } from "../lib/matchUtils.js";
 import { SIDE_LABEL_TEXT as sideLabels } from "../lib/constants.js";
 import { MatchRoomModal } from "./Matches.jsx";
+import "../styles/recruiting-arena.css";
 import "../styles/matches-arena.css";
 
 const statusMeta = {
@@ -224,7 +225,7 @@ export default function Recorder({ app }) {
               const meta = `참여 ${getMatchPlayerIds(match).length}명 · A ${getMatchSideCount(match, "teamA")} / B ${getMatchSideCount(match, "teamB")}${reserveCount ? ` · 후보 ${reserveCount}` : ""}`;
 
               return (
-                <article key={match.id} className={`om-match-card om-status-${match.status}`}>
+                <article key={match.id} className={`om-match-card om-status-${match.status} arena-lobby-card`} onClick={() => openMatch(match.id)}>
                   <div className="om-card-main">
                     <div className="om-card-kicker">
                       <span className={`om-status-pill ${status.tone}`}>{status.label}</span>
@@ -264,7 +265,10 @@ export default function Recorder({ app }) {
                     </div>
                   )}
 
-                  <button type="button" className="button button-secondary button-md om-room-link" onClick={() => openMatch(match.id)}>
+                  <button type="button" className="button button-secondary button-md om-room-link" onClick={(event) => {
+                    event.stopPropagation();
+                    openMatch(match.id);
+                  }}>
                     {getActionLabel(match)}
                   </button>
                 </article>
