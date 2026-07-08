@@ -45,6 +45,10 @@ export function getTimePart(value) {
   return String(value ?? "").match(/\d{2}:\d{2}/)?.[0] ?? "";
 }
 
+export function getScheduleText(date, time) {
+  return [date, time].filter(Boolean).join(" ") || "일정 미정";
+}
+
 function toDbTime(value) {
   return value ? String(value).slice(0, 5) : null;
 }

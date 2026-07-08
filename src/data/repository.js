@@ -218,6 +218,7 @@ import {
   makeId,
   makeUuid,
   nullableText,
+  shuffleItems,
   toDateTime,
   toggleId,
   uniquePlayerIds,
@@ -238,6 +239,7 @@ import { normalizeSettings as normalizeSettingsCore } from "./settingsMappers.js
 import {
   getDbScheduleParts,
   getNextQueueSchedule,
+  getScheduleText,
   isScheduleDateInAllowedWindow,
   normalizeRecruitingSchedules,
 } from "./scheduleUtils.js";
@@ -1727,19 +1729,6 @@ function cleanRecruitingRoomStatRecorders(post, state) {
       statRecorders: getRecruitingRoomStatRecorders({ ...post, roomState }, state),
     },
   };
-}
-
-function getScheduleText(date, time) {
-  return [date, time].filter(Boolean).join(" ") || "일정 미정";
-}
-
-function shuffleItems(items = []) {
-  const next = [...items];
-  for (let index = next.length - 1; index > 0; index -= 1) {
-    const swapIndex = Math.floor(Math.random() * (index + 1));
-    [next[index], next[swapIndex]] = [next[swapIndex], next[index]];
-  }
-  return next;
 }
 
 function getTournamentTeamStatuses(tournament = {}) {

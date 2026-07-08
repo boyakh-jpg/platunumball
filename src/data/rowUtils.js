@@ -55,6 +55,15 @@ export function toggleId(list = [], id, limit = Infinity) {
   return [id, ...list];
 }
 
+export function shuffleItems(items = []) {
+  const next = [...items];
+  for (let index = next.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [next[index], next[swapIndex]] = [next[swapIndex], next[index]];
+  }
+  return next;
+}
+
 export function chunkRows(rows, size = REMOTE_WRITE_CHUNK_SIZE) {
   const chunks = [];
   for (let index = 0; index < rows.length; index += size) {
