@@ -257,6 +257,29 @@ export function cleanRecruitingRoomStatRecorders(post, state) {
   };
 }
 
+export function inferSidePartyTeamIdForUser(post = {}, state = {}, sideName = "", userId = "") {
+  if (!userId || !VALID_SIDES.has(sideName)) return null;
+  const lobby = getRecruitingLobby(post, state);
+  const matchingTeamIds = new Set(
+    (lobby.sides?.[sideName]?.entries ?? [])
+      .filter((entry) => isRecruitingPartyEntry(entry) && entry.team?.members?.some((member) => member.userId === userId))
+      .map((entry) => entry.team?.id ?? entry.teamId)
+      .filter(Boolean),
+  );
+  return matchingTeamIds.size === 1 ? [...matchingTeamIds][0] : null;
+}
+
+export function inferRecruitingInvitationTeamId(post = {}, state = {}, invitation = {}) {
+  if (invitation.joinMode === "player") return null;
+  return invitation.teamId || inferSidePartyTeamIdForUser(post, state, invitation.side, invitation.targetUserId) || null;
+}
+
+export function getExplicitInvitationTeamPlayerIds(team = {}, capacity = Infinity, playerIds = [], fallbackPlayerId = "") {
+  const sourceIds = Array.isArray(playerIds) ? playerIds : [fallbackPlayerId];
+  const teamPlayerSet = new Set((team?.members ?? []).map((member) => member.userId));
+  return unique(sourceIds).filter((playerId) => teamPlayerSet.has(playerId)).slice(0, capacity);
+}
+
 export function getRecruitingEntryLeaderId(entry = null, roomState = {}, hostPlayerId = "") {
   if (!entry) return "";
   return roomState?.partyLeaders?.[entry.id] ?? (entry.fixed ? hostPlayerId : entry.playerId) ?? "";

@@ -112,7 +112,10 @@ import { applyMatchRating, calculateTeamDelta } from "../lib/rating.js";
 import {
   cleanRecruitingRoomStatRecorders,
   currentUserCanRefereeRecruitingRoom,
+  inferRecruitingInvitationTeamId,
+  inferSidePartyTeamIdForUser,
   getMercenaryTeamWeight,
+  getExplicitInvitationTeamPlayerIds,
   getRecruitingApplicantKey,
   getRecruitingApplicantKind,
   getRecruitingBestSide,
@@ -377,29 +380,6 @@ function getDisciplineBlockedState(state, actionLabel = "이 작업") {
       ...state.notifications,
     ],
   };
-}
-
-function inferSidePartyTeamIdForUser(post = {}, state = {}, sideName = "", userId = "") {
-  if (!userId || !["teamA", "teamB"].includes(sideName)) return null;
-  const lobby = getRecruitingLobby(post, state);
-  const matchingTeamIds = new Set(
-    (lobby.sides?.[sideName]?.entries ?? [])
-      .filter((entry) => isRecruitingPartyEntry(entry) && entry.team?.members?.some((member) => member.userId === userId))
-      .map((entry) => entry.team?.id ?? entry.teamId)
-      .filter(Boolean),
-  );
-  return matchingTeamIds.size === 1 ? [...matchingTeamIds][0] : null;
-}
-
-function inferRecruitingInvitationTeamId(post = {}, state = {}, invitation = {}) {
-  if (invitation.joinMode === "player") return null;
-  return invitation.teamId || inferSidePartyTeamIdForUser(post, state, invitation.side, invitation.targetUserId) || null;
-}
-
-function getExplicitInvitationTeamPlayerIds(team = {}, capacity = Infinity, playerIds = [], fallbackPlayerId = "") {
-  const sourceIds = Array.isArray(playerIds) ? playerIds : [fallbackPlayerId];
-  const teamPlayerSet = new Set((team?.members ?? []).map((member) => member.userId));
-  return uniquePlayerIds(sourceIds).filter((playerId) => teamPlayerSet.has(playerId)).slice(0, capacity);
 }
 
 function getInvalidScheduleNotification(maxDays = SCHEDULE_MAX_DAYS) {
