@@ -62,7 +62,7 @@ export function getSeasonProgress(season = fallbackSeason, now = new Date()) {
   return Math.max(0, Math.min(100, Math.round(((now - start) / (end - start)) * 100)));
 }
 
-export function getSeasonMatches(matches = [], season = fallbackSeason) {
+function getSeasonMatches(matches = [], season = fallbackSeason) {
   return matches.filter((match) => isInSeason(match, season));
 }
 

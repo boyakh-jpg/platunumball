@@ -2,7 +2,7 @@ import { DISPUTE_WINDOW_MINUTES, MAX_RECRUITING_RESERVES_PER_SIDE, MODE_SIZES, P
 import { isEligibleReferee, isInstantRoom } from "./matchUtils.js";
 import { TIERS, getTier, getTierDivision } from "./tier.js";
 
-export const RECRUITING_TYPES = {
+const RECRUITING_TYPES = {
   need_player: {
     label: "매치 큐",
     shortLabel: "빈자리 대기",
@@ -56,7 +56,7 @@ function unique(items = []) {
   return Array.from(new Set(items.filter(Boolean)));
 }
 
-export function getRecruitingEntryParticipantIds(entry = {}) {
+function getRecruitingEntryParticipantIds(entry = {}) {
   return unique([...(entry.players ?? []), ...(entry.reserves ?? [])]);
 }
 
@@ -317,7 +317,7 @@ export function getRecruitingRatingScale(post = {}) {
   return MMR_RANGE_POLICIES[mode].ratingScale;
 }
 
-export function getRecruitingTypeMeta(type = "need_player") {
+function getRecruitingTypeMeta(type = "need_player") {
   return RECRUITING_TYPES[type] ?? RECRUITING_TYPES.need_player;
 }
 
@@ -332,7 +332,7 @@ export function getRecruitingSideCapacity(post = {}) {
   return Math.max(1, Math.min(5, modeCapacity, safeCapacity));
 }
 
-export function getRecruitingJoinMode(entry = {}) {
+function getRecruitingJoinMode(entry = {}) {
   if (entry.joinMode === "team" || entry.kind === "team" || entry.teamId) return "team";
   return "player";
 }
@@ -382,7 +382,7 @@ function getExplicitTeamPlayerIds(team = {}, capacity = Infinity, playerIds = []
   return unique(playerIds).filter((playerId) => teamPlayerSet.has(playerId)).slice(0, capacity);
 }
 
-export function getActiveTeamPlayerIds(team = {}, capacity = Infinity, playerIds) {
+function getActiveTeamPlayerIds(team = {}, capacity = Infinity, playerIds) {
   return Array.isArray(playerIds)
     ? getExplicitTeamPlayerIds(team, capacity, playerIds)
     : getSelectableTeamPlayerIds(team).slice(0, capacity);
@@ -404,13 +404,13 @@ function getTeamEntryPlayerIds(team = null, capacity = Infinity, playerIds, fall
   return selectableIds.slice(0, capacity);
 }
 
-export function getReserveTeamPlayerIds(team = {}) {
+function getReserveTeamPlayerIds(team = {}) {
   return (team?.members ?? [])
     .filter((member) => RESERVE_ROLES.has(member.role))
     .map((member) => member.userId);
 }
 
-export function normalizeRecruitingApplicant(entry) {
+function normalizeRecruitingApplicant(entry) {
   if (!entry) return null;
   if (typeof entry === "string") {
     return {
@@ -778,7 +778,7 @@ export function isNationalRecruitingPost(post = {}, state = {}) {
   return getRecruitingTargetMmr(post, state) >= TIERS.find((tier) => tier.name === "Master").min;
 }
 
-export function getRecruitingHostEntry(post = {}, state = {}) {
+function getRecruitingHostEntry(post = {}, state = {}) {
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
   const user = state.users?.find((item) => item.id === post.playerId) ?? null;
   const team = post.teamId ? state.teams?.find((item) => item.id === post.teamId) ?? null : null;
@@ -810,7 +810,7 @@ export function getRecruitingHostEntry(post = {}, state = {}) {
   };
 }
 
-export function getRecruitingApplicantEntry(applicant = {}, state = {}, post = {}) {
+function getRecruitingApplicantEntry(applicant = {}, state = {}, post = {}) {
   const normalized = normalizeRecruitingApplicant(applicant);
   if (!normalized) return null;
   const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
