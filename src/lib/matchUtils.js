@@ -284,6 +284,24 @@ export function getMatchPlayerPlacement(match = {}, playerId = "") {
   return null;
 }
 
+export function isMatchSideTeamParty(match = {}, sideName = "") {
+  return Boolean(match[sideName]?.teamId) && uniquePlayerIds([...(match[sideName]?.players ?? []), ...getMatchReservePlayerIds(match, sideName)]).length >= 2;
+}
+
+export function isMatchPartyTeamParty(party = {}) {
+  return Boolean(party.teamId) && uniquePlayerIds([...(party.players ?? []), ...(party.reserves ?? [])]).length >= 2;
+}
+
+export function getMatchPlayerTeamId(match = {}, sideName, playerId) {
+  const side = match[sideName] ?? {};
+  if (side.playerTeams?.[playerId]) return side.playerTeams[playerId];
+  const party = (match.parties ?? []).find((item) => (
+    item.side === sideName &&
+    [...(item.players ?? []), ...(item.reserves ?? [])].includes(playerId)
+  ));
+  return party?.teamId ?? side.teamId ?? null;
+}
+
 export function getMatchAttendance(match = {}) {
   return {
     teamA: uniquePlayerIds(match.attendance?.teamA ?? []),

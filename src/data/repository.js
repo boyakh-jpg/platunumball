@@ -69,6 +69,7 @@ import {
   getMatchRosterSideName,
   getMatchRoomPhase,
   getMatchPlayerPlacement,
+  getMatchPlayerTeamId,
   getMatchReservePlayerIds,
   getMatchSideLeaderId,
   getMatchSidePlayerIds,
@@ -90,7 +91,9 @@ import {
   isMatchTrustFeedbackOpen,
   isInstantRoom,
   isEligibleReferee,
+  isMatchPartyTeamParty,
   isMatchReferee,
+  isMatchSideTeamParty,
   isMatchStatRecorder,
   isMatchRecordMatch,
   isPersonalRecordMatch,
@@ -2815,14 +2818,6 @@ function getSelfDecisionId(state, match, sideName, decisionKey, playerId) {
   return currentUserId;
 }
 
-function isMatchSideTeamParty(match = {}, sideName = "") {
-  return Boolean(match[sideName]?.teamId) && uniquePlayerIds([...(match[sideName]?.players ?? []), ...getMatchReservePlayerIds(match, sideName)]).length >= 2;
-}
-
-function isMatchPartyTeamParty(party = {}) {
-  return Boolean(party.teamId) && uniquePlayerIds([...(party.players ?? []), ...(party.reserves ?? [])]).length >= 2;
-}
-
 function ensureTeamPartyLeader(team = {}, playerIds = [], leaderId = "", capacity = Infinity) {
   const selectableIds = new Set(getSelectableTeamPlayerIds(team));
   const safePlayerIds = uniquePlayerIds(playerIds).filter((playerId) => selectableIds.has(playerId));
@@ -2845,16 +2840,6 @@ function getSelectedReservePlayerIds(team = {}, activeIds = [], reserveIds = [],
   return uniquePlayerIds(reserveIds)
     .filter((playerId) => teamPlayerIds.has(playerId) && !activeSet.has(playerId))
     .slice(0, capacity);
-}
-
-function getMatchPlayerTeamId(match = {}, sideName, playerId) {
-  const side = match[sideName] ?? {};
-  if (side.playerTeams?.[playerId]) return side.playerTeams[playerId];
-  const party = (match.parties ?? []).find((item) => (
-    item.side === sideName &&
-    [...(item.players ?? []), ...(item.reserves ?? [])].includes(playerId)
-  ));
-  return party?.teamId ?? side.teamId ?? null;
 }
 
 function withEffectiveMatchStatRecorders(match = {}) {
