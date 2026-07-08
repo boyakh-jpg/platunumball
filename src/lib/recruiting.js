@@ -113,6 +113,36 @@ export function getRecruitingEntryPlayerIds(entry, targetApplicant, post, capaci
   return (storedPlayerIds.length ? storedPlayerIds : unique(entry.players ?? [])).slice(0, capacity);
 }
 
+export function getLobbyPrimaryTeamId(lobby, sideName) {
+  return lobby.sides[sideName].entries
+    .map((entry) => (entry.kind === "team" ? entry.team?.id ?? entry.teamId ?? null : null))
+    .find(Boolean) ?? null;
+}
+
+export function getLobbyTeamEntry(lobby, sideName, teamId) {
+  if (!teamId || !["teamA", "teamB"].includes(sideName)) return null;
+  return lobby.sides?.[sideName]?.entries?.find((entry) => (
+    entry.kind === "team" &&
+    (entry.team?.id ?? entry.teamId) === teamId
+  )) ?? null;
+}
+
+export function getLobbyEntryTeamId(entry = {}) {
+  if (!isRecruitingPartyEntry(entry)) return null;
+  return entry.team?.id ?? entry.teamId ?? null;
+}
+
+export function getLobbySidePlayerTeamIds(lobby, sideName) {
+  return Object.fromEntries(
+    lobby.sides[sideName].entries
+      .flatMap((entry) => {
+        const teamId = getLobbyEntryTeamId(entry);
+        if (!teamId) return [];
+        return (entry.players ?? []).map((playerId) => [playerId, teamId]);
+      }),
+  );
+}
+
 export function getRecruitingEntryLeaderId(entry = null, roomState = {}, hostPlayerId = "") {
   if (!entry) return "";
   return roomState?.partyLeaders?.[entry.id] ?? (entry.fixed ? hostPlayerId : entry.playerId) ?? "";

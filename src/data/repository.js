@@ -118,6 +118,10 @@ import {
   getRecruitingEntryLeaderId,
   getRecruitingEntryPlayerIds,
   getRecruitingFit,
+  getLobbyEntryTeamId,
+  getLobbyPrimaryTeamId,
+  getLobbySidePlayerTeamIds,
+  getLobbyTeamEntry,
   getRecruitingLobby,
   getRecruitingRatingScale,
   getRecruitingHostEditReady,
@@ -5663,20 +5667,6 @@ function getLobbySideName(lobby, sideName) {
   return names.slice(0, 3).join(" + ");
 }
 
-function getLobbyPrimaryTeamId(lobby, sideName) {
-  return lobby.sides[sideName].entries
-    .map((entry) => (entry.kind === "team" ? entry.team?.id ?? entry.teamId ?? null : null))
-    .find(Boolean) ?? null;
-}
-
-function getLobbyTeamEntry(lobby, sideName, teamId) {
-  if (!teamId || !["teamA", "teamB"].includes(sideName)) return null;
-  return lobby.sides?.[sideName]?.entries?.find((entry) => (
-    entry.kind === "team" &&
-    (entry.team?.id ?? entry.teamId) === teamId
-  )) ?? null;
-}
-
 function applyTeamOnlyRosterSummon(state, post, roomState, lobby, side, reserve, playerIds, teamId) {
   const team = (state.teams ?? []).find((item) => item.id === teamId);
   const entry = getLobbyTeamEntry(lobby, side, teamId);
@@ -5812,22 +5802,6 @@ function applyTeamOnlyRosterSummon(state, post, roomState, lobby, side, reserve,
     handled: true,
     ok: true,
   };
-}
-
-function getLobbyEntryTeamId(entry = {}) {
-  if (!isRecruitingPartyEntry(entry)) return null;
-  return entry.team?.id ?? entry.teamId ?? null;
-}
-
-function getLobbySidePlayerTeamIds(lobby, sideName) {
-  return Object.fromEntries(
-    lobby.sides[sideName].entries
-      .flatMap((entry) => {
-        const teamId = getLobbyEntryTeamId(entry);
-        if (!teamId) return [];
-        return (entry.players ?? []).map((playerId) => [playerId, teamId]);
-      }),
-  );
 }
 
 export function setRecruitingReady(state, postId, ready = true) {
