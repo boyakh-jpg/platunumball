@@ -5,7 +5,6 @@ import {
   DISPUTE_WINDOW_MINUTES,
   FALSE_COURT_REPORT_TRUST_PENALTY,
   FAVORITE_LIMIT,
-  MATCH_SIDE_FALLBACK_NAMES,
   MAX_RECRUITING_RESERVES_PER_SIDE,
   MAX_TEAM_MEMBERS,
   MAX_TEAM_MEMBERSHIPS,
@@ -13,7 +12,6 @@ import {
   MODE_SIZES,
   PLAYER_STAT_FIELDS,
   PLAYER_POSITIONS,
-  POST_MATCH_STATUSES,
   PUBLIC_ROOM_SCHEDULE_MAX_DAYS,
   RECORD_TYPES,
   RECORDABLE_RESERVE_SOURCES,
@@ -127,13 +125,7 @@ import { findDiscordConnectionOwner, getDiscordConnectionUserId, syncDiscordNoti
 import { getUserHashtag, sameHashtag, toHashtag } from "../lib/handles.js";
 import { canChangeProfileName } from "../lib/profileSetup.js";
 import {
-  clearFuturePregameStartState,
   getScheduledStartMs,
-  isFutureScheduledMatch,
-  normalizeDisputeMinutes,
-  repairFuturePregameTitle,
-  repairLifecycleTitle,
-  resetFuturePostMatchState,
 } from "./matchLifecycleUtils.js";
 import { DEFAULT_SETTINGS, EMPTY_STATE } from "./repositoryDefaults.js";
 import { fromRemoteTeam, fromRemoteTeamInvitation, normalizeTeamInviteRole } from "./teamMappers.js";
@@ -153,7 +145,7 @@ import {
   toPayloadRow,
   toReportRow,
 } from "./remoteRowSerializers.js";
-import { fromRemoteMatch } from "./matchMappers.js";
+import { fromRemoteMatch, normalizeMatch } from "./matchMappers.js";
 import {
   collectMatchPageScope,
   collectRecruitingPageScope,
@@ -351,78 +343,6 @@ function getInvalidPublicScheduleNotification(detail = "공개 예약방은 5일
     body: detail,
     tone: "orange",
   };
-}
-
-function normalizeMatchParties(parties) {
-  if (Array.isArray(parties)) return parties;
-  if (!parties || typeof parties !== "object") return [];
-  return Object.values(parties).filter((party) => party && typeof party === "object");
-}
-
-function normalizeMatchIdList(value) {
-  return Array.isArray(value) ? uniquePlayerIds(value) : [];
-}
-
-function normalizeMatchSide(side = {}, fallbackName = "") {
-  const source = side && typeof side === "object" ? side : {};
-  return {
-    ...source,
-    name: source.name ?? fallbackName,
-    teamId: source.teamId || null,
-    players: normalizeMatchIdList(source.players),
-    score: Number.isFinite(Number(source.score)) ? Number(source.score) : 0,
-  };
-}
-
-function normalizeMatch(match = {}) {
-  const source = match && typeof match === "object" ? match : {};
-  const startedStatuses = ["agreed", "approval", "confirmed", "disputed", "void", "cancelled"];
-  const started = startedStatuses.includes(source.status);
-  const teamA = normalizeMatchSide(source.teamA, MATCH_SIDE_FALLBACK_NAMES.teamA);
-  const teamB = normalizeMatchSide(source.teamB, MATCH_SIDE_FALLBACK_NAMES.teamB);
-  const teamAPlayers = teamA.players;
-  const teamBPlayers = teamB.players;
-  const playedPlayerIds = source.playedPlayerIds ?? source.rules?.playedPlayerIds ?? {};
-  const normalizedPlayedPlayerIds = {
-    teamA: normalizeMatchIdList(playedPlayerIds.teamA),
-    teamB: normalizeMatchIdList(playedPlayerIds.teamB),
-  };
-
-  const normalized = {
-    ...source,
-    status: source.status ?? "contract",
-    teamA,
-    teamB,
-    agreements: source.agreements ?? {
-      teamA: started ? [...teamAPlayers] : [],
-      teamB: started ? [...teamBPlayers] : [],
-    },
-    approvals: source.approvals ?? { teamA: [], teamB: [] },
-    disputes: source.disputes ?? [],
-    refereeId: source.refereeId ?? "",
-    refereeTrustMin: Number(source.refereeTrustMin ?? REFEREE_TRUST_MIN),
-    statRecorders: normalizeStatRecorders(source.statRecorders ?? source.rules?.statRecorders),
-    statEntryMinutes: Number(source.statEntryMinutes ?? STAT_ENTRY_WINDOW_MINUTES),
-    disputeMinutes: normalizeDisputeMinutes(source),
-    trustFeedback: source.trustFeedback ?? {},
-    parties: normalizeMatchParties(source.parties ?? source.rules?.parties),
-    playedPlayerIds: normalizedPlayedPlayerIds,
-    rules: {
-      ...(source.rules ?? {}),
-      playedPlayerIds: normalizedPlayedPlayerIds,
-    },
-  };
-
-  const pregameStartRepaired = clearFuturePregameStartState(normalized);
-
-  if (isFutureScheduledMatch(pregameStartRepaired)) {
-    if (POST_MATCH_STATUSES.has(pregameStartRepaired.status)) {
-      return resetFuturePostMatchState(pregameStartRepaired);
-    }
-    return repairFuturePregameTitle(repairLifecycleTitle(pregameStartRepaired));
-  }
-
-  return repairLifecycleTitle(pregameStartRepaired);
 }
 
 function normalizeSettings(settings = {}, options = {}) {
