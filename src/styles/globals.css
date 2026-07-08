@@ -6913,9 +6913,10 @@ html[data-theme="light"] .search-picker-result-row.selected {
 .arena-dispute-editor {
   display: grid;
   gap: 12px;
-  border: 1px solid rgba(70, 224, 182, 0.22);
-  border-radius: var(--radius);
-  background: rgba(70, 224, 182, 0.055);
+  border: 1px solid var(--ui-room-panel-border, var(--card-border, var(--line)));
+  border-radius: var(--ui-card-radius, var(--radius));
+  background: var(--ui-room-panel-bg, var(--ui-card-bg, rgba(255, 255, 255, 0.05)));
+  box-shadow: var(--ui-card-shadow, none);
   padding: 12px;
 }
 
@@ -6979,9 +6980,9 @@ html[data-theme="light"] .search-picker-result-row.selected {
 .arena-dispute-player input {
   width: 100%;
   min-width: 0;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: rgba(5, 7, 10, 0.48);
+  border: 1px solid var(--ui-control-border, var(--line));
+  border-radius: var(--ui-control-radius, 8px);
+  background: var(--ui-control-bg, rgba(5, 7, 10, 0.48));
   color: var(--text);
   font: inherit;
   font-weight: 950;
@@ -7014,9 +7015,9 @@ html[data-theme="light"] .search-picker-result-row.selected {
 }
 
 .arena-dispute-player {
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: rgba(5, 7, 10, 0.34);
+  border: 1px solid var(--ui-room-panel-border, var(--line));
+  border-radius: var(--ui-card-radius, 8px);
+  background: var(--ui-card-bg, rgba(5, 7, 10, 0.34));
   padding: 8px;
 }
 

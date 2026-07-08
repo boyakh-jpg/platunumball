@@ -2787,8 +2787,9 @@ button.arena-room-player-slot {
   display: grid;
   gap: 12px;
   border: 1px solid var(--ui-room-panel-border, var(--line));
-  border-radius: var(--radius);
+  border-radius: var(--ui-card-radius, var(--radius));
   background: var(--ui-room-panel-bg, rgba(255, 255, 255, 0.05));
+  box-shadow: var(--ui-card-shadow, none);
   padding: 14px;
 }
 
