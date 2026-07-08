@@ -6,7 +6,6 @@ import {
   getAuthenticatedContext,
   groupRowsBy as groupBy,
   isMissingRoomFeedCards,
-  isMissingTable,
   isMissingUserRoomFeed,
   mergeById,
   readJsonBody,

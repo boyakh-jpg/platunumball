@@ -1,4 +1,4 @@
-import { getAuthenticatedContext, readJsonBody, sendJson, toArray, toNotificationRows } from "../_supabaseAdmin.js";
+import { getAuthenticatedContext, readJsonBody, sendJson, toNotificationRows } from "../_supabaseAdmin.js";
 import { REFEREE_TRUST_MIN } from "../../../src/lib/constants.js";
 
 const REFEREE_EXAM_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
