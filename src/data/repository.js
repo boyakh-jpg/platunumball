@@ -92,6 +92,7 @@ import {
   getRecruitingFit,
   getRecruitingLobby,
   getRecruitingRatingScale,
+  getRoomClosePenalty,
   getRecruitingRoomOwnerId,
   getRecruitingSideCapacity,
   getSelectableTeamPlayerIds,
@@ -99,6 +100,9 @@ import {
   hasRecruitingApplicant,
   isPublicTeamRecruitingRoom,
   isRecruitingPartyEntry,
+  isRecruitingRoomMember,
+  isRecruitingRoomOwner,
+  isRecruitingRoomParticipant,
   isTeamOnlyRecruitingRoom,
   isSoloIndividualRecruitingRoom,
   normalizeRecruitingMmrRangeMode,
@@ -272,9 +276,6 @@ function getDemoInitialState() {
   return demoInitialState ?? EMPTY_STATE;
 }
 
-function isRecruitingRoomOwner(post = {}, userId = "") {
-  return Boolean(userId && getRecruitingRoomOwnerId(post) === userId);
-}
 function getHostTrustBlockNotification(state, draft = {}) {
   const ranked = draft.ranked !== false;
   const visibility = draft.visibility === "public" ? "public" : "private";
@@ -306,53 +307,6 @@ function getDisciplineBlockedState(state, actionLabel = "이 작업") {
       ...state.notifications,
     ],
   };
-}
-
-function getRoomScheduleDate(post = {}) {
-  if (isInstantRoom(post)) return null;
-  if (!post.scheduledDate || !post.scheduledTime) return null;
-  const date = new Date(`${post.scheduledDate}T${post.scheduledTime}`);
-  return Number.isFinite(date.getTime()) ? date : null;
-}
-
-function getRoomClosePenalty(post = {}, nowMs = Date.now()) {
-  const applicants = normalizeRecruitingApplicants(post.applicants ?? []);
-  const scheduled = getRoomScheduleDate(post);
-  const hoursUntil = scheduled ? (scheduled.getTime() - nowMs) / 36e5 : Infinity;
-  if (!applicants.length && hoursUntil > 24) return 0;
-
-  let penalty = applicants.length ? 2 : 0;
-  if (!post.hostReady) penalty += 2;
-  if (hoursUntil < 0) penalty += 8;
-  else if (hoursUntil <= 6) penalty += 5;
-  else if (hoursUntil <= 24) penalty += 3;
-  else if (hoursUntil <= 72) penalty += 1;
-
-  const createdAt = post.createdAt ? new Date(post.createdAt).getTime() : null;
-  const shortNotice = scheduled && Number.isFinite(createdAt) && (scheduled.getTime() - createdAt) / 36e5 <= 24;
-  if (shortNotice) penalty = Math.max(0, penalty - 2);
-  return Math.min(12, penalty);
-}
-
-function isRecruitingRoomMember(post = {}, userId, state = {}) {
-  if (!userId) return false;
-  if (isRecruitingRoomOwner(post, userId)) return true;
-  if (post.refereeId === userId) return true;
-  const lobby = getRecruitingLobby(post, state);
-  return (lobby.entries ?? []).some((entry) => (
-    (entry.players ?? []).includes(userId) ||
-    (entry.reserves ?? []).includes(userId)
-  ));
-}
-
-function isRecruitingRoomParticipant(post = {}, userId, state = null) {
-  if (!userId) return false;
-  if (state) return isRecruitingRoomMember(post, userId, state);
-  if (post.refereeId === userId) return true;
-  if (post.playerId === userId || post.playerIds?.includes(userId)) return true;
-  return normalizeRecruitingApplicants(post.applicants ?? []).some((applicant) => (
-    applicant.playerId === userId || applicant.playerIds?.includes(userId)
-  ));
 }
 
 function inferSidePartyTeamIdForUser(post = {}, state = {}, sideName = "", userId = "") {

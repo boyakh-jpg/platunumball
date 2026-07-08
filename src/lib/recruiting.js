@@ -1,4 +1,5 @@
 import { DISPUTE_WINDOW_MINUTES, MODE_SIZES, PLAYER_POSITIONS, REFEREE_TRUST_MIN, ROOM_KINDS, STAT_ENTRY_WINDOW_MINUTES, isMercenaryTeamRole } from "./constants.js";
+import { isInstantRoom } from "./matchUtils.js";
 import { TIERS, getTier, getTierDivision } from "./tier.js";
 
 export const RECRUITING_TYPES = {
@@ -383,6 +384,57 @@ export function getRecruitingRoomOwnerId(post = {}) {
   const safePost = post ?? {};
   const roomState = normalizeRecruitingRoomState(safePost.roomState ?? {});
   return safePost.ownerId || roomState.ownerId || safePost.createdBy || safePost.createdPlayerId || safePost.playerId || "";
+}
+
+export function isRecruitingRoomOwner(post = {}, userId = "") {
+  return Boolean(userId && getRecruitingRoomOwnerId(post) === userId);
+}
+
+function getRoomScheduleDate(post = {}) {
+  if (isInstantRoom(post)) return null;
+  if (!post.scheduledDate || !post.scheduledTime) return null;
+  const date = new Date(`${post.scheduledDate}T${post.scheduledTime}`);
+  return Number.isFinite(date.getTime()) ? date : null;
+}
+
+export function getRoomClosePenalty(post = {}, nowMs = Date.now()) {
+  const applicants = normalizeRecruitingApplicants(post.applicants ?? []);
+  const scheduled = getRoomScheduleDate(post);
+  const hoursUntil = scheduled ? (scheduled.getTime() - nowMs) / 36e5 : Infinity;
+  if (!applicants.length && hoursUntil > 24) return 0;
+
+  let penalty = applicants.length ? 2 : 0;
+  if (!post.hostReady) penalty += 2;
+  if (hoursUntil < 0) penalty += 8;
+  else if (hoursUntil <= 6) penalty += 5;
+  else if (hoursUntil <= 24) penalty += 3;
+  else if (hoursUntil <= 72) penalty += 1;
+
+  const createdAt = post.createdAt ? new Date(post.createdAt).getTime() : null;
+  const shortNotice = scheduled && Number.isFinite(createdAt) && (scheduled.getTime() - createdAt) / 36e5 <= 24;
+  if (shortNotice) penalty = Math.max(0, penalty - 2);
+  return Math.min(12, penalty);
+}
+
+export function isRecruitingRoomMember(post = {}, userId, state = {}) {
+  if (!userId) return false;
+  if (isRecruitingRoomOwner(post, userId)) return true;
+  if (post.refereeId === userId) return true;
+  const lobby = getRecruitingLobby(post, state);
+  return (lobby.entries ?? []).some((entry) => (
+    (entry.players ?? []).includes(userId) ||
+    (entry.reserves ?? []).includes(userId)
+  ));
+}
+
+export function isRecruitingRoomParticipant(post = {}, userId, state = null) {
+  if (!userId) return false;
+  if (state) return isRecruitingRoomMember(post, userId, state);
+  if (post.refereeId === userId) return true;
+  if (post.playerId === userId || post.playerIds?.includes(userId)) return true;
+  return normalizeRecruitingApplicants(post.applicants ?? []).some((applicant) => (
+    applicant.playerId === userId || applicant.playerIds?.includes(userId)
+  ));
 }
 
 export function isRecruitingPostForUser(post = {}, userId, teamIds = []) {
