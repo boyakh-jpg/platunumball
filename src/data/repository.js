@@ -78,6 +78,7 @@ import {
   getMatchTrustFeedbackLimit,
   getMatchTrustFeedbackParticipantIds,
   getMergedResultScore,
+  getRecorderHandoffPatch,
   getReportableMatchTimeMs,
   getReportableMatchUserIds,
   getPublicRoomTimingStatus,
@@ -87,7 +88,6 @@ import {
   applyOperatorAttendance,
   getPlayerSideName,
   getStatRecorderSides,
-  getEffectiveStatRecorders,
   getResultPointAudit,
   getStatSubmissionStatus,
   getSubmittedStatPatch,
@@ -105,6 +105,7 @@ import {
   normalizeDisputeRequest,
   normalizeStatRecorders,
   normalizePlayerStats,
+  withEffectiveMatchStatRecorders,
 } from "../lib/matchUtils.js";
 import { applyMatchRating, calculateTeamDelta } from "../lib/rating.js";
 import {
@@ -2825,82 +2826,6 @@ function getAveragePlayerMmr(state = {}, playerIds = [], fallback = 1200) {
     .filter((value) => Number.isFinite(value));
   if (!values.length) return fallback;
   return Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
-}
-
-function withEffectiveMatchStatRecorders(match = {}) {
-  if (!match || match.refereeId) return match;
-  const currentRecorders = normalizeStatRecorders(match.statRecorders ?? match.rules?.statRecorders);
-  const nextRecorders = getEffectiveStatRecorders(match);
-  if (currentRecorders.teamA === nextRecorders.teamA && currentRecorders.teamB === nextRecorders.teamB) return match;
-  return {
-    ...match,
-    statRecorders: nextRecorders,
-    rules: {
-      ...(match.rules ?? {}),
-      statRecorders: nextRecorders,
-    },
-  };
-}
-
-function getRecorderHandoffPatch(match, sideName, currentRecorderId, nextRecorderId) {
-  const side = match[sideName] ?? {};
-  const sidePlayers = side.players ?? [];
-  const reserveIds = getMatchReservePlayerIds(match, sideName);
-  const currentIsPlayer = sidePlayers.includes(currentRecorderId);
-  const currentIsReserve = reserveIds.includes(currentRecorderId);
-  const nextIsPlayer = sidePlayers.includes(nextRecorderId);
-  const nextIsReserve = reserveIds.includes(nextRecorderId);
-  if (!nextIsPlayer && !nextIsReserve) return { valid: false, match, swapped: false };
-
-  const recordWindow = getMatchRecordWindow(match);
-  const shouldSwap = recordWindow.beforeEnd && (
-    (currentIsReserve && nextIsPlayer) ||
-    (currentIsPlayer && nextIsReserve)
-  );
-  if (!shouldSwap) return { valid: true, match, swapped: false };
-
-  const activeInId = currentIsReserve ? currentRecorderId : nextRecorderId;
-  const benchedId = currentIsReserve ? nextRecorderId : currentRecorderId;
-  const nextPlayers = sidePlayers.map((playerId) => (playerId === benchedId ? activeInId : playerId));
-  const currentReservePlayers = match.reservePlayers?.[sideName] ?? [];
-  const nextReservePlayers = uniquePlayerIds([
-    ...currentReservePlayers.filter((playerId) => playerId !== activeInId),
-    benchedId,
-  ]);
-  const playedPlayerIds = match.playedPlayerIds ?? match.rules?.playedPlayerIds ?? {};
-  const nextPlayedPlayerIds = {
-    ...playedPlayerIds,
-    [sideName]: uniquePlayerIds([...(playedPlayerIds[sideName] ?? []), ...sidePlayers, activeInId, benchedId]),
-  };
-  const playerTeams = { ...(side.playerTeams ?? {}) };
-  [activeInId, benchedId].forEach((playerId) => {
-    const teamId = getMatchPlayerTeamId(match, sideName, playerId);
-    if (teamId) playerTeams[playerId] = teamId;
-  });
-
-  return {
-    valid: true,
-    swapped: true,
-    activeInId,
-    benchedId,
-    match: {
-      ...match,
-      [sideName]: {
-        ...side,
-        players: uniquePlayerIds(nextPlayers),
-        playerTeams,
-      },
-      reservePlayers: {
-        ...(match.reservePlayers ?? {}),
-        [sideName]: nextReservePlayers,
-      },
-      playedPlayerIds: nextPlayedPlayerIds,
-      rules: {
-        ...(match.rules ?? {}),
-        playedPlayerIds: nextPlayedPlayerIds,
-      },
-    },
-  };
 }
 
 export function agreeMatch(state, matchId, sideName, playerId) {
