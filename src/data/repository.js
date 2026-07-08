@@ -162,6 +162,7 @@ import {
 import {
   createProfileShell,
   fromRemoteProfile,
+  getProfileRegionSnapshot,
   getRemoteAppSettings,
   makeDefaultRatings,
   normalizeRatings,
@@ -214,9 +215,13 @@ import {
   uniqueScopeIds,
 } from "./remoteQuery.js";
 import {
+  clone,
   firstBy,
   getMaxUpdatedAt,
   groupBy,
+  makeId,
+  makeUuid,
+  nullableText,
   toDateTime,
   toggleId,
 } from "./rowUtils.js";
@@ -255,15 +260,6 @@ export {
   REMOTE_CLIENT_RECRUITING_LIMIT,
 } from "../lib/constants.js";
 
-const clone = (value) => JSON.parse(JSON.stringify(value));
-const makeId = (prefix) => `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
-const makeUuid = () => globalThis.crypto?.randomUUID?.() ?? makeId("id");
-const nullableText = (value) => {
-  const text = String(value ?? "").trim();
-  return text || null;
-};
-const getProfileRegionSnapshot = (regionSido, regionDistrict, fallbackRegion) =>
-  nullableText([regionSido, regionDistrict].filter(Boolean).join(" ")) ?? nullableText(fallbackRegion);
 const getUserIdentityHashtag = (user = {}) => getUserHashtag(user);
 let demoInitialState = null;
 export function setDemoInitialState(state = null) {

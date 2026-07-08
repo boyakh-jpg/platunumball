@@ -1,5 +1,16 @@
 import { REMOTE_WRITE_CHUNK_SIZE } from "../lib/constants.js";
 
+export const clone = (value) => JSON.parse(JSON.stringify(value));
+
+export const makeId = (prefix) => `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+
+export const makeUuid = () => globalThis.crypto?.randomUUID?.() ?? makeId("id");
+
+export function nullableText(value) {
+  const text = String(value ?? "").trim();
+  return text || null;
+}
+
 export function groupBy(rows, key) {
   return rows.reduce((map, row) => {
     const value = row[key];

@@ -5,6 +5,7 @@ import {
   TEST_PROFILE_SETUP_AT,
 } from "../lib/constants.js";
 import { toHashtag } from "../lib/handles.js";
+import { nullableText } from "./rowUtils.js";
 
 export function makeDefaultRatings() {
   return { integrated: 1200, modes: { "1v1": 1200, "2v2": 1200, "3v3": 1200, "5v5": 1200 } };
@@ -18,6 +19,9 @@ export function normalizeRatings(ratings = {}) {
     modes: { ...defaults.modes, ...(ratings?.modes && typeof ratings.modes === "object" ? ratings.modes : {}) },
   };
 }
+
+export const getProfileRegionSnapshot = (regionSido, regionDistrict, fallbackRegion) =>
+  nullableText([regionSido, regionDistrict].filter(Boolean).join(" ")) ?? nullableText(fallbackRegion);
 
 function getProfileShellId(authUserId = "") {
   const safeId = String(authUserId || "pending").replace(/[^a-zA-Z0-9]/g, "").slice(0, 18) || "pending";
