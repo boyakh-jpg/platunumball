@@ -39,6 +39,40 @@ export function normalizeCourtReviewRating(value, fallback = null) {
   return Math.max(1, Math.min(5, Math.round(number)));
 }
 
+export function getCourtRequestName(rawName = "", addressDong = "") {
+  const name = String(rawName ?? "").trim();
+  const dong = String(addressDong ?? "").trim();
+  if (!dong || name.startsWith(dong)) return name;
+  return `${dong} ${name}`;
+}
+
+export function normalizeCourtHashtag(value = "") {
+  const raw = String(value ?? "").trim().replace(/^#+/, "");
+  return raw ? `#${raw}` : "";
+}
+
+export function makeRandomCourtHashtag(state = {}) {
+  const used = new Set([
+    ...COURTS,
+    ...(state.settings?.approvedCourts ?? []),
+    ...(state.settings?.courtRequests ?? []),
+  ].map((court) => String(court.hashtag ?? "").toLowerCase()).filter(Boolean));
+
+  for (let index = 0; index < 20; index += 1) {
+    const candidate = `#${Math.floor(10000 + Math.random() * 90000)}`;
+    if (!used.has(candidate.toLowerCase())) return candidate;
+  }
+  return `#${Date.now().toString(36).slice(-5)}`;
+}
+
+export function getOptionalCourtCoordinate(value, min, max) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return null;
+  const number = Number(raw);
+  if (!Number.isFinite(number) || number < min || number > max) return null;
+  return number;
+}
+
 function getFallbackSurfaceType(court = {}) {
   if (court.surfaceType) return court.surfaceType;
   if (String(court.type ?? "").includes("실내")) return "indoor_synthetic";

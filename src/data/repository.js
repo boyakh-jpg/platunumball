@@ -43,7 +43,20 @@ import {
   getTeamRoleLabel,
   normalizeMmrLimitMode as normalizeRecruitingMmrLimitMode,
 } from "../lib/constants.js";
-import { courtIdByName, findCourtDuplicate, getCourtDuplicateMessage, getCourtId, getRegisteredCourts, normalizeCourtLayout, normalizeCourtReviewRating, normalizeCourtSurfaceType } from "../lib/courts.js";
+import {
+  courtIdByName,
+  findCourtDuplicate,
+  getCourtDuplicateMessage,
+  getCourtId,
+  getCourtRequestName,
+  getOptionalCourtCoordinate,
+  getRegisteredCourts,
+  makeRandomCourtHashtag,
+  normalizeCourtHashtag,
+  normalizeCourtLayout,
+  normalizeCourtReviewRating,
+  normalizeCourtSurfaceType,
+} from "../lib/courts.js";
 import {
   canOperatorSubmitMissingPostgameResult,
   getAgreementStatus,
@@ -4330,40 +4343,6 @@ function getCourtAddressDong(draft = {}) {
   if (direct) return direct;
   const addressText = String(draft.addressText ?? draft.roadAddress ?? draft.jibunAddress ?? "").trim();
   return addressText.match(/[가-힣0-9]+동/)?.[0] ?? "";
-}
-
-function getCourtRequestName(rawName = "", addressDong = "") {
-  const name = String(rawName ?? "").trim();
-  const dong = String(addressDong ?? "").trim();
-  if (!dong || name.startsWith(dong)) return name;
-  return `${dong} ${name}`;
-}
-
-function normalizeCourtHashtag(value = "") {
-  const raw = String(value ?? "").trim().replace(/^#+/, "");
-  return raw ? `#${raw}` : "";
-}
-
-function makeRandomCourtHashtag(state = {}) {
-  const used = new Set([
-    ...COURTS,
-    ...(state.settings?.approvedCourts ?? []),
-    ...(state.settings?.courtRequests ?? []),
-  ].map((court) => String(court.hashtag ?? "").toLowerCase()).filter(Boolean));
-
-  for (let index = 0; index < 20; index += 1) {
-    const candidate = `#${Math.floor(10000 + Math.random() * 90000)}`;
-    if (!used.has(candidate.toLowerCase())) return candidate;
-  }
-  return `#${Date.now().toString(36).slice(-5)}`;
-}
-
-function getOptionalCourtCoordinate(value, min, max) {
-  const raw = String(value ?? "").trim();
-  if (!raw) return null;
-  const number = Number(raw);
-  if (!Number.isFinite(number) || number < min || number > max) return null;
-  return number;
 }
 
 export function submitCourtRequest(state, draft = {}) {
