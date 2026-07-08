@@ -57,6 +57,7 @@ import {
 } from "../lib/courts.js";
 import {
   canOperatorSubmitMissingPostgameResult,
+  clearMatchPlayerDecision,
   fillMatchDecision,
   getAgreementStatus,
   getApprovalStatus,
@@ -105,6 +106,7 @@ import {
   normalizeDisputeRequest,
   normalizeStatRecorders,
   normalizePlayerStats,
+  updateMatchPartiesForPlayer,
   withEffectiveMatchStatRecorders,
 } from "../lib/matchUtils.js";
 import { applyMatchRating, calculateTeamDelta } from "../lib/rating.js";
@@ -6035,51 +6037,6 @@ export function updateMatchRoomRules(state, matchId, patch = {}) {
 function canEditMatchPreparation(state, match) {
   if (!match || !["contract", "agreed"].includes(match.status) || match.result || match.endedAt || match.startedAt) return false;
   return currentUserCanOperateMatchPreparation(state, match);
-}
-
-function updateMatchPartiesForPlayer(match = {}, playerId = "", sideName = "", reserve = false, remove = false) {
-  return (match.parties ?? [])
-    .map((party) => {
-      const hadPlayer = (party.players ?? []).includes(playerId) || (party.reserves ?? []).includes(playerId);
-      const nextPlayers = uniquePlayerIds(party.players ?? []).filter((id) => id !== playerId);
-      const nextReserves = uniquePlayerIds(party.reserves ?? []).filter((id) => id !== playerId);
-      if (!remove && hadPlayer && party.side === sideName) {
-        if (reserve) nextReserves.push(playerId);
-        else nextPlayers.push(playerId);
-      }
-      const nextRosterIds = uniquePlayerIds([...nextPlayers, ...nextReserves]);
-      const currentLeaderId = party.partyLeaderId ?? party.leaderId ?? party.playerId ?? "";
-      const nextLeaderId = currentLeaderId && nextRosterIds.includes(currentLeaderId)
-        ? currentLeaderId
-        : nextRosterIds[0] ?? "";
-      return {
-        ...party,
-        partyLeaderId: nextLeaderId,
-        players: uniquePlayerIds(nextPlayers),
-        reserves: uniquePlayerIds(nextReserves),
-        reserve: party.reserve && !nextPlayers.length,
-      };
-    })
-    .filter((party) => (party.players ?? []).length || (party.reserves ?? []).length);
-}
-
-function clearMatchPlayerDecision(nextMatch, playerId) {
-  const attendance = getMatchAttendance(nextMatch);
-  return {
-    ...nextMatch,
-    agreements: {
-      teamA: (nextMatch.agreements?.teamA ?? []).filter((id) => id !== playerId),
-      teamB: (nextMatch.agreements?.teamB ?? []).filter((id) => id !== playerId),
-    },
-    approvals: {
-      teamA: (nextMatch.approvals?.teamA ?? []).filter((id) => id !== playerId),
-      teamB: (nextMatch.approvals?.teamB ?? []).filter((id) => id !== playerId),
-    },
-    attendance: {
-      teamA: attendance.teamA.filter((id) => id !== playerId),
-      teamB: attendance.teamB.filter((id) => id !== playerId),
-    },
-  };
 }
 
 function currentUserCanEditMatchRecordSideRoster(state, match, sideName) {

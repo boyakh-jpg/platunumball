@@ -449,6 +449,51 @@ export function getRecorderHandoffPatch(match, sideName, currentRecorderId, next
   };
 }
 
+export function updateMatchPartiesForPlayer(match = {}, playerId = "", sideName = "", reserve = false, remove = false) {
+  return (match.parties ?? [])
+    .map((party) => {
+      const hadPlayer = (party.players ?? []).includes(playerId) || (party.reserves ?? []).includes(playerId);
+      const nextPlayers = uniquePlayerIds(party.players ?? []).filter((id) => id !== playerId);
+      const nextReserves = uniquePlayerIds(party.reserves ?? []).filter((id) => id !== playerId);
+      if (!remove && hadPlayer && party.side === sideName) {
+        if (reserve) nextReserves.push(playerId);
+        else nextPlayers.push(playerId);
+      }
+      const nextRosterIds = uniquePlayerIds([...nextPlayers, ...nextReserves]);
+      const currentLeaderId = party.partyLeaderId ?? party.leaderId ?? party.playerId ?? "";
+      const nextLeaderId = currentLeaderId && nextRosterIds.includes(currentLeaderId)
+        ? currentLeaderId
+        : nextRosterIds[0] ?? "";
+      return {
+        ...party,
+        partyLeaderId: nextLeaderId,
+        players: uniquePlayerIds(nextPlayers),
+        reserves: uniquePlayerIds(nextReserves),
+        reserve: party.reserve && !nextPlayers.length,
+      };
+    })
+    .filter((party) => (party.players ?? []).length || (party.reserves ?? []).length);
+}
+
+export function clearMatchPlayerDecision(nextMatch, playerId) {
+  const attendance = getMatchAttendance(nextMatch);
+  return {
+    ...nextMatch,
+    agreements: {
+      teamA: (nextMatch.agreements?.teamA ?? []).filter((id) => id !== playerId),
+      teamB: (nextMatch.agreements?.teamB ?? []).filter((id) => id !== playerId),
+    },
+    approvals: {
+      teamA: (nextMatch.approvals?.teamA ?? []).filter((id) => id !== playerId),
+      teamB: (nextMatch.approvals?.teamB ?? []).filter((id) => id !== playerId),
+    },
+    attendance: {
+      teamA: attendance.teamA.filter((id) => id !== playerId),
+      teamB: attendance.teamB.filter((id) => id !== playerId),
+    },
+  };
+}
+
 export function getMatchAttendance(match = {}) {
   return {
     teamA: uniquePlayerIds(match.attendance?.teamA ?? []),
