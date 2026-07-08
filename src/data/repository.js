@@ -13,7 +13,6 @@ import {
   PLAYER_POSITIONS,
   PUBLIC_ROOM_SCHEDULE_MAX_DAYS,
   RECORD_TYPES,
-  RECORDABLE_RESERVE_SOURCES,
   REFEREE_ABSENCE_TRUST_PENALTY,
   REFEREE_EXAM_COOLDOWN_MS,
   REFEREE_TRUST_MIN,
@@ -111,6 +110,8 @@ import {
 } from "../lib/matchUtils.js";
 import { applyMatchRating, calculateTeamDelta } from "../lib/rating.js";
 import {
+  cleanRecruitingRoomStatRecorders,
+  currentUserCanRefereeRecruitingRoom,
   getMercenaryTeamWeight,
   getRecruitingApplicantKey,
   getRecruitingApplicantKind,
@@ -127,9 +128,12 @@ import {
   getRecruitingRatingScale,
   getRecruitingHostEditReady,
   getRoomClosePenalty,
+  getRecruitingRoomParticipantIds,
+  getRecruitingRoomStatRecorders,
   getRecruitingRoomOwnerId,
   getRecruitingSideCapacity,
   getRecruitingSlotEditStatus,
+  getValidRecruitingRecorder,
   getSelectableTeamPlayerIds,
   getSelectedTeamPlayerIds,
   hasRecruitingApplicant,
@@ -1688,55 +1692,6 @@ function getTrustedRefereeId(state, refereeId, playerIds = []) {
   return isEligibleReferee(user, REFEREE_TRUST_MIN, state.settings?.refereeAppointments) ? refereeId : "";
 }
 
-function getRecruitingRoomParticipantIds(post, state) {
-  const lobby = getRecruitingLobby(post, state);
-  return uniquePlayerIds([
-    post.playerId,
-    ...(post.playerIds ?? []),
-    ...lobby.entries.flatMap((entry) => [
-      entry.playerId,
-      ...(entry.players ?? []),
-      ...(entry.reserves ?? []),
-    ]),
-  ]);
-}
-
-function currentUserCanRefereeRecruitingRoom(state, post) {
-  const currentUser = state.users.find((item) => item.id === state.currentUserId);
-  if (!isEligibleReferee(currentUser, post.refereeTrustMin ?? REFEREE_TRUST_MIN, state.settings?.refereeAppointments)) return false;
-  return !getRecruitingRoomParticipantIds(post, state).includes(state.currentUserId);
-}
-
-function getValidRecruitingRecorder(post, state, sideName, playerId) {
-  if (!playerId || post.refereeId) return "";
-  const lobby = getRecruitingLobby(post, state);
-  const playingIds = new Set([...lobby.sides.teamA.projectedPlayers, ...lobby.sides.teamB.projectedPlayers]);
-  const candidate = (lobby.sides[sideName]?.reserveCandidates ?? []).find((item) => (
-    item.playerId === playerId &&
-    RECORDABLE_RESERVE_SOURCES.has(item.source) &&
-    item.status === "ready" &&
-    !playingIds.has(item.playerId)
-  ));
-  return candidate ? playerId : "";
-}
-
-function getRecruitingRoomStatRecorders(post, state) {
-  const lobby = getRecruitingLobby(post, state);
-  const playingIds = new Set([...lobby.sides.teamA.projectedPlayers, ...lobby.sides.teamB.projectedPlayers]);
-  const getRecorder = (sideName) => {
-    const candidate = (lobby.sides[sideName]?.reserveCandidates ?? []).find((item) => (
-      RECORDABLE_RESERVE_SOURCES.has(item.source) &&
-      item.status === "ready" &&
-      !playingIds.has(item.playerId)
-    ));
-    return candidate?.playerId ?? "";
-  };
-  return {
-    teamA: getRecorder("teamA"),
-    teamB: getRecorder("teamB"),
-  };
-}
-
 function getRecruitingReserveLimitNotification(postId, sideName) {
   return {
     id: makeId("n"),
@@ -1744,17 +1699,6 @@ function getRecruitingReserveLimitNotification(postId, sideName) {
     body: `${SIDE_LABEL_TEXT[sideName] ?? "해당 사이드"} 후보는 최대 ${MAX_RECRUITING_RESERVES_PER_SIDE}명까지 가능합니다.`,
     tone: "orange",
     recruitingPostId: postId,
-  };
-}
-
-function cleanRecruitingRoomStatRecorders(post, state) {
-  const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
-  return {
-    ...post,
-    roomState: {
-      ...roomState,
-      statRecorders: getRecruitingRoomStatRecorders({ ...post, roomState }, state),
-    },
   };
 }
 

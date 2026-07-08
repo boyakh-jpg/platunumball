@@ -1,5 +1,5 @@
-import { DISPUTE_WINDOW_MINUTES, MAX_RECRUITING_RESERVES_PER_SIDE, MODE_SIZES, PLAYER_POSITIONS, REFEREE_TRUST_MIN, ROOM_KINDS, STAT_ENTRY_WINDOW_MINUTES, isMercenaryTeamRole } from "./constants.js";
-import { isInstantRoom } from "./matchUtils.js";
+import { DISPUTE_WINDOW_MINUTES, MAX_RECRUITING_RESERVES_PER_SIDE, MODE_SIZES, PLAYER_POSITIONS, RECORDABLE_RESERVE_SOURCES, REFEREE_TRUST_MIN, ROOM_KINDS, STAT_ENTRY_WINDOW_MINUTES, isMercenaryTeamRole } from "./constants.js";
+import { isEligibleReferee, isInstantRoom } from "./matchUtils.js";
 import { TIERS, getTier, getTierDivision } from "./tier.js";
 
 export const RECRUITING_TYPES = {
@@ -195,6 +195,66 @@ export function isRecruitingReserveLimitExceeded(post, state, sideName) {
   if (!VALID_SIDES.has(sideName)) return true;
   const lobby = getRecruitingLobby(post, state);
   return (lobby.sides[sideName]?.reserveCandidates?.length ?? 0) > MAX_RECRUITING_RESERVES_PER_SIDE;
+}
+
+export function getRecruitingRoomParticipantIds(post, state) {
+  const lobby = getRecruitingLobby(post, state);
+  return unique([
+    post.playerId,
+    ...(post.playerIds ?? []),
+    ...lobby.entries.flatMap((entry) => [
+      entry.playerId,
+      ...(entry.players ?? []),
+      ...(entry.reserves ?? []),
+    ]),
+  ]);
+}
+
+export function currentUserCanRefereeRecruitingRoom(state, post) {
+  const currentUser = state.users.find((item) => item.id === state.currentUserId);
+  if (!isEligibleReferee(currentUser, post.refereeTrustMin ?? REFEREE_TRUST_MIN, state.settings?.refereeAppointments)) return false;
+  return !getRecruitingRoomParticipantIds(post, state).includes(state.currentUserId);
+}
+
+export function getValidRecruitingRecorder(post, state, sideName, playerId) {
+  if (!playerId || post.refereeId) return "";
+  const lobby = getRecruitingLobby(post, state);
+  const playingIds = new Set([...lobby.sides.teamA.projectedPlayers, ...lobby.sides.teamB.projectedPlayers]);
+  const candidate = (lobby.sides[sideName]?.reserveCandidates ?? []).find((item) => (
+    item.playerId === playerId &&
+    RECORDABLE_RESERVE_SOURCES.has(item.source) &&
+    item.status === "ready" &&
+    !playingIds.has(item.playerId)
+  ));
+  return candidate ? playerId : "";
+}
+
+export function getRecruitingRoomStatRecorders(post, state) {
+  const lobby = getRecruitingLobby(post, state);
+  const playingIds = new Set([...lobby.sides.teamA.projectedPlayers, ...lobby.sides.teamB.projectedPlayers]);
+  const getRecorder = (sideName) => {
+    const candidate = (lobby.sides[sideName]?.reserveCandidates ?? []).find((item) => (
+      RECORDABLE_RESERVE_SOURCES.has(item.source) &&
+      item.status === "ready" &&
+      !playingIds.has(item.playerId)
+    ));
+    return candidate?.playerId ?? "";
+  };
+  return {
+    teamA: getRecorder("teamA"),
+    teamB: getRecorder("teamB"),
+  };
+}
+
+export function cleanRecruitingRoomStatRecorders(post, state) {
+  const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
+  return {
+    ...post,
+    roomState: {
+      ...roomState,
+      statRecorders: getRecruitingRoomStatRecorders({ ...post, roomState }, state),
+    },
+  };
 }
 
 export function getRecruitingEntryLeaderId(entry = null, roomState = {}, hostPlayerId = "") {
