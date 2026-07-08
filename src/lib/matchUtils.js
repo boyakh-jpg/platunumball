@@ -368,7 +368,9 @@ export function getReportableMatchUserIds(match = {}) {
 }
 
 export function isMatchSideTeamParty(match = {}, sideName = "") {
-  return Boolean(match[sideName]?.teamId) && uniquePlayerIds([...(match[sideName]?.players ?? []), ...getMatchReservePlayerIds(match, sideName)]).length >= 2;
+  const sourceMatch = match ?? {};
+  const side = sourceMatch[sideName] ?? {};
+  return Boolean(side.teamId) && uniquePlayerIds([...(side.players ?? []), ...getMatchReservePlayerIds(sourceMatch, sideName)]).length >= 2;
 }
 
 export function isMatchPartyTeamParty(party = {}) {
