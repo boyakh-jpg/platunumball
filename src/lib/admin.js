@@ -90,6 +90,32 @@ export function hasAdminAccess(user = {}, settings = {}) {
   );
 }
 
+export function getReportTargetUserId(report = {}, fallbackUserId = "") {
+  return report.reportedUserIds?.[0] ?? fallbackUserId ?? "";
+}
+
+export function getAdminAuthorityLevel(state = {}) {
+  const currentUser = state.users?.find((user) => user.id === state.currentUserId) ?? {};
+  const profileLevel = getAdminGradeMeta(getAdminGrade(currentUser))?.level ?? 0;
+  const appointmentLevel = (state.settings?.adminAppointments ?? [])
+    .filter((appointment) => appointment.userId === state.currentUserId && (appointment.role ?? "admin") === "admin" && isAppointmentActive(appointment))
+    .reduce((max, appointment) => Math.max(max, getAdminGradeMeta(appointment.grade)?.level ?? 0), 0);
+  return Math.max(profileLevel, appointmentLevel);
+}
+
+export function getAppointmentTermDays(role, grade, termDays) {
+  const requestedDays = Number(termDays);
+  if (Number.isFinite(requestedDays) && requestedDays > 0) return requestedDays;
+  if (role === "admin") return ADMIN_GRADE_META[grade]?.defaultTermDays ?? 90;
+  return 90;
+}
+
+export function canManageAppointmentRole(authorityLevel, role) {
+  if (role === "admin") return authorityLevel >= ADMIN_GRADE_META.senior.level;
+  if (role === "referee") return authorityLevel >= ADMIN_GRADE_META.matchManager.level;
+  return false;
+}
+
 function getTime(value) {
   const time = new Date(value ?? 0).getTime();
   return Number.isFinite(time) ? time : 0;
