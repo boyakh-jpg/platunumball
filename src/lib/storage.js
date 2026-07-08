@@ -50,13 +50,6 @@ export function writeProfileBindings(bindings) {
   window.localStorage.setItem(PROFILE_BINDINGS_KEY, JSON.stringify(bindings));
 }
 
-export function clearProfileBinding(authUserId) {
-  if (typeof window === "undefined" || !authUserId) return;
-  const bindings = readProfileBindings();
-  delete bindings[authUserId];
-  writeProfileBindings(bindings);
-}
-
 function readProfileCacheMap() {
   if (typeof window === "undefined") return {};
   try {

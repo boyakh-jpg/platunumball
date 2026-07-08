@@ -1,6 +1,6 @@
 import { DISPUTE_WINDOW_MINUTES, MAX_RECRUITING_RESERVES_PER_SIDE, MODE_SIZES, PLAYER_POSITIONS, RECORDABLE_RESERVE_SOURCES, REFEREE_TRUST_MIN, ROOM_KINDS, STAT_ENTRY_WINDOW_MINUTES, isMercenaryTeamRole } from "./constants.js";
 import { isEligibleReferee, isInstantRoom } from "./matchUtils.js";
-import { TIERS, getTier, getTierDivision } from "./tier.js";
+import { TIERS, getTierDivision } from "./tier.js";
 
 const RECRUITING_TYPES = {
   need_player: {
@@ -300,11 +300,6 @@ function uniqueCandidates(candidates = []) {
     seen.add(candidate.playerId);
     return true;
   });
-}
-
-export function getTierIndex(mmr = 0) {
-  const tier = getTier(mmr);
-  return Math.max(0, TIERS.findIndex((item) => item.name === tier.name));
 }
 
 export function normalizeRecruitingMmrRangeMode(mode = "narrow") {

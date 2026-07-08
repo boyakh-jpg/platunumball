@@ -97,9 +97,3 @@ export function findCourtByHashtag(courts = [], query = "") {
     sameHashtag(query, getCourtHashtag(court))
   )) ?? null;
 }
-
-export function findMatchByHashtag(matches = [], query = "") {
-  return matches.find((match) => (
-    sameHashtag(query, getMatchHashtag(match))
-  )) ?? null;
-}

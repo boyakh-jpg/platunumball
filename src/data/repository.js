@@ -3808,11 +3808,6 @@ export function submitCourtReview(state, matchId, draft = {}) {
   };
 }
 
-export function switchUser(state, userId) {
-  if (!state.users.some((user) => user.id === userId)) return state;
-  return { ...state, currentUserId: userId };
-}
-
 export function updatePrivacySettings(state, patch) {
   return {
     ...state,

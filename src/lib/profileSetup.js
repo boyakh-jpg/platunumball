@@ -4,8 +4,6 @@ export const AGE_GROUPS = [
   { id: "open", label: "Open", rangeLabel: "Open", minAge: 20, maxAge: 120 },
 ];
 
-export const AGE_GROUP_ORDER = AGE_GROUPS.map((group) => group.id);
-
 export const REGION_TREE = [
   { sido: "서울특별시", districts: ["강남구", "강동구", "강북구", "강서구", "관악구", "광진구", "구로구", "금천구", "노원구", "도봉구", "동대문구", "동작구", "마포구", "서대문구", "서초구", "성동구", "성북구", "송파구", "양천구", "영등포구", "용산구", "은평구", "종로구", "중구", "중랑구"] },
   { sido: "부산광역시", districts: ["강서구", "금정구", "기장군", "남구", "동구", "동래구", "부산진구", "북구", "사상구", "사하구", "서구", "수영구", "연제구", "영도구", "중구", "해운대구"] },

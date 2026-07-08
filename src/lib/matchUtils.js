@@ -182,10 +182,6 @@ export function buildMatchDisputeRequest({ match = {}, playerId = "", playerName
   };
 }
 
-export function buildMatchDisputeReason(args = {}) {
-  return buildMatchDisputeRequest(args).reason;
-}
-
 export function normalizeDisputeRequest(disputeInput = "") {
   if (disputeInput && typeof disputeInput === "object") {
     return {
