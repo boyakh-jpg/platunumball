@@ -29,6 +29,7 @@ import RefereeHoverCard from "../components/referee/RefereeHoverCard.jsx";
 import TierBadge from "../components/rating/TierBadge.jsx";
 import { getTierEmblemSrc } from "../components/rating/TierEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
+import { ensureTeamPartyLeader } from "../data/teamMappers.js";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { MATCH_MODES, MAX_RECRUITING_RESERVES_PER_SIDE as MAX_RESERVE_PLAYERS_PER_SIDE, PLAYER_POSITIONS, PLAYER_STAT_FIELDS, RECORDABLE_RESERVE_SOURCES, REGIONS, ROOM_RELATION_TERMS, SIDE_LABEL_TEXT as SIDE_LABELS, getCanonicalRegion, isSameRegion } from "../lib/constants.js";
 import { inferRegionSelection, REGION_TREE } from "../lib/profileSetup.js";
@@ -234,27 +235,17 @@ function getDefaultApplyTeamId(post, teams) {
 
 function getDefaultTeamPlayerIds(team, capacity, requiredPlayerId = "") {
   if (!team) return [];
-  const selectableIds = getSelectableTeamPlayerIds(team);
-  const orderedIds = requiredPlayerId && selectableIds.includes(requiredPlayerId)
-    ? [requiredPlayerId, ...selectableIds.filter((playerId) => playerId !== requiredPlayerId)]
-    : selectableIds;
-  return orderedIds.slice(0, capacity);
+  return ensureTeamPartyLeader(team, getSelectableTeamPlayerIds(team), requiredPlayerId, capacity);
 }
 
 function getTeamRepresentativePlayerIds(team, userId = "") {
-  if (!team || !userId) return [];
-  return getSelectableTeamPlayerIds(team).includes(userId) ? [userId] : [];
+  return ensureTeamPartyLeader(team, userId ? [userId] : [], userId, 1);
 }
 
 function getPartyPlayerIds(team, playerIds, capacity, requiredPlayerId = "") {
   if (!team) return [];
-  if (!Array.isArray(playerIds)) return getDefaultTeamPlayerIds(team, capacity, requiredPlayerId);
-  const selectableIds = new Set(getSelectableTeamPlayerIds(team));
-  const safeIds = Array.from(new Set(playerIds.filter((playerId) => selectableIds.has(playerId))));
-  const orderedIds = requiredPlayerId && selectableIds.has(requiredPlayerId)
-    ? [requiredPlayerId, ...safeIds.filter((playerId) => playerId !== requiredPlayerId)]
-    : safeIds;
-  return orderedIds.slice(0, capacity);
+  const selectedIds = Array.isArray(playerIds) ? playerIds : getSelectableTeamPlayerIds(team);
+  return ensureTeamPartyLeader(team, selectedIds, requiredPlayerId, capacity);
 }
 
 function getPartyReserveIds(team, reserveIds, activeIds = [], capacity = MAX_RESERVE_PLAYERS_PER_SIDE) {
