@@ -68,6 +68,20 @@ export function isRecruitingTeamEntry(entry = {}) {
   return entry?.kind === "team" || entry?.joinMode === "team" || Boolean(entry?.teamId);
 }
 
+export function removeAcceptedRecruitingInvitations(invitations = [], acceptedInvitation = {}, targetUserId = "") {
+  if (acceptedInvitation.role === "referee") {
+    return invitations.filter((candidate) => candidate.role !== "referee");
+  }
+  return invitations.filter((candidate) => {
+    if (candidate.id === acceptedInvitation.id) return false;
+    return !(
+      candidate.role !== "referee" &&
+      candidate.status === "pending" &&
+      candidate.targetUserId === targetUserId
+    );
+  });
+}
+
 export function getRecruitingEntryLeaderId(entry = null, roomState = {}, hostPlayerId = "") {
   if (!entry) return "";
   return roomState?.partyLeaders?.[entry.id] ?? (entry.fixed ? hostPlayerId : entry.playerId) ?? "";

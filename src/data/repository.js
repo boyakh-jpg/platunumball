@@ -136,6 +136,7 @@ import {
   normalizeRecruitingApplicants,
   normalizeRecruitingPost,
   normalizeRecruitingRoomState,
+  removeAcceptedRecruitingInvitations,
 } from "../lib/recruiting.js";
 import {
   ADMIN_GRADE_META,
@@ -6628,20 +6629,6 @@ export function inviteRecruitingReferee(state, postId, refereeId) {
       ...state.notifications,
     ],
   };
-}
-
-function removeAcceptedRecruitingInvitations(invitations = [], acceptedInvitation = {}, targetUserId = "") {
-  if (acceptedInvitation.role === "referee") {
-    return invitations.filter((candidate) => candidate.role !== "referee");
-  }
-  return invitations.filter((candidate) => {
-    if (candidate.id === acceptedInvitation.id) return false;
-    return !(
-      candidate.role !== "referee" &&
-      candidate.status === "pending" &&
-      candidate.targetUserId === targetUserId
-    );
-  });
 }
 
 function makeRecruitingTeamNoticeNotifications({ post, team, side, acceptedBy, acceptedByName, now } = {}) {
