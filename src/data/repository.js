@@ -33,7 +33,6 @@ import {
   SIDE_LABEL_TEXT,
   SOLO_RECORD_ANONYMOUS_POSITION,
   SOLO_RECORD_ANONYMOUS_SOURCE,
-  SOLO_RECORD_MODE_IDS,
   STAT_ENTRY_WINDOW_MINUTES,
   TEST_PROFILE_AGE_GROUP,
   TEST_PROFILE_AGE_GROUP_SEASON,
@@ -166,7 +165,18 @@ import {
   toPayloadRow,
   toReportRow,
 } from "./remoteRowSerializers.js";
-import { fromRemoteMatch, normalizeMatch } from "./matchMappers.js";
+import {
+  fromRemoteMatch,
+  getSoloRecordDateRange,
+  getSoloRecordRosterError,
+  getSoloRecordSideSize,
+  makeSoloRecordAnonymousSide,
+  makeSoloRecordStats,
+  normalizeMatch,
+  normalizeSoloRecordMode,
+  parseSoloRecordRosterText,
+  toSoloRecordNumber,
+} from "./matchMappers.js";
 import {
   collectMatchPageScope,
   collectRecruitingPageScope,
@@ -2291,70 +2301,6 @@ export function runAutomaticStateMaintenance(state, now = new Date()) {
   return repairRecruitingSameTeamPersonalParties(applyAutomaticRecruitingConfirmations(applyExpiredRecruitingRooms(applyAutomaticMatchDecisions(state, now), now)));
 }
 
-function toSoloRecordNumber(value, fallback = 0) {
-  const number = Number(value ?? fallback);
-  if (!Number.isFinite(number)) return fallback;
-  return Math.max(0, Math.min(999, Math.floor(number)));
-}
-
-function makeSoloRecordStats(score, stats = {}) {
-  return Object.fromEntries(
-    PLAYER_STAT_FIELDS.map((field) => [
-      field.id,
-      field.id === "points" ? toSoloRecordNumber(score) : toSoloRecordNumber(stats[field.id]),
-    ]),
-  );
-}
-
-function normalizeSoloRecordMode(mode = "1v1") {
-  const text = String(mode || "1v1").trim();
-  return SOLO_RECORD_MODE_IDS.has(text) ? text : "1v1";
-}
-
-function getSoloRecordSideSize(mode = "1v1") {
-  const match = String(mode).match(/^(\d+)/);
-  const value = match ? Number(match[1]) : 1;
-  return Math.max(1, Math.min(5, Number.isFinite(value) ? value : 1));
-}
-
-function parseSoloRecordRosterText(value = "") {
-  return String(value ?? "")
-    .split(/[\n,]+/)
-    .map((line) => line.replace(/\s+/g, " ").trim())
-    .filter(Boolean)
-    .map((line) => {
-      const parts = line.split(" ");
-      const maybePosition = parts.length > 1 ? parts[parts.length - 1].toUpperCase() : "";
-      const hasPosition = PLAYER_POSITIONS.includes(maybePosition) && maybePosition !== "상관없음";
-      return {
-        name: hasPosition ? parts.slice(0, -1).join(" ").trim() : line,
-        position: hasPosition ? maybePosition : SOLO_RECORD_ANONYMOUS_POSITION,
-      };
-    })
-    .filter((entry) => entry.name);
-}
-
-function getSoloRecordEntryIdentity(entry = {}) {
-  const text = String(entry.name ?? "").replace(/\s+/g, " ").trim();
-  const hashtag = text.match(/#[^\s#]+/);
-  if (hashtag?.[0]) return hashtag[0].toLowerCase();
-  return text.toLowerCase();
-}
-
-function getSoloRecordRosterError(teamAEntries = [], teamBEntries = [], sideSize = 1) {
-  const teamALimit = Math.max(0, sideSize - 1);
-  if (teamAEntries.length > teamALimit) return `우리 사이드는 본인 제외 ${teamALimit}명까지만 추가할 수 있습니다.`;
-  if (teamBEntries.length > sideSize) return `상대 사이드는 ${sideSize}명까지만 추가할 수 있습니다.`;
-  const seen = new Set();
-  for (const entry of [...teamAEntries, ...teamBEntries]) {
-    const identity = getSoloRecordEntryIdentity(entry);
-    if (!identity) continue;
-    if (seen.has(identity)) return "같은 선수를 우리/상대 또는 같은 사이드에 중복으로 넣을 수 없습니다.";
-    seen.add(identity);
-  }
-  return "";
-}
-
 function withSoloRecordNotification(state, title, body) {
   return {
     ...state,
@@ -2362,27 +2308,6 @@ function withSoloRecordNotification(state, title, body) {
       { id: makeId("n"), title, body, tone: "match" },
       ...(state.notifications ?? []),
     ],
-  };
-}
-
-function makeSoloRecordAnonymousSide({ count, entries = [] } = {}) {
-  let anonymousIndex = 0;
-  return Array.from({ length: count }, (_, index) => {
-    const entry = entries[index] ?? {};
-    const name = entry.name || `무기명 ${++anonymousIndex}`;
-    return {
-      id: makeId("anon"),
-      name,
-      position: entry.position || SOLO_RECORD_ANONYMOUS_POSITION,
-      participationLabel: SOLO_RECORD_ANONYMOUS_SOURCE,
-    };
-  });
-}
-
-function getSoloRecordDateRange(now = new Date()) {
-  return {
-    max: now.toISOString().slice(0, 10),
-    min: new Date(now.getTime() - 1000 * 60 * 60 * 24 * 7).toISOString().slice(0, 10),
   };
 }
 
