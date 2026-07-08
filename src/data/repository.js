@@ -68,7 +68,6 @@ import {
   getMatchPlayerTeamId,
   getMatchReservePlayerIds,
   getMatchSideLeaderId,
-  getMatchSidePlayerIds,
   getMatchSideRecordPlayerIds,
   getMatchStartDate,
   getMatchTrustFeedbackLimit,
@@ -80,7 +79,6 @@ import {
   getPublicRoomTimingStatus,
   getMatchRecordWindow,
   getMissingMatchAttendance,
-  evaluateRecordVerification,
   applyOperatorAttendance,
   getPlayerSideName,
   getStatRecorderSides,
@@ -104,13 +102,20 @@ import {
   updateMatchPartiesForPlayer,
   withEffectiveMatchStatRecorders,
 } from "../lib/matchUtils.js";
-import { applyMatchRating, calculateTeamDelta } from "../lib/rating.js";
+import {
+  applyMatchRating,
+  averageTeamMmr,
+  calculateTeamDelta,
+  getAveragePlayerMmr,
+  getFinalizationRatingContext,
+  getMatchSideTeamGroups,
+  teamRegularRatio,
+} from "../lib/rating.js";
 import {
   cleanRecruitingRoomStatRecorders,
   currentUserCanRefereeRecruitingRoom,
   inferRecruitingInvitationTeamId,
   inferSidePartyTeamIdForUser,
-  getMercenaryTeamWeight,
   getExplicitInvitationTeamPlayerIds,
   getRecruitingApplicantKey,
   getRecruitingApplicantKind,
@@ -1785,43 +1790,6 @@ function isTournamentManager(state, tournament) {
   return tournament.createdBy === state.currentUserId;
 }
 
-function teamRegularRatio(team, playerIds, users = []) {
-  if (!team) return 1;
-  const userById = Object.fromEntries(users.map((user) => [user.id, user]));
-  const selected = team.members.filter((member) => playerIds.includes(member.userId));
-  if (!selected.length) return 1;
-  const weighted = selected.reduce((sum, member) => {
-    const memberMmr = userById[member.userId]?.ratings?.integrated ?? team.mmr;
-    return sum + getMercenaryTeamWeight(memberMmr, team.mmr, member.role);
-  }, 0);
-  return weighted / selected.length;
-}
-
-function averageTeamMmr(groups = []) {
-  if (!groups.length) return 1200;
-  return groups.reduce((sum, group) => sum + Number(group.team?.mmr ?? 1200), 0) / groups.length;
-}
-
-function getMatchSideTeamGroups(state, match, sideName) {
-  const side = match[sideName] ?? {};
-  const playerTeams = side.playerTeams ?? {};
-  const excludedIds = new Set(match.mmrExcludedPlayerIds ?? match.rules?.mmrExcludedPlayerIds ?? []);
-  const groups = new Map();
-  getMatchSidePlayerIds(match, sideName).forEach((playerId) => {
-    if (excludedIds.has(playerId)) return;
-    const teamId = playerTeams[playerId] ?? side.teamId;
-    if (!teamId) return;
-    if (!groups.has(teamId)) groups.set(teamId, []);
-    groups.get(teamId).push(playerId);
-  });
-  return Array.from(groups.entries())
-    .map(([teamId, playerIds]) => ({
-      team: state.teams.find((team) => team.id === teamId),
-      playerIds,
-    }))
-    .filter((group) => group.team);
-}
-
 function updateAffiliationScores(state) {
   const users = state.users;
   return state.affiliations.filter((affiliation) => affiliation.type !== "club").map((affiliation) => {
@@ -1835,28 +1803,6 @@ function updateAffiliationScores(state) {
     const average = members.reduce((sum, user) => sum + user.ratings.integrated, 0) / members.length;
     return { ...affiliation, score: Math.round(average + affiliation.wins * 2 - affiliation.losses) };
   });
-}
-
-function getFinalizationRatingContext(match, teams = []) {
-  if (!isMatchRecordMatch(match) && !isPersonalRecordMatch(match)) {
-    return { matchForRating: match, canApplyPersonalMmr: true, canApplyTeamMmr: true };
-  }
-  const verification = evaluateRecordVerification(match, { teams });
-  const eligibleIds = new Set(verification.mmrEligiblePlayerIds);
-  const existingExcludedIds = new Set([...(match.mmrExcludedPlayerIds ?? []), ...(match.rules?.mmrExcludedPlayerIds ?? [])]);
-  getMatchRecordPlayerIds(match).forEach((playerId) => {
-    if (!eligibleIds.has(playerId)) existingExcludedIds.add(playerId);
-  });
-  const mmrExcludedPlayerIds = Array.from(existingExcludedIds);
-  return {
-    matchForRating: {
-      ...match,
-      mmrExcludedPlayerIds,
-      rules: { ...(match.rules ?? {}), mmrExcludedPlayerIds },
-    },
-    canApplyPersonalMmr: verification.canApplyPersonalMmr,
-    canApplyTeamMmr: verification.canApplyTeamMmr,
-  };
 }
 
 function finalizeMatch(state, targetMatch) {
@@ -2719,14 +2665,6 @@ function getSelfDecisionId(state, match, sideName, decisionKey, playerId) {
   }
   if ((match[decisionKey]?.[sideName] ?? []).includes(currentUserId)) return null;
   return currentUserId;
-}
-
-function getAveragePlayerMmr(state = {}, playerIds = [], fallback = 1200) {
-  const values = uniquePlayerIds(playerIds)
-    .map((playerId) => Number(state.users?.find((user) => user.id === playerId)?.ratings?.integrated))
-    .filter((value) => Number.isFinite(value));
-  if (!values.length) return fallback;
-  return Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
 }
 
 export function agreeMatch(state, matchId, sideName, playerId) {

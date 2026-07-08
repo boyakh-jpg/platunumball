@@ -1,10 +1,18 @@
 import { CREDIBILITY_LEVELS, EVIDENCE_OPTIONS, MATCH_MODES } from "./constants.js";
-import { calculatePlayerStatBoost, getMatchSidePlayerIds } from "./matchUtils.js";
-import { getMercenaryPlayerFactor } from "./recruiting.js";
+import {
+  calculatePlayerStatBoost,
+  evaluateRecordVerification,
+  getMatchRecordPlayerIds,
+  getMatchSidePlayerIds,
+  isMatchRecordMatch,
+  isPersonalRecordMatch,
+} from "./matchUtils.js";
+import { getMercenaryPlayerFactor, getMercenaryTeamWeight } from "./recruiting.js";
 import { getTier, getTierDisplay, getTierDivision, getTierLabel } from "./tier.js";
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const round = (value) => Math.round(value * 10) / 10;
+const uniquePlayerIds = (playerIds = []) => [...new Set(playerIds.filter(Boolean))];
 
 const modeWeightMap = {
   "1v1": 0.78,
@@ -149,6 +157,73 @@ export function calculateTeamDelta({
   const base = 24 * (actual - expectedScore(teamMmr, opponentTeamMmr));
   const factor = getQualityFactor(match, 80, []) * clamp(regularRatio, 0.45, 1);
   return round(clamp(base * factor, -34, 34));
+}
+
+export function teamRegularRatio(team, playerIds, users = []) {
+  if (!team) return 1;
+  const userById = Object.fromEntries(users.map((user) => [user.id, user]));
+  const selected = team.members.filter((member) => playerIds.includes(member.userId));
+  if (!selected.length) return 1;
+  const weighted = selected.reduce((sum, member) => {
+    const memberMmr = userById[member.userId]?.ratings?.integrated ?? team.mmr;
+    return sum + getMercenaryTeamWeight(memberMmr, team.mmr, member.role);
+  }, 0);
+  return weighted / selected.length;
+}
+
+export function averageTeamMmr(groups = []) {
+  if (!groups.length) return 1200;
+  return groups.reduce((sum, group) => sum + Number(group.team?.mmr ?? 1200), 0) / groups.length;
+}
+
+export function getMatchSideTeamGroups(state, match, sideName) {
+  const side = match[sideName] ?? {};
+  const playerTeams = side.playerTeams ?? {};
+  const excludedIds = new Set(match.mmrExcludedPlayerIds ?? match.rules?.mmrExcludedPlayerIds ?? []);
+  const groups = new Map();
+  getMatchSidePlayerIds(match, sideName).forEach((playerId) => {
+    if (excludedIds.has(playerId)) return;
+    const teamId = playerTeams[playerId] ?? side.teamId;
+    if (!teamId) return;
+    if (!groups.has(teamId)) groups.set(teamId, []);
+    groups.get(teamId).push(playerId);
+  });
+  return Array.from(groups.entries())
+    .map(([teamId, playerIds]) => ({
+      team: state.teams.find((team) => team.id === teamId),
+      playerIds,
+    }))
+    .filter((group) => group.team);
+}
+
+export function getFinalizationRatingContext(match, teams = []) {
+  if (!isMatchRecordMatch(match) && !isPersonalRecordMatch(match)) {
+    return { matchForRating: match, canApplyPersonalMmr: true, canApplyTeamMmr: true };
+  }
+  const verification = evaluateRecordVerification(match, { teams });
+  const eligibleIds = new Set(verification.mmrEligiblePlayerIds);
+  const existingExcludedIds = new Set([...(match.mmrExcludedPlayerIds ?? []), ...(match.rules?.mmrExcludedPlayerIds ?? [])]);
+  getMatchRecordPlayerIds(match).forEach((playerId) => {
+    if (!eligibleIds.has(playerId)) existingExcludedIds.add(playerId);
+  });
+  const mmrExcludedPlayerIds = Array.from(existingExcludedIds);
+  return {
+    matchForRating: {
+      ...match,
+      mmrExcludedPlayerIds,
+      rules: { ...(match.rules ?? {}), mmrExcludedPlayerIds },
+    },
+    canApplyPersonalMmr: verification.canApplyPersonalMmr,
+    canApplyTeamMmr: verification.canApplyTeamMmr,
+  };
+}
+
+export function getAveragePlayerMmr(state = {}, playerIds = [], fallback = 1200) {
+  const values = uniquePlayerIds(playerIds)
+    .map((playerId) => Number(state.users?.find((user) => user.id === playerId)?.ratings?.integrated))
+    .filter((value) => Number.isFinite(value));
+  if (!values.length) return fallback;
+  return Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
 }
 
 function average(values) {
