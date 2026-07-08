@@ -30,7 +30,7 @@ import TierBadge from "../components/rating/TierBadge.jsx";
 import { getTierEmblemSrc } from "../components/rating/TierEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
-import { MATCH_MODES, PLAYER_POSITIONS, PLAYER_STAT_FIELDS, REGIONS, ROOM_RELATION_TERMS, SIDE_LABEL_TEXT as SIDE_LABELS, getCanonicalRegion, isSameRegion } from "../lib/constants.js";
+import { MATCH_MODES, MAX_RECRUITING_RESERVES_PER_SIDE as MAX_RESERVE_PLAYERS_PER_SIDE, PLAYER_POSITIONS, PLAYER_STAT_FIELDS, RECORDABLE_RESERVE_SOURCES, REGIONS, ROOM_RELATION_TERMS, SIDE_LABEL_TEXT as SIDE_LABELS, getCanonicalRegion, isSameRegion } from "../lib/constants.js";
 import { inferRegionSelection, REGION_TREE } from "../lib/profileSetup.js";
 import { getCourtLayoutLabel, getCourtPlayWarning, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
 import {
@@ -98,8 +98,6 @@ const CHAT_REPEAT_BLOCK_MS = 30000;
 const CHAT_RATE_WINDOW_MS = 60000;
 const CHAT_RATE_LIMIT = 6;
 const AUTO_RECRUITING_TITLE_PATTERN = /^(모집방|모집 중\s*\d*|정규전|친선전|대기방|매치 큐)$/;
-const RECORDABLE_RESERVE_SOURCES = new Set(["reserve-entry", "team-reserve"]);
-const MAX_RESERVE_PLAYERS_PER_SIDE = 2;
 const ROOM_SLOT_POSITION_AVATARS = {
   PG: assetUrl("/assets/position-avatars/PG.webp"),
   SG: assetUrl("/assets/position-avatars/SG.webp"),
