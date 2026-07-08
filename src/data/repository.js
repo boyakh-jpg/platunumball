@@ -116,6 +116,7 @@ import {
   getRecruitingApplicantKind,
   getRecruitingBestSide,
   getRecruitingEntryLeaderId,
+  getRecruitingEntryPlayerIds,
   getRecruitingFit,
   getRecruitingLobby,
   getRecruitingRatingScale,
@@ -133,6 +134,7 @@ import {
   isRecruitingRoomOwner,
   isRecruitingRoomParticipant,
   isRecruitingTeamSideLocked,
+  isRecruitingEntryMember,
   isTeamOnlyRecruitingRoom,
   isSoloIndividualRecruitingRoom,
   isMutableRecruitingRoom,
@@ -7092,16 +7094,6 @@ function hasRecruitingTeamMemberOnOtherSide(post, state, teamId, targetSide, all
       ...(entry.reserves ?? []),
     ].some((playerId) => teamMemberIds.has(playerId));
   });
-}
-
-function isRecruitingEntryMember(entry, playerId) {
-  if (!entry || !playerId) return false;
-  return (entry.players ?? []).includes(playerId) || (entry.reserves ?? []).includes(playerId);
-}
-
-function getRecruitingEntryPlayerIds(entry, targetApplicant, post, capacity) {
-  const storedPlayerIds = uniquePlayerIds(entry.fixed ? post.playerIds : targetApplicant?.playerIds);
-  return (storedPlayerIds.length ? storedPlayerIds : uniquePlayerIds(entry.players ?? [])).slice(0, capacity);
 }
 
 export function setRecruitingApplicantPlacement(state, postId, playerId, placement = {}) {

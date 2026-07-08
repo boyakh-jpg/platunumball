@@ -103,6 +103,16 @@ export function isRecruitingTeamSideLocked(post = {}) {
   );
 }
 
+export function isRecruitingEntryMember(entry, playerId) {
+  if (!entry || !playerId) return false;
+  return (entry.players ?? []).includes(playerId) || (entry.reserves ?? []).includes(playerId);
+}
+
+export function getRecruitingEntryPlayerIds(entry, targetApplicant, post, capacity) {
+  const storedPlayerIds = unique(entry.fixed ? post.playerIds : targetApplicant?.playerIds);
+  return (storedPlayerIds.length ? storedPlayerIds : unique(entry.players ?? [])).slice(0, capacity);
+}
+
 export function getRecruitingEntryLeaderId(entry = null, roomState = {}, hostPlayerId = "") {
   if (!entry) return "";
   return roomState?.partyLeaders?.[entry.id] ?? (entry.fixed ? hostPlayerId : entry.playerId) ?? "";
