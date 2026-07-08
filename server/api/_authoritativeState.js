@@ -40,6 +40,7 @@ import {
   setRecruitingSlotPosition,
   setRecruitingStatRecorder,
   startMatch,
+  substituteMatchPlayer,
   submitMatchResult,
   submitMatchThumbs,
   toggleMatchStar,
@@ -185,6 +186,8 @@ function getAuthoritativeLoadScope(operation = {}) {
     profileIds: [
       operation.refereeId,
       operation.playerId,
+      operation.activePlayerId,
+      operation.reservePlayerId,
       operation.targetUserId,
       ...(Array.isArray(operation.targetUserIds) ? operation.targetUserIds : []),
       operation.invitation?.targetUserId,
@@ -347,6 +350,9 @@ export function applyAuthoritativeMatchOperation(state, operation = {}) {
       break;
     case "handoffMatchRecorder":
       next = handoffMatchRecorder(state, operation.matchId, operation.sideName, operation.nextRecorderId);
+      break;
+    case "substituteMatchPlayer":
+      next = substituteMatchPlayer(state, operation.matchId, operation.sideName, operation.activePlayerId, operation.reservePlayerId);
       break;
     case "approveMatch":
       next = approveMatch(state, operation.matchId, operation.sideName, operation.playerId);

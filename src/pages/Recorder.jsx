@@ -8,7 +8,6 @@ import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
 import SearchPicker from "../components/common/SearchPicker.jsx";
 import PlayerHoverCard from "../components/profile/PlayerHoverCard.jsx";
-import useBodyScrollLock from "../hooks/useBodyScrollLock.js";
 import { PLAYER_STAT_FIELDS, SIDE_LABEL_TEXT as sideLabels } from "../lib/constants.js";
 import { getUserHashtag } from "../lib/handles.js";
 import {
@@ -31,8 +30,7 @@ import {
   isEligibleReferee,
   isMatchReferee,
 } from "../lib/matchUtils.js";
-import { getMatchRoomPost } from "./Matches.jsx";
-import { RecruitingRoomModal } from "./Recruiting.jsx";
+import { MatchRoomModal } from "./Matches.jsx";
 
 const statusMeta = {
   agreed: { label: "진행", tone: "blue" },
@@ -167,6 +165,7 @@ export default function Recorder({ app }) {
   const [stats, setStats] = useState({});
   const [dirtyStats, setDirtyStats] = useState({});
   const [handoffDraft, setHandoffDraft] = useState({});
+  const [substitutionDraft, setSubstitutionDraft] = useState({});
   const [latePlayerDraft, setLatePlayerDraft] = useState({ sideName: "teamA", userId: "", playerQuery: "", name: "" });
   const [disputeReason, setDisputeReason] = useState(MATCH_DISPUTE_REASON_OPTIONS[0]);
   const [disputeCustomReason, setDisputeCustomReason] = useState("");
@@ -226,6 +225,7 @@ export default function Recorder({ app }) {
       setStats(makeInitialStats(selectedMatch));
       setDirtyStats({});
       setHandoffDraft({});
+      setSubstitutionDraft({});
       setLatePlayerDraft((current) => ({ ...current, userId: "", playerQuery: "", name: "" }));
       setDisputeReason(MATCH_DISPUTE_REASON_OPTIONS[0]);
       setDisputeCustomReason("");
@@ -239,14 +239,6 @@ export default function Recorder({ app }) {
   const selectedMatchSourcePost = selectedMatch?.recruitingPostId
     ? app.state.recruitingPosts?.find((post) => post.id === selectedMatch.recruitingPostId)
     : null;
-  const selectedRoomMatch = selectedRoomMatchId
-    ? matches.find((match) => match.id === selectedRoomMatchId) ?? null
-    : null;
-  const selectedRoomPost = useMemo(
-    () => (selectedRoomMatch ? getMatchRoomPost(selectedRoomMatch, app.state) : null),
-    [app.state, selectedRoomMatch],
-  );
-  useBodyScrollLock(Boolean(selectedRoomPost));
   const hostPlayerId = selectedMatch ? getMatchHostPlayerId(selectedMatch, selectedMatchSourcePost) : "";
   const currentUserIsHost = Boolean(hostPlayerId && hostPlayerId === user.id);
   const selectedMatchHasReferee = Boolean(selectedMatch?.refereeId);
@@ -382,6 +374,69 @@ export default function Recorder({ app }) {
     if (canSave) saveStats();
     app.actions.handoffMatchRecorder(selectedMatch.id, sideName, nextRecorderId);
     setHandoffDraft((current) => ({ ...current, [sideName]: "" }));
+  };
+
+  const canSubstituteSide = (sideName) => Boolean(
+    selectedMatch &&
+    selectedMatch.status === "agreed" &&
+    roomPhase === "live" &&
+    !selectedMatch.endedAt &&
+    recordWindow?.beforeEnd &&
+    (currentUserCanOperatePostStart || recorderSides.includes(sideName))
+  );
+
+  const substitutePlayer = (sideName, reservePlayerId) => {
+    const activePlayerIds = selectedMatch?.[sideName]?.players ?? [];
+    const activePlayerId = substitutionDraft[`${sideName}:${reservePlayerId}`] ?? activePlayerIds[0] ?? "";
+    if (!selectedMatch || !activePlayerId || !reservePlayerId) return;
+    if (canSave) saveStats();
+    app.actions.substituteMatchPlayer?.(selectedMatch.id, sideName, activePlayerId, reservePlayerId);
+  };
+
+  const renderSubstitutionPanel = () => {
+    const sides = ["teamA", "teamB"].filter((sideName) => (
+      canSubstituteSide(sideName) &&
+      (selectedMatch[sideName]?.players ?? []).length &&
+      getMatchReservePlayerIds(selectedMatch, sideName).length
+    ));
+    if (!sides.length) return null;
+    return (
+      <div className="recorder-handoff-panel">
+        <div>
+          <span className="eyebrow">SUBSTITUTION</span>
+          <strong>선수 교체</strong>
+          <p>경기 중 후보를 출전으로 올리고, 기존 출전 선수는 후보로 내립니다.</p>
+        </div>
+        <div className="recorder-handoff-list">
+          {sides.flatMap((sideName) => {
+            const activePlayerIds = selectedMatch[sideName]?.players ?? [];
+            return getMatchReservePlayerIds(selectedMatch, sideName).map((reservePlayerId) => {
+              const draftKey = `${sideName}:${reservePlayerId}`;
+              const reserveUser = userMap[reservePlayerId];
+              return (
+                <div className="recorder-handoff-row" key={draftKey}>
+                  <label>
+                    {sideLabels[sideName]} {reserveUser?.name ?? "후보"}
+                    <select
+                      value={substitutionDraft[draftKey] ?? activePlayerIds[0] ?? ""}
+                      onChange={(event) => setSubstitutionDraft((current) => ({ ...current, [draftKey]: event.target.value }))}
+                    >
+                      {activePlayerIds.map((playerId) => (
+                        <option value={playerId} key={playerId}>{userMap[playerId]?.name ?? playerId}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <Button type="button" variant="secondary" onClick={() => substitutePlayer(sideName, reservePlayerId)}>
+                    <RotateCcw size={16} />
+                    교체
+                  </Button>
+                </div>
+              );
+            });
+          })}
+        </div>
+      </div>
+    );
   };
 
   const renderSide = (sideName) => {
@@ -562,6 +617,8 @@ export default function Recorder({ app }) {
             <div className="recorder-sides two">
               {["teamA", "teamB"].map(renderSide)}
             </div>
+
+            {renderSubstitutionPanel()}
 
             {canEditPostgameRoster ? (
               <div className="recorder-late-player-panel">
@@ -772,15 +829,7 @@ export default function Recorder({ app }) {
         </div>
       </div>
     </div>
-    {selectedRoomMatch && selectedRoomPost ? (
-      <RecruitingRoomModal
-        app={app}
-        post={selectedRoomPost}
-        sourceMatch={selectedRoomMatch}
-        skipInitialDetailLoad
-        onClose={() => setSelectedRoomMatchId("")}
-      />
-    ) : null}
+    <MatchRoomModal app={app} matchId={selectedRoomMatchId} onClose={() => setSelectedRoomMatchId("")} />
     </>
   );
 }

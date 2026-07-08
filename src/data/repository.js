@@ -3018,6 +3018,49 @@ export function handoffMatchRecorder(state, matchId, sideName, nextRecorderId) {
   };
 }
 
+function currentUserCanSubstituteMatchSide(state, match, sideName) {
+  if (currentUserCanOperateStartedMatch(state, match)) return true;
+  return getStatRecorderSides(match, state.currentUserId).includes(sideName);
+}
+
+export function substituteMatchPlayer(state, matchId, sideName, activePlayerId, reservePlayerId) {
+  const storedMatch = state.matches.find((item) => item.id === matchId);
+  const match = withEffectiveMatchStatRecorders(storedMatch);
+  if (!match || match.status !== "agreed" || match.endedAt) return state;
+  if (getMatchRoomPhase(match).phase !== "live") return state;
+  if (!["teamA", "teamB"].includes(sideName)) return state;
+  if (!currentUserCanSubstituteMatchSide(state, match, sideName)) return state;
+
+  const activeIds = match[sideName]?.players ?? [];
+  const reserveIds = getMatchReservePlayerIds(match, sideName);
+  if (!activeIds.includes(activePlayerId) || !reserveIds.includes(reservePlayerId)) return state;
+
+  const substitutionPatch = getRecorderHandoffPatch(match, sideName, activePlayerId, reservePlayerId);
+  if (!substitutionPatch.valid || !substitutionPatch.swapped) return state;
+
+  const activeUser = state.users.find((user) => user.id === activePlayerId);
+  const reserveUser = state.users.find((user) => user.id === reservePlayerId);
+
+  return {
+    ...state,
+    matches: state.matches.map((item) => (
+      item.id === matchId
+        ? getRecorderHandoffPatch(item, sideName, activePlayerId, reservePlayerId).match
+        : item
+    )),
+    notifications: [
+      {
+        id: makeId("n"),
+        title: "선수 교체",
+        body: `${match.title} ${SIDE_LABEL_TEXT[sideName]} ${reserveUser?.name ?? "후보"} 출전, ${activeUser?.name ?? "선수"} 후보 전환.`,
+        tone: "match",
+        matchId,
+      },
+      ...state.notifications,
+    ],
+  };
+}
+
 export function approveMatch(state, matchId, sideName, playerId) {
   const match = state.matches.find((item) => item.id === matchId);
   if (!match?.result || ["confirmed", "void", "cancelled", "disputed"].includes(match.status)) return state;

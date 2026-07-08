@@ -853,6 +853,7 @@ function canSyncMatchAction(profileId, existingMatch, existingPlayers, nextMatch
   const existingParticipants = existingParticipantIds(existingMatch, existingPlayers);
   if (action === "deleteSoloRecord") return canDeleteSoloRecord(profileId, existingMatch, nextMatch);
   if (action === "handoffMatchRecorder") return isMatchOperator(profileId, existingMatch, nextMatch) || getStatRecorderIds(existingMatch).includes(profileId);
+  if (action === "substituteMatchPlayer") return isMatchOperator(profileId, existingMatch, nextMatch) || getStatRecorderIds(existingMatch).includes(profileId);
   if (action === MATCH_RECORD_ROSTER_ACTION) return canSyncMatchRecordTeamRoster(profileId, existingMatch, existingPlayers, nextMatch);
   if (OPERATOR_MATCH_ACTIONS.has(action)) return isMatchOperator(profileId, existingMatch, nextMatch);
   if (action === "submitMatchResult") return canSubmitResult(profileId, existingMatch, nextMatch);

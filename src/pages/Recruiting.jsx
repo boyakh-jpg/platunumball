@@ -1371,6 +1371,66 @@ function RoomKickPanel({
   );
 }
 
+function MatchSubstitutionPanel({
+  match,
+  userById,
+  teams,
+  canSubstituteSide,
+  onSubstitute,
+}) {
+  const [draftByReserveId, setDraftByReserveId] = useState({});
+  if (!match) return null;
+  const rows = ["teamA", "teamB"].flatMap((sideName) => {
+    if (!canSubstituteSide(sideName)) return [];
+    const activePlayerIds = match[sideName]?.players ?? [];
+    const reservePlayerIds = getMatchReservePlayerIds(match, sideName);
+    if (!activePlayerIds.length || !reservePlayerIds.length) return [];
+    return reservePlayerIds.map((reservePlayerId) => ({
+      sideName,
+      activePlayerIds,
+      reservePlayerId,
+      reserveUser: userById[reservePlayerId],
+    }));
+  });
+  if (!rows.length) return null;
+
+  return (
+    <div className="arena-record-roster-panel">
+      <header>
+        <strong>선수 교체</strong>
+        <span>후보를 출전으로 올리고 기존 출전 선수는 후보로 내립니다.</span>
+      </header>
+      <div className="arena-record-roster-list">
+        {rows.map(({ sideName, activePlayerIds, reservePlayerId, reserveUser }) => {
+          const activePlayerId = draftByReserveId[reservePlayerId] ?? activePlayerIds[0] ?? "";
+          return (
+            <div key={`${sideName}:${reservePlayerId}`} className="arena-record-roster-row selected">
+              <PlayerHoverCard user={reserveUser} teams={teams} as="span">
+                <span className="avatar small" style={{ "--avatar": reserveUser?.avatarColor }}>{reserveUser?.name?.slice(0, 1) ?? "P"}</span>
+                <span>
+                  <strong>{reserveUser?.name ?? "후보"}</strong>
+                  <em>{SIDE_LABELS[sideName]} 후보</em>
+                </span>
+              </PlayerHoverCard>
+              <select
+                value={activePlayerId}
+                onChange={(event) => setDraftByReserveId((current) => ({ ...current, [reservePlayerId]: event.target.value }))}
+              >
+                {activePlayerIds.map((playerId) => (
+                  <option value={playerId} key={playerId}>{userById[playerId]?.name ?? playerId}</option>
+                ))}
+              </select>
+              <Button type="button" size="sm" variant="secondary" disabled={!activePlayerId} onClick={() => onSubstitute(sideName, activePlayerId, reservePlayerId)}>
+                교체
+              </Button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function MatchRecordRosterPanel({
   match,
   sideName,
@@ -2990,6 +3050,14 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const canCancelSourceMatch = Boolean(matchRoom && sourceMatch && ["contract", "agreed"].includes(sourceMatch.status) && (sourceMatchStarted || sourceMatch.endedAt || sourceMatch.result ? currentUserCanOperateStartedSourceMatch : mine));
         const canDeleteSourceSoloRecord = Boolean(matchRoom && isPersonalRecordMatch(sourceMatch) && sourceMatch.createdBy === app.currentUser.id && sourceMatch.status !== "cancelled");
         const sourceMatchRecordWindow = sourceMatch ? getMatchRecordWindow(sourceMatch) : null;
+        const canSubstituteSourceMatchSide = (sideName) => Boolean(
+          matchRoom &&
+          sourceMatch?.status === "agreed" &&
+          sourceMatchPhase?.phase === "live" &&
+          !sourceMatch?.endedAt &&
+          sourceMatchRecordWindow?.beforeEnd &&
+          (currentUserCanOperateStartedSourceMatch || sourceMatchRecorderSides.includes(sideName))
+        );
         const sourceMatchApprovalOpen = Boolean(
           sourceMatch?.result &&
           sourceMatchRecordWindow?.disputeOpen &&
@@ -3522,6 +3590,16 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                   attendanceBySide={matchRoom ? sourceMatchAttendance : null}
                   requireMissingAttendance={canManageMatchCheckin}
                   currentUserId={app.currentUser.id}
+                />
+              ) : null}
+
+              {!sourceRoomReadOnly && matchRoom ? (
+                <MatchSubstitutionPanel
+                  match={sourceMatch}
+                  userById={userById}
+                  teams={app.state.teams}
+                  canSubstituteSide={canSubstituteSourceMatchSide}
+                  onSubstitute={(sideName, activePlayerId, reservePlayerId) => app.actions.substituteMatchPlayer?.(sourceMatch.id, sideName, activePlayerId, reservePlayerId)}
                 />
               ) : null}
 

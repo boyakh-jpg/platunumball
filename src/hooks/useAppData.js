@@ -64,6 +64,7 @@ import {
   setRecruitingTeamPartyRoster,
   setRecruitingStatRecorder,
   startMatch,
+  substituteMatchPlayer,
   startRefereeExamAttempt,
   submitCourtRequest,
   submitCourtReview,
@@ -156,6 +157,7 @@ const SERVER_OPERATION_ACTIONS = new Set([
   "agreeMatch",
   "submitMatchResult",
   "handoffMatchRecorder",
+  "substituteMatchPlayer",
   "approveMatch",
   "checkInMatchPlayer",
   "requestMatchRefereeAbsence",
@@ -2378,6 +2380,9 @@ export function useAppData(authUser = null, appLocation = null) {
       submitMatchResult: (matchId, result) => applyMatchMutation(matchId, (prev) => submitMatchResult({ ...prev, currentUserId }, matchId, result), { action: "submitMatchResult", result }),
       handoffMatchRecorder: (matchId, sideName, nextRecorderId) => {
         applyMatchMutation(matchId, (prev) => handoffMatchRecorder({ ...prev, currentUserId }, matchId, sideName, nextRecorderId), { action: "handoffMatchRecorder", sideName, nextRecorderId });
+      },
+      substituteMatchPlayer: (matchId, sideName, activePlayerId, reservePlayerId) => {
+        applyMatchMutation(matchId, (prev) => substituteMatchPlayer({ ...prev, currentUserId }, matchId, sideName, activePlayerId, reservePlayerId), { action: "substituteMatchPlayer", sideName, activePlayerId, reservePlayerId });
       },
       approveMatch: (matchId, sideName, playerId) => applyMatchMutation(matchId, (prev) => approveMatch({ ...prev, currentUserId }, matchId, sideName, playerId), { action: "approveMatch", sideName, playerId }),
       checkInMatchPlayer: (matchId, sideName, playerId) => applyMatchMutation(matchId, (prev) => checkInMatchPlayer({ ...prev, currentUserId }, matchId, sideName, playerId), { action: "checkInMatchPlayer", sideName, playerId }),
