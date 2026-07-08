@@ -57,6 +57,7 @@ import {
 } from "../lib/courts.js";
 import {
   canOperatorSubmitMissingPostgameResult,
+  fillMatchDecision,
   getAgreementStatus,
   getApprovalStatus,
   getAllowedResultStatFields,
@@ -99,6 +100,7 @@ import {
   isMatchSideTeamParty,
   isMatchStatRecorder,
   isMatchRecordMatch,
+  isAutoDecisionDue,
   isPersonalRecordMatch,
   normalizeDisputeRequest,
   normalizeStatRecorders,
@@ -2080,19 +2082,6 @@ function finalizeMatch(state, targetMatch) {
   };
 
   return { ...nextState, affiliations: updateAffiliationScores(nextState) };
-}
-
-function fillMatchDecision(match, decisionKey) {
-  return {
-    ...(match[decisionKey] ?? { teamA: [], teamB: [] }),
-    teamA: [...new Set([...(match[decisionKey]?.teamA ?? []), ...(match.teamA?.players ?? [])])],
-    teamB: [...new Set([...(match[decisionKey]?.teamB ?? []), ...(match.teamB?.players ?? [])])],
-  };
-}
-
-function isAutoDecisionDue(match, nowMs = Date.now()) {
-  const recordWindow = getMatchRecordWindow(match, nowMs);
-  return Boolean(recordWindow.endAt && nowMs >= recordWindow.endAt.getTime() + DAY_MS);
 }
 
 function applyAutomaticMatchDecisions(state, now = new Date()) {

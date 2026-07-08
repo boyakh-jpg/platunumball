@@ -1,4 +1,5 @@
 import {
+  DAY_MS,
   DISPUTE_WINDOW_MINUTES,
   INSTANT_ROOM_EXPIRE_MINUTES,
   MODE_SIZES,
@@ -201,6 +202,19 @@ export function getMergedResultScore(match, playerStats, sideName, fallbackScore
   const sidePlayerIds = getMatchSidePlayerIds(match, sideName);
   if (!sidePlayerIds.some((playerId) => playerStats[playerId])) return Number(fallbackScore ?? match[sideName]?.score ?? 0);
   return sidePlayerIds.reduce((sum, playerId) => sum + Number(playerStats[playerId]?.points ?? 0), 0);
+}
+
+export function fillMatchDecision(match, decisionKey) {
+  return {
+    ...(match[decisionKey] ?? { teamA: [], teamB: [] }),
+    teamA: [...new Set([...(match[decisionKey]?.teamA ?? []), ...(match.teamA?.players ?? [])])],
+    teamB: [...new Set([...(match[decisionKey]?.teamB ?? []), ...(match.teamB?.players ?? [])])],
+  };
+}
+
+export function isAutoDecisionDue(match, nowMs = Date.now()) {
+  const recordWindow = getMatchRecordWindow(match, nowMs);
+  return Boolean(recordWindow.endAt && nowMs >= recordWindow.endAt.getTime() + DAY_MS);
 }
 
 function addDateDays(dateValue, days) {
