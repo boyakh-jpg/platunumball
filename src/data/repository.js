@@ -129,7 +129,13 @@ import {
 } from "./matchLifecycleUtils.js";
 import { DEFAULT_SETTINGS, EMPTY_STATE } from "./repositoryDefaults.js";
 import { fromRemoteTeam, fromRemoteTeamInvitation, normalizeTeamInviteRole } from "./teamMappers.js";
-import { fromRemoteTournament, normalizeTournament } from "./tournamentMappers.js";
+import {
+  buildLeaguePairings,
+  buildTournamentPairings,
+  fromRemoteTournament,
+  getTournamentTeamStatuses,
+  normalizeTournament,
+} from "./tournamentMappers.js";
 import {
   fromRemoteApprovedCourt,
   fromRemoteCourtRequest,
@@ -218,7 +224,6 @@ import {
   makeId,
   makeUuid,
   nullableText,
-  shuffleItems,
   toDateTime,
   toggleId,
   uniquePlayerIds,
@@ -1729,85 +1734,6 @@ function cleanRecruitingRoomStatRecorders(post, state) {
       statRecorders: getRecruitingRoomStatRecorders({ ...post, roomState }, state),
     },
   };
-}
-
-function getTournamentTeamStatuses(tournament = {}) {
-  return {
-    ...Object.fromEntries((tournament.teamIds ?? []).map((teamId) => [teamId, "invited"])),
-    ...(tournament.teamStatuses ?? {}),
-  };
-}
-
-function buildLeaguePairings(teamIds = []) {
-  const pairings = [];
-  for (let homeIndex = 0; homeIndex < teamIds.length; homeIndex += 1) {
-    for (let awayIndex = homeIndex + 1; awayIndex < teamIds.length; awayIndex += 1) {
-      pairings.push({
-        round: 1,
-        fixture: pairings.length + 1,
-        teamAId: teamIds[homeIndex],
-        teamBId: teamIds[awayIndex],
-      });
-    }
-  }
-  return pairings;
-}
-
-function getByeMatchIndexes(matchCount, byeCount) {
-  const indexes = [];
-  let left = 0;
-  let right = matchCount - 1;
-  while (indexes.length < byeCount && left <= right) {
-    indexes.push(left);
-    if (indexes.length < byeCount && right !== left) indexes.push(right);
-    left += 1;
-    right -= 1;
-  }
-  return new Set(indexes);
-}
-
-function buildTournamentPairings(teamIds = []) {
-  const seedOrder = shuffleItems(teamIds);
-  const bracketSize = 2 ** Math.ceil(Math.log2(Math.max(seedOrder.length, 2)));
-  const matchCount = bracketSize / 2;
-  const byeCount = Math.max(0, bracketSize - seedOrder.length);
-  const byeMatchIndexes = getByeMatchIndexes(matchCount, byeCount);
-  let seedIndex = 0;
-  const firstRound = Array.from({ length: matchCount }, (_item, index) => {
-    if (byeMatchIndexes.has(index)) {
-      const teamAId = seedOrder[seedIndex++] ?? null;
-      return {
-        id: `r1-${index + 1}`,
-        round: 1,
-        fixture: index + 1,
-        teamAId,
-        teamBId: null,
-        byeTeamId: teamAId,
-      };
-    }
-    const teamAId = seedOrder[seedIndex++] ?? null;
-    const teamBId = seedOrder[seedIndex++] ?? null;
-    return {
-      id: `r1-${index + 1}`,
-      round: 1,
-      fixture: index + 1,
-      teamAId,
-      teamBId,
-      byeTeamId: !teamBId ? teamAId : null,
-    };
-  });
-  const pairings = firstRound
-    .filter((row) => row.teamAId && row.teamBId)
-    .map((row) => ({
-      round: row.round,
-      fixture: row.fixture,
-      bracketMatch: row.fixture,
-      teamAId: row.teamAId,
-      teamBId: row.teamBId,
-    }));
-  const byes = firstRound.filter((row) => row.byeTeamId).map((row) => row.byeTeamId);
-  const slots = firstRound.flatMap((row) => [row.teamAId, row.teamBId]);
-  return { seedOrder, bracketSize, slots, firstRound, pairings, byes };
 }
 
 function makeTournamentMatch(tournament, teamA, teamB, pairing, now, matchId = "") {
