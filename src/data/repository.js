@@ -1,5 +1,4 @@
 import {
-  COURTS,
   COURT_REQUEST_TRUST_MIN,
   DAY_MS,
   DISPUTE_WINDOW_MINUTES,
@@ -36,7 +35,6 @@ import {
   TEST_PROFILE_BIRTH_YEAR,
   TEST_PROFILE_SETUP_AT,
   getHostTrustRequirement,
-  getTeamRoleLabel,
   normalizeMmrLimitMode as normalizeRecruitingMmrLimitMode,
 } from "../lib/constants.js";
 import {
@@ -64,7 +62,6 @@ import {
   getMatchRecordPlayerIds,
   getMatchHostPlayerId as getMatchHostPlayerIdFromMatch,
   getMatchAttendance,
-  getMatchAttendanceTargetIds,
   getMatchRosterSideName,
   getMatchRoomPhase,
   getMatchPlayerPlacement,
@@ -92,7 +89,6 @@ import {
   getSubmittedStatPatch,
   getTeamCaptainId,
   isMatchTrustFeedbackOpen,
-  isInstantRoom,
   isEligibleReferee,
   isMatchPartyTeamParty,
   isMatchReferee,
@@ -240,7 +236,6 @@ import {
   getProfileRegionSnapshot,
   getRemoteAppSettings,
   getUserIdentityHashtag,
-  makeDefaultRatings,
   normalizeRatings,
 } from "./profileMappers.js";
 import {
