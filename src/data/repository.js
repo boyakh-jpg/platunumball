@@ -228,6 +228,7 @@ import {
   nullableText,
   toDateTime,
   toggleId,
+  uniquePlayerIds,
 } from "./rowUtils.js";
 import {
   replaceRemoteRecruitingApplications,
@@ -3040,10 +3041,6 @@ function getSelfDecisionId(state, match, sideName, decisionKey, playerId) {
   }
   if ((match[decisionKey]?.[sideName] ?? []).includes(currentUserId)) return null;
   return currentUserId;
-}
-
-function uniquePlayerIds(playerIds = []) {
-  return [...new Set(playerIds.filter(Boolean))];
 }
 
 function isMatchSideTeamParty(match = {}, sideName = "") {

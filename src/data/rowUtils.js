@@ -11,6 +11,10 @@ export function nullableText(value) {
   return text || null;
 }
 
+export function uniquePlayerIds(playerIds = []) {
+  return [...new Set(playerIds.filter(Boolean))];
+}
+
 export function groupBy(rows, key) {
   return rows.reduce((map, row) => {
     const value = row[key];
