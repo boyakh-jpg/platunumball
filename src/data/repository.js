@@ -2929,7 +2929,7 @@ export function submitMatchResult(state, matchId, result) {
   const targetPlayerIds = (currentUserIsEligibleReferee || draftEntry)
     ? recordPlayerIds
     : [...new Set([...recorderPlayerIds, ...selfPlayerIds, ...hostPostgamePlayerIds])]
-        .filter((playerId) => getAllowedResultFieldIds(match, currentUserId, playerId, currentUserCanPostgameScore).length > 0);
+        .filter((playerId) => getAllowedResultStatFields(match, currentUserId, playerId, currentUserCanPostgameScore).length > 0);
   if (!hasReferee && !targetPlayerIds.length) {
     return {
       ...state,
@@ -2950,7 +2950,7 @@ export function submitMatchResult(state, matchId, result) {
   const nextPlayerStats = { ...existingStats };
   touchedPlayerIds.forEach((playerId) => {
     const allowedFieldIds = new Set(
-      getAllowedResultFieldIds(match, currentUserId, playerId, currentUserCanPostgameScore).map((field) => field.id),
+      getAllowedResultStatFields(match, currentUserId, playerId, currentUserCanPostgameScore).map((field) => field.id),
     );
     const currentStats = nextPlayerStats[playerId] ?? {};
     nextPlayerStats[playerId] = {
@@ -3302,10 +3302,6 @@ function currentUserCanFileMatchDispute(state, match) {
   if (!match) return false;
   if (currentUserCanOperateStartedMatch(state, match)) return true;
   return getMatchTrustFeedbackParticipantIds(match).includes(state.currentUserId);
-}
-
-function getAllowedResultFieldIds(match, currentUserId, playerId, hostPostgameScore = false) {
-  return getAllowedResultStatFields(match, currentUserId, playerId, hostPostgameScore);
 }
 
 export function checkInMatchPlayer(state, matchId, sideName, playerId) {
