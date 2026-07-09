@@ -328,6 +328,7 @@ Done:
 - Supabase schema/RLS hardening: `profiles.auth_user_id` uuid FK, duplicate hard failure, client write guard, admin/report/court/referee policy hardening.
 - RLS read hardening: recruiting permissive read policies are dropped, profile directory reads use `public_profiles`, and match tables read through `matches.visibility` plus participant/admin checks.
 - `/api/system/schema-health` includes `rankball_rls_policy_health()` so deployment checks fail on permissive raw read policy regressions for reports, court, matches, recruiting, feed, admin tables, and direct browser grants on `room_feed_cards`.
+- `/api/system/schema-health` also includes `rankball_rpc_grant_health()` so service-role-only RPCs fail health checks if `anon` or `authenticated` regains `EXECUTE`.
 - Vercel Hobby API consolidation: one `api/index.js` function dispatches the server routes.
 - Server action paths exist for profile upsert, court request submit/approve/report, admin review, admin/referee appointment, disciplinary action, Discord DM worker, Discord delivery queue sync, reports, recruiting, matches, teams, tournaments, referee requests, favorites, notification read, court reviews.
 - Team membership save/delete now commits through `rankball_sync_team_membership()` / `rankball_delete_team()` DB RPC transactions.
