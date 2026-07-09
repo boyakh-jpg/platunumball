@@ -637,6 +637,70 @@ function toMatchRow(match = {}, actorProfileId = "") {
   };
 }
 
+function toTournamentRow(tournament = {}) {
+  return {
+    id: tournament.id,
+    title: tournament.title,
+    format: tournament.format,
+    visibility: tournament.visibility,
+    status: tournament.status,
+    region: tournament.region,
+    court_id: tournament.courtId ?? tournament.court_id ?? null,
+    court_name: tournament.court ?? tournament.courtName ?? tournament.court_name ?? null,
+    mode: tournament.mode,
+    ranked: tournament.ranked !== false,
+    official: Boolean(tournament.official),
+    start_date: tournament.startDate || tournament.start_date || null,
+    end_date: tournament.endDate || tournament.end_date || null,
+    schedule_policy: tournament.schedulePolicy ?? tournament.schedule_policy ?? "weekly",
+    schedule_note: tournament.scheduleNote ?? tournament.schedule_note ?? "",
+    mmr_limit_mode: tournament.mmrLimitMode ?? tournament.mmr_limit_mode ?? "warn",
+    max_mmr_gap: Number(tournament.maxMmrGap ?? tournament.max_mmr_gap ?? 250),
+    mmr_policy: tournament.mmrPolicy ?? tournament.mmr_policy ?? "gap_adjusted",
+    rules: tournament.rules ?? {},
+    memo: tournament.memo ?? "",
+    created_by: tournament.createdBy ?? tournament.created_by ?? null,
+    created_at: tournament.createdAt ?? tournament.created_at ?? new Date().toISOString(),
+    started_at: tournament.startedAt ?? tournament.started_at ?? null,
+    match_ids: toArray(tournament.matchIds ?? tournament.match_ids),
+    team_statuses: tournament.teamStatuses ?? tournament.team_statuses ?? {},
+    team_approvals: tournament.teamApprovals ?? tournament.team_approvals ?? {},
+    bracket: tournament.bracket ?? {},
+    updated_at: new Date().toISOString(),
+  };
+}
+
+function toTournamentTeamRows(tournament = {}) {
+  return toArray(tournament.teamIds ?? tournament.team_ids).map((teamId, index) => {
+    const approval = tournament.teamApprovals?.[teamId] ?? {};
+    return {
+      tournament_id: tournament.id,
+      team_id: teamId,
+      seed_order: index + 1,
+      status: tournament.teamStatuses?.[teamId] ?? "invited",
+      approved_by: approval.by || approval.approvedBy || null,
+      approved_at: approval.approvedAt || approval.approved_at || null,
+    };
+  });
+}
+
+async function persistTournamentSnapshot(context, tournament = {}, notifications = []) {
+  if (!tournament?.id) return null;
+  const notificationRows = toNotificationRows(notifications, context.profileId, {
+    defaultTitle: "대회 변경",
+    defaultTone: "match",
+    defaultType: "tournament",
+    filterToProfile: true,
+  });
+  const { data, error } = await context.supabase.rpc("rankball_persist_tournament_snapshot", {
+    p_tournament_row: toTournamentRow(tournament),
+    p_team_rows: toTournamentTeamRows(tournament),
+    p_notification_rows: notificationRows,
+  });
+  if (error) throw error;
+  return data ?? { ok: true };
+}
+
 function toResultRow(match = {}, actorProfileId = "") {
   if (!match.result) return null;
   return {
@@ -1234,7 +1298,7 @@ export async function commitProfileTrustDeltas(context, trustCommit = {}) {
   return data ?? { ok: true, profileCount: profileUpdates.length };
 }
 
-export async function persistMatchSnapshot(context, { match, notifications = [], action = "sync", body = {}, ratingCommit = null, trustCommit = null }) {
+export async function persistMatchSnapshot(context, { match, notifications = [], action = "sync", body = {}, ratingCommit = null, trustCommit = null, trustedServerCreate = false }) {
   if (!match?.id) reject(400, "missing_match");
   validateMatchShape(match);
   validateResultShape(match, action);
@@ -1266,7 +1330,7 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
       .eq("match_id", match.id);
   if (statError) throw statError;
 
-  if (!canSyncMatchAction(context.profileId, existingMatch, existingPlayers, match, action)) {
+  if (!trustedServerCreate && !canSyncMatchAction(context.profileId, existingMatch, existingPlayers, match, action)) {
     reject(403, "match_sync_permission_denied");
   }
   validateSoloRecordSnapshot(match, context.profileId);
@@ -1376,6 +1440,9 @@ export default async function handler(request, response) {
     let action = body.action ? String(body.action) : "sync";
     let ratingCommit = null;
     let trustCommit = null;
+    let tournament = null;
+    let createdTournamentMatches = [];
+    let tournamentNotifications = [];
 
     if (operation && match && shouldUseSqlMatchAction(operation)) {
       const sqlResult = await applySqlMatchAction(context, operation, match);
@@ -1398,12 +1465,33 @@ export default async function handler(request, response) {
       action = operation.action;
       ratingCommit = result.ratingCommit;
       trustCommit = result.trustCommit;
+      tournament = result.tournament;
+      createdTournamentMatches = result.createdTournamentMatches ?? [];
+      tournamentNotifications = result.tournamentNotifications ?? [];
     } else if (operation && match) {
       action = operation.action;
     }
 
     const result = await persistMatchSnapshot(context, { match, notifications, action, body, ratingCommit, trustCommit });
-    sendJson(response, 200, result);
+    const tournamentPersistResult = tournament
+      ? await persistTournamentSnapshot(context, tournament, tournamentNotifications.filter((notification) => !notification.matchId))
+      : null;
+    let createdTournamentMatchCount = 0;
+    for (const tournamentMatch of createdTournamentMatches) {
+      await persistMatchSnapshot(context, {
+        match: tournamentMatch,
+        notifications: tournamentNotifications.filter((notification) => notification.matchId === tournamentMatch.id),
+        action: "createTournamentMatch",
+        body: {},
+        trustedServerCreate: true,
+      });
+      createdTournamentMatchCount += 1;
+    }
+    sendJson(response, 200, {
+      ...result,
+      tournamentSynced: Boolean(tournamentPersistResult?.ok),
+      createdTournamentMatchCount,
+    });
   } catch (error) {
     console.error("Match sync failed.", error);
     const statusCode = error.statusCode || (error.code === "40001" || error.message === "match_stale_snapshot" ? 409 : 500);

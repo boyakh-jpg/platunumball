@@ -331,7 +331,7 @@ export default async function handler(request, response) {
     await persistTournamentCourtId(context.supabase, tournament);
 
     for (const match of createdMatches) {
-      await persistMatchSnapshot(context, { match, notifications: [], action: "createTournamentMatch", body: {} });
+      await persistMatchSnapshot(context, { match, notifications: [], action: "createTournamentMatch", body: {}, trustedServerCreate: true });
     }
 
     sendJson(response, 200, {

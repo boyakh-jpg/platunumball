@@ -330,6 +330,7 @@ export function applyAuthoritativeRecruitingOperation(state, operation = {}) {
 export function applyAuthoritativeMatchOperation(state, operation = {}) {
   const action = String(operation.action || "");
   const beforeMatches = state.matches ?? [];
+  const beforeTournaments = state.tournaments ?? [];
   let next = state;
 
   switch (action) {
@@ -417,11 +418,24 @@ export function applyAuthoritativeMatchOperation(state, operation = {}) {
     : getCreatedItem(beforeMatches, next.matches ?? []);
   if (!match || next === state) reject(409, "match_operation_noop");
 
-  const notifications = getNewItems(state.notifications ?? [], next.notifications ?? [], (notification) => notification.matchId === match.id);
+  const allNewNotifications = getNewItems(state.notifications ?? [], next.notifications ?? []);
+  const createdTournamentMatches = getNewItems(beforeMatches, next.matches ?? [], (item) => item.tournamentId && item.id !== match.id);
+  const changedTournament = (next.tournaments ?? []).find((tournament) => {
+    const beforeTournament = beforeTournaments.find((item) => item.id === tournament.id);
+    return beforeTournament && JSON.stringify(beforeTournament) !== JSON.stringify(tournament);
+  }) ?? null;
+  const notifications = allNewNotifications.filter((notification) => notification.matchId === match.id);
+  const tournamentNotifications = allNewNotifications.filter((notification) => (
+    (!notification.matchId && changedTournament && (notification.type === "tournament" || notification.tone === "match" || !notification.targetUserId)) ||
+    (notification.matchId && createdTournamentMatches.some((item) => item.id === notification.matchId))
+  ));
   return {
     nextState: next,
     match,
     notifications,
+    tournament: changedTournament,
+    createdTournamentMatches,
+    tournamentNotifications,
     ratingCommit: getMatchRatingCommit(state, next, match, action),
     trustCommit: getMatchTrustCommit(state, next, match, action),
   };

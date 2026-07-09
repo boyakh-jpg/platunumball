@@ -174,20 +174,25 @@ function buildTournamentBracketTree(tournament, matchesById) {
 
   for (let roundIndex = 1; currentNodes.length > 1; roundIndex += 1) {
     const roundName = getBracketRoundName(roundIndex, totalRounds);
+    const savedRound = bracket.rounds?.[roundIndex] ?? {};
+    const savedPairings = savedRound.pairings ?? [];
     const nodes = [];
     for (let index = 0; index < currentNodes.length; index += 2) {
       const left = currentNodes[index];
       const right = currentNodes[index + 1];
+      const fixture = nodes.length + 1;
+      const pairing = savedPairings.find((item) => Number(item.fixture ?? 0) === fixture);
+      const match = pairing?.matchId ? matchesById[pairing.matchId] : null;
       nodes.push({
-        id: `round-${roundIndex + 1}-${nodes.length + 1}`,
+        id: `round-${roundIndex + 1}-${fixture}`,
         roundIndex,
-        fixture: nodes.length + 1,
-        name: `${roundName} ${nodes.length + 1}경기`,
+        fixture,
+        name: `${roundName} ${fixture}경기`,
         sourceA: makeBracketSourceFromNode(left),
         sourceB: right ? makeBracketSourceFromNode(right) : { type: "bye" },
-        match: null,
+        match,
         byeTeamId: null,
-        winnerTeamId: "",
+        winnerTeamId: getMatchWinnerTeamId(match),
       });
     }
     rounds.push({ id: `round-${roundIndex + 1}`, name: roundName, nodes });

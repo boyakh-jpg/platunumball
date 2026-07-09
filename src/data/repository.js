@@ -1786,6 +1786,141 @@ function generateTournamentMatches(state, tournament, options = {}) {
   };
 }
 
+function getTournamentMatchWinnerTeamId(match = {}) {
+  if (!match || match.status !== "confirmed") return "";
+  const scoreA = Number(match.result?.scoreA ?? match.teamA?.score ?? 0);
+  const scoreB = Number(match.result?.scoreB ?? match.teamB?.score ?? 0);
+  if (scoreA === scoreB) return "";
+  return scoreA > scoreB ? match.teamA?.teamId ?? "" : match.teamB?.teamId ?? "";
+}
+
+function findTournamentRoundMatch(matches = [], tournamentId = "", round = 1, fixture = 1) {
+  return matches.find((match) => (
+    match.tournamentId === tournamentId &&
+    Number(match.tournamentRound ?? 0) === Number(round) &&
+    Number(match.tournamentFixture ?? 0) === Number(fixture)
+  )) ?? null;
+}
+
+function getTournamentNodeWinnerTeamId(state, tournament, round, fixture) {
+  const bracket = tournament.bracket ?? {};
+  if (round === 1) {
+    const row = (bracket.firstRound ?? [])[fixture - 1];
+    if (row?.byeTeamId) return row.byeTeamId;
+  }
+  return getTournamentMatchWinnerTeamId(findTournamentRoundMatch(state.matches, tournament.id, round, fixture));
+}
+
+function advanceTournamentAfterMatch(state, confirmedMatch) {
+  if (!confirmedMatch?.tournamentId || confirmedMatch.tournamentFormat !== "tournament") return state;
+  const tournament = (state.tournaments ?? []).find((item) => item.id === confirmedMatch.tournamentId);
+  if (!tournament || tournament.format !== "tournament" || tournament.status !== "active") return state;
+  const winnerTeamId = getTournamentMatchWinnerTeamId(confirmedMatch);
+  if (!winnerTeamId) return state;
+
+  const bracket = tournament.bracket ?? {};
+  const bracketSize = Number(bracket.bracketSize ?? 0);
+  const totalRounds = Math.max(1, Math.ceil(Math.log2(Math.max(bracketSize, 2))));
+  const currentRound = Number(confirmedMatch.tournamentRound ?? 1);
+  const currentFixture = Number(confirmedMatch.tournamentFixture ?? 1);
+  const now = new Date().toISOString();
+
+  if (currentRound >= totalRounds) {
+    const closedTournament = {
+      ...tournament,
+      status: "closed",
+      bracket: {
+        ...bracket,
+        championTeamId: winnerTeamId,
+        completedAt: now,
+      },
+    };
+    return {
+      ...state,
+      tournaments: (state.tournaments ?? []).map((item) => (item.id === tournament.id ? closedTournament : item)),
+      notifications: [
+        {
+          id: makeId("n"),
+          title: "대회 종료",
+          body: `${tournament.title} 우승팀이 확정됐습니다.`,
+          tone: "match",
+        },
+        ...state.notifications,
+      ],
+    };
+  }
+
+  const nextRound = currentRound + 1;
+  const nextFixture = Math.ceil(currentFixture / 2);
+  const sourceFixtureA = (nextFixture - 1) * 2 + 1;
+  const sourceFixtureB = sourceFixtureA + 1;
+  const teamAId = getTournamentNodeWinnerTeamId(state, tournament, currentRound, sourceFixtureA);
+  const teamBId = getTournamentNodeWinnerTeamId(state, tournament, currentRound, sourceFixtureB);
+  if (!teamAId || !teamBId) return state;
+  if (findTournamentRoundMatch(state.matches, tournament.id, nextRound, nextFixture)) return state;
+
+  const teamById = Object.fromEntries(state.teams.map((team) => [team.id, team]));
+  const teamA = teamById[teamAId];
+  const teamB = teamById[teamBId];
+  if (!teamA || !teamB) return state;
+
+  const nextMatch = makeTournamentMatch(tournament, teamA, teamB, {
+    round: nextRound,
+    fixture: nextFixture,
+    bracketMatch: nextFixture,
+  }, now);
+  const nextRoundIndex = nextRound - 1;
+  const rounds = [...(bracket.rounds ?? [])];
+  const currentRoundEntry = rounds[nextRoundIndex] ?? {
+    id: `round-${nextRound}`,
+    name: `${nextRound}라운드`,
+    pairings: [],
+    byes: [],
+  };
+  const nextPairing = {
+    matchId: nextMatch.id,
+    round: nextRound,
+    fixture: nextFixture,
+    bracketMatch: nextFixture,
+    sourceRound: currentRound,
+    sourceFixtures: [sourceFixtureA, sourceFixtureB],
+    teamAId,
+    teamBId,
+  };
+  rounds[nextRoundIndex] = {
+    ...currentRoundEntry,
+    pairings: [
+      ...(currentRoundEntry.pairings ?? []).filter((pairing) => Number(pairing.fixture) !== nextFixture),
+      nextPairing,
+    ].sort((a, b) => Number(a.fixture ?? 0) - Number(b.fixture ?? 0)),
+  };
+  const nextTournament = {
+    ...tournament,
+    matchIds: [...new Set([...(tournament.matchIds ?? []), nextMatch.id])],
+    bracket: {
+      ...bracket,
+      rounds,
+      updatedAt: now,
+    },
+  };
+
+  return {
+    ...state,
+    matches: [nextMatch, ...state.matches],
+    tournaments: (state.tournaments ?? []).map((item) => (item.id === tournament.id ? nextTournament : item)),
+    notifications: [
+      {
+        id: makeId("n"),
+        title: "후속 라운드 생성",
+        body: `${tournament.title} ${nextRound}라운드 ${nextFixture}경기가 생성됐습니다.`,
+        tone: "match",
+        matchId: nextMatch.id,
+      },
+      ...state.notifications,
+    ],
+  };
+}
+
 function updateAffiliationScores(state) {
   const users = state.users;
   return state.affiliations.filter((affiliation) => affiliation.type !== "club").map((affiliation) => {
@@ -1925,7 +2060,8 @@ function finalizeMatch(state, targetMatch) {
     ],
   };
 
-  return { ...nextState, affiliations: updateAffiliationScores(nextState) };
+  const advancedState = advanceTournamentAfterMatch(nextState, confirmedMatch);
+  return { ...advancedState, affiliations: updateAffiliationScores(advancedState) };
 }
 
 function applyAutomaticMatchDecisions(state, now = new Date()) {
