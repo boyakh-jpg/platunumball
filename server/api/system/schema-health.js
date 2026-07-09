@@ -193,6 +193,10 @@ const REQUIRED_RPCS = [
     args: { p_actor_profile_id: "", p_post_id: "", p_player_id: "", p_side: "", p_reserve: false },
   },
   {
+    name: "rankball_rls_policy_health",
+    args: {},
+  },
+  {
     name: "rankball_recruiting_action",
     args: { p_actor_profile_id: "", p_action: "", p_post_row: {}, p_application_rows: [], p_notification_rows: [], p_expected_updated_at: null },
   },
@@ -320,6 +324,27 @@ async function checkFeedTriggers(client) {
     error: null,
     missing,
     triggers,
+  };
+}
+
+async function checkRlsPolicies(client) {
+  const { data, error } = await client.rpc("rankball_rls_policy_health");
+  if (error) {
+    return {
+      ok: false,
+      error: error.message || "rls_policy_health_failed",
+      failed: [],
+      checks: [],
+    };
+  }
+
+  const checks = Array.isArray(data) ? data : [];
+  const failed = checks.filter((check) => !check.ok);
+  return {
+    ok: failed.length === 0,
+    error: null,
+    failed,
+    checks,
   };
 }
 
@@ -487,6 +512,7 @@ export default async function handler(request, response) {
     );
     const rpcChecks = await Promise.all(REQUIRED_RPCS.map((rpc) => checkRpc(client, rpc.name, rpc.args)));
     const feedTriggerCheck = await checkFeedTriggers(client);
+    const rlsPolicyCheck = await checkRlsPolicies(client);
     const failed = checks.filter((check) => !check.ok);
     const failedRpcs = rpcChecks.filter((check) => !check.ok);
     const simulationSeed = body?.ensureTestActors === true
@@ -498,13 +524,15 @@ export default async function handler(request, response) {
       ? await ensureCourtAdminAppointments(client)
       : null;
     sendJson(response, 200, {
-      ok: failed.length === 0 && failedRpcs.length === 0 && feedTriggerCheck.ok && (!simulationSeed || simulationSeed.ok) && (!courtAdminSeed || courtAdminSeed.ok),
+      ok: failed.length === 0 && failedRpcs.length === 0 && feedTriggerCheck.ok && rlsPolicyCheck.ok && (!simulationSeed || simulationSeed.ok) && (!courtAdminSeed || courtAdminSeed.ok),
       failedCount: failed.length,
       failedRpcCount: failedRpcs.length,
       failedFeedTriggerCount: feedTriggerCheck.missing.length,
+      failedRlsPolicyCount: rlsPolicyCheck.failed.length,
       checks,
       rpcChecks,
       feedTriggerCheck,
+      rlsPolicyCheck,
       simulationSeed,
       courtAdminSeed,
     });
