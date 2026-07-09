@@ -303,7 +303,7 @@ Backend gaps:
 - 구장 hidden moderation status와 구장 리뷰 soft hide action은 있다. restore/hard delete 운영 도구는 없다.
 - `profiles`에는 birth year와 age group만 있고 나이 인증 상태, 신고 전 주장 나이, 관리자 검증 나이를 분리 저장할 컬럼이 없다.
 - 방 생성자는 연령 제한 밖이면 생성이 막히지만, recruiting 참여/초대 수락 시점의 연령 차단은 아직 authoritative server logic이 아니다.
-- abuse/integrity seed는 demo state 생성기에 들어갔다. Supabase Auth user 150명 이상을 만드는 service-role alpha seed script와 cleanup script는 별도 남은 작업이다.
+- abuse/integrity seed는 demo state 생성기에 들어갔다. Supabase Auth user 150명 이상을 만드는 service-role bulk script는 `npm run seed:supabase:auth-bulk`, cleanup은 `npm run seed:supabase:auth-bulk:cleanup`이다. 둘 다 dry-run 기본이며 실제 실행은 `RANKBALL_CONFIRM_AUTH_BULK=rankball`이 필요하다.
 
 ## 2026-06-26 server hydration guard
 
@@ -370,6 +370,8 @@ Remaining:
 - `npm run seed:supabase:cleanup` is dry-run by default.
 - Actual cleanup requires `RANKBALL_CONFIRM_CLEANUP=rankball npm run seed:supabase:cleanup`.
 - Cleanup deletes only ids derived from the current demo seed state plus `seed-owner-u1`.
+- `npm run seed:supabase:auth-bulk` creates/updates the separate `rankball-integrity-001..150` Auth/Profile set for abuse/integrity simulations. It does not touch the basic `rankball-001..050` test set unless the prefix env is changed.
+- `npm run seed:supabase:auth-bulk:cleanup` removes only ids derived from the current bulk prefix/range and is also dry-run until `RANKBALL_CONFIRM_AUTH_BULK=rankball`.
 - This finishes the basic backend test-account seed/cleanup path, but not the authoritative room/match RPC migration.
 
 ## 2026-06-28 public data and court fallback

@@ -9,6 +9,8 @@
     "seed:demo-flow": "node scripts/seed-demo-flow.mjs",
     "seed:supabase": "node scripts/seed-supabase-state.mjs",
     "seed:supabase:cleanup": "node scripts/cleanup-supabase-seed.mjs",
+    "seed:supabase:auth-bulk": "node scripts/seed-supabase-auth-bulk.mjs",
+    "seed:supabase:auth-bulk:cleanup": "node scripts/seed-supabase-auth-bulk.mjs --cleanup",
     "simulate:backend": "node scripts/simulate-backend-flow.mjs",
     "preview": "vite preview --host 127.0.0.1"
   },
