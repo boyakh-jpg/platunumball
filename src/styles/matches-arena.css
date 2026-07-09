@@ -4267,3 +4267,56 @@ html[data-theme="light"] .tournament-hero h1 {
 .recorder-card-list .arena-lobby-card .om-room-link {
   min-height: 84px;
 }
+
+/* 2026-07-09 matches hero situation board follows the recruiting hero panel. */
+.om-match-panel {
+  width: min(285px, 100%);
+  align-self: end;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+  backdrop-filter: none;
+}
+
+html[data-theme="light"] .om-match-panel {
+  border-color: var(--card-border);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
+}
+
+.om-match-stats {
+  gap: 8px;
+}
+
+.om-match-stats span {
+  min-height: 60px;
+  align-content: center;
+  gap: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.055);
+  color: var(--muted);
+  padding: 8px 10px;
+  font-size: 0.7rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+html[data-theme="light"] .om-match-stats span {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.om-match-stats strong {
+  color: var(--text);
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.om-match-create {
+  min-height: var(--control-height);
+  border-radius: var(--control-radius);
+}
