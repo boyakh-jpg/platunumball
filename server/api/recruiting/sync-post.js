@@ -5,6 +5,7 @@ import {
   getOperation,
   loadAuthoritativeState,
 } from "../_authoritativeState.js";
+import { syncRoomChatMessageToDiscord } from "../discord/_roomChatBridge.js";
 import { addTeamRoster, assertProfilesExist, assertTeamRosterMembers } from "../_rosterEligibility.js";
 import { getDiscordProfiles, persistMatchSnapshot, upsertDiscordDeliveryRows } from "../matches/sync-match.js";
 
@@ -941,10 +942,24 @@ async function persistRecruitingRoomChatMessage(context, operation = {}) {
     if (isMissingRoomChatMessages(error)) return null;
     throw error;
   }
+  let discordChatSync = null;
+  try {
+    discordChatSync = await syncRoomChatMessageToDiscord(context.supabase, {
+      roomType: "recruiting",
+      roomId: postId,
+      userId: context.profileId,
+      body: text,
+    });
+  } catch (discordChatError) {
+    discordChatSync = { sent: false, error: discordChatError.message || "discord_room_chat_sync_failed" };
+    console.error("Recruiting Discord room chat sync failed.", discordChatError);
+  }
+
   return {
     ok: true,
     postId,
     message: fromRoomChatMessageRow(data),
+    discordChatSync,
   };
 }
 

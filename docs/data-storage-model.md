@@ -48,7 +48,7 @@
 - OAuth 승인 직후 원격 state가 늦게 hydrate되더라도 로컬에 이미 붙은 `discordConnection`은 원격 저장 전까지 보존한다. 단, 원격 state에 같은 Discord ID가 다른 프로필에 이미 연결돼 있으면 보존하지 않는다.
 - Bot DM 발송은 브라우저 localStorage 큐를 직접 신뢰하지 않는다. 배포용으로는 서버가 DB의 미발송 `discordNotificationDeliveries`를 읽고 성공/실패 상태를 커밋해야 한다.
 - 홈의 해야 할 일은 별도 로직을 중복하지 말고 `notifications` 중 `actionRequired` 성격의 항목을 요약하는 방향으로 통합한다.
-- 방 채팅과 Discord 채팅 양방향 연동은 배포 후 백엔드에서 `roomId <-> discordChannelId/threadId` 매핑, 중복 방지 키, 삭제/신고/차단 정책을 둔 뒤 붙인다.
+- 방 채팅과 Discord 채팅 양방향 연동은 `room_discord_links` 매핑과 `room_chat_messages.external_message_id` 중복 방지 키를 사용한다. 웹 채팅은 서버가 Discord REST로 전송하고, Discord 채팅은 인증된 bridge가 `/api/discord/room-chat`으로 넣는다. Discord Gateway 이벤트를 수신하는 별도 Bot/bridge 배포는 운영 설정으로 남긴다.
 
 - 심판 시험 문제 추첨, 채점, 주 1회 응시 제한은 서버 함수/DB 정책으로 이동. 클라이언트 번들에는 정답 bank를 두지 않는다.
 
@@ -151,7 +151,7 @@
 - worker 호출은 `Authorization: Bearer <CRON_SECRET>`가 일치할 때만 허용한다.
 - 필요한 env는 `DISCORD_BOT_TOKEN`이다. 값은 가능하면 `Bot ` prefix 없이 순수 Bot token만 넣는다.
 - Vercel Hobby Cron은 알림 worker에 쓰지 않는다. 알파 테스트에서는 cron-job.org가 5분마다 `/api/discord/dm-worker`를 호출한다.
-- Discord interaction 버튼 수락/거절 처리는 `/api/discord/interactions`가 담당한다. 채팅 양방향 연동은 아직 남은 작업이다.
+- Discord interaction 버튼 수락/거절 처리는 `/api/discord/interactions`가 담당한다. 방 채팅 동기화는 `room_discord_links`와 `/api/discord/room-chat` bridge를 사용한다.
 - 수동 테스트 DM은 `/api/discord/dm-worker` `POST`에서만 Discord username을 받을 수 있다. 서버는 봇이 들어간 Discord 서버 멤버 검색으로 숫자 `discord_user_id`를 찾은 뒤 발송한다. 자동 발송 큐와 프로필 저장 원본은 계속 숫자 `discord_user_id`다. username 테스트에는 봇이 같은 서버에 있어야 하고 Discord Bot의 Server Members Intent가 필요할 수 있다.
 - `/api/discord/dm-worker` `POST`에 `botCheck: true`를 보내면 Bot token 설정, 봇 계정, 참여 서버 수를 토큰 노출 없이 점검한다.
 - Match server action은 디코 연동된 경기 참가자/심판에게 시작 24시간 전, 2시간 전, 1시간 전, 경기 시작, 경기 종료, 종료 30분 이의신청 안내 delivery row를 만든다.
@@ -340,7 +340,7 @@ Partial:
 - `mockData.js` and generated demo flow remain for non-Supabase local dev and seed generation, not production source of truth.
 - Admin UI calls server actions, but local UI state is still updated first and should be reloaded from server result before production.
 - Env owner support uses `POST /api/admin/context` to expose only the current user's admin level to the client.
-- Discord OAuth/profile badge/DM queue and invite button interactions exist, but chat sync is not complete.
+- Discord OAuth/profile badge/DM queue, invite button interactions, and room chat bridge paths exist. Discord Gateway bot deployment and room-channel link provisioning remain operational setup.
 - Court reviews exist, `court` / `court_review` reports submit through `/api/reports/submit`, and admin review actions can soft-hide approved courts and court reviews.
 
 Remaining:

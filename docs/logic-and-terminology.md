@@ -1396,7 +1396,7 @@ flowchart TD
 6. 배포 전 백엔드에는 Discord OAuth callback, `discordUserId` 저장, Bot DM 서버 액션, 실패 로그가 필요하다.
 7. Discord 프로필 이미지가 있으면 `discordConnection.avatarUrl`을 개인 프로필 아바타로 우선 표시한다.
 8. Discord DM은 앱 내부 알림을 원본으로 삼아 발송 큐에 쌓고, 서버 Bot이 큐를 처리해야 한다.
-9. 방 채팅과 Discord 채팅 양방향 연동은 백엔드 채널/thread 매핑과 중복 방지 키가 생긴 뒤 구현한다.
+9. 방 채팅과 Discord 채팅 양방향 연동은 `room_discord_links`의 채널/thread 매핑과 `room_chat_messages.external_message_id` 중복 방지 키를 사용한다.
 10. Discord DM 링크는 앱 내부 알림의 `recruitingPostId` 또는 `matchId`에서 만든 웹 경로를 포함한다.
 11. 초대 알림에만 Discord 수락/거절 버튼 payload를 붙인다. 버튼은 권한 원본이 아니며 서버가 `discordUserId -> userId`, 초대 대상, pending 상태, 방 정원, 후보 정원, 징계 상태를 다시 검증해야 한다.
 12. Discord 버튼 처리 실패 또는 충돌 시 앱 내부 초대/알림 상태를 원본으로 유지하고, Discord 응답은 웹 링크로 재확인하게 한다.
@@ -1415,6 +1415,7 @@ flowchart TD
 25. 점수 제출, 이의신청, 승인 처리, 이의 처리 재개가 일어나면 아직 발송되지 않은 경기 종료 점수 입력 안내와 종료 30분 뒤 이의신청 안내는 취소한다.
 26. 경기 취소 또는 무효 처리 시 아직 발송되지 않은 해당 경기의 시작 전 리마인더, 방관리자 안내, 시작/종료/이의 안내는 모두 취소한다.
 27. Discord 초대 버튼 interaction은 `custom_id` 길이와 ID 형식을 먼저 검증하고, 커밋 전 현재 DB snapshot에서 `postId + invitationId + discord_user_id`가 같은 pending 초대인지 다시 확인한다. 이미 처리/만료/닫힌 초대는 DB write 없이 stale 안내만 보낸다.
+28. 웹 방 채팅은 서버 저장 후 같은 방의 enabled `room_discord_links`가 있으면 Discord REST로 전송한다. Discord 채팅은 Gateway 이벤트를 받은 별도 Bot/bridge가 `POST /api/discord/room-chat`으로 넣고, 서버는 bridge secret, channel/thread 매핑, `discord_user_id -> profiles.id`, 방 참여 권한, `external_message_id` 중복을 다시 검증한다. Bot/webhook 메시지는 echo 방지를 위해 저장하지 않는다.
 
 ## 2026-06-24 내 진행 일정 지난 경기 필터
 
@@ -2072,6 +2073,7 @@ flowchart TD
 - Chat writes must not refresh room feed rows or mutate `recruiting_posts.updated_at`.
 - Chat detail load reads only the latest 30 messages. Polling reads only messages newer than the local `messageSeq` cursor, up to 20 rows per poll, and stops when the tab is hidden or the game/room is closed.
 - Chat body is one-line plain text, 60 characters or fewer. Client-side cooldown/rate checks are UX only; DB trigger/RLS blocks direct insert abuse and closed-room inserts.
+- Discord-origin room chat also lands in `room_chat_messages`, keeps the same one-line 60-character body rule, and must carry a unique Discord message ID to avoid duplicate imports.
 
 ## 2026-07-01 test login and shared rule constants
 
