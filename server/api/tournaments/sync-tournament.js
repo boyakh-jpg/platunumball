@@ -322,7 +322,7 @@ export default async function handler(request, response) {
       defaultType: "tournament",
       filterToProfile: true,
     });
-    const { data: persistResult, error: persistError } = await context.supabase.rpc("rankball_persist_tournament_snapshot", {
+    const { data: persistResult, error: persistError } = await context.supabase.rpc("rankball_persist_tournament_snapshot_locked", {
       p_tournament_row: toTournamentRow(tournament),
       p_team_rows: teamRows,
       p_notification_rows: notificationRows,

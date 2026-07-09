@@ -697,7 +697,7 @@ async function persistTournamentSnapshot(context, tournament = {}, notifications
     defaultType: "tournament",
     filterToProfile: true,
   });
-  const { data, error } = await context.supabase.rpc("rankball_persist_tournament_snapshot", {
+  const { data, error } = await context.supabase.rpc("rankball_persist_tournament_snapshot_locked", {
     p_tournament_row: toTournamentRow(tournament),
     p_team_rows: toTournamentTeamRows(tournament),
     p_notification_rows: notificationRows,
