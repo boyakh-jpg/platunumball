@@ -33,6 +33,37 @@ const MATCH_REMINDER_OFFSETS = [
     intro: "경기 시작 전에 출석체크해요. 모여주세요.",
   },
 ];
+const MATCH_SCHEDULED_NOTICE_PREFIXES = [
+  "match-reminder-24h",
+  "match-reminder-2h",
+  "match-reminder-1h",
+  "match-manager-checkin-10m",
+  "match-manager-start-now",
+];
+const MATCH_POSTGAME_NOTICE_PREFIXES = [
+  "match-ended-score",
+  "match-dispute-check",
+];
+const MATCH_CANCEL_NOTICE_PREFIXES = [
+  ...MATCH_SCHEDULED_NOTICE_PREFIXES,
+  "match-started",
+  ...MATCH_POSTGAME_NOTICE_PREFIXES,
+];
+const MATCH_REFRESH_SCHEDULED_NOTICE_ACTIONS = new Set([
+  "createMatch",
+  "confirmRecruitingMatch",
+  "createTournamentMatch",
+  "agreeMatch",
+  "updateTournamentMatchSchedule",
+  "updateMatchRoomRules",
+  "confirmMatchRefereeAbsence",
+  "addMatchLatePlayer",
+  "removeMatchLatePlayer",
+  "setMatchRoomPlayerPlacement",
+  "removeMatchRoomPlayer",
+  "setMatchRecordTeamRoster",
+  "sync",
+]);
 
 function toFiniteNumber(value, fallback = 0) {
   const number = Number(value ?? fallback);
@@ -339,53 +370,27 @@ export async function queueMatchDiscordDeliveries(supabase, match = {}, action =
     notificationRows.push(...toMatchNotificationRows(match, targetIds, notification));
   };
 
-  if (action === "startMatch") {
-    await cancelPendingDiscordDeliveryPrefixes(supabase, match.id, [
-      "match-reminder-24h",
-      "match-reminder-2h",
-      "match-reminder-1h",
-      "match-manager-checkin-10m",
-      "match-manager-start-now",
-    ]);
-    await cancelPendingMatchNotificationPrefixes(supabase, match.id, [
-      "match-reminder-24h",
-      "match-reminder-2h",
-      "match-reminder-1h",
-      "match-manager-checkin-10m",
-      "match-manager-start-now",
-    ]);
+  if (MATCH_REFRESH_SCHEDULED_NOTICE_ACTIONS.has(action)) {
+    await cancelPendingDiscordDeliveryPrefixes(supabase, match.id, MATCH_SCHEDULED_NOTICE_PREFIXES);
+    await cancelPendingMatchNotificationPrefixes(supabase, match.id, MATCH_SCHEDULED_NOTICE_PREFIXES);
   }
-  if (["submitMatchResult", "disputeMatch", "approveMatch", "resumeMatchApproval"].includes(action)) {
+  if (action === "startMatch") {
+    await cancelPendingDiscordDeliveryPrefixes(supabase, match.id, MATCH_SCHEDULED_NOTICE_PREFIXES);
+    await cancelPendingMatchNotificationPrefixes(supabase, match.id, MATCH_SCHEDULED_NOTICE_PREFIXES);
+  }
+  if (["endMatch", "submitMatchResult", "disputeMatch", "approveMatch", "resumeMatchApproval"].includes(action)) {
     await cancelPendingDiscordDeliveryPrefixes(supabase, match.id, [
-      "match-ended-score",
-      "match-dispute-check",
+      ...MATCH_SCHEDULED_NOTICE_PREFIXES,
+      ...MATCH_POSTGAME_NOTICE_PREFIXES,
     ]);
     await cancelPendingMatchNotificationPrefixes(supabase, match.id, [
-      "match-ended-score",
-      "match-dispute-check",
+      ...MATCH_SCHEDULED_NOTICE_PREFIXES,
+      ...MATCH_POSTGAME_NOTICE_PREFIXES,
     ]);
   }
   if (["cancelMatch", "voidMatch"].includes(action)) {
-    await cancelPendingDiscordDeliveryPrefixes(supabase, match.id, [
-      "match-reminder-24h",
-      "match-reminder-2h",
-      "match-reminder-1h",
-      "match-manager-checkin-10m",
-      "match-manager-start-now",
-      "match-started",
-      "match-ended-score",
-      "match-dispute-check",
-    ]);
-    await cancelPendingMatchNotificationPrefixes(supabase, match.id, [
-      "match-reminder-24h",
-      "match-reminder-2h",
-      "match-reminder-1h",
-      "match-manager-checkin-10m",
-      "match-manager-start-now",
-      "match-started",
-      "match-ended-score",
-      "match-dispute-check",
-    ]);
+    await cancelPendingDiscordDeliveryPrefixes(supabase, match.id, MATCH_CANCEL_NOTICE_PREFIXES);
+    await cancelPendingMatchNotificationPrefixes(supabase, match.id, MATCH_CANCEL_NOTICE_PREFIXES);
   }
 
   if (

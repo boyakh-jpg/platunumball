@@ -1411,8 +1411,8 @@ flowchart TD
 21. 경기 Discord 자동 알림은 match server action이 `discord_notification_deliveries`에 직접 저장한다. 예정 경기는 시작 24시간 전, 2시간 전, 1시간 전 리마인더를 만들고, 경기 시작/종료는 즉시 발송 큐로 넣는다.
 22. 경기 종료 알림은 점수 입력을 요청한다. 종료 30분 뒤에는 결과 확인과 이의신청 안내를 다시 보낸다.
 23. 즉시 모집방 생성은 방 개설 DM을 즉시 발송 큐로 넣는다. 초대장 수락/거절 버튼은 cron reminder가 아니라 Discord interaction server action으로 처리한다.
-24. 방관리자 Discord 알림은 심판이 있으면 심판, 없으면 방장에게 보낸다. 경기 10분 전에는 참여자 도착 여부 확인 안내, 경기 시작시간에는 준비 완료 후 시작 처리 안내를 보낸다. 경기를 일찍 시작하면 아직 발송되지 않은 참가자 경기 시작 전 리마인더와 방관리자 출석/시작 안내는 취소한다.
-25. 점수 제출, 이의신청, 승인 처리, 이의 처리 재개가 일어나면 아직 발송되지 않은 경기 종료 점수 입력 안내와 종료 30분 뒤 이의신청 안내는 취소한다.
+24. 방관리자 Discord 알림은 심판이 있으면 심판, 없으면 방장에게 보낸다. 경기 10분 전에는 참여자 도착 여부 확인 안내, 경기 시작시간에는 준비 완료 후 시작 처리 안내를 보낸다. 일정/roster/방관리자가 바뀌면 아직 발송되지 않은 참가자 경기 시작 전 리마인더와 방관리자 안내를 현재 대상자 기준으로 재생성하고, 경기를 일찍 시작하면 취소한다.
+25. 경기 종료, 점수 제출, 이의신청, 승인 처리, 이의 처리 재개가 일어나면 아직 발송되지 않은 시작 전 리마인더, 방관리자 안내, 경기 종료 점수 입력 안내, 종료 30분 뒤 이의신청 안내는 취소한다.
 26. 경기 취소 또는 무효 처리 시 아직 발송되지 않은 해당 경기의 시작 전 리마인더, 방관리자 안내, 시작/종료/이의 안내는 모두 취소한다.
 27. Discord 초대 버튼 interaction은 `custom_id` 길이와 ID 형식을 먼저 검증하고, 커밋 전 현재 DB snapshot에서 `postId + invitationId + discord_user_id`가 같은 pending 초대인지 다시 확인한다. 이미 처리/만료/닫힌 초대는 DB write 없이 stale 안내만 보낸다.
 28. 웹 방 채팅은 서버 저장 후 같은 방의 enabled `room_discord_links`가 있으면 Discord REST로 전송한다. Discord 채팅은 `scripts/discord-room-chat-bridge.mjs`가 Gateway 이벤트를 받아 `POST /api/discord/room-chat`으로 넣고, 서버는 bridge secret, channel/thread 매핑, `discord_user_id -> profiles.id`, 방 참여 권한, `external_message_id` 중복을 다시 검증한다. Bot/webhook 메시지는 echo 방지를 위해 저장하지 않는다.
