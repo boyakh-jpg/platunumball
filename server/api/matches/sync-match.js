@@ -323,7 +323,7 @@ async function cancelPendingMatchNotificationPrefixes(supabase, matchId, prefixe
   return data?.length ?? 0;
 }
 
-async function queueMatchDiscordDeliveries(supabase, match = {}, action = "sync") {
+export async function queueMatchDiscordDeliveries(supabase, match = {}, action = "sync") {
   const participantIds = Array.from(getParticipantIds(match));
   const managerIds = getRoomManagerIds(match);
   const profiles = await getDiscordProfiles(supabase, participantIds);
@@ -341,10 +341,16 @@ async function queueMatchDiscordDeliveries(supabase, match = {}, action = "sync"
 
   if (action === "startMatch") {
     await cancelPendingDiscordDeliveryPrefixes(supabase, match.id, [
+      "match-reminder-24h",
+      "match-reminder-2h",
+      "match-reminder-1h",
       "match-manager-checkin-10m",
       "match-manager-start-now",
     ]);
     await cancelPendingMatchNotificationPrefixes(supabase, match.id, [
+      "match-reminder-24h",
+      "match-reminder-2h",
+      "match-reminder-1h",
       "match-manager-checkin-10m",
       "match-manager-start-now",
     ]);
