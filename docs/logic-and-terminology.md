@@ -63,7 +63,7 @@
 - 진행 메뉴 카드는 얇은 목록 row 요약만 쓰고, 방 모달을 열 때 선택된 경기 1건만 상세 로드해 `statRecorders`, `playedPlayerIds`, `result.playerStats`를 맞춘다.
 - 후보는 실제 출전 전까지 점수판 기록 대상이 아니며, `playedPlayerIds`에 들어간 뒤에만 기록 대상이 된다.
 - 상세 로드 중에는 입력/저장을 잠깐 막아 늦게 도착한 상세 데이터가 사용자의 임시 입력을 덮지 않게 한다.
-- live 경기 중 선수 교체는 운영자 또는 해당 사이드 기록자만 처리한다. 후보를 출전으로 올리면 기존 출전 선수는 후보로 내려가고, 양쪽 선수 모두 `playedPlayerIds`에 남아 기록 대상이 된다.
+- live 경기 중 선수 교체는 운영자 또는 해당 사이드 기록자만 처리한다. UI는 현재 사용자가 후보인 교체 행만 노출한다. 후보를 출전으로 올리면 기존 출전 선수는 후보로 내려가고, 양쪽 선수 모두 `playedPlayerIds`에 남아 기록 대상이 된다.
 
 ## 2026-07-07 방 종류 표준값
 
@@ -1859,7 +1859,7 @@ flowchart TD
 30-1. `recorderOnly` match loads must include fallback candidate ids from `matches.stat_recorders`, `matches.reserve_players`, and `matches.played_player_ids` so candidate/reserve stat recorders can enter `/app/recorder` even when their `user_room_feed` card is stale or missing.
 30-1-1. `recorderOnly` match loads use the recorder candidate path directly and do not also load the normal match feed or closed notice feed. The client tracks `recorderMatchesLoaded` so direct `/app/recorder` entry does not immediately repeat the same request when the result is empty.
 30-2. A current stat recorder may call `handoffMatchRecorder` for their own side even without host/referee operator status. Server authorization must check the existing `stat_recorders` value, because the next match snapshot may already point the recorder role to the replacement player.
-30-3. 심판 없는 경기에서 `statRecorders`가 비었거나 출전/후보 이동으로 stale이면 현재 후보 슬롯을 기준으로 effective recorder를 계산한다. 후보가 있으면 후보를 우선하고, 슬롯 이동/강퇴/기록 저장 시 `matches.stat_recorders`와 `rules.statRecorders`를 같은 값으로 저장한다.
+30-3. 심판 없는 경기에서 `statRecorders`가 비었거나 출전/후보 이동으로 stale이면 현재 후보 슬롯을 기준으로 effective recorder를 계산한다. 후보가 있으면 후보를 우선하고, 슬롯 이동/강퇴/교체/기록 저장 시 `matches.stat_recorders`와 `rules.statRecorders`를 같은 값으로 저장한다.
 31. `/api/matches/list` with `listOnly:false` must not force `matchListOnly:true`; recorder/detail-like reads need `match_results` and `player_match_stats`.
 31-1. `/api/matches/list` with `completedOnly:true` loads current-profile participant confirmed match ids from `user_room_feed` first, then loads result/stat rows only for those ids and returns compact state. If the feed is unavailable, it falls back to `match_players` candidate ids before reading match rows. Home may load only recent 6-month completed feed cards for the `내 최근 전적` list, but must not pre-load confirmed record room detail rows; `/app/profile/records` loads them once on entry.
 31-2. `/app/profile/records` loads completed detail rows for the latest 6 months only and computes date counts from that result. Older all-time records need a separate text/aggregate feed, not broad match/result/stat loading.

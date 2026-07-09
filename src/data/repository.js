@@ -3037,6 +3037,7 @@ export function substituteMatchPlayer(state, matchId, sideName, activePlayerId, 
 
   const substitutionPatch = getRecorderHandoffPatch(match, sideName, activePlayerId, reservePlayerId);
   if (!substitutionPatch.valid || !substitutionPatch.swapped) return state;
+  const nextMatch = withEffectiveMatchStatRecorders(substitutionPatch.match);
 
   const activeUser = state.users.find((user) => user.id === activePlayerId);
   const reserveUser = state.users.find((user) => user.id === reservePlayerId);
@@ -3045,7 +3046,7 @@ export function substituteMatchPlayer(state, matchId, sideName, activePlayerId, 
     ...state,
     matches: state.matches.map((item) => (
       item.id === matchId
-        ? getRecorderHandoffPatch(item, sideName, activePlayerId, reservePlayerId).match
+        ? nextMatch
         : item
     )),
     notifications: [

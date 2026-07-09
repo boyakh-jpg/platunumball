@@ -7453,6 +7453,32 @@ html[data-theme="light"] .arena-lobby-arena {
   display: none;
 }
 
+/* 2026-07-09 room modal shell keeps its border/radius; only the inner layer scrolls. */
+.arena-lobby-modal {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+  background-clip: padding-box;
+}
+
+.arena-lobby-modal-scroll {
+  width: 100%;
+  min-height: 0;
+  max-height: inherit;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 20px;
+  scrollbar-gutter: stable both-edges;
+}
+
+@media (max-width: 720px) {
+  .arena-lobby-modal-scroll {
+    padding: 14px;
+  }
+}
+
 .arena-room-chat,
 .arena-owner-panel {
   min-height: 92px;

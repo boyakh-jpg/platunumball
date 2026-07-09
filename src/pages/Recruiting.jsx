@@ -1375,6 +1375,7 @@ function MatchSubstitutionPanel({
   match,
   userById,
   teams,
+  currentUserId,
   canSubstituteSide,
   onSubstitute,
 }) {
@@ -1385,7 +1386,7 @@ function MatchSubstitutionPanel({
     const activePlayerIds = match[sideName]?.players ?? [];
     const reservePlayerIds = getMatchReservePlayerIds(match, sideName);
     if (!activePlayerIds.length || !reservePlayerIds.length) return [];
-    return reservePlayerIds.map((reservePlayerId) => ({
+    return reservePlayerIds.filter((reservePlayerId) => reservePlayerId === currentUserId).map((reservePlayerId) => ({
       sideName,
       activePlayerIds,
       reservePlayerId,
@@ -3117,6 +3118,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
               match={sourceMatch}
               userById={userById}
               teams={app.state.teams}
+              currentUserId={app.currentUser.id}
               canSubstituteSide={canSubstituteSourceMatchSide}
               onSubstitute={(sideName, activePlayerId, reservePlayerId) => app.actions.substituteMatchPlayer?.(sourceMatch.id, sideName, activePlayerId, reservePlayerId)}
             />
@@ -3372,6 +3374,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                 className="arena-lobby-drag-handle"
                 aria-label="아래로 당겨 방 닫기"
               />
+              <div className="arena-lobby-modal-scroll">
               <div className="arena-lobby-arena">
                 <div className="arena-lobby-topline">
                   <div className="badge-row">
@@ -4136,6 +4139,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                 >
                   <X size={20} /> 방 닫기
                 </Button>
+              </div>
               </div>
             </aside>
           </div>
