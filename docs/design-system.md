@@ -924,6 +924,8 @@ UI 수정 전:
 7. Desktop home separates the left content rail and right support rail; each rail owns its own vertical stack gap so one rail height does not change the other rail's card spacing.
 8. Desktop home search remains the full-width top bar; only the content below the search bar splits into left and right rails.
 9. Desktop home right-rail invitation action rows place controls on their own row so accept/decline/view buttons do not squeeze the 360px rail.
+10. Home `Action Queue` title is `내가 처리할 일` and contains pending room/team/tournament actions only.
+11. Home has a separate `알림` card for due unread app notifications such as match reminders, record input, approval, and room notices. Discord-linked users still see the same app alert card.
 
 ## 2026-07-01 Full internal preview pass
 

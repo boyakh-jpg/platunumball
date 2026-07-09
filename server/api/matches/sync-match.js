@@ -211,6 +211,43 @@ function toDiscordDeliveryRows(match = {}, profiles = [], notification = {}) {
   });
 }
 
+function toMatchNotificationRows(match = {}, profileIds = [], notification = {}) {
+  const now = new Date().toISOString();
+  const sendAt = notification.sendAt ?? now;
+  const payload = getMatchDiscordPayload(match, notification.title, notification.intro);
+  const uniqueProfileIds = [...new Set(profileIds.filter(Boolean))];
+  return uniqueProfileIds.map((profileId) => {
+    const id = `notice-${notification.idPrefix}-${match.id}-${profileId}`;
+    return {
+      id,
+      user_id: profileId,
+      target_user_id: profileId,
+      title: notification.title,
+      body: payload.body,
+      tone: notification.tone ?? "match",
+      type: notification.type ?? `match_${String(notification.idPrefix || "notice").replace(/-/g, "_")}`,
+      match_id: match.id,
+      recruiting_post_id: null,
+      invitation_id: null,
+      discord_event: "match",
+      read_at: null,
+      payload: {
+        ...payload,
+        id,
+        matchId: match.id,
+        targetUserId: profileId,
+        actionRequired: notification.actionRequired !== false,
+        homeAction: true,
+        skipDiscordSync: true,
+        sendAt,
+        queuedAt: now,
+      },
+      created_at: now,
+      updated_at: now,
+    };
+  });
+}
+
 export async function upsertDiscordDeliveryRows(supabase, rows = []) {
   if (!rows.length) return 0;
   const ids = rows.map((row) => row.id).filter(Boolean);
@@ -226,6 +263,26 @@ export async function upsertDiscordDeliveryRows(supabase, rows = []) {
 
   const { error } = await supabase
     .from("discord_notification_deliveries")
+    .upsert(pendingRows, { onConflict: "id" });
+  if (error) throw error;
+  return pendingRows.length;
+}
+
+async function upsertMatchNotificationRows(supabase, rows = []) {
+  if (!rows.length) return 0;
+  const ids = rows.map((row) => row.id).filter(Boolean);
+  const { data: existingRows, error: existingError } = await supabase
+    .from("notifications")
+    .select("id, read_at")
+    .in("id", ids);
+  if (existingError) throw existingError;
+
+  const readIds = new Set((existingRows ?? []).filter((row) => row.read_at).map((row) => row.id));
+  const pendingRows = rows.filter((row) => !readIds.has(row.id));
+  if (!pendingRows.length) return 0;
+
+  const { error } = await supabase
+    .from("notifications")
     .upsert(pendingRows, { onConflict: "id" });
   if (error) throw error;
   return pendingRows.length;
@@ -249,17 +306,45 @@ async function cancelPendingDiscordDeliveryPrefixes(supabase, matchId, prefixes 
   return data?.length ?? 0;
 }
 
+async function cancelPendingMatchNotificationPrefixes(supabase, matchId, prefixes = []) {
+  const ids = prefixes
+    .filter(Boolean)
+    .map((prefix) => `notice-${prefix}-${matchId}`)
+    .filter(Boolean);
+  if (!ids.length) return 0;
+  const orClause = ids.map((id) => `id.like.${id}-%`).join(",");
+  const { data, error } = await supabase
+    .from("notifications")
+    .delete()
+    .is("read_at", null)
+    .or(orClause)
+    .select("id");
+  if (error) throw error;
+  return data?.length ?? 0;
+}
+
 async function queueMatchDiscordDeliveries(supabase, match = {}, action = "sync") {
-  const profiles = await getDiscordProfiles(supabase, Array.from(getParticipantIds(match)));
-  const managerProfiles = await getDiscordProfiles(supabase, getRoomManagerIds(match));
-  if (!profiles.length && !managerProfiles.length) return 0;
+  const participantIds = Array.from(getParticipantIds(match));
+  const managerIds = getRoomManagerIds(match);
+  const profiles = await getDiscordProfiles(supabase, participantIds);
+  const managerProfiles = await getDiscordProfiles(supabase, managerIds);
+  if (!participantIds.length && !managerIds.length) return 0;
 
   const nowMs = Date.now();
   const scheduledAt = parseMatchScheduleDate(match.scheduledAt);
   const rows = [];
+  const notificationRows = [];
+  const addRows = (targetIds = [], discordProfiles = [], notification = {}) => {
+    rows.push(...toDiscordDeliveryRows(match, discordProfiles, notification));
+    notificationRows.push(...toMatchNotificationRows(match, targetIds, notification));
+  };
 
   if (action === "startMatch") {
     await cancelPendingDiscordDeliveryPrefixes(supabase, match.id, [
+      "match-manager-checkin-10m",
+      "match-manager-start-now",
+    ]);
+    await cancelPendingMatchNotificationPrefixes(supabase, match.id, [
       "match-manager-checkin-10m",
       "match-manager-start-now",
     ]);
@@ -269,9 +354,23 @@ async function queueMatchDiscordDeliveries(supabase, match = {}, action = "sync"
       "match-ended-score",
       "match-dispute-check",
     ]);
+    await cancelPendingMatchNotificationPrefixes(supabase, match.id, [
+      "match-ended-score",
+      "match-dispute-check",
+    ]);
   }
   if (["cancelMatch", "voidMatch"].includes(action)) {
     await cancelPendingDiscordDeliveryPrefixes(supabase, match.id, [
+      "match-reminder-24h",
+      "match-reminder-2h",
+      "match-reminder-1h",
+      "match-manager-checkin-10m",
+      "match-manager-start-now",
+      "match-started",
+      "match-ended-score",
+      "match-dispute-check",
+    ]);
+    await cancelPendingMatchNotificationPrefixes(supabase, match.id, [
       "match-reminder-24h",
       "match-reminder-2h",
       "match-reminder-1h",
@@ -294,54 +393,55 @@ async function queueMatchDiscordDeliveries(supabase, match = {}, action = "sync"
     MATCH_REMINDER_OFFSETS.forEach((reminder) => {
       const sendAtMs = scheduledAt.getTime() - reminder.offsetMs;
       if (sendAtMs <= nowMs) return;
-      rows.push(...toDiscordDeliveryRows(match, profiles, {
+      addRows(participantIds, profiles, {
         idPrefix: `match-reminder-${reminder.suffix}`,
         title: reminder.title,
         intro: reminder.intro,
         sendAt: new Date(sendAtMs).toISOString(),
-      }));
+      });
     });
 
     const checkinAtMs = scheduledAt.getTime() - 10 * 60 * 1000;
     if (checkinAtMs > nowMs) {
-      rows.push(...toDiscordDeliveryRows(match, managerProfiles, {
+      addRows(managerIds, managerProfiles, {
         idPrefix: "match-manager-checkin-10m",
         title: "출석 확인 안내",
         intro: "경기 10분 전입니다. 참여자 도착 여부를 확인하고, 필요하면 명단을 정리해주세요.",
         sendAt: new Date(checkinAtMs).toISOString(),
-      }));
+      });
     }
-    rows.push(...toDiscordDeliveryRows(match, managerProfiles, {
+    addRows(managerIds, managerProfiles, {
       idPrefix: "match-manager-start-now",
       title: "경기 시작 안내",
       intro: "경기 시작시간입니다. 준비가 끝났다면 경기 시작 처리를 진행해주세요.",
       sendAt: scheduledAt.toISOString(),
-    }));
+    });
   }
 
   if (action === "startMatch") {
-    rows.push(...toDiscordDeliveryRows(match, profiles, {
+    addRows(participantIds, profiles, {
       idPrefix: "match-started",
       title: "경기 시작",
       intro: "경기가 시작됐습니다.",
-    }));
+    });
   }
 
   if (action === "endMatch") {
     const endedAt = match.endedAt ? new Date(match.endedAt) : new Date();
-    rows.push(...toDiscordDeliveryRows(match, profiles, {
+    addRows(participantIds, profiles, {
       idPrefix: "match-ended-score",
       title: "경기 종료",
       intro: "경기가 종료됐습니다. 점수를 입력해주세요.",
-    }));
-    rows.push(...toDiscordDeliveryRows(match, profiles, {
+    });
+    addRows(participantIds, profiles, {
       idPrefix: "match-dispute-check",
       title: "이의신청 확인",
       intro: "경기 종료 30분이 지났습니다. 점수가 입력됐다면 결과를 확인하고, 문제가 있으면 이의신청해주세요.",
       sendAt: new Date(endedAt.getTime() + 30 * 60 * 1000).toISOString(),
-    }));
+    });
   }
 
+  await upsertMatchNotificationRows(supabase, notificationRows);
   return upsertDiscordDeliveryRows(supabase, rows);
 }
 

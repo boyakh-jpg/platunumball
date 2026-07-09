@@ -1,3 +1,5 @@
+import { isNotificationDue } from "./notifications.js";
+
 export const DISCORD_NOTIFICATION_EVENTS = [
   { id: "match", label: "초대/경기" },
   { id: "approval", label: "승인/이의" },
@@ -237,6 +239,8 @@ export function syncDiscordNotificationDeliveries(state = {}) {
   const discordUserId = getDiscordConnectionUserId(getDiscordConnection(targetUser));
   const nextDeliveries = notifications
     .filter((notification) => notification?.id && !notification.readAt)
+    .filter((notification) => isNotificationDue(notification))
+    .filter((notification) => notification.skipDiscordSync !== true)
     .filter((notification) => !queuedNotificationIds.has(notification.id))
     .filter((notification) => !notification.targetUserId || notification.targetUserId === currentUserId)
     .filter((notification) => !seenKeys.has(`${currentUserId}:${notification.id}`))

@@ -3,6 +3,7 @@ import Card from "../components/common/Card.jsx";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import { isInstantRoom } from "../lib/matchUtils.js";
+import { isNotificationVisibleToUser } from "../lib/notifications.js";
 import { getPendingRecruitingInvitations } from "../lib/recruiting.js";
 
 const toneMap = {
@@ -18,7 +19,7 @@ function getRecruitingSchedule(post) {
 
 export default function Notifications({ app }) {
   const navigate = useNavigate();
-  const visibleNotifications = app.state.notifications.filter((notification) => !notification.targetUserId || notification.targetUserId === app.currentUser.id);
+  const visibleNotifications = app.state.notifications.filter((notification) => isNotificationVisibleToUser(notification, app.currentUser.id));
   const unreadCount = visibleNotifications.filter((notification) => !notification.readAt).length;
   const pendingInvitations = getPendingRecruitingInvitations(app.state, app.currentUser.id);
   const pendingTeamInvitations = (app.state.teamInvitations ?? []).filter((invitation) => (

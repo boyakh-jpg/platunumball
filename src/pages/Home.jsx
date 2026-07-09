@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { CalendarDays, ClipboardCheck, Handshake, PlusCircle, ShieldAlert, Swords, Trophy, UserPlus } from "lucide-react";
+import { Bell, CalendarDays, ClipboardCheck, Handshake, PlusCircle, ShieldAlert, Swords, Trophy, UserPlus } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
@@ -17,6 +17,7 @@ import { getPendingRecruitingInvitations, getRecruitingLobby, getRecruitingRoomO
 import { getCurrentSeason, getPlayerSeasonRows, getSeasonProgress } from "../lib/season.js";
 import { getTier, getTierDivision, getTierDivisionNumber } from "../lib/tier.js";
 import { getDiscordAvatarClassName, getDiscordAvatarStyle } from "../lib/discord.js";
+import { getNotificationDueAt, getNotificationHref, isNotificationVisibleToUser } from "../lib/notifications.js";
 
 function toDateInputValue(date = new Date()) {
   const year = date.getFullYear();
@@ -95,6 +96,13 @@ function getHomeRecruitingMeta(post = {}) {
 function getHomeMatchMeta(match = {}) {
   const prefix = isPersonalRecordMatch(match) ? "개인 기록 · " : "";
   return `${prefix}${match.scheduledAt || getRoomScheduleLabel(match)} · ${match.court || "구장 미정"}`;
+}
+
+function getNotificationPreviewBody(notification = {}) {
+  return String(notification.body ?? "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .find(Boolean) || "알림 확인 필요";
 }
 
 const getSafeMatchSide = (match = {}, sideName = "teamA") => getSafeMatchSideBase(match, sideName, { includeScore: true });
@@ -305,11 +313,19 @@ export default function Home({ app }) {
         href: `/app/recruiting?post=${post.id}`,
         icon: ShieldAlert,
       }));
-
     return [...invitationItems, ...teamInvitationItems, ...tournamentInviteItems, ...confirmableRoomItems, ...matchItems, ...cancelledRoomItems]
       .sort((a, b) => a.priority - b.priority || String(a.meta).localeCompare(String(b.meta)));
   }, [app.state, app.state.matches, app.state.recruitingPosts, app.state.tournaments, captainTeamIds, myTeamIds, pendingInvitations, pendingTeamInvitations, teamById, user.id]);
   const priorityItems = actionItems.slice(0, 5);
+  const homeNoticeItems = useMemo(() => (app.state.notifications ?? [])
+    .filter((notification) => isNotificationVisibleToUser(notification, user.id))
+    .filter((notification) => !notification.readAt)
+    .sort((a, b) => {
+      const aTime = getNotificationDueAt(a) || a.createdAt || "";
+      const bTime = getNotificationDueAt(b) || b.createdAt || "";
+      return String(bTime).localeCompare(String(aTime));
+    }), [app.state.notifications, user.id]);
+  const priorityNoticeItems = homeNoticeItems.slice(0, 4);
 
   const searchResults = useMemo(() => {
     if (!searchText) return [];
@@ -567,7 +583,7 @@ export default function Home({ app }) {
             <div className="section-title-row">
               <div>
                 <p className="eyebrow">Action Queue</p>
-                <h2>내가 처리할 방</h2>
+                <h2>내가 처리할 일</h2>
               </div>
               <Badge tone={actionItems.length ? "orange" : "neutral"}>{actionItems.length}개</Badge>
             </div>
@@ -619,8 +635,53 @@ export default function Home({ app }) {
                 <div className="home-action-row priority-5">
                   <span className="home-action-icon"><ClipboardCheck size={18} /></span>
                   <span className="home-action-main">
-                    <strong>처리할 알림 없음</strong>
-                    <em>초대, 승인, 기록 확인이 여기 뜹니다.</em>
+                    <strong>처리할 일 없음</strong>
+                    <em>초대, 승인, 기록 입력 같은 작업이 여기 뜹니다.</em>
+                  </span>
+                  <b>OK</b>
+                </div>
+              )}
+            </div>
+          </Card>
+
+          <Card className="section-card home-alert-card">
+            <div className="section-title-row">
+              <div>
+                <p className="eyebrow">Alerts</p>
+                <h2>알림</h2>
+              </div>
+              <Badge tone={homeNoticeItems.length ? "orange" : "neutral"}>{homeNoticeItems.length}개</Badge>
+            </div>
+            <div className="home-action-list">
+              {priorityNoticeItems.length ? (
+                <>
+                  {priorityNoticeItems.map((notification) => (
+                    <Link key={notification.id} to={getNotificationHref(notification)} className="home-action-row priority-5">
+                      <span className="home-action-icon"><Bell size={18} /></span>
+                      <span className="home-action-main">
+                        <strong>{notification.title}</strong>
+                        <em>{getNotificationPreviewBody(notification)}</em>
+                      </span>
+                      <b>보기</b>
+                    </Link>
+                  ))}
+                  {homeNoticeItems.length > priorityNoticeItems.length ? (
+                    <Link to="/app/notifications" className="home-action-row priority-5">
+                      <span className="home-action-icon"><Bell size={18} /></span>
+                      <span className="home-action-main">
+                        <strong>더 많은 알림</strong>
+                        <em>{homeNoticeItems.length - priorityNoticeItems.length}개 더 있음</em>
+                      </span>
+                      <b>전체</b>
+                    </Link>
+                  ) : null}
+                </>
+              ) : (
+                <div className="home-action-row priority-5">
+                  <span className="home-action-icon"><Bell size={18} /></span>
+                  <span className="home-action-main">
+                    <strong>새 알림 없음</strong>
+                    <em>경기 안내와 방 변경 알림이 여기 뜹니다.</em>
                   </span>
                   <b>OK</b>
                 </div>
