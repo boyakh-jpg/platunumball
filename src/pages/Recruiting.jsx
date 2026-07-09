@@ -1432,6 +1432,81 @@ function MatchSubstitutionPanel({
   );
 }
 
+function MatchRecorderHandoffPanel({
+  match,
+  userById,
+  teams,
+  currentUserId,
+  recorderSides = [],
+  onHandoff,
+}) {
+  const [draftBySide, setDraftBySide] = useState({});
+  if (!match || !recorderSides.length) return null;
+  const recordWindow = getMatchRecordWindow(match);
+  const rows = recorderSides.flatMap((sideName) => {
+    const activePlayerIds = match[sideName]?.players ?? [];
+    const reservePlayerIds = getMatchReservePlayerIds(match, sideName);
+    const candidateIds = [...new Set([...activePlayerIds, ...reservePlayerIds])]
+      .filter((playerId) => playerId && playerId !== currentUserId && userById[playerId]);
+    if (!candidateIds.length) return [];
+    const selectedId = candidateIds.includes(draftBySide[sideName])
+      ? draftBySide[sideName]
+      : candidateIds[0];
+    const currentIsReserve = reservePlayerIds.includes(currentUserId);
+    const selectedIsReserve = reservePlayerIds.includes(selectedId);
+    const selectedIsActive = activePlayerIds.includes(selectedId);
+    const willSwap = Boolean(recordWindow.beforeEnd && (
+      (currentIsReserve && selectedIsActive) ||
+      (!currentIsReserve && selectedIsReserve)
+    ));
+    return [{
+      sideName,
+      candidateIds,
+      selectedId,
+      currentUser: userById[currentUserId],
+      selectedUser: userById[selectedId],
+      willSwap,
+    }];
+  });
+  if (!rows.length) return null;
+
+  return (
+    <div className="arena-record-roster-panel">
+      <header>
+        <strong>기록권한 넘기기</strong>
+        <span>같은 사이드 출전 선수나 후보에게 기록권한을 넘깁니다.</span>
+      </header>
+      <div className="arena-record-roster-list">
+        {rows.map(({ sideName, candidateIds, selectedId, currentUser, selectedUser, willSwap }) => (
+          <div key={sideName} className="arena-record-roster-row selected">
+            <PlayerHoverCard user={currentUser} teams={teams} as="span">
+              <span className="avatar small" style={{ "--avatar": currentUser?.avatarColor }}>{currentUser?.name?.slice(0, 1) ?? "R"}</span>
+              <span>
+                <strong>{SIDE_LABELS[sideName]} 기록자</strong>
+                <em>{selectedUser?.name ?? "선수"}에게 넘김{willSwap ? " · 교체 포함" : ""}</em>
+              </span>
+            </PlayerHoverCard>
+            <select
+              aria-label={`${SIDE_LABELS[sideName]} 기록권한 받을 선수`}
+              value={selectedId}
+              onChange={(event) => setDraftBySide((current) => ({ ...current, [sideName]: event.target.value }))}
+            >
+              {candidateIds.map((playerId) => {
+                const user = userById[playerId];
+                const role = getMatchReservePlayerIds(match, sideName).includes(playerId) ? "후보" : "출전";
+                return <option value={playerId} key={playerId}>{user?.name ?? playerId} · {role}</option>;
+              })}
+            </select>
+            <Button type="button" size="sm" variant="secondary" disabled={!selectedId} onClick={() => onHandoff?.(sideName, selectedId)}>
+              넘기기
+            </Button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function MatchRecordRosterPanel({
   match,
   sideName,
@@ -3124,6 +3199,18 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
             />
           ) : null
         );
+        const renderMatchRecorderHandoffPanel = () => (
+          !sourceRoomReadOnly && matchRoom && sourceMatchRecorderSides.length ? (
+            <MatchRecorderHandoffPanel
+              match={sourceMatch}
+              userById={userById}
+              teams={app.state.teams}
+              currentUserId={app.currentUser.id}
+              recorderSides={sourceMatchRecorderSides}
+              onHandoff={(sideName, nextRecorderId) => app.actions.handoffMatchRecorder?.(sourceMatch.id, sideName, nextRecorderId)}
+            />
+          ) : null
+        );
         const canMoveMatchSides = Boolean(canManageMatchCheckin && selectedPost.hostJoinMode !== "team");
         const canEditSourceRoomRules = Boolean(
           !sourceRoomReadOnly &&
@@ -3405,6 +3492,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                 </div>
 
                 {renderSourceMatchRecordBoard()}
+                {entryPoint === "recorder" ? renderMatchRecorderHandoffPanel() : null}
                 {entryPoint === "recorder" ? renderMatchSubstitutionPanel() : null}
 
                 <div className="arena-lobby-versus-stage">
@@ -3621,6 +3709,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                 />
               ) : null}
 
+              {entryPoint === "recorder" ? null : renderMatchRecorderHandoffPanel()}
               {entryPoint === "recorder" ? null : renderMatchSubstitutionPanel()}
 
               <div className="arena-room-rule-panel">

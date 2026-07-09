@@ -910,6 +910,7 @@ UI 수정 전:
 2. Primary CTA color is orange. Green is kept for success/ready states only.
 3. Match list cards stay summary-only: title, status, time, court, count, score/result, CTA. Player slot grids must not be rendered directly in list cards.
 4. Room modal and lobby must preserve `SideRoster`, `ReserveLine`, `PlayerRoomSlot`, empty slots, reserve slots, avatar, READY/WAIT, party group, and party connection line.
+4-1. Match room modal recorder handoff uses the same compact roster panel rhythm as substitution/record roster panels. Do not create a separate modal or card skin for recorder handoff.
 5. Party connection glow stays visible but subdued, using orange line/glow instead of neon green/blue.
 6. Light mode must not become a white SaaS dashboard. Use warm cream background, charcoal text, orange CTA, soft card surface, and court/gym wall tone.
 
