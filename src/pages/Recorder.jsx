@@ -223,6 +223,8 @@ export default function Recorder({ app }) {
               const scoreB = getScore(match, "teamB");
               const reserveCount = getMatchReservePlayerIds(match, "teamA").length + getMatchReservePlayerIds(match, "teamB").length;
               const meta = `참여 ${getMatchPlayerIds(match).length}명 · A ${getMatchSideCount(match, "teamA")} / B ${getMatchSideCount(match, "teamB")}${reserveCount ? ` · 후보 ${reserveCount}` : ""}`;
+              const hasScore = shouldShowScore(match);
+              const summaryValue = hasScore ? `${scoreA} : ${scoreB}` : "vs";
 
               return (
                 <article key={match.id} className={`om-match-card om-status-${match.status} arena-lobby-card`} onClick={() => openMatch(match.id)}>
@@ -242,28 +244,19 @@ export default function Recorder({ app }) {
                     </p>
                   </div>
 
-                  {shouldShowScore(match) ? (
-                    <div className="om-score-box">
-                      <TeamHoverCard team={teamById[match.teamA?.teamId]} to={match.teamA?.teamId ? `/app/teams/${match.teamA?.teamId}` : undefined}>{match.teamA?.name ?? "A"}</TeamHoverCard>
-                      <strong>{scoreA} : {scoreB}</strong>
-                      <TeamHoverCard team={teamById[match.teamB?.teamId]} to={match.teamB?.teamId ? `/app/teams/${match.teamB?.teamId}` : undefined}>{match.teamB?.name ?? "B"}</TeamHoverCard>
-                      <span>{getDeadlineLabel(match)}</span>
+                  <div className="om-match-summary-box count-summary">
+                    <div className="om-summary-line">
+                      <span className="om-summary-side">
+                        <TeamHoverCard team={teamById[match.teamA?.teamId]} as="span">{match.teamA?.name ?? "A"}</TeamHoverCard>
+                      </span>
+                      <strong>{summaryValue}</strong>
+                      <span className="om-summary-side">
+                        <TeamHoverCard team={teamById[match.teamB?.teamId]} as="span">{match.teamB?.name ?? "B"}</TeamHoverCard>
+                      </span>
                     </div>
-                  ) : (
-                    <div className="om-match-summary-box count-summary">
-                      <div className="om-summary-line">
-                        <span className="om-summary-side">
-                          <TeamHoverCard team={teamById[match.teamA?.teamId]} as="span">{match.teamA?.name ?? "A"}</TeamHoverCard>
-                        </span>
-                        <strong>vs</strong>
-                        <span className="om-summary-side">
-                          <TeamHoverCard team={teamById[match.teamB?.teamId]} as="span">{match.teamB?.name ?? "B"}</TeamHoverCard>
-                        </span>
-                      </div>
-                      <span className="om-summary-meta">{meta}</span>
-                      <span className="om-summary-detail">{getRoleText(match, user, recorderSides)} · {getDeadlineLabel(match)}</span>
-                    </div>
-                  )}
+                    <span className="om-summary-meta">{meta}</span>
+                    <span className="om-summary-detail">{getRoleText(match, user, recorderSides)} · {getDeadlineLabel(match)}</span>
+                  </div>
 
                   <button type="button" className="button button-secondary button-md om-room-link" onClick={(event) => {
                     event.stopPropagation();

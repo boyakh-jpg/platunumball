@@ -4216,3 +4216,54 @@ html[data-theme="light"] .tournament-hero h1 {
 .arena-lobby-card .om-match-summary-box.count-summary .om-summary-line > strong {
   font-size: clamp(14px, 1.7vw, 23px);
 }
+
+/* 2026-07-09 recorder list cards follow the same compact row rhythm as recruiting cards. */
+.recorder-card-list .arena-lobby-card.om-match-card {
+  min-height: 112px;
+}
+
+.recorder-card-list .arena-lobby-card.om-match-card h3 {
+  max-height: 1em;
+  line-height: 0.98;
+  overflow: hidden;
+}
+
+.recorder-card-list .arena-lobby-card.om-match-card p {
+  max-height: 18px;
+  line-height: 1.2;
+  overflow: hidden;
+}
+
+.recorder-card-list .arena-lobby-card .om-match-summary-box {
+  height: 84px;
+  min-height: 0;
+  gap: 4px;
+  padding: 8px 12px;
+  overflow: hidden;
+}
+
+.recorder-card-list .arena-lobby-card .om-match-summary-box.count-summary .om-summary-side,
+.recorder-card-list .arena-lobby-card .om-match-summary-box.count-summary .om-summary-side .team-hover-trigger {
+  min-width: 0;
+  max-width: 9.5ch;
+  font-size: clamp(22px, 2.4vw, 34px);
+  line-height: 0.95;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: keep-all;
+}
+
+.recorder-card-list .arena-lobby-card .om-summary-meta,
+.recorder-card-list .arena-lobby-card .om-summary-detail {
+  min-width: 0;
+  font-size: 11px;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.recorder-card-list .arena-lobby-card .om-room-link {
+  min-height: 84px;
+}
