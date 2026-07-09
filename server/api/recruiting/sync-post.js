@@ -725,6 +725,7 @@ const AUTHORITATIVE_REPLAY_RECRUITING_ACTIONS = new Set([
 
 const SQL_REDUCER_RECRUITING_ACTIONS = new Set([
   "cancelRecruitingParticipation",
+  "setRecruitingApplicantPlacement",
   "setRecruitingSlotPosition",
 ]);
 
@@ -828,10 +829,6 @@ async function loadSyncedRecruitingState(context, postId = "") {
 }
 
 async function applySqlRecruitingAction(context, operation = {}) {
-  if (operation.action === "setRecruitingApplicantPlacement") {
-    return null;
-  }
-
   if (operation.action === "interestRecruitingPost") {
     const application = operation.application && typeof operation.application === "object"
       ? operation.application
@@ -866,6 +863,29 @@ async function applySqlRecruitingAction(context, operation = {}) {
       if (isMissingSqlReducer(error)) return null;
       throw error;
     }
+    return {
+      ok: true,
+      ...(data && typeof data === "object" ? data : {}),
+      postId: operation.postId,
+    };
+  }
+
+  if (operation.action === "setRecruitingApplicantPlacement") {
+    const placement = operation.placement && typeof operation.placement === "object"
+      ? operation.placement
+      : {};
+    const { data, error } = await context.supabase.rpc("rankball_recruiting_applicant_placement_action", {
+      p_actor_profile_id: context.profileId,
+      p_post_id: operation.postId,
+      p_player_id: operation.playerId ?? context.profileId,
+      p_side: placement.side ?? "",
+      p_reserve: Boolean(placement.reserve),
+    });
+    if (error) {
+      if (isMissingSqlReducer(error)) return null;
+      throw error;
+    }
+    if (data?.fallback) return null;
     return {
       ok: true,
       ...(data && typeof data === "object" ? data : {}),

@@ -350,6 +350,7 @@ Remaining:
 - Keep app user identity as `profiles.id`; never expose or use Google/provider ID as the public RankBall user id.
 - Finish authoritative RPC/server actions for recruiting create/join/invite/accept/ready/confirm and match attendance/start/record/end/dispute/approve.
 - Move operation calculation itself from server reducer replay to DB RPC if stricter row-level lock semantics are required.
+- Recruiting `setRecruitingApplicantPlacement` now tries `rankball_recruiting_applicant_placement_action()` first for self player applicant moves. Unsupported host/team/party/limit cases still fall back to server authoritative replay.
 - Make frontend repository a thin server caller after the authoritative RPCs are ready.
 - Remove production reliance on localStorage state and mock fallback completely.
 - Add broader server-side eligibility checks for tournament brackets and match roster edits.

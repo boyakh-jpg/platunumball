@@ -1926,7 +1926,7 @@ flowchart TD
 12. Recruiting 단일 방 상세 로드는 최신 서버 row가 기준이다. 목록 보강 로드의 최근 mutation 보호막으로 단일 상세 row를 버리면 안 된다.
 13. Supabase auth 사용자가 바뀌면 이전 계정의 room/list state를 화면에 남기지 않고 shell state로 비운 뒤 새 서버 state를 로드한다.
 
-14. `setRecruitingSlotPosition`, `setRecruitingReady`, `cancelRecruitingParticipation`은 SQL reducer 이식 대상이다. 서버는 `rankball_recruiting_slot_position_action()`/`rankball_recruiting_ready_action()`/`rankball_recruiting_cancel_participation_action()`을 우선 호출하고, SQL이 아직 적용되지 않았거나 복합 조건처럼 SQL reducer가 지원하지 않는 케이스면 기존 authoritative replay 경로로 fallback한다. 새 참가자를 추가하는 `interestRecruitingPost`와 로스터 배치 원본을 바꾸는 `setRecruitingApplicantPlacement`는 JS authoritative replay를 유지한다.
+14. `setRecruitingSlotPosition`, `setRecruitingApplicantPlacement`, `setRecruitingReady`, `cancelRecruitingParticipation`은 SQL reducer 이식 대상이다. 서버는 `rankball_recruiting_slot_position_action()`/`rankball_recruiting_applicant_placement_action()`/`rankball_recruiting_ready_action()`/`rankball_recruiting_cancel_participation_action()`을 우선 호출하고, SQL이 아직 적용되지 않았거나 복합 조건처럼 SQL reducer가 지원하지 않는 케이스면 기존 authoritative replay 경로로 fallback한다. 새 참가자를 추가하는 `interestRecruitingPost`는 JS authoritative replay를 유지한다.
 15. Recruiting 화면의 user-triggered `scope: "mine"` 로드는 요청이 성공했을 때만 완료 처리한다. 초기 auth/token 타이밍 실패가 나면 재시도하고, 실패한 1회 요청 때문에 `내가 만든 방`/`내 참여방` 카운트를 초기 목록 상태로 고정하지 않는다.
 16. Supabase remote state는 서버/DB가 source of truth다. 클라이언트 자동관리 함수는 원격 모집방/경기 상태를 로컬에서 임의로 취소/종료 처리하지 않는다. 만료, 자동취소, 자동확정 같은 lifecycle 변경은 server action/RPC로 저장된 뒤에만 화면 source of truth로 취급한다.
 
@@ -1942,6 +1942,7 @@ flowchart TD
 25. Recruiting replay scope must also include explicit invite targets, referee invite targets, and team ids stored on pending room invitations. Expired, declined, or cancelled invitations are not active eligibility targets and must not block age/team roster validation.
 26. Recruiting snapshot persist must pass the replay base `updated_at` into `rankball_recruiting_action`. The DB function locks the row and rejects stale writes with `recruiting_stale_snapshot` instead of overwriting a newer room state.
 27. `setRecruitingApplicantPlacement`는 방장 자기 슬롯 이동으로도 `hostSide`를 변경하지 않는다. 방장은 생성 사이드를 유지하고, 다른 참가자 배치 변경도 방 core field를 바꾸면 안 된다.
+28. `rankball_recruiting_applicant_placement_action()`은 self player applicant의 선출/후보/사이드 배치만 처리한다. 방장 자기 배치, 팀/파티/복합 참가자, 정원 초과, 후보 제한 초과는 기존 authoritative replay로 fallback한다. SQL 성공 시 이동한 본인은 `room_state.statRecorders`에서 제거되어 후보/대기 상태의 stale 기록권한이 남지 않는다.
 
 ## 2026-06-28 public feed access
 
