@@ -12,10 +12,13 @@ const INTERACTION_COMPONENT = 3;
 const RESPONSE_PONG = 1;
 const RESPONSE_MESSAGE = 4;
 const EPHEMERAL = 64;
+const COMPONENT_CUSTOM_ID_MAX = 100;
+const SAFE_ENTITY_ID_PATTERN = /^[A-Za-z0-9_.-]{1,120}$/;
 
-function reject(statusCode, message) {
+function reject(statusCode, message, details = {}) {
   const error = new Error(message);
   error.statusCode = statusCode;
+  error.details = details;
   throw error;
 }
 
@@ -64,14 +67,33 @@ function sendInteractionMessage(response, content) {
   sendJson(response, 200, {
     type: RESPONSE_MESSAGE,
     data: {
-      content,
+      content: String(content || "RankBall에서 다시 확인하세요.").slice(0, 1900),
       flags: EPHEMERAL,
     },
   });
 }
 
+function toArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function safeDecodeId(value = "", label = "id") {
+  const raw = String(value || "").trim();
+  if (!raw || raw.length > COMPONENT_CUSTOM_ID_MAX) reject(400, `invalid_${label}`);
+  let decoded = "";
+  try {
+    decoded = decodeURIComponent(raw);
+  } catch {
+    reject(400, `invalid_${label}`);
+  }
+  if (!SAFE_ENTITY_ID_PATTERN.test(decoded)) reject(400, `invalid_${label}`);
+  return decoded;
+}
+
 function parseInviteAction(customId = "") {
-  const parts = String(customId).split(":");
+  const rawCustomId = String(customId || "").trim();
+  if (!rawCustomId || rawCustomId.length > COMPONENT_CUSTOM_ID_MAX) reject(400, "invalid_discord_action");
+  const parts = rawCustomId.split(":");
   if (parts.length !== 5 || `${parts[0]}:${parts[1]}` !== INVITE_PREFIX) {
     reject(400, "unsupported_discord_action");
   }
@@ -79,8 +101,8 @@ function parseInviteAction(customId = "") {
   if (!action) reject(400, "unsupported_discord_action");
   return {
     action,
-    postId: decodeURIComponent(parts[3] || ""),
-    invitationId: decodeURIComponent(parts[4] || ""),
+    postId: safeDecodeId(parts[3], "post_id"),
+    invitationId: safeDecodeId(parts[4], "invitation_id"),
   };
 }
 
@@ -98,10 +120,39 @@ async function getProfileByDiscordUserId(supabase, discordUserId) {
   return data ?? null;
 }
 
+function getRoomState(post = {}) {
+  const roomState = post.roomState ?? post.room_state;
+  return roomState && typeof roomState === "object" ? roomState : {};
+}
+
+function getInviteDecisionState(state = {}, operation = {}, profileId = "") {
+  const post = toArray(state.recruitingPosts).find((item) => item?.id === operation.postId) ?? null;
+  if (!post) return { stale: true, reason: "missing_post" };
+  if (post.status && post.status !== "open") return { post, stale: true, reason: "closed_post" };
+
+  const invitation = toArray(getRoomState(post).invitations).find((item) => item?.id === operation.invitationId) ?? null;
+  if (!invitation) return { post, stale: true, reason: "missing_invitation" };
+  if (invitation.targetUserId !== profileId) reject(403, "discord_invite_not_for_user");
+  if (String(invitation.status ?? "pending") !== "pending") {
+    return { post, invitation, stale: true, reason: "processed_invitation" };
+  }
+  return { post, invitation, stale: false };
+}
+
+function getInviteResultMessage(operation = {}) {
+  return operation.action === "acceptRecruitingInvitation"
+    ? "초대를 수락했습니다. RankBall에서 방 상태를 확인하세요."
+    : "초대를 거절했습니다.";
+}
+
+function getStaleInviteMessage(decision = {}) {
+  if (decision.reason === "closed_post") return "이미 닫힌 방입니다. RankBall에서 최신 상태를 확인하세요.";
+  return "이미 처리됐거나 만료된 초대입니다. RankBall에서 최신 상태를 확인하세요.";
+}
+
 async function handleInviteAction(interaction) {
   const component = interaction.data?.custom_id ? interaction.data : null;
   const operation = parseInviteAction(component?.custom_id);
-  if (!operation.postId || !operation.invitationId) reject(400, "invalid_invite_action");
 
   const discordUserId = getInteractionDiscordUserId(interaction);
   if (!discordUserId) reject(401, "missing_discord_user");
@@ -117,6 +168,9 @@ async function handleInviteAction(interaction) {
     authUser: { id: `discord:${discordUserId}` },
   };
   const state = await loadAuthoritativeState(context, { operation });
+  const decision = getInviteDecisionState(state, operation, profile.id);
+  if (decision.stale) return getStaleInviteMessage(decision);
+
   const result = applyAuthoritativeRecruitingOperation(state, operation);
   await persistRecruitingPostSnapshot(context, {
     post: result.post,
@@ -126,9 +180,7 @@ async function handleInviteAction(interaction) {
     expectedUpdatedAt: result.baseUpdatedAt ?? null,
   });
 
-  return operation.action === "acceptRecruitingInvitation"
-    ? "초대를 수락했습니다. RankBall에서 방 상태를 확인하세요."
-    : "초대를 거절했습니다.";
+  return getInviteResultMessage(operation);
 }
 
 export default async function handler(request, response) {
@@ -164,6 +216,10 @@ export default async function handler(request, response) {
     }
     if (statusCode >= 500) {
       sendJson(response, statusCode, { error: error.message || "discord_interaction_failed" });
+      return;
+    }
+    if (statusCode === 409 && error.details?.message) {
+      sendInteractionMessage(response, `${error.details.message} RankBall에서 다시 확인하세요.`);
       return;
     }
     sendInteractionMessage(response, "처리하지 못했습니다. RankBall에서 다시 확인하세요.");
