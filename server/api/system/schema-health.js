@@ -197,6 +197,10 @@ const REQUIRED_RPCS = [
     args: {},
   },
   {
+    name: "rankball_referee_rls_policy_health",
+    args: {},
+  },
+  {
     name: "rankball_recruiting_action",
     args: { p_actor_profile_id: "", p_action: "", p_post_row: {}, p_application_rows: [], p_notification_rows: [], p_expected_updated_at: null },
   },
@@ -328,17 +332,26 @@ async function checkFeedTriggers(client) {
 }
 
 async function checkRlsPolicies(client) {
-  const { data, error } = await client.rpc("rankball_rls_policy_health");
-  if (error) {
+  const rpcNames = ["rankball_rls_policy_health", "rankball_referee_rls_policy_health"];
+  const results = await Promise.all(rpcNames.map(async (rpcName) => {
+    const { data, error } = await client.rpc(rpcName);
+    return { rpcName, data, error };
+  }));
+  const rpcError = results.find((result) => result.error);
+  if (rpcError) {
     return {
       ok: false,
-      error: error.message || "rls_policy_health_failed",
+      error: rpcError.error.message || `${rpcError.rpcName}_failed`,
       failed: [],
       checks: [],
     };
   }
 
-  const checks = Array.isArray(data) ? data : [];
+  const checks = results.flatMap((result) => (
+    Array.isArray(result.data)
+      ? result.data.map((check) => ({ ...check, rpcName: result.rpcName }))
+      : []
+  ));
   const failed = checks.filter((check) => !check.ok);
   return {
     ok: failed.length === 0,

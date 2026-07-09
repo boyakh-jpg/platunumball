@@ -449,6 +449,7 @@ const REFEREE_EXAM_BANK = Array.from({ length: 600 }, (_, index) => {
   };
 });
 export const REFEREE_EXAM_BANK_SIZE = REFEREE_EXAM_BANK.length;
+const REFEREE_EXAM_BANK_BY_ID = new Map(REFEREE_EXAM_BANK.map((question) => [question.id, question]));
 
 function hashSeed(seed = "") {
   return Array.from(String(seed)).reduce((hash, char) => ((hash << 5) - hash + char.charCodeAt(0)) | 0, 0);
@@ -480,6 +481,14 @@ export function getRefereeExamSet(seed = Date.now(), count = REFEREE_EXAM_SIZE) 
   return buildRefereeExamSet(seed, count).map(toPublicQuestion);
 }
 
+export function createRefereeExamSet(seed = Date.now(), count = REFEREE_EXAM_SIZE) {
+  const questions = buildRefereeExamSet(seed, count);
+  return {
+    questionIds: questions.map((question) => question.id),
+    questions: questions.map(toPublicQuestion),
+  };
+}
+
 export function gradeRefereeExam(seed = Date.now(), answers = {}, count = REFEREE_EXAM_SIZE) {
   const questions = Array.isArray(seed) ? seed : buildRefereeExamSet(seed, count);
   const reviewed = questions.map((question) => {
@@ -500,4 +509,11 @@ export function gradeRefereeExam(seed = Date.now(), answers = {}, count = REFERE
     reviewed,
     reviewedById: Object.fromEntries(reviewed.map((item) => [item.id, item])),
   };
+}
+
+export function gradeRefereeExamByQuestionIds(questionIds = [], answers = {}) {
+  const questions = questionIds
+    .map((questionId) => REFEREE_EXAM_BANK_BY_ID.get(questionId))
+    .filter(Boolean);
+  return gradeRefereeExam(questions, answers, questions.length);
 }

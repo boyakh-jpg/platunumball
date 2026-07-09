@@ -28,19 +28,15 @@ import {
   getDiscordProfileUrl,
   isDiscordLinked,
 } from "../lib/discord.js";
-import {
-  REFEREE_EXAM_BANK_SIZE,
-  REFEREE_EXAM_PASS_SCORE,
-  REFEREE_EXAM_SIZE,
-  REFEREE_EXAM_VERSION,
-  getRefereeExamSet,
-  gradeRefereeExam,
-} from "../lib/refereeExamBank.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import "../styles/recruiting-arena.css";
 
 const REPORT_MATCH_WINDOW_DAYS = 7;
 const REFEREE_EXAM_COOLDOWN_DAYS = 7;
+const REFEREE_EXAM_VERSION = "rankball-referee-2026-06";
+const REFEREE_EXAM_SIZE = 30;
+const REFEREE_EXAM_PASS_SCORE = 24;
+const REFEREE_EXAM_BANK_SIZE = 600;
 const DEFAULT_COURT_REQUEST = {
   name: "",
   region: "",
@@ -241,7 +237,7 @@ export default function Settings({ app, auth, section = "main" }) {
     region: app.currentUser?.region ?? DEFAULT_COURT_REQUEST.region,
   }));
   const [refereeDraft, setRefereeDraft] = useState(DEFAULT_REFEREE_REQUEST);
-  const [refereeExamSeed, setRefereeExamSeed] = useState(() => `${Date.now()}-${app.currentUserId}`);
+  const [refereeExamQuestions, setRefereeExamQuestions] = useState([]);
   const [refereeExamOpen, setRefereeExamOpen] = useState(false);
   const [refereeExamAnswers, setRefereeExamAnswers] = useState({});
   const [refereeExamResult, setRefereeExamResult] = useState(null);
@@ -639,7 +635,6 @@ export default function Settings({ app, auth, section = "main" }) {
   const averageMatches = testAccounts.length
     ? Math.round(testAccounts.reduce((sum, user) => sum + (matchCountByUser.get(user.id) ?? 0), 0) / testAccounts.length)
     : 0;
-  const refereeExamQuestions = useMemo(() => getRefereeExamSet(refereeExamSeed), [refereeExamSeed]);
   const answeredRefereeExamCount = Object.keys(refereeExamAnswers).length;
   const refereeExamRequired = refereeDraft.qualification === "community_exam";
   const refereeExamPassed = refereeExamResult?.passed === true;
@@ -906,9 +901,13 @@ export default function Settings({ app, auth, section = "main" }) {
     setReportedUserIds([]);
   };
   const updateRefereeDraft = (patch) => setRefereeDraft((current) => ({ ...current, ...patch }));
-  const startRefereeExam = () => {
+  const startRefereeExam = async () => {
     if (!canOpenRefereeRequestForm) {
       setRefereeExamNotice(`심판 시험은 신뢰도 ${REFEREE_TRUST_MIN}점 이상부터 가능합니다.`);
+      return;
+    }
+    if (!isSupabaseConfigured) {
+      setRefereeExamNotice("심판 시험은 서버 연결 후 응시할 수 있습니다.");
       return;
     }
     if (refereeExamOpen && !refereeExamResult) {
@@ -919,28 +918,39 @@ export default function Settings({ app, auth, section = "main" }) {
       setRefereeExamNotice(`심판 시험은 주 1회만 가능합니다. 다음 응시 가능: ${refereeExamLockLabel}`);
       return;
     }
-    const nextSeed = `${Date.now()}-${app.currentUserId}-${Math.random()}`;
     const attemptId = makeRefereeAttemptId();
-    setCurrentRefereeExamAttemptId(attemptId);
-    setRefereeExamSeed(nextSeed);
+    setRefereeExamNotice("시험을 불러오는 중입니다.");
+    const startedAttempt = await app.actions.startRefereeExamAttempt({
+      id: attemptId,
+      examVersion: REFEREE_EXAM_VERSION,
+    });
+    const questions = Array.isArray(startedAttempt?.questions) ? startedAttempt.questions : [];
+    if (!startedAttempt?.id || questions.length !== REFEREE_EXAM_SIZE) {
+      setRefereeExamNotice("심판 시험을 시작하지 못했습니다.");
+      return;
+    }
+    setCurrentRefereeExamAttemptId(startedAttempt.id);
+    setRefereeExamQuestions(questions);
     setRefereeExamAnswers({});
     setRefereeExamResult(null);
     setRefereeExamNotice("");
-    app.actions.startRefereeExamAttempt({
-      id: attemptId,
-      seed: nextSeed,
-      examVersion: REFEREE_EXAM_VERSION,
-    });
     setRefereeExamOpen(true);
   };
   const selectRefereeExamAnswer = (questionId, answerIndex) => {
     if (refereeExamResult) return;
     setRefereeExamAnswers((current) => ({ ...current, [questionId]: answerIndex }));
   };
-  const submitRefereeExam = () => {
-    const result = gradeRefereeExam(refereeExamSeed, refereeExamAnswers);
+  const submitRefereeExam = async () => {
+    if (!currentRefereeExamAttemptId) {
+      setRefereeExamNotice("진행 중인 시험이 없습니다.");
+      return;
+    }
+    const result = await app.actions.finishRefereeExamAttempt(currentRefereeExamAttemptId, { answers: refereeExamAnswers });
+    if (!result) {
+      setRefereeExamNotice("심판 시험 채점에 실패했습니다.");
+      return;
+    }
     setRefereeExamResult(result);
-    if (currentRefereeExamAttemptId) app.actions.finishRefereeExamAttempt(currentRefereeExamAttemptId, result);
   };
   const submitRefereeRequest = (event) => {
     event.preventDefault();
@@ -954,6 +964,7 @@ export default function Settings({ app, auth, section = "main" }) {
     });
     setRefereeDraft(DEFAULT_REFEREE_REQUEST);
     setCurrentRefereeExamAttemptId("");
+    setRefereeExamQuestions([]);
     setRefereeExamAnswers({});
     setRefereeExamResult(null);
     setRefereeExamOpen(false);

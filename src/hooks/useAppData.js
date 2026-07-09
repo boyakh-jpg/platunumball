@@ -1601,8 +1601,8 @@ export function useAppData(authUser = null, appLocation = null) {
     return runServerAction("/api/tournaments/sync-tournament", payload);
   }, [runServerAction]);
   const syncRefereeServer = useCallback((action, payload = {}) => {
-    if (!action) return;
-    runServerAction("/api/referee/sync", { action, ...payload });
+    if (!action) return Promise.resolve(null);
+    return runServerAction("/api/referee/sync", { action, ...payload });
   }, [runServerAction]);
   const syncFavoriteServer = useCallback((targetType, targetId, active) => {
     if (!targetType || !targetId) return;
@@ -2109,6 +2109,19 @@ export function useAppData(authUser = null, appLocation = null) {
           (notification.type === "referee" || notification.tone === "team" || !notification.targetUserId)
         ));
       };
+      const upsertRefereeExamAttempt = (attempt) => {
+        if (!attempt?.id) return;
+        setState((prev) => {
+          const attempts = prev.settings?.refereeExamAttempts ?? [];
+          return {
+            ...prev,
+            settings: {
+              ...(prev.settings ?? {}),
+              refereeExamAttempts: [attempt, ...attempts.filter((item) => item.id !== attempt.id)],
+            },
+          };
+        });
+      };
       const rollbackServerMutation = (snapshot, label, payload = {}) => {
         if (!snapshot) return;
         const reason = payload.error ? ` 이유: ${payload.error}` : "";
@@ -2581,6 +2594,13 @@ export function useAppData(authUser = null, appLocation = null) {
         if (submittedReview) runServerAction("/api/courts/submit-review", { review: submittedReview });
       },
       startRefereeExamAttempt: (draft) => {
+        if (isSupabaseConfigured) {
+          return syncRefereeServer("startExam", { attempt: draft }).then((result) => {
+            if (result?.ok === false || !result?.attempt) return null;
+            upsertRefereeExamAttempt(result.attempt);
+            return result.attempt;
+          });
+        }
         let createdAttempt = null;
         setState((prev) => {
           const existingIds = new Set((prev.settings?.refereeExamAttempts ?? []).map((attempt) => attempt.id));
@@ -2588,9 +2608,16 @@ export function useAppData(authUser = null, appLocation = null) {
           createdAttempt = (next.settings?.refereeExamAttempts ?? []).find((attempt) => !existingIds.has(attempt.id)) ?? null;
           return next;
         });
-        if (createdAttempt) syncRefereeServer("startExam", { attempt: createdAttempt });
+        return Promise.resolve(createdAttempt);
       },
       finishRefereeExamAttempt: (attemptId, result) => {
+        if (isSupabaseConfigured) {
+          return syncRefereeServer("finishExam", { attempt: { id: attemptId, answers: result?.answers ?? result } }).then((serverResult) => {
+            if (serverResult?.ok === false || !serverResult?.attempt) return null;
+            upsertRefereeExamAttempt(serverResult.attempt);
+            return serverResult.result ?? serverResult.attempt.result ?? null;
+          });
+        }
         let syncedAttempt = null;
         setState((prev) => {
           const beforeAttempt = (prev.settings?.refereeExamAttempts ?? []).find((attempt) => attempt.id === attemptId);
@@ -2599,7 +2626,7 @@ export function useAppData(authUser = null, appLocation = null) {
           syncedAttempt = beforeAttempt && nextAttempt !== beforeAttempt ? nextAttempt : null;
           return next;
         });
-        if (syncedAttempt) syncRefereeServer("finishExam", { attempt: syncedAttempt });
+        return Promise.resolve(syncedAttempt?.result ?? result ?? null);
       },
       submitRefereeRequest: (draft) => {
         let createdRequest = null;

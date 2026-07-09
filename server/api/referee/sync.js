@@ -1,5 +1,13 @@
 import { getAuthenticatedContext, readJsonBody, sendJson, toNotificationRows } from "../_supabaseAdmin.js";
 import { REFEREE_TRUST_MIN } from "../../../src/lib/constants.js";
+import {
+  REFEREE_EXAM_BANK_SIZE,
+  REFEREE_EXAM_PASS_SCORE,
+  REFEREE_EXAM_SIZE,
+  REFEREE_EXAM_VERSION,
+  createRefereeExamSet,
+  gradeRefereeExamByQuestionIds,
+} from "../../../src/lib/refereeExamBank.js";
 
 const REFEREE_EXAM_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -11,6 +19,28 @@ function toPayloadRow(item = {}) {
     created_at: item.createdAt || item.startedAt || new Date().toISOString(),
     updated_at: item.updatedAt || item.finishedAt || item.createdAt || item.startedAt || new Date().toISOString(),
   };
+}
+
+function sanitizeExamAnswers(answers = {}) {
+  return Object.fromEntries(
+    Object.entries(answers && typeof answers === "object" ? answers : {})
+      .map(([questionId, answerIndex]) => [String(questionId), Number(answerIndex)])
+      .filter(([questionId, answerIndex]) => questionId && Number.isInteger(answerIndex) && answerIndex >= 0 && answerIndex <= 3),
+  );
+}
+
+function getAttemptId(attempt = {}) {
+  const id = String(attempt.id || "").trim();
+  if (!id) {
+    const error = new Error("missing_attempt_id");
+    error.statusCode = 400;
+    throw error;
+  }
+  return id;
+}
+
+function toClientAttempt(payload = {}) {
+  return payload;
 }
 
 async function getActorTrustScore(context) {
@@ -47,18 +77,8 @@ async function assertExamCooldownOpen(context) {
   }
 }
 
-function toExamAttemptRow(attempt = {}, profileId = "") {
-  const id = String(attempt.id || "").trim();
-  if (!id) {
-    const error = new Error("missing_attempt_id");
-    error.statusCode = 400;
-    throw error;
-  }
-  const payload = {
-    ...attempt,
-    id,
-    userId: profileId,
-  };
+function toExamAttemptRow(payload = {}, profileId = "") {
+  const id = getAttemptId(payload);
   return {
     ...toPayloadRow(payload),
     id,
@@ -74,40 +94,88 @@ function toExamAttemptRow(attempt = {}, profileId = "") {
 async function syncExamAttempt(context, action, attempt = {}) {
   const trustScore = await getActorTrustScore(context);
   assertTrustScore(trustScore);
-  const row = toExamAttemptRow(attempt, context.profileId);
+  const attemptId = getAttemptId(attempt);
   const { data: existingAttempt, error: existingError } = await context.supabase
     .from("referee_exam_attempts")
-    .select("id, user_id")
-    .eq("id", row.id)
+    .select("id, user_id, status, payload")
+    .eq("id", attemptId)
     .maybeSingle();
   if (existingError) throw existingError;
 
   if (action === "startExam") {
-    if (existingAttempt?.user_id === context.profileId) return { ok: true, attemptId: row.id, duplicate: true };
+    if (existingAttempt?.user_id === context.profileId) {
+      return { ok: true, attemptId, attempt: toClientAttempt(existingAttempt.payload), duplicate: true };
+    }
     if (existingAttempt) {
       const error = new Error("exam_attempt_id_conflict");
       error.statusCode = 409;
       throw error;
     }
     await assertExamCooldownOpen(context);
-  } else if (action === "finishExam") {
-    if (existingAttempt?.user_id !== context.profileId) {
-      const error = new Error("exam_attempt_permission_denied");
-      error.statusCode = 403;
-      throw error;
-    }
-    if (!["passed", "failed"].includes(row.status)) {
-      const error = new Error("invalid_exam_finish_status");
-      error.statusCode = 400;
-      throw error;
-    }
+
+    const now = new Date();
+    const seed = `${now.toISOString()}-${context.profileId}-${attemptId}-${Math.random()}`;
+    const examSet = createRefereeExamSet(seed, REFEREE_EXAM_SIZE);
+    const payload = {
+      id: attemptId,
+      userId: context.profileId,
+      status: "started",
+      examVersion: REFEREE_EXAM_VERSION,
+      bankSize: REFEREE_EXAM_BANK_SIZE,
+      passScore: REFEREE_EXAM_PASS_SCORE,
+      total: REFEREE_EXAM_SIZE,
+      questionIds: examSet.questionIds,
+      questions: examSet.questions,
+      startedAt: now.toISOString(),
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString(),
+      availableAfter: new Date(now.getTime() + REFEREE_EXAM_COOLDOWN_MS).toISOString(),
+    };
+    const row = toExamAttemptRow(payload, context.profileId);
+    const { error } = await context.supabase
+      .from("referee_exam_attempts")
+      .upsert(row, { onConflict: "id" });
+    if (error) throw error;
+    return { ok: true, attemptId, attempt: toClientAttempt(payload) };
   }
 
+  if (existingAttempt?.user_id !== context.profileId) {
+    const error = new Error("exam_attempt_permission_denied");
+    error.statusCode = 403;
+    throw error;
+  }
+  if (["passed", "failed"].includes(existingAttempt?.status) && existingAttempt?.payload?.result) {
+    return { ok: true, attemptId, attempt: toClientAttempt(existingAttempt.payload), result: existingAttempt.payload.result, duplicate: true };
+  }
+
+  const questionIds = Array.isArray(existingAttempt?.payload?.questionIds) ? existingAttempt.payload.questionIds : [];
+  if (questionIds.length !== REFEREE_EXAM_SIZE) {
+    const error = new Error("invalid_exam_question_set");
+    error.statusCode = 400;
+    throw error;
+  }
+  const answers = sanitizeExamAnswers(attempt.answers);
+  const result = gradeRefereeExamByQuestionIds(questionIds, answers);
+  const now = new Date().toISOString();
+  const payload = {
+    ...existingAttempt.payload,
+    id: attemptId,
+    userId: context.profileId,
+    status: result.passed ? "passed" : "failed",
+    answers,
+    result,
+    score: result.score,
+    total: result.total,
+    passed: result.passed,
+    finishedAt: now,
+    updatedAt: now,
+  };
+  const row = toExamAttemptRow(payload, context.profileId);
   const { error } = await context.supabase
     .from("referee_exam_attempts")
     .upsert(row, { onConflict: "id" });
   if (error) throw error;
-  return { ok: true, attemptId: row.id };
+  return { ok: true, attemptId, attempt: toClientAttempt(payload), result };
 }
 
 async function assertPassedAttempt(context, request = {}) {

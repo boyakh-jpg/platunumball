@@ -238,10 +238,12 @@
 
 - `POST /api/referee/sync`를 추가했다.
 - 심판 시험 시작/종료는 `referee_exam_attempts`에 저장한다.
+- 시험 문제 추첨과 채점은 `/api/referee/sync` 서버에서 처리하고, 클라이언트는 공개 문제와 서버 채점 결과만 받는다.
 - 심판 등록요청은 `referee_requests`와 관련 `notifications`에 저장한다.
 - 서버는 `user_id`, `requested_by`를 현재 `profileId`로 강제하고 신뢰도 90점 조건을 다시 확인한다.
 - 시험 시작은 서버에서 `available_after` 쿨다운을 확인한다.
 - 커뮤니티 심판 등록요청은 같은 사용자/시험버전의 passed attempt가 있어야 저장된다.
+- `referee_exam_attempts`, `referee_requests` 브라우저 write grant/policy는 제거하고, self-read만 브라우저에 남긴다.
 - 심판 임명, 등급 부여, 회수는 기존 관리자 임명 server action 영역으로 남긴다.
 
 ## 2026-06-25 favorites sync server action
