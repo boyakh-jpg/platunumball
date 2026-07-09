@@ -3,6 +3,8 @@ import { createPortal } from "react-dom";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   CalendarDays,
+  ChevronDown,
+  ChevronUp,
   ClipboardCheck,
   Clock3,
   Copy,
@@ -118,6 +120,36 @@ function formatWhen(value) {
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours}시간 전`;
   return `${Math.floor(hours / 24)}일 전`;
+}
+
+function getNonNegativeNumber(value) {
+  const numericValue = Number(value ?? 0);
+  return Number.isFinite(numericValue) ? Math.max(0, numericValue) : 0;
+}
+
+function NumericStepper({ value, disabled = false, onChange, label, className = "" }) {
+  const numericValue = getNonNegativeNumber(value);
+  const setNextValue = (nextValue) => onChange(getNonNegativeNumber(nextValue));
+  return (
+    <div className={["numeric-stepper", className].filter(Boolean).join(" ")}>
+      <button type="button" disabled={disabled} onClick={() => setNextValue(numericValue + 1)} aria-label={`${label} 1 증가`} title="1 증가">
+        <ChevronUp size={18} strokeWidth={3} />
+      </button>
+      <input
+        type="number"
+        min="0"
+        inputMode="numeric"
+        pattern="[0-9]*"
+        disabled={disabled}
+        value={numericValue}
+        onChange={(event) => setNextValue(event.target.value)}
+        aria-label={label}
+      />
+      <button type="button" disabled={disabled} onClick={() => setNextValue(numericValue - 1)} aria-label={`${label} 1 감소`} title="1 감소">
+        <ChevronDown size={18} strokeWidth={3} />
+      </button>
+    </div>
+  );
 }
 
 function getDefaultTitle(draft) {
@@ -2267,10 +2299,13 @@ function SourceMatchDisputeEditor({
         ...current.playerStats,
         [playerId]: {
           ...(current.playerStats[playerId] ?? {}),
-          [fieldId]: Math.max(0, Number(value ?? 0)),
+          [fieldId]: getNonNegativeNumber(value),
         },
       },
     }));
+  };
+  const updateSideScore = (scoreKey, value) => {
+    setDraft((current) => ({ ...current, [scoreKey]: getNonNegativeNumber(value) }));
   };
   const getRecordSummaryNames = (sideName) => {
     const names = sideName === "teamA"
@@ -2290,12 +2325,24 @@ function SourceMatchDisputeEditor({
       <div className="arena-dispute-score-row">
         <label>
           {match.teamA?.name ?? "A"}
-          <input type="number" min="0" disabled={!canEditScore("teamA")} value={draft.scoreA} onChange={(event) => setDraft((current) => ({ ...current, scoreA: Number(event.target.value) }))} />
+          <NumericStepper
+            className="arena-score-stepper"
+            label={`${match.teamA?.name ?? "A"} 점수`}
+            disabled={!canEditScore("teamA")}
+            value={draft.scoreA}
+            onChange={(value) => updateSideScore("scoreA", value)}
+          />
         </label>
         <strong>:</strong>
         <label>
           {match.teamB?.name ?? "B"}
-          <input type="number" min="0" disabled={!canEditScore("teamB")} value={draft.scoreB} onChange={(event) => setDraft((current) => ({ ...current, scoreB: Number(event.target.value) }))} />
+          <NumericStepper
+            className="arena-score-stepper"
+            label={`${match.teamB?.name ?? "B"} 점수`}
+            disabled={!canEditScore("teamB")}
+            value={draft.scoreB}
+            onChange={(value) => updateSideScore("scoreB", value)}
+          />
         </label>
       </div>
       <div className="arena-dispute-stat-grid">
@@ -2312,12 +2359,12 @@ function SourceMatchDisputeEditor({
                     {PLAYER_STAT_FIELDS.map((field) => (
                       <label key={field.id}>
                         {field.shortLabel}
-                        <input
-                          type="number"
-                          min="0"
+                        <NumericStepper
+                          className="arena-stat-stepper"
                           disabled={!editableFieldIds.has(field.id)}
+                          label={`${getPlayerName(sideName, playerId, index)} ${field.label}`}
                           value={Number(playerStats[field.id] ?? 0)}
-                          onChange={(event) => updatePlayerStat(playerId, field.id, event.target.value)}
+                          onChange={(value) => updatePlayerStat(playerId, field.id, value)}
                         />
                       </label>
                     ))}

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
-import { CalendarDays, Crown, MapPin, Minus, Plus, RotateCcw, ShieldCheck, Star, ThumbsUp, Trophy, UsersRound, X } from "lucide-react";
+import { CalendarDays, ChevronDown, ChevronUp, Crown, MapPin, RotateCcw, ShieldCheck, Star, ThumbsUp, Trophy, UsersRound, X } from "lucide-react";
 import AgreementPanel from "../components/match/AgreementPanel.jsx";
 import ApprovalPanel from "../components/match/ApprovalPanel.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
@@ -173,6 +173,36 @@ function getCourtReviewDraft(review = {}) {
     locationAccuracy: review.locationAccuracy ?? "",
     memo: review.memo ?? "",
   };
+}
+
+function getNonNegativeNumber(value) {
+  const numericValue = Number(value ?? 0);
+  return Number.isFinite(numericValue) ? Math.max(0, numericValue) : 0;
+}
+
+function NumericStepper({ value, disabled = false, onChange, label, className = "" }) {
+  const numericValue = getNonNegativeNumber(value);
+  const setNextValue = (nextValue) => onChange(getNonNegativeNumber(nextValue));
+  return (
+    <div className={["numeric-stepper", className].filter(Boolean).join(" ")}>
+      <button type="button" disabled={disabled} onClick={() => setNextValue(numericValue + 1)} aria-label={`${label} 1 증가`} title="1 증가">
+        <ChevronUp size={18} strokeWidth={3} />
+      </button>
+      <input
+        type="number"
+        min="0"
+        inputMode="numeric"
+        pattern="[0-9]*"
+        disabled={disabled}
+        value={numericValue}
+        onChange={(event) => setNextValue(event.target.value)}
+        aria-label={label}
+      />
+      <button type="button" disabled={disabled} onClick={() => setNextValue(numericValue - 1)} aria-label={`${label} 1 감소`} title="1 감소">
+        <ChevronDown size={18} strokeWidth={3} />
+      </button>
+    </div>
+  );
 }
 
 function CourtReviewRating({ label, value, onChange, disabled = false }) {
@@ -467,9 +497,8 @@ export default function MatchRoom({ app }) {
       },
     }));
   };
-  const bumpPlayerStat = (playerId, fieldId, delta) => {
-    const currentValue = Number(score.playerStats[playerId]?.[fieldId] ?? 0);
-    updatePlayerStat(playerId, fieldId, currentValue + delta);
+  const updateSideScore = (scoreKey, value) => {
+    setScore((current) => ({ ...current, [scoreKey]: getNonNegativeNumber(value) }));
   };
   const submitResult = (event) => {
     event.preventDefault();
@@ -874,12 +903,24 @@ export default function MatchRoom({ app }) {
             <form className="score-form" onSubmit={submitResult}>
               <label>
                 {teamASide.name}
-                <input type="number" min="0" disabled={!canSubmitResult} value={score.scoreA} onChange={(event) => setScore((current) => ({ ...current, scoreA: event.target.value }))} />
+                <NumericStepper
+                  className="score-numeric-stepper"
+                  label={`${teamASide.name} 점수`}
+                  disabled={!canSubmitResult}
+                  value={score.scoreA}
+                  onChange={(value) => updateSideScore("scoreA", value)}
+                />
               </label>
               <span>:</span>
               <label>
                 {teamBSide.name}
-                <input type="number" min="0" disabled={!canSubmitResult} value={score.scoreB} onChange={(event) => setScore((current) => ({ ...current, scoreB: event.target.value }))} />
+                <NumericStepper
+                  className="score-numeric-stepper"
+                  label={`${teamBSide.name} 점수`}
+                  disabled={!canSubmitResult}
+                  value={score.scoreB}
+                  onChange={(value) => updateSideScore("scoreB", value)}
+                />
               </label>
               <div className="match-action-row stat-entry-actions">
                 <Button type="button" variant="secondary" disabled={matchDetailRefreshing} onClick={refreshMatchDetail}>
@@ -1189,15 +1230,13 @@ export default function MatchRoom({ app }) {
                     <strong>{field.label}</strong>
                     <span>{field.shortLabel}</span>
                   </div>
-                  <button type="button" disabled={!canEditPlayerStat(statEditorPlayerId)} onClick={() => bumpPlayerStat(statEditorPlayerId, field.id, -1)}><Minus size={16} /></button>
-                  <input
-                    type="number"
-                    min="0"
+                  <NumericStepper
+                    className="stat-numeric-stepper"
                     disabled={!canEditPlayerStat(statEditorPlayerId)}
+                    label={field.label}
                     value={score.playerStats[statEditorPlayerId]?.[field.id] ?? 0}
-                    onChange={(event) => updatePlayerStat(statEditorPlayerId, field.id, event.target.value)}
+                    onChange={(value) => updatePlayerStat(statEditorPlayerId, field.id, value)}
                   />
-                  <button type="button" disabled={!canEditPlayerStat(statEditorPlayerId)} onClick={() => bumpPlayerStat(statEditorPlayerId, field.id, 1)}><Plus size={16} /></button>
                 </div>
               ))}
             </div>

@@ -3060,6 +3060,69 @@ input[type="color"] {
   font-weight: 900;
 }
 
+.score-form label {
+  display: grid;
+  gap: 8px;
+}
+
+.numeric-stepper {
+  display: grid;
+  grid-template-rows: 38px minmax(48px, auto) 38px;
+  gap: 5px;
+  min-width: 0;
+}
+
+.numeric-stepper button {
+  display: grid;
+  min-height: 38px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.numeric-stepper button:hover:not(:disabled),
+.numeric-stepper button:focus-visible:not(:disabled) {
+  border-color: color-mix(in srgb, var(--rb-orange) 44%, var(--line));
+  color: var(--rb-orange);
+}
+
+.numeric-stepper button:disabled {
+  cursor: not-allowed;
+  opacity: 0.36;
+}
+
+.numeric-stepper input {
+  width: 100%;
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.numeric-stepper input::-webkit-outer-spin-button,
+.numeric-stepper input::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
+.numeric-stepper input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.score-numeric-stepper {
+  grid-template-rows: 40px minmax(74px, auto) 40px;
+}
+
+.score-numeric-stepper button {
+  min-height: 40px;
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--rb-orange);
+}
+
 .approval-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -7021,6 +7084,56 @@ html[data-theme="light"] .search-picker-result-row.selected {
   padding: 8px;
 }
 
+.arena-dispute-score-row .numeric-stepper,
+.arena-dispute-player .numeric-stepper {
+  gap: 4px;
+}
+
+.arena-score-stepper {
+  grid-template-rows: 34px 52px 34px;
+}
+
+.arena-score-stepper button {
+  min-height: 34px;
+  color: var(--rb-orange);
+}
+
+.arena-score-stepper input {
+  min-height: 52px;
+  text-align: center;
+}
+
+.arena-stat-stepper {
+  grid-template-areas: "down value up";
+  grid-template-columns: 30px minmax(34px, 1fr) 30px;
+  grid-template-rows: 38px;
+}
+
+.arena-stat-stepper button {
+  min-height: 38px;
+  border-radius: 6px;
+}
+
+.arena-stat-stepper button:first-of-type {
+  grid-area: up;
+}
+
+.arena-stat-stepper button:last-of-type {
+  grid-area: down;
+}
+
+.arena-stat-stepper button svg {
+  width: 14px;
+  height: 14px;
+}
+
+.arena-stat-stepper input {
+  grid-area: value;
+  min-height: 38px;
+  padding: 6px 4px;
+  text-align: center;
+}
+
 .arena-dispute-player > span {
   color: var(--text);
   font-size: 0.82rem;
@@ -7036,6 +7149,19 @@ html[data-theme="light"] .search-picker-result-row.selected {
 @media (max-width: 640px) {
   .arena-dispute-stat-grid {
     grid-template-columns: 1fr;
+  }
+
+  .arena-stat-stepper {
+    grid-template-columns: 32px minmax(36px, 1fr) 32px;
+    grid-template-rows: 42px;
+  }
+
+  .arena-stat-stepper button {
+    min-height: 42px;
+  }
+
+  .arena-stat-stepper input {
+    min-height: 42px;
   }
 }
 
@@ -7560,9 +7686,9 @@ html[data-theme="light"] .search-picker-result-row.selected {
 
 .stat-stepper-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 42px 68px 42px;
+  grid-template-columns: minmax(0, 1fr) 138px;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.045);
@@ -7580,19 +7706,29 @@ html[data-theme="light"] .search-picker-result-row.selected {
   font-weight: 900;
 }
 
-.stat-stepper-row button {
-  display: grid;
-  height: 42px;
-  place-items: center;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.07);
-  color: var(--text);
-  cursor: pointer;
+.stat-stepper-row .stat-numeric-stepper {
+  grid-template-areas: "down value up";
+  grid-template-columns: 40px 50px 40px;
+  grid-template-rows: 44px;
+  width: 138px;
 }
 
-.stat-stepper-row input {
-  min-height: 42px;
+.stat-stepper-row .stat-numeric-stepper button {
+  min-height: 44px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.stat-stepper-row .stat-numeric-stepper button:first-of-type {
+  grid-area: up;
+}
+
+.stat-stepper-row .stat-numeric-stepper button:last-of-type {
+  grid-area: down;
+}
+
+.stat-stepper-row .stat-numeric-stepper input {
+  grid-area: value;
+  min-height: 44px;
   padding-inline: 6px;
   text-align: center;
 }
@@ -8733,9 +8869,23 @@ html[data-theme="light"] .team-search-popover button.selected {
   }
 
   .stat-stepper-row {
-    grid-template-columns: minmax(0, 1fr) 38px 58px 38px;
+    grid-template-columns: minmax(0, 1fr) 120px;
     gap: 6px;
     padding: 8px;
+  }
+
+  .stat-stepper-row .stat-numeric-stepper {
+    grid-template-columns: 36px 42px 36px;
+    grid-template-rows: 42px;
+    width: 120px;
+  }
+
+  .stat-stepper-row .stat-numeric-stepper button {
+    min-height: 42px;
+  }
+
+  .stat-stepper-row .stat-numeric-stepper input {
+    min-height: 42px;
   }
 }
 
