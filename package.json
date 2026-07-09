@@ -11,6 +11,8 @@
     "seed:supabase:cleanup": "node scripts/cleanup-supabase-seed.mjs",
     "seed:supabase:auth-bulk": "node scripts/seed-supabase-auth-bulk.mjs",
     "seed:supabase:auth-bulk:cleanup": "node scripts/seed-supabase-auth-bulk.mjs --cleanup",
+    "discord:room-chat-bridge": "node scripts/discord-room-chat-bridge.mjs",
+    "discord:link-room": "node scripts/link-discord-room.mjs",
     "simulate:backend": "node scripts/simulate-backend-flow.mjs",
     "preview": "vite preview --host 127.0.0.1"
   },

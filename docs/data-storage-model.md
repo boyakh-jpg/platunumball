@@ -48,7 +48,7 @@
 - OAuth 승인 직후 원격 state가 늦게 hydrate되더라도 로컬에 이미 붙은 `discordConnection`은 원격 저장 전까지 보존한다. 단, 원격 state에 같은 Discord ID가 다른 프로필에 이미 연결돼 있으면 보존하지 않는다.
 - Bot DM 발송은 브라우저 localStorage 큐를 직접 신뢰하지 않는다. 배포용으로는 서버가 DB의 미발송 `discordNotificationDeliveries`를 읽고 성공/실패 상태를 커밋해야 한다.
 - 홈의 해야 할 일은 별도 로직을 중복하지 말고 `notifications` 중 `actionRequired` 성격의 항목을 요약하는 방향으로 통합한다.
-- 방 채팅과 Discord 채팅 양방향 연동은 `room_discord_links` 매핑과 `room_chat_messages.external_message_id` 중복 방지 키를 사용한다. 웹 채팅은 서버가 Discord REST로 전송하고, Discord 채팅은 인증된 bridge가 `/api/discord/room-chat`으로 넣는다. Discord Gateway 이벤트를 수신하는 별도 Bot/bridge 배포는 운영 설정으로 남긴다.
+- 방 채팅과 Discord 채팅 양방향 연동은 `room_discord_links` 매핑과 `room_chat_messages.external_message_id` 중복 방지 키를 사용한다. 웹 채팅은 서버가 Discord REST로 전송하고, Discord 채팅은 `scripts/discord-room-chat-bridge.mjs`가 Gateway 이벤트를 받아 인증된 `/api/discord/room-chat` bridge로 넣는다.
 
 - 심판 시험 문제 추첨, 채점, 주 1회 응시 제한은 서버 함수/DB 정책으로 이동. 클라이언트 번들에는 정답 bank를 두지 않는다.
 
@@ -345,7 +345,7 @@ Partial:
 - `mockData.js` and generated demo flow remain for non-Supabase local dev and seed generation, not production source of truth.
 - Admin UI calls server actions, but local UI state is still updated first and should be reloaded from server result before production.
 - Env owner support uses `POST /api/admin/context` to expose only the current user's admin level to the client.
-- Discord OAuth/profile badge/DM queue, invite button interactions, and room chat bridge paths exist. Discord Gateway bot deployment and room-channel link provisioning remain operational setup.
+- Discord OAuth/profile badge/DM queue, invite button interactions, room chat bridge path, Gateway bridge script, and room-channel link provisioning script exist. Real deployment still needs Bot token, bridge secret, channel/thread links, and a long-running bridge process.
 - Court reviews exist, `court` / `court_review` reports submit through `/api/reports/submit`, and admin review actions can soft-hide approved courts and court reviews.
 
 Remaining:
