@@ -1453,7 +1453,7 @@ flowchart TD
 3. 알림, 신고, 구장요청, 관리자 처리, Discord 발송 큐는 전용 server action 또는 worker가 저장한다.
 4. `mockData` / `localStorage`는 Supabase 환경의 앱 데이터 원천으로 쓰지 않는다.
 5. 경기방/매칭방 전용 server action은 `operation` payload가 있으면 DB 현재 상태를 로드하고 중앙 reducer를 서버에서 다시 실행한 결과를 저장한다.
-6. 아직 모든 방/경기 계산이 DB row-level authoritative RPC는 아니다. 개별 action reducer SQL 이전과 토너먼트 후속 라운드 검증은 남은 작업이다.
+6. 아직 모든 방/경기 계산이 DB row-level authoritative RPC는 아니다. 개별 action reducer SQL 이전은 남은 작업이다. 토너먼트 후속 라운드는 backend full simulation에서 검증한다.
 
 ## 2026-06-26 dedicated server action write
 
@@ -1521,6 +1521,7 @@ flowchart TD
 8. `sync-match`는 후속 라운드가 생성되면 서버가 실제 저장한 tournament snapshot과 새 match snapshot을 `state.tournaments`/`state.matches`로 응답한다.
 9. 클라이언트는 같은 `tournamentId + tournamentRound + tournamentFixture`를 가진 optimistic 경기와 서버 경기를 같은 경기로 보고 서버 경기 id를 남긴다.
 10. 토너먼트 생성/팀 승인/대진 1차 생성과 후속 라운드 생성은 서버 reducer 재실행 경로가 원본이다. tournament snapshot 저장은 `rankball_persist_tournament_snapshot_locked()`의 per-tournament advisory transaction lock을 거친다. 완전한 DB RPC reducer 이전은 아직 남아 있다.
+11. `npm run simulate:backend -- --full`의 `tournament_followup_round`는 4팀 토너먼트 생성, 팀장 승인, 1라운드 2경기 확정, 2라운드 1경기 생성, DB `match_ids` 반영을 검증한다.
 
 ## 2026-06-25 referee request server action
 

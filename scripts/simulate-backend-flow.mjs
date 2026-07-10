@@ -7,6 +7,7 @@ import recruitingListHandler from "../server/api/recruiting/list.js";
 import discordRoomChatHandler from "../server/api/discord/room-chat.js";
 import syncMatchHandler, { queueMatchDiscordDeliveries } from "../server/api/matches/sync-match.js";
 import matchDetailHandler from "../server/api/matches/detail.js";
+import syncTournamentHandler from "../server/api/tournaments/sync-tournament.js";
 import refereeSyncHandler from "../server/api/referee/sync.js";
 import teamsListHandler from "../server/api/teams/list.js";
 import maintenanceHandler from "../server/api/system/maintenance.js";
@@ -100,6 +101,8 @@ function makeScenarioIds(label) {
     label: safeLabel,
     postId: `sim_q_${safeLabel}_${suffix}`,
     matchId: `sim_m_${safeLabel}_${suffix}`,
+    matchIds: [],
+    tournamentId: `sim_trn_${safeLabel}_${suffix}`,
   };
   scenarioIds.push(nextIds);
   return nextIds;
@@ -134,6 +137,7 @@ async function step(label, action) {
 }
 
 const authTokensByLogin = new Map();
+const testLoginsByProfileId = new Map();
 
 // RANKBALL_AUTH_CLEANUP: remove old test-token env docs after all simulations use Auth users.
 function getTestAuthEmail(testLoginId = "") {
@@ -325,10 +329,41 @@ function getSeededProfileId(testLoginId = "") {
   return Number.isFinite(number) && number > 0 ? `u${number}` : "";
 }
 
+function getSeededLoginForProfileId(profileId = "") {
+  const match = String(profileId || "").toLowerCase().match(/^u(\d+)$/);
+  if (!match) return "";
+  const number = Number(match[1]);
+  return Number.isFinite(number) && number > 0 ? `rankball-${String(number).padStart(3, "0")}` : "";
+}
+
+async function getTestLoginForProfileId(profileId = "") {
+  const safeProfileId = String(profileId || "").trim();
+  if (!safeProfileId) return "";
+  if (testLoginsByProfileId.has(safeProfileId)) return testLoginsByProfileId.get(safeProfileId);
+  const seededLogin = getSeededLoginForProfileId(safeProfileId);
+  if (seededLogin) {
+    testLoginsByProfileId.set(safeProfileId, seededLogin);
+    return seededLogin;
+  }
+  if (!supabase) return "";
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id,test_login_id")
+    .eq("id", safeProfileId)
+    .maybeSingle();
+  if (error) throw error;
+  const login = String(data?.test_login_id || "").trim().toLowerCase();
+  if (login) testLoginsByProfileId.set(safeProfileId, login);
+  return login;
+}
+
 async function getProfileIdForLogin(testLoginId) {
   const seededProfileId = getSeededProfileId(testLoginId);
+  const normalizedLoginId = String(testLoginId || "").trim().toLowerCase();
   const state = await loadStateAs(testLoginId);
-  return getProfileId(state, testLoginId) || seededProfileId;
+  const profileId = getProfileId(state, testLoginId) || seededProfileId;
+  if (profileId && normalizedLoginId) testLoginsByProfileId.set(profileId, normalizedLoginId);
+  return profileId;
 }
 
 async function setTemporaryProfileDiscordUser(profileId = "", discordUserId = "", username = "rankball-sim") {
@@ -513,6 +548,10 @@ async function syncRecruitingAs(testLoginId, operation) {
 
 async function syncMatchAs(testLoginId, operation, extra = {}) {
   return callHandler("/api/matches/sync-match", syncMatchHandler, await getAuthToken(testLoginId), { operation, ...extra });
+}
+
+async function syncTournamentAs(testLoginId, operation) {
+  return callHandler("/api/tournaments/sync-tournament", syncTournamentHandler, await getAuthToken(testLoginId), { operation });
 }
 
 async function syncRefereeAs(testLoginId, body = {}) {
@@ -927,8 +966,11 @@ async function cleanup() {
 
   const closedAt = new Date().toISOString();
   const closures = scenarioIds.flatMap((scenario) => [
-    ["matches", "id", scenario.matchId],
+    ...uniqueIds([scenario.matchId, ...(scenario.matchIds ?? [])])
+      .filter(Boolean)
+      .map((matchId) => ["matches", "id", matchId]),
     ["recruiting_posts", "id", scenario.postId],
+    ["tournaments", "id", scenario.tournamentId],
   ]);
 
   const errors = [];
@@ -2741,6 +2783,289 @@ async function runSoloRecordScenario({
   };
 }
 
+function getTeamCaptainId(team = {}) {
+  return (team.members ?? []).find((member) => member.role === "captain")?.userId
+    || team.members?.[0]?.userId
+    || "";
+}
+
+async function resolveTournamentTeamFixtures(login, preferredTeamIds = []) {
+  if (supabase) {
+    let { data: teamRows, error: teamError } = await supabase
+      .from("teams")
+      .select("id,name,home_court,region,mmr,wins,losses,accent,created_at,updated_at")
+      .in("id", preferredTeamIds)
+      .is("deleted_at", null);
+    if (teamError) throw teamError;
+    if ((teamRows ?? []).length < preferredTeamIds.length) {
+      const fallback = await supabase
+        .from("teams")
+        .select("id,name,home_court,region,mmr,wins,losses,accent,created_at,updated_at")
+        .is("deleted_at", null)
+        .order("id", { ascending: true })
+        .limit(12);
+      if (fallback.error) throw fallback.error;
+      const byId = new Map([...(teamRows ?? []), ...(fallback.data ?? [])].map((team) => [team.id, team]));
+      teamRows = [...byId.values()].slice(0, Math.max(4, preferredTeamIds.length));
+    }
+    const teamIds = (teamRows ?? []).map((team) => team.id).filter(Boolean);
+    const { data: memberRows, error: memberError } = teamIds.length
+      ? await supabase
+          .from("team_members")
+          .select("team_id,user_id,role")
+          .in("team_id", teamIds)
+      : { data: [], error: null };
+    if (memberError) throw memberError;
+    const profileIds = uniqueIds((memberRows ?? []).map((member) => member.user_id));
+    const { data: profileRows, error: profileError } = profileIds.length
+      ? await supabase
+          .from("profiles")
+          .select("id,test_login_id")
+          .in("id", profileIds)
+      : { data: [], error: null };
+    if (profileError) throw profileError;
+    for (const profile of profileRows ?? []) {
+      if (profile.id && profile.test_login_id) testLoginsByProfileId.set(profile.id, String(profile.test_login_id).toLowerCase());
+    }
+    const membersByTeam = new Map();
+    for (const member of memberRows ?? []) {
+      const rows = membersByTeam.get(member.team_id) ?? [];
+      rows.push({ userId: member.user_id, role: member.role ?? "regular" });
+      membersByTeam.set(member.team_id, rows);
+    }
+    const fixtures = (teamRows ?? [])
+      .map((team) => ({
+        team: {
+          id: team.id,
+          name: team.name,
+          members: [...(membersByTeam.get(team.id) ?? [])]
+            .sort((a, b) => String(a.role).localeCompare(String(b.role)) || String(a.userId).localeCompare(String(b.userId))),
+        },
+      }))
+      .map((fixture) => {
+        const captainId = getTeamCaptainId(fixture.team);
+        const captainLogin = captainId ? testLoginsByProfileId.get(captainId) || getSeededLoginForProfileId(captainId) : "";
+        return { ...fixture, captainId, captainLogin };
+      })
+      .filter((fixture) => fixture.team.members.length && fixture.captainId && fixture.captainLogin)
+      .slice(0, 4);
+    assertFlow(fixtures.length >= 4, "tournament DB fixture teams missing", {
+      preferredTeamIds,
+      foundTeamIds: (teamRows ?? []).map((team) => team.id),
+      fixtureTeamIds: fixtures.map((fixture) => fixture.team.id),
+    });
+    assertFlow(new Set(fixtures.map((item) => item.captainId)).size === fixtures.length, "tournament captains must be unique", fixtures);
+    return fixtures;
+  }
+
+  const state = await loadTeamsAs(login);
+  const teamsById = new Map((state.teams ?? []).map((team) => [team.id, team]));
+  const teams = preferredTeamIds.map((teamId) => teamsById.get(teamId)).filter(Boolean);
+  assertFlow(teams.length === preferredTeamIds.length, "tournament fixture teams missing", {
+    preferredTeamIds,
+    foundTeamIds: teams.map((team) => team.id),
+  });
+  const fixtures = teams.map((team) => {
+    const captainId = getTeamCaptainId(team);
+    const captainLogin = getSeededLoginForProfileId(captainId);
+    assertFlow(Boolean(captainId && captainLogin), "tournament team captain login missing", {
+      teamId: team.id,
+      captainId,
+    });
+    return { team, captainId, captainLogin };
+  });
+  assertFlow(new Set(fixtures.map((item) => item.captainId)).size === fixtures.length, "tournament captains must be unique", fixtures);
+  return fixtures;
+}
+
+async function loadTournamentRow(tournamentId = "") {
+  if (!supabase) return { skipped: true, reason: "service_role_key_missing" };
+  const { data, error } = await supabase
+    .from("tournaments")
+    .select("id,status,match_ids,bracket")
+    .eq("id", tournamentId)
+    .maybeSingle();
+  if (error) throw error;
+  return data ?? null;
+}
+
+async function playTournamentMatchToConfirmed({ label, matchId, operatorLogin }) {
+  let match = await step(`${label}:loadMatch`, () => loadMatchAs(operatorLogin, matchId));
+  const teamAPlayerId = match.teamA?.players?.[0] ?? "";
+  const teamBPlayerId = match.teamB?.players?.[0] ?? "";
+  const teamALogin = await getTestLoginForProfileId(teamAPlayerId);
+  const teamBLogin = await getTestLoginForProfileId(teamBPlayerId);
+  const operatorId = await getProfileIdForLogin(operatorLogin);
+  assertFlow(Boolean(teamAPlayerId && teamBPlayerId && teamALogin && teamBLogin), "tournament match player login missing", {
+    matchId,
+    teamAPlayerId,
+    teamBPlayerId,
+  });
+
+  const endedMatch = withEndedMatch(withStartedMatch(match, teamAPlayerId));
+  const submittedAt = new Date().toISOString();
+  const result = {
+    ...makeResult(endedMatch),
+    statSubmissions: {
+      [teamAPlayerId]: { by: operatorId, side: "teamA", source: "host_postgame", submittedAt },
+      [teamBPlayerId]: { by: operatorId, side: "teamB", source: "host_postgame", submittedAt },
+    },
+    submittedBy: operatorId,
+    submittedAt,
+    updatedAt: submittedAt,
+  };
+  const resultDraft = {
+    ...endedMatch,
+    status: "approval",
+    teamA: { ...endedMatch.teamA, score: result.scoreA },
+    teamB: { ...endedMatch.teamB, score: result.scoreB },
+    approvals: { teamA: [], teamB: [] },
+    result,
+  };
+
+  const resultSubmit = await step(`${label}:submitMatchResult`, () => syncMatchAs(operatorLogin, {
+    action: "submitMatchResult",
+    matchId,
+    result,
+  }, { match: resultDraft }));
+  match = resultSubmit?.match;
+  assertFlow(match?.status === "approval" && match?.result, "tournament match result not persisted", match);
+
+  const approveAResult = await step(`${label}:approveMatch:teamA`, () => syncMatchAs(teamALogin, {
+    action: "approveMatch",
+    matchId,
+    sideName: "teamA",
+    playerId: teamAPlayerId,
+  }));
+  match = approveAResult?.match;
+  assertFlow(match?.approvals?.teamA?.includes(teamAPlayerId), "tournament teamA approval not persisted", match);
+
+  const approveBResult = await step(`${label}:approveMatch:teamB`, () => syncMatchAs(teamBLogin, {
+    action: "approveMatch",
+    matchId,
+    sideName: "teamB",
+    playerId: teamBPlayerId,
+  }));
+  match = approveBResult?.match;
+  assertFlow(match?.status === "confirmed", "tournament match not confirmed", match);
+
+  return { match, result: approveBResult, teamAPlayerId, teamBPlayerId };
+}
+
+async function runTournamentFollowupRoundScenario({
+  label,
+  creatorLogin,
+  teamIds = ["team-rb-01", "team-rb-02", "team-rb-03", "team-rb-04"],
+}) {
+  ids = makeScenarioIds(label);
+  const fixtures = await step(`${ids.label}:resolveTournamentTeams`, () => resolveTournamentTeamFixtures(creatorLogin, teamIds));
+  const effectiveCreatorLogin = fixtures[0]?.captainLogin || creatorLogin;
+  const selectedTeamIds = fixtures.map((fixture) => fixture.team.id);
+  const creatorId = await step(`${ids.label}:resolveProfile:creator`, () => getProfileIdForLogin(effectiveCreatorLogin));
+  assertFlow(fixtures[0]?.captainId === creatorId, "tournament creator must captain first team", {
+    creatorId,
+    firstTeamCaptainId: fixtures[0]?.captainId,
+    selectedTeamIds,
+  });
+
+  const firstRoundMatchIds = [`${ids.matchId}_r1_1`, `${ids.matchId}_r1_2`];
+  ids.matchIds = firstRoundMatchIds;
+  const startDate = getKstFutureSchedule(72).scheduledDate;
+  const createResult = await step(`${ids.label}:createTournament`, () => syncTournamentAs(effectiveCreatorLogin, {
+    action: "createTournament",
+    preferredTournamentId: ids.tournamentId,
+    preferredMatchIds: firstRoundMatchIds,
+    draft: {
+      id: ids.tournamentId,
+      title: `Backend simulation ${ids.label}`,
+      tournamentFormat: "tournament",
+      teamIds: selectedTeamIds,
+      mode: "1v1",
+      ranked: false,
+      official: false,
+      scheduledDate: startDate,
+      tournamentEndDate: startDate,
+      courtId: "c1",
+      court: "Backend Simulation Court",
+      region: "Backend Simulation",
+      mmrLimitMode: "warn",
+      targetScore: 21,
+      timeLimit: 12,
+      winByTwo: true,
+      memo: "Backend simulation tournament row. Safe to close.",
+    },
+  }));
+  assertFlow(createResult?.ok && createResult?.tournamentId === ids.tournamentId, "tournament create failed", createResult);
+  assertFlow(Number(createResult?.createdMatchCount ?? 0) === 0, "tournament should wait for invited teams", createResult);
+
+  let finalApproveResult = null;
+  for (const fixture of fixtures.slice(1)) {
+    finalApproveResult = await step(`${ids.label}:approveTournamentTeam:${fixture.team.id}`, () => syncTournamentAs(fixture.captainLogin, {
+      action: "approveTournamentTeam",
+      tournamentId: ids.tournamentId,
+      teamId: fixture.team.id,
+      preferredMatchIds: firstRoundMatchIds,
+    }));
+  }
+  assertFlow(Number(finalApproveResult?.createdMatchCount ?? 0) === firstRoundMatchIds.length, "tournament first round was not generated", finalApproveResult);
+
+  const firstRoundMatches = [];
+  for (const matchId of firstRoundMatchIds) {
+    const match = await step(`${ids.label}:loadFirstRound:${matchId}`, () => loadMatchAs(effectiveCreatorLogin, matchId));
+    assertFlow(match?.tournamentId === ids.tournamentId && Number(match?.tournamentRound) === 1, "first round match metadata mismatch", match);
+    firstRoundMatches.push(match);
+  }
+
+  const firstConfirmed = await playTournamentMatchToConfirmed({
+    label: `${ids.label}:round1fixture1`,
+    matchId: firstRoundMatches[0].id,
+    operatorLogin: effectiveCreatorLogin,
+  });
+  assertFlow(Number(firstConfirmed.result?.createdTournamentMatchCount ?? 0) === 0, "follow-up should wait for both source winners", firstConfirmed.result);
+
+  const secondConfirmed = await playTournamentMatchToConfirmed({
+    label: `${ids.label}:round1fixture2`,
+    matchId: firstRoundMatches[1].id,
+    operatorLogin: effectiveCreatorLogin,
+  });
+  assertFlow(Number(secondConfirmed.result?.createdTournamentMatchCount ?? 0) === 1, "follow-up match not generated after both source winners", secondConfirmed.result);
+
+  const finalMatch = (secondConfirmed.result?.state?.matches ?? []).find((match) => (
+    match.tournamentId === ids.tournamentId &&
+    Number(match.tournamentRound) === 2 &&
+    Number(match.tournamentFixture) === 1
+  ));
+  assertFlow(Boolean(finalMatch?.id), "follow-up final match missing from response state", secondConfirmed.result?.state);
+  ids.matchIds = uniqueIds([...ids.matchIds, finalMatch.id]);
+
+  const persistedFinal = await step(`${ids.label}:loadFollowupFinal`, () => loadMatchAs(effectiveCreatorLogin, finalMatch.id));
+  assertFlow(
+    persistedFinal?.tournamentId === ids.tournamentId &&
+      Number(persistedFinal?.tournamentRound) === 2 &&
+      Number(persistedFinal?.tournamentFixture) === 1,
+    "persisted follow-up final metadata mismatch",
+    persistedFinal,
+  );
+
+  const responseTournament = secondConfirmed.result?.state?.tournaments?.find((tournament) => tournament.id === ids.tournamentId);
+  assertFlow(responseTournament?.matchIds?.includes(finalMatch.id), "response tournament missing follow-up match id", responseTournament);
+  const dbTournament = await step(`${ids.label}:loadTournamentRow`, () => loadTournamentRow(ids.tournamentId));
+  if (dbTournament && !dbTournament.skipped) {
+    assertFlow((dbTournament.match_ids ?? []).includes(finalMatch.id), "DB tournament missing follow-up match id", dbTournament);
+  }
+
+  return {
+    label: ids.label,
+    creatorLogin: effectiveCreatorLogin,
+    tournamentId: ids.tournamentId,
+    teamIds: selectedTeamIds,
+    firstRoundMatchIds,
+    followupMatchId: finalMatch.id,
+    tournamentSynced: Boolean(secondConfirmed.result?.tournamentSynced),
+    createdTournamentMatchCount: Number(secondConfirmed.result?.createdTournamentMatchCount ?? 0),
+  };
+}
+
 async function main() {
   const schemaHealth = await assertRemoteSchemaHealth();
   const basicHostLogin = process.env.RANKBALL_SIM_HOST || "rankball-010";
@@ -2755,6 +3080,7 @@ async function main() {
   const recorderHandoffTeamBActiveLogin = process.env.RANKBALL_SIM_RECORDER_HANDOFF_TEAM_B_ACTIVE || "rankball-036";
   const discordChatHostLogin = process.env.RANKBALL_SIM_DISCORD_CHAT_HOST || "rankball-033";
   const refereeExamLogin = process.env.RANKBALL_SIM_REFEREE_EXAM_LOGIN || "rankball-034";
+  const tournamentCreatorLogin = process.env.RANKBALL_SIM_TOURNAMENT_CREATOR || "rankball-001";
   const teamBlockedHostLogin = process.env.RANKBALL_SIM_SOLO_BLOCK_HOST || "rankball-014";
   const teamBlockedLogin = process.env.RANKBALL_SIM_SOLO_BLOCK_TEAM_LOGIN || "rankball-001";
   const teamBlockedTeamId = process.env.RANKBALL_SIM_SOLO_BLOCK_TEAM_ID || "t1";
@@ -2822,6 +3148,10 @@ async function main() {
     scenarios.push(await runRefereeExamServerScenario({
       label: "referee_exam_server",
       login: refereeExamLogin,
+    }));
+    scenarios.push(await runTournamentFollowupRoundScenario({
+      label: "tournament_followup_round",
+      creatorLogin: tournamentCreatorLogin,
     }));
     scenarios.push(await runSoloRoomTeamBlockedScenario({
       label: "solo_1v1_team_join_blocked",
