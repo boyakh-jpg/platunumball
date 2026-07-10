@@ -12,6 +12,7 @@ import courtSubmitReview from "../server/api/courts/submit-review.js";
 import directoryLoad from "../server/api/directory/load.js";
 import discordDmWorker from "../server/api/discord/dm-worker.js";
 import discordInteractions from "../server/api/discord/interactions.js";
+import discordRoomChat from "../server/api/discord/room-chat.js";
 import discordSyncDeliveries from "../server/api/discord/sync-deliveries.js";
 import favoriteSync from "../server/api/favorites/sync.js";
 import homeLoad from "../server/api/home/load.js";
@@ -51,6 +52,7 @@ const ROUTES = new Map([
   ["/directory/load", directoryLoad],
   ["/discord/dm-worker", discordDmWorker],
   ["/discord/interactions", discordInteractions],
+  ["/discord/room-chat", discordRoomChat],
   ["/discord/sync-deliveries", discordSyncDeliveries],
   ["/favorites/sync", favoriteSync],
   ["/home/load", homeLoad],
