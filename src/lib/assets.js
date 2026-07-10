@@ -16,9 +16,37 @@ export function assetUrl(path = "") {
   return baseUrl ? `${baseUrl}${normalizedPath}` : normalizedPath;
 }
 
-export const BOXTIER_LOGO_URL = assetUrl("/assets/boxtier_logo.png");
-export const BOXTIER_LETTER_DARK_URL = assetUrl("/assets/boxtier_letter_dark.png");
-export const BOXTIER_LETTER_LIGHT_URL = assetUrl("/assets/boxtier_letter_light.png");
+const BOXTIER_LOGO_FALLBACK_SVG = `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <rect x="8" y="8" width="112" height="112" rx="26" fill="#f2e7d8"/>
+  <circle cx="64" cy="64" r="38" fill="#fb7a21"/>
+  <path d="M31 64h66M64 26c13 13 20 26 20 38s-7 25-20 38M64 26c-13 13-20 26-20 38s7 25 20 38" fill="none" stroke="#24130d" stroke-width="6" stroke-linecap="round"/>
+  <text x="64" y="76" text-anchor="middle" font-family="Arial, sans-serif" font-size="38" font-weight="900" fill="#24130d">B</text>
+</svg>`;
+
+const BOXTIER_LETTER_DARK_FALLBACK_SVG = `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 96">
+  <text x="4" y="68" font-family="Arial, sans-serif" font-size="70" font-weight="900" letter-spacing="0" fill="#f2e7d8">box</text>
+  <text x="136" y="68" font-family="Arial, sans-serif" font-size="70" font-weight="900" letter-spacing="0" fill="#fb7a21">tier</text>
+</svg>`;
+
+const BOXTIER_LETTER_LIGHT_FALLBACK_SVG = `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 96">
+  <text x="4" y="68" font-family="Arial, sans-serif" font-size="70" font-weight="900" letter-spacing="0" fill="#19140f">box</text>
+  <text x="136" y="68" font-family="Arial, sans-serif" font-size="70" font-weight="900" letter-spacing="0" fill="#d95108">tier</text>
+</svg>`;
+
+function svgDataUrl(svg) {
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg.trim())}`;
+}
+
+function brandAssetUrl(path, fallbackSvg) {
+  return getAssetBaseUrl() ? assetUrl(path) : svgDataUrl(fallbackSvg);
+}
+
+export const BOXTIER_LOGO_URL = brandAssetUrl("/assets/boxtier_logo.png", BOXTIER_LOGO_FALLBACK_SVG);
+export const BOXTIER_LETTER_DARK_URL = brandAssetUrl("/assets/boxtier_letter_dark.png", BOXTIER_LETTER_DARK_FALLBACK_SVG);
+export const BOXTIER_LETTER_LIGHT_URL = brandAssetUrl("/assets/boxtier_letter_light.png", BOXTIER_LETTER_LIGHT_FALLBACK_SVG);
 
 function cssUrl(path) {
   return `url("${assetUrl(path).replace(/"/g, '\\"')}")`;

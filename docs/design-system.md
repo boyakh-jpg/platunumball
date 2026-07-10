@@ -267,6 +267,7 @@ RankBall 다크 모드는 이 팔레트를 기본 CSS 색상 표준으로 쓴다
 3. Light/dark brand switching swaps only the letter image. Button, card, slot, and hero layout rules stay unchanged.
 4. Dark mode brand logo frame uses the dark letter art's warm neutral color so the emblem stays visually paired with the wordmark. Light mode keeps the frame background transparent.
 5. Brand logo and letter spacing stays tight. Sidebar/auth/landing letter art may be enlarged, but must shrink inside the available brand row instead of overflowing. Logo frame radius follows the logo art closely so the emblem is not clipped.
+6. If `VITE_ASSET_BASE_URL` is not configured, local/preview builds may use the inline `boxtier` fallback lockup. This fallback still must not show the old `RankBall` text lockup.
 
 이 문서는 UI/CSS/반응형/라이트/다크 수정 기준이다.
 디자인 변경 시 이 문서를 같이 갱신한다.
