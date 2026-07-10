@@ -357,18 +357,10 @@ async function cancelPendingMatchNotificationPrefixes(supabase, matchId, prefixe
 export async function queueMatchDiscordDeliveries(supabase, match = {}, action = "sync") {
   const participantIds = Array.from(getParticipantIds(match));
   const managerIds = getRoomManagerIds(match);
-  const profiles = await getDiscordProfiles(supabase, participantIds);
-  const managerProfiles = await getDiscordProfiles(supabase, managerIds);
-  if (!participantIds.length && !managerIds.length) return 0;
-
   const nowMs = Date.now();
   const scheduledAt = parseMatchScheduleDate(match.scheduledAt);
   const rows = [];
   const notificationRows = [];
-  const addRows = (targetIds = [], discordProfiles = [], notification = {}) => {
-    rows.push(...toDiscordDeliveryRows(match, discordProfiles, notification));
-    notificationRows.push(...toMatchNotificationRows(match, targetIds, notification));
-  };
 
   if (MATCH_REFRESH_SCHEDULED_NOTICE_ACTIONS.has(action)) {
     await cancelPendingDiscordDeliveryPrefixes(supabase, match.id, MATCH_SCHEDULED_NOTICE_PREFIXES);
@@ -392,6 +384,14 @@ export async function queueMatchDiscordDeliveries(supabase, match = {}, action =
     await cancelPendingDiscordDeliveryPrefixes(supabase, match.id, MATCH_CANCEL_NOTICE_PREFIXES);
     await cancelPendingMatchNotificationPrefixes(supabase, match.id, MATCH_CANCEL_NOTICE_PREFIXES);
   }
+
+  if (!participantIds.length && !managerIds.length) return 0;
+  const profiles = await getDiscordProfiles(supabase, participantIds);
+  const managerProfiles = await getDiscordProfiles(supabase, managerIds);
+  const addRows = (targetIds = [], discordProfiles = [], notification = {}) => {
+    rows.push(...toDiscordDeliveryRows(match, discordProfiles, notification));
+    notificationRows.push(...toMatchNotificationRows(match, targetIds, notification));
+  };
 
   if (
     scheduledAt &&
