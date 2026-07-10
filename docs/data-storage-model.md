@@ -204,6 +204,7 @@
 - 이미 `matches.rating_result`가 있으면 RPC는 `alreadyCommitted=true`로 반환하고 MMR을 다시 적용하지 않는다.
 - MMR 커밋 후 서버 응답은 영향받은 `profiles`/`teams`를 DB에서 다시 읽어 `state.users`/`state.teams`로 내려주며, 프론트는 reducer 추정값이 아니라 DB 권위값을 즉시 병합한다.
 - 따봉/심판 미출석처럼 MMR 확정과 분리된 신뢰도 변경은 `rankball_apply_profile_trust_deltas()`가 `profiles.trust_score`만 0~100으로 커밋한다.
+- `npm run simulate:backend -- --full` includes `ranked_mmr_commit_1v1`, which verifies `ratingCommitted=true`, returned DB profile state, and cleanup restoration of test profile rating snapshots.
 - 경기 생성/기록 제출/출석/이의/룰 수정은 아직 기존 server action 저장 경로를 쓴다.
 
 ## 2026-06-25 report submit server action

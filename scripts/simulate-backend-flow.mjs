@@ -78,6 +78,8 @@ const scenarioIds = [];
 const temporaryProfileDiscordSnapshots = new Map();
 const refereeSimulationAttemptIds = new Set();
 const refereeSimulationRequestIds = new Set();
+const profileRatingSnapshots = new Map();
+const teamRatingSnapshots = new Map();
 const MATCH_SCHEDULED_NOTICE_PREFIXES = [
   "match-reminder-24h",
   "match-reminder-2h",
@@ -449,6 +451,71 @@ async function cleanupRefereeSimulationRows() {
   }
   refereeSimulationAttemptIds.clear();
   refereeSimulationRequestIds.clear();
+  return { skipped: false, errors };
+}
+
+async function snapshotRatingSubjects(profileIds = [], teamIds = []) {
+  if (!supabase) return { skipped: true, reason: "service_role_key_missing" };
+  const safeProfileIds = uniqueIds(profileIds).filter((profileId) => !profileRatingSnapshots.has(profileId));
+  const safeTeamIds = uniqueIds(teamIds).filter((teamId) => !teamRatingSnapshots.has(teamId));
+  if (safeProfileIds.length) {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id,ratings,trust_score,streak")
+      .in("id", safeProfileIds);
+    if (error) throw error;
+    for (const row of data ?? []) {
+      profileRatingSnapshots.set(row.id, {
+        ratings: row.ratings ?? null,
+        trust_score: row.trust_score ?? null,
+        streak: row.streak ?? null,
+      });
+    }
+  }
+  if (safeTeamIds.length) {
+    const { data, error } = await supabase
+      .from("teams")
+      .select("id,mmr,wins,losses")
+      .in("id", safeTeamIds);
+    if (error) throw error;
+    for (const row of data ?? []) {
+      teamRatingSnapshots.set(row.id, {
+        mmr: row.mmr ?? null,
+        wins: row.wins ?? null,
+        losses: row.losses ?? null,
+      });
+    }
+  }
+  return { skipped: false, profiles: safeProfileIds.length, teams: safeTeamIds.length };
+}
+
+async function restoreRatingSnapshots() {
+  if (!supabase || (!profileRatingSnapshots.size && !teamRatingSnapshots.size)) return { skipped: true };
+  const errors = [];
+  for (const [profileId, snapshot] of profileRatingSnapshots.entries()) {
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        ratings: snapshot.ratings,
+        trust_score: snapshot.trust_score,
+        streak: snapshot.streak,
+      })
+      .eq("id", profileId);
+    if (error) errors.push({ table: "profiles", id: profileId, message: error.message });
+  }
+  for (const [teamId, snapshot] of teamRatingSnapshots.entries()) {
+    const { error } = await supabase
+      .from("teams")
+      .update({
+        mmr: snapshot.mmr,
+        wins: snapshot.wins,
+        losses: snapshot.losses,
+      })
+      .eq("id", teamId);
+    if (error) errors.push({ table: "teams", id: teamId, message: error.message });
+  }
+  profileRatingSnapshots.clear();
+  teamRatingSnapshots.clear();
   return { skipped: false, errors };
 }
 
@@ -948,7 +1015,8 @@ function withRecorderHandoff(match = {}, sideName = "teamA", currentRecorderId =
 async function cleanup() {
   const profileDiscordRestore = await restoreTemporaryProfileDiscordUsers();
   const refereeSimulationCleanup = await cleanupRefereeSimulationRows();
-  if (keepRows) return { skipped: true, reason: "keep_requested", profileDiscordRestore, refereeSimulationCleanup };
+  const ratingRestore = await restoreRatingSnapshots();
+  if (keepRows) return { skipped: true, reason: "keep_requested", profileDiscordRestore, refereeSimulationCleanup, ratingRestore };
   if (usesRemoteApi && schemaHealthSecret) {
     const response = await fetchWithTimeout(`${remoteBaseUrl}/api/system/cleanup-sim`, {
       method: "POST",
@@ -959,10 +1027,10 @@ async function cleanup() {
       body: "{}",
     });
     const text = await readResponseTextWithTimeout(response, "cleanup_sim");
-    if (!response.ok) return { skipped: true, reason: `remote_cleanup_failed:${response.status}:${text}` };
-    return { ...(text ? JSON.parse(text) : { ok: true }), profileDiscordRestore, refereeSimulationCleanup };
+    if (!response.ok) return { skipped: true, reason: `remote_cleanup_failed:${response.status}:${text}`, profileDiscordRestore, refereeSimulationCleanup, ratingRestore };
+    return { ...(text ? JSON.parse(text) : { ok: true }), profileDiscordRestore, refereeSimulationCleanup, ratingRestore };
   }
-  if (!supabase) return { skipped: true, reason: "service_role_key_missing", profileDiscordRestore, refereeSimulationCleanup };
+  if (!supabase) return { skipped: true, reason: "service_role_key_missing", profileDiscordRestore, refereeSimulationCleanup, ratingRestore };
 
   const closedAt = new Date().toISOString();
   const closures = scenarioIds.flatMap((scenario) => [
@@ -996,7 +1064,7 @@ async function cleanup() {
       errors.push({ table: "room_discord_links", message: error.message });
     }
   }
-  return { skipped: false, errors, profileDiscordRestore, refereeSimulationCleanup };
+  return { skipped: false, errors, profileDiscordRestore, refereeSimulationCleanup, ratingRestore };
 }
 
 async function runOneOnOneScenario({
@@ -1006,6 +1074,9 @@ async function runOneOnOneScenario({
   refereeLogin = "",
   refereeWanted = false,
   scheduledOffsetHours = 0,
+  ranked = false,
+  includeLatePlayer = !refereeWanted,
+  verifyRatingCommit = false,
 }) {
   ids = makeScenarioIds(label);
   const operatorLogin = refereeWanted ? refereeLogin : hostLogin;
@@ -1021,6 +1092,9 @@ async function runOneOnOneScenario({
     refereeId = await step(`${ids.label}:resolveProfile:referee`, () => getProfileIdForLogin(refereeLogin));
     assertFlow(![hostId, opponentId].includes(refereeId), "referee must be separate profile", { hostId, opponentId, refereeId });
   }
+  if (verifyRatingCommit) {
+    await step(`${ids.label}:snapshotRatingSubjects`, () => snapshotRatingSubjects([hostId, opponentId]));
+  }
 
   const scheduleDraft = scheduledOffsetHours > 0 ? getKstFutureSchedule(scheduledOffsetHours) : { timingType: "instant" };
   const createResult = await step(`${ids.label}:createRecruitingPost`, () => syncRecruitingAs(hostLogin, {
@@ -1034,8 +1108,9 @@ async function runOneOnOneScenario({
       mode: "1v1",
       sideCapacity: 1,
       ...scheduleDraft,
-      ranked: false,
+      ranked,
       official: false,
+      mmrLimitMode: ranked ? "off" : undefined,
       preRegistered: true,
       teamOnly: false,
       refereeWanted,
@@ -1184,7 +1259,7 @@ async function runOneOnOneScenario({
   ));
 
   let latePlayerSqlReducers = null;
-  if (!refereeWanted) {
+  if (includeLatePlayer && !refereeWanted) {
     const latePlayerId = `anon_${ids.label}_${suffix}`;
     const matchWithLatePlayer = withLateAnonymousPlayer(match, latePlayerId, "teamA", "Backend Anonymous");
     const addLateResult = await step(`${ids.label}:addMatchLatePlayer:anonymous`, () => syncMatchAs(operatorLogin, {
@@ -1247,6 +1322,16 @@ async function runOneOnOneScenario({
   }));
   match = approveBResult?.match;
   assertFlow(match?.status === "confirmed", "match approval not confirmed", match);
+  if (verifyRatingCommit) {
+    assertFlow(approveBResult?.ratingCommitted === true, "rating commit RPC was not used", approveBResult);
+    assertFlow(Array.isArray(match?.ratingResult) && match.ratingResult.length > 0, "rating result missing after ranked confirmation", match);
+    const responseUserIds = new Set((approveBResult?.state?.users ?? []).map((user) => user.id));
+    assertFlow(responseUserIds.has(hostId) && responseUserIds.has(opponentId), "rating commit response missing DB users", {
+      hostId,
+      opponentId,
+      users: approveBResult?.state?.users,
+    });
+  }
 
   return {
     label: ids.label,
@@ -1259,6 +1344,7 @@ async function runOneOnOneScenario({
     postId: ids.postId,
     matchId: ids.matchId,
     finalStatus: match.status,
+    ratingCommitted: verifyRatingCommit ? Boolean(approveBResult?.ratingCommitted) : undefined,
     sqlReducers: {
       setRecruitingReady: Boolean(readyResult?.sqlReducer),
       agreeMatch: agreeASqlReducer || agreeBSqlReducer,
@@ -3096,6 +3182,8 @@ async function main() {
   const disputeHostLogin = process.env.RANKBALL_SIM_DISPUTE_HOST || "rankball-010";
   const disputeOpponentLogin = process.env.RANKBALL_SIM_DISPUTE_OPPONENT || "rankball-011";
   const soloRecordLogin = process.env.RANKBALL_SIM_SOLO_RECORD_HOST || "rankball-010";
+  const mmrCommitHostLogin = process.env.RANKBALL_SIM_MMR_COMMIT_HOST || "rankball-021";
+  const mmrCommitOpponentLogin = process.env.RANKBALL_SIM_MMR_COMMIT_OPPONENT || "rankball-022";
 
   const scenarios = [];
   scenarios.push(await runSoloRecordScenario({
@@ -3152,6 +3240,14 @@ async function main() {
     scenarios.push(await runTournamentFollowupRoundScenario({
       label: "tournament_followup_round",
       creatorLogin: tournamentCreatorLogin,
+    }));
+    scenarios.push(await runOneOnOneScenario({
+      label: "ranked_mmr_commit_1v1",
+      hostLogin: mmrCommitHostLogin,
+      opponentLogin: mmrCommitOpponentLogin,
+      ranked: true,
+      includeLatePlayer: false,
+      verifyRatingCommit: true,
     }));
     scenarios.push(await runSoloRoomTeamBlockedScenario({
       label: "solo_1v1_team_join_blocked",

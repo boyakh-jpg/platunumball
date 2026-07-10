@@ -1684,6 +1684,7 @@ flowchart TD
 5. `ratingResult/teamRatingResult/confirmedAt`이 포함된 경기 확정 상태는 RPC가 match row에 저장한다.
 6. 경기 생성/기록 제출/출석/이의/룰 수정은 아직 별도 row upsert 경로이며, full DB RPC migration은 남아 있다.
 7. MMR 커밋 후 `/api/matches/sync-match`는 영향받은 profiles/teams를 DB에서 다시 읽어 `state.users`/`state.teams`로 응답하고, 프론트는 DB 권위값을 즉시 병합한다.
+8. `npm run simulate:backend -- --full`의 `ranked_mmr_commit_1v1`은 ranked 경기 확정 때 `ratingCommitted=true`와 DB profile state 반환을 검증하고, 테스트 profile rating snapshot을 cleanup에서 복구한다.
 
 ## 2026-06-26 Supabase test seed
 
