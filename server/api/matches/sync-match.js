@@ -1,6 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { getAuthenticatedContext, getDatePart, getTimePart, nullableText, readJsonBody, sendJson, toArray, toDbTime, toNotificationRows, uniqueValues as uniqueIds } from "../_supabaseAdmin.js";
 import { RECORD_TYPES } from "../../../src/lib/constants.js";
+import { PROFILE_CARD_COLUMNS, PROFILE_ME_COLUMNS, TEAM_COLUMNS, TEAM_MEMBER_COLUMNS } from "../../../src/data/repositoryColumns.js";
+import { fromRemoteProfile } from "../../../src/data/profileMappers.js";
+import { fromRemoteTeam } from "../../../src/data/teamMappers.js";
 import {
   applyAuthoritativeMatchOperation,
   getOperation,
@@ -1291,6 +1294,65 @@ export async function commitMatchRating(context, ratingCommit = {}) {
   return data ?? { ok: true };
 }
 
+function getRatingCommitProfileIds(ratingCommit = {}) {
+  return uniqueIds([
+    ...(ratingCommit.ratingResult ?? []).map((item) => item?.playerId),
+    ...(ratingCommit.profileUpdates ?? []).map((item) => item?.id),
+  ]);
+}
+
+function getRatingCommitTeamIds(ratingCommit = {}) {
+  return uniqueIds((ratingCommit.teamUpdates ?? []).map((item) => item?.id));
+}
+
+async function loadCommittedRatingState(context, ratingCommit = {}) {
+  const profileIds = getRatingCommitProfileIds(ratingCommit);
+  const teamIds = getRatingCommitTeamIds(ratingCommit);
+  if (!profileIds.length && !teamIds.length) return null;
+
+  const currentProfileId = profileIds.includes(context.profileId) ? context.profileId : "";
+  const publicProfileIds = profileIds.filter((profileId) => profileId !== currentProfileId);
+
+  const [
+    { data: currentProfile, error: currentProfileError },
+    { data: publicProfiles, error: publicProfilesError },
+    { data: teamRows, error: teamError },
+    { data: teamMemberRows, error: teamMemberError },
+  ] = await Promise.all([
+    currentProfileId
+      ? context.supabase.from("profiles").select(PROFILE_ME_COLUMNS).eq("id", currentProfileId).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+    publicProfileIds.length
+      ? context.supabase.from("profiles").select(PROFILE_CARD_COLUMNS).in("id", publicProfileIds)
+      : Promise.resolve({ data: [], error: null }),
+    teamIds.length
+      ? context.supabase.from("teams").select(TEAM_COLUMNS).in("id", teamIds).is("deleted_at", null)
+      : Promise.resolve({ data: [], error: null }),
+    teamIds.length
+      ? context.supabase.from("team_members").select(TEAM_MEMBER_COLUMNS).in("team_id", teamIds)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (currentProfileError) throw currentProfileError;
+  if (publicProfilesError) throw publicProfilesError;
+  if (teamError) throw teamError;
+  if (teamMemberError) throw teamMemberError;
+
+  const teamMembersByTeam = new Map();
+  (teamMemberRows ?? []).forEach((row) => {
+    const rows = teamMembersByTeam.get(row.team_id) ?? [];
+    rows.push(row);
+    teamMembersByTeam.set(row.team_id, rows);
+  });
+
+  const users = [
+    ...(publicProfiles ?? []).map(fromRemoteProfile),
+    ...(currentProfile ? [fromRemoteProfile(currentProfile)] : []),
+  ];
+  const teams = (teamRows ?? []).map((row) => fromRemoteTeam(row, teamMembersByTeam.get(row.id)));
+
+  return users.length || teams.length ? { users, teams } : null;
+}
+
 export async function commitProfileTrustDeltas(context, trustCommit = {}) {
   const profileUpdates = (trustCommit.profileUpdates ?? []).filter((item) => item?.id && Number(item.trustDelta));
   if (!trustCommit.matchId || !profileUpdates.length) return { ok: true, skipped: true, profileCount: 0 };
@@ -1396,6 +1458,7 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
   });
   if (persistError) throw persistError;
   const ratingCommitResult = shouldCommitRating ? await commitMatchRating(context, ratingCommit) : null;
+  const ratingState = shouldCommitRating ? await loadCommittedRatingState(context, ratingCommit) : null;
   const trustCommitResult = trustCommit ? await commitProfileTrustDeltas(context, trustCommit) : null;
   let discordDeliveryCount = 0;
   let discordDeliveryError = null;
@@ -1412,6 +1475,7 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
     }
   }
   const syncedMatch = isSoloRecordMatch(match) ? match : await loadSyncedMatchAfterWrite(context, match.id, match);
+  const responseState = ratingState ? { ...ratingState, matches: syncedMatch ? [syncedMatch] : [] } : null;
 
   return {
     ok: true,
@@ -1422,6 +1486,7 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
     notificationCount: Number(persistResult?.notificationCount ?? notificationRows.length),
     discordDeliveryCount,
     discordDeliveryError,
+    ...(responseState ? { state: responseState } : {}),
     ratingCommitted: Boolean(ratingCommitResult?.ok),
     ratingAlreadyCommitted: Boolean(ratingCommitResult?.alreadyCommitted),
     trustCommitted: Boolean(trustCommitResult?.ok && !trustCommitResult?.skipped),

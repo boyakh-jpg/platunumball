@@ -1451,7 +1451,7 @@ flowchart TD
 3. 알림, 신고, 구장요청, 관리자 처리, Discord 발송 큐는 전용 server action 또는 worker가 저장한다.
 4. `mockData` / `localStorage`는 Supabase 환경의 앱 데이터 원천으로 쓰지 않는다.
 5. 경기방/매칭방 전용 server action은 `operation` payload가 있으면 DB 현재 상태를 로드하고 중앙 reducer를 서버에서 다시 실행한 결과를 저장한다.
-6. 아직 모든 방/경기 계산이 DB row-level authoritative RPC는 아니다. transaction 잠금, MMR 커밋, 토너먼트 경기 생성은 남은 작업이다.
+6. 아직 모든 방/경기 계산이 DB row-level authoritative RPC는 아니다. 개별 action reducer SQL 이전과 토너먼트 후속 라운드 검증은 남은 작업이다.
 
 ## 2026-06-26 dedicated server action write
 
@@ -1677,6 +1677,7 @@ flowchart TD
 4. RPC는 `matches` row를 `for update`로 잠그고 `rating_result is not null`이면 재커밋하지 않는다.
 5. `ratingResult/teamRatingResult/confirmedAt`이 포함된 경기 확정 상태는 RPC가 match row에 저장한다.
 6. 경기 생성/기록 제출/출석/이의/룰 수정은 아직 별도 row upsert 경로이며, full DB RPC migration은 남아 있다.
+7. MMR 커밋 후 `/api/matches/sync-match`는 영향받은 profiles/teams를 DB에서 다시 읽어 `state.users`/`state.teams`로 응답하고, 프론트는 DB 권위값을 즉시 병합한다.
 
 ## 2026-06-26 Supabase test seed
 
