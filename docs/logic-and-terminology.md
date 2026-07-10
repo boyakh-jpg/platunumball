@@ -1542,7 +1542,7 @@ flowchart TD
 7. 관리자/징계/audit write는 client policy를 만들지 않고 server action만 사용한다.
 8. 승인 구장 테이블은 authenticated read만 허용하고 내부 요청자/승인자 정보를 payload에 섞지 않는다.
 9. `recruiting_posts`는 `recruiting_read_all` 같은 permissive `SELECT true` 정책을 허용하지 않는다. raw table은 anon/public 전체 read를 허용하지 않고 authenticated 현재 프로필이 `player_id`, `player_ids`, `room_state.ownerId`, `room_state.invitations`, `referee_id` 중 하나와 관련될 때만 읽는다.
-10. `/api/system/schema-health`는 `rankball_rls_policy_health()`와 `rankball_referee_rls_policy_health()`를 호출해 reports/court/matches/recruiting/feed/admin 대상 테이블의 `SELECT true` 정책, 필수 제한 policy 누락, `user_room_feed` public-scope 브라우저 read, `room_feed_cards` browser table grant, reports/court/matches/recruiting browser write grant/policy, 심판 시험/요청 browser write grant/policy를 회귀 검사한다.
+10. `/api/system/schema-health`는 `rankball_rls_policy_health()`와 `rankball_referee_rls_policy_health()`를 호출해 reports/court/matches/recruiting/feed/admin 대상 테이블의 `SELECT true` 정책, 필수 제한 policy 누락, admin read policy 누락, admin anon read grant, `user_room_feed` public-scope 브라우저 read, `room_feed_cards` browser table grant, admin/reports/court/matches/recruiting browser write grant/policy, 심판 시험/요청 browser write grant/policy를 회귀 검사한다.
 11. `profiles` 전체 row는 공개 read 대상이 아니다. 공개 목록은 `public_profiles` view를 사용하고, 직접 `profiles` read는 현재 본인 row만 허용한다.
 12. `matches.visibility`는 `public/private`를 가진다. 공개 경기는 public read, 비공개 경기는 방장/심판/출전자/후보/기록자/관리자만 read한다.
 13. `match_disputes`는 공개 경기라도 전체 공개하지 않고 경기 관계자와 관리자만 read한다.

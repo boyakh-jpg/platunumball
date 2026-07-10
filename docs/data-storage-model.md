@@ -331,7 +331,7 @@ Done:
 
 - Supabase schema/RLS hardening: `profiles.auth_user_id` uuid FK, duplicate hard failure, client write guard, admin/report/court/referee policy hardening.
 - RLS read hardening: recruiting permissive read policies are dropped, profile directory reads use `public_profiles`, and match tables read through `matches.visibility` plus participant/admin checks.
-- `/api/system/schema-health` includes `rankball_rls_policy_health()` so deployment checks fail on permissive raw read policy regressions for reports, court, matches, recruiting, feed, admin tables, direct browser grants on `room_feed_cards`, and browser write grants/policies on reports/court/matches/recruiting raw tables.
+- `/api/system/schema-health` includes `rankball_rls_policy_health()` so deployment checks fail on permissive raw read policy regressions for reports, court, matches, recruiting, feed, admin tables, direct browser grants on `room_feed_cards`, missing admin read policies, admin anon read grants, and browser write grants/policies on admin/reports/court/matches/recruiting raw tables.
 - `/api/system/schema-health` also includes `rankball_rpc_grant_health()` so service-role-only RPCs fail health checks if `anon` or `authenticated` regains `EXECUTE`.
 - `/api/system/schema-health` includes `rankball_profile_identity_health()` so profile auth/Discord/hashtag identity constraints, lock columns, client `auth_user_id` write guards, and `public_profiles` private-column hiding stay enforced.
 - `/api/system/schema-health` checks `room_chat_messages` Discord sync columns and `room_discord_links` so room chat bridge schema drift fails deployment health checks.
