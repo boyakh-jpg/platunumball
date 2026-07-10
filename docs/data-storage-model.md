@@ -141,6 +141,7 @@
 - `POST /api/admin/appointment-action`은 `rankball_commit_admin_appointment_action()` RPC로 관리자/심판 임명과 회수, audit log, 대상자 알림을 한 transaction으로 처리한다.
 - `POST /api/admin/disciplinary-action`은 `rankball_commit_admin_disciplinary_action()` RPC로 직접 징계, audit log, 대상자 알림을 한 transaction으로 처리한다.
 - 브라우저는 `admin_audit_log`, `admin_disciplinary_actions`, `admin_appointments`, `referee_appointments`를 직접 insert/update/delete 하지 않는다.
+- 해당 admin 테이블들은 browser role의 write/truncate/trigger/reference grant를 모두 제거하고, authenticated admin select만 RLS로 허용한다.
 - Supabase 설정 환경에서 관리자 UI는 local state를 먼저 갱신하고 같은 draft를 server action에 전달한다. 배포 전에는 server action 성공 결과 기준으로 재조회/동기화해야 한다.
 - Supabase 설정 환경의 프론트 bootstrap에서는 `localStorage/mockData` 앱 데이터 fallback을 제거했다. 남은 작업은 방/경기 reducer 자체를 authoritative RPC로 이전하는 것이다.
 

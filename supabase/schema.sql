@@ -9295,10 +9295,14 @@ $$;
 
 revoke insert, update, delete on public.approved_courts from anon, authenticated;
 revoke insert, update, delete on public.court_reviews from anon, authenticated;
-revoke insert, update, delete on public.admin_appointments from anon, authenticated;
-revoke insert, update, delete on public.referee_appointments from anon, authenticated;
-revoke insert, update, delete on public.admin_audit_log from anon, authenticated;
-revoke insert, update, delete on public.admin_disciplinary_actions from anon, authenticated;
+revoke all privileges on table public.admin_appointments from anon, authenticated;
+revoke all privileges on table public.referee_appointments from anon, authenticated;
+revoke all privileges on table public.admin_audit_log from anon, authenticated;
+revoke all privileges on table public.admin_disciplinary_actions from anon, authenticated;
+grant select on table public.admin_appointments to authenticated;
+grant select on table public.referee_appointments to authenticated;
+grant select on table public.admin_audit_log to authenticated;
+grant select on table public.admin_disciplinary_actions to authenticated;
 
 drop policy if exists approved_courts_select_public on public.approved_courts;
 drop policy if exists approved_courts_admin_read on public.approved_courts;
