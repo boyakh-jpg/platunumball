@@ -1012,6 +1012,13 @@ function withRecorderHandoff(match = {}, sideName = "teamA", currentRecorderId =
   return { valid: true, patch, match: nextMatch };
 }
 
+function withSubstitution(match = {}, sideName = "teamA", activePlayerId = "", reservePlayerId = "") {
+  const effectiveMatch = withEffectiveMatchStatRecorders(match);
+  const patch = getRecorderHandoffPatch(effectiveMatch, sideName, activePlayerId, reservePlayerId);
+  if (!patch.valid || !patch.swapped) return { valid: false, patch, match: effectiveMatch };
+  return { valid: true, patch, match: patch.match };
+}
+
 async function cleanup() {
   const profileDiscordRestore = await restoreTemporaryProfileDiscordUsers();
   const refereeSimulationCleanup = await cleanupRefereeSimulationRows();
@@ -2205,6 +2212,23 @@ async function runRecorderHandoffScenario({
   assertFlow((match.teamA?.players ?? []).includes(teamAReserveId) && !(match.teamA?.players ?? []).includes(hostId), "recorder handoff did not swap active player", match);
   assertFlow((match.reservePlayers?.teamA ?? []).includes(hostId) && !(match.reservePlayers?.teamA ?? []).includes(teamAReserveId), "recorder handoff reserve roster mismatch", match);
   assertFlow((match.playedPlayerIds?.teamA ?? []).includes(hostId) && (match.playedPlayerIds?.teamA ?? []).includes(teamAReserveId), "recorder handoff played ids missing", match);
+  assertFlow(Boolean(handoffResult?.sqlReducer), "recorder handoff SQL reducer not used", handoffResult);
+
+  const substituteDraft = withSubstitution(match, "teamA", teamAReserveId, hostId);
+  assertFlow(substituteDraft.valid && substituteDraft.patch?.swapped, "substitution draft not valid", substituteDraft);
+  const substituteResult = await step(`${ids.label}:substituteMatchPlayer`, () => syncMatchAs(hostLogin, {
+    action: "substituteMatchPlayer",
+    matchId: ids.matchId,
+    sideName: "teamA",
+    activePlayerId: teamAReserveId,
+    reservePlayerId: hostId,
+  }, { match: substituteDraft.match }));
+  match = await getMatchAfterResult(substituteResult, hostLogin, `${ids.label}:loadAfterSubstitution`);
+  assertFlow(Boolean(substituteResult?.sqlReducer), "substitution SQL reducer not used", substituteResult);
+  assertFlow(match?.statRecorders?.teamA === hostId && match?.rules?.statRecorders?.teamA === hostId, "substitution changed recorder unexpectedly", match);
+  assertFlow((match.teamA?.players ?? []).includes(hostId) && !(match.teamA?.players ?? []).includes(teamAReserveId), "substitution did not promote reserve", match);
+  assertFlow((match.reservePlayers?.teamA ?? []).includes(teamAReserveId) && !(match.reservePlayers?.teamA ?? []).includes(hostId), "substitution reserve roster mismatch", match);
+  assertFlow((match.playedPlayerIds?.teamA ?? []).includes(hostId) && (match.playedPlayerIds?.teamA ?? []).includes(teamAReserveId), "substitution played ids missing", match);
 
   return {
     label: ids.label,
@@ -2221,6 +2245,8 @@ async function runRecorderHandoffScenario({
       teamBActiveJoin: Boolean(joinTeamBActiveResult?.sqlReducer),
       checkInMatchPlayer: Boolean(checkInBResult?.sqlReducer),
       syncStartedSnapshot: Boolean(startResult?.ok),
+      handoffMatchRecorder: Boolean(handoffResult?.sqlReducer),
+      substituteMatchPlayer: Boolean(substituteResult?.sqlReducer),
     },
   };
 }

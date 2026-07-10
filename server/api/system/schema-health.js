@@ -278,6 +278,18 @@ const REQUIRED_RPCS = [
       p_mmr_excluded_player_ids: [],
     },
   },
+  {
+    name: "rankball_match_roster_move_action",
+    args: {
+      p_actor_profile_id: "",
+      p_action: "substituteMatchPlayer",
+      p_match_id: "",
+      p_side: "",
+      p_active_player_id: "",
+      p_reserve_player_id: "",
+      p_next_recorder_id: "",
+    },
+  },
 ];
 
 const REQUIRED_FEED_TRIGGERS = [

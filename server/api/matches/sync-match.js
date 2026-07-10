@@ -1116,8 +1116,10 @@ const SQL_REDUCER_MATCH_ACTIONS = new Set([
   "agreeMatch",
   "checkInMatchPlayer",
   "endMatch",
+  "handoffMatchRecorder",
   "removeMatchLatePlayer",
   "startMatch",
+  "substituteMatchPlayer",
 ]);
 
 function isMissingSqlMatchReducer(error = {}) {
@@ -1128,6 +1130,7 @@ function isMissingSqlMatchReducer(error = {}) {
     message.includes("rankball_match_checkin_action") ||
     message.includes("rankball_match_end_action") ||
     message.includes("rankball_match_late_player_action") ||
+    message.includes("rankball_match_roster_move_action") ||
     message.includes("rankball_match_start_action")
   );
 }
@@ -1177,6 +1180,28 @@ async function applySqlMatchAction(context, operation = {}, match = {}) {
       p_match_id: operation.matchId ?? match.id,
       p_side: operation.sideName ?? "",
       p_player_id: operation.playerId ?? "",
+    });
+    if (error) {
+      if (isMissingSqlMatchReducer(error)) return null;
+      throw error;
+    }
+    if (data?.fallback) return null;
+    return {
+      ok: true,
+      ...(data && typeof data === "object" ? data : {}),
+      matchId: operation.matchId ?? match.id,
+    };
+  }
+
+  if (["handoffMatchRecorder", "substituteMatchPlayer"].includes(operation.action) && match?.id) {
+    const { data, error } = await context.supabase.rpc("rankball_match_roster_move_action", {
+      p_actor_profile_id: context.profileId,
+      p_action: operation.action,
+      p_match_id: operation.matchId ?? match.id,
+      p_side: operation.sideName ?? "",
+      p_active_player_id: operation.activePlayerId ?? "",
+      p_reserve_player_id: operation.reservePlayerId ?? "",
+      p_next_recorder_id: operation.nextRecorderId ?? "",
     });
     if (error) {
       if (isMissingSqlMatchReducer(error)) return null;
