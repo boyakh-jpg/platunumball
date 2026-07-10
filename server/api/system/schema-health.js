@@ -290,6 +290,10 @@ const REQUIRED_RPCS = [
       p_next_recorder_id: "",
     },
   },
+  {
+    name: "rankball_match_approval_action",
+    args: { p_actor_profile_id: "", p_match_id: "", p_side: "", p_player_id: "" },
+  },
 ];
 
 const REQUIRED_FEED_TRIGGERS = [

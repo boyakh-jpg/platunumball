@@ -1114,6 +1114,7 @@ function canCommitRatingResult(action, existingResult, nextMatch) {
 const SQL_REDUCER_MATCH_ACTIONS = new Set([
   "addMatchLatePlayer",
   "agreeMatch",
+  "approveMatch",
   "checkInMatchPlayer",
   "endMatch",
   "handoffMatchRecorder",
@@ -1127,6 +1128,7 @@ function isMissingSqlMatchReducer(error = {}) {
   return (
     error?.code === "PGRST202" ||
     message.includes("rankball_match_agree_action") ||
+    message.includes("rankball_match_approval_action") ||
     message.includes("rankball_match_checkin_action") ||
     message.includes("rankball_match_end_action") ||
     message.includes("rankball_match_late_player_action") ||
@@ -1137,6 +1139,10 @@ function isMissingSqlMatchReducer(error = {}) {
 
 function shouldUseSqlMatchAction(operation = {}) {
   return SQL_REDUCER_MATCH_ACTIONS.has(String(operation?.action ?? ""));
+}
+
+function canUseSqlMatchActionWithoutSnapshot(operation = {}) {
+  return operation?.action === "approveMatch" && Boolean(operation?.matchId);
 }
 
 async function loadSyncedMatch(context, matchId = "") {
@@ -1155,6 +1161,25 @@ async function loadSyncedMatchAfterWrite(context, matchId = "", fallbackMatch = 
 }
 
 async function applySqlMatchAction(context, operation = {}, match = {}) {
+  if (operation.action === "approveMatch" && (match?.id || operation.matchId)) {
+    const { data, error } = await context.supabase.rpc("rankball_match_approval_action", {
+      p_actor_profile_id: context.profileId,
+      p_match_id: operation.matchId ?? match.id,
+      p_side: operation.sideName ?? "",
+      p_player_id: operation.playerId ?? "",
+    });
+    if (error) {
+      if (isMissingSqlMatchReducer(error)) return null;
+      throw error;
+    }
+    if (data?.fallback) return null;
+    return {
+      ok: true,
+      ...(data && typeof data === "object" ? data : {}),
+      matchId: operation.matchId ?? match.id,
+    };
+  }
+
   if (operation.action === "agreeMatch" && match?.id) {
     const { data, error } = await context.supabase.rpc("rankball_match_agree_action", {
       p_actor_profile_id: context.profileId,
@@ -1543,7 +1568,7 @@ export default async function handler(request, response) {
     let createdTournamentMatches = [];
     let tournamentNotifications = [];
 
-    if (operation && match && shouldUseSqlMatchAction(operation)) {
+    if (operation && shouldUseSqlMatchAction(operation) && (match || canUseSqlMatchActionWithoutSnapshot(operation))) {
       const sqlResult = await applySqlMatchAction(context, operation, match);
       if (sqlResult) {
         const syncedMatch = await loadSyncedMatchAfterWrite(context, sqlResult.matchId ?? operation.matchId ?? match.id, match);

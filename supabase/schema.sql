@@ -6745,6 +6745,187 @@ $$;
 revoke all on function public.rankball_match_agree_action(text, text, text, text) from public;
 grant execute on function public.rankball_match_agree_action(text, text, text, text) to service_role;
 
+create or replace function public.rankball_match_approval_action(
+  p_actor_profile_id text,
+  p_match_id text,
+  p_side text,
+  p_player_id text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  safe_actor_id text := nullif(btrim(p_actor_profile_id), '');
+  safe_match_id text := nullif(btrim(p_match_id), '');
+  safe_side text := nullif(btrim(p_side), '');
+  safe_player_id text := nullif(btrim(p_player_id), '');
+  current_match public.matches%rowtype;
+  result_row public.match_results%rowtype;
+  already_approved boolean := false;
+  missing_stat_count integer := 0;
+  team_a_player_count integer := 0;
+  team_b_player_count integer := 0;
+  team_a_approval_count integer := 0;
+  team_b_approval_count integer := 0;
+  team_a_needed integer := 1;
+  team_b_needed integer := 1;
+  team_a_stat_points integer := 0;
+  team_b_stat_points integer := 0;
+begin
+  if safe_actor_id is null then
+    raise exception 'missing_actor_profile_id' using errcode = '22023';
+  end if;
+  if safe_match_id is null then
+    raise exception 'missing_match' using errcode = '22023';
+  end if;
+  if safe_side not in ('teamA', 'teamB') or safe_player_id is null then
+    raise exception 'invalid_match_approval_target' using errcode = '22023';
+  end if;
+  if safe_actor_id <> safe_player_id then
+    raise exception 'match_approval_actor_mismatch' using errcode = '42501';
+  end if;
+
+  select *
+  into current_match
+  from public.matches
+  where id = safe_match_id
+  for update;
+
+  if not found then
+    raise exception 'match_not_found' using errcode = '22023';
+  end if;
+  if current_match.status <> 'approval' then
+    return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'match_approval_locked', 'matchId', safe_match_id);
+  end if;
+
+  select *
+  into result_row
+  from public.match_results
+  where match_id = safe_match_id;
+
+  if not found then
+    return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'match_approval_result_missing', 'matchId', safe_match_id);
+  end if;
+
+  if not exists (
+    select 1
+    from public.match_players mp
+    where mp.match_id = safe_match_id
+      and mp.side = safe_side
+      and mp.user_id = safe_player_id
+  ) then
+    return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'match_approval_player_not_found', 'matchId', safe_match_id);
+  end if;
+
+  select count(*)
+  into missing_stat_count
+  from public.match_players mp
+  left join public.player_match_stats stat
+    on stat.match_id = mp.match_id
+   and stat.user_id = mp.user_id
+  where mp.match_id = safe_match_id
+    and mp.user_id is not null
+    and mp.user_id <> ''
+    and mp.side in ('teamA', 'teamB')
+    and stat.user_id is null;
+
+  if missing_stat_count > 0 then
+    return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'match_approval_stats_incomplete', 'matchId', safe_match_id);
+  end if;
+
+  select
+    coalesce(sum(coalesce(stat.points, 0)) filter (where mp.side = 'teamA'), 0)::integer,
+    coalesce(sum(coalesce(stat.points, 0)) filter (where mp.side = 'teamB'), 0)::integer
+  into team_a_stat_points, team_b_stat_points
+  from public.match_players mp
+  left join public.player_match_stats stat
+    on stat.match_id = mp.match_id
+   and stat.user_id = mp.user_id
+  where mp.match_id = safe_match_id
+    and mp.user_id is not null
+    and mp.user_id <> ''
+    and mp.side in ('teamA', 'teamB');
+
+  if team_a_stat_points <> coalesce(result_row.score_a, current_match.score_a, 0)
+    or team_b_stat_points <> coalesce(result_row.score_b, current_match.score_b, 0) then
+    return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'match_approval_point_mismatch', 'matchId', safe_match_id);
+  end if;
+
+  select
+    count(*) filter (where mp.side = 'teamA'),
+    count(*) filter (where mp.side = 'teamB')
+  into team_a_player_count, team_b_player_count
+  from public.match_players mp
+  where mp.match_id = safe_match_id
+    and mp.user_id is not null
+    and mp.user_id <> ''
+    and mp.side in ('teamA', 'teamB');
+
+  if team_a_player_count = 0 or team_b_player_count = 0 then
+    return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'match_approval_players_missing', 'matchId', safe_match_id);
+  end if;
+
+  select
+    count(distinct approval.user_id) filter (where approval.side = 'teamA'),
+    count(distinct approval.user_id) filter (where approval.side = 'teamB')
+  into team_a_approval_count, team_b_approval_count
+  from public.match_approvals approval
+  where approval.match_id = safe_match_id;
+
+  select exists (
+    select 1
+    from public.match_approvals approval
+    where approval.match_id = safe_match_id
+      and approval.user_id = safe_player_id
+  )
+  into already_approved;
+
+  if not already_approved then
+    if safe_side = 'teamA' then
+      team_a_approval_count := team_a_approval_count + 1;
+    else
+      team_b_approval_count := team_b_approval_count + 1;
+    end if;
+  end if;
+
+  team_a_needed := floor(team_a_player_count / 2.0)::integer + 1;
+  team_b_needed := floor(team_b_player_count / 2.0)::integer + 1;
+
+  if team_a_approval_count >= team_a_needed and team_b_approval_count >= team_b_needed then
+    return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'match_approval_completion_requires_replay', 'matchId', safe_match_id);
+  end if;
+
+  if already_approved then
+    return jsonb_build_object('ok', true, 'action', 'approveMatch', 'matchId', safe_match_id, 'actorProfileId', safe_actor_id, 'playerId', safe_player_id, 'sideName', safe_side, 'sqlReducer', true, 'alreadyApproved', true);
+  end if;
+
+  insert into public.match_approvals (match_id, user_id, side)
+  values (safe_match_id, safe_player_id, safe_side)
+  on conflict (match_id, user_id) do update set side = excluded.side;
+
+  update public.matches
+  set updated_at = now()
+  where id = safe_match_id;
+
+  return jsonb_build_object(
+    'ok', true,
+    'action', 'approveMatch',
+    'matchId', safe_match_id,
+    'actorProfileId', safe_actor_id,
+    'playerId', safe_player_id,
+    'sideName', safe_side,
+    'sqlReducer', true
+  );
+end;
+$$;
+
+revoke all on function public.rankball_match_approval_action(text, text, text, text) from public;
+revoke all on function public.rankball_match_approval_action(text, text, text, text) from anon;
+revoke all on function public.rankball_match_approval_action(text, text, text, text) from authenticated;
+grant execute on function public.rankball_match_approval_action(text, text, text, text) to service_role;
+
 create or replace function public.rankball_match_checkin_action(
   p_actor_profile_id text,
   p_match_id text,
@@ -7641,6 +7822,18 @@ begin
 
   if safe_action = 'agreeMatch' and p_match_row ? '__operation' then
     branch_result := public.rankball_match_agree_action(
+      safe_actor_id,
+      safe_match_id,
+      p_match_row #>> '{__operation,sideName}',
+      p_match_row #>> '{__operation,playerId}'
+    );
+    if not coalesce((branch_result->>'fallback')::boolean, false) then
+      return branch_result;
+    end if;
+  end if;
+
+  if safe_action = 'approveMatch' and p_match_row ? '__operation' then
+    branch_result := public.rankball_match_approval_action(
       safe_actor_id,
       safe_match_id,
       p_match_row #>> '{__operation,sideName}',
@@ -10139,6 +10332,7 @@ as $$
       ('rankball_invite_team_member_5', 'public.rankball_invite_team_member(text,text,text,text,text)'),
       ('rankball_match_action', 'public.rankball_match_action(text,text,jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,boolean)'),
       ('rankball_match_agree_action', 'public.rankball_match_agree_action(text,text,text,text)'),
+      ('rankball_match_approval_action', 'public.rankball_match_approval_action(text,text,text,text)'),
       ('rankball_match_checkin_action', 'public.rankball_match_checkin_action(text,text,text,text)'),
       ('rankball_match_end_action', 'public.rankball_match_end_action(text,text,text,text)'),
       ('rankball_match_late_player_action', 'public.rankball_match_late_player_action(text,text,text,text,jsonb,jsonb,jsonb,jsonb)'),
@@ -10215,6 +10409,7 @@ begin
     'public.rankball_invite_team_member(text,text,text,text,text)',
     'public.rankball_match_action(text,text,jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,boolean)',
     'public.rankball_match_agree_action(text,text,text,text)',
+    'public.rankball_match_approval_action(text,text,text,text)',
     'public.rankball_match_checkin_action(text,text,text,text)',
     'public.rankball_match_end_action(text,text,text,text)',
     'public.rankball_match_late_player_action(text,text,text,text,jsonb,jsonb,jsonb,jsonb)',

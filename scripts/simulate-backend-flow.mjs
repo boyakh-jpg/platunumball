@@ -1320,6 +1320,7 @@ async function runOneOnOneScenario({
   }));
   match = approveAResult?.match;
   assertFlow(match?.approvals?.teamA?.includes(hostId), "teamA approval not persisted", match);
+  assertFlow(Boolean(approveAResult?.sqlReducer), "approval SQL reducer not used", approveAResult);
 
   const approveBResult = await step(`${ids.label}:approveMatch:teamB`, () => syncMatchAs(opponentLogin, {
     action: "approveMatch",
@@ -1358,6 +1359,7 @@ async function runOneOnOneScenario({
       checkInMatchPlayer: Boolean(checkInBResult?.sqlReducer),
       startMatch: Boolean(startResult?.sqlReducer),
       endMatch: Boolean(endResult?.sqlReducer),
+      approveMatch: Boolean(approveAResult?.sqlReducer),
       latePlayer: latePlayerSqlReducers,
     },
     reminderChecks,
