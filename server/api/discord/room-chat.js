@@ -59,8 +59,10 @@ async function persistDiscordChatMessage(supabase, link = {}, profile = {}, body
   if (text.includes("\n") || text.includes("\r")) reject(400, "single_line_chat_required");
 
   const messageId = readSnowflake(body.messageId ?? body.discordMessageId ?? body.id, "discord_message_id");
-  const channelId = readSnowflake(body.channelId ?? body.discordChannelId, "discord_channel_id");
-  const threadId = readSnowflake(body.threadId ?? body.discordThreadId, "discord_thread_id", false);
+  const incomingChannelId = readSnowflake(body.channelId ?? body.discordChannelId, "discord_channel_id");
+  const incomingThreadId = readSnowflake(body.threadId ?? body.discordThreadId, "discord_thread_id", false);
+  const channelId = readSnowflake(link.discord_channel_id || incomingChannelId, "discord_channel_id");
+  const threadId = readSnowflake(link.discord_thread_id || incomingThreadId, "discord_thread_id", false);
 
   let duplicateQuery = supabase
     .from("room_chat_messages")
@@ -87,6 +89,8 @@ async function persistDiscordChatMessage(supabase, link = {}, profile = {}, body
       metadata: {
         discordUserId: String(body.discordUserId || "").trim(),
         discordUsername: String(body.username || body.discordUsername || "").trim().slice(0, 80),
+        incomingChannelId,
+        incomingThreadId: incomingThreadId || null,
       },
     })
     .select(ROOM_CHAT_MESSAGE_COLUMNS)
