@@ -9279,8 +9279,19 @@ begin
     from pg_policies
     where schemaname = 'public'
       and tablename in (
+        'reports',
+        'court_requests',
         'approved_courts',
         'court_reviews',
+        'matches',
+        'match_players',
+        'match_results',
+        'player_match_stats',
+        'match_agreements',
+        'match_approvals',
+        'match_disputes',
+        'recruiting_posts',
+        'recruiting_applications',
         'admin_appointments',
         'referee_appointments',
         'admin_audit_log',
@@ -9293,8 +9304,34 @@ begin
 end;
 $$;
 
-revoke insert, update, delete on public.approved_courts from anon, authenticated;
-revoke insert, update, delete on public.court_reviews from anon, authenticated;
+do $$
+declare
+  table_name text;
+begin
+  foreach table_name in array array[
+    'reports',
+    'court_requests',
+    'approved_courts',
+    'court_reviews',
+    'matches',
+    'match_players',
+    'match_results',
+    'player_match_stats',
+    'match_agreements',
+    'match_approvals',
+    'match_disputes',
+    'recruiting_posts',
+    'recruiting_applications'
+  ]
+  loop
+    execute format('revoke all privileges on table public.%I from public', table_name);
+    execute format('revoke all privileges on table public.%I from anon, authenticated', table_name);
+    execute format('grant select on table public.%I to authenticated', table_name);
+    execute format('grant all privileges on table public.%I to service_role', table_name);
+  end loop;
+end;
+$$;
+
 revoke all privileges on table public.admin_appointments from anon, authenticated;
 revoke all privileges on table public.referee_appointments from anon, authenticated;
 revoke all privileges on table public.admin_audit_log from anon, authenticated;
@@ -9338,11 +9375,6 @@ on public.court_requests
 for select
 to authenticated
 using (requested_by = public.current_profile_id());
-create policy court_requests_self_insert
-on public.court_requests
-for insert
-to authenticated
-with check (requested_by = public.current_profile_id() and status = 'pending');
 create policy court_requests_admin_read
 on public.court_requests
 for select
@@ -9421,12 +9453,6 @@ begin
     execute 'drop policy if exists reports_no_public_read on public.reports';
     execute 'drop policy if exists reports_admin_read on public.reports';
     execute 'drop policy if exists reports_self_read on public.reports';
-    if exists (
-      select 1 from information_schema.columns
-      where table_schema = 'public' and table_name = 'reports' and column_name = 'user_id'
-    ) then
-      execute 'create policy reports_insert_authenticated on public.reports for insert to authenticated with check (user_id = public.current_profile_id())';
-    end if;
     execute 'create policy reports_self_read on public.reports for select to authenticated using (
       user_id = public.current_profile_id()
       or target_id = public.current_profile_id()

@@ -94,6 +94,7 @@
 - Supabase 설정 환경이면 browser가 전체 app state를 자동 저장하지 않는다.
 - `/api/supabase/bridge`, `VITE_ENABLE_SERVER_BRIDGE_WRITE`, `VITE_ENABLE_BULK_REMOTE_WRITE` 경로는 제거했다.
 - 신고 생성은 `POST /api/reports/submit`, 구장요청 신고는 `POST /api/court-requests/report`만 사용한다.
+- `reports`, `court_requests`, `approved_courts`, `court_reviews`, `matches`, 경기 하위 테이블, `recruiting_posts`, `recruiting_applications`는 browser role의 insert/update/delete/truncate/trigger/reference grant와 browser write policy를 두지 않는다. 브라우저는 scoped RLS `select`만 사용하고 write는 server action/RPC만 사용한다.
 - 심판 시험/요청은 `POST /api/referee/sync`만 사용한다.
 - Discord DM 발송 큐는 `POST /api/discord/sync-deliveries`가 현재 프로필의 `discord_user_id` 기준으로만 저장한다.
 - `court_requests` write는 `POST /api/court-requests/submit`, `approve`, `report` server action으로 처리한다.
@@ -170,7 +171,7 @@
 - `profiles.auth_user_id`는 `uuid references auth.users(id)`로 강제하며 중복, non-uuid, orphan 값이 있으면 migration을 실패시킨다.
 - 클라이언트는 `profiles.auth_user_id`를 insert/update 할 수 없다. 서버/service-role만 설정한다.
 - `notifications` 직접 update는 막고 `rankball_mark_notification_read()` RPC로 `read_at`만 바꾼다.
-- `reports`는 신고자 insert만 허용하고 관리자 read policy를 별도로 둔다.
+- `reports`는 브라우저 직접 insert를 허용하지 않고 `POST /api/reports/submit` service-role 경로만 사용한다. 읽기는 신고자/대상자 self-read와 관리자 read policy만 허용한다.
 - `referee_requests` 소유자 컬럼은 `requested_by`다.
 - 관리자/심판 임명, audit, 징계, 승인 구장 write는 client 정책을 만들지 않는다. server/service-role만 처리한다.
 - `approved_courts`는 authenticated read만 허용하고 payload에서 요청자/신뢰도/승인자 내부값을 제거한다.
@@ -329,7 +330,7 @@ Done:
 
 - Supabase schema/RLS hardening: `profiles.auth_user_id` uuid FK, duplicate hard failure, client write guard, admin/report/court/referee policy hardening.
 - RLS read hardening: recruiting permissive read policies are dropped, profile directory reads use `public_profiles`, and match tables read through `matches.visibility` plus participant/admin checks.
-- `/api/system/schema-health` includes `rankball_rls_policy_health()` so deployment checks fail on permissive raw read policy regressions for reports, court, matches, recruiting, feed, admin tables, and direct browser grants on `room_feed_cards`.
+- `/api/system/schema-health` includes `rankball_rls_policy_health()` so deployment checks fail on permissive raw read policy regressions for reports, court, matches, recruiting, feed, admin tables, direct browser grants on `room_feed_cards`, and browser write grants/policies on reports/court/matches/recruiting raw tables.
 - `/api/system/schema-health` also includes `rankball_rpc_grant_health()` so service-role-only RPCs fail health checks if `anon` or `authenticated` regains `EXECUTE`.
 - `/api/system/schema-health` includes `rankball_profile_identity_health()` so profile auth/Discord/hashtag identity constraints, lock columns, client `auth_user_id` write guards, and `public_profiles` private-column hiding stay enforced.
 - `/api/system/schema-health` checks `room_chat_messages` Discord sync columns and `room_discord_links` so room chat bridge schema drift fails deployment health checks.
