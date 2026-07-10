@@ -1531,7 +1531,8 @@ flowchart TD
 5. 커뮤니티 심판 등록요청은 같은 사용자, 같은 시험 버전의 passed attempt가 있어야 한다.
 6. 서버는 시험 시작 때 문제를 추첨해 공개 문제만 반환하고, 시험 종료 때 저장된 `questionIds`와 제출 답안으로 직접 채점한다. 클라이언트가 보낸 `passed/failed`는 신뢰하지 않는다.
 7. `referee_exam_attempts`, `referee_requests`는 브라우저 select self-read만 허용하고 insert/update/delete는 `/api/referee/sync` service-role 경로만 허용한다.
-8. 심판 임명/등급 부여는 기존 관리자 임명 server action에서 처리한다.
+8. Backend flow simulation verifies referee exam start/finish on `/api/referee/sync`, public-question-only response, server-side grading, cooldown rejection, and request submission requiring a passed attempt.
+9. 심판 임명/등급 부여는 기존 관리자 임명 server action에서 처리한다.
 
 ## 2026-06-24 RLS hardening
 

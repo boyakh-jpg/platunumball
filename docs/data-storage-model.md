@@ -250,6 +250,9 @@
 - `referee_exam_attempts`, `referee_requests` 브라우저 write grant/policy는 제거하고, self-read만 브라우저에 남긴다.
 - 심판 임명, 등급 부여, 회수는 기존 관리자 임명 server action 영역으로 남긴다.
 
+Referee exam verification update:
+- Backend flow simulation verifies `/api/referee/sync` start/finish/request, server grading, cooldown rejection, and public-question-only response.
+
 ## 2026-06-25 favorites sync server action
 
 - `POST /api/favorites/sync`를 추가했다.

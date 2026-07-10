@@ -7,8 +7,10 @@ import recruitingListHandler from "../server/api/recruiting/list.js";
 import discordRoomChatHandler from "../server/api/discord/room-chat.js";
 import syncMatchHandler, { queueMatchDiscordDeliveries } from "../server/api/matches/sync-match.js";
 import matchDetailHandler from "../server/api/matches/detail.js";
+import refereeSyncHandler from "../server/api/referee/sync.js";
 import teamsListHandler from "../server/api/teams/list.js";
 import maintenanceHandler from "../server/api/system/maintenance.js";
+import { gradeRefereeExamByQuestionIds } from "../src/lib/refereeExamBank.js";
 import {
   getRecorderHandoffPatch,
   withEffectiveMatchStatRecorders,
@@ -73,6 +75,8 @@ const keepRows = process.argv.includes("--keep") || process.env.RANKBALL_SIM_KEE
 const suffix = `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 const scenarioIds = [];
 const temporaryProfileDiscordSnapshots = new Map();
+const refereeSimulationAttemptIds = new Set();
+const refereeSimulationRequestIds = new Set();
 const MATCH_SCHEDULED_NOTICE_PREFIXES = [
   "match-reminder-24h",
   "match-reminder-2h",
@@ -103,6 +107,15 @@ function makeScenarioIds(label) {
 
 function makeDiscordSnowflake(offset = 0) {
   return String(1783000000000000000n + BigInt(Date.now() % 100000000) * 1000n + BigInt(Math.max(0, Number(offset) || 0)));
+}
+
+function getRefereeExamAnswerKey(questionIds = []) {
+  return Object.fromEntries(questionIds.map((questionId) => {
+    const answerIndex = [0, 1, 2, 3].find((index) => (
+      gradeRefereeExamByQuestionIds([questionId], { [questionId]: index }).score === 1
+    ));
+    return [questionId, Number.isInteger(answerIndex) ? answerIndex : 0];
+  }));
 }
 
 let ids = {
@@ -367,6 +380,43 @@ async function restoreTemporaryProfileDiscordUsers() {
   return { skipped: false, errors };
 }
 
+async function cleanupRefereeSimulationRows() {
+  if (!supabase || (!refereeSimulationAttemptIds.size && !refereeSimulationRequestIds.size)) return { skipped: true };
+  const now = new Date().toISOString();
+  const errors = [];
+  for (const attemptId of refereeSimulationAttemptIds) {
+    const { data, error: loadError } = await supabase
+      .from("referee_exam_attempts")
+      .select("payload")
+      .eq("id", attemptId)
+      .maybeSingle();
+    if (loadError) {
+      errors.push({ table: "referee_exam_attempts", id: attemptId, message: loadError.message });
+      continue;
+    }
+    const payload = {
+      ...(data?.payload && typeof data.payload === "object" ? data.payload : {}),
+      availableAfter: now,
+      simulationClosedAt: now,
+    };
+    const { error } = await supabase
+      .from("referee_exam_attempts")
+      .update({ available_after: now, payload, updated_at: now })
+      .eq("id", attemptId);
+    if (error) errors.push({ table: "referee_exam_attempts", id: attemptId, message: error.message });
+  }
+  if (refereeSimulationRequestIds.size) {
+    const { error } = await supabase
+      .from("referee_requests")
+      .update({ status: "simulation_closed", updated_at: now })
+      .in("id", [...refereeSimulationRequestIds]);
+    if (error) errors.push({ table: "referee_requests", message: error.message });
+  }
+  refereeSimulationAttemptIds.clear();
+  refereeSimulationRequestIds.clear();
+  return { skipped: false, errors };
+}
+
 async function loadStateAs(testLoginId) {
   const payload = await callHandler("/api/state/load", loadStateHandler, await getAuthToken(testLoginId));
   assertFlow(payload?.ok && payload?.state, `state load failed for ${testLoginId}`, payload);
@@ -463,6 +513,10 @@ async function syncRecruitingAs(testLoginId, operation) {
 
 async function syncMatchAs(testLoginId, operation, extra = {}) {
   return callHandler("/api/matches/sync-match", syncMatchHandler, await getAuthToken(testLoginId), { operation, ...extra });
+}
+
+async function syncRefereeAs(testLoginId, body = {}) {
+  return callHandler("/api/referee/sync", refereeSyncHandler, await getAuthToken(testLoginId), body);
 }
 
 async function loadMatchAs(testLoginId, matchId = ids.matchId) {
@@ -854,7 +908,8 @@ function withRecorderHandoff(match = {}, sideName = "teamA", currentRecorderId =
 
 async function cleanup() {
   const profileDiscordRestore = await restoreTemporaryProfileDiscordUsers();
-  if (keepRows) return { skipped: true, reason: "keep_requested", profileDiscordRestore };
+  const refereeSimulationCleanup = await cleanupRefereeSimulationRows();
+  if (keepRows) return { skipped: true, reason: "keep_requested", profileDiscordRestore, refereeSimulationCleanup };
   if (usesRemoteApi && schemaHealthSecret) {
     const response = await fetchWithTimeout(`${remoteBaseUrl}/api/system/cleanup-sim`, {
       method: "POST",
@@ -866,9 +921,9 @@ async function cleanup() {
     });
     const text = await readResponseTextWithTimeout(response, "cleanup_sim");
     if (!response.ok) return { skipped: true, reason: `remote_cleanup_failed:${response.status}:${text}` };
-    return { ...(text ? JSON.parse(text) : { ok: true }), profileDiscordRestore };
+    return { ...(text ? JSON.parse(text) : { ok: true }), profileDiscordRestore, refereeSimulationCleanup };
   }
-  if (!supabase) return { skipped: true, reason: "service_role_key_missing", profileDiscordRestore };
+  if (!supabase) return { skipped: true, reason: "service_role_key_missing", profileDiscordRestore, refereeSimulationCleanup };
 
   const closedAt = new Date().toISOString();
   const closures = scenarioIds.flatMap((scenario) => [
@@ -899,7 +954,7 @@ async function cleanup() {
       errors.push({ table: "room_discord_links", message: error.message });
     }
   }
-  return { skipped: false, errors, profileDiscordRestore };
+  return { skipped: false, errors, profileDiscordRestore, refereeSimulationCleanup };
 }
 
 async function runOneOnOneScenario({
@@ -2146,6 +2201,86 @@ async function runDiscordRoomChatBridgeScenario({
   };
 }
 
+async function runRefereeExamServerScenario({
+  label,
+  login,
+}) {
+  ids = makeScenarioIds(label);
+  const profileId = await step(`${ids.label}:resolveProfile`, () => getProfileIdForLogin(login));
+  const attemptId = `sim_rea_${ids.label}_${suffix}`;
+  const secondAttemptId = `sim_rea_${ids.label}_cooldown_${suffix}`;
+  const requestId = `sim_rr_${ids.label}_${suffix}`;
+  refereeSimulationAttemptIds.add(attemptId);
+  refereeSimulationRequestIds.add(requestId);
+
+  const startResult = await step(`${ids.label}:startExam`, () => syncRefereeAs(login, {
+    action: "startExam",
+    attempt: { id: attemptId },
+  }));
+  const attempt = startResult?.attempt ?? {};
+  assertFlow(startResult?.ok && startResult.attemptId === attemptId, "referee exam start failed", startResult);
+  assertFlow(attempt.userId === profileId && attempt.status === "started", "referee exam start payload mismatch", attempt);
+  assertFlow(Array.isArray(attempt.questionIds) && attempt.questionIds.length === attempt.total, "referee exam question ids missing", attempt);
+  assertFlow((attempt.questions ?? []).length === attempt.total, "referee exam public questions missing", attempt);
+  assertFlow((attempt.questions ?? []).every((question) => question.answerIndex === undefined && question.explanation === undefined), "referee exam leaked answer data", attempt.questions);
+
+  const duplicateStart = await step(`${ids.label}:startExamDuplicate`, () => syncRefereeAs(login, {
+    action: "startExam",
+    attempt: { id: attemptId },
+  }));
+  assertFlow(duplicateStart?.duplicate === true && duplicateStart?.attempt?.id === attemptId, "referee exam duplicate start mismatch", duplicateStart);
+
+  const answerKey = getRefereeExamAnswerKey(attempt.questionIds);
+  const finishResult = await step(`${ids.label}:finishExam`, () => syncRefereeAs(login, {
+    action: "finishExam",
+    attempt: {
+      id: attemptId,
+      answers: answerKey,
+      result: { passed: false, score: 0, total: 0 },
+    },
+  }));
+  assertFlow(finishResult?.ok && finishResult?.result?.passed === true, "referee exam server grading failed", finishResult);
+  assertFlow(finishResult.result.score >= attempt.passScore, "referee exam pass score mismatch", finishResult.result);
+  assertFlow(finishResult.attempt?.passed === true && finishResult.attempt?.score === finishResult.result.score, "referee exam finish payload mismatch", finishResult);
+
+  const requestResult = await step(`${ids.label}:submitRefereeRequest`, () => syncRefereeAs(login, {
+    action: "submitRequest",
+    request: {
+      id: requestId,
+      qualification: "community_exam",
+      examAttemptId: attemptId,
+      examVersion: attempt.examVersion,
+      experience: "Backend simulation referee exam flow.",
+      memo: "Backend simulation row.",
+    },
+    notifications: [],
+  }));
+  assertFlow(requestResult?.ok && requestResult?.requestId === requestId, "referee request submit failed", requestResult);
+
+  const cooldownResult = await expectRejected(
+    `${ids.label}:startExamCooldownBlocked`,
+    () => syncRefereeAs(login, {
+      action: "startExam",
+      attempt: { id: secondAttemptId },
+    }),
+    ["referee_exam_cooldown_active"],
+  );
+
+  return {
+    label: ids.label,
+    login,
+    profileId,
+    attemptId,
+    requestId,
+    publicQuestionsOnly: true,
+    serverGraded: true,
+    requestAccepted: true,
+    cooldownBlocked: cooldownResult.rejected,
+    score: finishResult.result.score,
+    total: finishResult.result.total,
+  };
+}
+
 async function runSoloRoomTeamBlockedScenario({
   label,
   hostLogin,
@@ -2619,6 +2754,7 @@ async function main() {
   const recorderHandoffTeamAReserveLogin = process.env.RANKBALL_SIM_RECORDER_HANDOFF_TEAM_A_RESERVE || "rankball-034";
   const recorderHandoffTeamBActiveLogin = process.env.RANKBALL_SIM_RECORDER_HANDOFF_TEAM_B_ACTIVE || "rankball-036";
   const discordChatHostLogin = process.env.RANKBALL_SIM_DISCORD_CHAT_HOST || "rankball-033";
+  const refereeExamLogin = process.env.RANKBALL_SIM_REFEREE_EXAM_LOGIN || "rankball-034";
   const teamBlockedHostLogin = process.env.RANKBALL_SIM_SOLO_BLOCK_HOST || "rankball-014";
   const teamBlockedLogin = process.env.RANKBALL_SIM_SOLO_BLOCK_TEAM_LOGIN || "rankball-001";
   const teamBlockedTeamId = process.env.RANKBALL_SIM_SOLO_BLOCK_TEAM_ID || "t1";
@@ -2682,6 +2818,10 @@ async function main() {
     scenarios.push(await runDiscordRoomChatBridgeScenario({
       label: "discord_room_chat_bridge",
       hostLogin: discordChatHostLogin,
+    }));
+    scenarios.push(await runRefereeExamServerScenario({
+      label: "referee_exam_server",
+      login: refereeExamLogin,
     }));
     scenarios.push(await runSoloRoomTeamBlockedScenario({
       label: "solo_1v1_team_join_blocked",
