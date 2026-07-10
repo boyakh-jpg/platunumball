@@ -4,6 +4,7 @@ import homeLoadHandler from "../server/api/home/load.js";
 import loadStateHandler from "../server/api/state/load.js";
 import syncRecruitingPostHandler from "../server/api/recruiting/sync-post.js";
 import recruitingListHandler from "../server/api/recruiting/list.js";
+import discordRoomChatHandler from "../server/api/discord/room-chat.js";
 import syncMatchHandler from "../server/api/matches/sync-match.js";
 import matchDetailHandler from "../server/api/matches/detail.js";
 import teamsListHandler from "../server/api/teams/list.js";
@@ -71,6 +72,7 @@ const authClient = createClient(url, publishableKey, {
 const keepRows = process.argv.includes("--keep") || process.env.RANKBALL_SIM_KEEP === "1";
 const suffix = `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 const scenarioIds = [];
+const temporaryProfileDiscordSnapshots = new Map();
 const MATCH_SCHEDULED_NOTICE_PREFIXES = [
   "match-reminder-24h",
   "match-reminder-2h",
@@ -92,6 +94,10 @@ function makeScenarioIds(label) {
   };
   scenarioIds.push(nextIds);
   return nextIds;
+}
+
+function makeDiscordSnowflake(offset = 0) {
+  return String(1783000000000000000n + BigInt(Date.now() % 100000000) * 1000n + BigInt(Math.max(0, Number(offset) || 0)));
 }
 
 let ids = {
@@ -186,6 +192,21 @@ async function callHandler(route, handler, bearerToken, body = {}) {
     throw new Error(`${route} failed ${response.statusCode}: ${detail}`);
   }
   return response.payload;
+}
+
+function getDiscordChatBridgeSecret() {
+  const configured = String(process.env.DISCORD_CHAT_BRIDGE_SECRET || process.env.CRON_SECRET || "").trim();
+  if (configured) return configured;
+  if (usesRemoteApi) return "";
+  const generated = `rankball-sim-${suffix}`;
+  process.env.DISCORD_CHAT_BRIDGE_SECRET = generated;
+  return generated;
+}
+
+async function syncDiscordRoomChatBridge(body = {}) {
+  const bridgeSecret = getDiscordChatBridgeSecret();
+  assertFlow(Boolean(bridgeSecret), "discord chat bridge secret missing");
+  return callHandler("/api/discord/room-chat", discordRoomChatHandler, bridgeSecret, body);
 }
 
 async function fetchWithTimeout(resource, options = {}) {
@@ -290,6 +311,55 @@ async function getProfileIdForLogin(testLoginId) {
   const seededProfileId = getSeededProfileId(testLoginId);
   const state = await loadStateAs(testLoginId);
   return getProfileId(state, testLoginId) || seededProfileId;
+}
+
+async function setTemporaryProfileDiscordUser(profileId = "", discordUserId = "", username = "rankball-sim") {
+  assertFlow(Boolean(supabase), "service role client required for temporary discord profile");
+  const safeProfileId = String(profileId || "").trim();
+  const safeDiscordUserId = String(discordUserId || "").trim();
+  assertFlow(Boolean(safeProfileId && safeDiscordUserId), "temporary discord profile input missing", { profileId, discordUserId });
+  if (!temporaryProfileDiscordSnapshots.has(safeProfileId)) {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id,discord_connection,discord_user_id")
+      .eq("id", safeProfileId)
+      .maybeSingle();
+    if (error) throw error;
+    assertFlow(data?.id === safeProfileId, "temporary discord profile not found", { profileId: safeProfileId });
+    temporaryProfileDiscordSnapshots.set(safeProfileId, {
+      discord_connection: data.discord_connection ?? null,
+      discord_user_id: data.discord_user_id ?? null,
+    });
+  }
+  const { error: updateError } = await supabase
+    .from("profiles")
+    .update({
+      discord_connection: {
+        status: "linked",
+        userId: safeDiscordUserId,
+        username: String(username || "rankball-sim").slice(0, 80),
+      },
+      discord_user_id: safeDiscordUserId,
+    })
+    .eq("id", safeProfileId);
+  if (updateError) throw updateError;
+}
+
+async function restoreTemporaryProfileDiscordUsers() {
+  if (!supabase || temporaryProfileDiscordSnapshots.size === 0) return { skipped: true };
+  const errors = [];
+  for (const [profileId, snapshot] of temporaryProfileDiscordSnapshots.entries()) {
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        discord_connection: snapshot.discord_connection,
+        discord_user_id: snapshot.discord_user_id,
+      })
+      .eq("id", profileId);
+    if (error) errors.push({ profileId, message: error.message });
+  }
+  temporaryProfileDiscordSnapshots.clear();
+  return { skipped: false, errors };
 }
 
 async function loadStateAs(testLoginId) {
@@ -712,7 +782,8 @@ function withRecorderHandoff(match = {}, sideName = "teamA", currentRecorderId =
 }
 
 async function cleanup() {
-  if (keepRows) return { skipped: true, reason: "keep_requested" };
+  const profileDiscordRestore = await restoreTemporaryProfileDiscordUsers();
+  if (keepRows) return { skipped: true, reason: "keep_requested", profileDiscordRestore };
   if (usesRemoteApi && schemaHealthSecret) {
     const response = await fetchWithTimeout(`${remoteBaseUrl}/api/system/cleanup-sim`, {
       method: "POST",
@@ -724,9 +795,9 @@ async function cleanup() {
     });
     const text = await readResponseTextWithTimeout(response, "cleanup_sim");
     if (!response.ok) return { skipped: true, reason: `remote_cleanup_failed:${response.status}:${text}` };
-    return text ? JSON.parse(text) : { ok: true };
+    return { ...(text ? JSON.parse(text) : { ok: true }), profileDiscordRestore };
   }
-  if (!supabase) return { skipped: true, reason: "service_role_key_missing" };
+  if (!supabase) return { skipped: true, reason: "service_role_key_missing", profileDiscordRestore };
 
   const closedAt = new Date().toISOString();
   const closures = scenarioIds.flatMap((scenario) => [
@@ -745,7 +816,19 @@ async function cleanup() {
       errors.push({ table, message: error.message });
     }
   }
-  return { skipped: false, errors };
+  const postIds = scenarioIds.map((scenario) => scenario.postId).filter(Boolean);
+  if (postIds.length) {
+    const { error } = await supabase
+      .from("room_discord_links")
+      .update({ enabled: false, updated_at: closedAt })
+      .eq("room_type", "recruiting")
+      .in("room_id", postIds)
+      .eq("enabled", true);
+    if (error && !String(error.message || "").includes("does not exist")) {
+      errors.push({ table: "room_discord_links", message: error.message });
+    }
+  }
+  return { skipped: false, errors, profileDiscordRestore };
 }
 
 async function runOneOnOneScenario({
@@ -1825,6 +1908,110 @@ async function runRecorderHandoffScenario({
   };
 }
 
+async function runDiscordRoomChatBridgeScenario({
+  label,
+  hostLogin,
+}) {
+  ids = makeScenarioIds(label);
+  if (!supabase) {
+    return { label: ids.label, skipped: true, reason: "service_role_key_missing" };
+  }
+
+  const hostId = await step(`${ids.label}:resolveProfile:host`, () => getProfileIdForLogin(hostLogin));
+  const discordUserId = makeDiscordSnowflake(301);
+  const discordChannelId = makeDiscordSnowflake(302);
+  const discordThreadId = makeDiscordSnowflake(303);
+  const discordMessageId = makeDiscordSnowflake(304);
+  const botMessageId = makeDiscordSnowflake(305);
+
+  const createResult = await step(`${ids.label}:createRecruitingPost`, () => syncRecruitingAs(hostLogin, {
+    action: "createRecruitingPost",
+    preferredPostId: ids.postId,
+    draft: {
+      id: ids.postId,
+      title: `Backend simulation ${ids.label}`,
+      visibility: "public",
+      hostJoinMode: "player",
+      mode: "1v1",
+      sideCapacity: 1,
+      timingType: "instant",
+      ranked: false,
+      official: false,
+      preRegistered: true,
+      teamOnly: false,
+      refereeWanted: false,
+      region: "Backend Simulation",
+      courtId: "c1",
+      court: "Backend Simulation Court",
+      position: "PG",
+      memo: "Backend simulation Discord room chat row. Safe to close.",
+      rules: {
+        targetScore: 21,
+        timeLimit: 12,
+        winByTwo: true,
+        ball: "7",
+      },
+    },
+  }));
+  const post = createResult?.post;
+  assertFlow(post?.id === ids.postId, "created discord room chat post not returned", createResult);
+
+  await step(`${ids.label}:setTemporaryDiscordUser`, () => setTemporaryProfileDiscordUser(hostId, discordUserId, "rankball-sim-chat"));
+
+  const { data: link, error: linkError } = await supabase
+    .from("room_discord_links")
+    .insert({
+      room_type: "recruiting",
+      room_id: ids.postId,
+      discord_channel_id: discordChannelId,
+      discord_thread_id: discordThreadId,
+      enabled: true,
+      created_by: hostId,
+      updated_at: new Date().toISOString(),
+    })
+    .select("id,room_type,room_id,discord_channel_id,discord_thread_id,enabled")
+    .single();
+  if (linkError) throw linkError;
+  assertFlow(link?.room_id === ids.postId && link.discord_thread_id === discordThreadId, "discord room link insert failed", link);
+
+  const bridgePayload = {
+    messageId: discordMessageId,
+    channelId: discordThreadId,
+    discordUserId,
+    username: "rankball-sim-chat",
+    body: "discord bridge ping",
+  };
+  const bridgeResult = await step(`${ids.label}:discordRoomChatBridge`, () => syncDiscordRoomChatBridge(bridgePayload));
+  assertFlow(bridgeResult?.ok && bridgeResult?.roomId === ids.postId, "discord bridge message not accepted", bridgeResult);
+  assertFlow(bridgeResult?.message?.userId === hostId && bridgeResult.message.body === bridgePayload.body, "discord bridge message payload mismatch", bridgeResult);
+
+  const duplicateResult = await step(`${ids.label}:discordRoomChatBridge:duplicate`, () => syncDiscordRoomChatBridge(bridgePayload));
+  assertFlow(duplicateResult?.ok && duplicateResult?.duplicate === true, "discord bridge duplicate not detected", duplicateResult);
+
+  const botResult = await step(`${ids.label}:discordRoomChatBridge:botSkip`, () => syncDiscordRoomChatBridge({
+    ...bridgePayload,
+    messageId: botMessageId,
+    body: "discord bot echo",
+    authorBot: true,
+  }));
+  assertFlow(botResult?.ok && botResult?.skipped === "bot_or_webhook_message", "discord bridge bot echo not skipped", botResult);
+
+  const loadedPost = await loadRecruitingPostAs(hostLogin, ids.postId);
+  const chatMessages = loadedPost?.roomState?.chatMessages ?? [];
+  assertFlow(chatMessages.some((message) => message.id === bridgeResult.message.id && message.userId === hostId && message.body === bridgePayload.body), "discord bridge chat not visible in room detail", chatMessages);
+  assertFlow(!chatMessages.some((message) => message.body === "discord bot echo"), "discord bridge bot echo persisted", chatMessages);
+
+  return {
+    label: ids.label,
+    hostLogin,
+    postId: ids.postId,
+    discordThreadNormalized: true,
+    duplicateBlocked: true,
+    botEchoSkipped: true,
+    messageId: bridgeResult.message.id,
+  };
+}
+
 async function runSoloRoomTeamBlockedScenario({
   label,
   hostLogin,
@@ -2297,6 +2484,7 @@ async function main() {
   const recorderHandoffHostLogin = process.env.RANKBALL_SIM_RECORDER_HANDOFF_HOST || "rankball-032";
   const recorderHandoffTeamAReserveLogin = process.env.RANKBALL_SIM_RECORDER_HANDOFF_TEAM_A_RESERVE || "rankball-034";
   const recorderHandoffTeamBActiveLogin = process.env.RANKBALL_SIM_RECORDER_HANDOFF_TEAM_B_ACTIVE || "rankball-036";
+  const discordChatHostLogin = process.env.RANKBALL_SIM_DISCORD_CHAT_HOST || "rankball-033";
   const teamBlockedHostLogin = process.env.RANKBALL_SIM_SOLO_BLOCK_HOST || "rankball-014";
   const teamBlockedLogin = process.env.RANKBALL_SIM_SOLO_BLOCK_TEAM_LOGIN || "rankball-001";
   const teamBlockedTeamId = process.env.RANKBALL_SIM_SOLO_BLOCK_TEAM_ID || "t1";
@@ -2356,6 +2544,10 @@ async function main() {
       hostLogin: recorderHandoffHostLogin,
       teamAReserveLogin: recorderHandoffTeamAReserveLogin,
       teamBActiveLogin: recorderHandoffTeamBActiveLogin,
+    }));
+    scenarios.push(await runDiscordRoomChatBridgeScenario({
+      label: "discord_room_chat_bridge",
+      hostLogin: discordChatHostLogin,
     }));
     scenarios.push(await runSoloRoomTeamBlockedScenario({
       label: "solo_1v1_team_join_blocked",
