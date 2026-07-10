@@ -275,10 +275,23 @@ function shouldUseIncomingRecruitingPostRow(incoming, existing) {
   return shouldUseIncomingRoomRow(incoming, existing);
 }
 
+function getTournamentMatchKey(match = {}) {
+  if (!match?.tournamentId) return "";
+  const round = Number(match.tournamentRound ?? 0);
+  const fixture = Number(match.tournamentFixture ?? 0);
+  return round && fixture ? `${match.tournamentId}:${round}:${fixture}` : "";
+}
+
 function mergeMatchesById(current = [], incoming = [], forceIds = new Set()) {
   const merged = new Map((current ?? []).filter((item) => item?.id).map((item) => [item.id, item]));
   (incoming ?? []).forEach((item) => {
     if (!item?.id) return;
+    const tournamentKey = getTournamentMatchKey(item);
+    if (tournamentKey) {
+      [...merged.entries()].forEach(([existingId, existingMatch]) => {
+        if (existingId !== item.id && getTournamentMatchKey(existingMatch) === tournamentKey) merged.delete(existingId);
+      });
+    }
     const existing = merged.get(item.id);
     if (!forceIds.has(item.id) && !shouldUseIncomingRoomRow(item, existing)) return;
     merged.set(item.id, preserveExistingWhenEmpty(item, existing, [

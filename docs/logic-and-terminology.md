@@ -1516,7 +1516,9 @@ flowchart TD
 5. 승인 완료로 생성된 경기들은 `sync-tournament` 안에서 `persistMatchSnapshot()`으로 함께 저장한다.
 6. 토너먼트 경기 일정 수정은 토너먼트 생성자만 가능하며, 변경된 match snapshot을 기존 match sync로 저장한다.
 7. 토너먼트 형식에서 확정된 경기의 승자가 다음 라운드 source pair를 완성하면 reducer가 후속 라운드 경기를 생성하고 `sync-match`가 tournament snapshot과 새 match snapshot을 같이 저장한다.
-8. 토너먼트 생성/팀 승인/대진 1차 생성과 후속 라운드 생성은 서버 reducer 재실행 경로가 원본이다. tournament snapshot 저장은 `rankball_persist_tournament_snapshot_locked()`의 per-tournament advisory transaction lock을 거친다. 완전한 DB RPC reducer 이전은 아직 남아 있다.
+8. `sync-match`는 후속 라운드가 생성되면 서버가 실제 저장한 tournament snapshot과 새 match snapshot을 `state.tournaments`/`state.matches`로 응답한다.
+9. 클라이언트는 같은 `tournamentId + tournamentRound + tournamentFixture`를 가진 optimistic 경기와 서버 경기를 같은 경기로 보고 서버 경기 id를 남긴다.
+10. 토너먼트 생성/팀 승인/대진 1차 생성과 후속 라운드 생성은 서버 reducer 재실행 경로가 원본이다. tournament snapshot 저장은 `rankball_persist_tournament_snapshot_locked()`의 per-tournament advisory transaction lock을 거친다. 완전한 DB RPC reducer 이전은 아직 남아 있다.
 
 ## 2026-06-25 referee request server action
 

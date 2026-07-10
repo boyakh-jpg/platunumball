@@ -103,6 +103,10 @@ function getTimestamp(item = {}) {
   return item.updatedAt ?? item.createdAt ?? item.queuedAt ?? item.startedAt ?? item.approvedAt ?? new Date().toISOString();
 }
 
+function uniqueItemsById(items = []) {
+  return [...new Map((items ?? []).filter((item) => item?.id).map((item) => [item.id, item])).values()];
+}
+
 function getPublicAppUrl() {
   return String(process.env.VITE_PUBLIC_APP_URL || process.env.PUBLIC_APP_URL || "").trim().replace(/\/$/, "");
 }
@@ -1557,8 +1561,21 @@ export default async function handler(request, response) {
       });
       createdTournamentMatchCount += 1;
     }
+    const responseStateMatches = uniqueItemsById([
+      ...(result.state?.matches ?? []),
+      result.match,
+      ...createdTournamentMatches,
+    ]);
+    const responseState = result.state || tournament || responseStateMatches.length
+      ? {
+          ...(result.state ?? {}),
+          ...(responseStateMatches.length ? { matches: responseStateMatches } : {}),
+          ...(tournament ? { tournaments: [tournament] } : {}),
+        }
+      : null;
     sendJson(response, 200, {
       ...result,
+      ...(responseState ? { state: responseState } : {}),
       tournamentSynced: Boolean(tournamentPersistResult?.ok),
       createdTournamentMatchCount,
     });
