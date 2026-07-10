@@ -5,7 +5,7 @@ import loadStateHandler from "../server/api/state/load.js";
 import syncRecruitingPostHandler from "../server/api/recruiting/sync-post.js";
 import recruitingListHandler from "../server/api/recruiting/list.js";
 import discordRoomChatHandler from "../server/api/discord/room-chat.js";
-import syncMatchHandler from "../server/api/matches/sync-match.js";
+import syncMatchHandler, { queueMatchDiscordDeliveries } from "../server/api/matches/sync-match.js";
 import matchDetailHandler from "../server/api/matches/detail.js";
 import teamsListHandler from "../server/api/teams/list.js";
 import maintenanceHandler from "../server/api/system/maintenance.js";
@@ -83,6 +83,11 @@ const MATCH_SCHEDULED_NOTICE_PREFIXES = [
 const MATCH_POSTGAME_NOTICE_PREFIXES = [
   "match-ended-score",
   "match-dispute-check",
+];
+const MATCH_CANCEL_NOTICE_PREFIXES = [
+  ...MATCH_SCHEDULED_NOTICE_PREFIXES,
+  "match-started",
+  ...MATCH_POSTGAME_NOTICE_PREFIXES,
 ];
 
 function makeScenarioIds(label) {
@@ -530,6 +535,72 @@ async function assertPendingMatchNotices(matchId, prefixes = [], { minNotificati
     { matchId, prefixes, notifications, deliveries, minNotifications, maxNotifications },
   );
   return { notifications, deliveries };
+}
+
+async function seedPendingMatchNotices(matchId = "", profileId = "", prefixes = []) {
+  if (!supabase) return { skipped: true, reason: "service_role_key_missing" };
+  const safeMatchId = String(matchId || "").trim();
+  const safeProfileId = String(profileId || "").trim();
+  const uniquePrefixes = uniqueIds(prefixes);
+  assertFlow(Boolean(safeMatchId && safeProfileId && uniquePrefixes.length), "pending match notice seed input missing", { matchId, profileId, prefixes });
+  const now = new Date().toISOString();
+  const notificationRows = uniquePrefixes.map((prefix) => {
+    const id = `notice-${prefix}-${safeMatchId}-${safeProfileId}`;
+    return {
+      id,
+      user_id: safeProfileId,
+      target_user_id: safeProfileId,
+      title: `Simulation ${prefix}`,
+      body: "Backend simulation stale notice.",
+      tone: "match",
+      type: `simulation_${String(prefix).replace(/-/g, "_")}`,
+      match_id: safeMatchId,
+      discord_event: "match",
+      read_at: null,
+      payload: {
+        id,
+        matchId: safeMatchId,
+        targetUserId: safeProfileId,
+        sendAt: now,
+        queuedAt: now,
+        skipDiscordSync: true,
+      },
+      created_at: now,
+      updated_at: now,
+    };
+  });
+  const deliveryRows = uniquePrefixes.map((prefix, index) => {
+    const notificationId = `notice-${prefix}-${safeMatchId}-${safeProfileId}`;
+    return {
+      id: `discord-${prefix}-${safeMatchId}-${safeProfileId}`,
+      notification_id: notificationId,
+      target_user_id: safeProfileId,
+      discord_user_id: makeDiscordSnowflake(600 + index),
+      event: "match",
+      status: "queued",
+      payload: {
+        matchId: safeMatchId,
+        targetUserId: safeProfileId,
+        simulation: true,
+      },
+      queued_at: now,
+      send_at: now,
+      sent_at: null,
+      failed_at: null,
+      last_error: null,
+      created_at: now,
+      updated_at: now,
+    };
+  });
+  const { error: notificationError } = await supabase
+    .from("notifications")
+    .upsert(notificationRows, { onConflict: "id" });
+  if (notificationError) throw notificationError;
+  const { error: deliveryError } = await supabase
+    .from("discord_notification_deliveries")
+    .upsert(deliveryRows, { onConflict: "id" });
+  if (deliveryError) throw deliveryError;
+  return { skipped: false, notifications: notificationRows.length, deliveries: deliveryRows.length };
 }
 
 async function expectRejected(label, action, expectedErrors = []) {
@@ -1198,6 +1269,69 @@ async function runMatchReminderCancelScenario({
     matchId: ids.matchId,
     finalStatus: match.status,
     reminderChecks,
+  };
+}
+
+async function runMatchReminderCleanupProbe({
+  label,
+  hostLogin,
+  matchId,
+}) {
+  ids = makeScenarioIds(label);
+  if (!supabase) {
+    return { label: ids.label, skipped: true, reason: "service_role_key_missing" };
+  }
+  const targetMatchId = String(matchId || ids.matchId).trim();
+  const hostId = await step(`${ids.label}:resolveProfile:host`, () => getProfileIdForLogin(hostLogin));
+  const checks = {};
+
+  await step(`${ids.label}:seedScheduledNotices`, () => seedPendingMatchNotices(targetMatchId, hostId, MATCH_SCHEDULED_NOTICE_PREFIXES));
+  checks.scheduledBeforeStart = await step(`${ids.label}:scheduledBeforeStart`, () => assertPendingMatchNotices(
+    targetMatchId,
+    MATCH_SCHEDULED_NOTICE_PREFIXES,
+    { minNotifications: MATCH_SCHEDULED_NOTICE_PREFIXES.length },
+  ));
+  await step(`${ids.label}:cleanupStartMatch`, () => queueMatchDiscordDeliveries(supabase, { id: targetMatchId, status: "agreed" }, "startMatch"));
+  checks.scheduledAfterStart = await step(`${ids.label}:scheduledAfterStart`, () => assertPendingMatchNotices(
+    targetMatchId,
+    MATCH_SCHEDULED_NOTICE_PREFIXES,
+    { maxNotifications: 0 },
+  ));
+
+  await step(`${ids.label}:seedPostgameNotices`, () => seedPendingMatchNotices(targetMatchId, hostId, MATCH_POSTGAME_NOTICE_PREFIXES));
+  checks.postgameBeforeApprove = await step(`${ids.label}:postgameBeforeApprove`, () => assertPendingMatchNotices(
+    targetMatchId,
+    MATCH_POSTGAME_NOTICE_PREFIXES,
+    { minNotifications: MATCH_POSTGAME_NOTICE_PREFIXES.length },
+  ));
+  await step(`${ids.label}:cleanupApproveMatch`, () => queueMatchDiscordDeliveries(supabase, { id: targetMatchId, status: "confirmed" }, "approveMatch"));
+  checks.postgameAfterApprove = await step(`${ids.label}:postgameAfterApprove`, () => assertPendingMatchNotices(
+    targetMatchId,
+    MATCH_POSTGAME_NOTICE_PREFIXES,
+    { maxNotifications: 0 },
+  ));
+
+  await step(`${ids.label}:seedCancelNotices`, () => seedPendingMatchNotices(targetMatchId, hostId, MATCH_CANCEL_NOTICE_PREFIXES));
+  checks.cancelBeforeVoid = await step(`${ids.label}:cancelBeforeVoid`, () => assertPendingMatchNotices(
+    targetMatchId,
+    MATCH_CANCEL_NOTICE_PREFIXES,
+    { minNotifications: MATCH_CANCEL_NOTICE_PREFIXES.length },
+  ));
+  await step(`${ids.label}:cleanupVoidMatch`, () => queueMatchDiscordDeliveries(supabase, { id: targetMatchId, status: "void" }, "voidMatch"));
+  checks.cancelAfterVoid = await step(`${ids.label}:cancelAfterVoid`, () => assertPendingMatchNotices(
+    targetMatchId,
+    MATCH_CANCEL_NOTICE_PREFIXES,
+    { maxNotifications: 0 },
+  ));
+
+  return {
+    label: ids.label,
+    hostLogin,
+    matchId: targetMatchId,
+    startStaleCleared: checks.scheduledAfterStart.notifications.total === 0,
+    approveStaleCleared: checks.postgameAfterApprove.notifications.total === 0,
+    voidStaleCleared: checks.cancelAfterVoid.notifications.total === 0,
+    checks,
   };
 }
 
@@ -2561,10 +2695,16 @@ async function main() {
       refereeLogin: refereeBlockedLogin,
     }));
   }
-  scenarios.push(await runMatchReminderCancelScenario({
+  const matchReminderCancelScenario = await runMatchReminderCancelScenario({
     label: "match_reminder_cancel",
     hostLogin: basicHostLogin,
     opponentLogin: basicOpponentLogin,
+  });
+  scenarios.push(matchReminderCancelScenario);
+  scenarios.push(await runMatchReminderCleanupProbe({
+    label: "match_reminder_cleanup_probe",
+    hostLogin: basicHostLogin,
+    matchId: matchReminderCancelScenario.matchId,
   }));
   scenarios.push(await runOneOnOneScenario({
     label: "basic_1v1_no_referee",
