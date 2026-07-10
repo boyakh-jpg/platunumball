@@ -165,6 +165,27 @@ const REQUIRED_COLUMNS = {
     "recruiting_post_id",
     "payload",
   ],
+  room_chat_messages: [
+    "id",
+    "room_type",
+    "room_id",
+    "user_id",
+    "body",
+    "message_seq",
+    "source",
+    "external_message_id",
+    "external_channel_id",
+    "external_thread_id",
+    "metadata",
+  ],
+  room_discord_links: [
+    "id",
+    "room_type",
+    "room_id",
+    "discord_channel_id",
+    "discord_thread_id",
+    "enabled",
+  ],
 };
 
 const REQUIRED_RPCS = [

@@ -330,6 +330,7 @@ Done:
 - `/api/system/schema-health` includes `rankball_rls_policy_health()` so deployment checks fail on permissive raw read policy regressions for reports, court, matches, recruiting, feed, admin tables, and direct browser grants on `room_feed_cards`.
 - `/api/system/schema-health` also includes `rankball_rpc_grant_health()` so service-role-only RPCs fail health checks if `anon` or `authenticated` regains `EXECUTE`.
 - `/api/system/schema-health` includes `rankball_profile_identity_health()` so profile auth/Discord/hashtag identity constraints, lock columns, client `auth_user_id` write guards, and `public_profiles` private-column hiding stay enforced.
+- `/api/system/schema-health` checks `room_chat_messages` Discord sync columns and `room_discord_links` so room chat bridge schema drift fails deployment health checks.
 - Vercel Hobby API consolidation: one `api/index.js` function dispatches the server routes.
 - Server action paths exist for profile upsert, court request submit/approve/report, admin review, admin/referee appointment, disciplinary action, Discord DM worker, Discord delivery queue sync, reports, recruiting, matches, teams, tournaments, referee requests, favorites, notification read, court reviews.
 - Team membership save/delete now commits through `rankball_sync_team_membership()` / `rankball_delete_team()` DB RPC transactions.

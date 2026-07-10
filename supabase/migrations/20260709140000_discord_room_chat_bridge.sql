@@ -90,3 +90,5 @@ using (
 
 grant select on public.room_discord_links to authenticated;
 grant all on public.room_discord_links to service_role;
+
+select pg_notify('pgrst', 'reload schema');
