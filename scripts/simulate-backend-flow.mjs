@@ -67,6 +67,17 @@ const authClient = createClient(url, publishableKey, {
 const keepRows = process.argv.includes("--keep") || process.env.RANKBALL_SIM_KEEP === "1";
 const suffix = `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 const scenarioIds = [];
+const MATCH_SCHEDULED_NOTICE_PREFIXES = [
+  "match-reminder-24h",
+  "match-reminder-2h",
+  "match-reminder-1h",
+  "match-manager-checkin-10m",
+  "match-manager-start-now",
+];
+const MATCH_POSTGAME_NOTICE_PREFIXES = [
+  "match-ended-score",
+  "match-dispute-check",
+];
 
 function makeScenarioIds(label) {
   const safeLabel = String(label || "scenario").replace(/[^a-z0-9]+/gi, "_").replace(/^_+|_+$/g, "").toLowerCase();
@@ -385,6 +396,68 @@ async function loadMatchAs(testLoginId, matchId = ids.matchId) {
   return match;
 }
 
+function getKstFutureSchedule(offsetHours = 48) {
+  const date = new Date(Date.now() + Math.max(1, Number(offsetHours) || 48) * 60 * 60 * 1000);
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Seoul",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    }).formatToParts(date).map((part) => [part.type, part.value]),
+  );
+  return {
+    timingType: "scheduled",
+    scheduledDate: `${parts.year}-${parts.month}-${parts.day}`,
+    scheduledTime: `${parts.hour}:${parts.minute}`,
+  };
+}
+
+async function countPendingRowsByPrefixes(table, matchId, prefixes = []) {
+  if (!supabase) return { skipped: true, reason: "service_role_key_missing" };
+  const kind = table === "discord_notification_deliveries" ? "discord" : "notice";
+  const counts = {};
+  for (const prefix of prefixes) {
+    let query = supabase
+      .from(table)
+      .select("id", { count: "exact", head: true })
+      .like("id", `${kind}-${prefix}-${matchId}-%`);
+    if (table === "discord_notification_deliveries") {
+      query = query.eq("status", "queued").is("sent_at", null);
+    } else {
+      query = query.is("read_at", null);
+    }
+    const { count, error } = await query;
+    if (error) throw error;
+    counts[prefix] = Number(count ?? 0);
+  }
+  return {
+    skipped: false,
+    counts,
+    total: Object.values(counts).reduce((sum, count) => sum + count, 0),
+  };
+}
+
+async function assertPendingMatchNotices(matchId, prefixes = [], { minNotifications = 0, maxNotifications = Infinity } = {}) {
+  const notifications = await countPendingRowsByPrefixes("notifications", matchId, prefixes);
+  const deliveries = await countPendingRowsByPrefixes("discord_notification_deliveries", matchId, prefixes);
+  if (notifications.skipped || deliveries.skipped) {
+    return {
+      skipped: true,
+      reason: notifications.reason || deliveries.reason,
+    };
+  }
+  assertFlow(
+    notifications.total >= minNotifications && notifications.total <= maxNotifications,
+    "match reminder notification count mismatch",
+    { matchId, prefixes, notifications, deliveries, minNotifications, maxNotifications },
+  );
+  return { notifications, deliveries };
+}
+
 async function expectRejected(label, action, expectedErrors = []) {
   try {
     const payload = await step(label, action);
@@ -658,6 +731,7 @@ async function runOneOnOneScenario({
   opponentLogin,
   refereeLogin = "",
   refereeWanted = false,
+  scheduledOffsetHours = 0,
 }) {
   ids = makeScenarioIds(label);
   const operatorLogin = refereeWanted ? refereeLogin : hostLogin;
@@ -674,6 +748,7 @@ async function runOneOnOneScenario({
     assertFlow(![hostId, opponentId].includes(refereeId), "referee must be separate profile", { hostId, opponentId, refereeId });
   }
 
+  const scheduleDraft = scheduledOffsetHours > 0 ? getKstFutureSchedule(scheduledOffsetHours) : { timingType: "instant" };
   const createResult = await step(`${ids.label}:createRecruitingPost`, () => syncRecruitingAs(hostLogin, {
     action: "createRecruitingPost",
     preferredPostId: ids.postId,
@@ -684,7 +759,7 @@ async function runOneOnOneScenario({
       hostJoinMode: "player",
       mode: "1v1",
       sideCapacity: 1,
-      timingType: "instant",
+      ...scheduleDraft,
       ranked: false,
       official: false,
       preRegistered: true,
@@ -692,6 +767,7 @@ async function runOneOnOneScenario({
       refereeWanted,
       refereeTrustMin: 70,
       region: "Backend Simulation",
+      courtId: "c1",
       court: "Backend Simulation Court",
       position: "PG",
       memo: "Backend simulation row. Safe to delete.",
@@ -732,13 +808,7 @@ async function runOneOnOneScenario({
   }));
   post = await getRecruitingPostAfterResult(opponentJoinResult, opponentLogin, `${ids.label}:loadAfterJoin`);
   assertFlow(post?.applicants?.some((applicant) => applicant.playerId === opponentId), "opponent join not persisted", post);
-
-  const readyResult = await step(`${ids.label}:setRecruitingReady`, () => syncRecruitingAs(opponentLogin, {
-    action: "setRecruitingReady",
-    postId: ids.postId,
-    ready: true,
-  }));
-  post = await getRecruitingPostAfterResult(readyResult, opponentLogin, `${ids.label}:loadAfterReady`);
+  const readyResult = { skipped: true };
   assertFlow(post?.applicants?.some((applicant) => applicant.playerId === opponentId && applicant.status === "ready"), "opponent ready not persisted", post);
 
   const confirmResult = await step(`${ids.label}:confirmRecruitingMatch`, () => syncRecruitingAs(hostLogin, {
@@ -751,6 +821,15 @@ async function runOneOnOneScenario({
   if (refereeWanted) assertFlow(match.refereeId === refereeId, "match referee not persisted", { refereeId, match });
   assertFlow(match.teamA?.players?.includes(hostId), "host missing from teamA", match);
   assertFlow(match.teamB?.players?.includes(opponentId), "opponent missing from teamB", match);
+
+  const reminderChecks = {};
+  if (scheduledOffsetHours > 0) {
+    reminderChecks.afterConfirm = await step(`${ids.label}:remindersAfterConfirm`, () => assertPendingMatchNotices(
+      ids.matchId,
+      MATCH_SCHEDULED_NOTICE_PREFIXES,
+      { minNotifications: 1 },
+    ));
+  }
 
   let agreeASqlReducer = false;
   let agreeBSqlReducer = false;
@@ -809,6 +888,13 @@ async function runOneOnOneScenario({
   }, { match: matchWithStart }));
   match = await getMatchAfterResult(startResult, operatorLogin, `${ids.label}:loadAfterStartMatch`);
   assertFlow(Boolean(match?.startedAt), "match start not persisted", match);
+  if (scheduledOffsetHours > 0) {
+    reminderChecks.afterStart = await step(`${ids.label}:remindersAfterStart`, () => assertPendingMatchNotices(
+      ids.matchId,
+      MATCH_SCHEDULED_NOTICE_PREFIXES,
+      { maxNotifications: 0 },
+    ));
+  }
 
   const matchWithEnd = withEndedMatch(match);
   const endResult = await step(`${ids.label}:endMatch`, () => syncMatchAs(operatorLogin, {
@@ -817,6 +903,11 @@ async function runOneOnOneScenario({
   }, { match: matchWithEnd }));
   match = await getMatchAfterResult(endResult, operatorLogin, `${ids.label}:loadAfterEndMatch`);
   assertFlow(Boolean(match?.endedAt), "match end not persisted", match);
+  reminderChecks.afterEnd = await step(`${ids.label}:postgameAfterEnd`, () => assertPendingMatchNotices(
+    ids.matchId,
+    MATCH_POSTGAME_NOTICE_PREFIXES,
+    { minNotifications: 1 },
+  ));
 
   let latePlayerSqlReducers = null;
   if (!refereeWanted) {
@@ -856,6 +947,11 @@ async function runOneOnOneScenario({
   }));
   match = resultSubmit?.match;
   assertFlow(match?.status === "approval" && match?.result, "match result not persisted", match);
+  reminderChecks.afterSubmitResult = await step(`${ids.label}:postgameAfterSubmitResult`, () => assertPendingMatchNotices(
+    ids.matchId,
+    MATCH_POSTGAME_NOTICE_PREFIXES,
+    { maxNotifications: 0 },
+  ));
   if (refereeWanted) {
     assertFlow(match.result.submittedBy === refereeId, "referee result submitter not persisted", { refereeId, result: match.result });
   }
@@ -897,6 +993,105 @@ async function runOneOnOneScenario({
       endMatch: Boolean(endResult?.sqlReducer),
       latePlayer: latePlayerSqlReducers,
     },
+    reminderChecks,
+  };
+}
+
+async function runMatchReminderCancelScenario({
+  label,
+  hostLogin,
+  opponentLogin,
+  scheduledOffsetHours = 23,
+}) {
+  ids = makeScenarioIds(label);
+  const hostId = await step(`${ids.label}:resolveProfile:host`, () => getProfileIdForLogin(hostLogin));
+  const opponentId = await step(`${ids.label}:resolveProfile:opponent`, () => getProfileIdForLogin(opponentLogin));
+  assertFlow(hostId !== opponentId, "host and opponent must be different profiles", { hostId, opponentId });
+
+  const createResult = await step(`${ids.label}:createRecruitingPost`, () => syncRecruitingAs(hostLogin, {
+    action: "createRecruitingPost",
+    preferredPostId: ids.postId,
+    draft: {
+      id: ids.postId,
+      title: `Backend simulation ${ids.label}`,
+      visibility: "public",
+      hostJoinMode: "player",
+      mode: "1v1",
+      sideCapacity: 1,
+      ...getKstFutureSchedule(scheduledOffsetHours),
+      ranked: false,
+      official: false,
+      preRegistered: true,
+      teamOnly: false,
+      refereeWanted: false,
+      refereeTrustMin: 70,
+      region: "Backend Simulation",
+      courtId: "c1",
+      court: "Backend Simulation Court",
+      position: "PG",
+      memo: "Backend simulation reminder row. Safe to delete.",
+      rules: {
+        targetScore: 21,
+        timeLimit: 12,
+        winByTwo: true,
+        ball: "7",
+      },
+    },
+  }));
+  let post = createResult?.post;
+  assertFlow(post?.id === ids.postId, "created reminder post not returned", createResult);
+
+  const opponentJoinResult = await step(`${ids.label}:interestRecruitingPost:opponent`, () => syncRecruitingAs(opponentLogin, {
+    action: "interestRecruitingPost",
+    postId: ids.postId,
+    application: {
+      joinMode: "player",
+      side: "teamB",
+      position: "PG",
+    },
+    joinMode: "player",
+  }));
+  post = await getRecruitingPostAfterResult(opponentJoinResult, opponentLogin, `${ids.label}:loadAfterJoin`);
+  assertFlow(post?.applicants?.some((applicant) => applicant.playerId === opponentId && applicant.status === "ready"), "reminder opponent join not ready", post);
+
+  const confirmResult = await step(`${ids.label}:confirmRecruitingMatch`, () => syncRecruitingAs(hostLogin, {
+    action: "confirmRecruitingMatch",
+    postId: ids.postId,
+    preferredMatchId: ids.matchId,
+  }));
+  let match = confirmResult?.createdMatch;
+  assertFlow(match?.id === ids.matchId, "reminder match not returned", confirmResult);
+
+  const reminderChecks = {
+    afterConfirm: await step(`${ids.label}:remindersAfterConfirm`, () => assertPendingMatchNotices(
+      ids.matchId,
+      MATCH_SCHEDULED_NOTICE_PREFIXES,
+      { minNotifications: 1 },
+    )),
+  };
+
+  const cancelResult = await step(`${ids.label}:cancelMatch`, () => syncMatchAs(hostLogin, {
+    action: "cancelMatch",
+    matchId: ids.matchId,
+  }));
+  match = await getMatchAfterResult(cancelResult, hostLogin, `${ids.label}:loadAfterCancelMatch`);
+  assertFlow(match?.status === "cancelled", "reminder match not cancelled", match);
+  reminderChecks.afterCancel = await step(`${ids.label}:remindersAfterCancel`, () => assertPendingMatchNotices(
+    ids.matchId,
+    MATCH_SCHEDULED_NOTICE_PREFIXES,
+    { maxNotifications: 0 },
+  ));
+
+  return {
+    label: ids.label,
+    hostLogin,
+    opponentLogin,
+    hostId,
+    opponentId,
+    postId: ids.postId,
+    matchId: ids.matchId,
+    finalStatus: match.status,
+    reminderChecks,
   };
 }
 
@@ -927,6 +1122,7 @@ async function runRecruitingInviteAcceptScenario({
       teamOnly: false,
       refereeWanted: false,
       region: "Backend Simulation",
+      courtId: "c1",
       court: "Backend Simulation Court",
       position: "PG",
       memo: "Backend simulation row. Safe to delete.",
@@ -1064,6 +1260,7 @@ async function runPublicTeamRegionFeedScenario({
       teamOnly: true,
       refereeWanted: false,
       region: "마포",
+      courtId: "c1",
       court: "Backend Simulation Court",
       teamId: resolvedTeamId,
       playerIds: [hostId, teammateId],
@@ -1136,6 +1333,7 @@ async function runDisputeResumeThumbsScenario({
       teamOnly: false,
       refereeWanted: false,
       region: "Backend Simulation",
+      courtId: "c1",
       court: "Backend Simulation Court",
       position: "PG",
       memo: "Backend simulation row. Safe to delete.",
@@ -1162,13 +1360,7 @@ async function runDisputeResumeThumbsScenario({
   }));
   post = await getRecruitingPostAfterResult(opponentJoinResult, opponentLogin, `${ids.label}:loadAfterJoin`);
   assertFlow(post?.applicants?.some((applicant) => applicant.playerId === opponentId), "dispute opponent join not persisted", post);
-
-  const readyResult = await step(`${ids.label}:setRecruitingReady`, () => syncRecruitingAs(opponentLogin, {
-    action: "setRecruitingReady",
-    postId: ids.postId,
-    ready: true,
-  }));
-  post = await getRecruitingPostAfterResult(readyResult, opponentLogin, `${ids.label}:loadAfterReady`);
+  const readyResult = { skipped: true };
   assertFlow(post?.applicants?.some((applicant) => applicant.playerId === opponentId && applicant.status === "ready"), "dispute opponent ready not persisted", post);
 
   const confirmResult = await step(`${ids.label}:confirmRecruitingMatch`, () => syncRecruitingAs(hostLogin, {
@@ -1360,6 +1552,7 @@ async function runRecruitingActorScenario({
       teamOnly: false,
       refereeWanted: false,
       region: "Backend Simulation",
+      courtId: "c1",
       court: "Backend Simulation Court",
       position: "PG",
       memo: "Backend simulation row. Safe to delete.",
@@ -1479,6 +1672,7 @@ async function runSoloRoomTeamBlockedScenario({
       teamOnly: false,
       refereeWanted: false,
       region: "Backend Simulation",
+      courtId: "c1",
       court: "Backend Simulation Court",
       position: "PG",
       memo: "Backend simulation row. Safe to delete.",
@@ -1562,6 +1756,7 @@ async function runIneligibleRefereeBlockedScenario({
       refereeWanted: true,
       refereeTrustMin: 70,
       region: "Backend Simulation",
+      courtId: "c1",
       court: "Backend Simulation Court",
       position: "PG",
       memo: "Backend simulation row. Safe to delete.",
@@ -1663,6 +1858,7 @@ async function runBulkHomeInviteAcceptScenario({
       teamOnly: false,
       refereeWanted: false,
       region: "Backend Simulation",
+      courtId: "c1",
       court: "Backend Simulation Court",
       position: "C",
       memo: "Backend simulation row. Safe to delete.",
@@ -1857,6 +2053,7 @@ async function runSoloRecordScenario({
       id: ids.matchId,
       recordType: "solo",
       title: `Backend simulation ${ids.label}`,
+      courtId: "c1",
       court: "Backend Simulation Court",
       scheduledDate: today,
       scheduledTime: "20:30",
@@ -1981,6 +2178,11 @@ async function main() {
       refereeLogin: refereeBlockedLogin,
     }));
   }
+  scenarios.push(await runMatchReminderCancelScenario({
+    label: "match_reminder_cancel",
+    hostLogin: basicHostLogin,
+    opponentLogin: basicOpponentLogin,
+  }));
   scenarios.push(await runOneOnOneScenario({
     label: "basic_1v1_no_referee",
     hostLogin: basicHostLogin,
