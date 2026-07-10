@@ -6305,6 +6305,8 @@ begin
     raise exception 'missing_recruiting_post' using errcode = '22023';
   end if;
 
+  perform pg_advisory_xact_lock(hashtext('rankball:recruiting'), hashtext(safe_post_id));
+
   if safe_action = 'setRecruitingSlotPosition' and p_post_row ? '__operation' then
     return public.rankball_recruiting_slot_position_action(
       safe_actor_id,
@@ -6361,7 +6363,8 @@ begin
 
   return persist_result || jsonb_build_object(
     'action', safe_action,
-    'actorProfileId', safe_actor_id
+    'actorProfileId', safe_actor_id,
+    'advisoryLocked', true
   );
 end;
 $$;
@@ -7376,6 +7379,8 @@ begin
     raise exception 'missing_match' using errcode = '22023';
   end if;
 
+  perform pg_advisory_xact_lock(hashtext('rankball:match'), hashtext(safe_match_id));
+
   if safe_action = 'agreeMatch' and p_match_row ? '__operation' then
     return public.rankball_match_agree_action(
       safe_actor_id,
@@ -7437,7 +7442,8 @@ begin
 
   return persist_result || jsonb_build_object(
     'action', safe_action,
-    'actorProfileId', safe_actor_id
+    'actorProfileId', safe_actor_id,
+    'advisoryLocked', true
   );
 end;
 $$;

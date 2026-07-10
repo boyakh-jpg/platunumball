@@ -1667,6 +1667,7 @@ flowchart TD
 3. `rankball_persist_tournament_snapshot()` commits `tournaments`, `tournament_teams`, and related notifications in one DB function.
 4. Server actions still calculate the next room/match/tournament state by loading Supabase state and rerunning the central reducer. The DB RPCs make persistence atomic, not reducer calculation fully SQL-native.
 5. `rankball_match_action()` normalizes match dispute row ids before snapshot persistence so stale client/internal ids cannot break the whole match write.
+6. `rankball_recruiting_action()` and `rankball_match_action()` take a per-room/per-match advisory transaction lock before branch-specific SQL reducers or snapshot persistence run. Row `for update` stale checks still apply after the advisory lock.
 
 ## 2026-06-26 match rating commit transaction
 
@@ -1747,7 +1748,7 @@ flowchart TD
 
 1. `rankball_recruiting_action()`은 모집방 action persist를 위한 단일 DB RPC 진입점이다.
 2. `rankball_match_action()`은 경기 action persist를 위한 단일 DB RPC 진입점이다.
-3. 1단계에서는 기존 JS reducer와 server-side 권한/룰 검증을 유지하고, DB row lock과 snapshot persist를 action RPC 안에서 처리한다.
+3. 1단계에서는 기존 JS reducer와 server-side 권한/룰 검증을 유지하고, advisory transaction lock, DB row lock, snapshot persist를 action RPC 안에서 처리한다.
 4. 다음 단계는 개별 action reducer를 SQL 내부로 옮겨 server action의 state load/read call을 더 줄이는 것이다.
 
 ## 2026-06-26 recruiting/match action snapshot fast path
