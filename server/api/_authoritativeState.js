@@ -406,6 +406,9 @@ export function applyAuthoritativeMatchOperation(state, operation = {}) {
     case "setMatchRoomPlayerPlacement":
       next = setMatchRoomPlayerPlacement(state, operation.matchId, operation.playerId, operation.placement);
       break;
+    case "setMatchRecordTeamRoster":
+      next = setMatchRecordTeamRoster(state, operation.matchId, operation.sideName, operation.roster ?? {});
+      break;
     case "removeMatchRoomPlayer":
       next = removeMatchRoomPlayer(state, operation.matchId, operation.playerId);
       break;

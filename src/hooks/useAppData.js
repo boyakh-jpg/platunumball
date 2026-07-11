@@ -221,6 +221,10 @@ const MATCH_OPERATION_ONLY_ACTIONS = new Set([
   "submitMatchResult",
   "substituteMatchPlayer",
   "toggleMatchStar",
+  "removeMatchRoomPlayer",
+  "setMatchRecordTeamRoster",
+  "setMatchRoomPlayerPlacement",
+  "updateMatchRoomRules",
   "voidMatch",
 ]);
 
