@@ -5,7 +5,7 @@ import loadStateHandler from "../server/api/state/load.js";
 import syncRecruitingPostHandler from "../server/api/recruiting/sync-post.js";
 import recruitingListHandler from "../server/api/recruiting/list.js";
 import discordRoomChatHandler from "../server/api/discord/room-chat.js";
-import syncMatchHandler, { queueMatchDiscordDeliveries } from "../server/api/matches/sync-match.js";
+import syncMatchHandler, { persistMatchSnapshot, queueMatchDiscordDeliveries } from "../server/api/matches/sync-match.js";
 import matchDetailHandler from "../server/api/matches/detail.js";
 import syncTournamentHandler from "../server/api/tournaments/sync-tournament.js";
 import refereeSyncHandler from "../server/api/referee/sync.js";
@@ -1689,6 +1689,123 @@ async function runRecruitingInviteAcceptScenario({
   };
 }
 
+async function runMatchAgreeSqlReducerScenario({
+  label,
+  hostLogin,
+  teamALogin,
+  teamBLogins = [],
+}) {
+  ids = makeScenarioIds(label);
+  if (!supabase) {
+    return { label: ids.label, skipped: true, reason: "service_role_key_missing" };
+  }
+  const hostId = await step(`${ids.label}:resolveProfile:host`, () => getProfileIdForLogin(hostLogin));
+  const teamAPlayerId = await step(`${ids.label}:resolveProfile:teamA`, () => getProfileIdForLogin(teamALogin));
+  const teamBPlayers = [];
+  for (const login of teamBLogins) {
+    teamBPlayers.push({
+      login,
+      id: await step(`${ids.label}:resolveProfile:${login}`, () => getProfileIdForLogin(login)),
+    });
+  }
+  const allIds = [hostId, teamAPlayerId, ...teamBPlayers.map((player) => player.id)];
+  assertFlow(new Set(allIds).size === allIds.length && teamBPlayers.length === 2, "agree SQL reducer scenario needs four unique profiles", {
+    hostId,
+    teamAPlayerId,
+    teamBPlayers,
+  });
+
+  const now = new Date().toISOString();
+  let match = {
+    id: ids.matchId,
+    title: `Backend simulation ${ids.label}`,
+    mode: "2v2",
+    courtId: "c1",
+    court: "Backend Simulation Court",
+    scheduledDate: "",
+    scheduledTime: "",
+    scheduledAt: "instant",
+    timingType: "instant",
+    visibility: "private",
+    status: "agreed",
+    ranked: false,
+    official: false,
+    preRegistered: true,
+    refereeId: "",
+    refereeTrustMin: 90,
+    statEntryMinutes: 60,
+    disputeMinutes: 120,
+    memo: "Backend simulation agree SQL reducer row. Safe to delete.",
+    stakes: "Backend simulation",
+    mmrLimitMode: "off",
+    rules: {
+      targetScore: 21,
+      timeLimit: 12,
+      winByTwo: true,
+      ball: "7",
+      timingType: "instant",
+      visibility: "private",
+      mmrRangeMode: "off",
+      statRecorders: { teamA: "", teamB: "" },
+      playedPlayerIds: { teamA: [], teamB: [] },
+      mmrExcludedPlayerIds: [],
+    },
+    createdBy: hostId,
+    agreedAt: now,
+    createdAt: now,
+    updatedAt: now,
+    teamA: { name: "Team A", teamId: null, players: [hostId, teamAPlayerId], score: 0 },
+    teamB: { name: "Team B", teamId: null, players: teamBPlayers.map((player) => player.id), score: 0 },
+    agreements: { teamA: [], teamB: [] },
+    approvals: { teamA: [], teamB: [] },
+    disputes: [],
+    playedPlayerIds: { teamA: [], teamB: [] },
+    reservePlayers: { teamA: [], teamB: [] },
+    promotedReserveIds: { teamA: [], teamB: [] },
+    attendance: { teamA: [], teamB: [] },
+    result: null,
+  };
+  await step(`${ids.label}:persistMatch`, () => persistMatchSnapshot(
+    { supabase, profileId: hostId },
+    { match, notifications: [], action: "createMatch", body: {}, trustedServerCreate: true },
+  ));
+
+  const playerLogins = new Map([
+    [hostId, hostLogin],
+    [teamAPlayerId, teamALogin],
+    ...teamBPlayers.map((player) => [player.id, player.login]),
+  ]);
+  const candidates = ["teamA", "teamB"].flatMap((sideName) => (
+    (match[sideName]?.players ?? []).map((playerId) => ({
+      sideName,
+      playerId,
+      login: playerLogins.get(playerId),
+      agreed: false,
+    }))
+  ));
+  const remaining = candidates.filter((candidate) => !candidate.agreed && candidate.login);
+  assertFlow(remaining.length > 1, "agree SQL scenario needs more than one remaining agreement", { match, candidates });
+  const target = remaining[0];
+  const agreeResult = await step(`${ids.label}:agreeMatch:${target.sideName}`, () => syncMatchAs(target.login, {
+    action: "agreeMatch",
+    matchId: ids.matchId,
+    sideName: target.sideName,
+    playerId: target.playerId,
+  }));
+  assertFlow(Boolean(agreeResult?.sqlReducer), "agreeMatch SQL reducer not used", agreeResult);
+  match = await getMatchAfterResult(agreeResult, target.login, `${ids.label}:loadAfterAgree`);
+  assertFlow((match.agreements?.[target.sideName] ?? []).includes(target.playerId), "agree SQL agreement not persisted", match);
+
+  return {
+    label: ids.label,
+    postId: ids.postId,
+    matchId: ids.matchId,
+    agreedPlayerId: target.playerId,
+    agreedSide: target.sideName,
+    sqlReducer: true,
+  };
+}
+
 async function runPublicTeamRegionFeedScenario({
   label,
   hostLogin,
@@ -3359,6 +3476,9 @@ async function main() {
   const refereeBlockedLogin = process.env.RANKBALL_SIM_REF_BLOCK_CANDIDATE || "rankball-015";
   const inviteHostLogin = process.env.RANKBALL_SIM_INVITE_HOST || "rankball-016";
   const inviteeLogin = process.env.RANKBALL_SIM_INVITEE || "rankball-015";
+  const agreeSqlHostLogin = process.env.RANKBALL_SIM_AGREE_SQL_HOST || "rankball-017";
+  const agreeSqlTeamALogin = process.env.RANKBALL_SIM_AGREE_SQL_TEAM_A || "rankball-018";
+  const agreeSqlTeamBLogins = (process.env.RANKBALL_SIM_AGREE_SQL_TEAM_B || "rankball-019,rankball-020").split(",").map((item) => item.trim()).filter(Boolean);
   const publicTeamHostLogin = process.env.RANKBALL_SIM_PUBLIC_TEAM_HOST || "rankball-001";
   const publicTeamTeammateLogin = process.env.RANKBALL_SIM_PUBLIC_TEAM_TEAMMATE || "rankball-002";
   const publicTeamId = process.env.RANKBALL_SIM_PUBLIC_TEAM_ID || "t1";
@@ -3390,6 +3510,14 @@ async function main() {
     hostLogin: inviteeLogin,
     inviteeLogin: inviteHostLogin,
   }));
+  if (!remoteSmokeOnly) {
+    scenarios.push(await runMatchAgreeSqlReducerScenario({
+      label: "match_agree_sql_reducer",
+      hostLogin: agreeSqlHostLogin,
+      teamALogin: agreeSqlTeamALogin,
+      teamBLogins: agreeSqlTeamBLogins,
+    }));
+  }
   scenarios.push(await runPublicTeamRegionFeedScenario({
     label: "public_team_region_feed",
     hostLogin: publicTeamHostLogin,
