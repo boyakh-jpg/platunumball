@@ -1270,26 +1270,25 @@ async function runOneOnOneScenario({
 
   let latePlayerSqlReducers = null;
   if (includeLatePlayer && !refereeWanted) {
-    const latePlayerId = `anon_${ids.label}_${suffix}`;
-    const matchWithLatePlayer = withLateAnonymousPlayer(match, latePlayerId, "teamA", "Backend Anonymous");
+    const latePlayerName = "Backend Anonymous";
     const addLateResult = await step(`${ids.label}:addMatchLatePlayer:anonymous`, () => syncMatchAs(operatorLogin, {
       action: "addMatchLatePlayer",
       matchId: ids.matchId,
       draft: {
         sideName: "teamA",
-        name: "Backend Anonymous",
+        name: latePlayerName,
       },
-    }, { match: matchWithLatePlayer }));
+    }));
     match = await getMatchAfterResult(addLateResult, operatorLogin, `${ids.label}:loadAfterLatePlayerAdd`);
-    assertFlow(Boolean(match?.anonymousPlayers?.[latePlayerId]), "anonymous late player not persisted", { latePlayerId, match });
+    const latePlayerId = addLateResult?.playerId || Object.entries(match?.anonymousPlayers ?? {}).find(([, player]) => player?.name === latePlayerName)?.[0] || "";
+    assertFlow(Boolean(latePlayerId && match?.anonymousPlayers?.[latePlayerId]), "anonymous late player not persisted", { latePlayerId, match });
     assertFlow((match?.playedPlayerIds?.teamA ?? []).includes(latePlayerId), "anonymous late player not in played ids", { latePlayerId, match });
 
-    const matchWithoutLatePlayer = withoutLatePlayer(match, latePlayerId);
     const removeLateResult = await step(`${ids.label}:removeMatchLatePlayer:anonymous`, () => syncMatchAs(operatorLogin, {
       action: "removeMatchLatePlayer",
       matchId: ids.matchId,
       playerId: latePlayerId,
-    }, { match: matchWithoutLatePlayer }));
+    }));
     match = await getMatchAfterResult(removeLateResult, operatorLogin, `${ids.label}:loadAfterLatePlayerRemove`);
     assertFlow(!match?.anonymousPlayers?.[latePlayerId], "anonymous late player remove not persisted", { latePlayerId, match });
     assertFlow(!(match?.playedPlayerIds?.teamA ?? []).includes(latePlayerId), "anonymous late player still in played ids", { latePlayerId, match });

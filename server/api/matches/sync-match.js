@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { getAuthenticatedContext, getDatePart, getTimePart, nullableText, readJsonBody, sendJson, toArray, toDbTime, toNotificationRows, uniqueValues as uniqueIds } from "../_supabaseAdmin.js";
 import { RECORD_TYPES } from "../../../src/lib/constants.js";
+import { makeAnonymousMatchPlayer } from "../../../src/lib/matchUtils.js";
 import { PROFILE_CARD_COLUMNS, PROFILE_ME_COLUMNS, TEAM_COLUMNS, TEAM_MEMBER_COLUMNS } from "../../../src/data/repositoryColumns.js";
 import { fromRemoteProfile } from "../../../src/data/profileMappers.js";
 import { fromRemoteTeam } from "../../../src/data/teamMappers.js";
@@ -489,6 +490,63 @@ function getMatchPlayedIdMap(match = {}) {
   return {
     teamA: toArray(playedPlayerIds.teamA).filter(Boolean),
     teamB: toArray(playedPlayerIds.teamB).filter(Boolean),
+  };
+}
+
+function getMatchSideIdMap(value = {}) {
+  return {
+    teamA: toArray(value?.teamA).filter(Boolean),
+    teamB: toArray(value?.teamB).filter(Boolean),
+  };
+}
+
+function createAnonymousLatePlayerId() {
+  return `anon_${Date.now().toString(36)}_${randomUUID().replace(/-/g, "").slice(0, 8)}`;
+}
+
+function getLatePlayerSqlPayload(match = {}, operation = {}) {
+  const playedPlayerIds = getMatchPlayedIdMap(match);
+  const reservePlayers = getMatchSideIdMap(match.reservePlayers ?? match.rules?.reservePlayers ?? {});
+  const anonymousPlayers = match.anonymousPlayers ?? {};
+  const mmrExcludedPlayerIds = toArray(match.mmrExcludedPlayerIds ?? match.rules?.mmrExcludedPlayerIds).filter(Boolean);
+
+  if (operation.action === "removeMatchLatePlayer") {
+    return {
+      playerId: operation.playerId ?? "",
+      playedPlayerIds,
+      reservePlayers,
+      anonymousPlayers,
+      mmrExcludedPlayerIds,
+    };
+  }
+
+  const draft = operation.draft && typeof operation.draft === "object" ? operation.draft : {};
+  if (draft.userId) return null;
+  const name = String(draft.name ?? "").trim();
+  if (!name) return null;
+
+  const sideName = draft.sideName === "teamB" ? "teamB" : "teamA";
+  const playerId = createAnonymousLatePlayerId();
+  const nextPlayedPlayerIds = {
+    ...playedPlayerIds,
+    [sideName]: uniqueIds([...(playedPlayerIds[sideName] ?? []), playerId]),
+  };
+  const nextReservePlayers = {
+    teamA: uniqueIds(reservePlayers.teamA ?? []).filter((id) => id !== playerId),
+    teamB: uniqueIds(reservePlayers.teamB ?? []).filter((id) => id !== playerId),
+  };
+  const nextAnonymousPlayers = {
+    ...anonymousPlayers,
+    [playerId]: makeAnonymousMatchPlayer(playerId, name, draft.position),
+  };
+  const nextExcludedIds = uniqueIds([...mmrExcludedPlayerIds, playerId]);
+
+  return {
+    playerId: "",
+    playedPlayerIds: nextPlayedPlayerIds,
+    reservePlayers: nextReservePlayers,
+    anonymousPlayers: nextAnonymousPlayers,
+    mmrExcludedPlayerIds: nextExcludedIds,
   };
 }
 
@@ -1152,6 +1210,8 @@ function canUseSqlMatchActionWithoutSnapshot(operation = {}) {
     "checkInMatchPlayer",
     "endMatch",
     "handoffMatchRecorder",
+    "addMatchLatePlayer",
+    "removeMatchLatePlayer",
     "startMatch",
     "submitMatchThumbs",
     "substituteMatchPlayer",
@@ -1330,16 +1390,19 @@ async function applySqlMatchAction(context, operation = {}, match = {}) {
     };
   }
 
-  if (["addMatchLatePlayer", "removeMatchLatePlayer"].includes(operation.action) && match?.id) {
+  if (["addMatchLatePlayer", "removeMatchLatePlayer"].includes(operation.action) && (match?.id || operation.matchId)) {
+    const sourceMatch = match?.id ? match : await loadSyncedMatch(context, operation.matchId);
+    const latePlayerPayload = getLatePlayerSqlPayload(sourceMatch, operation);
+    if (!sourceMatch?.id || !latePlayerPayload) return null;
     const { data, error } = await context.supabase.rpc("rankball_match_late_player_action", {
       p_actor_profile_id: context.profileId,
       p_action: operation.action,
-      p_match_id: operation.matchId ?? match.id,
-      p_player_id: operation.playerId ?? "",
-      p_played_player_ids: match.playedPlayerIds ?? match.rules?.playedPlayerIds ?? {},
-      p_reserve_players: match.reservePlayers ?? match.rules?.reservePlayers ?? {},
-      p_anonymous_players: match.anonymousPlayers ?? {},
-      p_mmr_excluded_player_ids: match.mmrExcludedPlayerIds ?? match.rules?.mmrExcludedPlayerIds ?? [],
+      p_match_id: operation.matchId ?? sourceMatch.id,
+      p_player_id: latePlayerPayload.playerId,
+      p_played_player_ids: latePlayerPayload.playedPlayerIds,
+      p_reserve_players: latePlayerPayload.reservePlayers,
+      p_anonymous_players: latePlayerPayload.anonymousPlayers,
+      p_mmr_excluded_player_ids: latePlayerPayload.mmrExcludedPlayerIds,
     });
     if (error) {
       if (isMissingSqlMatchReducer(error)) return null;
@@ -1349,7 +1412,7 @@ async function applySqlMatchAction(context, operation = {}, match = {}) {
     return {
       ok: true,
       ...(data && typeof data === "object" ? data : {}),
-      matchId: operation.matchId ?? match.id,
+      matchId: operation.matchId ?? sourceMatch.id,
     };
   }
 
