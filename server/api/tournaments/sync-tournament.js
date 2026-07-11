@@ -330,13 +330,17 @@ export default async function handler(request, response) {
     if (persistError) throw persistError;
     await persistTournamentCourtId(context.supabase, tournament);
 
+    const persistedCreatedMatches = [];
     for (const match of createdMatches) {
-      await persistMatchSnapshot(context, { match, notifications: [], action: "createTournamentMatch", body: {}, trustedServerCreate: true });
+      const matchResult = await persistMatchSnapshot(context, { match, notifications: [], action: "createTournamentMatch", body: {}, trustedServerCreate: true });
+      if (matchResult?.match) persistedCreatedMatches.push(matchResult.match);
     }
 
     sendJson(response, 200, {
       ok: true,
       tournamentId: tournament.id,
+      tournament,
+      createdMatches: persistedCreatedMatches.length ? persistedCreatedMatches : createdMatches,
       teamCount: Number(persistResult?.teamCount ?? teamRows.length),
       notificationCount: Number(persistResult?.notificationCount ?? notificationRows.length),
       createdMatchCount: createdMatches.length,

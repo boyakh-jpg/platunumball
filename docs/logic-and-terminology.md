@@ -1512,6 +1512,7 @@ flowchart TD
 ## 2026-06-25 tournament sync server action
 
 1. 토너먼트/리그 생성과 팀 승인 후 `POST /api/tournaments/sync-tournament`이 서버 state를 다시 읽고 `createTournament` / `approveTournamentTeam` reducer를 서버에서 재실행한다.
+1-1. Supabase frontend `createTournament` calls send operation-only draft payloads. `sync-tournament` must return the persisted tournament and generated matches so the client can merge server state without a client-created snapshot.
 2. 새 토너먼트는 현재 `profileId`가 `createdBy`인 경우만 생성한다.
 3. 기존 토너먼트 수정은 생성자만 가능하다. 단, 팀 참가 승인은 해당 팀 주장도 `action=approveTeam`으로 저장할 수 있다.
 4. operation 없는 fallback snapshot 경로에서 팀 주장의 `approveTeam`은 자기 팀 승인 상태와 승인자 정보만 바꿀 수 있고, 대회 핵심 설정, 팀 목록, 상태, bracket, matchIds는 바꿀 수 없다.

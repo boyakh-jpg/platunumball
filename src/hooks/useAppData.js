@@ -152,6 +152,8 @@ function getActionActorDebug(state = {}, currentUserId = "") {
 
 const SERVER_OPERATION_ACTIONS = new Set([
   "createMatch",
+  "createTournament",
+  "approveTournamentTeam",
   "updateTournamentMatchSchedule",
   "agreeMatch",
   "submitMatchResult",
@@ -1651,11 +1653,22 @@ export function useAppData(authUser = null, appLocation = null) {
     });
   }, [runServerAction, setState]);
   const syncTournamentServer = useCallback((tournament, notifications = [], meta = {}) => {
-    if (!tournament?.id) return Promise.resolve(false);
     const operation = getServerOperation(meta);
+    if (!tournament?.id && !operation) return Promise.resolve(false);
     const payload = operation ? { operation } : { tournament, notifications, ...meta };
-    return runServerAction("/api/tournaments/sync-tournament", payload);
-  }, [runServerAction]);
+    return runServerAction("/api/tournaments/sync-tournament", payload).then((result) => {
+      if (result?.tournament || result?.createdMatches?.length) {
+        setState((prev) => ({
+          ...prev,
+          tournaments: result.tournament ? mergeRemoteById(prev.tournaments, [result.tournament]) : prev.tournaments,
+          matches: Array.isArray(result.createdMatches) && result.createdMatches.length
+            ? mergeMatchesById(prev.matches ?? [], result.createdMatches)
+            : prev.matches,
+        }));
+      }
+      return result;
+    });
+  }, [runServerAction, setState]);
   const syncRefereeServer = useCallback((action, payload = {}) => {
     if (!action) return Promise.resolve(null);
     return runServerAction("/api/referee/sync", { action, ...payload });
@@ -2385,6 +2398,14 @@ export function useAppData(authUser = null, appLocation = null) {
         const serverReady = await ensureServerActionAvailable("/api/tournaments/sync-tournament", "토너먼트 생성");
         if (serverReady !== true) return serverReady;
         if (!ensureRemoteReady("토너먼트 생성")) return Promise.resolve(null);
+        if (isSupabaseConfigured) {
+          return syncTournamentServer(null, [], {
+            operation: {
+              action: "createTournament",
+              draft,
+            },
+          }).then((result) => (result?.ok === false ? result : result?.tournamentId ?? result?.tournament?.id ?? null));
+        }
         let rollbackState = null;
         let createdId = null;
         let createdTournament = null;
