@@ -2335,6 +2335,12 @@ export function useAppData(authUser = null, appLocation = null) {
         const serverReady = await ensureServerActionAvailable("/api/matches/sync-match", "경기 생성");
         if (serverReady !== true) return serverReady;
         if (!ensureRemoteReady("경기 생성")) return null;
+        if (isSupabaseConfigured) {
+          return syncMatchServer(null, [], { action: "createMatch", draft }).then((result) => {
+            if (!result || result?.ok === false) return result;
+            return result?.matchId ?? result?.match?.id ?? null;
+          });
+        }
         let rollbackState = null;
         let createdId = null;
         let createdMatch = null;

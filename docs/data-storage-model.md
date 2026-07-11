@@ -354,6 +354,7 @@ Done:
 - `rankball_match_thumbs_action()` commits match thumbs and affected profile trust deltas in one DB transaction.
 - `rankball_match_star_toggle_action()` wraps the thumbs RPC for single-target star toggles and preserves replay fallback for trust-feedback limit notifications.
 - `agreeMatch` and `checkInMatchPlayer` now use direct operation-only SQL reducer calls when `matchId`, `sideName`, and `playerId` are present, without sending a client match snapshot.
+- Supabase frontend `createMatch` calls send operation-only draft payloads; the server replays `createMatch` and returns the persisted match as the source of truth.
 - `startMatch` and `endMatch` now use direct operation-only SQL reducer calls for supported no-referee host-operated matches; start falls back to the DB `matches.attendance` row and auto-includes the host actor's active side attendance when no client attendance snapshot is sent.
 - Backend flow simulation seeds pending app/Discord match notice rows and verifies stale cleanup for `startMatch`, `approveMatch`, and `voidMatch`.
 - Match rating commit responses now reload affected profiles/teams from DB and return them in `state.users` / `state.teams`, so MMR UI merges DB-authoritative values after approve/auto-confirm.
