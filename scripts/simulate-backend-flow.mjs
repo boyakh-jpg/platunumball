@@ -1242,7 +1242,8 @@ async function runOneOnOneScenario({
   const startResult = await step(`${ids.label}:startMatch`, () => syncMatchAs(operatorLogin, {
     action: "startMatch",
     matchId: ids.matchId,
-  }, { match: matchWithStart }));
+  }, refereeWanted ? { match: matchWithStart } : {}));
+  if (!refereeWanted) assertFlow(Boolean(startResult?.sqlReducer), "start operation-only SQL reducer not used", startResult);
   match = await getMatchAfterResult(startResult, operatorLogin, `${ids.label}:loadAfterStartMatch`);
   assertFlow(Boolean(match?.startedAt), "match start not persisted", match);
   if (scheduledOffsetHours > 0) {
@@ -1257,7 +1258,8 @@ async function runOneOnOneScenario({
   const endResult = await step(`${ids.label}:endMatch`, () => syncMatchAs(operatorLogin, {
     action: "endMatch",
     matchId: ids.matchId,
-  }, { match: matchWithEnd }));
+  }, refereeWanted ? { match: matchWithEnd } : {}));
+  if (!refereeWanted) assertFlow(Boolean(endResult?.sqlReducer), "end operation-only SQL reducer not used", endResult);
   match = await getMatchAfterResult(endResult, operatorLogin, `${ids.label}:loadAfterEndMatch`);
   assertFlow(Boolean(match?.endedAt), "match end not persisted", match);
   reminderChecks.afterEnd = await step(`${ids.label}:postgameAfterEnd`, () => assertPendingMatchNotices(

@@ -1146,7 +1146,7 @@ function shouldUseSqlMatchAction(operation = {}) {
 }
 
 function canUseSqlMatchActionWithoutSnapshot(operation = {}) {
-  return ["agreeMatch", "approveMatch", "checkInMatchPlayer", "submitMatchThumbs", "toggleMatchStar"].includes(operation?.action) && Boolean(operation?.matchId);
+  return ["agreeMatch", "approveMatch", "checkInMatchPlayer", "endMatch", "startMatch", "submitMatchThumbs", "toggleMatchStar"].includes(operation?.action) && Boolean(operation?.matchId);
 }
 
 async function loadSyncedMatch(context, matchId = "") {
@@ -1280,13 +1280,14 @@ async function applySqlMatchAction(context, operation = {}, match = {}) {
     };
   }
 
-  if (operation.action === "startMatch" && match?.id) {
+  if (operation.action === "startMatch" && (match?.id || operation.matchId)) {
+    const matchId = operation.matchId ?? match.id;
     const { data, error } = await context.supabase.rpc("rankball_match_start_action", {
       p_actor_profile_id: context.profileId,
-      p_match_id: operation.matchId ?? match.id,
-      p_started_at: match.startedAt ?? match.rules?.startedAt ?? "",
-      p_agreed_at: match.agreedAt ?? "",
-      p_attendance: match.attendance ?? { teamA: [], teamB: [] },
+      p_match_id: matchId,
+      p_started_at: match?.startedAt ?? match?.rules?.startedAt ?? "",
+      p_agreed_at: match?.agreedAt ?? "",
+      p_attendance: match?.attendance ?? {},
     });
     if (error) {
       if (isMissingSqlMatchReducer(error)) return null;
@@ -1296,12 +1297,15 @@ async function applySqlMatchAction(context, operation = {}, match = {}) {
 
     let discordDeliveryCount = 0;
     let discordDeliveryError = null;
+    const deliveryMatch = match?.id ? match : await loadSyncedMatchAfterWrite(context, matchId, null);
     try {
-      discordDeliveryCount = await withTimeout(
-        queueMatchDiscordDeliveries(context.supabase, match, operation.action),
-        DISCORD_QUEUE_TIMEOUT_MS,
-        "discord_match_delivery_timeout",
-      );
+      if (deliveryMatch?.id) {
+        discordDeliveryCount = await withTimeout(
+          queueMatchDiscordDeliveries(context.supabase, deliveryMatch, operation.action),
+          DISCORD_QUEUE_TIMEOUT_MS,
+          "discord_match_delivery_timeout",
+        );
+      }
     } catch (deliveryError) {
       discordDeliveryError = deliveryError.message || "discord_match_delivery_failed";
       console.error("Match Discord delivery queue failed.", deliveryError);
@@ -1310,7 +1314,7 @@ async function applySqlMatchAction(context, operation = {}, match = {}) {
     return {
       ok: true,
       ...(data && typeof data === "object" ? data : {}),
-      matchId: operation.matchId ?? match.id,
+      matchId,
       discordDeliveryCount,
       discordDeliveryError,
     };
@@ -1339,12 +1343,13 @@ async function applySqlMatchAction(context, operation = {}, match = {}) {
     };
   }
 
-  if (operation.action !== "endMatch" || !match?.id) return null;
+  if (operation.action !== "endMatch" || !(match?.id || operation.matchId)) return null;
+  const matchId = operation.matchId ?? match.id;
   const { data, error } = await context.supabase.rpc("rankball_match_end_action", {
     p_actor_profile_id: context.profileId,
-    p_match_id: operation.matchId ?? match.id,
-    p_started_at: match.startedAt ?? match.rules?.startedAt ?? "",
-    p_ended_at: match.endedAt ?? "",
+    p_match_id: matchId,
+    p_started_at: match?.startedAt ?? match?.rules?.startedAt ?? "",
+    p_ended_at: match?.endedAt ?? "",
   });
   if (error) {
     if (isMissingSqlMatchReducer(error)) return null;
@@ -1354,12 +1359,15 @@ async function applySqlMatchAction(context, operation = {}, match = {}) {
 
   let discordDeliveryCount = 0;
   let discordDeliveryError = null;
+  const deliveryMatch = match?.id ? match : await loadSyncedMatchAfterWrite(context, matchId, null);
   try {
-    discordDeliveryCount = await withTimeout(
-      queueMatchDiscordDeliveries(context.supabase, match, operation.action),
-      DISCORD_QUEUE_TIMEOUT_MS,
-      "discord_match_delivery_timeout",
-    );
+    if (deliveryMatch?.id) {
+      discordDeliveryCount = await withTimeout(
+        queueMatchDiscordDeliveries(context.supabase, deliveryMatch, operation.action),
+        DISCORD_QUEUE_TIMEOUT_MS,
+        "discord_match_delivery_timeout",
+      );
+    }
   } catch (deliveryError) {
     discordDeliveryError = deliveryError.message || "discord_match_delivery_failed";
     console.error("Match Discord delivery queue failed.", deliveryError);
@@ -1368,7 +1376,7 @@ async function applySqlMatchAction(context, operation = {}, match = {}) {
   return {
     ok: true,
     ...(data && typeof data === "object" ? data : {}),
-    matchId: operation.matchId ?? match.id,
+    matchId,
     discordDeliveryCount,
     discordDeliveryError,
   };

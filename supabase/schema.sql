@@ -7480,7 +7480,10 @@ declare
   requested_agreed_at timestamptz := nullif(btrim(coalesce(p_agreed_at, '')), '')::timestamptz;
   current_match public.matches%rowtype;
   current_reserve jsonb;
+  input_attendance jsonb;
   next_attendance jsonb;
+  actor_side text;
+  actor_side_attendance jsonb;
   next_started_at timestamptz;
   next_agreed_at timestamptz;
   next_rules jsonb;
@@ -7544,7 +7547,17 @@ begin
   if jsonb_typeof(current_match.rules->'parties') = 'array' and jsonb_array_length(current_match.rules->'parties') > 0 then
     return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'party_attendance_requires_replay', 'matchId', safe_match_id);
   end if;
-  if jsonb_typeof(p_attendance) <> 'object' then
+  input_attendance := case
+    when jsonb_typeof(p_attendance) = 'object'
+      and (
+        jsonb_typeof(p_attendance->'teamA') = 'array'
+        or jsonb_typeof(p_attendance->'teamB') = 'array'
+      )
+      then p_attendance
+    when jsonb_typeof(current_match.attendance) = 'object' then current_match.attendance
+    else '{}'::jsonb
+  end;
+  if jsonb_typeof(input_attendance) <> 'object' then
     return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'attendance_snapshot_missing', 'matchId', safe_match_id);
   end if;
 
@@ -7570,10 +7583,34 @@ begin
 
   next_attendance := jsonb_build_object(
     'teamA',
-    case when jsonb_typeof(p_attendance->'teamA') = 'array' then p_attendance->'teamA' else '[]'::jsonb end,
+    case when jsonb_typeof(input_attendance->'teamA') = 'array' then input_attendance->'teamA' else '[]'::jsonb end,
     'teamB',
-    case when jsonb_typeof(p_attendance->'teamB') = 'array' then p_attendance->'teamB' else '[]'::jsonb end
+    case when jsonb_typeof(input_attendance->'teamB') = 'array' then input_attendance->'teamB' else '[]'::jsonb end
   );
+
+  select mp.side
+  into actor_side
+  from public.match_players mp
+  where mp.match_id = safe_match_id
+    and mp.user_id = safe_actor_id
+    and mp.side in ('teamA', 'teamB')
+  order by mp.slot_order nulls last
+  limit 1;
+
+  if actor_side in ('teamA', 'teamB') then
+    select coalesce(jsonb_agg(to_jsonb(value)), '[]'::jsonb)
+    into actor_side_attendance
+    from (
+      select distinct value
+      from (
+        select value from jsonb_array_elements_text(next_attendance->actor_side) ids(value)
+        union all
+        select safe_actor_id
+      ) values_to_attend
+      where value is not null and value <> ''
+    ) distinct_values;
+    next_attendance := jsonb_set(next_attendance, array[actor_side], actor_side_attendance, true);
+  end if;
 
   select count(distinct mp.user_id)
   into attended_player_count
@@ -7622,6 +7659,8 @@ end;
 $$;
 
 revoke all on function public.rankball_match_start_action(text, text, text, text, jsonb) from public;
+revoke all on function public.rankball_match_start_action(text, text, text, text, jsonb) from anon;
+revoke all on function public.rankball_match_start_action(text, text, text, text, jsonb) from authenticated;
 grant execute on function public.rankball_match_start_action(text, text, text, text, jsonb) to service_role;
 
 create or replace function public.rankball_match_end_action(
