@@ -224,9 +224,24 @@ const MATCH_OPERATION_ONLY_ACTIONS = new Set([
 ]);
 
 const RECRUITING_OPERATION_ONLY_ACTIONS = new Set([
+  "acceptRecruitingInvitation",
   "cancelRecruitingParticipation",
+  "closeRecruitingPost",
+  "declineRecruitingInvitation",
+  "detachRecruitingPartyPlayer",
+  "inviteRecruitingPlayers",
+  "inviteRecruitingReferee",
+  "joinRecruitingSideParty",
+  "kickRecruitingApplicant",
+  "removeRecruitingPartyPlayer",
   "setRecruitingApplicantPlacement",
+  "setRecruitingApplicantReserve",
+  "setRecruitingPartyPlayerPlacement",
+  "setRecruitingPartyPlayerReserve",
   "setRecruitingSlotPosition",
+  "setRecruitingStatRecorder",
+  "setRecruitingTeamPartyRoster",
+  "updateRecruitingRoomRules",
 ]);
 
 function getServerOperation(meta = {}) {
