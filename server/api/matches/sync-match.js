@@ -1122,6 +1122,7 @@ const SQL_REDUCER_MATCH_ACTIONS = new Set([
   "startMatch",
   "submitMatchThumbs",
   "substituteMatchPlayer",
+  "toggleMatchStar",
 ]);
 
 function isMissingSqlMatchReducer(error = {}) {
@@ -1134,6 +1135,7 @@ function isMissingSqlMatchReducer(error = {}) {
     message.includes("rankball_match_end_action") ||
     message.includes("rankball_match_late_player_action") ||
     message.includes("rankball_match_roster_move_action") ||
+    message.includes("rankball_match_star_toggle_action") ||
     message.includes("rankball_match_thumbs_action") ||
     message.includes("rankball_match_start_action")
   );
@@ -1144,7 +1146,7 @@ function shouldUseSqlMatchAction(operation = {}) {
 }
 
 function canUseSqlMatchActionWithoutSnapshot(operation = {}) {
-  return ["approveMatch", "submitMatchThumbs"].includes(operation?.action) && Boolean(operation?.matchId);
+  return ["approveMatch", "submitMatchThumbs", "toggleMatchStar"].includes(operation?.action) && Boolean(operation?.matchId);
 }
 
 async function loadSyncedMatch(context, matchId = "") {
@@ -1163,6 +1165,24 @@ async function loadSyncedMatchAfterWrite(context, matchId = "", fallbackMatch = 
 }
 
 async function applySqlMatchAction(context, operation = {}, match = {}) {
+  if (operation.action === "toggleMatchStar" && (match?.id || operation.matchId)) {
+    const { data, error } = await context.supabase.rpc("rankball_match_star_toggle_action", {
+      p_actor_profile_id: context.profileId,
+      p_match_id: operation.matchId ?? match.id,
+      p_target_user_id: operation.targetUserId ?? "",
+    });
+    if (error) {
+      if (isMissingSqlMatchReducer(error)) return null;
+      throw error;
+    }
+    if (data?.fallback) return null;
+    return {
+      ok: true,
+      ...(data && typeof data === "object" ? data : {}),
+      matchId: operation.matchId ?? match.id,
+    };
+  }
+
   if (operation.action === "submitMatchThumbs" && (match?.id || operation.matchId)) {
     const { data, error } = await context.supabase.rpc("rankball_match_thumbs_action", {
       p_actor_profile_id: context.profileId,

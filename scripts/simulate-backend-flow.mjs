@@ -1887,6 +1887,7 @@ async function runDisputeResumeThumbsScenario({
   assertFlow(match?.status === "confirmed", "dispute resume did not confirm match", match);
   assertFlow(match?.result?.scoreA === 22 && match?.result?.scoreB === 14, "dispute draft result not committed", match);
 
+  await step(`${ids.label}:snapshotTrustSubjects`, () => snapshotRatingSubjects([opponentId]));
   const opponentTrustBeforeThumbs = await step(`${ids.label}:loadTrustBeforeThumbs`, () => getCurrentProfileTrustScore(opponentLogin, opponentId));
   const thumbsResult = await step(`${ids.label}:submitMatchThumbs`, () => syncMatchAs(hostLogin, {
     action: "submitMatchThumbs",
@@ -1909,6 +1910,32 @@ async function runDisputeResumeThumbsScenario({
   assertFlow(opponentTrustAfterThumbs === Math.min(100, opponentTrustBeforeThumbs + 1), "match thumbs trust score not persisted", {
     opponentTrustBeforeThumbs,
     opponentTrustAfterThumbs,
+  });
+
+  const toggleClearResult = await step(`${ids.label}:toggleMatchStar:clear`, () => syncMatchAs(hostLogin, {
+    action: "toggleMatchStar",
+    matchId: ids.matchId,
+    targetUserId: opponentId,
+  }));
+  match = toggleClearResult?.match;
+  assertFlow(Boolean(toggleClearResult?.sqlReducer), "match star toggle clear SQL reducer not used", toggleClearResult);
+  assertFlow(!(match?.trustFeedback?.stars?.[hostId] ?? []).includes(opponentId), "match star toggle clear not persisted", {
+    hostId,
+    opponentId,
+    match,
+  });
+
+  const toggleRestoreResult = await step(`${ids.label}:toggleMatchStar:restore`, () => syncMatchAs(hostLogin, {
+    action: "toggleMatchStar",
+    matchId: ids.matchId,
+    targetUserId: opponentId,
+  }));
+  match = toggleRestoreResult?.match;
+  assertFlow(Boolean(toggleRestoreResult?.sqlReducer), "match star toggle restore SQL reducer not used", toggleRestoreResult);
+  assertFlow((match?.trustFeedback?.stars?.[hostId] ?? []).includes(opponentId), "match star toggle restore not persisted", {
+    hostId,
+    opponentId,
+    match,
   });
 
   let clearThumbsResult = null;
@@ -1956,6 +1983,8 @@ async function runDisputeResumeThumbsScenario({
       startMatch: Boolean(startResult?.sqlReducer),
       endMatch: Boolean(endResult?.sqlReducer),
       submitMatchThumbs: Boolean(thumbsResult?.sqlReducer),
+      toggleMatchStarClear: Boolean(toggleClearResult?.sqlReducer),
+      toggleMatchStarRestore: Boolean(toggleRestoreResult?.sqlReducer),
       clearMatchThumbs: clearThumbsResult ? Boolean(clearThumbsResult?.sqlReducer) : null,
     },
   };
