@@ -221,6 +221,12 @@ const MATCH_OPERATION_ONLY_ACTIONS = new Set([
   "voidMatch",
 ]);
 
+const RECRUITING_OPERATION_ONLY_ACTIONS = new Set([
+  "cancelRecruitingParticipation",
+  "setRecruitingApplicantPlacement",
+  "setRecruitingSlotPosition",
+]);
+
 function getServerOperation(meta = {}) {
   if (meta.operation) {
     const explicitAction = String(meta.operation.action || meta.action || "");
@@ -2213,7 +2219,7 @@ export function useAppData(authUser = null, appLocation = null) {
           return;
         }
         if (!optimisticBeforeServerCheck) applyLocalMutation();
-        if (operation?.action === "sendRecruitingChat") return rollbackIfServerFailed(syncRecruitingPostServer(null, [], { ...meta, postId }), rollbackState, "방 변경", { action: meta.action, postId });
+        if (operation?.action === "sendRecruitingChat" || RECRUITING_OPERATION_ONLY_ACTIONS.has(operation?.action)) return rollbackIfServerFailed(syncRecruitingPostServer(null, [], { ...meta, postId }), rollbackState, "방 변경", { action: meta.action, postId });
         if (syncedPost) return rollbackIfServerFailed(syncRecruitingPostServer(syncedPost, syncedNotifications, { ...meta, postId }), rollbackState, "방 변경", { action: meta.action, postId });
         if (operation) return rollbackIfServerFailed(syncRecruitingPostServer(null, [], { ...meta, postId }), rollbackState, "방 변경", { action: meta.action, postId });
         return true;

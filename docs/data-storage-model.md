@@ -359,6 +359,7 @@ Done:
 - Match rating commit responses now reload affected profiles/teams from DB and return them in `state.users` / `state.teams`, so MMR UI merges DB-authoritative values after approve/auto-confirm.
 - Room, match, and tournament frontend callers now send `{ operation }` only when operation replay is available; full snapshot sync is legacy fallback.
 - The frontend sends completed match lifecycle/roster/result/trust mutations as operation-only, including `agreeMatch`, `approveMatch`, `checkInMatchPlayer`, `handoffMatchRecorder`, `substituteMatchPlayer`, `requestMatchRefereeAbsence`, `confirmMatchRefereeAbsence`, `startMatch`, `endMatch`, `cancelMatch`, `deleteSoloRecord`, `voidMatch`, `submitMatchResult`, `disputeMatch`, `resumeMatchApproval`, `submitMatchThumbs`, and `toggleMatchStar`; the server uses SQL reducers where supported and otherwise reloads authoritative state before persisting attendance, roster, lifecycle, result, dispute, finalization, rating, or trust updates.
+- The frontend sends `cancelRecruitingParticipation`, `setRecruitingApplicantPlacement`, and `setRecruitingSlotPosition` as operation-only; these use recruiting SQL reducers when supported and otherwise fall back to server authoritative replay.
 - Recruiting, match, and tournament snapshot persistence now uses DB RPC transaction functions instead of multi-step client-side table upserts.
 - Remote hydration guard blocks local room/match/team/tournament actions before backend state is ready.
 - Test account server mapping uses `profiles.auth_user_id` with Supabase Auth JWTs.
