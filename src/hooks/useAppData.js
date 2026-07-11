@@ -202,9 +202,12 @@ const SERVER_OPERATION_ACTIONS = new Set([
 ]);
 
 const MATCH_OPERATION_ONLY_ACTIONS = new Set([
+  "approveMatch",
   "disputeMatch",
   "resumeMatchApproval",
+  "submitMatchThumbs",
   "submitMatchResult",
+  "toggleMatchStar",
 ]);
 
 function getServerOperation(meta = {}) {
