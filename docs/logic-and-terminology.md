@@ -373,8 +373,8 @@
 
 ## 2026-06-30 모집 참여 검증 경로
 
-- 새 참가자를 추가하는 `interestRecruitingPost`와 팀 파티 명단 변경 `setRecruitingTeamPartyRoster`는 서버 JS authoritative replay와 age/team eligibility guard를 반드시 지난다.
-- SQL reducer fast path는 새 참가자를 추가하지 않는 준비, 포지션, 배치, 취소류 action에만 쓴다.
+- 새 참가자를 추가하는 `interestRecruitingPost`는 공개 개인 참여일 때 `rankball_recruiting_interest_player_action()` SQL reducer를 먼저 시도한다. 비공개방, 팀/심판 참여, 복합 배치, 지원하지 않는 연령/후보 제한은 기존 서버 JS authoritative replay와 age/team eligibility guard로 fallback한다.
+- SQL reducer fast path는 공개 개인 참여, 준비, 포지션, 배치, 취소류 action에만 쓴다. 팀 파티 명단 변경 `setRecruitingTeamPartyRoster`는 서버 JS authoritative replay와 age/team eligibility guard를 반드시 지난다.
 
 ## 2026-06-29 방 초대 검색 선택
 
@@ -1768,7 +1768,7 @@ flowchart TD
 4. `approveMatch` remains on server replay because rating commit extraction needs before/after profile and team deltas.
 5. `createRecruitingPost` and `createMatch` do not use the fast path; server actions replay the reducer with authenticated `profileId` so Google login profile ids become the room owner and creator. Supabase frontend calls for both creations send operation-only draft payloads; local reducer creation is only a non-Supabase fallback.
 6. Google/auth actor-sensitive recruiting actions such as public join, side party join, applicant placement, and slot position change replay the reducer on the server with `context.profileId` and target recruiting scope instead of trusting a client snapshot.
-7. `interestRecruitingPost` must replay the JS reducer until the SQL reducer calculates full-side auto-reserve placement. A full active side must save new participants as reserve/candidate, not overfill the active slot.
+7. `interestRecruitingPost` may use `rankball_recruiting_interest_player_action()` as a SQL reducer for public player joins. The RPC row-locks the room, checks open/public player-room shape, actor profile, allowed age groups, MMR range, duplicate membership, side capacity, and full-side auto-reserve placement. Private, team, referee, reserve-limit, and unsupported cases must fall back to server authoritative replay.
 8. Recruiting core lock compares canonical room shape. `side_capacity` cannot exceed mode size, and rooms without `team_id` are treated as player-hosted even if older DB rows still say `host_join_mode='team'`.
 9. Match sync success responses include the latest single match row when available, so client screens merge the server result instead of stale optimistic snapshots.
 
@@ -1952,7 +1952,7 @@ flowchart TD
 12. Recruiting 단일 방 상세 로드는 최신 서버 row가 기준이다. 목록 보강 로드의 최근 mutation 보호막으로 단일 상세 row를 버리면 안 된다.
 13. Supabase auth 사용자가 바뀌면 이전 계정의 room/list state를 화면에 남기지 않고 shell state로 비운 뒤 새 서버 state를 로드한다.
 
-14. `setRecruitingSlotPosition`, `setRecruitingApplicantPlacement`, `setRecruitingReady`, `cancelRecruitingParticipation`은 SQL reducer 이식 대상이다. 서버는 `rankball_recruiting_slot_position_action()`/`rankball_recruiting_applicant_placement_action()`/`rankball_recruiting_ready_action()`/`rankball_recruiting_cancel_participation_action()`을 우선 호출하고, SQL이 아직 적용되지 않았거나 복합 조건처럼 SQL reducer가 지원하지 않는 케이스면 기존 authoritative replay 경로로 fallback한다. 새 참가자를 추가하는 `interestRecruitingPost`는 JS authoritative replay를 유지한다.
+14. `interestRecruitingPost`, `setRecruitingSlotPosition`, `setRecruitingApplicantPlacement`, `setRecruitingReady`, `cancelRecruitingParticipation`은 SQL reducer 이식 대상이다. 서버는 `rankball_recruiting_interest_player_action()`/`rankball_recruiting_slot_position_action()`/`rankball_recruiting_applicant_placement_action()`/`rankball_recruiting_ready_action()`/`rankball_recruiting_cancel_participation_action()`을 우선 호출하고, SQL이 아직 적용되지 않았거나 복합 조건처럼 SQL reducer가 지원하지 않는 케이스면 기존 authoritative replay 경로로 fallback한다.
 15. Recruiting 화면의 user-triggered `scope: "mine"` 로드는 요청이 성공했을 때만 완료 처리한다. 초기 auth/token 타이밍 실패가 나면 재시도하고, 실패한 1회 요청 때문에 `내가 만든 방`/`내 참여방` 카운트를 초기 목록 상태로 고정하지 않는다.
 16. Supabase remote state는 서버/DB가 source of truth다. 클라이언트 자동관리 함수는 원격 모집방/경기 상태를 로컬에서 임의로 취소/종료 처리하지 않는다. 만료, 자동취소, 자동확정 같은 lifecycle 변경은 server action/RPC로 저장된 뒤에만 화면 source of truth로 취급한다.
 
@@ -1969,7 +1969,7 @@ flowchart TD
 26. Recruiting snapshot persist must pass the replay base `updated_at` into `rankball_recruiting_action`. The DB function locks the row and rejects stale writes with `recruiting_stale_snapshot` instead of overwriting a newer room state.
 27. `setRecruitingApplicantPlacement`는 방장 자기 슬롯 이동으로도 `hostSide`를 변경하지 않는다. 방장은 생성 사이드를 유지하고, 다른 참가자 배치 변경도 방 core field를 바꾸면 안 된다.
 28. `rankball_recruiting_applicant_placement_action()`은 self player applicant의 선출/후보/사이드 배치만 처리한다. 방장 자기 배치, 팀/파티/복합 참가자, 정원 초과, 후보 제한 초과는 기존 authoritative replay로 fallback한다. SQL 성공 시 이동한 본인은 `room_state.statRecorders`에서 제거되어 후보/대기 상태의 stale 기록권한이 남지 않는다.
-29. `inviteRecruitingReferee`, `inviteRecruitingPlayers`, `acceptRecruitingInvitation`, `declineRecruitingInvitation`, `cancelRecruitingParticipation`, `updateRecruitingRoomRules`, `setRecruitingApplicantReserve`, `setRecruitingApplicantPlacement`, `joinRecruitingSideParty`, `setRecruitingSlotPosition`, `setRecruitingPartyPlayerReserve`, `setRecruitingPartyPlayerPlacement`, `setRecruitingTeamPartyRoster`, `detachRecruitingPartyPlayer`, `removeRecruitingPartyPlayer`, `setRecruitingStatRecorder`, `kickRecruitingApplicant`, `confirmRecruitingMatch`, and `closeRecruitingPost` are sent from the frontend as operation-only. The server must use the SQL reducer when supported or replay the operation from authoritative DB state; client recruiting snapshots are not accepted as the source of truth for these actions.
+29. `interestRecruitingPost`, `inviteRecruitingReferee`, `inviteRecruitingPlayers`, `acceptRecruitingInvitation`, `declineRecruitingInvitation`, `cancelRecruitingParticipation`, `updateRecruitingRoomRules`, `setRecruitingApplicantReserve`, `setRecruitingApplicantPlacement`, `joinRecruitingSideParty`, `setRecruitingSlotPosition`, `setRecruitingPartyPlayerReserve`, `setRecruitingPartyPlayerPlacement`, `setRecruitingTeamPartyRoster`, `detachRecruitingPartyPlayer`, `removeRecruitingPartyPlayer`, `setRecruitingStatRecorder`, `kickRecruitingApplicant`, `confirmRecruitingMatch`, and `closeRecruitingPost` are sent from the frontend as operation-only. The server must use the SQL reducer when supported or replay the operation from authoritative DB state; client recruiting snapshots are not accepted as the source of truth for these actions.
 
 ## 2026-06-28 public feed access
 

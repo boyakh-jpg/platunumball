@@ -725,6 +725,7 @@ const AUTHORITATIVE_REPLAY_RECRUITING_ACTIONS = new Set([
 
 const SQL_REDUCER_RECRUITING_ACTIONS = new Set([
   "cancelRecruitingParticipation",
+  "interestRecruitingPost",
   "setRecruitingApplicantPlacement",
   "setRecruitingSlotPosition",
 ]);
