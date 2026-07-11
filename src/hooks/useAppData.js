@@ -210,11 +210,13 @@ const MATCH_OPERATION_ONLY_ACTIONS = new Set([
   "deleteSoloRecord",
   "disputeMatch",
   "endMatch",
+  "handoffMatchRecorder",
   "requestMatchRefereeAbsence",
   "resumeMatchApproval",
   "startMatch",
   "submitMatchThumbs",
   "submitMatchResult",
+  "substituteMatchPlayer",
   "toggleMatchStar",
   "voidMatch",
 ]);

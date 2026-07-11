@@ -1146,7 +1146,17 @@ function shouldUseSqlMatchAction(operation = {}) {
 }
 
 function canUseSqlMatchActionWithoutSnapshot(operation = {}) {
-  return ["agreeMatch", "approveMatch", "checkInMatchPlayer", "endMatch", "startMatch", "submitMatchThumbs", "toggleMatchStar"].includes(operation?.action) && Boolean(operation?.matchId);
+  return [
+    "agreeMatch",
+    "approveMatch",
+    "checkInMatchPlayer",
+    "endMatch",
+    "handoffMatchRecorder",
+    "startMatch",
+    "submitMatchThumbs",
+    "substituteMatchPlayer",
+    "toggleMatchStar",
+  ].includes(operation?.action) && Boolean(operation?.matchId);
 }
 
 async function loadSyncedMatch(context, matchId = "") {
@@ -1258,7 +1268,7 @@ async function applySqlMatchAction(context, operation = {}, match = {}) {
     };
   }
 
-  if (["handoffMatchRecorder", "substituteMatchPlayer"].includes(operation.action) && match?.id) {
+  if (["handoffMatchRecorder", "substituteMatchPlayer"].includes(operation.action) && (match?.id || operation.matchId)) {
     const { data, error } = await context.supabase.rpc("rankball_match_roster_move_action", {
       p_actor_profile_id: context.profileId,
       p_action: operation.action,
