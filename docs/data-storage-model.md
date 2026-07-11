@@ -358,6 +358,7 @@ Done:
 - Backend flow simulation seeds pending app/Discord match notice rows and verifies stale cleanup for `startMatch`, `approveMatch`, and `voidMatch`.
 - Match rating commit responses now reload affected profiles/teams from DB and return them in `state.users` / `state.teams`, so MMR UI merges DB-authoritative values after approve/auto-confirm.
 - Room, match, and tournament frontend callers now send `{ operation }` only when operation replay is available; full snapshot sync is legacy fallback.
+- The frontend sends `disputeMatch` as operation-only; the server reloads authoritative state, builds the dispute draft, and persists the result instead of trusting a client match snapshot.
 - Recruiting, match, and tournament snapshot persistence now uses DB RPC transaction functions instead of multi-step client-side table upserts.
 - Remote hydration guard blocks local room/match/team/tournament actions before backend state is ready.
 - Test account server mapping uses `profiles.auth_user_id` with Supabase Auth JWTs.
