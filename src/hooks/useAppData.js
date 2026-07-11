@@ -204,14 +204,19 @@ const SERVER_OPERATION_ACTIONS = new Set([
 const MATCH_OPERATION_ONLY_ACTIONS = new Set([
   "agreeMatch",
   "approveMatch",
+  "cancelMatch",
   "checkInMatchPlayer",
+  "confirmMatchRefereeAbsence",
+  "deleteSoloRecord",
   "disputeMatch",
   "endMatch",
+  "requestMatchRefereeAbsence",
   "resumeMatchApproval",
   "startMatch",
   "submitMatchThumbs",
   "submitMatchResult",
   "toggleMatchStar",
+  "voidMatch",
 ]);
 
 function getServerOperation(meta = {}) {
