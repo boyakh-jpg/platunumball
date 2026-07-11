@@ -76,6 +76,7 @@ const authClient = createClient(url, publishableKey, {
 const keepRows = process.argv.includes("--keep") || process.env.RANKBALL_SIM_KEEP === "1";
 const suffix = `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 const scenarioIds = [];
+const simulationNotificationIds = new Set();
 const temporaryProfileDiscordSnapshots = new Map();
 const refereeSimulationAttemptIds = new Set();
 const refereeSimulationRequestIds = new Set();
@@ -543,6 +544,21 @@ async function restoreRatingSnapshots() {
   return { skipped: false, errors };
 }
 
+async function cleanupSimulationNotifications() {
+  if (!supabase || !simulationNotificationIds.size) return { skipped: true };
+  const idsToDelete = [...simulationNotificationIds];
+  const { error } = await supabase
+    .from("notifications")
+    .delete()
+    .in("id", idsToDelete);
+  simulationNotificationIds.clear();
+  return {
+    skipped: false,
+    deleted: error ? 0 : idsToDelete.length,
+    errors: error ? [{ table: "notifications", message: error.message }] : [],
+  };
+}
+
 async function loadStateAs(testLoginId) {
   const payload = await callHandler("/api/state/load", loadStateHandler, await getAuthToken(testLoginId));
   assertFlow(payload?.ok && payload?.state, `state load failed for ${testLoginId}`, payload);
@@ -557,6 +573,79 @@ async function loadHomeAs(testLoginId) {
   });
   assertFlow(payload?.ok && payload?.state, `home load failed for ${testLoginId}`, payload);
   return payload.state;
+}
+
+async function runHomeAlertNotificationScenario({
+  label,
+  login,
+}) {
+  ids = makeScenarioIds(label);
+  if (!supabase) {
+    return { label: ids.label, skipped: true, reason: "service_role_key_missing" };
+  }
+  const profileId = await step(`${ids.label}:resolveProfile`, () => getProfileIdForLogin(login));
+  const now = new Date();
+  const dueId = `sim_notice_due_${ids.label}_${suffix}`;
+  const futureId = `sim_notice_future_${ids.label}_${suffix}`;
+  simulationNotificationIds.add(dueId);
+  simulationNotificationIds.add(futureId);
+  const rows = [
+    {
+      id: dueId,
+      user_id: profileId,
+      target_user_id: profileId,
+      title: "Home due alert",
+      body: "home alert due",
+      tone: "match",
+      type: "match_reminder",
+      discord_event: "match",
+      read_at: null,
+      payload: {
+        id: dueId,
+        targetUserId: profileId,
+        sendAt: new Date(now.getTime() - 60_000).toISOString(),
+        skipDiscordSync: true,
+      },
+      created_at: now.toISOString(),
+      updated_at: now.toISOString(),
+    },
+    {
+      id: futureId,
+      user_id: profileId,
+      target_user_id: profileId,
+      title: "Home future alert",
+      body: "home alert future",
+      tone: "match",
+      type: "match_reminder",
+      discord_event: "match",
+      read_at: null,
+      payload: {
+        id: futureId,
+        targetUserId: profileId,
+        sendAt: new Date(now.getTime() + 60 * 60 * 1000).toISOString(),
+        skipDiscordSync: true,
+      },
+      created_at: now.toISOString(),
+      updated_at: now.toISOString(),
+    },
+  ];
+  const { error } = await step(`${ids.label}:insertNotifications`, () => supabase
+    .from("notifications")
+    .upsert(rows, { onConflict: "id" }));
+  if (error) throw error;
+
+  const homeState = await step(`${ids.label}:homeLoad`, () => loadHomeAs(login));
+  const notifications = homeState.notifications ?? [];
+  assertFlow(notifications.some((notification) => notification.id === dueId), "home due alert missing", notifications);
+  assertFlow(!notifications.some((notification) => notification.id === futureId), "home future alert should be hidden", notifications);
+
+  return {
+    label: ids.label,
+    login,
+    profileId,
+    dueIncluded: true,
+    futureHidden: true,
+  };
 }
 
 async function getCurrentProfileTrustScore(testLoginId, expectedProfileId = "") {
@@ -1047,7 +1136,17 @@ async function cleanup() {
   const profileDiscordRestore = await restoreTemporaryProfileDiscordUsers();
   const refereeSimulationCleanup = await cleanupRefereeSimulationRows();
   const ratingRestore = await restoreRatingSnapshots();
-  if (keepRows) return { skipped: true, reason: "keep_requested", profileDiscordRestore, refereeSimulationCleanup, ratingRestore };
+  if (keepRows) {
+    return {
+      skipped: true,
+      reason: "keep_requested",
+      profileDiscordRestore,
+      refereeSimulationCleanup,
+      ratingRestore,
+      notificationCleanup: { skipped: true, reason: "keep_requested" },
+    };
+  }
+  const notificationCleanup = await cleanupSimulationNotifications();
   if (usesRemoteApi && schemaHealthSecret) {
     const response = await fetchWithTimeout(`${remoteBaseUrl}/api/system/cleanup-sim`, {
       method: "POST",
@@ -1058,10 +1157,10 @@ async function cleanup() {
       body: "{}",
     });
     const text = await readResponseTextWithTimeout(response, "cleanup_sim");
-    if (!response.ok) return { skipped: true, reason: `remote_cleanup_failed:${response.status}:${text}`, profileDiscordRestore, refereeSimulationCleanup, ratingRestore };
-    return { ...(text ? JSON.parse(text) : { ok: true }), profileDiscordRestore, refereeSimulationCleanup, ratingRestore };
+    if (!response.ok) return { skipped: true, reason: `remote_cleanup_failed:${response.status}:${text}`, profileDiscordRestore, refereeSimulationCleanup, ratingRestore, notificationCleanup };
+    return { ...(text ? JSON.parse(text) : { ok: true }), profileDiscordRestore, refereeSimulationCleanup, ratingRestore, notificationCleanup };
   }
-  if (!supabase) return { skipped: true, reason: "service_role_key_missing", profileDiscordRestore, refereeSimulationCleanup, ratingRestore };
+  if (!supabase) return { skipped: true, reason: "service_role_key_missing", profileDiscordRestore, refereeSimulationCleanup, ratingRestore, notificationCleanup };
 
   const closedAt = new Date().toISOString();
   const closures = scenarioIds.flatMap((scenario) => [
@@ -1095,7 +1194,7 @@ async function cleanup() {
       errors.push({ table: "room_discord_links", message: error.message });
     }
   }
-  return { skipped: false, errors, profileDiscordRestore, refereeSimulationCleanup, ratingRestore };
+  return { skipped: false, errors, profileDiscordRestore, refereeSimulationCleanup, ratingRestore, notificationCleanup };
 }
 
 async function runOneOnOneScenario({
@@ -3525,6 +3624,7 @@ async function main() {
   const publicTeamHostLogin = process.env.RANKBALL_SIM_PUBLIC_TEAM_HOST || "rankball-001";
   const publicTeamTeammateLogin = process.env.RANKBALL_SIM_PUBLIC_TEAM_TEAMMATE || "rankball-002";
   const publicTeamId = process.env.RANKBALL_SIM_PUBLIC_TEAM_ID || "t1";
+  const homeAlertLogin = process.env.RANKBALL_SIM_HOME_ALERT_LOGIN || "rankball-010";
   const bulkInviteHostLogin = process.env.RANKBALL_SIM_BULK_INVITE_HOST || "rankball-020";
   const bulkInviteTeamId = process.env.RANKBALL_SIM_BULK_INVITE_TEAM_ID || "t1";
   const disputeHostLogin = process.env.RANKBALL_SIM_DISPUTE_HOST || "rankball-010";
@@ -3567,6 +3667,12 @@ async function main() {
     teammateLogin: publicTeamTeammateLogin,
     teamId: publicTeamId,
   }));
+  if (!remoteSmokeOnly) {
+    scenarios.push(await runHomeAlertNotificationScenario({
+      label: "home_alert_notifications",
+      login: homeAlertLogin,
+    }));
+  }
   scenarios.push(await runBulkHomeInviteAcceptScenario({
     label: "bulk_home_invite_accept_5v5",
     hostLogin: bulkInviteHostLogin,
