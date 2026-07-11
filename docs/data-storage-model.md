@@ -351,6 +351,7 @@ Done:
 - `rankball_match_action()` treats branch reducer `fallback=true` as a signal to continue into locked snapshot persistence, so reserve/party/unsupported match actions do not get dropped after the fast path declines.
 - `rankball_match_roster_move_action()` commits safe match recorder handoff and active/reserve substitution in one DB transaction by updating `match_players`, `matches.reserve_players`, `matches.played_player_ids`, and `matches.stat_recorders`.
 - `rankball_match_approval_action()` commits non-final participant result approvals in one DB transaction; approvals that would confirm the match still fall back to server reducer replay so rating commit stays authoritative.
+- `rankball_match_thumbs_action()` commits match thumbs and affected profile trust deltas in one DB transaction.
 - Backend flow simulation seeds pending app/Discord match notice rows and verifies stale cleanup for `startMatch`, `approveMatch`, and `voidMatch`.
 - Match rating commit responses now reload affected profiles/teams from DB and return them in `state.users` / `state.teams`, so MMR UI merges DB-authoritative values after approve/auto-confirm.
 - Room, match, and tournament frontend callers now send `{ operation }` only when operation replay is available; full snapshot sync is legacy fallback.

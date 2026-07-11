@@ -1899,6 +1899,7 @@ async function runDisputeResumeThumbsScenario({
     opponentId,
     match,
   });
+  assertFlow(Boolean(thumbsResult?.sqlReducer), "match thumbs SQL reducer not used", thumbsResult);
   assertFlow(
     opponentTrustBeforeThumbs >= 100 || thumbsResult?.trustCommitted === true,
     "match thumbs trust delta not committed",
@@ -1923,6 +1924,7 @@ async function runDisputeResumeThumbsScenario({
       hostId,
       match,
     });
+    assertFlow(Boolean(clearThumbsResult?.sqlReducer), "match thumbs clear SQL reducer not used", clearThumbsResult);
     assertFlow(clearThumbsResult?.trustCommitted === true, "match thumbs clear trust delta not committed", clearThumbsResult);
     opponentTrustAfterClear = await step(`${ids.label}:loadTrustAfterThumbsClear`, () => getCurrentProfileTrustScore(opponentLogin, opponentId));
     assertFlow(opponentTrustAfterClear === opponentTrustBeforeThumbs, "match thumbs clear trust score not restored", {
@@ -1953,6 +1955,8 @@ async function runDisputeResumeThumbsScenario({
       checkInMatchPlayer: Boolean(checkInBResult?.sqlReducer),
       startMatch: Boolean(startResult?.sqlReducer),
       endMatch: Boolean(endResult?.sqlReducer),
+      submitMatchThumbs: Boolean(thumbsResult?.sqlReducer),
+      clearMatchThumbs: clearThumbsResult ? Boolean(clearThumbsResult?.sqlReducer) : null,
     },
   };
 }

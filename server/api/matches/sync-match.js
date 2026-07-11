@@ -1120,6 +1120,7 @@ const SQL_REDUCER_MATCH_ACTIONS = new Set([
   "handoffMatchRecorder",
   "removeMatchLatePlayer",
   "startMatch",
+  "submitMatchThumbs",
   "substituteMatchPlayer",
 ]);
 
@@ -1133,6 +1134,7 @@ function isMissingSqlMatchReducer(error = {}) {
     message.includes("rankball_match_end_action") ||
     message.includes("rankball_match_late_player_action") ||
     message.includes("rankball_match_roster_move_action") ||
+    message.includes("rankball_match_thumbs_action") ||
     message.includes("rankball_match_start_action")
   );
 }
@@ -1142,7 +1144,7 @@ function shouldUseSqlMatchAction(operation = {}) {
 }
 
 function canUseSqlMatchActionWithoutSnapshot(operation = {}) {
-  return operation?.action === "approveMatch" && Boolean(operation?.matchId);
+  return ["approveMatch", "submitMatchThumbs"].includes(operation?.action) && Boolean(operation?.matchId);
 }
 
 async function loadSyncedMatch(context, matchId = "") {
@@ -1161,6 +1163,24 @@ async function loadSyncedMatchAfterWrite(context, matchId = "", fallbackMatch = 
 }
 
 async function applySqlMatchAction(context, operation = {}, match = {}) {
+  if (operation.action === "submitMatchThumbs" && (match?.id || operation.matchId)) {
+    const { data, error } = await context.supabase.rpc("rankball_match_thumbs_action", {
+      p_actor_profile_id: context.profileId,
+      p_match_id: operation.matchId ?? match.id,
+      p_target_user_ids: operation.targetUserIds ?? [],
+    });
+    if (error) {
+      if (isMissingSqlMatchReducer(error)) return null;
+      throw error;
+    }
+    if (data?.fallback) return null;
+    return {
+      ok: true,
+      ...(data && typeof data === "object" ? data : {}),
+      matchId: operation.matchId ?? match.id,
+    };
+  }
+
   if (operation.action === "approveMatch" && (match?.id || operation.matchId)) {
     const { data, error } = await context.supabase.rpc("rankball_match_approval_action", {
       p_actor_profile_id: context.profileId,

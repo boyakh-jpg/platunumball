@@ -294,6 +294,10 @@ const REQUIRED_RPCS = [
     name: "rankball_match_approval_action",
     args: { p_actor_profile_id: "", p_match_id: "", p_side: "", p_player_id: "" },
   },
+  {
+    name: "rankball_match_thumbs_action",
+    args: { p_actor_profile_id: "", p_match_id: "", p_target_user_ids: [] },
+  },
 ];
 
 const REQUIRED_FEED_TRIGGERS = [

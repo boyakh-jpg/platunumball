@@ -6926,6 +6926,223 @@ revoke all on function public.rankball_match_approval_action(text, text, text, t
 revoke all on function public.rankball_match_approval_action(text, text, text, text) from authenticated;
 grant execute on function public.rankball_match_approval_action(text, text, text, text) to service_role;
 
+create or replace function public.rankball_match_thumbs_action(
+  p_actor_profile_id text,
+  p_match_id text,
+  p_target_user_ids jsonb default '[]'::jsonb
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  safe_actor_id text := nullif(btrim(p_actor_profile_id), '');
+  safe_match_id text := nullif(btrim(p_match_id), '');
+  current_match public.matches%rowtype;
+  current_recorders jsonb := '{}'::jsonb;
+  current_feedback jsonb := '{}'::jsonb;
+  current_stars jsonb := '{}'::jsonb;
+  next_feedback jsonb := '{}'::jsonb;
+  feedback_ids text[] := array[]::text[];
+  operation_ids text[] := array[]::text[];
+  previous_ids text[] := array[]::text[];
+  next_ids text[] := array[]::text[];
+  candidate_id text;
+  active_player_count integer := 0;
+  max_thumbs integer := 1;
+  affected_count integer := 0;
+  profile_count integer := 0;
+begin
+  if safe_actor_id is null then
+    raise exception 'missing_actor_profile_id' using errcode = '22023';
+  end if;
+  if safe_match_id is null then
+    raise exception 'missing_match' using errcode = '22023';
+  end if;
+  if coalesce(jsonb_typeof(p_target_user_ids), 'array') <> 'array' then
+    raise exception 'invalid_match_thumbs_target_ids' using errcode = '22023';
+  end if;
+
+  select *
+  into current_match
+  from public.matches
+  where id = safe_match_id
+  for update;
+
+  if not found then
+    raise exception 'match_not_found' using errcode = '22023';
+  end if;
+  if current_match.status <> 'confirmed' then
+    return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'match_thumbs_closed', 'matchId', safe_match_id);
+  end if;
+  if coalesce(current_match.confirmed_at, current_match.updated_at, current_match.created_at) + interval '24 hours' < now() then
+    return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'match_thumbs_window_closed', 'matchId', safe_match_id);
+  end if;
+
+  current_recorders := case
+    when jsonb_typeof(current_match.stat_recorders) = 'object' then current_match.stat_recorders
+    when jsonb_typeof(current_match.rules->'statRecorders') = 'object' then current_match.rules->'statRecorders'
+    else '{}'::jsonb
+  end;
+
+  select count(distinct mp.user_id)
+  into active_player_count
+  from public.match_players mp
+  where mp.match_id = safe_match_id
+    and mp.user_id is not null
+    and mp.user_id <> '';
+
+  with raw(id) as (
+    select mp.user_id
+    from public.match_players mp
+    where mp.match_id = safe_match_id
+    union all
+    select reserve.value
+    from jsonb_array_elements_text(
+      case
+        when jsonb_typeof(current_match.reserve_players->'teamA') = 'array' then current_match.reserve_players->'teamA'
+        else '[]'::jsonb
+      end
+    ) as reserve(value)
+    union all
+    select reserve.value
+    from jsonb_array_elements_text(
+      case
+        when jsonb_typeof(current_match.reserve_players->'teamB') = 'array' then current_match.reserve_players->'teamB'
+        else '[]'::jsonb
+      end
+    ) as reserve(value)
+    union all
+    select current_match.created_by
+    union all
+    select current_match.referee_id
+    union all
+    select current_match.former_referee_id
+    union all
+    select current_recorders->>'teamA'
+    union all
+    select current_recorders->>'teamB'
+  )
+  select coalesce(array_agg(distinct id), array[]::text[])
+  into feedback_ids
+  from raw
+  where nullif(btrim(coalesce(id, '')), '') is not null;
+
+  if not (safe_actor_id = any(feedback_ids)) then
+    return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'match_thumbs_actor_not_allowed', 'matchId', safe_match_id);
+  end if;
+
+  with raw(id) as (
+    values
+      (current_match.created_by),
+      (current_match.referee_id),
+      (current_recorders->>'teamA'),
+      (current_recorders->>'teamB')
+  )
+  select coalesce(array_agg(distinct id), array[]::text[])
+  into operation_ids
+  from raw
+  where nullif(btrim(coalesce(id, '')), '') is not null;
+
+  max_thumbs := greatest(1, floor(active_player_count / 2.0)::integer)
+    + case when coalesce(array_length(operation_ids, 1), 0) > 0 then 1 else 0 end;
+
+  current_feedback := case
+    when jsonb_typeof(current_match.trust_feedback) = 'object' then current_match.trust_feedback
+    else '{}'::jsonb
+  end;
+  current_stars := case
+    when jsonb_typeof(current_feedback->'stars') = 'object' then current_feedback->'stars'
+    else '{}'::jsonb
+  end;
+
+  select coalesce(array_agg(distinct previous.value), array[]::text[])
+  into previous_ids
+  from jsonb_array_elements_text(
+    case
+      when jsonb_typeof(current_stars->safe_actor_id) = 'array' then current_stars->safe_actor_id
+      else '[]'::jsonb
+    end
+  ) as previous(value)
+  where nullif(btrim(coalesce(previous.value, '')), '') is not null;
+
+  for candidate_id in
+    select target.value
+    from jsonb_array_elements_text(coalesce(p_target_user_ids, '[]'::jsonb)) as target(value)
+  loop
+    candidate_id := nullif(btrim(coalesce(candidate_id, '')), '');
+    if candidate_id is null or candidate_id = safe_actor_id then
+      continue;
+    end if;
+    if not (candidate_id = any(feedback_ids)) or candidate_id = any(next_ids) then
+      continue;
+    end if;
+    if not exists (select 1 from public.profiles profile where profile.id = candidate_id) then
+      continue;
+    end if;
+
+    next_ids := array_append(next_ids, candidate_id);
+    if coalesce(array_length(next_ids, 1), 0) >= max_thumbs then
+      exit;
+    end if;
+  end loop;
+
+  foreach candidate_id in array next_ids loop
+    if candidate_id <> safe_actor_id and candidate_id = any(feedback_ids) and not (candidate_id = any(previous_ids)) then
+      update public.profiles
+      set trust_score = greatest(0, least(100, coalesce(trust_score, 80) + 1)),
+          updated_at = now()
+      where id = candidate_id;
+
+      get diagnostics affected_count = row_count;
+      if affected_count = 1 then
+        profile_count := profile_count + 1;
+      end if;
+    end if;
+  end loop;
+
+  foreach candidate_id in array previous_ids loop
+    if candidate_id <> safe_actor_id and candidate_id = any(feedback_ids) and not (candidate_id = any(next_ids)) then
+      update public.profiles
+      set trust_score = greatest(0, least(100, coalesce(trust_score, 80) - 1)),
+          updated_at = now()
+      where id = candidate_id;
+
+      get diagnostics affected_count = row_count;
+      if affected_count = 1 then
+        profile_count := profile_count + 1;
+      end if;
+    end if;
+  end loop;
+
+  current_stars := jsonb_set(current_stars, array[safe_actor_id], to_jsonb(next_ids), true);
+  next_feedback := jsonb_set(current_feedback, '{stars}', current_stars, true);
+  next_feedback := jsonb_set(next_feedback, '{updatedAt}', to_jsonb(now()::text), true);
+
+  update public.matches
+  set trust_feedback = next_feedback,
+      updated_at = now()
+  where id = safe_match_id;
+
+  return jsonb_build_object(
+    'ok', true,
+    'action', 'submitMatchThumbs',
+    'matchId', safe_match_id,
+    'actorProfileId', safe_actor_id,
+    'targetUserIds', to_jsonb(next_ids),
+    'sqlReducer', true,
+    'trustCommitted', profile_count > 0,
+    'trustProfileCount', profile_count
+  );
+end;
+$$;
+
+revoke all on function public.rankball_match_thumbs_action(text, text, jsonb) from public;
+revoke all on function public.rankball_match_thumbs_action(text, text, jsonb) from anon;
+revoke all on function public.rankball_match_thumbs_action(text, text, jsonb) from authenticated;
+grant execute on function public.rankball_match_thumbs_action(text, text, jsonb) to service_role;
+
 create or replace function public.rankball_match_checkin_action(
   p_actor_profile_id text,
   p_match_id text,
@@ -7838,6 +8055,17 @@ begin
       safe_match_id,
       p_match_row #>> '{__operation,sideName}',
       p_match_row #>> '{__operation,playerId}'
+    );
+    if not coalesce((branch_result->>'fallback')::boolean, false) then
+      return branch_result;
+    end if;
+  end if;
+
+  if safe_action = 'submitMatchThumbs' and p_match_row ? '__operation' then
+    branch_result := public.rankball_match_thumbs_action(
+      safe_actor_id,
+      safe_match_id,
+      coalesce(p_match_row->'__operation'->'targetUserIds', '[]'::jsonb)
     );
     if not coalesce((branch_result->>'fallback')::boolean, false) then
       return branch_result;
@@ -10339,6 +10567,7 @@ as $$
       ('rankball_match_list', 'public.rankball_match_list(text,integer,text,boolean)'),
       ('rankball_match_roster_move_action', 'public.rankball_match_roster_move_action(text,text,text,text,text,text,text)'),
       ('rankball_match_start_action', 'public.rankball_match_start_action(text,text,text,text,jsonb)'),
+      ('rankball_match_thumbs_action', 'public.rankball_match_thumbs_action(text,text,jsonb)'),
       ('rankball_normalize_match_dispute_rows', 'public.rankball_normalize_match_dispute_rows(jsonb,text)'),
       ('rankball_persist_match_snapshot', 'public.rankball_persist_match_snapshot(jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,boolean)'),
       ('rankball_persist_recruiting_snapshot', 'public.rankball_persist_recruiting_snapshot(jsonb,jsonb,jsonb)'),
@@ -10416,6 +10645,7 @@ begin
     'public.rankball_match_list(text,integer,text,boolean)',
     'public.rankball_match_roster_move_action(text,text,text,text,text,text,text)',
     'public.rankball_match_start_action(text,text,text,text,jsonb)',
+    'public.rankball_match_thumbs_action(text,text,jsonb)',
     'public.rankball_normalize_match_dispute_rows(jsonb,text)',
     'public.rankball_persist_match_snapshot(jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,boolean)',
     'public.rankball_persist_recruiting_snapshot(jsonb,jsonb,jsonb)',
