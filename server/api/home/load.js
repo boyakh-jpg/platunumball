@@ -2,6 +2,9 @@ import { getAdminLevel, getAuthenticatedContext, mergeById, readJsonBody, sendJs
 import { loadCompactMatchList } from "../matches/list.js";
 import { loadCurrentProfileState, PROFILE_ME_COLUMNS } from "../profile/me.js";
 import { loadCurrentUserRecruitingFeedList } from "../recruiting/list.js";
+import { fromRemoteNotification } from "../../../src/data/remotePayloadMappers.js";
+import { NOTIFICATION_COLUMNS } from "../../../src/data/repositoryColumns.js";
+import { isNotificationVisibleToUser } from "../../../src/lib/notifications.js";
 import {
   REMOTE_CLIENT_ACTIVE_MATCH_LIMIT,
   REMOTE_CLIENT_MATCH_LIMIT,
@@ -10,6 +13,8 @@ import {
 } from "../../../src/lib/constants.js";
 
 const HOME_RECENT_COMPLETED_HOURS = 24 * 31 * REMOTE_CLIENT_RECORD_MONTHS;
+const HOME_NOTIFICATION_QUERY_LIMIT = 80;
+const HOME_NOTIFICATION_LIMIT = 12;
 
 function mergeHomeState(profileState = {}, feedState = {}) {
   return {
@@ -21,6 +26,7 @@ function mergeHomeState(profileState = {}, feedState = {}) {
     matches: mergeById(profileState.matches, feedState.matches),
     recruitingPosts: mergeById(profileState.recruitingPosts, feedState.recruitingPosts),
     tournaments: mergeById(profileState.tournaments, feedState.tournaments),
+    notifications: mergeById(profileState.notifications, feedState.notifications),
     settings: {
       ...(profileState.settings ?? {}),
       ...(feedState.settings ?? {}),
@@ -68,6 +74,22 @@ function getCappedRecruitingLimit(value) {
   return Math.max(1, Math.min(REMOTE_CLIENT_RECRUITING_LIMIT, Math.floor(number)));
 }
 
+async function loadCurrentUserHomeNotifications(supabase, profileId = "") {
+  if (!profileId) return [];
+  const { data, error } = await supabase
+    .from("notifications")
+    .select(NOTIFICATION_COLUMNS)
+    .or(`user_id.eq.${profileId},target_user_id.eq.${profileId}`)
+    .is("read_at", null)
+    .order("created_at", { ascending: false })
+    .limit(HOME_NOTIFICATION_QUERY_LIMIT);
+  if (error) throw error;
+  return (data ?? [])
+    .map(fromRemoteNotification)
+    .filter((notification) => isNotificationVisibleToUser(notification, profileId))
+    .slice(0, HOME_NOTIFICATION_LIMIT);
+}
+
 export default async function handler(request, response) {
   if (request.method !== "POST") {
     response.setHeader("Allow", "POST");
@@ -86,7 +108,7 @@ export default async function handler(request, response) {
     const recruitingLimit = getCappedRecruitingLimit(body.recruitingLimit ?? REMOTE_CLIENT_RECRUITING_LIMIT);
     const includeFeedCounts = body.includeFeedCounts === true;
 
-    const [profileResult, matchResult, recruitingResult] = await Promise.all([
+    const [profileResult, matchResult, recruitingResult, homeNotifications] = await Promise.all([
       timeStep(debugTiming, "profileMs", () => loadCurrentProfileState(context, {
         debugTiming,
         includeFavorites: false,
@@ -110,6 +132,7 @@ export default async function handler(request, response) {
         includeFeedCounts,
         skipCardReferenceRows: true,
       })),
+      timeStep(debugTiming, "notificationsMs", () => loadCurrentUserHomeNotifications(context.supabase, context.profileId)),
     ]);
 
     if (debugTiming) debugTiming.totalMs = Date.now() - startedAt;
@@ -119,8 +142,11 @@ export default async function handler(request, response) {
     sendJson(response, 200, {
       ok: true,
       state: mergeHomeState(
-        mergeHomeState(profileResult.state, matchResult.state),
-        currentUserRecruitingState,
+        mergeHomeState(
+          mergeHomeState(profileResult.state, matchResult.state),
+          currentUserRecruitingState,
+        ),
+        { notifications: homeNotifications },
       ),
       page: {
         ...matchResult.page,
