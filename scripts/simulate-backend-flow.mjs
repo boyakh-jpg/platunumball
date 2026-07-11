@@ -10,6 +10,7 @@ import matchDetailHandler from "../server/api/matches/detail.js";
 import syncTournamentHandler from "../server/api/tournaments/sync-tournament.js";
 import refereeSyncHandler from "../server/api/referee/sync.js";
 import teamsListHandler from "../server/api/teams/list.js";
+import schemaHealthHandler from "../server/api/system/schema-health.js";
 import maintenanceHandler from "../server/api/system/maintenance.js";
 import { gradeRefereeExamByQuestionIds } from "../src/lib/refereeExamBank.js";
 import {
@@ -259,20 +260,26 @@ async function withTimeout(promise, label = "operation") {
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timeoutId));
 }
 
-async function assertRemoteSchemaHealth() {
-  if (!usesRemoteApi || !schemaHealthSecret) return { skipped: true };
-  const response = await fetchWithTimeout(`${remoteBaseUrl}/api/system/schema-health`, {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${schemaHealthSecret}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify(ensureRemoteTestActors ? { ensureTestActors: true } : {}),
-  });
-  const text = await readResponseTextWithTimeout(response, "schema_health");
-  const payload = text ? JSON.parse(text) : null;
-  if (!response.ok) {
-    throw new Error(`/api/system/schema-health failed ${response.status}: ${text}`);
+async function assertSchemaHealth() {
+  if (!schemaHealthSecret) return { skipped: true, reason: "secret_missing" };
+  const body = ensureRemoteTestActors ? { ensureTestActors: true } : {};
+  let payload = null;
+  if (usesRemoteApi) {
+    const response = await fetchWithTimeout(`${remoteBaseUrl}/api/system/schema-health`, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${schemaHealthSecret}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+    const text = await readResponseTextWithTimeout(response, "schema_health");
+    payload = text ? JSON.parse(text) : null;
+    if (!response.ok) {
+      throw new Error(`/api/system/schema-health failed ${response.status}: ${text}`);
+    }
+  } else {
+    payload = await callHandler("/api/system/schema-health", schemaHealthHandler, schemaHealthSecret, body);
   }
   if (!payload?.ok) {
     const failed = (payload?.checks ?? [])
@@ -452,6 +459,23 @@ async function cleanupRefereeSimulationRows() {
   refereeSimulationAttemptIds.clear();
   refereeSimulationRequestIds.clear();
   return { skipped: false, errors };
+}
+
+async function clearRefereeSimulationCooldown(profileId = "") {
+  if (!supabase || !profileId) return { skipped: true };
+  const now = new Date().toISOString();
+  const { data, error } = await supabase
+    .from("referee_exam_attempts")
+    .update({ available_after: now, updated_at: now })
+    .eq("user_id", profileId)
+    .like("id", "sim_rea_%")
+    .gt("available_after", now)
+    .select("id");
+  if (error) throw error;
+  for (const row of data ?? []) {
+    if (row?.id) refereeSimulationAttemptIds.add(row.id);
+  }
+  return { skipped: false, cleared: (data ?? []).length };
 }
 
 async function snapshotRatingSubjects(profileIds = [], teamIds = []) {
@@ -2398,6 +2422,7 @@ async function runRefereeExamServerScenario({
 }) {
   ids = makeScenarioIds(label);
   const profileId = await step(`${ids.label}:resolveProfile`, () => getProfileIdForLogin(login));
+  await step(`${ids.label}:clearSimulationCooldown`, () => clearRefereeSimulationCooldown(profileId));
   const attemptId = `sim_rea_${ids.label}_${suffix}`;
   const secondAttemptId = `sim_rea_${ids.label}_cooldown_${suffix}`;
   const requestId = `sim_rr_${ids.label}_${suffix}`;
@@ -3313,7 +3338,7 @@ async function runTournamentFollowupRoundScenario({
 }
 
 async function main() {
-  const schemaHealth = await assertRemoteSchemaHealth();
+  const schemaHealth = await assertSchemaHealth();
   const basicHostLogin = process.env.RANKBALL_SIM_HOST || "rankball-010";
   const basicOpponentLogin = process.env.RANKBALL_SIM_OPPONENT || "rankball-011";
   const refereeHostLogin = process.env.RANKBALL_SIM_REF_HOST || "rankball-012";
