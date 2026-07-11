@@ -31,6 +31,7 @@ import {
   resumeMatchApproval,
   sendRecruitingChat,
   approveTournamentTeam,
+  setMatchRecordTeamRoster,
   setMatchRoomPlayerPlacement,
   setRecruitingApplicantPlacement,
   setRecruitingApplicantReserve,

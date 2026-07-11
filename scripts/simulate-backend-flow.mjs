@@ -2932,6 +2932,103 @@ async function runSoloRecordScenario({
   };
 }
 
+async function runMatchRecordRosterScenario({
+  label,
+  teamIds = ["team-rb-01", "team-rb-02", "team-rb-03", "team-rb-04"],
+}) {
+  ids = makeScenarioIds(label);
+  const fixtures = (await resolveTournamentTeamFixtures(process.env.RANKBALL_SIM_TOURNAMENT_CREATOR || "rankball-001", teamIds))
+    .filter((fixture) => (fixture.team.members ?? []).length >= 2)
+    .slice(0, 2);
+  assertFlow(fixtures.length === 2, "match record roster teams missing", fixtures);
+
+  const [teamAFixture, teamBFixture] = fixtures;
+  const teamAPlayerIds = uniqueIds((teamAFixture.team.members ?? []).map((member) => member.userId));
+  const teamBPlayerIds = uniqueIds((teamBFixture.team.members ?? []).map((member) => member.userId));
+  const teamASecondId = teamAPlayerIds.find((userId) => userId !== teamAFixture.captainId) ?? "";
+  const teamBSecondId = teamBPlayerIds.find((userId) => userId !== teamBFixture.captainId) ?? "";
+  assertFlow(Boolean(teamASecondId && teamBSecondId), "match record roster member missing", {
+    teamA: teamAFixture.team,
+    teamB: teamBFixture.team,
+  });
+
+  const today = new Date().toISOString().slice(0, 10);
+  const createResult = await step(`${ids.label}:createMatchRecord`, () => syncMatchAs(teamAFixture.captainLogin, {
+    action: "createMatch",
+    preferredMatchId: ids.matchId,
+    draft: {
+      id: ids.matchId,
+      recordType: "match_record",
+      title: `Backend simulation ${ids.label}`,
+      visibility: "private",
+      hostJoinMode: "team",
+      teamOnly: true,
+      mode: "2v2",
+      teamAId: teamAFixture.team.id,
+      teamBId: teamBFixture.team.id,
+      opponentLeaderId: teamBFixture.captainId,
+      courtId: "c1",
+      court: "Backend Simulation Court",
+      scheduledDate: today,
+      scheduledTime: "20:30",
+      ranked: false,
+      official: false,
+    },
+  }));
+  let match = await getMatchAfterResult(createResult, teamAFixture.captainLogin, `${ids.label}:loadAfterCreateMatchRecord`);
+  assertFlow(match?.rules?.recordType === "match_record", "match record type missing", match);
+  assertFlow((match.teamA?.players ?? []).length === 1 && match.teamA.players[0] === teamAFixture.captainId, "match record teamA initial leader mismatch", match);
+  assertFlow((match.teamB?.players ?? []).length === 1 && match.teamB.players[0] === teamBFixture.captainId, "match record teamB initial leader mismatch", match);
+
+  const teamAResult = await step(`${ids.label}:setMatchRecordTeamRoster:teamA`, () => syncMatchAs(teamAFixture.captainLogin, {
+    action: "setMatchRecordTeamRoster",
+    matchId: ids.matchId,
+    sideName: "teamA",
+    roster: {
+      playerIds: [teamAFixture.captainId, teamASecondId],
+      reservePlayerIds: [],
+    },
+  }));
+  match = await getMatchAfterResult(teamAResult, teamAFixture.captainLogin, `${ids.label}:loadAfterTeamARoster`);
+  assertFlow((match.teamA?.players ?? []).includes(teamASecondId), "teamA record roster operation-only update missing", match);
+
+  const teamBResult = await step(`${ids.label}:setMatchRecordTeamRoster:teamB`, () => syncMatchAs(teamBFixture.captainLogin, {
+    action: "setMatchRecordTeamRoster",
+    matchId: ids.matchId,
+    sideName: "teamB",
+    roster: {
+      playerIds: [teamBFixture.captainId, teamBSecondId],
+      reservePlayerIds: [],
+    },
+  }));
+  match = await getMatchAfterResult(teamBResult, teamBFixture.captainLogin, `${ids.label}:loadAfterTeamBRoster`);
+  assertFlow((match.teamB?.players ?? []).includes(teamBSecondId), "teamB record roster operation-only update missing", match);
+
+  await expectRejected(
+    `${ids.label}:setMatchRecordTeamRoster:wrongSideBlocked`,
+    () => syncMatchAs(teamAFixture.captainLogin, {
+      action: "setMatchRecordTeamRoster",
+      matchId: ids.matchId,
+      sideName: "teamB",
+      roster: {
+        playerIds: [teamBFixture.captainId],
+        reservePlayerIds: [],
+      },
+    }),
+    ["match_operation_noop", "match_sync_permission_denied"],
+  );
+
+  return {
+    label: ids.label,
+    matchId: ids.matchId,
+    teamAId: teamAFixture.team.id,
+    teamBId: teamBFixture.team.id,
+    teamAPlayers: match.teamA?.players ?? [],
+    teamBPlayers: match.teamB?.players ?? [],
+    wrongSideBlocked: true,
+  };
+}
+
 function getTeamCaptainId(team = {}) {
   return (team.members ?? []).find((member) => member.role === "captain")?.userId
     || team.members?.[0]?.userId
@@ -3253,6 +3350,11 @@ async function main() {
     label: "solo_record",
     hostLogin: soloRecordLogin,
   }));
+  if (!remoteSmokeOnly) {
+    scenarios.push(await runMatchRecordRosterScenario({
+      label: "match_record_roster_operation",
+    }));
+  }
   scenarios.push(await runRecruitingInviteAcceptScenario({
     label: "private_player_invite_accept",
     hostLogin: inviteHostLogin,
