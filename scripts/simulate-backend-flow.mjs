@@ -2432,6 +2432,7 @@ async function runRecorderHandoffScenario({
 async function runDiscordRoomChatBridgeScenario({
   label,
   hostLogin,
+  guestLogin,
 }) {
   ids = makeScenarioIds(label);
   if (!supabase) {
@@ -2439,6 +2440,8 @@ async function runDiscordRoomChatBridgeScenario({
   }
 
   const hostId = await step(`${ids.label}:resolveProfile:host`, () => getProfileIdForLogin(hostLogin));
+  const guestId = await step(`${ids.label}:resolveProfile:guest`, () => getProfileIdForLogin(guestLogin));
+  assertFlow(hostId !== guestId, "discord room chat host and guest must be different profiles", { hostId, guestId });
   const discordUserId = makeDiscordSnowflake(301);
   const discordChannelId = makeDiscordSnowflake(302);
   const discordThreadId = makeDiscordSnowflake(303);
@@ -2477,7 +2480,20 @@ async function runDiscordRoomChatBridgeScenario({
   const post = createResult?.post;
   assertFlow(post?.id === ids.postId, "created discord room chat post not returned", createResult);
 
-  await step(`${ids.label}:setTemporaryDiscordUser`, () => setTemporaryProfileDiscordUser(hostId, discordUserId, "rankball-sim-chat"));
+  const joinResult = await step(`${ids.label}:interestRecruitingPost:guest`, () => syncRecruitingAs(guestLogin, {
+    action: "interestRecruitingPost",
+    postId: ids.postId,
+    application: {
+      joinMode: "player",
+      side: "teamB",
+      position: "SG",
+    },
+    joinMode: "player",
+  }));
+  const joinedPost = await getRecruitingPostAfterResult(joinResult, guestLogin, `${ids.label}:loadAfterGuestJoin`);
+  assertFlow(joinedPost?.applicants?.some((item) => item.playerId === guestId), "discord room chat guest join not persisted", { guestId, joinedPost });
+
+  await step(`${ids.label}:setTemporaryDiscordUser`, () => setTemporaryProfileDiscordUser(guestId, discordUserId, "rankball-sim-chat"));
 
   const { data: link, error: linkError } = await supabase
     .from("room_discord_links")
@@ -2504,7 +2520,7 @@ async function runDiscordRoomChatBridgeScenario({
   };
   const bridgeResult = await step(`${ids.label}:discordRoomChatBridge`, () => syncDiscordRoomChatBridge(bridgePayload));
   assertFlow(bridgeResult?.ok && bridgeResult?.roomId === ids.postId, "discord bridge message not accepted", bridgeResult);
-  assertFlow(bridgeResult?.message?.userId === hostId && bridgeResult.message.body === bridgePayload.body, "discord bridge message payload mismatch", bridgeResult);
+  assertFlow(bridgeResult?.message?.userId === guestId && bridgeResult.message.body === bridgePayload.body, "discord bridge message payload mismatch", bridgeResult);
 
   const duplicateResult = await step(`${ids.label}:discordRoomChatBridge:duplicate`, () => syncDiscordRoomChatBridge(bridgePayload));
   assertFlow(duplicateResult?.ok && duplicateResult?.duplicate === true, "discord bridge duplicate not detected", duplicateResult);
@@ -2517,18 +2533,44 @@ async function runDiscordRoomChatBridgeScenario({
   }));
   assertFlow(botResult?.ok && botResult?.skipped === "bot_or_webhook_message", "discord bridge bot echo not skipped", botResult);
 
+  let webChatResult = null;
+  if (!usesRemoteApi) {
+    const previousDryRun = process.env.DISCORD_CHAT_SYNC_DRY_RUN;
+    process.env.DISCORD_CHAT_SYNC_DRY_RUN = "1";
+    try {
+      webChatResult = await step(`${ids.label}:webRoomChatToDiscord`, () => syncRecruitingAs(hostLogin, {
+        action: "sendRecruitingChat",
+        postId: ids.postId,
+        body: "web bridge ping",
+      }));
+    } finally {
+      if (previousDryRun === undefined) {
+        delete process.env.DISCORD_CHAT_SYNC_DRY_RUN;
+      } else {
+        process.env.DISCORD_CHAT_SYNC_DRY_RUN = previousDryRun;
+      }
+    }
+    assertFlow(webChatResult?.message?.body === "web bridge ping", "web chat message not persisted", webChatResult);
+    assertFlow(webChatResult?.discordChatSync?.sent === true && webChatResult.discordChatSync.dryRun === true, "web chat Discord dry-run sync not used", webChatResult);
+  }
+
   const loadedPost = await loadRecruitingPostAs(hostLogin, ids.postId);
   const chatMessages = loadedPost?.roomState?.chatMessages ?? [];
-  assertFlow(chatMessages.some((message) => message.id === bridgeResult.message.id && message.userId === hostId && message.body === bridgePayload.body), "discord bridge chat not visible in room detail", chatMessages);
+  assertFlow(chatMessages.some((message) => message.id === bridgeResult.message.id && message.userId === guestId && message.body === bridgePayload.body), "discord bridge chat not visible in room detail", chatMessages);
+  if (webChatResult) {
+    assertFlow(chatMessages.some((message) => message.id === webChatResult.message.id && message.userId === hostId && message.body === webChatResult.message.body), "web bridge chat not visible in room detail", chatMessages);
+  }
   assertFlow(!chatMessages.some((message) => message.body === "discord bot echo"), "discord bridge bot echo persisted", chatMessages);
 
   return {
     label: ids.label,
     hostLogin,
+    guestLogin,
     postId: ids.postId,
     discordThreadNormalized: true,
     duplicateBlocked: true,
     botEchoSkipped: true,
+    webToDiscordDryRun: Boolean(webChatResult?.discordChatSync?.dryRun),
     messageId: bridgeResult.message.id,
   };
 }
@@ -3467,6 +3509,7 @@ async function main() {
   const recorderHandoffTeamAReserveLogin = process.env.RANKBALL_SIM_RECORDER_HANDOFF_TEAM_A_RESERVE || "rankball-034";
   const recorderHandoffTeamBActiveLogin = process.env.RANKBALL_SIM_RECORDER_HANDOFF_TEAM_B_ACTIVE || "rankball-036";
   const discordChatHostLogin = process.env.RANKBALL_SIM_DISCORD_CHAT_HOST || "rankball-033";
+  const discordChatGuestLogin = process.env.RANKBALL_SIM_DISCORD_CHAT_GUEST || "rankball-035";
   const refereeExamLogin = process.env.RANKBALL_SIM_REFEREE_EXAM_LOGIN || "rankball-034";
   const tournamentCreatorLogin = process.env.RANKBALL_SIM_TOURNAMENT_CREATOR || "rankball-001";
   const teamBlockedHostLogin = process.env.RANKBALL_SIM_SOLO_BLOCK_HOST || "rankball-014";
@@ -3550,6 +3593,7 @@ async function main() {
     scenarios.push(await runDiscordRoomChatBridgeScenario({
       label: "discord_room_chat_bridge",
       hostLogin: discordChatHostLogin,
+      guestLogin: discordChatGuestLogin,
     }));
     scenarios.push(await runRefereeExamServerScenario({
       label: "referee_exam_server",

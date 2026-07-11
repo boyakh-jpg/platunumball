@@ -13,6 +13,16 @@ function getDiscordBotToken() {
   return /^Bot\s+/i.test(token) ? token : `Bot ${token}`;
 }
 
+function getDiscordChatDryRun(path = "") {
+  if (process.env.DISCORD_CHAT_SYNC_DRY_RUN !== "1") return null;
+  const channelMatch = /^\/channels\/([^/]+)\/messages$/.exec(String(path || ""));
+  return {
+    id: process.env.DISCORD_CHAT_SYNC_DRY_RUN_MESSAGE_ID || "1783000000000000001",
+    channel_id: channelMatch?.[1] ? decodeURIComponent(channelMatch[1]) : "",
+    dryRun: true,
+  };
+}
+
 export function isDiscordSnowflake(value = "") {
   return DISCORD_SNOWFLAKE_RE.test(String(value || "").trim());
 }
@@ -35,6 +45,9 @@ export function fromRoomChatMessageRow(row = {}) {
 }
 
 async function discordFetch(path, options = {}) {
+  const dryRun = getDiscordChatDryRun(path);
+  if (dryRun) return dryRun;
+
   const authorization = getDiscordBotToken();
   if (!authorization) return { skipped: "discord_bot_token_not_configured" };
 
@@ -158,5 +171,6 @@ export async function syncRoomChatMessageToDiscord(supabase, { roomType = "recru
     sent: true,
     discordMessageId: result?.id ?? null,
     discordChannelId: result?.channel_id ?? targetId,
+    dryRun: Boolean(result?.dryRun),
   };
 }

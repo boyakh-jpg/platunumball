@@ -378,7 +378,7 @@ Partial:
 - Admin UI calls server actions, but local UI state is still updated first and should be reloaded from server result before production.
 - Env owner support uses `POST /api/admin/context` to expose only the current user's admin level to the client.
 - Discord OAuth/profile badge/DM queue, invite button interactions, room chat bridge path, Gateway bridge script, and room-channel link provisioning script exist. Real deployment still needs Bot token, bridge secret, channel/thread links, and a long-running bridge process.
-- Backend flow simulation covers Discord-origin room chat import, duplicate Discord message protection, bot echo skip, and room detail visibility.
+- Backend flow simulation covers Discord-origin room chat import, duplicate Discord message protection, bot echo skip, web-origin room chat to Discord dry-run delivery, and room detail visibility.
 - Court reviews exist, `court` / `court_review` reports submit through `/api/reports/submit`, and admin review actions can soft-hide approved courts and court reviews.
 
 Remaining:
