@@ -3084,6 +3084,10 @@ input[type="color"] {
   touch-action: manipulation;
 }
 
+.numeric-stepper button svg {
+  pointer-events: none;
+}
+
 .numeric-stepper button:hover:not(:disabled),
 .numeric-stepper button:focus-visible:not(:disabled) {
   border-color: color-mix(in srgb, var(--rb-orange) 44%, var(--line));
@@ -3113,14 +3117,30 @@ input[type="color"] {
 }
 
 .score-numeric-stepper {
-  grid-template-rows: 40px minmax(74px, auto) 40px;
+  grid-template-areas: "down value up";
+  grid-template-columns: 52px minmax(76px, 1fr) 52px;
+  grid-template-rows: 74px;
 }
 
 .score-numeric-stepper button {
-  min-height: 40px;
+  min-height: 74px;
   border-color: rgba(255, 255, 255, 0.14);
   background: rgba(255, 255, 255, 0.06);
   color: var(--rb-orange);
+}
+
+.score-numeric-stepper button:first-of-type {
+  grid-area: up;
+}
+
+.score-numeric-stepper button:last-of-type {
+  grid-area: down;
+}
+
+.score-numeric-stepper input {
+  grid-area: value;
+  min-height: 74px;
+  text-align: center;
 }
 
 .approval-grid {
@@ -7090,15 +7110,26 @@ html[data-theme="light"] .search-picker-result-row.selected {
 }
 
 .arena-score-stepper {
-  grid-template-rows: 34px 52px 34px;
+  grid-template-areas: "down value up";
+  grid-template-columns: 42px minmax(62px, 1fr) 42px;
+  grid-template-rows: 52px;
 }
 
 .arena-score-stepper button {
-  min-height: 34px;
+  min-height: 52px;
   color: var(--rb-orange);
 }
 
+.arena-score-stepper button:first-of-type {
+  grid-area: up;
+}
+
+.arena-score-stepper button:last-of-type {
+  grid-area: down;
+}
+
 .arena-score-stepper input {
+  grid-area: value;
   min-height: 52px;
   text-align: center;
 }
@@ -7710,6 +7741,7 @@ html[data-theme="light"] .search-picker-result-row.selected {
   grid-template-areas: "down value up";
   grid-template-columns: 40px 50px 40px;
   grid-template-rows: 44px;
+  gap: 4px;
   width: 138px;
 }
 
@@ -8877,6 +8909,7 @@ html[data-theme="light"] .team-search-popover button.selected {
   .stat-stepper-row .stat-numeric-stepper {
     grid-template-columns: 36px 42px 36px;
     grid-template-rows: 42px;
+    gap: 3px;
     width: 120px;
   }
 
