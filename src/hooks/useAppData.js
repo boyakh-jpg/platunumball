@@ -14,7 +14,6 @@ import {
   closeRecruitingPost,
   commitAdminReviewAction,
   commitAdminAppointmentAction,
-  confirmRecruitingMatch,
   confirmMatchRefereeAbsence,
   createMatch,
   createProfileShell,
@@ -227,6 +226,7 @@ const RECRUITING_OPERATION_ONLY_ACTIONS = new Set([
   "acceptRecruitingInvitation",
   "cancelRecruitingParticipation",
   "closeRecruitingPost",
+  "confirmRecruitingMatch",
   "declineRecruitingInvitation",
   "detachRecruitingPartyPlayer",
   "inviteRecruitingPlayers",
@@ -2953,43 +2953,16 @@ export function useAppData(authUser = null, appLocation = null) {
         if (serverReady !== true) return null;
         if (!ensureRemoteReady("방 확정")) return null;
         let rollbackState = null;
-        let createdId = null;
-        let createdMatch = null;
-        let syncedPost = null;
-        let syncedNotifications = [];
-        let syncedMatchNotifications = [];
         setState((prev) => {
           rollbackState = prev;
-          const existingIds = new Set((prev.matches ?? []).map((match) => match.id));
-          const beforePost = (prev.recruitingPosts ?? []).find((post) => post.id === postId) ?? null;
-          const next = confirmRecruitingMatch({ ...prev, currentUserId }, postId);
-          createdId = (next.matches ?? []).find((match) => !existingIds.has(match.id))?.id ?? null;
-          createdMatch = createdId ? (next.matches ?? []).find((match) => match.id === createdId) ?? null : null;
-          const nextPost = (next.recruitingPosts ?? []).find((post) => post.id === postId) ?? null;
-          syncedPost = nextPost && nextPost !== beforePost ? nextPost : null;
-          syncedNotifications = syncedPost ? getNewRecruitingNotifications(prev, next, postId) : [];
-          syncedMatchNotifications = createdMatch ? getNewMatchNotifications(prev, next, createdMatch.id) : [];
-          return !createdMatch && !syncedPost && isSupabaseConfigured ? prev : next;
+          return prev;
         });
-        if (syncedPost || createdMatch) {
-          return rollbackIfServerFailed(
-            syncedPost
-              ? syncRecruitingPostServer(syncedPost, [...syncedNotifications, ...syncedMatchNotifications], { action: "confirmRecruitingMatch", postId, preferredMatchId: createdMatch?.id, createdMatch })
-              : syncMatchServer(createdMatch, syncedMatchNotifications, { action: "confirmRecruitingMatch", matchId: createdMatch?.id, recruitingPostId: postId }),
-            rollbackState,
-            "방 확정",
-            { action: "confirmRecruitingMatch", postId, matchId: createdMatch?.id },
-          ).then((result) => (result?.ok === false ? null : result?.matchId ?? result?.createdMatch?.id ?? result?.match?.id ?? createdId));
-        }
-        if (isSupabaseConfigured) {
-          return rollbackIfServerFailed(
-            syncRecruitingPostServer(null, [], { action: "confirmRecruitingMatch", postId }),
-            rollbackState,
-            "방 확정",
-            { action: "confirmRecruitingMatch", postId },
-          ).then((result) => (result?.ok === false ? null : result?.matchId ?? result?.createdMatch?.id ?? result?.match?.id ?? null));
-        }
-        return createdId;
+        return rollbackIfServerFailed(
+          syncRecruitingPostServer(null, [], { action: "confirmRecruitingMatch", postId }),
+          rollbackState,
+          "방 확정",
+          { action: "confirmRecruitingMatch", postId },
+        ).then((result) => (result?.ok === false ? null : result?.matchId ?? result?.createdMatch?.id ?? result?.match?.id ?? null));
       },
       closeRecruitingPost: (postId) => applyRecruitingPostMutation(postId, (prev) => closeRecruitingPost({ ...prev, currentUserId }, postId), { action: "closeRecruitingPost" }),
       inviteTeamMember: (teamId, targetUserId, role = "regular") => applyTeamInvitationMutation(
