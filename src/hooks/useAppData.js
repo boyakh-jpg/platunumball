@@ -201,8 +201,10 @@ const SERVER_OPERATION_ACTIONS = new Set([
   "closeRecruitingPost",
 ]);
 
-const SERVER_REPLAY_ONLY_MATCH_ACTIONS = new Set([
+const MATCH_OPERATION_ONLY_ACTIONS = new Set([
   "disputeMatch",
+  "resumeMatchApproval",
+  "submitMatchResult",
 ]);
 
 function getServerOperation(meta = {}) {
@@ -2222,7 +2224,7 @@ export function useAppData(authUser = null, appLocation = null) {
           return !syncedMatch && operation && isSupabaseConfigured ? prev : next;
         });
         const syncMeta = { ...meta, matchId, baseUpdatedAt };
-        if (operation && SERVER_REPLAY_ONLY_MATCH_ACTIONS.has(operation.action)) {
+        if (operation && MATCH_OPERATION_ONLY_ACTIONS.has(operation.action)) {
           return rollbackIfServerFailed(syncMatchServer(null, [], syncMeta), rollbackState, "경기 변경", { action: meta.action, matchId });
         }
         if (syncedMatch) return rollbackIfServerFailed(syncMatchServer(syncedMatch, syncedNotifications, syncMeta), rollbackState, "경기 변경", { action: meta.action, matchId });
