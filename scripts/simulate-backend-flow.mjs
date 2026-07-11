@@ -1190,14 +1190,14 @@ async function runOneOnOneScenario({
   let agreeASqlReducer = false;
   let agreeBSqlReducer = false;
   if (!match.agreements?.teamA?.includes(hostId)) {
-    const matchWithHostAgreement = withAgreement(match, "teamA", hostId);
     const agreeAResult = await step(`${ids.label}:agreeMatch:teamA`, () => syncMatchAs(hostLogin, {
       action: "agreeMatch",
       matchId: ids.matchId,
       sideName: "teamA",
       playerId: hostId,
-    }, { match: matchWithHostAgreement }));
+    }));
     agreeASqlReducer = Boolean(agreeAResult?.sqlReducer);
+    assertFlow(agreeASqlReducer, "teamA agreement operation-only SQL reducer not used", agreeAResult);
     match = await getMatchAfterResult(agreeAResult, hostLogin, `${ids.label}:loadAfterAgreeTeamA`);
     assertFlow(match?.agreements?.teamA?.includes(hostId), "teamA agreement not persisted", match);
   }
@@ -1233,7 +1233,8 @@ async function runOneOnOneScenario({
     matchId: ids.matchId,
     sideName: "teamB",
     playerId: opponentId,
-  }, { match: matchWithOpponentAttendance }));
+  }, refereeWanted ? { match: matchWithOpponentAttendance } : {}));
+  if (!refereeWanted) assertFlow(Boolean(checkInBResult?.sqlReducer), "teamB check-in operation-only SQL reducer not used", checkInBResult);
   match = await getMatchAfterResult(checkInBResult, operatorLogin, `${ids.label}:loadAfterCheckInTeamB`);
   assertFlow(match?.attendance?.teamB?.includes(opponentId), "teamB check-in not persisted", match);
 

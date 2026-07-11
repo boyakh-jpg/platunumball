@@ -353,6 +353,7 @@ Done:
 - `rankball_match_approval_action()` commits non-final participant result approvals in one DB transaction; approvals that would confirm the match still fall back to server reducer replay so rating commit stays authoritative.
 - `rankball_match_thumbs_action()` commits match thumbs and affected profile trust deltas in one DB transaction.
 - `rankball_match_star_toggle_action()` wraps the thumbs RPC for single-target star toggles and preserves replay fallback for trust-feedback limit notifications.
+- `agreeMatch` and `checkInMatchPlayer` now use direct operation-only SQL reducer calls when `matchId`, `sideName`, and `playerId` are present, without sending a client match snapshot.
 - Backend flow simulation seeds pending app/Discord match notice rows and verifies stale cleanup for `startMatch`, `approveMatch`, and `voidMatch`.
 - Match rating commit responses now reload affected profiles/teams from DB and return them in `state.users` / `state.teams`, so MMR UI merges DB-authoritative values after approve/auto-confirm.
 - Room, match, and tournament frontend callers now send `{ operation }` only when operation replay is available; full snapshot sync is legacy fallback.
