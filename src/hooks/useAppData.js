@@ -202,9 +202,13 @@ const SERVER_OPERATION_ACTIONS = new Set([
 ]);
 
 const MATCH_OPERATION_ONLY_ACTIONS = new Set([
+  "agreeMatch",
   "approveMatch",
+  "checkInMatchPlayer",
   "disputeMatch",
+  "endMatch",
   "resumeMatchApproval",
+  "startMatch",
   "submitMatchThumbs",
   "submitMatchResult",
   "toggleMatchStar",
