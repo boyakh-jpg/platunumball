@@ -1568,6 +1568,7 @@ async function runMatchReminderCancelScenario({
     action: "cancelMatch",
     matchId: ids.matchId,
   }));
+  assertFlow(cancelResult?.sqlReducer === true, "match cancel did not use SQL reducer", cancelResult);
   match = await getMatchAfterResult(cancelResult, hostLogin, `${ids.label}:loadAfterCancelMatch`);
   assertFlow(match?.status === "cancelled", "reminder match not cancelled", match);
   reminderChecks.afterCancel = await step(`${ids.label}:remindersAfterCancel`, () => assertPendingMatchNotices(
@@ -3241,6 +3242,14 @@ async function runSoloRecordScenario({
   assertFlow(match?.result?.scoreA === 17 && match?.result?.scoreB === 11, "solo record score not persisted", match?.result);
   assertFlow(stats.points === 17 && stats.rebounds === 5 && stats.assists === 3 && stats.steals === 2 && stats.blocks === 1 && stats.fouls === 1, "solo record stats not persisted", stats);
 
+  const deleteResult = await step(`${ids.label}:deleteSoloRecord`, () => syncMatchAs(hostLogin, {
+    action: "deleteSoloRecord",
+    matchId: ids.matchId,
+  }));
+  const deletedMatch = await getMatchAfterResult(deleteResult, hostLogin, `${ids.label}:loadAfterDeleteSoloRecord`);
+  assertFlow(deleteResult?.sqlReducer === true, "solo record delete did not use SQL reducer", deleteResult);
+  assertFlow(deletedMatch?.status === "cancelled", "solo record delete not persisted", deletedMatch);
+
   return {
     label: ids.label,
     hostLogin,
@@ -3249,6 +3258,8 @@ async function runSoloRecordScenario({
     opponentId,
     score: `${match.result.scoreA}:${match.result.scoreB}`,
     mmrExcluded: true,
+    deleted: true,
+    sqlReducer: true,
   };
 }
 

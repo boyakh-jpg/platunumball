@@ -6277,6 +6277,132 @@ grant execute on function public.rankball_feed_trigger_health() to service_role;
 
 select pg_notify('pgrst', 'reload schema');
 
+-- Commit terminal match lifecycle actions under a per-match transaction lock.
+
+create or replace function public.rankball_match_terminal_action(
+  p_actor_profile_id text,
+  p_action text,
+  p_match_id text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  safe_actor_id text := nullif(btrim(p_actor_profile_id), '');
+  safe_action text := nullif(btrim(p_action), '');
+  safe_match_id text := nullif(btrim(p_match_id), '');
+  current_match public.matches%rowtype;
+  operator_id text;
+  after_start boolean := false;
+  notification_title text;
+  notification_body text;
+begin
+  if safe_actor_id is null then
+    raise exception 'missing_actor_profile_id' using errcode = '22023';
+  end if;
+  if safe_match_id is null then
+    raise exception 'missing_match' using errcode = '22023';
+  end if;
+  if safe_action not in ('cancelMatch', 'deleteSoloRecord', 'voidMatch') then
+    raise exception 'invalid_match_terminal_action' using errcode = '22023';
+  end if;
+
+  perform pg_advisory_xact_lock(hashtext('rankball:match'), hashtext(safe_match_id));
+
+  select *
+  into current_match
+  from public.matches
+  where id = safe_match_id
+  for update;
+
+  if not found then
+    raise exception 'match_not_found' using errcode = '22023';
+  end if;
+
+  if safe_action = 'cancelMatch' then
+    if current_match.status not in ('contract', 'agreed') then
+      return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'match_not_cancellable', 'matchId', safe_match_id);
+    end if;
+
+    after_start := current_match.started_at is not null
+      or current_match.ended_at is not null
+      or exists (select 1 from public.match_results result where result.match_id = safe_match_id);
+    operator_id := case
+      when after_start and nullif(current_match.referee_id, '') is not null then current_match.referee_id
+      else current_match.created_by
+    end;
+    if safe_actor_id <> coalesce(operator_id, '') then
+      raise exception 'match_cancel_permission_denied' using errcode = '42501';
+    end if;
+
+    update public.matches
+    set status = 'cancelled', cancelled_at = coalesce(cancelled_at, now()), updated_at = now()
+    where id = safe_match_id;
+    notification_title := '경기 취소';
+    notification_body := format('%s 경기방이 취소됐습니다.', current_match.title);
+  elsif safe_action = 'voidMatch' then
+    if current_match.status <> 'disputed' then
+      return jsonb_build_object('ok', false, 'fallback', true, 'reason', 'match_not_voidable', 'matchId', safe_match_id);
+    end if;
+
+    operator_id := coalesce(nullif(current_match.referee_id, ''), current_match.created_by);
+    if safe_actor_id <> coalesce(operator_id, '') then
+      raise exception 'match_void_permission_denied' using errcode = '42501';
+    end if;
+
+    update public.matches
+    set status = 'void', ranked = false, voided_at = coalesce(voided_at, now()), updated_at = now()
+    where id = safe_match_id;
+    notification_title := '결과 무효';
+    notification_body := format('%s 결과가 랭킹 반영에서 제외됐습니다.', current_match.title);
+  else
+    if current_match.created_by <> safe_actor_id
+      or coalesce(current_match.rules->>'recordType', '') <> 'solo'
+      or current_match.status = 'cancelled'
+    then
+      raise exception 'solo_record_delete_permission_denied' using errcode = '42501';
+    end if;
+
+    update public.matches
+    set status = 'cancelled', cancelled_at = coalesce(cancelled_at, now()), updated_at = now()
+    where id = safe_match_id;
+    notification_title := '개인 기록 삭제';
+    notification_body := format('%s 기록을 삭제했습니다.', current_match.title);
+  end if;
+
+  insert into public.notifications (
+    id, user_id, title, body, tone, match_id, payload, created_at, updated_at
+  ) values (
+    'n_' || replace(gen_random_uuid()::text, '-', ''),
+    safe_actor_id,
+    notification_title,
+    notification_body,
+    'match',
+    safe_match_id,
+    jsonb_build_object('source', 'match_terminal_action', 'action', safe_action),
+    now(),
+    now()
+  );
+
+  return jsonb_build_object(
+    'ok', true,
+    'action', safe_action,
+    'matchId', safe_match_id,
+    'actorProfileId', safe_actor_id,
+    'sqlReducer', true
+  );
+end;
+$$;
+
+revoke all on function public.rankball_match_terminal_action(text, text, text) from public;
+revoke all on function public.rankball_match_terminal_action(text, text, text) from anon;
+revoke all on function public.rankball_match_terminal_action(text, text, text) from authenticated;
+grant execute on function public.rankball_match_terminal_action(text, text, text) to service_role;
+
+select pg_notify('pgrst', 'reload schema');
+
 create or replace function public.rankball_recruiting_action(
   p_actor_profile_id text,
   p_action text,
@@ -10799,6 +10925,7 @@ as $$
       ('rankball_match_roster_move_action', 'public.rankball_match_roster_move_action(text,text,text,text,text,text,text)'),
       ('rankball_match_star_toggle_action', 'public.rankball_match_star_toggle_action(text,text,text)'),
       ('rankball_match_start_action', 'public.rankball_match_start_action(text,text,text,text,jsonb)'),
+      ('rankball_match_terminal_action', 'public.rankball_match_terminal_action(text,text,text)'),
       ('rankball_match_thumbs_action', 'public.rankball_match_thumbs_action(text,text,jsonb)'),
       ('rankball_normalize_match_dispute_rows', 'public.rankball_normalize_match_dispute_rows(jsonb,text)'),
       ('rankball_persist_match_snapshot', 'public.rankball_persist_match_snapshot(jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,boolean)'),
@@ -11669,6 +11796,7 @@ as $$
       ('rankball_match_roster_move_action', 'public.rankball_match_roster_move_action(text,text,text,text,text,text,text)'),
       ('rankball_match_star_toggle_action', 'public.rankball_match_star_toggle_action(text,text,text)'),
       ('rankball_match_start_action', 'public.rankball_match_start_action(text,text,text,text,jsonb)'),
+      ('rankball_match_terminal_action', 'public.rankball_match_terminal_action(text,text,text)'),
       ('rankball_match_thumbs_action', 'public.rankball_match_thumbs_action(text,text,jsonb)'),
       ('rankball_normalize_match_dispute_rows', 'public.rankball_normalize_match_dispute_rows(jsonb,text)'),
       ('rankball_persist_match_snapshot', 'public.rankball_persist_match_snapshot(jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,boolean)'),

@@ -1173,7 +1173,9 @@ const SQL_REDUCER_MATCH_ACTIONS = new Set([
   "addMatchLatePlayer",
   "agreeMatch",
   "approveMatch",
+  "cancelMatch",
   "checkInMatchPlayer",
+  "deleteSoloRecord",
   "endMatch",
   "handoffMatchRecorder",
   "removeMatchLatePlayer",
@@ -1181,6 +1183,7 @@ const SQL_REDUCER_MATCH_ACTIONS = new Set([
   "submitMatchThumbs",
   "substituteMatchPlayer",
   "toggleMatchStar",
+  "voidMatch",
 ]);
 
 function isMissingSqlMatchReducer(error = {}) {
@@ -1195,7 +1198,8 @@ function isMissingSqlMatchReducer(error = {}) {
     message.includes("rankball_match_roster_move_action") ||
     message.includes("rankball_match_star_toggle_action") ||
     message.includes("rankball_match_thumbs_action") ||
-    message.includes("rankball_match_start_action")
+    message.includes("rankball_match_start_action") ||
+    message.includes("rankball_match_terminal_action")
   );
 }
 
@@ -1207,7 +1211,9 @@ function canUseSqlMatchActionWithoutSnapshot(operation = {}) {
   return [
     "agreeMatch",
     "approveMatch",
+    "cancelMatch",
     "checkInMatchPlayer",
+    "deleteSoloRecord",
     "endMatch",
     "handoffMatchRecorder",
     "addMatchLatePlayer",
@@ -1216,6 +1222,7 @@ function canUseSqlMatchActionWithoutSnapshot(operation = {}) {
     "submitMatchThumbs",
     "substituteMatchPlayer",
     "toggleMatchStar",
+    "voidMatch",
   ].includes(operation?.action) && Boolean(operation?.matchId);
 }
 
@@ -1235,6 +1242,46 @@ async function loadSyncedMatchAfterWrite(context, matchId = "", fallbackMatch = 
 }
 
 async function applySqlMatchAction(context, operation = {}, match = {}) {
+  if (["cancelMatch", "deleteSoloRecord", "voidMatch"].includes(operation.action) && (match?.id || operation.matchId)) {
+    const matchId = operation.matchId ?? match.id;
+    const { data, error } = await context.supabase.rpc("rankball_match_terminal_action", {
+      p_actor_profile_id: context.profileId,
+      p_action: operation.action,
+      p_match_id: matchId,
+    });
+    if (error) {
+      if (isMissingSqlMatchReducer(error)) return null;
+      throw error;
+    }
+    if (data?.fallback) return null;
+
+    let discordDeliveryCount = 0;
+    let discordDeliveryError = null;
+    if (operation.action !== "deleteSoloRecord") {
+      const deliveryMatch = await loadSyncedMatchAfterWrite(context, matchId, match?.id ? match : null);
+      try {
+        if (deliveryMatch?.id) {
+          discordDeliveryCount = await withTimeout(
+            queueMatchDiscordDeliveries(context.supabase, deliveryMatch, operation.action),
+            DISCORD_QUEUE_TIMEOUT_MS,
+            "discord_match_delivery_timeout",
+          );
+        }
+      } catch (deliveryError) {
+        discordDeliveryError = deliveryError.message || "discord_match_delivery_failed";
+        console.error("Match Discord delivery queue failed.", deliveryError);
+      }
+    }
+
+    return {
+      ok: true,
+      ...(data && typeof data === "object" ? data : {}),
+      matchId,
+      discordDeliveryCount,
+      discordDeliveryError,
+    };
+  }
+
   if (operation.action === "toggleMatchStar" && (match?.id || operation.matchId)) {
     const { data, error } = await context.supabase.rpc("rankball_match_star_toggle_action", {
       p_actor_profile_id: context.profileId,
