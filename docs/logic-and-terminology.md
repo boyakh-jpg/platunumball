@@ -2293,3 +2293,11 @@ flowchart TD
 - 경기 메뉴는 경기 시작 이후부터 이의신청 종료 전까지의 내 경기만 보여준다.
 - 경기 메뉴는 `locked`, `checkin` 같은 경기 시작 전 방과 공개 모집/비공개 초대 모집방을 직접 목록에 붙이지 않는다.
 - 진행 메뉴는 기록/점수 처리 화면이다. 같은 방 모달을 열 수 있고, `match_record`는 여기서 기록 확인 흐름으로 다룬다.
+
+## 2026-07-13 모집 개인 초대 DB 전이
+
+- 개인 참가 방의 선수 초대, 수락, 거절은 방 id advisory transaction lock과 `recruiting_posts` row lock 안에서 처리한다.
+- SQL 직접 경로는 `hostJoinMode=player`, `joinMode=player`, 개인 대상, `mmrLimitMode=off|warn`인 단순 초대만 담당한다.
+- 팀/파티/심판 초대와 `mmrLimitMode=block`은 팀 MMR, 파티 정원, 심판 자격 계산을 보존하기 위해 서버 authoritative replay를 사용한다.
+- 초대 수락은 연령 제한, 출전 정원, 후보 2명 제한을 DB에서 다시 확인하고 `recruiting_applications`, `roomState.invitations`, `pinnedReservePlayers`, 알림을 한 트랜잭션으로 갱신한다.
+- 초대 거절은 대상 본인의 pending invitation만 같은 잠금 안에서 제거한다.

@@ -389,6 +389,7 @@ Remaining:
 - Finish authoritative RPC/server actions for recruiting create/join/invite/accept/ready/confirm and match attendance/start/record/end/dispute/approve.
 - Move operation calculation itself from server reducer replay to DB RPC if stricter row-level lock semantics are required.
 - Recruiting `interestRecruitingPost` now tries `rankball_recruiting_interest_player_action()` first for public player joins, and `setRecruitingApplicantPlacement` tries `rankball_recruiting_applicant_placement_action()` first for self player applicant moves. Unsupported private/team/referee/party/limit cases still fall back to server authoritative replay.
+- Simple individual player invitation create/accept/decline now uses `rankball_recruiting_invite_players_action()` and `rankball_recruiting_invitation_decision_action()` with per-room advisory and row locks. Team, party, referee, and MMR-blocked invitation branches keep server authoritative replay.
 - Make frontend repository a thin server caller after the authoritative RPCs are ready.
 - Remove production reliance on localStorage state and mock fallback completely.
 - Add broader server-side eligibility checks for tournament brackets and match roster edits.

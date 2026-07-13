@@ -214,6 +214,14 @@ const REQUIRED_RPCS = [
     args: { p_actor_profile_id: "", p_post_id: "", p_player_id: "", p_side: "", p_reserve: false },
   },
   {
+    name: "rankball_recruiting_invitation_decision_action",
+    args: { p_actor_profile_id: "", p_post_id: "", p_invitation_id: "", p_action: "" },
+  },
+  {
+    name: "rankball_recruiting_invite_players_action",
+    args: { p_actor_profile_id: "", p_post_id: "", p_target_user_ids: [], p_side: "", p_reserve: false, p_join_mode: "", p_team_id: "" },
+  },
+  {
     name: "rankball_rls_policy_health",
     args: {},
   },

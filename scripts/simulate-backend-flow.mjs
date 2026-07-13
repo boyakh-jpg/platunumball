@@ -1674,6 +1674,7 @@ async function runRecruitingInviteAcceptScenario({
       sideCapacity: 1,
       timingType: "instant",
       ranked: false,
+      mmrLimitMode: "off",
       official: false,
       preRegistered: true,
       teamOnly: false,
@@ -1695,7 +1696,7 @@ async function runRecruitingInviteAcceptScenario({
   assertFlow(post?.id === ids.postId, "created invite post not returned", createResult);
   assertFlow(post.ownerId === hostId || post.playerId === hostId, "created invite post owner mismatch", { hostId, post });
 
-  const inviteResult = await step(`${ids.label}:inviteRecruitingPlayers:invitee`, () => syncRecruitingAs(hostLogin, {
+  let inviteResult = await step(`${ids.label}:inviteRecruitingPlayers:invitee`, () => syncRecruitingAs(hostLogin, {
     action: "inviteRecruitingPlayers",
     postId: ids.postId,
     invite: {
@@ -1705,14 +1706,43 @@ async function runRecruitingInviteAcceptScenario({
       playerIds: [inviteeId],
     },
   }));
+  assertFlow(inviteResult?.sqlReducer === true, "player invitation did not use SQL reducer", inviteResult);
   post = await getRecruitingPostAfterResult(inviteResult, hostLogin, `${ids.label}:loadAfterInvite`);
   assertStateIncludesUsers(inviteResult, [hostId, inviteeId], "invite mutation response missing feed users");
-  const invitation = post?.roomState?.invitations?.find((item) => (
+  let invitation = post?.roomState?.invitations?.find((item) => (
     item.targetUserId === inviteeId &&
     item.status === "pending" &&
     item.role !== "referee"
   ));
   assertFlow(Boolean(invitation), "player invitation not persisted", { inviteeId, post });
+
+  const declineResult = await step(`${ids.label}:declineRecruitingInvitation`, () => syncRecruitingAs(inviteeLogin, {
+    action: "declineRecruitingInvitation",
+    postId: ids.postId,
+    invitationId: invitation.id,
+  }));
+  assertFlow(declineResult?.sqlReducer === true, "player invitation decline did not use SQL reducer", declineResult);
+  post = await getRecruitingPostAfterResult(declineResult, inviteeLogin, `${ids.label}:loadAfterDecline`);
+  assertFlow(!hasPendingInvitationFor(post, inviteeId), "declined invitation still pending", { inviteeId, post });
+
+  inviteResult = await step(`${ids.label}:inviteRecruitingPlayers:invitee:again`, () => syncRecruitingAs(hostLogin, {
+    action: "inviteRecruitingPlayers",
+    postId: ids.postId,
+    invite: {
+      side: "teamB",
+      reserve: false,
+      joinMode: "player",
+      playerIds: [inviteeId],
+    },
+  }));
+  assertFlow(inviteResult?.sqlReducer === true, "reissued player invitation did not use SQL reducer", inviteResult);
+  post = await getRecruitingPostAfterResult(inviteResult, hostLogin, `${ids.label}:loadAfterReinvite`);
+  invitation = post?.roomState?.invitations?.find((item) => (
+    item.targetUserId === inviteeId &&
+    item.status === "pending" &&
+    item.role !== "referee"
+  ));
+  assertFlow(Boolean(invitation), "reissued player invitation not persisted", { inviteeId, post });
 
   const invitedBeforeAccept = await step(`${ids.label}:roomScope:invited:beforeAccept`, () => loadRecruitingScopeAs(inviteeLogin, "invited"));
   assertFlow(Boolean(invitedBeforeAccept.post), "invited room scope missing invited post before accept", {
@@ -1734,6 +1764,7 @@ async function runRecruitingInviteAcceptScenario({
     postId: ids.postId,
     invitationId: invitation.id,
   }));
+  assertFlow(acceptResult?.sqlReducer === true, "player invitation accept did not use SQL reducer", acceptResult);
   post = await getRecruitingPostAfterResult(acceptResult, inviteeLogin, `${ids.label}:loadAfterAccept`);
   assertStateIncludesUsers(acceptResult, [hostId, inviteeId], "accept mutation response missing feed users");
   const applicant = post?.applicants?.find((item) => item.playerId === inviteeId);
@@ -1784,7 +1815,13 @@ async function runRecruitingInviteAcceptScenario({
     postId: ids.postId,
     matchId: ids.matchId,
     inviteAccepted: true,
+    inviteDeclined: true,
     matchCreated: true,
+    sqlReducers: {
+      invite: true,
+      decline: true,
+      accept: true,
+    },
   };
 }
 
