@@ -2964,7 +2964,7 @@ export function submitMatchResult(state, matchId, result) {
 
   const now = new Date().toISOString();
   const draftEntry = currentUserCanDisputeDraft;
-  const liveEntry = !draftEntry && recordWindow.beforeEnd && liveRecordAllowed;
+  const liveEntry = !draftEntry && !match.endedAt && recordWindow.beforeEnd && liveRecordAllowed;
   const recordPlayerIds = getMatchRecordPlayerIds(match);
   const existingStats = normalizePlayerStats((draftEntry ? match.disputeDraftResult : match.result)?.playerStats ?? match.result?.playerStats ?? {}, recordPlayerIds);
   const endedAt = liveEntry ? match.endedAt : match.endedAt ?? recordWindow.endAt?.toISOString() ?? now;
