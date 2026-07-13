@@ -119,7 +119,8 @@ function toProfileRows(accounts, authResults) {
   const authByProfileId = new Map(authResults.map((result) => [result.profileId, result.authUserId ?? null]));
   return accounts
     .filter((account) => authByProfileId.has(account.profileId))
-    .map((account) => ({
+    .map((account) => {
+      const row = {
       id: account.profileId,
       auth_user_id: authByProfileId.get(account.profileId),
       test_login_id: account.testLoginId,
@@ -141,7 +142,13 @@ function toProfileRows(accounts, authResults) {
       handle_locked_at: NOW,
       birth_year_locked_at: NOW,
       updated_at: NOW,
-    }));
+      };
+      row.name = `Integrity Test ${account.suffix}`;
+      row.region = "Seoul Mapo";
+      row.region_sido = "Seoul";
+      row.region_district = "Mapo";
+      return row;
+    });
 }
 
 async function upsertProfiles(accounts, authResults) {

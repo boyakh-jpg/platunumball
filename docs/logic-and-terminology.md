@@ -1697,9 +1697,10 @@ flowchart TD
 5. Backend simulations sign in as test Auth users and pass the Supabase Auth access token.
 6. Real Google accounts and test accounts use `profiles.auth_user_id = auth.users.id` for ownership.
 7. Abuse/integrity bulk Auth seed uses `npm run seed:supabase:auth-bulk` and defaults to `rankball-integrity-001..150`. It is dry-run unless `RANKBALL_CONFIRM_AUTH_BULK=rankball` is set.
-8. Seed cleanup actually deletes rows only when `RANKBALL_CONFIRM_CLEANUP=rankball` is set.
-9. This is backend simulation data setup, not completed authoritative room/match RPC migration.
-10. Seeded test accounts are treated as onboarding-complete profiles, but birth year is locked in the UI only when DB `birth_year_locked_at` exists. Missing test birth fields must be fixed by seed/backfill, not by client-side lock fallback.
+8. Bulk Auth/Profile seed display labels and regions are deterministic seed-only values, not production profile identity policy.
+9. Seed cleanup actually deletes rows only when `RANKBALL_CONFIRM_CLEANUP=rankball` is set.
+10. This is backend simulation data setup, not completed authoritative room/match RPC migration.
+11. Seeded test accounts are treated as onboarding-complete profiles, but birth year is locked in the UI only when DB `birth_year_locked_at` exists. Missing test birth fields must be fixed by seed/backfill, not by client-side lock fallback.
 
 ## 2026-06-26 hashtag canonical identity
 

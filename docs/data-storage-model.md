@@ -407,6 +407,7 @@ Remaining:
 - Cleanup deletes only ids derived from the current demo seed state plus `seed-owner-u1`.
 - `npm run seed:supabase:auth-bulk` creates/updates the separate `rankball-integrity-001..150` Auth/Profile set for abuse/integrity simulations. It does not touch the basic `rankball-001..050` test set unless the prefix env is changed.
 - `npm run seed:supabase:auth-bulk:cleanup` removes only ids derived from the current bulk prefix/range and is also dry-run until `RANKBALL_CONFIRM_AUTH_BULK=rankball`.
+- Bulk Auth/Profile seed rows use deterministic seed-only display labels and regions (`Integrity Test ###`, `Seoul Mapo`) so encoding drift does not block abuse/integrity simulations.
 - This finishes the basic backend test-account seed/cleanup path, but not the authoritative room/match RPC migration.
 
 ## 2026-06-28 public data and court fallback
