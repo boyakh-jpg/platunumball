@@ -638,6 +638,7 @@ function toMatchRow(match = {}, actorProfileId = "") {
   const statRecorders = match.statRecorders ?? match.rules?.statRecorders ?? {};
   const playedPlayerIds = match.playedPlayerIds ?? match.rules?.playedPlayerIds ?? {};
   const mmrExcludedPlayerIds = match.mmrExcludedPlayerIds ?? match.rules?.mmrExcludedPlayerIds ?? [];
+  const recruitingPostId = nullableText(match.recruitingPostId ?? match.rules?.recruitingPostId);
   const courtId = match.courtId ?? match.court_id ?? match.approvedCourtId ?? match.registeredCourtId ?? null;
   const schedule = getDbScheduleParts(match);
   return {
@@ -688,6 +689,7 @@ function toMatchRow(match = {}, actorProfileId = "") {
       statRecorders,
       playedPlayerIds,
       mmrExcludedPlayerIds,
+      ...(recruitingPostId ? { recruitingPostId } : {}),
     },
     memo: match.memo ?? "",
     stakes: match.stakes ?? "",

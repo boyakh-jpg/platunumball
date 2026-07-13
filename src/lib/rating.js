@@ -197,6 +197,9 @@ export function getMatchSideTeamGroups(state, match, sideName) {
 }
 
 export function getFinalizationRatingContext(match, teams = []) {
+  if (match?.ranked === false) {
+    return { matchForRating: match, canApplyPersonalMmr: false, canApplyTeamMmr: false };
+  }
   if (!isMatchRecordMatch(match) && !isPersonalRecordMatch(match)) {
     return { matchForRating: match, canApplyPersonalMmr: true, canApplyTeamMmr: true };
   }

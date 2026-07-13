@@ -527,6 +527,31 @@ async function snapshotRatingSubjects(profileIds = [], teamIds = []) {
   return { skipped: false, profiles: safeProfileIds.length, teams: safeTeamIds.length };
 }
 
+async function assertProfileRatingsUnchanged(profileIds = []) {
+  if (!supabase) return { skipped: true, reason: "service_role_key_missing" };
+  const safeProfileIds = uniqueIds(profileIds);
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id,ratings,streak")
+    .in("id", safeProfileIds);
+  if (error) throw error;
+  for (const row of data ?? []) {
+    const snapshot = profileRatingSnapshots.get(row.id);
+    assertFlow(Boolean(snapshot), "rating snapshot missing", { profileId: row.id });
+    assertFlow(JSON.stringify(row.ratings ?? null) === JSON.stringify(snapshot.ratings ?? null), "unranked match changed profile ratings", {
+      profileId: row.id,
+      before: snapshot.ratings,
+      after: row.ratings,
+    });
+    assertFlow(Number(row.streak ?? 0) === Number(snapshot.streak ?? 0), "unranked match changed profile streak", {
+      profileId: row.id,
+      before: snapshot.streak,
+      after: row.streak,
+    });
+  }
+  return { checked: safeProfileIds.length };
+}
+
 async function restoreRatingSnapshots() {
   if (!supabase || (!profileRatingSnapshots.size && !teamRatingSnapshots.size)) return { skipped: true };
   const errors = [];
@@ -1234,6 +1259,7 @@ async function runOneOnOneScenario({
   ranked = false,
   includeLatePlayer = !refereeWanted,
   verifyRatingCommit = false,
+  verifyUnrankedNoRating = false,
   serverGeneratedPostId = false,
 }) {
   ids = makeScenarioIds(label);
@@ -1250,7 +1276,7 @@ async function runOneOnOneScenario({
     refereeId = await step(`${ids.label}:resolveProfile:referee`, () => getProfileIdForLogin(refereeLogin));
     assertFlow(![hostId, opponentId].includes(refereeId), "referee must be separate profile", { hostId, opponentId, refereeId });
   }
-  if (verifyRatingCommit) {
+  if (verifyRatingCommit || verifyUnrankedNoRating) {
     await step(`${ids.label}:snapshotRatingSubjects`, () => snapshotRatingSubjects([hostId, opponentId]));
   }
 
@@ -1330,6 +1356,7 @@ async function runOneOnOneScenario({
   assertFlow(confirmResult?.confirmationAtomic === true, "recruiting confirmation was not atomic", confirmResult);
   let match = confirmResult?.createdMatch;
   assertFlow(match?.id === ids.matchId, "confirmed match not returned", confirmResult);
+  assertFlow(match?.recruitingPostId === ids.postId, "confirmed match recruiting post link not persisted", { postId: ids.postId, match });
   if (refereeWanted) assertFlow(match.refereeId === refereeId, "match referee not persisted", { refereeId, match });
   assertFlow(match.teamA?.players?.includes(hostId), "host missing from teamA", match);
   assertFlow(match.teamB?.players?.includes(opponentId), "opponent missing from teamB", match);
@@ -1498,6 +1525,12 @@ async function runOneOnOneScenario({
       opponentId,
       users: approveBResult?.state?.users,
     });
+  }
+  if (verifyUnrankedNoRating) {
+    assertFlow(ranked === false && match?.ranked === false, "unranked rating verification requires friendly match", match);
+    assertFlow(approveBResult?.ratingCommitted === true && approveBResult?.ratingAtomic === true, "unranked confirmation was not atomic", approveBResult);
+    assertFlow(Array.isArray(match?.ratingResult) && match.ratingResult.length === 0, "unranked match produced rating changes", match);
+    await step(`${ids.label}:assertUnrankedRatingsUnchanged`, () => assertProfileRatingsUnchanged([hostId, opponentId]));
   }
 
   return {
@@ -4150,6 +4183,7 @@ async function main() {
     label: "basic_1v1_no_referee",
     hostLogin: basicHostLogin,
     opponentLogin: basicOpponentLogin,
+    verifyUnrankedNoRating: true,
     serverGeneratedPostId: true,
   }));
   if (!remoteSmokeOnly) {

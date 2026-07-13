@@ -998,6 +998,8 @@ flowchart TD
 7. 후보만 하고 뛰지 않은 선수는 MMR 반영 제외.
 8. 경기 후 추가된 선수는 MMR 반영 제외.
 9. 사후 인원 수정이 많으면 정규전 반영률을 낮추거나 무효 처리할 수 있어야 한다.
+10. 친선전(`ranked=false`) 확정은 개인 MMR, 모드 MMR, 연승, 팀 MMR, 팀 승패를 변경하지 않는다. 기록자/심판 신뢰도 보상은 별도 규칙대로 적용할 수 있다.
+11. `rankball_match_finalize_locked()`은 친선전 확정 시 ratings/streak/팀 전적 계산을 건너뛰고, `rankball_commit_match_rating()`도 친선전 레이팅 payload를 거부한다. backend simulation은 승인 전후 ratings와 streak 불변을 검증한다.
 
 ## 연령군 원칙
 
@@ -2110,6 +2112,7 @@ flowchart TD
 - Chat body is one-line plain text, 60 characters or fewer. Client-side cooldown/rate checks are UX only; DB trigger/RLS blocks direct insert abuse and closed-room inserts.
 - Discord-origin room chat also lands in `room_chat_messages`, keeps the same one-line 60-character body rule, and must carry a unique Discord message ID to avoid duplicate imports.
 - 모집 확정 뒤에도 연결 경기의 `locked`, `checkin`, `live`, `postgame` 단계에서는 같은 방 채팅을 유지한다. `dispute`, `record`, `cancelled`, `void` 단계부터 입력을 잠그며 DB guard/RLS도 같은 단계 경계를 적용한다.
+- 모집 확정 transaction은 `matches.rules.recruitingPostId`에 원본 모집방 ID를 반드시 저장한다. 경기 상세 직행도 이 ID로 원본 방 상세와 채팅을 다시 불러오며, backend simulation은 확정 직후 DB 재로드 결과에서 연결 ID를 검증한다.
 
 ## 2026-07-01 test login and shared rule constants
 

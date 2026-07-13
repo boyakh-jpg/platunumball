@@ -268,6 +268,7 @@ export function fromRemoteMatch(row, context) {
     statEntryMinutes: row.stat_entry_minutes ?? STAT_ENTRY_WINDOW_MINUTES,
     disputeMinutes: row.dispute_minutes ?? DISPUTE_WINDOW_MINUTES,
     createdBy: row.created_by ?? "",
+    recruitingPostId: row.rules?.recruitingPostId ?? "",
     tournamentId: row.tournament_id,
     tournamentFormat: row.tournament_format,
     tournamentRound: row.tournament_round,
