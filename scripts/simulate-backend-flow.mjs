@@ -143,7 +143,6 @@ async function step(label, action) {
 const authTokensByLogin = new Map();
 const testLoginsByProfileId = new Map();
 
-// RANKBALL_AUTH_CLEANUP: remove old test-token env docs after all simulations use Auth users.
 function getTestAuthEmail(testLoginId = "") {
   return `${String(testLoginId).trim().toLowerCase()}@${testAuthEmailDomain}`;
 }

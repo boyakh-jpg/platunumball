@@ -24,7 +24,7 @@
 
 ## 지금 적용한 최소 보안 패치
 
-- legacy `rankball_state` 테이블은 런타임 미사용이며 schema migration에서 제거한다.
+- legacy `rankball_state` 테이블은 production DB에 없고 런타임에서도 사용하지 않는다.
 - `tournaments`는 public read만 유지한다. public insert/update 정책은 제거한다.
 - `tournament_teams`는 public read만 유지한다. public insert/update 정책은 제거한다.
 - `recruiting_applications` read는 authenticated related-user로 제한한다:
@@ -67,7 +67,7 @@
   - 방장은 자기 방 application을 읽을 수 있음
   - 신청자는 자기 application을 읽을 수 있음
   - public은 tournament를 insert/update 할 수 없음
-  - legacy `rankball_state`는 앱 경로에서 쓰지 않고 DB에서도 제거 대상임
+  - legacy `rankball_state`는 앱 경로에서 쓰지 않으며 production DB에도 존재하지 않음
 - OAuth/profile 소유권이 안정된 뒤에만 demo login을 `VITE_DEMO_LOGIN=true` 뒤로 이동.
 
 ## 2026-06-24 구장 등록 배포 TODO
@@ -435,7 +435,7 @@ Remaining:
 - `src/pages/CreateMatch.jsx`의 `PublicPartyPicker`는 참조 0개 후보지만 JSX UI 블록이라 생성 플로우 UI 패스에서 별도 확인 후 제거한다.
 - `src/lib/mockData.js`, `src/lib/demoFlowState.js`는 비-Supabase dev/seed 경로라 즉시 삭제하지 않는다. production source of truth는 아니다.
 - legacy `courts` 테이블 fallback은 `approved_courts` 이전 데이터 보정용이라 즉시 삭제하지 않는다.
-- legacy `rankball_state`는 런타임 미사용 제거 대상이지만 DB destructive cleanup은 별도 migration 확인 후 처리한다.
+- legacy `rankball_state`는 production DB에서 제거 완료됐다. 과거 schema guard만 재실행 호환용으로 남는다.
 
 ### DB table/column 참조표
 
@@ -460,7 +460,7 @@ Remaining:
 | `discord_notification_deliveries` | `id`, `notification_id`, `target_user_id`, `discord_user_id`, `status`, `send_at` | Discord DM worker | 유지 |
 | `approved_courts` | `id`, `name`, `address`, `region`, `status`, `hidden_at` | court search/favorites/feed fallback | 유지 |
 | `courts` | `id`, `name`, `address`, `region` | legacy court fallback | 보류 |
-| `rankball_state` | legacy snapshot | runtime 미사용, schema cleanup 대상 | 보류 |
+| `rankball_state` | legacy snapshot | production DB에 없음 | 제거 완료 |
 ## 2026-07-13 atomic match confirmation and rating commit
 
 - Final `approveMatch` persistence uses `rankball_match_action_with_rating()`.
@@ -470,7 +470,7 @@ Remaining:
 ## 2026-07-13 recruiting room control RPC
 
 - Simple individual reserve recorder assignment uses `rankball_recruiting_stat_recorder_action()` with the recruiting room advisory lock and row lock.
-- Team/party reserve recorder assignment keeps authoritative replay because party reserve projection remains centralized.
+- Team/party reserve recorder assignment is handled by the locked recruiting recorder RPC using DB roster and party-reserve state.
 - Room closing uses `rankball_recruiting_close_action()` so status, invitations, host trust penalty, notification, and Discord room-link disable commit atomically.
 - Repeated close requests are idempotent and do not apply the host penalty twice.
 ## 2026-07-13 auth context cache split
@@ -494,3 +494,16 @@ Remaining:
 - Discord invitation button decisions call the same recruiting management DB RPC as web decisions, including team and party invitations.
 - Production Discord still requires real Bot token, bridge secret, per-room channel/thread links, and a continuously running bridge worker.
 - Court hard delete/restore remains deferred until the moderation retention policy is fixed.
+
+## 2026-07-13 Discord bridge worker hardening
+
+- The long-running Gateway worker reconnects when heartbeat ACK is missing and resumes valid Discord sessions with the last sequence.
+- Fatal authentication, sharding, and intent close codes stop the process so the runtime supervisor can surface a failed deployment instead of reconnecting forever.
+- Discord-to-web delivery uses a request timeout and bounded retries for network errors, `408`, `425`, `429`, and `5xx`; DB `external_message_id` uniqueness keeps retries idempotent.
+- Production still requires the real Bot token, dedicated bridge secret, per-room link rows, and an always-on process host.
+
+## 2026-07-13 DB function lint cleanup
+
+- Feed card JSON normalization functions are `STABLE`, matching their called expression volatility.
+- The court region-key function no longer declares a shadowed loop variable.
+- Production `rankball_state` absence was rechecked; no destructive cleanup was executed.

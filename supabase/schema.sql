@@ -4585,7 +4585,6 @@ declare
   candidate_key text;
   tokens text[];
   token text;
-  token_index integer;
   raw_values text[] := array[
     p_payload->>'sigungu',
     p_payload->>'addressSigungu',

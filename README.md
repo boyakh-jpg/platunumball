@@ -20,7 +20,7 @@ NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
 ```
 
-Supabase에 영속 저장을 쓰려면 `supabase/schema.sql`을 SQL Editor에서 먼저 실행하세요. 테이블이 없거나 정책이 막혀 있으면 앱은 localStorage demo mode로 계속 동작합니다.
+Supabase 영속 저장은 `supabase/migrations`를 순서대로 적용합니다. Supabase 환경이 설정된 뒤 원격 로드가 실패하면 localStorage demo state로 후퇴하지 않고 원격 shell/error 상태를 유지합니다.
 
 ### Supabase CLI migration
 
@@ -76,12 +76,24 @@ npm run verify:release
 | `DISCORD_CLIENT_ID` / `DISCORD_CLIENT_SECRET` / `DISCORD_REDIRECT_URI` | 서버 전용 | Discord OAuth |
 | `DISCORD_BOT_TOKEN` / `DISCORD_GUILD_ID` / `DISCORD_GUILD_IDS` | 서버 전용 | Discord DM worker |
 | `DISCORD_PUBLIC_KEY` | 서버 전용 | Discord interaction signature 검증 |
+| `DISCORD_CHAT_BRIDGE_SECRET` / `DISCORD_CHAT_BRIDGE_URL` | bridge worker | Discord 방 채팅을 웹 API로 전달 |
+| `DISCORD_CHAT_BRIDGE_REQUEST_TIMEOUT_MS` / `DISCORD_CHAT_BRIDGE_MAX_DELIVERY_ATTEMPTS` | bridge worker | 전달 timeout과 재시도 횟수. 기본 `10000`, `4` |
 | `CRON_SECRET` | 서버/스크립트 전용 | worker, maintenance, schema-health |
 | `SUPABASE_ACCESS_TOKEN` | CLI 전용 | Supabase Management API 인증 |
 | `SUPABASE_DB_PASSWORD` | CLI 전용 | `supabase link`, `supabase db push --linked` 원격 DB 비밀번호 |
 | `SUPABASE_PROJECT_ID` | CLI/CI 전용 | Supabase project ref. 현재 production ref: `olzxextphxpniwiiwwda` |
 | `DATABASE_URL` | CLI/서버 전용 | `supabase db push --db-url` 또는 직접 Postgres 접속 |
 | `RANKBALL_SIM_BASE_URL` / `RANKBALL_SIM_SECRET` / `RANKBALL_SIM_TIMEOUT_MS` | 스크립트 | backend simulation |
+
+## Discord 방 채팅 bridge
+
+상시 실행 환경에서 아래 명령을 실행합니다. Gateway worker는 heartbeat ACK 누락 시 재연결하고, 가능한 세션은 resume하며, 웹 API의 timeout·429·5xx를 제한 횟수만큼 재시도합니다.
+
+```powershell
+npm run discord:room-chat-bridge
+```
+
+운영에서는 `DISCORD_CHAT_BRIDGE_SECRET`을 별도로 설정합니다. `CRON_SECRET` fallback은 기존 배포 호환용입니다.
 
 ## Vercel
 

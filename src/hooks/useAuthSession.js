@@ -32,7 +32,7 @@ function writeTestSession(session) {
   else window.localStorage.removeItem(TEST_SESSION_KEY);
 }
 
-// RANKBALL_AUTH_CLEANUP: local demo session only. Server auth must use Supabase Auth JWT.
+// Local demo session only. Server auth uses Supabase Auth JWT.
 function makeTestSession(provider) {
   const providerName = PROVIDER_LABELS[provider] ?? provider;
   const user = {

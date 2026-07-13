@@ -1,10 +1,20 @@
 # RankBall HANDOFF
 
-Updated: 2026-07-02
+Updated: 2026-07-13
 
-## 0. 2026-07-02 Thread Transfer Summary
+## 0. Current Status Override
 
-This section is the latest handoff. Older sections below are retained for context but may be stale. Trust actual files and this section first.
+- Core recruiting, match, tournament reducers are operation-only authoritative DB RPCs.
+- Frontend production mutations are thin server calls. Local reducers are non-Supabase demo-only.
+- Discord invite interactions, reminders, stale cleanup, and web/Discord room chat sync are implemented.
+- The long-running Discord Gateway worker now handles heartbeat ACK, session resume, and bounded HTTP retry.
+- Remaining external setup: real Discord Bot token, bridge secret, room channel/thread links, and an always-on worker host.
+- Court hard delete/restore stays deferred until retention policy is decided.
+- Sections below are historical context. Do not treat their old backlog or `test-token` examples as current instructions.
+
+## 0.1 2026-07-02 Thread Transfer Summary
+
+This was the latest handoff on 2026-07-02. It is retained for historical context and is superseded by the current status override above.
 
 ### Current pushed state
 
@@ -335,7 +345,7 @@ Symptom:
 
 Finding:
 - `/api/state/load` production response was not empty.
-- Example with `test-token-rankball-010`:
+- Example used the authenticated `rankball-010` Supabase session available at that time:
   - `matches: 200`
   - `recruitingPosts: 65`
   - `openPosts: 58`
@@ -827,25 +837,10 @@ Build:
 C:\Users\user\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe .\node_modules\vite\bin\vite.js build
 ```
 
-Production state count check:
+Production state count checks now run through the authenticated backend simulation. Do not use legacy `test-token` bearer values.
 
 ```powershell
-@'
-const response = await fetch('https://platunumball.vercel.app/api/state/load', {
-  method: 'POST',
-  headers: { authorization: 'Bearer test-token-rankball-010', 'content-type': 'application/json' },
-  body: JSON.stringify({})
-});
-const json = await response.json();
-const state = json.state ?? {};
-console.log({
-  currentUserId: state.currentUserId,
-  users: state.users?.length,
-  matches: state.matches?.length,
-  recruitingPosts: state.recruitingPosts?.length,
-  tournaments: state.tournaments?.length,
-});
-'@ | C:\Users\user\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe --input-type=module -
+npm run simulate:backend -- --full
 ```
 
 Production backend simulation:

@@ -11,6 +11,8 @@ const intents = readIntegerEnv("DISCORD_CHAT_BRIDGE_INTENTS", DEFAULT_INTENTS);
 const channelFilter = new Set(readListEnv("DISCORD_CHAT_BRIDGE_CHANNEL_IDS"));
 const logSkips = readBooleanEnv("DISCORD_CHAT_BRIDGE_LOG_SKIPS", false);
 const dryRun = readBooleanEnv("DISCORD_CHAT_BRIDGE_DRY_RUN", false);
+const requestTimeoutMs = readIntegerEnv("DISCORD_CHAT_BRIDGE_REQUEST_TIMEOUT_MS", 10000);
+const maxDeliveryAttempts = readIntegerEnv("DISCORD_CHAT_BRIDGE_MAX_DELIVERY_ATTEMPTS", 4);
 const identifyProperties = {
   os: process.platform,
   browser: "rankball-room-chat-bridge",
@@ -20,9 +22,17 @@ const identifyProperties = {
 let socket = null;
 let sequence = null;
 let heartbeatTimer = null;
+let heartbeatAcknowledged = true;
 let closing = false;
 let reconnectAttempt = 0;
+let reconnectTimer = null;
+let nextReconnectDelayMs = null;
+let sessionId = "";
+let resumeGatewayUrl = "";
 let inFlight = 0;
+
+const FATAL_GATEWAY_CLOSE_CODES = new Set([4004, 4010, 4011, 4012, 4013, 4014]);
+const RESET_SESSION_CLOSE_CODES = new Set([4007, 4009]);
 
 if (typeof WebSocket !== "function") {
   console.error("Global WebSocket is required. Run this script with Node 22+ or a runtime that exposes WebSocket.");
@@ -32,6 +42,10 @@ if (typeof WebSocket !== "function") {
 if (!bridgeSecret && !dryRun) {
   console.error("DISCORD_CHAT_BRIDGE_SECRET or CRON_SECRET is required.");
   process.exit(1);
+}
+
+if (!process.env.DISCORD_CHAT_BRIDGE_SECRET && process.env.CRON_SECRET && !dryRun) {
+  console.warn("DISCORD_CHAT_BRIDGE_SECRET is not set. CRON_SECRET compatibility fallback is active.");
 }
 
 function readRequiredEnv(name) {
@@ -72,49 +86,97 @@ function getBridgeUrl() {
   return `${base}/api/discord/room-chat`;
 }
 
+function sleep(delayMs) {
+  return new Promise((resolve) => setTimeout(resolve, delayMs));
+}
+
+function getGatewayUrl() {
+  const base = String(resumeGatewayUrl || DISCORD_GATEWAY_URL).replace(/\?.*$/, "").replace(/\/+$/, "");
+  return `${base}/?v=10&encoding=json`;
+}
+
+function resetGatewaySession() {
+  sessionId = "";
+  resumeGatewayUrl = "";
+  sequence = null;
+}
+
 function send(payload) {
   if (!socket || socket.readyState !== WebSocket.OPEN) return;
   socket.send(JSON.stringify(payload));
 }
 
+function sendHeartbeat(requirePreviousAck = true) {
+  if (!socket || socket.readyState !== WebSocket.OPEN) return;
+  if (requirePreviousAck && !heartbeatAcknowledged) {
+    console.warn("Discord heartbeat ACK missed. Reconnecting.");
+    socket.close(4000, "heartbeat_ack_timeout");
+    return;
+  }
+  heartbeatAcknowledged = false;
+  send({ op: 1, d: sequence });
+}
+
 function startHeartbeat(intervalMs) {
   stopHeartbeat();
-  heartbeatTimer = setInterval(() => {
-    send({ op: 1, d: sequence });
-  }, intervalMs);
-  send({ op: 1, d: sequence });
+  heartbeatAcknowledged = true;
+  const safeIntervalMs = Math.max(1000, Number(intervalMs) || 45000);
+  const runHeartbeat = () => {
+    sendHeartbeat(true);
+    if (!closing) heartbeatTimer = setTimeout(runHeartbeat, safeIntervalMs);
+  };
+  heartbeatTimer = setTimeout(runHeartbeat, Math.floor(Math.random() * safeIntervalMs));
 }
 
 function stopHeartbeat() {
   if (!heartbeatTimer) return;
-  clearInterval(heartbeatTimer);
+  clearTimeout(heartbeatTimer);
   heartbeatTimer = null;
+}
+
+function scheduleReconnect() {
+  if (closing || reconnectTimer) return;
+  const delayMs = nextReconnectDelayMs ?? Math.min(30000, 1000 * 2 ** Math.min(5, reconnectAttempt));
+  nextReconnectDelayMs = null;
+  reconnectAttempt += 1;
+  console.warn(`Discord gateway reconnecting in ${delayMs}ms.`);
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
+    connect();
+  }, delayMs);
 }
 
 function connect() {
   if (closing) return;
-  socket = new WebSocket(DISCORD_GATEWAY_URL);
+  const nextSocket = new WebSocket(getGatewayUrl());
+  socket = nextSocket;
 
-  socket.addEventListener("open", () => {
+  nextSocket.addEventListener("open", () => {
     console.log("Discord room chat bridge connected.");
   });
 
-  socket.addEventListener("message", (event) => {
+  nextSocket.addEventListener("message", (event) => {
     void handleGatewayMessage(event.data).catch((error) => {
       console.error("Discord gateway message failed.", error);
     });
   });
 
-  socket.addEventListener("close", (event) => {
+  nextSocket.addEventListener("close", (event) => {
+    if (socket !== nextSocket) return;
+    socket = null;
     stopHeartbeat();
     if (closing) return;
-    const delayMs = Math.min(30000, 1000 * 2 ** Math.min(5, reconnectAttempt));
-    reconnectAttempt += 1;
-    console.warn(`Discord gateway closed (${event.code}). Reconnecting in ${delayMs}ms.`);
-    setTimeout(connect, delayMs);
+    if (FATAL_GATEWAY_CLOSE_CODES.has(event.code)) {
+      console.error(`Discord gateway closed with fatal code ${event.code}.`);
+      void shutdown(1);
+      return;
+    }
+    if (RESET_SESSION_CLOSE_CODES.has(event.code)) resetGatewaySession();
+    console.warn(`Discord gateway closed (${event.code}).`);
+    scheduleReconnect();
   });
 
-  socket.addEventListener("error", (event) => {
+  nextSocket.addEventListener("error", (event) => {
     console.error("Discord gateway socket error.", event?.message || "socket_error");
   });
 }
@@ -125,31 +187,62 @@ async function handleGatewayMessage(raw) {
 
   if (payload.op === 10) {
     startHeartbeat(Number(payload.d?.heartbeat_interval || 45000));
-    send({
-      op: 2,
-      d: {
-        token: token.replace(/^Bot\s+/i, ""),
-        intents,
-        properties: identifyProperties,
-      },
-    });
+    if (sessionId && typeof sequence === "number") {
+      send({
+        op: 6,
+        d: {
+          token: token.replace(/^Bot\s+/i, ""),
+          session_id: sessionId,
+          seq: sequence,
+        },
+      });
+    } else {
+      send({
+        op: 2,
+        d: {
+          token: token.replace(/^Bot\s+/i, ""),
+          intents,
+          properties: identifyProperties,
+        },
+      });
+    }
     return;
   }
 
   if (payload.op === 1) {
-    send({ op: 1, d: sequence });
+    sendHeartbeat(false);
     return;
   }
 
-  if (payload.op === 7 || payload.op === 9) {
+  if (payload.op === 11) {
+    heartbeatAcknowledged = true;
+    return;
+  }
+
+  if (payload.op === 7) {
+    nextReconnectDelayMs = 0;
     socket?.close(4000, "gateway_reconnect_requested");
+    return;
+  }
+
+  if (payload.op === 9) {
+    if (!payload.d) resetGatewaySession();
+    nextReconnectDelayMs = 1000 + Math.floor(Math.random() * 4000);
+    socket?.close(4000, "invalid_session");
     return;
   }
 
   if (payload.op !== 0) return;
   if (payload.t === "READY") {
+    sessionId = String(payload.d?.session_id || "");
+    resumeGatewayUrl = String(payload.d?.resume_gateway_url || "");
     reconnectAttempt = 0;
     console.log(`Discord room chat bridge ready as ${payload.d?.user?.username || "bot"}.`);
+    return;
+  }
+  if (payload.t === "RESUMED") {
+    reconnectAttempt = 0;
+    console.log("Discord room chat bridge session resumed.");
     return;
   }
   if (payload.t === "MESSAGE_CREATE") await forwardMessage(payload.d ?? {});
@@ -188,44 +281,82 @@ async function forwardMessage(message = {}) {
 
   inFlight += 1;
   try {
-    const response = await fetch(bridgeUrl, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${bridgeSecret}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
-    const text = await response.text();
-    let body = null;
-    try {
-      body = text ? JSON.parse(text) : null;
-    } catch {
-      body = text;
-    }
-    if (!response.ok) {
-      const errorText = typeof body === "string" ? body : body?.error || response.statusText;
-      if (response.status === 404 || response.status === 403) {
-        if (logSkips) console.log(`Bridge skipped ${message.id}: ${errorText}`);
-        return;
-      }
-      throw new Error(`bridge_failed:${response.status}:${errorText}`);
-    }
-    if (body?.duplicate && logSkips) console.log(`Bridge duplicate ${message.id}`);
+    await deliverBridgePayload(payload, message.id);
   } finally {
     inFlight -= 1;
   }
 }
 
-async function shutdown() {
+async function deliverBridgePayload(payload, messageId) {
+  let lastError = null;
+  for (let attempt = 1; attempt <= maxDeliveryAttempts; attempt += 1) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(new Error("bridge_request_timeout")), requestTimeoutMs);
+    try {
+      const response = await fetch(bridgeUrl, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${bridgeSecret}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+      const text = await response.text();
+      let body = null;
+      try {
+        body = text ? JSON.parse(text) : null;
+      } catch {
+        body = text;
+      }
+      if (response.ok) {
+        if (body?.duplicate && logSkips) console.log(`Bridge duplicate ${messageId}`);
+        return;
+      }
+
+      const errorText = typeof body === "string" ? body : body?.error || response.statusText;
+      if (response.status === 404 || response.status === 403) {
+        if (logSkips) console.log(`Bridge skipped ${messageId}: ${errorText}`);
+        return;
+      }
+      const retryable = response.status === 408 || response.status === 425 || response.status === 429 || response.status >= 500;
+      lastError = new Error(`bridge_failed:${response.status}:${errorText}`);
+      if (!retryable || attempt === maxDeliveryAttempts) throw lastError;
+
+      const retryAfterHeader = Number(response.headers.get("retry-after"));
+      const retryAfterBodyMs = Number(body?.retryAfterMs);
+      const retryAfterBodySeconds = Number(body?.retry_after);
+      const retryDelayMs = Math.min(30000, Number.isFinite(retryAfterHeader) && retryAfterHeader > 0
+        ? retryAfterHeader * 1000
+        : Number.isFinite(retryAfterBodyMs) && retryAfterBodyMs > 0
+          ? retryAfterBodyMs
+          : Number.isFinite(retryAfterBodySeconds) && retryAfterBodySeconds > 0
+            ? retryAfterBodySeconds * 1000
+            : 500 * 2 ** (attempt - 1) + Math.floor(Math.random() * 250));
+      console.warn(`Bridge delivery ${messageId} retry ${attempt}/${maxDeliveryAttempts} in ${retryDelayMs}ms.`);
+      await sleep(retryDelayMs);
+    } catch (error) {
+      lastError = error;
+      if (attempt === maxDeliveryAttempts || String(error?.message || "").startsWith("bridge_failed:4")) throw error;
+      await sleep(Math.min(30000, 500 * 2 ** (attempt - 1)) + Math.floor(Math.random() * 250));
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+  throw lastError ?? new Error("bridge_delivery_failed");
+}
+
+async function shutdown(exitCode = 0) {
   closing = true;
   stopHeartbeat();
+  if (reconnectTimer) clearTimeout(reconnectTimer);
+  reconnectTimer = null;
   socket?.close(1000, "shutdown");
   const started = Date.now();
   while (inFlight > 0 && Date.now() - started < 3000) {
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
-  process.exit(0);
+  process.exit(exitCode);
 }
 
 process.on("SIGINT", () => void shutdown());

@@ -349,8 +349,8 @@
 
 ## 2026-06-30 production 테스트 인증 차단
 
-- RANKBALL_AUTH_CLEANUP: legacy `test-token-rankball-xxx` 인증은 제거됐다.
-- RANKBALL_AUTH_CLEANUP: `RANKBALL_ALLOW_PRODUCTION_TEST_LOGIN`와 생산 테스트 토큰 allowlist 문서는 제거 대상이다.
+- legacy `test-token-rankball-xxx` 인증은 제거됐다.
+- `RANKBALL_ALLOW_PRODUCTION_TEST_LOGIN`와 production test-token allowlist 경로도 제거됐다.
 - `/api/system/schema-health`의 `ensureTestActors`는 production DB를 기본 변경하지 않는다. production seed가 꼭 필요하면 `RANKBALL_ALLOW_PRODUCTION_TEST_SEED=true`를 별도로 명시한다.
 - 원격 `scripts/simulate-backend-flow.mjs`는 기본적으로 schema-health actor seed를 요청하지 않는다. 필요한 경우 `RANKBALL_SIM_ENSURE_TEST_ACTORS=true`로 opt-in 한다.
 
@@ -1419,6 +1419,8 @@ flowchart TD
 28. Discord 초대 버튼 interaction은 `custom_id` 길이와 ID 형식을 먼저 검증하고, 커밋 전 현재 DB snapshot에서 `postId + invitationId + discord_user_id`가 같은 pending 초대인지 다시 확인한다. 이미 처리/만료/닫힌 초대는 DB write 없이 stale 안내만 보낸다.
 29. 웹 방 채팅은 서버 저장 후 같은 방의 enabled `room_discord_links`가 있으면 Discord REST로 전송한다. Discord 채팅은 `scripts/discord-room-chat-bridge.mjs`가 Gateway 이벤트를 받아 `POST /api/discord/room-chat`으로 넣고, 서버는 bridge secret, channel/thread 매핑, `discord_user_id -> profiles.id`, 방 참여 권한, `external_message_id` 중복을 다시 검증한다. Bot/webhook 메시지는 echo 방지를 위해 저장하지 않는다. Discord thread 메시지는 Gateway `channel_id`가 thread id로 들어와도 `room_discord_links`의 parent channel/thread id로 정규화해 저장한다.
 29-1. Backend flow simulation verifies Discord-origin room chat import through `/api/discord/room-chat`, including thread-id normalization, duplicate `external_message_id` blocking, bot echo skip, and visibility in room detail chat.
+29-2. 상시 Discord Gateway bridge는 heartbeat ACK 누락 시 연결을 재생성하고, Gateway session id와 sequence가 유효하면 resume한다. 인증·intent 오류 close code는 무한 재접속하지 않고 종료하며 운영 supervisor가 실패로 감지하게 한다.
+29-3. Discord -> 웹 채팅 전달은 timeout을 두고 `408`, `425`, `429`, `5xx`, 네트워크 오류만 제한 횟수 재시도한다. timeout 뒤 중복 전달은 `room_chat_messages.external_message_id` unique 기준으로 멱등 처리한다.
 30. `scripts/link-discord-room.mjs`는 `room_discord_links` 운영용 dry-run/confirm 스크립트다. 기본은 계획만 출력하고, 실제 쓰기는 `RANKBALL_CONFIRM_DISCORD_ROOM_LINK=rankball` 또는 `--confirm`이 필요하다.
 31. Discord로 보내는 경기/방 안내는 앱 내부 알림도 원본으로 남겨야 한다. Discord 연결 여부와 무관하게 홈 별도 `알림` 카드에는 due 상태의 unread 앱 알림을 보여준다. 홈 `내가 처리할 일`은 버튼/진행 액션만 담는다. 예약 알림은 `payload.sendAt` 전까지 숨기고, 서버가 만든 예약 알림은 `skipDiscordSync`로 클라이언트 중복 DM 큐 생성을 막는다.
 31-1. `/api/home/load`는 홈 `알림` 카드용으로 현재 프로필의 due unread 앱 알림을 소량 포함한다. 미래 `payload.sendAt` 알림은 내려와도 홈 표시 대상이 아니며, 첫 홈 진입이 알림 화면 방문 여부에 의존하면 안 된다.
@@ -1454,7 +1456,7 @@ flowchart TD
 3. 알림, 신고, 구장요청, 관리자 처리, Discord 발송 큐는 전용 server action 또는 worker가 저장한다.
 4. `mockData` / `localStorage`는 Supabase 환경의 앱 데이터 원천으로 쓰지 않는다.
 5. 경기방/매칭방 전용 server action은 `operation` payload가 있으면 DB 현재 상태를 로드하고 중앙 reducer를 서버에서 다시 실행한 결과를 저장한다.
-6. 아직 모든 방/경기 계산이 DB row-level authoritative RPC는 아니다. 개별 action reducer SQL 이전은 남은 작업이다. 토너먼트 후속 라운드는 backend full simulation에서 검증한다.
+6. 이 단계 당시에는 일부 방/경기 계산이 서버 reducer에 남아 있었다. 2026-07-13 현재 production mutation은 operation-only DB RPC가 권위이며 토너먼트 후속 라운드도 DB trigger와 backend full simulation으로 검증한다.
 
 ## 2026-06-26 dedicated server action write
 
@@ -1564,7 +1566,7 @@ flowchart TD
 5. Vercel 배포 도메인에서는 테스트 계정 로그인을 기본 허용하지 않는다. 필요하면 `VITE_DEMO_LOGIN=true`를 명시한다.
 6. 테스트 계정 server action은 실제 Supabase Auth session이 있으면 Google과 같은 `profiles.auth_user_id` 경로를 탄다.
 7. 서버 action은 테스트 계정도 Supabase Auth JWT만 허용한다.
-8. RANKBALL_AUTH_CLEANUP: legacy `test-token` fallback, `RANKBALL_ENABLE_TEST_LOGIN` 문구는 제거 대상이다.
+8. legacy `test-token` fallback과 `RANKBALL_ENABLE_TEST_LOGIN` 경로는 제거됐다. 테스트 계정도 Supabase Auth JWT만 사용한다.
 9. 테스트 계정 프로필 저장은 실제 Auth 경로에서 `auth_user_id`를 유지한다.
 10. 실제 Google 프로필 저장은 `test_login_id` 컬럼에 의존하지 않는다.
 ## 2026-06-25 심판 있음 방 초대 슬롯
@@ -2110,7 +2112,7 @@ flowchart TD
 
 ## 2026-07-01 test login and shared rule constants
 
-- RANKBALL_AUTH_CLEANUP: production test-token allowlist flow is dead. Remove old env docs after deployment env cleanup.
+- Production test-token allowlist flow와 관련 env 문서는 제거 완료됐다.
 - Test login token formatting, test account count, team role normalization, team member limits, referee trust minimum, and court request trust minimum are shared from `src/lib/constants.js`.
 - Server endpoints must not keep separate copies of those rule values. If a limit changes, update `src/lib/constants.js` first.
 - 2026-07-02: Supabase Auth test accounts are seeded as `rankball-001` through `rankball-050`; all use `profiles.auth_user_id = auth.users.id`, completed adult profile fields, and no active `test-token` server path.

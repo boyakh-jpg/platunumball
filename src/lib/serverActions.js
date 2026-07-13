@@ -57,7 +57,7 @@ export async function getClientActionAccessToken() {
     return cachedActionSession.accessToken;
   }
 
-  // RANKBALL_AUTH_CLEANUP: server actions no longer read legacy localStorage test-token sessions.
+  // Server actions only use the current Supabase Auth session.
   return getSupabaseActionAccessToken();
 }
 

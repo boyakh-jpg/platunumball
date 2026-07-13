@@ -356,7 +356,7 @@ export async function getAuthenticatedContext(request, options = {}) {
     : null;
   if (cachedContext) return { ...cachedContext, supabase };
 
-  // RANKBALL_AUTH_CLEANUP: legacy test-token auth removed. Test accounts must be Supabase Auth users.
+  // Test accounts use the same Supabase Auth JWT path as production accounts.
   let authUser = readAuthUserCache(token);
   if (!authUser) {
     const { data: userData, error: userError } = await supabase.auth.getUser(token);
