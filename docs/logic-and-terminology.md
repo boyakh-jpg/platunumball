@@ -2316,3 +2316,10 @@ flowchart TD
 - 접수 시 기존 `match_results`와 `player_match_stats`로 `dispute_draft_result`를 만들고 `match_disputes`와 알림을 같은 트랜잭션에 저장한다.
 - 본인 득점 수정 요청이 있으면 본인 기록만 draft에 반영하고 해당 사이드 점수를 다시 합산한다.
 - `resumeMatchApproval`의 최종 결과 확정과 MMR commit은 기존 서버 계산 + DB commit 경로를 유지한다.
+
+## 2026-07-13 관리자 화면 반영 순서
+
+- Supabase 환경의 신고 조치와 관리자/심판 임명은 로컬 reducer를 먼저 적용하지 않는다.
+- 관리자 RPC 성공 후 `scope=admin` 서버 상태를 다시 읽어 화면에 반영한다.
+- 서버 거절 또는 통신 실패 시 화면에 가짜 audit, 징계, 임명 상태를 만들지 않는다.
+- local demo mode만 기존 로컬 reducer를 사용한다.

@@ -2589,13 +2589,31 @@ export function useAppData(authUser = null, appLocation = null) {
         });
         if (createdReport) submitReportServer(createdReport, syncedNotifications);
       },
-      commitAdminReviewAction: (draft) => {
-        setState((prev) => commitAdminReviewAction({ ...prev, currentUserId }, draft));
-        runServerAction("/api/admin/review-action", draft).then(() => refreshAdminState());
+      commitAdminReviewAction: async (draft) => {
+        if (!isSupabaseConfigured) {
+          setState((prev) => commitAdminReviewAction({ ...prev, currentUserId }, draft));
+          return true;
+        }
+        if (!ensureRemoteReady("관리자 조치")) return false;
+        const serverReady = await ensureServerActionAvailable("/api/admin/review-action", "관리자 조치");
+        if (serverReady !== true) return serverReady;
+        const result = await runServerAction("/api/admin/review-action", draft);
+        if (!result || result.ok === false) return result;
+        await refreshAdminState();
+        return result;
       },
-      commitAdminAppointmentAction: (draft) => {
-        setState((prev) => commitAdminAppointmentAction({ ...prev, currentUserId }, draft));
-        runServerAction("/api/admin/appointment-action", draft).then(() => refreshAdminState());
+      commitAdminAppointmentAction: async (draft) => {
+        if (!isSupabaseConfigured) {
+          setState((prev) => commitAdminAppointmentAction({ ...prev, currentUserId }, draft));
+          return true;
+        }
+        if (!ensureRemoteReady("관리자 임명")) return false;
+        const serverReady = await ensureServerActionAvailable("/api/admin/appointment-action", "관리자 임명");
+        if (serverReady !== true) return serverReady;
+        const result = await runServerAction("/api/admin/appointment-action", draft);
+        if (!result || result.ok === false) return result;
+        await refreshAdminState();
+        return result;
       },
       approveCourtRequest: async (requestId) => {
         if (!isSupabaseConfigured) {

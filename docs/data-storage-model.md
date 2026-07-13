@@ -376,7 +376,7 @@ Partial:
 
 - Frontend still has client reducer logic and sends changed room/match/team/tournament snapshots to dedicated server sync actions. This is not yet a fully authoritative room/match/team/tournament backend.
 - `mockData.js` and generated demo flow remain for non-Supabase local dev and seed generation, not production source of truth.
-- Admin UI calls server actions, but local UI state is still updated first and should be reloaded from server result before production.
+- Admin review and appointment UI waits for the server action and reloads `scope=admin` before changing visible state. Local-first admin state remains only in non-Supabase demo mode.
 - Env owner support uses `POST /api/admin/context` to expose only the current user's admin level to the client.
 - Discord OAuth/profile badge/DM queue, invite button interactions, room chat bridge path, Gateway bridge script, and room-channel link provisioning script exist. Real deployment still needs Bot token, bridge secret, channel/thread links, and a long-running bridge process.
 - Backend flow simulation covers Discord-origin room chat import, duplicate Discord message protection, bot echo skip, web-origin room chat to Discord dry-run delivery, and room detail visibility.
