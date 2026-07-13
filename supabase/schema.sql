@@ -6277,6 +6277,79 @@ grant execute on function public.rankball_feed_trigger_health() to service_role;
 
 select pg_notify('pgrst', 'reload schema');
 
+create or replace function public.rankball_match_action_with_rating(
+  p_actor_profile_id text,
+  p_action text,
+  p_match_row jsonb,
+  p_player_rows jsonb default '[]'::jsonb,
+  p_result_row jsonb default null,
+  p_stat_rows jsonb default '[]'::jsonb,
+  p_agreement_rows jsonb default '[]'::jsonb,
+  p_approval_rows jsonb default '[]'::jsonb,
+  p_dispute_rows jsonb default '[]'::jsonb,
+  p_notification_rows jsonb default '[]'::jsonb,
+  p_replace_result boolean default false,
+  p_rating_result jsonb default null,
+  p_team_rating_result jsonb default '{}'::jsonb,
+  p_profile_updates jsonb default '[]'::jsonb,
+  p_team_updates jsonb default '[]'::jsonb,
+  p_confirmed_at timestamptz default now()
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  safe_match_id text := nullif(btrim(p_match_row->>'id'), '');
+  persist_result jsonb;
+  rating_commit_result jsonb;
+begin
+  if safe_match_id is null then
+    raise exception 'missing_match' using errcode = '22023';
+  end if;
+  if p_rating_result is null or jsonb_typeof(p_rating_result) <> 'array' then
+    raise exception 'invalid_rating_result' using errcode = '22023';
+  end if;
+
+  perform pg_advisory_xact_lock(hashtext('rankball:match'), hashtext(safe_match_id));
+
+  persist_result := public.rankball_match_action(
+    p_actor_profile_id,
+    p_action,
+    p_match_row,
+    p_player_rows,
+    p_result_row,
+    p_stat_rows,
+    p_agreement_rows,
+    p_approval_rows,
+    p_dispute_rows,
+    p_notification_rows,
+    p_replace_result
+  );
+
+  rating_commit_result := public.rankball_commit_match_rating(
+    safe_match_id,
+    p_actor_profile_id,
+    p_rating_result,
+    p_team_rating_result,
+    p_profile_updates,
+    p_team_updates,
+    p_confirmed_at
+  );
+
+  return coalesce(persist_result, '{}'::jsonb) || jsonb_build_object(
+    'ratingCommit', rating_commit_result,
+    'ratingAtomic', true
+  );
+end;
+$$;
+
+revoke all on function public.rankball_match_action_with_rating(text, text, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, boolean, jsonb, jsonb, jsonb, jsonb, timestamptz) from public;
+revoke all on function public.rankball_match_action_with_rating(text, text, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, boolean, jsonb, jsonb, jsonb, jsonb, timestamptz) from anon;
+revoke all on function public.rankball_match_action_with_rating(text, text, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, boolean, jsonb, jsonb, jsonb, jsonb, timestamptz) from authenticated;
+grant execute on function public.rankball_match_action_with_rating(text, text, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, jsonb, boolean, jsonb, jsonb, jsonb, jsonb, timestamptz) to service_role;
+
 -- Commit match dispute intake and draft creation under a per-match lock.
 
 create or replace function public.rankball_match_dispute_action(
@@ -11121,6 +11194,7 @@ as $$
       ('rankball_invite_team_member_4', 'public.rankball_invite_team_member(text,text,text,text)'),
       ('rankball_invite_team_member_5', 'public.rankball_invite_team_member(text,text,text,text,text)'),
       ('rankball_match_action', 'public.rankball_match_action(text,text,jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,boolean)'),
+      ('rankball_match_action_with_rating', 'public.rankball_match_action_with_rating(text,text,jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,boolean,jsonb,jsonb,jsonb,jsonb,timestamptz)'),
       ('rankball_match_agree_action', 'public.rankball_match_agree_action(text,text,text,text)'),
       ('rankball_match_approval_action', 'public.rankball_match_approval_action(text,text,text,text)'),
       ('rankball_match_checkin_action', 'public.rankball_match_checkin_action(text,text,text,text)'),
@@ -11993,6 +12067,7 @@ as $$
       ('rankball_invite_team_member_4', 'public.rankball_invite_team_member(text,text,text,text)'),
       ('rankball_invite_team_member_5', 'public.rankball_invite_team_member(text,text,text,text,text)'),
       ('rankball_match_action', 'public.rankball_match_action(text,text,jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,boolean)'),
+      ('rankball_match_action_with_rating', 'public.rankball_match_action_with_rating(text,text,jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,boolean,jsonb,jsonb,jsonb,jsonb,timestamptz)'),
       ('rankball_match_agree_action', 'public.rankball_match_agree_action(text,text,text,text)'),
       ('rankball_match_approval_action', 'public.rankball_match_approval_action(text,text,text,text)'),
       ('rankball_match_checkin_action', 'public.rankball_match_checkin_action(text,text,text,text)'),

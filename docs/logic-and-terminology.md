@@ -2323,3 +2323,9 @@ flowchart TD
 - 관리자 RPC 성공 후 `scope=admin` 서버 상태를 다시 읽어 화면에 반영한다.
 - 서버 거절 또는 통신 실패 시 화면에 가짜 audit, 징계, 임명 상태를 만들지 않는다.
 - local demo mode만 기존 로컬 reducer를 사용한다.
+## 2026-07-13 경기 확정과 MMR 원자 커밋
+
+1. 최종 `approveMatch`는 `rankball_match_action_with_rating()` RPC를 사용한다.
+2. 경기 snapshot, 승인 완료, 개인/팀 MMR, trust/streak, `confirmed_at`은 한 DB transaction에서 커밋한다.
+3. 어느 단계든 실패하면 경기 확정과 레이팅 변경을 모두 롤백한다.
+4. 유지보수 백필은 이미 저장된 경기만 보정하므로 `rankball_commit_match_rating()` 단독 RPC를 계속 사용할 수 있다.

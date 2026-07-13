@@ -1706,7 +1706,8 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
   const disputeRows = toDisputeRows(match);
   const notificationRows = toNotificationRows(notifications, context.profileId, { coalesce: "nullish", getUpdatedAt: getTimestamp });
 
-  const { data: persistResult, error: persistError } = await context.supabase.rpc("rankball_match_action", {
+  const persistRpcName = shouldCommitRating ? "rankball_match_action_with_rating" : "rankball_match_action";
+  const persistArgs = {
     p_actor_profile_id: context.profileId,
     p_action: action,
     p_match_row: matchRow,
@@ -1718,9 +1719,17 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
     p_dispute_rows: disputeRows,
     p_notification_rows: notificationRows,
     p_replace_result: shouldReplaceResult,
-  });
+    ...(shouldCommitRating ? {
+      p_rating_result: ratingCommit.ratingResult ?? [],
+      p_team_rating_result: ratingCommit.teamRatingResult ?? {},
+      p_profile_updates: ratingCommit.profileUpdates ?? [],
+      p_team_updates: ratingCommit.teamUpdates ?? [],
+      p_confirmed_at: ratingCommit.confirmedAt ?? new Date().toISOString(),
+    } : {}),
+  };
+  const { data: persistResult, error: persistError } = await context.supabase.rpc(persistRpcName, persistArgs);
   if (persistError) throw persistError;
-  const ratingCommitResult = shouldCommitRating ? await commitMatchRating(context, ratingCommit) : null;
+  const ratingCommitResult = shouldCommitRating ? persistResult?.ratingCommit : null;
   const ratingState = shouldCommitRating ? await loadCommittedRatingState(context, ratingCommit) : null;
   const trustCommitResult = trustCommit ? await commitProfileTrustDeltas(context, trustCommit) : null;
   let discordDeliveryCount = 0;
@@ -1752,6 +1761,7 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
     ...(responseState ? { state: responseState } : {}),
     ratingCommitted: Boolean(ratingCommitResult?.ok),
     ratingAlreadyCommitted: Boolean(ratingCommitResult?.alreadyCommitted),
+    ratingAtomic: Boolean(shouldCommitRating && persistResult?.ratingAtomic),
     trustCommitted: Boolean(trustCommitResult?.ok && !trustCommitResult?.skipped),
     trustProfileCount: Number(trustCommitResult?.profileCount ?? 0),
   };

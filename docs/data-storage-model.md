@@ -465,3 +465,9 @@ Remaining:
 | `approved_courts` | `id`, `name`, `address`, `region`, `status`, `hidden_at` | court search/favorites/feed fallback | 유지 |
 | `courts` | `id`, `name`, `address`, `region` | legacy court fallback | 보류 |
 | `rankball_state` | legacy snapshot | runtime 미사용, schema cleanup 대상 | 보류 |
+## 2026-07-13 atomic match confirmation and rating commit
+
+- Final `approveMatch` persistence uses `rankball_match_action_with_rating()`.
+- Match snapshot, final confirmation, profile/team rating updates, and `confirmed_at` commit in one database transaction.
+- A failure in either snapshot persistence or rating application rolls back the entire final approval.
+- Maintenance backfill may continue to call `rankball_commit_match_rating()` for already-persisted matches.

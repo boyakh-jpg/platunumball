@@ -1457,6 +1457,7 @@ async function runOneOnOneScenario({
   assertFlow(match?.status === "confirmed", "match approval not confirmed", match);
   if (verifyRatingCommit) {
     assertFlow(approveBResult?.ratingCommitted === true, "rating commit RPC was not used", approveBResult);
+    assertFlow(approveBResult?.ratingAtomic === true, "match confirmation and rating commit were not atomic", approveBResult);
     assertFlow(Array.isArray(match?.ratingResult) && match.ratingResult.length > 0, "rating result missing after ranked confirmation", match);
     const responseUserIds = new Set((approveBResult?.state?.users ?? []).map((user) => user.id));
     assertFlow(responseUserIds.has(hostId) && responseUserIds.has(opponentId), "rating commit response missing DB users", {
@@ -1478,6 +1479,7 @@ async function runOneOnOneScenario({
     matchId: ids.matchId,
     finalStatus: match.status,
     ratingCommitted: verifyRatingCommit ? Boolean(approveBResult?.ratingCommitted) : undefined,
+    ratingAtomic: verifyRatingCommit ? Boolean(approveBResult?.ratingAtomic) : undefined,
     sqlReducers: {
       setRecruitingReady: Boolean(readyResult?.sqlReducer),
       agreeMatch: agreeASqlReducer || agreeBSqlReducer,
