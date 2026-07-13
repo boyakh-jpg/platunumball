@@ -2109,6 +2109,7 @@ flowchart TD
 - Chat detail load reads only the latest 30 messages. Polling reads only messages newer than the local `messageSeq` cursor, up to 20 rows per poll, and stops when the tab is hidden or the game/room is closed.
 - Chat body is one-line plain text, 60 characters or fewer. Client-side cooldown/rate checks are UX only; DB trigger/RLS blocks direct insert abuse and closed-room inserts.
 - Discord-origin room chat also lands in `room_chat_messages`, keeps the same one-line 60-character body rule, and must carry a unique Discord message ID to avoid duplicate imports.
+- 모집 확정 뒤에도 연결 경기의 `locked`, `checkin`, `live`, `postgame` 단계에서는 같은 방 채팅을 유지한다. `dispute`, `record`, `cancelled`, `void` 단계부터 입력을 잠그며 DB guard/RLS도 같은 단계 경계를 적용한다.
 
 ## 2026-07-01 test login and shared rule constants
 

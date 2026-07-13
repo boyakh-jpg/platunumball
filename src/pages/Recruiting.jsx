@@ -2453,11 +2453,9 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
   const modalPostNeedsDetail = Boolean(selectedPost?.listCardOnly && !sourceMatch);
   const roomShareUrl = useMemo(() => getRoomShareUrl(roomPostId), [roomPostId]);
   const sourceMatchPhaseForChat = sourceMatch ? getMatchRoomPhase(sourceMatch) : null;
-  const roomChatLocked = Boolean(
-    selectedPost?.status === "closed" ||
-    selectedPost?.confirmedAt ||
-    (sourceMatch && ["record", "cancelled", "void"].includes(sourceMatchPhaseForChat?.phase)),
-  );
+  const roomChatLocked = sourceMatch
+    ? ["dispute", "record", "cancelled", "void"].includes(sourceMatchPhaseForChat?.phase)
+    : Boolean(selectedPost?.status === "closed" || selectedPost?.confirmedAt);
   const modalPostDetailLoadRef = useRef("");
   const chatSendLogRef = useRef({});
   const roomShareStatusTimerRef = useRef(0);
