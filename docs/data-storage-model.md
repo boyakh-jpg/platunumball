@@ -351,7 +351,7 @@ Done:
 - Recruiting and match action persistence now takes a per-room/per-match advisory transaction lock inside `rankball_recruiting_action()` / `rankball_match_action()` before branch reducers or snapshot persistence run.
 - `rankball_match_action()` treats branch reducer `fallback=true` as a signal to continue into locked snapshot persistence, so reserve/party/unsupported match actions do not get dropped after the fast path declines.
 - `rankball_match_roster_move_action()` commits safe match recorder handoff and active/reserve substitution in one DB transaction by updating `match_players`, `matches.reserve_players`, `matches.played_player_ids`, and `matches.stat_recorders`.
-- `rankball_match_approval_action()` commits non-final participant result approvals in one DB transaction; approvals that would confirm the match still fall back to server reducer replay so rating commit stays authoritative.
+- `rankball_match_approval_action()` commits non-final participant result approvals in one DB transaction. Final approval calculation still uses server authoritative replay, but the resulting match snapshot and MMR changes commit atomically through `rankball_match_action_with_rating()`.
 - `rankball_match_thumbs_action()` commits match thumbs and affected profile trust deltas in one DB transaction.
 - `rankball_match_star_toggle_action()` wraps the thumbs RPC for single-target star toggles and preserves replay fallback for trust-feedback limit notifications.
 - `agreeMatch` and `checkInMatchPlayer` now use direct operation-only SQL reducer calls when `matchId`, `sideName`, and `playerId` are present, without sending a client match snapshot.
@@ -359,6 +359,10 @@ Done:
 - `startMatch` and `endMatch` now use direct operation-only SQL reducer calls for supported no-referee host-operated matches; start falls back to the DB `matches.attendance` row and auto-includes the host actor's active side attendance when no client attendance snapshot is sent.
 - Backend flow simulation seeds pending app/Discord match notice rows and verifies stale cleanup for `startMatch`, `cancelMatch`, `approveMatch`, and `voidMatch`.
 - Match rating commit responses now reload affected profiles/teams from DB and return them in `state.users` / `state.teams`, so MMR UI merges DB-authoritative values after approve/auto-confirm.
+- Final match confirmation and profile/team MMR changes now commit in one `rankball_match_action_with_rating()` transaction.
+- Recruiting confirmation now commits the closed recruiting room and created match in one `rankball_confirm_recruiting_match_action()` transaction.
+- Simple individual reserve recorder assignment and room close use `rankball_recruiting_stat_recorder_action()` / `rankball_recruiting_close_action()`; close also commits host trust penalty and disables the Discord room link.
+- Mutable profile rows are not retained in the 30-second auth context cache. Auth user verification remains cached while trust/rating/profile reads reload the current DB row.
 - Room, match, and tournament frontend callers now send `{ operation }` only when operation replay is available; full snapshot sync is legacy fallback.
 - The frontend sends completed match lifecycle/roster/result/trust mutations as operation-only, including `agreeMatch`, `addMatchLatePlayer`, `approveMatch`, `checkInMatchPlayer`, `handoffMatchRecorder`, `removeMatchLatePlayer`, `substituteMatchPlayer`, `requestMatchRefereeAbsence`, `confirmMatchRefereeAbsence`, `startMatch`, `endMatch`, `cancelMatch`, `deleteSoloRecord`, `voidMatch`, `submitMatchResult`, `disputeMatch`, `resumeMatchApproval`, `submitMatchThumbs`, `toggleMatchStar`, `updateMatchRoomRules`, `setMatchRoomPlayerPlacement`, `setMatchRecordTeamRoster`, and `removeMatchRoomPlayer`; the server uses SQL reducers where supported and otherwise reloads authoritative state before persisting attendance, roster, lifecycle, room rules, record-room roster, postgame late-player changes, result, dispute, finalization, rating, or trust updates.
 - Backend flow simulation includes `match_record_roster_operation`, which creates a team `match_record` room, updates both side rosters via operation-only `setMatchRecordTeamRoster`, and verifies wrong-side captain rejection.
@@ -374,7 +378,7 @@ Done:
 
 Partial:
 
-- Frontend still has client reducer logic and sends changed room/match/team/tournament snapshots to dedicated server sync actions. This is not yet a fully authoritative room/match/team/tournament backend.
+- Frontend still has local reducer code for optimistic/demo behavior. Production mutations send operations, but several operation calculations still run in the server JS reducer before DB RPC persistence.
 - `mockData.js` and generated demo flow remain for non-Supabase local dev and seed generation, not production source of truth.
 - Admin review and appointment UI waits for the server action and reloads `scope=admin` before changing visible state. Local-first admin state remains only in non-Supabase demo mode.
 - Env owner support uses `POST /api/admin/context` to expose only the current user's admin level to the client.
@@ -386,14 +390,15 @@ Remaining:
 
 - Set owner authority through `RANKBALL_OWNER_AUTH_USER_IDS`, `RANKBALL_OWNER_PROFILE_IDS`, or DB `admin_appointments`; do not depend on frontend seed IDs.
 - Keep app user identity as `profiles.id`; never expose or use Google/provider ID as the public RankBall user id.
-- Finish authoritative RPC/server actions for recruiting create/join/invite/accept/ready/confirm and match attendance/start/record/end/dispute/approve.
-- Move operation calculation itself from server reducer replay to DB RPC if stricter row-level lock semantics are required.
+- Move remaining recruiting calculations to DB reducers: room creation, referee/team/party invite and acceptance, room rule edits, party roster/placement/detach, applicant kick, and complex team/party readiness.
+- Move remaining match calculations to DB reducers: result submission/partial stat merge, dispute resume/finalization, final approval calculation, referee-absence flow, room rule edits, record-room roster edits, player removal, and referee/party lifecycle fallbacks.
+- Move tournament bracket validation, first-round generation, and follow-up-round generation calculation into authoritative DB functions; snapshot persistence already has the tournament lock and the full simulation verifies follow-up creation.
 - Recruiting `interestRecruitingPost` now tries `rankball_recruiting_interest_player_action()` first for public player joins, and `setRecruitingApplicantPlacement` tries `rankball_recruiting_applicant_placement_action()` first for self player applicant moves. Unsupported private/team/referee/party/limit cases still fall back to server authoritative replay.
 - Simple individual player invitation create/accept/decline now uses `rankball_recruiting_invite_players_action()` and `rankball_recruiting_invitation_decision_action()` with per-room advisory and row locks. Team, party, referee, and MMR-blocked invitation branches keep server authoritative replay.
 - Match cancel, void, and personal-record delete now use `rankball_match_terminal_action()` under the per-match advisory and row lock; server delivery cleanup still removes stale app/Discord reminders after cancel/void.
-- Match dispute intake now uses `rankball_match_dispute_action()` to validate actor/window and atomically write `match_disputes`, `matches.dispute_draft_result`, status, and notification. Final dispute resolution still uses the rating-aware server replay and DB rating commit path.
+- Match dispute intake now uses `rankball_match_dispute_action()` to validate actor/window and atomically write `match_disputes`, `matches.dispute_draft_result`, status, and notification. Final dispute resolution calculation still uses server replay; its final match/MMR persistence is atomic.
 - Make frontend repository a thin server caller after the authoritative RPCs are ready.
-- Remove production reliance on localStorage state and mock fallback completely.
+- Keep production state free of localStorage/mock fallback; localStorage demo state remains non-Supabase development-only.
 - Add broader server-side eligibility checks for tournament brackets and match roster edits.
 - Add hard delete/restore tools for court moderation only if operational policy later requires it.
 - Keep Supabase Auth/test seed and cleanup scripts for realistic multi-user simulations.
