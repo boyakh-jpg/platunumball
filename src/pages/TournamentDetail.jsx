@@ -1,6 +1,8 @@
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { CalendarDays, ChevronLeft, Save, ShieldCheck, Trophy } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
+import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import TierBadge from "../components/rating/TierBadge.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import "../styles/matches-arena.css";
@@ -290,9 +292,27 @@ function renderBracketNode(node, teamById) {
 export default function TournamentDetail({ app }) {
   const { tournamentId } = useParams();
   const tournament = (app.state.tournaments ?? []).find((item) => item.id === tournamentId);
+  const requestedTournamentIdRef = useRef("");
+  const [tournamentMissing, setTournamentMissing] = useState(false);
   const teamById = Object.fromEntries(app.state.teams.map((team) => [team.id, team]));
   const userById = Object.fromEntries(app.state.users.map((user) => [user.id, user]));
   const matchesById = Object.fromEntries(app.state.matches.map((match) => [match.id, match]));
+
+  useEffect(() => {
+    if (!tournamentId || tournament || app.remoteReady === false || requestedTournamentIdRef.current === tournamentId) return;
+    setTournamentMissing(false);
+    requestedTournamentIdRef.current = tournamentId;
+    Promise.resolve(app.actions.loadTournament?.(tournamentId)).then((count) => {
+      if (!count) setTournamentMissing(true);
+    }).catch(() => {
+      requestedTournamentIdRef.current = "";
+      setTournamentMissing(true);
+    });
+  }, [app.actions, app.remoteReady, tournament, tournamentId]);
+
+  if (!tournament && !tournamentMissing) {
+    return <BasketballLoader overlay label="대회 불러오는 중" />;
+  }
 
   if (!tournament) {
     return (

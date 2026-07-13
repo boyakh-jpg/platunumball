@@ -154,6 +154,7 @@ const SERVER_OPERATION_ACTIONS = new Set([
   "createMatch",
   "createTournament",
   "approveTournamentTeam",
+  "loadTournament",
   "updateTournamentMatchSchedule",
   "agreeMatch",
   "submitMatchResult",
@@ -634,6 +635,16 @@ function mergeRemoteProfileState(state, remoteState = {}) {
 function mergeRemoteHomeState(state, remoteState = {}) {
   const nextState = mergeRemoteProfileState(state, remoteState);
   return mergeRemoteMatchPage(nextState, remoteState);
+}
+
+function mergeRemoteTournamentState(state, remoteState = {}) {
+  return {
+    ...state,
+    users: mergeRemoteById(state.users, remoteState.users),
+    teams: mergeTeamsById(state.teams, remoteState.teams),
+    matches: Array.isArray(remoteState.matches) ? mergeMatchesById(state.matches, remoteState.matches) : state.matches,
+    tournaments: Array.isArray(remoteState.tournaments) ? mergeRemoteById(state.tournaments, remoteState.tournaments) : state.tournaments,
+  };
 }
 
 function mergeRemoteAdminState(state, remoteState = {}) {
@@ -1661,13 +1672,13 @@ export function useAppData(authUser = null, appLocation = null) {
     if (!tournament?.id && !operation) return Promise.resolve(false);
     const payload = operation ? { operation } : { tournament, notifications, ...meta };
     return runServerAction("/api/tournaments/sync-tournament", payload).then((result) => {
-      if (result?.tournament || result?.createdMatches?.length) {
-        setState((prev) => ({
-          ...prev,
-          tournaments: result.tournament ? mergeRemoteById(prev.tournaments, [result.tournament]) : prev.tournaments,
-          matches: Array.isArray(result.createdMatches) && result.createdMatches.length
-            ? mergeMatchesById(prev.matches ?? [], result.createdMatches)
-            : prev.matches,
+      if (result?.state) {
+        const remoteState = normalizeServerState(result.state);
+        setState((prev) => mergeRemoteTournamentState(prev, remoteState ?? {}));
+      } else if (result?.tournament || result?.createdMatches?.length) {
+        setState((prev) => mergeRemoteTournamentState(prev, {
+          tournaments: result.tournament ? [result.tournament] : [],
+          matches: result.createdMatches ?? [],
         }));
       }
       return result;
@@ -2459,6 +2470,15 @@ export function useAppData(authUser = null, appLocation = null) {
           },
         }), rollbackState, "토너먼트 생성", { action: "createTournament", tournamentId: createdTournament.id })
           .then((result) => (result?.ok === false ? result : createdId));
+      },
+      loadTournament: (tournamentId) => {
+        if (!tournamentId || !ensureRemoteReady("대회 조회")) return Promise.resolve(0);
+        return syncTournamentServer(null, [], {
+          operation: {
+            action: "loadTournament",
+            tournamentId,
+          },
+        }).then((result) => (result?.tournament?.id === tournamentId ? 1 : 0));
       },
       approveTournamentTeam: (tournamentId, teamId) => {
         if (isSupabaseConfigured) {

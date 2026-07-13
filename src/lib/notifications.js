@@ -17,6 +17,7 @@ export function isNotificationVisibleToUser(notification = {}, userId = "", opti
 
 export function getNotificationHref(notification = {}) {
   if (notification.webPath) return notification.webPath;
+  if (notification.tournamentId) return `/app/tournaments/${encodeURIComponent(notification.tournamentId)}`;
   if (notification.matchId) return `/app/matches?match=${encodeURIComponent(notification.matchId)}`;
   if (notification.recruitingPostId) return `/app/recruiting?post=${encodeURIComponent(notification.recruitingPostId)}`;
   return "/app/notifications";

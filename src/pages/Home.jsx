@@ -17,7 +17,7 @@ import { getPendingRecruitingInvitations, getRecruitingLobby, getRecruitingRoomO
 import { getCurrentSeason, getPlayerSeasonRows, getSeasonProgress } from "../lib/season.js";
 import { getTier, getTierDivision, getTierDivisionNumber } from "../lib/tier.js";
 import { getDiscordAvatarClassName, getDiscordAvatarStyle } from "../lib/discord.js";
-import { getNotificationDueAt, getNotificationHref, isNotificationVisibleToUser } from "../lib/notifications.js";
+import { getNotificationDueAt, getNotificationHref, isHomeActionNotification, isNotificationVisibleToUser } from "../lib/notifications.js";
 
 function toDateInputValue(date = new Date()) {
   const year = date.getFullYear();
@@ -203,6 +203,7 @@ export default function Home({ app }) {
         .filter((teamId) => (tournament.teamStatuses?.[teamId] ?? "invited") === "invited")
         .map((teamId) => ({
           id: `tournament-${tournament.id}-${teamId}`,
+          tournamentId: tournament.id,
           priority: 0,
           label: "대회 초대",
           title: tournament.title,
@@ -210,6 +211,20 @@ export default function Home({ app }) {
           href: `/app/tournaments/${tournament.id}`,
           icon: Trophy,
         })));
+    const loadedTournamentInviteIds = new Set(tournamentInviteItems.map((item) => item.tournamentId).filter(Boolean));
+    const tournamentNotificationItems = (app.state.notifications ?? [])
+      .filter((notification) => isNotificationVisibleToUser(notification, user.id))
+      .filter((notification) => notification.type === "tournament_invite" && isHomeActionNotification(notification))
+      .filter((notification) => !loadedTournamentInviteIds.has(notification.tournamentId))
+      .map((notification) => ({
+        id: `notification-${notification.id}`,
+        priority: 0,
+        label: "대회 초대",
+        title: notification.title,
+        meta: notification.body || "팀장 승인 필요",
+        href: getNotificationHref(notification),
+        icon: Trophy,
+      }));
     const matchItems = app.state.matches
       .filter((match) => isHomeUserMatch(match, user.id))
       .map((match) => {
@@ -313,7 +328,7 @@ export default function Home({ app }) {
         href: `/app/recruiting?post=${post.id}`,
         icon: ShieldAlert,
       }));
-    return [...invitationItems, ...teamInvitationItems, ...tournamentInviteItems, ...confirmableRoomItems, ...matchItems, ...cancelledRoomItems]
+    return [...invitationItems, ...teamInvitationItems, ...tournamentInviteItems, ...tournamentNotificationItems, ...confirmableRoomItems, ...matchItems, ...cancelledRoomItems]
       .sort((a, b) => a.priority - b.priority || String(a.meta).localeCompare(String(b.meta)));
   }, [app.state, app.state.matches, app.state.recruitingPosts, app.state.tournaments, captainTeamIds, myTeamIds, pendingInvitations, pendingTeamInvitations, teamById, user.id]);
   const priorityItems = actionItems.slice(0, 5);

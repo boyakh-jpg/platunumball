@@ -12,7 +12,13 @@ const STATUSES = new Set(["draft", "scheduled", "active", "closed", "cancelled"]
 const MMR_LIMIT_MODES = new Set(["off", "warn", "block"]);
 const MMR_POLICIES = new Set(["gap_adjusted", "standard", "event_only"]);
 const TEAM_STATUSES = new Set(["invited", "accepted", "declined"]);
-const TOURNAMENT_OPERATION_ACTIONS = new Set(["createTournament", "approveTournamentTeam"]);
+const TOURNAMENT_OPERATION_ACTIONS = new Set(["createTournament", "approveTournamentTeam", "loadTournament"]);
+
+function reject(statusCode, message) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  throw error;
+}
 
 function withTournamentCreateId(operation = null) {
   if (!operation || operation.action !== "createTournament") return operation;
@@ -224,6 +230,75 @@ async function isTeamCaptain(supabase, teamId, profileId) {
   return Boolean(data?.user_id);
 }
 
+function getTournamentScopedState(state = {}, tournament = null) {
+  if (!tournament?.id) return { ...state, users: [], teams: [], matches: [], tournaments: [] };
+  const teamIds = new Set(getTeamIds(tournament));
+  const teams = (state.teams ?? []).filter((team) => teamIds.has(team.id));
+  const userIds = new Set([
+    state.currentUserId,
+    ...teams.flatMap((team) => toArray(team.members).map((member) => member.userId)),
+  ].filter(Boolean));
+  const matches = (state.matches ?? []).filter((match) => match.tournamentId === tournament.id);
+  return {
+    ...state,
+    users: (state.users ?? []).filter((user) => userIds.has(user.id)),
+    teams,
+    matches,
+    recruitingPosts: [],
+    tournaments: [tournament],
+    notifications: [],
+    discordNotificationDeliveries: [],
+  };
+}
+
+async function assertCanLoadTournament(context, tournamentId) {
+  const { data: tournament, error: tournamentError } = await context.supabase
+    .from("tournaments")
+    .select("id, created_by, visibility")
+    .eq("id", tournamentId)
+    .maybeSingle();
+  if (tournamentError) throw tournamentError;
+  if (!tournament?.id) reject(404, "tournament_not_found");
+  if (tournament.created_by === context.profileId || tournament.visibility === "public") return;
+
+  const { data: teamRows, error: teamError } = await context.supabase
+    .from("tournament_teams")
+    .select("team_id")
+    .eq("tournament_id", tournamentId);
+  if (teamError) throw teamError;
+  const teamIds = toArray(teamRows).map((row) => row.team_id).filter(Boolean);
+  if (!teamIds.length) reject(403, "tournament_read_permission_denied");
+
+  const { data: memberships, error: membershipError } = await context.supabase
+    .from("team_members")
+    .select("team_id")
+    .eq("user_id", context.profileId)
+    .in("team_id", teamIds)
+    .limit(1);
+  if (membershipError) throw membershipError;
+  if (!memberships?.length) reject(403, "tournament_read_permission_denied");
+}
+
+async function loadTournamentOperation(context, operation = {}) {
+  const tournamentId = String(operation.tournamentId ?? "").trim();
+  if (!tournamentId) reject(400, "missing_tournament_id");
+  await assertCanLoadTournament(context, tournamentId);
+  const state = await loadAuthoritativeState(context, {
+    operation: { action: "loadTournament", tournamentId },
+  });
+  const tournament = (state.tournaments ?? []).find((item) => item.id === tournamentId) ?? null;
+  if (!tournament) reject(404, "tournament_not_found");
+  const scopedState = getTournamentScopedState(state, tournament);
+  return {
+    ok: true,
+    tournamentId,
+    tournament,
+    createdMatches: scopedState.matches,
+    createdMatchCount: scopedState.matches.length,
+    state: scopedState,
+  };
+}
+
 async function assertCanSyncTournament(context, existingTournament, tournament, action, teamId) {
   if (!existingTournament) {
     if (tournament.createdBy !== context.profileId) {
@@ -298,8 +373,9 @@ async function applySqlTournamentOperation(context, operation = {}) {
     operation: { action: "loadTournament", tournamentId },
   });
   const tournament = (state.tournaments ?? []).find((item) => item.id === tournamentId) ?? null;
+  const scopedState = getTournamentScopedState(state, tournament);
   const createdMatchIds = new Set(toArray(data?.createdMatches).map((item) => item?.id).filter(Boolean));
-  const createdMatches = (state.matches ?? []).filter((match) => createdMatchIds.has(match.id));
+  const createdMatches = scopedState.matches.filter((match) => createdMatchIds.has(match.id));
   return {
     ok: true,
     ...data,
@@ -307,7 +383,7 @@ async function applySqlTournamentOperation(context, operation = {}) {
     tournament,
     createdMatches,
     createdMatchCount: createdMatches.length,
-    state,
+    state: scopedState,
   };
 }
 
@@ -324,6 +400,10 @@ export default async function handler(request, response) {
     const operation = withTournamentCreateId(getOperation(body, body.action ? String(body.action) : "sync"));
     if (!operation) reject(400, "tournament_operation_required");
     if (!TOURNAMENT_OPERATION_ACTIONS.has(operation.action)) reject(400, "unsupported_tournament_operation");
+    if (operation.action === "loadTournament") {
+      sendJson(response, 200, await loadTournamentOperation(context, operation));
+      return;
+    }
     let tournament = null;
     let notifications = body.notifications ?? [];
     let createdMatches = [];
