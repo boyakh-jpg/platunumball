@@ -229,7 +229,7 @@ export function isAutoDecisionDue(match, nowMs = Date.now()) {
   return Boolean(recordWindow.endAt && nowMs >= recordWindow.endAt.getTime() + DAY_MS);
 }
 
-function addDateDays(dateValue, days) {
+export function addDateDays(dateValue, days) {
   const date = new Date(`${dateValue}T00:00:00`);
   if (!Number.isFinite(date.getTime())) return "";
   date.setDate(date.getDate() + days);
@@ -249,7 +249,7 @@ export function isInstantRoom(room = {}) {
   return getRoomTimingType(room) === "instant";
 }
 
-function getLocalDateInputValue(now = new Date()) {
+export function getLocalDateInputValue(now = new Date()) {
   return [
     now.getFullYear(),
     String(now.getMonth() + 1).padStart(2, "0"),

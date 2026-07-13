@@ -10,15 +10,15 @@ import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { MATCH_MODES, MAX_RECRUITING_RESERVES_PER_SIDE as MAX_PARTY_RESERVES, PLAYER_POSITIONS, PLAYER_STAT_FIELDS, RECORD_TYPES, REFEREE_TRUST_MIN, REGIONS, getCanonicalRegion, getHostTrustRequirement, getRoomKindFromDraft, getRoomKindLabel, isSameRegion } from "../lib/constants.js";
 import { getCourtLayoutLabel, getCourtPlayWarning, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
 import { getCourtHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
-import { getPublicRoomMaxDateInput, isEligibleReferee } from "../lib/matchUtils.js";
+import { addDateDays, getLocalDateInputValue, getPublicRoomMaxDateInput, isEligibleReferee } from "../lib/matchUtils.js";
 import { AGE_GROUPS, getAgeGroupForUser } from "../lib/profileSetup.js";
 import { MMR_RANGE_POLICIES, getRecruitingSideCapacity, getRecruitingTierRange, getSelectableTeamPlayerIds, isMmrInRecruitingRange } from "../lib/recruiting.js";
 
-const today = new Date().toISOString().slice(0, 10);
-const minSoloRecordDate = new Date(Date.now() - 1000 * 60 * 60 * 24 * 7).toISOString().slice(0, 10);
-const nextWeek = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString().slice(0, 10);
-const maxScheduleDate = new Date(Date.now() + 1000 * 60 * 60 * 24 * 365).toISOString().slice(0, 10);
-const maxPrivateScheduleDate = new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString().slice(0, 10);
+const today = getLocalDateInputValue();
+const minSoloRecordDate = addDateDays(today, -7);
+const nextWeek = addDateDays(today, 7);
+const maxScheduleDate = addDateDays(today, 365);
+const maxPrivateScheduleDate = addDateDays(today, 30);
 const maxPublicScheduleDate = getPublicRoomMaxDateInput();
 const allRegions = ["전체", ...REGIONS];
 const mmrLimitOptions = [

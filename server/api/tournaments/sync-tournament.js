@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { getAuthenticatedContext, readJsonBody, sendJson, toArray, toNotificationRows } from "../_supabaseAdmin.js";
 import {
   getOperation,
@@ -12,6 +13,15 @@ const MMR_LIMIT_MODES = new Set(["off", "warn", "block"]);
 const MMR_POLICIES = new Set(["gap_adjusted", "standard", "event_only"]);
 const TEAM_STATUSES = new Set(["invited", "accepted", "declined"]);
 const TOURNAMENT_OPERATION_ACTIONS = new Set(["createTournament", "approveTournamentTeam"]);
+
+function withTournamentCreateId(operation = null) {
+  if (!operation || operation.action !== "createTournament") return operation;
+  if (operation.preferredTournamentId || operation.tournamentId || operation.draft?.id) return operation;
+  return {
+    ...operation,
+    preferredTournamentId: `trn_${Date.now().toString(36)}_${randomUUID().replace(/-/g, "").slice(0, 10)}`,
+  };
+}
 
 function pickAllowed(value, allowed, fallback) {
   const text = String(value || "").trim();
@@ -311,7 +321,7 @@ export default async function handler(request, response) {
   try {
     const body = await readJsonBody(request);
     const context = await getAuthenticatedContext(request);
-    const operation = getOperation(body, body.action ? String(body.action) : "sync");
+    const operation = withTournamentCreateId(getOperation(body, body.action ? String(body.action) : "sync"));
     if (!operation) reject(400, "tournament_operation_required");
     if (!TOURNAMENT_OPERATION_ACTIONS.has(operation.action)) reject(400, "unsupported_tournament_operation");
     let tournament = null;
