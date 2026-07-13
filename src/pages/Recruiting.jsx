@@ -2451,6 +2451,11 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
   const [sheetDragSettling, setSheetDragSettling] = useState(false);
   const roomPostId = selectedPost?.id ?? "";
   const modalPostNeedsDetail = Boolean(selectedPost?.listCardOnly && !sourceMatch);
+  const sourceMatchNeedsRoomDetail = Boolean(
+    sourceMatch?.recruitingPostId &&
+    roomPostId === sourceMatch.recruitingPostId &&
+    !app.state.recruitingPosts?.some((item) => item.id === roomPostId && !item.listCardOnly),
+  );
   const roomShareUrl = useMemo(() => getRoomShareUrl(roomPostId), [roomPostId]);
   const sourceMatchPhaseForChat = sourceMatch ? getMatchRoomPhase(sourceMatch) : null;
   const roomChatLocked = sourceMatch
@@ -2470,14 +2475,14 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
     }
     if (!app.remoteReady || !app.currentUser.id) return;
     const refreshKey = `${roomPostId}:${app.currentUser.id}`;
-    if (sourceMatch || (skipInitialDetailLoad && !modalPostNeedsDetail)) {
+    if (!sourceMatchNeedsRoomDetail && (sourceMatch || (skipInitialDetailLoad && !modalPostNeedsDetail))) {
       modalPostDetailLoadRef.current = refreshKey;
       return;
     }
     if (modalPostDetailLoadRef.current === refreshKey) return;
     modalPostDetailLoadRef.current = refreshKey;
     app.actions.loadRecruitingPost?.(roomPostId);
-  }, [app.actions, app.currentUser.id, app.remoteReady, modalPostNeedsDetail, roomPostId, skipInitialDetailLoad, sourceMatch]);
+  }, [app.actions, app.currentUser.id, app.remoteReady, modalPostNeedsDetail, roomPostId, skipInitialDetailLoad, sourceMatch, sourceMatchNeedsRoomDetail]);
 
   useEffect(() => {
     if (!modalPostNeedsDetail || !roomPostId || !app.remoteReady || !app.currentUser.id) return undefined;

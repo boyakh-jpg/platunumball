@@ -696,7 +696,7 @@ export function getMatchRoomPost(match, state) {
   }
 
   return {
-    id: `match-room-${match.id}`,
+    id: match.recruitingPostId || `match-room-${match.id}`,
     title: match.title,
     type: "need_player",
     mode: match.mode,
