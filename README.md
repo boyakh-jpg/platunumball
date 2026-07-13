@@ -48,6 +48,14 @@ Production 적용 뒤 schema health를 확인합니다.
 Invoke-RestMethod -Method Post -Uri "https://platunumball.vercel.app/api/system/schema-health" -Headers @{ Authorization = "Bearer $env:CRON_SECRET" }
 ```
 
+배포 전 검증은 한 명령으로 실행합니다.
+
+```powershell
+npm run verify:release
+```
+
+`verify:release`는 production build 후 원격 Supabase/Auth 기반 전체 backend simulation과 schema health를 실행합니다. `SUPABASE_SERVICE_ROLE_KEY`, 테스트 Auth 환경변수, `CRON_SECRET`이 필요합니다. 종료 코드가 0이 아니면 배포하지 않습니다.
+
 원격 DB에는 `supabase db reset --linked`, `DROP TABLE`, `TRUNCATE`, 대량 `DELETE`를 쓰지 않습니다.
 
 ## 환경변수

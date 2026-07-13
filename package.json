@@ -14,6 +14,7 @@
     "discord:room-chat-bridge": "node scripts/discord-room-chat-bridge.mjs",
     "discord:link-room": "node scripts/link-discord-room.mjs",
     "simulate:backend": "node scripts/simulate-backend-flow.mjs",
+    "verify:release": "vite build && node scripts/simulate-backend-flow.mjs --full --quiet",
     "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {
