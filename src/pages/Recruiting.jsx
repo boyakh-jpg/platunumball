@@ -2413,10 +2413,18 @@ function RecruitingRoomLoadFailedView({ onClose, onRetry }) {
 
 function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sourceMatch = null, entryPoint = "", onInvitationAccepted = null, onJoined = null, skipInitialDetailLoad = false }) {
   const selectedPost = post;
+  const shouldLoadTeamDirectory = selectedPost.visibility === "public" && isTeamOnlyRoom(selectedPost);
   const myTeams = useMemo(
     () => app.state.teams.filter((team) => team.members.some((member) => member.userId === app.currentUser.id)),
     [app.currentUser.id, app.state.teams],
   );
+
+  useEffect(() => {
+    if (!shouldLoadTeamDirectory) return;
+    if (app.directoryStatus?.loaded || app.directoryStatus?.loading) return;
+    app.actions.loadDirectory?.();
+  }, [app.actions, app.directoryStatus?.loaded, app.directoryStatus?.loading, shouldLoadTeamDirectory]);
+
   const userById = useMemo(
     () => Object.fromEntries([...app.state.users, ...Object.values(sourceMatch?.anonymousPlayers ?? {})].map((user) => [user.id, user])),
     [app.state.users, sourceMatch?.anonymousPlayers],
