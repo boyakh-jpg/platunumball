@@ -42,7 +42,7 @@ function normalizeMatchSide(side = {}, fallbackName = "") {
   };
 }
 
-export function normalizeMatch(match = {}) {
+export function normalizeMatch(match = {}, options = {}) {
   const source = match && typeof match === "object" ? match : {};
   const startedStatuses = ["agreed", "approval", "confirmed", "disputed", "void", "cancelled"];
   const started = startedStatuses.includes(source.status);
@@ -80,6 +80,10 @@ export function normalizeMatch(match = {}) {
       playedPlayerIds: normalizedPlayedPlayerIds,
     },
   };
+
+  if (options.preserveAuthoritativeLifecycle === true) {
+    return repairLifecycleTitle(normalized);
+  }
 
   const pregameStartRepaired = clearFuturePregameStartState(normalized);
 

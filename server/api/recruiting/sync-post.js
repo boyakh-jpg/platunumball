@@ -699,50 +699,51 @@ const MEMBERSHIP_ADD_RECRUITING_ACTIONS = new Set([
   "setRecruitingTeamPartyRoster",
 ]);
 
-const AUTHORITATIVE_REPLAY_RECRUITING_ACTIONS = new Set([
+const SQL_REDUCER_RECRUITING_ACTIONS = new Set([
+  "createRecruitingPost",
+  "acceptRecruitingInvitation",
   "cancelRecruitingParticipation",
-  "confirmRecruitingMatch",
+  "declineRecruitingInvitation",
   "interestRecruitingPost",
-  "updateRecruitingRoomRules",
   "inviteRecruitingPlayers",
   "inviteRecruitingReferee",
-  "acceptRecruitingInvitation",
-  "declineRecruitingInvitation",
-  "sendRecruitingChat",
-  "joinRecruitingSideParty",
+  "closeRecruitingPost",
   "setRecruitingApplicantPlacement",
   "setRecruitingApplicantReserve",
+  "setRecruitingStatRecorder",
   "setRecruitingSlotPosition",
+  "updateRecruitingRoomRules",
+  "joinRecruitingSideParty",
   "setRecruitingPartyPlayerPlacement",
   "setRecruitingPartyPlayerReserve",
   "setRecruitingTeamPartyRoster",
   "detachRecruitingPartyPlayer",
   "removeRecruitingPartyPlayer",
-  "setRecruitingStatRecorder",
   "kickRecruitingApplicant",
-  "closeRecruitingPost",
 ]);
 
-const SQL_REDUCER_RECRUITING_ACTIONS = new Set([
+const MANAGEMENT_SQL_RECRUITING_ACTIONS = new Set([
+  "createRecruitingPost",
   "acceptRecruitingInvitation",
-  "cancelRecruitingParticipation",
   "declineRecruitingInvitation",
-  "interestRecruitingPost",
   "inviteRecruitingPlayers",
-  "closeRecruitingPost",
+  "inviteRecruitingReferee",
+  "updateRecruitingRoomRules",
   "setRecruitingApplicantPlacement",
-  "setRecruitingStatRecorder",
-  "setRecruitingSlotPosition",
+  "setRecruitingApplicantReserve",
+  "joinRecruitingSideParty",
+  "setRecruitingPartyPlayerPlacement",
+  "setRecruitingPartyPlayerReserve",
+  "setRecruitingTeamPartyRoster",
+  "detachRecruitingPartyPlayer",
+  "removeRecruitingPartyPlayer",
+  "kickRecruitingApplicant",
 ]);
 
 const CORE_LOCKED_RECRUITING_ACTIONS = new Set([
   ...PARTICIPANT_RECRUITING_ACTIONS,
   ...JOIN_RECRUITING_ACTIONS,
 ]);
-
-function shouldReplayRecruitingOperation(operation = {}) {
-  return AUTHORITATIVE_REPLAY_RECRUITING_ACTIONS.has(String(operation?.action ?? ""));
-}
 
 function isMissingSqlReducer(error = {}) {
   const message = String(error?.message ?? "");
@@ -755,12 +756,18 @@ function isMissingSqlReducer(error = {}) {
     message.includes("rankball_recruiting_slot_position_action") ||
     message.includes("rankball_recruiting_cancel_participation_action") ||
     message.includes("rankball_recruiting_applicant_placement_action") ||
-    message.includes("rankball_recruiting_interest_player_action")
+    message.includes("rankball_recruiting_interest_player_action") ||
+    message.includes("rankball_recruiting_management_action")
   );
 }
 
 function shouldUseSqlRecruitingAction(operation = {}) {
   return SQL_REDUCER_RECRUITING_ACTIONS.has(String(operation?.action ?? ""));
+}
+
+function rejectSqlRecruitingFallback(data = {}) {
+  if (!data?.fallback) return;
+  reject(409, String(data.reason || "recruiting_operation_blocked"));
 }
 
 function createTimingProbe() {
@@ -838,7 +845,27 @@ async function loadSyncedRecruitingState(context, postId = "") {
   };
 }
 
+async function applyRecruitingManagementAction(context, operation = {}) {
+  const { data, error } = await context.supabase.rpc("rankball_recruiting_management_action", {
+    p_actor_profile_id: context.profileId,
+    p_operation: operation,
+  });
+  if (error) {
+    if (isMissingSqlReducer(error)) reject(503, "recruiting_management_rpc_unavailable");
+    throw error;
+  }
+  return {
+    ok: true,
+    ...(data && typeof data === "object" ? data : {}),
+    postId: data?.postId ?? operation.postId ?? operation.preferredPostId ?? operation.draft?.id,
+  };
+}
+
 async function applySqlRecruitingAction(context, operation = {}) {
+  if (MANAGEMENT_SQL_RECRUITING_ACTIONS.has(operation.action)) {
+    return applyRecruitingManagementAction(context, operation);
+  }
+
   if (operation.action === "closeRecruitingPost") {
     const { data, error } = await context.supabase.rpc("rankball_recruiting_close_action", {
       p_actor_profile_id: context.profileId,
@@ -866,7 +893,7 @@ async function applySqlRecruitingAction(context, operation = {}) {
       if (isMissingSqlReducer(error)) return null;
       throw error;
     }
-    if (data?.fallback) return null;
+    rejectSqlRecruitingFallback(data);
     return {
       ok: true,
       ...(data && typeof data === "object" ? data : {}),
@@ -891,7 +918,7 @@ async function applySqlRecruitingAction(context, operation = {}) {
       if (isMissingSqlReducer(error)) return null;
       throw error;
     }
-    if (data?.fallback) return null;
+    rejectSqlRecruitingFallback(data);
     return {
       ok: true,
       ...(data && typeof data === "object" ? data : {}),
@@ -910,7 +937,7 @@ async function applySqlRecruitingAction(context, operation = {}) {
       if (isMissingSqlReducer(error)) return null;
       throw error;
     }
-    if (data?.fallback) return null;
+    rejectSqlRecruitingFallback(data);
     return {
       ok: true,
       ...(data && typeof data === "object" ? data : {}),
@@ -935,7 +962,7 @@ async function applySqlRecruitingAction(context, operation = {}) {
       if (isMissingSqlReducer(error)) return null;
       throw error;
     }
-    if (data?.fallback) return null;
+    if (data?.fallback) return applyRecruitingManagementAction(context, operation);
     return {
       ok: true,
       ...(data && typeof data === "object" ? data : {}),
@@ -974,7 +1001,7 @@ async function applySqlRecruitingAction(context, operation = {}) {
       if (isMissingSqlReducer(error)) return null;
       throw error;
     }
-    if (data?.fallback) return null;
+    rejectSqlRecruitingFallback(data);
     return {
       ok: true,
       ...(data && typeof data === "object" ? data : {}),
@@ -1325,9 +1352,13 @@ export default async function handler(request, response) {
     debugTiming = debugTiming || isTrue(body.debugTiming);
     const context = await timing.track("auth", () => getAuthenticatedContext(request));
     const operation = getOperation(body, body.action ? String(body.action) : "sync");
-    let post = body.post && typeof body.post === "object" ? body.post : null;
-    let notifications = body.notifications ?? [];
-    let action = body.action ? String(body.action) : "sync";
+    if (!operation) reject(400, "recruiting_operation_required");
+    if (!SQL_REDUCER_RECRUITING_ACTIONS.has(operation.action) && !["sendRecruitingChat", "confirmRecruitingMatch"].includes(operation.action)) {
+      reject(400, "unsupported_recruiting_operation");
+    }
+    let post = null;
+    let notifications = [];
+    let action = operation.action;
     let createdMatch = null;
     let replayResult = null;
 
@@ -1337,22 +1368,36 @@ export default async function handler(request, response) {
         sendTimedJson(response, 200, chatResult, timing, debugTiming);
         return;
       }
+      reject(503, "recruiting_chat_rpc_unavailable");
     }
 
     if (operation && shouldUseSqlRecruitingAction(operation)) {
       const sqlResult = await timing.track("sqlReducer", () => applySqlRecruitingAction(context, operation));
       if (sqlResult) {
         const synced = await timing.track("loadSyncedAfterSql", () => loadSyncedRecruitingState(context, sqlResult.postId ?? operation.postId));
+        let discordDeliveryCount = 0;
+        let discordDeliveryError = null;
+        if (operation.action === "createRecruitingPost" && synced.post) {
+          try {
+            discordDeliveryCount = await timing.track("discordQueue", () => queueInstantRoomOpenedDiscordDeliveries(context.supabase, synced.post, operation.action));
+          } catch (deliveryError) {
+            discordDeliveryError = deliveryError.message || "discord_room_opened_delivery_failed";
+            console.error("Recruiting Discord delivery queue failed.", deliveryError);
+          }
+        }
         sendTimedJson(response, 200, {
           ...sqlResult,
+          discordDeliveryCount,
+          discordDeliveryError,
           ...(synced.post ? { post: synced.post } : {}),
           ...(synced.state ? { state: synced.state } : {}),
         }, timing, debugTiming);
         return;
       }
+      reject(503, "recruiting_sql_reducer_unavailable");
     }
 
-    if (operation && (!post || operation.action === "createRecruitingPost" || shouldReplayRecruitingOperation(operation))) {
+    if (operation.action === "confirmRecruitingMatch") {
       const state = await timing.track("authoritativeLoad", () => loadAuthoritativeState(context, { operation }));
       const result = await timing.track("authoritativeReplay", () => applyAuthoritativeRecruitingOperation(state, operation));
       replayResult = result;
@@ -1360,9 +1405,6 @@ export default async function handler(request, response) {
       createdMatch = result.createdMatch;
       notifications = result.notifications;
       action = operation.action;
-    } else if (operation && post) {
-      action = operation.action;
-      if (body.createdMatch && typeof body.createdMatch === "object") createdMatch = body.createdMatch;
     }
 
     const recruitingNotifications = createdMatch

@@ -221,6 +221,7 @@ const MATCH_OPERATION_ONLY_ACTIONS = new Set([
   "submitMatchResult",
   "substituteMatchPlayer",
   "toggleMatchStar",
+  "updateTournamentMatchSchedule",
   "removeMatchRoomPlayer",
   "setMatchRecordTeamRoster",
   "setMatchRoomPlayerPlacement",
@@ -237,6 +238,7 @@ const RECRUITING_OPERATION_ONLY_ACTIONS = new Set([
   "detachRecruitingPartyPlayer",
   "inviteRecruitingPlayers",
   "inviteRecruitingReferee",
+  "interestRecruitingPost",
   "joinRecruitingSideParty",
   "kickRecruitingApplicant",
   "removeRecruitingPartyPlayer",
@@ -1565,9 +1567,7 @@ export function useAppData(authUser = null, appLocation = null) {
         recentRecruitingMutationTimesRef.current.delete(pendingPostId);
       }
     };
-    const payload = operation
-      ? { operation, ...(post?.id ? { post } : {}), notifications, createdMatch: meta.createdMatch ?? null }
-      : { post, notifications, ...meta };
+    const payload = operation ? { operation } : { post, notifications, ...meta };
     return runServerAction("/api/recruiting/sync-post", payload).then(async (result) => {
       if (result?.message && (result?.postId || pendingPostId)) {
         setState((prev) => mergeRecruitingChatMessage(prev, result.postId ?? pendingPostId, result.message));
@@ -1622,7 +1622,7 @@ export function useAppData(authUser = null, appLocation = null) {
         recentMatchMutationTimesRef.current.delete(pendingMatchId);
       }
     };
-    const payload = operation ? { operation, ...(match?.id ? { match } : {}), notifications } : { match, notifications, ...meta };
+    const payload = operation ? { operation } : { match, notifications, ...meta };
     return runServerAction("/api/matches/sync-match", payload).then((result) => {
       if (result?.match) {
         setState((prev) => mergeServerRoomResult(prev, result, {
@@ -2233,6 +2233,7 @@ export function useAppData(authUser = null, appLocation = null) {
         let rollbackState = null;
         let syncedPost = null;
         let syncedNotifications = [];
+        const directServerOperation = isSupabaseConfigured && operation && RECRUITING_OPERATION_ONLY_ACTIONS.has(operation.action);
         const applyLocalMutation = () => setState((prev) => {
           rollbackState = prev;
           const beforePost = (prev.recruitingPosts ?? []).find((post) => post.id === postId) ?? null;
@@ -2242,7 +2243,7 @@ export function useAppData(authUser = null, appLocation = null) {
           syncedNotifications = syncedPost ? getNewRecruitingNotifications(prev, next, postId) : [];
           return !syncedPost && operation && isSupabaseConfigured ? prev : next;
         });
-        if (optimisticBeforeServerCheck) applyLocalMutation();
+        if (optimisticBeforeServerCheck && !directServerOperation) applyLocalMutation();
         const serverReady = await ensureServerActionAvailable("/api/recruiting/sync-post", "방 변경", { quiet: optimisticBeforeServerCheck });
         if (serverReady !== true) {
           if (optimisticBeforeServerCheck) rollbackServerMutation(rollbackState, "방 변경", { action: meta.action, postId, error: serverReady?.error });
@@ -2251,6 +2252,9 @@ export function useAppData(authUser = null, appLocation = null) {
         if (!ensureRemoteReady("방 변경")) {
           if (optimisticBeforeServerCheck) rollbackServerMutation(rollbackState, "방 변경", { action: meta.action, postId, error: "remote_not_ready" });
           return;
+        }
+        if (directServerOperation) {
+          return syncRecruitingPostServer(null, [], { ...meta, postId });
         }
         if (!optimisticBeforeServerCheck) applyLocalMutation();
         if (operation?.action === "sendRecruitingChat" || RECRUITING_OPERATION_ONLY_ACTIONS.has(operation?.action)) return rollbackIfServerFailed(syncRecruitingPostServer(null, [], { ...meta, postId }), rollbackState, "방 변경", { action: meta.action, postId });
@@ -2263,6 +2267,14 @@ export function useAppData(authUser = null, appLocation = null) {
         if (serverReady !== true) return serverReady;
         if (!ensureRemoteReady("경기 변경")) return;
         const operation = getServerOperation({ ...meta, matchId });
+        if (isSupabaseConfigured && operation && MATCH_OPERATION_ONLY_ACTIONS.has(operation.action)) {
+          const currentMatch = (stateRef.current.matches ?? []).find((match) => match.id === matchId) ?? null;
+          return syncMatchServer(null, [], {
+            ...meta,
+            matchId,
+            baseUpdatedAt: currentMatch?.updatedAt ?? currentMatch?.createdAt ?? null,
+          });
+        }
         let rollbackState = null;
         let baseUpdatedAt = null;
         let syncedMatch = null;
@@ -2449,6 +2461,16 @@ export function useAppData(authUser = null, appLocation = null) {
           .then((result) => (result?.ok === false ? result : createdId));
       },
       approveTournamentTeam: (tournamentId, teamId) => {
+        if (isSupabaseConfigured) {
+          if (!ensureRemoteReady("토너먼트 팀 승인")) return Promise.resolve(null);
+          return syncTournamentServer(null, [], {
+            operation: {
+              action: "approveTournamentTeam",
+              tournamentId,
+              teamId,
+            },
+          });
+        }
         let rollbackState = null;
         let syncedTournament = null;
         let createdMatches = [];

@@ -411,6 +411,7 @@ function normalizeSettings(settings = {}, options = {}) {
 
 export function normalizeState(state, options = {}) {
   const includeDemo = options.includeDemo !== false;
+  const preserveAuthoritativeMatches = options.preserveAuthoritativeMatches ?? !includeDemo;
   const demoState = includeDemo ? getDemoInitialState() : EMPTY_STATE;
   const baseState = includeDemo ? clone(demoState) : clone(EMPTY_STATE);
   const notifications = state?.notifications?.length ? state.notifications : includeDemo ? demoState.notifications : [];
@@ -430,7 +431,8 @@ export function normalizeState(state, options = {}) {
     teamInvitations: state?.teamInvitations ?? (includeDemo ? demoState.teamInvitations ?? [] : []),
     affiliations: (includeDemo ? mergeDemoDefaultsById(state?.affiliations, demoState.affiliations) : state?.affiliations ?? []).filter((affiliation) => affiliation.type !== "club"),
     seasons: includeDemo ? mergeDemoDefaultsById(state?.seasons, demoState.seasons ?? []) : state?.seasons ?? [],
-    matches: (includeDemo ? mergeDemoDefaultsById(state?.matches, demoState.matches) : state?.matches ?? []).map(normalizeMatch),
+    matches: (includeDemo ? mergeDemoDefaultsById(state?.matches, demoState.matches) : state?.matches ?? [])
+      .map((match) => normalizeMatch(match, { preserveAuthoritativeLifecycle: preserveAuthoritativeMatches })),
     tournaments: (includeDemo ? mergeDemoDefaultsById(state?.tournaments, demoState.tournaments ?? []) : state?.tournaments ?? []).map(normalizeTournament),
     notifications: notifications.map((notification) => ({ readAt: null, ...notification })),
     discordNotificationDeliveries: state?.discordNotificationDeliveries ?? (includeDemo ? demoState.discordNotificationDeliveries ?? [] : []),

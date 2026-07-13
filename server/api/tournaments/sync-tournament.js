@@ -1,6 +1,5 @@
 import { getAuthenticatedContext, readJsonBody, sendJson, toArray, toNotificationRows } from "../_supabaseAdmin.js";
 import {
-  applyAuthoritativeTournamentOperation,
   getOperation,
   loadAuthoritativeState,
 } from "../_authoritativeState.js";
@@ -12,6 +11,7 @@ const STATUSES = new Set(["draft", "scheduled", "active", "closed", "cancelled"]
 const MMR_LIMIT_MODES = new Set(["off", "warn", "block"]);
 const MMR_POLICIES = new Set(["gap_adjusted", "standard", "event_only"]);
 const TEAM_STATUSES = new Set(["invited", "accepted", "declined"]);
+const TOURNAMENT_OPERATION_ACTIONS = new Set(["createTournament", "approveTournamentTeam"]);
 
 function pickAllowed(value, allowed, fallback) {
   const text = String(value || "").trim();
@@ -268,6 +268,39 @@ function validateTeamApprovalScope(context, existingTournament, existingTeamRows
   }
 }
 
+function isMissingTournamentOperationRpc(error = {}) {
+  const message = String(error?.message ?? "");
+  return error?.code === "PGRST202" || message.includes("rankball_tournament_operation_action");
+}
+
+async function applySqlTournamentOperation(context, operation = {}) {
+  const { data, error } = await context.supabase.rpc("rankball_tournament_operation_action", {
+    p_actor_profile_id: context.profileId,
+    p_operation: operation,
+  });
+  if (error) {
+    if (isMissingTournamentOperationRpc(error)) return null;
+    throw error;
+  }
+
+  const tournamentId = String(data?.tournamentId ?? operation.tournamentId ?? operation.preferredTournamentId ?? operation.draft?.id ?? "").trim();
+  const state = await loadAuthoritativeState(context, {
+    operation: { action: "loadTournament", tournamentId },
+  });
+  const tournament = (state.tournaments ?? []).find((item) => item.id === tournamentId) ?? null;
+  const createdMatchIds = new Set(toArray(data?.createdMatches).map((item) => item?.id).filter(Boolean));
+  const createdMatches = (state.matches ?? []).filter((match) => createdMatchIds.has(match.id));
+  return {
+    ok: true,
+    ...data,
+    tournamentId,
+    tournament,
+    createdMatches,
+    createdMatchCount: createdMatches.length,
+    state,
+  };
+}
+
 export default async function handler(request, response) {
   if (request.method !== "POST") {
     response.setHeader("Allow", "POST");
@@ -279,6 +312,8 @@ export default async function handler(request, response) {
     const body = await readJsonBody(request);
     const context = await getAuthenticatedContext(request);
     const operation = getOperation(body, body.action ? String(body.action) : "sync");
+    if (!operation) reject(400, "tournament_operation_required");
+    if (!TOURNAMENT_OPERATION_ACTIONS.has(operation.action)) reject(400, "unsupported_tournament_operation");
     let tournament = null;
     let notifications = body.notifications ?? [];
     let createdMatches = [];
@@ -286,13 +321,14 @@ export default async function handler(request, response) {
     let teamId = String(body.teamId || "").trim();
 
     if (operation) {
-      const state = await loadAuthoritativeState(context, { operation });
-      const result = applyAuthoritativeTournamentOperation(state, operation);
-      tournament = normalizeTournament(result.tournament, context.profileId);
-      notifications = result.notifications;
-      createdMatches = result.createdMatches;
-      action = operation.action;
-      teamId = String(operation.teamId || teamId || "").trim();
+      const sqlResult = await applySqlTournamentOperation(context, operation);
+      if (sqlResult) {
+        sendJson(response, 200, sqlResult);
+        return;
+      }
+      const error = new Error("tournament_operation_rpc_missing");
+      error.statusCode = 503;
+      throw error;
     } else {
       tournament = normalizeTournament(body.tournament, context.profileId);
     }

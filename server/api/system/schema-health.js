@@ -255,6 +255,34 @@ const REQUIRED_RPCS = [
     args: { p_actor_profile_id: "", p_post_id: "" },
   },
   {
+    name: "rankball_recruiting_management_action",
+    args: { p_actor_profile_id: "", p_operation: {} },
+  },
+  {
+    name: "rankball_match_result_action",
+    args: { p_actor_profile_id: "", p_match_id: "", p_result: {} },
+  },
+  {
+    name: "rankball_match_referee_absence_action",
+    args: { p_actor_profile_id: "", p_match_id: "", p_action: "" },
+  },
+  {
+    name: "rankball_match_room_action",
+    args: { p_actor_profile_id: "", p_action: "", p_match_id: "", p_payload: {} },
+  },
+  {
+    name: "rankball_match_resume_approval_action",
+    args: { p_actor_profile_id: "", p_match_id: "", p_result_draft: null },
+  },
+  {
+    name: "rankball_tournament_operation_action",
+    args: { p_actor_profile_id: "", p_operation: {} },
+  },
+  {
+    name: "rankball_tournament_match_schedule_action",
+    args: { p_actor_profile_id: "", p_tournament_id: "", p_match_id: "", p_schedule: {} },
+  },
+  {
     name: "rankball_rls_policy_health",
     args: {},
   },
@@ -264,6 +292,10 @@ const REQUIRED_RPCS = [
   },
   {
     name: "rankball_rpc_grant_health",
+    args: {},
+  },
+  {
+    name: "rankball_authoritative_rpc_grant_health",
     args: {},
   },
   {
@@ -485,17 +517,21 @@ async function checkRlsPolicies(client) {
 }
 
 async function checkRpcGrants(client) {
-  const { data, error } = await client.rpc("rankball_rpc_grant_health");
-  if (error) {
+  const results = await Promise.all([
+    client.rpc("rankball_rpc_grant_health"),
+    client.rpc("rankball_authoritative_rpc_grant_health"),
+  ]);
+  const failedRpc = results.find((result) => result.error);
+  if (failedRpc?.error) {
     return {
       ok: false,
-      error: error.message || "rpc_grant_health_failed",
+      error: failedRpc.error.message || "rpc_grant_health_failed",
       failed: [],
       checks: [],
     };
   }
 
-  const checks = Array.isArray(data) ? data : [];
+  const checks = results.flatMap((result) => Array.isArray(result.data) ? result.data : []);
   const failed = checks.filter((check) => !check.ok);
   return {
     ok: failed.length === 0,

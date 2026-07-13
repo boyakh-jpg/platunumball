@@ -2297,8 +2297,8 @@ flowchart TD
 ## 2026-07-13 모집 개인 초대 DB 전이
 
 - 개인 참가 방의 선수 초대, 수락, 거절은 방 id advisory transaction lock과 `recruiting_posts` row lock 안에서 처리한다.
-- SQL 직접 경로는 `hostJoinMode=player`, `joinMode=player`, 개인 대상, `mmrLimitMode=off|warn`인 단순 초대만 담당한다.
-- 팀/파티/심판 초대와 `mmrLimitMode=block`은 팀 MMR, 파티 정원, 심판 자격 계산을 보존하기 위해 서버 authoritative replay를 사용한다.
+- 개인 초대 전용 RPC와 통합 모집 관리 RPC가 개인·팀·파티·심판 초대 및 응답을 모두 처리한다.
+- `mmrLimitMode=block`, 팀 MMR, 파티 정원, 심판 자격은 잠긴 DB reducer가 검증한다.
 - 초대 수락은 연령 제한, 출전 정원, 후보 2명 제한을 DB에서 다시 확인하고 `recruiting_applications`, `roomState.invitations`, `pinnedReservePlayers`, 알림을 한 트랜잭션으로 갱신한다.
 - 초대 거절은 대상 본인의 pending invitation만 같은 잠금 안에서 제거한다.
 
@@ -2315,7 +2315,7 @@ flowchart TD
 - DB는 경기 참가자, 후보, 기록자, 방장, 심판 관계와 경기 종료 후 이의 시간창을 다시 확인한다.
 - 접수 시 기존 `match_results`와 `player_match_stats`로 `dispute_draft_result`를 만들고 `match_disputes`와 알림을 같은 트랜잭션에 저장한다.
 - 본인 득점 수정 요청이 있으면 본인 기록만 draft에 반영하고 해당 사이드 점수를 다시 합산한다.
-- `resumeMatchApproval`의 최종 결과 확정과 MMR commit은 기존 서버 계산 + DB commit 경로를 유지한다.
+- `resumeMatchApproval`의 선택적 최종 draft 병합, 최종 승인 계산, MMR commit은 한 잠긴 DB RPC transaction에서 처리한다.
 
 ## 2026-07-13 관리자 화면 반영 순서
 
@@ -2332,7 +2332,7 @@ flowchart TD
 ## 2026-07-13 모집방 기록자와 종료 DB 권위
 
 1. `setRecruitingStatRecorder`는 방장만 실행하며, 심판 없는 열린 방의 같은 사이드 준비된 후보만 기록자로 지정한다.
-2. 단순 개인 후보는 `rankball_recruiting_stat_recorder_action()`에서 row lock으로 지정/해제한다. 팀/파티 후보는 중앙 reducer replay를 유지한다.
+2. 개인·팀·파티·pinned 후보와 후보 상태의 방장은 `rankball_recruiting_stat_recorder_action()`에서 row lock으로 지정/해제한다.
 3. `closeRecruitingPost`는 `rankball_recruiting_close_action()`에서 방 종료, 초대 정리, 신뢰 점수 페널티, 페널티 알림, Discord 링크 비활성화를 한 transaction으로 처리한다.
 4. 같은 종료 요청 재시도는 `alreadyClosed=true`로 멱등 처리하고 페널티를 중복 적용하지 않는다.
 ## 2026-07-13 mutable profile cache policy
@@ -2353,3 +2353,14 @@ flowchart TD
 3. `npm run verify:release`로 production build와 원격 Auth/DB 전체 흐름을 실행한다.
 4. 종료 코드가 0일 때만 배포한다.
 5. 배포 후 Discord bridge worker, reminder worker, schema health를 운영 모니터링한다.
+
+## 2026-07-13 방/경기/토너먼트 DB 최종 권위
+
+1. Supabase 운영 환경의 모집·경기·토너먼트 mutation API는 `{ operation }`만 받는다. 브라우저가 계산한 room/match/tournament snapshot은 저장 원본으로 받지 않는다.
+2. 모집방 생성, 초대, 초대 응답, 룰, 참가자·후보 배치, 팀 파티 명단·분리·강퇴는 방 advisory lock과 row lock 안의 DB reducer가 처리한다.
+3. 경기 결과·부분 기록 병합, 심판 부재, 룰·명단·선수 제거, 이의 재개, 최종 승인과 MMR은 경기 advisory lock과 row lock 안의 DB reducer가 처리한다.
+4. 토너먼트 대진 검증, 1라운드 생성, 승자 후속 라운드 생성은 토너먼트 DB RPC와 확정 경기 trigger가 처리한다.
+5. 지원 RPC가 없으면 JS snapshot replay로 후퇴하지 않고 `503`으로 실패한다. 생성·모집 확정에 필요한 서버 조합 계산은 검증 후 단일 DB transaction RPC로만 커밋한다.
+6. Discord 초대 수락·거절도 웹과 같은 `rankball_recruiting_management_action()`을 사용해 개인·팀·파티 초대를 동일하게 처리한다.
+7. Supabase 프론트는 모집·경기·토너먼트 operation에서 로컬 reducer를 먼저 실행하지 않고 서버가 반환한 DB row만 병합한다. 로컬 reducer는 비-Supabase demo mode에만 남긴다.
+8. 원격 DB 경기의 status/result/score/종료 시각은 미래 일정 보정으로 덮지 않는다. 미래 lifecycle 복구는 local/demo state에만 적용한다.

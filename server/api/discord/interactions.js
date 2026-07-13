@@ -1,10 +1,6 @@
 import crypto from "node:crypto";
 import { getSupabaseAdminClient, sendJson } from "../_supabaseAdmin.js";
-import {
-  applyAuthoritativeRecruitingOperation,
-  loadAuthoritativeState,
-} from "../_authoritativeState.js";
-import { persistRecruitingPostSnapshot } from "../recruiting/sync-post.js";
+import { loadAuthoritativeState } from "../_authoritativeState.js";
 
 const INVITE_PREFIX = "rankball:invite";
 const INTERACTION_PING = 1;
@@ -171,14 +167,15 @@ async function handleInviteAction(interaction) {
   const decision = getInviteDecisionState(state, operation, profile.id);
   if (decision.stale) return getStaleInviteMessage(decision);
 
-  const result = applyAuthoritativeRecruitingOperation(state, operation);
-  await persistRecruitingPostSnapshot(context, {
-    post: result.post,
-    notifications: result.notifications,
-    action: operation.action,
-    body: operation,
-    expectedUpdatedAt: result.baseUpdatedAt ?? null,
+  const { error } = await supabase.rpc("rankball_recruiting_management_action", {
+    p_actor_profile_id: profile.id,
+    p_operation: operation,
   });
+  if (error) {
+    if (["P0002", "23514"].includes(error.code)) return getStaleInviteMessage({ reason: "processed_invitation" });
+    if (error.code === "42501") reject(403, "discord_invite_not_for_user");
+    throw error;
+  }
 
   return getInviteResultMessage(operation);
 }

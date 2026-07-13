@@ -1024,13 +1024,6 @@ const RESULT_REPLACE_MATCH_ACTIONS = new Set([
   "resumeMatchApproval",
 ]);
 
-const AUTHORITATIVE_REPLAY_MATCH_ACTIONS = new Set([
-  "approveMatch",
-  "toggleMatchStar",
-  "submitMatchThumbs",
-  "confirmMatchRefereeAbsence",
-]);
-
 function isSoloRecordMatch(match = {}) {
   return match?.rules?.recordType === RECORD_TYPES.personalRecord;
 }
@@ -1041,10 +1034,7 @@ function shouldReplaceMatchResult(action, match = {}) {
 
 function shouldReplayMatchOperation(operation = null, match = null) {
   if (!operation) return false;
-  if (!match) return true;
-  if (AUTHORITATIVE_REPLAY_MATCH_ACTIONS.has(operation.action)) return true;
-  if (operation.action === "createMatch") return !isSoloRecordMatch(match);
-  return false;
+  return operation.action === "createMatch" && (!match || !isSoloRecordMatch(match));
 }
 
 const ROSTER_LOCKED_MATCH_ACTIONS = new Set([
@@ -1180,10 +1170,19 @@ const SQL_REDUCER_MATCH_ACTIONS = new Set([
   "endMatch",
   "handoffMatchRecorder",
   "removeMatchLatePlayer",
+  "removeMatchRoomPlayer",
+  "requestMatchRefereeAbsence",
+  "confirmMatchRefereeAbsence",
+  "resumeMatchApproval",
+  "setMatchRecordTeamRoster",
+  "setMatchRoomPlayerPlacement",
   "startMatch",
+  "submitMatchResult",
   "submitMatchThumbs",
   "substituteMatchPlayer",
   "toggleMatchStar",
+  "updateMatchRoomRules",
+  "updateTournamentMatchSchedule",
   "voidMatch",
 ]);
 
@@ -1197,12 +1196,22 @@ function isMissingSqlMatchReducer(error = {}) {
     message.includes("rankball_match_dispute_action") ||
     message.includes("rankball_match_end_action") ||
     message.includes("rankball_match_late_player_action") ||
+    message.includes("rankball_match_referee_absence_action") ||
+    message.includes("rankball_match_result_action") ||
+    message.includes("rankball_match_resume_approval_action") ||
+    message.includes("rankball_match_room_action") ||
     message.includes("rankball_match_roster_move_action") ||
     message.includes("rankball_match_star_toggle_action") ||
     message.includes("rankball_match_thumbs_action") ||
     message.includes("rankball_match_start_action") ||
-    message.includes("rankball_match_terminal_action")
+    message.includes("rankball_match_terminal_action") ||
+    message.includes("rankball_tournament_match_schedule_action")
   );
+}
+
+function rejectSqlMatchFallback(data = {}) {
+  if (!data?.fallback) return;
+  reject(409, String(data.reason || "match_operation_blocked"));
 }
 
 function shouldUseSqlMatchAction(operation = {}) {
@@ -1221,10 +1230,19 @@ function canUseSqlMatchActionWithoutSnapshot(operation = {}) {
     "handoffMatchRecorder",
     "addMatchLatePlayer",
     "removeMatchLatePlayer",
+    "removeMatchRoomPlayer",
+    "requestMatchRefereeAbsence",
+    "confirmMatchRefereeAbsence",
+    "resumeMatchApproval",
+    "setMatchRecordTeamRoster",
+    "setMatchRoomPlayerPlacement",
     "startMatch",
+    "submitMatchResult",
     "submitMatchThumbs",
     "substituteMatchPlayer",
     "toggleMatchStar",
+    "updateMatchRoomRules",
+    "updateTournamentMatchSchedule",
     "voidMatch",
   ].includes(operation?.action) && Boolean(operation?.matchId);
 }
@@ -1235,16 +1253,120 @@ async function loadSyncedMatch(context, matchId = "") {
   return (state.matches ?? []).find((item) => item.id === matchId) ?? null;
 }
 
-async function loadSyncedMatchAfterWrite(context, matchId = "", fallbackMatch = null) {
-  try {
-    return await loadSyncedMatch(context, matchId);
-  } catch (error) {
-    console.warn("Match post-write reload failed.", error.message);
-    return fallbackMatch;
+function getSqlMatchReloadPredicate(operation = {}) {
+  const action = String(operation.action || "");
+  if (action === "submitMatchResult") {
+    return (match) => Boolean(match?.result) &&
+      Number(match.result.scoreA ?? match.teamA?.score ?? 0) === Number(operation.result?.scoreA ?? 0) &&
+      Number(match.result.scoreB ?? match.teamB?.score ?? 0) === Number(operation.result?.scoreB ?? 0);
   }
+  if (action === "updateTournamentMatchSchedule") {
+    return (match) => match?.scheduledDate === operation.schedule?.scheduledDate &&
+      String(match?.scheduledTime || "").slice(0, 5) === String(operation.schedule?.scheduledTime || "").slice(0, 5);
+  }
+  if (action === "approveMatch") {
+    return (match) => match?.status === "confirmed" || (match?.approvals?.[operation.sideName] ?? []).includes(operation.playerId);
+  }
+  if (action === "agreeMatch") {
+    return (match) => match?.status === "agreed" || (match?.agreements?.[operation.sideName] ?? []).includes(operation.playerId);
+  }
+  if (action === "startMatch") return (match) => Boolean(match?.startedAt);
+  if (action === "endMatch") return (match) => Boolean(match?.endedAt);
+  if (action === "checkInMatchPlayer") {
+    return (match) => (match?.attendance?.[operation.sideName] ?? []).includes(operation.playerId);
+  }
+  return null;
+}
+
+async function loadSyncedMatchAfterWrite(context, matchId = "", fallbackMatch = null, options = {}) {
+  const predicate = typeof options.predicate === "function" ? options.predicate : null;
+  const delays = predicate ? [0, 60, 120, 240, 480] : [0];
+  let latestMatch = fallbackMatch;
+  for (const delay of delays) {
+    if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
+    try {
+      const loadedMatch = await loadSyncedMatch(context, matchId);
+      if (loadedMatch) latestMatch = loadedMatch;
+      if (!predicate || predicate(loadedMatch)) return loadedMatch;
+    } catch (error) {
+      console.warn("Match post-write reload failed.", error.message);
+    }
+  }
+  return latestMatch;
 }
 
 async function applySqlMatchAction(context, operation = {}, match = {}) {
+  if (operation.action === "updateTournamentMatchSchedule" && operation.matchId) {
+    const { data, error } = await context.supabase.rpc("rankball_tournament_match_schedule_action", {
+      p_actor_profile_id: context.profileId,
+      p_tournament_id: operation.tournamentId ?? "",
+      p_match_id: operation.matchId,
+      p_schedule: operation.schedule ?? {},
+    });
+    if (error) {
+      if (isMissingSqlMatchReducer(error)) return null;
+      throw error;
+    }
+    return { ok: true, ...(data && typeof data === "object" ? data : {}), matchId: operation.matchId };
+  }
+
+  if (operation.action === "submitMatchResult" && (match?.id || operation.matchId)) {
+    const matchId = operation.matchId ?? match.id;
+    const { data, error } = await context.supabase.rpc("rankball_match_result_action", {
+      p_actor_profile_id: context.profileId,
+      p_match_id: matchId,
+      p_result: operation.result ?? {},
+    });
+    if (error) {
+      if (isMissingSqlMatchReducer(error)) return null;
+      throw error;
+    }
+    return { ok: true, ...(data && typeof data === "object" ? data : {}), matchId };
+  }
+
+  if (["requestMatchRefereeAbsence", "confirmMatchRefereeAbsence"].includes(operation.action) && (match?.id || operation.matchId)) {
+    const matchId = operation.matchId ?? match.id;
+    const { data, error } = await context.supabase.rpc("rankball_match_referee_absence_action", {
+      p_actor_profile_id: context.profileId,
+      p_match_id: matchId,
+      p_action: operation.action,
+    });
+    if (error) {
+      if (isMissingSqlMatchReducer(error)) return null;
+      throw error;
+    }
+    return { ok: true, ...(data && typeof data === "object" ? data : {}), matchId };
+  }
+
+  if (["updateMatchRoomRules", "setMatchRoomPlayerPlacement", "setMatchRecordTeamRoster", "removeMatchRoomPlayer"].includes(operation.action) && (match?.id || operation.matchId)) {
+    const matchId = operation.matchId ?? match.id;
+    const { data, error } = await context.supabase.rpc("rankball_match_room_action", {
+      p_actor_profile_id: context.profileId,
+      p_match_id: matchId,
+      p_action: operation.action,
+      p_payload: operation,
+    });
+    if (error) {
+      if (isMissingSqlMatchReducer(error)) return null;
+      throw error;
+    }
+    return { ok: true, ...(data && typeof data === "object" ? data : {}), matchId };
+  }
+
+  if (operation.action === "resumeMatchApproval" && (match?.id || operation.matchId)) {
+    const matchId = operation.matchId ?? match.id;
+    const { data, error } = await context.supabase.rpc("rankball_match_resume_approval_action", {
+      p_actor_profile_id: context.profileId,
+      p_match_id: matchId,
+      p_result_draft: operation.resultDraft ?? null,
+    });
+    if (error) {
+      if (isMissingSqlMatchReducer(error)) return null;
+      throw error;
+    }
+    return { ok: true, ...(data && typeof data === "object" ? data : {}), matchId };
+  }
+
   if (operation.action === "disputeMatch" && (match?.id || operation.matchId)) {
     const matchId = operation.matchId ?? match.id;
     const { data, error } = await context.supabase.rpc("rankball_match_dispute_action", {
@@ -1256,7 +1378,7 @@ async function applySqlMatchAction(context, operation = {}, match = {}) {
       if (isMissingSqlMatchReducer(error)) return null;
       throw error;
     }
-    if (data?.fallback) return null;
+    rejectSqlMatchFallback(data);
 
     let discordDeliveryCount = 0;
     let discordDeliveryError = null;
@@ -1294,7 +1416,7 @@ async function applySqlMatchAction(context, operation = {}, match = {}) {
       if (isMissingSqlMatchReducer(error)) return null;
       throw error;
     }
-    if (data?.fallback) return null;
+    rejectSqlMatchFallback(data);
 
     let discordDeliveryCount = 0;
     let discordDeliveryError = null;
@@ -1333,7 +1455,7 @@ async function applySqlMatchAction(context, operation = {}, match = {}) {
       if (isMissingSqlMatchReducer(error)) return null;
       throw error;
     }
-    if (data?.fallback) return null;
+    rejectSqlMatchFallback(data);
     return {
       ok: true,
       ...(data && typeof data === "object" ? data : {}),
@@ -1351,7 +1473,7 @@ async function applySqlMatchAction(context, operation = {}, match = {}) {
       if (isMissingSqlMatchReducer(error)) return null;
       throw error;
     }
-    if (data?.fallback) return null;
+    rejectSqlMatchFallback(data);
     return {
       ok: true,
       ...(data && typeof data === "object" ? data : {}),
@@ -1370,7 +1492,7 @@ async function applySqlMatchAction(context, operation = {}, match = {}) {
       if (isMissingSqlMatchReducer(error)) return null;
       throw error;
     }
-    if (data?.fallback) return null;
+    rejectSqlMatchFallback(data);
     return {
       ok: true,
       ...(data && typeof data === "object" ? data : {}),
@@ -1389,7 +1511,7 @@ async function applySqlMatchAction(context, operation = {}, match = {}) {
       if (isMissingSqlMatchReducer(error)) return null;
       throw error;
     }
-    if (data?.fallback) return null;
+    rejectSqlMatchFallback(data);
     return {
       ok: true,
       ...(data && typeof data === "object" ? data : {}),
@@ -1408,7 +1530,7 @@ async function applySqlMatchAction(context, operation = {}, match = {}) {
       if (isMissingSqlMatchReducer(error)) return null;
       throw error;
     }
-    if (data?.fallback) return null;
+    rejectSqlMatchFallback(data);
     return {
       ok: true,
       ...(data && typeof data === "object" ? data : {}),
@@ -1430,7 +1552,7 @@ async function applySqlMatchAction(context, operation = {}, match = {}) {
       if (isMissingSqlMatchReducer(error)) return null;
       throw error;
     }
-    if (data?.fallback) return null;
+    rejectSqlMatchFallback(data);
     return {
       ok: true,
       ...(data && typeof data === "object" ? data : {}),
@@ -1451,7 +1573,7 @@ async function applySqlMatchAction(context, operation = {}, match = {}) {
       if (isMissingSqlMatchReducer(error)) return null;
       throw error;
     }
-    if (data?.fallback) return null;
+    rejectSqlMatchFallback(data);
 
     let discordDeliveryCount = 0;
     let discordDeliveryError = null;
@@ -1481,7 +1603,7 @@ async function applySqlMatchAction(context, operation = {}, match = {}) {
   if (["addMatchLatePlayer", "removeMatchLatePlayer"].includes(operation.action) && (match?.id || operation.matchId)) {
     const sourceMatch = match?.id ? match : await loadSyncedMatch(context, operation.matchId);
     const latePlayerPayload = getLatePlayerSqlPayload(sourceMatch, operation);
-    if (!sourceMatch?.id || !latePlayerPayload) return null;
+    if (!sourceMatch?.id || !latePlayerPayload) reject(409, "unsupported_match_late_player_operation");
     const { data, error } = await context.supabase.rpc("rankball_match_late_player_action", {
       p_actor_profile_id: context.profileId,
       p_action: operation.action,
@@ -1496,7 +1618,7 @@ async function applySqlMatchAction(context, operation = {}, match = {}) {
       if (isMissingSqlMatchReducer(error)) return null;
       throw error;
     }
-    if (data?.fallback) return null;
+    rejectSqlMatchFallback(data);
     return {
       ok: true,
       ...(data && typeof data === "object" ? data : {}),
@@ -1516,7 +1638,7 @@ async function applySqlMatchAction(context, operation = {}, match = {}) {
     if (isMissingSqlMatchReducer(error)) return null;
     throw error;
   }
-  if (data?.fallback) return null;
+  rejectSqlMatchFallback(data);
 
   let discordDeliveryCount = 0;
   let discordDeliveryError = null;
@@ -1804,9 +1926,13 @@ export default async function handler(request, response) {
     const body = await readJsonBody(request);
     const context = await getAuthenticatedContext(request);
     const operation = getOperation(body, body.action ? String(body.action) : "sync");
-    let match = body.match && typeof body.match === "object" ? body.match : null;
-    let notifications = body.notifications ?? [];
-    let action = body.action ? String(body.action) : "sync";
+    if (!operation) reject(400, "match_operation_required");
+    if (!SQL_REDUCER_MATCH_ACTIONS.has(operation.action) && operation.action !== "createMatch") {
+      reject(400, "unsupported_match_operation");
+    }
+    let match = null;
+    let notifications = [];
+    let action = operation.action;
     let ratingCommit = null;
     let trustCommit = null;
     let tournament = null;
@@ -1816,14 +1942,50 @@ export default async function handler(request, response) {
     if (operation && shouldUseSqlMatchAction(operation) && (match || canUseSqlMatchActionWithoutSnapshot(operation))) {
       const sqlResult = await applySqlMatchAction(context, operation, match);
       if (sqlResult) {
-        const syncedMatch = await loadSyncedMatchAfterWrite(context, sqlResult.matchId ?? operation.matchId ?? match.id, match);
+        const syncedMatch = await loadSyncedMatchAfterWrite(
+          context,
+          sqlResult.matchId ?? operation.matchId ?? match?.id,
+          match,
+          { predicate: getSqlMatchReloadPredicate(operation) },
+        );
+        let discordDeliveryCount = Number(sqlResult.discordDeliveryCount ?? 0);
+        let discordDeliveryError = sqlResult.discordDeliveryError ?? null;
+        if (["submitMatchResult", "approveMatch", "resumeMatchApproval"].includes(operation.action) && syncedMatch?.id) {
+          try {
+            discordDeliveryCount = await withTimeout(
+              queueMatchDiscordDeliveries(context.supabase, syncedMatch, operation.action),
+              DISCORD_QUEUE_TIMEOUT_MS,
+              "discord_match_delivery_timeout",
+            );
+          } catch (deliveryError) {
+            discordDeliveryError = deliveryError.message || "discord_match_delivery_failed";
+            console.error("Match Discord delivery queue failed.", deliveryError);
+          }
+        }
+        const finalizedState = sqlResult.ratingAtomic
+          ? await loadAuthoritativeState(context, { operation: { action: "approveMatch", matchId: sqlResult.matchId ?? operation.matchId } })
+          : null;
+        const nextTournamentMatches = finalizedState && syncedMatch?.tournamentId
+          ? (finalizedState.matches ?? []).filter((item) => (
+              item.tournamentId === syncedMatch.tournamentId &&
+              Number(item.tournamentRound ?? 0) > Number(syncedMatch.tournamentRound ?? 0)
+            ))
+          : [];
         sendJson(response, 200, {
           ...sqlResult,
+          ratingCommitted: Boolean(sqlResult.ratingCommitted || sqlResult.ratingAtomic),
+          discordDeliveryCount,
+          discordDeliveryError,
           ...(syncedMatch ? { match: syncedMatch } : {}),
+          ...(finalizedState ? { state: finalizedState } : {}),
+          ...(syncedMatch?.tournamentId ? {
+            tournamentSynced: true,
+            createdTournamentMatchCount: nextTournamentMatches.length,
+          } : {}),
         });
         return;
       }
-      match = null;
+      reject(503, "match_sql_reducer_unavailable");
     }
 
     if (shouldReplayMatchOperation(operation, match)) {
@@ -1876,7 +2038,11 @@ export default async function handler(request, response) {
     });
   } catch (error) {
     console.error("Match sync failed.", error);
-    const statusCode = error.statusCode || (error.code === "40001" || error.message === "match_stale_snapshot" ? 409 : 500);
-    sendJson(response, statusCode, { error: error.message || "match_sync_failed" });
+    const permissionDenied = error.code === "42501";
+    const statusCode = error.statusCode || (permissionDenied ? 403 : error.code === "40001" || error.message === "match_stale_snapshot" ? 409 : 500);
+    sendJson(response, statusCode, {
+      error: permissionDenied ? "match_sync_permission_denied" : error.message || "match_sync_failed",
+      ...(permissionDenied ? { reason: error.message || "match_sync_permission_denied" } : {}),
+    });
   }
 }
