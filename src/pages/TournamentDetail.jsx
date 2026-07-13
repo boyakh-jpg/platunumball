@@ -69,9 +69,10 @@ function getWinnerName(match) {
 }
 
 function getMatchWinnerTeamId(match) {
+  if (!match?.result) return "";
   const scoreA = Number(match.result?.scoreA ?? match.teamA?.score ?? 0);
   const scoreB = Number(match.result?.scoreB ?? match.teamB?.score ?? 0);
-  if (!match.result || scoreA === scoreB) return "";
+  if (scoreA === scoreB) return "";
   return scoreA > scoreB ? match.teamA?.teamId ?? "" : match.teamB?.teamId ?? "";
 }
 
