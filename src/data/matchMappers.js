@@ -185,7 +185,7 @@ export function getSoloRecordDateRange(now = new Date()) {
 function toDateTime(date, time, fallback) {
   if (date && time) return `${date} ${String(time).slice(0, 5)}`;
   if (date) return date;
-  return fallback ?? "?쇱젙 誘몄젙";
+  return fallback ?? "일정 미정";
 }
 
 export function fromRemoteMatch(row, context) {
@@ -229,9 +229,9 @@ export function fromRemoteMatch(row, context) {
   const teamA = context.teamById[row.team_a_id];
   const teamB = context.teamById[row.team_b_id];
   const rawScheduledAt = toDateTime(row.scheduled_date, row.scheduled_time, row.scheduled_at);
-  const legacyInstant = !row.rules?.timingType && rawScheduledAt === "利됱떆";
+  const legacyInstant = !row.rules?.timingType && rawScheduledAt === "즉시";
   const timingType = row.rules?.timingType === "instant" || legacyInstant ? "instant" : "scheduled";
-  const scheduledAt = timingType === "instant" ? "利됱떆" : rawScheduledAt;
+  const scheduledAt = timingType === "instant" ? "즉시" : rawScheduledAt;
   const playedPlayerIds = row.played_player_ids ?? row.rules?.playedPlayerIds ?? {};
   const mmrExcludedPlayerIds = row.mmr_excluded_player_ids ?? row.rules?.mmrExcludedPlayerIds ?? [];
   const statRecorders = normalizeStatRecorders(row.stat_recorders ?? row.rules?.statRecorders);
@@ -245,7 +245,7 @@ export function fromRemoteMatch(row, context) {
     title: row.title,
     mode: row.mode,
     courtId: row.court_id ?? null,
-    court: row.court_name ?? context.courtById[row.court_id]?.name ?? "誘몄젙",
+    court: row.court_name ?? context.courtById[row.court_id]?.name ?? "미정",
     visibility: row.visibility ?? row.rules?.visibility ?? "public",
     scheduledDate: row.scheduled_date,
     scheduledTime: row.scheduled_time ? String(row.scheduled_time).slice(0, 5) : "",
