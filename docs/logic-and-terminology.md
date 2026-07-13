@@ -2329,3 +2329,14 @@ flowchart TD
 2. 경기 snapshot, 승인 완료, 개인/팀 MMR, trust/streak, `confirmed_at`은 한 DB transaction에서 커밋한다.
 3. 어느 단계든 실패하면 경기 확정과 레이팅 변경을 모두 롤백한다.
 4. 유지보수 백필은 이미 저장된 경기만 보정하므로 `rankball_commit_match_rating()` 단독 RPC를 계속 사용할 수 있다.
+## 2026-07-13 모집방 기록자와 종료 DB 권위
+
+1. `setRecruitingStatRecorder`는 방장만 실행하며, 심판 없는 열린 방의 같은 사이드 준비된 후보만 기록자로 지정한다.
+2. 단순 개인 후보는 `rankball_recruiting_stat_recorder_action()`에서 row lock으로 지정/해제한다. 팀/파티 후보는 중앙 reducer replay를 유지한다.
+3. `closeRecruitingPost`는 `rankball_recruiting_close_action()`에서 방 종료, 초대 정리, 신뢰 점수 페널티, 페널티 알림, Discord 링크 비활성화를 한 transaction으로 처리한다.
+4. 같은 종료 요청 재시도는 `alreadyClosed=true`로 멱등 처리하고 페널티를 중복 적용하지 않는다.
+## 2026-07-13 mutable profile cache policy
+
+1. Supabase Auth token 검증 결과는 30초 캐시할 수 있다.
+2. 전체 auth context 캐시는 `profiles.id/auth_user_id` 같은 불변 identity 조회에만 사용한다.
+3. `trust_score`, `ratings`, `streak`, profile 설정이 포함된 profile row는 mutation 직후 stale 값이 보이지 않도록 DB에서 다시 읽는다.

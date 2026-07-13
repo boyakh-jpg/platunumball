@@ -471,3 +471,14 @@ Remaining:
 - Match snapshot, final confirmation, profile/team rating updates, and `confirmed_at` commit in one database transaction.
 - A failure in either snapshot persistence or rating application rolls back the entire final approval.
 - Maintenance backfill may continue to call `rankball_commit_match_rating()` for already-persisted matches.
+## 2026-07-13 recruiting room control RPC
+
+- Simple individual reserve recorder assignment uses `rankball_recruiting_stat_recorder_action()` with the recruiting room advisory lock and row lock.
+- Team/party reserve recorder assignment keeps authoritative replay because party reserve projection remains centralized.
+- Room closing uses `rankball_recruiting_close_action()` so status, invitations, host trust penalty, notification, and Discord room-link disable commit atomically.
+- Repeated close requests are idempotent and do not apply the host penalty twice.
+## 2026-07-13 auth context cache split
+
+- Supabase Auth user verification keeps the 30-second cache.
+- Full profile context caching is limited to immutable `id/auth_user_id` selects.
+- Mutable profile reads containing trust, ratings, streak, or settings always reload the database row.

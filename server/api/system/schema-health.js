@@ -222,6 +222,18 @@ const REQUIRED_RPCS = [
     args: { p_actor_profile_id: "", p_post_id: "", p_target_user_ids: [], p_side: "", p_reserve: false, p_join_mode: "", p_team_id: "" },
   },
   {
+    name: "rankball_recruiting_stat_recorder_action",
+    args: { p_actor_profile_id: "", p_post_id: "", p_side: "", p_player_id: "" },
+  },
+  {
+    name: "rankball_recruiting_ready_action",
+    args: { p_actor_profile_id: "", p_post_id: "", p_ready: true },
+  },
+  {
+    name: "rankball_recruiting_close_action",
+    args: { p_actor_profile_id: "", p_post_id: "" },
+  },
+  {
     name: "rankball_rls_policy_health",
     args: {},
   },

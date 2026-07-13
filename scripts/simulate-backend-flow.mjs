@@ -3186,6 +3186,58 @@ async function runBulkHomeInviteAcceptScenario({
     reserveIds,
   });
 
+  let recorderSqlReducer;
+  if (!overflow) {
+    const recorderId = reserveIds[0];
+    const recorderSide = expectedPlacements.find((item) => item.profileId === recorderId)?.side;
+    const recorderResult = await step(`${ids.label}:setRecruitingStatRecorder`, () => syncRecruitingAs(hostLogin, {
+      action: "setRecruitingStatRecorder",
+      postId: ids.postId,
+      sideName: recorderSide,
+      playerId: recorderId,
+    }));
+    assertFlow(recorderResult?.sqlReducer === true, "recruiting recorder SQL reducer not used", recorderResult);
+    post = await getRecruitingPostAfterResult(recorderResult, hostLogin, `${ids.label}:loadAfterRecorderSet`);
+    assertFlow(post.roomState?.statRecorders?.[recorderSide] === recorderId, "recruiting recorder not persisted", {
+      recorderId,
+      recorderSide,
+      statRecorders: post.roomState?.statRecorders,
+    });
+
+    const clearRecorderResult = await step(`${ids.label}:clearRecruitingStatRecorder`, () => syncRecruitingAs(hostLogin, {
+      action: "setRecruitingStatRecorder",
+      postId: ids.postId,
+      sideName: recorderSide,
+      playerId: recorderId,
+    }));
+    assertFlow(clearRecorderResult?.sqlReducer === true, "recruiting recorder clear SQL reducer not used", clearRecorderResult);
+    post = await getRecruitingPostAfterResult(clearRecorderResult, hostLogin, `${ids.label}:loadAfterRecorderClear`);
+    assertFlow(!post.roomState?.statRecorders?.[recorderSide], "recruiting recorder not cleared", post.roomState?.statRecorders);
+    recorderSqlReducer = true;
+  }
+
+  let closeSqlReducer;
+  let closePenalty;
+  if (overflow) {
+    await step(`${ids.label}:snapshotClosePenaltyProfile`, () => snapshotRatingSubjects([hostId]));
+    const trustBeforeClose = await step(`${ids.label}:trustBeforeClose`, () => getCurrentProfileTrustScore(hostLogin, hostId));
+    const closeResult = await step(`${ids.label}:closeRecruitingPost`, () => syncRecruitingAs(hostLogin, {
+      action: "closeRecruitingPost",
+      postId: ids.postId,
+    }));
+    assertFlow(closeResult?.sqlReducer === true, "recruiting close SQL reducer not used", closeResult);
+    post = await getRecruitingPostAfterResult(closeResult, hostLogin, `${ids.label}:loadAfterClose`);
+    const trustAfterClose = await step(`${ids.label}:trustAfterClose`, () => getCurrentProfileTrustScore(hostLogin, hostId));
+    closePenalty = Number(closeResult?.penalty ?? 0);
+    assertFlow(post.status === "closed", "recruiting post did not close", post);
+    assertFlow(trustAfterClose === Math.max(0, trustBeforeClose - closePenalty), "recruiting close penalty mismatch", {
+      trustBeforeClose,
+      trustAfterClose,
+      closePenalty,
+    });
+    closeSqlReducer = true;
+  }
+
   return {
     label: ids.label,
     hostLogin,
@@ -3197,6 +3249,9 @@ async function runBulkHomeInviteAcceptScenario({
     reserves: reserveIds.length,
     expired: expiredIds.length,
     teamInviteId: resolvedTeamId,
+    recorderSqlReducer,
+    closeSqlReducer,
+    closePenalty,
   };
 }
 

@@ -729,7 +729,9 @@ const SQL_REDUCER_RECRUITING_ACTIONS = new Set([
   "declineRecruitingInvitation",
   "interestRecruitingPost",
   "inviteRecruitingPlayers",
+  "closeRecruitingPost",
   "setRecruitingApplicantPlacement",
+  "setRecruitingStatRecorder",
   "setRecruitingSlotPosition",
 ]);
 
@@ -748,6 +750,8 @@ function isMissingSqlReducer(error = {}) {
     error?.code === "PGRST202" ||
     message.includes("rankball_recruiting_invitation_decision_action") ||
     message.includes("rankball_recruiting_invite_players_action") ||
+    message.includes("rankball_recruiting_close_action") ||
+    message.includes("rankball_recruiting_stat_recorder_action") ||
     message.includes("rankball_recruiting_slot_position_action") ||
     message.includes("rankball_recruiting_cancel_participation_action") ||
     message.includes("rankball_recruiting_applicant_placement_action") ||
@@ -835,6 +839,41 @@ async function loadSyncedRecruitingState(context, postId = "") {
 }
 
 async function applySqlRecruitingAction(context, operation = {}) {
+  if (operation.action === "closeRecruitingPost") {
+    const { data, error } = await context.supabase.rpc("rankball_recruiting_close_action", {
+      p_actor_profile_id: context.profileId,
+      p_post_id: operation.postId,
+    });
+    if (error) {
+      if (isMissingSqlReducer(error)) return null;
+      throw error;
+    }
+    return {
+      ok: true,
+      ...(data && typeof data === "object" ? data : {}),
+      postId: operation.postId,
+    };
+  }
+
+  if (operation.action === "setRecruitingStatRecorder") {
+    const { data, error } = await context.supabase.rpc("rankball_recruiting_stat_recorder_action", {
+      p_actor_profile_id: context.profileId,
+      p_post_id: operation.postId,
+      p_side: operation.sideName ?? "",
+      p_player_id: operation.playerId ?? "",
+    });
+    if (error) {
+      if (isMissingSqlReducer(error)) return null;
+      throw error;
+    }
+    if (data?.fallback) return null;
+    return {
+      ok: true,
+      ...(data && typeof data === "object" ? data : {}),
+      postId: operation.postId,
+    };
+  }
+
   if (operation.action === "inviteRecruitingPlayers") {
     const invite = operation.invite && typeof operation.invite === "object"
       ? operation.invite

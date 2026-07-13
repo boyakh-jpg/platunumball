@@ -9,6 +9,7 @@ const ADMIN_GRADE_LEVELS = {
 };
 
 let adminClient = null;
+const authUserCache = new Map();
 const authContextCache = new Map();
 const adminLevelCache = new Map();
 const AUTH_CONTEXT_CACHE_TTL_MS = 30 * 1000;
@@ -71,6 +72,37 @@ function getJwtExpiresAt(token = "") {
 
 function getAuthContextCacheKey(token = "", profileSelect = "", allowMissingProfile = false) {
   return `${allowMissingProfile ? "allow-missing" : "require-profile"}\n${profileSelect}\n${token}`;
+}
+
+function canCacheProfileContext(profileSelect = "") {
+  const columns = String(profileSelect)
+    .split(",")
+    .map((column) => column.trim())
+    .filter(Boolean);
+  return columns.length > 0 && columns.every((column) => ["id", "auth_user_id"].includes(column));
+}
+
+function readAuthUserCache(token = "") {
+  const cached = authUserCache.get(token);
+  if (!cached || cached.expiresAt <= Date.now()) {
+    authUserCache.delete(token);
+    return null;
+  }
+  return cached.user;
+}
+
+function writeAuthUserCache(token = "", user = null) {
+  if (!token || !user?.id) return;
+  const jwtExpiresAt = getJwtExpiresAt(token);
+  const expiresAt = Math.min(Date.now() + AUTH_CONTEXT_CACHE_TTL_MS, jwtExpiresAt || Date.now() + AUTH_CONTEXT_CACHE_TTL_MS);
+  if (expiresAt <= Date.now()) return;
+  authUserCache.set(token, { expiresAt, user });
+  if (authUserCache.size > 100) {
+    const now = Date.now();
+    for (const [cacheKey, value] of authUserCache) {
+      if (value.expiresAt <= now || authUserCache.size > 100) authUserCache.delete(cacheKey);
+    }
+  }
 }
 
 function readAuthContextCache(token = "", profileSelect = "", allowMissingProfile = false) {
@@ -318,18 +350,26 @@ export async function getAuthenticatedContext(request, options = {}) {
     throw error;
   }
 
-  const cachedContext = readAuthContextCache(token, profileSelect, allowMissingProfile);
+  const cacheProfileContext = canCacheProfileContext(profileSelect);
+  const cachedContext = cacheProfileContext
+    ? readAuthContextCache(token, profileSelect, allowMissingProfile)
+    : null;
   if (cachedContext) return { ...cachedContext, supabase };
 
   // RANKBALL_AUTH_CLEANUP: legacy test-token auth removed. Test accounts must be Supabase Auth users.
-  const { data: userData, error: userError } = await supabase.auth.getUser(token);
-  if (userError || !userData?.user?.id) {
-    const error = new Error("invalid_bearer_token");
-    error.statusCode = 401;
-    throw error;
+  let authUser = readAuthUserCache(token);
+  if (!authUser) {
+    const { data: userData, error: userError } = await supabase.auth.getUser(token);
+    if (userError || !userData?.user?.id) {
+      const error = new Error("invalid_bearer_token");
+      error.statusCode = 401;
+      throw error;
+    }
+    authUser = userData.user;
+    writeAuthUserCache(token, authUser);
   }
 
-  const authUserId = userData.user.id;
+  const authUserId = authUser.id;
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select(profileSelect)
@@ -341,12 +381,12 @@ export async function getAuthenticatedContext(request, options = {}) {
     if (allowMissingProfile) {
       const context = {
         supabase,
-        authUser: userData.user,
+        authUser,
         authUserId,
         profileId: null,
         isProfileMissing: true,
       };
-      writeAuthContextCache(token, profileSelect, allowMissingProfile, context);
+      if (cacheProfileContext) writeAuthContextCache(token, profileSelect, allowMissingProfile, context);
       return context;
     }
     const error = new Error("profile_not_found");
@@ -356,12 +396,12 @@ export async function getAuthenticatedContext(request, options = {}) {
 
   const context = {
     supabase,
-    authUser: userData.user,
+    authUser,
     authUserId,
     profileId: profile.id,
     profile,
   };
-  writeAuthContextCache(token, profileSelect, allowMissingProfile, context);
+  if (cacheProfileContext) writeAuthContextCache(token, profileSelect, allowMissingProfile, context);
   return context;
 }
 
