@@ -558,17 +558,31 @@ async function restoreRatingSnapshots() {
 }
 
 async function cleanupSimulationNotifications() {
-  if (!supabase || !simulationNotificationIds.size) return { skipped: true };
+  if (!supabase) return { skipped: true };
   const idsToDelete = [...simulationNotificationIds];
-  const { error } = await supabase
-    .from("notifications")
-    .delete()
-    .in("id", idsToDelete);
+  const matchIds = uniqueIds(scenarioIds.flatMap((scenario) => [scenario.matchId, ...(scenario.matchIds ?? [])]));
+  const postIds = uniqueIds(scenarioIds.map((scenario) => scenario.postId));
+  if (!idsToDelete.length && !matchIds.length && !postIds.length) return { skipped: true };
+  const errors = [];
+  for (const [column, values] of [
+    ["id", idsToDelete],
+    ["match_id", matchIds],
+    ["recruiting_post_id", postIds],
+  ]) {
+    if (!values.length) continue;
+    const { error } = await supabase
+      .from("notifications")
+      .delete()
+      .in(column, values);
+    if (error) errors.push({ table: "notifications", column, message: error.message });
+  }
   simulationNotificationIds.clear();
   return {
     skipped: false,
-    deleted: error ? 0 : idsToDelete.length,
-    errors: error ? [{ table: "notifications", message: error.message }] : [],
+    explicitIds: idsToDelete.length,
+    matchIds: matchIds.length,
+    recruitingPostIds: postIds.length,
+    errors,
   };
 }
 
@@ -1220,6 +1234,7 @@ async function runOneOnOneScenario({
   ranked = false,
   includeLatePlayer = !refereeWanted,
   verifyRatingCommit = false,
+  serverGeneratedPostId = false,
 }) {
   ids = makeScenarioIds(label);
   const operatorLogin = refereeWanted ? refereeLogin : hostLogin;
@@ -1242,9 +1257,9 @@ async function runOneOnOneScenario({
   const scheduleDraft = scheduledOffsetHours > 0 ? getKstFutureSchedule(scheduledOffsetHours) : { timingType: "instant" };
   const createResult = await step(`${ids.label}:createRecruitingPost`, () => syncRecruitingAs(hostLogin, {
     action: "createRecruitingPost",
-    preferredPostId: ids.postId,
+    ...(!serverGeneratedPostId ? { preferredPostId: ids.postId } : {}),
     draft: {
-      id: ids.postId,
+      ...(!serverGeneratedPostId ? { id: ids.postId } : {}),
       title: `Backend simulation ${ids.label}`,
       visibility: "public",
       hostJoinMode: "player",
@@ -1271,6 +1286,10 @@ async function runOneOnOneScenario({
       },
     },
   }));
+  if (serverGeneratedPostId) {
+    assertFlow(/^q_[a-z0-9_]+$/i.test(createResult?.postId ?? ""), "server-generated recruiting post id missing", createResult);
+    ids.postId = createResult.postId;
+  }
   let post = createResult?.post;
   assertFlow(post?.id === ids.postId, "created post not returned", createResult);
   assertFlow(post.ownerId === hostId || post.playerId === hostId, "created post owner mismatch", { hostId, post });
@@ -4131,6 +4150,7 @@ async function main() {
     label: "basic_1v1_no_referee",
     hostLogin: basicHostLogin,
     opponentLogin: basicOpponentLogin,
+    serverGeneratedPostId: true,
   }));
   if (!remoteSmokeOnly) {
     scenarios.push(await runDisputeResumeThumbsScenario({

@@ -2364,5 +2364,6 @@ flowchart TD
 4. 토너먼트 대진 검증, 1라운드 생성, 승자 후속 라운드 생성은 토너먼트 DB RPC와 확정 경기 trigger가 처리한다.
 5. 지원 RPC가 없으면 JS snapshot replay로 후퇴하지 않고 `503`으로 실패한다. 생성·모집 확정에 필요한 서버 조합 계산은 검증 후 단일 DB transaction RPC로만 커밋한다.
 6. Discord 초대 수락·거절도 웹과 같은 `rankball_recruiting_management_action()`을 사용해 개인·팀·파티 초대를 동일하게 처리한다.
-7. Supabase 프론트는 모집·경기·토너먼트 operation에서 로컬 reducer를 먼저 실행하지 않고 서버가 반환한 DB row만 병합한다. 로컬 reducer는 비-Supabase demo mode에만 남긴다.
-8. 원격 DB 경기의 status/result/score/종료 시각은 미래 일정 보정으로 덮지 않는다. 미래 lifecycle 복구는 local/demo state에만 적용한다.
+7. 브라우저의 새 모집방 생성 요청에 id가 없으면 `/api/recruiting/sync-post`가 충돌 가능성이 낮은 `q_` id를 한 번 생성해 DB reducer에 전달한다. 방 규칙 검증, advisory lock, 중복 검사, insert는 계속 DB RPC가 담당한다.
+8. Supabase 프론트는 모집·경기·토너먼트 operation에서 로컬 reducer를 먼저 실행하지 않고 서버가 반환한 DB row만 병합한다. 로컬 reducer는 비-Supabase demo mode에만 남긴다.
+9. 원격 DB 경기의 status/result/score/종료 시각은 미래 일정 보정으로 덮지 않는다. 미래 lifecycle 복구는 local/demo state에만 적용한다.

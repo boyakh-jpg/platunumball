@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { getAuthenticatedContext, getDatePart, getTimePart, nullableText, readJsonBody, sendJson, toArray, toDbTime, toNotificationRows } from "../_supabaseAdmin.js";
 import { normalizeMmrLimitMode } from "../../../src/lib/constants.js";
 import {
@@ -765,6 +766,15 @@ function shouldUseSqlRecruitingAction(operation = {}) {
   return SQL_REDUCER_RECRUITING_ACTIONS.has(String(operation?.action ?? ""));
 }
 
+function withRecruitingCreatePostId(operation = null) {
+  if (!operation || operation.action !== "createRecruitingPost") return operation;
+  if (operation.preferredPostId || operation.postId || operation.draft?.id) return operation;
+  return {
+    ...operation,
+    preferredPostId: `q_${Date.now().toString(36)}_${randomUUID().replace(/-/g, "").slice(0, 10)}`,
+  };
+}
+
 function rejectSqlRecruitingFallback(data = {}) {
   if (!data?.fallback) return;
   reject(409, String(data.reason || "recruiting_operation_blocked"));
@@ -1351,7 +1361,7 @@ export default async function handler(request, response) {
     const body = await timing.track("body", () => readJsonBody(request));
     debugTiming = debugTiming || isTrue(body.debugTiming);
     const context = await timing.track("auth", () => getAuthenticatedContext(request));
-    const operation = getOperation(body, body.action ? String(body.action) : "sync");
+    const operation = withRecruitingCreatePostId(getOperation(body, body.action ? String(body.action) : "sync"));
     if (!operation) reject(400, "recruiting_operation_required");
     if (!SQL_REDUCER_RECRUITING_ACTIONS.has(operation.action) && !["sendRecruitingChat", "confirmRecruitingMatch"].includes(operation.action)) {
       reject(400, "unsupported_recruiting_operation");
