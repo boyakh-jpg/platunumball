@@ -391,6 +391,7 @@ Remaining:
 - Recruiting `interestRecruitingPost` now tries `rankball_recruiting_interest_player_action()` first for public player joins, and `setRecruitingApplicantPlacement` tries `rankball_recruiting_applicant_placement_action()` first for self player applicant moves. Unsupported private/team/referee/party/limit cases still fall back to server authoritative replay.
 - Simple individual player invitation create/accept/decline now uses `rankball_recruiting_invite_players_action()` and `rankball_recruiting_invitation_decision_action()` with per-room advisory and row locks. Team, party, referee, and MMR-blocked invitation branches keep server authoritative replay.
 - Match cancel, void, and personal-record delete now use `rankball_match_terminal_action()` under the per-match advisory and row lock; server delivery cleanup still removes stale app/Discord reminders after cancel/void.
+- Match dispute intake now uses `rankball_match_dispute_action()` to validate actor/window and atomically write `match_disputes`, `matches.dispute_draft_result`, status, and notification. Final dispute resolution still uses the rating-aware server replay and DB rating commit path.
 - Make frontend repository a thin server caller after the authoritative RPCs are ready.
 - Remove production reliance on localStorage state and mock fallback completely.
 - Add broader server-side eligibility checks for tournament brackets and match roster edits.

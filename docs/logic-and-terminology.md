@@ -2308,3 +2308,11 @@ flowchart TD
 - 경기 시작 전 취소는 방장만, 시작 후 취소와 이의 결과 무효는 심판이 있으면 심판만, 심판이 없으면 방장만 처리한다.
 - 개인 기록 삭제는 `created_by` 본인이고 `rules.recordType=solo`인 기록만 `cancelled` soft delete로 처리한다.
 - 취소/무효 SQL 전이 뒤에도 기존 Discord/app stale notice cleanup을 실행한다.
+
+## 2026-07-13 경기 이의제기 DB 전이
+
+- `disputeMatch`는 경기 id advisory transaction lock과 `matches` row lock 안에서 접수한다.
+- DB는 경기 참가자, 후보, 기록자, 방장, 심판 관계와 경기 종료 후 이의 시간창을 다시 확인한다.
+- 접수 시 기존 `match_results`와 `player_match_stats`로 `dispute_draft_result`를 만들고 `match_disputes`와 알림을 같은 트랜잭션에 저장한다.
+- 본인 득점 수정 요청이 있으면 본인 기록만 draft에 반영하고 해당 사이드 점수를 다시 합산한다.
+- `resumeMatchApproval`의 최종 결과 확정과 MMR commit은 기존 서버 계산 + DB commit 경로를 유지한다.

@@ -274,6 +274,10 @@ const REQUIRED_RPCS = [
     args: { p_actor_profile_id: "", p_match_id: "", p_started_at: "", p_ended_at: "" },
   },
   {
+    name: "rankball_match_dispute_action",
+    args: { p_actor_profile_id: "", p_match_id: "", p_dispute_request: {} },
+  },
+  {
     name: "rankball_match_terminal_action",
     args: { p_actor_profile_id: "", p_action: "", p_match_id: "" },
   },

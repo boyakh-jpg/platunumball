@@ -2139,10 +2139,20 @@ async function runDisputeResumeThumbsScenario({
   const disputeResult = await step(`${ids.label}:disputeMatch`, () => syncMatchAs(opponentLogin, {
     action: "disputeMatch",
     matchId: ids.matchId,
-    reason: "Backend simulation dispute",
+    reason: {
+      reason: "Backend simulation dispute",
+      playerId: opponentId,
+      requestedPoints: 15,
+    },
   }));
+  assertFlow(disputeResult?.sqlReducer === true, "match dispute did not use SQL reducer", disputeResult);
   match = disputeResult?.match;
   assertFlow(match?.status === "disputed" && (match.disputes ?? []).some((item) => item.by === opponentId), "dispute not persisted", match);
+  assertFlow(
+    match?.disputeDraftResult?.playerStats?.[opponentId]?.points === 15 && match?.disputeDraftResult?.scoreB === 15,
+    "dispute requested points not reflected in draft score",
+    match?.disputeDraftResult,
+  );
 
   const disputeDraft = makeResult(match);
   disputeDraft.scoreA = 22;

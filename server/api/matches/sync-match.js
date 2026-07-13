@@ -1176,6 +1176,7 @@ const SQL_REDUCER_MATCH_ACTIONS = new Set([
   "cancelMatch",
   "checkInMatchPlayer",
   "deleteSoloRecord",
+  "disputeMatch",
   "endMatch",
   "handoffMatchRecorder",
   "removeMatchLatePlayer",
@@ -1193,6 +1194,7 @@ function isMissingSqlMatchReducer(error = {}) {
     message.includes("rankball_match_agree_action") ||
     message.includes("rankball_match_approval_action") ||
     message.includes("rankball_match_checkin_action") ||
+    message.includes("rankball_match_dispute_action") ||
     message.includes("rankball_match_end_action") ||
     message.includes("rankball_match_late_player_action") ||
     message.includes("rankball_match_roster_move_action") ||
@@ -1214,6 +1216,7 @@ function canUseSqlMatchActionWithoutSnapshot(operation = {}) {
     "cancelMatch",
     "checkInMatchPlayer",
     "deleteSoloRecord",
+    "disputeMatch",
     "endMatch",
     "handoffMatchRecorder",
     "addMatchLatePlayer",
@@ -1242,6 +1245,44 @@ async function loadSyncedMatchAfterWrite(context, matchId = "", fallbackMatch = 
 }
 
 async function applySqlMatchAction(context, operation = {}, match = {}) {
+  if (operation.action === "disputeMatch" && (match?.id || operation.matchId)) {
+    const matchId = operation.matchId ?? match.id;
+    const { data, error } = await context.supabase.rpc("rankball_match_dispute_action", {
+      p_actor_profile_id: context.profileId,
+      p_match_id: matchId,
+      p_dispute_request: operation.reason ?? "",
+    });
+    if (error) {
+      if (isMissingSqlMatchReducer(error)) return null;
+      throw error;
+    }
+    if (data?.fallback) return null;
+
+    let discordDeliveryCount = 0;
+    let discordDeliveryError = null;
+    const deliveryMatch = await loadSyncedMatchAfterWrite(context, matchId, match?.id ? match : null);
+    try {
+      if (deliveryMatch?.id) {
+        discordDeliveryCount = await withTimeout(
+          queueMatchDiscordDeliveries(context.supabase, deliveryMatch, operation.action),
+          DISCORD_QUEUE_TIMEOUT_MS,
+          "discord_match_delivery_timeout",
+        );
+      }
+    } catch (deliveryError) {
+      discordDeliveryError = deliveryError.message || "discord_match_delivery_failed";
+      console.error("Match Discord delivery queue failed.", deliveryError);
+    }
+
+    return {
+      ok: true,
+      ...(data && typeof data === "object" ? data : {}),
+      matchId,
+      discordDeliveryCount,
+      discordDeliveryError,
+    };
+  }
+
   if (["cancelMatch", "deleteSoloRecord", "voidMatch"].includes(operation.action) && (match?.id || operation.matchId)) {
     const matchId = operation.matchId ?? match.id;
     const { data, error } = await context.supabase.rpc("rankball_match_terminal_action", {
