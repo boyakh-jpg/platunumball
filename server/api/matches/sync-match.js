@@ -1628,7 +1628,7 @@ export async function commitProfileTrustDeltas(context, trustCommit = {}) {
   return data ?? { ok: true, profileCount: profileUpdates.length };
 }
 
-export async function persistMatchSnapshot(context, { match, notifications = [], action = "sync", body = {}, ratingCommit = null, trustCommit = null, trustedServerCreate = false }) {
+export async function persistMatchSnapshot(context, { match, notifications = [], action = "sync", body = {}, ratingCommit = null, trustCommit = null, trustedServerCreate = false, recruitingPersistence = null }) {
   if (!match?.id) reject(400, "missing_match");
   validateMatchShape(match);
   validateResultShape(match, action);
@@ -1706,8 +1706,8 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
   const disputeRows = toDisputeRows(match);
   const notificationRows = toNotificationRows(notifications, context.profileId, { coalesce: "nullish", getUpdatedAt: getTimestamp });
 
-  const persistRpcName = shouldCommitRating ? "rankball_match_action_with_rating" : "rankball_match_action";
-  const persistArgs = {
+  let persistRpcName = shouldCommitRating ? "rankball_match_action_with_rating" : "rankball_match_action";
+  let persistArgs = {
     p_actor_profile_id: context.profileId,
     p_action: action,
     p_match_row: matchRow,
@@ -1727,9 +1727,33 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
       p_confirmed_at: ratingCommit.confirmedAt ?? new Date().toISOString(),
     } : {}),
   };
+  if (recruitingPersistence) {
+    if (shouldCommitRating || action !== "confirmRecruitingMatch") reject(400, "invalid_atomic_recruiting_confirmation");
+    persistRpcName = "rankball_confirm_recruiting_match_action";
+    persistArgs = {
+      p_actor_profile_id: context.profileId,
+      p_post_action: recruitingPersistence.p_action,
+      p_post_row: recruitingPersistence.p_post_row,
+      p_application_rows: recruitingPersistence.p_application_rows,
+      p_recruiting_notification_rows: recruitingPersistence.p_notification_rows,
+      p_expected_updated_at: recruitingPersistence.p_expected_updated_at,
+      p_match_action: action,
+      p_match_row: matchRow,
+      p_player_rows: playerRows,
+      p_result_row: resultRow,
+      p_stat_rows: statRows,
+      p_agreement_rows: agreementRows,
+      p_approval_rows: approvalRows,
+      p_dispute_rows: disputeRows,
+      p_match_notification_rows: notificationRows,
+      p_replace_result: shouldReplaceResult,
+    };
+  }
   const { data: persistResult, error: persistError } = await context.supabase.rpc(persistRpcName, persistArgs);
   if (persistError) throw persistError;
-  const ratingCommitResult = shouldCommitRating ? persistResult?.ratingCommit : null;
+  const matchPersistResult = recruitingPersistence ? persistResult?.match : persistResult;
+  const recruitingPersistResult = recruitingPersistence ? persistResult?.recruiting : null;
+  const ratingCommitResult = shouldCommitRating ? matchPersistResult?.ratingCommit : null;
   const ratingState = shouldCommitRating ? await loadCommittedRatingState(context, ratingCommit) : null;
   const trustCommitResult = trustCommit ? await commitProfileTrustDeltas(context, trustCommit) : null;
   let discordDeliveryCount = 0;
@@ -1753,15 +1777,17 @@ export async function persistMatchSnapshot(context, { match, notifications = [],
     ok: true,
     match: syncedMatch ?? match,
     matchId: match.id,
-    playerCount: Number(persistResult?.playerCount ?? playerRows.length),
-    statCount: Number(persistResult?.statCount ?? statRows.length),
-    notificationCount: Number(persistResult?.notificationCount ?? notificationRows.length),
+    playerCount: Number(matchPersistResult?.playerCount ?? playerRows.length),
+    statCount: Number(matchPersistResult?.statCount ?? statRows.length),
+    notificationCount: Number(matchPersistResult?.notificationCount ?? notificationRows.length),
     discordDeliveryCount,
     discordDeliveryError,
     ...(responseState ? { state: responseState } : {}),
     ratingCommitted: Boolean(ratingCommitResult?.ok),
     ratingAlreadyCommitted: Boolean(ratingCommitResult?.alreadyCommitted),
-    ratingAtomic: Boolean(shouldCommitRating && persistResult?.ratingAtomic),
+    ratingAtomic: Boolean(shouldCommitRating && matchPersistResult?.ratingAtomic),
+    confirmationAtomic: Boolean(recruitingPersistence && persistResult?.confirmationAtomic),
+    ...(recruitingPersistResult ? { recruitingPersistResult } : {}),
     trustCommitted: Boolean(trustCommitResult?.ok && !trustCommitResult?.skipped),
     trustProfileCount: Number(trustCommitResult?.profileCount ?? 0),
   };

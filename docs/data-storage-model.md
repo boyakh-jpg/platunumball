@@ -482,3 +482,8 @@ Remaining:
 - Supabase Auth user verification keeps the 30-second cache.
 - Full profile context caching is limited to immutable `id/auth_user_id` selects.
 - Mutable profile reads containing trust, ratings, streak, or settings always reload the database row.
+## 2026-07-13 atomic recruiting confirmation
+
+- `confirmRecruitingMatch` prepares validated recruiting and match snapshots on the server.
+- `rankball_confirm_recruiting_match_action()` commits the closed room, applications, match, players, agreements, and notifications in one transaction.
+- Match creation failure rolls back the recruiting room close instead of leaving a closed room without a match.

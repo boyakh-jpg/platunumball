@@ -190,6 +190,27 @@ const REQUIRED_COLUMNS = {
 
 const REQUIRED_RPCS = [
   {
+    name: "rankball_confirm_recruiting_match_action",
+    args: {
+      p_actor_profile_id: "",
+      p_post_action: "confirmRecruitingMatch",
+      p_post_row: {},
+      p_application_rows: [],
+      p_recruiting_notification_rows: [],
+      p_expected_updated_at: null,
+      p_match_action: "confirmRecruitingMatch",
+      p_match_row: {},
+      p_player_rows: [],
+      p_result_row: null,
+      p_stat_rows: [],
+      p_agreement_rows: [],
+      p_approval_rows: [],
+      p_dispute_rows: [],
+      p_match_notification_rows: [],
+      p_replace_result: false,
+    },
+  },
+  {
     name: "rankball_current_recruiting_post_ids",
     args: { p_profile_id: "", p_limit: 1 },
   },

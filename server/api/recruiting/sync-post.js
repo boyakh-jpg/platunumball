@@ -1199,7 +1199,7 @@ async function validateRefereeAction(supabase, profileId, existingPost, nextPost
   }
 }
 
-export async function persistRecruitingPostSnapshot(context, { post, notifications = [], action = "sync", body = {}, expectedUpdatedAt = null, timing = null, afterResponseTasks = null }) {
+export async function persistRecruitingPostSnapshot(context, { post, notifications = [], action = "sync", body = {}, expectedUpdatedAt = null, timing = null, afterResponseTasks = null, prepareOnly = false }) {
   if (!post?.id) reject(400, "missing_recruiting_post");
   validateRecruitingPostShape(post);
 
@@ -1250,15 +1250,27 @@ export async function persistRecruitingPostSnapshot(context, { post, notificatio
   const postRow = toRecruitingPostRow(post);
   const applicationRows = toRecruitingApplicationRows(post);
   const notificationRows = toNotificationRows(notifications, context.profileId, { coalesce: "nullish", getUpdatedAt: getTimestamp });
-
-  const { data: persistResult, error: persistError } = await timeStep(timing, "persistRpc", () => context.supabase.rpc("rankball_recruiting_action", {
+  const persistence = {
     p_actor_profile_id: context.profileId,
     p_action: action,
     p_post_row: postRow,
     p_application_rows: applicationRows,
     p_notification_rows: notificationRows,
     p_expected_updated_at: expectedUpdatedAt,
-  }));
+  };
+
+  if (prepareOnly) {
+    return {
+      ok: true,
+      post,
+      postId: post.id,
+      applicationCount: applicationRows.length,
+      notificationCount: notificationRows.length,
+      persistence,
+    };
+  }
+
+  const { data: persistResult, error: persistError } = await timeStep(timing, "persistRpc", () => context.supabase.rpc("rankball_recruiting_action", persistence));
   if (persistError) {
     if (persistError.code === "40001" || String(persistError.message ?? "").includes("recruiting_stale_snapshot")) {
       reject(409, "recruiting_stale_snapshot");
@@ -1356,32 +1368,54 @@ export default async function handler(request, response) {
     const recruitingNotifications = createdMatch
       ? notifications.filter((notification) => !notification.matchId || notification.matchId !== createdMatch.id)
       : notifications;
-    const result = await timing.track("persistSnapshot", () => persistRecruitingPostSnapshot(context, {
-      post,
-      notifications: recruitingNotifications,
-      action,
-      body: { ...body, ...(operation ?? {}) },
-      expectedUpdatedAt: operation ? replayResult?.baseUpdatedAt ?? null : null,
-      timing,
-      afterResponseTasks,
-    }));
+    let result;
+    if (createdMatch) {
+      const preparedRecruiting = await timing.track("prepareRecruitingSnapshot", () => persistRecruitingPostSnapshot(context, {
+        post,
+        notifications: recruitingNotifications,
+        action,
+        body: { ...body, ...(operation ?? {}) },
+        expectedUpdatedAt: operation ? replayResult?.baseUpdatedAt ?? null : null,
+        timing,
+        prepareOnly: true,
+      }));
+      const matchNotifications = notifications.filter((notification) => notification.matchId === createdMatch.id);
+      const matchResult = await timing.track("persistAtomicConfirmation", () => persistMatchSnapshot(context, {
+        match: createdMatch,
+        notifications: matchNotifications,
+        action: "confirmRecruitingMatch",
+        body: { ...body, ...(operation ?? {}) },
+        recruitingPersistence: preparedRecruiting.persistence,
+      }));
+      result = {
+        ok: true,
+        post,
+        postId: post.id,
+        applicationCount: Number(matchResult.recruitingPersistResult?.applicationCount ?? preparedRecruiting.applicationCount),
+        notificationCount: Number(matchResult.recruitingPersistResult?.notificationCount ?? preparedRecruiting.notificationCount),
+        discordDeliveryCount: 0,
+        discordDeliveryError: null,
+        discordDeliveryDeferred: false,
+        createdMatch: matchResult.match,
+        matchId: matchResult.matchId,
+        confirmationAtomic: Boolean(matchResult.confirmationAtomic),
+      };
+    } else {
+      result = await timing.track("persistSnapshot", () => persistRecruitingPostSnapshot(context, {
+        post,
+        notifications: recruitingNotifications,
+        action,
+        body: { ...body, ...(operation ?? {}) },
+        expectedUpdatedAt: operation ? replayResult?.baseUpdatedAt ?? null : null,
+        timing,
+        afterResponseTasks,
+      }));
+    }
     if (result?.postId && action !== "createRecruitingPost") {
       const synced = await timing.track("loadSyncedAfterPersist", () => loadSyncedRecruitingState(context, result.postId));
       if (synced.post) result.post = synced.post;
       if (synced.state) result.state = synced.state;
     }
-    if (createdMatch) {
-      const matchNotifications = notifications.filter((notification) => notification.matchId === createdMatch.id);
-      const matchResult = await timing.track("persistCreatedMatch", () => persistMatchSnapshot(context, {
-        match: createdMatch,
-        notifications: matchNotifications,
-        action: "confirmRecruitingMatch",
-        body: { ...body, ...(operation ?? {}) },
-      }));
-      result.createdMatch = matchResult.match;
-      result.matchId = matchResult.matchId;
-    }
-
     sendTimedJson(response, 200, result, timing, debugTiming);
     afterResponseTasks.forEach((task) => {
       Promise.resolve()

@@ -2340,3 +2340,9 @@ flowchart TD
 1. Supabase Auth token 검증 결과는 30초 캐시할 수 있다.
 2. 전체 auth context 캐시는 `profiles.id/auth_user_id` 같은 불변 identity 조회에만 사용한다.
 3. `trust_score`, `ratings`, `streak`, profile 설정이 포함된 profile row는 mutation 직후 stale 값이 보이지 않도록 DB에서 다시 읽는다.
+## 2026-07-13 모집 확정과 경기 생성 원자 커밋
+
+1. `confirmRecruitingMatch`의 중앙 reducer 계산과 서버 검증은 유지한다.
+2. 검증된 recruiting/match snapshot은 `rankball_confirm_recruiting_match_action()` 한 번으로 저장한다.
+3. 모집방 `closed`, 신청/초대 정리, 경기 row/선수/합의/알림 생성은 한 DB transaction이다.
+4. 경기 생성이 실패하면 모집방 종료도 롤백하며, 동일 match id가 이미 있으면 전체 요청을 거절한다.

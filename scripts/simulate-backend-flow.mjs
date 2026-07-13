@@ -1295,6 +1295,7 @@ async function runOneOnOneScenario({
     postId: ids.postId,
     preferredMatchId: ids.matchId,
   }));
+  assertFlow(confirmResult?.confirmationAtomic === true, "recruiting confirmation was not atomic", confirmResult);
   let match = confirmResult?.createdMatch;
   assertFlow(match?.id === ids.matchId, "confirmed match not returned", confirmResult);
   if (refereeWanted) assertFlow(match.refereeId === refereeId, "match referee not persisted", { refereeId, match });
@@ -1555,6 +1556,7 @@ async function runMatchReminderCancelScenario({
     postId: ids.postId,
     preferredMatchId: ids.matchId,
   }));
+  assertFlow(confirmResult?.confirmationAtomic === true, "recruiting confirmation was not atomic", confirmResult);
   let match = confirmResult?.createdMatch;
   assertFlow(match?.id === ids.matchId, "reminder match not returned", confirmResult);
 
@@ -1804,6 +1806,7 @@ async function runRecruitingInviteAcceptScenario({
     postId: ids.postId,
     preferredMatchId: ids.matchId,
   }));
+  assertFlow(confirmResult?.confirmationAtomic === true, "recruiting confirmation was not atomic", confirmResult);
   const match = confirmResult?.createdMatch;
   assertFlow(match?.id === ids.matchId, "invite match not returned", confirmResult);
   assertFlow(match.teamA?.players?.includes(hostId), "invite host missing from teamA", match);
@@ -2082,6 +2085,7 @@ async function runDisputeResumeThumbsScenario({
     postId: ids.postId,
     preferredMatchId: ids.matchId,
   }));
+  assertFlow(confirmResult?.confirmationAtomic === true, "recruiting confirmation was not atomic", confirmResult);
   let match = confirmResult?.createdMatch;
   assertFlow(match?.id === ids.matchId, "dispute match not returned", confirmResult);
 
@@ -2480,6 +2484,7 @@ async function runRecorderHandoffScenario({
     postId: ids.postId,
     preferredMatchId: ids.matchId,
   }));
+  assertFlow(confirmResult?.confirmationAtomic === true, "recruiting confirmation was not atomic", confirmResult);
   let match = confirmResult?.createdMatch;
   assertFlow(match?.id === ids.matchId, "recorder handoff match not returned", confirmResult);
   match = withEffectiveMatchStatRecorders(match);
