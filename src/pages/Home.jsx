@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Bell, CalendarDays, ClipboardCheck, Handshake, PlusCircle, ShieldAlert, Swords, Trophy, UserPlus } from "lucide-react";
+import { ArrowUpRight, Bell, CalendarDays, ClipboardCheck, Handshake, PlusCircle, ShieldAlert, Swords, Trophy, UserPlus } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
@@ -485,6 +485,8 @@ export default function Home({ app }) {
   const recentFiveMatches = myCompletedMatches.slice(0, 5);
   const recentFiveWins = recentFiveMatches.filter((match) => getUserResult(match, user.id) === "W").length;
   const latestMyMatches = recentFiveMatches;
+  const nextUpcomingMatch = upcomingItems[0]?.item ?? null;
+  const nextUpcomingLine = nextUpcomingMatch ? getUserMatchLine(nextUpcomingMatch, user.id) : null;
   const rankSpotlightTier = getTier(user.ratings.integrated);
   const rankSpotlightDivision = getTierDivisionNumber(user.ratings.integrated);
   const rankSpotlightLabel = rankSpotlightDivision ? `${rankSpotlightTier.name} ${rankSpotlightDivision}` : rankSpotlightTier.name;
@@ -580,6 +582,19 @@ export default function Home({ app }) {
                 <p>{user.region} · {user.position} · 통합 {getTierDivision(user.ratings.integrated)} · {Math.round(user.ratings.integrated)} MMR</p>
               </div>
             </div>
+            <aside className="home-hero-board" aria-label="내 코트 요약">
+              <Link className="home-hero-next" to={nextUpcomingMatch ? `/app/matches?match=${nextUpcomingMatch.id}` : "/app/recruiting"}>
+                <span><CalendarDays size={16} /> {nextUpcomingMatch ? "NEXT MATCH" : "COURT OPEN"}</span>
+                <strong>{nextUpcomingLine ? `${nextUpcomingLine.side.name} vs ${nextUpcomingLine.opponent.name}` : "예정된 경기 없음"}</strong>
+                <em>{nextUpcomingMatch ? `${getRoomScheduleLabel(nextUpcomingMatch)} · ${nextUpcomingMatch.court || "구장 미정"}` : "새 매칭을 찾아 다음 경기를 잡으세요."}</em>
+                <ArrowUpRight size={18} aria-hidden="true" />
+              </Link>
+              <div className="home-hero-stats">
+                <span><strong>{upcomingItems.length}</strong><em>확정 경기</em></span>
+                <span><strong>{recentFiveWins}승</strong><em>최근 5경기</em></span>
+                <span><strong>{mySeasonIndex >= 0 ? `${mySeasonIndex + 1}위` : "대기"}</strong><em>지역 순위</em></span>
+              </div>
+            </aside>
           </div>
         </section>
       </div>

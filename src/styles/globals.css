@@ -15370,3 +15370,149 @@ html[data-theme="light"] .app-main :is(
   color: var(--hero-copy-color);
   text-shadow: var(--hero-copy-shadow);
 }
+
+/* Home hero keeps rank copy on the left and a compact court summary on the right. */
+.rank-home .rank-summary-grid .home-rank-board-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(270px, 330px);
+  align-items: end;
+  gap: 20px;
+}
+
+.rank-home .rank-summary-grid .home-rank-board-head .rank-hero-top {
+  min-width: 0;
+}
+
+.home-hero-board {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  align-content: start;
+  justify-self: end;
+  overflow: hidden;
+  border: 1px solid var(--ui-card-border);
+  border-radius: var(--ui-card-radius);
+  background: var(--ui-card-bg);
+  box-shadow: var(--ui-card-shadow);
+}
+
+.home-hero-next {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  gap: 7px;
+  padding: 16px 42px 15px 16px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.home-hero-next > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--rb-orange);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.home-hero-next > strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-family: var(--sports-display-font);
+  font-size: clamp(1.35rem, 2vw, 1.8rem);
+  line-height: 1.05;
+}
+
+.home-hero-next > em {
+  overflow-wrap: anywhere;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-style: normal;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.home-hero-next > svg:last-child {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  color: var(--muted);
+}
+
+.home-hero-next:hover > svg:last-child,
+.home-hero-next:focus-visible > svg:last-child {
+  color: var(--rb-orange);
+}
+
+.home-hero-next:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.home-hero-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-top: 1px solid var(--ui-card-border);
+}
+
+.home-hero-stats > span {
+  display: grid;
+  min-width: 0;
+  justify-items: center;
+  gap: 3px;
+  padding: 11px 7px 12px;
+  text-align: center;
+}
+
+.home-hero-stats > span + span {
+  border-left: 1px solid var(--ui-card-border);
+}
+
+.home-hero-stats strong {
+  color: var(--text);
+  font-family: var(--sports-display-font);
+  font-size: 1.18rem;
+  line-height: 1;
+}
+
+.home-hero-stats em {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-style: normal;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+@media (max-width: 759px) {
+  .rank-home .rank-summary-grid .home-rank-board-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: end;
+    align-items: end;
+    gap: 16px;
+    min-height: clamp(500px, 132vw, 570px);
+  }
+
+  .rank-home .rank-summary-grid .home-rank-board-head .rank-hero-top {
+    width: 100%;
+  }
+
+  .home-hero-board {
+    max-width: none;
+    justify-self: stretch;
+  }
+}
+
+@media (max-width: 390px) {
+  .home-hero-next {
+    padding-inline-start: 14px;
+  }
+
+  .home-hero-stats > span {
+    padding-inline: 4px;
+  }
+
+  .home-hero-stats em {
+    font-size: 0.66rem;
+  }
+}
