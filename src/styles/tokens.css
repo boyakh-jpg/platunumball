@@ -119,11 +119,7 @@
   --ui-room-modal-radius: var(--radius-lg);
   --ui-room-modal-border: var(--card-border);
   --ui-room-modal-shadow: none;
-  --ui-room-modal-bg:
-    linear-gradient(180deg, rgba(24, 25, 26, 0.9), rgba(24, 25, 26, 0.78)),
-    radial-gradient(ellipse at 72% 28%, rgba(240, 90, 70, 0.14), transparent 20rem),
-    var(--bg-ball) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat,
-    var(--rb-bg-2);
+  --ui-room-modal-bg: var(--card-bg-strong);
   --ui-room-panel-bg: color-mix(in srgb, var(--rb-bg-2) 78%, transparent);
   --ui-room-panel-border: var(--card-border);
   --hero-title-font: var(--sports-display-font);
@@ -211,11 +207,7 @@ html[data-theme="light"] {
   --input-border: rgba(30, 24, 18, 0.14);
   --focus-ring: 0 0 0 3px rgba(229, 85, 63, 0.16);
   --ui-control-group-bg: color-mix(in srgb, var(--rb-surface) 82%, transparent);
-  --ui-room-modal-bg:
-    linear-gradient(180deg, rgba(255, 250, 241, 0.9), rgba(245, 241, 232, 0.82)),
-    radial-gradient(ellipse at 72% 28%, rgba(229, 85, 63, 0.1), transparent 20rem),
-    var(--bg-ball) var(--hero-bg-position-ball) / var(--hero-bg-size) no-repeat,
-    var(--rb-bg-2);
+  --ui-room-modal-bg: var(--card-bg-strong);
   --ui-room-panel-bg: rgba(255, 250, 241, 0.78);
   --hero-title-color: #fffaf1;
   --hero-title-shadow: 0 14px 34px rgba(30, 24, 18, 0.5);

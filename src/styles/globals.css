@@ -8,6 +8,12 @@ html {
   --bottom-nav-height: 58px;
 }
 
+@media (min-width: 1080px) {
+  html {
+    scrollbar-gutter: stable;
+  }
+}
+
 body {
   margin: 0;
   min-height: 100vh;
@@ -88,6 +94,7 @@ h3 {
 }
 
 .app-main {
+  container-type: inline-size;
   min-width: 0;
   margin-left: var(--sidebar-width);
   padding: 28px;
@@ -3272,7 +3279,7 @@ input[type="color"] {
   color: var(--gold);
   cursor: pointer;
   font-weight: 900;
-  min-height: 38px;
+  min-height: var(--ui-button-height);
   padding: 0 11px;
 }
 
@@ -3338,7 +3345,7 @@ input[type="color"] {
 }
 
 .match-room {
-  gap: 22px;
+  gap: var(--page-section-gap);
 }
 
 .match-hero {
@@ -3419,7 +3426,7 @@ input[type="color"] {
   margin-bottom: 14px;
 }
 
-@media (max-width: 1020px) {
+@media (max-width: 1079px) {
   .app-shell {
     display: block;
   }
@@ -6070,7 +6077,7 @@ html[data-theme="light"] .search-picker-result-row.selected {
 }
 
 .season-page {
-  gap: 22px;
+  gap: var(--page-section-gap);
 }
 
 .season-mini-card {
@@ -10298,12 +10305,13 @@ html[data-theme="light"] .rank-home .rank-mode-pill em {
 /* Team hub keeps the ranked-team hero layout instead of the generic page hero. */
 .team-hub-hero {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  align-content: end;
-  justify-items: start;
-  gap: 18px;
-  min-height: clamp(430px, 46vw, 620px);
-  padding: clamp(22px, 3.4vw, 34px);
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+  align-content: center;
+  align-items: end;
+  justify-items: stretch;
+  gap: var(--page-column-gap);
+  min-height: 214px;
+  padding: 24px;
   border-color: rgba(255, 211, 108, 0.2);
   background:
     linear-gradient(180deg, rgba(5, 7, 10, 0.2), rgba(5, 7, 10, 0.72) 54%, rgba(5, 7, 10, 0.94)),
@@ -10312,7 +10320,7 @@ html[data-theme="light"] .rank-home .rank-mode-pill em {
 
 .team-hub-hero > div:first-child {
   min-height: 0;
-  max-width: 720px;
+  max-width: 680px;
   gap: 12px;
 }
 
@@ -10331,14 +10339,17 @@ html[data-theme="light"] .rank-home .rank-mode-pill em {
 
 .team-hub-board {
   display: grid;
-  width: min(100%, 720px);
-  max-width: 720px;
+  width: 100%;
+  max-width: 360px;
   align-content: start;
-  gap: 12px;
-  border-color: rgba(255, 255, 255, 0.14);
-  background: rgba(5, 7, 10, 0.72);
-  box-shadow: 0 22px 54px rgba(0, 0, 0, 0.34);
-  padding: clamp(18px, 2.4vw, 24px);
+  justify-self: end;
+  gap: 8px;
+  border: 1px solid var(--ui-card-border);
+  border-radius: var(--ui-card-radius);
+  background: var(--ui-card-bg);
+  box-shadow: var(--ui-card-shadow);
+  backdrop-filter: none;
+  padding: 16px;
 }
 
 .team-hub-board > span {
@@ -10348,13 +10359,13 @@ html[data-theme="light"] .rank-home .rank-mode-pill em {
 
 .team-hub-board strong {
   color: var(--gold);
-  font-size: clamp(2.1rem, 4.4vw, 3.7rem);
+  font-size: clamp(2rem, 3vw, 2.6rem);
   line-height: 0.96;
 }
 
 .team-hub-board em {
   color: rgba(226, 233, 242, 0.82);
-  font-size: clamp(0.95rem, 1.8vw, 1.15rem);
+  font-size: 0.9rem;
 }
 
 .team-hub-board div span {
@@ -10378,9 +10389,9 @@ html[data-theme="light"] .team-hub-hero p:not(.eyebrow) {
 }
 
 html[data-theme="light"] .team-hub-board {
-  border-color: rgba(184, 118, 19, 0.2);
-  background: rgba(255, 255, 255, 0.76);
-  box-shadow: 0 20px 48px rgba(35, 50, 59, 0.16);
+  border-color: var(--ui-card-border);
+  background: var(--ui-card-bg);
+  box-shadow: var(--ui-card-shadow);
 }
 
 html[data-theme="light"] .team-hub-board em,
@@ -10565,8 +10576,7 @@ html[data-theme="light"] .profile-records-summary {
 .rivalry-card,
 .recruiting-teaser-card,
 .home-my-teams-card,
-.home-side-stack > .card,
-.team-hub-board {
+.home-side-stack > .card {
   background-color: rgba(10, 14, 21, 0.9);
   background-image: none;
 }
@@ -10628,8 +10638,7 @@ html[data-theme="light"] .season-mini-card,
 html[data-theme="light"] .rivalry-card,
 html[data-theme="light"] .recruiting-teaser-card,
 html[data-theme="light"] .home-my-teams-card,
-html[data-theme="light"] .home-side-stack > .card,
-html[data-theme="light"] .team-hub-board {
+html[data-theme="light"] .home-side-stack > .card {
   background-color: rgba(255, 255, 255, 0.9);
   background-image: none;
 }
@@ -12329,9 +12338,9 @@ button {
 }
 
 .rank-home {
-  width: min(100%, 1480px);
+  width: min(100%, var(--page-content-max));
   margin: 0 auto;
-  gap: 16px;
+  gap: var(--page-section-gap);
 }
 
 .rank-home .rank-summary-grid {
@@ -14735,6 +14744,7 @@ html[data-theme="light"] .referee-rulebook-hero::after {
     min-height: auto;
     align-content: start;
     gap: 12px;
+    padding: 16px;
   }
 
   .app-main > .page-stack.teams-page > .team-hub-hero:first-child .team-hub-board {
@@ -14912,6 +14922,7 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
   }
 
   .rank-home > .home-dashboard-grid {
+    display: block;
     order: 4;
   }
 
@@ -15238,10 +15249,6 @@ html[data-theme="light"] .brand-letter-light {
 }
 
 /* 2026-07-14 shared page rhythm and rail breakpoints. */
-.rank-home {
-  gap: var(--page-section-gap);
-}
-
 .profile-side-grid,
 .settings-page .page-stack {
   gap: var(--page-section-gap-mobile);
@@ -15268,10 +15275,94 @@ html[data-theme="light"] .brand-letter-light {
   .team-overview-grid {
     gap: var(--page-section-gap-mobile);
   }
+
+  .settings-page .content-grid {
+    gap: var(--page-section-gap-mobile);
+  }
 }
 
 @media (max-width: 720px) {
   .settings-page .section-card {
     padding: 14px;
   }
+}
+
+@container (max-width: 999px) {
+  .app-main > .rank-home {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: none;
+  }
+
+  .rank-home > .home-search-panel,
+  .rank-home > .home-left-rail,
+  .rank-home > .home-right-rail,
+  .rank-home > .home-dashboard-grid {
+    grid-area: auto;
+  }
+
+  .rank-home > .home-left-rail,
+  .rank-home > .home-right-rail {
+    display: contents;
+  }
+
+  .rank-home .rank-summary-grid {
+    order: 1;
+  }
+
+  .rank-home .home-search-panel {
+    order: 2;
+  }
+
+  .rank-home .home-top-rail {
+    order: 3;
+  }
+
+  .rank-home > .home-dashboard-grid {
+    display: block;
+    order: 4;
+  }
+
+  .rank-home .home-side-stack {
+    order: 5;
+  }
+}
+
+@media (max-width: 390px) {
+  .profile-rating-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .profile-rating-primary {
+    grid-column: auto;
+  }
+}
+
+.app-main :is(
+  .page-header,
+  .landing-hero,
+  .match-hero,
+  .team-hub-hero,
+  .season-hero,
+  .profile-hero,
+  .team-detail-hero,
+  .referee-rulebook-hero,
+  .om-match-hero,
+  .arena-recruit-hero,
+  .gm-room-hero
+) p:not(.eyebrow),
+html[data-theme="light"] .app-main :is(
+  .page-header,
+  .landing-hero,
+  .match-hero,
+  .team-hub-hero,
+  .season-hero,
+  .profile-hero,
+  .team-detail-hero,
+  .referee-rulebook-hero,
+  .om-match-hero,
+  .arena-recruit-hero,
+  .gm-room-hero
+) p:not(.eyebrow) {
+  color: var(--hero-copy-color);
+  text-shadow: var(--hero-copy-shadow);
 }

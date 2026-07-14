@@ -2583,10 +2583,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
     setSoloRecordDeleteTarget(null);
     onClose?.();
   };
-  const closeFromBackdrop = (event) => {
-    if (event.target !== event.currentTarget) return;
-    closeModal();
-  };
+  const closeFromBackdrop = () => closeModal();
   const deleteSourceSoloRecord = (match) => {
     if (!match?.id || !isPersonalRecordMatch(match) || match.createdBy !== app.currentUser.id) return;
     setSoloRecordDeleteTarget(match);
@@ -3541,8 +3538,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
             className="arena-compose-backdrop"
             role="presentation"
             style={{ "--sheet-backdrop-opacity": sheetBackdropOpacity }}
-            onPointerDown={closeFromBackdrop}
-            onMouseDown={closeFromBackdrop}
+            onClick={closeFromBackdrop}
           >
             <aside
               ref={lobbyModalRef}
@@ -3553,6 +3549,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
               style={{ "--sheet-drag-y": `${sheetDragOffset}px`, "--sheet-modal-opacity": sheetModalOpacity }}
               onPointerDown={(event) => { event.stopPropagation(); startSheetDrag(event); }}
               onMouseDown={(event) => event.stopPropagation()}
+              onClick={(event) => event.stopPropagation()}
               onPointerMove={moveSheetDrag}
               onPointerUp={finishSheetDrag}
               onPointerCancel={cancelSheetDrag}

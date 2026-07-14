@@ -87,9 +87,9 @@
 .arena-hero-stats span {
   display: grid;
   gap: 3px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--ui-control-group-border);
   border-radius: 7px;
-  background: rgba(255, 255, 255, 0.055);
+  background: var(--ui-control-group-bg);
   color: var(--muted);
   padding: 10px;
   text-align: center;
@@ -6843,6 +6843,7 @@ html[data-theme="light"] .arena-lobby-modal {
 /* 2026-07-01 shared primitive alignment for recruiting chunk. */
 .arena-recruit-card,
 .arena-filter-bar,
+.arena-queue-controls,
 .arena-lobby-card.om-match-card,
 .arena-owner-panel,
 .arena-room-rule-panel,
@@ -7073,7 +7074,10 @@ html[data-theme="light"] .arena-party-member-card {
 }
 
 html[data-theme="light"] .arena-lobby-modal {
+  border-color: var(--ui-room-modal-border);
+  border-radius: var(--ui-room-modal-radius);
   background: var(--ui-room-modal-bg);
+  box-shadow: var(--ui-room-modal-shadow);
 }
 
 .arena-side-roster,
@@ -7452,8 +7456,6 @@ html[data-theme="light"] .arena-recruit-hero {
 /* 2026-07-02 room compose drawer uses a neutral panel, not the hero image. */
 .arena-compose-drawer,
 html[data-theme="light"] .arena-compose-drawer,
-.arena-lobby-modal,
-html[data-theme="light"] .arena-lobby-modal,
 .arena-lobby-arena,
 html[data-theme="light"] .arena-lobby-arena {
   background: var(--ui-card-bg);
@@ -7764,5 +7766,34 @@ html[data-theme="light"] .arena-lobby-arena {
   .arena-recruit-hero {
     min-height: 174px;
     padding: 16px;
+  }
+}
+
+@media (max-width: 720px) {
+  .arena-lobby-modal .button,
+  .arena-lobby-modal .arena-icon-button {
+    min-height: var(--ui-button-height);
+  }
+
+  .arena-lobby-modal .arena-lobby-topline > .arena-room-share-actions .button {
+    min-height: var(--ui-button-height);
+  }
+
+  .arena-lobby-modal .arena-icon-button {
+    min-width: var(--ui-button-height);
+  }
+}
+
+@media (max-width: 560px) {
+  .arena-host-kick-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .arena-host-kick-row > span {
+    grid-column: 1 / -1;
+  }
+
+  .arena-host-kick-row > .button {
+    width: 100%;
   }
 }

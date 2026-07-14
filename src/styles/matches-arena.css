@@ -650,12 +650,10 @@
   gap: 12px;
   overflow-y: auto;
   overscroll-behavior: contain;
-  border: 1px solid rgba(255, 211, 108, 0.24);
-  border-radius: var(--radius);
-  background:
-    linear-gradient(145deg, rgba(10, 14, 21, 0.98), rgba(10, 14, 21, 0.92)),
-    var(--bg-hoop) var(--hero-bg-position-hoop) / var(--hero-bg-size) no-repeat;
-  box-shadow: 0 30px 120px rgba(0, 0, 0, 0.58);
+  border: 1px solid var(--ui-room-modal-border);
+  border-radius: var(--ui-room-modal-radius);
+  background: var(--ui-room-modal-bg);
+  box-shadow: var(--ui-room-modal-shadow);
   padding: 18px;
 }
 
@@ -721,7 +719,7 @@
 }
 
 .tournament-detail-page {
-  gap: 14px;
+  gap: var(--page-section-gap);
 }
 
 .tournament-back-link {
@@ -1825,7 +1823,6 @@ html[data-theme="light"] .om-view-card,
 html[data-theme="light"] .om-calendar-summary,
 html[data-theme="light"] .om-calendar-box,
 html[data-theme="light"] .om-tournament-card,
-html[data-theme="light"] .om-tournament-modal,
 html[data-theme="light"] .om-tournament-modal-section,
 html[data-theme="light"] .om-filter-bar,
 html[data-theme="light"] .om-list-head,
@@ -3994,6 +3991,10 @@ html[data-theme="light"] .om-score-box {
 .om-calendar-filter-bar,
 .om-match-panel,
 .om-calendar-panel,
+.om-calendar-summary,
+.om-calendar-box,
+.om-list-head,
+.om-empty-state,
 .om-tournament-panel,
 .om-tournament-card,
 .tournament-hero-badges,
@@ -4328,9 +4329,9 @@ html[data-theme="light"] .om-match-panel {
   min-height: 60px;
   align-content: center;
   gap: 3px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--ui-control-group-border);
   border-radius: 7px;
-  background: rgba(255, 255, 255, 0.055);
+  background: var(--ui-control-group-bg);
   color: var(--muted);
   padding: 8px 10px;
   font-size: 0.7rem;
@@ -4339,8 +4340,8 @@ html[data-theme="light"] .om-match-panel {
 }
 
 html[data-theme="light"] .om-match-stats span {
-  border-color: rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.055);
+  border-color: var(--ui-control-group-border);
+  background: var(--ui-control-group-bg);
 }
 
 .om-match-stats strong {
@@ -4389,5 +4390,59 @@ html[data-theme="light"] .om-match-stats span {
 @media (max-width: 560px) {
   .recorder-card-list .arena-lobby-card .om-room-link {
     min-height: var(--ui-button-height);
+  }
+}
+
+@media (min-width: 761px) and (max-width: 1180px) {
+  .om-match-card,
+  .arena-lobby-card.om-match-card {
+    grid-template-columns: minmax(0, 1fr) 92px;
+  }
+
+  .om-card-main {
+    grid-column: 1;
+  }
+
+  .om-match-summary-box,
+  .om-score-box,
+  .om-match-info-box,
+  .arena-lobby-card .om-match-summary-box {
+    grid-column: 1 / -1;
+    grid-row: auto;
+  }
+
+  .om-room-link,
+  .arena-lobby-card .om-room-link {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: center;
+  }
+
+  .om-card-kicker {
+    overflow: visible;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 760px) {
+  .om-match-card,
+  .arena-lobby-card.om-match-card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .om-card-main,
+  .om-match-summary-box,
+  .om-score-box,
+  .om-match-info-box,
+  .arena-lobby-card .om-match-summary-box,
+  .om-room-link,
+  .arena-lobby-card .om-room-link {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .om-card-kicker {
+    overflow: visible;
+    flex-wrap: wrap;
   }
 }
