@@ -3327,7 +3327,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const sourceTeamSideCount = ["teamA", "teamB"].filter((sideName) => isMatchSideTeamParty(sourceMatch, sideName)).length;
         const lobbyTeamEntryCount = (lobby.entries ?? []).filter((entry) => isPartyEntry(entry)).length;
         const teamMatchSideLocked = sourceTeamSideCount >= 2 || (selectedPost.hostJoinMode === "team" && lobbyTeamEntryCount > 0);
-        const roomMatchTypeLabel = sourceTeamSideCount >= 2 || (selectedPost.visibility === "private" && lobbyTeamEntryCount >= 2)
+        const roomMatchTypeLabel = teamOnlyRoom || sourceTeamSideCount >= 2 || (selectedPost.visibility === "private" && lobbyTeamEntryCount >= 2)
           ? "팀전"
           : lobbyTeamEntryCount > 0 || sourceTeamSideCount > 0
             ? "팀 파티 포함"

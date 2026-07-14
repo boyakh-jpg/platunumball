@@ -36,6 +36,7 @@
 - `createMatch`는 `solo`와 `match_record` 기록 생성만 담당한다. 일반 사전방은 `createRecruitingPost`로만 만든다.
 - 모집방 create 서버 저장은 방장 A사이드, 팀전 대표 1명, 비공개 팀전 B대표 초대 1명, 생성 시 B로스터 미저장을 다시 검사한다.
 - 팀전/팀 파티 표시 라벨은 참가자 2명 이상 여부가 아니라 `hostJoinMode`, `teamOnly`, `teamId`, `targetTeamId`, entry `kind/joinMode/teamId` 기준으로 판단한다.
+- `teamOnly=true`인 방 모달은 상대 팀 참가 전이라 팀 entry가 한쪽에만 있어도 `팀전`으로 표시한다. `isRecruitingPartyEntry` 성립 여부로 방 종류 라벨을 낮추지 않는다.
 - `isRecruitingPartyEntry`는 실제 파티 성립 조건이라 2명 이상 실제 참가/후보가 있을 때만 true로 둔다.
 - 출전/후보 명단 확정은 방모달의 사이드장/팀 소집 경로에서 처리한다.
 - 공개 팀전 참가 화면은 방 상세에 포함된 팀만으로 `내 팀`을 판정하지 않는다. 방모달 진입 시 현재 사용자 팀 디렉터리를 보강 로드한 뒤 대표/권한자의 참여 가능 팀을 표시한다.
