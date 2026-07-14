@@ -2065,7 +2065,7 @@ html[data-theme="light"] .tournament-schedule-list input {
   }
 
   .tournament-vertical-bracket {
-    --slot-width: 142px;
+    --slot-width: 190px;
     padding: 10px;
   }
 
