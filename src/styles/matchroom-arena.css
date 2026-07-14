@@ -674,6 +674,78 @@ html[data-theme="light"] .gm-room-title h1 {
   }
 }
 
+/* 2026-07-14 compact match-room content while preserving hero and slot dimensions. */
+.match-room {
+  gap: var(--page-section-gap);
+}
+
+.gm-room-hero {
+  gap: var(--page-section-gap);
+  padding: var(--card-padding);
+}
+
+.gm-versus-stage {
+  gap: var(--page-column-gap);
+}
+
+.gm-team-panel {
+  min-height: 0;
+  gap: 10px;
+  padding: var(--card-padding);
+}
+
+.gm-score-core {
+  gap: var(--ui-control-group-gap);
+  padding: 12px;
+}
+
+.gm-reserve-panel {
+  gap: var(--page-section-gap-mobile);
+}
+
+.gm-reserve-line {
+  gap: var(--ui-control-group-gap);
+  padding: 8px;
+}
+
+.gm-room-actions {
+  gap: var(--ui-control-group-gap);
+}
+
+.gm-room-actions > div {
+  gap: var(--ui-control-group-gap);
+  padding: 8px 10px;
+}
+
+.gm-room-hero + .content-grid {
+  margin-top: 0;
+}
+
+.gm-next-action-card > div {
+  gap: 2px;
+}
+
+.match-room .contract-grid div {
+  padding: 10px;
+}
+
+@media (max-width: 1079px) {
+  .match-room {
+    gap: var(--page-section-gap-mobile);
+  }
+}
+
+@media (max-width: 720px) {
+  .gm-room-hero {
+    gap: var(--page-section-gap-mobile);
+    padding: var(--card-padding);
+  }
+
+  .gm-team-panel {
+    padding: 12px;
+  }
+}
+
 /* 2026-07-04 KBO Dia Gothic display, scoped to room title, team names, and score core. */
 :where(.gm-room-title h1, .gm-team-head a, .gm-score-core strong, .gm-score-core i) {
   font-family: var(--sports-display-font);

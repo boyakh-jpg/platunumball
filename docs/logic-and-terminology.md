@@ -1237,7 +1237,7 @@ flowchart TD
 | 항목 | 기준 |
 | --- | --- |
 | 페이지 최대폭 | 1220~1280px |
-| 페이지 gap | 16~20px |
+| 페이지 gap | 12~14px |
 | 카드 radius | 8px 이하 |
 | 카드 border | `var(--line)` |
 | 카드 배경 | `var(--surface)` 계열 |
@@ -1572,6 +1572,8 @@ flowchart TD
 9. 클라이언트는 같은 `tournamentId + tournamentRound + tournamentFixture`를 가진 optimistic 경기와 서버 경기를 같은 경기로 보고 서버 경기 id를 남긴다.
 10. 토너먼트 생성/팀 승인/대진 1차 생성과 후속 라운드 생성은 서버 reducer 재실행 경로가 원본이다. tournament snapshot 저장은 `rankball_persist_tournament_snapshot_locked()`의 per-tournament advisory transaction lock을 거친다. 완전한 DB RPC reducer 이전은 아직 남아 있다.
 11. `npm run simulate:backend -- --full`의 `tournament_followup_round`는 4팀 토너먼트 생성, 팀장 승인, 1라운드 2경기 확정, 2라운드 1경기 생성, DB `match_ids` 반영을 검증한다.
+12. 리그 현재 순위는 저장 상태를 새로 만들지 않고 DB 경기 결과 projection으로 계산한다. 완료 경기의 승수, 득실차, 득점, 팀명 순으로 정렬하며 경기 원본 점수와 대회 상태를 수정하지 않는다.
+13. 리그 자동 종료와 우승 확정은 별도 authoritative DB 규칙이 생기기 전까지 화면에서 추정해 저장하지 않는다.
 
 ## 2026-06-25 referee request server action
 

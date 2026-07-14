@@ -78,6 +78,58 @@ function getMatchWinnerTeamId(match) {
   return scoreA > scoreB ? match.teamA?.teamId ?? "" : match.teamB?.teamId ?? "";
 }
 
+function getLeagueMatchResult(match) {
+  if (!match || (!match.result && match.status !== "confirmed")) return null;
+  const scoreA = Number(match.result?.scoreA ?? match.teamA?.score ?? match.scoreA);
+  const scoreB = Number(match.result?.scoreB ?? match.teamB?.score ?? match.scoreB);
+  const teamAId = match.teamA?.teamId ?? match.teamAId ?? "";
+  const teamBId = match.teamB?.teamId ?? match.teamBId ?? "";
+  if (!teamAId || !teamBId || !Number.isFinite(scoreA) || !Number.isFinite(scoreB)) return null;
+  return { teamAId, teamBId, scoreA, scoreB };
+}
+
+function getLeagueStandings(teamRows, matches) {
+  const table = new Map(teamRows.map(({ team, teamId }) => [teamId, {
+    team,
+    teamId,
+    played: 0,
+    wins: 0,
+    losses: 0,
+    pointsFor: 0,
+    pointsAgainst: 0,
+  }]));
+
+  matches.forEach((match) => {
+    const result = getLeagueMatchResult(match);
+    if (!result) return;
+    const teamA = table.get(result.teamAId);
+    const teamB = table.get(result.teamBId);
+    if (!teamA || !teamB) return;
+    teamA.played += 1;
+    teamB.played += 1;
+    teamA.pointsFor += result.scoreA;
+    teamA.pointsAgainst += result.scoreB;
+    teamB.pointsFor += result.scoreB;
+    teamB.pointsAgainst += result.scoreA;
+    if (result.scoreA > result.scoreB) {
+      teamA.wins += 1;
+      teamB.losses += 1;
+    } else if (result.scoreB > result.scoreA) {
+      teamB.wins += 1;
+      teamA.losses += 1;
+    }
+  });
+
+  return [...table.values()]
+    .map((row) => ({ ...row, pointDiff: row.pointsFor - row.pointsAgainst }))
+    .sort((a, b) => (
+      b.wins - a.wins ||
+      b.pointDiff - a.pointDiff ||
+      b.pointsFor - a.pointsFor ||
+      a.team.name.localeCompare(b.team.name, "ko")
+    ));
+}
+
 function getBracketRoundName(roundIndex, totalRounds) {
   const entrantCount = 2 ** (totalRounds - roundIndex);
   if (entrantCount === 2) return "결승";
@@ -241,6 +293,13 @@ function renderBracketSource(source, teamById) {
   const info = getBracketSourceInfo(source, teamById);
   return (
     <div className={`bracket-team-row ${info.state}`}>
+      <span
+        className={info.team ? "bracket-team-emblem" : "bracket-team-emblem placeholder"}
+        style={info.team ? { "--team-color": info.team.accent } : undefined}
+        aria-hidden="true"
+      >
+        {info.team?.name?.slice(0, 1) ?? (info.state === "bye" ? "B" : "?")}
+      </span>
       <span className="bracket-slot-copy">
         <strong>
           {info.team ? <TeamHoverCard team={info.team} as="span">{info.team.name}</TeamHoverCard> : info.label}
@@ -361,6 +420,7 @@ export default function TournamentDetail({ app }) {
     teamAId: match.teamA?.teamId ?? "",
     teamBId: match.teamB?.teamId ?? "",
   }));
+  const leagueStandings = tournament.format === "league" ? getLeagueStandings(teamRows, tournamentMatches) : [];
 
   const saveSchedule = (event, matchId) => {
     event.preventDefault();
@@ -401,7 +461,7 @@ export default function TournamentDetail({ app }) {
             <span><UserRound size={16} />개최자 {organizer?.name ?? "알 수 없음"}{organizer ? ` ${getUserHashtag(organizer)}` : ""}</span>
           </p>
         </div>
-        <div className="tournament-hero-badges">
+        <div className="tournament-hero-badges" aria-label="대회 상태">
           <Badge tone="gold">{formatLabels[tournament.format] ?? tournament.format}</Badge>
           <Badge tone={tournament.status === "active" ? "green" : "orange"}>{statusLabels[tournament.status] ?? tournament.status}</Badge>
           <Badge tone="blue">{tournament.mode}</Badge>
@@ -438,18 +498,20 @@ export default function TournamentDetail({ app }) {
           {teamRows.map((row) => (
             <article key={row.teamId} className={row.status === "accepted" ? "accepted" : ""}>
               <div className="team-emblem" style={{ "--team-color": row.team.accent }}>{row.team.name.slice(0, 1)}</div>
-              <div>
+              <div className="tournament-team-copy">
                 <TeamHoverCard team={row.team}>{row.team.name}</TeamHoverCard>
                 <span>{row.team.region} · {row.team.homeCourt} · 주장 {row.captainName}</span>
               </div>
-              <TierBadge mmr={row.team.mmr} compact />
-              {row.canApprove ? (
-                <button type="button" onClick={() => app.actions.approveTournamentTeam(tournament.id, row.teamId)}>
-                  <ShieldCheck size={15} /> 승인
-                </button>
-              ) : (
-                <b>{row.status === "accepted" ? "승인" : "초대"}</b>
-              )}
+              <div className="tournament-team-state">
+                <TierBadge mmr={row.team.mmr} compact />
+                {row.canApprove ? (
+                  <button type="button" onClick={() => app.actions.approveTournamentTeam(tournament.id, row.teamId)}>
+                    <ShieldCheck size={15} /> 승인
+                  </button>
+                ) : (
+                  <b>{row.status === "accepted" ? "승인 완료" : "승인 대기"}</b>
+                )}
+              </div>
             </article>
           ))}
         </div>
@@ -494,19 +556,53 @@ export default function TournamentDetail({ app }) {
             </div>
           </div>
         ) : (
-          <div className="league-fixture-grid">
-            {leagueFixtures.map((fixture) => {
-              const match = matchesById[fixture.matchId];
-              return (
-                <article key={fixture.matchId ?? `${fixture.teamAId}-${fixture.teamBId}`}>
-                  <span>{fixture.fixture}경기</span>
-                  <TeamHoverCard team={teamById[fixture.teamAId]}><strong>{teamById[fixture.teamAId]?.name ?? match?.teamA.name ?? "TBD"}</strong></TeamHoverCard>
-                  <b>vs</b>
-                  <TeamHoverCard team={teamById[fixture.teamBId]}><strong>{teamById[fixture.teamBId]?.name ?? match?.teamB.name ?? "TBD"}</strong></TeamHoverCard>
-                  <em>{match ? getMatchTime(match) : "일정 미정"}</em>
-                </article>
-              );
-            })}
+          <div className="league-layout">
+            <div className="league-standings-panel">
+              <div className="league-panel-head">
+                <strong>현재 순위</strong>
+                <span>승수 · 득실차 · 득점 순</span>
+              </div>
+              <div className="league-table-scroll">
+                <table className="league-table">
+                  <thead>
+                    <tr><th>순위</th><th>팀</th><th>경기</th><th>승</th><th>패</th><th>득실</th></tr>
+                  </thead>
+                  <tbody>
+                    {leagueStandings.map((row, index) => (
+                      <tr key={row.teamId} className={index === 0 && row.played ? "leader" : ""}>
+                        <td>{index + 1}</td>
+                        <td><TeamHoverCard team={row.team}>{row.team.name}</TeamHoverCard></td>
+                        <td>{row.played}</td>
+                        <td>{row.wins}</td>
+                        <td>{row.losses}</td>
+                        <td>{row.pointDiff > 0 ? `+${row.pointDiff}` : row.pointDiff}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div className="league-fixtures-panel">
+              <div className="league-panel-head">
+                <strong>경기 일정·결과</strong>
+                <span>{leagueFixtures.length}경기</span>
+              </div>
+              <div className="league-fixture-grid">
+                {leagueFixtures.map((fixture) => {
+                  const match = matchesById[fixture.matchId];
+                  const result = getLeagueMatchResult(match);
+                  return (
+                    <article key={fixture.matchId ?? `${fixture.teamAId}-${fixture.teamBId}`} className={result ? "completed" : ""}>
+                      <span>{fixture.fixture}경기</span>
+                      <TeamHoverCard team={teamById[fixture.teamAId]}><strong>{teamById[fixture.teamAId]?.name ?? match?.teamA.name ?? "TBD"}</strong></TeamHoverCard>
+                      <b>{result ? `${result.scoreA}:${result.scoreB}` : "vs"}</b>
+                      <TeamHoverCard team={teamById[fixture.teamBId]}><strong>{teamById[fixture.teamBId]?.name ?? match?.teamB.name ?? "TBD"}</strong></TeamHoverCard>
+                      <em>{match ? getMatchTime(match) : "일정 미정"}</em>
+                    </article>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         )}
       </section>

@@ -677,14 +677,14 @@
 
 .arena-empty-state {
   display: grid;
-  min-height: 220px;
+  min-height: 140px;
   place-items: center;
   border: 1px dashed rgba(255, 255, 255, 0.16);
   border-radius: var(--radius);
   background: rgba(8, 11, 16, 0.48);
   color: var(--muted);
   text-align: center;
-  padding: 24px;
+  padding: var(--card-padding);
 }
 
 .arena-empty-state strong {
@@ -7858,5 +7858,175 @@ html[data-theme="light"] .arena-lobby-arena {
 
   .arena-host-kick-row > .button {
     width: 100%;
+  }
+}
+
+/* 2026-07-14 compact queue and room content without changing shell or slot sizing. */
+.arena-queue-controls {
+  gap: var(--ui-control-group-gap);
+  padding: var(--card-padding);
+}
+
+.arena-queue-controls > .arena-filter-bar {
+  gap: var(--ui-control-group-gap);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.arena-filter-bar .segmented-control,
+.arena-filter-bar .arena-start-date-filter {
+  padding: var(--ui-control-group-padding);
+  scroll-padding-inline: var(--ui-control-group-padding);
+}
+
+.arena-lobby-card.om-match-card {
+  min-height: 0;
+  padding: var(--card-padding) var(--card-padding) var(--card-padding) calc(var(--card-padding) + 4px);
+}
+
+.arena-compose-drawer {
+  padding: var(--card-padding);
+}
+
+.arena-drawer-head {
+  gap: var(--page-column-gap);
+  margin-bottom: var(--page-section-gap-mobile);
+}
+
+.arena-compose-form {
+  gap: 10px;
+}
+
+.arena-field-grid,
+.arena-compose-type-grid,
+.arena-team-choice-grid,
+.arena-party-picker-grid,
+.arena-submit-row {
+  gap: var(--ui-control-group-gap);
+}
+
+.arena-lobby-modal-scroll {
+  padding: var(--card-padding);
+}
+
+.arena-lobby-modal .arena-lobby-arena {
+  gap: var(--page-section-gap);
+  min-height: 0;
+  padding: var(--card-padding);
+}
+
+.arena-lobby-modal .arena-lobby-topline,
+.arena-lobby-modal .arena-lobby-actions {
+  gap: var(--ui-control-group-gap);
+}
+
+.arena-lobby-modal .arena-lobby-title {
+  gap: var(--ui-control-group-gap);
+}
+
+.arena-lobby-modal .arena-lobby-versus-stage {
+  margin-top: 0;
+}
+
+.arena-lobby-modal .arena-lobby-team-panel {
+  min-height: 0;
+  gap: 10px;
+}
+
+.arena-lobby-modal .arena-lobby-score-core {
+  gap: var(--ui-control-group-gap);
+  padding: 12px;
+}
+
+.arena-lobby-modal .arena-reserve-panel {
+  margin-top: 0;
+}
+
+.arena-lobby-modal .arena-lobby-actions > div {
+  gap: var(--ui-control-group-gap);
+  padding: 8px 10px;
+}
+
+.arena-lobby-modal .arena-match-source-record-board,
+.arena-lobby-modal .arena-record-roster-panel {
+  gap: 8px;
+  padding: 10px;
+}
+
+.arena-lobby-modal .arena-source-record-summary {
+  gap: 8px;
+  margin-top: 0;
+  padding: 8px;
+}
+
+.arena-lobby-modal .arena-record-roster-panels,
+.arena-lobby-modal .arena-record-roster-list {
+  gap: 8px;
+}
+
+.arena-lobby-modal .arena-record-roster-row {
+  gap: 6px;
+  padding: 6px;
+}
+
+.arena-lobby-modal :is(
+  .arena-host-kick-panel,
+  .arena-invite-panel,
+  .arena-invitation-list,
+  .arena-room-rule-panel,
+  .arena-room-chat,
+  .arena-join-panel
+) {
+  gap: 8px;
+  padding: 10px;
+}
+
+.arena-lobby-modal :is(
+  .arena-owner-panel,
+  .arena-room-chat,
+  .arena-party-quick-join
+) {
+  min-height: 0;
+}
+
+.arena-lobby-modal .arena-join-form,
+.arena-lobby-modal .arena-host-kick-list,
+.arena-lobby-modal .arena-party-quick-join-list,
+.arena-lobby-modal .arena-chat-list {
+  gap: 6px;
+}
+
+.arena-lobby-modal .arena-party-quick-join {
+  gap: 8px;
+  padding: 8px 10px;
+}
+
+.arena-lobby-modal .arena-host-kick-row,
+.arena-lobby-modal .arena-chat-message > span:last-child {
+  padding: 6px;
+}
+
+@media (max-width: 760px) {
+  .arena-lobby-card.om-match-card {
+    gap: var(--page-section-gap-mobile);
+    padding: var(--card-padding);
+  }
+}
+
+@media (max-width: 720px) {
+  .arena-lobby-modal-scroll {
+    gap: var(--page-section-gap-mobile);
+    padding: 10px;
+  }
+
+  .arena-lobby-modal .arena-lobby-arena {
+    gap: var(--page-section-gap-mobile);
+    padding: 10px;
+  }
+
+  .arena-lobby-modal .arena-lobby-team-panel {
+    padding: 10px;
   }
 }

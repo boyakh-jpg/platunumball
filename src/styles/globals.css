@@ -564,7 +564,7 @@ body > .basketball-loader-overlay ~ .basketball-loader-overlay {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 18px;
+  gap: var(--page-section-gap);
 }
 
 .page-header h1 {
@@ -624,7 +624,7 @@ body > .basketball-loader-overlay ~ .basketball-loader-overlay {
 .card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
-  gap: 16px;
+  gap: var(--page-section-gap);
   align-items: stretch;
 }
 
@@ -641,13 +641,13 @@ body > .basketball-loader-overlay ~ .basketball-loader-overlay {
     linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent),
     rgba(16, 23, 34, 0.92);
   box-shadow: var(--shadow);
-  padding: 18px;
+  padding: var(--card-padding);
   backdrop-filter: blur(16px);
 }
 
 .section-card {
   display: grid;
-  gap: 16px;
+  gap: var(--page-section-gap-mobile);
 }
 
 .section-card:has(.search-picker.is-floating:focus-within) {
@@ -13985,8 +13985,8 @@ button:disabled,
 /* 2026-07-01 final mobile hero bleed standard.
    The app shell owns page padding, so first-screen heroes must cancel it on mobile. */
 .app-main {
-  --app-main-pad-top: 28px;
-  --app-main-pad-x: 28px;
+  --app-main-pad-top: var(--page-gutter);
+  --app-main-pad-x: var(--page-gutter);
 }
 
 @media (max-width: 1079px) {
@@ -13998,8 +13998,8 @@ button:disabled,
 
 @media (max-width: 1020px) {
   .app-main {
-    --app-main-pad-top: 18px;
-    --app-main-pad-x: 16px;
+    --app-main-pad-top: var(--page-gutter);
+    --app-main-pad-x: var(--page-gutter);
   }
 }
 
@@ -14074,7 +14074,7 @@ button:disabled,
 /* 2026-07-02 home responsive rail balance. */
 .rank-home .rank-summary-grid {
   grid-template-columns: 1fr;
-  gap: 16px;
+  gap: var(--page-section-gap);
   align-items: stretch;
   overflow: hidden;
 }
@@ -14130,7 +14130,7 @@ button:disabled,
 .rank-home .home-main-card-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  gap: var(--page-section-gap);
 }
 
 .rank-home .home-main-card-grid > .card {
@@ -14866,7 +14866,7 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
 .rank-home .home-right-rail > .home-top-rail,
 .rank-home .home-right-rail > .home-side-stack {
   min-width: 0;
-  gap: 16px;
+  gap: var(--page-section-gap);
 }
 
 @media (min-width: 1080px) {
@@ -14877,8 +14877,8 @@ html[data-theme="light"] .rank-home .rank-summary-grid .home-rank-board-head {
       "left right"
       "dashboard right";
     align-items: start;
-    column-gap: 20px;
-    row-gap: 16px;
+    column-gap: var(--page-column-gap);
+    row-gap: var(--page-section-gap);
   }
 
   .rank-home > .home-search-panel {
