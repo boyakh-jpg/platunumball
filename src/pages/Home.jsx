@@ -178,9 +178,8 @@ export default function Home({ app }) {
     const key = `${postId}:${invitationId}`;
     setProcessingInviteId(key);
     try {
-      const acceptPromise = app.actions.acceptRecruitingInvitation(postId, invitationId);
-      navigate(`/app/recruiting?post=${postId}`);
-      await acceptPromise;
+      const result = await app.actions.acceptRecruitingInvitation(postId, invitationId);
+      if (result && result.ok !== false) navigate(`/app/recruiting?post=${postId}`);
     } finally {
       setProcessingInviteId("");
     }

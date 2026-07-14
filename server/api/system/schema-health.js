@@ -279,6 +279,26 @@ const REQUIRED_RPCS = [
     args: { p_actor_profile_id: "", p_operation: {} },
   },
   {
+    name: "rankball_profile_representative_team_id",
+    args: { p_profile_id: "" },
+  },
+  {
+    name: "rankball_tournament_team_roster_snapshot",
+    args: { p_team_id: "", p_capacity: 1, p_ranked: false, p_mmr_limit_mode: "warn", p_mmr_range_mode: "normal", p_allowed_age_groups: [] },
+  },
+  {
+    name: "rankball_assert_tournament_team_snapshot_eligible",
+    args: { p_team_id: "", p_capacity: 1, p_ranked: false, p_mmr_limit_mode: "warn", p_mmr_range_mode: "normal", p_allowed_age_groups: [] },
+  },
+  {
+    name: "rankball_create_tournament_match_locked",
+    args: { p_tournament_id: "", p_team_a_id: "", p_team_b_id: "", p_round: 1, p_fixture: 1, p_preferred_match_id: "" },
+  },
+  {
+    name: "rankball_tournament_match_roster_action",
+    args: { p_actor_profile_id: "", p_match_id: "", p_payload: {} },
+  },
+  {
     name: "rankball_tournament_match_schedule_action",
     args: { p_actor_profile_id: "", p_tournament_id: "", p_match_id: "", p_schedule: {} },
   },

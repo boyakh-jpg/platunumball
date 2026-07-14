@@ -114,6 +114,25 @@ export default async function handler(request, response) {
 
     if (updateError) throw updateError;
 
+    const discordPatch = settingsPatch.notificationChannels?.discord;
+    if (discordPatch?.enabled === false || Object.values(discordPatch?.events ?? {}).includes(false)) {
+      const cancelledAt = new Date().toISOString();
+      let cancelQuery = context.supabase
+        .from("discord_notification_deliveries")
+        .update({ status: "cancelled", last_error: "discord_notification_disabled", updated_at: cancelledAt })
+        .eq("target_user_id", context.profileId)
+        .eq("status", "queued")
+        .is("sent_at", null);
+      if (discordPatch.enabled !== false) {
+        const disabledEvents = Object.entries(discordPatch.events ?? {})
+          .filter(([, enabled]) => enabled === false)
+          .map(([event]) => event);
+        if (disabledEvents.length) cancelQuery = cancelQuery.in("event", disabledEvents);
+      }
+      const { error: cancelError } = await cancelQuery;
+      if (cancelError) throw cancelError;
+    }
+
     sendJson(response, 200, { ok: true, settings: nextSettings });
   } catch (error) {
     console.error("Settings sync failed.", error);

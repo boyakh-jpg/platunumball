@@ -41,3 +41,8 @@ export function normalizeSettings(settings = {}, options = {}) {
     refereeExamAttempts: settings.refereeExamAttempts ?? fallbackSettings.refereeExamAttempts ?? [],
   };
 }
+
+export function isDiscordNotificationEnabled(settings = {}, event = "match") {
+  const discord = normalizeSettings(settings).notificationChannels.discord;
+  return discord.enabled === true && discord.events?.[event] !== false;
+}

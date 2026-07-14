@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { MessageCircle } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
@@ -11,6 +12,7 @@ import { getDiscordAvatarClassName, getDiscordAvatarStyle, getDiscordDisplayName
 import { getUserHashtag } from "../lib/handles.js";
 import { PLAYER_STAT_FIELDS } from "../lib/constants.js";
 import { formatStatLine, getMatchSideScore as getSideScore } from "../lib/matchUtils.js";
+import { isSupabaseConfigured } from "../lib/supabase.js";
 import { getTierDivision, getTierQuote } from "../lib/tier.js";
 
 function getPlayerSide(match, playerId) {
@@ -44,10 +46,17 @@ const historyStatusLabel = {
 
 export default function PlayerDetail({ app }) {
   const { playerId } = useParams();
+  const loadDirectory = app.actions?.loadDirectory;
+  useEffect(() => {
+    loadDirectory?.();
+  }, [loadDirectory]);
   const player = app.state.users.find((user) => user.id === playerId);
 
   if (!player) return <Navigate to="/app/rankings" replace />;
 
+  const isOwnProfile = player.id === app.currentUser.id;
+  const canViewTeamHistory = isOwnProfile || player.privacy?.teamHistory === true || (!isSupabaseConfigured && player.privacy?.teamHistory !== false);
+  const canViewStatSummary = isOwnProfile || player.privacy?.statSummary === true || (!isSupabaseConfigured && player.privacy?.statSummary !== false);
   const userMap = Object.fromEntries(app.state.users.map((user) => [user.id, user]));
   const teamMap = Object.fromEntries(app.state.teams.map((team) => [team.id, team]));
   const playerTeams = app.state.teams.filter((team) => team.members.some((member) => member.userId === player.id));
@@ -130,60 +139,64 @@ export default function PlayerDetail({ app }) {
         </div>
       </section>
 
-      <nav className="rank-profile-tabs">
-        <a href="#summary">종합</a>
-        <a href="#history">전적</a>
-        <a href="#teams">팀</a>
-        <a href="#links">상대</a>
-      </nav>
+      {canViewStatSummary || canViewTeamHistory ? (
+        <nav className="rank-profile-tabs">
+          {canViewStatSummary ? <a href="#summary">종합</a> : null}
+          {canViewTeamHistory ? <a href="#history">전적</a> : null}
+          {canViewTeamHistory ? <a href="#teams">팀</a> : null}
+          {canViewTeamHistory ? <a href="#links">상대</a> : null}
+        </nav>
+      ) : null}
 
-      <section id="summary" className="rank-profile-summary">
-        <Card className="section-card rank-record-card">
-          <div className="section-title-row">
-            <div>
-              <p className="eyebrow">Ranked Solo</p>
-              <h2>통합 랭크</h2>
+      {canViewStatSummary ? (
+        <section id="summary" className="rank-profile-summary">
+          <Card className="section-card rank-record-card">
+            <div className="section-title-row">
+              <div>
+                <p className="eyebrow">Ranked Solo</p>
+                <h2>통합 랭크</h2>
+              </div>
+              <Badge tone="gold">{Math.round(player.ratings.integrated)} MMR</Badge>
             </div>
-            <Badge tone="gold">{Math.round(player.ratings.integrated)} MMR</Badge>
-          </div>
-          <div className="rank-record-main">
-            <TierEmblem mmr={player.ratings.integrated} size="md" showLabel />
-            <div>
-              <strong>{getTierDivision(player.ratings.integrated)}</strong>
-              <span>{wins}승 {losses}패 · 승률 {winRate}%</span>
+            <div className="rank-record-main">
+              <TierEmblem mmr={player.ratings.integrated} size="md" showLabel />
+              <div>
+                <strong>{getTierDivision(player.ratings.integrated)}</strong>
+                <span>{wins}승 {losses}패 · 승률 {winRate}%</span>
+              </div>
             </div>
-          </div>
-          <div className="form-pill-row">
-            {recentOutcomes.map((outcome, index) => (
-              <span key={`${outcome}-${index}`} className={`form-pill form-pill-${outcome === "win" ? "w" : outcome === "loss" ? "l" : "d"}`}>
-                {outcome === "win" ? "W" : outcome === "loss" ? "L" : "D"}
+            <div className="form-pill-row">
+              {recentOutcomes.map((outcome, index) => (
+                <span key={`${outcome}-${index}`} className={`form-pill form-pill-${outcome === "win" ? "w" : outcome === "loss" ? "l" : "d"}`}>
+                  {outcome === "win" ? "W" : outcome === "loss" ? "L" : "D"}
+                </span>
+              ))}
+            </div>
+          </Card>
+          <Card className="section-card rank-record-card">
+            <div className="section-title-row">
+              <div>
+                <p className="eyebrow">Career Totals</p>
+                <h2>누적 스탯</h2>
+              </div>
+            </div>
+            <div className="rank-stat-grid">
+              {PLAYER_STAT_FIELDS.map((field) => (
+                <span key={field.id}>
+                  <strong>{totals[field.id]}</strong>
+                  {field.label}
+                </span>
+              ))}
+              <span>
+                <strong>{averageFouls.toFixed(1)}</strong>
+                평균 파울
               </span>
-            ))}
-          </div>
-        </Card>
-        <Card className="section-card rank-record-card">
-          <div className="section-title-row">
-            <div>
-              <p className="eyebrow">Career Totals</p>
-              <h2>누적 스탯</h2>
             </div>
-          </div>
-          <div className="rank-stat-grid">
-            {PLAYER_STAT_FIELDS.map((field) => (
-              <span key={field.id}>
-                <strong>{totals[field.id]}</strong>
-                {field.label}
-              </span>
-            ))}
-            <span>
-              <strong>{averageFouls.toFixed(1)}</strong>
-              평균 파울
-            </span>
-          </div>
-        </Card>
-      </section>
+          </Card>
+        </section>
+      ) : null}
 
-      <div className="content-grid wide-left">
+      <div className={canViewStatSummary || canViewTeamHistory ? "content-grid wide-left" : "page-stack"}>
         <div className="page-stack">
           <section className="mode-grid">
             <RatingCard title="통합" mmr={player.ratings.integrated} subtitle="메인 티어" />
@@ -192,86 +205,96 @@ export default function PlayerDetail({ app }) {
             ))}
           </section>
 
-          <Card id="history" className="section-card">
-            <div className="section-title-row">
-              <div>
-                <p className="eyebrow">Player History</p>
-                <h2>누구와 뛰었는지</h2>
+          {canViewTeamHistory ? (
+            <Card id="history" className="section-card">
+              <div className="section-title-row">
+                <div>
+                  <p className="eyebrow">Player History</p>
+                  <h2>누구와 뛰었는지</h2>
+                </div>
+                <Badge tone="green">{history.length}경기</Badge>
               </div>
-              <Badge tone="green">{history.length}경기</Badge>
-            </div>
-            <div className="history-list">
-              {history.map((match) => {
-                const sideName = getPlayerSide(match, player.id);
-                const oppositeSide = sideName === "teamA" ? "teamB" : "teamA";
-                const side = match[sideName] ?? { name: sideName === "teamA" ? "A" : "B", teamId: "" };
-                const opponent = match[oppositeSide] ?? { name: oppositeSide === "teamA" ? "A" : "B", teamId: "" };
-                const stats = match.result?.playerStats?.[player.id];
-                const outcome = getPlayerOutcome(match, player.id);
-                return (
-                  <article key={match.id} className={`history-item rank-match-item ${outcome ? `rank-match-${outcome}` : ""}`}>
-                    <div>
-                      <Link to={`/app/matches?match=${match.id}`}><strong>{match.title}</strong></Link>
-                      <span>{match.court} · {match.scheduledAt}</span>
-                    </div>
-                    <div className="history-score">
-                      <Badge tone={outcome === null ? "blue" : outcome === "win" ? "green" : outcome === "loss" ? "orange" : "gold"}>
-                        {outcome === null ? historyStatusLabel[match.status] ?? match.status : outcome === "win" ? "승" : outcome === "loss" ? "패" : "무"}
-                      </Badge>
-                      <strong>{getSideScore(match, sideName)}:{getSideScore(match, oppositeSide)}</strong>
-                    </div>
-                    <div className="history-teams">
-                      {side.teamId ? <Link to={`/app/teams/${side.teamId}`}>{teamMap[side.teamId]?.name ?? side.name}</Link> : <span>{side.name}</span>}
-                      <span>vs</span>
-                      {opponent.teamId ? <Link to={`/app/teams/${opponent.teamId}`}>{teamMap[opponent.teamId]?.name ?? opponent.name}</Link> : <span>{opponent.name}</span>}
-                    </div>
-                    <p>{formatStatLine(stats)}</p>
-                  </article>
-                );
-              })}
-            </div>
-          </Card>
+              <div className="history-list">
+                {history.map((match) => {
+                  const sideName = getPlayerSide(match, player.id);
+                  const oppositeSide = sideName === "teamA" ? "teamB" : "teamA";
+                  const side = match[sideName] ?? { name: sideName === "teamA" ? "A" : "B", teamId: "" };
+                  const opponent = match[oppositeSide] ?? { name: oppositeSide === "teamA" ? "A" : "B", teamId: "" };
+                  const stats = match.result?.playerStats?.[player.id];
+                  const outcome = getPlayerOutcome(match, player.id);
+                  return (
+                    <article key={match.id} className={`history-item rank-match-item ${outcome ? `rank-match-${outcome}` : ""}`}>
+                      <div>
+                        <Link to={`/app/matches?match=${match.id}`}><strong>{match.title}</strong></Link>
+                        <span>{match.court} · {match.scheduledAt}</span>
+                      </div>
+                      <div className="history-score">
+                        <Badge tone={outcome === null ? "blue" : outcome === "win" ? "green" : outcome === "loss" ? "orange" : "gold"}>
+                          {outcome === null ? historyStatusLabel[match.status] ?? match.status : outcome === "win" ? "승" : outcome === "loss" ? "패" : "무"}
+                        </Badge>
+                        <strong>{getSideScore(match, sideName)}:{getSideScore(match, oppositeSide)}</strong>
+                      </div>
+                      <div className="history-teams">
+                        {side.teamId ? <Link to={`/app/teams/${side.teamId}`}>{teamMap[side.teamId]?.name ?? side.name}</Link> : <span>{side.name}</span>}
+                        <span>vs</span>
+                        {opponent.teamId ? <Link to={`/app/teams/${opponent.teamId}`}>{teamMap[opponent.teamId]?.name ?? opponent.name}</Link> : <span>{opponent.name}</span>}
+                      </div>
+                      {canViewStatSummary ? <p>{formatStatLine(stats)}</p> : null}
+                    </article>
+                  );
+                })}
+              </div>
+            </Card>
+          ) : null}
         </div>
 
-        <aside className="page-stack">
-          <ProgressionChecklist user={player} matches={app.state.matches} />
-          <Card className="section-card" id="teams">
-            <div className="section-title-row">
-              <div>
-                <p className="eyebrow">Career Totals</p>
-                <h2>누적 경기 스탯</h2>
-              </div>
-            </div>
-            <div className="contract-grid single">
-              {PLAYER_STAT_FIELDS.map((field) => (
-                <div key={field.id}>
-                  <span>{field.label}</span>
-                  <strong>{totals[field.id]}</strong>
+        {canViewStatSummary || canViewTeamHistory ? (
+          <aside className="page-stack">
+            {canViewStatSummary ? <ProgressionChecklist user={player} matches={app.state.matches} /> : null}
+            {canViewStatSummary ? (
+              <Card className="section-card">
+                <div className="section-title-row">
+                  <div>
+                    <p className="eyebrow">Career Totals</p>
+                    <h2>누적 경기 스탯</h2>
+                  </div>
                 </div>
-              ))}
-            </div>
-          </Card>
-          <Card className="section-card">
-            <div className="section-title-row">
-              <div>
-                <p className="eyebrow">Teams</p>
-                <h2>소속 팀</h2>
+                <div className="contract-grid single">
+                  {PLAYER_STAT_FIELDS.map((field) => (
+                    <div key={field.id}>
+                      <span>{field.label}</span>
+                      <strong>{totals[field.id]}</strong>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            ) : null}
+            {canViewTeamHistory ? (
+              <Card className="section-card" id="teams">
+                <div className="section-title-row">
+                  <div>
+                    <p className="eyebrow">Teams</p>
+                    <h2>소속 팀</h2>
+                  </div>
+                </div>
+                <div className="compact-list">
+                  {playerTeams.map((team) => (
+                    <Link key={team.id} to={`/app/teams/${team.id}`}>
+                      <span>{team.name}</span>
+                      <strong>{team.mmr}</strong>
+                    </Link>
+                  ))}
+                </div>
+              </Card>
+            ) : null}
+            {canViewTeamHistory ? (
+              <div id="links" className="page-stack">
+                {renderRelationship("같이 뛴 사람", teammateCounts)}
+                {renderRelationship("상대한 사람", opponentCounts)}
               </div>
-            </div>
-            <div className="compact-list">
-              {playerTeams.map((team) => (
-                <Link key={team.id} to={`/app/teams/${team.id}`}>
-                  <span>{team.name}</span>
-                  <strong>{team.mmr}</strong>
-                </Link>
-              ))}
-            </div>
-          </Card>
-          <div id="links" className="page-stack">
-            {renderRelationship("같이 뛴 사람", teammateCounts)}
-            {renderRelationship("상대한 사람", opponentCounts)}
-          </div>
-        </aside>
+            ) : null}
+          </aside>
+        ) : null}
       </div>
     </div>
   );

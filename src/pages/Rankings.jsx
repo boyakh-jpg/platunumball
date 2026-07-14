@@ -3,6 +3,7 @@ import Badge from "../components/common/Badge.jsx";
 import Card from "../components/common/Card.jsx";
 import RankingTable from "../components/ranking/RankingTable.jsx";
 import RankingTabs from "../components/ranking/RankingTabs.jsx";
+import { isSupabaseConfigured } from "../lib/supabase.js";
 
 const tabs = [
   { id: "local", label: "내 주변" },
@@ -21,12 +22,17 @@ export default function Rankings({ app }) {
   }, [app.actions]);
   const myRegion = app.currentUser.region;
   const hiddenUserIds = new Set(app.state.settings?.blockedUserIds ?? []);
-  if (app.state.settings?.privacy?.regionRanking === false) hiddenUserIds.add(app.currentUser.id);
   const visiblePlayers = app.rankings.players.filter((user) => !hiddenUserIds.has(user.id));
   const visibleModePlayers = tab === "teams" || tab === "affiliations" || tab === "integrated" || tab === "local"
     ? visiblePlayers
     : app.rankings.mode(tab).filter((user) => !hiddenUserIds.has(user.id));
-  const localPlayers = visiblePlayers.filter((user) => user.region === myRegion);
+  const localPlayers = visiblePlayers.filter((user) => (
+    user.region === myRegion && (
+      user.id === app.currentUser.id ||
+      user.privacy?.regionRanking === true ||
+      (!isSupabaseConfigured && user.privacy?.regionRanking !== false)
+    )
+  ));
   const localTeams = app.rankings.teams.filter((team) => team.region === myRegion);
   const localAffiliations = app.rankings.affiliations.filter((affiliation) => affiliation.name === myRegion || affiliation.type !== "region").slice(0, 6);
   const type = tab === "teams" ? "teams" : tab === "affiliations" ? "affiliations" : "players";

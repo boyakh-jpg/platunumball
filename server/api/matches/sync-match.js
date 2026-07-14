@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { isDiscordNotificationEnabled } from "../../../src/data/settingsMappers.js";
 import { getAuthenticatedContext, getDatePart, getTimePart, nullableText, readJsonBody, sendJson, toArray, toDbTime, toNotificationRows, uniqueValues as uniqueIds } from "../_supabaseAdmin.js";
 import { RECORD_TYPES } from "../../../src/lib/constants.js";
 import { makeAnonymousMatchPlayer } from "../../../src/lib/matchUtils.js";
@@ -205,16 +206,18 @@ function getRoomManagerIds(match = {}) {
   return [match.refereeId || match.createdBy || match.ownerId || match.playerId].filter(Boolean);
 }
 
-export async function getDiscordProfiles(supabase, profileIds = []) {
+export async function getDiscordProfiles(supabase, profileIds = [], event = "match") {
   const ids = Array.from(new Set(profileIds.filter(Boolean)));
   if (!ids.length) return [];
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, discord_user_id")
+    .select("id, discord_user_id, app_settings")
     .in("id", ids)
     .not("discord_user_id", "is", null);
   if (error) throw error;
-  return (data ?? []).filter((profile) => profile.id && profile.discord_user_id);
+  return (data ?? []).filter((profile) => (
+    profile.id && profile.discord_user_id && isDiscordNotificationEnabled(profile.app_settings, event)
+  ));
 }
 
 function toDiscordDeliveryRows(match = {}, profiles = [], notification = {}) {

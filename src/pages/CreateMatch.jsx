@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ClipboardList, Globe2, Lock, Trophy } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
@@ -11,7 +11,7 @@ import { MATCH_MODES, MAX_RECRUITING_RESERVES_PER_SIDE as MAX_PARTY_RESERVES, PL
 import { getCourtLayoutLabel, getCourtPlayWarning, getCourtSurfaceLabel, getRegisteredCourts } from "../lib/courts.js";
 import { getCourtHashtag, getTeamHashtag, getUserHashtag } from "../lib/handles.js";
 import { addDateDays, getLocalDateInputValue, getPublicRoomMaxDateInput, isEligibleReferee } from "../lib/matchUtils.js";
-import { AGE_GROUPS, getAgeGroupForUser } from "../lib/profileSetup.js";
+import { AGE_GROUPS, getAgeGroupForUser, getRepresentativeTeam } from "../lib/profileSetup.js";
 import { MMR_RANGE_POLICIES, getRecruitingSideCapacity, getRecruitingTierRange, getSelectableTeamPlayerIds, getTeamEventEligibility, isMmrInRecruitingRange } from "../lib/recruiting.js";
 
 const today = getLocalDateInputValue();
@@ -208,6 +208,12 @@ function formatCreateSaveError(result, fallback) {
     reason = "선택 명단에 연령·MMR 조건을 충족하지 않는 선수가 있습니다.";
   } else if (errorCode === "team_captain_required" || errorCode === "tournament_team_captain_required") {
     reason = "팀장만 팀전 초대·참가를 확정할 수 있습니다.";
+  } else if (["tournament_representative_team_required", "tournament_creator_representative_team_required", "tournament_team_representative_required"].includes(errorCode)) {
+    reason = "대회에는 대표팀으로만 참가할 수 있습니다. 팀 메뉴에서 대표팀을 확인하세요.";
+  } else if (errorCode === "tournament_representative_roster_insufficient") {
+    reason = "대표팀 기준으로 고정된 참가 가능 선수가 경기 인원보다 적습니다.";
+  } else if (errorCode === "tournament_team_snapshot_missing") {
+    reason = "대회 생성 시점의 대표팀 명단을 찾지 못했습니다.";
   } else if (errorCode === "supabase_admin_not_configured") {
     reason = "서버 Supabase service role 환경변수가 설정되지 않았습니다.";
   } else {
@@ -281,16 +287,29 @@ export default function CreateMatch({ app }) {
   const navigate = useNavigate();
   const location = useLocation();
   const isRecordCreateIntent = useMemo(() => new URLSearchParams(location.search).get("intent") === "record", [location.search]);
+  const loadDirectory = app.actions.loadDirectory;
+  const requestedTournamentDirectoryRef = useRef(false);
   useEffect(() => {
-    app.actions.loadDirectory?.();
-  }, [app.actions]);
+    if (requestedTournamentDirectoryRef.current) return;
+    requestedTournamentDirectoryRef.current = true;
+    loadDirectory?.(true);
+  }, [loadDirectory]);
   const myTeams = useMemo(
     () => app.state.teams.filter((team) => team.members.some((member) => member.userId === app.currentUser.id && member.role === "captain")),
     [app.currentUser.id, app.state.teams],
   );
+  const representativeTeamId = app.state.settings?.representativeTeamId ?? app.currentUser.representativeTeamId ?? "";
+  const currentRepresentativeTeam = useMemo(
+    () => getRepresentativeTeam(app.currentUser.id, app.state.teams, representativeTeamId) ?? null,
+    [app.currentUser.id, app.state.teams, representativeTeamId],
+  );
+  const representativeTournamentTeam = useMemo(
+    () => myTeams.find((team) => team.id === currentRepresentativeTeam?.id) ?? null,
+    [currentRepresentativeTeam?.id, myTeams],
+  );
   const canCreateTeamRoom = myTeams.length > 0;
   const defaultTeamA = myTeams[0];
-  const defaultTournamentTeamA = defaultTeamA ?? app.state.teams[0];
+  const defaultTournamentTeamA = representativeTournamentTeam;
   const defaultMode = getDefaultCreateMode(defaultTeamA);
   const defaultHostJoinMode = canCreateTeamRoom && defaultMode !== "1v1" ? "team" : "player";
   const defaultCapacity = getRecruitingSideCapacity({ mode: defaultMode });
@@ -458,9 +477,22 @@ export default function CreateMatch({ app }) {
     () => (draft.tournamentTeamIds ?? []).map((teamId) => app.state.teams.find((team) => team.id === teamId)).filter(Boolean),
     [app.state.teams, draft.tournamentTeamIds],
   );
+  const getTournamentTeamEligibility = (team) => {
+    const eligibility = getTeamEligibility(team, team?.mmr);
+    const isMyTeam = myTeams.some((item) => item.id === team?.id);
+    if (isMyTeam && representativeTournamentTeam?.id !== team?.id) {
+      return { ...eligibility, allowed: false, reason: "내 팀은 대표팀으로 설정된 팀만 참가할 수 있습니다." };
+    }
+    return eligibility;
+  };
   const tournamentMmrSpread = getMmrSpread(tournamentTeams);
-  const tournamentEligibilityById = new Map(tournamentTeams.map((team) => [team.id, getTeamEligibility(team, team.mmr)]));
+  const tournamentEligibilityById = new Map(tournamentTeams.map((team) => [team.id, getTournamentTeamEligibility(team)]));
   const ineligibleTournamentTeams = tournamentTeams.filter((team) => !tournamentEligibilityById.get(team.id)?.allowed);
+  const tournamentDirectoryError = app.directoryStatus?.error ?? "";
+  const tournamentDirectoryPending = app.remoteReady === false || app.directoryStatus?.loading || (app.directoryStatus?.loaded === false && !tournamentDirectoryError);
+  const representativeTournamentTeamSelected = Boolean(
+    representativeTournamentTeam?.id && (draft.tournamentTeamIds ?? []).includes(representativeTournamentTeam.id),
+  );
   const teamOptions = useMemo(() => {
     const teamMap = new Map();
     [selectedTeamA, selectedTeamB, ...tournamentTeams, ...sortedTeams].filter(Boolean).forEach((team) => teamMap.set(team.id, team));
@@ -694,7 +726,7 @@ export default function CreateMatch({ app }) {
       draft.mmrLimitMode === "block" &&
       tournamentMmrSpread > Number(draft.tournamentMaxMmrGap ?? 250),
   );
-  const tournamentInvalid = !draft.title.trim() || tournamentTeams.length < 2 || tournamentMmrBlocked || ineligibleTournamentTeams.length > 0;
+  const tournamentInvalid = !draft.title.trim() || tournamentDirectoryPending || Boolean(tournamentDirectoryError) || !representativeTournamentTeamSelected || tournamentTeams.length < 2 || tournamentMmrBlocked || ineligibleTournamentTeams.length > 0;
   const publicTeamInvalidReason = !myTeams.some((team) => team.id === draft.teamAId)
     ? "내 팀을 먼저 선택해야 팀방을 만들 수 있습니다."
     : !selectedTeamAEligibility.allowed
@@ -734,6 +766,14 @@ export default function CreateMatch({ app }) {
             : "";
   const tournamentInvalidReason = !draft.title.trim()
     ? "대회 이름을 입력해야 생성할 수 있습니다."
+    : tournamentDirectoryPending
+      ? "팀원 정보를 불러오는 중입니다."
+    : tournamentDirectoryError
+      ? "팀원 정보를 불러오지 못했습니다. 다시 시도하세요."
+    : !representativeTournamentTeam
+      ? "대회에 참가할 대표팀의 팀장이어야 합니다."
+    : !representativeTournamentTeamSelected
+      ? "내 대표팀을 참가팀에 포함해야 합니다."
     : tournamentTeams.length < 2
       ? "대회는 최소 2개 팀을 선택해야 생성할 수 있습니다."
       : tournamentMmrBlocked
@@ -854,7 +894,16 @@ export default function CreateMatch({ app }) {
       const teamAExists = app.state.teams.some((team) => team.id === current.teamAId);
       const teamBExists = app.state.teams.some((team) => team.id === current.teamBId);
       const capacity = getRecruitingSideCapacity(current);
-      const tournamentTeamIds = (current.tournamentTeamIds ?? []).filter((teamId) => app.state.teams.some((team) => team.id === teamId));
+      const currentTournamentTeamIds = (current.tournamentTeamIds ?? []).filter((teamId) => app.state.teams.some((team) => team.id === teamId));
+      const tournamentTeamIds = currentTournamentTeamIds.filter((teamId) => (
+        !myTeams.some((team) => team.id === teamId) || teamId === representativeTournamentTeam?.id
+      ));
+      if (representativeTournamentTeam?.id && !tournamentTeamIds.includes(representativeTournamentTeam.id)) {
+        tournamentTeamIds.unshift(representativeTournamentTeam.id);
+      }
+      if (!currentTournamentTeamIds.length && defaultTournamentTeamB?.id && !tournamentTeamIds.includes(defaultTournamentTeamB.id)) {
+        tournamentTeamIds.push(defaultTournamentTeamB.id);
+      }
       const nextUserTeamId = myTeams[0]?.id ?? "";
       const currentTeamAIsMine = teamAExists && myTeams.some((team) => team.id === current.teamAId);
       const nextTeamAId = currentTeamAIsMine ? current.teamAId : nextUserTeamId;
@@ -874,7 +923,7 @@ export default function CreateMatch({ app }) {
       if (current.teamAId === nextTeamAId && current.teamBId === nextTeamBId && current.mmrLimitMode === nextMmrLimitMode && tournamentTeamIds.length === (current.tournamentTeamIds ?? []).length) return current;
       return { ...current, teamAId: nextTeamAId, teamBId: nextTeamBId, mmrLimitMode: nextMmrLimitMode, tournamentTeamIds };
     });
-  }, [app.currentUser.id, app.state.teams, currentRegion, myTeams]);
+  }, [app.currentUser.id, app.state.teams, currentRegion, defaultTournamentTeamB?.id, myTeams, representativeTournamentTeam?.id]);
 
   useEffect(() => {
     if (canCreateTeamRoom) return;
@@ -991,8 +1040,12 @@ export default function CreateMatch({ app }) {
   const toggleTournamentTeam = (teamId) => {
     const teamIds = draft.tournamentTeamIds ?? [];
     const team = app.state.teams.find((item) => item.id === teamId);
+    if (teamIds.includes(teamId) && teamId === representativeTournamentTeam?.id) {
+      setSubmitFeedback("내 대표팀은 대회 참가팀에서 해제할 수 없습니다.");
+      return;
+    }
     if (!teamIds.includes(teamId)) {
-      const eligibility = getTeamEligibility(team, team?.mmr);
+      const eligibility = getTournamentTeamEligibility(team);
       if (!eligibility.allowed) {
         setSubmitFeedback(`${team?.name ?? "선택 팀"}: ${eligibility.reason}`);
         return;
@@ -1027,7 +1080,7 @@ export default function CreateMatch({ app }) {
   const renderCreateTeamSearchItem = (team) => {
     const invited = (draft.tournamentTeamIds ?? []).includes(team.id);
     const selected = isTournamentRoom ? invited : isPublicRoom ? draft.teamAId === team.id : draft.teamAId === team.id;
-    const eligibility = getTeamEligibility(team, team.mmr);
+    const eligibility = isTournamentRoom ? getTournamentTeamEligibility(team) : getTeamEligibility(team, team.mmr);
     const actionLabel = isTournamentRoom ? (invited ? "초대 해제" : "초대") : isPublicRoom ? "내 파티" : "A사이드";
     return (
       <button
@@ -1874,9 +1927,9 @@ export default function CreateMatch({ app }) {
                 <span>선택 {tournamentTeams.length}팀 · 팀 수 제한 없음 · 2의 거듭제곱이 아니면 부전승 자동 배정</span>
                 <div>
                   {tournamentTeams.map((team) => (
-                    <button key={team.id} type="button" onClick={() => toggleTournamentTeam(team.id)}>
+                    <button key={team.id} type="button" disabled={team.id === representativeTournamentTeam?.id} onClick={() => toggleTournamentTeam(team.id)}>
                       <TeamHoverCard team={team} as="span"><strong>{team.name}</strong></TeamHoverCard>
-                      <em>해제</em>
+                      <em>{team.id === representativeTournamentTeam?.id ? "대표팀" : "해제"}</em>
                     </button>
                   ))}
                 </div>
@@ -1884,7 +1937,7 @@ export default function CreateMatch({ app }) {
               <div className="tournament-team-grid">
                 {teamOptions.map((team) => {
                   const invited = (draft.tournamentTeamIds ?? []).includes(team.id);
-                  const eligibility = getTeamEligibility(team, team.mmr);
+                  const eligibility = getTournamentTeamEligibility(team);
                   return (
                     <button key={team.id} type="button" className={[invited ? "active" : "", !eligibility.allowed && !invited ? "is-disabled" : ""].filter(Boolean).join(" ")} disabled={!eligibility.allowed && !invited} onClick={() => toggleTournamentTeam(team.id)}>
                       <TeamHoverCard team={team} as="span"><strong>{team.name}</strong></TeamHoverCard>

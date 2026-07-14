@@ -1,5 +1,28 @@
 # RankBall 로직/용어/디자인 기준
 
+## 2026-07-15 구현·자동 검증 인벤토리
+
+| 영역 | 현재 원본/구현 | 전체 시뮬레이션 |
+| --- | --- | --- |
+| Auth/Profile | `auth.users.id = profiles.auth_user_id` 1:1, 해시태그·생년 잠금, 이름 월 1회, Discord ID unique | `profile_identity_lock`, `discord_unique_profile`, schema health |
+| 공개 범위 | 지역 랭킹·소속팀 이력·개인 스탯 공개값만 directory 응답에 포함하고 타인 화면에서 적용 | `profile_privacy` |
+| 팀 | 생성·수정·soft delete, 팀원 초대·수락·거절·취소, 1인 3팀·팀당 10명 | `team_membership_invite_decline`, `team_lifecycle` |
+| 구장 | 등록 요청, 관리자 승인, 승인 구장 생성, 신청자 알림 | `court_request_approval` |
+| 모집방 | 공개/비공개, 개인/팀, 즉시/예약, 만료, 방 규칙, 관심·참가·취소, 후보·배치·분리·강퇴 | `private_player_invite_accept*`, `public_team_region_feed`, `bulk_home_invite_*`, `recruiting_actor_join_position`, `recruiting_room_expiry` |
+| 모집 초대/심판 | 선수·팀·파티 초대 응답, 심판 초대, 부적격 심판 차단 | `bulk_home_invite_*`, `referee_absence_confirmation`, `ineligible_referee_join_blocked` |
+| 경기방 | 출석, 방 규칙, 출전/후보 배치, 선수 제거, 심판 부재 합의, 시작·종료·취소·무효 | `recorder_handoff_1v1`, `basic_1v1_no_referee`, `referee_1v1`, `dispute_void` |
+| 기록 | 점수·부분 선수기록 병합, 기록권한 이관, 선수 교체, 이의제기·재개, 최종 승인 | `solo_record`, `match_record_roster_operation`, `recorder_handoff_1v1`, `dispute_resume_thumbs` |
+| MMR/신뢰 | 정규전 최종 승인과 개인·팀 MMR/trust/streak 원자 커밋, 비정규·개인기록 제외 | `ranked_mmr_commit_1v1`, `basic_1v1_no_referee`, `solo_record` |
+| 대회/리그 | 대표팀만 참가, 생성 시 명단 스냅샷, 일정·로스터, 1라운드·부전승·후속 라운드 자동 생성 | `tournament_representative_team_guard`, `tournament_followup_round`, `tournament_bye_round` |
+| 홈/알림 | 처리할 일과 알림 분리, due unread 표시, 미래 알림 숨김 | `home_alert_notifications` |
+| 경기 리마인더 | 24h·2h·1h·10m·시작·종료·이의 안내와 시작/승인/취소/무효 stale 제거 | `match_reminder_cancel`, `match_reminder_cleanup_probe` |
+| Discord | 웹↔방 채팅 bridge, 중복/echo 차단, 이벤트별 opt-in, opt-out 시 queued 취소 | `discord_room_chat_bridge`, `discord_notification_opt_in` |
+| 심판 시험 | 서버 문제 출제·채점·합격 확인·주 1회 cooldown·등록 요청 | `referee_exam_server` |
+| 신고/Admin/RLS | 최근 7일 같이 뛴 선수 신고, 중복 멱등, 임명·회수·징계·audit RPC, raw write 차단 | `player_report_scope_dedup`, `admin_appointment_discipline`, `raw_table_rls` |
+
+- `scripts/simulate-backend-flow.mjs --full`은 위 흐름을 서로 다른 테스트 계정으로 실행하고 생성한 방·경기·대회·팀·알림·Discord 큐·관리자 행과 임시 프로필/MMR 변경을 종료 시 복구한다.
+- 실제 Discord Bot DM/OAuth/Gateway 상시 worker, 외부 스케줄러 호출, 실사용 브라우저 세션은 코드/DB 시뮬레이션과 별도 운영 검증 대상이다.
+
 ## 2026-07-14 경기 메뉴 상태와 모집방 만료
 
 1. 경기 메뉴 상태는 `내 일정(MY)`, `처리 필요(ACTION)`, `예정·진행(SOON)`, `닫힘(CLOSED)` 네 가지다.
@@ -16,16 +39,17 @@
 
 ## 2026-07-14 팀 경기 참가 자격·대회 일정
 
-1. 공개/비공개 팀전과 대회는 팀장 지정 및 경기 인원수 이상의 참가 가능 팀원을 생성·초대·참가 전에 검사한다.
-2. 참가 가능 팀원은 팀에 실제 등록된 정규 팀원 또는 용병 중 연령 조건을 충족한 선수다. 정규전의 `mmrLimitMode="block"`에서만 선수 MMR 범위도 강제한다.
+1. 공개/비공개 팀전과 대회는 팀장 지정 및 경기 인원수 이상의 참가 가능 팀원을 생성·초대·참가 전에 검사한다. 대회는 각 사용자의 대표팀 배정도 함께 검사한다.
+2. 일반 팀전 참가 가능 팀원은 팀에 실제 등록된 정규 팀원 또는 용병 중 연령 조건을 충족한 선수다. 대회 참가 가능 팀원은 이 조건에 더해 해당 팀이 자신의 대표팀이어야 한다. 정규전의 `mmrLimitMode="block"`에서만 선수 MMR 범위도 강제한다.
 3. 공개/비공개 팀전은 팀장만 팀으로 방을 만들거나 참가할 수 있고 팀장 본인도 참가 조건을 충족해야 한다.
-4. 대회 팀장은 운영 대표라 출전 의무가 없다. 대회 팀은 팀장을 제외해도 조건을 충족한 선수가 경기 인원수 이상이면 초대할 수 있다.
-5. 용병은 먼저 해당 팀의 팀원으로 등록돼야 참가 가능 인원에 포함된다.
-6. 대회 경기는 모든 초대팀 승인 후 생성한다. 일정 저장은 이미 생성된 경기 row만 수정하며 새 경기 생성을 대신하지 않는다.
-7. 대회 일정 저장은 경기와 대회를 transaction lock으로 잠근 뒤 날짜·시간을 저장하고 양 팀장의 기존 로스터 확정을 해제한다.
-8. 일정 저장 후 양 팀장에게 홈 처리 항목·웹 알림·Discord 전달 대상 알림을 만들고, 팀장은 방 모달에서 조건을 충족한 출전 인원 정확히 N명과 후보 최대 2명을 확정한다.
-9. 양 팀 로스터가 모두 확정되지 않으면 대회 경기를 시작할 수 없다. 대회 팀장은 현재 로스터에 없어도 해당 경기 조회와 자기 팀 로스터 저장 권한을 가진다.
-10. 팀 초대·참가 전 검사는 가용 인원 검증이고, 경기 결과의 팀 MMR 반영 여부는 최종 출전 로스터를 기준으로 별도 검증한다.
+4. 대회 팀장은 운영 대표라 출전 의무가 없지만 해당 팀을 자신의 대표팀으로 둔 팀장만 대회 참가를 승인할 수 있다. 한 사용자가 여러 팀의 팀장이더라도 한 대회에는 대표팀 1개로만 참가한다.
+5. 용병은 먼저 해당 팀의 팀원으로 등록되고 해당 팀을 대표팀으로 둬야 대회 참가 가능 인원에 포함된다.
+6. 대회 생성 시점에 초대팀별 대표팀 소속원, 연령대, MMR, 참가 가능 여부를 `rules.teamRosterSnapshot`으로 고정한다. 이후 대표팀 변경은 이미 생성된 대회의 참가 명단 기준을 바꾸지 않는다.
+7. 대회 경기는 모든 유효 초대팀 승인 후 생성하되 출전·후보 명단은 비워 둔다. 일정 저장은 이미 생성된 경기 row만 수정하며 새 경기 생성이나 자동 선발을 대신하지 않는다.
+8. 대회 일정 저장은 경기와 대회를 transaction lock으로 잠근 뒤 날짜·시간을 저장하고 양 팀장의 기존 로스터 확정을 해제한다.
+9. 일정 저장 후 양 팀장에게 홈 처리 항목·웹 알림·Discord 전달 대상 알림을 만들고, 팀장은 생성 시점 스냅샷에서 출전 인원 정확히 N명과 후보 최대 2명을 확정한다.
+10. 양 팀 로스터가 모두 확정되지 않으면 대회 경기를 시작할 수 없다. 대회 팀장은 현재 로스터에 없어도 해당 경기 조회와 자기 팀 로스터 저장 권한을 가진다.
+11. 팀 초대·참가 전 검사는 가용 인원 검증이고, 경기 결과의 팀 MMR 반영 여부는 최종 출전 로스터를 기준으로 별도 검증한다.
 
 ## 2026-07-14 초대 생성·수신 규칙
 
@@ -594,6 +618,8 @@ UI/CSS/반응형/라이트·다크 세부 기준은 `docs/design-system.md`를 �
 9. 로그아웃은 local/test session과 React session을 먼저 지우고 Supabase signOut을 후처리한다. 로그아웃 중 이전 세션이 남아 `/app/signup` 또는 가입정보 버튼을 다시 띄우면 안 된다.
 10. 가입정보 화면과 로컬 profile reducer는 `birthYearLockedAt`만 있고 `birthYear`가 없으면 출생연도를 잠금으로 보지 않는다.
 11. 로컬 dev에서 API/env 미구성으로 만들어진 backend test shell profile은 가입정보 guard로 경기/매칭 메뉴 진입을 막지 않는다. server profile API 실패 시 direct Supabase fallback으로 가지 않고 shell state로 종료한다. 실제 Google profile에는 적용하지 않는다.
+12. `/api/profile/upsert`는 `handleLockedAt`, `birthYearLockedAt`, `nameUpdatedAt` 클라이언트 값을 신뢰하지 않고 서버 현재 시각으로만 기록한다.
+13. `onboardingComplete=true`가 저장된 프로필은 이후 요청으로 `false`로 되돌릴 수 없다. 잠긴 해시태그·출생연도와 이름 변경 cooldown도 기존 DB 값을 기준으로 판정한다.
 
 ## 데이터 축
 
@@ -1470,6 +1496,8 @@ flowchart TD
 30. `scripts/link-discord-room.mjs`는 `room_discord_links` 운영용 dry-run/confirm 스크립트다. 기본은 계획만 출력하고, 실제 쓰기는 `RANKBALL_CONFIRM_DISCORD_ROOM_LINK=rankball` 또는 `--confirm`이 필요하다.
 31. Discord로 보내는 경기/방 안내는 앱 내부 알림도 원본으로 남겨야 한다. Discord 연결 여부와 무관하게 홈 별도 `알림` 카드에는 due 상태의 unread 앱 알림을 보여준다. 홈 `내가 처리할 일`은 버튼/진행 액션만 담는다. 예약 알림은 `payload.sendAt` 전까지 숨기고, 서버가 만든 예약 알림은 `skipDiscordSync`로 클라이언트 중복 DM 큐 생성을 막는다.
 31-1. `/api/home/load`는 홈 `알림` 카드용으로 현재 프로필의 due unread 앱 알림을 소량 포함한다. 미래 `payload.sendAt` 알림은 내려와도 홈 표시 대상이 아니며, 첫 홈 진입이 알림 화면 방문 여부에 의존하면 안 된다.
+32. 서버 큐 생성과 `/api/discord/dm-worker`는 `notificationChannels.discord.enabled`와 이벤트별 설정을 모두 다시 확인한다. 전체 또는 특정 이벤트 수신을 끄면 아직 보내지 않은 해당 큐는 `cancelled`로 전환한다.
+33. Discord 연결 여부와 수신 설정은 앱 내부 알림 생성 여부를 바꾸지 않는다. 웹 알림은 항상 남고 Discord는 추가 전달 채널이다.
 
 ## 2026-06-24 내 진행 일정 지난 경기 필터
 
@@ -1547,6 +1575,8 @@ flowchart TD
 4. `match` 신고는 경기 참가자, 후보, 출전 이력, 방장, 심판만 제출할 수 있으며 기존 7일 신고 기한을 서버에서도 확인한다.
 5. `court_request` 신고는 기존 `rankball_report_court_request()` 전용 server action만 사용한다.
 6. 이 단계는 신고 생성 저장 브리지다. 신고 판정, 징계, 피드백은 기존 관리자 server action에서 처리한다.
+7. `player` 신고는 자기 자신을 신고할 수 없고 최근 7일 안에 신고자와 대상자가 같은 경기의 출전·후보·출전 이력에 함께 있어야 한다.
+8. 같은 신고자가 같은 미종결 대상을 다시 신고하면 새 row를 만들지 않고 기존 `reportId`와 `status`를 반환한다.
 
 ## 2026-06-25 team sync server action
 
@@ -1556,7 +1586,7 @@ flowchart TD
 4. 서버는 팀명 14자 제한, 멤버 프로필 존재 여부, 1인 최대 3팀 제한을 다시 확인한다.
 5. 팀 삭제는 `teams.deleted_at` soft delete, `team_members` 삭제, 팀 즐겨찾기 삭제, 해당 팀 모집방 닫기를 함께 수행한다.
 6. 팀 MMR, 승수, 패수는 클라이언트 스냅샷으로 수정하지 않는다. 새 팀은 기본값으로 시작하고 기존 팀은 DB 기존 값을 유지한다.
-7. 팀 저장/삭제는 `rankball_sync_team_membership()` / `rankball_delete_team()` RPC가 원본이다. 팀 초대/가입 승인 같은 별도 팀 운영 플로우는 아직 authoritative RPC가 아니다.
+7. 팀 저장/삭제는 `rankball_sync_team_membership()` / `rankball_delete_team()` RPC가 원본이다. 팀 초대·수락·거절·취소도 `/api/teams/sync-team`의 service-role RPC 경로만 사용한다.
 
 ## 2026-06-25 tournament sync server action
 
@@ -1570,7 +1600,7 @@ flowchart TD
 7. 토너먼트 형식에서 확정된 경기의 승자가 다음 라운드 source pair를 완성하면 reducer가 후속 라운드 경기를 생성하고 `sync-match`가 tournament snapshot과 새 match snapshot을 같이 저장한다.
 8. `sync-match`는 후속 라운드가 생성되면 서버가 실제 저장한 tournament snapshot과 새 match snapshot을 `state.tournaments`/`state.matches`로 응답한다.
 9. 클라이언트는 같은 `tournamentId + tournamentRound + tournamentFixture`를 가진 optimistic 경기와 서버 경기를 같은 경기로 보고 서버 경기 id를 남긴다.
-10. 토너먼트 생성/팀 승인/대진 1차 생성과 후속 라운드 생성은 서버 reducer 재실행 경로가 원본이다. tournament snapshot 저장은 `rankball_persist_tournament_snapshot_locked()`의 per-tournament advisory transaction lock을 거친다. 완전한 DB RPC reducer 이전은 아직 남아 있다.
+10. 토너먼트 생성·팀 승인·대진 1차 생성·후속 라운드 생성은 authoritative DB RPC가 원본이다. `rankball_persist_tournament_snapshot_locked()`와 tournament action RPC는 대회별 advisory/row lock 안에서 처리한다.
 11. `npm run simulate:backend -- --full`의 `tournament_followup_round`는 4팀 토너먼트 생성, 팀장 승인, 1라운드 2경기 확정, 2라운드 1경기 생성, DB `match_ids` 반영을 검증한다.
 12. 리그 현재 순위는 저장 상태를 새로 만들지 않고 DB 경기 결과 projection으로 계산한다. 완료 경기의 승수, 득실차, 득점, 팀명 순으로 정렬하며 경기 원본 점수와 대회 상태를 수정하지 않는다.
 13. 리그 자동 종료와 우승 확정은 별도 authoritative DB 규칙이 생기기 전까지 화면에서 추정해 저장하지 않는다.
@@ -2006,7 +2036,7 @@ flowchart TD
 12. Recruiting 단일 방 상세 로드는 최신 서버 row가 기준이다. 목록 보강 로드의 최근 mutation 보호막으로 단일 상세 row를 버리면 안 된다.
 13. Supabase auth 사용자가 바뀌면 이전 계정의 room/list state를 화면에 남기지 않고 shell state로 비운 뒤 새 서버 state를 로드한다.
 
-14. `interestRecruitingPost`, `setRecruitingSlotPosition`, `setRecruitingApplicantPlacement`, `setRecruitingReady`, `cancelRecruitingParticipation`은 SQL reducer 이식 대상이다. 서버는 `rankball_recruiting_interest_player_action()`/`rankball_recruiting_slot_position_action()`/`rankball_recruiting_applicant_placement_action()`/`rankball_recruiting_ready_action()`/`rankball_recruiting_cancel_participation_action()`을 우선 호출하고, SQL이 아직 적용되지 않았거나 복합 조건처럼 SQL reducer가 지원하지 않는 케이스면 기존 authoritative replay 경로로 fallback한다.
+14. `interestRecruitingPost`, `setRecruitingSlotPosition`, `setRecruitingApplicantPlacement`, `setRecruitingReady`, `cancelRecruitingParticipation`은 전용 SQL reducer 또는 `rankball_recruiting_management_action()` DB reducer가 처리한다. `cancelRecruitingParticipation` wrapper는 방별 advisory lock을 먼저 획득한다.
 15. Recruiting 화면의 user-triggered `scope: "mine"` 로드는 요청이 성공했을 때만 완료 처리한다. 초기 auth/token 타이밍 실패가 나면 재시도하고, 실패한 1회 요청 때문에 `내가 만든 방`/`내 참여방` 카운트를 초기 목록 상태로 고정하지 않는다.
 16. Supabase remote state는 서버/DB가 source of truth다. 클라이언트 자동관리 함수는 원격 모집방/경기 상태를 로컬에서 임의로 취소/종료 처리하지 않는다. 만료, 자동취소, 자동확정 같은 lifecycle 변경은 server action/RPC로 저장된 뒤에만 화면 source of truth로 취급한다.
 
@@ -2017,13 +2047,13 @@ flowchart TD
 21. Supabase 테스트 로그인은 Google auth 계정처럼 서버 프로필에 고정된 세션이다. Settings에서 임의 계정 전환 대상으로 취급하지 않는다.
 22. Settings 저장 UI는 서버 저장 결과를 기다린 뒤 성공/실패를 표시한다. Privacy/Discord 설정은 실패했는데도 `저장됨`으로 표시하면 안 된다.
 
-23. `setRecruitingReady` may use `rankball_recruiting_ready_action()` for active host/direct player readiness. Team-party, reserve, and other complex readiness cases must fall back to authoritative replay.
+23. `setRecruitingReady`의 단순 active host/direct player는 전용 SQL reducer가 처리하고 팀·파티·후보 복합 READY는 `rankball_recruiting_management_action()` DB reducer가 처리한다.
 24. Recruiting server action replay must load the acting profile's current teams, explicit draft/application team ids, and their team members. Team-hosted room creation, private opponent team creation, and team-party participation cannot rely only on teams already related to the target recruiting post.
 25. Recruiting replay scope must also include explicit invite targets, referee invite targets, and team ids stored on pending room invitations. Expired, declined, or cancelled invitations are not active eligibility targets and must not block age/team roster validation.
 26. Recruiting snapshot persist must pass the replay base `updated_at` into `rankball_recruiting_action`. The DB function locks the row and rejects stale writes with `recruiting_stale_snapshot` instead of overwriting a newer room state.
 27. `setRecruitingApplicantPlacement`는 방장 자기 슬롯 이동으로도 `hostSide`를 변경하지 않는다. 방장은 생성 사이드를 유지하고, 다른 참가자 배치 변경도 방 core field를 바꾸면 안 된다.
-28. `rankball_recruiting_applicant_placement_action()`은 self player applicant의 선출/후보/사이드 배치만 처리한다. 방장 자기 배치, 팀/파티/복합 참가자, 정원 초과, 후보 제한 초과는 기존 authoritative replay로 fallback한다. SQL 성공 시 이동한 본인은 `room_state.statRecorders`에서 제거되어 후보/대기 상태의 stale 기록권한이 남지 않는다.
-29. `interestRecruitingPost`, `inviteRecruitingReferee`, `inviteRecruitingPlayers`, `acceptRecruitingInvitation`, `declineRecruitingInvitation`, `cancelRecruitingParticipation`, `updateRecruitingRoomRules`, `setRecruitingApplicantReserve`, `setRecruitingApplicantPlacement`, `joinRecruitingSideParty`, `setRecruitingSlotPosition`, `setRecruitingPartyPlayerReserve`, `setRecruitingPartyPlayerPlacement`, `setRecruitingTeamPartyRoster`, `detachRecruitingPartyPlayer`, `removeRecruitingPartyPlayer`, `setRecruitingStatRecorder`, `kickRecruitingApplicant`, `confirmRecruitingMatch`, and `closeRecruitingPost` are sent from the frontend as operation-only. The server must use the SQL reducer when supported or replay the operation from authoritative DB state; client recruiting snapshots are not accepted as the source of truth for these actions.
+28. `rankball_recruiting_applicant_placement_action()`은 self player applicant의 선출/후보/사이드 배치를 처리하고 방장·팀·파티·복합 참가는 management DB reducer가 처리한다. 후보/대기 이동 시 stale 기록권한을 함께 제거한다.
+29. `interestRecruitingPost`, `inviteRecruitingReferee`, `inviteRecruitingPlayers`, `acceptRecruitingInvitation`, `declineRecruitingInvitation`, `cancelRecruitingParticipation`, `updateRecruitingRoomRules`, `setRecruitingApplicantReserve`, `setRecruitingApplicantPlacement`, `joinRecruitingSideParty`, `setRecruitingSlotPosition`, `setRecruitingPartyPlayerReserve`, `setRecruitingPartyPlayerPlacement`, `setRecruitingTeamPartyRoster`, `detachRecruitingPartyPlayer`, `removeRecruitingPartyPlayer`, `setRecruitingStatRecorder`, `kickRecruitingApplicant`, `confirmRecruitingMatch`, `closeRecruitingPost`는 frontend에서 operation-only로 보낸다. mutation은 DB reducer가 커밋하고 `confirmRecruitingMatch`만 서버가 authoritative 조합을 검증한 뒤 단일 transaction RPC로 모집 종료와 경기 생성을 함께 커밋한다. client snapshot은 원본으로 받지 않는다.
 
 ## 2026-06-28 public feed access
 
@@ -2185,6 +2215,7 @@ flowchart TD
 
 - Settings long forms are routed under `/app/settings/favorites`, `/app/settings/profile`, `/app/settings/discord`, `/app/settings/courts`, and `/app/settings/referee`; the root settings screen is the hub.
 - Profile exposure toggles are draft-only until the user presses save, then one settings patch writes `privacy`.
+- Directory API는 각 프로필의 `regionRanking`, `teamHistory`, `statSummary` boolean만 공개 응답에 붙이고 다른 `app_settings`는 제거한다. 타인 화면은 이 값을 적용하고 본인은 자기 정보를 계속 볼 수 있다.
 - Discord OAuth callback returns to `/app/settings/discord`. Profile no longer owns Discord notification controls. Discord DM/event toggles are draft-only until save, then one settings patch writes `notificationChannels.discord`.
 
 ## 2026-07-02 recruiting invite and host trust
@@ -2239,6 +2270,8 @@ flowchart TD
 - 설정된 대표팀 id가 현재 소속 팀에 없거나 비어 있으면 현재 로드된 소속 팀 중 가장 먼저 입단한 팀을 대표팀으로 본다. 입단 시각 원본이 없으면 팀 생성 시각 기준으로 fallback한다.
 - 프로필 카드의 팀 표시는 대표팀을 우선한다. 전체 `app_settings`를 공개 프로필로 노출하지 않는다.
 - 대표팀 변경은 팀 메뉴의 내 팀 관리에서만 자유롭게 바꾼다.
+- 대회 생성·승인은 이 대표팀 계산을 서버에서 다시 적용한다. 대회 생성자가 팀장인 여러 팀을 한꺼번에 선택해도 비대표팀은 참가할 수 없다.
+- 신규 대회의 참가 가능 선수 기준은 생성 시점 대표팀 명단 스냅샷이며 경기 row 생성 시 선수를 자동 출전시키지 않는다.
 
 ## 2026-07-06 모집방 상세/목록 병합
 

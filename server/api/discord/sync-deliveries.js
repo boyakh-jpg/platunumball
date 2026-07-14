@@ -1,4 +1,5 @@
 import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { isDiscordNotificationEnabled } from "../../../src/data/settingsMappers.js";
 
 const MAX_DELIVERIES = 100;
 const ALLOWED_EVENTS = new Set(["match", "approval", "report"]);
@@ -90,7 +91,7 @@ export default async function handler(request, response) {
     const body = await readJsonBody(request);
     const { data: profile, error: profileError } = await context.supabase
       .from("profiles")
-      .select("id, discord_user_id, discord_connection")
+      .select("id, discord_user_id, discord_connection, app_settings")
       .eq("id", context.profileId)
       .maybeSingle();
 
@@ -102,6 +103,7 @@ export default async function handler(request, response) {
     }
 
     const rows = normalizeDeliveries(body.deliveries)
+      .filter((delivery) => isDiscordNotificationEnabled(profile.app_settings, ALLOWED_EVENTS.has(delivery.event) ? delivery.event : "match"))
       .map((delivery) => toDeliveryRow(delivery, context.profileId, discordUserId))
       .filter(Boolean);
 

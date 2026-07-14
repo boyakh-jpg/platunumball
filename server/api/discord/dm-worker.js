@@ -1,5 +1,6 @@
 import { getBearerToken, getSupabaseAdminClient, readJsonBody, sendJson } from "../_supabaseAdmin.js";
 import { runSystemMaintenance } from "../system/maintenance.js";
+import { isDiscordNotificationEnabled } from "../../../src/data/settingsMappers.js";
 
 const DISCORD_API_BASE = "https://discord.com/api/v10";
 const MAX_BATCH_SIZE = 25;
@@ -297,10 +298,32 @@ export default async function handler(request, response) {
 
     if (claimError) throw claimError;
 
+    const targetUserIds = [...new Set((claimedRows ?? []).map((row) => row.target_user_id).filter(Boolean))];
+    const { data: profileRows, error: profileError } = targetUserIds.length
+      ? await supabase.from("profiles").select("id,app_settings").in("id", targetUserIds)
+      : { data: [], error: null };
+    if (profileError) throw profileError;
+    const settingsByProfileId = new Map((profileRows ?? []).map((profile) => [profile.id, profile.app_settings]));
+    const optedOutRows = (claimedRows ?? []).filter((delivery) => (
+      !isDiscordNotificationEnabled(settingsByProfileId.get(delivery.target_user_id), delivery.event)
+    ));
+    if (optedOutRows.length) {
+      const optedOutAt = new Date().toISOString();
+      const { error: optOutError } = await supabase
+        .from("discord_notification_deliveries")
+        .update({ status: "cancelled", last_error: "discord_notification_disabled", updated_at: optedOutAt })
+        .in("id", optedOutRows.map((delivery) => delivery.id))
+        .eq("status", "sending")
+        .is("sent_at", null);
+      if (optOutError) throw optOutError;
+    }
+    const optedOutIds = new Set(optedOutRows.map((delivery) => delivery.id));
+    const sendableRows = (claimedRows ?? []).filter((delivery) => !optedOutIds.has(delivery.id));
+
     const sent = [];
     const failed = [];
 
-    for (const delivery of claimedRows ?? []) {
+    for (const delivery of sendableRows) {
       try {
         const result = await sendDiscordDm(delivery);
         const sentAt = new Date().toISOString();
@@ -343,9 +366,10 @@ export default async function handler(request, response) {
 
     sendJson(response, 200, {
       ok: true,
-      processed: sent.length + failed.length,
+      processed: sent.length + failed.length + optedOutRows.length,
       sent: sent.length,
       failed: failed.length,
+      cancelled: optedOutRows.length,
       maintenance,
       sentIds: sent,
       failedRows: failed,

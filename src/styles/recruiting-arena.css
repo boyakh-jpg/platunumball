@@ -7183,10 +7183,20 @@ html[data-theme="light"] .arena-lobby-modal .arena-reserve-line > .arena-room-re
 }
 
 @media (min-width: 721px) {
+  .arena-lobby-modal .arena-reserve-line,
+  html[data-theme="light"] .arena-lobby-modal .arena-reserve-line {
+    inline-size: 100%;
+    min-inline-size: 0;
+    justify-self: stretch;
+  }
+
   .arena-lobby-modal .arena-reserve-line > .arena-room-reserve-row,
   html[data-theme="light"] .arena-lobby-modal .arena-reserve-line > .arena-room-reserve-row {
-    inline-size: calc(100% + 36px);
+    box-sizing: border-box;
+    inline-size: auto;
+    min-inline-size: 0;
     max-width: none;
+    justify-self: stretch;
   }
 }
 

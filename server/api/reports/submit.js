@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { getAuthenticatedContext, readJsonBody, sendJson, toArray } from "../_supabaseAdmin.js";
 
 const REPORT_MATCH_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+const REPORT_MATCH_QUERY_PAGE_SIZE = 200;
 const ALLOWED_REPORT_TYPES = new Set(["match", "player", "court", "court_review"]);
 
 function uniqueStrings(values) {
@@ -110,7 +111,65 @@ function flattenProfileValues(value) {
   return [String(value)];
 }
 
-async function assertCanSubmitPlayerReport(context, targetId, reportedUserIds) {
+function getMatchPlayerIds(match = {}, playerRows = []) {
+  return new Set(uniqueStrings([
+    ...playerRows.map((player) => player.user_id),
+    ...flattenProfileValues(match.reserve_players),
+    ...flattenProfileValues(match.played_player_ids),
+    ...flattenProfileValues(match.rules?.reservePlayers),
+    ...flattenProfileValues(match.rules?.playedPlayerIds),
+  ]));
+}
+
+async function hasRecentSharedPlayerMatch(context, targetId) {
+  const nowMs = Date.now();
+  const cutoffIso = new Date(nowMs - REPORT_MATCH_WINDOW_MS).toISOString();
+  const cutoffDate = cutoffIso.slice(0, 10);
+  const recentMatchFilter = [
+    `ended_at.gte.${cutoffIso}`,
+    `confirmed_at.gte.${cutoffIso}`,
+    `scheduled_at.gte.${cutoffIso}`,
+    `scheduled_date.gte.${cutoffDate}`,
+    `created_at.gte.${cutoffIso}`,
+  ].join(",");
+
+  for (let offset = 0; ; offset += REPORT_MATCH_QUERY_PAGE_SIZE) {
+    const { data: matches, error: matchError } = await context.supabase
+      .from("matches")
+      .select("id, scheduled_at, scheduled_date, scheduled_time, confirmed_at, ended_at, created_at, reserve_players, played_player_ids, rules")
+      .or(recentMatchFilter)
+      .order("id", { ascending: true })
+      .range(offset, offset + REPORT_MATCH_QUERY_PAGE_SIZE - 1);
+    if (matchError) throw matchError;
+
+    const matchRows = matches ?? [];
+    const reportableMatches = matchRows.filter((match) => isReportWindowOpen(match, nowMs));
+    const matchIds = reportableMatches.map((match) => match.id).filter(Boolean);
+    if (matchIds.length) {
+      const { data: players, error: playerError } = await context.supabase
+        .from("match_players")
+        .select("match_id, user_id")
+        .in("match_id", matchIds)
+        .in("user_id", [context.profileId, targetId]);
+      if (playerError) throw playerError;
+
+      const playerRowsByMatch = new Map();
+      for (const player of players ?? []) {
+        const rows = playerRowsByMatch.get(player.match_id) ?? [];
+        rows.push(player);
+        playerRowsByMatch.set(player.match_id, rows);
+      }
+      for (const match of reportableMatches) {
+        const playerIds = getMatchPlayerIds(match, playerRowsByMatch.get(match.id));
+        if (playerIds.has(context.profileId) && playerIds.has(targetId)) return true;
+      }
+    }
+
+    if (matchRows.length < REPORT_MATCH_QUERY_PAGE_SIZE) return false;
+  }
+}
+
+async function assertCanSubmitPlayerReport(context, targetId) {
   if (targetId === context.profileId) {
     const error = new Error("cannot_report_self");
     error.statusCode = 400;
@@ -127,8 +186,12 @@ async function assertCanSubmitPlayerReport(context, targetId, reportedUserIds) {
     error.statusCode = 404;
     throw error;
   }
-  const ids = uniqueStrings(reportedUserIds);
-  return ids.length ? ids.filter((profileId) => profileId === targetId) : [targetId];
+  if (!await hasRecentSharedPlayerMatch(context, targetId)) {
+    const error = new Error("report_permission_denied");
+    error.statusCode = 403;
+    throw error;
+  }
+  return [targetId];
 }
 
 async function assertCanSubmitCourtReport(context, targetId) {
@@ -201,7 +264,7 @@ async function buildReportRow(context, report = {}) {
   const rawReportedUserIds = uniqueStrings(report.reportedUserIds || report.reported_user_ids);
   let reportedUserIds = [];
   if (type === "match") reportedUserIds = await assertCanSubmitMatchReport(context, targetId, rawReportedUserIds);
-  if (type === "player") reportedUserIds = await assertCanSubmitPlayerReport(context, targetId, rawReportedUserIds);
+  if (type === "player") reportedUserIds = await assertCanSubmitPlayerReport(context, targetId);
   if (type === "court") reportedUserIds = await assertCanSubmitCourtReport(context, targetId);
   if (type === "court_review") reportedUserIds = await assertCanSubmitCourtReviewReport(context, targetId);
   const now = new Date().toISOString();
@@ -250,7 +313,7 @@ export default async function handler(request, response) {
 
     const { data: existingReport, error: existingError } = await context.supabase
       .from("reports")
-      .select("id, user_id")
+      .select("id, status")
       .eq("type", reportRow.type)
       .eq("target_id", reportRow.target_id)
       .eq("user_id", context.profileId)
@@ -260,10 +323,11 @@ export default async function handler(request, response) {
       .maybeSingle();
     if (existingError) throw existingError;
     if (existingReport) {
-      sendJson(response, existingReport.user_id === context.profileId ? 200 : 409, {
-        ok: existingReport.user_id === context.profileId,
+      sendJson(response, 200, {
+        ok: true,
         duplicate: true,
-        reportId: reportRow.id,
+        reportId: existingReport.id,
+        status: existingReport.status,
       });
       return;
     }

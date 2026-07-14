@@ -1690,15 +1690,8 @@ function makeTournamentMatch(state, tournament, teamA, teamB, pairing, now, matc
   const mode = tournament.mode || "5v5";
   const size = MODE_SIZES[mode] ?? 5;
   const roundLabel = tournament.format === "tournament" ? `${pairing.round}R-${pairing.fixture}` : `L-${pairing.fixture}`;
-  const eligibilityOptions = {
-    capacity: size,
-    ranked: tournament.ranked,
-    mmrLimitMode: tournament.rules?.mmrLimitMode ?? tournament.mmrLimitMode,
-    mmrRangeMode: tournament.rules?.mmrRangeMode,
-    allowedAgeGroups: tournament.rules?.allowedAgeGroups,
-  };
-  const teamAPlayers = getTeamEventEligibility(teamA, state.users, { ...eligibilityOptions, targetMmr: teamA.mmr }).eligiblePlayerIds.slice(0, size);
-  const teamBPlayers = getTeamEventEligibility(teamB, state.users, { ...eligibilityOptions, targetMmr: teamB.mmr }).eligiblePlayerIds.slice(0, size);
+  const teamAPlayers = [];
+  const teamBPlayers = [];
 
   return {
     id: matchId || makeId("m"),
@@ -1799,6 +1792,37 @@ function generateTournamentMatches(state, tournament, options = {}) {
       matchIds,
       bracket,
     },
+  };
+}
+
+function getStateRepresentativeTeamId(state, userId) {
+  const user = state.users.find((item) => item.id === userId);
+  const explicitTeamId = userId === state.currentUserId
+    ? state.settings?.representativeTeamId ?? user?.representativeTeamId ?? ""
+    : user?.representativeTeamId ?? "";
+  const memberTeams = state.teams
+    .filter((team) => team.members?.some((member) => member.userId === userId))
+    .sort((a, b) => String(a.createdAt ?? "").localeCompare(String(b.createdAt ?? "")) || String(a.id).localeCompare(String(b.id)));
+  return memberTeams.some((team) => team.id === explicitTeamId) ? explicitTeamId : memberTeams[0]?.id ?? "";
+}
+
+function getLocalTournamentTeamSnapshot(state, team, options = {}) {
+  const eligibility = getTeamEventEligibility(team, state.users, options);
+  const representativeMemberIds = getSelectableTeamPlayerIds(team)
+    .filter((playerId) => getStateRepresentativeTeamId(state, playerId) === team.id);
+  const representativeMemberSet = new Set(representativeMemberIds);
+  const eligiblePlayerIds = eligibility.eligiblePlayerIds.filter((playerId) => representativeMemberSet.has(playerId));
+  const captainId = getTeamCaptainId(state.teams, team.id);
+  const capacity = Math.max(1, Math.min(5, Number(options.capacity) || 1));
+  return {
+    teamId: team.id,
+    captainId,
+    captainRepresentative: Boolean(captainId && getStateRepresentativeTeamId(state, captainId) === team.id),
+    representativeMemberIds,
+    eligiblePlayerIds,
+    eligibleCount: eligiblePlayerIds.length,
+    capacity,
+    allowed: Boolean(captainId && getStateRepresentativeTeamId(state, captainId) === team.id && eligiblePlayerIds.length >= capacity),
   };
 }
 
@@ -2610,14 +2634,16 @@ export function createTournament(state, draft) {
     allowedAgeGroups: draft.allowedAgeGroups ?? draft.rules?.allowedAgeGroups ?? [],
     rosterReady: { teamA: false, teamB: false },
   };
-  const ineligibleTeam = invitedTeams.find((team) => !getTeamEventEligibility(team, state.users, {
+  const tournamentTeamSnapshots = Object.fromEntries(invitedTeams.map((team) => [team.id, getLocalTournamentTeamSnapshot(state, team, {
     capacity: sideCapacity,
     ranked: draft.ranked,
     mmrLimitMode,
     mmrRangeMode: tournamentRules.mmrRangeMode,
     targetMmr: team.mmr,
     allowedAgeGroups: tournamentRules.allowedAgeGroups,
-  }).allowed);
+  })]));
+  const creatorRepresentativeTeamId = getStateRepresentativeTeamId(state, state.currentUserId);
+  const ineligibleTeam = invitedTeams.find((team) => !tournamentTeamSnapshots[team.id]?.allowed);
 
   if (teamIds.length < 2) {
     return {
@@ -2649,21 +2675,26 @@ export function createTournament(state, draft) {
     };
   }
 
+  if (!creatorRepresentativeTeamId || !teamIds.includes(creatorRepresentativeTeamId) || getTeamCaptainId(state.teams, creatorRepresentativeTeamId) !== state.currentUserId) {
+    return {
+      ...state,
+      notifications: [{
+        id: makeId("n"),
+        title: "대표팀 필요",
+        body: "대회 생성자는 자신이 팀장인 대표팀으로만 참가할 수 있습니다.",
+        tone: "match",
+      }, ...state.notifications],
+    };
+  }
+
   if (ineligibleTeam) {
-    const eligibility = getTeamEventEligibility(ineligibleTeam, state.users, {
-      capacity: sideCapacity,
-      ranked: draft.ranked,
-      mmrLimitMode,
-      mmrRangeMode: tournamentRules.mmrRangeMode,
-      targetMmr: ineligibleTeam.mmr,
-      allowedAgeGroups: tournamentRules.allowedAgeGroups,
-    });
+    const eligibility = tournamentTeamSnapshots[ineligibleTeam.id];
     return {
       ...state,
       notifications: [{
         id: makeId("n"),
         title: "대회 참가 제한",
-        body: `${ineligibleTeam.name}: ${eligibility.reason}`,
+        body: `${ineligibleTeam.name}: 대표팀 기준 참가 가능 선수가 ${eligibility.eligibleCount}/${eligibility.capacity}명입니다.`,
         tone: "match",
       }, ...state.notifications],
     };
@@ -2671,10 +2702,15 @@ export function createTournament(state, draft) {
 
   const createdAt = new Date().toISOString();
   const ranked = draft.ranked !== false;
+  tournamentRules.teamRosterSnapshot = {
+    version: 1,
+    capturedAt: createdAt,
+    teams: tournamentTeamSnapshots,
+  };
   const teamStatuses = Object.fromEntries(
     teamIds.map((teamId) => [
       teamId,
-      getTeamCaptainId(state.teams, teamId) === state.currentUserId ? "accepted" : "invited",
+      teamId === creatorRepresentativeTeamId ? "accepted" : "invited",
     ]),
   );
   const teamApprovals = Object.fromEntries(
@@ -2740,14 +2776,14 @@ export function approveTournamentTeam(state, tournamentId, teamId, options = {})
   if (!tournament || tournament.status !== "draft" || !(tournament.teamIds ?? []).includes(teamId)) return state;
 
   const captainId = getTeamCaptainId(state.teams, teamId);
-  if (captainId !== state.currentUserId) {
+  if (captainId !== state.currentUserId || getStateRepresentativeTeamId(state, state.currentUserId) !== teamId) {
     return {
       ...state,
       notifications: [
         {
           id: makeId("n"),
           title: "대회 승인 불가",
-          body: "해당 팀장만 대회 참가를 승인할 수 있습니다.",
+          body: "해당 팀을 대표팀으로 둔 팀장만 대회 참가를 승인할 수 있습니다.",
           tone: "match",
         },
         ...state.notifications,
@@ -6203,7 +6239,10 @@ export function setMatchRecordTeamRoster(state, matchId, sideName, roster = {}) 
     targetMmr: team.mmr,
     allowedAgeGroups: match.rules?.allowedAgeGroups,
   });
-  const allowedIds = new Set(tournamentPregame ? eligibility.eligiblePlayerIds : getTeamMemberIds(team));
+  const snapshotEligibleIds = match.rules?.teamRosterSnapshot?.teams?.[team.id]?.eligiblePlayerIds;
+  const allowedIds = new Set(tournamentPregame
+    ? (Array.isArray(snapshotEligibleIds) ? snapshotEligibleIds : eligibility.eligiblePlayerIds)
+    : getTeamMemberIds(team));
   const otherSideName = sideName === "teamA" ? "teamB" : "teamA";
   const otherRosterIds = new Set([
     ...(match[otherSideName]?.players ?? []),
