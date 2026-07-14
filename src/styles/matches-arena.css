@@ -746,6 +746,7 @@
   max-width: 820px;
   margin-top: 8px;
   font-size: clamp(2rem, 4vw, 4.2rem);
+  overflow-wrap: anywhere;
 }
 
 .tournament-hero p {
@@ -3873,8 +3874,7 @@ html[data-theme="light"] .om-match-panel {
 
 /* 2026-07-01 standard UI cleanup: matches controls follow shared primitives. */
 .om-match-copy h1,
-.tournament-hero h1,
-.vertical-bracket-title strong {
+.tournament-hero h1 {
   color: var(--hero-title-color);
   font-family: var(--hero-title-font);
   font-size: var(--hero-title-size);
