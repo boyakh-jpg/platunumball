@@ -2243,6 +2243,52 @@ button.arena-room-player-slot {
   margin-top: 8px;
 }
 
+.arena-party-quick-join-list {
+  display: grid;
+  gap: 8px;
+}
+
+.arena-party-quick-join {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 68px;
+  border: 1px solid rgba(70, 224, 182, 0.26);
+  border-radius: 8px;
+  background: rgba(70, 224, 182, 0.07);
+  padding: 10px 12px;
+}
+
+.arena-party-quick-join > div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.arena-party-quick-join span,
+.arena-party-quick-join em {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.arena-party-quick-join strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 0.94rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.arena-party-quick-join .button {
+  min-width: 92px;
+}
+
 .arena-host-kick-panel {
   display: grid;
   gap: 10px;
@@ -3188,6 +3234,15 @@ html[data-theme="light"] .arena-compose-drawer {
 
   .arena-submit-row {
     grid-template-columns: 1fr;
+  }
+
+  .arena-party-quick-join {
+    gap: 8px;
+    padding: 9px 10px;
+  }
+
+  .arena-party-quick-join .button {
+    min-width: 82px;
   }
 
   .arena-compose-backdrop {

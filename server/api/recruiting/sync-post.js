@@ -758,6 +758,7 @@ function isMissingSqlReducer(error = {}) {
     message.includes("rankball_recruiting_cancel_participation_action") ||
     message.includes("rankball_recruiting_applicant_placement_action") ||
     message.includes("rankball_recruiting_interest_player_action") ||
+    message.includes("rankball_recruiting_side_party_join_action") ||
     message.includes("rankball_recruiting_management_action")
   );
 }
@@ -872,6 +873,25 @@ async function applyRecruitingManagementAction(context, operation = {}) {
 }
 
 async function applySqlRecruitingAction(context, operation = {}) {
+  if (operation.action === "joinRecruitingSideParty" && (operation.entryId === "host" || String(operation.entryId ?? "").startsWith("team:"))) {
+    const { data, error } = await context.supabase.rpc("rankball_recruiting_side_party_join_action", {
+      p_actor_profile_id: context.profileId,
+      p_post_id: operation.postId,
+      p_team_id: operation.teamId,
+      p_side: operation.sideName ?? "",
+      p_entry_id: operation.entryId ?? "",
+    });
+    if (error) {
+      if (isMissingSqlReducer(error)) reject(503, "recruiting_side_party_join_rpc_unavailable");
+      throw error;
+    }
+    return {
+      ok: true,
+      ...(data && typeof data === "object" ? data : {}),
+      postId: operation.postId,
+    };
+  }
+
   if (MANAGEMENT_SQL_RECRUITING_ACTIONS.has(operation.action)) {
     return applyRecruitingManagementAction(context, operation);
   }

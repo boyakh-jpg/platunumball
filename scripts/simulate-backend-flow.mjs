@@ -2090,6 +2090,24 @@ async function runPublicTeamRegionFeedScenario({
     teams: regionResult.payload?.state?.teams ?? [],
   });
 
+  const partyJoinResult = await step(`${ids.label}:joinRecruitingSideParty:teammate`, () => syncRecruitingAs(teammateLogin, {
+    action: "joinRecruitingSideParty",
+    postId: ids.postId,
+    teamId: resolvedTeamId,
+    sideName: "teamA",
+    entryId: "host",
+  }));
+  const joinedPost = await getRecruitingPostAfterResult(partyJoinResult, teammateLogin, `${ids.label}:loadAfterPartyJoin`);
+  assertFlow((joinedPost.playerIds ?? []).includes(teammateId), "public team member did not join the host party", {
+    teammateId,
+    playerIds: joinedPost.playerIds ?? [],
+    partyReserves: joinedPost.roomState?.partyReserves ?? {},
+  });
+  assertFlow(!(joinedPost.applicants ?? []).some((applicant) => applicant.playerId === teammateId && applicant.kind === "team"), "party join created a duplicate team application", {
+    teammateId,
+    applicants: joinedPost.applicants ?? [],
+  });
+
   return {
     label: ids.label,
     hostLogin,
@@ -2099,6 +2117,7 @@ async function runPublicTeamRegionFeedScenario({
     teammateId,
     postId: ids.postId,
     publicRegionFeed: true,
+    partyJoin: true,
   };
 }
 

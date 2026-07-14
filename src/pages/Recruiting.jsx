@@ -2450,6 +2450,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
   const registeredCourts = useMemo(() => getRegisteredCourts(app.state), [app.state]);
   const courtByName = useMemo(() => Object.fromEntries(registeredCourts.map((court) => [court.name, court])), [registeredCourts]);
   const [joinDraftByPost, setJoinDraftByPost] = useState({});
+  const [joiningPartyKey, setJoiningPartyKey] = useState("");
   const [chatDraftByPost, setChatDraftByPost] = useState({});
   const [chatErrorByPost, setChatErrorByPost] = useState({});
   const [chatCooldownUntilByPost, setChatCooldownUntilByPost] = useState({});
@@ -2735,6 +2736,18 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
       return result;
     } finally {
       setJoiningPostId((current) => (current === roomPost.id ? "" : current));
+    }
+  };
+  const joinSideParty = async (roomPost, option) => {
+    const partyKey = `${roomPost.id}:${getPartyOptionKey(option)}`;
+    if (joiningPartyKey) return false;
+    setJoiningPartyKey(partyKey);
+    try {
+      const result = await app.actions.joinRecruitingSideParty(roomPost.id, option.team.id, option.sideName, option.entry?.id);
+      if (result && result.ok !== false) onJoined?.(roomPost.id, result);
+      return result;
+    } finally {
+      setJoiningPartyKey((current) => current === partyKey ? "" : current);
     }
   };
   const getChatDraft = (roomPost) => chatDraftByPost[roomPost.id] ?? '';
@@ -4136,20 +4149,28 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                 ) : (
                   <form className="arena-join-form" onSubmit={(event) => { event.preventDefault(); void submitJoin(selectedPost); }}>
                     {sidePartyJoinOptions.length ? (
-                      <div className="arena-self-placement-actions">
+                      <div className="arena-party-quick-join-list">
                         {sidePartyJoinOptions.map((option) => (
-                          <Button
-                            key={getPartyOptionKey(option)}
-                            type="button"
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => app.actions.joinRecruitingSideParty(selectedPost.id, option.team.id, option.sideName, option.entry?.id)}
-                          >
-                            {SIDE_LABELS[option.sideName]} {getPartyOptionLabel(option)} 파티 합류
-                          </Button>
+                          <div className="arena-party-quick-join" key={getPartyOptionKey(option)}>
+                            <div>
+                              <span>{SIDE_LABELS[option.sideName]} 팀 파티</span>
+                              <strong>{option.team.name}</strong>
+                              <em>{getPartyOptionLabel(option)} 파티에 바로 합류</em>
+                            </div>
+                            <Button
+                              type="button"
+                              size="sm"
+                              disabled={Boolean(joiningPartyKey)}
+                              onClick={() => { void joinSideParty(selectedPost, option); }}
+                            >
+                              <UsersRound size={17} />
+                              {joiningPartyKey === `${selectedPost.id}:${getPartyOptionKey(option)}` ? "합류 중" : "합류"}
+                            </Button>
+                          </div>
                         ))}
                       </div>
-                    ) : null}
+                    ) : (
+                    <>
                     <div className="segmented-control compact-segments">
                       {joinModeEntries.map(([mode, meta]) => (
                         <button
@@ -4291,6 +4312,8 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                       {joinDraft.joinMode === "team" ? <UsersRound size={18} /> : joinDraft.joinMode === "referee" ? <ShieldCheck size={18} /> : <UserRound size={18} />}
                       {joiningThisRoom ? "참여 중" : "참여하기"}
                     </Button>
+                    </>
+                    )}
                   </form>
                 )}
 
