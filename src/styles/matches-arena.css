@@ -434,6 +434,14 @@
   line-height: 1.45;
 }
 
+.om-tournament-card p span,
+.om-tournament-modal-head p span {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+}
+
 .om-tournament-meta {
   display: flex;
   min-width: 0;
@@ -664,6 +672,9 @@
 }
 
 .om-tournament-modal-head p {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px 12px;
   margin-top: 6px;
   color: var(--muted);
   font-weight: 850;
@@ -744,6 +755,18 @@
   margin-top: 10px;
   color: var(--muted);
   font-weight: 900;
+}
+
+.tournament-hero-meta {
+  flex-wrap: wrap;
+}
+
+.tournament-hero-meta > span {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  gap: 6px;
+  overflow-wrap: anywhere;
 }
 
 .tournament-hero-badges,

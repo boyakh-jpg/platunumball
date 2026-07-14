@@ -225,6 +225,18 @@ export default function Home({ app }) {
         href: getNotificationHref(notification),
         icon: Trophy,
       }));
+    const tournamentScheduleItems = (app.state.notifications ?? [])
+      .filter((notification) => isNotificationVisibleToUser(notification, user.id))
+      .filter((notification) => notification.type === "tournament_match_schedule" && isHomeActionNotification(notification))
+      .map((notification) => ({
+        id: `notification-${notification.id}`,
+        priority: 1,
+        label: "명단 구성",
+        title: notification.title,
+        meta: notification.body || "출전·후보 명단 구성 필요",
+        href: getNotificationHref(notification),
+        icon: ClipboardCheck,
+      }));
     const matchItems = app.state.matches
       .filter((match) => isHomeUserMatch(match, user.id))
       .map((match) => {
@@ -328,7 +340,7 @@ export default function Home({ app }) {
         href: `/app/recruiting?post=${post.id}`,
         icon: ShieldAlert,
       }));
-    return [...invitationItems, ...teamInvitationItems, ...tournamentInviteItems, ...tournamentNotificationItems, ...confirmableRoomItems, ...matchItems, ...cancelledRoomItems]
+    return [...invitationItems, ...teamInvitationItems, ...tournamentInviteItems, ...tournamentNotificationItems, ...tournamentScheduleItems, ...confirmableRoomItems, ...matchItems, ...cancelledRoomItems]
       .sort((a, b) => a.priority - b.priority || String(a.meta).localeCompare(String(b.meta)));
   }, [app.state, app.state.matches, app.state.recruitingPosts, app.state.tournaments, captainTeamIds, myTeamIds, pendingInvitations, pendingTeamInvitations, teamById, user.id]);
   const priorityItems = actionItems.slice(0, 5);

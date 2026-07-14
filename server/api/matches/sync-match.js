@@ -1206,8 +1206,11 @@ function isMissingSqlMatchReducer(error = {}) {
     message.includes("rankball_match_star_toggle_action") ||
     message.includes("rankball_match_thumbs_action") ||
     message.includes("rankball_match_start_action") ||
+    message.includes("rankball_match_start_action_guarded") ||
+    message.includes("rankball_match_team_roster_action") ||
     message.includes("rankball_match_terminal_action") ||
-    message.includes("rankball_tournament_match_schedule_action")
+    message.includes("rankball_tournament_match_schedule_action") ||
+    message.includes("rankball_tournament_match_roster_action")
   );
 }
 
@@ -1340,7 +1343,21 @@ async function applySqlMatchAction(context, operation = {}, match = {}) {
     return { ok: true, ...(data && typeof data === "object" ? data : {}), matchId };
   }
 
-  if (["updateMatchRoomRules", "setMatchRoomPlayerPlacement", "setMatchRecordTeamRoster", "removeMatchRoomPlayer"].includes(operation.action) && (match?.id || operation.matchId)) {
+  if (operation.action === "setMatchRecordTeamRoster" && (match?.id || operation.matchId)) {
+    const matchId = operation.matchId ?? match.id;
+    const { data, error } = await context.supabase.rpc("rankball_match_team_roster_action", {
+      p_actor_profile_id: context.profileId,
+      p_match_id: matchId,
+      p_payload: operation,
+    });
+    if (error) {
+      if (isMissingSqlMatchReducer(error)) return null;
+      throw error;
+    }
+    return { ok: true, ...(data && typeof data === "object" ? data : {}), matchId };
+  }
+
+  if (["updateMatchRoomRules", "setMatchRoomPlayerPlacement", "removeMatchRoomPlayer"].includes(operation.action) && (match?.id || operation.matchId)) {
     const matchId = operation.matchId ?? match.id;
     const { data, error } = await context.supabase.rpc("rankball_match_room_action", {
       p_actor_profile_id: context.profileId,
@@ -1564,7 +1581,7 @@ async function applySqlMatchAction(context, operation = {}, match = {}) {
 
   if (operation.action === "startMatch" && (match?.id || operation.matchId)) {
     const matchId = operation.matchId ?? match.id;
-    const { data, error } = await context.supabase.rpc("rankball_match_start_action", {
+    const { data, error } = await context.supabase.rpc("rankball_match_start_action_guarded", {
       p_actor_profile_id: context.profileId,
       p_match_id: matchId,
       p_started_at: match?.startedAt ?? match?.rules?.startedAt ?? "",

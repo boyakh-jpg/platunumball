@@ -50,6 +50,7 @@ import {
   getRecruitingTargetMmr,
   getRecruitingTierRange,
   getSelectableTeamPlayerIds,
+  getTeamEventEligibility,
   hasPendingRecruitingInvitation,
   isRecruitingPartyEntry,
   isRecruitingTeamEntry,
@@ -722,6 +723,7 @@ function TeamMemberPicker({
   onRosterChange,
   requiredPlayerId = "",
   requiredActive = false,
+  eligiblePlayerIds = null,
   deferCommit = false,
   submitLabel = "선수 확정",
 }) {
@@ -744,6 +746,7 @@ function TeamMemberPicker({
   const memberIds = getSelectableTeamPlayerIds(team);
   const selectedSet = new Set(effectiveSelectedIds);
   const reserveSet = new Set(effectiveReserveIds);
+  const eligibleSet = Array.isArray(eligiblePlayerIds) ? new Set(eligiblePlayerIds) : null;
   const canSelectReserves = Boolean(onRosterChange || onReserveChange);
   const commitRoster = (nextSelectedIds, nextReserveIds) => {
     onRosterChange?.({ selectedIds: nextSelectedIds, reserveIds: nextReserveIds });
@@ -762,6 +765,7 @@ function TeamMemberPicker({
     reserveIds.join("|") !== effectiveReserveIds.join("|")
   );
   const setMemberRole = (playerId, role) => {
+    if ((role === "active" || role === "reserve") && eligibleSet && !eligibleSet.has(playerId)) return;
     const nextSelectedIds = effectiveSelectedIds.filter((id) => id !== playerId);
     const nextReserveIds = effectiveReserveIds.filter((id) => id !== playerId);
     if (role === "active") {
@@ -794,6 +798,7 @@ function TeamMemberPicker({
           const selected = selectedSet.has(playerId);
           const reserve = reserveSet.has(playerId);
           const required = playerId === requiredPlayerId;
+          const eligible = !eligibleSet || eligibleSet.has(playerId);
           const activeLocked = !selected && effectiveSelectedIds.length >= capacity;
           const reserveLocked = requiredActive && required
             ? true
@@ -806,18 +811,19 @@ function TeamMemberPicker({
                 selected ? "selected" : "",
                 reserve ? "reserve" : "",
                 required ? "required" : "",
+                !eligible ? "ineligible" : "",
               ].filter(Boolean).join(" ")}
             >
               <span className="avatar small" style={{ "--avatar": user?.avatarColor }}>{user?.name?.slice(0, 1) ?? "?"}</span>
               <span>
                 <strong>{user?.name ?? "알 수 없음"}</strong>
-                <em>{required ? `${getPlayerPosition(user)} · 필수` : getPlayerPosition(user)}</em>
+                <em>{!eligible ? `${getPlayerPosition(user)} · 조건 불일치` : required ? `${getPlayerPosition(user)} · 필수` : getPlayerPosition(user)}</em>
               </span>
               <TierBadge mmr={user?.ratings?.integrated ?? 1200} compact />
               <div className="arena-party-role-buttons">
-                <button type="button" className={selected ? "active" : ""} disabled={activeLocked} onClick={() => setMemberRole(playerId, "active")}>출전</button>
+                <button type="button" className={selected ? "active" : ""} disabled={!eligible || activeLocked} onClick={() => setMemberRole(playerId, "active")}>출전</button>
                 {canSelectReserves ? (
-                  <button type="button" className={reserve ? "active" : ""} disabled={reserveLocked} onClick={() => setMemberRole(playerId, "reserve")}>후보</button>
+                  <button type="button" className={reserve ? "active" : ""} disabled={!eligible || reserveLocked} onClick={() => setMemberRole(playerId, "reserve")}>후보</button>
                 ) : null}
                 <button type="button" disabled={required} onClick={() => setMemberRole(playerId, "none")}>해제</button>
               </div>
@@ -1548,6 +1554,8 @@ function MatchRecordRosterPanel({
   currentUserId,
   sideLeaderId,
   capacity,
+  tournamentRoster = false,
+  eligiblePlayerIds = null,
   onChange,
 }) {
   const sourceActiveIds = getMatchSidePlayerIds(match, sideName);
@@ -1559,7 +1567,7 @@ function MatchRecordRosterPanel({
     let nextReserveIds = [...new Set(reserveIds.filter(Boolean))]
       .filter((playerId) => !nextActiveIds.includes(playerId))
       .slice(0, MAX_RESERVE_PLAYERS_PER_SIDE);
-    if (sideLeaderId && teamMemberIdSet.has(sideLeaderId)) {
+    if (!tournamentRoster && sideLeaderId && teamMemberIdSet.has(sideLeaderId)) {
       nextActiveIds = [sideLeaderId, ...nextActiveIds.filter((playerId) => playerId !== sideLeaderId)].slice(0, capacity);
       nextReserveIds = nextReserveIds.filter((playerId) => playerId !== sideLeaderId);
     }
@@ -1570,12 +1578,13 @@ function MatchRecordRosterPanel({
 
   useEffect(() => {
     setDraftRoster(normalizeLeaderRoster(sourceActiveIds, sourceReserveIds));
-  }, [match?.id, sideName, sideLeaderId, team?.id, capacity, sourceActiveIds.join("|"), sourceReserveIds.join("|")]);
+  }, [match?.id, sideName, sideLeaderId, team?.id, capacity, tournamentRoster, sourceActiveIds.join("|"), sourceReserveIds.join("|")]);
 
   if (!match || !team || !sideLeaderId || sideLeaderId !== currentUserId) return null;
   const activeIds = draftRoster.activeIds;
   const reserveIds = draftRoster.reserveIds;
   const rosterIds = new Set([...activeIds, ...reserveIds]);
+  const eligibleSet = Array.isArray(eligiblePlayerIds) ? new Set(eligiblePlayerIds) : null;
   const memberIds = (team.members ?? []).map((member) => member.userId).filter((playerId) => userById[playerId]);
   if (!memberIds.length) return null;
 
@@ -1587,7 +1596,8 @@ function MatchRecordRosterPanel({
     });
   };
   const setPlayerState = (playerId, state) => {
-    if (playerId === sideLeaderId && state !== "active") return;
+    if (!tournamentRoster && playerId === sideLeaderId && state !== "active") return;
+    if ((state === "active" || state === "reserve") && eligibleSet && !eligibleSet.has(playerId)) return;
     const nextActiveIds = activeIds.filter((id) => id !== playerId);
     const nextReserveIds = reserveIds.filter((id) => id !== playerId);
     if (state === "active" && nextActiveIds.length < capacity) {
@@ -1602,7 +1612,7 @@ function MatchRecordRosterPanel({
   return (
     <div className="arena-record-roster-panel">
       <header>
-        <strong>{SIDE_LABELS[sideName]} 출전자 확인</strong>
+        <strong>{SIDE_LABELS[sideName]} {tournamentRoster ? "출전 명단 구성" : "출전자 확인"}</strong>
         <span>{team.name} · 출전 {activeIds.length}/{capacity} · 후보 {reserveIds.length}/{MAX_RESERVE_PLAYERS_PER_SIDE}</span>
       </header>
       <div className="arena-record-roster-list">
@@ -1611,30 +1621,31 @@ function MatchRecordRosterPanel({
           const isActive = activeIds.includes(playerId);
           const isReserve = reserveIds.includes(playerId);
           const isLeader = playerId === sideLeaderId;
+          const eligible = !eligibleSet || eligibleSet.has(playerId);
           const stateLabel = isActive ? "출전" : isReserve ? "후보" : "미선택";
           return (
-            <div key={playerId} className={rosterIds.has(playerId) ? "arena-record-roster-row selected" : "arena-record-roster-row"}>
+            <div key={playerId} className={["arena-record-roster-row", rosterIds.has(playerId) ? "selected" : "", !eligible ? "ineligible" : ""].filter(Boolean).join(" ")}>
               <PlayerHoverCard user={user} teams={teams} as="span">
                 <span className="avatar small" style={{ "--avatar": user.avatarColor }}>{user.name.slice(0, 1)}</span>
                 <span>
                   <strong>{user.name}</strong>
-                  <em>{user.position ?? "포지션 자유"} · {stateLabel}{isLeader ? " · 사이드장" : ""}</em>
+                  <em>{user.position ?? "포지션 자유"} · {eligible ? stateLabel : "조건 불일치"}{isLeader ? " · 사이드장" : ""}</em>
                 </span>
               </PlayerHoverCard>
-              <Button type="button" size="sm" variant={isActive ? "primary" : "secondary"} disabled={!isActive && activeIds.length >= capacity} onClick={() => setPlayerState(playerId, "active")}>
+              <Button type="button" size="sm" variant={isActive ? "primary" : "secondary"} disabled={!eligible || (!isActive && activeIds.length >= capacity)} onClick={() => setPlayerState(playerId, "active")}>
                 출전
               </Button>
-              <Button type="button" size="sm" variant={isReserve ? "primary" : "secondary"} disabled={isLeader || (!isReserve && reserveIds.length >= MAX_RESERVE_PLAYERS_PER_SIDE)} onClick={() => setPlayerState(playerId, "reserve")}>
+              <Button type="button" size="sm" variant={isReserve ? "primary" : "secondary"} disabled={!eligible || (!tournamentRoster && isLeader) || (!isReserve && reserveIds.length >= MAX_RESERVE_PLAYERS_PER_SIDE)} onClick={() => setPlayerState(playerId, "reserve")}>
                 후보
               </Button>
-              <Button type="button" size="sm" variant="secondary" disabled={isLeader || (!isActive && !isReserve)} onClick={() => setPlayerState(playerId, "none")}>
+              <Button type="button" size="sm" variant="secondary" disabled={(!tournamentRoster && isLeader) || (!isActive && !isReserve)} onClick={() => setPlayerState(playerId, "none")}>
                 해제
               </Button>
             </div>
           );
         })}
       </div>
-      <Button type="button" size="sm" disabled={!rosterChanged || !activeIds.length} onClick={commitRoster}>
+      <Button type="button" size="sm" disabled={!rosterChanged || (tournamentRoster ? activeIds.length !== capacity : !activeIds.length)} onClick={commitRoster}>
         선수 확정
       </Button>
     </div>
@@ -2418,6 +2429,10 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
     () => app.state.teams.filter((team) => team.members.some((member) => member.userId === app.currentUser.id)),
     [app.currentUser.id, app.state.teams],
   );
+  const captainTeams = useMemo(
+    () => myTeams.filter((team) => team.members.some((member) => member.userId === app.currentUser.id && member.role === "captain")),
+    [app.currentUser.id, myTeams],
+  );
 
   useEffect(() => {
     if (!shouldLoadTeamDirectory) return;
@@ -2962,7 +2977,18 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const joinDraft = getJoinDraft(selectedPost);
         const soloIndividualRoom = isSoloIndividualRecruitingRoom(selectedPost);
         const teamOnlyRoom = isTeamOnlyRoom(selectedPost) && !soloIndividualRoom;
-        const selectedJoinTeam = myTeams.find((team) => team.id === joinDraft.teamId) ?? myTeams[0] ?? null;
+        const roomTargetMmr = getRecruitingTargetMmr(selectedPost, app.state);
+        const getJoinTeamEligibility = (team) => getTeamEventEligibility(team, app.state.users, {
+          capacity: getRecruitingSideCapacity(selectedPost),
+          ranked: selectedPost.ranked,
+          mmrLimitMode: selectedPost.mmrLimitMode ?? selectedPost.roomState?.mmrLimitMode,
+          mmrRangeMode: selectedPost.mmrRangeMode ?? selectedPost.roomState?.mmrRangeMode,
+          targetMmr: roomTargetMmr,
+          allowedAgeGroups: selectedPost.allowedAgeGroups ?? selectedPost.rules?.allowedAgeGroups,
+          requireCaptainEligible: true,
+        });
+        const selectedJoinTeam = captainTeams.find((team) => team.id === joinDraft.teamId) ?? captainTeams[0] ?? null;
+        const selectedJoinTeamEligibility = getJoinTeamEligibility(selectedJoinTeam);
         const joinCapacity = getJoinActiveCapacity(selectedPost, lobby, joinDraft.side, joinDraft.reserve);
         const selectedJoinPlayerIds = getPartyPlayerIds(selectedJoinTeam, joinDraft.playerIds, joinCapacity, app.currentUser.id);
         const selectedJoinReserveIds = joinDraft.reserve
@@ -2993,7 +3019,9 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         );
         const teamJoinValid = !soloIndividualRoom && (joinDraft.joinMode !== "team" || (
           Boolean(selectedJoinTeam) &&
+          selectedJoinTeamEligibility.allowed &&
           selectedJoinPlayerIds.includes(app.currentUser.id) &&
+          [...selectedJoinPlayerIds, ...selectedJoinReserveIds].every((playerId) => selectedJoinTeamEligibility.eligiblePlayerIds.includes(playerId)) &&
           selectedJoinPlayerIds.length > 0 &&
           (!teamOnlyRoom || selectedJoinPlayerIds.length >= getRecruitingSideCapacity(selectedPost))
         ));
@@ -3118,6 +3146,17 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const roomReadyLabel = sourceMatch ? sourceMatchStatus.label : roomQueueStatus.label;
         const sourceMatchPhase = sourceMatch ? getMatchRoomPhase(sourceMatch) : null;
         const sourceMatchIsRecordRoom = Boolean(sourceMatch && isMatchRecordMatch(sourceMatch));
+        const sourceMatchIsTournamentPregame = Boolean(
+          sourceMatch?.tournamentId &&
+          sourceMatch?.scheduledDate &&
+          sourceMatch?.scheduledTime &&
+          !sourceMatch?.startedAt &&
+          !sourceMatch?.endedAt &&
+          !sourceMatch?.result &&
+          !sourceMatch?.confirmedAt &&
+          !sourceMatch?.cancelledAt &&
+          !sourceMatch?.voidedAt
+        );
         const sourceMatchRecordEditable = Boolean(sourceMatchIsRecordRoom && !sourceMatch?.result && !sourceMatch?.confirmedAt);
         const sourceRoomReadOnly = Boolean(matchRoom && (
           sourceMatch?.status === "disputed" ||
@@ -3134,10 +3173,14 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const sourceMatchHostSideName = sourceMatch && getMatchSidePlayerIds(sourceMatch, "teamB").includes(sourceMatch.createdBy) ? "teamB" : "teamA";
         const sourceMatchOpponentSideName = sourceMatchHostSideName === "teamA" ? "teamB" : "teamA";
         const sourceMatchSideLeaderIds = {
-          teamA: sourceMatch
+          teamA: sourceMatchIsTournamentPregame
+            ? teamById[sourceMatch?.teamA?.teamId]?.members?.find((member) => member.role === "captain")?.userId ?? ""
+            : sourceMatch
             ? getMatchSideLeaderId(sourceMatch, app.state.teams, "teamA")
             : getRecruitingSideLeaderId(lobby, "teamA", roomOwnerId, roomState),
-          teamB: sourceMatch
+          teamB: sourceMatchIsTournamentPregame
+            ? teamById[sourceMatch?.teamB?.teamId]?.members?.find((member) => member.role === "captain")?.userId ?? ""
+            : sourceMatch
             ? getMatchSideLeaderId(sourceMatch, app.state.teams, "teamB")
             : getRecruitingSideLeaderId(lobby, "teamB", roomOwnerId, roomState),
         };
@@ -3148,7 +3191,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
         const canEditMatchRecordRoster = Boolean(
           matchRoom &&
           sourceMatch &&
-          sourceMatchIsRecordRoom &&
+          (sourceMatchIsRecordRoom || sourceMatchIsTournamentPregame) &&
           !sourceMatch.result &&
           !sourceMatch.confirmedAt &&
           !sourceMatch.cancelledAt &&
@@ -3739,6 +3782,15 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                       currentUserId={app.currentUser.id}
                       sideLeaderId={sourceMatchSideLeaderIds[sideName]}
                       capacity={getRecruitingSideCapacity(sourceMatch)}
+                      tournamentRoster={sourceMatchIsTournamentPregame}
+                      eligiblePlayerIds={sourceMatchIsTournamentPregame ? getTeamEventEligibility(sourceMatchRecordTeams[sideName], app.state.users, {
+                        capacity: getRecruitingSideCapacity(sourceMatch),
+                        ranked: sourceMatch.ranked,
+                        mmrLimitMode: sourceMatch.rules?.mmrLimitMode ?? sourceMatch.mmrLimitMode,
+                        mmrRangeMode: sourceMatch.rules?.mmrRangeMode,
+                        targetMmr: sourceMatchRecordTeams[sideName]?.mmr,
+                        allowedAgeGroups: sourceMatch.rules?.allowedAgeGroups,
+                      }).eligiblePlayerIds : null}
                       onChange={(targetSideName, roster) => app.actions.setMatchRecordTeamRoster(sourceMatch.id, targetSideName, roster)}
                     />
                   ))}
@@ -4106,8 +4158,8 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                           type="button"
                           className={joinDraft.joinMode === mode ? "active" : ""}
                           onClick={() => {
-                            const teamId = mode === "team" ? getDefaultApplyTeamId(selectedPost, myTeams) : "";
-                            const team = myTeams.find((item) => item.id === teamId) ?? null;
+                            const teamId = mode === "team" ? getDefaultApplyTeamId(selectedPost, captainTeams) : "";
+                            const team = captainTeams.find((item) => item.id === teamId) ?? null;
                             const rosterPatch = mode === "team"
                               ? getJoinRosterPatch(team)
                               : { playerIds: [], reservePlayerIds: [] };
@@ -4127,24 +4179,28 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                       <>
                         <div className="arena-team-choice-field">
                           <span>참여 팀</span>
-                          {myTeams.length ? (
+                          {captainTeams.length ? (
                             <div className="arena-team-choice-grid">
-                              {myTeams.map((team) => (
-                                <button
-                                  key={team.id}
-                                  type="button"
-                                  className={joinDraft.teamId === team.id ? "selected" : ""}
-                                  onClick={() => {
-                                    updateJoinDraft(selectedPost, {
-                                      teamId: team.id,
-                                      ...getJoinRosterPatch(team),
-                                    });
-                                  }}
-                                >
-                                  <strong>{team.name}</strong>
-                                  <em>{team.mmr} MMR</em>
-                                </button>
-                              ))}
+                              {captainTeams.map((team) => {
+                                const eligibility = getJoinTeamEligibility(team);
+                                return (
+                                  <button
+                                    key={team.id}
+                                    type="button"
+                                    className={[joinDraft.teamId === team.id ? "selected" : "", !eligibility.allowed ? "is-disabled" : ""].filter(Boolean).join(" ")}
+                                    disabled={!eligibility.allowed}
+                                    onClick={() => {
+                                      updateJoinDraft(selectedPost, {
+                                        teamId: team.id,
+                                        ...getJoinRosterPatch(team),
+                                      });
+                                    }}
+                                  >
+                                    <strong>{team.name}</strong>
+                                    <em>{eligibility.allowed ? `${team.mmr} MMR · 가능 ${eligibility.eligibleCount}/${eligibility.capacity}` : eligibility.reason}</em>
+                                  </button>
+                                );
+                              })}
                             </div>
                           ) : (
                             <em>내 팀 없음</em>
@@ -4159,6 +4215,7 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                           reserveCapacity={MAX_RESERVE_PLAYERS_PER_SIDE}
                           onRosterChange={({ selectedIds: playerIds, reserveIds: reservePlayerIds }) => updateJoinDraft(selectedPost, { playerIds, reservePlayerIds })}
                           requiredPlayerId={app.currentUser.id}
+                          eligiblePlayerIds={selectedJoinTeamEligibility.eligiblePlayerIds}
                         />
                       </>
                     ) : joinDraft.joinMode === "referee" ? (
@@ -4226,8 +4283,8 @@ function RecruitingRoomModalReady({ app, post, onClose, onOpenMatch = null, sour
                     <div className="arena-mini-note">
                       <div>
                         <span>{joinDraft.joinMode === "team" ? `팀 파티 ${selectedJoinPlayerIds.length}+${selectedJoinReserveIds.length}` : joinDraft.joinMode === "referee" ? "심판 참여" : "개인 참여"}</span>
-                        <strong>{joinDraft.joinMode === "referee" ? "심판 가능" : fit.label}</strong>
-                        <em>{joinDraft.joinMode === "referee" ? "슬롯 사용 안 함" : fit.range.label}</em>
+                        <strong>{joinDraft.joinMode === "referee" ? "심판 가능" : joinDraft.joinMode === "team" && !selectedJoinTeamEligibility.allowed ? "참가 불가" : fit.label}</strong>
+                        <em>{joinDraft.joinMode === "referee" ? "슬롯 사용 안 함" : joinDraft.joinMode === "team" && !selectedJoinTeamEligibility.allowed ? selectedJoinTeamEligibility.reason : fit.range.label}</em>
                       </div>
                       {joinDraft.joinMode === "referee" ? <ShieldCheck size={18} /> : <TierBadge mmr={candidateMmr || app.currentUser.ratings.integrated} compact />}
                     </div>

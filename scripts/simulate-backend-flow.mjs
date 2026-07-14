@@ -7,6 +7,7 @@ import recruitingListHandler from "../server/api/recruiting/list.js";
 import discordRoomChatHandler from "../server/api/discord/room-chat.js";
 import syncMatchHandler, { persistMatchSnapshot, queueMatchDiscordDeliveries } from "../server/api/matches/sync-match.js";
 import matchDetailHandler from "../server/api/matches/detail.js";
+import matchesListHandler from "../server/api/matches/list.js";
 import syncTournamentHandler from "../server/api/tournaments/sync-tournament.js";
 import refereeSyncHandler from "../server/api/referee/sync.js";
 import teamsListHandler from "../server/api/teams/list.js";
@@ -798,6 +799,19 @@ async function loadMatchAs(testLoginId, matchId = ids.matchId) {
   const match = (payload?.state?.matches ?? []).find((item) => item.id === matchId);
   assertFlow(payload?.ok && match, `match load failed for ${testLoginId}`, payload);
   return match;
+}
+
+async function loadMatchesAs(testLoginId) {
+  const payload = await callHandler("/api/matches/list", matchesListHandler, await getAuthToken(testLoginId), {
+    activeOnly: true,
+    includeRecentCompleted: true,
+    includeClosedNotices: true,
+    includeRecruitingSchedule: false,
+    adminContext: false,
+    limit: 30,
+  });
+  assertFlow(payload?.ok && payload?.state, `match list load failed for ${testLoginId}`, payload);
+  return payload.state;
 }
 
 function getKstFutureSchedule(offsetHours = 48) {
@@ -3887,6 +3901,53 @@ async function runTournamentFollowupRoundScenario({
   assertFlow(scheduleResult?.sqlReducer === true && scheduleResult?.advisoryLocked === true, "tournament schedule SQL reducer not used", scheduleResult);
   const scheduledMatch = await step(`${ids.label}:loadScheduledTournamentMatch`, () => loadMatchAs(effectiveCreatorLogin, firstRoundMatches[0].id));
   assertFlow(scheduledMatch?.scheduledDate === startDate && scheduledMatch?.scheduledTime === scheduleTime, "tournament schedule not persisted", scheduledMatch);
+
+  const scheduledSideFixtures = ["teamA", "teamB"].map((sideName) => {
+    const teamId = scheduledMatch?.[sideName]?.teamId ?? "";
+    const fixture = fixtures.find((item) => item.team.id === teamId);
+    const playerId = scheduledMatch?.[sideName]?.players?.[0] ?? "";
+    assertFlow(Boolean(fixture?.captainLogin && playerId), "tournament scheduled side fixture missing", { sideName, teamId, playerId });
+    return { sideName, fixture, playerId };
+  });
+  for (const { sideName, fixture } of scheduledSideFixtures) {
+    const captainHome = await step(`${ids.label}:loadCaptainHome:${sideName}`, () => loadHomeAs(fixture.captainLogin));
+    assertFlow(
+      (captainHome.notifications ?? []).some((notification) => (
+        notification.type === "tournament_match_schedule" &&
+        notification.matchId === scheduledMatch.id &&
+        notification.actionRequired !== false
+      )),
+      "tournament captain schedule notification missing",
+      { sideName, captainId: fixture.captainId, notifications: captainHome.notifications },
+    );
+    const captainMatches = await step(`${ids.label}:loadCaptainMatches:${sideName}`, () => loadMatchesAs(fixture.captainLogin));
+    const listedMatch = (captainMatches.matches ?? []).find((match) => match.id === scheduledMatch.id);
+    assertFlow(
+      listedMatch?.__feedRelations?.includes("tournament_captain"),
+      "scheduled tournament match missing from captain match list",
+      { sideName, captainId: fixture.captainId, matchIds: (captainMatches.matches ?? []).map((match) => match.id) },
+    );
+  }
+  await expectRejected(
+    `${ids.label}:startBeforeTournamentRosterBlocked`,
+    () => syncMatchAs(effectiveCreatorLogin, { action: "startMatch", matchId: scheduledMatch.id }),
+    ["tournament_roster_not_ready"],
+  );
+  for (const { sideName, fixture, playerId } of scheduledSideFixtures) {
+    const rosterResult = await step(`${ids.label}:setTournamentRoster:${sideName}`, () => syncMatchAs(fixture.captainLogin, {
+      action: "setMatchRecordTeamRoster",
+      matchId: scheduledMatch.id,
+      sideName,
+      roster: { playerIds: [playerId], reservePlayerIds: [] },
+    }));
+    assertFlow(rosterResult?.sqlReducer === true && rosterResult?.rosterReady === true, "tournament roster SQL reducer not used", rosterResult);
+  }
+  const rosterReadyMatch = await step(`${ids.label}:loadTournamentRosterReadyMatch`, () => loadMatchAs(effectiveCreatorLogin, scheduledMatch.id));
+  assertFlow(
+    rosterReadyMatch?.rules?.rosterReady?.teamA === true && rosterReadyMatch?.rules?.rosterReady?.teamB === true,
+    "tournament roster readiness not persisted",
+    rosterReadyMatch?.rules,
+  );
 
   const firstConfirmed = await playTournamentMatchToConfirmed({
     label: `${ids.label}:round1fixture1`,

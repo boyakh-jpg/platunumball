@@ -137,6 +137,8 @@ import {
   getRecruitingRoomOwnerId,
   getRecruitingSideCapacity,
   getRecruitingSlotEditStatus,
+  getRecruitingTargetMmr,
+  getTeamEventEligibility,
   getValidRecruitingRecorder,
   getSelectableTeamPlayerIds,
   getSelectedTeamPlayerIds,
@@ -1684,12 +1686,19 @@ function getRecruitingReserveLimitNotification(postId, sideName) {
   };
 }
 
-function makeTournamentMatch(tournament, teamA, teamB, pairing, now, matchId = "") {
+function makeTournamentMatch(state, tournament, teamA, teamB, pairing, now, matchId = "") {
   const mode = tournament.mode || "5v5";
   const size = MODE_SIZES[mode] ?? 5;
   const roundLabel = tournament.format === "tournament" ? `${pairing.round}R-${pairing.fixture}` : `L-${pairing.fixture}`;
-  const teamAPlayers = getTeamPlayers(teamA, size);
-  const teamBPlayers = getTeamPlayers(teamB, size);
+  const eligibilityOptions = {
+    capacity: size,
+    ranked: tournament.ranked,
+    mmrLimitMode: tournament.rules?.mmrLimitMode ?? tournament.mmrLimitMode,
+    mmrRangeMode: tournament.rules?.mmrRangeMode,
+    allowedAgeGroups: tournament.rules?.allowedAgeGroups,
+  };
+  const teamAPlayers = getTeamEventEligibility(teamA, state.users, { ...eligibilityOptions, targetMmr: teamA.mmr }).eligiblePlayerIds.slice(0, size);
+  const teamBPlayers = getTeamEventEligibility(teamB, state.users, { ...eligibilityOptions, targetMmr: teamB.mmr }).eligiblePlayerIds.slice(0, size);
 
   return {
     id: matchId || makeId("m"),
@@ -1715,7 +1724,12 @@ function makeTournamentMatch(tournament, teamA, teamB, pairing, now, matchId = "
     tournamentFixture: pairing.fixture,
     tournamentBracketMatch: pairing.bracketMatch ?? pairing.fixture,
     tournamentMmrPolicy: tournament.mmrPolicy,
-    rules: { ...(tournament.rules ?? {}), visibility: tournament.visibility ?? "private" },
+    rules: {
+      ...(tournament.rules ?? {}),
+      sideCapacity: size,
+      visibility: tournament.visibility ?? "private",
+      rosterReady: { teamA: false, teamB: false },
+    },
     memo: tournament.memo || "대회 경기입니다.",
     stakes: "대회 경기 MMR 가중치가 적용됩니다.",
     mmrLimitMode: tournament.mmrLimitMode ?? "warn",
@@ -1748,7 +1762,7 @@ function generateTournamentMatches(state, tournament, options = {}) {
       const teamA = teamById[pairing.teamAId];
       const teamB = teamById[pairing.teamBId];
       if (!teamA || !teamB) return null;
-      return makeTournamentMatch(tournament, teamA, teamB, pairing, now, preferredMatchIds[index]);
+      return makeTournamentMatch(state, tournament, teamA, teamB, pairing, now, preferredMatchIds[index]);
     })
     .filter(Boolean);
   const matchIds = matches.map((match) => match.id);
@@ -1866,7 +1880,7 @@ function advanceTournamentAfterMatch(state, confirmedMatch) {
   const teamB = teamById[teamBId];
   if (!teamA || !teamB) return state;
 
-  const nextMatch = makeTournamentMatch(tournament, teamA, teamB, {
+  const nextMatch = makeTournamentMatch(state, tournament, teamA, teamB, {
     round: nextRound,
     fixture: nextFixture,
     bracketMatch: nextFixture,
@@ -2580,6 +2594,30 @@ export function createTournament(state, draft) {
   const mmrSpread = mmrs.length ? Math.max(...mmrs) - Math.min(...mmrs) : 0;
   const maxMmrGap = Number(draft.tournamentMaxMmrGap ?? draft.maxMmrGap ?? 250);
   const mmrLimitMode = draft.mmrLimitMode ?? "warn";
+  const sideCapacity = getRecruitingSideCapacity(draft);
+  const tournamentRules = {
+    targetScore: Number(draft.targetScore ?? 21),
+    timeLimit: Number(draft.timeLimit ?? 12),
+    winByTwo: Boolean(draft.winByTwo),
+    ball: draft.ball || "7호 공",
+    attackRule: draft.attackRule || "공격권은 득점 후 교대",
+    foulRule: draft.foulRule || "파울은 콜한 쪽 기준으로 즉시 중단",
+    ...(draft.rules ?? {}),
+    sideCapacity,
+    mmrLimitMode,
+    mmrRangeMode: draft.mmrRangeMode ?? draft.rules?.mmrRangeMode ?? "narrow",
+    ageRestriction: draft.ageRestriction ?? draft.rules?.ageRestriction ?? "any",
+    allowedAgeGroups: draft.allowedAgeGroups ?? draft.rules?.allowedAgeGroups ?? [],
+    rosterReady: { teamA: false, teamB: false },
+  };
+  const ineligibleTeam = invitedTeams.find((team) => !getTeamEventEligibility(team, state.users, {
+    capacity: sideCapacity,
+    ranked: draft.ranked,
+    mmrLimitMode,
+    mmrRangeMode: tournamentRules.mmrRangeMode,
+    targetMmr: team.mmr,
+    allowedAgeGroups: tournamentRules.allowedAgeGroups,
+  }).allowed);
 
   if (teamIds.length < 2) {
     return {
@@ -2608,6 +2646,26 @@ export function createTournament(state, draft) {
         },
         ...state.notifications,
       ],
+    };
+  }
+
+  if (ineligibleTeam) {
+    const eligibility = getTeamEventEligibility(ineligibleTeam, state.users, {
+      capacity: sideCapacity,
+      ranked: draft.ranked,
+      mmrLimitMode,
+      mmrRangeMode: tournamentRules.mmrRangeMode,
+      targetMmr: ineligibleTeam.mmr,
+      allowedAgeGroups: tournamentRules.allowedAgeGroups,
+    });
+    return {
+      ...state,
+      notifications: [{
+        id: makeId("n"),
+        title: "대회 참가 제한",
+        body: `${ineligibleTeam.name}: ${eligibility.reason}`,
+        tone: "match",
+      }, ...state.notifications],
     };
   }
 
@@ -2644,14 +2702,7 @@ export function createTournament(state, draft) {
     mmrLimitMode,
     maxMmrGap,
     mmrPolicy: draft.tournamentMmrPolicy ?? "gap_adjusted",
-    rules: {
-      targetScore: Number(draft.targetScore ?? 21),
-      timeLimit: Number(draft.timeLimit ?? 12),
-      winByTwo: Boolean(draft.winByTwo),
-      ball: draft.ball || "7호 공",
-      attackRule: draft.attackRule || "공격권은 득점 후 교대",
-      foulRule: draft.foulRule || "파울은 콜한 쪽 기준으로 즉시 중단",
-    },
+    rules: tournamentRules,
     memo: draft.memo || "비공개 초대 대회입니다.",
     createdBy: state.currentUserId,
     createdAt,
@@ -2766,12 +2817,43 @@ export function updateTournamentMatchSchedule(state, tournamentId, matchId, sche
     scheduledDate,
     scheduledTime,
     scheduledAt: getScheduleText(scheduledDate, scheduledTime),
+    rules: {
+      ...(match.rules ?? {}),
+      rosterReady: {
+        teamA: false,
+        teamB: false,
+      },
+    },
   };
+  const now = new Date().toISOString();
+  const captainNotifications = ["teamA", "teamB"].map((sideName) => {
+    const teamId = match[sideName]?.teamId;
+    const captainId = getTeamCaptainId(state.teams, teamId);
+    if (!teamId || !captainId) return null;
+    return {
+      id: makeId("n"),
+      title: "대회 경기 일정 확정",
+      body: `${updatedMatch.scheduledAt} 경기의 출전·후보 명단을 구성하세요.`,
+      tone: "match",
+      type: "tournament_match_schedule",
+      discordEvent: "match",
+      targetUserId: captainId,
+      matchId,
+      tournamentId,
+      teamId,
+      sideName,
+      actionRequired: true,
+      homeAction: true,
+      webPath: `/app/matches?match=${encodeURIComponent(matchId)}`,
+      createdAt: now,
+    };
+  }).filter(Boolean);
 
   return {
     ...state,
     matches: state.matches.map((item) => (item.id === matchId ? updatedMatch : item)),
     notifications: [
+      ...captainNotifications,
       {
         id: makeId("n"),
         title: "대회 일정 수정",
@@ -3511,6 +3593,18 @@ export function startMatch(state, matchId) {
   if (!match || !["contract", "agreed"].includes(match.status) || match.result || match.endedAt) return state;
   if (!currentUserCanStartMatch(state, match)) return state;
   if (getMatchRoomPhase(match).phase !== "checkin") return state;
+  if (match.tournamentId && (!match.rules?.rosterReady?.teamA || !match.rules?.rosterReady?.teamB)) {
+    return {
+      ...state,
+      notifications: [{
+        id: makeId("n"),
+        title: "출전 명단 미확정",
+        body: "양 팀장이 출전·후보 명단을 확정해야 경기를 시작할 수 있습니다.",
+        tone: "orange",
+        matchId,
+      }, ...state.notifications],
+    };
+  }
   const missingAttendance = getMissingMatchAttendance(match);
   if (missingAttendance.length) {
     return {
@@ -5097,6 +5191,9 @@ export function createRecruitingPost(state, draft) {
   }
 
   const sideCapacity = Math.max(1, Number(draft.sideCapacity ?? MODE_SIZES[draft.mode] ?? 5));
+  const mmrRangeMode = normalizeRecruitingMmrRangeMode(draft.mmrRangeMode);
+  const mmrLimitMode = normalizeRecruitingMmrLimitMode(draft.mmrLimitMode);
+  const allowedAgeGroups = draft.allowedAgeGroups ?? draft.rules?.allowedAgeGroups ?? [];
   const hostTeam = hostJoinMode === "team" ? state.teams.find((team) => team.id === draft.teamId) : null;
   const hostPlayerIds = hostJoinMode === "team" ? [state.currentUserId].filter((playerId) => getTeamMemberIds(hostTeam).includes(playerId)) : [];
   const hostReservePlayerIds = [];
@@ -5113,6 +5210,24 @@ export function createRecruitingPost(state, draft) {
   const opponentLeaderId = privateTeamInviteOnly
     ? (requestedOpponentLeaderId && opponentMemberIds.has(requestedOpponentLeaderId) && !hostSidePlayerIds.has(requestedOpponentLeaderId) ? requestedOpponentLeaderId : "")
     : rawOpponentPlayerIds.includes(draft.opponentLeaderId) ? draft.opponentLeaderId : rawOpponentPlayerIds[0] ?? "";
+  const hostEligibility = hostTeam ? getTeamEventEligibility(hostTeam, state.users, {
+    capacity: sideCapacity,
+    ranked: draft.ranked,
+    mmrLimitMode,
+    mmrRangeMode,
+    targetMmr: hostTeam.mmr,
+    allowedAgeGroups,
+    requireCaptainEligible: true,
+  }) : null;
+  const opponentEligibility = opponentTeam ? getTeamEventEligibility(opponentTeam, state.users, {
+    capacity: sideCapacity,
+    ranked: draft.ranked,
+    mmrLimitMode,
+    mmrRangeMode,
+    targetMmr: hostTeam?.mmr ?? opponentTeam.mmr,
+    allowedAgeGroups,
+    requireCaptainEligible: true,
+  }) : null;
   const orderedOpponentPlayerIds = opponentTeam
     ? (privateTeamInviteOnly ? [] : ensureTeamPartyLeader(opponentTeam, rawOpponentPlayerIds, opponentLeaderId, sideCapacity))
     : [];
@@ -5136,7 +5251,29 @@ export function createRecruitingPost(state, draft) {
       ],
     };
   }
-  if (privateTeamInviteOnly && (!opponentTeam || opponentTeam.id === hostTeam?.id || !opponentLeaderId)) {
+  if (hostJoinMode === "team" && (!hostEligibility?.allowed || hostEligibility.captainId !== state.currentUserId)) {
+    return {
+      ...state,
+      notifications: [{
+        id: makeId("n"),
+        title: "팀전 생성 제한",
+        body: hostEligibility?.captainId !== state.currentUserId ? "팀장만 팀전 방을 만들 수 있습니다." : hostEligibility?.reason,
+        tone: "team",
+      }, ...state.notifications],
+    };
+  }
+  if (privateTeamInviteOnly && !opponentEligibility?.allowed) {
+    return {
+      ...state,
+      notifications: [{
+        id: makeId("n"),
+        title: "상대 팀 초대 제한",
+        body: `${opponentTeam?.name ?? "상대 팀"}: ${opponentEligibility?.reason ?? "참가 조건을 확인하세요."}`,
+        tone: "team",
+      }, ...state.notifications],
+    };
+  }
+  if (privateTeamInviteOnly && (!opponentTeam || opponentTeam.id === hostTeam?.id || !opponentLeaderId || opponentLeaderId !== opponentEligibility?.captainId)) {
     return {
       ...state,
       notifications: [
@@ -5168,8 +5305,6 @@ export function createRecruitingPost(state, draft) {
   if (visibility === "public" && !timingStatus.canCreate) {
     return { ...state, notifications: [getInvalidPublicScheduleNotification(timingStatus.detail), ...state.notifications] };
   }
-  const mmrRangeMode = normalizeRecruitingMmrRangeMode(draft.mmrRangeMode);
-  const mmrLimitMode = normalizeRecruitingMmrLimitMode(draft.mmrLimitMode);
   const ratingScale = draft.ranked === false ? 1 : getRecruitingRatingScale({ ranked: draft.ranked !== false, mmrRangeMode });
   const createdAt = new Date().toISOString();
   const partyReserves = {};
@@ -5501,6 +5636,7 @@ export function interestRecruitingPost(state, postId, application = {}) {
   }
 
   const sideCapacity = getRecruitingSideCapacity(post);
+  const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
   const side = ["teamA", "teamB"].includes(application.side) ? application.side : getRecruitingBestSide(post, state);
   const lobby = getRecruitingLobby(post, state);
   const reserveRequested = Boolean(application.reserve);
@@ -5513,12 +5649,46 @@ export function interestRecruitingPost(state, postId, application = {}) {
         : Math.max(0, (sideState?.capacity ?? sideCapacity) - (sideState?.filled ?? 0))
     : sideCapacity;
   const reserveSelectionCapacity = Math.max(0, MAX_RECRUITING_RESERVES_PER_SIDE - (sideState?.reserveCandidates?.length ?? 0));
+  const teamEligibility = team ? getTeamEventEligibility(team, state.users, {
+    capacity: sideCapacity,
+    ranked: post.ranked,
+    mmrLimitMode: post.mmrLimitMode ?? roomState.mmrLimitMode,
+    mmrRangeMode: post.mmrRangeMode ?? roomState.mmrRangeMode,
+    targetMmr: getRecruitingTargetMmr(post, state),
+    allowedAgeGroups: post.allowedAgeGroups ?? post.rules?.allowedAgeGroups,
+    requireCaptainEligible: true,
+  }) : null;
+  if (applicantKind === "team" && (teamEligibility?.captainId !== state.currentUserId || !teamEligibility?.allowed)) {
+    return {
+      ...state,
+      notifications: [{
+        id: makeId("n"),
+        title: "팀전 참가 제한",
+        body: teamEligibility?.captainId !== state.currentUserId ? "팀장만 팀으로 참가할 수 있습니다." : teamEligibility?.reason,
+        tone: "team",
+      }, ...state.notifications],
+    };
+  }
   const selectedPlayerIds = applicantKind === "team"
     ? ensureTeamPartyLeader(team, getSelectedTeamPlayerIds(team, teamSelectionCapacity, application.playerIds), state.currentUserId, teamSelectionCapacity)
     : [];
   const selectedReservePlayerIds = applicantKind === "team" && !reserveRequested
     ? getSelectedReservePlayerIds(team, selectedPlayerIds, application.reservePlayerIds, reserveSelectionCapacity)
     : [];
+  if (applicantKind === "team") {
+    const eligiblePlayerIds = new Set(teamEligibility?.eligiblePlayerIds ?? []);
+    if ([...selectedPlayerIds, ...selectedReservePlayerIds].some((playerId) => !eligiblePlayerIds.has(playerId))) {
+      return {
+        ...state,
+        notifications: [{
+          id: makeId("n"),
+          title: "명단 조건 불일치",
+          body: "연령·MMR 조건을 충족한 팀원만 출전·후보로 선택할 수 있습니다.",
+          tone: "team",
+        }, ...state.notifications],
+      };
+    }
+  }
   const publicTeamJoin = post.visibility === "public" && applicantKind === "team";
   const teamSummonPlayerIds = publicTeamJoin
     ? [...selectedPlayerIds, ...selectedReservePlayerIds].filter((playerId) => playerId && playerId !== state.currentUserId)
@@ -5588,7 +5758,6 @@ export function interestRecruitingPost(state, postId, application = {}) {
       };
   if (hasRecruitingApplicant(post, nextApplicant)) return state;
   const applicants = [...normalizeRecruitingApplicants(post.applicants ?? []), nextApplicant];
-  const roomState = normalizeRecruitingRoomState(post.roomState ?? {});
   const applicantKey = getRecruitingApplicantKey(nextApplicant);
   const nextPartyReserves = { ...roomState.partyReserves };
   if (applicantKind === "team" && selectedReservePlayerIds.length) {
@@ -6002,9 +6171,18 @@ function canEditMatchPreparation(state, match) {
 }
 
 function currentUserCanEditMatchRecordSideRoster(state, match, sideName) {
-  if (!isMatchRecordMatch(match) || !["teamA", "teamB"].includes(sideName)) return false;
+  const tournamentPregame = Boolean(
+    match?.tournamentId &&
+    match?.scheduledDate &&
+    match?.scheduledTime &&
+    !match?.startedAt &&
+    !match?.endedAt
+  );
+  if ((!isMatchRecordMatch(match) && !tournamentPregame) || !["teamA", "teamB"].includes(sideName)) return false;
   if (match.result || match.confirmedAt || match.cancelledAt || match.voidedAt) return false;
-  const leaderId = getMatchSideLeaderId(match, state.teams, sideName);
+  const leaderId = tournamentPregame
+    ? getTeamCaptainId(state.teams, match[sideName]?.teamId)
+    : getMatchSideLeaderId(match, state.teams, sideName);
   return Boolean(leaderId && leaderId === state.currentUserId);
 }
 
@@ -6016,7 +6194,16 @@ export function setMatchRecordTeamRoster(state, matchId, sideName, roster = {}) 
   if (!team) return state;
 
   const sideCapacity = getRecruitingSideCapacity(match);
-  const allowedIds = new Set(getTeamMemberIds(team));
+  const tournamentPregame = Boolean(match.tournamentId && !match.startedAt && !match.endedAt);
+  const eligibility = getTeamEventEligibility(team, state.users, {
+    capacity: sideCapacity,
+    ranked: match.ranked,
+    mmrLimitMode: match.rules?.mmrLimitMode ?? match.mmrLimitMode,
+    mmrRangeMode: match.rules?.mmrRangeMode,
+    targetMmr: team.mmr,
+    allowedAgeGroups: match.rules?.allowedAgeGroups,
+  });
+  const allowedIds = new Set(tournamentPregame ? eligibility.eligiblePlayerIds : getTeamMemberIds(team));
   const otherSideName = sideName === "teamA" ? "teamB" : "teamA";
   const otherRosterIds = new Set([
     ...(match[otherSideName]?.players ?? []),
@@ -6028,8 +6215,11 @@ export function setMatchRecordTeamRoster(state, matchId, sideName, roster = {}) 
   const nextReserveIds = normalizeRosterIds(roster.reservePlayerIds)
     .filter((playerId) => !nextActiveIds.includes(playerId))
     .slice(0, MAX_RECRUITING_RESERVES_PER_SIDE);
-  const leaderId = getMatchSideLeaderId(match, state.teams, sideName);
-  if (leaderId && ![...nextActiveIds, ...nextReserveIds].includes(leaderId)) return state;
+  const leaderId = tournamentPregame
+    ? getTeamCaptainId(state.teams, team.id)
+    : getMatchSideLeaderId(match, state.teams, sideName);
+  if (tournamentPregame && nextActiveIds.length !== sideCapacity) return state;
+  if (!tournamentPregame && leaderId && ![...nextActiveIds, ...nextReserveIds].includes(leaderId)) return state;
 
   const previousRosterIds = uniquePlayerIds([
     ...(match[sideName]?.players ?? []),
@@ -6054,6 +6244,13 @@ export function setMatchRecordTeamRoster(state, matchId, sideName, roster = {}) 
       playerTeams: nextPlayerTeams,
     },
     reservePlayers: nextReservePlayers,
+    rules: tournamentPregame ? {
+      ...(match.rules ?? {}),
+      rosterReady: {
+        ...(match.rules?.rosterReady ?? {}),
+        [sideName]: true,
+      },
+    } : match.rules,
   };
   previousRosterIds
     .filter((playerId) => !nextRosterIds.has(playerId))
@@ -6061,10 +6258,35 @@ export function setMatchRecordTeamRoster(state, matchId, sideName, roster = {}) 
       nextMatch = clearMatchPlayerDecision(nextMatch, playerId);
     });
   nextMatch = withEffectiveMatchStatRecorders(nextMatch);
+  const rosterSavedAt = new Date().toISOString();
+  const resolvedNotifications = (state.notifications ?? []).map((notification) => (
+    tournamentPregame &&
+    notification.type === "tournament_match_schedule" &&
+    notification.matchId === matchId &&
+    notification.targetUserId === state.currentUserId
+      ? { ...notification, readAt: rosterSavedAt, actionRequired: false, homeAction: false }
+      : notification
+  ));
 
   return {
     ...state,
     matches: state.matches.map((item) => (item.id === matchId ? nextMatch : item)),
+    notifications: tournamentPregame ? [
+      ...[...nextActiveIds, ...nextReserveIds].map((playerId) => ({
+        id: makeId("n"),
+        title: "대회 출전 명단",
+        body: `${match.title} ${sideName === "teamA" ? "A" : "B"}사이드 명단에 배정됐습니다.`,
+        tone: "match",
+        type: "tournament_roster_assignment",
+        discordEvent: "match",
+        targetUserId: playerId,
+        matchId,
+        tournamentId: match.tournamentId,
+        webPath: `/app/matches?match=${encodeURIComponent(matchId)}`,
+        createdAt: rosterSavedAt,
+      })),
+      ...resolvedNotifications,
+    ] : resolvedNotifications,
   };
 }
 

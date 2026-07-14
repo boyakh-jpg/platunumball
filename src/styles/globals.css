@@ -2889,6 +2889,12 @@ input[type="color"] {
   background: rgba(70, 224, 182, 0.06);
 }
 
+.tournament-team-grid button.is-disabled,
+.tournament-team-grid button:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+
 .create-opponent-team-control {
   position: relative;
   min-width: 0;

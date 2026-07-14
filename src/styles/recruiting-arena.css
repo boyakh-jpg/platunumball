@@ -898,6 +898,12 @@
   background: rgba(70, 224, 182, 0.14);
 }
 
+.arena-team-choice-grid button.is-disabled,
+.arena-team-choice-grid button:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+
 .arena-team-choice-grid strong,
 .arena-team-choice-grid em {
   min-width: 0;
@@ -974,6 +980,12 @@
 .arena-party-member-card.reserve {
   border-color: rgba(255, 210, 92, 0.4);
   background: rgba(255, 210, 92, 0.09);
+}
+
+.arena-party-member-card.ineligible,
+.arena-record-roster-row.ineligible {
+  border-color: color-mix(in srgb, var(--rb-orange) 34%, var(--ui-card-border));
+  opacity: 0.66;
 }
 
 .arena-party-picker-grid > button.required,

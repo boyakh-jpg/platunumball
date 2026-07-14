@@ -236,6 +236,7 @@ function getTournamentScopedState(state = {}, tournament = null) {
   const teams = (state.teams ?? []).filter((team) => teamIds.has(team.id));
   const userIds = new Set([
     state.currentUserId,
+    tournament.createdBy,
     ...teams.flatMap((team) => toArray(team.members).map((member) => member.userId)),
   ].filter(Boolean));
   const matches = (state.matches ?? []).filter((match) => match.tournamentId === tournament.id);

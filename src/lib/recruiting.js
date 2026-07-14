@@ -1,5 +1,6 @@
 import { DISPUTE_WINDOW_MINUTES, MAX_RECRUITING_RESERVES_PER_SIDE, MODE_SIZES, PLAYER_POSITIONS, RECORDABLE_RESERVE_SOURCES, REFEREE_TRUST_MIN, ROOM_KINDS, STAT_ENTRY_WINDOW_MINUTES, isMercenaryTeamRole } from "./constants.js";
 import { isEligibleReferee, isInstantRoom } from "./matchUtils.js";
+import { getAgeGroupForUser } from "./profileSetup.js";
 import { TIERS, getTierDivision } from "./tier.js";
 
 const RECRUITING_TYPES = {
@@ -303,6 +304,7 @@ function uniqueCandidates(candidates = []) {
 }
 
 export function normalizeRecruitingMmrRangeMode(mode = "narrow") {
+  if (mode === "normal") return "standard";
   return MMR_RANGE_POLICIES[mode] ? mode : "narrow";
 }
 
@@ -358,6 +360,56 @@ export function getSelectableTeamPlayerIds(team = {}) {
   return (team?.members ?? [])
     .filter((member) => !RESERVE_ROLES.has(member.role))
     .map((member) => member.userId);
+}
+
+export function getTeamEventEligibility(team = null, users = [], options = {}) {
+  const capacity = Math.max(1, Math.min(5, Number(options.capacity) || 1));
+  const allowedAgeGroups = Array.isArray(options.allowedAgeGroups) && options.allowedAgeGroups.length
+    ? new Set(options.allowedAgeGroups)
+    : null;
+  const ranked = options.ranked !== false;
+  const mmrLimitMode = options.mmrLimitMode ?? "block";
+  const rangeMode = normalizeRecruitingMmrRangeMode(options.mmrRangeMode);
+  const targetMmr = Number(options.targetMmr);
+  const enforceMmr = ranked && mmrLimitMode === "block" && Number.isFinite(targetMmr);
+  const userById = new Map((users ?? []).map((user) => [user.id, user]));
+  const captainId = team?.members?.find((member) => member.role === "captain")?.userId ?? "";
+  const memberIds = getSelectableTeamPlayerIds(team);
+  const missingProfileIds = memberIds.filter((playerId) => !userById.has(playerId));
+  const eligiblePlayerIds = memberIds.filter((playerId) => {
+    const user = userById.get(playerId);
+    if (!user) return false;
+    if (allowedAgeGroups && !allowedAgeGroups.has(getAgeGroupForUser(user))) return false;
+    const playerMmr = Number(user.ratings?.integrated ?? user.mmr ?? 1200);
+    return !enforceMmr || isMmrInRecruitingRange(playerMmr, targetMmr, true, rangeMode);
+  });
+  const missingCount = Math.max(0, capacity - eligiblePlayerIds.length);
+  const captainPresent = Boolean(captainId && memberIds.includes(captainId));
+  const captainEligible = Boolean(captainId && eligiblePlayerIds.includes(captainId));
+  const allowed = Boolean(team?.id && captainPresent && (!options.requireCaptainEligible || captainEligible) && missingCount === 0);
+  const reason = !team?.id
+    ? "팀이 없습니다."
+    : !captainPresent
+      ? "팀장이 지정되지 않았습니다."
+      : options.requireCaptainEligible && !captainEligible
+        ? "팀장이 연령·MMR 조건을 충족하지 않습니다."
+      : missingProfileIds.length && eligiblePlayerIds.length < capacity
+        ? "팀원 정보를 불러온 뒤 다시 확인하세요."
+        : missingCount
+          ? `조건을 충족한 선수가 ${missingCount}명 부족합니다.`
+          : "참가 가능";
+
+  return {
+    allowed,
+    reason,
+    capacity,
+    captainId,
+    captainEligible,
+    eligiblePlayerIds,
+    eligibleCount: eligiblePlayerIds.length,
+    missingCount,
+    missingProfileIds,
+  };
 }
 
 function getTeamPlayerIds(team = {}) {

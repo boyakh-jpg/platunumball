@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { CalendarDays, ChevronLeft, Save, ShieldCheck, Trophy } from "lucide-react";
+import { CalendarDays, ChevronLeft, Save, ShieldCheck, Trophy, UserRound } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
+import Button from "../components/common/Button.jsx";
 import TierBadge from "../components/rating/TierBadge.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
+import { getUserHashtag } from "../lib/handles.js";
 import "../styles/matches-arena.css";
 
 function toDateInputValue(date = new Date()) {
@@ -295,6 +297,8 @@ export default function TournamentDetail({ app }) {
   const tournament = (app.state.tournaments ?? []).find((item) => item.id === tournamentId);
   const requestedTournamentIdRef = useRef("");
   const [tournamentMissing, setTournamentMissing] = useState(false);
+  const [scheduleDialog, setScheduleDialog] = useState(null);
+  const [savingScheduleId, setSavingScheduleId] = useState("");
   const teamById = Object.fromEntries(app.state.teams.map((team) => [team.id, team]));
   const userById = Object.fromEntries(app.state.users.map((user) => [user.id, user]));
   const matchesById = Object.fromEntries(app.state.matches.map((match) => [match.id, match]));
@@ -362,11 +366,27 @@ export default function TournamentDetail({ app }) {
     event.preventDefault();
     if (!canManageSchedule) return;
     const form = new FormData(event.currentTarget);
-    app.actions.updateTournamentMatchSchedule(tournament.id, matchId, {
-      scheduledDate: form.get("scheduledDate"),
-      scheduledTime: form.get("scheduledTime"),
-    });
+    const scheduledDate = String(form.get("scheduledDate") ?? "");
+    const scheduledTime = String(form.get("scheduledTime") ?? "");
+    if (!scheduledDate || !scheduledTime) return;
+    setScheduleDialog({ mode: "confirm", matchId, scheduledDate, scheduledTime });
   };
+  const confirmSchedule = async () => {
+    if (scheduleDialog?.mode !== "confirm" || savingScheduleId) return;
+    const { matchId, scheduledDate, scheduledTime } = scheduleDialog;
+    setSavingScheduleId(matchId);
+    try {
+      const result = await app.actions.updateTournamentMatchSchedule(tournament.id, matchId, { scheduledDate, scheduledTime });
+      if (!result || result?.ok === false) throw new Error(result?.error ?? "schedule_save_failed");
+      setScheduleDialog({ mode: "success", matchId, scheduledDate, scheduledTime });
+    } catch (error) {
+      setScheduleDialog({ mode: "error", message: error.message || "schedule_save_failed" });
+    } finally {
+      setSavingScheduleId("");
+    }
+  };
+  const organizer = userById[tournament.createdBy] ?? null;
+  const dialogMatch = scheduleDialog?.matchId ? matchesById[scheduleDialog.matchId] : null;
 
   return (
     <div className="page-stack tournament-detail-page">
@@ -376,7 +396,10 @@ export default function TournamentDetail({ app }) {
         <div>
           <span className="om-kicker">PRIVATE EVENT</span>
           <h1>{tournament.title}</h1>
-          <p><CalendarDays size={16} />{formatWindow(tournament)} · {tournament.court}</p>
+          <p className="tournament-hero-meta">
+            <span><CalendarDays size={16} />{formatWindow(tournament)} · {tournament.court}</span>
+            <span><UserRound size={16} />개최자 {organizer?.name ?? "알 수 없음"}{organizer ? ` ${getUserHashtag(organizer)}` : ""}</span>
+          </p>
         </div>
         <div className="tournament-hero-badges">
           <Badge tone="gold">{formatLabels[tournament.format] ?? tournament.format}</Badge>
@@ -508,11 +531,36 @@ export default function TournamentDetail({ app }) {
                 <span>{match.status === "confirmed" ? "확정" : match.status === "agreed" ? "예정" : "대기"}</span>
                 <input type="date" name="scheduledDate" min={todayValue} max={maxScheduleDate} defaultValue={match.scheduledDate ?? ""} disabled={!canManageSchedule} aria-label="경기 날짜" />
                 <input type="time" name="scheduledTime" defaultValue={match.scheduledTime ?? ""} disabled={!canManageSchedule} aria-label="경기 시간" />
-                <button type="submit" disabled={!canManageSchedule}><Save size={14} /> 저장</button>
+                <button type="submit" disabled={!canManageSchedule || savingScheduleId === match.id}><Save size={14} /> {savingScheduleId === match.id ? "저장 중" : "저장"}</button>
               </form>
             ))}
           </div>
         </section>
+      ) : null}
+
+      {scheduleDialog ? (
+        <div className="app-confirm-backdrop" role="presentation" onMouseDown={() => !savingScheduleId && setScheduleDialog(null)}>
+          <div className="app-confirm-dialog" role="dialog" aria-modal="true" aria-label="대회 경기 일정 저장" onMouseDown={(event) => event.stopPropagation()}>
+            <strong>{scheduleDialog.mode === "confirm" ? "경기 일정을 저장할까요?" : scheduleDialog.mode === "success" ? "일정을 저장했습니다." : "일정을 저장하지 못했습니다."}</strong>
+            <p>
+              {scheduleDialog.mode === "confirm"
+                ? `${dialogMatch?.teamA?.name ?? "A"} vs ${dialogMatch?.teamB?.name ?? "B"} · ${scheduleDialog.scheduledDate} ${scheduleDialog.scheduledTime}`
+                : scheduleDialog.mode === "success"
+                  ? "양 팀장에게 출전·후보 명단 구성 알림을 보냈습니다."
+                  : `서버 저장 실패: ${scheduleDialog.message}`}
+            </p>
+            <div className="app-confirm-actions">
+              {scheduleDialog.mode === "confirm" ? (
+                <>
+                  <Button type="button" variant="secondary" disabled={Boolean(savingScheduleId)} onClick={() => setScheduleDialog(null)}>취소</Button>
+                  <Button type="button" disabled={Boolean(savingScheduleId)} onClick={confirmSchedule}>{savingScheduleId ? "저장 중" : "저장"}</Button>
+                </>
+              ) : (
+                <Button type="button" onClick={() => setScheduleDialog(null)}>확인</Button>
+              )}
+            </div>
+          </div>
+        </div>
       ) : null}
     </div>
   );
