@@ -1770,6 +1770,7 @@ function InvitePanel({
   const selectedSet = new Set(selectedPlayerIds);
   const disabledSet = new Set(disabledPlayerIds);
   const allowedTeam = allowedTeamId ? teams.find((team) => team.id === allowedTeamId) : null;
+  const rosterTeam = teamSummonMode ? allowedTeam : matchedTeam;
   const allowedTeamMemberIds = new Set(allowedTeam ? getSelectableTeamPlayerIds(allowedTeam) : []);
   const isAllowedPlayer = (playerId, player = null) => (
     (!allowedTeamId || allowedTeamMemberIds.has(playerId) || (player?.teamIds ?? []).includes(allowedTeamId)) &&
@@ -1779,9 +1780,9 @@ function InvitePanel({
   const favoriteTeams = favoriteTeamIds
     .map((teamId) => teams.find((team) => team.id === teamId))
     .filter((team) => team && (!allowedTeamId || team.id === allowedTeamId));
-  const teamMemberIds = matchedTeam && (!allowedTeamId || matchedTeam.id === allowedTeamId) ? getSelectableTeamPlayerIds(matchedTeam) : [];
+  const teamMemberIds = rosterTeam && (!allowedTeamId || rosterTeam.id === allowedTeamId) ? getSelectableTeamPlayerIds(rosterTeam) : [];
   const selectedInvitableIds = selectedPlayerIds.filter((playerId) => !disabledSet.has(playerId) && isAllowedPlayer(playerId, userById[playerId]));
-  const canShowSelectedInviteAction = Boolean(selectedInvitableIds.length && !matchedTeam);
+  const canShowSelectedInviteAction = Boolean(!teamSummonMode && selectedInvitableIds.length && !matchedTeam);
   const selectedInviteTeamId = allowedTeamId || null;
   const selectedInviteJoinMode = allowedTeamId ? "team" : "player";
   const inviteQuery = query.trim().toLowerCase();
@@ -1863,30 +1864,31 @@ function InvitePanel({
         </div>
         <button type="button" className="arena-icon-button" aria-label={`${actionNoun} 닫기`} onClick={onClose}><X size={18} /></button>
       </header>
-      <SearchPicker
-        value={query}
-        onChange={onQueryChange}
-        placeholder={allowedTeam ? `${allowedTeam.name} 팀원 검색` : "선수 또는 팀 검색"}
-        items={inviteSearchItems}
-        getSearchText={getInviteItemSearchText}
-        remoteSearchType={allowedTeamId ? "profile" : ["profile", "team"]}
-        remoteSearchContext={allowedTeamId ? { teamId: allowedTeamId } : null}
-        mapRemoteItem={(item) => {
-          if (item.kind === "team") return allowedTeamId ? null : { type: "team", team: item };
-          if (!isAllowedPlayer(item.id, item)) return null;
-          return { type: "player", player: item };
-        }}
-        idleItems={idleInviteItems}
-        idleTitle="즐겨찾기"
-        showIdleOnFocus
-        limit={5}
-        detailLimit={50}
-        loadMoreStep={5}
-        remoteLimit={25}
-        floating
-        fieldClassName="arena-invite-search"
-        renderItem={renderInviteSearchItem}
-      />
+      {!teamSummonMode ? (
+        <SearchPicker
+          value={query}
+          onChange={onQueryChange}
+          placeholder="선수 또는 팀 검색"
+          items={inviteSearchItems}
+          getSearchText={getInviteItemSearchText}
+          remoteSearchType={["profile", "team"]}
+          mapRemoteItem={(item) => {
+            if (item.kind === "team") return { type: "team", team: item };
+            if (!isAllowedPlayer(item.id, item)) return null;
+            return { type: "player", player: item };
+          }}
+          idleItems={idleInviteItems}
+          idleTitle="즐겨찾기"
+          showIdleOnFocus
+          limit={5}
+          detailLimit={50}
+          loadMoreStep={5}
+          remoteLimit={25}
+          floating
+          fieldClassName="arena-invite-search"
+          renderItem={renderInviteSearchItem}
+        />
+      ) : null}
 
       {canShowSelectedInviteAction ? (
         <div className="arena-invite-actions">
@@ -1898,16 +1900,16 @@ function InvitePanel({
 
       {error ? <div className="arena-invite-empty error">{error}</div> : null}
 
-      {allowedTeam ? <div className="arena-invite-empty">{allowedTeam.name} 팀원만 이 사이드에 {actionLabel}할 수 있습니다.</div> : null}
+      {teamSummonMode && !allowedTeam ? <div className="arena-invite-empty error">팀원 명단을 불러오지 못했습니다.</div> : null}
 
-      {matchedTeam && (!allowedTeamId || matchedTeam.id === allowedTeamId) ? (
+      {rosterTeam && (!allowedTeamId || rosterTeam.id === allowedTeamId) ? (
         <div className="arena-invite-team-picker">
           <div className="arena-invite-team-head">
             <>
-              <span className="team-dot" style={{ "--team-color": matchedTeam.accent }} />
+              <span className="team-dot" style={{ "--team-color": rosterTeam.accent }} />
               <span>
-                <strong>{matchedTeam.name}</strong>
-                <em>{getTeamHashtag(matchedTeam)} · {matchedTeam.mmr} MMR</em>
+                <strong>{rosterTeam.name}</strong>
+                <em>{getTeamHashtag(rosterTeam)} · {rosterTeam.mmr} MMR</em>
               </span>
             </>
           </div>
@@ -1929,13 +1931,13 @@ function InvitePanel({
               );
             })}
           </div>
-          <Button type="button" size="sm" disabled={!selectedInvitableIds.length} onClick={() => onInvitePlayers(selectedInvitableIds, matchedTeam.id, "team")}>
+          <Button type="button" size="sm" disabled={!selectedInvitableIds.length} onClick={() => onInvitePlayers(selectedInvitableIds, rosterTeam.id, "team")}>
             선택 {selectedInvitableIds.length}명 {actionLabel}
           </Button>
         </div>
       ) : null}
 
-      {query.trim() && !inviteSearchItems.length && !matchedTeam ? <div className="arena-invite-empty">검색 결과 없음</div> : null}
+      {!teamSummonMode && query.trim() && !inviteSearchItems.length && !matchedTeam ? <div className="arena-invite-empty">검색 결과 없음</div> : null}
     </div>
   );
 }
