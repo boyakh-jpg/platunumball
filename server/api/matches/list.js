@@ -244,11 +244,13 @@ function filterActiveMatchCards(matches = [], activeOnly = false, options = {}) 
   const includeRecentCompleted = options.includeRecentCompleted === true;
   const includeRecordRooms = options.includeRecordRooms === true;
   return visibleMatches.filter((match) => (
-    (includeRecentCompleted && match?.recentCompleted) ||
-    ((includeRecordRooms || (!isSoloRecordMatch(match) && !isMatchRecordMatch(match))) && (
-      isMatchClosedNotice(match) ||
-      (!ACTIVE_MATCH_EXCLUDED_PHASES.has(getMatchRoomPhase(match).phase) && !match?.recentCompleted)
-    ))
+    match?.status !== "closed" && (
+      (includeRecentCompleted && match?.recentCompleted) ||
+      ((includeRecordRooms || (!isSoloRecordMatch(match) && !isMatchRecordMatch(match))) && (
+        isMatchClosedNotice(match) ||
+        (!ACTIVE_MATCH_EXCLUDED_PHASES.has(getMatchRoomPhase(match).phase) && !match?.recentCompleted)
+      ))
+    )
   ));
 }
 
@@ -486,6 +488,7 @@ async function fetchCaptainTournamentMatchRows(client, profileId = "", limit = R
     .from("matches")
     .select(MATCH_LIST_COLUMNS)
     .not("tournament_id", "is", null)
+    .neq("status", "closed")
     .in(column, teamIds)
     .order("updated_at", { ascending: false, nullsFirst: false })
     .limit(candidateLimit)));

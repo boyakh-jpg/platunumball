@@ -1340,6 +1340,24 @@ async function cleanup() {
       errors.push({ table, message: error.message });
     }
   }
+  for (const [table, column, prefix] of [
+    ["matches", "id", "sim_m_"],
+    ["matches", "tournament_id", "sim_trn_"],
+    ["recruiting_posts", "id", "sim_q_"],
+    ["tournaments", "id", "sim_trn_"],
+  ]) {
+    const { error } = await supabase
+      .from(table)
+      .update({ status: "closed", updated_at: closedAt })
+      .gte(column, prefix)
+      .lt(column, `${prefix}\uffff`)
+      .neq("status", "closed");
+    if (error && !String(error.message || "").includes("does not exist")) {
+      errors.push({ table, message: error.message });
+    }
+  }
+  const { error: feedCleanupError } = await supabase.rpc("rankball_cleanup_room_feed");
+  if (feedCleanupError) errors.push({ table: "user_room_feed", message: feedCleanupError.message });
   const postIds = scenarioIds.map((scenario) => scenario.postId).filter(Boolean);
   if (postIds.length) {
     const { error } = await supabase

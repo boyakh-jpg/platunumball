@@ -32,7 +32,16 @@ export default async function handler(request, response) {
     const client = getSupabaseAdminClient();
     const checks = [];
     checks.push(await closePrefix(client, "matches", "id", "sim_m_"));
+    checks.push(await closePrefix(client, "matches", "tournament_id", "sim_trn_"));
     checks.push(await closePrefix(client, "recruiting_posts", "id", "sim_q_"));
+    checks.push(await closePrefix(client, "tournaments", "id", "sim_trn_"));
+    const { data: feedCleanup, error: feedCleanupError } = await client.rpc("rankball_cleanup_room_feed");
+    checks.push({
+      table: "user_room_feed",
+      ok: !feedCleanupError,
+      error: feedCleanupError?.message ?? null,
+      closed: (feedCleanup ?? []).reduce((sum, row) => sum + Number(row.affected_count ?? 0), 0),
+    });
 
     const failed = checks.filter((check) => !check.ok);
     sendJson(response, 200, {
