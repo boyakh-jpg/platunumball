@@ -3101,10 +3101,14 @@ input[type="color"] {
   pointer-events: none;
 }
 
-.numeric-stepper button:hover:not(:disabled),
-.numeric-stepper button:focus-visible:not(:disabled) {
+.numeric-stepper button:hover:not(:disabled) {
   border-color: color-mix(in srgb, var(--rb-orange) 44%, var(--line));
   color: var(--rb-orange);
+}
+
+.numeric-stepper button:focus-visible:not(:disabled) {
+  outline: 2px solid var(--rb-orange);
+  outline-offset: 2px;
 }
 
 .numeric-stepper button:disabled {
@@ -3139,7 +3143,7 @@ input[type="color"] {
   min-height: 74px;
   border-color: rgba(255, 255, 255, 0.14);
   background: rgba(255, 255, 255, 0.06);
-  color: var(--rb-orange);
+  color: var(--text);
 }
 
 .score-numeric-stepper button:first-of-type {
@@ -7130,7 +7134,7 @@ html[data-theme="light"] .search-picker-result-row.selected {
 
 .arena-score-stepper button {
   min-height: 52px;
-  color: var(--rb-orange);
+  color: var(--text);
 }
 
 .arena-score-stepper button:first-of-type {

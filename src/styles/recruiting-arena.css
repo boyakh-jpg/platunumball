@@ -7127,6 +7127,14 @@ html[data-theme="light"] .arena-lobby-modal .arena-reserve-line > .arena-room-re
   overflow-y: hidden;
 }
 
+@media (min-width: 721px) {
+  .arena-lobby-modal .arena-reserve-line > .arena-room-reserve-row,
+  html[data-theme="light"] .arena-lobby-modal .arena-reserve-line > .arena-room-reserve-row {
+    inline-size: calc(100% + 36px);
+    max-width: none;
+  }
+}
+
 @media (max-width: 720px) {
   .arena-lobby-modal .arena-room-slot-row,
   html[data-theme="light"] .arena-lobby-modal .arena-room-slot-row {
