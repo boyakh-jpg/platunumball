@@ -118,7 +118,8 @@ async function processMatch(client, matchId, now) {
     return { matchId, ok: false, skipped: true, reason: "not_auto_confirmable" };
   }
 
-  const afterState = runAutomaticStateMaintenance(beforeState, now);
+  // Recruiting expiration is DB-authoritative; this reducer is only used for match auto-confirmation.
+  const afterState = runAutomaticStateMaintenance({ ...beforeState, recruitingPosts: [] }, now);
   const afterMatch = (afterState.matches ?? []).find((match) => match.id === matchId);
   if (afterMatch?.status !== "confirmed" || !afterMatch.ratingResult) {
     return { matchId, ok: false, skipped: true, reason: "maintenance_noop" };
@@ -162,6 +163,14 @@ async function cleanupRoomFeed(client, now) {
     affected: checks.reduce((sum, row) => sum + Number(row?.affected_count ?? 0), 0),
     checks,
   };
+}
+
+async function expireRecruitingRooms(client) {
+  const { data, error } = await client.rpc("rankball_expire_recruiting_rooms");
+  if (error) throw error;
+  return data && typeof data === "object"
+    ? data
+    : { ok: true, expiredCount: 0, rooms: [] };
 }
 
 async function refreshRecruitingFeed(client, postId) {
@@ -379,6 +388,7 @@ export async function runSystemMaintenance(client = getSupabaseAdminClient(), op
   const now = options.now instanceof Date ? options.now : new Date();
   const includeRecruitingCapacityCleanup = options.includeRecruitingCapacityCleanup === true;
   const includeFeedRepair = options.includeFeedRepair === true || process.env.RANKBALL_MAINTENANCE_FEED_REPAIR === "true";
+  const recruitingExpiration = await expireRecruitingRooms(client);
   const candidateIds = await getCandidateMatchIds(client, limit, now.getTime());
   const results = [];
 
@@ -390,6 +400,7 @@ export async function runSystemMaintenance(client = getSupabaseAdminClient(), op
     ok: results.every((result) => result.ok || result.skipped),
     candidateCount: candidateIds.length,
     confirmedCount: results.filter((result) => result.ok).length,
+    recruitingExpiration,
     feedCleanup: await cleanupRoomFeed(client, now),
     feedRepair: includeFeedRepair
       ? await repairStaleRoomFeed(client, limit)
@@ -411,7 +422,12 @@ export default async function handler(request, response) {
   try {
     assertAccess(request);
     const client = getSupabaseAdminClient();
-    const body = request.method === "POST" ? await readJsonBody(request) : {};
+    const body = (request.method === "POST" ? await readJsonBody(request) : {}) ?? {};
+    if (Object.prototype.hasOwnProperty.call(body, "now") || request.query?.now !== undefined) {
+      const error = new Error("maintenance_now_not_allowed");
+      error.statusCode = 400;
+      throw error;
+    }
     sendJson(response, 200, await runSystemMaintenance(client, {
       limit: normalizeLimit(body.limit ?? getLimit(request)),
       includeRecruitingCapacityCleanup: body.includeRecruitingCapacityCleanup !== false,

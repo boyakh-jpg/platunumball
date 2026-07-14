@@ -11,11 +11,16 @@ import matchesListHandler from "../server/api/matches/list.js";
 import syncTournamentHandler from "../server/api/tournaments/sync-tournament.js";
 import refereeSyncHandler from "../server/api/referee/sync.js";
 import teamsListHandler from "../server/api/teams/list.js";
+import syncTeamHandler from "../server/api/teams/sync-team.js";
+import profileMeHandler from "../server/api/profile/me.js";
+import submitCourtRequestHandler from "../server/api/court-requests/submit.js";
+import approveCourtRequestHandler from "../server/api/court-requests/approve.js";
 import schemaHealthHandler from "../server/api/system/schema-health.js";
 import maintenanceHandler from "../server/api/system/maintenance.js";
 import { gradeRefereeExamByQuestionIds } from "../src/lib/refereeExamBank.js";
 import {
   getRecorderHandoffPatch,
+  isMatchRecordMatch,
   withEffectiveMatchStatRecorders,
 } from "../src/lib/matchUtils.js";
 
@@ -78,6 +83,9 @@ const keepRows = process.argv.includes("--keep") || process.env.RANKBALL_SIM_KEE
 const suffix = `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 const scenarioIds = [];
 const simulationNotificationIds = new Set();
+const teamInvitationSimulationIds = new Set();
+const courtRequestSimulationIds = new Set();
+const approvedCourtSimulationIds = new Set();
 const temporaryProfileDiscordSnapshots = new Map();
 const refereeSimulationAttemptIds = new Set();
 const refereeSimulationRequestIds = new Set();
@@ -583,6 +591,51 @@ async function restoreRatingSnapshots() {
   return { skipped: false, errors };
 }
 
+async function cleanupRegressionSimulationRows() {
+  if (!supabase) return { skipped: true, reason: "service_role_key_missing" };
+  const teamInvitationIds = [...teamInvitationSimulationIds];
+  const courtRequestIds = [...courtRequestSimulationIds];
+  const approvedCourtIds = [...approvedCourtSimulationIds];
+  if (!teamInvitationIds.length && !courtRequestIds.length && !approvedCourtIds.length) return { skipped: true };
+
+  const errors = [];
+  const deleteRows = async (table, column, values) => {
+    if (!values.length) return;
+    const { error } = await supabase.from(table).delete().in(column, values);
+    if (error && !["42P01", "PGRST205"].includes(error.code)) {
+      errors.push({ table, column, message: error.message });
+    }
+  };
+
+  await deleteRows("notifications", "invitation_id", teamInvitationIds);
+  for (const requestId of courtRequestIds) {
+    const { error } = await supabase
+      .from("notifications")
+      .delete()
+      .eq("type", "court_request")
+      .contains("payload", { courtRequestId: requestId });
+    if (error && !["42P01", "PGRST205"].includes(error.code)) {
+      errors.push({ table: "notifications", column: "payload.courtRequestId", message: error.message });
+    }
+  }
+  await deleteRows("admin_audit_log", "request_id", courtRequestIds);
+  await deleteRows("courts", "id", approvedCourtIds);
+  await deleteRows("approved_courts", "id", approvedCourtIds);
+  await deleteRows("court_requests", "id", courtRequestIds);
+  await deleteRows("team_invitations", "id", teamInvitationIds);
+
+  teamInvitationSimulationIds.clear();
+  courtRequestSimulationIds.clear();
+  approvedCourtSimulationIds.clear();
+  return {
+    skipped: false,
+    teamInvitations: teamInvitationIds.length,
+    courtRequests: courtRequestIds.length,
+    approvedCourts: approvedCourtIds.length,
+    errors,
+  };
+}
+
 async function cleanupSimulationNotifications() {
   if (!supabase) return { skipped: true };
   const idsToDelete = [...simulationNotificationIds];
@@ -616,6 +669,19 @@ async function loadStateAs(testLoginId) {
   const payload = await callHandler("/api/state/load", loadStateHandler, await getAuthToken(testLoginId));
   assertFlow(payload?.ok && payload?.state, `state load failed for ${testLoginId}`, payload);
   return payload.state;
+}
+
+async function loadProfileMeAs(testLoginId) {
+  const payload = await callHandler("/api/profile/me", profileMeHandler, await getAuthToken(testLoginId), {
+    includeFavorites: false,
+    includeMatchSummary: false,
+    includeRecentRecords: false,
+  });
+  assertFlow(payload?.ok && payload?.state, `profile me failed for ${testLoginId}`, {
+    ok: payload?.ok,
+    error: payload?.error,
+  });
+  return payload;
 }
 
 async function loadHomeAs(testLoginId) {
@@ -717,6 +783,18 @@ async function loadTeamsAs(testLoginId) {
   return payload.state;
 }
 
+async function syncTeamAs(testLoginId, body = {}) {
+  return callHandler("/api/teams/sync-team", syncTeamHandler, await getAuthToken(testLoginId), body);
+}
+
+async function submitCourtRequestAs(testLoginId, request = {}) {
+  return callHandler("/api/court-requests/submit", submitCourtRequestHandler, await getAuthToken(testLoginId), { request });
+}
+
+async function approveCourtRequestAs(testLoginId, requestId = "") {
+  return callHandler("/api/court-requests/approve", approveCourtRequestHandler, await getAuthToken(testLoginId), { requestId });
+}
+
 function teamHasMembers(team = {}, memberIds = []) {
   const teamMemberIds = new Set((team.members ?? []).map((member) => member.userId).filter(Boolean));
   return memberIds.every((memberId) => teamMemberIds.has(memberId));
@@ -801,7 +879,7 @@ async function loadMatchAs(testLoginId, matchId = ids.matchId) {
   return match;
 }
 
-async function loadMatchesAs(testLoginId) {
+async function loadMatchesAs(testLoginId, options = {}) {
   const payload = await callHandler("/api/matches/list", matchesListHandler, await getAuthToken(testLoginId), {
     activeOnly: true,
     includeRecentCompleted: true,
@@ -809,6 +887,7 @@ async function loadMatchesAs(testLoginId) {
     includeRecruitingSchedule: false,
     adminContext: false,
     limit: 30,
+    ...options,
   });
   assertFlow(payload?.ok && payload?.state, `match list load failed for ${testLoginId}`, payload);
   return payload.state;
@@ -957,6 +1036,17 @@ async function expectRejected(label, action, expectedErrors = []) {
 
 function uniqueIds(values = []) {
   return [...new Set(values.filter(Boolean))];
+}
+
+function getRpcAffectedCount(result) {
+  const rows = Array.isArray(result) ? result : [result];
+  return rows.reduce((total, row) => {
+    const value = typeof row === "number" || typeof row === "string"
+      ? row
+      : row?.affected ?? row?.affectedCount ?? row?.affected_count ?? row?.expiredCount;
+    const count = Number(value);
+    return total + (Number.isFinite(count) ? count : 0);
+  }, 0);
 }
 
 function hasPendingInvitationFor(post = {}, profileId = "") {
@@ -1210,9 +1300,11 @@ async function cleanup() {
       refereeSimulationCleanup,
       ratingRestore,
       notificationCleanup: { skipped: true, reason: "keep_requested" },
+      regressionCleanup: { skipped: true, reason: "keep_requested" },
     };
   }
   const notificationCleanup = await cleanupSimulationNotifications();
+  const regressionCleanup = await cleanupRegressionSimulationRows();
   if (usesRemoteApi && schemaHealthSecret) {
     const response = await fetchWithTimeout(`${remoteBaseUrl}/api/system/cleanup-sim`, {
       method: "POST",
@@ -1223,10 +1315,10 @@ async function cleanup() {
       body: "{}",
     });
     const text = await readResponseTextWithTimeout(response, "cleanup_sim");
-    if (!response.ok) return { skipped: true, reason: `remote_cleanup_failed:${response.status}:${text}`, profileDiscordRestore, refereeSimulationCleanup, ratingRestore, notificationCleanup };
-    return { ...(text ? JSON.parse(text) : { ok: true }), profileDiscordRestore, refereeSimulationCleanup, ratingRestore, notificationCleanup };
+    if (!response.ok) return { skipped: true, reason: `remote_cleanup_failed:${response.status}:${text}`, profileDiscordRestore, refereeSimulationCleanup, ratingRestore, notificationCleanup, regressionCleanup };
+    return { ...(text ? JSON.parse(text) : { ok: true }), profileDiscordRestore, refereeSimulationCleanup, ratingRestore, notificationCleanup, regressionCleanup };
   }
-  if (!supabase) return { skipped: true, reason: "service_role_key_missing", profileDiscordRestore, refereeSimulationCleanup, ratingRestore, notificationCleanup };
+  if (!supabase) return { skipped: true, reason: "service_role_key_missing", profileDiscordRestore, refereeSimulationCleanup, ratingRestore, notificationCleanup, regressionCleanup };
 
   const closedAt = new Date().toISOString();
   const closures = scenarioIds.flatMap((scenario) => [
@@ -1260,7 +1352,7 @@ async function cleanup() {
       errors.push({ table: "room_discord_links", message: error.message });
     }
   }
-  return { skipped: false, errors, profileDiscordRestore, refereeSimulationCleanup, ratingRestore, notificationCleanup };
+  return { skipped: false, errors, profileDiscordRestore, refereeSimulationCleanup, ratingRestore, notificationCleanup, regressionCleanup };
 }
 
 async function runOneOnOneScenario({
@@ -1654,6 +1746,20 @@ async function runMatchReminderCancelScenario({
   assertFlow(cancelResult?.sqlReducer === true, "match cancel did not use SQL reducer", cancelResult);
   match = await getMatchAfterResult(cancelResult, hostLogin, `${ids.label}:loadAfterCancelMatch`);
   assertFlow(match?.status === "cancelled", "reminder match not cancelled", match);
+  const hostMatchState = await step(`${ids.label}:matchesListAfterCancel`, () => loadMatchesAs(hostLogin, {
+    includeRecentCompleted: false,
+    includeClosedNotices: true,
+    includeRecordRooms: false,
+  }));
+  const closedListMatch = (hostMatchState.matches ?? []).find((item) => item.id === ids.matchId);
+  const leakedMatchRecord = (hostMatchState.matches ?? []).find((item) => isMatchRecordMatch(item));
+  assertFlow(closedListMatch?.status === "cancelled", "cancelled match missing from closed notice list", {
+    matchId: ids.matchId,
+    returnedStatus: closedListMatch?.status,
+  });
+  assertFlow(!leakedMatchRecord, "match record leaked into normal match list", {
+    matchId: leakedMatchRecord?.id,
+  });
   reminderChecks.afterCancel = await step(`${ids.label}:remindersAfterCancel`, () => assertPendingMatchNotices(
     ids.matchId,
     MATCH_SCHEDULED_NOTICE_PREFIXES,
@@ -1669,6 +1775,10 @@ async function runMatchReminderCancelScenario({
     postId: ids.postId,
     matchId: ids.matchId,
     finalStatus: match.status,
+    closedListChecks: {
+      cancelledIncluded: true,
+      matchRecordExcluded: true,
+    },
     reminderChecks,
   };
 }
@@ -2118,6 +2228,343 @@ async function runPublicTeamRegionFeedScenario({
     postId: ids.postId,
     publicRegionFeed: true,
     partyJoin: true,
+  };
+}
+
+async function runTeamMembershipInviteScenario({
+  label,
+  captainLogin,
+  targetLogin,
+  teamId,
+}) {
+  ids = makeScenarioIds(label);
+  assertFlow(Boolean(supabase), "team membership invite scenario requires service role client");
+  const captainId = await step(`${ids.label}:resolveProfile:captain`, () => getProfileIdForLogin(captainLogin));
+  const targetId = await step(`${ids.label}:resolveProfile:target`, () => getProfileIdForLogin(targetLogin));
+  assertFlow(captainId !== targetId, "team invite captain and target must be different profiles", { captainId, targetId });
+
+  const { data: captainMemberships, error: captainMembershipError } = await step(`${ids.label}:verifyCaptain`, () => supabase
+    .from("team_members")
+    .select("team_id,user_id,role")
+    .eq("user_id", captainId)
+    .eq("role", "captain"));
+  if (captainMembershipError) throw captainMembershipError;
+  const captainMembership = (captainMemberships ?? []).find((membership) => membership.team_id === teamId)
+    ?? (captainMemberships ?? [])[0];
+  const resolvedTeamId = captainMembership?.team_id;
+  assertFlow(Boolean(resolvedTeamId), "team invite actor is not captain", { captainId, teamId });
+
+  const [{ data: existingMember, error: existingMemberError }, { data: existingPending, error: existingPendingError }] = await step(
+    `${ids.label}:verifyTargetAvailable`,
+    () => Promise.all([
+      supabase.from("team_members").select("team_id,user_id").eq("team_id", resolvedTeamId).eq("user_id", targetId).maybeSingle(),
+      supabase.from("team_invitations").select("id").eq("team_id", resolvedTeamId).eq("target_user_id", targetId).eq("status", "pending").limit(1).maybeSingle(),
+    ]),
+  );
+  if (existingMemberError) throw existingMemberError;
+  if (existingPendingError) throw existingPendingError;
+  assertFlow(!existingMember && !existingPending, "team invite target is not clean", {
+    targetId,
+    teamId: resolvedTeamId,
+    existingMember: Boolean(existingMember),
+    existingPendingInvitation: Boolean(existingPending),
+  });
+
+  const invitationId = `sim_ti_${ids.label}_${suffix}`;
+  teamInvitationSimulationIds.add(invitationId);
+  simulationNotificationIds.add(`n_${invitationId}`);
+  const inviteResult = await step(`${ids.label}:inviteTeamMember`, () => syncTeamAs(captainLogin, {
+    teamInviteAction: "invite",
+    teamId: resolvedTeamId,
+    targetUserId: targetId,
+    invitationId,
+    role: "regular",
+  }));
+  assertFlow(inviteResult?.ok && inviteResult?.invitationId === invitationId, "team invitation result mismatch", {
+    ok: inviteResult?.ok,
+    invitationId: inviteResult?.invitationId,
+  });
+
+  const profileResult = await step(`${ids.label}:profileMe:pendingInvite`, () => loadProfileMeAs(targetLogin));
+  const pendingInvitation = (profileResult.state.teamInvitations ?? []).find((invitation) => invitation.id === invitationId);
+  assertFlow(
+    profileResult.state.currentUserId === targetId &&
+      pendingInvitation?.teamId === resolvedTeamId &&
+      pendingInvitation?.targetUserId === targetId &&
+      pendingInvitation?.status === "pending" &&
+      (profileResult.state.teams ?? []).some((team) => team.id === resolvedTeamId),
+    "profile me pending team invitation mismatch",
+    {
+      currentUserId: profileResult.state.currentUserId,
+      targetId,
+      invitationStatus: pendingInvitation?.status,
+      invitationTeamId: pendingInvitation?.teamId,
+    },
+  );
+
+  const declineResult = await step(`${ids.label}:declineTeamInvitation`, () => syncTeamAs(targetLogin, {
+    teamInviteAction: "decline",
+    invitationId,
+  }));
+  assertFlow(declineResult?.ok && declineResult?.status === "declined", "team invitation decline result mismatch", {
+    ok: declineResult?.ok,
+    status: declineResult?.status,
+    invitationId: declineResult?.invitationId,
+  });
+
+  const { data: invitationRow, error: invitationRowError } = await step(`${ids.label}:verifyDeclinedRow`, () => supabase
+    .from("team_invitations")
+    .select("id,team_id,target_user_id,status")
+    .eq("id", invitationId)
+    .maybeSingle());
+  if (invitationRowError) throw invitationRowError;
+  assertFlow(invitationRow?.status === "declined", "declined team invitation not persisted", {
+    invitationId,
+    status: invitationRow?.status,
+  });
+
+  return {
+    label: ids.label,
+    teamId: resolvedTeamId,
+    captainId,
+    targetId,
+    invitationId,
+    profilePendingState: true,
+    response: "declined",
+  };
+}
+
+async function runCourtRegistrationScenario({
+  label,
+  requesterLogin,
+  adminLogin,
+}) {
+  ids = makeScenarioIds(label);
+  assertFlow(Boolean(supabase), "court registration scenario requires service role client");
+  const requesterId = await step(`${ids.label}:resolveProfile:requester`, () => getProfileIdForLogin(requesterLogin));
+  const adminId = await step(`${ids.label}:resolveProfile:admin`, () => getProfileIdForLogin(adminLogin));
+  assertFlow(requesterId !== adminId, "court requester and admin must be different profiles", { requesterId, adminId });
+
+  const requestId = `sim_cr_${ids.label}_${suffix}`;
+  const expectedCourtId = `court_${requestId}`;
+  courtRequestSimulationIds.add(requestId);
+  approvedCourtSimulationIds.add(expectedCourtId);
+
+  const { data: requesterProfile, error: requesterProfileError } = await step(`${ids.label}:verifyRequester`, () => supabase
+    .from("profiles")
+    .select("id,trust_score")
+    .eq("id", requesterId)
+    .maybeSingle());
+  if (requesterProfileError) throw requesterProfileError;
+  assertFlow(Number(requesterProfile?.trust_score ?? 0) >= 70, "court requester trust score too low", {
+    requesterId,
+    trustScore: requesterProfile?.trust_score,
+  });
+
+  const addressText = `Backend simulation address ${suffix}`;
+  const submitResult = await step(`${ids.label}:submitCourtRequest`, () => submitCourtRequestAs(requesterLogin, {
+    id: requestId,
+    name: `Backend Simulation Regression Court ${suffix}`,
+    hashtag: `#simcourt${Date.now().toString(36)}`,
+    addressText,
+    roadAddress: addressText,
+    jibunAddress: "",
+    zonecode: String(Date.now()).slice(-5),
+    lat: 37.5563,
+    lng: 126.9236,
+    region: "Backend Simulation",
+    type: "outdoor",
+    baseName: "Backend Simulation Regression Court",
+    courtKind: "street_hoop",
+    surfaceType: "urethane",
+    courtLayout: "full",
+    paid: false,
+  }));
+  assertFlow(submitResult?.ok && submitResult?.requestId === requestId, "court request submit result mismatch", {
+    ok: submitResult?.ok,
+    requestId: submitResult?.requestId,
+  });
+
+  const { data: pendingRequest, error: pendingRequestError } = await step(`${ids.label}:verifyPendingCourtRequest`, () => supabase
+    .from("court_requests")
+    .select("id,requested_by,status")
+    .eq("id", requestId)
+    .maybeSingle());
+  if (pendingRequestError) throw pendingRequestError;
+  assertFlow(pendingRequest?.requested_by === requesterId && pendingRequest?.status === "pending", "pending court request mismatch", {
+    requestId,
+    requestedBy: pendingRequest?.requested_by,
+    status: pendingRequest?.status,
+  });
+
+  const approveResult = await step(`${ids.label}:approveCourtRequest`, () => approveCourtRequestAs(adminLogin, requestId));
+  const approvedCourtId = String(approveResult?.approvedCourtId || expectedCourtId);
+  approvedCourtSimulationIds.add(approvedCourtId);
+  assertFlow(approveResult?.ok && approveResult?.requestId === requestId && approvedCourtId === expectedCourtId, "court request approval result mismatch", {
+    ok: approveResult?.ok,
+    requestId: approveResult?.requestId,
+    approvedCourtId,
+  });
+
+  const [requestRead, courtRead, notificationRead] = await step(`${ids.label}:verifyApprovedCourt`, () => Promise.all([
+    supabase.from("court_requests").select("id,requested_by,status,payload").eq("id", requestId).maybeSingle(),
+    supabase.from("approved_courts").select("id,source_request_id,approved_by,status").eq("id", approvedCourtId).maybeSingle(),
+    supabase
+      .from("notifications")
+      .select("id,user_id,target_user_id,type,payload")
+      .eq("type", "court_request")
+      .eq("target_user_id", requesterId)
+      .contains("payload", { courtRequestId: requestId }),
+  ]));
+  if (requestRead.error) throw requestRead.error;
+  if (courtRead.error) throw courtRead.error;
+  if (notificationRead.error) throw notificationRead.error;
+  (notificationRead.data ?? []).forEach((notification) => simulationNotificationIds.add(notification.id));
+  const approvalNotification = (notificationRead.data ?? []).find((notification) => (
+    notification.user_id === requesterId &&
+    notification.target_user_id === requesterId &&
+    notification.payload?.approvedCourtId === approvedCourtId
+  ));
+  assertFlow(
+    requestRead.data?.status === "approved" &&
+      requestRead.data?.payload?.approvedCourtId === approvedCourtId &&
+      courtRead.data?.source_request_id === requestId &&
+      courtRead.data?.approved_by === adminId &&
+      courtRead.data?.status === "active" &&
+      Boolean(approvalNotification),
+    "approved court persistence mismatch",
+    {
+      requestStatus: requestRead.data?.status,
+      requestApprovedCourtId: requestRead.data?.payload?.approvedCourtId,
+      approvedCourtId: courtRead.data?.id,
+      sourceRequestId: courtRead.data?.source_request_id,
+      approvedBy: courtRead.data?.approved_by,
+      notificationFound: Boolean(approvalNotification),
+    },
+  );
+
+  return {
+    label: ids.label,
+    requestId,
+    approvedCourtId,
+    requesterId,
+    adminId,
+    requestStatus: "approved",
+    notificationVerified: true,
+  };
+}
+
+async function runRecruitingRoomExpiryScenario({
+  label,
+  hostLogin,
+  inviteeLogin,
+}) {
+  ids = makeScenarioIds(label);
+  assertFlow(Boolean(supabase), "recruiting room expiry scenario requires service role client");
+  const hostId = await step(`${ids.label}:resolveProfile:host`, () => getProfileIdForLogin(hostLogin));
+  const inviteeId = await step(`${ids.label}:resolveProfile:invitee`, () => getProfileIdForLogin(inviteeLogin));
+  assertFlow(hostId !== inviteeId, "expiry room host and invitee must be different profiles", { hostId, inviteeId });
+
+  const createResult = await step(`${ids.label}:createRecruitingPost`, () => syncRecruitingAs(hostLogin, {
+    action: "createRecruitingPost",
+    preferredPostId: ids.postId,
+    draft: {
+      id: ids.postId,
+      title: `Backend simulation ${ids.label}`,
+      visibility: "private",
+      hostJoinMode: "player",
+      mode: "1v1",
+      sideCapacity: 1,
+      timingType: "instant",
+      ranked: false,
+      mmrLimitMode: "off",
+      official: false,
+      preRegistered: true,
+      teamOnly: false,
+      refereeWanted: false,
+      region: "Backend Simulation",
+      courtId: "c1",
+      court: "Backend Simulation Court",
+      position: "PG",
+      memo: "Backend simulation expiry row. Safe to clean.",
+      rules: {
+        targetScore: 21,
+        timeLimit: 12,
+        winByTwo: true,
+        ball: "7",
+      },
+    },
+  }));
+  assertFlow(createResult?.post?.id === ids.postId && createResult?.post?.status === "open", "expiry room create mismatch", {
+    postId: createResult?.post?.id,
+    status: createResult?.post?.status,
+  });
+
+  const inviteResult = await step(`${ids.label}:inviteRecruitingPlayer`, () => syncRecruitingAs(hostLogin, {
+    action: "inviteRecruitingPlayers",
+    postId: ids.postId,
+    invite: {
+      side: "teamB",
+      reserve: false,
+      joinMode: "player",
+      playerIds: [inviteeId],
+    },
+  }));
+  const invitedPost = await getRecruitingPostAfterResult(inviteResult, hostLogin, `${ids.label}:loadPendingInvitation`);
+  const pendingInvitation = (invitedPost.roomState?.invitations ?? []).find((invitation) => (
+    invitation.targetUserId === inviteeId && invitation.status === "pending"
+  ));
+  assertFlow(inviteResult?.sqlReducer === true && Boolean(pendingInvitation?.id), "expiry room pending invitation missing", {
+    sqlReducer: inviteResult?.sqlReducer,
+    inviteeId,
+  });
+
+  const staleCreatedAt = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
+  const { error: staleCreatedAtError } = await step(`${ids.label}:backdateTestRoom`, () => supabase
+    .from("recruiting_posts")
+    .update({ created_at: staleCreatedAt })
+    .eq("id", ids.postId));
+  if (staleCreatedAtError) throw staleCreatedAtError;
+
+  const expiryNow = new Date().toISOString();
+  const firstExpiry = await step(`${ids.label}:expireRecruitingRooms:first`, () => supabase.rpc("rankball_expire_recruiting_rooms", {
+    p_now: expiryNow,
+  }));
+  if (firstExpiry.error) throw firstExpiry.error;
+  const firstAffected = getRpcAffectedCount(firstExpiry.data);
+  assertFlow(firstAffected >= 1, "recruiting room expiry did not affect test room", { affected: firstAffected });
+
+  const { data: expiredRow, error: expiredRowError } = await step(`${ids.label}:verifyExpiredRoom`, () => supabase
+    .from("recruiting_posts")
+    .select("id,status,room_state")
+    .eq("id", ids.postId)
+    .maybeSingle());
+  if (expiredRowError) throw expiredRowError;
+  const expiredInvitation = (expiredRow?.room_state?.invitations ?? []).find((invitation) => invitation.id === pendingInvitation.id);
+  assertFlow(expiredRow?.status === "cancelled" && expiredInvitation?.status === "expired", "expired room persistence mismatch", {
+    postId: ids.postId,
+    status: expiredRow?.status,
+    invitationId: pendingInvitation.id,
+    invitationStatus: expiredInvitation?.status,
+  });
+
+  const secondExpiry = await step(`${ids.label}:expireRecruitingRooms:second`, () => supabase.rpc("rankball_expire_recruiting_rooms", {
+    p_now: expiryNow,
+  }));
+  if (secondExpiry.error) throw secondExpiry.error;
+  const secondAffected = getRpcAffectedCount(secondExpiry.data);
+  assertFlow(secondAffected === 0, "recruiting room expiry is not idempotent", { affected: secondAffected });
+
+  return {
+    label: ids.label,
+    postId: ids.postId,
+    hostId,
+    inviteeId,
+    invitationId: pendingInvitation.id,
+    status: "cancelled",
+    invitationStatus: "expired",
+    firstAffected,
+    secondAffected,
   };
 }
 
@@ -4147,6 +4594,13 @@ async function main() {
   const soloRecordLogin = process.env.RANKBALL_SIM_SOLO_RECORD_HOST || "rankball-010";
   const mmrCommitHostLogin = process.env.RANKBALL_SIM_MMR_COMMIT_HOST || "rankball-021";
   const mmrCommitOpponentLogin = process.env.RANKBALL_SIM_MMR_COMMIT_OPPONENT || "rankball-022";
+  const teamInviteCaptainLogin = process.env.RANKBALL_SIM_TEAM_INVITE_CAPTAIN || "rankball-001";
+  const teamInviteTargetLogin = process.env.RANKBALL_SIM_TEAM_INVITE_TARGET || "rankball-050";
+  const teamInviteTeamId = process.env.RANKBALL_SIM_TEAM_INVITE_TEAM_ID || "t1";
+  const courtRequesterLogin = process.env.RANKBALL_SIM_COURT_REQUESTER || "rankball-049";
+  const courtAdminLogin = process.env.RANKBALL_SIM_COURT_ADMIN || "rankball-001";
+  const expiryRoomHostLogin = process.env.RANKBALL_SIM_EXPIRY_HOST || "rankball-048";
+  const expiryRoomInviteeLogin = process.env.RANKBALL_SIM_EXPIRY_INVITEE || "rankball-050";
 
   const scenarios = [];
   scenarios.push(await runSoloRecordScenario({
@@ -4156,6 +4610,24 @@ async function main() {
   if (!remoteSmokeOnly) {
     scenarios.push(await runMatchRecordRosterScenario({
       label: "match_record_roster_operation",
+    }));
+  }
+  if (fullSimulation) {
+    scenarios.push(await runTeamMembershipInviteScenario({
+      label: "team_membership_invite_decline",
+      captainLogin: teamInviteCaptainLogin,
+      targetLogin: teamInviteTargetLogin,
+      teamId: teamInviteTeamId,
+    }));
+    scenarios.push(await runCourtRegistrationScenario({
+      label: "court_request_approval",
+      requesterLogin: courtRequesterLogin,
+      adminLogin: courtAdminLogin,
+    }));
+    scenarios.push(await runRecruitingRoomExpiryScenario({
+      label: "recruiting_room_expiry",
+      hostLogin: expiryRoomHostLogin,
+      inviteeLogin: expiryRoomInviteeLogin,
     }));
   }
   scenarios.push(await runRecruitingInviteAcceptScenario({
