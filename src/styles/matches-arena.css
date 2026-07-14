@@ -1008,22 +1008,27 @@
 }
 
 .vertical-bracket-row {
+  --bracket-round-title-height: 18px;
+  --bracket-round-title-gap: 10px;
   display: grid;
   position: relative;
-  gap: 10px;
+  gap: var(--bracket-round-title-gap);
 }
 
 .vertical-bracket-row h3 {
   justify-self: center;
+  min-height: var(--bracket-round-title-height);
   color: var(--gold);
   font-size: 0.9rem;
   font-weight: 950;
+  line-height: var(--bracket-round-title-height);
 }
 
 .vertical-bracket-lanes {
+  --bracket-lane-gap: 10px;
   display: grid;
   grid-template-columns: repeat(var(--bracket-slots, 2), minmax(var(--slot-width), 1fr));
-  gap: 10px;
+  gap: var(--bracket-lane-gap);
   align-items: start;
 }
 
@@ -1047,9 +1052,14 @@
   content: "";
   position: absolute;
   top: -34px;
-  left: 0;
-  right: 0;
+  left: 50%;
+  right: calc(var(--bracket-lane-gap) / -2);
   border-top: 1px solid rgba(255, 211, 108, 0.34);
+}
+
+.vertical-bracket-row:not(:first-child) .vertical-bracket-node:nth-child(even)::after {
+  left: calc(var(--bracket-lane-gap) / -2);
+  right: 50%;
 }
 
 .vertical-bracket-node > .bracket-match-card {
@@ -1070,10 +1080,10 @@
 
 .tournament-vertical-bracket .bracket-match-card > .bracket-connector {
   position: absolute;
-  bottom: -25px;
+  bottom: calc((var(--bracket-round-title-height) + var(--bracket-round-title-gap)) * -1);
   left: 50%;
   width: 1px;
-  height: 25px;
+  height: calc(var(--bracket-round-title-height) + var(--bracket-round-title-gap));
   overflow: hidden;
   background: rgba(255, 211, 108, 0.42);
   color: transparent;
