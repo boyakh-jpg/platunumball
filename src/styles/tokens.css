@@ -61,6 +61,10 @@
   --radius-xl: 24px;
   --radius: var(--radius-sm);
   --page-gutter: clamp(12px, 2vw, 28px);
+  --page-content-max: 1440px;
+  --page-section-gap: 20px;
+  --page-section-gap-mobile: 16px;
+  --page-column-gap: 20px;
   --card-radius: var(--radius-md);
   --card-padding: 18px;
   --card-bg: var(--rb-surface);

@@ -1,7 +1,7 @@
 ﻿.om-match-page {
   max-width: 1220px;
   margin: 0 auto;
-  gap: 16px;
+  gap: var(--page-section-gap);
 }
 
 .om-match-hero {
@@ -2736,7 +2736,7 @@ html[data-theme="light"] .om-calendar-grid button.active {
   }
 }
 
-@media (min-width: 761px) and (max-width: 960px) {
+@media (min-width: 761px) and (max-width: 1180px) {
   .om-match-card,
   .arena-lobby-card.om-match-card {
     grid-template-columns: minmax(0, 1fr) 92px;
@@ -4199,8 +4199,8 @@ html[data-theme="light"] .tournament-hero h1 {
 
 /* 2026-07-02 page width guard: matches follows the shared app container. */
 .om-match-page {
-  width: min(100%, 1440px);
-  max-width: 1440px;
+  width: min(100%, var(--page-content-max));
+  max-width: var(--page-content-max);
   margin-inline: auto;
 }
 
@@ -4352,4 +4352,42 @@ html[data-theme="light"] .om-match-stats span {
 .om-match-create {
   min-height: var(--control-height);
   border-radius: var(--control-radius);
+}
+
+/* 2026-07-14 cross-page hero and mobile card rhythm. */
+.om-match-page {
+  gap: var(--page-section-gap);
+}
+
+.om-match-hero {
+  min-height: 214px;
+  padding: 24px;
+}
+
+@media (min-width: 721px) {
+  .om-match-hero {
+    grid-template-columns: minmax(0, 1fr) minmax(250px, 285px);
+  }
+}
+
+@media (max-width: 720px) {
+  .om-match-page {
+    gap: var(--page-section-gap-mobile);
+  }
+
+  .om-match-hero {
+    min-height: 174px;
+    padding: 16px;
+  }
+
+  .om-card-kicker {
+    overflow: visible;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 560px) {
+  .recorder-card-list .arena-lobby-card .om-room-link {
+    min-height: var(--ui-button-height);
+  }
 }

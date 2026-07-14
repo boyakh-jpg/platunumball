@@ -2,7 +2,7 @@
 .arena-recruit-page {
   max-width: 1220px;
   margin: 0 auto;
-  gap: 16px;
+  gap: var(--page-section-gap);
 }
 
 .arena-recruit-hero {
@@ -7436,8 +7436,8 @@ html[data-theme="light"] .arena-hero-copy h1 {
 
 /* 2026-07-02 page width guard: recruiting follows the shared app container. */
 .arena-recruit-page {
-  width: min(100%, 1440px);
-  max-width: 1440px;
+  width: min(100%, var(--page-content-max));
+  max-width: var(--page-content-max);
   margin-inline: auto;
 }
 
@@ -7738,4 +7738,31 @@ html[data-theme="light"] .arena-lobby-arena {
   .arena-lobby-card .om-match-summary-box.count-summary .om-summary-line > strong
 ) {
   transform-origin: center;
+}
+
+/* 2026-07-14 cross-page hero and section rhythm. */
+.arena-recruit-page {
+  gap: var(--page-section-gap);
+}
+
+.arena-recruit-hero {
+  min-height: 214px;
+  padding: 24px;
+}
+
+@media (min-width: 721px) {
+  .arena-recruit-hero {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 330px);
+  }
+}
+
+@media (max-width: 720px) {
+  .arena-recruit-page {
+    gap: var(--page-section-gap-mobile);
+  }
+
+  .arena-recruit-hero {
+    min-height: 174px;
+    padding: 16px;
+  }
 }
