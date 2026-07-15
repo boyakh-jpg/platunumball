@@ -194,6 +194,10 @@ function getReverseRegionValue(result = {}, area = "") {
   return String(result?.region?.[area]?.name ?? "").trim();
 }
 
+function normalizeReverseAddressText(value = "") {
+  return String(value ?? "").trim().replace(/\s+/g, " ");
+}
+
 function formatReverseAddress(result = {}, includeBuilding = false) {
   if (!result) return "";
   const region = ["area1", "area2", "area3", "area4"]
@@ -213,8 +217,8 @@ export function normalizeNaverReverseAddress(response = {}, lat, lng) {
   const legalResult = getReverseAddressResult(response, "legalcode");
   const adminResult = getReverseAddressResult(response, "admcode");
   const regionResult = roadResult ?? jibunResult ?? legalResult ?? adminResult;
-  const roadAddress = String(response.v2?.address?.roadAddress ?? response.address?.roadAddress ?? formatReverseAddress(roadResult, true)).trim();
-  const jibunAddress = String(response.v2?.address?.jibunAddress ?? response.address?.jibunAddress ?? formatReverseAddress(jibunResult)).trim();
+  const roadAddress = normalizeReverseAddressText(response.v2?.address?.roadAddress ?? response.address?.roadAddress ?? formatReverseAddress(roadResult, true));
+  const jibunAddress = normalizeReverseAddressText(response.v2?.address?.jibunAddress ?? response.address?.jibunAddress ?? formatReverseAddress(jibunResult));
   const addressText = roadAddress || jibunAddress;
   if (!addressText) throw new Error("핀 위치의 주소를 찾을 수 없습니다.");
 
@@ -223,7 +227,7 @@ export function normalizeNaverReverseAddress(response = {}, lat, lng) {
     addressText,
     roadAddress,
     jibunAddress,
-    buildingName: roadResult?.land?.addition0?.type === "building" ? String(roadResult.land.addition0.value ?? "").trim() : "",
+    buildingName: roadResult?.land?.addition0?.type === "building" ? normalizeReverseAddressText(roadResult.land.addition0.value) : "",
     bname: getReverseRegionValue(jibunResult ?? legalResult ?? regionResult, "area4") || getReverseRegionValue(jibunResult ?? legalResult ?? regionResult, "area3"),
     hname: getReverseRegionValue(adminResult ?? regionResult, "area4") || getReverseRegionValue(adminResult ?? regionResult, "area3"),
     sido: getReverseRegionValue(regionResult, "area1"),
