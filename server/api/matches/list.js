@@ -472,7 +472,37 @@ async function fetchJsonActorMatchIds(client, profileId = "", limit = REMOTE_CLI
 }
 
 async function fetchCaptainTournamentMatchRows(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT) {
-  return [];
+  if (!profileId) return [];
+  const { data: memberRows, error: memberError } = await client
+    .from("team_members")
+    .select("team_id")
+    .eq("user_id", profileId)
+    .eq("role", "captain")
+    .limit(20);
+  if (memberError) throw memberError;
+  const teamIds = unique((memberRows ?? []).map((row) => row.team_id));
+  if (!teamIds.length) return [];
+
+  const queryLimit = Math.max(1, Math.min(MATCH_CANDIDATE_MAX_LIMIT, Number(limit) || REMOTE_CLIENT_MATCH_LIMIT));
+  const [teamARows, teamBRows] = await Promise.all([
+    client
+      .from("matches")
+      .select(MATCH_LIST_COLUMNS)
+      .not("tournament_id", "is", null)
+      .in("team_a_id", teamIds)
+      .order("updated_at", { ascending: false, nullsFirst: false })
+      .limit(queryLimit),
+    client
+      .from("matches")
+      .select(MATCH_LIST_COLUMNS)
+      .not("tournament_id", "is", null)
+      .in("team_b_id", teamIds)
+      .order("updated_at", { ascending: false, nullsFirst: false })
+      .limit(queryLimit),
+  ]);
+  if (teamARows.error) throw teamARows.error;
+  if (teamBRows.error) throw teamBRows.error;
+  return mergeMatchRowsById(teamARows.data ?? [], teamBRows.data ?? []).slice(0, queryLimit);
 }
 
 async function fetchCurrentUserMatchCandidateIds(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT, includeJsonActors = false) {
@@ -704,6 +734,7 @@ function isRecorderMatch(match = {}, profileId = "", isAdmin = false) {
 function getMatchRowActorIds(row = {}, players = []) {
   return unique([
     row.created_by,
+    row.rules?.tournamentOrganizerId,
     row.referee_id,
     row.former_referee_id,
     ...players.map((player) => player.user_id),

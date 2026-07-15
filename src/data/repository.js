@@ -1722,6 +1722,9 @@ function makeTournamentMatch(state, tournament, teamA, teamB, pairing, now, matc
       sideCapacity: size,
       visibility: tournament.visibility ?? "private",
       rosterReady: { teamA: false, teamB: false },
+      rosterReadyAt: {},
+      tournamentOrganizerId: tournament.createdBy,
+      tournamentSideAssignmentLocked: false,
     },
     memo: tournament.memo || "대회 경기입니다.",
     stakes: "대회 경기 MMR 가중치가 적용됩니다.",
@@ -2879,6 +2882,9 @@ export function updateTournamentMatchSchedule(state, tournamentId, matchId, sche
         teamA: false,
         teamB: false,
       },
+      rosterReadyAt: {},
+      lineupDeadlineState: "pending",
+      lineupDeadlineCheckedAt: null,
     },
   };
   const now = new Date().toISOString();
@@ -6297,6 +6303,43 @@ function canEditMatchPreparation(state, match) {
   return currentUserCanOperateMatchPreparation(state, match);
 }
 
+function swapMatchSideMap(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const { teamA, teamB, ...rest } = value;
+  return { ...rest, teamA: teamB, teamB: teamA };
+}
+
+function swapTournamentMatchSides(match = {}) {
+  const nextTeamA = match.teamB ?? {};
+  const nextTeamB = match.teamA ?? {};
+  const titlePrefix = String(match.title ?? "").split("·")[0].trim();
+  return {
+    ...match,
+    title: `${titlePrefix ? `${titlePrefix} · ` : ""}${nextTeamA.name ?? "A"} vs ${nextTeamB.name ?? "B"}`,
+    teamA: nextTeamA,
+    teamB: nextTeamB,
+    reservePlayers: swapMatchSideMap(match.reservePlayers),
+    playedPlayerIds: swapMatchSideMap(match.playedPlayerIds),
+    promotedReserveIds: swapMatchSideMap(match.promotedReserveIds),
+    attendance: swapMatchSideMap(match.attendance),
+    agreements: swapMatchSideMap(match.agreements),
+    approvals: swapMatchSideMap(match.approvals),
+    statRecorders: swapMatchSideMap(match.statRecorders),
+    parties: (match.parties ?? []).map((party) => ({
+      ...party,
+      side: party.side === "teamA" ? "teamB" : party.side === "teamB" ? "teamA" : party.side,
+    })),
+    rules: {
+      ...(match.rules ?? {}),
+      rosterReady: swapMatchSideMap(match.rules?.rosterReady),
+      rosterReadyAt: swapMatchSideMap(match.rules?.rosterReadyAt),
+      reservePlayers: swapMatchSideMap(match.rules?.reservePlayers),
+      playedPlayerIds: swapMatchSideMap(match.rules?.playedPlayerIds),
+      statRecorders: swapMatchSideMap(match.rules?.statRecorders),
+    },
+  };
+}
+
 function currentUserCanEditMatchRecordSideRoster(state, match, sideName) {
   const tournamentPregame = Boolean(
     match?.tournamentId &&
@@ -6314,14 +6357,34 @@ function currentUserCanEditMatchRecordSideRoster(state, match, sideName) {
 }
 
 export function setMatchRecordTeamRoster(state, matchId, sideName, roster = {}) {
-  const match = state.matches.find((item) => item.id === matchId);
-  if (!currentUserCanEditMatchRecordSideRoster(state, match, sideName)) return state;
+  const sourceMatch = state.matches.find((item) => item.id === matchId);
+  if (!currentUserCanEditMatchRecordSideRoster(state, sourceMatch, sideName)) return state;
+  const tournamentPregame = Boolean(sourceMatch.tournamentId && !sourceMatch.startedAt && !sourceMatch.endedAt);
+  let match = sourceMatch;
+  if (tournamentPregame && match.rules?.tournamentSideAssignmentLocked !== true) {
+    const organizerId = match.rules?.tournamentOrganizerId || match.createdBy || "";
+    const hostPlayerId = getTeamCaptainId(state.teams, match[sideName]?.teamId);
+    if (!hostPlayerId) return state;
+    if (sideName === "teamB") match = swapTournamentMatchSides(match);
+    sideName = "teamA";
+    match = {
+      ...match,
+      createdBy: hostPlayerId,
+      rules: {
+        ...(match.rules ?? {}),
+        tournamentOrganizerId: organizerId,
+        tournamentSideAssignmentLocked: true,
+        tournamentHostSide: "teamA",
+        tournamentHostTeamId: match.teamA?.teamId ?? "",
+        tournamentHostPlayerId: hostPlayerId,
+      },
+    };
+  }
   const side = match[sideName] ?? {};
   const team = state.teams.find((item) => item.id === side.teamId);
   if (!team) return state;
 
   const sideCapacity = getRecruitingSideCapacity(match);
-  const tournamentPregame = Boolean(match.tournamentId && !match.startedAt && !match.endedAt);
   const eligibility = getTeamEventEligibility(team, state.users, {
     capacity: sideCapacity,
     ranked: match.ranked,
@@ -6362,6 +6425,7 @@ export function setMatchRecordTeamRoster(state, matchId, sideName, roster = {}) 
   nextRosterIds.forEach((playerId) => {
     nextPlayerTeams[playerId] = team.id;
   });
+  const rosterSavedAt = new Date().toISOString();
   const nextReservePlayers = {
     ...(match.reservePlayers ?? {}),
     [sideName]: nextReserveIds,
@@ -6380,15 +6444,20 @@ export function setMatchRecordTeamRoster(state, matchId, sideName, roster = {}) 
         ...(match.rules?.rosterReady ?? {}),
         [sideName]: true,
       },
+      rosterReadyAt: {
+        ...(match.rules?.rosterReadyAt ?? {}),
+        [sideName]: rosterSavedAt,
+      },
+      lineupDeadlineState: "pending",
+      lineupDeadlineCheckedAt: null,
     } : match.rules,
   };
   previousRosterIds
     .filter((playerId) => !nextRosterIds.has(playerId))
     .forEach((playerId) => {
       nextMatch = clearMatchPlayerDecision(nextMatch, playerId);
-    });
+  });
   nextMatch = withEffectiveMatchStatRecorders(nextMatch);
-  const rosterSavedAt = new Date().toISOString();
   const resolvedNotifications = (state.notifications ?? []).map((notification) => (
     tournamentPregame &&
     notification.type === "tournament_match_schedule" &&

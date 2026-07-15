@@ -657,6 +657,11 @@ export function userNeedsMatchAction(match = {}, userId = "") {
 
 export function getMatchHostPlayerId(match = {}, sourcePost = null) {
   const sourceRoomState = sourcePost?.roomState ?? {};
+  if (match.tournamentId && !sourcePost) {
+    const tournamentHostPlayerId = match.hostPlayerId ?? match.rules?.tournamentHostPlayerId ?? "";
+    if (tournamentHostPlayerId) return tournamentHostPlayerId;
+    return match.rules?.tournamentSideAssignmentLocked === true ? match.createdBy ?? "" : "";
+  }
   return sourcePost?.ownerId
     || sourceRoomState.ownerId
     || sourcePost?.createdBy
@@ -664,8 +669,8 @@ export function getMatchHostPlayerId(match = {}, sourcePost = null) {
     || sourcePost?.userId
     || sourcePost?.createdPlayerId
     || sourcePost?.playerId
-    || match.createdBy
     || match.hostPlayerId
+    || match.createdBy
     || match.createdPlayerId
     || match.playerId
     || match.teamA?.players?.[0]
@@ -994,6 +999,23 @@ export function getRoomRefereeLabel(room = {}) {
   return "심판 없음";
 }
 
+export function isTournamentMatchSideRosterReady(match = {}, sideName = "") {
+  if (!match.tournamentId || !["teamA", "teamB"].includes(sideName)) return false;
+  if (match.rules?.rosterReady?.[sideName] !== true) return false;
+  const readyAt = match.rules?.rosterReadyAt?.[sideName];
+  const scheduledAt = getMatchScheduledDate(match);
+  if (!readyAt || !scheduledAt) return true;
+  const readyAtMs = new Date(readyAt).getTime();
+  return Number.isFinite(readyAtMs) && readyAtMs <= scheduledAt.getTime();
+}
+
+export function isTournamentMatchRosterReady(match = {}) {
+  return !match.tournamentId || (
+    isTournamentMatchSideRosterReady(match, "teamA") &&
+    isTournamentMatchSideRosterReady(match, "teamB")
+  );
+}
+
 export function getMatchRoomPhase(match = {}, now = new Date()) {
   if (match.status === "cancelled") return ROOM_PHASE_META.cancelled;
   if (match.status === "void") return ROOM_PHASE_META.void;
@@ -1009,6 +1031,7 @@ export function getMatchRoomPhase(match = {}, now = new Date()) {
   if (match.status === "agreed" && match.result) return ROOM_PHASE_META.postgame;
 
   if (match.status === "agreed" || match.status === "contract") {
+    if (match.tournamentId && !isTournamentMatchRosterReady(match)) return ROOM_PHASE_META.locked;
     if (isInstantRoom(match)) return ROOM_PHASE_META.checkin;
     const scheduledAt = getMatchScheduledDate(match);
     const nowMs = now instanceof Date ? now.getTime() : new Date(now).getTime();

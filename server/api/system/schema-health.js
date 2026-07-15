@@ -299,6 +299,10 @@ const REQUIRED_RPCS = [
     args: { p_actor_profile_id: "", p_match_id: "", p_payload: {} },
   },
   {
+    name: "rankball_tournament_match_lineup_deadline_action",
+    args: { p_match_id: "", p_now: new Date(0).toISOString() },
+  },
+  {
     name: "rankball_tournament_match_schedule_action",
     args: { p_actor_profile_id: "", p_tournament_id: "", p_match_id: "", p_schedule: {} },
   },

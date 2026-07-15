@@ -32,6 +32,11 @@ function isMissingCleanupRpc(error) {
   return error?.code === "PGRST202" || error?.code === "42883" || message.includes("rankball_cleanup_room_feed");
 }
 
+function isMissingTournamentLineupDeadlineRpc(error) {
+  const message = String(error?.message ?? "").toLowerCase();
+  return error?.code === "PGRST202" || error?.code === "42883" || message.includes("rankball_tournament_lineup_deadline_batch_action");
+}
+
 function getApplicationPlayerCount(row = {}, capacity = 5) {
   const playerIds = toArray(row.player_ids);
   if (playerIds.length) return Math.min(capacity, playerIds.length);
@@ -171,6 +176,22 @@ async function expireRecruitingRooms(client) {
   return data && typeof data === "object"
     ? data
     : { ok: true, expiredCount: 0, rooms: [] };
+}
+
+async function processTournamentLineupDeadlines(client, limit, now) {
+  const { data, error } = await client.rpc("rankball_tournament_lineup_deadline_batch_action", {
+    p_now: now.toISOString(),
+    p_limit: limit,
+  });
+  if (error) {
+    if (isMissingTournamentLineupDeadlineRpc(error)) {
+      return { ok: false, skipped: true, error: "rankball_tournament_lineup_deadline_batch_action_missing" };
+    }
+    throw error;
+  }
+  return data && typeof data === "object"
+    ? data
+    : { ok: true, checkedCount: 0, readyCount: 0, forfeitCount: 0, organizerReviewCount: 0, results: [] };
 }
 
 async function refreshRecruitingFeed(client, postId) {
@@ -388,6 +409,7 @@ export async function runSystemMaintenance(client = getSupabaseAdminClient(), op
   const now = options.now instanceof Date ? options.now : new Date();
   const includeRecruitingCapacityCleanup = options.includeRecruitingCapacityCleanup === true;
   const includeFeedRepair = options.includeFeedRepair === true || process.env.RANKBALL_MAINTENANCE_FEED_REPAIR === "true";
+  const tournamentLineupDeadlines = await processTournamentLineupDeadlines(client, limit, now);
   const recruitingExpiration = await expireRecruitingRooms(client);
   const candidateIds = await getCandidateMatchIds(client, limit, now.getTime());
   const results = [];
@@ -397,9 +419,10 @@ export async function runSystemMaintenance(client = getSupabaseAdminClient(), op
   }
 
   return {
-    ok: results.every((result) => result.ok || result.skipped),
+    ok: (tournamentLineupDeadlines.ok || tournamentLineupDeadlines.skipped) && results.every((result) => result.ok || result.skipped),
     candidateCount: candidateIds.length,
     confirmedCount: results.filter((result) => result.ok).length,
+    tournamentLineupDeadlines,
     recruitingExpiration,
     feedCleanup: await cleanupRoomFeed(client, now),
     feedRepair: includeFeedRepair

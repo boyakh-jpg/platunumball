@@ -830,14 +830,17 @@ function getRecruitingHostEntry(post = {}, state = {}) {
   const user = state.users?.find((item) => item.id === post.playerId) ?? null;
   const team = post.teamId ? state.teams?.find((item) => item.id === post.teamId) ?? null : null;
   const capacity = getRecruitingSideCapacity(post);
+  const exactTournamentRoster = Boolean(post.tournamentId);
   const joinMode = post.hostJoinMode === "team" && (team || post.teamId || post.playerIds?.length) ? "team" : "player";
   const players = joinMode === "team"
-    ? getTeamEntryPlayerIds(team, capacity, post.playerIds, post.playerId)
+    ? (exactTournamentRoster ? unique(post.playerIds ?? []).slice(0, capacity) : getTeamEntryPlayerIds(team, capacity, post.playerIds, post.playerId))
     : [post.playerId].filter(Boolean);
   const explicitReserves = joinMode === "team"
     ? (team ? getExplicitTeamPlayerIds(team, Infinity, roomState.partyReserves.host ?? []) : unique(roomState.partyReserves.host ?? []))
     : [];
-  const reserves = joinMode === "team" ? unique([...(team ? getReserveTeamPlayerIds(team) : []), ...explicitReserves]).filter((playerId) => !players.includes(playerId)) : [];
+  const reserves = joinMode === "team"
+    ? unique([...(exactTournamentRoster ? [] : team ? getReserveTeamPlayerIds(team) : []), ...explicitReserves]).filter((playerId) => !players.includes(playerId))
+    : [];
 
   return {
     id: "host",
@@ -879,13 +882,16 @@ function getRecruitingApplicantEntry(applicant = {}, state = {}, post = {}) {
   const user = normalizedEntry.playerId ? state.users?.find((item) => item.id === normalizedEntry.playerId) ?? null : null;
   const displayTeamId = normalizedEntry.kind === "team" ? normalizedEntry.teamId : normalizedEntry.sourceTeamId;
   const team = displayTeamId ? state.teams?.find((item) => item.id === displayTeamId) ?? null : null;
+  const exactTournamentRoster = Boolean(post.tournamentId);
   const players = normalizedEntry.kind === "team"
-    ? getTeamEntryPlayerIds(team, capacity, normalizedEntry.playerIds, normalizedEntry.playerId)
+    ? (exactTournamentRoster ? unique(normalizedEntry.playerIds ?? []).slice(0, capacity) : getTeamEntryPlayerIds(team, capacity, normalizedEntry.playerIds, normalizedEntry.playerId))
     : [normalizedEntry.playerId].filter(Boolean);
   const explicitReserves = normalizedEntry.kind === "team"
     ? (team ? getExplicitTeamPlayerIds(team, Infinity, roomState.partyReserves[getRecruitingApplicantKey(normalizedEntry)] ?? []) : unique(roomState.partyReserves[getRecruitingApplicantKey(normalizedEntry)] ?? []))
     : [];
-  const reserves = normalizedEntry.kind === "team" ? unique([...(team ? getReserveTeamPlayerIds(team) : []), ...explicitReserves]).filter((playerId) => !players.includes(playerId)) : [];
+  const reserves = normalizedEntry.kind === "team"
+    ? unique([...(exactTournamentRoster ? [] : team ? getReserveTeamPlayerIds(team) : []), ...explicitReserves]).filter((playerId) => !players.includes(playerId))
+    : [];
 
   return {
     ...normalizedEntry,

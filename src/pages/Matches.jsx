@@ -29,6 +29,7 @@ import {
   isMatchSideTeamParty,
   isPersonalRecordMatch,
   isInstantRoom,
+  isTournamentMatchSideRosterReady,
   isTournamentMatchInUserSchedule,
   userNeedsMatchAction,
 } from "../lib/matchUtils.js";
@@ -492,6 +493,7 @@ function uniquePlayerIds(ids = []) {
 
 function getSideAgreementReady(match = {}, sideName) {
   const sourceMatch = match ?? {};
+  if (sourceMatch.tournamentId) return isTournamentMatchSideRosterReady(sourceMatch, sideName);
   if (sourceMatch.status !== "contract") return true;
   const players = sourceMatch[sideName]?.players ?? [];
   const agreements = new Set(sourceMatch.agreements?.[sideName] ?? []);
@@ -506,7 +508,30 @@ export function getMatchRoomPost(match, state) {
     ? sourceState.recruitingPosts?.find((post) => post.id === sourceMatch.recruitingPostId)
     : null;
   const sourcePostLobby = sourcePost ? getRecruitingLobby(sourcePost, sourceState) : null;
-  const hostPlayerId = getMatchHostPlayerId(sourceMatch, sourcePost);
+  const tournamentRoom = Boolean(sourceMatch.tournamentId && !sourcePost);
+  const tournamentReadySide = tournamentRoom
+    ? ["teamA", "teamB"].find((sideName) => sourceMatch.rules?.rosterReady?.[sideName] === true) ?? ""
+    : "";
+  const configuredTournamentHostSide = ["teamA", "teamB"].includes(sourceMatch.rules?.tournamentHostSide)
+    ? sourceMatch.rules.tournamentHostSide
+    : "";
+  const tournamentHostClaimed = Boolean(
+    tournamentRoom && (sourceMatch.rules?.tournamentSideAssignmentLocked === true || tournamentReadySide),
+  );
+  const projectedTournamentHostSide = tournamentHostClaimed
+    ? configuredTournamentHostSide || tournamentReadySide || "teamA"
+    : "";
+  const projectedTournamentHostTeam = projectedTournamentHostSide
+    ? sourceState.teams?.find((team) => team.id === sourceMatch[projectedTournamentHostSide]?.teamId) ?? null
+    : null;
+  const projectedTournamentCaptainId = projectedTournamentHostTeam
+    ? getTeamCaptainId(projectedTournamentHostTeam)
+    : "";
+  const hostPlayerId = tournamentRoom
+    ? (tournamentHostClaimed
+        ? sourceMatch.rules?.tournamentHostPlayerId || projectedTournamentCaptainId
+        : "")
+    : getMatchHostPlayerId(sourceMatch, sourcePost);
   const sideCapacity = getRoomCapacity(sourceMatch);
   const soloRecord = isPersonalRecordMatch(sourceMatch);
   const soloPlayedPlayerIds = sourceMatch.playedPlayerIds ?? sourceMatch.rules?.playedPlayerIds ?? {};
@@ -539,8 +564,10 @@ export function getMatchRoomPost(match, state) {
     party.reserves.includes(hostPlayerId)
   );
   const hostParty = matchParties.find(partyHasHost) ?? matchParties.find((party) => party.side === "teamA") ?? null;
-  const hostSide = hostParty?.side ?? "teamA";
-  const hostJoinMode = hostParty?.teamId || isMatchSideTeamParty(match, hostSide) ? "team" : "player";
+  const hostSide = tournamentRoom ? projectedTournamentHostSide || "teamA" : hostParty?.side ?? "teamA";
+  const hostJoinMode = tournamentRoom
+    ? (tournamentHostClaimed && sourceMatch[hostSide]?.teamId ? "team" : "player")
+    : (hostParty?.teamId || isMatchSideTeamParty(match, hostSide) ? "team" : "player");
   const hostTeamId = hostJoinMode === "team" ? (hostParty?.teamId ?? match[hostSide]?.teamId ?? null) : null;
   const hostPlayers = hostJoinMode === "team"
     ? uniquePlayerIds(hostParty?.players?.length ? hostParty.players : match[hostSide]?.players ?? [])
@@ -594,26 +621,28 @@ export function getMatchRoomPost(match, state) {
       party.reserves.forEach((playerId) => pushPlayerApplicant(playerId, party.side, true));
     });
   } else if (hostJoinMode === "player") {
-    teamAPlayers
+    const hostSidePlayers = hostSide === "teamA" ? teamAPlayers : teamBPlayers;
+    const hostSideReserves = hostSide === "teamA" ? teamAReserves : teamBReserves;
+    hostSidePlayers
       .filter((playerId) => playerId !== hostPlayerId)
       .forEach((playerId) => {
         applicants.push({
           kind: "player",
           joinMode: "player",
           playerId,
-          side: "teamA",
-          status: getSideAgreementReady(match, "teamA") ? "ready" : "waiting",
+          side: hostSide,
+          status: getSideAgreementReady(match, hostSide) ? "ready" : "waiting",
           reserve: false,
           createdAt: match.createdAt,
           updatedAt: match.createdAt,
         });
       });
-    teamAReserves.forEach((playerId) => {
+    hostSideReserves.forEach((playerId) => {
       applicants.push({
         kind: "player",
         joinMode: "player",
         playerId,
-        side: "teamA",
+        side: hostSide,
         status: "ready",
         reserve: true,
         createdAt: match.createdAt,
@@ -621,42 +650,46 @@ export function getMatchRoomPost(match, state) {
       });
     });
   } else {
-    partyReserves.host = teamAReserves;
+    partyReserves.host = hostSide === "teamA" ? teamAReserves : teamBReserves;
   }
 
-  if (!matchParties.length && isMatchSideTeamParty(match, "teamB")) {
+  const opponentSide = hostSide === "teamA" ? "teamB" : "teamA";
+  const opponentPlayers = opponentSide === "teamA" ? teamAPlayers : teamBPlayers;
+  const opponentReserves = opponentSide === "teamA" ? teamAReserves : teamBReserves;
+  const opponentTeam = sourceState.teams?.find((team) => team.id === match[opponentSide]?.teamId) ?? null;
+  if (!matchParties.length && (tournamentRoom ? Boolean(match[opponentSide]?.teamId) : isMatchSideTeamParty(match, opponentSide))) {
     applicants.push({
       kind: "team",
       joinMode: "team",
-      teamId: match.teamB?.teamId,
-      playerId: teamBPlayers[0] ?? null,
-      playerIds: teamBPlayers,
-      side: "teamB",
-      status: getSideAgreementReady(match, "teamB") ? "ready" : "waiting",
+      teamId: match[opponentSide]?.teamId,
+      playerId: getTeamCaptainId(opponentTeam) ?? opponentPlayers[0] ?? null,
+      playerIds: opponentPlayers,
+      side: opponentSide,
+      status: getSideAgreementReady(match, opponentSide) ? "ready" : "waiting",
       reserve: false,
       createdAt: match.createdAt,
       updatedAt: match.createdAt,
     });
-    partyReserves[`team:${match.teamB?.teamId}`] = teamBReserves;
+    partyReserves[`team:${match[opponentSide]?.teamId}`] = opponentReserves;
   } else if (!matchParties.length) {
-    teamBPlayers.forEach((playerId) => {
+    opponentPlayers.forEach((playerId) => {
       applicants.push({
         kind: "player",
         joinMode: "player",
         playerId,
-        side: "teamB",
-        status: getSideAgreementReady(match, "teamB") ? "ready" : "waiting",
+        side: opponentSide,
+        status: getSideAgreementReady(match, opponentSide) ? "ready" : "waiting",
         reserve: false,
         createdAt: match.createdAt,
         updatedAt: match.createdAt,
       });
     });
-    teamBReserves.forEach((playerId) => {
+    opponentReserves.forEach((playerId) => {
       applicants.push({
         kind: "player",
         joinMode: "player",
         playerId,
-        side: "teamB",
+        side: opponentSide,
         status: "ready",
         reserve: true,
         createdAt: match.createdAt,
@@ -695,6 +728,7 @@ export function getMatchRoomPost(match, state) {
       ...sourcePost,
       status: "open",
       title: match.title ?? sourcePost.title,
+      tournamentId: match.tournamentId ?? sourcePost.tournamentId,
       mode: match.mode ?? sourcePost.mode,
       court: match.court ?? sourcePost.court,
       scheduledDate: match.scheduledDate ?? sourcePost.scheduledDate,
@@ -726,6 +760,7 @@ export function getMatchRoomPost(match, state) {
   return {
     id: match.recruitingPostId || `match-room-${match.id}`,
     title: match.title,
+    tournamentId: match.tournamentId,
     type: "need_player",
     mode: match.mode,
     court: match.court,

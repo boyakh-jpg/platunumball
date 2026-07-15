@@ -27,6 +27,7 @@ import maintenanceHandler from "../server/api/system/maintenance.js";
 import { gradeRefereeExamByQuestionIds } from "../src/lib/refereeExamBank.js";
 import {
   getRecorderHandoffPatch,
+  getMatchRoomPhase,
   getTournamentMatchDisplayTitle,
   isMatchRecordMatch,
   isTournamentMatchInUserSchedule,
@@ -5663,10 +5664,16 @@ async function prepareTournamentMatchRosters({
         "related private tournament missing from captain match response",
         { sideName, captainId: fixture.captainId, tournamentIds: (captainMatches.tournaments ?? []).map((tournament) => tournament.id) },
       );
+      const captainMatch = (captainMatches.matches ?? []).find((match) => match.id === scheduledMatch.id);
       assertFlow(
-        !isTournamentMatchInUserSchedule(scheduledMatch, fixture.captainId),
+        Boolean(captainMatch?.__feedRelations?.includes("tournament_captain")),
+        "tournament captain cannot load private fixture detail",
+        { sideName, captainId: fixture.captainId, matchIds: (captainMatches.matches ?? []).map((match) => match.id) },
+      );
+      assertFlow(
+        !isTournamentMatchInUserSchedule(captainMatch, fixture.captainId),
         "captain must not receive an unassigned tournament match as personal schedule",
-        { sideName, captainId: fixture.captainId, scheduledMatch },
+        { sideName, captainId: fixture.captainId, captainMatch },
       );
     }
   }
@@ -5676,7 +5683,8 @@ async function prepareTournamentMatchRosters({
     () => syncMatchAs(creatorLogin, { action: "startMatch", matchId }),
     ["tournament_roster_not_ready"],
   );
-  for (const { sideName, fixture, playerId } of sideFixtures) {
+  const rosterOrder = [...sideFixtures].reverse();
+  for (const [index, { sideName, fixture, playerId }] of rosterOrder.entries()) {
     const rosterResult = await step(`${label}:setRoster:${sideName}`, () => syncMatchAs(fixture.captainLogin, {
       action: "setMatchRecordTeamRoster",
       matchId,
@@ -5688,12 +5696,39 @@ async function prepareTournamentMatchRosters({
       "tournament snapshot roster SQL reducer not used",
       rosterResult,
     );
+    if (index === 0) {
+      const firstReadyMatch = await step(`${label}:loadFirstRoster`, () => loadMatchAs(creatorLogin, matchId));
+      assertFlow(
+        firstReadyMatch?.teamA?.teamId === fixture.team.id &&
+          firstReadyMatch?.createdBy === fixture.captainId &&
+          firstReadyMatch?.rules?.tournamentHostPlayerId === fixture.captainId &&
+          firstReadyMatch?.rules?.tournamentHostTeamId === fixture.team.id &&
+          firstReadyMatch?.rules?.tournamentHostSide === "teamA" &&
+          firstReadyMatch?.rules?.tournamentSideAssignmentLocked === true,
+        "first tournament roster did not claim A side and host",
+        { fixture, firstReadyMatch },
+      );
+      const afterDeadline = new Date(`${scheduledDate}T${scheduledTime}:00+09:00`);
+      afterDeadline.setMinutes(afterDeadline.getMinutes() + 1);
+      assertFlow(
+        getMatchRoomPhase(firstReadyMatch, afterDeadline).phase === "locked",
+        "single tournament lineup must stay locked after scheduled time",
+        { phase: getMatchRoomPhase(firstReadyMatch, afterDeadline), firstReadyMatch },
+      );
+    }
   }
   const rosterReadyMatch = await step(`${label}:loadRosterReady`, () => loadMatchAs(creatorLogin, matchId));
   assertFlow(
     rosterReadyMatch?.rules?.rosterReady?.teamA === true && rosterReadyMatch?.rules?.rosterReady?.teamB === true,
     "tournament roster readiness not persisted",
     rosterReadyMatch?.rules,
+  );
+  const afterDeadline = new Date(`${scheduledDate}T${scheduledTime}:00+09:00`);
+  afterDeadline.setMinutes(afterDeadline.getMinutes() + 1);
+  assertFlow(
+    getMatchRoomPhase(rosterReadyMatch, afterDeadline).phase === "checkin",
+    "two timely tournament lineups must enter checkin",
+    { phase: getMatchRoomPhase(rosterReadyMatch, afterDeadline), rosterReadyMatch },
   );
   if (verifyNotifications) {
     for (const { sideName, playerId, playerLogin } of sideFixtures) {
@@ -5715,7 +5750,8 @@ async function playTournamentMatchToConfirmed({ label, matchId, operatorLogin })
   const teamBPlayerId = match.teamB?.players?.[0] ?? "";
   const teamALogin = await getTestLoginForProfileId(teamAPlayerId);
   const teamBLogin = await getTestLoginForProfileId(teamBPlayerId);
-  const operatorId = await getProfileIdForLogin(operatorLogin);
+  const resultOperatorLogin = teamALogin;
+  const operatorId = teamAPlayerId;
   assertFlow(Boolean(teamAPlayerId && teamBPlayerId && teamALogin && teamBLogin), "tournament match player login missing", {
     matchId,
     teamAPlayerId,
@@ -5743,7 +5779,7 @@ async function playTournamentMatchToConfirmed({ label, matchId, operatorLogin })
     result,
   };
 
-  const resultSubmit = await step(`${label}:submitMatchResult`, () => syncMatchAs(operatorLogin, {
+  const resultSubmit = await step(`${label}:submitMatchResult`, () => syncMatchAs(resultOperatorLogin, {
     action: "submitMatchResult",
     matchId,
     result,
@@ -6025,7 +6061,8 @@ async function runTournamentRepresentativeTeamGuardScenario({
   teamCId = "team-rb-03",
 }) {
   ids = makeScenarioIds(label);
-  const startDate = getKstFutureSchedule(120).scheduledDate;
+  const automaticForfeitSchedule = getKstFutureSchedule(120);
+  const startDate = automaticForfeitSchedule.scheduledDate;
   await expectRejected(
     `${ids.label}:nonRepresentativeTeamCreateBlocked`,
     () => syncTournamentAs(creatorLogin, {
@@ -6148,6 +6185,11 @@ async function runTournamentRepresentativeTeamGuardScenario({
     "non-representative team entered valid league",
     { participatingTeamIds, nonRepresentativeTeamId },
   );
+  const tournamentFixtures = await step(`${ids.label}:resolveLineupFixtures`, () => resolveTournamentTeamFixtures(
+    creatorLogin,
+    [representativeTeamId, teamBId, teamCId],
+  ));
+  const fixtureByTeamId = new Map(tournamentFixtures.map((fixture) => [fixture.team.id, fixture]));
 
   await expectRejected(
     `${ids.label}:rejectUnapprovedCourt`,
@@ -6163,7 +6205,7 @@ async function runTournamentRepresentativeTeamGuardScenario({
     action: "updateTournamentMatchSchedule",
     tournamentId: ids.tournamentId,
     matchId: matches[0].id,
-    schedule: { scheduledDate: getKstCurrentDate(), scheduledTime: "00:00", courtId: "c1" },
+    schedule: { ...automaticForfeitSchedule, courtId: "c1" },
   }));
   await step(`${ids.label}:scheduleFutureFixture`, () => syncMatchAs(creatorLogin, {
     action: "updateTournamentMatchSchedule",
@@ -6187,34 +6229,89 @@ async function runTournamentRepresentativeTeamGuardScenario({
     () => syncMatchAs(teamBCaptainLogin, {
       action: "forfeitTournamentMatch",
       tournamentId: ids.tournamentId,
-      matchId: matches[0].id,
+      matchId: matches[1].id,
       losingSide: "teamA",
       reason: "팀 불참",
     }),
     ["tournament_owner_required"],
   );
-  const forfeitResult = await step(`${ids.label}:confirmForfeit`, () => syncMatchAs(creatorLogin, {
-    action: "forfeitTournamentMatch",
-    tournamentId: ids.tournamentId,
-    matchId: matches[0].id,
-    losingSide: "teamA",
-    reason: "팀 불참",
+
+  const scheduledForfeitMatch = await step(`${ids.label}:loadScheduledForfeit`, () => loadMatchAs(creatorLogin, matches[0].id));
+  const firstReadyTeamId = scheduledForfeitMatch.teamB?.teamId;
+  const firstReadyFixture = fixtureByTeamId.get(firstReadyTeamId);
+  const snapshotPlayerIds = scheduledForfeitMatch.rules?.teamRosterSnapshot?.teams?.[firstReadyTeamId]?.eligiblePlayerIds ?? [];
+  let firstReadyPlayerId = snapshotPlayerIds.includes(firstReadyFixture?.captainId) ? firstReadyFixture.captainId : "";
+  if (!firstReadyPlayerId) {
+    for (const candidateId of snapshotPlayerIds) {
+      if (await getTestLoginForProfileId(candidateId)) {
+        firstReadyPlayerId = candidateId;
+        break;
+      }
+    }
+  }
+  assertFlow(Boolean(firstReadyFixture?.captainLogin && firstReadyPlayerId), "automatic forfeit ready-side fixture missing", {
+    firstReadyTeamId,
+    firstReadyFixture,
+    snapshotPlayerIds,
+  });
+  const firstRosterResult = await step(`${ids.label}:setOnlyTeamBRoster`, () => syncMatchAs(firstReadyFixture.captainLogin, {
+    action: "setMatchRecordTeamRoster",
+    matchId: scheduledForfeitMatch.id,
+    sideName: "teamB",
+    roster: { playerIds: [firstReadyPlayerId], reservePlayerIds: [] },
   }));
   assertFlow(
-    forfeitResult?.sqlReducer === true && forfeitResult?.advisoryLocked === true,
-    "tournament forfeit SQL reducer not used",
+    firstRosterResult?.sqlReducer === true && firstRosterResult?.sideName === "teamA" && firstRosterResult?.tournamentHostTeamId === firstReadyTeamId,
+    "first B-side lineup did not claim A-side host",
+    firstRosterResult,
+  );
+
+  const oneReadyMatch = await step(`${ids.label}:loadOneReady`, () => loadMatchAs(creatorLogin, matches[0].id));
+  const deadlineNow = new Date(`${automaticForfeitSchedule.scheduledDate}T${automaticForfeitSchedule.scheduledTime}:00+09:00`);
+  deadlineNow.setMinutes(deadlineNow.getMinutes() + 1);
+  assertFlow(
+    oneReadyMatch.teamA?.teamId === firstReadyTeamId && getMatchRoomPhase(oneReadyMatch, deadlineNow).phase === "locked",
+    "single lineup tournament match must remain locked",
+    { firstReadyTeamId, oneReadyMatch, phase: getMatchRoomPhase(oneReadyMatch, deadlineNow) },
+  );
+  const { data: forfeitResult, error: forfeitError } = await step(`${ids.label}:automaticLineupForfeit`, () => supabase.rpc(
+    "rankball_tournament_match_lineup_deadline_action",
+    { p_match_id: oneReadyMatch.id, p_now: deadlineNow.toISOString() },
+  ));
+  if (forfeitError) throw forfeitError;
+  assertFlow(
+    forfeitResult?.status === "forfeit" && forfeitResult?.losingSide === "teamB" && forfeitResult?.sqlReducer === true,
+    "automatic tournament lineup forfeit SQL reducer not used",
     forfeitResult,
   );
+  const { data: retryResult, error: retryError } = await step(`${ids.label}:automaticLineupForfeitRetry`, () => supabase.rpc(
+    "rankball_tournament_match_lineup_deadline_action",
+    { p_match_id: oneReadyMatch.id, p_now: deadlineNow.toISOString() },
+  ));
+  if (retryError) throw retryError;
+  assertFlow(retryResult?.idempotent === true && retryResult?.processed === false, "automatic lineup forfeit retry was not idempotent", retryResult);
+
   const forfeitedMatch = await step(`${ids.label}:loadForfeitedMatch`, () => loadMatchAs(creatorLogin, matches[0].id));
   assertFlow(
     forfeitedMatch?.status === "confirmed" &&
-      forfeitedMatch?.forfeitSide === "teamA" &&
-      forfeitedMatch?.result?.scoreA === 0 &&
-      forfeitedMatch?.result?.scoreB === 1 &&
+      forfeitedMatch?.forfeitSide === "teamB" &&
+      forfeitedMatch?.result?.scoreA === 1 &&
+      forfeitedMatch?.result?.scoreB === 0 &&
       forfeitedMatch?.ratingResult == null &&
       forfeitedMatch?.teamRatingResult == null,
-    "tournament forfeit result or MMR exclusion mismatch",
+    "automatic tournament forfeit result or MMR exclusion mismatch",
     forfeitedMatch,
+  );
+  const { data: staleScheduleRows, error: staleScheduleError } = await supabase
+    .from("notifications")
+    .select("id,read_at,payload")
+    .eq("match_id", forfeitedMatch.id)
+    .eq("type", "tournament_match_schedule");
+  if (staleScheduleError) throw staleScheduleError;
+  assertFlow(
+    (staleScheduleRows ?? []).length > 0 && (staleScheduleRows ?? []).every((row) => row.read_at && row.payload?.actionRequired === false),
+    "automatic forfeit left stale schedule notifications",
+    staleScheduleRows,
   );
   const captainLoginByTeamId = new Map([
     [representativeTeamId, creatorLogin],
@@ -6225,8 +6322,8 @@ async function runTournamentRepresentativeTeamGuardScenario({
     const captainLogin = captainLoginByTeamId.get(teamId);
     const captainHome = await step(`${ids.label}:loadForfeitCaptainHome:${teamId}`, () => loadHomeAs(captainLogin));
     assertFlow(
-      (captainHome.notifications ?? []).some((notification) => notification.type === "tournament_match_forfeit" && notification.matchId === forfeitedMatch.id),
-      "tournament forfeit captain notification missing",
+      (captainHome.notifications ?? []).some((notification) => notification.type === "tournament_match_lineup_deadline" && notification.matchId === forfeitedMatch.id),
+      "automatic tournament forfeit captain notification missing",
       { teamId, notifications: captainHome.notifications },
     );
   }
@@ -6242,6 +6339,7 @@ async function runTournamentRepresentativeTeamGuardScenario({
     forfeitMatchId: forfeitedMatch.id,
     forfeitScore: `${forfeitedMatch.result.scoreA}:${forfeitedMatch.result.scoreB}`,
     forfeitMmrCommitted: Boolean(forfeitedMatch.ratingResult || forfeitedMatch.teamRatingResult),
+    automaticForfeitIdempotent: retryResult?.idempotent === true,
     inviteNotificationCheck,
     inviteDiscordDeliveryCheck,
     inviteResolutionCheck,
