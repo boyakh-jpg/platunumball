@@ -1280,60 +1280,65 @@ export default function Matches({ app }) {
         </div>
       </section>
 
-      {activeTournaments.length ? (
-        <section className={tournamentPanelOpen ? "om-tournament-panel" : "om-tournament-panel collapsed"} aria-label="비공개 대회">
-          <div className="om-list-head">
-            <div>
-              <span className="om-kicker">PRIVATE EVENT</span>
-              <h2>비공개 대회</h2>
-            </div>
-            <div className="om-tournament-head-actions">
-              <span>{activeTournaments.length}개</span>
+      <section className={activeTournaments.length && !tournamentPanelOpen ? "om-tournament-panel collapsed" : "om-tournament-panel"} aria-label="비공개 대회">
+        <div className="om-list-head">
+          <div>
+            <span className="om-kicker">PRIVATE EVENT</span>
+            <h2>비공개 대회</h2>
+          </div>
+          <div className="om-tournament-head-actions">
+            <span>{activeTournaments.length}개</span>
+            {activeTournaments.length ? (
               <button type="button" onClick={() => setTournamentPanelOpen((current) => !current)}>
                 {tournamentPanelOpen ? "접기" : "펼치기"}
               </button>
+            ) : null}
+          </div>
+        </div>
+        <div className={tournamentPanelOpen ? "om-tournament-grid" : "om-tournament-grid compact"}>
+          {activeTournaments.length ? activeTournaments.map((tournament) => {
+            const tournamentMatches = getTournamentMatches(tournament, matchesById, app.state.matches);
+            const teamRows = getTournamentTeamRows(tournament, teamById, userById, app.currentUser.id);
+            const organizer = userById[tournament.createdBy] ?? null;
+            const acceptedCount = teamRows.filter((row) => row.status === "accepted").length;
+            const pendingRows = teamRows.filter((row) => row.status !== "accepted");
+            return (
+              <article key={tournament.id} className="om-tournament-card">
+                <div>
+                  <span className="om-kicker">{tournamentFormatLabels[tournament.format] ?? tournament.format}</span>
+                  <h3>{tournament.title}</h3>
+                  <p>
+                    <span><CalendarDays size={15} />{formatTournamentWindow(tournament)} · {tournament.court}</span>
+                    <span><UserRound size={15} />개최자 {organizer?.name ?? "알 수 없음"}{organizer ? ` ${getUserHashtag(organizer)}` : ""}</span>
+                  </p>
+                </div>
+                <div className="om-tournament-meta">
+                  <span>{tournament.mode}</span>
+                  <span>{tournament.ranked === false ? "친선" : "정규"}</span>
+                  <span>{tournamentMmrLabels[tournament.mmrPolicy] ?? tournament.mmrPolicy}</span>
+                  <strong>{acceptedCount}/{teamRows.length} 승인</strong>
+                  <strong>{tournamentMatches.length}경기</strong>
+                </div>
+                <div className="om-tournament-state">
+                  <span>{tournamentStatusLabels[tournament.status] ?? tournament.status}</span>
+                  <em>{pendingRows.length ? `${pendingRows.length}팀 승인 대기` : "참가 승인 완료"}</em>
+                </div>
+                <div className="om-tournament-actions">
+                  <button type="button" onClick={() => setSelectedTournamentId(tournament.id)}>자세히</button>
+                  <Link className="button button-secondary button-md om-tournament-detail-link" to={`/app/tournaments/${tournament.id}`}>
+                    대진표
+                  </Link>
+                </div>
+              </article>
+            );
+          }) : (
+            <div className="om-empty-state om-tournament-empty">
+              <strong>관련 대회 없음</strong>
+              <span>내가 만든 대회나 내 팀이 초대된 대회가 여기에 표시된다.</span>
             </div>
-          </div>
-          <div className={tournamentPanelOpen ? "om-tournament-grid" : "om-tournament-grid compact"}>
-            {activeTournaments.map((tournament) => {
-              const tournamentMatches = getTournamentMatches(tournament, matchesById, app.state.matches);
-              const teamRows = getTournamentTeamRows(tournament, teamById, userById, app.currentUser.id);
-              const organizer = userById[tournament.createdBy] ?? null;
-              const acceptedCount = teamRows.filter((row) => row.status === "accepted").length;
-              const pendingRows = teamRows.filter((row) => row.status !== "accepted");
-              return (
-                <article key={tournament.id} className="om-tournament-card">
-                  <div>
-                    <span className="om-kicker">{tournamentFormatLabels[tournament.format] ?? tournament.format}</span>
-                    <h3>{tournament.title}</h3>
-                    <p>
-                      <span><CalendarDays size={15} />{formatTournamentWindow(tournament)} · {tournament.court}</span>
-                      <span><UserRound size={15} />개최자 {organizer?.name ?? "알 수 없음"}{organizer ? ` ${getUserHashtag(organizer)}` : ""}</span>
-                    </p>
-                  </div>
-                  <div className="om-tournament-meta">
-                    <span>{tournament.mode}</span>
-                    <span>{tournament.ranked === false ? "친선" : "정규"}</span>
-                    <span>{tournamentMmrLabels[tournament.mmrPolicy] ?? tournament.mmrPolicy}</span>
-                    <strong>{acceptedCount}/{teamRows.length} 승인</strong>
-                    <strong>{tournamentMatches.length}경기</strong>
-                  </div>
-                  <div className="om-tournament-state">
-                    <span>{tournamentStatusLabels[tournament.status] ?? tournament.status}</span>
-                    <em>{pendingRows.length ? `${pendingRows.length}팀 승인 대기` : "참가 승인 완료"}</em>
-                  </div>
-                  <div className="om-tournament-actions">
-                    <button type="button" onClick={() => setSelectedTournamentId(tournament.id)}>자세히</button>
-                    <Link className="button button-secondary button-md om-tournament-detail-link" to={`/app/tournaments/${tournament.id}`}>
-                      대진표
-                    </Link>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        </section>
-      ) : null}
+          )}
+        </div>
+      </section>
 
       {selectedTournament ? (() => {
         const tournamentMatches = getTournamentMatches(selectedTournament, matchesById, app.state.matches);
