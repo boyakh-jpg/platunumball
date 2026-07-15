@@ -646,6 +646,59 @@ async function clearRefereeSimulationCooldown(profileId = "") {
   return { skipped: false, cleared: (data ?? []).length };
 }
 
+async function ensureSimulationRefereeEligibility(profileId = "", label = "referee") {
+  if (!supabase || !profileId) return { skipped: true };
+  const nowMs = Date.now();
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("id,trust_score")
+    .eq("id", profileId)
+    .maybeSingle();
+  if (profileError) throw profileError;
+  if (Number(profile?.trust_score ?? 0) < 90) {
+    await snapshotRatingSubjects([profileId]);
+    const { error: trustError } = await supabase
+      .from("profiles")
+      .update({ trust_score: 95, updated_at: new Date(nowMs).toISOString() })
+      .eq("id", profileId);
+    if (trustError) throw trustError;
+  }
+  const { data: activeRows, error: activeError } = await supabase
+    .from("referee_appointments")
+    .select("id,ends_at")
+    .eq("user_id", profileId)
+    .eq("role", "referee")
+    .eq("status", "active");
+  if (activeError) throw activeError;
+  const liveAppointment = (activeRows ?? []).find((row) => !row.ends_at || Date.parse(row.ends_at) > nowMs);
+  if (liveAppointment?.id) return { alreadyEligible: true, appointmentId: liveAppointment.id };
+
+  const appointmentId = `sim_referee_appt_${label}_${suffix}`;
+  const now = new Date(nowMs).toISOString();
+  const endsAt = new Date(nowMs + 3 * 24 * 60 * 60 * 1000).toISOString();
+  const { error: upsertError } = await supabase
+    .from("referee_appointments")
+    .upsert({
+      id: appointmentId,
+      user_id: profileId,
+      role: "referee",
+      grade: "candidate",
+      status: "active",
+      starts_at: now,
+      ends_at: endsAt,
+      payload: {
+        source: "rankball-sim",
+        label,
+        suffix,
+      },
+      created_at: now,
+      updated_at: now,
+    }, { onConflict: "id" });
+  if (upsertError) throw upsertError;
+  adminAppointmentSimulationIds.add(appointmentId);
+  return { alreadyEligible: false, appointmentId };
+}
+
 async function snapshotRatingSubjects(profileIds = [], teamIds = []) {
   if (!supabase) return { skipped: true, reason: "service_role_key_missing" };
   const safeProfileIds = uniqueIds(profileIds).filter((profileId) => !profileRatingSnapshots.has(profileId));
@@ -1613,6 +1666,7 @@ async function runOneOnOneScenario({
     assertFlow(Boolean(refereeLogin), "referee login required");
     refereeId = await step(`${ids.label}:resolveProfile:referee`, () => getProfileIdForLogin(refereeLogin));
     assertFlow(![hostId, opponentId].includes(refereeId), "referee must be separate profile", { hostId, opponentId, refereeId });
+    await step(`${ids.label}:ensureRefereeEligible`, () => ensureSimulationRefereeEligibility(refereeId, ids.label));
   }
   if (verifyRatingCommit || verifyUnrankedNoRating) {
     await step(`${ids.label}:snapshotRatingSubjects`, () => snapshotRatingSubjects([hostId, opponentId]));
@@ -3055,7 +3109,24 @@ async function runPlayerReportScenario({
     targetId,
     outsiderId,
   });
+  const staleReports = await step(`${ids.label}:cleanupStalePlayerReports`, async () => {
+    if (!supabase) return { skipped: true };
+    const { data, error } = await supabase
+      .from("reports")
+      .select("id")
+      .eq("type", "player")
+      .eq("user_id", reporterId)
+      .eq("target_id", targetId)
+      .like("reason", "simulation shared match report%");
+    if (error) throw error;
+    const staleIds = (data ?? []).map((row) => row.id).filter(Boolean);
+    if (!staleIds.length) return { deleted: 0 };
+    const { error: deleteError } = await supabase.from("reports").delete().in("id", staleIds);
+    if (deleteError) throw deleteError;
+    return { deleted: staleIds.length };
+  });
   const report = {
+    id: `sim_report_${ids.label}_${suffix}`,
     type: "player",
     targetId,
     reason: `simulation shared match report ${suffix}`,
@@ -3077,6 +3148,7 @@ async function runPlayerReportScenario({
     targetLogin,
     outsiderLogin,
     reportId: first.reportId,
+    staleReports,
     recentSharedMatchRequired: true,
     duplicateIdempotent: true,
     unrelatedReporterBlocked: true,
