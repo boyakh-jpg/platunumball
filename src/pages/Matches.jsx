@@ -1105,6 +1105,12 @@ export default function Matches({ app }) {
     if (!scheduledDate || !scheduledTime) return;
     setScheduleDialog({ mode: "confirm", tournamentId, matchId, scheduledDate, scheduledTime });
   };
+  const formatTournamentScheduleError = (message = "") => {
+    if (message.includes("tournament_match_schedule_locked")) return "이미 시작·종료·취소·무효 처리된 경기는 일정을 바꿀 수 없습니다.";
+    if (message.includes("invalid_tournament_match_schedule")) return "오늘부터 365일 안의 날짜와 시간을 입력해야 합니다.";
+    if (message.includes("tournament_owner_required")) return "대회 생성자만 경기 일정을 저장할 수 있습니다.";
+    return message || "schedule_save_failed";
+  };
   const confirmTournamentSchedule = async () => {
     if (scheduleDialog?.mode !== "confirm" || savingScheduleId) return;
     const { tournamentId, matchId, scheduledDate, scheduledTime } = scheduleDialog;
@@ -1114,7 +1120,7 @@ export default function Matches({ app }) {
       if (!result || result?.ok === false) throw new Error(result?.error ?? "schedule_save_failed");
       setScheduleDialog({ mode: "success", tournamentId, matchId, scheduledDate, scheduledTime });
     } catch (error) {
-      setScheduleDialog({ mode: "error", message: error.message || "schedule_save_failed" });
+      setScheduleDialog({ mode: "error", message: formatTournamentScheduleError(error.message) });
     } finally {
       setSavingScheduleId("");
     }

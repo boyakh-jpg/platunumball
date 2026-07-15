@@ -6975,17 +6975,18 @@ html[data-theme="light"] .search-picker-result-row.selected {
   display: grid;
   place-items: center;
   padding: 18px;
-  background: rgba(0, 0, 0, 0.46);
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(4px);
 }
 
 .app-confirm-dialog {
   display: grid;
   width: min(360px, 100%);
   gap: 12px;
-  border: 1px solid var(--card-border);
+  border: 1px solid color-mix(in srgb, var(--card-border) 80%, var(--text) 20%);
   border-radius: var(--card-radius);
-  background: var(--card-bg);
-  box-shadow: var(--card-shadow);
+  background: color-mix(in srgb, var(--card-bg-strong) 16%, var(--bg) 84%);
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.5);
   padding: 18px;
   color: var(--text);
 }
