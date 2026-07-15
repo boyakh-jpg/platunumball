@@ -13882,6 +13882,10 @@ html[data-theme="light"] .rank-home .rank-tier-rail .rank-mode-pill {
   padding: 0;
 }
 
+.hover-portal-card:not(.touch-open) .hover-card-close {
+  display: none;
+}
+
 .hover-portal-card.touch-open .hover-card-close {
   position: absolute;
   top: 8px;
