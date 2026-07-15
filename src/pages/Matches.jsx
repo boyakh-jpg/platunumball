@@ -1138,43 +1138,54 @@ export default function Matches({ app }) {
 
       <section className="om-calendar-panel" aria-label="진행 경기 캘린더">
         <div className="om-calendar-summary">
-          <span className="om-view-icon"><CalendarDays size={22} /></span>
-          <div>
-            <span className="om-kicker">SCHEDULE</span>
-            <h2>내 진행 일정</h2>
-            <p>{dateFilter ? `${formatDateLabel(dateFilter)} 내 경기만 표시` : "내가 들어간 진행 중이거나 예정된 경기를 날짜별로 본다."}</p>
-          </div>
-          <div className="om-calendar-actions">
-            <button type="button" className={!dateFilter ? "active" : ""} onClick={() => setDateFilter("")}>전체</button>
-            <button
-              type="button"
-              className={dateFilter === todayValue ? "active" : ""}
-              onClick={() => {
-                setDateFilter(todayValue);
-                setCalendarMonth(getMonthKey(todayValue));
-              }}
-            >
-              오늘
-            </button>
-          </div>
-          <section className="om-filter-bar om-calendar-filter-bar" aria-label="경기 필터">
-            <div className="segmented-control compact-segments">
-              <button type="button" className={relationFilter === "all" ? "active" : ""} onClick={() => setRelationFilter("all")}>전체</button>
-              <button type="button" className={relationFilter === "created" ? "active" : ""} onClick={() => setRelationFilter("created")}>내가 만든 방</button>
-              <button type="button" className={relationFilter === "joined" ? "active" : ""} onClick={() => setRelationFilter("joined")}>내 참여방</button>
-              <button type="button" className={relationFilter === "invited" ? "active" : ""} onClick={() => setRelationFilter("invited")}>초대받은 방</button>
+          <div className="om-calendar-heading">
+            <span className="om-view-icon"><CalendarDays size={22} /></span>
+            <div>
+              <span className="om-kicker">SCHEDULE</span>
+              <h2>내 진행 일정</h2>
+              <p>{dateFilter ? `${formatDateLabel(dateFilter)} 내 경기만 표시` : "내가 들어간 진행 중이거나 예정된 경기를 날짜별로 본다."}</p>
             </div>
-            <div className="segmented-control compact-segments">
-              {SCHEDULE_BRANCH_FILTERS.map((option) => (
+          </div>
+          <section className="om-calendar-filter-bar" aria-label="경기 필터">
+            <div className="om-calendar-filter-row">
+              <span className="om-calendar-filter-label">기간</span>
+              <div className="segmented-control compact-segments" role="group" aria-label="기간 필터">
+                <button type="button" className={!dateFilter ? "active" : ""} onClick={() => setDateFilter("")}>전체</button>
                 <button
-                  key={option.id}
                   type="button"
-                  className={branchFilter === option.id ? "active" : ""}
-                  onClick={() => setBranchFilter(option.id)}
+                  className={dateFilter === todayValue ? "active" : ""}
+                  onClick={() => {
+                    setDateFilter(todayValue);
+                    setCalendarMonth(getMonthKey(todayValue));
+                  }}
                 >
-                  {option.label}
+                  오늘
                 </button>
-              ))}
+              </div>
+            </div>
+            <div className="om-calendar-filter-row">
+              <span className="om-calendar-filter-label">관계</span>
+              <div className="segmented-control compact-segments" role="group" aria-label="관계 필터">
+                <button type="button" className={relationFilter === "all" ? "active" : ""} onClick={() => setRelationFilter("all")}>전체</button>
+                <button type="button" className={relationFilter === "created" ? "active" : ""} onClick={() => setRelationFilter("created")}>내가 만든 방</button>
+                <button type="button" className={relationFilter === "joined" ? "active" : ""} onClick={() => setRelationFilter("joined")}>내 참여방</button>
+                <button type="button" className={relationFilter === "invited" ? "active" : ""} onClick={() => setRelationFilter("invited")}>초대받은 방</button>
+              </div>
+            </div>
+            <div className="om-calendar-filter-row">
+              <span className="om-calendar-filter-label">유형</span>
+              <div className="segmented-control compact-segments" role="group" aria-label="유형 필터">
+                {SCHEDULE_BRANCH_FILTERS.map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    className={branchFilter === option.id ? "active" : ""}
+                    onClick={() => setBranchFilter(option.id)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </section>
         </div>
