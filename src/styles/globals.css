@@ -10348,13 +10348,12 @@ html[data-theme="light"] .rank-home .rank-mode-pill em {
 /* Team hub keeps the ranked-team hero layout instead of the generic page hero. */
 .team-hub-hero {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
-  align-content: center;
-  align-items: end;
-  justify-items: stretch;
-  gap: var(--page-column-gap);
-  min-height: 214px;
-  padding: 24px;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: end;
+  justify-items: start;
+  gap: 18px;
+  min-height: clamp(430px, 46vw, 620px);
+  padding: clamp(22px, 3.4vw, 34px);
   border-color: rgba(255, 211, 108, 0.2);
   background:
     linear-gradient(180deg, rgba(5, 7, 10, 0.2), rgba(5, 7, 10, 0.72) 54%, rgba(5, 7, 10, 0.94)),
@@ -10363,7 +10362,7 @@ html[data-theme="light"] .rank-home .rank-mode-pill em {
 
 .team-hub-hero > div:first-child {
   min-height: 0;
-  max-width: 680px;
+  max-width: 720px;
   gap: 12px;
 }
 
@@ -10382,11 +10381,11 @@ html[data-theme="light"] .rank-home .rank-mode-pill em {
 
 .team-hub-board {
   display: grid;
-  width: 100%;
-  max-width: 360px;
+  width: min(100%, 720px);
+  max-width: 720px;
   align-content: start;
-  justify-self: end;
-  gap: 8px;
+  justify-self: start;
+  gap: 12px;
   border: 1px solid var(--ui-card-border);
   border-radius: var(--ui-card-radius);
   background: var(--ui-card-bg);
@@ -10402,13 +10401,13 @@ html[data-theme="light"] .rank-home .rank-mode-pill em {
 
 .team-hub-board strong {
   color: var(--gold);
-  font-size: clamp(2rem, 3vw, 2.6rem);
+  font-size: clamp(2.1rem, 4.4vw, 3.7rem);
   line-height: 0.96;
 }
 
 .team-hub-board em {
   color: rgba(226, 233, 242, 0.82);
-  font-size: 0.9rem;
+  font-size: clamp(0.95rem, 1.8vw, 1.15rem);
 }
 
 .team-hub-board div span {
@@ -14785,13 +14784,32 @@ html[data-theme="light"] .referee-rulebook-hero::after {
   }
 }
 
-/* 2026-07-02 team hub mobile keeps the first-place board inside the hero. */
+/* Team hub is the tall ranked-team exception at every responsive breakpoint. */
+@media (min-width: 760px) and (max-width: 1079px) {
+  .app-main > .page-stack.teams-page > .team-hub-hero:first-child {
+    grid-template-columns: minmax(0, 1fr);
+    align-content: end;
+    align-items: end;
+    justify-items: start;
+    gap: 18px;
+    min-height: clamp(430px, 46vw, 620px);
+    padding: clamp(22px, 3.4vw, 34px);
+  }
+
+  .app-main > .page-stack.teams-page > .team-hub-hero:first-child .team-hub-board {
+    display: grid;
+    width: min(100%, 720px);
+    max-width: 720px;
+    justify-self: start;
+  }
+}
+
 @media (max-width: 759px) {
   .app-main > .page-stack.teams-page > .team-hub-hero:first-child {
-    min-height: auto;
-    align-content: start;
+    min-height: clamp(620px, 87vw, 660px);
+    align-content: end;
     gap: 12px;
-    padding: 16px;
+    padding: 18px;
   }
 
   .app-main > .page-stack.teams-page > .team-hub-hero:first-child .team-hub-board {
