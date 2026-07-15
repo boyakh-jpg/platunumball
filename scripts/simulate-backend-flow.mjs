@@ -896,7 +896,8 @@ async function cleanupSimulationNotifications() {
   const discordIdsToDelete = [...simulationDiscordDeliveryIds];
   const matchIds = uniqueIds(scenarioIds.flatMap((scenario) => [scenario.matchId, ...(scenario.matchIds ?? [])]));
   const postIds = uniqueIds(scenarioIds.map((scenario) => scenario.postId));
-  if (!idsToDelete.length && !discordIdsToDelete.length && !matchIds.length && !postIds.length) return { skipped: true };
+  const tournamentIds = uniqueIds(scenarioIds.map((scenario) => scenario.tournamentId));
+  if (!idsToDelete.length && !discordIdsToDelete.length && !matchIds.length && !postIds.length && !tournamentIds.length) return { skipped: true };
   const errors = [];
   for (const [column, values] of [
     ["id", idsToDelete],
@@ -917,6 +918,40 @@ async function cleanupSimulationNotifications() {
       .in("id", discordIdsToDelete);
     if (error) errors.push({ table: "discord_notification_deliveries", column: "id", message: error.message });
   }
+  let tournamentNotificationCount = 0;
+  let tournamentDeliveryCount = 0;
+  for (const tournamentId of tournamentIds) {
+    const { data: tournamentNotifications, error } = await supabase
+      .from("notifications")
+      .select("id")
+      .contains("payload", { tournamentId });
+    if (error) {
+      errors.push({ table: "notifications", column: "payload.tournamentId", message: error.message });
+      continue;
+    }
+    const notificationIds = (tournamentNotifications ?? []).map((notification) => notification.id).filter(Boolean);
+    if (!notificationIds.length) continue;
+    const { data: deliveryRows, error: deliveryError } = await supabase
+      .from("discord_notification_deliveries")
+      .delete()
+      .in("notification_id", notificationIds)
+      .select("id");
+    if (deliveryError) {
+      errors.push({ table: "discord_notification_deliveries", column: "notification_id", message: deliveryError.message });
+    } else {
+      tournamentDeliveryCount += deliveryRows?.length ?? 0;
+    }
+    const { data: notificationRows, error: notificationError } = await supabase
+      .from("notifications")
+      .delete()
+      .in("id", notificationIds)
+      .select("id");
+    if (notificationError) {
+      errors.push({ table: "notifications", column: "payload.tournamentId", message: notificationError.message });
+    } else {
+      tournamentNotificationCount += notificationRows?.length ?? 0;
+    }
+  }
   simulationNotificationIds.clear();
   simulationDiscordDeliveryIds.clear();
   return {
@@ -925,6 +960,9 @@ async function cleanupSimulationNotifications() {
     discordDeliveryIds: discordIdsToDelete.length,
     matchIds: matchIds.length,
     recruitingPostIds: postIds.length,
+    tournamentIds: tournamentIds.length,
+    tournamentNotifications: tournamentNotificationCount,
+    tournamentDiscordDeliveries: tournamentDeliveryCount,
     errors,
   };
 }
@@ -1028,6 +1066,142 @@ async function runHomeAlertNotificationScenario({
     profileId,
     dueIncluded: true,
     futureHidden: true,
+  };
+}
+
+async function assertTournamentInviteNotifications({
+  label,
+  tournamentId,
+  expectedInvites = [],
+}) {
+  if (!supabase) return { skipped: true, reason: "service_role_key_missing" };
+  const expectedRows = [];
+  for (const invite of expectedInvites) {
+    const captainId = invite.captainId || await getProfileIdForLogin(invite.captainLogin);
+    expectedRows.push({ ...invite, captainId });
+  }
+  const { data, error } = await supabase
+    .from("notifications")
+    .select("id,target_user_id,type,read_at,payload")
+    .eq("type", "tournament_invite")
+    .contains("payload", { tournamentId });
+  if (error) throw error;
+  const rows = data ?? [];
+  for (const expected of expectedRows) {
+    const notification = rows.find((row) => (
+      row.target_user_id === expected.captainId &&
+      row.payload?.teamId === expected.teamId
+    ));
+    assertFlow(
+      notification &&
+        !notification.read_at &&
+        notification.payload?.actionRequired === true &&
+        notification.payload?.homeAction === true &&
+        notification.payload?.webPath === `/app/tournaments/${tournamentId}`,
+      "tournament captain invite notification missing",
+      { tournamentId, expected, notifications: rows },
+    );
+    simulationNotificationIds.add(notification.id);
+
+    const captainHome = await step(`${label}:loadCaptainHomeInvite:${expected.teamId}`, () => loadHomeAs(expected.captainLogin));
+    assertFlow(
+      (captainHome.notifications ?? []).some((homeNotification) => (
+        homeNotification.id === notification.id &&
+        homeNotification.type === "tournament_invite" &&
+        homeNotification.tournamentId === tournamentId &&
+        homeNotification.teamId === expected.teamId &&
+        homeNotification.actionRequired === true &&
+        homeNotification.homeAction === true
+      )),
+      "tournament captain home invite missing",
+      { tournamentId, expected, homeNotifications: captainHome.notifications },
+    );
+  }
+  return {
+    skipped: false,
+    expected: expectedRows.length,
+    found: rows.length,
+  };
+}
+
+async function assertTournamentInviteDiscordDelivery({
+  tournamentId,
+  targetUserId,
+}) {
+  if (!supabase) return { skipped: true, reason: "service_role_key_missing" };
+  const { data: notifications, error } = await supabase
+    .from("notifications")
+    .select("id,target_user_id,type,payload")
+    .eq("type", "tournament_invite")
+    .eq("target_user_id", targetUserId)
+    .contains("payload", { tournamentId });
+  if (error) throw error;
+  const notificationIds = (notifications ?? []).map((notification) => notification.id).filter(Boolean);
+  assertFlow(notificationIds.length > 0, "tournament invite notification missing before delivery check", {
+    tournamentId,
+    targetUserId,
+  });
+  const { data: deliveries, error: deliveryError } = await supabase
+    .from("discord_notification_deliveries")
+    .select("id,notification_id,target_user_id,event,status,sent_at,payload")
+    .in("notification_id", notificationIds)
+    .eq("target_user_id", targetUserId);
+  if (deliveryError) throw deliveryError;
+  const delivery = (deliveries ?? []).find((row) => (
+    row.event === "approval" &&
+    row.status === "queued" &&
+    !row.sent_at &&
+    notificationIds.includes(row.notification_id)
+  )) ?? deliveries?.[0];
+  assertFlow(
+    delivery?.event === "approval" && delivery?.status === "queued" && !delivery?.sent_at,
+    "tournament invite Discord delivery missing",
+    { tournamentId, targetUserId, notificationIds, deliveries },
+  );
+  simulationDiscordDeliveryIds.add(delivery.id);
+  return {
+    skipped: false,
+    deliveryId: delivery.id,
+    notificationIds,
+  };
+}
+
+async function assertTournamentInviteNotificationsResolved({
+  tournamentId,
+  expectedInvites = [],
+}) {
+  if (!supabase) return { skipped: true, reason: "service_role_key_missing" };
+  const expectedRows = [];
+  for (const invite of expectedInvites) {
+    const captainId = invite.captainId || await getProfileIdForLogin(invite.captainLogin);
+    expectedRows.push({ ...invite, captainId });
+  }
+  const { data, error } = await supabase
+    .from("notifications")
+    .select("id,target_user_id,type,read_at,payload")
+    .eq("type", "tournament_invite")
+    .contains("payload", { tournamentId });
+  if (error) throw error;
+  const rows = data ?? [];
+  for (const expected of expectedRows) {
+    const notification = rows.find((row) => (
+      row.target_user_id === expected.captainId &&
+      row.payload?.teamId === expected.teamId
+    ));
+    assertFlow(
+      notification &&
+        Boolean(notification.read_at) &&
+        notification.payload?.actionRequired === false &&
+        notification.payload?.homeAction === false &&
+        notification.payload?.resolvedStatus === "accepted",
+      "tournament captain invite notification not resolved",
+      { tournamentId, expected, notifications: rows },
+    );
+  }
+  return {
+    skipped: false,
+    expected: expectedRows.length,
+    resolved: expectedRows.length,
   };
 }
 
@@ -5695,6 +5869,19 @@ async function runTournamentRepresentativeTeamGuardScenario({
     ["tournament_team_representative_required"],
   );
 
+  const teamBCaptainId = await step(`${ids.label}:resolveTeamBCaptain`, () => getProfileIdForLogin(teamBCaptainLogin));
+  if (supabase) {
+    await step(`${ids.label}:setTeamBCaptainDiscord`, () => setTemporaryProfileDiscordUser(
+      teamBCaptainId,
+      makeDiscordSnowflake(820),
+      "rankball-sim-tournament-invite",
+    ));
+    await step(`${ids.label}:enableTeamBCaptainApprovalDiscord`, () => setTemporaryDiscordNotificationSettings(teamBCaptainId, {
+      enabled: true,
+      events: { approval: true },
+    }));
+  }
+
   const matchIds = [1, 2, 3].map((fixture) => `${ids.matchId}_l1_${fixture}`);
   ids.matchIds = matchIds;
   const createResult = await step(`${ids.label}:createValidLeague`, () => syncTournamentAs(creatorLogin, {
@@ -5719,6 +5906,20 @@ async function runTournamentRepresentativeTeamGuardScenario({
   }));
   assertFlow(createResult?.ok && Number(createResult?.createdMatchCount ?? 0) === 0, "representative league create failed", createResult);
 
+  const expectedInvites = [
+    { teamId: teamBId, captainLogin: teamBCaptainLogin, captainId: teamBCaptainId },
+    { teamId: teamCId, captainLogin: teamCCaptainLogin },
+  ];
+  const inviteNotificationCheck = await step(`${ids.label}:assertCaptainInvites`, () => assertTournamentInviteNotifications({
+    label: ids.label,
+    tournamentId: ids.tournamentId,
+    expectedInvites,
+  }));
+  const inviteDiscordDeliveryCheck = await step(`${ids.label}:assertCaptainInviteDiscordDelivery`, () => assertTournamentInviteDiscordDelivery({
+    tournamentId: ids.tournamentId,
+    targetUserId: teamBCaptainId,
+  }));
+
   const invitedLoadResult = await step(`${ids.label}:loadTournament:invitedCaptain`, () => syncTournamentAs(teamBCaptainLogin, {
     action: "loadTournament",
     tournamentId: ids.tournamentId,
@@ -5738,6 +5939,10 @@ async function runTournamentRepresentativeTeamGuardScenario({
     preferredMatchIds: matchIds,
   }));
   assertFlow(Number(finalApproval?.createdMatchCount ?? 0) === 3, "representative league fixture count mismatch", finalApproval);
+  const inviteResolutionCheck = await step(`${ids.label}:assertCaptainInvitesResolved`, () => assertTournamentInviteNotificationsResolved({
+    tournamentId: ids.tournamentId,
+    expectedInvites,
+  }));
   assertFlow(
     Object.keys(finalApproval?.tournament?.rules?.teamRosterSnapshot?.teams ?? {}).length === 3,
     "representative league snapshot team count mismatch",
@@ -5771,6 +5976,9 @@ async function runTournamentRepresentativeTeamGuardScenario({
     blockedTeamId: nonRepresentativeTeamId,
     createdMatchCount: matches.length,
     autoSelectedPlayerCount: 0,
+    inviteNotificationCheck,
+    inviteDiscordDeliveryCheck,
+    inviteResolutionCheck,
   };
 }
 

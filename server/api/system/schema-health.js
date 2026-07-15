@@ -303,6 +303,10 @@ const REQUIRED_RPCS = [
     args: { p_actor_profile_id: "", p_tournament_id: "", p_match_id: "", p_schedule: {} },
   },
   {
+    name: "rankball_tournament_invitation_health",
+    args: {},
+  },
+  {
     name: "rankball_rls_policy_health",
     args: {},
   },
@@ -582,6 +586,27 @@ async function checkProfileIdentity(client) {
   };
 }
 
+async function checkTournamentInvitations(client) {
+  const { data, error } = await client.rpc("rankball_tournament_invitation_health");
+  if (error) {
+    return {
+      ok: false,
+      error: error.message || "tournament_invitation_health_failed",
+      failed: [],
+      checks: [],
+    };
+  }
+
+  const checks = Array.isArray(data) ? data : [];
+  const failed = checks.filter((check) => !check.ok);
+  return {
+    ok: failed.length === 0,
+    error: null,
+    failed,
+    checks,
+  };
+}
+
 async function ensureSimulationTestActors(client) {
   const { data: profiles, error: profileError } = await client
     .from("profiles")
@@ -749,6 +774,7 @@ export default async function handler(request, response) {
     const rlsPolicyCheck = await checkRlsPolicies(client);
     const rpcGrantCheck = await checkRpcGrants(client);
     const profileIdentityCheck = await checkProfileIdentity(client);
+    const tournamentInvitationCheck = await checkTournamentInvitations(client);
     const failed = checks.filter((check) => !check.ok);
     const failedRpcs = rpcChecks.filter((check) => !check.ok);
     const simulationSeed = body?.ensureTestActors === true
@@ -760,19 +786,21 @@ export default async function handler(request, response) {
       ? await ensureCourtAdminAppointments(client)
       : null;
     sendJson(response, 200, {
-      ok: failed.length === 0 && failedRpcs.length === 0 && feedTriggerCheck.ok && rlsPolicyCheck.ok && rpcGrantCheck.ok && profileIdentityCheck.ok && (!simulationSeed || simulationSeed.ok) && (!courtAdminSeed || courtAdminSeed.ok),
+      ok: failed.length === 0 && failedRpcs.length === 0 && feedTriggerCheck.ok && rlsPolicyCheck.ok && rpcGrantCheck.ok && profileIdentityCheck.ok && tournamentInvitationCheck.ok && (!simulationSeed || simulationSeed.ok) && (!courtAdminSeed || courtAdminSeed.ok),
       failedCount: failed.length,
       failedRpcCount: failedRpcs.length,
       failedFeedTriggerCount: feedTriggerCheck.missing.length,
       failedRlsPolicyCount: rlsPolicyCheck.failed.length,
       failedRpcGrantCount: rpcGrantCheck.failed.length,
       failedProfileIdentityCount: profileIdentityCheck.failed.length,
+      failedTournamentInvitationCount: tournamentInvitationCheck.failed.length,
       checks,
       rpcChecks,
       feedTriggerCheck,
       rlsPolicyCheck,
       rpcGrantCheck,
       profileIdentityCheck,
+      tournamentInvitationCheck,
       simulationSeed,
       courtAdminSeed,
     });
