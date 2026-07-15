@@ -15430,11 +15430,13 @@ html[data-theme="light"] .app-main :is(
   text-shadow: var(--hero-copy-shadow);
 }
 
-/* Home hero keeps rank copy on the left and a compact court summary on the right. */
+/* Home hero keeps the next-match board below the rank copy on the left. */
 .rank-home .rank-summary-grid .home-rank-board-head {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(270px, 330px);
+  grid-template-columns: minmax(0, 1fr);
+  align-content: end;
   align-items: end;
+  justify-items: start;
   gap: 20px;
 }
 
@@ -15444,10 +15446,11 @@ html[data-theme="light"] .app-main :is(
 
 .home-hero-board {
   display: grid;
-  width: 100%;
+  width: min(100%, 720px);
+  max-width: 720px;
   min-width: 0;
   align-content: start;
-  justify-self: end;
+  justify-self: start;
   overflow: hidden;
   border: 1px solid var(--ui-card-border);
   border-radius: var(--ui-card-radius);
