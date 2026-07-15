@@ -396,22 +396,33 @@
 }
 
 .om-tournament-grid {
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .om-tournament-grid.compact {
-  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .om-tournament-card {
   display: grid;
-  gap: 9px;
+  grid-template-columns: minmax(0, 1fr) 124px;
+  grid-template-areas:
+    "copy action"
+    "meta action"
+    "state action";
+  align-items: start;
+  gap: 9px 12px;
   border: 1px solid rgba(255, 211, 108, 0.18);
   border-radius: var(--radius);
   background:
     linear-gradient(135deg, rgba(255, 211, 108, 0.08), transparent 42%),
     rgba(8, 11, 16, 0.72);
   padding: 12px;
+}
+
+.om-tournament-copy {
+  grid-area: copy;
+  min-width: 0;
 }
 
 .om-tournament-card h3 {
@@ -443,6 +454,7 @@
 }
 
 .om-tournament-meta {
+  grid-area: meta;
   display: flex;
   min-width: 0;
   align-items: center;
@@ -469,13 +481,32 @@
 }
 
 .om-tournament-detail-link {
-  justify-self: start;
+  width: 100%;
+  height: 100%;
+  min-height: 112px;
+  justify-content: center;
+  justify-self: stretch;
+  border-color: transparent;
+  background: var(--ui-button-bg-active);
+  color: var(--ui-button-color-active);
+}
+
+.om-tournament-detail-link:hover {
+  background: var(--ui-button-bg-hover);
+  color: var(--ui-button-color-active);
+  filter: none;
 }
 
 .om-tournament-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
+  grid-area: action;
+  display: grid;
+  align-self: stretch;
+  min-width: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
 }
 
 .om-tournament-actions button {
@@ -492,6 +523,7 @@
 }
 
 .om-tournament-state {
+  grid-area: state;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2313,6 +2345,20 @@ html[data-theme="light"] .tournament-schedule-list input {
 }
 
 @media (max-width: 720px) {
+  .om-tournament-card {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "copy"
+      "meta"
+      "state"
+      "action";
+  }
+
+  .om-tournament-detail-link {
+    height: auto;
+    min-height: 48px;
+  }
+
   .tournament-team-list article {
     grid-template-columns: 44px minmax(0, 1fr);
   }
@@ -4863,7 +4909,14 @@ html[data-theme="light"] .om-empty-state {
 }
 
 .om-tournament-actions {
+  grid-area: action;
   grid-template-columns: 1fr;
+  align-self: stretch;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
 }
 
 @media (max-width: 1120px) {

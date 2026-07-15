@@ -1244,7 +1244,7 @@ export default function Matches({ app }) {
             const pendingRows = teamRows.filter((row) => row.status !== "accepted");
             return (
               <article key={tournament.id} className="om-tournament-card">
-                <div>
+                <div className="om-tournament-copy">
                   <span className="om-kicker">{tournamentFormatLabels[tournament.format] ?? tournament.format}</span>
                   <h3>{tournament.title}</h3>
                   <p>
@@ -1264,7 +1264,7 @@ export default function Matches({ app }) {
                   <em>{pendingRows.length ? `${pendingRows.length}팀 승인 대기` : "참가 승인 완료"}</em>
                 </div>
                 <div className="om-tournament-actions">
-                  <Link className="button button-secondary button-md om-tournament-detail-link" to={`/app/tournaments/${tournament.id}`}>
+                  <Link className="button button-primary button-md om-tournament-detail-link" to={`/app/tournaments/${tournament.id}`}>
                     {tournament.format === "tournament" ? "대진표" : "리그표"}
                   </Link>
                 </div>
