@@ -17,6 +17,7 @@ import {
   detachRecruitingPartyPlayer,
   disputeMatch,
   endMatch,
+  forfeitTournamentMatch,
   handoffMatchRecorder,
   interestRecruitingPost,
   inviteRecruitingPlayers,
@@ -343,6 +344,9 @@ export function applyAuthoritativeMatchOperation(state, operation = {}) {
       break;
     case "updateTournamentMatchSchedule":
       next = updateTournamentMatchSchedule(state, operation.tournamentId, operation.matchId, operation.schedule ?? {});
+      break;
+    case "forfeitTournamentMatch":
+      next = forfeitTournamentMatch(state, operation.tournamentId, operation.matchId, operation.losingSide, operation.reason);
       break;
     case "agreeMatch":
       next = agreeMatch(state, operation.matchId, operation.sideName, operation.playerId);

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ClipboardList, Globe2, Lock, Trophy } from "lucide-react";
+import { ClipboardList, Globe2, Lock, Trophy, X } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import Button from "../components/common/Button.jsx";
 import Card from "../components/common/Card.jsx";
@@ -353,6 +353,7 @@ export default function CreateMatch({ app }) {
     mode: defaultMode,
     courtId: defaultCourt.id ?? "",
     court: defaultCourt.name,
+    tournamentCourtIds: defaultCourt.id ? [defaultCourt.id] : [],
     scheduledDate: today,
     scheduledTime: "20:30",
     teamAId: defaultTeamA?.id,
@@ -691,6 +692,10 @@ export default function CreateMatch({ app }) {
     () => registeredCourts.find((court) => court.id === draft.courtId || court.name === draft.court) ?? null,
     [draft.court, draft.courtId, registeredCourts],
   );
+  const selectedTournamentCourts = useMemo(() => {
+    const selectedIds = new Set(draft.tournamentCourtIds ?? []);
+    return registeredCourts.filter((court) => selectedIds.has(court.id));
+  }, [draft.tournamentCourtIds, registeredCourts]);
   const courtRequiredBlocked = !selectedCourt?.id;
   const ownsSelectedTeamA = myTeams.some((team) => team.id === draft.teamAId);
   const privateTeamDuplicate = !isPublicRoom && isTeamRoom && opponentPartyPlayerIds.some((playerId) => ownerSidePlayerIds.includes(playerId));
@@ -836,9 +841,32 @@ export default function CreateMatch({ app }) {
   const courtSummary = selectedCourt ?? defaultCourt;
   const courtPlayWarning = selectedCourt ? getCourtPlayWarning(selectedCourt, draft.mode) : "";
   const selectCourt = (court) => {
-    update({ courtId: court.id ?? "", court: court.name });
+    setSubmitFeedback("");
+    setDraft((current) => ({
+      ...current,
+      courtId: court.id ?? "",
+      court: court.name,
+      ...(isTournamentRoom && court.id
+        ? { tournamentCourtIds: Array.from(new Set([...(current.tournamentCourtIds ?? []), court.id])) }
+        : {}),
+    }));
     setCourtQuery(court.name);
     setCourtRegion(court.region);
+  };
+  const removeTournamentCourt = (courtId) => {
+    setSubmitFeedback("");
+    setDraft((current) => {
+      const nextIds = (current.tournamentCourtIds ?? []).filter((id) => id !== courtId);
+      if (!nextIds.length) return current;
+      if (current.courtId !== courtId) return { ...current, tournamentCourtIds: nextIds };
+      const nextCourt = registeredCourts.find((court) => court.id === nextIds[0]);
+      return {
+        ...current,
+        tournamentCourtIds: nextIds,
+        courtId: nextCourt?.id ?? "",
+        court: nextCourt?.name ?? "",
+      };
+    });
   };
 
   const update = (patch) => {
@@ -1263,6 +1291,8 @@ export default function CreateMatch({ app }) {
           mmrRangeMode: draft.mmrRangeMode,
           ageRestriction: draft.ageRestriction,
           allowedAgeGroups: ageRestrictionOption.allowedGroups,
+          allowedCourtIds: selectedTournamentCourts.map((court) => court.id),
+          allowedCourts: selectedTournamentCourts.map((court) => ({ id: court.id, name: court.name, region: court.region })),
           rosterReady: { teamA: false, teamB: false },
         },
       });
@@ -1773,6 +1803,30 @@ export default function CreateMatch({ app }) {
               <input value={draft.courtFee} placeholder="예약 금액/메모" onChange={(event) => update({ courtFee: event.target.value })} />
             ) : null}
           </div>
+          {isTournamentRoom ? (
+            <div className="tournament-court-pool" aria-label="대회 사용 구장">
+              <div>
+                <span>대회 사용 구장</span>
+                <strong>{selectedTournamentCourts.length}개</strong>
+              </div>
+              <div className="tournament-court-pool-list">
+                {selectedTournamentCourts.map((court) => (
+                  <span key={court.id}>
+                    {court.name}
+                    <button
+                      type="button"
+                      aria-label={`${court.name} 제외`}
+                      disabled={selectedTournamentCourts.length <= 1}
+                      onClick={() => removeTournamentCourt(court.id)}
+                      title={`${court.name} 제외`}
+                    >
+                      <X size={14} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : null}
           <div className={!selectedCourt || courtPlayWarning ? "tier-range-note tier-range-note-warning" : "tier-range-note"}>
             <div>
               <span>구장 속성</span>

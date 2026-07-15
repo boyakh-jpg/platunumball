@@ -68,6 +68,7 @@ import {
   submitCourtRequest,
   submitCourtReview,
   finishRefereeExamAttempt,
+  forfeitTournamentMatch,
   submitRefereeRequest,
   submitMatchThumbs,
   submitMatchResult,
@@ -156,6 +157,7 @@ const SERVER_OPERATION_ACTIONS = new Set([
   "approveTournamentTeam",
   "loadTournament",
   "updateTournamentMatchSchedule",
+  "forfeitTournamentMatch",
   "agreeMatch",
   "submitMatchResult",
   "handoffMatchRecorder",
@@ -223,6 +225,7 @@ const MATCH_OPERATION_ONLY_ACTIONS = new Set([
   "substituteMatchPlayer",
   "toggleMatchStar",
   "updateTournamentMatchSchedule",
+  "forfeitTournamentMatch",
   "removeMatchRoomPlayer",
   "setMatchRecordTeamRoster",
   "setMatchRoomPlayerPlacement",
@@ -2526,6 +2529,9 @@ export function useAppData(authUser = null, appLocation = null) {
       },
       updateTournamentMatchSchedule: (tournamentId, matchId, schedule) => {
         return applyMatchMutation(matchId, (prev) => updateTournamentMatchSchedule({ ...prev, currentUserId }, tournamentId, matchId, schedule), { action: "updateTournamentMatchSchedule", tournamentId, schedule });
+      },
+      forfeitTournamentMatch: (tournamentId, matchId, losingSide, reason = "팀 불참") => {
+        return applyMatchMutation(matchId, (prev) => forfeitTournamentMatch({ ...prev, currentUserId }, tournamentId, matchId, losingSide, reason), { action: "forfeitTournamentMatch", tournamentId, losingSide, reason });
       },
       agreeMatch: (matchId, sideName, playerId) => applyMatchMutation(matchId, (prev) => agreeMatch({ ...prev, currentUserId }, matchId, sideName, playerId), { action: "agreeMatch", sideName, playerId }),
       submitMatchResult: (matchId, result) => applyMatchMutation(matchId, (prev) => submitMatchResult({ ...prev, currentUserId }, matchId, result), { action: "submitMatchResult", result }),

@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { CalendarDays, ChevronLeft, Save, ShieldCheck, Trophy, UserRound } from "lucide-react";
+import { CalendarDays, ChevronLeft, Flag, Save, ShieldCheck, Trophy, UserRound } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Button from "../components/common/Button.jsx";
 import TierBadge from "../components/rating/TierBadge.jsx";
+import TeamEmblem from "../components/team/TeamEmblem.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
+import { getRegisteredCourts } from "../lib/courts.js";
 import { getUserHashtag } from "../lib/handles.js";
 import { MatchRoomModal } from "./Matches.jsx";
 import "../styles/matches-arena.css";
@@ -57,6 +59,13 @@ function formatWindow(tournament) {
 
 function getMatchTime(match) {
   return [match.scheduledDate, match.scheduledTime].filter(Boolean).join(" ") || match.scheduledAt || "일정 미정";
+}
+
+function isTournamentForfeitAvailable(match) {
+  if (!match || ["confirmed", "cancelled", "void", "voided", "closed"].includes(match.status) || match.startedAt || match.endedAt || match.result) return false;
+  if (!match.scheduledDate || !match.scheduledTime) return false;
+  const scheduledAt = new Date(`${match.scheduledDate}T${match.scheduledTime}`).getTime();
+  return Number.isFinite(scheduledAt) && scheduledAt <= Date.now();
 }
 
 function getTournamentMatches(tournament, matchesById, matches = []) {
@@ -294,13 +303,9 @@ function renderBracketSource(source, teamById) {
   const info = getBracketSourceInfo(source, teamById);
   return (
     <div className={`bracket-team-row ${info.state}`}>
-      <span
-        className={info.team ? "bracket-team-emblem" : "bracket-team-emblem placeholder"}
-        style={info.team ? { "--team-color": info.team.accent } : undefined}
-        aria-hidden="true"
-      >
-        {info.team?.name?.slice(0, 1) ?? (info.state === "bye" ? "B" : "?")}
-      </span>
+      {info.team
+        ? <TeamEmblem team={info.team} size="xs" />
+        : <span className="bracket-team-emblem placeholder" aria-hidden="true">{info.state === "bye" ? "B" : "?"}</span>}
       <span className="bracket-slot-copy">
         <strong>
           {info.team ? <TeamHoverCard team={info.team} as="span">{info.team.name}</TeamHoverCard> : info.label}
@@ -359,6 +364,8 @@ export default function TournamentDetail({ app }) {
   const [tournamentMissing, setTournamentMissing] = useState(false);
   const [scheduleDialog, setScheduleDialog] = useState(null);
   const [savingScheduleId, setSavingScheduleId] = useState("");
+  const [forfeitDialog, setForfeitDialog] = useState(null);
+  const [savingForfeitId, setSavingForfeitId] = useState("");
   const [selectedMatchId, setSelectedMatchId] = useState("");
   const teamById = Object.fromEntries(app.state.teams.map((team) => [team.id, team]));
   const userById = Object.fromEntries(app.state.users.map((user) => [user.id, user]));
@@ -423,6 +430,19 @@ export default function TournamentDetail({ app }) {
     teamBId: match.teamB?.teamId ?? "",
   }));
   const leagueStandings = tournament.format === "league" ? getLeagueStandings(teamRows, tournamentMatches) : [];
+  const registeredCourts = getRegisteredCourts(app.state);
+  const allowedCourtIds = new Set([
+    tournament.courtId,
+    ...(tournament.rules?.allowedCourtIds ?? []),
+  ].filter(Boolean));
+  const allowedCourtSnapshots = tournament.rules?.allowedCourts ?? [];
+  const tournamentCourts = registeredCourts.filter((court) => allowedCourtIds.has(court.id));
+  allowedCourtSnapshots.forEach((snapshot) => {
+    if (snapshot?.id && allowedCourtIds.has(snapshot.id) && !tournamentCourts.some((court) => court.id === snapshot.id)) tournamentCourts.push(snapshot);
+  });
+  if (!tournamentCourts.length && tournament.courtId) {
+    tournamentCourts.push({ id: tournament.courtId, name: tournament.court, region: tournament.region });
+  }
 
   const saveSchedule = (event, matchId) => {
     event.preventDefault();
@@ -430,21 +450,24 @@ export default function TournamentDetail({ app }) {
     const form = new FormData(event.currentTarget);
     const scheduledDate = String(form.get("scheduledDate") ?? "");
     const scheduledTime = String(form.get("scheduledTime") ?? "");
-    if (!scheduledDate || !scheduledTime) return;
-    setScheduleDialog({ mode: "confirm", matchId, scheduledDate, scheduledTime });
+    const courtId = String(form.get("courtId") ?? "");
+    const court = tournamentCourts.find((item) => item.id === courtId);
+    if (!scheduledDate || !scheduledTime || !court) return;
+    setScheduleDialog({ mode: "confirm", matchId, scheduledDate, scheduledTime, courtId, courtName: court.name });
   };
   const formatScheduleError = (message = "") => {
     if (message.includes("tournament_match_schedule_locked")) return "이미 시작·종료·취소·무효 처리된 경기는 일정을 바꿀 수 없습니다.";
     if (message.includes("invalid_tournament_match_schedule")) return "오늘부터 365일 안의 날짜와 시간을 입력해야 합니다.";
     if (message.includes("tournament_owner_required")) return "대회 생성자만 경기 일정을 저장할 수 있습니다.";
+    if (message.includes("tournament_court_not_allowed") || message.includes("tournament_court_not_active")) return "대회 사용 구장으로 등록된 승인 구장만 선택할 수 있습니다.";
     return message || "schedule_save_failed";
   };
   const confirmSchedule = async () => {
     if (scheduleDialog?.mode !== "confirm" || savingScheduleId) return;
-    const { matchId, scheduledDate, scheduledTime } = scheduleDialog;
+    const { matchId, scheduledDate, scheduledTime, courtId, courtName } = scheduleDialog;
     setSavingScheduleId(matchId);
     try {
-      const result = await app.actions.updateTournamentMatchSchedule(tournament.id, matchId, { scheduledDate, scheduledTime });
+      const result = await app.actions.updateTournamentMatchSchedule(tournament.id, matchId, { scheduledDate, scheduledTime, courtId, courtName });
       if (!result || result?.ok === false) throw new Error(result?.error ?? "schedule_save_failed");
       setScheduleDialog({ mode: "success", matchId, scheduledDate, scheduledTime });
     } catch (error) {
@@ -453,8 +476,30 @@ export default function TournamentDetail({ app }) {
       setSavingScheduleId("");
     }
   };
+  const formatForfeitError = (message = "") => {
+    if (message.includes("tournament_owner_required")) return "대회 개최자만 몰수패를 확정할 수 있습니다.";
+    if (message.includes("tournament_match_schedule_required")) return "경기 일정을 먼저 확정해야 합니다.";
+    if (message.includes("tournament_match_forfeit_before_start")) return "경기 시작 시각 이후에만 불참을 확정할 수 있습니다.";
+    if (message.includes("tournament_match_forfeit_locked")) return "이미 시작·결과·취소 처리가 된 경기입니다.";
+    return message || "tournament_forfeit_failed";
+  };
+  const confirmForfeit = async () => {
+    if (forfeitDialog?.mode !== "confirm" || savingForfeitId) return;
+    const { matchId, losingSide } = forfeitDialog;
+    setSavingForfeitId(matchId);
+    try {
+      const result = await app.actions.forfeitTournamentMatch(tournament.id, matchId, losingSide, "팀 불참");
+      if (!result || result?.ok === false) throw new Error(result?.error ?? "tournament_forfeit_failed");
+      setForfeitDialog({ mode: "success", matchId, losingSide });
+    } catch (error) {
+      setForfeitDialog({ mode: "error", matchId, message: formatForfeitError(error.message) });
+    } finally {
+      setSavingForfeitId("");
+    }
+  };
   const organizer = userById[tournament.createdBy] ?? null;
   const dialogMatch = scheduleDialog?.matchId ? matchesById[scheduleDialog.matchId] : null;
+  const forfeitMatch = forfeitDialog?.matchId ? matchesById[forfeitDialog.matchId] : null;
 
   return (
     <div className="page-stack tournament-detail-page">
@@ -505,7 +550,7 @@ export default function TournamentDetail({ app }) {
         <div className="tournament-team-list">
           {teamRows.map((row) => (
             <article key={row.teamId} className={row.status === "accepted" ? "accepted" : ""}>
-              <div className="team-emblem" style={{ "--team-color": row.team.accent }}>{row.team.name.slice(0, 1)}</div>
+              <TeamEmblem team={row.team} size="md" />
               <div className="tournament-team-copy">
                 <TeamHoverCard team={row.team}>{row.team.name}</TeamHoverCard>
                 <span>{row.team.region} · {row.team.homeCourt} · 주장 {row.captainName}</span>
@@ -599,18 +644,43 @@ export default function TournamentDetail({ app }) {
                 {leagueFixtures.map((fixture) => {
                   const match = matchesById[fixture.matchId];
                   const result = getLeagueMatchResult(match);
+                  const losingTeamName = match?.forfeitSide === "teamA" ? match.teamA?.name : match?.forfeitSide === "teamB" ? match.teamB?.name : "";
                   return (
-                    <article
+                    <form
                       key={fixture.matchId ?? `${fixture.teamAId}-${fixture.teamBId}`}
-                      className={result ? "completed" : ""}
-                      onClick={() => match?.id && setSelectedMatchId(match.id)}
+                      className={result ? "league-fixture-card completed" : "league-fixture-card"}
+                      onSubmit={(event) => match?.id && saveSchedule(event, match.id)}
                     >
-                      <span>{fixture.fixture}경기</span>
-                      <TeamHoverCard team={teamById[fixture.teamAId]}><strong>{teamById[fixture.teamAId]?.name ?? match?.teamA.name ?? "TBD"}</strong></TeamHoverCard>
-                      <b>{result ? `${result.scoreA}:${result.scoreB}` : "vs"}</b>
-                      <TeamHoverCard team={teamById[fixture.teamBId]}><strong>{teamById[fixture.teamBId]?.name ?? match?.teamB.name ?? "TBD"}</strong></TeamHoverCard>
-                      <em>{match ? getMatchTime(match) : "일정 미정"}</em>
-                    </article>
+                      <div className="league-fixture-head">
+                        <span>{fixture.fixture}경기</span>
+                        {match?.id ? <button type="button" onClick={() => setSelectedMatchId(match.id)}>방 보기</button> : <b>대기</b>}
+                      </div>
+                      <div className="league-fixture-matchup">
+                        <TeamHoverCard team={teamById[fixture.teamAId]}><strong>{teamById[fixture.teamAId]?.name ?? match?.teamA.name ?? "TBD"}</strong></TeamHoverCard>
+                        <b>{result ? `${result.scoreA}:${result.scoreB}` : "vs"}</b>
+                        <TeamHoverCard team={teamById[fixture.teamBId]}><strong>{teamById[fixture.teamBId]?.name ?? match?.teamB.name ?? "TBD"}</strong></TeamHoverCard>
+                      </div>
+                      <em>{losingTeamName ? `${losingTeamName} 불참 · 1:0 몰수` : match ? `${getMatchTime(match)} · ${match.court ?? tournament.court}` : "일정 미정"}</em>
+                      {match && !result ? (
+                        <div className={canManageSchedule ? "tournament-inline-schedule" : "tournament-inline-schedule locked"}>
+                          <input type="date" name="scheduledDate" min={todayValue} max={maxScheduleDate} defaultValue={match.scheduledDate ?? ""} disabled={!canManageSchedule} aria-label="경기 날짜" />
+                          <input type="time" name="scheduledTime" defaultValue={match.scheduledTime ?? ""} disabled={!canManageSchedule} aria-label="경기 시간" />
+                          <select name="courtId" defaultValue={match.courtId ?? tournament.courtId ?? tournamentCourts[0]?.id} disabled={!canManageSchedule} aria-label="경기 구장">
+                            {tournamentCourts.map((court) => <option key={court.id} value={court.id}>{court.name}</option>)}
+                          </select>
+                          <button type="submit" disabled={!canManageSchedule || savingScheduleId === match.id}><Save size={14} /> {savingScheduleId === match.id ? "저장 중" : "저장"}</button>
+                          {canManageSchedule ? (
+                            <button
+                              type="button"
+                              className="tournament-forfeit-button"
+                              disabled={!isTournamentForfeitAvailable(match)}
+                              title={isTournamentForfeitAvailable(match) ? "팀 불참 처리" : "경기 시작 시각 이후 사용 가능"}
+                              onClick={() => setForfeitDialog({ mode: "choose", matchId: match.id })}
+                            ><Flag size={14} /> 몰수</button>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </form>
                   );
                 })}
               </div>
@@ -619,7 +689,7 @@ export default function TournamentDetail({ app }) {
         )}
       </section>
 
-      {tournamentMatches.length ? (
+      {tournament.format === "tournament" && tournamentMatches.length ? (
         <section className="tournament-section">
           <div className="om-list-head">
             <div>
@@ -639,7 +709,19 @@ export default function TournamentDetail({ app }) {
                 <span>{match.status === "confirmed" ? "확정" : match.status === "agreed" ? "예정" : "대기"}</span>
                 <input type="date" name="scheduledDate" min={todayValue} max={maxScheduleDate} defaultValue={match.scheduledDate ?? ""} disabled={!canManageSchedule} aria-label="경기 날짜" />
                 <input type="time" name="scheduledTime" defaultValue={match.scheduledTime ?? ""} disabled={!canManageSchedule} aria-label="경기 시간" />
+                <select name="courtId" defaultValue={match.courtId ?? tournament.courtId ?? tournamentCourts[0]?.id} disabled={!canManageSchedule} aria-label="경기 구장">
+                  {tournamentCourts.map((court) => <option key={court.id} value={court.id}>{court.name}</option>)}
+                </select>
                 <button type="submit" disabled={!canManageSchedule || savingScheduleId === match.id}><Save size={14} /> {savingScheduleId === match.id ? "저장 중" : "저장"}</button>
+                {canManageSchedule ? (
+                  <button
+                    type="button"
+                    className="tournament-forfeit-button"
+                    disabled={!isTournamentForfeitAvailable(match)}
+                    title={isTournamentForfeitAvailable(match) ? "팀 불참 처리" : "경기 시작 시각 이후 사용 가능"}
+                    onClick={() => setForfeitDialog({ mode: "choose", matchId: match.id })}
+                  ><Flag size={14} /> 몰수</button>
+                ) : null}
               </form>
             ))}
           </div>
@@ -652,7 +734,7 @@ export default function TournamentDetail({ app }) {
             <strong>{scheduleDialog.mode === "confirm" ? "경기 일정을 저장할까요?" : scheduleDialog.mode === "success" ? "일정을 저장했습니다." : "일정을 저장하지 못했습니다."}</strong>
             <p>
               {scheduleDialog.mode === "confirm"
-                ? `${dialogMatch?.teamA?.name ?? "A"} vs ${dialogMatch?.teamB?.name ?? "B"} · ${scheduleDialog.scheduledDate} ${scheduleDialog.scheduledTime}`
+                ? `${dialogMatch?.teamA?.name ?? "A"} vs ${dialogMatch?.teamB?.name ?? "B"} · ${scheduleDialog.scheduledDate} ${scheduleDialog.scheduledTime} · ${scheduleDialog.courtName}`
                 : scheduleDialog.mode === "success"
                   ? "양 팀장에게 출전·후보 명단 구성 알림을 보냈습니다."
                   : `서버 저장 실패: ${scheduleDialog.message}`}
@@ -665,6 +747,46 @@ export default function TournamentDetail({ app }) {
                 </>
               ) : (
                 <Button type="button" onClick={() => setScheduleDialog(null)}>확인</Button>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {forfeitDialog ? (
+        <div className="app-confirm-backdrop" role="presentation" onMouseDown={() => !savingForfeitId && setForfeitDialog(null)}>
+          <div className="app-confirm-dialog" role="dialog" aria-modal="true" aria-label="대회 경기 몰수 처리" onMouseDown={(event) => event.stopPropagation()}>
+            <strong>
+              {forfeitDialog.mode === "choose"
+                ? "불참 팀을 선택하세요."
+                : forfeitDialog.mode === "confirm"
+                  ? "1:0 몰수패로 확정할까요?"
+                  : forfeitDialog.mode === "success"
+                    ? "몰수패를 확정했습니다."
+                    : "몰수패를 확정하지 못했습니다."}
+            </strong>
+            <p>
+              {forfeitDialog.mode === "choose"
+                ? `${forfeitMatch?.teamA?.name ?? "A팀"} vs ${forfeitMatch?.teamB?.name ?? "B팀"}`
+                : forfeitDialog.mode === "confirm"
+                  ? `${forfeitDialog.losingSide === "teamA" ? forfeitMatch?.teamA?.name ?? "A팀" : forfeitMatch?.teamB?.name ?? "B팀"} 불참 · 상대 팀 1:0 몰수승 · MMR 미반영`
+                  : forfeitDialog.mode === "success"
+                    ? "리그 승패 또는 다음 토너먼트 라운드에 반영했습니다."
+                    : `서버 저장 실패: ${forfeitDialog.message}`}
+            </p>
+            <div className="app-confirm-actions tournament-forfeit-actions">
+              {forfeitDialog.mode === "choose" ? (
+                <>
+                  <Button type="button" variant="secondary" onClick={() => setForfeitDialog(null)}>취소</Button>
+                  <Button type="button" variant="secondary" onClick={() => setForfeitDialog((current) => ({ ...current, mode: "confirm", losingSide: "teamA" }))}>{forfeitMatch?.teamA?.name ?? "A팀"} 불참</Button>
+                  <Button type="button" variant="secondary" onClick={() => setForfeitDialog((current) => ({ ...current, mode: "confirm", losingSide: "teamB" }))}>{forfeitMatch?.teamB?.name ?? "B팀"} 불참</Button>
+                </>
+              ) : forfeitDialog.mode === "confirm" ? (
+                <>
+                  <Button type="button" variant="secondary" disabled={Boolean(savingForfeitId)} onClick={() => setForfeitDialog((current) => ({ ...current, mode: "choose", losingSide: "" }))}>이전</Button>
+                  <Button type="button" disabled={Boolean(savingForfeitId)} onClick={confirmForfeit}>{savingForfeitId ? "처리 중" : "몰수 확정"}</Button>
+                </>
+              ) : (
+                <Button type="button" onClick={() => setForfeitDialog(null)}>확인</Button>
               )}
             </div>
           </div>

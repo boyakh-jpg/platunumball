@@ -2844,6 +2844,24 @@ export function updateTournamentMatchSchedule(state, tournamentId, matchId, sche
 
   const scheduledDate = String(schedule.scheduledDate ?? "").slice(0, 10);
   const scheduledTime = String(schedule.scheduledTime ?? "").slice(0, 5);
+  const allowedCourtIds = new Set([
+    tournament.courtId,
+    ...(tournament.rules?.allowedCourtIds ?? []),
+  ].filter(Boolean));
+  const courtId = String(schedule.courtId ?? match.courtId ?? tournament.courtId ?? "");
+  const selectedCourt = getRegisteredCourts(state).find((court) => court.id === courtId) ?? null;
+  if (!selectedCourt || (allowedCourtIds.size && !allowedCourtIds.has(courtId))) {
+    return {
+      ...state,
+      notifications: [{
+        id: makeId("n"),
+        title: "일정 수정 불가",
+        body: "대회 사용 구장으로 등록된 승인 구장만 선택할 수 있습니다.",
+        tone: "match",
+        matchId,
+      }, ...state.notifications],
+    };
+  }
   const maxDays = match.tournamentId ? SCHEDULE_MAX_DAYS : ROOM_SCHEDULE_MAX_DAYS;
   if (!isScheduleDateInAllowedWindow(scheduledDate, new Date(), maxDays)) {
     return { ...state, notifications: [getInvalidScheduleNotification(maxDays), ...state.notifications] };
@@ -2853,6 +2871,8 @@ export function updateTournamentMatchSchedule(state, tournamentId, matchId, sche
     scheduledDate,
     scheduledTime,
     scheduledAt: getScheduleText(scheduledDate, scheduledTime),
+    courtId: selectedCourt.id,
+    court: selectedCourt.name,
     rules: {
       ...(match.rules ?? {}),
       rosterReady: {
@@ -3272,6 +3292,77 @@ export function handoffMatchRecorder(state, matchId, sideName, nextRecorderId) {
       ...state.notifications,
     ],
   };
+}
+
+export function forfeitTournamentMatch(state, tournamentId, matchId, losingSide, reason = "팀 불참") {
+  const tournament = (state.tournaments ?? []).find((item) => item.id === tournamentId);
+  const match = (state.matches ?? []).find((item) => item.id === matchId && item.tournamentId === tournamentId);
+  if (!tournament || !match || !["teamA", "teamB"].includes(losingSide)) return state;
+
+  if (tournament.createdBy !== state.currentUserId) {
+    return {
+      ...state,
+      notifications: [{ id: makeId("n"), title: "몰수 처리 불가", body: "대회 개최자만 불참을 확정할 수 있습니다.", tone: "match", matchId }, ...state.notifications],
+    };
+  }
+
+  const scheduledAt = new Date(`${match.scheduledDate ?? ""}T${match.scheduledTime || "00:00"}`).getTime();
+  const locked = ["confirmed", "cancelled", "void", "voided", "closed"].includes(match.status) || match.startedAt || match.endedAt || match.result;
+  if (locked || !Number.isFinite(scheduledAt) || Date.now() < scheduledAt) {
+    return {
+      ...state,
+      notifications: [{ id: makeId("n"), title: "몰수 처리 불가", body: "확정된 경기 시작 시각 이후, 시작 전 경기만 몰수 처리할 수 있습니다.", tone: "match", matchId }, ...state.notifications],
+    };
+  }
+
+  const scoreA = losingSide === "teamA" ? 0 : 1;
+  const scoreB = losingSide === "teamB" ? 0 : 1;
+  const now = new Date().toISOString();
+  const excludedPlayerIds = Array.from(new Set([
+    ...(match.teamA?.players ?? []).map((player) => player.id),
+    ...(match.teamB?.players ?? []).map((player) => player.id),
+  ].filter(Boolean)));
+  const confirmedMatch = {
+    ...match,
+    status: "confirmed",
+    result: {
+      scoreA,
+      scoreB,
+      playerStats: {},
+      statSubmissions: {},
+      submittedBy: state.currentUserId,
+      submittedAt: now,
+    },
+    teamA: { ...match.teamA, score: scoreA },
+    teamB: { ...match.teamB, score: scoreB },
+    forfeitSide: losingSide,
+    forfeitReason: reason,
+    forfeitedAt: now,
+    forfeitedBy: state.currentUserId,
+    mmrExcludedPlayerIds: excludedPlayerIds,
+    rules: {
+      ...(match.rules ?? {}),
+      forfeit: { losingSide, reason, decidedBy: state.currentUserId, decidedAt: now, mmrCommitted: false },
+    },
+    endedAt: now,
+    confirmedAt: now,
+  };
+  const winnerName = losingSide === "teamA" ? match.teamB?.name ?? "B팀" : match.teamA?.name ?? "A팀";
+  const nextState = {
+    ...state,
+    matches: state.matches.map((item) => (item.id === matchId ? confirmedMatch : item)),
+    notifications: [{
+      id: makeId("n"),
+      title: "대회 경기 몰수 확정",
+      body: `${winnerName} 1:0 몰수승. MMR에는 반영하지 않습니다.`,
+      tone: "match",
+      type: "tournament_match_forfeit",
+      matchId,
+      tournamentId,
+      createdAt: now,
+    }, ...state.notifications],
+  };
+  return advanceTournamentAfterMatch(nextState, confirmedMatch);
 }
 
 function currentUserCanSubstituteMatchSide(state, match, sideName) {

@@ -15553,3 +15553,77 @@ html[data-theme="light"] .app-main :is(
     font-size: 0.66rem;
   }
 }
+
+/* Tournament court pool */
+.tournament-court-pool {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+}
+
+.tournament-court-pool > div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.tournament-court-pool > div:first-child strong {
+  color: var(--rb-orange);
+}
+
+.tournament-court-pool-list {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tournament-court-pool-list > span {
+  display: inline-flex;
+  min-width: 0;
+  min-height: 34px;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--ui-control-border);
+  border-radius: var(--ui-button-radius);
+  background: var(--ui-control-bg);
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 850;
+  padding: 5px 6px 5px 10px;
+}
+
+.tournament-court-pool-list button {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0;
+}
+
+.tournament-court-pool-list button:hover,
+.tournament-court-pool-list button:focus-visible {
+  background: color-mix(in srgb, var(--rb-orange) 14%, transparent);
+  color: var(--rb-orange);
+}
+
+.tournament-court-pool-list button:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 1px;
+}
+
+.tournament-court-pool-list button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}

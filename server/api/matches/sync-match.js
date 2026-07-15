@@ -381,7 +381,7 @@ export async function queueMatchDiscordDeliveries(supabase, match = {}, action =
     await cancelPendingDiscordDeliveryPrefixes(supabase, match.id, MATCH_SCHEDULED_NOTICE_PREFIXES);
     await cancelPendingMatchNotificationPrefixes(supabase, match.id, MATCH_SCHEDULED_NOTICE_PREFIXES);
   }
-  if (["endMatch", "submitMatchResult", "disputeMatch", "approveMatch", "resumeMatchApproval"].includes(action)) {
+  if (["endMatch", "submitMatchResult", "disputeMatch", "approveMatch", "resumeMatchApproval", "forfeitTournamentMatch"].includes(action)) {
     await cancelPendingDiscordDeliveryPrefixes(supabase, match.id, [
       ...MATCH_SCHEDULED_NOTICE_PREFIXES,
       ...MATCH_POSTGAME_NOTICE_PREFIXES,
@@ -988,6 +988,7 @@ const CREATE_MATCH_ACTIONS = new Set([
 
 const OPERATOR_MATCH_ACTIONS = new Set([
   "updateTournamentMatchSchedule",
+  "forfeitTournamentMatch",
   "handoffMatchRecorder",
   "checkInMatchPlayer",
   "requestMatchRefereeAbsence",
@@ -1173,6 +1174,7 @@ const SQL_REDUCER_MATCH_ACTIONS = new Set([
   "deleteSoloRecord",
   "disputeMatch",
   "endMatch",
+  "forfeitTournamentMatch",
   "handoffMatchRecorder",
   "removeMatchLatePlayer",
   "removeMatchRoomPlayer",
@@ -1200,6 +1202,7 @@ function isMissingSqlMatchReducer(error = {}) {
     message.includes("rankball_match_checkin_action") ||
     message.includes("rankball_match_dispute_action") ||
     message.includes("rankball_match_end_action") ||
+    message.includes("rankball_tournament_match_forfeit_action") ||
     message.includes("rankball_match_late_player_action") ||
     message.includes("rankball_match_referee_absence_action") ||
     message.includes("rankball_match_result_action") ||
@@ -1235,6 +1238,7 @@ function canUseSqlMatchActionWithoutSnapshot(operation = {}) {
     "deleteSoloRecord",
     "disputeMatch",
     "endMatch",
+    "forfeitTournamentMatch",
     "handoffMatchRecorder",
     "addMatchLatePlayer",
     "removeMatchLatePlayer",
@@ -1270,7 +1274,11 @@ function getSqlMatchReloadPredicate(operation = {}) {
   }
   if (action === "updateTournamentMatchSchedule") {
     return (match) => match?.scheduledDate === operation.schedule?.scheduledDate &&
-      String(match?.scheduledTime || "").slice(0, 5) === String(operation.schedule?.scheduledTime || "").slice(0, 5);
+      String(match?.scheduledTime || "").slice(0, 5) === String(operation.schedule?.scheduledTime || "").slice(0, 5) &&
+      (!operation.schedule?.courtId || match?.courtId === operation.schedule.courtId);
+  }
+  if (action === "forfeitTournamentMatch") {
+    return (match) => match?.status === "confirmed" && match?.forfeitSide === operation.losingSide;
   }
   if (action === "approveMatch") {
     return (match) => match?.status === "confirmed" || (match?.approvals?.[operation.sideName] ?? []).includes(operation.playerId);
@@ -1310,6 +1318,21 @@ async function applySqlMatchAction(context, operation = {}, match = {}) {
       p_tournament_id: operation.tournamentId ?? "",
       p_match_id: operation.matchId,
       p_schedule: operation.schedule ?? {},
+    });
+    if (error) {
+      if (isMissingSqlMatchReducer(error)) return null;
+      throw error;
+    }
+    return { ok: true, ...(data && typeof data === "object" ? data : {}), matchId: operation.matchId };
+  }
+
+  if (operation.action === "forfeitTournamentMatch" && operation.matchId) {
+    const { data, error } = await context.supabase.rpc("rankball_tournament_match_forfeit_action", {
+      p_actor_profile_id: context.profileId,
+      p_tournament_id: operation.tournamentId ?? "",
+      p_match_id: operation.matchId,
+      p_losing_side: operation.losingSide ?? "",
+      p_reason: operation.reason ?? "팀 불참",
     });
     if (error) {
       if (isMissingSqlMatchReducer(error)) return null;
@@ -1972,7 +1995,7 @@ export default async function handler(request, response) {
         );
         let discordDeliveryCount = Number(sqlResult.discordDeliveryCount ?? 0);
         let discordDeliveryError = sqlResult.discordDeliveryError ?? null;
-        if (["submitMatchResult", "approveMatch", "resumeMatchApproval"].includes(operation.action) && syncedMatch?.id) {
+        if (["submitMatchResult", "approveMatch", "resumeMatchApproval", "forfeitTournamentMatch"].includes(operation.action) && syncedMatch?.id) {
           try {
             discordDeliveryCount = await withTimeout(
               queueMatchDiscordDeliveries(context.supabase, syncedMatch, operation.action),

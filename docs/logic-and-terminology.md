@@ -2472,3 +2472,13 @@ flowchart TD
 7. 브라우저의 새 모집방 생성 요청에 id가 없으면 `/api/recruiting/sync-post`가 충돌 가능성이 낮은 `q_` id를 한 번 생성해 DB reducer에 전달한다. 방 규칙 검증, advisory lock, 중복 검사, insert는 계속 DB RPC가 담당한다.
 8. Supabase 프론트는 모집·경기·토너먼트 operation에서 로컬 reducer를 먼저 실행하지 않고 서버가 반환한 DB row만 병합한다. 로컬 reducer는 비-Supabase demo mode에만 남긴다.
 9. 원격 DB 경기의 status/result/score/종료 시각은 미래 일정 보정으로 덮지 않는다. 미래 lifecycle 복구는 local/demo state에만 적용한다.
+
+## 2026-07-15 대회 일정·구장·불참패 권위
+
+1. 대회 생성자는 대회 생성 시 사용할 승인 구장 목록을 `tournaments.rules.allowedCourtIds`에 고정한다. 기존 대회의 `court_id`는 항상 허용 구장으로 본다.
+2. 토너먼트와 리그 경기 일정은 사전 조율 후 대회 생성자만 확정·변경한다. 날짜·시간·허용 구장은 `rankball_tournament_match_schedule_action()`이 transaction lock 안에서 다시 검증한다.
+3. 일정 저장은 선택한 허용 구장을 경기 snapshot에 함께 저장하고 양 팀 주장에게 출전·후보 명단 구성 알림을 갱신한다.
+4. 팀 불참 처리는 대회 생성자만 할 수 있고, 일정이 확정된 경기의 시작 시각 이후이면서 아직 시작·종료·취소·무효·결과 확정 전일 때만 허용한다.
+5. 불참 팀은 `0`, 상대 팀은 `1`로 1:0 몰수 결과를 확정한다. 선수·팀 MMR은 반영하지 않고 리그 승패와 토너먼트 다음 라운드 진출에는 반영한다.
+6. 불참 side, 사유, 처리자, 처리 시각은 `matches.rules.forfeit`에 남기고 양 팀 주장에게 결과 알림을 보낸다.
+7. 일정 저장과 불참 처리는 브라우저 snapshot을 원본으로 받지 않는다. service-role 전용 DB RPC, tournament/match advisory lock, row lock을 사용한다.

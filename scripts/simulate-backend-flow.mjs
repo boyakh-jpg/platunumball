@@ -1370,6 +1370,15 @@ function getKstFutureSchedule(offsetHours = 48) {
   };
 }
 
+function getKstCurrentDate() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
 async function countPendingRowsByPrefixes(table, matchId, prefixes = []) {
   if (!supabase) return { skipped: true, reason: "service_role_key_missing" };
   const kind = table === "discord_notification_deliveries" ? "discord" : "notice";
@@ -6015,6 +6024,88 @@ async function runTournamentRepresentativeTeamGuardScenario({
     { participatingTeamIds, nonRepresentativeTeamId },
   );
 
+  await expectRejected(
+    `${ids.label}:rejectUnapprovedCourt`,
+    () => syncMatchAs(creatorLogin, {
+      action: "updateTournamentMatchSchedule",
+      tournamentId: ids.tournamentId,
+      matchId: matches[0].id,
+      schedule: { scheduledDate: getKstCurrentDate(), scheduledTime: "00:00", courtId: "court-not-allowed" },
+    }),
+    ["tournament_court_not_allowed"],
+  );
+  await step(`${ids.label}:scheduleForfeitFixture`, () => syncMatchAs(creatorLogin, {
+    action: "updateTournamentMatchSchedule",
+    tournamentId: ids.tournamentId,
+    matchId: matches[0].id,
+    schedule: { scheduledDate: getKstCurrentDate(), scheduledTime: "00:00", courtId: "c1" },
+  }));
+  await step(`${ids.label}:scheduleFutureFixture`, () => syncMatchAs(creatorLogin, {
+    action: "updateTournamentMatchSchedule",
+    tournamentId: ids.tournamentId,
+    matchId: matches[1].id,
+    schedule: { scheduledDate: startDate, scheduledTime: "23:59", courtId: "c1" },
+  }));
+  await expectRejected(
+    `${ids.label}:rejectForfeitBeforeStart`,
+    () => syncMatchAs(creatorLogin, {
+      action: "forfeitTournamentMatch",
+      tournamentId: ids.tournamentId,
+      matchId: matches[1].id,
+      losingSide: "teamA",
+      reason: "팀 불참",
+    }),
+    ["tournament_match_forfeit_before_start"],
+  );
+  await expectRejected(
+    `${ids.label}:rejectForfeitByNonOwner`,
+    () => syncMatchAs(teamBCaptainLogin, {
+      action: "forfeitTournamentMatch",
+      tournamentId: ids.tournamentId,
+      matchId: matches[0].id,
+      losingSide: "teamA",
+      reason: "팀 불참",
+    }),
+    ["tournament_owner_required"],
+  );
+  const forfeitResult = await step(`${ids.label}:confirmForfeit`, () => syncMatchAs(creatorLogin, {
+    action: "forfeitTournamentMatch",
+    tournamentId: ids.tournamentId,
+    matchId: matches[0].id,
+    losingSide: "teamA",
+    reason: "팀 불참",
+  }));
+  assertFlow(
+    forfeitResult?.sqlReducer === true && forfeitResult?.advisoryLocked === true,
+    "tournament forfeit SQL reducer not used",
+    forfeitResult,
+  );
+  const forfeitedMatch = await step(`${ids.label}:loadForfeitedMatch`, () => loadMatchAs(creatorLogin, matches[0].id));
+  assertFlow(
+    forfeitedMatch?.status === "confirmed" &&
+      forfeitedMatch?.forfeitSide === "teamA" &&
+      forfeitedMatch?.result?.scoreA === 0 &&
+      forfeitedMatch?.result?.scoreB === 1 &&
+      forfeitedMatch?.ratingResult == null &&
+      forfeitedMatch?.teamRatingResult == null,
+    "tournament forfeit result or MMR exclusion mismatch",
+    forfeitedMatch,
+  );
+  const captainLoginByTeamId = new Map([
+    [representativeTeamId, creatorLogin],
+    [teamBId, teamBCaptainLogin],
+    [teamCId, teamCCaptainLogin],
+  ]);
+  for (const teamId of [forfeitedMatch.teamA?.teamId, forfeitedMatch.teamB?.teamId]) {
+    const captainLogin = captainLoginByTeamId.get(teamId);
+    const captainHome = await step(`${ids.label}:loadForfeitCaptainHome:${teamId}`, () => loadHomeAs(captainLogin));
+    assertFlow(
+      (captainHome.notifications ?? []).some((notification) => notification.type === "tournament_match_forfeit" && notification.matchId === forfeitedMatch.id),
+      "tournament forfeit captain notification missing",
+      { teamId, notifications: captainHome.notifications },
+    );
+  }
+
   return {
     label: ids.label,
     tournamentId: ids.tournamentId,
@@ -6023,6 +6114,9 @@ async function runTournamentRepresentativeTeamGuardScenario({
     blockedTeamId: nonRepresentativeTeamId,
     createdMatchCount: matches.length,
     autoSelectedPlayerCount: 0,
+    forfeitMatchId: forfeitedMatch.id,
+    forfeitScore: `${forfeitedMatch.result.scoreA}:${forfeitedMatch.result.scoreB}`,
+    forfeitMmrCommitted: Boolean(forfeitedMatch.ratingResult || forfeitedMatch.teamRatingResult),
     inviteNotificationCheck,
     inviteDiscordDeliveryCheck,
     inviteResolutionCheck,

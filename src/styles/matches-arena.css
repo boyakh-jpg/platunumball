@@ -2125,6 +2125,201 @@ html[data-theme="light"] .tournament-schedule-list input {
   }
 }
 
+.tournament-team-list article {
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 10px 12px;
+}
+
+.league-fixture-card {
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+  border: 1px solid var(--ui-card-border);
+  border-radius: var(--ui-card-radius);
+  background: var(--ui-card-bg);
+  padding: 12px;
+}
+
+.league-fixture-card.completed {
+  border-color: color-mix(in srgb, var(--green) 36%, var(--ui-card-border));
+  background: color-mix(in srgb, var(--green) 8%, var(--ui-card-bg));
+}
+
+.league-fixture-head,
+.league-fixture-matchup {
+  display: grid;
+  min-width: 0;
+  align-items: center;
+}
+
+.league-fixture-head {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.league-fixture-head > span {
+  color: var(--gold);
+  font-size: 0.72rem;
+  font-weight: 950;
+}
+
+.league-fixture-head button,
+.league-fixture-head b {
+  min-height: 30px;
+  border: 1px solid var(--ui-button-border);
+  border-radius: var(--ui-button-radius);
+  background: var(--ui-button-bg);
+  color: var(--ui-button-color);
+  font-size: 0.72rem;
+  font-weight: 900;
+  padding: 0 9px;
+}
+
+.league-fixture-head button {
+  cursor: pointer;
+}
+
+.league-fixture-matchup {
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 10px;
+}
+
+.league-fixture-matchup > .team-hover-trigger {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.league-fixture-matchup > .team-hover-trigger:last-child {
+  text-align: right;
+}
+
+.league-fixture-matchup > b {
+  color: var(--gold);
+  font-size: 0.85rem;
+}
+
+.league-fixture-card > em {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-style: normal;
+  font-weight: 850;
+}
+
+.tournament-inline-schedule {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) 105px minmax(140px, 1fr) auto auto;
+  gap: 7px;
+  align-items: center;
+}
+
+.tournament-inline-schedule input,
+.tournament-inline-schedule select,
+.tournament-schedule-list select {
+  width: 100%;
+  min-width: 0;
+  min-height: 36px;
+  border: 1px solid var(--ui-control-border);
+  border-radius: var(--ui-button-radius);
+  background: var(--ui-control-bg);
+  color: var(--text);
+  font-size: 0.76rem;
+  font-weight: 850;
+  padding: 0 8px;
+}
+
+.tournament-inline-schedule button,
+.tournament-forfeit-button {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 1px solid var(--ui-button-border);
+  border-radius: var(--ui-button-radius);
+  background: var(--ui-button-bg);
+  color: var(--ui-button-color);
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 900;
+  padding: 0 9px;
+  white-space: nowrap;
+}
+
+.tournament-inline-schedule button[type="submit"] {
+  border-color: transparent;
+  background: var(--ui-button-bg-active);
+  color: var(--ui-button-color-active);
+}
+
+.tournament-forfeit-button {
+  color: var(--rb-orange);
+}
+
+.tournament-inline-schedule.locked,
+.tournament-inline-schedule :disabled,
+.tournament-forfeit-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.tournament-schedule-list form {
+  grid-template-columns: minmax(180px, 1fr) 62px 140px 105px minmax(150px, 0.8fr) 82px 82px;
+}
+
+.tournament-forfeit-actions {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.om-tournament-actions {
+  grid-template-columns: 1fr;
+}
+
+.om-tournament-detail-link {
+  width: 100%;
+  justify-content: center;
+}
+
+@media (max-width: 1120px) {
+  .tournament-schedule-list form {
+    grid-template-columns: minmax(0, 1fr) minmax(130px, 0.8fr) 105px;
+  }
+
+  .tournament-schedule-list .tournament-match-open,
+  .tournament-schedule-list form > span {
+    grid-column: auto;
+  }
+
+  .tournament-schedule-list input[type="date"],
+  .tournament-schedule-list select {
+    grid-column: span 1;
+  }
+}
+
+@media (max-width: 720px) {
+  .tournament-team-list article {
+    grid-template-columns: 44px minmax(0, 1fr);
+  }
+
+  .tournament-inline-schedule,
+  .tournament-schedule-list form,
+  .tournament-forfeit-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .tournament-inline-schedule input,
+  .tournament-inline-schedule select,
+  .tournament-inline-schedule button,
+  .tournament-schedule-list input,
+  .tournament-schedule-list select,
+  .tournament-schedule-list button,
+  .tournament-schedule-list .tournament-match-open {
+    width: 100%;
+  }
+}
+
 @media (max-width: 640px) {
   .om-calendar-panel {
     grid-template-columns: 1fr;
@@ -4616,5 +4811,58 @@ html[data-theme="light"] .om-match-stats span {
   .om-card-kicker {
     overflow: visible;
     flex-wrap: wrap;
+  }
+}
+
+/* Keep collection wrappers transparent after all shared surface declarations. */
+.om-match-page > .om-calendar-panel,
+.om-match-page .om-calendar-summary,
+.om-match-page > .om-tournament-panel,
+.tournament-detail-page > .tournament-section > .tournament-schedule-list,
+.om-calendar-summary > .om-calendar-filter-bar,
+.tournament-detail-page > .tournament-section > .om-list-head,
+.om-match-page > .om-tournament-panel > .om-list-head,
+html[data-theme="light"] .om-match-page > .om-calendar-panel,
+html[data-theme="light"] .om-match-page .om-calendar-summary,
+html[data-theme="light"] .om-match-page > .om-tournament-panel,
+html[data-theme="light"] .tournament-detail-page > .tournament-section > .tournament-schedule-list,
+html[data-theme="light"] .om-calendar-summary > .om-calendar-filter-bar,
+html[data-theme="light"] .tournament-detail-page > .tournament-section > .om-list-head,
+html[data-theme="light"] .om-match-page > .om-tournament-panel > .om-list-head {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+
+.tournament-team-list article {
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 10px 12px;
+}
+
+.tournament-schedule-list form {
+  grid-template-columns: minmax(180px, 1fr) 62px 140px 105px minmax(150px, 0.8fr) 82px 82px;
+}
+
+.om-tournament-actions {
+  grid-template-columns: 1fr;
+}
+
+@media (max-width: 1120px) {
+  .tournament-schedule-list form {
+    grid-template-columns: minmax(0, 1fr) minmax(130px, 0.8fr) 105px;
+  }
+}
+
+@media (max-width: 720px) {
+  .tournament-team-list article {
+    grid-template-columns: 44px minmax(0, 1fr);
+  }
+
+  .tournament-inline-schedule,
+  .tournament-schedule-list form,
+  .tournament-forfeit-actions {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

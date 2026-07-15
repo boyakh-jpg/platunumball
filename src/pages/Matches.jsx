@@ -1,6 +1,6 @@
 import { Component, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { CalendarDays, CheckCircle2, ClipboardCheck, ChevronLeft, ChevronRight, PlusCircle, ShieldAlert, Swords, UserRound, X } from "lucide-react";
+import { CalendarDays, CheckCircle2, ClipboardCheck, ChevronLeft, ChevronRight, PlusCircle, ShieldAlert, Swords, UserRound } from "lucide-react";
 import Badge from "../components/common/Badge.jsx";
 import BasketballLoader from "../components/common/BasketballLoader.jsx";
 import Button from "../components/common/Button.jsx";
@@ -477,12 +477,6 @@ function getTournamentTeamRows(tournament, teamById, userById, currentUserId) {
     .filter((row) => row.team);
 }
 
-function getTournamentPairingPreview(tournament) {
-  return tournament.format === "tournament"
-    ? tournament.bracket?.rounds?.[0]?.pairings ?? []
-    : tournament.bracket?.fixtures ?? [];
-}
-
 function getRoomCapacity(match = {}) {
   const sourceMatch = match ?? {};
   const fromRules = Number(sourceMatch.rules?.sideCapacity);
@@ -841,9 +835,6 @@ export default function Matches({ app }) {
   const [dateFilter, setDateFilter] = useState("");
   const [calendarMonth, setCalendarMonth] = useState(getMonthKey());
   const [tournamentPanelOpen, setTournamentPanelOpen] = useState(true);
-  const [selectedTournamentId, setSelectedTournamentId] = useState(null);
-  const [scheduleDialog, setScheduleDialog] = useState(null);
-  const [savingScheduleId, setSavingScheduleId] = useState("");
   const [selectedMatchId, setSelectedMatchId] = useState(null);
   const [selectedRecruitingPostId, setSelectedRecruitingPostId] = useState(null);
   const [selectedMatchDetailLoadingId, setSelectedMatchDetailLoadingId] = useState(null);
@@ -879,11 +870,6 @@ export default function Matches({ app }) {
       .filter((tournament) => tournament.createdBy === app.currentUser.id || getTournamentTeamIds(tournament).some((teamId) => myTeamIds.includes(teamId)))
       .sort((a, b) => String(b.createdAt ?? "").localeCompare(String(a.createdAt ?? "")));
   }, [app.currentUser.id, app.state.tournaments, myTeamIds]);
-  const selectedTournament = useMemo(
-    () => activeTournaments.find((tournament) => tournament.id === selectedTournamentId) ?? null,
-    [activeTournaments, selectedTournamentId],
-  );
-  const scheduleDialogMatch = scheduleDialog?.matchId ? matchesById[scheduleDialog.matchId] : null;
   const selectedRecruitingPost = useMemo(
     () => (app.state.recruitingPosts ?? []).find((post) => post.id === selectedRecruitingPostId && post.status === "open") ?? null,
     [app.state.recruitingPosts, selectedRecruitingPostId],
@@ -908,7 +894,7 @@ export default function Matches({ app }) {
   const selectedMatchRoomPost = selectedMatchRoom.post;
   const selectedMatchRoomError = selectedMatchRoom.error;
   const selectedMatchDetailLoading = Boolean(activeSelectedMatchId && selectedMatchDetailLoadingId === activeSelectedMatchId);
-  useBodyScrollLock(Boolean(scheduleDialog || selectedTournament || selectedMatch || selectedRecruitingPost || selectedMatchDetailLoading || selectedRecruitingPostDetailLoading));
+  useBodyScrollLock(Boolean(selectedMatch || selectedRecruitingPost || selectedMatchDetailLoading || selectedRecruitingPostDetailLoading));
   const closeSelectedMatch = () => {
     setSelectedMatchId(null);
     if (!queryMatchId) return;
@@ -1101,35 +1087,6 @@ export default function Matches({ app }) {
   const displayScheduledCount = scheduleLoading ? "..." : scheduledCount;
   const displayClosedCount = scheduleLoading ? "..." : closedCount;
   const getDisplayViewButtonCount = (view) => (scheduleLoading ? "..." : getViewButtonCount(view));
-  const saveTournamentSchedule = (event, tournamentId, matchId) => {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const scheduledDate = String(form.get("scheduledDate") ?? "");
-    const scheduledTime = String(form.get("scheduledTime") ?? "");
-    if (!scheduledDate || !scheduledTime) return;
-    setScheduleDialog({ mode: "confirm", tournamentId, matchId, scheduledDate, scheduledTime });
-  };
-  const formatTournamentScheduleError = (message = "") => {
-    if (message.includes("tournament_match_schedule_locked")) return "이미 시작·종료·취소·무효 처리된 경기는 일정을 바꿀 수 없습니다.";
-    if (message.includes("invalid_tournament_match_schedule")) return "오늘부터 365일 안의 날짜와 시간을 입력해야 합니다.";
-    if (message.includes("tournament_owner_required")) return "대회 생성자만 경기 일정을 저장할 수 있습니다.";
-    return message || "schedule_save_failed";
-  };
-  const confirmTournamentSchedule = async () => {
-    if (scheduleDialog?.mode !== "confirm" || savingScheduleId) return;
-    const { tournamentId, matchId, scheduledDate, scheduledTime } = scheduleDialog;
-    setSavingScheduleId(matchId);
-    try {
-      const result = await app.actions.updateTournamentMatchSchedule(tournamentId, matchId, { scheduledDate, scheduledTime });
-      if (!result || result?.ok === false) throw new Error(result?.error ?? "schedule_save_failed");
-      setScheduleDialog({ mode: "success", tournamentId, matchId, scheduledDate, scheduledTime });
-    } catch (error) {
-      setScheduleDialog({ mode: "error", message: formatTournamentScheduleError(error.message) });
-    } finally {
-      setSavingScheduleId("");
-    }
-  };
-
   return (
     <div className="page-stack om-match-page">
       <section className="om-match-hero">
@@ -1307,9 +1264,8 @@ export default function Matches({ app }) {
                   <em>{pendingRows.length ? `${pendingRows.length}팀 승인 대기` : "참가 승인 완료"}</em>
                 </div>
                 <div className="om-tournament-actions">
-                  <button type="button" onClick={() => setSelectedTournamentId(tournament.id)}>자세히</button>
                   <Link className="button button-secondary button-md om-tournament-detail-link" to={`/app/tournaments/${tournament.id}`}>
-                    대진표
+                    {tournament.format === "tournament" ? "대진표" : "리그표"}
                   </Link>
                 </div>
               </article>
@@ -1322,135 +1278,6 @@ export default function Matches({ app }) {
           )}
         </div>
       </section>
-
-      {selectedTournament ? (() => {
-        const tournamentMatches = getTournamentMatches(selectedTournament, matchesById, app.state.matches);
-        const teamRows = getTournamentTeamRows(selectedTournament, teamById, userById, app.currentUser.id);
-        const pendingRows = teamRows.filter((row) => row.status !== "accepted");
-        const acceptedCount = teamRows.length - pendingRows.length;
-        const pairingPreview = getTournamentPairingPreview(selectedTournament);
-        const canManageSchedule = selectedTournament.createdBy === app.currentUser.id;
-        const organizer = userById[selectedTournament.createdBy] ?? null;
-        return (
-          <div className="om-tournament-modal-backdrop" role="presentation" onMouseDown={() => setSelectedTournamentId(null)}>
-            <aside className="om-tournament-modal" role="dialog" aria-modal="true" aria-label="대회 상세" onMouseDown={(event) => event.stopPropagation()}>
-              <div className="om-tournament-modal-head">
-                <div>
-                  <span className="om-kicker">{tournamentFormatLabels[selectedTournament.format] ?? selectedTournament.format}</span>
-                  <h2>{selectedTournament.title}</h2>
-                  <p>
-                    <span><CalendarDays size={15} />{formatTournamentWindow(selectedTournament)} · {selectedTournament.court}</span>
-                    <span><UserRound size={15} />개최자 {organizer?.name ?? "알 수 없음"}{organizer ? ` ${getUserHashtag(organizer)}` : ""}</span>
-                  </p>
-                </div>
-                <button type="button" aria-label="닫기" onClick={() => setSelectedTournamentId(null)}><X size={20} /></button>
-              </div>
-
-              <div className="om-tournament-meta">
-                <span>{selectedTournament.mode}</span>
-                <span>{selectedTournament.ranked === false ? "친선" : "정규"}</span>
-                <span>{tournamentMmrLabels[selectedTournament.mmrPolicy] ?? selectedTournament.mmrPolicy}</span>
-                <strong>{acceptedCount}/{teamRows.length} 승인</strong>
-                <strong>{tournamentMatches.length}경기</strong>
-              </div>
-
-              <section className="om-tournament-modal-section">
-                <div className="om-modal-section-head">
-                  <strong>승인 대기</strong>
-                  <span>{pendingRows.length ? `${pendingRows.length}팀 남음` : "완료"}</span>
-                </div>
-                {pendingRows.length ? (
-                  <div className="om-tournament-teams">
-                    {pendingRows.map((row) => (
-                      <div key={row.teamId}>
-                        <span>
-                          <TeamHoverCard team={row.team}><strong>{row.team.name}</strong></TeamHoverCard>
-                          <em>{row.team.mmr} MMR · 주장 {row.captainName}</em>
-                        </span>
-                        {row.canApprove ? (
-                          <button type="button" onClick={() => app.actions.approveTournamentTeam(selectedTournament.id, row.teamId)}>승인</button>
-                        ) : (
-                          <b>초대</b>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="om-tournament-wait">참가팀 승인 완료. 승인 완료팀 목록은 접었다.</p>
-                )}
-              </section>
-
-              {pairingPreview.length ? (
-                <section className="om-tournament-modal-section">
-                  <div className="om-modal-section-head">
-                    <strong>{selectedTournament.format === "tournament" ? "첫 라운드" : "리그 경기"}</strong>
-                    <Link to={`/app/tournaments/${selectedTournament.id}`}>전체 대진표</Link>
-                  </div>
-                  <div className="om-tournament-pairings">
-                    {pairingPreview.slice(0, 6).map((pairing) => (
-                      <span key={pairing.matchId ?? `${pairing.round}-${pairing.fixture}`}>
-                        <TeamHoverCard team={teamById[pairing.teamAId]}>{teamById[pairing.teamAId]?.name ?? "TBD"}</TeamHoverCard>
-                        {" vs "}
-                        <TeamHoverCard team={teamById[pairing.teamBId]}>{teamById[pairing.teamBId]?.name ?? "TBD"}</TeamHoverCard>
-                      </span>
-                    ))}
-                  </div>
-                </section>
-              ) : null}
-
-              <section className="om-tournament-modal-section">
-                <div className="om-modal-section-head">
-                  <strong>경기 일정</strong>
-                  <span>{canManageSchedule ? "생성자 수정 가능" : "생성자만 수정"}</span>
-                </div>
-                {tournamentMatches.length ? (
-                  <div className="om-tournament-fixtures">
-                    {tournamentMatches.map((match) => (
-                      <form key={match.id} className={canManageSchedule ? "om-tournament-fixture-row" : "om-tournament-fixture-row locked"} onSubmit={(event) => saveTournamentSchedule(event, selectedTournament.id, match.id)}>
-                        <button type="button" className="tournament-match-open" onClick={() => openSelectedMatch(match.id)}>
-                          <TeamHoverCard team={teamById[match.teamA?.teamId]} as="span">{match.teamA?.name ?? "A"}</TeamHoverCard>
-                          {" vs "}
-                          <TeamHoverCard team={teamById[match.teamB?.teamId]} as="span">{match.teamB?.name ?? "B"}</TeamHoverCard>
-                        </button>
-                        <input type="date" name="scheduledDate" min={todayValue} max={maxScheduleDate} defaultValue={match.scheduledDate ?? ""} disabled={!canManageSchedule} aria-label="경기 날짜" />
-                        <input type="time" name="scheduledTime" defaultValue={match.scheduledTime ?? ""} disabled={!canManageSchedule} aria-label="경기 시간" />
-                        <button type="submit" disabled={!canManageSchedule || savingScheduleId === match.id}>{savingScheduleId === match.id ? "저장 중" : "저장"}</button>
-                      </form>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="om-tournament-wait">승인 완료 전. 대진과 경기 생성 대기.</p>
-                )}
-              </section>
-            </aside>
-          </div>
-        );
-      })() : null}
-
-      {scheduleDialog ? (
-        <div className="app-confirm-backdrop" role="presentation" onMouseDown={() => !savingScheduleId && setScheduleDialog(null)}>
-          <div className="app-confirm-dialog" role="dialog" aria-modal="true" aria-label="대회 경기 일정 저장" onMouseDown={(event) => event.stopPropagation()}>
-            <strong>{scheduleDialog.mode === "confirm" ? "경기 일정을 저장할까요?" : scheduleDialog.mode === "success" ? "일정을 저장했습니다." : "일정을 저장하지 못했습니다."}</strong>
-            <p>
-              {scheduleDialog.mode === "confirm"
-                ? `${scheduleDialogMatch?.teamA?.name ?? "A"} vs ${scheduleDialogMatch?.teamB?.name ?? "B"} · ${scheduleDialog.scheduledDate} ${scheduleDialog.scheduledTime}`
-                : scheduleDialog.mode === "success"
-                  ? "양 팀장에게 출전·후보 명단 구성 알림을 보냈습니다."
-                  : `서버 저장 실패: ${scheduleDialog.message}`}
-            </p>
-            <div className="app-confirm-actions">
-              {scheduleDialog.mode === "confirm" ? (
-                <>
-                  <Button type="button" variant="secondary" disabled={Boolean(savingScheduleId)} onClick={() => setScheduleDialog(null)}>취소</Button>
-                  <Button type="button" disabled={Boolean(savingScheduleId)} onClick={confirmTournamentSchedule}>{savingScheduleId ? "저장 중" : "저장"}</Button>
-                </>
-              ) : (
-                <Button type="button" onClick={() => setScheduleDialog(null)}>확인</Button>
-              )}
-            </div>
-          </div>
-        </div>
-      ) : null}
 
       {!selectedMatchDetailLoading && selectedMatch && selectedMatchRoomError ? (
         <RoomModalErrorView error={selectedMatchRoomError} onClose={closeSelectedMatch} />
