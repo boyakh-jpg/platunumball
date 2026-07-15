@@ -7,6 +7,7 @@ import Button from "../components/common/Button.jsx";
 import TierBadge from "../components/rating/TierBadge.jsx";
 import TeamHoverCard from "../components/team/TeamHoverCard.jsx";
 import { getUserHashtag } from "../lib/handles.js";
+import { MatchRoomModal } from "./Matches.jsx";
 import "../styles/matches-arena.css";
 
 function toDateInputValue(date = new Date()) {
@@ -333,14 +334,14 @@ function getVerticalBracketLayout(bracketTree = []) {
   };
 }
 
-function renderBracketNode(node, teamById) {
+function renderBracketNode(node, teamById, onOpenMatch) {
   if (!node) return null;
   const winner = node.match ? getWinnerName(node.match) : "";
   return (
     <article key={node.id} className={winner || node.byeTeamId ? "bracket-match-card done" : "bracket-match-card"}>
       <div className="bracket-node-head">
         <span>{node.name}</span>
-        {node.match ? <Link to={`/app/matches?match=${node.match.id}`}>방 보기</Link> : <b>{node.byeTeamId ? "BYE" : "예정"}</b>}
+        {node.match ? <button type="button" onClick={() => onOpenMatch?.(node.match.id)}>방 보기</button> : <b>{node.byeTeamId ? "BYE" : "예정"}</b>}
       </div>
       {renderBracketSource(node.sourceA, teamById)}
       <strong className="bracket-midline">vs</strong>
@@ -358,6 +359,7 @@ export default function TournamentDetail({ app }) {
   const [tournamentMissing, setTournamentMissing] = useState(false);
   const [scheduleDialog, setScheduleDialog] = useState(null);
   const [savingScheduleId, setSavingScheduleId] = useState("");
+  const [selectedMatchId, setSelectedMatchId] = useState("");
   const teamById = Object.fromEntries(app.state.teams.map((team) => [team.id, team]));
   const userById = Object.fromEntries(app.state.users.map((user) => [user.id, user]));
   const matchesById = Object.fromEntries(app.state.matches.map((match) => [match.id, match]));
@@ -553,7 +555,7 @@ export default function TournamentDetail({ app }) {
                   <div className="vertical-bracket-lanes">
                     {round.nodes.map(({ node, gridColumn }) => (
                       <div key={node.id} className="vertical-bracket-node" style={{ gridColumn }}>
-                        {renderBracketNode(node, teamById)}
+                        {renderBracketNode(node, teamById, setSelectedMatchId)}
                       </div>
                     ))}
                   </div>
@@ -598,7 +600,11 @@ export default function TournamentDetail({ app }) {
                   const match = matchesById[fixture.matchId];
                   const result = getLeagueMatchResult(match);
                   return (
-                    <article key={fixture.matchId ?? `${fixture.teamAId}-${fixture.teamBId}`} className={result ? "completed" : ""}>
+                    <article
+                      key={fixture.matchId ?? `${fixture.teamAId}-${fixture.teamBId}`}
+                      className={result ? "completed" : ""}
+                      onClick={() => match?.id && setSelectedMatchId(match.id)}
+                    >
                       <span>{fixture.fixture}경기</span>
                       <TeamHoverCard team={teamById[fixture.teamAId]}><strong>{teamById[fixture.teamAId]?.name ?? match?.teamA.name ?? "TBD"}</strong></TeamHoverCard>
                       <b>{result ? `${result.scoreA}:${result.scoreB}` : "vs"}</b>
@@ -625,11 +631,11 @@ export default function TournamentDetail({ app }) {
           <div className="tournament-schedule-list">
             {tournamentMatches.map((match) => (
               <form key={match.id} className={canManageSchedule ? "" : "locked"} onSubmit={(event) => saveSchedule(event, match.id)}>
-                <Link to={`/app/matches?match=${match.id}`}>
+                <button type="button" className="tournament-match-open" onClick={() => setSelectedMatchId(match.id)}>
                   <TeamHoverCard team={teamById[match.teamA?.teamId]} as="span">{match.teamA?.name ?? "A"}</TeamHoverCard>
                   {" vs "}
                   <TeamHoverCard team={teamById[match.teamB?.teamId]} as="span">{match.teamB?.name ?? "B"}</TeamHoverCard>
-                </Link>
+                </button>
                 <span>{match.status === "confirmed" ? "확정" : match.status === "agreed" ? "예정" : "대기"}</span>
                 <input type="date" name="scheduledDate" min={todayValue} max={maxScheduleDate} defaultValue={match.scheduledDate ?? ""} disabled={!canManageSchedule} aria-label="경기 날짜" />
                 <input type="time" name="scheduledTime" defaultValue={match.scheduledTime ?? ""} disabled={!canManageSchedule} aria-label="경기 시간" />
@@ -664,6 +670,7 @@ export default function TournamentDetail({ app }) {
           </div>
         </div>
       ) : null}
+      <MatchRoomModal app={app} matchId={selectedMatchId} entryPoint="tournament" onClose={() => setSelectedMatchId("")} />
     </div>
   );
 }

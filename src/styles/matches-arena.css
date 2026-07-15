@@ -546,12 +546,18 @@
 
 .om-tournament-teams strong,
 .om-tournament-teams .team-hover-trigger,
-.om-tournament-fixture-row a {
+.om-tournament-fixture-row a,
+.om-tournament-fixture-row .tournament-match-open {
   min-width: 0;
   overflow: hidden;
+  justify-content: flex-start;
+  border: 0;
+  background: transparent;
   color: var(--text);
   font-size: 0.82rem;
   font-weight: 950;
+  line-height: 1.2;
+  padding: 0;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -623,6 +629,11 @@
 .om-tournament-fixture-row button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
+}
+
+.om-tournament-fixture-row .tournament-match-open:disabled {
+  cursor: pointer;
+  opacity: 1;
 }
 
 .om-tournament-wait {
@@ -864,7 +875,8 @@
 
 .tournament-team-list a,
 .tournament-team-list .team-hover-trigger,
-.tournament-schedule-list a {
+.tournament-schedule-list a,
+.tournament-schedule-list .tournament-match-open {
   min-width: 0;
   overflow: hidden;
   color: var(--text);
@@ -905,6 +917,14 @@
 .tournament-team-list button,
 .tournament-schedule-list button {
   cursor: pointer;
+}
+
+.tournament-schedule-list .tournament-match-open {
+  justify-content: flex-start;
+  min-height: 0;
+  border: 0;
+  background: transparent;
+  padding: 0;
 }
 
 .tournament-bracket {
@@ -1248,11 +1268,14 @@
 }
 
 .bracket-node-head a,
+.bracket-node-head button,
 .bracket-node-head b {
   flex: 0 0 auto;
+  border: 0;
   border-radius: 999px;
   background: rgba(255, 211, 108, 0.12);
   color: var(--gold);
+  cursor: pointer;
   font-size: 0.68rem;
   font-weight: 950;
   padding: 4px 7px;
@@ -1481,6 +1504,7 @@
 .league-fixture-grid article {
   grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
+  cursor: pointer;
 }
 
 .league-fixture-grid article.completed {

@@ -358,8 +358,29 @@ function isTournamentCaptainMatch(match = {}, captainTeamIds = []) {
   return teamIds.has(match.teamA?.teamId) || teamIds.has(match.teamB?.teamId);
 }
 
+function getTournamentRosterPlayerIds(match = {}) {
+  return new Set([
+    ...(match.teamA?.players ?? []),
+    ...(match.teamB?.players ?? []),
+    ...(match.playedPlayerIds?.teamA ?? []),
+    ...(match.playedPlayerIds?.teamB ?? []),
+    ...(match.reservePlayers?.teamA ?? []),
+    ...(match.reservePlayers?.teamB ?? []),
+  ].filter(Boolean));
+}
+
+function isTournamentMatchInUserSchedule(match = {}, userId = "") {
+  return Boolean(
+    match.tournamentId &&
+    userId &&
+    getMatchDate(match) &&
+    getTournamentRosterPlayerIds(match).has(userId),
+  );
+}
+
 function getMatchScheduleRelation(match = {}, userId = "", captainTeamIds = []) {
   if (!userId) return "";
+  if (match.tournamentId) return isTournamentMatchInUserSchedule(match, userId) ? "joined" : "";
   const ownerId = match.createdBy || getMatchHostPlayerId(match) || "";
   const feedRelations = Array.isArray(match.__feedRelations) ? match.__feedRelations : [];
   if (ownerId === userId || feedRelations.includes("owner")) return "created";
@@ -1398,11 +1419,11 @@ export default function Matches({ app }) {
                   <div className="om-tournament-fixtures">
                     {tournamentMatches.map((match) => (
                       <form key={match.id} className={canManageSchedule ? "om-tournament-fixture-row" : "om-tournament-fixture-row locked"} onSubmit={(event) => saveTournamentSchedule(event, selectedTournament.id, match.id)}>
-                        <Link to={`/app/matches?match=${match.id}`}>
+                        <button type="button" className="tournament-match-open" onClick={() => openSelectedMatch(match.id)}>
                           <TeamHoverCard team={teamById[match.teamA?.teamId]} as="span">{match.teamA?.name ?? "A"}</TeamHoverCard>
                           {" vs "}
                           <TeamHoverCard team={teamById[match.teamB?.teamId]} as="span">{match.teamB?.name ?? "B"}</TeamHoverCard>
-                        </Link>
+                        </button>
                         <input type="date" name="scheduledDate" min={todayValue} max={maxScheduleDate} defaultValue={match.scheduledDate ?? ""} disabled={!canManageSchedule} aria-label="경기 날짜" />
                         <input type="time" name="scheduledTime" defaultValue={match.scheduledTime ?? ""} disabled={!canManageSchedule} aria-label="경기 시간" />
                         <button type="submit" disabled={!canManageSchedule || savingScheduleId === match.id}>{savingScheduleId === match.id ? "저장 중" : "저장"}</button>

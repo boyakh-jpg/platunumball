@@ -471,30 +471,7 @@ async function fetchJsonActorMatchIds(client, profileId = "", limit = REMOTE_CLI
 }
 
 async function fetchCaptainTournamentMatchRows(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT) {
-  if (!profileId) return [];
-  const candidateLimit = Math.max(
-    MATCH_CANDIDATE_MIN_LIMIT,
-    Math.min(MATCH_CANDIDATE_MAX_LIMIT, Number(limit || REMOTE_CLIENT_MATCH_LIMIT) * MATCH_CANDIDATE_LIMIT_FACTOR),
-  );
-  const { data: captainRows, error: captainError } = await client
-    .from("team_members")
-    .select("team_id")
-    .eq("user_id", profileId)
-    .eq("role", "captain");
-  if (captainError) throw captainError;
-  const teamIds = unique((captainRows ?? []).map((row) => row.team_id));
-  if (!teamIds.length) return [];
-  const results = await Promise.all(["team_a_id", "team_b_id"].map((column) => client
-    .from("matches")
-    .select(MATCH_LIST_COLUMNS)
-    .not("tournament_id", "is", null)
-    .neq("status", "closed")
-    .in(column, teamIds)
-    .order("updated_at", { ascending: false, nullsFirst: false })
-    .limit(candidateLimit)));
-  const error = results.find((result) => result.error)?.error;
-  if (error) throw error;
-  return mergeMatchRowsById(...results.map((result) => result.data ?? []));
+  return [];
 }
 
 async function fetchCurrentUserMatchCandidateIds(client, profileId = "", limit = REMOTE_CLIENT_MATCH_LIMIT, includeJsonActors = false) {
