@@ -634,7 +634,13 @@ function mergeRemoteProfileState(state, remoteState = {}) {
 
 function mergeRemoteHomeState(state, remoteState = {}) {
   const nextState = mergeRemoteProfileState(state, remoteState);
-  return mergeRemoteMatchPage(nextState, remoteState);
+  const mergedState = mergeRemoteMatchPage(nextState, remoteState);
+  return {
+    ...mergedState,
+    notifications: Array.isArray(remoteState.notifications)
+      ? mergeRemoteById(mergedState.notifications, remoteState.notifications)
+      : mergedState.notifications,
+  };
 }
 
 function mergeRemoteTournamentState(state, remoteState = {}) {
