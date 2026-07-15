@@ -1,0 +1,42 @@
+import { getAuthenticatedContext, readJsonBody, sendJson } from "../_supabaseAdmin.js";
+import { fromRemoteNotification } from "../../../src/data/remotePayloadMappers.js";
+import { NOTIFICATION_COLUMNS } from "../../../src/data/repositoryColumns.js";
+import { isNotificationVisibleToUser } from "../../../src/lib/notifications.js";
+
+const DEFAULT_NOTIFICATION_LIMIT = 80;
+const MAX_NOTIFICATION_LIMIT = 100;
+
+function getNotificationLimit(value) {
+  const limit = Number(value);
+  if (!Number.isFinite(limit) || limit <= 0) return DEFAULT_NOTIFICATION_LIMIT;
+  return Math.min(MAX_NOTIFICATION_LIMIT, Math.floor(limit));
+}
+
+export default async function handler(request, response) {
+  if (request.method !== "POST") {
+    response.setHeader("Allow", "POST");
+    sendJson(response, 405, { error: "method_not_allowed" });
+    return;
+  }
+
+  try {
+    const body = await readJsonBody(request);
+    const context = await getAuthenticatedContext(request);
+    const { data, error } = await context.supabase
+      .from("notifications")
+      .select(NOTIFICATION_COLUMNS)
+      .or(`user_id.eq.${context.profileId},target_user_id.eq.${context.profileId}`)
+      .order("created_at", { ascending: false })
+      .limit(getNotificationLimit(body.limit));
+    if (error) throw error;
+
+    const notifications = (data ?? [])
+      .map(fromRemoteNotification)
+      .filter((notification) => isNotificationVisibleToUser(notification, context.profileId));
+
+    sendJson(response, 200, { ok: true, notifications });
+  } catch (error) {
+    console.error("Notification list failed.", error);
+    sendJson(response, error.statusCode || 500, { error: error.message || "notification_list_failed" });
+  }
+}

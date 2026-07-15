@@ -8506,6 +8506,14 @@ export function markAllNotificationsRead(state) {
   };
 }
 
+export function deleteNotification(state, notificationId) {
+  if (!notificationId) return state;
+  return {
+    ...state,
+    notifications: state.notifications.filter((notification) => notification.id !== notificationId),
+  };
+}
+
 export function updateProfile(state, patch, targetUserId = state.currentUserId) {
   const profileUserId = targetUserId || state.currentUserId;
   if (patch.discordConnection?.status === "linked" && findDiscordConnectionOwner(state.users, patch.discordConnection, profileUserId)) {

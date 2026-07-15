@@ -2483,3 +2483,10 @@ flowchart TD
 5. 불참 팀은 `0`, 상대 팀은 `1`로 1:0 몰수 결과를 확정한다. 선수·팀 MMR은 반영하지 않고 리그 승패와 토너먼트 다음 라운드 진출에는 반영한다.
 6. 불참 side, 사유, 처리자, 처리 시각은 `matches.rules.forfeit`에 남기고 양 팀 주장에게 결과 알림을 보낸다.
 7. 일정 저장과 불참 처리는 브라우저 snapshot을 원본으로 받지 않는다. service-role 전용 DB RPC, tournament/match advisory lock, row lock을 사용한다.
+
+## 2026-07-15 알림 보관과 삭제
+
+1. 읽음 처리는 알림 row를 삭제하지 않고 `read_at`을 기록해 지난 알림으로 보관한다.
+2. 알림 페이지는 로그인 사용자의 최근 알림을 서버에서 다시 조회해 읽지 않은 알림과 지난 알림을 분리한다.
+3. 지난 알림 삭제는 인증된 server action만 사용하며 `notifications.user_id` 또는 `target_user_id`가 현재 profile id인 row만 삭제한다.
+4. 홈 알림 박스는 계속 읽지 않은 알림만 보여주며, 읽지 않은 알림이 0개여도 헤더의 `지난 알림` 진입점으로 전체 알림 페이지를 열 수 있다.

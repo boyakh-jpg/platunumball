@@ -20,6 +20,7 @@ import {
   createRecruitingPost,
   createTeam,
   createTournament,
+  deleteNotification,
   deleteSoloRecord,
   deleteTeam,
   detachRecruitingPartyPlayer,
@@ -1704,6 +1705,18 @@ export function useAppData(authUser = null, appLocation = null) {
   const markNotificationReadServer = useCallback((payload = {}) => {
     runServerAction("/api/notifications/read", payload);
   }, [runServerAction]);
+  const loadNotifications = useCallback(() => {
+    if (!isSupabaseConfigured) return Promise.resolve(stateRef.current.notifications ?? []);
+    return runServerAction("/api/notifications/list", { limit: 80 }).then((result) => {
+      if (Array.isArray(result?.notifications)) {
+        setState((prev) => ({
+          ...prev,
+          notifications: result.notifications,
+        }));
+      }
+      return result?.notifications ?? [];
+    });
+  }, [runServerAction, setState]);
   const syncSettingsServer = useCallback((settingsPatch = {}) => {
     return runServerAction("/api/settings/sync", { settings: settingsPatch }).then((result) => {
       if (result?.settings) {
@@ -2690,6 +2703,20 @@ export function useAppData(authUser = null, appLocation = null) {
         setState((prev) => markAllNotificationsRead(prev));
         markNotificationReadServer({ all: true });
       },
+      loadNotifications,
+      deleteNotification: async (notificationId) => {
+        const safeNotificationId = String(notificationId ?? "").trim();
+        if (!safeNotificationId) return false;
+        if (isSupabaseConfigured) {
+          if (!ensureRemoteReady("알림 삭제")) return false;
+          const serverReady = await ensureServerActionAvailable("/api/notifications/delete", "알림 삭제");
+          if (serverReady !== true) return serverReady;
+          const result = await runServerAction("/api/notifications/delete", { notificationId: safeNotificationId });
+          if (!result || result.ok === false) return result;
+        }
+        setState((prev) => deleteNotification(prev, safeNotificationId));
+        return true;
+      },
       toggleFavoritePlayer: (userId) => {
         let active = false;
         setState((prev) => {
@@ -3108,7 +3135,7 @@ export function useAppData(authUser = null, appLocation = null) {
       reset: () => setState(resetState({ includeDemo: !isSupabaseConfigured, authUserId, email: authEmail })),
       });
     },
-    [authEmail, authUserId, currentUserId, deleteTeamServer, ensureRemoteReady, ensureServerActionAvailable, loadAdminContext, loadDirectory, loadMatchDetail, loadMatchRecruitingSchedule, loadMoreMatches, loadMoreRecruiting, loadRecruitingRegion, loadRecruitingPost, loadRecorderMatches, loadProfileRecords, profileRecordsLoaded, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, refreshAdminState, refreshCurrentProfile, runServerAction, serverProfileBound, submitReportServer, syncFavoriteServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncSettingsServer, syncTeamInvitationServer, syncTeamServer, syncTournamentServer],
+    [authEmail, authUserId, currentUserId, deleteTeamServer, ensureRemoteReady, ensureServerActionAvailable, loadAdminContext, loadDirectory, loadMatchDetail, loadMatchRecruitingSchedule, loadMoreMatches, loadMoreRecruiting, loadNotifications, loadRecruitingRegion, loadRecruitingPost, loadRecorderMatches, loadProfileRecords, profileRecordsLoaded, markNotificationReadServer, persistProfileServer, profileKey, profileLocked, refreshAdminState, refreshCurrentProfile, runServerAction, serverProfileBound, submitReportServer, syncFavoriteServer, syncMatchServer, syncRecruitingPostServer, syncRefereeServer, syncSettingsServer, syncTeamInvitationServer, syncTeamServer, syncTournamentServer],
   );
 
   const safeCurrentUserId = currentUserId ?? currentUser?.id ?? "";

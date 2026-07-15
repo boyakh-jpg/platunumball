@@ -1749,6 +1749,9 @@ span.referee-hover-card {
 
 .notifications-list small {
   color: var(--muted);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .notification-unread {
@@ -1784,6 +1787,104 @@ span.referee-hover-card {
 .compact-list button:disabled {
   cursor: default;
   opacity: 0.5;
+}
+
+.notification-inbox-controls {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.home-alert-heading-actions {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.notification-view-tabs {
+  display: flex;
+  min-width: 0;
+}
+
+.notification-view-tabs button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.notification-view-tabs button span {
+  min-width: 20px;
+  border-radius: 999px;
+  background: color-mix(in srgb, currentColor 12%, transparent);
+  padding: 2px 6px;
+  font-size: 0.7rem;
+  line-height: 1.2;
+}
+
+.notifications-list time {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 750;
+}
+
+.notification-actions .notification-delete-button {
+  display: inline-flex;
+  width: var(--ui-icon-button-size);
+  min-width: var(--ui-icon-button-size);
+  height: var(--ui-icon-button-size);
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  padding: 0;
+}
+
+.notification-actions .notification-delete-button:hover,
+.notification-actions .notification-delete-button:focus-visible {
+  border-color: color-mix(in srgb, var(--rb-orange) 56%, var(--ui-control-border));
+  color: var(--rb-orange);
+}
+
+.notifications-list > .notification-empty-state {
+  min-height: 96px;
+  justify-content: center;
+  border-style: dashed;
+  color: var(--muted);
+  font-weight: 800;
+  text-align: center;
+}
+
+@media (max-width: 760px) {
+  .home-alert-heading-actions {
+    flex-wrap: wrap;
+  }
+
+  .notification-inbox-controls {
+    width: 100%;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .notification-view-tabs,
+  .notification-view-tabs button {
+    flex: 1 1 0;
+  }
+
+  .notifications-list > div:not(.notification-empty-state) {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .notification-actions {
+    width: auto;
+    max-width: 100%;
+    align-self: flex-start;
+    flex-wrap: wrap;
+  }
 }
 
 .team-emblem {

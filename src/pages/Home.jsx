@@ -759,7 +759,10 @@ export default function Home({ app }) {
                 <p className="eyebrow">Alerts</p>
                 <h2>알림</h2>
               </div>
-              <Badge tone={homeNoticeItems.length ? "orange" : "neutral"}>{homeNoticeItems.length}개</Badge>
+              <div className="home-alert-heading-actions">
+                <Link to="/app/notifications" className="button button-secondary button-sm">지난 알림</Link>
+                <Badge tone={homeNoticeItems.length ? "orange" : "neutral"}>{homeNoticeItems.length}개</Badge>
+              </div>
             </div>
             <div className="home-action-list">
               {priorityNoticeItems.length ? (
