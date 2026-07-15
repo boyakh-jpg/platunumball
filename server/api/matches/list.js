@@ -7,6 +7,7 @@ import {
   groupRowsBy as groupBy,
   isMissingRoomFeedCards,
   isMissingUserRoomFeed,
+  loadCurrentUserTournamentIndex,
   mergeById,
   readJsonBody,
   sendJson,
@@ -930,7 +931,7 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   const recruitingSchedulePromise = shouldLoadRecruitingSchedule
     ? loadCurrentRecruitingSchedule(context, adminLevel)
     : Promise.resolve(null);
-  const [baseFeedPage, recentCompletedPage, closedNoticePage, captainTournamentRows] = await Promise.all([
+  const [baseFeedPage, recentCompletedPage, closedNoticePage, captainTournamentRows, relatedTournamentState] = await Promise.all([
     recorderOnly
       ? Promise.resolve(null)
       : completedOnly
@@ -945,6 +946,9 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
     !cursor && !completedOnly && !recorderOnly
       ? timeStep(debugTiming, "captainTournamentMatchesMs", () => fetchCaptainTournamentMatchRows(context.supabase, context.profileId, limit))
       : Promise.resolve([]),
+    !cursor && !completedOnly && !recorderOnly
+      ? timeStep(debugTiming, "relatedTournamentsMs", () => loadCurrentUserTournamentIndex(context.supabase, context.profileId))
+      : Promise.resolve({ users: [], teams: [], tournaments: [] }),
   ]);
   const captainTournamentMatchIds = new Set((captainTournamentRows ?? []).map((row) => row.id).filter(Boolean));
   const feedPage = mergeMatchFeedPages(mergeMatchFeedPages(baseFeedPage, recentCompletedPage), closedNoticePage);
@@ -1037,15 +1041,15 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
     const recruitingScheduleCount = recruitingState.recruitingPosts?.length ?? 0;
     const mergedState = {
       ...state,
-      users: mergeById(state.users, recruitingState.users),
-      teams: mergeById(state.teams, recruitingState.teams),
+      users: mergeById(mergeById(state.users, relatedTournamentState.users), recruitingState.users),
+      teams: mergeById(mergeById(state.teams, relatedTournamentState.teams), recruitingState.teams),
       recruitingPosts: recruitingState.recruitingPosts ?? [],
+      tournaments: relatedTournamentState.tournaments ?? [],
     };
 
     return {
       state: {
         ...mergedState,
-        tournaments: [],
         affiliations: [],
         seasons: [],
         reports: [],
@@ -1154,15 +1158,15 @@ export async function loadCompactMatchList(context, body = {}, adminLevel = 0, l
   const recruitingScheduleCount = recruitingState.recruitingPosts?.length ?? 0;
   const mergedState = {
     ...state,
-    users: mergeById(state.users, recruitingState.users),
-    teams: mergeById(state.teams, recruitingState.teams),
+    users: mergeById(mergeById(state.users, relatedTournamentState.users), recruitingState.users),
+    teams: mergeById(mergeById(state.teams, relatedTournamentState.teams), recruitingState.teams),
     recruitingPosts: recruitingState.recruitingPosts ?? [],
+    tournaments: relatedTournamentState.tournaments ?? [],
   };
 
   return {
     state: {
       ...mergedState,
-      tournaments: [],
       affiliations: [],
       seasons: [],
       reports: [],

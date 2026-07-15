@@ -1,4 +1,13 @@
 import { createClient } from "@supabase/supabase-js";
+import { fromRemoteProfile } from "../../src/data/profileMappers.js";
+import {
+  PROFILE_CARD_COLUMNS,
+  TEAM_COLUMNS,
+  TEAM_MEMBER_COLUMNS,
+  TOURNAMENT_COLUMNS,
+  TOURNAMENT_TEAM_COLUMNS,
+} from "../../src/data/repositoryColumns.js";
+import { fromRemoteTournament } from "../../src/data/tournamentMappers.js";
 
 const ADMIN_GRADE_LEVELS = {
   owner: 100,
@@ -13,6 +22,7 @@ const authUserCache = new Map();
 const authContextCache = new Map();
 const adminLevelCache = new Map();
 const AUTH_CONTEXT_CACHE_TTL_MS = 30 * 1000;
+const RELATED_TOURNAMENT_LIMIT = 40;
 
 export function sendJson(response, statusCode, payload) {
   response.status(statusCode).json(payload);
@@ -259,6 +269,85 @@ export function toClientTeamWithMembers(team = {}, memberRows = []) {
     members: [...memberRows]
       .sort((a, b) => String(a.role).localeCompare(String(b.role)) || String(a.user_id).localeCompare(String(b.user_id)))
       .map((member) => ({ userId: member.user_id, role: member.role ?? "regular" })),
+  };
+}
+
+export async function loadCurrentUserTournamentIndex(client, profileId = "") {
+  if (!profileId) return { users: [], teams: [], tournaments: [] };
+
+  const { data: ownMembershipRows, error: ownMembershipError } = await client
+    .from("team_members")
+    .select(TEAM_MEMBER_COLUMNS)
+    .eq("user_id", profileId);
+  if (ownMembershipError) throw ownMembershipError;
+
+  const ownTeamIds = uniqueValues((ownMembershipRows ?? []).map((row) => row.team_id));
+  const { data: relatedTeamRows, error: relatedTeamError } = ownTeamIds.length
+    ? await client
+      .from("tournament_teams")
+      .select(TOURNAMENT_TEAM_COLUMNS)
+      .in("team_id", ownTeamIds)
+    : { data: [], error: null };
+  if (relatedTeamError) throw relatedTeamError;
+
+  const relatedTournamentIds = uniqueValues((relatedTeamRows ?? []).map((row) => row.tournament_id));
+  const [createdResult, relatedResult] = await Promise.all([
+    client
+      .from("tournaments")
+      .select(TOURNAMENT_COLUMNS)
+      .eq("created_by", profileId)
+      .order("updated_at", { ascending: false })
+      .limit(RELATED_TOURNAMENT_LIMIT),
+    relatedTournamentIds.length
+      ? client.from("tournaments").select(TOURNAMENT_COLUMNS).in("id", relatedTournamentIds)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (createdResult.error) throw createdResult.error;
+  if (relatedResult.error) throw relatedResult.error;
+
+  const tournamentRows = mergeById(createdResult.data ?? [], relatedResult.data ?? [])
+    .sort((a, b) => String(b.updated_at ?? b.created_at ?? "").localeCompare(String(a.updated_at ?? a.created_at ?? "")))
+    .slice(0, RELATED_TOURNAMENT_LIMIT);
+  const tournamentIds = tournamentRows.map((row) => row.id).filter(Boolean);
+  if (!tournamentIds.length) return { users: [], teams: [], tournaments: [] };
+
+  const { data: tournamentTeamRows, error: tournamentTeamError } = await client
+    .from("tournament_teams")
+    .select(TOURNAMENT_TEAM_COLUMNS)
+    .in("tournament_id", tournamentIds);
+  if (tournamentTeamError) throw tournamentTeamError;
+
+  const tournamentTeamIds = uniqueValues((tournamentTeamRows ?? []).map((row) => row.team_id));
+  const [{ data: teamRows, error: teamError }, { data: captainRows, error: captainError }] = tournamentTeamIds.length
+    ? await Promise.all([
+      client.from("teams").select(TEAM_COLUMNS).in("id", tournamentTeamIds).is("deleted_at", null),
+      client.from("team_members").select(TEAM_MEMBER_COLUMNS).in("team_id", tournamentTeamIds).eq("role", "captain"),
+    ])
+    : [{ data: [], error: null }, { data: [], error: null }];
+  if (teamError) throw teamError;
+  if (captainError) throw captainError;
+
+  const memberByKey = new Map();
+  [...(captainRows ?? []), ...(ownMembershipRows ?? [])]
+    .filter((row) => tournamentTeamIds.includes(row.team_id))
+    .forEach((row) => memberByKey.set(`${row.team_id}:${row.user_id}`, row));
+  const memberRows = [...memberByKey.values()];
+
+  const profileIds = uniqueValues(memberRows.map((row) => row.user_id));
+  const { data: profileRows, error: profileError } = profileIds.length
+    ? await client.from("profiles").select(PROFILE_CARD_COLUMNS).in("id", profileIds)
+    : { data: [], error: null };
+  if (profileError) throw profileError;
+
+  const membersByTeam = groupRowsBy(memberRows, "team_id");
+  const tournamentTeamsByTournament = groupRowsBy(tournamentTeamRows ?? [], "tournament_id");
+  return {
+    users: (profileRows ?? []).map(fromRemoteProfile),
+    teams: (teamRows ?? []).map((team) => ({
+      ...toClientTeamWithMembers(team, membersByTeam.get(team.id) ?? []),
+      membersPartial: true,
+    })),
+    tournaments: tournamentRows.map((tournament) => fromRemoteTournament(tournament, { tournamentTeamsByTournament })),
   };
 }
 

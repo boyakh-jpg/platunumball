@@ -28,6 +28,7 @@ import {
   isMatchSideTeamParty,
   isPersonalRecordMatch,
   isInstantRoom,
+  isTournamentMatchInUserSchedule,
   userNeedsMatchAction,
 } from "../lib/matchUtils.js";
 import { ROOM_KINDS } from "../lib/constants.js";
@@ -356,26 +357,6 @@ function isTournamentCaptainMatch(match = {}, captainTeamIds = []) {
   if (!captainTeamIds.length) return false;
   const teamIds = new Set(captainTeamIds);
   return teamIds.has(match.teamA?.teamId) || teamIds.has(match.teamB?.teamId);
-}
-
-function getTournamentRosterPlayerIds(match = {}) {
-  return new Set([
-    ...(match.teamA?.players ?? []),
-    ...(match.teamB?.players ?? []),
-    ...(match.playedPlayerIds?.teamA ?? []),
-    ...(match.playedPlayerIds?.teamB ?? []),
-    ...(match.reservePlayers?.teamA ?? []),
-    ...(match.reservePlayers?.teamB ?? []),
-  ].filter(Boolean));
-}
-
-function isTournamentMatchInUserSchedule(match = {}, userId = "") {
-  return Boolean(
-    match.tournamentId &&
-    userId &&
-    getMatchDate(match) &&
-    getTournamentRosterPlayerIds(match).has(userId),
-  );
 }
 
 function getMatchScheduleRelation(match = {}, userId = "", captainTeamIds = []) {

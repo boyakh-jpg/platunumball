@@ -610,6 +610,19 @@ export function isMatchRelatedToUser(match = {}, userId = "") {
   );
 }
 
+export function isTournamentMatchInUserSchedule(match = {}, userId = "") {
+  const hasSchedule = Boolean(
+    String(match.scheduledDate ?? "").match(/^\d{4}-\d{2}-\d{2}$/) ||
+    String(match.scheduledAt ?? "").match(/\d{4}-\d{2}-\d{2}/),
+  );
+  const feedRelations = Array.isArray(match.__feedRelations) ? match.__feedRelations : [];
+  return Boolean(
+    match.tournamentId &&
+    hasSchedule &&
+    (getMatchUserParticipantSideName(match, userId) || feedRelations.includes("participant")),
+  );
+}
+
 export function isSeedSampleMatch(match = {}) {
   const id = String(match?.id ?? "");
   const title = String(match?.title ?? "");

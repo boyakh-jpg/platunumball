@@ -28,6 +28,7 @@ import { gradeRefereeExamByQuestionIds } from "../src/lib/refereeExamBank.js";
 import {
   getRecorderHandoffPatch,
   isMatchRecordMatch,
+  isTournamentMatchInUserSchedule,
   withEffectiveMatchStatRecorders,
 } from "../src/lib/matchUtils.js";
 
@@ -5466,21 +5467,24 @@ async function prepareTournamentMatchRosters({
     const fixture = fixtures.find((item) => item.team.id === teamId);
     const snapshotIds = scheduledMatch?.rules?.teamRosterSnapshot?.teams?.[teamId]?.eligiblePlayerIds ?? [];
     let playerId = snapshotIds.includes(fixture?.captainId) ? fixture.captainId : "";
+    let playerLogin = playerId ? fixture?.captainLogin : "";
     if (!playerId) {
       for (const candidateId of snapshotIds) {
-        if (await getTestLoginForProfileId(candidateId)) {
+        const candidateLogin = await getTestLoginForProfileId(candidateId);
+        if (candidateLogin) {
           playerId = candidateId;
+          playerLogin = candidateLogin;
           break;
         }
       }
     }
-    assertFlow(Boolean(fixture?.captainLogin && playerId), "tournament snapshot side fixture missing", {
+    assertFlow(Boolean(fixture?.captainLogin && playerId && playerLogin), "tournament snapshot side fixture missing", {
       sideName,
       teamId,
       captainId: fixture?.captainId,
       snapshotIds,
     });
-    sideFixtures.push({ sideName, fixture, playerId });
+    sideFixtures.push({ sideName, fixture, playerId, playerLogin });
   }
 
   if (verifyNotifications) {
@@ -5496,11 +5500,15 @@ async function prepareTournamentMatchRosters({
         { sideName, captainId: fixture.captainId, notifications: captainHome.notifications },
       );
       const captainMatches = await step(`${label}:loadCaptainMatches:${sideName}`, () => loadMatchesAs(fixture.captainLogin));
-      const listedMatch = (captainMatches.matches ?? []).find((match) => match.id === scheduledMatch.id);
       assertFlow(
-        listedMatch?.__feedRelations?.includes("tournament_captain"),
-        "scheduled tournament match missing from captain match list",
-        { sideName, captainId: fixture.captainId, matchIds: (captainMatches.matches ?? []).map((match) => match.id) },
+        (captainMatches.tournaments ?? []).some((tournament) => tournament.id === tournamentId),
+        "related private tournament missing from captain match response",
+        { sideName, captainId: fixture.captainId, tournamentIds: (captainMatches.tournaments ?? []).map((tournament) => tournament.id) },
+      );
+      assertFlow(
+        !isTournamentMatchInUserSchedule(scheduledMatch, fixture.captainId),
+        "captain must not receive an unassigned tournament match as personal schedule",
+        { sideName, captainId: fixture.captainId, scheduledMatch },
       );
     }
   }
@@ -5529,6 +5537,17 @@ async function prepareTournamentMatchRosters({
     "tournament roster readiness not persisted",
     rosterReadyMatch?.rules,
   );
+  if (verifyNotifications) {
+    for (const { sideName, playerId, playerLogin } of sideFixtures) {
+      const playerMatches = await step(`${label}:loadRosterPlayerMatches:${sideName}`, () => loadMatchesAs(playerLogin));
+      const listedMatch = (playerMatches.matches ?? []).find((match) => match.id === rosterReadyMatch.id);
+      assertFlow(
+        Boolean(listedMatch && isTournamentMatchInUserSchedule(listedMatch, playerId)),
+        "assigned tournament roster player missing from personal schedule",
+        { sideName, playerId, matchIds: (playerMatches.matches ?? []).map((match) => match.id) },
+      );
+    }
+  }
   return rosterReadyMatch;
 }
 
