@@ -918,27 +918,59 @@ async function cleanupSimulationNotifications() {
   const tournamentIds = uniqueIds(scenarioIds.map((scenario) => scenario.tournamentId));
   if (!idsToDelete.length && !discordIdsToDelete.length && !matchIds.length && !postIds.length && !tournamentIds.length) return { skipped: true };
   const errors = [];
+  let notificationDeleteCount = 0;
+  let discordDeliveryDeleteCount = 0;
+
+  if (discordIdsToDelete.length) {
+    const { data, error } = await supabase
+      .from("discord_notification_deliveries")
+      .delete()
+      .in("id", discordIdsToDelete)
+      .select("id");
+    if (error) errors.push({ table: "discord_notification_deliveries", column: "id", message: error.message });
+    else discordDeliveryDeleteCount += data?.length ?? 0;
+  }
+
+  async function deleteNotificationGroup(column, values) {
+    if (!values.length) return;
+    const { data: notificationRows, error: selectError } = await supabase
+      .from("notifications")
+      .select("id")
+      .in(column, values);
+    if (selectError) {
+      errors.push({ table: "notifications", column, message: selectError.message });
+      return;
+    }
+    const notificationIds = uniqueIds((notificationRows ?? []).map((notification) => notification.id));
+    if (!notificationIds.length) return;
+    const { data: deliveryRows, error: deliveryError } = await supabase
+      .from("discord_notification_deliveries")
+      .delete()
+      .in("notification_id", notificationIds)
+      .select("id");
+    if (deliveryError) {
+      errors.push({ table: "discord_notification_deliveries", column: "notification_id", message: deliveryError.message });
+      return;
+    }
+    discordDeliveryDeleteCount += deliveryRows?.length ?? 0;
+    const { data: deletedRows, error: deleteError } = await supabase
+      .from("notifications")
+      .delete()
+      .in("id", notificationIds)
+      .select("id");
+    if (deleteError) errors.push({ table: "notifications", column, message: deleteError.message });
+    else notificationDeleteCount += deletedRows?.length ?? 0;
+  }
+
   for (const [column, values] of [
     ["id", idsToDelete],
     ["match_id", matchIds],
     ["recruiting_post_id", postIds],
   ]) {
-    if (!values.length) continue;
-    const { error } = await supabase
-      .from("notifications")
-      .delete()
-      .in(column, values);
-    if (error) errors.push({ table: "notifications", column, message: error.message });
+    await deleteNotificationGroup(column, values);
   }
-  if (discordIdsToDelete.length) {
-    const { error } = await supabase
-      .from("discord_notification_deliveries")
-      .delete()
-      .in("id", discordIdsToDelete);
-    if (error) errors.push({ table: "discord_notification_deliveries", column: "id", message: error.message });
-  }
+
   let tournamentNotificationCount = 0;
-  let tournamentDeliveryCount = 0;
   for (const tournamentId of tournamentIds) {
     const { data: tournamentNotifications, error } = await supabase
       .from("notifications")
@@ -950,27 +982,34 @@ async function cleanupSimulationNotifications() {
     }
     const notificationIds = (tournamentNotifications ?? []).map((notification) => notification.id).filter(Boolean);
     if (!notificationIds.length) continue;
-    const { data: deliveryRows, error: deliveryError } = await supabase
-      .from("discord_notification_deliveries")
-      .delete()
-      .in("notification_id", notificationIds)
-      .select("id");
-    if (deliveryError) {
-      errors.push({ table: "discord_notification_deliveries", column: "notification_id", message: deliveryError.message });
-    } else {
-      tournamentDeliveryCount += deliveryRows?.length ?? 0;
-    }
-    const { data: notificationRows, error: notificationError } = await supabase
-      .from("notifications")
-      .delete()
-      .in("id", notificationIds)
-      .select("id");
-    if (notificationError) {
-      errors.push({ table: "notifications", column: "payload.tournamentId", message: notificationError.message });
-    } else {
-      tournamentNotificationCount += notificationRows?.length ?? 0;
-    }
+    const beforeDeleteCount = notificationDeleteCount;
+    await deleteNotificationGroup("id", notificationIds);
+    tournamentNotificationCount += notificationDeleteCount - beforeDeleteCount;
   }
+
+  let remainingNotifications = 0;
+  for (const [column, values] of [
+    ["id", idsToDelete],
+    ["match_id", matchIds],
+    ["recruiting_post_id", postIds],
+  ]) {
+    if (!values.length) continue;
+    const { count, error } = await supabase
+      .from("notifications")
+      .select("id", { count: "exact", head: true })
+      .in(column, values);
+    if (error) errors.push({ table: "notifications", column: `verify:${column}`, message: error.message });
+    else remainingNotifications += count ?? 0;
+  }
+  for (const tournamentId of tournamentIds) {
+    const { count, error } = await supabase
+      .from("notifications")
+      .select("id", { count: "exact", head: true })
+      .contains("payload", { tournamentId });
+    if (error) errors.push({ table: "notifications", column: "verify:payload.tournamentId", message: error.message });
+    else remainingNotifications += count ?? 0;
+  }
+  if (remainingNotifications > 0) errors.push({ table: "notifications", column: "cleanup", message: `remaining_simulation_notifications:${remainingNotifications}` });
   simulationNotificationIds.clear();
   simulationDiscordDeliveryIds.clear();
   return {
@@ -980,8 +1019,10 @@ async function cleanupSimulationNotifications() {
     matchIds: matchIds.length,
     recruitingPostIds: postIds.length,
     tournamentIds: tournamentIds.length,
+    deletedNotifications: notificationDeleteCount,
+    deletedDiscordDeliveries: discordDeliveryDeleteCount,
     tournamentNotifications: tournamentNotificationCount,
-    tournamentDiscordDeliveries: tournamentDeliveryCount,
+    remainingNotifications,
     errors,
   };
 }
@@ -6395,6 +6436,21 @@ async function main() {
     }));
   }
 
+  const cleanupResult = await cleanup();
+  const cleanupSucceeded = (cleanupResult?.skipped === true && cleanupResult?.reason === "keep_requested") || (
+    cleanupResult?.skipped !== true
+    && cleanupResult?.ok !== false
+    && Number(cleanupResult?.failedCount ?? 0) === 0
+    && (cleanupResult?.errors ?? []).length === 0
+    && (cleanupResult?.notificationCleanup?.errors ?? []).length === 0
+    && Number(cleanupResult?.notificationCleanup?.remainingNotifications ?? 0) === 0
+    && Number(cleanupResult?.artifactCleanup?.remainingNotifications ?? 0) === 0
+    && Number(cleanupResult?.artifactCleanup?.remainingDiscordDeliveries ?? 0) === 0
+    && Number(cleanupResult?.artifactCleanup?.remainingMatches ?? 0) === 0
+    && Number(cleanupResult?.artifactCleanup?.remainingTournaments ?? 0) === 0
+  );
+  assertFlow(cleanupSucceeded, "simulation cleanup verification failed", cleanupResult);
+
   console.log(JSON.stringify({
     ok: true,
     mode: fullSimulation ? "full" : usesRemoteApi ? "remote_smoke" : "local_smoke",
@@ -6407,7 +6463,7 @@ async function main() {
     maintenance: remoteSmokeOnly
       ? { skipped: true, reason: "remote_smoke" }
       : await runSystemMaintenanceProbe(),
-    cleanup: await cleanup(),
+    cleanup: cleanupResult,
   }, null, 2));
 }
 

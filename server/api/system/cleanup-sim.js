@@ -31,12 +31,48 @@ export default async function handler(request, response) {
     assertAccess(request);
     const client = getSupabaseAdminClient();
     const checks = [];
-    const { data: artifactCleanup, error: artifactCleanupError } = await client.rpc("rankball_cleanup_simulation_artifacts");
+    let artifactCleanup = null;
+    let artifactCleanupError = null;
+    let cleanupAttempts = 0;
+    const deletedTotals = { matches: 0, tournaments: 0, notifications: 0, discordDeliveries: 0 };
+    do {
+      cleanupAttempts += 1;
+      const result = await client.rpc("rankball_cleanup_simulation_artifacts");
+      artifactCleanup = result.data;
+      artifactCleanupError = result.error;
+      if (artifactCleanupError) break;
+      deletedTotals.matches += Number(artifactCleanup?.deletedMatches ?? 0);
+      deletedTotals.tournaments += Number(artifactCleanup?.deletedTournaments ?? 0);
+      deletedTotals.notifications += Number(artifactCleanup?.deletedNotifications ?? 0);
+      deletedTotals.discordDeliveries += Number(artifactCleanup?.deletedDiscordDeliveries ?? 0);
+    } while (
+      cleanupAttempts < 10
+      && (
+        Number(artifactCleanup?.remainingMatches ?? 0) > 0
+        || Number(artifactCleanup?.remainingTournaments ?? 0) > 0
+      )
+    );
+    const artifactRowsRemain = Number(artifactCleanup?.remainingMatches ?? 0) > 0
+      || Number(artifactCleanup?.remainingTournaments ?? 0) > 0;
     checks.push({
       table: "simulation_artifacts",
-      ok: !artifactCleanupError,
-      error: artifactCleanupError?.message ?? null,
-      deleted: Number(artifactCleanup?.deletedMatches ?? 0) + Number(artifactCleanup?.deletedTournaments ?? 0),
+      ok: !artifactCleanupError && !artifactRowsRemain,
+      error: artifactCleanupError?.message ?? (artifactRowsRemain ? "simulation_artifacts_remaining" : null),
+      attempts: cleanupAttempts,
+      deleted: deletedTotals.matches + deletedTotals.tournaments,
+      remaining: Number(artifactCleanup?.remainingMatches ?? 0) + Number(artifactCleanup?.remainingTournaments ?? 0),
+    });
+    const remainingNotifications = Number(artifactCleanup?.remainingNotifications ?? 0);
+    const remainingDiscordDeliveries = Number(artifactCleanup?.remainingDiscordDeliveries ?? 0);
+    checks.push({
+      table: "simulation_notifications",
+      ok: !artifactCleanupError && remainingNotifications === 0 && remainingDiscordDeliveries === 0,
+      error: artifactCleanupError?.message
+        ?? (remainingNotifications > 0 || remainingDiscordDeliveries > 0 ? "simulation_notifications_remaining" : null),
+      deleted: deletedTotals.notifications,
+      deletedDiscordDeliveries: deletedTotals.discordDeliveries,
+      remaining: remainingNotifications,
+      remainingDiscordDeliveries,
     });
     checks.push(await closePrefix(client, "recruiting_posts", "id", "sim_q_"));
     const { data: feedCleanup, error: feedCleanupError } = await client.rpc("rankball_cleanup_room_feed");
